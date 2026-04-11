@@ -37,3 +37,20 @@ module Poll : sig
   val diagnostic : Diagnostic.Event.t list t
   val running_jobs : Job.Event.t list t
 end
+
+module Builtin : sig
+  type t =
+    | Request :
+        { decl : ('req, 'resp) Decl.Request.t
+        ; declare_with_client : bool
+        }
+        -> t
+    | Notification :
+        { decl : 'payload Decl.Notification.t
+        ; declare_with_client : bool
+        }
+        -> t
+
+  val all : t list
+  val declared_by_client : t list
+end

@@ -4,6 +4,27 @@ open Dune_rpc
 
 let () = Printexc.record_backtrace false
 
+let conv_to_digest conv =
+  let sexp_string = Sexp.to_string (Conv.sexp_for_digest conv) in
+  if String.length sexp_string < 32
+  then sexp_string
+  else Digest.to_hex (Digest.string sexp_string)
+;;
+
+let print_request_generations generations =
+  List.iter generations ~f:(fun (version, Decl.Generation.T conv) ->
+    Printf.printf
+      "  Version %d:\n    Request: %s\n    Response: %s\n"
+      version
+      (conv_to_digest conv.req)
+      (conv_to_digest conv.resp))
+;;
+
+let print_notification_generations generations =
+  List.iter generations ~f:(fun (version, Decl.Generation.T conv) ->
+    Printf.printf "  Version %d:\n    Payload: %s\n" version (conv_to_digest conv.req))
+;;
+
 let%expect_test "sexp_for_digest" =
   let print_sexp_for_digest conv =
     Pp.to_fmt Format.std_formatter (Sexp.pp (Conv.sexp_for_digest conv))
@@ -62,76 +83,90 @@ let%expect_test "sexp_for_digest" =
         (Recurse 0))))) |}]
 ;;
 
-let%expect_test "print digests for all public RPCs" =
-  Decl.Request.print_generations Procedures.Public.ping;
+let%expect_test "print digests for all declared RPCs" =
+  List.iter Procedures.Builtin.all ~f:(fun proc ->
+    match proc with
+    | Procedures.Builtin.Request { decl; _ } ->
+      Printf.printf "%s\n" (Method.Name.to_string decl.decl.method_);
+      print_request_generations decl.generations
+    | Procedures.Builtin.Notification { decl; _ } ->
+      Printf.printf "%s\n" (Method.Name.to_string decl.decl.method_);
+      print_notification_generations decl.generations);
   [%expect
     {|
-    Version 1:
-      Request: Unit
-      Response: Unit
-    |}];
-  Decl.Request.print_generations Procedures.Public.diagnostics;
-  [%expect
-    {|
-    Version 1:
-      Request: Unit
-      Response: ffd3de9652c685594aacfc51d28f2533
-    Version 2:
-      Request: Unit
-      Response: 0d4442e0c36d6727a9acf9aabce6a6ad
-    |}];
-  Decl.Notification.print_generations Procedures.Public.shutdown;
-  [%expect {| Version 1: Unit |}];
-  Decl.Request.print_generations Procedures.Public.format_dune_file;
-  [%expect
-    {|
-    Version 1:
-      Request: 15eae4b546faf05a0fc3b6d03aed0c63
-      Response: String
-    |}];
-  Decl.Request.print_generations Procedures.Public.promote;
-  [%expect
-    {|
-    Version 1:
-      Request: String
-      Response: Unit
-    |}];
-  Decl.Request.print_generations Procedures.Public.build_dir;
-  [%expect
-    {|
-    Version 1:
-      Request: Unit
-      Response: String
-    |}];
-  Decl.Notification.print_generations Procedures.Server_side.abort;
-  [%expect {| Version 1: 0e9dfd1099101769896cf0bb06f891c6 |}];
-  Decl.Notification.print_generations Procedures.Server_side.log;
-  [%expect {| Version 1: 0e9dfd1099101769896cf0bb06f891c6 |}];
-  Decl.Request.print_generations (Procedures.Poll.poll Procedures.Poll.progress);
-  [%expect
-    {|
-    Version 1:
-      Request: Sexp
-      Response: 889aa68f4ad3fc68ef5dfffbb7282c18
-    Version 2:
-      Request: Sexp
-      Response: 929074caab98360dc7116b6f27c2b9ad
-    |}];
-  Decl.Request.print_generations (Procedures.Poll.poll Procedures.Poll.diagnostic);
-  [%expect
-    {|
-    Version 1:
-      Request: Sexp
-      Response: 443627a52ab5595206164d020ff01c56
-    Version 2:
-      Request: Sexp
-      Response: 12995aa06697c01ef35c0339bd2fa29e
-    |}];
-  Decl.Request.print_generations (Procedures.Poll.poll Procedures.Poll.running_jobs);
-  [%expect
-    {|
-    Version 1:
-      Request: Sexp
-      Response: 33528f248084297d123a6ebd4c3ddee0
+    ping
+      Version 1:
+        Request: Unit
+        Response: Unit
+    diagnostics
+      Version 1:
+        Request: Unit
+        Response: ffd3de9652c685594aacfc51d28f2533
+      Version 2:
+        Request: Unit
+        Response: 0d4442e0c36d6727a9acf9aabce6a6ad
+    shutdown
+      Version 1:
+        Payload: Unit
+    format
+      Version 1:
+        Request: Unit
+        Response: Unit
+    format-dune-file
+      Version 1:
+        Request: 15eae4b546faf05a0fc3b6d03aed0c63
+        Response: String
+    promote
+      Version 1:
+        Request: String
+        Response: Unit
+    promote_many
+      Version 1:
+        Request: (Iso (List String))
+        Response: 9b023f3c0fa25b79499054bca94d5498
+      Version 2:
+        Request: 083acd32b67fa4dfd9b625241d1d91d0
+        Response: 9b023f3c0fa25b79499054bca94d5498
+    build_dir
+      Version 1:
+        Request: Unit
+        Response: String
+    runtest
+      Version 1:
+        Request: (List String)
+        Response: 9b023f3c0fa25b79499054bca94d5498
+    notify/abort
+      Version 1:
+        Payload: 0e9dfd1099101769896cf0bb06f891c6
+    notify/log
+      Version 1:
+        Payload: 0e9dfd1099101769896cf0bb06f891c6
+    poll/running-jobs
+      Version 1:
+        Request: Sexp
+        Response: 33528f248084297d123a6ebd4c3ddee0
+    poll/diagnostic
+      Version 1:
+        Request: Sexp
+        Response: 443627a52ab5595206164d020ff01c56
+      Version 2:
+        Request: Sexp
+        Response: 12995aa06697c01ef35c0339bd2fa29e
+    poll/progress
+      Version 1:
+        Request: Sexp
+        Response: 889aa68f4ad3fc68ef5dfffbb7282c18
+      Version 2:
+        Request: Sexp
+        Response: 929074caab98360dc7116b6f27c2b9ad
+    cancel-poll/running-jobs
+      Version 1:
+        Payload: Sexp
+    cancel-poll/diagnostic
+      Version 1:
+        Payload: Sexp
+    cancel-poll/progress
+      Version 1:
+        Payload: Sexp
     |}]
 ;;

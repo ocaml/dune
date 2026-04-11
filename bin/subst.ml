@@ -159,12 +159,18 @@ let subst_file path ~map opam_package_files =
     in
     let path = Path.source path in
     let subst = subst_string s ~map path in
+    let replace_or_prepend_version ver file_contents =
+      let re = Re.(compile (seq [ bol; str "version:"; rep (compl [ char '\n' ]) ])) in
+      if Re.execp re file_contents
+      then Re.replace_string re ~by:ver file_contents
+      else ver ^ "\n" ^ file_contents
+    in
     let contents =
       match version, subst with
       | None, None -> None
-      | Some x, None -> Some (x ^ "\n" ^ s)
+      | Some x, None -> Some (replace_or_prepend_version x s)
       | None, Some x -> Some x
-      | Some x, Some y -> Some (x ^ "\n" ^ y)
+      | Some x, Some y -> Some (replace_or_prepend_version x y)
     in
     Option.iter contents ~f:(Io.write_file path)
 ;;

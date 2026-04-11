@@ -22,13 +22,9 @@ and no library definition (#3378).
   >  (action (with-stdout-to %{target} (echo %{lib:foo:data.txt}))))
   > EOF
 
-Currently fails because %{lib:...} only looks up library stanzas:
+The build succeeds — %{lib:...} falls back to the package install path:
 
   $ dune build out.txt
-  File "dune", line 8, characters 41-60:
-  8 |  (action (with-stdout-to %{target} (echo %{lib:foo:data.txt}))))
-                                               ^^^^^^^^^^^^^^^^^^^
-  Error: Library "foo" not found.
-  -> required by %{lib:foo:data.txt} at dune:8
-  -> required by _build/default/out.txt
-  [1]
+
+  $ cat _build/default/out.txt
+  ../install/default/lib/foo/data.txt

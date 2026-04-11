@@ -415,9 +415,6 @@ let expand_lib_variable t source ~lib ~file ~lib_exec ~lib_private =
         Lib.DB.available (Scope.libs scope) lib
         |> Resolve.Memo.lift_memo
         >>= function
-        | false ->
-          let+ (_ : Path.t) = p in
-          assert false
         | true ->
           Resolve.Memo.fail
             (User_error.make
@@ -427,8 +424,22 @@ let expand_lib_variable t source ~lib ~file ~lib_exec ~lib_private =
                     file's installation path which is not defined for private libraries."
                    (Lib_name.to_string lib)
                    (if lib_exec then "exec" else "")
-               ]))
-     |> Resolve.Memo.read)
+               ])
+        | false ->
+          let package = Lib_name.package_name lib in
+          let packages = Dune_project.packages project in
+          if Package.Name.Map.mem packages package
+          then
+            let+ context =
+              Resolve.Memo.lift_memo (Memo.return t.context) >>| Context.name
+            in
+            let dir = Install.Context.lib_dir ~context ~package in
+            Path.build (Path.Build.relative dir file)
+          else
+            let+ (_ : Path.t) = p in
+            assert false)
+     |> Resolve.Memo.read
+     |> Action_builder.bind ~f:dep)
   |> Action_builder.of_memo_join
 ;;
 

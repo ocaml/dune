@@ -56,6 +56,7 @@ type t =
   { alarm_clock : Alarm_clock.t Lazy.t
   ; mutable status : status
   ; mutable invalidation : Memo.Invalidation.t
+  ; mutable watch_restart_started_at : Time.t option
   ; handler : Handler.t
   ; job_throttle : Fiber.Throttle.t
   ; events : Event.Queue.t
@@ -215,6 +216,7 @@ let prepare (config : Config.t) ~(handler : Handler.t) ~events ~file_watcher =
            mode, which is even weirder. *)
         Building cancel
     ; invalidation = Memo.Invalidation.empty
+    ; watch_restart_started_at = None
     ; job_throttle = Fiber.Throttle.create config.concurrency
     ; process_watcher
     ; events
@@ -289,6 +291,12 @@ module Run_once = struct
     if Memo.Invalidation.is_empty invalidation
     then iter t
     else (
+      let now = Time.now () in
+      let reasons = Memo.Invalidation.details_hum ~max_elements:max_int invalidation in
+      if Option.is_none t.watch_restart_started_at
+      then t.watch_restart_started_at <- Some now;
+      Dune_trace.emit Build (fun () ->
+        Dune_trace.Event.watch_build_restart ~reasons ~at:now);
       t.invalidation <- Memo.Invalidation.combine t.invalidation invalidation;
       let fills =
         match t.status with
@@ -404,6 +412,21 @@ module Run = struct
   module Event_queue = Event.Queue
   module Event = Handler.Event
 
+  let emit_watch_build_finish t ~started_at ~outcome =
+    let stop = Time.now () in
+    let restart_duration =
+      Option.map t.watch_restart_started_at ~f:(fun restart_started_at ->
+        Time.diff stop restart_started_at)
+    in
+    t.watch_restart_started_at <- None;
+    Dune_trace.emit Build (fun () ->
+      Dune_trace.Event.watch_build_finish
+        ~outcome
+        ~start:started_at
+        ~stop
+        ~restart_duration)
+  ;;
+
   let rec poll_iter t step =
     if Memo.Invalidation.is_empty t.invalidation
     then Memo.Metrics.reset ()
@@ -413,6 +436,11 @@ module Run = struct
       Memo.reset t.invalidation;
       t.invalidation <- Memo.Invalidation.empty;
       t.build_inputs_changed <- Trigger.create ());
+    let started_at = Time.now () in
+    Dune_trace.emit Build (fun () ->
+      Dune_trace.Event.watch_build_start
+        ~restart:(Option.is_some t.watch_restart_started_at)
+        ~start:started_at);
     let cancel = Fiber.Cancel.create () in
     t.status <- Building cancel;
     t.cancel <- cancel;
@@ -424,6 +452,13 @@ module Run = struct
         | Error `Already_reported -> Failure
         | Ok () -> Success
       in
+      emit_watch_build_finish
+        t
+        ~started_at
+        ~outcome:
+          (match res with
+           | Success -> `Success
+           | Failure -> `Failure);
       t.handler (Build_finish res);
       Fiber.return res
     | Restarting_build -> poll_iter t step
@@ -434,6 +469,13 @@ module Run = struct
         | Ok () -> Success
       in
       t.status <- Standing_by;
+      emit_watch_build_finish
+        t
+        ~started_at
+        ~outcome:
+          (match res with
+           | Success -> `Success
+           | Failure -> `Failure);
       t.handler (Build_finish res);
       Fiber.return res
   ;;

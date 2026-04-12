@@ -79,10 +79,18 @@ let to_dyn { events; process_watcher; _ } =
     ]
 ;;
 
-let t : t option Fiber.Var.t = Fiber.Var.create None
-let set x f = Fiber.Var.set t (Some x) f
-let t_opt () = Fiber.Var.get t
-let t () = Fiber.Var.get_exn t
+let current = ref None
+
+let t_opt () =
+  let+ () = Fiber.return () in
+  !current
+;;
+
+let t () =
+  let+ () = Fiber.return () in
+  Option.value_exn !current
+;;
+
 let running_jobs_count t = Event.Queue.pending_jobs t.events
 
 exception Build_cancelled
@@ -185,8 +193,6 @@ let kill_and_wait_for_all_processes t =
     Thread.join t.signal_watcher);
   !saw_signal
 ;;
-
-let current = ref None
 
 let () =
   Debug.register ~name:"scheduler" (fun () ->
@@ -312,31 +318,34 @@ end = struct
   ;;
 
   let run t f : _ result =
+    current := Some t;
     let fiber =
-      set t (fun () ->
-        let module Scheduler = struct
-          let register_job_started () = Event.Queue.register_worker_task_started t.events
-          let fill_jobs jobs = Event.Queue.send_worker_tasks_completed t.events jobs
-          let cancel_job_started () = Event.Queue.cancel_work_task_started t.events
-        end
-        in
-        Async_io.with_io (module (Scheduler : Async_io.Scheduler))
-        @@ fun () ->
-        Fiber.map_reduce_errors
-          (module Monoid.Unit)
-          f
-          ~on_error:(fun e ->
-            Dune_util.Report_error.report e;
-            Fiber.return ()))
+      let module Scheduler = struct
+        let register_job_started () = Event.Queue.register_worker_task_started t.events
+        let fill_jobs jobs = Event.Queue.send_worker_tasks_completed t.events jobs
+        let cancel_job_started () = Event.Queue.cancel_work_task_started t.events
+      end
+      in
+      Async_io.with_io (module (Scheduler : Async_io.Scheduler))
+      @@ fun () ->
+      Fiber.map_reduce_errors
+        (module Monoid.Unit)
+        f
+        ~on_error:(fun e ->
+          Dune_util.Report_error.report e;
+          Fiber.return ())
     in
-    match Fiber.run fiber ~iter:(fun () -> iter t) with
-    | Ok res ->
-      assert (Event.Queue.pending_jobs t.events = 0);
-      assert (Event.Queue.pending_worker_tasks t.events = 0);
-      Ok res
-    | Error () -> Error Already_reported
-    | exception Abort err -> Error err
-    | exception exn -> Error (Exn (Exn_with_backtrace.capture exn))
+    Exn.protect
+      ~finally:(fun () -> current := None)
+      ~f:(fun () ->
+        match Fiber.run fiber ~iter:(fun () -> iter t) with
+        | Ok res ->
+          assert (Event.Queue.pending_jobs t.events = 0);
+          assert (Event.Queue.pending_worker_tasks t.events = 0);
+          Result.Ok res
+        | Error () -> Error Already_reported
+        | exception Abort err -> Error err
+        | exception exn -> Error (Exn (Exn_with_backtrace.capture exn)))
   ;;
 
   let run_and_cleanup t f =

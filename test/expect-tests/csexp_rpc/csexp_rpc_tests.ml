@@ -55,7 +55,7 @@ let scheduler_config =
 
 let run_scheduler f =
   Dune_engine.Clflags.display := Quiet;
-  Scheduler.Run.go scheduler_config f ~on_event:(fun _ _ -> ())
+  Scheduler.Run.go scheduler_config f ~on_event:(fun _ -> ())
 ;;
 
 let stop_server server addr =

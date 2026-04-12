@@ -4,11 +4,10 @@
   (:include flags/sexp))
  (foreign_stubs
   (language c)
-  (names fsevents_stubs))
+  (names fsevents_stubs fswatch_win_stubs))
  (libraries
   ocaml_inotify
   spawn
-  fswatch_win
   re
   unix
   csexp

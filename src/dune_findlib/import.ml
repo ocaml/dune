@@ -4,6 +4,7 @@ include struct
   open Dune_engine
   module Fs_memo = Fs_memo
   module Process = Process
+  module Fs = Fs
 end
 
 module Variant = Ocaml.Variant

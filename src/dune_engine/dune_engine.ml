@@ -35,3 +35,4 @@ module Rpc = Rpc
 module Action_exec = Action_exec
 module Running_jobs = Running_jobs
 module Rule_cache = Rule_cache
+module Fs = Fs

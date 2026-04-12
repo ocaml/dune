@@ -1,12 +1,6 @@
 open Stdune
 open Memo.O
 
-open struct
-  open Dune_engine
-  module Fs_memo = Fs_memo
-  module Build_system = Build_system
-end
-
 let dir_contents (dir : Path.t) =
   let* () = Memo.return () in
   match Path.destruct_build_dir dir with

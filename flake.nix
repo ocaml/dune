@@ -30,6 +30,7 @@
       inputs.ocaml-overlays.follows = "ocaml-overlays";
       inputs.melange.follows = "melange";
       inputs.oxcaml-opam-repository.follows = "oxcaml-opam-repository";
+      inputs.menhir-src.follows = "menhir-src";
       inputs.revdeps-dune.follows = "revdeps-dune";
     };
     menhir-src = {

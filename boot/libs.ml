@@ -260,12 +260,6 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
-  ; { path = "src/fs"
-    ; main_module_name = Some "Fs"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
   ; { path = "src/dune_findlib"
     ; main_module_name = Some "Dune_findlib"
     ; include_subdirs = No

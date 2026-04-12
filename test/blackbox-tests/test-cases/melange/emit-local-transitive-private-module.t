@@ -70,6 +70,7 @@ transitive implementation closure, even across `.mli` boundaries.
 
   $ dune rules --deps app/dist/node_modules/repro.foo/foo_map.js \
   >   | sed -n 's#.*\(lib/.foo\.objs/melange/[^)]*\).*#\1#p'
-  lib/.foo.objs/melange/foo__.cmj
+  lib/.foo.objs/melange/foo__Foo_internalAVLtree.cmj
+  lib/.foo.objs/melange/foo__Foo_internalMapInt.cmj
   lib/.foo.objs/melange/foo__Foo_map.cmj
   lib/.foo.objs/melange/foo__Foo_mapInt.cmj

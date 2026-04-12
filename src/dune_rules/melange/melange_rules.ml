@@ -673,7 +673,7 @@ let setup_runtime_assets_rules
       >>= fun is_dir ->
       let dst, builder =
         match is_dir with
-        | Some (Ok true) -> Right dst, Action_builder.symlink_dir ~src ~dst
+        | Some (Ok true) -> Right dst, Action_builder.copy_dir ~src ~dst
         | Some (Ok false) | Some (Error _) | None ->
           Left dst, Action_builder.copy ~src ~dst
       in
@@ -689,7 +689,7 @@ let setup_runtime_assets_rules
         let rel = Path.reach ~from:src new_src in
         Path.Build.relative dst rel
       in
-      let builder = Action_builder.symlink_dir ~src:new_src ~dst in
+      let builder = Action_builder.copy_dir ~src:new_src ~dst in
       let builder =
         let open Action_builder.With_targets.O in
         builder >>| Action.Full.add_sandbox Sandbox_config.needs_sandboxing

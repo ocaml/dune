@@ -47,6 +47,7 @@ val lines_of : Path.t -> string list t
 val read_sexp : Path.t -> Dune_sexp.Ast.t t
 
 val symlink_dir : src:Path.t -> dst:Path.Build.t -> Action.Full.t With_targets.t
+val copy_dir : src:Path.t -> dst:Path.Build.t -> Action.Full.t With_targets.t
 val symlink : src:Path.t -> dst:Path.Build.t -> Action.Full.t With_targets.t
 val copy : src:Path.t -> dst:Path.Build.t -> Action.Full.t With_targets.t
 

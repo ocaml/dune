@@ -47,11 +47,15 @@ Depend on a path inside the directory target
   > EOF
   $ dune build @mel
 
-Dune symlinks the entire directory target
+Dune copies the directory target contents into the emit output
 
   $ ls _build/default/output
   main.js
   some_dir
 
-  $ realpath _build/default/output/some_dir
-  $TESTCASE_ROOT/_build/default/some_dir
+  $ test -d _build/default/output/some_dir
+
+  $ test ! -L _build/default/output/some_dir
+
+  $ cat _build/default/output/some_dir/other/nested/inside-dir-target.txt
+  hello from file inside dir target

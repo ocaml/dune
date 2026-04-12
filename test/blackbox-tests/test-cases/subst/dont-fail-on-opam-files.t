@@ -59,3 +59,30 @@ dune subst should not fail when adding the version field in opam files
     ]
   ]
   x-maintenance-intent: ["(latest)"]
+
+Release-style builds should take a checked-in opam file as-is:
+
+  $ mkdir release-profile
+  $ cd release-profile
+
+  $ cat > dune-project << EOF
+  > (lang dune 3.23)
+  > (name test)
+  > (version 0.1)
+  > (generate_opam_files)
+  > (package (name test) (allow_empty))
+  > EOF
+
+  $ cat > test.opam << EOF
+  > version: "0.1"
+  > # SOURCE COPY
+  > opam-version: "2.0"
+  > EOF
+
+  $ dune build @install 2>&1 | sed -n '1,3p'
+
+  $ dune build -p test @install _build/install/default/lib/test/opam
+  $ grep '^# SOURCE COPY$' _build/install/default/lib/test/opam
+  [1]
+  $ grep '^# SOURCE COPY$' test.opam
+  [1]

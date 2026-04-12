@@ -63,6 +63,7 @@
   dune_rpc_impl
   dune_scheduler
   stdune
+  rpc
   fiber
   xdg
   unix

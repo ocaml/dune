@@ -3,7 +3,7 @@ open Fiber.O
 open Dune_scheduler
 module Where = Dune_rpc.Private.Where
 module Registry = Dune_rpc.Private.Registry
-module Poll_active = Dune_rpc_impl.Poll_active
+module Poll_active = Rpc.Poll_active
 open Dune_rpc_e2e
 
 let try_ ~times ~delay_seconds ~f =

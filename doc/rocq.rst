@@ -44,7 +44,7 @@ example, adding
 
 .. code:: dune
 
-    (using rocq 0.12)
+    (using rocq 0.13)
 
 to a :doc:`/reference/dune-project/index` file enables using the
 ``rocq.theory`` stanza and other ``rocq.*`` stanzas. See the :ref:`Dune Rocq
@@ -85,7 +85,7 @@ When a ``.v`` file has a corresponding ``.expected`` file, Rocq's standard
 output is captured instead of being output to the terminal, and the output is
 diffed with the ``.expected`` file as part of the ``runtest`` alias. When the
 output differs, it can be promoted as with, e.g., cram tests.
-(Appeared in :ref:`Coq lang 0.12<rocq-lang>`)
+(Appeared in :ref:`Rocq lang 0.12<rocq-lang>`)
 
 For usage of this stanza, see the :ref:`rocq-examples`.
 
@@ -122,9 +122,10 @@ The semantics of the fields are:
   ``.cmxs`` files that appear in ``<ocaml_plugins>``. This will be dropped in
   future versions.
 
-- ``<rocq_flags>`` are passed to ``rocqc`` as command-line options. ``:standard``
-  is taken from the value set in the ``(rocq (flags <flags>))`` field in ``env``
-  profile. See :doc:`/reference/dune/env` for more information.
+- ``<rocq_flags>`` are passed to ``rocq c`` as command-line options.
+  ``:standard`` is taken from the value set in the ``(rocq (flags <flags>))``
+  field in ``env`` profile. See :doc:`/reference/dune/env` for more
+  information.
 
 - ``<flags_map>`` is a list of pairs of valid Rocq module names and a
   list of ``<rocq_flags>``. Note that if a module is present here, the
@@ -144,31 +145,33 @@ The semantics of the fields are:
   flags, but that should be done using ``(:standard <flag1> <flag2>
   ...)`` as to propagate the default flags.
 
-- ``<rocqdep_flags>`` are extra user-configurable flags passed to ``rocqdep``. The
-  default value for ``:standard`` is empty. This field exists for transient
-  use-cases, in particular disabling ``rocqdep`` warnings, but it should not be
-  used in normal operations.
+- ``<rocqdep_flags>`` are extra user-configurable flags passed to ``rocq dep``.
+  The default value for ``:standard`` is empty. This field exists for transient
+  use-cases, in particular disabling ``rocq dep`` warnings, but it should not
+  be used in normal operations.
 
-- ``<rocqdoc_flags>`` are extra user-configurable flags passed to ``rocqdoc``. The
-  default value for ``:standard`` is ``--toc``. The ``--html`` or ``--latex``
-  flags are passed separately depending on which mode is target. See the section
-  on :ref:`documentation using rocqdoc<rocqdoc>` for more information.
+- ``<rocqdoc_flags>`` are extra user-configurable flags passed to ``rocq doc``.
+  The default value for ``:standard`` is ``--toc``. The ``--html`` or
+  ``--latex`` flags are passed separately depending on which mode is target.
+  See the section on :ref:`Rocq Documentation<rocqdoc>` for more information.
 
-- ``<rocqdoc_header>`` is a file passed to ``rocqdoc`` using the ``--with-header``
-  option, to configure a custom HTML header for the generated HTML pages.
+- ``<rocqdoc_header>`` is a file passed to ``rocq doc`` using the
+  ``--with-header`` option, to configure a custom HTML header for the
+  generated HTML pages.
 
-- ``<rocqdoc_footer>`` is a file passed to ``rocqdoc`` using the ``--with-footer``
-  option, to configure a custom HTML footer for the generated HTML pages.
+- ``<rocqdoc_footer>`` is a file passed to ``rocq doc`` using the
+  ``--with-footer`` option, to configure a custom HTML footer for the
+  generated HTML pages.
 
 - ``<stdlib_included>`` can either be ``yes`` or ``no``, currently defaulting to
-  ``yes``. When set to ``no``, Rocq's standard library won't be visible from this
-  theory, which means the ``Rocq`` prefix won't be bound, and
-  ``Rocq.Init.Prelude`` won't be imported by default.
+  ``yes``. When set to ``no``, Rocq's core standard library (``Corelib``) won't
+  be added implicitly and ``Corelib.Init.Prelude`` won't be imported by default.
+  See the section on :ref:`rocq-stdlib` for details.
 
 - If the ``plugins`` field is present, Dune will pass the corresponding flags to
-  Rocq so that ``rocqdep`` and ``rocqc`` can find the corresponding OCaml libraries
-  declared in ``<ocaml_plugins>``. This allows a Rocq theory to depend on OCaml
-  plugins. The field must contain a public library name.
+  Rocq so that ``rocq dep`` and ``rocq c`` can find the corresponding OCaml
+  libraries declared in ``<ocaml_plugins>``. This allows a Rocq theory to
+  depend on OCaml plugins. The field must contain a public library name.
 
 - Your Rocq theory can depend on other theories --- globally installed or defined
   in the current workspace --- by adding the theories names to the
@@ -204,7 +207,7 @@ Rocq Dependencies
 
 When a Rocq file ``a.v`` depends on another file ``b.v``, Dune is able to build
 them in the correct order, even if they are in separate theories. Under the
-hood, Dune asks rocqdep how to resolve these dependencies, which is why it is
+hood, Dune uses ``rocq dep`` to resolve these dependencies, which is why it is
 called once per theory.
 
 .. _rocqdoc:
@@ -221,12 +224,12 @@ theory is the current directory).
 There are also two aliases :doc:`/reference/aliases/doc` and ``@doc-latex``
 that will respectively build the HTML or LaTeX documentation when called. These
 will determine whether or not Dune passes a ``--html`` or ``--latex`` flag to
-``rocqdoc``.
+``rocq doc``.
 
 Further flags can also be configured using the ``(rocqdoc_flags)`` field in the
-``rocq.theory`` stanza. These will be passed to ``rocqdoc`` and the default value
-is ``:standard`` which is ``--toc``. Extra flags can therefore be passed by
-writing ``(rocqdoc_flags :standard --body-only)`` for example.
+``rocq.theory`` stanza. These will be passed to ``rocq doc`` and the default
+value is ``:standard`` which is ``--toc``. Extra flags can therefore be passed
+by writing ``(rocqdoc_flags :standard --body-only)`` for example.
 
 When building the HTML documentation, flags ``(rocqdoc_header)`` and
 ``(rocqdoc_footer)`` can also be used to configure a custom HTML header or
@@ -253,7 +256,7 @@ module ``A.b.C``.
 How Dune Locates and Builds theories
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Dune organises it's knowledge about Rocq theories in 3 databases:
+Dune organises its knowledge about Rocq theories in 3 databases:
 
 - Scope database: A Dune *scope* is a part of the project sharing a single
   common ``dune-project`` file. In a single scope, any theory in the database
@@ -283,10 +286,15 @@ Dune organises it's knowledge about Rocq theories in 3 databases:
   workspace-public theories, Dune will try to locate the theory in the list of
   installed locations Rocq knows about.
 
-  This list is built using the output of ``rocq c --config`` in order  to infer
-  the ``ROCQLIB`` and ``ROCQPATH`` environment variables. Each path in ``ROCQPATH``
-  and ``ROCQLIB/user-contrib`` is used to build the database of installed
-  theories.
+  This list is built using the output of ``rocq c --config``. That command
+  reports the Rocq library root path under the key ``ROCQLIB`` (note: this key
+  is still named ``COQLIB`` in current Rocq releases and will eventually be
+  renamed). Each path under ``ROCQLIB/user-contrib`` is scanned to build the 
+  database of installed theories.
+
+  If the ``ROCQPATH`` environment variable is set, its paths are also scanned
+  for installed theories. This is useful for theories installed outside the
+  standard ``user-contrib`` location.
 
   Note that, for backwards compatibility purposes, installed theories do not
   have to be installed or built using Dune. Dune tries to infer the name of the
@@ -296,14 +304,16 @@ Dune organises it's knowledge about Rocq theories in 3 databases:
   Resolving this ambiguity in a backwards-compatible way is not possible, but
   future versions of Dune Rocq support will provide a way to improve this.
 
-  Rocq's standard library gets a special status in Dune. The location at
-  ``ROCQLIB/theories`` will be assigned a entry with the theory name ``Rocq``, and
-  added to the dependency list implicitly. This can be disabled with the
-  ``(stdlib no)`` field in the ``rocq.theory`` stanza.
+  Rocq's core library gets a special status in Dune. The location at
+  ``ROCQLIB/theories`` will be assigned an entry with the theory name
+  ``Corelib``, and added to the dependency list implicitly. This can be
+  disabled with the ``(stdlib no)`` field in the ``rocq.theory`` stanza.
+  Even if disabled, the ``Corelib`` theory is still available as an explicit 
+  dependency that can be added to the ``theories`` field. 
 
-  The ``Rocq`` prefix can then be used to depend on Rocq's stdlib in a regular,
-  qualified way. We recommend setting ``(stdlib no)`` and adding ``(theories
-  Rocq)`` explicitly.
+  Note that ``Stdlib`` is a *separate* installed theory and is never added 
+  implicitly. To use ``Stdlib`` modules, add ``(theories Stdlib)`` to your 
+  stanza regardless of the ``(stdlib ...)`` setting.
 
 The databases above are used to locate a theory dependencies. Note that Dune has
 a complete global view of every file involved in the compilation of your theory
@@ -345,14 +355,14 @@ Limitations
 .. _limitation-mlpack:
 
 - A ``foo.mlpack`` file must the present in directories of locally defined
-  plugins for things to work. ``rocqdep``, which is used internally by Dune, will
-  recognize a plugin by looking at the existence of an ``.mlpack`` file, as it
-  cannot access (for now) Dune's library database. This is a limitation of
-  ``rocqdep``. See the :ref:`example plugin<rocq example plugin>` or the `this
-  template <https://github.com/ejgallego/rocq-plugin-template>`_.
+  plugins for things to work. ``rocq dep``, which is used internally by Dune,
+  will recognize a plugin by looking at the existence of an ``.mlpack`` file,
+  as it cannot access (for now) Dune's library database. This is a limitation
+  of ``rocq dep``. See the :ref:`example plugin<rocq example plugin>` or the
+  `this template <https://github.com/ejgallego/rocq-plugin-template>`_.
 
-  This limitation will be lifted soon, as newer versions of ``rocqdep`` can use
-  findlib's database to check the existence of OCaml libraries.
+  This limitation will be lifted soon, as newer versions of ``rocq dep`` can
+  use findlib's database to check the existence of OCaml libraries.
 
 .. _rocq-lang:
 
@@ -364,14 +374,16 @@ The Rocq lang can be modified by adding the following to a
 
 .. code:: dune
 
-    (using rocq 0.12)
+    (using rocq 0.13)
 
 The supported Rocq language versions (not the version of Rocq) are:
 
 - ``0.11``: Support for the Rocq Prover; most important changes are:
+
   + all deprecated features in ``(lang coq 0.10)`` have been removed.
   + Dune won't install .cmxs files in user-contrib (along .vo files) anymore.
-  + ``(mode native)`` is not allowed anymore. It is the default if Rocq was configured with native compute enabled.
+  + ``(mode native)`` is not allowed anymore. It is the default if Rocq was
+    configured with native compute enabled.
   + ``COQPATH`` is not recognized anymore, use ``ROCQPATH``.
 - ``0.12``: Support for output tests.
 - ``0.13``: ``rocq.extraction`` now uses ``extracted_files`` instead of
@@ -383,10 +395,35 @@ Rocq Language Version 1.0
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Guarantees with respect to stability are not yet provided, but we
-intend that the ``(0.12)`` version of the language becomes ``1.0``.
+intend that the ``(0.13)`` version of the language becomes ``1.0``.
 The ``1.0`` version of Rocq lang will commit to a stable set of
 functionality. All the features below are expected to reach ``1.0``
 unchanged or minimally modified.
+
+.. _rocq-stdlib:
+
+The Rocq Standard Library
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Rocq's standard library is divided into two separately-installed theories:
+
+- **Corelib**: The core prelude, providing fundamental data types and basic 
+  logic. Corresponds to the path ``ROCQLIB/theories`` in the Rocq installation. 
+  See `The Rocq Reference Manual
+  <https://rocq-prover.org/doc/master/refman/language/coq-library.html#the-prelude>`_
+  for more information on the contents of this library.
+
+  By default ``(stdlib yes)`` is set: Dune adds ``Corelib`` as an implicit 
+  dependency and automatically imports ``Corelib.Init.Prelude``. This makes 
+  basic syntax and types available without any explicit ``Require``. 
+
+- **Stdlib**: The standard library, providing additional modules such as 
+  ``Strings``, ``ZArith``, ``Lists``, etc. This is a regular installed theory, 
+  typically named ``Stdlib`` in the ``user-contrib`` directory.  See 
+  `Rocq Stdlib <https://github.com/rocq-prover/stdlib>`_ for more information.
+
+  .. warning:: ``Stdlib`` is *never* added implicitly regardless of 
+    the ``(stdlib ...)`` setting.
 
 .. _rocq-extraction:
 
@@ -442,15 +479,16 @@ rocq.pp
 -------
 
 Authors of Rocq plugins often need to write ``.mlg`` files to extend the Rocq
-grammar. Such files are preprocessed with the ``rocqpp`` binary. To help plugin
-authors avoid writing boilerplate, we provide a ``(rocq.pp ...)`` stanza:
+grammar. Such files are preprocessed using the ``rocq pp-mlg`` subcommand. To
+help plugin authors avoid writing boilerplate, we provide a ``(rocq.pp ...)``
+stanza:
 
 .. code:: dune
 
     (rocq.pp
      (modules <ordered_set_lang>))
 
-This will run the ``rocqpp`` binary on all the ``.mlg`` files in
+This will run ``rocq pp-mlg`` on all the ``.mlg`` files in
 ``<ordered_set_lang>``.
 
 .. _rocq-examples:
@@ -472,7 +510,7 @@ lang<rocq-lang>` stanza present:
 .. code:: dune
 
   (lang dune 3.23)
-  (using rocq 0.12)
+  (using rocq 0.13)
 
 Next we need a :doc:`/reference/dune/index` file with a :ref:`rocq-theory`
 stanza:
@@ -703,7 +741,7 @@ the plugin to sit in, otherwise Rocq will not be able to find it.
 .. code:: dune
 
   (lang dune 3.23)
-  (using rocq 0.12)
+  (using rocq 0.13)
 
   (package
    (name my-rocq-plugin)
@@ -748,7 +786,7 @@ Together with ``hello_world.ml``:
   let hello_world = "hello world!"
 
 They make up the plugin. There is one more important ingredient here and that is
-the ``my_plugin.mlpack`` file, needed to signal ``rocqdep`` the existence of
+the ``my_plugin.mlpack`` file, needed to signal ``rocq dep`` the existence of
 ``my_plugin`` in this directory. An empty file suffices. See :ref:`this note on
 .mlpack files<limitation-mlpack>`.
 
@@ -778,7 +816,7 @@ Running ``dune build`` will build everything correctly.
 Running a Rocq Toplevel
 -----------------------
 
-Dune supports running a Rocq toplevel binary such as ``rocqtop``, which is
+Dune supports running a Rocq toplevel binary such as ``rocq top``, which is
 typically used by editors such as RocqIDE or Proof General to interact with Rocq.
 
 The following command:
@@ -787,10 +825,10 @@ The following command:
 
    $ dune rocq top <file> -- <args>
 
-runs a Rocq toplevel (``rocqtop`` by default) on the given Rocq file ``<file>``,
+runs a Rocq toplevel (``rocq top`` by default) on the given Rocq file ``<file>``,
 after having recompiled its dependencies as necessary. The given arguments
 ``<args>`` are forwarded to the invoked command. For example, this can be used
-to pass a ``-emacs`` flag to ``rocqtop``.
+to pass a ``-emacs`` flag to ``rocq top``.
 
 A different toplevel can be chosen with ``dune rocq top --toplevel CMD <file>``.
 Note that using ``--toplevel echo`` is one way to observe what options are
@@ -798,7 +836,7 @@ actually passed to the toplevel. These options are computed based on the options
 that would be passed to the Rocq compiler if it was invoked on the Rocq file
 ``<file>``.
 
-In certain situations, it is desirable to not rebuild dependencies for a ``.v``
+In certain situations, it is desirable to not rebuild dependencies for ``.v``
 files but still pass the correct flags to the toplevel. For this reason, a
 ``--no-build`` flag can be passed to ``dune rocq top`` which will skip any
 building of dependencies.
@@ -810,7 +848,7 @@ Limitations
 * When a file is created, it must be written to the file system before the Rocq
   toplevel is started.
 * When new dependencies are added to a file (via a Rocq ``Require`` vernacular
-  command), it is in principle required to save the file and restart to Rocq
+  command), it is in principle required to save the file and restart the Rocq
   toplevel process.
 
 .. _rocq-variables:
@@ -845,20 +883,20 @@ Rocq Environment Fields
 The :doc:`/reference/dune/env` stanza has a ``(rocq <rocq_fields>)`` field
 with the following values for ``<rocq_fields>``:
 
-- ``(flags <flags>)``: The default flags passed to ``rocqc``. The default value
-  is ``-q``. Values set here become the ``:standard`` value in the
+- ``(flags <flags>)``: The default flags passed to ``rocq c``. The default
+  value is ``-q``. Values set here become the ``:standard`` value in the
   ``(rocq.theory (flags <flags>))`` field.
-- ``(rocqdep_flags <flags>)``: The default flags passed to ``rocqdep``. The default
-  value is empty. Values set here become the ``:standard`` value in the
-  ``(rocq.theory (rocqdep_flags <flags>))`` field. As noted in the documentation
-  of the ``(rocq.theory (rocqdep_flags <flags>))`` field, changing the ``rocqdep``
-  flags is discouraged.
-- ``(rocqdoc_flags <flags>)``: The default flags passed to ``rocqdoc``. The default
-  value is ``--toc``. Values set here become the ``:standard`` value in the
-  ``(rocq.theory (rocqdoc_flags <flags>))`` field.
-- ``(rocqdoc_header <file>)``: The default HTML header passed to ``rocqdoc`` via
-  the ``--with-header`` flag. Values set here become the ``:standard`` value in the
-  ``(rocq.theory (rocqdoc_header <file>))`` field.
-- ``(rocqdoc_footer <file>)``: The default HTML footer passed to ``rocqdoc`` via
-  the ``--with-footer`` flag. Values set here become the ``:standard`` value in the
-  ``(rocq.theory (rocqdoc_footer <file>))`` field.
+- ``(rocqdep_flags <flags>)``: The default flags passed to ``rocq dep``. The
+  default value is empty. Values set here become the ``:standard`` value in
+  the ``(rocq.theory (rocqdep_flags <flags>))`` field. As noted in the
+  documentation of the ``(rocq.theory (rocqdep_flags <flags>))`` field,
+  changing the ``rocq dep`` flags is discouraged.
+- ``(rocqdoc_flags <flags>)``: The default flags passed to ``rocq doc``. The
+  default value is ``--toc``. Values set here become the ``:standard`` value
+  in the ``(rocq.theory (rocqdoc_flags <flags>))`` field.
+- ``(rocqdoc_header <file>)``: The default HTML header passed to ``rocq doc``
+  via the ``--with-header`` flag. Values set here become the ``:standard``
+  value in the ``(rocq.theory (rocqdoc_header <file>))`` field.
+- ``(rocqdoc_footer <file>)``: The default HTML footer passed to ``rocq doc``
+  via the ``--with-footer`` flag. Values set here become the ``:standard``
+  value in the ``(rocq.theory (rocqdoc_footer <file>))`` field.

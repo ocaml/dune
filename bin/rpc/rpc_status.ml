@@ -48,7 +48,9 @@ let registered_dunes () : Dune_rpc.Registry.Dune.t list Fiber.t =
   let config = Dune_rpc.Registry.Config.create (Lazy.force Dune_util.xdg) in
   let registry = Dune_rpc.Registry.create config in
   let open Fiber.O in
-  let+ _result = Dune_rpc_impl.Poll_active.poll registry in
+  let+ (_result : (Dune_rpc.Registry.Refresh.t, exn) result) =
+    Root.Rpc.Poll_active.poll registry
+  in
   Dune_rpc.Registry.current registry
 ;;
 

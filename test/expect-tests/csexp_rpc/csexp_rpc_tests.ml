@@ -65,10 +65,14 @@ let stop_server server addr =
   | ADDR_INET _ -> ()
 ;;
 
+let temp_rpc_dir () =
+  Temp.temp_dir ~parent_dir:(Path.of_string ".") ~prefix:"test" ~suffix:"dune_rpc"
+;;
+
 let%expect_test "csexp server create on unix sockets" =
   if not Sys.win32
   then (
-    let tmp_dir = Temp.create Dir ~prefix:"test" ~suffix:"dune_rpc" in
+    let tmp_dir = temp_rpc_dir () in
     let addr : Unix.sockaddr =
       Unix.ADDR_UNIX (Path.to_string (Path.relative tmp_dir "dunerpc.sock"))
     in
@@ -78,7 +82,7 @@ let%expect_test "csexp server create on unix sockets" =
 ;;
 
 let%expect_test "csexp server life cycle" =
-  let tmp_dir = Temp.create Dir ~prefix:"test" ~suffix:"dune_rpc" in
+  let tmp_dir = temp_rpc_dir () in
   let addr : Unix.sockaddr =
     if Sys.win32
     then ADDR_INET (Unix.inet_addr_loopback, 0)

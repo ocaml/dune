@@ -112,11 +112,12 @@ module Event : sig
 
   val scan_source : name:string -> start:Time.t -> stop:Time.t -> dir:Path.Source.t -> t
   val scheduler_idle : unit -> t
-  val watch_build_start : restart:bool -> start:Time.t -> t
-  val watch_build_restart : reasons:string list -> at:Time.t -> t
+  val watch_build_start : run_id:int -> restart:bool -> start:Time.t -> t
+  val watch_build_restart : run_id:int -> reasons:string list -> at:Time.t -> t
 
   val watch_build_finish
-    :  outcome:[ `Success | `Failure ]
+    :  run_id:int
+    -> outcome:[ `Success | `Failure ]
     -> start:Time.t
     -> stop:Time.t
     -> restart_duration:Time.Span.t option

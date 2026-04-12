@@ -1,4 +1,5 @@
 open Stdune
+module Fsevents = Dune_scheduler.For_tests.Fsevents
 
 let paths, latency =
   let latency = ref 0. in

@@ -228,6 +228,9 @@
         "melange": [
           "melange"
         ],
+        "menhir-src": [
+          "menhir-src"
+        ],
         "nixpkgs": [
           "nixpkgs"
         ],
@@ -251,11 +254,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1774622333,
-        "narHash": "sha256-1mstTMWySXgw6qwrB6Mhx3BiPSBI1wBfIvxNewnsGdA=",
+        "lastModified": 1775965138,
+        "narHash": "sha256-NcMOjNyc8xnjIo330BSC5bJtuaIEzIOlZ0c5rhDcfaI=",
         "owner": "ocaml",
         "repo": "dune",
-        "rev": "898e0121ff1fb1b5499f9aa976ea5bfc4258cb29",
+        "rev": "db211c4b093be1acee8dad2dd7949b7028788fd5",
         "type": "github"
       },
       "original": {

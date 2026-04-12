@@ -186,6 +186,8 @@ summarize_rpc_trace () {
              and .args.stage == "stop"
              and (.args | has("error"))
         then "accept stop error"
+        elif .name == "startup-failure"
+        then "startup failure"
         elif .name == "request" and .args.meth == "build"
         then "build \(.args.stage)"
         elif .name == "shutdown"

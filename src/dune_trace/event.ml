@@ -507,6 +507,12 @@ module Rpc = struct
 
   let shutdown ~id stage = server ~id ~name:"shutdown" stage
 
+  let startup_failure exn =
+    let now = Time.now () in
+    let args = [ "error", Arg.dyn (Exn_with_backtrace.to_dyn exn) ] in
+    Event.instant ~args ~name:"startup-failure" now Rpc
+  ;;
+
   let close ~id =
     let now = Time.now () in
     let args = [ "id", Arg.int id ] in

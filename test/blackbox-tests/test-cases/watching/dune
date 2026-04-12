@@ -18,6 +18,11 @@
   (= "macosx" %{ocaml-config:system}))
  (applies_to path-pwd))
 
+(cram
+ (applies_to rpc-bind-failure)
+ (enabled_if
+  (<> %{ocaml-config:system} win)))
+
 ;; Disabled due to timeouts
 
 (cram

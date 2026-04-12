@@ -23,20 +23,12 @@ include struct
   module Status = Status
 end
 
-module Server = Rpc.Server
-module Session = Server.Session
-module Handler = Server.Handler
+module Session = Rpc.Server.Session
+module Handler = Rpc.Server.Handler
 module Csexp_rpc = Rpc.Csexp_rpc
 
 module Run = struct
   module Registry = Dune_rpc.Registry
-
-  module Server = Rpc.Server.Make (struct
-      include Csexp_rpc.Session
-
-      (* only needed for action runners. can be safely omitted elsewhere *)
-      let name _ = "unnamed"
-    end)
 
   type t =
     { handler : Rpc.Server.t
@@ -99,7 +91,7 @@ module Run = struct
              cleanup_registry := Some path;
              at_exit run_cleanup_registry
            in
-           let* () = Server.serve sessions t.handler in
+           let* () = Rpc.Server.serve sessions t.handler in
            Fiber.Pool.close t.pool)
         (fun () -> Fiber.Pool.run t.pool)
     in
@@ -470,7 +462,7 @@ let handler (t : _ t Fdecl.t) : 'build_arg Handler.t =
 let create ~lock_timeout ~registry ~root =
   let t = Fdecl.create Dyn.opaque in
   let pending_jobs = Job_queue.create () in
-  let handler = Server.make (handler t) in
+  let handler = Rpc.Server.make (handler t) in
   let pool = Fiber.Pool.create () in
   let where = Where.default () in
   Global_lock.lock_exn ~timeout:lock_timeout;

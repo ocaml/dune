@@ -1,4 +1,5 @@
 open Stdune
+module Fswatch_win = Dune_scheduler.For_tests.Fswatch_win
 
 let paths =
   let paths = ref [] in

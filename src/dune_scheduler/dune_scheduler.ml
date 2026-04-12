@@ -4,6 +4,7 @@ module File_watcher = File_watcher
 
 module For_tests = struct
   module Inotify = Inotify
+  module Fsevents = Fsevents
 end
 
 module For_benchmarks = struct

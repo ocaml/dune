@@ -1,4 +1,5 @@
 open Stdune
+module Fsevents = Dune_scheduler.For_tests.Fsevents
 module Event = Fsevents.Event
 
 module Logger : sig

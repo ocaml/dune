@@ -1,9 +1,13 @@
 (library
  (name dune_scheduler)
+ (library_flags
+  (:include flags/sexp))
+ (foreign_stubs
+  (language c)
+  (names fsevents_stubs))
  (libraries
   ocaml_inotify
   spawn
-  fsevents
   fswatch_win
   re
   unix

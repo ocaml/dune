@@ -15,15 +15,9 @@
 (* TODO one day switch to lev and integrate all of this directly into the
    scheduler. This should solve all the problems above. *)
 
-module type Scheduler = sig
-  val fill_jobs : Fiber.fill list -> unit
-  val register_job_started : unit -> unit
-  val cancel_job_started : unit -> unit
-end
-
 (** [with_io scheduler f] runs [f] with [scheduler]. All operations in this
     module must be executed inside [f]. *)
-val with_io : (module Scheduler) -> (unit -> 'a Fiber.t) -> 'a Fiber.t
+val with_io : Event.Queue.t -> (unit -> 'a Fiber.t) -> 'a Fiber.t
 
 (** [close fd] must be used to close any file descriptor which has been watched
     at some point. This is needed to make sure we never close a file descriptor

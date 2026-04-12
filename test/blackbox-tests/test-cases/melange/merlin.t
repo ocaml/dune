@@ -22,33 +22,173 @@
 
   $ touch bar.ml $lib.ml
   $ dune build @check
-  $ dune ocaml merlin dump-config "$PWD" | grep -i "$lib"
-  ((INDEX $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
-   (B $TESTCASE_ROOT/_build/default/.foo.objs/melange)
-   (FLG (-open Foo__))
-   (UNIT_NAME foo__Bar))
-  ((INDEX $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
-   (B $TESTCASE_ROOT/_build/default/.foo.objs/melange)
-   (FLG (-open Foo__))
-   (UNIT_NAME foo__Bar))
-  Foo: _build/default/foo
-  ((INDEX $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
-   (B $TESTCASE_ROOT/_build/default/.foo.objs/melange)
-   (FLG (-open Foo__))
-   (UNIT_NAME foo))
-  Foo: _build/default/foo.ml
-  ((INDEX $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
-   (B $TESTCASE_ROOT/_build/default/.foo.objs/melange)
-   (FLG (-open Foo__))
-   (UNIT_NAME foo))
-  Foo__: _build/default/foo__
-  ((INDEX $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
-   (B $TESTCASE_ROOT/_build/default/.foo.objs/melange)
-   (UNIT_NAME foo__))
-  Foo__: _build/default/foo__.ml-gen
-  ((INDEX $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
-   (B $TESTCASE_ROOT/_build/default/.foo.objs/melange)
-   (UNIT_NAME foo__))
+  $ dune ocaml merlin dump-config --format=json "$PWD" | jq '
+  > include "dune";
+  > [
+  >   .[]
+  >   | merlinConfigSummary(["FLG", "UNIT_NAME"])
+  > ]
+  > | .[]'
+  {
+    "module_name": "Bar",
+    "source_path": "_build/default/bar",
+    "config": [
+      [
+        "FLG",
+        [
+          "-w",
+          "@1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40",
+          "-strict-sequence",
+          "-strict-formats",
+          "-short-paths",
+          "-keep-locs",
+          "-g"
+        ]
+      ],
+      [
+        "FLG",
+        [
+          "-open",
+          "Foo__"
+        ]
+      ],
+      [
+        "UNIT_NAME",
+        "foo__Bar"
+      ]
+    ]
+  }
+  {
+    "module_name": "Bar",
+    "source_path": "_build/default/bar.ml",
+    "config": [
+      [
+        "FLG",
+        [
+          "-w",
+          "@1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40",
+          "-strict-sequence",
+          "-strict-formats",
+          "-short-paths",
+          "-keep-locs",
+          "-g"
+        ]
+      ],
+      [
+        "FLG",
+        [
+          "-open",
+          "Foo__"
+        ]
+      ],
+      [
+        "UNIT_NAME",
+        "foo__Bar"
+      ]
+    ]
+  }
+  {
+    "module_name": "Foo",
+    "source_path": "_build/default/foo",
+    "config": [
+      [
+        "FLG",
+        [
+          "-w",
+          "@1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40",
+          "-strict-sequence",
+          "-strict-formats",
+          "-short-paths",
+          "-keep-locs",
+          "-g"
+        ]
+      ],
+      [
+        "FLG",
+        [
+          "-open",
+          "Foo__"
+        ]
+      ],
+      [
+        "UNIT_NAME",
+        "foo"
+      ]
+    ]
+  }
+  {
+    "module_name": "Foo",
+    "source_path": "_build/default/foo.ml",
+    "config": [
+      [
+        "FLG",
+        [
+          "-w",
+          "@1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40",
+          "-strict-sequence",
+          "-strict-formats",
+          "-short-paths",
+          "-keep-locs",
+          "-g"
+        ]
+      ],
+      [
+        "FLG",
+        [
+          "-open",
+          "Foo__"
+        ]
+      ],
+      [
+        "UNIT_NAME",
+        "foo"
+      ]
+    ]
+  }
+  {
+    "module_name": "Foo__",
+    "source_path": "_build/default/foo__",
+    "config": [
+      [
+        "FLG",
+        [
+          "-w",
+          "@1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40",
+          "-strict-sequence",
+          "-strict-formats",
+          "-short-paths",
+          "-keep-locs",
+          "-g"
+        ]
+      ],
+      [
+        "UNIT_NAME",
+        "foo__"
+      ]
+    ]
+  }
+  {
+    "module_name": "Foo__",
+    "source_path": "_build/default/foo__.ml-gen",
+    "config": [
+      [
+        "FLG",
+        [
+          "-w",
+          "@1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40",
+          "-strict-sequence",
+          "-strict-formats",
+          "-short-paths",
+          "-keep-locs",
+          "-g"
+        ]
+      ],
+      [
+        "UNIT_NAME",
+        "foo__"
+      ]
+    ]
+  }
 
 Paths to Melange stdlib appear in B and S entries without melange.emit stanza
 
@@ -73,11 +213,33 @@ Paths to Melange stdlib appear in B and S entries without melange.emit stanza
 
   $ touch main.ml
   $ dune build @check
-  $ dune ocaml merlin dump-config $PWD | grep -i "$target"
-  ((INDEX $TESTCASE_ROOT/_build/default/.output.mobjs/cctx.ocaml-index)
-   (B $TESTCASE_ROOT/_build/default/.output.mobjs/melange)
-  ((INDEX $TESTCASE_ROOT/_build/default/.output.mobjs/cctx.ocaml-index)
-   (B $TESTCASE_ROOT/_build/default/.output.mobjs/melange)
+  $ dune ocaml merlin dump-config --format=json $PWD | jq '
+  > include "dune";
+  > [
+  >   .[]
+  >   | merlinConfigSummary(["UNIT_NAME"])
+  > ]
+  > | .[]'
+  {
+    "module_name": "Main",
+    "source_path": "_build/default/main",
+    "config": [
+      [
+        "UNIT_NAME",
+        "melange__Main"
+      ]
+    ]
+  }
+  {
+    "module_name": "Main",
+    "source_path": "_build/default/main.ml",
+    "config": [
+      [
+        "UNIT_NAME",
+        "melange__Main"
+      ]
+    ]
+  }
 
 Dump-dot-merlin includes the melange flags
 
@@ -129,58 +291,208 @@ Check for flag directives ordering when another preprocessor is defined
 
 User ppx flags should appear in merlin config
 
-  $ dune ocaml merlin dump-config $PWD | grep -v "(B "  | grep -v "(S " | censor_ppx
-  Bar: _build/default/bar
-  ((INDEX $TESTCASE_ROOT/_build/default/.fooppx.objs/cctx.ocaml-index)
-   (INDEX $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
-   (STDLIB /MELC_STDLIB/melange)
-   (SOURCE_ROOT $TESTCASE_ROOT)
-   (EXCLUDE_QUERY_DIR)
-   (FLG (-w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g))
-   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name="foo"'"))
-   (FLG (-open Foo))
-   (UNIT_NAME foo__Bar))
-  Bar: _build/default/bar.ml
-  ((INDEX $TESTCASE_ROOT/_build/default/.fooppx.objs/cctx.ocaml-index)
-   (INDEX $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
-   (STDLIB /MELC_STDLIB/melange)
-   (SOURCE_ROOT $TESTCASE_ROOT)
-   (EXCLUDE_QUERY_DIR)
-   (FLG (-w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g))
-   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name="foo"'"))
-   (FLG (-open Foo))
-   (UNIT_NAME foo__Bar))
-  Foo: _build/default/foo
-  ((INDEX $TESTCASE_ROOT/_build/default/.fooppx.objs/cctx.ocaml-index)
-   (INDEX $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
-   (STDLIB /MELC_STDLIB/melange)
-   (SOURCE_ROOT $TESTCASE_ROOT)
-   (EXCLUDE_QUERY_DIR)
-   (FLG (-w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g))
-   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name="foo"'"))
-   (UNIT_NAME foo))
-  Foo: _build/default/foo.ml-gen
-  ((INDEX $TESTCASE_ROOT/_build/default/.fooppx.objs/cctx.ocaml-index)
-   (INDEX $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
-   (STDLIB /MELC_STDLIB/melange)
-   (SOURCE_ROOT $TESTCASE_ROOT)
-   (EXCLUDE_QUERY_DIR)
-   (FLG (-w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g))
-   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name="foo"'"))
-   (UNIT_NAME foo))
-  Fooppx: _build/default/fooppx
-  ((INDEX $TESTCASE_ROOT/_build/default/.fooppx.objs/cctx.ocaml-index)
-   (INDEX $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
-   (STDLIB /OCAMLC_WHERE)
-   (SOURCE_ROOT $TESTCASE_ROOT)
-   (EXCLUDE_QUERY_DIR)
-   (FLG (-w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g))
-   (UNIT_NAME fooppx))
-  Fooppx: _build/default/fooppx.ml
-  ((INDEX $TESTCASE_ROOT/_build/default/.fooppx.objs/cctx.ocaml-index)
-   (INDEX $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
-   (STDLIB /OCAMLC_WHERE)
-   (SOURCE_ROOT $TESTCASE_ROOT)
-   (EXCLUDE_QUERY_DIR)
-   (FLG (-w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g))
-   (UNIT_NAME fooppx))
+  $ dune ocaml merlin dump-config --format=json $PWD | jq '
+  > include "dune";
+  > [
+  >   .[]
+  >   | merlinConfigSummary(["STDLIB", "FLG", "UNIT_NAME"])
+  > ]
+  > | .[]' | censor_ppx
+  {
+    "module_name": "Bar",
+    "source_path": "_build/default/bar",
+    "config": [
+      [
+        "STDLIB",
+        "/MELC_STDLIB/melange"
+      ],
+      [
+        "FLG",
+        [
+          "-w",
+          "@1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40",
+          "-strict-sequence",
+          "-strict-formats",
+          "-short-paths",
+          "-keep-locs",
+          "-g"
+        ]
+      ],
+      [
+        "FLG",
+        [
+          "-ppx",
+          "$TESTCASE_ROOT/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name=\"foo\"'"
+        ]
+      ],
+      [
+        "FLG",
+        [
+          "-open",
+          "Foo"
+        ]
+      ],
+      [
+        "UNIT_NAME",
+        "foo__Bar"
+      ]
+    ]
+  }
+  {
+    "module_name": "Bar",
+    "source_path": "_build/default/bar.ml",
+    "config": [
+      [
+        "STDLIB",
+        "/MELC_STDLIB/melange"
+      ],
+      [
+        "FLG",
+        [
+          "-w",
+          "@1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40",
+          "-strict-sequence",
+          "-strict-formats",
+          "-short-paths",
+          "-keep-locs",
+          "-g"
+        ]
+      ],
+      [
+        "FLG",
+        [
+          "-ppx",
+          "$TESTCASE_ROOT/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name=\"foo\"'"
+        ]
+      ],
+      [
+        "FLG",
+        [
+          "-open",
+          "Foo"
+        ]
+      ],
+      [
+        "UNIT_NAME",
+        "foo__Bar"
+      ]
+    ]
+  }
+  {
+    "module_name": "Foo",
+    "source_path": "_build/default/foo",
+    "config": [
+      [
+        "STDLIB",
+        "/MELC_STDLIB/melange"
+      ],
+      [
+        "FLG",
+        [
+          "-w",
+          "@1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40",
+          "-strict-sequence",
+          "-strict-formats",
+          "-short-paths",
+          "-keep-locs",
+          "-g"
+        ]
+      ],
+      [
+        "FLG",
+        [
+          "-ppx",
+          "$TESTCASE_ROOT/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name=\"foo\"'"
+        ]
+      ],
+      [
+        "UNIT_NAME",
+        "foo"
+      ]
+    ]
+  }
+  {
+    "module_name": "Foo",
+    "source_path": "_build/default/foo.ml-gen",
+    "config": [
+      [
+        "STDLIB",
+        "/MELC_STDLIB/melange"
+      ],
+      [
+        "FLG",
+        [
+          "-w",
+          "@1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40",
+          "-strict-sequence",
+          "-strict-formats",
+          "-short-paths",
+          "-keep-locs",
+          "-g"
+        ]
+      ],
+      [
+        "FLG",
+        [
+          "-ppx",
+          "$TESTCASE_ROOT/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name=\"foo\"'"
+        ]
+      ],
+      [
+        "UNIT_NAME",
+        "foo"
+      ]
+    ]
+  }
+  {
+    "module_name": "Fooppx",
+    "source_path": "_build/default/fooppx",
+    "config": [
+      [
+        "STDLIB",
+        "/OCAMLC_WHERE"
+      ],
+      [
+        "FLG",
+        [
+          "-w",
+          "@1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40",
+          "-strict-sequence",
+          "-strict-formats",
+          "-short-paths",
+          "-keep-locs",
+          "-g"
+        ]
+      ],
+      [
+        "UNIT_NAME",
+        "fooppx"
+      ]
+    ]
+  }
+  {
+    "module_name": "Fooppx",
+    "source_path": "_build/default/fooppx.ml",
+    "config": [
+      [
+        "STDLIB",
+        "/OCAMLC_WHERE"
+      ],
+      [
+        "FLG",
+        [
+          "-w",
+          "@1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40",
+          "-strict-sequence",
+          "-strict-formats",
+          "-short-paths",
+          "-keep-locs",
+          "-g"
+        ]
+      ],
+      [
+        "UNIT_NAME",
+        "fooppx"
+      ]
+    ]
+  }

@@ -9,12 +9,6 @@ module Fd = struct
   let to_dyn = Dyn.opaque
 end
 
-module type Scheduler = sig
-  val fill_jobs : Fiber.fill list -> unit
-  val register_job_started : unit -> unit
-  val cancel_job_started : unit -> unit
-end
-
 let byte = Bytes.make 1 '0'
 
 module Task_id = Id.Make ()
@@ -27,7 +21,7 @@ type t =
   ; (* write a byte here to interrupt the select loop *)
     pipe_write : Unix.file_descr
   ; mutex : Mutex.t
-  ; scheduler : (module Scheduler)
+  ; scheduler_queue : Event.Queue.t
   ; mutable running : bool
   ; mutable started : bool
   ; (* this flag is to save a write to the pipe we used to interrupt select *)
@@ -94,9 +88,8 @@ module Task = struct
           !should_interrupt
         in
         if should_interrupt then interrupt t.select;
-        let module Scheduler = (val t.select.scheduler) in
         t.status <- `Filled;
-        Scheduler.cancel_job_started ();
+        Event.Queue.cancel_work_task_started t.select.scheduler_queue;
         Fiber.Ivar.fill t.ivar (Error `Cancelled)
     in
     Mutex.unlock t.select.mutex
@@ -184,9 +177,7 @@ let rec select_loop t =
      t.to_close <- [];
      (match fills with
       | [] -> ()
-      | _ :: _ ->
-        let module Scheduler = (val t.scheduler) in
-        Scheduler.fill_jobs fills));
+      | _ :: _ -> Event.Queue.send_worker_tasks_completed t.scheduler_queue fills));
   match t.running with
   | false ->
     Unix.close t.pipe_write;
@@ -223,14 +214,11 @@ let rec select_loop t =
          t.interrupting <- false);
        (match fills with
         | [] -> ()
-        | _ :: _ ->
-          let module Scheduler = (val t.scheduler) in
-          Scheduler.fill_jobs fills);
+        | _ :: _ -> Event.Queue.send_worker_tasks_completed t.scheduler_queue fills);
        select_loop t)
 ;;
 
 let start t =
-  let module Scheduler = (val t.scheduler : Scheduler) in
   Thread0.spawn (fun () ->
     Mutex.lock t.mutex;
     match select_loop t with
@@ -271,7 +259,7 @@ end = struct
   ;;
 end
 
-let with_io scheduler f =
+let with_io scheduler_queue f =
   let t =
     let pipe_read, pipe_write =
       if not Sys.win32
@@ -287,7 +275,7 @@ let with_io scheduler f =
     { readers = Table.create (module Fd) 64
     ; writers = Table.create (module Fd) 64
     ; mutex = Mutex.create ()
-    ; scheduler
+    ; scheduler_queue
     ; running = true
     ; pipe_read
     ; pipe_write
@@ -306,15 +294,14 @@ let with_ f =
   Exn.protect ~f:(fun () -> f t) ~finally:(fun () -> Mutex.unlock t.mutex)
 ;;
 
-let cancel_fd scheduler table fd =
+let cancel_fd scheduler_queue table fd =
   match Table.find table fd with
   | None -> Fiber.return ()
   | Some tasks ->
     Table.remove table fd;
-    let module Scheduler = (val scheduler : Scheduler) in
     Queue.to_list tasks
     |> Fiber.parallel_iter ~f:(fun (Task (t, _)) ->
-      Scheduler.cancel_job_started ();
+      Event.Queue.cancel_work_task_started scheduler_queue;
       Fiber.Ivar.fill t.ivar (Error `Cancelled))
 ;;
 
@@ -326,8 +313,8 @@ let close fd =
   t.to_close <- fd :: t.to_close;
   let+ () =
     Fiber.fork_and_join_unit
-      (fun () -> cancel_fd t.scheduler t.readers fd)
-      (fun () -> cancel_fd t.scheduler t.writers fd)
+      (fun () -> cancel_fd t.scheduler_queue t.readers fd)
+      (fun () -> cancel_fd t.scheduler_queue t.writers fd)
   in
   interrupt t;
   Mutex.unlock t.mutex
@@ -338,8 +325,7 @@ let ready_one (type a label) (fds : (label * Unix.file_descr) list) what ~f:job
   =
   with_
   @@ fun t ->
-  let module Scheduler = (val t.scheduler) in
-  Scheduler.register_job_started ();
+  Event.Queue.register_worker_task_started t.scheduler_queue;
   let ivar = Fiber.Ivar.create () in
   let queues, skip_interrupt =
     let table =

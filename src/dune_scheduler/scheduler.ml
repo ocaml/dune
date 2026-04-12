@@ -307,13 +307,7 @@ module Run_once = struct
   let run t f : _ result =
     current := Some t;
     let fiber =
-      let module Scheduler = struct
-        let register_job_started () = Event.Queue.register_worker_task_started t.events
-        let fill_jobs jobs = Event.Queue.send_worker_tasks_completed t.events jobs
-        let cancel_job_started () = Event.Queue.cancel_work_task_started t.events
-      end
-      in
-      Async_io.with_io (module (Scheduler : Async_io.Scheduler))
+      Async_io.with_io t.events
       @@ fun () ->
       Fiber.map_reduce_errors
         (module Monoid.Unit)

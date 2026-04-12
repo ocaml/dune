@@ -70,7 +70,7 @@ module Run : sig
     :  Config.t
     -> ?timeout:Time.Span.t
     -> ?file_watcher:file_watcher
-    -> on_event:(Config.t -> Event.t -> unit)
+    -> on_event:(Event.t -> unit)
     -> (unit -> 'a Fiber.t)
     -> 'a
 end

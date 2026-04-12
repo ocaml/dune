@@ -52,12 +52,11 @@ module Handler = struct
       | Build_finish of Build_outcome.t
   end
 
-  type t = Config.t -> Event.t -> unit
+  type t = Event.t -> unit
 end
 
 type t =
-  { config : Config.t
-  ; alarm_clock : Alarm_clock.t Lazy.t
+  { alarm_clock : Alarm_clock.t Lazy.t
   ; mutable status : status
   ; mutable invalidation : Memo.Invalidation.t
   ; handler : Handler.t
@@ -222,7 +221,6 @@ let prepare (config : Config.t) ~(handler : Handler.t) ~events ~file_watcher =
     ; job_throttle = Fiber.Throttle.create config.concurrency
     ; process_watcher
     ; events
-    ; config
     ; handler
     ; file_watcher
     ; fs_syncs = Table.create (module File_watcher.Sync_id) 64
@@ -272,7 +270,7 @@ end = struct
       - starting cancellations
       - terminating the scheduler on signals *)
   let rec iter (t : t) : Fiber.fill list =
-    t.handler t.config Tick;
+    t.handler Tick;
     match Event.Queue.next t.events with
     | File_watcher_task job ->
       let events = job () in
@@ -307,7 +305,7 @@ end = struct
         match t.status with
         | Restarting_build | Standing_by -> []
         | Building cancellation ->
-          t.handler t.config Build_interrupted;
+          t.handler Build_interrupted;
           t.status <- Restarting_build;
           Fiber.Cancel.fire' cancellation
       in
@@ -422,7 +420,7 @@ module Run = struct
     then Memo.Metrics.reset ()
     else (
       let details_hum = Memo.Invalidation.details_hum t.invalidation in
-      t.handler t.config (Source_files_changed { details_hum });
+      t.handler (Source_files_changed { details_hum });
       Memo.reset t.invalidation;
       t.invalidation <- Memo.Invalidation.empty;
       t.build_inputs_changed <- Trigger.create ());
@@ -437,7 +435,7 @@ module Run = struct
         | Error `Already_reported -> Failure
         | Ok () -> Success
       in
-      t.handler t.config (Build_finish res);
+      t.handler (Build_finish res);
       Fiber.return res
     | Restarting_build -> poll_iter t step
     | Building _ ->
@@ -447,7 +445,7 @@ module Run = struct
         | Ok () -> Success
       in
       t.status <- Standing_by;
-      t.handler t.config (Build_finish res);
+      t.handler (Build_finish res);
       Fiber.return res
   ;;
 
@@ -521,7 +519,7 @@ module Run = struct
         (config : Config.t)
         ?timeout
         ?(file_watcher = No_watcher)
-        ~(on_event : Config.t -> Handler.Event.t -> unit)
+        ~(on_event : Handler.Event.t -> unit)
         run
     =
     let events = Event_queue.create () in
@@ -586,7 +584,7 @@ let cancel_current_build () =
   match t.status with
   | Restarting_build | Standing_by -> Fiber.return ()
   | Building cancellation ->
-    t.handler t.config Build_interrupted;
+    t.handler Build_interrupted;
     t.status <- Standing_by;
     Fiber.Cancel.fire cancellation
 ;;

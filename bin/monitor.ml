@@ -282,7 +282,7 @@ let command =
     in
     Scheduler.Run.go
       config
-      ~on_event:(fun _ _ -> ())
+      ~on_event:(fun (_ : Scheduler.Run.Event.t) -> ())
       ~file_watcher:No_watcher
       (monitor ~quit_on_disconnect)
   in

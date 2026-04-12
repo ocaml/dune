@@ -284,7 +284,12 @@ let exec_building_directly ~common ~config ~context ~prog ~args ~no_rebuild =
     let on_exit = Console.printf "Program exited with code [%d]" in
     Scheduler.Run.poll
     @@
-    let* () = Fiber.return @@ Scheduler_setup.maybe_clear_screen ~details_hum:[] config in
+    let* () =
+      Fiber.return
+      @@ Scheduler_setup.maybe_clear_screen
+           ~details_hum:[]
+           ~terminal_persistence:config.terminal_persistence
+    in
     Build.build_memo @@ step ~prog ~args ~common ~no_rebuild ~context ~on_exit
   | No ->
     Scheduler_setup.go_with_rpc_server ~common ~config

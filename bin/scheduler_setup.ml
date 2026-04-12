@@ -1,11 +1,14 @@
 open Import
 open Scheduler
 
-let maybe_clear_screen ~details_hum (dune_config : Dune_config.t) =
+let maybe_clear_screen
+      ~(terminal_persistence : Dune_config.Terminal_persistence.t)
+      ~details_hum
+  =
   match Execution_env.inside_dune with
   | true -> (* Don't print anything here to make tests less verbose *) ()
   | false ->
-    (match dune_config.terminal_persistence with
+    (match terminal_persistence with
      | Clear_on_rebuild -> Console.reset ()
      | Clear_on_rebuild_and_flush_history -> Console.reset_flush_history ()
      | Preserve ->
@@ -19,9 +22,10 @@ let maybe_clear_screen ~details_hum (dune_config : Dune_config.t) =
             [ Pp.nop; Pp.tag User_message.Style.Success (Pp.verbatim message); Pp.nop ]))
 ;;
 
-let on_event dune_config _config = function
+let on_event ~terminal_persistence = function
   | Run.Event.Tick -> Console.Status_line.refresh ()
-  | Source_files_changed { details_hum } -> maybe_clear_screen ~details_hum dune_config
+  | Source_files_changed { details_hum } ->
+    maybe_clear_screen ~terminal_persistence ~details_hum
   | Build_interrupted ->
     Console.Status_line.set
       (Live
@@ -72,7 +76,7 @@ let no_build_no_rpc ~config:dune_config f =
     Dune_config.for_scheduler dune_config ~print_ctrl_c_warning:true ~watch_exclusions:[]
   in
   Dune_rules.Clflags.concurrency := config.concurrency;
-  Run.go config ~on_event:(fun _ _ -> ()) f
+  Run.go config ~on_event:(fun _ -> ()) f
 ;;
 
 let go_without_rpc_server ~(common : Common.t) ~config:dune_config f =
@@ -81,7 +85,8 @@ let go_without_rpc_server ~(common : Common.t) ~config:dune_config f =
     Dune_config.for_scheduler dune_config ~print_ctrl_c_warning:true ~watch_exclusions
   in
   Dune_rules.Clflags.concurrency := config.concurrency;
-  Run.go config ~on_event:(on_event dune_config) f
+  let on_event = on_event ~terminal_persistence:dune_config.terminal_persistence in
+  Run.go config ~on_event f
 ;;
 
 let go_with_rpc_server ~common ~config f =
@@ -116,5 +121,9 @@ let go_with_rpc_server_and_console_status_reporting
     let* () = Dune_engine.Rpc.ensure_ready () in
     run ()
   in
-  Run.go config ~file_watcher ~on_event:(on_event dune_config) run
+  Run.go
+    config
+    ~file_watcher
+    ~on_event:(on_event ~terminal_persistence:dune_config.terminal_persistence)
+    run
 ;;

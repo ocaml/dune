@@ -34,8 +34,7 @@ let%expect_test "cancelling a build" =
            (let* () = Fiber.Ivar.fill build_started () in
             let* () = Fiber.Ivar.read build_cancelled in
             let* res =
-              Fiber.collect_errors (fun () ->
-                Scheduler.with_job_slot (fun _ _ -> Fiber.return ()))
+              Fiber.collect_errors (fun () -> Scheduler.with_job_slot Fiber.return)
             in
             print_endline
               (match res with

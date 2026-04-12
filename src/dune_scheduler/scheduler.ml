@@ -109,7 +109,7 @@ let with_job_slot f =
   let* t = t () in
   Fiber.Throttle.run t.job_throttle ~f:(fun () ->
     check_cancelled t;
-    f t.cancel t.config)
+    f ())
 ;;
 
 let wait_for_process t ~is_process_group_leader pid =

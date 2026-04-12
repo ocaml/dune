@@ -1033,7 +1033,7 @@ let run_internal
       args
   =
   let start = Time.now () in
-  Scheduler.with_job_slot (fun _cancel (_config : Scheduler.Config.t) ->
+  Scheduler.with_job_slot (fun () ->
     let queued = Time.diff (Time.now ()) start in
     let dir =
       match dir with

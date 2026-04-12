@@ -31,20 +31,6 @@ module Run : sig
 
   val file_watcher_equal : file_watcher -> file_watcher -> bool
 
-  module Shutdown : sig
-    module Reason : sig
-      type t =
-        | Requested
-        | Timeout
-        | Signal of Signal.t
-    end
-
-    (** Raised when [go] terminates due to the user requesting a shutdown via
-        rpc or raising a signal. The caller needs to know about this to set the
-        exit code correctly *)
-    exception E of Reason.t
-  end
-
   exception Build_cancelled
 
   type step = (unit, [ `Already_reported ]) Result.t Fiber.t

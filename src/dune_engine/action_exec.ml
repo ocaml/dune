@@ -238,11 +238,16 @@ let rec exec t ~ectx ~eenv : Done_or_more_deps.t Produce.t =
             (File_kind.to_string_hum kind)
         ]
     in
-    let src_path = Path.to_string src in
     let+ () =
       maybe_async (fun () ->
-        match (Unix.lstat src_path).st_kind with
-        | S_DIR -> Tree_copy.copy ~src ~dst ~copy_file ~mkdir ~on_unsupported ()
+        (* NOTE(anmonteiro): we may reconsider relaxing the directory target
+           constraint (see [test/blackbox-tests/test-cases/pkg/source-with-directory-symlink.t]).
+
+           [Copy] stays file-oriented by default. We only use recursive copying
+           when [dst] is a directory target. *)
+        match ectx.targets with
+        | Some { dirs; _ } when Filename.Set.mem dirs (Path.basename dst) ->
+          Tree_copy.copy ~src ~dst ~copy_file ~mkdir ~on_unsupported ()
         | _ -> copy_file ~src ~dst)
     in
     Done

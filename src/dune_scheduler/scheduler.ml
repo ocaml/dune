@@ -1,6 +1,5 @@
 open Import
 open Fiber.O
-module Thread = Thread0
 
 module Fs_memo = struct
   let handle_fs_event = Fdecl.create Dyn.opaque
@@ -23,9 +22,7 @@ module Config = struct
     }
 end
 
-module Shutdown = Shutdown
-
-let spawn_thread ~name f = Thread.spawn ~name f
+let spawn_thread ~name f = Thread0.spawn ~name f
 
 type status =
   | (* We are not doing a build. Just accumulating invalidations until the next
@@ -188,7 +185,7 @@ let kill_and_wait_for_all_processes t =
      reset with the correct event queue. *)
   if not Sys.win32
   then (
-    Unix.kill (Unix.getpid ()) (Signal.to_int Thread.signal_watcher_interrupt);
+    Unix.kill (Unix.getpid ()) (Signal.to_int Thread0.signal_watcher_interrupt);
     Thread.join t.signal_watcher);
   !saw_signal
 ;;
@@ -211,11 +208,11 @@ let prepare (config : Config.t) ~(handler : Handler.t) ~events ~file_watcher =
   let t =
     { status =
         (* Slightly weird initialization happening here: for polling mode we
-         initialize in "Building" state, immediately switch to Standing_by
-         and then back to "Building". It would make more sense to start in
-         "Stand_by" from the start. We can't "just" switch the initial value
-         here because then the non-polling mode would run in "Standing_by"
-         mode, which is even weirder. *)
+           initialize in "Building" state, immediately switch to Standing_by
+           and then back to "Building". It would make more sense to start in
+           "Stand_by" from the start. We can't "just" switch the initial value
+           here because then the non-polling mode would run in "Standing_by"
+           mode, which is even weirder. *)
         Building cancel
     ; invalidation = Memo.Invalidation.empty
     ; job_throttle = Fiber.Throttle.create config.concurrency
@@ -235,15 +232,7 @@ let prepare (config : Config.t) ~(handler : Handler.t) ~events ~file_watcher =
   t
 ;;
 
-module Run_once : sig
-  type run_error =
-    | Already_reported
-    | Shutdown_requested of Shutdown.Reason.t
-    | Exn of Exn_with_backtrace.t
-
-  (** Run the build and clean up after it (kill any stray processes etc). *)
-  val run_and_cleanup : t -> (unit -> 'a Fiber.t) -> ('a, run_error) Result.t
-end = struct
+module Run_once = struct
   type run_error =
     | Already_reported
     | Shutdown_requested of Shutdown.Reason.t
@@ -632,10 +621,10 @@ let wait_for_process ?timeout ~is_process_group_leader pid =
 ;;
 
 let sleep dur =
-  let* t = t () in
-  let alarm_clock = Lazy.force t.alarm_clock in
-  let+ res = Alarm_clock.await (Alarm_clock.sleep alarm_clock dur) in
-  match res with
+  (let* t = t () in
+   let alarm_clock = Lazy.force t.alarm_clock in
+   Alarm_clock.await (Alarm_clock.sleep alarm_clock dur))
+  >>| function
   | `Finished -> ()
   | `Cancelled ->
     (* cancellation mechanism isn't exposed to the user *)

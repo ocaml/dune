@@ -225,7 +225,26 @@ let rec exec t ~ectx ~eenv : Done_or_more_deps.t Produce.t =
     Done
   | Copy (src, dst) ->
     let dst = Path.build dst in
-    let+ () = maybe_async (fun () -> Io.copy_file ~src ~dst ()) in
+    let copy_file ~src ~dst =
+      Path.parent dst |> Option.iter ~f:Path.mkdir_p;
+      Io.copy_file ~src ~dst ()
+    in
+    let mkdir ~src:_ ~dst = Path.mkdir_p dst in
+    let on_unsupported ~src kind =
+      User_error.raise
+        [ Pp.textf
+            "Failed to copy %s of kind %S while executing a copy action"
+            (Path.to_string_maybe_quoted src)
+            (File_kind.to_string_hum kind)
+        ]
+    in
+    let src_path = Path.to_string src in
+    let+ () =
+      maybe_async (fun () ->
+        match (Unix.lstat src_path).st_kind with
+        | S_DIR -> Tree_copy.copy ~src ~dst ~copy_file ~mkdir ~on_unsupported ()
+        | _ -> copy_file ~src ~dst)
+    in
     Done
   | Symlink (src, dst) ->
     let+ () = maybe_async (fun () -> Io.portable_symlink ~src ~dst:(Path.build dst)) in

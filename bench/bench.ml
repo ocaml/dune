@@ -77,7 +77,7 @@ module Package = struct
   ;;
 end
 
-let duniverse = []
+let duniverse = [ { Package.org = "ocaml"; name = "dune" } ]
 
 let prepare_workspace () =
   Fiber.parallel_iter duniverse ~f:(fun (pkg : Package.t) ->

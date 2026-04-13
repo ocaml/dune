@@ -159,5 +159,35 @@ module Action = Action_ext.Make (Spec)
 let action ~patch = Action.action patch
 
 module For_tests = struct
+  module Patch = struct
+    include Patch
+
+    let path_repr = Repr.abstract Path.Local.to_dyn
+
+    let operation_repr =
+      Repr.variant
+        "operation"
+        [ Repr.case "New" path_repr ~proj:(function
+            | New p -> Some p
+            | _ -> None)
+        ; Repr.case "Delete" path_repr ~proj:(function
+            | Delete p -> Some p
+            | _ -> None)
+        ; Repr.case "Replace" path_repr ~proj:(function
+            | Replace p -> Some p
+            | _ -> None)
+        ]
+    ;;
+
+    let repr =
+      Repr.record
+        "Patch"
+        [ Repr.field "prefix" Repr.int ~get:(fun t -> t.prefix)
+        ; Repr.field "op" operation_repr ~get:(fun t -> t.op)
+        ]
+    ;;
+  end
+
+  let patches_of_string = patches_of_string
   let exec = exec
 end

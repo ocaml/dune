@@ -1,0 +1,4 @@
+(cram
+ (applies_to promote-over-running-binary)
+ (enabled_if
+  (<> %{ocaml-config:system} win)))

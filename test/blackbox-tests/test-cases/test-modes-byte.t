@@ -20,5 +20,8 @@ Dune should execute inline tests whose only mode is `byte`.
 The test should fail:
 
   $ dune runtest test_bytecode_repro.ml
+  File "test_bytecode_repro.ml", line 2, characters 1-26: <<(fact 5) = 121>> is false.
+  
+  FAILED 1 / 1 tests
+  [1]
 
-Currently does not because it is not being run.

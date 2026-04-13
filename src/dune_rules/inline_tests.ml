@@ -311,11 +311,21 @@ include Sub_system.Register_end_point (struct
         let+ jsoo_enabled_modes =
           Jsoo_rules.jsoo_enabled_modes ~expander ~dir ~in_context:js_of_ocaml
         in
+        let ocaml = Compilation_context.ocaml cctx in
+        let lib_has_native =
+          let { Lib_config.has_native; _ } = ocaml.lib_config in
+          let lib_modes = Dune_lang.Mode_conf.Lib.Set.eval lib.modes ~has_native in
+          lib_modes.ocaml.native
+        in
         Mode_conf.Set.to_list info.modes
-        |> List.filter ~f:(fun (mode : Mode_conf.t) ->
+        |> List.filter_map ~f:(fun (mode : Mode_conf.t) ->
           match mode with
-          | Native | Best | Byte -> true
-          | Jsoo mode -> Js_of_ocaml.Mode.Pair.select ~mode jsoo_enabled_modes)
+          | Best -> Some (if lib_has_native then mode else Mode_conf.Byte)
+          | Native | Byte -> Some mode
+          | Jsoo mode ->
+            if Js_of_ocaml.Mode.Pair.select ~mode jsoo_enabled_modes
+            then Some (Jsoo mode)
+            else None)
       in
       let* (_ : Exe.dep_graphs) =
         let* linkages =

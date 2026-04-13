@@ -779,23 +779,6 @@ module Action_expander = struct
       | Man -> Man
     ;;
 
-    let section_dir_of_root
-          (roots : _ Install.Roots.t)
-          (section : Pform.Var.Pkg.Section.t)
-      =
-      match section with
-      | Lib -> roots.lib_root
-      | Libexec -> roots.libexec_root
-      | Bin -> roots.bin
-      | Sbin -> roots.sbin
-      | Share -> roots.share_root
-      | Etc -> roots.etc_root
-      | Doc -> roots.doc_root
-      | Man -> roots.man
-      | Toplevel -> Path.relative roots.lib_root "toplevel"
-      | Stublibs -> Path.relative roots.lib_root "stublibs"
-    ;;
-
     let sys_poll_var accessor =
       accessor Lock_dir.Sys_vars.poll
       |> Memo.Lazy.force
@@ -826,9 +809,9 @@ module Action_expander = struct
         let group = Unix.getgid () |> Unix.getgrgid in
         Memo.return [ Value.String group.gr_name ]
       | Section_dir section ->
-        let roots = Paths.install_roots paths in
-        let dir = section_dir_of_root roots section in
-        Memo.return [ Value.Dir dir ]
+        let section = dune_section_of_pform section in
+        let install_paths = Paths.install_paths paths in
+        Memo.return [ Value.Dir (Install.Paths.get install_paths section) ]
     ;;
 
     let expand_pkg_macro ~loc (paths : _ Paths.t) deps macro_invocation =

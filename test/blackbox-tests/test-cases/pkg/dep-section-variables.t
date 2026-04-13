@@ -1,6 +1,11 @@
 Test that dependency section variables expand to correct relative paths and
 that installed artifacts are accessible through those paths.
 
+Per the opam spec, lib, libexec, share, etc, doc append the package name
+(e.g. lib -> <prefix>/lib/<pkg>), while bin, sbin, man, toplevel, stublibs
+do not. Opam also has _root variants (lib_root, share_root, etc.) that
+return the root without the package name, but dune does not implement these.
+
   $ make_lockdir
 
 Create a dependency package "dep" that installs files into every section.
@@ -54,6 +59,7 @@ Section variables expanded via (system) produce relative paths:
   >   )
   >   (system
   >    "\| cat %{pkg:dep:lib}/lib-file
+  >    "\| cat %{pkg:dep:libexec}/libexec-file
   >    "\| cat %{pkg:dep:bin}/bin-file
   >    "\| cat %{pkg:dep:sbin}/sbin-file
   >    "\| cat %{pkg:dep:share}/share-file
@@ -76,15 +82,16 @@ Section variables expanded via (system) produce relative paths:
   ../../dep.0.0.1-$DIGEST/target/man
   ../../dep.0.0.1-$DIGEST/target/lib/toplevel
   ../../dep.0.0.1-$DIGEST/target/lib/stublibs
+  lib-data
+  libexec-data
   bin-data
   sbin-data
+  share-data
+  etc-data
+  doc-data
   man-data
   toplevel-data
   stublibs-data
-  cat: ../../dep.0.0.1-$DIGEST/target/lib/dep/lib-file: No such file or directory
-  cat: ../../dep.0.0.1-$DIGEST/target/share/dep/share-file: No such file or directory
-  cat: ../../dep.0.0.1-$DIGEST/target/etc/dep/etc-file: No such file or directory
-  cat: ../../dep.0.0.1-$DIGEST/target/doc/dep/doc-file: No such file or directory
 
 Section variables used as standalone pform args in (run) actions, as produced
 by opam translation of [ "echo" dep:lib ] to (run echo %{pkg:dep:lib}).
@@ -106,6 +113,7 @@ These currently expand to absolute paths instead of relative ones:
   >   (run echo %{pkg:dep:toplevel})
   >   (run echo %{pkg:dep:stublibs})
   >   (run cat %{pkg:dep:lib}/lib-file)
+  >   (run cat %{pkg:dep:libexec}/libexec-file)
   >   (run cat %{pkg:dep:bin}/bin-file)
   >   (run cat %{pkg:dep:sbin}/sbin-file)
   >   (run cat %{pkg:dep:share}/share-file)
@@ -127,10 +135,13 @@ These currently expand to absolute paths instead of relative ones:
   $SANDBOX/_private/default/.pkg/dep.0.0.1-$DIGEST/target/man
   $SANDBOX/_private/default/.pkg/dep.0.0.1-$DIGEST/target/lib/toplevel
   $SANDBOX/_private/default/.pkg/dep.0.0.1-$DIGEST/target/lib/stublibs
-  File "dune.lock/run-consumer.pkg", line 15, characters 7-10:
-  15 |   (run cat %{pkg:dep:lib}/lib-file)
-              ^^^
-  Error: Logs for package run-consumer
-  cat: $SANDBOX/_private/default/.pkg/dep.0.0.1-$DIGEST/target/lib/dep/lib-file: No such file or directory
-  
-  [1]
+  lib-data
+  libexec-data
+  bin-data
+  sbin-data
+  share-data
+  etc-data
+  doc-data
+  man-data
+  toplevel-data
+  stublibs-data

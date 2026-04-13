@@ -1,6 +1,6 @@
-Header files (.h) should only be copied to _build when C/C++ compilation
+Header files (.h) should only be dependencies when C/C++ compilation
 is configured for the directory. Without foreign_stubs, .h files in the
-source tree should not appear in _build.
+source tree should not appear as dependencies of any build rule.
 
 See https://github.com/ocaml/dune/issues/2370
 
@@ -8,7 +8,7 @@ See https://github.com/ocaml/dune/issues/2370
   > (lang dune 3.23)
   > EOF
 
-A library with no C stubs — .h files should not be copied:
+A library with no C stubs — .h files should not be a dependency of any rule:
 
   $ mkdir no-stubs
   $ cat > no-stubs/dune << EOF
@@ -18,14 +18,14 @@ A library with no C stubs — .h files should not be copied:
   > let x = 1
   > EOF
   $ cat > no-stubs/vendored.h << EOF
-  > /* should not appear in _build */
+  > /* should not appear as a dependency */
   > EOF
 
   $ dune build
-  $ test -f _build/default/no-stubs/vendored.h && echo "copied" || echo "not copied"
-  not copied
+  $ dune rules --deps no-stubs/ 2>&1 | grep 'vendored\.h'
+  [1]
 
-A library with foreign_stubs — .h files should be copied:
+A library with foreign_stubs — .h files should be a dependency:
 
   $ mkdir with-stubs
   $ cat > with-stubs/dune << EOF
@@ -46,5 +46,5 @@ A library with foreign_stubs — .h files should be copied:
   > EOF
 
   $ dune build
-  $ test -f _build/default/with-stubs/needed.h && echo "copied" || echo "not copied"
-  copied
+  $ dune rules --deps with-stubs/ 2>&1 | grep 'needed\.h'
+   (File (In_build_dir _build/default/with-stubs/needed.h))

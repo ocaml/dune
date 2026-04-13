@@ -215,6 +215,16 @@ let package_fields package ~project =
 let dune_name = Package.Name.of_string "dune"
 let odoc_name = Package.Name.of_string "odoc"
 
+let merge_dune_constraints lang_constraint user_constraint =
+  match lang_constraint, user_constraint with
+  | ( Package_constraint.Uop (Gte, String_literal lang_v)
+    , Package_constraint.Uop (Gte, String_literal user_v) ) ->
+    if OpamVersionCompare.compare lang_v user_v <= 0
+    then user_constraint
+    else lang_constraint
+  | _ -> And [ lang_constraint; user_constraint ]
+;;
+
 let insert_dune_dep depends dune_version =
   let constraint_ : Package_constraint.t =
     let dune_version = Dune_lang.Syntax.Version.to_string dune_version in
@@ -238,7 +248,7 @@ let insert_dune_dep depends dune_version =
                 Some
                   (match dep.constraint_ with
                    | None -> constraint_
-                   | Some c -> And [ constraint_; c ])
+                   | Some c -> merge_dune_constraints constraint_ c)
             }
         in
         List.rev_append acc (dep :: rest))

@@ -46,6 +46,57 @@ Same with version of the language >= 2.6, we now add the constraint:
     "dune" {>= "2.6"}
   ]
 
+When the user specifies a dune constraint matching the lang version,
+there should be no duplicate bounds (issue #3916):
+
+  $ cat > dune-project <<EOF
+  > (lang dune 2.7)
+  > (name foo)
+  > (generate_opam_files true)
+  > (package (name foo) (depends (dune (>= 2.7))))
+  > EOF
+
+  $ dune build foo.opam
+  $ grep -A3 ^depends: foo.opam
+  depends: [
+    "dune" {>= "2.7"}
+    "odoc" {with-doc}
+  ]
+
+When the user specifies a higher patch version than the lang version,
+the more restrictive user constraint should be kept (issue #11106):
+
+  $ cat > dune-project <<EOF
+  > (lang dune 3.16)
+  > (name foo)
+  > (generate_opam_files true)
+  > (package (name foo) (depends (dune (>= 3.16.0))))
+  > EOF
+
+  $ dune build foo.opam
+  $ grep -A3 ^depends: foo.opam
+  depends: [
+    "dune" {>= "3.16.0"}
+    "odoc" {with-doc}
+  ]
+
+When the user specifies a lower bound than the lang version, the lang
+constraint takes precedence:
+
+  $ cat > dune-project <<EOF
+  > (lang dune 2.7)
+  > (name foo)
+  > (generate_opam_files true)
+  > (package (name foo) (depends (dune (>= 2.5))))
+  > EOF
+
+  $ dune build foo.opam
+  $ grep -A3 ^depends: foo.opam
+  depends: [
+    "dune" {>= "2.7"}
+    "odoc" {with-doc}
+  ]
+
 When the version of the language >= 2.7 we use dev instead of pinned
 when calling dune subst:
 

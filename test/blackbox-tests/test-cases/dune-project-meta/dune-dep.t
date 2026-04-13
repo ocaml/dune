@@ -57,7 +57,7 @@ there should be no duplicate bounds (issue #3916):
   > EOF
 
   $ dune build foo.opam
-  $ sed -n '/^depends:/,/^]/p' foo.opam
+  $ dune_cmd print-from 'depends' < foo.opam | dune_cmd print-until ']'
   depends: [
     "dune" {>= "2.7"}
     "odoc" {with-doc}
@@ -74,7 +74,7 @@ the more restrictive user constraint should be kept (issue #11106):
   > EOF
 
   $ dune build foo.opam
-  $ sed -n '/^depends:/,/^]/p' foo.opam
+  $ dune_cmd print-from 'depends' < foo.opam | dune_cmd print-until ']'
   depends: [
     "dune" {>= "3.16.0"}
     "odoc" {with-doc}
@@ -91,7 +91,7 @@ constraint takes precedence:
   > EOF
 
   $ dune build foo.opam
-  $ sed -n '/^depends:/,/^]/p' foo.opam
+  $ dune_cmd print-from 'depends' < foo.opam | dune_cmd print-until ']'
   depends: [
     "dune" {>= "2.7"}
     "odoc" {with-doc}

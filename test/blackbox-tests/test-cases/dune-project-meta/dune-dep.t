@@ -91,6 +91,8 @@ constraint takes precedence:
   > EOF
 
   $ dune build foo.opam
+  Warning: The lower bound >= 2.5 on dune in the depends field is less than the
+  dune language version 2.7. The generated opam file will use >= 2.7 instead.
   $ dune_cmd print-from 'depends' < foo.opam | dune_cmd print-until ']'
   depends: [
     "dune" {>= "2.7"}

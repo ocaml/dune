@@ -221,7 +221,16 @@ let merge_dune_constraints lang_constraint user_constraint =
     , Package_constraint.Uop (Gte, String_literal user_v) ) ->
     if OpamVersionCompare.compare lang_v user_v <= 0
     then user_constraint
-    else lang_constraint
+    else (
+      User_warning.emit
+        [ Pp.textf
+            "The lower bound >= %s on dune in the depends field is less than the dune \
+             language version %s. The generated opam file will use >= %s instead."
+            user_v
+            lang_v
+            lang_v
+        ];
+      lang_constraint)
   | _ -> And [ lang_constraint; user_constraint ]
 ;;
 

@@ -15,7 +15,7 @@ The generated opam file should include "menhir" {>= "20180523"}.
   > EOF
 
   $ dune build foo.opam
-  $ cat foo.opam | grep menhir
+  $ grep menhir foo.opam
     "menhir" {>= "20180523"}
 
 Case 2: user already declared menhir with a sufficient lower bound.
@@ -32,7 +32,7 @@ The auto-injected constraint should not duplicate it.
   > EOF
 
   $ dune build foo.opam
-  $ cat foo.opam | grep menhir
+  $ grep menhir foo.opam
     "menhir" {>= "20211128"}
 
 Case 3: user declared menhir with no version constraint.
@@ -49,5 +49,5 @@ The auto-injected lower bound should be merged in.
   > EOF
 
   $ dune build foo.opam
-  $ cat foo.opam | grep menhir
+  $ grep menhir foo.opam
     "menhir" {>= "20180523"}

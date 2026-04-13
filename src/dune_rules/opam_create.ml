@@ -276,30 +276,26 @@ let insert_odoc_dep depends =
   loop [] depends
 ;;
 
+(* Menhir 20180523 added --infer-write-query and --infer-read-reply,
+   which dune's menhir rules rely on unconditionally. *)
 let menhir_constraint : Package_constraint.t = Uop (Gte, String_literal "20180523")
 
 let insert_menhir_dep depends =
   let menhir_dep =
     { Package_dependency.name = menhir_name; constraint_ = Some menhir_constraint }
   in
-  let rec loop acc = function
-    | [] -> List.rev (menhir_dep :: acc)
-    | (dep : Package_dependency.t) :: rest ->
+  if
+    List.exists depends ~f:(fun (dep : Package_dependency.t) ->
+      Package.Name.equal dep.name menhir_name)
+  then
+    List.map depends ~f:(fun (dep : Package_dependency.t) ->
       if Package.Name.equal dep.name menhir_name
-      then (
-        let dep =
-          { dep with
-            constraint_ =
-              Some
-                (match dep.constraint_ with
-                 | None -> menhir_constraint
-                 | Some _ -> dep.constraint_ |> Option.value_exn)
-          }
-        in
-        List.rev_append (dep :: acc) rest)
-      else loop (dep :: acc) rest
-  in
-  loop [] depends
+      then
+        { dep with
+          constraint_ = Some (Option.value dep.constraint_ ~default:menhir_constraint)
+        }
+      else dep)
+  else List.rev (menhir_dep :: List.rev depends)
 ;;
 
 let maintenance_intent dune_version info =

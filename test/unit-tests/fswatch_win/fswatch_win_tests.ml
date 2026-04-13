@@ -1,4 +1,5 @@
 open Stdune
+module Fswatch_win = Dune_scheduler.For_tests.Fswatch_win
 
 let remove_dot_slash s = String.drop_prefix s ~prefix:".\\" |> Option.value ~default:s
 let create_file fn = Io.String_path.write_file fn ""

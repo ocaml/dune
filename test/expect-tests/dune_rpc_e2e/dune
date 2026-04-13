@@ -9,7 +9,7 @@
  (name dune_rpc_e2e)
  (modules dune_rpc_e2e)
  (libraries
-  dune_rpc_client
+  rpc
   dune_rpc
   dune_util
   stdune
@@ -19,7 +19,7 @@
   dune_engine
   dune_scheduler
   dune_rpc_impl
-  csexp_rpc
+  unix
   ;; This is because of the (implicit_transitive_deps false)
   ;; in dune-project
   ppx_expect.config_types
@@ -38,7 +38,7 @@
   fiber
   stdune
   re
-  dune_rpc_client
+  rpc
   dune_rpc_e2e
   dune_rpc
   ;; This is because of the (implicit_transitive_deps false)
@@ -63,6 +63,7 @@
   dune_rpc_impl
   dune_scheduler
   stdune
+  rpc
   fiber
   xdg
   unix
@@ -86,7 +87,7 @@
  (libraries
   fiber
   stdune
-  dune_rpc_client
+  rpc
   dune_rpc_e2e
   dune_rpc
   unix

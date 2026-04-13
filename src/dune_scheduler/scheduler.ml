@@ -1,6 +1,5 @@
 open Import
 open Fiber.O
-module Thread = Thread0
 
 module Fs_memo = struct
   let handle_fs_event = Fdecl.create Dyn.opaque
@@ -23,9 +22,7 @@ module Config = struct
     }
 end
 
-module Shutdown = Shutdown
-
-let spawn_thread ~name f = Thread.spawn ~name f
+let spawn_thread ~name f = Thread0.spawn ~name f
 
 type status =
   | (* We are not doing a build. Just accumulating invalidations until the next
@@ -43,6 +40,47 @@ module Build_outcome = struct
     | Failure
 end
 
+module Run_id = struct
+  type t =
+    | Batch
+    | Watch of int
+
+  let batch = Batch
+
+  let to_int = function
+    | Batch -> 0
+    | Watch n -> n
+  ;;
+
+  module State = struct
+    type nonrec t =
+      | Batch_not_started
+      | Batch_started
+      | Watch of int
+
+    let create ~watch_mode = if watch_mode then Watch 1 else Batch_not_started
+
+    let is_watch = function
+      | Batch_not_started | Batch_started -> false
+      | Watch _ -> true
+    ;;
+
+    let next_to_start = function
+      | Batch_not_started -> Batch
+      | Batch_started ->
+        Code_error.raise "batch mode may not emit more than one build run id" []
+      | Watch n -> Watch n
+    ;;
+
+    let start = function
+      | Batch_not_started -> Batch_started, Batch
+      | Batch_started ->
+        Code_error.raise "batch mode may not start more than one build" []
+      | Watch n -> Watch (n + 1), Watch n
+    ;;
+  end
+end
+
 module Handler = struct
   module Event = struct
     type t =
@@ -52,14 +90,15 @@ module Handler = struct
       | Build_finish of Build_outcome.t
   end
 
-  type t = Config.t -> Event.t -> unit
+  type t = Event.t -> unit
 end
 
 type t =
-  { config : Config.t
-  ; alarm_clock : Alarm_clock.t Lazy.t
+  { alarm_clock : Alarm_clock.t Lazy.t
   ; mutable status : status
   ; mutable invalidation : Memo.Invalidation.t
+  ; mutable run_id_state : Run_id.State.t
+  ; mutable watch_restart_started_at : Time.t option
   ; handler : Handler.t
   ; job_throttle : Fiber.Throttle.t
   ; events : Event.Queue.t
@@ -79,10 +118,18 @@ let to_dyn { events; process_watcher; _ } =
     ]
 ;;
 
-let t : t option Fiber.Var.t = Fiber.Var.create None
-let set x f = Fiber.Var.set t (Some x) f
-let t_opt () = Fiber.Var.get t
-let t () = Fiber.Var.get_exn t
+let current = ref None
+
+let t_opt () =
+  let+ () = Fiber.return () in
+  !current
+;;
+
+let t () =
+  let+ () = Fiber.return () in
+  Option.value_exn !current
+;;
+
 let running_jobs_count t = Event.Queue.pending_jobs t.events
 
 exception Build_cancelled
@@ -109,7 +156,7 @@ let with_job_slot f =
   let* t = t () in
   Fiber.Throttle.run t.job_throttle ~f:(fun () ->
     check_cancelled t;
-    f t.cancel t.config)
+    f ())
 ;;
 
 let wait_for_process t ~is_process_group_leader pid =
@@ -181,12 +228,10 @@ let kill_and_wait_for_all_processes t =
      reset with the correct event queue. *)
   if not Sys.win32
   then (
-    Unix.kill (Unix.getpid ()) (Signal.to_int Thread.signal_watcher_interrupt);
+    Unix.kill (Unix.getpid ()) (Signal.to_int Thread0.signal_watcher_interrupt);
     Thread.join t.signal_watcher);
   !saw_signal
 ;;
-
-let current = ref None
 
 let () =
   Debug.register ~name:"scheduler" (fun () ->
@@ -206,17 +251,18 @@ let prepare (config : Config.t) ~(handler : Handler.t) ~events ~file_watcher =
   let t =
     { status =
         (* Slightly weird initialization happening here: for polling mode we
-         initialize in "Building" state, immediately switch to Standing_by
-         and then back to "Building". It would make more sense to start in
-         "Stand_by" from the start. We can't "just" switch the initial value
-         here because then the non-polling mode would run in "Standing_by"
-         mode, which is even weirder. *)
+           initialize in "Building" state, immediately switch to Standing_by
+           and then back to "Building". It would make more sense to start in
+           "Stand_by" from the start. We can't "just" switch the initial value
+           here because then the non-polling mode would run in "Standing_by"
+           mode, which is even weirder. *)
         Building cancel
     ; invalidation = Memo.Invalidation.empty
+    ; run_id_state = Run_id.State.create ~watch_mode:(Option.is_some file_watcher)
+    ; watch_restart_started_at = None
     ; job_throttle = Fiber.Throttle.create config.concurrency
     ; process_watcher
     ; events
-    ; config
     ; handler
     ; file_watcher
     ; fs_syncs = Table.create (module File_watcher.Sync_id) 64
@@ -231,15 +277,7 @@ let prepare (config : Config.t) ~(handler : Handler.t) ~events ~file_watcher =
   t
 ;;
 
-module Run_once : sig
-  type run_error =
-    | Already_reported
-    | Shutdown_requested of Shutdown.Reason.t
-    | Exn of Exn_with_backtrace.t
-
-  (** Run the build and clean up after it (kill any stray processes etc). *)
-  val run_and_cleanup : t -> (unit -> 'a Fiber.t) -> ('a, run_error) Result.t
-end = struct
+module Run_once = struct
   type run_error =
     | Already_reported
     | Shutdown_requested of Shutdown.Reason.t
@@ -266,7 +304,7 @@ end = struct
       - starting cancellations
       - terminating the scheduler on signals *)
   let rec iter (t : t) : Fiber.fill list =
-    t.handler t.config Tick;
+    t.handler Tick;
     match Event.Queue.next t.events with
     | File_watcher_task job ->
       let events = job () in
@@ -296,12 +334,24 @@ end = struct
     if Memo.Invalidation.is_empty invalidation
     then iter t
     else (
+      let now = Time.now () in
+      let reasons = Memo.Invalidation.details_hum ~max_elements:max_int invalidation in
+      if Run_id.State.is_watch t.run_id_state
+      then (
+        let run_id = Run_id.State.next_to_start t.run_id_state in
+        if Option.is_none t.watch_restart_started_at
+        then t.watch_restart_started_at <- Some now;
+        Dune_trace.emit Build (fun () ->
+          Dune_trace.Event.watch_build_restart
+            ~run_id:(Run_id.to_int run_id)
+            ~reasons
+            ~at:now));
       t.invalidation <- Memo.Invalidation.combine t.invalidation invalidation;
       let fills =
         match t.status with
         | Restarting_build | Standing_by -> []
         | Building cancellation ->
-          t.handler t.config Build_interrupted;
+          t.handler Build_interrupted;
           t.status <- Restarting_build;
           Fiber.Cancel.fire' cancellation
       in
@@ -312,31 +362,28 @@ end = struct
   ;;
 
   let run t f : _ result =
+    current := Some t;
     let fiber =
-      set t (fun () ->
-        let module Scheduler = struct
-          let register_job_started () = Event.Queue.register_worker_task_started t.events
-          let fill_jobs jobs = Event.Queue.send_worker_tasks_completed t.events jobs
-          let cancel_job_started () = Event.Queue.cancel_work_task_started t.events
-        end
-        in
-        Async_io.with_io (module (Scheduler : Async_io.Scheduler))
-        @@ fun () ->
-        Fiber.map_reduce_errors
-          (module Monoid.Unit)
-          f
-          ~on_error:(fun e ->
-            Dune_util.Report_error.report e;
-            Fiber.return ()))
+      Async_io.with_io t.events
+      @@ fun () ->
+      Fiber.map_reduce_errors
+        (module Monoid.Unit)
+        f
+        ~on_error:(fun e ->
+          Dune_util.Report_error.report e;
+          Fiber.return ())
     in
-    match Fiber.run fiber ~iter:(fun () -> iter t) with
-    | Ok res ->
-      assert (Event.Queue.pending_jobs t.events = 0);
-      assert (Event.Queue.pending_worker_tasks t.events = 0);
-      Ok res
-    | Error () -> Error Already_reported
-    | exception Abort err -> Error err
-    | exception exn -> Error (Exn (Exn_with_backtrace.capture exn))
+    Exn.protect
+      ~finally:(fun () -> current := None)
+      ~f:(fun () ->
+        match Fiber.run fiber ~iter:(fun () -> iter t) with
+        | Ok res ->
+          assert (Event.Queue.pending_jobs t.events = 0);
+          assert (Event.Queue.pending_worker_tasks t.events = 0);
+          Result.Ok res
+        | Error () -> Error Already_reported
+        | exception Abort err -> Error err
+        | exception exn -> Error (Exn (Exn_with_backtrace.capture exn)))
   ;;
 
   let run_and_cleanup t f =
@@ -408,15 +455,42 @@ module Run = struct
   module Event_queue = Event.Queue
   module Event = Handler.Event
 
+  let allocate_run_id t =
+    let state, run_id = Run_id.State.start t.run_id_state in
+    t.run_id_state <- state;
+    run_id
+  ;;
+
+  let emit_build_start ~run_id ~restart ~start =
+    Dune_trace.emit ~buffered:true Build (fun () ->
+      Dune_trace.Event.watch_build_start ~run_id:(Run_id.to_int run_id) ~restart ~start)
+  ;;
+
+  let emit_build_finish ~run_id ~start ~stop ~outcome ~restart_duration =
+    Dune_trace.emit ~buffered:true Build (fun () ->
+      Dune_trace.Event.watch_build_finish
+        ~run_id:(Run_id.to_int run_id)
+        ~outcome
+        ~start
+        ~stop
+        ~restart_duration)
+  ;;
+
   let rec poll_iter t step =
     if Memo.Invalidation.is_empty t.invalidation
     then Memo.Metrics.reset ()
     else (
       let details_hum = Memo.Invalidation.details_hum t.invalidation in
-      t.handler t.config (Source_files_changed { details_hum });
+      t.handler (Source_files_changed { details_hum });
       Memo.reset t.invalidation;
       t.invalidation <- Memo.Invalidation.empty;
       t.build_inputs_changed <- Trigger.create ());
+    let started_at = Time.now () in
+    let run_id = allocate_run_id t in
+    emit_build_start
+      ~run_id
+      ~restart:(Option.is_some t.watch_restart_started_at)
+      ~start:started_at;
     let cancel = Fiber.Cancel.create () in
     t.status <- Building cancel;
     t.cancel <- cancel;
@@ -428,7 +502,22 @@ module Run = struct
         | Error `Already_reported -> Failure
         | Ok () -> Success
       in
-      t.handler t.config (Build_finish res);
+      let stop = Time.now () in
+      let restart_duration =
+        Option.map t.watch_restart_started_at ~f:(fun restart_started_at ->
+          Time.diff stop restart_started_at)
+      in
+      t.watch_restart_started_at <- None;
+      emit_build_finish
+        ~run_id
+        ~start:started_at
+        ~stop
+        ~outcome:
+          (match res with
+           | Success -> `Success
+           | Failure -> `Failure)
+        ~restart_duration;
+      t.handler (Build_finish res);
       Fiber.return res
     | Restarting_build -> poll_iter t step
     | Building _ ->
@@ -438,7 +527,22 @@ module Run = struct
         | Ok () -> Success
       in
       t.status <- Standing_by;
-      t.handler t.config (Build_finish res);
+      let stop = Time.now () in
+      let restart_duration =
+        Option.map t.watch_restart_started_at ~f:(fun restart_started_at ->
+          Time.diff stop restart_started_at)
+      in
+      t.watch_restart_started_at <- None;
+      emit_build_finish
+        ~run_id
+        ~start:started_at
+        ~stop
+        ~outcome:
+          (match res with
+           | Success -> `Success
+           | Failure -> `Failure)
+        ~restart_duration;
+      t.handler (Build_finish res);
       Fiber.return res
   ;;
 
@@ -512,7 +616,7 @@ module Run = struct
         (config : Config.t)
         ?timeout
         ?(file_watcher = No_watcher)
-        ~(on_event : Config.t -> Handler.Event.t -> unit)
+        ~(on_event : Handler.Event.t -> unit)
         run
     =
     let events = Event_queue.create () in
@@ -577,7 +681,7 @@ let cancel_current_build () =
   match t.status with
   | Restarting_build | Standing_by -> Fiber.return ()
   | Building cancellation ->
-    t.handler t.config Build_interrupted;
+    t.handler Build_interrupted;
     t.status <- Standing_by;
     Fiber.Cancel.fire cancellation
 ;;
@@ -625,10 +729,10 @@ let wait_for_process ?timeout ~is_process_group_leader pid =
 ;;
 
 let sleep dur =
-  let* t = t () in
-  let alarm_clock = Lazy.force t.alarm_clock in
-  let+ res = Alarm_clock.await (Alarm_clock.sleep alarm_clock dur) in
-  match res with
+  (let* t = t () in
+   let alarm_clock = Lazy.force t.alarm_clock in
+   Alarm_clock.await (Alarm_clock.sleep alarm_clock dur))
+  >>| function
   | `Finished -> ()
   | `Cancelled ->
     (* cancellation mechanism isn't exposed to the user *)

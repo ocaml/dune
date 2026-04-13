@@ -1,5 +1,5 @@
 open Stdune
-module Io_buffer = Csexp_rpc.Private.Io_buffer
+module Io_buffer = Rpc.Private.Io_buffer
 
 let () = Printexc.record_backtrace false
 let print_dyn x = Io_buffer.to_dyn x |> Dyn.to_string |> print_endline

@@ -1,7 +1,12 @@
 include Stdune
 include Dune_config_file
 include Dune_vcs
-include Dune_scheduler
+
+include struct
+  open Dune_scheduler
+  module Scheduler = Scheduler
+end
+
 module Targets = Dune_targets
 
 include struct

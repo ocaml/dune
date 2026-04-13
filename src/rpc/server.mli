@@ -143,25 +143,14 @@ end
 type t
 
 val make : 'a Handler.t -> t
+val serve : Csexp_rpc.Session.t Fiber.Stream.In.t -> t -> unit Fiber.t
+
+(** Test only things below *)
+
+module type Session = Server_intf.Session
 
 (** Functor to create a server implementation *)
-module Make (S : sig
-    type t
-
-    (** [close t] closes the session *)
-    val close : t -> unit Fiber.t
-
-    (** [write t x] writes the s-expression *)
-    val write : t -> Sexp.t list -> (unit, [ `Closed ]) result Fiber.t
-
-    (** [read t] attempts to read from [t]. If an s-expression is read, it is
-        returned as [Some sexp], otherwise [None] is returned and the session is
-        closed. *)
-    val read : t -> Sexp.t option Fiber.t
-
-    (* [name t] returns the name of the endpoint the session is connected to. *)
-    val name : t -> string
-  end) : sig
+module Make (S : Session) : sig
   (** [serve sessions handler] serve all [sessions] using [handler] *)
   val serve : S.t Fiber.Stream.In.t -> t -> unit Fiber.t
 end

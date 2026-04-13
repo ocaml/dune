@@ -186,6 +186,35 @@ let scheduler_idle () =
   Event.instant ~name:"watch mode iteration" now Scheduler
 ;;
 
+let watch_build_start ~run_id ~restart ~start =
+  let args = [ "run_id", Arg.int run_id; "restart", Arg.bool restart ] in
+  Event.instant ~name:"build-start" ~args start Build
+;;
+
+let watch_build_restart ~run_id ~reasons ~at =
+  let args =
+    [ "run_id", Arg.int run_id; "reasons", Arg.list (List.map reasons ~f:Arg.string) ]
+  in
+  Event.instant ~name:"build-restart" ~args at Build
+;;
+
+let watch_build_finish ~run_id ~outcome ~start ~stop ~restart_duration =
+  let dur = Time.diff stop start in
+  let outcome =
+    match outcome with
+    | `Success -> "success"
+    | `Failure -> "failure"
+  in
+  let args =
+    [ "run_id", Arg.int run_id; "outcome", Arg.string outcome ]
+    @
+    match restart_duration with
+    | None -> []
+    | Some restart_duration -> [ "restart_duration", Arg.span restart_duration ]
+  in
+  Event.complete ~name:"build-finish" ~args ~start ~dur Build
+;;
+
 module Exit_status = struct
   type error =
     | Failed of int

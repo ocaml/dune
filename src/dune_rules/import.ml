@@ -59,6 +59,7 @@ include struct
   module Load_rules = Load_rules
   module Response_file = Response_file
   module Subdir_set = Subdir_set
+  module Fs = Fs
 end
 
 module Compound_user_error = Dune_rpc.Private.Compound_user_error

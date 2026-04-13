@@ -10,7 +10,7 @@ let config =
 ;;
 
 let%expect_test "read readiness" =
-  (Scheduler.Run.go config ~on_event:(fun _ _ -> ())
+  (Scheduler.Run.go config ~on_event:(fun _ -> ())
    @@ fun () ->
    let r, w = Unix.pipe ~cloexec:true () in
    if not Sys.win32 then Unix.set_nonblock r;
@@ -30,7 +30,7 @@ let%expect_test "read readiness" =
 ;;
 
 let%expect_test "write readiness" =
-  (Scheduler.Run.go config ~on_event:(fun _ _ -> ())
+  (Scheduler.Run.go config ~on_event:(fun _ -> ())
    @@ fun () ->
    let r, w = Unix.pipe ~cloexec:true () in
    if not Sys.win32 then Unix.set_nonblock w;
@@ -47,7 +47,7 @@ let%expect_test "write readiness" =
 ;;
 
 let%expect_test "first ready" =
-  (Scheduler.Run.go config ~on_event:(fun _ _ -> ())
+  (Scheduler.Run.go config ~on_event:(fun _ -> ())
    @@ fun () ->
    let r1, w1 = Unix.pipe ~cloexec:true () in
    let r2, w2 = Unix.pipe ~cloexec:true () in
@@ -74,7 +74,7 @@ let%expect_test "first ready" =
 ;;
 
 let%expect_test "cancel task" =
-  (Scheduler.Run.go config ~on_event:(fun _ _ -> ())
+  (Scheduler.Run.go config ~on_event:(fun _ -> ())
    @@ fun () ->
    let r, w = Unix.pipe ~cloexec:true () in
    if not Sys.win32 then Unix.set_nonblock r;

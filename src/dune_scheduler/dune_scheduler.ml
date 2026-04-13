@@ -1,9 +1,12 @@
 module Scheduler = Scheduler
 module Async_io = Async_io
 module File_watcher = File_watcher
+module Shutdown = Shutdown
 
 module For_tests = struct
   module Inotify = Inotify
+  module Fsevents = Fsevents
+  module Fswatch_win = Fswatch_win
 end
 
 module For_benchmarks = struct

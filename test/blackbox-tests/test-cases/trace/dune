@@ -1,0 +1,4 @@
+(cram
+ (applies_to watch-build-events)
+ (enabled_if
+  (= %{system} linux)))

@@ -231,8 +231,30 @@ let make_same_lib_emission_deps =
         Dep_graph.top_closed_implementations dep_graph (module_ :: intf_deps)
         |> Action_builder.map ~f:(deps_of_xopt_closure ~obj_dir)
       | false ->
-        Dep_rules.read_deps_of ~obj_dir ~modules ~ml_kind:Impl module_ ~for_
+        (* Emission reads same-library implementation artifacts recursively.
+           The generic [.impl.all-deps] files collapse transitive edges through
+           interfaces when a dependency has an [.mli], which is fine for
+           compilation but insufficient for JS emission. Follow the
+           implementation dependency graph directly instead. *)
+        Dep_graph.top_closed_implementations dep_graph [ module_ ]
         |> Action_builder.map ~f:(deps_of_impl_closure ~obj_dir)
+;;
+
+let make_external_lib_emission_deps =
+  let cmj_glob = Glob.of_string_exn Loc.none "*.cmj" in
+  let cmi_glob = Glob.of_string_exn Loc.none "*.cmi" in
+  let deps_of_glob ~dirs glob =
+    List.map dirs ~f:(fun dir -> Dep.file_selector (File_selector.of_glob ~dir glob))
+    |> Dep.Set.of_list
+  in
+  fun ~obj_dir ->
+    let melange_obj_dirs = Obj_dir.all_obj_dirs obj_dir ~mode:Melange in
+    let deps =
+      Dep.Set.union
+        (deps_of_glob ~dirs:melange_obj_dirs cmj_glob)
+        (deps_of_glob ~dirs:melange_obj_dirs cmi_glob)
+    in
+    fun _module_ -> Action_builder.return deps
 ;;
 
 let compile_info ~scope (mel : Melange_stanzas.Emit.t) =
@@ -651,7 +673,7 @@ let setup_runtime_assets_rules
       >>= fun is_dir ->
       let dst, builder =
         match is_dir with
-        | Some (Ok true) -> Right dst, Action_builder.symlink_dir ~src ~dst
+        | Some (Ok true) -> Right dst, Action_builder.copy_dir ~src ~dst
         | Some (Ok false) | Some (Error _) | None ->
           Left dst, Action_builder.copy ~src ~dst
       in
@@ -667,7 +689,7 @@ let setup_runtime_assets_rules
         let rel = Path.reach ~from:src new_src in
         Path.Build.relative dst rel
       in
-      let builder = Action_builder.symlink_dir ~src:new_src ~dst in
+      let builder = Action_builder.copy_dir ~src:new_src ~dst in
       let builder =
         let open Action_builder.With_targets.O in
         builder >>| Action.Full.add_sandbox Sandbox_config.needs_sandboxing
@@ -778,7 +800,13 @@ let setup_js_rules_libraries =
       in
       let same_lib_emission_deps =
         match Lib.Local.of_lib lib with
-        | None -> fun _ -> Action_builder.return Dep.Set.empty
+        | None ->
+          (* Installed libraries may have private helper modules that are not
+             exposed through their installed module metadata. Conservatively
+             depend on all Melange object dirs so sandboxed emission can still
+             resolve same-library private modules and future cross-module
+             optimization has the interface metadata it needs. *)
+          make_external_lib_emission_deps ~obj_dir:(Lib_info.obj_dir (Lib.info lib))
         | Some lib ->
           make_same_lib_emission_deps
             ~compile_flags

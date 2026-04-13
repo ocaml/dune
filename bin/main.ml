@@ -110,8 +110,8 @@ let () =
     | Ok _ -> exit_and_flush Success
     | Error _ -> exit_and_flush Error
   with
-  | Scheduler.Run.Shutdown.E Requested -> exit_and_flush Success
-  | Scheduler.Run.Shutdown.E (Signal _) -> exit_and_flush Signal
+  | Dune_scheduler.Shutdown.E Requested -> exit_and_flush Success
+  | Dune_scheduler.Shutdown.E (Signal _) -> exit_and_flush Signal
   | exn ->
     let exn = Exn_with_backtrace.capture exn in
     Dune_util.Report_error.report exn;

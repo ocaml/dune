@@ -122,18 +122,6 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
-  ; { path = "src/fsevents"
-    ; main_module_name = Some "Fsevents"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-  ; { path = "src/fswatch_win"
-    ; main_module_name = Some "Fswatch_win"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
   ; { path = "otherlibs/dune-action-trace"
     ; main_module_name = Some "Dune_action_trace"
     ; include_subdirs = No
@@ -236,18 +224,6 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
-  ; { path = "src/csexp_rpc"
-    ; main_module_name = Some "Csexp_rpc"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-  ; { path = "src/dune_rpc_client"
-    ; main_module_name = Some "Dune_rpc_client"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
   ; { path = "src/dune_engine"
     ; main_module_name = Some "Dune_engine"
     ; include_subdirs = No
@@ -268,12 +244,6 @@ let local_libraries =
     }
   ; { path = "otherlibs/dune-private-libs/meta_parser"
     ; main_module_name = Some "Dune_meta_parser"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-  ; { path = "src/fs"
-    ; main_module_name = Some "Fs"
     ; include_subdirs = No
     ; special_builtin_support = None
     ; root_module = None
@@ -416,8 +386,8 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
-  ; { path = "src/dune_rpc_server"
-    ; main_module_name = Some "Dune_rpc_server"
+  ; { path = "src/rpc"
+    ; main_module_name = Some "Rpc"
     ; include_subdirs = No
     ; special_builtin_support = None
     ; root_module = None
@@ -455,7 +425,6 @@ let main =
             ; "Cmdliner_term_deprecated"
             ; "Cmdliner_trie"
             ; "Csexp"
-            ; "Csexp_rpc"
             ; "Dune_cache"
             ; "Dune_config_file"
             ; "Dune_digest"
@@ -465,7 +434,6 @@ let main =
             ; "Dune_lang"
             ; "Dune_pkg"
             ; "Dune_rpc"
-            ; "Dune_rpc_client"
             ; "Dune_rpc_impl"
             ; "Dune_rules"
             ; "Dune_scheduler"
@@ -524,6 +492,7 @@ let main =
             ; "Pp"
             ; "Predicate_lang"
             ; "Re"
+            ; "Rpc"
             ; "Source"
             ; "Spawn"
             ; "Stdune"

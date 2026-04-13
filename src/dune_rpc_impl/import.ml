@@ -11,7 +11,7 @@ include struct
 end
 
 include struct
-  open Dune_rpc_client
+  open Rpc
   module Where = Where
-  module Client = Dune_rpc_client.Client
+  module Client = Rpc.Client
 end

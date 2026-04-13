@@ -1,6 +1,6 @@
 open Import
 open Fiber.O
-module Client = Dune_rpc_client.Client
+module Client = Root.Rpc.Client
 module Version_error = Dune_rpc.Version_error
 
 include struct
@@ -282,7 +282,7 @@ let command =
     in
     Scheduler.Run.go
       config
-      ~on_event:(fun _ _ -> ())
+      ~on_event:(fun (_ : Scheduler.Run.Event.t) -> ())
       ~file_watcher:No_watcher
       (monitor ~quit_on_disconnect)
   in

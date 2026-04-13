@@ -635,15 +635,9 @@ let create_sequence f ~version conv =
   Fiber.Stream.In.create read
 ;;
 
-module Make (S : sig
-    type t
+module type Session = Server_intf.Session
 
-    val close : t -> unit Fiber.t
-    val write : t -> Sexp.t list -> (unit, [ `Closed ]) result Fiber.t
-    val read : t -> Sexp.t option Fiber.t
-    val name : t -> string
-  end) =
-struct
+module Make (S : Session) = struct
   open Fiber.O
 
   let serve sessions server =
@@ -693,3 +687,13 @@ struct
 end
 
 module Handler = H.Builder
+
+let serve =
+  let module M = Make (struct
+      include Csexp_rpc.Session
+
+      let name _ = "dune"
+    end)
+  in
+  M.serve
+;;

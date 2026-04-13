@@ -10,23 +10,22 @@ let config =
   }
 ;;
 
+let on_event (_ : Scheduler.Run.Event.t) = ()
+
 let%expect_test "create and wait for timer" =
-  Scheduler.Run.go
-    ~on_event:(fun _ _ -> ())
-    config
-    (fun () ->
-       let now () = Time.now () in
-       let start = now () in
-       let duration = Time.Span.of_secs 0.2 in
-       let+ () = Scheduler.sleep duration in
-       assert (Time.Span.to_secs (Time.diff (now ()) start) >= Time.Span.to_secs duration);
-       print_endline "timer finished successfully");
+  Scheduler.Run.go ~on_event config (fun () ->
+    let now () = Time.now () in
+    let start = now () in
+    let duration = Time.Span.of_secs 0.2 in
+    let+ () = Scheduler.sleep duration in
+    assert (Time.Span.to_secs (Time.diff (now ()) start) >= Time.Span.to_secs duration);
+    print_endline "timer finished successfully");
   [%expect {| timer finished successfully |}]
 ;;
 
 let%expect_test "multiple timers" =
   Scheduler.Run.go
-    ~on_event:(fun _ _ -> ())
+    ~on_event:(fun _ -> ())
     config
     (fun () ->
        [ 0.3; 0.2; 0.1 ]
@@ -45,7 +44,7 @@ let%expect_test "multiple timers" =
 
 let%expect_test "run process with timeout" =
   Scheduler.Run.go
-    ~on_event:(fun _ _ -> ())
+    ~on_event:(fun _ -> ())
     config
     (fun () ->
        let pid =

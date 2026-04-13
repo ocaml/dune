@@ -10,6 +10,13 @@ module Config : sig
     }
 end
 
+module Run_id : sig
+  type t
+
+  val batch : t
+  val to_int : t -> int
+end
+
 module Run : sig
   module Build_outcome : sig
     type t =
@@ -30,20 +37,6 @@ module Run : sig
     | No_watcher
 
   val file_watcher_equal : file_watcher -> file_watcher -> bool
-
-  module Shutdown : sig
-    module Reason : sig
-      type t =
-        | Requested
-        | Timeout
-        | Signal of Signal.t
-    end
-
-    (** Raised when [go] terminates due to the user requesting a shutdown via
-        rpc or raising a signal. The caller needs to know about this to set the
-        exit code correctly *)
-    exception E of Reason.t
-  end
 
   exception Build_cancelled
 
@@ -70,7 +63,7 @@ module Run : sig
     :  Config.t
     -> ?timeout:Time.Span.t
     -> ?file_watcher:file_watcher
-    -> on_event:(Config.t -> Event.t -> unit)
+    -> on_event:(Event.t -> unit)
     -> (unit -> 'a Fiber.t)
     -> 'a
 end
@@ -87,9 +80,8 @@ type t
 val t : unit -> t Fiber.t
 
 (** [with_job_slot f] waits for one job slot (as per [-j <jobs] to become
-    available and then calls [f]. The cancellation token is provided to [f] to
-    avoid doing some work if the job's result is no longer necessary. *)
-val with_job_slot : (Fiber.Cancel.t -> Config.t -> 'a Fiber.t) -> 'a Fiber.t
+    available and then calls [f]. *)
+val with_job_slot : (unit -> 'a Fiber.t) -> 'a Fiber.t
 
 (** Wait for the following process to terminate. If [is_process_group_leader] is
     true, kill the entire process group instead of just the process in case of

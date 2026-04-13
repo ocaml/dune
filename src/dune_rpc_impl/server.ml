@@ -1,6 +1,5 @@
 open Import
 open Fiber.O
-open Dune_rpc_server
 
 include struct
   open Dune_rpc
@@ -24,18 +23,15 @@ include struct
   module Status = Status
 end
 
+module Session = Rpc.Server.Session
+module Handler = Rpc.Server.Handler
+module Csexp_rpc = Rpc.Csexp_rpc
+
 module Run = struct
   module Registry = Dune_rpc.Registry
 
-  module Server = Dune_rpc_server.Make (struct
-      include Csexp_rpc.Session
-
-      (* only needed for action runners. can be safely omitted elsewhere *)
-      let name _ = "unnamed"
-    end)
-
   type t =
-    { handler : Dune_rpc_server.t
+    { handler : Rpc.Server.t
     ; pool : Fiber.Pool.t
     ; root : string
     ; where : Dune_rpc.Where.t
@@ -95,7 +91,7 @@ module Run = struct
              cleanup_registry := Some path;
              at_exit run_cleanup_registry
            in
-           let* () = Server.serve sessions t.handler in
+           let* () = Rpc.Server.serve sessions t.handler in
            Fiber.Pool.close t.pool)
         (fun () -> Fiber.Pool.run t.pool)
     in
@@ -221,7 +217,7 @@ let get_current_diagnostic_errors () =
     | `Diagnostic compound_user_error -> Some compound_user_error)
 ;;
 
-let handler (t : _ t Fdecl.t) : 'build_arg Dune_rpc_server.Handler.t =
+let handler (t : _ t Fdecl.t) : 'build_arg Handler.t =
   let on_init session (_ : Initialize.Request.t) =
     let t = Fdecl.get t in
     let client = () in
@@ -466,7 +462,7 @@ let handler (t : _ t Fdecl.t) : 'build_arg Dune_rpc_server.Handler.t =
 let create ~lock_timeout ~registry ~root =
   let t = Fdecl.create Dyn.opaque in
   let pending_jobs = Job_queue.create () in
-  let handler = Dune_rpc_server.make (handler t) in
+  let handler = Rpc.Server.make (handler t) in
   let pool = Fiber.Pool.create () in
   let where = Where.default () in
   Global_lock.lock_exn ~timeout:lock_timeout;

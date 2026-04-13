@@ -40,6 +40,47 @@ module Build_outcome = struct
     | Failure
 end
 
+module Run_id = struct
+  type t =
+    | Batch
+    | Watch of int
+
+  let batch = Batch
+
+  let to_int = function
+    | Batch -> 0
+    | Watch n -> n
+  ;;
+
+  module State = struct
+    type nonrec t =
+      | Batch_not_started
+      | Batch_started
+      | Watch of int
+
+    let create ~watch_mode = if watch_mode then Watch 1 else Batch_not_started
+
+    let is_watch = function
+      | Batch_not_started | Batch_started -> false
+      | Watch _ -> true
+    ;;
+
+    let next_to_start = function
+      | Batch_not_started -> Batch
+      | Batch_started ->
+        Code_error.raise "batch mode may not emit more than one build run id" []
+      | Watch n -> Watch n
+    ;;
+
+    let start = function
+      | Batch_not_started -> Batch_started, Batch
+      | Batch_started ->
+        Code_error.raise "batch mode may not start more than one build" []
+      | Watch n -> Watch (n + 1), Watch n
+    ;;
+  end
+end
+
 module Handler = struct
   module Event = struct
     type t =
@@ -56,6 +97,7 @@ type t =
   { alarm_clock : Alarm_clock.t Lazy.t
   ; mutable status : status
   ; mutable invalidation : Memo.Invalidation.t
+  ; mutable run_id_state : Run_id.State.t
   ; mutable watch_restart_started_at : Time.t option
   ; handler : Handler.t
   ; job_throttle : Fiber.Throttle.t
@@ -216,6 +258,7 @@ let prepare (config : Config.t) ~(handler : Handler.t) ~events ~file_watcher =
            mode, which is even weirder. *)
         Building cancel
     ; invalidation = Memo.Invalidation.empty
+    ; run_id_state = Run_id.State.create ~watch_mode:(Option.is_some file_watcher)
     ; watch_restart_started_at = None
     ; job_throttle = Fiber.Throttle.create config.concurrency
     ; process_watcher
@@ -293,10 +336,16 @@ module Run_once = struct
     else (
       let now = Time.now () in
       let reasons = Memo.Invalidation.details_hum ~max_elements:max_int invalidation in
-      if Option.is_none t.watch_restart_started_at
-      then t.watch_restart_started_at <- Some now;
-      Dune_trace.emit Build (fun () ->
-        Dune_trace.Event.watch_build_restart ~reasons ~at:now);
+      if Run_id.State.is_watch t.run_id_state
+      then (
+        let run_id = Run_id.State.next_to_start t.run_id_state in
+        if Option.is_none t.watch_restart_started_at
+        then t.watch_restart_started_at <- Some now;
+        Dune_trace.emit Build (fun () ->
+          Dune_trace.Event.watch_build_restart
+            ~run_id:(Run_id.to_int run_id)
+            ~reasons
+            ~at:now));
       t.invalidation <- Memo.Invalidation.combine t.invalidation invalidation;
       let fills =
         match t.status with
@@ -406,17 +455,23 @@ module Run = struct
   module Event_queue = Event.Queue
   module Event = Handler.Event
 
-  let emit_watch_build_finish t ~started_at ~outcome =
-    let stop = Time.now () in
-    let restart_duration =
-      Option.map t.watch_restart_started_at ~f:(fun restart_started_at ->
-        Time.diff stop restart_started_at)
-    in
-    t.watch_restart_started_at <- None;
-    Dune_trace.emit Build (fun () ->
+  let allocate_run_id t =
+    let state, run_id = Run_id.State.start t.run_id_state in
+    t.run_id_state <- state;
+    run_id
+  ;;
+
+  let emit_build_start ~run_id ~restart ~start =
+    Dune_trace.emit ~buffered:true Build (fun () ->
+      Dune_trace.Event.watch_build_start ~run_id:(Run_id.to_int run_id) ~restart ~start)
+  ;;
+
+  let emit_build_finish ~run_id ~start ~stop ~outcome ~restart_duration =
+    Dune_trace.emit ~buffered:true Build (fun () ->
       Dune_trace.Event.watch_build_finish
+        ~run_id:(Run_id.to_int run_id)
         ~outcome
-        ~start:started_at
+        ~start
         ~stop
         ~restart_duration)
   ;;
@@ -431,10 +486,11 @@ module Run = struct
       t.invalidation <- Memo.Invalidation.empty;
       t.build_inputs_changed <- Trigger.create ());
     let started_at = Time.now () in
-    Dune_trace.emit Build (fun () ->
-      Dune_trace.Event.watch_build_start
-        ~restart:(Option.is_some t.watch_restart_started_at)
-        ~start:started_at);
+    let run_id = allocate_run_id t in
+    emit_build_start
+      ~run_id
+      ~restart:(Option.is_some t.watch_restart_started_at)
+      ~start:started_at;
     let cancel = Fiber.Cancel.create () in
     t.status <- Building cancel;
     t.cancel <- cancel;
@@ -446,13 +502,21 @@ module Run = struct
         | Error `Already_reported -> Failure
         | Ok () -> Success
       in
-      emit_watch_build_finish
-        t
-        ~started_at
+      let stop = Time.now () in
+      let restart_duration =
+        Option.map t.watch_restart_started_at ~f:(fun restart_started_at ->
+          Time.diff stop restart_started_at)
+      in
+      t.watch_restart_started_at <- None;
+      emit_build_finish
+        ~run_id
+        ~start:started_at
+        ~stop
         ~outcome:
           (match res with
            | Success -> `Success
-           | Failure -> `Failure);
+           | Failure -> `Failure)
+        ~restart_duration;
       t.handler (Build_finish res);
       Fiber.return res
     | Restarting_build -> poll_iter t step
@@ -463,13 +527,21 @@ module Run = struct
         | Ok () -> Success
       in
       t.status <- Standing_by;
-      emit_watch_build_finish
-        t
-        ~started_at
+      let stop = Time.now () in
+      let restart_duration =
+        Option.map t.watch_restart_started_at ~f:(fun restart_started_at ->
+          Time.diff stop restart_started_at)
+      in
+      t.watch_restart_started_at <- None;
+      emit_build_finish
+        ~run_id
+        ~start:started_at
+        ~stop
         ~outcome:
           (match res with
            | Success -> `Success
-           | Failure -> `Failure);
+           | Failure -> `Failure)
+        ~restart_duration;
       t.handler (Build_finish res);
       Fiber.return res
   ;;

@@ -1,4 +1,4 @@
-Watch-mode builds emit start, restart, and finish trace events.
+Batch and watch-mode builds emit run ids on build trace events.
 
   $ make_dune_project 3.22
 
@@ -12,6 +12,35 @@ Watch-mode builds emit start, restart, and finish trace events.
   >  (deps x)
   >  (action (system "cat x > y")))
   > EOF
+
+  $ dune build y
+
+  $ dune trace cat | jq -s '
+  > [ .[]
+  >   | select(
+  >       .cat == "build"
+  >       and (.name == "build-start" or .name == "build-restart" or .name == "build-finish")
+  >     )
+  >   | { args, name }
+  >   | if .args.restart_duration? != null
+  >     then .args.restart_duration |= type
+  >     else .
+  >     end
+  > ] | .[]'
+  {
+    "args": {
+      "run_id": 0,
+      "restart": false
+    },
+    "name": "build-start"
+  }
+  {
+    "args": {
+      "run_id": 0,
+      "outcome": "success"
+    },
+    "name": "build-finish"
+  }
 
   $ start_dune
 
@@ -39,18 +68,21 @@ Watch-mode builds emit start, restart, and finish trace events.
   > ] | .[]'
   {
     "args": {
+      "run_id": 1,
       "restart": false
     },
     "name": "build-start"
   }
   {
     "args": {
+      "run_id": 1,
       "outcome": "success"
     },
     "name": "build-finish"
   }
   {
     "args": {
+      "run_id": 2,
       "reasons": [
         "x changed"
       ]
@@ -59,12 +91,14 @@ Watch-mode builds emit start, restart, and finish trace events.
   }
   {
     "args": {
+      "run_id": 2,
       "restart": true
     },
     "name": "build-start"
   }
   {
     "args": {
+      "run_id": 2,
       "outcome": "success",
       "restart_duration": "number"
     },

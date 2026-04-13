@@ -10,6 +10,13 @@ module Config : sig
     }
 end
 
+module Run_id : sig
+  type t
+
+  val batch : t
+  val to_int : t -> int
+end
+
 module Run : sig
   module Build_outcome : sig
     type t =

@@ -74,6 +74,9 @@ let wait_for_process t ~is_process_group_leader pid =
   Fiber.Ivar.read ivar
 ;;
 
+(* Grace period before escalating from SIGTERM to SIGKILL *)
+let sigterm_grace_period = Time.Span.of_secs 0.2
+
 type termination_reason =
   | Normal
   | Cancel
@@ -82,18 +85,26 @@ type termination_reason =
 (* We use this version privately in this module whenever we can pass the
    scheduler explicitly *)
 let wait_for_build_process t ~is_process_group_leader pid =
+  let sigkill_alarm = ref None in
   let+ res, outcome =
     Fiber.Cancel.with_handler
       t.cancel
       ~on_cancel:(fun () ->
-        Process_watcher.killall t.process_watcher Sys.sigkill;
-        Fiber.return ())
+        if not Sys.win32 then Process_watcher.killall t.process_watcher Sys.sigterm;
+        let alarm_clock = Lazy.force t.alarm_clock in
+        let sleep = Alarm_clock.sleep alarm_clock sigterm_grace_period in
+        sigkill_alarm := Some sleep;
+        let+ res = Alarm_clock.await sleep in
+        match res with
+        | `Cancelled -> ()
+        | `Finished -> Process_watcher.killall t.process_watcher Sys.sigkill)
       (fun () ->
          let+ r = wait_for_process t ~is_process_group_leader pid in
-         (* [kill_process_group] on Windows only kills the pid and by this
-           time the process should've exited anyway *)
          if not Sys.win32
          then Process_watcher.kill_process_group pid Sys.sigterm ~is_process_group_leader;
+         (match !sigkill_alarm with
+          | None -> ()
+          | Some alarm -> Alarm_clock.cancel (Lazy.force t.alarm_clock) alarm);
          r)
   in
   ( res
@@ -121,7 +132,26 @@ type saw_shutdown =
   | Got_shutdown
 
 let kill_and_wait_for_all_processes t =
-  Process_watcher.killall t.process_watcher Sys.sigkill;
+  if Event.Queue.pending_jobs t.events > 0
+  then (
+    Dune_trace.emit Process Dune_trace.Event.process_cleanup_start;
+    (* Send SIGTERM first to give processes a chance to clean up *)
+    if not Sys.win32 then Process_watcher.killall t.process_watcher Sys.sigterm;
+    (* Poll until all processes exit or the grace period expires, then SIGKILL *)
+    let deadline = Time.add (Time.now ()) sigterm_grace_period in
+    let sent_sigkill = ref false in
+    while Event.Queue.pending_jobs t.events > 0 do
+      ignore (Process_watcher.wait_unix t.process_watcher : Fiber.fill list);
+      if Event.Queue.pending_jobs t.events > 0
+      then
+        if (not !sent_sigkill) && Time.(now () >= deadline)
+        then (
+          Dune_trace.emit Process Dune_trace.Event.process_cleanup_sigkill;
+          Process_watcher.killall t.process_watcher Sys.sigkill;
+          sent_sigkill := true)
+        else Unix.sleepf 0.01
+    done;
+    Dune_trace.emit Process Dune_trace.Event.process_cleanup_finish);
   let saw_signal = ref Ok in
   while Event.Queue.pending_jobs t.events > 0 do
     match Event.Queue.next t.events with

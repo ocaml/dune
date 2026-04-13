@@ -322,10 +322,8 @@ include Sub_system.Register_end_point (struct
           match mode with
           | Best -> Some (if lib_has_native then mode else Mode_conf.Byte)
           | Native | Byte -> Some mode
-          | Jsoo mode ->
-            if Js_of_ocaml.Mode.Pair.select ~mode jsoo_enabled_modes
-            then Some (Jsoo mode)
-            else None)
+          | Jsoo mode as v ->
+            if Js_of_ocaml.Mode.Pair.select ~mode jsoo_enabled_modes then Some v else None)
       in
       let* (_ : Exe.dep_graphs) =
         let* linkages =

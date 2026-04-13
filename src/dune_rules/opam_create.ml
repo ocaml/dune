@@ -226,14 +226,14 @@ let merge_dune_constraints lang_constraint user_constraint =
 ;;
 
 let insert_dune_dep depends dune_version =
-  let constraint_ : Package_constraint.t =
+  let lang_constraint : Package_constraint.t =
     let dune_version = Dune_lang.Syntax.Version.to_string dune_version in
     Uop (Gte, String_literal dune_version)
   in
   let rec loop acc = function
     | [] ->
       let dune_dep =
-        { Package_dependency.name = dune_name; constraint_ = Some constraint_ }
+        { Package_dependency.name = dune_name; constraint_ = Some lang_constraint }
       in
       dune_dep :: List.rev acc
     | (dep : Package_dependency.t) :: rest ->
@@ -247,8 +247,9 @@ let insert_dune_dep depends dune_version =
               constraint_ =
                 Some
                   (match dep.constraint_ with
-                   | None -> constraint_
-                   | Some c -> merge_dune_constraints constraint_ c)
+                   | None -> lang_constraint
+                   | Some user_constraint ->
+                     merge_dune_constraints lang_constraint user_constraint)
             }
         in
         List.rev_append acc (dep :: rest))

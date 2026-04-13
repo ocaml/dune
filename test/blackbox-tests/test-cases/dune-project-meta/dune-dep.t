@@ -80,8 +80,8 @@ the more restrictive user constraint should be kept (issue #11106):
     "odoc" {with-doc}
   ]
 
-When the user specifies a lower bound than the lang version, the lang
-constraint takes precedence:
+When the user specifies a lower bound than the lang version, a warning
+is emitted and the lang constraint takes precedence:
 
   $ cat > dune-project <<EOF
   > (lang dune 2.7)

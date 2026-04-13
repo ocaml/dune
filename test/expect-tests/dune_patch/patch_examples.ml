@@ -126,3 +126,48 @@ index 0000000..557db03
 +Hello World
 |}
 ;;
+
+let rename_patch =
+  {|
+diff --git a/old.ml b/new.ml
+similarity index 100%
+rename from old.ml
+rename to new.ml
+|}
+;;
+
+let git_ext_delete_only =
+  {|
+diff --git a/foo.ml b/foo.ml
+deleted file mode 100644
+index 557db03..0000000
+--- a/foo.ml
++++ /dev/null
+@@ -1 +0,0 @@
+-Hello World
+|}
+;;
+
+let git_ext_create_only =
+  {|
+diff --git a/foo.ml b/foo.ml
+new file mode 100644
+index 0000000..557db03
+--- /dev/null
++++ b/foo.ml
+@@ -0,0 +1 @@
++Hello World
+|}
+;;
+
+let edit_with_rename =
+  {|
+diff --git a/source.ml b/target.ml
+index b69a69a5a..ea988f6bd 100644
+--- a/source.ml
++++ b/target.ml
+@@ -1,1 +1,1 @@
+-This is wrong
++This is right
+|}
+;;

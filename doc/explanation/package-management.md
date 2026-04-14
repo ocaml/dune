@@ -204,6 +204,46 @@ managed automatically by Dune. Thus, when cleaning the build directory, the
 installed packages are cleaned as well and will be reinstalled at the next
 build.
 
+## External System Dependencies (depexts)
+
+OCaml packages sometimes require system packages at build or run time, such as
+C libraries, system tools, or `pkg-config` packages. In the opam ecosystem,
+these are called "depexts" (external dependencies) and are declared using the
+[`depexts` field in opam files](https://opam.ocaml.org/doc/Manual.html#opamfield-depexts).
+
+Dune does not install or manage system packages. It reads depexts information
+from opam package metadata and surfaces it to help users identify what needs to
+be installed on their system.
+
+### How Dune Handles Depexts
+
+During dependency solving, Dune reads the `depexts` field from each package's
+opam metadata. The depexts and their platform filter conditions (using opam
+variables like `os-family`, `os-distribution`, and `arch`) are recorded in the
+lock directory. The filters are preserved as conditionals so that the lock
+directory remains portable across platforms. When depexts are queried or
+displayed (e.g., via `dune show depexts`), the filters are evaluated against
+the current platform.
+
+### Surfacing Depexts to Users
+
+Dune surfaces depexts information in two ways:
+
+- **`dune show depexts`** prints all system packages required by the project's
+  locked dependencies (aggregated and deduplicated across all packages). See
+  {doc}`/howto/handle-depexts` for usage.
+
+- **Build failure hints:** when a locked package fails to build and has
+  associated depexts, Dune prints a hint listing that package's depexts after
+  the error message. This can help diagnose failures caused by missing system
+  packages.
+
+<!-- TODO: The `depexts` field cannot currently be set in the `(package)`
+stanza of a `dune-project` file. Projects must use `.opam.template` files to
+declare depexts for their own packages, which is unfortunate for projects using
+Dune package management that otherwise don't need `.opam` files. Tracking this
+gap is part of #13657. -->
+
 (compatibility)=
 ## Packaging for Dune Compatibility
 

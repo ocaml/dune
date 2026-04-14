@@ -241,8 +241,8 @@ Dune surfaces depexts information in two ways:
 <!-- TODO: The `depexts` field cannot currently be set in the `(package)`
 stanza of a `dune-project` file. Projects must use `.opam.template` files to
 declare depexts for their own packages, which is unfortunate for projects using
-Dune package management that otherwise don't need `.opam` files. Tracking this
-gap is part of #13657. -->
+Dune package management that otherwise don't need `.opam` files. See
+https://github.com/ocaml/dune/issues/5506 -->
 
 (compatibility)=
 ## Packaging for Dune Compatibility

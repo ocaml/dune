@@ -15,29 +15,21 @@ end
     with extension [files] of libraries [libs]. *)
 val deps : Lib.t list -> groups:Group.t list -> Dep.Set.t
 
-(** [deps_of_entries ~opaque ~cm_kind entries] computes the file dependencies
-    for the given library entries. When the module in an entry is [None], glob
-    deps are used for the library. When [Some m], per-file deps on specific
-    cm files are used. Currently all callers pass [None]; the [Some] path is
-    retained for potential future per-module filtering of unwrapped libraries. *)
-val deps_of_entries
-  :  opaque:bool
-  -> cm_kind:Lib_mode.Cm_kind.t
-  -> (Lib.t * Module.t option) list
-  -> Dep.Set.t
+(** [deps_of_entries ~opaque ~cm_kind libs] computes the file dependencies
+    (glob deps on .cmi/.cmx files) for the given libraries. *)
+val deps_of_entries : opaque:bool -> cm_kind:Lib_mode.Cm_kind.t -> Lib.t list -> Dep.Set.t
 
 module Lib_index : sig
-  type entry = Lib.t * Module.t option
   type t
 
   val empty : t
 
-  (** Create an index from a list of (module_name, entry) pairs. *)
-  val create : (Module_name.t * entry) list -> t
+  (** Create an index from a list of (module_name, library) pairs. *)
+  val create : (Module_name.t * Lib.t) list -> t
 
-  (** Return the library entries whose module names appear in
+  (** Return the libraries whose module names appear in
       [referenced_modules]. *)
-  val filter_libs : t -> referenced_modules:Module_name.Set.t -> entry list
+  val filter_libs : t -> referenced_modules:Module_name.Set.t -> Lib.t list
 end
 
 type path_specification =

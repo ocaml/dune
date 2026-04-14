@@ -47,7 +47,7 @@ $ dune pkg lock
 ```
 
 All the dependencies in the lock directory will be updated to the latest 
-available versions, satisyfing the declared constraints.
+available versions that remain consistent with the declared constraints.
 
 ## Removing a lock directory
 

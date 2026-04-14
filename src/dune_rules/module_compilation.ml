@@ -65,26 +65,9 @@ let filtered_lib_deps ~cctx ~obj_dir ~ml_kind ~for_ ~dep_graph ~opaque ~cm_kind 
        doesn't report, at arbitrary depth. *)
     let libs_set = Table.create (module Lib) (List.length libs) in
     List.iter libs ~f:(fun lib -> Table.set libs_set lib ());
-    let covered = Table.create (module Lib) 8 in
-    List.iter filtered_libs ~f:(fun lib -> Table.set covered lib ());
-    let rec close_over queue acc =
-      match queue with
-      | [] -> Action_builder.return acc
-      | lib :: rest ->
-        let open Action_builder.O in
-        let* requires = Resolve.Memo.read (Lib.requires lib ~for_) in
-        let new_deps =
-          List.filter_map requires ~f:(fun dep ->
-            if Table.mem libs_set dep && not (Table.mem covered dep)
-            then (
-              Table.set covered dep ();
-              Some dep)
-            else None)
-        in
-        close_over (new_deps @ rest) (new_deps @ acc)
-    in
-    let+ transitive_libs = close_over filtered_libs [] in
-    (), Lib_file_deps.deps_of_entries ~opaque ~cm_kind (filtered_libs @ transitive_libs)
+    let+ closed = Resolve.Memo.read (Lib.closure filtered_libs ~linking:false ~for_) in
+    let all_libs = List.filter closed ~f:(Table.mem libs_set) in
+    (), Lib_file_deps.deps_of_entries ~opaque ~cm_kind all_libs
 ;;
 
 (* Arguments for the compiler to prevent it from being too clever.

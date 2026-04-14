@@ -107,6 +107,7 @@ let add_rule sctx ?mode ?loc ~dir build =
 ;;
 
 let for_ = Compilation_mode.Melange
+let sandbox = Compilation_mode.default_sandbox for_
 
 let impl_only_modules_defined_in_this_lib ~sctx ~scope lib =
   match Lib_info.modules (Lib.info lib) ~for_ with
@@ -188,12 +189,18 @@ let make_same_lib_emission_deps =
       | "--mel-no-cross-module-opt" | "-mel-no-cross-module-opt" -> false
       | _ -> enabled)
   in
-  let impl_dep_graph ~obj_dir ~modules =
+  let impl_dep_graph ~sctx ~obj_dir ~modules =
     let per_module =
       Modules.With_vlib.obj_map modules
       |> Module_name.Unique.Map.mapi ~f:(fun _ sourced_module ->
         let module_ = Modules.Sourced_module.to_module sourced_module in
-        Dep_rules.read_immediate_deps_of ~obj_dir ~modules ~ml_kind:Impl ~for_ module_)
+        Dep_rules.read_immediate_deps_of
+          ~sandbox
+          ~sctx
+          ~obj_dir
+          ~modules
+          ~ml_kind:Impl
+          module_)
     in
     Dep_graph.make ~dir:(Obj_dir.dir obj_dir) ~per_module
   in
@@ -210,12 +217,12 @@ let make_same_lib_emission_deps =
     in
     Dep.Set.union cmi cmj
   in
-  fun ~obj_dir ~modules ~(compile_flags : Ocaml_flags.t) ->
+  fun ~sctx ~obj_dir ~modules ~(compile_flags : Ocaml_flags.t) ->
     let xopt_enabled =
       Ocaml_flags.get compile_flags Melange
       |> Action_builder.map ~f:melange_cross_module_opt_enabled
     in
-    let dep_graph = impl_dep_graph ~obj_dir ~modules in
+    let dep_graph = impl_dep_graph ~sctx ~obj_dir ~modules in
     fun module_ ->
       let open Action_builder.O in
       xopt_enabled
@@ -758,7 +765,7 @@ let setup_entries_js
   let promote_in_source = should_promote_in_source scope in
   let same_lib_emission_deps =
     let modules = Modules.With_vlib.modules local_modules in
-    make_same_lib_emission_deps ~compile_flags ~modules ~obj_dir:local_obj_dir
+    make_same_lib_emission_deps ~sctx ~compile_flags ~modules ~obj_dir:local_obj_dir
   in
   let+ directory_targets =
     setup_runtime_assets_rules
@@ -809,6 +816,7 @@ let setup_js_rules_libraries =
           make_external_lib_emission_deps ~obj_dir:(Lib_info.obj_dir (Lib.info lib))
         | Some lib ->
           make_same_lib_emission_deps
+            ~sctx
             ~compile_flags
             ~modules:lib_modules
             ~obj_dir:(Lib.Local.obj_dir lib)

@@ -240,3 +240,11 @@ def fsUpdateWithPath($path):
 
 def censorDigestDir:
   .args.dir |= (if . then sub("[0-9a-f]{32}"; "$DIGEST") else . end);
+
+def censorActionTargets:
+  if has("target_files") then
+    .target_files |= map(
+      if test("\\.actions[/\\\\][^/\\\\]+[/\\\\][0-9a-f]{32}$") then
+        sub("(?<sep>[/\\\\])[0-9a-f]{32}$"; "\(.sep)$ACTION")
+      else . end)
+  else . end;

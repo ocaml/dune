@@ -13,4 +13,3 @@ We don't need to run ocamldep on ther alias module
 
   $ find _build -iname "*.d" -o -iname "*.all-deps" | sort
   _build/default/.foo.objs/foo__Bar.impl.all-deps
-  _build/default/.foo.objs/foo__Bar.impl.d

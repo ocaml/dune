@@ -21,8 +21,9 @@ Test `(include_subdirs qualified)` with sandboxing
 
 Transitive deps file includes the alias module
 
-  $ cat _build/default/lib/.foo.objs/foo__Bar.impl.d
-  lib/bar.ml: Sub
+  $ cat _build/default/lib/.foo.objs/foo__Bar.impl.all-deps
+  foo__Sub
+  foo__Sub__Hello
 
   $ cat > lib/dune <<EOF
   > (include_subdirs qualified)
@@ -41,5 +42,7 @@ Transitive deps file includes the alias module
 
   $ DUNE_SANDBOX=symlink dune build
 
-  $ cat _build/default/lib/.foo.objs/foo__Bar.impl.d
-  lib/bar.ml: Sub
+  $ cat _build/default/lib/.foo.objs/foo__Bar.impl.all-deps
+  foo__Sub
+  foo__Sub__
+  foo__Sub__Hello

@@ -54,8 +54,8 @@ Test dependency on installed package
 
   $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root b @install --display=short
   Entering directory 'b'
-      ocamldep .b.objs/b__Bar.impl.d
-      ocamldep .b.objs/b__Foo.impl.d
+      ocamldep (internal)
+      ocamldep (internal)
           melc .b.objs/melange/b.{cmi,cmj,cmt}
           melc .b.objs/melange/b__Bar.{cmi,cmj,cmt}
           melc .b.objs/melange/b__Foo.{cmi,cmj,cmt}

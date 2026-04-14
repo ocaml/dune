@@ -354,13 +354,19 @@ module Crawl = struct
 
   let for_ = Compilation_mode.Ocaml
 
-  let immediate_deps_of_module ~options ~obj_dir ~modules unit =
+  let immediate_deps_of_module ~sctx ~options ~obj_dir ~modules unit =
     match (options : Options.t) with
     | { with_deps = false; _ } ->
       Action_builder.return { Root.Ocaml.Ml_kind.Dict.intf = []; impl = [] }
     | { with_deps = true; _ } ->
       let deps ml_kind =
-        Dune_rules.Dep_rules.read_immediate_deps_of ~obj_dir ~modules ~ml_kind unit ~for_
+        Dune_rules.Dep_rules.read_immediate_deps_of
+          ~sandbox:(Compilation_mode.default_sandbox for_)
+          ~sctx
+          ~obj_dir
+          ~modules
+          ~ml_kind
+          unit
       in
       let open Action_builder.O in
       let+ intf, impl = Action_builder.both (deps Intf) (deps Impl) in
@@ -440,7 +446,7 @@ module Crawl = struct
       in
       let deps_of module_ =
         let module_ = pp_map module_ in
-        immediate_deps_of_module ~options ~obj_dir ~modules:modules_ module_
+        immediate_deps_of_module ~sctx ~options ~obj_dir ~modules:modules_ module_
       in
       let obj_dir = Obj_dir.of_local obj_dir in
       let* modules = modules ~obj_dir ~deps_of modules_ in
@@ -509,6 +515,7 @@ module Crawl = struct
           in
           let deps_of module_ =
             immediate_deps_of_module
+              ~sctx
               ~options
               ~obj_dir:obj_dir_
               ~modules:modules_

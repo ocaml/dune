@@ -215,15 +215,34 @@ let package_fields package ~project =
 let dune_name = Package.Name.of_string "dune"
 let odoc_name = Package.Name.of_string "odoc"
 
+let merge_dune_constraints lang_constraint user_constraint =
+  match lang_constraint, user_constraint with
+  | ( Package_constraint.Uop (Gte, String_literal lang_v)
+    , Package_constraint.Uop (Gte, String_literal user_v) ) ->
+    if OpamVersionCompare.compare lang_v user_v <= 0
+    then user_constraint
+    else (
+      User_warning.emit
+        [ Pp.textf
+            "The lower bound >= %s on dune in the depends field is less than the dune \
+             language version %s. The generated opam file will use >= %s instead."
+            user_v
+            lang_v
+            lang_v
+        ];
+      lang_constraint)
+  | _ -> And [ lang_constraint; user_constraint ]
+;;
+
 let insert_dune_dep depends dune_version =
-  let constraint_ : Package_constraint.t =
+  let lang_constraint : Package_constraint.t =
     let dune_version = Dune_lang.Syntax.Version.to_string dune_version in
     Uop (Gte, String_literal dune_version)
   in
   let rec loop acc = function
     | [] ->
       let dune_dep =
-        { Package_dependency.name = dune_name; constraint_ = Some constraint_ }
+        { Package_dependency.name = dune_name; constraint_ = Some lang_constraint }
       in
       dune_dep :: List.rev acc
     | (dep : Package_dependency.t) :: rest ->
@@ -237,8 +256,9 @@ let insert_dune_dep depends dune_version =
               constraint_ =
                 Some
                   (match dep.constraint_ with
-                   | None -> constraint_
-                   | Some c -> And [ constraint_; c ])
+                   | None -> lang_constraint
+                   | Some user_constraint ->
+                     merge_dune_constraints lang_constraint user_constraint)
             }
         in
         List.rev_append acc (dep :: rest))

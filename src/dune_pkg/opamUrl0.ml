@@ -33,7 +33,7 @@ let is_supported_archive t = Option.is_some (Archive_driver.choose_for_filename 
 
 let classify url loc =
   match (url : t).backend with
-  | `rsync when is_local url -> `Path (Path.of_string url.path)
+  | `rsync when is_local url -> `Path (Path.of_string_allow_outside_workspace url.path)
   | `git -> `Git
   | `http when is_supported_archive url -> `Archive
   | `rsync | `http | `darcs | `hg ->

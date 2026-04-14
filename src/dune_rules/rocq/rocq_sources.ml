@@ -46,7 +46,9 @@ let empty =
 let rocq_modules_of_files ~dirs =
   let build_mod_dir (sd : Source_file_dir.t) =
     let prefix = sd.path_to_root in
-    let v_files = String.Set.filter sd.files ~f:(fun f -> Filename.check_suffix f ".v") in
+    let v_files =
+      String.Set.filter sd.files ~f:(fun f -> String.ends_with ~suffix:".v" f)
+    in
     String.Set.to_list_map v_files ~f:(fun file ->
       let name, _ = Filename.split_extension file in
       let name = Rocq_module.Name.make name in
@@ -60,7 +62,9 @@ let rocq_modules_of_files ~dirs =
 
 let expected_files_of_dirs ~dirs =
   let build_expected (sd : Source_file_dir.t) =
-    let v_files = String.Set.filter sd.files ~f:(fun f -> Filename.check_suffix f ".v") in
+    let v_files =
+      String.Set.filter sd.files ~f:(fun f -> String.ends_with ~suffix:".v" f)
+    in
     String.Set.to_list_map v_files ~f:(fun file ->
       let name, _ = Filename.split_extension file in
       let expected_name = name ^ ".expected" in
@@ -94,6 +98,34 @@ let of_dir stanzas ~dir ~include_subdirs ~dirs =
   check_no_unqualified include_subdirs;
   let modules = rocq_modules_of_files ~dirs in
   let expected_files = expected_files_of_dirs ~dirs in
+  let extend_rev_map e acc m =
+    Rocq_module.Map.add acc m e
+    |> function
+    | Ok rev_map -> rev_map
+    | Error prev_e ->
+      let conf_mod_name = Rocq_module.name m |> Rocq_module.Name.to_string in
+      let loc =
+        match e with
+        | `Theory rocq -> rocq.Theory.buildable.loc
+        | `Extraction extr -> extr.Extraction.buildable.loc
+      in
+      let hints =
+        let stanza_ty, stanza_name =
+          match prev_e with
+          | `Theory ({ name = _, lib_name; _ } : Theory.t) ->
+            "rocq.theory", Rocq_lib_name.to_string lib_name
+          | `Extraction ({ prelude = _, mod_name; _ } : Extraction.t) ->
+            "rocq.extraction", Rocq_module.Name.to_string mod_name
+        in
+        [ Pp.textf
+            "The Rocq module %S is already covered by %s stanza %S."
+            conf_mod_name
+            stanza_ty
+            stanza_name
+        ]
+      in
+      User_error.raise ~loc ~hints [ Pp.textf "Duplicate Rocq module %S." conf_mod_name ]
+  in
   List.fold_left stanzas ~init:{ empty with expected_files } ~f:(fun acc stanza ->
     match Stanza.repr stanza with
     | Theory.T rocq ->
@@ -106,17 +138,7 @@ let of_dir stanzas ~dir ~include_subdirs ~dirs =
       in
       let libraries = Rocq_lib_name.Map.add_exn acc.libraries (snd rocq.name) modules in
       let rev_map =
-        List.fold_left modules ~init:acc.rev_map ~f:(fun acc m ->
-          Rocq_module.Map.add acc m (`Theory rocq)
-          |> function
-          | Ok acc -> acc
-          | Error _ ->
-            User_error.raise
-              ~loc:rocq.buildable.loc
-              [ Pp.textf
-                  "Duplicate Rocq module %S."
-                  (Rocq_module.name m |> Rocq_module.Name.to_string)
-              ])
+        List.fold_left modules ~init:acc.rev_map ~f:(extend_rev_map (`Theory rocq))
       in
       { acc with directories; libraries; rev_map }
     | Extraction.T extr ->
@@ -133,7 +155,7 @@ let of_dir stanzas ~dir ~include_subdirs ~dirs =
             [ Pp.text "no Rocq source corresponding to prelude field" ]
       in
       let extract = Loc.Map.add_exn acc.extract extr.buildable.loc m in
-      let rev_map = Rocq_module.Map.add_exn acc.rev_map m (`Extraction extr) in
+      let rev_map = extend_rev_map (`Extraction extr) acc.rev_map m in
       { acc with extract; rev_map }
     | _ -> acc)
 ;;

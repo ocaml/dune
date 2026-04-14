@@ -21,11 +21,24 @@ val file_watcher : t -> Dune_scheduler.Scheduler.Run.file_watcher
 val prefix_target : t -> string -> string
 val find_default_trace_file : unit -> string
 
+(** [No_build] describes the most basic command-line flags that don't affect
+    workspace or build configuration. *)
+module No_build : sig
+  type t
+
+  val debug_backtraces : bool Cmdliner.Term.t
+  val set_debug_backtraces : bool -> unit
+  val term : t Cmdliner.Term.t
+  val set : t -> unit
+  val term_and_set : unit Cmdliner.Term.t
+end
+
 (** [Builder] describes how to initialize Dune. *)
 module Builder : sig
   type t
 
   val equal : t -> t -> bool
+  val set_no_build : t -> No_build.t -> t
   val root : t -> string option
   val set_root : t -> string -> t
   val forbid_builds : t -> t
@@ -67,7 +80,6 @@ val command_synopsis : string list -> Cmdliner.Manpage.block list
 val help_secs : Cmdliner.Manpage.block list
 val footer : Cmdliner.Manpage.block
 val envs : Cmdliner.Cmd.Env.info list
-val debug_backtraces : bool Cmdliner.Term.t
 val config_from_config_file : Dune_config.Partial.t Cmdliner.Term.t
 val display_term : Dune_config.Display.t option Cmdliner.Term.t
 val context_arg : doc:string option -> Dune_engine.Context_name.t Cmdliner.Term.t

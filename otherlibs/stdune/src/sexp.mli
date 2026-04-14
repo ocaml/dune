@@ -4,6 +4,7 @@ type t = Csexp.t =
   | Atom of string
   | List of t list
 
+val repr : t Repr.t
 val to_string : t -> string
 val pp : t -> 'a Pp.t
 val hash : t -> int

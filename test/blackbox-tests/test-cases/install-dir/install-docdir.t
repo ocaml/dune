@@ -1,3 +1,5 @@
+Honors `--docdir` for installed documentation files.
+
   $ echo "(lang dune 2.0)" > dune-project
   $ touch foo.opam docfile
   $ cat >dune <<EOF

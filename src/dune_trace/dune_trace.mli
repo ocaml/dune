@@ -33,12 +33,13 @@ module Event : sig
 
     val create_sandbox : loc:Loc.t -> data
     val fetch : url:string -> target:Path.t -> checksum:string option -> data
+    val pkg_load_lock_dir : path:string -> data
   end
 
   type t
 
   val sandbox
-    :  [ `Create | `Snapshot | `Destroy | `Extract ]
+    :  [ `Create | `Snapshot | `Destroy | `Extract | `Corrected ]
     -> start:Time.t
     -> stop:Time.t
     -> queued:Time.Span.t option
@@ -111,6 +112,17 @@ module Event : sig
 
   val scan_source : name:string -> start:Time.t -> stop:Time.t -> dir:Path.Source.t -> t
   val scheduler_idle : unit -> t
+  val watch_build_start : run_id:int -> restart:bool -> start:Time.t -> t
+  val watch_build_restart : run_id:int -> reasons:string list -> at:Time.t -> t
+
+  val watch_build_finish
+    :  run_id:int
+    -> outcome:[ `Success | `Failure ]
+    -> start:Time.t
+    -> stop:Time.t
+    -> restart_duration:Time.Span.t option
+    -> t
+
   val init : version:string option -> t
   val gc : unit -> t
   val fd_count : unit -> t option
@@ -217,7 +229,7 @@ module Event : sig
       -> new_stats:Dyn.t
       -> t
 
-    val dropped_stale_mtimes : Path.t list -> fs_now:float -> t
+    val dropped_stale_mtimes : Path.t list -> fs_now:Time.t -> t
   end
 
   val debug : (string * Dyn.t) list -> t

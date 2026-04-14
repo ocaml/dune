@@ -1,15 +1,37 @@
 (rule
- (mode promote)
+ (targets libs.ml.gen)
+ (deps
+  ../bin/main.exe
+  ../dune-file
+  ../dune-project
+  (source_tree ../bin)
+  (source_tree ../src)
+  (source_tree ../otherlibs)
+  (source_tree ../vendor))
  (action
-  (copy ../bin/bootstrap-info libs.ml)))
+  (with-stdout-to
+   libs.ml.gen
+   (run
+    %{dep:../bin/main.exe}
+    internal
+    bootstrap-info
+    --no-print-directory
+    --root
+    %{env:PWD=.}
+    --profile
+    %{profile}))))
 
 (alias
  (name runtest)
- (deps libs.ml))
+ (deps
+  (alias check)))
 
-(alias
- (name check)
- (deps libs.ml))
+(rule
+ (alias check)
+ (action
+  (diff libs.ml libs.ml.gen)))
+
+(ocamllex pps)
 
 (executable
  (name duneboot)

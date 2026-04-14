@@ -1,8 +1,10 @@
 (cram
+ (setup_scripts helpers.sh)
  (deps
-  helpers.sh
   %{project_root}/boot/types.ml
   %{project_root}/boot/duneboot.ml
+  %{project_root}/boot/pps.mli
+  %{project_root}/boot/pps.mll
   %{bin:bootstrap.exe}))
 
 (env

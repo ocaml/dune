@@ -29,7 +29,7 @@ module Crawl = struct
 
   (* Collect all (stanza, dir, expander) for test-related stanzas *)
   let collect_test_stanzas
-        ({ Import.Main.contexts = _; scontexts } : Import.Main.build_system)
+        { Dune_rules.Main.contexts = _; scontexts }
         (context : Context.t)
     : (Stanza.t * Path.Build.t * Expander.t) list Memo.t
     =
@@ -133,13 +133,11 @@ let term : unit Term.t =
   let common, config = Common.init builder in
   Scheduler_setup.go_with_rpc_server ~common ~config
   @@ fun () ->
-  let open Fiber.O in
-  let* setup = Import.Main.setup () in
-  build_exn
+  Build.build_memo_exn
   @@ fun () ->
   let open Memo.O in
-  let* setup = setup in
-  let super_context = Import.Main.find_scontext_exn setup ~name:context_name in
+  let* setup = Util.setup () in
+  let super_context = Dune_rules.Main.find_scontext_exn setup ~name:context_name in
   let context = Super_context.context super_context in
   let* tests_data = Crawl.tests setup context in
   let dyn_data =

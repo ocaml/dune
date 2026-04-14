@@ -1,3 +1,5 @@
+Rejects spaces inside `%{...}` forms.
+
   $ dune build @quoted
   File "dune", line 4, characters 25-26:
   4 |  (action (echo %{read:foo bar.txt})))

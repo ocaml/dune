@@ -4,6 +4,8 @@ module External = Path_external
 module Local = struct
   include Local
 
+  let repr = Repr.view Repr.string ~to_:to_string
+
   module L = struct
     include L
 
@@ -57,6 +59,7 @@ end
 module Source0 = struct
   include Path0.Source
 
+  let repr = Repr.view Repr.string ~to_:to_string
   let to_dyn s = Dyn.variant "In_source_tree" [ Path0.Local_gen.to_dyn s ]
   let append_local a b = of_local (Local.append (to_local a) b)
   let descendant t ~of_ = Option.map (Path0.Local_gen.descendant t ~of_) ~f:of_local
@@ -211,6 +214,8 @@ end
 
 module Build = struct
   include Path0.Build
+
+  let repr = Repr.view Repr.string ~to_:to_string
 
   module L = struct
     include L
@@ -412,6 +417,21 @@ end = struct
 end
 
 include T
+
+let repr =
+  Repr.variant
+    "path"
+    [ Repr.case "External" External.repr ~proj:(function
+        | External t -> Some t
+        | In_source_tree _ | In_build_dir _ -> None)
+    ; Repr.case "In_source_tree" Source0.repr ~proj:(function
+        | In_source_tree t -> Some t
+        | External _ | In_build_dir _ -> None)
+    ; Repr.case "In_build_dir" Build.repr ~proj:(function
+        | In_build_dir t -> Some t
+        | External _ | In_source_tree _ -> None)
+    ]
+;;
 
 let build_dir = in_build_dir Build.root
 

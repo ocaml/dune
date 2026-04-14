@@ -56,8 +56,14 @@ struct
   let remove_tree path = Remove_tree path
   let mkdir path = Mkdir path
 
-  let diff ?(optional = false) ?(mode = Diff.Mode.Text) file1 file2 =
-    Diff { optional; file1; file2; mode }
+  let diff
+        ?(optional = false)
+        ?(mode = Diff.Mode.Text)
+        ?(directory_diffs = true)
+        file1
+        file2
+    =
+    Diff { optional; mode; directory_diffs; file1; file2 }
   ;;
 end
 
@@ -175,6 +181,130 @@ let for_shell t =
       match x with
       | Ok p -> Path.reach p ~from:dir
       | Error e -> e.program)
+;;
+
+let digest =
+  let open Dune_digest.Manual in
+  let digest_outputs d outputs = repr d Outputs.repr outputs in
+  let digest_inputs d inputs = repr d Inputs.repr inputs in
+  let digest_file_perm d perm = repr d File_perm.repr perm in
+  let digest_mode d mode = repr d Diff.Mode.repr mode in
+  let digest_program d ~dir (program : Prog.t) =
+    match program with
+    | Ok p -> string d (Path.reach p ~from:dir)
+    | Error e -> string d e.program
+  in
+  let digest_path d ~dir path = string d (Path.reach path ~from:dir) in
+  let digest_target d ~dir target = string d (Path.reach (Path.build target) ~from:dir) in
+  let digest_ext d ~dir ((module A) : Encode_ext.t) =
+    repr
+      d
+      Sexp.repr
+      (A.Spec.encode
+         A.v
+         (fun p -> Sexp.Atom (Path.reach p ~from:dir))
+         (fun p -> Sexp.Atom (Path.reach (Path.build p) ~from:dir)))
+  in
+  let rec loop d t ~dir =
+    match t with
+    | Run (prog, args) ->
+      int d 0;
+      digest_program d ~dir prog;
+      int d (Array.Immutable.length args);
+      for i = 0 to Array.Immutable.length args - 1 do
+        string d (Array.Immutable.get args i)
+      done
+    | With_accepted_exit_codes (pred, t) ->
+      int d 1;
+      repr d (Predicate_lang.repr Repr.int) pred;
+      loop d t ~dir
+    | Chdir (path, t) ->
+      int d 2;
+      digest_path d ~dir path;
+      loop d t ~dir:path
+    | Setenv (var, value, t) ->
+      int d 3;
+      string d var;
+      string d value;
+      loop d t ~dir
+    | Redirect_out (outputs, target, perm, t) ->
+      int d 4;
+      digest_outputs d outputs;
+      digest_target d ~dir target;
+      digest_file_perm d perm;
+      loop d t ~dir
+    | Redirect_in (inputs, path, t) ->
+      int d 5;
+      digest_inputs d inputs;
+      digest_path d ~dir path;
+      loop d t ~dir
+    | Ignore (outputs, t) ->
+      int d 6;
+      digest_outputs d outputs;
+      loop d t ~dir
+    | Progn ts ->
+      int d 7;
+      list d ts ~f:(fun d t -> loop d t ~dir)
+    | Concurrent ts ->
+      int d 8;
+      list d ts ~f:(fun d t -> loop d t ~dir)
+    | Echo xs ->
+      int d 9;
+      list d xs ~f:string
+    | Cat paths ->
+      int d 10;
+      list d paths ~f:(fun d path -> digest_path d ~dir path)
+    | Copy (src, dst) ->
+      int d 11;
+      digest_path d ~dir src;
+      digest_target d ~dir dst
+    | Symlink (src, dst) ->
+      int d 12;
+      let src =
+        match Path.Build.parent dst with
+        | None -> Path.to_string src
+        | Some from -> Path.reach ~from:(Path.build from) src
+      in
+      string d src;
+      digest_target d ~dir dst
+    | Hardlink (src, dst) ->
+      int d 13;
+      digest_path d ~dir src;
+      digest_target d ~dir dst
+    | Bash s ->
+      int d 14;
+      string d s
+    | Write_file (target, perm, contents) ->
+      int d 15;
+      digest_target d ~dir target;
+      digest_file_perm d perm;
+      string d contents
+    | Rename (src, dst) ->
+      int d 16;
+      digest_target d ~dir src;
+      digest_target d ~dir dst
+    | Remove_tree target ->
+      int d 17;
+      digest_target d ~dir target
+    | Mkdir target ->
+      int d 18;
+      digest_target d ~dir target
+    | Pipe (outputs, ts) ->
+      int d 19;
+      digest_outputs d outputs;
+      list d ts ~f:(fun d t -> loop d t ~dir)
+    | Diff { optional; mode; directory_diffs; file1; file2 } ->
+      int d 20;
+      bool d optional;
+      digest_mode d mode;
+      bool d directory_diffs;
+      digest_path d ~dir file1;
+      digest_target d ~dir file2
+    | Extension ext ->
+      int d 21;
+      digest_ext d ~dir ext
+  in
+  fun d t -> loop d t ~dir:Path.root
 ;;
 
 let fold_one_step t ~init:acc ~f =
@@ -314,6 +444,7 @@ module Full = struct
       ; locks : Path.t list
       ; can_go_in_shared_cache : bool
       ; sandbox : Sandbox_config.t
+      ; corrections : Corrections.t option
       }
 
     let empty =
@@ -322,15 +453,29 @@ module Full = struct
       ; locks = []
       ; can_go_in_shared_cache = true
       ; sandbox = Sandbox_config.default
+      ; corrections = None
       }
     ;;
 
-    let combine { action; env; locks; can_go_in_shared_cache; sandbox } x =
+    let combine_corrections (x : Corrections.t option) (y : Corrections.t option) =
+      match x, y with
+      | None, x -> x
+      | x, None -> x
+      | Some Produce, Some Produce -> Some Produce
+      | Some Ignore, Some Ignore -> Some Ignore
+      | Some x, Some y ->
+        Code_error.raise
+          "incompatible corrections settings for action"
+          [ "x", Corrections.to_dyn x; "y", Corrections.to_dyn y ]
+    ;;
+
+    let combine { action; env; locks; can_go_in_shared_cache; sandbox; corrections } x =
       { action = combine action x.action
       ; env = Env.extend_env env x.env
       ; locks = locks @ x.locks
       ; can_go_in_shared_cache = can_go_in_shared_cache && x.can_go_in_shared_cache
       ; sandbox = Sandbox_config.inter sandbox x.sandbox
+      ; corrections = combine_corrections corrections x.corrections
       }
     ;;
   end
@@ -343,9 +488,10 @@ module Full = struct
         ?(locks = [])
         ?(can_go_in_shared_cache = !Clflags.can_go_in_shared_cache_default)
         ?(sandbox = Sandbox_config.default)
+        ?corrections
         action
     =
-    { action; env; locks; can_go_in_shared_cache; sandbox }
+    { action; env; locks; can_go_in_shared_cache; sandbox; corrections }
   ;;
 
   let map t ~f = { t with action = f t.action }
@@ -357,4 +503,8 @@ module Full = struct
   ;;
 
   let add_sandbox s t = { t with sandbox = Sandbox_config.inter t.sandbox s }
+
+  let add_corrections corrections t =
+    { t with corrections = combine_corrections (Some corrections) t.corrections }
+  ;;
 end

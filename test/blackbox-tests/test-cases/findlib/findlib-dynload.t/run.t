@@ -1,3 +1,5 @@
+Tests findlib dynload integration.
+
   $ dune build
 
   $ dune exec mytool

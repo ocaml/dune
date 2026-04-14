@@ -1,3 +1,5 @@
+Rejects custom cross-compilation contexts with an undefined host.
+
   $ dune build file @install
   File "dune-workspace", lines 5-7, characters 9-47:
   5 | (context (default

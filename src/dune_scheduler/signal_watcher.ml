@@ -2,6 +2,16 @@ open Stdune
 
 let signos = List.map Thread0.interrupt_signals ~f:Signal.to_int
 
+let macos_sigchld_warning =
+  {|
+
+*************************************************************************
+* Failed to handle signal, press Control+C to perform an emergency exit *
+*************************************************************************
+
+|}
+;;
+
 let warning =
   {|
 
@@ -54,11 +64,13 @@ let run ~print_ctrl_c_warning q : unit =
       let n = Queue.length last_exit_signals in
       if n = 2 && print_ctrl_c_warning then prerr_endline warning;
       if n = 3 then sys_exit 1
-    | Kill ->
-      (* On macOS, sometimes we process a `SIGKILL` either immediately before
-         or after `SIGINT`. Given Dune is going to exit anyway, we ignore it. *)
-      ()
-    | _ -> (* we only blocked the signals above *) assert false
+    | _ ->
+      (* On macOS, [sigwait] can occasionally return with success, yet skip
+         setting `&signo` when waiting on a set containing [SIGCHLD]. OCaml
+         returns invalid uninitialized garbage in this case. Ignore it rather
+         than crashing the scheduler. *)
+      prerr_endline macos_sigchld_warning;
+      Event.Queue.send_job_completed_ready q
   done
 ;;
 

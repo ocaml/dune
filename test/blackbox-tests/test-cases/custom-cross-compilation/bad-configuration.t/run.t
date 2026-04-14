@@ -1,3 +1,5 @@
+Rejects invalid custom cross-compilation configurations.
+
   $ dune build file @install
   File "dune-workspace", lines 5-7, characters 9-50:
   5 | (context (default

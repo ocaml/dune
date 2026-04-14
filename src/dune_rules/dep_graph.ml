@@ -69,4 +69,39 @@ module Ml_kind = struct
   type nonrec t = t Ml_kind.Dict.t
 
   let dummy m = Ml_kind.Dict.make_both (dummy m)
+
+  let for_module_compilation ~modules ({ impl; intf } : t) =
+    let dedupe_modules modules =
+      let _, modules =
+        List.fold_left
+          modules
+          ~init:(Module_name.Unique.Set.empty, [])
+          ~f:(fun (seen, acc) module_ ->
+            let obj_name = Module.obj_name module_ in
+            if Module_name.Unique.Set.mem seen obj_name
+            then seen, acc
+            else Module_name.Unique.Set.add seen obj_name, module_ :: acc)
+      in
+      List.rev modules
+    in
+    let merge_impl_and_intf_deps obj_name impl_deps =
+      let intf_deps = Module_name.Unique.Map.find_exn intf.per_module obj_name in
+      let open Action_builder.O in
+      let+ impl_deps = impl_deps
+      and+ intf_deps = intf_deps in
+      dedupe_modules (impl_deps @ intf_deps)
+    in
+    let per_module =
+      Modules.With_vlib.obj_map modules
+      |> Module_name.Unique.Map.mapi ~f:(fun obj_name sourced_module ->
+        let impl_deps = Module_name.Unique.Map.find_exn impl.per_module obj_name in
+        match sourced_module with
+        | Modules.Sourced_module.Normal module_ when Module.has module_ ~ml_kind:Intf ->
+          merge_impl_and_intf_deps obj_name impl_deps
+        | Modules.Sourced_module.Normal _
+        | Modules.Sourced_module.Imported_from_vlib _
+        | Modules.Sourced_module.Impl_of_virtual_module _ -> impl_deps)
+    in
+    Ml_kind.Dict.make ~impl:{ impl with per_module } ~intf
+  ;;
 end

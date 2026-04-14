@@ -42,14 +42,13 @@ let init =
   fun () -> Lazy.force init
 ;;
 
-(* Snapshot used to detect modifications. We use the same algorithm as
-   [Cached_digest] given that we are trying to detect the same kind of
-   changes. *)
-type snapshot = [ `Dir | `File of Cached_digest.Reduced_stats.t ] Path.Map.t
+type snapshot = [ `Dir | `File of Stat.t ] Path.Map.t
 
 type t =
   { dir : Path.Build.t
   ; snapshot : snapshot option
+  ; corrections : Corrections.t
+  ; deps : Path.Set.t option
   ; loc : Loc.t
   }
 
@@ -72,37 +71,35 @@ let copy_recursively =
           (File_kind.to_string_hum kind)
       ]
   in
+  let resolve_symlink_kind ~src =
+    match Unix.stat (Path.to_string src) with
+    | { Unix.st_kind; _ } -> Some st_kind
+    | exception Unix.Unix_error (Unix.ENOENT, _, _) ->
+      User_error.raise
+        ~hints:
+          [ Pp.text
+              "Re-run Dune to delete the stale artifact, or manually delete this file"
+          ]
+        [ Pp.textf
+            "Failed to copy file %s because it is a broken symbolic link while creating \
+             a copy sandbox"
+            (Path.to_string_maybe_quoted src)
+        ]
+  in
   let copy_file ~src ~dst = Io.copy_file ~chmod:chmod_file ~src ~dst () in
   let mkdir_with_perms ~src ~dst =
     let perms = (Unix.stat (Path.to_string src)).st_perm |> chmod_dir in
     Path.mkdir_p ~perms dst
   in
   fun ~src ~dst ->
-    let { Unix.st_kind; st_perm; _ } = Unix.stat (Path.to_string src) in
-    match st_kind with
-    | S_REG -> copy_file ~src ~dst
-    | S_DIR ->
-      Path.mkdir_p ~perms:(chmod_dir st_perm) dst;
-      Fpath.traverse
-        ~dir:(Path.to_string src)
-        ~init:()
-        ~on_file:(fun ~dir fname () ->
-          let rel = Filename.concat dir fname in
-          let src = Path.relative src rel in
-          let dst = Path.relative dst rel in
-          copy_file ~src ~dst)
-        ~on_dir:(fun ~dir fname () ->
-          let rel = Filename.concat dir fname in
-          let src = Path.relative src rel in
-          let dst = Path.relative dst rel in
-          mkdir_with_perms ~src ~dst)
-        ~on_other:
-          (`Call
-              (fun ~dir fname kind () ->
-                let src = Path.relative src (Filename.concat dir fname) in
-                raise_other_kind ~src kind))
-        ()
-    | kind -> raise_other_kind ~src kind
+    Tree_copy.copy
+      ~src
+      ~dst
+      ~copy_file
+      ~mkdir:mkdir_with_perms
+      ~on_unsupported:raise_other_kind
+      ~on_symlink:(`Call resolve_symlink_kind)
+      ()
 ;;
 
 let create_dir t dir = Path.mkdir_p (Path.build (map_path t dir))
@@ -115,13 +112,11 @@ let create_dirs t ~dirs ~rule_dir =
 let link_function ~(mode : Sandbox_mode.some) =
   let win32_error mode =
     let mode = Sandbox_mode.to_string (Some mode) in
-    Code_error.raise
-      (sprintf
-         "Don't have %ss on win32, but [%s] sandboxing mode was selected. To use  \
-          emulation via copy, the [copy] sandboxing mode should be selected."
-         mode
-         mode)
-      []
+    User_error.raise
+      [ Pp.textf
+          "Sandboxing mode %s is not supported on Windows. Use copy or hardlink instead."
+          mode
+      ]
   in
   Staged.stage
     (match mode with
@@ -130,10 +125,7 @@ let link_function ~(mode : Sandbox_mode.some) =
         | true -> win32_error mode
         | false -> fun src dst -> Io.portable_symlink ~src ~dst)
      | Copy -> fun src dst -> copy_recursively ~src ~dst
-     | Hardlink ->
-       (match Sys.win32 with
-        | true -> win32_error mode
-        | false -> fun src dst -> Io.portable_hardlink ~src ~dst)
+     | Hardlink -> fun src dst -> Io.portable_hardlink ~src ~dst
      | Patch_back_source_tree ->
        (* We need to let the action modify its dependencies, so we copy
           dependencies and make them writable. *)
@@ -170,8 +162,8 @@ let snapshot t =
         Path.Map.add_exn acc path `Dir)
       ~on_file:(fun ~dir fname acc ->
         let p = Path.relative root (Filename.concat dir fname) in
-        let stats = Unix.stat (Path.to_string p) in
-        Path.Map.add_exn acc p (`File (Cached_digest.Reduced_stats.of_unix_stats stats)))
+        let stats = Stat.stat (Path.to_string p) in
+        Path.Map.add_exn acc p (`File stats))
       ~on_other:`Ignore
       ~on_symlink:`Ignore
       ()
@@ -182,13 +174,90 @@ let snapshot t =
   snapshot
 ;;
 
-let create ~mode ~rule_loc ~dirs ~deps ~rule_dir ~rule_digest =
+let find_corrected_files (t : t) ~deps =
+  (* CR-someday rgrinberg: fuse this step with deletion *)
+  let start = Time.now () in
+  let corrected =
+    Fpath.traverse
+      ~dir:(Path.Build.to_string t.dir)
+      ~init:[]
+      ~on_dir:(fun ~dir:_ _ acc -> acc)
+      ~enter_dir:(fun ~dir:_ fname ->
+        (* We don't want to traverse the corrections produced by a nested dune *)
+        not (String.equal fname ".sandbox" || String.equal fname "_build"))
+      ~on_file:(fun ~dir fname acc ->
+        match
+          let path = Path.Build.relative t.dir (Filename.concat dir fname) in
+          if
+            let extension = Filename.extension fname in
+            Filename.Extension.Or_empty.check extension Filename.Extension.corrected
+            &&
+            let (_ : Path.Build.t option), path = Path.Build.split_sandbox_root path in
+            (* Dependencies cannot be corrections *)
+            not
+              (* CR-soon rgrinberg: slow for no reason. to fix. *)
+              (let path = Path.build path in
+               Path.Set.exists deps ~f:(fun dep ->
+                 Path.equal dep path || Path.is_descendant path ~of_:dep))
+          then Some path
+          else None
+        with
+        | None -> acc
+        | Some path -> path :: acc)
+      ~on_other:`Ignore
+      ~on_symlink:`Ignore
+      ()
+  in
+  let stop = Time.now () in
+  Dune_trace.emit ~buffered:true Sandbox (fun () ->
+    Dune_trace.Event.sandbox `Corrected ~start ~stop ~queued:None t.loc ~dir:t.dir);
+  corrected
+;;
+
+let build_path_without_corrected_suffix path =
+  let basename = Path.Build.basename path in
+  let extension = Filename.extension basename in
+  assert (Filename.Extension.Or_empty.check extension Filename.Extension.corrected);
+  let basename = Filename.remove_extension basename in
+  let parent = Path.Build.parent_exn path in
+  Path.Build.relative parent basename
+;;
+
+let register_corrected_file_promotions t ~deps =
+  find_corrected_files t ~deps
+  |> Fiber.parallel_iter ~f:(fun file2 ->
+    let (_ : Path.Build.t option), file2_without_sandbox =
+      Path.Build.split_sandbox_root file2
+    in
+    let file1 = build_path_without_corrected_suffix file2_without_sandbox |> Path.build in
+    Diff_action.exec
+      ~patch_back:(Some (Path.build t.dir))
+      t.loc
+      { Dune_util.Action.Diff.file1
+      ; file2
+      ; optional = false
+      ; mode = Text
+      ; directory_diffs = false
+      })
+;;
+
+let create
+      ~mode
+      (corrections : Corrections.t)
+      ~rule_loc
+      ~dirs
+      ~deps
+      ~rule_dir
+      ~rule_digest
+  =
   init ();
   let sandbox_dir =
     let sandbox_suffix = rule_digest |> Digest.to_string in
     Path.Build.relative sandbox_dir sandbox_suffix
   in
-  let t = { dir = sandbox_dir; snapshot = None; loc = rule_loc } in
+  let t =
+    { dir = sandbox_dir; snapshot = None; deps = None; loc = rule_loc; corrections }
+  in
   let open Fiber.O in
   let+ start, stop, queued =
     maybe_async (fun () ->
@@ -200,9 +269,19 @@ let create ~mode ~rule_loc ~dirs ~deps ~rule_dir ~rule_digest =
   in
   Dune_trace.emit ~buffered:true Sandbox (fun () ->
     Dune_trace.Event.sandbox `Create ~start ~stop ~queued t.loc ~dir:t.dir);
+  let deps =
+    match corrections, mode with
+    | Ignore, Patch_back_source_tree -> Some deps
+    | Produce, Patch_back_source_tree ->
+      Code_error.raise "a patch back sandboxed rule may not produce corrections" []
+    | _, (Symlink | Copy | Hardlink) ->
+      (match corrections with
+       | Produce -> Some deps
+       | Ignore -> None)
+  in
   match mode with
-  | Patch_back_source_tree -> { t with snapshot = Some (snapshot t) }
-  | _ -> t
+  | Patch_back_source_tree -> { t with snapshot = Some (snapshot t); deps }
+  | _ -> { t with deps }
 ;;
 
 (* Same as [rename] except that if the source doesn't exist we delete the
@@ -257,7 +336,7 @@ let register_snapshot_promotion t (targets : Targets.Validated.t) ~old_snapshot 
           ()
         | Some `Dir, Some (`File _) -> add_copy_file p
         | Some (`File before), Some (`File after) ->
-          (match Cached_digest.Reduced_stats.compare before after with
+          (match Stat.compare before after with
            | Eq -> ()
            | Lt | Gt -> add_copy_file p)))
   in
@@ -272,6 +351,7 @@ let register_snapshot_promotion t (targets : Targets.Validated.t) ~old_snapshot 
            ; file2 = Path.as_in_build_dir_exn path
            ; optional = true
            ; mode = Text
+           ; directory_diffs = true
            }))
     (fun () ->
        Fiber.parallel_iter !deletes ~f:(fun (what, path) ->
@@ -301,6 +381,13 @@ let move_targets_to_build_dir t ~should_be_skipped ~(targets : Targets.Validated
   =
   let open Fiber.O in
   let start = Time.now () in
+  let* () =
+    match t.corrections with
+    | Ignore -> Fiber.return ()
+    | Produce ->
+      let deps = Option.value_exn t.deps in
+      register_corrected_file_promotions t ~deps
+  in
   let+ () =
     match t.snapshot with
     | None -> Fiber.return ()

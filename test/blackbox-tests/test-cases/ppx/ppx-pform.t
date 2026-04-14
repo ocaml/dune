@@ -38,8 +38,8 @@ Create a rule that uses the ppx pform
 
 Run the test
 
-  $ dune build @test-ppx
-  .ppx/1b1fa3a921019504476f74bb87685798/ppx.exe
+  $ dune build @test-ppx 2>&1 | censor
+  .ppx/$DIGEST/ppx.exe
 
 Test that the order of libraries doesn't matter
 

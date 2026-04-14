@@ -16,7 +16,6 @@
     };
     oxcaml = {
       url = "github:oxcaml/oxcaml";
-      inputs.nixpkgs.follows = "nixpkgs";
     };
     oxcaml-opam-repository = {
       url = "github:oxcaml/opam-repository";
@@ -31,7 +30,12 @@
       inputs.ocaml-overlays.follows = "ocaml-overlays";
       inputs.melange.follows = "melange";
       inputs.oxcaml-opam-repository.follows = "oxcaml-opam-repository";
+      inputs.menhir-src.follows = "menhir-src";
       inputs.revdeps-dune.follows = "revdeps-dune";
+    };
+    menhir-src = {
+      url = "gitlab:fpottier/menhir/20231231?host=gitlab.inria.fr";
+      flake = false;
     };
   };
   outputs =
@@ -45,6 +49,7 @@
       oxcaml,
       oxcaml-opam-repository,
       revdeps-dune,
+      menhir-src,
     }:
     let
       forAllSystems =
@@ -77,41 +82,30 @@
                       src = odoc-src;
                       doCheck = false;
                     });
-                    rocq-core = super.rocqPackages_9_1.rocq-core.override {
+                    rocq-core = super.rocqPackages_9_2.rocq-core.override {
                       customOCamlPackages = oself;
                     };
-                    mkRocqDerivation = super.rocqPackages_9_1.mkRocqDerivation.override {
+                    mkRocqDerivation = super.rocqPackages_9_2.mkRocqDerivation.override {
                       rocq-core = oself.rocq-core;
                     };
-                    rocq-stdlib = super.rocqPackages_9_1.stdlib.override {
+                    rocq-stdlib = super.rocqPackages_9_2.stdlib.override {
                       rocq-core = oself.rocq-core;
                       mkRocqDerivation = oself.mkRocqDerivation;
                     };
-                    # Native compilation requires OCaml 4.14
-                    ocamlPackages_4_14 = super.ocaml-ng.ocamlPackages_4_14.overrideScope (
-                      oself414: osuper414: {
-                        ocaml = osuper414.ocaml.override {
-                          flambdaSupport = false;
-                        };
-                        rocq-core =
-                          (super.rocqPackages_9_1.rocq-core.override {
-                            customOCamlPackages = oself414;
-                          }).overrideAttrs
-                            (a: {
-                              configureFlags = (a.configureFlags or [ ]) ++ [
-                                "-native-compiler"
-                                "yes"
-                              ];
-                            });
-                        mkRocqDerivation = super.rocqPackages_9_1.mkRocqDerivation.override {
-                          rocq-core = oself414.rocq-core;
-                        };
-                        rocq-stdlib = super.rocqPackages_9_1.stdlib.override {
-                          rocq-core = oself414.rocq-core;
-                          mkRocqDerivation = oself414.mkRocqDerivation;
-                        };
-                      }
-                    );
+                    # Native compilation
+                    rocq-core-native = oself.rocq-core.overrideAttrs (a: {
+                      configureFlags = (a.configureFlags or [ ]) ++ [
+                        "-native-compiler"
+                        "yes"
+                      ];
+                    });
+                    mkRocqDerivation-native = oself.mkRocqDerivation.override {
+                      rocq-core = oself.rocq-core-native;
+                    };
+                    rocq-stdlib-native = oself.rocq-stdlib.override {
+                      rocq-core = oself.rocq-core-native;
+                      mkRocqDerivation = oself.mkRocqDerivation-native;
+                    };
                   }
                 );
               })
@@ -153,11 +147,38 @@
       packages = forAllSystems (
         pkgs:
         let
+          lib = pkgs.lib;
+          dune-source = lib.cleanSourceWith {
+            src = ./.;
+            filter = pkgs.nix-gitignore.gitignoreFilterPure (_: _: true) [
+              ".git"
+              ./.gitignore
+            ] ./.;
+          };
+          dune-build-files =
+            let
+              fs = lib.fileset;
+            in
+            fs.intersection (fs.fromSource dune-source) (
+              fs.unions [
+                ./bin
+                ./boot
+                ./configure
+                ./dune-project
+                ./dune-file
+                ./src
+                ./plugin
+                ./vendor
+                ./otherlibs
+                ./Makefile
+                (fs.fileFilter (file: file.hasExt "opam" || file.hasExt "template") ./.)
+              ]
+            );
           dune-static-overlay = self: super: {
             ocamlPackages = super.ocaml-ng.ocamlPackages_5_4.overrideScope (
               oself: osuper: {
                 dune_3 = osuper.dune_3.overrideAttrs (a: {
-                  src = ./.;
+                  src = dune-source;
                   preBuild = "ocaml boot/bootstrap.ml --static";
                 });
               }
@@ -175,26 +196,10 @@
             stdenv.mkDerivation {
               pname = "dune";
               version = "3.x-n/a";
-              src =
-                let
-                  fs = lib.fileset;
-                in
-                fs.toSource {
-                  root = ./.;
-                  fileset = fs.unions [
-                    ./bin
-                    ./boot
-                    ./configure
-                    ./dune-project
-                    ./dune-file
-                    ./src
-                    ./plugin
-                    ./vendor
-                    ./otherlibs
-                    ./Makefile
-                    (fs.fileFilter (file: file.hasExt "opam" || file.hasExt "template") ./.)
-                  ];
-                };
+              src = lib.fileset.toSource {
+                root = ./.;
+                fileset = dune-build-files;
+              };
               nativeBuildInputs = with ocamlPackages; [
                 ocaml
                 findlib
@@ -218,11 +223,16 @@
         pkgs:
         let
           INSIDE_NIX = "true";
-          applyOxcamlPatches = import ./nix/ox-patches.nix {
+          oxPackageSet = import ./nix/ox-package-set.nix {
             inherit pkgs;
             lib = pkgs.lib;
             oxcamlOpamRepo = oxcaml-opam-repository;
           };
+          oxcamlCompiler = oxcaml.packages.${pkgs.stdenv.hostPlatform.system}.default.overrideAttrs (old: {
+            NIX_CFLAGS_COMPILE = "-std=gnu17";
+            passthru = (old.passthru or { }) // pkgs.ocamlPackages.ocaml.passthru;
+            meta = (old.meta or { }) // pkgs.ocamlPackages.ocaml.meta;
+          });
           # Older nixpkgs for OCaml 4.02 support
           pkgs-old = nixpkgs-old.legacyPackages.${pkgs.stdenv.hostPlatform.system}.appendOverlays [
             ocaml-overlays.overlays.default
@@ -244,7 +254,6 @@
           testBuildInputs =
             with pkgs;
             [
-              file
               jq
               ripgrep
               shellcheck
@@ -279,6 +288,8 @@
               meta ? null,
               duneFromScope ? false,
               includeTestDeps ? true,
+              excludeTestNativeBuildInputs ? [ ],
+              excludeOcamlLibs ? [ ],
               packageOverrides ? (oself: osuper: { }),
             }:
             let
@@ -344,28 +355,38 @@
                 "$DUNE_SOURCE_ROOT"/_boot/dune.exe $@
               '';
 
-              baseInputs = if includeTestDeps then (testNativeBuildInputs pkgs') ++ docInputs else [ ];
+              baseInputs =
+                if includeTestDeps then
+                  (builtins.filter (p: !builtins.elem (p.pname or p.name or "") excludeTestNativeBuildInputs) (
+                    testNativeBuildInputs pkgs'
+                  ))
+                  ++ docInputs
+                else
+                  [ ];
 
               ocamlLibs =
                 if includeTestDeps then
-                  (with pkgs'.ocamlPackages; [
-                    ctypes
-                    cinaps
-                    integers
-                    lwt
-                    mdx
-                    menhir
-                    merlin
-                    ocaml-index
-                    ocaml-lsp
-                    odoc
-                    patdiff
-                    pp
-                    ppx_expect
-                    re
-                    spawn
-                    uutf
-                  ])
+                  builtins.filter (p: !builtins.elem (p.pname or p.name or "") excludeOcamlLibs) (
+                    with pkgs'.ocamlPackages;
+                    [
+                      ctypes
+                      cinaps
+                      integers
+                      lwt
+                      mdx
+                      menhir
+                      merlin
+                      ocaml-index
+                      ocaml-lsp
+                      odoc
+                      patdiff
+                      pp
+                      ppx_expect
+                      re
+                      spawn
+                      uutf
+                    ]
+                  )
                 else
                   [ ];
             in
@@ -409,7 +430,9 @@
             buildInputs = with pkgs.ocamlPackages; [
               csexp
               pp
-              # re shouldn't be needed. this is an issue with the fmt rules
+              # Some additional dependencies are needed because formatting
+              # promoted files in boot/ requires building them first
+              ppx_expect
               re
               spawn
               uutf
@@ -458,30 +481,16 @@
             '';
           };
 
-          rocq-native =
-            let
-              ocaml414 = pkgs.ocamlPackages.ocamlPackages_4_14;
-            in
-            pkgs.mkShell {
-              inherit INSIDE_NIX;
-              nativeBuildInputs = (testNativeBuildInputs pkgs) ++ [
-                ocaml414.ocaml
-                ocaml414.findlib
-              ];
-              buildInputs = [
-                ocaml414.csexp
-                ocaml414.pp
-                ocaml414.re
-                ocaml414.spawn
-                ocaml414.uutf
-                ocaml414.rocq-core
-                ocaml414.rocq-stdlib
-              ];
-              meta.description = ''
-                Provides a minimal shell environment built purely from nixpkgs
-                that can build Dune and run the Rocq testsuite with native compilation.
-              '';
-            };
+          rocq-native = makeDuneDevShell {
+            extraBuildInputs = pkgs: [
+              pkgs.ocamlPackages.rocq-core-native
+              pkgs.ocamlPackages.rocq-stdlib-native
+            ];
+            meta.description = ''
+              Provides a minimal shell environment built purely from nixpkgs
+              that can build Dune and run the Rocq testsuite with native compilation.
+            '';
+          };
 
           bootstrap-check = pkgs.mkShell {
             inherit INSIDE_NIX;
@@ -495,14 +504,14 @@
             '';
           };
 
-          bootstrap-check_4_08 = pkgs.mkShell {
+          bootstrap-check_4_14 = pkgs.mkShell {
             inherit INSIDE_NIX;
             buildInputs = [
               pkgs.gnumake
-              pkgs-old.ocaml-ng.ocamlPackages_4_08.ocaml
+              pkgs.ocaml-ng.ocamlPackages_4_14.ocaml
             ];
             meta.description = ''
-              Provides a minimal shell environment with OCaml 4.08 in order
+              Provides a minimal shell environment with OCaml 4.14 in order
               to test the bootstrapping script.
             '';
           };
@@ -511,9 +520,7 @@
             inherit INSIDE_NIX;
             buildInputs = [
               pkgs.gnumake
-              (oxcaml.packages.${pkgs.stdenv.hostPlatform.system}.default.overrideAttrs (_: {
-                NIX_CFLAGS_COMPILE = "-std=gnu17";
-              }))
+              oxcamlCompiler
             ];
             meta.description = ''
               Provides a minimal shell environment with OxCaml in order to
@@ -525,54 +532,73 @@
             includeTestDeps = false;
             packageOverrides =
               oself: osuper:
-              (applyOxcamlPatches oself osuper)
+              (oxPackageSet oself osuper)
               // {
-                # dune_3 = self.packages.${system}.default;
-                ocaml = oxcaml.packages.${pkgs.stdenv.hostPlatform.system}.default.overrideAttrs (old: {
-                  NIX_CFLAGS_COMPILE = "-std=gnu17";
-                  passthru = (old.passthru or { }) // pkgs.ocamlPackages.ocaml.passthru;
-                  meta = (old.meta or { }) // pkgs.ocamlPackages.ocaml.meta;
-                });
-                spawn = osuper.spawn.overrideAttrs (old: {
-                  doCheck = false;
-                });
-                csexp = osuper.csexp.overrideAttrs (old: {
-                  doCheck = false;
-                });
-                pp = osuper.pp.overrideAttrs (old: {
-                  doCheck = false;
-                });
+                ocaml = oxcamlCompiler;
               };
-            extraBuildInputs =
-              pkgs: with pkgs.ocamlPackages; [
-                csexp
-                pp
-                re
-                spawn
-                uutf
-                findlib
-              ];
             meta.description = ''
               Provides a minimal shell environment with OxCaml in order to
               run the OxCaml tests.
             '';
           };
 
+          ox-trunk =
+            let
+              customOcamlPackages = pkgs.ocamlPackages.overrideScope (
+                oself: osuper: {
+                  menhirLib = osuper.menhirLib.overrideAttrs (old: {
+                    version = "20231231";
+                    src = menhir-src;
+                    patches = [ ];
+                  });
+                  menhirGLR = null;
+                  menhir = osuper.menhir.overrideAttrs (old: {
+                    version = "20231231";
+                    src = menhir-src;
+                    patches = [ ];
+                    buildInputs = builtins.filter (x: x != null) (old.buildInputs or [ ]);
+                    postInstall = (old.postInstall or "") + ''
+                      mkdir -p $out/lib/menhirLib
+                      cp ${oself.menhirLib}/lib/ocaml/*/site-lib/menhirLib/menhirLib.{ml,mli} $out/lib/menhirLib/
+                    '';
+                  });
+                }
+              );
+            in
+            pkgs.mkShell {
+              inherit INSIDE_NIX;
+              shellHook = ''
+                export DUNE_SOURCE_ROOT=$PWD
+              '';
+              inputsFrom = [ pkgs.ocamlPackages.dune_3 ];
+              nativeBuildInputs = [
+                pkgs.autoconf
+                customOcamlPackages.menhir
+              ];
+              meta.description = ''
+                Provides a shell environment with upstream OCaml and menhir 20231231
+                for building the OxCaml trunk.
+              '';
+            };
           ox = makeDuneDevShell {
+            excludeTestNativeBuildInputs = [ "opam" ];
+            excludeOcamlLibs = [
+              "mdx"
+              "merlin"
+              "ocaml-index"
+              "ocaml-lsp-server"
+              "odoc"
+            ];
             packageOverrides =
               oself: osuper:
-              (applyOxcamlPatches oself osuper)
+              (oxPackageSet oself osuper)
               // {
                 dune_3 = self.packages.${pkgs.stdenv.hostPlatform.system}.default;
-                ocaml = oxcaml.packages.${pkgs.stdenv.hostPlatform.system}.default.overrideAttrs (old: {
-                  NIX_CFLAGS_COMPILE = "-std=gnu17";
-                  passthru = (old.passthru or { }) // pkgs.ocamlPackages.ocaml.passthru;
-                  meta = (old.meta or { }) // pkgs.ocamlPackages.ocaml.meta;
-                });
+                ocaml = oxcamlCompiler;
               };
             meta.description = ''
               Provides a full shell environment with the OxCaml compiler to
-              develop with Dune. Warning: does not work.
+              develop with Dune.
             '';
           };
 

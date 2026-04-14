@@ -1,3 +1,5 @@
+Tests a basic custom cross-compilation setup.
+
   $ env OCAMLFIND_CONF=$PWD/etc/findlib.conf dune build -x foo file @install --promote-install-files
   $ cat _build/default.foo/file
   42

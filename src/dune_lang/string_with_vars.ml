@@ -468,6 +468,7 @@ let encode t =
       }
 ;;
 
+let repr = Repr.view Dune_sexp.repr ~to_:encode
 let to_dyn t = Dune_sexp.to_dyn (encode t)
 
 let remove_locs { quoted; loc = _; parts } =

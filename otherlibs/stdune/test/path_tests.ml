@@ -11,6 +11,18 @@ let of_filename_relative_to_initial_cwd s =
   Path.of_filename_relative_to_initial_cwd s |> Path.to_dyn |> print_dyn
 ;;
 
+let external_relative a b =
+  Path.External.relative (Path.External.of_string a) b
+  |> Path.External.to_string
+  |> print_endline
+;;
+
+let external_append_local a b =
+  Path.External.append_local (Path.External.of_string a) b
+  |> Path.External.to_string
+  |> print_endline
+;;
+
 let descendant p ~of_ = Dyn.option Path.to_dyn (Path.descendant p ~of_) |> print_dyn
 let is_descendant p ~of_ = Dyn.bool (Path.is_descendant p ~of_) |> print_dyn
 
@@ -642,4 +654,54 @@ let%expect_test "drop prefix with a trailing /" =
   |> Dyn.option Path.Local.to_dyn
   |> print_dyn;
   [%expect {| Some "d/e" |}]
+;;
+
+let%expect_test "external relative plain" =
+  external_relative "/root" "foo/bar";
+  [%expect {| /root/foo/bar |}]
+;;
+
+let%expect_test "external relative dot-slash multi" =
+  external_relative "/root" "./foo/bar";
+  [%expect {| /root/./foo/bar |}]
+;;
+
+let%expect_test "external relative dot" =
+  external_relative "/root" ".";
+  [%expect {| /root |}]
+;;
+
+let%expect_test "external relative single" =
+  external_relative "/root" "foo";
+  [%expect {| /root/foo |}]
+;;
+
+let%expect_test "external relative deep" =
+  external_relative "/root/sub" "foo/bar/baz";
+  [%expect {| /root/sub/foo/bar/baz |}]
+;;
+
+let%expect_test "external relative dot-slash single" =
+  external_relative "/root" "./foo";
+  [%expect {| /root/./foo |}]
+;;
+
+let%expect_test "external append_local multi" =
+  external_append_local "/root" (Path.Local.of_string "foo/bar");
+  [%expect {| /root/foo/bar |}]
+;;
+
+let%expect_test "external append_local root" =
+  external_append_local "/root" Path.Local.root;
+  [%expect {| /root |}]
+;;
+
+let%expect_test "path relative external dot-slash" =
+  relative (Path.of_string "/ext") "./foo/bar";
+  [%expect {| External "/ext/./foo/bar" |}]
+;;
+
+let%expect_test "path relative external plain" =
+  relative (Path.of_string "/ext") "foo";
+  [%expect {| External "/ext/foo" |}]
 ;;

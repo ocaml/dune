@@ -21,7 +21,7 @@ module Solver_env_disjunction = struct
   ;;
 
   let hash t = List.hash Solver_env.hash t
-  let digest_feed = Digest_feed.list Solver_env.digest_feed
+  let repr = Repr.list Solver_env.repr
 
   let encode t =
     let open Encoder in
@@ -57,9 +57,12 @@ module Conditional = struct
     Tuple.T2.hash Solver_env_disjunction.hash f (condition, value)
   ;;
 
-  let digest_feed feed_value =
-    Digest_feed.tuple2 Solver_env_disjunction.digest_feed feed_value
-    |> Digest_feed.contramap ~f:(fun { condition; value } -> condition, value)
+  let repr value_repr =
+    Repr.record
+      "lock-dir-conditional"
+      [ Repr.field "condition" Solver_env_disjunction.repr ~get:(fun t -> t.condition)
+      ; Repr.field "value" value_repr ~get:(fun t -> t.value)
+      ]
   ;;
 
   let to_dyn value_to_dyn { condition; value } =
@@ -102,7 +105,7 @@ module Conditional_choice = struct
   let singleton_all_platforms value = singleton Solver_env.empty value
   let equal value_equal = List.equal (Conditional.equal value_equal)
   let hash t ~f = List.hash (Conditional.hash ~f) t
-  let digest_feed feed_value = Digest_feed.list (Conditional.digest_feed feed_value)
+  let repr value_repr = Repr.list (Conditional.repr value_repr)
   let map ~f = List.map ~f:(Conditional.map ~f)
   let to_dyn value_to_dyn = Dyn.list (Conditional.to_dyn value_to_dyn)
 
@@ -199,18 +202,6 @@ module Pkg_info = struct
       , List.hash (Tuple.T2.hash Path.Local.hash Source.hash) extra_sources )
   ;;
 
-  let digest_feed hasher { name; version; dev; avoid; source; extra_sources } =
-    Package_name.digest_feed hasher name;
-    Package_version.digest_feed hasher version;
-    Digest_feed.bool hasher dev;
-    Digest_feed.bool hasher avoid;
-    Digest_feed.option Source.digest_feed hasher source;
-    Digest_feed.list
-      (Digest_feed.tuple2 Digest_feed.generic Source.digest_feed)
-      hasher
-      extra_sources
-  ;;
-
   let remove_locs t =
     { t with
       source = Option.map ~f:Source.remove_locs t.source
@@ -220,17 +211,22 @@ module Pkg_info = struct
     }
   ;;
 
-  let to_dyn { name; version; dev; avoid; source; extra_sources } =
-    Dyn.record
-      [ "name", Package_name.to_dyn name
-      ; "version", Package_version.to_dyn version
-      ; "dev", Dyn.bool dev
-      ; "avoid", Dyn.bool avoid
-      ; "source", Dyn.option Source.to_dyn source
-      ; "extra_sources", Dyn.list (Dyn.pair Path.Local.to_dyn Source.to_dyn) extra_sources
+  let repr =
+    Repr.record
+      "lock-dir-pkg-info"
+      [ Repr.field "name" Package_name.repr ~get:(fun t -> t.name)
+      ; Repr.field "version" Package_version.repr ~get:(fun t -> t.version)
+      ; Repr.field "dev" Repr.bool ~get:(fun t -> t.dev)
+      ; Repr.field "avoid" Repr.bool ~get:(fun t -> t.avoid)
+      ; Repr.field "source" (Repr.option Source.repr) ~get:(fun t -> t.source)
+      ; Repr.field
+          "extra_sources"
+          (Repr.list (Repr.pair Path.Local.repr Source.repr))
+          ~get:(fun t -> t.extra_sources)
       ]
   ;;
 
+  let to_dyn = Repr.to_dyn repr
   let default_version = Package_version.dev
 
   let variables t =
@@ -357,6 +353,18 @@ module Build_command = struct
     | Action a -> Dyn.variant "Action" [ Action.to_dyn a ]
   ;;
 
+  let repr =
+    Repr.variant
+      "lock-dir-build-command"
+      [ Repr.case0 "Dune" ~test:(function
+          | Dune -> true
+          | Action _ -> false)
+      ; Repr.case "Action" Action.repr ~proj:(function
+          | Dune -> None
+          | Action action -> Some action)
+      ]
+  ;;
+
   module Fields = struct
     let dune = "dune"
     let action = "action"
@@ -432,6 +440,14 @@ module Dependency = struct
     Dyn.record [ "loc", Loc.to_dyn_hum loc; "name", Package_name.to_dyn name ]
   ;;
 
+  let repr =
+    Repr.record
+      "lock-dir-dependency"
+      [ Repr.field "loc" Loc.repr ~get:(fun t -> t.loc)
+      ; Repr.field "name" Package_name.repr ~get:(fun t -> t.name)
+      ]
+  ;;
+
   let decode =
     let open Decoder in
     let+ loc, name = located Package_name.decode in
@@ -446,6 +462,7 @@ module Dependencies = struct
 
   let equal = List.equal Dependency.equal
   let remove_locs = List.map ~f:Dependency.remove_locs
+  let repr = Repr.list Dependency.repr
   let to_dyn = Dyn.list Dependency.to_dyn
   let encode t = Dune_lang.List (List.map t ~f:Dependency.encode)
 end
@@ -513,6 +530,7 @@ module Depexts = struct
        { external_package_names; enabled_if = `Always })
   ;;
 
+  let repr = Repr.view Dune_sexp.repr ~to_:encode
   let remove_locs t = { t with enabled_if = Enabled_if.remove_locs t.enabled_if }
 end
 
@@ -597,25 +615,29 @@ module Pkg = struct
       , Solver_env_disjunction.hash enabled_on_platforms )
   ;;
 
-  let digest_feed
-        hasher
-        { build_command
-        ; install_command
-        ; depends
-        ; depexts
-        ; info
-        ; exported_env
-        ; enabled_on_platforms
-        }
-    =
-    Conditional_choice.digest_feed Digest_feed.generic hasher build_command;
-    Conditional_choice.digest_feed Digest_feed.generic hasher install_command;
-    Conditional_choice.digest_feed Digest_feed.generic hasher depends;
-    Digest_feed.generic hasher depexts;
-    Pkg_info.digest_feed hasher info;
-    Digest_feed.generic hasher exported_env;
-    Solver_env_disjunction.digest_feed hasher enabled_on_platforms
+  let repr =
+    Repr.record
+      "lock-dir-pkg"
+      [ Repr.field
+          "build_command"
+          (Conditional_choice.repr Build_command.repr)
+          ~get:(fun t -> t.build_command)
+      ; Repr.field "install_command" (Conditional_choice.repr Action.repr) ~get:(fun t ->
+          t.install_command)
+      ; Repr.field "depends" (Conditional_choice.repr Dependencies.repr) ~get:(fun t ->
+          t.depends)
+      ; Repr.field "depexts" (Repr.list Depexts.repr) ~get:(fun t -> t.depexts)
+      ; Repr.field "info" Pkg_info.repr ~get:(fun t -> t.info)
+      ; Repr.field
+          "exported_env"
+          (Repr.list (Action.Env_update.repr String_with_vars.repr))
+          ~get:(fun t -> t.exported_env)
+      ; Repr.field "enabled_on_platforms" Solver_env_disjunction.repr ~get:(fun t ->
+          t.enabled_on_platforms)
+      ]
   ;;
+
+  let digest_feed hasher t = Digest_feed.repr repr hasher t
 
   let remove_locs
         { build_command
@@ -1663,6 +1685,11 @@ struct
   ;;
 
   let load lock_dir_path =
+    let event =
+      Dune_trace.(
+        Out.start (global ()) (fun () ->
+          Event.Async.pkg_load_lock_dir ~path:(Path.to_string lock_dir_path)))
+    in
     let open Io.O in
     let* ( version
          , dependency_hash
@@ -1700,16 +1727,20 @@ struct
         pkg)
       >>| Packages.of_pkg_list
     in
-    check_packages packages ~lock_dir_path
-    |> Result.map ~f:(fun () ->
-      { version
-      ; dependency_hash
-      ; packages
-      ; ocaml
-      ; repos
-      ; expanded_solver_variable_bindings
-      ; solved_for_platforms
-      })
+    let result =
+      check_packages packages ~lock_dir_path
+      |> Result.map ~f:(fun () ->
+        { version
+        ; dependency_hash
+        ; packages
+        ; ocaml
+        ; repos
+        ; expanded_solver_variable_bindings
+        ; solved_for_platforms
+        })
+    in
+    Option.iter (Dune_trace.global ()) ~f:(fun trace -> Dune_trace.Out.finish trace event);
+    result
   ;;
 
   let load_exn lock_dir_path =

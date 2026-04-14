@@ -16,9 +16,9 @@ module type Desc = sig
   type t
 
   val name : string
+  val sharing : bool
   val version : int
   val to_dyn : t -> Dyn.t
-  val test_example : unit -> t
 end
 
 type data = private ..
@@ -52,4 +52,3 @@ end
 type t = T : (module Desc with type t = 'a) * 'a -> t
 
 val load_exn : Path.t -> t
-val test_examples : unit -> t Seq.t

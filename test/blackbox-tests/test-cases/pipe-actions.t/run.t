@@ -46,14 +46,22 @@ The makefile version of pipe actions uses actual pipes:
   >    (pipe-outputs (run a) (run b) (run c)))))
   > EOF
 
-  $ dune rules -m target
-  _build/default/target: _build/install/default/bin/a \
-    _build/install/default/bin/b _build/install/default/bin/c
-  	mkdir -p _build/default; \
-  	mkdir -p _build/default; \
-  	cd _build/default; \
-  	../install/default/bin/a  2>&1 |  \
-  	  ../install/default/bin/b | ../install/default/bin/c  &> target
+  $ dune rules target
+  ((deps
+    ((File (In_build_dir _build/install/default/bin/a))
+     (File (In_build_dir _build/install/default/bin/b))
+     (File (In_build_dir _build/install/default/bin/c))))
+   (targets ((files (_build/default/target)) (directories ())))
+   (context default)
+   (action
+    (chdir
+     _build/default
+     (with-outputs-to
+      target
+      (pipe-outputs
+       (run ../install/default/bin/a)
+       (run ../install/default/bin/b)
+       (run ../install/default/bin/c))))))
 
   $ cat >dune <<EOF
   > (executable

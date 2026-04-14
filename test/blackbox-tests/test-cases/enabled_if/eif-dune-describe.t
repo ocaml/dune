@@ -1,3 +1,5 @@
+Tests enabled_if when running dune describe.
+
   $ cat > dune <<EOF
   > (executable
   >  (name test)

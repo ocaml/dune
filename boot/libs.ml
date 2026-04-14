@@ -1,5 +1,4 @@
 open Types
-let external_libraries = [ "unix"; "threads" ]
 
 let local_libraries =
   [ { path = "otherlibs/top-closure"
@@ -34,14 +33,14 @@ let local_libraries =
         Some
           { name = "Root"
           ; entries =
-              [ "Unix"
-              ; "UnixLabels"
-              ; "Csexp"
-              ; "Top_closure"
-              ; "Ordering"
+              [ "Csexp"
               ; "Dyn"
-              ; "Pp"
               ; "Fs_io"
+              ; "Ordering"
+              ; "Pp"
+              ; "Top_closure"
+              ; "Unix"
+              ; "UnixLabels"
               ]
           }
     }
@@ -65,12 +64,6 @@ let local_libraries =
     }
   ; { path = "src/fiber/src"
     ; main_module_name = Some "Fiber"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-  ; { path = "src/dune_console"
-    ; main_module_name = Some "Dune_console"
     ; include_subdirs = No
     ; special_builtin_support = None
     ; root_module = None
@@ -117,32 +110,14 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
-  ; { path = "otherlibs/dune-rpc/private"
-    ; main_module_name = Some "Dune_rpc_private"
+  ; { path = "otherlibs/dune-rpc"
+    ; main_module_name = Some "Dune_rpc"
     ; include_subdirs = No
     ; special_builtin_support = None
     ; root_module = None
     }
   ; { path = "vendor/ocaml-inotify/src"
     ; main_module_name = Some "Ocaml_inotify"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-  ; { path = "src/async_inotify_for_dune"
-    ; main_module_name = Some "Async_inotify_for_dune"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-  ; { path = "src/fsevents"
-    ; main_module_name = Some "Fsevents"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-  ; { path = "src/fswatch_win"
-    ; main_module_name = Some "Fswatch_win"
     ; include_subdirs = No
     ; special_builtin_support = None
     ; root_module = None
@@ -225,18 +200,6 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
-  ; { path = "src/fiber_util"
-    ; main_module_name = Some "Fiber_util"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-  ; { path = "src/dune_cache_storage"
-    ; main_module_name = Some "Dune_cache_storage"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
   ; { path = "src/dune_targets"
     ; main_module_name = Some "Dune_targets"
     ; include_subdirs = No
@@ -261,18 +224,6 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
-  ; { path = "src/csexp_rpc"
-    ; main_module_name = Some "Csexp_rpc"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-  ; { path = "src/dune_rpc_client"
-    ; main_module_name = Some "Dune_rpc_client"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
   ; { path = "src/dune_engine"
     ; main_module_name = Some "Dune_engine"
     ; include_subdirs = No
@@ -293,12 +244,6 @@ let local_libraries =
     }
   ; { path = "otherlibs/dune-private-libs/meta_parser"
     ; main_module_name = Some "Dune_meta_parser"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-  ; { path = "src/fs"
-    ; main_module_name = Some "Fs"
     ; include_subdirs = No
     ; special_builtin_support = None
     ; root_module = None
@@ -441,8 +386,8 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
-  ; { path = "src/dune_rpc_server"
-    ; main_module_name = Some "Dune_rpc_server"
+  ; { path = "src/rpc"
+    ; main_module_name = Some "Rpc"
     ; include_subdirs = No
     ; special_builtin_support = None
     ; root_module = None
@@ -464,36 +409,8 @@ let main =
       Some
         { name = "Root"
         ; entries =
-            [ "Memo"
-            ; "Ocaml"
-            ; "Ocaml_config"
-            ; "Dune_sexp"
-            ; "Dune_lang"
-            ; "Predicate_lang"
-            ; "Fiber"
-            ; "Top_closure"
-            ; "Ordering"
-            ; "Dyn"
-            ; "Pp"
-            ; "Stdune"
-            ; "Fs_io"
-            ; "Dune_console"
-            ; "Unix"
-            ; "UnixLabels"
-            ; "Install"
-            ; "Dune_findlib"
-            ; "Dune_digest"
-            ; "Dune_cache"
-            ; "Dune_cache_storage"
-            ; "Dune_graph"
-            ; "Dune_rules"
-            ; "Dune_vcs"
-            ; "Dune_engine"
-            ; "Dune_scheduler"
-            ; "Dune_targets"
-            ; "Dune_util"
-            ; "Dune_upgrader"
-            ; "Dune_pkg"
+            [ "Build_info"
+            ; "Chrome_trace"
             ; "Cmdliner"
             ; "Cmdliner_arg"
             ; "Cmdliner_base"
@@ -507,57 +424,82 @@ let main =
             ; "Cmdliner_term"
             ; "Cmdliner_term_deprecated"
             ; "Cmdliner_trie"
-            ; "Build_info"
-            ; "Dune_config_file"
-            ; "Chrome_trace"
-            ; "Dune_trace"
             ; "Csexp"
-            ; "Csexp_rpc"
+            ; "Dune_cache"
+            ; "Dune_config_file"
+            ; "Dune_digest"
+            ; "Dune_engine"
+            ; "Dune_findlib"
+            ; "Dune_graph"
+            ; "Dune_lang"
+            ; "Dune_pkg"
+            ; "Dune_rpc"
             ; "Dune_rpc_impl"
-            ; "Dune_rpc_private"
-            ; "Dune_rpc_client"
-            ; "Spawn"
+            ; "Dune_rules"
+            ; "Dune_scheduler"
+            ; "Dune_sexp"
+            ; "Dune_targets"
+            ; "Dune_trace"
+            ; "Dune_upgrader"
+            ; "Dune_util"
+            ; "Dune_vcs"
+            ; "Dyn"
+            ; "Fiber"
+            ; "Fs_io"
+            ; "Install"
+            ; "Memo"
+            ; "Ocaml"
+            ; "Ocaml_config"
+            ; "OpamBaseParser"
             ; "OpamCompat"
             ; "OpamConsole"
             ; "OpamCoreConfig"
             ; "OpamCoreConfigDeveloper"
             ; "OpamDirTrack"
+            ; "OpamFile"
             ; "OpamFilename"
+            ; "OpamFilter"
+            ; "OpamFormat"
+            ; "OpamFormatConfig"
+            ; "OpamFormula"
             ; "OpamHash"
+            ; "OpamInterpLexer"
             ; "OpamJson"
+            ; "OpamLexer"
+            ; "OpamLineLexer"
+            ; "OpamPackage"
+            ; "OpamParser"
+            ; "OpamParserTypes"
+            ; "OpamPp"
+            ; "OpamPrinter"
+            ; "OpamRepositoryName"
             ; "OpamSHA"
             ; "OpamSWHID"
             ; "OpamStd"
             ; "OpamStubs"
             ; "OpamStubsTypes"
+            ; "OpamSwitch"
+            ; "OpamSysPkg"
             ; "OpamSystem"
+            ; "OpamTypes"
+            ; "OpamTypesBase"
             ; "OpamUrl"
+            ; "OpamVariable"
             ; "OpamVersion"
             ; "OpamVersionCompare"
             ; "OpamVersionInfo"
-            ; "OpamBaseParser"
-            ; "OpamLexer"
-            ; "OpamParser"
-            ; "OpamParserTypes"
-            ; "OpamPrinter"
-            ; "OpamFile"
-            ; "OpamFilter"
-            ; "OpamFormat"
-            ; "OpamFormatConfig"
-            ; "OpamFormula"
-            ; "OpamInterpLexer"
-            ; "OpamLineLexer"
-            ; "OpamPackage"
-            ; "OpamPp"
-            ; "OpamRepositoryName"
-            ; "OpamSwitch"
-            ; "OpamSysPkg"
-            ; "OpamTypes"
-            ; "OpamTypesBase"
-            ; "OpamVariable"
-            ; "Source"
-            ; "Xdg"
+            ; "Ordering"
+            ; "Pp"
+            ; "Predicate_lang"
             ; "Re"
+            ; "Rpc"
+            ; "Source"
+            ; "Spawn"
+            ; "Stdune"
+            ; "Top_closure"
+            ; "Unix"
+            ; "UnixLabels"
+            ; "Xdg"
             ]
         }
   }

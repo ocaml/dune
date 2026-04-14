@@ -88,7 +88,7 @@ module Context = struct
     ; solver_env : Solver_env.t
     ; dune_version : OpamPackage.Version.t
     ; stats_updater : Solver_stats.Updater.t
-    ; candidates_cache : (Package_name.t, candidates) Fiber_cache.t
+    ; candidates_cache : (Package_name.t, candidates) Fiber.Cache.t
     ; (* The solver can call this function several times on the same package.
          If the package contains an invalid "available" filter we want to print a
          warning, but only once per package. This field will keep track of the
@@ -109,7 +109,7 @@ module Context = struct
         ~stats_updater
         ~constraints
     =
-    let candidates_cache = Fiber_cache.create (module Package_name) in
+    let candidates_cache = Fiber.Cache.create (module Package_name) in
     let constraints =
       List.map constraints ~f:(fun (constraint_ : Package_dependency.t) ->
         constraint_.name, constraint_)
@@ -342,7 +342,7 @@ module Context = struct
       Fiber.return [ version, Ok local_package.opam_file ]
     | None ->
       let+ res =
-        Fiber_cache.find_or_add t.candidates_cache key ~f:(fun () ->
+        Fiber.Cache.find_or_add t.candidates_cache key ~f:(fun () ->
           match Package_name.Map.find t.pinned_packages key with
           | Some resolved_package -> Fiber.return (pinned_candidate t resolved_package)
           | None -> repo_candidate t name)
@@ -792,14 +792,14 @@ module Solver = struct
        might need, adding all of them to [sat_problem]. *)
     let build_problem context root_req sat ~max_avoids ~dummy_impl =
       (* For each (iface, source) we have a list of implementations. *)
-      let impl_cache = Fiber_cache.create (module Input.Role) in
+      let impl_cache = Fiber.Cache.create (module Input.Role) in
       let conflict_classes = Conflict_classes.create () in
       let avoids = ref [] in
       let+ () =
         let rec lookup_impl expand_deps role =
           let impls = ref [] in
           let* candidates =
-            Fiber_cache.find_or_add impl_cache role ~f:(fun () ->
+            Fiber.Cache.find_or_add impl_cache role ~f:(fun () ->
               let+ candidates, impls' =
                 Candidates.make_impl_clause sat context ~dummy_impl role
               in
@@ -918,7 +918,7 @@ module Solver = struct
         let dummy_impl = if closest_match then Some Input.Dummy else None in
         build_problem context root_req sat ~max_avoids ~dummy_impl
       in
-      let+ impl_clauses = Fiber_cache.to_table impl_clauses in
+      let+ impl_clauses = Fiber.Cache.to_table impl_clauses in
       (* Run the solve *)
       let decider () =
         (* Walk the current solution, depth-first, looking for the first
@@ -1789,7 +1789,7 @@ let solve_lock_dir
            let name = OpamPackage.name package |> Package_name.of_opam_package_name in
            (not (is_local_package name)) && not (is_dune name))
        in
-       let* candidates_cache = Fiber_cache.to_table context.candidates_cache in
+       let* candidates_cache = Fiber.Cache.to_table context.candidates_cache in
        let resolve_package name version =
          (Table.find_exn candidates_cache name).resolved
          |> OpamPackage.Version.Map.find version

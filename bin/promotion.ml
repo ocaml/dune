@@ -34,34 +34,60 @@ module Apply = struct
            you might use $(b,(diff file.expected file.generated)) and then call
            $(b,dune promote) to promote the generated file.
          |}
+      ; `P
+          {|When FILE arguments are provided, dune promote matches pending
+           promotions recursively under those paths. Use $(b,--file) to require
+           exact file matching instead.
+         |}
       ; `Blocks Common.help_secs
       ]
     in
     Cmd.info ~doc ~man "apply"
   ;;
 
-  let term =
-    let+ builder = Common.Builder.term
-    and+ files =
-      (* CR-someday Alizter: document this option *)
-      Arg.(value & pos_all Cmdliner.Arg.file [] & info [] ~docv:"FILE" ~doc:None)
-    in
+  let run ~(builder : Common.Builder.t) ~exact ~files =
     let common, config = Common.init builder in
-    let files_to_promote = files_to_promote ~common files in
+    let files_to_promote = List.map files ~f:Arg.Path.arg |> files_to_promote ~common in
+    let matching : Dune_rpc.Promote_targets.Matching.t =
+      if exact then Exact else Prefix
+    in
     match Global_lock.lock ~timeout:None with
     | Ok () ->
-      Diff_promotion.promote_files_registered_in_last_run files_to_promote |> on_missing
+      Diff_promotion.promote_files_registered_in_last_run ~matching files_to_promote
+      |> on_missing
     | Error lock_held_by ->
       Scheduler_setup.no_build_no_rpc ~config (fun () ->
         let open Fiber.O in
         Rpc.Rpc_common.fire_request
           ~name:"promote_many"
-          ~wait:true
+          ~wait:false
           ~lock_held_by
           builder
-          Dune_rpc_private.Procedures.Public.promote_many
-          files_to_promote
+          Dune_rpc.Procedures.Public.promote_many
+          { Dune_rpc.Promote_targets.files = files_to_promote; matching }
         >>| Rpc.Rpc_common.wrap_build_outcome_exn ~print_on_success:true)
+  ;;
+
+  let term_with_builder builder =
+    let+ builder
+    and+ exact =
+      Arg.(
+        value
+        & flag
+        & info [ "file" ] ~doc:(Some "Require each FILE argument to match exactly."))
+    and+ files =
+      (* CR-someday Alizter: document this option *)
+      Arg.(value & pos_all Arg.path [] & info [] ~docv:"FILE" ~doc:None)
+    in
+    run ~builder ~exact ~files
+  ;;
+
+  let term = term_with_builder Common.Builder.term
+
+  let promote_term =
+    term_with_builder
+      (let+ no_build = Common.No_build.term in
+       Common.Builder.set_no_build Common.Builder.default no_build)
   ;;
 
   let command = Cmd.v info term
@@ -178,5 +204,9 @@ let info =
 let group = Cmd.group info [ Files.command; Apply.command; Diff.command; Show.command ]
 
 let promote =
-  command_alias ~orig_name:"promotion apply" Apply.command Apply.term "promote"
+  Util.command_alias
+    ~orig_name:"promotion apply"
+    Apply.command
+    Apply.promote_term
+    "promote"
 ;;

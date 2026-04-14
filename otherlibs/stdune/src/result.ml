@@ -148,6 +148,18 @@ let equal e1 e2 x y =
   | _, _ -> false
 ;;
 
+let repr ok error =
+  Repr.variant
+    "result"
+    [ Repr.case "Ok" ok ~proj:(function
+        | Ok value -> Some value
+        | Error _ -> None)
+    ; Repr.case "Error" error ~proj:(function
+        | Ok _ -> None
+        | Error value -> Some value)
+    ]
+;;
+
 module Option = struct
   let iter t ~f =
     match t with
@@ -156,10 +168,13 @@ module Option = struct
   ;;
 end
 
-let to_dyn ok err = function
-  | Ok e -> Dyn.variant "Ok" [ ok e ]
-  | Error e -> Dyn.variant "Error" [ err e ]
-;;
+module Repr_derived = Repr.Make2 (struct
+    type nonrec ('a, 'error) t = ('a, 'error) t
+
+    let repr = repr
+  end)
+
+let to_dyn = Repr_derived.to_dyn
 
 let to_either = function
   | Ok e -> Either.Right e

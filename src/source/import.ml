@@ -2,7 +2,7 @@ include Stdune
 include Dune_vcs
 include Dune_util
 include Dune_config_file
-module Console = Dune_console
+module Console = Console
 
 include struct
   open Dune_engine
@@ -10,12 +10,11 @@ include struct
   module Execution_parameters = Execution_parameters
   module Fs_memo = Fs_memo
   module Build_system = Build_system
-  module Fs_cache = Fs_cache
   module Build_context = Build_context
   include No_io
 end
 
-module Compound_user_error = Dune_rpc_private.Compound_user_error
+module Compound_user_error = Dune_rpc.Private.Compound_user_error
 
 let phys_equal x y = x == y
 

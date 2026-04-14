@@ -1,0 +1,18 @@
+name: Coverage of Reverse Dependencies Check for Prereleases
+
+on:
+  push:
+    branches:
+      - '*-rc'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  revdeps:
+    name: OCaml Reverse Dependencies
+    uses: ocaml/dune/.github/workflows/revdeps.yml@main
+    with:
+      dune_version: "dev"
+      packages: "bap irmin-containers dream lambdapi kicadsch git-unix caqti-async"

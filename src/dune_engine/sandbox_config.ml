@@ -6,7 +6,7 @@ let no_sandboxing = of_func Option.is_none
 
 let needs_sandboxing =
   of_func (function
-    | None | Some Patch_back_source_tree -> false
+    | None -> false
     | Some _ -> true)
 ;;
 

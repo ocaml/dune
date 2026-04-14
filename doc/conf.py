@@ -34,7 +34,7 @@ from pathlib import Path
 import re
 
 # Read constant from a file
-version_file = Path(__file__).parent.parent / "otherlibs/dune-rpc/private/types.ml"
+version_file = Path(__file__).parent.parent / "otherlibs/dune-rpc/types.ml"
 text = version_file.read_text()
 
 match = re.search(r"\s*let\s+latest\s*=\s*(\d+),\s*(\d+)", text)

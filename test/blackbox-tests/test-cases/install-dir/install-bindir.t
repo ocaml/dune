@@ -1,3 +1,5 @@
+Honors `--bindir` and `--sbindir` during installation.
+
   $ echo "(lang dune 2.0)" > dune-project
   $ touch foo.opam user.ml admin.ml
   $ cat >dune <<EOF

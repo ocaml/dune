@@ -53,6 +53,10 @@ Dune is a self-hosting OCaml build system that uses itself to build itself.
 
 ## Development Workflow
 
+Refer to `doc/hacking.rst` for granular instructions on developing Dune. In
+particular, always write code according to the guidelines and style described
+in the hacking document.
+
 ### Build Commands
 ```bash
 dune build @check          # Quick build (recommended for development)
@@ -101,7 +105,7 @@ running `dune promote` to accept changes.
 things work. Don't run commands manually - run them through `dune runtest` to
 capture and verify behavior.
 
-**Printf Debugging:** When confused about behavior, use `Dune_console`
+**Printf Debugging:** When confused about behavior, use `Console`
 (commonly aliased as `Console`) for debugging:
 ```ocaml
 Console.printf "something: %s" (Something.to_dyn something |> Dyn.to_string);

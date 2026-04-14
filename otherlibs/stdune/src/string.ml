@@ -31,7 +31,7 @@ struct
     len >= suffix_len && check_suffix s ~suffix suffix_len (len - suffix_len) 0
   ;;
 
-  let drop_prefix s ~prefix =
+  let drop_prefix ~prefix s =
     if starts_with ~prefix s
     then
       if length s = length prefix
@@ -46,7 +46,7 @@ struct
     | Some s -> s
   ;;
 
-  let drop_suffix s ~suffix =
+  let drop_suffix ~suffix s =
     if ends_with ~suffix s
     then
       if length s = length suffix
@@ -70,54 +70,33 @@ module Caseless = Cased_functions (struct
     let normalize = Char.lowercase_ascii
   end)
 
-module StringLabels = struct
-  (* functions potentially in the stdlib, depending on OCaml version *)
+include Stdlib.StringLabels
 
-  let[@warning "-32"] exists =
-    let rec loop s i len f =
-      if i = len then false else f (String.unsafe_get s i) || loop s (i + 1) len f
-    in
-    fun ~f s -> loop s 0 (String.length s) f
-  ;;
-
-  let[@warning "-32"] for_all =
-    let rec loop s i len f =
-      i = len || (f (String.unsafe_get s i) && loop s (i + 1) len f)
-    in
-    fun ~f s -> loop s 0 (String.length s) f
-  ;;
-
-  let[@warning "-32"] starts_with = starts_with
-  let[@warning "-32"] ends_with = ends_with
-
-  (* overwrite them with stdlib versions if available *)
-  include Stdlib.StringLabels
-end
-
-include StringLabels
-
+let repr = Repr.string
 let compare a b = Ordering.of_int (String.compare a b)
 
 module T = struct
   type t = StringLabels.t
 
+  let repr = repr
   let compare = compare
   let equal (x : t) (y : t) = x = y
   let hash (s : t) = Poly.hash s
-  let to_dyn s = Dyn.String s
+  let to_dyn = Repr.to_dyn repr
 end
 
+let compare = T.compare
 let to_dyn = T.to_dyn
-let equal : string -> string -> bool = ( = )
+let equal = T.equal
 let hash = Poly.hash
 let capitalize = capitalize_ascii
 let uncapitalize = uncapitalize_ascii
 let uppercase = uppercase_ascii
 let lowercase = lowercase_ascii
 let index = index_opt
-let index_from = index_from_opt
+let index_from s i c = index_from_opt s i c
 let rindex = rindex_opt
-let rindex_from = rindex_from_opt
+let rindex_from s i c = rindex_from_opt s i c
 let break s ~pos = sub s ~pos:0 ~len:pos, sub s ~pos ~len:(length s - pos)
 let is_empty s = length s = 0
 

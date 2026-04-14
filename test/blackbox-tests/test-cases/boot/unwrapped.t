@@ -1,6 +1,6 @@
 Testing the bootstrap of unwrapped libraries.
 
-  $ . ./helpers.sh
+  $ init_bootstrap
 
   $ mkdir -p src/a
   $ cat > src/a/a.ml <<EOF
@@ -17,12 +17,16 @@ Testing the bootstrap of unwrapped libraries.
   >  (wrapped false))
   > EOF
 
+  $ make_module src/a/root.ml
+
   $ create_dune a <<EOF
+  > open Root
   > open A
   > open B
   > let () = Printf.printf "Hello from bootstrapped binary!"
   > EOF
-  ocamlc -output-complete-exe -intf-suffix .dummy -g -o .duneboot.exe -I boot -I +unix unix.cma boot/types.ml boot/libs.ml boot/duneboot.ml
+  ocamllex -q -o boot/pps.ml boot/pps.mll
+  ocamlc -output-complete-exe -intf-suffix .dummy -g -o .duneboot.exe -I boot -I +unix unix.cma boot/pps.ml boot/types.ml boot/libs.ml boot/duneboot.ml
   ./.duneboot.exe
   Hello from unwrapped a/a.ml
   Hello from unwrapped a/b.ml

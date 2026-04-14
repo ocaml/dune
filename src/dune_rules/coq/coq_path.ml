@@ -65,9 +65,9 @@ let scan_vo_cmxs ~dir dir_contents =
     match kind with
     (* Skip some files as Coq does, for now files with '-' *)
     | _ when String.contains d '-' -> List.Skip
-    | (File_kind.S_REG | S_LNK) when Filename.check_suffix d ".cmxs" ->
+    | (File_kind.S_REG | S_LNK) when String.ends_with ~suffix:".cmxs" d ->
       Left (Path.relative dir d)
-    | (File_kind.S_REG | S_LNK) when Filename.check_suffix d ".vo" ->
+    | (File_kind.S_REG | S_LNK) when String.ends_with ~suffix:".vo" d ->
       Right (Path.relative dir d)
     | _ -> Skip
   in
@@ -112,7 +112,7 @@ let rec scan_path ~(f : ('prefix, 'res) Scan_action.t) ~acc ~prefix ~dir dir_con
       (match dir_contents with
        | Error _ -> Memo.return []
        | Ok dir_contents ->
-         let dir_contents = Fs_cache.Dir_contents.to_list dir_contents in
+         let dir_contents = Fs_memo.Dir_contents.to_list dir_contents in
          let prefix = acc prefix d in
          let* subresults = scan_path ~f ~acc ~prefix ~dir dir_contents in
          f ~dir ~prefix ~subresults dir_contents)
@@ -127,7 +127,7 @@ let scan_path ~f ~acc ~prefix dir =
   match dir_contents with
   | Error _ -> Memo.return []
   | Ok dir_contents ->
-    let dir_contents = Fs_cache.Dir_contents.to_list dir_contents in
+    let dir_contents = Fs_memo.Dir_contents.to_list dir_contents in
     scan_path ~f ~acc ~prefix ~dir dir_contents
 ;;
 

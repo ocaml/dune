@@ -14,7 +14,8 @@ let for_melange ~target = Melange_entries target
 let to_string = function
   | Lib name -> sprintf "lib-%s" (Lib_name.to_string name)
   | Exes [ name ] -> sprintf "exe-%s" name
-  | Exes (name :: names) -> sprintf "exe-%s-%s" name Digest.(generic names |> to_string)
+  | Exes (name :: names) ->
+    sprintf "exe-%s-%s" name Digest.(repr (Repr.list String.repr) names |> to_string)
   | Melange_entries name -> sprintf "melange-%s" name
 ;;
 

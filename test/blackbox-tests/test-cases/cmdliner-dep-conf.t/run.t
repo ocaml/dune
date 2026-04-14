@@ -1,3 +1,5 @@
+Tests TARGET argument parsing for dependency configurations.
+
   $ dune build "(alias foo)"
   Hello!
 

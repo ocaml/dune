@@ -2,6 +2,7 @@ open Import
 
 type t
 
+val repr : t Repr.t
 val of_string : string -> t
 val of_string_opt : string -> t option
 val of_string_user_error : Loc.t * string -> (t, User_message.t) result

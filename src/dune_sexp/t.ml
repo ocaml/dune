@@ -13,6 +13,25 @@ let atom_or_quoted_string s =
 
 let atom s = Atom (Atom.of_string s)
 
+let repr =
+  Repr.fix (fun repr ->
+    Repr.variant
+      "dune-sexp"
+      [ Repr.case "Atom" Atom.repr ~proj:(function
+          | Atom atom -> Some atom
+          | Quoted_string _ | List _ | Template _ -> None)
+      ; Repr.case "Quoted_string" Repr.string ~proj:(function
+          | Quoted_string string -> Some string
+          | Atom _ | List _ | Template _ -> None)
+      ; Repr.case "List" (Repr.list repr) ~proj:(function
+          | List list -> Some list
+          | Atom _ | Quoted_string _ | Template _ -> None)
+      ; Repr.case "Template" Template.repr ~proj:(function
+          | Template template -> Some template
+          | Atom _ | Quoted_string _ | List _ -> None)
+      ])
+;;
+
 let rec to_string t =
   match t with
   | Atom (A s) -> s

@@ -58,6 +58,7 @@ module Local : sig
   include Path_intf.S with type t := t
 
   val root : t
+  val repr : t Repr.t
   val append : t -> t -> t
 
   include Path_intf.With_loc with type t := t
@@ -124,6 +125,7 @@ module Outside_build_dir : sig
   val hash : t -> int
   val relative : t -> string -> t
   val extend_basename : t -> suffix:Filename.t -> t
+  val append_local : t -> Local.t -> t
   val equal : t -> t -> bool
   val to_dyn : t -> Dyn.t
   val of_string : string -> t

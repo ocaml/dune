@@ -30,6 +30,5 @@ Change source files to force a recompilation
   files
   meta
   temp
-  values
 
 Cache has been written to!

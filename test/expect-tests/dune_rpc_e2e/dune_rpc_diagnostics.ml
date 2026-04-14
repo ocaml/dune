@@ -1,8 +1,8 @@
 open Stdune
 open Fiber.O
-module Client = Dune_rpc_client.Client
+module Client = Rpc.Client
 open Dune_rpc_e2e
-module Dune_rpc = Dune_rpc_private
+module Dune_rpc = Dune_rpc.Private
 module Sub = Dune_rpc.Sub
 module Diagnostic = Dune_rpc.Diagnostic
 module Request = Dune_rpc.Public.Request

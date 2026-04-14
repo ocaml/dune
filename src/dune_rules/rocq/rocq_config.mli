@@ -56,11 +56,11 @@ end
 (** Data of a Rocq configuration. *)
 type t
 
-(** [make ~rocq] runs rocq --config and returns the configuration data. Exceptionally, one
+(** [make ~rocq] runs [rocq c --config] and returns the configuration data. Exceptionally, one
     of the following will happen:
 
-    - Return [Error message] if rocq --config exits with a non-zero code.
-    - Throw a user error if rocq --config is not parsable.
+    - Return [Error message] if rocq c --config exits with a non-zero code.
+    - Throw a user error if rocq c --config is not parsable.
     - Throw an [Action.Prog.Not_found] exception if the rocq binary is not found. *)
 val make : rocq:Action.Prog.t -> (t, User_message.Style.t Pp.t) result Memo.t
 

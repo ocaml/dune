@@ -31,15 +31,14 @@ let term : unit Term.t =
   let common, config = Common.init builder in
   Scheduler_setup.go_with_rpc_server ~common ~config
   @@ fun () ->
-  let open Fiber.O in
-  let* setup = Import.Main.setup () in
-  build_exn
-  @@ fun () ->
   let open Memo.O in
-  let* sctx = setup >>| Import.Main.find_scontext_exn ~name:context in
+  Build.build_memo_exn
+  @@ fun () ->
+  let* setup = Util.setup () in
+  let sctx = Dune_rules.Main.find_scontext_exn setup ~name:context in
   let* prog = Exec.Cmd_arg.expand ~root:(Common.root common) ~sctx prog in
   let+ path = Exec.get_path common sctx ~prog >>| Path.to_string in
-  Dune_console.printf "%s" path
+  Console.printf "%s" path
 ;;
 
 let command = Cmd.v info term

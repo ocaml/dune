@@ -104,8 +104,8 @@ But building the executable from the vendored directory doesn't:
 Since the vendored binary only depends on public libraries, we get a single
 scope:
 
-  $ ls _build/default/.parameterised/
-  c93f32ed38844ee40a8116e34455b69f
+  $ ls _build/default/.parameterised/ | censor
+  $DIGEST
 
 But the vendored binary could use private libraries:
 
@@ -139,11 +139,11 @@ But the vendored binary could use private libraries:
 Which requires a new scope to host the private instantiation of `(lib_param
 param_impl)`:
 
-  $ ls _build/default/.parameterised/
-  faa0ebd10a0535a3e69ccb9c44974c2a
-  $ ls _build/default/.parameterised/f*
+  $ ls _build/default/.parameterised/ | censor
+  $DIGEST
+  $ ls _build/default/.parameterised/*
   lib_param
-  $ ls _build/default/.parameterised/f*/lib_param
+  $ ls _build/default/.parameterised/*/lib_param
   lib_param!param_impl
 
 We can also have a mix of public/private, with e.g. the parameterised library
@@ -176,17 +176,17 @@ being public:
   $ dune clean
   $ dune exec ./vendored/vendored_bin.exe
   vendored_bin:vendored:lib_param:impl
-  $ ls -R _build/default/.parameterised
+  $ ls -R _build/default/.parameterised | censor
   _build/default/.parameterised:
-  faa0ebd10a0535a3e69ccb9c44974c2a
+  $DIGEST
   
-  _build/default/.parameterised/faa0ebd10a0535a3e69ccb9c44974c2a:
+  _build/default/.parameterised/$DIGEST:
   vendored.lib_param
   
-  _build/default/.parameterised/faa0ebd10a0535a3e69ccb9c44974c2a/vendored.lib_param:
+  _build/default/.parameterised/$DIGEST/vendored.lib_param:
   vendored.lib_param!param_impl
   
-  _build/default/.parameterised/faa0ebd10a0535a3e69ccb9c44974c2a/vendored.lib_param/vendored.lib_param!param_impl:
+  _build/default/.parameterised/$DIGEST/vendored.lib_param/vendored.lib_param!param_impl:
   archive.a
   archive.cmxa
 
@@ -219,9 +219,9 @@ Or only the parameter being public:
   $ dune clean
   $ dune exec ./vendored/vendored_bin.exe
   vendored_bin:vendored:lib_param:impl
-  $ tree _build/default/.parameterised
+  $ tree _build/default/.parameterised | censor
   _build/default/.parameterised
-  `-- faa0ebd10a0535a3e69ccb9c44974c2a
+  `-- $DIGEST
       `-- lib_param
           `-- lib_param!vendored.param_impl
               |-- archive.a

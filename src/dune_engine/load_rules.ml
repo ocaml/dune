@@ -96,7 +96,7 @@ let get_dir_triage ~dir =
           ];
         Filename.Set.empty
       | Ok filenames ->
-        Fs_cache.Dir_contents.to_list filenames
+        Fs_memo.Dir_contents.to_list filenames
         |> List.filter_map ~f:(fun (filename, kind) ->
           match kind with
           | Unix.S_DIR -> None
@@ -204,8 +204,13 @@ let remove_old_artifacts
       then (
         match kind with
         | Unix.S_DIR ->
-          if not (Subdir_set.mem subdirs_to_keep fn) then Path.rm_rf (Path.build path)
-        | _ -> Fpath.unlink_exn (Path.Build.to_string path)))
+          if not (Subdir_set.mem subdirs_to_keep fn)
+          then (
+            let () = Rule_cache.Workspace_local.remove_subtree path in
+            Path.rm_rf (Path.build path))
+        | _ ->
+          let () = Rule_cache.Workspace_local.remove_target path in
+          Fpath.unlink_exn (Path.Build.to_string path)))
 ;;
 
 (* We don't remove files in there as we don't know upfront if they are stale or
@@ -218,7 +223,10 @@ let remove_old_sub_dirs_in_anonymous_actions_dir ~dir ~(subdirs_to_keep : Subdir
       let path = Path.Build.relative dir fn in
       match kind with
       | Unix.S_DIR ->
-        if not (Subdir_set.mem subdirs_to_keep fn) then Path.rm_rf (Path.build path)
+        if not (Subdir_set.mem subdirs_to_keep fn)
+        then (
+          let () = Rule_cache.Workspace_local.remove_subtree path in
+          Path.rm_rf (Path.build path))
       | _ -> ())
 ;;
 

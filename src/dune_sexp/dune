@@ -1,6 +1,9 @@
 (library
  (name dune_sexp)
  (synopsis "[Internal] S-expression library")
+ (inline_tests)
+ (preprocess
+  (pps ppx_expect))
  (libraries stdune uutf))
 
 (ocamllex lexer versioned_file_first_line)

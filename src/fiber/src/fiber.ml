@@ -27,3 +27,11 @@ module Expert = struct
   let suspend f k = suspend f k
   let resume a x k = resume a x k
 end
+
+module Temp = Stdune.Temp.Monad (struct
+    type nonrec 'a t = 'a t
+
+    let protect ~f ~finally = finalize f ~finally:(fun () -> finally () |> return)
+  end)
+
+module Cache = Cache

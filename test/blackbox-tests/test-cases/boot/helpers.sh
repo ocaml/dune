@@ -1,30 +1,45 @@
 
-mkdir boot
-cp ../../../../boot/types.ml boot/types.ml
-cp ../../../../boot/duneboot.ml boot/duneboot.ml
+function init_bootstrap() {
+  mkdir boot
+  cp ../../../../boot/types.ml boot/types.ml
+  cp ../../../../boot/duneboot.ml boot/duneboot.ml
+  cp ../../../../boot/pps.mll boot/pps.mll
+  cp ../../../../boot/pps.mli boot/pps.mli
 
-cat > dune-project <<EOF
+  cat > dune-project <<EOF
 (lang dune 3.21)
 (using dune-bootstrap-info 0.1)
 EOF
 
-# These libraries are hardcoded and expected to exist:
-mkdir -p vendor/csexp/src
-mkdir -p vendor/pp/src
-mkdir -p vendor/re/src
-mkdir -p vendor/spawn/src
-mkdir -p vendor/uutf
+  # These libraries are hardcoded and expected to exist:
+  mkdir -p vendor/csexp/src
+  mkdir -p vendor/pp/src
+  mkdir -p vendor/re/src
+  mkdir -p vendor/spawn/src
+  mkdir -p vendor/uutf
 
-mkdir bin
+  mkdir bin
 
-ocamlopt="$(which ocamlopt.opt)"
-export BUILD_PATH_PREFIX_MAP="/OCAMLOPT=$ocamlopt:$BUILD_PATH_PREFIX_MAP"
-ocamlc="$(which ocamlc.opt)"
-export BUILD_PATH_PREFIX_MAP="/OCAMLC=$ocamlc:$BUILD_PATH_PREFIX_MAP"
+  ocamlopt="$(which ocamlopt.opt)"
+  export BUILD_PATH_PREFIX_MAP="/OCAMLOPT=$ocamlopt:$BUILD_PATH_PREFIX_MAP"
+  ocamlc="$(which ocamlc.opt)"
+  export BUILD_PATH_PREFIX_MAP="/OCAMLC=$ocamlc:$BUILD_PATH_PREFIX_MAP"
+}
+
+function make_module() {
+  mkdir -p "$(dirname "$1")"
+  cat >"$1" <<- EOF
+module Spawn = Spawn
+module Re = Re
+module Csexp = Csexp
+module Pp = Pp
+module Uutf = Uutf
+EOF
+}
 
 # Creates a fake dune executable that depends on [$1] and emits bootstrap info
 # which is then used to bootstrap the fake dune.
-create_dune() {
+function create_dune() {
   cat > bin/main.ml
   cat > bin/dune <<- EOF
 	(executable

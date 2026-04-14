@@ -1,12 +1,11 @@
 Testing the bootstrap of a wrapped include subdirs qualified.
 
-Currently doesn't work because it is not implemented.
-
-  $ . ./helpers.sh
+  $ init_bootstrap
 
   $ mkdir -p src/a/b/c
 
-  $ cat > src/a/x.ml <<EOF
+  $ make_module src/a/x.ml
+  $ cat >> src/a/x.ml <<EOF
   > let () = Printf.printf "Hello from unwrapped a/x.ml\n"
   > EOF
 
@@ -32,7 +31,8 @@ Currently doesn't work because it is not implemented.
   > module M4 = A.B.C
   > let () = Printf.printf "Hello from bootstrapped binary!"
   > EOF
-  ocamlc -output-complete-exe -intf-suffix .dummy -g -o .duneboot.exe -I boot -I +unix unix.cma boot/types.ml boot/libs.ml boot/duneboot.ml
+  ocamllex -q -o boot/pps.ml boot/pps.mll
+  ocamlc -output-complete-exe -intf-suffix .dummy -g -o .duneboot.exe -I boot -I +unix unix.cma boot/pps.ml boot/types.ml boot/libs.ml boot/duneboot.ml
   ./.duneboot.exe
   Hello from wrapped a/b/c/c.ml
   Hello from wrapped a/b/b.ml

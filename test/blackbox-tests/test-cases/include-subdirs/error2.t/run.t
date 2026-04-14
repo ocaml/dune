@@ -1,3 +1,5 @@
+Rejects repeated (include_subdirs ...) stanzas in the same dune file.
+
   $ dune build
   File "dune", line 2, characters 0-29:
   2 | (include_subdirs unqualified)

@@ -7,7 +7,7 @@ let%expect_test "directory digest version" =
 
      The expected value is kept outside of the expect block on purpose so that it
      must be modified manually. *)
-  let expected = "b8103f74615da82331f53c68145085fc" in
+  let expected = "0707f6c61422e7e7281faa106824da8c" in
   let dir = Temp.create Dir ~prefix:"digest-tests" ~suffix:"" in
   let stats = { Digest.Stats_for_digest.st_kind = S_DIR; executable = true } in
   (match Digest.path_with_stats ~allow_dirs:true dir stats with
@@ -36,4 +36,17 @@ let%expect_test "directories with symlinks" =
    | Error Unexpected_kind -> print_endline "[FAIL] unexpected kind"
    | Error (Unix_error _) -> print_endline "[FAIL] unable to calculate digest");
   [%expect {| [PASS] |}]
+;;
+
+let%expect_test "repr digest distinguishes option cases" =
+  let repr = Option.repr Repr.string in
+  let digest_none = Digest.repr repr None in
+  let digest_some_empty = Digest.repr repr (Some "") in
+  let digest_none' = Digest.repr repr None in
+  print_endline (Bool.to_string (Digest.equal digest_none digest_some_empty));
+  print_endline (Bool.to_string (Digest.equal digest_none digest_none'));
+  [%expect
+    {|
+    false
+    true |}]
 ;;

@@ -1,3 +1,5 @@
+Generates Merlin config for executables using `future_syntax` preprocessing.
+
   $ ocamlc_where="$(ocamlc -where)"
   $ export BUILD_PATH_PREFIX_MAP="/OCAMLC_WHERE=$ocamlc_where:$BUILD_PATH_PREFIX_MAP"
   $ ocamlfind_libs="$(ocamlfind printconf path | while read line; do printf lib=${line}:; done)"

@@ -93,6 +93,10 @@ Adding Melange support to Dune libraries is done as follows:
   using ``melange.runtime_deps``. This field is analog to the ``runtime_deps``
   field used in ``melange.emit`` stanzas.
 
+- ``(melange.compile_flags <flags>)``: optionally, pass flags to ``melc`` compiler.
+  This field is analogous to the ``compile_flags``
+  field used in ``melange.emit`` stanzas.
+
 .. _melange-emit:
 
 melange.emit

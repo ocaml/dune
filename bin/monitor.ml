@@ -1,7 +1,7 @@
 open Import
 open Fiber.O
-module Client = Dune_rpc_client.Client
-module Version_error = Dune_rpc_private.Version_error
+module Client = Root.Rpc.Client
+module Version_error = Dune_rpc.Version_error
 
 include struct
   open Dune_rpc
@@ -231,7 +231,7 @@ let monitor ~quit_on_disconnect () =
              ~id:(Dune_rpc.Id.make (Sexp.Atom "monitor_cmd")))
           ~f:(fun client ->
             let event = Fiber.Event_bus.create () in
-            let module Sub = Dune_rpc_private.Public.Sub in
+            let module Sub = Dune_rpc.Public.Sub in
             Fiber.all_concurrently_unit
               [ render_loop ~event
               ; fetch_loop ~event ~client ~f:(fun x -> Event.Jobs x) Sub.running_jobs
@@ -282,7 +282,7 @@ let command =
     in
     Scheduler.Run.go
       config
-      ~on_event:(fun _ _ -> ())
+      ~on_event:(fun (_ : Scheduler.Run.Event.t) -> ())
       ~file_watcher:No_watcher
       (monitor ~quit_on_disconnect)
   in

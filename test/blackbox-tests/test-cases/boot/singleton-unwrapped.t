@@ -1,10 +1,11 @@
 Testing the bootstrap of singleton unwrapped libraries.
 
-  $ . ./helpers.sh
+  $ init_bootstrap
 
   $ mkdir -p src/a
 
-  $ cat > src/a/b.ml <<EOF
+  $ make_module src/a/b.ml
+  $ cat >> src/a/b.ml <<EOF
   > let () = Printf.printf "Hello from singleton unwrapped a/b.ml\n"
   > EOF
 
@@ -18,7 +19,8 @@ Testing the bootstrap of singleton unwrapped libraries.
   > open B
   > let () = Printf.printf "Hello from bootstrapped binary!"
   > EOF
-  ocamlc -output-complete-exe -intf-suffix .dummy -g -o .duneboot.exe -I boot -I +unix unix.cma boot/types.ml boot/libs.ml boot/duneboot.ml
+  ocamllex -q -o boot/pps.ml boot/pps.mll
+  ocamlc -output-complete-exe -intf-suffix .dummy -g -o .duneboot.exe -I boot -I +unix unix.cma boot/pps.ml boot/types.ml boot/libs.ml boot/duneboot.ml
   ./.duneboot.exe
   Hello from singleton unwrapped a/b.ml
   Hello from bootstrapped binary!

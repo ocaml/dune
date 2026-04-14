@@ -74,6 +74,7 @@ module Pid = Pid
 module Applicative = Applicative
 module Json = Json
 module Log = Log
+module Stat = Stat
 module Time = Time
 module Escape0 = Escape
 module Debug = Debug
@@ -83,6 +84,9 @@ module Counter = Counter
 module Global_lock = Global_lock
 module At_exit = At_exit
 module Permissions = Permissions
+module Console = Console
+module Repr = Repr
+module Marshal = Marshal
 
 module type Top_closure = Top_closure.Top_closure
 

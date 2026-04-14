@@ -1,0 +1,18 @@
+(library
+ (name rpc)
+ (foreign_stubs
+  (language c)
+  (names csexp_rpc_stubs))
+ (libraries
+  stdune
+  unix
+  fiber
+  csexp
+  dune_util
+  dune_scheduler
+  xdg
+  dune_rpc
+  dyn
+  ordering
+  dune_trace
+  chrome_trace))

@@ -6,12 +6,13 @@ Jsoo and build-info
   Consider passing '-g' option to ocamlc.
   $ node _build/default/src/main.bc.js
   unknown
-  $ dune install --prefix _install --display short
-  Installing _install/lib/main/META
-  Installing _install/lib/main/dune-package
-  Installing _install/lib/main/opam
-  Installing _install/bin/main
-  Installing _install/bin/main.bc.js
+  $ dune install --prefix _install
+  $ find _install -type f | sort
+  _install/bin/main
+  _install/bin/main.bc.js
+  _install/lib/main/META
+  _install/lib/main/dune-package
+  _install/lib/main/opam
   $ node _install/bin/main.bc.js
   unknown
   $ git init -q
@@ -26,18 +27,14 @@ Jsoo and build-info
   Consider passing '-g' option to ocamlc.
   $ node _build/default/src/main.bc.js
   unknown
-  $ dune install --prefix _install --display short
-  Deleting _install/lib/main/META
-  Installing _install/lib/main/META
-  Deleting _install/lib/main/dune-package
-  Installing _install/lib/main/dune-package
-  Deleting _install/lib/main/opam
-  Installing _install/lib/main/opam
-  Deleting _install/bin/main
-  Installing _install/bin/main
-  Deleting _install/bin/main.bc.js
-  Installing _install/bin/main.bc.js
-  Installing _install/doc/main/README
+  $ dune install --prefix _install
+  $ find _install -type f | sort
+  _install/bin/main
+  _install/bin/main.bc.js
+  _install/doc/main/README
+  _install/lib/main/META
+  _install/lib/main/dune-package
+  _install/lib/main/opam
   $ node _install/bin/main.bc.js
   v1-1-xxxxx-dirty
   $ echo "(name main)" >> dune-project
@@ -47,18 +44,13 @@ Jsoo and build-info
   Consider passing '-g' option to ocamlc.
   $ node _build/default/src/main.bc.js
   0.2.0
-  $ dune install --prefix _install --display short
-  Deleting _install/lib/main/META
-  Installing _install/lib/main/META
-  Deleting _install/lib/main/dune-package
-  Installing _install/lib/main/dune-package
-  Deleting _install/lib/main/opam
-  Installing _install/lib/main/opam
-  Deleting _install/bin/main
-  Installing _install/bin/main
-  Deleting _install/bin/main.bc.js
-  Installing _install/bin/main.bc.js
-  Deleting _install/doc/main/README
-  Installing _install/doc/main/README
+  $ dune install --prefix _install
+  $ find _install -type f | sort
+  _install/bin/main
+  _install/bin/main.bc.js
+  _install/doc/main/README
+  _install/lib/main/META
+  _install/lib/main/dune-package
+  _install/lib/main/opam
   $ node _build/default/src/main.bc.js
   0.2.0

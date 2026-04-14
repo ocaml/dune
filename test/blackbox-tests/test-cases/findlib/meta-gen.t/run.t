@@ -1,3 +1,5 @@
+Tests META file generation.
+
   $ dune runtest --force
   description = "contains \"quotes\""
   requires = "bytes"

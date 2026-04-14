@@ -1,9 +1,9 @@
 open Stdune
 open Fiber.O
 open Dune_scheduler
-module Where = Dune_rpc_private.Where
-module Registry = Dune_rpc_private.Registry
-module Poll_active = Dune_rpc_impl.Poll_active
+module Where = Dune_rpc.Private.Where
+module Registry = Dune_rpc.Private.Registry
+module Poll_active = Rpc.Poll_active
 open Dune_rpc_e2e
 
 let try_ ~times ~delay_seconds ~f =
@@ -41,7 +41,7 @@ let run =
       ~finally:(fun () -> Sys.chdir cwd)
       ~f:(fun () ->
         Sys.chdir (Path.to_string dir);
-        Scheduler.Run.go config run ~timeout:(Time.Span.of_secs 5.0) ~on_event:(fun _ _ ->
+        Scheduler.Run.go config run ~timeout:(Time.Span.of_secs 5.0) ~on_event:(fun _ ->
           ()))
 ;;
 

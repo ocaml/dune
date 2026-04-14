@@ -1,3 +1,5 @@
+let repr = Repr.bool
+
 let compare x y =
   match x, y with
   | true, true | false, false -> Ordering.Eq
@@ -13,7 +15,7 @@ include Comparator.Operators (struct
 
 let to_string = string_of_bool
 let of_string s = bool_of_string_opt s
-let to_dyn t = Dyn.Bool t
+let to_dyn = Repr.to_dyn repr
 
 let[@inline always] hash = function
   | true -> 1

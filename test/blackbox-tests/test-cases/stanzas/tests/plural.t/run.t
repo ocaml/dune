@@ -1,3 +1,5 @@
-  $ dune runtest
+Runs multiple tests declared in a single `(tests ...)` stanza.
+
+  $ dune runtest 2>&1 | sort
   regular test
   regular test2

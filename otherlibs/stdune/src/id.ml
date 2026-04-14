@@ -7,6 +7,7 @@ module type S = sig
   val gen : unit -> t
   val peek : unit -> t
   val to_int : t -> int
+  val repr : t Repr.t
   val compare : t -> t -> Ordering.t
   val equal : t -> t -> bool
   val hash : t -> int
@@ -27,4 +28,5 @@ module Make () : S = struct
 
   let peek () = !next
   let to_int x = x
+  let repr = Repr.view Int.repr ~to_:to_int
 end

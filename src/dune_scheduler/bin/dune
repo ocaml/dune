@@ -1,0 +1,5 @@
+;; small binaries to test out our fsevents/fswatch bindings
+
+(executables
+ (names dune_fsevents dune_fswatch_win)
+ (libraries threads.posix dyn stdune dune_scheduler))

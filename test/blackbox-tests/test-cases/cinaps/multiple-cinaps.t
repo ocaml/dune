@@ -19,9 +19,9 @@ Multiple cinaps stanzas in the same dune file
   > (cinaps (files foo.ml))
   > (cinaps (files *oo.ml))
   > EOF
-  $ dune runtest --diff-command diff 2>&1
+  $ dune runtest --diff-command diff 2>&1 | censor_cinaps
   Error: Multiple rules generated for
-  _build/default/.cinaps.f0d91a31/cinaps.ml-gen:
+  _build/default/$CINAPS/cinaps.ml-gen:
   - dune:1
   - dune:2
   -> required by alias cinaps in dune:1

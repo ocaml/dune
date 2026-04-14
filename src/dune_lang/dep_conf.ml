@@ -170,4 +170,5 @@ let encode = function
   | Include t -> List [ Dune_sexp.atom "include"; Dune_sexp.atom t ]
 ;;
 
+let repr = Repr.view Dune_sexp.repr ~to_:encode
 let to_dyn t = Dune_sexp.to_dyn (encode t)

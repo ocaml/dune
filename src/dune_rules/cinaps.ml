@@ -74,6 +74,33 @@ let flags = Ocaml_flags.of_list [ "-w"; "-24" ]
 let for_ = Compilation_mode.Ocaml
 
 let gen_rules sctx t ~dir ~scope =
+  let digest_input_repr =
+    Repr.variant
+      "cinaps-digest-input"
+      [ Repr.case
+          "No_files"
+          Repr.(
+            triple
+              (list Lib_dep.repr)
+              (Preprocess.Per_module.repr Preprocess.Without_instrumentation.repr)
+              (list Dep_conf.repr))
+          ~proj:(function
+            | `No_files x -> Some x
+            | `With_files _ -> None)
+      ; Repr.case
+          "With_files"
+          Repr.(
+            pair
+              (list Path.Build.repr)
+              (triple
+                 (list Lib_dep.repr)
+                 (Preprocess.Per_module.repr Preprocess.Without_instrumentation.repr)
+                 (list Dep_conf.repr)))
+          ~proj:(function
+            | `With_files x -> Some x
+            | `No_files _ -> None)
+      ]
+  in
   let loc = t.loc in
   (* Files checked by cinaps *)
   let* cinapsed_files =
@@ -93,10 +120,20 @@ let gen_rules sctx t ~dir ~scope =
   let cinaps_dir =
     let stamp =
       let digest =
-        match cinapsed_files with
-        | [] -> Digest.generic (t.loc, t.libraries, t.preprocess, t.preprocessor_deps)
-        | _ :: _ ->
-          Digest.generic (cinapsed_files, t.libraries, t.preprocess, t.preprocessor_deps)
+        Digest.repr
+          digest_input_repr
+          (match cinapsed_files with
+           | [] ->
+             `No_files
+               ( t.libraries
+               , t.preprocess
+               , List.map t.preprocessor_deps ~f:Dep_conf.remove_locs )
+           | _ :: _ ->
+             `With_files
+               ( cinapsed_files
+               , ( t.libraries
+                 , t.preprocess
+                 , List.map t.preprocessor_deps ~f:Dep_conf.remove_locs ) ))
       in
       String.take (Digest.to_string digest) 8
     in

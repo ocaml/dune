@@ -1,3 +1,5 @@
+Honors `--datadir` for installed shared files.
+
   $ echo "(lang dune 2.0)" > dune-project
   $ touch foo.opam datafile
   $ cat >dune <<EOF

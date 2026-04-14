@@ -1,11 +1,10 @@
 open Stdune
 open Fiber.O
 open Dune_scheduler
-module Dune_rpc = Dune_rpc_private
+module Dune_rpc = Dune_rpc.Private
 module Request = Dune_rpc.Public.Request
 module Diagnostic = Dune_rpc.Diagnostic
-module Client = Dune_rpc_client.Client
-module Session = Csexp_rpc.Session
+module Client = Rpc.Client
 
 (* enable to debug process stdout/stderr *)
 let debug = false
@@ -199,6 +198,5 @@ let run run =
     ~finally:(fun () -> Sys.chdir cwd)
     ~f:(fun () ->
       Sys.chdir (Path.to_string dir);
-      Scheduler.Run.go config run ~timeout:(Time.Span.of_secs 5.0) ~on_event:(fun _ _ ->
-        ()))
+      Scheduler.Run.go config run ~timeout:(Time.Span.of_secs 5.0) ~on_event:(fun _ -> ()))
 ;;

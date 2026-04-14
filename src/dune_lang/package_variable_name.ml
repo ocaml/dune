@@ -45,7 +45,20 @@ let name = of_string "name"
 let build = of_string "build"
 let post = of_string "post"
 let dev = of_string "dev"
+let installed = of_string "installed"
 let one_of t xs = List.mem xs ~equal t
+
+(** Returns the slang value of a variable for an absent package. Returns None
+    for variables without known values or contexts where substitution shouldn't
+    occur. For [version], returns empty string in string interpolation context,
+    or [Undefined] in filter context. *)
+let absent_package_value ~for_string_interp t =
+  if equal t installed
+  then Some (Slang.bool false)
+  else if equal t version
+  then Some (if for_string_interp then Slang.text "" else Slang.Undefined)
+  else None
+;;
 
 let platform_specific =
   Set.of_list [ arch; os; os_version; os_distribution; os_family; sys_ocaml_version ]
@@ -69,10 +82,12 @@ let all_known =
   ; build
   ; post
   ; dev
+  ; installed
   ]
 ;;
 
 let encode t = Encoder.string (to_string t)
+let repr = Repr.view Repr.string ~to_:to_string
 
 let check_typo_underscore_instead_of_dash =
   let possible_typos =

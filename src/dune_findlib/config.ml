@@ -36,7 +36,7 @@ module File = struct
          | Ok dir_contents ->
            let+ all_vars =
              Memo.parallel_map
-               (Fs_cache.Dir_contents.to_list dir_contents)
+               (Fs_memo.Dir_contents.to_list dir_contents)
                ~f:(fun (p, _kind) ->
                  let p = Path.Outside_build_dir.relative config_dir p in
                  load p)

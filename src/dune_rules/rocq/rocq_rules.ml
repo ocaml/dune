@@ -805,7 +805,12 @@ let setup_output_diff_rule ~loc ~dir ~sctx ~rocq_lang_version ~rocq_sources rocq
   | Some expected ->
     let output = Rocq_module.output_file ~obj_dir:dir rocq_module in
     let diff =
-      { Diff.file1 = Path.build expected; file2 = output; optional = false; mode = Text }
+      { Diff.file1 = Path.build expected
+      ; file2 = output
+      ; optional = false
+      ; mode = Text
+      ; directory_diffs = true
+      }
     in
     let alias = Alias.make ~dir Alias0.runtest in
     Simple_rules.Alias_rules.add
@@ -1292,7 +1297,7 @@ let setup_extraction_rules ~sctx ~dir ~dir_contents (s : Rocq_stanza.Extraction.
   let* rocq_sources = Dir_contents.rocq dir_contents in
   let rocq_module = Rocq_sources.extract rocq_sources s in
   let file_targets =
-    Rocq_stanza.Extraction.ml_target_fnames s |> List.map ~f:(Path.Build.relative dir)
+    Rocq_stanza.Extraction.target_fnames s |> List.map ~f:(Path.Build.relative dir)
   in
   let loc = s.buildable.loc in
   let use_stdlib = s.buildable.use_stdlib in

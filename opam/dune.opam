@@ -44,7 +44,7 @@ build: [
 depends: [
   # Please keep the lower bound in sync with .github/workflows/workflow.yml,
   # dune-project and min_ocaml_version in bootstrap.ml
-  "ocaml" {>= "4.08"}
+  "ocaml" {>= "4.14"}
   "base-unix"
   "base-threads"
   "lwt" { with-dev-setup & os != "win32" }
@@ -64,4 +64,9 @@ depends: [
   "utop" { with-dev-setup & >= "2.6.0" & os != "win32" }
   "melange" { with-dev-setup & >= "5.1.0-51" & os != "win32" }
   "uutf" { with-dev-setup }
+]
+depexts: [
+  # the rev store negotiation test launches a git daemon, needs it to be
+  # installed, which is not the case on Fedora by default
+  ["git-daemon"] { with-test & os-family = "fedora" }
 ]

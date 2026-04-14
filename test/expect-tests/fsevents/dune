@@ -9,7 +9,7 @@
    (sandbox always)))
  (libraries
   unix
-  fsevents
+  dune_scheduler
   stdune
   threads.posix
   ;; This is because of the (implicit_transitive_deps false)

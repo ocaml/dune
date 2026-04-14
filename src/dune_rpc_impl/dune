@@ -1,14 +1,11 @@
 (library
  (name dune_rpc_impl)
  (libraries
-  csexp_rpc
-  dune_console
   dune_engine
   dune_lang
   dune_scheduler
-  dune_rpc_client
-  dune_rpc_private
-  dune_rpc_server
+  rpc
+  dune_rpc
   source
   memo
   dune_util

@@ -12,16 +12,11 @@ module Feed : sig
       can consume a value of type ['a] and incorporate it into a hash value. *)
   type 'a t = hasher -> 'a -> unit
 
-  (** Consume any value. The result is based on the in-memory representation of
-      the value, so this is unsafe to perform on types who may have different
-      in-memory representation for values which are conceptually equal, such as
-      sets and maps. *)
-  val generic : _ t
-
   val contramap : 'a t -> f:('b -> 'a) -> 'b t
   val string : string t
   val bool : bool t
   val int : int t
+  val repr : 'a Repr.t -> 'a t
   val list : 'a t -> 'a list t
   val option : 'a t -> 'a option t
   val tuple2 : 'a t -> 'b t -> ('a * 'b) t
@@ -34,6 +29,23 @@ module Feed : sig
   val compute_digest : 'a t -> 'a -> digest
 end
 
+module Manual : sig
+  (** A manual API for constucting a digest without allocating. Not thread safe *)
+  type digest := t
+
+  type t
+
+  val create : unit -> t
+  val bool : t -> bool -> unit
+  val int : t -> int -> unit
+  val string : t -> string -> unit
+  val option : t -> f:(t -> 'a -> unit) -> 'a option -> unit
+  val list : t -> f:(t -> 'a -> unit) -> 'a list -> unit
+  val repr : t -> 'a Repr.t -> 'a -> unit
+  val digest : t -> digest -> unit
+  val get : t -> digest
+end
+
 include Comparable_intf.S with type key := t
 
 val to_dyn : t -> Dyn.t
@@ -43,9 +55,10 @@ val compare : t -> t -> Ordering.t
 val to_string : t -> string
 val from_hex : string -> t option
 val file : Path.t -> t
+val file_async : Path.t -> t Fiber.t
 val string : string -> t
 val to_string_raw : t -> string
-val generic : 'a -> t
+val repr : 'a Repr.t -> 'a -> t
 
 (** The subset of fields of [Unix.stats] used by this module.
 
@@ -58,6 +71,7 @@ module Stats_for_digest : sig
     }
 
   val of_unix_stats : Unix.stats -> t
+  val of_time_stat : Stat.t -> t
 end
 
 module Path_digest_error : sig
@@ -86,6 +100,12 @@ val path_with_stats
   -> Path.t
   -> Stats_for_digest.t
   -> (t, Path_digest_error.t) result
+
+val path_with_stats_async
+  :  allow_dirs:bool
+  -> Path.t
+  -> Stats_for_digest.t
+  -> (t, Path_digest_error.t) result Fiber.t
 
 (** Digest a file taking the [executable] bit into account. Should not be called
     on a directory. *)

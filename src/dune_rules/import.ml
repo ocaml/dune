@@ -1,7 +1,7 @@
 include Stdune
 include Dune_vcs
 include Dune_scheduler
-module Console = Dune_console
+module Console = Console
 module Digest = Dune_digest
 
 include struct
@@ -37,6 +37,7 @@ module Targets = Dune_targets
 
 include struct
   open Dune_engine
+  module Corrections = Corrections
   module Dir_set = Dir_set
   module Rule = Rule
   module Rules = Rules
@@ -51,7 +52,6 @@ include struct
   module Sandbox_config = Sandbox_config
   module Sandbox_mode = Sandbox_mode
   module Action = Action
-  module Fs_cache = Fs_cache
   module Process = Process
   module Execution_parameters = Execution_parameters
   module Build_context = Build_context
@@ -59,9 +59,10 @@ include struct
   module Load_rules = Load_rules
   module Response_file = Response_file
   module Subdir_set = Subdir_set
+  module Fs = Fs
 end
 
-module Compound_user_error = Dune_rpc_private.Compound_user_error
+module Compound_user_error = Dune_rpc.Private.Compound_user_error
 
 include struct
   open Ocaml

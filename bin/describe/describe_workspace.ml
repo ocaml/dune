@@ -346,8 +346,10 @@ module Crawl = struct
     if Lib.is_local lib
     then (
       let source_dir = Lib_info.src_dir (Lib.info lib) in
-      Digest.generic (name, Path.to_string source_dir))
-    else Digest.generic name
+      Digest.Feed.compute_digest
+        (Digest.Feed.tuple2 Digest.Feed.string Digest.Feed.string)
+        (Lib_name.to_string name, Path.to_string source_dir))
+    else Digest.string (Lib_name.to_string name)
   ;;
 
   let for_ = Compilation_mode.Ocaml
@@ -686,13 +688,11 @@ let term : unit Term.t =
   in
   Scheduler_setup.go_with_rpc_server ~common ~config
   @@ fun () ->
-  let open Fiber.O in
-  let* setup = Import.Main.setup () in
-  build_exn
+  Build.build_memo_exn
   @@ fun () ->
   let open Memo.O in
-  let* setup = setup in
-  let super_context = Import.Main.find_scontext_exn setup ~name:context_name in
+  let* setup = Util.setup () in
+  let super_context = Dune_rules.Main.find_scontext_exn setup ~name:context_name in
   let context = Super_context.context super_context in
   let* findlib_paths = Context.findlib_paths context in
   (* prefix directories with the workspace root, so that the

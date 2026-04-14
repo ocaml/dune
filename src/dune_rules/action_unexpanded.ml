@@ -71,6 +71,10 @@ module Action_expander : sig
        <dep_if_exists> ...)] *)
     val dep_if_exists : String_with_vars.t -> Path.t t
 
+    (** Record a source-tree dependency if this expands to a source directory in
+        the current build context. *)
+    val source_tree_if_directory : String_with_vars.t -> unit t
+
     (* Evaluate a path that is neither in a position of target or dependency,
        such as in [(chdir <path> ...)] *)
     val path : String_with_vars.t -> Path.t t
@@ -360,6 +364,23 @@ end = struct
              } )))
     ;;
 
+    let source_tree_if_directory sw env acc =
+      let build =
+        let open Action_builder.O in
+        let* path = Expander.expand_path env sw in
+        match Path.extract_build_context_dir path with
+        | None -> Action_builder.return ()
+        | Some _ ->
+          let deps =
+            let open Memo.O in
+            let+ deps, _files = Source_deps.files path in
+            deps, ()
+          in
+          Action_builder.dyn_memo_deps deps
+      in
+      Memo.return (build, acc)
+    ;;
+
     let add_or_remove_target ~what ~f sw env acc =
       if not env.infer
       then
@@ -572,8 +593,9 @@ let rec expand (t : Dune_lang.Action.t) : Action.t Action_expander.t =
                    ; Dune_sexp.atom_or_quoted_string (Path.to_string path)
                    ]))
          ])
-  | Diff { optional; file1; file2; mode } ->
+  | Diff { optional; file1; file2; mode; directory_diffs } ->
     let+ file1 = E.dep_if_exists file1
+    and+ () = E.source_tree_if_directory file1
     and+ file2 =
       if optional
       then E.consume_file file2
@@ -581,7 +603,7 @@ let rec expand (t : Dune_lang.Action.t) : Action.t Action_expander.t =
         let+ p = E.dep file2 in
         Expander0.as_in_build_dir p ~loc:(String_with_vars.loc file2) ~what:"File"
     in
-    Action.diff ~optional ~mode file1 file2
+    Action.diff ~optional ~mode ~directory_diffs file1 file2
   | No_infer t -> A.no_infer (expand t)
   | Pipe (outputs, l) ->
     let+ l = A.all (List.map l ~f:expand) in
@@ -629,6 +651,7 @@ let expand_no_targets t sandbox ~loc ~chdir ~deps:deps_written_by_user ~expander
       ; pp_targets targets
       ];
   let+ () = deps_builder
+  and+ sandbox = sandbox
   and+ action = build in
   let action = Action.Chdir (Path.build chdir, action) in
   Action.Full.make action ~sandbox
@@ -689,6 +712,7 @@ let expand
   in
   let build =
     let+ () = deps_builder
+    and+ sandbox = sandbox
     and+ action = build in
     Action.Full.make (Action.Chdir (Path.build chdir, action)) ~sandbox
   in

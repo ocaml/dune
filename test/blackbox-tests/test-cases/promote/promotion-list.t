@@ -1,3 +1,5 @@
+Tests dune promotion list output.
+
   $ cat > dune-project << EOF
   > (lang dune 2.0)
   > EOF

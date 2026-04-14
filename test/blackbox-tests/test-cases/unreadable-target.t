@@ -1,3 +1,5 @@
+Reports unreadable or broken targets after a rule runs.
+
   $ cat > dune-project <<EOF
   > (lang dune 2.9)
   > EOF
@@ -14,6 +16,6 @@
   2 |   (targets a b)
   3 |   (action (bash "echo content > a; chmod -r a; ln -s foo b")))
   Error: Error trying to read targets after a rule was run:
-  - a: Permission denied
+  - a: open(_build/default/a): Permission denied
   - b: Broken symbolic link
   [1]

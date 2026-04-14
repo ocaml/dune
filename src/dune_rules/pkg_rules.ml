@@ -135,6 +135,18 @@ module Pkg_digest = struct
         Dune_digest.hash
         (name, version, lockfile_and_dependency_digest)
     ;;
+
+    let digest_repr = Repr.view Repr.string ~to_:Dune_digest.to_string
+
+    let repr =
+      Repr.record
+        "pkg-digest"
+        [ Repr.field "name" Package.Name.repr ~get:(fun t -> t.name)
+        ; Repr.field "version" Package_version.repr ~get:(fun t -> t.version)
+        ; Repr.field "lockfile_and_dependency_digest" digest_repr ~get:(fun t ->
+            t.lockfile_and_dependency_digest)
+        ]
+    ;;
   end
 
   include T
@@ -168,19 +180,10 @@ module Pkg_digest = struct
             { name; version; lockfile_and_dependency_digest }))
   ;;
 
-  let digest_feed =
-    Digest_feed.tuple3
-      Package.Name.digest_feed
-      Package_version.digest_feed
-      Digest_feed.digest
-    |> Digest_feed.contramap ~f:(fun { name; version; lockfile_and_dependency_digest } ->
-      name, version, lockfile_and_dependency_digest)
-  ;;
-
   let create lockfile_pkg depends_pkg_digests =
     let lockfile_and_dependency_digest =
       Digest_feed.compute_digest
-        (Digest_feed.tuple2 Lock_dir.Pkg.digest_feed (Digest_feed.list digest_feed))
+        (Digest_feed.tuple2 Lock_dir.Pkg.digest_feed (Digest_feed.repr (Repr.list repr)))
         (Dune_pkg.Lock_dir.Pkg.remove_locs lockfile_pkg, depends_pkg_digests)
     in
     let name = lockfile_pkg.info.name in
@@ -305,15 +308,14 @@ module Install_cookie = struct
   module Persistent = Persistent.Make (struct
       type nonrec t = (Section.t * Path.t list) list Gen.t
 
+      let sharing = false
       let name = "INSTALL-COOKIE"
-      let version = 3
+      let version = 4
 
       let to_dyn =
         let open Dyn in
         Gen.to_dyn (list (pair Section.to_dyn (list Path.to_dyn)))
       ;;
-
-      let test_example () = { Gen.files = []; variables = [] }
     end)
 
   let load_exn f =
@@ -480,18 +482,20 @@ module Pkg = struct
     in
     let skip_file = String.starts_with ~prefix:".#" in
     let rec loop root acc path =
-      let full_path = Path.External.append_local root path in
-      Fs_memo.dir_contents (External full_path)
+      let full_path = Path.Outside_build_dir.append_local root path in
+      Fs_memo.dir_contents full_path
       >>= function
       | Error e ->
         User_error.raise
           ~loc
-          [ Pp.textf "Unable to read %s" (Path.External.to_string_maybe_quoted full_path)
+          [ Pp.textf
+              "Unable to read %s"
+              (Path.Outside_build_dir.to_string_maybe_quoted full_path)
           ; Unix_error.Detailed.pp e
           ]
       | Ok contents ->
         let files, dirs =
-          let contents = Fs_cache.Dir_contents.to_list contents in
+          let contents = Fs_memo.Dir_contents.to_list contents in
           List.rev_filter_partition_map contents ~f:(fun (name, kind) ->
             (* TODO handle links and cycles correctly *)
             match kind with
@@ -530,7 +534,7 @@ module Pkg = struct
 
   let install_roots t =
     let default_install_roots = Paths.install_roots t.paths in
-    match Pkg_toolchain.is_compiler_and_toolchains_enabled t.info.name with
+    match Pkg_toolchain.is_compiler_package_with_toolchains_enabled t.info.name with
     | false -> default_install_roots
     | true ->
       (* Compiler packages store their libraries in a subdirectory named "ocaml". *)
@@ -572,6 +576,7 @@ module Pkg = struct
       ; ( "OPAM_PACKAGE_VERSION"
         , [ Value.String (Package_version.to_string t.info.version) ] )
       ; "OPAMCLI", [ Value.String "2.0" ]
+      ; "OPAMSWITCH", [ Value.String "dune" ]
       ]
   ;;
 
@@ -655,18 +660,53 @@ module Substitute = struct
       }
 
     let name = "substitute"
-    let version = 3
+    let version = 4
     let bimap t f g = { t with src = f t.src; dst = g t.dst }
     let is_useful_to ~memoize = memoize
+
+    let variable_value_repr =
+      Repr.variant
+        "pkg-variable-value"
+        [ Repr.case "B" Bool.repr ~proj:(function
+            | Variable.B x -> Some x
+            | _ -> None)
+        ; Repr.case "S" String.repr ~proj:(function
+            | Variable.S x -> Some x
+            | _ -> None)
+        ; Repr.case
+            "L"
+            Repr.(list String.repr)
+            ~proj:(function
+              | Variable.L x -> Some x
+              | _ -> None)
+        ]
+    ;;
+
+    let variable_map_repr =
+      Repr.view
+        Repr.(list (pair Package_variable_name.repr variable_value_repr))
+        ~to_:Package_variable_name.Map.to_list
+    ;;
+
+    let paths_repr = Repr.T3.repr Path.repr Path.repr Package.Name.repr
+
+    let hash_input_repr =
+      Repr.T4.repr
+        paths_repr
+        Repr.(list (pair String.repr Path.repr))
+        Repr.(list (pair variable_map_repr paths_repr))
+        Package_version.repr
+    ;;
 
     let encode { expander; depends; artifacts; src; dst } input output : Sexp.t =
       let e =
         let paths (p : Path.t Paths.t) = p.source_dir, p.target_dir, p.name in
-        ( paths expander.paths
-        , String.Map.to_list artifacts
-        , Package.Name.Map.to_list_map depends ~f:(fun _ (m, p) -> m, paths p)
-        , expander.version )
-        |> Digest.generic
+        Digest.repr
+          hash_input_repr
+          ( paths expander.paths
+          , String.Map.to_list artifacts
+          , Package.Name.Map.to_list_map depends ~f:(fun _ (m, p) -> m, paths p)
+          , expander.version )
         |> Digest.to_string_raw
       in
       List [ Atom e; input src; output dst ]
@@ -974,6 +1014,7 @@ module Action_expander = struct
          let loc =
            let loc = function
              | Slang.Nil -> None
+             | Slang.Undefined -> None
              | Literal sw -> Some (String_with_vars.loc sw)
              | Form (loc, _) -> Some loc
            in
@@ -1112,7 +1153,14 @@ module Action_expander = struct
             let binaries =
               Section.Map.Multi.find cookie.files Bin
               |> List.fold_left ~init:binaries ~f:(fun acc bin ->
-                Filename.Map.set acc (Path.basename bin) bin)
+                let name = Path.basename bin in
+                (* CR-soon Alizter: share .exe stripping logic with artifacts.ml *)
+                let name =
+                  if Sys.win32
+                  then Option.value ~default:name (String.drop_suffix name ~suffix:".exe")
+                  else name
+                in
+                Filename.Map.set acc name bin)
             in
             let dep_info =
               let variables =
@@ -1357,12 +1405,29 @@ module DB = struct
     { id : Id.t
     ; pkg_digest_table : Pkg_table.t
     ; system_provided : Package.Name.Set.t
+    ; is_relocatable_compiler_context : bool
     }
 
   let equal x y = Id.equal x.id y.id
 
-  let create ~pkg_digest_table ~system_provided =
-    { id = Id.gen (); pkg_digest_table; system_provided }
+  let create =
+    (* A compiler is relocatable if the solution contains the
+       "relocatable-compiler" meta-package (from dra27's overlay repo) or
+       the "relocatable" virtual package (from upstream opam-repository). *)
+    let is_relocatable_meta_package name =
+      Package.Name.equal name (Package.Name.of_string "relocatable-compiler")
+      || Package.Name.equal name (Package.Name.of_string "relocatable")
+    in
+    fun ~pkg_digest_table ~system_provided ->
+      { id = Id.gen ()
+      ; pkg_digest_table
+      ; system_provided
+      ; is_relocatable_compiler_context =
+          Pkg_digest.Map.existsi
+            pkg_digest_table
+            ~f:(fun _ { Pkg_table.pkg = { info = { name; _ }; _ }; _ } ->
+              is_relocatable_meta_package name)
+      }
   ;;
 
   let pkg_digest_of_name lock_dir platform pkg_name ~system_provided =
@@ -1547,9 +1612,11 @@ end = struct
       let build_command = Option.map build_command ~f:relocate_build in
       let paths =
         let paths = Paths.map_path write_paths ~f:Path.build in
-        match Pkg_toolchain.is_compiler_and_toolchains_enabled info.name with
-        | false -> paths
-        | true ->
+        if
+          db.is_relocatable_compiler_context
+          || not (Pkg_toolchain.is_compiler_package_with_toolchains_enabled info.name)
+        then paths
+        else (
           (* Modify the environment as well as build and install commands for
              the compiler package. The specific changes are:
              - setting the prefix in the build environment to inside the user's
@@ -1560,7 +1627,8 @@ end = struct
                toolchain directory
              - if a matching version of the compiler is
                already installed in the user's toolchain directory then the
-               build and install commands are replaced with no-ops *)
+               build and install commands are replaced with no-ops
+             *)
           let prefix = Pkg_toolchain.installation_prefix pkg in
           let install_roots =
             Pkg_toolchain.install_roots ~prefix
@@ -1569,7 +1637,7 @@ end = struct
           { paths with
             prefix = Path.outside_build_dir prefix
           ; install_roots = Lazy.from_val install_roots
-          }
+          })
       in
       let t =
         { Pkg.id
@@ -1619,9 +1687,9 @@ end
 module Install_action = struct
   (* The install action does the following:
 
-     1. Runs the install action in the lock file (if exists)
+     1. Runs the install action in the lock file (if it exists)
      2. Reads the .install file produced by the build command
-     3. Discoves all the files produced by 1.
+     3. Discovers all the files produced by 1.
      4. Combines the set of files in 2. and 3. to produce a "cookie" file
   *)
 
@@ -1845,12 +1913,30 @@ module Install_action = struct
         |> List.map ~f:(fun (name, value) -> Package_variable_name.of_opam name, value)
     ;;
 
+    (* On Windows, .install files may omit .exe for bin/sbin entries.
+       Try the .exe variant if the original doesn't exist, mirroring opam. *)
+    let maybe_add_exe src (entry : Path.t Install.Entry.Expanded.t) =
+      match
+        match Sys.win32, entry.section with
+        | true, (Bin | Sbin) when not (Fpath.exists (Path.to_string src)) ->
+          let src_exe_str = Bin.add_exe (Path.to_string src) in
+          if Fpath.exists src_exe_str then Some src_exe_str else None
+        | _ -> None
+      with
+      | None -> src, entry
+      | Some src_exe_str ->
+        ( Path.of_string src_exe_str
+        , Install.Entry.map_dst entry ~f:(fun dst ->
+            Install.Entry.Dst.explicit (Bin.add_exe (Install.Entry.Dst.to_string dst))) )
+    ;;
+
     let install_entry
           ~src
           ~install_file
           ~target_dir
           (entry : Path.t Install.Entry.Expanded.t)
       =
+      let src, entry = maybe_add_exe src entry in
       match Fpath.exists (Path.to_string src), entry.optional with
       | false, true -> None
       | false, false ->
@@ -2060,7 +2146,7 @@ let source_rules (pkg : Pkg.t) =
          Memo.return (Dep.Set.of_files [ pkg.paths.source_dir ], [ loc, fetch ])
        | `Local (`Directory, source_root) ->
          let+ source_files, rules =
-           let source_root = Path.external_ source_root in
+           let source_root = Path.outside_build_dir source_root in
            Pkg.source_files pkg ~loc
            >>| Path.Local.Set.fold ~init:([], []) ~f:(fun file (source_files, rules) ->
              let src = Path.append_local source_root file in

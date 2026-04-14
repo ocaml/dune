@@ -19,6 +19,7 @@ val loc : t -> Loc.t
 (** [map_loc t ~f] transforms the value to update the location. *)
 val map_loc : t -> f:(Loc.t -> Loc.t) -> t
 
+val repr : t Repr.t
 val to_dyn : t Dyn.builder
 
 include Conv.S with type t := t

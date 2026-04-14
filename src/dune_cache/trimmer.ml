@@ -1,5 +1,4 @@
-open Stdune
-open Dune_cache_storage
+open Import
 
 module Trimming_result = struct
   type t =
@@ -25,54 +24,53 @@ let trim_broken_metadata_entries ~trimmed_so_far =
     Version.Metadata.all
     ~init:trimmed_so_far
     ~f:(fun trimmed_so_far version ->
-      let metadata_entries =
-        Lazy.force (Layout.Versioned.list_metadata_entries version)
-      in
       let file_path =
         Layout.Versioned.file_path (Version.Metadata.file_version version)
       in
-      List.fold_left
-        metadata_entries
-        ~init:trimmed_so_far
-        ~f:(fun trimmed_so_far (path, rule_or_action_digest) ->
-          let should_be_removed =
-            match Metadata.Versioned.restore version ~rule_or_action_digest with
-            | Not_found_in_cache ->
-              (* A concurrent process must have removed this metadata file. No
+      Layout.Versioned.list_metadata_entries version
+      |> Lazy.force
+      |> List.fold_left
+           ~init:trimmed_so_far
+           ~f:(fun trimmed_so_far (path, rule_or_action_digest) ->
+             let should_be_removed =
+               match Local.Metadata.Versioned.restore version ~rule_or_action_digest with
+               | Not_found_in_cache ->
+                 (* A concurrent process must have removed this metadata file. No
                  need to try removing such "phantom" metadata files again. *)
-              false
-            | Error _exn ->
-              (* If a metadata file can't be restored, let's trim it. *)
-              true
-            | Restored metadata ->
-              (match metadata with
-               | Metadata.Value _ ->
-                 (* We do not expect to see any value entries in the cache. Let's
-                    keep them untrimmed for now. *)
                  false
-               | Metadata.Artifacts { entries; _ } ->
-                 List.exists entries ~f:(function
-                   | { Artifacts.Metadata_entry.digest = Some file_digest; path = _ } ->
-                     let reference = Lazy.force (file_path ~file_digest) in
-                     not (Fpath.exists (Path.to_string reference))
-                     (* no digest means it's a directory. *)
-                   | { digest = None; path = _ } -> false))
-          in
-          match should_be_removed with
-          | true ->
-            (match Path.stat path with
-             | Ok stats ->
-               let bytes = stats.st_size in
-               (* If another process deletes [path] and the [unlink_no_err] below
-                  is a no-op, we take the credit and increase
-                  [trimmed_so_far]. *)
-               Fpath.unlink_no_err (Path.to_string path);
-               Trimming_result.add trimmed_so_far ~bytes
-             | Error _ ->
-               (* Alas, here we can't take any (non-zero) credit, since we don't
+               | Error _exn ->
+                 (* If a metadata file can't be restored, let's trim it. *)
+                 true
+               | Restored metadata ->
+                 (match metadata with
+                  | Value _ ->
+                    (* We do not expect to see any value entries in the cache. Let's
+                    keep them untrimmed for now. *)
+                    false
+                  | Artifacts { entries; metadata = _ } ->
+                    List.exists entries ~f:(function
+                      | { Local.Artifacts.Metadata_entry.digest = None; path = _ } ->
+                        (* no digest means it's a directory. *)
+                        false
+                      | { digest = Some file_digest; path = _ } ->
+                        let reference = Lazy.force (file_path ~file_digest) in
+                        not (Fpath.exists (Path.to_string reference))))
+             in
+             match should_be_removed with
+             | false -> trimmed_so_far
+             | true ->
+               (match Path.stat path with
+                | Error _ ->
+                  (* Alas, here we can't take any (non-zero) credit, since we don't
                   know the size of the deleted file. *)
-               trimmed_so_far)
-          | false -> trimmed_so_far))
+                  trimmed_so_far
+                | Ok stats ->
+                  let bytes = stats.st_size in
+                  (* If another process deletes [path] and the [unlink_no_err] below
+                     is a no-op, we take the credit and increase
+                     [trimmed_so_far]. *)
+                  Fpath.unlink_no_err (Path.to_string path);
+                  Trimming_result.add trimmed_so_far ~bytes)))
 ;;
 
 let garbage_collect () =
@@ -104,17 +102,17 @@ let file_exists_and_is_unused ~stats = stats.Unix.st_nlink = 1
      entry's [ctime]. This means that the trimmer will start deleting entries
      starting from the one that was least recently created or used. *)
 let trim ~goal =
-  let files = files_in_cache_for_all_supported_versions () |> List.map ~f:fst in
   let files =
-    List.sort
-      ~compare:(fun (_, _, ctime1) (_, _, ctime2) -> Float.compare ctime1 ctime2)
-      (List.filter_map files ~f:(fun path ->
-         match Path.stat path with
-         | Ok stats ->
-           if file_exists_and_is_unused ~stats
-           then Some (path, stats.st_size, stats.st_ctime)
-           else None
-         | Error _ -> None))
+    files_in_cache_for_all_supported_versions ()
+    |> List.filter_map ~f:(fun (path, _) ->
+      match Path.stat path with
+      | Error _ -> None
+      | Ok stats ->
+        if file_exists_and_is_unused ~stats
+        then Some (path, stats.st_size, stats.st_ctime)
+        else None)
+    |> List.sort ~compare:(fun (_, _, ctime1) (_, _, ctime2) ->
+      Float.compare ctime1 ctime2)
   in
   let delete (trimmed_so_far : Trimming_result.t) (path, bytes, _) =
     if trimmed_so_far.trimmed_bytes >= goal
@@ -130,16 +128,34 @@ let trim ~goal =
 ;;
 
 let overhead_size () =
-  let files = files_in_cache_for_all_supported_versions () |> List.map ~f:fst in
-  let stats =
-    let f p =
+  files_in_cache_for_all_supported_versions ()
+  |> List.fold_left ~init:0L ~f:(fun acc (p, _) ->
+    let size =
       try
         let stats = Unix.stat (Path.to_string p) in
         if file_exists_and_is_unused ~stats then Int64.of_int stats.st_size else 0L
       with
       | Unix.Unix_error (Unix.ENOENT, _, _) -> 0L
     in
-    List.map ~f files
+    Int64.add acc size)
+;;
+
+let clear () =
+  let rm_rf path = Path.rm_rf ~allow_external:true path in
+  let rmdir path =
+    try Unix.rmdir (Path.to_string path) with
+    | Unix.Unix_error ((ENOENT | ENOTEMPTY), _, _) -> ()
   in
-  List.fold_left ~f:Int64.add ~init:0L stats
+  let rm_rf_all versions dir =
+    List.iter versions ~f:(fun version ->
+      let dir = Lazy.force (dir version) in
+      rm_rf dir;
+      Option.iter ~f:rmdir (Path.parent dir))
+  in
+  rm_rf_all Version.Metadata.all Layout.Versioned.metadata_storage_dir;
+  rm_rf_all Version.File.all Layout.Versioned.file_storage_dir;
+  rm_rf (Lazy.force Layout.temp_dir);
+  (* Do not catch errors when deleting the root directory so that they are
+     reported to the user. *)
+  Layout.build_cache_dir |> Lazy.force |> Path.to_string |> Unix.rmdir
 ;;

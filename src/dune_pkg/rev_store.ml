@@ -3,7 +3,7 @@ open Dune_vcs
 module Process = Dune_engine.Process
 module Display = Dune_engine.Display
 open Dune_scheduler
-module Console = Dune_console
+module Console = Console
 open Fiber.O
 
 module Object : sig
@@ -238,8 +238,8 @@ module Cache = struct
       let conv : (File.Set.t * Commit.Set.t) Lmdb.Conv.t =
         Lmdb.Conv.make
           ~serialise:(fun alloc v ->
-            Marshal.to_string v [] |> Lmdb.Conv.(serialise string alloc))
-          ~deserialise:(fun bs -> Marshal.from_string Lmdb.Conv.(deserialise string bs) 0)
+            Marshal.to_string v ~sharing:true |> Lmdb.Conv.(serialise string alloc))
+          ~deserialise:(fun bs -> Marshal.from_string Lmdb.Conv.(deserialise string bs))
           ()
       ;;
     end
@@ -459,7 +459,7 @@ let run_with_exit_code ~env { dir; _ } ~allow_codes ~display args =
   let stdout_to = make_stdout () in
   let git = Lazy.force Vcs.git in
   let+ stderr, exit_code =
-    Fiber_util.Temp.with_temp_file
+    Fiber.Temp.with_temp_file
       ~prefix:"dune"
       ~suffix:"run_with_exit_code"
       ~dir:(Path.of_string (Filename.get_temp_dir_name ()))

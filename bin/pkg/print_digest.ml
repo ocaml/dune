@@ -20,7 +20,7 @@ let term =
   Scheduler_setup.go_with_rpc_server ~common ~config (fun () ->
     let open Fiber.O in
     let+ pkg_digest_opt =
-      build_exn (fun () ->
+      Build.build_memo_exn (fun () ->
         let open Memo.O in
         let* lock_dir_active = Dune_rules.Lock_dir.lock_dir_active context_name in
         if lock_dir_active

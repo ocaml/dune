@@ -75,8 +75,8 @@ Printing out PATH without setting it when the package has a dependency:
   >  (system "echo PATH=$PATH"))
   > EOF
   $ dune clean
-  $ OCAMLRUNPARAM=b PATH=$DUNE_PATH:/bin build_pkg test 2>&1 | $DUNE_CMD subst "$DUNE_PATH" 'DUNE_PATH'
-  PATH=$TESTCASE_ROOT/_build/_private/default/.pkg/hello2.0.0.1-3cf268d89ba7f04a10a17a1a00d6d508/target/bin:$TESTCASE_ROOT/_build/_private/default/.pkg/hello1.0.0.1-2bbe9250d988b3a1dc98ca2cf6f9ab0c/target/bin:DUNE_PATH:/bin
+  $ OCAMLRUNPARAM=b PATH=$DUNE_PATH:/bin build_pkg test 2>&1 | $DUNE_CMD subst "$DUNE_PATH" 'DUNE_PATH' | strip_sandbox | censor
+  $SANDBOX/default/test/blackbox-tests/test-cases/pkg/_build/_private/default/.pkg/hello1.0.0.1-$DIGEST/target/bin:DUNE_PATH:/bin
 
 Setting PATH to a specific value:
   $ make_lockpkg test <<'EOF'
@@ -101,8 +101,8 @@ Attempting to add a path to PATH replaces the entire PATH:
   >   (system "echo PATH=$PATH")))
   > EOF
   $ dune clean
-  $ PATH=$DUNE_PATH:/bin build_pkg test 2>&1 | $DUNE_CMD subst "$DUNE_PATH" 'DUNE_PATH'
-  PATH=/tmp/bin:$TESTCASE_ROOT/_build/_private/default/.pkg/hello2.0.0.1-3cf268d89ba7f04a10a17a1a00d6d508/target/bin:$TESTCASE_ROOT/_build/_private/default/.pkg/hello1.0.0.1-2bbe9250d988b3a1dc98ca2cf6f9ab0c/target/bin:DUNE_PATH:/bin
+  $ PATH=$DUNE_PATH:/bin build_pkg test 2>&1 | $DUNE_CMD subst "$DUNE_PATH" 'DUNE_PATH' | strip_sandbox | censor
+  $SANDBOX/default/test/blackbox-tests/test-cases/pkg/_build/_private/default/.pkg/hello1.0.0.1-$DIGEST/target/bin:DUNE_PATH:/bin
 
 Try adding multiple paths to PATH:
   $ make_lockpkg test <<'EOF'
@@ -116,5 +116,5 @@ Try adding multiple paths to PATH:
   >   (system "echo PATH=$PATH")))
   > EOF
   $ dune clean
-  $ PATH=$DUNE_PATH:/bin build_pkg test 2>&1 | $DUNE_CMD subst "$DUNE_PATH" 'DUNE_PATH'
-  PATH=/bar/bin:/foo/bin:/tmp/bin:$TESTCASE_ROOT/_build/_private/default/.pkg/hello2.0.0.1-3cf268d89ba7f04a10a17a1a00d6d508/target/bin:$TESTCASE_ROOT/_build/_private/default/.pkg/hello1.0.0.1-2bbe9250d988b3a1dc98ca2cf6f9ab0c/target/bin:DUNE_PATH:/bin
+  $ PATH=$DUNE_PATH:/bin build_pkg test 2>&1 | $DUNE_CMD subst "$DUNE_PATH" 'DUNE_PATH' | strip_sandbox | censor
+  $SANDBOX/default/test/blackbox-tests/test-cases/pkg/_build/_private/default/.pkg/hello1.0.0.1-$DIGEST/target/bin:DUNE_PATH:/bin

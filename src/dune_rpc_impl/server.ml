@@ -1,6 +1,5 @@
 open Import
 open Fiber.O
-open Dune_rpc_server
 
 include struct
   open Dune_rpc
@@ -24,18 +23,15 @@ include struct
   module Status = Status
 end
 
+module Session = Rpc.Server.Session
+module Handler = Rpc.Server.Handler
+module Csexp_rpc = Rpc.Csexp_rpc
+
 module Run = struct
   module Registry = Dune_rpc.Registry
 
-  module Server = Dune_rpc_server.Make (struct
-      include Csexp_rpc.Session
-
-      (* only needed for action runners. can be safely omitted elsewhere *)
-      let name _ = "unnamed"
-    end)
-
   type t =
-    { handler : Dune_rpc_server.t
+    { handler : Rpc.Server.t
     ; pool : Fiber.Pool.t
     ; root : string
     ; where : Dune_rpc.Where.t
@@ -60,7 +56,7 @@ module Run = struct
     in
     let with_print_errors f () =
       Fiber.with_error_handler f ~on_error:(fun exn ->
-        Dune_console.print [ Pp.text "Uncaught RPC Error"; Exn_with_backtrace.pp exn ];
+        Console.print [ Pp.text "Uncaught RPC Error"; Exn_with_backtrace.pp exn ];
         Exn_with_backtrace.reraise exn)
     in
     let run () =
@@ -95,7 +91,7 @@ module Run = struct
              cleanup_registry := Some path;
              at_exit run_cleanup_registry
            in
-           let* () = Server.serve sessions t.handler in
+           let* () = Rpc.Server.serve sessions t.handler in
            Fiber.Pool.close t.pool)
         (fun () -> Fiber.Pool.run t.pool)
     in
@@ -221,7 +217,7 @@ let get_current_diagnostic_errors () =
     | `Diagnostic compound_user_error -> Some compound_user_error)
 ;;
 
-let handler (t : _ t Fdecl.t) : 'build_arg Dune_rpc_server.Handler.t =
+let handler (t : _ t Fdecl.t) : 'build_arg Handler.t =
   let on_init session (_ : Initialize.Request.t) =
     let t = Fdecl.get t in
     let client = () in
@@ -241,23 +237,19 @@ let handler (t : _ t Fdecl.t) : 'build_arg Dune_rpc_server.Handler.t =
       | None ->
         Error.Id.Map.to_list_map (Error.Set.current now) ~f:(fun _ e ->
           Diagnostic.Event.Add (Diagnostics.diagnostic_of_error e))
-      | Some (prev : Error.Set.t) ->
-        (match Error.Set.one_event_diff ~prev ~next:now with
-         | Some last_event -> [ Diagnostics.diagnostic_event_of_error_event last_event ]
-         | _ ->
-           (* the slow path where we must calculate a diff between what we have
-              and the last thing we've sent to the poller *)
-           Error.Id.Map.merge
-             (Error.Set.current prev)
-             (Error.Set.current now)
-             ~f:(fun _ prev now ->
-               match prev, now with
-               | None, None -> assert false
-               | Some prev, None ->
-                 Some (Diagnostics.diagnostic_event_of_error_event (Remove prev))
-               | _, Some next ->
-                 Some (Diagnostics.diagnostic_event_of_error_event (Add next)))
-           |> Error.Id.Map.values)
+      | Some prev ->
+        Error.Id.Map.merge
+          (Error.Set.current prev)
+          (Error.Set.current now)
+          ~f:(fun _ prev now ->
+            match prev, now with
+            | None, None -> assert false
+            | Some prev, None ->
+              Some (Diagnostics.diagnostic_event_of_error_event (Remove prev))
+            | None, Some next ->
+              Some (Diagnostics.diagnostic_event_of_error_event (Add next))
+            | Some _, Some _ -> None)
+        |> Error.Id.Map.values
     in
     Handler.implement_long_poll
       rpc
@@ -368,6 +360,7 @@ let handler (t : _ t Fdecl.t) : 'build_arg Dune_rpc_server.Handler.t =
       | Failure ->
         (match
            Diff_promotion.promote_files_registered_in_last_run
+             ~matching:Exact
              Dune_rpc.Files_to_promote.All
          with
          | [] -> ()
@@ -426,8 +419,8 @@ let handler (t : _ t Fdecl.t) : 'build_arg Dune_rpc_server.Handler.t =
     Handler.implement_request rpc Procedures.Public.diagnostics f
   in
   let () =
-    let f _ files =
-      match Diff_promotion.promote_files_registered_in_last_run files with
+    let f _ { Dune_rpc.Promote_targets.files; matching } =
+      match Diff_promotion.promote_files_registered_in_last_run ~matching files with
       | [] -> Fiber.return Dune_rpc.Build_outcome_with_diagnostics.Success
       | missing ->
         let warnings =
@@ -450,7 +443,9 @@ let handler (t : _ t Fdecl.t) : 'build_arg Dune_rpc_server.Handler.t =
     let f _ path =
       let files = For_handlers.source_path_of_string path in
       let _ignored : Path.Source.t list =
-        Diff_promotion.promote_files_registered_in_last_run (These [ files ])
+        Diff_promotion.promote_files_registered_in_last_run
+          ~matching:Exact
+          (These [ files ])
       in
       Fiber.return ()
     in
@@ -467,7 +462,7 @@ let handler (t : _ t Fdecl.t) : 'build_arg Dune_rpc_server.Handler.t =
 let create ~lock_timeout ~registry ~root =
   let t = Fdecl.create Dyn.opaque in
   let pending_jobs = Job_queue.create () in
-  let handler = Dune_rpc_server.make (handler t) in
+  let handler = Rpc.Server.make (handler t) in
   let pool = Fiber.Pool.create () in
   let where = Where.default () in
   Global_lock.lock_exn ~timeout:lock_timeout;
@@ -476,7 +471,7 @@ let create ~lock_timeout ~registry ~root =
       (let socket_file = Where.rpc_socket_file () in
        Fpath.unlink_no_err (Path.Build.to_string socket_file);
        Path.mkdir_p (Path.build (Path.Build.parent_exn socket_file));
-       match Csexp_rpc.Server.create [ Where.to_socket where ] ~backlog:10 with
+       match Csexp_rpc.Server.create [ Where.to_socket where ] ~backlog:100 with
        | Ok s ->
          (match where with
           | `Ip _ -> Io.write_file (Path.build socket_file) (Where.to_string where)

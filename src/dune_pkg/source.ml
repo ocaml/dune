@@ -24,21 +24,12 @@ let equal
        other_checksum
 ;;
 
-let to_dyn { url = _loc, url; checksum } =
-  Dyn.record
-    [ "url", Dyn.string (OpamUrl.to_string url)
-    ; "checksum", Dyn.option (fun (_loc, checksum) -> Checksum.to_dyn checksum) checksum
-    ]
-;;
-
 let hash { url; checksum } =
   Tuple.T2.hash
     (Tuple.T2.hash Loc.hash OpamUrl.hash)
     (Option.hash (Tuple.T2.hash Loc.hash Checksum.hash))
     (url, checksum)
 ;;
-
-let digest_feed = Dune_digest.Feed.generic
 
 let fetch_archive_cached =
   let cache = Single_run_file_cache.create () in
@@ -161,6 +152,18 @@ let encode t =
   let open Encoder in
   named_record_fields Fields.fetch (encode_fetch_field t)
 ;;
+
+let repr =
+  let url_repr = Repr.view Repr.string ~to_:OpamUrl.to_string in
+  Repr.record
+    "source"
+    [ Repr.field "url" url_repr ~get:(fun t -> snd t.url)
+    ; Repr.field "checksum" (Repr.option Checksum.repr) ~get:(fun t ->
+        Option.map t.checksum ~f:snd)
+    ]
+;;
+
+let to_dyn = Repr.to_dyn repr
 
 let kind t =
   let _, url = t.url in

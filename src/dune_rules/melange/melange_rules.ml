@@ -179,6 +179,84 @@ let cmj_includes =
       ]
 ;;
 
+let make_same_lib_emission_deps =
+  let melange_cross_module_opt_enabled flags =
+    (* TODO(anmonteiro): cross-module-optimization could be a stanza field, eventually enabled by default *)
+    List.fold_left flags ~init:false ~f:(fun enabled flag ->
+      match flag with
+      | "--mel-cross-module-opt" | "-mel-cross-module-opt" -> true
+      | "--mel-no-cross-module-opt" | "-mel-no-cross-module-opt" -> false
+      | _ -> enabled)
+  in
+  let impl_dep_graph ~obj_dir ~modules =
+    let per_module =
+      Modules.With_vlib.obj_map modules
+      |> Module_name.Unique.Map.mapi ~f:(fun _ sourced_module ->
+        let module_ = Modules.Sourced_module.to_module sourced_module in
+        Dep_rules.read_immediate_deps_of ~obj_dir ~modules ~ml_kind:Impl ~for_ module_)
+    in
+    Dep_graph.make ~dir:(Obj_dir.dir obj_dir) ~per_module
+  in
+  let deps_of_impl_closure ~obj_dir modules =
+    let modules = Obj_dir.Module.L.cm_files obj_dir modules ~kind:(Melange Cmj) in
+    Dep.Set.of_files modules
+  in
+  let deps_of_xopt_closure ~obj_dir modules =
+    let cmj =
+      Obj_dir.Module.L.cm_files obj_dir modules ~kind:(Melange Cmj) |> Dep.Set.of_files
+    in
+    let cmi =
+      Obj_dir.Module.L.cm_files obj_dir modules ~kind:(Melange Cmi) |> Dep.Set.of_files
+    in
+    Dep.Set.union cmi cmj
+  in
+  fun ~obj_dir ~modules ~(compile_flags : Ocaml_flags.t) ->
+    let xopt_enabled =
+      Ocaml_flags.get compile_flags Melange
+      |> Action_builder.map ~f:melange_cross_module_opt_enabled
+    in
+    let dep_graph = impl_dep_graph ~obj_dir ~modules in
+    fun module_ ->
+      let open Action_builder.O in
+      xopt_enabled
+      >>= function
+      | true ->
+        let* intf_deps =
+          Dep_rules.read_deps_of ~obj_dir ~modules ~ml_kind:Intf module_ ~for_
+        in
+        (* Cross-module optimization follows implementation artifacts, but the
+         initial reachability also comes from the emitted module's interface
+         dependencies. Seed the implementation graph with that interface
+         closure so wrappers such as [Stdlib] stay visible to the emitter. *)
+        Dep_graph.top_closed_implementations dep_graph (module_ :: intf_deps)
+        |> Action_builder.map ~f:(deps_of_xopt_closure ~obj_dir)
+      | false ->
+        (* Emission reads same-library implementation artifacts recursively.
+           The generic [.impl.all-deps] files collapse transitive edges through
+           interfaces when a dependency has an [.mli], which is fine for
+           compilation but insufficient for JS emission. Follow the
+           implementation dependency graph directly instead. *)
+        Dep_graph.top_closed_implementations dep_graph [ module_ ]
+        |> Action_builder.map ~f:(deps_of_impl_closure ~obj_dir)
+;;
+
+let make_external_lib_emission_deps =
+  let cmj_glob = Glob.of_string_exn Loc.none "*.cmj" in
+  let cmi_glob = Glob.of_string_exn Loc.none "*.cmi" in
+  let deps_of_glob ~dirs glob =
+    List.map dirs ~f:(fun dir -> Dep.file_selector (File_selector.of_glob ~dir glob))
+    |> Dep.Set.of_list
+  in
+  fun ~obj_dir ->
+    let melange_obj_dirs = Obj_dir.all_obj_dirs obj_dir ~mode:Melange in
+    let deps =
+      Dep.Set.union
+        (deps_of_glob ~dirs:melange_obj_dirs cmj_glob)
+        (deps_of_glob ~dirs:melange_obj_dirs cmi_glob)
+    in
+    fun _module_ -> Action_builder.return deps
+;;
+
 let compile_info ~scope (mel : Melange_stanzas.Emit.t) =
   let dune_version = Scope.project scope |> Dune_project.dune_version in
   let+ pps =
@@ -298,7 +376,7 @@ let build_js
       ~sctx
       ~includes
       ~(compile_flags : Ocaml_flags.t)
-      ~local_modules_and_obj_dir
+      ~same_lib_emission_deps
       m
   =
   let project = Scope.project scope in
@@ -352,20 +430,10 @@ let build_js
           ; Dep src
           ]
       in
-      match local_modules_and_obj_dir with
-      | Some (modules, obj_dir) ->
-        With_targets.map_build command ~f:(fun command ->
-          let open Action_builder.O in
-          let paths =
-            let+ module_deps =
-              Dep_rules.read_deps_of ~obj_dir ~modules ~ml_kind:Impl m ~for_
-            in
-            List.filter_map module_deps ~f:(fun dep_m ->
-              let kind : Lib_mode.Cm_kind.t = Melange Cmj in
-              Obj_dir.Module.cm_file obj_dir dep_m ~kind |> Option.map ~f:Path.build)
-          in
-          Action_builder.dyn_paths_unit paths >>> command)
-      | None -> command
+      With_targets.map_build command ~f:(fun command ->
+        let open Action_builder.O in
+        let* same_lib_deps = same_lib_emission_deps m in
+        Action_builder.deps same_lib_deps >>> command)
     in
     let build =
       let open Action_builder.With_targets.O in
@@ -605,7 +673,7 @@ let setup_runtime_assets_rules
       >>= fun is_dir ->
       let dst, builder =
         match is_dir with
-        | Some (Ok true) -> Right dst, Action_builder.symlink_dir ~src ~dst
+        | Some (Ok true) -> Right dst, Action_builder.copy_dir ~src ~dst
         | Some (Ok false) | Some (Error _) | None ->
           Left dst, Action_builder.copy ~src ~dst
       in
@@ -621,7 +689,7 @@ let setup_runtime_assets_rules
         let rel = Path.reach ~from:src new_src in
         Path.Build.relative dst rel
       in
-      let builder = Action_builder.symlink_dir ~src:new_src ~dst in
+      let builder = Action_builder.copy_dir ~src:new_src ~dst in
       let builder =
         let open Action_builder.With_targets.O in
         builder >>| Action.Full.add_sandbox Sandbox_config.needs_sandboxing
@@ -688,8 +756,9 @@ let setup_entries_js
   let output = Output_kind.Private_library_or_emit target_dir in
   let obj_dir = Obj_dir.of_local local_obj_dir in
   let promote_in_source = should_promote_in_source scope in
-  let local_modules_and_obj_dir =
-    Some (Modules.With_vlib.modules local_modules, local_obj_dir)
+  let same_lib_emission_deps =
+    let modules = Modules.With_vlib.modules local_modules in
+    make_same_lib_emission_deps ~compile_flags ~modules ~obj_dir:local_obj_dir
   in
   let+ directory_targets =
     setup_runtime_assets_rules
@@ -717,27 +786,36 @@ let setup_entries_js
         ~sctx
         ~includes
         ~compile_flags
-        ~local_modules_and_obj_dir
+        ~same_lib_emission_deps
         m)
   in
   directory_targets
 ;;
 
 let setup_js_rules_libraries =
-  let local_modules_and_obj_dir ~lib modules =
-    Lib.Local.of_lib lib
-    |> Option.map ~f:(fun lib ->
-      let obj_dir = Lib.Local.obj_dir lib in
-      modules, obj_dir)
-  in
-  let parallel_build_source_modules ~sctx ~scope ~f:build_js lib =
-    let* local_modules_and_obj_dir, source_modules =
+  let parallel_build_source_modules ~compile_flags ~sctx ~scope ~f:build_js lib =
+    let* same_lib_emission_deps, source_modules =
       let+ lib_modules, source_modules =
         impl_only_modules_defined_in_this_lib ~sctx ~scope lib
       in
-      local_modules_and_obj_dir ~lib lib_modules, source_modules
+      let same_lib_emission_deps =
+        match Lib.Local.of_lib lib with
+        | None ->
+          (* Installed libraries may have private helper modules that are not
+             exposed through their installed module metadata. Conservatively
+             depend on all Melange object dirs so sandboxed emission can still
+             resolve same-library private modules and future cross-module
+             optimization has the interface metadata it needs. *)
+          make_external_lib_emission_deps ~obj_dir:(Lib_info.obj_dir (Lib.info lib))
+        | Some lib ->
+          make_same_lib_emission_deps
+            ~compile_flags
+            ~modules:lib_modules
+            ~obj_dir:(Lib.Local.obj_dir lib)
+      in
+      same_lib_emission_deps, source_modules
     in
-    Memo.parallel_iter source_modules ~f:(build_js ~local_modules_and_obj_dir)
+    Memo.parallel_iter source_modules ~f:(build_js ~same_lib_emission_deps)
   in
   fun ~dir ~scope ~target_dir ~sctx ~requires_link ~mode (mel : Melange_stanzas.Emit.t) ->
     let build_js = build_js ~sctx ~scope ~mode ~module_systems:mel.module_systems in
@@ -844,12 +922,14 @@ let setup_js_rules_libraries =
                  cmj_includes ~requires_link ~scope lib_config
                in
                parallel_build_source_modules
+                 ~compile_flags
                  ~sctx
                  ~scope
                  vlib
                  ~f:(build_js ~dir ~output:vlib_output ~includes ~compile_flags))
         and+ () =
           parallel_build_source_modules
+            ~compile_flags
             ~sctx
             ~scope
             lib

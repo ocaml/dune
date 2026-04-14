@@ -50,4 +50,4 @@ end
 
 val source_kind
   :  Dune_pkg.Source.t
-  -> [ `Local of [ `Directory | `File ] * Path.External.t | `Fetch ] Memo.t
+  -> [ `Local of [ `Directory | `File ] * Path.Outside_build_dir.t | `Fetch ] Memo.t

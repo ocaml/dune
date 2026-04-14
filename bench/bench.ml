@@ -5,7 +5,7 @@ module Process = Dune_engine.Process
 open Dune_scheduler
 
 module Console = struct
-  include Dune_console
+  include Console
 
   let printf fmt = printf ("[Bench] " ^^ fmt)
 end
@@ -61,7 +61,6 @@ module Package = struct
     }
 
   let uri { org; name } = sprintf "https://github.com/%s/%s" org name
-  let make org name = { org; name }
 
   let clone t =
     let stdout_to = make_stdout () in
@@ -78,10 +77,7 @@ module Package = struct
   ;;
 end
 
-let duniverse =
-  let pkg = Package.make in
-  [ pkg "ocaml-dune" "dune-bench" ]
-;;
+let duniverse = [ { Package.org = "ocaml"; name = "dune" } ]
 
 let prepare_workspace () =
   Fiber.parallel_iter duniverse ~f:(fun (pkg : Package.t) ->
@@ -240,7 +236,7 @@ let () =
     stat.st_size
   in
   let results =
-    Scheduler.Run.go config ~on_event:(fun _ _ -> ())
+    Scheduler.Run.go config ~on_event:(fun _ -> ())
     @@ fun () ->
     let open Fiber.O in
     (* Prepare the workspace *)

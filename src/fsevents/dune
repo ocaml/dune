@@ -1,9 +1,0 @@
-(library
- (name fsevents)
- (synopsis "minimal bindings for fsvents on macos")
- (library_flags
-  (:include flags/sexp))
- (foreign_stubs
-  (language c)
-  (names fsevents_stubs))
- (libraries dyn threads.posix stdune))

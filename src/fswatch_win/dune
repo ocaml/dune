@@ -1,6 +1,0 @@
-(library
- (name fswatch_win)
- (libraries dyn)
- (foreign_stubs
-  (language c)
-  (names fswatch_win_stubs)))

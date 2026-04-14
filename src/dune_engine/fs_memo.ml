@@ -1,5 +1,535 @@
 open Import
 open Memo.O
+module Digest_result = Dune_digest.Digest_result
+
+module Cached_digest = struct
+  module Reduced_stats = struct
+    type t =
+      { mtime : Time.t
+      ; size : int
+      ; perm : Unix.file_perm
+      ; dev : int
+      ; ino : int
+      }
+
+    let to_dyn { mtime; size; perm; dev; ino } =
+      Dyn.Record
+        [ "mtime", Int (Time.to_ns mtime)
+        ; "size", Int size
+        ; "perm", Int perm
+        ; "dev", Int.to_dyn dev
+        ; "ino", Int.to_dyn ino
+        ]
+    ;;
+
+    let of_stat (stat : Stat.t) =
+      { mtime = stat.mtime
+      ; size = stat.size
+      ; perm = stat.perm
+      ; dev = stat.dev
+      ; ino = stat.ino
+      }
+    ;;
+
+    let compare (t : t) x = Poly.compare t x
+  end
+
+  type file =
+    { mutable digest : Digest.t
+    ; mutable stats : Reduced_stats.t
+    ; mutable stats_checked : int
+    }
+
+  type t =
+    { mutable checked_key : int
+    ; mutable max_timestamp : Time.t
+    ; table : file Path.Table.t
+    }
+
+  let db_file = Path.relative Path.build_dir ".digest-db"
+
+  let dyn_of_file { digest; stats; stats_checked } =
+    Dyn.Record
+      [ "digest", Digest.to_dyn digest
+      ; "stats", Reduced_stats.to_dyn stats
+      ; "stats_checked", Int stats_checked
+      ]
+  ;;
+
+  let to_dyn { checked_key; max_timestamp; table } =
+    Dyn.Record
+      [ "checked_key", Int checked_key
+      ; "max_timestamp", Int (Time.to_ns max_timestamp)
+      ; "table", Path.Table.to_dyn dyn_of_file table
+      ]
+  ;;
+
+  module P = Persistent.Make (struct
+      type nonrec t = t
+
+      let name = "DIGEST-DB"
+      let version = 10
+      let sharing = true
+      let to_dyn = to_dyn
+    end)
+
+  let needs_dumping = ref false
+
+  (* CR-someday amokhov: replace this mutable table with a memoized function. This
+     will probably require splitting this module in two, for dealing with source
+     and target files, respectively. For source files, we receive updates via the
+     file-watching API. For target files, we modify the digests ourselves, without
+     subscribing for file-watching updates. *)
+  let cache =
+    lazy
+      (match P.load db_file with
+       | None ->
+         { checked_key = 0; table = Path.Table.create (); max_timestamp = Time.of_ns 0 }
+       | Some cache ->
+         cache.checked_key <- cache.checked_key + 1;
+         cache)
+  ;;
+
+  let get_current_filesystem_time () =
+    let special_path = Path.relative Path.build_dir ".filesystem-clock" in
+    Io.write_file special_path "<dummy>";
+    (Stat.stat (Path.to_string special_path)).mtime
+  ;;
+
+  let wait_for_fs_clock_to_advance () =
+    let t = get_current_filesystem_time () in
+    while get_current_filesystem_time () <= t do
+      (* This is a blocking wait but we don't care too much. This code is only
+       used in the test suite. *)
+      Unix.sleepf 0.01
+    done
+  ;;
+
+  let delete_very_recent_entries () =
+    let cache = Lazy.force cache in
+    if !Clflags.wait_for_filesystem_clock then wait_for_fs_clock_to_advance ();
+    let now = get_current_filesystem_time () in
+    (* We can only trust digests with timestamps in the past. We had issues in
+       the past with file systems having a slow internal clock, where we cached
+       digests too aggressively. *)
+    match Time.compare cache.max_timestamp now with
+    | Lt -> ()
+    | Eq | Gt ->
+      let filter (data : file) =
+        match Time.compare data.stats.mtime now with
+        | Lt -> true
+        | Gt | Eq -> false
+      in
+      (match Dune_trace.enabled Digest with
+       | false -> Path.Table.filter_inplace cache.table ~f:filter
+       | true ->
+         let dropped = ref [] in
+         Path.Table.filteri_inplace cache.table ~f:(fun ~key:path ~data ->
+           let filter = filter data in
+           if not filter then dropped := path :: !dropped;
+           filter);
+         (match !dropped with
+          | [] -> ()
+          | _ :: _ ->
+            Dune_trace.emit ~buffered:true Digest (fun () ->
+              Dune_trace.Event.Digest.dropped_stale_mtimes !dropped ~fs_now:now)))
+  ;;
+
+  let dump () =
+    if !needs_dumping && Path.build_dir_exists ()
+    then (
+      needs_dumping := false;
+      Console.Status_line.with_overlay
+        (Live (fun () -> Pp.hbox (Pp.text "Saving digest db...")))
+        ~f:(fun () ->
+          delete_very_recent_entries ();
+          P.dump db_file (Lazy.force cache)))
+  ;;
+
+  let () = At_exit.at_exit_ignore Dune_trace.at_exit dump
+
+  let invalidate_cached_timestamps () =
+    if Lazy.is_val cache
+    then (
+      let cache = Lazy.force cache in
+      cache.checked_key <- cache.checked_key + 1);
+    delete_very_recent_entries ()
+  ;;
+
+  let set_max_timestamp cache (stat : Stat.t) =
+    cache.max_timestamp <- Time.max cache.max_timestamp stat.mtime
+  ;;
+
+  let set_with_stat path digest stat =
+    let cache = Lazy.force cache in
+    needs_dumping := true;
+    set_max_timestamp cache stat;
+    Path.Table.set
+      cache.table
+      path
+      { digest; stats = Reduced_stats.of_stat stat; stats_checked = cache.checked_key }
+  ;;
+
+  let digest_path_with_stats path stats =
+    match
+      Digest.path_with_stats
+        ~allow_dirs:true
+        path
+        (Digest.Stats_for_digest.of_time_stat stats)
+    with
+    | Ok digest -> Ok digest
+    | Error Unexpected_kind -> Error (Digest_result.Error.Unexpected_kind stats.kind)
+    | Error (Unix_error (ENOENT, _, _)) -> Error No_such_file
+    | Error (Unix_error other_error) -> Error (Unix_error other_error)
+  ;;
+
+  (* Here we make only one [stat] call on the happy path. *)
+  let refresh =
+    let refresh_sync stats path =
+      (* Note that by the time we reach this point, [stats] may become stale due to
+         concurrent processes modifying the [path], so this function can actually
+         return [No_such_file] even if the caller managed to obtain the [stats]. *)
+      let result = digest_path_with_stats path stats in
+      Result.iter result ~f:(fun digest -> set_with_stat path digest stats);
+      result
+    in
+    fun path ->
+      let path_string = Path.to_string path in
+      Digest_result.catch_fs_errors (fun () ->
+        match Stat.stat path_string with
+        | stats -> refresh_sync stats path
+        | exception Unix.Unix_error (ENOENT, _, _) ->
+          (* Test if this is a broken symlink for better error messages. *)
+          (match Unix.lstat path_string with
+           | exception Unix.Unix_error (ENOENT, _, _) -> Error No_such_file
+           | _stats_so_must_be_a_symlink -> Error Broken_symlink))
+  ;;
+
+  let peek_file path =
+    let cache = Lazy.force cache in
+    match Path.Table.find cache.table path with
+    | None -> None
+    | Some x ->
+      Some
+        (if x.stats_checked = cache.checked_key
+         then Ok x.digest
+         else (
+           (* The [stat] below follows symlinks. *)
+           let path_string = Path.to_string path in
+           match
+             Dune_digest.Digest_result.catch_fs_errors (fun () ->
+               match Stat.stat path_string with
+               | exception Unix.Unix_error (ENOENT, _, _) -> Error No_such_file
+               | stats -> Ok stats)
+           with
+           | Error e -> Error e
+           | Ok stats ->
+             let reduced_stats = Reduced_stats.of_stat stats in
+             (match Reduced_stats.compare x.stats reduced_stats with
+              | Eq ->
+                (* Even though we're modifying the [stats_checked] field, we don't
+                   need to set [needs_dumping := true] here. This is because
+                   [checked_key] is incremented every time we load from disk, which
+                   makes it so that [stats_checked < checked_key] for all entries
+                   after loading, regardless of whether we save the new value here
+                   or not. *)
+                x.stats_checked <- cache.checked_key;
+                Ok x.digest
+              | Gt | Lt ->
+                let digest_result = digest_path_with_stats path stats in
+                Result.iter digest_result ~f:(fun digest ->
+                  Dune_trace.emit ~buffered:true Digest (fun () ->
+                    Dune_trace.Event.Digest.redigest
+                      ~path
+                      ~old_digest:(Digest.to_string x.digest)
+                      ~new_digest:(Digest.to_string digest)
+                      ~old_stats:(Reduced_stats.to_dyn x.stats)
+                      ~new_stats:(Reduced_stats.to_dyn reduced_stats));
+                  needs_dumping := true;
+                  set_max_timestamp cache stats;
+                  x.digest <- digest;
+                  x.stats <- reduced_stats;
+                  x.stats_checked <- cache.checked_key);
+                digest_result)))
+  ;;
+
+  module Untracked = struct
+    let source_or_external_file path =
+      let path = Path.outside_build_dir path in
+      match peek_file path with
+      | Some digest_result -> digest_result
+      | None -> refresh path
+    ;;
+
+    let invalidate_cached_timestamp path =
+      let path = Path.outside_build_dir path in
+      let cache = Lazy.force cache in
+      match Path.Table.find cache.table path with
+      | None -> ()
+      | Some entry ->
+        (* Make [stats_checked] unequal to [cache.checked_key] so that [peek_file]
+         is forced to re-[stat] the [path]. *)
+        let entry = { entry with stats_checked = cache.checked_key - 1 } in
+        Path.Table.set cache.table path entry
+    ;;
+  end
+
+  let load () = P.load db_file
+
+  let entries { table; _ } =
+    let entries = ref [] in
+    Path.Table.filteri_inplace table ~f:(fun ~key ~data ->
+      entries := (key, data) :: !entries;
+      true);
+    List.sort !entries ~compare:(fun (path_a, _) (path_b, _) ->
+      Path.compare path_a path_b)
+  ;;
+end
+
+let invalidate_cached_timestamps = Cached_digest.invalidate_cached_timestamps
+
+module Debug = struct
+  type selector =
+    | Exact of Path.t
+    | Direct_children_of of Path.t
+
+  let selectors paths =
+    List.map paths ~f:(fun path ->
+      match
+        Unix_error.Detailed.catch (fun path -> Unix.stat (Path.to_string path)) path
+      with
+      | Ok { Unix.st_kind = S_DIR; _ } -> Direct_children_of path
+      | Ok { Unix.st_kind = _; _ } | Error _ -> Exact path)
+  ;;
+
+  let matches selectors path =
+    match selectors with
+    | [] -> true
+    | selectors ->
+      List.exists selectors ~f:(function
+        | Exact selected -> Path.equal path selected
+        | Direct_children_of dir ->
+          (match Path.parent path with
+           | Some parent -> Path.equal parent dir
+           | None -> false))
+  ;;
+
+  let selected_entries db paths =
+    let selectors = selectors paths in
+    Cached_digest.entries db |> List.filter ~f:(fun (path, _) -> matches selectors path)
+  ;;
+
+  let entry_to_dyn path (file : Cached_digest.file) =
+    let { Cached_digest.digest; stats; stats_checked } = file in
+    Dyn.Record
+      [ "path", Path.to_dyn path
+      ; "digest", Digest.to_dyn digest
+      ; "stats", Cached_digest.Reduced_stats.to_dyn stats
+      ; "stats_checked", Dyn.Int stats_checked
+      ]
+  ;;
+
+  let load_exn () =
+    match Cached_digest.load () with
+    | Some db -> db
+    | None ->
+      User_error.raise
+        [ Pp.textf
+            "No digest database found at %s"
+            (Path.to_string_maybe_quoted Cached_digest.db_file)
+        ]
+  ;;
+
+  let dump_digest_db paths =
+    let db = load_exn () in
+    let { Cached_digest.checked_key; max_timestamp; _ } = db in
+    let entries =
+      selected_entries db paths
+      |> List.map ~f:(fun (path, file) -> entry_to_dyn path file)
+    in
+    Dyn.Record
+      [ "checked_key", Int checked_key
+      ; "max_timestamp", Int (Time.to_ns max_timestamp)
+      ; "entries", List entries
+      ]
+  ;;
+
+  let current_digest path =
+    let path_string = Path.to_string path in
+    match
+      Digest_result.catch_fs_errors (fun () ->
+        match Stat.stat path_string with
+        | stats ->
+          Ok
+            ( Some (Cached_digest.Reduced_stats.of_stat stats)
+            , Cached_digest.digest_path_with_stats path stats )
+        | exception Unix.Unix_error (ENOENT, _, _) ->
+          (match Unix.lstat path_string with
+           | exception Unix.Unix_error (ENOENT, _, _) ->
+             Error Digest_result.Error.No_such_file
+           | _ -> Error Digest_result.Error.Broken_symlink))
+    with
+    | Ok current -> current
+    | Error error -> None, Error error
+  ;;
+
+  let finding_to_dyn path ~status ~(cached_digest : Digest.t) ~actual =
+    Dyn.Record
+      [ "status", String status
+      ; "path", Path.to_dyn path
+      ; "cached_digest", Digest.to_dyn cached_digest
+      ; "actual", Digest_result.to_dyn actual
+      ]
+  ;;
+
+  let check_digest_db paths =
+    let db = load_exn () in
+    selected_entries db paths
+    |> List.filter_map ~f:(fun (path, file) ->
+      let { Cached_digest.digest = cached_digest; stats; stats_checked = _ } = file in
+      let current_stats, actual = current_digest path in
+      if Digest_result.equal actual (Ok cached_digest)
+      then None
+      else (
+        let status =
+          match current_stats with
+          | Some current_stats
+            when Cached_digest.Reduced_stats.compare stats current_stats = Eq -> "invalid"
+          | Some _ | None -> "stale"
+        in
+        Some (finding_to_dyn path ~status ~cached_digest ~actual)))
+    |> fun findings -> Dyn.List findings
+  ;;
+end
+
+module Dir_contents = struct
+  (* CR-someday amokhov: Using a [Filename.Map] instead of a list would be better
+     since we'll not need to worry about the invariant that the list is sorted
+     and doesn't contain any duplicate file names. Using maps will likely be
+     more costly, so we need to do some benchmarking before switching. *)
+  type t = (Filename.t * File_kind.t) list
+
+  let to_list t = t
+  let iter t = List.iter t
+
+  (* The names must be unique, so we don't care about comparing file kinds. *)
+  let of_list = List.sort ~compare:(fun (x, _) (y, _) -> Filename.compare x y)
+  let equal = List.equal (Tuple.T2.equal Filename.equal File_kind.equal)
+end
+
+(* This module caches only a subset of fields of [Unix.stats] because other
+   fields are currently unused.
+
+   Note that we specifically do not want to cache [mtime] and [ctime] because
+   these fields can change too often: for example, when a temporary file is
+   created in a watched directory. *)
+module Reduced_stats = struct
+  type t =
+    { st_dev : int
+    ; st_ino : int
+    ; st_kind : Unix.file_kind
+    }
+
+  let of_unix_stats { Unix.st_dev; st_ino; st_kind; _ } = { st_dev; st_ino; st_kind }
+
+  let equal x y =
+    Int.equal x.st_dev y.st_dev
+    && Int.equal x.st_ino y.st_ino
+    && File_kind.equal x.st_kind y.st_kind
+  ;;
+end
+
+module Fs_cache = struct
+  (* CR-someday amokhov: Persistently store the caches of (some?) operations. *)
+
+  (* CR-someday amokhov: Implement garbage collection. *)
+
+  (** A cached file-system operation on a [Path.Outside_build_dir.t] whose result
+    type is ['a]. For example, an operation to check if a path exists returns
+    ['a = bool].
+
+    Currently we do not expose a way to construct such cached operations; see
+    the [Untracked] module for a few predefined ones. *)
+
+  type 'a t =
+    { name : string (* For debugging *)
+    ; sample : Path.Outside_build_dir.t -> 'a
+    ; cache : 'a Path.Outside_build_dir.Table.t
+    ; equal : 'a -> 'a -> bool (* Used to implement cutoff *)
+    }
+
+  let create name ~sample ~equal : 'a t =
+    { name; sample; equal; cache = Path.Outside_build_dir.Table.create 128 }
+  ;;
+
+  (* If the cache contains the result of applying an operation to a path, return
+     it. Otherwise, perform the operation, store the result in the cache, and
+     then return it. *)
+  let read { sample; cache; _ } path =
+    match Path.Outside_build_dir.Table.find cache path with
+    | Some cached_result -> cached_result
+    | None ->
+      let result = sample path in
+      Path.Outside_build_dir.Table.add_exn cache path result;
+      result
+  ;;
+
+  let evict { cache; _ } path = Path.Outside_build_dir.Table.remove cache path
+
+  let update { sample; cache; equal; name } path =
+    let result =
+      match Path.Outside_build_dir.Table.find cache path with
+      | None -> `Skipped
+      | Some old_result ->
+        let new_result = sample path in
+        if equal old_result new_result
+        then `Unchanged
+        else (
+          Path.Outside_build_dir.Table.set cache path new_result;
+          `Changed)
+    in
+    Dune_trace.emit ~buffered:true Cache (fun () ->
+      Dune_trace.Event.Cache.fs_update ~cache_type:name ~path result);
+    result
+  ;;
+
+  module Untracked = struct
+    (* A few predefined cached operations. They are "untracked" in the sense that
+       the user is responsible for tracking the file system and manually calling
+       the [update] function to bring the stored results up to date.
+
+       See later in this module for tracked versions of these operations. *)
+    let path_stat =
+      let sample path =
+        Path.outside_build_dir path
+        |> Path.Untracked.stat
+        |> Result.map ~f:Reduced_stats.of_unix_stats
+      in
+      create
+        "path_stat"
+        ~sample
+        ~equal:(Result.equal Reduced_stats.equal Unix_error.Detailed.equal)
+    ;;
+
+    (* CR-someday amokhov: There is an overlap in functionality between this
+       module and [cached_digest.ml]. In particular, digests are stored twice,
+      in two separate tables. We should find a way to merge the tables into one.
+    *)
+    let file_digest =
+      let sample p = Cached_digest.Untracked.source_or_external_file p in
+      create "file_digest" ~sample ~equal:Digest_result.equal
+    ;;
+
+    let dir_contents =
+      create
+        "dir_contents"
+        ~sample:(fun path ->
+          Path.Untracked.readdir_unsorted_with_kinds (Path.outside_build_dir path)
+          |> Result.map ~f:Dir_contents.of_list)
+        ~equal:(Result.equal Dir_contents.equal Unix_error.Detailed.equal)
+    ;;
+  end
+end
 
 (* Watching and invalidating paths. *)
 module Watcher : sig
@@ -135,30 +665,16 @@ end = struct
     | true -> Memo.exec memo_for_watching_via_parent path
   ;;
 
-  module Update_all = Monoid.Function (Path.Outside_build_dir) (Fs_cache.Update_result)
-
-  let update_all : Path.Outside_build_dir.t -> Fs_cache.Update_result.t =
-    let update t path =
-      let result = Fs_cache.update t path in
-      Dune_trace.emit ~buffered:true Cache (fun () ->
-        let cache_type = Fs_cache.Debug.name t in
-        let result =
-          match result with
-          | Fs_cache.Update_result.Skipped -> `Skipped
-          | Updated { changed = true } -> `Changed
-          | Updated { changed = false } -> `Unchanged
-        in
-        Dune_trace.Event.Cache.fs_update ~cache_type ~path result);
-      result
-    in
-    fun p ->
-      let all =
-        [ update Fs_cache.Untracked.path_stat
-        ; update Fs_cache.Untracked.file_digest
-        ; update Fs_cache.Untracked.dir_contents
-        ]
-      in
-      Update_all.reduce all p
+  let update_all p =
+    Cached_digest.Untracked.invalidate_cached_timestamp p;
+    let dir_contents = Fs_cache.(update Untracked.dir_contents) p in
+    let digest = Fs_cache.(update Untracked.file_digest) p in
+    let stat = Fs_cache.(update Untracked.path_stat) p in
+    List.fold_left [ stat; digest; dir_contents ] ~init:`Skipped ~f:(fun x y ->
+      match x, y with
+      | `Skipped, res | res, `Skipped -> res
+      | `Changed, _ | _, `Changed -> `Changed
+      | `Unchanged, `Unchanged -> `Unchanged)
   ;;
 
   (* CR-someday amokhov: We share Memo tables for tracking different file-system
@@ -168,8 +684,8 @@ end = struct
      [Memo.create_with_store]. *)
   let invalidate path =
     match update_all path with
-    | Skipped | Updated { changed = false } -> Memo.Invalidation.empty
-    | Updated { changed = true } ->
+    | `Skipped | `Unchanged -> Memo.Invalidation.empty
+    | `Changed ->
       let reason : Memo.Invalidation.Reason.t =
         Path_changed (Path.outside_build_dir path)
       in
@@ -298,13 +814,9 @@ let file_digest ?(force_update = false) path =
   Fs_cache.read Fs_cache.Untracked.file_digest path
 ;;
 
-let file_digest_exn ?loc path =
+let file_digest_exn ~loc path =
   let report_user_error details =
-    let+ loc =
-      match loc with
-      | None -> Memo.return None
-      | Some loc -> loc ()
-    in
+    let+ loc = loc () in
     User_error.raise
       ?loc
       ([ Pp.textf
@@ -316,16 +828,10 @@ let file_digest_exn ?loc path =
   file_digest path
   >>= function
   | Ok digest -> Memo.return digest
-  | Error No_such_file -> report_user_error []
-  | Error Broken_symlink -> report_user_error [ Pp.text "Broken symbolic link" ]
-  | Error Cyclic_symlink -> report_user_error [ Pp.text "Cyclic symbolic link" ]
-  | Error (Unexpected_kind st_kind) ->
-    report_user_error
-      [ Pp.textf "This is not a regular file (%s)" (File_kind.to_string st_kind) ]
-  | Error (Unix_error unix_error) ->
-    report_user_error [ Unix_error.Detailed.pp_reason unix_error ]
-  | Error (Unrecognized exn) ->
-    report_user_error [ Pp.textf "%s" (Printexc.to_string exn) ]
+  | Error e ->
+    if Digest_result.Error.no_such_file e
+    then report_user_error []
+    else report_user_error [ Digest_result.Error.pp e (Path.outside_build_dir path) ]
 ;;
 
 let dir_contents ?(force_update = false) path =
@@ -343,9 +849,7 @@ let tracking_file_digest path =
   (* This is a bit of a hack. By reading [file_digest], we cause the [path] to
      be recorded in the [Fs_cache.Untracked.file_digest], so the build will be
      restarted if the digest changes. *)
-  let (_ : Cached_digest.Digest_result.t) =
-    Fs_cache.read Fs_cache.Untracked.file_digest path
-  in
+  let (_ : Digest_result.t) = Fs_cache.read Fs_cache.Untracked.file_digest path in
   ()
 ;;
 
@@ -401,3 +905,8 @@ let init = Watcher.init
 
 (* Register the Fs_memo implementation with the scheduler *)
 let () = Dune_scheduler.Scheduler.set_fs_memo_impl ~handle_fs_event ~init
+
+module Untracked = struct
+  let file_digest = Fs_cache.read Fs_cache.Untracked.file_digest
+  let path_stat = Fs_cache.read Fs_cache.Untracked.path_stat
+end

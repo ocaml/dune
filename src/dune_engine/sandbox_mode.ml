@@ -30,6 +30,17 @@ let equal a b =
   | Lt | Gt -> false
 ;;
 
+let repr =
+  Repr.variant
+    "sandbox-mode"
+    [ Repr.case0 "None" ~test:(equal None)
+    ; Repr.case0 "Symlink" ~test:(equal (Some Symlink))
+    ; Repr.case0 "Copy" ~test:(equal (Some Copy))
+    ; Repr.case0 "Hardlink" ~test:(equal (Some Hardlink))
+    ; Repr.case0 "Patch_back_source_tree" ~test:(equal (Some Patch_back_source_tree))
+    ]
+;;
+
 let to_dyn =
   Dyn.option (function
     | Symlink -> Variant ("Symlink", [])
@@ -106,12 +117,17 @@ module Set = struct
   let is_patch_back_source_tree_only t = t = patch_back_source_tree_only
 end
 
+(* All user-facing modes, excluding patch_back_source_tree. Includes symlink
+   on all platforms so that Windows users get a clear error message. *)
+let cli_options = [ None; Some Symlink; Some Copy; Some Hardlink ]
+
 (* The order of sandboxing modes in this list determines the order in which Dune
-   will try to use them when satisfying sandboxing constraints. *)
+   will try to use them when satisfying sandboxing constraints. On Windows,
+   symlink is excluded since it is not supported. *)
 let all_except_patch_back_source_tree =
   if Sys.win32
-  then [ None; Some Copy; Some Symlink; Some Hardlink ]
-  else [ None; Some Symlink; Some Copy; Some Hardlink ]
+  then List.filter cli_options ~f:(fun m -> m <> Some Symlink)
+  else cli_options
 ;;
 
 let all = all_except_patch_back_source_tree @ [ Some Patch_back_source_tree ]

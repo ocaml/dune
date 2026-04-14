@@ -215,7 +215,9 @@ let get_with_path =
            Pp.textf "read lock directory %s" (Path.to_string_maybe_quoted p))
          "read-lock-dir"
          ~input:(module Path)
-         Load.load)
+         (fun path ->
+            let* () = Build_system.build_dir path in
+            Load.load path))
   in
   Per_context.create_by_name ~name:"lock-dir-get" (fun ctx ->
     Memo.lazy_ (fun () ->
@@ -228,7 +230,6 @@ let get_with_path =
             "No lock dir path for context available"
             [ "context", Context_name.to_dyn ctx ]
       in
-      let* () = Build_system.build_dir path in
       read_lockdir path
       >>= function
       | Error e -> Memo.return (Error e)
@@ -308,17 +309,33 @@ let source_kind (source : Dune_pkg.Source.t) =
   let loc, url = source.url in
   if OpamUrl.is_local url && url.backend = `rsync
   then (
-    let path = Path.External.of_string url.path in
-    Fs_memo.path_kind (External path)
+    let path =
+      match Path.of_string_allow_outside_workspace url.path with
+      | External e -> Path.Outside_build_dir.External e
+      | In_source_tree s -> Path.Outside_build_dir.In_source_dir s
+      | In_build_dir b ->
+        User_error.raise
+          ~loc
+          [ Pp.textf
+              "package source path %s is inside the build directory"
+              (Path.Build.to_string_maybe_quoted b)
+          ]
+    in
+    Fs_memo.path_kind path
     >>| function
     | Error (ENOENT, _, _) ->
       User_error.raise
         ~loc
-        [ Pp.textf "%s does not exist" (Path.External.to_string_maybe_quoted path) ]
+        [ Pp.textf
+            "%s does not exist"
+            (Path.Outside_build_dir.to_string_maybe_quoted path)
+        ]
     | Error exn ->
       User_error.raise
         ~loc
-        [ Pp.textf "unable to read %s" (Path.External.to_string_maybe_quoted path)
+        [ Pp.textf
+            "unable to read %s"
+            (Path.Outside_build_dir.to_string_maybe_quoted path)
         ; Unix_error.Detailed.pp exn
         ]
     | Ok S_REG -> `Local (`File, path)
@@ -328,7 +345,7 @@ let source_kind (source : Dune_pkg.Source.t) =
         ~loc
         [ Pp.textf
             "path %s is not a directory or a file"
-            (Path.External.to_string_maybe_quoted path)
+            (Path.Outside_build_dir.to_string_maybe_quoted path)
         ])
   else Memo.return `Fetch
 ;;

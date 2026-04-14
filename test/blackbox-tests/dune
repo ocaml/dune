@@ -17,22 +17,15 @@
  (action
   (run %{bin:shellcheck} -s bash %{deps})))
 
-;; A list of tests that do not contain descriptions. This file should not not
-;; grow, only shrink. Once it is empty, it will become an error to introduce
-;; tests that do not have a description
+;; This rule is here to make sure that all of our tests have descriptions
 
 (rule
- (target lacking-description)
+ (alias runtest)
+ (enabled_if %{bin-available:rg})
  (deps
   %{bin:rg}
   ;; CR-someday rgrinberg: we need a recursive glob for source_tree
   (source_tree test-cases))
- (mode promote)
  (action
   (system
-   "rg --files-without-match '^\\S' --glob \"*.t\" --glob \"!*coq*\" --glob \"!*rocq*\" --sort=path . > %{target}")))
-
-(alias
- (enabled_if %{bin-available:rg})
- (name runtest)
- (deps lacking-description))
+   "rg -L --files-without-match '^\\S' --glob \"*.t\" --glob \"!*coq*\" --glob \"!*rocq*\"; [ $? -eq 1 ]")))

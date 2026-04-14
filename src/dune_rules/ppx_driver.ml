@@ -62,7 +62,11 @@ end = struct
   let reverse_table : (Digest.t, Decoded.t) Table.t = Table.create (module Digest) 128
 
   let encode ({ Decoded.pps; project_root } as x) =
-    let y = Digest.generic (pps, project_root) in
+    let y =
+      Digest.repr
+        Repr.(pair (list Lib_name.repr) (option Path.Source.repr))
+        (pps, project_root)
+    in
     match Table.find reverse_table y with
     | None ->
       Table.set reverse_table y x;
@@ -414,7 +418,9 @@ let ppx_driver_and_flags_internal
       Action_builder.List.concat_map flags ~f:(Expander.expand ~mode:Many expander)
       |> Action_builder.map
            ~f:(List.map ~f:(Value.to_string ~dir:(Path.build @@ Expander.dir expander)))
-  and+ cookies = Action_builder.of_memo (get_cookies ~loc ~lib_name ~expander libs)
+  and+ cookies =
+    let* libs = Resolve.Memo.read (Lib.closure libs ~linking:true ~for_) in
+    Action_builder.of_memo (get_cookies ~loc ~lib_name ~expander libs)
   and+ ppx_driver_exe = Action_builder.of_memo @@ ppx_driver_exe context libs in
   ppx_driver_exe, flags @ cookies
 ;;

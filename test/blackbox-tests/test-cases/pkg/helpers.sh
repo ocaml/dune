@@ -55,12 +55,6 @@ show_pkg() {
   find "$prefix" | sort | dune_cmd subst "$prefix" ""
 }
 
-strip_sandbox() {
-  # we want to substitute it to $SANDBOX
-  # shellcheck disable=SC2016
-  dune_cmd subst '[^ ]*.sandbox/[^/]+' '$SANDBOX'
-}
-
 show_pkg_targets() {
   local pkg=$1
   local prefix
@@ -70,7 +64,7 @@ show_pkg_targets() {
 
 show_pkg_cookie() {
   local pkg=$1
-  $dune internal dump "$(get_build_pkg_dir "$pkg")/target/cookie"
+  $dune internal dump "$(get_build_pkg_dir "$pkg")/target/cookie" 2>&1 | censor
 }
 
 mkrepo() {

@@ -28,3 +28,5 @@ val garbage_collect : unit -> Trimming_result.t
 (** Compute the "overhead size" of the cache, that is, the total size of files
     in the cache that are not hardlinked from any build directory. *)
 val overhead_size : unit -> int64
+
+val clear : unit -> unit

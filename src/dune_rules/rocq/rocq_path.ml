@@ -36,11 +36,11 @@ let config_path_exn rocq_config key =
        (* This should never happen *)
        Code_error.raise "key is not a path" [ key, Rocq_config.Value.to_dyn path ])
   | None ->
-    (* This happens if the output of rocq --config doesn't include the key *)
+    (* This happens if the output of rocq c --config doesn't include the key *)
     User_error.raise
       [ Pp.concat
           ~sep:Pp.space
-          [ Pp.text "key not found from"; User_message.command "rocq --config" ]
+          [ Pp.text "key not found from"; User_message.command "rocq c --config" ]
         |> Pp.hovbox
       ; Pp.text key
       ]
@@ -54,7 +54,7 @@ let scan_vo ~dir dir_contents =
     match kind with
     (* Skip some files as Rocq does, for now files with '-' *)
     | _ when String.contains d '-' -> None
-    | (File_kind.S_REG | S_LNK) when Filename.check_suffix d ".vo" ->
+    | (File_kind.S_REG | S_LNK) when String.ends_with ~suffix:".vo" d ->
       Some (Path.relative dir d)
     | _ -> None
   in
@@ -95,7 +95,7 @@ let rec scan_path ~(f : ('prefix, 'res) Scan_action.t) ~acc ~prefix ~dir dir_con
       (match dir_contents with
        | Error _ -> Memo.return []
        | Ok dir_contents ->
-         let dir_contents = Fs_cache.Dir_contents.to_list dir_contents in
+         let dir_contents = Fs_memo.Dir_contents.to_list dir_contents in
          let prefix = acc prefix d in
          let* subresults = scan_path ~f ~acc ~prefix ~dir dir_contents in
          f ~dir ~prefix ~subresults dir_contents)
@@ -110,7 +110,7 @@ let scan_path ~f ~acc ~prefix dir =
   match dir_contents with
   | Error _ -> Memo.return []
   | Ok dir_contents ->
-    let dir_contents = Fs_cache.Dir_contents.to_list dir_contents in
+    let dir_contents = Fs_memo.Dir_contents.to_list dir_contents in
     scan_path ~f ~acc ~prefix ~dir dir_contents
 ;;
 
@@ -144,7 +144,7 @@ let of_rocq_install rocq =
       [ Pp.concat
           ~sep:Pp.space
           [ Pp.text "Skipping installed theories due to"
-          ; User_message.command "rocq --config"
+          ; User_message.command "rocq c --config"
           ; Pp.text "failure:"
           ]
         |> Pp.hovbox
@@ -154,7 +154,7 @@ let of_rocq_install rocq =
         [ Pp.concat
             ~sep:Pp.space
             [ Pp.text "Try running"
-            ; User_message.command "rocq --config"
+            ; User_message.command "rocq c --config"
             ; Pp.text "manually to see the error."
             ]
           |> Pp.hovbox

@@ -42,9 +42,9 @@ the current digests for both files match those computed by Jenga.
 
   $ dune build exe non-exe
 
-  $ (cd "$PWD/.xdg-cache/dune/db/files/v4"; grep -rws . -e 'content' | sort)
-  ./5e/5ef8de0800908475d94747fef67940ed:content
-  ./e2/e293405959cb01f8de0d237b687714c8:content
+  $ (cd "$PWD/.xdg-cache/dune/db/files/v4"; grep -rws . -e 'content' | sort | censor)
+  ./5e/$DIGEST:content
+  ./e2/$DIGEST:content
 
 Move all current entries to v3 and v4 to test trimming of old versions of cache.
 
@@ -77,9 +77,9 @@ You will also need to make sure that the cache trimmer treats new and old cache
 entries uniformly.
 
   $ (cd "$PWD/.xdg-cache/dune/db/meta/v5"; grep -rws . -e 'metadata' | sort ) > out
-  $ cat out
-  ./62/62b3d3204298795e1dc06d2ad898320c:((8:metadata)(5:files(8:target_b32:d5b73f7b5d75090e1da54099e4458db3)))
-  ./92/9205b2a6c2a50c99556a20c05b6471f8:((8:metadata)(5:files(8:target_a32:7b362c0c7d2035084c9fc2d0e6815be5)))
+  $ cat out | censor
+  ./59/$DIGEST:((8:metadata)(5:files(8:target_b32:$DIGEST)))
+  ./78/$DIGEST:((8:metadata)(5:files(8:target_a32:$DIGEST)))
 
   $ digest="$(awk -F: '/target_b/ { digest=$1 } END { print digest }' < out)"
 
@@ -105,7 +105,7 @@ all metadata entries in [meta/v4] since they are broken: remember, we moved all
 If we unlink a file in the build tree, then the corresponding file entry will be
 trimmed.
 
-  $ rm -f _build/default/target_a _build/default/beacon_a _build/default/beacon_b
+  $ dune clean _build/default/target_a _build/default/beacon_a _build/default/beacon_b
   $ dune cache trim --trimmed-size 1B
   Freed 79B (2 files removed)
   $ dune build target_a target_b
@@ -143,15 +143,16 @@ The cache deletes oldest files first.
   $ reset
   $ dune build target_a target_b
 
-The [rm] commands below update the [ctime] of the corresponding cache entries.
+The [dune clean] commands below update the [ctime] of the corresponding cache
+entries.
 By deleting [target_b] first, we make its [ctime] older. The trimmer deletes
 older entries first, which is why [target_b] is trimmed while [target_a] is not.
 We know that [target_b] was trimmed, because it had to be rebuilt as indicated
 by the existence of [beacon_b].
 
-  $ rm -f _build/default/beacon_b _build/default/target_b
+  $ dune clean _build/default/beacon_b _build/default/target_b
   $ dune_cmd wait-for-fs-clock-to-advance
-  $ rm -f _build/default/beacon_a _build/default/target_a
+  $ dune clean _build/default/beacon_a _build/default/target_a
   $ dune cache trim --trimmed-size 1B
   Freed 79B (2 files removed)
   $ dune build target_a target_b
@@ -169,9 +170,9 @@ thus making the trimmer delete [target_a] instead of [target_b] as above.
 
   $ reset
   $ dune build target_a target_b
-  $ rm -f _build/default/beacon_a _build/default/target_a
+  $ dune clean _build/default/beacon_a _build/default/target_a
   $ dune_cmd wait-for-fs-clock-to-advance
-  $ rm -f _build/default/beacon_b _build/default/target_b
+  $ dune clean _build/default/beacon_b _build/default/target_b
   $ dune cache trim --trimmed-size 1B
   Freed 79B (2 files removed)
   $ dune build target_a target_b
@@ -189,7 +190,7 @@ are part of the same rule.
 
   $ reset
   $ dune build multi_a multi_b
-  $ rm -f _build/default/multi_a _build/default/multi_b
+  $ dune clean _build/default/multi_a _build/default/multi_b
   $ dune cache trim --trimmed-size 1B
   Freed 123B (2 files removed)
 

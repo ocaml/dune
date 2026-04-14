@@ -91,21 +91,59 @@ let default_build_command =
                subst
                promote_install_files
                install)))
+  and from_3_23 ~with_subst ~with_sites ~runtest =
+    let subst = if with_subst then {|  [ "dune" "subst" ] {dev} |} else "" in
+    let promote_install_files =
+      if with_sites then {|  "--promote-install-files=false" |} else ""
+    in
+    let install =
+      if with_sites
+      then {| [ "dune" "install" "-p" name "--create-install-files" name ] |}
+      else ""
+    in
+    lazy
+      (Opam_file.parse_value
+         (Lexbuf.from_string
+            ~fname:"<internal>"
+            (Printf.sprintf
+               {|
+[
+  %s
+  [ "dune" "build" "-p" name "-j" jobs %s
+      "%s" {with-test}
+      "@doc" {with-doc}
+  ]
+  %s
+]
+|}
+               subst
+               promote_install_files
+               runtest
+               install)))
   in
-  fun project ->
+  fun project package ->
+    let version = Dune_project.dune_version project in
+    let with_subst = Toggle.enabled (snd (Dune_project.subst_config project)) in
+    let with_sites = Dune_project.(is_extension_set project dune_site_extension) in
     Lazy.force
-      (if Dune_project.dune_version project < (1, 11)
+      (if version < (1, 11)
        then before_1_11
-       else if Dune_project.dune_version project < (2, 7)
+       else if version < (2, 7)
        then from_1_11_before_2_7
-       else if Dune_project.dune_version project < (2, 9)
+       else if version < (2, 9)
        then from_2_7
-       else if Dune_project.dune_version project < (3, 0)
+       else if version < (3, 0)
        then from_2_9
-       else
-         from_3_0
-           ~with_subst:(Toggle.enabled (snd (Dune_project.subst_config project)))
-           ~with_sites:Dune_project.(is_extension_set project dune_site_extension))
+       else if version < (3, 23)
+       then from_3_0 ~with_subst ~with_sites
+       else (
+         match Package.exclusive_dir package with
+         | None -> from_3_0 ~with_subst ~with_sites
+         | Some (_loc, dir) ->
+           from_3_23
+             ~with_subst
+             ~with_sites
+             ~runtest:("@runtest/" ^ Path.Source.to_string dir)))
 ;;
 
 let var_of_sw sw : Package_constraint.Value.t =
@@ -177,15 +215,34 @@ let package_fields package ~project =
 let dune_name = Package.Name.of_string "dune"
 let odoc_name = Package.Name.of_string "odoc"
 
+let merge_dune_constraints lang_constraint user_constraint =
+  match lang_constraint, user_constraint with
+  | ( Package_constraint.Uop (Gte, String_literal lang_v)
+    , Package_constraint.Uop (Gte, String_literal user_v) ) ->
+    if OpamVersionCompare.compare lang_v user_v <= 0
+    then user_constraint
+    else (
+      User_warning.emit
+        [ Pp.textf
+            "The lower bound >= %s on dune in the depends field is less than the dune \
+             language version %s. The generated opam file will use >= %s instead."
+            user_v
+            lang_v
+            lang_v
+        ];
+      lang_constraint)
+  | _ -> And [ lang_constraint; user_constraint ]
+;;
+
 let insert_dune_dep depends dune_version =
-  let constraint_ : Package_constraint.t =
+  let lang_constraint : Package_constraint.t =
     let dune_version = Dune_lang.Syntax.Version.to_string dune_version in
     Uop (Gte, String_literal dune_version)
   in
   let rec loop acc = function
     | [] ->
       let dune_dep =
-        { Package_dependency.name = dune_name; constraint_ = Some constraint_ }
+        { Package_dependency.name = dune_name; constraint_ = Some lang_constraint }
       in
       dune_dep :: List.rev acc
     | (dep : Package_dependency.t) :: rest ->
@@ -199,8 +256,9 @@ let insert_dune_dep depends dune_version =
               constraint_ =
                 Some
                   (match dep.constraint_ with
-                   | None -> constraint_
-                   | Some c -> And [ constraint_; c ])
+                   | None -> lang_constraint
+                   | Some user_constraint ->
+                     merge_dune_constraints lang_constraint user_constraint)
             }
         in
         List.rev_append acc (dep :: rest))
@@ -290,7 +348,9 @@ let opam_fields project (package : Package.t) =
       | None | Some [] -> None
       | Some (_ :: _ as v) -> Some (k, string_list v))
   in
-  let fields = [ "opam-version", string "2.0"; "build", default_build_command project ] in
+  let fields =
+    [ "opam-version", string "2.0"; "build", default_build_command project package ]
+  in
   let fields = List.concat [ fields; list_fields; optional_fields; package_fields ] in
   if dune_version < (1, 11) then fields else Opam_file.Create.normalise_field_order fields
 ;;

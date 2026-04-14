@@ -102,6 +102,11 @@ module Async = struct
     in
     { args = Some args; cat = Pkg; name = "fetch" }
   ;;
+
+  let pkg_load_lock_dir ~path =
+    let args = [ "path", Arg.string path ] in
+    { args = Some args; cat = Pkg; name = "load_lock_dir" }
+  ;;
 end
 
 type t = Event.t
@@ -179,6 +184,35 @@ let exit () =
 let scheduler_idle () =
   let now = Time.now () in
   Event.instant ~name:"watch mode iteration" now Scheduler
+;;
+
+let watch_build_start ~run_id ~restart ~start =
+  let args = [ "run_id", Arg.int run_id; "restart", Arg.bool restart ] in
+  Event.instant ~name:"build-start" ~args start Build
+;;
+
+let watch_build_restart ~run_id ~reasons ~at =
+  let args =
+    [ "run_id", Arg.int run_id; "reasons", Arg.list (List.map reasons ~f:Arg.string) ]
+  in
+  Event.instant ~name:"build-restart" ~args at Build
+;;
+
+let watch_build_finish ~run_id ~outcome ~start ~stop ~restart_duration =
+  let dur = Time.diff stop start in
+  let outcome =
+    match outcome with
+    | `Success -> "success"
+    | `Failure -> "failure"
+  in
+  let args =
+    [ "run_id", Arg.int run_id; "outcome", Arg.string outcome ]
+    @
+    match restart_duration with
+    | None -> []
+    | Some restart_duration -> [ "restart_duration", Arg.span restart_duration ]
+  in
+  Event.complete ~name:"build-finish" ~args ~start ~dur Build
 ;;
 
 module Exit_status = struct
@@ -729,7 +763,7 @@ module Digest = struct
   let dropped_stale_mtimes paths ~fs_now =
     let now = Time.now () in
     let args =
-      [ "fs_now", Arg.float fs_now; "paths", Arg.list (List.map paths ~f:Arg.path) ]
+      [ "fs_now", Arg.time fs_now; "paths", Arg.list (List.map paths ~f:Arg.path) ]
     in
     Event.instant ~args ~name:"dropped_stale_mtimes" now Digest
   ;;
@@ -774,6 +808,7 @@ let sandbox name ~start ~stop ~queued loc ~dir =
     | `Snapshot -> "snapshot"
     | `Create -> "create"
     | `Extract -> "extract"
+    | `Corrected -> "corrected"
   in
   Event.complete ~args ~name ~start ~dur Sandbox
 ;;

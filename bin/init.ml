@@ -300,6 +300,7 @@ let group =
       ; "init executable NAME [PATH] [OPTION]... "
       ; "init library NAME [PATH] [OPTION]... "
       ; "init test NAME [PATH] [OPTION]... "
+      ; "init start-file [PATH]"
       ]
   in
   let man =
@@ -339,8 +340,11 @@ let group =
         ; ( {|Configure a test component named `mytest' in a dune file in the
             ./test directory that depends on `mylib'|}
           , {|dune init test mytest test --libs mylib|} )
+        ; {|Write the standard `start/dune` helper file|}, {|dune init start-file|}
         ]
     ]
   in
-  Cmd.group (Cmd.info "init" ~doc ~man) [ executable; project; library; test ]
+  Cmd.group
+    (Cmd.info "init" ~doc ~man)
+    [ executable; project; library; test; Start_file.command ]
 ;;

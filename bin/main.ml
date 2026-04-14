@@ -15,7 +15,7 @@ let all : _ Cmdliner.Cmd.t list =
       ; Print_rules.command
       ; Ocaml.Utop.command
       ; Promotion.promote
-      ; command_alias Printenv.command Printenv.term "printenv"
+      ; Util.command_alias Printenv.command Printenv.term "printenv"
       ; Help.command
       ; Format_dune_file.command
       ; Upgrade.command
@@ -110,8 +110,8 @@ let () =
     | Ok _ -> exit_and_flush Success
     | Error _ -> exit_and_flush Error
   with
-  | Scheduler.Run.Shutdown.E Requested -> exit_and_flush Success
-  | Scheduler.Run.Shutdown.E (Signal _) -> exit_and_flush Signal
+  | Dune_scheduler.Shutdown.E Requested -> exit_and_flush Success
+  | Dune_scheduler.Shutdown.E (Signal _) -> exit_and_flush Signal
   | exn ->
     let exn = Exn_with_backtrace.capture exn in
     Dune_util.Report_error.report exn;

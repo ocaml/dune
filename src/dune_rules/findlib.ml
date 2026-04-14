@@ -219,7 +219,7 @@ let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib ~external_loc
             | Ok dir_contents ->
               let ext = Filename.Extension.to_string (Cm_kind.ext Cmi) in
               Result.List.filter_map dir_contents ~f:(fun fname ->
-                match Filename.check_suffix fname ext with
+                match String.ends_with ~suffix:ext fname with
                 | false -> Ok None
                 | true ->
                   if

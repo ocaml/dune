@@ -88,6 +88,49 @@ let add_user_rule
   Super_context.add_rule_get_targets sctx ~dir ~mode ~loc:rule.loc action
 ;;
 
+let dep_uses_patch_back_source_tree (d : Dep_conf.t) =
+  match d with
+  | Sandbox_config config ->
+    Dep_conf.Sandbox_config.fold config ~init:false ~f:(fun mode acc ->
+      acc || Poly.equal mode `Patch_back_source_tree)
+  | _ -> false
+;;
+
+let rule_uses_patch_back_source_tree (rule : Rule_conf.t) =
+  (* CR-someday rgrinberg: early exit from fold *)
+  Bindings.fold rule.deps ~init:false ~f:(fun one acc ->
+    acc
+    ||
+    match one with
+    | Unnamed dep -> dep_uses_patch_back_source_tree dep
+    | Named (_, deps) -> List.exists deps ~f:dep_uses_patch_back_source_tree)
+;;
+
+let validate_corrections ~(rule : Rule_conf.t) =
+  match rule.corrections with
+  | None -> ()
+  | Some Ignore -> ()
+  | Some Produce ->
+    if rule_uses_patch_back_source_tree rule
+    then
+      User_error.raise
+        ~loc:rule.loc
+        [ Pp.text
+            "Only (corrections ignore) is allowed on rules using patch-back-source-tree \
+             sandboxing."
+        ]
+;;
+
+let add_corrections ~(rule : Rule_conf.t) action =
+  match rule.corrections with
+  | None -> action
+  | Some Ignore -> Action.Full.add_corrections Ignore action
+  | Some Produce ->
+    action
+    |> Action.Full.add_sandbox Sandbox_config.needs_sandboxing
+    |> Action.Full.add_corrections Produce
+;;
+
 let user_rule sctx ~dir ~expander (rule : Rule_conf.t) =
   Expander.eval_blang expander rule.enabled_if
   >>= function
@@ -115,11 +158,19 @@ let user_rule sctx ~dir ~expander (rule : Rule_conf.t) =
         in
         Targets_spec.Static { multiplicity; targets }
     in
+    let sandbox =
+      if
+        rule_uses_patch_back_source_tree rule
+        || Dune_project.dune_version (Expander.project expander) >= (3, 23)
+      then Sandbox_config.needs_sandboxing
+      else Sandbox_config.no_special_requirements
+    in
+    let () = validate_corrections ~rule in
     let* action =
       let chdir = Expander.dir expander in
       Action_unexpanded.expand
         (snd rule.action)
-        Sandbox_config.no_special_requirements
+        sandbox
         ~loc:(fst rule.action)
         ~chdir
         ~expander
@@ -127,6 +178,7 @@ let user_rule sctx ~dir ~expander (rule : Rule_conf.t) =
         ~targets
         ~targets_dir:dir
     in
+    let action = Action_builder.With_targets.map action ~f:(add_corrections ~rule) in
     (match rule_kind ~rule ~action with
      | No_alias ->
        let+ targets = add_user_rule sctx ~dir ~rule ~action ~expander in

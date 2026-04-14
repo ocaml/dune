@@ -30,13 +30,9 @@
   Extr1.glob
   Extr1.v
   Extr1.vo
-  Extr1.vok
-  Extr1.vos
   Extr2.glob
   Extr2.v
   Extr2.vo
-  Extr2.vok
-  Extr2.vos
   Mod1.ml
   Mod1.mli
   Mod2.ml

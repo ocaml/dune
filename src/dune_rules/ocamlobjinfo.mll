@@ -64,48 +64,43 @@ let rules (ocaml : Ocaml_toolchain.t) ~dir ~sandbox ~units =
     else
       []
   in
-  let observing_facts =
-    List.map units ~f:(fun unit ->
-      Dep.Facts.singleton (Dep.file unit) (Dep.Fact.nothing))
-    |> Dep.Facts.union_all
-  in
   let open Action_builder.O in
-  let* action =
-    Command.run' ?sandbox
-      ~dir:(Path.build dir) ocaml.ocamlobjinfo
-      (List.concat
-         [ no_approx
-         ; no_code
-         ; [ Deps units ]
-         ])
-  in
-  (Dune_engine.Build_system.execute_action_stdout
-    ~observing_facts
+  let action =
+    let+ action =
+      Command.run' ?sandbox
+        ~dir:(Path.build dir) ocaml.ocamlobjinfo
+        (List.concat
+           [ no_approx
+           ; no_code
+           ; [ Deps units ]
+           ])
+    in
     { Rule.Anonymous_action.action
     ; loc = Loc.none
     ; dir
     ; alias = None
     }
-  |> Action_builder.of_memo)
-  >>| parse
+  in
+  Dune_engine.Build_system.execute_action_stdout action
+  |> Memo.map ~f:parse
+  |> Action_builder.of_memo
+;;
 
 let archive_rules (ocaml : Ocaml_toolchain.t) ~dir ~sandbox ~archive =
-  let observing_facts =
-    Dep.Facts.singleton (Dep.file archive) (Dep.Fact.nothing)
-  in
-  let open Action_builder.O in
-  let* action =
-    Command.run' ?sandbox
-      ~dir:(Path.build dir) ocaml.ocamlobjinfo
-      [ Dep archive ]
-  in
-  (Dune_engine.Build_system.execute_action_stdout
-    ~observing_facts
+  let action =
+    let open Action_builder.O in
+    let+ action =
+      Command.run' ?sandbox
+        ~dir:(Path.build dir) ocaml.ocamlobjinfo
+        [ Dep archive ]
+    in
     { Rule.Anonymous_action.action
     ; loc = Loc.none
     ; dir
     ; alias = None
     }
-  |> Action_builder.of_memo)
-  >>| parse_archive
+  in
+  Dune_engine.Build_system.execute_action_stdout action
+  |> Memo.map ~f:parse_archive
+  |> Action_builder.of_memo
 }

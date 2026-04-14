@@ -16,13 +16,11 @@
   fiber
   stdune
   fs_io
-  dune_console
   unix
   install
   dune_findlib
   dune_digest
   dune_cache
-  dune_cache_storage
   dune_graph
   dune_rules
   dune_vcs
@@ -38,10 +36,9 @@
   chrome_trace
   dune_trace
   csexp
-  csexp_rpc
   dune_rpc_impl
-  dune_rpc_private
-  dune_rpc_client
+  dune_rpc
+  rpc
   spawn
   opam_format
   source

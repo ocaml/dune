@@ -15,7 +15,7 @@ path
   @@ -1,2 +1,4 @@
      $ echo "  $ echo bar" >bar.t
      $ dune runtest
-  +  Error: RPC server not running.
+  +  Error: Another Dune instance is currently running. Aborting...
   +  [1]
   Promoting
     $TESTCASE_ROOT/tmp/default/foo.t.corrected
@@ -24,5 +24,5 @@ path
   $ cat foo.t
     $ echo "  $ echo bar" >bar.t
     $ dune runtest
-    Error: RPC server not running.
+    Error: Another Dune instance is currently running. Aborting...
     [1]

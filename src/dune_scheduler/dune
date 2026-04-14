@@ -1,16 +1,17 @@
 (library
  (name dune_scheduler)
+ (library_flags
+  (:include flags/sexp))
+ (foreign_stubs
+  (language c)
+  (names fsevents_stubs fswatch_win_stubs))
  (libraries
-  async_inotify_for_dune
   ocaml_inotify
   spawn
-  fsevents
-  fswatch_win
   re
   unix
   csexp
   stdune
-  dune_console
   dyn
   fiber
   memo

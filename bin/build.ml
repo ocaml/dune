@@ -1,38 +1,9 @@
 open Import
 
 let run_build_system ~request =
-  let run ~(toplevel : unit Memo.Lazy.t) = build (fun () -> Memo.Lazy.force toplevel) in
-  let open Fiber.O in
-  Fiber.finalize
-    (fun () ->
-       (* CR-someday amokhov: Currently we invalidate cached timestamps on every
-         incremental rebuild. This conservative approach helps us to work around
-         some [mtime] resolution problems (e.g. on Mac OS). It would be nice to
-         find a way to avoid doing this. In fact, this may be unnecessary even
-         for the initial build if we assume that the user does not modify files
-         in the [_build] directory. For now, it's unclear if optimising this is
-         worth the effort. *)
-       Cached_digest.invalidate_cached_timestamps ();
-       let* setup = Import.Main.setup () in
-       let request =
-         Action_builder.bind (Action_builder.of_memo setup) ~f:(fun setup ->
-           request setup)
-       in
-       (* CR-someday cmoseley: Can we avoid creating a new lazy memo node every
-         time the build system is rerun? *)
-       (* This top-level node is used for traversing the whole Memo graph. *)
-       let _toplevel_cell, toplevel =
-         Memo.Lazy.Expert.create ~name:"toplevel" (fun () ->
-           let open Memo.O in
-           let+ (), (_ : Dep.Fact.t Dep.Map.t) =
-             Action_builder.evaluate_and_collect_facts request
-           in
-           ())
-       in
-       run ~toplevel)
-    ~finally:(fun () ->
-      Hooks.End_of_build.run ();
-      Fiber.return ())
+  Dune_engine.Build_system.run_action_builder
+    (let open Action_builder.O in
+     Action_builder.of_memo (Util.setup ()) >>= request)
 ;;
 
 let poll_handling_rpc_build_requests ~(common : Common.t) =
@@ -84,7 +55,27 @@ let run_build_command_poll_passive ~common ~config ~request:_ : unit =
 let run_build_command_once ~(common : Common.t) ~config ~request =
   let open Fiber.O in
   let once () =
+    let run_id = Scheduler.Run_id.batch in
+    let start = Time.now () in
+    Dune_trace.emit Build (fun () ->
+      Dune_trace.Event.watch_build_start
+        ~run_id:(Scheduler.Run_id.to_int run_id)
+        ~restart:false
+        ~start);
     let+ res = run_build_system ~request in
+    let stop = Time.now () in
+    let outcome =
+      match res with
+      | Ok () -> `Success
+      | Error `Already_reported -> `Failure
+    in
+    Dune_trace.emit Build (fun () ->
+      Dune_trace.Event.watch_build_finish
+        ~run_id:(Scheduler.Run_id.to_int run_id)
+        ~outcome
+        ~start
+        ~stop
+        ~restart_duration:None);
     match res with
     | Error `Already_reported -> raise Dune_util.Report_error.Already_reported
     | Ok () -> ()
@@ -184,7 +175,7 @@ let build =
         let open Fiber.O in
         Rpc.Rpc_common.fire_request
           ~name:"build"
-          ~wait:true
+          ~wait:false
           ~lock_held_by
           builder
           Dune_rpc_impl.Decl.build
@@ -196,3 +187,6 @@ let build =
   in
   Cmd.v (Cmd.info "build" ~doc ~man ~envs:Common.envs) term
 ;;
+
+let build_memo f = Build_system.run f
+let build_memo_exn f = Build_system.run_exn f

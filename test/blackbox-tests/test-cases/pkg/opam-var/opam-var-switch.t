@@ -47,17 +47,17 @@ opam-var-unsupported.t
        (run echo %{toplevel})
        (run echo %{stublibs}))))))
 
-  $ build_pkg testpkg 2>&1 | dune_cmd subst '.*.sandbox/[^/]+' '.sandbox/$SANDBOX'
+  $ build_pkg testpkg 2>&1 | strip_sandbox | censor
   dune
-  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-8eb2c3a16deb636e83b81bb607119976/source
-  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-8eb2c3a16deb636e83b81bb607119976/target
-  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-8eb2c3a16deb636e83b81bb607119976/target/lib
-  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-8eb2c3a16deb636e83b81bb607119976/target/lib
-  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-8eb2c3a16deb636e83b81bb607119976/target/bin
-  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-8eb2c3a16deb636e83b81bb607119976/target/sbin
-  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-8eb2c3a16deb636e83b81bb607119976/target/share
-  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-8eb2c3a16deb636e83b81bb607119976/target/doc
-  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-8eb2c3a16deb636e83b81bb607119976/target/etc
-  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-8eb2c3a16deb636e83b81bb607119976/target/man
-  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-8eb2c3a16deb636e83b81bb607119976/target/lib/toplevel
-  .sandbox/$SANDBOX/_private/default/.pkg/testpkg.0.0.1-8eb2c3a16deb636e83b81bb607119976/target/lib/stublibs
+  $SANDBOX/_private/default/.pkg/testpkg.0.0.1-$DIGEST/source
+  $SANDBOX/_private/default/.pkg/testpkg.0.0.1-$DIGEST/target
+  $SANDBOX/_private/default/.pkg/testpkg.0.0.1-$DIGEST/target/lib
+  $SANDBOX/_private/default/.pkg/testpkg.0.0.1-$DIGEST/target/lib
+  $SANDBOX/_private/default/.pkg/testpkg.0.0.1-$DIGEST/target/bin
+  $SANDBOX/_private/default/.pkg/testpkg.0.0.1-$DIGEST/target/sbin
+  $SANDBOX/_private/default/.pkg/testpkg.0.0.1-$DIGEST/target/share
+  $SANDBOX/_private/default/.pkg/testpkg.0.0.1-$DIGEST/target/doc
+  $SANDBOX/_private/default/.pkg/testpkg.0.0.1-$DIGEST/target/etc
+  $SANDBOX/_private/default/.pkg/testpkg.0.0.1-$DIGEST/target/man
+  $SANDBOX/_private/default/.pkg/testpkg.0.0.1-$DIGEST/target/lib/toplevel
+  $SANDBOX/_private/default/.pkg/testpkg.0.0.1-$DIGEST/target/lib/stublibs

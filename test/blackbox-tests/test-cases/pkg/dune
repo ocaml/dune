@@ -90,7 +90,7 @@
 
 (cram
  (deps %{bin:ocaml_index})
- (applies_to gh10985))
+ (applies_to ocaml-index-private-lib-gh10985))
 
 (cram
  (deps %{bin:unzip})
@@ -106,8 +106,20 @@
   (= %{os_type} Win32))
  (alias runtest-windows))
 
+(cram
+ (applies_to installed-binary-windows)
+ (enabled_if
+  (= %{os_type} Win32))
+ (alias runtest-windows))
+
+(cram
+ (applies_to install-entry-missing-exe-suffix)
+ (enabled_if
+  (= %{os_type} Win32))
+ (alias runtest-windows))
+
 ;; disabled for flakiness
 
 (cram
  (enabled_if false)
- (applies_to gh10959))
+ (applies_to watch-exec-crash-gh10959))

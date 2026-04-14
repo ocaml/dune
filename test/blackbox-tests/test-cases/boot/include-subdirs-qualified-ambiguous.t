@@ -3,10 +3,12 @@ There is ambiguity between the two different foo modules.
 We show that the behaviour is correct in the bootstrap process:
 it picks up the closest one.
 
-  $ . ./helpers.sh
+  $ init_bootstrap
+
   $ mkdir a
 
-  $ cat > a/foo.ml << EOF
+  $ make_module a/foo.ml
+  $ cat >> a/foo.ml << EOF
   > let msg = "shouldn't be printed"
   > EOF
 
@@ -29,6 +31,7 @@ it picks up the closest one.
   > module M1 = A.Bar.Baz
   > let () = Printf.printf "Hello from %s\n" M1.exported
   > EOF
-  ocamlc -output-complete-exe -intf-suffix .dummy -g -o .duneboot.exe -I boot -I +unix unix.cma boot/types.ml boot/libs.ml boot/duneboot.ml
+  ocamllex -q -o boot/pps.ml boot/pps.mll
+  ocamlc -output-complete-exe -intf-suffix .dummy -g -o .duneboot.exe -I boot -I +unix unix.cma boot/pps.ml boot/types.ml boot/libs.ml boot/duneboot.ml
   ./.duneboot.exe
   Hello from the correct module!

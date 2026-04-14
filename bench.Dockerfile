@@ -1,5 +1,4 @@
-FROM ocaml/opam:debian-12-ocaml-4.14
-RUN opam depext -u patdiff.v0.15.0
-RUN opam install csexp pp re spawn uutf
+FROM ocaml/opam:debian-13-ocaml-5.4
+RUN opam install csexp pp re spawn uutf ppx_expect lwt
 COPY --chown=opam:opam . bench-dir
 WORKDIR bench-dir

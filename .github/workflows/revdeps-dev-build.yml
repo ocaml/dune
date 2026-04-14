@@ -1,0 +1,82 @@
+# The revdeps workflow checks that released versions of reverse dependencies
+# still build correctly. This workflow instead checks that the development
+# versions of critical reverse dependencies work with the development version
+# of Dune. Currently, it only covers OxCaml.
+name: Revdeps development build
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - '*-rc'
+
+permissions:
+  contents: read
+
+env:
+  EXTRA_NIX_CONFIG: |
+    extra-substituters = https://anmonteiro.nix-cache.workers.dev
+    extra-trusted-public-keys = ocaml.nix-cache.com-1:/xI2h2+56rwFfKyyFVbkJSeGqSIYMC/Je+7XXqGKDIY=
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    strategy:
+      matrix:
+        include:
+          - name: OxCaml Trunk
+            repo: oxcaml/oxcaml
+            repo_name: oxcaml
+            ref: main
+            build_command: >-
+              autoconf &&
+              ./configure --prefix $PWD/_install --enable-dev --enable-runtime5 &&
+              make
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Dune
+        uses: actions/checkout@v6
+
+      - name: Set up Nix
+        uses: nixbuild/nix-quick-install-action@v34
+        with:
+          nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
+
+      - name: Cache Nix store
+        uses: nix-community/cache-nix-action@v7
+        with:
+          primary-key: |
+            nix-${{ runner.os }}-${{ github.job }}--${{ hashFiles('**/*.nix', '**/flake.lock') }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-${{ github.job }}--
+          gc-max-store-size-linux: 2G
+
+      - name: Build Dune
+        run: |
+          # OxCaml requires Dune version >= 3.13. When Dune is built from source
+          # with Nix, it doesn't report the correct version. This step sets the
+          # version explicitly so that OxCaml's version check passes.
+          version=$(grep -oP '\(lang dune \K[^)]+' dune-project)
+          # Add a version if it doesn't exist.
+          grep -q '^(version' dune-project || echo "(version $version.0)" >> dune-project
+          nix develop -c make dev
+
+      - name: Create workspace
+        run: mkdir workspace
+
+      - name: Clone ${{ matrix.repo }}
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ matrix.repo }}
+          ref: ${{ matrix.ref }}
+          path: workspace/${{ matrix.repo_name }}
+          fetch-depth: 1
+
+      - name: Build ${{ matrix.name }}
+        working-directory: workspace/${{ matrix.repo_name }}
+        run: |
+          nix develop $GITHUB_WORKSPACE#ox-trunk -c bash -c '
+            export PATH="$GITHUB_WORKSPACE/_build/install/default/bin:$PATH"
+            echo "Using dune: $(which dune)"
+            dune --version
+            ${{ matrix.build_command }}
+          '

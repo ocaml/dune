@@ -62,6 +62,15 @@ module Pps = struct
     ; staged : bool
     }
 
+  let repr pps_repr =
+    Repr.record
+      "preprocess-pps"
+      [ Repr.field "pps" Repr.(list pps_repr) ~get:(fun t -> t.pps)
+      ; Repr.field "flags" Repr.(list String_with_vars.repr) ~get:(fun t -> t.flags)
+      ; Repr.field "staged" Bool.repr ~get:(fun t -> t.staged)
+      ]
+  ;;
+
   let equal f t { loc; pps; flags; staged } =
     Loc.equal t.loc loc
     && List.equal f t.pps pps
@@ -82,6 +91,24 @@ type 'a t =
   | Action of Loc.t * Action.t
   | Pps of 'a Pps.t
   | Future_syntax of Loc.t
+
+let repr pps_repr =
+  Repr.variant
+    "preprocess"
+    [ Repr.case0 "No_preprocessing" ~test:(function
+        | No_preprocessing -> true
+        | _ -> false)
+    ; Repr.case "Action" Action.repr ~proj:(function
+        | Action (_, action) -> Some action
+        | _ -> None)
+    ; Repr.case "Pps" (Pps.repr pps_repr) ~proj:(function
+        | Pps x -> Some x
+        | _ -> None)
+    ; Repr.case0 "Future_syntax" ~test:(function
+        | Future_syntax _ -> true
+        | _ -> false)
+    ]
+;;
 
 let equal f x y =
   match x, y with
@@ -109,6 +136,7 @@ let filter_map t ~f =
 module Without_instrumentation = struct
   type t = Loc.t * Lib_name.t
 
+  let repr = Repr.view Lib_name.repr ~to_:snd
   let compare_no_locs (_, x) (_, y) = Lib_name.compare x y
 end
 
@@ -120,6 +148,26 @@ module With_instrumentation = struct
         ; deps : Dep_conf.t list
         ; flags : String_with_vars.t list
         }
+
+  let repr =
+    Repr.variant
+      "preprocess-with-instrumentation"
+      [ Repr.case "Ordinary" Without_instrumentation.repr ~proj:(function
+          | Ordinary x -> Some x
+          | _ -> None)
+      ; Repr.case
+          "Instrumentation_backend"
+          Repr.(
+            triple
+              Without_instrumentation.repr
+              (list Dep_conf.repr)
+              (list String_with_vars.repr))
+          ~proj:(function
+            | Instrumentation_backend { libname; deps; flags } ->
+              Some (libname, deps, flags)
+            | _ -> None)
+      ]
+  ;;
 
   let equal (x : t) (y : t) = Poly.equal x y
 end
@@ -268,6 +316,7 @@ module Per_module = struct
   type 'a preprocess = 'a t
   type 'a t = 'a preprocess Per_module.t
 
+  let repr preprocess_repr = Per_module.repr (repr preprocess_repr)
   let equal f x y = Per_module.equal (equal f) x y
   let decode = Per_module.decode decode ~default:No_preprocessing
   let no_preprocessing () = Per_module.for_all No_preprocessing

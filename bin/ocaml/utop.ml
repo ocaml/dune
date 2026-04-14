@@ -33,12 +33,10 @@ let term =
   then User_error.raise [ Pp.textf "cannot find directory: %s" (String.maybe_quoted dir) ];
   let env, utop_path =
     Scheduler_setup.go_with_rpc_server ~common ~config (fun () ->
-      let open Fiber.O in
-      let* setup = Import.Main.setup () in
-      build_exn (fun () ->
+      Build.build_memo_exn (fun () ->
         let open Memo.O in
-        let* setup = setup in
-        let context = Import.Main.find_context_exn setup ~name:ctx_name in
+        let* setup = Util.setup () in
+        let context = Dune_rules.Main.find_context_exn setup ~name:ctx_name in
         let utop_target_path filename =
           Path.build
             (Path.Build.relative
@@ -72,7 +70,7 @@ let term =
               Build_system.build_file utop_findlib_conf
             else Memo.return ()
           in
-          let sctx = Import.Main.find_scontext_exn setup ~name:ctx_name in
+          let sctx = Dune_rules.Main.find_scontext_exn setup ~name:ctx_name in
           let* requires =
             let dir = Path.Build.relative (Context.build_dir context) dir in
             Utop.requires_under_dir sctx ~dir
@@ -104,8 +102,7 @@ let term =
           in
           env, Path.to_string utop_exe))
   in
-  Hooks.End_of_build.run ();
-  restore_cwd_and_execve (Common.root common) utop_path args env
+  Util.restore_cwd_and_execve (Common.root common) utop_path args env
 ;;
 
 let command = Cmd.v info term

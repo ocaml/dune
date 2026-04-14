@@ -1,3 +1,5 @@
+Validates module-related fields in virtual libraries.
+
   $ ocaml test.ml
   impl: true. modules_without_implementation: true. virtual_modules: true. private_modules: true
   File "dune", line 4, characters 18-19:

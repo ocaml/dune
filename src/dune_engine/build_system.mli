@@ -39,10 +39,7 @@ val files_of : dir:Path.t -> Filename_set.t Memo.t
 val execute_action : observing_facts:Dep.Facts.t -> Rule.Anonymous_action.t -> unit Memo.t
 
 (** Execute an action and capture its stdout. The execution is cached. *)
-val execute_action_stdout
-  :  observing_facts:Dep.Facts.t
-  -> Rule.Anonymous_action.t
-  -> string Memo.t
+val execute_action_stdout : Rule.Anonymous_action.t Action_builder.t -> string Memo.t
 
 type rule_execution_result =
   { facts : Dep.Fact.t Dep.Map.t
@@ -58,6 +55,10 @@ val run : (unit -> 'a Memo.t) -> ('a, [ `Already_reported ]) Result.t Fiber.t
 
 (** A variant of [run] that raises an [Already_reported] exception on error. *)
 val run_exn : (unit -> 'a Memo.t) -> 'a Fiber.t
+
+val run_action_builder
+  :  unit Action_builder.t
+  -> (unit, [ `Already_reported ]) result Fiber.t
 
 (** {2 Misc} *)
 

@@ -49,6 +49,10 @@ end
 
 val find_dir : Path.Source.t -> Dir.t option Memo.t
 
+(** [find_excluded_ancestor path] is the ancestor of [path] that was excluded by
+    a dirs stanza, if any. *)
+val find_excluded_ancestor : Path.Source.t -> (Path.Source.t * Loc.t) option Memo.t
+
 (** [nearest_dir t fn] returns the directory with the longest path that is an
     ancestor of [fn]. *)
 val nearest_dir : Path.Source.t -> Dir.t Memo.t

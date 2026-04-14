@@ -1,3 +1,5 @@
+Expands static library artifact variables in dependencies.
+
   $ cat >dune <<EOF
   > (alias
   >  (name default)

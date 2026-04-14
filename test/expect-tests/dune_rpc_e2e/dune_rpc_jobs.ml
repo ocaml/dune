@@ -1,8 +1,8 @@
 open Stdune
 open Fiber.O
 open Dune_rpc_e2e
-module Client = Dune_rpc_client.Client
-module Dune_rpc = Dune_rpc_private
+module Client = Rpc.Client
+module Dune_rpc = Dune_rpc.Private
 
 include struct
   open Dune_rpc

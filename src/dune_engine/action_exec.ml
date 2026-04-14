@@ -225,7 +225,31 @@ let rec exec t ~ectx ~eenv : Done_or_more_deps.t Produce.t =
     Done
   | Copy (src, dst) ->
     let dst = Path.build dst in
-    let+ () = maybe_async (fun () -> Io.copy_file ~src ~dst ()) in
+    let copy_file ~src ~dst =
+      Path.parent dst |> Option.iter ~f:Path.mkdir_p;
+      Io.copy_file ~src ~dst ()
+    in
+    let mkdir ~src:_ ~dst = Path.mkdir_p dst in
+    let on_unsupported ~src kind =
+      User_error.raise
+        [ Pp.textf
+            "Failed to copy %s of kind %S while executing a copy action"
+            (Path.to_string_maybe_quoted src)
+            (File_kind.to_string_hum kind)
+        ]
+    in
+    let+ () =
+      maybe_async (fun () ->
+        (* NOTE(anmonteiro): we may reconsider relaxing the directory target
+           constraint (see [test/blackbox-tests/test-cases/pkg/source-with-directory-symlink.t]).
+
+           [Copy] stays file-oriented by default. We only use recursive copying
+           when [dst] is a directory target. *)
+        match ectx.targets with
+        | Some { dirs; _ } when Filename.Set.mem dirs (Path.basename dst) ->
+          Tree_copy.copy ~src ~dst ~copy_file ~mkdir ~on_unsupported ()
+        | _ -> copy_file ~src ~dst)
+    in
     Done
   | Symlink (src, dst) ->
     let+ () = maybe_async (fun () -> Io.portable_symlink ~src ~dst:(Path.build dst)) in
@@ -409,6 +433,19 @@ let exec
           `New_rules_have_precedence
           (* TODO generify *)
           [ Some { source = Path.to_absolute_filename root; target } ]
+    in
+    let env =
+      match Execution_parameters.action_project_root execution_parameters with
+      | None -> Env.remove env ~var:"DUNE_PROJECT_ROOT"
+      | Some project_root ->
+        (match Path.as_in_build_dir root with
+         | None -> env
+         | Some root ->
+           let project_root = Path.Build.append_source root project_root in
+           Env.add
+             env
+             ~var:"DUNE_PROJECT_ROOT"
+             ~value:(Path.to_absolute_filename (Path.build project_root)))
     in
     { working_dir = Path.root
     ; env

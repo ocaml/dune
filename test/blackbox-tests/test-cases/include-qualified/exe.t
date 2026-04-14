@@ -1,3 +1,5 @@
+Tests executables with include_subdirs qualified.
+
 
   $ make_dune_project 3.7
 

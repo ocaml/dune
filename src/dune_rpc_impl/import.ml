@@ -1,6 +1,6 @@
 include Stdune
-module Console = Dune_console
-module Dune_rpc = Dune_rpc_private
+module Console = Console
+module Dune_rpc = Dune_rpc.Private
 include Dune_scheduler
 
 include struct
@@ -11,7 +11,7 @@ include struct
 end
 
 include struct
-  open Dune_rpc_client
+  open Rpc
   module Where = Where
-  module Client = Dune_rpc_client.Client
+  module Client = Rpc.Client
 end

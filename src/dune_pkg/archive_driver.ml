@@ -45,7 +45,7 @@ let make_tar_args ~tar_impl ~archive ~target_in_temp =
     match tar_impl with
     | Libarchive | Gnu -> [] (* auto-detect compression *)
     | Other ->
-      let has_suffix = Filename.check_suffix (Path.to_string archive) in
+      let has_suffix suffix = String.ends_with ~suffix (Path.to_string archive) in
       (* Need explicit flags for tar implementations that don't auto-detect *)
       if has_suffix ".tar.gz" || has_suffix ".tgz"
       then [ "-z" ]
@@ -144,7 +144,11 @@ let zip =
 
 let all = [ tar; zip ]
 let output_limit = 1_000_000
-let check_suffix t filename = List.exists t.suffixes ~f:(Filename.check_suffix filename)
+
+let check_suffix t filename =
+  List.exists t.suffixes ~f:(fun suffix -> String.ends_with ~suffix filename)
+;;
+
 let choose_for_filename filename = List.find all ~f:(fun t -> check_suffix t filename)
 
 let choose_for_filename_default_to_tar filename =

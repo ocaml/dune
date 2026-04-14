@@ -1,7 +1,12 @@
 include Stdune
 include Dune_config_file
 include Dune_vcs
-include Dune_scheduler
+
+include struct
+  open Dune_scheduler
+  module Scheduler = Scheduler
+end
+
 module Targets = Dune_targets
 
 include struct
@@ -10,18 +15,14 @@ include struct
   module Build_system = Build_system
   module Build_system_error = Build_system_error
   module Load_rules = Load_rules
-  module Hooks = Hooks
   module Action_builder = Dune_rules.Action_builder
   module Action = Action
   module Dep = Dep
-  module Action_to_sh = Action_to_sh
   module Dpath = Dpath
   module Findlib = Dune_rules.Findlib
   module Diff_promotion = Diff_promotion
   module Context_name = Context_name
 end
-
-module Cached_digest = Dune_digest.Cached_digest
 
 include struct
   open Source
@@ -60,7 +61,7 @@ include struct
 end
 
 module Digest = Dune_digest
-module Console = Dune_console
+module Console = Console
 
 include struct
   open Dune_lang
@@ -85,87 +86,6 @@ include struct
   module Resolved_package = Resolved_package
 end
 
-module Dune_rpc = Dune_rpc_private
+module Dune_rpc = Dune_rpc.Private
 module Graph = Dune_graph.Graph
 include Let_syntax
-
-module Main : sig
-  include module type of struct
-    include Dune_rules.Main
-  end
-
-  val setup : unit -> build_system Memo.t Fiber.t
-end = struct
-  include Dune_rules.Main
-
-  let setup () =
-    let open Fiber.O in
-    let* scheduler = Scheduler.t () in
-    Console.Status_line.set
-      (Live
-         (fun () ->
-           match Fiber.Svar.read Build_system.state with
-           | Initializing
-           | Restarting_current_build
-           | Build_succeeded__now_waiting_for_changes
-           | Build_failed__now_waiting_for_changes -> Pp.nop
-           | Building
-               { Build_system.Progress.number_of_rules_executed = done_
-               ; number_of_rules_discovered = total
-               ; number_of_rules_failed = failed
-               } ->
-             Pp.verbatim
-               (sprintf
-                  "Done: %u%% (%u/%u, %u left%s) (jobs: %u)"
-                  (if total = 0 then 0 else done_ * 100 / total)
-                  done_
-                  total
-                  (total - done_)
-                  (if failed = 0 then "" else sprintf ", %u failed" failed)
-                  (Scheduler.running_jobs_count scheduler))));
-    Fiber.return (Memo.of_thunk get)
-  ;;
-end
-
-let string_path_relative_to_specified_root (root : Workspace_root.t) path =
-  if Filename.is_relative path then Filename.concat root.dir path else path
-;;
-
-let restore_cwd_and_execve root prog args env =
-  let prog = string_path_relative_to_specified_root root prog in
-  Proc.restore_cwd_and_execve prog args ~env
-;;
-
-(* Adapted from
-   https://github.com/ocaml/opam/blob/fbbe93c3f67034da62d28c8666ec6b05e0a9b17c/src/client/opamArg.ml#L759 *)
-let command_alias ?orig_name cmd term name =
-  let orig =
-    match orig_name with
-    | Some s -> s
-    | None -> Cmd.name cmd
-  in
-  let doc = Printf.sprintf "An alias for $(b,%s)." orig in
-  let man =
-    [ `S "DESCRIPTION"
-    ; `P (Printf.sprintf "$(mname)$(b, %s) is an alias for $(mname)$(b, %s)." name orig)
-    ; `P (Printf.sprintf "See $(mname)$(b, %s --help) for details." orig)
-    ; `Blocks Common.help_secs
-    ]
-  in
-  Cmd.v (Cmd.info name ~docs:"COMMAND ALIASES" ~doc ~man) term
-;;
-
-(* The build system has some global state which makes it unsafe for
-   multiple instances of it to be executed concurrently, so we ensure
-   serialization by holding this mutex while running the build system. *)
-let build_system_mutex = Fiber.Mutex.create ()
-
-let build f =
-  Hooks.End_of_build.once Dune_engine.Diff_promotion.finalize;
-  Fiber.Mutex.with_lock build_system_mutex ~f:(fun () -> Build_system.run f)
-;;
-
-let build_exn f =
-  Hooks.End_of_build.once Dune_engine.Diff_promotion.finalize;
-  Fiber.Mutex.with_lock build_system_mutex ~f:(fun () -> Build_system.run_exn f)
-;;

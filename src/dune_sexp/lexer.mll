@@ -126,8 +126,8 @@ module Template = struct
         let parts = add_buf_to_parts parts in
         state := Template (v::parts)
 
-    let add_text   = Buffer.add_string text_buf
-    let add_text_c = Buffer.add_char text_buf
+    let add_text s = Buffer.add_string text_buf s
+    let add_text_c c = Buffer.add_char text_buf c
   end
 end
 }

@@ -655,8 +655,7 @@ let make vars =
     in
     let ox = get_bool vars "ox" in
     let makefile_vars = Vars.load_makefile_config file in
-    let module Getters =
-      Vars.Getters (struct
+    let module Getters = Vars.Getters (struct
         let origin = Origin.Makefile_config file
       end)
     in

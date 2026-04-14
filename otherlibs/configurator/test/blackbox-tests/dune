@@ -10,4 +10,4 @@
 (cram
  (enabled_if
   (<> %{ocaml-config:system} win))
- (applies_to configurator.t))
+ (applies_to configurator))

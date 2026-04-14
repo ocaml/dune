@@ -12,7 +12,10 @@ end = struct
   let file_key project =
     let name = Dune_project.name project in
     let root = Dune_project.root project in
-    let digest = Digest.generic (name, root) |> Digest.to_string in
+    let digest =
+      Digest.repr Repr.(pair Dune_project_name.repr Path.Source.repr) (name, root)
+      |> Digest.to_string
+    in
     String.take digest 12
   ;;
 

@@ -23,6 +23,7 @@ module Diff : sig
   type nonrec ('path, 'target) t = ('path, 'target) t =
     { optional : bool
     ; mode : Mode.t
+    ; directory_diffs : bool
     ; file1 : 'path
     ; file2 : 'target
     }
@@ -82,6 +83,7 @@ module Env_update : sig
 
   val map : 'a t -> f:('a -> 'b) -> 'b t
   val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
+  val repr : 'a Repr.t -> 'a t Repr.t
   val to_dyn : 'a Dyn.builder -> 'a t Dyn.builder
   val decode : String_with_vars.t t Decoder.t
   val encode : String_with_vars.t t -> Dune_sexp.t
@@ -137,6 +139,7 @@ val validate : loc:Loc.t -> t -> unit
 
 val compare_no_locs : t -> t -> Ordering.t
 val equal_no_locs : t -> t -> bool
+val repr : t Repr.t
 val to_dyn : t -> Dyn.t
 val remove_locs : t -> t
 val equal : t -> t -> bool

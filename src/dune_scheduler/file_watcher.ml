@@ -1,5 +1,4 @@
 open Import
-module Inotify_lib = Async_inotify_for_dune.Async_inotify
 
 module Fs_memo_event = struct
   type kind =
@@ -49,10 +48,7 @@ module Event = struct
 end
 
 module Scheduler = struct
-  type t =
-    { spawn_thread : (unit -> unit) -> Thread.t
-    ; thread_safe_send_emit_events_job : (unit -> Event.t list) -> unit
-    }
+  type t = { thread_safe_send_emit_events_job : (unit -> Event.t list) -> unit }
 end
 
 module Watch_trie : sig
@@ -144,7 +140,7 @@ type kind =
       ; latency : Time.Span.t
       ; on_event : Fsevents.Event.t -> Path.t -> Event.t option
       }
-  | Inotify of Inotify_lib.t
+  | Inotify of Inotify.t
   | Fswatch_win of
       { t : Fswatch_win.t
       ; scheduler : Scheduler.t
@@ -166,11 +162,7 @@ module For_tests = struct
   let should_exclude = create_should_exclude_predicate
 end
 
-let process_inotify_event
-      (event : Async_inotify_for_dune.Async_inotify.Event.t)
-      should_exclude
-  : Event.t list
-  =
+let process_inotify_event (event : Inotify.Event.t) should_exclude : Event.t list =
   let create_event_unless_excluded ~kind ~path =
     match should_exclude path with
     | true -> []
@@ -186,9 +178,9 @@ let process_inotify_event
     (match move with
      | Away path -> create_event_unless_excluded ~kind:Deleted ~path
      | Into path -> create_event_unless_excluded ~kind:Created ~path
-     | Move (from, to_) ->
-       create_event_unless_excluded ~kind:Deleted ~path:from
-       @ create_event_unless_excluded ~kind:Created ~path:to_)
+     | Move { src; dst } ->
+       create_event_unless_excluded ~kind:Deleted ~path:src
+       @ create_event_unless_excluded ~kind:Created ~path:dst)
   | Queue_overflow -> [ Queue_overflow ]
 ;;
 
@@ -224,51 +216,6 @@ let shutdown t =
         |> List.iter ~f:(fun (_, fs) -> Fsevents.stop fs))
   | Fswatch_win { t; _ } -> `Thunk (fun () -> Fswatch_win.shutdown t)
 ;;
-
-let buffer_capacity = 65536
-
-(* Fixed-size buffer for reading line-by-line from file descriptors. Bug:
-   deadlocks if there's a line longer than the capacity of the buffer. TODO: use
-   In_channel? *)
-module Buffer = struct
-  type buffer =
-    { data : Bytes.t
-    ; mutable size : int
-    }
-
-  let create ~capacity = { data = Bytes.create capacity; size = 0 }
-
-  let read_lines buffer fd =
-    let len = Unix.read fd buffer.data buffer.size (buffer_capacity - buffer.size) in
-    buffer.size <- buffer.size + len;
-    if len = 0
-    then `End_of_file (Bytes.sub_string buffer.data ~pos:0 ~len:buffer.size)
-    else
-      `Ok
-        (let lines = ref [] in
-         let line_start = ref 0 in
-         for i = 0 to buffer.size - 1 do
-           let c = Bytes.get buffer.data i in
-           if c = '\n' || c = '\r'
-           then (
-             if !line_start < i
-             then (
-               let line =
-                 Bytes.sub_string buffer.data ~pos:!line_start ~len:(i - !line_start)
-               in
-               lines := line :: !lines);
-             line_start := i + 1)
-         done;
-         buffer.size <- buffer.size - !line_start;
-         Bytes.blit
-           ~src:buffer.data
-           ~src_pos:!line_start
-           ~dst:buffer.data
-           ~dst_pos:0
-           ~len:buffer.size;
-         List.rev !lines)
-  ;;
-end
 
 module Fs_sync : sig
   val special_dir_path : Path.Build.t Lazy.t
@@ -426,19 +373,18 @@ let spawn_external_watcher ~root ~backend ~watch_exclusions =
   let pid = Spawn.spawn () ~prog ~argv ~stdout:w_stdout ?stderr |> Pid.of_int in
   Unix.close w_stdout;
   Option.iter stderr ~f:Unix.close;
-  (r_stdout, parse_line, wait), pid
+  (Unix.in_channel_of_descr r_stdout, parse_line, wait), pid
 ;;
 
 let create_inotifylib_watcher ~sync_table ~(scheduler : Scheduler.t) should_exclude =
-  Inotify_lib.create
-    ~spawn_thread:scheduler.spawn_thread
+  Inotify.create
     ~modify_event_selector:`Closed_writable_fd
     ~send_emit_events_job_to_scheduler:(fun f ->
       scheduler.thread_safe_send_emit_events_job (fun () ->
         let events = f () in
         List.concat_map events ~f:(fun event ->
           let is_fs_sync_event_generated_by_dune =
-            match (event : Inotify_lib.Event.t) with
+            match (event : Inotify.Event.t) with
             | Modified path | Created path | Unlinked path ->
               Option.some_if
                 (Fs_sync.is_special_file ~path_as_reported_by_file_watcher:path)
@@ -463,31 +409,31 @@ let create_no_buffering ~(scheduler : Scheduler.t) ~root ~backend ~watch_exclusi
     spawn_external_watcher ~root ~backend ~watch_exclusions
   in
   let worker_thread pipe =
-    let buffer = Buffer.create ~capacity:buffer_capacity in
     while true do
       (* This job runs on the scheduler thread because it uses [sync_table]. *)
       let job =
-        match Buffer.read_lines buffer pipe with
-        | `End_of_file _remaining -> fun () -> [ Event.Watcher_terminated ]
-        | `Ok lines ->
+        match input_line pipe with
+        | exception End_of_file -> fun () -> [ Event.Watcher_terminated ]
+        | line ->
           fun () ->
-            List.concat_map lines ~f:(fun line ->
-              match parse_line line with
-              | Error s -> failwith s
-              | Ok path_s ->
-                if Fs_sync.is_special_file ~path_as_reported_by_file_watcher:path_s
-                then (
-                  match Fs_sync.consume_event sync_table path_s with
-                  | None -> []
-                  | Some id -> [ Event.Sync id ])
-                else (
-                  let path = Path.Expert.try_localize_external (Path.of_string path_s) in
-                  [ Fs_memo_event (Fs_memo_event.create ~kind:File_changed ~path) ]))
+            (match parse_line line with
+             | Error s -> failwith s
+             | Ok path_s ->
+               if Fs_sync.is_special_file ~path_as_reported_by_file_watcher:path_s
+               then (
+                 match Fs_sync.consume_event sync_table path_s with
+                 | None -> []
+                 | Some id -> [ Event.Sync id ])
+               else (
+                 let path = Path.Expert.try_localize_external (Path.of_string path_s) in
+                 [ Fs_memo_event (Fs_memo_event.create ~kind:File_changed ~path) ]))
       in
       scheduler.thread_safe_send_emit_events_job job
     done
   in
-  let (_ : Thread.t) = scheduler.spawn_thread (fun () -> worker_thread pipe) in
+  let (_ : Thread.t) =
+    Thread0.spawn ~name:"file-watcher" (fun () -> worker_thread pipe)
+  in
   { kind = Fswatch { pid; wait_for_watches_established = wait }; sync_table }
 ;;
 
@@ -502,7 +448,7 @@ let with_buffering ~create ~(scheduler : Scheduler.t) ~debounce_interval =
       Condition.signal event_cv;
       Mutex.unlock event_mtx
     in
-    let scheduler = { scheduler with thread_safe_send_emit_events_job } in
+    let scheduler = { Scheduler.thread_safe_send_emit_events_job } in
     create ~scheduler
   in
   (* The buffer thread is used to avoid flooding the main thread with file
@@ -530,7 +476,7 @@ let with_buffering ~create ~(scheduler : Scheduler.t) ~debounce_interval =
     Thread.delay debounce_interval;
     buffer_thread ()
   in
-  let (_ : Thread.t) = scheduler.spawn_thread buffer_thread in
+  let (_ : Thread.t) = Thread0.spawn ~name:"file-watcher" buffer_thread in
   res
 ;;
 
@@ -538,7 +484,7 @@ let create_inotifylib ~scheduler ~should_exclude =
   prepare_sync ();
   let sync_table = Table.create (module String) 64 in
   let inotify = create_inotifylib_watcher ~sync_table ~scheduler should_exclude in
-  Inotify_lib.add inotify (Lazy.force Fs_sync.special_dir);
+  Inotify.add inotify (Lazy.force Fs_sync.special_dir);
   { kind = Inotify inotify; sync_table }
 ;;
 
@@ -623,7 +569,7 @@ let create_fsevents
   let dispatch_queue_ref = ref None in
   let mutex = Mutex.create () in
   let (_ : Thread.t) =
-    scheduler.spawn_thread (fun () ->
+    Thread0.spawn ~name:"file-watcher" (fun () ->
       let dispatch_queue = Fsevents.Dispatch_queue.create () in
       Mutex.lock mutex;
       dispatch_queue_ref := Some dispatch_queue;
@@ -688,7 +634,7 @@ let create_fswatch_win ~(scheduler : Scheduler.t) ~debounce_interval:sleep ~shou
   let t = Fswatch_win.create () in
   Fswatch_win.add t (Path.to_absolute_filename Path.root);
   let (_ : Thread.t) =
-    scheduler.spawn_thread (fun () ->
+    Thread0.spawn ~name:"file-watcher" (fun () ->
       while true do
         let events = Fswatch_win.wait t ~sleep in
         List.iter ~f:(fswatch_win_callback ~scheduler ~sync_table ~should_exclude) events
@@ -779,7 +725,7 @@ let add_watch t path =
        start *)
     Ok ()
   | Inotify inotify ->
-    (try Ok (Inotify_lib.add inotify (Path.to_string path)) with
+    (try Ok (Inotify.add inotify (Path.to_string path)) with
      | Unix.Unix_error (ENOENT, _, _) -> Error `Does_not_exist)
   | Fswatch_win fswatch ->
     (match path with

@@ -1,7 +1,7 @@
 open Import
 module Versioned_file = Dune_sexp.Versioned_file
 module Execution_parameters = Dune_engine.Execution_parameters
-module Compound_user_error = Dune_rpc_private.Compound_user_error
+module Compound_user_error = Dune_rpc.Private.Compound_user_error
 
 module Implicit_transitive_deps = struct
   type t =
@@ -780,6 +780,8 @@ let update_execution_parameters t ep =
   |> Execution_parameters.set_expand_aliases_in_sandbox t.expand_aliases_in_sandbox
   |> Execution_parameters.set_workspace_root_to_build_path_prefix_map
        (if t.map_workspace_root then Set "/workspace_root" else Unset)
+  |> Execution_parameters.set_action_project_root
+       (if t.dune_version >= (3, 23) then Some t.root else None)
   |> Execution_parameters.set_should_remove_write_permissions_on_generated_files
        (t.dune_version >= (2, 4))
 ;;

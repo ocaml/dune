@@ -76,7 +76,7 @@ module Scope = struct
   let reverse_table : (Digest.t, t) Table.t = Table.create (module Digest) 128
 
   let encode t =
-    let key = Digest.generic (to_string t) in
+    let key = Digest.string (to_string t) in
     match Table.find reverse_table key with
     | None ->
       Table.set reverse_table key t;

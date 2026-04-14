@@ -30,11 +30,11 @@ Test that we can set variables
   >   (run mkdir -p %{prefix})))
   > EOF
 
-  $ build_pkg usetest
+  $ build_pkg usetest 2>&1 | censor
   abool: true
   astring: foobar
   somestrings: foo bar
-  share path: ../../test.0.0.1-9c401dcba674aef73cb59a8542e10768/target/share/test
+  share path: ../../test.0.0.1-$DIGEST/target/share/test
   version: 1.2.3
 
   $ show_pkg_cookie test
@@ -58,7 +58,7 @@ Now we demonstrate we get a proper error from invalid .config files:
   >  ))
   > EOF
 
-  $ build_pkg test 2>&1 | dune_cmd subst 'File .*:' 'File $REDACTED:'
+  $ build_pkg test 2>&1 | dune_cmd subst 'File .*:' 'File $REDACTED:' | censor
   Error:
   File $REDACTED:
   1 | this is dummy text
@@ -66,5 +66,5 @@ Now we demonstrate we get a proper error from invalid .config files:
   Error parsing test.config
   Reason: Parse error
   -> required by
-     _build/_private/default/.pkg/test.0.0.1-8af7aa610e92a4df76396bed0f179745/target
+     _build/_private/default/.pkg/test.0.0.1-$DIGEST/target
   [1]

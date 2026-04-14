@@ -5,3 +5,7 @@
 (cram
  (deps %{bin:node} %{bin:js_of_ocaml} %{bin:wasm_of_ocaml})
  (applies_to parameterised-jsoo))
+
+(cram
+ (deps %{bin:tree})
+ (applies_to vendor-parameterised))

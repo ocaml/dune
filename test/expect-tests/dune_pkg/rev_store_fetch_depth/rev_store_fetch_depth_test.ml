@@ -2,7 +2,7 @@ open Stdune
 open Fiber.O
 open Git_test_utils
 module Rev_store = Dune_pkg.Rev_store
-module Console = Dune_console
+module Console = Console
 
 let () =
   let cache_dir = lazy (Temp.create Dir ~prefix:"isolated-cache-" ~suffix:"") in
@@ -33,7 +33,7 @@ let%expect_test "second fetch uses refs for efficient negotiation (fix #13323)" 
   in
   (Dune_scheduler.Scheduler.Run.go
      { concurrency = 2; print_ctrl_c_warning = false; watch_exclusions = [] }
-     ~on_event:(fun _ _ -> ())
+     ~on_event:(fun _ -> ())
    @@ fun () ->
    let* rev_store = Rev_store.get in
    let git = git ~dir:repo_dir in

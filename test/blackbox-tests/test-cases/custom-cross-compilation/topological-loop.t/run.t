@@ -1,3 +1,5 @@
+Rejects topological loops in custom contexts.
+
   $ dune build file @install
   File "dune-workspace", lines 13-15, characters 9-50:
   13 | (context (default

@@ -11,3 +11,5 @@ val add_to_env : Env.t -> Env.t
 
 (** Destroy the temporary file or directory *)
 val destroy : Temp.what -> Path.t -> unit
+
+val clear : unit -> unit

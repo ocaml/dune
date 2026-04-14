@@ -5,6 +5,7 @@ type t = string
 module Extension = struct
   type t = string
 
+  let corrected = ".corrected"
   let ml = ".ml"
   let mli = ".mli"
   let vo = ".vo"

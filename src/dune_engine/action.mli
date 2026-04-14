@@ -40,6 +40,7 @@ module Diff : sig
   type nonrec ('path, 'target) t = ('path, 'target) t =
     { optional : bool
     ; mode : Mode.t
+    ; directory_diffs : bool
     ; file1 : 'path
     ; file2 : 'target
     }
@@ -108,6 +109,8 @@ end
 (** Convert the action to a format suitable for printing *)
 val for_shell : t -> For_shell.t
 
+val digest : Dune_digest.Manual.t -> t -> unit
+
 (** Return the list of directories the action chdirs to *)
 val chdirs : t -> Path.Build.Set.t
 
@@ -147,6 +150,7 @@ module Full : sig
     ; locks : Path.t list
     ; can_go_in_shared_cache : bool
     ; sandbox : Sandbox_config.t
+    ; corrections : Corrections.t option
     }
 
   val make
@@ -155,6 +159,7 @@ module Full : sig
     -> ?can_go_in_shared_cache:bool
          (** default [!Clflags.can_fo_in_shared_cache_default] *)
     -> ?sandbox:Sandbox_config.t (** default [Sandbox_config.default] *)
+    -> ?corrections:Corrections.t (** default [Corrections.Ignore] *)
     -> action
     -> t
 
@@ -171,6 +176,7 @@ module Full : sig
   val add_locks : Path.t list -> t -> t
   val add_sandbox : Sandbox_config.t -> t -> t
   val add_can_go_in_shared_cache : bool -> t -> t
+  val add_corrections : Corrections.t -> t -> t
 
   include Monoid with type t := t
 end

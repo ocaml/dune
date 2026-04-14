@@ -16,9 +16,9 @@ let default =
 
 let go ?(timeout = Time.Span.of_secs 0.3) ?(config = default) f =
   try
-    Scheduler.Run.go ~timeout config ~file_watcher:No_watcher ~on_event:(fun _ _ -> ()) f
+    Scheduler.Run.go ~timeout config ~file_watcher:No_watcher ~on_event:(fun _ -> ()) f
   with
-  | Scheduler.Run.Shutdown.E Requested -> ()
+  | Shutdown.E Requested -> ()
 ;;
 
 let true_ = Bin.which "true" ~path:(Env_path.path Env.initial) |> Option.value_exn
@@ -34,8 +34,7 @@ let%expect_test "cancelling a build" =
            (let* () = Fiber.Ivar.fill build_started () in
             let* () = Fiber.Ivar.read build_cancelled in
             let* res =
-              Fiber.collect_errors (fun () ->
-                Scheduler.with_job_slot (fun _ _ -> Fiber.return ()))
+              Fiber.collect_errors (fun () -> Scheduler.with_job_slot Fiber.return)
             in
             print_endline
               (match res with

@@ -4,6 +4,7 @@ module Table = String.Table
 type t = string
 
 let to_string t = t
+let repr = Repr.view Repr.string ~to_:to_string
 let equal = String.equal
 let hash = String.hash
 let compare = String.compare

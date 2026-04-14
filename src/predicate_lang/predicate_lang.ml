@@ -36,19 +36,6 @@ let and_ = function
   | _ :: _ :: _ as xs -> And xs
 ;;
 
-let map t ~f =
-  let rec loop = function
-    | True -> True
-    | False -> False
-    | Element a -> Element (f a)
-    | Not a -> Not (loop a)
-    | Standard -> Standard
-    | Or xs -> Or (List.map ~f:loop xs)
-    | And xs -> And (List.map ~f:loop xs)
-  in
-  loop t
-;;
-
 let rec decode_one =
   let not_or a = not (Or a) in
   fun f ->
@@ -115,6 +102,34 @@ let rec encode f =
   | And xs -> constr "and" (list (encode f)) xs
 ;;
 
+let repr elt =
+  Repr.fix (fun repr ->
+    Repr.variant
+      "predicate-lang"
+      [ Repr.case0 "True" ~test:(function
+          | True -> true
+          | False | Element _ | Not _ | Standard | Or _ | And _ -> false)
+      ; Repr.case0 "False" ~test:(function
+          | False -> true
+          | True | Element _ | Not _ | Standard | Or _ | And _ -> false)
+      ; Repr.case "Element" elt ~proj:(function
+          | Element a -> Some a
+          | True | False | Not _ | Standard | Or _ | And _ -> None)
+      ; Repr.case "Not" repr ~proj:(function
+          | Not a -> Some a
+          | True | False | Element _ | Standard | Or _ | And _ -> None)
+      ; Repr.case0 "Standard" ~test:(function
+          | Standard -> true
+          | True | False | Element _ | Not _ | Or _ | And _ -> false)
+      ; Repr.case "Or" (Repr.list repr) ~proj:(function
+          | Or xs -> Some xs
+          | True | False | Element _ | Not _ | Standard | And _ -> None)
+      ; Repr.case "And" (Repr.list repr) ~proj:(function
+          | And xs -> Some xs
+          | True | False | Element _ | Not _ | Standard | Or _ -> None)
+      ])
+;;
+
 let rec to_dyn f =
   let open Dyn in
   function
@@ -163,6 +178,12 @@ let rec compare f x y =
   | False, False -> Eq
 ;;
 
+module Repr_derived = Repr.Make1 (struct
+    type nonrec 'a t = 'a t
+
+    let repr = repr
+  end)
+
 module Glob = struct
   module Glob = Dune_glob.V1
 
@@ -191,14 +212,24 @@ module Glob = struct
       | Glob of Proxy.t
       | Literal of string
 
+    let repr =
+      let glob_repr =
+        Repr.view Repr.string ~to_:(fun glob -> Glob.to_string (unproxy glob))
+      in
+      Repr.variant
+        "glob-element"
+        [ Repr.case "Glob" glob_repr ~proj:(function
+            | Glob glob -> Some glob
+            | Literal _ -> None)
+        ; Repr.case "Literal" Repr.string ~proj:(function
+            | Literal string -> Some string
+            | Glob _ -> None)
+        ]
+    ;;
+
     let to_dyn = function
       | Literal s -> Dyn.variant "Literal" [ Dyn.string s ]
       | Glob g -> Dyn.variant "Glob" [ Glob.to_dyn (unproxy g) ]
-    ;;
-
-    let digest = function
-      | Literal s -> Dune_digest.generic (0, s)
-      | Glob g -> Dune_digest.generic (1, Glob.to_string (unproxy g))
     ;;
 
     let encode t =
@@ -242,6 +273,7 @@ module Glob = struct
 
   type nonrec t = Element.t t
 
+  let repr = repr Element.repr
   let to_dyn t = to_dyn Element.to_dyn t
   let test (t : t) ~standard elem = test t ~standard ~test:Element.test elem
 
@@ -264,5 +296,5 @@ module Glob = struct
   let hash t = Poly.hash t
   let decode = decode Element.decode
   let encode t = encode Element.encode t
-  let digest t = map t ~f:Element.digest |> Dune_digest.generic
+  let digest t = Dune_digest.repr repr t
 end

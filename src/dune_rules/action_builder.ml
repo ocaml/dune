@@ -78,6 +78,13 @@ let copy ~src ~dst =
     (path src >>> return (Action.Full.make (Action.Copy (src, dst))))
 ;;
 
+let copy_dir ~src ~dst =
+  with_targets
+    ~targets:
+      (Targets.create ~files:Path.Build.Set.empty ~dirs:(Path.Build.Set.singleton dst))
+    (path src >>> return (Action.Full.make (Action.Copy (src, dst))))
+;;
+
 let symlink ~src ~dst =
   with_file_targets
     ~file_targets:[ dst ]

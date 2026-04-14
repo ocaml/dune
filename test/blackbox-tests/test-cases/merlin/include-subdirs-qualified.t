@@ -1,3 +1,5 @@
+Generates Merlin config for `(include_subdirs qualified)` libraries.
+
   $ make_dune_project 3.12
 
   $ cat >dune <<EOF

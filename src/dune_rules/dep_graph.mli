@@ -10,6 +10,7 @@ val make
   -> t
 
 val dir : t -> Path.Build.t
+val mem : t -> Module.t -> bool
 val deps_of : t -> Module.t -> Module.t list Action_builder.t
 val top_closed_implementations : t -> Module.t list -> Module.t list Action_builder.t
 

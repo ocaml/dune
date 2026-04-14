@@ -8,6 +8,7 @@ type t =
 
 let make ~dir ~per_module = { dir; per_module }
 let dir t = t.dir
+let mem t (m : Module.t) = Module_name.Unique.Map.mem t.per_module (Module.obj_name m)
 
 let deps_of t (m : Module.t) =
   match Module_name.Unique.Map.find t.per_module (Module.obj_name m) with

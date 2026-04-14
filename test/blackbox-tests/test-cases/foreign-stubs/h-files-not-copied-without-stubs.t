@@ -21,11 +21,12 @@ A library with no C stubs — .h files should not be a dependency of any rule:
   > /* should not appear as a dependency */
   > EOF
 
-  $ dune build
+  $ dune build no-stubs/.mylib.objs/byte/mylib.cmo
   $ dune rules --deps no-stubs/ 2>&1 | grep 'vendored\.h'
   [1]
 
-A library with foreign_stubs — .h files should be a dependency:
+A library with foreign_stubs — .h files should be a dependency.
+Build the stub object with sandboxing to ensure dependencies are accurate:
 
   $ mkdir with-stubs
   $ cat > with-stubs/dune << EOF
@@ -45,6 +46,6 @@ A library with foreign_stubs — .h files should be a dependency:
   > /* needed by stub.c */
   > EOF
 
-  $ dune build
-  $ dune rules --deps with-stubs/ 2>&1 | grep 'needed\.h'
+  $ dune build --sandbox copy with-stubs/stub.o
+  $ dune rules --deps with-stubs/stub.o 2>&1 | grep 'needed\.h'
    (File (In_build_dir _build/default/with-stubs/needed.h))

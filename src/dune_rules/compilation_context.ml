@@ -219,11 +219,8 @@ let create
   ; includes = Includes.make ~project ~direct_requires ~hidden_requires ocaml.lib_config
   ; lib_index =
       (* Maps module names to libraries for per-module inter-library dependency
-         filtering. All entries use [None] for the module (glob deps on the
-         library) rather than [Some m] (per-file deps on a specific module).
-         Per-file deps for unwrapped libraries are not yet supported because
-         modules in unwrapped libraries can alias modules from other libraries,
-         and we don't yet track the dependency cone of individual modules. *)
+         filtering. Used to look up which libraries a module references based
+         on the module names reported by ocamldep. *)
       (let open Resolve.Memo.O in
        let* all_libs = direct_requires in
        let+ entries =
@@ -232,12 +229,12 @@ let create
            match main with
            | Some name ->
              (* Wrapped library: index by the wrapper module name. *)
-             Resolve.Memo.return [ name, ((lib : Lib.t), (None : Module.t option)) ]
+             Resolve.Memo.return [ name, lib ]
            | None ->
              (* Unwrapped library: index by each entry module name. *)
              (match Lib_info.entry_modules (Lib.info lib) ~for_ with
               | External (Ok names) ->
-                Resolve.Memo.return (List.map names ~f:(fun n -> n, (lib, None)))
+                Resolve.Memo.return (List.map names ~f:(fun n -> n, lib))
               | External (Error e) -> Resolve.Memo.of_result (Error e)
               | Local ->
                 Resolve.Memo.lift_memo
@@ -248,7 +245,7 @@ let create
                         ~for_)
                      ~f:(fun mods ->
                        List.map (Modules.entry_modules mods) ~f:(fun m ->
-                         Module.name m, (lib, None))))))
+                         Module.name m, lib)))))
        in
        Lib_file_deps.Lib_index.create entries)
   ; preprocessing

@@ -329,8 +329,7 @@ let build_cm
         let+ direct_libs = Compilation_context.requires_compile cctx
         and+ hidden_libs = Compilation_context.requires_hidden cctx in
         let libs = direct_libs @ hidden_libs in
-        let entries = List.map libs ~f:(fun lib -> lib, None) in
-        Command.Args.Hidden_deps (Lib_file_deps.deps_of_entries ~opaque ~cm_kind entries))
+        Command.Args.Hidden_deps (Lib_file_deps.deps_of_entries ~opaque ~cm_kind libs))
        |> Resolve.Memo.args
        |> Command.Args.memo
    in
@@ -352,10 +351,8 @@ let build_cm
             List.exists libs ~f:(fun lib -> Option.is_some (Lib.implements lib))
           in
           if has_virtual_impl
-          then (
-            let entries = List.map libs ~f:(fun lib -> lib, None) in
-            Action_builder.return
-              ((), Lib_file_deps.deps_of_entries ~opaque ~cm_kind entries))
+          then
+            Action_builder.return ((), Lib_file_deps.deps_of_entries ~opaque ~cm_kind libs)
           else
             let* lib_index = Resolve.Memo.read (Compilation_context.lib_index cctx) in
             let* raw_deps_m =
@@ -400,7 +397,7 @@ let build_cm
             let* flags = Ocaml_flags.get (Compilation_context.flags cctx) mode in
             let open_modules = Ocaml_flags.extract_open_module_names flags in
             let referenced = Module_name.Set.union all_raw open_modules in
-            let filtered_entries =
+            let filtered_libs =
               Lib_file_deps.Lib_index.filter_libs lib_index ~referenced_modules:referenced
             in
             (* Transitively close the filtered libraries within [libs].
@@ -409,7 +406,7 @@ let build_cm
             let libs_set = Table.create (module Lib) (List.length libs) in
             List.iter libs ~f:(fun lib -> Table.set libs_set lib ());
             let covered = Table.create (module Lib) 8 in
-            List.iter filtered_entries ~f:(fun (lib, _) -> Table.set covered lib ());
+            List.iter filtered_libs ~f:(fun lib -> Table.set covered lib ());
             let rec close_over queue acc =
               match queue with
               | [] -> Action_builder.return acc
@@ -424,17 +421,14 @@ let build_cm
                       Some dep)
                     else None)
                 in
-                let new_entries =
-                  List.map new_deps ~f:(fun dep -> dep, (None : Module.t option))
-                in
-                close_over (new_deps @ rest) (new_entries @ acc)
+                close_over (new_deps @ rest) (new_deps @ acc)
             in
-            let+ transitive_entries = close_over (List.map filtered_entries ~f:fst) [] in
+            let+ transitive_libs = close_over filtered_libs [] in
             ( ()
             , Lib_file_deps.deps_of_entries
                 ~opaque
                 ~cm_kind
-                (filtered_entries @ transitive_entries) ))
+                (filtered_libs @ transitive_libs) ))
    in
    let other_cm_files =
      let dep_graph = Ml_kind.Dict.get (Compilation_context.dep_graphs cctx) ml_kind in
@@ -682,8 +676,7 @@ let ocamlc_i ~deps cctx (m : Module.t) ~output =
             and+ h = Compilation_context.requires_hidden cctx in
             d @ h)
        in
-       let entries = List.map libs ~f:(fun lib -> lib, None) in
-       (), Lib_file_deps.deps_of_entries ~opaque ~cm_kind:(Ocaml Cmo) entries)
+       (), Lib_file_deps.deps_of_entries ~opaque ~cm_kind:(Ocaml Cmo) libs)
   in
   let ocaml_flags = Ocaml_flags.get (Compilation_context.flags cctx) (Ocaml Byte) in
   let modules = Compilation_context.modules cctx in

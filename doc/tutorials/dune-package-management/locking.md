@@ -8,11 +8,13 @@ For many projects this is a good and acceptable behavior as users often want to
 use new versions of their dependencies. However some projects might want to
 keep a fixed set of (transitive) dependencies that is only updated manually.
 
-## Create a lock directory manually
+## Creating a lock directory
 
 If a lock directory exists in the source, Dune will use that to fix the exact
 version and source of dependencies. The default name of said lock directory is
-`dune.lock`. Lock directories are created with:
+`dune.lock`.
+
+Lock directories are created with:
 
 ```
 $ dune pkg lock
@@ -23,20 +25,31 @@ Solution for dune.lock:
 ```
 
 Whenever Dune encounters a `dune.lock` folder, it will use the set of
-dependencies defined in the lock. It contains all the metadata about package
-names and versions, their dependencies and source locations that are necessary
-to build the project's dependencies.
+dependencies defined in the lock. It contains all the metadata necessary
+to build a project's dependencies, including every packages' name, version, 
+dependencies, source location.
 
 On the next build, Dune will read the stored solver solution from the
-`dune.lock` directory, download and build the dependencies and then continue on
-building the project as usual.
-
-The lock directory will not be updated until `dune pkg lock` is rerun.
+`dune.lock` directory, download and build the dependencies, and then continue to
+build the project as usual.
 
 :::{note}
 This approach is similar to using `opam switch export --full --freeze` to
 export the configuration of a switch.
 :::
+
+## Updating a lock directory
+
+To update a lock directory, rerun
+
+```
+$ dune pkg lock
+```
+
+All the dependencies in the lock directory will be updated to the latest 
+available versions, satisyfing the declared constraints.
+
+## Removing a lock directory
 
 Deleting the lock directory will cause Dune to fall back to automatically
 determining dependency versions via the declared package constraints.

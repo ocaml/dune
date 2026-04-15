@@ -94,8 +94,8 @@ let wait_for_build_process t ~is_process_group_leader pid =
         let alarm_clock = Lazy.force t.alarm_clock in
         let sleep = Alarm_clock.sleep alarm_clock sigterm_grace_period in
         sigkill_alarm := Some sleep;
-        let+ res = Alarm_clock.await sleep in
-        match res with
+        Alarm_clock.await sleep
+        >>| function
         | `Cancelled -> ()
         | `Finished -> Process_watcher.killall t.process_watcher Sys.sigkill)
       (fun () ->

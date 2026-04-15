@@ -124,3 +124,12 @@
  (applies_to hidden-deps-unsupported)
  (enabled_if
   (< %{ocaml_version} 5.2.0)))
+
+;; Skip on macOS: dune hangs on SIGINT due to a known macOS sigwait issue
+;; (see signal_watcher.ml). The SIGTERM-before-SIGKILL logic is
+;; platform-independent; this test just cannot exercise it on macOS.
+
+(cram
+ (applies_to graceful-shutdown)
+ (enabled_if
+  (= %{system} macosx)))

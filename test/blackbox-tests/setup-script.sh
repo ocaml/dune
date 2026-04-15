@@ -118,6 +118,13 @@ build () {
     with_timeout dune rpc build --wait "$@"
 }
 
+wait_for_file () {
+    until [ -e "$1" ]
+    do
+        sleep 0.01
+    done
+}
+
 file_status() {
   [ -e "$1" ] && echo "$1 exists" || echo "$1 missing"
 }

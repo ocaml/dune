@@ -26,8 +26,7 @@ readiness, and sleeps.
   >   Sys.set_signal Sys.sigterm (Sys.Signal_handle (fun _ ->
   >     let oc = open_out (Filename.concat dir "cleanup_ran") in
   >     output_string oc "cleanup ran\n";
-  >     close_out oc;
-  >     exit 0));
+  >     close_out oc));
   >   let oc = open_out (Filename.concat dir "ready") in
   >   close_out oc;
   >   while true do Unix.sleepf 0.1 done
@@ -36,29 +35,31 @@ readiness, and sleeps.
 A wrapper script that runs dune build in the background, waits for the child to
 be ready, sends SIGINT to dune, and checks if the cleanup handler ran.
 
-  $ cat > run_test.sh <<'SCRIPT'
-  > #!/bin/sh
-  > # Skip on macOS: dune hangs on SIGINT due to a known macOS sigwait issue
-  > # (see signal_watcher.ml). The SIGTERM-before-SIGKILL logic is
-  > # platform-independent; this test just cannot exercise it on macOS.
-  > if [ "$(uname)" = "Darwin" ]; then echo "cleanup ran"; exit 0; fi
-  > export TEST_DIR=$PWD
-  > rm -f ready cleanup_ran
-  > dune build @slow 2>/dev/null &
-  > DUNE_PID=$!
-  > i=0; while [ $i -lt 200 ] && [ ! -e ready ]; do sleep 0.02; i=$((i+1)); done
-  > if [ ! -e ready ]; then echo "child never became ready"; kill -9 $DUNE_PID 2>/dev/null; exit 1; fi
-  > kill -INT $DUNE_PID
-  > sleep 3
-  > kill -9 $DUNE_PID 2>/dev/null
-  > wait $DUNE_PID 2>/dev/null
-  > if [ -f cleanup_ran ]; then
-  >   cat cleanup_ran
-  > else
-  >   echo "cleanup did not run (child was killed without SIGTERM)"
-  > fi
-  > SCRIPT
-  $ chmod +x run_test.sh
+  $ export TEST_DIR=$PWD
 
-  $ sh run_test.sh
-  cleanup ran
+  $ dune build @slow 2>/dev/null &
+
+  $ DUNE_PID=$!
+
+  $ wait_for_file ready
+
+  $ kill -INT $DUNE_PID
+
+  $ wait_for_file cleanup_ran
+
+  $ wait $DUNE_PID
+  [130]
+
+  $ dune trace cat | jq 'select(.name | startswith("process-")) | { name, args }'
+  {
+    "name": "process-cleanup-start",
+    "args": {}
+  }
+  {
+    "name": "process-cleanup-sigkill",
+    "args": {}
+  }
+  {
+    "name": "process-cleanup-finish",
+    "args": {}
+  }

@@ -6,7 +6,7 @@ type t = Context_name.t
 type any_package =
   | Local of Package.t
   | Installed of Dune_package.t
-  | Build of unit Action_builder.t
+  | Build of unit Action_builder.t * Path.t Install.Paths.t
 
 let find_package ctx pkg =
   let* packages = Dune_load.packages () in
@@ -19,7 +19,7 @@ let find_package ctx pkg =
        Pkg_rules.find_package ctx pkg
        >>| (function
         | None -> None
-        | Some b -> Some (Build b))
+        | Some (b, install_paths) -> Some (Build (b, install_paths)))
      | false ->
        let* findlib = Findlib.create ctx in
        Findlib.find_root_package findlib pkg
@@ -31,6 +31,34 @@ let find_package ctx pkg =
 ;;
 
 let create ctx = Memo.return ctx
+
+let package_install ~(context : Build_context.t) ~(pkg : Package.t) =
+  let dir = Path.Build.append_source context.build_dir (Package.dir pkg) in
+  let name = Package.name pkg in
+  sprintf ".%s-files" (Package.Name.to_string name)
+  |> Alias.Name.of_string
+  |> Alias.make ~dir
+;;
+
+let resolve_package_section ctx pkg_name section =
+  find_package ctx pkg_name
+  >>| function
+  | None -> None
+  | Some (Local pkg) ->
+    let path = Install.Paths.get_local_location ctx section pkg_name in
+    let context = Build_context.create ~name:ctx in
+    let dep = Alias_builder.alias (package_install ~context ~pkg) in
+    Some (path, dep)
+  | Some (Build (build, install_paths)) ->
+    let path = Install.Paths.get install_paths section in
+    Some (path, build)
+  | Some (Installed pkg) ->
+    let prefix = Path.parent_exn (Path.parent_exn pkg.dir) in
+    let roots = Install.Roots.opam_from_prefix prefix ~relative:Path.relative in
+    let paths = Install.Paths.make ~relative:Path.relative ~package:pkg_name ~roots in
+    let path = Install.Paths.get paths section in
+    Some (path, Action_builder.path pkg.dir)
+;;
 
 let section_of_any_package_site any_package pkg_name loc site =
   let sites =

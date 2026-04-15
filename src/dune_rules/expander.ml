@@ -636,7 +636,51 @@ let expand_pform_macro
   =
   let s = Pform.Macro_invocation.Args.whole macro_invocation in
   match macro_invocation.macro with
-  | Pkg -> Code_error.raise "pkg forms aren't possible here" []
+  | Pkg ->
+    let pkg_name_str, variable_name =
+      Pform.Macro_invocation.Args.lsplit2_exn
+        macro_invocation
+        (Dune_lang.Template.Pform.payload_loc source)
+    in
+    (match Section.of_string variable_name with
+     | Some Misc | None ->
+       User_error.raise
+         ~loc:(Dune_lang.Template.Pform.loc source)
+         [ Pp.textf
+             "%%{pkg:%s:%s} is not supported; only section variables (lib, bin, share, \
+              etc.) are available in regular rules"
+             pkg_name_str
+             variable_name
+         ]
+     | Some section ->
+       Need_full_expander
+         (fun t ->
+           With
+             (let pkg_name = Package.Name.of_string pkg_name_str in
+              let context_name = Context.name t.context in
+              let loc = Dune_lang.Template.Pform.loc source in
+              let open Action_builder.O in
+              let* found =
+                Action_builder.of_memo
+                  (let open Memo.O in
+                   let* package_db = Package_db.create context_name in
+                   Package_db.resolve_package_section package_db pkg_name section)
+              in
+              match found with
+              | None ->
+                Action_builder.fail
+                  { fail =
+                      (fun () ->
+                        User_error.raise
+                          ~loc
+                          [ Pp.textf
+                              "Package %s does not exist"
+                              (Package.Name.to_string pkg_name)
+                          ])
+                  }
+              | Some (path, dep) ->
+                let+ () = dep in
+                [ Value.Dir path ])))
   | Pkg_self -> Code_error.raise "pkg-self forms aren't possible here" []
   | Ocaml_config -> ocaml_config_macro source macro_invocation context
   | Env -> Need_full_expander (fun t -> env_macro t source macro_invocation)

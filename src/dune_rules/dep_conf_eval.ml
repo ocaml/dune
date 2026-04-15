@@ -137,7 +137,7 @@ let package loc pkg (context : Build_context.t) ~dune_version =
      let* package_db = Package_db.create context.name in
      Package_db.find_package package_db pkg)
   >>= function
-  | Some (Build build) -> build
+  | Some (Build (build, _)) -> build
   | Some (Local pkg) -> Alias_builder.alias (package_install ~context ~pkg)
   | Some (Installed pkg) ->
     if dune_version < (2, 9)

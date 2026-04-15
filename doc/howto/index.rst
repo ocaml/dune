@@ -20,6 +20,7 @@ These guides will help you use Dune's features in your project.
    ../virtual-libraries
    ../tests
    bundle
+   handle-depexts
    toplevel
    rule-generation
    override-default-entrypoint

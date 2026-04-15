@@ -218,34 +218,26 @@ let create
   ; parameters
   ; includes = Includes.make ~project ~direct_requires ~hidden_requires ocaml.lib_config
   ; lib_index =
-      (* Maps module names to libraries for per-module inter-library dependency
-         filtering. Used to look up which libraries a module references based
-         on the module names reported by ocamldep. *)
+      (* Maps entry module names to libraries for per-module inter-library
+         dependency filtering. For wrapped libraries, the entry module is the
+         wrapper; for unwrapped, it is each public module. *)
       (let open Resolve.Memo.O in
        let* all_libs = direct_requires in
        let+ entries =
          Resolve.Memo.List.concat_map all_libs ~f:(fun lib ->
-           let* main = Lib.main_module_name lib in
-           match main with
-           | Some name ->
-             (* Wrapped library: index by the wrapper module name. *)
-             Resolve.Memo.return [ name, lib ]
-           | None ->
-             (* Unwrapped library: index by each entry module name. *)
-             (match Lib_info.entry_modules (Lib.info lib) ~for_ with
-              | External (Ok names) ->
-                Resolve.Memo.return (List.map names ~f:(fun n -> n, lib))
-              | External (Error e) -> Resolve.Memo.of_result (Error e)
-              | Local ->
-                Resolve.Memo.lift_memo
-                  (Memo.map
-                     (Dir_contents.modules_of_local_lib
-                        super_context
-                        (Lib.Local.of_lib_exn lib)
-                        ~for_)
-                     ~f:(fun mods ->
-                       List.map (Modules.entry_modules mods) ~f:(fun m ->
-                         Module.name m, lib)))))
+           match Lib_info.entry_modules (Lib.info lib) ~for_ with
+           | External (Ok names) ->
+             Resolve.Memo.return (List.map names ~f:(fun n -> n, lib))
+           | External (Error e) -> Resolve.Memo.of_result (Error e)
+           | Local ->
+             Resolve.Memo.lift_memo
+               (Memo.map
+                  (Dir_contents.modules_of_local_lib
+                     super_context
+                     (Lib.Local.of_lib_exn lib)
+                     ~for_)
+                  ~f:(fun mods ->
+                    List.map (Modules.entry_modules mods) ~f:(fun m -> Module.name m, lib))))
        in
        Lib_file_deps.Lib_index.create entries)
   ; preprocessing

@@ -14,7 +14,7 @@ let all_libs cctx =
   d @ h
 ;;
 
-let filtered_lib_deps ~cctx ~obj_dir ~ml_kind ~for_ ~dep_graph ~opaque ~cm_kind ~mode m =
+let filtered_lib_deps ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~mode m =
   let open Action_builder.O in
   let* libs = Resolve.Memo.read (all_libs cctx) in
   let has_virtual_impl =
@@ -27,7 +27,30 @@ let filtered_lib_deps ~cctx ~obj_dir ~ml_kind ~for_ ~dep_graph ~opaque ~cm_kind 
     let sandbox = Compilation_context.sandbox cctx in
     let sctx = Compilation_context.super_context cctx in
     let* raw_deps_m =
-      Ocamldep.read_immediate_deps_raw_of ~sandbox ~sctx ~obj_dir ~ml_kind m
+      let open Action_builder.O in
+      let* impl_deps =
+        if Module.has m ~ml_kind:Impl
+        then
+          Ocamldep.read_immediate_deps_raw_of
+            ~sandbox
+            ~sctx
+            ~obj_dir
+            ~ml_kind:Impl
+            m
+        else Action_builder.return Module_name.Set.empty
+      in
+      let+ intf_deps =
+        if Module.has m ~ml_kind:Intf
+        then
+          Ocamldep.read_immediate_deps_raw_of
+            ~sandbox
+            ~sctx
+            ~obj_dir
+            ~ml_kind:Intf
+            m
+        else Action_builder.return Module_name.Set.empty
+      in
+      Module_name.Set.union impl_deps intf_deps
     in
     (* deps_of already returns transitive intra-library deps *)
     let* trans_deps = Dep_graph.deps_of dep_graph m in
@@ -40,26 +63,33 @@ let filtered_lib_deps ~cctx ~obj_dir ~ml_kind ~for_ ~dep_graph ~opaque ~cm_kind 
         in
         if not is_standard_kind
         then Action_builder.return Module_name.Set.empty
-        else (
-          (* Try the current ml_kind first; fall back to the other kind for
-             interface-only modules that may contain aliases to other libraries. *)
-          let dep_ml_kind =
-            if Module.has dep_m ~ml_kind
-            then ml_kind
-            else (
-              match ml_kind with
-              | Ml_kind.Impl -> Ml_kind.Intf
-              | Intf -> Impl)
+        else
+          (* Read ocamldep for both .ml and .mli when they exist, since the
+             interface can reference different libraries than the implementation. *)
+          let open Action_builder.O in
+          let* impl_deps =
+            if Module.has dep_m ~ml_kind:Impl
+            then
+              Ocamldep.read_immediate_deps_raw_of
+                ~sandbox
+                ~sctx
+                ~obj_dir
+                ~ml_kind:Impl
+                dep_m
+            else Action_builder.return Module_name.Set.empty
           in
-          if Module.has dep_m ~ml_kind:dep_ml_kind
-          then
-            Ocamldep.read_immediate_deps_raw_of
-              ~sandbox
-              ~sctx
-              ~obj_dir
-              ~ml_kind:dep_ml_kind
-              dep_m
-          else Action_builder.return Module_name.Set.empty))
+          let+ intf_deps =
+            if Module.has dep_m ~ml_kind:Intf
+            then
+              Ocamldep.read_immediate_deps_raw_of
+                ~sandbox
+                ~sctx
+                ~obj_dir
+                ~ml_kind:Intf
+                dep_m
+            else Action_builder.return Module_name.Set.empty
+          in
+          Module_name.Set.union impl_deps intf_deps)
     in
     let all_raw =
       List.fold_left trans_raw_deps ~init:raw_deps_m ~f:Module_name.Set.union
@@ -413,16 +443,7 @@ let build_cm
      then Action_builder.return ()
      else
        Action_builder.dyn_deps
-         (filtered_lib_deps
-            ~cctx
-            ~obj_dir
-            ~ml_kind
-            ~for_
-            ~dep_graph
-            ~opaque
-            ~cm_kind
-            ~mode
-            m)
+         (filtered_lib_deps ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~mode m)
    in
    let other_cm_files =
      let dep_graph = Ml_kind.Dict.get (Compilation_context.dep_graphs cctx) ml_kind in
@@ -689,7 +710,6 @@ let ocamlc_i ~deps cctx (m : Module.t) ~output =
         (filtered_lib_deps
            ~cctx
            ~obj_dir
-           ~ml_kind
            ~for_
            ~dep_graph
            ~opaque

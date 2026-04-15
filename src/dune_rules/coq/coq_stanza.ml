@@ -31,7 +31,7 @@ let _deprecated_coq_lang_lt_08 =
 
 let deprecated_coq_lang =
   Warning.make
-    ~default:(fun _version -> `Enabled)
+    ~default:(fun version -> if version >= (3, 21) then `Enabled else `Disabled)
     ~name:"deprecated_coq_lang"
     ~since:(3, 21)
 ;;

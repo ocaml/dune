@@ -14,8 +14,9 @@ Checking What System Packages Are Needed
    manage dependencies with opam, use ``opam list --required-by <pkg>
    --external`` to query depexts instead.
 
-Once you have a lock directory (created by running ``dune pkg lock``), you can
-list all required system packages:
+Once you have a lock directory (created by running ``dune pkg lock`` or
+automatically when building with package management enabled), you can list all
+required system packages:
 
 .. code:: console
 

@@ -201,7 +201,12 @@ let open_flags modules =
 let extract_open_module_names flags =
   let rec loop acc = function
     | "-open" :: name :: rest ->
-      loop (Module_name.Set.add acc (Module_name.of_checked_string name)) rest
+      let acc =
+        match Module_name.of_string_opt name with
+        | Some m -> Module_name.Set.add acc m
+        | None -> acc
+      in
+      loop acc rest
     | _ :: rest -> loop acc rest
     | [] -> acc
   in

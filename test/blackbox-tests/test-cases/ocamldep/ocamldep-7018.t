@@ -30,7 +30,7 @@ Reproduces #7018
   > dune build
   > }
 
-First we try to construct X.t directly.
+First we try to construct X.t directly
 
   $ runtest "()"
   Error: dependency cycle between modules in _build/default:

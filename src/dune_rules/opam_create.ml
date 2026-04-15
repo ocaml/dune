@@ -214,6 +214,7 @@ let package_fields package ~project =
 
 let dune_name = Package.Name.of_string "dune"
 let odoc_name = Package.Name.of_string "odoc"
+let menhir_name = Package.Name.of_string "menhir"
 
 let merge_dune_constraints lang_constraint user_constraint =
   match lang_constraint, user_constraint with
@@ -295,6 +296,28 @@ let insert_odoc_dep depends =
   loop [] depends
 ;;
 
+(* Menhir 20180523 added --infer-write-query and --infer-read-reply,
+   which dune's menhir rules rely on unconditionally. *)
+let menhir_constraint : Package_constraint.t = Uop (Gte, String_literal "20180523")
+
+let insert_menhir_dep depends =
+  let menhir_dep =
+    { Package_dependency.name = menhir_name; constraint_ = Some menhir_constraint }
+  in
+  if
+    List.exists depends ~f:(fun (dep : Package_dependency.t) ->
+      Package.Name.equal dep.name menhir_name)
+  then
+    List.map depends ~f:(fun (dep : Package_dependency.t) ->
+      if Package.Name.equal dep.name menhir_name
+      then
+        { dep with
+          constraint_ = Some (Option.value dep.constraint_ ~default:menhir_constraint)
+        }
+      else dep)
+  else depends @ [ menhir_dep ]
+;;
+
 let maintenance_intent dune_version info =
   if dune_version < (3, 18)
   then None
@@ -317,6 +340,11 @@ let opam_fields project (package : Package.t) =
     if dune_version < (2, 7) || Package.Name.equal package_name odoc_name
     then package
     else Package.map_depends package ~f:insert_odoc_dep
+  in
+  let package =
+    match Dune_project.find_extension_version project Dune_lang.Menhir.syntax with
+    | None -> package
+    | Some _ -> Package.map_depends package ~f:insert_menhir_dep
   in
   let package_fields = package_fields package ~project in
   let open Opam_file.Create in

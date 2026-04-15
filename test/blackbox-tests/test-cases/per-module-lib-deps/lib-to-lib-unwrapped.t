@@ -85,7 +85,7 @@ filtering within unwrapped libraries is not yet supported):
 
   $ dune build ./main.exe
   $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("uses_beta"))] | length'
-  1
+  2
 
 Change only beta.mli:
 
@@ -102,4 +102,4 @@ uses_alpha is recompiled because unwrapped libraries use glob deps:
 
   $ dune build ./main.exe
   $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("uses_alpha"))] | length'
-  1
+  2

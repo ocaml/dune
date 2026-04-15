@@ -26,14 +26,9 @@ type follow_symlink_error =
   | Max_depth_exceeded
   | Unix_error of Unix_error.Detailed.t
 
+(* Resolve a symbolic link recursively until its target is not a link.
+   Does not resolve intermediate path components, just the last one. *)
 val follow_symlink : string -> (string, follow_symlink_error) result
-
-(** [follow_symlinks path] returns a file path that is equivalent to [path], but
-    free of symbolic links. The value [None] is returned if the maximum symbolic
-    link depth is reached (i.e., [follow_symlink] returns the value
-    [Error Max_depth_exceeded] on some intermediate path). *)
-val follow_symlinks : string -> string option
-
 val unlink_exn : ?chmod:bool -> string -> unit
 val unlink_no_err : string -> unit
 

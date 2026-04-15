@@ -12,34 +12,8 @@ end
 let byte = Bytes.make 1 '0'
 
 module Task_id = Id.Make ()
-
-type t =
-  { readers : (Unix.file_descr, packed_task Queue.t) Table.t
-  ; writers : (Unix.file_descr, packed_task Queue.t) Table.t
-  ; mutable to_close : Unix.file_descr list
-  ; pipe_read : Unix.file_descr
-  ; (* write a byte here to interrupt the select loop *)
-    pipe_write : Unix.file_descr
-  ; mutex : Mutex.t
-  ; scheduler_queue : Event.Queue.t
-  ; mutable running : bool
-  ; mutable started : bool
-  ; (* this flag is to save a write to the pipe we used to interrupt select *)
-    mutable interrupting : bool
-  ; pipe_buf : Bytes.t
-  }
-
-and ('a, 'label) task =
-  { job : 'label -> Unix.file_descr -> 'a
-  ; ivar : ('a, [ `Cancelled | `Exn of exn ]) result Fiber.Ivar.t
-  ; select : t
-  ; what : [ `Read | `Write ]
-  ; fds : Unix.file_descr list
-  ; id : Task_id.t
-  ; mutable status : [ `Filled | `Waiting ]
-  }
-
-and packed_task = Task : (_, 'label) task * 'label -> packed_task
+open Types
+include Types.Async_io
 
 let interrupt t =
   if not t.interrupting

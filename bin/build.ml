@@ -1,4 +1,5 @@
 open Import
+module Run_id = Dune_scheduler.Run_id
 
 let run_build_system ~request =
   Dune_engine.Build_system.run_action_builder
@@ -55,11 +56,11 @@ let run_build_command_poll_passive ~common ~config ~request:_ : unit =
 let run_build_command_once ~(common : Common.t) ~config ~request =
   let open Fiber.O in
   let once () =
-    let run_id = Scheduler.Run_id.batch in
+    let run_id = Run_id.Batch in
     let start = Time.now () in
     Dune_trace.emit Build (fun () ->
       Dune_trace.Event.watch_build_start
-        ~run_id:(Scheduler.Run_id.to_int run_id)
+        ~run_id:(Run_id.to_int run_id)
         ~restart:false
         ~start);
     let+ res = run_build_system ~request in
@@ -71,7 +72,7 @@ let run_build_command_once ~(common : Common.t) ~config ~request =
     in
     Dune_trace.emit Build (fun () ->
       Dune_trace.Event.watch_build_finish
-        ~run_id:(Scheduler.Run_id.to_int run_id)
+        ~run_id:(Run_id.to_int run_id)
         ~outcome
         ~start
         ~stop

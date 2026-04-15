@@ -2,6 +2,7 @@ module Scheduler = Scheduler
 module Async_io = Async_io
 module File_watcher = File_watcher
 module Shutdown = Shutdown
+module Run_id = Run_id
 
 module For_tests = struct
   module Inotify = Inotify

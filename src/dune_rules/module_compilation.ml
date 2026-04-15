@@ -7,15 +7,16 @@ open Memo.O
    Returns [Dep.Set.t] suitable for use with [Action_builder.dyn_deps].
    Falls back to glob deps on all [libs] when virtual implementations
    are present (parameter libraries may not be in requires_compile). *)
+let all_libs cctx =
+  let open Resolve.Memo.O in
+  let+ d = Compilation_context.requires_compile cctx
+  and+ h = Compilation_context.requires_hidden cctx in
+  d @ h
+;;
+
 let filtered_lib_deps ~cctx ~obj_dir ~ml_kind ~for_ ~dep_graph ~opaque ~cm_kind ~mode m =
   let open Action_builder.O in
-  let* libs =
-    Resolve.Memo.read
-      (let open Resolve.Memo.O in
-       let+ d = Compilation_context.requires_compile cctx
-       and+ h = Compilation_context.requires_hidden cctx in
-       d @ h)
-  in
+  let* libs = Resolve.Memo.read (all_libs cctx) in
   let has_virtual_impl =
     List.exists libs ~f:(fun lib -> Option.is_some (Lib.implements lib))
   in
@@ -31,7 +32,7 @@ let filtered_lib_deps ~cctx ~obj_dir ~ml_kind ~for_ ~dep_graph ~opaque ~cm_kind 
         let is_standard_kind =
           match Module.kind dep_m with
           | Impl_vmodule | Virtual | Root | Alias _ | Wrapped_compat | Parameter -> false
-          | _ -> true
+          | Intf_only | Impl -> true
         in
         if not is_standard_kind
         then Action_builder.return Module_name.Set.empty
@@ -386,20 +387,18 @@ let build_cm
      && Dep_graph.mem dep_graph m
      && (match Module.kind m with
          | Root | Wrapped_compat | Impl_vmodule | Virtual | Parameter -> false
-         | _ -> true)
+         | Intf_only | Impl | Alias _ -> true)
      && Module.has m ~ml_kind
      && not (Virtual_rules.is_implementation (Compilation_context.implements cctx))
    in
-   (* Static lib deps: used when filtering is not possible, preserves the
-      original Hidden_deps-in-Command.Args behavior exactly. *)
+   (* Fallback lib deps: when per-module filtering is not possible, depend
+      on all .cmi/.cmx files from all required libraries. *)
    let lib_cm_deps_args =
      if skip_lib_deps || can_filter
      then Command.Args.empty
      else
        (let open Resolve.Memo.O in
-        let+ direct_libs = Compilation_context.requires_compile cctx
-        and+ hidden_libs = Compilation_context.requires_hidden cctx in
-        let libs = direct_libs @ hidden_libs in
+        let+ libs = all_libs cctx in
         Command.Args.Hidden_deps (Lib_file_deps.deps_of_entries ~opaque ~cm_kind libs))
        |> Resolve.Memo.args
        |> Command.Args.memo
@@ -666,7 +665,7 @@ let ocamlc_i ~deps cctx (m : Module.t) ~output =
       && Dep_graph.mem dep_graph m
       && (match Module.kind m with
           | Root | Wrapped_compat | Impl_vmodule | Virtual | Parameter | Alias _ -> false
-          | _ -> true)
+          | Intf_only | Impl -> true)
       && Module.has m ~ml_kind
       && not (Virtual_rules.is_implementation (Compilation_context.implements cctx))
     in
@@ -686,13 +685,7 @@ let ocamlc_i ~deps cctx (m : Module.t) ~output =
     else
       Action_builder.dyn_deps
         (let open Action_builder.O in
-         let+ libs =
-           Resolve.Memo.read
-             (let open Resolve.Memo.O in
-              let+ d = Compilation_context.requires_compile cctx
-              and+ h = Compilation_context.requires_hidden cctx in
-              d @ h)
-         in
+         let+ libs = Resolve.Memo.read (all_libs cctx) in
          (), Lib_file_deps.deps_of_entries ~opaque ~cm_kind:(Ocaml Cmo) libs)
   in
   let ocaml_flags = Ocaml_flags.get (Compilation_context.flags cctx) (Ocaml Byte) in

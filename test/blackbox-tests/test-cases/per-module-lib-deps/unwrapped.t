@@ -78,7 +78,7 @@ filtering within unwrapped libraries is not yet supported):
 
   $ dune build ./main.exe
   $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("Uses_utils"))] | length'
-  1
+  2
 
 Change only utils.mli:
 
@@ -95,4 +95,4 @@ Uses_helper is recompiled because unwrapped libraries use glob deps:
 
   $ dune build ./main.exe
   $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("Uses_helper"))] | length'
-  1
+  2

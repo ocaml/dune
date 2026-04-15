@@ -31,8 +31,8 @@ let filtered_lib_deps ~cctx ~obj_dir ~ml_kind ~for_ ~dep_graph ~opaque ~cm_kind 
       Action_builder.List.map trans_deps ~f:(fun dep_m ->
         let is_standard_kind =
           match Module.kind dep_m with
-          | Impl_vmodule | Virtual | Root | Alias _ | Wrapped_compat | Parameter -> false
-          | Intf_only | Impl -> true
+          | Impl_vmodule | Root | Alias _ | Wrapped_compat | Parameter -> false
+          | Virtual | Intf_only | Impl -> true
         in
         if not is_standard_kind
         then Action_builder.return Module_name.Set.empty

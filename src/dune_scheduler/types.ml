@@ -76,5 +76,20 @@ module Scheduler = struct
     ; mutable cancel : Fiber.Cancel.t
     ; thread_pool : Thread_pool.t Lazy.t
     ; signal_watcher : Thread.t
+    ; async_io : Async_io.t
     }
+
+  let current : t option ref = ref None
+
+  let t_opt () =
+    let open Fiber.O in
+    let+ () = Fiber.return () in
+    !current
+  ;;
+
+  let t () =
+    let open Fiber.O in
+    let+ () = Fiber.return () in
+    Option.value_exn !current
+  ;;
 end

@@ -295,7 +295,7 @@ let insert_menhir_dep depends =
           constraint_ = Some (Option.value dep.constraint_ ~default:menhir_constraint)
         }
       else dep)
-  else List.rev (menhir_dep :: List.rev depends)
+  else depends @ [ menhir_dep ]
 ;;
 
 let maintenance_intent dune_version info =

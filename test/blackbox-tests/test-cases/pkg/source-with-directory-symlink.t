@@ -1,7 +1,8 @@
 Test that dune handles sources containing directory symlinks.
 
-Directory symlinks in sources used to cause failures. This was improved
-by resolving the symlinks after fetch & extraction.
+Currently, directory symlinks in sources cause failures. This is substantially
+improved by resolving the symlinks during extraction.
+The non-tarball scenario (happening in case of local pins) isn't fixed however.
 
 --------------------------------------------------------------------------------
 
@@ -22,10 +23,16 @@ Case 1: Local directory source containing a directory symlink.
   > (build (run cat real_dir/file.txt))
   > EOF
 
-This is now fixed
+CR-someday alizter: This fails because directory symlinks are not supported.
+We could potentially resolve them during the copy.
 
-  $ build_pkg foo
-  content
+  $ build_pkg foo 2>&1 | sanitize_pkg_digest foo.0.0.1
+  Error: Is a directory
+  -> required by
+     _build/_private/default/.pkg/foo.0.0.1-DIGEST_HASH/source/link_to_dir
+  -> required by
+     _build/_private/default/.pkg/foo.0.0.1-DIGEST_HASH/target
+  [1]
 
 Only the real directory was partially copied:
 

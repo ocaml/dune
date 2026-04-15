@@ -481,10 +481,6 @@ module Pkg = struct
       | _ -> false
     in
     let skip_file = String.starts_with ~prefix:".#" in
-    let cycle_error name =
-      User_error.raise
-        [ Pp.textf "Unable to resolve symlink %s, it is part of a cycle." name ]
-    in
     (match t.info.source with
      | None -> Memo.return None
      | Some source ->
@@ -495,7 +491,7 @@ module Pkg = struct
     >>= function
     | None -> Memo.return Path.Local.Set.empty
     | Some root ->
-      let rec collect_sources ~acc ~dir ~already_seen =
+      let rec collect_sources ~acc ~dir =
         let full_path = Path.Outside_build_dir.append_local root dir in
         Fs_memo.dir_contents full_path
         >>= function
@@ -508,106 +504,23 @@ module Pkg = struct
             ; Unix_error.Detailed.pp e
             ]
         | Ok contents ->
-          let files, dirs, seen =
+          let files, dirs =
             let contents = Fs_memo.Dir_contents.to_list contents in
-            List.fold_left
-              contents
-              ~init:([], [], already_seen)
-              ~f:(fun (files, dirs, seen) (name, kind) ->
-                let relative = Path.Local.relative dir name in
-                match (kind : Unix.file_kind) with
-                | S_DIR ->
-                  if skip_dir name
-                  then files, dirs, seen
-                  else files, relative :: dirs, seen
-                | S_LNK ->
-                  let full_name =
-                    Filename.concat (Path.Outside_build_dir.to_string full_path) name
-                  in
-                  if String.Set.mem seen full_name
-                  then cycle_error (Path.Local.to_string relative);
-                  let seen = String.Set.add seen full_name in
-                  (match Fpath.follow_symlink full_name with
-                   | Error Fpath.Not_a_symlink ->
-                     Code_error.raise
-                       ~loc
-                       "source_files: not a symlink"
-                       [ "path", Dyn.string full_name ]
-                   | Error Fpath.Max_depth_exceeded ->
-                     User_error.raise
-                       ~loc
-                       [ Pp.textf
-                           "Unable to resolve symlink %s: too many levels of symbolic \
-                            links"
-                           (Path.Local.to_string relative)
-                       ]
-                   | Error (Fpath.Unix_error ((Unix.ENOENT, _, _) as u_err)) ->
-                     Log.info
-                       "Found a broken symlink, skipping"
-                       [ "full_name", Dyn.string full_name
-                       ; "u_err", Unix_error.Detailed.to_dyn u_err
-                       ];
-                     files, dirs, seen
-                   | Error (Fpath.Unix_error e) -> Unix_error.Detailed.raise e
-                   | Ok raw_resolved ->
-                     (* [raw_resolved] is an absolute path but it might contain indirections,
-                      something like /a/b/c/../d
-                      First we need to canonicalize it,
-                      then check if it's in the source directory,
-                      then check if it points to a parent of itself.
-                      We can't do the first check before canonicalizing because it might be
-                      workspace_root/../outside *)
-                     let canon_resolved =
-                       Path.External.canonicalize_abs
-                         (Path.External.of_string raw_resolved)
-                     in
-                     (match
-                        (* We assume here that [a] is a descendant of [a]. *)
-                        Path.descendant
-                          (Path.external_ canon_resolved)
-                          ~of_:(Path.outside_build_dir root)
-                      with
-                      | Some _ ->
-                        let local_resolved =
-                          Path.drop_prefix_exn
-                            ~prefix:(Path.outside_build_dir root)
-                            (Path.external_ canon_resolved)
-                        in
-                        if Path.Local.is_descendant relative ~of_:local_resolved
-                        then cycle_error (Path.Local.to_string relative);
-                        (match Unix.lstat raw_resolved with
-                         | { st_kind = S_DIR; _ } ->
-                           if skip_dir name
-                           then files, dirs, seen
-                           else files, local_resolved :: dirs, seen
-                         | { st_kind = _; _ } ->
-                           if skip_file name
-                           then files, dirs, seen
-                           else relative :: files, dirs, seen)
-                      | None ->
-                        User_error.raise
-                          [ Pp.textf
-                              "Unable to resolve symlink %s: its target %S is outside \
-                               the source directory"
-                              (Path.Local.to_string relative)
-                              (Path.External.to_string canon_resolved)
-                          ]))
-                | _ ->
-                  if skip_file name
-                  then files, dirs, seen
-                  else relative :: files, dirs, seen)
+            List.rev_filter_partition_map contents ~f:(fun (name, kind) ->
+              (* TODO handle links and cycles correctly *)
+              let relative = Path.Local.relative dir name in
+              match (kind : Unix.file_kind) with
+              | S_DIR -> if skip_dir name then Skip else Right relative
+              | _ -> if skip_file name then Skip else Left relative)
           in
           let acc = Path.Local.Set.of_list files |> Path.Local.Set.union acc in
           let+ dirs =
             Memo.parallel_map dirs ~f:(fun dir ->
-              collect_sources ~acc:Path.Local.Set.empty ~dir ~already_seen:seen)
+              collect_sources ~acc:Path.Local.Set.empty ~dir)
           in
           Path.Local.Set.union_all (acc :: dirs)
       in
-      collect_sources
-        ~acc:Path.Local.Set.empty
-        ~dir:Path.Local.root
-        ~already_seen:String.Set.empty
+      collect_sources ~acc:Path.Local.Set.empty ~dir:Path.Local.root
   ;;
 
   let dep t = Dep.file t.paths.target_dir

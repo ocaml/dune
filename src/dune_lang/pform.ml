@@ -692,6 +692,7 @@ module Env = struct
          ; "ocaml-config", macro Ocaml_config
          ; "env", since ~version:(1, 4) Macro.Env
          ; "ppx", since ~version:(3, 21) Macro.Ppx
+         ; "pkg", since ~version:(3, 24) Macro.Pkg
          ; "coq", macro Coq_config
          ; "rocq", macro Rocq_config
          ]

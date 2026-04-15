@@ -27,9 +27,6 @@ This prints the system package names from all locked packages, deduplicated and
 sorted. Install these packages using your system's package manager (e.g.,
 ``apt``, ``brew``, ``dnf``) before building.
 
-Use ``--context CONTEXT`` to query a specific build context (defaults to
-``default``).
-
 Declaring Depexts for Your Own Packages
 ---------------------------------------
 

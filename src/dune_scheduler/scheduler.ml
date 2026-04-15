@@ -24,99 +24,8 @@ end
 
 let spawn_thread ~name f = Thread0.spawn ~name f
 
-type status =
-  | (* We are not doing a build. Just accumulating invalidations until the next
-       build starts. *)
-    Standing_by
-  | (* Running a build *)
-    Building of Fiber.Cancel.t
-  | (* Cancellation requested. Build jobs are immediately rejected in this
-       state *)
-    Restarting_build
-
-module Build_outcome = struct
-  type t =
-    | Success
-    | Failure
-end
-
-module Run_id = struct
-  type t =
-    | Batch
-    | Watch of int
-
-  let batch = Batch
-
-  let to_int = function
-    | Batch -> 0
-    | Watch n -> n
-  ;;
-
-  module State = struct
-    type nonrec t =
-      | Batch_not_started
-      | Batch_started
-      | Watch of int
-
-    let create ~watch_mode = if watch_mode then Watch 1 else Batch_not_started
-
-    let is_watch = function
-      | Batch_not_started | Batch_started -> false
-      | Watch _ -> true
-    ;;
-
-    let next_to_start = function
-      | Batch_not_started -> Batch
-      | Batch_started ->
-        Code_error.raise "batch mode may not emit more than one build run id" []
-      | Watch n -> Watch n
-    ;;
-
-    let start = function
-      | Batch_not_started -> Batch_started, Batch
-      | Batch_started ->
-        Code_error.raise "batch mode may not start more than one build" []
-      | Watch n -> Watch (n + 1), Watch n
-    ;;
-  end
-end
-
-module Handler = struct
-  module Event = struct
-    type t =
-      | Tick
-      | Source_files_changed of { details_hum : string list }
-      | Build_interrupted
-      | Build_finish of Build_outcome.t
-  end
-
-  type t = Event.t -> unit
-end
-
-type t =
-  { alarm_clock : Alarm_clock.t Lazy.t
-  ; mutable status : status
-  ; mutable invalidation : Memo.Invalidation.t
-  ; mutable run_id_state : Run_id.State.t
-  ; mutable watch_restart_started_at : Time.t option
-  ; handler : Handler.t
-  ; job_throttle : Fiber.Throttle.t
-  ; events : Event.Queue.t
-  ; process_watcher : Process_watcher.t
-  ; file_watcher : File_watcher.t option
-  ; fs_syncs : (File_watcher.Sync_id.t, unit Fiber.Ivar.t) Table.t
-  ; mutable build_inputs_changed : Trigger.t
-  ; mutable cancel : Fiber.Cancel.t
-  ; thread_pool : Thread_pool.t Lazy.t
-  ; signal_watcher : Thread.t
-  }
-
-let to_dyn { events; process_watcher; _ } =
-  Dyn.record
-    [ "events", Event.Queue.to_dyn events
-    ; "process_watcher", Process_watcher.to_dyn process_watcher
-    ]
-;;
+module Run_id = Run_id
+include Types.Scheduler
 
 let current = ref None
 
@@ -130,7 +39,7 @@ let t () =
   Option.value_exn !current
 ;;
 
-let running_jobs_count t = Event.Queue.pending_jobs t.events
+let running_jobs_count (t : t) = Event.Queue.pending_jobs t.events
 
 exception Build_cancelled
 
@@ -231,6 +140,13 @@ let kill_and_wait_for_all_processes t =
     Unix.kill (Unix.getpid ()) (Signal.to_int Thread0.signal_watcher_interrupt);
     Thread.join t.signal_watcher);
   !saw_signal
+;;
+
+let to_dyn { events; process_watcher; _ } =
+  Dyn.record
+    [ "events", Event.Queue.to_dyn events
+    ; "process_watcher", Process_watcher.to_dyn process_watcher
+    ]
 ;;
 
 let () =

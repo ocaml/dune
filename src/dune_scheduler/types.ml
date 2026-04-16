@@ -19,7 +19,7 @@ module Async_io = struct
     }
 
   and ('a, 'label) task =
-    { job : 'label -> Unix.file_descr -> 'a
+    { job : 'label -> Fd.t -> 'a
     ; ivar : ('a, [ `Cancelled | `Exn of exn ]) result Fiber.Ivar.t
     ; select : t
     ; what : [ `Read | `Write ]

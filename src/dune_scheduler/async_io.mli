@@ -17,6 +17,12 @@
 
 val create : Event.Queue.t -> Types.Async_io.t
 
+(** [close_fd fd] must be used to close any file descriptor which has been
+    watched at some point. This is needed to make sure we never close a file
+    descriptor that is being selected. Any associated operations with [fd] will
+    be cancelled. *)
+val close_fd : Stdune.Fd.t -> unit Fiber.t
+
 (** [close fd] must be used to close any file descriptor which has been watched
     at some point. This is needed to make sure we never close a file descriptor
     that is being selected. Any associated operations with [fd] will be
@@ -37,7 +43,15 @@ end
 (** [ready fd what ~f] wait until [what] can be done on [fd] in a non-blocking
     way and then call [f]. Note that [f] will be called in a different thread,
     so it should only be used for atomic or synchronized operations. *)
+val ready_fd : Stdune.Fd.t -> [ `Read | `Write ] -> f:(unit -> 'a) -> 'a Task.t Fiber.t
+
 val ready : Unix.file_descr -> [ `Read | `Write ] -> f:(unit -> 'a) -> 'a Task.t Fiber.t
+
+val ready_one_fd
+  :  ('label * Stdune.Fd.t) list
+  -> [ `Read | `Write ]
+  -> f:('label -> Stdune.Fd.t -> 'a)
+  -> 'a Task.t Fiber.t
 
 val ready_one
   :  ('label * Unix.file_descr) list
@@ -51,6 +65,12 @@ val ready_one
 
     It's possible to implement this function using the other functions in this
     module. But since it's a bit non trivial, the implementation is done here. *)
+val connect_fd
+  :  (Stdune.Fd.t -> Unix.sockaddr -> unit)
+  -> Stdune.Fd.t
+  -> Unix.sockaddr
+  -> (unit, [ `Cancelled | `Exn of exn ]) result Fiber.t
+
 val connect
   :  (Unix.file_descr -> Unix.sockaddr -> unit)
   -> Unix.file_descr

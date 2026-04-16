@@ -4,24 +4,51 @@ Ignores user `.merlin` files when generating Merlin configuration.
   $ export BUILD_PATH_PREFIX_MAP="/OCAMLC_WHERE=$ocamlc_where:$BUILD_PATH_PREFIX_MAP"
 
   $ dune build foo.cma --profile release
-  $ dune ocaml merlin dump-config $PWD
-  Foo: _build/default/foo
-  ((INDEX $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index) (STDLIB /OCAMLC_WHERE) (SOURCE_ROOT $TESTCASE_ROOT) (EXCLUDE_QUERY_DIR) (B $TESTCASE_ROOT/_build/default/.foo.objs/byte) (S $TESTCASE_ROOT) (FLG (-w -40 -g)) (UNIT_NAME foo))
-  Foo: _build/default/foo.ml-gen
-  ((INDEX $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index) (STDLIB /OCAMLC_WHERE) (SOURCE_ROOT $TESTCASE_ROOT) (EXCLUDE_QUERY_DIR) (B $TESTCASE_ROOT/_build/default/.foo.objs/byte) (S $TESTCASE_ROOT) (FLG (-w -40 -g)) (UNIT_NAME foo))
+  $ dune ocaml merlin dump-config --format=json $PWD | jq '
+  >   include "dune";
+  >   merlinEntry("Foo")
+  >   | merlinUnitNameSummary'
+  {
+    "module_name": "Foo",
+    "source_path": "_build/default/foo",
+    "unit_name": "foo"
+  }
+  {
+    "module_name": "Foo",
+    "source_path": "_build/default/foo.ml-gen",
+    "unit_name": "foo"
+  }
 
   $ rm -f .merlin
   $ dune build foo.cma --profile release
-  $ dune ocaml merlin dump-config $PWD
-  Foo: _build/default/foo
-  ((INDEX $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index) (STDLIB /OCAMLC_WHERE) (SOURCE_ROOT $TESTCASE_ROOT) (EXCLUDE_QUERY_DIR) (B $TESTCASE_ROOT/_build/default/.foo.objs/byte) (S $TESTCASE_ROOT) (FLG (-w -40 -g)) (UNIT_NAME foo))
-  Foo: _build/default/foo.ml-gen
-  ((INDEX $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index) (STDLIB /OCAMLC_WHERE) (SOURCE_ROOT $TESTCASE_ROOT) (EXCLUDE_QUERY_DIR) (B $TESTCASE_ROOT/_build/default/.foo.objs/byte) (S $TESTCASE_ROOT) (FLG (-w -40 -g)) (UNIT_NAME foo))
+  $ dune ocaml merlin dump-config --format=json $PWD | jq '
+  >   include "dune";
+  >   merlinEntry("Foo")
+  >   | merlinUnitNameSummary'
+  {
+    "module_name": "Foo",
+    "source_path": "_build/default/foo",
+    "unit_name": "foo"
+  }
+  {
+    "module_name": "Foo",
+    "source_path": "_build/default/foo.ml-gen",
+    "unit_name": "foo"
+  }
 
   $ echo toto > .merlin
   $ dune build foo.cma --profile release
-  $ dune ocaml merlin dump-config $PWD
-  Foo: _build/default/foo
-  ((INDEX $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index) (STDLIB /OCAMLC_WHERE) (SOURCE_ROOT $TESTCASE_ROOT) (EXCLUDE_QUERY_DIR) (B $TESTCASE_ROOT/_build/default/.foo.objs/byte) (S $TESTCASE_ROOT) (FLG (-w -40 -g)) (UNIT_NAME foo))
-  Foo: _build/default/foo.ml-gen
-  ((INDEX $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index) (STDLIB /OCAMLC_WHERE) (SOURCE_ROOT $TESTCASE_ROOT) (EXCLUDE_QUERY_DIR) (B $TESTCASE_ROOT/_build/default/.foo.objs/byte) (S $TESTCASE_ROOT) (FLG (-w -40 -g)) (UNIT_NAME foo))
+  $ dune ocaml merlin dump-config --format=json $PWD | jq '
+  >   include "dune";
+  >   merlinEntry("Foo")
+  >   | merlinUnitNameSummary'
+  {
+    "module_name": "Foo",
+    "source_path": "_build/default/foo",
+    "unit_name": "foo"
+  }
+  {
+    "module_name": "Foo",
+    "source_path": "_build/default/foo.ml-gen",
+    "unit_name": "foo"
+  }

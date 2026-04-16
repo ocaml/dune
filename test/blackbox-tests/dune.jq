@@ -72,6 +72,41 @@ def coqdocFlags:
   | .[]
   | rocqArg;
 
+def merlinEntry($module_name):
+  .[] | select(.module_name == $module_name);
+
+def merlinBuildPath:
+  "_build/\(.source_path)";
+
+def merlinPathSummary:
+  { module_name, source_path: merlinBuildPath };
+
+def merlinPathLine:
+  "\(.module_name): \(merlinBuildPath)";
+
+def merlinConfigItems:
+  .config[];
+
+def merlinConfigItemsNamed($names):
+  .config[] | select(.[0] as $name | $names | index($name));
+
+def merlinJsonEntry:
+  merlinPathLine,
+  (merlinConfigItems | @json);
+
+def merlinJsonEntryWithConfigNames($names):
+  merlinPathLine,
+  (merlinConfigItemsNamed($names) | @json);
+
+def merlinUnitName:
+  first(.config[] | select(.[0] == "UNIT_NAME") | .[1]);
+
+def merlinUnitNameSummary:
+  merlinPathSummary + { unit_name: merlinUnitName };
+
+def merlinConfigSummary($names):
+  merlinPathSummary + { config: [merlinConfigItemsNamed($names)] };
+
 def redactedActionTraces:
   [ .[]
   | select(.cat != "config" and .args.digest != null)

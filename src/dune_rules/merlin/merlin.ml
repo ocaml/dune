@@ -114,6 +114,34 @@ module Processed = struct
     ; pp_config : pp_flag option Module_name.Per_item.t
     }
 
+  type output_format =
+    [ `Text
+    | `Json
+    ]
+
+  module Dump_entry = struct
+    type t =
+      { module_name : Module_name.t
+      ; source_path : Path.Build.t
+      ; config : Sexp.t
+      }
+
+    let rec sexp_to_json = function
+      | Sexp.Atom atom -> Json.string atom
+      | Sexp.List items -> Json.list (List.map items ~f:sexp_to_json)
+    ;;
+
+    let to_json { module_name; source_path; config } =
+      let context, source_path = Path.Build.extract_build_context_exn source_path in
+      Json.assoc
+        [ "module_name", Json.string (Module_name.to_string module_name)
+        ; ( "source_path"
+          , Json.string (Filename.concat context (Path.Source.to_string source_path)) )
+        ; "config", sexp_to_json config
+        ]
+    ;;
+  end
+
   let to_dyn { config; per_file_config; pp_config } =
     let open Dyn in
     record
@@ -350,29 +378,52 @@ module Processed = struct
     to_sexp ~unit_name ~opens ~pp ~reader config
   ;;
 
+  let dump_entries { per_file_config; pp_config; config } : Dump_entry.t list =
+    Path.Build.Map.to_list per_file_config
+    |> List.map ~f:(fun (source_path, { module_; opens; reader }) ->
+      let module_name = Module.name module_ in
+      let unit_name = Module_name.Unique.to_string (Module.obj_name module_) in
+      let pp = Module_name.Per_item.get pp_config module_name in
+      let config = to_sexp ~unit_name ~reader ~opens ~pp config in
+      Dump_entry.{ module_name; source_path; config })
+  ;;
+
+  let print_entry (Dump_entry.{ module_name; source_path; config } : Dump_entry.t) =
+    let open Pp.O in
+    let pp =
+      Pp.hvbox
+        (Pp.textf
+           "%s: %s"
+           (Module_name.to_string module_name)
+           (Path.Build.to_string source_path))
+      ++ Pp.newline
+      ++ Pp.vbox (Sexp.pp config)
+    in
+    Format.printf "%a%a@." Format.pp_set_margin 1000 Pp.to_fmt pp
+  ;;
+
   let print_file path =
     match load_file path with
     | Error msg -> Printf.eprintf "%s\n" msg
-    | Ok { per_file_config; pp_config; config } ->
-      let pp_one (source, { module_; opens; reader }) =
-        let open Pp.O in
-        let name = Module.name module_ in
-        let sexp =
-          let unit_name = Module_name.Unique.to_string (Module.obj_name module_) in
-          let pp = Module_name.Per_item.get pp_config name in
-          to_sexp ~unit_name ~reader ~opens ~pp config
-        in
-        Pp.hvbox
-          (Pp.textf "%s: %s" (Module_name.to_string name) (Path.Build.to_string source))
-        ++ Pp.newline
-        ++ Pp.vbox (Sexp.pp sexp)
-      in
-      let pp =
-        Path.Build.Map.to_list per_file_config
-        |> Pp.concat_map ~sep:Pp.cut ~f:pp_one
-        |> Pp.vbox
-      in
-      Format.printf "%a%a@." Format.pp_set_margin 1000 Pp.to_fmt pp
+    | Ok t -> dump_entries t |> List.iter ~f:print_entry
+  ;;
+
+  let print_files format paths =
+    match format with
+    | `Text -> List.iter paths ~f:print_file
+    | `Json ->
+      (match
+         Result.List.map paths ~f:(fun path ->
+           match load_file path with
+           | Error msg -> Error msg
+           | Ok t -> Ok (dump_entries t))
+       with
+       | Error msg -> Printf.eprintf "%s\n" msg
+       | Ok entries ->
+         let entries = List.concat entries in
+         Json.list (List.map entries ~f:Dump_entry.to_json)
+         |> Json.to_string
+         |> print_endline)
   ;;
 
   let print_generic_dot_merlin paths =

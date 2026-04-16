@@ -22,8 +22,24 @@ module Selected_context = struct
   ;;
 end
 
+module Merlin = Dune_rules.Merlin
+
+module Output_format = struct
+  type t =
+    [ `Text
+    | `Json
+    ]
+
+  let all = [ "text", `Text; "json", `Json ]
+end
+
 module Server : sig
-  val dump : selected_context:Context_name.t -> string -> unit Fiber.t
+  val dump
+    :  selected_context:Context_name.t
+    -> format:Output_format.t
+    -> string
+    -> unit Fiber.t
+
   val dump_dot_merlin : selected_context:Context_name.t -> string -> unit Fiber.t
 
   (** Once started the server will wait for commands on stdin, read the
@@ -175,11 +191,11 @@ end = struct
     >>| Merlin_conf.to_stdout
   ;;
 
-  let dump ~selected_context s =
+  let dump ~selected_context ~format s =
     to_local ~selected_context s
     >>| function
     | Error mess -> Printf.eprintf "%s\n%!" mess
-    | Ok path -> get_merlin_files_paths path |> List.iter ~f:Merlin.Processed.print_file
+    | Ok path -> get_merlin_files_paths path |> Merlin.Processed.print_files format
   ;;
 
   let dump_dot_merlin ~selected_context s =
@@ -221,6 +237,11 @@ module Dump_config = struct
     let+ builder = Common.Builder.term
     (* CR-someday Alizter: document this option *)
     and+ dir = Arg.(value & pos 0 dir "" & info [] ~docv:"PATH" ~doc:None)
+    and+ format =
+      Arg.(
+        value
+        & opt (enum Output_format.all) `Text
+        & info [ "format" ] ~docv:"FORMAT" ~doc:(Some "Output format (text or json)."))
     and+ selected_context = Selected_context.arg in
     let _common, config =
       let builder =
@@ -230,7 +251,8 @@ module Dump_config = struct
       Common.init builder
     in
     (* CR-soon rgrinberg: remove pointless args *)
-    Scheduler_setup.no_build_no_rpc ~config (fun () -> Server.dump ~selected_context dir)
+    Scheduler_setup.no_build_no_rpc ~config (fun () ->
+      Server.dump ~selected_context ~format dir)
   ;;
 
   let command = Cmd.v info term

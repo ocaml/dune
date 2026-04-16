@@ -4,75 +4,133 @@
   $ dune exec ./foo.exe
   42
 
-  $ dune ocaml merlin dump-config $PWD
-  Foo: _build/default/foo
-  ((INDEX $TESTCASE_ROOT/_build/default/.foo.eobjs/cctx.ocaml-index)
-   (INDEX $TESTCASE_ROOT/_build/default/foo/.foo.objs/cctx.ocaml-index)
-   (STDLIB /OCAMLC_WHERE)
-   (SOURCE_ROOT $TESTCASE_ROOT)
-   (EXCLUDE_QUERY_DIR)
-   (B $TESTCASE_ROOT/_build/default/.foo.eobjs/byte)
-   (B $TESTCASE_ROOT/_build/default/foo/.foo.objs/byte)
-   (S $TESTCASE_ROOT)
-   (S $TESTCASE_ROOT/foo)
-   (FLG (-w @1..3@5..28@30..39@43@46..47@49..57@61..62-40 -strict-sequence -strict-formats -short-paths -keep-locs -g))
-   (UNIT_NAME dune__exe__Foo))
-  Foo: _build/default/foo.ml
-  ((INDEX $TESTCASE_ROOT/_build/default/.foo.eobjs/cctx.ocaml-index)
-   (INDEX $TESTCASE_ROOT/_build/default/foo/.foo.objs/cctx.ocaml-index)
-   (STDLIB /OCAMLC_WHERE)
-   (SOURCE_ROOT $TESTCASE_ROOT)
-   (EXCLUDE_QUERY_DIR)
-   (B $TESTCASE_ROOT/_build/default/.foo.eobjs/byte)
-   (B $TESTCASE_ROOT/_build/default/foo/.foo.objs/byte)
-   (S $TESTCASE_ROOT)
-   (S $TESTCASE_ROOT/foo)
-   (FLG (-w @1..3@5..28@30..39@43@46..47@49..57@61..62-40 -strict-sequence -strict-formats -short-paths -keep-locs -g))
-   (UNIT_NAME dune__exe__Foo))
+  $ dune ocaml merlin dump-config --format=json $PWD | jq '
+  >   include "dune";
+  >   merlinEntry("Foo")
+  >   | merlinUnitNameSummary'
+  {
+    "module_name": "Foo",
+    "source_path": "_build/default/foo",
+    "unit_name": "dune__exe__Foo"
+  }
+  {
+    "module_name": "Foo",
+    "source_path": "_build/default/foo.ml",
+    "unit_name": "dune__exe__Foo"
+  }
 
-  $ dune ocaml merlin dump-config $PWD/foo
-  Bar: _build/default/foo/bar
-  ((INDEX $TESTCASE_ROOT/_build/default/.foo.eobjs/cctx.ocaml-index)
-   (INDEX $TESTCASE_ROOT/_build/default/foo/.foo.objs/cctx.ocaml-index)
-   (STDLIB /OCAMLC_WHERE)
-   (SOURCE_ROOT $TESTCASE_ROOT)
-   (EXCLUDE_QUERY_DIR)
-   (B $TESTCASE_ROOT/_build/default/foo/.foo.objs/byte)
-   (S $TESTCASE_ROOT/foo)
-   (FLG (-w @1..3@5..28@30..39@43@46..47@49..57@61..62-40 -strict-sequence -strict-formats -short-paths -keep-locs -g))
-   (FLG (-open Foo))
-   (UNIT_NAME foo__Bar))
-  Bar: _build/default/foo/bar.ml
-  ((INDEX $TESTCASE_ROOT/_build/default/.foo.eobjs/cctx.ocaml-index)
-   (INDEX $TESTCASE_ROOT/_build/default/foo/.foo.objs/cctx.ocaml-index)
-   (STDLIB /OCAMLC_WHERE)
-   (SOURCE_ROOT $TESTCASE_ROOT)
-   (EXCLUDE_QUERY_DIR)
-   (B $TESTCASE_ROOT/_build/default/foo/.foo.objs/byte)
-   (S $TESTCASE_ROOT/foo)
-   (FLG (-w @1..3@5..28@30..39@43@46..47@49..57@61..62-40 -strict-sequence -strict-formats -short-paths -keep-locs -g))
-   (FLG (-open Foo))
-   (UNIT_NAME foo__Bar))
-  Foo: _build/default/foo/foo
-  ((INDEX $TESTCASE_ROOT/_build/default/.foo.eobjs/cctx.ocaml-index)
-   (INDEX $TESTCASE_ROOT/_build/default/foo/.foo.objs/cctx.ocaml-index)
-   (STDLIB /OCAMLC_WHERE)
-   (SOURCE_ROOT $TESTCASE_ROOT)
-   (EXCLUDE_QUERY_DIR)
-   (B $TESTCASE_ROOT/_build/default/foo/.foo.objs/byte)
-   (S $TESTCASE_ROOT/foo)
-   (FLG (-w @1..3@5..28@30..39@43@46..47@49..57@61..62-40 -strict-sequence -strict-formats -short-paths -keep-locs -g))
-   (UNIT_NAME foo))
-  Foo: _build/default/foo/foo.ml-gen
-  ((INDEX $TESTCASE_ROOT/_build/default/.foo.eobjs/cctx.ocaml-index)
-   (INDEX $TESTCASE_ROOT/_build/default/foo/.foo.objs/cctx.ocaml-index)
-   (STDLIB /OCAMLC_WHERE)
-   (SOURCE_ROOT $TESTCASE_ROOT)
-   (EXCLUDE_QUERY_DIR)
-   (B $TESTCASE_ROOT/_build/default/foo/.foo.objs/byte)
-   (S $TESTCASE_ROOT/foo)
-   (FLG (-w @1..3@5..28@30..39@43@46..47@49..57@61..62-40 -strict-sequence -strict-formats -short-paths -keep-locs -g))
-   (UNIT_NAME foo))
+  $ dune ocaml merlin dump-config --format=json $PWD/foo | jq '
+  >   include "dune";
+  >   [
+  >     (merlinEntry("Bar")
+  >      | merlinConfigSummary(["UNIT_NAME", "FLG"])),
+  >     (merlinEntry("Foo")
+  >      | merlinConfigSummary(["UNIT_NAME", "FLG"]))
+  >   ]
+  >   | sort_by(.module_name, .source_path)
+  >   | .[]'
+  {
+    "module_name": "Bar",
+    "source_path": "_build/default/foo/bar",
+    "config": [
+      [
+        "FLG",
+        [
+          "-w",
+          "@1..3@5..28@30..39@43@46..47@49..57@61..62-40",
+          "-strict-sequence",
+          "-strict-formats",
+          "-short-paths",
+          "-keep-locs",
+          "-g"
+        ]
+      ],
+      [
+        "FLG",
+        [
+          "-open",
+          "Foo"
+        ]
+      ],
+      [
+        "UNIT_NAME",
+        "foo__Bar"
+      ]
+    ]
+  }
+  {
+    "module_name": "Bar",
+    "source_path": "_build/default/foo/bar.ml",
+    "config": [
+      [
+        "FLG",
+        [
+          "-w",
+          "@1..3@5..28@30..39@43@46..47@49..57@61..62-40",
+          "-strict-sequence",
+          "-strict-formats",
+          "-short-paths",
+          "-keep-locs",
+          "-g"
+        ]
+      ],
+      [
+        "FLG",
+        [
+          "-open",
+          "Foo"
+        ]
+      ],
+      [
+        "UNIT_NAME",
+        "foo__Bar"
+      ]
+    ]
+  }
+  {
+    "module_name": "Foo",
+    "source_path": "_build/default/foo/foo",
+    "config": [
+      [
+        "FLG",
+        [
+          "-w",
+          "@1..3@5..28@30..39@43@46..47@49..57@61..62-40",
+          "-strict-sequence",
+          "-strict-formats",
+          "-short-paths",
+          "-keep-locs",
+          "-g"
+        ]
+      ],
+      [
+        "UNIT_NAME",
+        "foo"
+      ]
+    ]
+  }
+  {
+    "module_name": "Foo",
+    "source_path": "_build/default/foo/foo.ml-gen",
+    "config": [
+      [
+        "FLG",
+        [
+          "-w",
+          "@1..3@5..28@30..39@43@46..47@49..57@61..62-40",
+          "-strict-sequence",
+          "-strict-formats",
+          "-short-paths",
+          "-keep-locs",
+          "-g"
+        ]
+      ],
+      [
+        "UNIT_NAME",
+        "foo"
+      ]
+    ]
+  }
 
 FIXME : module Foo is not unbound
 This test is disabled because it depends on root detection and is not reproducible.

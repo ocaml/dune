@@ -15,6 +15,11 @@ module Processed : sig
   (** Type of "processed" merlin information *)
   type t
 
+  type output_format =
+    [ `Text
+    | `Json
+    ]
+
   val to_dyn : t -> Dyn.t
 
   module Pp_kind : sig
@@ -32,6 +37,8 @@ module Processed : sig
   (** [print_file path] reads the configuration at path [path] and print it as a
       s-expression *)
   val print_file : Path.t -> unit
+
+  val print_files : output_format -> Path.t list -> unit
 
   (** [print_generic_dot_merlin paths] will merge the given configurations and
       print the resulting configuration in dot-merlin syntax. *)

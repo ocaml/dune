@@ -10,7 +10,7 @@ include Types.Async_io
 let interrupt t =
   if not t.interrupting
   then (
-    assert (Unix.single_write t.pipe_write byte 0 1 = 1);
+    assert (Unix.single_write (Fd.unsafe_to_unix_file_descr t.pipe_write) byte 0 1 = 1);
     t.interrupting <- true)
 ;;
 
@@ -80,7 +80,7 @@ let drain_until_ready fd waiters queue acc =
   | None -> acc
   | Some (Task (task, label)) ->
     let result =
-      try Ok (task.job label fd) with
+      try Ok (task.job label (Fd.unsafe_to_unix_file_descr fd)) with
       | exn -> Error (`Exn exn)
     in
     task.status <- `Filled;
@@ -105,7 +105,7 @@ let make_fills fds pipe_fd waiters init =
 ;;
 
 let drain_pipe pipe buf =
-  match Unix.read pipe buf 0 (Bytes.length buf) with
+  match Unix.read (Fd.unsafe_to_unix_file_descr pipe) buf 0 (Bytes.length buf) with
   | _ -> ()
   | exception Unix.Unix_error (Unix.EAGAIN, _, _) -> ()
 ;;
@@ -136,7 +136,7 @@ let rec select_loop t =
    | to_close ->
      let fills =
        List.fold_left to_close ~init:[] ~f:(fun acc fd ->
-         Unix.close fd;
+         Fd.close fd;
          let acc = maybe_cancel t.readers fd acc in
          maybe_cancel t.writers fd acc)
      in
@@ -146,14 +146,16 @@ let rec select_loop t =
       | _ :: _ -> Event.Queue.send_worker_tasks_completed t.scheduler_queue fills));
   match t.running with
   | false ->
-    Unix.close t.pipe_write;
+    Fd.close t.pipe_write;
     if not Sys.win32
     then
-      Unix.close t.pipe_read
-      (* On Win32, both ends of the "pipe" are the same UDP socket *)
+      Fd.close t.pipe_read (* On Win32, both ends of the "pipe" are the same UDP socket *)
   | true ->
-    let read = t.pipe_read :: Table.keys t.readers in
-    let write = Table.keys t.writers in
+    let read =
+      Fd.unsafe_to_unix_file_descr t.pipe_read
+      :: List.map (Table.keys t.readers) ~f:Fd.unsafe_to_unix_file_descr
+    in
+    let write = List.map (Table.keys t.writers) ~f:Fd.unsafe_to_unix_file_descr in
     Mutex.unlock t.mutex;
     (* At this point, if any [ready] acquires the lock, they need to check if
        [read] or [write] contain their fd. If it doesn't, the write
@@ -170,6 +172,8 @@ let rec select_loop t =
        (* Before we acquire the lock, it's possible that new tasks were added.
           This is fine. *)
        Mutex.lock t.mutex;
+       let readers = List.map readers ~f:Fd.unsafe_of_unix_file_descr in
+       let writers = List.map writers ~f:Fd.unsafe_of_unix_file_descr in
        let seen_pipe, fills = make_fills readers t.pipe_read t.readers [] in
        (* we will never see [t.pipe_read] in the next list, but there's no harm in
           this *)
@@ -217,6 +221,8 @@ let create scheduler_queue =
       udp_sock, udp_sock)
   in
   Unix.set_nonblock pipe_read;
+  let pipe_read = Fd.unsafe_of_unix_file_descr pipe_read in
+  let pipe_write = Fd.unsafe_of_unix_file_descr pipe_write in
   { readers = Table.create (module Fd) 64
   ; writers = Table.create (module Fd) 64
   ; mutex = Mutex.create ()
@@ -249,6 +255,7 @@ let cancel_fd scheduler_queue table fd =
 ;;
 
 let close fd =
+  let fd = Fd.unsafe_of_unix_file_descr fd in
   let* t = get_exn () in
   Mutex.lock t.mutex;
   (* everything below is guaranteed not to raise so the mutex will be unlocked
@@ -268,6 +275,7 @@ let ready_one (type a label) (fds : (label * Unix.file_descr) list) what ~f:job
   =
   with_
   @@ fun t ->
+  let fds = List.map fds ~f:(fun (label, fd) -> label, Fd.unsafe_of_unix_file_descr fd) in
   Event.Queue.register_worker_task_started t.scheduler_queue;
   let ivar = Fiber.Ivar.create () in
   let queues, skip_interrupt =

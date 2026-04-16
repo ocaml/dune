@@ -3,12 +3,12 @@ module Task_id = Id.Make ()
 
 module Async_io = struct
   type t =
-    { readers : (Unix.file_descr, packed_task Queue.t) Table.t
-    ; writers : (Unix.file_descr, packed_task Queue.t) Table.t
-    ; mutable to_close : Unix.file_descr list
-    ; pipe_read : Unix.file_descr
+    { readers : (Fd.t, packed_task Queue.t) Table.t
+    ; writers : (Fd.t, packed_task Queue.t) Table.t
+    ; mutable to_close : Fd.t list
+    ; pipe_read : Fd.t
     ; (* write a byte here to interrupt the select loop *)
-      pipe_write : Unix.file_descr
+      pipe_write : Fd.t
     ; mutex : Mutex.t
     ; scheduler_queue : Event.Queue.t
     ; mutable running : bool
@@ -23,7 +23,7 @@ module Async_io = struct
     ; ivar : ('a, [ `Cancelled | `Exn of exn ]) result Fiber.Ivar.t
     ; select : t
     ; what : [ `Read | `Write ]
-    ; fds : Unix.file_descr list
+    ; fds : Fd.t list
     ; id : Task_id.t
     ; mutable status : [ `Filled | `Waiting ]
     }

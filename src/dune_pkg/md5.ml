@@ -20,8 +20,14 @@ let file file =
      delete it even if it is still open. See #8243. *)
   let file = Path.to_string file in
   Result.try_with (fun () ->
-    let fd = Unix.openfile file [ Unix.O_RDONLY; O_SHARE_DELETE; O_CLOEXEC ] 0 in
-    Exn.protectx fd ~f:md5_fd ~finally:Unix.close)
+    let fd =
+      Unix.openfile file [ Unix.O_RDONLY; O_SHARE_DELETE; O_CLOEXEC ] 0
+      |> Fd.unsafe_of_unix_file_descr
+    in
+    Exn.protectx
+      fd
+      ~f:(fun fd -> md5_fd (Fd.unsafe_to_unix_file_descr fd))
+      ~finally:Fd.close)
 ;;
 
 let string = Stdlib.Digest.string

@@ -65,6 +65,7 @@ These documents specify the various features and languages present in Dune.
        :caption: Dune Components
 
        cli
+       dune-tools
        ../dune-libs
        caches
 

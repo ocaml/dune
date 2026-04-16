@@ -87,6 +87,7 @@ let parse_deps_exn =
   let invalid file lines =
     User_error.raise
       [ Pp.textf
+          (* TODO: binary name *)
           "ocamldep returned unexpected output for %s:"
           (Path.to_string_maybe_quoted file)
       ; Pp.vbox
@@ -94,7 +95,12 @@ let parse_deps_exn =
              Pp.seq (Pp.verbatim "> ") (Pp.verbatim line)))
       ]
   in
-  fun ~file lines ->
+  fun source lines ->
+    let file = Module.File.path source in
+    let valid_basenames =
+      let original_file = Module.File.original_path source in
+      String.Set.of_list [ Path.basename file; Path.basename original_file ]
+    in
     match lines with
     | [] | _ :: _ :: _ -> invalid file lines
     | [ line ] ->
@@ -102,7 +108,7 @@ let parse_deps_exn =
        | None -> invalid file lines
        | Some (basename, deps) ->
          let basename = Filename.basename basename in
-         if basename <> Path.basename file then invalid file lines;
+         if not (String.Set.mem valid_basenames basename) then invalid file lines;
          String.extract_blank_separated_words deps)
 ;;
 
@@ -119,16 +125,53 @@ let transitive_deps =
   fun obj_dir modules ~for_ -> List.filter_map modules ~f:(transive_dep obj_dir ~for_)
 ;;
 
+let melange_uses_melc_modules ~dir =
+  let+ project = Dune_load.find_project ~dir in
+  match Dune_project.find_extension_version project Dune_lang.Melange.syntax with
+  | Some version -> version >= (1, 0)
+  | None -> false
+;;
+
+let binary ~sctx ~dir ~for_ =
+  match for_ with
+  | Compilation_mode.Ocaml ->
+    let+ ocaml =
+      let context = Super_context.context sctx in
+      Context.ocaml context
+    in
+    ocaml.ocamldep
+  | Melange ->
+    let* use_melc = melange_uses_melc_modules ~dir in
+    if use_melc
+    then Melange_binary.melc sctx ~loc:None ~dir
+    else
+      let+ ocaml =
+        let context = Super_context.context sctx in
+        Context.ocaml context
+      in
+      ocaml.ocamldep
+;;
+
 let deps_of ~sandbox ~modules ~sctx ~dir ~obj_dir ~ml_kind ~for_ unit =
+  let flag ~for_ ~use_melc =
+    match for_, use_melc with
+    | Compilation_mode.Melange, true -> [ "--modules" ]
+    | Melange, false | Ocaml, _ -> [ "-modules" ]
+  in
   let source = Option.value_exn (Module.source unit ~ml_kind) in
   let dep = Obj_dir.Module.dep obj_dir ~for_ in
   let ocamldep_output = dep (Immediate (unit, ml_kind)) |> Option.value_exn in
   let* () =
     let context = Super_context.context sctx in
-    let ocamldep =
-      (let+ ocaml = Context.ocaml context in
-       ocaml.ocamldep)
-      |> Action_builder.of_memo
+    let dep_scanner = binary ~sctx ~dir ~for_ |> Action_builder.of_memo in
+    let use_melc =
+      match for_ with
+      | Ocaml -> Memo.return false
+      | Melange -> melange_uses_melc_modules ~dir
+    in
+    let scanner_mode_flag =
+      Action_builder.of_memo use_melc
+      |> Action_builder.map ~f:(fun use_melc -> flag ~for_ ~use_melc)
     in
     Super_context.add_rule
       sctx
@@ -138,10 +181,10 @@ let deps_of ~sandbox ~modules ~sctx ~dir ~obj_dir ~ml_kind ~for_ unit =
          Module.pp_flags unit |> Option.value ~default:(Action_builder.return [], sandbox)
        in
        Command.run_dyn_prog
-         ocamldep
+         dep_scanner
          ~dir:(Path.build (Context.build_dir context))
          ~stdout_to:ocamldep_output
-         [ A "-modules"
+         [ Command.Args.dyn scanner_mode_flag
          ; Command.Args.dyn flags
          ; Command.Ml_kind.flag ml_kind
          ; Dep (Module.File.path source)
@@ -156,7 +199,7 @@ let deps_of ~sandbox ~modules ~sctx ~dir ~obj_dir ~ml_kind ~for_ unit =
          (let+ immediate_deps =
             Path.build ocamldep_output
             |> Action_builder.lines_of
-            >>| parse_deps_exn ~file:(Module.File.path source)
+            >>| parse_deps_exn source
             >>| parse_module_names ~dir ~unit ~modules
             >>| Stdlib.( @ ) (Modules.With_vlib.implicit_deps modules ~of_:unit)
           in
@@ -195,7 +238,7 @@ let read_immediate_deps_of ~obj_dir ~modules ~ml_kind ~for_ unit =
     in
     Action_builder.lines_of (Path.build ocamldep_output)
     |> Action_builder.map ~f:(fun lines ->
-      parse_deps_exn ~file:(Module.File.path source) lines
+      parse_deps_exn source lines
       |> parse_module_names ~dir:(Obj_dir.dir obj_dir) ~unit ~modules)
     |> Action_builder.memoize (Path.Build.to_string ocamldep_output)
 ;;

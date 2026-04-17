@@ -27,18 +27,6 @@ let spawn_thread ~name f = Thread0.spawn ~name f
 module Run_id = Run_id
 include Types.Scheduler
 
-let current = ref None
-
-let t_opt () =
-  let+ () = Fiber.return () in
-  !current
-;;
-
-let t () =
-  let+ () = Fiber.return () in
-  Option.value_exn !current
-;;
-
 let running_jobs_count (t : t) = Event.Queue.pending_jobs t.events
 
 exception Build_cancelled
@@ -187,6 +175,7 @@ let prepare (config : Config.t) ~(handler : Handler.t) ~events ~file_watcher =
     ; cancel
     ; thread_pool = lazy (Thread_pool.create ~min_workers:4 ~max_workers:50)
     ; signal_watcher
+    ; async_io = Async_io.create events
     }
   in
   current := Some t;
@@ -280,8 +269,6 @@ module Run_once = struct
   let run t f : _ result =
     current := Some t;
     let fiber =
-      Async_io.with_io t.events
-      @@ fun () ->
       Fiber.map_reduce_errors
         (module Monoid.Unit)
         f

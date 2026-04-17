@@ -203,67 +203,44 @@ let start t =
       reraise exn)
 ;;
 
-module T_var : sig
-  (** Wrap the global t_var so that it is started whenever requested. *)
+let get_exn () =
+  let+ t = Types.Scheduler.t () in
+  let t = t.async_io in
+  if not t.started
+  then (
+    let (_ : Thread.t) = start ~name:"async-io" t in
+    t.started <- true);
+  t
+;;
 
-  val get_exn : unit -> t Fiber.t
-  val setup : t -> (unit -> 'a Fiber.t) -> 'a Fiber.t
-end = struct
-  let t_var = Fiber.Var.create None
-
-  let get_exn () =
-    let+ t = Fiber.Var.get_exn t_var in
-    if not t.started
-    then (
-      let (_ : Thread.t) = start ~name:"async-io" t in
-      t.started <- true);
-    t
-  ;;
-
-  let setup t f =
-    Fiber.Var.set t_var (Some t) (fun () ->
-      Fiber.finalize f ~finally:(fun () ->
-        if t.started
-        then (
-          Mutex.lock t.mutex;
-          t.running <- false;
-          interrupt t;
-          Mutex.unlock t.mutex);
-        Fiber.return ()))
-  ;;
-end
-
-let with_io scheduler_queue f =
-  let t =
-    let pipe_read, pipe_write =
-      if not Sys.win32
-      then Unix.pipe ~cloexec:true ()
-      else (
-        (* Create a self-connected UDP socket *)
-        let udp_sock = Unix.socket ~cloexec:true PF_INET SOCK_DGRAM 0 in
-        Unix.bind udp_sock (ADDR_INET (Unix.inet_addr_loopback, 0));
-        Unix.connect udp_sock (Unix.getsockname udp_sock);
-        udp_sock, udp_sock)
-    in
-    Unix.set_nonblock pipe_read;
-    { readers = Table.create (module Fd) 64
-    ; writers = Table.create (module Fd) 64
-    ; mutex = Mutex.create ()
-    ; scheduler_queue
-    ; running = true
-    ; pipe_read
-    ; pipe_write
-    ; pipe_buf = Bytes.create 512
-    ; interrupting = false
-    ; to_close = []
-    ; started = false
-    }
+let create scheduler_queue =
+  let pipe_read, pipe_write =
+    if not Sys.win32
+    then Unix.pipe ~cloexec:true ()
+    else (
+      (* Create a self-connected UDP socket *)
+      let udp_sock = Unix.socket ~cloexec:true PF_INET SOCK_DGRAM 0 in
+      Unix.bind udp_sock (ADDR_INET (Unix.inet_addr_loopback, 0));
+      Unix.connect udp_sock (Unix.getsockname udp_sock);
+      udp_sock, udp_sock)
   in
-  T_var.setup t f
+  Unix.set_nonblock pipe_read;
+  { readers = Table.create (module Fd) 64
+  ; writers = Table.create (module Fd) 64
+  ; mutex = Mutex.create ()
+  ; scheduler_queue
+  ; running = true
+  ; pipe_read
+  ; pipe_write
+  ; pipe_buf = Bytes.create 512
+  ; interrupting = false
+  ; to_close = []
+  ; started = false
+  }
 ;;
 
 let with_ f =
-  let+ t = T_var.get_exn () in
+  let+ t = get_exn () in
   Mutex.lock t.mutex;
   Exn.protect ~f:(fun () -> f t) ~finally:(fun () -> Mutex.unlock t.mutex)
 ;;
@@ -280,7 +257,7 @@ let cancel_fd scheduler_queue table fd =
 ;;
 
 let close fd =
-  let* t = T_var.get_exn () in
+  let* t = get_exn () in
   Mutex.lock t.mutex;
   (* everything below is guaranteed not to raise so the mutex will be unlocked
      in the end. There's no need to use [protect] to make sure we don't deadlock *)

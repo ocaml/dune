@@ -435,17 +435,15 @@ let exec
           [ Some { source = Path.to_absolute_filename root; target } ]
     in
     let env =
+      let var = "DUNE_PROJECT_ROOT" in
       match Execution_parameters.action_project_root execution_parameters with
-      | None -> Env.remove env ~var:"DUNE_PROJECT_ROOT"
+      | None -> Env.remove env ~var
       | Some project_root ->
         (match Path.as_in_build_dir root with
          | None -> env
          | Some root ->
            let project_root = Path.Build.append_source root project_root in
-           Env.add
-             env
-             ~var:"DUNE_PROJECT_ROOT"
-             ~value:(Path.to_absolute_filename (Path.build project_root)))
+           Env.add env ~var ~value:(Path.to_absolute_filename (Path.build project_root)))
     in
     { working_dir = Path.root
     ; env

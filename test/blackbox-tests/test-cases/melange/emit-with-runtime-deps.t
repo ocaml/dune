@@ -42,10 +42,9 @@ Rules created for the assets in the output directory
 
 Alias is found even if source dir "output" isn't present
 
-  $ dune rules @mel | grep file.txt
-  ((deps ((File (In_build_dir _build/default/assets/file.txt))))
-   (targets ((files (_build/default/output/assets/file.txt)) (directories ())))
-   (action (chdir _build/default (copy assets/file.txt output/assets/file.txt))))
+  $ dune rules --root . --format=json @mel |
+  > jq -r 'include "dune"; rulesMatchingTarget("output/assets/file.txt") | select(ruleHasCopy("assets/file.txt"; "output/assets/file.txt")) | ruleDepFilePaths'
+  _build/default/assets/file.txt
 
   $ dune build @mel
 
@@ -74,4 +73,3 @@ The runtime_dep index.txt was copied to the build folder
   $ node _build/default/output/main.js
   hello from file
   
-

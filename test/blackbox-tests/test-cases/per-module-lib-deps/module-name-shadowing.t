@@ -51,8 +51,9 @@ The build succeeds using the internal Helper:
 The dependencies of main.ml's native compilation show dune__exe__Helper
 (the internal module), not unwrapped_lib's helper:
 
-  $ dune rules --deps _build/default/.main.eobjs/native/dune__exe__Main.cmx | grep dune__exe__Helper
-   (File (In_build_dir _build/default/.main.eobjs/byte/dune__exe__Helper.cmi))
+  $ dune rules --root . --format=json --deps _build/default/.main.eobjs/native/dune__exe__Main.cmx |
+  > jq -r 'include "dune"; .[] | depsFilePaths | select(test("dune__exe__Helper"))'
+  _build/default/.main.eobjs/byte/dune__exe__Helper.cmi
 
 The library's Helper.lib_value is not accessible:
 

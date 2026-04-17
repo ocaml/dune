@@ -16,6 +16,17 @@ Create a project with oxcaml extension (required for cms_cmt_dependency):
   > (using oxcaml 0.1)
   > EOF
 
+Probe whether the current compiler is actually OxCaml. The language extension
+can be available even when the compiler does not support the `.cms` dependency
+machinery itself.
+
+  $ cat >probe_oxcaml.ml <<EOF
+  > let fst_local ((x, _) @ local) = x
+  > let () = ignore (fst_local (stack_ (1, 2)))
+  > EOF
+
+  $ if ocamlc -c probe_oxcaml.ml >/dev/null 2>&1; then IS_OX=true; else IS_OX=false; fi
+
 Create a library with two modules where one depends on the other:
 
   $ mkdir -p mylib
@@ -36,6 +47,7 @@ Create a library with two modules where one depends on the other:
   > EOF
 
   $ cat >mylib/dune <<EOF
+  > (env (_ (bin_annot_cms true)))
   > (library (name mylib))
   > EOF
 
@@ -60,15 +72,15 @@ Build everything first so rules are generated:
 
 Check that User.cmx does NOT depend on Dep's .cms/.cmsi files:
 
-  $ dune rules mylib/.mylib.objs/native/mylib__User.cmx | grep -c 'mylib__Dep\.cms'
+  $ dune rules --root . --format=json mylib/.mylib.objs/native/mylib__User.cmx |
+  > jq 'include "dune"; [ .[] | ruleDepFilePaths | select(test("mylib__Dep\\.cms")) ] | length'
   0
-  [1]
 
 Check that User.cmx does NOT depend on Dep's .cmt/.cmti files:
 
-  $ dune rules mylib/.mylib.objs/native/mylib__User.cmx | grep -c 'mylib__Dep\.cmt'
+  $ dune rules --root . --format=json mylib/.mylib.objs/native/mylib__User.cmx |
+  > jq 'include "dune"; [ .[] | ruleDepFilePaths | select(test("mylib__Dep\\.cmt")) ] | length'
   0
-  [1]
 
 Test 2: cms_cmt_dependency = cms
 ================================
@@ -93,14 +105,15 @@ Build everything:
 
 Check that User.cmx DOES depend on Dep's .cms/.cmsi files:
 
-  $ dune rules mylib/.mylib.objs/native/mylib__User.cmx | grep -c 'mylib__Dep\.cms'
-  2
+  $ if [ "$IS_OX" = true ]; then
+  >   test "$(dune rules --root . --format=sexp mylib/.mylib.objs/native/mylib__User.cmx | grep -c 'mylib__Dep\.cms')" = 2
+  > else
+  >   test "$(dune rules --root . --format=sexp mylib/.mylib.objs/native/mylib__User.cmx | grep -c 'mylib__Dep\.cms')" = 0
+  > fi
 
 Check that User.cmx does NOT depend on Dep's .cmt/.cmti files:
 
-  $ dune rules mylib/.mylib.objs/native/mylib__User.cmx | grep -c 'mylib__Dep\.cmt'
-  0
-  [1]
+  $ test "$(dune rules --root . --format=sexp mylib/.mylib.objs/native/mylib__User.cmx | grep -c 'mylib__Dep\.cmt')" = 0
 
 Test 3: cms_cmt_dependency = cmt
 ================================
@@ -124,11 +137,12 @@ Build everything:
 
 Check that User.cmx DOES depend on Dep's .cmt/.cmti files:
 
-  $ dune rules mylib/.mylib.objs/native/mylib__User.cmx | grep -c 'mylib__Dep\.cmt'
-  2
+  $ if [ "$IS_OX" = true ]; then
+  >   test "$(dune rules --root . --format=sexp mylib/.mylib.objs/native/mylib__User.cmx | grep -c 'mylib__Dep\.cmt')" = 2
+  > else
+  >   test "$(dune rules --root . --format=sexp mylib/.mylib.objs/native/mylib__User.cmx | grep -c 'mylib__Dep\.cmt')" = 0
+  > fi
 
 Check that User.cmx does NOT depend on Dep's .cms/.cmsi files:
 
-  $ dune rules mylib/.mylib.objs/native/mylib__User.cmx | grep -c 'mylib__Dep\.cms'
-  0
-  [1]
+  $ test "$(dune rules --root . --format=sexp mylib/.mylib.objs/native/mylib__User.cmx | grep -c 'mylib__Dep\.cms')" = 0

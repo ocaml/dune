@@ -34,5 +34,6 @@ directories, we do not add include directories, so they aren't accessible.
 The rules include the dependency on foo.h, but the include directory has to be
 added manually.
 
-  $ dune rules _build/default/bar.o | grep subdir
-     (File (In_build_dir _build/default/subdir/foo.h))
+  $ dune rules --root . --format=json _build/default/bar.o |
+  > jq -r 'include "dune"; .[] | ruleDepFilePaths | select(test("subdir"))'
+  _build/default/subdir/foo.h

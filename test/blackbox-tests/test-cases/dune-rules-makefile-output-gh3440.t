@@ -3,4 +3,4 @@ had bugs where this subcommand would stop working and nobody would notice as
 it's not used very much.
 
   $ echo "(lang dune 2.5)" > dune-project
-  $ dune rules -o Makefile
+  $ dune rules --root . --format=json -o Makefile

@@ -62,25 +62,25 @@ module's interface.
 With xopt enabled, the `entry.js` emission rule must stage the interface
 closure and the same-library implementation closure it reaches.
 
-  $ dune describe rules --display=quiet --profile=release dist_xopt/node_modules/repro/entry.js > xopt-rules.sexp
-  $ grep -c 'lib/.repro.objs/melange/dep.cmi' xopt-rules.sexp
+  $ dune describe rules --root . --format=json --display=quiet --profile=release dist_xopt/node_modules/repro/entry.js > xopt-rules.json
+  $ jq 'include "dune"; [ .[] | ruleDepFilePaths | select(test("lib/\\.repro\\.objs/melange/dep\\.cmi$")) ] | length' xopt-rules.json
   1
-  $ grep -c 'lib/.repro.objs/melange/dep.cmj' xopt-rules.sexp
+  $ jq 'include "dune"; [ .[] | ruleDepFilePaths | select(test("lib/\\.repro\\.objs/melange/dep\\.cmj$")) ] | length' xopt-rules.json
   1
-  $ grep -c 'lib/.repro.objs/melange/leaf.cmi' xopt-rules.sexp
+  $ jq 'include "dune"; [ .[] | ruleDepFilePaths | select(test("lib/\\.repro\\.objs/melange/leaf\\.cmi$")) ] | length' xopt-rules.json
   1
-  $ grep -c 'lib/.repro.objs/melange/leaf.cmj' xopt-rules.sexp
+  $ jq 'include "dune"; [ .[] | ruleDepFilePaths | select(test("lib/\\.repro\\.objs/melange/leaf\\.cmj$")) ] | length' xopt-rules.json
   1
 
 Without xopt, the same emitted module should not stage those extra same-library
 dependencies.
 
-  $ dune describe rules --display=quiet --profile=release dist_no_xopt/node_modules/repro/entry.js > no-xopt-rules.sexp
-  $ grep -c 'lib/.repro.objs/melange/dep.cmi' no-xopt-rules.sexp || true
+  $ dune describe rules --root . --format=json --display=quiet --profile=release dist_no_xopt/node_modules/repro/entry.js > no-xopt-rules.json
+  $ jq 'include "dune"; [ .[] | ruleDepFilePaths | select(test("lib/\\.repro\\.objs/melange/dep\\.cmi$")) ] | length' no-xopt-rules.json
   0
-  $ grep -c 'lib/.repro.objs/melange/dep.cmj' no-xopt-rules.sexp || true
+  $ jq 'include "dune"; [ .[] | ruleDepFilePaths | select(test("lib/\\.repro\\.objs/melange/dep\\.cmj$")) ] | length' no-xopt-rules.json
   0
-  $ grep -c 'lib/.repro.objs/melange/leaf.cmi' no-xopt-rules.sexp || true
+  $ jq 'include "dune"; [ .[] | ruleDepFilePaths | select(test("lib/\\.repro\\.objs/melange/leaf\\.cmi$")) ] | length' no-xopt-rules.json
   0
-  $ grep -c 'lib/.repro.objs/melange/leaf.cmj' no-xopt-rules.sexp || true
+  $ jq 'include "dune"; [ .[] | ruleDepFilePaths | select(test("lib/\\.repro\\.objs/melange/leaf\\.cmj$")) ] | length' no-xopt-rules.json
   0

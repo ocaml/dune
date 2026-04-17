@@ -18,18 +18,20 @@ Test dune rules
 
 Calling dune rules with the 'all' alias works fine
 
-  $ dune rules @all | grep In_build_dir
-     (File (In_build_dir _build/default/main.ml))))
-      (In_build_dir _build/default/.output.mobjs/melange/melange__Main.cmj))))
+  $ dune rules --root . --format=json @all |
+  > jq -r 'include "dune"; .[] | ruleDepFilePaths | select(test("main\\.ml$|melange__Main\\.cmj$"))'
+  _build/default/main.ml
+  _build/default/.output.mobjs/melange/melange__Main.cmj
 
 Calling dune rules with the alias works fine
 
-  $ dune rules @melange | grep In_build_dir
-      (In_build_dir _build/default/.output.mobjs/melange/melange__Main.cmj))))
+  $ dune rules --root . --format=json @melange |
+  > jq -r 'include "dune"; .[] | ruleDepFilePaths | select(test("melange__Main\\.cmj$"))'
+  _build/default/.output.mobjs/melange/melange__Main.cmj
 
 Using output folder fails
 
-  $ dune rules output
+  $ dune rules --root . --format=json output
   Error: Don't know how to build output
   [1]
 
@@ -37,6 +39,6 @@ Creating dir fixes the problem
 
   $ mkdir output
 
-  $ dune rules output | grep "\.cmj"
-      (In_build_dir _build/default/.output.mobjs/melange/melange__Main.cmj))))
-      .output.mobjs/melange/melange__Main.cmj))))
+  $ dune rules --root . --format=json output |
+  > jq -r 'include "dune"; rulesMatchingTarget("output/main.js") | ruleDepFilePaths | select(test("\\.cmj$"))'
+  _build/default/.output.mobjs/melange/melange__Main.cmj

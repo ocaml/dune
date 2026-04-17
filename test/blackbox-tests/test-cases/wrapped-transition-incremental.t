@@ -49,10 +49,11 @@ A consumer still using the bare name during the migration:
 The compat shim foo.cmi now depends on both the wrapper mylib.cmi and the
 inner module mylib__Foo.cmi that it re-exports:
 
-  $ dune rules --deps mylib/.mylib.objs/byte/foo.cmi 2>&1 | grep In_build_dir
-   (File (In_build_dir _build/default/mylib/.mylib.objs/byte/mylib.cmi))
-   (File (In_build_dir _build/default/mylib/.mylib.objs/byte/mylib__Foo.cmi))
-   (File (In_build_dir _build/default/mylib/.wrapped_compat/Foo.ml-gen)))
+  $ dune rules --root . --format=json --deps mylib/.mylib.objs/byte/foo.cmi |
+  > jq -r 'include "dune"; .[] | depsFilePathsOfKind("In_build_dir")'
+  _build/default/mylib/.mylib.objs/byte/mylib.cmi
+  _build/default/mylib/.mylib.objs/byte/mylib__Foo.cmi
+  _build/default/mylib/.wrapped_compat/Foo.ml-gen
 
 The library author adds a field:
 

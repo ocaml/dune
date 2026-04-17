@@ -32,10 +32,9 @@ Test simple interactions between melange.emit and copy_files
 
 Rules created for the assets in the output directory
 
-  $ dune rules @mel | grep file.txt
-  ((deps ((File (In_build_dir _build/default/a/assets/file.txt))))
-    ((files (_build/default/a/output/a/assets/file.txt)) (directories ())))
-    (chdir _build/default (copy a/assets/file.txt a/output/a/assets/file.txt))))
+  $ dune rules --root . --format=json @mel |
+  > jq -r 'include "dune"; rulesMatchingTarget("a/output/a/assets/file.txt") | select(ruleHasCopy("a/assets/file.txt"; "a/output/a/assets/file.txt")) | ruleDepFilePaths'
+  _build/default/a/assets/file.txt
 
   $ dune build @mel
 
@@ -119,13 +118,10 @@ Test depending on paths that "escape" the melange.emit directory
 
 Rules are created for the runtime deps
 
-  $ dune rules @mel | grep .txt
-  ((deps ((File (In_build_dir _build/default/a/assets/file.txt))))
-    ((files (_build/default/a/output/a/assets/file.txt)) (directories ())))
-    (chdir _build/default (copy a/assets/file.txt a/output/a/assets/file.txt))))
-  ((deps ((File (In_build_dir _build/default/a/assets/file.txt))))
-    ((files (_build/default/another/another-output/a/assets/file.txt))
-     (copy a/assets/file.txt another/another-output/a/assets/file.txt))))
+  $ dune rules --root . --format=json @mel |
+  > jq -r 'include "dune"; .[] | if ruleHasCopy("a/assets/file.txt"; "a/output/a/assets/file.txt") then "a/output/a/assets/file.txt <- \([ruleDepFilePaths] | join(" "))" elif ruleHasCopy("a/assets/file.txt"; "another/another-output/a/assets/file.txt") then "another/another-output/a/assets/file.txt <- \([ruleDepFilePaths] | join(" "))" else empty end'
+  a/output/a/assets/file.txt <- _build/default/a/assets/file.txt
+  another/another-output/a/assets/file.txt <- _build/default/a/assets/file.txt
 
   $ dune build @mel
 
@@ -216,4 +212,3 @@ Test depending on runtime assets inside `(include_subdirs ..)`
   $ node _build/default/incl/incl-output/incl/sub/main.js
   hello from sub file
   
-

@@ -394,17 +394,7 @@ end
 module Exit_status = Dune_trace.Event.Exit_status
 
 (* Implemt the rendering for [--display short] *)
-module Short_display : sig
-  val pp_ok : prog:string -> purpose:purpose -> User_message.Style.t Pp.t
-
-  val pp_error
-    :  prog:string
-    -> purpose:purpose
-    -> has_unexpected_stdout:bool
-    -> has_unexpected_stderr:bool
-    -> error:Exit_status.error
-    -> User_message.Style.t Pp.t
-end = struct
+module Short_display = struct
   let pp_purpose = function
     | Internal_job -> Pp.verbatim "(internal)"
     | Build_job targets ->
@@ -519,30 +509,7 @@ let pp_id id =
   ++ Pp.char ']'
 ;;
 
-module Handle_exit_status : sig
-  open Exit_status
-
-  val verbose
-    :  ('a, error) result
-    -> id:Running_jobs.Id.t
-    -> metadata:metadata
-    -> output:string
-    -> command_line:User_message.Style.t Pp.t
-    -> dir:Path.t option
-    -> 'a
-
-  val non_verbose
-    :  ('a, error) result
-    -> verbosity:Display.t
-    -> metadata:metadata
-    -> output:string
-    -> prog:string
-    -> command_line:string
-    -> dir:Path.t option
-    -> has_unexpected_stdout:bool
-    -> has_unexpected_stderr:bool
-    -> 'a
-end = struct
+module Handle_exit_status = struct
   open Exit_status
 
   type output =

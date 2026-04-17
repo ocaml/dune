@@ -4,15 +4,15 @@ open Dune_scheduler
 
 module Socket = struct
   module type Unix_socket = sig
-    val connect : Unix.file_descr -> socket:string -> unit
-    val bind : Unix.file_descr -> socket:string -> unit
+    val connect : Fd.t -> socket:string -> unit
+    val bind : Fd.t -> socket:string -> unit
   end
 
   module U = struct
     type sockaddr = Unix.sockaddr
 
-    let connect fd sock = Unix.connect fd sock
-    let bind fd sock = Unix.bind fd sock
+    let connect fd sock = Unix.connect (Fd.unsafe_to_unix_file_descr fd) sock
+    let bind fd sock = Unix.bind (Fd.unsafe_to_unix_file_descr fd) sock
   end
 
   module Mac = struct
@@ -27,8 +27,15 @@ module Socket = struct
       Exn.protectx (Unix.ADDR_UNIX sock) ~f:(f fd) ~finally:(fun _ -> pthread_chdir old)
     ;;
 
-    let connect fd ~socket : unit = with_chdir fd ~socket ~f:Unix.connect
-    let bind fd ~socket : unit = with_chdir fd ~socket ~f:Unix.bind
+    let connect fd ~socket : unit =
+      with_chdir fd ~socket ~f:(fun fd sockaddr ->
+        Unix.connect (Fd.unsafe_to_unix_file_descr fd) sockaddr)
+    ;;
+
+    let bind fd ~socket : unit =
+      with_chdir fd ~socket ~f:(fun fd sockaddr ->
+        Unix.bind (Fd.unsafe_to_unix_file_descr fd) sockaddr)
+    ;;
   end
 
   module Unix : Unix_socket = struct
@@ -42,8 +49,8 @@ module Socket = struct
          | None -> socket)
     ;;
 
-    let connect fd ~socket = Unix.connect fd (addr socket)
-    let bind fd ~socket = Unix.bind fd (addr socket)
+    let connect fd ~socket = U.connect fd (addr socket)
+    let bind fd ~socket = U.bind fd (addr socket)
   end
 
   module Fail : Unix_socket = struct
@@ -71,7 +78,10 @@ module Socket = struct
 
   let bind = make ~original:U.bind ~backup:Sel.bind
   let connect = make ~original:U.connect ~backup:Sel.connect
-  let maybe_set_nosigpipe fd = if is_osx () then Mac.set_nosigpipe fd
+
+  let maybe_set_nosigpipe fd =
+    if is_osx () then Mac.set_nosigpipe (Fd.unsafe_to_unix_file_descr fd)
+  ;;
 end
 
 module Session = struct
@@ -84,7 +94,7 @@ module Session = struct
       | Open of
           { out_buf : Io_buffer.t
           ; in_buf : Io_buffer.t
-          ; fd : Unix.file_descr
+          ; fd : Fd.t
           ; mutable read_eof : bool
           ; write_mutex : Fiber.Mutex.t
           ; read_mutex : Fiber.Mutex.t
@@ -99,7 +109,7 @@ module Session = struct
     }
 
   let create fd =
-    Unix.set_nonblock fd;
+    Unix.set_nonblock (Fd.unsafe_to_unix_file_descr fd);
     let id = Id.gen () in
     Dune_trace.emit Rpc (fun () -> Dune_trace.Event.Rpc.session ~id:(Id.to_int id) `Start);
     let state =
@@ -116,13 +126,13 @@ module Session = struct
     { id; state }
   ;;
 
-  let close t =
+  let close_fd t =
     let* () = Fiber.return () in
     match t.state with
     | Closed -> Fiber.return ()
     | Open { fd; _ } ->
       t.state <- Closed;
-      Async_io.close fd
+      Async_io.close_fd fd
   ;;
 
   module Lexer = Csexp.Parser.Lexer
@@ -148,11 +158,17 @@ module Session = struct
         then Fiber.return (Ok `Eof)
         else
           let* task =
-            Async_io.ready fd `Read ~f:(fun () ->
+            Async_io.ready_fd fd `Read ~f:(fun () ->
               let () = Io_buffer.maybe_resize_to_fit in_buf min_read in
               let pos = Io_buffer.write_pos in_buf in
               let len = Io_buffer.max_write_len in_buf in
-              match Unix.read fd (Io_buffer.bytes in_buf) pos len with
+              match
+                Unix.read
+                  (Fd.unsafe_to_unix_file_descr fd)
+                  (Io_buffer.bytes in_buf)
+                  pos
+                  len
+              with
               | exception Unix.Unix_error ((EAGAIN | EINTR | EWOULDBLOCK), _, _) ->
                 `Refill
               | (exception Unix.Unix_error (ECONNRESET, _, _)) | 0 ->
@@ -211,7 +227,7 @@ module Session = struct
               ~success:false
               ~error:(Some (Printexc.to_string exn)));
           Dune_util.Report_error.report_exception exn;
-          let+ () = close t in
+          let+ () = close_fd t in
           None
         | Ok None ->
           Dune_trace.emit Rpc (fun () ->
@@ -219,7 +235,7 @@ module Session = struct
               ~id:(Id.to_int t.id)
               ~success:true
               ~error:None);
-          let+ () = close t in
+          let+ () = close_fd t in
           None
         | Ok (Some sexp) ->
           Dune_trace.emit Rpc (fun () ->
@@ -235,6 +251,7 @@ module Session = struct
   external send : Unix.file_descr -> Bytes.t -> int -> int -> int = "dune_send"
 
   let write fd bytes pos len =
+    let fd = Fd.unsafe_to_unix_file_descr fd in
     match Platform.OS.value with
     | Linux -> send fd bytes pos len
     | _ -> Unix.single_write fd bytes pos len
@@ -249,7 +266,7 @@ module Session = struct
          to do *)
       let* task =
         let* task =
-          Async_io.ready fd `Write ~f:(fun () ->
+          Async_io.ready_fd fd `Write ~f:(fun () ->
             let bytes = Io_buffer.bytes out_buf in
             let pos = Io_buffer.pos out_buf in
             let len = Io_buffer.length out_buf in
@@ -292,7 +309,7 @@ module Session = struct
           | `Exn exn ->
             Dune_trace.emit Rpc (fun () ->
               Dune_trace.Event.Rpc.dropped_write_client_disconnect exn));
-         let+ () = close t in
+         let+ () = close_fd t in
          Error `Closed)
   ;;
 
@@ -304,30 +321,30 @@ module Session = struct
     | Open { fd; _ } ->
       (try
          (* TODO this hack is temporary until we get rid of dune rpc init *)
-         Unix.shutdown fd Unix.SHUTDOWN_ALL
+         Unix.shutdown (Fd.unsafe_to_unix_file_descr fd) Unix.SHUTDOWN_ALL
        with
        | Unix.Unix_error (_, _, _) -> ());
-      close t
+      close_fd t
   ;;
 end
 
 module Server = struct
   module Transport = struct
     type t =
-      { sockets : (Unix.sockaddr * Unix.file_descr) list
-      ; mutable task : (Unix.file_descr * Unix.sockaddr) Async_io.Task.t option
+      { sockets : (Unix.sockaddr * Fd.t) list
+      ; mutable task : (Fd.t * Unix.sockaddr) Async_io.Task.t option
       ; mutable running : bool
       }
 
     let create sockets ~backlog =
       List.iter sockets ~f:(fun (_, fd) ->
-        Unix.listen fd backlog;
-        Unix.set_nonblock fd);
+        Unix.listen (Fd.unsafe_to_unix_file_descr fd) backlog;
+        Unix.set_nonblock (Fd.unsafe_to_unix_file_descr fd));
       { sockets; task = None; running = true }
     ;;
 
     let close t =
-      let+ () = Fiber.parallel_iter ~f:(fun (_, fd) -> Async_io.close fd) t.sockets in
+      let+ () = Fiber.parallel_iter ~f:(fun (_, fd) -> Async_io.close_fd fd) t.sockets in
       Ok None
     ;;
 
@@ -337,7 +354,11 @@ module Server = struct
       | false -> close t
       | true ->
         let* task =
-          Async_io.ready_one t.sockets `Read ~f:(fun _ fd -> Unix.accept ~cloexec:true fd)
+          Async_io.ready_one_fd t.sockets `Read ~f:(fun _ fd ->
+            let fd, sockaddr =
+              Unix.accept ~cloexec:true (Fd.unsafe_to_unix_file_descr fd)
+            in
+            Fd.unsafe_of_unix_file_descr fd, sockaddr)
         in
         t.task <- Some task;
         let* res = Async_io.Task.await task in
@@ -349,7 +370,7 @@ module Server = struct
          | Error `Cancelled -> close t
          | Ok (fd, _) ->
            Socket.maybe_set_nosigpipe fd;
-           Unix.set_nonblock fd;
+           Unix.set_nonblock (Fd.unsafe_to_unix_file_descr fd);
            Fiber.return @@ Ok (Some fd))
     ;;
 
@@ -369,8 +390,7 @@ module Server = struct
   end
 
   type t =
-    { mutable state :
-        [ `Init of Unix.file_descr list | `Running of Transport.t | `Closed ]
+    { mutable state : [ `Init of Fd.t list | `Running of Transport.t | `Closed ]
     ; backlog : int
     ; sockaddrs : Unix.sockaddr list
     ; ready : unit Fiber.Ivar.t
@@ -386,11 +406,13 @@ module Server = struct
               (Unix.domain_of_sockaddr sockaddr)
               Unix.SOCK_STREAM
               0
+            |> Fd.unsafe_of_unix_file_descr
           in
-          Unix.set_nonblock fd;
+          Unix.set_nonblock (Fd.unsafe_to_unix_file_descr fd);
           (match (sockaddr : Unix.sockaddr) with
            | ADDR_UNIX _ -> ()
-           | ADDR_INET _ -> Unix.setsockopt fd Unix.SO_REUSEADDR true);
+           | ADDR_INET _ ->
+             Unix.setsockopt (Fd.unsafe_to_unix_file_descr fd) Unix.SO_REUSEADDR true);
           Socket.bind fd sockaddr;
           fd)
       in
@@ -442,7 +464,7 @@ module Server = struct
       | `Closed -> Fiber.return ()
       | `Running t -> Transport.stop t
       | `Init fds ->
-        List.iter ~f:Unix.close fds;
+        List.iter ~f:Fd.close fds;
         Fiber.return ()
     in
     t.state <- `Closed
@@ -450,7 +472,8 @@ module Server = struct
 
   let listening_address t =
     match t.state with
-    | `Init fds -> List.map ~f:Unix.getsockname fds
+    | `Init fds ->
+      List.map ~f:(fun fd -> Unix.getsockname (Fd.unsafe_to_unix_file_descr fd)) fds
     | `Running { Transport.sockets; _ } -> List.map ~f:fst sockets
     | `Closed -> Code_error.raise "server is already closed" []
   ;;
@@ -458,15 +481,16 @@ end
 
 module Client = struct
   module Transport = struct
-    type t = { fd : Unix.file_descr }
+    type t = { fd : Fd.t }
 
-    let close t = Unix.close t.fd
+    let close t = Fd.close t.fd
 
     let create sockaddr =
       let fd =
         Unix.socket ~cloexec:true (Unix.domain_of_sockaddr sockaddr) Unix.SOCK_STREAM 0
+        |> Fd.unsafe_of_unix_file_descr
       in
-      Unix.set_nonblock fd;
+      Unix.set_nonblock (Fd.unsafe_to_unix_file_descr fd);
       { fd }
     ;;
   end
@@ -484,7 +508,7 @@ module Client = struct
     let transport = Transport.create t.sockaddr in
     let fd = transport.fd in
     t.transport <- Some transport;
-    Async_io.connect Socket.connect fd t.sockaddr
+    Async_io.connect_fd Socket.connect fd t.sockaddr
     >>| function
     | Ok () -> Ok (Session.create fd)
     | Error `Cancelled ->

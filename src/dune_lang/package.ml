@@ -5,6 +5,7 @@ module Id = Package_id
 type opam_file =
   | Exists of bool
   | Generated
+  | Generated_with_diff
 
 (* we need the original opam file when passing it [$ dune pkg lock] we want to
    to allow the opam library interpret the opam file directly. *)
@@ -243,6 +244,7 @@ let dyn_of_opam_file =
   function
   | Exists b -> variant "Exists" [ bool b ]
   | Generated -> variant "Generated" []
+  | Generated_with_diff -> variant "Generated_with_diff" []
 ;;
 
 let to_dyn

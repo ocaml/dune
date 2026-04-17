@@ -15,14 +15,24 @@ let need_odoc_config (pkg : Package.t) =
 ;;
 
 module Package_paths = struct
-  let opam_file (ctx : Build_context.t) (pkg : Package.t) =
+  let generated_opam_file (ctx : Build_context.t) (pkg : Package.t) =
+    Opam_create.build_path ~build_dir:ctx.build_dir pkg
+  ;;
+
+  let opam_file (context : Context.t) (pkg : Package.t) =
+    let ctx = Context.build_context context in
     let opam_file = Package.opam_file pkg in
-    let exists =
-      match Package.has_opam_file pkg with
-      | Exists b -> b
-      | Generated -> true
-    in
-    if exists then Some (Path.Build.append_source ctx.build_dir opam_file) else None
+    let build_opam_file = Path.Build.append_source ctx.build_dir opam_file in
+    match Package.has_opam_file pkg with
+    | Exists false -> Memo.return None
+    | Exists true -> Memo.return (Some build_opam_file)
+    | Generated | Generated_with_diff ->
+      let+ use_source_opam =
+        if Profile.is_release (Context.profile context)
+        then Build_system.file_exists (Path.source opam_file)
+        else Memo.return false
+      in
+      Some (if use_source_opam then build_opam_file else generated_opam_file ctx pkg)
   ;;
 
   let meta_fn pkg = "META." ^ Package.Name.to_string pkg
@@ -574,12 +584,13 @@ end = struct
   module Package_map_traversals = Memo.Make_parallel_map (Package.Name.Map)
 
   let stanzas_to_entries sctx =
-    let ctx = Context.build_context (Super_context.context sctx) in
+    let context = Super_context.context sctx in
+    let ctx = Context.build_context context in
     let* stanzas = Dune_load.dune_files ctx.name in
     let* packages = Dune_load.packages () in
     let+ init =
       Package_map_traversals.parallel_map packages ~f:(fun _name (pkg : Package.t) ->
-        let opam_file = Package_paths.opam_file ctx pkg in
+        let* opam_file = Package_paths.opam_file context pkg in
         let init =
           let file section local_file dst =
             Install.Entry.Unexpanded.make

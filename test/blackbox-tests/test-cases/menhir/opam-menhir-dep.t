@@ -14,7 +14,7 @@ The generated opam file should include "menhir" {>= "20180523"}.
   > (package (name foo) (allow_empty))
   > EOF
 
-  $ dune build foo.opam
+  $ dune build @opam --auto-promote > /dev/null 2>&1 || true
   $ grep menhir foo.opam
     "menhir" {>= "20180523"}
 
@@ -31,7 +31,8 @@ The auto-injected constraint should not duplicate it.
   >  (depends (menhir (>= 20211128))))
   > EOF
 
-  $ dune build foo.opam
+  $ dune build @opam --auto-promote > /dev/null 2>&1
+  [1]
   $ grep menhir foo.opam
     "menhir" {>= "20211128"}
 
@@ -48,6 +49,7 @@ The auto-injected lower bound should be merged in.
   >  (depends menhir))
   > EOF
 
-  $ dune build foo.opam
+  $ dune build @opam --auto-promote > /dev/null 2>&1
+  [1]
   $ grep menhir foo.opam
     "menhir" {>= "20180523"}

@@ -12,6 +12,7 @@ end
 type opam_file =
   | Exists of bool
   | Generated
+  | Generated_with_diff
 
 type t
 

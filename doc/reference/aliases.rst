@@ -69,6 +69,7 @@ Some aliases are defined and managed by Dune itself:
        aliases/all
        aliases/default
        aliases/revdep
+       aliases/opam
        aliases/install
        aliases/pkg-install
        aliases/empty

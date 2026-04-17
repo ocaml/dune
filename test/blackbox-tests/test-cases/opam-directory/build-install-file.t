@@ -33,6 +33,6 @@ style builds.
 
   $ dune build -p foobar @install _build/install/default/lib/foobar/opam
   $ grep '^# SOURCE COPY$' _build/install/default/lib/foobar/opam
-  [1]
+  # SOURCE COPY
   $ grep '^# SOURCE COPY$' opam/foobar.opam
-  [1]
+  # SOURCE COPY

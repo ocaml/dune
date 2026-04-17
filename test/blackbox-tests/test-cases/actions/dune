@@ -4,7 +4,7 @@
 (cram
  (applies_to stray-process)
  (enabled_if
-  (= %{system} macosx)))
+  (<> %{system} macosx)))
 
 (cram
  (applies_to concurrent)

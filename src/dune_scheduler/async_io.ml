@@ -1,14 +1,6 @@
 open Stdune
 open Fiber.O
 
-module Fd = struct
-  type t = Unix.file_descr
-
-  let equal = Poly.equal
-  let hash = Poly.hash
-  let to_dyn = Dyn.opaque
-end
-
 let byte = Bytes.make 1 '0'
 
 module Task_id = Id.Make ()

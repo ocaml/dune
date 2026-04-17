@@ -87,6 +87,7 @@ module Permissions = Permissions
 module Console = Console
 module Repr = Repr
 module Marshal = Marshal
+module Fd = Fd
 
 module type Top_closure = Top_closure.Top_closure
 

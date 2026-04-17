@@ -365,20 +365,21 @@ let with_flock lock_path ~f =
       (Path.to_string lock_path)
       [ Unix.O_CREAT; O_WRONLY; O_SHARE_DELETE; Unix.O_CLOEXEC ]
       0o600
+    |> Fd.unsafe_of_unix_file_descr
   in
   let flock = Flock.create fd in
   let max_retries = 49 in
   Fiber.finalize
     ~finally:(fun () ->
       let+ () = Fiber.return () in
-      Unix.close fd)
+      Fd.close fd)
     (fun () ->
        attempt_to_lock flock Flock.Exclusive ~max_retries
        >>= function
        | Ok `Success ->
          Fiber.finalize
            (fun () ->
-              Unix.ftruncate fd 0;
+              Unix.ftruncate (Fd.unsafe_to_unix_file_descr fd) 0;
               Global_lock.write_pid fd;
               f ())
            ~finally:(fun () ->

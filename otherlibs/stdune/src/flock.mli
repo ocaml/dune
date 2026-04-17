@@ -3,8 +3,8 @@
 
 type t
 
-val fd : t -> Unix.file_descr
-val create : Unix.file_descr -> t
+val fd : t -> Fd.t
+val create : Fd.t -> t
 
 type lock =
   | Shared

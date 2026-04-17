@@ -18,5 +18,5 @@ val lock_exn : timeout:Time.Span.t option -> unit
 (** release a lock and allow it be re-acquired *)
 val unlock : unit -> unit
 
-val write_pid : Unix.file_descr -> unit
+val write_pid : Fd.t -> unit
 val at_exit : At_exit.t

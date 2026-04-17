@@ -1,3 +1,5 @@
+open Stdune
+
 include
   Dune_rpc.Private.Registry.Poll
     (Fiber)
@@ -13,7 +15,7 @@ include
         Fiber.return
           (match Stdune.Stat.stat s with
            | exception exn -> Error exn
-           | stat -> Ok (`Mtime stat.mtime))
+           | stat -> Ok (`Mtime (Time.to_secs stat.mtime)))
       ;;
 
       let read_file s =

@@ -186,6 +186,18 @@ let scheduler_idle () =
   Event.instant ~name:"watch mode iteration" now Scheduler
 ;;
 
+let process_cleanup_start () =
+  Event.instant ~name:"process-cleanup-start" (Time.now ()) Process
+;;
+
+let process_cleanup_sigkill () =
+  Event.instant ~name:"process-cleanup-sigkill" (Time.now ()) Process
+;;
+
+let process_cleanup_finish () =
+  Event.instant ~name:"process-cleanup-finish" (Time.now ()) Process
+;;
+
 let watch_build_start ~run_id ~restart ~start =
   let args = [ "run_id", Arg.int run_id; "restart", Arg.bool restart ] in
   Event.instant ~name:"build-start" ~args start Build

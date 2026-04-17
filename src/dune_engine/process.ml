@@ -100,13 +100,14 @@ module Io = struct
     | In_chan : in_channel -> input channel
     | Out_chan : out_channel -> output channel
 
-  let descr_of_channel : type a. a channel -> _ = function
-    | In_chan ic -> Unix.descr_of_in_channel ic
-    | Out_chan oc -> Unix.descr_of_out_channel oc
+  let descr_of_channel : type a. a channel -> Fd.t = function
+    | In_chan ic -> Fd.unsafe_of_unix_file_descr (Unix.descr_of_in_channel ic)
+    | Out_chan oc -> Fd.unsafe_of_unix_file_descr (Unix.descr_of_out_channel oc)
   ;;
 
-  let channel_of_descr : type a. _ -> a mode -> a channel =
+  let channel_of_descr : type a. Fd.t -> a mode -> a channel =
     fun fd mode ->
+    let fd = Fd.unsafe_to_unix_file_descr fd in
     match mode with
     | In -> In_chan (Unix.in_channel_of_descr fd)
     | Out -> Out_chan (Unix.out_channel_of_descr fd)
@@ -119,7 +120,7 @@ module Io = struct
 
   type 'a t =
     { kind : kind
-    ; fd : Unix.file_descr Lazy.t
+    ; fd : Fd.t Lazy.t
     ; channel : 'a channel Lazy.t
     ; mutable status : status
     }
@@ -154,9 +155,10 @@ module Io = struct
 
   let null (type a) (mode : a mode) : a t =
     let fd =
-      match mode with
-      | In -> Dev_null.in_
-      | Out -> Dev_null.out
+      lazy
+        (match mode with
+         | In -> Fd.unsafe_of_unix_file_descr (Lazy.force Dev_null.in_)
+         | Out -> Fd.unsafe_of_unix_file_descr (Lazy.force Dev_null.out))
     in
     let channel = lazy (channel_of_descr (Lazy.force fd) mode) in
     { kind = Null; fd; channel; status = Keep_open }
@@ -171,7 +173,8 @@ module Io = struct
            | Out -> [ Unix.O_WRONLY; O_CREAT; O_TRUNC ]
            | In -> [ O_RDONLY ]
          in
-         Unix.openfile (Path.to_string fn) (O_CLOEXEC :: O_SHARE_DELETE :: flags) perm)
+         Unix.openfile (Path.to_string fn) (O_CLOEXEC :: O_SHARE_DELETE :: flags) perm
+         |> Fd.unsafe_of_unix_file_descr)
     in
     let channel = lazy (channel_of_descr (Lazy.force fd) mode) in
     { kind = File fn; fd; channel; status = Close_after_exec }
@@ -203,7 +206,7 @@ module Io = struct
       t.status <- Closed;
       if Lazy.is_val t.channel
       then close_channel (Lazy.force t.channel)
-      else Unix.close (Lazy.force t.fd)
+      else Fd.close (Lazy.force t.fd)
   ;;
 
   let multi_use t = { t with status = Keep_open }
@@ -966,9 +969,9 @@ let spawn
       let env = Dtemp.add_to_env env in
       Env.to_unix env |> Spawn.Env.of_list
     in
-    let stdout = Io.fd stdout in
-    let stderr = Io.fd stderr in
-    let stdin = Io.fd stdin in
+    let stdout = Io.fd stdout |> Fd.unsafe_to_unix_file_descr in
+    let stderr = Io.fd stderr |> Fd.unsafe_to_unix_file_descr in
+    let stdin = Io.fd stdin |> Fd.unsafe_to_unix_file_descr in
     let argv = prog_str :: args in
     Spawn.spawn
       ()

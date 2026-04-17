@@ -2,5 +2,10 @@
  (deps bin/sub_process.exe))
 
 (cram
+ (applies_to stray-process)
+ (enabled_if
+  (= %{system} macosx)))
+
+(cram
  (applies_to concurrent)
  (enabled_if false))

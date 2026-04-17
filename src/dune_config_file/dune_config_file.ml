@@ -711,9 +711,9 @@ module Dune_config = struct
                    Spawn.spawn
                      ~prog
                      ~argv:(prog :: args)
-                     ~stdin:(Lazy.force Dev_null.in_)
+                     ~stdin:(Fd.unsafe_to_unix_file_descr (Lazy.force Dev_null.in_))
                      ~stdout:fdw
-                     ~stderr:(Lazy.force Dev_null.out)
+                     ~stderr:(Fd.unsafe_to_unix_file_descr (Lazy.force Dev_null.out))
                      ()
                  with
                  | exception Unix.Unix_error _ ->

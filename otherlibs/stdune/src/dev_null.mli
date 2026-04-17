@@ -4,7 +4,7 @@
 val path : Path.t
 
 (** [path] opened in read mode. Do not close this fd. *)
-val in_ : Unix.file_descr Lazy.t
+val in_ : Fd.t Lazy.t
 
 (** [path] opened in write mode. Do not close this fd. *)
-val out : Unix.file_descr Lazy.t
+val out : Fd.t Lazy.t

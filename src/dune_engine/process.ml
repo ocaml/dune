@@ -154,8 +154,8 @@ module Io = struct
     let fd =
       lazy
         (match mode with
-         | In -> Fd.unsafe_of_unix_file_descr (Lazy.force Dev_null.in_)
-         | Out -> Fd.unsafe_of_unix_file_descr (Lazy.force Dev_null.out))
+         | In -> Lazy.force Dev_null.in_
+         | Out -> Lazy.force Dev_null.out)
     in
     let channel = lazy (channel_of_descr (Lazy.force fd) mode) in
     { kind = Null; fd; channel; status = Keep_open }

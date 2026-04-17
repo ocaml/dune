@@ -132,7 +132,7 @@ module Session = struct
     | Closed -> Fiber.return ()
     | Open { fd; _ } ->
       t.state <- Closed;
-      Async_io.close_fd fd
+      Async_io.close fd
   ;;
 
   module Lexer = Csexp.Parser.Lexer
@@ -158,7 +158,7 @@ module Session = struct
         then Fiber.return (Ok `Eof)
         else
           let* task =
-            Async_io.ready_fd fd `Read ~f:(fun () ->
+            Async_io.ready fd `Read ~f:(fun () ->
               let () = Io_buffer.maybe_resize_to_fit in_buf min_read in
               let pos = Io_buffer.write_pos in_buf in
               let len = Io_buffer.max_write_len in_buf in
@@ -266,7 +266,7 @@ module Session = struct
          to do *)
       let* task =
         let* task =
-          Async_io.ready_fd fd `Write ~f:(fun () ->
+          Async_io.ready fd `Write ~f:(fun () ->
             let bytes = Io_buffer.bytes out_buf in
             let pos = Io_buffer.pos out_buf in
             let len = Io_buffer.length out_buf in
@@ -344,7 +344,7 @@ module Server = struct
     ;;
 
     let close t =
-      let+ () = Fiber.parallel_iter ~f:(fun (_, fd) -> Async_io.close_fd fd) t.sockets in
+      let+ () = Fiber.parallel_iter ~f:(fun (_, fd) -> Async_io.close fd) t.sockets in
       Ok None
     ;;
 
@@ -354,7 +354,7 @@ module Server = struct
       | false -> close t
       | true ->
         let* task =
-          Async_io.ready_one_fd t.sockets `Read ~f:(fun _ fd ->
+          Async_io.ready_one t.sockets `Read ~f:(fun _ fd ->
             let fd, sockaddr =
               Unix.accept ~cloexec:true (Fd.unsafe_to_unix_file_descr fd)
             in
@@ -508,7 +508,7 @@ module Client = struct
     let transport = Transport.create t.sockaddr in
     let fd = transport.fd in
     t.transport <- Some transport;
-    Async_io.connect_fd Socket.connect fd t.sockaddr
+    Async_io.connect Socket.connect fd t.sockaddr
     >>| function
     | Ok () -> Ok (Session.create fd)
     | Error `Cancelled ->

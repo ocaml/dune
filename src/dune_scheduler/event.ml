@@ -251,7 +251,10 @@ module Queue = struct
   ;;
 
   let send_worker_tasks_completed q events =
-    add_event q (fun q -> List.iter events ~f:(Queue.push q.worker_tasks_completed))
+    match events with
+    | [] -> ()
+    | _ :: _ ->
+      add_event q (fun q -> List.iter events ~f:(Queue.push q.worker_tasks_completed))
   ;;
 
   let send_invalidation_events q events =

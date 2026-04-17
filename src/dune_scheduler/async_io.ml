@@ -141,9 +141,7 @@ let rec select_loop t =
          maybe_cancel t.writers fd acc)
      in
      t.to_close <- [];
-     (match fills with
-      | [] -> ()
-      | _ :: _ -> Event.Queue.send_worker_tasks_completed t.scheduler_queue fills));
+     Event.Queue.send_worker_tasks_completed t.scheduler_queue fills);
   match t.running with
   | false ->
     Unix.close t.pipe_write;
@@ -178,9 +176,7 @@ let rec select_loop t =
        then (
          drain_pipe t.pipe_read t.pipe_buf;
          t.interrupting <- false);
-       (match fills with
-        | [] -> ()
-        | _ :: _ -> Event.Queue.send_worker_tasks_completed t.scheduler_queue fills);
+       Event.Queue.send_worker_tasks_completed t.scheduler_queue fills;
        select_loop t)
 ;;
 

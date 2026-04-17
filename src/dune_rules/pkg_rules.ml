@@ -766,19 +766,6 @@ module Action_expander = struct
       x
     ;;
 
-    let dune_section_of_pform : Pform.Var.Pkg.Section.t -> Section.t = function
-      | Lib -> Lib
-      | Libexec -> Libexec
-      | Bin -> Bin
-      | Sbin -> Sbin
-      | Toplevel -> Toplevel
-      | Share -> Share
-      | Etc -> Etc
-      | Doc -> Doc
-      | Stublibs -> Stublibs
-      | Man -> Man
-    ;;
-
     let section_dir_of_root
           (roots : _ Install.Roots.t)
           (section : Pform.Var.Pkg.Section.t)
@@ -794,6 +781,10 @@ module Action_expander = struct
       | Man -> roots.man
       | Toplevel -> Path.relative roots.lib_root "toplevel"
       | Stublibs -> Path.relative roots.lib_root "stublibs"
+      | Lib_root | Libexec_root | Share_root | Misc ->
+        Code_error.raise
+          "section_dir_of_root: unsupported section"
+          [ "section", Section.to_dyn section ]
     ;;
 
     let sys_poll_var accessor =
@@ -877,7 +868,6 @@ module Action_expander = struct
                with
                | None -> Memo.return (Error (`Undefined_pkg_var variable_name))
                | Some section ->
-                 let section = dune_section_of_pform section in
                  let install_paths = Paths.install_paths paths in
                  Memo.return @@ Ok [ Value.Dir (Install.Paths.get install_paths section) ])))
     ;;

@@ -12,17 +12,7 @@ module Var : sig
 
   module Pkg : sig
     module Section : sig
-      type t =
-        | Lib
-        | Libexec
-        | Bin
-        | Sbin
-        | Toplevel
-        | Share
-        | Etc
-        | Doc
-        | Stublibs
-        | Man
+      type t = Section.t
 
       val of_string : string -> t option
     end

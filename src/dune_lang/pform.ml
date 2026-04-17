@@ -23,20 +23,10 @@ module Var = struct
 
   module Pkg = struct
     module Section = struct
-      type t =
-        | Lib
-        | Libexec
-        | Bin
-        | Sbin
-        | Toplevel
-        | Share
-        | Etc
-        | Doc
-        | Stublibs
-        | Man
+      type t = Section.t
 
       let all =
-        [ Lib, "lib"
+        [ Section.Lib, "lib"
         ; Libexec, "libexec"
         ; Bin, "bin"
         ; Sbin, "sbin"
@@ -49,14 +39,12 @@ module Var = struct
         ]
       ;;
 
-      let to_string t = List.assoc all t |> Option.value_exn
+      let to_string = Section.to_string
 
-      let rec of_string x = function
-        | [] -> None
-        | (s, x') :: xs -> if x' = x then Some s else of_string x xs
+      let of_string name =
+        List.find_map all ~f:(fun (section, s) ->
+          if String.equal s name then Some section else None)
       ;;
-
-      let of_string x = of_string x all
     end
 
     type t =

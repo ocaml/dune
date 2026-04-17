@@ -11,16 +11,15 @@ let all_libs cctx =
 (* Per-module inter-library dependency filtering (#4572). Uses ocamldep
    output to determine which libraries a module actually references, then
    transitively closes within the compilation context's library set to
-   handle transparent aliases. Returns [((), Dep.Set.t)] suitable for use
-   with [Action_builder.dyn_deps].
+   handle transparent aliases. Returns the filtered library list.
 
    Falls back to all libs when filtering is not possible. *)
-let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kind ~mode m =
+let libs_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~ml_kind ~mode m =
   let open Action_builder.O in
   let can_filter =
-    (match Lib_mode.of_cm_kind cm_kind with
-     | Melange -> false
-     | Ocaml _ -> true)
+    (match mode with
+     | Lib_mode.Ocaml _ -> true
+     | Melange -> false)
     && Path.Build.equal (Dep_graph.dir dep_graph) (Obj_dir.dir obj_dir)
     && Dep_graph.mem dep_graph m
     && (match Module.kind m with
@@ -31,13 +30,13 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
   in
   let* libs = Resolve.Memo.read (all_libs cctx) in
   if not can_filter
-  then Action_builder.return ((), Lib_file_deps.deps_of_entries ~opaque ~cm_kind libs)
+  then Action_builder.return libs
   else (
     let has_virtual_impl =
       List.exists libs ~f:(fun lib -> Option.is_some (Lib.implements lib))
     in
     if has_virtual_impl
-    then Action_builder.return ((), Lib_file_deps.deps_of_entries ~opaque ~cm_kind libs)
+    then Action_builder.return libs
     else
       let* lib_index = Resolve.Memo.read (Compilation_context.lib_index cctx) in
       let* trans_deps = Dep_graph.deps_of dep_graph m in
@@ -64,20 +63,59 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
       let* flags = Ocaml_flags.get (Compilation_context.flags cctx) mode in
       let open_modules = Ocaml_flags.extract_open_module_names flags in
       let referenced = Module_name.Set.union all_raw open_modules in
-      let filtered_libs =
-        Lib_file_deps.Lib_index.filter_libs lib_index ~referenced_modules:referenced
+      (* If any referenced module is a root module, it aliases all libraries
+         in the compilation context. Fall back to all libs since ocamldep
+         sees the root module name, not the underlying library names. *)
+      let modules = Compilation_context.modules cctx in
+      let references_root_module =
+        Module_name.Set.exists referenced ~f:(fun name ->
+          match Modules.With_vlib.find modules name with
+          | Some m ->
+            (match Module.kind m with
+             | Root -> true
+             | _ -> false)
+          | None -> false)
       in
-      (* Transitively close the filtered libraries within [libs].
-         Transparent module aliases can create cross-library .cmi reads
-         that ocamldep doesn't report, at arbitrary depth. The
-         intersection with [libs] is needed because [Lib.closure] may
-         return libraries outside the compilation context when
-         [implicit_transitive_deps] is [Disabled]. *)
-      let libs_set = Table.create (module Lib) (List.length libs) in
-      List.iter libs ~f:(fun lib -> Table.set libs_set lib ());
-      let+ closed = Resolve.Memo.read (Lib.closure filtered_libs ~linking:false ~for_) in
-      let filtered = List.filter closed ~f:(Table.mem libs_set) in
-      (), Lib_file_deps.deps_of_entries ~opaque ~cm_kind filtered)
+      if references_root_module
+      then Action_builder.return libs
+      else (
+        let filtered_libs =
+          Lib_file_deps.Lib_index.filter_libs lib_index ~referenced_modules:referenced
+        in
+        (* Transitively close the filtered libraries within [libs].
+           Transparent module aliases can create cross-library .cmi reads
+           that ocamldep doesn't report, at arbitrary depth. The
+           intersection with [libs] is needed because [Lib.closure] may
+           return libraries outside the compilation context when
+           [implicit_transitive_deps] is [Disabled]. *)
+        let libs_set = Table.create (module Lib) (List.length libs) in
+        List.iter libs ~f:(fun lib -> Table.set libs_set lib ());
+        let+ closed =
+          Resolve.Memo.read (Lib.closure filtered_libs ~linking:false ~for_)
+        in
+        List.filter closed ~f:(Table.mem libs_set)))
+;;
+
+(* Compute per-module include flags and hidden deps from a library list.
+   Partitions libs into direct (visible via -I) and hidden (via -H)
+   based on requires_compile membership. *)
+let lib_deps_and_includes_of_libs ~cctx ~opaque ~cm_kind libs =
+  let open Action_builder.O in
+  let+ direct_requires = Resolve.Memo.read (Compilation_context.requires_compile cctx) in
+  let direct_set = Table.create (module Lib) (List.length direct_requires) in
+  List.iter direct_requires ~f:(fun lib -> Table.set direct_set lib ());
+  let direct_libs, hidden_libs = List.partition libs ~f:(Table.mem direct_set) in
+  let project = Compilation_context.scope cctx |> Scope.project in
+  let lib_config = (Compilation_context.ocaml cctx).lib_config in
+  Command.Args.S
+    [ Lib_flags.L.include_flags
+        ~project
+        ~direct_libs
+        ~hidden_libs
+        (Lib_mode.of_cm_kind cm_kind)
+        lib_config
+    ; Hidden_deps (Lib_file_deps.deps_of_entries ~opaque ~cm_kind libs)
+    ]
 ;;
 
 (* Arguments for the compiler to prevent it from being too clever.
@@ -374,21 +412,13 @@ let build_cm
    in
    let for_ = Compilation_context.for_ cctx in
    let dep_graph = Ml_kind.Dict.get (Compilation_context.dep_graphs cctx) ml_kind in
-   let lib_cm_deps =
+   let lib_deps_and_includes =
      if skip_lib_deps
-     then Action_builder.return ()
+     then Action_builder.return Command.Args.empty
      else
-       Action_builder.dyn_deps
-         (lib_deps_for_module
-            ~cctx
-            ~obj_dir
-            ~for_
-            ~dep_graph
-            ~opaque
-            ~cm_kind
-            ~ml_kind
-            ~mode
-            m)
+       let open Action_builder.O in
+       let* libs = libs_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~ml_kind ~mode m in
+       lib_deps_and_includes_of_libs ~cctx ~opaque ~cm_kind libs
    in
    let other_cm_files =
      let dep_graph = Ml_kind.Dict.get (Compilation_context.dep_graphs cctx) ml_kind in
@@ -508,7 +538,6 @@ let build_cm
      ?loc:(Compilation_context.loc cctx)
      (let open Action_builder.With_targets.O in
       Action_builder.with_no_targets other_cm_files
-      >>> Action_builder.with_no_targets lib_cm_deps
       >>> Command.run
             ~dir:(Path.build (Context.build_dir ctx))
             compiler
@@ -517,9 +546,7 @@ let build_cm
             ; cmt_args
             ; cms_args
             ; Command.Args.S obj_dirs
-            ; Command.Args.as_any
-                (Lib_mode.Cm_kind.Map.get (Compilation_context.includes cctx) cm_kind)
-            ; Command.Args.empty
+            ; Dyn lib_deps_and_includes
             ; extra_args
             ; As as_parameter_arg
             ; as_argument_for
@@ -625,21 +652,15 @@ let ocamlc_i ~deps cctx (m : Module.t) ~output =
        List.concat_map deps ~f:(fun m ->
          [ Path.build (Obj_dir.Module.cm_file_exn obj_dir m ~kind:(Ocaml Cmi)) ]))
   in
-  let lib_cm_deps =
+  let lib_deps_and_includes =
     let opaque = Compilation_context.opaque cctx in
     let for_ = Compilation_context.for_ cctx in
     let dep_graph = Ml_kind.Dict.get (Compilation_context.dep_graphs cctx) Impl in
-    Action_builder.dyn_deps
-      (lib_deps_for_module
-         ~cctx
-         ~obj_dir
-         ~for_
-         ~dep_graph
-         ~opaque
-         ~cm_kind:(Ocaml Cmo)
-         ~ml_kind:Impl
-         ~mode:(Ocaml Byte)
-         m)
+    let open Action_builder.O in
+    let* libs =
+      libs_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~ml_kind:Impl ~mode:(Ocaml Byte) m
+    in
+    lib_deps_and_includes_of_libs ~cctx ~opaque ~cm_kind:(Ocaml Cmo) libs
   in
   let ocaml_flags = Ocaml_flags.get (Compilation_context.flags cctx) (Ocaml Byte) in
   let modules = Compilation_context.modules cctx in
@@ -651,7 +672,6 @@ let ocamlc_i ~deps cctx (m : Module.t) ~output =
        ~file_targets:[ output ]
        (let open Action_builder.With_targets.O in
         Action_builder.with_no_targets cm_deps
-        >>> Action_builder.with_no_targets lib_cm_deps
         >>> Command.run
               (Ok ocaml.ocamlc)
               ~dir:(Path.build (Context.build_dir ctx))
@@ -659,10 +679,7 @@ let ocamlc_i ~deps cctx (m : Module.t) ~output =
               [ Command.Args.dyn ocaml_flags
               ; A "-I"
               ; Path (Path.build (Obj_dir.byte_dir obj_dir))
-              ; Command.Args.as_any
-                  (Lib_mode.Cm_kind.Map.get
-                     (Compilation_context.includes cctx)
-                     (Ocaml Cmo))
+              ; Dyn lib_deps_and_includes
               ; opens modules m
               ; A "-short-paths"
               ; A "-i"

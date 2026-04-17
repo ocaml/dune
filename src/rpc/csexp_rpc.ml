@@ -156,8 +156,8 @@ module Session = struct
         then Fiber.return (Ok `Continue)
         else if open_.read_eof
         then Fiber.return (Ok `Eof)
-        else
-          let* task =
+        else (
+          let task =
             Async_io.ready fd `Read ~f:(fun () ->
               let () = Io_buffer.maybe_resize_to_fit in_buf min_read in
               let pos = Io_buffer.write_pos in_buf in
@@ -183,7 +183,7 @@ module Session = struct
           | Error (`Exn e) -> Fiber.return (Error e)
           | Error `Cancelled | Ok `Eof -> Fiber.return @@ Ok `Eof
           | Ok `Continue -> Fiber.return @@ Ok `Continue
-          | Ok `Refill -> refill ()
+          | Ok `Refill -> refill ())
       and read parser =
         let* res = refill () in
         match res with
@@ -265,7 +265,7 @@ module Session = struct
          This should minimize the amount of [write] calls we need
          to do *)
       let* task =
-        let* task =
+        let task =
           Async_io.ready fd `Write ~f:(fun () ->
             let bytes = Io_buffer.bytes out_buf in
             let pos = Io_buffer.pos out_buf in
@@ -353,7 +353,7 @@ module Server = struct
       match t.running with
       | false -> close t
       | true ->
-        let* task =
+        let task =
           Async_io.ready_one t.sockets `Read ~f:(fun _ fd ->
             let fd, sockaddr =
               Unix.accept ~cloexec:true (Fd.unsafe_to_unix_file_descr fd)

@@ -70,7 +70,7 @@ val async_exn : (unit -> 'a) -> 'a Fiber.t
 type t
 
 (** Get the instance of the scheduler that runs the current fiber. *)
-val t : unit -> t Fiber.t
+val t : unit -> t
 
 (** [with_job_slot f] waits for one job slot (as per [-j <jobs] to become
     available and then calls [f]. *)
@@ -120,7 +120,7 @@ val running_jobs_count : t -> int
     effectively never restart. If a fiber calls [wait_for_process] or any other
     function from this module that needs an external event to make progress, it
     will get suspended and will never restart. *)
-val shutdown : unit -> unit Fiber.t
+val shutdown : unit -> unit
 
 (** Cancel the current build. Superficially, this function is like [shutdown]
     in that it stops the build early, but it is different because the [Run.go]

@@ -79,8 +79,7 @@ let command_alias ?orig_name cmd term name =
 ;;
 
 let setup () =
-  let open Memo.O in
-  let* scheduler = Memo.of_reproducible_fiber (Scheduler.t ()) in
+  let scheduler = Scheduler.t () in
   Console.Status_line.set
     (Live
        (fun () ->

@@ -80,16 +80,6 @@ module Scheduler = struct
     }
 
   let current : t option ref = ref None
-
-  let t_opt () =
-    let open Fiber.O in
-    let+ () = Fiber.return () in
-    !current
-  ;;
-
-  let t () =
-    let open Fiber.O in
-    let+ () = Fiber.return () in
-    Option.value_exn !current
-  ;;
+  let t_opt () = !current
+  let t () = Option.value_exn !current
 end

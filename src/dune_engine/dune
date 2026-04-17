@@ -13,7 +13,6 @@
   dune_scheduler
   dune_glob
   dune_targets
-  chrome_trace
   dune_trace
   dune_action_plugin
   dune_util

@@ -1,8 +1,5 @@
 open Import
 open Fiber.O
-module Json = Chrome_trace.Json
-module Event = Chrome_trace.Event
-module Timestamp = Event.Timestamp
 module Action_output_on_success = Execution_parameters.Action_output_on_success
 module Action_output_limit = Execution_parameters.Action_output_limit
 

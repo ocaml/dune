@@ -55,7 +55,7 @@ module Inotify_watch = struct
 end
 
 type t =
-  { fd : Unix.file_descr
+  { fd : Fd.t
   ; watch_table : (Inotify_watch.t, string) Table.t
   ; path_table : (string, Inotify.watch) Table.t
   ; send_emit_events_job_to_scheduler : (unit -> Event.t list) -> unit
@@ -68,7 +68,9 @@ type modify_event_selector =
   ]
 
 let add t path =
-  let watch = Inotify.add_watch t.fd path t.select_events in
+  let watch =
+    Inotify.add_watch (Fd.unsafe_to_unix_file_descr t.fd) path t.select_events
+  in
   (* XXX why are we just overwriting existing watches? *)
   Table.set t.watch_table watch path;
   Table.set t.path_table path watch
@@ -141,7 +143,7 @@ let process_raw_events t events =
 ;;
 
 let pump_events t =
-  let fd = t.fd in
+  let fd = Fd.unsafe_to_unix_file_descr t.fd in
   let (_ : Thread.t) =
     Thread0.spawn ~name:"file-watcher" (fun () ->
       while true do
@@ -156,7 +158,7 @@ let pump_events t =
 ;;
 
 let create ~modify_event_selector ~send_emit_events_job_to_scheduler =
-  let fd = Inotify.create () in
+  let fd = Inotify.create () |> Fd.unsafe_of_unix_file_descr in
   let watch_table = Table.create (module Inotify_watch) 10 in
   let modify_selector : Inotify.selector =
     match modify_event_selector with

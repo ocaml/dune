@@ -52,14 +52,10 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
           then Action_builder.return Module_name.Set.empty
           else
             let* impl_deps =
-              if Module.has dep_m ~ml_kind:Impl
-              then Ocamldep.read_immediate_deps_raw_of ~obj_dir ~ml_kind:Impl ~for_ dep_m
-              else Action_builder.return Module_name.Set.empty
+              Ocamldep.read_immediate_deps_raw_of ~obj_dir ~ml_kind:Impl ~for_ dep_m
             in
             let+ intf_deps =
-              if Module.has dep_m ~ml_kind:Intf
-              then Ocamldep.read_immediate_deps_raw_of ~obj_dir ~ml_kind:Intf ~for_ dep_m
-              else Action_builder.return Module_name.Set.empty
+              Ocamldep.read_immediate_deps_raw_of ~obj_dir ~ml_kind:Intf ~for_ dep_m
             in
             Module_name.Set.union impl_deps intf_deps)
         |> Action_builder.map

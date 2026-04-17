@@ -20,18 +20,7 @@ env:
 
 jobs:
   build:
-    name: ${{ matrix.name }}
-    strategy:
-      matrix:
-        include:
-          - name: OxCaml Trunk
-            repo: oxcaml/oxcaml
-            repo_name: oxcaml
-            ref: main
-            build_command: >-
-              autoconf &&
-              ./configure --prefix $PWD/_install --enable-dev --enable-runtime5 &&
-              make
+    name: OxCaml Trunk
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Dune
@@ -50,33 +39,5 @@ jobs:
           restore-prefixes-first-match: nix-${{ runner.os }}-${{ github.job }}--
           gc-max-store-size-linux: 2G
 
-      - name: Build Dune
-        run: |
-          # OxCaml requires Dune version >= 3.13. When Dune is built from source
-          # with Nix, it doesn't report the correct version. This step sets the
-          # version explicitly so that OxCaml's version check passes.
-          version=$(grep -oP '\(lang dune \K[^)]+' dune-project)
-          # Add a version if it doesn't exist.
-          grep -q '^(version' dune-project || echo "(version $version.0)" >> dune-project
-          nix develop -c make dev
-
-      - name: Create workspace
-        run: mkdir workspace
-
-      - name: Clone ${{ matrix.repo }}
-        uses: actions/checkout@v6
-        with:
-          repository: ${{ matrix.repo }}
-          ref: ${{ matrix.ref }}
-          path: workspace/${{ matrix.repo_name }}
-          fetch-depth: 1
-
-      - name: Build ${{ matrix.name }}
-        working-directory: workspace/${{ matrix.repo_name }}
-        run: |
-          nix develop $GITHUB_WORKSPACE#ox-trunk -c bash -c '
-            export PATH="$GITHUB_WORKSPACE/_build/install/default/bin:$PATH"
-            echo "Using dune: $(which dune)"
-            dune --version
-            ${{ matrix.build_command }}
-          '
+      - name: Build OxCaml with Dune
+        run: nix build .#oxcaml-trunk-build

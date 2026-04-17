@@ -74,16 +74,26 @@ type termination_reason =
 (* We use this version privately in this module whenever we can pass the
    scheduler explicitly *)
 let wait_for_build_process t ~is_process_group_leader pid =
+  let sigkill_alarm = ref None in
   let+ res, outcome =
     Fiber.Cancel.with_handler
       t.cancel
       ~on_cancel:(fun () ->
-        Process_watcher.killall t.process_watcher Sys.sigkill;
-        Fiber.return ())
+        if not Sys.win32 then Process_watcher.killall t.process_watcher Sys.sigterm;
+        let alarm_clock = Lazy.force t.alarm_clock in
+        let sleep = Alarm_clock.sleep alarm_clock sigterm_grace_period in
+        sigkill_alarm := Some sleep;
+        Alarm_clock.await sleep
+        >>| function
+        | `Cancelled -> ()
+        | `Finished -> Process_watcher.killall t.process_watcher Sys.sigkill)
       (fun () ->
          let+ r = wait_for_process t ~is_process_group_leader pid in
          if not Sys.win32
          then Process_watcher.kill_process_group pid Sys.sigterm ~is_process_group_leader;
+         (match !sigkill_alarm with
+          | None -> ()
+          | Some alarm -> Alarm_clock.cancel (Lazy.force t.alarm_clock) alarm);
          r)
   in
   ( res

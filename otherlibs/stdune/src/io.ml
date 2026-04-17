@@ -127,13 +127,16 @@ module Copyfile = struct
       match Unix.openfile src [ O_RDONLY; O_CLOEXEC ] 0 with
       | exception Unix.Unix_error (Unix.ENOENT, _, _) -> Error `Src_missing
       | fd_src ->
-        (match Unix.fstat fd_src with
+        let fd_src = Fd.unsafe_of_unix_file_descr fd_src in
+        (match Unix.fstat (Fd.unsafe_to_unix_file_descr fd_src) with
          | exception exn ->
-           Unix.close fd_src;
+           Fd.close fd_src;
            Error (`Exn (Exn_with_backtrace.capture exn))
          | src_stat ->
            (match src_stat.st_kind with
-            | S_DIR -> Error `Src_is_a_dir
+            | S_DIR ->
+              Fd.close fd_src;
+              Error `Src_is_a_dir
             | _ ->
               let open Result.O in
               let+ fd_dst, src_size =
@@ -141,9 +144,9 @@ module Copyfile = struct
                   let dst_perm = chmod src_stat.st_perm in
                   Unix.openfile dst [ O_WRONLY; O_CREAT; O_TRUNC; O_CLOEXEC ] dst_perm
                 with
-                | fd_dst -> Ok (fd_dst, src_stat.st_size)
+                | fd_dst -> Ok (Fd.unsafe_of_unix_file_descr fd_dst, src_stat.st_size)
                 | exception exn ->
-                  Unix.close fd_src;
+                  Fd.close fd_src;
                   (match exn with
                    | Unix.Unix_error (Unix.EISDIR, _, _) -> Error `Dst_is_a_dir
                    | _ -> Error (`Exn (Exn_with_backtrace.capture exn)))
@@ -168,13 +171,19 @@ module Copyfile = struct
         raise (Sys_error message)
       | Ok (src, dst, src_size) ->
         let close_fds () =
-          Unix.close src;
-          Unix.close dst
+          Fd.close src;
+          Fd.close dst
         in
-        (match sendfile ~src ~dst src_size with
+        (match
+           sendfile
+             ~src:(Fd.unsafe_to_unix_file_descr src)
+             ~dst:(Fd.unsafe_to_unix_file_descr dst)
+             src_size
+         with
          | exception Unix.Unix_error (EINVAL, "sendfile", _) ->
            Exn.protectx
-             (Unix.in_channel_of_descr src, Unix.out_channel_of_descr dst)
+             ( Unix.in_channel_of_descr (Fd.unsafe_to_unix_file_descr src)
+             , Unix.out_channel_of_descr (Fd.unsafe_to_unix_file_descr dst) )
              (* we make sure to close the fd's with the channel api to make
                 sure everything has been flushed *)
              ~f:(fun (ic, oc) -> copy_channels ic oc)

@@ -18,6 +18,7 @@ open Stdune
    scheduler. This should solve all the problems above. *)
 
 val create : Event.Queue.t -> Types.Async_io.t
+val shutdown : Types.Async_io.t -> unit
 
 (** [close fd] must be used to close any file descriptor which has been
     watched at some point. This is needed to make sure we never close a file

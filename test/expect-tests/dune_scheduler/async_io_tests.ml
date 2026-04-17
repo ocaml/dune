@@ -146,6 +146,37 @@ let%expect_test "close cancels pending readiness" =
   [%expect {| close cancelled waiter |}]
 ;;
 
+let%expect_test "close cancels unawaited task" =
+  (Scheduler.Run.go config ~on_event:(fun _ -> ())
+   @@ fun () ->
+   let r, w = pipe () in
+   if not Sys.win32 then set_nonblock r;
+   let _task = Async_io.ready r `Read ~f:ignore in
+   Fd.close w;
+   let+ () = Async_io.close r in
+   print_endline "closed cleanly");
+  [%expect {| closed cleanly |}]
+;;
+
+let%expect_test "close waits for the loop thread to close the fd" =
+  (Scheduler.Run.go config ~on_event:(fun _ -> ())
+   @@ fun () ->
+   let is_closed fd =
+     let buf = Bytes.make 1 '0' in
+     match Unix.read (Fd.unsafe_to_unix_file_descr fd) buf 0 1 with
+     | exception Unix.Unix_error (EBADF, _, _) -> true
+     | _ -> false
+   in
+   let r, w = pipe () in
+   if not Sys.win32 then set_nonblock r;
+   let _task_to_close = Async_io.ready r `Read ~f:ignore in
+   Fd.close w;
+   let+ () = Async_io.close r in
+   assert (is_closed r);
+   print_endline "close waited for loop thread");
+  [%expect {| close waited for loop thread |}]
+;;
+
 let%expect_test "re-arm when watched mask changes" =
   (Scheduler.Run.go config ~on_event:(fun _ -> ())
    @@ fun () ->
@@ -203,4 +234,29 @@ let%expect_test "mask switch on same fd" =
      print_endline "successful mask switch"
    | Ok _ -> assert false);
   [%expect {| successful mask switch |}]
+;;
+
+let%expect_test "close cancels ready_one task" =
+  (Scheduler.Run.go config ~on_event:(fun _ -> ())
+   @@ fun () ->
+   let r1, w1 = pipe () in
+   let r2, w2 = pipe () in
+   if not Sys.win32
+   then (
+     set_nonblock r1;
+     set_nonblock r2);
+   let task =
+     Async_io.ready_one [ `First, r1; `Second, r2 ] `Read ~f:(fun which _fd -> which)
+   in
+   let* () = Async_io.close r1 in
+   let* res = Async_io.Task.await task in
+   Fd.close w1;
+   Fd.close w2;
+   let* () = Async_io.close r2 in
+   match res with
+   | Error `Cancelled ->
+     print_endline "ready_one cancelled";
+     Fiber.return ()
+   | Ok _ | Error (`Exn _) -> assert false);
+  [%expect {| ready_one cancelled |}]
 ;;

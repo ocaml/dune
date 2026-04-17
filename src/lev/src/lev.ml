@@ -310,6 +310,7 @@ module Io = struct
       type nonrec t = t
     end)
 
+  external destroy : t -> unit = "lev_io_destroy"
   external fd : t -> Unix.file_descr = "lev_io_fd"
   external modify : t -> Event.Set.t -> unit = "lev_io_modify"
 
@@ -466,6 +467,7 @@ module Stat = struct
       type nonrec t = t
     end)
 
+  external destroy : t -> unit = "lev_stat_destroy"
   external stop : t -> Loop.t -> unit = "lev_stat_stop"
   external start : t -> Loop.t -> unit = "lev_stat_start"
   external create : (t -> unit -> unit) -> string -> Timestamp.t -> t = "lev_stat_create"

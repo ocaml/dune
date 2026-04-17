@@ -18,7 +18,7 @@ module Mutex = struct
 end
 
 type t =
-  { fd : Unix.file_descr
+  { fd : Fd.t
   ; buf : Buffer.t
   ; cats : Category.Set.t
   ; mutex : Mutex.t
@@ -43,7 +43,13 @@ let flush =
     if len = 0
     then Buffer.clear t.buf
     else (
-      match write_bigstring t.fd (Buffer.buf t.buf) pos (Buffer.pos t.buf - pos) with
+      match
+        write_bigstring
+          (Fd.unsafe_to_unix_file_descr t.fd)
+          (Buffer.buf t.buf)
+          pos
+          (Buffer.pos t.buf - pos)
+      with
       | n -> loop t (pos + n) (len - n)
       | exception e ->
         let () =
@@ -59,7 +65,7 @@ let flush =
 let close t =
   Mutex.protect t.mutex (fun () ->
     flush t;
-    Unix.close t.fd)
+    Fd.close t.fd)
 ;;
 
 let create cats path =
@@ -68,6 +74,7 @@ let create cats path =
       (Path.to_string path)
       [ O_TRUNC; O_APPEND; O_CLOEXEC; O_WRONLY; O_CREAT ]
       0o644
+    |> Fd.unsafe_of_unix_file_descr
   in
   let cats = Category.Set.of_list cats in
   let buf = Buffer.create (1 lsl 16) in

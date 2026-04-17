@@ -239,7 +239,7 @@ let with_ f =
   Exn.protect ~f:(fun () -> f t) ~finally:(fun () -> Mutex.unlock t.mutex)
 ;;
 
-let cancel_fd scheduler_queue table fd =
+let cancel scheduler_queue table fd =
   match Table.find table fd with
   | None -> Fiber.return ()
   | Some tasks ->
@@ -250,7 +250,7 @@ let cancel_fd scheduler_queue table fd =
       Fiber.Ivar.fill t.ivar (Error `Cancelled))
 ;;
 
-let close_fd fd =
+let close fd =
   let* t = get_exn () in
   Mutex.lock t.mutex;
   (* everything below is guaranteed not to raise so the mutex will be unlocked
@@ -258,17 +258,14 @@ let close_fd fd =
   t.to_close <- fd :: t.to_close;
   let+ () =
     Fiber.fork_and_join_unit
-      (fun () -> cancel_fd t.scheduler_queue t.readers fd)
-      (fun () -> cancel_fd t.scheduler_queue t.writers fd)
+      (fun () -> cancel t.scheduler_queue t.readers fd)
+      (fun () -> cancel t.scheduler_queue t.writers fd)
   in
   interrupt t;
   Mutex.unlock t.mutex
 ;;
 
-let close fd = close_fd (Fd.unsafe_of_unix_file_descr fd)
-
-let ready_one_fd (type a label) (fds : (label * Fd.t) list) what ~f:job : a Task.t Fiber.t
-  =
+let ready_one (type a label) (fds : (label * Fd.t) list) what ~f:job : a Task.t Fiber.t =
   with_
   @@ fun t ->
   Event.Queue.register_worker_task_started t.scheduler_queue;
@@ -308,15 +305,7 @@ let ready_one_fd (type a label) (fds : (label * Fd.t) list) what ~f:job : a Task
   Task.User_task task
 ;;
 
-let ready_one fds what ~f:job =
-  ready_one_fd
-    (List.map fds ~f:(fun (label, fd) -> label, Fd.unsafe_of_unix_file_descr fd))
-    what
-    ~f:(fun label fd -> job label (Fd.unsafe_to_unix_file_descr fd))
-;;
-
-let ready_fd fd what ~f:job = ready_one_fd [ (), fd ] what ~f:(fun () _fd -> job ())
-let ready fd what ~f:job = ready_fd (Fd.unsafe_of_unix_file_descr fd) what ~f:job
+let ready fd what ~f:job = ready_one [ (), fd ] what ~f:(fun () _fd -> job ())
 
 let rec with_retry_fd f fd =
   match f () with
@@ -324,7 +313,7 @@ let rec with_retry_fd f fd =
   | exception Unix.Unix_error (EWOULDBLOCK, x, y) when Sys.win32 ->
     Fiber.return (Error (`Unix (Unix.EINPROGRESS, x, y)))
   | exception Unix.Unix_error ((EAGAIN | EWOULDBLOCK | EINTR), _, _) ->
-    let* task = ready_fd fd `Write ~f:Fun.id in
+    let* task = ready fd `Write ~f:Fun.id in
     Task.await task
     >>= (function
      | Ok () -> with_retry_fd f fd
@@ -333,7 +322,7 @@ let rec with_retry_fd f fd =
   | exception Unix.Unix_error (err, x, y) -> Fiber.return (Error (`Unix (err, x, y)))
 ;;
 
-let connect_fd f fd socket =
+let connect f fd socket =
   let* () = Fiber.return () in
   with_retry_fd (fun () -> f fd socket) fd
   >>= function
@@ -341,7 +330,7 @@ let connect_fd f fd socket =
   | Error (`Unix (Unix.EISCONN, _, _)) when Sys.win32 -> Fiber.return (Ok ())
   | Error (`Unix (EINPROGRESS, _, _)) ->
     let* task =
-      ready_fd fd `Write ~f:(fun () ->
+      ready fd `Write ~f:(fun () ->
         Unix.getsockopt_error (Fd.unsafe_to_unix_file_descr fd))
     in
     Task.await task
@@ -352,11 +341,4 @@ let connect_fd f fd socket =
   | Error (`Unix (e, x, y)) -> Fiber.return @@ Error (`Exn (Unix.Unix_error (e, x, y)))
   | Error (`Exn _) as e -> Fiber.return e
   | Error `Cancelled as e -> Fiber.return e
-;;
-
-let connect f fd socket =
-  connect_fd
-    (fun fd socket -> f (Fd.unsafe_to_unix_file_descr fd) socket)
-    (Fd.unsafe_of_unix_file_descr fd)
-    socket
 ;;

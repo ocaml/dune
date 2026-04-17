@@ -1,5 +1,7 @@
+open Stdune
+
 type t =
-  { fd : Unix.file_descr
+  { fd : Fd.t
   ; buf : Buffer.t
   ; cats : Category.Set.t
   ; mutex : Mutex.t

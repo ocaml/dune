@@ -100,7 +100,7 @@ let run ?env ~prog ~argv () =
       ~argv
       ~stdout:stdout_w
       ~stderr:stderr_w
-      ~stdin:(Lazy.force Dev_null.in_)
+      ~stdin:(Fd.unsafe_to_unix_file_descr (Lazy.force Dev_null.in_))
       ?env
       ()
     |> Pid.of_int

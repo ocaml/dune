@@ -76,6 +76,7 @@ let open_for_digest file =
      [O_SHARE_DELETE] ensures that the main thread can delete it even if it
      is still open. See #8243. *)
   Unix.openfile file [ Unix.O_RDONLY; O_SHARE_DELETE; O_CLOEXEC ] 0
+  |> Fd.unsafe_of_unix_file_descr
 ;;
 
 (* CR-someday rgrinberg: maybe this should exist in blake3_mini? *)
@@ -83,7 +84,12 @@ let zero = lazy (Hasher.with_singleton (fun _f -> ()))
 
 let digest_and_close_fd fd =
   let start = Counter.Timer.start () in
-  let res = Exn.protectx fd ~f:Blake3_mini.fd ~finally:Unix.close in
+  let res =
+    Exn.protectx
+      fd
+      ~f:(fun fd -> Blake3_mini.fd (Fd.unsafe_to_unix_file_descr fd))
+      ~finally:Fd.close
+  in
   Counter.Timer.stop Metrics.Digest.File.time start;
   res
 ;;
@@ -106,16 +112,16 @@ let file_async file =
   let fd = open_for_digest file in
   Counter.incr Metrics.Digest.File.count;
   let size =
-    match Unix.fstat fd with
+    match Unix.fstat (Fd.unsafe_to_unix_file_descr fd) with
     | exception exn ->
-      Unix.close fd;
+      Fd.close fd;
       raise exn
     | stat -> stat.st_size
   in
   Counter.add Metrics.Digest.File.bytes size;
   if size = 0
   then
-    let+ () = Fiber.return @@ Unix.close fd in
+    let+ () = Fiber.return @@ Fd.close fd in
     Lazy.force zero
   else if size < async_digest_minimum
   then Fiber.return (digest_and_close_fd fd)

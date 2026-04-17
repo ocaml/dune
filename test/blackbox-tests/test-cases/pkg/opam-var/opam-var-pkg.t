@@ -23,12 +23,18 @@ we intend to interpret in dune.
   >   [ "echo" foo:sbin ]
   >   [ "echo"   _:lib ]
   >   [ "echo" foo:lib ]
+  >   [ "echo"   _:lib_root ]
+  >   [ "echo" foo:lib_root ]
+  >   [ "echo"   _:libexec_root ]
+  >   [ "echo" foo:libexec_root ]
   >   [ "echo"   _:man ]
   >   [ "echo" foo:man ]
   >   [ "echo"   _:doc ]
   >   [ "echo" foo:doc ]
   >   [ "echo"   _:share ]
   >   [ "echo" foo:share ]
+  >   [ "echo"   _:share_root ]
+  >   [ "echo" foo:share_root ]
   >   [ "echo"   _:etc ]
   >   [ "echo" foo:etc ]
   >   [ "echo"   _:dev ]
@@ -84,12 +90,18 @@ translated into a corresponding Dune version.
        (run echo %{pkg:foo:sbin})
        (run echo %{pkg-self:lib})
        (run echo %{pkg:foo:lib})
+       (run echo %{pkg-self:lib_root})
+       (run echo %{pkg:foo:lib_root})
+       (run echo %{pkg-self:libexec_root})
+       (run echo %{pkg:foo:libexec_root})
        (run echo %{pkg-self:man})
        (run echo %{pkg:foo:man})
        (run echo %{pkg-self:doc})
        (run echo %{pkg:foo:doc})
        (run echo %{pkg-self:share})
        (run echo %{pkg:foo:share})
+       (run echo %{pkg-self:share_root})
+       (run echo %{pkg:foo:share_root})
        (run echo %{pkg-self:etc})
        (run echo %{pkg:foo:etc})
        (run echo %{pkg-self:dev})
@@ -112,36 +124,60 @@ The values here are not important, but Dune should be able to interpret the
 variables.
 
   $ build_pkg testpkg
-  File "dune.lock/testpkg.0.0.1.pkg", line 41, characters 15-36:
-  41 |      (run echo %{pkg-self:with-test})
+  File "dune.lock/testpkg.0.0.1.pkg", line 29, characters 15-35:
+  29 |      (run echo %{pkg-self:lib_root})
+                      ^^^^^^^^^^^^^^^^^^^^
+  Error: Undefined package variable "lib_root"
+  File "dune.lock/testpkg.0.0.1.pkg", line 30, characters 15-34:
+  30 |      (run echo %{pkg:foo:lib_root})
+                      ^^^^^^^^^^^^^^^^^^^
+  Error: Undefined package variable "lib_root"
+  File "dune.lock/testpkg.0.0.1.pkg", line 31, characters 15-39:
+  31 |      (run echo %{pkg-self:libexec_root})
+                      ^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: Undefined package variable "libexec_root"
+  File "dune.lock/testpkg.0.0.1.pkg", line 32, characters 15-38:
+  32 |      (run echo %{pkg:foo:libexec_root})
+                      ^^^^^^^^^^^^^^^^^^^^^^^
+  Error: Undefined package variable "libexec_root"
+  File "dune.lock/testpkg.0.0.1.pkg", line 39, characters 15-37:
+  39 |      (run echo %{pkg-self:share_root})
+                      ^^^^^^^^^^^^^^^^^^^^^^
+  Error: Undefined package variable "share_root"
+  File "dune.lock/testpkg.0.0.1.pkg", line 40, characters 15-36:
+  40 |      (run echo %{pkg:foo:share_root})
+                      ^^^^^^^^^^^^^^^^^^^^^
+  Error: Undefined package variable "share_root"
+  File "dune.lock/testpkg.0.0.1.pkg", line 47, characters 15-36:
+  47 |      (run echo %{pkg-self:with-test})
                       ^^^^^^^^^^^^^^^^^^^^^
   Error: Undefined package variable "with-test"
-  File "dune.lock/testpkg.0.0.1.pkg", line 42, characters 15-36:
-  42 |      (run echo %{pkg-self:with-test})
+  File "dune.lock/testpkg.0.0.1.pkg", line 48, characters 15-36:
+  48 |      (run echo %{pkg-self:with-test})
                       ^^^^^^^^^^^^^^^^^^^^^
   Error: Undefined package variable "with-test"
-  File "dune.lock/testpkg.0.0.1.pkg", line 43, characters 15-35:
-  43 |      (run echo %{pkg:foo:with-test})
+  File "dune.lock/testpkg.0.0.1.pkg", line 49, characters 15-35:
+  49 |      (run echo %{pkg:foo:with-test})
                       ^^^^^^^^^^^^^^^^^^^^
   Error: Undefined package variable "with-test"
-  File "dune.lock/testpkg.0.0.1.pkg", line 44, characters 15-35:
-  44 |      (run echo %{pkg-self:with-doc})
+  File "dune.lock/testpkg.0.0.1.pkg", line 50, characters 15-35:
+  50 |      (run echo %{pkg-self:with-doc})
                       ^^^^^^^^^^^^^^^^^^^^
   Error: Undefined package variable "with-doc"
-  File "dune.lock/testpkg.0.0.1.pkg", line 45, characters 15-35:
-  45 |      (run echo %{pkg-self:with-doc})
+  File "dune.lock/testpkg.0.0.1.pkg", line 51, characters 15-35:
+  51 |      (run echo %{pkg-self:with-doc})
                       ^^^^^^^^^^^^^^^^^^^^
   Error: Undefined package variable "with-doc"
-  File "dune.lock/testpkg.0.0.1.pkg", line 46, characters 15-34:
-  46 |      (run echo %{pkg:foo:with-doc})
+  File "dune.lock/testpkg.0.0.1.pkg", line 52, characters 15-34:
+  52 |      (run echo %{pkg:foo:with-doc})
                       ^^^^^^^^^^^^^^^^^^^
   Error: Undefined package variable "with-doc"
-  File "dune.lock/testpkg.0.0.1.pkg", line 47, characters 15-41:
-  47 |      (run echo %{pkg-self:with-dev-setup})
+  File "dune.lock/testpkg.0.0.1.pkg", line 53, characters 15-41:
+  53 |      (run echo %{pkg-self:with-dev-setup})
                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: Undefined package variable "with-dev-setup"
-  File "dune.lock/testpkg.0.0.1.pkg", line 48, characters 15-40:
-  48 |      (run echo %{pkg:foo:with-dev-setup}))))))
+  File "dune.lock/testpkg.0.0.1.pkg", line 54, characters 15-40:
+  54 |      (run echo %{pkg:foo:with-dev-setup}))))))
                       ^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: Undefined package variable "with-dev-setup"
   [1]

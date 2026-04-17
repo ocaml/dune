@@ -125,6 +125,11 @@ test-ox: $(BIN)
 check: $(BIN)
 	@$(BIN) build @check
 
+.PHONY: start
+start: $(BIN)
+	@$(BIN) init start-file
+	@$(BIN) build @start/build -w
+
 .PHONY: fmt
 fmt: $(BIN)
 	@$(BIN) fmt

@@ -1,7 +1,9 @@
 open Stdune
 
 let%expect_test "blocking lock" =
-  let fd = Unix.openfile "tlc1" [ Unix.O_CREAT; O_CLOEXEC ] 0o777 in
+  let fd =
+    Unix.openfile "tlc1" [ Unix.O_CREAT; O_CLOEXEC ] 0o777 |> Fd.unsafe_of_unix_file_descr
+  in
   let lock = Flock.create fd in
   print_endline "acquiring lock";
   (match Flock.lock_block lock Exclusive with
@@ -10,7 +12,7 @@ let%expect_test "blocking lock" =
   (match Flock.unlock lock with
    | Ok () -> print_endline "released lock"
    | Error _ -> assert false);
-  Unix.close fd;
+  Fd.close fd;
   [%expect
     {|
     acquiring lock
@@ -19,7 +21,9 @@ let%expect_test "blocking lock" =
 ;;
 
 let%expect_test "nonblocking lock" =
-  let fd flag = Unix.openfile "tlc2" [ O_CLOEXEC; flag ] 0o777 in
+  let fd flag =
+    Unix.openfile "tlc2" [ O_CLOEXEC; flag ] 0o777 |> Fd.unsafe_of_unix_file_descr
+  in
   let fd1 = fd Unix.O_CREAT in
   let lock1 = Flock.create fd1 in
   print_endline "acquiring lock";
@@ -40,8 +44,8 @@ let%expect_test "nonblocking lock" =
   (match Flock.lock_non_block lock2 Exclusive with
    | Ok `Success -> print_endline "managed to lock after unlock"
    | Ok `Failure | Error _ -> assert false);
-  Unix.close fd1;
-  Unix.close fd2;
+  Fd.close fd1;
+  Fd.close fd2;
   [%expect
     {|
     acquiring lock
@@ -52,7 +56,9 @@ let%expect_test "nonblocking lock" =
 ;;
 
 let%expect_test "double lock" =
-  let fd = Unix.openfile "tlc3" [ Unix.O_CREAT; O_CLOEXEC ] 0o600 in
+  let fd =
+    Unix.openfile "tlc3" [ Unix.O_CREAT; O_CLOEXEC ] 0o600 |> Fd.unsafe_of_unix_file_descr
+  in
   let lock = Flock.create fd in
   (match Flock.lock_non_block lock Exclusive with
    | Ok `Success -> print_endline "lock 1 worked"

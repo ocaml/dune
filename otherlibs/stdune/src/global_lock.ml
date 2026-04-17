@@ -18,7 +18,7 @@ let with_timeout ~timeout f =
 let write_pid fd =
   let pid = Int.to_string (Unix.getpid ()) in
   let len = String.length pid in
-  let res = Unix.write fd (Bytes.of_string pid) 0 len in
+  let res = Unix.write (Fd.unsafe_to_unix_file_descr fd) (Bytes.of_string pid) 0 len in
   assert (res = len)
 ;;
 
@@ -31,6 +31,7 @@ module Lock = struct
            (Path.Build.to_string lock_file)
            [ Unix.O_CREAT; O_WRONLY; O_SHARE_DELETE; O_CLOEXEC ]
            0o600
+         |> Fd.unsafe_of_unix_file_descr
        in
        Flock.create fd)
   ;;
@@ -50,14 +51,14 @@ module Lock = struct
      | `Failure -> ()
      | `Success ->
        let fd = Flock.fd t in
-       Unix.ftruncate fd 0;
+       Unix.ftruncate (Fd.unsafe_to_unix_file_descr fd) 0;
        write_pid fd);
     res
   ;;
 
   let unlock () =
     let lock = Lazy.force t in
-    Unix.ftruncate (Flock.fd lock) 0;
+    Unix.ftruncate (Fd.unsafe_to_unix_file_descr (Flock.fd lock)) 0;
     Flock.unlock lock |> or_raise_unix ~name:"unlock"
   ;;
 end

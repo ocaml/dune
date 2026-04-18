@@ -329,6 +329,9 @@ module Session = struct
 end
 
 module Server = struct
+  module Server_id = Id.Make ()
+  module Id = Server_id
+
   module Transport = struct
     type t =
       { sockets : (Unix.sockaddr * Fd.t) list
@@ -390,7 +393,8 @@ module Server = struct
   end
 
   type t =
-    { mutable state : [ `Init of Fd.t list | `Running of Transport.t | `Closed ]
+    { id : Id.t
+    ; mutable state : [ `Init of Fd.t list | `Running of Transport.t | `Closed ]
     ; backlog : int
     ; sockaddrs : Unix.sockaddr list
     ; ready : unit Fiber.Ivar.t
@@ -416,7 +420,13 @@ module Server = struct
           Socket.bind fd sockaddr;
           fd)
       in
-      Ok { sockaddrs; backlog; state = `Init fds; ready = Fiber.Ivar.create () }
+      Ok
+        { id = Id.gen ()
+        ; sockaddrs
+        ; backlog
+        ; state = `Init fds
+        ; ready = Fiber.Ivar.create ()
+        }
     with
     | Unix.Unix_error (EADDRINUSE, _, _) -> Error `Already_in_use
   ;;
@@ -434,40 +444,50 @@ module Server = struct
       t.state <- `Running transport;
       let+ () = Fiber.Ivar.fill t.ready () in
       let loop () =
-        let+ accept = Transport.accept transport in
+        Dune_trace.emit Rpc (fun () ->
+          Dune_trace.Event.Rpc.accept
+            ~id:(Id.to_int t.id)
+            `Start
+            ~success:None
+            ~error:None);
+        let* accept = Transport.accept transport in
+        Dune_trace.emit Rpc (fun () ->
+          let success, error =
+            match accept with
+            | Error _exn ->
+              Some false, Some "RPC accept failed. Server will not accept new clients"
+            | Ok None -> Some false, Some "No more clients will be accepted"
+            | Ok (Some _) -> Some true, None
+          in
+          Dune_trace.Event.Rpc.accept ~id:(Id.to_int t.id) `Stop ~success ~error);
         match accept with
-        | Error _exn ->
-          Dune_trace.emit Rpc (fun () ->
-            Dune_trace.Event.Rpc.accept
-              ~success:false
-              ~error:(Some "RPC accept failed. Server will not accept new clients"));
-          None
-        | Ok None ->
-          Dune_trace.emit Rpc (fun () ->
-            Dune_trace.Event.Rpc.accept
-              ~success:false
-              ~error:(Some "No more clients will be accepted"));
-          None
+        | Error _exn -> Fiber.return None
+        | Ok None -> Fiber.return None
         | Ok (Some fd) ->
-          Dune_trace.emit Rpc (fun () ->
-            Dune_trace.Event.Rpc.accept ~success:true ~error:None);
           let session = Session.create fd in
-          Some session
+          Fiber.return (Some session)
       in
       Fiber.Stream.In.create loop
   ;;
 
   let stop t =
     let* () = Fiber.return () in
-    let+ () =
-      match t.state with
-      | `Closed -> Fiber.return ()
-      | `Running t -> Transport.stop t
-      | `Init fds ->
-        List.iter ~f:Fd.close fds;
-        Fiber.return ()
-    in
-    t.state <- `Closed
+    match t.state with
+    | `Closed -> Fiber.return ()
+    | `Running _ | `Init _ ->
+      Dune_trace.emit Rpc (fun () ->
+        Dune_trace.Event.Rpc.shutdown ~id:(Id.to_int t.id) `Start);
+      let+ () =
+        match t.state with
+        | `Closed -> Fiber.return ()
+        | `Running t -> Transport.stop t
+        | `Init fds ->
+          List.iter ~f:Fd.close fds;
+          Fiber.return ()
+      in
+      t.state <- `Closed;
+      Dune_trace.emit Rpc (fun () ->
+        Dune_trace.Event.Rpc.shutdown ~id:(Id.to_int t.id) `Stop)
   ;;
 
   let listening_address t =

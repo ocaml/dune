@@ -81,6 +81,7 @@ val set_workspace_root_to_build_path_prefix_map
 
 val set_action_project_root : Path.Source.t option -> t -> t
 val set_should_remove_write_permissions_on_generated_files : bool -> t -> t
+val set_sandbox_actions : bool -> t -> t
 
 (** As configured by [init] *)
 val default : t Memo.t

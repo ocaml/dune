@@ -309,7 +309,9 @@ let exec_building_directly ~common ~config ~context ~prog ~args ~no_rebuild =
   | Yes Passive ->
     User_error.raise [ Pp.textf "passive watch mode is unsupported by exec" ]
   | Yes Eager ->
-    let build_loop = Dune_engine.Build_loop.create () in
+    let build_loop =
+      Dune_engine.Build_loop.create ~action_runner:(Common.action_runner common) ()
+    in
     let rpc_server =
       Dune_rpc_impl.Server.create
         ~registry:`Add

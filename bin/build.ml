@@ -5,8 +5,14 @@ let action_builder_of_request request =
   Action_builder.of_memo (Memo.of_thunk Util.setup) >>= request
 ;;
 
-let run_build_system ~run_id ~request =
-  Dune_engine.Build_system.run_action_builder ~run_id (action_builder_of_request request)
+let run_build_system ~action_runner ~run_id ~request =
+  let build =
+    Dune_engine.Process.Build.create
+      ~action_runner
+      ~run_id
+      ~cancellation:(Fiber.Cancel.create ())
+  in
+  Dune_engine.Build_system.run_action_builder ~build (action_builder_of_request request)
 ;;
 
 let rpc_request_action ~(common : Common.t) (kind : Dune_rpc_impl.Server.build_request) =
@@ -22,7 +28,9 @@ let rpc_request_action ~(common : Common.t) (kind : Dune_rpc_impl.Server.build_r
 ;;
 
 let run_build_command_poll ~(common : Common.t) ~config ~sticky_goal : unit =
-  let build_loop = Dune_engine.Build_loop.create () in
+  let build_loop =
+    Dune_engine.Build_loop.create ~action_runner:(Common.action_runner common) ()
+  in
   let rpc_server =
     Dune_rpc_impl.Server.create
       ~registry:`Add
@@ -44,7 +52,10 @@ let run_build_command_poll ~(common : Common.t) ~config ~sticky_goal : unit =
 let run_build_command_once ~(common : Common.t) ~config ~request =
   let open Fiber.O in
   let once () =
-    run_build_system ~run_id:Dune_engine.Run_id.Batch ~request
+    run_build_system
+      ~action_runner:(Common.action_runner common)
+      ~run_id:Dune_engine.Run_id.Batch
+      ~request
     >>| function
     | Error `Already_reported -> raise Dune_util.Report_error.Already_reported
     | Ok () -> ()

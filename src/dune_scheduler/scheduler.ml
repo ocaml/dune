@@ -19,22 +19,9 @@ exception Build_cancelled
 
 let cancelled () = raise (Memo.Non_reproducible Build_cancelled)
 
-let check_cancelled t =
-  match t.current_build_cancel with
+let check_cancelled = function
   | Some cancel when Fiber.Cancel.fired cancel -> cancelled ()
   | None | Some _ -> ()
-;;
-
-let with_current_build_cancellation cancel f =
-  let* () = Fiber.return () in
-  let t = t () in
-  match t.current_build_cancel with
-  | Some _ -> f ()
-  | None ->
-    t.current_build_cancel <- Some cancel;
-    Fiber.finalize f ~finally:(fun () ->
-      t.current_build_cancel <- None;
-      Fiber.return ())
 ;;
 
 let check_point =
@@ -52,11 +39,11 @@ let check_point =
 
 let () = Memo.check_point := check_point
 
-let with_job_slot f =
+let with_job_slot ?cancellation f =
   let* () = Fiber.return () in
   let t = t () in
   Fiber.Throttle.run t.job_throttle ~f:(fun () ->
-    check_cancelled t;
+    check_cancelled cancellation;
     f ())
 ;;
 
@@ -76,7 +63,7 @@ type termination_reason =
 
 (* We use this version privately in this module whenever we can pass the
    scheduler explicitly *)
-let wait_for_build_process t ~is_process_group_leader pid =
+let wait_for_build_process t ?cancellation ~is_process_group_leader pid =
   let sigkill_alarm = ref None in
   let wait () =
     let* r = wait_for_process t ~is_process_group_leader pid in
@@ -89,7 +76,7 @@ let wait_for_build_process t ~is_process_group_leader pid =
     in
     r
   in
-  match t.current_build_cancel with
+  match cancellation with
   | None ->
     let+ res = wait () in
     res, Normal
@@ -98,13 +85,15 @@ let wait_for_build_process t ~is_process_group_leader pid =
       Fiber.Cancel.with_handler
         cancel
         ~on_cancel:(fun () ->
-          if not Sys.win32 then Process_watcher.killall t.process_watcher Sys.sigterm;
+          if not Sys.win32
+          then Process_watcher.kill_process_group pid Sys.sigterm ~is_process_group_leader;
           let sleep = Async_io.sleep t.async_io sigterm_grace_period in
           sigkill_alarm := Some sleep;
           Async_io.Task.await sleep
           >>| function
           | Error `Cancelled -> ()
-          | Ok () -> Process_watcher.killall t.process_watcher Sys.sigkill
+          | Ok () ->
+            Process_watcher.kill_process_group pid Sys.sigkill ~is_process_group_leader
           | Error (`Exn _) -> assert false)
         wait
     in
@@ -207,7 +196,6 @@ let prepare (config : Config.t) ~events ~file_watcher =
     ; thread_pool = lazy (Thread_pool.create ~min_workers:4 ~max_workers:50)
     ; signal_watcher
     ; async_io
-    ; current_build_cancel = None
     }
   in
   current := Some t;
@@ -381,13 +369,6 @@ let shutdown reason =
   Event.Queue.send_shutdown t.events reason
 ;;
 
-let cancel_current_build () =
-  let* () = Fiber.return () in
-  match (t ()).current_build_cancel with
-  | None -> Fiber.return ()
-  | Some cancel -> Fiber.Cancel.fire cancel
-;;
-
 let wait_for_process_with_timeout t pid waiter ~timeout ~is_process_group_leader =
   Fiber.of_thunk (fun () ->
     let sleep = Async_io.sleep t.async_io timeout in
@@ -414,16 +395,17 @@ let wait_for_process_with_timeout t pid waiter ~timeout ~is_process_group_leader
       | `Finished -> termination_reason ))
 ;;
 
-let wait_for_build_process ?timeout ~is_process_group_leader pid =
+let wait_for_build_process ?cancellation ?timeout ~is_process_group_leader pid =
   let* () = Fiber.return () in
   let t = t () in
   match timeout with
-  | None -> wait_for_build_process t ~is_process_group_leader pid
+  | None -> wait_for_build_process t ?cancellation ~is_process_group_leader pid
   | Some timeout ->
     wait_for_process_with_timeout
       t
       pid
-      wait_for_build_process
+      (fun t ~is_process_group_leader pid ->
+         wait_for_build_process t ?cancellation ~is_process_group_leader pid)
       ~timeout
       ~is_process_group_leader
 ;;

@@ -1,3 +1,5 @@
+open Import
+
 (** An RPC handler. *)
 type t
 
@@ -25,3 +27,5 @@ val stop : t -> unit Fiber.t
 
 val ready : t -> unit Fiber.t
 val run : t -> unit Fiber.t
+val listening_address : t -> Dune_rpc.Where.t
+val action_runner : t -> Dune_engine.Action_runner.Rpc_server.t

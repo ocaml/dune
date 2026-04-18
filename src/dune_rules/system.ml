@@ -6,6 +6,7 @@ module Spec = struct
 
   let name = "system"
   let version = 1
+  let runs_process = true
   let bimap t _ _ = t
   let is_useful_to ~memoize = memoize
   let encode cmd _ _ : Sexp.t = Atom cmd

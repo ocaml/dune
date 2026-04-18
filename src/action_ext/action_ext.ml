@@ -9,6 +9,7 @@ module Make (S : sig
     val name : string
     val version : int
     val is_useful_to : memoize:bool -> bool
+    val runs_process : bool
     val encode : ('p, 't) t -> ('p -> Sexp.t) -> ('t -> Sexp.t) -> Sexp.t
     val bimap : ('a, 'b) t -> ('a -> 'x) -> ('b -> 'y) -> ('x, 'y) t
 
@@ -23,6 +24,7 @@ struct
     include S
 
     let is_dynamic = false
+    let runs_process = runs_process
 
     let encode t f g =
       let open Sexp in

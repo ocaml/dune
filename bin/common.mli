@@ -18,6 +18,8 @@ val rpc
 val watch_exclusions : t -> string list
 val watch : t -> Dune_rpc_impl.Watch_mode_config.t
 val file_watcher : t -> Dune_scheduler.Scheduler.Run.file_watcher
+val sandbox_actions : t -> bool
+val action_runner : t -> Dune_engine.Action_runner.t option
 val prefix_target : t -> string -> string
 val find_default_trace_file : unit -> string
 

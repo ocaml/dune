@@ -45,15 +45,18 @@ module Event = struct
   type args = (string * Arg.t) list
   type t = Sexp.t
 
+  let common_args = ref []
   let base ~name cat : Sexp.t list = [ Atom (Category.to_string cat); Atom name ]
+  let record_args args = Arg.record (args @ !common_args)
+  let set_common_args args = common_args := args
 
   let complete ?(args = []) ~name ~start ~dur cat : t =
     List
-      (base ~name cat @ [ Sexp.List [ Arg.time start; Arg.span dur ] ] @ Arg.record args)
+      (base ~name cat @ [ Sexp.List [ Arg.time start; Arg.span dur ] ] @ record_args args)
   ;;
 
   let instant ?(args = []) ~name ts cat : t =
-    List (base ~name cat @ [ Arg.time ts ] @ Arg.record args)
+    List (base ~name cat @ [ Arg.time ts ] @ record_args args)
   ;;
 
   let async ?(args = []) id ~name ts stage cat : t =
@@ -68,7 +71,7 @@ module Event = struct
                   | `Start -> "start"
                   | `Stop -> "stop") )
            ]
-       @ Arg.record args)
+       @ record_args args)
   ;;
 end
 
@@ -368,6 +371,7 @@ let make_exit exit =
 ;;
 
 let process_start
+      ~extra_args
       ~pid
       ~dir
       ~prog
@@ -403,12 +407,13 @@ let process_start
            | Some timeout -> [ "timeout", Arg.span timeout ])
         ]
     in
-    always @ extended
+    always @ extended @ extra_args
   in
   Event.instant ~args ~name:"start" started_at Process
 ;;
 
 let process
+      ~extra_args
       ~name
       ~started_at
       ~targets
@@ -452,7 +457,7 @@ let process
         ]
     in
     let resource_usage = make_rusage_args resource_usage in
-    always @ extended @ resource_usage
+    always @ extended @ resource_usage @ extra_args
   in
   Event.complete ~args ~start:started_at ~dur:elapsed_time ~name:"finish" Process
 ;;
@@ -779,6 +784,34 @@ module Action = struct
     let dur = Time.diff (Time.now ()) start in
     Event.complete ~args:[ "name", Arg.string name ] ~name:"finish" ~start ~dur Action
   ;;
+
+  let runner_name_arg name = "name", Arg.string (Action_runner_name.to_string name)
+
+  let runner_event ~name event_name extra_args =
+    let args = runner_name_arg name :: extra_args in
+    Event.instant ~args ~name:event_name (Time.now ()) Action
+  ;;
+
+  let runner_spawn ~name ~pid =
+    runner_event ~name "runner-spawn" [ "pid", Arg.int (Pid.to_int pid) ]
+  ;;
+
+  let runner_connection_start ~name = runner_event ~name "runner-connection-start" []
+
+  let runner_connection_established ~name =
+    runner_event ~name "runner-connection-established" []
+  ;;
+
+  let runner_connected ~name = runner_event ~name "runner-connected" []
+  let runner_request_sent ~name = runner_event ~name "runner-request-sent" []
+
+  let runner_cancel_request_sent ~name =
+    runner_event ~name "runner-cancel-request-sent" []
+  ;;
+
+  let runner_exec_start ~name = runner_event ~name "runner-exec-start" []
+  let runner_cancel_start ~name = runner_event ~name "runner-cancel-start" []
+  let runner_disconnected ~name = runner_event ~name "runner-disconnected" []
 
   let write_file ~start ~finish ~file ~size =
     let dur = Time.diff finish start in

@@ -99,8 +99,7 @@ with_timeout () {
     fi
 }
 
-stop_dune () {
-    with_timeout dune shutdown;
+wait_for_dune_exit () {
     # On Linux, we may run into a bash pid aliasing bug that causes wait to
     # reject the pid. Therefore we use tail to wait instead.
     if [ "$(uname -s)" = "Linux" ]
@@ -111,6 +110,11 @@ stop_dune () {
         # wait for dune to exit
         wait "$DUNE_PID";
     fi
+}
+
+stop_dune () {
+    with_timeout dune shutdown;
+    wait_for_dune_exit;
     cat .#dune-output;
 }
 

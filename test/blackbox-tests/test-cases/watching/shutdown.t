@@ -12,6 +12,7 @@ a client.
 
   $ dune build -w &
   Success, waiting for filesystem changes...
+  $ DUNE_PID=$!
 
   $ dune rpc ping --wait
   Server appears to be responding normally
@@ -24,9 +25,9 @@ a client.
 
   $ dune rpc ping
   Server appears to be responding normally
-  $ dune shutdown
+  $ with_timeout dune shutdown
+  $ wait_for_dune_exit
 
 This allows us to observe the exit code which should be non-zero.
   $ wait $PID
   [1]
-

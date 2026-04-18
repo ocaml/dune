@@ -169,10 +169,6 @@ static struct custom_operations watcher_ops = {
     "lev.watcher", custom_finalize_default,  compare_watchers,
     hash_watcher,  custom_serialize_default, custom_deserialize_default};
 
-static struct custom_operations periodic_custom_ops = {
-    "lev.periodic", custom_finalize_default,  compare_watchers,
-    hash_watcher,   custom_serialize_default, custom_deserialize_default};
-
 static struct custom_operations embed_manual_ops = {
     "lev.embed",  custom_finalize_default,  compare_watchers,
     hash_watcher, custom_serialize_default, custom_deserialize_default};
@@ -359,7 +355,8 @@ CAMLprim value lev_io_create(value v_cb, value v_fd, value v_flags) {
 CAMLprim value lev_io_modify(value v_io, value v_flags) {
   CAMLparam2(v_io, v_flags);
   ev_io *io = Ev_io_val(v_io);
-  ev_io_modify(io, Int_val(v_flags));
+  int flags = Int_val(v_flags);
+  io->events = (io->events & EV__IOFDSET) | flags;
   CAMLreturn(Val_unit);
 }
 

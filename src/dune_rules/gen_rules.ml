@@ -592,8 +592,22 @@ let gen_rules_regular_directory (sctx : Super_context.t Memo.t) ~src_dir ~compon
                 match st_dir with
                 | None -> Memo.return Rules.empty
                 | Some st_dir -> gen_project_rules sctx st_dir
+              and+ compile_commands_rules =
+                (* Generate compile_commands.json only for the merlin
+                   context at the context root *)
+                match components with
+                | [] ->
+                  let* sctx = sctx in
+                  if Context.merlin (Super_context.context sctx)
+                  then Rules.collect_unit (fun () -> Compile_commands.gen_rules sctx)
+                  else Memo.return Rules.empty
+                | _ -> Memo.return Rules.empty
               and+ rules = rules in
-              Rules.union (Rules.union project_rules automatic_subdir_rules) rules
+              Rules.union
+                (Rules.union
+                   (Rules.union project_rules automatic_subdir_rules)
+                   compile_commands_rules)
+                rules
             in
             Gen_rules.rules_for ~dir ~directory_targets ~allowed_subdirs rules
         in

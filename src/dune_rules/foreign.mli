@@ -126,6 +126,7 @@ module Source : sig
   val language : t -> Foreign_language.t
   val mode : t -> Mode.Select.t
   val path : t -> Path.Build.t
+  val include_dirs : t -> Stubs.Include_dir.t list
 
   (** The name of the corresponding object file; for example, [name] for a
       source file [some/path/name.cpp] of [name_mode] if the stub is

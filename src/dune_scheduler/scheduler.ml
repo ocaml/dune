@@ -35,8 +35,8 @@ let cancelled () = raise (Memo.Non_reproducible Build_cancelled)
 let check_cancelled t = if Fiber.Cancel.fired t.cancel then cancelled ()
 
 let check_point =
-  t_opt ()
-  >>= function
+  let* () = Fiber.return () in
+  match t_opt () with
   | None -> Fiber.return ()
   | Some t ->
     (* CR-someday amokhov: we used to call [check_cancelled t] here but that led
@@ -50,7 +50,8 @@ let check_point =
 let () = Memo.check_point := check_point
 
 let with_job_slot f =
-  let* t = t () in
+  let* () = Fiber.return () in
+  let t = t () in
   Fiber.Throttle.run t.job_throttle ~f:(fun () ->
     check_cancelled t;
     f ())
@@ -331,7 +332,8 @@ module Run_once = struct
 end
 
 let async f =
-  let* t = t () in
+  let* () = Fiber.return () in
+  let t = t () in
   let ivar = Fiber.Ivar.create () in
   let f () =
     let res = Exn_with_backtrace.try_with f in
@@ -478,7 +480,8 @@ module Run = struct
   type step = (unit, [ `Already_reported ]) Result.t Fiber.t
 
   let poll_init () =
-    let+ t = t () in
+    let+ () = Fiber.return () in
+    let t = t () in
     assert (
       match t.status with
       | Building _ -> true
@@ -595,12 +598,13 @@ module Run = struct
 end
 
 let shutdown () =
-  let+ t = t () in
+  let t = t () in
   Event.Queue.send_shutdown t.events Requested
 ;;
 
 let cancel_current_build () =
-  let* t = t () in
+  let* () = Fiber.return () in
+  let t = t () in
   match t.status with
   | Restarting_build | Standing_by -> Fiber.return ()
   | Building cancellation ->
@@ -635,7 +639,8 @@ let wait_for_process_with_timeout t pid waiter ~timeout ~is_process_group_leader
 ;;
 
 let wait_for_build_process ?timeout ~is_process_group_leader pid =
-  let* t = t () in
+  let* () = Fiber.return () in
+  let t = t () in
   match timeout with
   | None -> wait_for_build_process t ~is_process_group_leader pid
   | Some timeout ->
@@ -652,7 +657,8 @@ let wait_for_process ?timeout ~is_process_group_leader pid =
 ;;
 
 let sleep dur =
-  (let* t = t () in
+  let* () = Fiber.return () in
+  (let t = t () in
    let alarm_clock = Lazy.force t.alarm_clock in
    Alarm_clock.await (Alarm_clock.sleep alarm_clock dur))
   >>| function
@@ -666,12 +672,14 @@ let set_fs_memo_impl = Fs_memo.set_impl
 
 module For_tests = struct
   let wait_for_build_input_change () =
-    let* t = t () in
+    let* () = Fiber.return () in
+    let t = t () in
     Trigger.wait t.build_inputs_changed
   ;;
 
   let inject_memo_invalidation invalidation =
-    let* t = t () in
+    let* () = Fiber.return () in
+    let t = t () in
     Event.Queue.send_invalidation_event t.events invalidation;
     Fiber.return ()
   ;;

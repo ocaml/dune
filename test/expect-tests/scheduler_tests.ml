@@ -40,7 +40,7 @@ let%expect_test "cancelling a build" =
               (match res with
                | Ok () -> "FAIL: build wasn't cancelled"
                | Error _ -> "PASS: build was cancelled");
-            let* () = Scheduler.shutdown () in
+            let () = Scheduler.shutdown () in
             Fiber.never))
       (fun () ->
          let* () = Fiber.Ivar.read build_started in
@@ -71,7 +71,7 @@ let%expect_test "cancelling a build: effect on other fibers" =
              (Memo.Cell.invalidate cell ~reason:Unknown)
          in
          let* () = Scheduler.For_tests.wait_for_build_input_change () in
-         let* res = Fiber.collect_errors (fun () -> Fiber.return ()) in
+         let+ res = Fiber.collect_errors (fun () -> Fiber.return ()) in
          print_endline
            (match res with
             | Ok () -> "PASS: we can still run things outside the build"

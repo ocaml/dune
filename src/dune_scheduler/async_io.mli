@@ -39,13 +39,13 @@ end
 (** [ready fd what ~f] wait until [what] can be done on [fd] in a non-blocking
     way and then call [f]. Note that [f] will be called in a different thread,
     so it should only be used for atomic or synchronized operations. *)
-val ready : Fd.t -> [ `Read | `Write ] -> f:(unit -> 'a) -> 'a Task.t Fiber.t
+val ready : Fd.t -> [ `Read | `Write ] -> f:(unit -> 'a) -> 'a Task.t
 
 val ready_one
   :  ('label * Fd.t) list
   -> [ `Read | `Write ]
   -> f:('label -> Fd.t -> 'a)
-  -> 'a Task.t Fiber.t
+  -> 'a Task.t
 
 (** [connect fd sock] will do the equivalent of [Unix.connect fd sock] but
     without blocking. As in the other functions, you must call

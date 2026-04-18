@@ -387,8 +387,8 @@ let handler (t : _ t Fdecl.t) : 'build_arg Handler.t =
             Session.Stage1.close entry.session))
       in
       let shutdown () =
-        Fiber.fork_and_join_unit Scheduler.shutdown (fun () ->
-          Csexp_rpc.Server.stop (Lazy.force t.config.server))
+        Scheduler.shutdown ();
+        Csexp_rpc.Server.stop (Lazy.force t.config.server)
       in
       Fiber.fork_and_join_unit terminate_sessions shutdown
     in

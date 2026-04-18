@@ -196,7 +196,7 @@ let start t =
 ;;
 
 let get_exn () =
-  let+ t = Types.Scheduler.t () in
+  let t = Types.Scheduler.t () in
   let t = t.async_io in
   if not t.started
   then (
@@ -234,7 +234,7 @@ let create scheduler_queue =
 ;;
 
 let with_ f =
-  let+ t = get_exn () in
+  let t = get_exn () in
   Mutex.lock t.mutex;
   Exn.protect ~f:(fun () -> f t) ~finally:(fun () -> Mutex.unlock t.mutex)
 ;;
@@ -251,7 +251,8 @@ let cancel scheduler_queue table fd =
 ;;
 
 let close fd =
-  let* t = get_exn () in
+  let* () = Fiber.return () in
+  let t = get_exn () in
   Mutex.lock t.mutex;
   (* everything below is guaranteed not to raise so the mutex will be unlocked
      in the end. There's no need to use [protect] to make sure we don't deadlock *)
@@ -265,7 +266,7 @@ let close fd =
   Mutex.unlock t.mutex
 ;;
 
-let ready_one (type a label) (fds : (label * Fd.t) list) what ~f:job : a Task.t Fiber.t =
+let ready_one (type a label) (fds : (label * Fd.t) list) what ~f:job : a Task.t =
   with_
   @@ fun t ->
   Event.Queue.register_worker_task_started t.scheduler_queue;
@@ -313,7 +314,7 @@ let rec with_retry_fd f fd =
   | exception Unix.Unix_error (EWOULDBLOCK, x, y) when Sys.win32 ->
     Fiber.return (Error (`Unix (Unix.EINPROGRESS, x, y)))
   | exception Unix.Unix_error ((EAGAIN | EWOULDBLOCK | EINTR), _, _) ->
-    let* task = ready fd `Write ~f:Fun.id in
+    let task = ready fd `Write ~f:Fun.id in
     Task.await task
     >>= (function
      | Ok () -> with_retry_fd f fd
@@ -329,7 +330,7 @@ let connect f fd socket =
   | Ok () -> Fiber.return (Ok ())
   | Error (`Unix (Unix.EISCONN, _, _)) when Sys.win32 -> Fiber.return (Ok ())
   | Error (`Unix (EINPROGRESS, _, _)) ->
-    let* task =
+    let task =
       ready fd `Write ~f:(fun () ->
         Unix.getsockopt_error (Fd.unsafe_to_unix_file_descr fd))
     in

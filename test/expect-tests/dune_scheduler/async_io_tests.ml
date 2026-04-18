@@ -32,7 +32,7 @@ let%expect_test "read readiness" =
    @@ fun () ->
    let r, w = pipe () in
    if not Sys.win32 then set_nonblock r;
-   let* task = Async_io.ready r `Read ~f:ignore in
+   let task = Async_io.ready r `Read ~f:ignore in
    write_one w '0';
    Async_io.Task.await task
    >>= function
@@ -50,7 +50,7 @@ let%expect_test "write readiness" =
    @@ fun () ->
    let r, w = pipe () in
    if not Sys.win32 then set_nonblock w;
-   let* task = Async_io.ready w `Write ~f:ignore in
+   let task = Async_io.ready w `Write ~f:ignore in
    Async_io.Task.await task
    >>= function
    | Error _ -> assert false
@@ -71,7 +71,7 @@ let%expect_test "first ready" =
    then (
      set_nonblock w1;
      set_nonblock w2);
-   let* task =
+   let task =
      Async_io.ready_one [ (), w1; (), w2 ] `Write ~f:(fun () fd -> write_one fd '0')
    in
    Async_io.Task.await task
@@ -91,7 +91,7 @@ let%expect_test "cancel task" =
    @@ fun () ->
    let r, w = pipe () in
    if not Sys.win32 then set_nonblock r;
-   let* task = Async_io.ready r `Read ~f:ignore in
+   let task = Async_io.ready r `Read ~f:ignore in
    Fiber.fork_and_join_unit
      (fun () ->
         Async_io.Task.await task

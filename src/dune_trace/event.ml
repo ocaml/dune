@@ -453,11 +453,8 @@ module Rpc = struct
     | `Stop
     ]
 
-  let session ~id stage =
-    let now = Time.now () in
-    let id = Event.Id.int id in
-    Event.async id now stage ~name:"rpc_session" Rpc
-  ;;
+  let server ~id ~name stage = Event.async (Event.Id.int id) (Time.now ()) stage ~name Rpc
+  let session ~id stage = server ~id ~name:"rpc_session" stage
 
   let rec to_json : Sexp.t -> Arg.t = function
     | Atom s -> Arg.string s
@@ -497,16 +494,21 @@ module Rpc = struct
     Event.instant ~name:"packet_write" ~args now Rpc
   ;;
 
-  let accept ~success ~error =
-    let now = Time.now () in
+  let accept ~id stage ~success ~error =
     let args =
-      let base = [ "success", Arg.bool success ] in
+      let args =
+        match success with
+        | None -> []
+        | Some success -> [ "success", Arg.bool success ]
+      in
       match error with
-      | None -> base
-      | Some err -> ("error", Arg.string err) :: base
+      | None -> args
+      | Some err -> ("error", Arg.string err) :: args
     in
-    Event.instant ~args ~name:"accept" now Rpc
+    Event.async (Event.Id.int id) ~args ~name:"accept" (Time.now ()) stage Rpc
   ;;
+
+  let shutdown ~id stage = server ~id ~name:"shutdown" stage
 
   let close ~id =
     let now = Time.now () in

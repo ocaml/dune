@@ -241,13 +241,13 @@ let with_ f =
 
 let cancel scheduler_queue table fd =
   match Table.find table fd with
-  | None -> Fiber.return ()
+  | None -> []
   | Some tasks ->
     Table.remove table fd;
     Queue.to_list tasks
-    |> Fiber.parallel_iter ~f:(fun (Task (t, _)) ->
+    |> List.map ~f:(fun (Task (t, _)) ->
       Event.Queue.cancel_work_task_started scheduler_queue;
-      Fiber.Ivar.fill t.ivar (Error `Cancelled))
+      Fiber.Fill (t.ivar, Error `Cancelled))
 ;;
 
 let close fd =
@@ -257,13 +257,12 @@ let close fd =
   (* everything below is guaranteed not to raise so the mutex will be unlocked
      in the end. There's no need to use [protect] to make sure we don't deadlock *)
   t.to_close <- fd :: t.to_close;
-  let+ () =
-    Fiber.fork_and_join_unit
-      (fun () -> cancel t.scheduler_queue t.readers fd)
-      (fun () -> cancel t.scheduler_queue t.writers fd)
+  let to_cancel =
+    cancel t.scheduler_queue t.readers fd @ cancel t.scheduler_queue t.writers fd
   in
   interrupt t;
-  Mutex.unlock t.mutex
+  Mutex.unlock t.mutex;
+  Fiber.parallel_iter to_cancel ~f:(fun (Fiber.Fill (ivar, v)) -> Fiber.Ivar.fill ivar v)
 ;;
 
 let ready_one (type a label) (fds : (label * Fd.t) list) what ~f:job : a Task.t =

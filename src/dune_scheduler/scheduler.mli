@@ -99,6 +99,9 @@ val wait_for_build_process
 (** Number of jobs currently running in the background *)
 val running_jobs_count : t -> int
 
+(** Run id of the currently executing build. *)
+val current_run_id : unit -> Run_id.t
+
 (** Abort any on-going [Run.go], making it raise [Run.Shutdown_requested].
 
     To understand the exact effect of [shutdown], one needs to understand how

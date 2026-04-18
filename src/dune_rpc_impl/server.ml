@@ -16,6 +16,7 @@ include struct
   module Build_config = Build_config
   module Diff_promotion = Diff_promotion
   module Build_outcome = Scheduler.Run.Build_outcome
+  module Action_runner = Action_runner
 end
 
 include struct
@@ -32,6 +33,7 @@ module Run = struct
 
   type t =
     { handler : Rpc.Server.t
+    ; action_runner : Action_runner.Rpc_server.t
     ; pool : Fiber.Pool.t
     ; root : string
     ; where : Dune_rpc.Where.t
@@ -201,10 +203,13 @@ let ready (t : _ t) =
 ;;
 
 let stop (t : _ t) =
-  let* server = Fiber.Ivar.peek t.config.server_ivar in
-  match server with
-  | None -> Fiber.return ()
-  | Some server -> Csexp_rpc.Server.stop server
+  Fiber.fork_and_join_unit
+    (fun () -> Action_runner.Rpc_server.stop t.config.action_runner)
+    (fun () ->
+       let* server = Fiber.Ivar.peek t.config.server_ivar in
+       match server with
+       | None -> Fiber.return ()
+       | Some server -> Csexp_rpc.Server.stop server)
 ;;
 
 let get_current_diagnostic_errors () =
@@ -217,7 +222,7 @@ let get_current_diagnostic_errors () =
     | `Diagnostic compound_user_error -> Some compound_user_error)
 ;;
 
-let handler (t : _ t Fdecl.t) : 'build_arg Handler.t =
+let handler (t : _ t Fdecl.t) action_runner_server : 'build_arg Handler.t =
   let on_init session (_ : Initialize.Request.t) =
     let t = Fdecl.get t in
     let client = () in
@@ -387,6 +392,10 @@ let handler (t : _ t Fdecl.t) : 'build_arg Handler.t =
             Session.Stage1.close entry.session))
       in
       let shutdown () =
+        (* Known limitation: this bypasses [stop t], so it does not currently
+           stop [t.config.action_runner]. Under [--sandbox-actions], the action
+           runner loop can therefore keep the RPC server alive after
+           [dune shutdown]. *)
         Scheduler.shutdown ();
         Csexp_rpc.Server.stop (Lazy.force t.config.server)
       in
@@ -455,6 +464,7 @@ let handler (t : _ t Fdecl.t) : 'build_arg Handler.t =
     let f _ () = Fiber.return Path.Build.(to_string root) in
     Handler.implement_request rpc Procedures.Public.build_dir f
   in
+  Action_runner.Rpc_server.implement_handler action_runner_server rpc;
   Dune_rules_rpc.register rpc;
   rpc
 ;;
@@ -462,7 +472,8 @@ let handler (t : _ t Fdecl.t) : 'build_arg Handler.t =
 let create ~lock_timeout ~registry ~root =
   let t = Fdecl.create Dyn.opaque in
   let pending_jobs = Job_queue.create () in
-  let handler = Rpc.Server.make (handler t) in
+  let action_runner = Action_runner.Rpc_server.create () in
+  let handler = Rpc.Server.make (handler t action_runner) in
   let pool = Fiber.Pool.create () in
   let where = Where.default () in
   Global_lock.lock_exn ~timeout:lock_timeout;
@@ -488,6 +499,7 @@ let create ~lock_timeout ~registry ~root =
   in
   let config =
     { Run.handler
+    ; action_runner
     ; pool
     ; root
     ; where
@@ -503,7 +515,11 @@ let create ~lock_timeout ~registry ~root =
 
 let run t =
   let* () = Fiber.return () in
-  Run.run t.config
+  Fiber.fork_and_join_unit
+    (fun () -> Run.run t.config)
+    (fun () -> Action_runner.Rpc_server.run t.config.action_runner)
 ;;
 
 let pending_action t = Job_queue.read t.pending_jobs
+let listening_address t = t.config.where
+let action_runner t = t.config.action_runner

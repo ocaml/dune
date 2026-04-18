@@ -221,6 +221,28 @@ def redactedActionTraces:
   |= "REDACTED"
   ] | sort_by(.name) | .[];
 
+def redactedRunnerEvents:
+  [ .[]
+  | select(.cat == "action" and (.name | startswith("runner-")))
+  | .args |=
+      (if has("pid")
+       then .pid = "PID"
+       else .
+       end)
+  ] | .[];
+
+def runnerEventSummary:
+  [ .[]
+  | select(.cat == "action" and (.name | startswith("runner-")))
+  ] as $events
+  | {
+      spawn: ([$events[] | select(.name == "runner-spawn")] | length),
+      connected: ([$events[] | select(.name == "runner-connected")] | length),
+      request_sent: ([$events[] | select(.name == "runner-request-sent")] | length > 0),
+      names: ([$events[] | .args.name] | unique),
+      spawn_pid_types: ([$events[] | select(.name == "runner-spawn") | .args.pid | type] | unique)
+    };
+
 def cacheEvent($path):
   select(.cat == "cache") | .args | select(.path == $path);
 

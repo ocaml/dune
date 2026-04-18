@@ -1,45 +1,72 @@
-Test that %{pkg:...} introduces an implicit dependency on the package and
-makes its artifacts accessible.
+Test that %{pkg:...} resolves through install renames across all sections
+and tracks source files as dependencies.
 
   $ cat >dune-project <<EOF
   > (lang dune 3.23)
-  > (expand_aliases_in_sandbox)
   > (package (name foo))
   > EOF
 
   $ mkdir foo
 
-  $ cat >foo/dune <<EOF
-  > (install
-  >  (section share)
-  >  (package foo)
-  >  (files (data.txt as data.txt)))
+  $ for section in lib lib_root libexec libexec_root bin sbin toplevel share share_root etc doc stublibs man; do
+  >   cat >>foo/dune <<EOF
+  > (install (package foo) (section $section) (files (${section}_src as ${section}_dst)))
   > EOF
+  >   echo "$section content" > foo/${section}_src
+  > done
 
-  $ cat >foo/data.txt <<EOF
-  > some data
-  > EOF
+Each section resolves the install name back to the source file:
 
-Verify via dune rules --deps that the install alias is registered without
-any explicit (deps (package foo)):
-
-  $ cat >dune <<EOF
+  $ cat >dune <<'EOF'
   > (rule
-  >  (target dep-output)
-  >  (action (with-stdout-to %{target} (echo %{pkg:foo:share}))))
+  >  (target out)
+  >  (action
+  >   (with-stdout-to %{target}
+  >    (progn
+  >     (cat %{pkg:foo:lib:lib_dst})
+  >     (cat %{pkg:foo:lib_root:lib_root_dst})
+  >     (cat %{pkg:foo:libexec:libexec_dst})
+  >     (cat %{pkg:foo:libexec_root:libexec_root_dst})
+  >     (cat %{pkg:foo:bin:bin_dst})
+  >     (cat %{pkg:foo:sbin:sbin_dst})
+  >     (cat %{pkg:foo:toplevel:toplevel_dst})
+  >     (cat %{pkg:foo:share:share_dst})
+  >     (cat %{pkg:foo:share_root:share_root_dst})
+  >     (cat %{pkg:foo:etc:etc_dst})
+  >     (cat %{pkg:foo:doc:doc_dst})
+  >     (cat %{pkg:foo:stublibs:stublibs_dst})
+  >     (cat %{pkg:foo:man:man_dst})))))
   > EOF
 
-  $ dune rules --deps _build/default/dep-output 2>&1 | grep -i alias
-  ((Alias ((dir (In_build_dir _build/default)) (name .foo-files))))
+  $ dune build out 2>&1
+  $ cat _build/default/out
+  lib content
+  lib_root content
+  libexec content
+  libexec_root content
+  bin content
+  sbin content
+  toplevel content
+  share content
+  share_root content
+  etc content
+  doc content
+  stublibs content
+  man content
 
-With (expand_aliases_in_sandbox) enabled, the implicit dependency is
-sufficient to make artifacts accessible at the expanded path:
+All source files appear as dependencies (not install staging paths):
 
-  $ cat >dune <<EOF
-  > (rule
-  >  (alias test-read-artifact)
-  >  (action (system "cat %{pkg:foo:share}/data.txt")))
-  > EOF
-
-  $ dune build @test-read-artifact 2>&1
-  some data
+  $ dune rules --format=json _build/default/out 2>&1 | jq 'include "dune"; .[] | ruleDepFilePaths' | sort
+  "_build/default/foo/bin_src"
+  "_build/default/foo/doc_src"
+  "_build/default/foo/etc_src"
+  "_build/default/foo/lib_root_src"
+  "_build/default/foo/lib_src"
+  "_build/default/foo/libexec_root_src"
+  "_build/default/foo/libexec_src"
+  "_build/default/foo/man_src"
+  "_build/default/foo/sbin_src"
+  "_build/default/foo/share_root_src"
+  "_build/default/foo/share_src"
+  "_build/default/foo/stublibs_src"
+  "_build/default/foo/toplevel_src"

@@ -9,44 +9,22 @@ The env-vars parser doesn't expand pforms at all:
 
   $ mkdir -p foo
   $ cat >foo/dune <<EOF
-  > (executable
-  >  (name foo_bin)
-  >  (public_name foo-bin)
-  >  (package foo))
+  > (install (section share) (package foo) (files (src.txt as dest.txt)))
   > EOF
-  $ cat >foo/foo_bin.ml <<EOF
-  > let () = print_endline "I am foo"
+  $ cat >foo/src.txt <<EOF
+  > some data
   > EOF
 
   $ cat >dune <<EOF
   > (env
   >  (_
   >   (env-vars
-  >    (MY_SHARE %{pkg:foo:share}))))
+  >    (MY_FILE %{pkg:foo:share:dest.txt}))))
   > EOF
 
   $ dune build 2>&1
-  File "dune", line 4, characters 13-29:
-  4 |    (MY_SHARE %{pkg:foo:share}))))
-                   ^^^^^^^^^^^^^^^^
+  File "dune", line 4, characters 12-37:
+  4 |    (MY_FILE %{pkg:foo:share:dest.txt}))))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: Atom or quoted string expected
-  [1]
-
-The (binaries) field does expand pforms, but %{pkg:...} introduces deps and
-is rejected in this no-deps context:
-
-  $ cat >dune <<EOF
-  > (env
-  >  (_
-  >   (binaries (%{pkg:foo:bin}/foo-bin as my-tool))))
-  > (rule
-  >  (alias test-env-bin)
-  >  (action (run my-tool)))
-  > EOF
-
-  $ dune build @test-env-bin 2>&1
-  File "dune", line 3, characters 13-27:
-  3 |   (binaries (%{pkg:foo:bin}/foo-bin as my-tool))))
-                   ^^^^^^^^^^^^^^
-  Error: %{pkg:..} isn't allowed in this position.
   [1]

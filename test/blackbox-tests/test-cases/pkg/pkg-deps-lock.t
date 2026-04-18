@@ -21,7 +21,7 @@ registered:
   $ cat >dune <<EOF
   > (rule
   >  (target output)
-  >  (action (with-stdout-to %{target} (echo %{pkg:lockpkg:share}))))
+  >  (action (with-stdout-to %{target} (echo %{pkg:lockpkg:share:data.txt}))))
   > EOF
 
 CR-someday alizter: [dune rules --deps] should be able to show deps without

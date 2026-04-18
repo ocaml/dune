@@ -1,4 +1,5 @@
-%{pkg:...:section} in regular rules should work with lock-file packages.
+%{pkg:package:section:file} in regular rules should work with lock-file
+packages, resolving to the file in the package's target directory.
 
   $ make_lockdir
 
@@ -16,14 +17,11 @@ Create a lock-file package that installs a file into share:
   > (lang dune 3.23)
   > EOF
 
-Use %{pkg:lockpkg:share} in a regular rule to reference the lock-file
-package's install path:
-
   $ cat >dune <<EOF
   > (rule
-  >  (alias test-lock-pkg-path)
-  >  (action (echo "share: %{pkg:lockpkg:share}\n")))
+  >  (alias test-lock-pkg-file)
+  >  (action (echo "%{pkg:lockpkg:share:data.txt}\n")))
   > EOF
 
-  $ dune build @test-lock-pkg-path 2>&1 | sanitize_pkg_digest lockpkg.0.0.1
-  share: ../_private/default/.pkg/lockpkg.0.0.1-DIGEST_HASH/target/share/lockpkg
+  $ dune build @test-lock-pkg-file 2>&1 | sanitize_pkg_digest lockpkg.0.0.1
+  ../_private/default/.pkg/lockpkg.0.0.1-DIGEST_HASH/target/share/lockpkg/data.txt

@@ -105,6 +105,82 @@ let get_installed_binaries ~(context : Context.t) stanzas =
   >>| Filename.Map.union_all ~f:merge
 ;;
 
+let get_installed_package_files ~(context : Context.t) stanzas =
+  Memo.List.map stanzas ~f:(fun d ->
+    let dir = Path.Build.append_source (Context.build_dir context) (Dune_file.dir d) in
+    let* expander = Expander0.get ~dir in
+    let expand_value sw =
+      Expander0.expand expander ~mode:Single sw
+      |> Action_builder.evaluate_and_collect_facts
+      >>| fst
+    in
+    let expand_str sw =
+      Expander0.expand_str expander sw
+      |> Action_builder.evaluate_and_collect_facts
+      >>| fst
+    in
+    let expand_str_partial sw =
+      Expander0.expand_str_partial expander sw
+      |> Action_builder.evaluate_and_collect_facts
+      >>| fst
+    in
+    let files_from_install ~package ~section files =
+      let* unexpanded_file_bindings =
+        Install_entry.File.to_file_bindings_unexpanded files ~expand:expand_value ~dir
+      in
+      Memo.List.map unexpanded_file_bindings ~f:(fun fb ->
+        let* expanded =
+          File_binding_expand.expand
+            fb
+            ~dir
+            ~f:(Expander0.expand_str_and_build_deps expander)
+        in
+        let+ dst =
+          File_binding_expand.destination_relative_to_install_path
+            fb
+            ~section
+            ~expand:expand_str
+            ~expand_partial:expand_str_partial
+        in
+        let dst_str = Install.Entry.Dst.to_string dst in
+        let src_path = File_binding.Expanded.src expanded in
+        Some (package, section, dst_str, src_path))
+      >>| List.filter_opt
+    in
+    Dune_file.static_stanzas d
+    |> Memo.List.map ~f:(fun stanza ->
+      match Stanza.repr stanza with
+      | Install_conf.T { section = _loc, Section section; files; package; _ } ->
+        let package = Package.name package in
+        files_from_install ~package ~section files
+      | _ -> Memo.return [])
+    >>| List.concat)
+  >>| List.concat
+;;
+
+let package_install_files =
+  let f context_name =
+    let* stanzas = Dune_load.dune_files context_name in
+    let* context =
+      Context.DB.all ()
+      >>| List.find_exn ~f:(fun ctx -> Context_name.equal (Context.name ctx) context_name)
+    in
+    get_installed_package_files ~context stanzas
+  in
+  Memo.create "package-install-files" f ~input:(module Context_name)
+;;
+
+let resolve_package_install_file context_name ~pkg ~section ~file =
+  let+ entries = Memo.exec package_install_files context_name in
+  List.find_map entries ~f:(fun (entry_pkg, entry_section, dst, src) ->
+    if
+      Package.Name.equal entry_pkg pkg
+      && Ordering.is_eq (Section.compare entry_section section)
+      && String.equal dst file
+    then Some src
+    else None)
+;;
+
 let all =
   Memo.lazy_ ~name:"Artifacts_db.all"
   @@ fun () ->

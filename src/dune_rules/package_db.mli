@@ -10,12 +10,6 @@ type any_package =
 val create : Context_name.t -> t Memo.t
 val find_package : t -> Package.Name.t -> any_package option Memo.t
 
-val resolve_package_section
-  :  t
-  -> Package.Name.t
-  -> Section.t
-  -> (Path.t * unit Action_builder.t) option Memo.t
-
 val section_of_any_package_site
   :  any_package
   -> Package.Name.t

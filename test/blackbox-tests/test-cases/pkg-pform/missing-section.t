@@ -1,8 +1,4 @@
-%{pkg:foo:section} expands to a directory path. The path is always computed
-from the install layout convention, even for sections the package doesn't
-install to. This is consistent across all package types.
-
-For installed packages, the path is derived from the install prefix:
+Requesting a file that doesn't exist in an installed package is rejected.
 
   $ mkdir -p src prefix consumer
 
@@ -12,10 +8,10 @@ For installed packages, the path is derived from the install prefix:
   > EOF
 
   $ cat >src/dune <<EOF
-  > (install (section share) (package extpkg) (files (hello.txt as hello.txt)))
+  > (install (section share) (package extpkg) (files (src.txt as published.txt)))
   > EOF
 
-  $ cat >src/hello.txt <<EOF
+  $ cat >src/src.txt <<EOF
   > hello from installed
   > EOF
 
@@ -26,46 +22,38 @@ For installed packages, the path is derived from the install prefix:
   $ dune install --root src --prefix $PWD/prefix --display short 2>&1
   Installing $TESTCASE_ROOT/prefix/lib/extpkg/META
   Installing $TESTCASE_ROOT/prefix/lib/extpkg/dune-package
-  Installing $TESTCASE_ROOT/prefix/share/extpkg/hello.txt
+  Installing $TESTCASE_ROOT/prefix/share/extpkg/published.txt
 
   $ cat >consumer/dune-project <<EOF
   > (lang dune 3.23)
   > EOF
 
+Requesting the published file works:
+
   $ cat >consumer/dune <<EOF
   > (rule
-  >  (alias test-installed-missing)
-  >  (action (echo "%{pkg:extpkg:sbin}\n")))
+  >  (alias test-ok)
+  >  (action (echo "%{pkg:extpkg:share:published.txt}\n")))
   > EOF
 
-  $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root consumer @test-installed-missing 2>&1
+  $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root consumer @test-ok 2>&1
   Entering directory 'consumer'
-  $TESTCASE_ROOT/prefix/sbin
+  $TESTCASE_ROOT/prefix/share/extpkg/published.txt
   Leaving directory 'consumer'
 
-For workspace packages, similarly returns the path even though foo only
-installs to share:
+Requesting a file that doesn't exist is rejected:
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.23)
-  > (package (name foo))
-  > EOF
-
-  $ mkdir -p foo
-
-  $ cat >foo/dune <<EOF
-  > (install (section share) (package foo) (files (data.txt as data.txt)))
-  > EOF
-
-  $ cat >foo/data.txt <<EOF
-  > some data
-  > EOF
-
-  $ cat >dune <<EOF
+  $ cat >consumer/dune <<EOF
   > (rule
-  >  (alias test-local-missing)
-  >  (action (echo "%{pkg:foo:sbin}\n")))
+  >  (alias test-missing)
+  >  (action (echo "%{pkg:extpkg:share:missing.txt}\n")))
   > EOF
 
-  $ dune build @test-local-missing 2>&1
-  ../install/default/sbin
+  $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root consumer @test-missing 2>&1
+  Entering directory 'consumer'
+  File "dune", line 3, characters 16-47:
+  3 |  (action (echo "%{pkg:extpkg:share:missing.txt}\n")))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: File missing.txt not found in section share of package extpkg
+  Leaving directory 'consumer'
+  [1]

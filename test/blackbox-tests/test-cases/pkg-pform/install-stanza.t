@@ -13,10 +13,10 @@ pform expansion.
   > (install
   >  (section share)
   >  (package foo)
-  >  (files (data.txt as data.txt)))
+  >  (files (src.txt as dest.txt)))
   > EOF
 
-  $ cat >foo/data.txt <<EOF
+  $ cat >foo/src.txt <<EOF
   > foo data
   > EOF
 
@@ -27,12 +27,12 @@ pform expansion.
   > (install
   >  (section share)
   >  (package bar)
-  >  (files (generated.txt as %{pkg:foo:share}/nested.txt)))
+  >  (files (generated.txt as %{pkg:foo:share:dest.txt}/nested.txt)))
   > EOF
 
   $ dune build @install 2>&1
-  File "dune", line 7, characters 26-42:
-  7 |  (files (generated.txt as %{pkg:foo:share}/nested.txt)))
-                                ^^^^^^^^^^^^^^^^
+  File "dune", line 7, characters 26-51:
+  7 |  (files (generated.txt as %{pkg:foo:share:dest.txt}/nested.txt)))
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: %{pkg:..} isn't allowed in this position.
   [1]

@@ -1,4 +1,4 @@
-Test that %{pkg:...} supports cross-package references in regular rules.
+Test that %{pkg:...} supports cross-package file references.
 
   $ cat >dune-project <<EOF
   > (lang dune 3.23)
@@ -12,10 +12,10 @@ Test that %{pkg:...} supports cross-package references in regular rules.
   > (install
   >  (section share)
   >  (package foo)
-  >  (files (data.txt as data.txt)))
+  >  (files (foo_src.txt as foo_data.txt)))
   > EOF
 
-  $ cat >foo/data.txt <<EOF
+  $ cat >foo/foo_src.txt <<EOF
   > foo data
   > EOF
 
@@ -23,10 +23,10 @@ Test that %{pkg:...} supports cross-package references in regular rules.
   > (install
   >  (section share)
   >  (package bar)
-  >  (files (greeting.txt as greeting.txt)))
+  >  (files (bar_src.txt as bar_data.txt)))
   > EOF
 
-  $ cat >bar/greeting.txt <<EOF
+  $ cat >bar/bar_src.txt <<EOF
   > hello
   > EOF
 
@@ -34,12 +34,11 @@ Test that %{pkg:...} supports cross-package references in regular rules.
   > (rule
   >  (alias test-cross-pkg)
   >  (action
-  >   (echo
-  >    "\| foo-share: %{pkg:foo:share}
-  >    "\| bar-share: %{pkg:bar:share}
-  >   )))
+  >   (progn
+  >    (cat %{pkg:foo:share:foo_data.txt})
+  >    (cat %{pkg:bar:share:bar_data.txt}))))
   > EOF
 
   $ dune build @test-cross-pkg 2>&1
-  foo-share: ../install/default/share/foo
-  bar-share: ../install/default/share/bar
+  foo data
+  hello

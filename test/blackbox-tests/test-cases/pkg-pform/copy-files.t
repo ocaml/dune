@@ -12,20 +12,20 @@ pform expansion.
   > (install
   >  (section share)
   >  (package foo)
-  >  (files (data.txt as data.txt)))
+  >  (files (src.txt as dest.txt)))
   > EOF
 
-  $ cat >foo/data.txt <<EOF
+  $ cat >foo/src.txt <<EOF
   > some data
   > EOF
 
   $ cat >dune <<EOF
-  > (copy_files %{pkg:foo:share}/*.txt)
+  > (copy_files %{pkg:foo:share:dest.txt})
   > EOF
 
   $ dune build 2>&1
-  File "dune", line 1, characters 12-28:
-  1 | (copy_files %{pkg:foo:share}/*.txt)
-                  ^^^^^^^^^^^^^^^^
+  File "dune", line 1, characters 12-37:
+  1 | (copy_files %{pkg:foo:share:dest.txt})
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: %{pkg:..} isn't allowed in this position.
   [1]

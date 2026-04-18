@@ -8,10 +8,10 @@ Test that %{pkg:...} works for installed packages outside the workspace.
   > EOF
 
   $ cat >src/dune <<EOF
-  > (install (section share) (package extpkg) (files (hello.txt as hello.txt)))
+  > (install (section share) (package extpkg) (files (src.txt as published.txt)))
   > EOF
 
-  $ cat >src/hello.txt <<EOF
+  $ cat >src/src.txt <<EOF
   > hello from installed
   > EOF
 
@@ -22,10 +22,9 @@ Test that %{pkg:...} works for installed packages outside the workspace.
   $ dune install --root src --prefix $PWD/prefix --display short 2>&1
   Installing $TESTCASE_ROOT/prefix/lib/extpkg/META
   Installing $TESTCASE_ROOT/prefix/lib/extpkg/dune-package
-  Installing $TESTCASE_ROOT/prefix/share/extpkg/hello.txt
+  Installing $TESTCASE_ROOT/prefix/share/extpkg/published.txt
 
-Reference the installed package from a separate project via OCAMLPATH.
-The share section resolves to the absolute installed path:
+Reference the installed file from a separate project via OCAMLPATH:
 
   $ cat >consumer/dune-project <<EOF
   > (lang dune 3.23)
@@ -33,35 +32,11 @@ The share section resolves to the absolute installed path:
 
   $ cat >consumer/dune <<EOF
   > (rule
-  >  (alias test-installed-pkg)
-  >  (action (echo "share: %{pkg:extpkg:share}\n")))
+  >  (alias test-installed-file)
+  >  (action (echo "%{pkg:extpkg:share:published.txt}\n")))
   > EOF
 
-  $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root consumer @test-installed-pkg 2>&1
+  $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root consumer @test-installed-file 2>&1
   Entering directory 'consumer'
-  share: $TESTCASE_ROOT/prefix/share/extpkg
-  Leaving directory 'consumer'
-
-A dependency on the package's lib directory is registered:
-
-  $ cat >consumer/dune <<EOF
-  > (rule
-  >  (target output)
-  >  (action (with-stdout-to %{target} (echo %{pkg:extpkg:share}))))
-  > EOF
-
-  $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune rules --root consumer --deps _build/default/output 2>&1 | grep -F prefix/lib/extpkg
-     $TESTCASE_ROOT/prefix/lib/extpkg)))
-
-The installed artifact is accessible through the expanded path:
-
-  $ cat >consumer/dune <<EOF
-  > (rule
-  >  (alias test-read)
-  >  (action (system "cat %{pkg:extpkg:share}/hello.txt")))
-  > EOF
-
-  $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root consumer @test-read 2>&1
-  Entering directory 'consumer'
-  hello from installed
+  $TESTCASE_ROOT/prefix/share/extpkg/published.txt
   Leaving directory 'consumer'

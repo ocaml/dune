@@ -1,12 +1,15 @@
 Demonstrate what happens when the server is shut down in the middle of serving
 a client.
 
-  $ cat > dune-projec <<EOF
-  > (lang dune 3.21)
-  > EOF
+  $ make_dune_project 3.21
+  $ STARTED=$(mktemp)
+  $ RELEASE=$(mktemp)
+  $ OUTPUT=$(mktemp)
+  $ rm "$STARTED" "$RELEASE"
 
   $ cat > mytest.t <<EOF
-  >   $ sleep 1
+  >   $ touch "$STARTED"
+  >   $ dune_cmd wait-for-file-to-appear "$RELEASE"
   >   $ echo 'took too long'
   > EOF
 
@@ -17,11 +20,9 @@ a client.
   $ dune rpc ping --wait
   Server appears to be responding normally
 
-  $ dune build --alias runtest &
-  Error: Server returned error: 
-  Connection terminated. This request will never receive a response. (error
-  kind: Connection_dead)
+  $ dune build --alias runtest >"$OUTPUT" 2>&1 &
   $ PID=$!
+  $ with_timeout dune_cmd wait-for-file-to-appear "$STARTED"
 
   $ dune rpc ping
   Server appears to be responding normally
@@ -31,3 +32,7 @@ a client.
 This allows us to observe the exit code which should be non-zero.
   $ wait $PID
   [1]
+  $ cat "$OUTPUT"
+  Error: Server returned error: 
+  Connection terminated. This request will never receive a response. (error
+  kind: Connection_dead)

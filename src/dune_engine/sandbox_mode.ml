@@ -6,29 +6,12 @@ type some =
   | Hardlink
   | Patch_back_source_tree
 
-let compare_some a b =
-  match a, b with
-  | Symlink, Symlink -> Eq
-  | Symlink, _ -> Lt
-  | _, Symlink -> Gt
-  | Copy, Copy -> Eq
-  | Copy, _ -> Lt
-  | _, Copy -> Gt
-  | Hardlink, Hardlink -> Eq
-  | Hardlink, _ -> Lt
-  | _, Hardlink -> Gt
-  | Patch_back_source_tree, Patch_back_source_tree -> Eq
-;;
+let compare_some (a : some) (b : some) = Poly.compare a b
 
 type t = some option
 
 let compare = Option.compare compare_some
-
-let equal a b =
-  match compare a b with
-  | Eq -> true
-  | Lt | Gt -> false
-;;
+let equal (a : t) (b : t) = Poly.equal a b
 
 let repr =
   Repr.variant
@@ -41,13 +24,7 @@ let repr =
     ]
 ;;
 
-let to_dyn =
-  Dyn.option (function
-    | Symlink -> Variant ("Symlink", [])
-    | Copy -> Variant ("Copy", [])
-    | Hardlink -> Variant ("Hardlink", [])
-    | Patch_back_source_tree -> Variant ("Patch_back_source_tree", []))
-;;
+let to_dyn = Repr.to_dyn repr
 
 module Dict = struct
   type key = t
@@ -59,15 +36,6 @@ module Dict = struct
     ; hardlink : 'a
     ; patch_back_source_tree : 'a
     }
-
-  let compare compare { none; symlink; copy; hardlink; patch_back_source_tree } t =
-    let open Ordering.O in
-    let= () = compare none t.none in
-    let= () = compare symlink t.symlink in
-    let= () = compare copy t.copy in
-    let= () = compare hardlink t.hardlink in
-    compare patch_back_source_tree t.patch_back_source_tree
-  ;;
 
   let of_func (f : key -> _) =
     { none = f None

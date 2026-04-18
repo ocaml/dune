@@ -279,8 +279,6 @@ type message_kind =
   | Notification
 
 module Event = struct
-  module Event = Chrome_trace.Event
-
   type t =
     | Session of Dune_trace.Event.Rpc.stage
     | Message of

@@ -14,5 +14,4 @@
   dune_rpc
   dyn
   ordering
-  dune_trace
-  chrome_trace))
+  dune_trace))

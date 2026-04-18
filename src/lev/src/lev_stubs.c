@@ -273,7 +273,9 @@ CAMLprim value lev_ev_now(value v_ev) {
 
 CAMLprim value lev_sleep(value v_ts) {
   CAMLparam1(v_ts);
+  caml_release_runtime_system();
   ev_sleep(Double_val(v_ts));
+  caml_acquire_runtime_system();
   CAMLreturn(Val_unit);
 }
 

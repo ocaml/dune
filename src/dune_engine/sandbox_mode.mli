@@ -47,7 +47,6 @@ module Dict : sig
     ; patch_back_source_tree : 'a
     }
 
-  val compare : ('a -> 'a -> Ordering.t) -> 'a t -> 'a t -> Ordering.t
   val of_func : (key -> 'a) -> 'a t
   val get : 'a t -> key -> 'a
 end

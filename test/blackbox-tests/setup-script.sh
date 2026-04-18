@@ -83,6 +83,7 @@ start_dune () {
     ( (dune build "$@" --passive-watch-mode > .#dune-output 2>&1) || (echo exit $? >> .#dune-output) ) &
     DUNE_PID=$!;
     export DUNE_RUNNING=1;
+    wait_for_rpc_server
 }
 
 timeout="$(command -v timeout || echo gtimeout)"
@@ -99,6 +100,31 @@ with_timeout () {
     fi
 }
 
+with_timeout_quiet () {
+    output=$(mktemp)
+    $timeout 2 "$@" >"$output" 2>&1
+    exit_code=$?
+    if [ "$exit_code" = 124 ]
+    then
+        echo Timed out
+        cat "$output"
+        cat .#dune-output
+    elif [ "$exit_code" != 0 ]
+    then
+        cat "$output"
+    fi
+    rm -f "$output"
+    return "$exit_code"
+}
+
+shutdown_dune () {
+    with_timeout dune shutdown
+}
+
+shutdown_dune_quiet () {
+    with_timeout_quiet dune shutdown
+}
+
 wait_for_dune_exit () {
     # On Linux, we may run into a bash pid aliasing bug that causes wait to
     # reject the pid. Therefore we use tail to wait instead.
@@ -112,14 +138,66 @@ wait_for_dune_exit () {
     fi
 }
 
+wait_for_pid_to_exit_with_timeout () {
+    pid=$1
+    iterations=$2
+    while kill -0 "$pid" 2>/dev/null
+    do
+        if [ "$iterations" = 0 ]
+        then
+            return 124
+        fi
+        iterations=$((iterations - 1))
+        sleep 0.01
+    done
+}
+
 stop_dune () {
-    with_timeout dune shutdown;
+    shutdown_dune;
     wait_for_dune_exit;
     cat .#dune-output;
 }
 
 build () {
     with_timeout dune rpc build --wait "$@"
+}
+
+stop_dune_quiet () {
+    shutdown_dune_quiet;
+    wait_for_dune_exit_with_timeout;
+}
+
+build_quiet () {
+    with_timeout_quiet dune rpc build --wait "$@"
+}
+
+wait_for_rpc_server () {
+    with_timeout_quiet dune rpc ping --wait
+}
+
+summarize_rpc_trace () {
+    dune trace cat | jq -r '
+      select(.cat == "rpc")
+      | if .name == "accept"
+           and .args.stage == "stop"
+           and (.args.success == false)
+        then "accept stop false"
+        elif .name == "request" and .args.meth == "build"
+        then "build \(.args.stage)"
+        elif .name == "shutdown"
+        then "shutdown \(.args.stage)"
+        else empty
+        end'
+}
+
+wait_for_dune_exit_with_timeout () {
+    exit_code=0
+    wait_for_pid_to_exit_with_timeout "$DUNE_PID" 200 || exit_code=$?
+    if [ "$exit_code" = 124 ]
+    then
+        summarize_rpc_trace
+    fi
+    return "$exit_code"
 }
 
 wait_for_file () {

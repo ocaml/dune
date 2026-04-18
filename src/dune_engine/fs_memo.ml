@@ -171,12 +171,7 @@ module Cached_digest = struct
   ;;
 
   let digest_path_with_stats path stats =
-    match
-      Digest.path_with_stats
-        ~allow_dirs:true
-        path
-        (Digest.Stats_for_digest.of_time_stat stats)
-    with
+    match Digest.path_with_stats path (Digest.Stats_for_digest.of_time_stat stats) with
     | Ok digest -> Ok digest
     | Error Unexpected_kind -> Error (Digest_result.Error.Unexpected_kind stats.kind)
     | Error (Unix_error (ENOENT, _, _)) -> Error No_such_file

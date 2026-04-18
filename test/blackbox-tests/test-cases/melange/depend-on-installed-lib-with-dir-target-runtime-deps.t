@@ -82,9 +82,21 @@ Test `melange.runtime_deps` in a library that has been installed
 
   $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root app @mel --debug-dependency-path
   Entering directory 'app'
+  File "dune", lines 1-6, characters 0-114:
+  1 | (melange.emit
+  2 |  (target output)
+  3 |  (alias mel)
+  4 |  (emit_stdlib false)
+  5 |  (libraries foo)
+  6 |  (preprocess (pps melange.ppx)))
+  Error: File unavailable:
+  $TESTCASE_ROOT/prefix/lib/foo/some_dir
+  Unexpected file kind "S_DIR" (directory)
+  -> required by _build/default/output/node_modules/foo/some_dir
+  -> required by alias output/mel
   Leaving directory 'app'
+  [1]
 
   $ ls app/_build/default/output/node_modules/foo
   foo.js
   index.txt
-  some_dir

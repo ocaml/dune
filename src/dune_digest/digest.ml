@@ -354,7 +354,6 @@ end
 let string s = Feed.compute_digest Feed.string s
 let string_pooled s = Feed.compute_digest_pooled Feed.string s
 let to_string_raw s = Blake3_mini.Digest.to_binary s
-let digest_repr = Repr.view Repr.string ~to_:to_string
 
 let repr_with compute_digest repr a =
   let start = Counter.Timer.start () in
@@ -365,7 +364,6 @@ let repr_with compute_digest repr a =
 ;;
 
 let repr repr a = repr_with Feed.compute_digest repr a
-let repr_pooled repr a = repr_with Feed.compute_digest_pooled repr a
 
 let path_with_executable_bit_with string_digest =
   let string_and_bool ~digest_hex ~bool =
@@ -416,86 +414,38 @@ module Path_digest_error = struct
     | Unix_error of Unix_error.Detailed.t
 end
 
-exception E of Path_digest_error.t
-
-let directory_digest_with =
-  let directory_digest_version = 4 in
-  let directory_digest_repr = Repr.(triple int (list (pair string digest_repr)) bool) in
-  fun repr_digest ~contents ~executable ->
-    repr_digest directory_digest_repr (directory_digest_version, contents, executable)
-;;
-
 let path_with_stats_internal
-      ~allow_dirs
       ~string_digest
-      ~directory_digest
       ~file_with_executable_bit
       path
       (stats : Stats_for_digest.t)
   =
-  let rec loop path (stats : Stats_for_digest.t) =
-    match stats.st_kind with
-    | S_LNK ->
-      Unix_error.Detailed.catch
-        (fun path ->
-           let contents = Path.to_string path |> Unix.readlink |> string_digest in
-           path_with_executable_bit ~executable:stats.executable ~content_digest:contents)
-        path
-      |> Result.map_error ~f:(fun x -> Path_digest_error.Unix_error x)
-    | S_REG ->
-      Unix_error.Detailed.catch
-        (file_with_executable_bit ~executable:stats.executable)
-        path
-      |> Result.map_error ~f:(fun x -> Path_digest_error.Unix_error x)
-    | S_DIR when allow_dirs ->
-      (* CR-someday amokhov: The current digesting scheme has collisions for files
-         and directories. It's unclear if this is actually a problem. If it turns
-         out to be a problem, we should include [st_kind] into both digests. *)
-      (match Path.readdir_unsorted path with
-       | Error e -> Error (Path_digest_error.Unix_error e)
-       | Ok listing ->
-         (match
-            List.rev_map listing ~f:(fun name ->
-              let path = Path.relative path name in
-              let stats =
-                match Path.lstat path with
-                | Error e -> raise_notrace (E (Unix_error e))
-                | Ok stat -> Stats_for_digest.of_unix_stats stat
-              in
-              let digest =
-                match loop path stats with
-                | Ok s -> s
-                | Error e -> raise_notrace (E e)
-              in
-              name, digest)
-            |> List.sort ~compare:(fun (x, _) (y, _) -> String.compare x y)
-          with
-          | exception E e -> Error e
-          | contents -> Ok (directory_digest ~contents ~executable:stats.executable)))
-    | S_DIR | S_BLK | S_CHR | S_FIFO | S_SOCK -> Error Unexpected_kind
-  in
   match stats.st_kind with
-  | S_DIR when not allow_dirs -> Error Path_digest_error.Unexpected_kind
-  | S_BLK | S_CHR | S_LNK | S_FIFO | S_SOCK -> Error Unexpected_kind
-  | _ -> loop path stats
+  | S_LNK ->
+    Unix_error.Detailed.catch
+      (fun path ->
+         let contents = Path.to_string path |> Unix.readlink |> string_digest in
+         path_with_executable_bit ~executable:stats.executable ~content_digest:contents)
+      path
+    |> Result.map_error ~f:(fun x -> Path_digest_error.Unix_error x)
+  | S_REG ->
+    Unix_error.Detailed.catch (file_with_executable_bit ~executable:stats.executable) path
+    |> Result.map_error ~f:(fun x -> Path_digest_error.Unix_error x)
+  | S_DIR | S_BLK | S_CHR | S_FIFO | S_SOCK -> Error Unexpected_kind
 ;;
 
-let path_with_stats ~allow_dirs path stats =
+let path_with_stats path stats =
   path_with_stats_internal
-    ~allow_dirs
     ~string_digest:string
-    ~directory_digest:(directory_digest_with repr)
     ~file_with_executable_bit:file_with_executable_bit_sync
     path
     stats
 ;;
 
-let path_with_stats_async ~allow_dirs path (stats : Stats_for_digest.t) =
+let path_with_stats_async path (stats : Stats_for_digest.t) =
   let f () =
     path_with_stats_internal
-      ~allow_dirs
       ~string_digest:string_pooled
-      ~directory_digest:(directory_digest_with repr_pooled)
       ~file_with_executable_bit:file_with_executable_bit_pooled
       path
       stats

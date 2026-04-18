@@ -68,8 +68,8 @@ transitive implementation closure, even across `.mli` boundaries.
   > let () = ignore (Foo.Foo_map.Int.size (Obj.magic 0))
   > EOF
 
-  $ dune rules --deps app/dist/node_modules/repro.foo/foo_map.js \
-  >   | sed -n 's#.*\(lib/.foo\.objs/melange/[^)]*\).*#\1#p'
+  $ dune rules --root . --format=json --deps app/dist/node_modules/repro.foo/foo_map.js |
+  > jq -r 'include "dune"; .[] | depsFilePaths | select(test("lib/\\.foo\\.objs/melange/.*\\.cmj$")) | sub("^_build/default/"; "")'
   lib/.foo.objs/melange/foo__Foo_internalAVLtree.cmj
   lib/.foo.objs/melange/foo__Foo_internalMapInt.cmj
   lib/.foo.objs/melange/foo__Foo_map.cmj

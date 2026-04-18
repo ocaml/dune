@@ -19,16 +19,12 @@ Add a private library to package foo
 Cmj rules `--bs-package-output` should be `.` like public libraries (relative
 to the dune file dir)
 
-  $ dune rules lib/.a.objs/melange/a.cmj |
-  > grep -e "--bs-package-output" --after-context=1
-      --bs-package-output
-      .
+  $ dune rules --root . --format=json lib/.a.objs/melange/a.cmj |
+  > jq -r 'include "dune"; .[] | ruleActionFlagValues("--bs-package-output")'
+  .
 
 Cmj rules should include `--bs-package-name` with the private mangled name
 
-  $ dune rules lib/.a.objs/melange/a.cmj |
-  > grep -A1 -e "--bs-package-name"
-      --bs-package-name
-      foo.__private__.a
-
-
+  $ dune rules --root . --format=json lib/.a.objs/melange/a.cmj |
+  > jq -r 'include "dune"; .[] | ruleActionFlagValues("--bs-package-name")'
+  foo.__private__.a

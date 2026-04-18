@@ -35,4 +35,3 @@ Path to app_B is non-relative (broken)
 
   $ dune clean
   $ dune build @all
-

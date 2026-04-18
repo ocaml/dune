@@ -141,3 +141,4 @@ one can extend link flags in env
   $ dune rules sub/main.exe --profile some-profile  | tr -s '\n' ' ' |
   > grep -ce "Main.cmx$GCC_LF_LIB$OTHER\|Main.cmx$Clang_LF_LIB$OTHER\|Main.cmx$Msvc_LF_LIB$OTHER"
   1
+ 

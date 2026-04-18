@@ -17,7 +17,7 @@ Test Melange extension stanza versioning
   > EOF
 
 Only supported after Dune 3.20
-  $ dune rules app/.pkg.objs/melange/pkg__App.cmj
+  $ dune rules --root . --format=json app/.pkg.objs/melange/pkg__App.cmj
   File "dune-project", line 2, characters 15-18:
   2 | (using melange 1.0)
                      ^^^
@@ -34,10 +34,9 @@ Only supported after Dune 3.20
   > EOF
 
 Cmj rules should include --mel-package-output
-  $ dune rules app/.pkg.objs/melange/pkg__App.cmj |
-  > grep -e "--mel-package-name" --after-context=1
-      --mel-package-name
-      pkg
+  $ dune rules --root . --format=json app/.pkg.objs/melange/pkg__App.cmj |
+  > jq -r 'include "dune"; .[] | ruleActionFlagValues("--mel-package-name")'
+  pkg
 
 
 Using `(module_system es6)` is deprecated in `(using melange 1.0)`
@@ -45,10 +44,9 @@ Using `(module_system es6)` is deprecated in `(using melange 1.0)`
   $ cat > app/dune <<EOF
   > (melange.emit (target dist) (module_systems es6))
   > EOF
-  $ dune rules @app/melange > /dev/null
+  $ dune rules --root . --format=json @app/melange > /dev/null
   File "app/dune", line 1, characters 44-47:
   1 | (melange.emit (target dist) (module_systems es6))
                                                   ^^^
   Warning: 'es6' was deprecated in version 1.0 of the Melange extension. Use
   `esm' instead.
-

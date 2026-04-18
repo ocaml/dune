@@ -27,6 +27,112 @@ def targetsMatching($m):
   | {target_files, target_dirs}
   | del(..|nulls);
 
+def ruleTargets:
+  (.targets.files // []) + (.targets.directories // []);
+
+def pathMatches($path):
+  . == $path or endswith("/" + $path);
+
+def rulesMatchingTargetFilter(f):
+  .[] | select((ruleTargets | any(f)));
+
+def rulesMatchingTarget($path):
+  rulesMatchingTargetFilter(pathMatches($path));
+
+def depFileEntries:
+  .[] | select(has("File")) | { kind: .File[0], path: .File[1] };
+
+def depsFilePaths:
+  depFileEntries | .path;
+
+def depsFilePathsOfKind($kind):
+  depFileEntries | select(.kind == $kind) | .path;
+
+def depGlobEntries:
+  .[] | select(has("glob")) | .glob
+  | { dir_kind: .dir[0], dir: .dir[1], predicate, only_generated_files };
+
+def depsGlobs:
+  depGlobEntries;
+
+def depsGlobEntriesWithPredicate($predicate):
+  depGlobEntries | select(.predicate == $predicate);
+
+def depsGlobDirsWithPredicate($predicate):
+  depsGlobEntriesWithPredicate($predicate) | .dir;
+
+def depsGlobPredicates:
+  depGlobEntries | .predicate;
+
+def ruleDepFileEntries:
+  .deps | depFileEntries;
+
+def ruleDepFilePaths:
+  .deps | depsFilePaths;
+
+def ruleDepFilePathsOfKind($kind):
+  .deps | depsFilePathsOfKind($kind);
+
+def ruleDepGlobEntries:
+  .deps | depGlobEntries;
+
+def ruleDepGlobDirsWithPredicate($predicate):
+  .deps | depsGlobDirsWithPredicate($predicate);
+
+def ruleDepGlobPredicates:
+  .deps | depsGlobPredicates;
+
+def ruleHasDepFile($path):
+  [ ruleDepFilePaths | select(pathMatches($path)) ] | length > 0;
+
+def ruleActionNodes:
+  .action | .. | arrays | select(length > 0 and (.[0] | type) == "string");
+
+def ruleActionsNamed($name):
+  ruleActionNodes | select(.[0] == $name);
+
+def ruleActionRunArgv:
+  ruleActionsNamed("run") | .[1:];
+
+def argListContainsSequence($seq):
+  . as $args
+  | ($seq | length) as $n
+  | if $n == 0 then false
+    elif ($args | length) < $n then false
+    else [ range(0; ($args | length) - $n + 1) as $i
+         | $args[$i:($i + $n)] == $seq
+         ] | any
+    end;
+
+def argListHasSuffix($suffix):
+  . as $args
+  | ($suffix | length) as $n
+  | if $n == 0 then false
+    elif ($args | length) < $n then false
+    else $args[(-$n):] == $suffix
+    end;
+
+def ruleHasRunArg($arg):
+  [ ruleActionRunArgv | index($arg) != null ] | any;
+
+def ruleHasRunContaining($seq):
+  [ ruleActionRunArgv | argListContainsSequence($seq) ] | any;
+
+def ruleHasRunSuffix($suffix):
+  [ ruleActionRunArgv | argListHasSuffix($suffix) ] | any;
+
+def ruleActionFlagValues($flag):
+  ruleActionRunArgv as $args
+  | ($args | length) as $n
+  | if $n < 2
+    then empty
+    else range(0; $n - 1) | select($args[.] == $flag) | $args[. + 1]
+    end;
+
+def ruleHasCopy($src; $dst):
+  [ ruleActionsNamed("copy") | select(.[1] == $src and .[2] == $dst) ]
+  | length > 0;
+
 def basename: split("/") | last;
 
 def progMatching($m):

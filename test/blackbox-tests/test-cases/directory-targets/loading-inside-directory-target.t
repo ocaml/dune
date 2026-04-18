@@ -50,14 +50,27 @@ output/
 
 Now we try loading the rules in output/a and make sure that nothing is deleted:
 
-  $ dune rules output/a/
-  ((deps ())
-   (targets ((files ()) (directories (_build/default/output))))
-   (context default)
-   (action
-    (chdir
-     _build/default
-     (bash "echo creating output dir && mkdir -p output/a && touch output/a/b"))))
+  $ dune rules --root . --format=json output/a/ | jq .
+  [
+    {
+      "deps": [],
+      "targets": {
+        "files": [],
+        "directories": [
+          "_build/default/output"
+        ]
+      },
+      "context": "default",
+      "action": [
+        "chdir",
+        "_build/default",
+        [
+          "bash",
+          "echo creating output dir && mkdir -p output/a && touch output/a/b"
+        ]
+      ]
+    }
+  ]
 
   $ dune trace cat | loadedDirs
   {"dir":"_build/default/output"}

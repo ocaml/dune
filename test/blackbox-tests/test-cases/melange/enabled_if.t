@@ -15,9 +15,9 @@
   > let () = Js.log "hello"
   > EOF
 
-  $ dune rules @melange | grep '\.cmj'
-     (File (In_build_dir _build/default/.out.mobjs/melange/melange__X.cmj))))
-      .out.mobjs/melange/melange__X.cmj))))
+  $ dune rules --root . --format=json @melange |
+  > jq -r 'include "dune"; .[] | ruleDepFilePaths | select(test("\\.cmj$"))'
+  _build/default/.out.mobjs/melange/melange__X.cmj
   $ dune build @melange
 
   $ dune clean
@@ -38,7 +38,7 @@
 
 No rules attached to the alias
 
-  $ dune rules @melange
+  $ dune rules --root . --format=json @melange
   Error: Alias "melange" specified on the command line is empty.
   It is not defined in . or any of its descendants.
   [1]

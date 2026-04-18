@@ -182,6 +182,25 @@ let feed_repr hasher =
     | String ->
       feed_int hasher scratch 4;
       feed_string hasher scratch value
+    | Int32 ->
+      feed_int hasher scratch 12;
+      feed_int64 hasher scratch (Int64.of_int32 value)
+    | Int64 ->
+      feed_int hasher scratch 13;
+      feed_int64 hasher scratch value
+    | Nativeint ->
+      feed_int hasher scratch 14;
+      feed_int64 hasher scratch (Int64.of_nativeint value)
+    | Bytes ->
+      feed_int hasher scratch 15;
+      feed_int hasher scratch (Bytes.length value);
+      feed_bytes_raw hasher value ~len:(Bytes.length value)
+    | Char ->
+      feed_int hasher scratch 16;
+      feed_int hasher scratch (Char.code value)
+    | Float ->
+      feed_int hasher scratch 17;
+      feed_int64 hasher scratch (Int64.bits_of_float value)
     | Option repr ->
       feed_int hasher scratch 5;
       (match value with
@@ -208,6 +227,13 @@ let feed_repr hasher =
       loop first first_value;
       loop second second_value;
       loop third third_value
+    | Quadruple (first, second, third, fourth) ->
+      feed_int hasher scratch 18;
+      let first_value, second_value, third_value, fourth_value = value in
+      loop first first_value;
+      loop second second_value;
+      loop third third_value;
+      loop fourth fourth_value
     | Fix repr -> loop (Lazy.force repr) value
     | Record (_, fields) ->
       feed_int hasher scratch 10;

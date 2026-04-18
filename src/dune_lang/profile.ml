@@ -8,6 +8,21 @@ type t =
   | Release
   | User_defined of string
 
+let repr =
+  Repr.variant
+    "profile"
+    [ Repr.case0 "Dev" ~test:(function
+        | Dev -> true
+        | Release | User_defined _ -> false)
+    ; Repr.case0 "Release" ~test:(function
+        | Release -> true
+        | Dev | User_defined _ -> false)
+    ; Repr.case "User_defined" Repr.string ~proj:(function
+        | User_defined s -> Some s
+        | Dev | Release -> None)
+    ]
+;;
+
 include (
   Stringlike.Make (struct
     type nonrec t = t
@@ -35,14 +50,7 @@ include (
   end) :
     Stringlike with type t := t)
 
-let equal x y =
-  match x, y with
-  | Dev, Dev -> true
-  | Release, Release -> true
-  | User_defined x, User_defined y -> String.equal x y
-  | _, _ -> false
-;;
-
+let equal, _ = Repr.make_compare repr
 let default = Dev
 
 let is_dev = function
@@ -60,10 +68,4 @@ let is_inline_test = function
   | _ -> true
 ;;
 
-let to_dyn =
-  let open Dyn in
-  function
-  | Dev -> variant "Dev" []
-  | Release -> variant "Release" []
-  | User_defined s -> variant "User_defined" [ string s ]
-;;
+let to_dyn = Repr.to_dyn repr

@@ -1,5 +1,7 @@
 include Stdlib.Char
 
+let repr = Repr.char
+
 let is_digit = function
   | '0' .. '9' -> true
   | _non_digit_char -> false
@@ -12,3 +14,4 @@ let is_lowercase_hex = function
 
 let[@inline always] hash c = Int.hash (code c)
 let compare x y = Ordering.of_int (compare x y)
+let to_dyn = Repr.to_dyn repr

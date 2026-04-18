@@ -34,23 +34,7 @@ let rec pp = function
 ;;
 
 let hash = Stdlib.Hashtbl.hash
-let string_equal (x : string) (y : string) = x = y
-
-let rec equal x y =
-  match x, y with
-  | Atom x, Atom y -> string_equal x y
-  | List x, List y -> equal_list x y
-  | _, _ -> false
-
-and equal_list xs ys =
-  (* replicating List.equal to avoid circular deps *)
-  match xs, ys with
-  | [], [] -> true
-  | x :: xs, y :: ys -> equal x y && equal_list xs ys
-  | _, _ -> false
-;;
-
-let compare x y = Ordering.of_int (compare x y)
+let equal, compare = Repr.make_compare repr
 
 let rec of_dyn : Dyn.t -> t = function
   | Opaque -> Atom "<opaque>"

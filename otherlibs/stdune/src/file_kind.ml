@@ -27,21 +27,32 @@ let to_string_hum = function
   | S_SOCK -> "socket"
 ;;
 
-let equal x y =
-  match x, y with
-  | S_REG, S_REG -> true
-  | S_REG, _ | _, S_REG -> false
-  | S_DIR, S_DIR -> true
-  | S_DIR, _ | _, S_DIR -> false
-  | S_CHR, S_CHR -> true
-  | S_CHR, _ | _, S_CHR -> false
-  | S_BLK, S_BLK -> true
-  | S_BLK, _ | _, S_BLK -> false
-  | S_LNK, S_LNK -> true
-  | S_LNK, _ | _, S_LNK -> false
-  | S_FIFO, S_FIFO -> true
-  | S_FIFO, _ | _, S_FIFO -> false
-  | S_SOCK, S_SOCK -> true
+let repr =
+  Repr.variant
+    "file-kind"
+    [ Repr.case0 "S_REG" ~test:(function
+        | S_REG -> true
+        | _ -> false)
+    ; Repr.case0 "S_DIR" ~test:(function
+        | S_DIR -> true
+        | _ -> false)
+    ; Repr.case0 "S_CHR" ~test:(function
+        | S_CHR -> true
+        | _ -> false)
+    ; Repr.case0 "S_BLK" ~test:(function
+        | S_BLK -> true
+        | _ -> false)
+    ; Repr.case0 "S_LNK" ~test:(function
+        | S_LNK -> true
+        | _ -> false)
+    ; Repr.case0 "S_FIFO" ~test:(function
+        | S_FIFO -> true
+        | _ -> false)
+    ; Repr.case0 "S_SOCK" ~test:(function
+        | S_SOCK -> true
+        | _ -> false)
+    ]
 ;;
 
-let to_dyn t = Dyn.String (to_string t)
+let equal, _ = Repr.make_compare repr
+let to_dyn = Repr.to_dyn repr

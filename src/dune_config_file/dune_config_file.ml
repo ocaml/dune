@@ -22,12 +22,29 @@ module Dune_config = struct
       ; license : string list option
       }
 
-    let equal t { authors; maintainers; maintenance_intent; license } =
-      Option.equal (List.equal String.equal) t.authors authors
-      && Option.equal (List.equal String.equal) t.maintainers maintainers
-      && Option.equal (List.equal String.equal) t.maintenance_intent maintenance_intent
-      && Option.equal (List.equal String.equal) t.license license
+    let repr =
+      Repr.record
+        "project-defaults"
+        [ Repr.field
+            "authors"
+            (Repr.option (Repr.list Repr.string))
+            ~get:(fun t -> t.authors)
+        ; Repr.field
+            "maintainers"
+            (Repr.option (Repr.list Repr.string))
+            ~get:(fun t -> t.maintainers)
+        ; Repr.field
+            "maintenance_intent"
+            (Repr.option (Repr.list Repr.string))
+            ~get:(fun t -> t.maintenance_intent)
+        ; Repr.field
+            "license"
+            (Repr.option (Repr.list Repr.string))
+            ~get:(fun t -> t.license)
+        ]
     ;;
+
+    let equal, _ = Repr.make_compare repr
 
     let decode =
       fields
@@ -39,15 +56,7 @@ module Dune_config = struct
          { authors; maintainers; maintenance_intent; license })
     ;;
 
-    let to_dyn t =
-      let f = Dyn.(option (list string)) in
-      Dyn.record
-        [ "authors", f t.authors
-        ; "maintainers", f t.maintainers
-        ; "maintenance_intent", f t.maintenance_intent
-        ; "license", f t.license
-        ]
-    ;;
+    let to_dyn = Repr.to_dyn repr
   end
 
   module Pkg_enabled = struct
@@ -56,16 +65,16 @@ module Dune_config = struct
         | Cli
         | Loc of Loc.t
 
-      let equal x y =
-        match x, y with
-        | Cli, Cli -> true
-        | Loc x, Loc y -> Loc.equal x y
-        | _, _ -> false
-      ;;
-
-      let to_dyn = function
-        | Cli -> Dyn.variant "Cli" []
-        | Loc loc -> Dyn.variant "Loc" [ Loc.to_dyn loc ]
+      let repr =
+        Repr.variant
+          "pkg-enabled-where"
+          [ Repr.case0 "Cli" ~test:(function
+              | Cli -> true
+              | Loc _ -> false)
+          ; Repr.case "Loc" Loc.repr ~proj:(function
+              | Loc loc -> Some loc
+              | Cli -> None)
+          ]
       ;;
     end
 
@@ -77,25 +86,37 @@ module Dune_config = struct
       | Set of where * Config.Toggle.t
       | Unset
 
+    let repr =
+      let toggle_repr =
+        Repr.variant
+          "config-toggle"
+          [ Repr.case0 "Enabled" ~test:(function
+              | `Enabled -> true
+              | `Disabled -> false)
+          ; Repr.case0 "Disabled" ~test:(function
+              | `Disabled -> true
+              | `Enabled -> false)
+          ]
+      in
+      Repr.variant
+        "pkg-enabled"
+        [ Repr.case "Set" (Repr.pair Where.repr toggle_repr) ~proj:(function
+            | Set (where, toggle) -> Some (where, toggle)
+            | Unset -> None)
+        ; Repr.case0 "Unset" ~test:(function
+            | Unset -> true
+            | Set _ -> false)
+        ]
+    ;;
+
     let decode =
       let open Dune_lang.Decoder in
       let+ loc, value = located (enum Config.Toggle.all) in
       Set (Loc loc, value)
     ;;
 
-    let equal x y =
-      match x, y with
-      | Set (x_loc, x_toggle), Set (y_loc, y_toggle) ->
-        Where.equal x_loc y_loc && Config.Toggle.equal x_toggle y_toggle
-      | Unset, Unset -> true
-      | _, _ -> false
-    ;;
-
-    let to_dyn = function
-      | Set (loc, toggle) ->
-        Dyn.variant "Set" [ Where.to_dyn loc; Config.Toggle.to_dyn toggle ]
-      | Unset -> Dyn.variant "Unset" []
-    ;;
+    let equal, _ = Repr.make_compare repr
+    let to_dyn = Repr.to_dyn repr
 
     let all where =
       [ "enabled", Set (where, `Enabled); "disabled", Set (where, `Disabled) ]
@@ -108,6 +129,21 @@ module Dune_config = struct
       | Clear_on_rebuild
       | Clear_on_rebuild_and_flush_history
 
+    let repr =
+      Repr.variant
+        "terminal-persistence"
+        [ Repr.case0 "Preserve" ~test:(function
+            | Preserve -> true
+            | Clear_on_rebuild | Clear_on_rebuild_and_flush_history -> false)
+        ; Repr.case0 "Clear_on_rebuild" ~test:(function
+            | Clear_on_rebuild -> true
+            | Preserve | Clear_on_rebuild_and_flush_history -> false)
+        ; Repr.case0 "Clear_on_rebuild_and_flush_history" ~test:(function
+            | Clear_on_rebuild_and_flush_history -> true
+            | Preserve | Clear_on_rebuild -> false)
+        ]
+    ;;
+
     let all =
       [ "preserve", Preserve
       ; "clear-on-rebuild", Clear_on_rebuild
@@ -115,21 +151,8 @@ module Dune_config = struct
       ]
     ;;
 
-    let equal a b =
-      match a, b with
-      | Preserve, Preserve
-      | Clear_on_rebuild, Clear_on_rebuild
-      | Clear_on_rebuild_and_flush_history, Clear_on_rebuild_and_flush_history -> true
-      | _, _ -> false
-    ;;
-
-    let to_dyn = function
-      | Preserve -> Dyn.Variant ("Preserve", [])
-      | Clear_on_rebuild -> Dyn.Variant ("Clear_on_rebuild", [])
-      | Clear_on_rebuild_and_flush_history ->
-        Variant ("Clear_on_rebuild_and_flush_history", [])
-    ;;
-
+    let equal, _ = Repr.make_compare repr
+    let to_dyn = Repr.to_dyn repr
     let decode = enum all
   end
 
@@ -138,13 +161,19 @@ module Dune_config = struct
       | Fixed of int
       | Auto
 
-    let equal a b =
-      match a, b with
-      | Fixed a, Fixed b -> Int.equal a b
-      | Auto, Auto -> true
-      | _, _ -> false
+    let repr =
+      Repr.variant
+        "concurrency"
+        [ Repr.case "Fixed" Repr.int ~proj:(function
+            | Fixed n -> Some n
+            | Auto -> None)
+        ; Repr.case0 "Auto" ~test:(function
+            | Auto -> true
+            | Fixed _ -> false)
+        ]
     ;;
 
+    let equal, _ = Repr.make_compare repr
     let error = Error "invalid concurrency value, must be 'auto' or a positive number"
 
     let of_string = function
@@ -167,10 +196,7 @@ module Dune_config = struct
       | Fixed n -> string_of_int n
     ;;
 
-    let to_dyn = function
-      | Auto -> Dyn.Variant ("Auto", [])
-      | Fixed n -> Dyn.Variant ("Fixed", [ Int n ])
-    ;;
+    let to_dyn = Repr.to_dyn repr
   end
 
   module Sandboxing_preference = struct
@@ -198,13 +224,22 @@ module Dune_config = struct
         | Enabled_except_user_rules
         | Enabled
 
-      let equal a b =
-        match a, b with
-        | Disabled, Disabled
-        | Enabled_except_user_rules, Enabled_except_user_rules
-        | Enabled, Enabled -> true
-        | _, _ -> false
+      let repr =
+        Repr.variant
+          "cache-toggle"
+          [ Repr.case0 "Disabed" ~test:(function
+              | Disabled -> true
+              | Enabled_except_user_rules | Enabled -> false)
+          ; Repr.case0 "Enabled_except_user_rules" ~test:(function
+              | Enabled_except_user_rules -> true
+              | Disabled | Enabled -> false)
+          ; Repr.case0 "Enabled" ~test:(function
+              | Enabled -> true
+              | Disabled | Enabled_except_user_rules -> false)
+          ]
       ;;
+
+      let equal, _ = Repr.make_compare repr
 
       let to_string = function
         | Disabled -> "disabled"
@@ -228,11 +263,7 @@ module Dune_config = struct
           ]
       ;;
 
-      let to_dyn = function
-        | Disabled -> Dyn.variant "Disabed" []
-        | Enabled_except_user_rules -> Dyn.variant "Enabled_except_user_rules" []
-        | Enabled -> Dyn.variant "Enabled" []
-      ;;
+      let to_dyn = Repr.to_dyn repr
     end
 
     module Transport_deprecated = struct

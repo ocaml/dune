@@ -8,16 +8,16 @@ module File = struct
       ; dev : int
       }
 
-    let to_dyn { ino; dev } =
-      let open Dyn in
-      record [ "ino", Int.to_dyn ino; "dev", Int.to_dyn dev ]
+    let repr =
+      Repr.record
+        "dir-contents-file"
+        [ Repr.field "ino" Repr.int ~get:(fun t -> t.ino)
+        ; Repr.field "dev" Repr.int ~get:(fun t -> t.dev)
+        ]
     ;;
 
-    let compare { ino; dev } t =
-      match Int.compare ino t.ino with
-      | Ordering.Eq -> Int.compare dev t.dev
-      | _ as e -> e
-    ;;
+    let to_dyn = Repr.to_dyn repr
+    let _, compare = Repr.make_compare repr
   end
 
   include T

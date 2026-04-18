@@ -41,6 +41,13 @@ let%expect_test "create and run" =
   [%expect {||}]
 ;;
 
+let%expect_test "supported backends include the active backend" =
+  let loop = Loop.create () in
+  let backend = Loop.backend loop in
+  printf "supported = %b\n" (Backend.Set.mem (Backend.supported ()) backend);
+  [%expect {| supported = true |}]
+;;
+
 let%expect_test "timer" =
   let loop = Loop.create () in
   let timer =
@@ -53,6 +60,16 @@ let%expect_test "timer" =
   [%expect
     {|
     fired timer |}]
+;;
+
+let%expect_test "timer remaining is boxed correctly" =
+  let loop = Loop.create () in
+  let timer = Timer.create ~after:1.0 (fun _ -> ()) in
+  Timer.start timer loop;
+  let remaining = Timestamp.to_float (Timer.remaining timer loop) in
+  printf "remaining positive = %b\n" (remaining > 0.);
+  Timer.stop timer loop;
+  [%expect {| remaining positive = true |}]
 ;;
 
 let%expect_test "timer - not repeats" =

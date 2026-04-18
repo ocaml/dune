@@ -1,5 +1,6 @@
 (library
  (name dune_engine)
+ (root_module root)
  (libraries
   unix
   csexp
@@ -20,5 +21,6 @@
   dune_rpc
   spawn
   dune_digest
-  dune_action_trace)
+  dune_action_trace
+  rpc)
  (synopsis "Internal Dune library, do not use!"))

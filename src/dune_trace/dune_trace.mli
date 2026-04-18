@@ -77,7 +77,8 @@ module Event : sig
     }
 
   val process_start
-    :  pid:Pid.t
+    :  extra_args:(string * Sexp.t) list
+    -> pid:Pid.t
     -> dir:Path.t option
     -> prog:string
     -> args:string list
@@ -90,7 +91,8 @@ module Event : sig
     -> t
 
   val process
-    :  name:string option
+    :  extra_args:(string * Sexp.t) list
+    -> name:string option
     -> started_at:Time.t
     -> targets:targets option
     -> categories:string list
@@ -240,6 +242,15 @@ module Event : sig
   module Action : sig
     val start : name:string -> start:Time.t -> t
     val finish : name:string -> start:Time.t -> t
+    val runner_spawn : name:Action_runner_name.t -> pid:Pid.t -> t
+    val runner_connection_start : name:Action_runner_name.t -> t
+    val runner_connection_established : name:Action_runner_name.t -> t
+    val runner_connected : name:Action_runner_name.t -> t
+    val runner_request_sent : name:Action_runner_name.t -> t
+    val runner_cancel_request_sent : name:Action_runner_name.t -> t
+    val runner_exec_start : name:Action_runner_name.t -> t
+    val runner_cancel_start : name:Action_runner_name.t -> t
+    val runner_disconnected : name:Action_runner_name.t -> t
     val write_file : start:Time.t -> finish:Time.t -> file:Path.t -> size:int -> t
     val trace : digest:string -> Csexp.t -> t
   end
@@ -295,6 +306,9 @@ end
 
 val global : unit -> Out.t option
 val set_global : Out.t -> unit
+val set_global_inherited_fd : Fd.t -> unit
+val set_common_args : (string * Sexp.t) list -> unit
+val duplicate_global_fd : unit -> Fd.t option
 val always_emit : Event.t -> unit
 val enabled : Category.t -> bool
 val emit : ?buffered:bool -> Category.t -> (unit -> Event.t) -> unit

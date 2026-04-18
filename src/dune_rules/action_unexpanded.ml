@@ -653,7 +653,7 @@ let expand_no_targets t sandbox ~loc ~chdir ~deps:deps_written_by_user ~expander
   let+ () = deps_builder
   and+ sandbox = sandbox
   and+ action = build in
-  let action = Action.Chdir (Path.build chdir, action) in
+  let action = Action.Chdir (Path.build chdir, action) |> Action.allow_action_runner in
   Action.Full.make action ~sandbox
 ;;
 
@@ -714,7 +714,9 @@ let expand
     let+ () = deps_builder
     and+ sandbox = sandbox
     and+ action = build in
-    Action.Full.make (Action.Chdir (Path.build chdir, action)) ~sandbox
+    Action.Full.make
+      (Action.Chdir (Path.build chdir, action) |> Action.allow_action_runner)
+      ~sandbox
   in
   Action_builder.with_targets ~targets build
 ;;

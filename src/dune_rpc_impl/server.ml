@@ -16,6 +16,7 @@ include struct
   module Build_config = Build_config
   module Diff_promotion = Diff_promotion
   module Build_outcome = Scheduler.Run.Build_outcome
+  module Action_runner = Action_runner
 end
 
 include struct
@@ -30,6 +31,7 @@ module Csexp_rpc = Rpc.Csexp_rpc
 module Run = struct
   type t =
     { handler : Rpc.Server.t
+    ; action_runner : Action_runner.Rpc_server.t
     ; pool : Fiber.Pool.t
     ; root : string
     ; where : Dune_rpc.Where.t
@@ -214,11 +216,14 @@ let ready (t : _ t) =
 ;;
 
 let stop (t : _ t) =
-  Fiber.of_thunk (fun () ->
-    match Fiber.Ivar.peek t.server.config.startup_ivar with
-    | None -> Fiber.return ()
-    | Some (Error _) -> Fiber.return ()
-    | Some (Ok server) -> Csexp_rpc.Server.stop server)
+  Fiber.fork_and_join_unit
+    (fun () -> Action_runner.Rpc_server.stop t.server.config.action_runner)
+    (fun () ->
+       Fiber.of_thunk (fun () ->
+         match Fiber.Ivar.peek t.server.config.startup_ivar with
+         | None -> Fiber.return ()
+         | Some (Error _) -> Fiber.return ()
+         | Some (Ok server) -> Csexp_rpc.Server.stop server))
 ;;
 
 let get_current_diagnostic_errors () =
@@ -231,7 +236,7 @@ let get_current_diagnostic_errors () =
     | `Diagnostic compound_user_error -> Some compound_user_error)
 ;;
 
-let handler (t : _ t Fdecl.t) : 'build_arg Handler.t =
+let handler (t : _ t Fdecl.t) action_runner_server : 'build_arg Handler.t =
   let on_init session (_ : Initialize.Request.t) =
     let t = Fdecl.get t in
     let client = () in
@@ -416,7 +421,7 @@ let handler (t : _ t Fdecl.t) : 'build_arg Handler.t =
             Session.Stage1.close entry.session))
       in
       let shutdown () =
-        let* () = Csexp_rpc.Server.stop (Lazy.force t.server.config.server) in
+        let* () = stop t in
         Scheduler.shutdown ();
         Fiber.return ()
       in
@@ -485,14 +490,18 @@ let handler (t : _ t Fdecl.t) : 'build_arg Handler.t =
     let f _ () = Fiber.return Path.Build.(to_string root) in
     Handler.implement_request rpc Procedures.Public.build_dir f
   in
+  Action_runner.Rpc_server.implement_handler action_runner_server rpc;
   Dune_rules_rpc.register rpc;
   rpc
 ;;
 
 let create ~lock_timeout ~registry ~root =
+  let t = Fdecl.create Dyn.opaque in
+  let pending_jobs = Job_queue.create () in
+  let action_runner = Action_runner.Rpc_server.create () in
+  let pool = Fiber.Pool.create () in
   let where = Where.default () in
   Global_lock.lock_exn ~timeout:lock_timeout;
-  let t = Fdecl.create Dyn.opaque in
   let config =
     let server =
       lazy
@@ -514,9 +523,10 @@ let create ~lock_timeout ~registry ~root =
                  (Path.Build.to_string_maybe_quoted (Where.rpc_socket_file ()))
              ])
     in
-    let handler = Rpc.Server.make (handler t) in
+    let handler = Rpc.Server.make (handler t action_runner) in
     { Run.handler
-    ; pool = Fiber.Pool.create ()
+    ; action_runner
+    ; pool
     ; root
     ; where
     ; server
@@ -525,22 +535,27 @@ let create ~lock_timeout ~registry ~root =
     }
   in
   let server = { config; clients = Clients.empty } in
-  let res = { server; pending_jobs = Job_queue.create () } in
+  let res = { server; pending_jobs } in
   current := Some server;
   Fdecl.set t res;
   res
 ;;
 
 let run t =
+  let run () =
+    Fiber.fork_and_join_unit
+      (fun () -> Run.run t.server.config)
+      (fun () -> Action_runner.Rpc_server.run t.server.config.action_runner)
+  in
   match t.server.config.registry with
-  | `Skip -> Run.run t.server.config
+  | `Skip -> run ()
   | `Add ->
     let section = Console.Status_line.add_section (Live (fun () -> pp_client_count t)) in
-    Fiber.finalize
-      (fun () -> Run.run t.server.config)
-      ~finally:(fun () ->
-        Console.Status_line.remove_section section;
-        Fiber.return ())
+    Fiber.finalize run ~finally:(fun () ->
+      Console.Status_line.remove_section section;
+      Fiber.return ())
 ;;
 
 let pending_action t = Job_queue.read t.pending_jobs
+let listening_address t = t.server.config.where
+let action_runner t = t.server.config.action_runner

@@ -31,6 +31,7 @@ module Execution_parameters = Execution_parameters
 module Report_errors_config = Report_errors_config
 module Reflection = Reflection
 module No_io = No_io
+module Action_runner = Action_runner
 module Action_exec = Action_exec
 module Running_jobs = Running_jobs
 module Rule_cache = Rule_cache

@@ -23,6 +23,11 @@
  (enabled_if
   (<> %{ocaml-config:system} win)))
 
+(cram
+ (applies_to action-runner-shutdown)
+ (enabled_if
+  (<> %{ocaml-config:system} win)))
+
 ;; Disabled due to timeouts
 
 (cram

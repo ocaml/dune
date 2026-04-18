@@ -1,0 +1,21 @@
+(cram
+ (alias runtest-action-runner)
+ (applies_to
+  basic
+  cancel-disconnect
+  disconnect
+  failure
+  pool
+  runtest
+  trace
+  watch-stop-on-first-error))
+
+(cram
+ (applies_to cancel-disconnect)
+ (deps %{bin:setsid})
+ (enabled_if %{bin-available:setsid}))
+
+(cram
+ (enabled_if false)
+ (alias runtest-action-runner)
+ (applies_to stop-on-first-error))

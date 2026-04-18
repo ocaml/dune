@@ -47,8 +47,10 @@ let parse_deps_exn ~file lines =
 
 let ocamldep_action ~sandbox ~sctx ~dir ~ml_kind unit =
   let context = Super_context.context sctx in
-  let flags, sandbox =
-    Module.pp_flags unit |> Option.value ~default:(Action_builder.return [], sandbox)
+  let flags, sandbox, can_run_in_action_runner =
+    match Module.pp_flags unit with
+    | None -> Action_builder.return [], sandbox, false
+    | Some (flags, sandbox) -> flags, sandbox, true
   in
   let open Action_builder.O in
   let* ocamldep =
@@ -59,6 +61,7 @@ let ocamldep_action ~sandbox ~sctx ~dir ~ml_kind unit =
     let source = Option.value_exn (Module.source unit ~ml_kind) in
     Command.run'
       ~dir:(Path.build (Context.build_dir context))
+      ~can_run_in_action_runner
       ocamldep
       [ A "-modules"
       ; Command.Args.dyn flags

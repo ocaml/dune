@@ -29,9 +29,36 @@ include Types.Scheduler
 
 let running_jobs_count (t : t) = Event.Queue.pending_jobs t.events
 
+let current_run_id () =
+  let t = t () in
+  match t.current_run_id with
+  | Some run_id -> run_id
+  | None -> Code_error.raise "no build run id is active" []
+;;
+
 exception Build_cancelled
 
 let cancelled () = raise (Memo.Non_reproducible Build_cancelled)
+
+let with_current_build_cancellation_handler ~on_cancel f =
+  let* () = Fiber.return () in
+  let t = t () in
+  let* result, outcome =
+    Fiber.Cancel.with_handler t.cancel (fun () -> Fiber.collect_errors f) ~on_cancel
+  in
+  match outcome, result with
+  | Cancelled (), _ -> cancelled ()
+  | Not_cancelled, Ok result -> Fiber.return result
+  | Not_cancelled, Error exns -> Fiber.reraise_all exns
+;;
+
+let reset_current_build_cancellation () =
+  let t = t () in
+  let cancel = Fiber.Cancel.create () in
+  t.cancel <- cancel;
+  t.status <- Building cancel
+;;
+
 let check_cancelled t = if Fiber.Cancel.fired t.cancel then cancelled ()
 
 let check_point =
@@ -193,6 +220,10 @@ let prepare (config : Config.t) ~(handler : Handler.t) ~events ~file_watcher =
   let cancel = Fiber.Cancel.create () in
   let process_watcher = Process_watcher.init events in
   let async_io = Async_io.create events in
+  let run_id_state = Run_id.State.create ~watch_mode:(Option.is_some file_watcher) in
+  let current_run_id =
+    if Run_id.State.is_watch run_id_state then None else Some Run_id.Batch
+  in
   let t =
     { status =
         (* Slightly weird initialization happening here: for polling mode we
@@ -203,7 +234,8 @@ let prepare (config : Config.t) ~(handler : Handler.t) ~events ~file_watcher =
            mode, which is even weirder. *)
         Building cancel
     ; invalidation = Memo.Invalidation.empty
-    ; run_id_state = Run_id.State.create ~watch_mode:(Option.is_some file_watcher)
+    ; run_id_state
+    ; current_run_id
     ; watch_restart_started_at = None
     ; watch_restart_files = None
     ; job_throttle = Fiber.Throttle.create config.concurrency
@@ -562,6 +594,7 @@ let start_build () =
   let t = t () in
   let state, run_id = Run_id.State.start t.run_id_state in
   t.run_id_state <- state;
+  t.current_run_id <- Some run_id;
   run_id
 ;;
 
@@ -576,6 +609,7 @@ let finish_build ~stop =
     in
     t.watch_restart_started_at <- None;
     t.watch_restart_files <- None;
+    if Run_id.State.is_watch t.run_id_state then t.current_run_id <- None;
     Finished { restart_duration }
   in
   match t.status with

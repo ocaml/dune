@@ -27,6 +27,7 @@ module type Ast = sig
 
   type t =
     | Run of program * string Array.Immutable.t
+    | Allow_action_runner of t
     | With_accepted_exit_codes of int Predicate_lang.t * t
     | Chdir of path * t
     | Setenv of string * string * t
@@ -62,6 +63,7 @@ module type Helpers = sig
 
   (* TODO consider changing this to a [string array] to save some conversion *)
   val run : program -> string list -> t
+  val allow_action_runner : t -> t
   val chdir : path -> t -> t
   val setenv : string -> string -> t -> t
   val with_stdout_to : ?perm:File_perm.t -> target -> t -> t
@@ -122,6 +124,7 @@ module Ext = struct
     val version : int
     val is_useful_to : memoize:bool -> bool
     val is_dynamic : bool
+    val runs_process : bool
     val encode : ('p, 't) t -> ('p -> Sexp.t) -> ('t -> Sexp.t) -> Sexp.t
     val bimap : ('a, 'b) t -> ('a -> 'x) -> ('b -> 'y) -> ('x, 'y) t
 

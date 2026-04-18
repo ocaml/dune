@@ -9,6 +9,9 @@ let to_int = function
   | Watch n -> n
 ;;
 
+let compare a b = Int.compare (to_int a) (to_int b)
+let equal a b = Ordering.is_eq (compare a b)
+
 module State = struct
   type nonrec t =
     | Batch_not_started

@@ -18,6 +18,7 @@ module Make (Src : Action_intf.Ast) (Dst : Action_intf.Ast) = struct
     match t with
     | Run (prog, args) ->
       Run (f_program ~dir prog, Array.Immutable.map args ~f:(f_string ~dir))
+    | Allow_action_runner t -> Allow_action_runner (f t ~dir)
     | With_accepted_exit_codes (pred, t) -> With_accepted_exit_codes (pred, f t ~dir)
     | Chdir (fn, t) -> Chdir (f_path ~dir fn, f t ~dir:fn)
     | Setenv (var, value, t) -> Setenv (f_string ~dir var, f_string ~dir value, f t ~dir)

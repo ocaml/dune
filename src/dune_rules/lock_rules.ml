@@ -37,6 +37,7 @@ module Spec = struct
 
   let name = "lock"
   let version = 1
+  let runs_process = false
   let bimap t f g = { t with lock_dir = f t.lock_dir; target = g t.target }
   let is_useful_to ~memoize = memoize
 

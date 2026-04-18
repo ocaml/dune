@@ -111,6 +111,7 @@ let group =
     (Cmd.info "internal")
     [ Internal_dump.command
     ; Internal_digest_db.command
+    ; Internal_action_runner.group
     ; latest_lang_version
     ; bootstrap_info
     ; Sexp_pp.command

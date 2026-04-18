@@ -60,6 +60,7 @@ end
 
 let default_build_dir = "_build"
 let trace_file_name = "trace.csexp"
+let action_runner_name = Dune_engine.Action_runner.Name.of_string "action-runner"
 
 let find_default_trace_file () =
   let trace_file = Filename.concat default_build_dir trace_file_name in
@@ -625,6 +626,8 @@ module Builder = struct
     ; allow_builds : bool
     ; default_root_is_cwd : bool
     ; target_exec : string option
+    ; action_runner : bool
+    ; sandbox_actions : bool
     }
 
   let set_no_build t no_build = { t with no_build }
@@ -633,6 +636,8 @@ module Builder = struct
   let forbid_builds t = { t with allow_builds = false; no_print_directory = true }
   let default_root_is_cwd t = t.default_root_is_cwd
   let set_default_root_is_cwd t x = { t with default_root_is_cwd = x }
+  let action_runner t = t.action_runner
+  let sandbox_actions t = t.sandbox_actions
   let disable_log_file t = { t with trace_file = None }
   let set_promote t v = { t with promote = Some v }
   let default_target t = t.default_target
@@ -952,6 +957,25 @@ module Builder = struct
         & info
             [ "stop-on-first-error" ]
             ~doc:(Some "Stop the build as soon as an error is encountered."))
+    and+ sandbox_actions =
+      Arg.(
+        value
+        & flag
+        & info
+            [ "sandbox-actions" ]
+            ~docs
+            ~doc:
+              (Some
+                 "Run build actions in an external dune action runner wrapped with \
+                  bubblewrap."))
+    and+ action_runner =
+      Arg.(
+        value
+        & flag
+        & info
+            [ "action-runner" ]
+            ~docs
+            ~doc:(Some "Run build actions in an external dune action runner."))
     in
     { no_build
     ; debug_dep_path
@@ -996,6 +1020,8 @@ module Builder = struct
     ; allow_builds = true
     ; default_root_is_cwd = false
     ; target_exec
+    ; action_runner
+    ; sandbox_actions
     }
   ;;
 
@@ -1035,6 +1061,8 @@ module Builder = struct
         ; allow_builds
         ; default_root_is_cwd
         ; target_exec
+        ; action_runner
+        ; sandbox_actions
         }
     =
     No_build.equal t.no_build no_build
@@ -1074,6 +1102,8 @@ module Builder = struct
     && Bool.equal t.allow_builds allow_builds
     && Bool.equal t.default_root_is_cwd default_root_is_cwd
     && Option.equal String.equal t.target_exec target_exec
+    && Bool.equal t.action_runner action_runner
+    && Bool.equal t.sandbox_actions sandbox_actions
   ;;
 end
 
@@ -1082,6 +1112,7 @@ type t =
   ; root : Workspace_root.t
   ; rpc :
       [ `Allow of Dune_lang.Dep_conf.t Dune_rpc_impl.Server.t Lazy.t | `Forbid_builds ]
+  ; action_runner : Dune_engine.Action_runner.t option
   }
 
 let capture_outputs t = t.builder.capture_outputs
@@ -1089,6 +1120,8 @@ let root t = t.root
 let watch t = t.builder.watch
 let x t = t.builder.workspace_config.x
 let file_watcher t = t.builder.file_watcher
+let sandbox_actions t = t.builder.sandbox_actions
+let action_runner t = t.action_runner
 let prefix_target t s = t.root.reach_from_root_prefix ^ s
 
 let rpc t =
@@ -1181,7 +1214,7 @@ let build (root : Workspace_root.t) (builder : Builder.t) =
            Dune_rpc_impl.Server.create ~lock_timeout ~registry ~root:root.dir))
     else `Forbid_builds
   in
-  { builder; root; rpc }
+  { builder; root; rpc; action_runner = None }
 ;;
 
 let maybe_init_cache (cache_config : Dune_cache.Config.t) =
@@ -1288,7 +1321,30 @@ let init_with_root ~(root : Workspace_root.t) (builder : Builder.t) =
       , Dyn.string (Path.to_string (Lazy.force Dune_cache.Layout.build_cache_dir)) )
     ];
   Dune_cache.Shared.config := maybe_init_cache cache_config;
-  Dune_rules.Main.init ~sandboxing_preference:config.sandboxing_preference ();
+  let action_runner =
+    match c.builder.action_runner || c.builder.sandbox_actions with
+    | false -> None
+    | true ->
+      let server =
+        match rpc c with
+        | `Allow server -> Dune_rpc_impl.Server.action_runner server
+        | `Forbid_builds ->
+          Code_error.raise "action runners require the dune RPC server" []
+      in
+      Some (Dune_engine.Action_runner.create server ~name:action_runner_name)
+  in
+  let c = { c with action_runner } in
+  let action_runner, action_runners =
+    match action_runner with
+    | None -> (fun _ -> None), fun () -> []
+    | Some runner -> (fun _ -> Some runner), fun () -> [ runner ]
+  in
+  Dune_rules.Main.init
+    ~sandbox_actions:c.builder.sandbox_actions
+    ~sandboxing_preference:config.sandboxing_preference
+    ~action_runner
+    ~action_runners
+    ();
   Only_packages.Clflags.set c.builder.only_packages;
   Report_error.print_memo_stacks := c.builder.debug_dep_path;
   Dune_engine.Clflags.report_errors_config := c.builder.report_errors_config;

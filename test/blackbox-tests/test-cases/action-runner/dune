@@ -1,0 +1,14 @@
+(cram
+ (alias runtest-action-runner)
+ (applies_to disconnect trace))
+
+(cram
+ (enabled_if false)
+ (alias runtest-action-runner)
+ (applies_to
+  basic
+  cancel-disconnect
+  failure
+  runtest
+  stop-on-first-error
+  watch-stop-on-first-error))

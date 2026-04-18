@@ -221,6 +221,48 @@ def redactedActionTraces:
   |= "REDACTED"
   ] | sort_by(.name) | .[];
 
+def redactedRunnerEvents:
+  [ .[]
+  | select(.cat == "action" and (.name | startswith("runner-")))
+  | .args |=
+      (if has("pid")
+       then .pid = "PID"
+       else .
+       end)
+  ] | .[];
+
+def runnerEventSummary:
+  [ .[]
+  | select(.cat == "action" and (.name | startswith("runner-")))
+  ] as $events
+  | {
+      spawn: ([$events[] | select(.name == "runner-spawn")] | length),
+      connection_start:
+        ([$events[] | select(.name == "runner-connection-start")] | length),
+      connection_established:
+        ([$events[] | select(.name == "runner-connection-established")] | length),
+      connected: ([$events[] | select(.name == "runner-connected")] | length),
+      exec_start: ([$events[] | select(.name == "runner-exec-start")] | length),
+      cancel_request_sent:
+        ([$events[] | select(.name == "runner-cancel-request-sent")] | length),
+      cancel_start: ([$events[] | select(.name == "runner-cancel-start")] | length),
+      disconnected: ([$events[] | select(.name == "runner-disconnected")] | length),
+      request_sent: ([$events[] | select(.name == "runner-request-sent")] | length > 0),
+      names: ([$events[] | .args.name] | unique),
+      spawn_pid_types: ([$events[] | select(.name == "runner-spawn") | .args.pid | type] | unique)
+    };
+
+def runnerEventCount($name):
+  [ .[]
+  | select(.cat == "action" and .name == $name)
+  ] | length;
+
+def lastRunnerSpawnPid:
+  [ .[]
+  | select(.cat == "action" and .name == "runner-spawn")
+  | .args.pid
+  ] | last;
+
 def cacheEvent($path):
   select(.cat == "cache") | .args | select(.path == $path);
 

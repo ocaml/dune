@@ -45,15 +45,18 @@ module Event = struct
   type args = (string * Arg.t) list
   type t = Sexp.t
 
+  let common_args = ref []
   let base ~name cat : Sexp.t list = [ Atom (Category.to_string cat); Atom name ]
+  let record_args args = Arg.record (args @ !common_args)
+  let set_common_args args = common_args := args
 
   let complete ?(args = []) ~name ~start ~dur cat : t =
     List
-      (base ~name cat @ [ Sexp.List [ Arg.time start; Arg.span dur ] ] @ Arg.record args)
+      (base ~name cat @ [ Sexp.List [ Arg.time start; Arg.span dur ] ] @ record_args args)
   ;;
 
   let instant ?(args = []) ~name ts cat : t =
-    List (base ~name cat @ [ Arg.time ts ] @ Arg.record args)
+    List (base ~name cat @ [ Arg.time ts ] @ record_args args)
   ;;
 
   let async ?(args = []) id ~name ts stage cat : t =
@@ -68,7 +71,7 @@ module Event = struct
                   | `Start -> "start"
                   | `Stop -> "stop") )
            ]
-       @ Arg.record args)
+       @ record_args args)
   ;;
 end
 
@@ -699,6 +702,60 @@ module Action = struct
   let finish ~name ~start =
     let dur = Time.diff (Time.now ()) start in
     Event.complete ~args:[ "name", Arg.string name ] ~name:"finish" ~start ~dur Action
+  ;;
+
+  let runner_spawn ~name ~pid =
+    let now = Time.now () in
+    let args = [ "name", Arg.string name; "pid", Arg.int (Pid.to_int pid) ] in
+    Event.instant ~args ~name:"runner-spawn" now Action
+  ;;
+
+  let runner_connection_start ~name =
+    let now = Time.now () in
+    let args = [ "name", Arg.string name ] in
+    Event.instant ~args ~name:"runner-connection-start" now Action
+  ;;
+
+  let runner_connection_established ~name =
+    let now = Time.now () in
+    let args = [ "name", Arg.string name ] in
+    Event.instant ~args ~name:"runner-connection-established" now Action
+  ;;
+
+  let runner_connected ~name =
+    let now = Time.now () in
+    let args = [ "name", Arg.string name ] in
+    Event.instant ~args ~name:"runner-connected" now Action
+  ;;
+
+  let runner_request_sent ~name =
+    let now = Time.now () in
+    let args = [ "name", Arg.string name ] in
+    Event.instant ~args ~name:"runner-request-sent" now Action
+  ;;
+
+  let runner_cancel_request_sent ~name =
+    let now = Time.now () in
+    let args = [ "name", Arg.string name ] in
+    Event.instant ~args ~name:"runner-cancel-request-sent" now Action
+  ;;
+
+  let runner_exec_start ~name =
+    let now = Time.now () in
+    let args = [ "name", Arg.string name ] in
+    Event.instant ~args ~name:"runner-exec-start" now Action
+  ;;
+
+  let runner_cancel_start ~name =
+    let now = Time.now () in
+    let args = [ "name", Arg.string name ] in
+    Event.instant ~args ~name:"runner-cancel-start" now Action
+  ;;
+
+  let runner_disconnected ~name =
+    let now = Time.now () in
+    let args = [ "name", Arg.string name ] in
+    Event.instant ~args ~name:"runner-disconnected" now Action
   ;;
 
   let write_file ~start ~finish ~file ~size =

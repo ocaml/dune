@@ -120,6 +120,9 @@ val empty : t
 (** Checks, if action contains a [Dynamic_run]. *)
 val is_dynamic : t -> bool
 
+(** Checks if executing the action may spawn a process. *)
+val runs_process : t -> bool
+
 (** Re-root all the paths in the action to their sandbox version *)
 val sandbox : t -> Sandbox.t -> t
 

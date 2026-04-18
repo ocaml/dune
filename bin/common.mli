@@ -18,6 +18,9 @@ val rpc
 val watch_exclusions : t -> string list
 val watch : t -> Dune_rpc_impl.Watch_mode_config.t
 val file_watcher : t -> Dune_scheduler.Scheduler.Run.file_watcher
+val sandbox_actions : t -> bool
+val action_runner : t -> Dune_engine.Action_runner.t option
+val action_runner_name : Dune_engine.Action_runner.Name.t
 val prefix_target : t -> string -> string
 val find_default_trace_file : unit -> string
 
@@ -44,6 +47,8 @@ module Builder : sig
   val forbid_builds : t -> t
   val default_root_is_cwd : t -> bool
   val set_default_root_is_cwd : t -> bool -> t
+  val action_runner : t -> bool
+  val sandbox_actions : t -> bool
   val disable_log_file : t -> t
   val set_promote : t -> Dune_engine.Clflags.Promote.t -> t
   val default_target : t -> Arg.Dep.t

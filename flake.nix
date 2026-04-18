@@ -314,12 +314,15 @@
             ]
             ++ lib.optionals stdenv.isLinux [ strace ];
           testNativeBuildInputs =
-            pkgs: with pkgs; [
+            pkgs:
+            with pkgs;
+            [
               nodejs-slim
               pkg-config
               opam
               ocamlformat
-            ];
+            ]
+            ++ lib.optionals stdenv.isLinux [ bubblewrap ];
 
           docInputs = with pkgs.python3.pkgs; [
             sphinx-autobuild

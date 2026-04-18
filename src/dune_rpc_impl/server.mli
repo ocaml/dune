@@ -33,3 +33,5 @@ val stop : _ t -> unit Fiber.t
 
 val ready : _ t -> unit Fiber.t
 val run : _ t -> unit Fiber.t
+val listening_address : _ t -> Dune_rpc.Where.t
+val action_runner : _ t -> Dune_engine.Action_runner.Rpc_server.t

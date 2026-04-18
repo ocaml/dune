@@ -1,0 +1,8 @@
+(cram
+ (applies_to :whole_subtree)
+ (alias runtest-bwrap)
+ (deps %{bin:bwrap})
+ (enabled_if
+  (and
+   (= %{system} linux)
+   %{bin-available:bwrap})))

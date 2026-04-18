@@ -204,6 +204,15 @@ module Event : sig
   module Action : sig
     val start : name:string -> start:Time.t -> t
     val finish : name:string -> start:Time.t -> t
+    val runner_spawn : name:string -> pid:Pid.t -> t
+    val runner_connection_start : name:string -> t
+    val runner_connection_established : name:string -> t
+    val runner_connected : name:string -> t
+    val runner_request_sent : name:string -> t
+    val runner_cancel_request_sent : name:string -> t
+    val runner_exec_start : name:string -> t
+    val runner_cancel_start : name:string -> t
+    val runner_disconnected : name:string -> t
     val write_file : start:Time.t -> finish:Time.t -> file:Path.t -> size:int -> t
     val trace : digest:string -> Csexp.t -> t
   end
@@ -251,6 +260,9 @@ end
 
 val global : unit -> Out.t option
 val set_global : Out.t -> unit
+val set_global_inherited_fd : Unix.file_descr -> unit
+val set_common_args : (string * Sexp.t) list -> unit
+val duplicate_global_fd : unit -> Unix.file_descr option
 val always_emit : Event.t -> unit
 val enabled : Category.t -> bool
 val emit : ?buffered:bool -> Category.t -> (unit -> Event.t) -> unit

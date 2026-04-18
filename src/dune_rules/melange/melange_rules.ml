@@ -464,6 +464,7 @@ let build_js
         Command.run
           ~dir:(Super_context.context sctx |> Context.build_dir |> Path.build)
           ~sandbox:Sandbox_config.needs_sandboxing
+          ~forbid_action_runner:true
           compiler
           [ Command.Args.S obj_dir
           ; Command.Args.as_any includes

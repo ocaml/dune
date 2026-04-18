@@ -79,6 +79,7 @@ let build_instance
     ]
     |> Command.run
          ~sandbox:Sandbox_config.needs_sandboxing
+         ~forbid_action_runner:true
          (Ok compiler)
          ~dir:(Path.build dir)
     |> Super_context.add_rule ~dir sctx)
@@ -162,6 +163,7 @@ let build_archive ~sctx ~mode ~obj_dir ~lib ~top_sorted_modules ~modules =
     ]
     |> Command.run
          ~sandbox:Sandbox_config.needs_sandboxing
+         ~forbid_action_runner:true
          (Ok compiler)
          ~dir:(Path.build dir)
     |> Super_context.add_rule ~dir sctx)

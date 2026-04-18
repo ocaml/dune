@@ -65,34 +65,29 @@ module Io : sig
   val multi_use : 'a t -> 'a t
 end
 
-(** Why a Fiber.t was run.*)
-type purpose =
-  | Internal_job
-  | Build_job of Targets.Validated.t option
+module Build : sig
+  type t
 
-(** Additional metadata attached to processes. The location and annotations will
-    be attached to error messages. *)
-type metadata =
-  { loc : Loc.t option
-  ; compound : User_message.Compound.t list
-  ; name : string option
-    (** name when emitting stats. defaults to the basename of the executable *)
-  ; categories : string list (** additional categories when emitting stats *)
-  ; purpose : purpose
-  ; has_embedded_location : bool
-  ; promotion : User_message.Diff_annot.t option
-  }
+  val create
+    :  action_runner:Action_runner.t option
+    -> run_id:Run_id.t
+    -> cancellation:Fiber.Cancel.t
+    -> t
 
-val create_metadata
-  :  ?loc:Loc.t
-  -> ?compound:User_message.Compound.t list
-  -> ?has_embedded_location:bool
-  -> ?name:string
-  -> ?categories:string list
-  -> ?purpose:purpose
-  -> ?promotion:User_message.Diff_annot.t
-  -> unit
-  -> metadata
+  val run_id : t -> Run_id.t
+  val cancellation : t -> Fiber.Cancel.t
+  val action_runner : t -> Action_runner.t option
+  val get : unit -> t option
+  val with_ : t -> (unit -> 'a Fiber.t) -> 'a Fiber.t
+  val cancel_current : unit -> unit Fiber.t
+end
+
+module Runner = Process_runner
+
+(** Execute a [Runner.request] locally without taking another scheduler job
+    slot. The caller must already account for scheduler concurrency. This is
+    intended for the external worker implementation. *)
+val exec_locally : build:Build.t -> Runner.request -> Runner.response Fiber.t
 
 (** [run ?dir ?stdout_to prog args] spawns a sub-process and wait for its
     termination. [stdout_to] [stderr_to] are released *)
@@ -103,7 +98,8 @@ val run
   -> ?stderr_to:Io.output Io.t
   -> ?stdin_from:Io.input Io.t
   -> ?env:Env.t
-  -> ?metadata:metadata
+  -> ?metadata:Process_metadata.t
+  -> ?build:Build.t
   -> (unit, 'a) Failure_mode.t
   -> Path.t
   -> string list
@@ -116,7 +112,8 @@ val run_with_times
   -> ?stderr_to:Io.output Io.t
   -> ?stdin_from:Io.input Io.t
   -> ?env:Env.t
-  -> ?metadata:metadata
+  -> ?metadata:Process_metadata.t
+  -> ?build:Build.t
   -> (Proc.Times.t, 'a) Failure_mode.t
   -> Path.t
   -> string list
@@ -129,7 +126,8 @@ val run_capture
   -> ?stderr_to:Io.output Io.t
   -> ?stdin_from:Io.input Io.t
   -> ?env:Env.t
-  -> ?metadata:metadata
+  -> ?metadata:Process_metadata.t
+  -> ?build:Build.t
   -> (string, 'a) Failure_mode.t
   -> Path.t
   -> string list
@@ -141,7 +139,8 @@ val run_capture_line
   -> ?stderr_to:Io.output Io.t
   -> ?stdin_from:Io.input Io.t
   -> ?env:Env.t
-  -> ?metadata:metadata
+  -> ?metadata:Process_metadata.t
+  -> ?build:Build.t
   -> (string, 'a) Failure_mode.t
   -> Path.t
   -> string list
@@ -153,7 +152,8 @@ val run_capture_lines
   -> ?stderr_to:Io.output Io.t
   -> ?stdin_from:Io.input Io.t
   -> ?env:Env.t
-  -> ?metadata:metadata
+  -> ?metadata:Process_metadata.t
+  -> ?build:Build.t
   -> (string list, 'a) Failure_mode.t
   -> Path.t
   -> string list
@@ -165,7 +165,8 @@ val run_capture_zero_separated
   -> ?stderr_to:Io.output Io.t
   -> ?stdin_from:Io.input Io.t
   -> ?env:Env.t
-  -> ?metadata:metadata
+  -> ?metadata:Process_metadata.t
+  -> ?build:Build.t
   -> (string list, 'a) Failure_mode.t
   -> Path.t
   -> string list

@@ -139,7 +139,7 @@ let request_rebuild_due_to_rpc_request t =
       t.status <- Restarting_build run_id;
       if Option.is_none t.pending_reset
       then t.pending_reset <- Some Memo.Invalidation.empty;
-      Scheduler.cancel_current_build ()
+      Process.Build.cancel_current ()
   in
   trigger_wakeup t
 ;;
@@ -160,7 +160,7 @@ let request_restart t invalidation =
       | Building run_id ->
         show_build_interrupted_status_line ();
         t.status <- Restarting_build run_id;
-        let+ () = Scheduler.cancel_current_build () in
+        let+ () = Process.Build.cancel_current () in
         Dune_trace.emit Build (fun () ->
           Dune_trace.Event.watch_build_restart
             ~run_id:(Run_id.to_int run_id)
@@ -227,6 +227,7 @@ let run_current_build
        ; wakeup_generation = build_start_wakeup_generation
        ; _
        } as t)
+      ~action_runner
       ~run_id
       build
   =
@@ -236,8 +237,11 @@ let run_current_build
    | Standing_by | Restarting_build _ -> ());
   t.status <- Building run_id;
   let+ outcome =
-    Scheduler.with_current_build_cancellation (Fiber.Cancel.create ()) (fun () ->
-      Build_system.run_action_builder ?restart_started_at ~run_id build)
+    let build_ctx =
+      Process.Build.create ~action_runner ~run_id ~cancellation:(Fiber.Cancel.create ())
+    in
+    Process.Build.with_ build_ctx (fun () ->
+      Build_system.run_action_builder ?restart_started_at ~build:build_ctx build)
   in
   let next =
     match t.status with
@@ -304,7 +308,7 @@ type rpc_poll_iter_result =
   ; sticky_built_at : int option
   }
 
-let rpc_poll_iter t ~sticky_goal ~sticky_built_at =
+let rpc_poll_iter t ~action_runner ~sticky_goal ~sticky_built_at =
   let rec loop () =
     let rpc_requests = Rpc_request_id.Map.to_list t.rpc_requests in
     let sticky_goal_to_build =
@@ -347,7 +351,7 @@ let rpc_poll_iter t ~sticky_goal ~sticky_built_at =
               Console.maybe_clear_screen ~details_hum);
             Memo.reset invalidation
         in
-        run_current_build t ~run_id build
+        run_current_build t ~action_runner ~run_id build
       in
       (match next with
        | `Restart -> loop ()
@@ -378,10 +382,10 @@ let rpc_poll_iter t ~sticky_goal ~sticky_built_at =
   loop ()
 ;;
 
-let poll t ~sticky_goal =
+let poll t ~action_runner ~sticky_goal =
   let rec loop ~sticky_built_at =
     let* { wakeup_generation; sticky_built_at = built } =
-      rpc_poll_iter t ~sticky_goal ~sticky_built_at
+      rpc_poll_iter t ~action_runner ~sticky_goal ~sticky_built_at
     in
     (* Work we're allowed to do between successive polling iterations. this work
    should be fast and never fail (within reason) *)

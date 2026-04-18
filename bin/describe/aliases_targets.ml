@@ -106,7 +106,10 @@ let ls_term (fetch_results : Path.Build.t -> string list Action_builder.t) =
   Scheduler_setup.go_with_rpc_server ~common ~config
   @@ fun () ->
   let open Fiber.O in
-  Build.run_build_system ~run_id:Dune_engine.Run_id.Batch ~request
+  Build.run_build_system
+    ~action_runner:(Common.action_runner common)
+    ~run_id:Dune_engine.Run_id.Batch
+    ~request
   >>| fun (_ : (unit, [ `Already_reported ]) result) -> ()
 ;;
 

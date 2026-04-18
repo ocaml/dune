@@ -1546,6 +1546,52 @@ trace_rocq_flags () {
     dune trace cat | jq_dune -c 'rocqFlags'
 }
 
+trace_jq() {
+    dune trace cat 2>/dev/null | jq -rs "$@"
+}
+
+wait_for_trace_jq_true() {
+    filter=$1
+    iterations=${2:-200}
+    while [ "$iterations" -gt 0 ]
+    do
+        if dune trace cat 2>/dev/null | jq -es "$filter" >/dev/null 2>&1
+        then
+            return 0
+        fi
+        iterations=$((iterations - 1))
+        sleep 0.01
+    done
+    return 124
+}
+
+wait_for_runner_event_count() {
+    event_name=$1
+    count=$2
+    wait_for_trace_jq_true \
+        "include \"dune\"; runnerEventCount(\"$event_name\") >= $count"
+}
+
+runner_spawn_pid() {
+    trace_jq 'include "dune"; lastRunnerSpawnPid // empty'
+}
+
+wait_for_runner_spawn_pid() {
+    iterations=${1:-200}
+    while [ "$iterations" -gt 0 ]
+    do
+        pid=$(runner_spawn_pid)
+        if [ -n "$pid" ] && [ "$pid" != "null" ]
+        then
+            printf '%s\n' "$pid"
+            return 0
+        fi
+        iterations=$((iterations - 1))
+        sleep 0.01
+    done
+    return 124
+}
+
 wait_for_dune_exit_with_timeout () {
     exit_code=0
     wait_for_pid_to_exit_with_timeout "$DUNE_PID" 200 || exit_code=$?

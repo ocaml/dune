@@ -625,6 +625,8 @@ module Builder = struct
     ; allow_builds : bool
     ; default_root_is_cwd : bool
     ; target_exec : string option
+    ; action_runner : bool
+    ; sandbox_actions : bool
     }
 
   let set_no_build t no_build = { t with no_build }
@@ -952,6 +954,25 @@ module Builder = struct
         & info
             [ "stop-on-first-error" ]
             ~doc:(Some "Stop the build as soon as an error is encountered."))
+    and+ sandbox_actions =
+      Arg.(
+        value
+        & flag
+        & info
+            [ "sandbox-actions" ]
+            ~docs
+            ~doc:
+              (Some
+                 "Run spawned build processes in an external dune action runner wrapped \
+                  with bubblewrap."))
+    and+ action_runner =
+      Arg.(
+        value
+        & flag
+        & info
+            [ "action-runner" ]
+            ~docs
+            ~doc:(Some "Run spawned build processes in an external dune action runner."))
     in
     { no_build
     ; debug_dep_path
@@ -996,6 +1017,8 @@ module Builder = struct
     ; allow_builds = true
     ; default_root_is_cwd = false
     ; target_exec
+    ; action_runner
+    ; sandbox_actions
     }
   ;;
 
@@ -1035,6 +1058,8 @@ module Builder = struct
         ; allow_builds
         ; default_root_is_cwd
         ; target_exec
+        ; action_runner
+        ; sandbox_actions
         }
     =
     No_build.equal t.no_build no_build
@@ -1074,20 +1099,26 @@ module Builder = struct
     && Bool.equal t.allow_builds allow_builds
     && Bool.equal t.default_root_is_cwd default_root_is_cwd
     && Option.equal String.equal t.target_exec target_exec
+    && Bool.equal t.action_runner action_runner
+    && Bool.equal t.sandbox_actions sandbox_actions
   ;;
 end
 
 type t =
   { builder : Builder.t
   ; root : Workspace_root.t
+  ; build_loop : Dune_engine.Build_loop.t
   ; rpc : [ `Allow of Dune_rpc_impl.Server.t Lazy.t | `Forbid_builds ]
+  ; action_runner : Dune_engine.Action_runner.t option Lazy.t
   }
 
 let capture_outputs t = t.builder.capture_outputs
 let root t = t.root
+let build_loop t = t.build_loop
 let watch t = t.builder.watch
 let x t = t.builder.workspace_config.x
 let file_watcher t = t.builder.file_watcher
+let sandbox_actions t = t.builder.sandbox_actions
 let prefix_target t s = t.root.reach_from_root_prefix ^ s
 
 let rpc t =
@@ -1159,27 +1190,46 @@ let print_entering_message c =
     Console.set_directory dir)
 ;;
 
+let action_builder_of_rpc_request request =
+  let open Dune_engine.Action_builder.O in
+  Dune_engine.Action_builder.of_memo (Memo.of_thunk Util.setup) >>= request
+;;
+
+let rpc_request_action ~root (kind : Dune_rpc_impl.Server.build_request) =
+  action_builder_of_rpc_request (fun setup ->
+    match kind with
+    | Build targets -> Target.interpret_targets root setup targets
+    | Runtest test_paths ->
+      Runtest_common.make_request
+        ~scontexts:setup.scontexts
+        ~to_cwd:root.to_cwd
+        ~test_paths)
+;;
+
 (* CR-someday rleshchinskiy: The split between `build` and `init` seems quite arbitrary,
    we should probably refactor that at some point. *)
-let build (root : Workspace_root.t) (builder : Builder.t) =
+let build (root : Workspace_root.t) (builder : Builder.t) ~rpc_build =
+  let build_loop = Dune_engine.Build_loop.create () in
+  let rpc_build =
+    match rpc_build with
+    | `Disabled -> Dune_rpc_impl.Server.Disabled
+    | `Enabled ->
+      Dune_rpc_impl.Server.Enabled { build_loop; build_action = rpc_request_action ~root }
+  in
   let rpc =
     if builder.allow_builds
     then
       `Allow
         (lazy
-          (let registry =
+          (let registry, build =
              match builder.watch with
-             | Yes _ -> `Add
-             | No -> `Skip
+             | Yes _ -> `Add, rpc_build
+             | No -> `Skip, Dune_rpc_impl.Server.Disabled
            in
-           Dune_rpc_impl.Server.create
-             ~registry
-             ~root:root.dir
-             ~build:Disabled
-             builder.watch))
+           Dune_rpc_impl.Server.create ~registry ~root:root.dir ~build builder.watch))
     else `Forbid_builds
   in
-  { builder; root; rpc }
+  { builder; root; build_loop; rpc; action_runner = lazy None }
 ;;
 
 let maybe_init_cache (cache_config : Dune_cache.Config.t) =
@@ -1199,8 +1249,14 @@ let maybe_init_cache (cache_config : Dune_cache.Config.t) =
        Disabled)
 ;;
 
-let init_with_root ~(root : Workspace_root.t) (builder : Builder.t) =
-  let c = build root builder in
+let action_runner t = Lazy.force t.action_runner
+
+let action_runner_requested t =
+  t.builder.allow_builds && (t.builder.action_runner || t.builder.sandbox_actions)
+;;
+
+let init_with_root_and_rpc ~(root : Workspace_root.t) ~rpc_build (builder : Builder.t) =
+  let c = build root builder ~rpc_build in
   No_build.set c.builder.no_build;
   if c.root.dir <> Filename.current_dir_name then Sys.chdir c.root.dir;
   Path.set_root (normalize_path (Path.External.cwd ()));
@@ -1235,7 +1291,7 @@ let init_with_root ~(root : Workspace_root.t) (builder : Builder.t) =
              | exception Unix.Unix_error _ -> ())
           | `User_specified _ -> ());
          let stats = Dune_trace.Out.create trace in
-         Dune_trace.set_global stats;
+         Dune_trace.set_global stats ~path:trace;
          Dune_trace.Event.init
            ~version:
              (Build_info.V1.version () |> Option.map ~f:Build_info.V1.Version.to_string)
@@ -1286,7 +1342,10 @@ let init_with_root ~(root : Workspace_root.t) (builder : Builder.t) =
       , Dyn.string (Path.to_string (Lazy.force Dune_cache.Layout.build_cache_dir)) )
     ];
   Dune_cache.Shared.config := maybe_init_cache cache_config;
-  Dune_rules.Main.init ~sandboxing_preference:config.sandboxing_preference ();
+  Dune_rules.Main.init
+    ~sandbox_actions:c.builder.sandbox_actions
+    ~sandboxing_preference:config.sandboxing_preference
+    ();
   Only_packages.Clflags.set c.builder.only_packages;
   Report_error.print_memo_stacks := c.builder.debug_dep_path;
   Dune_engine.Clflags.report_errors_config := c.builder.report_errors_config;
@@ -1337,18 +1396,43 @@ let init_with_root ~(root : Workspace_root.t) (builder : Builder.t) =
       let stat = Gc.stat () in
       let path = Path.external_ file in
       Dune_util.Gc.serialize ~path stat);
+  let action_runner =
+    lazy
+      (if c.builder.allow_builds && (c.builder.action_runner || c.builder.sandbox_actions)
+       then (
+         let rpc_server =
+           match rpc c with
+           | `Allow rpc_server -> rpc_server
+           | `Forbid_builds ->
+             Code_error.raise "action runners require the dune RPC server" []
+         in
+         Some
+           (Action_runner.create
+              rpc_server
+              ~config
+              ~sandbox_actions:c.builder.sandbox_actions))
+       else None)
+  in
+  let c = { c with action_runner } in
   c, config
 ;;
 
-let init (builder : Builder.t) =
-  let root =
-    Workspace_root.create_exn
-      ~from:Filename.current_dir_name
-      ~default_is_cwd:builder.default_root_is_cwd
-      ~specified_by_user:builder.root
-      ()
-  in
-  init_with_root ~root builder
+let init_with_root ~root (builder : Builder.t) =
+  init_with_root_and_rpc ~root ~rpc_build:`Disabled builder
+;;
+
+let create_root (builder : Builder.t) =
+  Workspace_root.create_exn
+    ~from:Filename.current_dir_name
+    ~default_is_cwd:builder.default_root_is_cwd
+    ~specified_by_user:builder.root
+    ()
+;;
+
+let init (builder : Builder.t) = init_with_root ~root:(create_root builder) builder
+
+let init_build (builder : Builder.t) =
+  init_with_root_and_rpc ~root:(create_root builder) ~rpc_build:`Enabled builder
 ;;
 
 let footer =

@@ -34,6 +34,12 @@ let%expect_test "second fetch uses refs for efficient negotiation (fix #13323)" 
   (Dune_scheduler.Scheduler.Run.go
      { concurrency = 2; print_ctrl_c_warning = false; watch_exclusions = [] }
    @@ fun () ->
+   let build =
+     Dune_engine.Process.Build.create
+       ~action_runner:None
+       ~run_id:Dune_engine.Run_id.Batch
+       ~cancellation:(Fiber.Cancel.create ())
+   in
    let* rev_store = Rev_store.get in
    let git = git ~dir:repo_dir in
    (* Create a repository with initial commits *)
@@ -93,6 +99,7 @@ let%expect_test "second fetch uses refs for efficient negotiation (fix #13323)" 
         Dune_engine.Process.run
           ~dir:parent_dir
           ~display
+          ~build
           ~stdout_to:(make_stdout ())
           ~stderr_to:(make_stderr ())
           Dune_engine.Process.Failure_mode.(
@@ -195,7 +202,7 @@ let%expect_test "second fetch uses refs for efficient negotiation (fix #13323)" 
           |> List.length
         in
         Console.print [ Pp.textf "Negotiation 'have' lines sent: %d" have_count ];
-        Dune_scheduler.Scheduler.cancel_current_build ()));
+        Fiber.Cancel.fire (Dune_engine.Process.Build.cancellation build)));
   (* With refs created by previous fetches, git can tell the server what it
      already has, avoiding redundant downloads. The count does not include
      refs from the unrelated remote due to URL-based namespacing. *)

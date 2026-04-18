@@ -363,29 +363,30 @@ let pp_one_module
                (Action_builder.with_file_targets
                   ~file_targets:[ dst ]
                   (let open Action_builder.O in
-                   let* exe, flags, args = driver_and_flags in
-                   let dir =
-                     Super_context.context sctx |> Context.build_dir |> Path.build
-                   in
-                   Command.run'
-                     ~dir
-                     ~sandbox
-                     ~env
-                     (Ok (Path.build exe))
-                     [ As args
-                     ; A "-o"
-                     ; Path (Path.build dst)
-                     ; loc_filename_arg
-                     ; Command.Ml_kind.ppx_driver_flag ml_kind
-                     ; Dep (Path.build src)
-                     ; Hidden_deps
-                         (Module.source m ~ml_kind
-                          |> Option.value_exn
-                          |> Module.File.path
-                          |> Dep.file
-                          |> Dep.Set.singleton)
-                     ; As flags
-                     ])))))
+                   preprocessor_deps
+                   >>> let* exe, flags, args = driver_and_flags in
+                       let dir =
+                         Super_context.context sctx |> Context.build_dir |> Path.build
+                       in
+                       Command.run'
+                         ~dir
+                         ~sandbox
+                         ~env
+                         (Ok (Path.build exe))
+                         [ As args
+                         ; A "-o"
+                         ; Path (Path.build dst)
+                         ; loc_filename_arg
+                         ; Command.Ml_kind.ppx_driver_flag ml_kind
+                         ; Dep (Path.build src)
+                         ; Hidden_deps
+                             (Module.source m ~ml_kind
+                              |> Option.value_exn
+                              |> Module.File.path
+                              |> Dep.file
+                              |> Dep.Set.singleton)
+                         ; As flags
+                         ])))))
 ;;
 
 let make

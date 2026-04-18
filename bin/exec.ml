@@ -309,17 +309,7 @@ let exec_building_directly ~common ~config ~context ~prog ~args ~no_rebuild =
   | Yes Passive ->
     User_error.raise [ Pp.textf "passive watch mode is unsupported by exec" ]
   | Yes Eager ->
-    let build_loop = Dune_engine.Build_loop.create () in
-    let rpc_server =
-      Dune_rpc_impl.Server.create
-        ~registry:`Add
-        ~root:(Common.root common).dir
-        ~build:
-          (Dune_rpc_impl.Server.Enabled
-             { build_loop; build_action = Build.rpc_request_action ~common })
-        (Common.watch common)
-    in
-    Scheduler_setup.go_with_rpc_server_and_file_watcher ~common ~config ~rpc_server
+    Scheduler_setup.go_with_rpc_server_and_file_watcher ~common ~config
     @@ fun () ->
     let on_exit = Console.printf "Program exited with code [%d]" in
     let sticky_goal =
@@ -329,8 +319,12 @@ let exec_building_directly ~common ~config ~context ~prog ~args ~no_rebuild =
               Console.maybe_clear_screen ~details_hum:[];
               step ~prog ~args ~common ~no_rebuild ~context ~on_exit ())))
     in
+    let build_loop = Common.build_loop common in
     Dune_engine.Build_loop.run build_loop (fun () ->
-      Dune_engine.Build_loop.poll build_loop ~sticky_goal)
+      Dune_engine.Build_loop.poll
+        build_loop
+        ~action_runner:(Common.action_runner common)
+        ~sticky_goal)
   | No ->
     Scheduler_setup.go_with_rpc_server ~common ~config
     @@ fun () ->
@@ -367,7 +361,7 @@ let term : unit Term.t =
   (* TODO we should make sure to finalize the current backend before exiting dune.
      For watch mode, we should finalize the backend and then restart it in between
      runs. *)
-  let common, config = Common.init builder in
+  let common, config = Common.init_build builder in
   match Global_lock.lock () with
   | Error lock_held_by ->
     (match Common.watch common with

@@ -11,6 +11,8 @@ module Merge_dep_output = struct
 
     let name = "merge_dep_output"
     let version = 3
+    let runs_process = false
+    let can_run_in_action_runner = false
     let is_useful_to ~memoize:_ = true
 
     let bimap

@@ -5,46 +5,33 @@ let action_builder_of_request request =
   Action_builder.of_memo (Memo.of_thunk Util.setup) >>= request
 ;;
 
-let run_build_system ~run_id ~request =
-  Dune_engine.Build_system.run_action_builder ~run_id (action_builder_of_request request)
-;;
-
-let rpc_request_action ~(common : Common.t) (kind : Dune_rpc_impl.Server.build_request) =
-  action_builder_of_request (fun setup ->
-    let root = Common.root common in
-    match kind with
-    | Build targets -> Target.interpret_targets root setup targets
-    | Runtest test_paths ->
-      Runtest_common.make_request
-        ~scontexts:setup.scontexts
-        ~to_cwd:root.to_cwd
-        ~test_paths)
+let run_build_system ~action_runner ~run_id ~request =
+  let build =
+    Dune_engine.Process.Build.create
+      ~action_runner
+      ~run_id
+      ~cancellation:(Fiber.Cancel.create ())
+  in
+  Dune_engine.Build_system.run_action_builder ~build (action_builder_of_request request)
 ;;
 
 let run_build_command_poll ~(common : Common.t) ~config ~sticky_goal : unit =
-  let build_loop = Dune_engine.Build_loop.create () in
-  let rpc_server =
-    Dune_rpc_impl.Server.create
-      ~registry:`Add
-      ~root:(Common.root common).dir
-      ~build:
-        (Dune_rpc_impl.Server.Enabled
-           { build_loop; build_action = rpc_request_action ~common })
-      (Common.watch common)
-  in
-  Scheduler_setup.go_with_rpc_server_and_file_watcher
-    ~common
-    ~config
-    ~rpc_server
-    (fun () ->
-       Dune_engine.Build_loop.run build_loop (fun () ->
-         Dune_engine.Build_loop.poll build_loop ~sticky_goal))
+  let build_loop = Common.build_loop common in
+  Scheduler_setup.go_with_rpc_server_and_file_watcher ~common ~config (fun () ->
+    Dune_engine.Build_loop.run build_loop (fun () ->
+      Dune_engine.Build_loop.poll
+        build_loop
+        ~action_runner:(Common.action_runner common)
+        ~sticky_goal))
 ;;
 
 let run_build_command_once ~(common : Common.t) ~config ~request =
   let open Fiber.O in
   let once () =
-    run_build_system ~run_id:Dune_engine.Run_id.Batch ~request
+    run_build_system
+      ~action_runner:(Common.action_runner common)
+      ~run_id:Dune_engine.Run_id.Batch
+      ~request
     >>| function
     | Error `Already_reported -> raise Dune_util.Report_error.Already_reported
     | Ok () -> ()
@@ -165,7 +152,7 @@ let build =
       | [] -> [ Common.Builder.default_target builder ]
       | _ :: _ -> targets
     in
-    let common, config = Common.init builder in
+    let common, config = Common.init_build builder in
     (* Here we need to find out whether another instance of dune already holds
        the global build lock, as this will determine whether the current
        instance of dune will perform the build itself or send a build request
@@ -181,6 +168,14 @@ let build =
        it. *)
     match Global_lock.lock () with
     | Error lock_held_by ->
+      if Common.action_runner_requested common
+      then
+        User_error.raise
+          [ Pp.text
+              "Action runner flags cannot be used when forwarding build requests to an \
+               existing Dune process. Start the server with the action runner flags \
+               instead."
+          ];
       (* This case is reached if dune detects that another instance of dune
          is already running. Rather than performing the build itself, the
          current instance of dune will instruct the already-running instance to

@@ -7,6 +7,7 @@ type t
 val x : t -> Dune_engine.Context_name.t option
 val capture_outputs : t -> bool
 val root : t -> Workspace_root.t
+val build_loop : t -> Dune_engine.Build_loop.t
 
 val rpc
   :  t
@@ -18,6 +19,9 @@ val rpc
 val watch_exclusions : t -> string list
 val watch : t -> Dune_rpc_impl.Watch_mode_config.t
 val file_watcher : t -> Dune_scheduler.Scheduler.Run.file_watcher
+val sandbox_actions : t -> bool
+val action_runner : t -> Dune_engine.Action_runner.t option
+val action_runner_requested : t -> bool
 val prefix_target : t -> string -> string
 val find_default_trace_file : unit -> string
 
@@ -62,6 +66,8 @@ val init_with_root
   :  root:Workspace_root.t
   -> Builder.t
   -> t * Dune_config_file.Dune_config.t
+
+val init_build : Builder.t -> t * Dune_config_file.Dune_config.t
 
 (** [init] is like [init_with_root], where [root] is the Workspace root
     corresponding to the current working directory. *)

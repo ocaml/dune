@@ -8,8 +8,6 @@ an appropriate error message.
   > (library (public_name foodummy))
   > EOF
   $ dune build --root external @install
-  Entering directory 'external'
-  Leaving directory 'external'
   $ mkdir test
   $ echo "(lang dune 2.5)" > test/dune-project
   $ cat >test/dune <<EOF

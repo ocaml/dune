@@ -17,8 +17,6 @@ Test installed directory targets may be depended on
   > EOF
 
   $ dune build --root lib
-  Entering directory 'lib'
-  Leaving directory 'lib'
 
   $ cat lib/_build/default/foo.install
   lib: [
@@ -48,8 +46,6 @@ Test installed directory targets may be depended on
   > EOF
 
   $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root app hello.txt
-  Entering directory 'app'
-  Leaving directory 'app'
 
   $ cat app/_build/default/hello.txt
   hello from file inside dir target

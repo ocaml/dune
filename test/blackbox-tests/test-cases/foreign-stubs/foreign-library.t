@@ -673,8 +673,6 @@ Testsuite for the (foreign_library ...) stanza.
   > EOF
 
   $ export OCAMLPATH=$PWD/external/install/lib; dune exec ./main.exe --root=some/dir
-  Entering directory 'some/dir'
-  Leaving directory 'some/dir'
   Answer = 42
 
 ----------------------------------------------------------------------------------
@@ -834,8 +832,6 @@ Testsuite for the (foreign_library ...) stanza.
   >  (foreign_stubs (language c) (names stubs)))
   > EOF
   $ dune build --root stubs_in_libs
-  Entering directory 'stubs_in_libs'
-  Leaving directory 'stubs_in_libs'
   $ stubs_in_libs/_build/default/main.exe
   12
 
@@ -874,8 +870,6 @@ Testsuite for the (foreign_library ...) stanza.
   >  (foreign_archives lib))
   > EOF
   $ ENABLE=1 dune build --root enabled_if
-  Entering directory 'enabled_if'
-  Leaving directory 'enabled_if'
   $ ENABLE=0 dune build --root enabled_if
   Entering directory 'enabled_if'
   File "dune", lines 6-8, characters 0-45:

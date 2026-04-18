@@ -27,8 +27,6 @@ Show target promotion in-source for `melange.emit`
   > EOF
 
   $ dune build --root lib
-  Entering directory 'lib'
-  Leaving directory 'lib'
 
   $ cat lib/_build/default/foo.install
   lib: [
@@ -78,8 +76,6 @@ Show target promotion in-source for `melange.emit`
   > EOF
 
   $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root app @mel
-  Entering directory 'app'
-  Leaving directory 'app'
 
   $ ls app/_build/default/output/node_modules/foo
   foo.js

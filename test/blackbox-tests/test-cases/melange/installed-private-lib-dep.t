@@ -28,8 +28,6 @@ Melange (installed) library depends on private library
   > EOF
 
   $ dune build @install --root lib
-  Entering directory 'lib'
-  Leaving directory 'lib'
   $ dune install --prefix $PWD/prefix --root lib --display short
   Installing $TESTCASE_ROOT/prefix/lib/foo/META
   Installing $TESTCASE_ROOT/prefix/lib/foo/__private__/priv/melange/.public_cmi_melange/priv.cmi
@@ -63,6 +61,4 @@ Melange (installed) library depends on private library
 Build the app that depends on `foo`, which in turn depends on a private lib
 
   $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build @melange --root app
-  Entering directory 'app'
-  Leaving directory 'app'
 

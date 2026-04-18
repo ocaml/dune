@@ -6,6 +6,7 @@
  (libraries
   stdune
   dune_action_trace
+  re
   csexp
   bigstringaf
   threads.posix

@@ -6,15 +6,53 @@ module Out = struct
   include Out
 
   let create path =
+    let of_string_exn x =
+      match Category.of_string x with
+      | Some x -> x
+      | None -> User_error.raise [ Pp.textf "unrecognized trace category %S" x ]
+    in
     let cats =
       match Sys.getenv_opt "DUNE_TRACE" with
       | None -> Category.default
       | Some s ->
-        String.split ~on:',' s
-        |> List.map ~f:(fun x ->
-          match Category.of_string x with
-          | Some s -> s
-          | None -> User_error.raise [ Pp.textf "unrecognized trace category %S" x ])
+        let tokens =
+          let dune_trace_re = Re.compile (Re.set ",+-") in
+          Re.split_full dune_trace_re s
+          |> List.map ~f:(function
+            | `Text s -> `Category (of_string_exn s)
+            | `Delim g ->
+              (match Re.Group.get g 0 with
+               | "," -> `Comma
+               | "+" -> `Add
+               | "-" -> `Remove
+               | _ -> assert false))
+        in
+        if
+          List.for_all tokens ~f:(function
+            | `Category _ | `Comma -> true
+            | _ -> false)
+        then
+          (* We can do better validation here *)
+          List.filter_map tokens ~f:(function
+            | `Category x -> Some x
+            | _ -> None)
+        else (
+          let rec loop acc = function
+            | `Add :: `Category cat :: xs ->
+              let acc = cat :: acc in
+              loop acc xs
+            | `Remove :: `Category cat :: xs ->
+              let acc = List.filter acc ~f:(fun x -> x <> cat) in
+              loop acc xs
+            | [] -> acc
+            | _ :: _ ->
+              User_error.raise
+                [ Pp.text
+                    "invalid DUNE_TRACE. Either specify categories by only ',' or a mix \
+                     of '+', and '-' "
+                ]
+          in
+          loop Category.default tokens)
     in
     create cats path
   ;;

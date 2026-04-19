@@ -66,7 +66,8 @@ let get_error_from_exn = function
       match msg.dir with
       | None -> msg
       | Some path ->
-        (match Path.extract_build_context (Path.of_string path) with
+        let path = Path.of_string path |> Path.drop_optional_sandbox_root in
+        (match Path.extract_build_context path with
          | None -> msg
          | Some (ctxt, _) -> { msg with context = Some ctxt })
     in

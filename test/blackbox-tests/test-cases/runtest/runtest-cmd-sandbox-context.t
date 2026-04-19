@@ -16,6 +16,7 @@ Sandboxed cram failures should preserve their build context.
 
   $ dune test --sandbox symlink mytest.t
   File "mytest.t", line 1, characters 0-0:
+  Context: alt
   --- mytest.t
   +++ mytest.t.corrected
   @@ -1,2 +1,2 @@

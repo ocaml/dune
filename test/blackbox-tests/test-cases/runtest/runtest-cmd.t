@@ -289,4 +289,3 @@ that context as expected.
   Error: Multiple contexts are defined but no default context was found. Please
   use the --context flag or specify a build directory path.
   [1]
-

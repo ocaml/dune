@@ -338,6 +338,12 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
+  ; { path = "vendor/patch/src"
+    ; main_module_name = Some "Patch"
+    ; include_subdirs = No
+    ; special_builtin_support = None
+    ; root_module = None
+    }
   ; { path = "src/dune_patch"
     ; main_module_name = Some "Dune_patch"
     ; include_subdirs = No

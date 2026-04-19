@@ -2206,11 +2206,51 @@ end = struct
   ;;
 end
 
-let closure l ~linking =
-  let forbidden_libraries = Map.empty in
-  if linking
-  then Resolve_names.linking_closure_with_overlap_checks None l ~forbidden_libraries
-  else Resolve_names.compile_closure_with_overlap_checks None l ~forbidden_libraries
+let closure =
+  let memo =
+    let module Input = struct
+      type nonrec t = bool * Compilation_mode.t * t list
+
+      let equal (l, m, libs) (l', m', libs') =
+        Bool.equal l l' && Compilation_mode.equal m m' && List.equal equal libs libs'
+      ;;
+
+      let hash_for_ = function
+        | Compilation_mode.Ocaml -> 0
+        | Melange -> 1
+      ;;
+
+      let hash (linking, for_, libs) =
+        Tuple.T3.hash
+          Bool.hash
+          hash_for_
+          (List.hash (fun lib -> Id.hash lib.unique_id))
+          (linking, for_, libs)
+      ;;
+
+      let to_dyn = Dyn.opaque
+    end
+    in
+    Memo.create
+      "lib-closure"
+      ~input:(module Input)
+      (fun (linking, for_, l) ->
+         let forbidden_libraries = Map.empty in
+         if linking
+         then
+           Resolve_names.linking_closure_with_overlap_checks
+             None
+             l
+             ~forbidden_libraries
+             ~for_
+         else
+           Resolve_names.compile_closure_with_overlap_checks
+             None
+             l
+             ~forbidden_libraries
+             ~for_)
+  in
+  fun l ~linking ~for_ -> Memo.exec memo (linking, for_, l)
 ;;
 
 let descriptive_closure (l : lib list) ~with_pps ~for_ : lib list Memo.t =

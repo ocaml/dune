@@ -16,11 +16,6 @@ concurrency:
 permissions:
   contents: read
 
-env:
-  EXTRA_NIX_CONFIG: |
-    extra-substituters = https://anmonteiro.nix-cache.workers.dev
-    extra-trusted-public-keys = ocaml.nix-cache.com-1:/xI2h2+56rwFfKyyFVbkJSeGqSIYMC/Je+7XXqGKDIY=
-
 jobs:
 
 #
@@ -39,8 +34,6 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: nixbuild/nix-quick-install-action@v34
-        with:
-          nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
       - run: nix build
 
   nix-test:
@@ -54,8 +47,6 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: nixbuild/nix-quick-install-action@v34
-        with:
-          nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
       - run: nix develop -i -c make test
 
   fmt:
@@ -64,8 +55,6 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: nixbuild/nix-quick-install-action@v34
-        with:
-          nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
       - run: nix develop .#fmt -c make fmt
 
   diff-on-checkout:
@@ -81,8 +70,6 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: nixbuild/nix-quick-install-action@v34
-        with:
-          nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
       - run: nix develop .#doc -c make doc
         env:
           LC_ALL: C
@@ -98,8 +85,6 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: nixbuild/nix-quick-install-action@v34
-        with:
-          nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
       - run: nix develop -i .#bootstrap-check -c make test-bootstrap-script
 
   nix-build-4-14:
@@ -113,8 +98,6 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: nixbuild/nix-quick-install-action@v34
-        with:
-          nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
       - uses: nix-community/cache-nix-action@v7
         with:
           primary-key: |
@@ -136,8 +119,6 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: nixbuild/nix-quick-install-action@v34
-        with:
-          nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
       - uses: nix-community/cache-nix-action@v7
         with:
           primary-key: |
@@ -316,8 +297,6 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: nixbuild/nix-quick-install-action@v34
-        with:
-          nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
       - uses: nix-community/cache-nix-action@v7
         with:
           primary-key: |
@@ -333,8 +312,6 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: nixbuild/nix-quick-install-action@v34
-        with:
-          nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
       - uses: nix-community/cache-nix-action@v7
         with:
           primary-key: |
@@ -504,8 +481,6 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: nixbuild/nix-quick-install-action@v34
-        with:
-          nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
       - run: nix develop .#microbench -c make dune build bench/micro
 
   utop-dev-tool-test:
@@ -514,8 +489,6 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: nixbuild/nix-quick-install-action@v34
-        with:
-          nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
       - uses: nix-community/cache-nix-action@v7
         with:
           primary-key: |
@@ -533,4 +506,3 @@ jobs:
           dune pkg lock
           dune tools install utop
           dune utop . script.ml
-

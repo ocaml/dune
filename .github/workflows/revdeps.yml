@@ -29,11 +29,6 @@ concurrency:
 permissions:
   contents: read
 
-env:
-  EXTRA_NIX_CONFIG: |
-    extra-substituters = https://anmonteiro.nix-cache.workers.dev
-    extra-trusted-public-keys = ocaml.nix-cache.com-1:/xI2h2+56rwFfKyyFVbkJSeGqSIYMC/Je+7XXqGKDIY=
-
 jobs:
   revdeps:
     name: OCaml Reverse Dependencies
@@ -41,8 +36,6 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: nixbuild/nix-quick-install-action@v34
-        with:
-          nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
       - name: Build OCaml reverse dependencies
         run: |
           prefix=".#revdeps.x86_64-linux"

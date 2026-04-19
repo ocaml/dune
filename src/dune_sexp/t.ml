@@ -65,6 +65,6 @@ let rec to_sexp = function
   | Atom (A s) -> Sexp.Atom s
   | List s -> List (List.map ~f:to_sexp s)
   | Quoted_string s -> List [ Atom "quoted"; Atom s ]
-  | Template ({ quoted; parts = _; loc = _ } as t) ->
+  | Template ({ quoted; parts = _; loc = _; _ } as t) ->
     List [ Atom "template"; Atom (Bool.to_string quoted); Atom (Template.to_string t) ]
 ;;

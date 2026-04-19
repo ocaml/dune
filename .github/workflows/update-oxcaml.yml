@@ -1,0 +1,63 @@
+name: Update OxCaml flake inputs
+
+on:
+  schedule:
+    - cron: '0 5 * * 1' # Every Monday at 5:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-release:
+    name: Update OxCaml release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Check for new release
+        id: check
+        run: |
+          # Extract the current tag from flake.nix
+          current=$(grep -oP 'github:oxcaml/oxcaml/\K[^"]+' flake.nix | head -1)
+          echo "current=$current" >> "$GITHUB_OUTPUT"
+
+          # Find the tag the opam repo pins
+          versions_url="https://api.github.com/repos/oxcaml/opam-repository/contents/packages/ocaml-variants"
+          latest_dir=$(curl -s "$versions_url" | jq -r '.[].name' | sort -V | tail -1)
+          opam_url="https://raw.githubusercontent.com/oxcaml/opam-repository/HEAD/packages/ocaml-variants/${latest_dir}/opam"
+          latest=$(curl -s "$opam_url" | grep -oP 'refs/tags/\K[^"]+' | head -1)
+
+          echo "latest=$latest" >> "$GITHUB_OUTPUT"
+
+          if [ "$current" = "$latest" ]; then
+            echo "up_to_date=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "up_to_date=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: nixbuild/nix-quick-install-action@v34
+        if: steps.check.outputs.up_to_date == 'false'
+
+      - name: Update flake inputs
+        if: steps.check.outputs.up_to_date == 'false'
+        run: |
+          current="${{ steps.check.outputs.current }}"
+          latest="${{ steps.check.outputs.latest }}"
+          sed -i "s|github:oxcaml/oxcaml/${current}|github:oxcaml/oxcaml/${latest}|" flake.nix
+          nix flake update oxcaml oxcaml-opam-repository
+
+      - name: Create PR
+        if: steps.check.outputs.up_to_date == 'false'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: update-oxcaml-${{ steps.check.outputs.latest }}
+          title: "Update OxCaml to ${{ steps.check.outputs.latest }}"
+          body: |
+            The OxCaml opam repository now pins release `${{ steps.check.outputs.latest }}`.
+
+            Previously pinned: `${{ steps.check.outputs.current }}`
+
+            This PR updates the `oxcaml` and `oxcaml-opam-repository` flake inputs to match.
+          commit-message: "Update OxCaml to ${{ steps.check.outputs.latest }}"

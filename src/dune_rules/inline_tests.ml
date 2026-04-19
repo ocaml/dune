@@ -202,10 +202,16 @@ include Sub_system.Register_end_point (struct
         let lib_name = snd lib.name in
         Path.Build.relative dir (Inline_tests_info.inline_test_dirname lib_name)
       in
+      let dune_version = Scope.project scope |> Dune_project.dune_version in
       let runner_name = Inline_tests_info.inline_test_runner in
       let main_module =
         let name = Module_name.of_checked_string "main" in
         Module.generated ~kind:Impl ~for_ ~src_dir:inline_test_dir [ name ]
+      in
+      let generate_runner_sandbox =
+        if dune_version >= (3, 23)
+        then Sandbox_config.needs_sandboxing
+        else Sandbox_config.no_special_requirements
       in
       (* Generate the runner file *)
       let js_of_ocaml =
@@ -241,7 +247,7 @@ include Sub_system.Register_end_point (struct
                  Option.map backend.info.generate_runner ~f:(fun (loc, action) ->
                    Action_unexpanded.expand_no_targets
                      action
-                     Sandbox_config.no_special_requirements
+                     generate_runner_sandbox
                      ~loc
                      ~expander
                      ~chdir:dir
@@ -371,8 +377,7 @@ include Sub_system.Register_end_point (struct
       let partitions_flags = partition_flags ~expander ~lib_name ~backends in
       let deps, sandbox =
         let sandbox =
-          let project = Scope.project scope in
-          if Dune_project.dune_version project < (3, 5)
+          if dune_version < (3, 5)
           then Sandbox_config.no_special_requirements
           else Sandbox_config.needs_sandboxing
         in

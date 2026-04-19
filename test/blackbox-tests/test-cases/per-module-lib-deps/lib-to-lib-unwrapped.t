@@ -80,7 +80,8 @@ Change only alpha.mli:
   > let new_alpha_fn () = "alpha"
   > EOF
 
-uses_beta is recompiled even though it only references Beta, not Alpha:
+uses_beta is recompiled because unwrapped libraries use glob deps (per-module
+filtering within unwrapped libraries is not yet supported):
 
   $ dune build ./main.exe
   $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("uses_beta"))] | length'
@@ -97,7 +98,7 @@ Change only beta.mli:
   > let new_beta_fn () = "beta"
   > EOF
 
-uses_alpha is recompiled even though it only references Alpha, not Beta:
+uses_alpha is recompiled because unwrapped libraries use glob deps:
 
   $ dune build ./main.exe
   $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("uses_alpha"))] | length'

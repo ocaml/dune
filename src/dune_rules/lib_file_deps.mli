@@ -15,7 +15,22 @@ end
     with extension [files] of libraries [libs]. *)
 val deps : Lib.t list -> groups:Group.t list -> Dep.Set.t
 
-val deps_with_exts : (Lib.t * Group.t list) list -> Dep.Set.t
+(** [deps_of_entries ~opaque ~cm_kind libs] computes the file dependencies
+    (glob deps on .cmi/.cmx files) for the given libraries. *)
+val deps_of_entries : opaque:bool -> cm_kind:Lib_mode.Cm_kind.t -> Lib.t list -> Dep.Set.t
+
+module Lib_index : sig
+  type t
+
+  val empty : t
+
+  (** Create an index from a list of (module_name, library) pairs. *)
+  val create : (Module_name.t * Lib.t) list -> t
+
+  (** Return the libraries whose module names appear in
+      [referenced_modules]. *)
+  val filter_libs : t -> referenced_modules:Module_name.Set.t -> Lib.t list
+end
 
 type path_specification =
   | Allow_all

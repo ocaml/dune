@@ -12,18 +12,43 @@ type t =
   | Ocaml_index
   | Merlin
 
-let to_dyn = function
-  | Ocamlformat -> Dyn.variant "Ocamlformat" []
-  | Odoc -> Dyn.variant "Odoc" []
-  | Ocamllsp -> Dyn.variant "Ocamllsp" []
-  | Utop -> Dyn.variant "Utop" []
-  | Ocamlearlybird -> Dyn.variant "Ocamlearlybird" []
-  | Odig -> Dyn.variant "Odig" []
-  | Opam_publish -> Dyn.variant "Opam_publish" []
-  | Dune_release -> Dyn.variant "Dune_release" []
-  | Ocaml_index -> Dyn.variant "Ocaml_index" []
-  | Merlin -> Dyn.variant "Merlin" []
+let repr =
+  Repr.variant
+    "dev-tool"
+    [ Repr.case0 "Ocamlformat" ~test:(function
+        | Ocamlformat -> true
+        | _ -> false)
+    ; Repr.case0 "Odoc" ~test:(function
+        | Odoc -> true
+        | _ -> false)
+    ; Repr.case0 "Ocamllsp" ~test:(function
+        | Ocamllsp -> true
+        | _ -> false)
+    ; Repr.case0 "Utop" ~test:(function
+        | Utop -> true
+        | _ -> false)
+    ; Repr.case0 "Ocamlearlybird" ~test:(function
+        | Ocamlearlybird -> true
+        | _ -> false)
+    ; Repr.case0 "Odig" ~test:(function
+        | Odig -> true
+        | _ -> false)
+    ; Repr.case0 "Opam_publish" ~test:(function
+        | Opam_publish -> true
+        | _ -> false)
+    ; Repr.case0 "Dune_release" ~test:(function
+        | Dune_release -> true
+        | _ -> false)
+    ; Repr.case0 "Ocaml_index" ~test:(function
+        | Ocaml_index -> true
+        | _ -> false)
+    ; Repr.case0 "Merlin" ~test:(function
+        | Merlin -> true
+        | _ -> false)
+    ]
 ;;
+
+let to_dyn = Repr.to_dyn repr
 
 let all =
   [ Ocamlformat
@@ -39,31 +64,7 @@ let all =
   ]
 ;;
 
-let equal a b =
-  match a, b with
-  | Ocamlformat, Ocamlformat -> true
-  | Ocamlformat, _ | _, Ocamlformat -> false
-  | Odoc, Odoc -> true
-  | Odoc, _ | _, Odoc -> false
-  | Ocamllsp, Ocamllsp -> true
-  | Ocamllsp, _ | _, Ocamllsp -> false
-  | Utop, Utop -> true
-  | Utop, _ | _, Utop -> false
-  | Ocamlearlybird, Ocamlearlybird -> true
-  | Ocamlearlybird, _ | _, Ocamlearlybird -> false
-  | Odig, Odig -> true
-  | Odig, _ | _, Odig -> false
-  | Opam_publish, Opam_publish -> true
-  | Opam_publish, _ -> false
-  | _, Opam_publish -> false
-  | Dune_release, Dune_release -> true
-  | Dune_release, _ -> false
-  | _, Dune_release -> false
-  | Ocaml_index, Ocaml_index -> true
-  | Ocaml_index, _ | _, Ocaml_index -> false
-  | Merlin, Merlin -> true
-;;
-
+let equal, _ = Repr.make_compare repr
 let hash = Poly.hash
 
 let package_name = function

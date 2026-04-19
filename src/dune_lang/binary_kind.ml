@@ -7,22 +7,28 @@ type t =
   | Shared_object
   | Plugin
 
-let compare x y =
-  match x, y with
-  | C, C -> Eq
-  | C, _ -> Lt
-  | _, C -> Gt
-  | Exe, Exe -> Eq
-  | Exe, _ -> Lt
-  | _, Exe -> Gt
-  | Object, Object -> Eq
-  | Object, _ -> Lt
-  | _, Object -> Gt
-  | Shared_object, Shared_object -> Eq
-  | Shared_object, _ -> Lt
-  | _, Shared_object -> Gt
-  | Plugin, Plugin -> Eq
+let repr =
+  Repr.variant
+    "binary-kind"
+    [ Repr.case0 "c" ~test:(function
+        | C -> true
+        | _ -> false)
+    ; Repr.case0 "exe" ~test:(function
+        | Exe -> true
+        | _ -> false)
+    ; Repr.case0 "object" ~test:(function
+        | Object -> true
+        | _ -> false)
+    ; Repr.case0 "shared_object" ~test:(function
+        | Shared_object -> true
+        | _ -> false)
+    ; Repr.case0 "plugin" ~test:(function
+        | Plugin -> true
+        | _ -> false)
+    ]
 ;;
+
+let _, compare = Repr.make_compare repr
 
 let decode =
   let open Decoder in
@@ -43,6 +49,6 @@ let to_string = function
   | Plugin -> "plugin"
 ;;
 
-let to_dyn t = Dyn.variant (to_string t) []
+let to_dyn = Repr.to_dyn repr
 let encode t = Dune_sexp.atom (to_string t)
 let all = [ C; Exe; Object; Shared_object; Plugin ]

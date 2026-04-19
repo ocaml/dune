@@ -5,25 +5,20 @@ module T = struct
     | C
     | Cxx
 
-  let compare x y =
-    match x, y with
-    | C, C -> Eq
-    | C, _ -> Lt
-    | _, C -> Gt
-    | Cxx, Cxx -> Eq
+  let repr =
+    Repr.variant
+      "foreign-language"
+      [ Repr.case0 "C" ~test:(function
+          | C -> true
+          | Cxx -> false)
+      ; Repr.case0 "Cxx" ~test:(function
+          | Cxx -> true
+          | C -> false)
+      ]
   ;;
 
-  let equal x y =
-    match x, y with
-    | C, C -> true
-    | Cxx, Cxx -> true
-    | _, _ -> false
-  ;;
-
-  let to_dyn = function
-    | C -> Dyn.Variant ("C", [])
-    | Cxx -> Dyn.Variant ("Cxx", [])
-  ;;
+  let equal, compare = Repr.make_compare repr
+  let to_dyn = Repr.to_dyn repr
 end
 
 include T

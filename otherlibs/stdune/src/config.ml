@@ -31,17 +31,23 @@ module Toggle = struct
     | `Disabled
     ]
 
-  let all : (string * t) list = [ "enabled", `Enabled; "disabled", `Disabled ]
-
-  let equal x y =
-    match x, y with
-    | `Enabled, `Enabled -> true
-    | `Enabled, _ | _, `Enabled -> false
-    | `Disabled, `Disabled -> true
+  let repr =
+    Repr.variant
+      "config-toggle"
+      [ Repr.case0 "Enabled" ~test:(function
+          | `Enabled -> true
+          | `Disabled -> false)
+      ; Repr.case0 "Disabled" ~test:(function
+          | `Disabled -> true
+          | `Enabled -> false)
+      ]
   ;;
 
+  let all : (string * t) list = [ "enabled", `Enabled; "disabled", `Disabled ]
+  let equal, _ = Repr.make_compare repr
+
   let to_string t =
-    List.find_map all ~f:(fun (k, v) -> if Poly.equal v t then Some k else None)
+    List.find_map all ~f:(fun (k, v) -> if equal v t then Some k else None)
     |> Option.value_exn
   ;;
 
@@ -51,12 +57,7 @@ module Toggle = struct
     | None -> Error (sprintf "only %S and %S are allowed" "enabled" "disabled")
   ;;
 
-  let to_dyn =
-    let open Dyn in
-    function
-    | `Enabled -> variant "Enabled" []
-    | `Disabled -> variant "Disabled" []
-  ;;
+  let to_dyn = Repr.to_dyn repr
 end
 
 let init values =

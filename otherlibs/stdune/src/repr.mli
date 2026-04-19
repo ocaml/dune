@@ -2,12 +2,19 @@ type _ t = private
   | Unit : unit t
   | Bool : bool t
   | Int : int t
+  | Int32 : int32 t
+  | Int64 : int64 t
+  | Nativeint : nativeint t
   | String : string t
+  | Bytes : bytes t
+  | Char : char t
+  | Float : float t
   | Option : 'a t -> 'a option t
   | List : 'a t -> 'a list t
   | Array : 'a t -> 'a array t
   | Pair : 'a t * 'b t -> ('a * 'b) t
   | Triple : 'a t * 'b t * 'c t -> ('a * 'b * 'c) t
+  | Quadruple : 'a t * 'b t * 'c t * 'd t -> ('a * 'b * 'c * 'd) t
   | Fix : 'a t Lazy.t -> 'a t
   | Record : string * 'a field list -> 'a t
   | Variant : string * 'a case list -> 'a t
@@ -75,7 +82,13 @@ val to_dyn : 'a repr -> 'a -> Dyn.t
 val unit : unit t
 val bool : bool t
 val int : int t
+val int32 : int32 t
+val int64 : int64 t
+val nativeint : nativeint t
 val string : string t
+val bytes : bytes t
+val char : char t
+val float : float t
 val option : 'a t -> 'a option t
 val list : 'a t -> 'a list t
 val array : 'a t -> 'a array t
@@ -89,6 +102,7 @@ val case : string -> 'b t -> proj:('a -> 'b option) -> 'a case
 val case0 : string -> test:('a -> bool) -> 'a case
 val variant : string -> 'a case list -> 'a t
 val abstract : ('a -> Dyn.t) -> 'a t
+val make_compare : 'a t -> ('a -> 'a -> bool) * ('a -> 'a -> Ordering.t)
 
 module Make (T : S) : sig
   val to_dyn : T.t -> Dyn.t

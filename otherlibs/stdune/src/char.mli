@@ -2,6 +2,8 @@ include module type of struct
   include Stdlib.Char
 end
 
+val repr : t Repr.t
+
 (** Check if a character belongs to the set [{'0'..'9'}]. *)
 val is_digit : t -> bool
 
@@ -10,3 +12,4 @@ val is_lowercase_hex : t -> bool
 
 val hash : t -> int
 val compare : t -> t -> Ordering.t
+val to_dyn : t -> Dyn.t

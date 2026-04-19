@@ -28,10 +28,6 @@ turn depends on the inline-test-name alias of the inline tests of the library.
 
 This kind of cycle has a difficult to understand error message.
   $ dune build 2>&1 | grep -vwE "sed"
-  File "dune", lines 7-9, characters 0-69:
-  7 | (library
-  8 |  (name foo_simple)
-  9 |  (inline_tests (backend backend_simple)))
   Error: Dependency cycle between:
      _build/default/.foo_simple.objs/foo_simple__Bar.impl.all-deps
   -> _build/default/.foo_simple.objs/byte/foo_simple__Bar.cmi

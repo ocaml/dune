@@ -42,20 +42,18 @@ At dune 3.22 the generator still runs outside the sandbox.
   >   ][0]'
   false
 
-At dune 3.23 the generator is sandboxed, which exposes the missing input.
+At dune 3.23 the generator is sandboxed and %{impl-files} still works.
 
   $ rm -rf _build
   $ cat > dune-project <<EOF
   > (lang dune 3.23)
   > EOF
 
-  $ dune test lib.ml 2>&1 | sed -E 's#/.*/sed:#sed:#'
-  File "dune", lines 10-13, characters 0-77:
-  10 | (library
-  11 |  (name mylib)
-  12 |  (modules lib)
+  $ dune test lib.ml
+  File "dune", line 13, characters 1-38:
   13 |  (inline_tests (backend test_backend)))
-  sed: can't read lib.ml: No such file or directory
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Fatal error: exception File ".mylib.inline-tests/main.ml-gen", line 2, characters 40-46: Assertion failed
   [1]
 
   $ dune trace cat | jq -sc 'include "dune";

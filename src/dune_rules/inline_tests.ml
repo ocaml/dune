@@ -235,13 +235,18 @@ include Sub_system.Register_end_point (struct
                let expander =
                  let bindings =
                    let files ml_kind =
-                     List.filter_map source_modules ~f:(Module.file ~ml_kind)
-                     |> Value.L.paths
+                     let files =
+                       List.filter_map source_modules ~f:(Module.file ~ml_kind)
+                     in
+                     Expander.Deps.With
+                       (let open Action_builder.O in
+                        let+ () = Action_builder.paths files in
+                        Value.L.paths files)
                    in
                    Pform.Map.of_list_exn
                      [ Var Impl_files, files Impl; Var Intf_files, files Intf ]
                  in
-                 Expander.add_bindings expander ~bindings
+                 Expander.add_bindings_full expander ~bindings
                in
                List.filter_map backends ~f:(fun (backend : Backend.t) ->
                  Option.map backend.info.generate_runner ~f:(fun (loc, action) ->

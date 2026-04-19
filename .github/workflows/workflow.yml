@@ -28,7 +28,7 @@ jobs:
 #
 
   nix-build:
-    name: Nix Build
+    name: Bootstrap with OCaml 5.4
     strategy:
       fail-fast: false
       matrix:
@@ -44,7 +44,7 @@ jobs:
       - run: nix build
 
   nix-test:
-    name: Nix Tests
+    name: Tests (Nix)
     strategy:
       fail-fast: false
       matrix:
@@ -88,7 +88,7 @@ jobs:
           LC_ALL: C
 
   bootstrap:
-    name: Bootstrap
+    name: Bootstrap with OCaml 4.02
     strategy:
       fail-fast: false
       matrix:
@@ -103,7 +103,7 @@ jobs:
       - run: nix develop -i .#bootstrap-check -c make test-bootstrap-script
 
   nix-build-4-14:
-    name: Nix Build 4.14
+    name: Bootstrap with OCaml 4.14
     strategy:
       fail-fast: false
       matrix:
@@ -126,7 +126,7 @@ jobs:
   nix-build-ox:
     # This builds OxCaml with the flake version which is typically ahead of the
     # OxCaml opam repository
-    name: Build with OxCaml
+    name: Bootstrap with OxCaml
     strategy:
       fail-fast: false
       matrix:
@@ -151,7 +151,7 @@ jobs:
 #
 
   build:
-    name: Build
+    name: Build (opam)
     # we only start building our other jobs, once our main tests have passed
     needs: nix-test
     strategy:
@@ -159,6 +159,10 @@ jobs:
       matrix:
         # Please keep the list in sync with the minimal version of OCaml in
         # dune-project, opam/dune.opam.template and bootstrap.ml
+        #
+        # CR Alizter: Move build-only matrix entries (no run_tests) to
+        # dedicated nix jobs. Some are already covered (e.g. 4.14 ubuntu by
+        # nix-build-4-14). The 32-bit entry may need to stay opam-based.
         #
         # We don't run tests on all versions of the Windows environment and on
         # 4.02.x and 4.07.x in other environments
@@ -306,7 +310,7 @@ jobs:
           key: opam-${{ matrix.os }}-${{ matrix.cache-prefix }}-${{ hashFiles('**.opam') }}
 
   rocq:
-    name: Rocq 9.2
+    name: Rocq Tests
     needs: nix-build
     runs-on: ubuntu-latest
     steps:
@@ -323,7 +327,7 @@ jobs:
       - run: nix develop .#rocq -c make test-rocq
 
   rocq-native:
-    name: Rocq 9.2 (native)
+    name: Rocq Tests (native)
     needs: nix-build
     runs-on: ubuntu-latest
     steps:
@@ -340,7 +344,7 @@ jobs:
       - run: nix develop .#rocq-native -c make test-rocq-native
 
   wasm:
-    name: Wasm_of_ocaml
+    name: Wasm_of_ocaml Tests
     needs: nix-build
     runs-on: ubuntu-latest
     steps:
@@ -396,7 +400,7 @@ jobs:
           key: opam-wasm-${{ hashFiles('**.opam') }}
 
   cygwin:
-    name: Cygwin Build
+    name: Bootstrap on Cygwin
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v6
@@ -414,7 +418,7 @@ jobs:
       # run: _boot/dune build dune.install
 
   oxcaml:
-    name: Building Dune with OxCaml
+    name: OxCaml Tests (opam)
     needs: nix-build
     runs-on: ubuntu-latest
     steps:

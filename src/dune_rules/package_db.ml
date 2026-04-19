@@ -6,7 +6,7 @@ type t = Context_name.t
 type any_package =
   | Local of Package.t
   | Installed of Dune_package.t
-  | Build of unit Action_builder.t
+  | Build of unit Action_builder.t * Path.t Install.Paths.t
 
 let find_package ctx pkg =
   let* packages = Dune_load.packages () in
@@ -19,7 +19,7 @@ let find_package ctx pkg =
        Pkg_rules.find_package ctx pkg
        >>| (function
         | None -> None
-        | Some b -> Some (Build b))
+        | Some (b, install_paths) -> Some (Build (b, install_paths)))
      | false ->
        let* findlib = Findlib.create ctx in
        Findlib.find_root_package findlib pkg

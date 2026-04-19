@@ -5,7 +5,7 @@ type t
 type any_package =
   | Local of Package.t
   | Installed of Dune_package.t
-  | Build of unit Action_builder.t
+  | Build of unit Action_builder.t * Path.t Install.Paths.t
 
 val create : Context_name.t -> t Memo.t
 val find_package : t -> Package.Name.t -> any_package option Memo.t

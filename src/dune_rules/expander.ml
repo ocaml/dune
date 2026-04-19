@@ -636,7 +636,103 @@ let expand_pform_macro
   =
   let s = Pform.Macro_invocation.Args.whole macro_invocation in
   match macro_invocation.macro with
-  | Pkg -> Code_error.raise "pkg forms aren't possible here" []
+  | Pkg ->
+    let loc = Dune_lang.Template.Pform.loc source in
+    let args = Pform.Macro_invocation.Args.split macro_invocation in
+    (match args with
+     | [ pkg_name_str; section_str; file_str ] ->
+       (match Section.of_string section_str with
+        | Some Misc | None ->
+          User_error.raise
+            ~loc
+            [ Pp.textf
+                "%%{pkg:%s:%s:%s}: %s is not a valid section; supported sections are \
+                 lib, bin, share, etc."
+                pkg_name_str
+                section_str
+                file_str
+                section_str
+            ]
+        | Some section ->
+          Need_full_expander
+            (fun t ->
+              With
+                (let pkg_name = Package.Name.of_string pkg_name_str in
+                 let context_name = Context.name t.context in
+                 let file_not_found () =
+                   Action_builder.fail
+                     { fail =
+                         (fun () ->
+                           User_error.raise
+                             ~loc
+                             [ Pp.textf
+                                 "File %s not found in section %s of package %s"
+                                 file_str
+                                 (Section.to_string section)
+                                 (Package.Name.to_string pkg_name)
+                             ])
+                     }
+                 in
+                 let open Action_builder.O in
+                 let* found =
+                   Action_builder.of_memo
+                     (let open Memo.O in
+                      let* package_db = Package_db.create context_name in
+                      Package_db.find_package package_db pkg_name)
+                 in
+                 match found with
+                 | None ->
+                   Action_builder.fail
+                     { fail =
+                         (fun () ->
+                           User_error.raise
+                             ~loc
+                             [ Pp.textf
+                                 "Package %s does not exist"
+                                 (Package.Name.to_string pkg_name)
+                             ])
+                     }
+                 | Some (Local _pkg) ->
+                   let* src =
+                     Action_builder.of_memo
+                       (Artifacts_db.resolve_package_install_file
+                          context_name
+                          ~pkg:pkg_name
+                          ~section
+                          ~file:file_str)
+                   in
+                   (match src with
+                    | None -> file_not_found ()
+                    | Some src -> Action_builder.return [ Value.Path (Path.build src) ])
+                 | Some (Build (build, install_paths)) ->
+                   let dst = Install.Entry.Dst.explicit file_str in
+                   let path = Install.Entry.Dst.install_path install_paths section dst in
+                   let+ () = build in
+                   [ Value.Path path ]
+                 | Some (Installed pkg) ->
+                   let has_file =
+                     List.exists pkg.files ~f:(fun (s, paths) ->
+                       Ordering.is_eq (Section.compare s section)
+                       && List.exists paths ~f:(fun (p : Dune_package.path) ->
+                         String.equal (Install.Entry.Dst.to_string p.dst) file_str))
+                   in
+                   if not has_file
+                   then file_not_found ()
+                   else (
+                     let prefix = Path.parent_exn (Path.parent_exn pkg.dir) in
+                     let roots =
+                       Install.Roots.opam_from_prefix prefix ~relative:Path.relative
+                     in
+                     let install_paths =
+                       Install.Paths.make ~relative:Path.relative ~package:pkg_name ~roots
+                     in
+                     let section_dir = Install.Paths.get install_paths section in
+                     let path = Path.relative section_dir file_str in
+                     Action_builder.return [ Value.Path path ]))))
+     | _ ->
+       User_error.raise
+         ~loc
+         [ Pp.textf "%%{pkg:..} requires 3 arguments: %%{pkg:PACKAGE:SECTION:PATH}" ])
   | Pkg_self -> Code_error.raise "pkg-self forms aren't possible here" []
   | Ocaml_config -> ocaml_config_macro source macro_invocation context
   | Env -> Need_full_expander (fun t -> env_macro t source macro_invocation)

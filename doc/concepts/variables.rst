@@ -144,6 +144,15 @@ In addition, ``(action ...)`` fields support the following special variables:
 - ``ppx:lib1+..+libn`` expands to the ppx executable with ppx libraries
   ``lib1`` to ``libn`` linked in. This form also introduces a dependency on
   this executable.
+- ``pkg:<package>:<section>:<path>`` expands to the path of a file
+  installed by ``<package>`` in ``<section>`` at the relative ``<path>``
+  within that section. For workspace packages, this resolves to the original
+  source file in the build directory. For installed packages, it resolves to
+  the absolute installed path. The supported sections are ``lib``,
+  ``libexec``, ``bin``, ``sbin``, ``share``, ``etc``, ``doc``, ``man``,
+  ``toplevel``, and ``stublibs`` (see :doc:`/reference/dune/install` for
+  details on each section). This form also introduces a dependency on the
+  package so that its artifacts are built before the action runs.
 
 The ``%{<kind>:...}`` forms are what allows you to write custom rules that work
 transparently, whether things are installed or not.

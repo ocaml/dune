@@ -26,9 +26,9 @@ let keep_generated_files =
 ;;
 
 let pps = "boot/pps"
-let modules = pps :: [ "boot/types"; "boot/libs"; "boot/duneboot" ]
+let main = "boot/duneboot"
+let modules = pps :: [ "boot/types"; "boot/libs" ]
 let duneboot = ".duneboot"
-let prog = duneboot ^ ".exe"
 
 let () =
   at_exit (fun () ->
@@ -72,13 +72,23 @@ let read_file fn =
   s
 ;;
 
+let script chan =
+  let pwd = Sys.getcwd () in
+  let directive ~directive_name ~module_ =
+    let fn = Filename.concat pwd (module_ ^ ".ml") in
+    fprintf chan "#%s %S;;\n" directive_name fn
+  in
+  List.iter modules ~f:(fun module_ -> directive ~directive_name:"mod_use" ~module_);
+  directive ~directive_name:"use" ~module_:main
+;;
+
 let () =
   let v = Scanf.sscanf Sys.ocaml_version "%d.%d.%d" (fun a b c -> a, b, c) in
   let compiler, ocamllex, which =
     if v >= min_supported_natively
-    then "ocamlc", "ocamllex", None
+    then "ocaml", "ocamllex", None
     else (
-      let compiler = "ocamlfind -toolchain secondary ocamlc" in
+      let compiler = "ocamlfind -toolchain secondary ocaml" in
       let output_fn, out = Filename.open_temp_file "duneboot" "ocamlfind-output" in
       let n = runf "%s 2>%s" compiler output_fn in
       let s = read_file output_fn in
@@ -102,22 +112,26 @@ let () =
       compiler, ocamllex, Some "--secondary")
   in
   exit_if_non_zero (runf "%s -q -o %s %s" ocamllex (pps ^ ".ml") (pps ^ ".mll"));
-  exit_if_non_zero
-    (runf
-       "%s %s -intf-suffix .dummy -g -o %s -I boot %sunix.cma %s"
-       compiler
-       (* Make sure to produce a self-contained binary as dlls tend to cause
-          issues *)
-       "-output-complete-exe"
-       prog
-       (if v >= (5, 0, 0) then "-I +unix " else "")
-       (List.map modules ~f:(fun m -> m ^ ".ml") |> String.concat ~sep:" "));
+  let script =
+    let fname, out = Filename.open_temp_file duneboot "main" in
+    script out;
+    close_out out;
+    fname
+  in
   let args = List.tl (Array.to_list Sys.argv) in
   let args =
     match which with
     | None -> args
     | Some x -> x :: args
   in
-  let args = Filename.concat "." prog :: args in
-  exit (runf "%s" (String.concat ~sep:" " args))
+  let cmd =
+    [ [ compiler ]
+    ; (if v >= (5, 0, 0) then [ "-I"; "+unix" ] else [])
+    ; [ "unix.cma"; script ]
+    ; args
+    ]
+    |> List.concat
+    |> String.concat ~sep:" "
+  in
+  runf "%s" cmd |> exit_if_non_zero
 ;;

@@ -15,6 +15,9 @@
       flake = false;
     };
     oxcaml = {
+      url = "github:oxcaml/oxcaml/5.2.0minus-25";
+    };
+    oxcaml-trunk = {
       url = "github:oxcaml/oxcaml";
     };
     oxcaml-opam-repository = {
@@ -26,7 +29,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.nixpkgs-old.follows = "nixpkgs-old";
       inputs.odoc-src.follows = "odoc-src";
-      inputs.oxcaml.follows = "oxcaml";
+      inputs.oxcaml.follows = "oxcaml-trunk";
       inputs.ocaml-overlays.follows = "ocaml-overlays";
       inputs.melange.follows = "melange";
       inputs.oxcaml-opam-repository.follows = "oxcaml-opam-repository";
@@ -53,6 +56,7 @@
       ocaml-overlays,
       odoc-src,
       oxcaml,
+      oxcaml-trunk,
       oxcaml-opam-repository,
       revdeps-dune,
       menhir-src,
@@ -595,6 +599,14 @@
               "ocaml-lsp-server"
               "odoc"
             ];
+            extraBuildInputs =
+              pkgs:
+              [ pkgs.tree ]
+              ++ (with pkgs.ocamlPackages; [
+                js_of_ocaml
+                js_of_ocaml-compiler
+                wasm_of_ocaml-compiler
+              ]);
             packageOverrides =
               oself: osuper:
               (oxPackageSet oself osuper)

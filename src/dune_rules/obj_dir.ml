@@ -646,7 +646,7 @@ module Module = struct
          let dir =
            match for_ with
            | Compilation_mode.Ocaml -> obj_dir t
-           | Melange -> obj_dir t
+           | Melange -> melange_dir t
          in
          let name = Dep.basename dep in
          Some (Path.Build.relative dir name))

@@ -20,6 +20,7 @@ Calling dune rules with the 'all' alias works fine
 
   $ dune rules --root . --format=json @all |
   > jq -r 'include "dune"; .[] | ruleDepFilePaths | select(test("main\\.ml$|melange__Main\\.cmj$"))'
+  _build/default/.melange_src/main.ml
   _build/default/main.ml
   _build/default/.output.mobjs/melange/melange__Main.cmj
 

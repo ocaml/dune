@@ -48,8 +48,44 @@ let deps_of_lib (lib : Lib.t) ~groups =
   |> Dep.Set.of_list
 ;;
 
-let deps_with_exts = Dep.Set.union_map ~f:(fun (lib, groups) -> deps_of_lib lib ~groups)
 let deps libs ~groups = Dep.Set.union_map libs ~f:(deps_of_lib ~groups)
+
+let deps_of_entries ~opaque ~(cm_kind : Lib_mode.Cm_kind.t) libs =
+  let groups_for lib =
+    match cm_kind with
+    | Ocaml Cmi | Ocaml Cmo -> [ Group.Ocaml Cmi ]
+    | Ocaml Cmx ->
+      if opaque && Lib.is_local lib
+      then [ Group.Ocaml Cmi ]
+      else [ Group.Ocaml Cmi; Group.Ocaml Cmx ]
+    | Melange Cmi -> [ Group.Melange Cmi ]
+    | Melange Cmj -> [ Group.Melange Cmi; Group.Melange Cmj ]
+  in
+  Dep.Set.union_map libs ~f:(fun lib -> deps_of_lib lib ~groups:(groups_for lib))
+;;
+
+module Lib_index = struct
+  type t = { by_module_name : Lib.t list Module_name.Map.t }
+
+  let empty = { by_module_name = Module_name.Map.empty }
+
+  let create entries =
+    let by_module_name =
+      List.fold_left entries ~init:Module_name.Map.empty ~f:(fun map (name, lib) ->
+        Module_name.Map.update map name ~f:(function
+          | None -> Some [ lib ]
+          | Some libs -> Some (lib :: libs)))
+    in
+    { by_module_name }
+  ;;
+
+  let filter_libs t ~referenced_modules =
+    Module_name.Set.fold referenced_modules ~init:[] ~f:(fun name acc ->
+      match Module_name.Map.find t.by_module_name name with
+      | None -> acc
+      | Some libs -> List.rev_append libs acc)
+  ;;
+end
 
 type path_specification =
   | Allow_all

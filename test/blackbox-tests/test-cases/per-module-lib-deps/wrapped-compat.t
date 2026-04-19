@@ -67,8 +67,8 @@ See: https://github.com/ocaml/dune/issues/4572
   > let new_fn () = "hello"
   > EOF
 
-Standalone is recompiled even though it doesn't reference Baselib:
+Standalone is not recompiled because it doesn't reference Baselib:
 
   $ dune build ./main.exe
   $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("Standalone"))] | length'
-  2
+  0

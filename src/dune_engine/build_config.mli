@@ -111,6 +111,8 @@ val set
   -> execution_parameters:
        (Context_name.t -> dir:Path.Build.t -> Execution_parameters.t Memo.t)
   -> source_tree:(module Source_tree)
+  -> action_runner:(Action_exec.input -> Action_runner.t option)
+  -> action_runners:(unit -> Action_runner.t list)
   -> unit
 
 type t = private
@@ -127,6 +129,8 @@ type t = private
   ; execution_parameters :
       Context_name.t -> dir:Path.Build.t -> Execution_parameters.t Memo.t
   ; source_tree : (module Source_tree)
+  ; action_runner : Action_exec.input -> Action_runner.t option
+  ; action_runners : unit -> Action_runner.t list
   }
 
 val get : unit -> t

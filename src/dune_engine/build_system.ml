@@ -492,8 +492,15 @@ end = struct
                ; action
                }
              in
-             let build_deps deps = Memo.run (build_deps deps) in
-             Action_exec.exec input ~build_deps
+             match (Build_config.get ()).action_runner input with
+             | None ->
+               let build_deps deps = Memo.run (build_deps deps) in
+               Action_exec.exec input ~build_deps
+             | Some runner ->
+               Action_runner.exec_action
+                 runner
+                 ~run_id:(Scheduler.current_run_id ())
+                 input
            in
            let* action_exec_result = Action_exec.Exec_result.ok_exn action_exec_result in
            let* () = Action_trace.collect action_trace in
@@ -1178,7 +1185,14 @@ let report_early_exn exn =
     let+ () = State.add_errors errors
     and+ () =
       match !Clflags.stop_on_first_error with
-      | true -> Scheduler.cancel_current_build ()
+      | true ->
+        let run_id = Scheduler.current_run_id () in
+        let* () =
+          (Build_config.get ()).action_runners ()
+          |> Fiber.parallel_iter ~f:(fun runner ->
+            Action_runner.cancel_build runner ~run_id)
+        in
+        Scheduler.cancel_current_build ()
       | false -> Fiber.return ()
     in
     (match !Clflags.report_errors_config with

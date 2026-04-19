@@ -701,6 +701,24 @@ module Action = struct
     Event.complete ~args:[ "name", Arg.string name ] ~name:"finish" ~start ~dur Action
   ;;
 
+  let runner_spawn ~name ~pid =
+    let now = Time.now () in
+    let args = [ "name", Arg.string name; "pid", Arg.int (Pid.to_int pid) ] in
+    Event.instant ~args ~name:"runner-spawn" now Action
+  ;;
+
+  let runner_connected ~name =
+    let now = Time.now () in
+    let args = [ "name", Arg.string name ] in
+    Event.instant ~args ~name:"runner-connected" now Action
+  ;;
+
+  let runner_request_sent ~name =
+    let now = Time.now () in
+    let args = [ "name", Arg.string name ] in
+    Event.instant ~args ~name:"runner-request-sent" now Action
+  ;;
+
   let write_file ~start ~finish ~file ~size =
     let dur = Time.diff finish start in
     let args = [ "file", Arg.path file; "size", Arg.int size ] in

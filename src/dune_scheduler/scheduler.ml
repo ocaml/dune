@@ -29,6 +29,13 @@ include Types.Scheduler
 
 let running_jobs_count (t : t) = Event.Queue.pending_jobs t.events
 
+let current_run_id () =
+  let t = t () in
+  match t.current_run_id with
+  | Some run_id -> run_id
+  | None -> Code_error.raise "no build run id is active" []
+;;
+
 exception Build_cancelled
 
 let cancelled () = raise (Memo.Non_reproducible Build_cancelled)
@@ -173,6 +180,10 @@ let prepare (config : Config.t) ~(handler : Handler.t) ~events ~file_watcher =
   in
   let cancel = Fiber.Cancel.create () in
   let process_watcher = Process_watcher.init events in
+  let run_id_state = Run_id.State.create ~watch_mode:(Option.is_some file_watcher) in
+  let current_run_id =
+    if Run_id.State.is_watch run_id_state then None else Some Run_id.Batch
+  in
   let t =
     { status =
         (* Slightly weird initialization happening here: for polling mode we
@@ -183,7 +194,8 @@ let prepare (config : Config.t) ~(handler : Handler.t) ~events ~file_watcher =
            mode, which is even weirder. *)
         Building cancel
     ; invalidation = Memo.Invalidation.empty
-    ; run_id_state = Run_id.State.create ~watch_mode:(Option.is_some file_watcher)
+    ; run_id_state
+    ; current_run_id
     ; watch_restart_started_at = None
     ; job_throttle = Fiber.Throttle.create config.concurrency
     ; process_watcher
@@ -412,6 +424,7 @@ module Run = struct
       t.build_inputs_changed <- Trigger.create ());
     let started_at = Time.now () in
     let run_id = allocate_run_id t in
+    t.current_run_id <- Some run_id;
     emit_build_start
       ~run_id
       ~restart:(Option.is_some t.watch_restart_started_at)
@@ -419,56 +432,61 @@ module Run = struct
     let cancel = Fiber.Cancel.create () in
     t.status <- Building cancel;
     t.cancel <- cancel;
-    let* res = step in
-    match t.status with
-    | Standing_by ->
-      let res : Build_outcome.t =
-        match res with
-        | Error `Already_reported -> Failure
-        | Ok () -> Success
-      in
-      let stop = Time.now () in
-      let restart_duration =
-        Option.map t.watch_restart_started_at ~f:(fun restart_started_at ->
-          Time.diff stop restart_started_at)
-      in
-      t.watch_restart_started_at <- None;
-      emit_build_finish
-        ~run_id
-        ~start:started_at
-        ~stop
-        ~outcome:
-          (match res with
-           | Success -> `Success
-           | Failure -> `Failure)
-        ~restart_duration;
-      t.handler (Build_finish res);
-      Fiber.return res
-    | Restarting_build -> poll_iter t step
-    | Building _ ->
-      let res : Build_outcome.t =
-        match res with
-        | Error `Already_reported -> Failure
-        | Ok () -> Success
-      in
-      t.status <- Standing_by;
-      let stop = Time.now () in
-      let restart_duration =
-        Option.map t.watch_restart_started_at ~f:(fun restart_started_at ->
-          Time.diff stop restart_started_at)
-      in
-      t.watch_restart_started_at <- None;
-      emit_build_finish
-        ~run_id
-        ~start:started_at
-        ~stop
-        ~outcome:
-          (match res with
-           | Success -> `Success
-           | Failure -> `Failure)
-        ~restart_duration;
-      t.handler (Build_finish res);
-      Fiber.return res
+    Fiber.finalize
+      (fun () ->
+         let* res = step in
+         match t.status with
+         | Standing_by ->
+           let res : Build_outcome.t =
+             match res with
+             | Error `Already_reported -> Failure
+             | Ok () -> Success
+           in
+           let stop = Time.now () in
+           let restart_duration =
+             Option.map t.watch_restart_started_at ~f:(fun restart_started_at ->
+               Time.diff stop restart_started_at)
+           in
+           t.watch_restart_started_at <- None;
+           emit_build_finish
+             ~run_id
+             ~start:started_at
+             ~stop
+             ~outcome:
+               (match res with
+                | Success -> `Success
+                | Failure -> `Failure)
+             ~restart_duration;
+           t.handler (Build_finish res);
+           Fiber.return res
+         | Restarting_build -> poll_iter t step
+         | Building _ ->
+           let res : Build_outcome.t =
+             match res with
+             | Error `Already_reported -> Failure
+             | Ok () -> Success
+           in
+           t.status <- Standing_by;
+           let stop = Time.now () in
+           let restart_duration =
+             Option.map t.watch_restart_started_at ~f:(fun restart_started_at ->
+               Time.diff stop restart_started_at)
+           in
+           t.watch_restart_started_at <- None;
+           emit_build_finish
+             ~run_id
+             ~start:started_at
+             ~stop
+             ~outcome:
+               (match res with
+                | Success -> `Success
+                | Failure -> `Failure)
+             ~restart_duration;
+           t.handler (Build_finish res);
+           Fiber.return res)
+      ~finally:(fun () ->
+        t.current_run_id <- None;
+        Fiber.return ())
   ;;
 
   let poll_iter t step =

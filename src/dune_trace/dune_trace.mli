@@ -204,6 +204,9 @@ module Event : sig
   module Action : sig
     val start : name:string -> start:Time.t -> t
     val finish : name:string -> start:Time.t -> t
+    val runner_spawn : name:string -> pid:Pid.t -> t
+    val runner_connected : name:string -> t
+    val runner_request_sent : name:string -> t
     val write_file : start:Time.t -> finish:Time.t -> file:Path.t -> size:int -> t
     val trace : digest:string -> Csexp.t -> t
   end

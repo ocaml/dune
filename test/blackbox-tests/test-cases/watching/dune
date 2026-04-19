@@ -18,6 +18,14 @@
   (= "macosx" %{ocaml-config:system}))
  (applies_to path-pwd))
 
+(cram
+ (deps %{bin:bwrap})
+ (enabled_if
+  (and
+   (= %{system} linux)
+   %{bin-available:bwrap}))
+ (applies_to sandbox-actions-shutdown))
+
 ;; Disabled due to timeouts
 
 (cram

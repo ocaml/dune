@@ -312,6 +312,7 @@ module Run_once = struct
 
   let run_and_cleanup t f =
     let res = run t f in
+    Async_io.shutdown t.async_io;
     Option.iter t.file_watcher ~f:(fun watcher ->
       (* CR-someday rgrinberg: we do not wind down the threads for the file
          watchers currently. Might interefere with tests that spawn the

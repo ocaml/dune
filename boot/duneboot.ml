@@ -1457,6 +1457,14 @@ module Group = struct
 end
 
 module Library = struct
+  let rec merge_sources left right =
+    String.Map.union left right ~f:(fun _key (left : _ String.Trie.node) right ->
+      match left, right with
+      | Node _, _ -> Some left
+      | Tree left, Tree right -> Some (Tree (merge_sources left right))
+      | Tree _, Node _ -> Some left)
+  ;;
+
   (* Collect source files *)
   let scan ~module_path ~dir ~include_subdirs =
     let rec collect dir module_path =
@@ -1494,6 +1502,28 @@ module Library = struct
       String.Map.union files dirs ~f:(fun _ _ _ -> assert false)
     in
     collect dir module_path
+  ;;
+
+  let copy_only_vendor_c_file file = Filename.basename file <> "ev.c"
+
+  (* Bootstrap does not evaluate [copy_files], so [lev] must explicitly pull
+     in the vendored C sources and headers that live next to [src]. We only
+     compile [ev.c]; the other vendored [.c] files are conditionally included
+     by [ev.c] and must only be copied into the boot directory. *)
+  let extra_sources ~dir =
+    match dir with
+    | "src/lev/src" ->
+      let vendor_dir = Filename.dirname dir ^/ "vendor" in
+      if Sys.file_exists vendor_dir && Sys.is_directory vendor_dir
+      then
+        scan ~module_path:[] ~dir:vendor_dir ~include_subdirs:No
+        |> String.Trie.map ~f:(fun (source : File_kind.t Source.t) ->
+          match source.kind with
+          | File_kind.C _ when copy_only_vendor_c_file source.file ->
+            { source with kind = File_kind.Header }
+          | _ -> source)
+      else String.Trie.empty
+    | _ -> String.Trie.empty
   ;;
 
   module Conv = Trie.Conv (String.Trie) (Module.Name.Trie)
@@ -1700,7 +1730,7 @@ module Library = struct
         | None -> []
         | Some x -> [ Module.Name.to_string x ]
       in
-      scan ~module_path ~dir ~include_subdirs
+      merge_sources (scan ~module_path ~dir ~include_subdirs) (extra_sources ~dir)
     in
     let modules, path_by_obj =
       let root_module = Option.map root_module ~f:fst in

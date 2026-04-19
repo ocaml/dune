@@ -1,0 +1,25 @@
+(copy_files# ../vendor/*.c)
+
+(copy_files# ../vendor/{ev,ev_vars,ev_wrap}.h)
+
+(foreign_library
+ (archive_name ev)
+ (extra_deps
+  ev_kqueue.c
+  ev_epoll.c
+  ev_iouring.c
+  ev_poll.c
+  ev_port.c
+  ev_select.c
+  ev_win32.c)
+ (language c)
+ (names ev))
+
+(library
+ (name lev)
+ (synopsis "libev bindings")
+ (libraries unix)
+ (foreign_archives ev)
+ (foreign_stubs
+  (language c)
+  (names lev_stubs)))

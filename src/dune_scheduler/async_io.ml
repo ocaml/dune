@@ -1,18 +1,7 @@
 open Stdune
 open Fiber.O
-
-let byte = Bytes.make 1 '0'
-
-module Task_id = Id.Make ()
 open Types
 include Types.Async_io
-
-let interrupt t =
-  if not t.interrupting
-  then (
-    assert (Unix.single_write (Fd.unsafe_to_unix_file_descr t.pipe_write) byte 0 1 = 1);
-    t.interrupting <- true)
-;;
 
 let filter_queue q ~f =
   let new_q = Queue.create () in
@@ -20,47 +9,34 @@ let filter_queue q ~f =
   new_q
 ;;
 
-module Task = struct
-  type 'a t = User_task : ('a, 'label) task -> 'a t
+let with_mutex t ~f =
+  Mutex.lock t.mutex;
+  Exn.protect ~f ~finally:(fun () -> Mutex.unlock t.mutex)
+;;
 
-  let await (User_task task) = Fiber.Ivar.read task.ivar
+let wakeup_loop t = Lev.Async.send t.wakeup t.loop
 
-  let cancel (User_task t) =
-    let* () = Fiber.return () in
-    Mutex.lock t.select.mutex;
-    let+ () =
-      match t.status with
-      | `Filled -> Fiber.return ()
-      | `Waiting ->
-        let table =
-          match t.what with
-          | `Read -> t.select.readers
-          | `Write -> t.select.writers
-        in
-        let should_interrupt =
-          let should_interrupt = ref false in
-          List.iter t.fds ~f:(fun fd ->
-            match Table.find table fd with
-            | None -> ()
-            | Some q ->
-              let new_q =
-                filter_queue q ~f:(fun (Task (t', _)) -> not (Task_id.equal t.id t'.id))
-              in
-              should_interrupt
-              := !should_interrupt || Queue.length new_q <> Queue.length q;
-              if Queue.is_empty new_q
-              then Table.remove table fd
-              else Table.set table fd new_q);
-          !should_interrupt
-        in
-        if should_interrupt then interrupt t.select;
-        t.status <- `Filled;
-        Event.Queue.cancel_work_task_started t.select.scheduler_queue;
-        Fiber.Ivar.fill t.ivar (Error `Cancelled)
-    in
-    Mutex.unlock t.select.mutex
-  ;;
-end
+let retire_watcher ?fd_to_close ?(fills = []) t fd ({ io; _ } as watcher : watcher) =
+  if Lev.Io.is_active io then Lev.Io.stop io t.loop;
+  Table.remove t.watchers fd;
+  t.retired <- watcher :: t.retired;
+  Option.iter fd_to_close ~f:Fd.close;
+  fills
+;;
+
+let destroy_retired_watchers_locked t =
+  let pending, ready =
+    List.fold_left
+      t.retired
+      ~init:([], [])
+      ~f:(fun (pending, ready) ({ io; _ } as watcher) ->
+        if Lev.Io.is_pending io
+        then watcher :: pending, ready
+        else pending, watcher :: ready)
+  in
+  t.retired <- pending;
+  List.iter ready ~f:(fun { io; _ } -> Lev.Io.destroy io)
+;;
 
 let cleanup_other_tasks waiters task =
   List.iter task.fds ~f:(fun fd ->
@@ -88,33 +64,13 @@ let drain_until_ready fd waiters queue acc =
     Fiber.Fill (task.ivar, result) :: acc
 ;;
 
-let make_fills fds pipe_fd waiters init =
-  List.fold_left fds ~init:(false, init) ~f:(fun (pipe, acc) fd ->
-    if Fd.equal fd pipe_fd
-    then true, acc
-    else (
-      let acc =
-        match Table.find waiters fd with
-        | None -> acc
-        | Some w ->
-          let acc = drain_until_ready fd waiters w acc in
-          if Queue.is_empty w then Table.remove waiters fd;
-          acc
-      in
-      pipe, acc))
-;;
-
-let drain_pipe pipe buf =
-  match Unix.read (Fd.unsafe_to_unix_file_descr pipe) buf 0 (Bytes.length buf) with
-  | _ -> ()
-  | exception Unix.Unix_error (Unix.EAGAIN, _, _) -> ()
-;;
-
-let rec drain_cancel q acc =
+let rec drain_cancel waiters q acc =
   match Queue.pop q with
   | None -> acc
   | Some (Task (task, _)) ->
-    drain_cancel q (Fiber.Fill (task.ivar, Error `Cancelled) :: acc)
+    task.status <- `Filled;
+    cleanup_other_tasks waiters task;
+    drain_cancel waiters q (Fiber.Fill (task.ivar, Error `Cancelled) :: acc)
 ;;
 
 let maybe_cancel table fd acc =
@@ -122,77 +78,185 @@ let maybe_cancel table fd acc =
   | None -> acc
   | Some q ->
     Table.remove table fd;
-    drain_cancel q acc
+    drain_cancel table q acc
 ;;
 
-(* This exception is raised in [select_loop] whenever it fails and the mutex is
-   unlocked. This makes sure that we don't unlock it again after [select_loop]
-   finishes *)
-exception Unlocked of Exn_with_backtrace.t
+let add_desired desired fd event =
+  let events =
+    match Table.find desired fd with
+    | None -> Lev.Io.Event.Set.create ()
+    | Some events -> events
+  in
+  Table.set desired fd (Lev.Io.Event.Set.add events event)
+;;
 
-let rec select_loop t =
-  (match t.to_close with
-   | [] -> ()
-   | to_close ->
-     let fills =
-       List.fold_left to_close ~init:[] ~f:(fun acc fd ->
-         Fd.close fd;
-         let acc = maybe_cancel t.readers fd acc in
-         maybe_cancel t.writers fd acc)
-     in
-     t.to_close <- [];
-     Event.Queue.send_worker_tasks_completed t.scheduler_queue fills);
-  match t.running with
-  | false ->
-    Fd.close t.pipe_write;
-    if not Sys.win32
-    then
-      Fd.close t.pipe_read (* On Win32, both ends of the "pipe" are the same UDP socket *)
-  | true ->
-    let read =
-      Fd.unsafe_to_unix_file_descr t.pipe_read
-      :: List.map (Table.keys t.readers) ~f:Fd.unsafe_to_unix_file_descr
+let mark_ready watcher ready =
+  if Lev.Io.Event.Set.mem ready Lev.Io.Event.Read then watcher.read_ready <- true;
+  if Lev.Io.Event.Set.mem ready Lev.Io.Event.Write then watcher.write_ready <- true
+;;
+
+let service_waiters waiters fd fills =
+  match Table.find waiters fd with
+  | None -> fills
+  | Some q ->
+    let fills = drain_until_ready fd waiters q fills in
+    if Queue.is_empty q then Table.remove waiters fd;
+    fills
+;;
+
+let service_ready_watchers_locked t fills =
+  List.fold_left (Table.to_list t.watchers) ~init:fills ~f:(fun fills (fd, watcher) ->
+    let fills =
+      if watcher.read_ready then service_waiters t.readers fd fills else fills
     in
-    let write = List.map (Table.keys t.writers) ~f:Fd.unsafe_to_unix_file_descr in
-    Mutex.unlock t.mutex;
-    (* At this point, if any [ready] acquires the lock, they need to check if
-       [read] or [write] contain their fd. If it doesn't, the write
-       [t.pipe_write] will interrupt this select *)
-    (match Unix.select read write [] (-1.0) with
-     | exception Unix.Unix_error (Unix.(EINTR | EAGAIN), _, _) ->
-       Mutex.lock t.mutex;
-       select_loop t
-     | exception exn ->
-       let exn = Exn_with_backtrace.capture exn in
-       raise_notrace (Unlocked exn)
-     | readers, writers, ex ->
-       assert (ex = []);
-       (* Before we acquire the lock, it's possible that new tasks were added.
-          This is fine. *)
-       Mutex.lock t.mutex;
-       let readers = List.map readers ~f:Fd.unsafe_of_unix_file_descr in
-       let writers = List.map writers ~f:Fd.unsafe_of_unix_file_descr in
-       let seen_pipe, fills = make_fills readers t.pipe_read t.readers [] in
-       (* we will never see [t.pipe_read] in the next list, but there's no harm in
-          this *)
-       let _, fills = make_fills writers t.pipe_read t.writers fills in
-       if seen_pipe
-       then (
-         drain_pipe t.pipe_read t.pipe_buf;
-         t.interrupting <- false);
-       Event.Queue.send_worker_tasks_completed t.scheduler_queue fills;
-       select_loop t)
+    let fills =
+      if watcher.write_ready then service_waiters t.writers fd fills else fills
+    in
+    watcher.read_ready <- false;
+    watcher.write_ready <- false;
+    fills)
 ;;
 
-let start t =
-  Thread0.spawn (fun () ->
-    Mutex.lock t.mutex;
-    match select_loop t with
-    | () -> Mutex.unlock t.mutex
-    | exception Unlocked exn -> Exn_with_backtrace.reraise exn
-    | exception exn ->
-      Mutex.unlock t.mutex;
-      reraise exn)
+let sync_watchers_locked t =
+  let desired = Table.create (module Fd) 16 in
+  List.iter (Table.keys t.readers) ~f:(fun fd -> add_desired desired fd Lev.Io.Event.Read);
+  List.iter (Table.keys t.writers) ~f:(fun fd ->
+    add_desired desired fd Lev.Io.Event.Write);
+  List.iter (Table.keys t.watchers) ~f:(fun fd ->
+    match Table.find t.watchers fd, Table.find desired fd with
+    | None, _ -> ()
+    | Some watcher, None -> ignore (retire_watcher t fd watcher : Fiber.fill list)
+    | Some watcher, Some events ->
+      if not (Lev.Io.Event.Set.equal watcher.events events)
+      then (
+        if Lev.Io.is_active watcher.io then Lev.Io.stop watcher.io t.loop;
+        Lev.Io.modify watcher.io events;
+        Lev.Io.start watcher.io t.loop;
+        watcher.events <- events));
+  List.iter (Table.keys desired) ~f:(fun fd ->
+    match Table.find t.watchers fd with
+    | Some _ -> ()
+    | None ->
+      let events =
+        match Table.find desired fd with
+        | Some events -> events
+        | None -> assert false
+      in
+      let watcher_ref = ref None in
+      let io =
+        Lev.Io.create
+          (fun _ _ ready ->
+             match !watcher_ref with
+             | None -> ()
+             | Some watcher -> mark_ready watcher ready)
+          (Fd.unsafe_to_unix_file_descr fd)
+          events
+      in
+      let watcher = { io; events; read_ready = false; write_ready = false } in
+      watcher_ref := Some watcher;
+      Lev.Io.start io t.loop;
+      Table.add_exn t.watchers fd watcher)
+;;
+
+let process_closures_locked t fills =
+  match Table.to_list t.to_close with
+  | [] -> fills
+  | to_close ->
+    Table.clear t.to_close;
+    List.fold_left to_close ~init:fills ~f:(fun fills (fd, close_fills) ->
+      let fills =
+        match Table.find t.watchers fd with
+        | None ->
+          Fd.close fd;
+          List.rev_append close_fills fills
+        | Some watcher ->
+          List.rev_append
+            (retire_watcher ~fd_to_close:fd ~fills:close_fills t fd watcher)
+            fills
+      in
+      let fills = maybe_cancel t.readers fd fills in
+      maybe_cancel t.writers fd fills)
+;;
+
+module Task = struct
+  type 'a t = User_task : ('a, 'label) task -> 'a t
+
+  let await (User_task task) = Fiber.Ivar.read task.ivar
+
+  let cancel (User_task t) =
+    let* () = Fiber.return () in
+    with_mutex t.select ~f:(fun () ->
+      match t.status with
+      | `Filled -> Fiber.return ()
+      | `Waiting ->
+        let table =
+          match t.what with
+          | `Read -> t.select.readers
+          | `Write -> t.select.writers
+        in
+        List.iter t.fds ~f:(fun fd ->
+          match Table.find table fd with
+          | None -> ()
+          | Some q ->
+            let new_q =
+              filter_queue q ~f:(fun (Task (t', _)) -> not (Task_id.equal t.id t'.id))
+            in
+            if Queue.is_empty new_q
+            then Table.remove table fd
+            else Table.set table fd new_q);
+        wakeup_loop t.select;
+        t.status <- `Filled;
+        Event.Queue.cancel_work_task_started t.select.scheduler_queue;
+        Fiber.Ivar.fill t.ivar (Error `Cancelled))
+  ;;
+end
+
+let destroy_loop_resources t =
+  with_mutex t ~f:(fun () ->
+    List.iter (Table.to_list t.watchers) ~f:(fun (fd, watcher) ->
+      ignore (retire_watcher t fd watcher : Fiber.fill list));
+    List.iter t.retired ~f:(fun { io; _ } -> Lev.Io.destroy io);
+    t.retired <- [];
+    if Lev.Async.is_active t.wakeup then Lev.Async.stop t.wakeup t.loop;
+    Lev.Async.destroy t.wakeup)
+;;
+
+let shutdown t =
+  if not t.destroyed
+  then (
+    if t.started
+    then (
+      with_mutex t ~f:(fun () -> t.shutting_down <- true);
+      wakeup_loop t;
+      Option.iter t.thread ~f:Thread.join;
+      t.thread <- None;
+      t.started <- false)
+    else (
+      destroy_loop_resources t;
+      Lev.Loop.destroy t.loop);
+    t.destroyed <- true)
+;;
+
+let start ~name t =
+  Thread0.spawn ~name (fun () ->
+    let rec loop () =
+      ignore
+        (Lev.Loop.run t.loop Lev.Loop.Once : [ `No_more_active_watchers | `Otherwise ]);
+      let shutting_down, fills =
+        with_mutex t ~f:(fun () ->
+          let fills = process_closures_locked t [] in
+          let fills = service_ready_watchers_locked t fills in
+          sync_watchers_locked t;
+          destroy_retired_watchers_locked t;
+          t.shutting_down, fills)
+      in
+      Event.Queue.send_worker_tasks_completed t.scheduler_queue fills;
+      if not shutting_down then loop ()
+    in
+    Exn.protect ~f:loop ~finally:(fun () ->
+      destroy_loop_resources t;
+      Lev.Loop.destroy t.loop;
+      t.destroyed <- true))
 ;;
 
 let get_exn () =
@@ -200,69 +264,54 @@ let get_exn () =
   let t = t.async_io in
   if not t.started
   then (
-    let (_ : Thread.t) = start ~name:"async-io" t in
+    t.thread <- Some (start ~name:"async-io" t);
     t.started <- true);
   t
 ;;
 
 let create scheduler_queue =
-  let pipe_read, pipe_write =
-    if not Sys.win32
-    then Unix.pipe ~cloexec:true ()
-    else (
-      (* Create a self-connected UDP socket *)
-      let udp_sock = Unix.socket ~cloexec:true PF_INET SOCK_DGRAM 0 in
-      Unix.bind udp_sock (ADDR_INET (Unix.inet_addr_loopback, 0));
-      Unix.connect udp_sock (Unix.getsockname udp_sock);
-      udp_sock, udp_sock)
+  let loop = Lev.Loop.create () in
+  let watchers = Table.create (module Fd) 16 in
+  let wakeup = Lev.Async.create (fun _ -> ()) in
+  let t =
+    { readers = Table.create (module Fd) 64
+    ; writers = Table.create (module Fd) 64
+    ; to_close = Table.create (module Fd) 16
+    ; mutex = Mutex.create ()
+    ; scheduler_queue
+    ; loop
+    ; wakeup
+    ; watchers
+    ; retired = []
+    ; thread = None
+    ; started = false
+    ; shutting_down = false
+    ; destroyed = false
+    }
   in
-  Unix.set_nonblock pipe_read;
-  let pipe_read = Fd.unsafe_of_unix_file_descr pipe_read in
-  let pipe_write = Fd.unsafe_of_unix_file_descr pipe_write in
-  { readers = Table.create (module Fd) 64
-  ; writers = Table.create (module Fd) 64
-  ; mutex = Mutex.create ()
-  ; scheduler_queue
-  ; running = true
-  ; pipe_read
-  ; pipe_write
-  ; pipe_buf = Bytes.create 512
-  ; interrupting = false
-  ; to_close = []
-  ; started = false
-  }
+  Lev.Async.start wakeup loop;
+  at_exit (fun () -> shutdown t);
+  t
 ;;
 
 let with_ f =
   let t = get_exn () in
-  Mutex.lock t.mutex;
-  Exn.protect ~f:(fun () -> f t) ~finally:(fun () -> Mutex.unlock t.mutex)
-;;
-
-let cancel scheduler_queue table fd =
-  match Table.find table fd with
-  | None -> []
-  | Some tasks ->
-    Table.remove table fd;
-    Queue.to_list tasks
-    |> List.map ~f:(fun (Task (t, _)) ->
-      Event.Queue.cancel_work_task_started scheduler_queue;
-      Fiber.Fill (t.ivar, Error `Cancelled))
+  with_mutex t ~f:(fun () -> f t)
 ;;
 
 let close fd =
-  let* () = Fiber.return () in
   let t = get_exn () in
-  Mutex.lock t.mutex;
-  (* everything below is guaranteed not to raise so the mutex will be unlocked
-     in the end. There's no need to use [protect] to make sure we don't deadlock *)
-  t.to_close <- fd :: t.to_close;
-  let to_cancel =
-    cancel t.scheduler_queue t.readers fd @ cancel t.scheduler_queue t.writers fd
+  let fills =
+    with_mutex t ~f:(fun () ->
+      (match Table.find t.to_close fd with
+       | None -> Table.add_exn t.to_close fd []
+       | Some _ -> ());
+      let fills = maybe_cancel t.readers fd [] in
+      maybe_cancel t.writers fd fills)
   in
-  interrupt t;
-  Mutex.unlock t.mutex;
-  Fiber.parallel_iter to_cancel ~f:(fun (Fiber.Fill (ivar, v)) -> Fiber.Ivar.fill ivar v)
+  Event.Queue.send_worker_tasks_completed t.scheduler_queue fills;
+  wakeup_loop t;
+  Fiber.return ()
 ;;
 
 let ready_one (type a label) (fds : (label * Fd.t) list) what ~f:job : a Task.t =
@@ -270,25 +319,22 @@ let ready_one (type a label) (fds : (label * Fd.t) list) what ~f:job : a Task.t 
   @@ fun t ->
   Event.Queue.register_worker_task_started t.scheduler_queue;
   let ivar = Fiber.Ivar.create () in
-  let queues, skip_interrupt =
-    let table =
-      match what with
-      | `Read -> t.readers
-      | `Write -> t.writers
-    in
-    let skip_interrupt = ref false in
-    ( List.map fds ~f:(fun (label, fd) ->
-        let q =
-          match Table.find table fd with
-          | Some q -> q
-          | None ->
-            let q = Queue.create () in
-            Table.add_exn table fd q;
-            skip_interrupt := false;
-            q
-        in
-        label, q)
-    , !skip_interrupt )
+  let table =
+    match what with
+    | `Read -> t.readers
+    | `Write -> t.writers
+  in
+  let queues =
+    List.map fds ~f:(fun (label, fd) ->
+      let q =
+        match Table.find table fd with
+        | Some q -> q
+        | None ->
+          let q = Queue.create () in
+          Table.add_exn table fd q;
+          q
+      in
+      label, q)
   in
   let task =
     { ivar
@@ -301,7 +347,7 @@ let ready_one (type a label) (fds : (label * Fd.t) list) what ~f:job : a Task.t 
     }
   in
   List.iter queues ~f:(fun (label, q) -> Queue.push q (Task (task, label)));
-  if not skip_interrupt then interrupt t;
+  wakeup_loop t;
   Task.User_task task
 ;;
 

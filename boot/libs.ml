@@ -122,6 +122,12 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
+  ; { path = "src/lev/src"
+    ; main_module_name = Some "Lev"
+    ; include_subdirs = No
+    ; special_builtin_support = None
+    ; root_module = None
+    }
   ; { path = "otherlibs/dune-action-trace"
     ; main_module_name = Some "Dune_action_trace"
     ; include_subdirs = No

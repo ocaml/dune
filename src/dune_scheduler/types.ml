@@ -2,20 +2,27 @@ open Stdune
 module Task_id = Id.Make ()
 
 module Async_io = struct
+  type watcher =
+    { io : Lev.Io.t
+    ; mutable events : Lev.Io.Event.Set.t
+    ; mutable read_ready : bool
+    ; mutable write_ready : bool
+    }
+
   type t =
     { readers : (Fd.t, packed_task Queue.t) Table.t
     ; writers : (Fd.t, packed_task Queue.t) Table.t
-    ; mutable to_close : Fd.t list
-    ; pipe_read : Fd.t
-    ; (* write a byte here to interrupt the select loop *)
-      pipe_write : Fd.t
+    ; to_close : (Fd.t, Fiber.fill list) Table.t
     ; mutex : Mutex.t
     ; scheduler_queue : Event.Queue.t
-    ; mutable running : bool
+    ; loop : Lev.Loop.t
+    ; wakeup : Lev.Async.t
+    ; watchers : (Fd.t, watcher) Table.t
+    ; mutable retired : watcher list
+    ; mutable thread : Thread.t option
     ; mutable started : bool
-    ; (* this flag is to save a write to the pipe we used to interrupt select *)
-      mutable interrupting : bool
-    ; pipe_buf : Bytes.t
+    ; mutable shutting_down : bool
+    ; mutable destroyed : bool
     }
 
   and ('a, 'label) task =

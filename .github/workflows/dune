@@ -1,9 +1,25 @@
 (rule
- (aliases runtest)
+ (deps bench.yml.in)
+ (target bench.yml.gen)
  (action
-  (diff bench.yml ../../ci/bench.yml.gen)))
+  (with-stdout-to
+   %{target}
+   (run ../../ci/update_version.exe bench.yml.in))))
 
 (rule
  (aliases runtest)
  (action
-  (diff workflow.yml ../../ci/workflow.yml.gen)))
+  (diff bench.yml bench.yml.gen)))
+
+(rule
+ (deps workflow.yml.in)
+ (target workflow.yml.gen)
+ (action
+  (with-stdout-to
+   %{target}
+   (run ../../ci/update_version.exe workflow.yml.in))))
+
+(rule
+ (aliases runtest)
+ (action
+  (diff workflow.yml workflow.yml.gen)))

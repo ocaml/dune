@@ -95,8 +95,6 @@ instantation are created:
 But building the executable from the vendored directory doesn't:
 
   $ dune exec --root=vendored ./vendored_bin.exe
-  Entering directory 'vendored'
-  Leaving directory 'vendored'
   vendored_bin:vendored:lib_param:impl
   $ ls vendored/_build/default/.parameterised/*/vendored.lib_param
   vendored.lib_param!vendored.param_impl

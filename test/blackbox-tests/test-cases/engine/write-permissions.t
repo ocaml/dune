@@ -14,8 +14,6 @@ Check that dune <= 2.3 leaves write permissions alone.
   > \_o< COIN
   > EOF
   $ dune build --root 2.3 target | head -c1
-  Entering directory '2.3'
-  Leaving directory '2.3'
   $ dune_cmd stat permissions 2.3/_build/default/target | head -c1
   6
 
@@ -47,8 +45,6 @@ Check that dune >= 2.4 removes target write permissions.
   > \_o< COIN
   > EOF
   $ dune build --root 2.4 foo.exe @install
-  Entering directory '2.4'
-  Leaving directory '2.4'
   $ dune_cmd stat permissions 2.4/_build/default/foo.exe | head -c1
   5
   $ dune install --root 2.4 --prefix ./ --display short

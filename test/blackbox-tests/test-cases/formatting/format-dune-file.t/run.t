@@ -296,14 +296,11 @@ within Dune is always the directory directly containing the file.
 
   $ cd sub
   $ dune format-dune-file sub/test
-  Entering directory 'sub'
   (aaaaaaaaaaa bbbbbbbbbbbbb ccccccccccccccccc dddddddddddddddddd aaaaaaaaaaa
     bbbbbbbbbbbbb ccccccccccccccccc dddddddddddddddddd)
-  Leaving directory 'sub'
 
   $ cd sub
   $ dune format-dune-file ../test
-  Entering directory '..'
   (aaaaaaaaaaa
    bbbbbbbbbbbbb
    ccccccccccccccccc
@@ -312,4 +309,3 @@ within Dune is always the directory directly containing the file.
    bbbbbbbbbbbbb
    ccccccccccccccccc
    dddddddddddddddddd)
-  Leaving directory '..'

@@ -13,8 +13,6 @@ Sandboxed actions see the sandboxed project root.
   >    (bash "cat $DUNE_PROJECT_ROOT/dune-project > root.txt"))))
   > EOF
   $ dune build --root proj sub/root.txt
-  Entering directory 'proj'
-  Leaving directory 'proj'
   $ cat proj/_build/default/sub/root.txt
   (lang dune 3.23)
 

@@ -1157,10 +1157,7 @@ let print_entering_message c =
               in
               loop ".." (Filename.dirname s)))
     in
-    Console.print [ Pp.verbatim (sprintf "Entering directory '%s'" dir) ];
-    at_exit (fun () ->
-      flush stdout;
-      Console.print [ Pp.verbatim (sprintf "Leaving directory '%s'" dir) ]))
+    Console.set_directory dir)
 ;;
 
 (* CR-someday rleshchinskiy: The split between `build` and `init` seems quite arbitrary,

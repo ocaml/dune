@@ -27,8 +27,6 @@ When running dune exec from the root this is true.
 
 As expected, the `exe:` argument shows the correct path
   $ (cd subdir && dune exec --root .. -- ./bug.exe)
-  Entering directory '..'
-  Leaving directory '..'
   pwd: $TESTCASE_ROOT/subdir
   exe: ../_build/default/bug.exe
  

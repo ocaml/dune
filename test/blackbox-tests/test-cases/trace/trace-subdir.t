@@ -7,8 +7,6 @@ a subdirectory.
 Run dune build from the subdirectory:
 
   $ (cd src && dune build --root ..)
-  Entering directory '..'
-  Leaving directory '..'
 
 Check that the trace file is not written in the incorrect location:
 

@@ -3,8 +3,6 @@ Test that an external definition of parameters and parameterised libraries can b
 First we "install" the external library:
 
   $ dune build --root external @install
-  Entering directory 'external'
-  Leaving directory 'external'
 
 Then we test the installation:
 

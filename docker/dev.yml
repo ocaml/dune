@@ -4,7 +4,7 @@ volumes:
 services:
   dune:
     image: dune
-    user: opam
+    # user: opam
     tty: true
     privileged: true
     cap_add:
@@ -15,6 +15,8 @@ services:
     stdin_open: true
     environment:
       HISTFILE: /home/opam/dune/.git/.bash_history
+      HOST_UID: ${HOST_UID}
+      HOST_GID: ${HOST_GID}
     volumes:
       - ../:/home/opam/dune
       - _build:/home/opam/dune/_build/

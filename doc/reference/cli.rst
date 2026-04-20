@@ -226,6 +226,11 @@ documentation for each command is available through ``dune COMMAND --help``.
    Command group for managing developer tools. See :doc:`dune-tools` for
    details.
 
+   .. warning::
+
+      The ``dune tools`` command group is **experimental**. Its subcommands,
+      flags, and behavior may change in future versions of Dune without notice.
+
    .. describe:: dune tools exec
 
       Run a developer tool, automatically building it if needed.

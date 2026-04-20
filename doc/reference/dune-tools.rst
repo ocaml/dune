@@ -71,11 +71,14 @@ The following developer tools are currently supported:
 
    ``odoc`` and ``utop`` have their own dedicated commands to execute:
 
-   - ``utop`` is run via ``dune utop DIR``, which discovers libraries in the
-     given directory, configures library search paths, and generates a custom
-     ``findlib.conf`` so that utop can find dependencies within ``_build``.
+   - ``utop`` is run via ``dune utop [DIR]``, which discovers libraries in the
+     given directory (defaults to working directory), configures library search
+     paths, and generates a custom ``findlib.conf`` so that utop can find
+     dependencies within ``_build``. ``utop`` needs to be installed via ``opam``
+     or ``dune tools install utop`` before invoking this command.
    - ``odoc`` is invoked via ``dune ocaml doc``, which builds documentation
-     using the ``@doc`` alias.
+     using the ``@doc`` alias. As with ``utop``, ``odoc`` must be installed
+     before use.
 
 Subcommands
 -----------

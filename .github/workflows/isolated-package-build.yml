@@ -6,8 +6,8 @@ name: Packaging check
 on:
   push:
     branches:
-        - main
-        - '*-rc'
+      - main
+      - '*-rc'
   pull_request:
     paths:
       - 'opam/*.opam'
@@ -19,7 +19,7 @@ jobs:
     outputs:
       opam_changed: ${{ steps.filter.outputs.opam }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - id: filter
         uses: dorny/paths-filter@v4
@@ -31,7 +31,7 @@ jobs:
   packaging-check:
     needs: opam-changes
     runs-on: ubuntu-latest
-    if: ${{ endsWith(github.ref_name, '-rc') || (github.ref_name == 'main' && needs.opam-changes.outputs.opam_changed == 'true') }}
+    if: ${{ endsWith(github.ref_name, '-rc') || ((github.ref_name == 'main' || github.event_name == 'pull_request') && needs.opam-changes.outputs.opam_changed == 'true') }}
 
     steps:
       - uses: actions/checkout@v6

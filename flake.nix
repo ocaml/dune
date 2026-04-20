@@ -222,6 +222,47 @@
             };
           dune = self.packages.${pkgs.stdenv.hostPlatform.system}.default;
           dune-static = pkgs-static.pkgsCross.musl64.ocamlPackages.dune;
+          oxcaml-trunk-build =
+            let
+              dune-version =
+                let
+                  types = builtins.readFile ./otherlibs/dune-rpc/types.ml;
+                  match = builtins.match ".*let latest = ([0-9]+), ([0-9]+).*" types;
+                in
+                "${builtins.elemAt match 0}.${builtins.elemAt match 1}.0";
+              dune = (self.packages.${pkgs.stdenv.hostPlatform.system}.default).overrideAttrs {
+                postPatch = ''
+                  echo '(version ${dune-version})' >> dune-project
+                  sed -i '2a version: "${dune-version}"' opam/dune.opam
+                '';
+              };
+              menhirPackages = import ./nix/menhir.nix {
+                inherit pkgs menhir-src;
+              };
+            in
+            pkgs.stdenv.mkDerivation {
+              pname = "oxcaml-trunk-build";
+              version = "check";
+              src = oxcaml;
+              nativeBuildInputs = [
+                dune
+                pkgs.autoconf
+                pkgs.which
+                pkgs.ocamlPackages.ocaml
+                pkgs.ocamlPackages.findlib
+                menhirPackages.menhir
+              ];
+              strictDeps = true;
+              buildPhase = ''
+                autoconf
+                ./configure --prefix $PWD/_install --enable-dev --enable-runtime5
+                make SHELL=$SHELL
+              '';
+              installPhase = ''
+                mkdir -p $out
+                touch $out/success
+              '';
+            };
         }
       );
 
@@ -550,26 +591,9 @@
 
           ox-trunk =
             let
-              customOcamlPackages = pkgs.ocamlPackages.overrideScope (
-                oself: osuper: {
-                  menhirLib = osuper.menhirLib.overrideAttrs (old: {
-                    version = "20231231";
-                    src = menhir-src;
-                    patches = [ ];
-                  });
-                  menhirGLR = null;
-                  menhir = osuper.menhir.overrideAttrs (old: {
-                    version = "20231231";
-                    src = menhir-src;
-                    patches = [ ];
-                    buildInputs = builtins.filter (x: x != null) (old.buildInputs or [ ]);
-                    postInstall = (old.postInstall or "") + ''
-                      mkdir -p $out/lib/menhirLib
-                      cp ${oself.menhirLib}/lib/ocaml/*/site-lib/menhirLib/menhirLib.{ml,mli} $out/lib/menhirLib/
-                    '';
-                  });
-                }
-              );
+              menhirPackages = import ./nix/menhir.nix {
+                inherit pkgs menhir-src;
+              };
             in
             pkgs.mkShell {
               inherit INSIDE_NIX;
@@ -579,7 +603,7 @@
               inputsFrom = [ pkgs.ocamlPackages.dune_3 ];
               nativeBuildInputs = [
                 pkgs.autoconf
-                customOcamlPackages.menhir
+                menhirPackages.menhir
               ];
               meta.description = ''
                 Provides a shell environment with upstream OCaml and menhir 20231231

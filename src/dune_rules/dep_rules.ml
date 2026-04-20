@@ -92,6 +92,7 @@ let deps_of_vlib_module ~obj_dir ~vimpl ~dir ~sctx ~ml_kind ~for_ sourced_module
     Lib.Local.of_lib vlib
   with
   | None ->
+    let m = Modules.Sourced_module.to_module sourced_module in
     let+ deps =
       let vlib_obj_map = Vimpl.vlib_obj_map vimpl in
       let dune_version =
@@ -108,6 +109,18 @@ let deps_of_vlib_module ~obj_dir ~vimpl ~dir ~sctx ~ml_kind ~for_ sourced_module
         ~ml_kind
         ~for_
         sourced_module
+    and+ () =
+      (* Produce an empty .all-raw-deps for external vlib modules so
+         that transitive chaining in the ocamldep pipeline doesn't
+         fail with "no rule found". *)
+      match Obj_dir.Module.dep obj_dir ~for_ (Transitive_raw (m, ml_kind)) with
+      | None -> Memo.return ()
+      | Some dst ->
+        Super_context.add_rule
+          sctx
+          ~dir
+          (Action_builder.return (Action.Full.make (Action.write_file dst ""))
+           |> Action_builder.with_file_targets ~file_targets:[ dst ])
     in
     Action_builder.map deps ~f:(List.map ~f:Modules.Sourced_module.to_module)
   | Some lib ->
@@ -126,6 +139,17 @@ let deps_of_vlib_module ~obj_dir ~vimpl ~dir ~sctx ~ml_kind ~for_ sourced_module
         Obj_dir.Module.dep obj_dir ~for_ (Transitive (m, ml_kind)) |> Option.value_exn
       in
       Super_context.add_rule sctx ~dir (Action_builder.symlink ~src ~dst)
+    and+ () =
+      match
+        ( Obj_dir.Module.dep vlib_obj_dir ~for_ (Transitive_raw (m, ml_kind))
+        , Obj_dir.Module.dep obj_dir ~for_ (Transitive_raw (m, ml_kind)) )
+      with
+      | Some src, Some dst ->
+        Super_context.add_rule
+          sctx
+          ~dir
+          (Action_builder.symlink ~src:(Path.build src) ~dst)
+      | _ -> Memo.return ()
     in
     let modules = Vimpl.vlib_modules vimpl |> Modules.With_vlib.modules in
     Ocamldep.read_deps_of ~obj_dir:vlib_obj_dir ~modules ~ml_kind ~for_ m
@@ -182,7 +206,12 @@ let rec deps_of
 ;;
 
 let read_deps_of_module ~modules ~obj_dir dep ~for_ =
-  let (Obj_dir.Module.Dep.Immediate (unit, _) | Transitive (unit, _)) = dep in
+  let ( Obj_dir.Module.Dep.Immediate (unit, _)
+      | Transitive (unit, _)
+      | Transitive_raw (unit, _) )
+    =
+    dep
+  in
   match Module.kind unit with
   | Root | Alias _ -> Action_builder.return []
   | Wrapped_compat -> wrapped_compat_deps modules unit |> Action_builder.return
@@ -198,7 +227,9 @@ let read_deps_of_module ~modules ~obj_dir dep ~for_ =
         let+ deps = Ocamldep.read_deps_of ~obj_dir ~modules ~ml_kind ~for_ unit in
         (match Modules.With_vlib.alias_for modules unit with
          | [] -> deps
-         | aliases -> aliases @ deps))
+         | aliases -> aliases @ deps)
+      | Transitive_raw _ ->
+        Code_error.raise "Transitive_raw should not be used in read_deps_of_module" [])
 ;;
 
 let read_immediate_deps_of ~obj_dir ~modules ~ml_kind ~for_ m =

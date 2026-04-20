@@ -40,27 +40,9 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
     then Action_builder.return ((), Lib_file_deps.deps_of_entries ~opaque ~cm_kind libs)
     else
       let* lib_index = Resolve.Memo.read (Compilation_context.lib_index cctx) in
-      let* trans_deps = Dep_graph.deps_of dep_graph m in
-      let* all_raw =
-        Action_builder.List.map (m :: trans_deps) ~f:(fun dep_m ->
-          let is_standard_kind =
-            match Module.kind dep_m with
-            | Impl_vmodule | Root | Alias _ | Wrapped_compat | Parameter -> false
-            | Virtual | Intf_only | Impl -> true
-          in
-          if not is_standard_kind
-          then Action_builder.return Module_name.Set.empty
-          else
-            let* impl_deps =
-              Ocamldep.read_immediate_deps_raw_of ~obj_dir ~ml_kind:Impl ~for_ dep_m
-            in
-            let+ intf_deps =
-              Ocamldep.read_immediate_deps_raw_of ~obj_dir ~ml_kind:Intf ~for_ dep_m
-            in
-            Module_name.Set.union impl_deps intf_deps)
-        |> Action_builder.map
-             ~f:(List.fold_left ~init:Module_name.Set.empty ~f:Module_name.Set.union)
-      in
+      let* impl_raw = Ocamldep.read_all_raw_deps_of ~obj_dir ~ml_kind:Impl ~for_ m in
+      let* intf_raw = Ocamldep.read_all_raw_deps_of ~obj_dir ~ml_kind:Intf ~for_ m in
+      let all_raw = Module_name.Set.union impl_raw intf_raw in
       let* flags = Ocaml_flags.get (Compilation_context.flags cctx) mode in
       let open_modules = Ocaml_flags.extract_open_module_names flags in
       let referenced = Module_name.Set.union all_raw open_modules in

@@ -155,6 +155,7 @@ module Module : sig
     type t =
       | Immediate of Module.t * Ml_kind.t
       | Transitive of Module.t * Ml_kind.t
+      | Transitive_raw of Module.t * Ml_kind.t
   end
 
   val dep : Path.Build.t t -> Dep.t -> for_:Compilation_mode.t -> Path.Build.t option

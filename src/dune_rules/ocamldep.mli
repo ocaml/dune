@@ -43,3 +43,13 @@ val read_immediate_deps_raw_of
   -> for_:Compilation_mode.t
   -> Module.t
   -> Module_name.Set.t Action_builder.t
+
+(** [read_all_raw_deps_of ~obj_dir ~ml_kind ~for_ unit] returns the union of
+    raw module names from [unit] and all its transitive intra-library deps,
+    read from a single consolidated file. *)
+val read_all_raw_deps_of
+  :  obj_dir:Path.Build.t Obj_dir.t
+  -> ml_kind:Ml_kind.t
+  -> for_:Compilation_mode.t
+  -> Module.t
+  -> Module_name.Set.t Action_builder.t

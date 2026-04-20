@@ -38,6 +38,7 @@ module Extension = struct
   let odoc = ".odoc"
   let d = ".d"
   let all_deps = ".all-deps"
+  let all_raw_deps = ".all-raw-deps"
   let js = ".js"
   let h = ".h"
   let mlg = ".mlg"

@@ -1,6 +1,55 @@
 open Import
 open Memo.O
 
+module Merge_raw_deps_into = struct
+  module Spec = struct
+    type ('src, 'dst) t =
+      { transitive : 'src list
+      ; immediate : string list
+      ; target : 'dst
+      }
+
+    let name = "merge_raw_deps_into"
+    let version = 1
+    let is_useful_to ~memoize:_ = true
+
+    let bimap t path target =
+      { t with transitive = List.map t.transitive ~f:path; target = target t.target }
+    ;;
+
+    let encode
+          (type src dst)
+          ({ transitive; immediate; target } : (src, dst) t)
+          (input : src -> Sexp.t)
+          (output : dst -> Sexp.t)
+      : Sexp.t
+      =
+      List
+        [ List (List.map transitive ~f:input)
+        ; List (List.map ~f:(fun s -> Sexp.Atom s) immediate)
+        ; output target
+        ]
+    ;;
+
+    let action { transitive; immediate; target } ~ectx:_ ~eenv:_ =
+      Async.async (fun () ->
+        List.fold_left
+          transitive
+          ~init:(String.Set.of_list immediate)
+          ~f:(fun set source_path ->
+            Io.lines_of_file source_path |> String.Set.of_list |> String.Set.union set)
+        |> String.Set.to_list
+        |> Io.write_lines (Path.build target))
+    ;;
+  end
+
+  module Action = Action_ext.Make (Spec)
+
+  let action ~transitive ~immediate ~target =
+    Action.action { transitive; immediate; target }
+  ;;
+end
+
 module Merge_files_into = struct
   module Spec = struct
     type ('src, 'dst) t =
@@ -119,6 +168,21 @@ let transitive_deps =
   fun obj_dir modules ~for_ -> List.filter_map modules ~f:(transive_dep obj_dir ~for_)
 ;;
 
+(* Like [transitive_deps] but for .all-raw-deps files. Skips modules
+   that don't have locally-produced .all-raw-deps (e.g., modules from
+   external virtual libraries whose deps are resolved via ooi_deps). *)
+let transitive_raw_deps =
+  let transive_raw_dep obj_dir m ~for_ =
+    (match Module.kind m with
+     | Root | Alias _ -> None
+     | _ -> if Module.has m ~ml_kind:Intf then Some Ml_kind.Intf else Some Impl)
+    |> Option.bind ~f:(fun ml_kind ->
+      Obj_dir.Module.dep obj_dir ~for_ (Transitive_raw (m, ml_kind))
+      |> Option.map ~f:Path.build)
+  in
+  fun obj_dir modules ~for_ -> List.filter_map modules ~f:(transive_raw_dep obj_dir ~for_)
+;;
+
 let deps_of ~sandbox ~modules ~sctx ~dir ~obj_dir ~ml_kind ~for_ unit =
   let source = Option.value_exn (Module.source unit ~ml_kind) in
   let dep = Obj_dir.Module.dep obj_dir ~for_ in
@@ -149,27 +213,62 @@ let deps_of ~sandbox ~modules ~sctx ~dir ~obj_dir ~ml_kind ~for_ unit =
        >>| Action.Full.add_sandbox sandbox)
   in
   let all_deps_file = dep (Transitive (unit, ml_kind)) |> Option.value_exn in
+  let all_raw_deps_file = dep (Transitive_raw (unit, ml_kind)) in
   let+ () =
     let produce_all_deps =
       let open Action_builder.O in
-      (let+ transitive, immediate =
-         (let+ immediate_deps =
+      (let+ transitive, immediate, _immediate_raw =
+         (let+ immediate_raw =
             Path.build ocamldep_output
             |> Action_builder.lines_of
             >>| parse_deps_exn ~file:(Module.File.path source)
-            >>| parse_module_names ~dir ~unit ~modules
-            >>| Stdlib.( @ ) (Modules.With_vlib.implicit_deps modules ~of_:unit)
+          in
+          let immediate_deps =
+            parse_module_names ~dir ~unit ~modules immediate_raw
+            |> Stdlib.( @ ) (Modules.With_vlib.implicit_deps modules ~of_:unit)
           in
           let transitive_deps = transitive_deps obj_dir immediate_deps ~for_ in
           let immediate_deps = List.map immediate_deps ~f:Module.obj_name in
-          (transitive_deps, immediate_deps), transitive_deps)
+          (transitive_deps, immediate_deps, immediate_raw), transitive_deps)
          |> Action_builder.dyn_paths
        in
        Merge_files_into.action ~transitive ~immediate ~target:all_deps_file)
       |> Action_builder.with_file_targets ~file_targets:[ all_deps_file ]
     in
-    Action_builder.With_targets.map ~f:Action.Full.make produce_all_deps
-    |> Super_context.add_rule sctx ~dir
+    let* () =
+      Action_builder.With_targets.map ~f:Action.Full.make produce_all_deps
+      |> Super_context.add_rule sctx ~dir
+    in
+    (* Produce .all-raw-deps as a separate rule so that cycle detection
+       works on .all-deps alone. The .all-raw-deps rule depends on the
+       resolved .all-deps (which triggers cycle detection) and merges
+       the transitive .all-raw-deps of resolved deps. *)
+    match all_raw_deps_file with
+    | None -> Memo.return ()
+    | Some all_raw_deps_file ->
+      let produce_raw =
+        let open Action_builder.O in
+        (let+ immediate_raw =
+           Path.build ocamldep_output
+           |> Action_builder.lines_of
+           >>| parse_deps_exn ~file:(Module.File.path source)
+         and+ transitive_raw =
+           Action_builder.lines_of (Path.build all_deps_file)
+           >>| parse_compilation_units ~modules
+           >>| fun resolved_deps -> transitive_raw_deps obj_dir resolved_deps ~for_
+         in
+         (transitive_raw, immediate_raw), transitive_raw)
+        |> Action_builder.dyn_paths
+        >>| fun (transitive_raw, immediate_raw) ->
+        Action.Full.make
+          (Merge_raw_deps_into.action
+             ~transitive:transitive_raw
+             ~immediate:immediate_raw
+             ~target:all_raw_deps_file)
+      in
+      produce_raw
+      |> Action_builder.with_file_targets ~file_targets:[ all_raw_deps_file ]
+      |> Super_context.add_rule sctx ~dir
   in
   let all_deps_file = Path.build all_deps_file in
   Action_builder.lines_of all_deps_file
@@ -216,4 +315,21 @@ let read_immediate_deps_raw_of ~obj_dir ~ml_kind ~for_ unit =
   match parsed with
   | None -> Module_name.Set.empty
   | Some names -> Module_name.Set.of_list_map names ~f:Module_name.of_checked_string
+;;
+
+(* Read the transitive raw deps from the consolidated .all-raw-deps file.
+   This contains the union of all raw module names from the module and its
+   transitive intra-library deps, avoiding the need to read N individual
+   .d files during per-module library filtering. *)
+let read_all_raw_deps_of ~obj_dir ~ml_kind ~for_ unit =
+  match Module.has unit ~ml_kind && Option.is_some (Module.source ~ml_kind unit) with
+  | false -> Action_builder.return Module_name.Set.empty
+  | true ->
+    (match Obj_dir.Module.dep obj_dir ~for_ (Transitive_raw (unit, ml_kind)) with
+     | None -> Action_builder.return Module_name.Set.empty
+     | Some all_raw_deps_file ->
+       Action_builder.lines_of (Path.build all_raw_deps_file)
+       |> Action_builder.map ~f:(fun lines ->
+         List.filter_map lines ~f:Module_name.of_string_opt |> Module_name.Set.of_list)
+       |> Action_builder.memoize (Path.Build.to_string all_raw_deps_file))
 ;;

@@ -54,6 +54,7 @@ module Extension : sig
   val h : t
   val d : t
   val all_deps : t
+  val all_raw_deps : t
   val js : t
   val mlg : t
   val json : t

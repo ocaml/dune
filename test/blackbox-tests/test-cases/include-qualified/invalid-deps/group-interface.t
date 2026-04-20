@@ -24,7 +24,6 @@ We shouldn't allow foo/$x.ml to depend on foo/foo.ml
   of the library. Consequently, it should be the one depending on all the other
   modules in the library.
   -> required by _build/default/.foo.objs/foo__Baz__Bar.impl.all-deps
-  -> required by _build/default/.foo.objs/byte/foo__Baz__Bar.cmo
   -> required by _build/default/foo.cma
   -> required by alias all
   -> required by alias default

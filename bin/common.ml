@@ -1229,6 +1229,13 @@ let init_with_root ~(root : Workspace_root.t) (builder : Builder.t) =
            | `User_specified stats -> Path.of_filename_relative_to_initial_cwd stats
          in
          Path.parent trace |> Option.iter ~f:Path.mkdir_p;
+         (match trace_config with
+          | `Default ->
+            let path = Path.to_string trace in
+            (match Fpath.rename_exn path (path ^ ".old") with
+             | () -> ()
+             | exception Unix.Unix_error _ -> ())
+          | `User_specified _ -> ());
          let stats = Dune_trace.Out.create trace in
          Dune_trace.set_global stats;
          Dune_trace.Event.init

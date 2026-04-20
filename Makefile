@@ -37,7 +37,7 @@ test-bootstrap-script:
 
 .PHONY: release
 release: $(BIN)
-	@$(BIN) build @install -p dune --profile dune-bootstrap
+	@$(BIN) build dune.install -p dune --profile dune-bootstrap
 
 $(BIN):
 	@ocaml boot/bootstrap.ml

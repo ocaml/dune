@@ -58,11 +58,7 @@ let map_extension t ~f =
 
 let cwd () = Sys.getcwd ()
 let initial_cwd = Fpath.initial_cwd
-
-let as_local t =
-  let s = t in
-  "." ^ s
-;;
+let as_local t = "." ^ t
 
 let of_filename_relative_to_initial_cwd fn =
   if Filename.is_relative fn then relative initial_cwd fn else of_string fn
@@ -79,7 +75,7 @@ include (
 let to_string_maybe_quoted t = String.maybe_quoted (to_string t)
 
 let is_descendant b ~of_:a =
-  if is_root a then true else String.starts_with ~prefix:(to_string a ^ "/") (to_string b)
+  is_root a || String.starts_with ~prefix:(to_string a ^ "/") (to_string b)
 ;;
 
 module Map = String.Map

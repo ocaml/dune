@@ -27,7 +27,7 @@
 
     The second part is the "external world". It is all the paths that live
     outside of the workspace and build directory. To be on the safe side Dune
-    makes no assumption does nothing clever with these paths.
+    makes no assumption and does nothing clever with these paths.
 
     External paths are represented as [Path.External.t] values.
 

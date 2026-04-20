@@ -16,20 +16,25 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Check for new release
+      - uses: nixbuild/nix-quick-install-action@v34
+
+      - name: Find latest OxCaml release
         id: check
         run: |
-          # Extract the current tag from flake.nix
+          # Fetch the opam repository to find what compiler version it pins
+          opam_repo=$(mktemp -d)
+          git clone --depth 1 https://github.com/oxcaml/opam-repository.git "$opam_repo"
+
+          latest_dir=$(ls "$opam_repo/packages/ocaml-variants" | sort -V | tail -1)
+          latest=$(grep -oP 'refs/tags/\K[^"]+' "$opam_repo/packages/ocaml-variants/${latest_dir}/opam" | head -1)
+          opam_rev=$(git -C "$opam_repo" rev-parse HEAD)
+          rm -rf "$opam_repo"
+
           current=$(grep -oP 'github:oxcaml/oxcaml/\K[^"]+' flake.nix | head -1)
+
           echo "current=$current" >> "$GITHUB_OUTPUT"
-
-          # Find the tag the opam repo pins
-          versions_url="https://api.github.com/repos/oxcaml/opam-repository/contents/packages/ocaml-variants"
-          latest_dir=$(curl -s "$versions_url" | jq -r '.[].name' | sort -V | tail -1)
-          opam_url="https://raw.githubusercontent.com/oxcaml/opam-repository/HEAD/packages/ocaml-variants/${latest_dir}/opam"
-          latest=$(curl -s "$opam_url" | grep -oP 'refs/tags/\K[^"]+' | head -1)
-
           echo "latest=$latest" >> "$GITHUB_OUTPUT"
+          echo "opam_rev=$opam_rev" >> "$GITHUB_OUTPUT"
 
           if [ "$current" = "$latest" ]; then
             echo "up_to_date=true" >> "$GITHUB_OUTPUT"
@@ -37,16 +42,21 @@ jobs:
             echo "up_to_date=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - uses: nixbuild/nix-quick-install-action@v34
-        if: steps.check.outputs.up_to_date == 'false'
-
-      - name: Update flake inputs
+      - name: Update flake.nix and relock
         if: steps.check.outputs.up_to_date == 'false'
         run: |
           current="${{ steps.check.outputs.current }}"
           latest="${{ steps.check.outputs.latest }}"
+          opam_rev="${{ steps.check.outputs.opam_rev }}"
+
+          # Pin oxcaml to the new release tag
           sed -i "s|github:oxcaml/oxcaml/${current}|github:oxcaml/oxcaml/${latest}|" flake.nix
-          nix flake update oxcaml oxcaml-opam-repository
+
+          # Pin oxcaml-opam-repository to the commit that has this release
+          sed -i "s|github:oxcaml/opam-repository.*\"|github:oxcaml/opam-repository/${opam_rev}\"|" flake.nix
+
+          # Relock to resolve the updated inputs
+          nix flake lock
 
       - name: Create PR
         if: steps.check.outputs.up_to_date == 'false'
@@ -59,7 +69,7 @@ jobs:
 
             Previously pinned: `${{ steps.check.outputs.current }}`
 
-            This PR updates the `oxcaml` and `oxcaml-opam-repository` flake inputs to match.
+            This PR updates `flake.nix` to pin both `oxcaml` and `oxcaml-opam-repository`.
           commit-message: |
             Update OxCaml to ${{ steps.check.outputs.latest }}
 

@@ -194,11 +194,11 @@
         "nixpkgs": "nixpkgs_2"
       },
       "locked": {
-        "lastModified": 1775932077,
-        "narHash": "sha256-ZSqDEsddwyf78HpXvKiVVft/TcaixI0eZUlRnCQGAxs=",
+        "lastModified": 1776506396,
+        "narHash": "sha256-6+LREHXxBhYnG2GroK+5Fvt5qqCCfCsz4PK+ksBXCvY=",
         "owner": "oxcaml",
         "repo": "oxcaml",
-        "rev": "a23ce940ea4eef3e7d2ec46f022399fae2b7c423",
+        "rev": "a25e3233944b273381797c39211b5989ea13e026",
         "type": "github"
       },
       "original": {

@@ -233,7 +233,6 @@
               dune = (self.packages.${pkgs.stdenv.hostPlatform.system}.default).overrideAttrs {
                 postPatch = ''
                   echo '(version ${dune-version})' >> dune-project
-                  sed -i '2a version: "${dune-version}"' opam/dune.opam
                 '';
               };
               menhirPackages = import ./nix/menhir.nix {

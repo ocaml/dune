@@ -41,6 +41,7 @@ val make_wrapped
 val fold_user_written : t -> f:(Module.t -> 'acc -> 'acc) -> init:'acc -> 'acc
 val map_user_written : t -> f:(Module.t -> Module.t Memo.t) -> t Memo.t
 val fold_user_available : t -> f:(Module.t -> 'acc -> 'acc) -> init:'acc -> 'acc
+val is_user_written : Module.t -> bool
 
 module Sourced_module : sig
   type t =

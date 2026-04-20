@@ -34,12 +34,12 @@ let index_path_in_obj_dir obj_dir =
   Path.Build.relative dir index_file_name
 ;;
 
-let cctx_rules cctx =
+let index_modules_rule ~modules_to_index cctx =
   let for_ = Compilation_context.for_ cctx in
   (* Indexing is performed by the external binary [ocaml-index] which performs
      full shape reduction to compute the actual definition of all the elements in
-     the typedtree. This step is therefore dependent on all the cmts of those
-     definitions are used by all the cmts of modules in this cctx. *)
+     the typedtree. This step depends on the cmt files of the modules being
+     indexed. *)
   let sctx = Compilation_context.super_context cctx in
   let dir = Compilation_context.dir cctx in
   let aggregate =
@@ -86,12 +86,11 @@ let cctx_rules cctx =
       |> Context_name.build_dir
       |> Path.build
     in
-    (* Indexation also depends on the current stanza's modules *)
     let modules_deps =
       Action_builder.memoize "index-module-deps"
       @@
       let open Action_builder.O in
-      let+ () = Action_builder.return () in
+      let+ modules_to_index = modules_to_index in
       let cm_kind =
         match for_ with
         | Ocaml -> Lib_mode.Cm_kind.(Ocaml Cmi)
@@ -99,18 +98,14 @@ let cctx_rules cctx =
       in
       (* We only index occurrences in user-written modules *)
       let paths =
-        Compilation_context.modules cctx
-        |> Modules.With_vlib.drop_vlib
-        |> Modules.fold_user_written ~init:[] ~f:(fun module_ acc ->
-          let cmts =
-            [ Ml_kind.Intf; Impl ]
-            |> List.filter_map ~f:(fun ml_kind ->
-              Obj_dir.Module.cmt_file obj_dir ~ml_kind ~cm_kind module_
-              |> Option.map ~f:Path.build)
-          in
-          List.rev_append cmts acc)
+        List.concat_map modules_to_index ~f:(fun module_ ->
+          if Modules.is_user_written module_
+          then
+            List.filter_map [ Ml_kind.Intf; Impl ] ~f:(fun ml_kind ->
+              Obj_dir.Module.cmt_file obj_dir ~ml_kind ~cm_kind module_)
+          else [])
       in
-      Command.Args.Deps paths
+      Command.Args.Deps (List.map ~f:Path.build paths)
     in
     Command.run_dyn_prog
       ~dir:context_dir

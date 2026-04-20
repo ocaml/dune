@@ -29,6 +29,3 @@ Normal build should succeed:
 
 Building @ocaml-index:
   $ dune build @ocaml-index
-  File "bar.ml", line 1:
-  Error: Could not find the .cmi file for interface bar.mli.
-  [1]

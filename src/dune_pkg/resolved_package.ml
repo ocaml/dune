@@ -186,7 +186,7 @@ let digest_extra_files : extra_files -> Dune_digest.t = function
        Sexp.List [ Atom "inside_files_dir"; Atom "none" ]
        |> Sexp.to_string
        |> Dune_digest.string
-     | Some path -> Path_digest.digest_with_lstat path)
+     | Some path -> Path_digest.digest_with_stat path)
   | Git_files (path_opt, rev) ->
     let path_str =
       match path_opt with

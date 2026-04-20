@@ -50,7 +50,7 @@ jobs:
 
       - name: Create PR
         if: steps.check.outputs.up_to_date == 'false'
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           branch: update-oxcaml-${{ steps.check.outputs.latest }}
           title: "Update OxCaml to ${{ steps.check.outputs.latest }}"

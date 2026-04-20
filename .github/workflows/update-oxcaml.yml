@@ -63,4 +63,4 @@ jobs:
           commit-message: |
             Update OxCaml to ${{ steps.check.outputs.latest }}
 
-            Signed-off-by: github-actions[bot] <github-actions[bot]@users.noreply.github.com>
+            Signed-off-by: Ali Caglayan <alizter@gmail.com>

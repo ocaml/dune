@@ -519,7 +519,6 @@ let build_cm
             ; Command.Args.S obj_dirs
             ; Command.Args.as_any
                 (Lib_mode.Cm_kind.Map.get (Compilation_context.includes cctx) cm_kind)
-            ; Command.Args.empty
             ; extra_args
             ; As as_parameter_arg
             ; as_argument_for

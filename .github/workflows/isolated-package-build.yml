@@ -7,16 +7,31 @@ on:
   push:
     branches:
         - main
-    paths:
-        - 'opam/*.opam'
+        - '*-rc'
   pull_request:
     paths:
       - 'opam/*.opam'
   workflow_dispatch:
 
 jobs:
-  packaging-check:
+  opam-changes:
     runs-on: ubuntu-latest
+    outputs:
+      opam_changed: ${{ steps.filter.outputs.opam }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: filter
+        uses: dorny/paths-filter@v4
+        with:
+          filters: |
+            opam:
+              - 'opam/*.opam'
+
+  packaging-check:
+    needs: opam-changes
+    runs-on: ubuntu-latest
+    if: ${{ endsWith(github.ref_name, '-rc') || (github.ref_name == 'main' && needs.opam-changes.outputs.opam_changed == 'true') }}
 
     steps:
       - uses: actions/checkout@v6

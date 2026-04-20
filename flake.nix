@@ -18,7 +18,7 @@
       url = "github:oxcaml/oxcaml";
     };
     oxcaml-opam-repository = {
-      url = "github:oxcaml/opam-repository";
+      url = "github:oxcaml/opam-repository/dde24fbc07390ada8c41508871d4741e06069241";
       flake = false;
     };
     revdeps-dune = {

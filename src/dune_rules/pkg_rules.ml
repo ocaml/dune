@@ -481,38 +481,6 @@ module Pkg = struct
       | _ -> false
     in
     let skip_file = String.starts_with ~prefix:".#" in
-    let rec loop root acc path =
-      let full_path = Path.Outside_build_dir.append_local root path in
-      Fs_memo.dir_contents full_path
-      >>= function
-      | Error e ->
-        User_error.raise
-          ~loc
-          [ Pp.textf
-              "Unable to read %s"
-              (Path.Outside_build_dir.to_string_maybe_quoted full_path)
-          ; Unix_error.Detailed.pp e
-          ]
-      | Ok contents ->
-        let files, dirs =
-          let contents = Fs_memo.Dir_contents.to_list contents in
-          List.rev_filter_partition_map contents ~f:(fun (name, kind) ->
-            (* TODO handle links and cycles correctly *)
-            match kind with
-            | S_DIR -> if skip_dir name then Skip else Right name
-            | _ -> if skip_file name then Skip else Left name)
-        in
-        let acc =
-          Path.Local.Set.of_list_map files ~f:(Path.Local.relative path)
-          |> Path.Local.Set.union acc
-        in
-        let+ dirs =
-          Memo.parallel_map dirs ~f:(fun dir ->
-            let dir = Path.Local.relative path dir in
-            loop root Path.Local.Set.empty dir)
-        in
-        Path.Local.Set.union_all (acc :: dirs)
-    in
     (match t.info.source with
      | None -> Memo.return None
      | Some source ->
@@ -522,7 +490,37 @@ module Pkg = struct
         | `Local (`Directory, root) -> Some root))
     >>= function
     | None -> Memo.return Path.Local.Set.empty
-    | Some root -> loop root Path.Local.Set.empty Path.Local.root
+    | Some root ->
+      let rec collect_sources ~acc ~dir =
+        let full_path = Path.Outside_build_dir.append_local root dir in
+        Fs_memo.dir_contents full_path
+        >>= function
+        | Error e ->
+          User_error.raise
+            ~loc
+            [ Pp.textf
+                "Unable to read %s"
+                (Path.Outside_build_dir.to_string_maybe_quoted full_path)
+            ; Unix_error.Detailed.pp e
+            ]
+        | Ok contents ->
+          let files, dirs =
+            let contents = Fs_memo.Dir_contents.to_list contents in
+            List.rev_filter_partition_map contents ~f:(fun (name, kind) ->
+              (* TODO handle links and cycles correctly *)
+              let relative = Path.Local.relative dir name in
+              match (kind : Unix.file_kind) with
+              | S_DIR -> if skip_dir name then Skip else Right relative
+              | _ -> if skip_file name then Skip else Left relative)
+          in
+          let acc = Path.Local.Set.of_list files |> Path.Local.Set.union acc in
+          let+ dirs =
+            Memo.parallel_map dirs ~f:(fun dir ->
+              collect_sources ~acc:Path.Local.Set.empty ~dir)
+          in
+          Path.Local.Set.union_all (acc :: dirs)
+      in
+      collect_sources ~acc:Path.Local.Set.empty ~dir:Path.Local.root
   ;;
 
   let dep t = Dep.file t.paths.target_dir
@@ -1963,37 +1961,33 @@ module Install_action = struct
         Some (entry.section, dst)
     ;;
 
-    let rec resolve_symlinks_in dir =
-      match Readdir.read_directory_with_kinds dir with
-      | Error e -> Unix_error.Detailed.raise e
-      | Ok entries ->
-        List.iter entries ~f:(fun (fname, kind) ->
-          let path = Filename.concat dir fname in
-          match (kind : Unix.file_kind) with
-          | S_DIR -> resolve_symlinks_in path
-          | S_LNK ->
-            (match Fpath.follow_symlink path with
-             | Error (Unix_error e) -> Unix_error.Detailed.raise e
-             | Error Not_a_symlink ->
-               Code_error.raise
-                 "resolve_symlinks_in: not a symlink"
-                 [ "path", Dyn.string path ]
-             | Error Max_depth_exceeded ->
-               User_error.raise
-                 [ Pp.textf
-                     "Unable to resolve symlink %s: too many levels of symbolic links"
-                     path
-                 ]
-             | Ok resolved ->
-               (match Unix.lstat resolved with
-                | { Unix.st_kind = S_REG; _ } ->
-                  (* CR-someday rgrinberg: pass chmod:true here? *)
-                  Fpath.unlink_exn path;
-                  Io.portable_hardlink
-                    ~src:(Path.of_string resolved)
-                    ~dst:(Path.of_string path)
-                | _ -> ()))
-          | _ -> ())
+    let resolve_symlinks_in root =
+      let on_symlink ~dir fname () =
+        let path = Filename.concat root (Filename.concat dir fname) in
+        match Fpath.follow_symlink path with
+        | Error (Unix_error e) -> Unix_error.Detailed.raise e
+        | Error Not_a_symlink ->
+          Code_error.raise
+            "resolve_symlinks_in: not a symlink"
+            [ "path", Dyn.string path ]
+        | Error Max_depth_exceeded ->
+          User_error.raise
+            [ Pp.textf
+                "Unable to resolve symlink %s: too many levels of symbolic links"
+                path
+            ]
+        | Ok resolved ->
+          (match Unix.lstat resolved with
+           | { Unix.st_kind = S_REG; _ } ->
+             (* CR-someday rgrinberg: pass chmod:true here? *)
+             Fpath.unlink_exn path;
+             Io.portable_hardlink
+               ~src:(Path.of_string resolved)
+               ~dst:(Path.of_string path)
+           | _ -> ());
+          (), None
+      in
+      Fpath.traverse ~dir:root ~init:() ~on_symlink:(`Call on_symlink) ()
     ;;
 
     let action
@@ -2159,6 +2153,7 @@ let source_rules (pkg : Pkg.t) =
                   explicitly deleted immediately after the archive is
                   extracted. This logic is implemented in the "source-fetch"
                   action spec in [Fetch_rules]. *)
+               (* CR-Ambre update above comment *)
                source_files, rules
              else (
                let dst = Path.Build.append_local pkg.write_paths.source_dir file in

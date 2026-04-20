@@ -60,4 +60,7 @@ jobs:
             Previously pinned: `${{ steps.check.outputs.current }}`
 
             This PR updates the `oxcaml` and `oxcaml-opam-repository` flake inputs to match.
-          commit-message: "Update OxCaml to ${{ steps.check.outputs.latest }}"
+          commit-message: |
+            Update OxCaml to ${{ steps.check.outputs.latest }}
+
+            Signed-off-by: github-actions[bot] <github-actions[bot]@users.noreply.github.com>

@@ -2157,8 +2157,8 @@ let source_rules (pkg : Pkg.t) =
                   directories. Packages whose source is extracted from an
                   archive (possibly fetched over the web) have broken symlinks
                   explicitly deleted immediately after the archive is
-                  extracted. This logic is implemented in the "source-fetch"
-                  action spec in [Fetch_rules]. *)
+                  extracted. This logic is implemented in
+                  [Fetch.resolve_directory_symlinks]. *)
                source_files, rules
              else (
                let dst = Path.Build.append_local pkg.write_paths.source_dir file in

@@ -284,7 +284,14 @@ let resolve_directory_symlinks_in root =
           let seen = String.Set.add seen full_name in
           (match follow_symlink_exn full_name with
            | None ->
-             (* Delete faulty symlinks silently, as they're allowed in fetched sources. *)
+             (* Delete any broken symlinks from the unpacked archive. Dune can't
+                handle broken symlinks in the _build directory, but some opam
+                package contain broken symlinks. The logic here is applied to the
+                contents of package source archives but not to packages whose source
+                is in a local directory (e.g. when a package is pinned from the
+                filesystem). Broken symlinks are excluded while copying files from
+                local directories into the build directory, and the logic for
+                excluding them lives in [Pkg_rules.source_rules]. *)
              Fpath.unlink_no_err full_name;
              Log.info
                "Deleted broken symlink from fetched archive"

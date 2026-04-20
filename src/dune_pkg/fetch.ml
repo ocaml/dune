@@ -265,7 +265,7 @@ let resolve_directory_symlinks_in root =
     User_error.raise
       [ Pp.textf "Unable to resolve symlink %s, it is part of a cycle." name ]
   in
-  let rec resolve_rec (dir : Path.t) already_seen =
+  let rec resolve_rec dir seen =
     match Readdir.read_directory_with_kinds (Path.to_string dir) with
     | Error e -> Unix_error.Detailed.raise e
     | Ok entries ->
@@ -274,13 +274,13 @@ let resolve_directory_symlinks_in root =
           ~compare:(fun (name1, _k1) (name2, _k2) -> String.compare name1 name2)
           entries
       in
-      List.fold_left sorted_entries ~init:already_seen ~f:(fun seen (name, kind) ->
+      List.fold_left sorted_entries ~init:seen ~f:(fun seen (name, kind) ->
         let relative = Path.relative dir name in
         let full_name = Path.to_string relative in
         match (kind : Unix.file_kind) with
         | S_DIR -> resolve_rec relative seen
         | S_LNK ->
-          if String.Set.mem already_seen full_name then cycle_error full_name;
+          if String.Set.mem seen full_name then cycle_error full_name;
           let seen = String.Set.add seen full_name in
           (match follow_symlink_exn full_name with
            | None ->

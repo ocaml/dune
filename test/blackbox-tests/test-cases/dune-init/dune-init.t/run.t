@@ -375,8 +375,6 @@ build:
 We can build the project:
 
   $ dune build --root new_exec_proj
-  Entering directory 'new_exec_proj'
-  Leaving directory 'new_exec_proj'
 
  $ diff -u new_exec_proj.opam.before-build new_exec_proj/new_exec_proj.opam
 
@@ -419,15 +417,11 @@ And the opam file content is as expected
 We can build and run the resulting executable:
 
   $ dune exec --root new_exec_proj ./bin/main.exe
-  Entering directory 'new_exec_proj'
-  Leaving directory 'new_exec_proj'
   Hello, World!
 
 We can build and run the project's tests:
 
   $ dune exec --root new_exec_proj ./test/test_new_exec_proj.exe
-  Entering directory 'new_exec_proj'
-  Leaving directory 'new_exec_proj'
 
 Initializing Library Projects
 ================================
@@ -493,8 +487,6 @@ Building and installing the freshly initialized library project currently fails
 until the generated opam file is promoted:
 
   $ dune build --root new_lib_proj @install
-  Entering directory 'new_lib_proj'
-  Leaving directory 'new_lib_proj'
 
 Likewise, the command below currently produces no output. This documents the
 same regression for initialized library projects.
@@ -537,8 +529,6 @@ Running the freshly initialized project's tests currently fails for the same
 reason:
 
   $ dune runtest --root new_lib_proj
-  Entering directory 'new_lib_proj'
-  Leaving directory 'new_lib_proj'
 
 
 Initializing Projects Using the PATH Argument

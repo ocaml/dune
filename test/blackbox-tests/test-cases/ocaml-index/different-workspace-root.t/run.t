@@ -15,8 +15,6 @@ Building from one of the sub-projects folder also creates all three indexes:
   $ cd sub-project 
   $ export PATH=../bin:$PATH
   $ dune build --workspace=../dune-workspace --root=.. @sub-project/ocaml-index
-  Entering directory '..'
-  Leaving directory '..'
   $ cd ..
 
   $ find . -name '*.ocaml-index' | sort

@@ -25,8 +25,6 @@ Test dependency on installed package
   > EOF
 
   $ dune build --root a
-  Entering directory 'a'
-  Leaving directory 'a'
 
   $ dune install --root a --prefix $PWD/prefix --display short
   Installing $TESTCASE_ROOT/prefix/lib/a/META
@@ -60,6 +58,4 @@ Test dependency on installed package
   > EOF
 
   $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root b @install
-  Entering directory 'b'
-  Leaving directory 'b'
 

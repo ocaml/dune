@@ -1,8 +1,6 @@
 Test using installed drivers
 
   $ dune build --root driver @install
-  Entering directory 'driver'
-  Leaving directory 'driver'
   $ OCAMLPATH=driver/_build/install/default/lib dune build --root use-external-driver driveruser.cma 2>&1 | censor
   Entering directory 'use-external-driver'
   .ppx/$DIGEST/ppx.exe
@@ -49,8 +47,6 @@ Test using installed drivers
   [1]
 
   $ OCAMLPATH=driver/_build/install/default/lib dune build --root driver-replaces @install
-  Entering directory 'driver-replaces'
-  Leaving directory 'driver-replaces'
   $ OCAMLPATH=driver/_build/install/default/lib:driver-replaces/_build/install/default/lib dune build --root replaces-external driveruser.cma 2>&1 | censor
   Entering directory 'replaces-external'
   replacesdriver

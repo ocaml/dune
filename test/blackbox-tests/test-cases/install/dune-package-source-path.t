@@ -17,8 +17,6 @@ Test paths on public libraries with `.` are correct
   > EOF
 
   $ dune build a.install --root a
-  Entering directory 'a'
-  Leaving directory 'a'
 
   $ cat a/_build/default/a.install
   lib: [
@@ -64,8 +62,6 @@ Test paths on public libraries with `.` are correct
 
 
   $ dune build b.install --root b
-  Entering directory 'b'
-  Leaving directory 'b'
 
   $ cat b/_build/default/b.install
   lib: [

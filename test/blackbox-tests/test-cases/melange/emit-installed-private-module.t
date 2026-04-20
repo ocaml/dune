@@ -58,8 +58,6 @@ stage the installed Melange object dirs rather than only the entry module's
   > EOF
 
   $ dune build --root lib @install
-  Entering directory 'lib'
-  Leaving directory 'lib'
 
   $ dune install --root lib --prefix $PWD/prefix --display short
   Installing $TESTCASE_ROOT/prefix/lib/repro/META
@@ -114,8 +112,6 @@ stage the installed Melange object dirs rather than only the entry module's
   > EOF
 
   $ OCAMLPATH=$PWD/prefix/lib:$OCAMLPATH dune rules --format=json --deps --root app --display=quiet dist/node_modules/repro.foo/foo_map.js > deps.json
-  Entering directory 'app'
-  Leaving directory 'app'
   $ jq -r 'include "dune"; .[] | depsGlobEntriesWithPredicate("*.cmj") | select(.dir | endswith("/repro/foo")) | "\(.dir_kind) \(.dir)"' deps.json
   External $TESTCASE_ROOT/prefix/lib/repro/foo
   $ jq -r 'include "dune"; .[] | depsGlobEntriesWithPredicate("*.cmi") | select(.dir | endswith("/repro/foo")) | "\(.dir_kind) \(.dir)"' deps.json

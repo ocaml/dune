@@ -24,6 +24,7 @@ compilation unit.
   _build/default/.foo.objs/byte/foo__Root.cmi
   _build/default/.foo.objs/byte/foo__Root.cmo
   _build/default/.foo.objs/byte/foo__Root.cmt
+  _build/default/.foo.objs/foo__Root.filtered-libs
 
 Not only is running ocamldep wasteful, but it can also lead to cycles:
 

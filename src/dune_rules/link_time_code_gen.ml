@@ -262,6 +262,7 @@ let findlib_dynload cctx lib loc =
 let handle_special_libs cctx =
   let ( let& ) m f = Resolve.Memo.bind m ~f in
   let& all_libs = Compilation_context.requires_link cctx in
+  let sctx = Compilation_context.super_context cctx in
   let obj_dir = Compilation_context.obj_dir cctx |> Obj_dir.of_local in
   let open Memo.O in
   let dune_site_plugin_code =
@@ -326,5 +327,12 @@ let handle_special_libs cctx =
               ~to_link_rev:(Lib lib :: Module (obj_dir, module_) :: to_link_rev)
               ~force_linkall:true))
   in
-  process_libs all_libs ~to_link_rev:[] ~force_linkall:false
+  let& { to_link; force_linkall } =
+    process_libs all_libs ~to_link_rev:[] ~force_linkall:false
+  in
+  let open Resolve.Memo.O in
+  let+ to_link =
+    Resolve.Memo.lift_memo (Lib_flags.Lib_and_module.L.expand_archived_libs sctx to_link)
+  in
+  { to_link; force_linkall }
 ;;

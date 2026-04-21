@@ -186,20 +186,31 @@ let read_deps_of ~obj_dir ~modules ~ml_kind ~for_ unit =
   |> Action_builder.memoize (Path.Build.to_string all_deps_file)
 ;;
 
-(* Parse the raw dependency names from an ocamldep output file. This is
-   shared between [read_immediate_deps_of] and [read_immediate_deps_raw_of]
-   to avoid parsing the same .d file twice on null builds. *)
-let read_immediate_deps_parsed ~obj_dir ~ml_kind ~for_ unit =
-  match Module.source ~ml_kind unit with
-  | None -> Action_builder.return None
-  | Some source ->
-    (match Obj_dir.Module.dep obj_dir ~for_ (Immediate (unit, ml_kind)) with
-     | None -> Action_builder.return None
-     | Some ocamldep_output ->
-       Action_builder.lines_of (Path.build ocamldep_output)
-       |> Action_builder.map ~f:(fun lines ->
-         Some (parse_deps_exn ~file:(Module.File.path source) lines))
-       |> Action_builder.memoize (Path.Build.to_string ocamldep_output))
+(* Parse the raw dependency names from an ocamldep output file. The
+   builder for each .d file is cached by path so that
+   [read_immediate_deps_of] and [read_immediate_deps_raw_of] (which
+   may be called many times for the same module) share one memoized
+   [Action_builder.t] instance per file. *)
+let read_immediate_deps_parsed =
+  let cache = Table.create (module Path.Build) 64 in
+  fun ~obj_dir ~ml_kind ~for_ unit ->
+    match Module.source ~ml_kind unit with
+    | None -> Action_builder.return None
+    | Some source ->
+      (match Obj_dir.Module.dep obj_dir ~for_ (Immediate (unit, ml_kind)) with
+       | None -> Action_builder.return None
+       | Some ocamldep_output ->
+         (match Table.find cache ocamldep_output with
+          | Some builder -> builder
+          | None ->
+            let builder =
+              Action_builder.lines_of (Path.build ocamldep_output)
+              |> Action_builder.map ~f:(fun lines ->
+                Some (parse_deps_exn ~file:(Module.File.path source) lines))
+              |> Action_builder.memoize (Path.Build.to_string ocamldep_output)
+            in
+            Table.set cache ocamldep_output builder;
+            builder))
 ;;
 
 let read_immediate_deps_of ~obj_dir ~modules ~ml_kind ~for_ unit =

@@ -87,7 +87,7 @@ DEF_LOOP_FLAG(notimerfd, EVFLAG_NOTIMERFD)
 #define DEF_BACKEND_SET(__name, __value)                                       \
   CAMLprim value lev_backend_##__name(value v_unit) {                          \
     CAMLparam1(v_unit);                                                        \
-    CAMLreturn(Int_val(__value()));                                            \
+    CAMLreturn(Val_int(__value()));                                            \
   }
 
 DEF_BACKEND_SET(supported, ev_supported_backends)
@@ -381,7 +381,7 @@ CAMLprim value lev_timer_remaining(value v_timer, value v_ev) {
   CAMLparam2(v_timer, v_ev);
   ev_timer *timer = Ev_timer_val(v_timer);
   struct ev_loop *ev = (struct ev_loop *)Nativeint_val(v_ev);
-  CAMLreturn(ev_timer_remaining(ev, timer));
+  CAMLreturn(caml_copy_double(ev_timer_remaining(ev, timer)));
 }
 
 CAMLprim value lev_timer_again(value v_timer, value v_ev) {

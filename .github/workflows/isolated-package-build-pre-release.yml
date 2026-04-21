@@ -1,0 +1,11 @@
+name: Packaging check pre-release
+
+on:
+  push:
+    branches:
+      - '*-rc'
+
+jobs:
+  packaging-check:
+    name: Packaging check
+    uses: Sudha247/dune/.github/workflows/isolated-package-build.yml@ci-actions-rc

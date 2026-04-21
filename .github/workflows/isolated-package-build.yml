@@ -4,34 +4,20 @@ name: Packaging check
 # https://opam.ci.ocaml.org/github/ocaml/opam-repository/commit/a95df9014bc79103fde668cf2adbe6680fd2f9cf/variant/compilers,5.0,fs-io.3.21.0~alpha3,tests
 
 on:
+  workflow_call:
   push:
     branches:
       - main
-      - '*-rc'
+    paths:
+      - 'opam/*.opam'
   pull_request:
     paths:
       - 'opam/*.opam'
   workflow_dispatch:
 
 jobs:
-  opam-changes:
-    runs-on: ubuntu-latest
-    outputs:
-      opam_changed: ${{ steps.filter.outputs.opam }}
-    steps:
-      - uses: actions/checkout@v6
-
-      - id: filter
-        uses: dorny/paths-filter@v4
-        with:
-          filters: |
-            opam:
-              - 'opam/*.opam'
-
   packaging-check:
-    needs: opam-changes
     runs-on: ubuntu-latest
-    if: ${{ endsWith(github.ref_name, '-rc') || ((github.ref_name == 'main' || github.event_name == 'pull_request') && needs.opam-changes.outputs.opam_changed == 'true') }}
 
     steps:
       - uses: actions/checkout@v6

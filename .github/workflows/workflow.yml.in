@@ -230,6 +230,7 @@ jobs:
 
       # Install ocamlfind-secondary and ocaml-secondary-compiler, if needed
       - run: |
+          cat ~/.opam/config
           opam pin -n . --with-version=%%VERSION%%
           opam install dune --deps-only
 

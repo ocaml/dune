@@ -705,3 +705,20 @@ let%expect_test "path relative external plain" =
   relative (Path.of_string "/ext") "foo";
   [%expect {| External "/ext/foo" |}]
 ;;
+
+let%expect_test "external relative trailing slash" =
+  external_relative "/root/" "foo/bar";
+  [%expect {| /root/foo/bar |}]
+;;
+
+(* CR-soon Alizter: should strip "./" and produce "/root/foo" *)
+let%expect_test "external relative trailing slash dot-slash" =
+  external_relative "/root/" "./foo";
+  [%expect {| /root/./foo |}]
+;;
+
+(* CR-soon Alizter: should return "/root" *)
+let%expect_test "external relative dot-slash only" =
+  external_relative "/root" "./";
+  [%expect {| /root/./ |}]
+;;

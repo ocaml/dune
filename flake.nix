@@ -15,7 +15,7 @@
       flake = false;
     };
     oxcaml = {
-      url = "github:oxcaml/oxcaml";
+      url = "github:oxcaml/oxcaml/5.2.0minus-25";
     };
     oxcaml-opam-repository = {
       url = "github:oxcaml/opam-repository";
@@ -618,6 +618,14 @@
               "ocaml-lsp-server"
               "odoc"
             ];
+            extraBuildInputs =
+              pkgs:
+              [ pkgs.tree ]
+              ++ (with pkgs.ocamlPackages; [
+                js_of_ocaml
+                js_of_ocaml-compiler
+                wasm_of_ocaml-compiler
+              ]);
             packageOverrides =
               oself: osuper:
               (oxPackageSet oself osuper)

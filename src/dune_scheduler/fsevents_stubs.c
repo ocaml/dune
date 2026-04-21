@@ -216,7 +216,7 @@ CFMutableArrayRef paths_of_list(value v_paths) {
     i++;
   }
 
-  return paths;
+  CAMLreturnT(CFMutableArrayRef, paths);
 }
 
 CAMLprim value dune_fsevents_create(value v_paths, value v_latency,

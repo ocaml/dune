@@ -223,6 +223,8 @@ documentation for each command is available through ``dune COMMAND --help``.
 
 .. describe:: dune tools
 
+   .. versionadded:: 3.17
+
    Command group for managing developer tools. See :doc:`dune-tools` for
    details.
 
@@ -245,7 +247,7 @@ documentation for each command is available through ``dune COMMAND --help``.
 
    .. describe:: dune tools env
 
-      Print a command to add dev tool directories to your ``PATH``.
+      Print a command to add developer tool directories to your ``PATH``.
 
 .. describe:: dune top
 

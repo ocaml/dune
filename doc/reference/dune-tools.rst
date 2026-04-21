@@ -13,13 +13,14 @@ dune tools
 ``dune tools`` is a command group for managing developer tools. Developer tools
 are programs that are useful for working on a project's source code but are not
 required for building or deploying the project itself. Examples include
-`ocamlformat <https://github.com/ocaml-ppx/ocamlformat>`_,
-`ocaml-lsp-server <https://github.com/ocaml/ocaml-lsp>`_, and
-`utop <https://github.com/ocaml-community/utop>`_.
+`ocamlformat <https://github.com/ocaml-ppx/ocamlformat>`_ for formatting your
+source code, `ocaml-lsp-server <https://github.com/ocaml/ocaml-lsp>`_ which
+provides a Language Server Protocol implementation for OCaml, and `utop
+<https://github.com/ocaml-community/utop>`_ an improved toplevel (REPL).
 
 Dune can automatically resolve, lock, build, and run these tools using package
-management. Each tool is managed in its own lock directory under
-``_build/.dev-tools.locks/<package-name>``.
+management. Each tool is managed in its own lock directory separate from the
+project.
 
 Supported Tools
 ---------------
@@ -83,8 +84,8 @@ The following developer tools are currently supported:
 Subcommands
 -----------
 
-dune tools exec
-~~~~~~~~~~~~~~~
+``dune tools exec``
+~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: console
 
@@ -100,8 +101,8 @@ All positional arguments are forwarded to the tool's executable.
    $ dune tools exec ocamlformat
    $ dune tools exec --help
 
-dune tools install
-~~~~~~~~~~~~~~~~~~
+``dune tools install``
+~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: console
 
@@ -116,8 +117,8 @@ pre-installing tools so that later ``exec`` or ``which`` calls are fast.
    $ dune tools install ocamlformat
    $ dune tools install ocamllsp
 
-dune tools which
-~~~~~~~~~~~~~~~~
+``dune tools which``
+~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: console
 
@@ -140,8 +141,8 @@ Flags:
    $ dune tools which merlin --allow-not-installed
    _build/.dev-tools.locks/merlin/merlin/target/bin/ocamlmerlin
 
-dune tools env
-~~~~~~~~~~~~~~
+``dune tools env``
+~~~~~~~~~~~~~~~~~~
 
 .. code-block:: console
 

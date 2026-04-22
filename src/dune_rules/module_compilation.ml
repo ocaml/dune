@@ -8,64 +8,6 @@ let all_libs cctx =
   d @ h
 ;;
 
-let is_standard_kind m =
-  match Module.kind m with
-  | Impl_vmodule | Root | Alias _ | Wrapped_compat | Parameter -> false
-  | Virtual | Intf_only | Impl -> true
-;;
-
-(* Libraries referenced by [m]'s own source, obtained by mapping the raw
-   module names in [m]'s ocamldep output through [lib_index]. *)
-let own_libs_of_module ~lib_index ~obj_dir ~for_ m =
-  let open Action_builder.O in
-  let+ impl = Ocamldep.read_immediate_deps_raw_of ~obj_dir ~ml_kind:Impl ~for_ m
-  and+ intf = Ocamldep.read_immediate_deps_raw_of ~obj_dir ~ml_kind:Intf ~for_ m in
-  let raw = Module_name.Set.union impl intf in
-  Lib_file_deps.Lib_index.filter_libs lib_index ~referenced_modules:raw
-;;
-
-(* Direct intra-stanza module dependencies of [m], across both [ml] and
-   [mli]. *)
-let direct_module_deps ~obj_dir ~modules ~for_ m =
-  let open Action_builder.O in
-  let+ impl = Ocamldep.read_immediate_deps_of ~obj_dir ~modules ~ml_kind:Impl ~for_ m
-  and+ intf = Ocamldep.read_immediate_deps_of ~obj_dir ~modules ~ml_kind:Intf ~for_ m in
-  impl @ intf
-;;
-
-(* Libraries referenced by [m] or by modules reachable from [m] through
-   intra-stanza dependencies. Memoised per module so that sibling
-   compilations sharing common dependency subtrees do not redo the walk
-   — the issue @art-w flagged in #14116 where iterating over each
-   module's full transitive module-dep closure is accidentally
-   quadratic. Traverses [direct_module_deps] only; the recursion itself
-   accumulates the subtrees. *)
-let make_acc_libs_of_module ~lib_index ~obj_dir ~modules ~for_ =
-  let cache = ref Module_name.Unique.Map.empty in
-  let rec of_module m =
-    let key = Module.obj_name m in
-    match Module_name.Unique.Map.find !cache key with
-    | Some v -> v
-    | None ->
-      let v =
-        let open Action_builder.O in
-        if not (is_standard_kind m)
-        then Action_builder.return []
-        else
-          let* own = own_libs_of_module ~lib_index ~obj_dir ~for_ m in
-          let* direct = direct_module_deps ~obj_dir ~modules ~for_ m in
-          let+ sub = Action_builder.List.map direct ~f:of_module in
-          List.concat (own :: sub) |> List.sort_uniq ~compare:Lib.compare
-      in
-      let v =
-        Action_builder.memoize ("acc_libs::" ^ Module_name.Unique.to_string key) v
-      in
-      cache := Module_name.Unique.Map.set !cache key v;
-      v
-  in
-  of_module
-;;
-
 (* Per-module inter-library dependency filtering (#4572). Uses ocamldep
    output to determine which libraries a module actually references, then
    transitively closes within the compilation context's library set to
@@ -98,15 +40,33 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
     then Action_builder.return ((), Lib_file_deps.deps_of_entries ~opaque ~cm_kind libs)
     else
       let* lib_index = Resolve.Memo.read (Compilation_context.lib_index cctx) in
-      let modules = Compilation_context.modules cctx in
-      let acc_libs_of = make_acc_libs_of_module ~lib_index ~obj_dir ~modules ~for_ in
+      let* trans_deps = Dep_graph.deps_of dep_graph m in
+      let* all_raw =
+        Action_builder.List.map (m :: trans_deps) ~f:(fun dep_m ->
+          let is_standard_kind =
+            match Module.kind dep_m with
+            | Impl_vmodule | Root | Alias _ | Wrapped_compat | Parameter -> false
+            | Virtual | Intf_only | Impl -> true
+          in
+          if not is_standard_kind
+          then Action_builder.return Module_name.Set.empty
+          else
+            let* impl_deps =
+              Ocamldep.read_immediate_deps_raw_of ~obj_dir ~ml_kind:Impl ~for_ dep_m
+            in
+            let+ intf_deps =
+              Ocamldep.read_immediate_deps_raw_of ~obj_dir ~ml_kind:Intf ~for_ dep_m
+            in
+            Module_name.Set.union impl_deps intf_deps)
+        |> Action_builder.map
+             ~f:(List.fold_left ~init:Module_name.Set.empty ~f:Module_name.Set.union)
+      in
       let* flags = Ocaml_flags.get (Compilation_context.flags cctx) mode in
       let open_modules = Ocaml_flags.extract_open_module_names flags in
-      let open_libs =
-        Lib_file_deps.Lib_index.filter_libs lib_index ~referenced_modules:open_modules
+      let referenced = Module_name.Set.union all_raw open_modules in
+      let filtered_libs =
+        Lib_file_deps.Lib_index.filter_libs lib_index ~referenced_modules:referenced
       in
-      let* acc = acc_libs_of m in
-      let filtered_libs = List.sort_uniq ~compare:Lib.compare (open_libs @ acc) in
       (* Transitively close the filtered libraries within [libs].
          Transparent module aliases can create cross-library .cmi reads
          that ocamldep doesn't report, at arbitrary depth. The

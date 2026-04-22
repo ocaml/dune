@@ -201,7 +201,7 @@ let%expect_test "termination is always called" =
         |}]
 ;;
 
-let%expect_test "server-side pending request stays pending on disconnect" =
+let%expect_test "server-side pending request fails on client disconnect" =
   let module Client = struct
     include
       Dune_rpc.Client.Make
@@ -214,8 +214,8 @@ let%expect_test "server-side pending request stays pending on disconnect" =
             >>| function
             | Ok () -> ()
             | Error `Closed ->
-              (* Keep this test focused on the server-side pending request bug.
-               The default test client raises [Already_reported] here instead. *)
+              (* Keep this test focused on the server-side pending request path.
+                 The default test client raises [Already_reported] here instead. *)
               ()
           ;;
         end)
@@ -258,11 +258,16 @@ let%expect_test "server-side pending request stays pending on disconnect" =
     let requester () =
       let* session = Fiber.Ivar.read upgraded_session in
       let id = Id.make (Atom "server-request") in
-      let* () =
-        Session.request session (Decl.Request.witness server_request_decl) id ()
+      let* result =
+        Fiber.collect_errors (fun () ->
+          Session.request session (Decl.Request.witness server_request_decl) id ())
       in
-      printfn "server: request returned";
-      Fiber.return ()
+      match result with
+      | Ok () -> Code_error.raise "server request unexpectedly completed" []
+      | Error exns ->
+        printfn "server: request failed";
+        print_dyn (Dyn.list Exn_with_backtrace.to_dyn exns);
+        Fiber.return ()
     in
     let server () =
       let+ () = Drpc.Server.serve sessions (Rpc.Server.make handler) in
@@ -270,14 +275,23 @@ let%expect_test "server-side pending request stays pending on disconnect" =
     in
     Fiber.parallel_iter [ client; requester; server ] ~f:(fun f -> f ())
   in
-  let scheduler = Scheduler.create () in
-  (try Scheduler.run scheduler run with
-   | Scheduler.Never -> printfn "server: request remained pending after close");
+  Scheduler.run (Scheduler.create ()) run;
   [%expect
     {|
     client: closing channel
+    server: request failed
+    [ { exn =
+          "Response.E\n\
+          \  { payload = Some [ [ \"id\"; \"server-request\" ] ]\n\
+          \  ; message =\n\
+          \      \"Connection terminated. This request will never receive a response.\"\n\
+          \  ; kind = Connection_dead\n\
+          \  }"
+      ; backtrace = ""
+      }
+    ]
     server: finished.
-    server: request remained pending after close |}]
+    |}]
 ;;
 
 let%expect_test "client-side reply write raises on disconnect" =
@@ -319,12 +333,16 @@ let%expect_test "client-side reply write raises on disconnect" =
     let requester () =
       let* session = Fiber.Ivar.read upgraded_session in
       let id = Id.make (Atom "server-request") in
-      let* (_result : (unit, Exn_with_backtrace.t list) result) =
+      let* result =
         Fiber.collect_errors (fun () ->
           Session.request session (Decl.Request.witness server_request_decl) id ())
       in
-      printfn "server: request returned";
-      Fiber.return ()
+      match result with
+      | Ok () -> Code_error.raise "server request unexpectedly completed" []
+      | Error exns ->
+        printfn "server: request failed";
+        print_dyn (Dyn.list Exn_with_backtrace.to_dyn exns);
+        Fiber.return ()
     in
     let server () =
       let+ () = Drpc.Server.serve sessions (Rpc.Server.make handler) in

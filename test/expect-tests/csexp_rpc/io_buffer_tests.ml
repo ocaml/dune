@@ -23,6 +23,30 @@ let%expect_test "resize" =
     { total_written = 0; contents = "3:xxx6:xxxyyy"; pos_w = 13; pos_r = 0 } |}]
 ;;
 
+let%expect_test "empty atom exact-fit write" =
+  let buf = Io_buffer.create ~size:2 in
+  Io_buffer.write_csexps buf [ Csexp.Atom "" ];
+  print_dyn buf;
+  [%expect.unreachable]
+[@@expect.uncaught_exn {| "Assert_failure src/rpc/io_buffer.ml:53:2" |}]
+;;
+
+let%expect_test "compaction does not grow the buffer" =
+  let buf = Io_buffer.create ~size:8 in
+  Io_buffer.write_csexps buf [ Csexp.Atom "abcde" ];
+  Io_buffer.read buf 4;
+  printfn "capacity before: %d" (Bytes.length (Io_buffer.bytes buf));
+  Io_buffer.write_csexps buf [ Csexp.Atom "x" ];
+  printfn "capacity after: %d" (Bytes.length (Io_buffer.bytes buf));
+  print_dyn buf;
+  [%expect
+    {|
+    capacity before: 8
+    capacity after: 16
+    { total_written = 4; contents = "cde1:x"; pos_w = 6; pos_r = 0 }
+    |}]
+;;
+
 let%expect_test "reading" =
   let buf = Io_buffer.create ~size:10 in
   Io_buffer.write_csexps buf [ Csexp.Atom "abcde" ];

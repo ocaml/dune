@@ -2,6 +2,9 @@ name: Mirage
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - '*-rc'
 
 jobs:
   build:

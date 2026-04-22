@@ -1,0 +1,11 @@
+name: Packaging check pre-release
+
+on:
+  push:
+    branches:
+      - '*-rc'
+
+jobs:
+  packaging-check:
+    name: Packaging check
+    uses: ocaml/dune/.github/workflows/isolated-package-build.yml@main

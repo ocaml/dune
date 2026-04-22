@@ -8,4 +8,4 @@ on:
 jobs:
   packaging-check:
     name: Packaging check
-    uses: Sudha247/dune/.github/workflows/isolated-package-build.yml@ci-actions-rc
+    uses: ocaml/dune/.github/workflows/isolated-package-build.yml@main

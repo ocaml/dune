@@ -18,7 +18,7 @@ Test symlink chains: A -> B -> C where intermediate links are also symlinks.
   > (build (run cat real_dir/file.txt))
   > EOF
 
-The works as expected
+This works as expected
   $ build_pkg bar
   content
 

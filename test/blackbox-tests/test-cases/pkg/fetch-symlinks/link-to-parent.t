@@ -27,7 +27,8 @@ This fails correctly
 Case 2: relative parent outside the source directory
 
   $ rm _src/mydir/link_to_parent
-  $ ln -s ../.. _src/mydir/link_to_root
+  $ ln -s ../.. _src/mydir/link_to_parent
+  $ tar czf _src.tar.gz _src
 
 This fails correctly
   $ build_pkg bar 2>&1 | sanitize_pkg_digest bar.0.0.1 | tail -3

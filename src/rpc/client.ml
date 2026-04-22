@@ -15,23 +15,29 @@ include
       ;;
     end)
 
-type chan = Csexp_rpc.Session.t
-
 module Connection = struct
   type t = Csexp_rpc.Session.t
 
   let connect where =
-    let sock = Where.to_socket where in
-    let client = Csexp_rpc.Client.create sock in
-    let+ res = Csexp_rpc.Client.connect client in
-    match res with
-    | Ok s -> Ok s
-    | Error exn ->
-      Error
-        (User_error.make
-           [ Pp.textf "failed to connect to RPC server %s" (Where.to_string where)
-           ; Exn_with_backtrace.pp exn
-           ])
+    match Where.to_socket where with
+    | exception exn ->
+      Fiber.return
+        (Error
+           (User_error.make
+              [ Pp.textf "failed to connect to RPC server %s" (Where.to_string where)
+              ; Exn.pp exn
+              ]))
+    | sock ->
+      let client = Csexp_rpc.Client.create sock in
+      let+ res = Csexp_rpc.Client.connect client in
+      (match res with
+       | Ok s -> Ok s
+       | Error exn ->
+         Error
+           (User_error.make
+              [ Pp.textf "failed to connect to RPC server %s" (Where.to_string where)
+              ; Exn_with_backtrace.pp exn
+              ]))
   ;;
 
   let connect_exn where =

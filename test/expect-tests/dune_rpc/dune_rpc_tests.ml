@@ -27,8 +27,7 @@ let%expect_test "connection error includes rpc endpoint" =
      (match Stdune.User_message.to_string message |> String.split_lines with
       | [] -> ()
       | line :: _ -> print_endline line));
-  [%expect.unreachable]
-[@@expect.uncaught_exn {| (Failure inet_addr_of_string) |}]
+  [%expect {| failed to connect to RPC server tcp:host=invalid%20host,port=8587 |}]
 ;;
 
 let%expect_test "initialize scheduler with rpc" =

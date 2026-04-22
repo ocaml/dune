@@ -378,11 +378,7 @@ module Session = struct
        | Pending_response.Closed -> raise_connection_dead id
        | Response response ->
          (match response with
-          | Error error ->
-            (* CR-soon rgrinberg: this is not a code error *)
-            Code_error.raise
-              "client and server do not agree on version"
-              [ "error", Response.Error.to_dyn error ]
+          | Error error -> raise (Response.Error.E error)
           | Ok resp ->
             (match decode_resp resp with
              | Ok s -> s

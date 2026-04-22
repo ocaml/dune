@@ -530,7 +530,12 @@ struct
                    ~message:"unexpected error"
                    ())
           in
-          Chan.write t.chan [ Response (id, result) ]
+          let* write_result =
+            Fiber.collect_errors (fun () -> Chan.write t.chan [ Response (id, result) ])
+          in
+          (match write_result with
+           | Ok () -> Fiber.return ()
+           | Error _ -> terminate t)
         | Response (id, response) ->
           (match Table.find t.requests id with
            | Some status ->

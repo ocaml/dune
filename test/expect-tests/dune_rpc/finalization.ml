@@ -201,7 +201,7 @@ let%expect_test "termination is always called" =
         |}]
 ;;
 
-let%expect_test "server-side pending request hangs on client disconnect" =
+let%expect_test "server-side pending request fails on client disconnect" =
   let upgraded_session = Fiber.Ivar.create () in
   let client_request_started = Fiber.Ivar.create () in
   let release_client_request = Fiber.Ivar.create () in
@@ -240,12 +240,16 @@ let%expect_test "server-side pending request hangs on client disconnect" =
     let requester () =
       let* session = Fiber.Ivar.read upgraded_session in
       let id = Id.make (Atom "server-request") in
-      let* (_result : (unit, Exn_with_backtrace.t list) result) =
+      let* result =
         Fiber.collect_errors (fun () ->
           Session.request session (Decl.Request.witness server_request_decl) id ())
       in
-      printfn "server: request returned";
-      Fiber.return ()
+      match result with
+      | Ok () -> Code_error.raise "server request unexpectedly completed" []
+      | Error exns ->
+        printfn "server: request failed";
+        print_dyn (Dyn.list Exn_with_backtrace.to_dyn exns);
+        Fiber.return ()
     in
     let server () =
       let+ () = Drpc.Server.serve sessions (Rpc.Server.make handler) in
@@ -254,12 +258,20 @@ let%expect_test "server-side pending request hangs on client disconnect" =
     Fiber.parallel_iter [ client; requester; server ] ~f:(fun f -> f ())
   in
   Scheduler.run (Scheduler.create ()) run;
-  [%expect.unreachable]
-[@@expect.uncaught_exn
-  {|
-  (Dune_util__Report_error.Already_reported)
-  Trailing output
-  ---------------
-  client: closing channel
-  |}]
+  [%expect
+    {|
+    client: closing channel
+    server: request failed
+    [ { exn =
+          "Response.E\n\
+          \  { payload = Some [ [ \"id\"; \"server-request\" ] ]\n\
+          \  ; message =\n\
+          \      \"Connection terminated. This request will never receive a response.\"\n\
+          \  ; kind = Connection_dead\n\
+          \  }"
+      ; backtrace = ""
+      }
+    ]
+    server: finished.
+    |}]
 ;;

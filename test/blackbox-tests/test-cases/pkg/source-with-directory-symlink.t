@@ -58,13 +58,11 @@ Case 2: Tarball source containing a directory symlink.
   > EOF
 
 This is now fixed
-
   $ build_pkg bar
   content
 
 
 The tarball was fully extracted (including the symlink):
-
   $ ls _build/_private/default/.pkg/bar.*/source
   link_to_dir
   real_dir
@@ -85,6 +83,34 @@ Case 3: Downloaded tarball containing a directory symlink (with checksum).
   $ echo $PWD/_src.tar.gz >> fake-curls
 
 This is now fixed
-
   $ build_pkg baz
   content
+
+--------------------------------------------------------------------------------
+
+Case 4: Git pinned sources
+
+  $ mkdir -p _src_git/real_dir
+  $ cd _src_git/
+  $ echo "content" > real_dir/file.txt
+  $ ln -s real_dir link_to_dir
+
+  $ git init --quiet
+  $ echo 'opam-version: "2.0"' > qux.opam
+  $ git add -A
+  $ git commit --quiet -m "Initial commit"
+
+  $ cd ..
+
+  $ make_lockpkg qux << EOF
+  > (version 0.0.1)
+  > (source
+  >  (fetch
+  >   (url git+file://$PWD/_src_git)))
+  > (build (run cat link_to_dir/file.txt))
+  > EOF
+
+This is also fixed
+  $ build_pkg qux
+  content
+

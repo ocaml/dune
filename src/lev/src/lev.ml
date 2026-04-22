@@ -1,3 +1,4 @@
+open Stdune
 module List = ListLabels
 
 external ev_version : unit -> int * int = "lev_version"
@@ -91,14 +92,7 @@ module Backend = struct
   external recommended : unit -> Set.t = "lev_backend_recommended"
 end
 
-module Timestamp = struct
-  type t = float
-
-  external sleep : t -> unit = "lev_sleep"
-
-  let to_float x = x
-  let of_float x = x
-end
+external sleep : Time.Span.t -> unit = "lev_sleep"
 
 module Loop = struct
   module Flag = struct
@@ -174,7 +168,7 @@ module Loop = struct
 
   let create ?(flags = flags) () = create flags
 
-  external now : t -> Timestamp.t = "lev_ev_now"
+  external now : t -> Time.t = "lev_ev_now"
   external destroy : t -> unit = "lev_loop_destroy"
   external now_update : t -> unit = "lev_loop_now_update"
   external run : t -> int -> bool = "lev_ev_run"
@@ -338,21 +332,21 @@ module Periodic = struct
 
   type kind =
     | Regular of
-        { offset : Timestamp.t
-        ; interval : Timestamp.t option
+        { offset : Time.t
+        ; interval : Time.Span.t option
         }
-    | Custom of (t -> now:Timestamp.t -> Timestamp.t)
+    | Custom of (t -> now:Time.t -> Time.t)
 
   external create_regular
     :  (t -> unit -> unit)
-    -> float
-    -> float
+    -> Time.t
+    -> Time.Span.t
     -> t
     = "lev_periodic_create_regular"
 
   external create_custom
     :  (t -> unit -> unit)
-    -> (t -> now:Timestamp.t -> Timestamp.t)
+    -> (t -> now:Time.t -> Time.t)
     -> t
     = "lev_periodic_create_custom"
 
@@ -363,7 +357,7 @@ module Periodic = struct
     | Regular { offset; interval } ->
       let interval =
         match interval with
-        | None -> 0.
+        | None -> Time.Span.zero
         | Some f -> f
       in
       create_regular f offset interval
@@ -380,11 +374,16 @@ module Timer = struct
       type nonrec t = t
     end)
 
-  external create : (t -> unit -> unit) -> float -> float -> t = "lev_timer_create"
+  external create
+    :  (t -> unit -> unit)
+    -> Time.Span.t
+    -> Time.Span.t
+    -> t
+    = "lev_timer_create"
 
-  let create ?(repeat = 0.) ~after f = create (wrap_callback f) after repeat
+  let create ?(repeat = Time.Span.zero) ~after f = create (wrap_callback f) after repeat
 
-  external remaining : t -> Loop.t -> Timestamp.t = "lev_timer_remaining"
+  external remaining : t -> Loop.t -> Time.Span.t = "lev_timer_remaining"
   external stop : t -> Loop.t -> unit = "lev_timer_stop"
   external start : t -> Loop.t -> unit = "lev_timer_start"
   external again : t -> Loop.t -> unit = "lev_timer_again"
@@ -470,10 +469,13 @@ module Stat = struct
   external destroy : t -> unit = "lev_stat_destroy"
   external stop : t -> Loop.t -> unit = "lev_stat_stop"
   external start : t -> Loop.t -> unit = "lev_stat_start"
-  external create : (t -> unit -> unit) -> string -> Timestamp.t -> t = "lev_stat_create"
+  external create : (t -> unit -> unit) -> string -> Time.Span.t -> t = "lev_stat_create"
   external stat : t -> Unix.stats = "lev_stat_stat"
 
-  let create_unix ?(interval = 0.) ~path f = create (wrap_callback f) path interval
+  let create_unix ?(interval = Time.Span.zero) ~path f =
+    create (wrap_callback f) path interval
+  ;;
+
   let create = if Sys.win32 then Error `Unimplemented else Ok create_unix
 end
 

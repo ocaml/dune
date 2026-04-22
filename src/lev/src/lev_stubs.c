@@ -95,6 +95,24 @@ DEF_BACKEND_SET(supported, ev_supported_backends)
 DEF_BACKEND_SET(recommended, ev_recommended_backends)
 DEF_BACKEND_SET(embeddable, ev_embeddable_backends)
 
+static const ev_tstamp lev_ns_per_second = 1000000000.0;
+
+static ev_tstamp lev_time_to_seconds(value v_time) {
+  return ((ev_tstamp)Long_val(v_time)) / lev_ns_per_second;
+}
+
+static ev_tstamp lev_span_to_seconds(value v_span) {
+  return ((ev_tstamp)Long_val(v_span)) / lev_ns_per_second;
+}
+
+static value lev_time_of_seconds(ev_tstamp seconds) {
+  return Val_long((intnat)(seconds * lev_ns_per_second));
+}
+
+static value lev_span_of_seconds(ev_tstamp seconds) {
+  return Val_long((intnat)(seconds * lev_ns_per_second));
+}
+
 #define DEF_STOP(__name)                                                       \
   CAMLprim value lev_##__name##_stop(value v_w, value v_ev) {                  \
     CAMLparam2(v_w, v_ev);                                                     \
@@ -277,13 +295,13 @@ CAMLprim value lev_ev_now(value v_ev) {
   CAMLparam1(v_ev);
   struct ev_loop *loop = (struct ev_loop *)Nativeint_val(v_ev);
   ev_tstamp now = ev_now(loop);
-  CAMLreturn(caml_copy_double(now));
+  CAMLreturn(lev_time_of_seconds(now));
 }
 
 CAMLprim value lev_sleep(value v_ts) {
   CAMLparam1(v_ts);
   caml_release_runtime_system();
-  ev_sleep(Double_val(v_ts));
+  ev_sleep(lev_span_to_seconds(v_ts));
   caml_acquire_runtime_system();
   CAMLreturn(Val_unit);
 }
@@ -324,8 +342,8 @@ static ev_tstamp lev_periodic_reschedule_cb(ev_periodic *w, ev_tstamp now) {
   CAMLparam0();
   CAMLlocal1(v_stamp);
   struct periodic_cbs *cbs = (struct periodic_cbs *)w->data;
-  v_stamp = caml_callback(cbs->reschedule, caml_copy_double(now));
-  double result = Double_val(v_stamp);
+  v_stamp = caml_callback(cbs->reschedule, lev_time_of_seconds(now));
+  ev_tstamp result = lev_time_to_seconds(v_stamp);
   CAMLdrop;
   return result;
 }
@@ -393,8 +411,8 @@ CAMLprim value lev_timer_create(value v_cb, value v_after, value v_repeat) {
   CAMLparam3(v_cb, v_after, v_repeat);
   CAMLlocal2(v_timer, v_cb_applied);
   ev_timer *timer = caml_stat_alloc(sizeof(ev_timer));
-  ev_timer_init(timer, Cb_for(ev_timer), Double_val(v_after),
-                Double_val(v_repeat));
+  ev_timer_init(timer, Cb_for(ev_timer), lev_span_to_seconds(v_after),
+                lev_span_to_seconds(v_repeat));
   v_timer = caml_alloc_custom(&watcher_ops, sizeof(struct ev_timer *), 0, 1);
   Ev_timer_val(v_timer) = timer;
   v_cb_applied = caml_callback(v_cb, v_timer);
@@ -407,7 +425,7 @@ CAMLprim value lev_timer_remaining(value v_timer, value v_ev) {
   CAMLparam2(v_timer, v_ev);
   ev_timer *timer = Ev_timer_val(v_timer);
   struct ev_loop *ev = (struct ev_loop *)Nativeint_val(v_ev);
-  CAMLreturn(caml_copy_double(ev_timer_remaining(ev, timer)));
+  CAMLreturn(lev_span_of_seconds(ev_timer_remaining(ev, timer)));
 }
 
 CAMLprim value lev_timer_again(value v_timer, value v_ev) {
@@ -423,8 +441,8 @@ CAMLprim value lev_periodic_create_regular(value v_cb, value v_offset,
   CAMLparam3(v_cb, v_offset, v_interval);
   CAMLlocal2(v_periodic, v_cb_applied);
   ev_periodic *periodic = caml_stat_alloc(sizeof(ev_periodic));
-  ev_periodic_init(periodic, Cb_for(ev_periodic), Double_val(v_offset),
-                   Double_val(v_interval), NULL);
+  ev_periodic_init(periodic, Cb_for(ev_periodic), lev_time_to_seconds(v_offset),
+                   lev_span_to_seconds(v_interval), NULL);
   v_periodic =
       caml_alloc_custom(&watcher_ops, sizeof(struct ev_periodic *), 0, 1);
   Ev_periodic_val(v_periodic) = periodic;
@@ -663,7 +681,7 @@ CAMLprim value lev_stat_create(value v_cb, value v_path, value v_interval) {
   ev_stat *w = caml_stat_alloc(sizeof(ev_stat));
   struct lev_stat_data *data = caml_stat_alloc(sizeof(struct lev_stat_data));
   const char *path = caml_stat_strdup(String_val(v_path));
-  ev_stat_init(w, lev_stat_cb, path, Double_val(v_interval));
+  ev_stat_init(w, lev_stat_cb, path, lev_span_to_seconds(v_interval));
   v_w = caml_alloc_custom(&watcher_ops, sizeof(struct ev_stat *), 0, 1);
   Ev_val(ev_stat, v_w) = w;
   v_cb_applied = caml_callback(v_cb, v_w);

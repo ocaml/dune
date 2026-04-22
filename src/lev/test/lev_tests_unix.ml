@@ -1,6 +1,6 @@
+open Stdune
 open Printf
 open Lev
-module List = ListLabels
 
 let%expect_test "child" =
   let loop = Loop.default () in
@@ -187,13 +187,13 @@ let%expect_test "modify io watcher and preserve watched fd" =
 ;;
 
 let%expect_test "stat watcher reports updated file metadata" =
-  let path = Filename.temp_file "lev-stat" ".txt" in
+  let path = Stdlib.Filename.temp_file "lev-stat" ".txt" in
   let oc = open_out_bin path in
   output_string oc "a";
   close_out oc;
   let loop = Loop.create () in
   let timer =
-    Timer.create ~after:0.01 (fun timer ->
+    Timer.create ~after:(Time.Span.of_secs 0.01) (fun timer ->
       let oc = open_out_gen [ Open_wronly; Open_append ] 0o666 path in
       output_string oc "bc";
       close_out oc;

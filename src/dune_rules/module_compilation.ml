@@ -67,16 +67,15 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
       let filtered_libs =
         Lib_file_deps.Lib_index.filter_libs lib_index ~referenced_modules:referenced
       in
-      (* Transitively close the filtered libraries within [libs].
-         Transparent module aliases can create cross-library .cmi reads
-         that ocamldep doesn't report, at arbitrary depth. The
-         intersection with [libs] is needed because [Lib.closure] may
-         return libraries outside the compilation context when
-         [implicit_transitive_deps] is [Disabled]. *)
-      let libs_set = Table.create (module Lib) (List.length libs) in
-      List.iter libs ~f:(fun lib -> Table.set libs_set lib ());
-      let+ closed = Resolve.Memo.read (Lib.closure filtered_libs ~linking:false ~for_) in
-      let filtered = List.filter closed ~f:(Table.mem libs_set) in
+      (* Transitively close the filtered libraries. Transparent module
+         aliases can create cross-library .cmi reads that ocamldep
+         doesn't report, at arbitrary depth. [libs] is already the
+         transitive closure required for compilation (across all
+         [implicit_transitive_deps] modes), so [Lib.closure]'s result
+         on a subset of [libs] stays within it. *)
+      let+ filtered =
+        Resolve.Memo.read (Lib.closure filtered_libs ~linking:false ~for_)
+      in
       (), Lib_file_deps.deps_of_entries ~opaque ~cm_kind filtered)
 ;;
 

@@ -32,6 +32,5 @@ it picks up the closest one.
   > let () = Printf.printf "Hello from %s\n" M1.exported
   > EOF
   ocamllex -q -o boot/pps.ml boot/pps.mll
-  ocamlc -output-complete-exe -intf-suffix .dummy -g -o .duneboot.exe -I boot -I +unix unix.cma boot/pps.ml boot/types.ml boot/libs.ml boot/duneboot.ml
-  ./.duneboot.exe
+  ocaml -I +unix unix.cma $DUNEBOOT
   Hello from the correct module!

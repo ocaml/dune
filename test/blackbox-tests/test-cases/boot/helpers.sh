@@ -37,9 +37,18 @@ module Uutf = Uutf
 EOF
 }
 
+function normalize_bootstrap_output() {
+  # bootstrap.exe runs an OCaml script from a temp file with a random path.
+  # shellcheck disable=SC2016
+  dune_cmd subst '[^ ]*[/\\]\.duneboot[0-9a-f]+main' '$DUNEBOOT'
+}
+
 # Creates a fake dune executable that depends on [$1] and emits bootstrap info
 # which is then used to bootstrap the fake dune.
 function create_dune() {
+  local output
+  local bootstrap_status=0
+
   cat > bin/main.ml
   cat > bin/dune <<- EOF
 	(executable
@@ -49,6 +58,10 @@ function create_dune() {
 	EOF
   dune build bin/bootstrap-info
   cp _build/default/bin/bootstrap-info boot/libs.ml
-  bootstrap.exe && _boot/dune.exe
+  output="$(mktemp)"
+  bootstrap.exe >"$output" 2>&1 || bootstrap_status=$?
+  normalize_bootstrap_output <"$output"
+  rm -f "$output"
+  [ "$bootstrap_status" -eq 0 ] || return "$bootstrap_status"
+  _boot/dune.exe
 }
-

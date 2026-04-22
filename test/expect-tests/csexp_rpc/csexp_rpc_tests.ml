@@ -107,9 +107,18 @@ let%expect_test "csexp session reports malformed eof" =
             | Some sexp -> printfn "server: received %s" (Csexp.to_string sexp));
            Server.stop server))
   in
-  run_scheduler run;
+  let old_verbose = !Log.verbose in
+  Exn.protect
+    ~f:(fun () ->
+      Log.verbose := true;
+      run_scheduler run)
+    ~finally:(fun () -> Log.verbose := old_verbose);
   Fpath.unlink_no_err path;
-  [%expect {| server: read returned None |}]
+  [%expect
+    {|
+    Warning: malformed csexp rpc packet id: 0 error: "Csexp.Make(Sexp).Parser.Parse_error(\"premature end of input\")"
+    server: read returned None
+    |}]
 ;;
 
 let%expect_test "csexp server life cycle" =

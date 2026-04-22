@@ -238,9 +238,15 @@ let create
   ; lib_index =
       (* Maps entry module names to libraries for per-module inter-library
          dependency filtering. For wrapped libraries, the entry module is the
-         wrapper; for unwrapped, it is each public module. *)
+         wrapper; for unwrapped, it is each public module. Includes hidden
+         libraries (present under [implicit_transitive_deps =
+         disabled_with_hidden_includes]) so that consumers which transitively
+         reference a hidden library's entry module still produce a build
+         dependency on it. *)
       (let open Resolve.Memo.O in
-       let* all_libs = direct_requires in
+       let* direct = direct_requires in
+       let* hidden = hidden_requires in
+       let all_libs = direct @ hidden in
        let+ entries =
          Resolve.Memo.List.concat_map all_libs ~f:(fun lib ->
            match Lib_info.entry_modules (Lib.info lib) ~for_ with

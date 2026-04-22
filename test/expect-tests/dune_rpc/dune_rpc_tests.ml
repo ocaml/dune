@@ -16,6 +16,21 @@ let init ?(id = Id.make (Csexp.Atom "test-client")) ?(version = 1, 1) () =
   }
 ;;
 
+let%expect_test "connection error includes rpc endpoint" =
+  let where : Dune_rpc.Where.t = `Ip (`Host "invalid host", `Port 8587) in
+  let result =
+    Scheduler.run (Scheduler.create ()) (Rpc.Client.Connection.connect where)
+  in
+  (match result with
+   | Ok _ -> assert false
+   | Error message ->
+     (match Stdune.User_message.to_string message |> String.split_lines with
+      | [] -> ()
+      | line :: _ -> print_endline line));
+  [%expect.unreachable]
+[@@expect.uncaught_exn {| (Failure inet_addr_of_string) |}]
+;;
+
 let%expect_test "initialize scheduler with rpc" =
   let handler = Handler.create ~on_init ~version:(2, 0) () in
   let init = init () in

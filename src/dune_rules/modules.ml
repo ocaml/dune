@@ -670,6 +670,12 @@ module Wrapped = struct
 
   let lib_interface t = Group.lib_interface t.group
 
+  (* Entry modules visible to consumers of a wrapped library: the wrapper
+     itself, plus any [wrapped_compat] shims (present for
+     [(wrapped (transition ...))] libraries, which expose bare module names
+     in addition to qualified ones). *)
+  let entry_modules t = lib_interface t :: Module_name.Map.values t.wrapped_compat
+
   let fold_user_available { group; toplevel_module; _ } ~init ~f =
     let init =
       match toplevel_module with
@@ -1005,7 +1011,7 @@ let entry_modules t =
      | Unwrapped m -> Unwrapped.entry_modules m
      | Wrapped m ->
        (* we assume this is never called for implementations *)
-       [ Wrapped.lib_interface m ])
+       Wrapped.entry_modules m)
 ;;
 
 module With_vlib = struct

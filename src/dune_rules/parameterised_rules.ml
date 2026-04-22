@@ -408,6 +408,7 @@ let external_dep_rules ~sctx ~dir ~scope lib_name =
         ~impl:Virtual_rules.no_implements
         ~for_
         ~modules
+        ~has_library_deps:true
     in
     ()
 ;;

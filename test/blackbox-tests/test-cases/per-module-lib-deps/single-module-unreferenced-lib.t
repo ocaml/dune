@@ -1,23 +1,14 @@
-Baseline: single-module consumer library whose only module references
-no module of its declared dependency library.
-
-This is an observational test. It records the number of rebuild
-targets for the consumer's single module [modB] when a module of the
-dependency library [libA] has its interface edited.
+Single-module consumer library whose only module references no module
+of its declared dependency library. Under per-module library dep
+filtering, the consumer is not rebuilt when the dependency's
+interface changes.
 
 [libB] declares [(libraries libA)] but [modB.ml] does not reference
-any module of [libA]. On current main this scenario still rebuilds
-[modB]: libB is a single-module stanza, so dune skips ocamldep as an
-optimisation and cannot discover that [modB] references no module of
-[libA]; the consumer falls back to a glob over [libA]'s object
-directory, which is invalidated by the cmi change.
-
-The zero-reference case is a distinct corner from the single-module
-consumer that references some (but not all) modules of its dep,
-which [single-module-lib.t] already documents. A future fix that
-detects "ocamldep yields no references to libA" could tighten this
-corner to zero rebuilds without needing to solve the broader
-single-module-consumer skip-ocamldep limitation.
+any module of [libA]. Ocamldep runs on [modB] (single-module stanzas
+with library deps are no longer short-circuited), reports no
+references to [libA], and the filter drops [libA] from [modB]'s deps
+entirely. Editing [modA]'s interface no longer invalidates anything
+in [modB]'s dep set, so [modB] stays built.
 
 See: https://github.com/ocaml/dune/issues/4572
 See: https://github.com/ocaml/dune/pull/14116#issuecomment-4286949811
@@ -56,4 +47,4 @@ number of modB rebuild targets observed in the trace:
   > EOF
   $ dune build @check
   $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("modB"))] | length'
-  1
+  0

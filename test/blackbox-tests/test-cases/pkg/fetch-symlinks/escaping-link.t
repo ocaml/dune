@@ -8,11 +8,11 @@ Case 1: standard relative directory link
   $ echo "content" > _src/file.txt
   $ ln -s ../_outside_sources _src/link_to_outside
 
-  $ make_lockdir
-
   $ tar czf _src.tar.gz _src
 
-Foo tests if the package is succesfully extracted and built
+  $ make_lockdir
+
+Foo tests if the package is successfully extracted and built
   $ make_lockpkg foo <<EOF
   > (version 0.0.1)
   > (source
@@ -43,8 +43,8 @@ We then delete it silently.
     }
   }
 
-This should fail since the symlink was deleted
-  $ build_pkg bar
+This fails correctly because the symlink was deleted
+  $ build_pkg bar 2>&1 | dune_cmd subst '/[^ ]*/cat:' 'cat:'
   File "dune.lock/bar.pkg", line 5, characters 12-15:
   5 | (build (run cat link_to_outside/file.txt))
                   ^^^
@@ -99,11 +99,21 @@ Case 4: relative file links
   > (build (run cat link_to_secret))
   > EOF
 
-This should either work and print 'content' or fail???
+This works silently because since the symlink was deleted, we have the exact
+same file system contents as case 1, hence the build is a cache hit.
+The symlink is correctly deleted because it goes outside the sources.
   $ build_pkg foo
 
-TODO: I don't even know what should happen here
-  $ build_pkg bar
+  $ dune trace cat | jq 'select(.args.message == "Deleted broken symlink from fetched archive") | {args}' | sanitize_pkg_digest foo.0.0.1
+  {
+    "args": {
+      "message": "Deleted broken symlink from fetched archive",
+      "full_name": "_build/_private/default/.pkg/foo.0.0.1-DIGEST_HASH/source/link_to_secret"
+    }
+  }
+
+This fails correctly because the symlink was deleted
+  $ build_pkg bar 2>&1 | dune_cmd subst '/[^ ]*/cat:' 'cat:'
   File "dune.lock/bar.pkg", line 5, characters 12-15:
   5 | (build (run cat link_to_secret))
                   ^^^

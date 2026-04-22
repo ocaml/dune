@@ -79,11 +79,16 @@ module Lib_index = struct
     { by_module_name }
   ;;
 
+  (* Sorted and deduplicated so the returned list is a canonical memo key
+     for [Lib.closure] and so [Lib.closure] is not asked to process the
+     same library multiple times (it otherwise would be whenever the
+     consumer references several entry modules of the same library). *)
   let filter_libs t ~referenced_modules =
     Module_name.Set.fold referenced_modules ~init:[] ~f:(fun name acc ->
       match Module_name.Map.find t.by_module_name name with
       | None -> acc
       | Some libs -> List.rev_append libs acc)
+    |> List.sort_uniq ~compare:Lib.compare
   ;;
 end
 

@@ -1,7 +1,7 @@
 profile
 -------
 
-The build profile can be selected in the ``dune-workspace`` file by write a
+The build profile can be selected in the ``dune-workspace`` file by writing a
 ``(profile ...)`` stanza. For instance:
 
 .. code:: dune

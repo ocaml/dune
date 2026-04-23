@@ -251,7 +251,7 @@ let create
          Resolve.Memo.List.concat_map all_libs ~f:(fun lib ->
            match Lib_info.entry_modules (Lib.info lib) ~for_ with
            | External (Ok names) ->
-             Resolve.Memo.return (List.map names ~f:(fun n -> n, lib))
+             Resolve.Memo.return (List.map names ~f:(fun n -> n, lib, None))
            | External (Error e) -> Resolve.Memo.of_result (Error e)
            | Local ->
              Resolve.Memo.lift_memo
@@ -261,7 +261,8 @@ let create
                      (Lib.Local.of_lib_exn lib)
                      ~for_)
                   ~f:(fun mods ->
-                    List.map (Modules.entry_modules mods) ~f:(fun m -> Module.name m, lib))))
+                    List.map (Modules.entry_modules mods) ~f:(fun m ->
+                      Module.name m, lib, Some m))))
        in
        Lib_file_deps.Lib_index.create entries)
   ; preprocessing

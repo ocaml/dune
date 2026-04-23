@@ -64,8 +64,15 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
       let* flags = Ocaml_flags.get (Compilation_context.flags cctx) mode in
       let open_modules = Ocaml_flags.extract_open_module_names flags in
       let referenced = Module_name.Set.union all_raw open_modules in
-      let filtered_libs =
-        Lib_file_deps.Lib_index.filter_libs lib_index ~referenced_modules:referenced
+      let { Lib_file_deps.Lib_index.unwrapped; wrapped } =
+        Lib_file_deps.Lib_index.filter_libs_with_modules
+          lib_index
+          ~referenced_modules:referenced
+      in
+      (* Sort to preserve the canonical [Lib.closure] memo key (see
+         commit 9359b37e6 on the base branch). *)
+      let direct_libs =
+        List.sort ~compare:Lib.compare (Lib.Map.keys unwrapped @ wrapped)
       in
       (* Transitively close the filtered libraries. Transparent module
          aliases can create cross-library .cmi reads that ocamldep
@@ -73,10 +80,23 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
          transitive closure required for compilation (across all
          [implicit_transitive_deps] modes), so [Lib.closure]'s result
          on a subset of [libs] stays within it. *)
-      let+ filtered =
-        Resolve.Memo.read (Lib.closure filtered_libs ~linking:false ~for_)
+      let+ all_libs = Resolve.Memo.read (Lib.closure direct_libs ~linking:false ~for_) in
+      (* For directly-referenced unwrapped libs, emit per-module deps
+         on the specific entry modules the consumer named. Everything
+         else (wrapped direct libs and libs brought in only through
+         [Lib.closure]) gets the conservative glob. *)
+      let tight_deps, glob_libs =
+        List.fold_left all_libs ~init:(Dep.Set.empty, []) ~f:(fun (td, gl) lib ->
+          match Lib.Map.find unwrapped lib with
+          | Some names ->
+            ( Dep.Set.union
+                td
+                (Lib_file_deps.deps_of_entry_modules ~opaque ~cm_kind lib names)
+            , gl )
+          | None -> td, lib :: gl)
       in
-      (), Lib_file_deps.deps_of_entries ~opaque ~cm_kind filtered)
+      let glob_deps = Lib_file_deps.deps_of_entries ~opaque ~cm_kind glob_libs in
+      (), Dep.Set.union tight_deps glob_deps)
 ;;
 
 (* Arguments for the compiler to prevent it from being too clever.

@@ -1,18 +1,15 @@
-Baseline: consumer-module rebuild count when individual modules of
-an unwrapped dependency library change.
+Per-module tight deps within an unwrapped library.
 
-This is an observational test. It records the number of rebuild
-targets for a single consumer module C when each of three entry
-modules (A1, A2, A3) of the dependency library [base] has its
-interface edited. C references only A2.
+When a consumer module references a specific module of an unwrapped
+dependency library, dune emits dynamic dependencies on exactly the
+referenced module's .cmi/.cmx files — not a directory-wide glob over
+every module of the library. The consumer's rule only invalidates
+when a module it actually reads changes.
 
-On current main, editing any one of A1/A2/A3 causes C to rebuild
-because library-level dependency filtering (and, within that,
-per-module tightening) is not yet in place: the consumer is
-conservatively rebuilt whenever any entry module's cmi changes.
-Work on https://github.com/ocaml/dune/issues/4572 is expected to
-tighten this, at which point editing A1 or A3 leaves C untouched
-and the emitted counts are promoted.
+This test exercises the tightening with a consumer module [C] that
+references only [A2] of three entry modules in the dependency [base].
+Editing [A1] or [A3] must leave [C] untouched; editing [A2] must
+rebuild [C].
 
 See: https://github.com/ocaml/dune/issues/4572
 
@@ -48,11 +45,9 @@ explicit interface so signature changes propagate through .cmi files:
 
 consumer has two modules. The module of interest, [c.ml], references
 only [A2] from [base]. A second, unused module [d.ml] is present only
-to keep [consumer] a multi-module stanza: dune skips ocamldep for
-single-module stanzas with no library deps as an optimisation, and
-the per-module-lib-deps filter depends on ocamldep output. Including
-[d.ml] isolates this test from the skip-ocamldep optimisation so the
-rebuild count for [c] reflects only the per-module filter's work:
+to keep [consumer] a multi-module stanza so ocamldep is never short-
+circuited and the rebuild count for [c] reflects the per-module
+filter's work independently of any skip-ocamldep heuristic:
 
   $ mkdir consumer
   $ cat > consumer/dune <<EOF
@@ -67,8 +62,8 @@ rebuild count for [c] reflects only the per-module filter's work:
 
   $ dune build @check
 
-Edit A1's interface — a module C does not reference — and record
-the rebuild-target count for C:
+Changing A1's interface — a module C does not reference — must not
+rebuild C:
 
   $ cat > base/a1.mli <<EOF
   > val v : int
@@ -80,7 +75,7 @@ the rebuild-target count for C:
   > EOF
   $ dune build @check
   $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("consumer/\\.consumer\\.objs/byte/c\\."))] | length'
-  1
+  0
 
 Same for A3:
 
@@ -94,10 +89,10 @@ Same for A3:
   > EOF
   $ dune build @check
   $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("consumer/\\.consumer\\.objs/byte/c\\."))] | length'
-  1
+  0
 
-Edit A2's interface — the one module C does reference — and check
-that the count is positive (C must rebuild):
+Changing A2's interface — the one module C does reference — must
+rebuild C:
 
   $ cat > base/a2.mli <<EOF
   > val v : int

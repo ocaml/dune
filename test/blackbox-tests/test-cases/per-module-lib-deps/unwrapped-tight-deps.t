@@ -46,7 +46,13 @@ explicit interface so signature changes propagate through .cmi files:
   > val v : int
   > EOF
 
-consumer has a single module that references only A2 from base:
+consumer has two modules. The module of interest, [c.ml], references
+only [A2] from [base]. A second, unused module [d.ml] is present only
+to keep [consumer] a multi-module stanza: dune skips ocamldep for
+single-module stanzas with no library deps as an optimisation, and
+the per-module-lib-deps filter depends on ocamldep output. Including
+[d.ml] isolates this test from the skip-ocamldep optimisation so the
+rebuild count for [c] reflects only the per-module filter's work:
 
   $ mkdir consumer
   $ cat > consumer/dune <<EOF
@@ -54,6 +60,9 @@ consumer has a single module that references only A2 from base:
   > EOF
   $ cat > consumer/c.ml <<EOF
   > let w = A2.v
+  > EOF
+  $ cat > consumer/d.ml <<EOF
+  > let _ = ()
   > EOF
 
   $ dune build @check

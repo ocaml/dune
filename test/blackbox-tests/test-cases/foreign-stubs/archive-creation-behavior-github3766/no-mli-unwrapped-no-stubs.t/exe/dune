@@ -1,0 +1,4 @@
+(executable
+ (name b)
+ (link_flags -linkall)
+ (libraries foo))

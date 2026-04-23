@@ -1,0 +1,5 @@
+(library
+ (public_name foo)
+ (wrapped true)
+ (foreign_stubs (language c) (names stub))
+ (modules ()))

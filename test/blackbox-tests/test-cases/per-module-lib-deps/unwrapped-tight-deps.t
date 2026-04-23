@@ -84,15 +84,7 @@ reference — and record the rebuild targets for [consumer]:
   > EOF
   $ dune build @check
   $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("consumer_lib/\\.consumer_lib\\.objs/byte/consumer\\."))]'
-  [
-    {
-      "target_files": [
-        "_build/default/consumer_lib/.consumer_lib.objs/byte/consumer.cmi",
-        "_build/default/consumer_lib/.consumer_lib.objs/byte/consumer.cmo",
-        "_build/default/consumer_lib/.consumer_lib.objs/byte/consumer.cmt"
-      ]
-    }
-  ]
+  []
 
 Same for [Unread_dep_b]:
 
@@ -106,15 +98,7 @@ Same for [Unread_dep_b]:
   > EOF
   $ dune build @check
   $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("consumer_lib/\\.consumer_lib\\.objs/byte/consumer\\."))]'
-  [
-    {
-      "target_files": [
-        "_build/default/consumer_lib/.consumer_lib.objs/byte/consumer.cmi",
-        "_build/default/consumer_lib/.consumer_lib.objs/byte/consumer.cmo",
-        "_build/default/consumer_lib/.consumer_lib.objs/byte/consumer.cmt"
-      ]
-    }
-  ]
+  []
 
 Edit [Referenced_dep]'s interface — the one module [consumer] does
 reference — and record the rebuild targets ([consumer] must

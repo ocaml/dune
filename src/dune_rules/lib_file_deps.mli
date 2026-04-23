@@ -19,17 +19,45 @@ val deps : Lib.t list -> groups:Group.t list -> Dep.Set.t
     (glob deps on .cmi/.cmx files) for the given libraries. *)
 val deps_of_entries : opaque:bool -> cm_kind:Lib_mode.Cm_kind.t -> Lib.t list -> Dep.Set.t
 
+(** [deps_of_entry_modules ~opaque ~cm_kind lib modules] computes the
+    file dependencies on the specific [modules] of [lib], using
+    [Obj_dir.Module.cm_file_exn] for path construction. Only valid for
+    local libraries (for which [Module.t] is available). *)
+val deps_of_entry_modules
+  :  opaque:bool
+  -> cm_kind:Lib_mode.Cm_kind.t
+  -> Lib.t
+  -> Module.t list
+  -> Dep.Set.t
+
 module Lib_index : sig
   type t
 
   val empty : t
 
-  (** Create an index from a list of (module_name, library) pairs. *)
-  val create : (Module_name.t * Lib.t) list -> t
+  (** Create an index. Each entry carries the [Module.t] of the entry
+      module when it is known ([Some] for local libraries; [None] for
+      externals). Libraries whose entries all carry a [Module.t] and
+      which are unwrapped are eligible for per-module deps. *)
+  val create : (Module_name.t * Lib.t * Module.t option) list -> t
 
-  (** Return the libraries whose module names appear in
+  type classified =
+    { unwrapped : Module.t list Lib.Map.t
+      (** Directly-referenced libraries that are local, unwrapped, and
+        whose referenced entry modules are all known as [Module.t].
+        Each is mapped to the list of [Module.t]s the consumer
+        references. These libraries' shape allows per-module deps via
+        [deps_of_entry_modules]; whether to use it is the caller's
+        policy. *)
+    ; wrapped : Lib.t list
+      (** Other directly-referenced libraries — wrapped locals, all
+        externals, or anything else for which we fall back to a glob.
+        Sorted by [Lib.compare]. *)
+    }
+
+  (** Classify the libraries whose entry modules appear in
       [referenced_modules]. *)
-  val filter_libs : t -> referenced_modules:Module_name.Set.t -> Lib.t list
+  val filter_libs_with_modules : t -> referenced_modules:Module_name.Set.t -> classified
 end
 
 type path_specification =

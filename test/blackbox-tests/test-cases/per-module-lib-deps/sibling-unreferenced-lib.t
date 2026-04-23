@@ -1,13 +1,24 @@
-Per-module library filtering within a single consumer library.
+Baseline: multi-module consumer library with a sibling module that
+references no module of its declared dependency library.
 
-When a consumer library has multiple modules, only some of which reference a
-given dependency library, changes to that dependency library must not trigger
-recompilation of consumer modules that do not reference it — even when their
-siblings do.
+This is an observational test. It records the number of rebuild
+targets for consumer module [modB1] when a module of the dependency
+library [libA] has its interface edited.
 
-This distinguishes the filter's granularity from the two-library case in
-multiple-libraries.t: the filter must operate at the consumer-module level,
-not merely at the consumer-library level.
+[libB] is an unwrapped library with two modules. [modB2] references
+[ModA2]; [modB1] references nothing from [libA]. On current main,
+editing [modA2]'s interface rebuilds [modB1] even though [modB1]
+references nothing from [libA]: the consumer depends on a glob over
+[libA]'s object directory, which is invalidated by the cmi change.
+
+The zero-reference-sibling-in-a-library corner is distinct from
+scenarios covered by existing tests: [lib-to-lib-unwrapped.t] probes
+siblings that reference a different (non-edited) module of the dep;
+[transitive.t] and [unwrapped.t] probe zero-reference modules but
+within executable stanzas, not library stanzas. A future fix
+implementing library-level dep filtering at consumer-module
+granularity would drop [libA] entirely from [modB1]'s deps, tightening
+this corner to zero rebuilds.
 
 See: https://github.com/ocaml/dune/issues/4572
 See: https://github.com/ocaml/dune/pull/14116#issuecomment-4301275263
@@ -27,6 +38,9 @@ See: https://github.com/ocaml/dune/pull/14116#issuecomment-4301275263
   $ cat > modA2.ml <<EOF
   > let x = 43
   > EOF
+  $ cat > modA2.mli <<EOF
+  > val x : int
+  > EOF
   $ cat > modB1.ml <<EOF
   > let x = 12
   > EOF
@@ -36,10 +50,17 @@ See: https://github.com/ocaml/dune/pull/14116#issuecomment-4301275263
 
   $ dune build @check
 
-modB1 references nothing in libA. Even when libA's ModA2 (used by sibling
-modB2) changes, modB1 must not be recompiled:
+Edit modA2's interface. modB1 references nothing in libA. Record the
+number of modB1 rebuild targets observed in the trace:
 
-  $ echo "let x = 44" > modA2.ml
+  $ cat > modA2.mli <<EOF
+  > val x : int
+  > val y : string
+  > EOF
+  $ cat > modA2.ml <<EOF
+  > let x = 43
+  > let y = "hello"
+  > EOF
   $ dune build @check
   $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("modB1"))] | length'
-  0
+  1

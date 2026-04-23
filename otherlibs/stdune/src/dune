@@ -28,7 +28,7 @@
 (rule
  (enabled_if %{ocaml-config:ox})
  (action
-  (copy array.oxcaml.mli array.mli)))
+  (copy array.oxcaml.mli_ array.mli)))
 
 (rule
  (enabled_if

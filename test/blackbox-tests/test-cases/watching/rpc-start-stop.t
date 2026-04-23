@@ -17,4 +17,4 @@ Minimal RPC watch startup and shutdown without an RPC build.
   $ summarize_rpc_trace
   shutdown start
   shutdown stop
-  accept stop false
+  accept stop close

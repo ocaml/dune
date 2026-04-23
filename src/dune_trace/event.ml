@@ -494,16 +494,13 @@ module Rpc = struct
     Event.instant ~name:"packet_write" ~args now Rpc
   ;;
 
-  let accept ~id stage ~success ~error =
+  let accept ~id stage res =
     let args =
-      let args =
-        match success with
-        | None -> []
-        | Some success -> [ "success", Arg.bool success ]
-      in
-      match error with
-      | None -> args
-      | Some err -> ("error", Arg.string err) :: args
+      match res with
+      | None -> []
+      | Some `Close -> [ "status", Arg.string "close" ]
+      | Some `Accept -> [ "status", Arg.string "accept" ]
+      | Some (`Error exn) -> [ "error", Arg.dyn (Exn_with_backtrace.to_dyn exn) ]
     in
     Event.async (Event.Id.int id) ~args ~name:"accept" (Time.now ()) stage Rpc
   ;;

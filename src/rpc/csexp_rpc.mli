@@ -50,7 +50,10 @@ module Server : sig
       to the server *)
   val ready : t -> unit Fiber.t
 
+  (** [stop t] completes only after the listening sockets are closed and no new
+      clients can connect. *)
   val stop : t -> unit Fiber.t
+
   val serve : t -> Session.t Fiber.Stream.In.t Fiber.t
   val listening_address : t -> Unix.sockaddr list
 end

@@ -40,10 +40,7 @@ let%expect_test "no methods in common" =
 [@@expect.uncaught_exn
   {|
   ( "Server_aborted\
-   \n  [ [ \"message\"; \"Server and client have no method versions in common\" ] ]")
-  Trailing output
-  ---------------
-  server: finished. |}]
+   \n  [ [ \"message\"; \"Server and client have no method versions in common\" ] ]") |}]
 ;;
 
 let%expect_test "call method with matching versions" =

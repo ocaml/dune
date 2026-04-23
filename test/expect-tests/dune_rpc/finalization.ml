@@ -9,6 +9,11 @@ let print pp = Format.printf "%a@." Pp.to_fmt pp
 let print_dyn dyn = print (Dyn.pp dyn)
 let decl = simple_request ~method_:(Method.Name.of_string "double") Conv.unit Conv.unit
 let witness = Decl.Request.witness decl
+
+let server_request_decl =
+  simple_request ~method_:(Method.Name.of_string "server-request") Conv.unit Conv.unit
+;;
+
 let () = Printexc.record_backtrace false
 
 type callback =
@@ -194,4 +199,67 @@ let%expect_test "termination is always called" =
 
         ---------------
         |}]
+;;
+
+let%expect_test "server-side pending request hangs on client disconnect" =
+  let upgraded_session = Fiber.Ivar.create () in
+  let client_request_started = Fiber.Ivar.create () in
+  let release_client_request = Fiber.Ivar.create () in
+  let handler =
+    let on_upgrade session _menu = Fiber.Ivar.fill upgraded_session session in
+    let rpc = Handler.create ~on_init ~on_upgrade ~version:(1, 1) () in
+    let () = Handler.declare_request rpc server_request_decl in
+    rpc
+  in
+  let init =
+    { Initialize.Request.dune_version = 1, 1
+    ; protocol_version = Protocol.latest_version
+    ; id = Id.make (Atom "test-client")
+    }
+  in
+  let run =
+    let client_chan, sessions = setup_direct_client_server () in
+    let client () =
+      let private_menu =
+        [ Drpc.Client.Handle_request
+            ( server_request_decl
+            , fun () ->
+                let* () = Fiber.Ivar.fill client_request_started () in
+                Fiber.Ivar.read release_client_request )
+        ]
+      in
+      Drpc.Client.connect_with_menu client_chan init ~private_menu ~f:(fun _client ->
+        let* () = Fiber.Ivar.read client_request_started in
+        let* () =
+          printfn "client: closing channel";
+          Chan.close client_chan
+        in
+        let* () = Fiber.Ivar.fill release_client_request () in
+        Fiber.return ())
+    in
+    let requester () =
+      let* session = Fiber.Ivar.read upgraded_session in
+      let id = Id.make (Atom "server-request") in
+      let* (_result : (unit, Exn_with_backtrace.t list) result) =
+        Fiber.collect_errors (fun () ->
+          Session.request session (Decl.Request.witness server_request_decl) id ())
+      in
+      printfn "server: request returned";
+      Fiber.return ()
+    in
+    let server () =
+      let+ () = Drpc.Server.serve sessions (Rpc.Server.make handler) in
+      printfn "server: finished."
+    in
+    Fiber.parallel_iter [ client; requester; server ] ~f:(fun f -> f ())
+  in
+  Scheduler.run (Scheduler.create ()) run;
+  [%expect.unreachable]
+[@@expect.uncaught_exn
+  {|
+  (Dune_util__Report_error.Already_reported)
+  Trailing output
+  ---------------
+  client: closing channel
+  |}]
 ;;

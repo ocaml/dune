@@ -1,0 +1,36 @@
+# The revdeps workflow checks that released versions of reverse dependencies
+# still build correctly. This workflow instead checks that the development
+# versions of critical reverse dependencies work with the development version
+# of Dune. Currently, it only covers OxCaml.
+name: Revdeps development build
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - '*-rc'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build OxCaml trunk with Dune
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Dune
+        uses: actions/checkout@v6
+
+      - name: Set up Nix
+        uses: nixbuild/nix-quick-install-action@v34
+
+      - name: Cache Nix store
+        uses: nix-community/cache-nix-action@v7
+        with:
+          primary-key: |
+            nix-${{ runner.os }}-${{ github.job }}--${{ hashFiles('**/*.nix', '**/flake.lock') }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-${{ github.job }}--
+          gc-max-store-size-linux: 2G
+
+      - name: Build OxCaml with Dune
+        run: nix build .#oxcaml-trunk-build

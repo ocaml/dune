@@ -25,12 +25,23 @@ jobs:
           opam_repo=$(mktemp -d)
           git clone --depth 1 https://github.com/oxcaml/opam-repository.git "$opam_repo"
 
-          latest_dir=$(ls "$opam_repo/packages/ocaml-variants" | sort -V | tail -1)
-          latest=$(grep -oP 'refs/tags/\K[^"]+' "$opam_repo/packages/ocaml-variants/${latest_dir}/opam" | head -1)
+          # The compiler source is in the oxcaml-compiler package
+          latest_dir=$(ls "$opam_repo/packages/oxcaml-compiler" | sort -V | tail -1)
+          # Extract the tag from the url section, stripping the .tar.gz suffix
+          latest=$(grep -oP 'refs/tags/\K[^"]+(?=\.tar\.gz)' "$opam_repo/packages/oxcaml-compiler/${latest_dir}/opam" | head -1)
           opam_rev=$(git -C "$opam_repo" rev-parse HEAD)
           rm -rf "$opam_repo"
 
           current=$(grep -oP 'github:oxcaml/oxcaml/\K[^"]+' flake.nix | head -1)
+
+          if [ -z "$latest" ]; then
+            echo "::error::Could not determine latest OxCaml version from opam repository"
+            exit 1
+          fi
+          if [ -z "$current" ]; then
+            echo "::error::Could not determine current OxCaml version from flake.nix"
+            exit 1
+          fi
 
           echo "current=$current" >> "$GITHUB_OUTPUT"
           echo "latest=$latest" >> "$GITHUB_OUTPUT"

@@ -194,6 +194,10 @@ jobs:
 
     runs-on: ${{ matrix.os }}
 
+    # Use bash on all platforms so that multi-line `run:` scripts exit on the
+    # first failing command. PowerShell (the Windows default) only propagates
+    # the exit code of the last command in a script, masking earlier failures.
+    # https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions#defaultsrunshell
     defaults:
       run:
         shell: bash

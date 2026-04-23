@@ -221,6 +221,7 @@
       "original": {
         "owner": "oxcaml",
         "repo": "opam-repository",
+        "rev": "dde24fbc07390ada8c41508871d4741e06069241",
         "type": "github"
       }
     },

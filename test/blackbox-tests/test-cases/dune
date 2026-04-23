@@ -133,4 +133,3 @@
  (applies_to graceful-shutdown)
  (enabled_if
   (<> %{system} macosx)))
-

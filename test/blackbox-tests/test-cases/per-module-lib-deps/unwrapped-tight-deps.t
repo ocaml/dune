@@ -17,7 +17,7 @@ and the emitted counts are promoted.
 See: https://github.com/ocaml/dune/issues/4572
 
   $ cat > dune-project <<EOF
-  > (lang dune 3.22)
+  > (lang dune 3.0)
   > EOF
 
 base is an unwrapped library with three entry modules, each with an

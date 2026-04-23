@@ -909,6 +909,14 @@ let spawn
     | _ -> (None, stdout), (None, stderr)
   in
   let prog_str = Path.reach_for_running ?from:dir prog in
+  (* Normalise to backslashes on Windows. Dune's path representation uses '/'
+     across platforms for consistency, but some Windows programs (notably
+     cmd.exe, which scans argv[0] for '/c') misparse mixed separators.
+     Backslashes are the native form on Windows, so we normalise here at the
+     boundary between Dune's path representation and the OS. *)
+  let prog_str =
+    if Sys.win32 then String.replace_char prog_str ~from:'/' ~to_:'\\' else prog_str
+  in
   let args, response_file =
     if Sys.win32 && cmdline_approximate_length prog_str args >= 1024
     then (

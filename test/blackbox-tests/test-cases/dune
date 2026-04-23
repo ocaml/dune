@@ -133,3 +133,11 @@
  (applies_to graceful-shutdown)
  (enabled_if
   (<> %{system} macosx)))
+
+;; Windows-only: verify that Ctrl-C shuts dune down cleanly without a
+;; Code_error from the wait_unix call that is not available on Windows.
+
+(cram
+ (applies_to graceful-shutdown-windows)
+ (enabled_if
+  (= %{ocaml-config:system} win)))

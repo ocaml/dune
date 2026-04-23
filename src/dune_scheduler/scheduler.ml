@@ -124,22 +124,30 @@ let kill_and_wait_for_all_processes t =
   if Event.Queue.pending_jobs t.events > 0
   then (
     Dune_trace.emit Process Dune_trace.Event.process_cleanup_start;
-    (* Send SIGTERM first to give processes a chance to clean up *)
-    if not Sys.win32 then Process_watcher.killall t.process_watcher Sys.sigterm;
-    (* Poll until all processes exit or the grace period expires, then SIGKILL *)
-    let deadline = Time.add (Time.now ()) sigterm_grace_period in
-    let sent_sigkill = ref false in
-    while Event.Queue.pending_jobs t.events > 0 do
-      ignore (Process_watcher.wait_unix t.process_watcher : Fiber.fill list);
-      if Event.Queue.pending_jobs t.events > 0
-      then
-        if (not !sent_sigkill) && Time.(now () >= deadline)
-        then (
-          Dune_trace.emit Process Dune_trace.Event.process_cleanup_sigkill;
-          Process_watcher.killall t.process_watcher Sys.sigkill;
-          sent_sigkill := true)
-        else Unix.sleepf 0.01
-    done;
+    if Sys.win32
+    then (
+      (* On Windows, SIGTERM is not meaningful; kill immediately.
+         The second loop below drains completed jobs via Event.Queue.next
+         using the jobs_completed event source driven by the run_win32 thread. *)
+      Dune_trace.emit Process Dune_trace.Event.process_cleanup_sigkill;
+      Process_watcher.killall t.process_watcher Sys.sigkill)
+    else (
+      (* Send SIGTERM first to give processes a chance to clean up *)
+      Process_watcher.killall t.process_watcher Sys.sigterm;
+      (* Poll until all processes exit or the grace period expires, then SIGKILL *)
+      let deadline = Time.add (Time.now ()) sigterm_grace_period in
+      let sent_sigkill = ref false in
+      while Event.Queue.pending_jobs t.events > 0 do
+        ignore (Process_watcher.wait_unix t.process_watcher : Fiber.fill list);
+        if Event.Queue.pending_jobs t.events > 0
+        then
+          if (not !sent_sigkill) && Time.(now () >= deadline)
+          then (
+            Dune_trace.emit Process Dune_trace.Event.process_cleanup_sigkill;
+            Process_watcher.killall t.process_watcher Sys.sigkill;
+            sent_sigkill := true)
+          else Unix.sleepf 0.01
+      done);
     Dune_trace.emit Process Dune_trace.Event.process_cleanup_finish);
   let saw_signal = ref Ok in
   while Event.Queue.pending_jobs t.events > 0 do

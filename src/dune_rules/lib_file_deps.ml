@@ -50,45 +50,119 @@ let deps_of_lib (lib : Lib.t) ~groups =
 
 let deps libs ~groups = Dep.Set.union_map libs ~f:(deps_of_lib ~groups)
 
-let deps_of_entries ~opaque ~(cm_kind : Lib_mode.Cm_kind.t) libs =
-  let groups_for lib =
+let groups_for_cm_kind ~opaque ~(cm_kind : Lib_mode.Cm_kind.t) lib =
+  match cm_kind with
+  | Ocaml Cmi | Ocaml Cmo -> [ Group.Ocaml Cmi ]
+  | Ocaml Cmx ->
+    if opaque && Lib.is_local lib
+    then [ Group.Ocaml Cmi ]
+    else [ Group.Ocaml Cmi; Group.Ocaml Cmx ]
+  | Melange Cmi -> [ Group.Melange Cmi ]
+  | Melange Cmj -> [ Group.Melange Cmi; Group.Melange Cmj ]
+;;
+
+let deps_of_entries ~opaque ~cm_kind libs =
+  Dep.Set.union_map libs ~f:(fun lib ->
+    deps_of_lib lib ~groups:(groups_for_cm_kind ~opaque ~cm_kind lib))
+;;
+
+(* [cm_public_file] gives the cmi path consumers read via their [-I]
+   include path, which for libraries with a dedicated public cmi dir
+   ([private_modules]) differs from the internal compilation output.
+   Using it ensures the dep triggers the produce-public-cmi rule.
+
+   Only called for local unwrapped libraries: [can_filter] rejects
+   melange cm_kinds, so this function handles ocaml only. *)
+let deps_of_entry_modules ~opaque ~(cm_kind : Lib_mode.Cm_kind.t) lib modules =
+  let obj_dir = Lib.info lib |> Lib_info.obj_dir in
+  let cmi_kind = Lib_mode.Cm_kind.cmi cm_kind in
+  let want_cmx =
     match cm_kind with
-    | Ocaml Cmi | Ocaml Cmo -> [ Group.Ocaml Cmi ]
-    | Ocaml Cmx ->
-      if opaque && Lib.is_local lib
-      then [ Group.Ocaml Cmi ]
-      else [ Group.Ocaml Cmi; Group.Ocaml Cmx ]
-    | Melange Cmi -> [ Group.Melange Cmi ]
-    | Melange Cmj -> [ Group.Melange Cmi; Group.Melange Cmj ]
+    | Ocaml Cmx -> not (opaque && Lib.is_local lib)
+    | _ -> false
   in
-  Dep.Set.union_map libs ~f:(fun lib -> deps_of_lib lib ~groups:(groups_for lib))
+  List.fold_left modules ~init:Dep.Set.empty ~f:(fun acc m ->
+    let acc =
+      match Obj_dir.Module.cm_public_file obj_dir m ~kind:cmi_kind with
+      | Some path -> Dep.Set.add acc (Dep.file path)
+      | None -> acc
+    in
+    if want_cmx && Module.has m ~ml_kind:Impl
+    then (
+      match Obj_dir.Module.cm_public_file obj_dir m ~kind:(Ocaml Cmx) with
+      | Some path -> Dep.Set.add acc (Dep.file path)
+      | None -> acc)
+    else acc)
 ;;
 
 module Lib_index = struct
-  type t = { by_module_name : Lib.t list Module_name.Map.t }
+  type t =
+    { by_module_name : (Lib.t * Module.t option) list Module_name.Map.t
+    ; tight_eligible : Lib.Set.t
+    }
 
-  let empty = { by_module_name = Module_name.Map.empty }
+  let empty = { by_module_name = Module_name.Map.empty; tight_eligible = Lib.Set.empty }
+
+  (* A library is eligible for per-module tight deps iff it is local
+     (so every entry has a known [Module.t] with which we can call
+     [Obj_dir.Module.cm_public_file]) and unwrapped (so the public
+     cmi dir does not need a glob to reach internal alias modules). *)
+  let is_lib_tight_eligible lib =
+    Lib.is_local lib
+    &&
+    match Lib_info.wrapped (Lib.info lib) with
+    | Some (This w) -> not (Wrapped.to_bool w)
+    | Some (From _) | None ->
+      (* [Some (From _)]: wrapped setting inherited from a virtual
+         library. The [has_virtual_impl] branch higher up in
+         [lib_deps_for_module] should handle virtual-impl contexts
+         before we reach here; stay defensive.
+         [None]: no wrapped information available (e.g. legacy
+         [dune-package]). *)
+      false
+  ;;
 
   let create entries =
     let by_module_name =
-      List.fold_left entries ~init:Module_name.Map.empty ~f:(fun map (name, lib) ->
+      List.fold_left entries ~init:Module_name.Map.empty ~f:(fun map (name, lib, m) ->
         Module_name.Map.update map name ~f:(function
-          | None -> Some [ lib ]
-          | Some libs -> Some (lib :: libs)))
+          | None -> Some [ lib, m ]
+          | Some xs -> Some ((lib, m) :: xs)))
     in
-    { by_module_name }
+    let tight_eligible =
+      List.fold_left entries ~init:Lib.Set.empty ~f:(fun acc (_, lib, _) ->
+        if is_lib_tight_eligible lib then Lib.Set.add acc lib else acc)
+    in
+    { by_module_name; tight_eligible }
   ;;
 
-  (* Sorted and deduplicated so the returned list is a canonical memo key
-     for [Lib.closure] and so [Lib.closure] is not asked to process the
-     same library multiple times (it otherwise would be whenever the
-     consumer references several entry modules of the same library). *)
-  let filter_libs t ~referenced_modules =
-    Module_name.Set.fold referenced_modules ~init:[] ~f:(fun name acc ->
-      match Module_name.Map.find t.by_module_name name with
-      | None -> acc
-      | Some libs -> List.rev_append libs acc)
-    |> List.sort_uniq ~compare:Lib.compare
+  type classified =
+    { unwrapped : Module.t list Lib.Map.t
+    ; wrapped : Lib.t list
+    }
+
+  let filter_libs_with_modules idx ~referenced_modules =
+    let add_entry (unwrapped, wrapped) (lib, m_opt) =
+      match m_opt with
+      | Some m when Lib.Set.mem idx.tight_eligible lib ->
+        let unwrapped =
+          Lib.Map.update unwrapped lib ~f:(function
+            | None -> Some [ m ]
+            | Some ms -> Some (m :: ms))
+        in
+        unwrapped, wrapped
+      | _ -> unwrapped, Lib.Set.add wrapped lib
+    in
+    let unwrapped, wrapped =
+      Module_name.Set.fold
+        referenced_modules
+        ~init:(Lib.Map.empty, Lib.Set.empty)
+        ~f:(fun name acc ->
+          match Module_name.Map.find idx.by_module_name name with
+          | None -> acc
+          | Some entries -> List.fold_left entries ~init:acc ~f:add_entry)
+    in
+    { unwrapped; wrapped = Lib.Set.to_list wrapped }
   ;;
 end
 

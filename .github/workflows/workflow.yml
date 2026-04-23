@@ -474,7 +474,6 @@ jobs:
           - 5
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v6
       - name: Use OCaml ${{ matrix.ocaml-compiler }}
         uses: ocaml/setup-ocaml@v3
         with:
@@ -484,8 +483,8 @@ jobs:
         uses: actions/cache/restore@v5
         with:
           path: ~/.opam/download-cache
-          key: opam-download-${{ matrix.os }}-${{ matrix.ocaml-compiler }}-${{ hashFiles('**.opam') }}
-          restore-keys: opam-download-${{ matrix.os }}-${{ matrix.ocaml-compiler }}-
+          key: opam-download-${{ matrix.os }}-${{ matrix.ocaml-compiler }}
+      - uses: actions/checkout@v6
       - name: Create an empty switch
         run: opam switch create . --empty
       - name: Pin local packages to local dependencies
@@ -499,7 +498,7 @@ jobs:
         if: steps.opam-download-cache.outputs.cache-hit != 'true'
         with:
           path: ~/.opam/download-cache
-          key: opam-download-${{ matrix.os }}-${{ matrix.ocaml-compiler }}-${{ hashFiles('**.opam') }}
+          key: opam-download-${{ matrix.os }}-${{ matrix.ocaml-compiler }}
 
   build-microbench:
     name: Build microbenchmarks

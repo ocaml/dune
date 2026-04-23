@@ -1,24 +1,14 @@
-Baseline: multi-module consumer library with a sibling module that
-references no module of its declared dependency library.
-
-This is an observational test. It records the number of rebuild
-targets for consumer module [modB1] when a module of the dependency
-library [libA] has its interface edited.
+Multi-module consumer library with a sibling module that references
+no module of its declared dependency library. Under per-module
+library dep filtering, the unreferenced sibling is not rebuilt when
+the dependency's interface changes.
 
 [libB] is an unwrapped library with two modules. [modB2] references
-[ModA2]; [modB1] references nothing from [libA]. On current main,
-editing [modA2]'s interface rebuilds [modB1] even though [modB1]
-references nothing from [libA]: the consumer depends on a glob over
-[libA]'s object directory, which is invalidated by the cmi change.
-
-The zero-reference-sibling-in-a-library corner is distinct from
-scenarios covered by existing tests: [lib-to-lib-unwrapped.t] probes
-siblings that reference a different (non-edited) module of the dep;
-[transitive.t] and [unwrapped.t] probe zero-reference modules but
-within executable stanzas, not library stanzas. A future fix
-implementing library-level dep filtering at consumer-module
-granularity would drop [libA] entirely from [modB1]'s deps, tightening
-this corner to zero rebuilds.
+[ModA2]; [modB1] references nothing from [libA]. Ocamldep's output
+for [modB1] is empty of references to [libA], so the filter drops
+[libA] entirely from [modB1]'s deps. Editing [modA2]'s interface
+does not invalidate anything in [modB1]'s dep set, so [modB1] stays
+built.
 
 See: https://github.com/ocaml/dune/issues/4572
 See: https://github.com/ocaml/dune/pull/14116#issuecomment-4301275263
@@ -63,4 +53,4 @@ number of modB1 rebuild targets observed in the trace:
   > EOF
   $ dune build @check
   $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("modB1"))] | length'
-  1
+  0

@@ -110,7 +110,6 @@ module Load = Make_load (struct
         (* CR-someday rgrinberg: add some proper message here *)
         User_error.raise [ Pp.text "" ]
       | Ok content -> return content
-    ;;
 
     let with_lexbuf_from_file path ~f =
       Io.Untracked.with_lexbuf_from_file path ~f |> return
@@ -212,17 +211,43 @@ let get_with_path =
     Memo.exec
       (Memo.create
          ~human_readable_description:(fun p ->
-           Pp.textf "read lock directory %s" (Path.to_string_maybe_quoted p))
+           Pp.textf "read lock directory %s" (Path.Source.to_string_maybe_quoted p))
          "read-lock-dir"
-         ~input:(module Path)
-         (fun path ->
-            let* () = Build_system.build_dir path in
-            Load.load path))
+         ~input:(module Path.Source)
+         (fun source_path ->
+            let build_path = lock_dir_of_source source_path in
+            (* [Build_system.build_dir] requires [Building _] state.
+               Skip it outside [Build_system.run] and read from wherever available. *)
+            match Fiber.Svar.read Build_system.state with
+            | Building _ ->
+              let* () = Build_system.build_dir build_path in
+              Load.load build_path
+            | _ ->
+              (match
+                 ( Fpath.exists (Path.to_string build_path)
+                 , Fpath.exists (Path.to_string (Path.source source_path)) )
+               with
+               | true, _ -> Load.load build_path
+               | false, true -> Load.load (Path.source source_path)
+               | false, false ->
+                 User_error.raise
+                   [ Pp.textf
+                       "The lock directory %s has not been built yet."
+                       (Path.Source.to_string_maybe_quoted source_path)
+                   ]
+                   ~hints:
+                     [ Pp.concat
+                         ~sep:Pp.space
+                         [ Pp.text "Try running"
+                         ; User_message.command "dune build"
+                         ; Pp.text "first."
+                         ]
+                     ])))
   in
   Per_context.create_by_name ~name:"lock-dir-get" (fun ctx ->
     Memo.lazy_ (fun () ->
-      let* path =
-        get_path ctx
+      let* source_path =
+        get_source_path_for_context ctx
         >>| function
         | Some p -> p
         | None ->
@@ -230,7 +255,7 @@ let get_with_path =
             "No lock dir path for context available"
             [ "context", Context_name.to_dyn ctx ]
       in
-      read_lockdir path
+      read_lockdir source_path
       >>= function
       | Error e -> Memo.return (Error e)
       | Ok lock_dir ->
@@ -241,7 +266,7 @@ let get_with_path =
            Solver_stats.Expanded_variable_bindings.validate_against_solver_env
              lock_dir.expanded_solver_variable_bindings
              (workspace_lock_dir.solver_env |> Option.value ~default:Solver_env.empty));
-        Ok (path, lock_dir))
+        Ok (lock_dir_of_source source_path, lock_dir))
     |> Memo.Lazy.force)
   |> Staged.unstage
 ;;

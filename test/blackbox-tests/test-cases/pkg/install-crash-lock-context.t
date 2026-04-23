@@ -1,12 +1,7 @@
-Reproduces a crash where `dune install` from #14272
-
-The case when `dune install` crashes is this: there is already a lock_directory
-in `dune.lock`. First run `dune build @install` to generate build artifacts.
-Later when you run `dune install`, it runs under
-`Scheduler_setup.no_build_no_rpc` and doesn't call `Build_system.run`. The build
-system state stays at `Initializing`. However, when Build_system.build_dir is
-called on the lock directory, it is expecting the state to be in `Building _`
-and it fails.
+Regression test for #14272: `dune install` with a lock-based context used to
+crash because it called `Build_system.build_dir` outside `Build_system.run`,
+where the build state is `Initializing` rather than `Building _`. It shouldn't
+crash now, but the test is to provide coverage for this code path.
 
   $ mkrepo
 
@@ -36,18 +31,44 @@ engine.
   >  (run echo "installing foo"))
   > EOF
 
-Build the lockdir first, so the install command needs to read real contents.
+Build the lockdir first
 
   $ dune build @install
 
-`dune install` crashes with an internal error because it never calls
-`Build_system.run`, yet it's expected to be in `Building` state.
+`dune install` without --prefix calls `Context.roots`, which triggers the lock
+dir read. We unset OPAM_SWITCH_PREFIX for a deterministic result.
 
-  $ dune install 2>&1 | head -n 6
-  Internal error! Please report to https://github.com/ocaml/dune/issues,
-  providing the file _build/trace.csexp, if possible. This includes build
-  commands, message logs, and file paths.
-  Description:
-    ("Unexpected build progress state (expected [Building _])",
-     { current = Initializing })
+  $ dune install
+  Error: The mandir installation directory is unknown.
+  Hint: It can be specified with '--prefix' or by setting '--mandir'
   [1]
+  $ dune install --prefix "$PWD/_install"
+
+Autolocking case: no source lock directory, lock dir is auto-generated into
+the build tree. `dune install` must read it from there.
+
+  $ mkdir autolock_test
+  $ cd autolock_test
+
+  $ cat > dune-project <<EOF
+  > (lang dune 3.20)
+  > (package
+  >  (name mypkg)
+  >  (allow_empty))
+  > EOF
+
+  $ cat > dune-workspace <<EOF
+  > (lang dune 3.20)
+  > (pkg enabled)
+  > EOF
+
+  $ mkrepo
+  $ add_mock_repo_if_needed
+
+  $ dune build @install
+
+  $ dune install
+  Error: The mandir installation directory is unknown.
+  Hint: It can be specified with '--prefix' or by setting '--mandir'
+  [1]
+  $ dune install --prefix "$PWD/_install"

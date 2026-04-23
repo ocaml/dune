@@ -17,8 +17,9 @@ See: https://github.com/ocaml/dune/issues/4572
   > (lang dune 3.22)
   > EOF
 
-base is wrapped with a transition period, exposing both [Base.Alpha]
-and bare [Alpha]:
+base is wrapped with a transition period: consumers can reach each
+public module either through the wrapper (e.g. [Base.Alpha]) or by
+its bare name (e.g. [Beta]):
 
   $ mkdir base
   $ cat > base/dune <<EOF
@@ -37,10 +38,10 @@ and bare [Alpha]:
   > val v : int
   > EOF
 
-Consumer references the library via the wrapper. The transition
+Consumer intentionally exercises both access paths. The transition
 machinery emits deprecation alerts for the bare-name access, so we
-silence them in the consumer flags and only exercise the wrapper
-path here:
+silence them in the consumer flags while testing both the wrapper
+path and the bare-name compat shim here:
 
   $ mkdir consumer
   $ cat > consumer/dune <<EOF

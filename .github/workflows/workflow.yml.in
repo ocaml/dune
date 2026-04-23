@@ -473,12 +473,18 @@ jobs:
           - 5
     runs-on: ${{ matrix.os }}
     steps:
-      # TODO: opam cache here?
+      - uses: actions/checkout@v6
       - name: Use OCaml ${{ matrix.ocaml-compiler }}
         uses: ocaml/setup-ocaml@v3
         with:
           ocaml-compiler: ${{ matrix.ocaml-compiler }}
-      - uses: actions/checkout@v6
+      - name: Restore opam download cache
+        id: opam-download-cache
+        uses: actions/cache/restore@v5
+        with:
+          path: ~/.opam/download-cache
+          key: opam-download-${{ matrix.os }}-${{ matrix.ocaml-compiler }}-${{ hashFiles('**.opam') }}
+          restore-keys: opam-download-${{ matrix.os }}-${{ matrix.ocaml-compiler }}-
       - name: Create an empty switch
         run: opam switch create . --empty
       - name: Pin local packages to local dependencies
@@ -487,6 +493,12 @@ jobs:
         # When updating dune lang, update this too
       - name: Install external dependencies
         run: opam install .
+      - name: Save opam download cache
+        uses: actions/cache/save@v5
+        if: steps.opam-download-cache.outputs.cache-hit != 'true'
+        with:
+          path: ~/.opam/download-cache
+          key: opam-download-${{ matrix.os }}-${{ matrix.ocaml-compiler }}-${{ hashFiles('**.opam') }}
 
   build-microbench:
     name: Build microbenchmarks

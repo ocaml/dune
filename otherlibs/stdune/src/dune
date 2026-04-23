@@ -24,3 +24,14 @@
    copyfile_stubs
    signal_stubs
    time_stubs)))
+
+(rule
+ (enabled_if %{ocaml-config:ox})
+ (action
+  (copy array.oxcaml.mli array.mli)))
+
+(rule
+ (enabled_if
+  (not %{ocaml-config:ox}))
+ (action
+  (copy array.ocaml.mli array.mli)))

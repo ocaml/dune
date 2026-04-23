@@ -140,4 +140,5 @@
 (cram
  (applies_to graceful-shutdown-windows)
  (enabled_if
-  (= %{ocaml-config:system} win)))
+  (= %{os_type} Win32))
+ (alias runtest-windows))

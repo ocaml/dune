@@ -23,7 +23,7 @@ See: https://github.com/ocaml/dune/issues/4572
 See: https://github.com/ocaml/dune/pull/14116#issuecomment-4286949811
 
   $ cat > dune-project <<EOF
-  > (lang dune 3.22)
+  > (lang dune 3.0)
   > EOF
 
   $ cat > dune <<EOF

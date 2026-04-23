@@ -28,6 +28,15 @@ let system_shell_exn =
   let bin = lazy (Bin.which ~path:(path Env.initial) cmd) in
   fun ~needed_to ->
     match Lazy.force bin with
+    | Some path when Sys.win32 ->
+      (* cmd.exe has a quirky property where it will scan all of its args for
+         /c when parsing its flags. Even though CreateProcessW accepts forward
+         slash paths, calling C:\Windows\system32/cmd.exe with mixed path
+         separators will cause issues because cmd.exe will believe /cmd.exe is
+         an argument and fail. In order to avoid this we explicitly replace the
+         forward slashes in the cmd.exe path with backslashes. Other programs
+         don't have this issue luckily. *)
+      Path.of_string (String.replace_char ~from:'/' ~to_:'\\' (Path.to_string path)), arg
     | Some path -> path, arg
     | None ->
       User_error.raise

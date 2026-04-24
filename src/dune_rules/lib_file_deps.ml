@@ -102,9 +102,10 @@ module Lib_index = struct
     ; no_ocamldep : Lib.Set.t
       (* Local libs whose ocamldep is short-circuited by
          [Dep_rules.skip_ocamldep] — single-module stanzas without
-         library dependencies have no [.d] build rules. BFS must
-         not try to read ocamldep for them; their entry module
-         can have no cross-library references anyway. *)
+         library dependencies have no [.d] build rules. The
+         cross-library walk must not try to read ocamldep for them;
+         their entry module can have no cross-library references
+         anyway. *)
     }
 
   let empty =
@@ -126,7 +127,7 @@ module Lib_index = struct
      [Foo]. We cannot distinguish consumers that use the wrapped
      lib's [Bar] internal from those that use [Baz], and so cannot
      emit specific deps on just [Foo__Bar.cmi] vs [Foo__Baz.cmi].
-     Any BFS-based walk over the wrapper's own ocamldep output
+     Any breadth-first walk over the wrapper's own ocamldep output
      reaches every internal the wrapper exposes, which is
      equivalent to the current glob for invalidation.
 

@@ -42,9 +42,9 @@ module Lib_index : sig
 
       [no_ocamldep] names local libs whose ocamldep output is
       short-circuited (single-module stanzas without library
-      dependencies — see [Dep_rules.skip_ocamldep]). The cross-lib
-      BFS in [module_compilation] must not try to read [.d] files
-      for those libs. *)
+      dependencies — see [Dep_rules.skip_ocamldep]). The cross-
+      library walk in [module_compilation] must not try to read
+      [.d] files for those libs. *)
   val create
     :  ?no_ocamldep:Lib.Set.t
     -> (Module_name.t * Lib.t * Module.t option) list
@@ -68,7 +68,7 @@ module Lib_index : sig
   val filter_libs_with_modules : t -> referenced_modules:Module_name.Set.t -> classified
 
   (** [lookup_tight_entries idx name] returns [(lib, entry module)]
-      pairs used by the cross-library BFS in [module_compilation].
+      pairs used by the cross-library walk in [module_compilation].
       Libraries in [no_ocamldep] are excluded (their [.d] files do
       not exist), as are externals, wrapped locals, and entries with
       no [Module.t]. *)

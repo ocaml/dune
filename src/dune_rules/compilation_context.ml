@@ -136,8 +136,8 @@ let parameters_main_modules parameters =
 
    Local libraries whose ocamldep is short-circuited by
    [Dep_rules.skip_ocamldep] (unwrapped single-module stanzas without
-   direct lib deps) are collected into [no_ocamldep] so the cross-lib
-   BFS does not try to read their nonexistent [.d] files. *)
+   direct lib deps) are collected into [no_ocamldep] so the cross-
+   library walk does not try to read their nonexistent [.d] files. *)
 let build_lib_index ~super_context ~all_libs ~for_ =
   let open Resolve.Memo.O in
   let+ per_lib =

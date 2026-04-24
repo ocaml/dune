@@ -568,6 +568,7 @@ let shared_with_config_file ~allow_pkg_flag =
         & opt (some (enum Dune_config.Pkg_enabled.(all Cli))) None
         & info
             [ "pkg" ]
+            ~env:(Cmd.Env.info "DUNE_PKG")
             ~docs
             ~doc:
               (Some

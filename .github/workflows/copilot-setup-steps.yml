@@ -34,6 +34,7 @@ jobs:
             nix-${{ runner.os }}-${{ github.job }}--
             nix-Linux-nix-test--
           gc-max-store-size-linux: 2G
+          save: false
 
       - name: Enter Nix dev shell
         run: nix develop -c true

@@ -83,27 +83,42 @@ let parse_compilation_units ~modules =
     |> Option.map ~f:Modules.Sourced_module.to_module)
 ;;
 
-let parse_deps_exn =
-  let invalid file lines =
-    User_error.raise
-      [ Pp.textf
-          "ocamldep returned unexpected output for %s:"
-          (Path.to_string_maybe_quoted file)
-      ; Pp.vbox
-          (Pp.concat_map lines ~sep:Pp.cut ~f:(fun line ->
-             Pp.seq (Pp.verbatim "> ") (Pp.verbatim line)))
-      ]
-  in
-  fun ~file lines ->
-    match lines with
-    | [] | _ :: _ :: _ -> invalid file lines
-    | [ line ] ->
-      (match String.lsplit2 line ~on:':' with
-       | None -> invalid file lines
-       | Some (basename, deps) ->
-         let basename = Filename.basename basename in
-         if basename <> Path.basename file then invalid file lines;
-         String.extract_blank_separated_words deps)
+let invalid_ocamldep_output file lines =
+  User_error.raise
+    [ Pp.textf
+        "ocamldep returned unexpected output for %s:"
+        (Path.to_string_maybe_quoted file)
+    ; Pp.vbox
+        (Pp.concat_map lines ~sep:Pp.cut ~f:(fun line ->
+           Pp.seq (Pp.verbatim "> ") (Pp.verbatim line)))
+    ]
+;;
+
+let parse_deps_exn ~file lines =
+  match lines with
+  | [] | _ :: _ :: _ -> invalid_ocamldep_output file lines
+  | [ line ] ->
+    (match String.lsplit2 line ~on:':' with
+     | None -> invalid_ocamldep_output file lines
+     | Some (basename, deps) ->
+       let basename = Filename.basename basename in
+       if basename <> Path.basename file then invalid_ocamldep_output file lines;
+       String.extract_blank_separated_words deps)
+;;
+
+(* Like [parse_deps_exn] but without the left-hand basename check.
+   Callers that only read [.d] files (rather than producing them)
+   may hold a raw [Module.t] whose [Module.source] path differs
+   from the pp-transformed source the producing rule fed to
+   ocamldep — the basename will not match even though the output
+   is valid. *)
+let parse_deps_lenient ~file lines =
+  match lines with
+  | [] | _ :: _ :: _ -> invalid_ocamldep_output file lines
+  | [ line ] ->
+    (match String.lsplit2 line ~on:':' with
+     | None -> invalid_ocamldep_output file lines
+     | Some (_, deps) -> String.extract_blank_separated_words deps)
 ;;
 
 let transitive_deps =
@@ -190,7 +205,13 @@ let read_deps_of ~obj_dir ~modules ~ml_kind ~for_ unit =
    builder for each .d file is cached by path so that
    [read_immediate_deps_of] and [read_immediate_deps_raw_of] (which
    may be called many times for the same module) share one memoized
-   [Action_builder.t] instance per file. *)
+   [Action_builder.t] instance per file.
+
+   Uses [parse_deps_lenient] rather than [parse_deps_exn]: the
+   producing rule already validates the basename in [deps_of]; by
+   the time a reader sees the [.d] file it is known-valid, and
+   cross-lib readers may hold a raw [Module.t] whose source path
+   does not match the pp-transformed source the rule used. *)
 let read_immediate_deps_parsed =
   let cache = Table.create (module Path.Build) 64 in
   fun ~obj_dir ~ml_kind ~for_ unit ->
@@ -206,7 +227,7 @@ let read_immediate_deps_parsed =
             let builder =
               Action_builder.lines_of (Path.build ocamldep_output)
               |> Action_builder.map ~f:(fun lines ->
-                Some (parse_deps_exn ~file:(Module.File.path source) lines))
+                Some (parse_deps_lenient ~file:(Module.File.path source) lines))
               |> Action_builder.memoize (Path.Build.to_string ocamldep_output)
             in
             Table.set cache ocamldep_output builder;

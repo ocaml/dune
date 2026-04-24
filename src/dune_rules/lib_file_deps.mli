@@ -73,12 +73,6 @@ module Lib_index : sig
       not exist), as are externals, wrapped locals, and entries with
       no [Module.t]. *)
   val lookup_tight_entries : t -> Module_name.t -> (Lib.t * Module.t) list
-
-  (** [tight_subset idx lib names] returns [lib]'s entry modules
-      whose names appear in [names]. Returns [[]] when [lib] is not
-      tight-eligible; callers should interpret that as a signal to
-      fall back to [deps_of_entries] (a glob over the lib's objdir). *)
-  val tight_subset : t -> Lib.t -> Module_name.Set.t -> Module.t list
 end
 
 type path_specification =

@@ -187,20 +187,6 @@ module Lib_index = struct
           -> Some (lib, m)
         | _ -> None)
   ;;
-
-  let tight_subset idx lib names =
-    if not (Lib.Set.mem idx.tight_eligible lib)
-    then []
-    else
-      Module_name.Set.fold names ~init:[] ~f:(fun name acc ->
-        match Module_name.Map.find idx.by_module_name name with
-        | None -> acc
-        | Some entries ->
-          List.fold_left entries ~init:acc ~f:(fun acc (l, m_opt) ->
-            match m_opt with
-            | Some m when Lib.equal l lib -> m :: acc
-            | _ -> acc))
-  ;;
 end
 
 type path_specification =

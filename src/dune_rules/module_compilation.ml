@@ -155,20 +155,25 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
          on a subset of [libs] stays within it. *)
       let* all_libs = Resolve.Memo.read (Lib.closure direct_libs ~linking:false ~for_) in
       let+ tight_set = cross_lib_tight_set ~lib_index ~for_ ~initial_refs:referenced in
-      (* For libs whose entry modules intersect the cross-library
-         tight set, emit per-module deps on just those entries.
-         Non-tight-eligible libs (wrapped locals, externals) and
-         tight-eligible libs with no intersecting entries fall into
-         the glob path, matching the pre-BFS conservative shape. *)
+      (* Classify [all_libs] against the cross-library tight set: libs
+         whose entries appear in [tight_set] get per-module deps on
+         just those entries; the rest (non-tight-eligible libs,
+         tight-eligible libs with no intersecting entries) fall to a
+         glob over their objdir. *)
+      let { Lib_file_deps.Lib_index.tight = tight_modules; non_tight = _ } =
+        Lib_file_deps.Lib_index.filter_libs_with_modules
+          lib_index
+          ~referenced_modules:tight_set
+      in
       let tight_deps, glob_libs =
         List.fold_left all_libs ~init:(Dep.Set.empty, []) ~f:(fun (td, gl) lib ->
-          match Lib_file_deps.Lib_index.tight_subset lib_index lib tight_set with
-          | [] -> td, lib :: gl
-          | modules ->
+          match Lib.Map.find tight_modules lib with
+          | Some modules ->
             ( Dep.Set.union
                 td
                 (Lib_file_deps.deps_of_entry_modules ~opaque ~cm_kind lib modules)
-            , gl ))
+            , gl )
+          | None -> td, lib :: gl)
       in
       let glob_deps = Lib_file_deps.deps_of_entries ~opaque ~cm_kind glob_libs in
       (), Dep.Set.union tight_deps glob_deps)

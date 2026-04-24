@@ -98,7 +98,13 @@ let cross_lib_tight_set ~lib_index ~for_ ~initial_refs =
 
    These deps surface in [dune rules <target>]'s output alongside any
    static deps. Falls back to a glob over all cctx libs when filtering
-   is not possible. *)
+   is not possible.
+
+   Wrapped dependency libraries always take the glob path. See
+   [Lib_file_deps.Lib_index.is_lib_tight_eligible] for an explanation
+   of why per-module tightening cannot be applied to wrapped libs
+   with the information ocamldep makes available, and for sketches
+   of possible follow-on work. *)
 let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kind ~mode m =
   let open Action_builder.O in
   let can_filter =

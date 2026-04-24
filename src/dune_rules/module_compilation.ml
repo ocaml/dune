@@ -8,6 +8,33 @@ let all_libs cctx =
   d @ h
 ;;
 
+(* Map each element of [xs] through [f], returning the union of all the
+   resulting [Module_name.Set.t]s. *)
+let union_set_map xs ~f =
+  Action_builder.List.map xs ~f
+  |> Action_builder.map
+       ~f:(List.fold_left ~init:Module_name.Set.empty ~f:Module_name.Set.union)
+;;
+
+(* A module is filterable (per-module lib deps apply) only when it has a
+   proper source-level kind: user [Impl]/[Intf_only] or a transparent
+   alias whose ocamldep we can read to follow the chain. *)
+let module_kind_is_filterable m =
+  match Module.kind m with
+  | Root | Wrapped_compat | Impl_vmodule | Virtual | Parameter -> false
+  | Intf_only | Impl | Alias _ -> true
+;;
+
+(* A module has user-authored ocamldep output we can read as part of
+   the filter's reference walk. [Alias _] modules are synthetic stubs
+   with no useful ocamldep; [Virtual] modules' interfaces do carry
+   references we want to follow. *)
+let module_kind_has_readable_ocamldep m =
+  match Module.kind m with
+  | Impl_vmodule | Root | Alias _ | Wrapped_compat | Parameter -> false
+  | Virtual | Intf_only | Impl -> true
+;;
+
 (* Extend [initial_refs] with module names reached through cross-
    library ocamldep. Walk tight-eligible entry modules breadth-first:
    gather all [(lib, entry module)] pairs named by the frontier, read
@@ -40,7 +67,6 @@ let module_needs_preprocessing lib m =
 
 let cross_lib_tight_set ~sandbox ~sctx ~lib_index ~initial_refs =
   let open Action_builder.O in
-  let union_all = List.fold_left ~init:Module_name.Set.empty ~f:Module_name.Set.union in
   let read_entry_deps (lib, m) =
     if module_needs_preprocessing lib m
     then Action_builder.return Module_name.Set.empty
@@ -62,10 +88,7 @@ let cross_lib_tight_set ~sandbox ~sctx ~lib_index ~initial_refs =
         Module_name.Set.fold frontier ~init:[] ~f:(fun name acc ->
           Lib_file_deps.Lib_index.lookup_tight_entries lib_index name @ acc)
       in
-      let* discovered =
-        Action_builder.List.map pairs ~f:read_entry_deps
-        |> Action_builder.map ~f:union_all
-      in
+      let* discovered = union_set_map pairs ~f:read_entry_deps in
       let seen = Module_name.Set.union seen frontier in
       let frontier = Module_name.Set.diff discovered seen in
       loop ~seen ~frontier)
@@ -109,9 +132,7 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
      | Ocaml _ -> true)
     && Path.Build.equal (Dep_graph.dir dep_graph) (Obj_dir.dir obj_dir)
     && Dep_graph.mem dep_graph m
-    && (match Module.kind m with
-        | Root | Wrapped_compat | Impl_vmodule | Virtual | Parameter -> false
-        | Intf_only | Impl | Alias _ -> true)
+    && module_kind_is_filterable m
     && Module.has m ~ml_kind
     && not (Virtual_rules.is_implementation (Compilation_context.implements cctx))
   in
@@ -130,13 +151,8 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
       let sctx = Compilation_context.super_context cctx in
       let* trans_deps = Dep_graph.deps_of dep_graph m in
       let* all_raw =
-        Action_builder.List.map (m :: trans_deps) ~f:(fun dep_m ->
-          let is_standard_kind =
-            match Module.kind dep_m with
-            | Impl_vmodule | Root | Alias _ | Wrapped_compat | Parameter -> false
-            | Virtual | Intf_only | Impl -> true
-          in
-          if not is_standard_kind
+        union_set_map (m :: trans_deps) ~f:(fun dep_m ->
+          if not (module_kind_has_readable_ocamldep dep_m)
           then Action_builder.return Module_name.Set.empty
           else
             let* impl_deps =
@@ -156,22 +172,18 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
                 dep_m
             in
             Module_name.Set.union impl_deps intf_deps)
-        |> Action_builder.map
-             ~f:(List.fold_left ~init:Module_name.Set.empty ~f:Module_name.Set.union)
       in
       let* flags = Ocaml_flags.get (Compilation_context.flags cctx) mode in
       let open_modules = Ocaml_flags.extract_open_module_names flags in
       let referenced = Module_name.Set.union all_raw open_modules in
-      let { Lib_file_deps.Lib_index.unwrapped; wrapped } =
+      let { Lib_file_deps.Lib_index.tight; non_tight } =
         Lib_file_deps.Lib_index.filter_libs_with_modules
           lib_index
           ~referenced_modules:referenced
       in
       (* Sort to preserve the canonical [Lib.closure] memo key (see
          commit 9359b37e6 on the base branch). *)
-      let direct_libs =
-        List.sort ~compare:Lib.compare (Lib.Map.keys unwrapped @ wrapped)
-      in
+      let direct_libs = List.sort ~compare:Lib.compare (Lib.Map.keys tight @ non_tight) in
       (* Transitively close the filtered libraries. Transparent module
          aliases can create cross-library .cmi reads that ocamldep
          doesn't report, at arbitrary depth. [libs] is already the

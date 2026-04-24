@@ -60,6 +60,7 @@ The following pages describe the available stanzas and their meanings.
       data_only_dirs
       ignored_subdirs
       include_subdirs
+      scope
       vendored_dirs
       subdir
 

@@ -51,17 +51,16 @@ module Lib_index : sig
     -> t
 
   type classified =
-    { unwrapped : Module.t list Lib.Map.t
-      (** Directly-referenced libraries that are local, unwrapped, and
-        whose referenced entry modules are all known as [Module.t].
-        Each is mapped to the list of [Module.t]s the consumer
-        references. These libraries' shape allows per-module deps via
-        [deps_of_entry_modules]; whether to use it is the caller's
-        policy. *)
-    ; wrapped : Lib.t list
-      (** Other directly-referenced libraries — wrapped locals, all
-        externals, or anything else for which we fall back to a glob.
-        Sorted by [Lib.compare]. *)
+    { tight : Module.t list Lib.Map.t
+      (** Directly-referenced tight-eligible libraries (local,
+        unwrapped, each entry with a known [Module.t]). Mapped to the
+        referenced entry modules. These libraries are candidates for
+        per-module deps via [deps_of_entry_modules]; whether to emit
+        them is the caller's policy. *)
+    ; non_tight : Lib.t list
+      (** Other directly-referenced libraries — wrapped locals,
+        externals, or anything else that falls back to a glob. Sorted
+        by [Lib.compare]. *)
     }
 
   (** Classify the libraries whose entry modules appear in

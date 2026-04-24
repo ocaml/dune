@@ -123,6 +123,52 @@ let parameters_main_modules parameters =
         [ "param", Lib.to_dyn param ])
 ;;
 
+(* Build a [Lib_index] from [all_libs] for the per-module inter-library
+   dependency filter.
+
+   For each library, entry module names are collected (for wrapped
+   libraries, the wrapper; for unwrapped, each public module). Hidden
+   libraries are included so that consumers which transitively
+   reference a hidden library's entry module still produce a build
+   dependency on it.
+
+   Local libraries whose ocamldep is short-circuited by
+   [Dep_rules.skip_ocamldep] (unwrapped single-module stanzas without
+   direct lib deps) are collected into [no_ocamldep] so the cross-lib
+   BFS does not try to read their nonexistent [.d] files. *)
+let build_lib_index ~super_context ~all_libs ~for_ =
+  let open Resolve.Memo.O in
+  let+ per_lib =
+    Resolve.Memo.List.map all_libs ~f:(fun lib ->
+      match Lib_info.entry_modules (Lib.info lib) ~for_ with
+      | External (Ok names) ->
+        Resolve.Memo.return (List.map names ~f:(fun n -> n, lib, None), None)
+      | External (Error e) -> Resolve.Memo.of_result (Error e)
+      | Local ->
+        Resolve.Memo.lift_memo
+          (Memo.map
+             (Dir_contents.modules_of_local_lib
+                super_context
+                (Lib.Local.of_lib_exn lib)
+                ~for_)
+             ~f:(fun mods ->
+               let entries =
+                 List.map (Modules.entry_modules mods) ~f:(fun m ->
+                   Module.name m, lib, Some m)
+               in
+               let no_ocamldep_lib =
+                 match Modules.as_singleton mods with
+                 | Some _ when List.is_empty (Lib_info.requires (Lib.info lib) ~for_) ->
+                   Some lib
+                 | _ -> None
+               in
+               entries, no_ocamldep_lib)))
+  in
+  let entries = List.concat_map per_lib ~f:fst in
+  let no_ocamldep = List.filter_map per_lib ~f:snd |> Lib.Set.of_list in
+  Lib_file_deps.Lib_index.create ~no_ocamldep entries
+;;
+
 let create
       ~super_context
       ~scope
@@ -236,50 +282,10 @@ let create
   ; parameters
   ; includes = Includes.make ~project ~direct_requires ~hidden_requires ocaml.lib_config
   ; lib_index =
-      (* Maps entry module names to libraries for per-module inter-library
-         dependency filtering. For wrapped libraries, the entry module is the
-         wrapper; for unwrapped, it is each public module. Includes hidden
-         libraries (present under [implicit_transitive_deps =
-         disabled_with_hidden_includes]) so that consumers which transitively
-         reference a hidden library's entry module still produce a build
-         dependency on it. *)
       (let open Resolve.Memo.O in
        let* direct = direct_requires in
        let* hidden = hidden_requires in
-       let all_libs = direct @ hidden in
-       let+ per_lib =
-         Resolve.Memo.List.map all_libs ~f:(fun lib ->
-           match Lib_info.entry_modules (Lib.info lib) ~for_ with
-           | External (Ok names) ->
-             Resolve.Memo.return (List.map names ~f:(fun n -> n, lib, None), None)
-           | External (Error e) -> Resolve.Memo.of_result (Error e)
-           | Local ->
-             Resolve.Memo.lift_memo
-               (Memo.map
-                  (Dir_contents.modules_of_local_lib
-                     super_context
-                     (Lib.Local.of_lib_exn lib)
-                     ~for_)
-                  ~f:(fun mods ->
-                    let entries =
-                      List.map (Modules.entry_modules mods) ~f:(fun m ->
-                        Module.name m, lib, Some m)
-                    in
-                    (* Mirror [Dep_rules.skip_ocamldep]: unwrapped
-                       single-file stanzas with no direct lib deps
-                       do not produce [.d] rules, so the cross-lib
-                       BFS must not try to read them. *)
-                    let no_ocamldep_lib =
-                      match Modules.as_singleton mods with
-                      | Some _ when List.is_empty (Lib_info.requires (Lib.info lib) ~for_)
-                        -> Some lib
-                      | _ -> None
-                    in
-                    entries, no_ocamldep_lib)))
-       in
-       let entries = List.concat_map per_lib ~f:fst in
-       let no_ocamldep = List.filter_map per_lib ~f:snd |> Lib.Set.of_list in
-       Lib_file_deps.Lib_index.create ~no_ocamldep entries)
+       build_lib_index ~super_context ~all_libs:(direct @ hidden) ~for_)
   ; preprocessing
   ; opaque
   ; js_of_ocaml

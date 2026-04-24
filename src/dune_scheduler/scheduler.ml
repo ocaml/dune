@@ -121,11 +121,18 @@ type saw_shutdown =
   | Got_shutdown
 
 let kill_and_wait_for_all_processes t =
-  if Event.Queue.pending_jobs t.events > 0
+  if Sys.win32
+  then
+    (* SIGTERM is not meaningful on Windows, and [Process_watcher.wait_unix]
+       would raise because [Proc.wait] has no implementation there. Send
+       SIGKILL directly; the main drain loop below observes exits via
+       [jobs_completed] events pushed by the Win32 polling thread. *)
+    Process_watcher.killall t.process_watcher Sys.sigkill
+  else if Event.Queue.pending_jobs t.events > 0
   then (
     Dune_trace.emit Process Dune_trace.Event.process_cleanup_start;
     (* Send SIGTERM first to give processes a chance to clean up *)
-    if not Sys.win32 then Process_watcher.killall t.process_watcher Sys.sigterm;
+    Process_watcher.killall t.process_watcher Sys.sigterm;
     (* Poll until all processes exit or the grace period expires, then SIGKILL *)
     let deadline = Time.add (Time.now ()) sigterm_grace_period in
     let sent_sigkill = ref false in

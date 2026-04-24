@@ -3,17 +3,14 @@ expressions in lockfiles.
 
   $ mkrepo
 
-Declare a package which refers to some variables:
+Declare a non-dune package which refers to some variables. Using a non-dune
+build system ensures the build commands are preserved in the lockfile so the
+partial filter evaluation is visible.
   $ mkpkg a <<EOF
   > build: [
-  >   ["dune" "subst"] {dev}
+  >   ["./configure"] {dev}
   >   [
-  >     "dune"
-  >     "build"
-  >     "-p"
-  >     name
-  >     "-j"
-  >     jobs
+  >     "./make"
   >     "--foobar" { foo = "bar" }
   >     "@install"
   >     "@runtest" {with-test}
@@ -33,14 +30,9 @@ Solve the package using the default solver env:
    (all_platforms
     ((action
       (progn
-       (when %{pkg-self:dev} (run dune subst))
+       (when %{pkg-self:dev} (run ./configure))
        (run
-        dune
-        build
-        -p
-        %{pkg-self:name}
-        -j
-        %{jobs}
+        ./make
         (when (catch_undefined_var (= %{pkg-self:foo} bar) false) --foobar)
         @install))))))
 
@@ -74,4 +66,4 @@ Run the solver using the new env:
   (build
    (all_platforms
     ((action
-      (run dune build -p %{pkg-self:name} -j %{jobs} --foobar @install @doc)))))
+      (run ./make --foobar @install @doc)))))

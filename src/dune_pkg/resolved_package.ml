@@ -1,5 +1,39 @@
 open Import
 
+(* Checks whether all build commands are dune commands (starting with "dune"),
+   and that the build section contains at least one [dune build -p name ...]
+   command. The install section must be empty. Packages with opam-format
+   substitution files ([substs]) or patches are excluded because those steps
+   would be skipped when using [Build_command.Dune]. *)
+let commands_are_dune_build
+  ~(build : OpamTypes.command list)
+  ~(install : OpamTypes.command list)
+  ~(patches : _ list)
+  ~(substs : _ list)
+  =
+  let is_dune_command ((args, _) : OpamTypes.command) =
+    match args with
+    | (CString "dune", _) :: _ -> true
+    | _ -> false
+  in
+  let has_dune_build_with_pkg_name ((args, _) : OpamTypes.command) =
+    let rec find_p_name = function
+      | (CString "-p", _) :: (CIdent "name", _) :: _ -> true
+      | _ :: rest -> find_p_name rest
+      | [] -> false
+    in
+    match args with
+    | (CString "dune", _) :: (CString "build", _) :: rest -> find_p_name rest
+    | _ -> false
+  in
+  List.is_empty install
+  && List.is_empty patches
+  && List.is_empty substs
+  && (not (List.is_empty build))
+  && List.for_all ~f:is_dune_command build
+  && List.exists ~f:has_dune_build_with_pkg_name build
+;;
+
 type extra_files =
   | Inside_files_dir of Path.t option
   | Git_files of Path.Local.t option * Rev_store.At_rev.t
@@ -51,10 +85,18 @@ let extra_files = function
   | Rest t -> Some t.extra_files
 ;;
 
+let dune_build_of_opam_file opam_file =
+  commands_are_dune_build
+    ~build:(OpamFile.OPAM.build opam_file)
+    ~install:(OpamFile.OPAM.install opam_file)
+    ~patches:(OpamFile.OPAM.patches opam_file)
+    ~substs:(OpamFile.OPAM.substs opam_file)
+;;
+
 let git_repo package (loc, opam_file) rev ~files_dir ~url =
   let opam_file = Opam_file.opam_file_with ~package ~url opam_file in
   Rest
-    { dune_build = false
+    { dune_build = dune_build_of_opam_file opam_file
     ; loc
     ; package
     ; opam_file
@@ -66,7 +108,7 @@ let local_fs package (loc, opam_file) ~dir ~files_dir ~url =
   let files_dir = Option.map files_dir ~f:(Path.append_local dir) in
   let opam_file = Opam_file.opam_file_with ~package ~url opam_file in
   Rest
-    { dune_build = false
+    { dune_build = dune_build_of_opam_file opam_file
     ; loc
     ; package
     ; extra_files = Inside_files_dir files_dir
@@ -100,12 +142,12 @@ let scan_files_entries path =
 ;;
 
 let local_package ~command_source (loc, opam_file) opam_package =
+  let opam_file = Opam_file.opam_file_with ~package:opam_package ~url:None opam_file in
   let dune_build =
     match (command_source : Local_package.command_source) with
     | Assume_defaults -> true
-    | Opam_file _ -> false
+    | Opam_file _ -> dune_build_of_opam_file opam_file
   in
-  let opam_file = Opam_file.opam_file_with ~package:opam_package ~url:None opam_file in
   let package = OpamFile.OPAM.package opam_file in
   Rest { dune_build; opam_file; package; loc; extra_files = Inside_files_dir None }
 ;;

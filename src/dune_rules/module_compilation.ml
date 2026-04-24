@@ -8,6 +8,71 @@ let all_libs cctx =
   d @ h
 ;;
 
+(* Extend [initial_refs] with module names reached through cross-
+   library ocamldep. Walk tight-eligible entry modules breadth-first:
+   gather all [(lib, entry module)] pairs named by the frontier, read
+   each pair's impl and intf ocamldep, and union the raw names into
+   the frontier. Iterate until no new names appear.
+
+   Libraries that are not tight-eligible (wrapped locals, externals,
+   virtual-impls) are skipped by [lookup_tight_entries]. Chains that
+   pass through them terminate and the consumer falls back to a glob
+   on the unreached libs.
+
+   Cycles terminate on the [seen] set. *)
+(* Modules of preprocessed libs are skipped by the walk below: their
+   [Module.t] from [Lib_index] (via [Dir_contents.modules_of_local_lib])
+   carries [pp_flags = None], so running ocamldep on them via
+   [read_immediate_deps_raw_of] would invoke ocamldep on the raw,
+   pre-pp source — for cppo/ppx-using libs the source isn't valid OCaml
+   on its own and ocamldep fails. Threading the foreign lib's [pp_spec]
+   through [Lib_index] would fix this precisely; until then, the
+   conservative thing is to not walk through preprocessed modules and
+   let [Lib.closure] pick up the library's deps via the declared-
+   [(libraries ...)] graph instead. *)
+let module_needs_preprocessing lib m =
+  let info = Lib.info lib in
+  let preprocess = Lib_info.preprocess info ~for_:Ocaml in
+  match Preprocess.Per_module.find (Module.name m) preprocess with
+  | No_preprocessing | Future_syntax _ -> false
+  | Action _ | Pps _ -> true
+;;
+
+let cross_lib_tight_set ~sandbox ~sctx ~lib_index ~initial_refs =
+  let open Action_builder.O in
+  let union_all = List.fold_left ~init:Module_name.Set.empty ~f:Module_name.Set.union in
+  let read_entry_deps (lib, m) =
+    if module_needs_preprocessing lib m
+    then Action_builder.return Module_name.Set.empty
+    else (
+      let obj_dir = Lib.info lib |> Lib_info.obj_dir |> Obj_dir.as_local_exn in
+      let* impl_deps =
+        Ocamldep.read_immediate_deps_raw_of ~sandbox ~sctx ~obj_dir ~ml_kind:Impl m
+      in
+      let+ intf_deps =
+        Ocamldep.read_immediate_deps_raw_of ~sandbox ~sctx ~obj_dir ~ml_kind:Intf m
+      in
+      Module_name.Set.union impl_deps intf_deps)
+  in
+  let rec loop ~seen ~frontier =
+    if Module_name.Set.is_empty frontier
+    then Action_builder.return seen
+    else (
+      let pairs =
+        Module_name.Set.fold frontier ~init:[] ~f:(fun name acc ->
+          Lib_file_deps.Lib_index.lookup_tight_entries lib_index name @ acc)
+      in
+      let* discovered =
+        Action_builder.List.map pairs ~f:read_entry_deps
+        |> Action_builder.map ~f:union_all
+      in
+      let seen = Module_name.Set.union seen frontier in
+      let frontier = Module_name.Set.diff discovered seen in
+      loop ~seen ~frontier)
+  in
+  loop ~seen:Module_name.Set.empty ~frontier:initial_refs
+;;
+
 (* Per-module inter-library dependency filtering (#4572). Uses ocamldep
    output to determine which libraries a module actually references, then
    transitively closes within the compilation context's library set to
@@ -25,6 +90,13 @@ let all_libs cctx =
      content changes to those specific cmis invalidate the consumer.
    - [Lib_file_deps.deps_of_entries libs] → a glob over each lib's
      objdir. Any content change to any cmi in that dir invalidates.
+
+   The tight set of referenced module names is computed across
+   library boundaries by [cross_lib_tight_set]: it starts from the
+   consumer's own ocamldep reads and iterates through tight-eligible
+   entry modules. This lets closure-reached libraries (not directly
+   named by the consumer but pulled in through transparent aliases)
+   receive specific-file deps on just the entries that matter.
 
    These deps surface in [dune rules <target>]'s output alongside any
    static deps. Falls back to a glob over all cctx libs when filtering
@@ -106,20 +178,24 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
          transitive closure required for compilation (across all
          [implicit_transitive_deps] modes), so [Lib.closure]'s result
          on a subset of [libs] stays within it. *)
-      let+ all_libs = Resolve.Memo.read (Lib.closure direct_libs ~linking:false ~for_) in
-      (* For directly-referenced unwrapped libs, emit per-module deps
-         on the specific entry modules the consumer named. Everything
-         else (wrapped direct libs and libs brought in only through
-         [Lib.closure]) gets the conservative glob. *)
+      let* all_libs = Resolve.Memo.read (Lib.closure direct_libs ~linking:false ~for_) in
+      let+ tight_set =
+        cross_lib_tight_set ~sandbox ~sctx ~lib_index ~initial_refs:referenced
+      in
+      (* For libs whose entry modules intersect the cross-library
+         tight set, emit per-module deps on just those entries.
+         Non-tight-eligible libs (wrapped locals, externals) and
+         tight-eligible libs with no intersecting entries fall into
+         the glob path, matching the pre-BFS conservative shape. *)
       let tight_deps, glob_libs =
         List.fold_left all_libs ~init:(Dep.Set.empty, []) ~f:(fun (td, gl) lib ->
-          match Lib.Map.find unwrapped lib with
-          | Some names ->
+          match Lib_file_deps.Lib_index.tight_subset lib_index lib tight_set with
+          | [] -> td, lib :: gl
+          | modules ->
             ( Dep.Set.union
                 td
-                (Lib_file_deps.deps_of_entry_modules ~opaque ~cm_kind lib names)
-            , gl )
-          | None -> td, lib :: gl)
+                (Lib_file_deps.deps_of_entry_modules ~opaque ~cm_kind lib modules)
+            , gl ))
       in
       let glob_deps = Lib_file_deps.deps_of_entries ~opaque ~cm_kind glob_libs in
       (), Dep.Set.union tight_deps glob_deps)

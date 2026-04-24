@@ -38,8 +38,17 @@ module Lib_index : sig
   (** Create an index. Each entry carries the [Module.t] of the entry
       module when it is known ([Some] for local libraries; [None] for
       externals). Libraries whose entries all carry a [Module.t] and
-      which are unwrapped are eligible for per-module deps. *)
-  val create : (Module_name.t * Lib.t * Module.t option) list -> t
+      which are unwrapped are eligible for per-module deps.
+
+      [no_ocamldep] names local libs whose ocamldep output is
+      short-circuited (single-module stanzas without library
+      dependencies — see [Dep_rules.skip_ocamldep]). The cross-lib
+      BFS in [module_compilation] must not try to read [.d] files
+      for those libs. *)
+  val create
+    :  ?no_ocamldep:Lib.Set.t
+    -> (Module_name.t * Lib.t * Module.t option) list
+    -> t
 
   type classified =
     { unwrapped : Module.t list Lib.Map.t
@@ -58,6 +67,19 @@ module Lib_index : sig
   (** Classify the libraries whose entry modules appear in
       [referenced_modules]. *)
   val filter_libs_with_modules : t -> referenced_modules:Module_name.Set.t -> classified
+
+  (** [lookup_tight_entries idx name] returns [(lib, entry module)]
+      pairs used by the cross-library BFS in [module_compilation].
+      Libraries in [no_ocamldep] are excluded (their [.d] files do
+      not exist), as are externals, wrapped locals, and entries with
+      no [Module.t]. *)
+  val lookup_tight_entries : t -> Module_name.t -> (Lib.t * Module.t) list
+
+  (** [tight_subset idx lib names] returns [lib]'s entry modules
+      whose names appear in [names]. Returns [[]] when [lib] is not
+      tight-eligible; callers should interpret that as a signal to
+      fall back to [deps_of_entries] (a glob over the lib's objdir). *)
+  val tight_subset : t -> Lib.t -> Module_name.Set.t -> Module.t list
 end
 
 type path_specification =

@@ -924,6 +924,12 @@ let wrapped t =
   | Stdlib _ -> Simple true
 ;;
 
+let as_singleton t =
+  match t.modules with
+  | Singleton m -> Some m
+  | Unwrapped _ | Wrapped _ | Stdlib _ -> None
+;;
+
 let is_user_written m =
   match Module.kind m with
   | Root | Wrapped_compat | Alias _ -> false

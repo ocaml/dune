@@ -99,9 +99,20 @@ module Lib_index = struct
   type t =
     { by_module_name : (Lib.t * Module.t option) list Module_name.Map.t
     ; tight_eligible : Lib.Set.t
+    ; no_ocamldep : Lib.Set.t
+      (* Local libs whose ocamldep is short-circuited by
+         [Dep_rules.skip_ocamldep] — single-module stanzas without
+         library dependencies have no [.d] build rules. BFS must
+         not try to read ocamldep for them; their entry module
+         can have no cross-library references anyway. *)
     }
 
-  let empty = { by_module_name = Module_name.Map.empty; tight_eligible = Lib.Set.empty }
+  let empty =
+    { by_module_name = Module_name.Map.empty
+    ; tight_eligible = Lib.Set.empty
+    ; no_ocamldep = Lib.Set.empty
+    }
+  ;;
 
   (* A library is eligible for per-module tight deps iff it is local
      (so every entry has a known [Module.t] with which we can call
@@ -122,7 +133,7 @@ module Lib_index = struct
       false
   ;;
 
-  let create entries =
+  let create ?(no_ocamldep = Lib.Set.empty) entries =
     let by_module_name =
       List.fold_left entries ~init:Module_name.Map.empty ~f:(fun map (name, lib, m) ->
         Module_name.Map.update map name ~f:(function
@@ -133,7 +144,7 @@ module Lib_index = struct
       List.fold_left entries ~init:Lib.Set.empty ~f:(fun acc (_, lib, _) ->
         if is_lib_tight_eligible lib then Lib.Set.add acc lib else acc)
     in
-    { by_module_name; tight_eligible }
+    { by_module_name; tight_eligible; no_ocamldep }
   ;;
 
   type classified =
@@ -163,6 +174,32 @@ module Lib_index = struct
           | Some entries -> List.fold_left entries ~init:acc ~f:add_entry)
     in
     { unwrapped; wrapped = Lib.Set.to_list wrapped }
+  ;;
+
+  let lookup_tight_entries idx name =
+    match Module_name.Map.find idx.by_module_name name with
+    | None -> []
+    | Some entries ->
+      List.filter_map entries ~f:(fun (lib, m_opt) ->
+        match m_opt with
+        | Some m
+          when Lib.Set.mem idx.tight_eligible lib && not (Lib.Set.mem idx.no_ocamldep lib)
+          -> Some (lib, m)
+        | _ -> None)
+  ;;
+
+  let tight_subset idx lib names =
+    if not (Lib.Set.mem idx.tight_eligible lib)
+    then []
+    else
+      Module_name.Set.fold names ~init:[] ~f:(fun name acc ->
+        match Module_name.Map.find idx.by_module_name name with
+        | None -> acc
+        | Some entries ->
+          List.fold_left entries ~init:acc ~f:(fun acc (l, m_opt) ->
+            match m_opt with
+            | Some m when Lib.equal l lib -> m :: acc
+            | _ -> acc))
   ;;
 end
 

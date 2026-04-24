@@ -116,8 +116,40 @@ module Lib_index = struct
 
   (* A library is eligible for per-module tight deps iff it is local
      (so every entry has a known [Module.t] with which we can call
-     [Obj_dir.Module.cm_public_file]) and unwrapped (so the public
-     cmi dir does not need a glob to reach internal alias modules). *)
+     [Obj_dir.Module.cm_public_file]) and unwrapped.
+
+     Wrapped libraries fall back to a directory glob over their
+     public cmi dir. The limitation is fundamental to ocamldep's
+     output granularity: with [-modules], ocamldep lists only the
+     top-level module names referenced by a source file, so
+     [Foo.Bar.x] and [Foo.Baz.y] both produce the single output
+     [Foo]. We cannot distinguish consumers that use the wrapped
+     lib's [Bar] internal from those that use [Baz], and so cannot
+     emit specific deps on just [Foo__Bar.cmi] vs [Foo__Baz.cmi].
+     Any BFS-based walk over the wrapper's own ocamldep output
+     reaches every internal the wrapper exposes, which is
+     equivalent to the current glob for invalidation.
+
+     Possible follow-on work to cross the wrapped-lib gap:
+
+     - Qualified-path extractor: walk source via [compiler-libs]'
+       [Parse.implementation], collect [Longident.t] references
+       as [Module_name.Path.t] values in a companion artifact.
+       Match qualified paths against wrapped-lib internals for
+       per-consumer precision. Estimated ~500-1000 lines across a
+       new rule, a new file format, and preprocessing integration;
+       correct handling of [let open Foo in Bar.x] (opens that
+       bring sub-modules into unqualified scope) needs
+       lexical-scope tracking and roughly doubles the low-end
+       estimate.
+
+     - Post-compile cmi-imports refinement: consumer.cmi records
+       exactly the cmis its compilation imported; [Ocamlobjinfo]
+       can read them. Using this as the source of truth requires
+       breaking dune's invariant that rule deps are fixed before
+       the rule runs — a two-phase build or a pessimistic-then-
+       refine scheme. Not natively supported by dune's rule model
+       today. *)
   let is_lib_tight_eligible lib =
     Lib.is_local lib
     &&

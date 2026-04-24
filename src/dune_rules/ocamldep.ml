@@ -83,27 +83,27 @@ let parse_compilation_units ~modules =
     |> Option.map ~f:Modules.Sourced_module.to_module)
 ;;
 
-let parse_deps_exn =
-  let invalid file lines =
-    User_error.raise
-      [ Pp.textf
-          "ocamldep returned unexpected output for %s:"
-          (Path.to_string_maybe_quoted file)
-      ; Pp.vbox
-          (Pp.concat_map lines ~sep:Pp.cut ~f:(fun line ->
-             Pp.seq (Pp.verbatim "> ") (Pp.verbatim line)))
-      ]
-  in
-  fun ~file lines ->
-    match lines with
-    | [] | _ :: _ :: _ -> invalid file lines
-    | [ line ] ->
-      (match String.lsplit2 line ~on:':' with
-       | None -> invalid file lines
-       | Some (basename, deps) ->
-         let basename = Filename.basename basename in
-         if basename <> Path.basename file then invalid file lines;
-         String.extract_blank_separated_words deps)
+let invalid_ocamldep_output file lines =
+  User_error.raise
+    [ Pp.textf
+        "ocamldep returned unexpected output for %s:"
+        (Path.to_string_maybe_quoted file)
+    ; Pp.vbox
+        (Pp.concat_map lines ~sep:Pp.cut ~f:(fun line ->
+           Pp.seq (Pp.verbatim "> ") (Pp.verbatim line)))
+    ]
+;;
+
+let parse_deps_exn ~file lines =
+  match lines with
+  | [] | _ :: _ :: _ -> invalid_ocamldep_output file lines
+  | [ line ] ->
+    (match String.lsplit2 line ~on:':' with
+     | None -> invalid_ocamldep_output file lines
+     | Some (basename, deps) ->
+       let basename = Filename.basename basename in
+       if basename <> Path.basename file then invalid_ocamldep_output file lines;
+       String.extract_blank_separated_words deps)
 ;;
 
 let transitive_deps =

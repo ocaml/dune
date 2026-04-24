@@ -376,6 +376,28 @@ let rec is_dynamic = function
   | Extension (module A) -> A.Spec.is_dynamic
 ;;
 
+let rec runs_process = function
+  | Chdir (_, t)
+  | Setenv (_, _, t)
+  | Redirect_out (_, _, _, t)
+  | Redirect_in (_, _, t)
+  | Ignore (_, t)
+  | With_accepted_exit_codes (_, t) -> runs_process t
+  | Progn l | Pipe (_, l) | Concurrent l -> List.exists l ~f:runs_process
+  | Run _ | Bash _ -> true
+  | Echo _
+  | Cat _
+  | Copy _
+  | Symlink _
+  | Hardlink _
+  | Write_file _
+  | Rename _
+  | Remove_tree _
+  | Diff _
+  | Mkdir _
+  | Extension _ -> false
+;;
+
 let maybe_sandbox_path sandbox p =
   match Path.as_in_build_dir p with
   | None -> p

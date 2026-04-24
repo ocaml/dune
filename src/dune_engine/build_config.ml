@@ -101,6 +101,8 @@ type t =
   ; execution_parameters :
       Context_name.t -> dir:Path.Build.t -> Execution_parameters.t Memo.t
   ; source_tree : (module Source_tree)
+  ; action_runner : Action_exec.input -> Action_runner.t option
+  ; action_runners : unit -> Action_runner.t list
   }
 
 let t : t Fdecl.t = Fdecl.create Dyn.opaque
@@ -114,6 +116,8 @@ let set
       ~implicit_default_alias
       ~execution_parameters
       ~source_tree
+      ~action_runner
+      ~action_runners
   =
   let contexts =
     Memo.lazy_ ~name:"Build_config.set" (fun () ->
@@ -133,5 +137,7 @@ let set
     ; implicit_default_alias
     ; execution_parameters
     ; source_tree
+    ; action_runner
+    ; action_runners
     }
 ;;

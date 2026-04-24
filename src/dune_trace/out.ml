@@ -1,5 +1,7 @@
 open Stdune
 
+external sys_exit : int -> 'a = "caml_sys_exit"
+
 module Mutex = struct
   open Mutex
 
@@ -22,7 +24,8 @@ type t =
   ; buf : Buffer.t
   ; cats : Category.Set.t
   ; mutex : Mutex.t
-  ; path : Path.t
+  ; path : Path.t option
+  ; terminate_process_on_error : bool
   }
 
 (* CR-someday rgrinberg: remove this once we drop support for < 5.2 *)
@@ -34,7 +37,7 @@ external write_bigstring
   -> int
   = "dune_trace_write"
 
-let flush =
+let flush_unlocked =
   (* This loop will almost always result in a single write, but we make sure to
      write everything (albeit inefficiently) if the user is running out of disk
      space, is on NFS, or some exotic operation system that doesn't give us
@@ -62,10 +65,18 @@ let flush =
   fun t -> loop t 0 (Buffer.pos t.buf)
 ;;
 
+let handle_emit_error t exn =
+  if t.terminate_process_on_error then sys_exit 1 else raise exn
+;;
+
 let close t =
-  Mutex.protect t.mutex (fun () ->
-    flush t;
-    Fd.close t.fd)
+  match
+    Mutex.protect t.mutex (fun () ->
+      flush_unlocked t;
+      Fd.close t.fd)
+  with
+  | () -> ()
+  | exception exn -> handle_emit_error t exn
 ;;
 
 let create cats path =
@@ -78,7 +89,26 @@ let create cats path =
   in
   let cats = Category.Set.of_list cats in
   let buf = Buffer.create (1 lsl 16) in
-  { fd; cats; buf; mutex = Mutex.create (); path }
+  { fd
+  ; cats
+  ; buf
+  ; mutex = Mutex.create ()
+  ; path = Some path
+  ; terminate_process_on_error = false
+  }
+;;
+
+let of_fd cats fd =
+  let fd = Fd.unsafe_of_unix_file_descr fd in
+  let cats = Category.Set.of_list cats in
+  let buf = Buffer.create (1 lsl 16) in
+  { fd
+  ; cats
+  ; buf
+  ; mutex = Mutex.create ()
+  ; path = None
+  ; terminate_process_on_error = true
+  }
 ;;
 
 let to_buffer t sexp =
@@ -105,12 +135,20 @@ let emit_buffered t event =
 ;;
 
 let emit ?(buffered = false) t event =
-  Mutex.protect t.mutex (fun () ->
-    emit_buffered t event;
-    if not buffered then flush t)
+  match
+    Mutex.protect t.mutex (fun () ->
+      emit_buffered t event;
+      if not buffered then flush_unlocked t)
+  with
+  | () -> ()
+  | exception exn -> handle_emit_error t exn
 ;;
 
-let flush t = Mutex.protect t.mutex (fun () -> flush t)
+let flush t =
+  match Mutex.protect t.mutex (fun () -> flush_unlocked t) with
+  | () -> ()
+  | exception exn -> handle_emit_error t exn
+;;
 
 let start t k : Event.Async.t option =
   match t with

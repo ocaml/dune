@@ -22,4 +22,7 @@
 
 (cram
  (enabled_if false)
- (applies_to watching-eager-concurrent-build-command sigpipe))
+ (applies_to
+  action-runner-shutdown
+  watching-eager-concurrent-build-command
+  sigpipe))

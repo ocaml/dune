@@ -57,6 +57,12 @@ val obj_map : t -> Sourced_module.t Module_name.Unique.Map.t
 val virtual_module_names : t -> Module_name.Path.Set.t
 
 val wrapped : t -> Wrapped.t
+
+(** [Some m] iff the library consists of the single source module [m]
+    (unwrapped stanza with exactly one module). Mirrors
+    [With_vlib.as_singleton]. *)
+val as_singleton : t -> Module.t option
+
 val source_dirs : t -> Path.Set.t
 val compat_for_exn : t -> Module.t -> Module.t
 

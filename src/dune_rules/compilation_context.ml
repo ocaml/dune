@@ -247,11 +247,11 @@ let create
        let* direct = direct_requires in
        let* hidden = hidden_requires in
        let all_libs = direct @ hidden in
-       let+ entries =
-         Resolve.Memo.List.concat_map all_libs ~f:(fun lib ->
+       let+ per_lib =
+         Resolve.Memo.List.map all_libs ~f:(fun lib ->
            match Lib_info.entry_modules (Lib.info lib) ~for_ with
            | External (Ok names) ->
-             Resolve.Memo.return (List.map names ~f:(fun n -> n, lib, None))
+             Resolve.Memo.return (List.map names ~f:(fun n -> n, lib, None), None)
            | External (Error e) -> Resolve.Memo.of_result (Error e)
            | Local ->
              Resolve.Memo.lift_memo
@@ -261,10 +261,25 @@ let create
                      (Lib.Local.of_lib_exn lib)
                      ~for_)
                   ~f:(fun mods ->
-                    List.map (Modules.entry_modules mods) ~f:(fun m ->
-                      Module.name m, lib, Some m))))
+                    let entries =
+                      List.map (Modules.entry_modules mods) ~f:(fun m ->
+                        Module.name m, lib, Some m)
+                    in
+                    (* Mirror [Dep_rules.skip_ocamldep]: unwrapped
+                       single-file stanzas with no direct lib deps
+                       do not produce [.d] rules, so the cross-lib
+                       BFS must not try to read them. *)
+                    let no_ocamldep_lib =
+                      match Modules.as_singleton mods with
+                      | Some _ when List.is_empty (Lib_info.requires (Lib.info lib) ~for_)
+                        -> Some lib
+                      | _ -> None
+                    in
+                    entries, no_ocamldep_lib)))
        in
-       Lib_file_deps.Lib_index.create entries)
+       let entries = List.concat_map per_lib ~f:fst in
+       let no_ocamldep = List.filter_map per_lib ~f:snd |> Lib.Set.of_list in
+       Lib_file_deps.Lib_index.create ~no_ocamldep entries)
   ; preprocessing
   ; opaque
   ; js_of_ocaml

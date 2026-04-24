@@ -11,10 +11,24 @@ let all_libs cctx =
 (* Per-module inter-library dependency filtering (#4572). Uses ocamldep
    output to determine which libraries a module actually references, then
    transitively closes within the compilation context's library set to
-   handle transparent aliases. Returns [((), Dep.Set.t)] suitable for use
-   with [Action_builder.dyn_deps].
+   handle transparent aliases. Returns [((), Dep.Set.t)] suitable for
+   use with [Action_builder.dyn_deps].
 
-   Falls back to all libs when filtering is not possible. *)
+   The returned [Dep.Set.t] is the sole source of cross-library file
+   dependencies for the compile rule: [-I] flags on the ocamlc command
+   line add search paths but do not register rule deps on their own.
+   Narrowing here directly narrows rule invalidation.
+
+   Two dep shapes flow out of the filter:
+   - [Lib_file_deps.deps_of_entry_modules lib names] → specific File
+     deps on the named cmis (and their cmx/cmj as appropriate). Only
+     content changes to those specific cmis invalidate the consumer.
+   - [Lib_file_deps.deps_of_entries libs] → a glob over each lib's
+     objdir. Any content change to any cmi in that dir invalidates.
+
+   These deps surface in [dune rules <target>]'s output alongside any
+   static deps. Falls back to a glob over all cctx libs when filtering
+   is not possible. *)
 let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kind ~mode m =
   let open Action_builder.O in
   let can_filter =

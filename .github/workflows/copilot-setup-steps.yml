@@ -37,4 +37,4 @@ jobs:
           save: false
 
       - name: Enter Nix dev shell
-        run: nix develop -c true
+        run: nix develop -c bash -c 'echo "$PATH"' | tr ':' '\n' >> "$GITHUB_PATH"

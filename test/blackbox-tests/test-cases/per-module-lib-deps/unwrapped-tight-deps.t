@@ -12,6 +12,7 @@ Editing [A1] or [A3] must leave [C] untouched; editing [A2] must
 rebuild [C].
 
 See: https://github.com/ocaml/dune/issues/4572
+See: https://github.com/ocaml/dune/pull/14116#issuecomment-4301275263
 
   $ cat > dune-project <<EOF
   > (lang dune 3.0)

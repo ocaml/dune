@@ -114,9 +114,9 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
   let* libs = Resolve.Memo.read (all_libs cctx) in
   if not can_filter
   then Action_builder.return ((), Lib_file_deps.deps_of_entries ~opaque ~cm_kind libs)
-  else (
-    let has_virtual_impl =
-      List.exists libs ~f:(fun lib -> Option.is_some (Lib.implements lib))
+  else
+    let* has_virtual_impl =
+      Resolve.Memo.read (Compilation_context.has_virtual_impl cctx)
     in
     if has_virtual_impl
     then Action_builder.return ((), Lib_file_deps.deps_of_entries ~opaque ~cm_kind libs)
@@ -176,7 +176,7 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
           | None -> td, lib :: gl)
       in
       let glob_deps = Lib_file_deps.deps_of_entries ~opaque ~cm_kind glob_libs in
-      (), Dep.Set.union tight_deps glob_deps)
+      (), Dep.Set.union tight_deps glob_deps
 ;;
 
 (* Arguments for the compiler to prevent it from being too clever.

@@ -148,23 +148,23 @@ module Lib_index = struct
   ;;
 
   type classified =
-    { unwrapped : Module.t list Lib.Map.t
-    ; wrapped : Lib.t list
+    { tight : Module.t list Lib.Map.t
+    ; non_tight : Lib.t list
     }
 
   let filter_libs_with_modules idx ~referenced_modules =
-    let add_entry (unwrapped, wrapped) (lib, m_opt) =
+    let add_entry (tight, non_tight) (lib, m_opt) =
       match m_opt with
       | Some m when Lib.Set.mem idx.tight_eligible lib ->
-        let unwrapped =
-          Lib.Map.update unwrapped lib ~f:(function
+        let tight =
+          Lib.Map.update tight lib ~f:(function
             | None -> Some [ m ]
             | Some ms -> Some (m :: ms))
         in
-        unwrapped, wrapped
-      | _ -> unwrapped, Lib.Set.add wrapped lib
+        tight, non_tight
+      | _ -> tight, Lib.Set.add non_tight lib
     in
-    let unwrapped, wrapped =
+    let tight, non_tight =
       Module_name.Set.fold
         referenced_modules
         ~init:(Lib.Map.empty, Lib.Set.empty)
@@ -173,7 +173,7 @@ module Lib_index = struct
           | None -> acc
           | Some entries -> List.fold_left entries ~init:acc ~f:add_entry)
     in
-    { unwrapped; wrapped = Lib.Set.to_list wrapped }
+    { tight; non_tight = Lib.Set.to_list non_tight }
   ;;
 
   let lookup_tight_entries idx name =

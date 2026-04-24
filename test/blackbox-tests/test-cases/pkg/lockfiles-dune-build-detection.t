@@ -2,8 +2,8 @@ Demonstrate which opam build command patterns are detected as dune builds,
 resulting in "(dune)" in the lockfile rather than an explicit action.
 
 Detection rules:
-- Every command in build + install must start with "dune"
-- The opam install: field must be empty
+- Every command in the build field must start with "dune"
+- The opam install: field must be empty (no install commands at all)
 - At least one build command must be ["dune" "build" ... "-p" name ...]
   (using the opam `name` variable, not a literal)
 - The opam patches: and substs: fields must be empty

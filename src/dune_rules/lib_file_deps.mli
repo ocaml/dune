@@ -83,6 +83,15 @@ module Lib_index : sig
       not exist), as are externals, wrapped locals, and entries with
       no [Module.t]. *)
   val lookup_tight_entries : t -> Module_name.t -> (Lib.t * Module.t) list
+
+  (** [is_tight_eligible idx lib] is [true] when [lib] is local,
+      unwrapped, and every entry carries a known [Module.t]. The
+      cross-library walk has full visibility into such libraries:
+      the absence of any of their entry modules from the post-walk
+      reference set is positive evidence that the consumer does
+      not reach the library, so the consumer's compile rule does
+      not need a dep on it. *)
+  val is_tight_eligible : t -> Lib.t -> bool
 end
 
 type path_specification =

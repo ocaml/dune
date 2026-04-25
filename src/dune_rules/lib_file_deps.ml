@@ -243,6 +243,8 @@ module Lib_index = struct
           -> Some (lib, m)
         | _ -> None)
   ;;
+
+  let is_tight_eligible idx lib = Lib.Set.mem idx.tight_eligible lib
 end
 
 type path_specification =

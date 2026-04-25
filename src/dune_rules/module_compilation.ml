@@ -263,11 +263,25 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
          on a subset of [libs] stays within it. *)
       let* all_libs = Resolve.Memo.read (Lib.closure direct_libs ~linking:false ~for_) in
       let+ tight_set = cross_lib_tight_set ~lib_index ~for_ ~initial_refs:referenced in
-      (* Classify [all_libs] against the cross-library tight set: libs
-         whose entries appear in [tight_set] get per-module deps on
-         just those entries; the rest (non-tight-eligible libs,
-         tight-eligible libs with no intersecting entries) fall to a
-         glob over their objdir. *)
+      (* Classify [all_libs] against the cross-library tight set into
+         three buckets:
+
+         - [Some modules] in [tight_modules]: per-module deps on the
+           entries actually referenced.
+
+         - [None] AND tight-eligible: the cross-library walk had full
+           visibility (local, unwrapped, every entry has a [Module.t])
+           and no entry of the library appears in [tight_set]. The
+           consumer therefore does not reach this library through any
+           reference chain visible to the walk, including transitive
+           module aliases under the [-opaque]-aware impl-side reads.
+           Drop the library entirely from the consumer's compile rule
+           deps; the link rule still pulls it in through
+           [requires_link] for executables/libraries that need it.
+
+         - [None] AND not tight-eligible: wrapped local, external, or
+           virtual-impl. The walk does not have full visibility, so
+           fall back to a glob over the library's objdir. *)
       let tight_modules =
         Lib_file_deps.Lib_index.tight_modules_per_lib
           lib_index
@@ -281,7 +295,10 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
                 td
                 (Lib_file_deps.deps_of_entry_modules ~opaque ~cm_kind lib modules)
             , gl )
-          | None -> td, lib :: gl)
+          | None ->
+            if Lib_file_deps.Lib_index.is_tight_eligible lib_index lib
+            then td, gl
+            else td, lib :: gl)
       in
       let glob_deps = Lib_file_deps.deps_of_entries ~opaque ~cm_kind glob_libs in
       (), Dep.Set.union tight_deps glob_deps

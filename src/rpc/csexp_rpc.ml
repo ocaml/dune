@@ -528,6 +528,14 @@ module Client = struct
     let backtrace = Printexc.get_callstack 10 in
     let transport = Transport.create t.sockaddr in
     let fd = transport.fd in
+    (* CR-soon rgrinberg:
+
+      [t.transport] keeps owning [fd] across both failed and successful
+       connects. That means callers must remember to [stop] a failed client to
+       avoid leaking the socket, while calling [stop] after a successful
+       [connect] can still close the live session transport. We should transfer
+       ownership on success/failure or tighten the API so [stop] is only valid
+       before [connect]. *)
     t.transport <- Some transport;
     Async_io.connect Socket.connect fd t.sockaddr
     >>| function

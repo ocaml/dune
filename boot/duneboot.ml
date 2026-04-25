@@ -1613,8 +1613,7 @@ module Library = struct
       | "lmdb_stubs.c", _, _, _ -> [ "-I ." ]
       | "mdb.c", `Msvc, `Win32, _ -> [ "/wd4333"; "/wd4172" ]
       | "mdb.c", `Other, `Win32, _ -> [ "-Wno-return-local-addr" ]
-      | "ev.c", `Msvc, _, _ ->
-        [ "/wd4068"; "/wd4100"; "/wd4127"; "/wd4201"; "/wd4244" ]
+      | "ev.c", `Msvc, _, _ -> [ "/wd4068"; "/wd4100"; "/wd4127"; "/wd4201"; "/wd4244" ]
       | "ev.c", _, _, _ ->
         [ "-Wno-unknown-pragmas"
         ; "-Wno-comment"

@@ -111,7 +111,19 @@ let parse_deps_exn ~file lines =
    may hold a raw [Module.t] whose [Module.source] path differs
    from the pp-transformed source the producing rule fed to
    ocamldep — the basename will not match even though the output
-   is valid. *)
+   is valid.
+
+   Trade-off: this trades a cross-consistency assertion (the rule
+   that produced the file must have used the same source path the
+   reader now holds) for compatibility with cross-library readers
+   that don't participate in rule production. The producing side
+   still validates via [parse_deps_exn] in [deps_of]'s action, so
+   bogus ocamldep output is still caught at the producing rule; but
+   a subtle future drift between the two sources of [Module.t] (e.g.
+   a refactor that changes how [Module.source] is resolved for
+   cross-library reads) would now slip past the reader silently.
+   The structural check remaining here (exactly one line, one colon)
+   continues to catch gross format corruption. *)
 let parse_deps_lenient ~file lines =
   match lines with
   | [] | _ :: _ :: _ -> invalid_ocamldep_output file lines

@@ -18,7 +18,7 @@
 (library
  (name lev)
  (synopsis "libev bindings")
- (libraries unix)
+ (libraries stdune unix)
  (foreign_archives ev)
  (foreign_stubs
   (language c)

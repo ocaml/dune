@@ -30,6 +30,12 @@ let add_exe prog =
   if String.ends_with ~suffix:exe (String.lowercase prog) then prog else prog ^ exe
 ;;
 
+let strip_exe prog =
+  if Sys.win32
+  then Option.value ~default:prog (String.drop_suffix prog ~suffix:".exe")
+  else prog
+;;
+
 let which ~path prog =
   let prog = add_exe prog in
   List.find_map path ~f:(fun dir ->

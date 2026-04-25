@@ -1,9 +1,7 @@
-Verify that a [.mli] change in a dependency library rebuilds
-consumers under both [release] (opaque=false) and [dev] (opaque=true)
-profiles. The opaque-mode optimisation in [groups_for_cm_kind] is
-purely about cross-module inlining propagation through [.cmx]; it
-does not affect [.cmi] propagation, which is what carries [.mli]
-changes to consumers.
+A [.mli] change in a dependency library rebuilds consumers under
+both the release (opaque=false) and dev (opaque=true) profiles.
+Opaque mode does not affect [.cmi] propagation; it only affects
+whether cross-module inlining tracks a dep's [.cmx].
 
 Companion to [opaque.t], which covers the [.ml]-only change axis.
 

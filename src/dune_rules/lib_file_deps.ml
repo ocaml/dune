@@ -158,7 +158,7 @@ module Lib_index = struct
      in as [(_, _, None)] and don't enter [tight_eligible]. See the
      module-level comment at the top of this file for the
      ocamldep-granularity reason wrapped libs are excluded. *)
-  let create ?(no_ocamldep = Lib.Set.empty) entries =
+  let create ~no_ocamldep entries =
     let by_module_name =
       List.fold_left entries ~init:Module_name.Map.empty ~f:(fun map (name, lib, m) ->
         Module_name.Map.update map name ~f:(function

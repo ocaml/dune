@@ -1,21 +1,11 @@
 open Stdune
 
-(** Poor man's asynchronous IO on sockets (and pipes on Unix)
+(** Readiness-based asynchronous IO on sockets (and pipes on Unix) implemented
+    by running a small [Lev] loop in a dedicated thread.
 
-    Problematic in three ways:
-
-    - Needs to run in a separate thread because our scheduler loop does not
-      allow polling for fd's and custom events. This requires unnecessary
-      locking.
-
-    - Uses the rather slow select primitive. There's much better options on
-      every operating system.
-
-    - Relies on the "pipe trick" to be interruptible. This is the best we can do
-      with select. *)
-
-(* TODO one day switch to lev and integrate all of this directly into the
-   scheduler. This should solve all the problems above. *)
+    We still need a separate thread because the scheduler loop does not yet
+    handle fd readiness and internal scheduler events in one place, so this
+    module still has to synchronize access with a mutex. *)
 
 val create : Event.Queue.t -> Types.Async_io.t
 val shutdown : Types.Async_io.t -> unit
@@ -23,7 +13,8 @@ val shutdown : Types.Async_io.t -> unit
 (** [close fd] must be used to close any file descriptor which has been
     watched at some point. This is needed to make sure we never close a file
     descriptor that is being selected. Any associated operations with [fd] will
-    be cancelled. *)
+    be cancelled. The returned fiber is resolved only after [fd] has been
+    closed on the async-io thread. *)
 val close : Fd.t -> unit Fiber.t
 
 module Task : sig

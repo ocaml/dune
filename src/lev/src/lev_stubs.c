@@ -1,6 +1,7 @@
 #include "ev.h"
 
 #include <stdbool.h>
+#include <stdint.h>
 
 #include <math.h>
 #if (defined(__FreeBSD__) || defined(__OpenBSD__))
@@ -153,16 +154,28 @@ CAMLprim value lev_child_start(value v_w, value v_ev) {
 // TODO garbage collect loops themselves
 
 static int compare_watchers(value a, value b) {
-  return (int)((char *)Ev_watcher_val(a) - (char *)Ev_watcher_val(b));
+  uintptr_t left = (uintptr_t)Ev_watcher_val(a);
+  uintptr_t right = (uintptr_t)Ev_watcher_val(b);
+  return left < right ? -1 : left > right;
 }
 
 static intnat hash_watcher(value watcher) {
-  return (intnat)Ev_watcher_val(watcher);
+  return (intnat)(uintptr_t)Ev_watcher_val(watcher);
 }
 
 struct periodic_cbs {
   value watcher;
   value reschedule;
+};
+
+struct lev_io_data {
+  value callback;
+  value fd;
+};
+
+struct lev_stat_data {
+  value callback;
+  char *path;
 };
 
 static struct custom_operations watcher_ops = {
@@ -298,8 +311,8 @@ CAMLprim value lev_ev_run(value v_ev, value v_run) {
 }
 
 static void lev_io_cb(EV_P_ ev_io *w, int revents) {
-  int fd = w->fd;
-  caml_callback2((value)w->data, Val_int(fd), Val_int(revents));
+  struct lev_io_data *data = (struct lev_io_data *)w->data;
+  caml_callback2(data->callback, data->fd, Val_int(revents));
 }
 
 static void lev_watcher_cb(EV_P_ ev_watcher *w, int revents) {
@@ -336,19 +349,24 @@ CAMLprim value lev_io_write_code(value v_unit) {
 CAMLprim value lev_io_fd(value v_io) {
   CAMLparam1(v_io);
   ev_io *io = Ev_io_val(v_io);
-  CAMLreturn(Val_int(io->fd));
+  struct lev_io_data *data = (struct lev_io_data *)io->data;
+  CAMLreturn(data->fd);
 }
 
 CAMLprim value lev_io_create(value v_cb, value v_fd, value v_flags) {
   CAMLparam3(v_cb, v_fd, v_flags);
   CAMLlocal2(v_io, v_cb_applied);
   ev_io *io = caml_stat_alloc(sizeof(ev_io));
+  struct lev_io_data *data = caml_stat_alloc(sizeof(struct lev_io_data));
   ev_io_init(io, lev_io_cb, FD_val(v_fd), Int_val(v_flags));
   v_io = caml_alloc_custom(&watcher_ops, sizeof(struct ev_io *), 0, 1);
   Ev_io_val(v_io) = io;
   v_cb_applied = caml_callback(v_cb, v_io);
-  io->data = (void *)v_cb_applied;
-  caml_register_generational_global_root((value *)(&(io->data)));
+  data->callback = v_cb_applied;
+  data->fd = v_fd;
+  io->data = data;
+  caml_register_generational_global_root(&data->callback);
+  caml_register_generational_global_root(&data->fd);
   CAMLreturn(v_io);
 }
 
@@ -357,6 +375,17 @@ CAMLprim value lev_io_modify(value v_io, value v_flags) {
   ev_io *io = Ev_io_val(v_io);
   int flags = Int_val(v_flags);
   io->events = (io->events & EV__IOFDSET) | flags;
+  CAMLreturn(Val_unit);
+}
+
+CAMLprim value lev_io_destroy(value v_io) {
+  CAMLparam1(v_io);
+  ev_io *io = Ev_io_val(v_io);
+  struct lev_io_data *data = (struct lev_io_data *)io->data;
+  caml_remove_generational_global_root(&data->callback);
+  caml_remove_generational_global_root(&data->fd);
+  caml_stat_free(data);
+  caml_stat_free(io);
   CAMLreturn(Val_unit);
 }
 
@@ -611,17 +640,6 @@ CAMLprim value lev_embed_destroy(value v_embed) {
   CAMLreturn(Val_unit);
 }
 
-CAMLprim value lev_periodic_custom_destroy(value v_periodic) {
-  CAMLparam1(v_periodic);
-  ev_periodic *w = Ev_periodic_val(v_periodic);
-  struct periodic_cbs *cbs = (struct periodic_cbs *)w->data;
-  caml_remove_generational_global_root(&(cbs->watcher));
-  caml_remove_generational_global_root(&(cbs->reschedule));
-  caml_stat_free(cbs);
-  caml_stat_free(w);
-  CAMLreturn(Val_unit);
-}
-
 #ifdef _WIN32
 
 CAMLprim value lev_stat_create(value v_cb, value v_path, value v_interval) {
@@ -634,18 +652,25 @@ CAMLprim value lev_stat_stat(value v_w) {
 
 #else
 
+static void lev_stat_cb(EV_P_ ev_stat *w, int revents) {
+  struct lev_stat_data *data = (struct lev_stat_data *)w->data;
+  caml_callback(data->callback, Val_unit);
+}
+
 CAMLprim value lev_stat_create(value v_cb, value v_path, value v_interval) {
   CAMLparam3(v_cb, v_path, v_interval);
   CAMLlocal2(v_w, v_cb_applied);
   ev_stat *w = caml_stat_alloc(sizeof(ev_stat));
-  const char *path = String_val(v_path);
-  float interval = Double_val(v_interval);
-  ev_stat_init(w, Cb_for(ev_stat), path, interval);
+  struct lev_stat_data *data = caml_stat_alloc(sizeof(struct lev_stat_data));
+  const char *path = caml_stat_strdup(String_val(v_path));
+  ev_stat_init(w, lev_stat_cb, path, Double_val(v_interval));
   v_w = caml_alloc_custom(&watcher_ops, sizeof(struct ev_stat *), 0, 1);
   Ev_val(ev_stat, v_w) = w;
   v_cb_applied = caml_callback(v_cb, v_w);
-  w->data = (void *)v_cb_applied;
-  caml_register_generational_global_root((value *)(&(w->data)));
+  data->callback = v_cb_applied;
+  data->path = (char *)path;
+  w->data = data;
+  caml_register_generational_global_root(&data->callback);
   CAMLreturn(v_w);
 }
 
@@ -691,7 +716,7 @@ CAMLprim value lev_stat_stat(value v_w) {
   CAMLparam1(v_w);
   CAMLlocal5(v_atime, v_mtime, v_ctime, v_offset, v);
   ev_stat *watcher_stat = Ev_val(ev_stat, v_w);
-  struct stat *stat = watcher_stat->data;
+  ev_statdata *stat = &watcher_stat->attr;
 
   v_atime = caml_copy_double(stat_timestamp(stat->st_atime, NSEC(buf, a)));
   v_mtime = caml_copy_double(stat_timestamp(stat->st_mtime, NSEC(buf, m)));
@@ -718,3 +743,14 @@ CAMLprim value lev_stat_stat(value v_w) {
 }
 
 #endif
+
+CAMLprim value lev_stat_destroy(value v_w) {
+  CAMLparam1(v_w);
+  ev_stat *w = Ev_val(ev_stat, v_w);
+  struct lev_stat_data *data = (struct lev_stat_data *)w->data;
+  caml_remove_generational_global_root(&data->callback);
+  caml_stat_free(data->path);
+  caml_stat_free(data);
+  caml_stat_free(w);
+  CAMLreturn(Val_unit);
+}

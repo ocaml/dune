@@ -12,7 +12,7 @@ module Async_io = struct
   type t =
     { readers : (Fd.t, packed_task Queue.t) Table.t
     ; writers : (Fd.t, packed_task Queue.t) Table.t
-    ; to_close : (Fd.t, Fiber.fill list) Table.t
+    ; to_close : (Fd.t, unit Fiber.Ivar.t) Table.t
     ; mutex : Mutex.t
     ; scheduler_queue : Event.Queue.t
     ; loop : Lev.Loop.t

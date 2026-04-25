@@ -154,3 +154,67 @@ let%expect_test "write to closed reader" =
   Sys.set_signal Sys.sigpipe old_sigpipe;
   [%expect {| received epipe |}]
 ;;
+
+let%expect_test "modify io watcher and preserve watched fd" =
+  let left, right = Unix.socketpair Unix.PF_UNIX Unix.SOCK_STREAM 0 in
+  Unix.set_nonblock left;
+  Unix.set_nonblock right;
+  let loop = Loop.create () in
+  let io =
+    Io.create
+      (fun io fd events ->
+         assert (fd = left);
+         assert (Io.fd io = fd);
+         assert (Io.Event.Set.mem events Write);
+         print_endline "write";
+         Io.stop io loop;
+         Unix.close left;
+         Unix.close right;
+         Io.destroy io)
+      left
+      (Io.Event.Set.create ~read:true ())
+  in
+  let prepare =
+    Prepare.create (fun prepare ->
+      Io.modify io (Io.Event.Set.create ~write:true ());
+      Prepare.stop prepare loop;
+      Prepare.destroy prepare)
+  in
+  Prepare.start prepare loop;
+  Io.start io loop;
+  Loop.run_until_done loop;
+  [%expect {| write |}]
+;;
+
+let%expect_test "stat watcher reports updated file metadata" =
+  let path = Filename.temp_file "lev-stat" ".txt" in
+  let oc = open_out_bin path in
+  output_string oc "a";
+  close_out oc;
+  let loop = Loop.create () in
+  let timer =
+    Timer.create ~after:0.01 (fun timer ->
+      let oc = open_out_gen [ Open_wronly; Open_append ] 0o666 path in
+      output_string oc "bc";
+      close_out oc;
+      Timer.stop timer loop;
+      Timer.destroy timer)
+  in
+  let watcher =
+    match Stat.create with
+    | Error `Unimplemented -> assert false
+    | Ok create ->
+      create ~path (fun watcher ->
+        let stat = Stat.stat watcher in
+        printf "size = %d\n" stat.Unix.st_size;
+        Stat.stop watcher loop;
+        Stat.destroy watcher)
+  in
+  Gc.minor ();
+  Gc.full_major ();
+  Stat.start watcher loop;
+  Timer.start timer loop;
+  Loop.run_until_done loop;
+  Sys.remove path;
+  [%expect {| size = 3 |}]
+;;

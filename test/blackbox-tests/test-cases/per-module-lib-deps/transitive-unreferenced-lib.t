@@ -82,11 +82,4 @@ untouched. Today [Main] is rebuilt:
   $ echo > unreferenced_dep.ml
   $ dune build @check
   $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("dune__exe__Main\\."))]'
-  [
-    {
-      "target_files": [
-        "_build/default/.main.eobjs/byte/dune__exe__Main.cmo",
-        "_build/default/.main.eobjs/byte/dune__exe__Main.cmt"
-      ]
-    }
-  ]
+  []

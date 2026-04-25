@@ -13,6 +13,13 @@
   ev_select.c
   ev_win32.c)
  (language c)
+ (flags
+  :standard
+  -Wno-unknown-pragmas
+  -Wno-comment
+  -Wno-unused-value
+  -Wno-parentheses
+  -Wno-unused-result)
  (names ev))
 
 (library

@@ -82,7 +82,7 @@ select_modify (EV_P_ int fd, int oev, int nev)
     int handle = fd;
     #endif
 
-    assert (((void)"libev: fd >= FD_SETSIZE passed to fd_set-based select backend", fd < FD_SETSIZE));
+    assert (("libev: fd >= FD_SETSIZE passed to fd_set-based select backend", fd < FD_SETSIZE));
 
     /* FD_SET is broken on windows (it adds the fd to a set twice or more,
      * which eventually leads to overflows). Need to call it only on changes.
@@ -90,22 +90,18 @@ select_modify (EV_P_ int fd, int oev, int nev)
     #if EV_SELECT_IS_WINSOCKET
     if ((oev ^ nev) & EV_READ)
     #endif
-      {
-        if (nev & EV_READ)
-          FD_SET (handle, (fd_set *)vec_ri);
-        else
-          FD_CLR (handle, (fd_set *)vec_ri);
-      }
+      if (nev & EV_READ)
+        FD_SET (handle, (fd_set *)vec_ri);
+      else
+        FD_CLR (handle, (fd_set *)vec_ri);
 
     #if EV_SELECT_IS_WINSOCKET
     if ((oev ^ nev) & EV_WRITE)
     #endif
-      {
-        if (nev & EV_WRITE)
-          FD_SET (handle, (fd_set *)vec_wi);
-        else
-          FD_CLR (handle, (fd_set *)vec_wi);
-      }
+      if (nev & EV_WRITE)
+        FD_SET (handle, (fd_set *)vec_wi);
+      else
+        FD_CLR (handle, (fd_set *)vec_wi);
 
 #else
 
@@ -183,12 +179,10 @@ select_poll (EV_P_ ev_tstamp timeout)
       #ifdef WSABASEERR
       /* on windows, select returns incompatible error codes, fix this */
       if (errno >= WSABASEERR && errno < WSABASEERR + 1000)
-        {
-          if (errno == WSAENOTSOCK)
-            errno = EBADF;
-          else
-            errno -= WSABASEERR;
-        }
+        if (errno == WSAENOTSOCK)
+          errno = EBADF;
+        else
+          errno -= WSABASEERR;
       #endif
 
       #ifdef _WIN32
@@ -203,7 +197,7 @@ select_poll (EV_P_ ev_tstamp timeout)
         {
           if (timeout)
             {
-              unsigned long ms = (unsigned long)EV_TS_TO_MSEC (timeout);
+              unsigned long ms = EV_TS_TO_MSEC (timeout);
               Sleep (ms ? ms : 1);
             }
 

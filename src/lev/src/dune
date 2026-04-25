@@ -2,6 +2,22 @@
 
 (copy_files# ../vendor/{ev,ev_vars,ev_wrap}.h)
 
+(rule
+ (enabled_if
+  (= %{ocaml-config:ccomp_type} "msvc"))
+ (target c_flags.sexp)
+ (action
+  (write-file %{target} "(/wd4068 /wd4100 /wd4127 /wd4201 /wd4244)")))
+
+(rule
+ (enabled_if
+  (<> %{ocaml-config:ccomp_type} "msvc"))
+ (target c_flags.sexp)
+ (action
+  (write-file
+   %{target}
+   "(-Wno-unknown-pragmas -Wno-comment -Wno-unused-value -Wno-parentheses -Wno-unused-result)")))
+
 (foreign_library
  (archive_name ev)
  (extra_deps
@@ -15,11 +31,7 @@
  (language c)
  (flags
   :standard
-  -Wno-unknown-pragmas
-  -Wno-comment
-  -Wno-unused-value
-  -Wno-parentheses
-  -Wno-unused-result)
+  (:include c_flags.sexp))
  (names ev))
 
 (library

@@ -217,6 +217,10 @@ end
 
 (** {1 Transitive closure} *)
 
+(** Memoized. The memo key is order-sensitive on the input list, so
+    for callers that share inputs across invocations (e.g. the hot
+    path in [Module_compilation.lib_deps_for_module]), a canonical
+    sort (by [Lib.compare]) maximises cache reuse. *)
 val closure : t list -> linking:bool -> for_:Compilation_mode.t -> t list Resolve.Memo.t
 
 (** [descriptive_closure ~with_pps libs] computes the smallest set of libraries

@@ -645,6 +645,10 @@ module Module = struct
     let none =
       match Module.kind m, dep with
       | Module.Kind.Alias _, _ -> true
+      (* [Wrapped_compat] has synthesized deps in
+         [Dep_rules.deps_of_module] — no ocamldep rule is
+         registered and no [.d]/[.all-deps] file is produced. *)
+      | Wrapped_compat, _ -> true
       (* [Root] has a synthesized [.d] written alongside [root.ml]
          by [build_root_module] (one line of [<basename>: <names>]
          format), but no transitive [.all-deps] is produced for

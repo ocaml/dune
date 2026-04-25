@@ -1,0 +1,40 @@
+name: "Copilot Setup Steps"
+
+# Automatically run the setup steps when they are changed to allow for easy
+# validation, and allow manual testing through the repository's "Actions" tab
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+  pull_request:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+
+jobs:
+  # The job MUST be called `copilot-setup-steps` or it will not be picked up by Copilot.
+  copilot-setup-steps:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install Nix
+        uses: nixbuild/nix-quick-install-action@v34
+
+      - name: Restore Nix cache
+        uses: nix-community/cache-nix-action@v7
+        with:
+          primary-key: nix-${{ runner.os }}-${{ github.job }}--${{ hashFiles('**/*.nix', '**/flake.lock') }}
+          restore-prefixes-first-match: |
+            nix-${{ runner.os }}-${{ github.job }}--
+            nix-Linux-nix-test--
+          gc-max-store-size-linux: 2G
+          save: false
+
+      - name: Enter Nix dev shell
+        run: nix develop -c true

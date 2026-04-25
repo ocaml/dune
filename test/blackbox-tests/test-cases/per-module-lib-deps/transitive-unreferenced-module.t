@@ -58,11 +58,4 @@ test references — and record the rebuild list for [main]:
   > EOF
   $ dune build ./main.exe
   $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("dune__exe__Main\\."))]'
-  [
-    {
-      "target_files": [
-        "_build/default/.main.eobjs/native/dune__exe__Main.cmx",
-        "_build/default/.main.eobjs/native/dune__exe__Main.o"
-      ]
-    }
-  ]
+  []

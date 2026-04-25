@@ -1,7 +1,9 @@
-Verify that library file deps are declared for module compilation rules.
+Verify the cm_kind/-opaque rules for library file deps in compile rules.
 
-Every non-alias module should declare glob deps on its library
-dependencies' .cmi files.
+[mylib] is a wrapped library exposing one entry [Mylib]. The
+executable has two modules: [Uses_lib] which references [Mylib] in
+its [.ml] (but not its [.mli]) and [Main] which references only
+[Uses_lib]. [Main] has no [.mli].
 
   $ cat > dune-project <<EOF
   > (lang dune 3.23)
@@ -33,12 +35,17 @@ dependencies' .cmi files.
 
   $ dune build ./main.exe
 
-Both modules declare glob deps on mylib's .cmi files:
+[Uses_lib.cmx] keeps the glob: [Uses_lib.ml] references [Mylib], a
+wrapped library that falls back to a directory glob over its public
+cmi dir.
 
   $ dune rules --root . --format=json --deps _build/default/.main.eobjs/native/dune__exe__Uses_lib.cmx |
   > jq -r 'include "dune"; .[] | depsGlobPredicates'
   *.cmi
 
+[Main.cmx] has no inter-library deps. Under [-opaque] (the default
+profile), [Uses_lib]'s references to [Mylib] are sealed behind
+[Uses_lib]'s [.cmi] and don't propagate to [Main]'s native compile.
+
   $ dune rules --root . --format=json --deps _build/default/.main.eobjs/native/dune__exe__Main.cmx |
   > jq -r 'include "dune"; .[] | depsGlobPredicates'
-  *.cmi

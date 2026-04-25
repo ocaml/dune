@@ -144,96 +144,10 @@ type rule_execution_result =
   ; targets : Digest.t Targets.Produced.t
   }
 
-module type Rec = sig
-  (** Build all the transitive dependencies of the alias and return the alias
-      expansion. *)
-  val build_alias : Alias.t -> Dep.Fact.Files.t Memo.t
-
-  val build_file : Path.t -> Digest.t Memo.t
-  val build_dir : Path.t -> Digest.t Targets.Produced.t Memo.t
-  val build_dep : Dep.t -> Dep.Fact.t Memo.t
-  val build_deps : Dep.Set.t -> Dep.Facts.t Memo.t
-  val execute_rule : Rule.t -> rule_execution_result Memo.t
-
-  val execute_action
-    :  observing_facts:Dep.Facts.t
-    -> Rule.Anonymous_action.t
-    -> unit Memo.t
-
-  val execute_action_stdout : Rule.Anonymous_action.t Action_builder.t -> string Memo.t
-  val eval_pred : File_selector.t -> Filename_set.t Memo.t
-end
-
-(* Separation between [Used_recursively] and [Exported] is necessary because at
-   least one module in the recursive module group must be pure (i.e. only expose
-   functions). *)
-module rec Used_recursively : Rec = Exported
-
-and Exported : sig
-  include Rec
-
-  val execute_rule : Rule.t -> rule_execution_result Memo.t
-
-  type target_kind =
-    | File_target
-    | Dir_target of { targets : Digest.t Targets.Produced.t }
-
-  (* The below two definitions are useless, but if we remove them we get an
-     "Undefined_recursive_module" exception. *)
-
-  val build_file_memo : (Path.t, Digest.t * target_kind) Memo.Table.t Lazy.t
-  [@@warning "-32"]
-
-  val build_alias_memo : (Alias.t, Dep.Fact.Files.t) Memo.Table.t [@@warning "-32"]
-  val dep_on_alias_definition : Rules.Dir_rules.Alias_spec.item -> unit Action_builder.t
-end = struct
-  open Used_recursively
-
+module Internal = struct
   let file_selector_stack_frame_description file_selector =
     Pp.concat [ Pp.text (File_selector.to_dyn file_selector |> Dyn.to_string) ]
   ;;
-
-  let build_file_selector : File_selector.t -> Dep.Fact.t Memo.t =
-    let impl file_selector =
-      let* files = eval_pred file_selector in
-      let+ fact = Dep.Fact.Files.create files ~build_file in
-      (* Fact: [file_selector] expands to the set of [files] whose digests are captured
-         via [build_file]; also, the [File_selector.dir] exists (though it may be empty) *)
-      Dep.Fact.file_selector file_selector fact
-    in
-    let memo =
-      Memo.create
-        "build_file_selector"
-        ~input:(module File_selector)
-        ~cutoff:Dep.Fact.equal
-          (* CR-someday amokhov: Pass [file_selector_stack_frame_description] here to
-             include globs into stack traces. *)
-        ?human_readable_description:None
-        impl
-    in
-    fun file_selector -> Memo.exec memo file_selector
-  ;;
-
-  (* [build_dep] turns a [Dep.t] which is a description of a dependency into a
-     fact about the world. To do that, it needs to do some building. *)
-  let build_dep : Dep.t -> Dep.Fact.t Memo.t = function
-    | Alias a ->
-      let+ digests = build_alias a in
-      (* Fact: alias [a] expands to the set of file-digest pairs [digests] *)
-      Dep.Fact.alias a digests
-    | File f ->
-      (* Not necessarily a file, can also be a directory. *)
-      let+ digest = build_file f in
-      (* Fact: file [f] has digest [digest] *)
-      Dep.Fact.file f digest
-    | File_selector file_selector -> build_file_selector file_selector
-    | Universe | Env _ ->
-      (* Facts about these dependencies are constructed in
-         [Dep.Facts.digest]. *)
-      Memo.return Dep.Fact.nothing
-  ;;
-
-  let build_deps deps = Dep.Map.parallel_map deps ~f:(fun dep () -> build_dep dep)
 
   let select_sandbox_mode (config : Sandbox_config.t) ~loc ~sandboxing_preference =
     (* Rules with (mode patch-back-source-tree) are special and are not affected
@@ -388,7 +302,86 @@ end = struct
     | `Disabled -> Fiber.return (f ())
   ;;
 
-  let execute_action_for_rule
+  module Anonymous_action = struct
+    type t =
+      { action : Rule.Anonymous_action.t
+      ; deps : Dep.Set.t
+      ; capture_stdout : bool
+      ; digest : Digest.t
+      }
+
+    let equal a b = Digest.equal a.digest b.digest
+    let hash t = Digest.hash t.digest
+
+    let to_dyn t : Dyn.t =
+      Record [ "digest", Digest.to_dyn t.digest; "loc", Loc.to_dyn t.action.loc ]
+    ;;
+  end
+
+  (* CR-soon amokhov: Instead of wrapping the result into a variant, [build_file_impl]
+     could always return [targets : Digest.t Targets.Produced.t], and the latter could
+     provide a way to conveniently check if a specific [path] is a file or a directory,
+     as well as extract its digest when needed. *)
+  type target_kind =
+    | File_target
+    | Dir_target of
+        { targets :
+            (* All targets of the rule which produced the directory target in question. *)
+            Digest.t Targets.Produced.t
+        }
+
+  let target_kind_equal a b =
+    match a, b with
+    | File_target, File_target -> true
+    | Dir_target { targets = a }, Dir_target { targets = b } ->
+      Targets.Produced.equal a b ~equal:Digest.equal
+    | File_target, Dir_target _ | Dir_target _, File_target -> false
+  ;;
+
+  let rec build_alias alias = Memo.exec (Lazy.force build_alias_memo) alias
+  and build_file path = Memo.exec (Lazy.force build_file_memo) path >>| fst
+
+  and build_dir path =
+    let+ (_ : Digest.t), kind = Memo.exec (Lazy.force build_file_memo) path in
+    match kind with
+    | Dir_target { targets } -> targets
+    | File_target ->
+      Code_error.raise "build_dir called on a file target" [ "path", Path.to_dyn path ]
+
+  and eval_pred file_selector = Memo.exec (Lazy.force eval_pred_memo) file_selector
+  and execute_rule rule = Memo.exec (Lazy.force execute_rule_memo) rule
+
+  and build_file_selector (file_selector : File_selector.t) : Dep.Fact.t Memo.t =
+    Memo.exec (Lazy.force build_file_selector_memo) file_selector
+
+  and build_file_selector_impl file_selector =
+    let* files = eval_pred file_selector in
+    let+ fact = Dep.Fact.Files.create files ~build_file in
+    (* Fact: [file_selector] expands to the set of [files] whose digests are captured
+       via [build_file]; also, the [File_selector.dir] exists (though it may be empty) *)
+    Dep.Fact.file_selector file_selector fact
+
+  (* [build_dep] turns a [Dep.t] which is a description of a dependency into a
+     fact about the world. To do that, it needs to do some building. *)
+  and build_dep : Dep.t -> Dep.Fact.t Memo.t = function
+    | Alias a ->
+      let+ digests = build_alias a in
+      (* Fact: alias [a] expands to the set of file-digest pairs [digests] *)
+      Dep.Fact.alias a digests
+    | File f ->
+      (* Not necessarily a file, can also be a directory. *)
+      let+ digest = build_file f in
+      (* Fact: file [f] has digest [digest] *)
+      Dep.Fact.file f digest
+    | File_selector file_selector -> build_file_selector file_selector
+    | Universe | Env _ ->
+      (* Facts about these dependencies are constructed in
+         [Dep.Facts.digest]. *)
+      Memo.return Dep.Fact.nothing
+
+  and build_deps deps = Dep.Map.parallel_map deps ~f:(fun dep () -> build_dep dep)
+
+  and execute_action_for_rule
         ~rule_kind
         ~rule_digest
         ~action
@@ -516,17 +509,15 @@ end = struct
            match produced_targets with
            | Ok produced_targets -> { Exec_result.produced_targets; action_exec_result }
            | Error error -> User_error.raise ~loc (Targets.Produced.Error.message error)))
-  ;;
 
-  let promote_targets ~rule_mode ~targets ~promote_source =
+  and promote_targets ~rule_mode ~targets ~promote_source =
     match rule_mode, !Clflags.promote with
     | (Rule.Mode.Standard | Fallback | Ignore_source_files), _ | Promote _, Some Never ->
       Fiber.return ()
     | Promote promote, (Some Automatically | None) ->
       Target_promotion.promote ~targets ~promote ~promote_source
-  ;;
 
-  let execute_rule_impl ~rule_kind rule =
+  and execute_rule_impl ~rule_kind rule =
     let { Rule.id = _; targets; mode; action; info = _; loc } = rule in
     (* We run [State.start_rule_exn ()] entirely for its side effect, so one
        might be tempted to use [Memo.of_non_reproducible_fiber] here but that is
@@ -728,26 +719,9 @@ end = struct
        running the action here. Otherwise, package dependencies are broken in
        the presence of dynamic actions. *)
     >>| fun produced_targets -> { facts; targets = produced_targets }
-  ;;
-
-  module Anonymous_action = struct
-    type t =
-      { action : Rule.Anonymous_action.t
-      ; deps : Dep.Set.t
-      ; capture_stdout : bool
-      ; digest : Digest.t
-      }
-
-    let equal a b = Digest.equal a.digest b.digest
-    let hash t = Digest.hash t.digest
-
-    let to_dyn t : Dyn.t =
-      Record [ "digest", Digest.to_dyn t.digest; "loc", Loc.to_dyn t.action.loc ]
-    ;;
-  end
 
   (* Returns the action's stdout or the empty string if [capture_stdout = false]. *)
-  let execute_action_generic_stage2_impl
+  and execute_action_generic_stage2_impl
         { Anonymous_action.action = act; deps; capture_stdout; digest }
     =
     let target =
@@ -783,17 +757,8 @@ end = struct
              })
     in
     if capture_stdout then Io.read_file (Path.build target) else ""
-  ;;
 
-  let execute_action_generic_stage2_memo =
-    Memo.create
-      "execute-action"
-      ~input:(module Anonymous_action)
-      ~cutoff:String.equal
-      execute_action_generic_stage2_impl
-  ;;
-
-  let execute_action_generic
+  and execute_action_generic
         ~observing_facts
         (act : Rule.Anonymous_action.t)
         ~capture_stdout
@@ -868,45 +833,22 @@ end = struct
        same file. Using [Memo.create] serves as a synchronisation point to share
        the execution and avoid such a race condition. *)
     Memo.exec
-      execute_action_generic_stage2_memo
-      { action = act; deps; capture_stdout; digest }
-  ;;
+      (Lazy.force execute_action_generic_stage2_memo)
+      { Anonymous_action.action = act; deps; capture_stdout; digest }
 
-  let execute_action ~observing_facts act =
+  and execute_action ~observing_facts act =
     let+ (_empty_string : string) =
       execute_action_generic ~observing_facts act ~capture_stdout:false
     in
     ()
-  ;;
 
-  let execute_action_stdout action =
+  and execute_action_stdout action =
     let* action, observing_facts = Action_builder.evaluate_and_collect_facts action in
     execute_action_generic ~observing_facts action ~capture_stdout:true
-  ;;
-
-  (* CR-soon amokhov: Instead of wrapping the result into a variant, [build_file_impl]
-     could always return [targets : Digest.t Targets.Produced.t], and the latter could
-     provide a way to conveniently check if a specific [path] is a file or a directory,
-     as well as extract its digest when needed. *)
-  type target_kind =
-    | File_target
-    | Dir_target of
-        { targets :
-            (* All targets of the rule which produced the directory target in question. *)
-            Digest.t Targets.Produced.t
-        }
-
-  let target_kind_equal a b =
-    match a, b with
-    | File_target, File_target -> true
-    | Dir_target { targets = a }, Dir_target { targets = b } ->
-      Targets.Produced.equal a b ~equal:Digest.equal
-    | File_target, Dir_target _ | Dir_target _, File_target -> false
-  ;;
 
   (* A rule can have multiple targets but calls to [execute_rule] are memoized,
      so the rule will be executed only once. *)
-  let build_file_impl =
+  and build_file_impl path =
     let directory_digest contents =
       Digest.Feed.compute_digest
         (fun hasher contents ->
@@ -918,76 +860,71 @@ end = struct
                Digest.Feed.string hasher (Path.Local.to_string path)))
         contents
     in
-    fun path ->
-      Load_rules.get_rule_or_source path
-      >>= function
-      | Source digest -> Memo.return (digest, File_target)
-      | Rule (path, rule) ->
-        let* { facts = _; targets } =
-          Memo.push_stack_frame
-            (fun () -> execute_rule rule)
-            ~human_readable_description:(fun () ->
-              Pp.text (Path.to_string_maybe_quoted (Path.build path)))
-        in
-        (match Targets.Produced.find_any targets path with
-         | Some (Left digest) -> Memo.return (digest, File_target)
-         | Some (Right contents) ->
-           let digest = directory_digest contents in
-           Memo.return (digest, Dir_target { targets })
-         | None ->
-           (* CR-someday amokhov: The most important reason we end up here is
-            [No_such_file]. I think some of the outcomes above are impossible
-            but some others will benefit from a better error. To be refined. *)
-           let target =
-             Path.Build.drop_build_context_exn path |> Path.Source.to_string_maybe_quoted
-           in
-           let matching_dirs =
-             Filename.Set.to_list_map rule.targets.dirs ~f:(fun dir ->
-               (* CR-someday rleshchinskiy: This test can probably be simplified. *)
-               let dir = Path.Build.relative rule.targets.root dir in
-               match Path.Build.is_descendant path ~of_:dir with
-               | true -> [ dir ]
-               | false -> [])
-             |> List.concat
-           in
-           let matching_target =
-             match matching_dirs with
-             | [ dir ] ->
-               Path.Build.drop_build_context_exn dir |> Path.Source.to_string_maybe_quoted
-             | [] | _ :: _ ->
-               Code_error.raise
-                 "Multiple matching directory targets"
-                 [ "targets", Targets.Validated.to_dyn rule.targets ]
-           in
-           User_error.raise
-             ~loc:rule.loc
-             ~needs_stack_trace:true
-             [ Pp.textf
-                 "This rule defines a directory target %S that matches the requested \
-                  path %S but the rule's action didn't produce it"
-                 matching_target
-                 target
-             ])
-  ;;
+    Load_rules.get_rule_or_source path
+    >>= function
+    | Source digest -> Memo.return (digest, File_target)
+    | Rule (path, rule) ->
+      let* { facts = _; targets } =
+        Memo.push_stack_frame
+          (fun () -> execute_rule rule)
+          ~human_readable_description:(fun () ->
+            Pp.text (Path.to_string_maybe_quoted (Path.build path)))
+      in
+      (match Targets.Produced.find_any targets path with
+       | Some (Left digest) -> Memo.return (digest, File_target)
+       | Some (Right contents) ->
+         let digest = directory_digest contents in
+         Memo.return (digest, Dir_target { targets })
+       | None ->
+         (* CR-someday amokhov: The most important reason we end up here is
+          [No_such_file]. I think some of the outcomes above are impossible
+          but some others will benefit from a better error. To be refined. *)
+         let target =
+           Path.Build.drop_build_context_exn path |> Path.Source.to_string_maybe_quoted
+         in
+         let matching_dirs =
+           Filename.Set.to_list_map rule.targets.dirs ~f:(fun dir ->
+             (* CR-someday rleshchinskiy: This test can probably be simplified. *)
+             let dir = Path.Build.relative rule.targets.root dir in
+             match Path.Build.is_descendant path ~of_:dir with
+             | true -> [ dir ]
+             | false -> [])
+           |> List.concat
+         in
+         let matching_target =
+           match matching_dirs with
+           | [ dir ] ->
+             Path.Build.drop_build_context_exn dir |> Path.Source.to_string_maybe_quoted
+           | [] | _ :: _ ->
+             Code_error.raise
+               "Multiple matching directory targets"
+               [ "targets", Targets.Validated.to_dyn rule.targets ]
+         in
+         User_error.raise
+           ~loc:rule.loc
+           ~needs_stack_trace:true
+           [ Pp.textf
+               "This rule defines a directory target %S that matches the requested path \
+                %S but the rule's action didn't produce it"
+               matching_target
+               target
+           ])
 
-  let execute_anonymous_action action =
+  and execute_anonymous_action action =
     let* action, facts = Action_builder.evaluate_and_collect_facts action in
     execute_action action ~observing_facts:facts
-  ;;
 
-  let dep_on_anonymous_action (action : Rule.Anonymous_action.t Action_builder.t)
+  and dep_on_anonymous_action (action : Rule.Anonymous_action.t Action_builder.t)
     : unit Action_builder.t
     =
     Action_builder.record_success (Memo.of_thunk_apply execute_anonymous_action action)
-  ;;
 
-  let dep_on_alias_definition (definition : Rules.Dir_rules.Alias_spec.item) =
+  and dep_on_alias_definition (definition : Rules.Dir_rules.Alias_spec.item) =
     match definition with
     | Deps x -> x
     | Action x -> dep_on_anonymous_action x
-  ;;
 
-  let build_alias_impl alias =
+  and build_alias_impl alias =
     let+ l =
       Load_rules.get_alias_definition alias
       >>= Memo.parallel_map ~f:(fun (loc, definition) ->
@@ -999,9 +936,8 @@ end = struct
           ~human_readable_description:(fun () -> Alias.describe alias ~loc))
     in
     Dep.Facts.group_paths_as_fact_files l
-  ;;
 
-  let eval_pred_impl g =
+  and eval_pred_impl g =
     let dir = File_selector.dir g in
     (* CR-soon amokhov: Change [Load_rules.load_dir] to return [Filename_set.t]s to save
        a bunch of set/list operations and reduce code duplication. *)
@@ -1041,20 +977,36 @@ end = struct
             doesn't contain the requested dir, we will currently create an empty directory
             in the sandbox, as if it actually existed. *)
          Filename_set.empty ~dir)
-  ;;
 
-  let eval_pred_memo =
-    Memo.create
-      "eval-pred"
-      ~human_readable_description:file_selector_stack_frame_description
-      ~input:(module File_selector)
-      ~cutoff:Filename_set.equal
-      eval_pred_impl
-  ;;
+  and build_file_selector_memo =
+    lazy
+      (Memo.create
+         "build_file_selector"
+         ~input:(module File_selector)
+         ~cutoff:Dep.Fact.equal
+           (* CR-someday amokhov: Pass [file_selector_stack_frame_description] here to
+              include globs into stack traces. *)
+         ?human_readable_description:None
+         build_file_selector_impl)
 
-  let eval_pred = Memo.exec eval_pred_memo
+  and execute_action_generic_stage2_memo =
+    lazy
+      (Memo.create
+         "execute-action"
+         ~input:(module Anonymous_action)
+         ~cutoff:String.equal
+         execute_action_generic_stage2_impl)
 
-  let build_file_memo =
+  and eval_pred_memo =
+    lazy
+      (Memo.create
+         "eval-pred"
+         ~human_readable_description:file_selector_stack_frame_description
+         ~input:(module File_selector)
+         ~cutoff:Filename_set.equal
+         eval_pred_impl)
+
+  and build_file_memo =
     lazy
       (let cutoff =
          match Config.(get cutoffs_that_reduce_concurrency_in_watch_mode) with
@@ -1067,54 +1019,42 @@ end = struct
          ~input:(module Path)
          ?cutoff
          build_file_impl)
+
+  and build_alias_memo =
+    lazy
+      (Memo.create
+         "build-alias"
+         ~input:(module Alias)
+         ~cutoff:Dep.Fact.Files.equal
+         build_alias_impl)
+
+  and execute_rule_memo =
+    lazy
+      (Memo.create
+         "execute-rule"
+         ~input:(module Rule)
+         (execute_rule_impl ~rule_kind:Normal_rule))
   ;;
-
-  let build_file path = Memo.exec (Lazy.force build_file_memo) path >>| fst
-
-  let build_dir path =
-    let+ (_ : Digest.t), kind = Memo.exec (Lazy.force build_file_memo) path in
-    match kind with
-    | Dir_target { targets } -> targets
-    | File_target ->
-      Code_error.raise "build_dir called on a file target" [ "path", Path.to_dyn path ]
-  ;;
-
-  let build_alias_memo =
-    Memo.create
-      "build-alias"
-      ~input:(module Alias)
-      ~cutoff:Dep.Fact.Files.equal
-      build_alias_impl
-  ;;
-
-  let build_alias = Memo.exec build_alias_memo
-
-  let execute_rule_memo =
-    Memo.create
-      "execute-rule"
-      ~input:(module Rule)
-      (execute_rule_impl ~rule_kind:Normal_rule)
-  ;;
-
-  let execute_rule = Memo.exec execute_rule_memo
 
   let () =
     Load_rules.set_current_rule_loc (fun () ->
       let+ stack = Memo.get_call_stack () in
       List.find_map stack ~f:(fun frame ->
-        match Memo.Stack_frame.as_instance_of frame ~of_:execute_rule_memo with
+        match
+          Memo.Stack_frame.as_instance_of frame ~of_:(Lazy.force execute_rule_memo)
+        with
         | Some r -> Some (Rule.loc r)
         | None ->
           Option.bind
             (Memo.Stack_frame.as_instance_of
                frame
-               ~of_:execute_action_generic_stage2_memo)
+               ~of_:(Lazy.force execute_action_generic_stage2_memo))
             ~f:(fun (x : Anonymous_action.t) ->
               Option.some_if (not @@ Loc.is_none x.action.loc) x.action.loc)))
   ;;
 end
 
-include Exported
+include Internal
 
 (* Here we are doing a O(log |S|) lookup in a set S of files in the build
    directory [dir]. We could memoize these lookups, but it doesn't seem to be

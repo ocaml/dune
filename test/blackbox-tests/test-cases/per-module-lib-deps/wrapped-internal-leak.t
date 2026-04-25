@@ -1,30 +1,28 @@
-Observational baseline for an unsupported leak: a consumer can
-currently reach a wrapped library's internal (mangled) module name
-through the include path, because the library's object directory
-contains the mangled `Mylib__Internal.cmi` and broad `-I` flags make
-that directory reachable.
+A consumer that writes `Mylib__Internal.x` — using a wrapped
+library's mangled internal module name directly, bypassing the
+wrapper — no longer compiles. This file asserts the compile
+error.
 
-A wrapped library exposes its public API only through its wrapper
-module (`Mylib.Internal`, etc). Dune mangles the on-disk cmi of the
-wrapped internal module to `Mylib__Internal.cmi` as an implementation
-detail. Under broad per-module `-I` flags, a consumer that writes
-`Mylib__Internal.x` compiles successfully, side-stepping the wrapper.
+Why it fails: per-module rule-dep filtering (#4572 / #14116)
+scopes each consumer's compile-rule deps to the libraries its
+source actually references. The consumer's ocamldep output
+names `Mylib__Internal` as a top-level module, but
+`Mylib__Internal` is not a library entry — the lib index only
+knows about `Mylib`. The filter therefore does not list
+`Mylib__Internal.cmi` among the consumer's compile-rule deps;
+dune does not order the producing rule before the consumer's
+compile, and ocamlc reports `Unbound module` because the file
+is absent from `mylib`'s objdir when the consumer's compile
+runs.
 
-This is not officially supported — consumers should reach a wrapped
-library's internals only through the wrapper API, not through the
-mangled form (see #14317 review discussion). The leak works today
-only as an implementation-detail side effect of the wrapping
-convention. In practice some packages currently depend on it, which
-is why the baseline is recorded here so any flip is visible in CI.
-
-Per-module `-I` filtering (#4572 / #14186) is expected to break this
-leak by scoping each consumer's `-I` paths to the libraries its
-source references. `Mylib__Internal` is not an entry in the lib
-index, so the filter excludes `mylib`, the objdir is dropped from
-`-I`, and the compile fails with "Unbound module Mylib__Internal".
-The flip is acceptable because the leak was never supported;
-downstream consumers depending on the mangled form should migrate
-to the wrapper API.
+Why this isn't a regression: the mangled form was never
+officially supported. Wrapped libraries expose their public API
+through the wrapper module (`Mylib.Internal.x`); the on-disk
+mangling to `Mylib__Internal.cmi` is an implementation detail.
+Under broad cctx-wide compile-rule deps the leak previously
+compiled by accident; per-module rule-dep filtering removes the
+accidental reachability. Downstream consumers depending on the
+mangled form should migrate to the wrapper API.
 
   $ cat > dune-project <<EOF
   > (lang dune 3.0)
@@ -49,3 +47,8 @@ to the wrapper API.
   > EOF
 
   $ dune build ./main.exe
+  File "main.ml", line 1, characters 23-38:
+  1 | let () = print_endline Mylib__Internal.hi
+                             ^^^^^^^^^^^^^^^
+  Error: Unbound module Mylib__Internal
+  [1]

@@ -94,37 +94,11 @@ let invalid_ocamldep_output file lines =
     ]
 ;;
 
-let parse_deps_exn ~file lines =
-  match lines with
-  | [] | _ :: _ :: _ -> invalid_ocamldep_output file lines
-  | [ line ] ->
-    (match String.lsplit2 line ~on:':' with
-     | None -> invalid_ocamldep_output file lines
-     | Some (basename, deps) ->
-       let basename = Filename.basename basename in
-       if basename <> Path.basename file then invalid_ocamldep_output file lines;
-       String.extract_blank_separated_words deps)
-;;
-
-(* Like [parse_deps_exn] but without the left-hand basename check.
-   Callers that only read [.d] files (rather than producing them)
-   may hold a raw [Module.t] whose [Module.source] path differs
-   from the pp-transformed source the producing rule fed to
-   ocamldep — the basename will not match even though the output
-   is valid.
-
-   Trade-off: this trades a cross-consistency assertion (the rule
-   that produced the file must have used the same source path the
-   reader now holds) for compatibility with cross-library readers
-   that don't participate in rule production. The producing side
-   still validates via [parse_deps_exn] in [deps_of]'s action, so
-   bogus ocamldep output is still caught at the producing rule; but
-   a subtle future drift between the two sources of [Module.t] (e.g.
-   a refactor that changes how [Module.source] is resolved for
-   cross-library reads) would now slip past the reader silently.
-   The structural check remaining here (exactly one line, one colon)
-   continues to catch gross format corruption. *)
-let parse_deps_lenient ~file lines =
+(* Parse the space-separated module names from one line of
+   [ocamldep -modules] output. The structural check (exactly one
+   line, one colon) catches gross format corruption; the basename
+   on the LHS is ignored. *)
+let parse_deps ~file lines =
   match lines with
   | [] | _ :: _ :: _ -> invalid_ocamldep_output file lines
   | [ line ] ->
@@ -183,7 +157,7 @@ let deps_of ~sandbox ~modules ~sctx ~dir ~obj_dir ~ml_kind ~for_ unit =
          (let+ immediate_deps =
             Path.build ocamldep_output
             |> Action_builder.lines_of
-            >>| parse_deps_exn ~file:(Module.File.path source)
+            >>| parse_deps ~file:(Module.File.path source)
             >>| parse_module_names ~dir ~unit ~modules
             >>| Stdlib.( @ ) (Modules.With_vlib.implicit_deps modules ~of_:unit)
           in
@@ -217,13 +191,7 @@ let read_deps_of ~obj_dir ~modules ~ml_kind ~for_ unit =
    builder for each .d file is cached by path so that
    [read_immediate_deps_of] and [read_immediate_deps_raw_of] (which
    may be called many times for the same module) share one memoized
-   [Action_builder.t] instance per file.
-
-   Uses [parse_deps_lenient] rather than [parse_deps_exn]: the
-   producing rule already validates the basename in [deps_of]; by
-   the time a reader sees the [.d] file it is known-valid, and
-   cross-lib readers may hold a raw [Module.t] whose source path
-   does not match the pp-transformed source the rule used. *)
+   [Action_builder.t] instance per file. *)
 let read_immediate_deps_parsed =
   let cache = Table.create (module Path.Build) 64 in
   fun ~obj_dir ~ml_kind ~for_ unit ->
@@ -239,7 +207,7 @@ let read_immediate_deps_parsed =
             let builder =
               Action_builder.lines_of (Path.build ocamldep_output)
               |> Action_builder.map ~f:(fun lines ->
-                Some (parse_deps_lenient ~file:(Module.File.path source) lines))
+                Some (parse_deps ~file:(Module.File.path source) lines))
               |> Action_builder.memoize (Path.Build.to_string ocamldep_output)
             in
             Table.set cache ocamldep_output builder;

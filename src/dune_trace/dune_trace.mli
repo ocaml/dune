@@ -180,7 +180,13 @@ module Event : sig
 
     val packet_read : id:int -> success:bool -> error:string option -> t
     val packet_write : id:int -> count:int -> t
-    val accept : id:int -> stage -> success:bool option -> error:string option -> t
+
+    val accept
+      :  id:int
+      -> stage
+      -> [ `Close | `Error of Exn_with_backtrace.t | `Accept ] option
+      -> t
+
     val shutdown : id:int -> stage -> t
     val close : id:int -> t
     val dropped_write_client_disconnect : Exn.t -> t

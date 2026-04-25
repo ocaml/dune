@@ -24,4 +24,4 @@ from server exit.
   build stop
   shutdown start
   shutdown stop
-  accept stop false
+  accept stop close

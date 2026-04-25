@@ -135,3 +135,36 @@ let%expect_test "csexp server life cycle" =
     server: received (11:from client)
     server: sessions finished |}]
 ;;
+
+let%expect_test "csexp server stop rejects new connections" =
+  let tmp_dir = temp_rpc_dir () in
+  let addr : Unix.sockaddr =
+    if Sys.win32
+    then ADDR_INET (Unix.inet_addr_loopback, 0)
+    else ADDR_UNIX (Path.to_string (Path.relative tmp_dir "dunerpc.sock"))
+  in
+  let run () =
+    let server = server addr in
+    let* sessions = Server.serve server in
+    let listening_address = Csexp_rpc.Server.listening_address server |> List.hd in
+    Fiber.fork_and_join_unit
+      (fun () ->
+         let* () = Server.stop server in
+         let client = client listening_address in
+         let* res = Client.connect client in
+         let* outcome =
+           match res with
+           | Error _ ->
+             Client.stop client;
+             Fiber.return "connect failed"
+           | Ok session ->
+             let+ () = Session.close session in
+             "connected"
+         in
+         printfn "%s" outcome;
+         Fiber.return ())
+      (fun () -> Fiber.Stream.In.parallel_iter sessions ~f:(fun _ -> Fiber.return ()))
+  in
+  run_scheduler run;
+  [%expect {| connect failed |}]
+;;

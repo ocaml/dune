@@ -337,24 +337,45 @@ module Server = struct
       { sockets : (Unix.sockaddr * Fd.t) list
       ; mutable task : (Fd.t * Unix.sockaddr) Async_io.Task.t option
       ; mutable running : bool
+      ; closed : unit Fiber.Ivar.t
       }
 
     let create sockets ~backlog =
       List.iter sockets ~f:(fun (_, fd) ->
         Unix.listen (Fd.unsafe_to_unix_file_descr fd) backlog;
         Unix.set_nonblock (Fd.unsafe_to_unix_file_descr fd));
-      { sockets; task = None; running = true }
+      { sockets; task = None; running = true; closed = Fiber.Ivar.create () }
     ;;
 
-    let close t =
-      let+ () = Fiber.parallel_iter ~f:(fun (_, fd) -> Async_io.close fd) t.sockets in
-      Ok None
+    let stop t =
+      let* () = Fiber.return () in
+      match t.running with
+      | false -> Fiber.Ivar.read t.closed
+      | true ->
+        t.running <- false;
+        let* () =
+          match t.task with
+          | None -> Fiber.return ()
+          | Some task ->
+            t.task <- None;
+            let* () = Async_io.Task.cancel task in
+            let+ (_ : (Fd.t * Unix.sockaddr, [ `Cancelled | `Exn of exn ]) result) =
+              Async_io.Task.await task
+            in
+            ()
+        in
+        let* () = Fiber.parallel_iter t.sockets ~f:(fun (_, fd) -> Async_io.close fd) in
+        List.iter t.sockets ~f:(fun (addr, _) ->
+          match (addr : Unix.sockaddr) with
+          | ADDR_UNIX p -> Fpath.unlink_no_err p
+          | _ -> ());
+        Fiber.Ivar.fill t.closed ()
     ;;
 
     let rec accept t =
       let* () = Fiber.return () in
       match t.running with
-      | false -> close t
+      | false -> Fiber.return (Ok None)
       | true ->
         let task =
           Async_io.ready_one t.sockets `Read ~f:(fun _ fd ->
@@ -365,30 +386,19 @@ module Server = struct
         in
         t.task <- Some task;
         let* res = Async_io.Task.await task in
+        t.task <- None;
         (match res with
          | Error (`Exn (Unix.Unix_error (Unix.EAGAIN, _, _))) -> accept t
          | Error (`Exn exn) ->
-           let+ _ = close t in
+           let+ () = stop t in
            Error (Exn_with_backtrace.capture exn)
-         | Error `Cancelled -> close t
+         | Error `Cancelled ->
+           let+ () = stop t in
+           Ok None
          | Ok (fd, _) ->
            Socket.maybe_set_nosigpipe fd;
            Unix.set_nonblock (Fd.unsafe_to_unix_file_descr fd);
            Fiber.return @@ Ok (Some fd))
-    ;;
-
-    let stop t =
-      let* () = Fiber.return () in
-      t.running <- false;
-      let+ () =
-        match t.task with
-        | None -> Fiber.return ()
-        | Some task -> Async_io.Task.cancel task
-      in
-      List.iter t.sockets ~f:(fun (addr, _) ->
-        match (addr : Unix.sockaddr) with
-        | ADDR_UNIX p -> Fpath.unlink_no_err p
-        | _ -> ())
     ;;
   end
 
@@ -445,27 +455,19 @@ module Server = struct
       let+ () = Fiber.Ivar.fill t.ready () in
       let loop () =
         Dune_trace.emit Rpc (fun () ->
-          Dune_trace.Event.Rpc.accept
-            ~id:(Id.to_int t.id)
-            `Start
-            ~success:None
-            ~error:None);
-        let* accept = Transport.accept transport in
+          Dune_trace.Event.Rpc.accept ~id:(Id.to_int t.id) `Start None);
+        let+ accept = Transport.accept transport in
         Dune_trace.emit Rpc (fun () ->
-          let success, error =
+          let res =
             match accept with
-            | Error _exn ->
-              Some false, Some "RPC accept failed. Server will not accept new clients"
-            | Ok None -> Some false, Some "No more clients will be accepted"
-            | Ok (Some _) -> Some true, None
+            | Error exn -> `Error exn
+            | Ok None -> `Close
+            | Ok (Some _) -> `Accept
           in
-          Dune_trace.Event.Rpc.accept ~id:(Id.to_int t.id) `Stop ~success ~error);
+          Dune_trace.Event.Rpc.accept ~id:(Id.to_int t.id) `Stop (Some res));
         match accept with
-        | Error _exn -> Fiber.return None
-        | Ok None -> Fiber.return None
-        | Ok (Some fd) ->
-          let session = Session.create fd in
-          Fiber.return (Some session)
+        | Error _ | Ok None -> None
+        | Ok (Some fd) -> Some (Session.create fd)
       in
       Fiber.Stream.In.create loop
   ;;
@@ -477,14 +479,13 @@ module Server = struct
     | `Running _ | `Init _ ->
       Dune_trace.emit Rpc (fun () ->
         Dune_trace.Event.Rpc.shutdown ~id:(Id.to_int t.id) `Start);
-      let+ () =
+      let* () =
         match t.state with
         | `Closed -> Fiber.return ()
-        | `Running t -> Transport.stop t
-        | `Init fds ->
-          List.iter ~f:Fd.close fds;
-          Fiber.return ()
+        | `Running transport -> Transport.stop transport
+        | `Init fds -> Fiber.parallel_iter fds ~f:Async_io.close
       in
+      let+ () = Fiber.return () in
       t.state <- `Closed;
       Dune_trace.emit Rpc (fun () ->
         Dune_trace.Event.Rpc.shutdown ~id:(Id.to_int t.id) `Stop)
@@ -538,8 +539,8 @@ module Client = struct
   ;;
 
   let connect_exn t =
-    let+ res = connect t in
-    match res with
+    connect t
+    >>| function
     | Ok s -> s
     | Error e -> Exn_with_backtrace.reraise e
   ;;

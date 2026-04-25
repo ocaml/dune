@@ -180,8 +180,12 @@ summarize_rpc_trace () {
       select(.cat == "rpc")
       | if .name == "accept"
            and .args.stage == "stop"
-           and (.args.success == false)
-        then "accept stop false"
+           and .args.status == "close"
+        then "accept stop close"
+        elif .name == "accept"
+             and .args.stage == "stop"
+             and (.args | has("error"))
+        then "accept stop error"
         elif .name == "request" and .args.meth == "build"
         then "build \(.args.stage)"
         elif .name == "shutdown"

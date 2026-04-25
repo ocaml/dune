@@ -20,4 +20,4 @@ Minimal RPC watch shutdown after an RPC build.
   build stop
   shutdown start
   shutdown stop
-  accept stop false
+  accept stop close

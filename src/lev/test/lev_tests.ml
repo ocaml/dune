@@ -1,8 +1,7 @@
+open Stdune
 open Printf
 open Lev
 module List = ListLabels
-
-let immediately = 0.00001
 
 let%expect_test "version" =
   let major, minor = ev_version () in
@@ -15,14 +14,17 @@ let%expect_test "default" =
   [%expect {||}]
 ;;
 
+let span_of_secs = Time.Span.of_secs
+let immediately = span_of_secs 0.00001
+
 let%expect_test "now" =
   let loop = Loop.default () in
-  let (_ : Timestamp.t) = Loop.now loop in
+  let (_ : Time.t) = Loop.now loop in
   [%expect {||}]
 ;;
 
 let%expect_test "sleep" =
-  Timestamp.sleep (Timestamp.of_float 0.1);
+  Lev.sleep (span_of_secs 0.1);
   [%expect {||}]
 ;;
 
@@ -51,7 +53,7 @@ let%expect_test "supported backends include the active backend" =
 let%expect_test "timer" =
   let loop = Loop.create () in
   let timer =
-    Timer.create ~after:0.001 (fun timer ->
+    Timer.create ~after:(span_of_secs 0.001) (fun timer ->
       print_endline "fired timer";
       Timer.stop timer loop)
   in
@@ -64,9 +66,9 @@ let%expect_test "timer" =
 
 let%expect_test "timer remaining is boxed correctly" =
   let loop = Loop.create () in
-  let timer = Timer.create ~after:1.0 (fun _ -> ()) in
+  let timer = Timer.create ~after:(span_of_secs 1.0) (fun _ -> ()) in
   Timer.start timer loop;
-  let remaining = Timestamp.to_float (Timer.remaining timer loop) in
+  let remaining = Time.Span.to_secs (Timer.remaining timer loop) in
   printf "remaining positive = %b\n" (remaining > 0.);
   Timer.stop timer loop;
   [%expect {| remaining positive = true |}]
@@ -86,7 +88,9 @@ let%expect_test "timer - not repeats" =
 
 let%expect_test "timer - cancellation with stop" =
   let loop = Loop.create () in
-  let timer = Timer.create ~after:6.5 (fun _ -> print_endline "fired timer") in
+  let timer =
+    Timer.create ~after:(span_of_secs 6.5) (fun _ -> print_endline "fired timer")
+  in
   Timer.start timer loop;
   ignore (Lev.Loop.run loop Nowait);
   Timer.stop timer loop;
@@ -98,7 +102,7 @@ let%expect_test "periodic timer" =
   let loop = Loop.create () in
   let timer =
     let count = ref 3 in
-    Timer.create ~after:0. ~repeat:0.02 (fun timer ->
+    Timer.create ~after:Time.Span.zero ~repeat:(span_of_secs 0.02) (fun timer ->
       if !count = 0
       then (
         let () = print_endline "stopping timer" in
@@ -133,7 +137,7 @@ let%expect_test "periodic - regular" =
       (fun p ->
          print_endline "periodic fired";
          Periodic.stop p loop)
-      (Regular { offset = Timestamp.of_float 0.1; interval = None })
+      (Regular { offset = Time.add (Loop.now loop) (span_of_secs 0.1); interval = None })
   in
   Periodic.start periodic loop;
   Loop.run_until_done loop;
@@ -147,10 +151,7 @@ let%expect_test "periodic - custom" =
       (fun p ->
          print_endline "periodic fired";
          Periodic.stop p loop)
-      (Custom
-         (fun _ ~now ->
-           let now = Timestamp.to_float now in
-           Timestamp.of_float (now +. 0.2)))
+      (Custom (fun _ ~now -> Time.add now (span_of_secs 0.2)))
   in
   Periodic.start periodic loop;
   Loop.run_until_done loop;
@@ -276,13 +277,13 @@ let%expect_test "timer/consecutive again" =
   let loop = Loop.create () in
   let now = Unix.time () in
   let timer =
-    Timer.create ~after:1.0 (fun t ->
+    Timer.create ~after:(span_of_secs 1.0) (fun t ->
       printf "timer fired after %f\n" (Unix.time () -. now);
       Timer.stop t loop)
   in
   let control =
     let count = ref 3 in
-    Timer.create ~after:immediately ~repeat:0.2 (fun t ->
+    Timer.create ~after:immediately ~repeat:(span_of_secs 0.2) (fun t ->
       if !count = 0
       then Timer.stop t loop
       else (

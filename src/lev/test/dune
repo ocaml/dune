@@ -4,6 +4,7 @@
  (libraries
   lev
   unix
+  stdune
   ;; This is because of the (implicit_transitive_deps false)
   ;; in dune-project
   ppx_expect.config
@@ -20,6 +21,7 @@
  (libraries
   lev
   unix
+  stdune
   ;; This is because of the (implicit_transitive_deps false)
   ;; in dune-project
   ppx_expect.config

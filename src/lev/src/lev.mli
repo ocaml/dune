@@ -1,3 +1,5 @@
+open Stdune
+
 (** Thin wrapper around Marc Lehmann's libev library.
 
 libev is small and performant, but this comes at a cost of a few rough edges
@@ -57,13 +59,7 @@ module Backend : sig
   val recommended : unit -> Set.t
 end
 
-module Timestamp : sig
-  type t
-
-  val sleep : t -> unit
-  val of_float : float -> t
-  val to_float : t -> float
-end
+val sleep : Time.Span.t -> unit
 
 module Loop : sig
   module Flag : sig
@@ -95,7 +91,7 @@ module Loop : sig
 
   type t
 
-  val now : t -> Timestamp.t
+  val now : t -> Stdune.Time.t
 
   (** The default event loop is the only one that can handle child watchers. *)
   val default : ?flags:Flag.Set.t -> unit -> t
@@ -160,10 +156,10 @@ module Periodic : sig
 
   type kind =
     | Regular of
-        { offset : Timestamp.t
-        ; interval : Timestamp.t option
+        { offset : Time.t
+        ; interval : Time.Span.t option
         }
-    | Custom of (t -> now:Timestamp.t -> Timestamp.t)
+    | Custom of (t -> now:Time.t -> Time.t)
 
   val create : (t -> unit) -> kind -> t
 end
@@ -202,8 +198,8 @@ end
 module Timer : sig
   include Watcher
 
-  val create : ?repeat:float -> after:float -> (t -> unit) -> t
-  val remaining : t -> Loop.t -> Timestamp.t
+  val create : ?repeat:Time.Span.t -> after:Time.Span.t -> (t -> unit) -> t
+  val remaining : t -> Loop.t -> Time.Span.t
   val again : t -> Loop.t -> unit
 end
 
@@ -214,7 +210,7 @@ module Stat : sig
   val stat : t -> Unix.stats
 
   val create
-    : ( ?interval:Timestamp.t -> path:string -> (t -> unit) -> t
+    : ( ?interval:Time.Span.t -> path:string -> (t -> unit) -> t
         , [ `Unimplemented ] )
         result
 end

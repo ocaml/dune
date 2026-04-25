@@ -7,8 +7,10 @@ open Stdune
     handle fd readiness and internal scheduler events in one place, so this
     module still has to synchronize access with a mutex. *)
 
-val create : Event.Queue.t -> Types.Async_io.t
-val shutdown : Types.Async_io.t -> unit
+type t := Types.Async_io.t
+
+val create : Event.Queue.t -> t
+val shutdown : t -> unit
 
 (** [close fd] must be used to close any file descriptor which has been
     watched at some point. This is needed to make sure we never close a file
@@ -27,6 +29,9 @@ module Task : sig
   (** Wait for a task to complete *)
   val await : 'a t -> ('a, [ `Cancelled | `Exn of exn ]) result Fiber.t
 end
+
+(** [sleep t after] schedules a one-shot timer on the async-io loop. *)
+val sleep : t -> Time.Span.t -> unit Task.t
 
 (** [ready fd what ~f] wait until [what] can be done on [fd] in a non-blocking
     way and then call [f]. Note that [f] will be called in a different thread,

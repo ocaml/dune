@@ -80,20 +80,22 @@ let wait_for_build_process t ~is_process_group_leader pid =
       t.cancel
       ~on_cancel:(fun () ->
         if not Sys.win32 then Process_watcher.killall t.process_watcher Sys.sigterm;
-        let alarm_clock = Lazy.force t.alarm_clock in
-        let sleep = Alarm_clock.sleep alarm_clock sigterm_grace_period in
+        let sleep = Async_io.sleep t.async_io sigterm_grace_period in
         sigkill_alarm := Some sleep;
-        Alarm_clock.await sleep
+        Async_io.Task.await sleep
         >>| function
-        | `Cancelled -> ()
-        | `Finished -> Process_watcher.killall t.process_watcher Sys.sigkill)
+        | Error `Cancelled -> ()
+        | Ok () -> Process_watcher.killall t.process_watcher Sys.sigkill
+        | Error (`Exn _) -> assert false)
       (fun () ->
-         let+ r = wait_for_process t ~is_process_group_leader pid in
+         let* r = wait_for_process t ~is_process_group_leader pid in
          if not Sys.win32
          then Process_watcher.kill_process_group pid Sys.sigterm ~is_process_group_leader;
-         (match !sigkill_alarm with
-          | None -> ()
-          | Some alarm -> Alarm_clock.cancel (Lazy.force t.alarm_clock) alarm);
+         let+ () =
+           match !sigkill_alarm with
+           | None -> Fiber.return ()
+           | Some alarm -> Async_io.Task.cancel alarm
+         in
          r)
   in
   ( res
@@ -190,6 +192,7 @@ let prepare (config : Config.t) ~(handler : Handler.t) ~events ~file_watcher =
   in
   let cancel = Fiber.Cancel.create () in
   let process_watcher = Process_watcher.init events in
+  let async_io = Async_io.create events in
   let t =
     { status =
         (* Slightly weird initialization happening here: for polling mode we
@@ -209,11 +212,10 @@ let prepare (config : Config.t) ~(handler : Handler.t) ~events ~file_watcher =
     ; file_watcher
     ; fs_syncs = Table.create (module File_watcher.Sync_id) 64
     ; build_inputs_changed = Trigger.create ()
-    ; alarm_clock = lazy (Alarm_clock.create events (Time.Span.of_secs 0.1))
     ; cancel
     ; thread_pool = lazy (Thread_pool.create ~min_workers:4 ~max_workers:50)
     ; signal_watcher
-    ; async_io = Async_io.create events
+    ; async_io
     }
   in
   current := Some t;
@@ -589,17 +591,16 @@ module Run = struct
         | None -> run
         | Some timeout ->
           fun () ->
-            let sleep = Alarm_clock.sleep (Lazy.force t.alarm_clock) timeout in
+            let sleep = Async_io.sleep t.async_io timeout in
             Fiber.fork_and_join_unit
               (fun () ->
-                 let+ res = Alarm_clock.await sleep in
+                 let+ res = Async_io.Task.await sleep in
                  match res with
-                 | `Finished -> Event_queue.send_shutdown t.events Timeout
-                 | `Cancelled -> ())
+                 | Ok () -> Event_queue.send_shutdown t.events Timeout
+                 | Error `Cancelled -> ()
+                 | Error (`Exn _) -> assert false)
               (fun () ->
-                 Fiber.finalize run ~finally:(fun () ->
-                   Alarm_clock.cancel (Lazy.force t.alarm_clock) sleep;
-                   Fiber.return ()))
+                 Fiber.finalize run ~finally:(fun () -> Async_io.Task.cancel sleep))
       in
       match Run_once.run_and_cleanup t run with
       | Ok a -> Result.Ok a
@@ -607,7 +608,6 @@ module Run = struct
       | Error Already_reported -> Error (Dune_util.Report_error.Already_reported, None)
       | Error (Exn exn_with_bt) -> Error (exn_with_bt.exn, Some exn_with_bt.backtrace)
     in
-    if Lazy.is_val t.alarm_clock then Alarm_clock.close (Lazy.force t.alarm_clock);
     match result with
     | Ok a -> a
     | Error (exn, None) -> Exn.raise exn
@@ -633,21 +633,22 @@ let cancel_current_build () =
 
 let wait_for_process_with_timeout t pid waiter ~timeout ~is_process_group_leader =
   Fiber.of_thunk (fun () ->
-    let sleep = Alarm_clock.sleep (Lazy.force t.alarm_clock) timeout in
+    let sleep = Async_io.sleep t.async_io timeout in
     let+ clock_result =
-      Alarm_clock.await sleep
+      Async_io.Task.await sleep
       >>| function
-      | `Finished when Process_watcher.is_running t.process_watcher pid ->
+      | Ok () when Process_watcher.is_running t.process_watcher pid ->
         Process_watcher.kill_process_group pid Sys.sigkill ~is_process_group_leader;
         Dune_trace.emit Process (fun () ->
           Dune_trace.Event.signal_sent
             Kill
             (`Timeout { pid; group_leader = is_process_group_leader; timeout }));
         `Timed_out
-      | _ -> `Finished
+      | Ok () | Error `Cancelled -> `Finished
+      | Error (`Exn _) -> assert false
     and+ res, termination_reason =
-      let+ res = waiter t ~is_process_group_leader pid in
-      Alarm_clock.cancel (Lazy.force t.alarm_clock) sleep;
+      let* res = waiter t ~is_process_group_leader pid in
+      let+ () = Async_io.Task.cancel sleep in
       res
     in
     ( res
@@ -677,13 +678,13 @@ let wait_for_process ?timeout ~is_process_group_leader pid =
 let sleep dur =
   let* () = Fiber.return () in
   (let t = t () in
-   let alarm_clock = Lazy.force t.alarm_clock in
-   Alarm_clock.await (Alarm_clock.sleep alarm_clock dur))
+   Async_io.Task.await (Async_io.sleep t.async_io dur))
   >>| function
-  | `Finished -> ()
-  | `Cancelled ->
+  | Ok () -> ()
+  | Error `Cancelled ->
     (* cancellation mechanism isn't exposed to the user *)
     assert false
+  | Error (`Exn _) -> assert false
 ;;
 
 let set_fs_memo_impl = Fs_memo.set_impl

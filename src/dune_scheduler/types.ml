@@ -19,10 +19,22 @@ module Async_io = struct
     ; wakeup : Lev.Async.t
     ; watchers : (Fd.t, watcher) Table.t
     ; mutable retired : watcher list
+    ; timers : (Task_id.t, timer) Table.t
+    ; mutable retired_timers : Lev.Timer.t list
     ; mutable thread : Thread.t option
     ; mutable started : bool
     ; mutable shutting_down : bool
     ; mutable destroyed : bool
+    }
+
+  and timer =
+    { ivar : (unit, [ `Cancelled | `Exn of exn ]) result Fiber.Ivar.t
+    ; after : Time.Span.t
+    ; select : t
+    ; id : Task_id.t
+    ; mutable watcher : Lev.Timer.t option
+    ; mutable ready : bool
+    ; mutable status : [ `Filled | `Waiting ]
     }
 
   and ('a, 'label) task =
@@ -68,8 +80,7 @@ module Scheduler = struct
       Restarting_build
 
   type t =
-    { alarm_clock : Alarm_clock.t Lazy.t
-    ; mutable status : status
+    { mutable status : status
     ; mutable invalidation : Memo.Invalidation.t
     ; mutable run_id_state : Run_id.State.t
     ; mutable watch_restart_started_at : Time.t option

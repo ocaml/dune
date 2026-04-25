@@ -134,9 +134,23 @@ let deps_of_vlib_module ~obj_dir ~vimpl ~dir ~sctx ~ml_kind ~for_ sourced_module
 (** Tests whether a set of modules is a singleton. *)
 let has_single_file modules = Option.is_some @@ Modules.With_vlib.as_singleton modules
 
-(** Tests whether ocamldep can be short-circuited for [modules]: true for
-    single-module stanzas that have no library dependencies, since no
-    consumer of ocamldep output can benefit in that case. *)
+(** Tests whether ocamldep can be short-circuited for [modules]: true
+    for single-module stanzas that have no library dependencies.
+    The premise — "no consumer of ocamldep output can benefit" — was
+    valid before #4572; under that PR, cross-library consumers now
+    read a target library's ocamldep output as part of the
+    per-module inter-library dependency filter. Libraries identified
+    here must also be identified in
+    [Compilation_context.build_lib_index]'s [no_ocamldep_lib] check
+    so the cross-library walk knows their [.d] files will be
+    missing. Keeping the two in sync is fragile.
+
+    TODO: unify into a single predicate that both call sites
+    consult, so future changes to the condition can't drift. The
+    cleanest shape is probably to retire this short-circuit for
+    library stanzas entirely — libraries that could be consumed
+    cross-stanza should always run ocamldep — and keep the
+    optimisation only for executable/test stanzas. *)
 let skip_ocamldep ~has_library_deps modules =
   has_single_file modules && not has_library_deps
 ;;

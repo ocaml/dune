@@ -65,8 +65,8 @@ type t =
   ; parameters : Module_name.t list Resolve.Memo.t
   ; instances : Parameterised_instances.t Resolve.Memo.t option
   ; includes : Includes.t
-  ; lib_index : Lib_file_deps.Lib_index.t Resolve.Memo.t
-  ; has_virtual_impl : bool Resolve.Memo.t
+  ; lib_index : Lib_file_deps.Lib_index.t Resolve.t Memo.Lazy.t
+  ; has_virtual_impl : bool Resolve.t Memo.Lazy.t
   ; preprocessing : Pp_spec.t
   ; opaque : bool
   ; js_of_ocaml : Js_of_ocaml.In_context.t option Js_of_ocaml.Mode.Pair.t
@@ -94,8 +94,8 @@ let requires_hidden t = t.requires_hidden
 let requires_link t = Memo.Lazy.force t.requires_link
 let parameters t = t.parameters
 let includes t = t.includes
-let lib_index t = t.lib_index
-let has_virtual_impl t = t.has_virtual_impl
+let lib_index t = Memo.Lazy.force t.lib_index
+let has_virtual_impl t = Memo.Lazy.force t.has_virtual_impl
 let preprocessing t = t.preprocessing
 let opaque t = t.opaque
 let js_of_ocaml t = t.js_of_ocaml
@@ -284,15 +284,17 @@ let create
   ; parameters
   ; includes = Includes.make ~project ~direct_requires ~hidden_requires ocaml.lib_config
   ; lib_index =
-      (let open Resolve.Memo.O in
-       let* direct = direct_requires in
-       let* hidden = hidden_requires in
-       build_lib_index ~super_context ~all_libs:(direct @ hidden) ~for_)
+      Memo.lazy_ (fun () ->
+        let open Resolve.Memo.O in
+        let* direct = direct_requires in
+        let* hidden = hidden_requires in
+        build_lib_index ~super_context ~all_libs:(direct @ hidden) ~for_)
   ; has_virtual_impl =
-      (let open Resolve.Memo.O in
-       let+ direct = direct_requires
-       and+ hidden = hidden_requires in
-       List.exists (direct @ hidden) ~f:(fun lib -> Option.is_some (Lib.implements lib)))
+      Memo.lazy_ (fun () ->
+        let open Resolve.Memo.O in
+        let+ direct = direct_requires
+        and+ hidden = hidden_requires in
+        List.exists (direct @ hidden) ~f:(fun lib -> Option.is_some (Lib.implements lib)))
   ; preprocessing
   ; opaque
   ; js_of_ocaml
@@ -394,7 +396,7 @@ let for_module_generated_at_link_time cctx ~requires ~module_ =
   ; requires_link = Memo.lazy_ (fun () -> requires)
   ; requires_compile = requires
   ; includes
-  ; lib_index = Resolve.Memo.return Lib_file_deps.Lib_index.empty
+  ; lib_index = Memo.lazy_ (fun () -> Resolve.Memo.return Lib_file_deps.Lib_index.empty)
   ; modules
   }
 ;;

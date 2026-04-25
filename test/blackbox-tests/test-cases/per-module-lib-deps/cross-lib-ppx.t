@@ -56,7 +56,7 @@ raw [Module.t] for [mod_a]:
   > (library (name consumer) (wrapped false) (libraries dep))
   > EOF
   $ cat > consumer/c.ml <<EOF
-  > let w = Mod_a.v
+  > let _ = Mod_a.v
   > EOF
   $ cat > consumer/d.ml <<EOF
   > let _ = ()

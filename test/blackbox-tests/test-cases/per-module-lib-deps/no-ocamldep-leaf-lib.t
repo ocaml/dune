@@ -37,7 +37,7 @@ whether the cross-library walk tries to read [leaf]'s ocamldep:
   > (library (name consumer) (wrapped false) (libraries leaf))
   > EOF
   $ cat > consumer/c.ml <<EOF
-  > let w = Mod_leaf.v
+  > let _ = Mod_leaf.v
   > EOF
   $ cat > consumer/d.ml <<EOF
   > let _ = ()

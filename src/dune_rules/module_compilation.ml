@@ -46,14 +46,18 @@ let module_kind_is_filterable m =
   | Intf_only | Impl | Alias _ -> true
 ;;
 
-(* A module has user-authored ocamldep output we can read as part of
-   the filter's reference walk. [Alias _] modules are synthetic stubs
-   with no useful ocamldep; [Virtual] modules' interfaces do carry
-   references we want to follow. *)
+(* A module whose immediate-deps file we can read as part of the
+   filter's reference walk. [Alias _] modules are synthetic stubs
+   with no useful ocamldep output; [Virtual] modules' interfaces
+   do carry references we want to follow. [Root] modules have a
+   synthesized [.d] written alongside the generated [root.ml] (no
+   ocamldep invocation, but the file exists in the same format),
+   so they participate in the walk through the general read path.
+   See the standalone change in [build_root_module]. *)
 let module_kind_has_readable_ocamldep m =
   match Module.kind m with
-  | Impl_vmodule | Root | Alias _ | Wrapped_compat | Parameter -> false
-  | Virtual | Intf_only | Impl -> true
+  | Impl_vmodule | Alias _ | Wrapped_compat | Parameter -> false
+  | Virtual | Intf_only | Impl | Root -> true
 ;;
 
 (* Extend [initial_refs] with module names reached through cross-
@@ -1018,6 +1022,33 @@ let build_root_module cctx root_module =
          (let open Action_builder.O in
           let+ entries = entries in
           root_source entries))
+  in
+  (* Write a synthesized immediate-deps file in the same format
+     [ocamldep -modules] would produce. The content is exactly
+     what running ocamldep on the generated [root.ml] would
+     output: the entry-module names of every required library.
+     [Dep_rules.deps_of]'s [is_alias_or_root] short-circuit
+     remains intact, so no transitive [.all-deps] file is
+     produced for [Root] — preserving the cycle prevention
+     introduced in commit a5d894525 (change #12227). The cycle
+     lives in [.all-deps] generation, not in [.d] reading. *)
+  let* () =
+    let obj_dir = Compilation_context.obj_dir cctx in
+    match Obj_dir.Module.dep obj_dir ~for_ (Immediate (root_module, Ml_kind.Impl)) with
+    | None -> Memo.return ()
+    | Some d_target ->
+      Super_context.add_rule
+        ~loc:Loc.none
+        sctx
+        ~dir
+        (Action_builder.write_file_dyn
+           d_target
+           (let open Action_builder.O in
+            let+ entries = entries in
+            sprintf
+              "%s: %s\n"
+              (Path.Build.basename (Path.as_in_build_dir_exn file))
+              (String.concat ~sep:" " (List.map entries ~f:Module_name.to_string))))
   in
   build_module cctx root_module
 ;;

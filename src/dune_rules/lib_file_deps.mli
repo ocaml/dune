@@ -46,7 +46,7 @@ module Lib_index : sig
       library walk in [module_compilation] must not try to read
       [.d] files for those libs. *)
   val create
-    :  ?no_ocamldep:Lib.Set.t
+    :  no_ocamldep:Lib.Set.t
     -> (Module_name.t * Lib.t * Module.t option) list
     -> t
 

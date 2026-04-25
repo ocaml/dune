@@ -154,9 +154,19 @@ let build_lib_index ~super_context ~all_libs ~for_ =
                 (Lib.Local.of_lib_exn lib)
                 ~for_)
              ~f:(fun mods ->
+               (* [Some m] iff the lib is tight-eligible (local + unwrapped):
+                  only then can downstream consumers issue per-module deps
+                  on its [.cmi] files. [None] therefore covers both wrapped
+                  locals and externals — in either case we don't have a
+                  [Module.t] the per-module path can use. *)
+               let unwrapped =
+                 match Lib_info.wrapped (Lib.info lib) with
+                 | Some (This w) -> not (Wrapped.to_bool w)
+                 | Some (From _) | None -> false
+               in
                let entries =
                  List.map (Modules.entry_modules mods) ~f:(fun m ->
-                   Module.name m, lib, Some m)
+                   Module.name m, lib, if unwrapped then Some m else None)
                in
                let no_ocamldep_lib =
                  match Modules.as_singleton mods with

@@ -151,26 +151,13 @@ module Lib_index = struct
     }
   ;;
 
-  (* Local + unwrapped: every entry has a known [Module.t] we can
-     feed to [Obj_dir.Module.cm_public_file]. Wrapped libraries
-     fall back to a directory glob; see the module-level comment
-     at the top of this file for the ocamldep-granularity reason
-     and sketches of follow-on work. *)
-  let is_lib_tight_eligible lib =
-    Lib.is_local lib
-    &&
-    match Lib_info.wrapped (Lib.info lib) with
-    | Some (This w) -> not (Wrapped.to_bool w)
-    | Some (From _) | None ->
-      (* [Some (From _)]: wrapped setting inherited from a virtual
-         library. The [has_virtual_impl] branch higher up in
-         [lib_deps_for_module] should handle virtual-impl contexts
-         before we reach here; stay defensive.
-         [None]: no wrapped information available (e.g. legacy
-         [dune-package]). *)
-      false
-  ;;
-
+  (* Tight-eligibility — local + unwrapped, every entry carries a
+     [Module.t] — is encoded in the entry shape itself: an entry
+     [(_, lib, Some _)] means the producer of the index has decided
+     [lib] is tight-eligible. Wrapped local libs and externals come
+     in as [(_, _, None)] and don't enter [tight_eligible]. See the
+     module-level comment at the top of this file for the
+     ocamldep-granularity reason wrapped libs are excluded. *)
   let create ?(no_ocamldep = Lib.Set.empty) entries =
     let by_module_name =
       List.fold_left entries ~init:Module_name.Map.empty ~f:(fun map (name, lib, m) ->
@@ -179,8 +166,10 @@ module Lib_index = struct
           | Some xs -> Some ((lib, m) :: xs)))
     in
     let tight_eligible =
-      List.fold_left entries ~init:Lib.Set.empty ~f:(fun acc (_, lib, _) ->
-        if is_lib_tight_eligible lib then Lib.Set.add acc lib else acc)
+      List.fold_left entries ~init:Lib.Set.empty ~f:(fun acc (_, lib, m_opt) ->
+        match m_opt with
+        | Some _ -> Lib.Set.add acc lib
+        | None -> acc)
     in
     { by_module_name; tight_eligible; no_ocamldep }
   ;;

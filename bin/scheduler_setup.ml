@@ -22,46 +22,47 @@ let maybe_clear_screen
             [ Pp.nop; Pp.tag User_message.Style.Success (Pp.verbatim message); Pp.nop ]))
 ;;
 
-let on_event ~terminal_persistence = function
+let set_overlay overlay message =
+  Option.iter !overlay ~f:Console.Status_line.remove_overlay;
+  overlay := Some (Console.Status_line.add_overlay (Constant message))
+;;
+
+let clear_overlay overlay =
+  Option.iter !overlay ~f:Console.Status_line.remove_overlay;
+  overlay := None
+;;
+
+let on_event overlay ~terminal_persistence = function
   | Run.Event.Tick -> Console.Status_line.refresh ()
   | Source_files_changed { details_hum } ->
-    maybe_clear_screen ~terminal_persistence ~details_hum
+    maybe_clear_screen ~terminal_persistence ~details_hum;
+    clear_overlay overlay
   | Build_interrupted ->
-    Console.Status_line.set
-      (Live
-         (fun () ->
-           let progression =
-             match Fiber.Svar.read Build_system.state with
-             | Initializing
-             | Restarting_current_build
-             | Build_succeeded__now_waiting_for_changes
-             | Build_failed__now_waiting_for_changes -> Build_system.Progress.init
-             | Building progress -> progress
-           in
-           Pp.seq
-             (Pp.tag User_message.Style.Error (Pp.verbatim "Source files changed"))
-             (Pp.verbatim
-                (sprintf
-                   ", restarting current build... (%u/%u)"
-                   progression.number_of_rules_executed
-                   progression.number_of_rules_discovered))))
+    set_overlay
+      overlay
+      (Pp.tag User_message.Style.Error (Pp.verbatim "Restarting current build..."))
   | Build_finish build_result ->
     let message =
       match build_result with
-      | Success -> Pp.tag User_message.Style.Success (Pp.verbatim "Success")
+      | Success ->
+        Pp.seq
+          (Pp.tag User_message.Style.Success (Pp.verbatim "Success"))
+          (Pp.verbatim ", waiting for filesystem changes...")
       | Failure ->
+        let error_count =
+          Build_system_error.(
+            Id.Map.cardinal (Set.current (Fiber.Svar.read Build_system.errors)))
+        in
         let failure_message =
-          match
-            Build_system_error.(
-              Id.Map.cardinal (Set.current (Fiber.Svar.read Build_system.errors)))
-          with
+          match error_count with
           | 1 -> Pp.textf "Had 1 error"
           | n -> Pp.textf "Had %d errors" n
         in
-        Pp.tag User_message.Style.Error failure_message
+        Pp.seq
+          (Pp.tag User_message.Style.Error failure_message)
+          (Pp.verbatim ", waiting for filesystem changes...")
     in
-    Console.Status_line.set
-      (Constant (Pp.seq message (Pp.verbatim ", waiting for filesystem changes...")))
+    set_overlay overlay message
 ;;
 
 let rpc server =
@@ -79,14 +80,27 @@ let no_build_no_rpc ~config:dune_config f =
   Run.go config ~on_event:(fun _ -> ()) f
 ;;
 
+let run_with_watch_status ~terminal_persistence f =
+  let overlay = ref None in
+  Exn.protect
+    ~f:(fun () ->
+      let on_event = on_event overlay ~terminal_persistence in
+      f on_event)
+    ~finally:(fun () -> clear_overlay overlay)
+;;
+
 let go_without_rpc_server ~(common : Common.t) ~config:dune_config f =
   let config =
     let watch_exclusions = Common.watch_exclusions common in
     Dune_config.for_scheduler dune_config ~print_ctrl_c_warning:true ~watch_exclusions
   in
   Dune_rules.Clflags.concurrency := config.concurrency;
-  let on_event = on_event ~terminal_persistence:dune_config.terminal_persistence in
-  Run.go config ~on_event f
+  match Common.watch common with
+  | No -> Run.go config ~on_event:(fun _ -> ()) f
+  | Yes _ ->
+    run_with_watch_status
+      ~terminal_persistence:dune_config.terminal_persistence
+      (fun on_event -> Run.go config ~on_event f)
 ;;
 
 let go_with_rpc_server ~common ~config f =
@@ -121,9 +135,7 @@ let go_with_rpc_server_and_console_status_reporting
     let* () = Root.Rpc.Global.ensure_ready () in
     run ()
   in
-  Run.go
-    config
-    ~file_watcher
-    ~on_event:(on_event ~terminal_persistence:dune_config.terminal_persistence)
-    run
+  run_with_watch_status
+    ~terminal_persistence:dune_config.terminal_persistence
+    (fun on_event -> Run.go config ~file_watcher ~on_event run)
 ;;

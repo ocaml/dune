@@ -46,14 +46,18 @@ let module_kind_is_filterable m =
   | Intf_only | Impl | Alias _ -> true
 ;;
 
-(* A module has user-authored ocamldep output we can read as part of
-   the filter's reference walk. [Alias _] modules are synthetic stubs
-   with no useful ocamldep; [Virtual] modules' interfaces do carry
-   references we want to follow. *)
+(* A module whose ocamldep output the filter's reference walk can
+   read. [Alias _] modules are synthetic stubs with no useful
+   ocamldep output; [Virtual] modules' interfaces do carry
+   references we want to follow. [Root] modules have a generated
+   [root.ml] source that ocamldep parses normally; the
+   [is_alias_or_root] short-circuit in [Dep_rules.deps_of] still
+   suppresses the [.all-deps] file (preserving the cycle prevention
+   from change #12227, commit a5d894525). *)
 let module_kind_has_readable_ocamldep m =
   match Module.kind m with
-  | Impl_vmodule | Root | Alias _ | Wrapped_compat | Parameter -> false
-  | Virtual | Intf_only | Impl -> true
+  | Impl_vmodule | Alias _ | Wrapped_compat | Parameter -> false
+  | Virtual | Intf_only | Impl | Root -> true
 ;;
 
 (* Extend [initial_refs] with module names reached through cross-

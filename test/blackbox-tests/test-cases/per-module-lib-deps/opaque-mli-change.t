@@ -50,7 +50,7 @@ left unexported, which would trip warning 32 under dev):
 
   $ dune build ./main.exe
   $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("dune__exe__Main"))] | length'
-  2
+  1
 
 --- Dev profile (opaque=true): .mli change still rebuilds consumer ---
 
@@ -76,4 +76,4 @@ Add another paired declaration:
 
   $ dune build ./main.exe
   $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("dune__exe__Main"))] | length'
-  2
+  1

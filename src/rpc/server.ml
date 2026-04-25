@@ -80,14 +80,6 @@ module Session = struct
       in
       Dyn.variant name []
     ;;
-
-    let close t =
-      match t.state with
-      | `Closed -> Fiber.return ()
-      | `Open ->
-        t.state <- `Closed;
-        Fiber.fork_and_join_unit t.finalizer (Fiber.Ivar.fill t.ivar)
-    ;;
   end
 
   type 'a state =
@@ -96,6 +88,12 @@ module Session = struct
         { init : Initialize.Request.t
         ; state : 'a
         }
+
+  module Pending_response = struct
+    type t =
+      | Response of Response.t
+      | Closed
+  end
 
   module Stage1 = struct
     type 'a t =
@@ -106,8 +104,7 @@ module Session = struct
       ; send : Packet.t list option -> unit Fiber.t
       ; pool : Fiber.Pool.t
       ; mutable state : 'a state
-      ; (* TODO these should be cancelled when the connection closes *)
-        pending : (Dune_rpc.Private.Id.t, Response.t Fiber.Ivar.t) Table.t
+      ; pending : (Dune_rpc.Private.Id.t, Pending_response.t Fiber.Ivar.t) Table.t
         (** Pending requests sent to the client. When a response is
           received, the ivar for the response will be filled. *)
       ; name : string
@@ -147,30 +144,62 @@ module Session = struct
     ;;
 
     let menu t = t.menu
-    let close t = Close.close t.close
+
+    let close_pending_requests t =
+      let pending = Table.to_list t.pending in
+      Table.clear t.pending;
+      Fiber.parallel_iter pending ~f:(fun (_, ivar) ->
+        Fiber.Ivar.fill ivar Pending_response.Closed)
+    ;;
+
+    let close t =
+      match t.close.state with
+      | `Closed -> Fiber.return ()
+      | `Open ->
+        t.close.state <- `Closed;
+        Fiber.fork_and_join_unit
+          (fun () -> close_pending_requests t)
+          (fun () ->
+             Fiber.fork_and_join_unit t.close.finalizer (Fiber.Ivar.fill t.close.ivar))
+    ;;
+
     let id t = t.id
 
     let request t ((id, call) as req) =
-      match Table.find t.pending id with
-      | Some _ ->
-        Code_error.raise
-          "request with this id is already pending"
-          [ "id", Dune_rpc.Private.Id.to_dyn id
-          ; "call", Dune_rpc.Private.Call.to_dyn call
-          ]
-      | None ->
+      match t.close.state with
+      | `Closed ->
         let ivar = Fiber.Ivar.create () in
-        Table.add_exn t.pending id ivar;
-        let+ () = Fiber.Pool.task t.pool ~f:(fun () -> t.send (Some [ Request req ])) in
+        let+ () = Fiber.Ivar.fill ivar Pending_response.Closed in
         ivar
+      | `Open ->
+        (match Table.find t.pending id with
+         | Some _ ->
+           Code_error.raise
+             "request with this id is already pending"
+             [ "id", Dune_rpc.Private.Id.to_dyn id
+             ; "call", Dune_rpc.Private.Call.to_dyn call
+             ]
+         | None ->
+           let ivar = Fiber.Ivar.create () in
+           Table.add_exn t.pending id ivar;
+           let+ () =
+             Fiber.Pool.task t.pool ~f:(fun () ->
+               match t.close.state with
+               | `Closed -> Fiber.return ()
+               | `Open -> t.send (Some [ Request req ]))
+           in
+           ivar)
     ;;
 
     let response t (id, response) =
       match Table.find t.pending id with
-      | None -> raise_invalid_session "unexpected response" []
+      | None ->
+        (match t.close.state with
+         | `Closed -> Fiber.return ()
+         | `Open -> raise_invalid_session "unexpected response" [])
       | Some ivar ->
         Table.remove t.pending id;
-        Fiber.Ivar.fill ivar response
+        Fiber.Ivar.fill ivar (Pending_response.Response response)
     ;;
 
     let compare x y = Id.compare x.id y.id
@@ -223,6 +252,18 @@ module Session = struct
     t.base.send (Some [ Notification (encode n) ])
   ;;
 
+  let raise_connection_dead id =
+    let payload = Sexp.record [ "id", Dune_rpc.Private.Id.to_sexp id ] in
+    let error =
+      Response.Error.create
+        ~kind:Connection_dead
+        ~payload
+        ~message:"Connection terminated. This request will never receive a response."
+        ()
+    in
+    raise (Response.Error.E error)
+  ;;
+
   let request t decl id req =
     let* () = Fiber.return () in
     match V.Handler.prepare_request t.handler decl with
@@ -237,17 +278,20 @@ module Session = struct
       let* ivar = Stage1.request t.base (id, req) in
       let+ resp = Fiber.Ivar.read ivar in
       (match resp with
-       | Error error ->
-         Code_error.raise
-           "client and server do not agree on version"
-           [ "error", Response.Error.to_dyn error ]
-       | Ok resp ->
-         (match decode_resp resp with
-          | Ok s -> s
+       | Pending_response.Closed -> raise_connection_dead id
+       | Response response ->
+         (match response with
           | Error error ->
             Code_error.raise
-              "unexpected response"
-              [ "error", Response.Error.to_dyn error ]))
+              "client and server do not agree on version"
+              [ "error", Response.Error.to_dyn error ]
+          | Ok resp ->
+            (match decode_resp resp with
+             | Ok s -> s
+             | Error error ->
+               Code_error.raise
+                 "unexpected response"
+                 [ "error", Response.Error.to_dyn error ])))
   ;;
 
   let to_dyn f t =

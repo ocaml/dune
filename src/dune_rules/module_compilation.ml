@@ -46,20 +46,6 @@ let module_kind_is_filterable m =
   | Intf_only | Impl | Alias _ -> true
 ;;
 
-(* A module whose immediate-deps file we can read as part of the
-   filter's reference walk. [Alias _] modules are synthetic stubs
-   with no useful ocamldep output; [Virtual] modules' interfaces
-   do carry references we want to follow. [Root] modules have a
-   synthesized [.d] written alongside the generated [root.ml] (no
-   ocamldep invocation, but the file exists in the same format),
-   so they participate in the walk through the general read path.
-   See the standalone change in [build_root_module]. *)
-let module_kind_has_readable_ocamldep m =
-  match Module.kind m with
-  | Impl_vmodule | Alias _ | Wrapped_compat | Parameter -> false
-  | Virtual | Intf_only | Impl | Root -> true
-;;
-
 (* Extend [initial_refs] with module names reached through cross-
    library ocamldep. Walk tight-eligible entry modules breadth-first:
    gather all [(lib, entry module)] pairs named by the frontier, read
@@ -225,18 +211,15 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
           | Ocaml (Cmi | Cmo) | Melange _ -> false
       in
       let read_dep_m_raw dep_m ~is_consumer =
-        if not (module_kind_has_readable_ocamldep dep_m)
-        then Action_builder.return Module_name.Set.empty
-        else
-          let* impl_deps =
-            if need_impl_deps_of dep_m ~is_consumer
-            then Ocamldep.read_immediate_deps_raw_of ~obj_dir ~ml_kind:Impl ~for_ dep_m
-            else Action_builder.return Module_name.Set.empty
-          in
-          let+ intf_deps =
-            Ocamldep.read_immediate_deps_raw_of ~obj_dir ~ml_kind:Intf ~for_ dep_m
-          in
-          Module_name.Set.union impl_deps intf_deps
+        let* impl_deps =
+          if need_impl_deps_of dep_m ~is_consumer
+          then Ocamldep.read_immediate_deps_raw_of ~obj_dir ~ml_kind:Impl ~for_ dep_m
+          else Action_builder.return Module_name.Set.empty
+        in
+        let+ intf_deps =
+          Ocamldep.read_immediate_deps_raw_of ~obj_dir ~ml_kind:Intf ~for_ dep_m
+        in
+        Module_name.Set.union impl_deps intf_deps
       in
       let* m_raw = read_dep_m_raw m ~is_consumer:true in
       let* trans_raw =

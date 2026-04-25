@@ -1,8 +1,8 @@
-Verify that the [groups_for_cm_kind] optimisation in [lib_file_deps.ml]
-is gated on [Lib.is_local lib]: a consumer's [.cmx] rule depends on an
-external library's [.cmx] regardless of profile. Counterpart to
-[opaque-cmx-deps-local.t]. The [unix] stdlib library, resolved through
-findlib, plays the role of "external".
+A consumer's [.cmx] compilation rule depends on an external library's
+[.cmx] under both the release and dev profiles. Counterpart to
+[opaque-cmx-deps-local.t], which shows the dev-profile behaviour that
+omits the [.cmx] from the dep set for *local* libraries. The [unix]
+stdlib library, resolved through findlib, plays the role of "external".
 
   $ cat > dune-project <<EOF
   > (lang dune 3.0)

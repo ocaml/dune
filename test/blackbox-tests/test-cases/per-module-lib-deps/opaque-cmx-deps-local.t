@@ -1,9 +1,7 @@
-Verify the [groups_for_cm_kind] decision in [lib_file_deps.ml]: a
-consumer's [.cmx] rule depends on a local library's [.cmx] under the
-release profile (opaque=false), but only on the [.cmi] under the dev
-profile (opaque=true). The [Lib.is_local lib] guard means this
-optimisation applies to local libraries; see
-[opaque-cmx-deps-external.t] for the external-library case.
+A consumer's [.cmx] compilation rule depends on a local library's
+[.cmx] under the release profile (opaque=false), but only on the
+[.cmi] under the dev profile (opaque=true). External libraries
+behave differently; see [opaque-cmx-deps-external.t].
 
   $ cat > dune-project <<EOF
   > (lang dune 3.0)

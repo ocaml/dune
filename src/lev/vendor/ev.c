@@ -588,7 +588,7 @@ struct signalfd_siginfo
  * This value is good at least till the year 4000.
  */
 #define MIN_INTERVAL  0.0001220703125 /* 1/2**13, good till 4000 */
-/*#define MIN_INTERVAL  0.00000095367431640625 // 1/2**20, good till 2200 */
+// #define MIN_INTERVAL  0.00000095367431640625 /* 1/2**20, good till 2200 */
 
 #define MIN_TIMEJUMP   1. /* minimum timejump that gets detected (if monotonic clock available) */
 #define MAX_BLOCKTIME  59.743 /* never wait longer than this time (to detect time jumps) */
@@ -5631,8 +5631,8 @@ ev_walk (EV_P_ int types, void (*cb)(EV_P_ int type, void *w)) EV_NOEXCEPT
           wl = wn;
         }
 #endif
-/* EV_STAT     0x00001000 // stat data changed */
-/* EV_EMBED    0x00010000 // embedded event loop needs sweep */
+/* EV_STAT     0x00001000 - stat data changed */
+/* EV_EMBED    0x00010000 - embedded event loop needs sweep */
 }
 #endif
 

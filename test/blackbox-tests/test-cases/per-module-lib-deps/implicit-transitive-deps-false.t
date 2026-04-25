@@ -1,5 +1,5 @@
-Observational baseline: under [(implicit_transitive_deps false)],
-the consumer [main] uses [intermediate_lib] which declares
+Partial-fix state: under [(implicit_transitive_deps false)], the
+consumer [main] uses [intermediate_lib] which declares
 [link_only_lib] as a transitive dep. [main]'s source never
 references any module of [link_only_lib]; under
 [(implicit_transitive_deps false)] (with [-H] support, mode
@@ -14,19 +14,20 @@ test pins [(lang dune 3.23)] below to keep the [-H]-glob path the
 one exercised — that is the path the future per-module filter is
 expected to tighten.
 
-On trunk today, [main]'s compile rule globs over
-[link_only_lib]'s objdir as part of the cctx-wide [-H] glob, so
-any [.cmi] content change in [link_only_lib] invalidates [main].
-A tighter per-module filter could observe that no
-[link_only_lib] entry name reaches [main]'s reference closure
-and drop the lib from [main]'s compile-rule deps.
+This commit's [.ml]-side ocamldep skip elides the [-H] glob from
+[Main]'s [.cmi]/[.cmti] rule (the [.mli] consumer side does not
+read [.cmx], so [.ml]-side references in transitively-reached
+modules don't propagate). The [.cmo]/[.cmt] rule still globs over
+[link_only_lib]'s objdir, so [Main.cmo] is still invalidated on
+any [.cmi] content change in [link_only_lib]. The full
+elimination to [[]] requires the further [Lib_index] hidden-libs
+fix in PR #14116.
 
 Reported by @nojb in
 https://github.com/ocaml/dune/pull/14116#issuecomment-4323883194
 and again, after a partial fix, in
 https://github.com/ocaml/dune/pull/14116#issuecomment-4331209820.
-Records [main]'s current rebuild count so a future per-module
-filter can flip it to 0.
+Records [main]'s current intermediate state.
 
   $ cat > dune-project <<EOF
   > (lang dune 3.23)
@@ -72,12 +73,6 @@ on the [.cmi] content change, invalidating [main] — both the
   $ dune build ./main.exe
   $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("dune__exe__Main"))]'
   [
-    {
-      "target_files": [
-        "_build/default/.main.eobjs/byte/dune__exe__Main.cmi",
-        "_build/default/.main.eobjs/byte/dune__exe__Main.cmti"
-      ]
-    },
     {
       "target_files": [
         "_build/default/.main.eobjs/native/dune__exe__Main.cmx",

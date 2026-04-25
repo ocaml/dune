@@ -219,6 +219,7 @@ module Ivar = struct
   let create () = { state = Empty }
   let read t k = Read_ivar (t, k)
   let fill t x k = Fill_ivar (t, x, k)
+  let create_full a = { state = Full a }
 
   let peek t k =
     k

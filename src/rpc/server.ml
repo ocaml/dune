@@ -4,31 +4,6 @@ open Fiber.O
 module Session_id = Stdune.Id.Make ()
 module User_message = Stdune.User_message
 
-type error =
-  { message : User_message.t
-  ; details : (string * Dyn.t) list
-  }
-
-exception Invalid_session of error
-
-let () =
-  Printexc.register_printer (function
-    | Invalid_session { message; details } ->
-      let message =
-        let paragraphs =
-          message.paragraphs @ [ Pp.text "details:"; Dyn.pp (Dyn.record details) ]
-        in
-        { message with paragraphs }
-      in
-      Some (User_message.to_string message)
-    | _ -> None)
-;;
-
-let raise_invalid_session message details =
-  let message = User_message.make [ Pp.text message ] in
-  raise (Invalid_session { message; details })
-;;
-
 module Poller = struct
   module Id = Stdune.Id.Make ()
 
@@ -60,23 +35,37 @@ module V = Versioned.Make (struct
     ;;
   end)
 
+module type Session = Server_intf.Session
+
 module Session = struct
   module Id = Session_id
 
   module Close = struct
     type t =
       { ivar : unit Fiber.Ivar.t
-      ; mutable state : [ `Open | `Closed ]
+      ; mutable state : [ `Open | `Closed | `Closing ]
       ; finalizer : unit -> unit Fiber.t
       }
 
     let create finalizer = { ivar = Fiber.Ivar.create (); state = `Open; finalizer }
+
+    let close t =
+      match t.state with
+      | `Closing -> Fiber.Ivar.read t.ivar
+      | `Closed -> Fiber.return ()
+      | `Open ->
+        t.state <- `Closing;
+        Fiber.finalize t.finalizer ~finally:(fun () ->
+          t.state <- `Closed;
+          Fiber.Ivar.fill t.ivar ())
+    ;;
 
     let to_dyn { state; ivar = _; finalizer = _ } =
       let name =
         match state with
         | `Open -> "Open"
         | `Closed -> "Closed"
+        | `Closing -> "Closing"
       in
       Dyn.variant name []
     ;;
@@ -95,13 +84,16 @@ module Session = struct
       | Closed
   end
 
+  type 's chan' = (module Session with type t = 's) * 's
+  type chan = Chan : 's chan' -> chan
+
   module Stage1 = struct
     type 'a t =
-      { queries : Packet.t Fiber.Stream.In.t
-      ; id : Id.t
+      { id : Id.t
+      ; version : int * int
       ; close : Close.t
+      ; chan : chan
       ; mutable menu : Menu.t option
-      ; send : Packet.t list option -> unit Fiber.t
       ; pool : Fiber.Pool.t
       ; mutable state : 'a state
       ; pending : (Dune_rpc.Private.Id.t, Pending_response.t Fiber.Ivar.t) Table.t
@@ -128,49 +120,77 @@ module Session = struct
       | Uninitialized -> Code_error.raise "initialize: request not available" []
     ;;
 
-    let create ~name ~queries ~send ~finalizer =
-      { queries
-      ; send
+    let close_pending_requests pending =
+      let pending_list = Table.to_list pending in
+      Table.clear pending;
+      Fiber.parallel_iter pending_list ~f:(fun (_, ivar) ->
+        Fiber.Ivar.fill ivar Pending_response.Closed)
+    ;;
+
+    let create (type s) ~name ~version (chan, s) ~finalizer =
+      let pending = Table.create (module Dune_rpc.Private.Id) 16 in
+      let pool = Fiber.Pool.create () in
+      let module Chan = (val chan : Session with type t = s) in
+      { version
+      ; chan = Chan (chan, s)
       ; menu = None
       ; close =
           Close.create (fun () ->
-            Fiber.fork_and_join_unit (fun () -> send None) finalizer)
+            let open Fiber.O in
+            let+ () = Chan.close s
+            and+ () = Fiber.of_thunk finalizer
+            and+ () = Fiber.Pool.close pool
+            and+ () = close_pending_requests pending in
+            ())
       ; state = Uninitialized
       ; id = Id.gen ()
-      ; pool = Fiber.Pool.create ()
-      ; pending = Table.create (module Dune_rpc.Private.Id) 16
+      ; pool
+      ; pending
       ; name
       }
     ;;
 
     let menu t = t.menu
-
-    let close_pending_requests t =
-      let pending = Table.to_list t.pending in
-      Table.clear t.pending;
-      Fiber.parallel_iter pending ~f:(fun (_, ivar) ->
-        Fiber.Ivar.fill ivar Pending_response.Closed)
-    ;;
-
-    let close t =
-      match t.close.state with
-      | `Closed -> Fiber.return ()
-      | `Open ->
-        t.close.state <- `Closed;
-        Fiber.fork_and_join_unit
-          (fun () -> close_pending_requests t)
-          (fun () ->
-             Fiber.fork_and_join_unit t.close.finalizer (Fiber.Ivar.fill t.close.ivar))
-    ;;
-
+    let close t = Close.close t.close
     let id t = t.id
+
+    let write t packet =
+      let (Chan (chan, s)) = t.chan in
+      let module Chan = (val chan) in
+      let sexp = Conv.to_sexp Packet.sexp packet in
+      Chan.write s [ sexp ]
+      >>= function
+      | Ok () -> Fiber.return `Ok
+      | Error `Closed ->
+        let+ () = Close.close t.close in
+        `Closed
+    ;;
+
+    let read t =
+      let (Chan (chan, s)) = t.chan in
+      let module Chan = (val chan) in
+      Chan.read s
+      >>= function
+      | None ->
+        let+ () = Close.close t.close in
+        None
+      | Some sexp ->
+        (match Conv.of_sexp Packet.sexp ~version:t.version sexp with
+         | Ok message -> Fiber.return (Some message)
+         | Error error ->
+           Log.log (fun () ->
+             Log.Message.create
+               `Warn
+               "invalid RPC packet from sesion"
+               [ "error", Conv.dyn_of_error error ]);
+           let+ () = Close.close t.close in
+           None)
+    ;;
 
     let request t ((id, call) as req) =
       match t.close.state with
-      | `Closed ->
-        let ivar = Fiber.Ivar.create () in
-        let+ () = Fiber.Ivar.fill ivar Pending_response.Closed in
-        ivar
+      | `Closing | `Closed ->
+        Fiber.return (Fiber.Ivar.create_full Pending_response.Closed)
       | `Open ->
         (match Table.find t.pending id with
          | Some _ ->
@@ -184,9 +204,8 @@ module Session = struct
            Table.add_exn t.pending id ivar;
            let+ () =
              Fiber.Pool.task t.pool ~f:(fun () ->
-               match t.close.state with
-               | `Closed -> Fiber.return ()
-               | `Open -> t.send (Some [ Request req ]))
+               let+ (_ : [> `Closed | `Ok ]) = write t (Request req) in
+               ())
            in
            ivar)
     ;;
@@ -195,8 +214,14 @@ module Session = struct
       match Table.find t.pending id with
       | None ->
         (match t.close.state with
-         | `Closed -> Fiber.return ()
-         | `Open -> raise_invalid_session "unexpected response" [])
+         | `Closing | `Closed -> Fiber.return ()
+         | `Open ->
+           Log.log (fun () ->
+             Log.Message.create
+               `Warn
+               "unexpected response from rpc client"
+               [ "response", Response.to_dyn response ]);
+           Close.close t.close)
       | Some ivar ->
         Table.remove t.pending id;
         Fiber.Ivar.fill ivar (Pending_response.Response response)
@@ -215,15 +240,15 @@ module Session = struct
 
     let to_dyn
           f
-          { id; state; close; queries = _; send = _; pool = _; pending = _; menu; name }
+          { id; version = _; state; close; chan = _; pool = _; pending = _; menu; name }
       =
       let open Dyn in
       record
         [ "id", Id.to_dyn id
         ; "state", dyn_of_state f state
         ; "menu", Dyn.option Menu.to_dyn menu
-        ; "close", Close.to_dyn close
         ; "name", Dyn.string name
+        ; "close", Close.to_dyn close
         ]
     ;;
 
@@ -249,7 +274,8 @@ module Session = struct
   let prepare_notification t decl = V.Handler.prepare_notification t.handler decl
 
   let send_notification t { Versioned_intf.Staged.encode } n =
-    t.base.send (Some [ Notification (encode n) ])
+    let+ (_ : [> `Closed | `Ok ]) = Stage1.write t.base (Notification (encode n)) in
+    ()
   ;;
 
   let raise_connection_dead id =
@@ -276,12 +302,13 @@ module Session = struct
     | Ok { Versioned_intf.Staged.encode_req; decode_resp } ->
       let req = encode_req req in
       let* ivar = Stage1.request t.base (id, req) in
-      let+ resp = Fiber.Ivar.read ivar in
-      (match resp with
+      Fiber.Ivar.read ivar
+      >>| (function
        | Pending_response.Closed -> raise_connection_dead id
        | Response response ->
          (match response with
           | Error error ->
+            (* CR-soon rgrinberg: this is not a code error *)
             Code_error.raise
               "client and server do not agree on version"
               [ "error", Response.Error.to_dyn error ]
@@ -289,6 +316,7 @@ module Session = struct
             (match decode_resp resp with
              | Ok s -> s
              | Error error ->
+               (* CR-soon rgrinberg: this is not a code error *)
                Code_error.raise
                  "unexpected response"
                  [ "error", Response.Error.to_dyn error ])))
@@ -370,8 +398,8 @@ module H = struct
       ; method_ = Method.Name.of_string "notify/abort"
       }
     in
-    let* () = session.send (Some [ Notification call ]) in
-    session.send None
+    let* (_ : [> `Closed | `Ok ]) = Session.Stage1.write session (Notification call) in
+    Session.Stage1.close session
   ;;
 
   (* TODO catch and convert dispatch users *)
@@ -402,8 +430,6 @@ module H = struct
     Event.emit (Message { kind; meth_; stage = `Start }) (Session.id session);
     let* response =
       let+ result =
-        (* TODO instead of waiting for all errors, wait for the first one.
-           The fiber might never finish anyway. *)
         Fiber.collect_errors (fun () ->
           V.Handler.handle_request t.handler session (id, r))
       in
@@ -418,28 +444,38 @@ module H = struct
         Error (Response.Error.create ~kind:Code_error ~message:"server error" ~payload ())
     in
     Event.emit (Message { kind; meth_; stage = `Stop }) (Session.id session);
-    match session.base.close.state with
-    | `Closed -> Fiber.return ()
-    | `Open -> session.base.send (Some [ Response (id, response) ])
+    let+ (_ : [> `Closed | `Ok ]) =
+      Session.Stage1.write session.base (Response (id, response))
+    in
+    ()
   ;;
 
   let run_session (type a) (t : a t) (session : a Session.t) =
     let open Fiber.O in
-    let* () =
-      Fiber.Stream.In.parallel_iter session.base.queries ~f:(fun (message : Packet.t) ->
-        match message with
-        | Response resp -> Session.Stage1.response session.base resp
-        | Notification n -> dispatch_notification t session n.method_ n
-        | Request (id, r) -> dispatch_request t session r.method_ r id)
+    let dispatch_in_pool f = Fiber.Pool.task session.base.pool ~f in
+    let rec loop () =
+      Session.Stage1.read session.base
+      >>= function
+      | None -> Fiber.return ()
+      | Some (message : Packet.t) ->
+        let* () =
+          match message with
+          | Response resp -> Session.Stage1.response session.base resp
+          | Notification n ->
+            dispatch_in_pool (fun () -> dispatch_notification t session n.method_ n)
+          | Request (id, r) ->
+            dispatch_in_pool (fun () -> dispatch_request t session r.method_ r id)
+        in
+        loop ()
     in
-    Session.Stage1.close session.base
+    loop ()
   ;;
 
   let negotiate_version (type a) (t : a stage1) (session : a Session.Stage1.t) =
     let open Fiber.O in
-    let* query = Fiber.Stream.In.read session.queries in
-    match query with
-    | None -> session.send None
+    Session.Stage1.read session
+    >>= function
+    | None -> Fiber.return ()
     | Some client_versions ->
       (match (client_versions : Packet.t) with
        | Response _ ->
@@ -451,7 +487,11 @@ module H = struct
              "Notification unexpected. You must complete version negotiation first."
        | Request (id, call) ->
          (match Version_negotiation.Request.of_call ~version:t.base.version call with
-          | Error e -> session.send (Some [ Response (id, Error e) ])
+          | Error e ->
+            let+ (_ : [> `Closed | `Ok ]) =
+              Session.Stage1.write session (Response (id, Error e))
+            in
+            ()
           | Ok (Menu client_versions) ->
             (match
                Menu.select_common
@@ -467,20 +507,23 @@ module H = struct
                  Version_negotiation.(
                    Conv.to_sexp Response.sexp (Response.create (Menu.to_list menu)))
                in
-               let* () = session.send (Some [ Response (id, Ok response) ]) in
-               let handler = t.to_handler menu in
-               session.menu <- Some menu;
-               let session = Session.of_stage1 session handler in
-               let* () = t.base.on_upgrade session menu in
-               run_session { handler } session)))
+               Session.Stage1.write session (Response (id, Ok response))
+               >>= (function
+                | `Closed -> Fiber.return ()
+                | `Ok ->
+                  let handler = t.to_handler menu in
+                  session.menu <- Some menu;
+                  let session = Session.of_stage1 session handler in
+                  let* () = t.base.on_upgrade session menu in
+                  run_session { handler } session))))
   ;;
 
   let handle (type a) (t : a stage1) (session : a Session.Stage1.t) =
     let open Fiber.O in
     let* () = Fiber.return () in
-    let* query = Fiber.Stream.In.read session.queries in
-    match query with
-    | None -> session.send None
+    Session.Stage1.read session
+    >>= function
+    | None -> Fiber.return ()
     | Some init ->
       (match (init : Packet.t) with
        | Response _ ->
@@ -489,7 +532,11 @@ module H = struct
          abort session ~message:"Notification unexpected. You must initialize first."
        | Request (id, call) ->
          (match Initialize.Request.of_call ~version:t.base.version call with
-          | Error e -> session.send (Some [ Response (id, Error e) ])
+          | Error e ->
+            let+ (_ : [> `Closed | `Ok ]) =
+              Session.Stage1.write session (Response (id, Error e))
+            in
+            ()
           | Ok init ->
             let protocol_ver = Initialize.Request.protocol_version init in
             if protocol_ver <> Protocol.latest_version
@@ -498,13 +545,13 @@ module H = struct
             else
               let* a = t.base.on_init session init in
               let () = session.state <- Initialized { init; state = a } in
-              let* () =
-                let response =
-                  Ok (Initialize.Response.to_response (Initialize.Response.create ()))
-                in
-                session.send (Some [ Response (id, response) ])
+              let response =
+                Ok (Initialize.Response.to_response (Initialize.Response.create ()))
               in
-              negotiate_version t session))
+              Session.Stage1.write session (Response (id, response))
+              >>= (function
+               | `Closed -> Fiber.return ()
+               | `Ok -> negotiate_version t session)))
   ;;
 
   module Builder = struct
@@ -640,17 +687,14 @@ end
 type t = Server : 'a H.stage1 -> t
 
 let make (type a) (h : a H.Builder.t) : t = Server (H.Builder.to_handler h)
-let version (Server h) = h.base.version
 
-let new_session (Server handler) ~name ~queries ~send =
+let new_session (Server handler) ~name chan =
   let session = Fdecl.create Dyn.opaque in
   Fdecl.set
     session
-    (Session.Stage1.create ~name ~queries ~send ~finalizer:(fun () ->
+    (Session.Stage1.create ~name ~version:handler.base.version chan ~finalizer:(fun () ->
        let session : _ Session.Stage1.t = Fdecl.get session in
-       Fiber.fork_and_join_unit
-         (fun () -> Fiber.Pool.close session.pool)
-         (fun () -> handler.base.on_terminate session)));
+       handler.base.on_terminate session));
   let session = Fdecl.get session in
   object
     method id = session.id
@@ -665,40 +709,14 @@ let new_session (Server handler) ~name ~queries ~send =
   end
 ;;
 
-let create_sequence f ~version conv =
-  let read () =
-    let+ read = f () in
-    Option.map read ~f:(fun sexp ->
-      match Conv.of_sexp conv ~version sexp with
-      | Ok message -> message
-      | Error error ->
-        raise_invalid_session "unexpected csexp" [ "error", Conv.dyn_of_error error ])
-  in
-  Fiber.Stream.In.create read
-;;
-
-module type Session = Server_intf.Session
-
 module Make (S : Session) = struct
   open Fiber.O
 
   let serve sessions server =
     Fiber.Stream.In.parallel_iter sessions ~f:(fun session ->
       let session =
-        let send = function
-          | None -> S.close session
-          | Some packets ->
-            List.map packets ~f:(Conv.to_sexp Packet.sexp)
-            |> S.write session
-            >>| (function
-             | Ok () -> ()
-             | Error `Closed -> raise Dune_util.Report_error.Already_reported)
-        in
-        let queries =
-          create_sequence (fun () -> S.read session) ~version:(version server) Packet.sexp
-        in
         let name = S.name session in
-        new_session server ~name ~queries ~send
+        new_session server ~name ((module S), session)
       in
       let id = session#id in
       Event.emit (Session `Start) id;

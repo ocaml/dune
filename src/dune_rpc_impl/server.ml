@@ -36,7 +36,7 @@ module Run = struct
     ; root : string
     ; where : Dune_rpc.Where.t
     ; server : Csexp_rpc.Server.t Lazy.t
-    ; server_ivar : Csexp_rpc.Server.t Fiber.Ivar.t
+    ; startup_ivar : (Csexp_rpc.Server.t, Exn_with_backtrace.t) result Fiber.Ivar.t
     ; registry : [ `Add | `Skip ]
     }
 
@@ -61,8 +61,18 @@ module Run = struct
     in
     let run () =
       let open Fiber.O in
-      let server = Lazy.force t.server in
-      let* () = Fiber.Ivar.fill t.server_ivar server in
+      let* server =
+        match Exn_with_backtrace.try_with (fun () -> Lazy.force t.server) with
+        | Ok server ->
+          let+ () = Fiber.Ivar.fill t.startup_ivar (Ok server) in
+          server
+        | Error exn ->
+          let () =
+            Dune_trace.emit Rpc (fun () -> Dune_trace.Event.Rpc.startup_failure exn)
+          in
+          let* () = Fiber.Ivar.fill t.startup_ivar (Error exn) in
+          Exn_with_backtrace.reraise exn
+      in
       Fiber.fork_and_join_unit
         (fun () ->
            let* sessions = Csexp_rpc.Server.serve server in
@@ -196,15 +206,18 @@ type 'build_arg t =
   }
 
 let ready (t : _ t) =
-  let* server = Fiber.Ivar.read t.config.server_ivar in
-  Csexp_rpc.Server.ready server
+  Fiber.Ivar.read t.config.startup_ivar
+  >>= function
+  | Ok server -> Csexp_rpc.Server.ready server
+  | Error _exn -> raise Dune_util.Report_error.Already_reported
 ;;
 
 let stop (t : _ t) =
-  let* server = Fiber.Ivar.peek t.config.server_ivar in
-  match server with
+  Fiber.Ivar.peek t.config.startup_ivar
+  >>= function
   | None -> Fiber.return ()
-  | Some server -> Csexp_rpc.Server.stop server
+  | Some (Error _) -> Fiber.return ()
+  | Some (Ok server) -> Csexp_rpc.Server.stop server
 ;;
 
 let get_current_diagnostic_errors () =
@@ -494,7 +507,7 @@ let create ~lock_timeout ~registry ~root =
     ; where
     ; server
     ; registry
-    ; server_ivar = Fiber.Ivar.create ()
+    ; startup_ivar = Fiber.Ivar.create ()
     }
   in
   let res = { config; pending_jobs; clients = Clients.empty } in

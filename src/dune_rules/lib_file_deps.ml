@@ -1,6 +1,42 @@
 open Import
 open Memo.O
 
+(* Why wrapped libraries fall back to a directory glob
+   =================================================
+
+   Per-module tight deps apply only to local unwrapped libraries.
+   Wrapped libraries take the glob path over their public cmi dir.
+   The limitation is fundamental to ocamldep's output granularity.
+
+   [ocamldep -modules foo.ml] lists only the top-level module names
+   referenced by a source file. For a consumer using [Foo.Bar.x],
+   the output is [Foo] — not [Foo.Bar]. Consumers that use
+   [Foo.Bar] and those that use [Foo.Baz] produce identical
+   ocamldep output, so the filter cannot distinguish them and
+   cannot emit specific deps on [Foo__Bar.cmi] vs [Foo__Baz.cmi].
+   Any breadth-first walk over the wrapper's own ocamldep output
+   reaches every internal the wrapper exposes, which is equivalent
+   to the glob for invalidation.
+
+   Possible follow-on work:
+
+   - Qualified-path extractor. Walk consumer source with
+     [compiler-libs]' [Parse.implementation], collect [Longident.t]
+     references as [Module_name.Path.t] values in a companion
+     artifact. Match qualified paths against wrapped-lib internals
+     for per-consumer precision. Estimated ~500-1000 lines across a
+     new rule, a new file format, and preprocessing integration;
+     correct handling of [let open Foo in Bar.x] (opens that bring
+     sub-modules into unqualified scope) needs lexical-scope
+     tracking and roughly doubles the low-end estimate.
+
+   - Post-compile cmi-imports refinement. [consumer.cmi] records
+     exactly the cmis its compilation imported; [Ocamlobjinfo] can
+     read them. Using this as the source of truth requires breaking
+     dune's invariant that rule deps are fixed before the rule
+     runs — a two-phase build or a pessimistic-then-refine scheme.
+     Not natively supported by dune's rule model today. *)
+
 module Group = struct
   type ocaml =
     | Cmi
@@ -115,42 +151,11 @@ module Lib_index = struct
     }
   ;;
 
-  (* A library is eligible for per-module tight deps iff it is local
-     (so every entry has a known [Module.t] with which we can call
-     [Obj_dir.Module.cm_public_file]) and unwrapped.
-
-     Wrapped libraries fall back to a directory glob over their
-     public cmi dir. The limitation is fundamental to ocamldep's
-     output granularity: with [-modules], ocamldep lists only the
-     top-level module names referenced by a source file, so
-     [Foo.Bar.x] and [Foo.Baz.y] both produce the single output
-     [Foo]. We cannot distinguish consumers that use the wrapped
-     lib's [Bar] internal from those that use [Baz], and so cannot
-     emit specific deps on just [Foo__Bar.cmi] vs [Foo__Baz.cmi].
-     Any breadth-first walk over the wrapper's own ocamldep output
-     reaches every internal the wrapper exposes, which is
-     equivalent to the current glob for invalidation.
-
-     Possible follow-on work to cross the wrapped-lib gap:
-
-     - Qualified-path extractor: walk source via [compiler-libs]'
-       [Parse.implementation], collect [Longident.t] references
-       as [Module_name.Path.t] values in a companion artifact.
-       Match qualified paths against wrapped-lib internals for
-       per-consumer precision. Estimated ~500-1000 lines across a
-       new rule, a new file format, and preprocessing integration;
-       correct handling of [let open Foo in Bar.x] (opens that
-       bring sub-modules into unqualified scope) needs
-       lexical-scope tracking and roughly doubles the low-end
-       estimate.
-
-     - Post-compile cmi-imports refinement: consumer.cmi records
-       exactly the cmis its compilation imported; [Ocamlobjinfo]
-       can read them. Using this as the source of truth requires
-       breaking dune's invariant that rule deps are fixed before
-       the rule runs — a two-phase build or a pessimistic-then-
-       refine scheme. Not natively supported by dune's rule model
-       today. *)
+  (* Local + unwrapped: every entry has a known [Module.t] we can
+     feed to [Obj_dir.Module.cm_public_file]. Wrapped libraries
+     fall back to a directory glob; see the module-level comment
+     at the top of this file for the ocamldep-granularity reason
+     and sketches of follow-on work. *)
   let is_lib_tight_eligible lib =
     Lib.is_local lib
     &&
@@ -207,6 +212,24 @@ module Lib_index = struct
           | Some entries -> List.fold_left entries ~init:acc ~f:add_entry)
     in
     { tight; non_tight = Lib.Set.to_list non_tight }
+  ;;
+
+  (* Like [filter_libs_with_modules] but only returns the tight
+     part. Saves the [non_tight] accumulator at call sites that
+     only consume the tight map (e.g. the post-BFS classify in
+     [lib_deps_for_module]). *)
+  let tight_modules_per_lib idx ~referenced_modules =
+    Module_name.Set.fold referenced_modules ~init:Lib.Map.empty ~f:(fun name acc ->
+      match Module_name.Map.find idx.by_module_name name with
+      | None -> acc
+      | Some entries ->
+        List.fold_left entries ~init:acc ~f:(fun acc (lib, m_opt) ->
+          match m_opt with
+          | Some m when Lib.Set.mem idx.tight_eligible lib ->
+            Lib.Map.update acc lib ~f:(function
+              | None -> Some [ m ]
+              | Some ms -> Some (m :: ms))
+          | _ -> acc))
   ;;
 
   let lookup_tight_entries idx name =

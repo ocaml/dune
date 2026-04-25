@@ -67,6 +67,16 @@ module Lib_index : sig
       [referenced_modules]. *)
   val filter_libs_with_modules : t -> referenced_modules:Module_name.Set.t -> classified
 
+  (** [tight_modules_per_lib idx ~referenced_modules] builds a map
+      from each tight-eligible library that exposes a name in
+      [referenced_modules] to the subset of its entry modules that
+      appear. Equivalent to [filter_libs_with_modules] with only the
+      tight part kept. *)
+  val tight_modules_per_lib
+    :  t
+    -> referenced_modules:Module_name.Set.t
+    -> Module.t list Lib.Map.t
+
   (** [lookup_tight_entries idx name] returns [(lib, entry module)]
       pairs used by the cross-library walk in [module_compilation].
       Libraries in [no_ocamldep] are excluded (their [.d] files do

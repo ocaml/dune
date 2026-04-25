@@ -1,16 +1,16 @@
-Baseline: an intermediate library [libB] declares [(libraries libA)]
-but its module [modB] does not actually reference any of [libA]'s
-modules. The consumer [main] uses [libB] and so transitively gains
-[libA] in its compilation context.
+An intermediate library [libB] declares [(libraries libA)] but its
+module [modB] does not reference any of [libA]'s modules. The
+consumer [main] uses [libB] and so transitively gains [libA] in its
+compilation context.
 
-Today every consumer module declares a glob over each transitively-
-reached library's public-cmi directory, so editing [modA1.ml] (which
-no source file references) re-invalidates [main]. The test records
-the current rebuild count of [main] when [modA1.ml] is touched.
+The cross-library walk has full visibility into [libA] (local,
+unwrapped, every entry has a known module), and finishes without
+adding any of [libA]'s entry modules to the reference closure. The
+filter therefore drops [libA] from [main]'s compile-rule deps
+entirely; the link rule still pulls [libA] in for executables that
+need it.
 
-This test is observational: a tighter dependency tracker that drops
-unreferenced libraries from compile rules' deps would lower the
-count.
+Editing [modA1.ml] does not invalidate [main].
 
   $ cat > dune-project <<EOF
   > (lang dune 3.0)
@@ -37,11 +37,7 @@ count.
 
   $ dune build @check
 
-Edit [modA1.ml]. Neither [main.ml] nor [modB.ml] references [modA1]
-or any other [libA] module, so a tighter filter could leave [main]
-untouched. Today [main] is rebuilt:
-
   $ echo > modA1.ml
   $ dune build @check
   $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("dune__exe__Main"))] | length'
-  2
+  0

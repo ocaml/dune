@@ -3,6 +3,8 @@ open Fiber.O
 open Types
 include Types.Async_io
 
+type timer = Types.Async_io.timer
+
 let filter_queue q ~f =
   let new_q = Queue.create () in
   Queue.iter q ~f:(fun x -> if f x then Queue.push new_q x);
@@ -22,6 +24,15 @@ let retire_watcher t fd ({ io; _ } as watcher : watcher) =
   t.retired <- watcher :: t.retired
 ;;
 
+let retire_timer t id ({ watcher; _ } as timer : timer) =
+  Option.iter watcher ~f:(fun watcher ->
+    if Lev.Timer.is_active watcher then Lev.Timer.stop watcher t.loop;
+    t.retired_timers <- watcher :: t.retired_timers);
+  timer.ready <- false;
+  timer.watcher <- None;
+  Table.remove t.timers id
+;;
+
 let destroy_retired_watchers_locked t =
   let pending, ready =
     List.fold_left
@@ -34,6 +45,17 @@ let destroy_retired_watchers_locked t =
   in
   t.retired <- pending;
   List.iter ready ~f:(fun { io; _ } -> Lev.Io.destroy io)
+;;
+
+let destroy_retired_timers_locked t =
+  let pending, ready =
+    List.fold_left t.retired_timers ~init:([], []) ~f:(fun (pending, ready) timer ->
+      if Lev.Timer.is_pending timer
+      then timer :: pending, ready
+      else pending, timer :: ready)
+  in
+  t.retired_timers <- pending;
+  List.iter ready ~f:Lev.Timer.destroy
 ;;
 
 let cleanup_other_tasks waiters task =
@@ -93,6 +115,25 @@ let mark_ready watcher ready =
   if Lev.Io.Event.Set.mem ready Write then watcher.write_ready <- true
 ;;
 
+let service_ready_timer t ({ id; ivar; ready; watcher; _ } as timer : timer) fills =
+  match timer.status, ready, watcher with
+  | `Filled, _, _ | `Waiting, false, _ -> fills
+  | `Waiting, true, None -> assert false
+  | `Waiting, true, Some watcher ->
+    timer.ready <- false;
+    timer.status <- `Filled;
+    timer.watcher <- None;
+    Table.remove t.timers id;
+    t.retired_timers <- watcher :: t.retired_timers;
+    Fiber.Fill (ivar, Ok ()) :: fills
+;;
+
+let start_timer_locked t ({ after; _ } as timer : timer) =
+  let watcher = Lev.Timer.create ~after (fun _watcher -> timer.ready <- true) in
+  timer.watcher <- Some watcher;
+  Lev.Timer.start watcher t.loop
+;;
+
 let service_waiters waiters fd fills =
   match Table.find waiters fd with
   | None -> fills
@@ -113,6 +154,11 @@ let service_ready_watchers_locked t fills =
     watcher.read_ready <- false;
     watcher.write_ready <- false;
     fills)
+;;
+
+let service_ready_timers_locked t fills =
+  List.fold_left (Table.to_list t.timers) ~init:fills ~f:(fun fills (_id, timer) ->
+    service_ready_timer t timer fills)
 ;;
 
 let sync_watchers_locked t =
@@ -153,6 +199,16 @@ let sync_watchers_locked t =
       Table.add_exn t.watchers fd watcher)
 ;;
 
+let sync_timers_locked t =
+  List.iter (Table.to_list t.timers) ~f:(fun (id, (timer : timer)) ->
+    match timer.status with
+    | `Filled -> retire_timer t id timer
+    | `Waiting ->
+      (match timer.watcher with
+       | Some _ -> ()
+       | None -> start_timer_locked t timer))
+;;
+
 let process_closures_locked t fills =
   match Table.to_list t.to_close with
   | [] -> fills
@@ -172,35 +228,54 @@ let process_closures_locked t fills =
 ;;
 
 module Task = struct
-  type 'a t = User_task : ('a, 'label) task -> 'a t
+  type 'a t =
+    | User_task : ('a, 'label) task -> 'a t
+    | Timer_task : timer -> unit t
 
-  let await (User_task task) = Fiber.Ivar.read task.ivar
+  let await : type a. a t -> (a, [ `Cancelled | `Exn of exn ]) result Fiber.t = function
+    | User_task task -> Fiber.Ivar.read task.ivar
+    | Timer_task timer -> Fiber.Ivar.read timer.ivar
+  ;;
 
-  let cancel (User_task t) =
-    let* () = Fiber.return () in
-    with_mutex t.select ~f:(fun () ->
-      match t.status with
-      | `Filled -> Fiber.return ()
-      | `Waiting ->
-        let table =
-          match t.what with
-          | `Read -> t.select.readers
-          | `Write -> t.select.writers
-        in
-        List.iter t.fds ~f:(fun fd ->
-          match Table.find table fd with
-          | None -> ()
-          | Some q ->
-            let new_q =
-              filter_queue q ~f:(fun (Task (t', _)) -> not (Task_id.equal t.id t'.id))
-            in
-            if Queue.is_empty new_q
-            then Table.remove table fd
-            else Table.set table fd new_q);
-        wakeup_loop t.select;
-        t.status <- `Filled;
-        Event.Queue.cancel_work_task_started t.select.scheduler_queue;
-        Fiber.Ivar.fill t.ivar (Error `Cancelled))
+  let cancel : type a. a t -> unit Fiber.t =
+    let cancel_fd_task (t : (_, _) task) =
+      with_mutex t.select ~f:(fun () ->
+        match t.status with
+        | `Filled -> Fiber.return ()
+        | `Waiting ->
+          let table =
+            match t.what with
+            | `Read -> t.select.readers
+            | `Write -> t.select.writers
+          in
+          List.iter t.fds ~f:(fun fd ->
+            Table.find table fd
+            |> Option.iter ~f:(fun q ->
+              let new_q =
+                filter_queue q ~f:(fun (Task (t', _)) -> not (Task_id.equal t.id t'.id))
+              in
+              if Queue.is_empty new_q
+              then Table.remove table fd
+              else Table.set table fd new_q));
+          wakeup_loop t.select;
+          t.status <- `Filled;
+          Event.Queue.cancel_work_task_started t.select.scheduler_queue;
+          Fiber.Ivar.fill t.ivar (Error `Cancelled))
+    in
+    let cancel_timer_task (t : timer) =
+      with_mutex t.select ~f:(fun () ->
+        match t.status with
+        | `Filled -> Fiber.return ()
+        | `Waiting ->
+          retire_timer t.select t.id t;
+          wakeup_loop t.select;
+          t.status <- `Filled;
+          Event.Queue.cancel_work_task_started t.select.scheduler_queue;
+          Fiber.Ivar.fill t.ivar (Error `Cancelled))
+    in
+    function
+    | User_task t -> cancel_fd_task t
+    | Timer_task t -> cancel_timer_task t
   ;;
 end
 
@@ -208,8 +283,11 @@ let destroy_loop_resources t =
   with_mutex t ~f:(fun () ->
     List.iter (Table.to_list t.watchers) ~f:(fun (fd, watcher) ->
       retire_watcher t fd watcher);
+    List.iter (Table.to_list t.timers) ~f:(fun (id, timer) -> retire_timer t id timer);
     List.iter t.retired ~f:(fun { io; _ } -> Lev.Io.destroy io);
     t.retired <- [];
+    List.iter t.retired_timers ~f:Lev.Timer.destroy;
+    t.retired_timers <- [];
     if Lev.Async.is_active t.wakeup then Lev.Async.stop t.wakeup t.loop;
     Lev.Async.destroy t.wakeup)
 ;;
@@ -239,8 +317,11 @@ let start ~name t =
         with_mutex t ~f:(fun () ->
           let fills = process_closures_locked t [] in
           let fills = service_ready_watchers_locked t fills in
+          let fills = service_ready_timers_locked t fills in
           sync_watchers_locked t;
+          sync_timers_locked t;
           destroy_retired_watchers_locked t;
+          destroy_retired_timers_locked t;
           t.shutting_down, fills)
       in
       Event.Queue.send_worker_tasks_completed t.scheduler_queue fills;
@@ -252,14 +333,34 @@ let start ~name t =
       t.destroyed <- true))
 ;;
 
-let get_exn () =
-  let t = Types.Scheduler.t () in
-  let t = t.async_io in
+let ensure_running_locked t =
+  if t.destroyed then Code_error.raise "cannot use async io after shutdown" [];
   if not t.started
   then (
     t.thread <- Some (start ~name:"async-io" t);
-    t.started <- true);
-  t
+    t.started <- true)
+;;
+
+let sleep t after =
+  let timer =
+    with_mutex t ~f:(fun () ->
+      ensure_running_locked t;
+      Event.Queue.register_worker_task_started t.scheduler_queue;
+      let timer =
+        { ivar = Fiber.Ivar.create ()
+        ; after
+        ; select = t
+        ; id = Task_id.gen ()
+        ; watcher = None
+        ; ready = false
+        ; status = `Waiting
+        }
+      in
+      Table.add_exn t.timers timer.id timer;
+      wakeup_loop t;
+      timer)
+  in
+  Task.Timer_task timer
 ;;
 
 let create scheduler_queue =
@@ -276,6 +377,8 @@ let create scheduler_queue =
     ; wakeup
     ; watchers
     ; retired = []
+    ; timers = Table.create (module Task_id) 16
+    ; retired_timers = []
     ; thread = None
     ; started = false
     ; shutting_down = false
@@ -287,14 +390,19 @@ let create scheduler_queue =
 ;;
 
 let with_ f =
-  let t = get_exn () in
-  with_mutex t ~f:(fun () -> f t)
+  let t = Types.Scheduler.t () in
+  let t = t.async_io in
+  with_mutex t ~f:(fun () ->
+    ensure_running_locked t;
+    f t)
 ;;
 
 let close fd =
-  let t = get_exn () in
+  let t = Types.Scheduler.t () in
+  let t = t.async_io in
   let to_cancel =
     with_mutex t ~f:(fun () ->
+      ensure_running_locked t;
       match Table.find t.to_close fd with
       | Some ivar -> `Wait ivar
       | None ->
@@ -304,9 +412,9 @@ let close fd =
         let to_cancel = maybe_cancel t.readers fd [] in
         let fills = maybe_cancel t.readers fd to_cancel in
         let to_cancel = maybe_cancel t.writers fd [] in
+        wakeup_loop t;
         `Cancel (ivar, fills @ maybe_cancel t.writers fd to_cancel))
   in
-  wakeup_loop t;
   match to_cancel with
   | `Wait ivar -> Fiber.Ivar.read ivar
   | `Cancel (ivar, to_cancel) ->

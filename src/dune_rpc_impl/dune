@@ -9,6 +9,7 @@
   source
   memo
   dune_util
+  dune_trace
   fiber
   stdune
   unix)

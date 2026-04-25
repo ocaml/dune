@@ -188,6 +188,7 @@ module Event : sig
       -> t
 
     val shutdown : id:int -> stage -> t
+    val startup_failure : Exn_with_backtrace.t -> t
     val close : id:int -> t
     val dropped_write_client_disconnect : Exn.t -> t
   end

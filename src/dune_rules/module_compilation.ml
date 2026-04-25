@@ -173,19 +173,72 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
     else
       let* lib_index = Resolve.Memo.read (Compilation_context.lib_index cctx) in
       let* trans_deps = Dep_graph.deps_of dep_graph m in
-      let* all_raw =
-        union_module_name_sets_mapped (m :: trans_deps) ~f:(fun dep_m ->
-          if not (module_kind_has_readable_ocamldep dep_m)
-          then Action_builder.return Module_name.Set.empty
-          else
-            let* impl_deps =
-              Ocamldep.read_immediate_deps_raw_of ~obj_dir ~ml_kind:Impl ~for_ dep_m
-            in
-            let+ intf_deps =
-              Ocamldep.read_immediate_deps_raw_of ~obj_dir ~ml_kind:Intf ~for_ dep_m
-            in
-            Module_name.Set.union impl_deps intf_deps)
+      (* Whether to read [dep_m]'s [.ml]-side ocamldep when collecting
+         the libraries the consumer references.
+
+         A module's [.cmi] is produced from [.mli] when one exists; only
+         then. References in [.ml] that are not re-exported through the
+         [.mli] never appear in [.cmi]'s imports — they are sealed.
+
+         The [.cmx] is produced from [.ml]. The compiler reads a
+         dep's [.cmx] only for cross-module inlining, which happens
+         only when compiling [Ocaml Cmx] without [-opaque]. In every
+         other case the [.cmx] is unread and any [.ml]-side
+         references it carries do not propagate.
+
+         For [m] itself (the consumer being compiled), [.ml] is the
+         source the compiler is feeding when [ml_kind = Impl]; its
+         references must be resolved. When [ml_kind = Intf] we are
+         compiling [m.cmi] from [m.mli], and [m.ml] is unread.
+
+         For a transitive intra-library dep [dep_m], [.ml]-side
+         references only propagate when (a) [dep_m] has no [.mli]
+         (so [dep_m.cmi] is produced from [.ml]) or (b) the
+         consumer reads [dep_m.cmx] for inlining ([Ocaml Cmx]
+         without [-opaque]).
+
+         Decision summary:
+
+         | [dep_m] is              | [cm_kind]   | [opaque] | read [.ml]?  |
+         | ----------------------- | ----------- | -------- | ------------ |
+         | consumer ([m] itself)   | any         | any      | iff [Impl]   |
+         | trans_dep, no [.mli]    | any         | any      | yes          |
+         | trans_dep, has [.mli]   | [Cmx]       | false    | yes (inline) |
+         | trans_dep, has [.mli]   | [Cmx]       | true     | no           |
+         | trans_dep, has [.mli]   | [Cmi]/[Cmo] | any      | no           |
+      *)
+      let need_impl_deps_of dep_m ~is_consumer =
+        if is_consumer
+        then (
+          match ml_kind with
+          | Ml_kind.Impl -> true
+          | Intf -> false)
+        else
+          (not (Module.has dep_m ~ml_kind:Intf))
+          ||
+          match cm_kind with
+          | Ocaml Cmx -> not opaque
+          | Ocaml (Cmi | Cmo) | Melange _ -> false
       in
+      let read_dep_m_raw dep_m ~is_consumer =
+        if not (module_kind_has_readable_ocamldep dep_m)
+        then Action_builder.return Module_name.Set.empty
+        else
+          let* impl_deps =
+            if need_impl_deps_of dep_m ~is_consumer
+            then Ocamldep.read_immediate_deps_raw_of ~obj_dir ~ml_kind:Impl ~for_ dep_m
+            else Action_builder.return Module_name.Set.empty
+          in
+          let+ intf_deps =
+            Ocamldep.read_immediate_deps_raw_of ~obj_dir ~ml_kind:Intf ~for_ dep_m
+          in
+          Module_name.Set.union impl_deps intf_deps
+      in
+      let* m_raw = read_dep_m_raw m ~is_consumer:true in
+      let* trans_raw =
+        union_module_name_sets_mapped trans_deps ~f:(read_dep_m_raw ~is_consumer:false)
+      in
+      let all_raw = Module_name.Set.union m_raw trans_raw in
       let* flags = Ocaml_flags.get (Compilation_context.flags cctx) mode in
       let open_modules = Ocaml_flags.extract_open_module_names flags in
       let referenced = Module_name.Set.union all_raw open_modules in

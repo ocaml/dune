@@ -616,7 +616,7 @@ let build_cm
      | Alias _ ->
        not (Modules.With_vlib.is_stdlib_alias (Compilation_context.modules cctx) m)
      | Wrapped_compat -> true
-     | _ -> false
+     | Intf_only | Virtual | Impl | Impl_vmodule | Root | Parameter -> false
    in
    let lib_cm_deps =
      if skip_lib_deps

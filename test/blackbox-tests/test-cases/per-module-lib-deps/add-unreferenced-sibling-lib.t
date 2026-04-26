@@ -1,18 +1,16 @@
-Observational baseline: adding a library to a stanza's
-[(libraries ...)] list currently rebuilds every module in the
-stanza, including modules that reference nothing from the new
-library. The [-I]/[-H] flags on each module's compiler invocation
-are derived from the cctx-wide library list rather than from the
-module's own ocamldep reference set, so adding an unreferenced
-library still changes every consumer's compile-action hash and
-invalidates the rule cache.
+Adding a library to a stanza's [(libraries ...)] list does not
+rebuild modules that reference nothing from the new library. Each
+module's [-I]/[-H] flags are derived from its own ocamldep
+reference set rather than from the cctx-wide library list, so an
+unreferenced sibling addition leaves consumer compile actions
+byte-identical and the rule cache holds.
 
 [libB] starts with [(libraries libA)] and two modules: [modB1]
 references [modA]; [modB2] references nothing from [libA] or any
 other library. After the initial build, [libC] is added to the
 stanza's [(libraries ...)] list. Neither [modB1] nor [modB2] uses
-anything from [libC], yet both rebuild. Records the rebuild counts
-on each so a future change can flip them to 0.
+anything from [libC]; their per-module include flags stay narrow,
+so neither's compile action hash changes and neither rebuilds.
 
   $ cat > dune-project <<EOF
   > (lang dune 3.0)
@@ -56,6 +54,6 @@ references [libC]:
 
   $ dune build @check
   $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("modB1"))] | length'
-  1
+  0
   $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("modB2"))] | length'
-  1
+  0

@@ -120,8 +120,13 @@ let cross_lib_tight_set ~lib_index ~for_ ~initial_refs =
    Wrapped dependency libraries always take the glob path. See the
    module-level comment at the top of [lib_file_deps.ml] for the
    ocamldep-granularity reason and sketches of follow-on work. *)
+let cctx_includes_for cctx cm_kind =
+  Lib_mode.Cm_kind.Map.get (Compilation_context.includes cctx) cm_kind
+;;
+
 let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kind ~mode m =
   let open Action_builder.O in
+  let fallback_includes = cctx_includes_for cctx cm_kind in
   let can_filter =
     (* Filtering is OCaml-only; Melange has its own dep handling. *)
     (match Lib_mode.of_cm_kind cm_kind with
@@ -149,8 +154,12 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
     && not (Virtual_rules.is_implementation (Compilation_context.implements cctx))
   in
   let* libs = Resolve.Memo.read (all_libs cctx) in
+  let fallback =
+    Action_builder.return
+      (fallback_includes, Lib_file_deps.deps_of_entries ~opaque ~cm_kind libs)
+  in
   if not can_filter
-  then Action_builder.return ((), Lib_file_deps.deps_of_entries ~opaque ~cm_kind libs)
+  then fallback
   else
     (* Deps-side virtual-impl check: if any library in the consumer's
        requires implements a virtual library, fall back to glob.
@@ -159,9 +168,12 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
       Resolve.Memo.read (Compilation_context.has_virtual_impl cctx)
     in
     if has_virtual_impl
-    then Action_builder.return ((), Lib_file_deps.deps_of_entries ~opaque ~cm_kind libs)
+    then fallback
     else
       let* lib_index = Resolve.Memo.read (Compilation_context.lib_index cctx) in
+      let* direct_requires =
+        Resolve.Memo.read (Compilation_context.requires_compile cctx)
+      in
       let* trans_deps = Dep_graph.deps_of dep_graph m in
       (* Whether to read [dep_m]'s [.ml]-side ocamldep when collecting
          the libraries the consumer references.
@@ -288,7 +300,29 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
             else td, lib :: gl)
       in
       let glob_deps = Lib_file_deps.deps_of_entries ~opaque ~cm_kind glob_libs in
-      (), Dep.Set.union tight_deps glob_deps
+      (* Per-module [-I]/[-H] flags: partition the libraries the
+         consumer keeps by the cctx's direct/hidden classification.
+         The classification is preserved per-lib; the filter only
+         narrows which libs appear at all. Libraries dropped above
+         (tight-eligible-unreached) get neither flag — the consumer
+         cannot reach them through any reference chain visible to
+         the walk, so omitting them is sound. *)
+      let kept_libs = Lib.Map.keys tight_modules @ glob_libs in
+      let direct_set = Lib.Set.of_list direct_requires in
+      let filtered_direct, filtered_hidden =
+        List.partition kept_libs ~f:(Lib.Set.mem direct_set)
+      in
+      let project = Scope.project (Compilation_context.scope cctx) in
+      let lib_config = (Compilation_context.ocaml cctx).lib_config in
+      let filtered_includes =
+        Lib_flags.L.include_flags
+          ~project
+          ~direct_libs:filtered_direct
+          ~hidden_libs:filtered_hidden
+          mode
+          lib_config
+      in
+      filtered_includes, Dep.Set.union tight_deps glob_deps
 ;;
 
 (* Convenience wrapper for the two call sites ([build_cm] and
@@ -607,7 +641,7 @@ let build_cm
    in
    let lib_cm_deps =
      if skip_lib_deps
-     then Action_builder.return ()
+     then Action_builder.return (cctx_includes_for cctx cm_kind)
      else lib_cm_deps ~cctx ~cm_kind ~ml_kind ~mode m
    in
    let other_cm_files =
@@ -728,7 +762,6 @@ let build_cm
      ?loc:(Compilation_context.loc cctx)
      (let open Action_builder.With_targets.O in
       Action_builder.with_no_targets other_cm_files
-      >>> Action_builder.with_no_targets lib_cm_deps
       >>> Command.run
             ~dir:(Path.build (Context.build_dir ctx))
             compiler
@@ -737,8 +770,7 @@ let build_cm
             ; cmt_args
             ; cms_args
             ; Command.Args.S obj_dirs
-            ; Command.Args.as_any
-                (Lib_mode.Cm_kind.Map.get (Compilation_context.includes cctx) cm_kind)
+            ; Command.Args.Dyn lib_cm_deps
             ; extra_args
             ; As as_parameter_arg
             ; as_argument_for
@@ -857,7 +889,6 @@ let ocamlc_i ~deps cctx (m : Module.t) ~output =
        ~file_targets:[ output ]
        (let open Action_builder.With_targets.O in
         Action_builder.with_no_targets cm_deps
-        >>> Action_builder.with_no_targets lib_cm_deps
         >>> Command.run
               (Ok ocaml.ocamlc)
               ~dir:(Path.build (Context.build_dir ctx))
@@ -865,10 +896,7 @@ let ocamlc_i ~deps cctx (m : Module.t) ~output =
               [ Command.Args.dyn ocaml_flags
               ; A "-I"
               ; Path (Path.build (Obj_dir.byte_dir obj_dir))
-              ; Command.Args.as_any
-                  (Lib_mode.Cm_kind.Map.get
-                     (Compilation_context.includes cctx)
-                     (Ocaml Cmo))
+              ; Command.Args.Dyn lib_cm_deps
               ; opens modules m
               ; A "-short-paths"
               ; A "-i"

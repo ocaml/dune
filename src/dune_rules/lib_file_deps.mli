@@ -36,9 +36,16 @@ module Lib_index : sig
   val empty : t
 
   (** Create an index. Each entry carries the [Module.t] of the entry
-      module when it is known ([Some] for local libraries; [None] for
-      externals). Libraries whose entries all carry a [Module.t] and
-      which are unwrapped are eligible for per-module deps.
+      module when it is known ([Some] for local libraries, wrapped
+      or not; [None] for externals).
+
+      [unwrapped_local] is the set of libs that are local and
+      unwrapped — the tight-eligible class. The cross-library walk
+      reads ocamldep for any local lib's entries (via
+      [lookup_walkable_entries], including wrapped libs' children
+      indexed under their mangled names); per-module dep
+      classification is restricted to [tight_eligible] (see
+      [is_tight_eligible]).
 
       [no_ocamldep] names local libs whose ocamldep output is
       short-circuited (single-module stanzas without library
@@ -47,6 +54,7 @@ module Lib_index : sig
       [.d] files for those libs. *)
   val create
     :  no_ocamldep:Lib.Set.t
+    -> unwrapped_local:Lib.Set.t
     -> (Module_name.t * Lib.t * Module.t option) list
     -> t
 
@@ -77,12 +85,15 @@ module Lib_index : sig
     -> referenced_modules:Module_name.Set.t
     -> Module.t list Lib.Map.t
 
-  (** [lookup_tight_entries idx name] returns [(lib, entry module)]
+  (** [lookup_walkable_entries idx name] returns [(lib, entry module)]
       pairs used by the cross-library walk in [module_compilation].
-      Libraries in [no_ocamldep] are excluded (their [.d] files do
-      not exist), as are externals, wrapped locals, and entries with
-      no [Module.t]. *)
-  val lookup_tight_entries : t -> Module_name.t -> (Lib.t * Module.t) list
+      Includes wrapped local libs' wrappers and their children
+      (indexed under their mangled names) — the BFS reads each
+      walkable entry's ocamldep to follow alias chains across
+      library boundaries. Libraries in [no_ocamldep] are excluded
+      (their [.d] files do not exist); externals are excluded
+      because no [Module.t] is available. *)
+  val lookup_walkable_entries : t -> Module_name.t -> (Lib.t * Module.t) list
 
   (** [is_tight_eligible idx lib] is [true] when [lib] is local,
       unwrapped, and every entry carries a known [Module.t]. The

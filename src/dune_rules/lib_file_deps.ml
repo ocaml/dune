@@ -151,27 +151,28 @@ module Lib_index = struct
     }
   ;;
 
-  (* Tight-eligibility — local + unwrapped, every entry carries a
-     [Module.t] — is encoded in the entry shape itself: an entry
-     [(_, lib, Some _)] means the producer of the index has decided
-     [lib] is tight-eligible. Wrapped local libs and externals come
-     in as [(_, _, None)] and don't enter [tight_eligible]. See the
+  (* Two orthogonal predicates on a lib's entries are tracked here.
+     [Some m] in an entry means we have the entry's [Module.t] —
+     true for every local lib (wrapped or not), false for externals;
+     this is what lets the cross-library walk read the entry's
+     ocamldep. [tight_eligible] (built from the caller-supplied
+     [unwrapped_local]) means the lib is local AND unwrapped, so
+     downstream consumers can issue per-module deps on its [.cmi]
+     files. Wrapped local libs are walkable but not tight-eligible —
+     their auto-generated wrapper's ocamldep references children by
+     mangled name and the BFS expands through them, but the lib
+     itself classifies as glob for invalidation. See the
      module-level comment at the top of this file for the
-     ocamldep-granularity reason wrapped libs are excluded. *)
-  let create ~no_ocamldep entries =
+     ocamldep-granularity reason wrapped libs are excluded from the
+     tight-eligible class. *)
+  let create ~no_ocamldep ~unwrapped_local entries =
     let by_module_name =
       List.fold_left entries ~init:Module_name.Map.empty ~f:(fun map (name, lib, m) ->
         Module_name.Map.update map name ~f:(function
           | None -> Some [ lib, m ]
           | Some xs -> Some ((lib, m) :: xs)))
     in
-    let tight_eligible =
-      List.fold_left entries ~init:Lib.Set.empty ~f:(fun acc (_, lib, m_opt) ->
-        match m_opt with
-        | Some _ -> Lib.Set.add acc lib
-        | None -> acc)
-    in
-    { by_module_name; tight_eligible; no_ocamldep }
+    { by_module_name; tight_eligible = unwrapped_local; no_ocamldep }
   ;;
 
   type classified =
@@ -221,15 +222,13 @@ module Lib_index = struct
           | _ -> acc))
   ;;
 
-  let lookup_tight_entries idx name =
+  let lookup_walkable_entries idx name =
     match Module_name.Map.find idx.by_module_name name with
     | None -> []
     | Some entries ->
       List.filter_map entries ~f:(fun (lib, m_opt) ->
         match m_opt with
-        | Some m
-          when Lib.Set.mem idx.tight_eligible lib && not (Lib.Set.mem idx.no_ocamldep lib)
-          -> Some (lib, m)
+        | Some m when not (Lib.Set.mem idx.no_ocamldep lib) -> Some (lib, m)
         | _ -> None)
   ;;
 

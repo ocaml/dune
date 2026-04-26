@@ -154,7 +154,7 @@ let build_lib_index ~super_context ~libs ~for_ =
     Resolve.Memo.List.map libs ~f:(fun lib ->
       match Lib_info.entry_modules (Lib.info lib) ~for_ with
       | External (Ok names) ->
-        Resolve.Memo.return (List.map names ~f:(fun n -> n, lib, None), None)
+        Resolve.Memo.return (List.map names ~f:(fun n -> n, lib, None), None, None)
       | External (Error e) -> Resolve.Memo.of_result (Error e)
       | Local ->
         Resolve.Memo.lift_memo
@@ -164,19 +164,58 @@ let build_lib_index ~super_context ~libs ~for_ =
                 (Lib.Local.of_lib_exn lib)
                 ~for_)
              ~f:(fun mods ->
-               (* [Some m] iff the lib is tight-eligible (local + unwrapped):
-                  only then can downstream consumers issue per-module deps
-                  on its [.cmi] files. [None] therefore covers both wrapped
-                  locals and externals — in either case we don't have a
-                  [Module.t] the per-module path can use. *)
+               (* Local libs always carry [Some m] for each entry so the
+                  cross-library walk can read the entry's ocamldep.
+                  Whether to issue per-module deps on the entry's [.cmi]
+                  is a separate decision tracked by [unwrapped_local]:
+                  only unwrapped local libs are tight-eligible. Wrapped
+                  local libs are walkable (the wrapper's ocamldep
+                  references children by mangled name and the BFS
+                  expands through them) but classified as glob for
+                  invalidation. *)
                let unwrapped =
                  match Lib_info.wrapped (Lib.info lib) with
                  | Some (This w) -> not (Wrapped.to_bool w)
                  | Some (From _) | None -> false
                in
+               let entry_modules = Modules.entry_modules mods in
+               let entry_entries =
+                 List.map entry_modules ~f:(fun m ->
+                   Module.name m, lib, Some m)
+               in
                let entries =
-                 List.map (Modules.entry_modules mods) ~f:(fun m ->
-                   Module.name m, lib, if unwrapped then Some m else None)
+                 if unwrapped
+                 then entry_entries
+                 else
+                   (* Auto-wrapped libs: dune's auto-generated wrapper
+                      has [Module.kind = Alias], which means
+                      [Dep_rules.skip_ocamldep] fires and no [.d] is
+                      generated for the wrapper. The BFS thus cannot
+                      learn the wrapper's children by reading its
+                      ocamldep. Instead, also index each child under
+                      the WRAPPER's name (multi-entry), so that
+                      whenever the BFS encounters the wrapper's name
+                      in the frontier (via [-open Wrapper] in the
+                      consumer's flags or via a qualified
+                      [Wrapper.Child.x] reference), it walks
+                      directly into each child's ocamldep. *)
+                   let entry_obj_names =
+                     List.map entry_modules ~f:Module.obj_name
+                   in
+                   let child_modules =
+                     Modules.fold_user_available mods ~init:[] ~f:(fun m acc ->
+                       let obj_name = Module.obj_name m in
+                       if List.exists entry_obj_names ~f:(fun n ->
+                            Module_name.Unique.equal n obj_name)
+                       then acc
+                       else m :: acc)
+                   in
+                   let child_entries_under_wrapper =
+                     List.concat_map entry_modules ~f:(fun wrapper ->
+                       List.map child_modules ~f:(fun child ->
+                         Module.name wrapper, lib, Some child))
+                   in
+                   entry_entries @ child_entries_under_wrapper
                in
                let no_ocamldep_lib =
                  match Modules.as_singleton mods with
@@ -184,11 +223,16 @@ let build_lib_index ~super_context ~libs ~for_ =
                    Some lib
                  | _ -> None
                in
-               entries, no_ocamldep_lib)))
+               entries, no_ocamldep_lib, (if unwrapped then Some lib else None))))
   in
-  let entries = List.concat_map per_lib ~f:fst in
-  let no_ocamldep = List.filter_map per_lib ~f:snd |> Lib.Set.of_list in
-  Lib_file_deps.Lib_index.create ~no_ocamldep entries
+  let entries = List.concat_map per_lib ~f:(fun (e, _, _) -> e) in
+  let no_ocamldep =
+    List.filter_map per_lib ~f:(fun (_, n, _) -> n) |> Lib.Set.of_list
+  in
+  let unwrapped_local =
+    List.filter_map per_lib ~f:(fun (_, _, u) -> u) |> Lib.Set.of_list
+  in
+  Lib_file_deps.Lib_index.create ~no_ocamldep ~unwrapped_local entries
 ;;
 
 let create

@@ -47,14 +47,23 @@ let module_kind_is_filterable m =
 ;;
 
 (* Extend [initial_refs] with module names reached through cross-
-   library ocamldep. Walk tight-eligible entry modules breadth-first:
-   gather all [(lib, entry module)] pairs named by the frontier, read
-   each pair's impl and intf ocamldep, and union the raw names into
-   the frontier. Iterate until no new names appear.
+   library ocamldep. Walk every walkable entry module breadth-first
+   — wrappers and children of wrapped local libs alike: gather all
+   [(lib, entry module)] pairs named by the frontier, read each
+   pair's impl and intf ocamldep, and union the raw names into the
+   frontier. Iterate until no new names appear.
 
-   Libraries that are not tight-eligible (wrapped locals, externals,
-   virtual-impls) are skipped by [lookup_tight_entries]. Chains that
-   pass through them terminate and the consumer falls back to a glob
+   Wrapped local libs are walkable too. Dune's auto-generated
+   wrapper contains [module Foo = Lib__Foo] for each child;
+   reading the wrapper's ocamldep emits the mangled child names,
+   and [lookup_walkable_entries] resolves each to the child's
+   [Module.t] (also indexed under its mangled name). The BFS then
+   descends into the child's own ocamldep, surfacing transitive
+   cross-library references like [include Vendored_pprint] that
+   the wrapper alone would not reveal. Externals and libs in
+   [no_ocamldep] are excluded by [lookup_walkable_entries] —
+   they have no readable [.d] file. Chains passing through
+   excluded libs terminate and the consumer falls back to a glob
    on the unreached libs.
 
    Cycles in the module-reference graph terminate on the [seen] set.
@@ -78,7 +87,7 @@ let cross_lib_tight_set ~lib_index ~for_ ~initial_refs =
     else (
       let pairs =
         Module_name.Set.fold frontier ~init:[] ~f:(fun name acc ->
-          Lib_file_deps.Lib_index.lookup_tight_entries lib_index name @ acc)
+          Lib_file_deps.Lib_index.lookup_walkable_entries lib_index name @ acc)
       in
       let* discovered = union_module_name_sets_mapped pairs ~f:read_entry_deps in
       let seen = Module_name.Set.union seen frontier in

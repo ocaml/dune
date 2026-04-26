@@ -12,7 +12,7 @@ module Dst : sig
 
   include Dune_lang.Conv.S with type t := t
 
-  val explicit : string -> t
+  val maybe_add_exe : t -> t
   val to_dyn : t -> Dyn.t
   val install_path : Path.t Paths.t -> Section.t -> t -> Path.t
 end

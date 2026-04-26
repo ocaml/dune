@@ -1102,7 +1102,7 @@ let symlink_installed_artifacts_to_build_install
         let entry =
           let entry =
             Install.Entry.map_dst entry ~f:(fun dst ->
-              Install.Entry.Dst.add_suffix dst (Path.Local.to_string suffix))
+              Install.Entry.Dst.append_local dst suffix)
           in
           let entry = Install.Entry.Unexpanded.expand entry in
           Install.Entry.Expanded.set_src entry dst

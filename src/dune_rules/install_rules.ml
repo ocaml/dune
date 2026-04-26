@@ -1253,7 +1253,8 @@ struct
 
     let make_entry entry path comps =
       Install.Entry.Expanded.set_src entry path
-      |> Install.Entry.map_dst ~f:(fun dst -> Install.Entry.Dst.concat_all dst comps)
+      |> Install.Entry.map_dst ~f:(fun dst ->
+        Install.Entry.Dst.append_local dst (Path.Local.of_comps comps))
     ;;
 
     let read_dir_recursively (entry : _ Install.Entry.t) =

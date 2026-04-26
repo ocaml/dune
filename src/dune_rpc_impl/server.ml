@@ -337,11 +337,13 @@ let handler (t : _ t Fdecl.t) : 'build_arg Handler.t =
   let () = Handler.implement_request rpc Procedures.Public.ping (fun _ -> Fiber.return) in
   let implement_request_pending_action decl ~f =
     let handler _session input =
-      let server = Fdecl.get t in
       let outcome = Fiber.Ivar.create () in
-      let* () = Job_queue.write server.pending_jobs { kind = f input; outcome } in
-      let+ build_outcome = Fiber.Ivar.read outcome in
-      match (build_outcome : Build_outcome.t) with
+      let* () =
+        let server = Fdecl.get t in
+        Job_queue.write server.pending_jobs { kind = f input; outcome }
+      in
+      Fiber.Ivar.read outcome
+      >>| function
       | Success -> Dune_rpc.Build_outcome_with_diagnostics.Success
       | Failure -> Failure (get_current_diagnostic_errors ())
     in
@@ -358,16 +360,17 @@ let handler (t : _ t Fdecl.t) : 'build_arg Handler.t =
   in
   let () =
     let f _ () =
-      let server = Fdecl.get t in
       let outcome = Fiber.Ivar.create () in
-      let target =
-        Dune_lang.Dep_conf.Alias_rec (Dune_lang.String_with_vars.make_text Loc.none "fmt")
-      in
       let* () =
+        let server = Fdecl.get t in
+        let target =
+          Dune_lang.Dep_conf.Alias_rec
+            (Dune_lang.String_with_vars.make_text Loc.none "fmt")
+        in
         Job_queue.write server.pending_jobs { kind = Build [ target ]; outcome }
       in
-      let+ build_outcome = Fiber.Ivar.read outcome in
-      match build_outcome with
+      Fiber.Ivar.read outcome
+      >>| function
       (* A 'successful' formatting means there is nothing to promote. *)
       | Success -> ()
       | Failure ->
@@ -474,35 +477,33 @@ let handler (t : _ t Fdecl.t) : 'build_arg Handler.t =
 ;;
 
 let create ~lock_timeout ~registry ~root =
-  let t = Fdecl.create Dyn.opaque in
-  let pending_jobs = Job_queue.create () in
-  let handler = Rpc.Server.make (handler t) in
-  let pool = Fiber.Pool.create () in
   let where = Where.default () in
   Global_lock.lock_exn ~timeout:lock_timeout;
-  let server =
-    lazy
-      (let socket_file = Where.rpc_socket_file () in
-       Fpath.unlink_no_err (Path.Build.to_string socket_file);
-       Path.mkdir_p (Path.build (Path.Build.parent_exn socket_file));
-       match Csexp_rpc.Server.create [ Where.to_socket where ] ~backlog:100 with
-       | Ok s ->
-         (match where with
-          | `Ip _ -> Io.write_file (Path.build socket_file) (Where.to_string where)
-          | `Unix _ -> ());
-         at_exit (fun () -> Fpath.unlink_no_err (Path.Build.to_string socket_file));
-         s
-       | Error `Already_in_use ->
-         User_error.raise
-           [ Pp.textf
-               "Dune rpc is already running in this workspace. If this is not the case, \
-                please delete %s"
-               (Path.Build.to_string_maybe_quoted (Where.rpc_socket_file ()))
-           ])
-  in
+  let t = Fdecl.create Dyn.opaque in
   let config =
+    let server =
+      lazy
+        (let socket_file = Where.rpc_socket_file () in
+         Fpath.unlink_no_err (Path.Build.to_string socket_file);
+         Path.mkdir_p (Path.build (Path.Build.parent_exn socket_file));
+         match Csexp_rpc.Server.create [ Where.to_socket where ] ~backlog:100 with
+         | Ok s ->
+           (match where with
+            | `Ip _ -> Io.write_file (Path.build socket_file) (Where.to_string where)
+            | `Unix _ -> ());
+           at_exit (fun () -> Fpath.unlink_no_err (Path.Build.to_string socket_file));
+           s
+         | Error `Already_in_use ->
+           User_error.raise
+             [ Pp.textf
+                 "Dune rpc is already running in this workspace. If this is not the \
+                  case, please delete %s"
+                 (Path.Build.to_string_maybe_quoted (Where.rpc_socket_file ()))
+             ])
+    in
+    let handler = Rpc.Server.make (handler t) in
     { Run.handler
-    ; pool
+    ; pool = Fiber.Pool.create ()
     ; root
     ; where
     ; server
@@ -510,7 +511,10 @@ let create ~lock_timeout ~registry ~root =
     ; startup_ivar = Fiber.Ivar.create ()
     }
   in
-  let res = { config; pending_jobs; clients = Clients.empty } in
+  let res =
+    let pending_jobs = Job_queue.create () in
+    { config; pending_jobs; clients = Clients.empty }
+  in
   Fdecl.set t res;
   res
 ;;

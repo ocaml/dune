@@ -1915,8 +1915,7 @@ module Install_action = struct
       | None -> src, entry
       | Some src_exe_str ->
         ( Path.of_string src_exe_str
-        , Install.Entry.map_dst entry ~f:(fun dst ->
-            Install.Entry.Dst.explicit (Bin.add_exe (Install.Entry.Dst.to_string dst))) )
+        , Install.Entry.map_dst entry ~f:Install.Entry.Dst.maybe_add_exe )
     ;;
 
     let install_entry

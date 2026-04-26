@@ -11,7 +11,10 @@ module Dst : sig
   val add_suffix : t -> string -> t
   val to_install_file : t -> src_basename:string -> section:Section.t -> string option
   val of_install_file : string option -> src_basename:string -> section:Section.t -> t
+
+  (* CR-someday rgrinberg: get rid of this function *)
   val explicit : string -> t
+  val maybe_add_exe : t -> t
   val compare : t -> t -> Ordering.t
   val infer : src_basename:string -> Section.t -> t
 
@@ -26,7 +29,8 @@ end = struct
   let concat_all t suffixes = List.fold_left suffixes ~init:t ~f:Filename.concat
   let add_prefix p t = Filename.concat p t
   let add_suffix t p = Filename.concat t p
-  let explicit t = t
+  let explicit s = s
+  let maybe_add_exe t = Bin.add_exe t
   let compare = String.compare
 
   let man_subdir s =

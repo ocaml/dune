@@ -6,7 +6,7 @@ module Dst : sig
   type t
 
   val to_string : t -> string
-  val concat_all : t -> string list -> t
+  val append_local : t -> Path.Local.t -> t
   val add_prefix : string -> t -> t
   val add_suffix : t -> string -> t
   val to_install_file : t -> src_basename:string -> section:Section.t -> string option
@@ -26,7 +26,7 @@ end = struct
   type t = string
 
   let to_string t = t
-  let concat_all t suffixes = List.fold_left suffixes ~init:t ~f:Filename.concat
+  let append_local t l = Filename.concat t (Path.Local.to_string l)
   let add_prefix p t = Filename.concat p t
   let add_suffix t p = Filename.concat t p
   let explicit s = s

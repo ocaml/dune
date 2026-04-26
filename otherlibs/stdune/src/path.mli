@@ -70,6 +70,7 @@ module Local : sig
   val split_first_component : t -> (Filename.t * t) option
   val explode : t -> Filename.t list
   val descendant : t -> of_:t -> t option
+  val of_comps : Filename.t list -> t
 
   module Table : Hashtbl.S with type key = t
 end

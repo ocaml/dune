@@ -30,6 +30,7 @@ module Async_io = struct
   and timer =
     { ivar : (unit, [ `Cancelled | `Exn of exn ]) result Fiber.Ivar.t
     ; after : Time.Span.t
+    ; deadline : Time.t
     ; select : t
     ; id : Task_id.t
     ; mutable watcher : Lev.Timer.t option

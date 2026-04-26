@@ -156,7 +156,7 @@ let package loc pkg (context : Build_context.t) ~dune_version =
        Memo.parallel_map pkg.files ~f:(fun (s, l) ->
          let dir = Section.Map.find_exn pkg.sections s in
          Memo.parallel_map l ~f:(fun { kind; dst } ->
-           let path = Path.relative dir (Install.Entry.Dst.to_string dst) in
+           let path = Path.append_local dir (Install.Entry.Dst.local dst) in
            match kind with
            | File -> Memo.return [ path ]
            | Directory ->

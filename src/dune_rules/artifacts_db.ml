@@ -67,7 +67,7 @@ let get_installed_binaries ~(context : Context.t) stanzas =
             ~expand:expand_str
             ~expand_partial:expand_str_partial
         in
-        let dst = Path.Local.of_string (Install.Entry.Dst.to_string p) in
+        let dst = Install.Entry.Dst.local p in
         if Path.Local.is_root (Path.Local.parent_exn dst)
         then (
           let origin = { Artifacts.binding = fb; dir; dst; enabled_if } in

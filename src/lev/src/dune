@@ -7,7 +7,9 @@
   (= %{ocaml-config:ccomp_type} "msvc"))
  (target c_flags.sexp)
  (action
-  (write-file %{target} "(/wd4068 /wd4100 /wd4127 /wd4201 /wd4244)")))
+  (write-file
+   %{target}
+   "(\"/wd4068\" \"/wd4100\" \"/wd4127\" \"/wd4201\" \"/wd4244\")")))
 
 (rule
  (enabled_if

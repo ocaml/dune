@@ -7,7 +7,6 @@ module Dst : sig
 
   val to_string : t -> string
   val prepend_local : Path.Local.t -> t -> t
-  val add_suffix : t -> string -> t
   val append_local : t -> Path.Local.t -> t
 
   include Dune_lang.Conv.S with type t := t

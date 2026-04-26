@@ -161,13 +161,20 @@ let adjust_dst' ~src ~dst ~section =
   adjust_dst_gen ~src_suffix:(Full (Path.to_string (Path.build src))) ~dst ~section
 ;;
 
-let compare compare_src { optional; src; dst; section; kind } t =
+let compare
+      (type a)
+      (type b)
+      (compare_src : a -> a -> Ordering.t)
+      (compare_kind : b -> b -> Ordering.t)
+      { optional; src; dst; section; kind }
+      t
+  =
   let open Ordering.O in
   let= () = Section.compare section t.section in
   let= () = Dst.compare dst t.dst in
   let= () = compare_src src t.src in
   let= () = Bool.compare optional t.optional in
-  Poly.compare kind t.kind
+  compare_kind kind t.kind
 ;;
 
 let relative_installed_path t ~paths = Dst.install_path paths t.section t.dst
@@ -176,6 +183,20 @@ module Expanded = struct
   type kind =
     | File
     | Directory
+
+  let repr_kind =
+    Repr.variant
+      "kind"
+      [ Repr.case0 "Directory" ~test:(function
+          | Directory -> true
+          | _ -> false)
+      ; Repr.case0 "File" ~test:(function
+          | File -> true
+          | _ -> false)
+      ]
+  ;;
+
+  let _, compare_kind = Repr.make_compare repr_kind
 
   type nonrec 'src t = ('src, kind) t
 
@@ -213,7 +234,7 @@ module Expanded = struct
     let pr fmt = Printf.bprintf buf (fmt ^^ "\n") in
     Section.Map.iteri (group entries) ~f:(fun section entries ->
       pr "%s: [" (Section.to_string section);
-      List.sort ~compare:(compare Path.compare) entries
+      List.sort ~compare:(compare Path.compare compare_kind) entries
       |> List.iter ~f:(fun (e : Path.t t) ->
         let src = Path.to_string e.src in
         match
@@ -277,18 +298,27 @@ module Unexpanded = struct
     | Directory
     | Source_tree
 
+  let repr_kind =
+    Repr.variant
+      "kind"
+      [ Repr.case0 "File" ~test:(function
+          | File -> true
+          | _ -> false)
+      ; Repr.case0 "Directory" ~test:(function
+          | Directory -> true
+          | _ -> false)
+      ; Repr.case0 "Source_tree" ~test:(function
+          | Source_tree -> true
+          | _ -> false)
+      ]
+  ;;
+
+  let _, compare_kind = Repr.make_compare repr_kind
+
   type nonrec t = (Path.Build.t, kind) t
 
-  let to_dyn =
-    let dyn_of_kind =
-      let open Dyn in
-      function
-      | File -> variant "File" []
-      | Directory -> variant "Directory" []
-      | Source_tree -> variant "Source_tree" []
-    in
-    fun f t -> to_dyn dyn_of_kind f t
-  ;;
+  let dyn_of_kind = Repr.to_dyn repr_kind
+  let to_dyn f t = to_dyn dyn_of_kind f t
 
   let make section ?dst ~kind src =
     let dst = adjust_dst' ~src ~dst ~section in
@@ -307,7 +337,7 @@ module Unexpanded = struct
     { t with kind }
   ;;
 
-  let compare a b = compare Path.Build.compare a b
+  let compare a b = compare Path.Build.compare compare_kind a b
 end
 
 module Sourced = struct

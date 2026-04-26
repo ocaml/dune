@@ -143,6 +143,14 @@ let service_waiters waiters fd fills =
     fills
 ;;
 
+let timers_by_wakeup_order t =
+  Table.values t.timers
+  |> List.sort ~compare:(fun a b ->
+    match Time.compare a.deadline b.deadline with
+    | Eq -> Task_id.compare a.id b.id
+    | order -> order)
+;;
+
 let service_ready_watchers_locked t fills =
   List.fold_left (Table.to_list t.watchers) ~init:fills ~f:(fun fills (fd, watcher) ->
     let fills =
@@ -157,8 +165,7 @@ let service_ready_watchers_locked t fills =
 ;;
 
 let service_ready_timers_locked t fills =
-  List.fold_left (Table.to_list t.timers) ~init:fills ~f:(fun fills (_id, timer) ->
-    service_ready_timer t timer fills)
+  timers_by_wakeup_order t |> List.fold_right ~init:fills ~f:(service_ready_timer t)
 ;;
 
 let sync_watchers_locked t =
@@ -200,9 +207,10 @@ let sync_watchers_locked t =
 ;;
 
 let sync_timers_locked t =
-  List.iter (Table.to_list t.timers) ~f:(fun (id, (timer : timer)) ->
+  timers_by_wakeup_order t
+  |> List.iter ~f:(fun (timer : timer) ->
     match timer.status with
-    | `Filled -> retire_timer t id timer
+    | `Filled -> retire_timer t timer.id timer
     | `Waiting ->
       (match timer.watcher with
        | Some _ -> ()
@@ -346,9 +354,11 @@ let sleep t after =
     with_mutex t ~f:(fun () ->
       ensure_running_locked t;
       Event.Queue.register_worker_task_started t.scheduler_queue;
+      let deadline = Time.add (Time.now ()) after in
       let timer =
         { ivar = Fiber.Ivar.create ()
         ; after
+        ; deadline
         ; select = t
         ; id = Task_id.gen ()
         ; watcher = None

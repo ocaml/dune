@@ -17,6 +17,10 @@
     oxcaml = {
       url = "github:oxcaml/oxcaml/5.2.0minus-31";
     };
+    oxcaml-trunk = {
+      url = "github:oxcaml/oxcaml/main";
+      flake = false;
+    };
     oxcaml-opam-repository = {
       url = "github:oxcaml/opam-repository/231c88c2e564fdca40e15e750aacad5fb0887435";
       flake = false;
@@ -53,6 +57,7 @@
       ocaml-overlays,
       odoc-src,
       oxcaml,
+      oxcaml-trunk,
       oxcaml-opam-repository,
       revdeps-dune,
       menhir-src,
@@ -242,7 +247,7 @@
             pkgs.stdenv.mkDerivation {
               pname = "oxcaml-trunk-build";
               version = "check";
-              src = oxcaml;
+              src = oxcaml-trunk;
               nativeBuildInputs = [
                 dune
                 pkgs.autoconf
@@ -254,7 +259,7 @@
               strictDeps = true;
               buildPhase = ''
                 autoconf
-                ./configure --prefix $PWD/_install --enable-dev --enable-runtime5
+                ./configure --prefix $PWD/_install --enable-runtime5 --disable-warn-error
                 make SHELL=$SHELL
               '';
               installPhase = ''

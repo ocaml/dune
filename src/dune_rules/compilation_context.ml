@@ -138,10 +138,20 @@ let parameters_main_modules parameters =
    [Dep_rules.skip_ocamldep] (unwrapped single-module stanzas without
    direct lib deps) are collected into [no_ocamldep] so the cross-
    library walk does not try to read their nonexistent [.d] files. *)
-let build_lib_index ~super_context ~all_libs ~for_ =
+(* [libs] should be the consumer's [direct_requires] — the libraries
+   whose entry modules can legitimately appear in the consumer's
+   ocamldep output (and, after the cross-library walk extends through
+   them, in cross-library ocamldep outputs that the BFS surfaces).
+   Hidden requires are intentionally excluded: the user has not
+   committed to them as direct dependencies, so the per-module
+   filter does not track them with per-module precision — they
+   fall to glob fallback in [lib_deps_for_module]'s post-walk
+   classification, which is the right behaviour for libs outside
+   the user's commitment surface. *)
+let build_lib_index ~super_context ~libs ~for_ =
   let open Resolve.Memo.O in
   let+ per_lib =
-    Resolve.Memo.List.map all_libs ~f:(fun lib ->
+    Resolve.Memo.List.map libs ~f:(fun lib ->
       match Lib_info.entry_modules (Lib.info lib) ~for_ with
       | External (Ok names) ->
         Resolve.Memo.return (List.map names ~f:(fun n -> n, lib, None), None)
@@ -296,9 +306,8 @@ let create
   ; lib_index =
       Memo.lazy_ (fun () ->
         let open Resolve.Memo.O in
-        let* direct = direct_requires in
-        let* hidden = hidden_requires in
-        build_lib_index ~super_context ~all_libs:(direct @ hidden) ~for_)
+        let* libs = direct_requires in
+        build_lib_index ~super_context ~libs ~for_)
   ; has_virtual_impl =
       Memo.lazy_ (fun () ->
         let open Resolve.Memo.O in

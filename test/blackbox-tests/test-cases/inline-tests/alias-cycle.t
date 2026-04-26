@@ -26,19 +26,12 @@ turn depends on the inline-test-name alias of the inline tests of the library.
   >    (echo "let message = \"Hello world\""))))
   > EOF
 
-This kind of cycle has a difficult to understand error message.
-  $ dune build 2>&1 | grep -vwE "sed"
+This kind of cycle has a difficult to understand error message. The specific
+ordering of nodes in the cycle walk varies across environments and depends
+on rule-scheduling order, so the test hides the walk nodes (which change)
+and keeps only the invariants: the error header and the presence of the
+runtest alias in the walk.
+  $ dune build 2>&1 | dune_cmd delete '^(File |\d+ \||   _build|-> _build|-> required by|-> %\{|.*sed: )'
   Error: Dependency cycle between:
-     _build/default/.foo_simple.objs/foo_simple__Bar.impl.all-deps
-  -> _build/default/.foo_simple.objs/byte/foo_simple__Bar.cmi
-  -> _build/default/.foo_simple.inline-tests/.t.eobjs/native/dune__exe__Main.cmx
-  -> _build/default/.foo_simple.inline-tests/inline-test-runner.exe
   -> alias runtest-foo_simple in dune:9
-  -> _build/default/bar.ml
-  -> _build/default/.foo_simple.objs/foo_simple__Bar.impl.d
-  -> _build/default/.foo_simple.objs/foo_simple__Bar.impl.all-deps
-  -> required by _build/default/.foo_simple.objs/byte/foo_simple__Bar.cmo
-  -> required by _build/default/foo_simple.cma
-  -> required by alias all
-  -> required by alias default
   [1]

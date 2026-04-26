@@ -83,27 +83,28 @@ let parse_compilation_units ~modules =
     |> Option.map ~f:Modules.Sourced_module.to_module)
 ;;
 
-let parse_deps_exn =
-  let invalid file lines =
-    User_error.raise
-      [ Pp.textf
-          "ocamldep returned unexpected output for %s:"
-          (Path.to_string_maybe_quoted file)
-      ; Pp.vbox
-          (Pp.concat_map lines ~sep:Pp.cut ~f:(fun line ->
-             Pp.seq (Pp.verbatim "> ") (Pp.verbatim line)))
-      ]
-  in
-  fun ~file lines ->
-    match lines with
-    | [] | _ :: _ :: _ -> invalid file lines
-    | [ line ] ->
-      (match String.lsplit2 line ~on:':' with
-       | None -> invalid file lines
-       | Some (basename, deps) ->
-         let basename = Filename.basename basename in
-         if basename <> Path.basename file then invalid file lines;
-         String.extract_blank_separated_words deps)
+let invalid_ocamldep_output file lines =
+  User_error.raise
+    [ Pp.textf
+        "ocamldep returned unexpected output for %s:"
+        (Path.to_string_maybe_quoted file)
+    ; Pp.vbox
+        (Pp.concat_map lines ~sep:Pp.cut ~f:(fun line ->
+           Pp.seq (Pp.verbatim "> ") (Pp.verbatim line)))
+    ]
+;;
+
+(* Parse the space-separated module names from one line of
+   [ocamldep -modules] output. The structural check (exactly one
+   line, one colon) catches gross format corruption; the basename
+   on the LHS is ignored. *)
+let parse_deps ~file lines =
+  match lines with
+  | [] | _ :: _ :: _ -> invalid_ocamldep_output file lines
+  | [ line ] ->
+    (match String.lsplit2 line ~on:':' with
+     | None -> invalid_ocamldep_output file lines
+     | Some (_, deps) -> String.extract_blank_separated_words deps)
 ;;
 
 let transitive_deps =
@@ -156,7 +157,7 @@ let deps_of ~sandbox ~modules ~sctx ~dir ~obj_dir ~ml_kind ~for_ unit =
          (let+ immediate_deps =
             Path.build ocamldep_output
             |> Action_builder.lines_of
-            >>| parse_deps_exn ~file:(Module.File.path source)
+            >>| parse_deps ~file:(Module.File.path source)
             >>| parse_module_names ~dir ~unit ~modules
             >>| Stdlib.( @ ) (Modules.With_vlib.implicit_deps modules ~of_:unit)
           in
@@ -186,16 +187,45 @@ let read_deps_of ~obj_dir ~modules ~ml_kind ~for_ unit =
   |> Action_builder.memoize (Path.Build.to_string all_deps_file)
 ;;
 
+(* Parse the raw dependency names from an ocamldep output file. The
+   builder for each .d file is cached by path so that
+   [read_immediate_deps_of] and [read_immediate_deps_raw_of] (which
+   may be called many times for the same module) share one memoized
+   [Action_builder.t] instance per file. *)
+let read_immediate_deps_parsed =
+  let cache = Table.create (module Path.Build) 64 in
+  fun ~obj_dir ~ml_kind ~for_ unit ->
+    match Module.source ~ml_kind unit with
+    | None -> Action_builder.return None
+    | Some source ->
+      (match Obj_dir.Module.dep obj_dir ~for_ (Immediate (unit, ml_kind)) with
+       | None -> Action_builder.return None
+       | Some ocamldep_output ->
+         (match Table.find cache ocamldep_output with
+          | Some builder -> builder
+          | None ->
+            let builder =
+              Action_builder.lines_of (Path.build ocamldep_output)
+              |> Action_builder.map ~f:(fun lines ->
+                Some (parse_deps ~file:(Module.File.path source) lines))
+              |> Action_builder.memoize (Path.Build.to_string ocamldep_output)
+            in
+            Table.set cache ocamldep_output builder;
+            builder))
+;;
+
 let read_immediate_deps_of ~obj_dir ~modules ~ml_kind ~for_ unit =
-  match Module.source ~ml_kind unit with
-  | None -> Action_builder.return []
-  | Some source ->
-    let ocamldep_output =
-      Obj_dir.Module.dep obj_dir ~for_ (Immediate (unit, ml_kind)) |> Option.value_exn
-    in
-    Action_builder.lines_of (Path.build ocamldep_output)
-    |> Action_builder.map ~f:(fun lines ->
-      parse_deps_exn ~file:(Module.File.path source) lines
-      |> parse_module_names ~dir:(Obj_dir.dir obj_dir) ~unit ~modules)
-    |> Action_builder.memoize (Path.Build.to_string ocamldep_output)
+  let open Action_builder.O in
+  let+ parsed = read_immediate_deps_parsed ~obj_dir ~ml_kind ~for_ unit in
+  match parsed with
+  | None -> []
+  | Some names -> parse_module_names ~dir:(Obj_dir.dir obj_dir) ~unit ~modules names
+;;
+
+let read_immediate_deps_raw_of ~obj_dir ~ml_kind ~for_ unit =
+  let open Action_builder.O in
+  let+ parsed = read_immediate_deps_parsed ~obj_dir ~ml_kind ~for_ unit in
+  match parsed with
+  | None -> Module_name.Set.empty
+  | Some names -> Module_name.Set.of_list_map names ~f:Module_name.of_checked_string
 ;;

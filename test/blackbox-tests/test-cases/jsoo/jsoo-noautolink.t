@@ -39,6 +39,10 @@ The file dlllibA_stubs.so should not appear in the next list.
   _build/default/.mainA.eobjs/byte/dune__exe__MainA.cmo
   _build/default/.mainA.eobjs/byte/dune__exe__MainA.cmt
   _build/default/.mainA.eobjs/byte/dune__exe__MainA.cmti
+  _build/default/.mainA.eobjs/dune__exe__MainA.impl.all-deps
+  _build/default/.mainA.eobjs/dune__exe__MainA.impl.d
+  _build/default/.mainA.eobjs/dune__exe__MainA.intf.all-deps
+  _build/default/.mainA.eobjs/dune__exe__MainA.intf.d
   _build/default/.merlin-conf
   _build/default/.merlin-conf/exe-mainA
   _build/default/.merlin-conf/lib-libA

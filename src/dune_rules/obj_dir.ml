@@ -638,18 +638,37 @@ module Module = struct
   end
 
   let dep t dep ~for_ =
-    match (dep : Dep.t) with
-    | Immediate (m, _) | Transitive (m, _) ->
-      (match Module.kind m with
-       | Module.Kind.Alias _ | Root -> None
-       | _ ->
-         let dir =
-           match for_ with
-           | Compilation_mode.Ocaml -> obj_dir t
-           | Melange -> obj_dir t
-         in
-         let name = Dep.basename dep in
-         Some (Path.Build.relative dir name))
+    let m =
+      match (dep : Dep.t) with
+      | Immediate (m, _) | Transitive (m, _) -> m
+    in
+    let none =
+      match Module.kind m, dep with
+      | Module.Kind.Alias _, _ -> true
+      (* [Wrapped_compat] has synthesized deps in
+         [Dep_rules.deps_of_module] — no ocamldep rule is
+         registered and no [.d]/[.all-deps] file is produced. *)
+      | Wrapped_compat, _ -> true
+      (* [Root] has a synthesized [.d] written alongside [root.ml]
+         by [build_root_module] (one line of [<basename>: <names>]
+         format), but no transitive [.all-deps] is produced for
+         it: the cycle that motivated [Dep_rules.deps_of]'s
+         [is_alias_or_root] short-circuit (see commit a5d894525,
+         change #12227) lives in [.all-deps] generation, not in
+         [.d]. *)
+      | Root, Transitive _ -> true
+      | _ -> false
+    in
+    if none
+    then None
+    else (
+      let dir =
+        match for_ with
+        | Compilation_mode.Ocaml -> obj_dir t
+        | Melange -> obj_dir t
+      in
+      let name = Dep.basename dep in
+      Some (Path.Build.relative dir name))
   ;;
 
   module L = struct

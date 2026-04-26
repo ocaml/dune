@@ -1,6 +1,42 @@
 open Import
 open Memo.O
 
+(* Why wrapped libraries fall back to a directory glob
+   =================================================
+
+   Per-module tight deps apply only to local unwrapped libraries.
+   Wrapped libraries take the glob path over their public cmi dir.
+   The limitation is fundamental to ocamldep's output granularity.
+
+   [ocamldep -modules foo.ml] lists only the top-level module names
+   referenced by a source file. For a consumer using [Foo.Bar.x],
+   the output is [Foo] — not [Foo.Bar]. Consumers that use
+   [Foo.Bar] and those that use [Foo.Baz] produce identical
+   ocamldep output, so the filter cannot distinguish them and
+   cannot emit specific deps on [Foo__Bar.cmi] vs [Foo__Baz.cmi].
+   Any breadth-first walk over the wrapper's own ocamldep output
+   reaches every internal the wrapper exposes, which is equivalent
+   to the glob for invalidation.
+
+   Possible follow-on work:
+
+   - Qualified-path extractor. Walk consumer source with
+     [compiler-libs]' [Parse.implementation], collect [Longident.t]
+     references as [Module_name.Path.t] values in a companion
+     artifact. Match qualified paths against wrapped-lib internals
+     for per-consumer precision. Estimated ~500-1000 lines across a
+     new rule, a new file format, and preprocessing integration;
+     correct handling of [let open Foo in Bar.x] (opens that bring
+     sub-modules into unqualified scope) needs lexical-scope
+     tracking and roughly doubles the low-end estimate.
+
+   - Post-compile cmi-imports refinement. [consumer.cmi] records
+     exactly the cmis its compilation imported; [Ocamlobjinfo] can
+     read them. Using this as the source of truth requires breaking
+     dune's invariant that rule deps are fixed before the rule
+     runs — a two-phase build or a pessimistic-then-refine scheme.
+     Not natively supported by dune's rule model today. *)
+
 module Group = struct
   type ocaml =
     | Cmi
@@ -48,8 +84,157 @@ let deps_of_lib (lib : Lib.t) ~groups =
   |> Dep.Set.of_list
 ;;
 
-let deps_with_exts = Dep.Set.union_map ~f:(fun (lib, groups) -> deps_of_lib lib ~groups)
 let deps libs ~groups = Dep.Set.union_map libs ~f:(deps_of_lib ~groups)
+
+let groups_for_cm_kind ~opaque ~(cm_kind : Lib_mode.Cm_kind.t) lib =
+  match cm_kind with
+  | Ocaml Cmi | Ocaml Cmo -> [ Group.Ocaml Cmi ]
+  | Ocaml Cmx ->
+    if opaque && Lib.is_local lib
+    then [ Group.Ocaml Cmi ]
+    else [ Group.Ocaml Cmi; Group.Ocaml Cmx ]
+  | Melange Cmi -> [ Group.Melange Cmi ]
+  | Melange Cmj -> [ Group.Melange Cmi; Group.Melange Cmj ]
+;;
+
+let deps_of_entries ~opaque ~cm_kind libs =
+  Dep.Set.union_map libs ~f:(fun lib ->
+    deps_of_lib lib ~groups:(groups_for_cm_kind ~opaque ~cm_kind lib))
+;;
+
+(* [cm_public_file] gives the cmi path consumers read via their [-I]
+   include path, which for libraries with a dedicated public cmi dir
+   ([private_modules]) differs from the internal compilation output.
+   Using it ensures the dep triggers the produce-public-cmi rule.
+
+   Only called for local unwrapped libraries: [can_filter] rejects
+   melange cm_kinds, so this function handles ocaml only. *)
+let deps_of_entry_modules ~opaque ~(cm_kind : Lib_mode.Cm_kind.t) lib modules =
+  let obj_dir = Lib.info lib |> Lib_info.obj_dir in
+  let cmi_kind = Lib_mode.Cm_kind.cmi cm_kind in
+  let want_cmx =
+    match cm_kind with
+    | Ocaml Cmx -> not (opaque && Lib.is_local lib)
+    | _ -> false
+  in
+  List.fold_left modules ~init:Dep.Set.empty ~f:(fun acc m ->
+    let acc =
+      match Obj_dir.Module.cm_public_file obj_dir m ~kind:cmi_kind with
+      | Some path -> Dep.Set.add acc (Dep.file path)
+      | None -> acc
+    in
+    if want_cmx && Module.has m ~ml_kind:Impl
+    then (
+      match Obj_dir.Module.cm_public_file obj_dir m ~kind:(Ocaml Cmx) with
+      | Some path -> Dep.Set.add acc (Dep.file path)
+      | None -> acc)
+    else acc)
+;;
+
+module Lib_index = struct
+  type t =
+    { by_module_name : (Lib.t * Module.t option) list Module_name.Map.t
+    ; tight_eligible : Lib.Set.t
+    ; no_ocamldep : Lib.Set.t
+      (* Local libs whose ocamldep is short-circuited by
+         [Dep_rules.skip_ocamldep] — single-module stanzas without
+         library dependencies have no [.d] build rules. The
+         cross-library walk must not try to read ocamldep for them;
+         their entry module can have no cross-library references
+         anyway. *)
+    }
+
+  let empty =
+    { by_module_name = Module_name.Map.empty
+    ; tight_eligible = Lib.Set.empty
+    ; no_ocamldep = Lib.Set.empty
+    }
+  ;;
+
+  (* Tight-eligibility — local + unwrapped, every entry carries a
+     [Module.t] — is encoded in the entry shape itself: an entry
+     [(_, lib, Some _)] means the producer of the index has decided
+     [lib] is tight-eligible. Wrapped local libs and externals come
+     in as [(_, _, None)] and don't enter [tight_eligible]. See the
+     module-level comment at the top of this file for the
+     ocamldep-granularity reason wrapped libs are excluded. *)
+  let create ~no_ocamldep entries =
+    let by_module_name =
+      List.fold_left entries ~init:Module_name.Map.empty ~f:(fun map (name, lib, m) ->
+        Module_name.Map.update map name ~f:(function
+          | None -> Some [ lib, m ]
+          | Some xs -> Some ((lib, m) :: xs)))
+    in
+    let tight_eligible =
+      List.fold_left entries ~init:Lib.Set.empty ~f:(fun acc (_, lib, m_opt) ->
+        match m_opt with
+        | Some _ -> Lib.Set.add acc lib
+        | None -> acc)
+    in
+    { by_module_name; tight_eligible; no_ocamldep }
+  ;;
+
+  type classified =
+    { tight : Module.t list Lib.Map.t
+    ; non_tight : Lib.t list
+    }
+
+  let filter_libs_with_modules idx ~referenced_modules =
+    let add_entry (tight, non_tight) (lib, m_opt) =
+      match m_opt with
+      | Some m when Lib.Set.mem idx.tight_eligible lib ->
+        let tight =
+          Lib.Map.update tight lib ~f:(function
+            | None -> Some [ m ]
+            | Some ms -> Some (m :: ms))
+        in
+        tight, non_tight
+      | _ -> tight, Lib.Set.add non_tight lib
+    in
+    let tight, non_tight =
+      Module_name.Set.fold
+        referenced_modules
+        ~init:(Lib.Map.empty, Lib.Set.empty)
+        ~f:(fun name acc ->
+          match Module_name.Map.find idx.by_module_name name with
+          | None -> acc
+          | Some entries -> List.fold_left entries ~init:acc ~f:add_entry)
+    in
+    { tight; non_tight = Lib.Set.to_list non_tight }
+  ;;
+
+  (* Like [filter_libs_with_modules] but only returns the tight
+     part. Saves the [non_tight] accumulator at call sites that
+     only consume the tight map (e.g. the post-BFS classify in
+     [lib_deps_for_module]). *)
+  let tight_modules_per_lib idx ~referenced_modules =
+    Module_name.Set.fold referenced_modules ~init:Lib.Map.empty ~f:(fun name acc ->
+      match Module_name.Map.find idx.by_module_name name with
+      | None -> acc
+      | Some entries ->
+        List.fold_left entries ~init:acc ~f:(fun acc (lib, m_opt) ->
+          match m_opt with
+          | Some m when Lib.Set.mem idx.tight_eligible lib ->
+            Lib.Map.update acc lib ~f:(function
+              | None -> Some [ m ]
+              | Some ms -> Some (m :: ms))
+          | _ -> acc))
+  ;;
+
+  let lookup_tight_entries idx name =
+    match Module_name.Map.find idx.by_module_name name with
+    | None -> []
+    | Some entries ->
+      List.filter_map entries ~f:(fun (lib, m_opt) ->
+        match m_opt with
+        | Some m
+          when Lib.Set.mem idx.tight_eligible lib && not (Lib.Set.mem idx.no_ocamldep lib)
+          -> Some (lib, m)
+        | _ -> None)
+  ;;
+
+  let is_tight_eligible idx lib = Lib.Set.mem idx.tight_eligible lib
+end
 
 type path_specification =
   | Allow_all

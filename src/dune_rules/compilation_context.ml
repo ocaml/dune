@@ -4,55 +4,29 @@ open Memo.O
 module Includes = struct
   type t = Command.Args.without_targets Command.Args.t Lib_mode.Cm_kind.Map.t
 
-  let make ~project ~opaque ~direct_requires ~hidden_requires lib_config
+  let make ~project ~direct_requires ~hidden_requires lib_config
     : _ Lib_mode.Cm_kind.Map.t
     =
-    (* TODO: some of the requires can filtered out using [ocamldep] info *)
     let open Resolve.Memo.O in
     let iflags direct_libs hidden_libs mode =
       Lib_flags.L.include_flags ~project ~direct_libs ~hidden_libs mode lib_config
     in
-    let make_includes_args ~mode groups =
+    let make_includes_args ~mode =
       (let+ direct_libs = direct_requires
        and+ hidden_libs = hidden_requires in
-       Command.Args.S
-         [ iflags direct_libs hidden_libs mode
-         ; Hidden_deps (Lib_file_deps.deps (direct_libs @ hidden_libs) ~groups)
-         ])
+       iflags direct_libs hidden_libs mode)
       |> Resolve.Memo.args
       |> Command.Args.memo
     in
     { ocaml =
-        (let cmi_includes = make_includes_args ~mode:(Ocaml Byte) [ Ocaml Cmi ] in
+        (let cmi_includes = make_includes_args ~mode:(Ocaml Byte) in
          { cmi = cmi_includes
          ; cmo = cmi_includes
-         ; cmx =
-             (let+ direct_libs = direct_requires
-              and+ hidden_libs = hidden_requires in
-              Command.Args.S
-                [ iflags direct_libs hidden_libs (Ocaml Native)
-                ; Hidden_deps
-                    (let libs = direct_libs @ hidden_libs in
-                     if opaque
-                     then
-                       List.map libs ~f:(fun lib ->
-                         ( lib
-                         , if Lib.is_local lib
-                           then [ Lib_file_deps.Group.Ocaml Cmi ]
-                           else [ Ocaml Cmi; Ocaml Cmx ] ))
-                       |> Lib_file_deps.deps_with_exts
-                     else
-                       Lib_file_deps.deps
-                         libs
-                         ~groups:[ Lib_file_deps.Group.Ocaml Cmi; Ocaml Cmx ])
-                ])
-             |> Resolve.Memo.args
-             |> Command.Args.memo
+         ; cmx = make_includes_args ~mode:(Ocaml Native)
          })
     ; melange =
-        { cmi = make_includes_args ~mode:Melange [ Melange Cmi ]
-        ; cmj = make_includes_args ~mode:Melange [ Melange Cmi; Melange Cmj ]
-        }
+        (let mel_includes = make_includes_args ~mode:Melange in
+         { cmi = mel_includes; cmj = mel_includes })
     }
   ;;
 
@@ -91,6 +65,8 @@ type t =
   ; parameters : Module_name.t list Resolve.Memo.t
   ; instances : Parameterised_instances.t Resolve.Memo.t option
   ; includes : Includes.t
+  ; lib_index : Lib_file_deps.Lib_index.t Resolve.t Memo.Lazy.t
+  ; has_virtual_impl : bool Resolve.t Memo.Lazy.t
   ; preprocessing : Pp_spec.t
   ; opaque : bool
   ; js_of_ocaml : Js_of_ocaml.In_context.t option Js_of_ocaml.Mode.Pair.t
@@ -118,6 +94,8 @@ let requires_hidden t = t.requires_hidden
 let requires_link t = Memo.Lazy.force t.requires_link
 let parameters t = t.parameters
 let includes t = t.includes
+let lib_index t = Memo.Lazy.force t.lib_index
+let has_virtual_impl t = Memo.Lazy.force t.has_virtual_impl
 let preprocessing t = t.preprocessing
 let opaque t = t.opaque
 let js_of_ocaml t = t.js_of_ocaml
@@ -145,6 +123,72 @@ let parameters_main_modules parameters =
       Code_error.raise
         "Expected library parameter to have a main module"
         [ "param", Lib.to_dyn param ])
+;;
+
+(* Build a [Lib_index] from [all_libs] for the per-module inter-library
+   dependency filter.
+
+   For each library, entry module names are collected (for wrapped
+   libraries, the wrapper; for unwrapped, each public module). Hidden
+   libraries are included so that consumers which transitively
+   reference a hidden library's entry module still produce a build
+   dependency on it.
+
+   Local libraries whose ocamldep is short-circuited by
+   [Dep_rules.skip_ocamldep] (unwrapped single-module stanzas without
+   direct lib deps) are collected into [no_ocamldep] so the cross-
+   library walk does not try to read their nonexistent [.d] files. *)
+(* [libs] should be the consumer's [direct_requires] — the libraries
+   whose entry modules can legitimately appear in the consumer's
+   ocamldep output (and, after the cross-library walk extends through
+   them, in cross-library ocamldep outputs that the BFS surfaces).
+   Hidden requires are intentionally excluded: the user has not
+   committed to them as direct dependencies, so the per-module
+   filter does not track them with per-module precision — they
+   fall to glob fallback in [lib_deps_for_module]'s post-walk
+   classification, which is the right behaviour for libs outside
+   the user's commitment surface. *)
+let build_lib_index ~super_context ~libs ~for_ =
+  let open Resolve.Memo.O in
+  let+ per_lib =
+    Resolve.Memo.List.map libs ~f:(fun lib ->
+      match Lib_info.entry_modules (Lib.info lib) ~for_ with
+      | External (Ok names) ->
+        Resolve.Memo.return (List.map names ~f:(fun n -> n, lib, None), None)
+      | External (Error e) -> Resolve.Memo.of_result (Error e)
+      | Local ->
+        Resolve.Memo.lift_memo
+          (Memo.map
+             (Dir_contents.modules_of_local_lib
+                super_context
+                (Lib.Local.of_lib_exn lib)
+                ~for_)
+             ~f:(fun mods ->
+               (* [Some m] iff the lib is tight-eligible (local + unwrapped):
+                  only then can downstream consumers issue per-module deps
+                  on its [.cmi] files. [None] therefore covers both wrapped
+                  locals and externals — in either case we don't have a
+                  [Module.t] the per-module path can use. *)
+               let unwrapped =
+                 match Lib_info.wrapped (Lib.info lib) with
+                 | Some (This w) -> not (Wrapped.to_bool w)
+                 | Some (From _) | None -> false
+               in
+               let entries =
+                 List.map (Modules.entry_modules mods) ~f:(fun m ->
+                   Module.name m, lib, if unwrapped then Some m else None)
+               in
+               let no_ocamldep_lib =
+                 match Modules.as_singleton mods with
+                 | Some _ when List.is_empty (Lib_info.requires (Lib.info lib) ~for_) ->
+                   Some lib
+                 | _ -> None
+               in
+               entries, no_ocamldep_lib)))
+  in
+  let entries = List.concat_map per_lib ~f:fst in
+  let no_ocamldep = List.filter_map per_lib ~f:snd |> Lib.Set.of_list in
+  Lib_file_deps.Lib_index.create ~no_ocamldep entries
 ;;
 
 let create
@@ -206,6 +250,23 @@ let create
     let profile = Context.profile context in
     eval_opaque ocaml profile opaque
   in
+  let* has_library_deps =
+    (* Determine whether any library dependencies are declared, so that
+       single-module stanzas still run ocamldep when its output could
+       inform the per-module inter-library dependency filter. *)
+    let open Resolve.Memo.O in
+    let+ direct = direct_requires
+    and+ hidden = hidden_requires in
+    match direct, hidden with
+    | [], [] -> false
+    | _ -> true
+  in
+  let has_library_deps =
+    (* Unresolved dependency errors propagate later through the normal
+       compilation rules; here we conservatively behave as if libraries
+       are present. *)
+    Resolve.peek has_library_deps |> Result.value ~default:true
+  in
   let+ dep_graphs =
     Dep_rules.rules
       ~dir:(Obj_dir.dir obj_dir)
@@ -215,6 +276,7 @@ let create
       ~impl:implements
       ~modules
       ~for_
+      ~has_library_deps
   and+ bin_annot =
     match bin_annot with
     | Some b -> Memo.return b
@@ -240,8 +302,18 @@ let create
   ; requires_link
   ; implements
   ; parameters
-  ; includes =
-      Includes.make ~project ~opaque ~direct_requires ~hidden_requires ocaml.lib_config
+  ; includes = Includes.make ~project ~direct_requires ~hidden_requires ocaml.lib_config
+  ; lib_index =
+      Memo.lazy_ (fun () ->
+        let open Resolve.Memo.O in
+        let* libs = direct_requires in
+        build_lib_index ~super_context ~libs ~for_)
+  ; has_virtual_impl =
+      Memo.lazy_ (fun () ->
+        let open Resolve.Memo.O in
+        let+ direct = direct_requires
+        and+ hidden = hidden_requires in
+        List.exists (direct @ hidden) ~f:(fun lib -> Option.is_some (Lib.implements lib)))
   ; preprocessing
   ; opaque
   ; js_of_ocaml
@@ -333,7 +405,6 @@ let for_module_generated_at_link_time cctx ~requires ~module_ =
     let direct_requires = requires in
     Includes.make
       ~project:(Scope.project cctx.scope)
-      ~opaque
       ~direct_requires
       ~hidden_requires
       cctx.ocaml.lib_config
@@ -344,6 +415,7 @@ let for_module_generated_at_link_time cctx ~requires ~module_ =
   ; requires_link = Memo.lazy_ (fun () -> requires)
   ; requires_compile = requires
   ; includes
+  ; lib_index = Memo.lazy_ (fun () -> Resolve.Memo.return Lib_file_deps.Lib_index.empty)
   ; modules
   }
 ;;

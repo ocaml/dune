@@ -345,7 +345,6 @@ required parameters.
   1 | (executable (name bin) (libraries lib))
                                         ^^^
   Error: Missing argument for parameter "project.a".
-  -> required by _build/default/bin/.bin.eobjs/native/dune__exe__Bin.cmx
   -> required by _build/default/bin/bin.exe
   -> required by alias bin/all
   -> required by alias default

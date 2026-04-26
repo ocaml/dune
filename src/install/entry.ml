@@ -7,7 +7,7 @@ module Dst : sig
 
   val to_string : t -> string
   val append_local : t -> Path.Local.t -> t
-  val add_prefix : string -> t -> t
+  val prepend_local : Path.Local.t -> t -> t
   val add_suffix : t -> string -> t
   val to_install_file : t -> src_basename:string -> section:Section.t -> string option
   val of_install_file : string option -> src_basename:string -> section:Section.t -> t
@@ -27,7 +27,7 @@ end = struct
 
   let to_string t = t
   let append_local t l = Filename.concat t (Path.Local.to_string l)
-  let add_prefix p t = Filename.concat p t
+  let prepend_local l t = Path.Local.to_string (Path.Local.relative l t)
   let add_suffix t p = Filename.concat t p
   let explicit s = s
   let maybe_add_exe t = Bin.add_exe t

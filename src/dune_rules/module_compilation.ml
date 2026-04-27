@@ -1,6 +1,245 @@
 open Import
 open Memo.O
 
+(* The compile rule depends on two disjoint dep sets: [other_cm_files]
+   for intra-library cmis (static, from [Dep_graph.t]) and
+   [lib_cm_deps] for inter-library deps (dynamic, the per-module
+   filter from #4572). Disjointness comes from [parse_module_names]
+   stripping intra-lib references on the intra-lib path while the
+   inter-lib path keeps raw [Module_name.t] values. *)
+
+let all_libs cctx =
+  let open Resolve.Memo.O in
+  let+ d = Compilation_context.requires_compile cctx
+  and+ h = Compilation_context.requires_hidden cctx in
+  d @ h
+;;
+
+let union_module_name_sets_mapped xs ~f =
+  Action_builder.List.map xs ~f
+  |> Action_builder.map
+       ~f:(List.fold_left ~init:Module_name.Set.empty ~f:Module_name.Set.union)
+;;
+
+(* A module is filterable (per-module lib deps apply) only when it has a
+   proper source-level kind: user [Impl]/[Intf_only] or a transparent
+   alias whose ocamldep we can read to follow the chain. *)
+let module_kind_is_filterable m =
+  match Module.kind m with
+  | Root | Wrapped_compat | Impl_vmodule | Virtual | Parameter -> false
+  | Intf_only | Impl | Alias _ -> true
+;;
+
+(* Extend [initial_refs] with module names reached through cross-
+   library ocamldep. The frontier expansion follows alias chains
+   into wrapped libs' children; how those children land in the
+   index is the indexing decision documented in
+   [Compilation_context.build_lib_index]. Externals and libs in
+   [no_ocamldep] are absent from [lookup_walkable_entries], so
+   chains through them terminate and the consumer falls back to a
+   glob on the unreached libs.
+
+   Rule-graph cycle safety: [.d] files depend only on their source
+   [.ml]/[.mli] (via [Ocamldep.deps_of]), never on any cmi, so
+   reading a cross-library [.d] file cannot transitively demand any
+   consumer output. The walk cannot introduce rule cycles regardless
+   of the library graph. *)
+let cross_lib_tight_set ~lib_index ~for_ ~initial_refs =
+  let open Action_builder.O in
+  let read_entry_deps (lib, m) =
+    let obj_dir = Lib.info lib |> Lib_info.obj_dir |> Obj_dir.as_local_exn in
+    let* impl_deps = Ocamldep.read_immediate_deps_raw_of ~obj_dir ~ml_kind:Impl ~for_ m in
+    let+ intf_deps = Ocamldep.read_immediate_deps_raw_of ~obj_dir ~ml_kind:Intf ~for_ m in
+    Module_name.Set.union impl_deps intf_deps
+  in
+  let rec loop ~seen ~frontier =
+    if Module_name.Set.is_empty frontier
+    then Action_builder.return seen
+    else (
+      let pairs =
+        Module_name.Set.fold frontier ~init:[] ~f:(fun name acc ->
+          Lib_file_deps.Lib_index.lookup_walkable_entries lib_index name @ acc)
+      in
+      let* discovered = union_module_name_sets_mapped pairs ~f:read_entry_deps in
+      let seen = Module_name.Set.union seen frontier in
+      let frontier = Module_name.Set.diff discovered seen in
+      loop ~seen ~frontier)
+  in
+  loop ~seen:Module_name.Set.empty ~frontier:initial_refs
+;;
+
+(* Per-module inter-library dependency filtering (#4572). The
+   returned [Dep.Set.t] is the sole source of cross-library rule
+   deps for the compile rule — [-I] flags add search paths but
+   register no deps — so narrowing here directly narrows rule
+   invalidation. Falls back to a glob over the library's objdir
+   when filtering is unsafe (Melange, virtual-impl) or unavailable
+   (wrapped libs; see [lib_file_deps.ml]'s opening for the
+   ocamldep-granularity reason). *)
+let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kind ~mode m =
+  let open Action_builder.O in
+  let can_filter =
+    (* Filtering is OCaml-only; Melange has its own dep handling. *)
+    (match Lib_mode.of_cm_kind cm_kind with
+     | Melange -> false
+     | Ocaml _ -> true)
+    (* [Dep_graph.dir = Path.Build.root] indicates a dummy dep graph
+       from [Compilation_context.for_alias_module],
+       [for_root_module], or [for_module_generated_at_link_time].
+       Those contexts replace [modules] with [singleton_modules];
+       the resulting dummy dep graph cannot supply transitive
+       deps. *)
+    && Path.Build.equal (Dep_graph.dir dep_graph) (Obj_dir.dir obj_dir)
+    (* Reached when [m] was synthesised outside the stanza's module
+       set and handed directly to [ocamlc_i] — menhir's [mock_module]
+       is the concrete case. *)
+    && Dep_graph.mem dep_graph m
+    && module_kind_is_filterable m
+    && Module.has m ~ml_kind
+    (* Consumer-side virtual-impl check: this stanza is itself a
+       virtual-library implementation, which has its own dep
+       machinery (see [Dep_rules.deps_of_vlib_module]). The
+       complementary check below ([has_virtual_impl]) covers the
+       case where the consumer's dep list contains a virtual
+       implementation. *)
+    && not (Virtual_rules.is_implementation (Compilation_context.implements cctx))
+  in
+  let* libs = Resolve.Memo.read (all_libs cctx) in
+  if not can_filter
+  then Action_builder.return (Lib_file_deps.deps_of_entries ~opaque ~cm_kind libs)
+  else
+    (* Deps-side virtual-impl check: if any library in the consumer's
+       requires implements a virtual library, fall back to glob.
+       Distinct from the consumer-stanza check in [can_filter]. *)
+    let* has_virtual_impl =
+      Resolve.Memo.read (Compilation_context.has_virtual_impl cctx)
+    in
+    if has_virtual_impl
+    then Action_builder.return (Lib_file_deps.deps_of_entries ~opaque ~cm_kind libs)
+    else
+      let* lib_index = Resolve.Memo.read (Compilation_context.lib_index cctx) in
+      let* trans_deps = Dep_graph.deps_of dep_graph m in
+      (* Whether to read [dep_m]'s [.ml]-side ocamldep. [.ml]-side
+         references propagate to the consumer only when [dep_m]'s
+         [.cmx] is read ([Cmx] + not opaque) or when [dep_m] has no
+         [.mli] (so its [.cmi] is produced from [.ml]). For the
+         consumer itself, [.ml] is read iff we are compiling its
+         [.ml] (i.e. [ml_kind = Impl]).
+
+         | [dep_m] is              | [cm_kind]   | [opaque] | read [.ml]?  |
+         | ----------------------- | ----------- | -------- | ------------ |
+         | consumer ([m] itself)   | any         | any      | iff [Impl]   |
+         | trans_dep, no [.mli]    | any         | any      | yes          |
+         | trans_dep, has [.mli]   | [Cmx]       | false    | yes (inline) |
+         | trans_dep, has [.mli]   | [Cmx]       | true     | no           |
+         | trans_dep, has [.mli]   | [Cmi]/[Cmo] | any      | no           |
+      *)
+      let need_impl_deps_of dep_m ~is_consumer =
+        if is_consumer
+        then (
+          match ml_kind with
+          | Ml_kind.Impl -> true
+          | Intf -> false)
+        else
+          (not (Module.has dep_m ~ml_kind:Intf))
+          ||
+          match cm_kind with
+          | Ocaml Cmx -> not opaque
+          | Ocaml (Cmi | Cmo) | Melange _ -> false
+      in
+      let read_dep_m_raw dep_m ~is_consumer =
+        let* impl_deps =
+          if need_impl_deps_of dep_m ~is_consumer
+          then Ocamldep.read_immediate_deps_raw_of ~obj_dir ~ml_kind:Impl ~for_ dep_m
+          else Action_builder.return Module_name.Set.empty
+        in
+        let+ intf_deps =
+          Ocamldep.read_immediate_deps_raw_of ~obj_dir ~ml_kind:Intf ~for_ dep_m
+        in
+        Module_name.Set.union impl_deps intf_deps
+      in
+      let* m_raw = read_dep_m_raw m ~is_consumer:true in
+      let* trans_raw =
+        union_module_name_sets_mapped trans_deps ~f:(read_dep_m_raw ~is_consumer:false)
+      in
+      let all_raw = Module_name.Set.union m_raw trans_raw in
+      let* flags = Ocaml_flags.get (Compilation_context.flags cctx) mode in
+      let open_modules = Ocaml_flags.extract_open_module_names flags in
+      let referenced = Module_name.Set.union all_raw open_modules in
+      (* Seed [Lib.closure] with the libs the consumer directly
+         names; the post-BFS classify below uses
+         [tight_modules_per_lib] on the extended name set. *)
+      let { Lib_file_deps.Lib_index.tight; non_tight } =
+        Lib_file_deps.Lib_index.filter_libs_with_modules
+          lib_index
+          ~referenced_modules:referenced
+      in
+      (* Sort for [Lib.closure] memo-key stability. *)
+      let direct_libs = List.sort ~compare:Lib.compare (Lib.Map.keys tight @ non_tight) in
+      (* Close transitively to catch cross-library [.cmi] reads via
+         transparent aliases that ocamldep doesn't report.
+         [Lib.closure] expands link-time deps too; under
+         [(implicit_transitive_deps false)] those reach libs that
+         the compiler cannot see (no entry in [-I] or [-H]). The
+         fold below filters them out via [compile_scope]. *)
+      let* all_libs = Resolve.Memo.read (Lib.closure direct_libs ~linking:false ~for_) in
+      let+ tight_set = cross_lib_tight_set ~lib_index ~for_ ~initial_refs:referenced in
+      let compile_scope = Lib.Set.of_list libs in
+      (* Classify each lib in [all_libs]:
+         - in [tight_modules]: per-module deps.
+         - tight-eligible but unreferenced: drop. Link still pulls
+           it in via [requires_link].
+         - in [compile_scope] but not tight-eligible: glob (wrapped,
+           external, virtual-impl, or hidden under
+           [Disabled_with_hidden_includes]).
+         - outside [compile_scope]: drop. Link-only transitive dep
+           that the compiler cannot reference. *)
+      let tight_modules =
+        Lib_file_deps.Lib_index.tight_modules_per_lib
+          lib_index
+          ~referenced_modules:tight_set
+      in
+      let tight_deps, glob_libs =
+        List.fold_left all_libs ~init:(Dep.Set.empty, []) ~f:(fun (td, gl) lib ->
+          match Lib.Map.find tight_modules lib with
+          | Some modules ->
+            ( Dep.Set.union
+                td
+                (Lib_file_deps.deps_of_entry_modules ~opaque ~cm_kind lib modules)
+            , gl )
+          | None ->
+            if Lib_file_deps.Lib_index.is_tight_eligible lib_index lib
+            then td, gl
+            else if Lib.Set.mem compile_scope lib
+            then td, lib :: gl
+            else td, gl)
+      in
+      let glob_deps = Lib_file_deps.deps_of_entries ~opaque ~cm_kind glob_libs in
+      Dep.Set.union tight_deps glob_deps
+;;
+
+let lib_cm_deps ~cctx ~cm_kind ~ml_kind ~mode m =
+  let obj_dir = Compilation_context.obj_dir cctx in
+  let opaque = Compilation_context.opaque cctx in
+  let for_ = Compilation_context.for_ cctx in
+  let dep_graph = Ml_kind.Dict.get (Compilation_context.dep_graphs cctx) ml_kind in
+  let open Action_builder.O in
+  Action_builder.dyn_deps
+    (let+ deps =
+       lib_deps_for_module
+         ~cctx
+         ~obj_dir
+         ~for_
+         ~dep_graph
+         ~opaque
+         ~cm_kind
+         ~ml_kind
+         ~mode
+         m
+     in
+     (), deps)
+;;
+
 (* Arguments for the compiler to prevent it from being too clever.
 
    The compiler creates the cmi when it thinks a .ml file has no corresponding
@@ -286,6 +525,18 @@ let build_cm
         | Some All | None -> Hidden_targets [ obj ])
    in
    let opaque = Compilation_context.opaque cctx in
+   let skip_lib_deps =
+     match Module.kind m with
+     | Alias _ ->
+       not (Modules.With_vlib.is_stdlib_alias (Compilation_context.modules cctx) m)
+     | Wrapped_compat -> true
+     | Intf_only | Virtual | Impl | Impl_vmodule | Root | Parameter -> false
+   in
+   let lib_cm_deps =
+     if skip_lib_deps
+     then Action_builder.return ()
+     else lib_cm_deps ~cctx ~cm_kind ~ml_kind ~mode m
+   in
    let other_cm_files =
      let dep_graph = Ml_kind.Dict.get (Compilation_context.dep_graphs cctx) ml_kind in
      let module_deps = Dep_graph.deps_of dep_graph m in
@@ -404,6 +655,7 @@ let build_cm
      ?loc:(Compilation_context.loc cctx)
      (let open Action_builder.With_targets.O in
       Action_builder.with_no_targets other_cm_files
+      >>> Action_builder.with_no_targets lib_cm_deps
       >>> Command.run
             ~dir:(Path.build (Context.build_dir ctx))
             compiler
@@ -519,6 +771,9 @@ let ocamlc_i ~deps cctx (m : Module.t) ~output =
        List.concat_map deps ~f:(fun m ->
          [ Path.build (Obj_dir.Module.cm_file_exn obj_dir m ~kind:(Ocaml Cmi)) ]))
   in
+  let lib_cm_deps =
+    lib_cm_deps ~cctx ~cm_kind:(Ocaml Cmo) ~ml_kind:Impl ~mode:(Ocaml Byte) m
+  in
   let ocaml_flags = Ocaml_flags.get (Compilation_context.flags cctx) (Ocaml Byte) in
   let modules = Compilation_context.modules cctx in
   let ocaml = Compilation_context.ocaml cctx in
@@ -529,6 +784,7 @@ let ocamlc_i ~deps cctx (m : Module.t) ~output =
        ~file_targets:[ output ]
        (let open Action_builder.With_targets.O in
         Action_builder.with_no_targets cm_deps
+        >>> Action_builder.with_no_targets lib_cm_deps
         >>> Command.run
               (Ok ocaml.ocamlc)
               ~dir:(Path.build (Context.build_dir ctx))
@@ -676,6 +932,33 @@ let build_root_module cctx root_module =
          (let open Action_builder.O in
           let+ entries = entries in
           root_source entries))
+  in
+  (* Write a synthesized immediate-deps file in the same format
+     [ocamldep -modules] would produce. The content is exactly
+     what running ocamldep on the generated [root.ml] would
+     output: the entry-module names of every required library.
+     [Dep_rules.deps_of]'s [is_alias_or_root] short-circuit
+     remains intact, so no transitive [.all-deps] file is
+     produced for [Root] — preserving the cycle prevention
+     introduced in commit a5d894525 (change #12227). The cycle
+     lives in [.all-deps] generation, not in [.d] reading. *)
+  let* () =
+    let obj_dir = Compilation_context.obj_dir cctx in
+    match Obj_dir.Module.dep obj_dir ~for_ (Immediate (root_module, Ml_kind.Impl)) with
+    | None -> Memo.return ()
+    | Some d_target ->
+      Super_context.add_rule
+        ~loc:Loc.none
+        sctx
+        ~dir
+        (Action_builder.write_file_dyn
+           d_target
+           (let open Action_builder.O in
+            let+ entries = entries in
+            sprintf
+              "%s: %s\n"
+              (Path.Build.basename (Path.as_in_build_dir_exn file))
+              (String.concat ~sep:" " (List.map entries ~f:Module_name.to_string))))
   in
   build_module cctx root_module
 ;;

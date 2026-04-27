@@ -62,11 +62,11 @@ Change ONLY the implementation (not the interface):
   > let value = 43
   > EOF
 
-No_use_lib is recompiled even though it doesn't reference Mylib:
+No_use_lib is not recompiled because it doesn't reference Mylib:
 
   $ dune build ./main.exe
   $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("No_use_lib"))] | length'
-  1
+  0
 
 --- Dev profile (opaque=true): .cmx deps are NOT tracked for local libs ---
 

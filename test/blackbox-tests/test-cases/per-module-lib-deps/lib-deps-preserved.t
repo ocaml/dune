@@ -1,7 +1,9 @@
-Verify that library file deps are declared for module compilation rules.
+Verify the cm_kind/-opaque rules for library file deps in compile rules.
 
-Every non-alias module should declare glob deps on its library
-dependencies' .cmi files.
+[mylib] is a wrapped library exposing one entry [Mylib]. The
+executable has two modules: [Uses_lib] which references [Mylib] in
+its [.ml] (but not its [.mli]) and [Main] which references only
+[Uses_lib]. [Main] has no [.mli].
 
   $ cat > dune-project <<EOF
   > (lang dune 3.23)
@@ -33,12 +35,23 @@ dependencies' .cmi files.
 
   $ dune build ./main.exe
 
-Both modules declare glob deps on mylib's .cmi files:
+[Uses_lib.cmx] keeps the glob: [Uses_lib.ml] references [Mylib], and
+[mylib] is wrapped — wrapped libraries fall back to a glob over their
+public cmi dir even under per-module filtering, since ocamldep's
+[-modules] output cannot distinguish [Foo.Bar.x] from [Foo.Baz.x].
 
   $ dune rules --root . --format=json --deps _build/default/.main.eobjs/native/dune__exe__Uses_lib.cmx |
   > jq -r 'include "dune"; .[] | depsGlobPredicates'
   *.cmi
 
+[Main.cmx] has no inter-library deps. [Main.ml] references only
+[Uses_lib], an intra-library module filtered out before the
+inter-library filter runs. [Uses_lib] is a transitive intra-library
+dep; its [.mli] has no cross-library references. [Uses_lib.ml] does
+reference [Mylib], but those references propagate to the consumer
+only through [Uses_lib.cmx] for cross-module inlining. Under the
+default profile dune builds with [-opaque], which disables that
+inlining, so [Uses_lib.ml]'s references are sealed behind its [.cmi].
+
   $ dune rules --root . --format=json --deps _build/default/.main.eobjs/native/dune__exe__Main.cmx |
   > jq -r 'include "dune"; .[] | depsGlobPredicates'
-  *.cmi

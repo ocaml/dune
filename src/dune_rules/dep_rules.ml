@@ -131,8 +131,57 @@ let deps_of_vlib_module ~obj_dir ~vimpl ~dir ~sctx ~ml_kind ~for_ sourced_module
     Ocamldep.read_deps_of ~obj_dir:vlib_obj_dir ~modules ~ml_kind ~for_ m
 ;;
 
-(** Tests whether a set of modules is a singleton *)
+(** Tests whether a set of modules is a singleton. *)
 let has_single_file modules = Option.is_some @@ Modules.With_vlib.as_singleton modules
+
+(* On resolution failure both [has_library_deps_*] helpers below
+   return [true]. Conservative-true keeps [.d]-file rules in place,
+   so the unresolved-library error surfaces as a real compile-rule
+   diagnostic. Conservative-false would short-circuit the [.d]
+   rules and turn that diagnostic into a "No rule found for
+   .X.objs/X.impl.d" infrastructure error. The trade-off is
+   asymmetric: forced choice. *)
+
+(** Canonical [has_library_deps] for [lib]'s own cctx. The cross-
+    library walk in [Compilation_context.build_lib_index] consults
+    the same helper, so the skip decision and the walk's prediction
+    can't drift. *)
+let has_library_deps_of_lib lib ~for_ =
+  let open Memo.O in
+  let+ resolved = Lib.requires lib ~for_ |> Memo.map ~f:Resolve.peek in
+  match resolved with
+  | Ok [] -> false
+  | Ok _ | Error _ -> true
+;;
+
+(** Same boolean as [has_library_deps_of_lib], for cctxes without a
+    [Lib.t] (executables, tests, melange emit). Takes the resolved
+    [direct] and [hidden] requires already split by
+    [Compilation_context.create] per [implicit_transitive_deps]
+    mode. *)
+let has_library_deps_of_resolved ~direct ~hidden =
+  let resolved =
+    let open Resolve.Memo.O in
+    let+ direct = direct
+    and+ hidden = hidden in
+    match direct, hidden with
+    | [], [] -> false
+    | _ -> true
+  in
+  let open Memo.O in
+  let+ peeked = Memo.map resolved ~f:Resolve.peek in
+  Result.value peeked ~default:true
+;;
+
+(** Single-module stanzas with no library deps don't run ocamldep.
+    Under #4572, a library short-circuited here must also appear in
+    [Compilation_context.build_lib_index]'s [no_ocamldep] set or
+    the cross-library walk will read a [.d] dune never produced.
+    Both sides derive their [has_library_deps] via the helpers
+    above. *)
+let skip_ocamldep ~has_library_deps modules =
+  has_single_file modules && not has_library_deps
+;;
 
 let rec deps_of
           ~obj_dir
@@ -143,6 +192,7 @@ let rec deps_of
           ~sctx
           ~ml_kind
           ~for_
+          ~has_library_deps
           (m : Modules.Sourced_module.t)
   =
   let is_alias_or_root =
@@ -153,7 +203,7 @@ let rec deps_of
        | Root | Alias _ -> true
        | _ -> false)
   in
-  if is_alias_or_root || has_single_file modules
+  if is_alias_or_root || skip_ocamldep ~has_library_deps modules
   then Memo.return (Action_builder.return [])
   else (
     let skip_if_source_absent f sourced_module =
@@ -173,7 +223,7 @@ let rec deps_of
         (deps_of_module ~modules ~sandbox ~sctx ~dir ~obj_dir ~ml_kind ~for_)
         m
     | Impl_of_virtual_module impl_or_vlib ->
-      deps_of ~obj_dir ~modules ~sandbox ~impl ~dir ~sctx ~ml_kind ~for_
+      deps_of ~obj_dir ~modules ~sandbox ~impl ~dir ~sctx ~ml_kind ~for_ ~has_library_deps
       @@
       let m = Ml_kind.Dict.get impl_or_vlib ml_kind in
       (match ml_kind with
@@ -181,6 +231,10 @@ let rec deps_of
        | Impl -> Normal m))
 ;;
 
+(* [read_deps_of_module] reports intra-stanza module dependencies. For
+   single-module stanzas that dependency graph is trivially empty
+   regardless of whether the stanza declares library dependencies, so we
+   keep the unconditional short-circuit here. *)
 let read_deps_of_module ~modules ~obj_dir dep ~for_ =
   let (Obj_dir.Module.Dep.Immediate (unit, _) | Transitive (unit, _)) = dep in
   match Module.kind unit with
@@ -219,18 +273,37 @@ let dict_of_func_concurrently f =
 
 let for_module ~obj_dir ~modules ~sandbox ~impl ~dir ~sctx ~for_ module_ =
   dict_of_func_concurrently
-    (deps_of ~obj_dir ~modules ~sandbox ~impl ~dir ~sctx ~for_ (Normal module_))
+    (deps_of
+       ~obj_dir
+       ~modules
+       ~sandbox
+       ~impl
+       ~dir
+       ~sctx
+       ~for_
+       ~has_library_deps:true
+       (Normal module_))
 ;;
 
-let rules ~obj_dir ~modules ~sandbox ~impl ~sctx ~dir ~for_ =
+let rules ~obj_dir ~modules ~sandbox ~impl ~sctx ~dir ~for_ ~has_library_deps =
   match Modules.With_vlib.as_singleton modules with
-  | Some m -> Memo.return (Dep_graph.Ml_kind.dummy m)
-  | None ->
+  | Some m when not has_library_deps -> Memo.return (Dep_graph.Ml_kind.dummy m)
+  | Some _ | None ->
     dict_of_func_concurrently (fun ~ml_kind ->
       let+ per_module =
         Modules.With_vlib.obj_map modules
         |> Parallel_map.parallel_map ~f:(fun _obj_name m ->
-          deps_of ~obj_dir ~modules ~sandbox ~impl ~sctx ~dir ~ml_kind ~for_ m)
+          deps_of
+            ~obj_dir
+            ~modules
+            ~sandbox
+            ~impl
+            ~sctx
+            ~dir
+            ~ml_kind
+            ~for_
+            ~has_library_deps
+            m)
       in
       Dep_graph.make ~dir ~per_module)
     |> Memo.map ~f:(Dep_graph.Ml_kind.for_module_compilation ~modules)

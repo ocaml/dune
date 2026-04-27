@@ -140,33 +140,48 @@ let disambiguate_test_name ~sctx path =
   | None -> Memo.return @@ Test_kind.Runtest (Path.source Path.Source.root)
   | Some parent_dir ->
     let open Memo.O in
-    let* cram_tests = cram_tests_of_dir parent_dir in
-    (match find_cram_test cram_tests path with
-     | Some test ->
-       (* If we find the cram test, then we request that is run. *)
-       Memo.return (Test_kind.Cram (Path.source parent_dir, test))
-     | None ->
-       let filename = Path.Source.basename path in
-       classify_ml_test ~sctx ~dir:parent_dir ~ml_file:filename
-       >>= (function
-        | Ok (`Test_executable exe_name) ->
-          Memo.return
-            (Test_kind.Test_executable { dir = Path.source parent_dir; exe_name })
-        | Ok (`Inline_tests_library lib_name) ->
-          Memo.return (Test_kind.Inline_tests { dir = Path.source parent_dir; lib_name })
-        | Error `Not_an_entry_point ->
-          User_error.raise
-            [ Pp.textf
-                "%S is used by multiple test executables and cannot be run directly."
-                filename
-            ]
-        | Error `Not_a_test ->
-          (* Assume the user intended a directory for @runtest to be used. *)
-          Source_tree.find_dir path
-          >>= (function
-           (* We need to make sure that this directory or file exists. *)
-           | Some _ -> Memo.return (Test_kind.Runtest (Path.source path))
-           | None -> explain_unsuccessful_search ~sctx path ~parent_dir)))
+    (* If path is <name>.t/run.t, redirect to the parent directory cram test
+       rather than treating run.t as a standalone file cram test. *)
+    let filename = Path.Source.basename path in
+    if
+      String.equal filename Source.Cram_test.fname_in_dir_test
+      && Source.Cram_test.is_cram_suffix (Path.Source.basename parent_dir)
+    then (
+      match Path.Source.parent parent_dir with
+      | None -> Memo.return @@ Test_kind.Runtest (Path.source Path.Source.root)
+      | Some grandparent_dir ->
+        let* dir_cram_tests = cram_tests_of_dir grandparent_dir in
+        (match find_cram_test dir_cram_tests parent_dir with
+         | Some test -> Memo.return (Test_kind.Cram (Path.source grandparent_dir, test))
+         | None -> explain_unsuccessful_search ~sctx path ~parent_dir))
+    else
+      let* cram_tests = cram_tests_of_dir parent_dir in
+      (match find_cram_test cram_tests path with
+       | Some test ->
+         (* If we find the cram test, then we request that is run. *)
+         Memo.return (Test_kind.Cram (Path.source parent_dir, test))
+       | None ->
+         classify_ml_test ~sctx ~dir:parent_dir ~ml_file:filename
+         >>= (function
+          | Ok (`Test_executable exe_name) ->
+            Memo.return
+              (Test_kind.Test_executable { dir = Path.source parent_dir; exe_name })
+          | Ok (`Inline_tests_library lib_name) ->
+            Memo.return
+              (Test_kind.Inline_tests { dir = Path.source parent_dir; lib_name })
+          | Error `Not_an_entry_point ->
+            User_error.raise
+              [ Pp.textf
+                  "%S is used by multiple test executables and cannot be run directly."
+                  filename
+              ]
+          | Error `Not_a_test ->
+            (* Assume the user intended a directory for @runtest to be used. *)
+            Source_tree.find_dir path
+            >>= (function
+             (* We need to make sure that this directory or file exists. *)
+             | Some _ -> Memo.return (Test_kind.Runtest (Path.source path))
+             | None -> explain_unsuccessful_search ~sctx path ~parent_dir)))
 ;;
 
 let make_request ~scontexts ~to_cwd ~test_paths =

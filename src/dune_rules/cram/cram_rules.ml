@@ -379,39 +379,48 @@ let cram_tests dir =
   | false -> Memo.return []
   | true ->
     let path = Source_tree.Dir.path dir in
-    let file_tests =
-      Source_tree.Dir.filenames dir
-      |> Filename.Set.to_list
-      |> List.filter_map ~f:(fun s ->
-        if Cram_test.is_cram_suffix s
-        then Some (Ok (Cram_test.File (Path.Source.relative path s)))
-        else None)
-    in
-    let+ dir_tests =
-      Source_tree.Dir.sub_dirs dir
-      |> Filename.Map.to_list
-      |> Memo.parallel_map ~f:(fun (name, sub_dir) ->
-        match Cram_test.is_cram_suffix name with
-        | false -> Memo.return None
-        | true ->
-          let+ sub_dir = Source_tree.Dir.sub_dir_as_t sub_dir in
-          let fname = Cram_test.fname_in_dir_test in
-          let test =
-            let dir = Source_tree.Dir.path sub_dir in
-            let file = Path.Source.relative dir fname in
-            Cram_test.Dir { file; dir }
-          in
-          let files = Source_tree.Dir.filenames sub_dir in
-          if Filename.Set.is_empty files
-          then None
-          else
-            Some
-              (if Filename.Set.mem files fname
-               then Ok test
-               else Error (Missing_run_t test)))
-      >>| List.filter_opt
-    in
-    file_tests @ dir_tests
+    (* Don't generate cram rules for files inside a directory cram test.
+       A directory ending with ".t" is itself a cram test directory, and its
+       contents (including run.t) are part of that test, not standalone tests. *)
+    if
+      match Path.Source.basename_opt path with
+      | None -> false
+      | Some bn -> Cram_test.is_cram_suffix bn
+    then Memo.return []
+    else (
+      let file_tests =
+        Source_tree.Dir.filenames dir
+        |> Filename.Set.to_list
+        |> List.filter_map ~f:(fun s ->
+          if Cram_test.is_cram_suffix s
+          then Some (Ok (Cram_test.File (Path.Source.relative path s)))
+          else None)
+      in
+      let+ dir_tests =
+        Source_tree.Dir.sub_dirs dir
+        |> Filename.Map.to_list
+        |> Memo.parallel_map ~f:(fun (name, sub_dir) ->
+          match Cram_test.is_cram_suffix name with
+          | false -> Memo.return None
+          | true ->
+            let+ sub_dir = Source_tree.Dir.sub_dir_as_t sub_dir in
+            let fname = Cram_test.fname_in_dir_test in
+            let test =
+              let dir = Source_tree.Dir.path sub_dir in
+              let file = Path.Source.relative dir fname in
+              Cram_test.Dir { file; dir }
+            in
+            let files = Source_tree.Dir.filenames sub_dir in
+            if Filename.Set.is_empty files
+            then None
+            else
+              Some
+                (if Filename.Set.mem files fname
+                 then Ok test
+                 else Error (Missing_run_t test)))
+        >>| List.filter_opt
+      in
+      file_tests @ dir_tests)
 ;;
 
 let rules ~sctx ~dir source_dir =

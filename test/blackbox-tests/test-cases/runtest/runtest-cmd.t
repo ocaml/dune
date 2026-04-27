@@ -51,21 +51,19 @@ be the corresponding directory cram test.
   File "tests/myothertest.t/run.t", line 1, characters 0-0:
   --- tests/myothertest.t/run.t
   +++ tests/myothertest.t/run.t.corrected
-  @@ -1,2 +1,3 @@
+  @@ -1,2 +1,2 @@
      $ cat hello.world
   -  "Goodbye, world!"
-  +  cat: hello.world: No such file or directory
-  +  [1]
+  +  Hello, world!
   [1]
   $ dune promotion diff tests/myothertest.t/run.t
   File "tests/myothertest.t/run.t", line 1, characters 0-0:
   --- tests/myothertest.t/run.t
   +++ _build/.promotion-staging/tests/myothertest.t/run.t
-  @@ -1,2 +1,3 @@
+  @@ -1,2 +1,2 @@
      $ cat hello.world
   -  "Goodbye, world!"
-  +  cat: hello.world: No such file or directory
-  +  [1]
+  +  Hello, world!
 
 We cannot give the name of a cram test in a subdirectory and expect Dune to
 find it.

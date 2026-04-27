@@ -6,6 +6,7 @@ module Dst : sig
   type t
 
   val to_string : t -> string
+  val local : t -> Path.Local.t
   val append_local : t -> Path.Local.t -> t
   val prepend_local : Path.Local.t -> t -> t
   val to_install_file : t -> src_basename:string -> section:Section.t -> string option
@@ -25,6 +26,7 @@ end = struct
   type t = string
 
   let to_string t = t
+  let local t = Path.Local.of_string t
   let append_local t l = Filename.concat t (Path.Local.to_string l)
   let prepend_local l t = Path.Local.to_string (Path.Local.relative l t)
   let explicit s = s

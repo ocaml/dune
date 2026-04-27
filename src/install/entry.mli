@@ -6,6 +6,7 @@ module Dst : sig
   type t
 
   val to_string : t -> string
+  val local : t -> Path.Local.t
   val prepend_local : Path.Local.t -> t -> t
   val append_local : t -> Path.Local.t -> t
 

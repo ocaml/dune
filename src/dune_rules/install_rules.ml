@@ -1509,6 +1509,41 @@ let gen_install_alias sctx (package : Package.t) =
 
 let stanzas_to_entries = Stanzas_to_entries.stanzas_to_entries
 
+let resolve_package_install_file ~loc sctx ~pkg ~section ~file =
+  let+ entries = Stanzas_to_entries.stanzas_to_entries sctx in
+  match Package.Name.Map.find entries pkg with
+  | None ->
+    User_error.raise
+      ~loc
+      [ Pp.textf "Package %s has no install entries." (Package.Name.to_string pkg) ]
+  | Some entries ->
+    let in_section =
+      List.filter_map entries ~f:(fun (e : Install.Entry.Sourced.Unexpanded.t) ->
+        if Section.equal e.entry.section section
+        then Some (Install.Entry.Dst.local e.entry.dst, e.entry.src)
+        else None)
+    in
+    (match
+       List.find_map in_section ~f:(fun (dst, src) ->
+         if Path.Local.equal dst file then Some src else None)
+     with
+     | Some src -> src
+     | None ->
+       let file_str = Path.Local.to_string file in
+       let candidates =
+         List.map in_section ~f:(fun (dst, _) -> Path.Local.to_string dst)
+       in
+       User_error.raise
+         ~loc
+         ~hints:(User_message.did_you_mean file_str ~candidates)
+         [ Pp.textf
+             "File %s not found in section %s of package %s."
+             file_str
+             (Section.to_string section)
+             (Package.Name.to_string pkg)
+         ])
+;;
+
 let gen_project_rules sctx project =
   let* () = meta_and_dune_package_rules sctx project in
   Dune_project.packages project

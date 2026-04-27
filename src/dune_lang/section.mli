@@ -2,6 +2,7 @@ open Import
 include module type of Dune_section with type t = Dune_section.t
 
 val compare : t -> t -> Ordering.t
+val equal : t -> t -> bool
 
 include Comparable_intf.S with type key := t
 

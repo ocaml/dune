@@ -803,3 +803,11 @@ let gen_rules ctx ~dir components =
     let+ sctx_rules = gen_rules ctx (Super_context.find_exn ctx) ~dir components in
     Gen_rules.combine sctx_rules gen_pkg_alias_rule
 ;;
+
+let () =
+  Fdecl.set Expander.resolve_pkg_install_file
+  @@ fun ~loc context_name ~pkg ~section ~file ->
+  let open Memo.O in
+  let* sctx = Super_context.find_exn context_name in
+  Install_rules.resolve_package_install_file sctx ~loc ~pkg ~section ~file
+;;

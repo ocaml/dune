@@ -441,14 +441,22 @@ let%expect_test "client-side reply write raises on disconnect" =
     Fiber.parallel_iter [ client; requester; server ] ~f:(fun f -> f ())
   in
   Scheduler.run (Scheduler.create ()) run;
-  [%expect.unreachable]
-[@@expect.uncaught_exn
-  {|
-  (Dune_util__Report_error.Already_reported)
-  Trailing output
-  ---------------
-  client: closing channel
-  |}]
+  [%expect
+    {|
+    client: closing channel
+    server: finished.
+    server: request failed
+    [ { exn =
+          "Response.E\n\
+          \  { payload = Some [ [ \"id\"; \"server-request\" ] ]\n\
+          \  ; message =\n\
+          \      \"Connection terminated. This request will never receive a response.\"\n\
+          \  ; kind = Connection_dead\n\
+          \  }"
+      ; backtrace = ""
+      }
+    ]
+    |}]
 ;;
 
 let%expect_test "client-side request write raises after close" =

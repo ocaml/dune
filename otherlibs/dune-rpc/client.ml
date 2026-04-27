@@ -158,8 +158,13 @@ struct
     ;;
 
     let write (t : t) packet =
-      (* CR-soon rgrinberg: do not allow writes after close *)
-      List.map ~f:(Conv.to_sexp Packet.sexp) packet |> Chan.write t.chan
+      let* () = Fiber.return () in
+      if t.closed_write
+      then Fiber.return `Closed
+      else
+        (* CR-soon rgrinberg: catch [Chan.write] errors here *)
+        let+ () = List.map ~f:(Conv.to_sexp Packet.sexp) packet |> Chan.write t.chan in
+        `Ok
     ;;
   end
 
@@ -264,7 +269,12 @@ struct
     match prepare_request' conn (id, req) with
     | Error e -> Fiber.return (`Completed (Error e))
     | Ok ivar ->
-      let* () = Chan.write conn.chan [ Request (id, req) ] in
+      let* res = Chan.write conn.chan [ Request (id, req) ] in
+      let* () =
+        match res with
+        | `Ok -> Fiber.return ()
+        | `Closed -> terminate conn
+      in
       Fiber.Ivar.read ivar
   ;;
 
@@ -347,7 +357,9 @@ struct
 
   let notification (type a) t (stg : a Versioned.notification) (n : a) =
     let* () = Fiber.return () in
-    make_notification t stg n (fun call -> Chan.write t.chan [ Notification call ])
+    make_notification t stg n (fun call ->
+      let+ (_ : [ `Ok | `Closed ]) = Chan.write t.chan [ Notification call ] in
+      ())
   ;;
 
   let disconnected t = Fiber.Ivar.read t.chan.disconnected
@@ -477,7 +489,10 @@ struct
       let* () = Fiber.return () in
       let pending = List.rev t.pending in
       t.pending <- [];
-      Chan.write t.client.chan pending
+      let* res = Chan.write t.client.chan pending in
+      match res with
+      | `Ok -> Fiber.return ()
+      | `Closed -> terminate t.client
     ;;
   end
 
@@ -529,7 +544,10 @@ struct
                    ~message:"unexpected error"
                    ())
           in
-          Chan.write t.chan [ Response (id, result) ]
+          let* res = Chan.write t.chan [ Response (id, result) ] in
+          (match res with
+           | `Ok -> Fiber.return ()
+           | `Closed -> terminate t)
         | Response (id, response) ->
           (match Table.find t.requests id with
            | Some status ->

@@ -909,6 +909,10 @@ module Generated_modules = struct
                  let ext = Filename.Extension.Or_empty.extension_exn ext in
                  match Dialect.DB.find_by_extension dialects ext with
                  | Some (dialect, ml_kind) ->
+                   let file =
+                     let file = source_in_dir ~dir descendant ~for_ in
+                     Module.File.make dialect (Path.build file)
+                   in
                    let module_path =
                      let module_name =
                        Module_name.of_string_allow_invalid
@@ -924,7 +928,11 @@ module Generated_modules = struct
                           let path_to_root =
                             Path.Local.parent_exn descendant |> Path.Local.explode
                           in
-                          module_path ~loc:(Some loc) ~include_subdirs ~dir path_to_root
+                          module_path
+                            ~loc:(Some loc)
+                            ~include_subdirs
+                            ~dir
+                            (Filename.L.to_string path_to_root)
                         with
                         | [] -> Nonempty_list.[ module_name ]
                         | p :: ps ->
@@ -935,7 +943,6 @@ module Generated_modules = struct
                           in
                           Nonempty_list.(to_list base_path @ [ module_name ]))
                    in
-                   let file = Module.File.make dialect (Path.build dst) in
                    (match ml_kind with
                     | Ml_kind.Impl -> Left (module_path, (loc, file))
                     | Intf -> Right (module_path, (loc, file)))
@@ -1248,7 +1255,7 @@ let modules_of_stanzas =
                      ~dir
                      ~dialects
                      ~include_subdirs
-                     ~for_:Melange
+                     ~for_:Compilation_mode.Melange
                      ~module_path_translation
                      mel.libraries
                  in
@@ -1261,7 +1268,7 @@ let modules_of_stanzas =
                    ~version
                    ~private_modules:Ordered_set_lang.Unexpanded.standard
                    ~src_dir:dir
-                   ~for_:Melange
+                   ~for_:Compilation_mode.Melange
                    mel.modules
                in
                let modules =

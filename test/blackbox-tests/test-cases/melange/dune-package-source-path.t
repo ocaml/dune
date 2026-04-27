@@ -59,3 +59,55 @@ form `foo.bar.baz`
   $ ls app/_build/default/dist/node_modules/a.sub
   a.js
   foo.js
+
+The same source paths should drive `node_modules` emission for installed
+libraries that use `(include_subdirs qualified)` with renamed directories.
+
+  $ mkdir -p renamed-lib/internal renamed-app renamed-prefix
+  $ cat >renamed-lib/dune-project <<EOF
+  > (lang dune 3.22)
+  > (package (name renamed))
+  > (using melange 0.1)
+  > EOF
+  $ cat >renamed-lib/dune <<EOF
+  > (include_subdirs
+  >  (mode qualified)
+  >  (dirs (internal as public)))
+  > (library
+  >  (modes melange)
+  >  (name renamed)
+  >  (public_name renamed))
+  > EOF
+
+  $ cat >renamed-lib/internal/leaf.ml <<EOF
+  > let value = "from renamed melange dir"
+  > EOF
+
+  $ dune build --root renamed-lib @install
+  $ dune install --root renamed-lib --prefix $PWD/renamed-prefix --display quiet
+  $ cat renamed-prefix/lib/renamed/dune-package | grep "path Public Leaf"
+          (source (path Public Leaf) (impl (path internal/leaf.ml))))))))
+
+  $ cat >renamed-app/dune-project <<EOF
+  > (lang dune 3.22)
+  > (using melange 0.1)
+  > EOF
+  $ cat >renamed-app/dune <<EOF
+  > (melange.emit
+  >  (target dist)
+  >  (alias dist)
+  >  (emit_stdlib false)
+  >  (libraries renamed))
+  > EOF
+
+  $ cat >renamed-app/main.ml <<EOF
+  > let () = Js.log Renamed.Public.Leaf.value
+  > EOF
+
+  $ OCAMLPATH=$PWD/renamed-prefix/lib/:$OCAMLPATH dune build --root renamed-app @dist
+  $ find renamed-app/_build/default/dist/node_modules/renamed -type f | sort
+  renamed-app/_build/default/dist/node_modules/renamed/internal/leaf.js
+  renamed-app/_build/default/dist/node_modules/renamed/renamed.js
+  renamed-app/_build/default/dist/node_modules/renamed/renamed__Public.js
+  $ node renamed-app/_build/default/dist/main.js
+  from renamed melange dir

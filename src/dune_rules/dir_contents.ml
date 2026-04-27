@@ -372,7 +372,8 @@ end = struct
                  let base_path =
                    Nonempty_list.(
                      map (x :: xs) ~f:(fun p ->
-                       Module_name.of_string_allow_invalid (include_subdirs_loc, p)))
+                       Module_name.of_string_allow_invalid
+                         (include_subdirs_loc, Filename.to_string p)))
                  in
                  let replacement =
                    match Path.Local.descendant (Path.Local.relative dir dst) ~of_:dir with
@@ -383,7 +384,8 @@ end = struct
                       | x :: xs ->
                         Nonempty_list.(
                           map (x :: xs) ~f:(fun p ->
-                            Module_name.of_string_allow_invalid (fst qualification, p))))
+                            Module_name.of_string_allow_invalid
+                              (fst qualification, Filename.to_string p))))
                  in
                  Module_trie.Unchecked.set acc base_path replacement))
         in

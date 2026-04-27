@@ -37,7 +37,7 @@ let decode ~qualified =
   let legacy = decode ~qualified in
   let decode =
     fields
-      (let* () = Syntax.since Stanza.syntax (3, 22) in
+      (let* () = Syntax.since Stanza.syntax (3, 25) in
        let+ loc, mode = field "mode" (decode ~qualified)
        and+ dirs = field_o "dirs" (repeat File_binding.Unexpanded.decode) in
        match mode with

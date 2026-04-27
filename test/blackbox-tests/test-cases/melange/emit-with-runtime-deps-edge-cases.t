@@ -156,7 +156,7 @@ Test depending on external paths
   $ dune trace cat | jq 'include "dune"; targetsMatchingFilter(test("[Mm]ain"))'
   {
     "target_files": [
-      "_build/default/external/main.pp.ml"
+      "_build/default/external/.melange_src/main.pp.ml"
     ]
   }
   {

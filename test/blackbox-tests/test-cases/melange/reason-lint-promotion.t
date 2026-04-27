@@ -60,8 +60,7 @@ Explore PPX lint correction and promotion for Reason sources under
 
   $ dune build @shared/lint
   File "shared/add.re.ml", line 1:
-  Error: ppxlib_driver: the rewriting contains parts from another file.
-  It is too complicated to reconcile it with the source: shared/add.re or shared/add.re and shared/add.re.ml
+  Error: ppxlib_driver: cannot use -reconcile with binary AST files
   [1]
   $ dune promote shared/add.re
   Warning: Nothing to promote for shared/add.re.

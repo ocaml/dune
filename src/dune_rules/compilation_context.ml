@@ -317,32 +317,24 @@ let create
   let* has_library_deps =
     (* Determine whether any library dependencies are declared, so that
        single-module stanzas still run ocamldep when its output could
-       inform the per-module inter-library dependency filter.
-
-       For library cctxes ([?lib] supplied), route through
+       inform the per-module inter-library dependency filter. For
+       library cctxes ([?lib] supplied), route through
        [Dep_rules.has_library_deps_of_lib] — the same helper
-       [build_lib_index] uses to predict the lib's [.d]-file presence
-       from a different cctx. Sharing the predicate at the lib level
-       is what keeps the skip-decision and the cross-library walk's
-       prediction in agreement. For non-library cctxes (executables,
-       tests, melange emit, …), fall back to the cctx-local
-       direct/hidden derivation: there is nothing to predict
-       cross-stanza, since these aren't entries in any lib_index. *)
+       [build_lib_index] uses to predict the lib's [.d]-file
+       presence from a different cctx. Sharing the predicate at the
+       lib level is what keeps the skip-decision and the cross-
+       library walk's prediction in agreement. For non-library
+       cctxes (executables, tests, melange emit, …), there's
+       nothing to predict cross-stanza — these aren't entries in
+       any lib_index — but the same conservative-on-resolution-
+       failure handling applies, so route through
+       [has_library_deps_of_resolved]. *)
     match lib with
     | Some lib -> Dep_rules.has_library_deps_of_lib lib ~for_
     | None ->
-      let+ resolved =
-        let open Resolve.Memo.O in
-        let+ direct = direct_requires
-        and+ hidden = hidden_requires in
-        match direct, hidden with
-        | [], [] -> false
-        | _ -> true
-      in
-      (* Unresolved dependency errors propagate later through the
-         normal compilation rules; here we conservatively behave as
-         if libraries are present. *)
-      Resolve.peek resolved |> Result.value ~default:true
+      Dep_rules.has_library_deps_of_resolved
+        ~direct:direct_requires
+        ~hidden:hidden_requires
   in
   let+ dep_graphs =
     Dep_rules.rules

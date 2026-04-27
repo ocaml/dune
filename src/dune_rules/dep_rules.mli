@@ -36,8 +36,19 @@ val rules
     [Compilation_context.build_lib_index] (when predicting whether
     the lib's [.d] file will exist for the cross-library walk).
     Returns [true] if [Lib.requires lib ~for_] resolves to a
-    non-empty list, or if resolution fails (conservative). *)
+    non-empty list, or if resolution fails (conservative — see the
+    rationale comment in [dep_rules.ml]). *)
 val has_library_deps_of_lib : Lib.t -> for_:Compilation_mode.t -> bool Memo.t
+
+(** [has_library_deps] for non-library cctxes (executables, tests,
+    melange emit), derived from already-resolved [direct] and
+    [hidden] requires. Resolution failures conservatively fall
+    back to has-deps=true — see the rationale comment in
+    [dep_rules.ml]. *)
+val has_library_deps_of_resolved
+  :  direct:Lib.t list Resolve.Memo.t
+  -> hidden:Lib.t list Resolve.Memo.t
+  -> bool Memo.t
 
 val read_immediate_deps_of
   :  obj_dir:Path.Build.t Obj_dir.t

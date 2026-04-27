@@ -25,6 +25,7 @@ module File = struct
   let dialect t = t.dialect
   let path t = t.path
   let original_path t = t.original_path
+  let set_path t path = { t with path }
 
   let version_installed t ~src_root ~install_dir =
     let path =
@@ -449,7 +450,7 @@ let generated
       let src_dir =
         match for_ with
         | Ocaml -> src_dir
-        | Melange -> src_dir
+        | Melange -> Path.Build.relative src_dir Melange.Source.dir
       in
       Path.Build.relative src_dir basename |> Path.build |> File.make Dialect.ocaml
     in

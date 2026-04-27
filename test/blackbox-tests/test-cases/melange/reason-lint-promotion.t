@@ -59,8 +59,33 @@ Explore PPX lint correction and promotion for Reason sources under
   > EOF
 
   $ dune build @shared/lint
-  File "shared/add.re.ml", line 1:
+  File "shared/.melange_src/add.re.ml", line 1:
   Error: ppxlib_driver: cannot use -reconcile with binary AST files
   [1]
   $ dune promote shared/add.re
   Warning: Nothing to promote for shared/add.re.
+
+Melange-specific Reason overrides currently behave the same way.
+
+  $ cat > override/dune <<'EOF'
+  > (melange.emit
+  >  (target out)
+  >  (emit_stdlib false)
+  >  (lint
+  >   (pps correct_static_add)))
+  > EOF
+
+  $ cat > override/add.re <<'EOF'
+  > let x = 1 + 2;
+  > EOF
+
+  $ cat > override/add.melange.re <<'EOF'
+  > let x = 1 + 2;
+  > EOF
+
+  $ dune build @override/lint
+  File "override/.melange_src/add.re.ml", line 1:
+  Error: ppxlib_driver: cannot use -reconcile with binary AST files
+  [1]
+  $ dune promote override/add.melange.re
+  Warning: Nothing to promote for override/add.melange.re.

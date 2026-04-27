@@ -156,7 +156,7 @@ Test depending on external paths
   $ dune trace cat | jq 'include "dune"; targetsMatchingFilter(test("[Mm]ain"))'
   {
     "target_files": [
-      "_build/default/external/main.pp.ml"
+      "_build/default/external/.melange_src/main.pp.ml"
     ]
   }
   {
@@ -205,7 +205,7 @@ Test depending on runtime assets inside `(include_subdirs ..)`
   > EOF
 
   $ dune build @mel --display=short 2>&1 | grep -i main
-           ppx incl/sub/main.pp.ml
+           ppx incl/.melange_src/sub/main.pp.ml
           melc incl/.incl-output.mobjs/melange/melange__Main.{cmi,cmj,cmt}
           melc incl/incl-output/incl/sub/main.js
 

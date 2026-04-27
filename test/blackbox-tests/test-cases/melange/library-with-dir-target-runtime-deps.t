@@ -57,7 +57,6 @@ The directory target runtime_dep some_dir was copied to the library build folder
 
   $ ls _build/default/lib
   foo.ml
-  foo.pp.ml
   some_dir
 
 The runtime_dep index.txt was copied to the build folder

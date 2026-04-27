@@ -476,6 +476,7 @@ let cctx
       ~scope
       ~parameters
       ~compile_info
+      ~local_lib
       ~modes
       ~for_
   =
@@ -532,6 +533,7 @@ let cctx
     ~melange_package_name
     ~modes
     ~instances
+    ~lib:local_lib
 ;;
 
 let library_rules
@@ -675,7 +677,7 @@ let compile_context_data (lib : Library.t) ~sctx ~dir_contents ~scope =
 
 let compile_context (lib : Library.t) ~sctx ~dir_contents ~expander ~scope =
   let dir = Dir_contents.dir dir_contents in
-  let* _, compile_info, modes, source_modules, parameters =
+  let* local_lib, compile_info, modes, source_modules, parameters =
     compile_context_data lib ~sctx ~dir_contents ~scope
   in
   cctx
@@ -687,6 +689,7 @@ let compile_context (lib : Library.t) ~sctx ~dir_contents ~expander ~scope =
     ~expander
     ~parameters
     ~compile_info
+    ~local_lib
     ~modes
     ~for_:Ocaml
 ;;
@@ -708,6 +711,7 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~expander ~scope =
         ~expander
         ~parameters
         ~compile_info
+        ~local_lib
         ~modes
         ~for_:Ocaml
     in

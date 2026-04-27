@@ -55,7 +55,7 @@ module Lib_index : sig
   val create
     :  no_ocamldep:Lib.Set.t
     -> unwrapped_local:Lib.Set.t
-    -> (Module_name.t * Lib.t * Module.t option) list
+    -> entries:(Module_name.t * Lib.t * Module.t option) list
     -> t
 
   type classified =

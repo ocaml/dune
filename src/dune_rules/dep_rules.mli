@@ -30,6 +30,15 @@ val rules
   -> has_library_deps:bool
   -> Dep_graph.Ml_kind.t Memo.t
 
+(** Canonical [has_library_deps] for a library, used both by
+    [Compilation_context.create] (when building a library cctx, to
+    derive the [has_library_deps] passed to [rules]) and by
+    [Compilation_context.build_lib_index] (when predicting whether
+    the lib's [.d] file will exist for the cross-library walk).
+    Returns [true] if [Lib.requires lib ~for_] resolves to a
+    non-empty list, or if resolution fails (conservative). *)
+val has_library_deps_of_lib : Lib.t -> for_:Compilation_mode.t -> bool Memo.t
+
 val read_immediate_deps_of
   :  obj_dir:Path.Build.t Obj_dir.t
   -> modules:Modules.With_vlib.t

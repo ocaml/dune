@@ -134,23 +134,36 @@ let deps_of_vlib_module ~obj_dir ~vimpl ~dir ~sctx ~ml_kind ~for_ sourced_module
 (** Tests whether a set of modules is a singleton. *)
 let has_single_file modules = Option.is_some @@ Modules.With_vlib.as_singleton modules
 
+(** Canonical "does this library have any library dependencies?"
+    answer. The boolean controls whether ocamldep is short-circuited
+    for [lib]'s own cctx (via [skip_ocamldep] below) and, in turn,
+    whether [lib]'s [.d] files are produced. The cross-library walk
+    in [Compilation_context.build_lib_index] consults the same
+    helper to decide whether [lib] should land in [no_ocamldep] —
+    routing both sites through this function is what keeps them in
+    sync, so changes to the condition can't drift between the
+    skip-decision side and the prediction side. Resolution failures
+    (unresolved direct deps) are treated conservatively as
+    has-deps=true so the lib's cctx still produces [.d] files and
+    cross-library consumers expect them. *)
+let has_library_deps_of_lib lib ~for_ =
+  let open Memo.O in
+  let+ resolved = Lib.requires lib ~for_ |> Memo.map ~f:Resolve.peek in
+  match resolved with
+  | Ok [] -> false
+  | Ok _ | Error _ -> true
+;;
+
 (** Tests whether ocamldep can be short-circuited for [modules]: true
-    for single-module stanzas that have no library dependencies.
-    The premise — "no consumer of ocamldep output can benefit" — was
+    for single-module stanzas that have no library dependencies. The
+    premise — "no consumer of ocamldep output can benefit" — was
     valid before #4572; under that PR, cross-library consumers now
     read a target library's ocamldep output as part of the
-    per-module inter-library dependency filter. Libraries identified
-    here must also be identified in
-    [Compilation_context.build_lib_index]'s [no_ocamldep_lib] check
-    so the cross-library walk knows their [.d] files will be
-    missing. Keeping the two in sync is fragile.
-
-    TODO: unify into a single predicate that both call sites
-    consult, so future changes to the condition can't drift. The
-    cleanest shape is probably to retire this short-circuit for
-    library stanzas entirely — libraries that could be consumed
-    cross-stanza should always run ocamldep — and keep the
-    optimisation only for executable/test stanzas. *)
+    per-module inter-library dependency filter, so a target library
+    short-circuited here must also be in
+    [Compilation_context.build_lib_index]'s [no_ocamldep] set. Both
+    sides resolve their [has_library_deps] view through
+    [has_library_deps_of_lib] above. *)
 let skip_ocamldep ~has_library_deps modules =
   has_single_file modules && not has_library_deps
 ;;

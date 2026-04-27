@@ -125,29 +125,27 @@ let parameters_main_modules parameters =
         [ "param", Lib.to_dyn param ])
 ;;
 
-(* Build a [Lib_index] from [all_libs] for the per-module inter-library
+(* Build a [Lib_index] from [libs] for the per-module inter-library
    dependency filter.
 
-   For each library, entry module names are collected (for wrapped
-   libraries, the wrapper; for unwrapped, each public module). Hidden
-   libraries are included so that consumers which transitively
-   reference a hidden library's entry module still produce a build
-   dependency on it.
-
-   Local libraries whose ocamldep is short-circuited by
-   [Dep_rules.skip_ocamldep] (unwrapped single-module stanzas without
-   direct lib deps) are collected into [no_ocamldep] so the cross-
-   library walk does not try to read their nonexistent [.d] files. *)
-(* [libs] should be the consumer's [direct_requires] — the libraries
+   [libs] should be the consumer's [direct_requires] — the libraries
    whose entry modules can legitimately appear in the consumer's
    ocamldep output (and, after the cross-library walk extends through
    them, in cross-library ocamldep outputs that the BFS surfaces).
    Hidden requires are intentionally excluded: the user has not
-   committed to them as direct dependencies, so the per-module
-   filter does not track them with per-module precision — they
-   fall to glob fallback in [lib_deps_for_module]'s post-walk
-   classification, which is the right behaviour for libs outside
-   the user's commitment surface. *)
+   committed to them as direct dependencies, so the per-module filter
+   does not track them with per-module precision — they fall to glob
+   fallback in [lib_deps_for_module]'s post-walk classification, which
+   is the right behaviour for libs outside the user's commitment
+   surface.
+
+   For each library, entry module names are collected (for wrapped
+   libraries, the wrapper plus a multi-entry index of children under
+   the wrapper's name; for unwrapped, each public module). Local
+   libraries whose ocamldep is short-circuited by
+   [Dep_rules.skip_ocamldep] (unwrapped single-module stanzas without
+   direct lib deps) are collected into [no_ocamldep] so the cross-
+   library walk does not try to read their nonexistent [.d] files. *)
 let build_lib_index ~super_context ~libs ~for_ =
   let open Resolve.Memo.O in
   let+ per_lib =
@@ -158,72 +156,74 @@ let build_lib_index ~super_context ~libs ~for_ =
       | External (Error e) -> Resolve.Memo.of_result (Error e)
       | Local ->
         Resolve.Memo.lift_memo
-          (Memo.map
-             (Dir_contents.modules_of_local_lib
-                super_context
-                (Lib.Local.of_lib_exn lib)
-                ~for_)
-             ~f:(fun mods ->
-               (* Local libs always carry [Some m] for each entry so the
-                  cross-library walk can read the entry's ocamldep.
-                  Whether to issue per-module deps on the entry's [.cmi]
-                  is a separate decision tracked by [unwrapped_local]:
-                  only unwrapped local libs are tight-eligible. Wrapped
-                  local libs are walkable (the wrapper's ocamldep
-                  references children by mangled name and the BFS
-                  expands through them) but classified as glob for
-                  invalidation. *)
-               let unwrapped =
-                 match Lib_info.wrapped (Lib.info lib) with
-                 | Some (This w) -> not (Wrapped.to_bool w)
-                 | Some (From _) | None -> false
+          (let open Memo.O in
+           let* mods =
+             Dir_contents.modules_of_local_lib
+               super_context
+               (Lib.Local.of_lib_exn lib)
+               ~for_
+           in
+           (* Predict the lib's own [has_library_deps] via the same
+              helper its cctx uses; routing both sites through
+              [Dep_rules.has_library_deps_of_lib] is what keeps the
+              skip-decision and the walk's prediction in sync. *)
+           let+ has_resolved_deps = Dep_rules.has_library_deps_of_lib lib ~for_ in
+           (* Local libs always carry [Some m] for each entry so the
+              cross-library walk can read the entry's ocamldep.
+              Whether to issue per-module deps on the entry's [.cmi]
+              is a separate decision tracked by [unwrapped_local]:
+              only unwrapped local libs are tight-eligible. Wrapped
+              local libs are walkable (the wrapper's ocamldep
+              references children by mangled name and the BFS
+              expands through them) but classified as glob for
+              invalidation. *)
+           let unwrapped =
+             match Lib_info.wrapped (Lib.info lib) with
+             | Some (This w) -> not (Wrapped.to_bool w)
+             | Some (From _) | None -> false
+           in
+           let entry_modules = Modules.entry_modules mods in
+           let entry_entries =
+             List.map entry_modules ~f:(fun m -> Module.name m, lib, Some m)
+           in
+           let entries =
+             if unwrapped
+             then entry_entries
+             else
+               (* Auto-wrapped libs: dune's auto-generated wrapper
+                  has [Module.kind = Alias], which means
+                  [Dep_rules.skip_ocamldep] fires and no [.d] is
+                  generated for the wrapper. The BFS thus cannot
+                  learn the wrapper's children by reading its
+                  ocamldep. Instead, also index each child under
+                  the WRAPPER's name (multi-entry), so that
+                  whenever the BFS encounters the wrapper's name
+                  in the frontier (via [-open Wrapper] in the
+                  consumer's flags or via a qualified
+                  [Wrapper.Child.x] reference), it walks
+                  directly into each child's ocamldep. *)
+               let entry_obj_names = List.map entry_modules ~f:Module.obj_name in
+               let child_modules =
+                 Modules.fold_user_available mods ~init:[] ~f:(fun m acc ->
+                   let obj_name = Module.obj_name m in
+                   if List.exists entry_obj_names ~f:(fun n ->
+                        Module_name.Unique.equal n obj_name)
+                   then acc
+                   else m :: acc)
                in
-               let entry_modules = Modules.entry_modules mods in
-               let entry_entries =
-                 List.map entry_modules ~f:(fun m ->
-                   Module.name m, lib, Some m)
+               let child_entries_under_wrapper =
+                 List.concat_map entry_modules ~f:(fun wrapper ->
+                   List.map child_modules ~f:(fun child ->
+                     Module.name wrapper, lib, Some child))
                in
-               let entries =
-                 if unwrapped
-                 then entry_entries
-                 else
-                   (* Auto-wrapped libs: dune's auto-generated wrapper
-                      has [Module.kind = Alias], which means
-                      [Dep_rules.skip_ocamldep] fires and no [.d] is
-                      generated for the wrapper. The BFS thus cannot
-                      learn the wrapper's children by reading its
-                      ocamldep. Instead, also index each child under
-                      the WRAPPER's name (multi-entry), so that
-                      whenever the BFS encounters the wrapper's name
-                      in the frontier (via [-open Wrapper] in the
-                      consumer's flags or via a qualified
-                      [Wrapper.Child.x] reference), it walks
-                      directly into each child's ocamldep. *)
-                   let entry_obj_names =
-                     List.map entry_modules ~f:Module.obj_name
-                   in
-                   let child_modules =
-                     Modules.fold_user_available mods ~init:[] ~f:(fun m acc ->
-                       let obj_name = Module.obj_name m in
-                       if List.exists entry_obj_names ~f:(fun n ->
-                            Module_name.Unique.equal n obj_name)
-                       then acc
-                       else m :: acc)
-                   in
-                   let child_entries_under_wrapper =
-                     List.concat_map entry_modules ~f:(fun wrapper ->
-                       List.map child_modules ~f:(fun child ->
-                         Module.name wrapper, lib, Some child))
-                   in
-                   entry_entries @ child_entries_under_wrapper
-               in
-               let no_ocamldep_lib =
-                 match Modules.as_singleton mods with
-                 | Some _ when List.is_empty (Lib_info.requires (Lib.info lib) ~for_) ->
-                   Some lib
-                 | _ -> None
-               in
-               entries, no_ocamldep_lib, (if unwrapped then Some lib else None))))
+               entry_entries @ child_entries_under_wrapper
+           in
+           let no_ocamldep_lib =
+             match Modules.as_singleton mods with
+             | Some _ when not has_resolved_deps -> Some lib
+             | _ -> None
+           in
+           entries, no_ocamldep_lib, (if unwrapped then Some lib else None)))
   in
   let entries = List.concat_map per_lib ~f:(fun (e, _, _) -> e) in
   let no_ocamldep =
@@ -232,7 +232,7 @@ let build_lib_index ~super_context ~libs ~for_ =
   let unwrapped_local =
     List.filter_map per_lib ~f:(fun (_, _, u) -> u) |> Lib.Set.of_list
   in
-  Lib_file_deps.Lib_index.create ~no_ocamldep ~unwrapped_local entries
+  Lib_file_deps.Lib_index.create ~no_ocamldep ~unwrapped_local ~entries
 ;;
 
 let create
@@ -256,6 +256,7 @@ let create
       ?cms_cmt_dependency
       ?loc
       ?instances
+      ?lib
       for_
   =
   let project = Scope.project scope in
@@ -297,19 +298,32 @@ let create
   let* has_library_deps =
     (* Determine whether any library dependencies are declared, so that
        single-module stanzas still run ocamldep when its output could
-       inform the per-module inter-library dependency filter. *)
-    let open Resolve.Memo.O in
-    let+ direct = direct_requires
-    and+ hidden = hidden_requires in
-    match direct, hidden with
-    | [], [] -> false
-    | _ -> true
-  in
-  let has_library_deps =
-    (* Unresolved dependency errors propagate later through the normal
-       compilation rules; here we conservatively behave as if libraries
-       are present. *)
-    Resolve.peek has_library_deps |> Result.value ~default:true
+       inform the per-module inter-library dependency filter.
+
+       For library cctxes ([?lib] supplied), route through
+       [Dep_rules.has_library_deps_of_lib] — the same helper
+       [build_lib_index] uses to predict the lib's [.d]-file presence
+       from a different cctx. Sharing the predicate at the lib level
+       is what keeps the skip-decision and the cross-library walk's
+       prediction in agreement. For non-library cctxes (executables,
+       tests, melange emit, …), fall back to the cctx-local
+       direct/hidden derivation: there is nothing to predict
+       cross-stanza, since these aren't entries in any lib_index. *)
+    match lib with
+    | Some lib -> Dep_rules.has_library_deps_of_lib lib ~for_
+    | None ->
+      let+ resolved =
+        let open Resolve.Memo.O in
+        let+ direct = direct_requires
+        and+ hidden = hidden_requires in
+        match direct, hidden with
+        | [], [] -> false
+        | _ -> true
+      in
+      (* Unresolved dependency errors propagate later through the
+         normal compilation rules; here we conservatively behave as
+         if libraries are present. *)
+      Resolve.peek resolved |> Result.value ~default:true
   in
   let+ dep_graphs =
     Dep_rules.rules

@@ -116,8 +116,11 @@ let build =
       ~docv:"TARGET"
       ~doc:
         (Some
-           "Build $(docv). Targets starting with a $(b,@) are interpreted as aliases. If \
-            no targets are given, the default target is built.")
+           "Build $(docv). Targets are either paths to files or directories, or aliases \
+            prefixed with $(b,@) or $(b,@@). A $(b,@)$(i,name) target recursively builds \
+            the alias $(i,name) in the current directory and all subdirectories. A \
+            $(b,@@)$(i,name) target builds the alias $(i,name) in the current directory \
+            only. Repeatable.")
   in
   let term =
     let+ builder = Common.Builder.term

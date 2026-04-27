@@ -202,12 +202,12 @@ let build_lib_index ~super_context ~libs ~for_ =
                   consumer's flags or via a qualified
                   [Wrapper.Child.x] reference), it walks
                   directly into each child's ocamldep. *)
-               let entry_obj_names = List.map entry_modules ~f:Module.obj_name in
+               let entry_obj_names =
+                 Module_name.Unique.Set.of_list_map entry_modules ~f:Module.obj_name
+               in
                let child_modules =
                  Modules.fold_user_available mods ~init:[] ~f:(fun m acc ->
-                   let obj_name = Module.obj_name m in
-                   if List.exists entry_obj_names ~f:(fun n ->
-                        Module_name.Unique.equal n obj_name)
+                   if Module_name.Unique.Set.mem entry_obj_names (Module.obj_name m)
                    then acc
                    else m :: acc)
                in

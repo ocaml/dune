@@ -41,42 +41,27 @@ let%expect_test "Build.to_string relative" =
 
 let%expect_test "to_absolute_filename source path" =
   Path.to_absolute_filename (Path.relative Path.root "src/main.ml") |> print_endline;
-  check_on_win_or_unix
-    [%expect.output]
-    ~wind:{| /workspace\src/main.ml |}
-    ~unix:{| /workspace/src/main.ml |}
+  [%expect {| /workspace/src/main.ml |}]
 ;;
 
 let%expect_test "to_absolute_filename build path" =
   Path.to_absolute_filename (Path.relative Path.build_dir "foo/bar") |> print_endline;
-  check_on_win_or_unix
-    [%expect.output]
-    ~wind:{| /external-build\foo/bar |}
-    ~unix:{| /external-build/foo/bar |}
+  [%expect {| /external-build/foo/bar |}]
 ;;
 
 let%expect_test "reach build from source" =
   Path.reach (Path.relative Path.build_dir "foo") ~from:Path.root |> print_endline;
-  check_on_win_or_unix
-    [%expect.output]
-    ~wind:{| /external-build\foo |}
-    ~unix:{| /external-build/foo |}
+  [%expect {| /external-build/foo |}]
 ;;
 
 let%expect_test "reach source from build" =
   Path.reach (Path.relative Path.root "src") ~from:(Path.relative Path.build_dir "foo")
   |> print_endline;
-  check_on_win_or_unix
-    [%expect.output]
-    ~wind:{| /workspace\src |}
-    ~unix:{| /workspace/src |}
+  [%expect {| /workspace/src |}]
 ;;
 
 let%expect_test "reach_for_running build from source" =
   Path.reach_for_running (Path.relative Path.build_dir "foo/bar") ~from:Path.root
   |> print_endline;
-  check_on_win_or_unix
-    [%expect.output]
-    ~wind:{| /external-build\foo/bar |}
-    ~unix:{| /external-build/foo/bar |}
+  [%expect {| /external-build/foo/bar |}]
 ;;

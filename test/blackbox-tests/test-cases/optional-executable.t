@@ -167,7 +167,7 @@ Optional on the executable should be respected:
   > EOF
 
   $ PATH=./bin:$PATH dune build @run-x
-  binary path: $TESTCASE_ROOT/optional-binary-absent/./bin/dunetestbar
+  binary path: $TESTCASE_ROOT/optional-binary-absent/bin/dunetestbar
 
 In the same way as enabled_if:
 
@@ -179,7 +179,7 @@ In the same way as enabled_if:
   > EOF
 
   $ PATH=./bin:$PATH dune build @run-x --force
-  binary path: $TESTCASE_ROOT/optional-binary-absent/./bin/dunetestbar
+  binary path: $TESTCASE_ROOT/optional-binary-absent/bin/dunetestbar
 
   $ cd ..
 

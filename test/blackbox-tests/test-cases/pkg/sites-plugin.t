@@ -66,6 +66,7 @@ Make an executable using dune-site (example mostly from the manual)
   > 
   > (rule
   >  (alias runtest)
+  >  (deps (package app) (package plugin1))
   >  (action
   >   (run app)))
   > EOF

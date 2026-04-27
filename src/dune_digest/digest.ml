@@ -104,28 +104,36 @@ let file file =
   digest_and_close_fd fd
 ;;
 
+(* Throttle concurrent [file_async] calls so an unbounded [parallel_map] over
+   many targets (e.g. the relocatable compiler) does not exhaust the process
+   fd limit. 100 sits comfortably above the background thread pool's worker
+   count (so digesting never starves it) while staying well under the typical
+   1024 fd soft limit; raising that limit is hazardous because some code
+   still falls back to [select()], which has a hard FD_SETSIZE (1024) cap. *)
+let digest_throttle = lazy (Fiber.Throttle.create 100)
 let async_digest_minimum = 1_000
 
 let file_async file =
-  let open Fiber.O in
-  let* () = Fiber.return () in
-  let fd = open_for_digest file in
-  Counter.incr Metrics.Digest.File.count;
-  let size =
-    match Unix.fstat (Fd.unsafe_to_unix_file_descr fd) with
-    | exception exn ->
-      Fd.close fd;
-      raise exn
-    | stat -> stat.st_size
-  in
-  Counter.add Metrics.Digest.File.bytes size;
-  if size = 0
-  then
-    let+ () = Fiber.return @@ Fd.close fd in
-    Lazy.force zero
-  else if size < async_digest_minimum
-  then Fiber.return (digest_and_close_fd fd)
-  else Dune_scheduler.Scheduler.async_exn (fun () -> digest_and_close_fd fd)
+  Fiber.Throttle.run (Lazy.force digest_throttle) ~f:(fun () ->
+    let open Fiber.O in
+    let* () = Fiber.return () in
+    let fd = open_for_digest file in
+    Counter.incr Metrics.Digest.File.count;
+    let size =
+      match Unix.fstat (Fd.unsafe_to_unix_file_descr fd) with
+      | exception exn ->
+        Fd.close fd;
+        raise exn
+      | stat -> stat.st_size
+    in
+    Counter.add Metrics.Digest.File.bytes size;
+    if size = 0
+    then
+      let+ () = Fiber.return @@ Fd.close fd in
+      Lazy.force zero
+    else if size < async_digest_minimum
+    then Fiber.return (digest_and_close_fd fd)
+    else Dune_scheduler.Scheduler.async_exn (fun () -> digest_and_close_fd fd))
 ;;
 
 let equal = Blake3_mini.Digest.equal

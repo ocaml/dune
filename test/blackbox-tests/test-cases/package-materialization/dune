@@ -1,0 +1,7 @@
+(cram
+ (applies_to :whole_subtree)
+ (setup_scripts helpers.sh))
+
+(cram
+ (applies_to ocamlfind no-transitive-through-targets installed-package)
+ (deps %{bin:ocamlfind}))

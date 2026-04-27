@@ -8,7 +8,11 @@ module Kind : sig
     | Hg
 
   val of_dir_name : Filename.t -> t option
-  val of_dir_contents : Filename.Set.t -> t option
+
+  val of_dir_contents
+    :  files:Filename.Array.Set.t
+    -> dirs:_ Filename.Array.Map.t
+    -> t option
 end
 
 type t =

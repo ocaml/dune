@@ -40,6 +40,15 @@ module type Session = Server_intf.Session
 module Session = struct
   module Id = Session_id
 
+  let rpc_id_repr = Repr.abstract Dune_rpc.Private.Id.to_dyn
+  let rpc_call_repr = Repr.abstract Dune_rpc.Private.Call.to_dyn
+
+  let request_repr =
+    Repr.record
+      "Request"
+      [ Repr.field "id" rpc_id_repr ~get:fst; Repr.field "call" rpc_call_repr ~get:snd ]
+  ;;
+
   module Close = struct
     type t =
       { ivar : unit Fiber.Ivar.t
@@ -84,6 +93,28 @@ module Session = struct
       | Closed
   end
 
+  module Pending_request = struct
+    type t =
+      { request : Request.t
+      ; ivar : Pending_response.t Fiber.Ivar.t
+      }
+
+    let create request ivar = { request; ivar }
+    let repr = Repr.view request_repr ~to_:(fun { request; ivar = _ } -> request)
+  end
+
+  let initialize_request_repr =
+    Repr.record
+      "Initialize.Request"
+      [ Repr.field "id" rpc_id_repr ~get:Initialize.Request.id
+      ; Repr.field
+          "dune_version"
+          (Repr.pair Repr.int Repr.int)
+          ~get:Initialize.Request.dune_version
+      ; Repr.field "protocol_version" Repr.int ~get:Initialize.Request.protocol_version
+      ]
+  ;;
+
   type 's chan' = (module Session with type t = 's) * 's
   type chan = Chan : 's chan' -> chan
 
@@ -96,9 +127,10 @@ module Session = struct
       ; mutable menu : Menu.t option
       ; pool : Fiber.Pool.t
       ; mutable state : 'a state
-      ; pending : (Dune_rpc.Private.Id.t, Pending_response.t Fiber.Ivar.t) Table.t
+      ; pending : (Dune_rpc.Private.Id.t, Pending_request.t) Table.t
         (** Pending requests sent to the client. When a response is
           received, the ivar for the response will be filled. *)
+      ; mutable requests_in_flight : Request.t Dune_rpc.Private.Id.Map.t
       ; name : string
       }
 
@@ -123,7 +155,7 @@ module Session = struct
     let close_pending_requests pending =
       let pending_list = Table.to_list pending in
       Table.clear pending;
-      Fiber.parallel_iter pending_list ~f:(fun (_, ivar) ->
+      Fiber.parallel_iter pending_list ~f:(fun (_, { Pending_request.ivar; _ }) ->
         Fiber.Ivar.fill ivar Pending_response.Closed)
     ;;
 
@@ -146,6 +178,7 @@ module Session = struct
       ; id = Id.gen ()
       ; pool
       ; pending
+      ; requests_in_flight = Dune_rpc.Private.Id.Map.empty
       ; name
       }
     ;;
@@ -187,7 +220,7 @@ module Session = struct
            None)
     ;;
 
-    let request t ((id, call) as req) =
+    let request t ((id, _) as req) =
       match t.close.state with
       | `Closing | `Closed ->
         Fiber.return (Fiber.Ivar.create_full Pending_response.Closed)
@@ -196,12 +229,10 @@ module Session = struct
          | Some _ ->
            Code_error.raise
              "request with this id is already pending"
-             [ "id", Dune_rpc.Private.Id.to_dyn id
-             ; "call", Dune_rpc.Private.Call.to_dyn call
-             ]
+             [ "request", Repr.to_dyn request_repr req ]
          | None ->
            let ivar = Fiber.Ivar.create () in
-           Table.add_exn t.pending id ivar;
+           Table.add_exn t.pending id (Pending_request.create req ivar);
            let+ () =
              Fiber.Pool.task t.pool ~f:(fun () ->
                let+ (_ : [> `Closed | `Ok ]) = write t (Request req) in
@@ -222,9 +253,24 @@ module Session = struct
                "unexpected response from rpc client"
                [ "response", Response.to_dyn response ]);
            Close.close t.close)
-      | Some ivar ->
+      | Some { Pending_request.ivar; _ } ->
         Table.remove t.pending id;
         Fiber.Ivar.fill ivar (Pending_response.Response response)
+    ;;
+
+    let request_started t ((id, _) as request) =
+      match Dune_rpc.Private.Id.Map.find t.requests_in_flight id with
+      | Some _ ->
+        Code_error.raise
+          "request with this id is already in flight"
+          [ "request", Repr.to_dyn request_repr request ]
+      | None ->
+        t.requests_in_flight
+        <- Dune_rpc.Private.Id.Map.add_exn t.requests_in_flight id request
+    ;;
+
+    let request_finished t id =
+      t.requests_in_flight <- Dune_rpc.Private.Id.Map.remove t.requests_in_flight id
     ;;
 
     let compare x y = Id.compare x.id y.id
@@ -234,13 +280,36 @@ module Session = struct
       function
       | Uninitialized -> variant "Uninitialized" []
       | Initialized { init; state } ->
-        let record = record [ "init", opaque init; "state", f state ] in
+        let record =
+          record [ "init", Repr.to_dyn initialize_request_repr init; "state", f state ]
+        in
         variant "Initialized" [ record ]
+    ;;
+
+    let pending_requests_repr =
+      Repr.view (Repr.list Pending_request.repr) ~to_:(fun pending ->
+        Table.to_list pending
+        |> Dune_rpc.Private.Id.Map.of_list_exn
+        |> Dune_rpc.Private.Id.Map.values)
+    ;;
+
+    let requests_in_flight_repr =
+      Repr.view (Repr.list request_repr) ~to_:Dune_rpc.Private.Id.Map.values
     ;;
 
     let to_dyn
           f
-          { id; version = _; state; close; chan = _; pool = _; pending = _; menu; name }
+          { id
+          ; version = _
+          ; state
+          ; close
+          ; chan = _
+          ; pool = _
+          ; pending
+          ; requests_in_flight
+          ; menu
+          ; name
+          }
       =
       let open Dyn in
       record
@@ -249,6 +318,8 @@ module Session = struct
         ; "menu", Dyn.option Menu.to_dyn menu
         ; "name", Dyn.string name
         ; "close", Close.to_dyn close
+        ; "requests_in_flight", Repr.to_dyn requests_in_flight_repr requests_in_flight
+        ; "pending_requests", Repr.to_dyn pending_requests_repr pending
         ]
     ;;
 
@@ -428,26 +499,38 @@ module H = struct
   let dispatch_request (type a) (t : a t) (session : a Session.t) meth_ r id =
     let kind = Request id in
     Event.emit (Message { kind; meth_; stage = `Start }) (Session.id session);
-    let* response =
-      let+ result =
-        Fiber.collect_errors (fun () ->
-          V.Handler.handle_request t.handler session (id, r))
-      in
-      match result with
-      | Ok r -> r
-      | Error [ { Exn_with_backtrace.exn = Response.Error.E e; backtrace = _ } ] ->
-        Error e
-      | Error xs ->
-        let payload =
-          Sexp.List (List.map xs ~f:(fun x -> Exn_with_backtrace.to_dyn x |> Sexp.of_dyn))
-        in
-        Error (Response.Error.create ~kind:Code_error ~message:"server error" ~payload ())
-    in
-    Event.emit (Message { kind; meth_; stage = `Stop }) (Session.id session);
-    let+ (_ : [> `Closed | `Ok ]) =
-      Session.Stage1.write session.base (Response (id, response))
-    in
-    ()
+    let () = Session.Stage1.request_started session.base (id, r) in
+    Fiber.finalize
+      (fun () ->
+         let* response =
+           let+ result =
+             Fiber.collect_errors (fun () ->
+               V.Handler.handle_request t.handler session (id, r))
+           in
+           match result with
+           | Ok r -> r
+           | Error [ { Exn_with_backtrace.exn = Response.Error.E e; backtrace = _ } ] ->
+             Error e
+           | Error xs ->
+             let payload =
+               Sexp.List
+                 (List.map xs ~f:(fun x -> Exn_with_backtrace.to_dyn x |> Sexp.of_dyn))
+             in
+             Error
+               (Response.Error.create
+                  ~kind:Code_error
+                  ~message:"server error"
+                  ~payload
+                  ())
+         in
+         Event.emit (Message { kind; meth_; stage = `Stop }) (Session.id session);
+         let+ (_ : [> `Closed | `Ok ]) =
+           Session.Stage1.write session.base (Response (id, response))
+         in
+         ())
+      ~finally:(fun () ->
+        Session.Stage1.request_finished session.base id;
+        Fiber.return ())
   ;;
 
   let run_session (type a) (t : a t) (session : a Session.t) =

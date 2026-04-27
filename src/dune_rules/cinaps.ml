@@ -247,7 +247,7 @@ let gen_rules sctx t ~dir ~scope =
         let cinaps_exe = Path.Build.relative cinaps_dir (name ^ ".exe") in
         Path.build cinaps_exe
       in
-      let runtime_deps, sandbox =
+      let action_env, sandbox =
         let sandbox =
           if t.cinaps_version >= (1, 1)
           then Sandbox_config.needs_sandboxing
@@ -255,14 +255,14 @@ let gen_rules sctx t ~dir ~scope =
         in
         Dep_conf_eval.unnamed sandbox ~expander t.runtime_deps
       in
-      let* () = runtime_deps in
       let+ () =
         cinaps_exe :: List.rev_map cinapsed_files ~f:Path.build
         |> Dep.Set.of_files
         |> Action_builder.deps
-      in
-      Action.Full.make ~sandbox
-      @@ Action.chdir
+      and+ env = action_env in
+      Action.Full.make
+        ~sandbox
+        (Action.chdir
            (Path.build dir)
            (Action.progn
               [ Action.run (Ok cinaps_exe) [ "-diff-cmd"; "-" ]
@@ -272,7 +272,8 @@ let gen_rules sctx t ~dir ~scope =
                     ~optional:true
                     (Path.build fn)
                     (Path.Build.extend_basename fn ~suffix:".cinaps-corrected"))
-              ])
+              ]))
+      |> Action.Full.add_env env
     in
     Super_context.add_alias_action sctx ~dir ~loc cinaps_alias action
   in

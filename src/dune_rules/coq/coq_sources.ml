@@ -33,14 +33,15 @@ let coq_modules_of_files ~dirs =
          as sd)
     =
     { sd with
-      files = String.Set.filter files ~f:(fun f -> String.ends_with ~suffix:".v" f)
+      files =
+        Filename.Array.Set.filter files ~f:(fun f -> String.ends_with ~suffix:".v" f)
     }
   in
   let dirs = Nonempty_list.to_list_map dirs ~f:filter_v_files in
   let build_mod_dir
         { Source_file_dir.dir; path_to_root = prefix; files; source_dir = _; stanzas = _ }
     =
-    String.Set.to_list_map files ~f:(fun file ->
+    Filename.Array.Set.to_list_map files ~f:(fun file ->
       let name, _ = Filename.split_extension file in
       let name = Coq_module.Name.make name in
       Coq_module.make ~source:(Path.build @@ Path.Build.relative dir file) ~prefix ~name)

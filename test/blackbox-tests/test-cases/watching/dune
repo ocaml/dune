@@ -23,6 +23,20 @@
  (enabled_if
   (<> %{ocaml-config:system} win)))
 
+(cram
+ (applies_to rpc-flush-file-watcher)
+ (deps
+  (package dune-action-plugin)
+  (package dune-rpc)
+  (package stdune)
+  (package dune-glob)
+  (package top-closure)
+  (package ordering)
+  (package dyn)
+  (package fs-io)
+  (package ocamlc-loc)
+  (package xdg)))
+
 ;; Disabled due to timeouts
 
 (cram

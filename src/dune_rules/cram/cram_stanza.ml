@@ -49,6 +49,19 @@ module Shell = struct
   let decode = enum all
 end
 
+let decode_runtest_alias =
+  let* () = Dune_lang.Syntax.since Stanza.syntax (3, 12) in
+  let* dune_version = Dune_lang.Syntax.get_exn Stanza.syntax in
+  let decode =
+    if dune_version >= (3, 24)
+    then Blang.decode
+    else
+      let+ set = bool in
+      if set then Blang.true_ else Blang.false_
+  in
+  located decode
+;;
+
 type t =
   { loc : Loc.t
   ; applies_to : applies_to
@@ -58,7 +71,7 @@ type t =
   ; locks : Locks.t
   ; conflict_markers : Conflict_markers.t option
   ; package : Package.t option
-  ; runtest_alias : (Loc.t * bool) option
+  ; runtest_alias : (Loc.t * Blang.t) option
   ; timeout : (Loc.t * Time.Span.t) option
   ; setup_scripts : (Loc.t * string) list
   ; shell : Shell.t option
@@ -97,10 +110,7 @@ let decode =
      and+ package =
        Stanza_pkg.field_opt ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 8)) ()
        >>| Option.map ~f:snd
-     and+ runtest_alias =
-       field_o
-         "runtest_alias"
-         (Dune_lang.Syntax.since Stanza.syntax (3, 12) >>> located bool)
+     and+ runtest_alias = field_o "runtest_alias" decode_runtest_alias
      and+ timeout =
        field_o
          "timeout"

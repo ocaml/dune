@@ -11,11 +11,6 @@ let filter_queue q ~f =
   new_q
 ;;
 
-let with_mutex t ~f =
-  Mutex.lock t.mutex;
-  Exn.protect ~f ~finally:(fun () -> Mutex.unlock t.mutex)
-;;
-
 let wakeup_loop t = Lev.Async.send t.wakeup t.loop
 
 let retire_watcher t fd ({ io; _ } as watcher : watcher) =
@@ -247,7 +242,7 @@ module Task = struct
 
   let cancel : type a. a t -> unit Fiber.t =
     let cancel_fd_task (t : (_, _) task) =
-      with_mutex t.select ~f:(fun () ->
+      Mutex.protect t.select.mutex (fun () ->
         match t.status with
         | `Filled -> Fiber.return ()
         | `Waiting ->
@@ -271,7 +266,7 @@ module Task = struct
           Fiber.Ivar.fill t.ivar (Error `Cancelled))
     in
     let cancel_timer_task (t : timer) =
-      with_mutex t.select ~f:(fun () ->
+      Mutex.protect t.select.mutex (fun () ->
         match t.status with
         | `Filled -> Fiber.return ()
         | `Waiting ->
@@ -288,7 +283,7 @@ module Task = struct
 end
 
 let destroy_loop_resources t =
-  with_mutex t ~f:(fun () ->
+  Mutex.protect t.mutex (fun () ->
     List.iter (Table.to_list t.watchers) ~f:(fun (fd, watcher) ->
       retire_watcher t fd watcher);
     List.iter (Table.to_list t.timers) ~f:(fun (id, timer) -> retire_timer t id timer);
@@ -305,7 +300,7 @@ let shutdown t =
   then (
     if t.started
     then (
-      with_mutex t ~f:(fun () -> t.shutting_down <- true);
+      Mutex.protect t.mutex (fun () -> t.shutting_down <- true);
       wakeup_loop t;
       Option.iter t.thread ~f:Thread.join;
       t.thread <- None;
@@ -322,7 +317,7 @@ let start ~name t =
       ignore
         (Lev.Loop.run t.loop Lev.Loop.Once : [ `No_more_active_watchers | `Otherwise ]);
       let shutting_down, fills =
-        with_mutex t ~f:(fun () ->
+        Mutex.protect t.mutex (fun () ->
           let fills = process_closures_locked t [] in
           let fills = service_ready_watchers_locked t fills in
           let fills = service_ready_timers_locked t fills in
@@ -351,7 +346,7 @@ let ensure_running_locked t =
 
 let sleep t after =
   let timer =
-    with_mutex t ~f:(fun () ->
+    Mutex.protect t.mutex (fun () ->
       ensure_running_locked t;
       Event.Queue.register_worker_task_started t.scheduler_queue;
       let deadline = Time.add (Time.now ()) after in
@@ -402,7 +397,7 @@ let create scheduler_queue =
 let with_ f =
   let t = Types.Scheduler.t () in
   let t = t.async_io in
-  with_mutex t ~f:(fun () ->
+  Mutex.protect t.mutex (fun () ->
     ensure_running_locked t;
     f t)
 ;;
@@ -411,7 +406,7 @@ let close fd =
   let t = Types.Scheduler.t () in
   let t = t.async_io in
   let to_cancel =
-    with_mutex t ~f:(fun () ->
+    Mutex.protect t.mutex (fun () ->
       ensure_running_locked t;
       match Table.find t.to_close fd with
       | Some ivar -> `Wait ivar

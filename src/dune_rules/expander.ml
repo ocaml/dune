@@ -58,6 +58,7 @@ type t =
   ; scope : Scope.t Memo.t
   ; scope_host : Scope.t Memo.t
   ; context : Context.t
+  ; context_host : Context.t Memo.t
   ; expanding_what : Expanding_what.t
   ; project : Dune_project.t
   }
@@ -66,6 +67,7 @@ let artifacts t = t.artifacts_host
 let dir t = t.dir
 let project t = t.project
 let context t = Context.name t.context
+let host_context t = t.context_host
 
 let set_local_env_var t ~var ~value =
   { t with local_env = Env.Var.Map.set t.local_env var value }
@@ -938,6 +940,7 @@ let make_root
       ~scope
       ~scope_host
       ~(context : Context.t)
+      ~context_host
       ~env
       ~public_libs
       ~public_libs_host
@@ -953,6 +956,7 @@ let make_root
   ; public_libs_host
   ; artifacts_host
   ; context
+  ; context_host
   ; expanding_what = Nothing_special
   ; project
   }

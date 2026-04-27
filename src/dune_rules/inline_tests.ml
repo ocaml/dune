@@ -380,7 +380,7 @@ include Sub_system.Register_end_point (struct
       in
       let lib_name = snd lib.name in
       let partitions_flags = partition_flags ~expander ~lib_name ~backends in
-      let deps, sandbox =
+      let action_env, sandbox =
         let sandbox =
           if dune_version < (3, 5)
           then Sandbox_config.no_special_requirements
@@ -388,6 +388,8 @@ include Sub_system.Register_end_point (struct
         in
         Dep_conf_eval.unnamed sandbox info.deps ~expander
       in
+      let action_env = Action_builder.memoize "inline-tests action_env" action_env in
+      let deps = Action_builder.ignore action_env in
       let action = action sctx ~deps ~loc ~dir ~inline_test_dir ~runner_name in
       Memo.parallel_iter modes ~f:(fun (mode : Mode_conf.t) ->
         let partition_file =
@@ -445,7 +447,8 @@ include Sub_system.Register_end_point (struct
                |> action mode)
              >>= Action_builder.all
            and+ () = Action_builder.paths runner_inputs
-           and+ () = Action_builder.paths promotion_targets in
+           and+ () = Action_builder.paths promotion_targets
+           and+ env = action_env in
            match actions with
            | [] -> Action.Full.empty
            | _ :: _ ->
@@ -457,7 +460,8 @@ include Sub_system.Register_end_point (struct
                  |> Action.diff ~optional:true fn)
                |> Action.concurrent
              in
-             Action.Full.make ~sandbox @@ Action.progn [ run_tests; diffs ]))
+             Action.Full.make ~sandbox (Action.progn [ run_tests; diffs ])
+             |> Action.Full.add_env env))
     ;;
 
     let gen_rules

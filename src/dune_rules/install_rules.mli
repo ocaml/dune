@@ -22,3 +22,8 @@ val resolve_package_install_file
 (** Generate rules for [.dune-package], [META.<package-name>] files. and
     [<package-name>.install] files. *)
 val gen_project_rules : Super_context.t -> Dune_project.t -> unit Memo.t
+
+(** Generate the symlink rules that materialize the install layout for a set
+    of packages at [_build/install/<context>/.packages/<key>/]. Called from
+    [gen_rules] when the build system visits that directory. *)
+val layout_gen_rules : Context_name.t -> dir:Path.Build.t -> string -> unit Memo.t

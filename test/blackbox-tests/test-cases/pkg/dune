@@ -31,6 +31,12 @@
  (applies_to autolock-with-watch-server))
 
 (cram
+ (applies_to sites-plugin)
+ (deps
+  (package dune-site)
+  (package dune-private-libs)))
+
+(cram
  (deps %{bin:patch})
  (applies_to patch opam-package-with-patch extra-sources))
 

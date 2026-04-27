@@ -72,7 +72,6 @@ It's an error for the binary to partially instantiate `lib_ab`:
                                 ^^^^^^
   Error: Missing argument for parameter "project.a".
   -> required by _build/default/bin/bin.exe
-  -> required by _build/install/default/bin/project.bin
   Hint: Pass an argument implementing "project.a" to the dependency.
   [1]
 
@@ -99,7 +98,6 @@ overlapping modules)
   -> required by _build/default/bin/.bin.eobjs/byte/dune__exe.cmi
   -> required by _build/default/bin/.bin.eobjs/native/dune__exe.cmx
   -> required by _build/default/bin/bin.exe
-  -> required by _build/install/default/bin/project.bin
   [1]
 
 We add another way to implement the parameter `b` from the parameter `a`:
@@ -136,14 +134,12 @@ dependencies, because its parameter `b` is missing:
   -> required by _build/default/bin/.bin.eobjs/byte/dune__exe.cmi
   -> required by _build/default/bin/.bin.eobjs/native/dune__exe.cmx
   -> required by _build/default/bin/bin.exe
-  -> required by _build/install/default/bin/project.bin
   File "bin/dune", line 6, characters 31-37:
   6 |     (instantiate lib_ab a_impl a_of_b)))
                                      ^^^^^^
   Error: Missing argument for parameter "project.b".
   -> required by _build/default/bin/.bin.eobjs/native/dune__exe__Bin.cmx
   -> required by _build/default/bin/bin.exe
-  -> required by _build/install/default/bin/project.bin
   Hint: Pass an argument implementing "project.b" to the dependency.
   [1]
 
@@ -209,7 +205,6 @@ It's an error to provide a non-required parameter:
   -> required by _build/default/bin/.bin.eobjs/byte/dune__exe.cmi
   -> required by _build/default/bin/.bin.eobjs/native/dune__exe.cmx
   -> required by _build/default/bin/bin.exe
-  -> required by _build/install/default/bin/project.bin
   Hint: Remove this argument
   [1]
 
@@ -241,7 +236,6 @@ which one to use:
   -> required by _build/default/bin/.bin.eobjs/byte/dune__exe.cmi
   -> required by _build/default/bin/.bin.eobjs/native/dune__exe.cmx
   -> required by _build/default/bin/bin.exe
-  -> required by _build/install/default/bin/project.bin
   [1]
 
 Same error if the argument is repeated:
@@ -262,7 +256,6 @@ Same error if the argument is repeated:
   -> required by _build/default/bin/.bin.eobjs/byte/dune__exe.cmi
   -> required by _build/default/bin/.bin.eobjs/native/dune__exe.cmx
   -> required by _build/default/bin/bin.exe
-  -> required by _build/install/default/bin/project.bin
   [1]
 
 We can instantiate the same library multiple times by giving it different names:

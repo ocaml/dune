@@ -35,7 +35,7 @@ val equal : 'a t -> 'a t -> bool
 (** The source_root directory *)
 val dir : 'path t -> 'path
 
-(** The directory for ocamldep files *)
+(** The private object directory *)
 val obj_dir : 'path t -> 'path
 
 (** The private compiled native file directory *)
@@ -150,12 +150,4 @@ module Module : sig
     val o_files : 'path t -> Module.t list -> ext_obj:Filename.Extension.t -> Path.t list
     val cm_files : 'path t -> Module.t list -> kind:Lib_mode.Cm_kind.t -> Path.t list
   end
-
-  module Dep : sig
-    type t =
-      | Immediate of Module.t * Ml_kind.t
-      | Transitive of Module.t * Ml_kind.t
-  end
-
-  val dep : Path.Build.t t -> Dep.t -> for_:Compilation_mode.t -> Path.Build.t option
 end

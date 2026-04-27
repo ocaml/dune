@@ -23,12 +23,12 @@ module File = struct
 
   let in_staging_area source = Path.Build.append_source staging_area source
 
-  let to_dyn { src; staging; dst } =
-    let open Dyn in
-    record
-      [ "src", Path.Build.to_dyn src
-      ; "staging", option Path.Build.to_dyn staging
-      ; "dst", Path.Source.to_dyn dst
+  let repr =
+    Repr.record
+      "promotion-file"
+      [ Repr.field "src" Path.Build.repr ~get:(fun t -> t.src)
+      ; Repr.field "staging" (Repr.option Path.Build.repr) ~get:(fun t -> t.staging)
+      ; Repr.field "dst" Path.Source.repr ~get:(fun t -> t.dst)
       ]
   ;;
 
@@ -89,11 +89,16 @@ type what =
   | `Directory
   ]
 
-let dyn_of_what =
-  let open Dyn in
-  function
-  | `File -> variant "File" []
-  | `Directory -> variant "Directory" []
+let what_repr =
+  Repr.variant
+    "promotion-what"
+    [ Repr.case0 "File" ~test:(function
+        | `File -> true
+        | `Directory -> false)
+    ; Repr.case0 "Directory" ~test:(function
+        | `Directory -> true
+        | `File -> false)
+    ]
 ;;
 
 type op =
@@ -101,10 +106,19 @@ type op =
   | Create_directory of Path.Source.t
   | Delete of what * Path.Source.t
 
-let dyn_of_op = function
-  | File f -> Dyn.variant "File" [ File.to_dyn f ]
-  | Create_directory p -> Dyn.variant "Create_directory" [ Path.Source.to_dyn p ]
-  | Delete (what, d) -> Dyn.variant "Delete" [ dyn_of_what what; Path.Source.to_dyn d ]
+let op_repr =
+  Repr.variant
+    "promotion-op"
+    [ Repr.case "File" File.repr ~proj:(function
+        | File f -> Some f
+        | _ -> None)
+    ; Repr.case "Create_directory" Path.Source.repr ~proj:(function
+        | Create_directory p -> Some p
+        | _ -> None)
+    ; Repr.case "Delete" (Repr.pair what_repr Path.Source.repr) ~proj:(function
+        | Delete (what, p) -> Some (what, p)
+        | _ -> None)
+    ]
 ;;
 
 type db = op list
@@ -129,6 +143,7 @@ let register_intermediate how ~source_file ~correction_file =
    | `Already_exists | `Created -> ()
    | `Not_a_dir ->
      Code_error.raise "dir was deleted" [ "staging_dir", Path.Build.to_dyn staging_dir ]);
+  Path.rm_rf (Path.build staging);
   (match how with
    | `Move ->
      Unix.rename (Path.Build.to_string correction_file) (Path.Build.to_string staging)
@@ -147,7 +162,7 @@ module P = Persistent.Make (struct
     let name = "TO-PROMOTE"
     let sharing = true
     let version = 6
-    let to_dyn = Dyn.list dyn_of_op
+    let repr = Repr.list op_repr
   end)
 
 let db_file = Path.relative Path.build_dir ".to-promote"

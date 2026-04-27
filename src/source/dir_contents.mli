@@ -12,7 +12,7 @@ end
 type t
 
 val empty : t
-val dirs : t -> (Filename.t * File.t) list
-val files : t -> Filename.Set.t
+val dirs : t -> File.t Filename.Array.Map.t
+val files : t -> Filename.Array.Set.t
 val to_dyn : t -> Dyn.t
 val of_source_path : Path.Source.t -> (t, Unix_error.Detailed.t) result Memo.t

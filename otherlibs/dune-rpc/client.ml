@@ -163,8 +163,14 @@ struct
       then Fiber.return `Closed
       else
         (* CR-soon rgrinberg: catch [Chan.write] errors here *)
-        let+ () = List.map ~f:(Conv.to_sexp Packet.sexp) packet |> Chan.write t.chan in
-        `Ok
+        let+ res =
+          Fiber.collect_errors (fun () ->
+            List.map ~f:(Conv.to_sexp Packet.sexp) packet |> Chan.write t.chan)
+        in
+        match res with
+        | Ok () -> `Ok
+        | Error [] -> assert false
+        | Error (exn :: _) -> `Exn exn
     ;;
   end
 
@@ -174,7 +180,8 @@ struct
         ( Id.t
           , [ `Cancelled
             | `Pending of
-                [ `Completed of Response.t | `Connection_dead | `Cancelled ] Fiber.Ivar.t
+                [ `Completed of Response.t | `Connection_dead | `Cancelled | `Exn of exn ]
+                  Fiber.Ivar.t
             ] )
           Table.t
     ; initialize : Initialize.Request.t
@@ -191,7 +198,7 @@ struct
 
   (* When the client is terminated via this function, the session is
      considered to be dead without a way to recover. *)
-  let terminate t =
+  let terminate t error =
     let* () = Fiber.return () in
     match t.running with
     | false -> Fiber.return ()
@@ -215,17 +222,21 @@ struct
            Fiber.parallel_iter ivars ~f:(fun status ->
              match status with
              | `Cancelled -> Fiber.return ()
-             | `Pending ivar -> Fiber.Ivar.fill ivar `Connection_dead))
+             | `Pending ivar -> Fiber.Ivar.fill ivar error))
   ;;
 
   let terminate_with_error t message info =
     Fiber.fork_and_join_unit
-      (fun () -> terminate t)
+      (fun () -> terminate t `Connection_dead)
       (fun () ->
          (* TODO stop using code error here. If [terminate_with_error] is
             called, it's because the other side is doing something unexpected,
             not because we have a bug *)
          Code_error.raise message info)
+  ;;
+
+  let connection_dead_error ?payload ~message () =
+    Response.Error.create ?payload ~message ~kind:Connection_dead ()
   ;;
 
   let create ~chan ~initialize ~handler ~on_preemptive_abort =
@@ -273,7 +284,8 @@ struct
       let* () =
         match res with
         | `Ok -> Fiber.return ()
-        | `Closed -> terminate conn
+        | `Exn exn -> terminate conn (`Exn exn)
+        | `Closed -> terminate conn `Connection_dead
       in
       Fiber.Ivar.read ivar
   ;;
@@ -317,6 +329,7 @@ struct
     let req = encode_req req in
     let* res = request_untyped t (id, req) in
     match res with
+    | `Exn exn -> raise exn
     | `Connection_dead -> Fiber.return `Connection_dead
     | `Cancelled -> Fiber.return `Cancelled
     | `Completed res ->
@@ -346,10 +359,9 @@ struct
     | false ->
       let err =
         let payload = Conv.to_sexp (Conv.record Call.fields) call in
-        Response.Error.create
+        connection_dead_error
           ~payload
           ~message:"notification sent while connection is dead"
-          ~kind:Connection_dead
           ()
       in
       raise (Response.Error.E err)
@@ -358,8 +370,26 @@ struct
   let notification (type a) t (stg : a Versioned.notification) (n : a) =
     let* () = Fiber.return () in
     make_notification t stg n (fun call ->
-      let+ (_ : [ `Ok | `Closed ]) = Chan.write t.chan [ Notification call ] in
-      ())
+      let payload = Conv.to_sexp (Conv.record Call.fields) call in
+      let* res = Chan.write t.chan [ Notification call ] in
+      match res with
+      | `Ok -> Fiber.return ()
+      | `Exn exn ->
+        let* () = terminate t (`Exn exn) in
+        raise
+          (Response.Error.E
+             (connection_dead_error
+                ~payload
+                ~message:"connection terminated while sending notification"
+                ()))
+      | `Closed ->
+        let* () = terminate t `Connection_dead in
+        raise
+          (Response.Error.E
+             (connection_dead_error
+                ~payload
+                ~message:"connection terminated while sending notification"
+                ())))
   ;;
 
   let disconnected t = Fiber.Ivar.read t.chan.disconnected
@@ -424,6 +454,7 @@ struct
 
   let no_cancel_raise_connection_dead id = function
     | `Cancelled -> assert false
+    | `Exn exn -> raise exn
     | `Completed s -> s
     | `Connection_dead ->
       let payload = Sexp.record [ "id", Id.to_sexp id ] in
@@ -492,7 +523,8 @@ struct
       let* res = Chan.write t.client.chan pending in
       match res with
       | `Ok -> Fiber.return ()
-      | `Closed -> terminate t.client
+      | `Exn exn -> terminate t.client (`Exn exn)
+      | `Closed -> terminate t.client `Connection_dead
     ;;
   end
 
@@ -547,7 +579,8 @@ struct
           let* res = Chan.write t.chan [ Response (id, result) ] in
           (match res with
            | `Ok -> Fiber.return ()
-           | `Closed -> terminate t)
+           | `Closed -> terminate t `Connection_dead
+           | `Exn exn -> terminate t (`Exn exn))
         | Response (id, response) ->
           (match Table.find t.requests id with
            | Some status ->
@@ -561,7 +594,7 @@ struct
                "unexpected response"
                [ "id", Id.to_dyn id; "response", Response.to_dyn response ]))
     in
-    terminate t
+    terminate t `Connection_dead
   ;;
 
   module Handler = struct

@@ -110,31 +110,7 @@ module Spec = struct
        ~target
        ~url:(loc_url, url))
     >>= function
-    | Ok () ->
-      (match kind with
-       | `File -> ()
-       | `Directory ->
-         (* Delete any broken symlinks from the unpacked archive. Dune can't
-            handle broken symlinks in the _build directory, but some opam
-            package contain broken symlinks. The logic here is applied to the
-            contents of package source archives but not to packages whose source
-            is in a local directory (e.g. when a package is pinned from the
-            filesystem). Broken symlinks are excluded while copying files from
-            local directories into the build directory, and the logic for
-            excluding them lives in [Pkg_rules.source_rules]. *)
-         let target_abs = Path.to_absolute_filename target in
-         let on_symlink ~dir fname () =
-           let path = Filename.concat target_abs (Filename.concat dir fname) in
-           match Unix.stat path with
-           | { Unix.st_kind = kind; _ } -> (), Some kind
-           | exception Unix.Unix_error (Unix.ENOENT, _, _) ->
-             Fpath.rm_rf path;
-             (), None
-           | exception Unix.Unix_error (error, syscall, arg) ->
-             Unix_error.Detailed.raise (Unix_error.Detailed.create error ~syscall ~arg)
-         in
-         Fpath.traverse ~init:() ~dir:target_abs ~on_symlink:(`Call on_symlink) ());
-      Fiber.return ()
+    | Ok () -> Fiber.return ()
     | Error (Checksum_mismatch actual_checksum) ->
       (match checksum with
        | None ->

@@ -23,11 +23,7 @@ end = struct
   let set t a = t.data <- a
   let get t = t.data
   let create data = { mutex = Mutex.create (); data }
-
-  let critical_section (type a) (t : a t) f =
-    Mutex.lock t.mutex;
-    Fun.protect (fun () -> f t) ~finally:(fun () -> Mutex.unlock t.mutex)
-  ;;
+  let critical_section (type a) (t : a t) f = Mutex.protect t.mutex (fun () -> f t)
 end
 
 module Dispatch_queue = struct

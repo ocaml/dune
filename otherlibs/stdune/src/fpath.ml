@@ -257,6 +257,7 @@ let traverse
       ?(on_symlink = `Resolve)
       ?(enter_dir = fun ~dir:_ _fname -> true)
       ?(on_error = `Raise)
+      ?(sort_entries = false)
       ()
   =
   let on_other =
@@ -300,6 +301,15 @@ let traverse
          let acc = on_error ~dir e acc in
          loop root dirs acc
        | Ok entries ->
+         let entries =
+           if sort_entries
+           then
+             List.sort
+               ~compare:(fun (name1, _kind1) (name2, _kind2) ->
+                 String.compare name2 name1)
+               entries
+           else entries
+         in
          let stack, acc =
            List.fold_left entries ~init:(dirs, acc) ~f:(fun (stack, acc) (fname, kind) ->
              match (kind : Unix.file_kind) with

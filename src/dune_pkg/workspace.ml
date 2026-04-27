@@ -51,6 +51,16 @@ module Repository = struct
     }
   ;;
 
+  let relocatable =
+    { name = "relocatable"
+    ; url =
+        ( Loc.none
+        , OpamUrl.of_string
+            "git+https://github.com/ocaml-dune/opam-repository-relocatable.git#relocatable"
+        )
+    }
+  ;;
+
   let binary_packages =
     { name = "binary-packages"
     ; url =

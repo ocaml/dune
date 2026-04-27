@@ -17,6 +17,8 @@ val quote : string -> string
 (* TODO add invariants and make this abstract or private *)
 type t = string
 
+val repr : t Repr.t
+
 module Extension : sig
   type t
 
@@ -53,7 +55,6 @@ module Extension : sig
   val odoc : t
   val h : t
   val d : t
-  val all_deps : t
   val js : t
   val mlg : t
   val json : t
@@ -99,3 +100,4 @@ val chop_extension : [ `Use_remove_extension ]
 
 module Set = String.Set
 module Map = String.Map
+module Array : Array_intf.S with type Set.elt = t

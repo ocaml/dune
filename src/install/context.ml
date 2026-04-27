@@ -22,7 +22,10 @@ let of_path path =
   | Build (Regular (With_context (name, src))) ->
     Some
       (if Context_name.equal name install_context.name
-       then Context_name.of_string (Path.Source.basename src)
+       then (
+         match Path.Source.split_first_component src with
+         | Some (ctx, _) -> Context_name.of_string ctx
+         | None -> name)
        else name)
   | Build (Anonymous_action (With_context (name, _))) -> Some name
   | _ -> None

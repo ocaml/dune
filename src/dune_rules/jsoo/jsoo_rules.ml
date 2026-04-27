@@ -530,11 +530,11 @@ end = struct
         List.filter libs ~f:(fun lib ->
           not (List.is_empty (jsoo_runtime_files ~mode [ lib ])))
       in
-      let lib_names =
-        List.sort libs_with_runtime ~compare:(fun a b ->
-          Lib_name.compare (Lib.name a) (Lib.name b))
-        |> List.map ~f:Lib.name
-      in
+      (* Keep the topological order from [requires_link]: jsoo runtime
+         contents are concatenated and later files override earlier ones,
+         so reordering (e.g. sorting by name) can change which conflicting
+         binding wins. *)
+      let lib_names = List.map libs_with_runtime ~f:Lib.name in
       let project_root = Lib.L.project_root libs_with_runtime in
       { mode; lib_names; project_root }
     ;;

@@ -89,7 +89,6 @@ module Per_dir = struct
 end
 
 module Spec = struct
-  type status = t
   type t = Predicate_lang.Glob.t Map.t
   type input = (Loc.t * Predicate_lang.Glob.t) option Map.t
 
@@ -118,31 +117,32 @@ module Spec = struct
       Map.merge t default ~f:(fun pred standard ->
         Predicate_lang.Glob.test pred ~standard)
     in
-    Filename.Set.of_list dirs
-    |> Filename.Set.to_map ~f:(fun _ -> ())
-    |> Filename.Map.filter_mapi ~f:(fun dir () : status option ->
+    Filename.Array.Set.fold dirs ~init:Filename.Map.empty ~f:(fun dir acc ->
       match Map.map f ~f:(fun pred -> pred dir) |> Set.to_list with
-      | [] -> None
+      | [] -> acc
       | statuses ->
         (* If a directory has a status other than [Normal], then the [Normal]
            status is irrelevant so we just filter it out. *)
-        (match
-           List.filter statuses ~f:(function
-             | Normal -> false
-             | _ -> true)
-         with
-         | [] -> Some Normal
-         | [ status ] -> Some status
-         | statuses ->
-           (* CR-rgrinberg: this error needs a location *)
-           User_error.raise
-             [ Pp.textf
-                 "Directory %s was marked as %s, it can't be marked as %s."
-                 dir
-                 (String.enumerate_and (List.map statuses ~f:to_string))
-                 (match List.length statuses with
-                  | 2 -> "both"
-                  | _ -> "all these")
-             ]))
+        let status =
+          match
+            List.filter statuses ~f:(function
+              | Normal -> false
+              | _ -> true)
+          with
+          | [] -> Normal
+          | [ status ] -> status
+          | statuses ->
+            (* CR-rgrinberg: this error needs a location *)
+            User_error.raise
+              [ Pp.textf
+                  "Directory %s was marked as %s, it can't be marked as %s."
+                  dir
+                  (String.enumerate_and (List.map statuses ~f:to_string))
+                  (match List.length statuses with
+                   | 2 -> "both"
+                   | _ -> "all these")
+              ]
+        in
+        Filename.Map.set acc dir status)
   ;;
 end

@@ -35,9 +35,11 @@ let local_libraries =
           ; entries =
               [ "Csexp"
               ; "Dyn"
+              ; "Event"
               ; "Fs_io"
               ; "Ordering"
               ; "Pp"
+              ; "Thread"
               ; "Top_closure"
               ; "Unix"
               ; "UnixLabels"
@@ -164,7 +166,7 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
-  ; { path = "vendor/ocaml-blake3-mini"
+  ; { path = "src/ocaml-blake3-mini"
     ; main_module_name = Some "Blake3_mini"
     ; include_subdirs = No
     ; special_builtin_support = None

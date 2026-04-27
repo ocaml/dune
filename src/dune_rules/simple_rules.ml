@@ -295,25 +295,25 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
      add the corresponding rules, and then to convert the files to [targets]. To
      do only one traversal we need [Memo.parallel_map_set]. *)
   let* () =
-    Memo.parallel_iter_seq
-      (Filename.Set.to_seq (Filename_set.filenames files))
-      ~f:(fun basename ->
-        let file_src = Path.relative src_in_build basename in
-        let file_dst = Path.Build.relative dir basename in
-        let context = Super_context.context sctx in
-        Super_context.add_rule
-          sctx
-          ~loc
-          ~dir
-          ~mode
-          ((if def.add_line_directive
-            then Copy_line_directive.builder context
-            else Action_builder.copy)
-             ~src:file_src
-             ~dst:file_dst))
+    Filename_set.filenames files
+    |> Filename.Array.Set.to_list
+    |> Memo.parallel_iter ~f:(fun basename ->
+      let file_src = Path.relative src_in_build basename in
+      let file_dst = Path.Build.relative dir basename in
+      let context = Super_context.context sctx in
+      Super_context.add_rule
+        sctx
+        ~loc
+        ~dir
+        ~mode
+        ((if def.add_line_directive
+          then Copy_line_directive.builder context
+          else Action_builder.copy)
+           ~src:file_src
+           ~dst:file_dst))
   in
   let targets =
-    Filename.Set.to_list_map (Filename_set.filenames files) ~f:(fun basename ->
+    Filename.Array.Set.to_list_map (Filename_set.filenames files) ~f:(fun basename ->
       let file_dst = Path.Build.relative dir basename in
       Path.build file_dst)
     |> Path.Set.of_list
@@ -345,13 +345,13 @@ let alias sctx ~dir ~expander (alias_conf : Alias_conf.t) =
     (match alias_conf.action with
      | None ->
        (* Sandboxing options don't make sense for deps, only for actions *)
-       let builder, _expander, _sandbox =
+       let action_env, _expander, _sandbox =
          Dep_conf_eval.named
            ~expander
            Sandbox_config.no_special_requirements
            alias_conf.deps
        in
-       Rules.Produce.Alias.add_deps alias ~loc builder
+       Rules.Produce.Alias.add_deps alias ~loc (Action_builder.ignore action_env)
      | Some (action_loc, action) ->
        let action =
          let chdir = Expander.dir expander in

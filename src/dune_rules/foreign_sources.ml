@@ -80,7 +80,7 @@ module Unresolved = struct
 
   let load ~dune_version ~dir ~files =
     let init = String.Map.empty in
-    String.Set.fold files ~init ~f:(fun fn acc ->
+    Filename.Array.Set.fold files ~init ~f:(fun fn acc ->
       match drop_source_extension fn ~dune_version with
       | None -> acc
       | Some (obj, language) ->

@@ -2,6 +2,8 @@ include Stdlib.Filename
 
 type t = string
 
+let repr = Repr.string
+
 module Extension = struct
   type t = string
 
@@ -37,7 +39,6 @@ module Extension = struct
   let cmsi = ".cmsi"
   let odoc = ".odoc"
   let d = ".d"
-  let all_deps = ".all-deps"
   let js = ".js"
   let h = ".h"
   let mlg = ".mlg"
@@ -136,3 +137,11 @@ let chop_extension = `Use_remove_extension
 
 module Set = String.Set
 module Map = String.Map
+module Array0 = Array
+
+module Array = Array0.Sorted.Make (struct
+    type nonrec t = t
+
+    let compare = compare
+    let to_dyn = Dyn.string
+  end)

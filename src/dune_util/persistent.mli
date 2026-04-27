@@ -18,7 +18,7 @@ module type Desc = sig
   val name : string
   val sharing : bool
   val version : int
-  val to_dyn : t -> Dyn.t
+  val repr : t Repr.t
 end
 
 type data = private ..
@@ -34,7 +34,7 @@ end
 
     There's the [dune dump <file>] command that can pretty-print the contents of
     any persistent file. This command can use the [D.name] stored in the
-    persistent file to locate the appropriate pretty printer. *)
+    persistent file to locate the appropriate representation. *)
 module Make (D : Desc) : sig
   val to_string : D.t -> string
   val dump : Path.t -> D.t -> unit

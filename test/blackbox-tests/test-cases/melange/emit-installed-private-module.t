@@ -62,21 +62,14 @@ stage the installed Melange object dirs rather than only the entry module's
   $ dune install --root lib --prefix $PWD/prefix --display short
   Installing $TESTCASE_ROOT/prefix/lib/repro/META
   Installing $TESTCASE_ROOT/prefix/lib/repro/dune-package
-  Installing $TESTCASE_ROOT/prefix/lib/repro/foo/foo.ml
-  Installing $TESTCASE_ROOT/prefix/lib/repro/foo/foo__.ml
-  Installing $TESTCASE_ROOT/prefix/lib/repro/foo/foo_internalAVLtree.ml
-  Installing $TESTCASE_ROOT/prefix/lib/repro/foo/foo_internalMapInt.ml
-  Installing $TESTCASE_ROOT/prefix/lib/repro/foo/foo_internalMapInt.mli
-  Installing $TESTCASE_ROOT/prefix/lib/repro/foo/foo_map.ml
-  Installing $TESTCASE_ROOT/prefix/lib/repro/foo/foo_map.mli
-  Installing $TESTCASE_ROOT/prefix/lib/repro/foo/foo_mapInt.ml
-  Installing $TESTCASE_ROOT/prefix/lib/repro/foo/foo_mapInt.mli
   Installing $TESTCASE_ROOT/prefix/lib/repro/foo/melange/foo.cmi
   Installing $TESTCASE_ROOT/prefix/lib/repro/foo/melange/foo.cmj
   Installing $TESTCASE_ROOT/prefix/lib/repro/foo/melange/foo.cmt
+  Installing $TESTCASE_ROOT/prefix/lib/repro/foo/melange/foo.ml
   Installing $TESTCASE_ROOT/prefix/lib/repro/foo/melange/foo__.cmi
   Installing $TESTCASE_ROOT/prefix/lib/repro/foo/melange/foo__.cmj
   Installing $TESTCASE_ROOT/prefix/lib/repro/foo/melange/foo__.cmt
+  Installing $TESTCASE_ROOT/prefix/lib/repro/foo/melange/foo__.ml
   Installing $TESTCASE_ROOT/prefix/lib/repro/foo/melange/foo__Foo_internalAVLtree.cmi
   Installing $TESTCASE_ROOT/prefix/lib/repro/foo/melange/foo__Foo_internalAVLtree.cmj
   Installing $TESTCASE_ROOT/prefix/lib/repro/foo/melange/foo__Foo_internalAVLtree.cmt
@@ -92,6 +85,13 @@ stage the installed Melange object dirs rather than only the entry module's
   Installing $TESTCASE_ROOT/prefix/lib/repro/foo/melange/foo__Foo_mapInt.cmj
   Installing $TESTCASE_ROOT/prefix/lib/repro/foo/melange/foo__Foo_mapInt.cmt
   Installing $TESTCASE_ROOT/prefix/lib/repro/foo/melange/foo__Foo_mapInt.cmti
+  Installing $TESTCASE_ROOT/prefix/lib/repro/foo/melange/foo_internalAVLtree.ml
+  Installing $TESTCASE_ROOT/prefix/lib/repro/foo/melange/foo_internalMapInt.ml
+  Installing $TESTCASE_ROOT/prefix/lib/repro/foo/melange/foo_internalMapInt.mli
+  Installing $TESTCASE_ROOT/prefix/lib/repro/foo/melange/foo_map.ml
+  Installing $TESTCASE_ROOT/prefix/lib/repro/foo/melange/foo_map.mli
+  Installing $TESTCASE_ROOT/prefix/lib/repro/foo/melange/foo_mapInt.ml
+  Installing $TESTCASE_ROOT/prefix/lib/repro/foo/melange/foo_mapInt.mli
 
   $ cat > app/dune-project <<'EOF'
   > (lang dune 3.20)

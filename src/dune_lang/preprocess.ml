@@ -396,3 +396,19 @@ let preprocess_fields =
   in
   preprocess, preprocessor_deps
 ;;
+
+type preprocess =
+  { config : With_instrumentation.t Per_module.t
+  ; preprocessor_deps : Dep_conf.t list
+  }
+
+let preprocess_config ~preprocess ~instrumentation ~preprocessor_deps =
+  let config =
+    let init =
+      let f libname = With_instrumentation.Ordinary libname in
+      Module_name.Per_item.map preprocess ~f:(map ~f)
+    in
+    List.fold_left instrumentation ~init ~f:Per_module.add_instrumentation
+  in
+  { config; preprocessor_deps }
+;;

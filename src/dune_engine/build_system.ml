@@ -120,25 +120,6 @@ let rec with_locks ~f = function
       ~f:(fun () -> with_locks ~f mutexes)
 ;;
 
-module Pending_targets = struct
-  (* All file and directory targets of non-sandboxed actions that are currently
-     being executed. On exit, we need to delete them as they might contain
-     garbage. *)
-
-  let t = ref Targets.empty
-  let remove targets = t := Targets.diff !t (Targets.Validated.unvalidate targets)
-  let add targets = t := Targets.combine !t (Targets.Validated.unvalidate targets)
-
-  let cleanup () =
-    let targets = !t in
-    t := Targets.empty;
-    Targets.iter
-      targets
-      ~file:(fun p -> p |> Path.Build.to_string |> Fpath.unlink_no_err)
-      ~dir:(fun p -> Path.rm_rf (Path.build p))
-  ;;
-end
-
 type rule_execution_result =
   { facts : Dep.Fact.t Dep.Map.t
   ; targets : Digest.t Targets.Produced.t
@@ -403,112 +384,92 @@ module Internal = struct
       =
       action
     in
-    let deps =
-      Dep.Facts.paths
-        ~expand_aliases:
-          (Execution_parameters.expand_aliases_in_sandbox execution_parameters)
-        facts
-    in
-    let* sandbox =
-      match sandbox_mode with
-      | Some mode ->
-        let+ sandbox =
-          Sandbox.create
-            ~mode
-            (Option.value ~default:Ignore corrections)
-            ~dirs:(Dep.Facts.necessary_dirs_for_sandboxing facts)
-            ~deps
-            ~rule_dir:targets.root
-            ~rule_loc:loc
-            ~rule_digest
+    let execute_action sandbox =
+      let is_sandboxed = Sandbox.is_sandboxed sandbox in
+      let action = if is_sandboxed then Action.sandbox action sandbox else action in
+      let action =
+        (* We must add the creation of the stamp file after sandboxing it, as
+           otherwise the stamp file would end up inside the sandbox. This is
+           especially a problem for the [Patch_back_source_tree] sandboxing
+           mode. *)
+        match rule_kind with
+        | Normal_rule -> action
+        | Anonymous_action { stamp_file; capture_stdout; _ } ->
+          if capture_stdout
+          then Action.with_stdout_to stamp_file action
+          else Action.progn [ action; Action.write_file stamp_file "" ]
+      in
+      let* () =
+        maybe_async_rule_file_op (fun () ->
+          Action.chdirs action
+          |> Path.Build.Set.iter ~f:(fun p -> Path.mkdir_p (Path.build p)))
+      in
+      let context = Build_context.of_build_path targets.root in
+      let root =
+        match context with
+        | None -> Path.Build.root
+        | Some context -> context.build_dir
+      in
+      let root = Path.build (Sandbox.map_path sandbox root) in
+      let action_trace = Action_trace.create rule_digest in
+      with_locks locks ~f:(fun () ->
+        let* action_exec_result =
+          let input =
+            let env = Action_trace.add_to_env action_trace env in
+            { Action_exec.root
+            ; context (* can be derived from the root *)
+            ; env
+            ; targets = Some targets
+            ; rule_loc = loc
+            ; execution_parameters
+            ; action
+            }
+          in
+          let build_deps deps = Memo.run (build_deps deps) in
+          Action_exec.exec input ~build_deps
         in
-        Some sandbox
-      | None ->
-        (* If the action is not sandboxed, we use [pending_file_targets] to
-           clean up the build directory if the action is interrupted. *)
-        Pending_targets.add targets;
-        Fiber.return None
+        let* action_exec_result = Action_exec.Exec_result.ok_exn action_exec_result in
+        let* () = Action_trace.collect action_trace in
+        let* () =
+          if not is_sandboxed
+          then Fiber.return ()
+          else (
+            (* The stamp file for anonymous actions is always created outside
+               the sandbox, so we can't move it. *)
+            let should_be_skipped =
+              match rule_kind with
+              | Normal_rule -> fun (_ : Path.Build.t) -> false
+              | Anonymous_action { stamp_file; _ } -> Path.Build.equal stamp_file
+            in
+            Sandbox.move_targets_to_build_dir sandbox ~should_be_skipped ~targets)
+        in
+        let+ produced_targets =
+          maybe_async_rule_file_op (fun () -> Targets.Produced.of_validated targets)
+        in
+        match produced_targets with
+        | Ok produced_targets -> { Exec_result.produced_targets; action_exec_result }
+        | Error error -> User_error.raise ~loc (Targets.Produced.Error.message error))
     in
-    let action =
-      match sandbox with
-      | None -> action
-      | Some sandbox -> Action.sandbox action sandbox
+    let deps, sandbox_dirs =
+      match sandbox_mode with
+      | None -> Path.Set.empty, Path.Build.Set.empty
+      | Some _ ->
+        ( Dep.Facts.paths
+            ~expand_aliases:
+              (Execution_parameters.expand_aliases_in_sandbox execution_parameters)
+            facts
+        , Dep.Facts.necessary_dirs_for_sandboxing facts )
     in
-    let action =
-      (* We must add the creation of the stamp file after sandboxing it, as
-         otherwise the stamp file would end up inside the sandbox. This is
-         especially a problem for the [Patch_back_source_tree] sandboxing
-         mode. *)
-      match rule_kind with
-      | Normal_rule -> action
-      | Anonymous_action { stamp_file; capture_stdout; _ } ->
-        if capture_stdout
-        then Action.with_stdout_to stamp_file action
-        else Action.progn [ action; Action.write_file stamp_file "" ]
-    in
-    let* () =
-      maybe_async_rule_file_op (fun () ->
-        Action.chdirs action
-        |> Path.Build.Set.iter ~f:(fun p -> Path.mkdir_p (Path.build p)))
-    in
-    let context = Build_context.of_build_path targets.root in
-    let root =
-      match context with
-      | None -> Path.Build.root
-      | Some context -> context.build_dir
-    in
-    let root =
-      Path.build
-        (match sandbox with
-         | None -> root
-         | Some sandbox -> Sandbox.map_path sandbox root)
-    in
-    let action_trace = Action_trace.create rule_digest in
-    Fiber.finalize
-      ~finally:(fun () ->
-        match sandbox with
-        | Some sandbox -> Sandbox.destroy sandbox
-        | None ->
-          Pending_targets.remove targets;
-          Fiber.return ())
-      (fun () ->
-         with_locks locks ~f:(fun () ->
-           let* action_exec_result =
-             let input =
-               let env = Action_trace.add_to_env action_trace env in
-               { Action_exec.root
-               ; context (* can be derived from the root *)
-               ; env
-               ; targets = Some targets
-               ; rule_loc = loc
-               ; execution_parameters
-               ; action
-               }
-             in
-             let build_deps deps = Memo.run (build_deps deps) in
-             Action_exec.exec input ~build_deps
-           in
-           let* action_exec_result = Action_exec.Exec_result.ok_exn action_exec_result in
-           let* () = Action_trace.collect action_trace in
-           let* () =
-             match sandbox with
-             | None -> Fiber.return ()
-             | Some sandbox ->
-               (* The stamp file for anonymous actions is always created outside
-                 the sandbox, so we can't move it. *)
-               let should_be_skipped =
-                 match rule_kind with
-                 | Normal_rule -> fun (_ : Path.Build.t) -> false
-                 | Anonymous_action { stamp_file; _ } -> Path.Build.equal stamp_file
-               in
-               Sandbox.move_targets_to_build_dir sandbox ~should_be_skipped ~targets
-           in
-           let+ produced_targets =
-             maybe_async_rule_file_op (fun () -> Targets.Produced.of_validated targets)
-           in
-           match produced_targets with
-           | Ok produced_targets -> { Exec_result.produced_targets; action_exec_result }
-           | Error error -> User_error.raise ~loc (Targets.Produced.Error.message error)))
+    Sandbox.with_
+      ~mode:sandbox_mode
+      (Option.value ~default:Ignore corrections)
+      ~rule_loc:loc
+      ~dirs:sandbox_dirs
+      ~deps
+      ~rule_dir:targets.root
+      ~rule_digest
+      ~targets
+      ~f:execute_action
 
   and promote_targets ~rule_mode ~targets ~promote_source =
     match rule_mode, !Clflags.promote with
@@ -959,7 +920,8 @@ module Internal = struct
           | _ ->
             let basename = Path.Build.basename path in
             if File_selector.test_basename g ~basename then basename :: acc else acc)
-      |> Filename.Set.of_list
+      |> List.rev
+      |> Filename.Array.Set.of_sorted_list
       |> Filename_set.create ~dir
       |> Memo.return
     | Build_under_directory_target { directory_target_ancestor = _ } ->
@@ -971,7 +933,7 @@ module Internal = struct
          Filename_set.create
            ~dir
            ~filter:(File_selector.test_basename g)
-           (Filename.Set.of_keys files_and_digests)
+           (Filename.Map.keys files_and_digests |> Filename.Array.Set.of_sorted_list)
        | None ->
          (* CR-soon amokhov: I think this case should be an error. If the directory target
             doesn't contain the requested dir, we will currently create an empty directory
@@ -1068,7 +1030,7 @@ let file_exists fn =
   Load_rules.load_dir ~dir:(Path.parent_exn fn)
   >>= function
   | Source { filenames } | External { filenames } ->
-    Filename.Set.mem filenames (Path.basename fn) |> Memo.return
+    Filename.Array.Set.mem filenames (Path.basename fn) |> Memo.return
   | Build { rules_here; _ } ->
     Memo.return
       (Path.Build.Map.mem rules_here.by_file_targets (Path.as_in_build_dir_exn fn))
@@ -1085,7 +1047,8 @@ let files_of ~dir =
     Memo.return (Filename_set.create ~dir filenames)
   | Build { rules_here; _ } ->
     Path.Build.Map.keys rules_here.by_file_targets
-    |> Filename.Set.of_list_map ~f:Path.Build.basename
+    |> List.map ~f:Path.Build.basename
+    |> Filename.Array.Set.of_sorted_list
     |> Filename_set.create ~dir
     |> Memo.return
   | Build_under_directory_target { directory_target_ancestor } ->
@@ -1093,8 +1056,8 @@ let files_of ~dir =
     let filenames =
       let dir = Path.as_in_build_dir_exn dir in
       match Targets.Produced.find_dir path_map dir with
-      | Some files -> Filename.Set.of_keys files
-      | None -> Filename.Set.empty
+      | Some files -> Filename.Map.keys files |> Filename.Array.Set.of_sorted_list
+      | None -> Filename.Array.Set.empty
     in
     Filename_set.create ~dir filenames
 ;;
@@ -1149,6 +1112,15 @@ let run f =
   in
   let open Fiber.O in
   let f () =
+    let run_id = Scheduler.start_build () in
+    let files = Scheduler.watch_restart_files () in
+    let start = Time.now () in
+    Dune_trace.emit ~buffered:false Build (fun () ->
+      Dune_trace.Event.watch_build_start
+        ~run_id:(Run_id.to_int run_id)
+        ~restart:(Option.is_some files)
+        ~files
+        ~start);
     (* CR-someday amokhov: Currently we invalidate cached timestamps on every
        incremental rebuild. This conservative approach helps us to work around
        some [mtime] resolution problems (e.g. on Mac OS). It would be nice to
@@ -1159,15 +1131,15 @@ let run f =
     Fs_memo.invalidate_cached_timestamps ();
     let* () = State.reset_progress () in
     let* () = State.reset_errors () in
-    let* res =
+    let* outcome =
       Fiber.collect_errors (fun () ->
         Memo.run_with_error_handler f ~handle_error_no_raise:report_early_exn)
     in
     Dtemp.clear ();
-    Pending_targets.cleanup ();
+    Sandbox.cleanup_pending_targets ();
     Target_promotion.save ();
-    let res =
-      match res with
+    let* outcome =
+      match outcome with
       | Ok res ->
         finalize_diff_promotion ();
         let+ () = State.set Build_succeeded__now_waiting_for_changes in
@@ -1184,7 +1156,26 @@ let run f =
         Error `Already_reported
     in
     Metrics.reset ();
-    res
+    let+ () =
+      match run_id with
+      | Batch -> Fiber.return ()
+      | Watch _ -> Scheduler.flush_file_watcher ()
+    in
+    let stop = Time.now () in
+    (match Scheduler.finish_build ~stop with
+     | Restarting -> ()
+     | Finished { restart_duration } ->
+       Dune_trace.emit Build (fun () ->
+         Dune_trace.Event.watch_build_finish
+           ~run_id:(Run_id.to_int run_id)
+           ~outcome:
+             (match outcome with
+              | Ok _ -> `Success
+              | Error `Already_reported -> `Failure)
+           ~start
+           ~stop
+           ~restart_duration));
+    outcome
   in
   Fiber.Mutex.with_lock State.build_mutex ~f
 ;;

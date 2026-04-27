@@ -361,9 +361,11 @@ let subst vcs =
                ~trace_event_name:"Subst"
                ~f:(fun dir ->
                  Source_tree.Dir.filenames dir
-                 |> Filename.Set.fold ~init:Path.Source.Set.empty ~f:(fun fname acc ->
-                   Path.Source.relative (Source_tree.Dir.path dir) fname
-                   |> Path.Source.Set.add acc)
+                 |> Filename.Array.Set.fold
+                      ~init:Path.Source.Set.empty
+                      ~f:(fun fname acc ->
+                        Path.Source.relative (Source_tree.Dir.path dir) fname
+                        |> Path.Source.Set.add acc)
                  |> Memo.return)
        in
        Some (None, None, Path.Source.Set.to_list files))
@@ -376,11 +378,11 @@ let subst vcs =
       (* CR-soon rgrinberg: unify this check with the above version check *)
       (let files =
          (* Filter-out files form sub-directories *)
-         List.fold_left files ~init:String.Set.empty ~f:(fun acc fn ->
+         List.filter_map files ~f:(fun fn ->
            let fn = Path.source fn in
-           if Path.is_root (Path.parent_exn fn)
-           then String.Set.add acc (Path.to_string fn)
-           else acc)
+           (* CR-soon rgrinberg: this conversion to string looks wrong *)
+           if Path.is_root (Path.parent_exn fn) then Some (Path.to_string fn) else None)
+         |> Filename.Array.Set.of_list
        in
        Dune_project.load ~dir:Path.Source.root ~files ~infer_from_opam_files:true)
       >>| function

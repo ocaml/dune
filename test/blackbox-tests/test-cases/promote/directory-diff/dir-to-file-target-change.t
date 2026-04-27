@@ -1,5 +1,6 @@
-Non-optional diff with a directory target that changes to a file target between
-builds. This exercises the Copy path in register_intermediate.
+Regression test: a non-optional diff with a directory target that changes to a
+file target between builds should produce a normal diff. Previously this failed
+with "Is a directory" due to a stale staging directory in _build.
 
   $ cat > dune-project <<'EOF'
   > (lang dune 3.24)
@@ -31,8 +32,8 @@ directory:
   +different
   [1]
 
-Now change the rule so that it produces a file target instead of a directory,
-and update expected accordingly:
+Now change the rule to produce a file target instead of a directory, and update
+expected accordingly. The diff should work normally:
 
   $ rm -r expected
   $ printf 'expected-content\n' > expected
@@ -47,8 +48,6 @@ and update expected accordingly:
   > EOF
 
   $ dune runtest
-  Error: _build/.promotion-staging/expected: Is a directory
-  -> required by alias runtest in dune:4
   File "expected", line 1, characters 0-0:
   --- expected
   +++ actual

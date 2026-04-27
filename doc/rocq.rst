@@ -44,7 +44,7 @@ example, adding
 
 .. code:: dune
 
-    (using rocq 0.13)
+    (using rocq 0.14)
 
 to a :doc:`/reference/dune-project/index` file enables using the
 ``rocq.theory`` stanza and other ``rocq.*`` stanzas. See the :ref:`Dune Rocq
@@ -73,7 +73,7 @@ The Rocq theory stanza is very similar in form to the OCaml
      (rocqdoc_flags <rocqdoc_flags>)
      (rocqdoc_header <rocqdoc_header>)
      (rocqdoc_footer <rocqdoc_footer>)
-     (stdlib <stdlib_included>)
+     (no_corelib)
      (mode <rocq_build_mode>)
      (theories <rocq_theories>))
 
@@ -163,10 +163,19 @@ The semantics of the fields are:
   ``--with-footer`` option, to configure a custom HTML footer for the
   generated HTML pages.
 
-- ``<stdlib_included>`` can either be ``yes`` or ``no``, currently defaulting to
-  ``yes``. When set to ``no``, Rocq's core standard library (``Corelib``) won't
-  be added implicitly and ``Corelib.Init.Prelude`` won't be imported by default.
-  See the section on :ref:`rocq-stdlib` for details.
+- ``(no_corelib)`` disables Dune's automatic ``Corelib`` handling. When this
+  field is present, ``Corelib`` is not added as an implicit dependency and
+  ``Corelib.Init.Prelude`` is not imported by default. See the section on
+  :ref:`rocq-stdlib` for details.
+
+  .. versionadded:: 3.24
+
+  .. note::
+
+     In Rocq language 0.13 and earlier, this setting was written as
+     ``(stdlib no)``. In Rocq language 0.14 and later, ``stdlib`` was deleted:
+     use ``(no_corelib)`` instead of ``(stdlib no)``, and remove
+     ``(stdlib yes)`` entirely.
 
 - If the ``plugins`` field is present, Dune will pass the corresponding flags to
   Rocq so that ``rocq dep`` and ``rocq c`` can find the corresponding OCaml
@@ -307,13 +316,13 @@ Dune organises its knowledge about Rocq theories in 3 databases:
   Rocq's core library gets a special status in Dune. The location at
   ``ROCQLIB/theories`` will be assigned an entry with the theory name
   ``Corelib``, and added to the dependency list implicitly. This can be
-  disabled with the ``(stdlib no)`` field in the ``rocq.theory`` stanza.
-  Even if disabled, the ``Corelib`` theory is still available as an explicit 
-  dependency that can be added to the ``theories`` field. 
+  disabled with the ``(no_corelib)`` field in the ``rocq.theory`` stanza.
+  Even if disabled, the ``Corelib`` theory is still available as an explicit
+  dependency that can be added to the ``theories`` field.
 
-  Note that ``Stdlib`` is a *separate* installed theory and is never added 
-  implicitly. To use ``Stdlib`` modules, add ``(theories Stdlib)`` to your 
-  stanza regardless of the ``(stdlib ...)`` setting.
+  Note that ``Stdlib`` is a *separate* installed theory and is never added
+  implicitly. To use ``Stdlib`` modules, add ``(theories Stdlib)`` to your
+  stanza regardless of the ``(no_corelib)`` setting.
 
 The databases above are used to locate a theory dependencies. Note that Dune has
 a complete global view of every file involved in the compilation of your theory
@@ -374,7 +383,7 @@ The Rocq lang can be modified by adding the following to a
 
 .. code:: dune
 
-    (using rocq 0.13)
+    (using rocq 0.14)
 
 The supported Rocq language versions (not the version of Rocq) are:
 
@@ -388,6 +397,7 @@ The supported Rocq language versions (not the version of Rocq) are:
 - ``0.12``: Support for output tests.
 - ``0.13``: ``rocq.extraction`` now uses ``extracted_files`` instead of
   ``extracted_modules``, supporting extraction to languages other than OCaml.
+- ``0.14``: ``(stdlib ...)`` was replaced by ``(no_corelib)``. 
 
 .. _rocq-lang-1.0:
 
@@ -395,7 +405,7 @@ Rocq Language Version 1.0
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Guarantees with respect to stability are not yet provided, but we
-intend that the ``(0.13)`` version of the language becomes ``1.0``.
+intend that the ``(0.14)`` version of the language becomes ``1.0``.
 The ``1.0`` version of Rocq lang will commit to a stable set of
 functionality. All the features below are expected to reach ``1.0``
 unchanged or minimally modified.
@@ -407,23 +417,40 @@ The Rocq Standard Library
 
 Rocq's standard library is divided into two separately-installed theories:
 
-- **Corelib**: The core prelude, providing fundamental data types and basic 
-  logic. Corresponds to the path ``ROCQLIB/theories`` in the Rocq installation. 
+- **Corelib**: The core prelude, providing fundamental data types and basic
+  logic. Corresponds to the path ``ROCQLIB/theories`` in the Rocq installation.
   See `The Rocq Reference Manual
   <https://rocq-prover.org/doc/master/refman/language/coq-library.html#the-prelude>`_
   for more information on the contents of this library.
 
-  By default ``(stdlib yes)`` is set: Dune adds ``Corelib`` as an implicit 
-  dependency and automatically imports ``Corelib.Init.Prelude``. This makes 
-  basic syntax and types available without any explicit ``Require``. 
+  By default, Dune adds ``Corelib`` as an implicit dependency and automatically
+  imports ``Corelib.Init.Prelude``. This makes basic syntax and types available
+  without any explicit ``Require``. Add ``(no_corelib)`` to disable both the
+  implicit dependency and the default prelude import.
 
-- **Stdlib**: The standard library, providing additional modules such as 
-  ``Strings``, ``ZArith``, ``Lists``, etc. This is a regular installed theory, 
-  typically named ``Stdlib`` in the ``user-contrib`` directory.  See 
+  In Rocq language 0.13 and earlier, this setting was written as
+  ``(stdlib no)``. When upgrading to Rocq language 0.14, replace
+  ``(stdlib no)`` with ``(no_corelib)`` and remove ``(stdlib yes)``.
+
+  .. code:: dune
+
+    ; Rocq language 0.13 and earlier
+    (rocq.theory
+     (name MyTheory)
+     (stdlib no))
+
+    ; Rocq language 0.14 and later
+    (rocq.theory
+     (name MyTheory)
+     (no_corelib))
+
+- **Stdlib**: The standard library, providing additional modules such as
+  ``Strings``, ``ZArith``, ``Lists``, etc. This is a regular installed theory,
+  typically named ``Stdlib`` in the ``user-contrib`` directory. See
   `Rocq Stdlib <https://github.com/rocq-prover/stdlib>`_ for more information.
 
-  .. warning:: ``Stdlib`` is *never* added implicitly regardless of 
-    the ``(stdlib ...)`` setting.
+  .. warning:: ``Stdlib`` is *never* added implicitly regardless of
+    the ``(no_corelib)`` setting. Use ``(theories Stdlib)`` to add ``Stdlib``.
 
 .. _rocq-extraction:
 
@@ -444,7 +471,7 @@ process by using the ``rocq.extraction`` stanza:
   commands.
 
 - ``(extracted_files <filenames>)`` is the list of files Dune expects the
-  extraction to produce. Each entry is a filename with its extension, for 
+  extraction to produce. Each entry is a filename with its extension, for
   example OCaml (``.ml``, ``.mli``), Haskell (``.hs``), or Scheme (``.scm``).
 
   .. versionadded:: 3.23
@@ -458,7 +485,7 @@ process by using the ``rocq.extraction`` stanza:
    upgrading from ``0.12`` should replace ``(extracted_modules M1 ... Mn)``
    with ``(extracted_files M1.ml M1.mli ... Mn.ml Mn.mli)``.
 
-- ``<optional-fields>`` are ``flags``, ``stdlib``, ``theories``, and
+- ``<optional-fields>`` are ``flags``, ``no_corelib``, ``theories``, and
   ``plugins``. All of these fields have the same meaning as in the
   ``rocq.theory`` stanza.
 
@@ -510,7 +537,7 @@ lang<rocq-lang>` stanza present:
 .. code:: dune
 
   (lang dune {{latest}})
-  (using rocq 0.13)
+  (using rocq 0.14)
 
 Next we need a :doc:`/reference/dune/index` file with a :ref:`rocq-theory`
 stanza:
@@ -741,7 +768,7 @@ the plugin to sit in, otherwise Rocq will not be able to find it.
 .. code:: dune
 
   (lang dune {{latest}})
-  (using rocq 0.13)
+  (using rocq 0.14)
 
   (package
    (name my-rocq-plugin)

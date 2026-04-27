@@ -62,15 +62,28 @@ module T = struct
     | Universe, Universe -> Ordering.Eq
   ;;
 
-  let to_dyn t =
-    let open Dyn in
-    match t with
-    | File_selector g -> variant "File_selector" [ File_selector.to_dyn g ]
-    | Env e -> variant "Env" [ string e ]
-    | File f -> variant "File" [ Path.to_dyn f ]
-    | Alias a -> variant "Alias" [ Alias.to_dyn a ]
-    | Universe -> variant "Universe" []
+  let repr =
+    Repr.variant
+      "dep"
+      [ Repr.case "File_selector" File_selector.repr ~proj:(function
+          | File_selector g -> Some g
+          | _ -> None)
+      ; Repr.case "Env" Repr.string ~proj:(function
+          | Env e -> Some e
+          | _ -> None)
+      ; Repr.case "File" Path.repr ~proj:(function
+          | File f -> Some f
+          | _ -> None)
+      ; Repr.case "Alias" (Repr.abstract Alias.to_dyn) ~proj:(function
+          | Alias a -> Some a
+          | _ -> None)
+      ; Repr.case0 "Universe" ~test:(function
+          | Universe -> true
+          | _ -> false)
+      ]
   ;;
+
+  let to_dyn = Repr.to_dyn repr
 end
 
 include T

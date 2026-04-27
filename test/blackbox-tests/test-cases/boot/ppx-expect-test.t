@@ -8,6 +8,14 @@ Testing that the bootstrap preprocessor strips let%expect_test blocks.
   > module Root = Root
   > let x = 42
   > let%expect_test "this should be stripped" =
+  >   let _ = ";;" in
+  >   let _ = "\" ;; [%%else]" in
+  >   let _ = '\'' in
+  >   let _ = fun (x : 'a) -> x in
+  >   let _ = {|;; [%%endif]|} in
+  >   let _ = {boot|[%%else]|boot} in
+  >   let _ = "[%%else]" in
+  >   let _ = 0 (* outer (* ;; [%%endif] *) [%%else] *) in
   >   print_int x;
   >   [%expect {| 42 |}]
   > ;;

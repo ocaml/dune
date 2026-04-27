@@ -282,12 +282,18 @@ let odoc_dev_tool_exe_path_building_if_necessary () =
 ;;
 
 let odoc_program sctx dir =
-  let odoc_dev_tool_lock_dir_exists =
-    match Config.get Compile_time.lock_dev_tools with
-    | `Enabled -> true
-    | `Disabled -> false
+  let open Action_builder.O in
+  let* lock_dir_exists =
+    Action_builder.of_memo
+      (match Config.get Compile_time.lock_dev_tools with
+       | `Enabled -> Memo.return true
+       | `Disabled ->
+         (* even if lock_dev_tools is disabled, there might be a lock dir
+            created by `dune tools install odoc` *)
+         let path = Lock_dir.dev_tool_external_lock_dir Odoc in
+         Fs_memo.dir_exists (Path.Outside_build_dir.External path))
   in
-  match odoc_dev_tool_lock_dir_exists with
+  match lock_dir_exists with
   | true -> odoc_dev_tool_exe_path_building_if_necessary ()
   | false ->
     Super_context.resolve_program
@@ -460,16 +466,14 @@ let setup_library_odoc_rules cctx (local_lib : Lib.Local.t) =
   |> Modules.With_vlib.drop_vlib
   |> Modules.fold ~init:[] ~f:(fun m acc ->
     let compiled =
-      let { Compilation_mode.for_merlin; _ } =
-        Compilation_mode.of_mode_set (Lib_info.modes info)
-      in
+      let for_ = Compilation_context.for_ cctx in
       compile_module
         sctx
         ~includes
         ~dep_graphs:(Compilation_context.dep_graphs cctx)
         ~obj_dir
         ~pkg_or_lnu
-        ~mode:for_merlin
+        ~mode:for_
         m
     in
     compiled :: acc)

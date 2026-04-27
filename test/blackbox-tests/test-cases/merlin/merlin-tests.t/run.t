@@ -20,34 +20,34 @@ CRAM sanitization
   >     | merlinConfigSummary(["B", "S", "FLG", "UNIT_NAME"])
   >   ]
   >   | sort_by(.source_path)
-  >   | .[]' | censor_ppx
+  >   | .[]' | censor
   {
     "module_name": "X",
     "source_path": "_build/default/exe/x",
     "config": [
       [
         "B",
-        "$TESTCASE_ROOT/_findlib/publicfoo"
+        "$PWD/_findlib/publicfoo"
       ],
       [
         "B",
-        "$TESTCASE_ROOT/_build/default/exe/.x.eobjs/byte"
+        "$PWD/_build/default/exe/.x.eobjs/byte"
       ],
       [
         "B",
-        "$TESTCASE_ROOT/_build/default/lib/.foo.objs/public_cmi"
+        "$PWD/_build/default/lib/.foo.objs/public_cmi"
       ],
       [
         "S",
-        "$TESTCASE_ROOT/_findlib/publicfoo"
+        "$PWD/_findlib/publicfoo"
       ],
       [
         "S",
-        "$TESTCASE_ROOT/exe"
+        "$PWD/exe"
       ],
       [
         "S",
-        "$TESTCASE_ROOT/lib"
+        "$PWD/lib"
       ],
       [
         "FLG",
@@ -61,7 +61,7 @@ CRAM sanitization
         "FLG",
         [
           "-pp",
-          "$TESTCASE_ROOT/_build/default/pp/pp.exe"
+          "$PWD/_build/default/pp/pp.exe"
         ]
       ],
       [
@@ -76,27 +76,27 @@ CRAM sanitization
     "config": [
       [
         "B",
-        "$TESTCASE_ROOT/_findlib/publicfoo"
+        "$PWD/_findlib/publicfoo"
       ],
       [
         "B",
-        "$TESTCASE_ROOT/_build/default/exe/.x.eobjs/byte"
+        "$PWD/_build/default/exe/.x.eobjs/byte"
       ],
       [
         "B",
-        "$TESTCASE_ROOT/_build/default/lib/.foo.objs/public_cmi"
+        "$PWD/_build/default/lib/.foo.objs/public_cmi"
       ],
       [
         "S",
-        "$TESTCASE_ROOT/_findlib/publicfoo"
+        "$PWD/_findlib/publicfoo"
       ],
       [
         "S",
-        "$TESTCASE_ROOT/exe"
+        "$PWD/exe"
       ],
       [
         "S",
-        "$TESTCASE_ROOT/lib"
+        "$PWD/lib"
       ],
       [
         "FLG",
@@ -110,7 +110,7 @@ CRAM sanitization
         "FLG",
         [
           "-pp",
-          "$TESTCASE_ROOT/_build/default/pp/pp.exe"
+          "$PWD/_build/default/pp/pp.exe"
         ]
       ],
       [
@@ -129,22 +129,22 @@ CRAM sanitization
   >     | merlinConfigSummary(["B", "S", "FLG", "UNIT_NAME"])
   >   ]
   >   | sort_by(.module_name, .source_path)
-  >   | .[]' | censor_ppx
+  >   | .[]' | censor
   {
     "module_name": "Bar",
     "source_path": "_build/default/lib/bar",
     "config": [
       [
         "B",
-        "$TESTCASE_ROOT/_build/default/lib/.bar.objs/byte"
+        "$PWD/_build/default/lib/.bar.objs/byte"
       ],
       [
         "S",
-        "$TESTCASE_ROOT/lib"
+        "$PWD/lib"
       ],
       [
         "S",
-        "$TESTCASE_ROOT/lib/subdir"
+        "$PWD/lib/subdir"
       ],
       [
         "FLG",
@@ -158,7 +158,7 @@ CRAM sanitization
         "FLG",
         [
           "-ppx",
-          "$TESTCASE_ROOT/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name=\"bar\"'"
+          "$PWD/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name=\"bar\"'"
         ]
       ],
       [
@@ -173,15 +173,15 @@ CRAM sanitization
     "config": [
       [
         "B",
-        "$TESTCASE_ROOT/_build/default/lib/.bar.objs/byte"
+        "$PWD/_build/default/lib/.bar.objs/byte"
       ],
       [
         "S",
-        "$TESTCASE_ROOT/lib"
+        "$PWD/lib"
       ],
       [
         "S",
-        "$TESTCASE_ROOT/lib/subdir"
+        "$PWD/lib/subdir"
       ],
       [
         "FLG",
@@ -195,7 +195,7 @@ CRAM sanitization
         "FLG",
         [
           "-ppx",
-          "$TESTCASE_ROOT/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name=\"bar\"'"
+          "$PWD/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name=\"bar\"'"
         ]
       ],
       [
@@ -210,15 +210,15 @@ CRAM sanitization
     "config": [
       [
         "B",
-        "$TESTCASE_ROOT/_build/default/lib/.bar.objs/byte"
+        "$PWD/_build/default/lib/.bar.objs/byte"
       ],
       [
         "S",
-        "$TESTCASE_ROOT/lib"
+        "$PWD/lib"
       ],
       [
         "S",
-        "$TESTCASE_ROOT/lib/subdir"
+        "$PWD/lib/subdir"
       ],
       [
         "FLG",
@@ -232,7 +232,7 @@ CRAM sanitization
         "FLG",
         [
           "-ppx",
-          "$TESTCASE_ROOT/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name=\"bar\"'"
+          "$PWD/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name=\"bar\"'"
         ]
       ],
       [
@@ -254,15 +254,15 @@ CRAM sanitization
     "config": [
       [
         "B",
-        "$TESTCASE_ROOT/_build/default/lib/.bar.objs/byte"
+        "$PWD/_build/default/lib/.bar.objs/byte"
       ],
       [
         "S",
-        "$TESTCASE_ROOT/lib"
+        "$PWD/lib"
       ],
       [
         "S",
-        "$TESTCASE_ROOT/lib/subdir"
+        "$PWD/lib/subdir"
       ],
       [
         "FLG",
@@ -276,7 +276,7 @@ CRAM sanitization
         "FLG",
         [
           "-ppx",
-          "$TESTCASE_ROOT/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name=\"bar\"'"
+          "$PWD/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name=\"bar\"'"
         ]
       ],
       [
@@ -298,23 +298,23 @@ CRAM sanitization
     "config": [
       [
         "B",
-        "$TESTCASE_ROOT/_findlib/publicfoo"
+        "$PWD/_findlib/publicfoo"
       ],
       [
         "B",
-        "$TESTCASE_ROOT/_build/default/lib/.foo.objs/byte"
+        "$PWD/_build/default/lib/.foo.objs/byte"
       ],
       [
         "S",
-        "$TESTCASE_ROOT/_findlib/publicfoo"
+        "$PWD/_findlib/publicfoo"
       ],
       [
         "S",
-        "$TESTCASE_ROOT/lib"
+        "$PWD/lib"
       ],
       [
         "S",
-        "$TESTCASE_ROOT/lib/subdir"
+        "$PWD/lib/subdir"
       ],
       [
         "FLG",
@@ -328,7 +328,7 @@ CRAM sanitization
         "FLG",
         [
           "-ppx",
-          "$TESTCASE_ROOT/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name=\"foo\"'"
+          "$PWD/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name=\"foo\"'"
         ]
       ],
       [
@@ -343,23 +343,23 @@ CRAM sanitization
     "config": [
       [
         "B",
-        "$TESTCASE_ROOT/_findlib/publicfoo"
+        "$PWD/_findlib/publicfoo"
       ],
       [
         "B",
-        "$TESTCASE_ROOT/_build/default/lib/.foo.objs/byte"
+        "$PWD/_build/default/lib/.foo.objs/byte"
       ],
       [
         "S",
-        "$TESTCASE_ROOT/_findlib/publicfoo"
+        "$PWD/_findlib/publicfoo"
       ],
       [
         "S",
-        "$TESTCASE_ROOT/lib"
+        "$PWD/lib"
       ],
       [
         "S",
-        "$TESTCASE_ROOT/lib/subdir"
+        "$PWD/lib/subdir"
       ],
       [
         "FLG",
@@ -373,7 +373,7 @@ CRAM sanitization
         "FLG",
         [
           "-ppx",
-          "$TESTCASE_ROOT/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name=\"foo\"'"
+          "$PWD/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name=\"foo\"'"
         ]
       ],
       [
@@ -388,23 +388,23 @@ CRAM sanitization
     "config": [
       [
         "B",
-        "$TESTCASE_ROOT/_findlib/publicfoo"
+        "$PWD/_findlib/publicfoo"
       ],
       [
         "B",
-        "$TESTCASE_ROOT/_build/default/lib/.foo.objs/byte"
+        "$PWD/_build/default/lib/.foo.objs/byte"
       ],
       [
         "S",
-        "$TESTCASE_ROOT/_findlib/publicfoo"
+        "$PWD/_findlib/publicfoo"
       ],
       [
         "S",
-        "$TESTCASE_ROOT/lib"
+        "$PWD/lib"
       ],
       [
         "S",
-        "$TESTCASE_ROOT/lib/subdir"
+        "$PWD/lib/subdir"
       ],
       [
         "FLG",
@@ -418,7 +418,7 @@ CRAM sanitization
         "FLG",
         [
           "-ppx",
-          "$TESTCASE_ROOT/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name=\"foo\"'"
+          "$PWD/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name=\"foo\"'"
         ]
       ],
       [
@@ -440,23 +440,23 @@ CRAM sanitization
     "config": [
       [
         "B",
-        "$TESTCASE_ROOT/_findlib/publicfoo"
+        "$PWD/_findlib/publicfoo"
       ],
       [
         "B",
-        "$TESTCASE_ROOT/_build/default/lib/.foo.objs/byte"
+        "$PWD/_build/default/lib/.foo.objs/byte"
       ],
       [
         "S",
-        "$TESTCASE_ROOT/_findlib/publicfoo"
+        "$PWD/_findlib/publicfoo"
       ],
       [
         "S",
-        "$TESTCASE_ROOT/lib"
+        "$PWD/lib"
       ],
       [
         "S",
-        "$TESTCASE_ROOT/lib/subdir"
+        "$PWD/lib/subdir"
       ],
       [
         "FLG",
@@ -470,7 +470,7 @@ CRAM sanitization
         "FLG",
         [
           "-ppx",
-          "$TESTCASE_ROOT/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name=\"foo\"'"
+          "$PWD/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name=\"foo\"'"
         ]
       ],
       [
@@ -504,7 +504,7 @@ Make sure a ppx directive is generated (if not, the [grep ppx] step fails)
   >     | select(.ppx_flags != [])
   >   ]
   >   | sort_by(.module_name, .source_path)
-  >   | .[]' | censor_ppx
+  >   | .[]' | censor
   {
     "module_name": "Bar",
     "source_path": "_build/default/lib/bar",
@@ -513,7 +513,7 @@ Make sure a ppx directive is generated (if not, the [grep ppx] step fails)
         "FLG",
         [
           "-ppx",
-          "$TESTCASE_ROOT/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name=\"bar\"'"
+          "$PWD/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name=\"bar\"'"
         ]
       ]
     ]
@@ -526,7 +526,7 @@ Make sure a ppx directive is generated (if not, the [grep ppx] step fails)
         "FLG",
         [
           "-ppx",
-          "$TESTCASE_ROOT/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name=\"bar\"'"
+          "$PWD/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name=\"bar\"'"
         ]
       ]
     ]
@@ -539,7 +539,7 @@ Make sure a ppx directive is generated (if not, the [grep ppx] step fails)
         "FLG",
         [
           "-ppx",
-          "$TESTCASE_ROOT/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name=\"foo\"'"
+          "$PWD/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name=\"foo\"'"
         ]
       ]
     ]
@@ -552,7 +552,7 @@ Make sure a ppx directive is generated (if not, the [grep ppx] step fails)
         "FLG",
         [
           "-ppx",
-          "$TESTCASE_ROOT/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name=\"foo\"'"
+          "$PWD/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name=\"foo\"'"
         ]
       ]
     ]
@@ -565,7 +565,7 @@ Make sure a ppx directive is generated (if not, the [grep ppx] step fails)
         "FLG",
         [
           "-ppx",
-          "$TESTCASE_ROOT/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name=\"foo\"'"
+          "$PWD/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name=\"foo\"'"
         ]
       ]
     ]
@@ -578,7 +578,7 @@ Make sure a ppx directive is generated (if not, the [grep ppx] step fails)
         "FLG",
         [
           "-ppx",
-          "$TESTCASE_ROOT/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name=\"foo\"'"
+          "$PWD/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name=\"foo\"'"
         ]
       ]
     ]

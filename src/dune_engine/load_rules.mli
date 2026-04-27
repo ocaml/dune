@@ -22,8 +22,8 @@ module Loaded : sig
   (* CR-someday amokhov: Switch to [Filename_set.Source.t] and [Filename_set.External.t]
      or something similar to avoid handling filename sets unanchored to their directory. *)
   type t =
-    | Source of { filenames : Filename.Set.t }
-    | External of { filenames : Filename.Set.t }
+    | Source of { filenames : Filename.Array.Set.t }
+    | External of { filenames : Filename.Array.Set.t }
     | Build of build
     | Build_under_directory_target of { directory_target_ancestor : Path.Build.t }
 

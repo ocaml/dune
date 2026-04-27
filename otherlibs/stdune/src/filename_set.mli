@@ -10,11 +10,11 @@ val equal : t -> t -> bool
 val dir : t -> Path.t
 
 (** The set of file names, all relative to [dir]. *)
-val filenames : t -> Filename.Set.t
+val filenames : t -> Filename.Array.Set.t
 
 val empty : dir:Path.t -> t
 val is_empty : t -> bool
 
 (* CR-soon amokhov: Decouple [create] from [filter]. *)
-val create : ?filter:(basename:string -> bool) -> dir:Path.t -> Filename.Set.t -> t
+val create : ?filter:(basename:string -> bool) -> dir:Path.t -> Filename.Array.Set.t -> t
 val to_list : t -> Path.t list

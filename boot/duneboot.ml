@@ -1613,6 +1613,8 @@ module Library = struct
       | "lmdb_stubs.c", _, _, _ -> [ "-I ." ]
       | "mdb.c", `Msvc, `Win32, _ -> [ "/wd4333"; "/wd4172" ]
       | "mdb.c", `Other, `Win32, _ -> [ "-Wno-return-local-addr" ]
+      | "ev.c", `Msvc, _, _ -> [ "/w" ]
+      | "ev.c", _, _, _ -> [ "-w" ]
       | _, _, _, _ -> []
     in
     { Source.flags = extra_flags @ c.flags; name = fn }

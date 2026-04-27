@@ -617,41 +617,6 @@ module Module = struct
     relative t (odoc_dir t) basename
   ;;
 
-  module Dep = struct
-    type t =
-      | Immediate of Module.t * Ml_kind.t
-      | Transitive of Module.t * Ml_kind.t
-
-    let make_name m kind ext =
-      let ext =
-        sprintf ".%s%s" (Ml_kind.to_string kind) (Filename.Extension.to_string ext)
-        |> Filename.Extension.of_string_exn
-      in
-      let obj = Module.obj_name m in
-      Module_name.Unique.artifact_filename obj ~ext
-    ;;
-
-    let basename = function
-      | Immediate (m, kind) -> make_name m kind Filename.Extension.d
-      | Transitive (m, kind) -> make_name m kind Filename.Extension.all_deps
-    ;;
-  end
-
-  let dep t dep ~for_ =
-    match (dep : Dep.t) with
-    | Immediate (m, _) | Transitive (m, _) ->
-      (match Module.kind m with
-       | Module.Kind.Alias _ | Root -> None
-       | _ ->
-         let dir =
-           match for_ with
-           | Compilation_mode.Ocaml -> obj_dir t
-           | Melange -> obj_dir t
-         in
-         let name = Dep.basename dep in
-         Some (Path.Build.relative dir name))
-  ;;
-
   module L = struct
     let o_files t modules ~ext_obj =
       List.filter_map modules ~f:(fun m ->

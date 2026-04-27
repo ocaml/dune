@@ -5,7 +5,7 @@ Detects scan cycles through symlinks without blocking valid external links.
   $ (cd c1 && ln -s . y)
   $ (cd c1 && dune build)
   Error: Path . has already been scanned. Cannot scan it again through symlink
-  x
+  y
   [1]
 
   $ mkdir -p c2/a c2/b

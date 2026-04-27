@@ -2,6 +2,20 @@
 
 (copy_files# ../vendor/{ev,ev_vars,ev_wrap}.h)
 
+(rule
+ (enabled_if
+  (= %{ocaml-config:ccomp_type} "msvc"))
+ (target c_flags.sexp)
+ (action
+  (write-file %{target} "(\"/w\")")))
+
+(rule
+ (enabled_if
+  (<> %{ocaml-config:ccomp_type} "msvc"))
+ (target c_flags.sexp)
+ (action
+  (write-file %{target} "(-w)")))
+
 (foreign_library
  (archive_name ev)
  (extra_deps
@@ -13,6 +27,9 @@
   ev_select.c
   ev_win32.c)
  (language c)
+ (flags
+  :standard
+  (:include c_flags.sexp))
  (names ev))
 
 (library

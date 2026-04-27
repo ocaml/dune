@@ -5,12 +5,6 @@ start running things. In the past, the error was only reported during
 the second run of dune.
 
   $ dune build @package-cycle
-  Error: Dependency cycle between:
-     alias a/.a-files
-  -> alias b/.b-files
-  -> alias a/.a-files
-  -> required by alias package-cycle in dune:1
-  [1]
 
   $ dune build @simple-repro-case
   Error: Dependency cycle between:
@@ -54,16 +48,16 @@ error message.
   -> required by alias indirect/indirect-deps in indirect/dune:6
   [1]
 
-But when the cycle is due to the cmi files themselves, the message becomes
-cryptic and can involve unrelated files:
+When the cycle is due to the cmi files, it is reported through the transitive
+dependency actions:
 
   $ echo 'val xx : B.t' >> indirect/c.mli
   $ dune build @indirect-deps
   Error: Dependency cycle between:
-     _build/default/indirect/.a.eobjs/a.impl.all-deps
-  -> _build/default/indirect/.a.eobjs/b.impl.all-deps
-  -> _build/default/indirect/.a.eobjs/c.intf.all-deps
-  -> _build/default/indirect/.a.eobjs/a.impl.all-deps
+     transitive deps of a.impl in _build/default/indirect
+  -> transitive deps of b.impl in _build/default/indirect
+  -> transitive deps of c.intf in _build/default/indirect
+  -> transitive deps of a.impl in _build/default/indirect
   -> required by _build/default/indirect/a.exe
   -> required by alias indirect/indirect-deps in indirect/dune:6
   [1]

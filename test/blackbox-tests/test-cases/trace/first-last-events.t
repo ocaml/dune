@@ -24,7 +24,15 @@ Demonstrate the last event:
 
   $ dune trace cat | jq -s '
   >   last
-  > | { name, cat, args: (.args | .gc |= keys | .io |= keys | .digest |= keys) }
+  > | { name
+  >   , cat
+  >   , args:
+  >       { gc: (.args.gc | keys)
+  >       , io: (.args.io | keys)
+  >       , digest: (.args.digest | keys)
+  >       , rusage: (.args.rusage | keys)
+  >       }
+  >   }
   > '
   {
     "name": "exit",
@@ -49,6 +57,17 @@ Demonstrate the last event:
       "digest": [
         "files",
         "values"
+      ],
+      "rusage": [
+        "inblock",
+        "majflt",
+        "maxrss",
+        "minflt",
+        "nivcsw",
+        "nvcsw",
+        "oublock",
+        "system_cpu_time",
+        "user_cpu_time"
       ]
     }
   }

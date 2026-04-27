@@ -4,6 +4,9 @@
  (foreign_stubs
   (names md5_stubs)
   (language c))
+ (inline_tests)
+ (preprocess
+  (pps ppx_expect))
  (libraries
   stdune
   lmdb

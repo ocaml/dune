@@ -426,3 +426,239 @@ let fetch_without_checksum ~unpack ~target ~url =
   | Error (Checksum_mismatch _) -> assert false
   | Error (Unavailable message) -> Error message
 ;;
+
+let%test_module "resolve symlink tests" =
+  (module struct
+    let () =
+      Printexc.record_backtrace true;
+      Path.set_root (Path.External.cwd ());
+      Path.Build.set_build_dir (Path.Outside_build_dir.of_string "_build");
+      Log.init No_log_file
+    ;;
+
+    (** Prints the directory tree rooted at [root] in sorted order.
+       - files: "path [file]"
+       - hardlinks: "path [hardlink]" for the first occurrence,
+         "path [hardlink of p1, p2, ...]" for subsequent ones sharing the same inode
+       - directories: "path/ [dir]"
+       - symlinks: "path [symlink -> target]" (not entered)
+       - other (pipes, sockets, etc.): "path [kind]" *)
+    let dump_tree root =
+      let str ~dir fname =
+        let dir = if String.is_empty dir then root else Path.relative root dir in
+        Path.to_string (Path.relative dir fname)
+      in
+      let inodes = Table.create (module Int) 16 in
+      Fpath.traverse
+        ~dir:(Path.to_string root)
+        ~init:()
+        ~sort_entries:true
+        ~on_file:(fun ~dir fname () ->
+          let s = str ~dir fname in
+          match Path.lstat (Path.of_string s) with
+          | Error _ -> printfn "%s [file]" s
+          | Ok { st_nlink; st_ino; _ } ->
+            if st_nlink <= 1
+            then printfn "%s [file]" s
+            else (
+              let peers = Table.find inodes st_ino |> Option.value ~default:[] in
+              Table.set inodes st_ino (s :: peers);
+              match List.rev peers with
+              | [] -> printfn "%s [hardlink]" s
+              | others -> printfn "%s [hardlink of %s]" s (String.concat ~sep:", " others)))
+        ~on_dir:(fun ~dir fname () -> printfn "%s/ [dir]" (str ~dir fname))
+        ~on_symlink:
+          (`Call
+              (fun ~dir fname () ->
+                let s = str ~dir fname in
+                printfn "%s [symlink -> %s]" s (Unix.readlink s);
+                (), None))
+        ~on_other:
+          (`Call
+              (fun ~dir fname kind () ->
+                printfn "%s [%s]" (str ~dir fname) (File_kind.to_string_hum kind)))
+        ()
+    ;;
+
+    (* [with_temp_dir name f] creates a temp directory, runs [f dir] which
+       should return a string (use [%expect.output] to capture printed output).
+       The temp dir path is replaced with [name] in the output before printing.
+       User_error exceptions are caught and their message is printed (also
+       censored). This allows [%expect] blocks to match against stable output. *)
+    let with_temp_dir name f =
+      Temp.with_temp_dir
+        ~parent_dir:(Path.of_string ".")
+        ~prefix:"symlink"
+        ~suffix:"test"
+        ~f:(function
+        | Error e -> raise e
+        | Ok dir ->
+          let s =
+            match f dir with
+            | s -> s
+            | exception User_error.E msg ->
+              User_message.pp msg |> Format.asprintf "%a" Pp.to_fmt
+          in
+          Re.replace_string (Re.compile (Re.str (Path.to_string dir))) ~by:name s
+          |> print_string)
+    ;;
+
+    let make_dir dir name = Path.mkdir_p (Path.relative dir name)
+    let make_file dir name = Io.write_file (Path.relative dir name) name
+
+    let make_symlink dir ~src ~dst =
+      Unix.symlink src (Path.to_string (Path.relative dir dst))
+    ;;
+
+    let%expect_test "no symlink no change" =
+      with_temp_dir "somedir" (fun dir ->
+        make_dir dir "real_dir";
+        make_dir dir "other_dir";
+        make_file dir "real_dir/file2.txt";
+        make_file dir "other_dir/file1.txt";
+        printfn "before";
+        dump_tree dir;
+        resolve_directory_symlinks_in dir;
+        printfn "\nafter";
+        dump_tree dir;
+        [%expect.output]);
+      [%expect
+        {|
+        before
+        somedir/real_dir/ [dir]
+        somedir/other_dir/ [dir]
+        somedir/other_dir/file1.txt [file]
+        somedir/real_dir/file2.txt [file]
+
+        after
+        somedir/real_dir/ [dir]
+        somedir/other_dir/ [dir]
+        somedir/other_dir/file1.txt [file]
+        somedir/real_dir/file2.txt [file]
+        |}]
+    ;;
+
+    let%expect_test "nested directory symlinks resolved recursively" =
+      with_temp_dir "$DIR" (fun dir ->
+        make_dir dir "real_dir";
+        make_dir dir "real_dir/sub";
+        make_file dir "real_dir/sub/deep.txt";
+        make_symlink dir ~src:"real_dir" ~dst:"link";
+        resolve_directory_symlinks_in dir;
+        dump_tree dir;
+        [%expect.output]);
+      [%expect
+        {|
+        $DIR/real_dir/ [dir]
+        $DIR/link/ [dir]
+        $DIR/link/sub/ [dir]
+        $DIR/link/sub/deep.txt [hardlink]
+        $DIR/real_dir/sub/ [dir]
+        $DIR/real_dir/sub/deep.txt [hardlink of $DIR/link/sub/deep.txt]
+        |}]
+    ;;
+
+    let%expect_test "outside test" =
+      with_temp_dir "$OUTSIDE" (fun outside ->
+        with_temp_dir "$DIR" (fun dir ->
+          make_symlink dir ~src:(Path.reach ~from:dir outside) ~dst:"escape";
+          resolve_directory_symlinks_in dir;
+          [%expect.output]);
+        [%expect.output]);
+      [%expect
+        {|
+        Error: Unable to resolve symlink $DIR/escape: its target
+        $OUTSIDE is outside the source directory
+        |}]
+    ;;
+
+    let%expect_test "file symlinks" =
+      with_temp_dir "$DIR" (fun dir ->
+        make_file dir "file.txt";
+        make_symlink dir ~src:"file.txt" ~dst:"link";
+        resolve_directory_symlinks_in dir;
+        dump_tree dir;
+        [%expect.output]);
+      [%expect
+        {|
+        $DIR/link [symlink -> file.txt]
+        $DIR/file.txt [file]
+        |}]
+    ;;
+
+    let%expect_test "broken symlinks deleted" =
+      with_temp_dir "$DIR" (fun dir ->
+        make_file dir "keep.txt";
+        make_symlink dir ~src:"nonexistent" ~dst:"broken_link";
+        (* Todo-ambre: read the log for the deletion message *)
+        resolve_directory_symlinks_in dir;
+        dump_tree dir;
+        [%expect.output]);
+      [%expect {| $DIR/keep.txt [file] |}]
+    ;;
+
+    let%expect_test "cycle" =
+      with_temp_dir "$DIR" (fun dir ->
+        make_dir dir "dir_a";
+        make_dir dir "dir_b";
+        make_file dir "dir_a/file.txt";
+        make_file dir "dir_b/file.txt";
+        make_symlink dir ~src:"../dir_b" ~dst:"dir_a/link_to_b";
+        make_symlink dir ~src:"../dir_a" ~dst:"dir_b/link_to_a";
+        resolve_directory_symlinks_in dir;
+        [%expect.output]);
+      [%expect
+        {|
+        Error: Unable to resolve symlink
+        $DIR/dir_a/link_to_b/link_to_a, it is part of a cycle.
+        |}]
+    ;;
+
+    let%expect_test "nested file link" =
+      with_temp_dir "$DIR" (fun dir ->
+        make_dir dir "target_dir";
+        make_file dir "target_dir/file.txt";
+        make_dir dir "real_dir";
+        make_file dir "real_dir/regular.txt";
+        make_symlink dir ~src:"../target_dir/file.txt" ~dst:"real_dir/inner_link";
+        make_symlink dir ~src:"real_dir" ~dst:"link";
+        resolve_directory_symlinks_in dir;
+        dump_tree dir;
+        [%expect.output]);
+      [%expect
+        {|
+        $DIR/target_dir/ [dir]
+        $DIR/real_dir/ [dir]
+        $DIR/link/ [dir]
+        $DIR/link/regular.txt [hardlink]
+        $DIR/link/inner_link [symlink -> ../target_dir/file.txt]
+        $DIR/real_dir/regular.txt [hardlink of $DIR/link/regular.txt]
+        $DIR/real_dir/inner_link [symlink -> ../target_dir/file.txt]
+        $DIR/target_dir/file.txt [file]
+        |}]
+    ;;
+
+    let%expect_test "pipes?" =
+      with_temp_dir "$DIR" (fun dir ->
+        make_dir dir "real_dir";
+        make_file dir "real_dir/file.txt";
+        (* Pipes aren't copied! *)
+        Unix.mkfifo (Path.to_string (Path.relative dir "real_dir/my_pipe")) 0o644;
+        make_symlink dir ~src:"my_pipe" ~dst:"real_dir/pipelink";
+        make_symlink dir ~src:"real_dir" ~dst:"link";
+        resolve_directory_symlinks_in dir;
+        dump_tree dir;
+        [%expect.output]);
+      [%expect
+        {|
+        $DIR/real_dir/ [dir]
+        $DIR/link/ [dir]
+        $DIR/link/pipelink [symlink -> ../real_dir/my_pipe]
+        $DIR/link/file.txt [hardlink]
+        $DIR/real_dir/pipelink [symlink -> my_pipe]
+        $DIR/real_dir/my_pipe [named pipe]
+        $DIR/real_dir/file.txt [hardlink of $DIR/link/file.txt]
+        |}]
+    ;;
+  end)
+;;

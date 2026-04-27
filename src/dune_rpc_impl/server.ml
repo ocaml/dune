@@ -28,8 +28,6 @@ module Handler = Rpc.Server.Handler
 module Csexp_rpc = Rpc.Csexp_rpc
 
 module Run = struct
-  module Registry = Dune_rpc.Registry
-
   type t =
     { handler : Rpc.Server.t
     ; pool : Fiber.Pool.t
@@ -41,19 +39,7 @@ module Run = struct
     }
 
   let run t =
-    let cleanup_registry = ref None in
-    let with_registry f =
-      match t.registry with
-      | `Skip -> ()
-      | `Add -> f ()
-    in
-    let run_cleanup_registry () =
-      match !cleanup_registry with
-      | None -> ()
-      | Some path ->
-        Fpath.unlink_no_err path;
-        cleanup_registry := None
-    in
+    let registry = Rpc.Registry.create ~root:t.root ~where:t.where t.registry in
     let with_print_errors f () =
       Fiber.with_error_handler f ~on_error:(fun exn ->
         Console.print [ Pp.text "Uncaught RPC Error"; Exn_with_backtrace.pp exn ];
@@ -76,37 +62,13 @@ module Run = struct
       Fiber.fork_and_join_unit
         (fun () ->
            let* sessions = Csexp_rpc.Server.serve server in
-           let () =
-             with_registry
-             @@ fun () ->
-             let (`Caller_should_write { Registry.File.path; contents }) =
-               let registry_config = Registry.Config.create (Lazy.force Dune_util.xdg) in
-               let dune =
-                 let pid = Unix.getpid () in
-                 let where =
-                   match t.where with
-                   | `Ip (host, port) -> `Ip (host, port)
-                   | `Unix a ->
-                     `Unix
-                       (if Filename.is_relative a
-                        then Filename.concat (Sys.getcwd ()) a
-                        else a)
-                 in
-                 Registry.Dune.create ~where ~root:t.root ~pid
-               in
-               Registry.Config.register registry_config dune
-             in
-             let (_ : Fpath.mkdir_p_result) = Fpath.mkdir_p (Filename.dirname path) in
-             Io.String_path.write_file path contents;
-             cleanup_registry := Some path;
-             at_exit run_cleanup_registry
-           in
+           let () = Rpc.Registry.register registry in
            let* () = Rpc.Server.serve sessions t.handler in
            Fiber.Pool.close t.pool)
         (fun () -> Fiber.Pool.run t.pool)
     in
     Fiber.finalize (with_print_errors run) ~finally:(fun () ->
-      with_registry run_cleanup_registry;
+      Rpc.Registry.cleanup registry;
       Fiber.return ())
   ;;
 end

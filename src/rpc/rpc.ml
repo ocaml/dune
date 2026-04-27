@@ -1,4 +1,5 @@
 module Where = Where
+module Registry = Registry
 module Client = Client
 module Server = Server
 module Poll_active = Poll_active

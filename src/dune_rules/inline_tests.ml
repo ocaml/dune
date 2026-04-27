@@ -426,7 +426,13 @@ include Sub_system.Register_end_point (struct
           ~loc:info.loc
           alias
           (let open Action_builder.O in
-           let source_files = List.concat_map source_modules ~f:Module.sources in
+           let runner_inputs =
+             List.concat_map source_modules ~f:(fun module_ ->
+               Module.ml_source module_ |> Module.sources)
+           in
+           let promotion_targets =
+             List.concat_map source_modules ~f:Module.sources_without_pp
+           in
            let+ actions =
              (match partitions_flags with
               | None -> Action_builder.return [ None ]
@@ -438,13 +444,14 @@ include Sub_system.Register_end_point (struct
                flags ~info ~expander ~backends ~lib_name:(snd lib.name) ~partition
                |> action mode)
              >>= Action_builder.all
-           and+ () = Action_builder.paths source_files in
+           and+ () = Action_builder.paths runner_inputs
+           and+ () = Action_builder.paths promotion_targets in
            match actions with
            | [] -> Action.Full.empty
            | _ :: _ ->
              let run_tests = Action.concurrent actions in
              let diffs =
-               List.map source_files ~f:(fun fn ->
+               List.map promotion_targets ~f:(fun fn ->
                  Path.as_in_build_dir_exn fn
                  |> Path.Build.extend_basename ~suffix:".corrected"
                  |> Action.diff ~optional:true fn)

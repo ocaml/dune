@@ -21,9 +21,7 @@ We also make sure that the dump file is not present
 This also works for reason code
 
   $ dune describe pp src/main_re.re
-  # 1 "src/main_re.pp.re.ml"
-  # 1 "src/main_re.pp.re"
-  Util.log ("Hello, world!")
+  ;;Util.log "Hello, world!"
 
   $ dune describe pp lib/subdir/bazy.ml
   

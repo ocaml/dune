@@ -8,6 +8,8 @@
 - Revert the change in behavior of `--diff-command` back to 3.21. Non-existent
   files are now passed to this command instead of being replaced with /dev/null
   (#14098, fixes 13891, @rgrinberg)
+- Fixed spelling one of the DUNE_TRACE envvar values: `artifact_substitution`
+  (@hraban)
 
 3.22.1 (2026-04-01)
 -------------------

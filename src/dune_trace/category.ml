@@ -71,7 +71,7 @@ let to_string = function
   | Action -> "action"
   | Cache -> "cache"
   | Digest -> "digest"
-  | Artifact_substitution -> "artifact_subtitution"
+  | Artifact_substitution -> "artifact_substitution"
   | Thread -> "thread"
 ;;
 

@@ -124,8 +124,7 @@ struct
 
   module Chan = struct
     type t =
-      { read : unit -> Sexp.t option Fiber.t
-      ; closed_read : bool
+      { closed_read : bool
       ; mutable closed_write : bool
       ; disconnected : unit Fiber.Ivar.t
       ; chan : Chan.t
@@ -133,15 +132,20 @@ struct
 
     let of_chan c =
       let disconnected = Fiber.Ivar.create () in
-      let read () =
-        let* result = Chan.read c in
+      { chan = c; closed_read = false; closed_write = false; disconnected }
+    ;;
+
+    let read t =
+      let* () = Fiber.return () in
+      if t.closed_read
+      then Fiber.return None
+      else
+        let* result = Chan.read t.chan in
         match result with
         | None ->
-          let+ () = Fiber.Ivar.fill disconnected () in
+          let+ () = Fiber.Ivar.fill t.disconnected () in
           None
-        | _ -> Fiber.return result
-      in
-      { chan = c; read; closed_read = false; closed_write = false; disconnected }
+        | Some _ -> Fiber.return result
     ;;
 
     let close t =
@@ -154,12 +158,8 @@ struct
     ;;
 
     let write (t : t) packet =
+      (* CR-soon rgrinberg: do not allow writes after close *)
       List.map ~f:(Conv.to_sexp Packet.sexp) packet |> Chan.write t.chan
-    ;;
-
-    let read t =
-      let* () = Fiber.return () in
-      if t.closed_read then Fiber.return None else Chan.read t.chan
     ;;
   end
 

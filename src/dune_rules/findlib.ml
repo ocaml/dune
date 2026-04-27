@@ -246,6 +246,7 @@ let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib ~external_loc
       ~lib_id
       ~kind
       ~status
+      ~archived:true
       ~src_dir
       ~orig_src_dir
       ~obj_dir

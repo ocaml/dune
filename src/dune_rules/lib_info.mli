@@ -175,6 +175,7 @@ val enabled : _ t -> Enabled_status.t Memo.t
 val orig_src_dir : 'path t -> 'path option
 val version : _ t -> Package_version.t option
 val dune_version : _ t -> Dune_lang.Syntax.Version.t option
+val archived : _ t -> bool
 val dynlink_supported : _ t -> bool
 
 (** Directory where the source files for the library are located. Returns the
@@ -215,6 +216,7 @@ val create
   -> lib_id:Lib_id.t
   -> kind:Lib_kind.t
   -> status:Status.t
+  -> archived:bool
   -> src_dir:'a
   -> orig_src_dir:'a option
   -> obj_dir:'a Obj_dir.t

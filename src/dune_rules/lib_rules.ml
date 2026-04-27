@@ -403,6 +403,22 @@ let iter_modes_concurrently (t : _ Ocaml.Mode.Dict.t) ~(f : Ocaml.Mode.t -> unit
   ()
 ;;
 
+let add_unarchived_modules_to_all_alias cctx =
+  let obj_dir = Compilation_context.obj_dir cctx in
+  let dir = Compilation_context.dir cctx in
+  let project = Compilation_context.scope cctx |> Scope.project in
+  let modes = Compilation_context.modes cctx in
+  let dirs =
+    Obj_dir.byte_dir obj_dir
+    :: (if Obj_dir.need_dedicated_public_dir obj_dir
+        then [ Obj_dir.public_cmi_ocaml_dir obj_dir ]
+        else [])
+    @ if modes.ocaml.native then [ Obj_dir.native_dir obj_dir ] else []
+  in
+  Memo.parallel_iter dirs ~f:(fun predicate_dir ->
+    Alias_builder.define_all_alias ~project ~predicate_dir ~js_targets:[] dir)
+;;
+
 let setup_build_archives (lib : Library.t) ~top_sorted_modules ~cctx ~expander ~lib_info =
   let obj_dir = Compilation_context.obj_dir cctx in
   let flags = Compilation_context.flags cctx in
@@ -461,7 +477,8 @@ let setup_build_archives (lib : Library.t) ~top_sorted_modules ~cctx ~expander ~
         build_lib lib ~native_archives ~dir ~sctx ~expander ~flags ~mode ~cm_files)
   in
   Memo.when_
-    (Lib_info.dynlink_supported lib_info
+    (Library.archived lib
+     && Lib_info.dynlink_supported lib_info
      && Dynlink_supported.By_the_os.get natdynlink_supported
      && modes.ocaml.native)
     (fun () -> build_shared ~native_archives ~sctx lib ~dir ~flags)
@@ -579,7 +596,11 @@ let library_rules
       Ocaml_index.cctx_rules cctx)
   and+ () =
     Memo.when_
-      (not (Library.is_virtual lib))
+      (not (Library.archived lib))
+      (fun () -> add_unarchived_modules_to_all_alias cctx)
+  and+ () =
+    Memo.when_
+      (Library.archived lib && not (Library.is_virtual lib))
       (fun () -> setup_build_archives lib ~lib_info ~top_sorted_modules ~cctx ~expander)
   and+ () =
     let vlib_stubs_o_files = Virtual_rules.stubs_o_files implements in

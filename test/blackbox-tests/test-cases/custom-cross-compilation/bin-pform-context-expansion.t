@@ -31,4 +31,3 @@ dir and the install bin dir, both under the host context.
 
   $ env_added "$(cat _build/target/path-output)" "$PATH" | censor
   $PWD/_build/install/host/.binaries/$DIGEST
-  $PWD/_build/install/host/bin

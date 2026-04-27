@@ -2,9 +2,6 @@
 
 open Import
 
-(** Alias for all the files in [_build/install] that belong to this package *)
-val package_install : context:Build_context.t -> pkg:Package.t -> Alias.t
-
 (** Evaluates unnamed dependency specifications. The returned builder both
     registers the rule's dependencies (as a side effect of evaluation) and
     produces an [Env.t] augmentation that callers should fold into the action

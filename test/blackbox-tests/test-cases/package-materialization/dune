@@ -1,0 +1,3 @@
+(cram
+ (applies_to ocamlfind no-transitive-through-targets installed-package)
+ (deps %{bin:ocamlfind}))

@@ -9,6 +9,15 @@ let install_file ~(package : Package.Name.t) ~findlib_toolchain =
   |> Filename.of_string_exn
 ;;
 
+(** Alias for all the files in [_build/install] that belong to a package. *)
+let package_install ~(context : Build_context.t) ~(pkg : Package.t) =
+  let dir = Path.Build.append_source context.build_dir (Package.dir pkg) in
+  let name = Package.name pkg in
+  sprintf ".%s-files" (Package.Name.to_string name)
+  |> Alias.Name.of_string
+  |> Alias.make ~dir
+;;
+
 let with_doc = Package_variable_name.with_doc
 
 let need_odoc_config (pkg : Package.t) =
@@ -1179,6 +1188,13 @@ let install_entries sctx package =
   Package.Name.Map.Multi.find packages package
 ;;
 
+let () =
+  Install_layout.set_entry_resolver (fun context_name package ->
+    let open Memo.O in
+    let* sctx = Super_context.find_exn context_name in
+    install_entries sctx package)
+;;
+
 let packages =
   let f sctx =
     let* packages = Dune_load.packages () in
@@ -1398,9 +1414,7 @@ let gen_package_install_file_rules sctx (package : Package.t) =
   in
   let* () =
     let* all_packages = Dune_load.packages () in
-    let target_alias =
-      Dep_conf_eval.package_install ~context:build_context ~pkg:package
-    in
+    let target_alias = package_install ~context:build_context ~pkg:package in
     let open Action_builder.O in
     Rules.Produce.Alias.add_deps
       target_alias
@@ -1414,7 +1428,7 @@ let gen_package_install_file_rules sctx (package : Package.t) =
                 let name = Package.Id.name pkg in
                 Package.Name.Map.find_exn all_packages name
               in
-              Dep_conf_eval.package_install ~context:build_context ~pkg |> Dep.alias) )))
+              package_install ~context:build_context ~pkg |> Dep.alias) )))
   in
   let action =
     let findlib_toolchain = Context.findlib_toolchain context in

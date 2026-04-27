@@ -89,12 +89,10 @@ let make_dispatch ~dir subdirs f =
 
 let gen_rules context_name ~dir rest =
   match rest with
-  | [] -> Memo.return (make_dispatch ~dir Subdir_set.all (fun () -> Memo.return ()))
+  | [] -> make_dispatch ~dir Subdir_set.all (fun () -> Memo.return ())
   | [ key ] ->
-    Memo.return
-      (make_dispatch ~dir Subdir_set.empty (fun () ->
-         symlink_rules_for_key context_name ~dir key))
+    make_dispatch ~dir Subdir_set.empty (fun () ->
+      symlink_rules_for_key context_name ~dir key)
   | _ :: _ :: _ ->
-    Memo.return
-      (Build_config.Gen_rules.redirect_to_parent Build_config.Gen_rules.Rules.empty)
+    Build_config.Gen_rules.redirect_to_parent Build_config.Gen_rules.Rules.empty
 ;;

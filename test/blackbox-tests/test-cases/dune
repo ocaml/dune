@@ -42,6 +42,11 @@
  (applies_to windows-diff staged-pps-with-sandboxing-gh6644)
  (alias runtest-windows))
 
+(cram
+ (applies_to empty-meta-version-gh9176)
+ (deps
+  (package dune-build-info)))
+
 ;; DISABLED TESTS
 
 (cram

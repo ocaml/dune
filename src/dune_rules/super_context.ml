@@ -150,10 +150,10 @@ let extend_action t ~dir action =
       (let open Memo.O in
        t.get_node dir >>= Env_node.external_env)
   in
-  (* [action.env] is expected to contain only PATH-prepend hints from
-     [Dep_conf_eval.make_bin_env]. Splice its PATH entries in front of the
-     external env's PATH, keep other vars as-is. *)
-  let env = Env_path.extend_env_concat_path env action.env in
+  (* Cons path-like vars from action.env (bin-layout PATH, package-layout
+     OCAMLPATH/etc.) onto the directory env so that both layout and system
+     entries remain visible. Other vars from action.env overwrite dir env. *)
+  let env = Install.Roots.extend_env_concat_path_vars env action.env in
   Action.Full.add_env env action
   |> Action.Full.map ~f:(function
     | Chdir _ as a -> a
@@ -236,40 +236,16 @@ let make_default_env_node
             make ~inherit_from:None ~config_stanza:env_nodes.workspace |> Memo.return)))
 ;;
 
-let make_root_env (context : Context.t) ~(host : t option) : Env.t Memo.t =
-  let* env =
-    let roots =
-      let context = Context.name context in
-      Install.Context.dir ~context |> Install.Roots.make ~relative:Path.Build.relative
-    in
-    Context.installed_env context >>| Install.Roots.add_to_env roots
-  in
-  let+ host_context, _PATH =
-    let _PATH = Env.get env Env_path.var in
-    match host with
-    | None -> Memo.return (context, _PATH)
-    | Some host ->
-      let context = host.context in
-      let+ _PATH =
-        let+ env = Context.installed_env context in
-        Env.get env Env_path.var
-      in
-      context, _PATH
-  in
-  Env.add
-    env
-    ~var:Env_path.var
-    ~value:
-      (Install.Context.bin_dir ~context:(Context.name host_context)
-       |> Path.build
-       |> Bin.cons_path ~_PATH)
-;;
-
 let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
   let context_name = Context.name context in
   let env =
     Memo.lazy_ (fun () ->
-      let* base = make_root_env context ~host in
+      let env_context =
+        match host with
+        | None -> context
+        | Some host -> host.context
+      in
+      let* base = Context.installed_env env_context in
       Site_env.add_packages_env context_name ~base stanzas packages)
     |> Memo.Lazy.force
   in

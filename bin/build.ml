@@ -110,8 +110,15 @@ let build =
         ]
     ]
   in
-  (* CR-someday Alizter: document this option *)
-  let name_ = Arg.info [] ~docv:"TARGET" ~doc:None in
+  let name_ =
+    Arg.info
+      []
+      ~docv:"TARGET"
+      ~doc:
+        (Some
+           "Build $(docv). Targets starting with a $(b,@) are interpreted as aliases. If \
+            no targets are given, the default target is built.")
+  in
   let term =
     let+ builder = Common.Builder.term
     and+ targets = Arg.(value & pos_all dep [] name_)

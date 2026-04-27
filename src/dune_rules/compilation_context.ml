@@ -173,10 +173,14 @@ let build_lib_index ~super_context ~libs ~for_ =
               Whether to issue per-module deps on the entry's [.cmi]
               is a separate decision tracked by [unwrapped_local]:
               only unwrapped local libs are tight-eligible. Wrapped
-              local libs are walkable (the wrapper's ocamldep
-              references children by mangled name and the BFS
-              expands through them) but classified as glob for
-              invalidation. *)
+              local libs are walkable too — their children are
+              indexed below, under the wrapper's name for auto-
+              generated wrappers and under the child's own name for
+              hand-written ones, so the BFS can reach them — but
+              they remain non-tight: per-module precision isn't
+              possible (see [lib_file_deps.ml]'s ocamldep-
+              granularity rationale), so they fall back to a glob
+              for invalidation. *)
            let unwrapped =
              match Lib_info.wrapped (Lib.info lib) with
              | Some (This w) -> not (Wrapped.to_bool w)

@@ -207,8 +207,9 @@ let has_library_deps_of_resolved ~direct ~hidden =
     per-module inter-library dependency filter, so a target library
     short-circuited here must also be in
     [Compilation_context.build_lib_index]'s [no_ocamldep] set. Both
-    sides resolve their [has_library_deps] view through
-    [has_library_deps_of_lib] above. *)
+    sides resolve their [has_library_deps] view through the helpers
+    above ([has_library_deps_of_lib] for library cctxes,
+    [has_library_deps_of_resolved] elsewhere). *)
 let skip_ocamldep ~has_library_deps modules =
   has_single_file modules && not has_library_deps
 ;;

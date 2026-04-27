@@ -158,13 +158,15 @@ module Lib_index = struct
      ocamldep. [tight_eligible] (built from the caller-supplied
      [unwrapped_local]) means the lib is local AND unwrapped, so
      downstream consumers can issue per-module deps on its [.cmi]
-     files. Wrapped local libs are walkable but not tight-eligible —
-     their auto-generated wrapper's ocamldep references children by
-     mangled name and the BFS expands through them, but the lib
-     itself classifies as glob for invalidation. See the
-     module-level comment at the top of this file for the
-     ocamldep-granularity reason wrapped libs are excluded from the
-     tight-eligible class. *)
+     files. Wrapped local libs are walkable but not tight-eligible:
+     their children are present in [by_module_name] (placed there
+     by [Compilation_context.build_lib_index] under the wrapper's
+     name for auto-generated wrappers and under the child's own
+     name for hand-written ones), so the BFS reaches them, but
+     the lib itself falls back to a glob for invalidation. See
+     the module-level comment at the top of this file for the
+     ocamldep-granularity reason wrapped libs are excluded from
+     the tight-eligible class. *)
   let create ~no_ocamldep ~unwrapped_local ~entries =
     let by_module_name =
       List.fold_left entries ~init:Module_name.Map.empty ~f:(fun map (name, lib, m) ->

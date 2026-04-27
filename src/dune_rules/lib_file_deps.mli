@@ -43,7 +43,9 @@ module Lib_index : sig
       unwrapped — the tight-eligible class. The cross-library walk
       reads ocamldep for any local lib's entries (via
       [lookup_walkable_entries], including wrapped libs' children
-      indexed under their mangled names); per-module dep
+      placed by [Compilation_context.build_lib_index] under the
+      wrapper's name for auto-generated wrappers and under the
+      child's own name for hand-written ones); per-module dep
       classification is restricted to [tight_eligible] (see
       [is_tight_eligible]).
 
@@ -61,10 +63,10 @@ module Lib_index : sig
   type classified =
     { tight : Module.t list Lib.Map.t
       (** Directly-referenced tight-eligible libraries (local,
-        unwrapped, each entry with a known [Module.t]). Mapped to the
-        referenced entry modules. These libraries are candidates for
-        per-module deps via [deps_of_entry_modules]; whether to emit
-        them is the caller's policy. *)
+        unwrapped). Mapped to the referenced entry modules. These
+        libraries are candidates for per-module deps via
+        [deps_of_entry_modules]; whether to emit them is the
+        caller's policy. *)
     ; non_tight : Lib.t list
       (** Other directly-referenced libraries — wrapped locals,
         externals, or anything else that falls back to a glob. Sorted
@@ -88,20 +90,21 @@ module Lib_index : sig
   (** [lookup_walkable_entries idx name] returns [(lib, entry module)]
       pairs used by the cross-library walk in [module_compilation].
       Includes wrapped local libs' wrappers and their children
-      (indexed under their mangled names) — the BFS reads each
-      walkable entry's ocamldep to follow alias chains across
-      library boundaries. Libraries in [no_ocamldep] are excluded
-      (their [.d] files do not exist); externals are excluded
-      because no [Module.t] is available. *)
+      (placed in the index by [Compilation_context.build_lib_index]
+      under the wrapper's name for auto-generated wrappers and
+      under the child's own name for hand-written ones) — the BFS
+      reads each walkable entry's ocamldep to follow alias chains
+      across library boundaries. Libraries in [no_ocamldep] are
+      excluded (their [.d] files do not exist); externals are
+      excluded because no [Module.t] is available. *)
   val lookup_walkable_entries : t -> Module_name.t -> (Lib.t * Module.t) list
 
-  (** [is_tight_eligible idx lib] is [true] when [lib] is local,
-      unwrapped, and every entry carries a known [Module.t]. The
-      cross-library walk has full visibility into such libraries:
-      the absence of any of their entry modules from the post-walk
-      reference set is positive evidence that the consumer does
-      not reach the library, so the consumer's compile rule does
-      not need a dep on it. *)
+  (** [is_tight_eligible idx lib] is [true] when [lib] is local and
+      unwrapped. The cross-library walk has full visibility into
+      such libraries: the absence of any of their entry modules from
+      the post-walk reference set is positive evidence that the
+      consumer does not reach the library, so the consumer's compile
+      rule does not need a dep on it. *)
   val is_tight_eligible : t -> Lib.t -> bool
 end
 

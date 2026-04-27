@@ -53,18 +53,29 @@ let module_kind_is_filterable m =
    pair's impl and intf ocamldep, and union the raw names into the
    frontier. Iterate until no new names appear.
 
-   Wrapped local libs are walkable too. Dune's auto-generated
-   wrapper contains [module Foo = Lib__Foo] for each child;
-   reading the wrapper's ocamldep emits the mangled child names,
-   and [lookup_walkable_entries] resolves each to the child's
-   [Module.t] (also indexed under its mangled name). The BFS then
-   descends into the child's own ocamldep, surfacing transitive
-   cross-library references like [include Vendored_pprint] that
-   the wrapper alone would not reveal. Externals and libs in
-   [no_ocamldep] are excluded by [lookup_walkable_entries] —
-   they have no readable [.d] file. Chains passing through
-   excluded libs terminate and the consumer falls back to a glob
-   on the unreached libs.
+   Wrapped local libs are walkable too, but how the BFS reaches
+   their children depends on the wrapper kind (see
+   [Compilation_context.build_lib_index]):
+
+   - Auto-generated wrappers ([Module.kind = Alias]) have no
+     readable [.d] of their own ([Dep_rules.deps_of] short-circuits
+     on [Alias]). Their children are indexed under the WRAPPER's
+     unmangled name (multi-entry); a frontier hit on the wrapper
+     expands directly to every child via [lookup_walkable_entries].
+
+   - Hand-written wrappers ([Impl] / [Intf_only]) have a readable
+     [.d]; ocamldep on the wrapper's source emits the unmangled
+     names of the children the wrapper exposes. Children are
+     indexed under their OWN names, so the BFS resolves those
+     emitted names in the next round.
+
+   Either way the BFS ends up reading each reachable child's own
+   ocamldep, surfacing transitive cross-library references like
+   [include Vendored_pprint] that the wrapper alone would not
+   reveal. Externals and libs in [no_ocamldep] are excluded by
+   [lookup_walkable_entries] — they have no readable [.d] file.
+   Chains passing through excluded libs terminate and the consumer
+   falls back to a glob on the unreached libs.
 
    Cycles in the module-reference graph terminate on the [seen] set.
 
@@ -100,8 +111,9 @@ let cross_lib_tight_set ~lib_index ~for_ ~initial_refs =
 (* Per-module inter-library dependency filtering (#4572). Uses ocamldep
    output to determine which libraries a module actually references, then
    transitively closes within the compilation context's library set to
-   handle transparent aliases. Returns [((), Dep.Set.t)] suitable for
-   use with [Action_builder.dyn_deps].
+   handle transparent aliases. Returns the [Dep.Set.t] of file deps the
+   compile rule should depend on; the wrapper [lib_cm_deps] adapts it
+   for [Action_builder.dyn_deps].
 
    The returned [Dep.Set.t] is the sole source of cross-library file
    dependencies for the compile rule: [-I] flags on the ocamlc command
@@ -159,7 +171,7 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
   in
   let* libs = Resolve.Memo.read (all_libs cctx) in
   if not can_filter
-  then Action_builder.return ((), Lib_file_deps.deps_of_entries ~opaque ~cm_kind libs)
+  then Action_builder.return (Lib_file_deps.deps_of_entries ~opaque ~cm_kind libs)
   else
     (* Deps-side virtual-impl check: if any library in the consumer's
        requires implements a virtual library, fall back to glob.
@@ -168,7 +180,7 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
       Resolve.Memo.read (Compilation_context.has_virtual_impl cctx)
     in
     if has_virtual_impl
-    then Action_builder.return ((), Lib_file_deps.deps_of_entries ~opaque ~cm_kind libs)
+    then Action_builder.return (Lib_file_deps.deps_of_entries ~opaque ~cm_kind libs)
     else
       let* lib_index = Resolve.Memo.read (Compilation_context.lib_index cctx) in
       let* trans_deps = Dep_graph.deps_of dep_graph m in
@@ -266,14 +278,14 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
            entries actually referenced.
 
          - [None] AND tight-eligible: the cross-library walk had full
-           visibility (local, unwrapped, every entry has a [Module.t])
-           and no entry of the library appears in [tight_set]. The
-           consumer therefore does not reach this library through any
-           reference chain visible to the walk, including transitive
-           module aliases under the [-opaque]-aware impl-side reads.
-           Drop the library entirely from the consumer's compile rule
-           deps; the link rule still pulls it in through
-           [requires_link] for executables/libraries that need it.
+           visibility (local, unwrapped) and no entry of the library
+           appears in [tight_set]. The consumer therefore does not
+           reach this library through any reference chain visible to
+           the walk, including transitive module aliases under the
+           [-opaque]-aware impl-side reads. Drop the library entirely
+           from the consumer's compile rule deps; the link rule still
+           pulls it in through [requires_link] for executables /
+           libraries that need it.
 
          - [None] AND not tight-eligible: wrapped local, external, or
            virtual-impl. The walk does not have full visibility, so
@@ -297,7 +309,7 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
             else td, lib :: gl)
       in
       let glob_deps = Lib_file_deps.deps_of_entries ~opaque ~cm_kind glob_libs in
-      (), Dep.Set.union tight_deps glob_deps
+      Dep.Set.union tight_deps glob_deps
 ;;
 
 (* Convenience wrapper for the two call sites ([build_cm] and
@@ -309,17 +321,21 @@ let lib_cm_deps ~cctx ~cm_kind ~ml_kind ~mode m =
   let opaque = Compilation_context.opaque cctx in
   let for_ = Compilation_context.for_ cctx in
   let dep_graph = Ml_kind.Dict.get (Compilation_context.dep_graphs cctx) ml_kind in
+  let open Action_builder.O in
   Action_builder.dyn_deps
-    (lib_deps_for_module
-       ~cctx
-       ~obj_dir
-       ~for_
-       ~dep_graph
-       ~opaque
-       ~cm_kind
-       ~ml_kind
-       ~mode
-       m)
+    (let+ deps =
+       lib_deps_for_module
+         ~cctx
+         ~obj_dir
+         ~for_
+         ~dep_graph
+         ~opaque
+         ~cm_kind
+         ~ml_kind
+         ~mode
+         m
+     in
+     (), deps)
 ;;
 
 (* Arguments for the compiler to prevent it from being too clever.

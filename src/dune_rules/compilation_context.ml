@@ -189,19 +189,7 @@ let build_lib_index ~super_context ~libs ~for_ =
            let entries =
              if unwrapped
              then entry_entries
-             else
-               (* Auto-wrapped libs: dune's auto-generated wrapper
-                  has [Module.kind = Alias], which means
-                  [Dep_rules.skip_ocamldep] fires and no [.d] is
-                  generated for the wrapper. The BFS thus cannot
-                  learn the wrapper's children by reading its
-                  ocamldep. Instead, also index each child under
-                  the WRAPPER's name (multi-entry), so that
-                  whenever the BFS encounters the wrapper's name
-                  in the frontier (via [-open Wrapper] in the
-                  consumer's flags or via a qualified
-                  [Wrapper.Child.x] reference), it walks
-                  directly into each child's ocamldep. *)
+             else (
                let entry_obj_names =
                  Module_name.Unique.Set.of_list_map entry_modules ~f:Module.obj_name
                in
@@ -211,24 +199,55 @@ let build_lib_index ~super_context ~libs ~for_ =
                    then acc
                    else m :: acc)
                in
-               let child_entries_under_wrapper =
-                 List.concat_map entry_modules ~f:(fun wrapper ->
-                   List.map child_modules ~f:(fun child ->
-                     Module.name wrapper, lib, Some child))
+               (* Two indexing strategies for wrapped libs' children,
+                  picked from the wrapper's [Module.kind]:
+
+                  - Auto-generated wrappers ([Alias]) have no [.d]
+                    of their own ([Dep_rules.deps_of] short-circuits
+                    on [Alias]), so the BFS cannot learn the
+                    children by reading the wrapper's ocamldep. Map
+                    each child under the WRAPPER's name (multi-
+                    entry); a frontier hit on the wrapper expands
+                    directly to the children's [.d] files.
+
+                  - Hand-written wrappers ([Impl]/[Intf_only]) have
+                    a readable [.d] that names every child the
+                    wrapper exposes (via [module Foo = Foo] aliases
+                    or the like). Indexing children under their
+                    OWN names lets the BFS resolve those emitted
+                    names to the children's [.d] files in the next
+                    round. Avoid the multi-entry-under-wrapper
+                    trick here — it would re-read every child's
+                    [.d] each time the wrapper is in the frontier,
+                    including children the wrapper does not
+                    expose. *)
+               let any_alias_wrapper =
+                 List.exists entry_modules ~f:(fun m ->
+                   match Module.kind m with
+                   | Alias _ -> true
+                   | _ -> false)
                in
-               entry_entries @ child_entries_under_wrapper
+               let child_entries =
+                 if any_alias_wrapper
+                 then
+                   List.concat_map entry_modules ~f:(fun wrapper ->
+                     List.map child_modules ~f:(fun child ->
+                       Module.name wrapper, lib, Some child))
+                 else
+                   List.map child_modules ~f:(fun child ->
+                     Module.name child, lib, Some child)
+               in
+               entry_entries @ child_entries)
            in
            let no_ocamldep_lib =
              match Modules.as_singleton mods with
              | Some _ when not has_resolved_deps -> Some lib
              | _ -> None
            in
-           entries, no_ocamldep_lib, (if unwrapped then Some lib else None)))
+           entries, no_ocamldep_lib, if unwrapped then Some lib else None))
   in
   let entries = List.concat_map per_lib ~f:(fun (e, _, _) -> e) in
-  let no_ocamldep =
-    List.filter_map per_lib ~f:(fun (_, n, _) -> n) |> Lib.Set.of_list
-  in
+  let no_ocamldep = List.filter_map per_lib ~f:(fun (_, n, _) -> n) |> Lib.Set.of_list in
   let unwrapped_local =
     List.filter_map per_lib ~f:(fun (_, _, u) -> u) |> Lib.Set.of_list
   in

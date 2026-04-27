@@ -339,8 +339,7 @@ struct
         Response.Error.create
           ~payload
           ~message:"notification sent while connection is dead"
-            (* CR-soon rgrinberg: Should be Connection_dead *)
-          ~kind:Code_error
+          ~kind:Connection_dead
           ()
       in
       raise (Response.Error.E err)

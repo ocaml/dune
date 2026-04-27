@@ -149,9 +149,6 @@ let build_lib_index ~super_context ~libs ~for_ =
                (Lib.Local.of_lib_exn lib)
                ~for_
            in
-           (* Same helper the lib's own cctx uses — keeps the skip
-              decision and the walk's prediction in lock step. *)
-           let+ has_resolved_deps = Dep_rules.has_library_deps_of_lib lib ~for_ in
            (* Every local lib's entries carry [Some m] so the walk
               can read the entry's ocamldep. Whether to issue per-
               module deps is tracked separately via [unwrapped_local]
@@ -216,10 +213,18 @@ let build_lib_index ~super_context ~libs ~for_ =
                in
                entry_entries @ child_entries)
            in
-           let no_ocamldep_lib =
+           (* Only single-module libs can land in [no_ocamldep];
+              multi-module libs always have [.d] files for their
+              children. Skip the helper call otherwise. *)
+           let+ no_ocamldep_lib =
              match Modules.as_singleton mods with
-             | Some _ when not has_resolved_deps -> Some lib
-             | _ -> None
+             | None -> Memo.return None
+             | Some _ ->
+               (* Same helper the lib's own cctx uses — keeps the
+                  skip decision and the walk's prediction in lock
+                  step. *)
+               let+ has_resolved_deps = Dep_rules.has_library_deps_of_lib lib ~for_ in
+               if has_resolved_deps then None else Some lib
            in
            entries, no_ocamldep_lib, if unwrapped then Some lib else None))
   in

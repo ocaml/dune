@@ -533,7 +533,7 @@ let cctx
     ~melange_package_name
     ~modes
     ~instances
-    ~lib:local_lib
+    ~own_lib:local_lib
 ;;
 
 let library_rules

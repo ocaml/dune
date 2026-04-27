@@ -257,7 +257,7 @@ let create
       ?cms_cmt_dependency
       ?loc
       ?instances
-      ?lib
+      ?own_lib
       for_
   =
   let project = Scope.project scope in
@@ -301,7 +301,7 @@ let create
        [build_lib_index] uses, so the lib's skip decision and the
        cross-stanza walk's prediction can't drift. Other cctxes
        just need the boolean. *)
-    match lib with
+    match own_lib with
     | Some lib -> Dep_rules.has_library_deps_of_lib lib ~for_
     | None ->
       Dep_rules.has_library_deps_of_resolved

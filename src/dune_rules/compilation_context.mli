@@ -40,7 +40,7 @@ val create
   -> ?cms_cmt_dependency:Workspace.Context.Cms_cmt_dependency.t
   -> ?loc:Loc.t
   -> ?instances:Parameterised_instances.t Resolve.Memo.t
-  -> ?lib:Lib.t
+  -> ?own_lib:Lib.t
   -> Compilation_mode.t
   -> t Memo.t
 

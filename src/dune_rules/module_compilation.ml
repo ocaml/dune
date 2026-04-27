@@ -1,26 +1,12 @@
 open Import
 open Memo.O
 
-(* Two dep pipelines feed every compile rule:
-
-   - [other_cm_files] (in [build_cm] below) — intra-library deps:
-     the cmis of the sibling modules that this module's own
-     ocamldep output says it transitively depends on within the
-     same stanza. These are static deps computed from the stanza's
-     [Dep_graph.t].
-
-   - [lib_cm_deps] — inter-library deps, produced by
-     [lib_deps_for_module] as [Action_builder.dyn_deps]. This is
-     the per-module inter-library dependency filter (#4572): it
-     reads ocamldep output to narrow the set of cmis the consumer
-     depends on from other libraries, falling back to a per-lib
-     directory glob when filtering is unsafe or unavailable.
-
-   The two sets are composed with [>>>] in the compile rule; there
-   is no overlap between them because intra-lib references are
-   already filtered out of ocamldep's "raw" output by
-   [parse_module_names] for the intra-lib path, and kept as raw
-   [Module_name.t] values for the inter-lib path. *)
+(* The compile rule depends on two disjoint dep sets: [other_cm_files]
+   for intra-library cmis (static, from [Dep_graph.t]) and
+   [lib_cm_deps] for inter-library deps (dynamic, the per-module
+   filter from #4572). Disjointness comes from [parse_module_names]
+   stripping intra-lib references on the intra-lib path while the
+   inter-lib path keeps raw [Module_name.t] values. *)
 
 let all_libs cctx =
   let open Resolve.Memo.O in
@@ -29,8 +15,6 @@ let all_libs cctx =
   d @ h
 ;;
 
-(* Map each element of [xs] through [f] and union the resulting
-   [Module_name.Set.t]s. Monomorphic on [Module_name.Set] by design. *)
 let union_module_name_sets_mapped xs ~f =
   Action_builder.List.map xs ~f
   |> Action_builder.map
@@ -47,43 +31,19 @@ let module_kind_is_filterable m =
 ;;
 
 (* Extend [initial_refs] with module names reached through cross-
-   library ocamldep. Walk every walkable entry module breadth-first
-   — wrappers and children of wrapped local libs alike: gather all
-   [(lib, entry module)] pairs named by the frontier, read each
-   pair's impl and intf ocamldep, and union the raw names into the
-   frontier. Iterate until no new names appear.
-
-   Wrapped local libs are walkable too, but how the BFS reaches
-   their children depends on the wrapper kind (see
-   [Compilation_context.build_lib_index]):
-
-   - Auto-generated wrappers ([Module.kind = Alias]) have no
-     readable [.d] of their own ([Dep_rules.deps_of] short-circuits
-     on [Alias]). Their children are indexed under the WRAPPER's
-     unmangled name (multi-entry); a frontier hit on the wrapper
-     expands directly to every child via [lookup_walkable_entries].
-
-   - Hand-written wrappers ([Impl] / [Intf_only]) have a readable
-     [.d]; ocamldep on the wrapper's source emits the unmangled
-     names of the children the wrapper exposes. Children are
-     indexed under their OWN names, so the BFS resolves those
-     emitted names in the next round.
-
-   Either way the BFS ends up reading each reachable child's own
-   ocamldep, surfacing transitive cross-library references like
-   [include Vendored_pprint] that the wrapper alone would not
-   reveal. Externals and libs in [no_ocamldep] are excluded by
-   [lookup_walkable_entries] — they have no readable [.d] file.
-   Chains passing through excluded libs terminate and the consumer
-   falls back to a glob on the unreached libs.
-
-   Cycles in the module-reference graph terminate on the [seen] set.
+   library ocamldep. The frontier expansion follows alias chains
+   into wrapped libs' children; how those children land in the
+   index is the indexing decision documented in
+   [Compilation_context.build_lib_index]. Externals and libs in
+   [no_ocamldep] are absent from [lookup_walkable_entries], so
+   chains through them terminate and the consumer falls back to a
+   glob on the unreached libs.
 
    Rule-graph cycle safety: [.d] files depend only on their source
-   [.ml]/[.mli] (via [Ocamldep.deps_of]) — never on any cmi. So
+   [.ml]/[.mli] (via [Ocamldep.deps_of]), never on any cmi, so
    reading a cross-library [.d] file cannot transitively demand any
-   consumer output, and this walk cannot introduce rule cycles
-   regardless of how the library graph looks. *)
+   consumer output. The walk cannot introduce rule cycles regardless
+   of the library graph. *)
 let cross_lib_tight_set ~lib_index ~for_ ~initial_refs =
   let open Action_builder.O in
   let read_entry_deps (lib, m) =
@@ -108,39 +68,14 @@ let cross_lib_tight_set ~lib_index ~for_ ~initial_refs =
   loop ~seen:Module_name.Set.empty ~frontier:initial_refs
 ;;
 
-(* Per-module inter-library dependency filtering (#4572). Uses ocamldep
-   output to determine which libraries a module actually references, then
-   transitively closes within the compilation context's library set to
-   handle transparent aliases. Returns the [Dep.Set.t] of file deps the
-   compile rule should depend on; the wrapper [lib_cm_deps] adapts it
-   for [Action_builder.dyn_deps].
-
-   The returned [Dep.Set.t] is the sole source of cross-library file
-   dependencies for the compile rule: [-I] flags on the ocamlc command
-   line add search paths but do not register rule deps on their own.
-   Narrowing here directly narrows rule invalidation.
-
-   Two dep shapes flow out of the filter:
-   - [Lib_file_deps.deps_of_entry_modules lib names] → specific File
-     deps on the named cmis (and their cmx/cmj as appropriate). Only
-     content changes to those specific cmis invalidate the consumer.
-   - [Lib_file_deps.deps_of_entries libs] → a glob over each lib's
-     objdir. Any content change to any cmi in that dir invalidates.
-
-   The tight set of referenced module names is computed across
-   library boundaries by [cross_lib_tight_set]: it starts from the
-   consumer's own ocamldep reads and iterates through tight-eligible
-   entry modules. This lets closure-reached libraries (not directly
-   named by the consumer but pulled in through transparent aliases)
-   receive specific-file deps on just the entries that matter.
-
-   These deps surface in [dune rules <target>]'s output alongside any
-   static deps. Falls back to a glob over all cctx libs when filtering
-   is not possible.
-
-   Wrapped dependency libraries always take the glob path. See the
-   module-level comment at the top of [lib_file_deps.ml] for the
-   ocamldep-granularity reason and sketches of follow-on work. *)
+(* Per-module inter-library dependency filtering (#4572). The
+   returned [Dep.Set.t] is the sole source of cross-library rule
+   deps for the compile rule — [-I] flags add search paths but
+   register no deps — so narrowing here directly narrows rule
+   invalidation. Falls back to a glob over the library's objdir
+   when filtering is unsafe (Melange, virtual-impl) or unavailable
+   (wrapped libs; see [lib_file_deps.ml]'s opening for the
+   ocamldep-granularity reason). *)
 let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kind ~mode m =
   let open Action_builder.O in
   let can_filter =
@@ -184,31 +119,12 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
     else
       let* lib_index = Resolve.Memo.read (Compilation_context.lib_index cctx) in
       let* trans_deps = Dep_graph.deps_of dep_graph m in
-      (* Whether to read [dep_m]'s [.ml]-side ocamldep when collecting
-         the libraries the consumer references.
-
-         A module's [.cmi] is produced from [.mli] when one exists; only
-         then. References in [.ml] that are not re-exported through the
-         [.mli] never appear in [.cmi]'s imports — they are sealed.
-
-         The [.cmx] is produced from [.ml]. The compiler reads a
-         dep's [.cmx] only for cross-module inlining, which happens
-         only when compiling [Ocaml Cmx] without [-opaque]. In every
-         other case the [.cmx] is unread and any [.ml]-side
-         references it carries do not propagate.
-
-         For [m] itself (the consumer being compiled), [.ml] is the
-         source the compiler is feeding when [ml_kind = Impl]; its
-         references must be resolved. When [ml_kind = Intf] we are
-         compiling [m.cmi] from [m.mli], and [m.ml] is unread.
-
-         For a transitive intra-library dep [dep_m], [.ml]-side
-         references only propagate when (a) [dep_m] has no [.mli]
-         (so [dep_m.cmi] is produced from [.ml]) or (b) the
-         consumer reads [dep_m.cmx] for inlining ([Ocaml Cmx]
-         without [-opaque]).
-
-         Decision summary:
+      (* Whether to read [dep_m]'s [.ml]-side ocamldep. [.ml]-side
+         references propagate to the consumer only when [dep_m]'s
+         [.cmx] is read ([Cmx] + not opaque) or when [dep_m] has no
+         [.mli] (so its [.cmi] is produced from [.ml]). For the
+         consumer itself, [.ml] is read iff we are compiling its
+         [.ml] (i.e. [ml_kind = Impl]).
 
          | [dep_m] is              | [cm_kind]   | [opaque] | read [.ml]?  |
          | ----------------------- | ----------- | -------- | ------------ |
@@ -250,46 +166,27 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
       let* flags = Ocaml_flags.get (Compilation_context.flags cctx) mode in
       let open_modules = Ocaml_flags.extract_open_module_names flags in
       let referenced = Module_name.Set.union all_raw open_modules in
-      (* First use of [filter_libs_with_modules]: identify the libs
-         the consumer directly names (via its own ocamldep output).
-         Used only to seed [Lib.closure]'s input. The second use,
-         after the cross-library walk extends the name set, produces
-         the per-lib module lists used in the fold below. *)
+      (* Seed [Lib.closure] with the libs the consumer directly
+         names; the post-BFS classify below uses
+         [tight_modules_per_lib] on the extended name set. *)
       let { Lib_file_deps.Lib_index.tight; non_tight } =
         Lib_file_deps.Lib_index.filter_libs_with_modules
           lib_index
           ~referenced_modules:referenced
       in
-      (* Sort to preserve the canonical [Lib.closure] memo key (see
-         commit 9359b37e6 on the base branch). *)
+      (* Sort for [Lib.closure] memo-key stability. *)
       let direct_libs = List.sort ~compare:Lib.compare (Lib.Map.keys tight @ non_tight) in
-      (* Transitively close the filtered libraries. Transparent module
-         aliases can create cross-library .cmi reads that ocamldep
-         doesn't report, at arbitrary depth. [libs] is already the
-         transitive closure required for compilation (across all
-         [implicit_transitive_deps] modes), so [Lib.closure]'s result
-         on a subset of [libs] stays within it. *)
+      (* Close transitively to catch cross-library [.cmi] reads via
+         transparent aliases that ocamldep doesn't report. *)
       let* all_libs = Resolve.Memo.read (Lib.closure direct_libs ~linking:false ~for_) in
       let+ tight_set = cross_lib_tight_set ~lib_index ~for_ ~initial_refs:referenced in
-      (* Classify [all_libs] against the cross-library tight set into
-         three buckets:
-
-         - [Some modules] in [tight_modules]: per-module deps on the
-           entries actually referenced.
-
-         - [None] AND tight-eligible: the cross-library walk had full
-           visibility (local, unwrapped) and no entry of the library
-           appears in [tight_set]. The consumer therefore does not
-           reach this library through any reference chain visible to
-           the walk, including transitive module aliases under the
-           [-opaque]-aware impl-side reads. Drop the library entirely
-           from the consumer's compile rule deps; the link rule still
-           pulls it in through [requires_link] for executables /
-           libraries that need it.
-
-         - [None] AND not tight-eligible: wrapped local, external, or
-           virtual-impl. The walk does not have full visibility, so
-           fall back to a glob over the library's objdir. *)
+      (* Classify [all_libs] into three buckets:
+         - in [tight_modules]: per-module deps on the entries
+           actually referenced.
+         - tight-eligible but not referenced: the walk had full
+           visibility (local, unwrapped) and saw nothing reach the
+           lib; drop it. Link still pulls it in via [requires_link].
+         - not tight-eligible: glob fallback. *)
       let tight_modules =
         Lib_file_deps.Lib_index.tight_modules_per_lib
           lib_index
@@ -312,10 +209,6 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
       Dep.Set.union tight_deps glob_deps
 ;;
 
-(* Convenience wrapper for the two call sites ([build_cm] and
-   [ocamlc_i]) that wire the per-module filter into a compile rule.
-   Both take [cm_kind], [ml_kind], [mode], and the module to be
-   compiled; the rest is derived from [cctx]. *)
 let lib_cm_deps ~cctx ~cm_kind ~ml_kind ~mode m =
   let obj_dir = Compilation_context.obj_dir cctx in
   let opaque = Compilation_context.opaque cctx in

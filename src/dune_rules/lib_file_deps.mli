@@ -35,25 +35,13 @@ module Lib_index : sig
 
   val empty : t
 
-  (** Create an index. Each entry carries the [Module.t] of the entry
-      module when it is known ([Some] for local libraries, wrapped
-      or not; [None] for externals).
-
-      [unwrapped_local] is the set of libs that are local and
-      unwrapped — the tight-eligible class. The cross-library walk
-      reads ocamldep for any local lib's entries (via
-      [lookup_walkable_entries], including wrapped libs' children
-      placed by [Compilation_context.build_lib_index] under the
-      wrapper's name for auto-generated wrappers and under the
-      child's own name for hand-written ones); per-module dep
-      classification is restricted to [tight_eligible] (see
-      [is_tight_eligible]).
-
-      [no_ocamldep] names local libs whose ocamldep output is
-      short-circuited (single-module stanzas without library
-      dependencies — see [Dep_rules.skip_ocamldep]). The cross-
-      library walk in [module_compilation] must not try to read
-      [.d] files for those libs. *)
+  (** [unwrapped_local] is the tight-eligible set (local AND
+      unwrapped); [no_ocamldep] names local libs whose [.d] files
+      are short-circuited away by [Dep_rules.skip_ocamldep] and
+      must therefore be excluded from the cross-library walk.
+      [entries] carries [Some m] for local libs, [None] for
+      externals — see [Compilation_context.build_lib_index] for the
+      indexing convention used for wrapped libs' children. *)
   val create
     :  no_ocamldep:Lib.Set.t
     -> unwrapped_local:Lib.Set.t
@@ -62,49 +50,35 @@ module Lib_index : sig
 
   type classified =
     { tight : Module.t list Lib.Map.t
-      (** Directly-referenced tight-eligible libraries (local,
-        unwrapped). Mapped to the referenced entry modules. These
-        libraries are candidates for per-module deps via
-        [deps_of_entry_modules]; whether to emit them is the
-        caller's policy. *)
+      (** Tight-eligible libs the consumer references, mapped to
+        the referenced entry modules. *)
     ; non_tight : Lib.t list
-      (** Other directly-referenced libraries — wrapped locals,
-        externals, or anything else that falls back to a glob. Sorted
-        by [Lib.compare]. *)
+      (** Other referenced libs (wrapped locals, externals, …),
+        sorted by [Lib.compare]. *)
     }
 
-  (** Classify the libraries whose entry modules appear in
+  (** Classify the libs whose entry modules appear in
       [referenced_modules]. *)
   val filter_libs_with_modules : t -> referenced_modules:Module_name.Set.t -> classified
 
-  (** [tight_modules_per_lib idx ~referenced_modules] builds a map
-      from each tight-eligible library that exposes a name in
-      [referenced_modules] to the subset of its entry modules that
-      appear. Equivalent to [filter_libs_with_modules] with only the
-      tight part kept. *)
+  (** Like [filter_libs_with_modules] but returns only the [tight]
+      map. *)
   val tight_modules_per_lib
     :  t
     -> referenced_modules:Module_name.Set.t
     -> Module.t list Lib.Map.t
 
-  (** [lookup_walkable_entries idx name] returns [(lib, entry module)]
-      pairs used by the cross-library walk in [module_compilation].
-      Includes wrapped local libs' wrappers and their children
-      (placed in the index by [Compilation_context.build_lib_index]
-      under the wrapper's name for auto-generated wrappers and
-      under the child's own name for hand-written ones) — the BFS
-      reads each walkable entry's ocamldep to follow alias chains
-      across library boundaries. Libraries in [no_ocamldep] are
-      excluded (their [.d] files do not exist); externals are
-      excluded because no [Module.t] is available. *)
+  (** Walkable entries indexed under [name]: wrappers and children
+      of wrapped libs alike (see [Compilation_context.build_lib_
+      index] for the indexing convention). Libs in [no_ocamldep]
+      and externals are excluded. *)
   val lookup_walkable_entries : t -> Module_name.t -> (Lib.t * Module.t) list
 
-  (** [is_tight_eligible idx lib] is [true] when [lib] is local and
-      unwrapped. The cross-library walk has full visibility into
-      such libraries: the absence of any of their entry modules from
-      the post-walk reference set is positive evidence that the
-      consumer does not reach the library, so the consumer's compile
-      rule does not need a dep on it. *)
+  (** A library is tight-eligible when local and unwrapped. The
+      walk has full visibility into such libs, so absence of all
+      their entry modules from the post-walk reference set means
+      the consumer doesn't reach the lib; the compile rule needs
+      no dep on it. *)
   val is_tight_eligible : t -> Lib.t -> bool
 end
 

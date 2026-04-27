@@ -134,43 +134,18 @@ let deps_of_vlib_module ~obj_dir ~vimpl ~dir ~sctx ~ml_kind ~for_ sourced_module
 (** Tests whether a set of modules is a singleton. *)
 let has_single_file modules = Option.is_some @@ Modules.With_vlib.as_singleton modules
 
-(* Conservative direction on resolution failure
-   ===========================================
+(* On resolution failure both [has_library_deps_*] helpers below
+   return [true]. Conservative-true keeps [.d]-file rules in place,
+   so the unresolved-library error surfaces as a real compile-rule
+   diagnostic. Conservative-false would short-circuit the [.d]
+   rules and turn that diagnostic into a "No rule found for
+   .X.objs/X.impl.d" infrastructure error. The trade-off is
+   asymmetric: forced choice. *)
 
-   Both [has_library_deps_of_lib] and [has_library_deps_of_resolved]
-   below collapse a [_ Resolve.t] into a plain [bool] for [skip_
-   ocamldep]'s consumption. Unresolved dependencies (e.g. the user
-   declared [(libraries some_missing_lib)]) make the resolve fail.
-   When that happens, both helpers return [true] — "act as if
-   library deps are present".
-
-   This is deliberate, not a default-because-we-must:
-
-   - has-deps=true keeps [.d]-file rules in place. The unresolved-
-     library error then surfaces in the compile rule, where the
-     user gets a useful "library X is not available" diagnostic.
-
-   - has-deps=false would short-circuit the [.d] rules. If anything
-     downstream (notably the cross-library walk in
-     [Compilation_context.build_lib_index]) later tried to read
-     this stanza's [.d], dune would emit a "No rule found for
-     .X.objs/X.impl.d" error, masking the real cause behind an
-     infrastructure-level message.
-
-   Conservative-true at worst runs ocamldep on a stanza whose
-   compilation would have failed anyway; conservative-false risks
-   turning a real dependency error into an obscure "no rule"
-   error. The trade-off is asymmetric, so the choice is forced. *)
-
-(** Canonical "does this library have any library dependencies?"
-    answer for [lib]. The boolean controls whether ocamldep is
-    short-circuited for [lib]'s own cctx (via [skip_ocamldep]
-    below) and, in turn, whether [lib]'s [.d] files are produced.
-    The cross-library walk in [Compilation_context.build_lib_index]
-    consults the same helper to decide whether [lib] should land in
-    [no_ocamldep] — routing both sites through this function is
-    what keeps them in sync. Resolution failures fall back to
-    has-deps=true; see the conservative-direction note above. *)
+(** Canonical [has_library_deps] for [lib]'s own cctx. The cross-
+    library walk in [Compilation_context.build_lib_index] consults
+    the same helper, so the skip decision and the walk's prediction
+    can't drift. *)
 let has_library_deps_of_lib lib ~for_ =
   let open Memo.O in
   let+ resolved = Lib.requires lib ~for_ |> Memo.map ~f:Resolve.peek in
@@ -179,12 +154,11 @@ let has_library_deps_of_lib lib ~for_ =
   | Ok _ | Error _ -> true
 ;;
 
-(** Same answer as [has_library_deps_of_lib], but for cctxes that
-    aren't built from a [Lib.t] — executables, tests, melange emit.
-    Takes the resolved [direct] and [hidden] requires that
-    [Compilation_context.create] has already split per
-    [implicit_transitive_deps] mode. Resolution failures fall back
-    to has-deps=true; see the conservative-direction note above. *)
+(** Same boolean as [has_library_deps_of_lib], for cctxes without a
+    [Lib.t] (executables, tests, melange emit). Takes the resolved
+    [direct] and [hidden] requires already split by
+    [Compilation_context.create] per [implicit_transitive_deps]
+    mode. *)
 let has_library_deps_of_resolved ~direct ~hidden =
   let resolved =
     let open Resolve.Memo.O in
@@ -199,17 +173,12 @@ let has_library_deps_of_resolved ~direct ~hidden =
   Result.value peeked ~default:true
 ;;
 
-(** Tests whether ocamldep can be short-circuited for [modules]: true
-    for single-module stanzas that have no library dependencies. The
-    premise — "no consumer of ocamldep output can benefit" — was
-    valid before #4572; under that PR, cross-library consumers now
-    read a target library's ocamldep output as part of the
-    per-module inter-library dependency filter, so a target library
-    short-circuited here must also be in
-    [Compilation_context.build_lib_index]'s [no_ocamldep] set. Both
-    sides resolve their [has_library_deps] view through the helpers
-    above ([has_library_deps_of_lib] for library cctxes,
-    [has_library_deps_of_resolved] elsewhere). *)
+(** Single-module stanzas with no library deps don't run ocamldep.
+    Under #4572, a library short-circuited here must also appear in
+    [Compilation_context.build_lib_index]'s [no_ocamldep] set or
+    the cross-library walk will read a [.d] dune never produced.
+    Both sides derive their [has_library_deps] via the helpers
+    above. *)
 let skip_ocamldep ~has_library_deps modules =
   has_single_file modules && not has_library_deps
 ;;

@@ -177,16 +177,23 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
       (* Sort for [Lib.closure] memo-key stability. *)
       let direct_libs = List.sort ~compare:Lib.compare (Lib.Map.keys tight @ non_tight) in
       (* Close transitively to catch cross-library [.cmi] reads via
-         transparent aliases that ocamldep doesn't report. *)
+         transparent aliases that ocamldep doesn't report.
+         [Lib.closure] expands link-time deps too; under
+         [(implicit_transitive_deps false)] those reach libs that
+         the compiler cannot see (no entry in [-I] or [-H]). The
+         fold below filters them out via [compile_scope]. *)
       let* all_libs = Resolve.Memo.read (Lib.closure direct_libs ~linking:false ~for_) in
       let+ tight_set = cross_lib_tight_set ~lib_index ~for_ ~initial_refs:referenced in
-      (* Classify [all_libs] into three buckets:
-         - in [tight_modules]: per-module deps on the entries
-           actually referenced.
-         - tight-eligible but not referenced: the walk had full
-           visibility (local, unwrapped) and saw nothing reach the
-           lib; drop it. Link still pulls it in via [requires_link].
-         - not tight-eligible: glob fallback. *)
+      let compile_scope = Lib.Set.of_list libs in
+      (* Classify each lib in [all_libs]:
+         - in [tight_modules]: per-module deps.
+         - tight-eligible but unreferenced: drop. Link still pulls
+           it in via [requires_link].
+         - in [compile_scope] but not tight-eligible: glob (wrapped,
+           external, virtual-impl, or hidden under
+           [Disabled_with_hidden_includes]).
+         - outside [compile_scope]: drop. Link-only transitive dep
+           that the compiler cannot reference. *)
       let tight_modules =
         Lib_file_deps.Lib_index.tight_modules_per_lib
           lib_index
@@ -203,7 +210,9 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
           | None ->
             if Lib_file_deps.Lib_index.is_tight_eligible lib_index lib
             then td, gl
-            else td, lib :: gl)
+            else if Lib.Set.mem compile_scope lib
+            then td, lib :: gl
+            else td, gl)
       in
       let glob_deps = Lib_file_deps.deps_of_entries ~opaque ~cm_kind glob_libs in
       Dep.Set.union tight_deps glob_deps

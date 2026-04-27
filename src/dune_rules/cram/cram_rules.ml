@@ -380,8 +380,11 @@ let cram_tests dir =
   | true ->
     let path = Source_tree.Dir.path dir in
     (* Don't generate cram rules for files inside a directory cram test.
-       A directory ending with ".t" is itself a cram test directory, and its
-       contents (including run.t) are part of that test, not standalone tests. *)
+       A directory ending with ".t" is itself a cram test directory; its
+       contents belong to that test and should not be treated as independent
+       cram tests. Without this guard, run.t inside foo.t/ would be treated
+       as a standalone file test, producing spurious @run and @runtest aliases
+       that run the test without the directory's sandbox environment. *)
     if
       match Path.Source.basename_opt path with
       | None -> false

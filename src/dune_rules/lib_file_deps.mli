@@ -92,6 +92,15 @@ module Lib_index : sig
       not reach the library, so the consumer's compile rule does
       not need a dep on it. *)
   val is_tight_eligible : t -> Lib.t -> bool
+
+  (** [wrapped_libs_referenced idx ~referenced_modules] returns the
+      set of local wrapped libraries whose entry name appears in
+      [referenced_modules]. The cross-library walk cannot see
+      through a wrapped lib's wrapper module — ocamldep reports
+      [Foo] for both [Foo.Bar.x] and [Foo.Baz.x]. Consumers that
+      reach into a wrapped lib must therefore conservatively glob
+      the wrapped lib's entire transitive [Lib.closure]. *)
+  val wrapped_libs_referenced : t -> referenced_modules:Module_name.Set.t -> Lib.Set.t
 end
 
 type path_specification =

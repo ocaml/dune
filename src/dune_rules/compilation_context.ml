@@ -125,29 +125,18 @@ let parameters_main_modules parameters =
         [ "param", Lib.to_dyn param ])
 ;;
 
-(* Build a [Lib_index] from [all_libs] for the per-module inter-library
-   dependency filter.
-
-   For each library, entry module names are collected (for wrapped
-   libraries, the wrapper; for unwrapped, each public module). Hidden
-   libraries are included so that consumers which transitively
-   reference a hidden library's entry module still produce a build
-   dependency on it.
-
-   Local libraries whose ocamldep is short-circuited by
-   [Dep_rules.skip_ocamldep] (unwrapped single-module stanzas without
-   direct lib deps) are collected into [no_ocamldep] so the cross-
-   library walk does not try to read their nonexistent [.d] files. *)
-(* [libs] should be the consumer's [direct_requires] — the libraries
-   whose entry modules can legitimately appear in the consumer's
-   ocamldep output (and, after the cross-library walk extends through
-   them, in cross-library ocamldep outputs that the BFS surfaces).
-   Hidden requires are intentionally excluded: the user has not
-   committed to them as direct dependencies, so the per-module
-   filter does not track them with per-module precision — they
-   fall to glob fallback in [lib_deps_for_module]'s post-walk
-   classification, which is the right behaviour for libs outside
-   the user's commitment surface. *)
+(* Build a [Lib_index] from the consumer's [direct + hidden]
+   requires. Under [(implicit_transitive_deps false)] +
+   [Disabled_with_hidden_includes], hidden libs are visible to the
+   compiler via [-H], so the post-walk classify in
+   [module_compilation] treats them as part of the compile scope.
+   The BFS must therefore be able to walk them and decide
+   tight-vs-drop; without indexing them, an unreached hidden lib
+   falls through to the glob branch and over-invalidates the
+   consumer on any [.cmi] change in its objdir. Local libs
+   short-circuited by [Dep_rules.skip_ocamldep] (single-module + no
+   resolved deps) land in [no_ocamldep] so the cross-library walk
+   doesn't read [.d] files dune never produced. *)
 let build_lib_index ~super_context ~libs ~for_ =
   let open Resolve.Memo.O in
   let+ per_lib =
@@ -310,8 +299,9 @@ let create
   ; lib_index =
       Memo.lazy_ (fun () ->
         let open Resolve.Memo.O in
-        let* libs = direct_requires in
-        build_lib_index ~super_context ~libs ~for_)
+        let* d = direct_requires
+        and* h = hidden_requires in
+        build_lib_index ~super_context ~libs:(d @ h) ~for_)
   ; has_virtual_impl =
       Memo.lazy_ (fun () ->
         let open Resolve.Memo.O in

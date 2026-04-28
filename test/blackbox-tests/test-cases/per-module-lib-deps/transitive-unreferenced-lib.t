@@ -7,12 +7,18 @@ compilation context.
 Today every consumer module declares a glob over each transitively-
 reached library's public-cmi directory, so editing
 [unreferenced_dep.ml] (which no source file references) re-
-invalidates [Main]. The test records the current rebuild count of
-[Main] when [unreferenced_dep.ml] is touched.
+invalidates [Main]. The test records the current rebuild targets
+for [Main] when [unreferenced_dep.ml] is touched.
 
 This test is observational: a tighter dependency tracker that drops
-unreferenced libraries from compile rules' deps would lower the
-count.
+unreferenced libraries from compile rules' deps would shrink the
+recorded target list.
+
+[intermediate_lib] and the [main] executable each include an unused
+dummy module ([intermediate_dummy] / [main_dummy]) so that ocamldep
+runs unconditionally for both stanzas. Single-module stanzas trigger
+a short-circuit in [dep_rules.ml] that skips ocamldep, which would
+mask the per-module dependency filtering being baselined here.
 
   $ cat > dune-project <<EOF
   > (lang dune 3.23)
@@ -26,9 +32,12 @@ count.
   > (library
   >  (name intermediate_lib)
   >  (wrapped false)
-  >  (modules intermediate_module)
+  >  (modules intermediate_module intermediate_dummy)
   >  (libraries dep_lib))
-  > (executable (name main) (modules main) (libraries intermediate_lib))
+  > (executable
+  >  (name main)
+  >  (modules main main_dummy)
+  >  (libraries intermediate_lib))
   > EOF
 
   $ cat > unreferenced_dep.ml <<EOF
@@ -40,8 +49,14 @@ count.
   $ cat > intermediate_module.ml <<EOF
   > let x = 42
   > EOF
+  $ cat > intermediate_dummy.ml <<EOF
+  > let _ = ()
+  > EOF
   $ cat > main.ml <<EOF
   > let _ = Intermediate_module.x
+  > EOF
+  $ cat > main_dummy.ml <<EOF
+  > let _ = ()
   > EOF
 
   $ dune build @check
@@ -66,5 +81,18 @@ untouched. Today [Main] is rebuilt:
 
   $ echo > unreferenced_dep.ml
   $ dune build @check
-  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("dune__exe__Main"))] | length'
-  2
+  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("dune__exe__Main\\."))]'
+  [
+    {
+      "target_files": [
+        "_build/default/.main.eobjs/byte/dune__exe__Main.cmi",
+        "_build/default/.main.eobjs/byte/dune__exe__Main.cmti"
+      ]
+    },
+    {
+      "target_files": [
+        "_build/default/.main.eobjs/byte/dune__exe__Main.cmo",
+        "_build/default/.main.eobjs/byte/dune__exe__Main.cmt"
+      ]
+    }
+  ]

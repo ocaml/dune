@@ -61,7 +61,7 @@ filter can flip it to 0.
   > let _ = Intermediate_module.x
   > EOF
 
-  $ dune build ./main.exe
+  $ dune build @check
 
 Empty [link_only_module.ml] so its [.cmi] loses the [val x : int]
 binding. The cctx-wide glob over [link_only_lib]'s objdir fires

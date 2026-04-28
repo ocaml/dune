@@ -260,10 +260,10 @@ let is_descendant t ~of_ =
 ;;
 
 let resolve_directory_symlinks_in root =
-  let follow_symlink_exn name =
-    match Fpath.follow_symlink name with
-    | Ok resolved -> Some resolved
-    | Error (Unix_error _) -> None
+  let on_symlink ~dir:raw_dir name () =
+    let relative = Path.relative (Path.relative root raw_dir) name in
+    let full_name = Path.to_string relative in
+    match Fpath.follow_symlink full_name with
     | Error Not_a_symlink ->
       Code_error.raise
         "resolve_directory_symlinks_in: not a symlink"
@@ -272,108 +272,70 @@ let resolve_directory_symlinks_in root =
       User_error.raise
         [ Pp.textf "Unable to resolve symlink %s: too many levels of symbolic links" name
         ]
+    | Error (Unix_error _) ->
+      (* Delete any broken symlinks from the unpacked archive. Dune can't
+         handle broken symlinks in the _build directory, but some opam
+         package contain broken symlinks. The logic here is applied to the
+         contents of package source archives but not to packages whose source
+         is in a local directory (e.g. when a package is pinned from the
+         filesystem). Broken symlinks are excluded while copying files from
+         local directories into the build directory, and the logic for
+         excluding them lives in [Pkg_rules.source_rules]. *)
+      Fpath.unlink_no_err full_name;
+      Log.info
+        "Deleted broken symlink from fetched archive"
+        [ "full_name", Dyn.string full_name ];
+      (), None
+    | Ok resolved ->
+      (* [resolved] is a relative build path but it might contain
+         indirections, something like _build/foo/../bar or _build/../outside.
+         [Path.of_string] canonicalizes it, removing those indirections. *)
+      let resolved = Path.of_string resolved in
+      if is_descendant relative ~of_:resolved
+      then
+        User_error.raise
+          [ Pp.textf "Unable to resolve symlink %s, it is part of a cycle." full_name ];
+      if not (is_descendant resolved ~of_:root)
+      then
+        User_error.raise
+          [ Pp.textf
+              "Unable to resolve symlink %s: its target %s is outside the source \
+               directory"
+              full_name
+              (Path.to_string resolved)
+          ];
+      (match Unix.stat (Path.to_string resolved) with
+       | { Unix.st_kind = S_DIR; _ } ->
+         Fpath.unlink_exn full_name;
+         let _ : Fpath.mkdir_p_result = Fpath.mkdir_p full_name in
+         (match Readdir.read_directory_with_kinds (Path.to_string resolved) with
+          | Error e -> Unix_error.Detailed.raise e
+          | Ok children ->
+            List.iter children ~f:(fun (child_name, child_kind) ->
+              let src = Path.relative resolved child_name in
+              let dst = Path.relative relative child_name in
+              match (child_kind : Unix.file_kind) with
+              | S_REG -> Io.portable_hardlink ~src ~dst
+              (* TODO-ambre: add comment explaining that these symlinks will get resolved one step down *)
+              | S_DIR -> Io.portable_symlink ~src ~dst
+              | S_LNK ->
+                Fpath.follow_symlink (Path.to_string src)
+                |> Result.iter ~f:(fun linked_path ->
+                  let src = Path.of_string linked_path in
+                  Io.portable_symlink ~src ~dst)
+              | _ -> ());
+            (), Some Unix.S_DIR)
+       | _ ->
+         (* We do not care about symlinks pointing to anything but directories. *)
+         (), None)
   in
-  let cycle_error name =
-    User_error.raise
-      [ Pp.textf "Unable to resolve symlink %s, it is part of a cycle." name ]
-  in
-  let rec resolve_rec dir seen =
-    match Readdir.read_directory_with_kinds (Path.to_string dir) with
-    | Error e -> Unix_error.Detailed.raise e
-    | Ok entries ->
-      let sorted_entries =
-        List.sort
-          ~compare:(fun (name1, _k1) (name2, _k2) -> String.compare name1 name2)
-          entries
-      in
-      List.fold_left sorted_entries ~init:seen ~f:(fun seen (name, kind) ->
-        let relative = Path.relative dir name in
-        let full_name = Path.to_string relative in
-        match (kind : Unix.file_kind) with
-        | S_DIR -> resolve_rec relative seen
-        | S_LNK ->
-          if String.Set.mem seen full_name then cycle_error full_name;
-          let seen = String.Set.add seen full_name in
-          (match follow_symlink_exn full_name with
-           | None ->
-             (* Delete any broken symlinks from the unpacked archive. Dune can't
-                handle broken symlinks in the _build directory, but some opam
-                package contain broken symlinks. The logic here is applied to the
-                contents of package source archives but not to packages whose source
-                is in a local directory (e.g. when a package is pinned from the
-                filesystem). Broken symlinks are excluded while copying files from
-                local directories into the build directory, and the logic for
-                excluding them lives in [Pkg_rules.source_rules]. *)
-             Fpath.unlink_no_err full_name;
-             Log.info
-               "Deleted broken symlink from fetched archive"
-               [ "full_name", Dyn.string full_name ];
-             seen
-           | Some raw_resolved ->
-             (* [raw_resolved] is a relative build path but it might contain indirections,
-                something like _build/foo/../bar
-                or _build/../outside *)
-             let canon_resolved = Path.of_string raw_resolved in
-             if is_descendant relative ~of_:canon_resolved then cycle_error full_name;
-             if not (is_descendant canon_resolved ~of_:root)
-             then
-               User_error.raise
-                 [ Pp.textf
-                     "Unable to resolve symlink %s: its target %s is outside the source \
-                      directory"
-                     full_name
-                     (Path.to_string canon_resolved)
-                 ];
-             (match Unix.stat raw_resolved with
-              | { Unix.st_kind = S_DIR; _ } ->
-                Fpath.unlink_exn full_name;
-                (match Fpath.mkdir_p full_name with
-                 | `Created -> ()
-                 | `Already_exists ->
-                   User_error.raise
-                     [ Pp.textf
-                         "Unable to resolve symlink %s: a directory with the same name \
-                          already exists."
-                         full_name
-                     ]);
-                (match
-                   Readdir.read_directory_with_kinds (Path.to_string canon_resolved)
-                 with
-                 | Error e -> Unix_error.Detailed.raise e
-                 | Ok children ->
-                   let symlinks_in_children =
-                     List.fold_left
-                       children
-                       ~init:false
-                       ~f:(fun symlinks_in_children (child_name, child_kind) ->
-                         let child_path = Filename.concat raw_resolved child_name in
-                         let src = Path.of_string child_path in
-                         let dst =
-                           Path.of_string (Filename.concat full_name child_name)
-                         in
-                         match (child_kind : Unix.file_kind) with
-                         | S_REG ->
-                           Io.portable_hardlink ~src ~dst;
-                           symlinks_in_children
-                         | S_DIR ->
-                           Io.portable_symlink ~src ~dst;
-                           true
-                         | S_LNK ->
-                           follow_symlink_exn child_path
-                           |> Option.iter ~f:(fun linked_path ->
-                             let src = Path.of_string linked_path in
-                             Io.portable_symlink ~src ~dst);
-                           true
-                         | _ -> symlinks_in_children)
-                   in
-                   if symlinks_in_children then resolve_rec relative seen else seen)
-              | _ ->
-                (* We do not care about symlinks pointing to anything but directories. *)
-                seen))
-        | _ -> seen)
-  in
-  let _symlinks_seen : String.Set.t = resolve_rec root String.Set.empty in
-  ()
+  Fpath.traverse
+    ~dir:(Path.to_string root)
+    ~init:()
+    ~on_symlink:(`Call on_symlink)
+    ~on_other:`Ignore
+    ~sort_entries:true
+    ()
 ;;
 
 let fetch ~unpack ~checksum ~target ~url:(url_loc, url) =

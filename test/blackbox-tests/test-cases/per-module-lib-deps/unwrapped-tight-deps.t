@@ -17,7 +17,6 @@ tighten this, at which point editing [Unread_dep_a] or
 list becomes empty.
 
 See: https://github.com/ocaml/dune/issues/4572
-See: https://github.com/ocaml/dune/pull/14116#issuecomment-4301275263
 
   $ cat > dune-project <<EOF
   > (lang dune 3.23)

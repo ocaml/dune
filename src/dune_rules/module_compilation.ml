@@ -283,6 +283,23 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
          [implicit_transitive_deps] modes), so [Lib.closure]'s result
          on a subset of [libs] stays within it. *)
       let* all_libs = Resolve.Memo.read (Lib.closure direct_libs ~linking:false ~for_) in
+      (* Conservative wrapped-lib soundness recovery. Any wrapped
+         local lib whose entry name appears in [referenced] is a
+         hole the cross-library walk cannot see through (see
+         [wrapped_libs_referenced] for why). The consumer may reach
+         arbitrary modules of the wrapped lib's transitive closure
+         through aliases; glob those libs unconditionally so any
+         [.cmi] change in them invalidates the consumer. *)
+      let wrapped_referenced =
+        Lib_file_deps.Lib_index.wrapped_libs_referenced
+          lib_index
+          ~referenced_modules:referenced
+      in
+      let* must_glob_libs =
+        Resolve.Memo.read
+          (Lib.closure (Lib.Set.to_list wrapped_referenced) ~linking:false ~for_)
+      in
+      let must_glob_set = Lib.Set.of_list must_glob_libs in
       let+ tight_set =
         cross_lib_tight_set ~sandbox ~sctx ~lib_index ~initial_refs:referenced
       in
@@ -312,16 +329,23 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
       in
       let tight_deps, glob_libs =
         List.fold_left all_libs ~init:(Dep.Set.empty, []) ~f:(fun (td, gl) lib ->
-          match Lib.Map.find tight_modules lib with
-          | Some modules ->
-            ( Dep.Set.union
-                td
-                (Lib_file_deps.deps_of_entry_modules ~opaque ~cm_kind lib modules)
-            , gl )
-          | None ->
-            if Lib_file_deps.Lib_index.is_tight_eligible lib_index lib
-            then td, gl
-            else td, lib :: gl)
+          (* [must_glob_set] precedes per-module precision: a lib
+             reachable from a wrapped lib's closure may be touched
+             through aliases the cross-library walk cannot see, so
+             specific-file deps would under-invalidate. *)
+          if Lib.Set.mem must_glob_set lib
+          then td, lib :: gl
+          else (
+            match Lib.Map.find tight_modules lib with
+            | Some modules ->
+              ( Dep.Set.union
+                  td
+                  (Lib_file_deps.deps_of_entry_modules ~opaque ~cm_kind lib modules)
+              , gl )
+            | None ->
+              if Lib_file_deps.Lib_index.is_tight_eligible lib_index lib
+              then td, gl
+              else td, lib :: gl))
       in
       let glob_deps = Lib_file_deps.deps_of_entries ~opaque ~cm_kind glob_libs in
       (), Dep.Set.union tight_deps glob_deps

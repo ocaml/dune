@@ -234,6 +234,21 @@ module Lib_index = struct
   ;;
 
   let is_tight_eligible idx lib = Lib.Set.mem idx.tight_eligible lib
+
+  (* A local lib lands in [by_module_name] with [m_opt = None]
+     exactly when [build_lib_index] saw [unwrapped = false] for it
+     (see [compilation_context.ml]). External libs also carry
+     [m_opt = None] but [Lib.is_local] excludes them. *)
+  let wrapped_libs_referenced idx ~referenced_modules =
+    Module_name.Set.fold referenced_modules ~init:Lib.Set.empty ~f:(fun name acc ->
+      match Module_name.Map.find idx.by_module_name name with
+      | None -> acc
+      | Some entries ->
+        List.fold_left entries ~init:acc ~f:(fun acc (lib, m_opt) ->
+          match m_opt with
+          | None when Lib.is_local lib -> Lib.Set.add acc lib
+          | _ -> acc))
+  ;;
 end
 
 type path_specification =

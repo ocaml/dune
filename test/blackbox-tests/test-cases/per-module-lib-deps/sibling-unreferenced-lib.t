@@ -72,5 +72,13 @@ rebuild targets observed in the trace:
   > let y = "hello"
   > EOF
   $ dune build @check
-  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("spurious_rebuild"))] | length'
-  1
+  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("spurious_rebuild"))]'
+  [
+    {
+      "target_files": [
+        "_build/default/.consumer_lib.objs/byte/spurious_rebuild.cmi",
+        "_build/default/.consumer_lib.objs/byte/spurious_rebuild.cmo",
+        "_build/default/.consumer_lib.objs/byte/spurious_rebuild.cmt"
+      ]
+    }
+  ]

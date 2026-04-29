@@ -29,8 +29,6 @@ let all_libs cctx =
   d @ h
 ;;
 
-(* Map each element of [xs] through [f] and union the resulting
-   [Module_name.Set.t]s. Monomorphic on [Module_name.Set] by design. *)
 let union_module_name_sets_mapped xs ~f =
   Action_builder.List.map xs ~f
   |> Action_builder.map
@@ -263,11 +261,6 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
       let* flags = Ocaml_flags.get (Compilation_context.flags cctx) mode in
       let open_modules = Ocaml_flags.extract_open_module_names flags in
       let referenced = Module_name.Set.union all_raw open_modules in
-      (* First use of [filter_libs_with_modules]: identify the libs
-         the consumer directly names (via its own ocamldep output).
-         Used only to seed [Lib.closure]'s input. The second use,
-         after the cross-library walk extends the name set, produces
-         the per-lib module lists used in the fold below. *)
       let { Lib_file_deps.Lib_index.tight; non_tight } =
         Lib_file_deps.Lib_index.filter_libs_with_modules
           lib_index
@@ -351,10 +344,6 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
       (), Dep.Set.union tight_deps glob_deps
 ;;
 
-(* Convenience wrapper for the two call sites ([build_cm] and
-   [ocamlc_i]) that wire the per-module filter into a compile rule.
-   Both take [cm_kind], [ml_kind], [mode], and the module to be
-   compiled; the rest is derived from [cctx]. *)
 let lib_cm_deps ~cctx ~cm_kind ~ml_kind ~mode m =
   let obj_dir = Compilation_context.obj_dir cctx in
   let opaque = Compilation_context.opaque cctx in

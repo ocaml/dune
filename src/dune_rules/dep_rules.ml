@@ -131,7 +131,7 @@ let deps_of_vlib_module ~obj_dir ~vimpl ~dir ~sctx ~ml_kind ~for_ sourced_module
     Ocamldep.read_deps_of ~obj_dir:vlib_obj_dir ~modules ~ml_kind ~for_ m
 ;;
 
-(** Tests whether a set of modules is a singleton. *)
+(** Tests whether a set of modules is a singleton *)
 let has_single_file modules = Option.is_some @@ Modules.With_vlib.as_singleton modules
 
 (** Short-circuit ocamldep for single-module stanzas with no library

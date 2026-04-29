@@ -73,5 +73,13 @@ Edit [dep_lib]'s interface. [consumer] reaches [dep_lib]'s
   > let y = 42
   > EOF
   $ dune build @check
-  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("consumer"))] | length'
-  1
+  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("consumer"))]'
+  [
+    {
+      "target_files": [
+        "_build/default/.consumer_lib.objs/byte/consumer.cmi",
+        "_build/default/.consumer_lib.objs/byte/consumer.cmo",
+        "_build/default/.consumer_lib.objs/byte/consumer.cmt"
+      ]
+    }
+  ]

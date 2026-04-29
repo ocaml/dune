@@ -259,6 +259,8 @@ let is_descendant t ~of_ =
   | _ -> Path.is_descendant t ~of_
 ;;
 
+(* Dune can't handle symbolic links pointing to directories, so we replace them
+   with regular directories containing the same contents. *)
 let resolve_directory_symlinks_in root =
   let on_symlink ~dir:raw_dir name () =
     let relative = Path.relative (Path.relative root raw_dir) name in
@@ -316,7 +318,8 @@ let resolve_directory_symlinks_in root =
               let dst = Path.relative relative child_name in
               match (child_kind : Unix.file_kind) with
               | S_REG -> Io.portable_hardlink ~src ~dst
-              (* TODO-ambre: add comment explaining that these symlinks will get resolved one step down *)
+              (* To avoid recursing here, we create symlinks will get resolved
+                 one step down in [traverse]. *)
               | S_DIR -> Io.portable_symlink ~src ~dst
               | S_LNK ->
                 Fpath.follow_symlink (Path.to_string src)
@@ -552,7 +555,7 @@ let%test_module "resolve symlink tests" =
       with_temp_dir "$DIR" (fun dir ->
         make_file dir "keep.txt";
         make_symlink dir ~src:"nonexistent" ~dst:"broken_link";
-        (* Todo-ambre: read the log for the deletion message *)
+        (* We could check the log here to check the message. *)
         resolve_directory_symlinks_in dir;
         dump_tree dir;
         [%expect.output]);

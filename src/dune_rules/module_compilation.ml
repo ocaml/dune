@@ -266,8 +266,7 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
           lib_index
           ~referenced_modules:referenced
       in
-      (* Sort to preserve the canonical [Lib.closure] memo key (see
-         commit 9359b37e6 on the base branch). *)
+      (* [Lib.closure]'s memo key is order-sensitive on the input list. *)
       let direct_libs = List.sort ~compare:Lib.compare (Lib.Map.keys tight @ non_tight) in
       (* Transitively close the filtered libraries. Transparent module
          aliases can create cross-library .cmi reads that ocamldep

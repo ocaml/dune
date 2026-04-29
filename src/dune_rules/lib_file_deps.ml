@@ -105,10 +105,7 @@ let deps_of_entries ~opaque ~cm_kind libs =
 (* [cm_public_file] gives the cmi path consumers read via their [-I]
    include path, which for libraries with a dedicated public cmi dir
    ([private_modules]) differs from the internal compilation output.
-   Using it ensures the dep triggers the produce-public-cmi rule.
-
-   Only called for local unwrapped libraries: [can_filter] rejects
-   melange cm_kinds, so this function handles ocaml only. *)
+   Using it ensures the dep triggers the produce-public-cmi rule. *)
 let deps_of_entry_modules ~opaque ~(cm_kind : Lib_mode.Cm_kind.t) lib modules =
   let obj_dir = Lib.info lib |> Lib_info.obj_dir in
   let cmi_kind = Lib_mode.Cm_kind.cmi cm_kind in
@@ -203,10 +200,7 @@ module Lib_index = struct
     { tight; non_tight = Lib.Set.to_list non_tight }
   ;;
 
-  (* Like [filter_libs_with_modules] but only returns the tight
-     part. Saves the [non_tight] accumulator at call sites that
-     only consume the tight map (e.g. the post-BFS classify in
-     [lib_deps_for_module]). *)
+  (* Like [filter_libs_with_modules] but only returns the tight part. *)
   let tight_modules_per_lib idx ~referenced_modules =
     Module_name.Set.fold referenced_modules ~init:Lib.Map.empty ~f:(fun name acc ->
       match Module_name.Map.find idx.by_module_name name with
@@ -236,9 +230,9 @@ module Lib_index = struct
   let is_tight_eligible idx lib = Lib.Set.mem idx.tight_eligible lib
 
   (* A local lib lands in [by_module_name] with [m_opt = None]
-     exactly when [build_lib_index] saw [unwrapped = false] for it
-     (see [compilation_context.ml]). External libs also carry
-     [m_opt = None] but [Lib.is_local] excludes them. *)
+     exactly when its index entry was built with [unwrapped = false].
+     External libs also carry [m_opt = None] but [Lib.is_local]
+     excludes them. *)
   let wrapped_libs_referenced idx ~referenced_modules =
     Module_name.Set.fold referenced_modules ~init:Lib.Set.empty ~f:(fun name acc ->
       match Module_name.Map.find idx.by_module_name name with

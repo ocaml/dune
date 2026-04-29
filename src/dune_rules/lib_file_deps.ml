@@ -16,26 +16,7 @@ open Memo.O
    cannot emit specific deps on [Foo__Bar.cmi] vs [Foo__Baz.cmi].
    Any breadth-first walk over the wrapper's own ocamldep output
    reaches every internal the wrapper exposes, which is equivalent
-   to the glob for invalidation.
-
-   Possible follow-on work:
-
-   - Qualified-path extractor. Walk consumer source with
-     [compiler-libs]' [Parse.implementation], collect [Longident.t]
-     references as [Module_name.Path.t] values in a companion
-     artifact. Match qualified paths against wrapped-lib internals
-     for per-consumer precision. Estimated ~500-1000 lines across a
-     new rule, a new file format, and preprocessing integration;
-     correct handling of [let open Foo in Bar.x] (opens that bring
-     sub-modules into unqualified scope) needs lexical-scope
-     tracking and roughly doubles the low-end estimate.
-
-   - Post-compile cmi-imports refinement. [consumer.cmi] records
-     exactly the cmis its compilation imported; [Ocamlobjinfo] can
-     read them. Using this as the source of truth requires breaking
-     dune's invariant that rule deps are fixed before the rule
-     runs — a two-phase build or a pessimistic-then-refine scheme.
-     Not natively supported by dune's rule model today. *)
+   to the glob for invalidation. *)
 
 module Group = struct
   type ocaml =

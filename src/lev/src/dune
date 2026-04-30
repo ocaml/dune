@@ -7,18 +7,14 @@
   (= %{ocaml-config:ccomp_type} "msvc"))
  (target c_flags.sexp)
  (action
-  (write-file
-   %{target}
-   "(\"/wd4068\" \"/wd4100\" \"/wd4127\" \"/wd4201\" \"/wd4244\")")))
+  (write-file %{target} "(\"/W0\")")))
 
 (rule
  (enabled_if
   (<> %{ocaml-config:ccomp_type} "msvc"))
  (target c_flags.sexp)
  (action
-  (write-file
-   %{target}
-   "(-Wno-unknown-pragmas -Wno-comment -Wno-unused-value -Wno-parentheses -Wno-unused-result)")))
+  (write-file %{target} "(-w)")))
 
 (foreign_library
  (archive_name ev)

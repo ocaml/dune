@@ -16,7 +16,7 @@
 
 (cram
  (deps %{bin:refmt})
- (applies_to reason-lint-promotion))
+ (applies_to preprocess reason-lint-promotion))
 
 (cram
  (deps

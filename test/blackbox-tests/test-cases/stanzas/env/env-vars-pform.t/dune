@@ -1,0 +1,8 @@
+(env
+ (_
+  (env-vars
+   (MY_BUILD_PROFILE %{profile}))))
+
+(rule
+ (alias default)
+ (action (echo "MY_BUILD_PROFILE=%{env:MY_BUILD_PROFILE=UNSET}")))

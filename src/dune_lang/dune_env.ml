@@ -72,7 +72,7 @@ type config =
   { flags : Ocaml_flags.Spec.t
   ; foreign_flags : Ordered_set_lang.Unexpanded.t Foreign_language.Dict.t
   ; link_flags : Link_flags.Spec.t
-  ; env_vars : Env.t
+  ; env_vars : (string * String_with_vars.t) list
   ; binaries : File_binding.Unexpanded.t list option
   ; inline_tests : Inline_tests.t option
   ; menhir : Ordered_set_lang.Unexpanded.t Menhir_env.t
@@ -121,7 +121,7 @@ let equal_config
        foreign_flags
        t.foreign_flags
   && Link_flags.Spec.equal link_flags t.link_flags
-  && Env.equal env_vars t.env_vars
+  && List.equal (Tuple.T2.equal String.equal String_with_vars.equal) env_vars t.env_vars
   && Option.equal (List.equal File_binding.Unexpanded.equal) binaries t.binaries
   && Option.equal Inline_tests.equal inline_tests t.inline_tests
   && Menhir_env.equal menhir t.menhir
@@ -143,7 +143,7 @@ let empty_config =
   { flags = Ocaml_flags.Spec.standard
   ; foreign_flags = Foreign_language.Dict.make_both Ordered_set_lang.Unexpanded.standard
   ; link_flags = Link_flags.Spec.standard
-  ; env_vars = Env.empty
+  ; env_vars = []
   ; binaries = None
   ; inline_tests = None
   ; menhir = Menhir_env.empty
@@ -203,14 +203,15 @@ let inline_tests_field =
 let env_vars_field =
   field
     "env-vars"
-    ~default:Env.empty
+    ~default:[]
     (Syntax.since Stanza.syntax (1, 5)
-     >>> located (repeat (pair string string))
+     >>> located (repeat (pair string String_with_vars.decode))
      >>| fun (loc, pairs) ->
-     match Env.Map.of_list pairs with
-     | Ok vars -> Env.extend Env.empty ~vars
-     | Error (k, _, _) ->
-       User_error.raise ~loc [ Pp.textf "Variable %s is specified several times" k ])
+     (match Env.Map.of_list (List.map pairs ~f:(fun (k, _) -> k, ())) with
+      | Ok _ -> ()
+      | Error (k, _, _) ->
+        User_error.raise ~loc [ Pp.textf "Variable %s is specified several times" k ]);
+     pairs)
 ;;
 
 let odoc_field =

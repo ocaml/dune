@@ -40,8 +40,13 @@ let make
   let config_binaries = Option.value config.binaries ~default:[] in
   let external_env =
     inherited ~field:external_env ~root:default_env (fun env ->
+      let* vars =
+        Memo.parallel_map config.env_vars ~f:(fun (key, value) ->
+          let+ v = expand_str_lazy expander value in
+          key, v)
+      in
       let env =
-        let env = Env.extend_env env config.env_vars in
+        let env = Env.extend env ~vars:(Env.Map.of_list_exn vars) in
         match config_binaries with
         | [] -> env
         | _ :: _ ->

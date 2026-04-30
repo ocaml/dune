@@ -56,12 +56,27 @@ module Env_nodes = struct
   let extra_env { context; workspace } profile =
     let make env =
       Option.value
-        ~default:Env.empty
+        ~default:[]
         (let open Option.O in
          let+ (env : Dune_env.config) = env >>= Dune_env.find_opt ~profile in
          env.env_vars)
     in
-    Env.extend_env (make context) (make workspace)
+    let env_of_list vars =
+      let pairs =
+        List.map vars ~f:(fun (key, sw) ->
+          match String_with_vars.text_only sw with
+          | Some v -> key, v
+          | None ->
+            User_error.raise
+              ~loc:(String_with_vars.loc sw)
+              [ Pp.text
+                  "Variable expansion is not supported for (env-vars) in workspace and \
+                   context stanzas"
+              ])
+      in
+      Env.extend Env.empty ~vars:(Env.Map.of_list_exn pairs)
+    in
+    Env.extend_env (env_of_list (make context)) (env_of_list (make workspace))
   ;;
 end
 

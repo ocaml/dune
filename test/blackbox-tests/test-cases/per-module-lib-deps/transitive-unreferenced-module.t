@@ -1,18 +1,12 @@
-A consumer reaches a transitive dep library through one module
-of an intermediate library, never naming a sibling module of
-the transitive lib in source. Today the consumer rebuilds when
-any module of the transitive lib changes, even unreferenced
-ones.
+A consumer transitively depends upon a library through one module of an
+intermediate library, never naming a sibling module of the transitive lib in
+source. The current but undesirable behaviour is that the consumer rebuilds
+when any module of the transitively depended upon library changes, even
+unreferenced ones.
 
-Setup. [dep_lib] is unwrapped with two modules: [reached_module]
-and [unreached_module]; nothing references [unreached_module]
-from outside [dep_lib]. [intermediate_lib] depends on [dep_lib]
-and references only [Reached_module] from it. [main] depends on
-[intermediate_lib] and references only [Intermediate_module];
-[main]'s source never names [unreached_module].
-
-This test records [main]'s current rebuild list so a future
-per-module filter can flip it to empty.
+[intermediate_lib] and [main] each include an unused dummy module so neither
+stanza is single-module — single-module stanzas take a fast path that would
+mask the behaviour being baselined here.
 
   $ cat > dune-project <<EOF
   > (lang dune 3.23)
@@ -20,8 +14,8 @@ per-module filter can flip it to empty.
 
   $ cat > dune <<EOF
   > (library (name dep_lib) (wrapped false) (modules reached_module unreached_module))
-  > (library (name intermediate_lib) (wrapped false) (modules intermediate_module) (libraries dep_lib))
-  > (executable (name main) (modules main) (libraries intermediate_lib))
+  > (library (name intermediate_lib) (wrapped false) (modules intermediate_module intermediate_dummy) (libraries dep_lib))
+  > (executable (name main) (modules main main_dummy) (libraries intermediate_lib))
   > EOF
 
   $ cat > reached_module.ml <<EOF
@@ -39,15 +33,20 @@ per-module filter can flip it to empty.
   $ cat > intermediate_module.ml <<EOF
   > let v = Reached_module.v
   > EOF
+  $ cat > intermediate_dummy.ml <<EOF
+  > let _ = ()
+  > EOF
   $ cat > main.ml <<EOF
   > let _ = Intermediate_module.v
+  > EOF
+  $ cat > main_dummy.ml <<EOF
+  > let _ = ()
   > EOF
 
   $ dune build ./main.exe
 
-Edit [unreached_module] (both [.mli] and [.ml]) — a module no
-source in this test references — and record the rebuild list for
-[main]:
+Edit [unreached_module] (both [.mli] and [.ml]) — a module no source in this
+test references — and record the rebuild list for [main]:
 
   $ cat > unreached_module.mli <<EOF
   > val v : int
@@ -58,7 +57,7 @@ source in this test references — and record the rebuild list for
   > let extra = 99
   > EOF
   $ dune build ./main.exe
-  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("dune__exe__Main"))]'
+  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("dune__exe__Main\\."))]'
   [
     {
       "target_files": [

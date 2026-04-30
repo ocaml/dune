@@ -204,17 +204,12 @@ let build_cm
   let ctx = Super_context.context sctx in
   let mode = Lib_mode.of_cm_kind cm_kind in
   let sandbox =
-    let default =
-      match mode with
-      | Melange -> Sandbox_config.needs_sandboxing
-      | Ocaml _ -> Compilation_context.sandbox cctx
-    in
     match Module.kind m with
     | Root ->
       (* This is need to guarantee that no local modules shadow the modules
          referenced by the root module *)
       Sandbox_config.needs_sandboxing
-    | _ -> default
+    | _ -> Compilation_context.sandbox cctx
   in
   let ocaml = Compilation_context.ocaml cctx in
   let* compiler =

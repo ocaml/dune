@@ -33,6 +33,11 @@ let of_mode_set (modes : Lib_mode.Map.Set.t) =
   | false, false, false -> { modes = []; for_merlin = Ocaml }
 ;;
 
+let default_sandbox = function
+  | Ocaml -> Sandbox_config.no_special_requirements
+  | Melange -> Sandbox_config.needs_sandboxing
+;;
+
 module By_mode = struct
   type nonrec 'a t =
     { ocaml : 'a

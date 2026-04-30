@@ -106,8 +106,17 @@ let dep_on_alias_rec_multi_contexts ~dir:src_dir ~name ~contexts =
   | true -> Action_builder.return ()
   | false ->
     let* load_dir =
+      let selected = !Dune_engine.Clflags.selected_context in
+      let hint_contexts =
+        match List.filter contexts ~f:(Context_name.equal selected) with
+        | [] ->
+          (match contexts with
+           | [] -> []
+           | ctx :: _ -> [ ctx ])
+        | ctxs -> ctxs
+      in
       Action_builder.all
-      @@ List.map contexts ~f:(fun ctx ->
+      @@ List.map hint_contexts ~f:(fun ctx ->
         let dir =
           Source_tree.Dir.path dir
           |> Path.Build.append_source (Context_name.build_dir ctx)

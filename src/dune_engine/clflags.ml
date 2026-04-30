@@ -32,3 +32,4 @@ let display = ref Display.Quiet
 let can_go_in_shared_cache_default = ref false
 let diff_command = ref None
 let wait_for_filesystem_clock = ref false
+let selected_context = ref Context_name.default

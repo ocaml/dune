@@ -44,3 +44,6 @@ val diff_command : string option ref
 (** Wait for the filesystem clock to advance rather than dropping cached digest
     entries *)
 val wait_for_filesystem_clock : bool ref
+
+(** The build context selected by the user on the command line *)
+val selected_context : Context_name.t ref

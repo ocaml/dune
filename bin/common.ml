@@ -634,6 +634,7 @@ module Builder = struct
   let default_root_is_cwd t = t.default_root_is_cwd
   let set_default_root_is_cwd t x = { t with default_root_is_cwd = x }
   let disable_log_file t = { t with trace_file = None }
+  let promote t = t.promote
   let set_promote t v = { t with promote = Some v }
   let default_target t = t.default_target
 

@@ -90,7 +90,21 @@ let create ~from ~default_is_cwd ~specified_by_user () =
     | None ->
       let cwd = { Candidate.kind = Cwd; dir = from; to_cwd = [] } in
       if Execution_env.inside_dune
-      then Some cwd
+      then (
+        (* When running inside dune (e.g. in a sandboxed action), still
+           perform root discovery, but do not allow it to escape beyond the
+           starting directory. This prevents a nested dune process from
+           finding the outer workspace's root. If no root file is found at
+           the starting directory, fall back to using the starting directory
+           itself as the root (preserving the original behavior). *)
+        let abs_from =
+          if Filename.is_relative from
+          then Filename.concat Fpath.initial_cwd from
+          else from
+        in
+        match find from with
+        | Some { Candidate.dir; _ } as candidate when dir = abs_from -> candidate
+        | _ -> Some cwd)
       else (
         match find from with
         | Some s -> Some s

@@ -395,7 +395,14 @@ let for_module_generated_at_link_time cctx ~requires ~module_ =
   ; requires_link = Memo.lazy_ (fun () -> requires)
   ; requires_compile = requires
   ; includes
-  ; lib_index = Memo.lazy_ (fun () -> Resolve.Memo.return Lib_file_deps.Lib_index.empty)
+  ; lib_index =
+      Memo.lazy_ (fun () ->
+        (* Unreachable: synthesised modules aren't in any [Dep_graph],
+           so [lib_deps_for_module] takes its non-filter fallback. *)
+        Code_error.raise
+          "Compilation_context.lib_index forced for a module synthesised at link time; \
+           this should be unreachable."
+          [])
   ; modules
   }
 ;;

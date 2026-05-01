@@ -90,13 +90,26 @@ let deps_of_entry_modules ~opaque ~(cm_kind : Lib_mode.Cm_kind.t) lib modules =
     let acc =
       match Obj_dir.Module.cm_public_file obj_dir m ~kind:cmi_kind with
       | Some path -> Dep.Set.add acc (Dep.file path)
-      | None -> acc
+      | None ->
+        (* Unreachable: [tight_modules] contains only public modules
+           (consumers can't reach private), so [cm_public_file] resolves. *)
+        Code_error.raise
+          "deps_of_entry_modules: [cm_public_file] returned [None] for cmi of a module \
+           in tight_modules"
+          [ "module", Module.to_dyn m; "lib", Lib.to_dyn lib ]
     in
     if want_cmx && Module.has m ~ml_kind:Impl
     then (
       match Obj_dir.Module.cm_public_file obj_dir m ~kind:(Ocaml Cmx) with
       | Some path -> Dep.Set.add acc (Dep.file path)
-      | None -> acc)
+      | None ->
+        (* Unreachable. [cm_public_file ~kind:(Ocaml Cmx)] returns
+           [None] only when [not has_impl]. The enclosing [if]
+           guarantees [Module.has m ~ml_kind:Impl] (= [has_impl]). *)
+        Code_error.raise
+          "deps_of_entry_modules: [cm_public_file] returned [None] for cmx despite \
+           [Module.has m ~ml_kind:Impl] holding"
+          [ "module", Module.to_dyn m ])
     else acc)
 ;;
 

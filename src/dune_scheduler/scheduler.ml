@@ -406,9 +406,13 @@ module Run = struct
     run_id
   ;;
 
-  let emit_build_start ~run_id ~restart ~start =
+  let emit_build_start ~run_id ~restart ~files ~start =
     Dune_trace.emit ~buffered:true Build (fun () ->
-      Dune_trace.Event.watch_build_start ~run_id:(Run_id.to_int run_id) ~restart ~start)
+      Dune_trace.Event.watch_build_start
+        ~run_id:(Run_id.to_int run_id)
+        ~restart
+        ~files
+        ~start)
   ;;
 
   let emit_build_finish ~run_id ~start ~stop ~outcome ~restart_duration =
@@ -422,19 +426,26 @@ module Run = struct
   ;;
 
   let rec poll_iter t step =
-    if Memo.Invalidation.is_empty t.invalidation
-    then Memo.Metrics.reset ()
-    else (
-      let details_hum = Memo.Invalidation.details_hum t.invalidation in
-      t.handler (Source_files_changed { details_hum });
-      Memo.reset t.invalidation;
-      t.invalidation <- Memo.Invalidation.empty;
-      t.build_inputs_changed <- Trigger.create ());
+    let files =
+      if Memo.Invalidation.is_empty t.invalidation
+      then (
+        Memo.Metrics.reset ();
+        None)
+      else (
+        let files = Memo.Invalidation.changed_paths t.invalidation in
+        let details_hum = Memo.Invalidation.details_hum t.invalidation in
+        t.handler (Source_files_changed { details_hum });
+        Memo.reset t.invalidation;
+        t.invalidation <- Memo.Invalidation.empty;
+        t.build_inputs_changed <- Trigger.create ();
+        Some files)
+    in
     let started_at = Time.now () in
     let run_id = allocate_run_id t in
     emit_build_start
       ~run_id
       ~restart:(Option.is_some t.watch_restart_started_at)
+      ~files
       ~start:started_at;
     let cancel = Fiber.Cancel.create () in
     t.status <- Building cancel;

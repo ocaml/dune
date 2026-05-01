@@ -198,6 +198,10 @@ module Invalidation : sig
       The list is truncated to [max_elements] elements, with [max_elements = 1]
       by default. Raises if [max_elements <= 0]. *)
   val details_hum : ?max_elements:int -> t -> string list
+
+  (** The list of changed paths that contributed [Path_changed] invalidations.
+      The list is deduplicated and not truncated. *)
+  val changed_paths : t -> Path.t list
 end
 
 (** Notify the memoization system that the build system has restarted. This

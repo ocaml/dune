@@ -198,8 +198,14 @@ let process_cleanup_finish () =
   Event.instant ~name:"process-cleanup-finish" (Time.now ()) Process
 ;;
 
-let watch_build_start ~run_id ~restart ~start =
-  let args = [ "run_id", Arg.int run_id; "restart", Arg.bool restart ] in
+let watch_build_start ~run_id ~restart ~files ~start =
+  let args =
+    [ "run_id", Arg.int run_id; "restart", Arg.bool restart ]
+    @
+    match files with
+    | None -> []
+    | Some files -> [ "files", Arg.list (List.map files ~f:Arg.path) ]
+  in
   Event.instant ~name:"build-start" ~args start Build
 ;;
 

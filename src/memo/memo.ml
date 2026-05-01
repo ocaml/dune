@@ -1502,6 +1502,15 @@ module Invalidation = struct
        | Some (all_but_last, last) -> all_but_last @ [ last ^ extra_message ])
   ;;
 
+  let changed_paths t =
+    List.filter_map (to_list t) ~f:(fun ({ Leaf.reason; _ } : Leaf.t) ->
+      match reason with
+      | Path_changed path -> Some path
+      | Unknown | Event_queue_overflow | Upgrade | Test | Variable_changed _ -> None)
+    |> Path.Set.of_list
+    |> Path.Set.to_list
+  ;;
+
   let execute x = execute x []
 
   let is_empty = function

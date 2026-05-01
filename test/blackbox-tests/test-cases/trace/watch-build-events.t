@@ -6,11 +6,15 @@ Batch and watch-mode builds emit run ids on build trace events.
   > original
   > EOF
 
+  $ cat >z <<EOF
+  > first
+  > EOF
+
   $ cat >dune <<EOF
   > (rule
   >  (target y)
-  >  (deps x)
-  >  (action (system "cat x > y")))
+  >  (deps x z)
+  >  (action (system "cat x z > y")))
   > EOF
 
   $ dune build y
@@ -48,6 +52,7 @@ Batch and watch-mode builds emit run ids on build trace events.
   Success
 
   $ echo updated > x
+  $ echo second > z
 
   $ build y
   Success
@@ -92,7 +97,20 @@ Batch and watch-mode builds emit run ids on build trace events.
   {
     "args": {
       "run_id": 2,
-      "restart": true
+      "reasons": [
+        "z changed"
+      ]
+    },
+    "name": "build-restart"
+  }
+  {
+    "args": {
+      "run_id": 2,
+      "restart": true,
+      "files": [
+        "x",
+        "z"
+      ]
     },
     "name": "build-start"
   }

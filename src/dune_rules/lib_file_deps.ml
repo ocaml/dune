@@ -1,22 +1,13 @@
 open Import
 open Memo.O
 
-(* Why wrapped libraries fall back to a directory glob
-   =================================================
-
-   Per-module tight deps apply only to local unwrapped libraries.
-   Wrapped libraries take the glob path over their public cmi dir.
-   The limitation is fundamental to ocamldep's output granularity.
-
-   [ocamldep -modules foo.ml] lists only the top-level module names
-   referenced by a source file. For a consumer using [Foo.Bar.x],
-   the output is [Foo] — not [Foo.Bar]. Consumers that use
-   [Foo.Bar] and those that use [Foo.Baz] produce identical
-   ocamldep output, so the filter cannot distinguish them and
-   cannot emit specific deps on [Foo__Bar.cmi] vs [Foo__Baz.cmi].
-   Any breadth-first walk over the wrapper's own ocamldep output
-   reaches every internal the wrapper exposes, which is equivalent
-   to the glob for invalidation. *)
+(* This file builds dep specs for library files (cmi/cmx/cmj/header).
+   Per-module tight deps apply only to local unwrapped libraries;
+   wrapped libraries take a directory glob over their public cmi
+   dir. [ocamldep -modules] outputs only top-level module names —
+   for a consumer using [Foo.Bar.x] the output is [Foo], not
+   [Foo.Bar] — so the filter cannot distinguish [Foo.Bar] from
+   [Foo.Baz] consumers and a glob is the tightest sound dep. *)
 
 module Group = struct
   type ocaml =
@@ -114,12 +105,9 @@ module Lib_index = struct
     { by_module_name : (Lib.t * Module.t option) list Module_name.Map.t
     ; tight_eligible : Lib.Set.t
     ; no_ocamldep : Lib.Set.t
-      (* Local libs whose ocamldep is short-circuited by
-         [Dep_rules.skip_ocamldep] — single-module stanzas without
-         library dependencies have no [.d] build rules. The
-         cross-library walk must not try to read ocamldep for them;
-         their entry module can have no cross-library references
-         anyway. *)
+      (* Local libs short-circuited by [Dep_rules.skip_ocamldep] —
+         no [.d] rules exist; the cross-library walk must skip
+         them. *)
     }
 
   let empty =
@@ -129,13 +117,9 @@ module Lib_index = struct
     }
   ;;
 
-  (* Tight-eligibility — local + unwrapped, every entry carries a
-     [Module.t] — is encoded in the entry shape itself: an entry
-     [(_, lib, Some _)] means the producer of the index has decided
-     [lib] is tight-eligible. Wrapped local libs and externals come
-     in as [(_, _, None)] and don't enter [tight_eligible]. See the
-     module-level comment at the top of this file for the
-     ocamldep-granularity reason wrapped libs are excluded. *)
+  (* Tight-eligibility is encoded in the entry shape: [(_, lib, Some
+     _)] means the index producer has decided [lib] is tight-eligible
+     (local + unwrapped, every entry carries a [Module.t]). *)
   let create ~no_ocamldep entries =
     let by_module_name =
       List.fold_left entries ~init:Module_name.Map.empty ~f:(fun map (name, lib, m) ->
@@ -210,10 +194,8 @@ module Lib_index = struct
 
   let is_tight_eligible idx lib = Lib.Set.mem idx.tight_eligible lib
 
-  (* A local lib lands in [by_module_name] with [m_opt = None]
-     exactly when its index entry was built with [unwrapped = false].
-     External libs also carry [m_opt = None] but [Lib.is_local]
-     excludes them. *)
+  (* Wrapped local libs land in [by_module_name] with [m_opt = None];
+     externals also do, but [Lib.is_local] excludes them. *)
   let wrapped_libs_referenced idx ~referenced_modules =
     Module_name.Set.fold referenced_modules ~init:Lib.Set.empty ~f:(fun name acc ->
       match Module_name.Map.find idx.by_module_name name with

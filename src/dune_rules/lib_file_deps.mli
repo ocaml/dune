@@ -19,10 +19,8 @@ val deps : Lib.t list -> groups:Group.t list -> Dep.Set.t
     (glob deps on .cmi/.cmx files) for the given libraries. *)
 val deps_of_entries : opaque:bool -> cm_kind:Lib_mode.Cm_kind.t -> Lib.t list -> Dep.Set.t
 
-(** [deps_of_entry_modules ~opaque ~cm_kind lib modules] computes the
-    file dependencies on the specific [modules] of [lib], using
-    [Obj_dir.Module.cm_file_exn] for path construction. Only valid for
-    local libraries (for which [Module.t] is available). *)
+(** Specific-file deps on the [modules] of [lib]. Only valid for
+    local libraries (where [Module.t] values are available). *)
 val deps_of_entry_modules
   :  opaque:bool
   -> cm_kind:Lib_mode.Cm_kind.t
@@ -35,16 +33,11 @@ module Lib_index : sig
 
   val empty : t
 
-  (** Create an index. Each entry carries the [Module.t] of the entry
-      module when it is known ([Some] for local libraries; [None] for
-      externals). Libraries whose entries all carry a [Module.t] and
-      which are unwrapped are eligible for per-module deps.
-
-      [no_ocamldep] names local libs whose ocamldep output is
-      short-circuited (single-module stanzas without library
-      dependencies — see [Dep_rules.skip_ocamldep]). The cross-
-      library walk in [module_compilation] must not try to read
-      [.d] files for those libs. *)
+  (** Third tuple element is [Some m] for local + unwrapped libs
+      (with the entry's [Module.t]) and [None] otherwise (wrapped
+      locals, externals). [no_ocamldep] names local libs whose [.d]
+      files don't exist (short-circuited by [Dep_rules.skip_ocamldep]);
+      the cross-library walk skips them. *)
   val create
     :  no_ocamldep:Lib.Set.t
     -> (Module_name.t * Lib.t * Module.t option) list
@@ -52,54 +45,36 @@ module Lib_index : sig
 
   type classified =
     { tight : Module.t list Lib.Map.t
-      (** Directly-referenced tight-eligible libraries (local,
-        unwrapped, each entry with a known [Module.t]). Mapped to the
-        referenced entry modules. These libraries are candidates for
-        per-module deps via [deps_of_entry_modules]; whether to emit
-        them is the caller's policy. *)
+      (** Tight-eligible libs mapped to the entry modules referenced.
+        Candidates for [deps_of_entry_modules]. *)
     ; non_tight : Lib.t list
-      (** Other directly-referenced libraries — wrapped locals,
-        externals, or anything else that falls back to a glob. Sorted
-        by [Lib.compare]. *)
+      (** Wrapped locals, externals, or anything else; glob fallback.
+        Sorted by [Lib.compare]. *)
     }
 
   (** Classify the libraries whose entry modules appear in
       [referenced_modules]. *)
   val filter_libs_with_modules : t -> referenced_modules:Module_name.Set.t -> classified
 
-  (** [tight_modules_per_lib idx ~referenced_modules] builds a map
-      from each tight-eligible library that exposes a name in
-      [referenced_modules] to the subset of its entry modules that
-      appear. Equivalent to [filter_libs_with_modules] with only the
-      tight part kept. *)
+  (** Like [filter_libs_with_modules] but returns only the tight
+      part. *)
   val tight_modules_per_lib
     :  t
     -> referenced_modules:Module_name.Set.t
     -> Module.t list Lib.Map.t
 
-  (** [lookup_tight_entries idx name] returns [(lib, entry module)]
-      pairs used by the cross-library walk in [module_compilation].
-      Libraries in [no_ocamldep] are excluded (their [.d] files do
-      not exist), as are externals, wrapped locals, and entries with
-      no [Module.t]. *)
+  (** [(lib, entry module)] pairs for the cross-library walk;
+      excludes [no_ocamldep] libs and non-tight-eligible entries. *)
   val lookup_tight_entries : t -> Module_name.t -> (Lib.t * Module.t) list
 
-  (** [is_tight_eligible idx lib] is [true] when [lib] is local,
-      unwrapped, and every entry carries a known [Module.t]. The
-      cross-library walk has full visibility into such libraries:
-      the absence of any of their entry modules from the post-walk
-      reference set is positive evidence that the consumer does
-      not reach the library, so the consumer's compile rule does
-      not need a dep on it. *)
+  (** True for local + unwrapped libs whose entries all carry a
+      [Module.t]. Used to drop unreached libs from a consumer's
+      compile deps (the link rule still pulls them in). *)
   val is_tight_eligible : t -> Lib.t -> bool
 
-  (** [wrapped_libs_referenced idx ~referenced_modules] returns the
-      set of local wrapped libraries whose entry name appears in
-      [referenced_modules]. The cross-library walk cannot see
-      through a wrapped lib's wrapper module — ocamldep reports
-      [Foo] for both [Foo.Bar.x] and [Foo.Baz.x]. Consumers that
-      reach into a wrapped lib must therefore conservatively glob
-      the wrapped lib's entire transitive [Lib.closure]. *)
+  (** Local wrapped libs whose entry name is in [referenced_modules].
+      The consumer must glob the wrapped lib's [Lib.closure] (see
+      the file-level comment for why). *)
   val wrapped_libs_referenced : t -> referenced_modules:Module_name.Set.t -> Lib.Set.t
 end
 

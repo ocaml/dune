@@ -638,9 +638,6 @@ module Module = struct
     match (dep : Dep.t) with
     | Transitive (m, _) ->
       (match Module.kind m with
-       (* [Alias _], [Root], and [Wrapped_compat] modules synthesize
-          their deps inside [Dep_rules.deps_of] without an ocamldep
-          rule, so no [.all-deps] file is produced for them. *)
        | Module.Kind.Alias _ | Root | Wrapped_compat -> None
        | _ ->
          let dir =

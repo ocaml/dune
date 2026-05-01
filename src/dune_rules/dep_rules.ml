@@ -134,11 +134,10 @@ let deps_of_vlib_module ~obj_dir ~vimpl ~dir ~sctx ~ml_kind ~for_ sourced_module
 (** Tests whether a set of modules is a singleton *)
 let has_single_file modules = Option.is_some @@ Modules.With_vlib.as_singleton modules
 
-(** Short-circuit ocamldep for single-module stanzas with no library
-    dependencies. The set of libraries this short-circuits must match
-    [Compilation_context.build_lib_index]'s [no_ocamldep_lib] check —
-    otherwise the per-module inter-library filter's cross-library walk
-    will demand a [.d] file that was never produced. *)
+(** Single-module stanzas with no library deps. Must match
+    [Compilation_context.build_lib_index]'s [no_ocamldep_lib] check
+    so the per-module filter's BFS doesn't demand absent [.d]
+    files. *)
 let skip_ocamldep ~has_library_deps modules =
   has_single_file modules && not has_library_deps
 ;;

@@ -125,18 +125,8 @@ let parameters_main_modules parameters =
         [ "param", Lib.to_dyn param ])
 ;;
 
-(* Build a [Lib_index] from the consumer's [direct + hidden]
-   requires. Under [(implicit_transitive_deps false)] +
-   [Disabled_with_hidden_includes], hidden libs are visible to the
-   compiler via [-H], so the post-walk classify in
-   [module_compilation] treats them as part of the compile scope.
-   The BFS must therefore be able to walk them and decide
-   tight-vs-drop; without indexing them, an unreached hidden lib
-   falls through to the glob branch and over-invalidates the
-   consumer on any [.cmi] change in its objdir. Local libs
-   short-circuited by [Dep_rules.skip_ocamldep] (single-module + no
-   resolved deps) land in [no_ocamldep] so the cross-library walk
-   doesn't read [.d] files dune never produced. *)
+(* Hidden libs must be indexed: otherwise unreached ones fall to
+   the glob branch and over-invalidate. *)
 let build_lib_index ~super_context ~libs ~for_ =
   let open Resolve.Memo.O in
   let+ per_lib =
@@ -153,11 +143,8 @@ let build_lib_index ~super_context ~libs ~for_ =
                 (Lib.Local.of_lib_exn lib)
                 ~for_)
              ~f:(fun mods ->
-               (* [Some m] iff the lib is tight-eligible (local + unwrapped):
-                  only then can downstream consumers issue per-module deps
-                  on its [.cmi] files. [None] therefore covers both wrapped
-                  locals and externals — in either case we don't have a
-                  [Module.t] the per-module path can use. *)
+               (* [Some m] only for unwrapped locals (tight-eligible);
+                  wrapped locals and externals → [None]. *)
                let unwrapped =
                  match Lib_info.wrapped (Lib.info lib) with
                  | Some (This w) -> not (Wrapped.to_bool w)
@@ -167,6 +154,9 @@ let build_lib_index ~super_context ~libs ~for_ =
                  List.map (Modules.entry_modules mods) ~f:(fun m ->
                    Module.name m, lib, if unwrapped then Some m else None)
                in
+               (* Into [no_ocamldep] so the cross-lib walk doesn't
+                  read [.d] files that [Dep_rules.skip_ocamldep]
+                  elided. *)
                let no_ocamldep_lib =
                  match Modules.as_singleton mods with
                  | Some _ when List.is_empty (Lib_info.requires (Lib.info lib) ~for_) ->
@@ -244,9 +234,8 @@ let create
     eval_opaque ocaml profile opaque
   in
   let* has_library_deps =
-    (* Determine whether any library dependencies are declared, so that
-       single-module stanzas still run ocamldep when its output could
-       inform the per-module inter-library dependency filter. *)
+    (* Single-module stanzas still run ocamldep when they have library
+       deps so the per-module filter can inform the result. *)
     let open Resolve.Memo.O in
     let+ direct = direct_requires
     and+ hidden = hidden_requires in
@@ -254,12 +243,9 @@ let create
     | [], [] -> false
     | _ -> true
   in
-  let has_library_deps =
-    (* Unresolved dependency errors propagate later through the normal
-       compilation rules; here we conservatively behave as if libraries
-       are present. *)
-    Resolve.peek has_library_deps |> Result.value ~default:true
-  in
+  (* Resolution errors surface later through the normal compilation
+     rules; assume deps are present here. *)
+  let has_library_deps = Resolve.peek has_library_deps |> Result.value ~default:true in
   let+ dep_graphs =
     Dep_rules.rules
       ~dir:(Obj_dir.dir obj_dir)

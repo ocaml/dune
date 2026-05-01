@@ -12,15 +12,18 @@ module Cached_digest = struct
       ; ino : int
       }
 
-    let to_dyn { mtime; size; perm; dev; ino } =
-      Dyn.Record
-        [ "mtime", Int (Time.to_ns mtime)
-        ; "size", Int size
-        ; "perm", Int perm
-        ; "dev", Int.to_dyn dev
-        ; "ino", Int.to_dyn ino
+    let repr =
+      Repr.record
+        "fs-memo-cached-digest-reduced-stats"
+        [ Repr.field "mtime" Time.repr ~get:(fun t -> t.mtime)
+        ; Repr.field "size" Repr.int ~get:(fun t -> t.size)
+        ; Repr.field "perm" Repr.int ~get:(fun t -> t.perm)
+        ; Repr.field "dev" Repr.int ~get:(fun t -> t.dev)
+        ; Repr.field "ino" Repr.int ~get:(fun t -> t.ino)
         ]
     ;;
+
+    let to_dyn = Repr.to_dyn repr
 
     let of_stat (stat : Stat.t) =
       { mtime = stat.mtime
@@ -31,7 +34,7 @@ module Cached_digest = struct
       }
     ;;
 
-    let compare (t : t) x = Poly.compare t x
+    let _, compare = Repr.make_compare repr
   end
 
   type file =
@@ -48,21 +51,30 @@ module Cached_digest = struct
 
   let db_file = Path.relative Path.build_dir ".digest-db"
 
-  let dyn_of_file { digest; stats; stats_checked } =
-    Dyn.Record
-      [ "digest", Digest.to_dyn digest
-      ; "stats", Reduced_stats.to_dyn stats
-      ; "stats_checked", Int stats_checked
+  let file_repr =
+    Repr.record
+      "fs-memo-cached-digest-file"
+      [ Repr.field "digest" (Repr.abstract Digest.to_dyn) ~get:(fun t -> t.digest)
+      ; Repr.field "stats" Reduced_stats.repr ~get:(fun t -> t.stats)
+      ; Repr.field "stats_checked" Repr.int ~get:(fun t -> t.stats_checked)
       ]
   ;;
 
-  let to_dyn { checked_key; max_timestamp; table } =
-    Dyn.Record
-      [ "checked_key", Int checked_key
-      ; "max_timestamp", Int (Time.to_ns max_timestamp)
-      ; "table", Path.Table.to_dyn dyn_of_file table
+  let file_to_dyn = Repr.to_dyn file_repr
+
+  let repr =
+    Repr.record
+      "fs-memo-cached-digest"
+      [ Repr.field "checked_key" Repr.int ~get:(fun t -> t.checked_key)
+      ; Repr.field "max_timestamp" Time.repr ~get:(fun t -> t.max_timestamp)
+      ; Repr.field
+          "table"
+          (Repr.abstract (Path.Table.to_dyn file_to_dyn))
+          ~get:(fun t -> t.table)
       ]
   ;;
+
+  let to_dyn = Repr.to_dyn repr
 
   module P = Persistent.Make (struct
       type nonrec t = t
@@ -319,15 +331,26 @@ module Debug = struct
     Cached_digest.entries db |> List.filter ~f:(fun (path, _) -> matches selectors path)
   ;;
 
-  let entry_to_dyn path (file : Cached_digest.file) =
-    let { Cached_digest.digest; stats; stats_checked } = file in
-    Dyn.Record
-      [ "path", Path.to_dyn path
-      ; "digest", Digest.to_dyn digest
-      ; "stats", Cached_digest.Reduced_stats.to_dyn stats
-      ; "stats_checked", Dyn.Int stats_checked
+  let entry_repr =
+    Repr.record
+      "fs-memo-debug-entry"
+      [ Repr.field "path" (Repr.abstract Path.to_dyn) ~get:(fun (path, _) -> path)
+      ; Repr.field
+          "digest"
+          (Repr.abstract Digest.to_dyn)
+          ~get:(fun (_, { Cached_digest.digest; _ }) -> digest)
+      ; Repr.field
+          "stats"
+          Cached_digest.Reduced_stats.repr
+          ~get:(fun (_, { Cached_digest.stats; _ }) -> stats)
+      ; Repr.field
+          "stats_checked"
+          Repr.int
+          ~get:(fun (_, { Cached_digest.stats_checked; _ }) -> stats_checked)
       ]
   ;;
+
+  let entry_to_dyn = Repr.to_dyn entry_repr
 
   let load_exn () =
     match Cached_digest.load () with
@@ -345,7 +368,7 @@ module Debug = struct
     let { Cached_digest.checked_key; max_timestamp; _ } = db in
     let entries =
       selected_entries db paths
-      |> List.map ~f:(fun (path, file) -> entry_to_dyn path file)
+      |> List.map ~f:(fun (path, file) -> entry_to_dyn (path, file))
     in
     Dyn.Record
       [ "checked_key", Int checked_key
@@ -353,6 +376,13 @@ module Debug = struct
       ; "entries", List entries
       ]
   ;;
+
+  type finding =
+    { status : string
+    ; path : Path.t
+    ; cached_digest : Digest.t
+    ; actual : Digest_result.t
+    }
 
   let current_digest path =
     let path_string = Path.to_string path in
@@ -373,14 +403,18 @@ module Debug = struct
     | Error error -> None, Error error
   ;;
 
-  let finding_to_dyn path ~status ~(cached_digest : Digest.t) ~actual =
-    Dyn.Record
-      [ "status", String status
-      ; "path", Path.to_dyn path
-      ; "cached_digest", Digest.to_dyn cached_digest
-      ; "actual", Digest_result.to_dyn actual
+  let finding_repr =
+    Repr.record
+      "fs-memo-debug-finding"
+      [ Repr.field "status" Repr.string ~get:(fun t -> t.status)
+      ; Repr.field "path" (Repr.abstract Path.to_dyn) ~get:(fun t -> t.path)
+      ; Repr.field "cached_digest" (Repr.abstract Digest.to_dyn) ~get:(fun t ->
+          t.cached_digest)
+      ; Repr.field "actual" (Repr.abstract Digest_result.to_dyn) ~get:(fun t -> t.actual)
       ]
   ;;
+
+  let finding_to_dyn = Repr.to_dyn finding_repr
 
   let check_digest_db paths =
     let db = load_exn () in
@@ -397,7 +431,7 @@ module Debug = struct
             when Cached_digest.Reduced_stats.compare stats current_stats = Eq -> "invalid"
           | Some _ | None -> "stale"
         in
-        Some (finding_to_dyn path ~status ~cached_digest ~actual)))
+        Some (finding_to_dyn { status; path; cached_digest; actual })))
     |> fun findings -> Dyn.List findings
   ;;
 end

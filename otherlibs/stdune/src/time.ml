@@ -1,5 +1,7 @@
 type t = int
 
+let repr = Repr.int
+
 external now : unit -> t = "dune_clock_gettime_realtime"
 
 let start = now ()

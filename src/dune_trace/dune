@@ -1,5 +1,7 @@
 (library
  (name dune_trace)
+ (preprocess
+  (pps ppx_optcomp))
  (foreign_stubs
   (language c)
   (names dune_trace_stubs))

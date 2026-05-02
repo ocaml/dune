@@ -60,11 +60,35 @@ end
 
 let global = ref None
 
+let reset_alloc_profile () =
+  Option.iter !global ~f:(fun (out : Out.t) -> Option.iter out.alloc ~f:Alloc.reset)
+;;
+
+let capture_alloc_profile kind =
+  match
+    match !global with
+    | None -> None
+    | Some (global : Out.t) -> global.alloc
+  with
+  | None -> None
+  | Some alloc ->
+    let { Alloc.minor; major; promoted } = Alloc.snapshot alloc in
+    let phase, run_id =
+      match kind with
+      | `Build run_id -> `Build, Some run_id
+      | `Exit -> `Exit, None
+    in
+    Some (Event.alloc_summary ~phase ~run_id ~minor ~major ~promoted)
+;;
+
 let at_exit =
   At_exit.at_exit Global_lock.at_exit (fun () ->
     match !global with
     | None -> ()
     | Some t ->
+      let alloc_summary = capture_alloc_profile `Exit in
+      Option.iter t.alloc ~f:Alloc.stop;
+      Option.iter alloc_summary ~f:(Out.emit t);
       Out.emit t (Event.exit ());
       Out.close t;
       (match Env.(get initial Dune_action_trace.Private.trace_dir_env_var) with

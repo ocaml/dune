@@ -1121,6 +1121,7 @@ let run f =
         ~restart:(Option.is_some files)
         ~files
         ~start);
+    Dune_trace.reset_alloc_profile ();
     (* CR-someday amokhov: Currently we invalidate cached timestamps on every
        incremental rebuild. This conservative approach helps us to work around
        some [mtime] resolution problems (e.g. on Mac OS). It would be nice to
@@ -1165,6 +1166,9 @@ let run f =
     (match Scheduler.finish_build ~stop with
      | Restarting -> ()
      | Finished { restart_duration } ->
+       let alloc_summary =
+         Dune_trace.capture_alloc_profile (`Build (Run_id.to_int run_id))
+       in
        Dune_trace.emit Build (fun () ->
          Dune_trace.Event.watch_build_finish
            ~run_id:(Run_id.to_int run_id)
@@ -1174,7 +1178,8 @@ let run f =
               | Error `Already_reported -> `Failure)
            ~start
            ~stop
-           ~restart_duration));
+           ~restart_duration);
+       Option.iter alloc_summary ~f:Dune_trace.always_emit);
     outcome
   in
   Fiber.Mutex.with_lock State.build_mutex ~f

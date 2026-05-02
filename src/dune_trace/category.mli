@@ -1,6 +1,7 @@
 type t =
   | Rpc
   | Gc
+  | Alloc
   | Fd
   | Sandbox
   | Persistent

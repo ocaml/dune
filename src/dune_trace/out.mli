@@ -6,6 +6,7 @@ type t =
   ; cats : Category.Set.t
   ; mutex : Mutex.t
   ; path : Stdune.Path.t
+  ; mutable alloc : Alloc.t option
   }
 
 val emit : ?buffered:bool -> t -> Event.t -> unit

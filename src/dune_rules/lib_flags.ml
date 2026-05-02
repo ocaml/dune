@@ -12,7 +12,7 @@ module Link_params = struct
        not appear on the command line *)
     }
 
-  let get sctx (t : Lib.t) (mode : Link_mode.t) (lib_config : Lib_config.t) =
+  let get_archived sctx (t : Lib.t) (mode : Link_mode.t) (lib_config : Lib_config.t) =
     let info = Lib.info t in
     let lib_files = Lib_info.foreign_archives info
     and dll_files = Lib_info.foreign_dll_files info in
@@ -77,6 +77,13 @@ module Link_params = struct
            :: hidden_deps)
     in
     { deps; hidden_deps; include_dirs }
+  ;;
+
+  let get sctx t mode lib_config =
+    let info = Lib.info t in
+    if Lib_info.archived info
+    then get_archived sctx t mode lib_config
+    else Memo.return { deps = []; hidden_deps = []; include_dirs = [] }
   ;;
 end
 
@@ -322,11 +329,32 @@ module Lib_and_module = struct
   module L = struct
     type nonrec t = t list
 
+    let expand_archived_libs sctx ts =
+      if
+        List.for_all ts ~f:(function
+          | Lib lib -> Lib_info.archived (Lib.info lib)
+          | Module _ -> true)
+      then Memo.return ts
+      else
+        Memo.List.concat_map ts ~f:(function
+          | Module _ as x -> Memo.return [ x ]
+          | Lib lib as x ->
+            if Lib_info.archived (Lib.info lib)
+            then Memo.return [ x ]
+            else
+              let+ modules = Dir_contents.modules_of_lib sctx lib ~for_:Ocaml in
+              let obj_dir = Lib_info.obj_dir (Lib.info lib) in
+              List.map
+                (Modules.With_vlib.impl_only (Option.value_exn modules))
+                ~f:(fun module_ -> Module (obj_dir, module_)))
+    ;;
+
     let link_flags sctx ts ~(lib_config : Lib_config.t) ~mode =
       let open Action_builder.O in
       let build_dir = Context.build_dir (Super_context.context sctx) in
       Command.Args.Dyn
-        (let+ l =
+        (let* ts = Action_builder.of_memo (expand_archived_libs sctx ts) in
+         let+ l =
            Action_builder.List.map ts ~f:(function
              | Lib t ->
                let t =

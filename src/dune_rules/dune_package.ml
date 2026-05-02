@@ -294,6 +294,7 @@ module Lib = struct
            ~lib_id
            ~kind
            ~status
+           ~archived:true
            ~src_dir
            ~orig_src_dir
            ~obj_dir

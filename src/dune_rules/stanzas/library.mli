@@ -23,6 +23,7 @@ type t =
   ; virtual_deps : (Loc.t * Lib_name.t) list
   ; wrapped : Wrapped.t Lib_info.Inherited.t
   ; optional : bool
+  ; archived : bool
   ; buildable : Buildable.t
   ; dynlink : Dynlink_supported.t
   ; project : Dune_project.t
@@ -73,6 +74,7 @@ val foreign_lib_files
 val archive : t -> dir:Path.Build.t -> ext:Filename.Extension.t -> Path.Build.t
 
 val best_name : t -> Lib_name.t
+val archived : t -> bool
 val is_virtual : t -> bool
 val is_impl : t -> bool
 val obj_dir : dir:Path.Build.t -> t -> Path.Build.t Obj_dir.t

@@ -79,15 +79,14 @@ let m = Mutex.create ()
 
 let init ~print_ctrl_c_warning q =
   Thread0.spawn ~name:"signal-watcher" (fun () ->
-    Mutex.lock m;
     let res =
-      try
-        run ~print_ctrl_c_warning q;
-        None
-      with
-      | Exit -> None
-      | exn -> Some exn
+      Mutex.protect m (fun () ->
+        try
+          run ~print_ctrl_c_warning q;
+          None
+        with
+        | Exit -> None
+        | exn -> Some exn)
     in
-    Mutex.unlock m;
     Option.iter res ~f:raise)
 ;;

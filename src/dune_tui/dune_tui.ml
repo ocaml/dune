@@ -327,9 +327,8 @@ module Console_backend = struct
 
   (* Update any global state and finish *)
   let set_dirty ~mutex (state : Dune_threaded_console.state) =
-    Mutex.lock mutex;
-    state.dirty <- true;
-    Mutex.unlock mutex;
+    (* CR-someday rgrinberg: use an atomic? *)
+    Mutex.protect mutex (fun () -> state.dirty <- true);
     Time.now ()
   ;;
 

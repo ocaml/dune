@@ -35,9 +35,11 @@ let local_libraries =
           ; entries =
               [ "Csexp"
               ; "Dyn"
+              ; "Event"
               ; "Fs_io"
               ; "Ordering"
               ; "Pp"
+              ; "Thread"
               ; "Top_closure"
               ; "Unix"
               ; "UnixLabels"

@@ -112,6 +112,12 @@ module Clients = struct
 
   let to_list = Session.Id.Map.to_list
   let to_list_map = Session.Id.Map.to_list_map
+
+  let repr =
+    let session_repr = Repr.abstract (Session.Stage1.to_dyn Client.to_dyn) in
+    Repr.view (Repr.list session_repr) ~to_:(fun t ->
+      Session.Id.Map.values t |> List.map ~f:(fun { session } -> session))
+  ;;
 end
 
 (** Primitive unbounded FIFO channel. Reads are blocking. Writes are not
@@ -161,21 +167,39 @@ end = struct
   ;;
 end
 
-type 'build_arg t =
+type server =
   { config : Run.t
-  ; pending_jobs : 'build_arg pending_action Job_queue.t
   ; mutable clients : Clients.t
   }
 
+let repr =
+  Repr.record "rpc" [ Repr.field "connections" Clients.repr ~get:(fun t -> t.clients) ]
+;;
+
+let to_dyn = Repr.to_dyn repr
+let current : server option ref = ref None
+
+type 'build_arg t =
+  { server : server
+  ; pending_jobs : 'build_arg pending_action Job_queue.t
+  }
+
+let () =
+  Debug.register ~name:"rpc" (fun () ->
+    match !current with
+    | None -> Dyn.Option None
+    | Some server -> to_dyn server)
+;;
+
 let ready (t : _ t) =
-  Fiber.Ivar.read t.config.startup_ivar
+  Fiber.Ivar.read t.server.config.startup_ivar
   >>= function
   | Ok server -> Csexp_rpc.Server.ready server
   | Error _exn -> raise Dune_util.Report_error.Already_reported
 ;;
 
 let stop (t : _ t) =
-  Fiber.Ivar.peek t.config.startup_ivar
+  Fiber.Ivar.peek t.server.config.startup_ivar
   >>= function
   | None -> Fiber.return ()
   | Some (Error _) -> Fiber.return ()
@@ -196,12 +220,12 @@ let handler (t : _ t Fdecl.t) : 'build_arg Handler.t =
   let on_init session (_ : Initialize.Request.t) =
     let t = Fdecl.get t in
     let client = () in
-    t.clients <- Clients.add_session t.clients session;
+    t.server.clients <- Clients.add_session t.server.clients session;
     Fiber.return client
   in
   let on_terminate session =
     let t = Fdecl.get t in
-    t.clients <- Clients.remove_session t.clients session;
+    t.server.clients <- Clients.remove_session t.server.clients session;
     Fiber.return ()
   in
   let rpc = Handler.create ~on_terminate ~on_init ~version:Dune_rpc.Version.latest () in
@@ -361,11 +385,11 @@ let handler (t : _ t Fdecl.t) : 'build_arg Handler.t =
       let t = Fdecl.get t in
       let terminate_sessions () =
         Fiber.fork_and_join_unit cancel_pending_jobs (fun () ->
-          Fiber.parallel_iter (Clients.to_list t.clients) ~f:(fun (_, entry) ->
+          Fiber.parallel_iter (Clients.to_list t.server.clients) ~f:(fun (_, entry) ->
             Session.Stage1.close entry.session))
       in
       let shutdown () =
-        let* () = Csexp_rpc.Server.stop (Lazy.force t.config.server) in
+        let* () = Csexp_rpc.Server.stop (Lazy.force t.server.config.server) in
         Scheduler.shutdown ();
         Fiber.return ()
       in
@@ -377,7 +401,7 @@ let handler (t : _ t Fdecl.t) : 'build_arg Handler.t =
     let f _ () =
       let t = Fdecl.get t in
       let clients =
-        Clients.to_list_map t.clients ~f:(fun _id (entry : Clients.entry) ->
+        Clients.to_list_map t.server.clients ~f:(fun _id (entry : Clients.entry) ->
           ( Initialize.Request.id (Session.Stage1.initialize entry.session)
           , match Session.Stage1.menu entry.session with
             | None -> Status.Menu.Uninitialized
@@ -473,17 +497,12 @@ let create ~lock_timeout ~registry ~root =
     ; startup_ivar = Fiber.Ivar.create ()
     }
   in
-  let res =
-    let pending_jobs = Job_queue.create () in
-    { config; pending_jobs; clients = Clients.empty }
-  in
+  let server = { config; clients = Clients.empty } in
+  let res = { server; pending_jobs = Job_queue.create () } in
+  current := Some server;
   Fdecl.set t res;
   res
 ;;
 
-let run t =
-  let* () = Fiber.return () in
-  Run.run t.config
-;;
-
+let run t = Run.run t.server.config
 let pending_action t = Job_queue.read t.pending_jobs

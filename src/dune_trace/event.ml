@@ -143,6 +143,36 @@ let init ~version =
   Event.instant ~args ~name:"init" now Config
 ;;
 
+let make_rusage_args resource_usage =
+  match resource_usage with
+  | None -> []
+  | Some
+      { Proc.Resource_usage.user_cpu_time
+      ; system_cpu_time
+      ; maxrss
+      ; minflt
+      ; majflt
+      ; inblock
+      ; oublock
+      ; nvcsw
+      ; nivcsw
+      } ->
+    [ ( "rusage"
+      , Arg.record
+          [ "user_cpu_time", Arg.span user_cpu_time
+          ; "system_cpu_time", Arg.span system_cpu_time
+          ; "maxrss", Arg.int maxrss
+          ; "minflt", Arg.int minflt
+          ; "majflt", Arg.int majflt
+          ; "inblock", Arg.int inblock
+          ; "oublock", Arg.int oublock
+          ; "nvcsw", Arg.int nvcsw
+          ; "nivcsw", Arg.int nivcsw
+          ]
+        |> Arg.list )
+    ]
+;;
+
 let exit () =
   let now = Time.now () in
   let args =
@@ -177,6 +207,7 @@ let exit () =
       |> Arg.list
     in
     [ "gc", gc; "io", io; "digest", digest ]
+    @ make_rusage_args (Proc.Resource_usage.get_self ())
   in
   Event.instant ~args ~name:"exit" now Config
 ;;
@@ -201,10 +232,10 @@ let process_cleanup_finish () =
 let watch_build_start ~run_id ~restart ~files ~start =
   let args =
     [ "run_id", Arg.int run_id; "restart", Arg.bool restart ]
-    @
-    match files with
-    | None -> []
-    | Some files -> [ "files", Arg.list (List.map files ~f:Arg.path) ]
+    @ (match files with
+       | None -> []
+       | Some files -> [ "files", Arg.list (List.map files ~f:Arg.path) ])
+    @ make_rusage_args (Proc.Resource_usage.get_self ())
   in
   Event.instant ~name:"build-start" ~args start Build
 ;;
@@ -225,10 +256,10 @@ let watch_build_finish ~run_id ~outcome ~start ~stop ~restart_duration =
   in
   let args =
     [ "run_id", Arg.int run_id; "outcome", Arg.string outcome ]
-    @
-    match restart_duration with
-    | None -> []
-    | Some restart_duration -> [ "restart_duration", Arg.span restart_duration ]
+    @ (match restart_duration with
+       | None -> []
+       | Some restart_duration -> [ "restart_duration", Arg.span restart_duration ])
+    @ make_rusage_args (Proc.Resource_usage.get_self ())
   in
   Event.complete ~name:"build-finish" ~args ~start ~dur Build
 ;;
@@ -260,36 +291,6 @@ let args_of_targets =
   in
   fun { root; files; dirs } ->
     paths root "target_files" files @ paths root "target_dirs" dirs
-;;
-
-let make_rusage_args resource_usage =
-  match resource_usage with
-  | None -> []
-  | Some
-      { Proc.Resource_usage.user_cpu_time
-      ; system_cpu_time
-      ; maxrss
-      ; minflt
-      ; majflt
-      ; inblock
-      ; oublock
-      ; nvcsw
-      ; nivcsw
-      } ->
-    [ ( "rusage"
-      , Arg.record
-          [ "user_cpu_time", Arg.span user_cpu_time
-          ; "system_cpu_time", Arg.span system_cpu_time
-          ; "maxrss", Arg.int maxrss
-          ; "minflt", Arg.int minflt
-          ; "majflt", Arg.int majflt
-          ; "inblock", Arg.int inblock
-          ; "oublock", Arg.int oublock
-          ; "nvcsw", Arg.int nvcsw
-          ; "nivcsw", Arg.int nivcsw
-          ]
-        |> Arg.list )
-    ]
 ;;
 
 let make_exit exit =

@@ -1,4 +1,5 @@
-Batch and watch-mode builds emit run ids on build trace events.
+Batch and watch-mode builds emit run ids and dune's own rusage snapshots on
+build trace events.
 
   $ make_dune_project 3.22
 
@@ -30,18 +31,44 @@ Batch and watch-mode builds emit run ids on build trace events.
   >     then .args.restart_duration |= type
   >     else .
   >     end
+  >   | if .args.rusage? != null
+  >     then .args.rusage |= keys
+  >     else .
+  >     end
   > ] | .[]'
   {
     "args": {
       "run_id": 0,
-      "restart": false
+      "restart": false,
+      "rusage": [
+        "inblock",
+        "majflt",
+        "maxrss",
+        "minflt",
+        "nivcsw",
+        "nvcsw",
+        "oublock",
+        "system_cpu_time",
+        "user_cpu_time"
+      ]
     },
     "name": "build-start"
   }
   {
     "args": {
       "run_id": 0,
-      "outcome": "success"
+      "outcome": "success",
+      "rusage": [
+        "inblock",
+        "majflt",
+        "maxrss",
+        "minflt",
+        "nivcsw",
+        "nvcsw",
+        "oublock",
+        "system_cpu_time",
+        "user_cpu_time"
+      ]
     },
     "name": "build-finish"
   }
@@ -70,18 +97,44 @@ Batch and watch-mode builds emit run ids on build trace events.
   >     then .args.restart_duration |= type
   >     else .
   >     end
+  >   | if .args.rusage? != null
+  >     then .args.rusage |= keys
+  >     else .
+  >     end
   > ] | .[]'
   {
     "args": {
       "run_id": 1,
-      "restart": false
+      "restart": false,
+      "rusage": [
+        "inblock",
+        "majflt",
+        "maxrss",
+        "minflt",
+        "nivcsw",
+        "nvcsw",
+        "oublock",
+        "system_cpu_time",
+        "user_cpu_time"
+      ]
     },
     "name": "build-start"
   }
   {
     "args": {
       "run_id": 1,
-      "outcome": "success"
+      "outcome": "success",
+      "rusage": [
+        "inblock",
+        "majflt",
+        "maxrss",
+        "minflt",
+        "nivcsw",
+        "nvcsw",
+        "oublock",
+        "system_cpu_time",
+        "user_cpu_time"
+      ]
     },
     "name": "build-finish"
   }
@@ -110,6 +163,17 @@ Batch and watch-mode builds emit run ids on build trace events.
       "files": [
         "x",
         "z"
+      ],
+      "rusage": [
+        "inblock",
+        "majflt",
+        "maxrss",
+        "minflt",
+        "nivcsw",
+        "nvcsw",
+        "oublock",
+        "system_cpu_time",
+        "user_cpu_time"
       ]
     },
     "name": "build-start"
@@ -118,7 +182,38 @@ Batch and watch-mode builds emit run ids on build trace events.
     "args": {
       "run_id": 2,
       "outcome": "success",
-      "restart_duration": "number"
+      "restart_duration": "number",
+      "rusage": [
+        "inblock",
+        "majflt",
+        "maxrss",
+        "minflt",
+        "nivcsw",
+        "nvcsw",
+        "oublock",
+        "system_cpu_time",
+        "user_cpu_time"
+      ]
     },
     "name": "build-finish"
+  }
+
+  $ dune trace cat | jq -s '
+  > last
+  > | select(.name == "exit")
+  > | { name, cat, rusage: (.args.rusage | keys) }'
+  {
+    "name": "exit",
+    "cat": "config",
+    "rusage": [
+      "inblock",
+      "majflt",
+      "maxrss",
+      "minflt",
+      "nivcsw",
+      "nvcsw",
+      "oublock",
+      "system_cpu_time",
+      "user_cpu_time"
+    ]
   }

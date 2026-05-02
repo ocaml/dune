@@ -9,6 +9,15 @@ Testing that the bootstrap preprocessor strips let%test_module blocks.
   > let x = 42
   > let%test_module "tests" =
   >   (module struct
+  >     let _ = ")"
+  >     let _ = ')'
+  >     let _ = '\''
+  >     let _ = fun (x : 'a) -> x
+  >     let _ = "\" ) ;; [%%endif]"
+  >     let _ = {|) ;; [%%else]|}
+  >     let _ = {boot|[%%endif]|boot}
+  >     let _ = "[%%endif]"
+  >     let _ = 0 (* outer (* ) ;; [%%else] *) [%%endif] *)
   >     let%expect_test "inner test" =
   >       print_int x;
   >       [%expect {| 42 |}]

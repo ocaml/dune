@@ -4,15 +4,13 @@ any of [dep_lib]'s modules. The consumer [main] uses
 [intermediate_lib] and so transitively gains [dep_lib] in its
 compilation context.
 
-Today every consumer module declares a glob over each transitively-
-reached library's public-cmi directory, so editing
-[unreferenced_dep.ml] (which no source file references) re-
-invalidates [Main]. The test records the current rebuild targets
-for [Main] when [unreferenced_dep.ml] is touched.
-
-This test is observational: a tighter dependency tracker that drops
-unreferenced libraries from compile rules' deps would shrink the
-recorded target list.
+The per-module filter detects that no consumer module references
+any [dep_lib] module — directly or transitively through
+[intermediate_lib] — and drops [dep_lib] entirely from [Main]'s
+compile-rule deps, so editing [unreferenced_dep.ml] leaves [Main]
+untouched. Pre-#14116 every consumer module declared a glob over
+each transitively-reached library's public-cmi directory, so the
+edit re-invalidated [Main].
 
 [intermediate_lib] and the [main] executable each include an unused
 dummy module ([intermediate_dummy] / [main_dummy]) so that ocamldep
@@ -76,8 +74,7 @@ references any module of [dep_lib]:
 
 Edit [unreferenced_dep.ml]. Neither [main.ml] nor
 [intermediate_module.ml] references [Unreferenced_dep] or any
-other [dep_lib] module, so a tighter filter could leave [Main]
-untouched. Today [Main] is rebuilt:
+other [dep_lib] module, so the filter leaves [Main] untouched:
 
   $ echo > unreferenced_dep.ml
   $ dune build @check

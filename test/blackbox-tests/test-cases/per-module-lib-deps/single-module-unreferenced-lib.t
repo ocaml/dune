@@ -8,19 +8,16 @@ edited.
 
 [consumer_lib] declares [(libraries dep_lib)] but
 [spurious_rebuild.ml] does not reference any module of [dep_lib].
-On current main this scenario still rebuilds [spurious_rebuild]:
-[consumer_lib] is a single-module stanza, so dune skips ocamldep
-as an optimisation and cannot discover that [spurious_rebuild]
-references no module of [dep_lib]; the consumer falls back to a
-glob over [dep_lib]'s object directory, which is invalidated by
-the cmi change.
+The per-module filter drops [dep_lib] from [spurious_rebuild]'s
+compile-rule deps for this single-module consumer, so editing
+[dep_module]'s interface fires no [spurious_rebuild]-named rule.
 
 The zero-reference case is a distinct corner from the single-module
 consumer that references some (but not all) modules of its dep,
-which [single-module-lib.t] already documents. A future fix that
-detects "ocamldep yields no references to dep_lib" could tighten
-this corner to zero rebuilds without needing to solve the broader
-single-module-consumer skip-ocamldep limitation.
+which [single-module-lib.t] already documents. Pre-#14116 this
+overrebuilt because dune skipped ocamldep for single-module
+stanzas as an optimisation and so fell back to a glob over
+[dep_lib]'s objdir, which the cmi change invalidated.
 
 See: https://github.com/ocaml/dune/issues/4572
 See: https://github.com/ocaml/dune/pull/14116#issuecomment-4286949811

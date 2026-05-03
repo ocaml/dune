@@ -585,9 +585,8 @@ let library_rules
   and* () = Module_compilation.build_all cctx
   and* () = Check_rules.add_obj_dir sctx ~obj_dir for_
   and* () =
-    Memo.when_
-      (Compilation_context.bin_annot cctx && for_merlin)
-      (fun () -> Ocaml_index.cctx_rules cctx)
+    Memo.when_ (Compilation_context.bin_annot cctx) (fun () ->
+      Ocaml_index.cctx_rules cctx)
   in
   let+ () =
     Memo.when_

@@ -3,6 +3,18 @@
     Buffer.add_string dst (Lexing.lexeme lexbuf)
   ;;
 
+  let add_lexeme_opt dst lexbuf =
+    match dst with
+    | None -> ()
+    | Some dst -> add_lexeme dst lexbuf
+  ;;
+
+  let add_char_opt dst c =
+    match dst with
+    | None -> ()
+    | Some dst -> Buffer.add_char dst c
+  ;;
+
   let append_char s c =
     let len = String.length s in
     let bytes = Bytes.create (len + 1) in
@@ -35,12 +47,6 @@
     | "<>" -> ocaml_version <> rhs
     | _ -> failwith "invalid operator in [%%if]"
   ;;
-
-  let update_end_depth depth = function
-    | "begin" | "object" | "sig" | "struct" -> depth + 1
-    | "end" when depth > 0 -> depth - 1
-    | _ -> depth
-  ;;
 }
 
 let blank = [' ' '\t' '\n' '\r']*
@@ -62,14 +68,25 @@ rule pp_lex dst = parse
  | "let%expect_test" { skip_expect_test (pp_lex dst) 0 lexbuf }
  | "let%test_module" { skip_test_module (pp_lex dst) 0 lexbuf }
  | "[%%if" { copy_conditional dst lexbuf; pp_lex dst lexbuf }
- | '"' { add_lexeme dst lexbuf; copy_string dst (pp_lex dst) lexbuf }
+ | '"' {
+     add_lexeme dst lexbuf;
+     string_literal (Some dst) (pp_lex dst) lexbuf
+   }
  | (char_literal as c) { Buffer.add_string dst c; pp_lex dst lexbuf }
  | '{' (quoted_string_id as id) '|'
    {
      add_lexeme dst lexbuf;
-     copy_quoted_string dst (pp_lex dst) (quoted_string_end id) "" lexbuf
+     quoted_string
+       (Some dst)
+       (pp_lex dst)
+       (quoted_string_end id)
+       ""
+       lexbuf
    }
- | "(*" { add_lexeme dst lexbuf; copy_comment dst (pp_lex dst) 1 lexbuf }
+ | "(*" {
+     add_lexeme dst lexbuf;
+     comment (Some dst) (pp_lex dst) 1 lexbuf
+   }
  | _ as c { Buffer.add_char dst c; pp_lex dst lexbuf }
  | eof { () }
 
@@ -78,19 +95,28 @@ and skip_expect_test k end_depth = parse
    {
      if end_depth = 0 then k lexbuf else skip_expect_test k end_depth lexbuf
    }
- | '"' { skip_string (skip_expect_test k end_depth) lexbuf }
+ | '"' { string_literal None (skip_expect_test k end_depth) lexbuf }
  | char_literal { skip_expect_test k end_depth lexbuf }
  | '{' (quoted_string_id as id) '|'
    {
-     skip_quoted_string
+     quoted_string
+       None
        (skip_expect_test k end_depth)
        (quoted_string_end id)
        ""
        lexbuf
    }
- | "(*" { skip_comment (skip_expect_test k end_depth) 1 lexbuf }
- | (lower_ident as id)
-   { skip_expect_test k (update_end_depth end_depth id) lexbuf }
+ | "(*" { comment None (skip_expect_test k end_depth) 1 lexbuf }
+ | ("begin" | "object" | "sig" | "struct")
+   { skip_expect_test k (end_depth + 1) lexbuf }
+ | "end"
+   {
+     skip_expect_test
+       k
+       (if end_depth = 0 then 0 else end_depth - 1)
+       lexbuf
+   }
+ | lower_ident { skip_expect_test k end_depth lexbuf }
  | _ { skip_expect_test k end_depth lexbuf }
  | eof { failwith "unterminated let%expect_test" }
 
@@ -102,17 +128,18 @@ and skip_test_module k depth = parse
      then skip_expect_test k 0 lexbuf
      else skip_test_module k (depth - 1) lexbuf
    }
- | '"' { skip_string (skip_test_module k depth) lexbuf }
+ | '"' { string_literal None (skip_test_module k depth) lexbuf }
  | char_literal { skip_test_module k depth lexbuf }
  | '{' (quoted_string_id as id) '|'
    {
-     skip_quoted_string
+     quoted_string
+       None
        (skip_test_module k depth)
        (quoted_string_end id)
        ""
        lexbuf
    }
- | "(*" { skip_comment (skip_test_module k depth) 1 lexbuf }
+ | "(*" { comment None (skip_test_module k depth) 1 lexbuf }
  | _ { skip_test_module k depth lexbuf }
  | eof { failwith "unterminated let%test_module" }
 
@@ -164,8 +191,8 @@ and copy_branches then_branch else_branch current seen_else = parse
  | "[%%endif]" { () }
  | '"' {
      add_lexeme current lexbuf;
-     copy_string
-       current
+     string_literal
+       (Some current)
        (copy_branches then_branch else_branch current seen_else)
        lexbuf
    }
@@ -177,8 +204,8 @@ and copy_branches then_branch else_branch current seen_else = parse
  | '{' (quoted_string_id as id) '|'
    {
      add_lexeme current lexbuf;
-     copy_quoted_string
-       current
+     quoted_string
+       (Some current)
        (copy_branches then_branch else_branch current seen_else)
        (quoted_string_end id)
        ""
@@ -186,8 +213,8 @@ and copy_branches then_branch else_branch current seen_else = parse
    }
  | "(*" {
      add_lexeme current lexbuf;
-     copy_comment
-       current
+     comment
+       (Some current)
        (copy_branches then_branch else_branch current seen_else)
        1
        lexbuf
@@ -199,88 +226,58 @@ and copy_branches then_branch else_branch current seen_else = parse
    }
  | eof { failwith "unterminated [%%if]" }
 
-and skip_string k = parse
- | '"' { k lexbuf }
- | '\\' _ { skip_string k lexbuf }
- | _ { skip_string k lexbuf }
+and string_literal dst k = parse
+ | '"' {
+     add_lexeme_opt dst lexbuf;
+     k lexbuf
+   }
+ | [^ '"' '\\']+ {
+     add_lexeme_opt dst lexbuf;
+     string_literal dst k lexbuf
+   }
+ | '\\' _ {
+     add_lexeme_opt dst lexbuf;
+     string_literal dst k lexbuf
+   }
  | eof { failwith "unterminated string literal" }
 
-and skip_quoted_string k terminator recent = parse
+and quoted_string dst k terminator recent = parse
  | _ as c
    {
      (* We keep a sliding suffix to recognize the closing [|id}]. This still
         does O(String.length terminator) work per body character, so
-        [skip_quoted_string] and [copy_quoted_string] are worst-case quadratic
-        in inputs with extremely long quoted-string tags. That cost manifests
-        while scanning the body of [{|...|}] and [{id|...|id}] literals. *)
+        [quoted_string] is worst-case quadratic in inputs with extremely long
+        quoted-string tags. That cost manifests while scanning the body of
+        [{|...|}] and [{id|...|id}] literals. *)
+     add_char_opt dst c;
      let next = append_char recent c in
      if next = terminator
      then k lexbuf
      else
-       skip_quoted_string
-         k
-         terminator
+       quoted_string dst k terminator
          (keep_recent next ~limit:(String.length terminator - 1))
          lexbuf
    }
  | eof { failwith "unterminated quoted string literal" }
 
-and skip_comment k depth = parse
- | "(*" { skip_comment k (depth + 1) lexbuf }
- | "*)" {
-     if depth = 1
-     then k lexbuf
-     else skip_comment k (depth - 1) lexbuf
-   }
- | _ { skip_comment k depth lexbuf }
- | eof { failwith "unterminated comment" }
-
-and copy_string dst k = parse
- | '"' {
-     add_lexeme dst lexbuf;
-     k lexbuf
-   }
- | '\\' _ {
-     add_lexeme dst lexbuf;
-     copy_string dst k lexbuf
-   }
- | _ {
-     add_lexeme dst lexbuf;
-     copy_string dst k lexbuf
-   }
- | eof { failwith "unterminated string literal" }
-
-and copy_quoted_string dst k terminator recent = parse
- | _ as c
-   {
-     Buffer.add_char dst c;
-     let next = append_char recent c in
-     if next = terminator
-     then k lexbuf
-     else
-       copy_quoted_string
-         dst
-         k
-         terminator
-         (keep_recent next ~limit:(String.length terminator - 1))
-         lexbuf
-   }
- | eof { failwith "unterminated quoted string literal" }
-
-and copy_comment dst k depth = parse
+and comment dst k depth = parse
  | "(*" {
-     add_lexeme dst lexbuf;
-     copy_comment dst k (depth + 1) lexbuf
+     add_lexeme_opt dst lexbuf;
+     comment dst k (depth + 1) lexbuf
    }
  | "*)" {
-     add_lexeme dst lexbuf;
+     add_lexeme_opt dst lexbuf;
      if depth = 1
      then k lexbuf
-     else copy_comment dst k (depth - 1) lexbuf
+     else comment dst k (depth - 1) lexbuf
+   }
+ | [^ '(' '*']+ {
+     add_lexeme_opt dst lexbuf;
+     comment dst k depth lexbuf
    }
  | _ {
-     add_lexeme dst lexbuf;
-     copy_comment dst k depth lexbuf
+     add_lexeme_opt dst lexbuf;
+     comment dst k depth lexbuf
    }
  | eof { failwith "unterminated comment" }
 

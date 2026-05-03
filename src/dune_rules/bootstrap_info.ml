@@ -23,12 +23,13 @@ end
 module Include_subdirs = struct
   type t =
     | Unqualified
-    | Qualified
+    | Qualified of { dirs : File_binding.Unexpanded.t list }
     | No
 
   let to_dyn = function
     | Unqualified -> Dyn.variant "Unqualified" []
-    | Qualified -> Dyn.variant "Qualified" []
+    | Qualified { dirs } ->
+      Dyn.variant "Qualified" (List.map dirs ~f:File_binding.Unexpanded.to_dyn)
     | No -> Dyn.variant "No" []
   ;;
 end
@@ -55,7 +56,7 @@ let include_subdirs dir_contents =
   >>| Ml_sources.include_subdirs
   >>| function
   | Import.Include_subdirs.No -> Include_subdirs.No
-  | Include Qualified -> Qualified
+  | Include (Qualified { dirs }) -> Qualified { dirs }
   | Include Unqualified -> Unqualified
 ;;
 

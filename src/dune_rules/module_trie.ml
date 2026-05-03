@@ -202,10 +202,11 @@ end
 include Make (Module_name)
 
 module Unchecked = struct
-  module Unchecked = Make (Module_name.Unchecked)
+  module Unchecked = Module_name.Unchecked
+  module Module_trie_unchecked = Make (Unchecked)
 
   let check_exn t =
-    Unchecked.foldi t ~init:empty ~f:(fun unchecked_key (loc, m) acc ->
+    Module_trie_unchecked.foldi t ~init:empty ~f:(fun unchecked_key (loc, m) acc ->
       let path_checked =
         let (module_name :: dirs) = Nonempty_list.rev unchecked_key in
         let dirs = List.map dirs ~f:Module_name.Unchecked.validate_exn in
@@ -214,5 +215,23 @@ module Unchecked = struct
       set acc path_checked (loc, m))
   ;;
 
-  include Unchecked
+  include Module_trie_unchecked
+
+  let translate_prefix =
+    let rec translate_prefix t (p :: ps : Module_name.Unchecked.Path.t) acc =
+      match Unchecked.Map.find t p with
+      | None -> None
+      | Some (Leaf (replacement : Module_name.Unchecked.Path.t)) ->
+        let (r :: rs) = replacement in
+        Some (r :: (rs @ ps) : _ Nonempty_list.t)
+      | Some (Map t) ->
+        (match ps with
+         | [] -> None
+         | p' :: ps -> translate_prefix t (p' :: ps) (p :: acc))
+    in
+    fun (t : _ t) prefix ->
+      match translate_prefix t prefix [] with
+      | None -> prefix
+      | Some t -> t
+  ;;
 end

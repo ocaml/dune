@@ -17,4 +17,9 @@ module Unchecked : sig
      and type el := Module_name.Unchecked.t
 
   val check_exn : (Loc.t * Module.Source.t) t -> (Loc.t * Module.Source.t) module_trie
+
+  val translate_prefix
+    :  Module_name.Unchecked.Path.t t
+    -> Module_name.Unchecked.Path.t
+    -> Module_name.Unchecked.Path.t
 end

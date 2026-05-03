@@ -11,6 +11,7 @@ val all : Set.t
 val parse_string : string -> (t, string) Result.t
 val decode : t Decoder.t
 val encode : t Encoder.t
+val repr : t Repr.t
 val to_dyn : t -> Dyn.t
 
 (** [true] iff the executable bit should be set for files installed in this

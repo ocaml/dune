@@ -23,13 +23,22 @@ module Variable = struct
 
   type t = Package_variable_name.t * value
 
-  let dyn_of_value : value -> Dyn.t =
-    let open Dyn in
-    function
-    | B b -> variant "Bool" [ bool b ]
-    | S s -> variant "String" [ string s ]
-    | L xs -> variant "Strings" [ list string xs ]
+  let value_repr =
+    Repr.variant
+      "package-variable-value"
+      [ Repr.case "Bool" Repr.bool ~proj:(function
+          | B b -> Some b
+          | _ -> None)
+      ; Repr.case "String" Repr.string ~proj:(function
+          | S s -> Some s
+          | _ -> None)
+      ; Repr.case "Strings" (Repr.list Repr.string) ~proj:(function
+          | L xs -> Some xs
+          | _ -> None)
+      ]
   ;;
+
+  let repr = Repr.pair Package_variable_name.repr value_repr
 
   let dune_value : value -> Value.t list = function
     | B b -> [ String (Bool.to_string b) ]
@@ -42,10 +51,6 @@ module Variable = struct
     match List.map xs ~f:(Value.to_string ~dir) with
     | [ x ] -> S x
     | xs -> L xs
-  ;;
-
-  let to_dyn (name, value) =
-    Dyn.(pair Package_variable_name.to_dyn dyn_of_value (name, value))
   ;;
 end
 
@@ -297,9 +302,12 @@ module Install_cookie = struct
       ; variables : Variable.t list
       }
 
-    let to_dyn f { files; variables } =
-      let open Dyn in
-      record [ "files", f files; "variables", list Variable.to_dyn variables ]
+    let repr files_repr =
+      Repr.record
+        "install-cookie"
+        [ Repr.field "files" files_repr ~get:(fun t -> t.files)
+        ; Repr.field "variables" (Repr.list Variable.repr) ~get:(fun t -> t.variables)
+        ]
     ;;
   end
 
@@ -311,11 +319,7 @@ module Install_cookie = struct
       let sharing = false
       let name = "INSTALL-COOKIE"
       let version = 4
-
-      let to_dyn =
-        let open Dyn in
-        Gen.to_dyn (list (pair Section.to_dyn (list Path.to_dyn)))
-      ;;
+      let repr = Gen.repr (Repr.list (Repr.pair Section.repr (Repr.list Path.repr)))
     end)
 
   let load_exn f =

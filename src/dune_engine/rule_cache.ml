@@ -4,6 +4,8 @@ open Dune_cache.Hit_or_miss
 module Workspace_local = struct
   (* Stores information for deciding if a rule needs to be re-executed. *)
   module Database = struct
+    let digest_repr = Repr.view Repr.string ~to_:Digest.to_string
+
     module Entry = struct
       type t =
         { rule_digest : Digest.t
@@ -14,19 +16,14 @@ module Workspace_local = struct
       let repr =
         Repr.record
           "rule-cache-workspace-local-entry"
-          [ Repr.field "rule_digest" (Repr.abstract Digest.to_dyn) ~get:(fun t ->
-              t.rule_digest)
+          [ Repr.field "rule_digest" digest_repr ~get:(fun t -> t.rule_digest)
           ; Repr.field
               "dynamic_deps_stages"
-              (Repr.list
-                 (Repr.pair (Repr.abstract Dep.Set.to_dyn) (Repr.abstract Digest.to_dyn)))
+              (Repr.list (Repr.pair (Repr.abstract Dep.Set.to_dyn) digest_repr))
               ~get:(fun t -> t.dynamic_deps_stages)
-          ; Repr.field "targets_digest" (Repr.abstract Digest.to_dyn) ~get:(fun t ->
-              t.targets_digest)
+          ; Repr.field "targets_digest" digest_repr ~get:(fun t -> t.targets_digest)
           ]
       ;;
-
-      let to_dyn = Repr.to_dyn repr
     end
 
     type digest =
@@ -38,14 +35,12 @@ module Workspace_local = struct
     let digest_repr =
       Repr.record
         "rule-cache-workspace-local-digest"
-        [ Repr.field "digest" (Repr.abstract Digest.to_dyn) ~get:(fun t -> t.digest)
+        [ Repr.field "digest" digest_repr ~get:(fun t -> t.digest)
         ; Repr.field "siblings" (Repr.abstract Targets.Produced.to_dyn) ~get:(fun t ->
             t.siblings)
         ; Repr.field "generation" Repr.int ~get:(fun t -> t.generation)
         ]
     ;;
-
-    let dyn_of_digest = Repr.to_dyn digest_repr
 
     (* Keyed by the first target of the rule. *)
     type t =
@@ -64,11 +59,11 @@ module Workspace_local = struct
         "rule-cache-workspace-local-database"
         [ Repr.field
             "rules"
-            (Repr.abstract (Path.Table.to_dyn Entry.to_dyn))
+            (Repr.abstract (Path.Table.to_dyn (Repr.to_dyn Entry.repr)))
             ~get:(fun t -> t.rules)
         ; Repr.field
             "digests"
-            (Repr.abstract (Path.Build.Table.to_dyn dyn_of_digest))
+            (Repr.abstract (Path.Build.Table.to_dyn (Repr.to_dyn digest_repr)))
             ~get:(fun t -> t.digests)
         ; Repr.field
             "invalidated_subtrees"
@@ -78,15 +73,13 @@ module Workspace_local = struct
         ]
     ;;
 
-    let to_dyn = Repr.to_dyn repr
-
     module P = Dune_util.Persistent.Make (struct
         type nonrec t = t
 
         let name = "INCREMENTAL-DB"
         let version = 8
         let sharing = true
-        let to_dyn = to_dyn
+        let repr = repr
       end)
 
     let needs_dumping = ref false

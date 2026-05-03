@@ -4,11 +4,14 @@ include Dune_section
 let compare : t -> t -> Ordering.t = Poly.compare
 let equal : t -> t -> bool = Poly.equal
 
-let to_dyn x =
-  let s = Dune_section.to_string x in
-  let open Dyn in
-  variant (String.uppercase_ascii s) []
+let repr =
+  Repr.variant
+    "section"
+    (List.map Dune_section.all ~f:(fun (section, name) ->
+       Repr.case0 (String.uppercase_ascii name) ~test:(equal section)))
 ;;
+
+let to_dyn = Repr.to_dyn repr
 
 module Key = struct
   type nonrec t = t

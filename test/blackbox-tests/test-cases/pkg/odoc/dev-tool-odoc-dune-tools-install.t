@@ -34,22 +34,27 @@ inspects the compile-time `lock_dev_tools` flag and never falls back to an
   > val hello : unit -> unit
   > EOF
 
-Shadow any system-installed odoc with a fake binary so that PATH lookups have
-known behaviour regardless of what the test environment has installed:
-
-  $ mkdir .fakebin
-  $ cat > .fakebin/odoc <<EOF
-  > #!/bin/sh
-  > echo "odoc from PATH, not pkg" >&2
-  > exit 1
-  > EOF
-  $ chmod +x .fakebin/odoc
-  $ export PATH=$(pwd)/.fakebin:$PATH
-
   $ dune build
 
-Install odoc via `dune tools install`, which populates the dev-tool lockdir
-at _build/.dev-tools.locks/odoc:
+Helper to extract the odoc-related file dependencies of @doc:
+
+  $ odoc_deps() {
+  >   dune rules --deps --format=json @doc 2>/dev/null \
+  >     | jq '[.. | objects | select(.File != null) | .File[1] | select(test("odoc"))] | unique'
+  > }
+
+Baseline before installing the dev-tool: no path under .dev-tool/odoc shows up
+as a dep — dune isn't sourcing odoc from a lockdir (because there isn't one):
+
+  $ odoc_deps
+  [
+    "_build/default/_doc/_html/sherlodoc.js",
+    "_build/default/_doc/_odocls/foo/foo.odocl",
+    "_build/default/_doc/_odocls/foo/page-index.odocl"
+  ]
+
+Install odoc via `dune tools install`, populating the dev-tool lockdir at
+_build/.dev-tools.locks/odoc:
 
   $ dune tools install odoc
   Solution for _build/.dev-tools.locks/odoc:
@@ -57,37 +62,25 @@ at _build/.dev-tools.locks/odoc:
   - ocaml-compiler.5.2.0
   - odoc.0.0.1
 
-With DUNE_CONFIG__LOCK_DEV_TOOL=enabled, `dune build @doc` consults the
-lockdir and invokes the mock odoc (which prints "hello from fake odoc"):
+With DUNE_CONFIG__LOCK_DEV_TOOL=enabled, the locked odoc at
+_build/_private/default/.dev-tool/odoc/target/bin/odoc now appears as a
+dependency, so the build will invoke it instead of relying on PATH:
 
-  $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune build @doc
-  hello from fake odoc
-  hello from fake odoc
-  File "_doc/_html/_unknown_", line 1, characters 0-0:
-  Error: Rule failed to produce directory "_doc/_html/odoc.support"
-  File "_doc/_odoc/pkg/foo/_unknown_", line 1, characters 0-0:
-  Error: Rule failed to generate the following targets:
-  - _doc/_odoc/pkg/foo/page-index.odoc
-  [1]
+  $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled odoc_deps
+  [
+    "_build/_private/default/.dev-tool/odoc/target/bin/odoc",
+    "_build/default/_doc/_html/sherlodoc.js",
+    "_build/default/_doc/_odocls/foo/foo.odocl",
+    "_build/default/_doc/_odocls/foo/page-index.odocl"
+  ]
 
-Without the feature flag, `dune build @doc` should also pick up the locked
-odoc (as `dune fmt` does with ocamlformat). Currently it instead falls back
-to a PATH lookup and runs the shim from .fakebin — this is the bug:
+Without the flag, `dune build @doc` should also pick up the locked odoc (as
+`dune fmt` does with ocamlformat). Currently the dev-tool path is missing from
+the rule deps — odoc is sourced from PATH instead. This is the bug:
 
-  $ dune build @doc
-  File "_doc/_html/_unknown_", line 1, characters 0-0:
-  odoc from PATH, not pkg
-  File "_doc/_odoc/pkg/foo/_unknown_", line 1, characters 0-0:
-  odoc from PATH, not pkg
-  [1]
-
-Removing the lockdir should leave `dune build @doc` still falling back to the
-PATH shim, confirming the locked odoc was the only possible source:
-
-  $ rm -r "${dev_tool_lock_dir}"
-  $ dune build @doc
-  File "_doc/_html/_unknown_", line 1, characters 0-0:
-  odoc from PATH, not pkg
-  File "_doc/_odoc/pkg/foo/_unknown_", line 1, characters 0-0:
-  odoc from PATH, not pkg
-  [1]
+  $ odoc_deps
+  [
+    "_build/default/_doc/_html/sherlodoc.js",
+    "_build/default/_doc/_odocls/foo/foo.odocl",
+    "_build/default/_doc/_odocls/foo/page-index.odocl"
+  ]

@@ -28,6 +28,7 @@ module By_mode : sig
   val both : 'a -> 'a t
   val from_fun : (for_:mode -> 'a) -> 'a t
   val of_list : (mode * 'a) list -> init:'a -> 'a t
+  val to_list : 'a option t -> (mode * 'a) list
   val map : 'a t -> f:(for_:mode -> 'a -> 'b) -> 'b t
   val to_dyn : 'a Dyn.builder -> 'a t Dyn.builder
   val get : for_:mode -> 'a t -> 'a

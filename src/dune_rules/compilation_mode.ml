@@ -54,6 +54,14 @@ module By_mode = struct
       | Melange -> { acc with melange = item })
   ;;
 
+  let to_list t =
+    match t.ocaml, t.melange with
+    | Some ocaml, Some melange -> [ Ocaml, ocaml; Melange, melange ]
+    | Some ocaml, None -> [ Ocaml, ocaml ]
+    | None, Some melange -> [ Melange, melange ]
+    | None, None -> []
+  ;;
+
   let just t ~for_ = of_list ~init:None [ for_, Some t ]
   let map t ~f = { ocaml = f ~for_:Ocaml t.ocaml; melange = f ~for_:Melange t.melange }
 

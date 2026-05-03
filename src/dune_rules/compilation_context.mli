@@ -63,6 +63,19 @@ val requires_hidden : t -> Lib.t list Resolve.Memo.t
 val requires_compile : t -> Lib.t list Resolve.Memo.t
 val parameters : t -> Module_name.t list Resolve.Memo.t
 val includes : t -> Command.Args.without_targets Command.Args.t Lib_mode.Cm_kind.Map.t
+
+(** Include flags ([-I]/[-H]) filtered to a [kept_libs] subset of
+    the cctx's [requires_compile] / [requires_hidden] (direct +
+    hidden split preserved). Cached per
+    (cctx, [Lib_mode.of_cm_kind cm_kind], sorted [kept_libs]) — so
+    [cm_kind]s that map to the same [Lib_mode] (e.g. [Ocaml Cmi]
+    and [Ocaml Cmo] both → [Ocaml Byte]) share a cache entry. *)
+val filtered_include_flags
+  :  t
+  -> cm_kind:Lib_mode.Cm_kind.t
+  -> kept_libs:Lib.t list
+  -> Command.Args.without_targets Command.Args.t Action_builder.t
+
 val lib_index : t -> Lib_file_deps.Lib_index.t Resolve.Memo.t
 
 (** [true] iff any library in the compilation context's direct or

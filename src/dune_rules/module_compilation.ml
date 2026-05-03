@@ -61,6 +61,9 @@ let cross_lib_tight_set ~sandbox ~sctx ~lib_index ~initial_refs =
    why wrapped dep libraries always take the glob path. *)
 let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kind ~mode m =
   let open Action_builder.O in
+  let cctx_includes_for_cm_kind () =
+    Lib_mode.Cm_kind.Map.get (Compilation_context.includes cctx) cm_kind
+  in
   let can_filter =
     (match Lib_mode.of_cm_kind cm_kind with
      | Melange -> false
@@ -79,13 +82,17 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
   in
   let* libs = Resolve.Memo.read (all_libs cctx) in
   if not can_filter
-  then Action_builder.return ((), Lib_file_deps.deps_of_entries ~opaque ~cm_kind libs)
+  then
+    Action_builder.return
+      (cctx_includes_for_cm_kind (), Lib_file_deps.deps_of_entries ~opaque ~cm_kind libs)
   else
     let* has_virtual_impl =
       Resolve.Memo.read (Compilation_context.has_virtual_impl cctx)
     in
     if has_virtual_impl
-    then Action_builder.return ((), Lib_file_deps.deps_of_entries ~opaque ~cm_kind libs)
+    then
+      Action_builder.return
+        (cctx_includes_for_cm_kind (), Lib_file_deps.deps_of_entries ~opaque ~cm_kind libs)
     else
       let* lib_index = Resolve.Memo.read (Compilation_context.lib_index cctx) in
       let sandbox = Compilation_context.sandbox cctx in
@@ -184,7 +191,7 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
              ~for_)
       in
       let must_glob_set = Lib.Set.of_list must_glob_libs in
-      let+ tight_set =
+      let* tight_set =
         cross_lib_tight_set ~sandbox ~sctx ~lib_index ~initial_refs:referenced
       in
       (* Classify each lib in [all_libs]:
@@ -193,34 +200,43 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
          - lib has only [Some] entries referenced → per-module deps;
          - lib unreached but tight-eligible → drop (link rule pulls
            it in via [requires_link]);
-         - lib unreached and not tight-eligible → glob. *)
+         - lib unreached and not tight-eligible → glob.
+         [kept_libs] gets every lib that contributes a tight or glob
+         dep — used by [Compilation_context.filtered_include_flags]
+         to scope the consumer's [-I]/[-H] flags. *)
       let { Lib_file_deps.Lib_index.tight = tight_modules; non_tight = non_tight_libs } =
         Lib_file_deps.Lib_index.filter_libs_with_modules
           lib_index
           ~referenced_modules:tight_set
       in
       let non_tight_set = Lib.Set.of_list non_tight_libs in
-      let tight_deps, glob_libs =
-        List.fold_left all_libs ~init:(Dep.Set.empty, []) ~f:(fun (td, gl) lib ->
+      let tight_deps, glob_libs, kept_libs =
+        List.fold_left all_libs ~init:(Dep.Set.empty, [], []) ~f:(fun (td, gl, kl) lib ->
           (* [must_glob_set] (alias-reachable libs the walk can't
              see) and [non_tight_set] (lib has a [None]-entry
              module reached by the BFS) both force glob. *)
           if Lib.Set.mem must_glob_set lib || Lib.Set.mem non_tight_set lib
-          then td, lib :: gl
+          then td, lib :: gl, lib :: kl
           else (
             match Lib.Map.find tight_modules lib with
             | Some modules ->
               ( Dep.Set.union
                   td
                   (Lib_file_deps.deps_of_entry_modules ~opaque ~cm_kind lib modules)
-              , gl )
+              , gl
+              , lib :: kl )
             | None ->
               if Lib_file_deps.Lib_index.is_tight_eligible lib_index lib
-              then td, gl
-              else td, lib :: gl))
+              then td, gl, kl
+              else td, lib :: gl, lib :: kl))
       in
       let glob_deps = Lib_file_deps.deps_of_entries ~opaque ~cm_kind glob_libs in
-      (), Dep.Set.union tight_deps glob_deps
+      (* Build per-module [-I]/[-H] flags from [kept_libs]: see
+         [Compilation_context.filtered_include_flags]. *)
+      let+ include_flags =
+        Compilation_context.filtered_include_flags cctx ~cm_kind ~kept_libs
+      in
+      include_flags, Dep.Set.union tight_deps glob_deps
 ;;
 
 let lib_cm_deps ~cctx ~cm_kind ~ml_kind ~mode m =
@@ -530,7 +546,9 @@ let build_cm
    in
    let lib_cm_deps =
      if skip_lib_deps
-     then Action_builder.return ()
+     then
+       Action_builder.return
+         (Lib_mode.Cm_kind.Map.get (Compilation_context.includes cctx) cm_kind)
      else lib_cm_deps ~cctx ~cm_kind ~ml_kind ~mode m
    in
    let other_cm_files =
@@ -651,7 +669,6 @@ let build_cm
      ?loc:(Compilation_context.loc cctx)
      (let open Action_builder.With_targets.O in
       Action_builder.with_no_targets other_cm_files
-      >>> Action_builder.with_no_targets lib_cm_deps
       >>> Command.run
             ~dir:(Path.build (Context.build_dir ctx))
             compiler
@@ -660,8 +677,7 @@ let build_cm
             ; cmt_args
             ; cms_args
             ; Command.Args.S obj_dirs
-            ; Command.Args.as_any
-                (Lib_mode.Cm_kind.Map.get (Compilation_context.includes cctx) cm_kind)
+            ; Command.Args.Dyn lib_cm_deps
             ; extra_args
             ; As as_parameter_arg
             ; as_argument_for
@@ -790,7 +806,6 @@ let ocamlc_i ~deps cctx (m : Module.t) ~output =
        ~file_targets:[ output ]
        (let open Action_builder.With_targets.O in
         Action_builder.with_no_targets cm_deps
-        >>> Action_builder.with_no_targets lib_cm_deps
         >>> Command.run
               (Ok ocaml.ocamlc)
               ~dir:(Path.build (Context.build_dir ctx))
@@ -798,10 +813,7 @@ let ocamlc_i ~deps cctx (m : Module.t) ~output =
               [ Command.Args.dyn ocaml_flags
               ; A "-I"
               ; Path (Path.build (Obj_dir.byte_dir obj_dir))
-              ; Command.Args.as_any
-                  (Lib_mode.Cm_kind.Map.get
-                     (Compilation_context.includes cctx)
-                     (Ocaml Cmo))
+              ; Command.Args.Dyn lib_cm_deps
               ; opens modules m
               ; A "-short-paths"
               ; A "-i"

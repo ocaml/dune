@@ -34,6 +34,18 @@ inspects the compile-time `lock_dev_tools` flag and never falls back to an
   > val hello : unit -> unit
   > EOF
 
+Shadow any system-installed odoc with a fake binary so that PATH lookups have
+known behaviour regardless of what the test environment has installed:
+
+  $ mkdir .fakebin
+  $ cat > .fakebin/odoc <<EOF
+  > #!/bin/sh
+  > echo "odoc from PATH, not pkg" >&2
+  > exit 1
+  > EOF
+  $ chmod +x .fakebin/odoc
+  $ export PATH=$(pwd)/.fakebin:$PATH
+
   $ dune build
 
 Install odoc via `dune tools install`, which populates the dev-tool lockdir
@@ -60,30 +72,22 @@ lockdir and invokes the mock odoc (which prints "hello from fake odoc"):
 
 Without the feature flag, `dune build @doc` should also pick up the locked
 odoc (as `dune fmt` does with ocamlformat). Currently it instead falls back
-to a PATH lookup and fails with "Program odoc not found" — this is the bug:
+to a PATH lookup and runs the shim from .fakebin — this is the bug:
 
   $ dune build @doc
   File "_doc/_html/_unknown_", line 1, characters 0-0:
-  Error: Program odoc not found in the tree or in PATH
-   (context: default)
-  Hint: opam install odoc
+  odoc from PATH, not pkg
   File "_doc/_odoc/pkg/foo/_unknown_", line 1, characters 0-0:
-  Error: Program odoc not found in the tree or in PATH
-   (context: default)
-  Hint: opam install odoc
+  odoc from PATH, not pkg
   [1]
 
-Removing the lockdir should leave `dune build @doc` in the same failing state
-(PATH lookup), confirming the locked odoc was the only possible source:
+Removing the lockdir should leave `dune build @doc` still falling back to the
+PATH shim, confirming the locked odoc was the only possible source:
 
   $ rm -r "${dev_tool_lock_dir}"
   $ dune build @doc
   File "_doc/_html/_unknown_", line 1, characters 0-0:
-  Error: Program odoc not found in the tree or in PATH
-   (context: default)
-  Hint: opam install odoc
+  odoc from PATH, not pkg
   File "_doc/_odoc/pkg/foo/_unknown_", line 1, characters 0-0:
-  Error: Program odoc not found in the tree or in PATH
-   (context: default)
-  Hint: opam install odoc
+  odoc from PATH, not pkg
   [1]

@@ -220,17 +220,9 @@ module String_opt_map = Map.Make (struct
 
 let serialize_summary t oc =
   let open Aggregated in
-  (* CR-someday cmoseley: A memo node is created for each *.all-deps target
-     which fills up the summary with noise. This is a hacky fix for it right
-     now, it would be better to find something else to aggregate on or to move
-     these nodes to a single table since they only have a single entry each *)
-  let rename_all_deps label =
-    Option.map label ~f:(fun label ->
-      if String.ends_with ~suffix:".all-deps" label then "*.all-deps" else label)
-  in
   let by_label =
     Int.Map.fold t.nodes ~init:String_opt_map.empty ~f:(fun node acc ->
-      let label = rename_all_deps node.label in
+      let label = node.label in
       let attributes =
         Option.value
           ~default:Int.Map.empty
@@ -253,7 +245,7 @@ let serialize_summary t oc =
   let by_label =
     Edge.Set.fold t.edges ~init:by_label ~f:(fun edge acc ->
       let get_label id =
-        Option.bind (Int.Map.find t.nodes id) ~f:(fun node -> rename_all_deps node.label)
+        Option.bind (Int.Map.find t.nodes id) ~f:(fun node -> node.label)
       in
       let src_label = get_label edge.src_id in
       let dst_label = get_label edge.dst_id in

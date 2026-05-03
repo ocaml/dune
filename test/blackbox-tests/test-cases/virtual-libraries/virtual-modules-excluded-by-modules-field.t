@@ -40,11 +40,6 @@ X is warned about:
   1 | module type F = X
                       ^
   Error: Unbound module type X
-  File "src/impl/dune", lines 1-3, characters 0-40:
-  1 | (library
-  2 |  (name impl)
-  3 |  (implements foo))
-  Error: No rule found for src/.foo.objs/y.impl.all-deps
   [1]
 
 In 3.11 onwards this warning becomes an error

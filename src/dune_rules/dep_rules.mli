@@ -33,9 +33,13 @@ val read_immediate_deps_of
   -> Module.t list Action_builder.t
 
 val read_deps_of
-  :  obj_dir:Path.Build.t Obj_dir.t
+  :  sandbox:Sandbox_config.t
+  -> sctx:Super_context.t
+  -> obj_dir:Path.Build.t Obj_dir.t
   -> modules:Modules.With_vlib.t
-  -> ml_kind:Ml_kind.t
+  -> impl:Virtual_rules.t
+  -> dir:Path.Build.t
   -> for_:Compilation_mode.t
+  -> ml_kind:Ml_kind.t
   -> Module.t
   -> Module.t list Action_builder.t

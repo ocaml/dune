@@ -246,7 +246,16 @@ let make_same_lib_emission_deps =
       >>= function
       | true ->
         let* intf_deps =
-          Dep_rules.read_deps_of ~obj_dir ~modules ~ml_kind:Intf module_ ~for_
+          Dep_rules.read_deps_of
+            ~sandbox
+            ~sctx
+            ~obj_dir
+            ~modules
+            ~impl:Virtual_rules.no_implements
+            ~dir:(Obj_dir.dir obj_dir)
+            ~for_
+            ~ml_kind:Intf
+            module_
         in
         (* Cross-module optimization follows implementation artifacts, but the
          initial reachability also comes from the emitted module's interface
@@ -256,10 +265,10 @@ let make_same_lib_emission_deps =
         |> Action_builder.map ~f:(deps_of_xopt_closure ~obj_dir)
       | false ->
         (* Emission reads same-library implementation artifacts recursively.
-           The generic [.impl.all-deps] files collapse transitive edges through
-           interfaces when a dependency has an [.mli], which is fine for
-           compilation but insufficient for JS emission. Follow the
-           implementation dependency graph directly instead. *)
+           Compilation dependencies collapse transitive edges through interfaces
+           when a dependency has an [.mli], which is insufficient for JS
+           emission. Follow the implementation dependency graph directly
+           instead. *)
         Dep_graph.top_closed_implementations dep_graph [ module_ ]
         |> Action_builder.map ~f:(deps_of_impl_closure ~obj_dir)
 ;;

@@ -63,6 +63,17 @@ val requires_hidden : t -> Lib.t list Resolve.Memo.t
 val requires_compile : t -> Lib.t list Resolve.Memo.t
 val parameters : t -> Module_name.t list Resolve.Memo.t
 val includes : t -> Command.Args.without_targets Command.Args.t Lib_mode.Cm_kind.Map.t
+
+(** Include flags ([-I]/[-H]) for compiling a module against [kept_libs]. The
+    cctx's [requires_compile] and [requires_hidden] are each restricted to
+    libraries in [kept_libs]; the kept direct entries become [-I], the kept
+    hidden entries become [-H]. *)
+val filtered_include_flags
+  :  t
+  -> cm_kind:Lib_mode.Cm_kind.t
+  -> kept_libs:Lib.t list
+  -> Command.Args.without_targets Command.Args.t Action_builder.t
+
 val lib_index : t -> Lib_file_deps.Lib_index.t Resolve.Memo.t
 
 (** [true] iff any library in the compilation context's direct or

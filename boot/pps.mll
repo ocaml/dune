@@ -32,9 +32,6 @@
 
   let ocaml_version =
     Scanf.sscanf Sys.ocaml_version "%d.%d.%d" (fun a b c -> a, b, c)
-
-  let version a b c =
-    int_of_string a, int_of_string b, int_of_string c
   ;;
 
   let eval_relop relop rhs =
@@ -46,6 +43,19 @@
     | "=" -> ocaml_version = rhs
     | "<>" -> ocaml_version <> rhs
     | _ -> failwith "invalid operator in [%%if]"
+  ;;
+
+  type copy_mode =
+    | Top_level
+    | Conditional of
+        { root_dst : Buffer.t option
+        ; keep_then : bool
+        ; seen_else : bool
+        }
+  ;;
+
+  let branch_dst root_dst keep_then seen_else =
+    if keep_then <> seen_else then root_dst else None
   ;;
 }
 
@@ -64,31 +74,57 @@ let char_escape =
 let char_literal = '\'' (char_simple | char_escape) '\''
 let lower_ident = ['a'-'z' '_']['A'-'Z' 'a'-'z' '_' '0'-'9' '\'']*
 
-rule pp_lex dst = parse
- | "let%expect_test" { skip_expect_test (pp_lex dst) 0 lexbuf }
- | "let%test_module" { skip_test_module (pp_lex dst) 0 lexbuf }
- | "[%%if" { copy_conditional dst lexbuf; pp_lex dst lexbuf }
- | '"' {
-     add_lexeme dst lexbuf;
-     string_literal (Some dst) (pp_lex dst) lexbuf
+rule copy dst mode = parse
+ | "let%expect_test" { skip_expect_test (copy dst mode) 0 lexbuf }
+ | "let%test_module" { skip_test_module (copy dst mode) 0 lexbuf }
+ | "[%%if" { copy_conditional dst mode lexbuf }
+ | "[%%else]"
+   {
+     match mode with
+     | Top_level ->
+       add_lexeme_opt dst lexbuf;
+       copy dst mode lexbuf
+     | Conditional { seen_else = true; _ } -> failwith "unexpected [%%else]"
+     | Conditional { root_dst; keep_then; seen_else = false } ->
+       copy
+         (branch_dst root_dst keep_then true)
+         (Conditional { root_dst; keep_then; seen_else = true })
+         lexbuf
    }
- | (char_literal as c) { Buffer.add_string dst c; pp_lex dst lexbuf }
+ | "[%%endif]"
+   {
+     match mode with
+     | Top_level ->
+       add_lexeme_opt dst lexbuf;
+       copy dst mode lexbuf
+     | Conditional _ -> ()
+   }
+ | '"' {
+     add_lexeme_opt dst lexbuf;
+     string_literal dst (copy dst mode) lexbuf
+   }
+ | char_literal {
+     add_lexeme_opt dst lexbuf;
+     copy dst mode lexbuf
+   }
  | '{' (quoted_string_id as id) '|'
    {
-     add_lexeme dst lexbuf;
-     quoted_string
-       (Some dst)
-       (pp_lex dst)
-       (quoted_string_end id)
-       ""
-       lexbuf
+     add_lexeme_opt dst lexbuf;
+     quoted_string dst (copy dst mode) (quoted_string_end id) "" lexbuf
    }
  | "(*" {
-     add_lexeme dst lexbuf;
-     comment (Some dst) (pp_lex dst) 1 lexbuf
+     add_lexeme_opt dst lexbuf;
+     comment dst (copy dst mode) 1 lexbuf
    }
- | _ as c { Buffer.add_char dst c; pp_lex dst lexbuf }
- | eof { () }
+ | _ as c {
+     add_char_opt dst c;
+     copy dst mode lexbuf
+   }
+ | eof {
+     match mode with
+     | Top_level -> ()
+     | Conditional _ -> failwith "unterminated [%%if]"
+   }
 
 and skip_expect_test k end_depth = parse
  | ";;"
@@ -143,7 +179,7 @@ and skip_test_module k depth = parse
  | _ { skip_test_module k depth lexbuf }
  | eof { failwith "unterminated let%test_module" }
 
-and copy_conditional dst = parse
+and copy_conditional dst mode = parse
  | blank "ocaml_version" blank
    (("<=" | ">=" | "<>" | "<" | ">" | "=") as relop)
    blank '(' blank
@@ -154,77 +190,18 @@ and copy_conditional dst = parse
    (integer as patch)
    blank ')' blank ']'
    {
-     let keep_then = eval_relop relop (version major minor patch) in
-     let then_branch = Buffer.create 128 in
-     let else_branch = Buffer.create 128 in
-     copy_branches then_branch else_branch then_branch false lexbuf;
-     Buffer.add_buffer dst (if keep_then then then_branch else else_branch)
+     let keep_then =
+       eval_relop
+         relop
+         (int_of_string major, int_of_string minor, int_of_string patch)
+     in
+     copy
+       (branch_dst dst keep_then false)
+       (Conditional { root_dst = dst; keep_then; seen_else = false })
+       lexbuf;
+     copy dst mode lexbuf
    }
  | _ { failwith "invalid [%%if] header" }
-
-and copy_branches then_branch else_branch current seen_else = parse
- | "let%expect_test"
-   {
-     skip_expect_test
-       (copy_branches then_branch else_branch current seen_else)
-       0
-       lexbuf
-   }
- | "let%test_module"
-   {
-     skip_test_module
-       (copy_branches then_branch else_branch current seen_else)
-       0
-       lexbuf
-   }
- | "[%%if"
-   {
-     copy_conditional current lexbuf;
-     copy_branches then_branch else_branch current seen_else lexbuf
-   }
- | "[%%else]"
-   {
-     if seen_else
-     then failwith "unexpected [%%else]"
-     else copy_branches then_branch else_branch else_branch true lexbuf
-   }
- | "[%%endif]" { () }
- | '"' {
-     add_lexeme current lexbuf;
-     string_literal
-       (Some current)
-       (copy_branches then_branch else_branch current seen_else)
-       lexbuf
-   }
- | (char_literal as c)
-   {
-     Buffer.add_string current c;
-     copy_branches then_branch else_branch current seen_else lexbuf
-   }
- | '{' (quoted_string_id as id) '|'
-   {
-     add_lexeme current lexbuf;
-     quoted_string
-       (Some current)
-       (copy_branches then_branch else_branch current seen_else)
-       (quoted_string_end id)
-       ""
-       lexbuf
-   }
- | "(*" {
-     add_lexeme current lexbuf;
-     comment
-       (Some current)
-       (copy_branches then_branch else_branch current seen_else)
-       1
-       lexbuf
-   }
- | _ as c
-   {
-     Buffer.add_char current c;
-     copy_branches then_branch else_branch current seen_else lexbuf
-   }
- | eof { failwith "unterminated [%%if]" }
 
 and string_literal dst k = parse
  | '"' {
@@ -285,7 +262,7 @@ and comment dst k depth = parse
   let pp s =
     let b = Buffer.create (String.length s) in
     let lb = Lexing.from_string s in
-    pp_lex b lb;
+    copy (Some b) Top_level lb;
     Buffer.contents b
   ;;
 }

@@ -374,21 +374,10 @@ module Build_environment_kind = struct
     | Some findlib -> Findlib_config.ocamlpath findlib
     | None ->
       (match t with
-       | Cross_compilation_using_findlib_toolchain toolchain ->
-         User_error.raise
-           [ Pp.textf
-               "Could not find `ocamlfind' in PATH or an environment variable \
-                `OCAMLFIND_CONF' while cross-compiling with toolchain `%s'"
-               (Context_name.to_string toolchain)
-           ]
-           ~hints:
-             [ Pp.enumerate
-                 [ "`opam install ocamlfind' and/or:"
-                 ; "Point `OCAMLFIND_CONF' to the findlib configuration that defines \
-                    this toolchain"
-                 ]
-                 ~f:Pp.text
-             ]
+       | Cross_compilation_using_findlib_toolchain _ ->
+         (* Defer to library resolution: an empty path lets unused
+            cross-compile contexts load. See ocaml/dune#10399. *)
+         []
        | Hardcoded_path l -> List.map l ~f:Path.of_filename_relative_to_initial_cwd
        | Opam2_environment opam_prefix ->
          let p = Path.of_filename_relative_to_initial_cwd opam_prefix in

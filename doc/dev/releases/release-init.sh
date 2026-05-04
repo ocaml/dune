@@ -73,9 +73,7 @@ Issues blocking the release
 
 To begin once all initial blockers are resolved.
 
-- [ ] Run pre-release CI jobs on \`main\` branch
-    - [ ] [mirage](https://github.com/ocaml/dune/actions/workflows/mirage.yml)
-    - [ ] [packaging](https://github.com/ocaml/dune/actions/workflows/isolated-package-build.yml)
+- [ ] Create the release candidate branch and ensure all CI jobs are passing
 - [ ] Work thru the [pre-release phase](https://github.com/ocaml/dune/blob/main/doc/dev/releases/process.md#pre-release-phase).
   Alpha release PRs into opam repo:
   - [link to OPAM PR 1]

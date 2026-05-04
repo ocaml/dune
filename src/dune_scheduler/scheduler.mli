@@ -133,6 +133,15 @@ val sleep : Time.Span.t -> unit Fiber.t
 
 val spawn_thread : name:string -> (unit -> unit) -> Thread.t
 
+type build_finish =
+  | Finished of { restart_duration : Time.Span.t option }
+  | Restarting
+
+val start_build : unit -> Run_id.t
+val watch_restart_files : unit -> Path.t list option
+val finish_build : stop:Time.t -> build_finish
+val flush_file_watcher : unit -> unit Fiber.t
+
 (** [set_fs_memo_impl] registers the file system memoization callbacks.
     This must be called by dune_engine at initialization before starting
     the scheduler to enable proper file system event handling. *)

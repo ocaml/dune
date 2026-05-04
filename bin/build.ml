@@ -1,5 +1,4 @@
 open Import
-module Run_id = Dune_scheduler.Run_id
 
 let run_build_system ~request =
   Dune_engine.Build_system.run_action_builder
@@ -56,29 +55,8 @@ let run_build_command_poll_passive ~common ~config ~request:_ : unit =
 let run_build_command_once ~(common : Common.t) ~config ~request =
   let open Fiber.O in
   let once () =
-    let run_id = Run_id.Batch in
-    let start = Time.now () in
-    Dune_trace.emit Build (fun () ->
-      Dune_trace.Event.watch_build_start
-        ~run_id:(Run_id.to_int run_id)
-        ~restart:false
-        ~files:None
-        ~start);
-    let+ res = run_build_system ~request in
-    let stop = Time.now () in
-    let outcome =
-      match res with
-      | Ok () -> `Success
-      | Error `Already_reported -> `Failure
-    in
-    Dune_trace.emit Build (fun () ->
-      Dune_trace.Event.watch_build_finish
-        ~run_id:(Run_id.to_int run_id)
-        ~outcome
-        ~start
-        ~stop
-        ~restart_duration:None);
-    match res with
+    run_build_system ~request
+    >>| function
     | Error `Already_reported -> raise Dune_util.Report_error.Already_reported
     | Ok () -> ()
   in

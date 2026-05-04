@@ -285,7 +285,7 @@ let compile_info ~scope (mel : Melange_stanzas.Emit.t) =
   let dune_version = Scope.project scope |> Dune_project.dune_version in
   let+ pps =
     Instrumentation.with_instrumentation
-      mel.preprocess
+      mel.preprocess.config
       ~instrumentation_backend:(Lib.DB.instrumentation_backend (Scope.libs scope))
     |> Resolve.Memo.read_memo
     >>| Preprocess.Per_module.pps
@@ -513,7 +513,6 @@ let setup_emit_cmj_rules
           sctx
           (Melange
              { preprocess = mel.preprocess
-             ; preprocessor_deps = mel.preprocessor_deps
              ; lint = mel.lint
              ; (* why is this always false? *)
                empty_module_interface_if_absent = false
@@ -587,7 +586,7 @@ let setup_emit_cmj_rules
         ~flags
         ~modules
         ~libname:None
-        ~preprocess:(Preprocess.Per_module.without_instrumentation mel.preprocess)
+        ~preprocess:(Preprocess.Per_module.without_instrumentation mel.preprocess.config)
         ~obj_dir
         ~ident:merlin_ident
         ~dialects:(Dune_project.dialects (Scope.project scope))
@@ -736,7 +735,9 @@ let modules_for_js_and_obj_dir ~sctx ~dir_contents ~scope (mel : Melange_stanzas
           ~libs:(Scope.libs scope)
           ~for_:(Melange { target = mel.target })
   in
-  let+ modules = modules_in_obj_dir ~sctx ~scope ~preprocess:mel.preprocess modules in
+  let+ modules =
+    modules_in_obj_dir ~sctx ~scope ~preprocess:mel.preprocess.config modules
+  in
   let modules_for_js =
     Modules.fold_user_available modules ~init:[] ~f:(fun x acc ->
       if Module.has x ~ml_kind:Impl then x :: acc else acc)

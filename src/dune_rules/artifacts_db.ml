@@ -14,7 +14,7 @@ let available_exes ~dir (exes : Executables.t) =
          fail when loading artifacts. This is clearly bad but
          "optional" executables shouldn't be used. *)
       Instrumentation.with_instrumentation
-        exes.buildable.preprocess
+        exes.buildable.preprocess.config
         ~instrumentation_backend:(Lib.DB.instrumentation_backend libs)
       |> Resolve.Memo.read_memo
       >>| Preprocess.Per_module.pps

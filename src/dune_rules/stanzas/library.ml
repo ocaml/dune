@@ -593,8 +593,8 @@ let to_lib_info
     }
   in
   let preprocess =
-    { Compilation_mode.By_mode.ocaml = conf.buildable.preprocess
-    ; melange = conf.buildable.preprocess
+    { Compilation_mode.By_mode.ocaml = conf.buildable.preprocess.config
+    ; melange = conf.buildable.preprocess.config
     }
   in
   let virtual_deps = conf.virtual_deps in

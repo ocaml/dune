@@ -58,7 +58,7 @@ let decode =
      let+ buildable : Buildable.t =
        let+ loc = loc
        and+ libraries = Buildable.decode_libraries ~allow_re_export:true
-       and+ preprocess, preprocessor_deps = Buildable.decode_preprocess
+       and+ preprocess = Buildable.decode_preprocess
        and+ lint = Buildable.decode_lint
        and+ flags = Buildable.decode_ocaml_flags
        and+ allow_overlapping_dependencies = Buildable.decode_allow_overlapping
@@ -72,7 +72,6 @@ let decode =
        ; extra_objects = Foreign.Objects.empty
        ; foreign_stubs = []
        ; preprocess
-       ; preprocessor_deps
        ; lint
        ; flags
        ; js_of_ocaml =

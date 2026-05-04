@@ -643,7 +643,8 @@ let library_rules
       ~stdlib_dir:lib_config.stdlib_dir
       ~flags
       ~modules
-      ~preprocess:(Preprocess.Per_module.without_instrumentation lib.buildable.preprocess)
+      ~preprocess:
+        (Preprocess.Per_module.without_instrumentation lib.buildable.preprocess.config)
       ~libname:(Some (snd lib.name))
       ~obj_dir
       ~dialects:(Dune_project.dialects (Scope.project scope))

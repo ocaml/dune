@@ -38,7 +38,7 @@ let make ~sctx ~scope ~(lib : Library.t) ~info ~vlib ~for_ =
         let* preprocess =
           (* TODO wrong, this should be delayed *)
           Instrumentation.with_instrumentation
-            lib.buildable.preprocess
+            lib.buildable.preprocess.config
             ~instrumentation_backend:(Lib.DB.instrumentation_backend db)
           |> Resolve.Memo.read_memo
         in

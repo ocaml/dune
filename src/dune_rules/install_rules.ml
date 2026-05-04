@@ -503,7 +503,7 @@ end = struct
                     we shouldn't install the binary rather than failing outright
                  *)
                  Instrumentation.with_instrumentation
-                   exes.buildable.preprocess
+                   exes.buildable.preprocess.config
                    ~instrumentation_backend:
                      (Lib.DB.instrumentation_backend (Scope.libs scope))
                  |> Resolve.Memo.read_memo

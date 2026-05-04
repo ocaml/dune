@@ -340,7 +340,7 @@ let executables_rules
       ~libname:None
       ~obj_dir
       ~preprocess:
-        (Preprocess.Per_module.without_instrumentation exes.buildable.preprocess)
+        (Preprocess.Per_module.without_instrumentation exes.buildable.preprocess.config)
       ~dialects:(Dune_project.dialects (Scope.project scope))
       ~ident:(Merlin_ident.for_exes ~names:(Nonempty_list.map ~f:snd exes.names))
       ~for_
@@ -354,7 +354,7 @@ let compile_info ~scope (exes : Executables.t) =
   let+ pps =
     (* TODO resolution should be delayed *)
     Instrumentation.with_instrumentation
-      exes.buildable.preprocess
+      exes.buildable.preprocess.config
       ~instrumentation_backend:(Lib.DB.instrumentation_backend (Scope.libs scope))
     |> Resolve.Memo.read_memo
     >>| Preprocess.Per_module.pps

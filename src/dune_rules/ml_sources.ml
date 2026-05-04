@@ -16,10 +16,10 @@ module Origin = struct
   ;;
 
   let preprocess = function
-    | Library l -> l.buildable.preprocess
-    | Executables e -> e.buildable.preprocess
-    | Tests t -> t.exes.buildable.preprocess
-    | Melange mel -> mel.preprocess
+    | Library l -> l.buildable.preprocess.config
+    | Executables e -> e.buildable.preprocess.config
+    | Tests t -> t.exes.buildable.preprocess.config
+    | Melange mel -> mel.preprocess.config
   ;;
 
   let to_dyn = function

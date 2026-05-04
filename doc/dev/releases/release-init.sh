@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/usr/bin/env bash
 
 # Script name: release-init.sh
 # Description: This script initiates the release process for a release of dune

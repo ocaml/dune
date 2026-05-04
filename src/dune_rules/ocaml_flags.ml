@@ -197,3 +197,18 @@ let allow_only_melange t =
 let open_flags modules =
   List.concat_map modules ~f:(fun name -> [ "-open"; Module_name.to_string name ])
 ;;
+
+let extract_open_module_names flags =
+  let rec loop acc = function
+    | "-open" :: name :: rest ->
+      let acc =
+        match Module_name.of_string_opt name with
+        | Some m -> Module_name.Set.add acc m
+        | None -> acc
+      in
+      loop acc rest
+    | _ :: rest -> loop acc rest
+    | [] -> acc
+  in
+  loop Module_name.Set.empty flags
+;;

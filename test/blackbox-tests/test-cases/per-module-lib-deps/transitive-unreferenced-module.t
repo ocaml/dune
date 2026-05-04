@@ -61,12 +61,6 @@ test references — and record the rebuild list for [main]:
   [
     {
       "target_files": [
-        "_build/default/.main.eobjs/byte/dune__exe__Main.cmi",
-        "_build/default/.main.eobjs/byte/dune__exe__Main.cmti"
-      ]
-    },
-    {
-      "target_files": [
         "_build/default/.main.eobjs/native/dune__exe__Main.cmx",
         "_build/default/.main.eobjs/native/dune__exe__Main.o"
       ]

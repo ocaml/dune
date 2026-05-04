@@ -49,13 +49,6 @@ Editing only [dep_lib.mli] (the [.ml] is unchanged) changes
         "_build/default/consumer_lib/.consumer_lib.objs/byte/consumer_lib__Root.cmo",
         "_build/default/consumer_lib/.consumer_lib.objs/byte/consumer_lib__Root.cmt"
       ]
-    },
-    {
-      "target_files": [
-        "_build/default/consumer_lib/.consumer_lib.objs/byte/consumer_lib.cmi",
-        "_build/default/consumer_lib/.consumer_lib.objs/byte/consumer_lib.cmo",
-        "_build/default/consumer_lib/.consumer_lib.objs/byte/consumer_lib.cmt"
-      ]
     }
   ]
 

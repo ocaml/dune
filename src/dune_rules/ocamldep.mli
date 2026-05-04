@@ -33,3 +33,15 @@ val read_immediate_deps_of
   -> ml_kind:Ml_kind.t
   -> Module.t
   -> Module.t list Action_builder.t
+
+(** [read_immediate_deps_raw_of ~sandbox ~sctx ~obj_dir ~ml_kind unit] returns
+    the raw module names from ocamldep output without filtering against the
+    stanza's module set. This preserves cross-library references that
+    [read_immediate_deps_of] discards. *)
+val read_immediate_deps_raw_of
+  :  sandbox:Sandbox_config.t
+  -> sctx:Super_context.t
+  -> obj_dir:Path.Build.t Obj_dir.t
+  -> ml_kind:Ml_kind.t
+  -> Module.t
+  -> Module_name.Set.t Action_builder.t

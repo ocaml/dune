@@ -85,12 +85,6 @@ untouched. Today [Main] is rebuilt:
   [
     {
       "target_files": [
-        "_build/default/.main.eobjs/byte/dune__exe__Main.cmi",
-        "_build/default/.main.eobjs/byte/dune__exe__Main.cmti"
-      ]
-    },
-    {
-      "target_files": [
         "_build/default/.main.eobjs/byte/dune__exe__Main.cmo",
         "_build/default/.main.eobjs/byte/dune__exe__Main.cmt"
       ]

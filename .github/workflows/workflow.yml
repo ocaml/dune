@@ -256,6 +256,7 @@ jobs:
 
       - name: Install deps
         run: |
+          opam pin add lwt 5.9.1 --no-action
           # CR-soon Alizter: ocaml_intrinsics_kernel v0.17 doesn't compile on
           # MSVC. Pin to master which has the fix. Remove when v0.18 is released.
           opam pin add ocaml_intrinsics_kernel https://github.com/janestreet/ocaml_intrinsics_kernel.git --no-action

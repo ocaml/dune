@@ -122,11 +122,21 @@ let should_warn ~warn_forwarding builder =
   && not (Common.Builder.equal builder Common.Builder.default)
 ;;
 
+let with_rpc_connected_status_line f =
+  let section =
+    Console.Status_line.add_section
+      (Live (fun () -> Pp.verbatim "Connected to RPC server"))
+  in
+  Fiber.finalize f ~finally:(fun () ->
+    Console.Status_line.remove_section section;
+    Fiber.return ())
+;;
+
 let send_request ~f connection name =
   Dune_rpc_impl.Client.client
     connection
     (Dune_rpc.Initialize.Request.create ~id:(Dune_rpc.Id.make (Sexp.Atom name)))
-    ~f
+    ~f:(fun client -> with_rpc_connected_status_line (fun () -> f client))
 ;;
 
 let fire_request

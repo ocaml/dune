@@ -108,5 +108,7 @@ val path_with_stats_async
   -> (t, Path_digest_error.t) result Fiber.t
 
 (** Digest a file taking the [executable] bit into account. Should not be called
-    on a directory. *)
+    on a directory. Digesting is done in the background thread pool, with the
+    number of concurrent calls capped by a global throttle so that we do not
+    exceed the process's open file descriptor limit. *)
 val file_with_executable_bit : executable:bool -> Path.t -> t Fiber.t

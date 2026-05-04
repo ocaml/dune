@@ -153,26 +153,48 @@ let ocamldep_action ~sandbox ~sctx ~dir ~ml_kind unit =
   }
 ;;
 
+(* Top-level cache per (source path, ml_kind): without it, each caller's
+   [Action_builder.memoize] cell has a different digest (pp-flags closure
+   identity varies), causing ocamldep to run multiply per source. *)
+let read_immediate_deps_words =
+  let cache = Table.create (module String) 64 in
+  fun ~sandbox ~sctx ~obj_dir ~ml_kind unit ->
+    match Module.source ~ml_kind unit with
+    | None -> Action_builder.return None
+    | Some source ->
+      let memo_name =
+        sprintf
+          "%s.%s.ocamldep"
+          (Path.to_string (Module.File.path source))
+          (Ml_kind.to_string ml_kind)
+      in
+      (match Table.find cache memo_name with
+       | Some builder -> builder
+       | None ->
+         let dir = Obj_dir.dir obj_dir in
+         let builder =
+           ocamldep_action ~sandbox ~sctx ~dir ~ml_kind unit
+           |> Build_system.execute_action_stdout
+           |> Memo.map ~f:(fun output ->
+             Some
+               (String.split_lines output
+                |> parse_deps_exn ~file:(Module.File.path source)))
+           |> Action_builder.of_memo
+           |> Action_builder.memoize memo_name
+         in
+         Table.set cache memo_name builder;
+         builder)
+;;
+
 let read_immediate_deps_of ~sandbox ~sctx ~obj_dir ~modules ~ml_kind unit =
-  match Module.source ~ml_kind unit with
-  | None -> Action_builder.return []
-  | Some source ->
+  let open Action_builder.O in
+  let+ words = read_immediate_deps_words ~sandbox ~sctx ~obj_dir ~ml_kind unit in
+  match words with
+  | None -> []
+  | Some words ->
     let dir = Obj_dir.dir obj_dir in
-    let memo_name =
-      sprintf
-        "%s.%s.ocamldep"
-        (Path.to_string (Module.File.path source))
-        (Ml_kind.to_string ml_kind)
-    in
-    ocamldep_action ~sandbox ~sctx ~dir ~ml_kind unit
-    |> Build_system.execute_action_stdout
-    |> Memo.map ~f:(fun output ->
-      String.split_lines output
-      |> parse_deps_exn ~file:(Module.File.path source)
-      |> parse_module_names ~dir ~unit ~modules
-      |> Stdlib.( @ ) (Modules.With_vlib.implicit_deps modules ~of_:unit))
-    |> Action_builder.of_memo
-    |> Action_builder.memoize memo_name
+    parse_module_names ~dir ~unit ~modules words
+    |> Stdlib.( @ ) (Modules.With_vlib.implicit_deps modules ~of_:unit)
 ;;
 
 let deps_of ~sandbox ~modules ~sctx ~dir ~obj_dir ~ml_kind ~for_ unit =
@@ -209,4 +231,16 @@ let read_deps_of ~obj_dir ~modules ~ml_kind ~for_ unit =
   Action_builder.lines_of (Path.build all_deps_file)
   |> Action_builder.map ~f:(parse_compilation_units ~modules)
   |> Action_builder.memoize (Path.Build.to_string all_deps_file)
+;;
+
+(* Returns raw module names without resolving against the stanza's module
+   set. Preserves references to external libraries, which [parse_module_names]
+   would discard. Used for per-module inter-library dependency filtering
+   (#4572). *)
+let read_immediate_deps_raw_of ~sandbox ~sctx ~obj_dir ~ml_kind unit =
+  let open Action_builder.O in
+  let+ words = read_immediate_deps_words ~sandbox ~sctx ~obj_dir ~ml_kind unit in
+  match words with
+  | None -> Module_name.Set.empty
+  | Some words -> Module_name.Set.of_list_map words ~f:Module_name.of_checked_string
 ;;

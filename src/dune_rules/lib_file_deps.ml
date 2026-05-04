@@ -48,8 +48,71 @@ let deps_of_lib (lib : Lib.t) ~groups =
   |> Dep.Set.of_list
 ;;
 
-let deps_with_exts = Dep.Set.union_map ~f:(fun (lib, groups) -> deps_of_lib lib ~groups)
 let deps libs ~groups = Dep.Set.union_map libs ~f:(deps_of_lib ~groups)
+
+(* Currently unused: per-file deps on individual modules within a library.
+   Retained for potential future use when per-module filtering of unwrapped
+   libraries is supported. *)
+let deps_of_module (lib : Lib.t) (m : Module.t) ~cm_kinds =
+  let obj_dir = Lib.info lib |> Lib_info.obj_dir in
+  List.filter_map cm_kinds ~f:(fun kind ->
+    Obj_dir.Module.cm_public_file obj_dir m ~kind |> Option.map ~f:(fun p -> Dep.file p))
+  |> Dep.Set.of_list
+;;
+
+let deps_of_entries ~opaque ~(cm_kind : Lib_mode.Cm_kind.t) entries =
+  let groups_for lib =
+    match cm_kind with
+    | Ocaml Cmi | Ocaml Cmo -> [ Group.Ocaml Cmi ]
+    | Ocaml Cmx ->
+      if opaque && Lib.is_local lib
+      then [ Group.Ocaml Cmi ]
+      else [ Group.Ocaml Cmi; Group.Ocaml Cmx ]
+    | Melange Cmi -> [ Group.Melange Cmi ]
+    | Melange Cmj -> [ Group.Melange Cmi; Group.Melange Cmj ]
+  in
+  (* Currently unused: [cm_kinds_for] and the [Some m] branch below support
+     per-file deps on individual modules. All entries currently use [None]
+     (glob deps), so this path is dead code. Retained for future use. *)
+  let cm_kinds_for lib =
+    match cm_kind with
+    | Ocaml Cmi | Ocaml Cmo -> [ Lib_mode.Cm_kind.Ocaml Cmi ]
+    | Ocaml Cmx ->
+      if opaque && Lib.is_local lib
+      then [ Lib_mode.Cm_kind.Ocaml Cmi ]
+      else [ Lib_mode.Cm_kind.Ocaml Cmi; Ocaml Cmx ]
+    | Melange Cmi -> [ Lib_mode.Cm_kind.Melange Cmi ]
+    | Melange Cmj -> [ Lib_mode.Cm_kind.Melange Cmi; Melange Cmj ]
+  in
+  Dep.Set.union_map entries ~f:(fun (lib, module_opt) ->
+    match module_opt with
+    | None -> deps_of_lib lib ~groups:(groups_for lib)
+    | Some m -> deps_of_module lib m ~cm_kinds:(cm_kinds_for lib))
+;;
+
+module Lib_index = struct
+  type entry = Lib.t * Module.t option
+  type t = { by_module_name : entry list Module_name.Map.t }
+
+  let empty = { by_module_name = Module_name.Map.empty }
+
+  let create entries =
+    let by_module_name =
+      List.fold_left entries ~init:Module_name.Map.empty ~f:(fun map (name, entry) ->
+        Module_name.Map.update map name ~f:(function
+          | None -> Some [ entry ]
+          | Some entries -> Some (entry :: entries)))
+    in
+    { by_module_name }
+  ;;
+
+  let filter_libs t ~referenced_modules =
+    Module_name.Set.fold referenced_modules ~init:[] ~f:(fun name acc ->
+      match Module_name.Map.find t.by_module_name name with
+      | None -> acc
+      | Some entries -> List.rev_append entries acc)
+  ;;
+end
 
 type path_specification =
   | Allow_all

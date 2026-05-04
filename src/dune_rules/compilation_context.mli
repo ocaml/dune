@@ -62,6 +62,7 @@ val requires_hidden : t -> Lib.t list Resolve.Memo.t
 val requires_compile : t -> Lib.t list Resolve.Memo.t
 val parameters : t -> Module_name.t list Resolve.Memo.t
 val includes : t -> Command.Args.without_targets Command.Args.t Lib_mode.Cm_kind.Map.t
+val lib_index : t -> Lib_file_deps.Lib_index.t Resolve.Memo.t
 val preprocessing : t -> Pp_spec.t
 val opaque : t -> bool
 val js_of_ocaml : t -> Js_of_ocaml.In_context.t option Js_of_ocaml.Mode.Pair.t

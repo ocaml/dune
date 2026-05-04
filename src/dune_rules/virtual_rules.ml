@@ -11,6 +11,11 @@ type t =
 
 let no_implements = No_implements
 
+let is_implementation = function
+  | Virtual _ | Parameter _ -> true
+  | No_implements -> false
+;;
+
 let setup_copy_rules_for_impl ~sctx ~dir t =
   match t with
   | No_implements | Parameter _ -> Memo.return ()

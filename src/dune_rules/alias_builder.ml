@@ -72,23 +72,3 @@ struct
     traverse dir ~f
   ;;
 end
-
-let define_all_alias ?predicate_dir ~project ~js_targets dir =
-  let deps =
-    let predicate =
-      if Dune_project.explicit_js_mode project
-      then Predicate_lang.true_
-      else (
-        List.iter js_targets ~f:(fun js_target ->
-          assert (Path.Build.equal (Path.Build.parent_exn js_target) dir));
-        Predicate_lang.not
-          (Predicate_lang.Glob.of_string_set
-             (String.Set.of_list_map js_targets ~f:Path.Build.basename)))
-    in
-    let only_generated_files = Dune_project.dune_version project >= (3, 0) in
-    let dir = Option.value predicate_dir ~default:dir in
-    File_selector.of_predicate_lang ~dir:(Path.build dir) ~only_generated_files predicate
-    |> Action_builder.paths_matching_unit ~loc:Loc.none
-  in
-  Rules.Produce.Alias.add_deps (Alias.make Alias0.all ~dir) deps
-;;

@@ -495,7 +495,19 @@ let build_module ?(force_write_cmi = false) ?(precompiled_cmi = false) cctx m =
       let obj_dir = Compilation_context.obj_dir cctx in
       Obj_dir.melange_dir obj_dir
     in
-    Alias_builder.define_all_alias ~project ~predicate_dir ~js_targets:[] dir
+    let predicate =
+      [ Lib_mode.Cm_kind.ext (Melange Cmi); Lib_mode.Cm_kind.ext (Melange Cmj) ]
+      |> Glob.matching_extensions
+      |> Predicate_lang.Glob.of_glob
+    in
+    let deps =
+      File_selector.of_predicate_lang
+        ~dir:(Path.build predicate_dir)
+        ~only_generated_files:(Dune_project.dune_version project >= (3, 0))
+        predicate
+      |> Action_builder.paths_matching_unit ~loc:Loc.none
+    in
+    Rules.Produce.Alias.add_deps (Alias.make Alias0.all ~dir) deps
 ;;
 
 let ocamlc_i ~deps cctx (m : Module.t) ~output =

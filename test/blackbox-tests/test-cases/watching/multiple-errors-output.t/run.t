@@ -15,10 +15,18 @@ We test the output of the watch mode client when we have multiple errors
   1 | let y = "unknown variable" ^ what
                                    ^^^^
   Unbound value what
-  Error: Build failed with 2 errors.
+  File "$TESTCASE_ROOT/src/foo.ml", line 1, characters 39-40:
+  1 | let f = Bar.x + Baz.y + invalid_syntax : ? = !
+                                             ^
+  Syntax error
+  Error: Build failed with 3 errors.
   [1]
 
   $ stop_dune
+  File "src/foo.ml", line 1, characters 39-40:
+  1 | let f = Bar.x + Baz.y + invalid_syntax : ? = !
+                                             ^
+  Error: Syntax error
   File "libs/bar.ml", line 1, characters 8-20:
   1 | let y = "type error" + 3
               ^^^^^^^^^^^^
@@ -28,4 +36,4 @@ We test the output of the watch mode client when we have multiple errors
   1 | let y = "unknown variable" ^ what
                                    ^^^^
   Error: Unbound value what
-  Had 2 errors, waiting for filesystem changes...
+  Had 3 errors, waiting for filesystem changes...

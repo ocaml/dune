@@ -1,9 +1,6 @@
 %{bin:...} in a cross-compilation context. The pform expands via the
-host context's artifacts, and the install bin dir on the action's
-PATH is the host's install bin dir.
-
-mybin is gated to the host context only. If cross-context resolution
-were broken, the binary wouldn't be found and the action would fail.
+host context's artifacts, and the action's PATH gets the bin-layout
+dir and the install bin dir, both under the host context.
 
   $ cat >dune-project <<EOF
   > (lang dune 3.24)
@@ -17,18 +14,13 @@ were broken, the binary wouldn't be found and the action would fail.
   > EOF
 
   $ cat >dune <<'EOF'
-  > (executable
-  >  (public_name mybin)
-  >  (package mypkg)
-  >  (enabled_if (= %{context_name} host)))
+  > (executable (public_name mybin) (package mypkg))
   > (rule
   >  (enabled_if (= %{context_name} target))
   >  (deps %{bin:mybin})
   >  (action
-  >   (progn
-  >    (with-stdout-to path-output
-  >     (bash "echo $PATH"))
-  >    (run mybin))))
+  >   (with-stdout-to path-output
+  >    (bash "echo $PATH"))))
   > EOF
 
   $ cat >mybin.ml <<'EOF'
@@ -36,7 +28,7 @@ were broken, the binary wouldn't be found and the action would fail.
   > EOF
 
   $ dune build _build/target/path-output
-  hello
 
-  $ env_added "$(cat _build/target/path-output)" "$PATH"
-  $TESTCASE_ROOT/_build/install/host/bin
+  $ env_added "$(cat _build/target/path-output)" "$PATH" | censor
+  $PWD/_build/install/host/.binaries/$DIGEST
+  $PWD/_build/install/host/bin

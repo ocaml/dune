@@ -26,5 +26,5 @@ Test sandboxing when depending on things from the install context using
   $ dune build --sandbox symlink @foo 2>&1 | sed -E 's#.*.sandbox/[^/]+/#.sandbox/$SANDBOX/#g'
   .sandbox/$SANDBOX/default
   .sandbox/$SANDBOX/install/default/bin/mybin
-  ../install/default/bin/mybin
+  foo/mybin.exe
   hello from package foo

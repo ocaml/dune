@@ -14,15 +14,15 @@
   > let () = print_endline "hello"
   > EOF
 
-The pform resolves to the staging path:
+The pform resolves to the build artifact:
 
   $ dune build bin-path
   $ cat _build/default/bin-path
-  ../install/default/bin/mybin
+  mybin.exe
 
-The rule depends on the staging binary:
+The rule depends on the build artifact:
 
   $ dune rules --format=json _build/default/bin-path \
   >   | jq 'include "dune"; .[] | ruleDepFilePaths' \
   >   | grep mybin
-  "_build/install/default/bin/mybin"
+  "_build/default/mybin.exe"

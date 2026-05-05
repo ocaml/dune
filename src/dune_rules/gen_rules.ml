@@ -803,15 +803,33 @@ let gen_rules ctx ~dir components =
         Gen_rules.Build_only_sub_dirs.singleton ~dir context_dirs
       in
       Gen_rules.make ~build_dir_only_sub_dirs (Memo.return Rules.empty)
-    | ctx :: _ ->
+    | ctx :: rest ->
       let ctx = Context_name.of_string ctx in
-      with_context ctx ~f:(fun sctx ->
-        let+ subdirs, rules = Install_rules.symlink_rules sctx ~dir in
-        let directory_targets = Rules.directory_targets rules in
-        Gen_rules.make
-          ~build_dir_only_sub_dirs:(Gen_rules.Build_only_sub_dirs.singleton ~dir subdirs)
-          ~directory_targets
-          (Memo.return rules)))
+      (match rest with
+       | ".binaries" :: layout_rest ->
+         has_rules
+           ~dir
+           (match layout_rest with
+            | [] -> Subdir_set.all
+            | _ -> Subdir_set.empty)
+           (fun () ->
+              match layout_rest with
+              | [ key ] -> Bin_layout.gen_rules ctx ~dir key
+              | _ -> Memo.return ())
+       | _ ->
+         with_context ctx ~f:(fun sctx ->
+           let+ subdirs, rules = Install_rules.symlink_rules sctx ~dir in
+           let subdirs =
+             if List.is_empty rest
+             then Subdir_set.union subdirs (Subdir_set.of_list [ ".binaries" ])
+             else subdirs
+           in
+           let directory_targets = Rules.directory_targets rules in
+           Gen_rules.make
+             ~build_dir_only_sub_dirs:
+               (Gen_rules.Build_only_sub_dirs.singleton ~dir subdirs)
+             ~directory_targets
+             (Memo.return rules))))
   else if Context_name.equal ctx Private_context.t.name
   then private_context ~dir components ctx
   else if Context_name.equal ctx Fetch_rules.context.name

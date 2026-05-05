@@ -40,5 +40,6 @@ sandbox:
   > EOF
 
   $ dune runtest 2>&1
-  $ env_added "$(cat path.out)" "$PATH"
-  $TESTCASE_ROOT/_build/install/default/bin
+  $ env_added "$(cat path.out)" "$PATH" | censor
+  $PWD/_build/install/default/.binaries/$DIGEST
+  $PWD/_build/install/default/bin

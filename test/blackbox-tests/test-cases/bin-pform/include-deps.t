@@ -1,6 +1,6 @@
-%{bin:NAME} inside (include ...) deps is processed: the binary
-becomes a tracked dep of the rule and the install bin dir is added
-to the action's PATH.
+BUG: %{bin:...} inside (include ...) deps does not add the binary to
+PATH. The bin_env is computed but discarded because Include calls
+named_paths_builder recursively and cannot propagate the env upward.
 
   $ cat >dune-project <<EOF
   > (lang dune 3.24)
@@ -27,14 +27,16 @@ to the action's PATH.
 
   $ dune build path-output
 
-The action's PATH includes the install bin dir:
+The bin-layout dir should appear here (as it does for inline deps in
+run-action.t) but it doesn't. Only the install bin dir (always-on)
+shows:
 
   $ env_added "$(cat _build/default/path-output)" "$PATH"
   $TESTCASE_ROOT/_build/install/default/bin
 
-The rule depends on the staging binary:
+The rule depends on the build artifact (via where=Original_path):
 
   $ dune rules --format=json _build/default/path-output \
   >   | jq 'include "dune"; .[] | ruleDepFilePaths' \
   >   | grep mybin
-  "_build/install/default/bin/mybin"
+  "_build/default/src/mybin.exe"

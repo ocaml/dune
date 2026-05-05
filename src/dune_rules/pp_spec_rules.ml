@@ -109,11 +109,6 @@ let action_for_pp ~sandbox ~loc ~expander ~action ~src =
   >>| Action.Full.add_sandbox sandbox
 ;;
 
-let action_for_pp_with_target ~sandbox ~loc ~expander ~action ~src ~target =
-  let action = action_for_pp ~sandbox ~loc ~expander ~action ~src in
-  Action_builder.with_stdout_to target action
-;;
-
 (* Generate rules for the dialect modules in [modules] and return a a new module
    with only OCaml sources *)
 let setup_dialect_rules sctx ~sandbox ~dir ~expander (m : Module.t) =
@@ -126,10 +121,9 @@ let setup_dialect_rules sctx ~sandbox ~dir ~expander (m : Module.t) =
         let dst =
           Module.file ml ~ml_kind |> Option.value_exn |> Path.as_in_build_dir_exn
         in
-        Super_context.add_rule
-          sctx
-          ~dir
-          (action_for_pp_with_target ~sandbox ~loc ~expander ~action ~src ~target:dst)))
+        action_for_pp ~sandbox ~loc ~expander ~action ~src
+        |> Action_builder.with_stdout_to dst
+        |> Super_context.add_rule sctx ~dir))
   in
   ml
 ;;
@@ -224,6 +218,7 @@ let pp_one_module
       ~lib_name
       ~scope
       ~preprocessor_deps
+      ~env
       ~(lint_module : source:_ -> ast:_ -> unit Memo.t)
       ~sandbox
       ~dir
@@ -250,14 +245,12 @@ let pp_one_module
       let sandbox = sandbox_of_setting sandbox in
       pped_module m ~f:(fun _kind src dst ->
         let action =
-          action_for_pp_with_target ~sandbox ~loc ~expander ~action ~src ~target:dst
+          let open Action_builder.O in
+          let+ act = action_for_pp ~sandbox ~loc ~expander ~action ~src
+          and+ env = env in
+          Action.Full.add_env env act
         in
-        Super_context.add_rule
-          sctx
-          ~loc
-          ~dir
-          (let open Action_builder.With_targets.O in
-           Action_builder.with_no_targets preprocessor_deps >>> action))
+        Action_builder.with_stdout_to dst action |> Super_context.add_rule sctx ~loc ~dir)
       >>= setup_dialect_rules sctx ~sandbox ~dir ~expander
     in
     let+ () = Memo.when_ lint (fun () -> lint_module ~ast ~source:m) in
@@ -355,28 +348,28 @@ let pp_one_module
                (Action_builder.with_file_targets
                   ~file_targets:[ dst ]
                   (let open Action_builder.O in
-                   preprocessor_deps
-                   >>> let* exe, flags, args = driver_and_flags in
-                       let dir =
-                         Super_context.context sctx |> Context.build_dir |> Path.build
-                       in
-                       Command.run'
-                         ~dir
-                         (Ok (Path.build exe))
-                         [ As args
-                         ; A "-o"
-                         ; Path (Path.build dst)
-                         ; Command.Ml_kind.ppx_driver_flag ml_kind
-                         ; Dep (Path.build src)
-                         ; Hidden_deps
-                             (Module.source m ~ml_kind
-                              |> Option.value_exn
-                              |> Module.File.path
-                              |> Dep.file
-                              |> Dep.Set.singleton)
-                         ; As flags
-                         ]
-                       >>| Action.Full.add_sandbox sandbox)))))
+                   let* exe, flags, args = driver_and_flags in
+                   let dir =
+                     Super_context.context sctx |> Context.build_dir |> Path.build
+                   in
+                   Command.run'
+                     ~dir
+                     ~env
+                     (Ok (Path.build exe))
+                     [ As args
+                     ; A "-o"
+                     ; Path (Path.build dst)
+                     ; Command.Ml_kind.ppx_driver_flag ml_kind
+                     ; Dep (Path.build src)
+                     ; Hidden_deps
+                         (Module.source m ~ml_kind
+                          |> Option.value_exn
+                          |> Module.File.path
+                          |> Dep.file
+                          |> Dep.Set.singleton)
+                     ; As flags
+                     ]
+                   >>| Action.Full.add_sandbox sandbox)))))
 ;;
 
 let make
@@ -396,7 +389,7 @@ let make
     Module_name.Per_item.map preprocess ~f:(fun pp ->
       Preprocess.remove_future_syntax ~for_:Compiler pp ocaml.version)
   in
-  let preprocessor_deps, sandbox =
+  let env, sandbox =
     Dep_conf_eval.unnamed
       Sandbox_config.no_special_requirements
       preprocessor_deps
@@ -411,7 +404,10 @@ let make
       `Default
         (if dune_version >= (3, 3) then Sandbox_config.needs_sandboxing else sandbox)
   in
-  let preprocessor_deps = Action_builder.memoize "preprocessor deps" preprocessor_deps in
+  let preprocessor_deps =
+    (* The dependencies of the env are memoized here but the env is passed on later anyway. *)
+    Action_builder.memoize "preprocessor deps" (Action_builder.ignore env)
+  in
   let lint_module =
     let sandbox = sandbox_of_setting sandbox in
     Staged.unstage (lint_module sctx ~sandbox ~dir ~expander ~lint ~lib_name ~scope)
@@ -423,6 +419,7 @@ let make
          ~lib_name
          ~scope
          ~preprocessor_deps
+         ~env
          ~lint_module
          ~sandbox
          ~dir

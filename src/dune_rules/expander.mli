@@ -19,6 +19,12 @@ val make_root
   -> artifacts_host:Artifacts.t Memo.t
   -> t
 
+(** The host context this expander resolves to (the current context if there
+    is no cross-compilation). Used for resolving [%{bin:...}] artifacts and
+    package layouts, which must live in the context that produced the
+    binaries the action will execute. *)
+val host_context : t -> Context.t Memo.t
+
 val set_local_env_var : t -> var:string -> value:string Action_builder.t -> t
 
 val set_scope

@@ -67,6 +67,11 @@ let dir t = t.dir
 let project t = t.project
 let context t = Context.name t.context
 
+let host_context t =
+  let open Memo.O in
+  t.scope_host >>= fun s -> Context.DB.by_dir (Scope.root s)
+;;
+
 let set_local_env_var t ~var ~value =
   { t with local_env = Env.Var.Map.set t.local_env var value }
 ;;

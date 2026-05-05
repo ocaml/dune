@@ -96,13 +96,18 @@ In addition, ``(action ...)`` fields support the following special variables:
   the action).
 - ``exe:<path>`` is the same as ``<path>``, except when cross-compiling, in
   which case it will expand to ``<path>`` from the host build context.
-- ``bin:<program>`` expands ``<path>`` to ``program``. If ``program``
+- ``bin:<program>`` expands to the path of ``program``. If ``program``
   is installed by a workspace package (see :doc:`/reference/dune/install`
-  stanzas), the locally built binary will be used, otherwise it will be
-  searched in the ``<path>`` of the current build context. Note that ``(run
-  %{bin:program} ...)`` and ``(run program ...)`` behave in the same way.
-  ``%{bin:...}`` is only necessary when you are using ``(bash ...)`` or
-  ``(system ...)``.
+  stanzas), it expands to the build artifact path of the locally built
+  binary; otherwise the program is looked up in the ``PATH`` of the
+  current build context. When ``%{bin:program}`` is listed in
+  ``(deps ...)``, the action additionally gets a per-rule directory
+  prepended to ``PATH`` containing a correctly-named symlink for
+  ``program`` (and any other ``%{bin:...}`` deps of the same rule), so
+  ``program`` can be invoked from ``(bash ...)`` or ``(system ...)``
+  by its bare name. Note that ``(run %{bin:program} ...)`` and ``(run
+  program ...)`` behave in the same way; ``%{bin:...}`` is only
+  necessary when you are using ``(bash ...)`` or ``(system ...)``.
 - ``bin-available:<program>`` expands to ``true`` or ``false``, depending
   on whether ``<program>`` is available or not.
 - ``file-available:<path>`` expands to ``true`` or ``false``, depending on

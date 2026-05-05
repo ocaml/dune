@@ -5,9 +5,7 @@ the incremental case: editing the impl's private module's body must
 not break the rebuild, and a downstream consumer that depends on the
 [impl] library must continue to type-check.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.24)
-  > EOF
+  $ make_dune_project 3.24
 
 [vlib] declares one virtual module [Bar]:
 

@@ -21,11 +21,11 @@ Create a cram test that creates a junction inside its working directory:
   >   $ cmd /c "mklink /j junction file" > /dev/null
   > EOF
 
-  $ dune runtest 2>&1 | strip_sandbox
+  $ dune runtest 2>&1 | censor
   Error: failed to delete sandbox in
-  $SANDBOX
+  _build/.sandbox/$DIGEST
   Reason:
-  $SANDBOX\default): Directory not empty
+  rmdir(_build/.sandbox/$DIGEST\default): Directory not empty
   -> required by _build/default/.cram.junction.t/cram.out
   -> required by alias junction
   -> required by alias runtest

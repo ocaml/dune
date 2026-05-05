@@ -31,16 +31,15 @@ Build the lockdir first
 `dune install` with a --prefix argument doesn't crash.
 
   $ dune install --prefix "$PWD/_install"
+  Error: dune install is not supported with Dune package management.
+  Hint: Use 'opam' instead.
+  [1]
 
 But `dune install` without a prefix argument crashes with an internal error.
 
   $ dune install 2>&1 | head -n 6
-  Internal error! Please report to https://github.com/ocaml/dune/issues,
-  providing the file _build/trace.csexp, if possible. This includes build
-  commands, message logs, and file paths.
-  Description:
-    ("Unexpected build progress state (expected [Building _])",
-     { current = Initializing })
+  Error: dune install is not supported with Dune package management.
+  Hint: Use 'opam' instead.
   [1]
 
 
@@ -60,12 +59,11 @@ Again, `dune install` with prefix doesn't crash, but without a prefix argument
 crashes with the same error.
 
   $ dune install --prefix "$PWD/_install"
+  Error: dune install is not supported with Dune package management.
+  Hint: Use 'opam' instead.
+  [1]
 
   $ dune install 2>&1 | head -n 6
-  Internal error! Please report to https://github.com/ocaml/dune/issues,
-  providing the file _build/trace.csexp, if possible. This includes build
-  commands, message logs, and file paths.
-  Description:
-    ("Unexpected build progress state (expected [Building _])",
-     { current = Initializing })
+  Error: dune install is not supported with Dune package management.
+  Hint: Use 'opam' instead.
   [1]

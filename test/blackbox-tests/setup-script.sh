@@ -227,3 +227,8 @@ censor() {
     | dune_cmd subst-unique '\.cinaps\.[0-9a-f]{8}' '.cinaps.$CINAPS'
 }
 
+# Print PATH-like entries in $1 that aren't in $2, preserving their
+# order in $1. Assumes ":" as the separator.
+env_added() {
+  tr ':' '\n' <<< "$1" | grep -vFxf <(tr ':' '\n' <<< "$2")
+}

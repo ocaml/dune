@@ -16,7 +16,7 @@ Ocamldep on the post-pp output is fine; ocamldep on the pre-pp
 input is a syntax error.
 
   $ cat > dune-project <<EOF
-  > (lang dune 3.0)
+  > (lang dune 3.24)
   > EOF
 
 A trivial preprocessor that drops every line starting with [#].

@@ -6,7 +6,7 @@ not break the rebuild, and a downstream consumer that depends on the
 [impl] library must continue to type-check.
 
   $ cat > dune-project <<EOF
-  > (lang dune 3.23)
+  > (lang dune 3.24)
   > EOF
 
 [vlib] declares one virtual module [Bar]:

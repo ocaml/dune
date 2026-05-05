@@ -84,3 +84,14 @@ of a foreign-lib module without re-applying that lib's preprocessor,
 this test will fail with a syntax error from [dep/foo.ml].
 
   $ dune build @check
+
+Confirm that [consumer/c.cmi] depends on [dep]'s objdir for cmis,
+and not on any path that names the pre-pp source. The dep is
+registered as a [*.cmi] glob over the dep's objdir; a future
+regression that switched to a per-file dep on the wrong basename
+(e.g. [dep/.dep.objs/byte/foo.pp.cmi] instead of [foo.cmi]) would
+surface here as a different recorded dep:
+
+  $ dune rules --root . --format=json --deps _build/default/consumer/.consumer.objs/byte/c.cmi |
+  > jq -r 'include "dune"; .[] | depsGlobPredicates'
+  *.cmi

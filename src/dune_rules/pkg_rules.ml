@@ -1915,8 +1915,7 @@ module Install_action = struct
       | None -> src, entry
       | Some src_exe_str ->
         ( Path.of_string src_exe_str
-        , Install.Entry.map_dst entry ~f:(fun dst ->
-            Install.Entry.Dst.explicit (Bin.add_exe (Install.Entry.Dst.to_string dst))) )
+        , Install.Entry.map_dst entry ~f:Install.Entry.Dst.maybe_add_exe )
     ;;
 
     let install_entry
@@ -2606,6 +2605,39 @@ let find_package ctx pkg =
       (let open Action_builder.O in
        let+ _cookie = (Pkg_installed.of_paths pkg.paths).cookie in
        ())
+;;
+
+let resolve_installed_file ~loc ~context_name ~pkg_name ~section ~file =
+  let open Action_builder.O in
+  let* { paths; _ } =
+    Action_builder.of_memo (resolve_pkg_dep context_name (loc, pkg_name))
+  in
+  let* { files; _ } = (Pkg_installed.of_paths paths).cookie in
+  let section_dir =
+    let install_paths = Lazy.force paths.install_paths in
+    Install.Paths.get install_paths section
+  in
+  let path = Path.append_local section_dir file in
+  let installed = Section.Map.find files section |> Option.value ~default:[] in
+  match List.exists installed ~f:(Path.equal path) with
+  | true ->
+    let+ () = Action_builder.path path in
+    path
+  | false ->
+    let file_str = Path.Local.to_string file in
+    let candidates =
+      List.filter_map installed ~f:(Path.drop_prefix ~prefix:section_dir)
+      |> List.map ~f:Path.Local.to_string
+    in
+    User_error.raise
+      ~loc
+      ~hints:(User_message.did_you_mean file_str ~candidates)
+      [ Pp.textf
+          "File %s not found in section %s of package %s"
+          file_str
+          (Section.to_string section)
+          (Package.Name.to_string pkg_name)
+      ]
 ;;
 
 let all_filtered_depexts context =

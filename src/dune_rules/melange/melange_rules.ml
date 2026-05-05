@@ -26,6 +26,23 @@ module Output_kind = struct
   ;;
 end
 
+let setup_melange_sources_copy_rules ~sctx ~dir modules =
+  let mods = Modules.fold_user_written modules ~init:[] ~f:List.cons in
+  let context = Super_context.context sctx in
+  Memo.parallel_iter mods ~f:(fun m ->
+    (* use the original path to set up the correct symlinks *)
+    List.combine (Module.sources_without_pp m) (Module.sources m)
+    |> Memo.parallel_iter ~f:(fun (src, dst) ->
+      let dst =
+        let src_in_lib = Path.drop_prefix_exn dst ~prefix:(Path.build dir) in
+        Path.Build.append_local dir src_in_lib
+      in
+      match Path.equal src (Path.build dst) with
+      | true -> Memo.return ()
+      | false ->
+        Super_context.add_rule sctx ~dir (Copy_line_directive.builder context ~src ~dst)))
+;;
+
 let output_of_lib =
   let public_lib ~info ~target_dir lib_name =
     Output_kind.Public_library
@@ -107,6 +124,7 @@ let add_rule sctx ?mode ?loc ~dir build =
 ;;
 
 let for_ = Compilation_mode.Melange
+let sandbox = Compilation_mode.default_sandbox for_
 
 let impl_only_modules_defined_in_this_lib ~sctx ~scope lib =
   match Lib_info.modules (Lib.info lib) ~for_ with
@@ -188,12 +206,18 @@ let make_same_lib_emission_deps =
       | "--mel-no-cross-module-opt" | "-mel-no-cross-module-opt" -> false
       | _ -> enabled)
   in
-  let impl_dep_graph ~obj_dir ~modules =
+  let impl_dep_graph ~sctx ~obj_dir ~modules =
     let per_module =
       Modules.With_vlib.obj_map modules
       |> Module_name.Unique.Map.mapi ~f:(fun _ sourced_module ->
         let module_ = Modules.Sourced_module.to_module sourced_module in
-        Dep_rules.read_immediate_deps_of ~obj_dir ~modules ~ml_kind:Impl ~for_ module_)
+        Dep_rules.read_immediate_deps_of
+          ~sandbox
+          ~sctx
+          ~obj_dir
+          ~modules
+          ~ml_kind:Impl
+          module_)
     in
     Dep_graph.make ~dir:(Obj_dir.dir obj_dir) ~per_module
   in
@@ -210,12 +234,12 @@ let make_same_lib_emission_deps =
     in
     Dep.Set.union cmi cmj
   in
-  fun ~obj_dir ~modules ~(compile_flags : Ocaml_flags.t) ->
+  fun ~sctx ~obj_dir ~modules ~(compile_flags : Ocaml_flags.t) ->
     let xopt_enabled =
       Ocaml_flags.get compile_flags Melange
       |> Action_builder.map ~f:melange_cross_module_opt_enabled
     in
-    let dep_graph = impl_dep_graph ~obj_dir ~modules in
+    let dep_graph = impl_dep_graph ~sctx ~obj_dir ~modules in
     fun module_ ->
       let open Action_builder.O in
       xopt_enabled
@@ -261,7 +285,7 @@ let compile_info ~scope (mel : Melange_stanzas.Emit.t) =
   let dune_version = Scope.project scope |> Dune_project.dune_version in
   let+ pps =
     Instrumentation.with_instrumentation
-      mel.preprocess
+      mel.preprocess.config
       ~instrumentation_backend:(Lib.DB.instrumentation_backend (Scope.libs scope))
     |> Resolve.Memo.read_memo
     >>| Preprocess.Per_module.pps
@@ -464,8 +488,6 @@ let melange_compile_flags ~sctx ~dir (mel : Melange_stanzas.Emit.t) =
   >>| Ocaml_flags.allow_only_melange
 ;;
 
-let for_ = Compilation_mode.Melange
-
 let setup_emit_cmj_rules
       ~sctx
       ~scope
@@ -478,8 +500,8 @@ let setup_emit_cmj_rules
   let merlin_ident = Merlin_ident.for_melange ~target:mel.target in
   let dir = Dir_contents.dir dir_contents in
   let f () =
-    let* modules, obj_dir =
-      Dir_contents.melange dir_contents
+    let* source_modules, obj_dir =
+      Dir_contents.ml dir_contents ~for_
       >>= Ml_sources.modules_and_obj_dir
             ~libs:(Scope.libs scope)
             ~for_:(Melange { target = mel.target })
@@ -491,7 +513,6 @@ let setup_emit_cmj_rules
           sctx
           (Melange
              { preprocess = mel.preprocess
-             ; preprocessor_deps = mel.preprocessor_deps
              ; lint = mel.lint
              ; (* why is this always false? *)
                empty_module_interface_if_absent = false
@@ -499,7 +520,7 @@ let setup_emit_cmj_rules
           expander
           ~dir
           scope
-          modules
+          source_modules
       in
       Modules.With_vlib.modules modules, pp
     in
@@ -522,8 +543,8 @@ let setup_emit_cmj_rules
         ~opaque:Inherit_from_settings
         ~melange_package_name:None
         ~package:mel.package
-        ~modes:{ ocaml = Mode.Dict.make_both false; melange = true }
     in
+    let* () = setup_melange_sources_copy_rules ~sctx ~dir source_modules in
     let* () = Module_compilation.build_all cctx in
     let* () =
       Memo.when_ (Compilation_context.bin_annot cctx) (fun () ->
@@ -565,7 +586,7 @@ let setup_emit_cmj_rules
         ~flags
         ~modules
         ~libname:None
-        ~preprocess:(Preprocess.Per_module.without_instrumentation mel.preprocess)
+        ~preprocess:(Preprocess.Per_module.without_instrumentation mel.preprocess.config)
         ~obj_dir
         ~ident:merlin_ident
         ~dialects:(Dune_project.dialects (Scope.project scope))
@@ -709,12 +730,14 @@ let setup_runtime_assets_rules
 
 let modules_for_js_and_obj_dir ~sctx ~dir_contents ~scope (mel : Melange_stanzas.Emit.t) =
   let* modules, obj_dir =
-    Dir_contents.melange dir_contents
+    Dir_contents.ml dir_contents ~for_
     >>= Ml_sources.modules_and_obj_dir
           ~libs:(Scope.libs scope)
           ~for_:(Melange { target = mel.target })
   in
-  let+ modules = modules_in_obj_dir ~sctx ~scope ~preprocess:mel.preprocess modules in
+  let+ modules =
+    modules_in_obj_dir ~sctx ~scope ~preprocess:mel.preprocess.config modules
+  in
   let modules_for_js =
     Modules.fold_user_available modules ~init:[] ~f:(fun x acc ->
       if Module.has x ~ml_kind:Impl then x :: acc else acc)
@@ -758,7 +781,7 @@ let setup_entries_js
   let promote_in_source = should_promote_in_source scope in
   let same_lib_emission_deps =
     let modules = Modules.With_vlib.modules local_modules in
-    make_same_lib_emission_deps ~compile_flags ~modules ~obj_dir:local_obj_dir
+    make_same_lib_emission_deps ~sctx ~compile_flags ~modules ~obj_dir:local_obj_dir
   in
   let+ directory_targets =
     setup_runtime_assets_rules
@@ -809,6 +832,7 @@ let setup_js_rules_libraries =
           make_external_lib_emission_deps ~obj_dir:(Lib_info.obj_dir (Lib.info lib))
         | Some lib ->
           make_same_lib_emission_deps
+            ~sctx
             ~compile_flags
             ~modules:lib_modules
             ~obj_dir:(Lib.Local.obj_dir lib)

@@ -239,10 +239,14 @@
                 inherit pkgs menhir-src;
               };
             in
+            # nix build .#oxcaml-trunk-build --no-link --impure
             pkgs.stdenv.mkDerivation {
               pname = "oxcaml-trunk-build";
               version = "check";
-              src = oxcaml;
+              src = builtins.fetchGit {
+                url = "https://github.com/oxcaml/oxcaml.git";
+                ref = "main";
+              };
               nativeBuildInputs = [
                 dune
                 pkgs.autoconf
@@ -254,7 +258,7 @@
               strictDeps = true;
               buildPhase = ''
                 autoconf
-                ./configure --prefix $PWD/_install --enable-dev --enable-runtime5
+                ./configure --prefix $PWD/_install --enable-runtime5 --disable-warn-error
                 make SHELL=$SHELL
               '';
               installPhase = ''

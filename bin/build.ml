@@ -62,6 +62,7 @@ let run_build_command_once ~(common : Common.t) ~config ~request =
       Dune_trace.Event.watch_build_start
         ~run_id:(Run_id.to_int run_id)
         ~restart:false
+        ~files:None
         ~start);
     let+ res = run_build_system ~request in
     let stop = Time.now () in

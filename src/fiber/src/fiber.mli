@@ -187,6 +187,9 @@ module Ivar : sig
   (** Create a new empty ivar. *)
   val create : unit -> 'a t
 
+  (** Create a new empty ivar. *)
+  val create_full : 'a -> 'a t
+
   (** Read the contents of the ivar. *)
   val read : 'a t -> 'a fiber
 

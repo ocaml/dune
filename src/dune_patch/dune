@@ -1,3 +1,3 @@
 (library
  (name dune_patch)
- (libraries stdune fiber dune_engine dune_lang action_ext re unix))
+ (libraries stdune fiber dune_engine action_ext re patch))

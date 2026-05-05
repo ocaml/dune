@@ -8,6 +8,11 @@ void dune_wait4(value v_pid, value flags) {
   caml_failwith("wait4: not supported on windows");
 }
 
+CAMLprim value dune_getrusage_self(value unit) {
+  (void)unit;
+  return Val_none;
+}
+
 #else
 
 #include <caml/alloc.h>
@@ -38,6 +43,24 @@ static inline value caml_alloc_some_compat(value v) {
 
 CAMLextern int caml_convert_signal_number(int);
 CAMLextern int caml_rev_convert_signal_number(int);
+
+static value alloc_resource_usage(struct rusage *ru) {
+  CAMLparam0();
+  CAMLlocal1(times);
+  times = caml_alloc_tuple(9);
+  Store_field(times, 0, Val_long(((int64_t)ru->ru_utime.tv_sec * 1000000000LL) +
+                                 ((int64_t)ru->ru_utime.tv_usec * 1000LL)));
+  Store_field(times, 1, Val_long(((int64_t)ru->ru_stime.tv_sec * 1000000000LL) +
+                                 ((int64_t)ru->ru_stime.tv_usec * 1000LL)));
+  Store_field(times, 2, Val_long(ru->ru_maxrss));
+  Store_field(times, 3, Val_long(ru->ru_minflt));
+  Store_field(times, 4, Val_long(ru->ru_majflt));
+  Store_field(times, 5, Val_long(ru->ru_inblock));
+  Store_field(times, 6, Val_long(ru->ru_oublock));
+  Store_field(times, 7, Val_long(ru->ru_nvcsw));
+  Store_field(times, 8, Val_long(ru->ru_nivcsw));
+  CAMLreturn(times);
+}
 
 static value alloc_process_status(int status) {
   value st;
@@ -88,18 +111,7 @@ value dune_wait4(value v_pid, value flags) {
     }
   }
 
-  times = caml_alloc_tuple(9);
-  Store_field(times, 0, Val_long(((int64_t)ru.ru_utime.tv_sec * 1000000000LL) +
-                                 ((int64_t)ru.ru_utime.tv_usec * 1000LL)));
-  Store_field(times, 1, Val_long(((int64_t)ru.ru_stime.tv_sec * 1000000000LL) +
-                                 ((int64_t)ru.ru_stime.tv_usec * 1000LL)));
-  Store_field(times, 2, Val_long(ru.ru_maxrss));
-  Store_field(times, 3, Val_long(ru.ru_minflt));
-  Store_field(times, 4, Val_long(ru.ru_majflt));
-  Store_field(times, 5, Val_long(ru.ru_inblock));
-  Store_field(times, 6, Val_long(ru.ru_oublock));
-  Store_field(times, 7, Val_long(ru.ru_nvcsw));
-  Store_field(times, 8, Val_long(ru.ru_nivcsw));
+  times = alloc_resource_usage(&ru);
 
   res = caml_alloc_tuple(4);
   Store_field(res, 0, Val_int(pid));
@@ -107,6 +119,15 @@ value dune_wait4(value v_pid, value flags) {
   Store_field(res, 2, Val_long(time_ns));
   Store_field(res, 3, times);
   CAMLreturn(caml_alloc_some_compat(res));
+}
+
+CAMLprim value dune_getrusage_self(value unit) {
+  CAMLparam1(unit);
+  struct rusage ru;
+  if (getrusage(RUSAGE_SELF, &ru) == -1) {
+    uerror("getrusage", Nothing);
+  }
+  CAMLreturn(caml_alloc_some_compat(alloc_resource_usage(&ru)));
 }
 
 #endif

@@ -260,3 +260,18 @@ let%expect_test "close cancels ready_one task" =
    | Ok _ | Error (`Exn _) -> assert false);
   [%expect {| ready_one cancelled |}]
 ;;
+
+let%expect_test "sleep after shutdown is rejected" =
+  let events = Dune_scheduler__Event.Queue.create () in
+  let (t : Dune_scheduler__Types.Async_io.t) = Async_io.create events in
+  Async_io.shutdown t;
+  (try
+     ignore (Async_io.sleep t Time.Span.zero);
+     print_endline "FAIL: sleep succeeded"
+   with
+   | Code_error.E _ ->
+     (match t.thread with
+      | None -> print_endline "sleep rejected without restart"
+      | Some _ -> print_endline "FAIL: sleep restarted the loop"));
+  [%expect {| sleep rejected without restart |}]
+;;

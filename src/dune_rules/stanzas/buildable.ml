@@ -9,13 +9,13 @@ type for_ =
 type t =
   { loc : Loc.t
   ; modules : Modules_settings.t
+  ; melange_modules : Ordered_set_lang.Unexpanded.t option
   ; empty_module_interface_if_absent : bool
   ; libraries : Lib_dep.t list
   ; foreign_archives : (Loc.t * Foreign.Archive.t) list
   ; extra_objects : Foreign.Objects.t
   ; foreign_stubs : Foreign.Stubs.t list
-  ; preprocess : Preprocess.With_instrumentation.t Preprocess.Per_module.t
-  ; preprocessor_deps : Dep_conf.t list
+  ; preprocess : Preprocess.preprocess
   ; lint : Preprocess.Without_instrumentation.t Preprocess.Per_module.t
   ; flags : Ocaml_flags.Spec.t
   ; js_of_ocaml : Js_of_ocaml.In_buildable.t Js_of_ocaml.Mode.Pair.t
@@ -31,12 +31,7 @@ let decode_libraries ~allow_re_export =
 let decode_preprocess =
   let+ preprocess, preprocessor_deps = Preprocess.preprocess_fields
   and+ instrumentation = Preprocess.Instrumentation.instrumentation in
-  let init =
-    let f libname = Preprocess.With_instrumentation.Ordinary libname in
-    Module_name.Per_item.map preprocess ~f:(Preprocess.map ~f)
-  in
-  ( List.fold_left instrumentation ~init ~f:Preprocess.Per_module.add_instrumentation
-  , preprocessor_deps )
+  Preprocess.preprocess_config ~preprocess ~instrumentation ~preprocessor_deps
 ;;
 
 let decode_ocaml_flags = Ocaml_flags.Spec.decode
@@ -74,7 +69,7 @@ let decode (for_ : for_) =
       Foreign.Stubs.make ~loc ~language ~names ~flags :: foreign_stubs
   in
   let+ loc = loc
-  and+ preprocess, preprocessor_deps = decode_preprocess
+  and+ preprocess = decode_preprocess
   and+ lint = decode_lint
   and+ foreign_stubs =
     multi_field
@@ -114,7 +109,8 @@ let decode (for_ : for_) =
                (2, 0)
                ~extra_info:"Use the (foreign_archives ...) field instead."
              >>> enter (maybe string))))
-  and+ libraries = decode_libraries ~allow_re_export:in_library
+  and+ libraries =
+    field "libraries" (Lib_dep.L.decode ~allow_re_export:in_library) ~default:[]
   and+ flags = decode_ocaml_flags
   and+ js_of_ocaml =
     field
@@ -181,9 +177,9 @@ let decode (for_ : for_) =
   in
   { loc
   ; preprocess
-  ; preprocessor_deps
   ; lint
   ; modules
+  ; melange_modules = Some modules.modules
   ; empty_module_interface_if_absent
   ; foreign_stubs
   ; foreign_archives

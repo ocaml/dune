@@ -11,12 +11,13 @@
 (cram
  (deps %{bin:melc_stdlib_prefix})
  (enabled_if
+  ; CR-soon Alizter: re-enable this test inside Nix
   (not %{env:INSIDE_NIX=false}))
  (applies_to merlin))
 
 (cram
  (deps %{bin:refmt})
- (applies_to reason-lint-promotion))
+ (applies_to preprocess reason-lint-promotion))
 
 (cram
  (deps

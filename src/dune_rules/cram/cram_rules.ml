@@ -242,7 +242,7 @@ let rules ~sctx ~dir tests project =
       in
       let test_name_alias = Alias.Name.of_string name in
       let init = None, Spec.make_empty ~test_name_alias in
-      let+ runtest_alias, acc =
+      let* runtest_alias, acc =
         Memo.List.fold_left
           stanzas
           ~init
@@ -286,8 +286,8 @@ let rules ~sctx ~dir tests project =
                 | None -> None
                 | Some (loc, set) ->
                   (match runtest_alias with
-                   | None -> Some (loc, set)
-                   | Some (loc', _) ->
+                   | None -> Some (loc, expander, set)
+                   | Some (loc', _, _) ->
                      let main_message =
                        [ Pp.text
                            "enabling or disabling the runtest alias for a cram test may \
@@ -361,11 +361,14 @@ let rules ~sctx ~dir tests project =
                 ; shell
                 } ))
       in
-      let extra_aliases =
-        let to_add =
-          match runtest_alias with
-          | None | Some (_, true) -> Alias.Name.Set.singleton Alias0.runtest
-          | Some (_, false) -> Alias.Name.Set.empty
+      let+ extra_aliases =
+        let+ to_add =
+          (match runtest_alias with
+           | None -> Memo.return true
+           | Some (_, expander, set) -> Expander.eval_blang expander set)
+          >>| function
+          | true -> Alias.Name.Set.singleton Alias0.runtest
+          | false -> Alias.Name.Set.empty
         in
         Alias.Name.Set.union to_add acc.extra_aliases
       in

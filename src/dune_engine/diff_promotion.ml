@@ -129,6 +129,7 @@ let register_intermediate how ~source_file ~correction_file =
    | `Already_exists | `Created -> ()
    | `Not_a_dir ->
      Code_error.raise "dir was deleted" [ "staging_dir", Path.Build.to_dyn staging_dir ]);
+  Path.rm_rf (Path.build staging);
   (match how with
    | `Move ->
      Unix.rename (Path.Build.to_string correction_file) (Path.Build.to_string staging)

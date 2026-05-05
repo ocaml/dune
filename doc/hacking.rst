@@ -116,6 +116,15 @@ everywhere. When platform-specific functionality is needed, Cram tests can use
 operations: file statistics, waiting for files to appear, waiting for
 filesystem clocks to advance, and a subset of sed features with clearer syntax.
 
+The ``censor`` helper replaces hex digests and other values subject to change
+with stable labels. Distinct digests get distinct labels:
+
+.. code::
+
+   $ echo paths | censor
+   _build/.sandbox/$DIGEST1/foo.txt
+   _build/default/.ppx/$DIGEST2/ppx.exe
+
 .. _ppx_expect:      https://github.com/janestreet/ppx_expect
 
 .. seealso::

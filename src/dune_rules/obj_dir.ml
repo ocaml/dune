@@ -618,9 +618,7 @@ module Module = struct
   ;;
 
   module Dep = struct
-    type t =
-      | Immediate of Module.t * Ml_kind.t
-      | Transitive of Module.t * Ml_kind.t
+    type t = Transitive of Module.t * Ml_kind.t
 
     let make_name m kind ext =
       let ext =
@@ -632,21 +630,20 @@ module Module = struct
     ;;
 
     let basename = function
-      | Immediate (m, kind) -> make_name m kind Filename.Extension.d
       | Transitive (m, kind) -> make_name m kind Filename.Extension.all_deps
     ;;
   end
 
   let dep t dep ~for_ =
     match (dep : Dep.t) with
-    | Immediate (m, _) | Transitive (m, _) ->
+    | Transitive (m, _) ->
       (match Module.kind m with
        | Module.Kind.Alias _ | Root -> None
        | _ ->
          let dir =
            match for_ with
            | Compilation_mode.Ocaml -> obj_dir t
-           | Melange -> obj_dir t
+           | Melange -> melange_dir t
          in
          let name = Dep.basename dep in
          Some (Path.Build.relative dir name))

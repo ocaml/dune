@@ -14,6 +14,7 @@ type modes =
 
 val of_lib_mode : Lib_mode.t -> t
 val of_mode_set : Lib_mode.Map.Set.t -> modes
+val default_sandbox : t -> Sandbox_config.t
 
 module By_mode : sig
   type mode := t
@@ -25,8 +26,10 @@ module By_mode : sig
 
   val just : 'a -> for_:mode -> 'a option t
   val both : 'a -> 'a t
+  val choose : 'a option t -> 'a option
   val from_fun : (for_:mode -> 'a) -> 'a t
   val of_list : (mode * 'a) list -> init:'a -> 'a t
+  val to_list : 'a option t -> (mode * 'a) list
   val map : 'a t -> f:(for_:mode -> 'a -> 'b) -> 'b t
   val to_dyn : 'a Dyn.builder -> 'a t Dyn.builder
   val get : for_:mode -> 'a t -> 'a

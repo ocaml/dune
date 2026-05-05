@@ -43,8 +43,8 @@ the current digests for both files match those computed by Jenga.
   $ dune build exe non-exe
 
   $ (cd "$PWD/.xdg-cache/dune/db/files/v4"; grep -rws . -e 'content' | sort | censor)
-  ./5e/$DIGEST:content
-  ./e2/$DIGEST:content
+  ./5e/$DIGEST1:content
+  ./e2/$DIGEST2:content
 
 Move all current entries to v3 and v4 to test trimming of old versions of cache.
 
@@ -78,8 +78,8 @@ entries uniformly.
 
   $ (cd "$PWD/.xdg-cache/dune/db/meta/v5"; grep -rws . -e 'metadata' | sort ) > out
   $ cat out | censor
-  ./59/$DIGEST:((8:metadata)(5:files(8:target_b32:$DIGEST)))
-  ./78/$DIGEST:((8:metadata)(5:files(8:target_a32:$DIGEST)))
+  ./59/$DIGEST1:((8:metadata)(5:files(8:target_b32:$DIGEST2)))
+  ./78/$DIGEST3:((8:metadata)(5:files(8:target_a32:$DIGEST4)))
 
   $ digest="$(awk -F: '/target_b/ { digest=$1 } END { print digest }' < out)"
 

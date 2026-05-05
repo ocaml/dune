@@ -118,7 +118,10 @@ end = struct
       in
       if_available_buildable
         ~loc:lib.buildable.loc
-        (fun () -> Lib_rules.rules lib ~sctx ~scope ~dir_contents ~expander)
+        (fun () ->
+           Lib_rules.rules lib ~sctx ~scope ~dir_contents ~expander
+           >>| Compilation_mode.By_mode.choose
+           >>| Option.value_exn)
         enabled_if
     | Foreign_library.T lib ->
       Expander.eval_blang expander lib.enabled_if
@@ -193,6 +196,25 @@ end = struct
     >>| rev
   ;;
 end
+
+let define_all_alias ~dir ~project ~js_targets =
+  let deps =
+    let predicate =
+      if Dune_project.explicit_js_mode project
+      then Predicate_lang.true_
+      else (
+        List.iter js_targets ~f:(fun js_target ->
+          assert (Path.Build.equal (Path.Build.parent_exn js_target) dir));
+        Predicate_lang.not
+          (Predicate_lang.Glob.of_string_set
+             (String.Set.of_list_map js_targets ~f:Path.Build.basename)))
+    in
+    let only_generated_files = Dune_project.dune_version project >= (3, 0) in
+    File_selector.of_predicate_lang ~dir:(Path.build dir) ~only_generated_files predicate
+    |> Action_builder.paths_matching_unit ~loc:Loc.none
+  in
+  Rules.Produce.Alias.add_deps (Alias.make Alias0.all ~dir) deps
+;;
 
 let gen_rules_for_stanzas sctx dir_contents cctxs expander ~dune_file ~dir:ctx_dir =
   let src_dir = Dune_file.dir dune_file in
@@ -301,7 +323,7 @@ let gen_rules_for_stanzas sctx dir_contents cctxs expander ~dune_file ~dir:ctx_d
       | _ -> Memo.return ())
   and+ () =
     let project = Dune_file.project dune_file in
-    Alias_builder.define_all_alias ~project ~js_targets ctx_dir
+    define_all_alias ~dir:ctx_dir ~project ~js_targets
   in
   cctxs
 ;;
@@ -318,10 +340,7 @@ let gen_rules_source_only sctx ~dir source_dir =
     let+ () = gen_format_and_cram_rules sctx ~dir source_dir
     and+ () = Revdep_rules.add ~sctx ~dir
     and+ () =
-      Alias_builder.define_all_alias
-        ~js_targets:[]
-        ~project:(Source_tree.Dir.project source_dir)
-        dir
+      define_all_alias ~dir ~js_targets:[] ~project:(Source_tree.Dir.project source_dir)
     in
     ())
 ;;
@@ -340,7 +359,7 @@ let gen_rules_group_part_or_root sctx dir_contents cctxs ~source_dir ~dir
       >>= gen_rules_for_stanzas sctx dir_contents cctxs ~dune_file ~dir
     | None ->
       let project = Source_tree.Dir.project source_dir in
-      let+ () = Alias_builder.define_all_alias ~js_targets:[] ~project dir in
+      let+ () = define_all_alias ~dir ~js_targets:[] ~project in
       Loc.Map.empty
   in
   contexts
@@ -802,4 +821,12 @@ let gen_rules ctx ~dir components =
     let gen_pkg_alias_rule = Pkg_rules.setup_pkg_install_alias ~dir ctx in
     let+ sctx_rules = gen_rules ctx (Super_context.find_exn ctx) ~dir components in
     Gen_rules.combine sctx_rules gen_pkg_alias_rule
+;;
+
+let () =
+  Fdecl.set Expander.resolve_pkg_install_file
+  @@ fun ~loc context_name ~pkg ~section ~file ->
+  let open Memo.O in
+  let* sctx = Super_context.find_exn context_name in
+  Install_rules.resolve_package_install_file sctx ~loc ~pkg ~section ~file
 ;;

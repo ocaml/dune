@@ -47,7 +47,6 @@ module Queue = struct
     ; mutable pending_worker_tasks : int
     ; mutable job_complete_ready : bool
     ; worker_tasks_completed : Fiber.fill Queue.t
-    ; timers : Fiber.fill Queue.t
     ; mutable got_event : bool
     ; mutable yield : unit Fiber.Ivar.t option
     }
@@ -69,11 +68,9 @@ module Queue = struct
     let cond = Condition.create () in
     let pending_jobs = 0 in
     let pending_worker_tasks = 0 in
-    let timers = Queue.create () in
     { jobs_completed
     ; file_watcher_tasks
     ; invalidation_events
-    ; timers
     ; shutdown_reasons
     ; mutex
     ; cond
@@ -203,7 +200,6 @@ module Queue = struct
         Fiber_fill_ivar (Fill (ivar, ())))
     ;;
 
-    let timers q = Option.map (Queue.pop q.timers) ~f:(fun timer -> Fiber_fill_ivar timer)
     let chain list q = List.find_map list ~f:(fun f -> f q)
   end
 
@@ -221,7 +217,6 @@ module Queue = struct
       ; worker_tasks_completed
       ; (if Sys.win32 then jobs_completed else job_complete_ready)
       ; yield
-      ; timers
       ]
   ;;
 
@@ -284,11 +279,6 @@ module Queue = struct
 
   let send_file_watcher_task q job =
     add_event q (fun q -> Queue.push q.file_watcher_tasks job)
-  ;;
-
-  let send_timers_completed q timers =
-    add_event q (fun q ->
-      Nonempty_list.to_list timers |> List.iter ~f:(Queue.push q.timers))
   ;;
 
   let pending_jobs q = q.pending_jobs

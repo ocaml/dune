@@ -128,9 +128,7 @@ val shutdown : unit -> unit
     similar to what happens on file system events in polling mode. *)
 val cancel_current_build : unit -> unit Fiber.t
 
-(** [sleep duration] wait for [duration] seconds to elapse. Sleepers
-    are checked for wake up at a rate of once per 0.1 seconds. So
-    [duration] should be at least this long. *)
+(** [sleep duration] waits for [duration] to elapse. *)
 val sleep : Time.Span.t -> unit Fiber.t
 
 val spawn_thread : name:string -> (unit -> unit) -> Thread.t

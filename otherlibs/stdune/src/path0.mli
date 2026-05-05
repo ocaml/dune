@@ -28,6 +28,7 @@ module Local : sig
   module Table : Hashtbl.S with type key = t
 
   val root : t
+  val of_comps : Filename.t list -> t
   val is_root : t -> bool
   val relative : t -> string -> t
   val relative_result : t -> string -> (t, [ `Outside_the_workspace ]) Result.t

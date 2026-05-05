@@ -30,8 +30,7 @@ type kind =
   | Library of Buildable.t * Lib_name.Local.t
   | Parameter of Buildable.t * Lib_name.Local.t
   | Melange of
-      { preprocess : Preprocess.With_instrumentation.t Preprocess.Per_module.t
-      ; preprocessor_deps : Dep_conf.t list
+      { preprocess : Preprocess.preprocess
       ; lint : Preprocess.Without_instrumentation.t Preprocess.Per_module.t
       ; empty_module_interface_if_absent : bool
       }

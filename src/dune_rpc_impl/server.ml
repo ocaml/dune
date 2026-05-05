@@ -28,8 +28,6 @@ module Handler = Rpc.Server.Handler
 module Csexp_rpc = Rpc.Csexp_rpc
 
 module Run = struct
-  module Registry = Dune_rpc.Registry
-
   type t =
     { handler : Rpc.Server.t
     ; pool : Fiber.Pool.t
@@ -41,19 +39,7 @@ module Run = struct
     }
 
   let run t =
-    let cleanup_registry = ref None in
-    let with_registry f =
-      match t.registry with
-      | `Skip -> ()
-      | `Add -> f ()
-    in
-    let run_cleanup_registry () =
-      match !cleanup_registry with
-      | None -> ()
-      | Some path ->
-        Fpath.unlink_no_err path;
-        cleanup_registry := None
-    in
+    let registry = Rpc.Registry.create ~root:t.root ~where:t.where t.registry in
     let with_print_errors f () =
       Fiber.with_error_handler f ~on_error:(fun exn ->
         Console.print [ Pp.text "Uncaught RPC Error"; Exn_with_backtrace.pp exn ];
@@ -76,37 +62,13 @@ module Run = struct
       Fiber.fork_and_join_unit
         (fun () ->
            let* sessions = Csexp_rpc.Server.serve server in
-           let () =
-             with_registry
-             @@ fun () ->
-             let (`Caller_should_write { Registry.File.path; contents }) =
-               let registry_config = Registry.Config.create (Lazy.force Dune_util.xdg) in
-               let dune =
-                 let pid = Unix.getpid () in
-                 let where =
-                   match t.where with
-                   | `Ip (host, port) -> `Ip (host, port)
-                   | `Unix a ->
-                     `Unix
-                       (if Filename.is_relative a
-                        then Filename.concat (Sys.getcwd ()) a
-                        else a)
-                 in
-                 Registry.Dune.create ~where ~root:t.root ~pid
-               in
-               Registry.Config.register registry_config dune
-             in
-             let (_ : Fpath.mkdir_p_result) = Fpath.mkdir_p (Filename.dirname path) in
-             Io.String_path.write_file path contents;
-             cleanup_registry := Some path;
-             at_exit run_cleanup_registry
-           in
+           let () = Rpc.Registry.register registry in
            let* () = Rpc.Server.serve sessions t.handler in
            Fiber.Pool.close t.pool)
         (fun () -> Fiber.Pool.run t.pool)
     in
     Fiber.finalize (with_print_errors run) ~finally:(fun () ->
-      with_registry run_cleanup_registry;
+      Rpc.Registry.cleanup registry;
       Fiber.return ())
   ;;
 end
@@ -337,11 +299,13 @@ let handler (t : _ t Fdecl.t) : 'build_arg Handler.t =
   let () = Handler.implement_request rpc Procedures.Public.ping (fun _ -> Fiber.return) in
   let implement_request_pending_action decl ~f =
     let handler _session input =
-      let server = Fdecl.get t in
       let outcome = Fiber.Ivar.create () in
-      let* () = Job_queue.write server.pending_jobs { kind = f input; outcome } in
-      let+ build_outcome = Fiber.Ivar.read outcome in
-      match (build_outcome : Build_outcome.t) with
+      let* () =
+        let server = Fdecl.get t in
+        Job_queue.write server.pending_jobs { kind = f input; outcome }
+      in
+      Fiber.Ivar.read outcome
+      >>| function
       | Success -> Dune_rpc.Build_outcome_with_diagnostics.Success
       | Failure -> Failure (get_current_diagnostic_errors ())
     in
@@ -358,16 +322,17 @@ let handler (t : _ t Fdecl.t) : 'build_arg Handler.t =
   in
   let () =
     let f _ () =
-      let server = Fdecl.get t in
       let outcome = Fiber.Ivar.create () in
-      let target =
-        Dune_lang.Dep_conf.Alias_rec (Dune_lang.String_with_vars.make_text Loc.none "fmt")
-      in
       let* () =
+        let server = Fdecl.get t in
+        let target =
+          Dune_lang.Dep_conf.Alias_rec
+            (Dune_lang.String_with_vars.make_text Loc.none "fmt")
+        in
         Job_queue.write server.pending_jobs { kind = Build [ target ]; outcome }
       in
-      let+ build_outcome = Fiber.Ivar.read outcome in
-      match build_outcome with
+      Fiber.Ivar.read outcome
+      >>| function
       (* A 'successful' formatting means there is nothing to promote. *)
       | Success -> ()
       | Failure ->
@@ -474,35 +439,33 @@ let handler (t : _ t Fdecl.t) : 'build_arg Handler.t =
 ;;
 
 let create ~lock_timeout ~registry ~root =
-  let t = Fdecl.create Dyn.opaque in
-  let pending_jobs = Job_queue.create () in
-  let handler = Rpc.Server.make (handler t) in
-  let pool = Fiber.Pool.create () in
   let where = Where.default () in
   Global_lock.lock_exn ~timeout:lock_timeout;
-  let server =
-    lazy
-      (let socket_file = Where.rpc_socket_file () in
-       Fpath.unlink_no_err (Path.Build.to_string socket_file);
-       Path.mkdir_p (Path.build (Path.Build.parent_exn socket_file));
-       match Csexp_rpc.Server.create [ Where.to_socket where ] ~backlog:100 with
-       | Ok s ->
-         (match where with
-          | `Ip _ -> Io.write_file (Path.build socket_file) (Where.to_string where)
-          | `Unix _ -> ());
-         at_exit (fun () -> Fpath.unlink_no_err (Path.Build.to_string socket_file));
-         s
-       | Error `Already_in_use ->
-         User_error.raise
-           [ Pp.textf
-               "Dune rpc is already running in this workspace. If this is not the case, \
-                please delete %s"
-               (Path.Build.to_string_maybe_quoted (Where.rpc_socket_file ()))
-           ])
-  in
+  let t = Fdecl.create Dyn.opaque in
   let config =
+    let server =
+      lazy
+        (let socket_file = Where.rpc_socket_file () in
+         Fpath.unlink_no_err (Path.Build.to_string socket_file);
+         Path.mkdir_p (Path.build (Path.Build.parent_exn socket_file));
+         match Csexp_rpc.Server.create [ Where.to_socket where ] ~backlog:100 with
+         | Ok s ->
+           (match where with
+            | `Ip _ -> Io.write_file (Path.build socket_file) (Where.to_string where)
+            | `Unix _ -> ());
+           at_exit (fun () -> Fpath.unlink_no_err (Path.Build.to_string socket_file));
+           s
+         | Error `Already_in_use ->
+           User_error.raise
+             [ Pp.textf
+                 "Dune rpc is already running in this workspace. If this is not the \
+                  case, please delete %s"
+                 (Path.Build.to_string_maybe_quoted (Where.rpc_socket_file ()))
+             ])
+    in
+    let handler = Rpc.Server.make (handler t) in
     { Run.handler
-    ; pool
+    ; pool = Fiber.Pool.create ()
     ; root
     ; where
     ; server
@@ -510,7 +473,10 @@ let create ~lock_timeout ~registry ~root =
     ; startup_ivar = Fiber.Ivar.create ()
     }
   in
-  let res = { config; pending_jobs; clients = Clients.empty } in
+  let res =
+    let pending_jobs = Job_queue.create () in
+    { config; pending_jobs; clients = Clients.empty }
+  in
   Fdecl.set t res;
   res
 ;;

@@ -2,6 +2,7 @@ open Import
 include Dune_section
 
 let compare : t -> t -> Ordering.t = Poly.compare
+let equal : t -> t -> bool = Poly.equal
 
 let to_dyn x =
   let s = Dune_section.to_string x in

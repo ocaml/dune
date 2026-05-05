@@ -10,10 +10,12 @@ let make_with_site (section : Section_with_site.t) ?dst get_section ~kind src =
     let+ section = get_section ~loc ~pkg ~site in
     let dst =
       let dst = Entry.adjust_dst' ~src ~dst ~section in
-      Dst.add_prefix (Site.to_string site) dst
+      Dst.prepend_local (Path.Local.of_string (Site.to_string site)) dst
     in
     let (section : Section.t), dst =
-      let dst_with_pkg_prefix = Dst.add_prefix (Package.Name.to_string pkg) dst in
+      let dst_with_pkg_prefix =
+        Dst.prepend_local (Path.Local.of_string (Package.Name.to_string pkg)) dst
+      in
       match section with
       | Lib -> Lib_root, dst_with_pkg_prefix
       | Libexec -> Libexec_root, dst_with_pkg_prefix

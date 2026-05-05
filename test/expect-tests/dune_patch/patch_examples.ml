@@ -45,6 +45,19 @@ index 000000000..ea988f6bd
 |}
 ;;
 
+(* Example adding a new file in a subdirectory. *)
+let new_file_in_subdir =
+  {|
+diff --git a/dir/new.ml b/dir/new.ml
+new file mode 100644
+index 000000000..ea988f6bd
+--- /dev/null
++++ b/dir/new.ml
+@@ -0,0 +1 @@
++This is new
+|}
+;;
+
 (* Example deleting an existing file. *)
 let delete_file =
   {|
@@ -157,6 +170,59 @@ index 0000000..557db03
 +++ b/foo.ml
 @@ -0,0 +1 @@
 +Hello World
+|}
+;;
+
+(* "new file mode" present but ---/+++ indicate an edit, not a
+   create. The ---/+++ headers should take precedence. *)
+let spurious_new_file_mode =
+  {|
+diff --git a/dir/baz.ml b/dir/baz.ml
+new file mode 100644
+index b69a69a5a..ea988f6bd 100644
+--- a/dir/baz.ml
++++ b/dir/baz.ml
+@@ -1,1 +1,1 @@
+-This is wrong
++This is right
+|}
+;;
+
+(* "deleted file mode" present but ---/+++ indicate an edit, not a
+   delete. The ---/+++ headers should take precedence. *)
+let spurious_deleted_file_mode =
+  {|
+diff --git a/foo.ml b/foo.ml
+deleted file mode 100644
+index b69a69a5a..ea988f6bd 100644
+--- a/foo.ml
++++ b/foo.ml
+@@ -1,1 +1,1 @@
+-This is wrong
++This is right
+|}
+;;
+
+(* Combined patch where one entry has a spurious "new file mode".
+   Reproduces the opam-package-with-patch-multiple.t failure. *)
+let combined_with_spurious_new_file_mode =
+  {|
+diff --git a/bar.ml b/bar.ml
+index b69a69a5a..ea988f6bd 100644
+--- a/bar.ml
++++ b/bar.ml
+@@ -1,1 +1,1 @@
+-This is wrong
++This is right
+
+diff --git a/dir/baz.ml b/dir/baz.ml
+new file mode 100644
+index b69a69a5a..ea988f6bd 100644
+--- a/dir/baz.ml
++++ b/dir/baz.ml
+@@ -1,1 +1,1 @@
+-This is wrong
++This is right
 |}
 ;;
 

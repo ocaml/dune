@@ -57,21 +57,21 @@ let watch, collect_events =
     Inotify.create
       ~modify_event_selector:`Closed_writable_fd
       ~send_emit_events_job_to_scheduler:(fun f ->
-        Mutex.lock mutex;
-        Queue.push events f;
-        Condition.signal cond;
-        Mutex.unlock mutex)
+        Mutex.protect mutex (fun () ->
+          Queue.push events f;
+          Condition.signal cond))
   in
   let watch fn = Inotify.add inotify fn in
   watch beginning_of_test_file;
   watch end_of_test_file;
   let next_events () =
-    Mutex.lock mutex;
-    while Queue.is_empty events do
-      Condition.wait cond mutex
-    done;
-    let f = Queue.pop_exn events in
-    Mutex.unlock mutex;
+    let f =
+      Mutex.protect mutex (fun () ->
+        while Queue.is_empty events do
+          Condition.wait cond mutex
+        done;
+        Queue.pop_exn events)
+    in
     f ()
   in
   let rec collect_events acc = function

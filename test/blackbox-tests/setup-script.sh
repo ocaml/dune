@@ -218,24 +218,12 @@ file_status() {
 }
 
 censor() {
-  # we want to substitute it to $DIGEST
+  # Strip $PWD first so that sandbox hashes in the cram test's own path
+  # aren't caught as digests. Each unique remaining digest gets a distinct
+  # label ($DIGEST when unique, $DIGEST1/$DIGEST2/etc. when multiple).
   # shellcheck disable=SC2016
-  dune_cmd subst '[0-9a-f]{32}' '$DIGEST'
+  dune_cmd subst "$PWD" '$PWD' \
+    | dune_cmd subst-unique '[0-9a-f]{32}' '$DIGEST' \
+    | dune_cmd subst-unique '\.cinaps\.[0-9a-f]{8}' '.cinaps.$CINAPS'
 }
 
-censor_ppx() {
-  # shellcheck disable=SC2016
-  dune_cmd subst '[0-9a-f]{32}/ppx.exe' '$DIGEST/ppx.exe'
-}
-
-censor_cinaps() {
-  # shellcheck disable=SC2016
-  dune_cmd subst '\.cinaps\.[0-9a-f]+/' '$CINAPS/'
-}
-
-# CR-someday rgrinberg: get rid of this one or fuse it into censor
-strip_sandbox() {
-  # we want to substitute it to $SANDBOX
-  # shellcheck disable=SC2016
-  dune_cmd subst '[^ ]*.sandbox[/\\][^/\\]+' '$SANDBOX'
-}

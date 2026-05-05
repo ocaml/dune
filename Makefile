@@ -181,13 +181,16 @@ dune: $(BIN)
 opam-release: dev
 	$(BIN) exec -- $(MAKE) dune-release
 
+# Set DUNE_RELEASE_YES_FLAG=true to force dune-release to run with the --yes flag
+# Avoiding the need for interaction
+DUNE_RELEASE_YES_FLAG := $(if $(filter true,$(DUNE_RELEASE_YES)),--yes)
 dune-release:
-	dune-release tag
+	dune-release tag $(DUNE_RELEASE_YES_FLAG)
 	dune-release distrib --skip-build --skip-lint --skip-tests
 # See https://github.com/ocamllabs/dune-release/issues/206
-	DUNE_RELEASE_DELEGATE=github-dune-release-delegate dune-release publish --verbose
-	dune-release opam pkg
-	dune-release opam submit
+	DUNE_RELEASE_DELEGATE=github-dune-release-delegate dune-release publish --verbose $(if $(filter prerelease,$(RELEASE_KIND)),--prerelease) $(DUNE_RELEASE_YES_FLAG)
+	dune-release opam pkg $(DUNE_RELEASE_YES_FLAG)
+	dune-release opam submit $(DUNE_RELEASE_YES_FLAG)
 
 .PHONY: docker-build-image
 docker-build-image:

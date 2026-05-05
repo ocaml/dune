@@ -381,6 +381,12 @@ module Local_gen = struct
   ;;
 
   let explode p = if is_root p then [] else String.split p ~on:'/'
+
+  let of_comps = function
+    | [] -> root
+    | x -> String.concat ~sep:"/" x
+  ;;
+
   let to_string_maybe_quoted t = String.maybe_quoted t
 
   let parent_exn t =

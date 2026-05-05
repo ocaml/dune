@@ -443,10 +443,9 @@ let with_buffering ~create ~(scheduler : Scheduler.t) ~debounce_interval =
   let event_cv = Condition.create () in
   let res =
     let thread_safe_send_emit_events_job job =
-      Mutex.lock event_mtx;
-      jobs := job :: !jobs;
-      Condition.signal event_cv;
-      Mutex.unlock event_mtx
+      Mutex.protect event_mtx (fun () ->
+        jobs := job :: !jobs;
+        Condition.signal event_cv)
     in
     let scheduler = { Scheduler.thread_safe_send_emit_events_job } in
     create ~scheduler
@@ -464,13 +463,15 @@ let with_buffering ~create ~(scheduler : Scheduler.t) ~debounce_interval =
      - after the first event is received, buffer subsequent events for
        [debounce_interval] *)
   let rec buffer_thread () =
-    Mutex.lock event_mtx;
-    while List.is_empty !jobs do
-      Condition.wait event_cv event_mtx
-    done;
-    let jobs_batch = List.rev !jobs in
-    jobs := [];
-    Mutex.unlock event_mtx;
+    let jobs_batch =
+      Mutex.protect event_mtx (fun () ->
+        while List.is_empty !jobs do
+          Condition.wait event_cv event_mtx
+        done;
+        let jobs_batch = List.rev !jobs in
+        jobs := [];
+        jobs_batch)
+    in
     scheduler.thread_safe_send_emit_events_job (fun () ->
       List.concat_map jobs_batch ~f:(fun job -> job ()));
     Thread.delay debounce_interval;
@@ -571,10 +572,9 @@ let create_fsevents
   let (_ : Thread.t) =
     Thread0.spawn ~name:"file-watcher" (fun () ->
       let dispatch_queue = Fsevents.Dispatch_queue.create () in
-      Mutex.lock mutex;
-      dispatch_queue_ref := Some dispatch_queue;
-      Condition.signal cv;
-      Mutex.unlock mutex;
+      Mutex.protect mutex (fun () ->
+        dispatch_queue_ref := Some dispatch_queue;
+        Condition.signal cv);
       Fsevents.start source dispatch_queue;
       Fsevents.start sync dispatch_queue;
       match Fsevents.Dispatch_queue.wait_until_stopped dispatch_queue with
@@ -583,11 +583,10 @@ let create_fsevents
   in
   let external_ = Watch_trie.empty in
   let dispatch_queue =
-    Mutex.lock mutex;
-    while !dispatch_queue_ref = None do
-      Condition.wait cv mutex
-    done;
-    Mutex.unlock mutex;
+    Mutex.protect mutex (fun () ->
+      while !dispatch_queue_ref = None do
+        Condition.wait cv mutex
+      done);
     Option.value_exn !dispatch_queue_ref
   in
   { kind =

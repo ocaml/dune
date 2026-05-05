@@ -20,9 +20,9 @@
 
   $ dune build @check
   Error: Dependency cycle between:
-     _build/default/.output.mobjs/melange__Main.impl.all-deps
-  -> _build/default/.output.mobjs/melange__Hello.impl.all-deps
-  -> _build/default/.output.mobjs/melange__Main.impl.all-deps
+     _build/default/.output.mobjs/melange/melange__Main.impl.all-deps
+  -> _build/default/.output.mobjs/melange/melange__Hello.impl.all-deps
+  -> _build/default/.output.mobjs/melange/melange__Main.impl.all-deps
   -> required by _build/default/.output.mobjs/melange/melange__Main.cmi
   -> required by alias check
   [1]

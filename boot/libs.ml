@@ -35,9 +35,11 @@ let local_libraries =
           ; entries =
               [ "Csexp"
               ; "Dyn"
+              ; "Event"
               ; "Fs_io"
               ; "Ordering"
               ; "Pp"
+              ; "Thread"
               ; "Top_closure"
               ; "Unix"
               ; "UnixLabels"
@@ -296,6 +298,12 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
+  ; { path = "src/rpc"
+    ; main_module_name = Some "Rpc"
+    ; include_subdirs = No
+    ; special_builtin_support = None
+    ; root_module = None
+    }
   ; { path = "src/action_plugin"
     ; main_module_name = Some "Action_plugin"
     ; include_subdirs = No
@@ -344,6 +352,12 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
+  ; { path = "vendor/patch/src"
+    ; main_module_name = Some "Patch"
+    ; include_subdirs = No
+    ; special_builtin_support = None
+    ; root_module = None
+    }
   ; { path = "src/dune_patch"
     ; main_module_name = Some "Dune_patch"
     ; include_subdirs = No
@@ -388,12 +402,6 @@ let local_libraries =
     }
   ; { path = "otherlibs/chrome-trace/src"
     ; main_module_name = Some "Chrome_trace"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-  ; { path = "src/rpc"
-    ; main_module_name = Some "Rpc"
     ; include_subdirs = No
     ; special_builtin_support = None
     ; root_module = None

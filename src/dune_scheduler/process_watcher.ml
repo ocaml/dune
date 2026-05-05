@@ -64,11 +64,7 @@ let to_dyn { table; running_count; _ } =
 let is_running_unix t pid = Table.mem t.table pid
 
 let is_running_win32 t pid =
-  let mutex = Lazy.force t.mutex in
-  Mutex.lock mutex;
-  let res = is_running_unix t pid in
-  Mutex.unlock mutex;
-  res
+  Mutex.protect (Lazy.force t.mutex) (fun () -> is_running_unix t pid)
 ;;
 
 let is_running = if Sys.win32 then is_running_win32 else is_running_unix
@@ -119,10 +115,7 @@ end
 
 let register_job_win32 t job =
   Event.Queue.register_job_started t.events;
-  let mutex = Lazy.force t.mutex in
-  Mutex.lock mutex;
-  Process_table.add t job;
-  Mutex.unlock mutex
+  Mutex.protect (Lazy.force t.mutex) (fun () -> Process_table.add t job)
 ;;
 
 let register_job_unix t job =
@@ -138,10 +131,8 @@ let killall_unix t signal =
 ;;
 
 let killall_win32 t signal =
-  let mutex = Lazy.force t.mutex in
-  Mutex.lock mutex;
-  killall_unix t signal;
-  Mutex.unlock mutex
+  (* CR-rgrinberg: weird naming? *)
+  Mutex.protect (Lazy.force t.mutex) (fun () -> killall_unix t signal)
 ;;
 
 let killall = if Sys.win32 then killall_win32 else killall_unix

@@ -21,7 +21,8 @@
 
 (executable
  (name refmt)
- (modules refmt))
+ (modules refmt)
+ (libraries compiler-libs.common))
 
 (executable
  (name sherlodoc)

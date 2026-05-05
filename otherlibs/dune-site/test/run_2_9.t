@@ -338,12 +338,8 @@ Test compiling an external plugin
   > EOF
 
   $ OCAMLPATH=$PWD/_install/lib:$OCAMLPATH dune build --root=e
-  Entering directory 'e'
-  Leaving directory 'e'
 
   $ OCAMLPATH=$PWD/_install/lib:$OCAMLPATH PATH=$PWD/_install/bin:$PATH dune exec  --root=e -- c
-  Entering directory 'e'
-  Leaving directory 'e'
   run a
   a: $TESTCASE_ROOT/_install/share/a/data
   run c: a linked registered:.
@@ -415,8 +411,6 @@ Test %{version:installed-pkg}
   > EOF
 
   $ OCAMLPATH=_install/lib:$OCAMLPATH dune build --root=f
-  Entering directory 'f'
-  Leaving directory 'f'
   $ cat $PWD/f/_build/default/test.target
   a = 0.a
   e = 

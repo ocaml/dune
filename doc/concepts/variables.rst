@@ -144,6 +144,13 @@ In addition, ``(action ...)`` fields support the following special variables:
 - ``ppx:lib1+..+libn`` expands to the ppx executable with ppx libraries
   ``lib1`` to ``libn`` linked in. This form also introduces a dependency on
   this executable.
+- ``pkg:<package>:<section>:<path>`` expands to the path of a file
+  installed by ``<package>`` in ``<section>`` at the relative ``<path>``
+  within that section. Works with workspace packages, lock-file packages,
+  and installed packages. The supported sections are those listed in
+  :doc:`/reference/dune/install` (except ``misc``).
+
+  .. versionadded:: 3.24
 
 The ``%{<kind>:...}`` forms are what allows you to write custom rules that work
 transparently, whether things are installed or not.

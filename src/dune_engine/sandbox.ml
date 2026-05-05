@@ -197,8 +197,7 @@ let find_corrected_files (t : t) ~deps =
             not
               (* CR-soon rgrinberg: slow for no reason. to fix. *)
               (let path = Path.build path in
-               Path.Set.exists deps ~f:(fun dep ->
-                 Path.equal dep path || Path.is_descendant path ~of_:dep))
+               Path.Set.exists deps ~f:(fun dep -> Path.is_descendant path ~of_:dep))
           then Some path
           else None
         with

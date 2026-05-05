@@ -247,18 +247,6 @@ let fetch_local ~checksum ~target (url, url_loc) =
       Unavailable (Some (User_message.make [ Pp.text "Could not unpack:"; pp ])))
 ;;
 
-let is_descendant t ~of_ =
-  let is_desc_e t ~of_ =
-    let open Path.External in
-    is_root of_
-    || equal of_ t
-    || String.starts_with ~prefix:(to_string of_ ^ "/") (to_string t)
-  in
-  match t, of_ with
-  | Path.External t, Path.External of_ -> is_desc_e t ~of_
-  | _ -> Path.is_descendant t ~of_
-;;
-
 (* Dune can't handle symbolic links pointing to directories, so we replace them
    with regular directories containing the same contents. *)
 let resolve_directory_symlinks_in root =
@@ -293,11 +281,11 @@ let resolve_directory_symlinks_in root =
          indirections, something like _build/foo/../bar or _build/../outside.
          [Path.of_string] canonicalizes it, removing those indirections. *)
       let resolved = Path.of_string resolved in
-      if is_descendant relative ~of_:resolved
+      if Path.is_descendant relative ~of_:resolved
       then
         User_error.raise
           [ Pp.textf "Unable to resolve symlink %s, it is part of a cycle." full_name ];
-      if not (is_descendant resolved ~of_:root)
+      if not (Path.is_descendant resolved ~of_:root)
       then
         User_error.raise
           [ Pp.textf

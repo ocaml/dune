@@ -15,9 +15,7 @@ lines, and [dep/foo.ml] starts with a [#if]/[#endif] block.
 Ocamldep on the post-pp output is fine; ocamldep on the pre-pp
 input is a syntax error.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.24)
-  > EOF
+  $ make_dune_project 3.24
 
 A trivial preprocessor that drops every line starting with [#].
 This mimics cppo's behaviour without needing an external tool: the

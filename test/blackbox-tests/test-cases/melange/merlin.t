@@ -297,7 +297,7 @@ User ppx flags should appear in merlin config
   >   .[]
   >   | merlinConfigSummary(["STDLIB", "FLG", "UNIT_NAME"])
   > ]
-  > | .[]' | censor_ppx
+  > | .[]' | censor
   {
     "module_name": "Foo",
     "source_path": "_build/default/.melange_src/foo",
@@ -322,7 +322,7 @@ User ppx flags should appear in merlin config
         "FLG",
         [
           "-ppx",
-          "$TESTCASE_ROOT/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name=\"foo\"'"
+          "$PWD/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name=\"foo\"'"
         ]
       ],
       [
@@ -355,7 +355,7 @@ User ppx flags should appear in merlin config
         "FLG",
         [
           "-ppx",
-          "$TESTCASE_ROOT/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name=\"foo\"'"
+          "$PWD/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name=\"foo\"'"
         ]
       ],
       [
@@ -388,7 +388,7 @@ User ppx flags should appear in merlin config
         "FLG",
         [
           "-ppx",
-          "$TESTCASE_ROOT/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name=\"foo\"'"
+          "$PWD/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name=\"foo\"'"
         ]
       ],
       [
@@ -428,7 +428,7 @@ User ppx flags should appear in merlin config
         "FLG",
         [
           "-ppx",
-          "$TESTCASE_ROOT/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name=\"foo\"'"
+          "$PWD/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name=\"foo\"'"
         ]
       ],
       [

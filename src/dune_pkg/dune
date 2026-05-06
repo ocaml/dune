@@ -1,9 +1,28 @@
+; OxCaml's ppx_expect v0.18 rejects [let%test_module] in favour of
+; [module%test], but upstream ppx_expect has not released v0.18 yet.
+; Until it does we must support both: pass the compatibility flag on
+; OxCaml and nothing otherwise.
+
+(rule
+ (enabled_if %{ocaml-config:ox})
+ (action
+  (write-file ppx-extra-flags "-inline-test-allow-let-test-module")))
+
+(rule
+ (enabled_if
+  (not %{ocaml-config:ox}))
+ (action
+  (write-file ppx-extra-flags "")))
+
 (library
  (name dune_pkg)
  (synopsis "[Internal] Dune's packaging support")
  (foreign_stubs
   (names md5_stubs)
   (language c))
+ (inline_tests)
+ (preprocess
+  (pps ppx_expect -- %{read-lines:ppx-extra-flags}))
  (libraries
   stdune
   lmdb

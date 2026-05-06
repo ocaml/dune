@@ -233,10 +233,9 @@ let read_deps_of ~obj_dir ~modules ~ml_kind ~for_ unit =
   |> Action_builder.memoize (Path.Build.to_string all_deps_file)
 ;;
 
-(* Returns raw module names without resolving against the stanza's module
-   set. Preserves references to external libraries, which [parse_module_names]
-   would discard. Used for per-module inter-library dependency filtering
-   (#4572). *)
+(* Returns raw module names without resolving against the stanza's module set.
+   Preserves references to external libraries, which [parse_module_names] would
+   discard. Used for per-module inter-library dependency filtering (#4572). *)
 let read_immediate_deps_raw_of ~sandbox ~sctx ~obj_dir ~ml_kind unit =
   let open Action_builder.O in
   let+ words = read_immediate_deps_words ~sandbox ~sctx ~obj_dir ~ml_kind unit in

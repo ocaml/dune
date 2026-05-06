@@ -135,9 +135,8 @@ let deps_of_vlib_module ~obj_dir ~vimpl ~dir ~sctx ~ml_kind ~for_ sourced_module
 let has_single_file modules = Option.is_some @@ Modules.With_vlib.as_singleton modules
 
 (** Single-module stanzas with no library deps. Must match
-    [Compilation_context.build_lib_index]'s [no_ocamldep_lib] check
-    so the per-module filter's BFS doesn't demand absent [.d]
-    files. *)
+    [Compilation_context.build_lib_index]'s [no_ocamldep_lib] check so the
+    per-module filter's BFS doesn't demand absent [.d] files. *)
 let skip_ocamldep ~has_library_deps modules =
   has_single_file modules && not has_library_deps
 ;;
@@ -244,10 +243,9 @@ let for_module ~obj_dir ~modules ~sandbox ~impl ~dir ~sctx ~for_ module_ =
 let rules ~obj_dir ~modules ~sandbox ~impl ~sctx ~dir ~for_ ~has_library_deps =
   match Modules.With_vlib.as_singleton modules with
   | Some m when (not has_library_deps) || Compilation_mode.equal for_ Melange ->
-    (* Single-module stanzas have no intra-stanza deps; the dep
-       graph is only consumed by the per-module filter in
-       [lib_deps_for_module]. That filter doesn't activate for
-       Melange (see its [can_filter]) — skip ocamldep. *)
+    (* Single-module stanzas have no intra-stanza deps; the dep graph is only
+       consumed by the per-module filter in [lib_deps_for_module]. That filter
+       doesn't activate for Melange (see its [can_filter]) — skip ocamldep. *)
     Memo.return (Dep_graph.Ml_kind.dummy m)
   | Some _ | None ->
     dict_of_func_concurrently (fun ~ml_kind ->

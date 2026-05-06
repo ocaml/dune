@@ -33,11 +33,10 @@ module Includes = struct
   let empty = Lib_mode.Cm_kind.Map.make_all Command.Args.empty
 end
 
-(* Per-cctx cache of [Lib_flags.L.include_flags] keyed on
-   (lib_mode, sorted kept_libs). Two consumer modules with the
-   same kept-libs share one [Args.t]. Cache is per-cctx, so
-   regenerating the cctx (e.g. on a [(libraries ...)] edit)
-   discards it — the requires-split need not be in the key. *)
+(* Per-cctx cache of [Lib_flags.L.include_flags] keyed on (lib_mode, sorted
+   kept_libs). Two consumer modules with the same kept-libs share one [Args.t].
+   Cache is per-cctx, so regenerating the cctx (e.g. on a [(libraries ...)]
+   edit) discards it — the requires-split need not be in the key. *)
 module Filtered_includes = struct
   module Key = struct
     type t =

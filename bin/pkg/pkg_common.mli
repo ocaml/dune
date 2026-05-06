@@ -82,11 +82,10 @@ end
     [lock_dir]. *)
 val pp_packages : Dune_pkg.Lock_dir.Pkg.t list -> User_message.Style.t Pp.t
 
+(** [pkg_enabled ~workspace ~lock_dir_paths] returns [true] if package management is
+    enabled. *)
+val pkg_enabled : workspace:Workspace.t -> lock_dir_paths:Path.Source.t list -> bool
+
 (** [check_pkg_management_enabled ()] checks if package management is enabled in the
     workspace configuration. Raises a user error if it is explicitly disabled. *)
-val pkg_enabled
-  :  workspace:Workspace.t
-  -> lock_dir_paths:Path.Source.t list
-  -> bool
-
 val check_pkg_management_enabled : unit -> unit Fiber.t

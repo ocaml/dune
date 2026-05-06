@@ -14,17 +14,7 @@ let term =
         Pkg_common.Lock_dirs_arg.all
         workspace
     in
-    let any_lockdir_exists =
-      List.exists lock_dir_paths ~f:(fun p -> Fpath.exists (Path.Source.to_string p))
-    in
-    (* CR-Leonidas-from-XIV: change this logic when we stop detecting lock
-       directories in the source tree *)
-    let enabled =
-      match workspace.config.pkg_enabled with
-      | Set (_, `Enabled) -> true
-      | Set (_, `Disabled) -> false
-      | Unset -> any_lockdir_exists
-    in
+    let enabled = Pkg_common.pkg_enabled ~workspace ~lock_dir_paths in
     match enabled with
     | true -> ()
     | false -> exit 1)

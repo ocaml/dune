@@ -517,21 +517,21 @@ let run
          User_error.raise
            [ Pp.textf "Context %S not found!" (Dune_engine.Context_name.to_string name) ])
   in
-  (match
-     List.find contexts ~f:(fun ctx ->
-       match Context.kind ctx with
-       | Context.Kind.Lock _ -> true
-       | _ -> false)
-   with
-   | Some _ ->
-     User_error.raise
-       [ Pp.text "dune install is not supported with Dune package management." ]
-       ~hints:
-         [ Pp.concat
-             ~sep:Pp.space
-             [ Pp.text "Use"; User_message.command "opam"; Pp.text "instead." ]
-         ]
-   | None -> ());
+  let* source_workspace = Memo.run (Source.Workspace.workspace ()) in
+  let lock_dir_paths =
+    Pkg.Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace
+      Pkg.Pkg_common.Lock_dirs_arg.all
+      source_workspace
+  in
+  if Pkg.Pkg_common.pkg_enabled ~workspace:source_workspace ~lock_dir_paths
+  then
+    User_error.raise
+      [ Pp.text "dune install is not supported with Dune package management." ]
+      ~hints:
+        [ Pp.concat
+            ~sep:Pp.space
+            [ Pp.text "Use"; User_message.command "opam"; Pp.text "instead." ]
+        ];
   let* pkgs =
     match pkgs with
     | _ :: _ -> Fiber.return pkgs

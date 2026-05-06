@@ -100,8 +100,8 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
       let sandbox = Compilation_context.sandbox cctx in
       let sctx = Compilation_context.super_context cctx in
       let* trans_deps = Dep_graph.deps_of dep_graph m in
-      (* Read [dep_m]'s [.ml]-side ocamldep only when its references
-         can propagate to the consumer:
+      (* Read [dep_m]'s [.ml]-side ocamldep only when its references can
+         propagate to the consumer:
 
          | [dep_m] is              | [cm_kind]   | [opaque] | read [.ml]?  |
          | ----------------------- | ----------- | -------- | ------------ |
@@ -109,8 +109,7 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
          | trans_dep, no [.mli]    | any         | any      | yes          |
          | trans_dep, has [.mli]   | [Cmx]       | false    | yes (inline) |
          | trans_dep, has [.mli]   | [Cmx]       | true     | no           |
-         | trans_dep, has [.mli]   | [Cmi]/[Cmo] | any      | no           |
-      *)
+         | trans_dep, has [.mli]   | [Cmi]/[Cmo] | any      | no           | *)
       let need_impl_deps_of dep_m ~is_consumer =
         if is_consumer
         then (

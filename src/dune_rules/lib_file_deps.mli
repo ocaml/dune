@@ -56,8 +56,7 @@ module Lib_index : sig
       [referenced_modules]. *)
   val filter_libs_with_modules : t -> referenced_modules:Module_name.Set.t -> classified
 
-  (** Like [filter_libs_with_modules] but returns only the tight
-      part. *)
+  (** Like [filter_libs_with_modules] but returns only the tight part. *)
   val tight_modules_per_lib
     :  t
     -> referenced_modules:Module_name.Set.t

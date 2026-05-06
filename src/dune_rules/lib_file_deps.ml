@@ -118,9 +118,8 @@ module Lib_index = struct
     { by_module_name : (Lib.t * Module.t option) list Module_name.Map.t
     ; tight_eligible : Lib.Set.t
     ; no_ocamldep : Lib.Set.t
-      (* Local libs short-circuited by [Dep_rules.skip_ocamldep] —
-         no [.d] rules exist; the cross-library walk must skip
-         them. *)
+      (* Local libs short-circuited by [Dep_rules.skip_ocamldep] — no [.d]
+         rules exist; the cross-library walk must skip them. *)
     }
 
   let empty =

@@ -156,9 +156,8 @@ let build_lib_index ~super_context ~libs ~for_ =
                  List.map (Modules.entry_modules mods) ~f:(fun m ->
                    Module.name m, lib, if unwrapped then Some m else None)
                in
-               (* Into [no_ocamldep] so the cross-lib walk doesn't
-                  read [.d] files that [Dep_rules.skip_ocamldep]
-                  elided. *)
+               (* Into [no_ocamldep] so the cross-lib walk doesn't read [.d]
+                  files that [Dep_rules.skip_ocamldep] elided. *)
                let no_ocamldep_lib =
                  match Modules.as_singleton mods with
                  | Some _ when List.is_empty (Lib_info.requires (Lib.info lib) ~for_) ->

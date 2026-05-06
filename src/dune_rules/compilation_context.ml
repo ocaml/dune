@@ -68,6 +68,7 @@ type t =
   ; lib_index : Lib_file_deps.Lib_index.t Resolve.t Memo.Lazy.t
   ; has_virtual_impl : bool Resolve.t Memo.Lazy.t
   ; preprocessing : Pp_spec.t
+  ; pps_runtime_libs : Lib.t list Resolve.Memo.t
   ; opaque : bool
   ; js_of_ocaml : Js_of_ocaml.In_context.t option Js_of_ocaml.Mode.Pair.t
   ; sandbox : Sandbox_config.t
@@ -97,6 +98,7 @@ let includes t = t.includes
 let lib_index t = Memo.Lazy.force t.lib_index
 let has_virtual_impl t = Memo.Lazy.force t.has_virtual_impl
 let preprocessing t = t.preprocessing
+let pps_runtime_libs t = t.pps_runtime_libs
 let opaque t = t.opaque
 let js_of_ocaml t = t.js_of_ocaml
 let sandbox t = t.sandbox
@@ -178,6 +180,7 @@ let create
       ~flags
       ~requires_compile
       ~requires_link
+      ?(pps_runtime_libs = Resolve.Memo.return [])
       ?(preprocessing = Pp_spec.dummy)
       ~opaque
       ~js_of_ocaml
@@ -295,6 +298,7 @@ let create
         and+ hidden = hidden_requires in
         List.exists (direct @ hidden) ~f:(fun lib -> Option.is_some (Lib.implements lib)))
   ; preprocessing
+  ; pps_runtime_libs
   ; opaque
   ; js_of_ocaml
   ; sandbox

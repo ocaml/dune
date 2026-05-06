@@ -39,5 +39,5 @@ then [lib_a]. Alphabetical would invert this.
   $ touch main.ml
 
   $ dune build --display verbose main.bc.js 2>&1 | grep -oE 'lib_[az]/runtime\.js'
-  lib_a/runtime.js
   lib_z/runtime.js
+  lib_a/runtime.js

@@ -106,6 +106,10 @@ Case 5: a [{with-test}] filter on the menhir dep is a non-version
 constraint and is preserved verbatim — the lower bound is not
 combined with it.
 
+Case 4 left a [bar.opam] behind; remove it first, otherwise dune
+errors because the new dune-project below has no [bar] package
+stanza for the existing opam file.
+
   $ rm -f bar.opam
   $ cat > dune-project << EOF
   > (lang dune 3.24)

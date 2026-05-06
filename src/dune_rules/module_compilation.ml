@@ -154,8 +154,24 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
           lib_index
           ~referenced_modules:referenced
       in
-      (* [Lib.closure]'s memo key is order-sensitive on the input list. *)
-      let direct_libs = List.sort ~compare:Lib.compare (Lib.Map.keys tight @ non_tight) in
+      (* [ppx_runtime_libraries] introduce module references through
+         post-pp source that ocamldep cannot see; carry them through
+         to [all_libs] so the classification fold sees them, and
+         force them onto the glob path via [must_glob_set]. *)
+      let* pps_runtime_libs =
+        Resolve.Memo.read (Compilation_context.pps_runtime_libs cctx)
+      in
+      (* [Lib.closure]'s memo key is order- and multiplicity-sensitive
+         on the input list. [pps_runtime_libs] can both contain
+         duplicates (multiple pps sharing a runtime dep) and overlap
+         with [tight]/[non_tight] (a lib referenced both syntactically
+         and via [add_pp_runtime_deps]). [sort_uniq] keeps the input
+         canonical for memoization. *)
+      let direct_libs =
+        List.sort_uniq
+          ~compare:Lib.compare
+          (Lib.Map.keys tight @ non_tight @ pps_runtime_libs)
+      in
       (* Close transitively over transparent aliases that ocamldep
          doesn't report. *)
       let* all_libs = Resolve.Memo.read (Lib.closure direct_libs ~linking:false ~for_) in
@@ -170,7 +186,12 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
       in
       let* must_glob_libs =
         Resolve.Memo.read
-          (Lib.closure (Lib.Set.to_list wrapped_referenced) ~linking:false ~for_)
+          (Lib.closure
+             (List.sort_uniq
+                ~compare:Lib.compare
+                (Lib.Set.to_list wrapped_referenced @ pps_runtime_libs))
+             ~linking:false
+             ~for_)
       in
       let must_glob_set = Lib.Set.of_list must_glob_libs in
       let+ tight_set =

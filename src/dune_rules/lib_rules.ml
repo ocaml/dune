@@ -502,6 +502,11 @@ let cctx
   let modules = Virtual_rules.impl_modules implements modules in
   let requires_compile = Lib.Compile.direct_requires compile_info ~for_ in
   let requires_link = Lib.Compile.requires_link compile_info ~for_ in
+  let pps_runtime_libs =
+    let open Resolve.Memo.O in
+    let* pps = Lib.Compile.pps compile_info ~for_ in
+    Resolve.Memo.List.concat_map pps ~f:(Lib.ppx_runtime_deps ~for_)
+  in
   let instances =
     Parameterised_instances.instances ~sctx ~db:(Scope.libs scope) lib.buildable.libraries
   in
@@ -532,6 +537,7 @@ let cctx
     ~flags
     ~requires_compile
     ~requires_link
+    ~pps_runtime_libs
     ~implements
     ~parameters
     ~preprocessing:pp

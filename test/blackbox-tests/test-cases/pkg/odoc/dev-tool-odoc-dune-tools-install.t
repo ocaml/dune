@@ -2,11 +2,6 @@ Test that `dune tools install odoc` lets `dune build @doc` pick up the locked
 odoc binary without requiring DUNE_CONFIG__LOCK_DEV_TOOL=enabled, mirroring
 the behaviour of `dune tools install ocamlformat` + `dune fmt`.
 
-This documents a current bug: `odoc_program` in src/dune_rules/odoc.ml only
-inspects the compile-time `lock_dev_tools` flag and never falls back to an
-`Fs_memo.dir_exists` check on the lockdir, unlike
-`Ocamlformat.dev_tool_lock_dir_exists` in src/dune_rules/format_rules.ml.
-
   $ mkrepo
   $ make_mock_odoc_package
   $ mk_ocaml 5.2.0
@@ -70,9 +65,19 @@ dep — dune will invoke it instead of relying on PATH:
     "_build/_private/default/.dev-tool/odoc/target/bin/odoc"
   ]
 
-Without the flag, `dune build @doc` should also pick up the locked odoc (as
-`dune fmt` does with ocamlformat) — but the dev-tool path is absent from the
-rule deps, so dune falls back to PATH instead. This is the bug:
+Without the flag, `dune build @doc` also picks up the locked odoc (mirroring
+how `dune fmt` works with ocamlformat) — the dev-tool path is present in the
+rule deps:
 
+  $ dev_tool_odoc_deps
+  [
+    "_build/_private/default/.dev-tool/odoc/target/bin/odoc"
+  ]
+
+Removing the lockdir reverts the rule graph to the baseline — with no lockdir
+to source from, dune falls back to a PATH lookup and the dev-tool path drops
+out of the deps:
+
+  $ rm -r "${dev_tool_lock_dir}"
   $ dev_tool_odoc_deps
   []

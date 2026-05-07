@@ -450,7 +450,7 @@ Rocq's standard library is divided into two separately-installed theories:
   `Rocq Stdlib <https://github.com/rocq-prover/stdlib>`_ for more information.
 
   .. warning:: ``Stdlib`` is *never* added implicitly regardless of
-    the ``(no_corelib)`` setting.
+    the ``(no_corelib)`` setting. Use ``(theories Stdlib)`` to add ``Stdlib``.
 
 .. _rocq-extraction:
 

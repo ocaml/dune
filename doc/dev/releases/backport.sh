@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/usr/bin/env bash
 
 # Script name: backport.sh
 # Description: This script creates backport PRs into a release candidate branch.
@@ -71,8 +71,9 @@ then
     fi
 
     git checkout -b "${backport_branch}"
-    git push -u "${DUNE_REMOTE}" HEAD
     git cherry-pick --mainline 1 --signoff -x "${commit}"
+    git push -u "${DUNE_REMOTE}" HEAD
+
 fi
 
 gh pr create \

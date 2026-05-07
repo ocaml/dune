@@ -207,6 +207,18 @@ module Lock_dirs_arg = struct
   ;;
 end
 
+let pkg_enabled ~(workspace : Workspace.t) ~lock_dir_paths =
+  (* CR-Leonidas-from-XIV: change this logic when we stop detecting lock
+       directories in the source tree *)
+  let any_lockdir_exists =
+    List.exists lock_dir_paths ~f:(fun p -> Fpath.exists (Path.Source.to_string p))
+  in
+  match workspace.config.pkg_enabled with
+  | Set (_, `Enabled) -> true
+  | Set (_, `Disabled) -> false
+  | Unset -> any_lockdir_exists
+;;
+
 let check_pkg_management_enabled () =
   Memo.run
   @@

@@ -64,6 +64,21 @@ val requires_compile : t -> Lib.t list Resolve.Memo.t
 val parameters : t -> Module_name.t list Resolve.Memo.t
 val includes : t -> Command.Args.without_targets Command.Args.t Lib_mode.Cm_kind.Map.t
 
+(** Memoise the raw-refs [Action_builder.t] computed for each
+    [(dep_m, ml_kind, cm_kind, is_consumer)] tuple within this
+    cctx. [compute ()] is invoked only on cache miss; subsequent
+    callers with the same key get the cached builder back. The
+    cache short-circuits before allocating, so siblings sharing
+    [trans_deps] don't redo construction. *)
+val cached_raw_refs
+  :  t
+  -> dep_m:Module.t
+  -> ml_kind:Ml_kind.t
+  -> cm_kind:Lib_mode.Cm_kind.t
+  -> is_consumer:bool
+  -> (unit -> Module_name.Set.t Action_builder.t)
+  -> Module_name.Set.t Action_builder.t
+
 (** Include flags ([-I]/[-H]) filtered to a [kept_libs] subset of
     the cctx's [requires_compile] / [requires_hidden] (direct +
     hidden split preserved). Cached per

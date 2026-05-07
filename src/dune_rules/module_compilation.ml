@@ -122,21 +122,38 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
           | Ocaml (Cmi | Cmo) | Melange _ -> false
       in
       let read_dep_m_raw dep_m ~is_consumer =
-        let* impl_deps =
-          if need_impl_deps_of dep_m ~is_consumer
-          then
-            Ocamldep.read_immediate_deps_raw_of
-              ~sandbox
-              ~sctx
-              ~obj_dir
-              ~ml_kind:Impl
-              dep_m
-          else Action_builder.return Module_name.Set.empty
-        in
-        let+ intf_deps =
-          Ocamldep.read_immediate_deps_raw_of ~sandbox ~sctx ~obj_dir ~ml_kind:Intf dep_m
-        in
-        Module_name.Set.union impl_deps intf_deps
+        (* For trans_deps ([is_consumer = false]) [need_impl_deps_of]
+           does not read [ml_kind], so the cached builder is the same
+           for [Impl] and [Intf] passes. Normalising keeps the cache
+           shareable across both passes. *)
+        let cache_ml_kind = if is_consumer then ml_kind else Ml_kind.Impl in
+        Compilation_context.cached_raw_refs
+          cctx
+          ~dep_m
+          ~ml_kind:cache_ml_kind
+          ~cm_kind
+          ~is_consumer
+          (fun () ->
+             let* impl_deps =
+               if need_impl_deps_of dep_m ~is_consumer
+               then
+                 Ocamldep.read_immediate_deps_raw_of
+                   ~sandbox
+                   ~sctx
+                   ~obj_dir
+                   ~ml_kind:Impl
+                   dep_m
+               else Action_builder.return Module_name.Set.empty
+             in
+             let+ intf_deps =
+               Ocamldep.read_immediate_deps_raw_of
+                 ~sandbox
+                 ~sctx
+                 ~obj_dir
+                 ~ml_kind:Intf
+                 dep_m
+             in
+             Module_name.Set.union impl_deps intf_deps)
       in
       let* m_raw = read_dep_m_raw m ~is_consumer:true in
       let* trans_raw =

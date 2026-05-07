@@ -37,6 +37,66 @@ end
    kept_libs). Two consumer modules with the same kept-libs share one [Args.t].
    Cache is per-cctx, so regenerating the cctx (e.g. on a [(libraries ...)]
    edit) discards it — the requires-split need not be in the key. *)
+(* Cache the raw-refs Action_builder built for each [(dep_m,
+   ml_kind, cm_kind, is_consumer)] tuple within a single cctx.
+   Sibling consumers iterate over overlapping [trans_deps] sets;
+   without this cache each call reconstructs a fresh
+   [Action_builder.t] tree (the inner [ocamldep] result is shared,
+   but the wrapping per-module logic is rebuilt N times per
+   stanza). [Table.find] short-circuits before allocating. *)
+module Raw_refs = struct
+  module Key = struct
+    type t =
+      { obj_name : Module_name.Unique.t
+      ; ml_kind : Ml_kind.t
+      ; cm_kind : Lib_mode.Cm_kind.t
+      ; is_consumer : bool
+      }
+
+    let cm_kind_tag : Lib_mode.Cm_kind.t -> int = function
+      | Ocaml Cmi -> 0
+      | Ocaml Cmo -> 1
+      | Ocaml Cmx -> 2
+      | Melange Cmi -> 3
+      | Melange Cmj -> 4
+    ;;
+
+    let ml_kind_tag : Ml_kind.t -> int = function
+      | Intf -> 0
+      | Impl -> 1
+    ;;
+
+    let equal a b =
+      Module_name.Unique.equal a.obj_name b.obj_name
+      && ml_kind_tag a.ml_kind = ml_kind_tag b.ml_kind
+      && cm_kind_tag a.cm_kind = cm_kind_tag b.cm_kind
+      && Bool.equal a.is_consumer b.is_consumer
+    ;;
+
+    let hash { obj_name; ml_kind; cm_kind; is_consumer } =
+      Poly.hash
+        ( Module_name.Unique.to_string obj_name
+        , ml_kind_tag ml_kind
+        , cm_kind_tag cm_kind
+        , is_consumer )
+    ;;
+
+    let to_dyn { obj_name; ml_kind; cm_kind; is_consumer } =
+      let open Dyn in
+      record
+        [ "obj_name", Module_name.Unique.to_dyn obj_name
+        ; "ml_kind", string (Ml_kind.to_string ml_kind)
+        ; "cm_kind", Lib_mode.Cm_kind.to_dyn cm_kind
+        ; "is_consumer", bool is_consumer
+        ]
+    ;;
+  end
+
+  type t = (Key.t, Module_name.Set.t Action_builder.t) Table.t
+
+  let create () : t = Table.create (module Key) 64
+end
+
 module Filtered_includes = struct
   module Key = struct
     type t =
@@ -113,6 +173,7 @@ type t =
   ; ocaml : Ocaml_toolchain.t
   ; for_ : Compilation_mode.t
   ; filtered_includes : Filtered_includes.t
+  ; raw_refs : Raw_refs.t
   }
 
 let loc t = t.loc
@@ -377,10 +438,23 @@ let create
   ; instances
   ; for_
   ; filtered_includes = Filtered_includes.create ()
+  ; raw_refs = Raw_refs.create ()
   }
 ;;
 
 let for_ t = t.for_
+
+let cached_raw_refs t ~dep_m ~ml_kind ~cm_kind ~is_consumer compute =
+  let cache_key =
+    { Raw_refs.Key.obj_name = Module.obj_name dep_m; ml_kind; cm_kind; is_consumer }
+  in
+  match Table.find t.raw_refs cache_key with
+  | Some builder -> builder
+  | None ->
+    let builder = compute () in
+    Table.set t.raw_refs cache_key builder;
+    builder
+;;
 
 let filtered_include_flags t ~cm_kind ~kept_libs =
   let lib_mode = Lib_mode.of_cm_kind cm_kind in

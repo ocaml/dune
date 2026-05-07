@@ -126,7 +126,8 @@ We now test that the ocaml package still builds even when Coq rules can't be set
 Coq package should fail:
 
   $ (unset INSIDE_DUNE; PATH=_path dune build -p example-coq)
-  Couldn't find Rocq standard library, and theory is not using (stdlib no)
+  Couldn't find Rocq Corelib, and the theory does not disable automatic Corelib
+  inclusion with (no_corelib).
   -> required by _build/default/coq/Common/Foo.glob
   -> required by _build/install/default/lib/coq/user-contrib/Common/Foo.glob
   -> required by _build/default/example-coq.install

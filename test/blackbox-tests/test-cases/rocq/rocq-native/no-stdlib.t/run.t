@@ -1,5 +1,5 @@
-Test that when `(stdlib no)` is provided, the standard library is not bound to `Coq`
-and the prelude is not imported; we expect the below two tests to fail.
+Test that the old `(stdlib no)` field remains supported: Corelib is not
+bound and the prelude is not imported; we expect the below two tests to fail.
 
   $ dune build --display=short foo.vo
           rocq .basic.theory.d

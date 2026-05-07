@@ -1,7 +1,7 @@
 Testing composition of theories across a Dune workspace with a boot library and
 importing ``corelib`` enabled or disabled.
 
-Composing library A depending on Coq but having `(stdlib no)`:
+Composing library A depending on Coq but having `(no_corelib)`:
 
   $ dune build A
   Module
@@ -10,7 +10,7 @@ Composing library A depending on Coq but having `(stdlib no)`:
   Hello
        : Set
 
-Composing library B depending on Coq but having `(stdlib yes)`:
+Composing library B depending on Coq with the default Corelib binding:
 
   $ dune build B
   Module

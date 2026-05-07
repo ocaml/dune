@@ -300,20 +300,48 @@ let insert_odoc_dep depends =
 
 (* Menhir 20180523 added --infer-write-query and --infer-read-reply,
    which dune's menhir rules rely on unconditionally. *)
-let menhir_constraint : Package_constraint.t = Uop (Gte, String_literal "20180523")
+let menhir_min_version = "20180523"
+let menhir_constraint : Package_constraint.t = Uop (Gte, String_literal menhir_min_version)
 
-(* If the package's [(depends ...)] field already lists [menhir]
-   without a constraint, fill in the lower bound. Existing user-
-   written constraints (whether version bounds, [{with-test}], or
-   anything else) are preserved verbatim. We do not add menhir as a
-   new dependency: doing so unconditionally is the over-injection
+(* Merge an existing user-written menhir constraint with dune's
+   required lower bound. Mirrors [merge_dune_constraints]:
+   - two [>= "v"] literals collapse to the higher of the two
+     (warn when the user's bound is below dune's required minimum);
+   - any other shape (e.g. [{with-test}]) is ANDed with the lower
+     bound. *)
+let merge_menhir_constraint user_constraint =
+  match user_constraint with
+  | Package_constraint.Uop (Gte, String_literal user_v) ->
+    if OpamVersionCompare.compare user_v menhir_min_version >= 0
+    then user_constraint
+    else (
+      User_warning.emit
+        [ Pp.textf
+            "The lower bound >= %s on menhir in the depends field is less than the \
+             version dune's menhir rules require. The generated opam file will use >= %s \
+             instead."
+            user_v
+            menhir_min_version
+        ];
+      menhir_constraint)
+  | _ -> And [ menhir_constraint; user_constraint ]
+;;
+
+(* If the package's [(depends ...)] field already lists [menhir],
+   fill in the lower bound — combining it with any user-written
+   constraint via [merge_menhir_constraint]. We do not add menhir as
+   a new dependency: doing so unconditionally is the over-injection
    bug reported in #14428. *)
 let upgrade_menhir_constraint depends =
   List.map depends ~f:(fun (dep : Package_dependency.t) ->
     if Package.Name.equal dep.name menhir_name
     then
       { dep with
-        constraint_ = Some (Option.value dep.constraint_ ~default:menhir_constraint)
+        constraint_ =
+          Some
+            (match dep.constraint_ with
+             | None -> menhir_constraint
+             | Some user_constraint -> merge_menhir_constraint user_constraint)
       }
     else dep)
 ;;
@@ -342,9 +370,12 @@ let opam_fields project (package : Package.t) =
     else Package.map_depends package ~f:insert_odoc_dep
   in
   let package =
-    match Dune_project.find_extension_version project Dune_lang.Menhir.syntax with
-    | None -> package
-    | Some _ -> Package.map_depends package ~f:upgrade_menhir_constraint
+    if dune_version < (3, 23)
+    then package
+    else (
+      match Dune_project.find_extension_version project Dune_lang.Menhir.syntax with
+      | None -> package
+      | Some _ -> Package.map_depends package ~f:upgrade_menhir_constraint)
   in
   let package_fields = package_fields package ~project in
   let open Opam_file.Create in

@@ -300,22 +300,20 @@ let insert_odoc_dep depends =
    which dune's menhir rules rely on unconditionally. *)
 let menhir_constraint : Package_constraint.t = Uop (Gte, String_literal "20180523")
 
-let insert_menhir_dep depends =
-  let menhir_dep =
-    { Package_dependency.name = menhir_name; constraint_ = Some menhir_constraint }
-  in
-  if
-    List.exists depends ~f:(fun (dep : Package_dependency.t) ->
-      Package.Name.equal dep.name menhir_name)
-  then
-    List.map depends ~f:(fun (dep : Package_dependency.t) ->
-      if Package.Name.equal dep.name menhir_name
-      then
-        { dep with
-          constraint_ = Some (Option.value dep.constraint_ ~default:menhir_constraint)
-        }
-      else dep)
-  else depends @ [ menhir_dep ]
+(* If the package's [(depends ...)] field already lists [menhir]
+   without a constraint, fill in the lower bound. Existing user-
+   written constraints (whether version bounds, [{with-test}], or
+   anything else) are preserved verbatim. We do not add menhir as a
+   new dependency: doing so unconditionally is the over-injection
+   bug reported in #14428. *)
+let upgrade_menhir_constraint depends =
+  List.map depends ~f:(fun (dep : Package_dependency.t) ->
+    if Package.Name.equal dep.name menhir_name
+    then
+      { dep with
+        constraint_ = Some (Option.value dep.constraint_ ~default:menhir_constraint)
+      }
+    else dep)
 ;;
 
 let maintenance_intent dune_version info =
@@ -344,7 +342,7 @@ let opam_fields project (package : Package.t) =
   let package =
     match Dune_project.find_extension_version project Dune_lang.Menhir.syntax with
     | None -> package
-    | Some _ -> Package.map_depends package ~f:insert_menhir_dep
+    | Some _ -> Package.map_depends package ~f:upgrade_menhir_constraint
   in
   let package_fields = package_fields package ~project in
   let open Opam_file.Create in

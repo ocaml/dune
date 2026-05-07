@@ -43,7 +43,7 @@ annotation of `block`:
   > let block :=
   >   | B; ~ = main; Eof; <Some>
   >   | Eof; { None }
-  >
+  > 
   > let main :=
   >   | A; { [1] }
   >   | ~ = block; <Option.get>
@@ -85,7 +85,7 @@ not generate a cyclic reference to `Mylib.Ast`:
   > let block :=
   >   | B; ~ = main; Eof; <Some>
   >   | Eof; { None }
-  >
+  > 
   > let main :=
   >   | A; { [1] }
   >   | ~ = block; <Option.get>

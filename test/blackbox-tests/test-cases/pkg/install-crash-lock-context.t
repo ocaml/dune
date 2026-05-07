@@ -32,14 +32,12 @@ Build the lockdir first
 
   $ dune install --prefix "$PWD/_install"
   Error: dune install is not supported with Dune package management.
-  Hint: Use 'opam' instead.
   [1]
 
 But `dune install` without a prefix argument crashes with an internal error.
 
   $ dune install
   Error: dune install is not supported with Dune package management.
-  Hint: Use 'opam' instead.
   [1]
 
 
@@ -60,10 +58,8 @@ crashes with the same error.
 
   $ dune install --prefix "$PWD/_install"
   Error: dune install is not supported with Dune package management.
-  Hint: Use 'opam' instead.
   [1]
 
   $ dune install
   Error: dune install is not supported with Dune package management.
-  Hint: Use 'opam' instead.
   [1]

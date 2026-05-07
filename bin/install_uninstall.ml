@@ -526,12 +526,7 @@ let run
   if Pkg.Pkg_common.pkg_enabled ~workspace:source_workspace ~lock_dir_paths
   then
     User_error.raise
-      [ Pp.text "dune install is not supported with Dune package management." ]
-      ~hints:
-        [ Pp.concat
-            ~sep:Pp.space
-            [ Pp.text "Use"; User_message.command "opam"; Pp.text "instead." ]
-        ];
+      [ Pp.text "dune install is not supported with Dune package management." ];
   let* pkgs =
     match pkgs with
     | _ :: _ -> Fiber.return pkgs

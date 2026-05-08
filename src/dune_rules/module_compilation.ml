@@ -22,32 +22,25 @@ let module_kind_is_filterable m =
 
 (* Skip preprocessed modules: their [Module.t] from [Lib_index] carries
    [pp_flags = None], so ocamldep would run on the raw, pre-pp source. *)
-let module_needs_preprocessing lib m =
-  let info = Lib.info lib in
-  let preprocess = Lib_info.preprocess info ~for_:Ocaml in
-  match Preprocess.Per_module.find (Module.name m) preprocess with
-  | No_preprocessing | Future_syntax _ -> false
-  | Action _ | Pps _ -> true
-;;
-
 (* BFS over tight-eligible entries: each (lib, entry) pair's
    impl+intf ocamldep names extend the frontier. Non-tight-eligible
-   libs (wrapped locals, externals, virtual-impls) are skipped by
-   [lookup_tight_entries], terminating chains through them. *)
+   libs (wrapped locals, externals, virtual-impls, staged-Pps libs)
+   are skipped by [lookup_tight_entries], terminating chains through
+   them. The [Module.t] supplied here is the post-pp form
+   (constructed in [build_lib_index]), so ocamldep runs on the dep
+   lib's [.pp.ml] (action / non-staged Pps) or directly on the source
+   (no preprocessing / future-syntax). *)
 let cross_lib_tight_set ~sandbox ~sctx ~lib_index ~initial_refs =
   let open Action_builder.O in
   let read_entry_deps (lib, m) =
-    if module_needs_preprocessing lib m
-    then Action_builder.return Module_name.Set.empty
-    else (
-      let obj_dir = Lib.info lib |> Lib_info.obj_dir |> Obj_dir.as_local_exn in
-      let* impl_deps =
-        Ocamldep.read_immediate_deps_raw_of ~sandbox ~sctx ~obj_dir ~ml_kind:Impl m
-      in
-      let+ intf_deps =
-        Ocamldep.read_immediate_deps_raw_of ~sandbox ~sctx ~obj_dir ~ml_kind:Intf m
-      in
-      Module_name.Set.union impl_deps intf_deps)
+    let obj_dir = Lib.info lib |> Lib_info.obj_dir |> Obj_dir.as_local_exn in
+    let* impl_deps =
+      Ocamldep.read_immediate_deps_raw_of ~sandbox ~sctx ~obj_dir ~ml_kind:Impl m
+    in
+    let+ intf_deps =
+      Ocamldep.read_immediate_deps_raw_of ~sandbox ~sctx ~obj_dir ~ml_kind:Intf m
+    in
+    Module_name.Set.union impl_deps intf_deps
   in
   let rec loop ~seen ~frontier =
     if Module_name.Set.is_empty frontier

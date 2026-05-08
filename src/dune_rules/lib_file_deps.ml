@@ -153,17 +153,24 @@ module Lib_index = struct
     ; non_tight : Lib.t list
     }
 
+  (* Per-pair classification: each entry is independently tight
+     (Some) or non-tight (None). A lib whose modules have mixed
+     entries (e.g. unwrapped lib with per-module preprocessing
+     where some modules are staged-pps) lands in BOTH [tight] and
+     [non_tight]; the caller should treat such a lib as glob-only
+     to avoid dropping the None entries' [.cmi]s from compile-rule
+     deps. *)
   let filter_libs_with_modules idx ~referenced_modules =
     let add_entry (tight, non_tight) (lib, m_opt) =
       match m_opt with
-      | Some m when Lib.Set.mem idx.tight_eligible lib ->
+      | Some m ->
         let tight =
           Lib.Map.update tight lib ~f:(function
             | None -> Some [ m ]
             | Some ms -> Some (m :: ms))
         in
         tight, non_tight
-      | _ -> tight, Lib.Set.add non_tight lib
+      | None -> tight, Lib.Set.add non_tight lib
     in
     let tight, non_tight =
       Module_name.Set.fold
@@ -177,30 +184,13 @@ module Lib_index = struct
     { tight; non_tight = Lib.Set.to_list non_tight }
   ;;
 
-  (* Like [filter_libs_with_modules] but only returns the tight part. *)
-  let tight_modules_per_lib idx ~referenced_modules =
-    Module_name.Set.fold referenced_modules ~init:Lib.Map.empty ~f:(fun name acc ->
-      match Module_name.Map.find idx.by_module_name name with
-      | None -> acc
-      | Some entries ->
-        List.fold_left entries ~init:acc ~f:(fun acc (lib, m_opt) ->
-          match m_opt with
-          | Some m when Lib.Set.mem idx.tight_eligible lib ->
-            Lib.Map.update acc lib ~f:(function
-              | None -> Some [ m ]
-              | Some ms -> Some (m :: ms))
-          | _ -> acc))
-  ;;
-
   let lookup_tight_entries idx name =
     match Module_name.Map.find idx.by_module_name name with
     | None -> []
     | Some entries ->
       List.filter_map entries ~f:(fun (lib, m_opt) ->
         match m_opt with
-        | Some m
-          when Lib.Set.mem idx.tight_eligible lib && not (Lib.Set.mem idx.no_ocamldep lib)
-          -> Some (lib, m)
+        | Some m when not (Lib.Set.mem idx.no_ocamldep lib) -> Some (lib, m)
         | _ -> None)
   ;;
 

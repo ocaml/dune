@@ -189,22 +189,25 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
       let+ tight_set =
         cross_lib_tight_set ~sandbox ~sctx ~lib_index ~initial_refs:referenced
       in
-      (* Classify each lib in [all_libs] into one of three buckets:
-         - tight entries referenced → per-module deps on those cmis;
-         - tight-eligible but unreached → drop (link rule still
-           pulls the lib in via [requires_link] when needed);
-         - non-tight-eligible (wrapped local, external, vimpl) →
-           glob fallback. *)
-      let tight_modules =
-        Lib_file_deps.Lib_index.tight_modules_per_lib
+      (* Classify each lib in [all_libs]:
+         - lib has [None]-entry referenced (mixed-entry or wrapped)
+           → glob (covers the None entries' [.cmi]s);
+         - lib has only [Some] entries referenced → per-module deps;
+         - lib unreached but tight-eligible → drop (link rule pulls
+           it in via [requires_link]);
+         - lib unreached and not tight-eligible → glob. *)
+      let { Lib_file_deps.Lib_index.tight = tight_modules; non_tight = non_tight_libs } =
+        Lib_file_deps.Lib_index.filter_libs_with_modules
           lib_index
           ~referenced_modules:tight_set
       in
+      let non_tight_set = Lib.Set.of_list non_tight_libs in
       let tight_deps, glob_libs =
         List.fold_left all_libs ~init:(Dep.Set.empty, []) ~f:(fun (td, gl) lib ->
-          (* [must_glob_set] takes precedence over per-module
-             precision (alias-reachable libs the walk can't see). *)
-          if Lib.Set.mem must_glob_set lib
+          (* [must_glob_set] (alias-reachable libs the walk can't
+             see) and [non_tight_set] (lib has a [None]-entry
+             module reached by the BFS) both force glob. *)
+          if Lib.Set.mem must_glob_set lib || Lib.Set.mem non_tight_set lib
           then td, lib :: gl
           else (
             match Lib.Map.find tight_modules lib with

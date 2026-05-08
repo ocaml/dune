@@ -1,6 +1,9 @@
 open Import
 
 let sandbox_dir = Path.Build.relative Path.Build.root ".sandbox"
+let max_live_sandboxes = 250
+let live_sandbox_throttle = lazy (Fiber.Throttle.create max_live_sandboxes)
+let with_live_sandbox_slot ~f = Fiber.Throttle.run (Lazy.force live_sandbox_throttle) ~f
 
 let maybe_async f =
   (* It would be nice to do this check only once and return a function, but the

@@ -9,7 +9,15 @@ val dir : t -> Path.Build.t
 (** [map_path t p] returns the path corresponding to [p] inside the sandbox. *)
 val map_path : t -> Path.Build.t -> Path.Build.t
 
-(** Create a new sandbox containing [dirs] and copy or link dependencies [deps] inside it. *)
+(** Run [f] while holding one global live-sandbox slot.
+
+    The slot should be acquired before creating a sandbox and released after it
+    has been destroyed, so rules cannot pre-create unbounded sandboxes while
+    waiting for their actions to run. *)
+val with_live_sandbox_slot : f:(unit -> 'a Fiber.t) -> 'a Fiber.t
+
+(** Create a new sandbox containing [dirs] and copy or link dependencies [deps]
+    inside it. *)
 val create
   :  mode:Sandbox_mode.some
   -> Corrections.t

@@ -25,3 +25,4 @@ val feed_bigstring_release_lock
 
 val digest : t -> Digest.t
 val fd : Unix.file_descr -> Digest.t
+val file_with_size : string -> Digest.t * int

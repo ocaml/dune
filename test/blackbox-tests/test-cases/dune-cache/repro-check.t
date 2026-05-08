@@ -9,6 +9,16 @@ Test reproducibility check
   $ dune_build () {
   >   dune build -j1 "$@"
   > }
+  $ dune_build_sorted_actions () {
+  >   dune_build "$@" > dune-build-output 2>&1 || {
+  >     status=$?
+  >     cat dune-build-output
+  >     return $status
+  >   }
+  >   sed -n '/^Warning:/,/^action at dune:6/p' dune-build-output
+  >   sed -n '/^build /p' dune-build-output | sort
+  >   sed '/^Warning:/,/^action at dune:6/d; /^build /d' dune-build-output
+  > }
 
   $ cat > dune-project <<EOF
   > (lang dune 3.0)
@@ -31,9 +41,9 @@ Both rules read [dep] but only the reproducible rule declares it as a dependency
 
 Build both, which will store the results to the cache
 
-  $ dune_build --config-file config reproducible non-reproducible
-  build reproducible
+  $ dune_build_sorted_actions --config-file config reproducible non-reproducible
   build non-reproducible
+  build reproducible
 
 Update the content and rebuild; only the reproducible rule will rerun
 
@@ -71,13 +81,13 @@ Set 'cache-check-probability' to 1.0, which should trigger the check
   > (cache-check-probability 1.0)
   > EOF
   $ rm -rf _build
-  $ dune_build --config-file config reproducible non-reproducible
+  $ dune_build_sorted_actions --config-file config reproducible non-reproducible
   Warning: cache store error [3bb99da19b1ae86663e3b09c33f59ff6]: ((in_cache
   ((non-reproducible 7378fb2d7d80dc4468d6558d864f0897))) (computed
   ((non-reproducible 074ebdc1c3853f27c68566d8d183032c)))) after executing
   action at dune:6
-  build reproducible
   build non-reproducible
+  build reproducible
 
 Check that the reported digests make sense
 
@@ -127,25 +137,25 @@ Test that the environment variable and the command line flag work too
   $ DUNE_CACHE_CHECK_PROBABILITY=0.0 dune_build --cache=enabled reproducible non-reproducible
 
   $ rm -rf _build
-  $ DUNE_CACHE_CHECK_PROBABILITY=1.0 dune_build --cache=enabled reproducible non-reproducible
+  $ DUNE_CACHE_CHECK_PROBABILITY=1.0 dune_build_sorted_actions --cache=enabled reproducible non-reproducible
   Warning: cache store error [3bb99da19b1ae86663e3b09c33f59ff6]: ((in_cache
   ((non-reproducible 7378fb2d7d80dc4468d6558d864f0897))) (computed
   ((non-reproducible 074ebdc1c3853f27c68566d8d183032c)))) after executing
   action at dune:6
-  build reproducible
   build non-reproducible
+  build reproducible
 
   $ rm -rf _build
   $ DUNE_CACHE_CHECK_PROBABILITY=1.0 dune_build --cache-check-probability=0.0 --cache=enabled reproducible non-reproducible
 
   $ rm -rf _build
-  $ dune_build --cache=enabled --cache-check-probability=1.0 reproducible non-reproducible
+  $ dune_build_sorted_actions --cache=enabled --cache-check-probability=1.0 reproducible non-reproducible
   Warning: cache store error [3bb99da19b1ae86663e3b09c33f59ff6]: ((in_cache
   ((non-reproducible 7378fb2d7d80dc4468d6558d864f0897))) (computed
   ((non-reproducible 074ebdc1c3853f27c68566d8d183032c)))) after executing
   action at dune:6
-  build reproducible
   build non-reproducible
+  build reproducible
 
   $ dune_build --cache=enabled --cache-check-probability=8 reproducible non-reproducible
   Error: The reproducibility check probability must be in the range [0, 1].

@@ -152,9 +152,34 @@ let build_lib_index ~super_context ~libs ~for_ =
                  | Some (This w) -> not (Wrapped.to_bool w)
                  | Some (From _) | None -> false
                in
+               (* Post-pp [Module.t]: mirror [Pp_spec.pped_modules_map]
+                  so the cross-lib walker reads ocamldep on the source
+                  the dep lib's compile pipeline actually produces.
+                  Staged Pps entries have no materialised [.pp.ml].
+                  Pps lists composed only of [Instrumentation_backend]
+                  entries are conditional (active only when the build
+                  enables [--instrument-with]); we cannot be sure a
+                  [.pp.ml] exists at this site, so we fall back to
+                  non-tight-eligible ([m_opt = None]) for those. Pps
+                  with at least one [Ordinary] entry always produces
+                  a [.pp.ml]. *)
+               let preprocess = Lib_info.preprocess (Lib.info lib) ~for_:Ocaml in
+               let post_pp_module m =
+                 match Preprocess.Per_module.find (Module.name m) preprocess with
+                 | No_preprocessing | Future_syntax _ -> Some (Module.ml_source m)
+                 | Action _ -> Some (Module.ml_source (Module.pped m))
+                 | Pps { staged = false; pps; _ } ->
+                   if
+                     List.exists pps ~f:(function
+                       | Preprocess.With_instrumentation.Ordinary _ -> true
+                       | Instrumentation_backend _ -> false)
+                   then Some (Module.pped (Module.ml_source m))
+                   else None
+                 | Pps { staged = true; _ } -> None
+               in
                let entries =
                  List.map (Modules.entry_modules mods) ~f:(fun m ->
-                   Module.name m, lib, if unwrapped then Some m else None)
+                   Module.name m, lib, if unwrapped then post_pp_module m else None)
                in
                (* Into [no_ocamldep] so the cross-lib walk doesn't read [.d]
                   files that [Dep_rules.skip_ocamldep] elided. *)

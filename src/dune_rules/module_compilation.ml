@@ -84,7 +84,7 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
     (* Consumer-stanza virtual-impl: handled by [Dep_rules]. The
        deps-side counterpart ([has_virtual_impl] below) covers the
        case where a lib in [requires] is a virtual impl. *)
-    && not (Virtual_rules.is_implementation (Compilation_context.implements cctx))
+    && not (Virtual_rules.is_virtual_or_parameter (Compilation_context.implements cctx))
   in
   let* libs = Resolve.Memo.read (all_libs cctx) in
   if not can_filter

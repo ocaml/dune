@@ -9,7 +9,7 @@ val setup_copy_rules_for_impl
   -> unit Memo.t
 
 val no_implements : t
-val is_implementation : t -> bool
+val is_virtual_or_parameter : t -> bool
 
 val impl
   :  Super_context.t

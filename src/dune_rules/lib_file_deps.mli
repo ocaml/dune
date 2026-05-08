@@ -45,30 +45,31 @@ module Lib_index : sig
 
   type classified =
     { tight : Module.t list Lib.Map.t
-      (** Tight-eligible libs mapped to the entry modules referenced.
-        Candidates for [deps_of_entry_modules]. *)
+      (** Per-pair tight entries: libs mapped to the [Some]-entry
+          modules referenced. Candidates for [deps_of_entry_modules]
+          unless the lib also appears in [non_tight] (mixed-entry
+          libs must glob to cover their [None] entries). *)
     ; non_tight : Lib.t list
-      (** Wrapped locals, externals, or anything else; glob fallback.
-        Sorted by [Lib.compare]. *)
+      (** Libs whose [None]-entry modules appear in the input
+          (wrapped locals, externals, or unwrapped locals with
+          some staged-pps / instrumentation-only entries). The
+          caller must glob these. Sorted by [Lib.compare]. *)
     }
 
   (** Classify the libraries whose entry modules appear in
-      [referenced_modules]. *)
+      [referenced_modules]. A lib with mixed [Some]/[None] entries
+      can appear in BOTH [tight] (for its [Some] modules) AND
+      [non_tight] (for its [None] modules). *)
   val filter_libs_with_modules : t -> referenced_modules:Module_name.Set.t -> classified
 
-  (** Like [filter_libs_with_modules] but returns only the tight part. *)
-  val tight_modules_per_lib
-    :  t
-    -> referenced_modules:Module_name.Set.t
-    -> Module.t list Lib.Map.t
-
   (** [(lib, entry module)] pairs for the cross-library walk;
-      excludes [no_ocamldep] libs and non-tight-eligible entries. *)
+      excludes [no_ocamldep] libs and entries with [m_opt = None]. *)
   val lookup_tight_entries : t -> Module_name.t -> (Lib.t * Module.t) list
 
-  (** True for local + unwrapped libs whose entries all carry a
-      [Module.t]. Used to drop unreached libs from a consumer's
-      compile deps (the link rule still pulls them in). *)
+  (** True for libs with at least one tight-eligible ([Some]) entry.
+      Used to drop unreached libs from a consumer's compile deps:
+      if the lib is capable of tight-eligibility but no module of
+      it is referenced, the link rule still pulls it in. *)
   val is_tight_eligible : t -> Lib.t -> bool
 
   (** Local wrapped libs whose entry name is in [referenced_modules].

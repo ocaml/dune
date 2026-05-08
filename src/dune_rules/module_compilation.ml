@@ -211,24 +211,27 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
       in
       let non_tight_set = Lib.Set.of_list non_tight_libs in
       let tight_deps, glob_libs, kept_libs =
-        List.fold_left all_libs ~init:(Dep.Set.empty, [], []) ~f:(fun (td, gl, kl) lib ->
-          (* [must_glob_set] (alias-reachable libs the walk can't
-             see) and [non_tight_set] (lib has a [None]-entry
-             module reached by the BFS) both force glob. *)
-          if Lib.Set.mem must_glob_set lib || Lib.Set.mem non_tight_set lib
-          then td, lib :: gl, lib :: kl
-          else (
-            match Lib.Map.find tight_modules lib with
-            | Some modules ->
-              ( Dep.Set.union
-                  td
-                  (Lib_file_deps.deps_of_entry_modules ~opaque ~cm_kind lib modules)
-              , gl
-              , lib :: kl )
-            | None ->
-              if Lib_file_deps.Lib_index.is_tight_eligible lib_index lib
-              then td, gl, kl
-              else td, lib :: gl, lib :: kl))
+        List.fold_left
+          all_libs
+          ~init:(Dep.Set.empty, [], Lib.Set.empty)
+          ~f:(fun (td, gl, kl) lib ->
+            (* [must_glob_set] (alias-reachable libs the walk can't
+               see) and [non_tight_set] (lib has a [None]-entry
+               module reached by the BFS) both force glob. *)
+            if Lib.Set.mem must_glob_set lib || Lib.Set.mem non_tight_set lib
+            then td, lib :: gl, Lib.Set.add kl lib
+            else (
+              match Lib.Map.find tight_modules lib with
+              | Some modules ->
+                ( Dep.Set.union
+                    td
+                    (Lib_file_deps.deps_of_entry_modules ~opaque ~cm_kind lib modules)
+                , gl
+                , Lib.Set.add kl lib )
+              | None ->
+                if Lib_file_deps.Lib_index.is_tight_eligible lib_index lib
+                then td, gl, kl
+                else td, lib :: gl, Lib.Set.add kl lib))
       in
       let glob_deps = Lib_file_deps.deps_of_entries ~opaque ~cm_kind glob_libs in
       (* Build per-module [-I]/[-H] flags from [kept_libs]: see

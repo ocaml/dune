@@ -72,6 +72,39 @@ let read_file fn =
   s
 ;;
 
+let secondary_error () =
+  Format.eprintf
+    "@[%a@]@."
+    Format.pp_print_text
+    (let a, b, c = min_supported_natively in
+     sprintf
+       "The ocamlfind's secondary toolchain does not seem to be correctly installed.\n\
+        Dune requires OCaml %d.%02d.%d or later to compile.\n\
+        Please either upgrade your compiler or configure a secondary OCaml compiler (in \
+        opam, this can be done by installing the ocamlfind-secondary package)."
+       a
+       b
+       c);
+  exit 2
+;;
+
+(* Locate the secondary compiler's bin directory via ocamlfind. We query
+   ocamlfind rather than invoking [ocamlfind -toolchain secondary ocaml]
+   directly because ocamlfind does not support the [ocaml] toplevel as a
+   subcommand — it only wraps compiler tools like [ocamlc] and [ocamlopt]. *)
+let find_secondary_bin_dir () =
+  let output_fn, out = Filename.open_temp_file "duneboot" "ocamlfind-output" in
+  let n =
+    runf
+      "ocamlfind -toolchain secondary query ocaml -format \"%%d\" >%s 2>/dev/null"
+      output_fn
+  in
+  let bin_dir = String.trim (read_file output_fn) in
+  close_out out;
+  if n <> 0 || bin_dir = "" then secondary_error ();
+  bin_dir
+;;
+
 let script chan =
   let pwd = Sys.getcwd () in
   let directive ~directive_name ~module_ =
@@ -84,32 +117,15 @@ let script chan =
 
 let () =
   let v = Scanf.sscanf Sys.ocaml_version "%d.%d.%d" (fun a b c -> a, b, c) in
-  let compiler, ocamllex, which =
+  let compiler, ocamllex, which, secondary_lib =
     if v >= min_supported_natively
-    then "ocaml", "ocamllex", None
+    then "ocaml", "ocamllex", None, None
     else (
-      let compiler = "ocamlfind -toolchain secondary ocaml" in
-      let output_fn, out = Filename.open_temp_file "duneboot" "ocamlfind-output" in
-      let n = runf "%s 2>%s" compiler output_fn in
-      let s = read_file output_fn in
-      close_out out;
-      prerr_endline s;
-      if n <> 0 || s <> ""
-      then (
-        Format.eprintf
-          "@[%a@]@."
-          Format.pp_print_text
-          (let a, b, _ = min_supported_natively in
-           sprintf
-             "The ocamlfind's secondary toolchain does not seem to be correctly installed.\n\
-              Dune requires OCaml %d.%02d or later to compile.\n\
-              Please either upgrade your compile or configure a secondary OCaml compiler \
-              (in opam, this can be done by installing the ocamlfind-secondary package)."
-             a
-             b);
-        exit 2);
-      let ocamllex = "ocamlfind -toolchain secondary ocamllex" in
-      compiler, ocamllex, Some "--secondary")
+      let bin_dir = find_secondary_bin_dir () in
+      let lib_dir = Filename.concat (Filename.dirname bin_dir) "lib" in
+      let compiler = Filename.concat bin_dir "ocaml" in
+      let ocamllex = Filename.concat bin_dir "ocamllex" in
+      compiler, ocamllex, Some "--secondary", Some lib_dir)
   in
   exit_if_non_zero (runf "%s -q -o %s %s" ocamllex (pps ^ ".ml") (pps ^ ".mll"));
   let script =
@@ -124,9 +140,18 @@ let () =
     | None -> args
     | Some x -> x :: args
   in
+  (* When using the secondary compiler, we must point it at its own lib
+     directory (-I) and stub library directory (CAML_LD_LIBRARY_PATH) so it
+     does not pick up the primary switch's incompatible libraries. *)
   let cmd =
-    [ [ compiler ]
-    ; (if v >= (5, 0, 0) then [ "-I"; "+unix" ] else [])
+    [ (match secondary_lib with
+       | Some dir ->
+         [ sprintf "CAML_LD_LIBRARY_PATH=%s" (Filename.concat dir "stublibs")
+         ; compiler
+         ; "-I"
+         ; dir
+         ]
+       | None -> [ compiler ] @ if v >= (5, 0, 0) then [ "-I"; "+unix" ] else [])
     ; [ "unix.cma"; script ]
     ; args
     ]

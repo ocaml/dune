@@ -1,0 +1,41 @@
+(rule
+ (write-file somefile 111XXXYYYZZ))
+
+(library
+ (name blake3_mini_tests)
+ (enabled_if
+  (> %{ocaml_version} "4.14.2"))
+ (inline_tests
+  (deps somefile))
+ (libraries
+  unix
+  blake3_mini
+  ;; This is because of the (implicit_transitive_deps false)
+  ;; in dune-project
+  ppx_expect.config
+  ppx_expect.config_types
+  ppx_expect
+  base
+  ppx_inline_test.config)
+ (preprocess
+  (pps ppx_expect)))
+
+(library
+ (name blake3_mini_tests)
+ (enabled_if
+  (<= %{ocaml_version} "4.14.2"))
+ (inline_tests
+  (deps somefile))
+ (libraries
+  unix
+  blake3_mini
+  ;; This is because of the (implicit_transitive_deps false)
+  ;; in dune-project
+  ppx_expect.config
+  ppx_expect.config_types
+  ppx_expect
+  ppx_expect.common
+  base
+  ppx_inline_test.config)
+ (preprocess
+  (pps ppx_expect)))

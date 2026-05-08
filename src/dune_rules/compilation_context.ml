@@ -395,9 +395,7 @@ let for_ t = t.for_
 let filtered_include_flags t ~cm_kind ~kept_libs =
   let lib_mode = Lib_mode.of_cm_kind cm_kind in
   let cache_key =
-    { Filtered_includes.Key.lib_mode
-    ; kept_libs = List.sort kept_libs ~compare:Lib.compare
-    }
+    { Filtered_includes.Key.lib_mode; kept_libs = Lib.Set.to_list kept_libs }
   in
   match Table.find t.filtered_includes cache_key with
   | Some builder -> builder
@@ -411,9 +409,8 @@ let filtered_include_flags t ~cm_kind ~kept_libs =
       let open Action_builder.O in
       let* direct_requires = Resolve.Memo.read t.requires_compile in
       let+ hidden_requires = Resolve.Memo.read t.requires_hidden in
-      let kept_set = Lib.Set.of_list kept_libs in
-      let direct_filtered = List.filter direct_requires ~f:(Lib.Set.mem kept_set) in
-      let hidden_filtered = List.filter hidden_requires ~f:(Lib.Set.mem kept_set) in
+      let direct_filtered = List.filter direct_requires ~f:(Lib.Set.mem kept_libs) in
+      let hidden_filtered = List.filter hidden_requires ~f:(Lib.Set.mem kept_libs) in
       let project = Scope.project t.scope in
       let lib_config = t.ocaml.lib_config in
       Lib_flags.L.include_flags

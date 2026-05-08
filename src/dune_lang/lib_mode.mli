@@ -4,6 +4,10 @@ type t =
   | Ocaml of Ocaml.Mode.t
   | Melange
 
+val equal : t -> t -> bool
+val hash : t -> int
+val to_string : t -> string
+val to_dyn : t -> Dyn.t
 val decode : t Decoder.t
 
 module Cm_kind : sig

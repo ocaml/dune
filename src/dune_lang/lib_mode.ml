@@ -11,6 +11,12 @@ let equal x y =
   | Melange, Melange -> true
 ;;
 
+let hash = function
+  | Ocaml Byte -> 0
+  | Ocaml Native -> 1
+  | Melange -> 2
+;;
+
 let decode =
   let open Decoder in
   enum [ "byte", Ocaml Byte; "native", Ocaml Native; "melange", Melange ]
@@ -24,6 +30,7 @@ let choose byte native melange = function
 
 let to_string = choose "byte" "native" "melange"
 let encode t = Encoder.string (to_string t)
+let to_dyn t = Dyn.string (to_string t)
 
 module Cm_kind = struct
   type t =

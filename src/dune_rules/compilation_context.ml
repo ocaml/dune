@@ -44,32 +44,18 @@ module Filtered_includes = struct
       ; kept_libs : Lib.t list (** sorted by [Lib.compare] *)
       }
 
-    let lib_mode_tag : Lib_mode.t -> int = function
-      | Ocaml Byte -> 0
-      | Ocaml Native -> 1
-      | Melange -> 2
-    ;;
-
     let equal a b =
-      lib_mode_tag a.lib_mode = lib_mode_tag b.lib_mode
-      && List.equal Lib.equal a.kept_libs b.kept_libs
+      Lib_mode.equal a.lib_mode b.lib_mode && List.equal Lib.equal a.kept_libs b.kept_libs
     ;;
 
     let hash { lib_mode; kept_libs } =
-      Poly.hash (lib_mode_tag lib_mode, List.map kept_libs ~f:Lib.hash)
+      Poly.hash (Lib_mode.hash lib_mode, List.map kept_libs ~f:Lib.hash)
     ;;
 
     let to_dyn { lib_mode; kept_libs } =
       let open Dyn in
-      let lib_mode_label : Lib_mode.t -> string = function
-        | Ocaml Byte -> "ocaml-byte"
-        | Ocaml Native -> "ocaml-native"
-        | Melange -> "melange"
-      in
       record
-        [ "lib_mode", string (lib_mode_label lib_mode)
-        ; "kept_libs", list Lib.to_dyn kept_libs
-        ]
+        [ "lib_mode", Lib_mode.to_dyn lib_mode; "kept_libs", list Lib.to_dyn kept_libs ]
     ;;
   end
 

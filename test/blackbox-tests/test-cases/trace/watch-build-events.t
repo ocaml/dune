@@ -20,22 +20,7 @@ build trace events.
 
   $ dune build y
 
-  $ dune trace cat | jq -s '
-  > [ .[]
-  >   | select(
-  >       .cat == "build"
-  >       and (.name == "build-start" or .name == "build-restart" or .name == "build-finish")
-  >     )
-  >   | { args, name }
-  >   | if .args.restart_duration? != null
-  >     then .args.restart_duration |= type
-  >     else .
-  >     end
-  >   | if .args.rusage? != null
-  >     then .args.rusage |= keys
-  >     else .
-  >     end
-  > ] | .[]'
+  $ dune trace cat | jq -s 'include "dune"; .[] | buildEvents'
   {
     "args": {
       "run_id": 0,
@@ -86,22 +71,12 @@ build trace events.
 
   $ stop_dune > /dev/null
 
+File watcher backends may batch file changes differently. Normalize contiguous
+restart events so the test checks the run id and reasons, not the batching.
+
   $ dune trace cat | jq -s '
-  > [ .[]
-  >   | select(
-  >       .cat == "build"
-  >       and (.name == "build-start" or .name == "build-restart" or .name == "build-finish")
-  >     )
-  >   | { args, name }
-  >   | if .args.restart_duration? != null
-  >     then .args.restart_duration |= type
-  >     else .
-  >     end
-  >   | if .args.rusage? != null
-  >     then .args.rusage |= keys
-  >     else .
-  >     end
-  > ] | .[]'
+  > include "dune";
+  > [ .[] | buildEvents ] | normalizeBuildRestartEvents'
   {
     "args": {
       "run_id": 1,
@@ -142,15 +117,7 @@ build trace events.
     "args": {
       "run_id": 2,
       "reasons": [
-        "x changed"
-      ]
-    },
-    "name": "build-restart"
-  }
-  {
-    "args": {
-      "run_id": 2,
-      "reasons": [
+        "x changed",
         "z changed"
       ]
     },

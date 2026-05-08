@@ -221,6 +221,60 @@ def redactedActionTraces:
   |= "REDACTED"
   ] | sort_by(.name) | .[];
 
+def buildEvents:
+    select(
+      .cat == "build"
+      and (.name | IN("build-start", "build-restart", "build-finish")))
+  | { args, name }
+  | if .args.restart_duration? != null
+    then .args.restart_duration |= type
+    else .
+    end
+  | if .args.rusage? != null
+    then .args.rusage |= keys
+    else .
+    end;
+
+def normalizeBuildRestartEvents:
+  def flush:
+    if .pending == null
+    then .out
+    else
+      .out + [
+        {
+          args: {
+            run_id: .pending.run_id,
+            reasons: (.pending.reasons | sort)
+          },
+          name: "build-restart"
+        }
+      ]
+    end;
+  reduce .[] as $event
+    ({ out: [], pending: null };
+     if $event.name == "build-restart"
+     then
+       if .pending == null or .pending.run_id == $event.args.run_id
+       then
+         .pending = {
+           run_id: $event.args.run_id,
+           reasons: ((.pending.reasons // []) + $event.args.reasons)
+         }
+       else
+         .out = (flush)
+         | .pending = {
+             run_id: $event.args.run_id,
+             reasons: $event.args.reasons
+           }
+       end
+     else
+       .out = (flush)
+       | .pending = null
+       | .out += [ $event ]
+     end)
+  | flush
+  | .[];
+
 def cacheEvent($path):
   select(.cat == "cache") | .args | select(.path == $path);
 

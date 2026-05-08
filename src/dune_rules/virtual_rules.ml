@@ -11,7 +11,7 @@ type t =
 
 let no_implements = No_implements
 
-let is_implementation = function
+let is_virtual_or_parameter = function
   | Virtual _ | Parameter _ -> true
   | No_implements -> false
 ;;

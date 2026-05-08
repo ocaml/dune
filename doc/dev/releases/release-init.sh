@@ -86,7 +86,7 @@ To begin once all initial blockers are resolved.
 
 ${POST_RELEASE_STEPS}
 - [ ] Increase the version of Dune to the new latest minor version
-  - [ ] in the [CI workflow](https://github.com/ocaml/dune/tree/main/ci/workflow.yml.in)
+  - [ ] in the [CI workflow](https://github.com/ocaml/dune/tree/main/.github/workflows/workflow.yml.in)
   - [ ] in [dune-project](https://github.com/ocaml/dune/blob/main/dune-project#L1)
   - [ ] in the [dune-rpc](https://github.com/ocaml/dune/blob/main/otherlibs/dune-rpc/types.ml#L30)
 """

@@ -138,58 +138,66 @@ let build_lib_index ~super_context ~libs ~for_ =
         Resolve.Memo.return (List.map names ~f:(fun n -> n, lib, None), None)
       | External (Error e) -> Resolve.Memo.of_result (Error e)
       | Local ->
-        Resolve.Memo.lift_memo
-          (Memo.map
-             (Dir_contents.modules_of_local_lib
-                super_context
-                (Lib.Local.of_lib_exn lib)
-                ~for_)
-             ~f:(fun mods ->
-               (* [Some m] only for unwrapped locals (tight-eligible);
-                  wrapped locals and externals → [None]. *)
-               let unwrapped =
-                 match Lib_info.wrapped (Lib.info lib) with
-                 | Some (This w) -> not (Wrapped.to_bool w)
-                 | Some (From _) | None -> false
-               in
-               (* Post-pp [Module.t]: mirror [Pp_spec.pped_modules_map]
-                  so the cross-lib walker reads ocamldep on the source
-                  the dep lib's compile pipeline actually produces.
-                  Staged Pps entries have no materialised [.pp.ml].
-                  Pps lists composed only of [Instrumentation_backend]
-                  entries are conditional (active only when the build
-                  enables [--instrument-with]); we cannot be sure a
-                  [.pp.ml] exists at this site, so we fall back to
-                  non-tight-eligible ([m_opt = None]) for those. Pps
-                  with at least one [Ordinary] entry always produces
-                  a [.pp.ml]. *)
-               let preprocess = Lib_info.preprocess (Lib.info lib) ~for_:Ocaml in
-               let post_pp_module m =
-                 match Preprocess.Per_module.find (Module.name m) preprocess with
-                 | No_preprocessing | Future_syntax _ -> Some (Module.ml_source m)
-                 | Action _ -> Some (Module.ml_source (Module.pped m))
-                 | Pps { staged = false; pps; _ } ->
-                   if
-                     List.exists pps ~f:(function
-                       | Preprocess.With_instrumentation.Ordinary _ -> true
-                       | Instrumentation_backend _ -> false)
-                   then Some (Module.pped (Module.ml_source m))
-                   else None
-                 | Pps { staged = true; _ } -> None
-               in
-               let entries =
-                 List.map (Modules.entry_modules mods) ~f:(fun m ->
-                   Module.name m, lib, if unwrapped then post_pp_module m else None)
-               in
-               (* Into [no_ocamldep] so the cross-lib walk doesn't read [.d]
-                  files that [Dep_rules.skip_ocamldep] elided. *)
-               let no_ocamldep_lib =
-                 match Modules.as_singleton mods with
-                 | Some _ when List.is_empty (Lib_info.requires (Lib.info lib) ~for_) ->
-                   Some lib
-                 | _ -> None
-               in
-               entries, no_ocamldep_lib)))
+        let* mods =
+          Resolve.Memo.lift_memo
+            (Dir_contents.modules_of_local_lib
+               super_context
+               (Lib.Local.of_lib_exn lib)
+               ~for_)
+        in
+        (* [no_ocamldep_lib] mirrors [Dep_rules.skip_ocamldep]'s
+           [has_library_deps] gating: use the *resolved* requires
+           (which include pps runtime libs added via
+           [add_pp_runtime_deps]), not the static [(libraries ...)]
+           field. A single-module lib with no [(libraries ...)] but
+           with [(preprocess (pps X))] still has its ocamldep run
+           because [Lib.requires] is non-empty; classifying it as
+           [no_ocamldep] would cause the cross-library walk to skip
+           it and drop transitive [.cmi] deps reachable through its
+           post-pp ocamldep output. *)
+        let+ requires_resolved = Lib.requires lib ~for_ in
+        (* [Some m] only for unwrapped locals (tight-eligible);
+           wrapped locals and externals → [None]. *)
+        let unwrapped =
+          match Lib_info.wrapped (Lib.info lib) with
+          | Some (This w) -> not (Wrapped.to_bool w)
+          | Some (From _) | None -> false
+        in
+        (* Post-pp [Module.t]: mirror [Pp_spec.pped_modules_map]
+           so the cross-lib walker reads ocamldep on the source
+           the dep lib's compile pipeline actually produces.
+           Staged Pps entries have no materialised [.pp.ml].
+           Pps lists composed only of [Instrumentation_backend]
+           entries are conditional (active only when the build
+           enables [--instrument-with]); we cannot be sure a
+           [.pp.ml] exists at this site, so we fall back to
+           non-tight-eligible ([m_opt = None]) for those. Pps
+           with at least one [Ordinary] entry always produces
+           a [.pp.ml]. *)
+        let preprocess = Lib_info.preprocess (Lib.info lib) ~for_:Ocaml in
+        let post_pp_module m =
+          match Preprocess.Per_module.find (Module.name m) preprocess with
+          | No_preprocessing | Future_syntax _ -> Some (Module.ml_source m)
+          | Action _ -> Some (Module.ml_source (Module.pped m))
+          | Pps { staged = false; pps; _ } ->
+            if
+              List.exists pps ~f:(function
+                | Preprocess.With_instrumentation.Ordinary _ -> true
+                | Instrumentation_backend _ -> false)
+            then Some (Module.pped (Module.ml_source m))
+            else None
+          | Pps { staged = true; _ } -> None
+        in
+        let entries =
+          List.map (Modules.entry_modules mods) ~f:(fun m ->
+            Module.name m, lib, if unwrapped then post_pp_module m else None)
+        in
+        let no_ocamldep_lib =
+          match Modules.as_singleton mods with
+          | Some _ when List.is_empty requires_resolved -> Some lib
+          | _ -> None
+        in
+        entries, no_ocamldep_lib)
   in
   let entries = List.concat_map per_lib ~f:fst in
   let no_ocamldep = List.filter_map per_lib ~f:snd |> Lib.Set.of_list in

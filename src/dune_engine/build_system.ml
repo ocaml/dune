@@ -120,25 +120,6 @@ let rec with_locks ~f = function
       ~f:(fun () -> with_locks ~f mutexes)
 ;;
 
-module Pending_targets = struct
-  (* All file and directory targets of non-sandboxed actions that are currently
-     being executed. On exit, we need to delete them as they might contain
-     garbage. *)
-
-  let t = ref Targets.empty
-  let remove targets = t := Targets.diff !t (Targets.Validated.unvalidate targets)
-  let add targets = t := Targets.combine !t (Targets.Validated.unvalidate targets)
-
-  let cleanup () =
-    let targets = !t in
-    t := Targets.empty;
-    Targets.iter
-      targets
-      ~file:(fun p -> p |> Path.Build.to_string |> Fpath.unlink_no_err)
-      ~dir:(fun p -> Path.rm_rf (Path.build p))
-  ;;
-end
-
 type rule_execution_result =
   { facts : Dep.Fact.t Dep.Map.t
   ; targets : Digest.t Targets.Produced.t
@@ -403,18 +384,9 @@ module Internal = struct
       =
       action
     in
-    let deps =
-      Dep.Facts.paths
-        ~expand_aliases:
-          (Execution_parameters.expand_aliases_in_sandbox execution_parameters)
-        facts
-    in
     let execute_action sandbox =
-      let action =
-        match sandbox with
-        | None -> action
-        | Some sandbox -> Action.sandbox action sandbox
-      in
+      let is_sandboxed = Sandbox.is_sandboxed sandbox in
+      let action = if is_sandboxed then Action.sandbox action sandbox else action in
       let action =
         (* We must add the creation of the stamp file after sandboxing it, as
            otherwise the stamp file would end up inside the sandbox. This is
@@ -438,12 +410,7 @@ module Internal = struct
         | None -> Path.Build.root
         | Some context -> context.build_dir
       in
-      let root =
-        Path.build
-          (match sandbox with
-           | None -> root
-           | Some sandbox -> Sandbox.map_path sandbox root)
-      in
+      let root = Path.build (Sandbox.map_path sandbox root) in
       let action_trace = Action_trace.create rule_digest in
       with_locks locks ~f:(fun () ->
         let* action_exec_result =
@@ -464,9 +431,9 @@ module Internal = struct
         let* action_exec_result = Action_exec.Exec_result.ok_exn action_exec_result in
         let* () = Action_trace.collect action_trace in
         let* () =
-          match sandbox with
-          | None -> Fiber.return ()
-          | Some sandbox ->
+          if not is_sandboxed
+          then Fiber.return ()
+          else (
             (* The stamp file for anonymous actions is always created outside
                the sandbox, so we can't move it. *)
             let should_be_skipped =
@@ -474,7 +441,7 @@ module Internal = struct
               | Normal_rule -> fun (_ : Path.Build.t) -> false
               | Anonymous_action { stamp_file; _ } -> Path.Build.equal stamp_file
             in
-            Sandbox.move_targets_to_build_dir sandbox ~should_be_skipped ~targets
+            Sandbox.move_targets_to_build_dir sandbox ~should_be_skipped ~targets)
         in
         let+ produced_targets =
           maybe_async_rule_file_op (fun () -> Targets.Produced.of_validated targets)
@@ -483,35 +450,26 @@ module Internal = struct
         | Ok produced_targets -> { Exec_result.produced_targets; action_exec_result }
         | Error error -> User_error.raise ~loc (Targets.Produced.Error.message error))
     in
-    match sandbox_mode with
-    | Some mode ->
-      Sandbox.with_live_sandbox_slot ~f:(fun () ->
-        let* sandbox =
-          Sandbox.create
-            ~mode
-            (Option.value ~default:Ignore corrections)
-            ~dirs:(Dep.Facts.necessary_dirs_for_sandboxing facts)
-            ~deps
-            ~rule_dir:targets.root
-            ~rule_loc:loc
-            ~rule_digest
-        in
-        (* CR-someday rgrinberg: Dynamic actions may discover dependencies
-           while this slot is held. If all sandbox slots are held by such
-           actions, sandboxed rules for the discovered dependencies cannot
-           start. *)
-        Fiber.finalize
-          ~finally:(fun () -> Sandbox.destroy sandbox)
-          (fun () -> execute_action (Some sandbox)))
-    | None ->
-      (* If the action is not sandboxed, we use [pending_file_targets] to
-         clean up the build directory if the action is interrupted. *)
-      Pending_targets.add targets;
-      Fiber.finalize
-        ~finally:(fun () ->
-          Pending_targets.remove targets;
-          Fiber.return ())
-        (fun () -> execute_action None)
+    let deps, sandbox_dirs =
+      match sandbox_mode with
+      | None -> Path.Set.empty, Path.Build.Set.empty
+      | Some _ ->
+        ( Dep.Facts.paths
+            ~expand_aliases:
+              (Execution_parameters.expand_aliases_in_sandbox execution_parameters)
+            facts
+        , Dep.Facts.necessary_dirs_for_sandboxing facts )
+    in
+    Sandbox.with_
+      ~mode:sandbox_mode
+      (Option.value ~default:Ignore corrections)
+      ~rule_loc:loc
+      ~dirs:sandbox_dirs
+      ~deps
+      ~rule_dir:targets.root
+      ~rule_digest
+      ~targets
+      ~f:execute_action
 
   and promote_targets ~rule_mode ~targets ~promote_source =
     match rule_mode, !Clflags.promote with
@@ -1176,7 +1134,7 @@ let run f =
         Memo.run_with_error_handler f ~handle_error_no_raise:report_early_exn)
     in
     Dtemp.clear ();
-    Pending_targets.cleanup ();
+    Sandbox.cleanup_pending_targets ();
     Target_promotion.save ();
     let* outcome =
       match outcome with

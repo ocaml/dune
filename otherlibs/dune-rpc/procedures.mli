@@ -6,6 +6,7 @@ module Public : sig
   val diagnostics : (unit, Diagnostic.t list) Decl.Request.t
   val shutdown : unit Decl.Notification.t
   val format : (unit, unit) Decl.Request.t
+  val flush_file_watcher : (unit, [ `Ok | `Not_in_watch_mode ]) Decl.Request.t
   val format_dune_file : (Path.t * [ `Contents of string ], string) Decl.Request.t
   val promote : (Path.t, unit) Decl.Request.t
   val promote_many : (Promote_targets.t, Build_outcome_with_diagnostics.t) Decl.Request.t

@@ -303,6 +303,7 @@ module Request : sig
 
   val ping : (unit, unit) t
   val diagnostics : (unit, Diagnostic.t list) t
+  val flush_file_watcher : (unit, [ `Ok | `Not_in_watch_mode ]) t
 
   (** format a [dune], [dune-project], or a [dune-workspace] file. The full
       path to the file is necessary so that dune knows the formatting options

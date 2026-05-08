@@ -128,7 +128,12 @@ let needs_to_build_with_same_compiler_as_project = function
 let compiler_package_names =
   List.map
     ~f:Package_name.of_string
-    [ "ocaml"; "ocaml-base-compiler"; "ocaml-variants"; "ocaml-compiler" ]
+    [ "ocaml"
+    ; "ocaml-base-compiler"
+    ; "ocaml-variants"
+    ; "ocaml-compiler"
+    ; "relocatable-compiler"
+    ]
 ;;
 
 let is_compiler_package name =

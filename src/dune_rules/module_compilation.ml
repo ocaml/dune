@@ -20,8 +20,6 @@ let module_kind_is_filterable m =
   | Intf_only | Impl | Alias _ -> true
 ;;
 
-(* Skip preprocessed modules: their [Module.t] from [Lib_index] carries
-   [pp_flags = None], so ocamldep would run on the raw, pre-pp source. *)
 (* BFS over tight-eligible entries: each (lib, entry) pair's
    impl+intf ocamldep names extend the frontier. Non-tight-eligible
    libs (wrapped locals, externals, virtual-impls, staged-Pps libs)

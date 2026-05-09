@@ -8,6 +8,7 @@
   dune_util
   dune_engine
   dune_scheduler
+  dune_threaded_console
   dune_rules
   fiber
   dune_lang

@@ -176,7 +176,7 @@ module Conf = struct
       let executable =
         match Path.Untracked.stat file with
         | Error _ -> false
-        | Ok { st_perm; _ } -> Permissions.test Permissions.execute st_perm
+        | Ok { st_perm; _ } -> Permissions.test_any Permissions.execute st_perm
       in
       if executable
       then
@@ -645,9 +645,14 @@ let copy_file_non_atomic ~conf ?chmod ~src ~dst () =
 ;;
 
 (** This is just an optimisation: skip the renaming if the destination exists
-    and has the right digest. The optimisation is useful to avoid unnecessary
-    retriggering of Dune and other file-watching systems. *)
+    and has the right contents and executable bit. The optimisation is useful to
+    avoid unnecessary retriggering of Dune and other file-watching systems. *)
 let replace_if_different ~delete_dst_if_it_is_a_directory ~src ~dst =
+  let files_are_up_to_date src_stats dst_stats =
+    let executable stats = Permissions.test_any Permissions.execute stats.Unix.st_perm in
+    Bool.equal (executable src_stats) (executable dst_stats)
+    && Io.compare_files src dst = Eq
+  in
   let up_to_date =
     match Path.Untracked.stat dst with
     | Ok { st_kind = S_DIR; _ } ->
@@ -662,12 +667,18 @@ let replace_if_different ~delete_dst_if_it_is_a_directory ~src ~dst =
                (Path.to_string dst)
            ])
     | Error (_ : Unix_error.Detailed.t) -> false
-    | Ok (_ : Unix.stats) ->
-      let temp_file_digest = Digest.file src in
-      let dst_digest = Digest.file dst in
-      Digest.equal temp_file_digest dst_digest
+    | Ok ({ st_kind = S_REG; _ } as dst_stats) ->
+      (match Path.Untracked.stat src with
+       | Ok ({ st_kind = S_REG; _ } as src_stats) ->
+         files_are_up_to_date src_stats dst_stats
+       | Ok _ | Error _ -> false)
+    | Ok _ -> false
   in
-  if not up_to_date then Unix.rename (Path.to_string src) (Path.to_string dst)
+  if up_to_date
+  then false
+  else (
+    Unix.rename (Path.to_string src) (Path.to_string dst);
+    true)
 ;;
 
 let copy_file ~conf ?chmod ?(delete_dst_if_it_is_a_directory = false) ~src ~dst () =

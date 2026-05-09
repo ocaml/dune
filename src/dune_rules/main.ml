@@ -81,6 +81,7 @@ let init ~sandboxing_preference () : unit =
       ~dst
       ~conf
       ()
+    >>| ignore
   in
   Build_config.set
     ~sandboxing_preference

@@ -22,6 +22,7 @@ type t =
   | Cache
   | Digest
   | Artifact_substitution
+  | Source_copy
   | Thread
 
 let all =
@@ -46,6 +47,7 @@ let all =
   ; Cache
   ; Digest
   ; Artifact_substitution
+  ; Source_copy
   ; Thread
   ]
 ;;
@@ -72,6 +74,7 @@ let to_string = function
   | Cache -> "cache"
   | Digest -> "digest"
   | Artifact_substitution -> "artifact_subtitution"
+  | Source_copy -> "source_copy"
   | Thread -> "thread"
 ;;
 
@@ -110,7 +113,8 @@ module Set = Bit_set.Make (struct
       | Cache -> 18
       | Digest -> 19
       | Artifact_substitution -> 20
-      | Thread -> 21
+      | Source_copy -> 21
+      | Thread -> 22
     ;;
   end)
 

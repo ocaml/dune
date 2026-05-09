@@ -1,4 +1,4 @@
-Test the "dune internal digest-db" command.
+Source-backed targets do not cache content digests for source-tree files.
 
   $ echo '(lang dune 3.0)' > dune-project
   $ mkdir -p dir/sub
@@ -9,36 +9,42 @@ Test the "dune internal digest-db" command.
   $ touch -t 200001010000 invalid.txt
   $ dune build invalid.txt stale.txt dir/a dir/sub/b
 
-The full dump includes cached entries:
+The persistent digest database has no source-tree file entries after building
+source-backed targets.
 
-  $ dune internal digest-db dump 2>&1 | grep -o 'In_source_tree "invalid.txt"'
-  In_source_tree "invalid.txt"
+  $ dune internal digest-db dump > dump.out 2>&1
+  $ grep -o 'entries = \[\]' dump.out
+  entries = []
 
-Dumping a file only shows its exact entry:
-
-  $ dune internal digest-db dump invalid.txt 2>&1 | grep -o 'In_source_tree "invalid.txt"'
-  In_source_tree "invalid.txt"
-  $ dune internal digest-db dump invalid.txt 2>&1 | grep 'In_source_tree "stale.txt"'
-  [1]
-
-Dumping a directory only shows its direct children:
-
-  $ dune internal digest-db dump dir 2>&1 | grep -o 'In_source_tree "dir/a"'
-  In_source_tree "dir/a"
-  $ dune internal digest-db dump dir 2>&1 | grep 'In_source_tree "dir/sub/b"'
-  [1]
-
-Modify one file without changing the cached stats and another one normally.
+Modifying source files cannot produce invalid or stale source digest reports
+because source files are tracked without content digests.
 
   $ printf z > invalid.txt
   $ touch -t 200001010000 invalid.txt
   $ printf yz > stale.txt
+  $ dune internal digest-db check invalid.txt stale.txt
+  []
 
-Only actual digest mismatches are reported, classified as invalid or stale.
+External files are still content-digested, and the digest-db commands still
+report cached and stale external entries.
 
-  $ dune internal digest-db check invalid.txt stale.txt 2>&1 \
-  > | sed -n 's/.*status = /status = /p;s/.*path = /path = /p'
-  status = "invalid"
-  path = In_source_tree "invalid.txt"
-  status = "stale"
-  path = In_source_tree "stale.txt"
+  $ external="$PWD/../external.txt"
+  $ printf external > "$external"
+  $ cat > dune <<EOF
+  > (rule
+  >  (deps $external)
+  >  (target external-copy)
+  >  (action (copy $external external-copy)))
+  > EOF
+  $ dune build external-copy
+  $ dune internal digest-db dump > external-dump.out 2>&1
+  $ grep -A1 'External' external-dump.out
+            External
+              "$TESTCASE_ROOT/../external.txt"
+  $ printf changed > "$external"
+  $ dune internal digest-db check > external-check.out 2>&1 || true
+  $ grep 'status = "stale"' external-check.out
+  [ { status = "stale"
+  $ grep -A1 'External' external-check.out
+        External
+          "$TESTCASE_ROOT/../external.txt"

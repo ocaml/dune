@@ -65,7 +65,7 @@ module Target = struct
     match Unix.lstat path with
     | { Unix.st_kind = Unix.S_REG; st_perm; _ } ->
       Unix.chmod path (Permissions.remove Permissions.write st_perm);
-      let executable = Permissions.test Permissions.execute st_perm in
+      let executable = Permissions.test_any Permissions.execute st_perm in
       Some (File { executable })
     | { Unix.st_kind = Unix.S_DIR; st_perm; _ } ->
       (* Adding "executable" permissions to directories mean we can traverse them. *)

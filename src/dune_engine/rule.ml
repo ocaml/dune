@@ -4,7 +4,6 @@ module Info = struct
   type t =
     | From_dune_file of Loc.t
     | Internal
-    | Source_file_copy of Path.Source.t
 
   let of_loc_opt = function
     | None -> Internal
@@ -14,7 +13,6 @@ module Info = struct
   let to_dyn : t -> Dyn.t = function
     | From_dune_file loc -> Dyn.Variant ("From_dune_file", [ Loc.to_dyn loc ])
     | Internal -> Dyn.Variant ("Internal", [])
-    | Source_file_copy p -> Dyn.Variant ("Source_file_copy", [ Path.Source.to_dyn p ])
   ;;
 end
 
@@ -76,7 +74,7 @@ let make ?(mode = Mode.Standard) ?(info = Info.Internal) ~targets action =
     | From_dune_file loc ->
       let pp = [ Pp.text message ] @ extra_pp in
       User_error.raise ~loc pp
-    | Internal | Source_file_copy _ ->
+    | Internal ->
       Code_error.raise
         message
         [ "info", Info.to_dyn info; "targets", Targets.to_dyn targets ]
@@ -104,7 +102,6 @@ let make ?(mode = Mode.Standard) ?(info = Info.Internal) ~targets action =
       Loc.in_file
         (Path.drop_optional_build_context
            (Path.build (Path.Build.relative targets.root "_unknown_")))
-    | Source_file_copy p -> Loc.in_file (Path.source p)
   in
   { id = Id.gen (); targets; action; mode; info; loc }
 ;;

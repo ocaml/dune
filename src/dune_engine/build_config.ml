@@ -85,6 +85,7 @@ module type Source_tree = sig
   end
 
   val find_dir : Path.Source.t -> Dir.t option Memo.t
+  val copy_source : src:Path.Source.t -> dst:Path.Build.t -> unit Fiber.t
 end
 
 type t =

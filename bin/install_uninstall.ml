@@ -305,7 +305,10 @@ module File_ops_real (W : sig
     let chmod = if executable then fun _ -> 0o755 else fun _ -> 0o644 in
     let plain_copy () = Io.copy_file ~chmod ~src ~dst () in
     match kind with
-    | Substitute -> Artifact_substitution.copy_file ~conf ~src ~dst ~chmod ()
+    | Substitute ->
+      let open Fiber.O in
+      let+ (_ : bool) = Artifact_substitution.copy_file ~conf ~src ~dst ~chmod () in
+      ()
     | Special sf ->
       let open Fiber.O in
       let ic, oc = Io.setup_copy ~chmod ~src ~dst () in

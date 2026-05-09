@@ -7,36 +7,15 @@ Test the tracing of digest events
   $ dune build x --wait-for-filesystem-clock
   $ echo 1 > x
   $ dune build x --wait-for-filesystem-clock
+  $ cat _build/default/x
+  1
 
-  $ dune trace cat | jq '
-  >   select(.cat == "digest")
-  > | .args
-  > | .old_stats.mtime |= type
-  > | .new_stats.mtime |= type
-  > | .new_stats.dev |= type
-  > | .new_stats.ino |= type
-  > | .old_stats.dev |= type
-  > | .old_stats.ino |= type
-  > '
-  {
-    "path": "x",
-    "old_digest": "662cf3f7d59f76428301690d4ead67ae",
-    "new_digest": "f31e1f1c33564e07cd02ad2c52f4df85",
-    "old_stats": {
-      "mtime": "number",
-      "size": 0,
-      "perm": 420,
-      "dev": "number",
-      "ino": "number"
-    },
-    "new_stats": {
-      "mtime": "number",
-      "size": 2,
-      "perm": 420,
-      "dev": "number",
-      "ino": "number"
-    }
-  }
+Source-backed targets do not emit content digest events for source files.
+
+  $ dune trace cat | jq -s '
+  > [ .[] | select(.cat == "digest" and .name == "redigest" and .args.path == "x") ]
+  > | length'
+  0
 
   $ mkdir dir
   $ touch dir/one.in

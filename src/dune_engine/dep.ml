@@ -400,6 +400,23 @@ module Facts = struct
         Path.Build.Set.union_all [ acc; Fact.Files.necessary_dirs_for_sandboxing facts ])
   ;;
 
+  let path_is_in_source_tree = function
+    | Path.In_source_tree _ -> true
+    | External _ | In_build_dir _ -> false
+  ;;
+
+  let fact_files_has_source_tree_paths { Fact.Files.files; empty_dirs = _; digest = _ } =
+    Path.Set.exists files ~f:path_is_in_source_tree
+  ;;
+
+  let has_source_tree_paths t =
+    Map.exists t ~f:(function
+      | Fact.Nothing -> false
+      | File (p, _digest) -> path_is_in_source_tree p
+      | File_selector { file_selector_digest = _; facts } | Alias facts ->
+        fact_files_has_source_tree_paths facts)
+  ;;
+
   let digest t digest ~env =
     Map.iteri t ~f:(fun dep fact ->
       match dep with

@@ -21,7 +21,7 @@ events. This is a known bug.
   >   echo "------------------------------------------"
   >   echo "result = '$before' -> '$between' -> '$after'"
   >   echo "------------------------------------------"
-  >   dune trace cat | jq -c 'select(.name == "fs_update") | .args' | sort
+  >   dune trace cat | jq -c 'select(.name == "fs_update") | .args | select(.path != "dune-workspace")' | sort
   >   rm .#tmp
   > }
 
@@ -60,9 +60,6 @@ of failing.
   ------------------------------------------
   result = '' -> '13' -> '13'
   ------------------------------------------
-  {"cache_type":"dir_contents","path":"dune-workspace","result":"skipped"}
-  {"cache_type":"file_digest","path":"dune-workspace","result":"skipped"}
-  {"cache_type":"path_stat","path":"dune-workspace","result":"unchanged"}
 
 If we repeat the test, we finally see the failure.
 
@@ -78,9 +75,6 @@ If we repeat the test, we finally see the failure.
   ------------------------------------------
   result = '13' -> '13' -> '13'
   ------------------------------------------
-  {"cache_type":"dir_contents","path":"dune-workspace","result":"skipped"}
-  {"cache_type":"file_digest","path":"dune-workspace","result":"skipped"}
-  {"cache_type":"path_stat","path":"dune-workspace","result":"unchanged"}
 
 Same problem in the other direction.
 
@@ -95,9 +89,6 @@ Same problem in the other direction.
   ------------------------------------------
   result = '13' -> '13' -> '13'
   ------------------------------------------
-  {"cache_type":"dir_contents","path":"dune-workspace","result":"skipped"}
-  {"cache_type":"file_digest","path":"dune-workspace","result":"skipped"}
-  {"cache_type":"path_stat","path":"dune-workspace","result":"unchanged"}
 
   $ test "echo How about now?"
   ------------------------------------------
@@ -107,9 +98,6 @@ Same problem in the other direction.
   ------------------------------------------
   result = '13' -> '13' -> '13'
   ------------------------------------------
-  {"cache_type":"dir_contents","path":"dune-workspace","result":"skipped"}
-  {"cache_type":"file_digest","path":"dune-workspace","result":"skipped"}
-  {"cache_type":"path_stat","path":"dune-workspace","result":"unchanged"}
 
 Same problem for files.
 
@@ -120,9 +108,6 @@ Same problem for files.
   ------------------------------------------
   result = '13' -> '13' -> '13'
   ------------------------------------------
-  {"cache_type":"dir_contents","path":"dune-workspace","result":"skipped"}
-  {"cache_type":"file_digest","path":"dune-workspace","result":"skipped"}
-  {"cache_type":"path_stat","path":"dune-workspace","result":"unchanged"}
 
   $ test "chmod +r file-1"
   ------------------------------------------
@@ -139,6 +124,3 @@ Same problem for files.
   ------------------------------------------
   result = '13' -> '13' -> '13'
   ------------------------------------------
-  {"cache_type":"dir_contents","path":"dune-workspace","result":"skipped"}
-  {"cache_type":"file_digest","path":"dune-workspace","result":"skipped"}
-  {"cache_type":"path_stat","path":"dune-workspace","result":"unchanged"}

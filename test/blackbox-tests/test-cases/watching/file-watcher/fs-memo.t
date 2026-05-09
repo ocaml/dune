@@ -60,10 +60,6 @@ and then the contents is written to it.
   {"cache_type":"dir_contents","path":"dune-workspace","result":"skipped"}
   {"cache_type":"dir_contents","path":"file-2","result":"skipped"}
   {"cache_type":"dir_contents","path":"file-2","result":"skipped"}
-  {"cache_type":"file_digest","path":".","result":"skipped"}
-  {"cache_type":"file_digest","path":"dune-workspace","result":"skipped"}
-  {"cache_type":"file_digest","path":"file-2","result":"skipped"}
-  {"cache_type":"file_digest","path":"file-2","result":"skipped"}
   {"cache_type":"path_stat","path":".","result":"unchanged"}
   {"cache_type":"path_stat","path":"dune-workspace","result":"unchanged"}
   {"cache_type":"path_stat","path":"file-2","result":"skipped"}
@@ -87,15 +83,12 @@ the glob remains unchanged.
   {"cache_type":"dir_contents","path":".","result":"changed"}
   {"cache_type":"dir_contents","path":"dir","result":"skipped"}
   {"cache_type":"dir_contents","path":"dune-workspace","result":"skipped"}
-  {"cache_type":"file_digest","path":".","result":"skipped"}
-  {"cache_type":"file_digest","path":"dir","result":"skipped"}
-  {"cache_type":"file_digest","path":"dune-workspace","result":"skipped"}
   {"cache_type":"path_stat","path":".","result":"unchanged"}
   {"cache_type":"path_stat","path":"dir","result":"skipped"}
   {"cache_type":"path_stat","path":"dune-workspace","result":"unchanged"}
 
-We create [dir/file-3] before running Dune, so we only observe a single
-[file_digest] change event with the file watcher.
+We create [dir/file-3] before running Dune. Source file changes are tracked
+without content digests, so the trace only shows change tracking for the path.
 
   $ echo -n '?' > dir/file-3
   $ test "echo -n 3 > dir/file-3"
@@ -109,12 +102,11 @@ We create [dir/file-3] before running Dune, so we only observe a single
   ------------------------------------------
   {"cache_type":"dir_contents","path":"dir/file-3","result":"skipped"}
   {"cache_type":"dir_contents","path":"dune-workspace","result":"skipped"}
-  {"cache_type":"file_digest","path":"dir/file-3","result":"changed"}
-  {"cache_type":"file_digest","path":"dune-workspace","result":"skipped"}
   {"cache_type":"path_stat","path":"dir/file-3","result":"skipped"}
   {"cache_type":"path_stat","path":"dune-workspace","result":"unchanged"}
 
-Now, Dune similarly updates [file_digest] for [file-2].
+Now, Dune similarly tracks the source-file change for [file-2] without
+digesting it.
 
   $ test "echo -n '*' > file-2"
   ------------------------------------------
@@ -126,8 +118,6 @@ Now, Dune similarly updates [file_digest] for [file-2].
   ------------------------------------------
   {"cache_type":"dir_contents","path":"dune-workspace","result":"skipped"}
   {"cache_type":"dir_contents","path":"file-2","result":"skipped"}
-  {"cache_type":"file_digest","path":"dune-workspace","result":"skipped"}
-  {"cache_type":"file_digest","path":"file-2","result":"changed"}
   {"cache_type":"path_stat","path":"dune-workspace","result":"unchanged"}
   {"cache_type":"path_stat","path":"file-2","result":"skipped"}
 
@@ -144,15 +134,12 @@ On deletion of a file, we receive events for the file and the parent directory.
   {"cache_type":"dir_contents","path":".","result":"changed"}
   {"cache_type":"dir_contents","path":"dune-workspace","result":"skipped"}
   {"cache_type":"dir_contents","path":"file-2","result":"skipped"}
-  {"cache_type":"file_digest","path":".","result":"skipped"}
-  {"cache_type":"file_digest","path":"dune-workspace","result":"skipped"}
-  {"cache_type":"file_digest","path":"file-2","result":"changed"}
   {"cache_type":"path_stat","path":".","result":"unchanged"}
   {"cache_type":"path_stat","path":"dune-workspace","result":"unchanged"}
   {"cache_type":"path_stat","path":"file-2","result":"skipped"}
 
-Dune notices that [dir_contents] of both [dir] and [.] changed, and also that
-[dir/file-3]'s digest changed (from a digest to the error about missing file).
+Dune notices that [dir_contents] of both [dir] and [.] changed, and also tracks
+the source-file changes for the moved paths without digesting them.
 
   $ test "mv dir/file-3 ."
   ------------------------------------------
@@ -167,11 +154,6 @@ Dune notices that [dir_contents] of both [dir] and [.] changed, and also that
   {"cache_type":"dir_contents","path":"dir/file-3","result":"skipped"}
   {"cache_type":"dir_contents","path":"dune-workspace","result":"skipped"}
   {"cache_type":"dir_contents","path":"file-3","result":"skipped"}
-  {"cache_type":"file_digest","path":".","result":"skipped"}
-  {"cache_type":"file_digest","path":"dir","result":"skipped"}
-  {"cache_type":"file_digest","path":"dir/file-3","result":"changed"}
-  {"cache_type":"file_digest","path":"dune-workspace","result":"skipped"}
-  {"cache_type":"file_digest","path":"file-3","result":"skipped"}
   {"cache_type":"path_stat","path":".","result":"unchanged"}
   {"cache_type":"path_stat","path":"dir","result":"unchanged"}
   {"cache_type":"path_stat","path":"dir/file-3","result":"skipped"}
@@ -188,9 +170,6 @@ Dune notices that [dir_contents] of both [dir] and [.] changed, and also that
   {"cache_type":"dir_contents","path":"dir","result":"changed"}
   {"cache_type":"dir_contents","path":"dir/subdir","result":"skipped"}
   {"cache_type":"dir_contents","path":"dune-workspace","result":"skipped"}
-  {"cache_type":"file_digest","path":"dir","result":"skipped"}
-  {"cache_type":"file_digest","path":"dir/subdir","result":"skipped"}
-  {"cache_type":"file_digest","path":"dune-workspace","result":"skipped"}
   {"cache_type":"path_stat","path":"dir","result":"unchanged"}
   {"cache_type":"path_stat","path":"dir/subdir","result":"skipped"}
   {"cache_type":"path_stat","path":"dune-workspace","result":"unchanged"}
@@ -209,10 +188,6 @@ Again, there are two events for [file-4]: for creation and modification.
   {"cache_type":"dir_contents","path":"dir/subdir/file-4","result":"skipped"}
   {"cache_type":"dir_contents","path":"dir/subdir/file-4","result":"skipped"}
   {"cache_type":"dir_contents","path":"dune-workspace","result":"skipped"}
-  {"cache_type":"file_digest","path":"dir/subdir","result":"skipped"}
-  {"cache_type":"file_digest","path":"dir/subdir/file-4","result":"skipped"}
-  {"cache_type":"file_digest","path":"dir/subdir/file-4","result":"skipped"}
-  {"cache_type":"file_digest","path":"dune-workspace","result":"skipped"}
   {"cache_type":"path_stat","path":"dir/subdir","result":"unchanged"}
   {"cache_type":"path_stat","path":"dir/subdir/file-4","result":"skipped"}
   {"cache_type":"path_stat","path":"dir/subdir/file-4","result":"skipped"}
@@ -236,13 +211,6 @@ because we watch each of them both directly and via their parents.
   {"cache_type":"dir_contents","path":"dir/subdir","result":"unchanged"}
   {"cache_type":"dir_contents","path":"dune-workspace","result":"skipped"}
   {"cache_type":"dir_contents","path":"subdir","result":"skipped"}
-  {"cache_type":"file_digest","path":".","result":"skipped"}
-  {"cache_type":"file_digest","path":"dir","result":"skipped"}
-  {"cache_type":"file_digest","path":"dir","result":"skipped"}
-  {"cache_type":"file_digest","path":"dir/subdir","result":"skipped"}
-  {"cache_type":"file_digest","path":"dir/subdir","result":"skipped"}
-  {"cache_type":"file_digest","path":"dune-workspace","result":"skipped"}
-  {"cache_type":"file_digest","path":"subdir","result":"skipped"}
   {"cache_type":"path_stat","path":".","result":"unchanged"}
   {"cache_type":"path_stat","path":"dir","result":"unchanged"}
   {"cache_type":"path_stat","path":"dir","result":"unchanged"}
@@ -270,12 +238,6 @@ then creating a file.
   {"cache_type":"dir_contents","path":"file-1","result":"skipped"}
   {"cache_type":"dir_contents","path":"file-5","result":"skipped"}
   {"cache_type":"dir_contents","path":"file-5","result":"skipped"}
-  {"cache_type":"file_digest","path":".","result":"skipped"}
-  {"cache_type":"file_digest","path":".","result":"skipped"}
-  {"cache_type":"file_digest","path":"dune-workspace","result":"skipped"}
-  {"cache_type":"file_digest","path":"file-1","result":"changed"}
-  {"cache_type":"file_digest","path":"file-5","result":"skipped"}
-  {"cache_type":"file_digest","path":"file-5","result":"skipped"}
   {"cache_type":"path_stat","path":".","result":"unchanged"}
   {"cache_type":"path_stat","path":".","result":"unchanged"}
   {"cache_type":"path_stat","path":"dune-workspace","result":"unchanged"}

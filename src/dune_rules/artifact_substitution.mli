@@ -50,7 +50,8 @@ val decode : string -> t option
 
 (** Copy a file, performing all required substitutions. The operation is atomic,
     i.e., the contents is first copied to a temporary file in the same directory
-    and then atomically renamed to [dst]. *)
+    and then atomically renamed to [dst]. Returns [true] if [dst] was
+    replaced. *)
 val copy_file
   :  conf:Conf.t
   -> ?chmod:(int -> int)
@@ -58,7 +59,7 @@ val copy_file
   -> src:Path.t
   -> dst:Path.t
   -> unit
-  -> unit Fiber.t
+  -> bool Fiber.t
 
 type status =
   | Some_substitution

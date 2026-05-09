@@ -259,7 +259,9 @@ let insert_dune_dep depends dune_version =
                   (match dep.constraint_ with
                    | None -> lang_constraint
                    | Some user_constraint ->
-                     merge_dune_constraints lang_constraint user_constraint)
+                     if dune_version >= (3, 23)
+                     then merge_dune_constraints lang_constraint user_constraint
+                     else And [ lang_constraint; user_constraint ])
             }
         in
         List.rev_append acc (dep :: rest))

@@ -1,9 +1,9 @@
 A library declared as [(kind ppx_rewriter) (ppx_runtime_libraries
-baz)] declares libraries the consumer needs at compile time
+runtime_dep)] declares libraries the consumer needs at compile time
 *after* preprocessing. The runtime libraries' modules are
 referenced by ppx-rewritten output, so ocamldep on the consumer's
 source cannot reason about which of them are referenced — the
-next ppx invocation may use any module of [baz].
+next ppx invocation may use any module of [runtime_dep].
 
 The compile rule for any consumer of such a ppx must therefore
 have a dep that covers every cmi in the runtime library's objdir.
@@ -14,31 +14,32 @@ libraries.
 
   $ make_dune_project 3.24
 
-[baz] is a regular unwrapped library that the ppx's expansion
-would reference at runtime.
+[runtime_dep] is a regular library that the ppx's expansion would
+reference at runtime.
 
-  $ mkdir baz
-  $ cat > baz/dune <<EOF
-  > (library (name baz) (wrapped false))
+  $ mkdir runtime_dep
+  $ cat > runtime_dep/dune <<EOF
+  > (library (name runtime_dep))
   > EOF
-  $ cat > baz/baz_mod.ml <<EOF
+  $ cat > runtime_dep/runtime_dep_mod.ml <<EOF
   > let value = 0
   > EOF
 
-[bar] is a [ppx_rewriter] declaring [baz] as a runtime library.
-The [ppx.driver] entry lets dune treat [bar] as a [pps] target
-without ppxlib; the driver itself is a no-op stub that satisfies
-dune's invocation contract enough for rule generation.
+[preprocessor] is a [ppx_rewriter] declaring [runtime_dep] as a
+runtime library. The [ppx.driver] entry lets dune treat
+[preprocessor] as a [pps] target without ppxlib; the driver
+itself is a no-op stub that satisfies dune's invocation contract
+enough for rule generation.
 
-  $ mkdir bar
-  $ cat > bar/dune <<EOF
+  $ mkdir preprocessor
+  $ cat > preprocessor/dune <<EOF
   > (library
-  >  (name bar)
+  >  (name preprocessor)
   >  (kind ppx_rewriter)
-  >  (ppx_runtime_libraries baz)
-  >  (ppx.driver (main Bar.main)))
+  >  (ppx_runtime_libraries runtime_dep)
+  >  (ppx.driver (main Preprocessor.main)))
   > EOF
-  $ cat > bar/bar.ml <<EOF
+  $ cat > preprocessor/preprocessor.ml <<EOF
   > let main () =
   >   let out = ref "" in
   >   let args =
@@ -53,31 +54,34 @@ dune's invocation contract enough for rule generation.
   >   close_out (open_out !out)
   > EOF
 
-[foo] uses [bar] as a preprocessor. [foo.ml] does not mention
-[Baz_mod] textually — the ppx's runtime references would only
-appear post-pp. Without [(libraries ...)], [foo]'s
-[requires_compile] is populated entirely by [add_pp_runtime_deps]
-in [src/dune_rules/lib.ml]: [bar] (the pps) plus its runtime
-closure ([baz]).
+[user] applies [preprocessor] as a ppx. [user.ml] does not
+mention [Runtime_dep_mod] textually — the ppx's runtime
+references would only appear post-pp. Without [(libraries ...)],
+[user]'s [requires_compile] is populated entirely by
+[add_pp_runtime_deps] in [src/dune_rules/lib.ml]: [preprocessor]
+(the pps) plus its runtime closure ([runtime_dep]).
 
-  $ mkdir foo
-  $ cat > foo/dune <<EOF
-  > (library (name foo) (wrapped false) (preprocess (pps bar)))
+  $ mkdir user
+  $ cat > user/dune <<EOF
+  > (library (name user) (preprocess (pps preprocessor)))
   > EOF
-  $ cat > foo/foo.ml <<EOF
+  $ cat > user/user.ml <<EOF
   > let _ = ()
   > EOF
 
-The compile rule's recorded deps for [foo.cmi] must cover every
-cmi in [baz/.baz.objs/byte/]. Without that, a change to any cmi
-in [baz] would not invalidate [foo.cmi]'s rule and an incremental
-rebuild could silently use a stale [foo.cmi]. The [-I
-baz/.baz.objs/byte] flag is already on the compile command line
-via [requires_compile] (so the initial build succeeds regardless),
-but only the rule's recorded deps drive incremental correctness.
+The compile rule for [user.cmi] must list every cmi in
+[runtime_dep/.runtime_dep.objs/byte/] as a dep. Without that
+coverage, a change to any of [runtime_dep]'s cmis would not
+invalidate [user.cmi], and the next build could silently use a
+stale artefact.
 
-  $ dune rules --root . --format=json --deps _build/default/foo/.foo.objs/byte/foo.cmi |
+The [-I runtime_dep/.runtime_dep.objs/byte] flag is already on
+the compile command line via [requires_compile], so the initial
+build succeeds. But the flag does not cause rebuilds; only the
+recorded deps do.
+
+  $ dune rules --root . --format=json --deps _build/default/user/.user.objs/byte/user.cmi |
   > jq -r 'include "dune"; .[] | depsGlobs
-  >   | select(.dir | endswith("baz/.baz.objs/byte"))
-  >   | "\(.dir) \(.predicate)"' | sort -u
-  _build/default/baz/.baz.objs/byte *.cmi
+  >   | select(.dir | endswith("runtime_dep/.runtime_dep.objs/byte"))
+  >   | .dir + " " + .predicate'
+  _build/default/runtime_dep/.runtime_dep.objs/byte *.cmi

@@ -97,3 +97,79 @@ invalidate that result, first for source copies and then for new local rules.
 We're done.
 
   $ stop_dune_quiet
+
+An executable-bit change must reach every build context, even when one copy
+already has the new executable bit.
+
+  $ mkdir executable-source-copy
+  $ cd executable-source-copy
+  $ make_dune_project 3.0
+  $ cat > dune-workspace <<EOF
+  > (lang dune 3.0)
+  > (context default)
+  > (context (default (name other)))
+  > EOF
+  $ cat > dune <<EOF
+  > (alias (name idle))
+  > (rule
+  >  (deps script.sh)
+  >  (target mode)
+  >  (action
+  >   (bash
+  >    "if test -x script.sh; then echo executable; else echo plain; fi > mode")))
+  > EOF
+  $ printf '#!/bin/sh\n' > script.sh
+  $ start_dune @idle
+  $ build _build/default/mode _build/other/mode
+  Success
+  $ cat _build/default/mode _build/other/mode
+  plain
+  plain
+  $ chmod +x _build/default/script.sh script.sh
+  $ touch script.sh
+  $ build _build/other/mode
+  Success
+  $ cat _build/other/mode
+  executable
+  $ stop_dune_quiet
+  $ cd ..
+
+A source_tree dependency must ignore same-content writes in watch mode, but
+rerun its dependent rule after a real content change.
+
+  $ mkdir source-tree-copy-cutoff
+  $ cd source-tree-copy-cutoff
+  $ make_dune_project 3.0
+  $ runs="$PWD/../source-tree-runs"
+  $ mkdir tree
+  $ echo one > tree/a
+  $ cat > dune <<EOF
+  > (alias (name idle))
+  > (rule
+  >  (deps (source_tree tree) (sandbox none))
+  >  (target result)
+  >  (action
+  >   (progn
+  >    (bash "echo run >> '$runs'")
+  >    (copy tree/a result))))
+  > EOF
+  $ start_dune @idle
+  $ build result
+  Success
+  $ cat "$runs"
+  run
+  $ echo one > tree/a
+  $ build result
+  Success
+  $ cat "$runs"
+  run
+  $ echo two > tree/a
+  $ build result
+  Success
+  $ cat "$runs"
+  run
+  run
+  $ cat _build/default/result
+  two
+  $ stop_dune_quiet
+  $ cd ..

@@ -4,41 +4,31 @@ type t = Thread.t
 
 let join = Thread.join
 let delay = Thread.delay
-let wait_signal = Thread.wait_signal
-let signal_watcher_interrupt : Signal.t = Usr1
-let signal_watcher_debug : Signal.t = Usr2
+let debug_signal : Signal.t = Usr2
 
 (* These are the signals that will make the scheduler attempt to terminate dune
    or signal to dune to reap a process *)
-let interrupt_signals : Signal.t list =
-  [ signal_watcher_interrupt; signal_watcher_debug; Chld; Int; Quit; Term ]
-;;
+let interrupt_signals : Signal.t list = [ Int; Quit; Term; debug_signal; Chld ]
 
 (* In addition, the scheduler also blocks some other signals so that only
    designated threads can handle them by unblocking *)
 let blocked_signals : Signal.t list = Terminal_signals.signals @ interrupt_signals
-
-let block_signals =
-  lazy
-    (let () =
-       List.iter
-         [ signal_watcher_interrupt; signal_watcher_debug; Chld ]
-         ~f:(fun signal ->
-           Sys.set_signal (Signal.to_int signal) (Signal_handle (fun _ -> ())))
-     in
-     let signos = List.map blocked_signals ~f:Signal.to_int in
-     ignore (Unix.sigprocmask SIG_BLOCK signos : int list))
-;;
+let blocked_signos = lazy (List.map blocked_signals ~f:Signal.to_int)
 
 let create =
   if Sys.win32
   then Thread.create
   else
-    (* On unix, we make sure to block signals globally before starting a
-         thread so that only the signal watcher thread can receive signals. *)
     fun f x ->
-      Lazy.force block_signals;
-      Thread.create f x
+      (* New threads inherit their creator's signal mask. Block scheduler
+         signals around [Thread.create] so the child starts with those signals
+         blocked, then restore the creator's mask so the main thread remains
+         able to handle them via the scheduler's C signal handlers. *)
+      let previous_mask = Unix.sigprocmask SIG_BLOCK (Lazy.force blocked_signos) in
+      Exn.protect
+        ~f:(fun () -> Thread.create f x)
+        ~finally:(fun () ->
+          ignore (Unix.sigprocmask SIG_SETMASK previous_mask : int list))
 ;;
 
 let spawn ~name f =

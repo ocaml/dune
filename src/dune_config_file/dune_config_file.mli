@@ -160,8 +160,7 @@ module Dune_config : sig
   val hash : t -> int
   val equal : t -> t -> bool
 
-  (** [for_scheduler config ?watch_exclusions stats_opt ~signal_watcher]
-      creates a configuration for a scheduler from the user-visible Dune
+  (** Creates a configuration for a scheduler from the user-visible Dune
       [config]. *)
   val for_scheduler
     :  t

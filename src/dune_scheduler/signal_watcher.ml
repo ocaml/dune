@@ -1,17 +1,5 @@
 open Stdune
 
-let signos = List.map Thread0.interrupt_signals ~f:Signal.to_int
-
-let macos_sigchld_warning =
-  {|
-
-*************************************************************************
-* Failed to handle signal, press Control+C to perform an emergency exit *
-*************************************************************************
-
-|}
-;;
-
 let warning =
   {|
 
@@ -22,71 +10,90 @@ let warning =
 |}
 ;;
 
+let warning_bytes = Bytes.of_string warning
+let one_second = 1.0
+
 external sys_exit : int -> _ = "caml_sys_exit"
+external install : int list -> unit = "dune_signal_watcher_install"
 
-let signal_waiter () =
-  if Sys.win32
-  then (
-    let r, w = Unix.pipe ~cloexec:true () in
-    let buf = Bytes.create 1 in
-    Sys.set_signal Sys.sigint (Signal_handle (fun _ -> assert (Unix.write w buf 0 1 = 1)));
-    Staged.stage (fun () ->
-      assert (Unix.read r buf 0 1 = 1);
-      Signal.Int))
-  else Staged.stage (fun () -> Thread.wait_signal signos |> Signal.of_int)
+type action =
+  | Continue
+  | Reap_processes
+  | Shutdown of Shutdown.Reason.t
+
+let is_exit_signal = function
+  | Signal.Int | Quit | Term -> true
+  | _ -> false
 ;;
 
-let run ~print_ctrl_c_warning q : unit =
-  let last_exit_signals = Queue.create () in
-  let one_second = Time.Span.of_secs 1. in
-  let wait_signal = Staged.unstage (signal_waiter ()) in
-  while true do
-    let signal = wait_signal () in
-    Dune_trace.emit Process (fun () -> Dune_trace.Event.signal_received signal);
-    match signal with
-    | _ when Signal.equal signal Thread0.signal_watcher_interrupt -> raise_notrace Exit
-    | _ when Signal.equal signal Thread0.signal_watcher_debug ->
-      Dune_trace.emit Diagnostics (fun () ->
-        let dump = Debug.dump () in
-        Dune_trace.Event.debug dump)
-    | Chld -> Event.Queue.send_job_completed_ready q
-    | Int | Quit | Term ->
-      Event.Queue.send_shutdown q (Signal signal);
-      let now = Time.now () in
-      Queue.push last_exit_signals now;
-      (* Discard old signals *)
-      while
-        Queue.length last_exit_signals > 0
-        && Poly.(Time.diff now (Queue.peek_exn last_exit_signals) > one_second)
-      do
-        ignore (Queue.pop_exn last_exit_signals : Time.t)
-      done;
-      let n = Queue.length last_exit_signals in
-      if n = 2 && print_ctrl_c_warning then prerr_endline warning;
-      if n = 3 then sys_exit 1
-    | _ ->
-      (* On macOS, [sigwait] can occasionally return with success, yet skip
-         setting `&signo` when waiting on a set containing [SIGCHLD]. OCaml
-         returns invalid uninitialized garbage in this case. Ignore it rather
-         than crashing the scheduler. *)
-      prerr_endline macos_sigchld_warning;
-      Event.Queue.send_job_completed_ready q
-  done
+let write_warning () =
+  try
+    ignore
+      (Unix.single_write Unix.stderr warning_bytes 0 (Bytes.length warning_bytes) : int)
+  with
+  | Unix.Unix_error _ -> ()
 ;;
 
-(* Make sure that we never have more than one signal watcher running at a time *)
-let m = Mutex.create ()
+let exit_signals = Queue.create ()
+
+let record_exit_signal ~print_ctrl_c_warning =
+  let now = Unix.gettimeofday () in
+  Queue.push exit_signals now;
+  while
+    Queue.length exit_signals > 0 && now -. Queue.peek_exn exit_signals > one_second
+  do
+    ignore (Queue.pop_exn exit_signals : float)
+  done;
+  let count = Queue.length exit_signals in
+  if count = 2 && print_ctrl_c_warning then write_warning ();
+  if count >= 3 then sys_exit 1
+;;
+
+let should_print_ctrl_c_warning = ref true
 
 let init ~print_ctrl_c_warning q =
-  Thread0.spawn ~name:"signal-watcher" (fun () ->
-    let res =
-      Mutex.protect m (fun () ->
-        try
-          run ~print_ctrl_c_warning q;
-          None
-        with
-        | Exit -> None
-        | exn -> Some exn)
-    in
-    Option.iter res ~f:raise)
+  Queue.clear exit_signals;
+  should_print_ctrl_c_warning := print_ctrl_c_warning;
+  let signals = if Sys.win32 then [ Signal.Int ] else Thread0.interrupt_signals in
+  let signal_numbers = List.map signals ~f:Signal.to_int in
+  if Sys.win32
+  then (
+    Event.Queue.use_for_signal_wakeup q;
+    install signal_numbers)
+  else (
+    ignore (Unix.sigprocmask SIG_BLOCK signal_numbers : int list);
+    Exn.protect
+      ~f:(fun () ->
+        Event.Queue.use_for_signal_wakeup q;
+        install signal_numbers)
+      ~finally:(fun () -> ignore (Unix.sigprocmask SIG_UNBLOCK signal_numbers : int list)))
+;;
+
+let cleanup q =
+  Queue.clear exit_signals;
+  if Sys.win32
+  then Event.Queue.stop_using_signal_wakeup q
+  else (
+    let signal_numbers = List.map Thread0.interrupt_signals ~f:Signal.to_int in
+    ignore (Unix.sigprocmask SIG_BLOCK signal_numbers : int list);
+    Exn.protect
+      ~f:(fun () -> Event.Queue.stop_using_signal_wakeup q)
+      ~finally:(fun () -> ignore (Unix.sigprocmask SIG_UNBLOCK signal_numbers : int list)))
+;;
+
+let handle signal =
+  if is_exit_signal signal
+  then record_exit_signal ~print_ctrl_c_warning:!should_print_ctrl_c_warning;
+  Dune_trace.emit Process (fun () -> Dune_trace.Event.signal_received signal);
+  if Signal.equal signal Thread0.debug_signal
+  then (
+    Dune_trace.emit Diagnostics (fun () ->
+      let dump = Debug.dump () in
+      Dune_trace.Event.debug dump);
+    Continue)
+  else (
+    match signal with
+    | Chld -> Reap_processes
+    | Int | Quit | Term -> Shutdown (Signal signal)
+    | _ -> Continue)
 ;;

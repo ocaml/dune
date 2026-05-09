@@ -1,4 +1,4 @@
-Dune can emit events for threads started
+Dune does not start a signal watcher thread for a plain build
 
   $ make_dune_project 3.21
 
@@ -11,4 +11,3 @@ Dune can emit events for threads started
   $ dune build @foo
 
   $ dune trace cat | jq -c 'select(.cat == "thread") | .args' | sort -u
-  {"name":"signal-watcher"}

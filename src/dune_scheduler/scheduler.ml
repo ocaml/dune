@@ -156,17 +156,16 @@ let kill_and_wait_for_all_processes t =
     | Shutdown reason ->
       got_shutdown reason;
       saw_signal := Got_shutdown
-    | Job_complete_ready ->
-      ignore (Process_watcher.wait_unix t.process_watcher : Fiber.fill list)
+    | Signal_received signal ->
+      (match Signal_watcher.handle signal with
+       | Continue -> ()
+       | Reap_processes ->
+         ignore (Process_watcher.wait_unix t.process_watcher : Fiber.fill list)
+       | Shutdown reason ->
+         got_shutdown reason;
+         saw_signal := Got_shutdown)
     | _ -> ()
   done;
-  (* This silliness is needed because we have tests that run the scheduler
-     more than once per process. Such tests require the signal watcher to be
-     reset with the correct event queue. *)
-  if not Sys.win32
-  then (
-    Unix.kill (Unix.getpid ()) (Signal.to_int Thread0.signal_watcher_interrupt);
-    Thread.join t.signal_watcher);
   !saw_signal
 ;;
 
@@ -185,11 +184,6 @@ let () =
 ;;
 
 let prepare (config : Config.t) ~(handler : Handler.t) ~events ~file_watcher =
-  (* The signal watcher must be initialized first so that signals are
-     blocked in all threads. *)
-  let signal_watcher =
-    Signal_watcher.init ~print_ctrl_c_warning:config.print_ctrl_c_warning events
-  in
   let cancel = Fiber.Cancel.create () in
   let process_watcher = Process_watcher.init events in
   let async_io = Async_io.create events in
@@ -215,7 +209,6 @@ let prepare (config : Config.t) ~(handler : Handler.t) ~events ~file_watcher =
     ; build_inputs_changed = Trigger.create ()
     ; cancel
     ; thread_pool = lazy (Thread_pool.create ~min_workers:4 ~max_workers:50)
-    ; signal_watcher
     ; async_io
     }
   in
@@ -266,10 +259,16 @@ module Run_once = struct
     | File_system_watcher_terminated ->
       filesystem_watcher_terminated ();
       raise (Abort Already_reported)
-    | Job_complete_ready ->
-      (match Process_watcher.wait_unix t.process_watcher with
-       | [] -> iter t
-       | fills -> fills)
+    | Signal_received signal ->
+      (match Signal_watcher.handle signal with
+       | Continue -> iter t
+       | Reap_processes ->
+         (match Process_watcher.wait_unix t.process_watcher with
+          | [] -> iter t
+          | fills -> fills)
+       | Shutdown reason ->
+         got_shutdown reason;
+         raise @@ Abort (Shutdown_requested reason))
     | Fiber_fill_ivar fill -> [ fill ]
     | Shutdown reason ->
       got_shutdown reason;
@@ -500,52 +499,56 @@ module Run = struct
         run
     =
     let events = Event_queue.create () in
-    let file_watcher =
-      match file_watcher with
-      | No_watcher -> None
-      | Automatic ->
-        Some
-          (File_watcher.create_default
-             ~scheduler:
-               { thread_safe_send_emit_events_job =
-                   (fun job -> Event_queue.send_file_watcher_task events job)
-               }
-             ~watch_exclusions:config.watch_exclusions
-             ())
-    in
-    let t = prepare config ~handler:on_event ~events ~file_watcher in
-    Option.iter file_watcher ~f:(fun dune_file_watcher ->
-      let initial_invalidation =
-        Fs_memo.init ~dune_file_watcher:(Some dune_file_watcher)
-      in
-      Memo.reset initial_invalidation);
-    let result =
-      let run =
-        match timeout with
-        | None -> run
-        | Some timeout ->
-          fun () ->
-            let sleep = Async_io.sleep t.async_io timeout in
-            Fiber.fork_and_join_unit
-              (fun () ->
-                 let+ res = Async_io.Task.await sleep in
-                 match res with
-                 | Ok () -> Event_queue.send_shutdown t.events Timeout
-                 | Error `Cancelled -> ()
-                 | Error (`Exn _) -> assert false)
-              (fun () ->
-                 Fiber.finalize run ~finally:(fun () -> Async_io.Task.cancel sleep))
-      in
-      match Run_once.run_and_cleanup t run with
-      | Ok a -> Result.Ok a
-      | Error (Shutdown_requested reason) -> Error (Shutdown.E reason, None)
-      | Error Already_reported -> Error (Dune_util.Report_error.Already_reported, None)
-      | Error (Exn exn_with_bt) -> Error (exn_with_bt.exn, Some exn_with_bt.backtrace)
-    in
-    match result with
-    | Ok a -> a
-    | Error (exn, None) -> Exn.raise exn
-    | Error (exn, Some bt) -> Exn.raise_with_backtrace exn bt
+    Signal_watcher.init ~print_ctrl_c_warning:config.print_ctrl_c_warning events;
+    Exn.protect
+      ~finally:(fun () -> Signal_watcher.cleanup events)
+      ~f:(fun () ->
+        let file_watcher =
+          match file_watcher with
+          | No_watcher -> None
+          | Automatic ->
+            Some
+              (File_watcher.create_default
+                 ~scheduler:
+                   { thread_safe_send_emit_events_job =
+                       (fun job -> Event_queue.send_file_watcher_task events job)
+                   }
+                 ~watch_exclusions:config.watch_exclusions
+                 ())
+        in
+        let t = prepare config ~handler:on_event ~events ~file_watcher in
+        Option.iter file_watcher ~f:(fun dune_file_watcher ->
+          let initial_invalidation =
+            Fs_memo.init ~dune_file_watcher:(Some dune_file_watcher)
+          in
+          Memo.reset initial_invalidation);
+        let result =
+          let run =
+            match timeout with
+            | None -> run
+            | Some timeout ->
+              fun () ->
+                let sleep = Async_io.sleep t.async_io timeout in
+                Fiber.fork_and_join_unit
+                  (fun () ->
+                     let+ res = Async_io.Task.await sleep in
+                     match res with
+                     | Ok () -> Event_queue.send_shutdown t.events Timeout
+                     | Error `Cancelled -> ()
+                     | Error (`Exn _) -> assert false)
+                  (fun () ->
+                     Fiber.finalize run ~finally:(fun () -> Async_io.Task.cancel sleep))
+          in
+          match Run_once.run_and_cleanup t run with
+          | Ok a -> Result.Ok a
+          | Error (Shutdown_requested reason) -> Error (Shutdown.E reason, None)
+          | Error Already_reported -> Error (Dune_util.Report_error.Already_reported, None)
+          | Error (Exn exn_with_bt) -> Error (exn_with_bt.exn, Some exn_with_bt.backtrace)
+        in
+        match result with
+        | Ok a -> a
+        | Error (exn, None) -> Exn.raise exn
+        | Error (exn, Some bt) -> Exn.raise_with_backtrace exn bt)
   ;;
 end
 

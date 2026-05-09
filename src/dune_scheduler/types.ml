@@ -95,7 +95,6 @@ module Scheduler = struct
     ; mutable build_inputs_changed : Trigger.t
     ; mutable cancel : Fiber.Cancel.t
     ; thread_pool : Thread_pool.t Lazy.t
-    ; signal_watcher : Thread.t
     ; async_io : Async_io.t
     }
 

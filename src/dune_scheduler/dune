@@ -7,7 +7,7 @@
   (pps ppx_expect))
  (foreign_stubs
   (language c)
-  (names fsevents_stubs fswatch_win_stubs))
+  (names fsevents_stubs fswatch_win_stubs signal_watcher_stubs))
  (libraries
   ocaml_inotify
   lev

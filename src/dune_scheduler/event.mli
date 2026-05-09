@@ -19,7 +19,7 @@ type t =
   | File_system_watcher_terminated
   | Shutdown of Shutdown.Reason.t
   | Fiber_fill_ivar of Fiber.fill
-  | Job_complete_ready
+  | Signal_received of Signal.t
 
 module Queue : sig
   type event := t
@@ -57,7 +57,8 @@ module Queue : sig
 
   val send_invalidation_event : t -> Memo.Invalidation.t -> unit
   val send_job_completed : t -> job -> Proc.Process_info.t -> unit
-  val send_job_completed_ready : t -> unit
   val send_shutdown : t -> Shutdown.Reason.t -> unit
+  val use_for_signal_wakeup : t -> unit
+  val stop_using_signal_wakeup : t -> unit
   val yield_if_there_are_pending_events : t -> unit Fiber.t
 end

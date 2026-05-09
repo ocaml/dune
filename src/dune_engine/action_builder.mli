@@ -65,20 +65,6 @@ val record : 'a -> Dep.Set.t -> f:(Dep.t -> Dep.Fact.t Memo.t) -> 'a t
     until the action's dependencies need to be determined. *)
 val record_success : unit Memo.t -> unit t
 
-module Expert : sig
-  (** Like [record] but records a dependency on a *source* file. Evaluating the resulting
-      [t] in the [Eager] mode will raise a user error if the file can't be digested.
-
-      This function is in the [Expert] module because depending on files in the source
-      directory is usually a mistake. As of 2023-11-14, we use this function only for
-      setting up the rules that copy files from the source to the build directory. *)
-  val record_dep_on_source_file_exn
-    :  'a
-    -> loc:(unit -> Loc.t option Memo.t)
-    -> Path.Source.t
-    -> 'a t
-end
-
 (** {1 Evaluation} *)
 
 (** Evaluate a [t] and collect the set of its dependencies. This avoids doing the build

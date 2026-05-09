@@ -37,11 +37,15 @@ module Workspace_local = struct
     let remove (targets : Targets.Validated.t) =
       let t = Lazy.force t in
       Workspace_cache.mark_dirty ();
-      let remove = Path.Build.Table.remove t.digests in
+      let remove path =
+        Fs_memo.Source_file_copy_cache.remove path;
+        Path.Build.Table.remove t.digests path
+      in
       Targets.Validated.iter targets ~file:remove ~dir:remove
     ;;
 
     let remove_target path =
+      Fs_memo.Source_file_copy_cache.remove path;
       let t = Lazy.force t in
       Workspace_cache.mark_dirty ();
       match Path.Build.Table.find t.digests path with
@@ -83,6 +87,7 @@ module Workspace_local = struct
     ;;
 
     let remove_subtree root =
+      Fs_memo.Source_file_copy_cache.remove_subtree root;
       let t = Lazy.force t in
       Workspace_cache.mark_dirty ();
       t.generation <- t.generation + 1;

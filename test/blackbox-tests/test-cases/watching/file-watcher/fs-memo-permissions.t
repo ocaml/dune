@@ -8,6 +8,23 @@ events. This is a known bug.
   $ export DUNE_TRACE=cache
   $ setup_xdg_runtime_dir
 
+  $ fs_memo_test () {
+  >   echo "------------------------------------------"
+  >   before=$(cat _build/default/result 2>/dev/null)
+  >   start_dune
+  >   build . | grep -v Success
+  >   between=$(cat _build/default/result)
+  >   eval "$@"
+  >   build . | grep -v Success
+  >   stop_dune >> .#tmp
+  >   after=$(cat _build/default/result)
+  >   cat .#tmp
+  >   echo "------------------------------------------"
+  >   echo "result = '$before' -> '$between' -> '$after'"
+  >   echo "------------------------------------------"
+  >   dune trace cat | jq -c 'select(.name == "fs_update") | .args | select(.path != "dune-workspace")' | sort
+  >   rm .#tmp
+  > }
 
   $ make_fs_memo_project
 
@@ -28,9 +45,6 @@ of failing.
   ------------------------------------------
   result = '' -> '13' -> '13'
   ------------------------------------------
-  {"cache_type":"dir_contents","path":"dune-workspace","result":"skipped"}
-  {"cache_type":"file_digest","path":"dune-workspace","result":"skipped"}
-  {"cache_type":"path_stat","path":"dune-workspace","result":"unchanged"}
 
 If we repeat the test, we finally see the failure.
 
@@ -46,9 +60,6 @@ If we repeat the test, we finally see the failure.
   ------------------------------------------
   result = '13' -> '13' -> '13'
   ------------------------------------------
-  {"cache_type":"dir_contents","path":"dune-workspace","result":"skipped"}
-  {"cache_type":"file_digest","path":"dune-workspace","result":"skipped"}
-  {"cache_type":"path_stat","path":"dune-workspace","result":"unchanged"}
 
 Same problem in the other direction.
 
@@ -63,9 +74,6 @@ Same problem in the other direction.
   ------------------------------------------
   result = '13' -> '13' -> '13'
   ------------------------------------------
-  {"cache_type":"dir_contents","path":"dune-workspace","result":"skipped"}
-  {"cache_type":"file_digest","path":"dune-workspace","result":"skipped"}
-  {"cache_type":"path_stat","path":"dune-workspace","result":"unchanged"}
 
   $ fs_memo_test "echo How about now?"
   ------------------------------------------
@@ -75,9 +83,6 @@ Same problem in the other direction.
   ------------------------------------------
   result = '13' -> '13' -> '13'
   ------------------------------------------
-  {"cache_type":"dir_contents","path":"dune-workspace","result":"skipped"}
-  {"cache_type":"file_digest","path":"dune-workspace","result":"skipped"}
-  {"cache_type":"path_stat","path":"dune-workspace","result":"unchanged"}
 
 Same problem for files.
 
@@ -88,9 +93,6 @@ Same problem for files.
   ------------------------------------------
   result = '13' -> '13' -> '13'
   ------------------------------------------
-  {"cache_type":"dir_contents","path":"dune-workspace","result":"skipped"}
-  {"cache_type":"file_digest","path":"dune-workspace","result":"skipped"}
-  {"cache_type":"path_stat","path":"dune-workspace","result":"unchanged"}
 
   $ fs_memo_test "chmod +r file-1"
   ------------------------------------------
@@ -107,6 +109,3 @@ Same problem for files.
   ------------------------------------------
   result = '13' -> '13' -> '13'
   ------------------------------------------
-  {"cache_type":"dir_contents","path":"dune-workspace","result":"skipped"}
-  {"cache_type":"file_digest","path":"dune-workspace","result":"skipped"}
-  {"cache_type":"path_stat","path":"dune-workspace","result":"unchanged"}

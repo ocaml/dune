@@ -1,23 +1,19 @@
 Regression guard for soundness when a consumer depends on an
-implementation of a virtual library whose [(wrapped ...)] setting
-is *inherited* from the virtual library (the implementation does
-not redeclare [wrapped]).
+implementation that inherits its [(wrapped ...)] setting from the
+virtual library (the implementation does not redeclare [wrapped]).
 
-The implementation contributes both the virtual-module impl and
-the vlib's concrete (non-virtual) modules into its closure. A
-consumer that reaches one of the concrete modules through the
-vlib wrapper (e.g. [Vlib.Helper.h]) needs that module's [.cmi] at
-compile time. The consumer's compile rule must therefore cover the
-implementation's [.cmi] directory; any future per-module narrowing
+[vlib] declares [(wrapped true)] with a virtual module [virt_iface]
+and a concrete sibling [helper]. [impl] implements [vlib] without
+redeclaring [wrapped]. The executable [main] depends on [impl] and
+reaches both modules via the vlib wrapper: [Vlib.Virt_iface.x] and
+[Vlib.Helper.h].
+
+The implementation's closure includes both [virt_iface]'s impl and
+[vlib]'s concrete modules. [main]'s compile rule must therefore
+cover [impl]'s [.cmi] directory. Any future per-module narrowing
 that treats inherited-wrapped libraries as ordinary local libraries
-must still keep that coverage, otherwise a change to a concrete
-module's interface fails to invalidate the consumer.
-
-Structure: [vlib] declares [(wrapped true)], a virtual module
-[virt_iface], and a concrete sibling [helper]. [impl] implements
-[vlib] and inherits its [wrapped] setting. The executable [main]
-depends on [impl] and references both modules through the vlib
-wrapper.
+must still keep that coverage; otherwise a change to [helper]'s
+interface fails to invalidate [main].
 
   $ cat > dune-project <<EOF
   > (lang dune 3.23)
@@ -74,7 +70,7 @@ cover [helper.cmi], so [main] rebuilds:
   > let z = 42
   > EOF
   $ dune build @check
-  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("dune__exe__Main"))]'
+  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("consumer/\\.main\\.eobjs/byte/"))]'
   [
     {
       "target_files": [

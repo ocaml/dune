@@ -59,7 +59,7 @@ interface fails to invalidate [main].
 
 Edit [helper]'s interface (a concrete vlib module). [main] reaches
 [helper] through the vlib wrapper; the compile-rule deps must
-cover [helper.cmi], so [main] rebuilds:
+cover [vlib__Helper.cmi], so [main] rebuilds:
 
   $ cat > vlib/helper.mli <<EOF
   > val h : string

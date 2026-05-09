@@ -46,56 +46,84 @@ Same with version of the language >= 2.6, we now add the constraint:
     "dune" {>= "2.6"}
   ]
 
-When the user specifies a dune constraint matching the lang version,
-there should be no duplicate bounds (issue #3916):
+For projects on lang versions < 3.23, no deduplication occurs: the
+lang lower bound is conjoined with the user's constraint verbatim
+(issue #14436):
 
   $ cat > dune-project <<EOF
-  > (lang dune 2.7)
+  > (lang dune 3.22)
   > (name foo)
   > (generate_opam_files true)
-  > (package (name foo) (depends (dune (>= 2.7))))
+  > (package (name foo) (depends (dune (>= 3.22))))
   > EOF
 
   $ dune build foo.opam
   $ dune_cmd print-from 'depends' < foo.opam | dune_cmd print-until ']'
   depends: [
-    "dune" {>= "2.7"}
+    "dune" {>= "3.22" & >= "3.22"}
+    "odoc" {with-doc}
+  ]
+
+From `(lang dune 3.23)`, opam files are in `Generated_with_diff` mode:
+`dune build foo.opam` writes the computed opam file under `_build/`
+but does not promote to source. The blocks below remove the stale
+`foo.opam` left by earlier blocks before each rebuild and read the
+generated file from `_build/default/`.
+
+When the user specifies a dune constraint matching the lang version,
+there should be no duplicate bounds (issue #3916):
+
+  $ rm -f foo.opam
+  $ cat > dune-project <<EOF
+  > (lang dune 3.23)
+  > (name foo)
+  > (generate_opam_files true)
+  > (package (name foo) (depends (dune (>= 3.23))))
+  > EOF
+
+  $ dune build foo.opam
+  $ dune_cmd print-from 'depends' < _build/default/foo.opam | dune_cmd print-until ']'
+  depends: [
+    "dune" {>= "3.23"}
     "odoc" {with-doc}
   ]
 
 When the user specifies a higher patch version than the lang version,
 the more restrictive user constraint should be kept (issue #11106):
 
+  $ rm -f foo.opam
   $ cat > dune-project <<EOF
-  > (lang dune 3.16)
+  > (lang dune 3.23)
   > (name foo)
   > (generate_opam_files true)
-  > (package (name foo) (depends (dune (>= 3.16.0))))
+  > (package (name foo) (depends (dune (>= 3.23.0))))
   > EOF
 
   $ dune build foo.opam
-  $ dune_cmd print-from 'depends' < foo.opam | dune_cmd print-until ']'
+  $ dune_cmd print-from 'depends' < _build/default/foo.opam | dune_cmd print-until ']'
   depends: [
-    "dune" {>= "3.16.0"}
+    "dune" {>= "3.23.0"}
     "odoc" {with-doc}
   ]
 
 When the user specifies a lower bound than the lang version, a warning
 is emitted and the lang constraint takes precedence:
 
+  $ rm -f foo.opam
   $ cat > dune-project <<EOF
-  > (lang dune 2.7)
+  > (lang dune 3.23)
   > (name foo)
   > (generate_opam_files true)
-  > (package (name foo) (depends (dune (>= 2.5))))
+  > (package (name foo) (depends (dune (>= 3.20))))
   > EOF
 
   $ dune build foo.opam
-  Warning: The lower bound >= 2.5 on dune in the depends field is less than the
-  dune language version 2.7. The generated opam file will use >= 2.7 instead.
-  $ dune_cmd print-from 'depends' < foo.opam | dune_cmd print-until ']'
+  Warning: The lower bound >= 3.20 on dune in the depends field is less than
+  the dune language version 3.23. The generated opam file will use >= 3.23
+  instead.
+  $ dune_cmd print-from 'depends' < _build/default/foo.opam | dune_cmd print-until ']'
   depends: [
-    "dune" {>= "2.7"}
+    "dune" {>= "3.23"}
     "odoc" {with-doc}
   ]
 

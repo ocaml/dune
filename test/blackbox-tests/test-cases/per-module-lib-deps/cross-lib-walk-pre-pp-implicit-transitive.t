@@ -1,29 +1,31 @@
-Regression guard for cross-library dependency tracking through a
-preprocessed entry module.
+Regression test for cross-library dependency tracking through a
+preprocessed library's interface.
 
-A consumer compiled against a library with a preprocessed entry
-module must still see the [.cmi] of any transitive library whose
-type signature leaks through that entry module's interface — even
-when the consumer never names the transitive library
-syntactically.
+Three libraries, all unwrapped. [other_dep] defines a record
+type [Other.t]. [pp_dep] is preprocessed, depends on
+[other_dep], and re-exports [Other.t] in its [.mli]. [consumer]
+depends only on [pp_dep] and accesses a field of a value of
+type [Other.t] without ever naming [Other].
 
-The cross-library walker (used to compute per-module dependency
-sets) stops at preprocessed entry modules because ocamldep on the
-pre-preprocessing source can fail; the neighbour test
-[cross-lib-walk-pre-pp-source.t] guards that stopping behaviour.
-When the preprocessed module's [.mli] mentions a type from another
-library, the walker cannot observe the link. Any per-module
-filtering of include flags must be conservative enough to keep the
-transitive library on the consumer's include path; otherwise
-type-checking the consumer fails the moment it touches the
-transitive type.
+The consumer's compile must find [other.cmi] on its include
+path; otherwise the field access fails with "Unbound record
+field x".
+
+Dune normally discovers cross-library type leaks by running
+ocamldep on each module's source. For preprocessed modules,
+ocamldep can fail on the pre-preprocessing source, so dune
+skips it — see neighbour test
+[cross-lib-walk-pre-pp-source.t]. As a result, dune cannot
+observe the implicit dependency from [consumer] to [other_dep]
+through [pp_dep]'s interface. The consumer's include flags
+must therefore conservatively retain [other_dep]'s [-I]/[-H]
+even though dune sees no direct link.
 
   $ cat > dune-project <<EOF
   > (lang dune 3.0)
   > EOF
 
-[other_dep] is unwrapped (so tight-eligible) and exposes a record
-type:
+[other_dep]:
 
   $ mkdir other_dep
   $ cat > other_dep/dune <<EOF
@@ -38,9 +40,7 @@ type:
   > val make : int -> string -> t
   > EOF
 
-[pp_dep] is unwrapped + preprocessed. Its [.mli] mentions
-[Other.t]; this is the implicit-transitive link from consumer to
-[other_dep] that ocamldep on the consumer cannot observe.
+[pp_dep]:
 
   $ mkdir pp_dep
   $ cat > pp_dep/dune <<EOF
@@ -57,9 +57,9 @@ type:
   > val make_thing : unit -> Other.t
   > EOF
 
-Consumer references [D.make_thing] and accesses its [.x] field.
-The field access forces the type checker to load [other.cmi]
-even though [Other] is never named in [c.ml].
+[consumer] accesses [.x] on a [D.make_thing ()] value, forcing
+the type checker to load [other.cmi] even though [Other] is
+never named in [c.ml]:
 
   $ mkdir consumer
   $ cat > consumer/dune <<EOF
@@ -70,9 +70,6 @@ even though [Other] is never named in [c.ml].
   > let _ = v.x
   > EOF
 
-Build the consumer. The build must succeed. If a future change
-narrows [c.ml]'s compile rule to drop [other_dep]'s [-I]/[-H] on
-the basis of the walker's tight set alone, this fails with
-"Unbound record field x".
+The build must succeed:
 
   $ dune build @check

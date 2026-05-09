@@ -944,12 +944,103 @@ module Solver = struct
       ;;
     end
 
+    module Cross_platform_version = struct
+      (* Implements @art-w's cross-platform version equality constraint from
+         https://github.com/ocaml/dune/issues/13647. For each (package_name,
+         version) appearing as an impl on any platform, introduce a "somewhere"
+         SAT variable that is true iff some platform selected [package_name] at
+         [version]. Two kinds of clauses are added:
+         - For each per-platform impl: [impl_var implies somewhere].
+         - At-most-one across the somewhere-vars of each [name].
+         Together these force every platform that selects [name] to select the
+         same version, while still permitting platforms to omit a package
+         entirely (e.g. unix-only packages on Windows). *)
+      module Key = struct
+        type t = OpamPackage.Name.t * OpamPackage.Version.t
+
+        let compare (n1, v1) (n2, v2) =
+          match Ordering.of_int (OpamPackage.Name.compare n1 n2) with
+          | Eq -> Ordering.of_int (OpamPackage.Version.compare v1 v2)
+          | x -> x
+        ;;
+
+        let to_dyn (n, v) =
+          Dyn.Tuple
+            [ Dyn.string (OpamPackage.Name.to_string n)
+            ; Dyn.string (OpamPackage.Version.to_string v)
+            ]
+        ;;
+      end
+
+      module Key_map = Map.Make (Key)
+
+      type t =
+        { sat : Sat.t
+        ; mutable somewhere_vars : Sat.lit Key_map.t
+        ; (* For each package name, the list of somewhere-vars across its
+             versions. Used at seal time to add the at-most-one clauses. *)
+          mutable per_name : Sat.lit list ref OpamPackage.Name.Map.t
+        }
+
+      let create sat =
+        { sat; somewhere_vars = Key_map.empty; per_name = OpamPackage.Name.Map.empty }
+      ;;
+
+      let somewhere_var t name version =
+        let key = name, version in
+        match Key_map.find t.somewhere_vars key with
+        | Some v -> v
+        | None ->
+          (* The user data attached to this SAT variable is opaque to the SAT
+             engine — we use Dummy since the variable doesn't represent a real
+             package selection. *)
+          let v = Sat.add_variable t.sat Input.Dummy in
+          t.somewhere_vars <- Key_map.set t.somewhere_vars key v;
+          let bucket =
+            match OpamPackage.Name.Map.find_opt name t.per_name with
+            | Some b -> b
+            | None ->
+              let b = ref [] in
+              t.per_name <- OpamPackage.Name.Map.add name b t.per_name;
+              b
+          in
+          bucket := v :: !bucket;
+          v
+      ;;
+
+      (* If this impl represents a real (name, version, platform) selection,
+         add the implication [impl_var implies somewhere(name, version)]. Other
+         impl kinds (Virtual, Reject, Dummy) don't participate. *)
+      let process t impl_var (impl : Input.impl) =
+        match impl with
+        | RealImpl real_impl ->
+          let pkg = real_impl.pkg in
+          let name = OpamPackage.name pkg in
+          let version = OpamPackage.version pkg in
+          let som = somewhere_var t name version in
+          Sat.implies t.sat impl_var [ som ] ~reason:"cross-platform version equality"
+        | VirtualImpl _ | Reject _ | Dummy -> ()
+      ;;
+
+      (* Add at-most-one over the somewhere-vars per package name. Call after
+         all impls have been processed. *)
+      let seal t =
+        OpamPackage.Name.Map.iter
+          (fun _name bucket ->
+             match !bucket with
+             | [] | [ _ ] -> ()
+             | vars -> ignore (Sat.at_most_one vars : Sat.at_most_one_clause))
+          t.per_name
+      ;;
+    end
+
     (* Starting from [root_req], explore all the feeds and implementations we
        might need, adding all of them to [sat_problem]. *)
     let build_problem context root_req sat ~max_avoids ~dummy_impl =
       (* For each (iface, source) we have a list of implementations. *)
       let impl_cache = Fiber.Cache.create (module Input.Role) in
       let conflict_classes = Conflict_classes.create () in
+      let cross_platform_versions = Cross_platform_version.create sat in
       let avoids = ref [] in
       let+ () =
         let rec lookup_impl expand_deps role =
@@ -965,6 +1056,7 @@ module Solver = struct
           let+ () =
             Fiber.parallel_iter !impls ~f:(fun { var = impl_var; impl } ->
               Conflict_classes.process conflict_classes role impl_var impl;
+              Cross_platform_version.process cross_platform_versions impl_var impl;
               if Input.Impl.avoid impl then avoids := impl_var :: !avoids;
               match expand_deps with
               | `No_expand -> Fiber.return ()
@@ -1037,6 +1129,7 @@ module Solver = struct
         (* All impl_candidates have now been added, so snapshot the cache. *)
       in
       Conflict_classes.seal conflict_classes;
+      Cross_platform_version.seal cross_platform_versions;
       (match max_avoids, !avoids with
        | None, _ | _, [] -> ()
        | Some max_avoids, avoids ->
@@ -2137,92 +2230,37 @@ let solve_lock_dir
           in
           let* pkgs_by_name =
             let+ pkgs =
-              (* For single-solve, we require the same version across all
-                 platforms. Detect version conflicts using the per-platform
-                 selection in [packages_by_platform], and report them grouped
-                 by version with the platforms that selected each. *)
-              let conflicts =
-                OpamPackage.Name.Map.fold
-                  (fun name by_platform acc ->
-                     let versions =
-                       Platform_id.Map.values by_platform
-                       |> List.map ~f:Package_version.of_opam_package_version
-                     in
-                     let distinct =
-                       List.fold_left versions ~init:[] ~f:(fun seen v ->
-                         if List.exists seen ~f:(Package_version.equal v)
-                         then seen
-                         else v :: seen)
-                     in
-                     match distinct with
-                     | [] | [ _ ] -> acc
-                     | _ ->
-                       let groups =
-                         Platform_id.Map.foldi
-                           by_platform
-                           ~init:Package_version.Map.empty
-                           ~f:(fun platform_id version acc ->
-                             let version =
-                               Package_version.of_opam_package_version version
-                             in
-                             Package_version.Map.update acc version ~f:(function
-                               | None -> Some [ platform_id ]
-                               | Some ids -> Some (platform_id :: ids)))
-                       in
-                       (name, groups) :: acc)
-                  packages_by_platform
-                  []
-              in
-              (match conflicts with
-               | [] -> ()
-               | _ ->
-                 let env_for_platform_id id =
-                   Platform_id.Map.find_exn platform_overlays_map id
-                   |> Solver_env.extend solver_env
-                 in
-                 let pp_conflict (name, groups) =
-                   Pp.box
-                     ~indent:2
-                     (Pp.concat
-                        ~sep:Pp.cut
-                        (Pp.textf "- %s:" (OpamPackage.Name.to_string name)
-                         :: (Package_version.Map.to_list groups
-                             |> List.map ~f:(fun (version, ids) ->
-                               Pp.box
-                                 ~indent:2
-                                 (Pp.concat
-                                    ~sep:Pp.cut
-                                    [ Pp.textf
-                                        "version %s on:"
-                                        (Package_version.to_string version)
-                                    ; Pp.enumerate
-                                        (List.rev_map ids ~f:env_for_platform_id)
-                                        ~f:Solver_env.pp_oneline
-                                    ])))))
-                 in
-                 raise
-                   (User_error.E
-                      (User_error.make
-                         [ Pp.text
-                             "Multi-platform solving selected different versions of the \
-                              same package on different platforms. This is not \
-                              supported."
-                         ; Pp.text "The following packages have version conflicts:"
-                         ; Pp.concat ~sep:Pp.cut (List.map conflicts ~f:pp_conflict)
-                         ])));
-              (* After the conflict check, every package has a single version
-                 across all platforms, so pick the first per name. *)
+              (* Deduplicate packages - same package may appear for multiple
+                 platforms. The SAT-level cross-platform version equality
+                 constraint guarantees the version is identical across
+                 platforms, so the fold below either inserts a fresh entry or
+                 sees a matching version. A mismatch indicates a bug in the
+                 SAT setup, not user error. *)
               let version_by_package_name =
-                Package_name.Map.of_list_map_exn
-                  (List.sort_uniq solution ~compare:(fun a b ->
-                     Ordering.of_int
-                       (OpamPackage.Name.compare
-                          (OpamPackage.name a)
-                          (OpamPackage.name b))))
-                  ~f:(fun package ->
-                    ( Package_name.of_opam_package_name (OpamPackage.name package)
-                    , Package_version.of_opam_package_version
-                        (OpamPackage.version package) ))
+                List.fold_left
+                  solution
+                  ~init:Package_name.Map.empty
+                  ~f:(fun acc package ->
+                    let name =
+                      Package_name.of_opam_package_name (OpamPackage.name package)
+                    in
+                    let version =
+                      Package_version.of_opam_package_version
+                        (OpamPackage.version package)
+                    in
+                    match Package_name.Map.find acc name with
+                    | None -> Package_name.Map.set acc name version
+                    | Some existing_version ->
+                      if not (Package_version.equal existing_version version)
+                      then
+                        Code_error.raise
+                          "Cross-platform version equality SAT constraint failed: solver \
+                           selected multiple versions of the same package"
+                          [ "name", Package_name.to_dyn name
+                          ; "version_a", Package_version.to_dyn existing_version
+                          ; "version_b", Package_version.to_dyn version
+                          ];
+                      acc)
               in
               let+ resolved_pkgs =
                 resolve_opam_packages opam_packages_to_lock candidates_cache

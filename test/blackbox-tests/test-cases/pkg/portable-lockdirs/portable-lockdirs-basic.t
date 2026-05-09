@@ -39,13 +39,15 @@ Create a package that writes a different value to some files depending on the os
   - foo.0.0.1
 
 Under single-solve, the SAT engine runs once for all default platforms.
+With the cross-platform version equality SAT constraint, extra `somewhere`
+variables (one per candidate version) are added to the problem.
 
   $ dune trace cat \
   > | jq -s 'include "dune"; [ .[] | satSolveEvents | .args ]'
   [
     {
-      "num_variables": 9,
-      "num_clauses": 9,
+      "num_variables": 11,
+      "num_clauses": 17,
       "num_decisions": 0,
       "num_conflicts": 0
     }

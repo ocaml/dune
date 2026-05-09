@@ -52,21 +52,21 @@ failure.
   > | jq -s 'include "dune"; [ .[] | satSolveEvents | .args ]'
   [
     {
-      "num_variables": 17,
-      "num_clauses": 21,
+      "num_variables": 21,
+      "num_clauses": 37,
       "num_decisions": 0,
       "num_conflicts": 0
     },
     {
-      "num_variables": 17,
-      "num_clauses": 21,
+      "num_variables": 21,
+      "num_clauses": 37,
       "num_decisions": 0,
       "num_conflicts": 0
     },
     {
-      "num_variables": 34,
-      "num_clauses": 21,
-      "num_decisions": 13,
+      "num_variables": 38,
+      "num_clauses": 37,
+      "num_decisions": 14,
       "num_conflicts": 0
     }
   ]

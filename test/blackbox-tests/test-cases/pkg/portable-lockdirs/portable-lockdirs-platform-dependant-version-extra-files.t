@@ -66,25 +66,24 @@ Define a project with a package depending on bar:
   >  (libraries foo))
   > EOF
 
-Under single-solve, allowing different versions of the same package on
-different platforms is no longer supported: the solver returns a combined
-solution and a post-solve check rejects it.
+Solve the project. The SAT-level cross-platform version equality constraint
+rejects bar's per-platform version disagreement on foo, so the lock fails:
   $ dune pkg lock
-  Error: Multi-platform solving selected different versions of the same package
-  on different platforms. This is not supported.
-  The following packages have version conflicts:
-  - foo:
-    version 1 on:
-      - arch = x86_64; opam-version = 2.2.0; os = linux; post = true;
-        with-dev-setup = false; with-doc = false
-      - arch = arm64; opam-version = 2.2.0; os = linux; post = true;
-        with-dev-setup = false; with-doc = false
-    version 2 on:
-      - arch = x86_64; opam-version = 2.2.0; os = macos; post = true;
-        with-dev-setup = false; with-doc = false
-      - arch = arm64; opam-version = 2.2.0; os = macos; post = true;
-        with-dev-setup = false; with-doc = false
+  Error:
+  Unable to solve dependencies while generating lock directory: dune.lock
+  
+  The dependency solver failed to find a solution for the following platforms:
+  - arch = x86_64; os = linux
+  - arch = arm64; os = linux
+  - arch = x86_64; os = macos
+  - arch = arm64; os = macos
+  ...with this error:
+  Couldn't solve the package dependency formula.
+  Selected candidates: bar.0.0.1 x.dev
+  - foo -> foo.1
+      bar 0.0.1 requires = 1
   [1]
+
 
 No solution exists so the lockdir has no foo.<ver>.files directories:
   $ cat ${default_lock_dir}/foo.1.files/version.txt

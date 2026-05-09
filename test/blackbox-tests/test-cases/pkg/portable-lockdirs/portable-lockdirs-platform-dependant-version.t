@@ -51,38 +51,52 @@ Define a package bar which conditionally depends on different versions of foo:
   >  (libraries foo))
   > EOF
 
-Under single-solve, allowing different versions of the same package on
-different platforms is no longer supported: the solver returns a combined
-solution and a post-solve check rejects it.
+Under single-solve with the cross-platform version equality SAT constraint,
+allowing different versions of the same package on different platforms is
+rejected by the SAT solver itself rather than by a post-solve check.
 
   $ DUNE_TRACE=+sat dune pkg lock
-  Error: Multi-platform solving selected different versions of the same package
-  on different platforms. This is not supported.
-  The following packages have version conflicts:
-  - foo:
-    version 1 on:
-      - arch = x86_64; opam-version = 2.2.0; os = linux; post = true;
-        with-dev-setup = false; with-doc = false
-      - arch = arm64; opam-version = 2.2.0; os = linux; post = true;
-        with-dev-setup = false; with-doc = false
-    version 2 on:
-      - arch = x86_64; opam-version = 2.2.0; os = macos; post = true;
-        with-dev-setup = false; with-doc = false
-      - arch = arm64; opam-version = 2.2.0; os = macos; post = true;
-        with-dev-setup = false; with-doc = false
+  Error:
+  Unable to solve dependencies while generating lock directory: dune.lock
+  
+  The dependency solver failed to find a solution for the following platforms:
+  - arch = x86_64; os = linux
+  - arch = arm64; os = linux
+  - arch = x86_64; os = macos
+  - arch = arm64; os = macos
+  ...with this error:
+  Couldn't solve the package dependency formula.
+  Selected candidates: bar.0.0.1 x.dev
+  - foo -> foo.1
+      bar 0.0.1 requires = 1
   [1]
 
-The single SAT run produces a combined solution; the rejection happens in
-the post-solve version-conflict check.
+
+
+The SAT engine itself rejects the conflict; the post-solve version-conflict
+check is no longer reached. The do_solve retry path runs SAT 3 times before
+reporting the failure, and each run records the same cross-platform conflict.
 
   $ dune trace cat \
   > | jq -s 'include "dune"; [ .[] | satSolveEvents | .args ]'
   [
     {
-      "num_variables": 17,
-      "num_clauses": 13,
+      "num_variables": 21,
+      "num_clauses": 29,
       "num_decisions": 0,
-      "num_conflicts": 0
+      "num_conflicts": 1
+    },
+    {
+      "num_variables": 21,
+      "num_clauses": 29,
+      "num_decisions": 0,
+      "num_conflicts": 1
+    },
+    {
+      "num_variables": 34,
+      "num_clauses": 29,
+      "num_decisions": 12,
+      "num_conflicts": 1
     }
   ]
 

@@ -84,8 +84,8 @@ covers only the last pkg lock above (one SAT engine run, non-portable).
   > | jq -s 'include "dune"; [ .[] | satSolveEvents | .args ]'
   [
     {
-      "num_variables": 2,
-      "num_clauses": 2,
+      "num_variables": 4,
+      "num_clauses": 4,
       "num_decisions": 0,
       "num_conflicts": 0
     }

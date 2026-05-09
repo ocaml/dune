@@ -50,17 +50,16 @@ module Cached_digest = struct
     }
 
   let db_file = Path.relative Path.build_dir ".digest-db"
+  let digest_repr = Repr.view Repr.string ~to_:Digest.to_string
 
   let file_repr =
     Repr.record
       "fs-memo-cached-digest-file"
-      [ Repr.field "digest" (Repr.abstract Digest.to_dyn) ~get:(fun t -> t.digest)
+      [ Repr.field "digest" digest_repr ~get:(fun t -> t.digest)
       ; Repr.field "stats" Reduced_stats.repr ~get:(fun t -> t.stats)
       ; Repr.field "stats_checked" Repr.int ~get:(fun t -> t.stats_checked)
       ]
   ;;
-
-  let file_to_dyn = Repr.to_dyn file_repr
 
   let repr =
     Repr.record
@@ -69,12 +68,10 @@ module Cached_digest = struct
       ; Repr.field "max_timestamp" Time.repr ~get:(fun t -> t.max_timestamp)
       ; Repr.field
           "table"
-          (Repr.abstract (Path.Table.to_dyn file_to_dyn))
+          (Repr.abstract (Path.Table.to_dyn (Repr.to_dyn file_repr)))
           ~get:(fun t -> t.table)
       ]
   ;;
-
-  let to_dyn = Repr.to_dyn repr
 
   module P = Persistent.Make (struct
       type nonrec t = t
@@ -82,7 +79,7 @@ module Cached_digest = struct
       let name = "DIGEST-DB"
       let version = 10
       let sharing = true
-      let to_dyn = to_dyn
+      let repr = repr
     end)
 
   let needs_dumping = ref false

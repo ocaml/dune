@@ -10,7 +10,6 @@ module File : sig
   val compare : t -> t -> Ordering.t
   val source : t -> Path.Source.t
   val correction_file : t -> Path.t
-  val to_dyn : t -> Dyn.t
   val in_staging_area : Path.Source.t -> Path.Build.t
 end
 

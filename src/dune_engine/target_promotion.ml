@@ -14,7 +14,7 @@ module To_delete = struct
       let name = "PROMOTED-TO-DELETE"
       let sharing = true
       let version = 4
-      let to_dyn = Path.Source.Set.to_dyn
+      let repr = Repr.abstract Path.Source.Set.to_dyn
     end)
 
   let fn = Path.relative Path.build_dir ".to-delete-in-source-tree"

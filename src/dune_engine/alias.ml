@@ -62,14 +62,14 @@ let compare { dir; name } t =
 
 let equal x y = compare x y = Eq
 let hash { dir; name } = Tuple.T2.hash Path.Build.hash Name.hash (dir, name)
+let name t = t.name
+let dir t = t.dir
 
 let to_dyn { dir; name } =
   let open Dyn in
   Record [ "dir", Path.Build.to_dyn dir; "name", Name.to_dyn name ]
 ;;
 
-let name t = t.name
-let dir t = t.dir
 let fully_qualified_name t = Path.Build.relative t.dir (Name.to_string t.name)
 
 let get_ctx (path : Path.Build.t) =

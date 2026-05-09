@@ -21,7 +21,7 @@ let term =
   in
   let _common, _config = Common.init builder in
   let (Persistent.T ((module D), data)) = Persistent.load_exn (Arg.Path.path file) in
-  Console.print [ Dyn.pp (D.to_dyn data) ]
+  Console.print [ Dyn.pp (Repr.to_dyn D.repr data) ]
 ;;
 
 let command = Cmd.v info term

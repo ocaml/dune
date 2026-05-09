@@ -87,6 +87,11 @@ directory. There are two disadvantages of this mode:
   from the build directory. To reduce the risk of cache corruption, Dune
   systematically removes write permissions from all build results. It is worth
   noting that modifying files in the build directory is a bad practice anyway.
+* The cache does not preserve exact Unix permission bits. Cache entries are
+  identified by file contents and Dune's executable flag, not by the complete
+  file mode. When two artifacts differ only in ignored permission bits, Dune may
+  deduplicate them into the same cache entry. In hardlink mode, all copies then
+  share one inode and therefore one set of permissions.
 
 The `copy` Mode
 ---------------

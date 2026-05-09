@@ -141,6 +141,7 @@ val start_build : unit -> Run_id.t
 val watch_restart_files : unit -> Path.t list option
 val finish_build : stop:Time.t -> build_finish
 val flush_file_watcher : unit -> unit Fiber.t
+val is_watch_mode : unit -> bool
 
 (** [set_fs_memo_impl] registers the file system memoization callbacks.
     This must be called by dune_engine at initialization before starting

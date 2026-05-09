@@ -383,6 +383,7 @@ let flush_file_watcher_impl t =
 ;;
 
 let flush_file_watcher () = flush_file_watcher_impl (t ())
+let is_watch_mode () = Run_id.State.is_watch (t ()).run_id_state
 
 module Run = struct
   exception Build_cancelled = Build_cancelled

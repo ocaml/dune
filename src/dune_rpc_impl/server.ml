@@ -350,6 +350,16 @@ let handler (t : _ t Fdecl.t) : 'build_arg Handler.t =
     Handler.implement_request rpc Procedures.Public.format f
   in
   let () =
+    let f _ () =
+      if Scheduler.is_watch_mode ()
+      then
+        let+ () = Scheduler.flush_file_watcher () in
+        `Ok
+      else Fiber.return `Not_in_watch_mode
+    in
+    Handler.implement_request rpc Procedures.Public.flush_file_watcher f
+  in
+  let () =
     let rec cancel_pending_jobs () =
       match Job_queue.pop_internal (Fdecl.get t).pending_jobs with
       | None -> Fiber.return ()

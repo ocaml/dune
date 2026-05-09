@@ -540,8 +540,7 @@ module Crawl = struct
              | Some rule ->
                (* [rule.info] gives the dune file the rule is written in; a rule
                   with no user-facing location (internal, or an empty loc) is
-                  attributed to the stanza's own dune file. A source-file copy is
-                  not really generated, so is reported as a plain source. *)
+                  attributed to the stanza's own dune file. *)
                let mk_dune_origin dune_file =
                  let+ deps, expanded_deps =
                    match options.with_origin_deps_expanded, options.with_origin_deps with
@@ -564,8 +563,7 @@ module Crawl = struct
                (match rule.info with
                 | From_dune_file loc when not (Loc.is_none loc) ->
                   mk_dune_origin (dune_file_of_loc loc)
-                | From_dune_file _ | Internal -> mk_dune_origin dune_file
-                | Source_file_copy _ -> Memo.return Source))))
+                | From_dune_file _ | Internal -> mk_dune_origin dune_file))))
   ;;
 
   (* Builds the description of a module from a module and its object directory *)

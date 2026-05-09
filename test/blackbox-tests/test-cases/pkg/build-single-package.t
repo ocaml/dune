@@ -42,3 +42,16 @@ Package build commands are not restricted by the shared-cache Landlock policy.
   $ build_pkg cache-writer
   $ test -e "$DUNE_CACHE_ROOT/db/package-marker" && echo wrote
   wrote
+
+Lock inputs use build-directory snapshots and are not content-digested in the
+source tree. Editing them must still rebuild the affected package.
+
+  $ make_lockpkg foo <<EOF
+  > (build (run echo rebuilt foo))
+  > (version dev)
+  > EOF
+  $ build_pkg foo
+  rebuilt foo
+  $ cmp dune.lock/foo.pkg _build/.source-copies/dune.lock/foo.pkg
+  $ dune internal digest-db dump 2>&1 | grep 'In_source_tree'
+  [1]

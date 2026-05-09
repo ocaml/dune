@@ -21,6 +21,7 @@ type t =
   | Cache
   | Digest
   | Artifact_substitution
+  | Source_copy
   | Thread
   | Runtime
   | Sat

@@ -50,6 +50,15 @@ module Fs_memo : sig
     }
 end
 
+module Source_file_copy : sig
+  type t =
+    { src : Path.Source.t
+    ; src_stats : Fs_memo.Stats.t
+    ; dst_stats : Fs_memo.Stats.t
+    ; dst_digest : Digest.t
+    }
+end
+
 module Rule_cache : sig
   module Entry : sig
     type t =
@@ -79,6 +88,7 @@ end
 val file : Path.t
 val fs_memo : unit -> Fs_memo.t
 val rule_cache : unit -> Rule_cache.t
+val source_file_copies : unit -> Source_file_copy.t Path.Build.Table.t
 val loaded_from_disk : unit -> bool
 val at_exit : At_exit.t
 val load_fs_memo : unit -> Fs_memo.t option

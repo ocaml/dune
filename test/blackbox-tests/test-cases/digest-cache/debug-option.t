@@ -9,10 +9,35 @@ Test the tracing of digest events
   $ dune build x --wait-for-filesystem-clock
   $ echo 1 > x
   $ dune build x --wait-for-filesystem-clock
+  $ cat _build/default/x
+  1
 
+Source-backed targets do not emit content digest events for source files.
+
+  $ dune trace cat | jq -s '
+  > [ .[] | select(.cat == "digest" and .name == "redigest" and .args.path == "x") ]
+  > | length'
+  0
+
+External files are still content-digested and emit redigest events.
+
+  $ external="$PWD/../external"
+  $ touch "$external"
+  $ cat > dune <<EOF
+  > (rule
+  >  (deps $external)
+  >  (target external-copy)
+  >  (action (copy $external external-copy)))
+  > EOF
+  $ dune build external-copy --wait-for-filesystem-clock
+  $ echo 1 > "$external"
+  $ dune build external-copy --wait-for-filesystem-clock
   $ dune trace cat | jq '
-  >   select(.cat == "digest")
+  >   select(.cat == "digest"
+  >          and .name == "redigest"
+  >          and (.args.path | endswith("/external")))
   > | .args
+  > | del(.path)
   > | .old_stats.mtime |= type
   > | .new_stats.mtime |= type
   > | .old_stats.ctime |= type
@@ -23,7 +48,6 @@ Test the tracing of digest events
   > | .old_stats.ino |= type
   > '
   {
-    "path": "x",
     "old_digest": "662cf3f7d59f76428301690d4ead67ae",
     "new_digest": "f31e1f1c33564e07cd02ad2c52f4df85",
     "old_stats": {

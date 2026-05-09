@@ -171,6 +171,149 @@ type rule_execution_result =
   ; targets : Digest.t Targets.Produced.t
   }
 
+module Source_file_copy = struct
+  type t =
+    { src : Path.Source.t
+    ; dst : Path.Build.t
+    }
+
+  let equal { src; dst } t = Path.Source.equal src t.src && Path.Build.equal dst t.dst
+  let hash { src; dst } = Tuple.T2.hash Path.Source.hash Path.Build.hash (src, dst)
+
+  let repr =
+    Repr.record
+      "source-file-copy"
+      [ Repr.field "src" Path.Source.repr ~get:(fun t -> t.src)
+      ; Repr.field "dst" Path.Build.repr ~get:(fun t -> t.dst)
+      ]
+  ;;
+
+  let to_dyn = Repr.to_dyn repr
+
+  let raise_source_file_unavailable ~src src_path exn =
+    let details_from_exception () =
+      match exn with
+      | Unix.Unix_error (error, syscall, arg) ->
+        [ Unix_error.Detailed.pp (Unix_error.Detailed.create error ~syscall ~arg) ]
+      | Sys_error message -> [ Pp.text message ]
+      | _ -> Exn.reraise exn
+    in
+    let details =
+      match Unix.stat (Path.to_string src_path) with
+      | _ -> details_from_exception ()
+      | exception Unix.Unix_error (error, syscall, arg) ->
+        (match error with
+         | ENOENT ->
+           (match Unix.lstat (Path.to_string src_path) with
+            | { st_kind = S_LNK; _ } -> [ Pp.text "Broken symbolic link" ]
+            | _ -> []
+            | exception Unix.Unix_error (ENOENT, _, _) -> []
+            | exception Unix.Unix_error (error, syscall, arg) ->
+              [ Unix_error.Detailed.pp (Unix_error.Detailed.create error ~syscall ~arg) ])
+         | _ ->
+           [ Unix_error.Detailed.pp (Unix_error.Detailed.create error ~syscall ~arg) ])
+    in
+    User_error.raise
+      ~loc:(Loc.in_file src_path)
+      (Pp.textf "File unavailable: %s" (Path.Source.to_string_maybe_quoted src) :: details)
+  ;;
+
+  let build { src; dst } =
+    let* () = Fs_memo.track_source_file_copy ~src ~dst in
+    Memo.of_reproducible_fiber
+      (let src_path = Path.source src in
+       let dst_path = Path.build dst in
+       let src_stats =
+         match Stat.stat (Path.to_string src_path) with
+         | { kind = S_REG; _ } as stats -> stats
+         | { kind; _ } ->
+           User_error.raise
+             ~loc:(Loc.in_file src_path)
+             [ Pp.textf "File unavailable: %s" (Path.Source.to_string_maybe_quoted src)
+             ; Dune_digest.Digest_result.Error.pp (Unexpected_kind kind) src_path
+             ]
+         | exception ((Unix.Unix_error _ | Sys_error _) as exn) ->
+           raise_source_file_unavailable ~src src_path exn
+       in
+       let dst_stats =
+         match Path.Untracked.lstat dst_path with
+         | Ok { st_kind = S_REG; st_nlink = 1; _ } ->
+           Some (Stat.stat (Path.to_string dst_path))
+         | Ok { st_kind = S_DIR; _ } ->
+           Rule_cache.Workspace_local.remove_subtree dst;
+           None
+         | Ok _ | Error _ -> None
+       in
+       let cached_digest =
+         Option.bind dst_stats ~f:(fun dst_stats ->
+           Fs_memo.Source_file_copy_cache.find ~src ~dst ~src_stats ~dst_stats)
+       in
+       let start = Time.now () in
+       let result =
+         match cached_digest with
+         | Some _ -> `Cached
+         | None ->
+           Rule_cache.Workspace_local.remove_target dst;
+           Path.mkdir_p (Path.build (Path.Build.parent_exn dst));
+           (match Fpath.unlink (Path.to_string dst_path) with
+            | Success | Does_not_exist -> ()
+            | Is_a_directory -> Path.rm_rf dst_path
+            | Error exn -> Exn.reraise exn);
+           (match
+              Io.copy_file
+                ~overwrite:false
+                ~chmod:(Permissions.remove Permissions.write)
+                ~src:src_path
+                ~dst:dst_path
+                ()
+            with
+            | () -> ()
+            | exception ((Unix.Unix_error (_, _, arg) | Sys_error arg) as exn) ->
+              let src_path_string = Path.to_string src_path in
+              if
+                String.equal arg src_path_string
+                || String.starts_with arg ~prefix:(src_path_string ^ ":")
+              then raise_source_file_unavailable ~src src_path exn
+              else Exn.reraise exn);
+           `Copied
+       in
+       let stop = Time.now () in
+       Dune_trace.emit Source_copy (fun () ->
+         Dune_trace.Event.source_copy ~src ~dst ~start ~stop ~result);
+       match cached_digest with
+       | Some digest -> Fiber.return digest
+       | None ->
+         let dst_stats =
+           match Stat.stat (Path.to_string dst_path) with
+           | { kind = S_REG; _ } as stats -> stats
+           | { kind; _ } ->
+             User_error.raise
+               [ Pp.textf
+                   "Expected source copy target %s to be a file, but got %s"
+                   (Path.to_string_maybe_quoted dst_path)
+                   (File_kind.to_string_hum kind)
+               ]
+           | exception Unix.Unix_error (e, _, _) ->
+             User_error.raise
+               [ Pp.textf
+                   "Failed to copy source file %s to %s: %s"
+                   (Path.Source.to_string_maybe_quoted src)
+                   (Path.Build.to_string_maybe_quoted dst)
+                   (Unix.error_message e)
+               ]
+         in
+         let executable =
+           Permissions.test_any
+             Permissions.execute
+             (Permissions.Mode.of_int dst_stats.perm)
+         in
+         let open Fiber.O in
+         let+ dst_digest = Digest.file_with_executable_bit ~executable dst_path in
+         Fs_memo.Source_file_copy_cache.store ~src ~dst ~src_stats ~dst_stats ~dst_digest;
+         dst_digest)
+  ;;
+end
+
 let file_selector_stack_frame_description file_selector =
   Pp.concat [ Pp.text (File_selector.to_dyn file_selector |> Dyn.to_string) ]
 ;;
@@ -866,6 +1009,11 @@ and build_file_impl path =
   Load_rules.get_rule_or_source path
   >>= function
   | Source digest -> Memo.return (digest, File_target)
+  | Source_file_copy { src; dst } ->
+    let+ digest =
+      Memo.exec (Lazy.force build_source_file_copy_memo) { Source_file_copy.src; dst }
+    in
+    digest, File_target
   | Rule (path, rule) ->
     let* { facts = _; targets } =
       Memo.push_stack_frame
@@ -949,17 +1097,19 @@ and eval_pred_impl g =
     let only_generated_files = File_selector.only_generated_files g in
     (* We look only at [by_file_targets] because [File_selector] does not
        match directories. *)
-    Path.Build.Map.foldi
-      ~init:[]
-      rules_here.by_file_targets
-      ~f:(fun path { Rule.info; _ } acc ->
-        match info with
-        | Rule.Info.Source_file_copy _ when only_generated_files -> acc
-        | _ ->
-          let basename = Path.Build.basename path in
-          if File_selector.test_basename g ~basename then basename :: acc else acc)
-    |> List.rev
-    |> Filename.Array.Set.of_sorted_list
+    let add_matching path acc =
+      let basename = Path.Build.basename path in
+      if File_selector.test_basename g ~basename then basename :: acc else acc
+    in
+    Path.Build.Map.foldi ~init:[] rules_here.by_file_targets ~f:(fun path _ acc ->
+      add_matching path acc)
+    |> (fun acc ->
+    if only_generated_files
+    then acc
+    else
+      Path.Build.Map.foldi rules_here.source_file_copies ~init:acc ~f:(fun path _ acc ->
+        add_matching path acc))
+    |> Filename.Array.Set.of_list
     |> Filename_set.create ~dir
     |> Memo.return
   | Build_under_directory_target { directory_target_ancestor = _ } ->
@@ -1008,6 +1158,14 @@ and eval_pred_memo =
        ~input:(module File_selector)
        ~cutoff:Filename_set.equal
        eval_pred_impl)
+
+and build_source_file_copy_memo =
+  lazy
+    (Memo.create
+       "build-source-file-copy"
+       ~input:(module Source_file_copy)
+       ~cutoff:Digest.equal
+       Source_file_copy.build)
 
 and build_file_memo =
   lazy
@@ -1072,8 +1230,10 @@ let file_exists fn =
   | Source { filenames } | External { filenames } ->
     Filename.Array.Set.mem filenames (Path.basename fn) |> Memo.return
   | Build { rules_here; _ } ->
+    let fn = Path.as_in_build_dir_exn fn in
     Memo.return
-      (Path.Build.Map.mem rules_here.by_file_targets (Path.as_in_build_dir_exn fn))
+      (Path.Build.Map.mem rules_here.by_file_targets fn
+       || Path.Build.Map.mem rules_here.source_file_copies fn)
   | Build_under_directory_target { directory_target_ancestor } ->
     let+ path_map = build_directory_targets (Path.build directory_target_ancestor) in
     (* Note that in the case of directory targets, we also check if directories exist. *)
@@ -1087,8 +1247,9 @@ let files_of ~dir =
     Memo.return (Filename_set.create ~dir filenames)
   | Build { rules_here; _ } ->
     Path.Build.Map.keys rules_here.by_file_targets
+    @ Path.Build.Map.keys rules_here.source_file_copies
     |> List.map ~f:Path.Build.basename
-    |> Filename.Array.Set.of_sorted_list
+    |> Filename.Array.Set.of_list
     |> Filename_set.create ~dir
     |> Memo.return
   | Build_under_directory_target { directory_target_ancestor } ->

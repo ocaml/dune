@@ -187,10 +187,13 @@ let gen_rules sctx ~rules =
            | [] ->
              (* Identical contents prevent promotion from overwriting the
                 source or scheduling it for deletion on clean. *)
-             let source = Path.source (Path.Build.drop_build_context_exn gen_path) in
+             let source = Path.Build.drop_build_context_exn gen_path in
+             let copy =
+               Path.Build.append_source Dpath.Build.source_file_copies_dir source
+             in
              Action_builder.if_file_exists
-               source
-               ~then_:(Action_builder.contents source)
+               (Path.source source)
+               ~then_:(Action_builder.contents (Path.build copy))
                ~else_:(Action_builder.return "[]")
            | _ ->
              let+ entries = Action_builder.all entry_builders >>| List.concat in

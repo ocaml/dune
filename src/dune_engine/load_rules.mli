@@ -9,6 +9,7 @@ module Loaded : sig
   type rules_here =
     { by_file_targets : Rule.t Path.Build.Map.t
     ; by_directory_targets : Rule.t Path.Build.Map.t
+    ; source_file_copies : Path.Source.t Path.Build.Map.t
     }
 
   val no_rules_here : rules_here
@@ -71,5 +72,9 @@ val is_under_directory_target : Path.t -> bool Memo.t
 type rule_or_source =
   | Source of Digest.t
   | Rule of Path.Build.t * Rule.t
+  | Source_file_copy of
+      { src : Path.Source.t
+      ; dst : Path.Build.t
+      }
 
 val get_rule_or_source : Path.t -> rule_or_source Memo.t

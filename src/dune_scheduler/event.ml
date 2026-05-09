@@ -25,7 +25,7 @@ type t =
   | File_system_watcher_terminated
   | Shutdown of Shutdown.Reason.t
   | Fiber_fill_ivar of Fiber.fill
-  | Job_complete_ready
+  | Signal_received of Signal.t
 
 module Invalidation_event = struct
   type t =
@@ -36,16 +36,31 @@ end
 module Queue = struct
   type event = t
 
+  module Wakeup = struct
+    type t
+
+    external create : unit -> t = "dune_event_wakeup_create"
+    external release : t -> unit = "dune_event_wakeup_release"
+    external acquire : t -> unit = "dune_event_wakeup_acquire"
+    external try_acquire : t -> bool = "dune_event_wakeup_try_acquire"
+    external use_for_signals : t -> unit = "dune_event_wakeup_use_for_signals"
+    external stop_using_signals : t -> unit = "dune_event_wakeup_stop_using_signals"
+  end
+
+  external next_pending_signal_number : unit -> int = "dune_signal_watcher_next_pending"
+
+  external has_pending_signal : unit -> bool = "dune_signal_watcher_has_pending"
+  [@@noalloc]
+
   type t =
     { jobs_completed : (job * Proc.Process_info.t) Queue.t
     ; file_watcher_tasks : (unit -> File_watcher.Event.t list) Queue.t
     ; mutable invalidation_events : Invalidation_event.t list
     ; mutable shutdown_reasons : Shutdown.Reason.Set.t
     ; mutex : Mutex.t
-    ; cond : Condition.t
+    ; wakeup : Wakeup.t
     ; mutable pending_jobs : int
     ; mutable pending_worker_tasks : int
-    ; mutable job_complete_ready : bool
     ; worker_tasks_completed : Fiber.fill Queue.t
     ; mutable got_event : bool
     ; mutable yield : unit Fiber.Ivar.t option
@@ -65,7 +80,7 @@ module Queue = struct
     let invalidation_events = [] in
     let shutdown_reasons = Shutdown.Reason.Set.empty in
     let mutex = Mutex.create () in
-    let cond = Condition.create () in
+    let wakeup = Wakeup.create () in
     let pending_jobs = 0 in
     let pending_worker_tasks = 0 in
     { jobs_completed
@@ -73,13 +88,12 @@ module Queue = struct
     ; invalidation_events
     ; shutdown_reasons
     ; mutex
-    ; cond
+    ; wakeup
     ; pending_jobs
     ; worker_tasks_completed
     ; pending_worker_tasks
     ; got_event = false
     ; yield = None
-    ; job_complete_ready = false
     }
   ;;
 
@@ -97,17 +111,25 @@ module Queue = struct
   let cancel_work_task_started q = q.pending_worker_tasks <- q.pending_worker_tasks - 1
 
   let add_event q f =
-    Mutex.lock q.mutex;
-    f q;
-    if not q.got_event
-    then (
-      q.got_event <- true;
-      Condition.signal q.cond);
-    Mutex.unlock q.mutex
+    Mutex.protect q.mutex (fun () ->
+      f q;
+      if not q.got_event
+      then (
+        q.got_event <- true;
+        Wakeup.release q.wakeup))
+  ;;
+
+  let use_for_signal_wakeup q = Wakeup.use_for_signals q.wakeup
+  let stop_using_signal_wakeup q = Wakeup.stop_using_signals q.wakeup
+
+  let next_signal () =
+    match next_pending_signal_number () with
+    | 0 -> None
+    | signal -> Some (Signal.of_int signal)
   ;;
 
   let yield_if_there_are_pending_events q =
-    if Execution_env.inside_dune || not q.got_event
+    if Execution_env.inside_dune || not (q.got_event || has_pending_signal ())
     then Fiber.return ()
     else (
       match q.yield with
@@ -131,13 +153,8 @@ module Queue = struct
         Shutdown reason)
     ;;
 
-    let job_complete_ready : t =
-      fun q ->
-      match q.job_complete_ready with
-      | false -> None
-      | true ->
-        q.job_complete_ready <- false;
-        Some Job_complete_ready
+    let signal : t =
+      fun _q -> Option.map (next_signal ()) ~f:(fun signal -> Signal_received signal)
     ;;
 
     let file_watcher_task q =
@@ -211,11 +228,12 @@ module Queue = struct
        [jobs_completed] and [yield] are where the bulk of the work is done, so
        they are the lowest priority to avoid starving other things. *)
     Event_source.
-      [ shutdown
+      [ signal
+      ; shutdown
       ; file_watcher_task
       ; invalidation
       ; worker_tasks_completed
-      ; (if Sys.win32 then jobs_completed else job_complete_ready)
+      ; jobs_completed
       ; yield
       ]
   ;;
@@ -232,9 +250,18 @@ module Queue = struct
       | None -> wait ()
       | Some event -> event
     and wait () =
+      (* Keep a single pending wakeup for any number of events. The token can
+         be stale when the scheduler drained events without blocking, so consume
+         it before waiting for the next event. *)
       q.got_event <- false;
-      Condition.wait q.cond q.mutex;
-      loop ()
+      ignore (Wakeup.try_acquire q.wakeup : bool);
+      match Event_source.(run (chain events_in_order)) q with
+      | Some event -> event
+      | None ->
+        Mutex.unlock q.mutex;
+        Wakeup.acquire q.wakeup;
+        Mutex.lock q.mutex;
+        loop ()
     in
     let ev = loop () in
     Mutex.unlock q.mutex;
@@ -270,8 +297,6 @@ module Queue = struct
     add_event q (fun q -> Queue.push q.jobs_completed (job, proc_info))
   ;;
 
-  let send_job_completed_ready q = add_event q (fun q -> q.job_complete_ready <- true)
-
   let send_shutdown q signal =
     add_event q (fun q ->
       q.shutdown_reasons <- Shutdown.Reason.Set.add q.shutdown_reasons signal)
@@ -283,4 +308,34 @@ module Queue = struct
 
   let pending_jobs q = q.pending_jobs
   let pending_worker_tasks q = q.pending_worker_tasks
+
+  let%expect_test "wakeup is coalesced while an event is pending" =
+    let q = create () in
+    let print_wakeup label =
+      Printf.printf "%s: %b\n" label (Wakeup.try_acquire q.wakeup)
+    in
+    let print_next () =
+      match next q with
+      | Shutdown Requested -> print_endline "requested"
+      | Shutdown Timeout -> print_endline "timeout"
+      | _ -> print_endline "unexpected"
+    in
+    print_wakeup "initial";
+    send_shutdown q Requested;
+    send_shutdown q Timeout;
+    print_wakeup "after two events";
+    print_wakeup "after consuming token";
+    print_next ();
+    print_next ();
+    print_wakeup "after draining events";
+    [%expect
+      {|
+      initial: false
+      after two events: true
+      after consuming token: false
+      requested
+      timeout
+      after draining events: false
+      |}]
+  ;;
 end

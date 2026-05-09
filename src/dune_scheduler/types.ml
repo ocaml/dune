@@ -80,6 +80,11 @@ module Scheduler = struct
        state *)
       Restarting_build
 
+  type signal_interruptions =
+    { timestamps : Time.t Queue.t
+    ; print_ctrl_c_warning : bool
+    }
+
   type t =
     { mutable status : status
     ; mutable invalidation : Memo.Invalidation.t
@@ -95,8 +100,8 @@ module Scheduler = struct
     ; mutable build_inputs_changed : Trigger.t
     ; mutable cancel : Fiber.Cancel.t
     ; thread_pool : Thread_pool.t Lazy.t
-    ; signal_watcher : Thread.t
     ; async_io : Async_io.t
+    ; signal_interruptions : signal_interruptions
     }
 
   let current : t option ref = ref None

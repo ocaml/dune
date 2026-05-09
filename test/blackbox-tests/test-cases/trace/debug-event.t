@@ -1,4 +1,4 @@
-The debug event can be triggered with Sigusr1
+The debug event can be triggered with SIGUSR2
 
   $ debug_events_jq='select(.name == "debug") | .name'
   $ build_request_starts_jq='select(.cat == "rpc" and .name == "request" and .args.meth == "build" and .args.stage == "start") | .name'

@@ -63,3 +63,41 @@ be ready, sends SIGINT to dune, and checks if the cleanup handler ran.
     "name": "process-cleanup-finish",
     "args": {}
   }
+
+A second interrupt in quick succession prints a warning. A third interrupt in
+the same window drops the graceful shutdown and exits immediately.
+
+  $ rm -f ready cleanup_ran child_pid
+
+  $ cat > main.ml <<'EOF'
+  > let () =
+  >   let dir = Sys.getenv "TEST_DIR" in
+  >   let oc = open_out (Filename.concat dir "child_pid") in
+  >   Printf.fprintf oc "%d\n%!" (Unix.getpid ());
+  >   close_out oc;
+  >   Sys.set_signal Sys.sigint Sys.Signal_ignore;
+  >   Sys.set_signal Sys.sigterm Sys.Signal_ignore;
+  >   let oc = open_out (Filename.concat dir "ready") in
+  >   close_out oc;
+  >   while true do Unix.sleepf 0.1 done
+  > EOF
+
+  $ dune build @slow 2>dune.err &
+
+  $ DUNE_PID=$!
+
+  $ wait_for_file ready
+
+  $ kill -INT $DUNE_PID
+
+  $ kill -INT $DUNE_PID
+
+  $ with_timeout sh -c "until grep 'Press Control+C again quickly' dune.err; do sleep 0.01; done"
+  * Press Control+C again quickly to perform an emergency exit *
+
+  $ kill -INT $DUNE_PID
+
+  $ wait $DUNE_PID
+  [1]
+
+  $ kill -KILL $(cat child_pid) 2>/dev/null || true

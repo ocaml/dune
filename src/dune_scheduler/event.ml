@@ -42,7 +42,7 @@ module Queue = struct
     ; mutable invalidation_events : Invalidation_event.t list
     ; mutable shutdown_reasons : Shutdown.Reason.Set.t
     ; mutex : Mutex.t
-    ; cond : Condition.t
+    ; wakeup : Semaphore.Binary.t
     ; mutable pending_jobs : int
     ; mutable pending_worker_tasks : int
     ; mutable job_complete_ready : bool
@@ -65,7 +65,7 @@ module Queue = struct
     let invalidation_events = [] in
     let shutdown_reasons = Shutdown.Reason.Set.empty in
     let mutex = Mutex.create () in
-    let cond = Condition.create () in
+    let wakeup = Semaphore.Binary.make false in
     let pending_jobs = 0 in
     let pending_worker_tasks = 0 in
     { jobs_completed
@@ -73,7 +73,7 @@ module Queue = struct
     ; invalidation_events
     ; shutdown_reasons
     ; mutex
-    ; cond
+    ; wakeup
     ; pending_jobs
     ; worker_tasks_completed
     ; pending_worker_tasks
@@ -97,13 +97,12 @@ module Queue = struct
   let cancel_work_task_started q = q.pending_worker_tasks <- q.pending_worker_tasks - 1
 
   let add_event q f =
-    Mutex.lock q.mutex;
-    f q;
-    if not q.got_event
-    then (
-      q.got_event <- true;
-      Condition.signal q.cond);
-    Mutex.unlock q.mutex
+    Mutex.protect q.mutex (fun () ->
+      f q;
+      if not q.got_event
+      then (
+        q.got_event <- true;
+        Semaphore.Binary.release q.wakeup))
   ;;
 
   let yield_if_there_are_pending_events q =
@@ -232,8 +231,15 @@ module Queue = struct
       | None -> wait ()
       | Some event -> event
     and wait () =
+      (* Keep a single pending wakeup for any number of events. A binary
+         semaphore preserves that coalescing across producer threads. The token
+         can be stale when the scheduler drained events without blocking, so
+         consume it before waiting for the next event. *)
       q.got_event <- false;
-      Condition.wait q.cond q.mutex;
+      ignore (Semaphore.Binary.try_acquire q.wakeup : bool);
+      Mutex.unlock q.mutex;
+      Semaphore.Binary.acquire q.wakeup;
+      Mutex.lock q.mutex;
       loop ()
     in
     let ev = loop () in
@@ -283,4 +289,34 @@ module Queue = struct
 
   let pending_jobs q = q.pending_jobs
   let pending_worker_tasks q = q.pending_worker_tasks
+
+  let%expect_test "wakeup is coalesced while an event is pending" =
+    let q = create () in
+    let print_wakeup label =
+      Printf.printf "%s: %b\n" label (Semaphore.Binary.try_acquire q.wakeup)
+    in
+    let print_next () =
+      match next q with
+      | Shutdown Requested -> print_endline "requested"
+      | Shutdown Timeout -> print_endline "timeout"
+      | _ -> print_endline "unexpected"
+    in
+    print_wakeup "initial";
+    send_shutdown q Requested;
+    send_shutdown q Timeout;
+    print_wakeup "after two events";
+    print_wakeup "after consuming token";
+    print_next ();
+    print_next ();
+    print_wakeup "after draining events";
+    [%expect
+      {|
+      initial: false
+      after two events: true
+      after consuming token: false
+      requested
+      timeout
+      after draining events: false
+      |}]
+  ;;
 end

@@ -1149,6 +1149,15 @@ let run f =
   in
   let open Fiber.O in
   let f () =
+    let run_id = Scheduler.start_build () in
+    let files = Scheduler.watch_restart_files () in
+    let start = Time.now () in
+    Dune_trace.emit ~buffered:false Build (fun () ->
+      Dune_trace.Event.watch_build_start
+        ~run_id:(Run_id.to_int run_id)
+        ~restart:(Option.is_some files)
+        ~files
+        ~start);
     (* CR-someday amokhov: Currently we invalidate cached timestamps on every
        incremental rebuild. This conservative approach helps us to work around
        some [mtime] resolution problems (e.g. on Mac OS). It would be nice to
@@ -1159,15 +1168,15 @@ let run f =
     Fs_memo.invalidate_cached_timestamps ();
     let* () = State.reset_progress () in
     let* () = State.reset_errors () in
-    let* res =
+    let* outcome =
       Fiber.collect_errors (fun () ->
         Memo.run_with_error_handler f ~handle_error_no_raise:report_early_exn)
     in
     Dtemp.clear ();
     Pending_targets.cleanup ();
     Target_promotion.save ();
-    let res =
-      match res with
+    let* outcome =
+      match outcome with
       | Ok res ->
         finalize_diff_promotion ();
         let+ () = State.set Build_succeeded__now_waiting_for_changes in
@@ -1184,7 +1193,26 @@ let run f =
         Error `Already_reported
     in
     Metrics.reset ();
-    res
+    let+ () =
+      match run_id with
+      | Batch -> Fiber.return ()
+      | Watch _ -> Scheduler.flush_file_watcher ()
+    in
+    let stop = Time.now () in
+    (match Scheduler.finish_build ~stop with
+     | Restarting -> ()
+     | Finished { restart_duration } ->
+       Dune_trace.emit Build (fun () ->
+         Dune_trace.Event.watch_build_finish
+           ~run_id:(Run_id.to_int run_id)
+           ~outcome:
+             (match outcome with
+              | Ok _ -> `Success
+              | Error `Already_reported -> `Failure)
+           ~start
+           ~stop
+           ~restart_duration));
+    outcome
   in
   Fiber.Mutex.with_lock State.build_mutex ~f
 ;;

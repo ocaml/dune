@@ -205,6 +205,7 @@ let prepare (config : Config.t) ~(handler : Handler.t) ~events ~file_watcher =
     ; invalidation = Memo.Invalidation.empty
     ; run_id_state = Run_id.State.create ~watch_mode:(Option.is_some file_watcher)
     ; watch_restart_started_at = None
+    ; watch_restart_files = None
     ; job_throttle = Fiber.Throttle.create config.concurrency
     ; process_watcher
     ; events
@@ -280,10 +281,10 @@ module Run_once = struct
     then iter t
     else (
       let now = Time.now () in
-      let reasons = Memo.Invalidation.details_hum ~max_elements:max_int invalidation in
       if Run_id.State.is_watch t.run_id_state
       then (
         let run_id = Run_id.State.next_to_start t.run_id_state in
+        let reasons = Memo.Invalidation.details_hum ~max_elements:max_int invalidation in
         if Option.is_none t.watch_restart_started_at
         then t.watch_restart_started_at <- Some now;
         Dune_trace.emit Build (fun () ->
@@ -371,7 +372,7 @@ let async_exn f =
   | Ok e -> e
 ;;
 
-let flush_file_watcher t =
+let flush_file_watcher_impl t =
   match t.file_watcher with
   | None -> Fiber.return ()
   | Some file_watcher ->
@@ -380,6 +381,8 @@ let flush_file_watcher t =
     Table.set t.fs_syncs id ivar;
     Fiber.Ivar.read ivar
 ;;
+
+let flush_file_watcher () = flush_file_watcher_impl (t ())
 
 module Run = struct
   exception Build_cancelled = Build_cancelled
@@ -400,104 +403,38 @@ module Run = struct
   module Event_queue = Event.Queue
   module Event = Handler.Event
 
-  let allocate_run_id t =
-    let state, run_id = Run_id.State.start t.run_id_state in
-    t.run_id_state <- state;
-    run_id
-  ;;
-
-  let emit_build_start ~run_id ~restart ~files ~start =
-    Dune_trace.emit ~buffered:true Build (fun () ->
-      Dune_trace.Event.watch_build_start
-        ~run_id:(Run_id.to_int run_id)
-        ~restart
-        ~files
-        ~start)
-  ;;
-
-  let emit_build_finish ~run_id ~start ~stop ~outcome ~restart_duration =
-    Dune_trace.emit ~buffered:true Build (fun () ->
-      Dune_trace.Event.watch_build_finish
-        ~run_id:(Run_id.to_int run_id)
-        ~outcome
-        ~start
-        ~stop
-        ~restart_duration)
-  ;;
-
   let rec poll_iter t step =
-    let files =
-      if Memo.Invalidation.is_empty t.invalidation
-      then (
-        Memo.Metrics.reset ();
-        None)
-      else (
-        let files = Memo.Invalidation.changed_paths t.invalidation in
-        let details_hum = Memo.Invalidation.details_hum t.invalidation in
-        t.handler (Source_files_changed { details_hum });
-        Memo.reset t.invalidation;
-        t.invalidation <- Memo.Invalidation.empty;
-        t.build_inputs_changed <- Trigger.create ();
-        Some files)
-    in
-    let started_at = Time.now () in
-    let run_id = allocate_run_id t in
-    emit_build_start
-      ~run_id
-      ~restart:(Option.is_some t.watch_restart_started_at)
-      ~files
-      ~start:started_at;
+    t.watch_restart_files
+    <- (if Memo.Invalidation.is_empty t.invalidation
+        then (
+          Memo.Metrics.reset ();
+          None)
+        else (
+          let files = Memo.Invalidation.changed_paths t.invalidation in
+          let details_hum = Memo.Invalidation.details_hum t.invalidation in
+          t.handler (Source_files_changed { details_hum });
+          Memo.reset t.invalidation;
+          t.invalidation <- Memo.Invalidation.empty;
+          t.build_inputs_changed <- Trigger.create ();
+          Some files));
     let cancel = Fiber.Cancel.create () in
     t.status <- Building cancel;
     t.cancel <- cancel;
     let* res = step in
+    let res : Build_outcome.t =
+      match res with
+      | Error `Already_reported -> Failure
+      | Ok () -> Success
+    in
     match t.status with
     | Standing_by ->
-      let res : Build_outcome.t =
-        match res with
-        | Error `Already_reported -> Failure
-        | Ok () -> Success
-      in
-      let stop = Time.now () in
-      let restart_duration =
-        Option.map t.watch_restart_started_at ~f:(fun restart_started_at ->
-          Time.diff stop restart_started_at)
-      in
-      t.watch_restart_started_at <- None;
-      emit_build_finish
-        ~run_id
-        ~start:started_at
-        ~stop
-        ~outcome:
-          (match res with
-           | Success -> `Success
-           | Failure -> `Failure)
-        ~restart_duration;
       t.handler (Build_finish res);
       Fiber.return res
     | Restarting_build -> poll_iter t step
     | Building _ ->
-      let res : Build_outcome.t =
-        match res with
-        | Error `Already_reported -> Failure
-        | Ok () -> Success
-      in
       t.status <- Standing_by;
-      let stop = Time.now () in
-      let restart_duration =
-        Option.map t.watch_restart_started_at ~f:(fun restart_started_at ->
-          Time.diff stop restart_started_at)
-      in
       t.watch_restart_started_at <- None;
-      emit_build_finish
-        ~run_id
-        ~start:started_at
-        ~stop
-        ~outcome:
-          (match res with
-           | Success -> `Success
-           | Failure -> `Failure)
-        ~restart_duration;
+      t.watch_restart_files <- None;
       t.handler (Build_finish res);
       Fiber.return res
   ;;
@@ -546,22 +483,7 @@ module Run = struct
       (* Flush before to make the build reproducible. The passive watch mode is
          designed for tests and We want to observe all the change made by the
          test before starting the build. *)
-      let* () = flush_file_watcher t in
-      let step =
-        let* res = step in
-        (* Flush after the build to make sure we reach a fix point if the build
-           interrupts itself. Without that, a file change caused by the build
-           itself might be picked up before or after the build finishes, which
-           makes the behavior racy and not good for tests.
-
-           Flushing here makes the previous [flush_file_watcher] less useful,
-           however we keep it because without it we might start the build
-           without having observed all the changes made by the current test.
-           Such an intermediate state might result in a build error, which would
-           make the test racy.*)
-        let+ () = flush_file_watcher t in
-        res
-      in
+      let* () = flush_file_watcher () in
       let* res = poll_iter t step in
       let* () = Fiber.Ivar.fill response_ivar res in
       loop ()
@@ -629,6 +551,38 @@ end
 let shutdown () =
   let t = t () in
   Event.Queue.send_shutdown t.events Requested
+;;
+
+type build_finish =
+  | Finished of { restart_duration : Time.Span.t option }
+  | Restarting
+
+let start_build () =
+  let t = t () in
+  let state, run_id = Run_id.State.start t.run_id_state in
+  t.run_id_state <- state;
+  run_id
+;;
+
+let watch_restart_files () = (t ()).watch_restart_files
+
+let finish_build ~stop =
+  let t = t () in
+  let finish () =
+    let restart_duration =
+      Option.map t.watch_restart_started_at ~f:(fun restart_started_at ->
+        Time.diff stop restart_started_at)
+    in
+    t.watch_restart_started_at <- None;
+    t.watch_restart_files <- None;
+    Finished { restart_duration }
+  in
+  match t.status with
+  | Restarting_build -> Restarting
+  | Standing_by -> finish ()
+  | Building _ ->
+    t.status <- Standing_by;
+    finish ()
 ;;
 
 let cancel_current_build () =

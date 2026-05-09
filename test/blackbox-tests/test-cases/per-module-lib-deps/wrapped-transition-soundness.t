@@ -8,10 +8,12 @@ writes [Wrapped_lib.Inner_a.x] — naming the wrapper and one inner
 module but not the other.
 
 The wrapper's [.cmi] only carries an alias name; the type lives in
-the inner module. So [consumer]'s compile rule must cover
-[inner_a.cmi] alongside [wrapped_lib.cmi]. Any future per-module
-narrowing of compile-rule deps must keep that coverage; otherwise
-a change to [inner_a]'s interface fails to invalidate [consumer].
+the inner module's mangled artifact [wrapped_lib__Inner_a.cmi] (not
+the [inner_a.cmi] transition shim). So [consumer]'s compile rule
+must cover [wrapped_lib__Inner_a.cmi] alongside [wrapped_lib.cmi].
+Any future per-module narrowing of compile-rule deps must keep that
+coverage; otherwise a change to [inner_a]'s interface fails to
+invalidate [consumer].
 
   $ cat > dune-project <<EOF
   > (lang dune 3.23)
@@ -53,7 +55,7 @@ a change to [inner_a]'s interface fails to invalidate [consumer].
 
 Edit [inner_a]'s interface. [consumer] reaches [inner_a] through
 the wrapper [Wrapped_lib]; the compile-rule deps must cover
-[inner_a.cmi], so [consumer] rebuilds:
+[wrapped_lib__Inner_a.cmi], so [consumer] rebuilds:
 
   $ cat > inner_a.mli <<EOF
   > val x : string

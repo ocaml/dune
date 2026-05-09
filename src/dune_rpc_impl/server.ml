@@ -110,6 +110,7 @@ module Clients = struct
     Session.Id.Map.remove t id
   ;;
 
+  let cardinal = Session.Id.Map.cardinal
   let to_list = Session.Id.Map.to_list
   let to_list_map = Session.Id.Map.to_list_map
 
@@ -184,6 +185,20 @@ type 'build_arg t =
   ; pending_jobs : 'build_arg pending_action Job_queue.t
   }
 
+let client_count t = Clients.cardinal t.server.clients
+
+let pp_client_count t =
+  match client_count t with
+  | 0 -> Pp.nop
+  | count -> Pp.textf "[rpc %d]" count
+;;
+
+let refresh_client_count_status_line t =
+  match t.server.config.registry with
+  | `Skip -> ()
+  | `Add -> Console.Status_line.refresh ()
+;;
+
 let () =
   Debug.register ~name:"rpc" (fun () ->
     match !current with
@@ -221,11 +236,13 @@ let handler (t : _ t Fdecl.t) : 'build_arg Handler.t =
     let t = Fdecl.get t in
     let client = () in
     t.server.clients <- Clients.add_session t.server.clients session;
+    refresh_client_count_status_line t;
     Fiber.return client
   in
   let on_terminate session =
     let t = Fdecl.get t in
     t.server.clients <- Clients.remove_session t.server.clients session;
+    refresh_client_count_status_line t;
     Fiber.return ()
   in
   let rpc = Handler.create ~on_terminate ~on_init ~version:Dune_rpc.Version.latest () in
@@ -514,5 +531,16 @@ let create ~lock_timeout ~registry ~root =
   res
 ;;
 
-let run t = Run.run t.server.config
+let run t =
+  match t.server.config.registry with
+  | `Skip -> Run.run t.server.config
+  | `Add ->
+    let section = Console.Status_line.add_section (Live (fun () -> pp_client_count t)) in
+    Fiber.finalize
+      (fun () -> Run.run t.server.config)
+      ~finally:(fun () ->
+        Console.Status_line.remove_section section;
+        Fiber.return ())
+;;
+
 let pending_action t = Job_queue.read t.pending_jobs

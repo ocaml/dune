@@ -103,11 +103,12 @@ let go_with_rpc_server_and_console_status_reporting
       ~config:dune_config
       run
   =
-  let server =
+  let rpc_server =
     match Common.rpc common with
-    | `Allow server -> rpc server
+    | `Allow server -> server
     | `Forbid_builds -> Code_error.raise "rpc must be enabled in polling mode" []
   in
+  let server = rpc rpc_server in
   let config =
     let watch_exclusions = Common.watch_exclusions common in
     Dune_config.for_scheduler dune_config ~print_ctrl_c_warning:true ~watch_exclusions

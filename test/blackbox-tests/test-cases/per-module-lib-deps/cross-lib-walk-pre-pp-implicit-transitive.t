@@ -22,21 +22,6 @@ transitive type.
   > (lang dune 3.0)
   > EOF
 
-A pass-through preprocessor: its sole effect is to mark
-[pp_dep]'s modules as preprocessed so the cross-library walker
-treats them as opaque.
-
-  $ mkdir pp
-  $ cat > pp/dune <<EOF
-  > (executable (name pp))
-  > EOF
-  $ cat > pp/pp.ml <<'EOF'
-  > let () =
-  >   let ic = open_in_bin Sys.argv.(1) in
-  >   try while true do print_endline (input_line ic) done
-  >   with End_of_file -> ()
-  > EOF
-
 [other_dep] is unwrapped (so tight-eligible) and exposes a record
 type:
 
@@ -63,7 +48,7 @@ type:
   >  (name pp_dep)
   >  (wrapped false)
   >  (libraries other_dep)
-  >  (preprocess (action (run %{exe:../pp/pp.exe} %{input-file}))))
+  >  (preprocess (action (run cat %{input-file}))))
   > EOF
   $ cat > pp_dep/d.ml <<EOF
   > let make_thing () = Other.make 1 "hi"

@@ -1,8 +1,7 @@
-Reproduction case for #1342. Check that when the user edits files in
-_build, things are rebuild as expected.
+Reproduction case for #1342. Edits to files in _build are unsupported: Dune
+owns these files and trusts its recorded metadata.
 
-Note that this is no longer supported. Users are not expected to edit things in
-the _build directory.
+A real source change must still replace the build copy, even if it was edited.
 
   $ echo 42 > x
   $ dune build x
@@ -10,11 +9,7 @@ the _build directory.
   42
   $ chmod u+w _build/default/x
   $ echo 0 > _build/default/x
-
-To force the mtime to change:
-https://github.com/ocaml/dune/pull/1359
-
-  $ touch -t 01010000 _build/default/x
+  $ echo 43 > x
   $ dune build x
   $ cat _build/default/x
-  0
+  43

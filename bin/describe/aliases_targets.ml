@@ -143,6 +143,7 @@ module Targets_cmd = struct
     | Load_rules.Loaded.Build { rules_here; _ } ->
       let file_targets =
         Path.Build.Map.keys rules_here.by_file_targets
+        @ Path.Build.Map.keys rules_here.source_file_copies
         |> List.filter_map ~f:(fun path ->
           if Path.Build.equal (Path.Build.parent_exn path) dir
           then Some (Path.Build.basename path |> Filename.to_string)

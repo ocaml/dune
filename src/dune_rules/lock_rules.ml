@@ -311,17 +311,17 @@ let setup_lock_rules ~dir ~lock_dir : Gen_rules.t =
   Gen_rules.make ~directory_targets rules
 ;;
 
-let copy_lock_dir ~target ~lock_dir ~deps ~files =
-  let open Action_builder.O in
-  Action_builder.deps deps
-  >>> (Path.Set.to_list_map files ~f:(fun src ->
-         let dst =
-           Path.drop_prefix_exn src ~prefix:lock_dir |> Path.Build.append_local target
-         in
-         Action.progn [ Action.mkdir (Path.Build.parent_exn dst); Action.copy src dst ])
-       |> Action.concurrent
-       |> Action.Full.make
-       |> Action_builder.return)
+let copy_lock_dir ~target ~lock_dir ~files =
+  List.map files ~f:(fun (src, perm, contents) ->
+    let dst =
+      Path.drop_prefix_exn src ~prefix:(Path.outside_build_dir lock_dir)
+      |> Path.Build.append_local target
+    in
+    Action.progn
+      [ Action.mkdir (Path.Build.parent_exn dst); Action.write_file ~perm dst contents ])
+  |> Action.concurrent
+  |> Action.Full.make
+  |> Action_builder.return
   |> Action_builder.with_targets
        ~targets:
          (Targets.create
@@ -361,19 +361,27 @@ let scan_lock_directory =
                  ])
   in
   fun lock_dir_path ->
-    let+ files = scan lock_dir_path in
-    Dep.Set.of_source_files ~files ~empty_directories:Path.Set.empty, files
+    let* files = scan lock_dir_path in
+    Memo.parallel_map (Path.Set.to_list files) ~f:(fun path ->
+      let+ contents = Fs_memo.file_contents (Path.as_outside_build_dir_exn path) in
+      let { Unix.st_perm; _ } = Unix.stat (Path.to_string path) in
+      let perm : Action_types.File_perm.t =
+        if Permissions.test_any Permissions.execute (Permissions.Mode.of_int st_perm)
+        then Executable
+        else Normal
+      in
+      path, perm, contents)
 ;;
 
 let setup_copy_rules ~dir:target ~lock_dir =
-  let+ deps, files = scan_lock_directory lock_dir in
+  let+ files = scan_lock_directory lock_dir in
   let directory_targets, rules =
-    match Path.Set.is_empty files with
+    match List.is_empty files with
     | true -> Path.Build.Map.empty, Rules.empty
     | false ->
       let directory_targets = Path.Build.Map.singleton target Loc.none in
       let { Action_builder.With_targets.build; targets } =
-        copy_lock_dir ~target ~lock_dir:(Path.outside_build_dir lock_dir) ~deps ~files
+        copy_lock_dir ~target ~lock_dir ~files
       in
       let rule = Rule.make ~targets build in
       directory_targets, Rules.of_rules [ rule ]

@@ -1,5 +1,13 @@
 open Import
 
+let check_path = function
+  | Path.In_build_dir _ | External _ -> ()
+  | In_source_tree _ as path ->
+    Code_error.raise
+      "Rule dependencies must be build or external paths"
+      [ "path", Path.to_dyn path ]
+;;
+
 (* CR-someday amokhov: We probably want to add a new variant [Dir] to provide
    first-class support for depending on directory targets. *)
 module T = struct
@@ -11,10 +19,19 @@ module T = struct
     | Universe
 
   let env e = Env e
-  let file f = File f
+
+  let file path =
+    check_path path;
+    File path
+  ;;
+
   let alias a = Alias a
   let universe = Universe
-  let file_selector g = File_selector g
+
+  let file_selector selector =
+    check_path (File_selector.dir selector);
+    File_selector selector
+  ;;
 
   let compare x y =
     match x, y with

@@ -2,6 +2,8 @@ Test that files promoted to the source tree are writable by the user
 
 Reproduction case for #3026
 
+  $ setup_xdg_runtime_dir
+
   $ cat > config <<EOF
   > (lang dune 2.1)
   > (cache enabled)
@@ -27,14 +29,12 @@ should change the permission of this file.
 We check that Dune does change the permission by echoing something into the file
 after the second run.
 
-  $ env XDG_RUNTIME_DIR=$PWD/.xdg-runtime \
-  >     XDG_CACHE_HOME=$PWD/.xdg-cache \
+  $ env XDG_CACHE_HOME=$PWD/.xdg-cache \
   >   dune build --config-file=config file
 
   $ rm -f file
 
-  $ env XDG_RUNTIME_DIR=$PWD/.xdg-runtime \
-  >     XDG_CACHE_HOME=$PWD/.xdg-cache \
+  $ env XDG_CACHE_HOME=$PWD/.xdg-cache \
   >   dune build --config-file=config file
 
   $ cat file

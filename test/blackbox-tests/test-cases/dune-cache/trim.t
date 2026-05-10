@@ -1,6 +1,6 @@
   $ export DUNE_CACHE=enabled
-  $ export XDG_RUNTIME_DIR=$PWD/.xdg-runtime
   $ export XDG_CACHE_HOME=$PWD/.xdg-cache
+  $ setup_xdg_runtime_dir
 
   $ cat > dune-project <<EOF
   > (lang dune 2.1)

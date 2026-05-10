@@ -2,9 +2,7 @@ The flush-file-watcher RPC waits for pending file watcher notifications to be
 handled by the watch server.
 
   $ export DUNE_TRACE=cache
-  $ export XDG_RUNTIME_DIR="$PWD/.xdg-runtime"
-  $ mkdir -p "$XDG_RUNTIME_DIR"
-  $ chmod 700 "$XDG_RUNTIME_DIR"
+  $ setup_xdg_runtime_dir
 
   $ cat > dune-project <<EOF
   > (lang dune 3.23)

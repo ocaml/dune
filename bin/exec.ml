@@ -84,7 +84,7 @@ let not_found_with_suggestions ~dir ~prog =
     let+ candidates =
       let+ filename_set = Build_system.files_of ~dir:(Path.build dir) in
       Filename_set.filenames filename_set
-      |> Filename.Set.to_list
+      |> Filename.Array.Set.to_list
       |> List.filter ~f:(fun filename ->
         let ext = Filename.extension filename in
         Filename.Extension.Or_empty.check ext Filename.Extension.exe)

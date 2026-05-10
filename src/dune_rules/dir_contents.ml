@@ -20,7 +20,7 @@ let loc_of_dune_file st_dir =
 type t =
   { kind : kind
   ; dir : Path.Build.t
-  ; text_files : Filename.Set.t
+  ; text_files : Filename.Array.Set.t
   ; foreign_sources : Foreign_sources.t Memo.Lazy.t
   ; mlds : (Documentation.t * Doc_sources.mld list) list Memo.Lazy.t
   ; coq : Coq_sources.t Memo.Lazy.t
@@ -39,7 +39,7 @@ let empty kind ~dir ~source_dir =
   { kind
   ; dir
   ; source_dir
-  ; text_files = Filename.Set.empty
+  ; text_files = Filename.Array.Set.empty
   ; ocaml = Memo.Lazy.of_val Ml_sources.empty
   ; melange = Memo.Lazy.of_val Ml_sources.empty
   ; mlds = Memo.Lazy.of_val []
@@ -202,9 +202,9 @@ end = struct
             Memo.return (select_deps_files @ ctypes_files)
           | _ -> Memo.return [])
         >>| List.concat
-        >>| Filename.Set.of_list
+        >>| Filename.Array.Set.of_list
       in
-      Filename.Set.union generated_files from_source
+      Filename.Array.Set.union generated_files from_source
   ;;
 
   module Key = struct

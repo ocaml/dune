@@ -1124,7 +1124,7 @@ let gen_load ~read ~dir ~files ~infer_from_opam_files ~load_opam_file_with_conte
   =
   let open Memo.O in
   let opam_packages =
-    Filename.Set.fold files ~init:[] ~f:(fun fn acc ->
+    Filename.Array.Set.fold files ~init:[] ~f:(fun fn acc ->
       match Package.Name.of_opam_file_basename fn with
       | None -> acc
       | Some name ->
@@ -1137,7 +1137,7 @@ let gen_load ~read ~dir ~files ~infer_from_opam_files ~load_opam_file_with_conte
         (name, (loc, pkg)) :: acc)
     |> Package.Name.Map.of_list_exn
   in
-  if Filename.Set.mem files filename
+  if Filename.Array.Set.mem files filename
   then load_dune_project ~read ~dir opam_packages >>| Option.some
   else if infer_from_opam_files && not (Package.Name.Map.is_empty opam_packages)
   then

@@ -182,8 +182,8 @@ let gen_rules_output
   let* () =
     Memo.Option.iter source_dir ~f:(fun source_dir ->
       Source_tree.Dir.filenames source_dir
-      |> Filename.Set.to_seq
-      |> Memo.parallel_iter_seq ~f:(fun file ->
+      |> Filename.Array.Set.to_list
+      |> Memo.parallel_iter ~f:(fun file ->
         Path.Source.relative (Source_tree.Dir.path source_dir) file |> setup_formatting))
   and* () =
     match Format_config.includes config Dune with

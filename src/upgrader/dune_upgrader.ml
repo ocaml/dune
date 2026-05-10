@@ -274,7 +274,7 @@ module V2 = struct
   ;;
 
   let upgrade_dune_files todo dir =
-    if String.Set.mem (Source_tree.Dir.filenames dir) Dune_file.fname
+    if Filename.Array.Set.mem (Source_tree.Dir.filenames dir) Dune_file.fname
     then (
       let path = Source_tree.Dir.path dir in
       let fn = Path.Source.relative path Dune_file.fname in
@@ -332,7 +332,7 @@ language. Use the (foreign_archives ...) field instead.|}
 end
 
 let detect_project_version project dir =
-  let in_tree = String.Set.mem (Source_tree.Dir.filenames dir) in
+  let in_tree = Filename.Array.Set.mem (Source_tree.Dir.filenames dir) in
   Dune_project.default_dune_language_version := 0, 1;
   if in_tree "jbuild"
   then (

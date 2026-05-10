@@ -39,10 +39,9 @@ module Dir0 = struct
 
     let get_vcs ~default:vcs ~readdir ~path =
       match
-        Filename.Set.union
-          (Dir_contents.files readdir)
-          (Filename.Set.of_list_map (Dir_contents.dirs readdir) ~f:fst)
-        |> Vcs.Kind.of_dir_contents
+        Vcs.Kind.of_dir_contents
+          ~files:(Dir_contents.files readdir)
+          ~dirs:(Dir_contents.dirs readdir)
       with
       | None -> vcs
       | Some kind -> This { Vcs.kind; root = Path.(append_source root) path }
@@ -52,8 +51,8 @@ module Dir0 = struct
   type t =
     { path : Path.Source.t
     ; status : Source_dir_status.t
-    ; files : Filename.Set.t
-    ; sub_dirs : sub_dir Filename.Map.t
+    ; files : Filename.Array.Set.t
+    ; sub_dirs : sub_dir Filename.Array.Map.t
     ; dune_file : Dune_file.t option
     ; project : Dune_project.t
     ; vcs : Vcs.t
@@ -68,8 +67,11 @@ module Dir0 = struct
     Dyn.record
       [ "path", Path.Source.to_dyn path
       ; "status", Source_dir_status.to_dyn status
-      ; "files", Filename.Set.to_dyn files
-      ; "sub_dirs", Filename.Map.to_dyn dyn_of_sub_dir sub_dirs
+      ; "files", Dyn.Set (Filename.Array.Set.to_list_map files ~f:Dyn.string)
+      ; ( "sub_dirs"
+        , Dyn.Map
+            (Filename.Array.Map.to_list_map sub_dirs ~f:(fun name sub_dir ->
+               Dyn.string name, dyn_of_sub_dir sub_dir)) )
       ; ("dune_file", Dyn.(option opaque dune_file))
       ]
 
@@ -83,12 +85,7 @@ module Dir0 = struct
   let sub_dirs t = t.sub_dirs
   let dune_file t = t.dune_file
   let project t = t.project
-
-  let sub_dir_names t =
-    Filename.Map.foldi (sub_dirs t) ~init:Filename.Set.empty ~f:(fun s _ acc ->
-      Filename.Set.add acc s)
-  ;;
-
+  let sub_dir_names t = Filename.Array.Map.keys t.sub_dirs
   let sub_dir_as_t (s : sub_dir) = s.sub_dir_as_t
 end
 
@@ -123,29 +120,29 @@ let rec physical
           ~parent_status
   =
   let status_map =
-    Source_dir_status.Spec.eval sub_dirs ~dirs:(List.map ~f:(fun (a, _) -> a) dirs)
+    Source_dir_status.Spec.eval sub_dirs ~dirs:(Filename.Array.Map.keys dirs)
   in
-  List.fold_left dirs ~init:Filename.Map.empty ~f:(fun subdirs (fn, file) ->
+  Filename.Array.Map.filter_mapi dirs ~f:(fun fn file ->
     match eval_status ~status_map ~parent_status fn with
-    | None -> subdirs
+    | None -> None
     | Some dir_status ->
       let path = Path.Source.relative dir fn in
       let dirs_visited = Dirs_visited.add dirs_visited path file in
-      { Dir0.sub_dir_status = dir_status
-      ; sub_dir_as_t =
-          Memo.lazy_cell (fun () ->
-            find_dir_raw
-              ~default_vcs
-              ~path
-              ~basename:fn
-              ~virtual_:false
-              ~dirs_visited
-              ~dune_file
-              ~status:dir_status
-              ~project)
-          |> Memo.Cell.read
-      }
-      |> Filename.Map.add_exn subdirs fn)
+      Some
+        { Dir0.sub_dir_status = dir_status
+        ; sub_dir_as_t =
+            Memo.lazy_cell (fun () ->
+              find_dir_raw
+                ~default_vcs
+                ~path
+                ~basename:fn
+                ~virtual_:false
+                ~dirs_visited
+                ~dune_file
+                ~status:dir_status
+                ~project)
+            |> Memo.Cell.read
+        })
 
 and virtual_ ~project ~sub_dirs ~parent_status ~dune_file ~init ~path =
   match dune_file with
@@ -155,33 +152,34 @@ and virtual_ ~project ~sub_dirs ~parent_status ~dune_file ~init ~path =
        their entries *)
     let dirs = Dune_file.sub_dirnames df in
     let status_map = Source_dir_status.Spec.eval sub_dirs ~dirs in
-    List.fold_left dirs ~init ~f:(fun acc fn ->
-      match eval_status ~status_map ~parent_status fn with
-      | None -> acc
-      | Some status ->
-        Filename.Map.update acc fn ~f:(function
-          (* Physical directories have already been added so they are
-             skipped here.
-
-             CR-rgrinberg: we should still update the status for these
-             directories if it hasn't been set *)
-          | Some _ as r -> r
-          | None ->
+    let virtual_dirs =
+      Filename.Array.Set.to_list_map dirs ~f:(fun fn ->
+        match eval_status ~status_map ~parent_status fn with
+        | None -> None
+        | Some status ->
+          if Filename.Array.Map.mem init fn
+          then None
+          else
             Some
-              { Dir0.sub_dir_status = status
-              ; sub_dir_as_t =
-                  Memo.lazy_cell (fun () ->
-                    find_dir_raw
-                      ~default_vcs:Dir0.Vcs.Ancestor_vcs
-                      ~path:(Path.Source.relative path fn)
-                      ~basename:fn
-                      ~virtual_:true
-                      ~dune_file
-                      ~status
-                      ~dirs_visited:Dirs_visited.empty
-                      ~project)
-                  |> Memo.Cell.read
-              }))
+              ( fn
+              , { Dir0.sub_dir_status = status
+                ; sub_dir_as_t =
+                    Memo.lazy_cell (fun () ->
+                      find_dir_raw
+                        ~default_vcs:Dir0.Vcs.Ancestor_vcs
+                        ~path:(Path.Source.relative path fn)
+                        ~basename:fn
+                        ~virtual_:true
+                        ~dune_file
+                        ~status
+                        ~dirs_visited:Dirs_visited.empty
+                        ~project)
+                    |> Memo.Cell.read
+                } ))
+      |> List.filter_opt
+      |> Filename.Array.Map.of_sorted_list_exn
+    in
+    Filename.Array.Map.union_left_biased init virtual_dirs
 
 and contents
       readdir
@@ -309,7 +307,7 @@ let gen_find_dir =
     match components with
     | [] -> on_success dir
     | x :: xs ->
-      (match Filename.Map.find dir.sub_dirs x with
+      (match Filename.Array.Map.find dir.sub_dirs x with
        | None -> on_last_found dir
        | Some dir -> dir.sub_dir_as_t >>= loop on_success on_last_found xs)
   in
@@ -329,16 +327,15 @@ let find_excluded_ancestor path =
   let rec loop (dir : Dir0.t) = function
     | [] -> Memo.return None
     | sub_dir :: path ->
-      (match Filename.Map.find dir.sub_dirs sub_dir with
+      (match Filename.Array.Map.find dir.sub_dirs sub_dir with
        | Some sub_dir ->
          let* child = sub_dir.sub_dir_as_t in
          loop child path
        | None ->
          Dir_contents.of_source_path dir.path
          >>| (function
-          | Ok contents
-            when List.exists (Dir_contents.dirs contents) ~f:(fun (name, _) ->
-                   String.equal name sub_dir) ->
+          | Ok contents when Filename.Array.Map.mem (Dir_contents.dirs contents) sub_dir
+            ->
             dir.dune_file
             |> Option.bind ~f:Dune_file.dirs_stanza_loc
             |> Option.map ~f:(fun loc -> Path.Source.relative dir.path sub_dir, loc)
@@ -356,7 +353,7 @@ let files_of path =
   | None -> Path.Source.Set.empty
   | Some dir ->
     Dir0.filenames dir
-    |> Filename.Set.to_list
+    |> Filename.Array.Set.to_list
     |> Path.Source.Set.of_list_map ~f:(Path.Source.relative path)
 ;;
 
@@ -374,9 +371,11 @@ module Dir = struct
         | true ->
           let+ here = f t
           and+ in_sub_dirs =
-            M.List.map (Filename.Map.values t.sub_dirs) ~f:(fun s ->
-              let* t = M.of_memo (sub_dir_as_t s) in
-              map_reduce t ~traverse ~trace_event_name ~f)
+            M.List.map
+              (Filename.Array.Map.to_list_map t.sub_dirs ~f:(fun _ s -> s))
+              ~f:(fun s ->
+                let* t = M.of_memo (sub_dir_as_t s) in
+                map_reduce t ~traverse ~trace_event_name ~f)
           in
           List.fold_left in_sub_dirs ~init:here ~f:Outcome.combine
       in
@@ -445,10 +444,10 @@ let ancestor_vcs =
         else (
           let dir = Filename.dirname dir in
           match
-            Sys.readdir dir
-            |> Array.to_list
-            |> Filename.Set.of_list
-            |> Vcs.Kind.of_dir_contents
+            let files =
+              Sys.readdir dir |> Stdlib.Array.to_list |> Filename.Array.Set.of_list
+            in
+            Vcs.Kind.of_dir_contents ~files ~dirs:Filename.Array.Map.empty
           with
           | Some kind -> Some { Vcs.kind; root = Path.of_string dir }
           | None -> loop dir

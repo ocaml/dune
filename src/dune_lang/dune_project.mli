@@ -155,7 +155,7 @@ end
 
 val load
   :  dir:Path.Source.t
-  -> files:Filename.Set.t
+  -> files:Filename.Array.Set.t
   -> infer_from_opam_files:bool
   -> load_opam_file_with_contents:
        (contents:string -> Path.Source.t -> Package_name.t -> Package.t)
@@ -164,7 +164,7 @@ val load
 val gen_load
   :  read:(Path.Source.t -> string Memo.t)
   -> dir:Path.Source.t
-  -> files:Filename.Set.t
+  -> files:Filename.Array.Set.t
   -> infer_from_opam_files:bool
   -> load_opam_file_with_contents:
        (contents:string -> Path.Source.t -> Package_name.t -> Package.t)

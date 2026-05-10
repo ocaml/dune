@@ -215,15 +215,16 @@ let promote ~(targets : _ Targets.Produced.t) ~(promote : Rule.Promote.t) ~promo
     function
     | Error unix_error -> directory_target_error ~unix_error ~dst_dir []
     | Ok dir_contents ->
-      Fs_memo.Dir_contents.iter dir_contents ~f:(function
-        | file_name, S_REG ->
+      Fs_memo.Dir_contents.iter dir_contents ~f:(fun file_name kind ->
+        match kind with
+        | S_REG ->
           if not (Targets.Produced.mem targets (Path.Build.relative build_dir file_name))
           then Fpath.unlink_no_err (Path.to_string (Path.relative dst_dir file_name))
-        | dir_name, S_DIR ->
-          let src_dir = Path.Build.relative build_dir dir_name in
+        | S_DIR ->
+          let src_dir = Path.Build.relative build_dir file_name in
           if not (Targets.Produced.mem_dir targets src_dir)
-          then Path.rm_rf (Path.relative dst_dir dir_name)
-        | name, _kind -> Fpath.unlink_no_err (Path.to_string (Path.relative dst_dir name)))
+          then Path.rm_rf (Path.relative dst_dir file_name)
+        | _kind -> Fpath.unlink_no_err (Path.to_string (Path.relative dst_dir file_name)))
   in
   Fiber.sequential_iter_seq (Targets.Produced.all_dirs_seq targets) ~f:(fun dir ->
     remove_stale_files_and_subdirectories ~dir)

@@ -26,7 +26,7 @@ let files_with_filter dir ~filter =
           let path = Path.append_source prefix_with @@ Source_tree.Dir.path dir in
           let files =
             Source_tree.Dir.filenames dir
-            |> String.Set.to_list
+            |> Filename.Array.Set.to_list
             |> Path.Set.of_list_map ~f:(fun fn -> Path.relative path fn)
             |> Path.Set.filter ~f:filter
           in

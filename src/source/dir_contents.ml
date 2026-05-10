@@ -31,24 +31,29 @@ module File = struct
 end
 
 type t =
-  { files : Filename.Set.t
-  ; dirs : (Filename.t * File.t) list
+  { files : Filename.Array.Set.t
+  ; dirs : File.t Filename.Array.Map.t
   }
 
 let files t = t.files
 let dirs t = t.dirs
 
-let equal =
-  let dirs_equal (s1, f1) (s2, f2) = Filename.equal s1 s2 && File.compare f1 f2 = Eq in
-  fun x y -> Filename.Set.equal x.files y.files && List.equal dirs_equal x.dirs y.dirs
+let equal x y =
+  Filename.Array.Set.equal x.files y.files
+  && Filename.Array.Map.equal x.dirs y.dirs ~equal:(fun f1 f2 -> File.compare f1 f2 = Eq)
 ;;
 
-let empty = { files = Filename.Set.empty; dirs = [] }
+let empty = { files = Filename.Array.Set.empty; dirs = Filename.Array.Map.empty }
 
 let to_dyn { files; dirs } =
   let open Dyn in
   record
-    [ "files", Filename.Set.to_dyn files; "dirs", list (pair string File.to_dyn) dirs ]
+    [ "files", Set (Filename.Array.Set.to_list_map files ~f:Dyn.string)
+    ; ( "dirs"
+      , list
+          (pair string File.to_dyn)
+          (Filename.Array.Map.to_list_map dirs ~f:(fun name file -> name, file)) )
+    ]
 ;;
 
 (* Returns [true] for special files such as character devices of sockets; see
@@ -110,7 +115,8 @@ let of_source_path_impl path =
           if is_directory then List.Right (fn, file) else Left fn)
       >>| List.filter_partition_map ~f:Fun.id
     in
-    { files = Filename.Set.of_list files; dirs } |> Result.ok
+    let dirs = Filename.Array.Map.of_sorted_list_exn dirs in
+    { files = Filename.Array.Set.of_sorted_list files; dirs } |> Result.ok
 ;;
 
 (* Having a cutoff here speeds up incremental rebuilds quite a bit when a

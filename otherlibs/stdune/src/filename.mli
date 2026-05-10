@@ -98,3 +98,4 @@ val chop_extension : [ `Use_remove_extension ]
 
 module Set = String.Set
 module Map = String.Map
+module Array : Array_intf.S with type Set.elt = t

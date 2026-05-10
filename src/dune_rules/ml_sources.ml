@@ -237,7 +237,7 @@ let modules_of_files ~dialects ~dir ~files =
       name, Module.File.make dialect ~original_path path_in_build_dir
     in
     let loc = Loc.in_dir dir in
-    List.filter_partition_map (Filename.Set.to_list files) ~f:(fun fn ->
+    List.filter_partition_map (Filename.Array.Set.to_list files) ~f:(fun fn ->
       (* we aren't using Filename.extension because we want to ignore
          filenames such as `foo.cppo.ml` or `foo.{filter}.ml` (e.g. from the
          `(select ..)` field) *)
@@ -289,7 +289,7 @@ let melange_modules_of_files ~root_dir ~dialects ~dir ~files =
       name, Module.File.make dialect ~original_path (Path.build path_in_build_dir)
     in
     let loc = Loc.in_dir (Path.build dir) in
-    List.filter_partition_map (Filename.Set.to_list files) ~f:(fun fn ->
+    List.filter_partition_map (Filename.Array.Set.to_list files) ~f:(fun fn ->
       (* we aren't using Filename.extension because we want to handle
          filenames such as foo.cppo.ml *)
       match String.lsplit2 fn ~on:'.' with

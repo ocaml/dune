@@ -67,10 +67,10 @@ Initial regular build, then [dune ocaml top-module mylib/m.ml]:
 
   $ dune build @check
   $ dune ocaml top-module mylib/m.ml > /dev/null 2>&1
-  $ stat -c '%y' _build/default/.topmod/mylib/m.ml/mylib__M.cmo > before-impl-edit.mtime
 
 Control: edit [dep_for_impl]'s cmi (referenced from [m.ml]). The
-top-module compile rebuilds — expected.
+top-module compile rebuilds — expected. The trace contains the
+[mylib__M.cmo] build action.
 
   $ cat > dep_for_impl/dep_for_impl.ml <<EOF
   > let value = 7
@@ -80,15 +80,19 @@ top-module compile rebuilds — expected.
   > val value : int
   > val extra : string
   > EOF
-  $ dune ocaml top-module mylib/m.ml > /dev/null 2>&1
-  $ stat -c '%y' _build/default/.topmod/mylib/m.ml/mylib__M.cmo > after-impl-edit.mtime
-  $ if [ "$(cat before-impl-edit.mtime)" != "$(cat after-impl-edit.mtime)" ]; then echo "REBUILT"; else echo "NOT REBUILT"; fi
-  REBUILT
-  $ cp after-impl-edit.mtime before-intf-edit.mtime
+  $ dune ocaml top-module mylib/m.ml --trace-file=_build/trace-impl.csexp > /dev/null 2>&1
+  $ dune trace cat --trace-file=_build/trace-impl.csexp | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("\\.topmod/mylib/m\\.ml/mylib__M\\.cmo$"))]'
+  [
+    {
+      "target_files": [
+        "_build/default/.topmod/mylib/m.ml/mylib__M.cmo"
+      ]
+    }
+  ]
 
 Probe: edit [dep_for_intf]'s cmi (NOT referenced from [m.ml] — the
 only reference was in the discarded [m.mli]). The top-module
-compile rebuilds despite the absence of any actual reference. This
+compile rebuilds despite the absence of any actual reference; this
 is the over-invalidation under observation.
 
   $ cat > dep_for_intf/dep_for_intf.ml <<EOF
@@ -99,7 +103,12 @@ is the over-invalidation under observation.
   > type t = int
   > val zero : t
   > EOF
-  $ dune ocaml top-module mylib/m.ml > /dev/null 2>&1
-  $ stat -c '%y' _build/default/.topmod/mylib/m.ml/mylib__M.cmo > after-intf-edit.mtime
-  $ if [ "$(cat before-intf-edit.mtime)" != "$(cat after-intf-edit.mtime)" ]; then echo "REBUILT"; else echo "NOT REBUILT"; fi
-  REBUILT
+  $ dune ocaml top-module mylib/m.ml --trace-file=_build/trace-intf.csexp > /dev/null 2>&1
+  $ dune trace cat --trace-file=_build/trace-intf.csexp | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("\\.topmod/mylib/m\\.ml/mylib__M\\.cmo$"))]'
+  [
+    {
+      "target_files": [
+        "_build/default/.topmod/mylib/m.ml/mylib__M.cmo"
+      ]
+    }
+  ]

@@ -100,31 +100,28 @@ module Lib = struct
     in
     let modules =
       match Lib_info.modules_by_mode info with
-      | External modules ->
-        (match modules.ocaml, modules.melange with
-         | None, None -> assert false
-         | Some m, _ -> Some m
-         | _, Some modules ->
-           let src_dir = Lib_info.src_dir info in
-           Modules.With_vlib.map modules ~f:(fun m ->
-             List.fold_left Ml_kind.all ~init:m ~f:(fun m ml_kind ->
-               match Module.source m ~ml_kind with
-               | None -> m
-               | Some msrc ->
-                 (match
-                    Path.descendant
-                      (Module.File.path msrc)
-                      ~of_:(Path.relative src_dir Melange.Source.dir)
-                  with
-                  | None -> m
-                  | Some segment ->
-                    let m' =
-                      let path' = Path.append_local src_dir (Path.local_part segment) in
-                      Module.File.set_path msrc path'
-                    in
-                    Module.set_source m ~ml_kind (Some m'))))
-           |> Option.some)
+      | External modules -> Some modules
       | Local -> None
+    in
+    let melange_modules_for_dune_package modules =
+      let src_dir = Lib_info.src_dir info in
+      Modules.With_vlib.map modules ~f:(fun modules ->
+        List.fold_left Ml_kind.all ~init:modules ~f:(fun modules ml_kind ->
+          match Module.source modules ~ml_kind with
+          | None -> modules
+          | Some source ->
+            (match
+               Path.descendant
+                 (Module.File.path source)
+                 ~of_:(Path.relative src_dir Melange.Source.dir)
+             with
+             | None -> modules
+             | Some segment ->
+               let source =
+                 let path = Path.append_local src_dir (Path.local_part segment) in
+                 Module.File.set_path source path
+               in
+               Module.set_source modules ~ml_kind (Some source))))
     in
     let melange_runtime_deps = additional_paths (Lib_info.melange_runtime_deps info) in
     let jsoo_runtime = Lib_info.jsoo_runtime info in
@@ -169,7 +166,15 @@ module Lib = struct
        ; field_o "main_module_name" Module_name.encode main_module_name
        ; field_l "modes" sexp (Lib_mode.Map.Set.encode modes)
        ; field_l "obj_dir" sexp (Obj_dir.encode obj_dir)
-       ; field_o "modules" (Modules.With_vlib.encode ~src_dir:package_root) modules
+       ; field_o
+           "modules"
+           (Modules.With_vlib.encode ~src_dir:package_root)
+           (Option.bind modules ~f:(fun modules -> modules.ocaml))
+       ; field_o
+           "melange_modules"
+           (Modules.With_vlib.encode ~src_dir:package_root)
+           (Option.bind modules ~f:(fun modules ->
+              Option.map modules.melange ~f:melange_modules_for_dune_package))
        ; paths "melange_runtime_deps" melange_runtime_deps
        ; field_o
            "special_builtin_support"
@@ -257,7 +262,8 @@ module Lib = struct
        and+ ppx_runtime_deps = libs "ppx_runtime_deps"
        and+ sub_systems = Sub_system_info.record_parser
        and+ orig_src_dir = field_o "orig_src_dir" path
-       and+ modules = field "modules" (Modules.decode ~src_dir:base)
+       and+ modules = field_o "modules" (Modules.decode ~src_dir:base)
+       and+ melange_modules = field_o "melange_modules" (Modules.decode ~src_dir:base)
        and+ special_builtin_support =
          field_o
            "special_builtin_support"
@@ -287,7 +293,14 @@ module Lib = struct
          let virtual_deps = [] in
          let dune_version = None in
          let modules =
-           { Compilation_mode.By_mode.ocaml = Some modules; melange = Some modules }
+           { Compilation_mode.By_mode.ocaml = modules
+           ; melange =
+               (match modes.melange, melange_modules with
+                | true, Some modules -> Some modules
+                | true, None -> modules
+                | false, Some _ -> assert false
+                | false, None -> None)
+           }
          in
          let entry_modules =
            Compilation_mode.By_mode.map modules ~f:(fun ~for_:_ modules ->
@@ -299,7 +312,11 @@ module Lib = struct
              Option.map modules ~f:(fun modules -> Modules.With_vlib.modules modules))
          in
          let wrapped =
-           let any_modules = modules.ocaml |> Option.value_exn in
+           let any_modules =
+             match modules.ocaml with
+             | Some modules -> modules
+             | None -> Option.value_exn modules.melange
+           in
            Some (Lib_info.Inherited.This (Modules.With_vlib.wrapped any_modules))
          in
          let entry_modules = Lib_info.Source.External (Ok entry_modules) in

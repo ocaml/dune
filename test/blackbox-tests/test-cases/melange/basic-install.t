@@ -43,7 +43,7 @@ Test that we can install melange mode libraries
    (kind normal)
    (main_module_name Foo)
    (modes melange)
-   (modules
+   (melange_modules
     (singleton
      (obj_name foo)
      (visibility public)
@@ -56,4 +56,3 @@ Test that we can install melange mode libraries
   Installing prefix/lib/foo/melange/foo.cmj
   Installing prefix/lib/foo/melange/foo.cmt
   Installing prefix/lib/foo/melange/foo.ml
-

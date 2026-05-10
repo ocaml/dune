@@ -199,11 +199,11 @@ let ready (t : _ t) =
 ;;
 
 let stop (t : _ t) =
-  Fiber.Ivar.peek t.server.config.startup_ivar
-  >>= function
-  | None -> Fiber.return ()
-  | Some (Error _) -> Fiber.return ()
-  | Some (Ok server) -> Csexp_rpc.Server.stop server
+  Fiber.of_thunk (fun () ->
+    match Fiber.Ivar.peek t.server.config.startup_ivar with
+    | None -> Fiber.return ()
+    | Some (Error _) -> Fiber.return ()
+    | Some (Ok server) -> Csexp_rpc.Server.stop server)
 ;;
 
 let get_current_diagnostic_errors () =

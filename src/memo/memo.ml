@@ -742,8 +742,7 @@ module Computation = struct
          to let the latter get the discovered dependencies [deps_rev]. *)
       Call_stack.push_frame frame (fun () -> fiber frame)
     in
-    Fiber.Ivar.peek ivar
-    >>= function
+    match Fiber.Ivar.peek ivar with
     | Some _ -> Fiber.return result
     | None ->
       let+ () = Fiber.Ivar.fill ivar result in
@@ -751,8 +750,7 @@ module Computation = struct
   ;;
 
   let read_but_first_check_for_cycles { ivar; dag_node } ~phase ~dep_node =
-    Fiber.Ivar.peek ivar
-    >>= function
+    match Fiber.Ivar.peek ivar with
     | Some res -> Fiber.return (Ok res)
     | None ->
       let dep_node = Dep_node.T dep_node in
@@ -1213,8 +1211,7 @@ end = struct
       dep_node.state <- Cached_value (Cached_value.create_cancelled ~dependency_cycle);
       Fiber.return ()
     | Computing { compute; _ } ->
-      Fiber.Ivar.peek compute.ivar
-      >>= (function
+      (match Fiber.Ivar.peek compute.ivar with
        | Some _ -> Fiber.return ()
        | None ->
          let cancelled = Cached_value.create_cancelled ~dependency_cycle in

@@ -221,11 +221,10 @@ module Ivar = struct
   let fill t x k = Fill_ivar (t, x, k)
   let create_full a = { state = Full a }
 
-  let peek t k =
-    k
-      (match t.state with
-       | Empty | Empty_with_readers _ -> None
-       | Full x -> Some x)
+  let peek t =
+    match t.state with
+    | Empty | Empty_with_readers _ -> None
+    | Full x -> Some x
   ;;
 end
 

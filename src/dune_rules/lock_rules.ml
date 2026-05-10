@@ -439,19 +439,21 @@ let scan_lock_directory =
         ]
     | Ok entries ->
       Fs_memo.Dir_contents.to_list entries
-      |> Memo.parallel_map ~f:(fun (entry, kind) ->
-        let path = Path.Outside_build_dir.relative dir entry in
-        match (kind : File_kind.t) with
-        | S_REG -> Memo.return (Path.Set.singleton (Path.outside_build_dir path))
-        | S_DIR -> scan path
-        | kind ->
-          User_error.raise
-            [ Pp.textf
-                "Lock directory contains file %S with unsupported kind %S"
-                (Path.Outside_build_dir.to_string_maybe_quoted path)
-                (File_kind.to_string kind)
-            ])
-      >>| Path.Set.union_all
+      |> Memo.map_reduce
+           ~empty:Path.Set.empty
+           ~combine:Path.Set.union
+           ~f:(fun (entry, kind) ->
+             let path = Path.Outside_build_dir.relative dir entry in
+             match (kind : File_kind.t) with
+             | S_REG -> Memo.return (Path.Set.singleton (Path.outside_build_dir path))
+             | S_DIR -> scan path
+             | kind ->
+               User_error.raise
+                 [ Pp.textf
+                     "Lock directory contains file %S with unsupported kind %S"
+                     (Path.Outside_build_dir.to_string_maybe_quoted path)
+                     (File_kind.to_string kind)
+                 ])
   in
   fun lock_dir_path ->
     let+ files = scan lock_dir_path in

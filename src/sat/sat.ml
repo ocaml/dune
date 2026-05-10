@@ -147,6 +147,13 @@ module Make (User : USER) = struct
     ; mutable set_to_false : bool
     ; conflict_vars : VarID.Hash_set.t
       (* we are finishing up by setting everything else to False *)
+      (* Counters for observability. [num_clauses] counts input clauses
+         added via [at_least_one] / [implies] / [at_most] / [impossible];
+         [num_decisions] and [num_conflicts] are incremented in
+         [run_solver]. *)
+    ; num_clauses : Counter.t
+    ; num_decisions : Counter.t
+    ; num_conflicts : Counter.t
     }
 
   let lit_equal (s1, v1) (s2, v2) = s1 == s2 && v1 == v2
@@ -223,6 +230,9 @@ module Make (User : USER) = struct
     ; toplevel_conflict = false
     ; set_to_false = false
     ; conflict_vars = VarID.Hash_set.create ()
+    ; num_clauses = Counter.create ()
+    ; num_decisions = Counter.create ()
+    ; num_conflicts = Counter.create ()
     }
   ;;
 
@@ -356,7 +366,10 @@ module Make (User : USER) = struct
     done
   ;;
 
-  let impossible problem = problem.toplevel_conflict <- true
+  let impossible problem =
+    Counter.incr problem.num_clauses;
+    problem.toplevel_conflict <- true
+  ;;
 
   (* Call [Clause.propagate lit] when lit becomes True *)
   let watch_lit lit clause =
@@ -626,6 +639,7 @@ module Make (User : USER) = struct
 
   (** Public interface. Only used before the solve starts. *)
   let at_least_one problem ?(reason = "input fact") lits =
+    Counter.incr problem.num_clauses;
     if List.is_empty lits
     then problem.toplevel_conflict <- true
     else if
@@ -910,9 +924,11 @@ module Make (User : USER) = struct
                 ];
             problem.trail_lim <- problem.trail_len :: problem.trail_lim;
             problem.trail_lim_len <- problem.trail_lim_len + 1;
+            Counter.incr problem.num_decisions;
             let r = enqueue problem lit (External "considering") in
             assert r
           | Some conflicting_clause ->
+            Counter.incr problem.num_conflicts;
             if get_decision_level problem = 0
             then (
               if debug then log_debug (Pp.text "FAIL: conflict found at top level");
@@ -960,5 +976,20 @@ module Make (User : USER) = struct
     if value = Undecided
     then Pp.text "undecided!"
     else Pp.hovbox (pp_lit_reason lit ++ Pp.text " => " ++ pp_lit_assignment lit)
+  ;;
+
+  type stats =
+    { num_variables : int
+    ; num_clauses : int
+    ; num_decisions : int
+    ; num_conflicts : int
+    }
+
+  let get_stats problem =
+    { num_variables = List.length problem.vars
+    ; num_clauses = Counter.read problem.num_clauses
+    ; num_decisions = Counter.read problem.num_decisions
+    ; num_conflicts = Counter.read problem.num_conflicts
+    }
   ;;
 end

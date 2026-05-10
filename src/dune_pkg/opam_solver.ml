@@ -948,7 +948,19 @@ module Solver = struct
         in
         find_undecided root_req
       in
-      match Sat.run_solver sat decider with
+      let start = Time.now () in
+      let result = Sat.run_solver sat decider in
+      let stop = Time.now () in
+      Dune_trace.emit Sat (fun () ->
+        let stats = Sat.get_stats sat in
+        Dune_trace.Event.sat_solve
+          ~start
+          ~dur:(Time.diff stop start)
+          ~num_variables:stats.num_variables
+          ~num_clauses:stats.num_clauses
+          ~num_decisions:stats.num_decisions
+          ~num_conflicts:stats.num_conflicts);
+      match result with
       | false -> None
       | true ->
         (* Build the results object *)

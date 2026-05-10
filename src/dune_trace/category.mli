@@ -21,6 +21,7 @@ type t =
   | Digest
   | Artifact_substitution
   | Thread
+  | Sat
 
 val to_string : t -> string
 val of_string : string -> t option

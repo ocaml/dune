@@ -24,6 +24,7 @@ module Category : sig
     | Digest
     | Artifact_substitution
     | Thread
+    | Sat
 end
 
 module Event : sig
@@ -137,6 +138,15 @@ module Event : sig
   val gc : unit -> t
   val fd_count : unit -> t option
   val spawn_thread : name:string -> t
+
+  val sat_solve
+    :  start:Time.t
+    -> dur:Time.Span.t
+    -> num_variables:int
+    -> num_clauses:int
+    -> num_decisions:int
+    -> num_conflicts:int
+    -> t
 
   module Promote : sig
     val promote : Path.Build.t -> Path.Source.t -> t

@@ -816,6 +816,17 @@ let spawn_thread ~name =
   Event.instant ~args ~name:"spawn_thread" now Thread
 ;;
 
+let sat_solve ~start ~dur ~num_variables ~num_clauses ~num_decisions ~num_conflicts =
+  let args =
+    [ "num_variables", Arg.int num_variables
+    ; "num_clauses", Arg.int num_clauses
+    ; "num_decisions", Arg.int num_decisions
+    ; "num_conflicts", Arg.int num_conflicts
+    ]
+  in
+  Event.complete ~args ~name:"solve" ~start ~dur Sat
+;;
+
 let sandbox name ~start ~stop ~queued loc ~dir =
   let args =
     [ "loc", Arg.string (Loc.to_file_colon_line loc); "dir", Arg.build_path dir ]

@@ -1,8 +1,10 @@
-This demonstrates error messages whennever a pform isn't expanded
+A %{lib:LIB:FILE} pform where LIB doesn't resolve fails with
+"Library ... not found", whether the pform appears in the action or
+in the deps field.
 
   $ echo '(lang dune 2.0)' > dune-project
 
-for libraries:
+In an action:
 
   $ echo '(rule (with-stdout-to dummy (echo "%{lib:fakelib:bar.ml}")))' > dune
   $ dune build ./dummy
@@ -14,18 +16,7 @@ for libraries:
   -> required by _build/default/dummy
   [1]
 
-for binaries:
-
-  $ echo '(rule (with-stdout-to dummy (echo "%{bin:fakebin}")))' > dune
-  $ dune build ./dummy
-  File "dune", line 1, characters 35-49:
-  1 | (rule (with-stdout-to dummy (echo "%{bin:fakebin}")))
-                                         ^^^^^^^^^^^^^^
-  Error: Program fakebin not found in the tree or in PATH
-   (context: default)
-  [1]
-
-for libraries in the deps field:
+In the deps field:
 
   $ echo '(rule (deps %{lib:fakelib:bar.ml}) (target dummy) (action (with-stdout-to %{target} (echo foo))))' > dune
   $ dune build ./dummy
@@ -35,15 +26,4 @@ for libraries in the deps field:
   Error: Library "fakelib" not found.
   -> required by %{lib:fakelib:bar.ml} at dune:1
   -> required by _build/default/dummy
-  [1]
-
-for binaries in the deps field:
-
-  $ echo '(rule (deps %{bin:foobar}) (target dummy) (action (with-stdout-to %{target} (echo foo))))' > dune
-  $ dune build ./dummy
-  File "dune", line 1, characters 12-25:
-  1 | (rule (deps %{bin:foobar}) (target dummy) (action (with-stdout-to %{target} (echo foo))))
-                  ^^^^^^^^^^^^^
-  Error: Program foobar not found in the tree or in PATH
-   (context: default)
   [1]

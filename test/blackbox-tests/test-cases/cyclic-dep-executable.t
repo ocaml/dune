@@ -23,12 +23,11 @@ Reports module dependency cycles inside executables.
 
   $ dune build
   Error: Dependency cycle between:
-     _build/default/.foo.eobjs/dune__exe__Baz.impl.all-deps
-  -> _build/default/.foo.eobjs/dune__exe__Bar.impl.all-deps
-  -> _build/default/.foo.eobjs/dune__exe__Baz.impl.all-deps
-  -> required by _build/default/.foo.eobjs/dune__exe__Foo.impl.all-deps
+     transitive deps of dune__exe__Baz.impl in _build/default
+  -> transitive deps of dune__exe__Bar.impl in _build/default
+  -> transitive deps of dune__exe__Baz.impl in _build/default
+  -> required by transitive deps of dune__exe__Foo.impl in _build/default
   -> required by _build/default/foo.exe
   -> required by alias all
   -> required by alias default
   [1]
-

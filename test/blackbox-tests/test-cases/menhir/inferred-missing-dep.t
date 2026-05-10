@@ -60,7 +60,7 @@ The first issue #2450 is that `ocamlc -i` may generate a reference to
   Mylib is the main module of the library and is the only module exposed
   outside of the library. Consequently, it should be the one depending on all
   the other modules in the library.
-  -> required by _build/default/.mylib.objs/mylib__Parser.impl.all-deps
+  -> required by transitive deps of mylib__Parser.impl in _build/default
   -> required by _build/default/.mylib.objs/native/mylib__Parser.cmx
   -> required by _build/default/mylib.a
   -> required by alias all

@@ -54,16 +54,16 @@ error message.
   -> required by alias indirect/indirect-deps in indirect/dune:6
   [1]
 
-But when the cycle is due to the cmi files themselves, the message becomes
-cryptic and can involve unrelated files:
+When the cycle is due to the cmi files, it is reported through the transitive
+dependency actions:
 
   $ echo 'val xx : B.t' >> indirect/c.mli
   $ dune build @indirect-deps
   Error: Dependency cycle between:
-     _build/default/indirect/.a.eobjs/a.impl.all-deps
-  -> _build/default/indirect/.a.eobjs/b.impl.all-deps
-  -> _build/default/indirect/.a.eobjs/c.intf.all-deps
-  -> _build/default/indirect/.a.eobjs/a.impl.all-deps
+     transitive deps of a.impl in _build/default/indirect
+  -> transitive deps of b.impl in _build/default/indirect
+  -> transitive deps of c.intf in _build/default/indirect
+  -> transitive deps of a.impl in _build/default/indirect
   -> required by _build/default/indirect/a.exe
   -> required by alias indirect/indirect-deps in indirect/dune:6
   [1]

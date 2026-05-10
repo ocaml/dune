@@ -65,16 +65,23 @@ Initial build.
 
 The mock-compile invocation is recognisable by [-i] in its argv;
 its target is [grammar__mock.mli.inferred]. The presence of this
-event positively asserts the [--infer] code path ran. The mock's
-[-I] path includes [dep]'s objdir, so the grammar's semantic action
-type-checks against [dep]:
+event positively asserts the [--infer] code path ran:
 
-  $ dune trace cat | jq -s 'include "dune"; [.[] | progMatching("ocamlc") | select(.process_args | index("-i") != null) | {target: .target_files[0], dep_in_args: (.process_args | any(. == "dep/.dep.objs/byte"))}]'
+  $ dune trace cat | jq -s 'include "dune"; [.[] | progMatching("ocamlc") | select(.process_args | index("-i") != null) | .target_files]'
   [
-    {
-      "target": "_build/default/parser/grammar__mock.mli.inferred",
-      "dep_in_args": true
-    }
+    [
+      "_build/default/parser/grammar__mock.mli.inferred"
+    ]
+  ]
+
+The mock's [-I] path includes [dep]'s objdir, so the grammar's
+semantic action type-checks against [dep]:
+
+  $ dune trace cat | jq -s 'include "dune"; [.[] | progMatching("ocamlc") | select(.process_args | index("-i") != null) | .process_args | [.[] | select(startswith("dep/"))]]'
+  [
+    [
+      "dep/.dep.objs/byte"
+    ]
   ]
 
 Modify [dep]'s interface (add a value). Both consumers — the

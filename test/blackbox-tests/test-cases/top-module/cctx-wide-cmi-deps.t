@@ -25,10 +25,10 @@ mentions [Dep_for_intf].
   > (library (name dep_for_intf))
   > EOF
   $ cat > dep_for_intf/dep_for_intf.ml <<EOF
-  > type t = Tag
+  > type t = int
   > EOF
   $ cat > dep_for_intf/dep_for_intf.mli <<EOF
-  > type t = Tag
+  > type t = int
   > EOF
 
 [dep_for_impl] is referenced from [m.ml] only. [m.mli] never
@@ -60,7 +60,7 @@ mentions [Dep_for_impl].
   > EOF
   $ cat > mylib/m.ml <<EOF
   > let _ = Dep_for_impl.value
-  > let tag = Dep_for_intf.Tag
+  > let tag = 42
   > EOF
 
 Initial regular build, then [dune ocaml top-module mylib/m.ml]:
@@ -92,10 +92,12 @@ compile rebuilds despite the absence of any actual reference. This
 is the over-invalidation under observation.
 
   $ cat > dep_for_intf/dep_for_intf.ml <<EOF
-  > type t = Tag | Other
+  > type t = int
+  > let zero = 0
   > EOF
   $ cat > dep_for_intf/dep_for_intf.mli <<EOF
-  > type t = Tag | Other
+  > type t = int
+  > val zero : t
   > EOF
   $ dune ocaml top-module mylib/m.ml > /dev/null 2>&1
   $ stat -c '%y' _build/default/.topmod/mylib/m.ml/mylib__M.cmo > after-intf-edit.mtime

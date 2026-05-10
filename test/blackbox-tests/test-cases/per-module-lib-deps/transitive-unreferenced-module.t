@@ -1,8 +1,9 @@
 A consumer transitively depends upon a library through one module of an
 intermediate library, never naming a sibling module of the transitive lib in
-source. The current but undesirable behaviour is that the consumer rebuilds
-when any module of the transitively depended upon library changes, even
-unreferenced ones.
+source. The per-module filter walks ocamldep output across library
+boundaries: editing [unreached_module] leaves [main] untouched because no
+source in this test references it. Pre-#14116 this overrebuilt because
+the consumer's compile rule depended on a glob over [dep_lib]'s objdir.
 
 [intermediate_lib] and [main] each include an unused dummy module so neither
 stanza is single-module — single-module stanzas take a fast path that would
@@ -58,17 +59,4 @@ test references — and record the rebuild list for [main]:
   > EOF
   $ dune build ./main.exe
   $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("dune__exe__Main\\."))]'
-  [
-    {
-      "target_files": [
-        "_build/default/.main.eobjs/byte/dune__exe__Main.cmi",
-        "_build/default/.main.eobjs/byte/dune__exe__Main.cmti"
-      ]
-    },
-    {
-      "target_files": [
-        "_build/default/.main.eobjs/native/dune__exe__Main.cmx",
-        "_build/default/.main.eobjs/native/dune__exe__Main.o"
-      ]
-    }
-  ]
+  []

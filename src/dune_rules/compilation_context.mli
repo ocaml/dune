@@ -27,6 +27,7 @@ val create
   -> flags:Ocaml_flags.t
   -> requires_compile:Lib.t list Resolve.Memo.t
   -> requires_link:Lib.t list Resolve.t Memo.Lazy.t
+  -> ?pps_runtime_libs:Lib.t list Resolve.Memo.t
   -> ?preprocessing:Pp_spec.t
   -> opaque:opaque
   -> js_of_ocaml:Js_of_ocaml.In_context.t option Js_of_ocaml.Mode.Pair.t
@@ -62,7 +63,58 @@ val requires_hidden : t -> Lib.t list Resolve.Memo.t
 val requires_compile : t -> Lib.t list Resolve.Memo.t
 val parameters : t -> Module_name.t list Resolve.Memo.t
 val includes : t -> Command.Args.without_targets Command.Args.t Lib_mode.Cm_kind.Map.t
+
+module Raw_refs : sig
+  module Key : sig
+    type t =
+      | Direct of
+          { obj_name : Module_name.Unique.t
+          ; ml_kind : Ml_kind.t
+          }
+      | Transitive of
+          { obj_name : Module_name.Unique.t
+          ; cm_kind : Lib_mode.Cm_kind.t
+          }
+  end
+end
+
+(** Memoise the raw-refs [Action_builder.t] computed for each
+    [Raw_refs.Key.t] within this cctx. [compute ()] is invoked
+    only on cache miss; subsequent callers with the same key get
+    the cached builder back. The cache short-circuits before
+    allocating, so siblings sharing [trans_deps] don't redo
+    construction. *)
+val cached_raw_refs
+  :  t
+  -> key:Raw_refs.Key.t
+  -> compute:(unit -> Module_name.Set.t Action_builder.t)
+  -> Module_name.Set.t Action_builder.t
+
+(** Include flags ([-I]/[-H]) for compiling a module against [kept_libs]. The
+    cctx's [requires_compile] and [requires_hidden] are each restricted to
+    libraries in [kept_libs]; the kept direct entries become [-I], the kept
+    hidden entries become [-H]. *)
+val filtered_include_flags
+  :  t
+  -> cm_kind:Lib_mode.Cm_kind.t
+  -> kept_libs:Lib.Set.t
+  -> Command.Args.without_targets Command.Args.t Action_builder.t
+
+val lib_index : t -> Lib_file_deps.Lib_index.t Resolve.Memo.t
+
+(** [true] iff any library in the compilation context's direct or
+    hidden requires implements a virtual library. Memoized per cctx. *)
+val has_virtual_impl : t -> bool Resolve.Memo.t
+
 val preprocessing : t -> Pp_spec.t
+
+(** Closure of [ppx_runtime_libraries] introduced by every [pps] in
+    this stanza's preprocessor. These libraries' modules are visible
+    only to ppx-rewritten output, so the per-module dependency filter
+    cannot reason about which of them are referenced — they must be
+    treated as opaque [must-glob] dependencies. *)
+val pps_runtime_libs : t -> Lib.t list Resolve.Memo.t
+
 val opaque : t -> bool
 val js_of_ocaml : t -> Js_of_ocaml.In_context.t option Js_of_ocaml.Mode.Pair.t
 val sandbox : t -> Sandbox_config.t

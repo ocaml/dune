@@ -78,11 +78,11 @@ Change only mylib's interface:
   > let new_function () = "hello"
   > EOF
 
-Uses_other is recompiled even though it only uses Otherlib, not Mylib:
+Uses_other is not recompiled because it only uses Otherlib, not Mylib:
 
   $ dune build ./main.exe
   $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("Uses_other"))] | length'
-  2
+  0
 
 Change only otherlib's interface:
 
@@ -95,8 +95,8 @@ Change only otherlib's interface:
   > let new_other_fn s = s ^ "!"
   > EOF
 
-Uses_lib is recompiled even though it only uses Mylib, not Otherlib:
+Uses_lib is not recompiled because it only uses Mylib, not Otherlib:
 
   $ dune build ./main.exe
   $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("Uses_lib"))] | length'
-  2
+  0

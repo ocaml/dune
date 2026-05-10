@@ -64,6 +64,32 @@ val requires_compile : t -> Lib.t list Resolve.Memo.t
 val parameters : t -> Module_name.t list Resolve.Memo.t
 val includes : t -> Command.Args.without_targets Command.Args.t Lib_mode.Cm_kind.Map.t
 
+module Raw_refs : sig
+  module Key : sig
+    type t =
+      | Direct of
+          { obj_name : Module_name.Unique.t
+          ; ml_kind : Ml_kind.t
+          }
+      | Transitive of
+          { obj_name : Module_name.Unique.t
+          ; cm_kind : Lib_mode.Cm_kind.t
+          }
+  end
+end
+
+(** Memoise the raw-refs [Action_builder.t] computed for each
+    [Raw_refs.Key.t] within this cctx. [compute ()] is invoked
+    only on cache miss; subsequent callers with the same key get
+    the cached builder back. The cache short-circuits before
+    allocating, so siblings sharing [trans_deps] don't redo
+    construction. *)
+val cached_raw_refs
+  :  t
+  -> key:Raw_refs.Key.t
+  -> compute:(unit -> Module_name.Set.t Action_builder.t)
+  -> Module_name.Set.t Action_builder.t
+
 (** Include flags ([-I]/[-H]) for compiling a module against [kept_libs]. The
     cctx's [requires_compile] and [requires_hidden] are each restricted to
     libraries in [kept_libs]; the kept direct entries become [-I], the kept

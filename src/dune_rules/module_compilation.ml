@@ -122,21 +122,33 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
           | Ocaml (Cmi | Cmo) | Melange _ -> false
       in
       let read_dep_m_raw dep_m ~is_consumer =
-        let* impl_deps =
-          if need_impl_deps_of dep_m ~is_consumer
-          then
+        let key : Compilation_context.Raw_refs.Key.t =
+          let obj_name = Module.obj_name dep_m in
+          if is_consumer
+          then Direct { obj_name; ml_kind }
+          else Transitive { obj_name; cm_kind }
+        in
+        Compilation_context.cached_raw_refs cctx ~key ~compute:(fun () ->
+          let* impl_deps =
+            if need_impl_deps_of dep_m ~is_consumer
+            then
+              Ocamldep.read_immediate_deps_raw_of
+                ~sandbox
+                ~sctx
+                ~obj_dir
+                ~ml_kind:Impl
+                dep_m
+            else Action_builder.return Module_name.Set.empty
+          in
+          let+ intf_deps =
             Ocamldep.read_immediate_deps_raw_of
               ~sandbox
               ~sctx
               ~obj_dir
-              ~ml_kind:Impl
+              ~ml_kind:Intf
               dep_m
-          else Action_builder.return Module_name.Set.empty
-        in
-        let+ intf_deps =
-          Ocamldep.read_immediate_deps_raw_of ~sandbox ~sctx ~obj_dir ~ml_kind:Intf dep_m
-        in
-        Module_name.Set.union impl_deps intf_deps
+          in
+          Module_name.Set.union impl_deps intf_deps)
       in
       let* m_raw = read_dep_m_raw m ~is_consumer:true in
       let* trans_raw =

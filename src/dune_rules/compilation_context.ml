@@ -33,6 +33,75 @@ module Includes = struct
   let empty = Lib_mode.Cm_kind.Map.make_all Command.Args.empty
 end
 
+(* Variant key: [Direct] for the consumer-side row (the module being compiled),
+   [Transitive] for trans-dep rows. Each carries only the fields that identify
+   the row's closure behaviour — [ml_kind] for [Direct], [cm_kind] for
+   [Transitive] — so cache entries collapse across irrelevant dimensions. *)
+module Raw_refs = struct
+  module Key = struct
+    type t =
+      | Direct of
+          { obj_name : Module_name.Unique.t
+          ; ml_kind : Ml_kind.t
+          }
+      | Transitive of
+          { obj_name : Module_name.Unique.t
+          ; cm_kind : Lib_mode.Cm_kind.t
+          }
+
+    let cm_kind_tag : Lib_mode.Cm_kind.t -> int = function
+      | Ocaml Cmi -> 0
+      | Ocaml Cmo -> 1
+      | Ocaml Cmx -> 2
+      | Melange Cmi -> 3
+      | Melange Cmj -> 4
+    ;;
+
+    let ml_kind_tag : Ml_kind.t -> int = function
+      | Intf -> 0
+      | Impl -> 1
+    ;;
+
+    let equal a b =
+      match a, b with
+      | Direct a, Direct b ->
+        Module_name.Unique.equal a.obj_name b.obj_name
+        && ml_kind_tag a.ml_kind = ml_kind_tag b.ml_kind
+      | Transitive a, Transitive b ->
+        Module_name.Unique.equal a.obj_name b.obj_name
+        && cm_kind_tag a.cm_kind = cm_kind_tag b.cm_kind
+      | Direct _, Transitive _ | Transitive _, Direct _ -> false
+    ;;
+
+    let hash = function
+      | Direct { obj_name; ml_kind } -> Poly.hash (0, obj_name, ml_kind_tag ml_kind)
+      | Transitive { obj_name; cm_kind } -> Poly.hash (1, obj_name, cm_kind_tag cm_kind)
+    ;;
+
+    let repr =
+      let open Repr in
+      let obj_name_repr = view string ~to_:Module_name.Unique.to_string in
+      let ml_kind_repr = view string ~to_:Ml_kind.to_string in
+      let cm_kind_repr = abstract Lib_mode.Cm_kind.to_dyn in
+      variant
+        "Raw_refs.Key"
+        [ case "Direct" (pair obj_name_repr ml_kind_repr) ~proj:(function
+            | Direct { obj_name; ml_kind } -> Some (obj_name, ml_kind)
+            | Transitive _ -> None)
+        ; case "Transitive" (pair obj_name_repr cm_kind_repr) ~proj:(function
+            | Transitive { obj_name; cm_kind } -> Some (obj_name, cm_kind)
+            | Direct _ -> None)
+        ]
+    ;;
+
+    let to_dyn = Repr.to_dyn repr
+  end
+
+  type t = (Key.t, Module_name.Set.t Action_builder.t) Table.t
+
+  let create () : t = Table.create (module Key) 64
+end
+
 (* Per-cctx cache of [Lib_flags.L.include_flags] keyed on [(lib_mode, sorted
    kept_libs)]; two compile rules in this cctx sharing those values share one
    [Args.t]. Output also depends on [t.requires_compile] / [t.requires_hidden],
@@ -123,6 +192,7 @@ type t =
   ; ocaml : Ocaml_toolchain.t
   ; for_ : Compilation_mode.t
   ; filtered_includes : Filtered_includes.t
+  ; raw_refs : Raw_refs.t
   }
 
 let loc t = t.loc
@@ -387,10 +457,20 @@ let create
   ; instances
   ; for_
   ; filtered_includes = Filtered_includes.create ()
+  ; raw_refs = Raw_refs.create ()
   }
 ;;
 
 let for_ t = t.for_
+
+let cached_raw_refs t ~key ~compute =
+  match Table.find t.raw_refs key with
+  | Some builder -> builder
+  | None ->
+    let builder = compute () in
+    Table.set t.raw_refs key builder;
+    builder
+;;
 
 let filtered_include_flags t ~cm_kind ~kept_libs =
   let lib_mode = Lib_mode.of_cm_kind cm_kind in

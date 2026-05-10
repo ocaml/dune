@@ -15,9 +15,7 @@ This test pins the current behaviour. A future change that filters
 references would flip the final assertion from REBUILT to
 NOT REBUILT, and the test would need promotion.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.23)
-  > EOF
+  $ make_dune_project 3.24
 
 [dep_for_intf] is referenced from [m.mli] only. [m.ml] never
 mentions [Dep_for_intf].

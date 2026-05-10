@@ -65,7 +65,7 @@ mentions [Dep_for_impl].
 
 Initial regular build, then [dune ocaml top-module mylib/m.ml]:
 
-  $ dune build @check 2>&1 | head -5
+  $ dune build @check
   $ dune ocaml top-module mylib/m.ml > /dev/null 2>&1
   $ stat -c '%y' _build/default/.topmod/mylib/m.ml/mylib__M.cmo > before-impl-edit.mtime
 

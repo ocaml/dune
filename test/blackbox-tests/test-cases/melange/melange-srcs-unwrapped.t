@@ -30,7 +30,6 @@ Inspect build dir path of generated melange sources under
 
   $ dune build
   $ find _build/default/a -type f | sort
-  _build/default/a/.a.objs/bar.impl.all-deps
   _build/default/a/.a.objs/byte/bar.cmi
   _build/default/a/.a.objs/byte/bar.cmo
   _build/default/a/.a.objs/byte/bar.cmt
@@ -40,20 +39,15 @@ Inspect build dir path of generated melange sources under
   _build/default/a/.a.objs/byte/qux.cmi
   _build/default/a/.a.objs/byte/qux.cmo
   _build/default/a/.a.objs/byte/qux.cmt
-  _build/default/a/.a.objs/foo.impl.all-deps
   _build/default/a/.a.objs/melange/bar.cmi
   _build/default/a/.a.objs/melange/bar.cmj
   _build/default/a/.a.objs/melange/bar.cmt
-  _build/default/a/.a.objs/melange/bar.impl.all-deps
   _build/default/a/.a.objs/melange/foo.cmi
   _build/default/a/.a.objs/melange/foo.cmj
   _build/default/a/.a.objs/melange/foo.cmt
-  _build/default/a/.a.objs/melange/foo.impl.all-deps
   _build/default/a/.a.objs/melange/qux.cmi
   _build/default/a/.a.objs/melange/qux.cmj
   _build/default/a/.a.objs/melange/qux.cmt
-  _build/default/a/.a.objs/melange/qux.impl.all-deps
-  _build/default/a/.a.objs/qux.impl.all-deps
   _build/default/a/.melange_src/b/bar.ml
   _build/default/a/.melange_src/b/c/qux.ml
   _build/default/a/.melange_src/foo.ml

@@ -19,7 +19,10 @@ let get_descendants_of_relative_dir_relative_to_base_dir_local
       Source_tree.find_dir absolute_dir
       >>| function
       | None -> []
-      | Some dir -> Source_tree.Dir.sub_dirs dir |> String.Map.keys
+      | Some dir ->
+        Source_tree.Dir.sub_dirs dir
+        |> Filename.Array.Map.keys
+        |> Filename.Array.Set.to_list
     in
     let+ rest =
       Memo.List.concat_map children ~f:(fun child ->
@@ -160,7 +163,7 @@ struct
       >>= M.List.concat_map ~f:(fun (file_selector, prefix) ->
         C.collect_files ~loc file_selector
         >>| Filename_set.filenames
-        >>| Filename.Set.to_list_map ~f:(Filename.concat prefix))
+        >>| Filename.Array.Set.to_list_map ~f:(Filename.concat prefix))
       >>| List.sort ~compare:String.compare
     in
     { Expanded.matches; prefix = without_vars.prefix }

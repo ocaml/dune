@@ -13,10 +13,15 @@ module Kind = struct
     | _ -> None
   ;;
 
-  let of_dir_contents set =
-    match Filename.Set.find set ~f:(fun s -> Option.is_some (of_dir_name s)) with
-    | None -> None
-    | Some s -> Some (Option.value_exn (of_dir_name s))
+  let of_dir_contents ~files ~dirs =
+    let kind name =
+      if Filename.Array.Set.mem files name || Filename.Array.Map.mem dirs name
+      then of_dir_name name
+      else None
+    in
+    match kind ".git" with
+    | Some _ as kind -> kind
+    | None -> kind ".hg"
   ;;
 
   let to_dyn t =

@@ -105,7 +105,7 @@ let all_tests_of_dir ~sctx parent_dir =
     | None -> Memo.return []
     | Some source_dir ->
       Source_tree.Dir.filenames source_dir
-      |> Filename.Set.to_list
+      |> Filename.Array.Set.to_list
       |> Memo.List.filter ~f:(fun ml_file ->
         classify_ml_test ~sctx ~dir:parent_dir ~ml_file >>| Result.is_ok)
   and+ dir_candidates =
@@ -114,7 +114,7 @@ let all_tests_of_dir ~sctx parent_dir =
     | None -> Memo.return []
     | Some parent_source_dir ->
       let dirs = Source_tree.Dir.sub_dirs parent_source_dir in
-      String.Map.to_list dirs
+      Filename.Array.Map.to_list dirs
       |> Memo.List.map ~f:(fun (_candidate, candidate_path) ->
         Source_tree.Dir.sub_dir_as_t candidate_path
         >>| Source_tree.Dir.path

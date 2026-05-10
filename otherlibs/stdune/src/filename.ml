@@ -135,3 +135,11 @@ let chop_extension = `Use_remove_extension
 
 module Set = String.Set
 module Map = String.Map
+module Array0 = Array
+
+module Array = Array0.Sorted.Make (struct
+    type nonrec t = t
+
+    let compare = compare
+    let to_dyn = Dyn.string
+  end)

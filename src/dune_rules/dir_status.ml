@@ -255,7 +255,7 @@ end = struct
     and walk_children st_dir ~dir ~local =
       (* TODO take account of directory targets *)
       Source_tree.Dir.sub_dirs st_dir
-      |> Filename.Map.to_list
+      |> Filename.Array.Map.to_list
       |> Memo.parallel_map ~f:(fun (basename, st_dir) ->
         let* st_dir = Source_tree.Dir.sub_dir_as_t st_dir in
         let dir = Path.Build.relative dir basename in

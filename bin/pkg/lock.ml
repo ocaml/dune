@@ -64,7 +64,7 @@ let project_and_package_pins project =
 (* For recursive pins, we must traverse the pinned sources. The [project_pins]
    are the initial pins that we have in our project. *)
 let resolve_project_pins project_pins =
-  let scan_project ~read ~files =
+  let scan_project ~read ~(files : Filename.Array.Set.t) =
     let read file = Memo.of_reproducible_fiber (read file) in
     let open Memo.O in
     (* Opam files may never contain recursive pins, so don't both reading them *)

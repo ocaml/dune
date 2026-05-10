@@ -384,7 +384,7 @@ let cram_tests dir =
     let path = Source_tree.Dir.path dir in
     let file_tests =
       Source_tree.Dir.filenames dir
-      |> Filename.Set.to_list
+      |> Filename.Array.Set.to_list
       |> List.filter_map ~f:(fun s ->
         if Cram_test.is_cram_suffix s
         then Some (Ok (Cram_test.File (Path.Source.relative path s)))
@@ -392,7 +392,7 @@ let cram_tests dir =
     in
     let+ dir_tests =
       Source_tree.Dir.sub_dirs dir
-      |> Filename.Map.to_list
+      |> Filename.Array.Map.to_list
       |> Memo.parallel_map ~f:(fun (name, sub_dir) ->
         match Cram_test.is_cram_suffix name with
         | false -> Memo.return None
@@ -405,11 +405,11 @@ let cram_tests dir =
             Cram_test.Dir { file; dir }
           in
           let files = Source_tree.Dir.filenames sub_dir in
-          if Filename.Set.is_empty files
+          if Filename.Array.Set.is_empty files
           then None
           else
             Some
-              (if Filename.Set.mem files fname
+              (if Filename.Array.Set.mem files fname
                then Ok test
                else Error (Missing_run_t test)))
       >>| List.filter_opt

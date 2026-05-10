@@ -434,18 +434,21 @@ module Debug = struct
 end
 
 module Dir_contents = struct
-  (* CR-someday amokhov: Using a [Filename.Map] instead of a list would be better
-     since we'll not need to worry about the invariant that the list is sorted
-     and doesn't contain any duplicate file names. Using maps will likely be
-     more costly, so we need to do some benchmarking before switching. *)
-  type t = (Filename.t * File_kind.t) list
+  (* CR-soon rgrinberg: turn this into this record:
+    {[
+      { files : Filename.Array.Set.t
+      ; dirs : Filename.Array.Set.t
+      ; rest : File_kind.t Filename.Array.Map.t
+      }
+    ]}*)
+  type t = File_kind.t Filename.Array.Map.t
 
-  let to_list t = t
-  let iter t = List.iter t
+  let iter t ~f = Filename.Array.Map.iteri t ~f
+  let to_list = Filename.Array.Map.to_list
 
   (* The names must be unique, so we don't care about comparing file kinds. *)
-  let of_list = List.sort ~compare:(fun (x, _) (y, _) -> Filename.compare x y)
-  let equal = List.equal (Tuple.T2.equal Filename.equal File_kind.equal)
+  let of_list = Filename.Array.Map.of_list_exn
+  let equal = Filename.Array.Map.equal ~equal:File_kind.equal
 end
 
 (* This module caches only a subset of fields of [Unix.stats] because other

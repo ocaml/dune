@@ -36,8 +36,8 @@ module Loaded = struct
     }
 
   type t =
-    | Source of { filenames : Filename.Set.t }
-    | External of { filenames : Filename.Set.t }
+    | Source of { filenames : Filename.Array.Set.t }
+    | External of { filenames : Filename.Array.Set.t }
     | Build of build
     | Build_under_directory_target of { directory_target_ancestor : Path.Build.t }
 
@@ -72,7 +72,7 @@ module Dir_triage = struct
     | Known of Loaded.t
     | Build_directory of Build_directory.t
 
-  let empty_source = Known (Source { filenames = Filename.Set.empty })
+  let empty_source = Known (Source { filenames = Filename.Array.Set.empty })
   let no_rules = Known (Loaded.no_rules ~allowed_subdirs:Dir_set.empty)
 end
 
@@ -88,20 +88,20 @@ let get_dir_triage ~dir =
     let+ filenames =
       Fs_memo.dir_contents (External dir_ext)
       >>| function
-      | Error (Unix.ENOENT, _, _) -> Filename.Set.empty
+      | Error (Unix.ENOENT, _, _) -> Filename.Array.Set.empty
       | Error unix_error ->
         User_warning.emit
           [ Pp.textf "Unable to read %s" (Path.to_string_maybe_quoted dir)
           ; Unix_error.Detailed.pp_reason unix_error
           ];
-        Filename.Set.empty
+        Filename.Array.Set.empty
       | Ok filenames ->
         Fs_memo.Dir_contents.to_list filenames
         |> List.filter_map ~f:(fun (filename, kind) ->
           match kind with
           | Unix.S_DIR -> None
           | _ -> Some filename)
-        |> Filename.Set.of_list
+        |> Filename.Array.Set.of_sorted_list
     in
     Dir_triage.Known (External { filenames })
   | Build (Regular Root) ->
@@ -300,7 +300,7 @@ end = struct
   ;;
 
   let create_copy_rules ~dir ~ctx_dir ~non_target_source_filenames =
-    Filename.Set.to_list_map non_target_source_filenames ~f:(fun filename ->
+    Filename.Array.Set.to_list_map non_target_source_filenames ~f:(fun filename ->
       let src_path = Path.Source.relative dir filename in
       let build_path = Path.Build.append_source ctx_dir src_path in
       Rule.make
@@ -312,7 +312,7 @@ end = struct
   let compile_rules ~dir ~source_dirs rules =
     let file_targets, directory_targets =
       let check_for_source_dir_conflict rule target =
-        if Filename.Set.mem source_dirs target
+        if Filename.Array.Set.mem source_dirs target
         then report_rule_src_dir_conflict dir target rule
       in
       List.map rules ~f:(fun rule ->
@@ -388,21 +388,25 @@ end = struct
               "Unexpected directory target in a Fallback rule"
               [ "targets", Targets.Validated.to_dyn rule.targets ];
           if Path.Build.equal dir rule.targets.root
-          then rule.targets.files
-          else Filename.Set.empty
+          then
+            rule.targets.files
+            |> Filename.Set.to_list
+            |> Filename.Array.Set.of_sorted_list
+          else Filename.Array.Set.empty
         in
-        if Filename.Set.is_subset source_filenames_for_targets ~of_:source_filenames
+        if Filename.Array.Set.is_subset source_filenames_for_targets ~of_:source_filenames
         then (* All targets are present *)
           acc
-        else if Filename.Set.are_disjoint source_filenames_for_targets source_filenames
+        else if
+          Filename.Array.Set.are_disjoint source_filenames_for_targets source_filenames
         then (* No target is present *)
           rule :: acc
         else (
           let absent_targets =
-            Filename.Set.diff source_filenames_for_targets source_filenames
+            Filename.Array.Set.diff source_filenames_for_targets source_filenames
           in
           let present_targets =
-            Filename.Set.diff source_filenames_for_targets absent_targets
+            Filename.Array.Set.diff source_filenames_for_targets absent_targets
           in
           let dir = Path.source (Path.Build.drop_build_context_exn rule.targets.root) in
           User_error.raise
@@ -415,12 +419,12 @@ end = struct
             ; Pp.text "The following targets are present:"
             ; Pp.enumerate
                 ~f:Path.pp
-                (Filename.Set.to_list_map present_targets ~f:(Path.relative dir))
+                (Filename.Array.Set.to_list_map present_targets ~f:(Path.relative dir))
             ; Pp.nop
             ; Pp.text "The following targets are not:"
             ; Pp.enumerate
                 ~f:Path.pp
-                (Filename.Set.to_list_map absent_targets ~f:(Path.relative dir))
+                (Filename.Array.Set.to_list_map absent_targets ~f:(Path.relative dir))
             ]))
   ;;
 
@@ -450,13 +454,13 @@ end = struct
       in
       corresponding_source_dir
       >>| function
-      | None -> Filename.Set.empty
+      | None -> Filename.Array.Set.empty
       | Some dir -> Source_tree.Dir.sub_dir_names dir
     ;;
 
     let allowed_dirs ~dir ~subdir : restriction Memo.t =
       let+ subdirs = source_subdirs_of_build_dir ~dir in
-      if Filename.Set.mem subdirs subdir
+      if Filename.Array.Set.mem subdirs subdir
       then Unrestricted
       else
         Restricted
@@ -634,15 +638,19 @@ end = struct
   ;;
 
   type source_paths_to_ignore =
-    { filenames : Filename.Set.t
-    ; dirnames : Filename.Set.t
+    { filenames : Filename.Array.Set.t
+    ; dirnames : Filename.Array.Set.t
     }
 
   (* Compute source paths ignored by specific rules *)
   let source_paths_to_ignore ~dir build_dir_only_sub_dirs rules : source_paths_to_ignore =
+    let of_filename_set set =
+      Filename.Set.to_list set |> Filename.Array.Set.of_sorted_list
+    in
     let rec iter ~filenames ~dirnames rules =
       match rules with
-      | [] -> { filenames; dirnames }
+      | [] ->
+        { filenames = of_filename_set filenames; dirnames = of_filename_set dirnames }
       | { Rule.targets; mode; loc; _ } :: rules when Path.Build.equal dir targets.root ->
         let target_filenames = targets.files in
         let target_dirnames = targets.dirs in
@@ -685,12 +693,14 @@ end = struct
 
   module Source_files_and_dirs = struct
     type t =
-      { source_filenames : Filename.Set.t
-      ; source_dirs : Filename.Set.t
+      { source_filenames : Filename.Array.Set.t
+      ; source_dirs : Filename.Array.Set.t
       }
 
     let empty =
-      { source_filenames = Filename.Set.empty; source_dirs = Filename.Set.empty }
+      { source_filenames = Filename.Array.Set.empty
+      ; source_dirs = Filename.Array.Set.empty
+      }
     ;;
   end
 
@@ -701,11 +711,11 @@ end = struct
         let module Source_tree = (val (Build_config.get ()).source_tree) in
         Source_tree.find_dir dir
         >>| function
-        | None -> Filename.Set.empty, Filename.Set.empty
+        | None -> Filename.Array.Set.empty, Filename.Array.Set.empty
         | Some dir -> Source_tree.Dir.filenames dir, Source_tree.Dir.sub_dir_names dir
       in
-      ( Filename.Set.diff filenames source_paths_to_ignore.filenames
-      , Filename.Set.diff dirnames source_paths_to_ignore.dirnames )
+      ( Filename.Array.Set.diff filenames source_paths_to_ignore.filenames
+      , Filename.Array.Set.diff dirnames source_paths_to_ignore.dirnames )
     in
     (* Compile the rules and cleanup stale artifacts *)
     { Source_files_and_dirs.source_filenames; source_dirs }
@@ -750,8 +760,13 @@ end = struct
         | None -> acc
         | Some p -> Dir_set.union acc (Dir_set.singleton p))
     in
+    let source_dirs_to_keep =
+      Filename.Array.Set.fold source_dirs ~init:Dir_set.empty ~f:(fun path acc ->
+        let path = Path.Local.of_string path in
+        Dir_set.union acc (Dir_set.singleton path))
+    in
     let subdirs_to_keep =
-      Subdir_set.union build_dir_only_sub_dirs (Subdir_set.of_set source_dirs)
+      Dir_set.union (Subdir_set.to_dir_set build_dir_only_sub_dirs) source_dirs_to_keep
     in
     let+ allowed_grand_descendants_of_parent =
       match allowed_by_parent with
@@ -764,10 +779,7 @@ end = struct
       | Restricted restriction -> Memo.Lazy.force restriction
     in
     Dir_set.union_all
-      [ rules_generated_in
-      ; Subdir_set.to_dir_set subdirs_to_keep
-      ; allowed_grand_descendants_of_parent
-      ]
+      [ rules_generated_in; subdirs_to_keep; allowed_grand_descendants_of_parent ]
   ;;
 
   let validate_directory_targets ~dir ~real_directory_targets ~directory_targets =
@@ -848,7 +860,7 @@ end = struct
       (* Compile the rules and cleanup stale artifacts *)
       let rules =
         (* Filter out fallback rules *)
-        if Filename.Set.is_empty source_filenames
+        if Filename.Array.Set.is_empty source_filenames
         then
           (* If there are no source files to copy, fallback rules are
              automatically kept *)

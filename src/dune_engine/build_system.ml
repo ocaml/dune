@@ -920,7 +920,8 @@ module Internal = struct
           | _ ->
             let basename = Path.Build.basename path in
             if File_selector.test_basename g ~basename then basename :: acc else acc)
-      |> Filename.Set.of_list
+      |> List.rev
+      |> Filename.Array.Set.of_sorted_list
       |> Filename_set.create ~dir
       |> Memo.return
     | Build_under_directory_target { directory_target_ancestor = _ } ->
@@ -932,7 +933,7 @@ module Internal = struct
          Filename_set.create
            ~dir
            ~filter:(File_selector.test_basename g)
-           (Filename.Set.of_keys files_and_digests)
+           (Filename.Map.keys files_and_digests |> Filename.Array.Set.of_sorted_list)
        | None ->
          (* CR-soon amokhov: I think this case should be an error. If the directory target
             doesn't contain the requested dir, we will currently create an empty directory
@@ -1029,7 +1030,7 @@ let file_exists fn =
   Load_rules.load_dir ~dir:(Path.parent_exn fn)
   >>= function
   | Source { filenames } | External { filenames } ->
-    Filename.Set.mem filenames (Path.basename fn) |> Memo.return
+    Filename.Array.Set.mem filenames (Path.basename fn) |> Memo.return
   | Build { rules_here; _ } ->
     Memo.return
       (Path.Build.Map.mem rules_here.by_file_targets (Path.as_in_build_dir_exn fn))
@@ -1046,7 +1047,8 @@ let files_of ~dir =
     Memo.return (Filename_set.create ~dir filenames)
   | Build { rules_here; _ } ->
     Path.Build.Map.keys rules_here.by_file_targets
-    |> Filename.Set.of_list_map ~f:Path.Build.basename
+    |> List.map ~f:Path.Build.basename
+    |> Filename.Array.Set.of_sorted_list
     |> Filename_set.create ~dir
     |> Memo.return
   | Build_under_directory_target { directory_target_ancestor } ->
@@ -1054,8 +1056,8 @@ let files_of ~dir =
     let filenames =
       let dir = Path.as_in_build_dir_exn dir in
       match Targets.Produced.find_dir path_map dir with
-      | Some files -> Filename.Set.of_keys files
-      | None -> Filename.Set.empty
+      | Some files -> Filename.Map.keys files |> Filename.Array.Set.of_sorted_list
+      | None -> Filename.Array.Set.empty
     in
     Filename_set.create ~dir filenames
 ;;

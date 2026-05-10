@@ -66,7 +66,7 @@ module Dir_map = struct
         match t with
         | None -> files
         | Some (_, glob) ->
-          Filename.Set.filter files ~f:(fun filename ->
+          Filename.Array.Set.filter files ~f:(fun filename ->
             Predicate_lang.Glob.test glob ~standard:Predicate_lang.true_ filename)
       ;;
     end
@@ -112,7 +112,7 @@ module Dir_map = struct
   let empty = { data = Per_dir.empty; nodes = Filename.Map.empty }
   let root t = t.data
   let descend t (p : Filename.t) = Filename.Map.find t.nodes p
-  let sub_dirs t = Filename.Map.keys t.nodes
+  let sub_dirs t = Filename.Map.keys t.nodes |> Filename.Array.Set.of_sorted_list
 
   let rec make_at_path path data =
     match path with
@@ -598,9 +598,9 @@ let load ~dir (status : Source_dir_status.t) project ~files ~parent =
     then None
     else if
       Dune_project.accept_alternative_dune_file_name project
-      && Filename.Set.mem files alternative_fname
+      && Filename.Array.Set.mem files alternative_fname
     then Some alternative_fname
-    else if Filename.Set.mem files fname
+    else if Filename.Array.Set.mem files fname
     then Some fname
     else None
   in

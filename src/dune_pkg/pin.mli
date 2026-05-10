@@ -33,7 +33,7 @@ end
 module Scan_project : sig
   type t =
     read:(Path.Source.t -> string Fiber.t)
-    -> files:Filename.Set.t
+    -> files:Filename.Array.Set.t
     -> (DB.t * Dune_lang.Package.t Package_name.Map.t) option Fiber.t
 end
 

@@ -110,6 +110,7 @@ val rfindi : string -> f:(char -> bool) -> int option
 
 include Comparable_intf.S with type key := t
 module Table : Hashtbl.S with type key = t
+module Array : Array_intf.S with type Set.elt = t
 
 (** Whether the string needs quoting if it is part of a shell command *)
 val need_quoting : string -> bool

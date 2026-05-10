@@ -39,8 +39,6 @@ Inspect build dir path of generated melange sources under
 
   $ dune build
   $ find a _build/default/a -type f | sort
-  _build/default/a/.a.objs/a__Bar.impl.all-deps
-  _build/default/a/.a.objs/a__Foo.impl.all-deps
   _build/default/a/.a.objs/byte/a.cmi
   _build/default/a/.a.objs/byte/a.cmo
   _build/default/a/.a.objs/byte/a.cmt
@@ -56,11 +54,9 @@ Inspect build dir path of generated melange sources under
   _build/default/a/.a.objs/melange/a__Bar.cmi
   _build/default/a/.a.objs/melange/a__Bar.cmj
   _build/default/a/.a.objs/melange/a__Bar.cmt
-  _build/default/a/.a.objs/melange/a__Bar.impl.all-deps
   _build/default/a/.a.objs/melange/a__Foo.cmi
   _build/default/a/.a.objs/melange/a__Foo.cmj
   _build/default/a/.a.objs/melange/a__Foo.cmt
-  _build/default/a/.a.objs/melange/a__Foo.impl.all-deps
   _build/default/a/.melange_src/a.ml-gen
   _build/default/a/.melange_src/bar.ml
   _build/default/a/.melange_src/foo.ml

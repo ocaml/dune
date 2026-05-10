@@ -154,7 +154,7 @@ let executables_rules
     Dir_contents.ml dir_contents ~for_
     >>= Ml_sources.modules_and_obj_dir ~libs:(Scope.libs scope) ~for_:(Exe { first_exe })
   in
-  let* () = Check_rules.add_obj_dir sctx ~obj_dir Ocaml in
+  let* () = Check_rules.add_obj_dir sctx ~obj_dir for_ in
   let ctx = Super_context.context sctx in
   let* ocaml = Context.ocaml ctx in
   let project = Scope.project scope in
@@ -206,7 +206,7 @@ let executables_rules
           x)
     in
     Compilation_context.create
-      Ocaml
+      for_
       ~loc:exes.buildable.loc
       ~super_context:sctx
       ~scope

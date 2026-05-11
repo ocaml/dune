@@ -5,5 +5,5 @@
   the minimum); combine with formula operators like `:with-test`.
   The 3.23 gate also covers the bare-`(menhir)` fill from #14434
   (previously unversioned), mirroring the fix in #14466 to avoid
-  silent changes to opam output on dune-binary upgrade. Follows up
-  #14434. (@robinbb)
+  silent changes to opam output on dune-binary upgrade.
+  (#14453, @robinbb)

@@ -190,16 +190,27 @@ let%expect_test "fetching an object twice from the store" =
                                          " })
      ])
     |}];
-  (* Checking for the presence of the lmdb database. *)
+  (* Cache lives under a version-named subdirectory; the lmdb database
+     files sit inside it. *)
+  let path = Path.External.cwd () |> Path.external_ in
   Console.print
-    [ (let path = Path.External.cwd () |> Path.external_ in
-       Path.L.relative path [ ".cache"; "dune"; "rev_store" ]
-       |> Path.to_string
-       |> Sys.readdir
-       |> Array.to_list
-       |> List.sort ~compare:String.compare
-       |> Dyn.list Dyn.string
-       |> Dyn.pp)
+    [ Path.L.relative path [ ".cache"; "dune"; "rev_store" ]
+      |> Path.to_string
+      |> Sys.readdir
+      |> Array.to_list
+      |> List.sort ~compare:String.compare
+      |> Dyn.list Dyn.string
+      |> Dyn.pp
+    ];
+  [%expect {| [ "v1" ] |}];
+  Console.print
+    [ Path.L.relative path [ ".cache"; "dune"; "rev_store"; "v1" ]
+      |> Path.to_string
+      |> Sys.readdir
+      |> Array.to_list
+      |> List.sort ~compare:String.compare
+      |> Dyn.list Dyn.string
+      |> Dyn.pp
     ];
   [%expect {| [ "data.mdb"; "lock.mdb" ] |}]
 ;;

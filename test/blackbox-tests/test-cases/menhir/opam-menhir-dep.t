@@ -8,7 +8,7 @@ See https://github.com/ocaml/dune/issues/10707.
 Case 0: package does not declare menhir. Dune does not add it.
 
   $ cat > dune-project << EOF
-  > (lang dune 3.24)
+  > (lang dune 3.23)
   > (using menhir 2.1)
   > (generate_opam_files true)
   > (package (name foo) (allow_empty))
@@ -22,7 +22,7 @@ Case 0: package does not declare menhir. Dune does not add it.
 Case 1: bare [(depends menhir)]. Dune fills in the lower bound.
 
   $ cat > dune-project << EOF
-  > (lang dune 3.24)
+  > (lang dune 3.23)
   > (using menhir 2.1)
   > (generate_opam_files true)
   > (package
@@ -39,7 +39,7 @@ Case 1: bare [(depends menhir)]. Dune fills in the lower bound.
 Case 2: user-written version bound is preserved verbatim.
 
   $ cat > dune-project << EOF
-  > (lang dune 3.24)
+  > (lang dune 3.23)
   > (using menhir 2.1)
   > (generate_opam_files true)
   > (package
@@ -59,7 +59,7 @@ the lower bound on a user-declared menhir dependency that exists
 for an unrelated reason (e.g. runtime).
 
   $ cat > dune-project << EOF
-  > (lang dune 3.24)
+  > (lang dune 3.23)
   > (generate_opam_files true)
   > (package
   >  (name foo)
@@ -78,7 +78,7 @@ generated opam files must reflect this: [foo.opam] gets the lower
 bound; [bar.opam] has no [menhir] line at all.
 
   $ cat > dune-project << EOF
-  > (lang dune 3.24)
+  > (lang dune 3.23)
   > (using menhir 2.1)
   > (generate_opam_files true)
   > (package
@@ -107,7 +107,7 @@ stanza for the existing opam file.
 
   $ rm -f bar.opam
   $ cat > dune-project << EOF
-  > (lang dune 3.24)
+  > (lang dune 3.23)
   > (using menhir 2.1)
   > (generate_opam_files true)
   > (package
@@ -130,7 +130,7 @@ fresh.
 
   $ rm -rf _build foo.opam
   $ cat > dune-project << EOF
-  > (lang dune 3.24)
+  > (lang dune 3.23)
   > (using menhir 2.1)
   > (generate_opam_files true)
   > (package

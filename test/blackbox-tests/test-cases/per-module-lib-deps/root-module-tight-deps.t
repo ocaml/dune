@@ -41,4 +41,30 @@ and references [Dep_lib] through [Root].
   > let _ = Root.Dep_lib.v
   > EOF
 
-  $ dune build @check
+The root module's cmi is the specific artefact whose dep
+behaviour is under test. Building just that artefact narrows
+the success criterion to the root.cmi rule itself; a build of
+[@check] could succeed for other reasons.
+
+  $ ROOT_CMI=_build/default/consumer_lib/.consumer_lib.objs/byte/consumer_lib__Root.cmi
+  $ dune build $ROOT_CMI
+
+The root.cmi rule's deps include a glob over [dep_lib]'s objdir
+for cmis. A future regression that omits the dep entirely
+(returning empty deps for root from the per-module filter)
+would remove this glob and fail the assertion; a future
+refinement narrower than the glob would flip the snapshot and
+require deliberate promotion.
+
+The compiler-binary dep (a [(File (External ...))] entry whose
+sexp shape varies with path length across opam/Nix builds) is
+filtered out; we keep the [root.ml-gen] file dep and the glob.
+
+  $ dune rules --deps $ROOT_CMI 2>&1 \
+  >   | dune_cmd print-from 'In_build_dir _build/default/consumer_lib/root\.ml-gen' \
+  >   | dune_cmd print-until '\)\)\)\)$'
+   (File (In_build_dir _build/default/consumer_lib/root.ml-gen))
+   (glob
+    ((dir (In_build_dir _build/default/dep_lib/.dep_lib.objs/byte))
+     (predicate *.cmi)
+     (only_generated_files false))))

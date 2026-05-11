@@ -186,13 +186,12 @@ let expand_artifact ~source t artifact arg =
   in
   match artifact with
   | Pform.Artifact.Mod kind ->
-    let name =
-      Module_name.of_string_allow_invalid
-        (Dune_lang.Template.Pform.loc source, Filename.to_string name)
-      |> Module_name.Unchecked.allow_invalid
-    in
-    (match Artifacts_obj.lookup_module artifacts name with
-     | None -> does_not_exist ~what:"Module" (Module_name.to_string name)
+    (match Artifacts_obj.lookup_module artifacts path with
+     | None ->
+       Module_name.of_string_allow_invalid (loc, Filename.to_string name)
+       |> Module_name.Unchecked.allow_invalid
+       |> Module_name.to_string
+       |> does_not_exist ~what:"Module"
      | Some (t, m) ->
        (match
           match kind with

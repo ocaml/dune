@@ -216,23 +216,64 @@ let dune_name = Package.Name.of_string "dune"
 let odoc_name = Package.Name.of_string "odoc"
 let menhir_name = Package.Name.of_string "menhir"
 
+(* Does every satisfying valuation of [c] imply the version is at
+   least [min_version]? Conservative (over-approximating false):
+   [Not], [Bop], and [Bvar] are treated as opaque, so an outer AND
+   with the minimum-version constraint is added on their behalf. *)
+let rec has_sufficient_lower_bound ~min_version : Package_constraint.t -> bool = function
+  | Uop (Gte, String_literal v) | Uop (Eq, String_literal v) ->
+    OpamVersionCompare.compare v min_version >= 0
+  | And ts -> List.exists ts ~f:(has_sufficient_lower_bound ~min_version)
+  | Or ts -> List.for_all ts ~f:(has_sufficient_lower_bound ~min_version)
+  | Uop _ | Bop _ | Bvar _ | Not _ -> false
+;;
+
+(* Walk [c] replacing each [>= "v"] literal where [v < min_version]
+   with [>= min_version]. Returns the rewritten constraint and a
+   flag indicating whether any rewrite occurred (so the caller can
+   emit a single user-facing warning). [Not], [Bop], and [Bvar]
+   pass through unchanged. *)
+let normalize_lower_bounds ~min_version c =
+  let rewrote = ref false in
+  let min_constraint : Package_constraint.t = Uop (Gte, String_literal min_version) in
+  let rec loop : Package_constraint.t -> Package_constraint.t = function
+    | Uop (Gte, String_literal v) as c ->
+      if OpamVersionCompare.compare v min_version >= 0
+      then c
+      else (
+        rewrote := true;
+        min_constraint)
+    | And ts -> And (List.map ts ~f:loop)
+    | Or ts -> Or (List.map ts ~f:loop)
+    | Not t -> Not (loop t)
+    | (Uop _ | Bop _ | Bvar _) as c -> c
+  in
+  let c' = loop c in
+  c', !rewrote
+;;
+
 let merge_dune_constraints lang_constraint user_constraint =
-  match lang_constraint, user_constraint with
-  | ( Package_constraint.Uop (Gte, String_literal lang_v)
-    , Package_constraint.Uop (Gte, String_literal user_v) ) ->
-    if OpamVersionCompare.compare lang_v user_v <= 0
-    then user_constraint
-    else (
+  match lang_constraint with
+  | Package_constraint.Uop (Gte, String_literal lang_v) ->
+    let user_constraint, rewrote =
+      normalize_lower_bounds ~min_version:lang_v user_constraint
+    in
+    if rewrote
+    then
       User_warning.emit
         [ Pp.textf
-            "The lower bound >= %s on dune in the depends field is less than the dune \
-             language version %s. The generated opam file will use >= %s instead."
-            user_v
+            "A lower bound on dune in the depends field is less than the dune language \
+             version %s. The generated opam file will use >= %s instead."
             lang_v
             lang_v
         ];
-      lang_constraint)
-  | _ -> And [ lang_constraint; user_constraint ]
+    if has_sufficient_lower_bound ~min_version:lang_v user_constraint
+    then user_constraint
+    else And [ lang_constraint; user_constraint ]
+  | _ ->
+    (* [insert_dune_dep] always supplies the [Gte] shape; this arm
+       is defensive. *)
+    And [ lang_constraint; user_constraint ]
 ;;
 
 let insert_dune_dep depends dune_version =
@@ -304,27 +345,25 @@ let menhir_min_version = "20180523"
 let menhir_constraint : Package_constraint.t = Uop (Gte, String_literal menhir_min_version)
 
 (* Merge an existing user-written menhir constraint with dune's
-   required lower bound. Mirrors [merge_dune_constraints]:
-   - two [>= "v"] literals collapse to the higher of the two
-     (warn when the user's bound is below dune's required minimum);
-   - any other shape (e.g. [{with-test}]) is ANDed with the lower
-     bound. *)
+   required lower bound. Tightens any nested [>= "v"] literal below
+   the minimum, then AND's [menhir_constraint] at the top level
+   unless the (post-tightening) expression already implies the
+   lower bound on every satisfying valuation. *)
 let merge_menhir_constraint user_constraint =
-  match user_constraint with
-  | Package_constraint.Uop (Gte, String_literal user_v) ->
-    if OpamVersionCompare.compare user_v menhir_min_version >= 0
-    then user_constraint
-    else (
-      User_warning.emit
-        [ Pp.textf
-            "The lower bound >= %s on menhir in the depends field is less than the \
-             version dune's menhir rules require. The generated opam file will use >= %s \
-             instead."
-            user_v
-            menhir_min_version
-        ];
-      menhir_constraint)
-  | _ -> And [ menhir_constraint; user_constraint ]
+  let user_constraint, rewrote =
+    normalize_lower_bounds ~min_version:menhir_min_version user_constraint
+  in
+  if rewrote
+  then
+    User_warning.emit
+      [ Pp.textf
+          "A lower bound on menhir in the depends field is less than the version dune's \
+           menhir rules require. The generated opam file will use >= %s instead."
+          menhir_min_version
+      ];
+  if has_sufficient_lower_bound ~min_version:menhir_min_version user_constraint
+  then user_constraint
+  else And [ menhir_constraint; user_constraint ]
 ;;
 
 (* If the package's [(depends ...)] field already lists [menhir],

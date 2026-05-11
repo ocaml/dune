@@ -101,7 +101,6 @@ Now add a newer version of foo to the repository:
   > EOF
 
 Build again - auto-locking should detect the new version and rebuild:
-  $ dune clean
   $ dune exec --display short bar 2>&1 | grep "Building"
       Building foo.0.0.2
 

@@ -34,6 +34,7 @@ let package_install ~(context : Build_context.t) ~(pkg : Package.t) =
 type dep_evaluation_result =
   | Simple of Path.t list Memo.t
   | Other of Path.t list Action_builder.t
+  | Include_result of (Path.t list * Env.t) Action_builder.t
 
 let to_action_builder = function
   | Simple paths ->
@@ -41,6 +42,12 @@ let to_action_builder = function
     let+ () = Action_builder.all_unit (List.map ~f:Action_builder.path paths) in
     paths
   | Other x -> x
+  | Include_result pair -> Action_builder.map pair ~f:fst
+;;
+
+let include_bin_env = function
+  | Simple _ | Other _ -> None
+  | Include_result pair -> Some (Action_builder.map pair ~f:snd)
 ;;
 
 let dep_on_alias_rec alias ~loc =
@@ -254,13 +261,15 @@ let rec dep expander : Dep_conf.t -> _ = function
     (* TODO this is wrong. we shouldn't allow bindings here if we are in an
        unnamed expansion *)
     let dir = Expander.dir expander in
-    Other
-      (let* deps =
-         let* project = Action_builder.of_memo @@ Dune_load.find_project ~dir in
-         expand_include ~dir ~project s
-       in
-       let builder, _bindings, _bin_env = named_paths_builder ~expander deps in
-       builder)
+    let pair =
+      let* project = Action_builder.of_memo @@ Dune_load.find_project ~dir in
+      let* deps = expand_include ~dir ~project s in
+      let builder, _bindings, bin_env = named_paths_builder ~expander deps in
+      let+ paths = builder
+      and+ env = bin_env in
+      paths, env
+    in
+    Include_result (Action_builder.memoize "include-eval" pair)
   | File s ->
     (match Expander.With_deps_if_necessary.expand_path expander s with
      | Without paths ->
@@ -336,59 +345,82 @@ let rec dep expander : Dep_conf.t -> _ = function
   | Sandbox_config _ -> Other (Action_builder.return [])
 
 and named_paths_builder ~expander l =
-  let builders, bindings, bin_names =
+  let builders, bindings, bin_names, include_envs =
     let expander = prepare_expander expander in
     let bin_names =
       List.concat_map l ~f:(function
         | Bindings.Unnamed dep -> Option.to_list (bin_dep_name dep)
         | Bindings.Named (_, deps) -> List.filter_map deps ~f:bin_dep_name)
     in
-    let builders, bindings =
-      List.fold_left l ~init:([], Pform.Map.empty) ~f:(fun (builders, bindings) x ->
-        match x with
-        | Bindings.Unnamed x -> to_action_builder (dep expander x) :: builders, bindings
-        | Named (name, x) ->
-          let x = List.map x ~f:(dep expander) in
-          (match
-             Option.List.all
-               (List.map x ~f:(function
-                  | Simple x -> Some x
-                  | Other _ -> None))
-           with
-           | Some x ->
-             let open Memo.O in
-             let x = Memo.lazy_ (fun () -> Memo.all_concurrently x >>| List.concat) in
-             let bindings =
-               Pform.Map.set
-                 bindings
-                 (Var (User_var name))
-                 (Expander.Deps.Without (Memo.Lazy.force x >>| Value.L.paths))
-             in
-             let x =
-               let open Action_builder.O in
-               let* x = Action_builder.of_memo (Memo.Lazy.force x) in
-               let+ () = Action_builder.paths x in
-               x
-             in
-             x :: builders, bindings
-           | None ->
-             let x =
-               Action_builder.memoize
-                 ~cutoff:(List.equal Path.equal)
-                 ("dep " ^ name)
-                 (Action_builder.List.concat_map x ~f:to_action_builder)
-             in
-             let bindings =
-               Pform.Map.set
-                 bindings
-                 (Var (User_var name))
-                 (Expander.Deps.With (x >>| Value.L.paths))
-             in
-             x :: builders, bindings))
+    let builders, bindings, include_envs =
+      List.fold_left
+        l
+        ~init:([], Pform.Map.empty, [])
+        ~f:(fun (builders, bindings, envs) x ->
+          match x with
+          | Bindings.Unnamed x ->
+            let r = dep expander x in
+            let envs =
+              match include_bin_env r with
+              | Some e -> e :: envs
+              | None -> envs
+            in
+            to_action_builder r :: builders, bindings, envs
+          | Named (name, x) ->
+            let x = List.map x ~f:(dep expander) in
+            let envs =
+              List.fold_left x ~init:envs ~f:(fun envs r ->
+                match include_bin_env r with
+                | Some e -> e :: envs
+                | None -> envs)
+            in
+            (match
+               Option.List.all
+                 (List.map x ~f:(function
+                    | Simple x -> Some x
+                    | Other _ | Include_result _ -> None))
+             with
+             | Some x ->
+               let open Memo.O in
+               let x = Memo.lazy_ (fun () -> Memo.all_concurrently x >>| List.concat) in
+               let bindings =
+                 Pform.Map.set
+                   bindings
+                   (Var (User_var name))
+                   (Expander.Deps.Without (Memo.Lazy.force x >>| Value.L.paths))
+               in
+               let x =
+                 let open Action_builder.O in
+                 let* x = Action_builder.of_memo (Memo.Lazy.force x) in
+                 let+ () = Action_builder.paths x in
+                 x
+               in
+               x :: builders, bindings, envs
+             | None ->
+               let x =
+                 Action_builder.memoize
+                   ~cutoff:(List.equal Path.equal)
+                   ("dep " ^ name)
+                   (Action_builder.List.concat_map x ~f:to_action_builder)
+               in
+               let bindings =
+                 Pform.Map.set
+                   bindings
+                   (Var (User_var name))
+                   (Expander.Deps.With (x >>| Value.L.paths))
+               in
+               x :: builders, bindings, envs))
     in
-    builders, bindings, bin_names
+    builders, bindings, bin_names, include_envs
   in
-  let bin_env = make_bin_env expander bin_names in
+  let bin_env =
+    let outer = make_bin_env expander bin_names in
+    List.fold_left include_envs ~init:outer ~f:(fun acc env ->
+      let open Action_builder.O in
+      let+ acc = acc
+      and+ env = env in
+      Env_path.extend_env_concat_path acc env)
+  in
   let builder = List.rev builders |> Action_builder.all >>| List.concat in
   builder, bindings, bin_env
 ;;

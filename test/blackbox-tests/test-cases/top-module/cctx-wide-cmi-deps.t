@@ -1,24 +1,20 @@
 Reproduction: `dune ocaml top-module` over-rebuilds when an
-unreferenced library's interface changes.
+unreferenced library's interface changes. The test passes while
+the bug is present; promote when fixed.
 
-[top_module.ml] derives a cctx via [Compilation_context.set_obj_dir]
-to a private obj_dir, then calls [Module_compilation.build_module] on
-a module value with [.mli] dropped via
-[Module.set_source ~ml_kind:Intf None]. The derived cctx's compile
-rule pulls cmi-deps from the parent library's full [(libraries ...)]
-closure rather than from the actual references in [.ml] alone, so
-editing any [(libraries ...)] dep's interface triggers a rebuild —
-even libraries referenced ONLY from the (dropped) [.mli].
+`dune ocaml top-module` synthesises a compile for `m.ml` with the
+`.mli` dropped, so only `m.ml`'s actual references should drive
+the cmi-deps. Instead, the cmi-deps come from the parent library's
+full `(libraries ...)` closure, so editing any of those deps'
+interfaces triggers a rebuild — even libraries referenced ONLY
+from the (dropped) `.mli`.
 
-This test pins the current behaviour. A future change that filters
-[top_module]'s compile-rule cmi-deps to match the [.ml]'s actual
-references would flip the final assertion from REBUILT to
-NOT REBUILT, and the test would need promotion.
+Code under test: `src/dune_rules/top_module.ml`.
 
   $ make_dune_project 3.24
 
-[dep_for_intf] is referenced from [m.mli] only. [m.ml] never
-mentions [Dep_for_intf].
+`dep_for_intf` is referenced from `m.mli` only. `m.ml` never
+mentions `Dep_for_intf`.
 
   $ mkdir dep_for_intf
   $ cat > dep_for_intf/dune <<EOF
@@ -31,8 +27,8 @@ mentions [Dep_for_intf].
   > type t = int
   > EOF
 
-[dep_for_impl] is referenced from [m.ml] only. [m.mli] never
-mentions [Dep_for_impl].
+`dep_for_impl` is referenced from `m.ml` only. `m.mli` never
+mentions `Dep_for_impl`.
 
   $ mkdir dep_for_impl
   $ cat > dep_for_impl/dune <<EOF
@@ -45,9 +41,9 @@ mentions [Dep_for_impl].
   > val value : int
   > EOF
 
-[mylib] declares both libraries in [(libraries ...)] but module
-[m] splits them: [.ml] uses only [Dep_for_impl]; [.mli] uses only
-[Dep_for_intf].
+`mylib` declares both libraries in `(libraries ...)` but module
+`m` splits them: `.ml` uses only `Dep_for_impl`; `.mli` uses only
+`Dep_for_intf`.
 
   $ mkdir mylib
   $ cat > mylib/dune <<EOF
@@ -59,18 +55,18 @@ mentions [Dep_for_impl].
   > val tag : Dep_for_intf.t
   > EOF
   $ cat > mylib/m.ml <<EOF
-  > let _ = Dep_for_impl.value
-  > let tag = 42
+  > let tag = Dep_for_impl.value
   > EOF
 
-Initial regular build, then [dune ocaml top-module mylib/m.ml]:
+Initial regular build, then `dune ocaml top-module mylib/m.ml`:
 
   $ dune build @check
   $ dune ocaml top-module mylib/m.ml > /dev/null 2>&1
 
-Control: edit [dep_for_impl]'s cmi (referenced from [m.ml]). The
-top-module compile rebuilds — expected. The trace contains the
-[mylib__M.cmo] build action.
+Control: change `dep_for_impl`'s `.mli` (the matching `.ml` change
+ensures the package builds). `m.ml` references `Dep_for_impl.value`,
+so its top-module compile depends on `dep_for_impl.cmi`. Rebuild
+expected. The trace contains the `mylib__M.cmo` build action.
 
   $ cat > dep_for_impl/dep_for_impl.ml <<EOF
   > let value = 7
@@ -90,10 +86,11 @@ top-module compile rebuilds — expected. The trace contains the
     }
   ]
 
-Probe: edit [dep_for_intf]'s cmi (NOT referenced from [m.ml] — the
-only reference was in the discarded [m.mli]). The top-module
-compile rebuilds despite the absence of any actual reference; this
-is the over-invalidation under observation.
+Probe: change `dep_for_intf`'s `.mli` (the matching `.ml` change
+ensures the package builds). `m.ml` never references
+`Dep_for_intf` — the only reference was in the discarded
+`m.mli`. The top-module compile rebuilds anyway; this is the
+over-invalidation.
 
   $ cat > dep_for_intf/dep_for_intf.ml <<EOF
   > type t = int

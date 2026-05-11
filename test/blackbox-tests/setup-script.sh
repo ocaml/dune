@@ -9,6 +9,12 @@ is_linked() {
 
 export XDG_CACHE_HOME="$PWD/.cache"
 
+setup_xdg_runtime_dir () {
+    export XDG_RUNTIME_DIR="${TMPDIR:-$PWD}/.xdg-runtime"
+    mkdir -p "$XDG_RUNTIME_DIR"
+    chmod 700 "$XDG_RUNTIME_DIR"
+}
+
 init_oxcaml_project() {
   cat > "dune-project" <<- EOF
 	(lang dune 3.20)

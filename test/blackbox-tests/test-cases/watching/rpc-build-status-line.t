@@ -1,8 +1,6 @@
 Forwarded builds display a rich status line once connected over RPC.
 
-  $ export XDG_RUNTIME_DIR="$PWD/.xdg-runtime"
-  $ mkdir -p "$XDG_RUNTIME_DIR"
-  $ chmod 700 "$XDG_RUNTIME_DIR"
+  $ setup_xdg_runtime_dir
 
   $ echo "(lang dune 3.23)" > dune-project
 

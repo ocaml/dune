@@ -51,7 +51,7 @@ Define a package bar which conditionally depends on different versions of foo:
   >  (libraries foo))
   > EOF
 
-  $ dune pkg lock
+  $ DUNE_TRACE=+sat dune pkg lock
   Solution for dune.lock
   
   Dependencies common to all supported platforms:
@@ -70,6 +70,39 @@ Define a package bar which conditionally depends on different versions of foo:
   
   arch = x86_64; os = macos:
   - foo.2
+
+
+The lock above runs the SAT engine once per default platform (4) under the
+current per-platform parallel solving shape.
+
+  $ dune trace cat \
+  > | jq -s 'include "dune"; [ .[] | satSolveEvents | .args ]'
+  [
+    {
+      "num_variables": 4,
+      "num_clauses": 3,
+      "num_decisions": 0,
+      "num_conflicts": 0
+    },
+    {
+      "num_variables": 4,
+      "num_clauses": 3,
+      "num_decisions": 0,
+      "num_conflicts": 0
+    },
+    {
+      "num_variables": 4,
+      "num_clauses": 3,
+      "num_decisions": 0,
+      "num_conflicts": 0
+    },
+    {
+      "num_variables": 4,
+      "num_clauses": 3,
+      "num_decisions": 0,
+      "num_conflicts": 0
+    }
+  ]
 
 Build the project as if we were on linux and confirm that version 1 of foo was built:
   $ export DUNE_CONFIG__OS=linux DUNE_CONFIG__ARCH=arm64 DUNE_CONFIG__OS_FAMILY=debian DUNE_CONFIG__OS_DISTRIBUTION=ubuntu DUNE_CONFIG__OS_VERSION=24.11

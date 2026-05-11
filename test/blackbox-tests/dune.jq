@@ -13,6 +13,8 @@ def targets: (.target_files // []) + (.target_dirs // []);
 
 def processes: select(.cat == "process" and .name == "finish");
 
+def satSolveEvents: select(.cat == "sat" and .name == "solve");
+
 def targetsMatchingFilter(f):
     processes
   | select(.args | targets | any(f))

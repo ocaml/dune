@@ -27,7 +27,7 @@ Depend on a pair of packages which can't be coinstalled:
   > EOF
 
 Solver error when solving fails with the same error on all platforms:
-  $ dune pkg lock
+  $ DUNE_TRACE=+sat dune pkg lock
   Error:
   Unable to solve dependencies while generating lock directory: dune.lock
   
@@ -44,6 +44,86 @@ Solver error when solving fails with the same error on all platforms:
       Rejected candidates:
         c.0.2: Incompatible with restriction: = 0.1
   [1]
+
+Even on failure the SAT engine runs once per platform attempt under
+per-platform parallel solving.
+
+  $ dune trace cat \
+  > | jq -s 'include "dune"; [ .[] | satSolveEvents | .args ]'
+  [
+    {
+      "num_variables": 4,
+      "num_clauses": 5,
+      "num_decisions": 0,
+      "num_conflicts": 0
+    },
+    {
+      "num_variables": 4,
+      "num_clauses": 5,
+      "num_decisions": 0,
+      "num_conflicts": 0
+    },
+    {
+      "num_variables": 8,
+      "num_clauses": 5,
+      "num_decisions": 3,
+      "num_conflicts": 0
+    },
+    {
+      "num_variables": 4,
+      "num_clauses": 5,
+      "num_decisions": 0,
+      "num_conflicts": 0
+    },
+    {
+      "num_variables": 4,
+      "num_clauses": 5,
+      "num_decisions": 0,
+      "num_conflicts": 0
+    },
+    {
+      "num_variables": 8,
+      "num_clauses": 5,
+      "num_decisions": 3,
+      "num_conflicts": 0
+    },
+    {
+      "num_variables": 4,
+      "num_clauses": 5,
+      "num_decisions": 0,
+      "num_conflicts": 0
+    },
+    {
+      "num_variables": 4,
+      "num_clauses": 5,
+      "num_decisions": 0,
+      "num_conflicts": 0
+    },
+    {
+      "num_variables": 8,
+      "num_clauses": 5,
+      "num_decisions": 3,
+      "num_conflicts": 0
+    },
+    {
+      "num_variables": 4,
+      "num_clauses": 5,
+      "num_decisions": 0,
+      "num_conflicts": 0
+    },
+    {
+      "num_variables": 4,
+      "num_clauses": 5,
+      "num_decisions": 0,
+      "num_conflicts": 0
+    },
+    {
+      "num_variables": 8,
+      "num_clauses": 5,
+      "num_decisions": 3,
+      "num_conflicts": 0
+    }
+  ]
 
 Modify the "a" package so the solver error is different on different platforms:
   $ mkpkg a <<EOF

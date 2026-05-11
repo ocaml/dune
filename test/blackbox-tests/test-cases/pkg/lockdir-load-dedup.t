@@ -19,9 +19,16 @@ the same lock dir.
   > (lang dune 3.23)
   > EOF
 
-  $ dune build @check
+  $ DUNE_TRACE=+sat dune build @check
 
 Both contexts share the default lock dir. Check how many times it is loaded:
 
   $ dune trace cat | jq -s '[ .[] | select(.name == "load_lock_dir") ] | length'
   1
+
+The build path uses an already-generated lockdir, so the SAT engine
+should not run at all. With Sat tracing enabled, the count is zero.
+
+  $ dune trace cat \
+  > | jq -s 'include "dune"; [ .[] | satSolveEvents ] | length'
+  0

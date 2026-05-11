@@ -12,5 +12,6 @@ val make
   -> exes:(Modules.t * Path.Build.t Obj_dir.t) list
   -> t Memo.t
 
-val lookup_module : t -> Module_name.t -> (Path.Build.t Obj_dir.t * Module.t) option
+val stanza_dir : t -> Path.Build.t
+val lookup_module : t -> Module_name.Path.t -> (Path.Build.t Obj_dir.t * Module.t) option
 val lookup_library : t -> Lib_name.t -> Lib_info.local option

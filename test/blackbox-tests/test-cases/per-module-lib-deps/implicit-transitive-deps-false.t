@@ -22,10 +22,8 @@ name reaches [main]'s reference closure and drops the lib from
 [main]'s compile-rule deps entirely; [main] is no longer
 rebuilt.
 
-Reported by @nojb in
-https://github.com/ocaml/dune/pull/14116#issuecomment-4323883194
-and again, after a partial fix, in
-https://github.com/ocaml/dune/pull/14116#issuecomment-4331209820.
+Reported by @nojb (first as a baseline case, then again after a
+partial fix).
 
   $ cat > dune-project <<EOF
   > (lang dune 3.23)

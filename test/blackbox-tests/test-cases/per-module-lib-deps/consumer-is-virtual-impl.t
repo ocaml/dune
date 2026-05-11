@@ -2,7 +2,7 @@ Regression: a stanza with [(implements vlib)] correctly tracks
 changes to its own [(libraries ...)] deps.
 
 For a virtual-library implementation, future per-module
-dependency filtering work (#14116) must preserve deps from the
+dependency filtering work must preserve deps from the
 implementation's own [(libraries ...)] closure — otherwise the
 implementation may fail to rebuild when one of those libraries'
 interfaces changes. This test checks that an [(implements vlib)]

@@ -3,7 +3,7 @@ library's mangled internal module name directly, bypassing the
 wrapper — no longer compiles. This file asserts the compile
 error.
 
-Why it fails: per-module rule-dep filtering (#4572 / #14116)
+Why it fails: per-module rule-dep filtering (#4572)
 scopes each consumer's compile-rule deps to the libraries its
 source actually references. The consumer's ocamldep output
 names `Mylib__Internal` as a top-level module, but

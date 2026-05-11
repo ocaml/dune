@@ -14,13 +14,12 @@ compile-rule deps for this single-module consumer, so editing
 
 The zero-reference case is a distinct corner from the single-module
 consumer that references some (but not all) modules of its dep,
-which [single-module-lib.t] already documents. Pre-#14116 this
+which [single-module-lib.t] already documents. Previously this
 overrebuilt because dune skipped ocamldep for single-module
 stanzas as an optimisation and so fell back to a glob over
 [dep_lib]'s objdir, which the cmi change invalidated.
 
 See: https://github.com/ocaml/dune/issues/4572
-See: https://github.com/ocaml/dune/pull/14116#issuecomment-4286949811
 
   $ cat > dune-project <<EOF
   > (lang dune 3.23)

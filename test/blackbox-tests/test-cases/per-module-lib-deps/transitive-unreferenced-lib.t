@@ -8,7 +8,7 @@ The per-module filter detects that no consumer module references
 any [dep_lib] module — directly or transitively through
 [intermediate_lib] — and drops [dep_lib] entirely from [Main]'s
 compile-rule deps, so editing [unreferenced_dep.ml] leaves [Main]
-untouched. Pre-#14116 every consumer module declared a glob over
+untouched. Previously every consumer module declared a glob over
 each transitively-reached library's public-cmi directory, so the
 edit re-invalidated [Main].
 

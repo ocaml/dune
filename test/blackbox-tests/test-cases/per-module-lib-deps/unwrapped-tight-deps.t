@@ -11,7 +11,7 @@ The per-module filter restricts [consumer]'s deps to modules of
 [dep_lib] that [consumer]'s ocamldep output names — only
 [Referenced_dep]. Editing [Unread_dep_a] or [Unread_dep_b] thus
 leaves [consumer] untouched (empty target list); editing
-[Referenced_dep] still rebuilds it. Pre-#14116 all three edits
+[Referenced_dep] still rebuilds it. Previously all three edits
 rebuilt [consumer] because the consumer was conservatively
 rebuilt whenever any entry module's cmi changed.
 

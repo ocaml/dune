@@ -2,7 +2,7 @@ A consumer transitively depends upon a library through one module of an
 intermediate library, never naming a sibling module of the transitive lib in
 source. The per-module filter walks ocamldep output across library
 boundaries: editing [unreached_module] leaves [main] untouched because no
-source in this test references it. Pre-#14116 this overrebuilt because
+source in this test references it. Previously this overrebuilt because
 the consumer's compile rule depended on a glob over [dep_lib]'s objdir.
 
 [intermediate_lib] and [main] each include an unused dummy module so neither

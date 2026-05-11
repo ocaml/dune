@@ -17,12 +17,11 @@ The zero-reference-sibling-in-a-library corner is distinct from
 scenarios covered by existing tests: [lib-to-lib-unwrapped.t] probes
 siblings that reference a different (non-edited) module of the dep;
 [transitive.t] and [unwrapped.t] probe zero-reference modules but
-within executable stanzas, not library stanzas. Pre-#14116 the
+within executable stanzas, not library stanzas. Previously the
 consumer fell back to a glob over [dep_lib]'s objdir, which the
 cmi change invalidated.
 
 See: https://github.com/ocaml/dune/issues/4572
-See: https://github.com/ocaml/dune/pull/14116#issuecomment-4301275263
 
   $ cat > dune-project <<EOF
   > (lang dune 3.23)

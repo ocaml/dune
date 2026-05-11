@@ -1,5 +1,5 @@
-Observational baseline: [dune ocaml top-module] over-invalidates the
-top-module compile when an unreferenced library's interface changes.
+Reproduction: `dune ocaml top-module` over-rebuilds when an
+unreferenced library's interface changes.
 
 [top_module.ml] derives a cctx via [Compilation_context.set_obj_dir]
 to a private obj_dir, then calls [Module_compilation.build_module] on

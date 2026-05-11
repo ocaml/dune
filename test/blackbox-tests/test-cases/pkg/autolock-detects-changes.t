@@ -101,6 +101,9 @@ Now add a newer version of foo to the repository:
   > EOF
 
 Build again - auto-locking should detect the new version and rebuild:
+
+CR-someday Sudha247: update this to use process events in the trace and remove
+--display short
   $ dune exec --display short bar 2>&1 | grep "Building"
       Building foo.0.0.2
 

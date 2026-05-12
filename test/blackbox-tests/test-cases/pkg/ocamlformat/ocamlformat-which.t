@@ -20,9 +20,11 @@ The command will fail because the dev tool is not installed:
   _build/_private/default/.dev-tool/ocamlformat/target/bin/ocamlformat
 
 Install the dev tool:
-  $ dune tools exec ocamlformat
+  $ dune tools install ocamlformat
   Solution for _build/.dev-tools.locks/ocamlformat:
   - ocamlformat.0.26.2
+
+  $ dune tools exec ocamlformat
        Running 'ocamlformat'
   formatted with version 0.26.2
 

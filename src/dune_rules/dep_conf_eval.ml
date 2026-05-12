@@ -367,7 +367,21 @@ and named_paths_builder ~expander l =
             in
             to_action_builder r :: builders, bindings, envs
           | Named (name, x) ->
-            let x = List.map x ~f:(dep expander) in
+            let x =
+              List.map x ~f:(function
+                | Dep_conf.Package p ->
+                  User_error.raise
+                    ~loc:(String_with_vars.loc p)
+                    ~hints:
+                      [ Pp.text "Place the (package ...) entry in the deps list directly."
+                      ]
+                    [ Pp.textf
+                        "(package ...) is not supported inside a named dependency \
+                         binding (:%s)."
+                        name
+                    ]
+                | d -> dep expander d)
+            in
             let envs =
               List.fold_left x ~init:envs ~f:(fun envs r ->
                 match include_bin_env r with

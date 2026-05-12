@@ -1,4 +1,4 @@
-Testing the composition of the installed stdlib
+Testing the composition of the installed Corelib
 
   $ cat > dune << EOF
   > (rocq.theory

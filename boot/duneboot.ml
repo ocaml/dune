@@ -89,7 +89,28 @@ module Map = struct
   end
 end
 
+(* CR-soon Alizter: When bumping the minimal version to 4.12, remove. *)
+module Either = struct
+  [@@@warning "-37"]
+
+  type ('a, 'b) t =
+    | Left of 'a
+    | Right of 'b
+end
+
 module List = struct
+  (* CR-soon Alizter: When bumping the minimal version to 4.12, remove. *)
+  let[@warning "-32"] partition_map t ~f =
+    let rec loop l r = function
+      | [] -> List.rev l, List.rev r
+      | x :: xs ->
+        (match f x with
+         | Either.Left x -> loop (x :: l) r xs
+         | Either.Right x -> loop l (x :: r) xs)
+    in
+    loop [] [] t
+  ;;
+
   let partition_map_skip t ~f =
     let rec loop l m r = function
       | [] -> l, m, r
@@ -108,6 +129,17 @@ module List = struct
     match x with
     | None -> t
     | Some x -> x :: t
+  ;;
+
+  (* CR-soon Alizter: When bumping the minimal version to 4.12, remove. *)
+  let[@warning "-32"] rec compare ~cmp xs ys =
+    match xs, ys with
+    | [], [] -> 0
+    | [], _ :: _ -> -1
+    | _ :: _, [] -> 1
+    | x :: xs, y :: ys ->
+      let c = cmp x y in
+      if c <> 0 then c else compare ~cmp xs ys
   ;;
 
   include List
@@ -203,6 +235,21 @@ end
 
 module String = struct
   include String
+
+  (* CR-soon Alizter: When bumping the minimal version to 4.13, remove. *)
+  let[@warning "-32"] ends_with ~suffix s =
+    let sl = String.length s in
+    let xl = String.length suffix in
+    sl >= xl && String.sub s ~pos:(sl - xl) ~len:xl = suffix
+  ;;
+
+  (* CR-soon Alizter: When bumping the minimal version to 4.13, remove. *)
+  let[@warning "-32"] starts_with ~prefix s =
+    let sl = String.length s in
+    let pl = String.length prefix in
+    sl >= pl && String.sub s ~pos:0 ~len:pl = prefix
+  ;;
+
   module Set = Set.Make (String)
 
   module Map = struct

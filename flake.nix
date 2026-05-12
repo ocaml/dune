@@ -554,6 +554,18 @@
             '';
           };
 
+          bootstrap-check_4_11 = pkgs.mkShell {
+            inherit INSIDE_NIX;
+            buildInputs = [
+              pkgs.gnumake
+              pkgs.ocaml-ng.ocamlPackages_4_11.ocaml
+            ];
+            meta.description = ''
+              Provides a minimal shell environment with OCaml 4.11 in order
+              to test the bootstrapping script.
+            '';
+          };
+
           bootstrap-check_4_14 = pkgs.mkShell {
             inherit INSIDE_NIX;
             buildInputs = [

@@ -7,6 +7,17 @@ let swap arr i j =
 ;;
 
 module T = struct
+  (* CR-soon Alizter: When bumping the minimal version to 4.13, remove this
+     polyfill. [Stdlib.ArrayLabels] provides it natively. *)
+  let[@warning "-32"] find_opt ~f a =
+    let len = Stdlib.Array.length a in
+    let rec loop i =
+      if i = len then None else if f a.(i) then Some a.(i) else loop (i + 1)
+    in
+    loop 0
+  ;;
+
+  (* overwrite with stdlib version if available *)
   include ArrayLabels
 
   let equal f x y =

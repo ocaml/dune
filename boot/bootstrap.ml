@@ -4,7 +4,7 @@ open Printf
 (* This program performs version checking of the compiler and switches to the
    secondary compiler if necessary. The script should execute in OCaml 4.02! *)
 
-let min_supported_natively = 4, 14, 0
+let min_supported_natively = 4, 11, 0
 
 let keep_generated_files =
   let anon s = raise (Arg.Bad (sprintf "don't know what to do with %s\n" s)) in
@@ -91,7 +91,7 @@ let secondary_error () =
 (* Locate the secondary compiler's bin directory via ocamlfind. We query
    ocamlfind rather than invoking [ocamlfind -toolchain secondary ocaml]
    directly because ocamlfind does not support the [ocaml] toplevel as a
-   subcommand — it only wraps compiler tools like [ocamlc] and [ocamlopt]. *)
+   subcommand; it only wraps compiler tools like [ocamlc] and [ocamlopt]. *)
 let find_secondary_bin_dir () =
   let output_fn, out = Filename.open_temp_file "duneboot" "ocamlfind-output" in
   let n =

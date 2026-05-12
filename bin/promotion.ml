@@ -69,7 +69,7 @@ module Apply = struct
   ;;
 
   let term_with_builder builder =
-    let+ builder
+    let+ builder = builder
     and+ exact =
       Arg.(
         value

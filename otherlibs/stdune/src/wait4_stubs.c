@@ -1,5 +1,10 @@
 #include <caml/mlvalues.h>
 
+/* CR-soon Alizter: When bumping the minimal version to 4.12, remove. */
+#ifndef Val_none
+#define Val_none Val_int(0)
+#endif
+
 #ifdef _WIN32
 #include <caml/fail.h>
 

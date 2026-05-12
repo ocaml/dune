@@ -70,7 +70,29 @@ module Caseless = Cased_functions (struct
     let normalize = Char.lowercase_ascii
   end)
 
-include Stdlib.StringLabels
+(* CR-soon Alizter: When bumping the minimal version to 4.13, remove this
+   module. [Stdlib.StringLabels] provides these natively. *)
+module StringLabels = struct
+  let[@warning "-32"] exists ~f s =
+    let len = String.length s in
+    let rec loop i = i < len && (f s.[i] || loop (i + 1)) in
+    loop 0
+  ;;
+
+  let[@warning "-32"] for_all ~f s =
+    let len = String.length s in
+    let rec loop i = i = len || (f s.[i] && loop (i + 1)) in
+    loop 0
+  ;;
+
+  let[@warning "-32"] starts_with = starts_with
+  let[@warning "-32"] ends_with = ends_with
+
+  (* overwrite with stdlib versions if available *)
+  include Stdlib.StringLabels
+end
+
+include StringLabels
 
 let repr = Repr.string
 let compare a b = Ordering.of_int (String.compare a b)

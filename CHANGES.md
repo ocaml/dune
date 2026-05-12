@@ -163,7 +163,8 @@
   (#13394, grants #13378, @Alizter)
 
 - Bump the minimal OCaml version required to build Dune from 4.08 to 4.14.
-  (#13533, @Alizter)
+  (#13533, @Alizter) (Note: this was later revised to 4.11 in 3.23.1; see
+  #14502.)
 
 - Starting from 3.23, user rules are sandboxed by default (#13805, @rgrinberg)
 

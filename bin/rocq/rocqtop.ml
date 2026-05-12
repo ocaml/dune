@@ -100,7 +100,7 @@ let term =
             [ Pp.textf "Cannot find file: %s" (rocq_file_arg |> Path.Local.to_string) ]
       in
       let stanza = Dune_rules.Rocq.Rocq_sources.lookup_module rocq_src rocq_module in
-      let args, use_stdlib, wrapper_name, mode =
+      let args, use_corelib, wrapper_name, mode =
         match stanza with
         | None ->
           User_error.raise
@@ -115,12 +115,12 @@ let term =
               ~dir_contents:dc
               theory
               rocq_module
-          , theory.buildable.use_stdlib
+          , theory.buildable.use_corelib
           , Dune_rules.Rocq.Rocq_lib_name.wrapper (snd theory.name)
           , theory.buildable.mode )
         | Some (`Extraction extr) ->
           ( Dune_rules.Rocq.Rocq_rules.rocqtop_args_extraction ~sctx ~dir extr rocq_module
-          , extr.buildable.use_stdlib
+          , extr.buildable.use_corelib
           , Dune_rules.Rocq.Rocq_rules.extraction_wrapper_name extr
           , extr.buildable.mode )
       in
@@ -137,7 +137,7 @@ let term =
             in
             Dune_rules.Rocq.Rocq_rules.deps_of
               ~dir
-              ~use_stdlib
+              ~use_corelib
               ~wrapper_name
               ~mode
               rocq_module)

@@ -1,9 +1,8 @@
-Testing the composition of the installed stdlib
+Testing the composition of the installed Corelib
 
   $ cat > dune << EOF
   > (rocq.theory
-  >  (name test)
-  >  (theories Corelib))
+  >  (name test))
   > EOF
 
   $ dune build test.vo --display=short --always-show-command-line

@@ -22,6 +22,7 @@ mentions `Dep_for_intf`.
   > EOF
   $ cat > dep_for_intf/dep_for_intf.ml <<EOF
   > type t = int
+  > let zero = 0
   > EOF
   $ cat > dep_for_intf/dep_for_intf.mli <<EOF
   > type t = int
@@ -36,6 +37,7 @@ mentions `Dep_for_impl`.
   > EOF
   $ cat > dep_for_impl/dep_for_impl.ml <<EOF
   > let value = 7
+  > let extra = "x"
   > EOF
   $ cat > dep_for_impl/dep_for_impl.mli <<EOF
   > val value : int
@@ -63,15 +65,11 @@ Initial regular build, then `dune ocaml top-module mylib/m.ml`:
   $ dune build @check
   $ dune ocaml top-module mylib/m.ml > /dev/null 2>&1
 
-Control: change `dep_for_impl`'s `.mli` (the matching `.ml` change
-ensures the package builds). `m.ml` references `Dep_for_impl.value`,
-so its top-module compile depends on `dep_for_impl.cmi`. Rebuild
-expected. The trace contains the `mylib__M.cmo` build action.
+Control: edit `dep_for_impl`'s `.mli` to expose `extra`. `m.ml`
+references `Dep_for_impl.value`, so its top-module compile depends
+on `dep_for_impl.cmi`. Rebuild expected. The trace contains the
+`mylib__M.cmo` build action.
 
-  $ cat > dep_for_impl/dep_for_impl.ml <<EOF
-  > let value = 7
-  > let extra = "x"
-  > EOF
   $ cat > dep_for_impl/dep_for_impl.mli <<EOF
   > val value : int
   > val extra : string
@@ -86,16 +84,11 @@ expected. The trace contains the `mylib__M.cmo` build action.
     }
   ]
 
-Probe: change `dep_for_intf`'s `.mli` (the matching `.ml` change
-ensures the package builds). `m.ml` never references
-`Dep_for_intf` — the only reference was in the discarded
-`m.mli`. The top-module compile rebuilds anyway; this is the
-over-invalidation.
+Probe: edit `dep_for_intf`'s `.mli` to expose `zero`. `m.ml` never
+references `Dep_for_intf` — the only reference was in the
+discarded `m.mli`. The top-module compile rebuilds anyway; this is
+the over-invalidation.
 
-  $ cat > dep_for_intf/dep_for_intf.ml <<EOF
-  > type t = int
-  > let zero = 0
-  > EOF
   $ cat > dep_for_intf/dep_for_intf.mli <<EOF
   > type t = int
   > val zero : t

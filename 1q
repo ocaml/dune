@@ -1,0 +1,17 @@
+test(ci): new windows runners
+
+windows-latest will be ugpraded to use Visual Studio 2026, so the C++
+toolchain we rely on in msvc jobs and perhaps indirectly in the other
+Windows jobs will potentially be affected.
+
+This PR tests this future change using the already available VS2026
+runners. If there are no issues then we needn't worry. This is in
+response to a heads-up from GitHub regarding this change.
+
+Signed-off-by: Ali Caglayan <alizter@gmail.com>
+
+JJ: Change ID: zttmwyvt
+JJ: This commit contains the following changes:
+JJ:     M .github/workflows/workflow.yml.in
+JJ:
+JJ: Lines starting with "JJ:" (like this one) will be removed.

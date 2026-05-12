@@ -169,12 +169,12 @@ jobs:
             os: macos-15-intel
           ## MSVC
           - ocaml-compiler: ocaml-compiler.5.4.0,system-msvc
-            os: windows-latest
+            os: windows-2025-vs2026
             cache-prefix: ocaml-compiler.5.4.0-system-msvc
             run_tests: true
           ## mingw
           - ocaml-compiler: ocaml-base-compiler.5.4.0,system-mingw
-            os: windows-latest
+            os: windows-2025-vs2026
             cache-prefix: ocaml-compiler.5.4.0-system-mingw
             run_tests: true
           # OCaml 4:
@@ -272,11 +272,11 @@ jobs:
 
       - name: Run test suite on Unix
         run: opam exec -- make test
-        if: ${{ matrix.os != 'windows-latest' && matrix.run_tests }}
+        if: ${{ matrix.os != 'windows-2025-vs2026' && matrix.run_tests }}
 
       - name: Run test suite on Win32
         run: opam exec -- make test-windows
-        if: ${{ matrix.os == 'windows-latest' && matrix.run_tests }}
+        if: ${{ matrix.os == 'windows-2025-vs2026' && matrix.run_tests }}
 
       # We never build configurator
       - name: Build configurator
@@ -389,7 +389,7 @@ jobs:
 
   cygwin:
     name: Bootstrap on Cygwin
-    runs-on: windows-latest
+    runs-on: windows-2025-vs2026
     steps:
       - uses: actions/checkout@v6
       - name: Setup Cygwin

@@ -2,6 +2,8 @@ include Stdlib.Filename
 
 type t = string
 
+let repr = Repr.string
+
 module Extension = struct
   type t = string
 

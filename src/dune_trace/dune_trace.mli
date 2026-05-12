@@ -247,6 +247,14 @@ module Event : sig
       -> new_stats:Dyn.t
       -> t
 
+    val reread_dir
+      :  path:Path.t
+      -> old_contents:Dyn.t
+      -> new_contents:Dyn.t
+      -> old_stats:Dyn.t
+      -> new_stats:Dyn.t
+      -> t
+
     val dropped_stale_mtimes : Path.t list -> fs_now:Time.t -> t
   end
 

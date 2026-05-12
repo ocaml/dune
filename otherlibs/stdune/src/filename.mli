@@ -17,6 +17,8 @@ val quote : string -> string
 (* TODO add invariants and make this abstract or private *)
 type t = string
 
+val repr : t Repr.t
+
 module Extension : sig
   type t
 

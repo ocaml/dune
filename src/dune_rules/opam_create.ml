@@ -216,10 +216,6 @@ let dune_name = Package.Name.of_string "dune"
 let odoc_name = Package.Name.of_string "odoc"
 let menhir_name = Package.Name.of_string "menhir"
 
-(* Does every satisfying valuation of [c] imply the version is at
-   least [min_version]? Conservative (over-approximating false):
-   [Not], [Bop], and [Bvar] are treated as opaque, so an outer AND
-   with the minimum-version constraint is added on their behalf. *)
 let rec has_sufficient_lower_bound ~min_version : Package_constraint.t -> bool = function
   | Uop (Gte, String_literal v) | Uop (Eq, String_literal v) ->
     OpamVersionCompare.compare v min_version >= 0

@@ -1,7 +1,7 @@
-When a package's [(depends ...)] field lists [menhir] without a
-version constraint, the generated opam file should fill in the
-lower bound [{>= "20180523"}], since dune's menhir rules rely on
-features available since menhir 20180523.
+When a package's `(depends ...)` field lists `menhir` without a version
+constraint, the generated opam file should fill in the lower bound `{>=
+"20180523"}`, since dune's menhir rules rely on features available since menhir
+20180523.
 
 See https://github.com/ocaml/dune/issues/10707.
 
@@ -19,7 +19,7 @@ Case 0: package does not declare menhir. Dune does not add it.
   $ grep menhir foo.opam
   [1]
 
-Case 1: bare [(depends menhir)]. Dune fills in the lower bound.
+Case 1: bare `(depends menhir)`. Dune fills in the lower bound.
 
   $ cat > dune-project << EOF
   > (lang dune 3.23)
@@ -53,10 +53,10 @@ Case 2: user-written version bound is preserved verbatim.
   $ grep menhir foo.opam
     "menhir" {>= "20211128"}
 
-Case 3: gate on [(using menhir ...)]. Without the menhir extension
-enabled, dune does not run menhir's rules and so must not impose
-the lower bound on a user-declared menhir dependency that exists
-for an unrelated reason (e.g. runtime).
+Case 3: gate on `(using menhir ...)`. Without the menhir extension enabled, dune
+does not run menhir's rules and so must not impose the lower bound on a
+user-declared menhir dependency that exists for an unrelated reason (e.g.
+runtime).
 
   $ cat > dune-project << EOF
   > (lang dune 3.23)
@@ -72,10 +72,10 @@ for an unrelated reason (e.g. runtime).
   $ grep menhir foo.opam
     "menhir"
 
-Case 4: multi-package regression for #14428. Package [foo] declares
-[(depends menhir)]; package [bar] declares no menhir dep. The
-generated opam files must reflect this: [foo.opam] gets the lower
-bound; [bar.opam] has no [menhir] line at all.
+Case 4: multi-package regression for #14428. Package `foo` declares `(depends
+menhir)`; package `bar` declares no menhir dep. The generated opam files must
+reflect this: `foo.opam` gets the lower bound; `bar.opam` has no `menhir` line
+at all.
 
   $ cat > dune-project << EOF
   > (lang dune 3.23)
@@ -97,13 +97,12 @@ bound; [bar.opam] has no [menhir] line at all.
   $ grep menhir bar.opam
   [1]
 
-Case 5: a [{with-test}] filter on the menhir dep is a non-version
-constraint; the generated opam file ANDs dune's required lower
-bound with it.
+Case 5: a `{with-test}` filter on the menhir dep is a non-version constraint;
+the generated opam file ANDs dune's required lower bound with it.
 
-Case 4 left a [bar.opam] behind; remove it first, otherwise dune
-errors because the new dune-project below has no [bar] package
-stanza for the existing opam file.
+Case 4 left a `bar.opam` behind; remove it first, otherwise dune errors because
+the new dune-project below has no `bar` package stanza for the existing opam
+file.
 
   $ rm -f bar.opam
   $ cat > dune-project << EOF
@@ -121,12 +120,10 @@ stanza for the existing opam file.
   $ grep menhir foo.opam
     "menhir" {>= "20180523" & with-test}
 
-Case 6: user-written lower bound below dune's required minimum.
-Dune warns and the generated opam file uses [>= "20180523"]
-instead of the user's bound.
+Case 6: user-written lower bound below dune's required minimum. Dune warns and
+the generated opam file uses `>= "20180523"` instead of the user's bound.
 
-Case 5 left [foo.opam] behind; remove it so this case starts
-fresh.
+Case 5 left `foo.opam` behind; remove it so this case starts fresh.
 
   $ rm -rf _build foo.opam
   $ cat > dune-project << EOF
@@ -139,11 +136,8 @@ fresh.
   >  (depends (menhir (>= 20100101))))
   > EOF
 
-Skip [--auto-promote]: the generated file lives at
-[_build/default/foo.opam.generated] under [(lang dune 3.23)] or
-newer, so we can read it without promoting to source. Assert two
-things: the warning is emitted with its full text, and the
-generated opam file uses dune's bound rather than the user's.
+Skip `--auto-promote` so the warning lands in stdout; read the unpromoted file
+at `_build/default/foo.opam.generated`.
 
   $ dune build @opam 2>&1 | dune_cmd print-from '^Warning:' | dune_cmd print-until 'instead\.$'
   Warning: A lower bound on menhir in the depends field is less than the
@@ -153,13 +147,9 @@ generated opam file uses dune's bound rather than the user's.
   $ grep menhir _build/default/foo.opam.generated
     "menhir" {>= "20180523"}
 
-Case 7: lang version below 3.23. Dune does nothing to the menhir
-dep constraint; the generated opam file preserves the user's input
-verbatim. The whole upgrade step is gated on [(lang dune 3.23)] or
-newer to avoid changing opam output on dune-binary upgrade for
-projects pinned to an older lang version (parallels #14466 / the
-fix for #14436). The gate also covers the bare-[(menhir)] fill
-from #14434, which previously applied unversioned.
+Case 7: with `(lang dune 3.22)`, the menhir constraint is preserved verbatim.
+The 3.23 gate avoids changing opam output on dune-binary upgrade for projects
+pinned to an older lang version (parallels #14466 / fix for #14436).
 
   $ rm -rf _build foo.opam
   $ cat > dune-project << EOF
@@ -175,13 +165,9 @@ from #14434, which previously applied unversioned.
   $ grep menhir foo.opam
     "menhir" {>= "20100101"}
 
-Case 8: lang version below 3.23 with bare [(menhir)]. The 3.23
-gate also covers #14434's bare-fill — dune does not inject
-[>= "20180523"]; the opam file lists [menhir] without a
-constraint. Together with Case 7, this verifies both branches of
-[upgrade_menhir_constraint] are gated: the bare branch (from
-#14434) and the user-constraint branch (from this PR's merge
-logic).
+Case 8: with `(lang dune 3.22)` and a bare `(menhir)` dep, dune does not inject
+`>= "20180523"`. Together with Case 7, this verifies the gate covers both bare
+deps (from #14434) and deps with a user-written constraint.
 
   $ rm -rf _build foo.opam
   $ cat > dune-project << EOF
@@ -197,22 +183,13 @@ logic).
   $ grep menhir foo.opam
     "menhir"
 
-Cases 9-15 exercise the merge function's recursive descent into
-the user's constraint expression — see also #14453 review by
-@shonfeder. The merge walks [And]/[Or]/[Not] looking for [>= "v"]
-literals to tighten; leaf [Bvar]/[Bop] and non-[>=] [Uop] nodes
-pass through unchanged. If, after tightening, every satisfying
-valuation of the user expression implies [>= menhir_min_version],
-the merge returns the rewritten expression directly; otherwise it
-AND's [menhir_constraint] at the top level. The sufficiency
-check decomposes [And]/[Or] structurally and treats [Eq] on a
-version literal as if it were [Gte]; everything else ([Not],
-[Bop], [Bvar], non-version [Uop]s) is opaque.
+Cases 9-15 cover user-written menhir constraints with nested structure (`(and
+...)`, `(or ...)`, `(not ...)`) — the lower bound is enforced even when the
+user's `>=` is buried inside the expression.
 
-Case 9: nested lower bound below dune's minimum, combined with a
-filter via [(and ...)]. The merge descends into the [And],
-tightens the inner [>=] (warns), and returns the rewritten
-expression directly because the inner bound now suffices.
+Case 9: the user's lower bound is nested inside `(and ...)` alongside a filter,
+and is below dune's minimum. Dune warns and the generated opam file uses `>=
+"20180523"` in place of the user's low bound; the filter is preserved.
 
   $ rm -rf _build foo.opam
   $ cat > dune-project << EOF
@@ -232,9 +209,9 @@ expression directly because the inner bound now suffices.
   $ grep menhir _build/default/foo.opam.generated
     "menhir" {with-test & >= "20180523"}
 
-Case 10: nested lower bound at or above the minimum is preserved
-verbatim; no outer AND is added (the inner bound suffices, no
-warning).
+Case 10: the user's lower bound is nested inside `(and ...)` alongside a filter,
+and is at or above dune's minimum. The user's constraint is preserved verbatim;
+no warning.
 
   $ rm -rf _build foo.opam
   $ cat > dune-project << EOF
@@ -251,11 +228,10 @@ warning).
   $ grep menhir foo.opam
     "menhir" {with-test & >= "20211128"}
 
-Case 11: an [Or] whose branches mix a (low) lower bound with a
-filter. The merge tightens the in-branch [>=] (warns); since the
-[Or] does not imply the minimum on every branch (the filter-only
-branch escapes), the outer AND with dune's bound is still
-emitted.
+Case 11: the user offers an `(or ...)` between a low lower bound and a filter.
+Dune warns and the generated opam file enforces `>= "20180523"` alongside the
+user's expression — the filter-only branch would otherwise admit pre-20180523
+versions.
 
   $ rm -rf _build foo.opam
   $ cat > dune-project << EOF
@@ -275,10 +251,9 @@ emitted.
   $ grep menhir _build/default/foo.opam.generated
     "menhir" {>= "20180523" & (>= "20180523" | with-test)}
 
-Case 12: a user-declared version range whose lower end is below
-dune's minimum. The merge tightens the [>=] in place (warns) and
-preserves the upper bound. The merged range starts at dune's
-minimum.
+Case 12: the user declares a version range whose lower end is below dune's
+minimum. Dune warns; the upper bound is preserved and the lower bound becomes
+`>= "20180523"` in the generated opam file.
 
   $ rm -rf _build foo.opam
   $ cat > dune-project << EOF
@@ -298,13 +273,11 @@ minimum.
   $ grep menhir _build/default/foo.opam.generated
     "menhir" {>= "20180523" & < "20300101"}
 
-Case 13: a user-declared expression that conflicts with dune's
-minimum — here [(and :with-test (< 1))] — has no inner [>=] to
-tighten. The merge AND's dune's bound at the top level; the
-result is generated faithfully but is unsatisfiable as an opam
-constraint. The conflict surfaces at install time (opam reports
-no version satisfies the combined constraints) rather than at
-opam-file generation time.
+Case 13: the user's expression conflicts with dune's minimum — here `(and
+:with-test (< 1))`. The generated opam file enforces `>= "20180523"` alongside
+the user's expression; the combination is unsatisfiable, and the conflict
+surfaces at install time (opam reports no version satisfies the combined
+constraints) rather than at opam-file generation.
 
   $ rm -rf _build foo.opam
   $ cat > dune-project << EOF
@@ -321,10 +294,8 @@ opam-file generation time.
   $ grep menhir foo.opam
     "menhir" {>= "20180523" & with-test & < "1"}
 
-Case 14: a user-declared equality pin at or above dune's minimum.
-The sufficiency check treats [= "v"] like [>= "v"] when [v] is at
-or above the minimum: the pin already implies the lower bound, so
-no outer AND is added.
+Case 14: a user-declared equality pin at or above dune's minimum. The pin
+already implies the lower bound, so the generated opam file uses it verbatim.
 
   $ rm -rf _build foo.opam
   $ cat > dune-project << EOF
@@ -341,12 +312,9 @@ no outer AND is added.
   $ grep menhir foo.opam
     "menhir" {= "20211128"}
 
-Case 15: a [(not (>= v))] expression with [v] below dune's
-minimum. The merge descends into [Not] and tightens the inner
-[>=] (warns); [Not] is opaque to the sufficiency check, so the
-outer AND is still emitted. The resulting expression is
-unsatisfiable as an opam constraint; the conflict surfaces at
-install time (as in Case 13).
+Case 15: a `(not (>= v))` expression with `v` below dune's minimum. Dune warns
+and the generated opam file enforces `>= "20180523"` alongside the user's
+expression. The combination is unsatisfiable, as in Case 13.
 
   $ rm -rf _build foo.opam
   $ cat > dune-project << EOF

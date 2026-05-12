@@ -71,6 +71,16 @@ let command =
                   them. This takes precedence over auto-promote as that flag is assumed \
                   for this command."))
     in
+    let () =
+      match Common.Builder.promote builder with
+      | Some Never ->
+        User_error.raise
+          [ Pp.text
+              "The --disable-promotion flag is not applicable to `dune fmt`. Use \
+               --preview to display formatting changes without applying them."
+          ]
+      | _ -> ()
+    in
     let builder =
       Common.Builder.set_promote builder (if preview then Never else Automatically)
     in

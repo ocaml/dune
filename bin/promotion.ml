@@ -79,6 +79,15 @@ module Apply = struct
       (* CR-someday Alizter: document this option *)
       Arg.(value & pos_all Arg.path [] & info [] ~docv:"FILE" ~doc:None)
     in
+    let () =
+      match Common.Builder.promote builder with
+      | Some Dune_engine.Clflags.Promote.Never ->
+        User_error.raise
+          [ Pp.text
+              "The --disable-promotion flag is not applicable to `dune promotion apply`."
+          ]
+      | _ -> ()
+    in
     run ~builder ~exact ~files
   ;;
 

@@ -815,7 +815,8 @@ let source_path_of_lock_dir_path path =
   | In_source_tree s -> s
   | In_build_dir b ->
     (match Path.Build.explode b with
-     | [ _; _; ".lock"; lock_dir ] -> Path.Source.of_string lock_dir
+     | _ :: _ :: ".lock" :: (_ :: _ as lock_dir_segs) ->
+       Path.Source.L.relative Path.Source.root lock_dir_segs
      | [ ".dev-tools.locks"; dev_tool ] ->
        Path.Source.L.relative Path.Source.root [ "_build"; ".dev-tools.locks"; dev_tool ]
      | components ->

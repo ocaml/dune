@@ -6,7 +6,7 @@ parent library's library deps on that mock compile's [-I] search path.
 This test guards against regressions in that wiring.
 
   $ cat > dune-project <<EOF
-  > (lang dune 3.23)
+  > (lang dune 3.24)
   > (using menhir 3.0)
   > EOF
 

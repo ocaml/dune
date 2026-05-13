@@ -118,8 +118,9 @@ is emitted and the lang constraint takes precedence:
   > EOF
 
   $ dune build foo.opam
-  Warning: A lower bound on dune in the depends field is less than the dune
-  language version 3.23. The generated opam file will use >= 3.23 instead.
+  Warning: The lower bound >= 3.20 on dune in the depends field is less than
+  the dune language version 3.23. The generated opam file will use >= 3.23
+  instead.
   $ dune_cmd print-from 'depends' < _build/default/foo.opam | dune_cmd print-until ']'
   depends: [
     "dune" {>= "3.23"}

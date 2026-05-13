@@ -8,7 +8,7 @@ See https://github.com/ocaml/dune/issues/10707.
 Case 0: package does not declare menhir. Dune does not add it.
 
   $ cat > dune-project << EOF
-  > (lang dune 3.23)
+  > (lang dune 3.24)
   > (using menhir 2.1)
   > (generate_opam_files true)
   > (package (name foo) (allow_empty))
@@ -22,7 +22,7 @@ Case 0: package does not declare menhir. Dune does not add it.
 Case 1: bare `(depends menhir)`. Dune fills in the lower bound.
 
   $ cat > dune-project << EOF
-  > (lang dune 3.23)
+  > (lang dune 3.24)
   > (using menhir 2.1)
   > (generate_opam_files true)
   > (package
@@ -39,7 +39,7 @@ Case 1: bare `(depends menhir)`. Dune fills in the lower bound.
 Case 2: user-written version bound is preserved verbatim.
 
   $ cat > dune-project << EOF
-  > (lang dune 3.23)
+  > (lang dune 3.24)
   > (using menhir 2.1)
   > (generate_opam_files true)
   > (package
@@ -59,7 +59,7 @@ user-declared menhir dependency that exists for an unrelated reason (e.g.
 runtime).
 
   $ cat > dune-project << EOF
-  > (lang dune 3.23)
+  > (lang dune 3.24)
   > (generate_opam_files true)
   > (package
   >  (name foo)
@@ -78,7 +78,7 @@ reflect this: `foo.opam` gets the lower bound; `bar.opam` has no `menhir` line
 at all.
 
   $ cat > dune-project << EOF
-  > (lang dune 3.23)
+  > (lang dune 3.24)
   > (using menhir 2.1)
   > (generate_opam_files true)
   > (package
@@ -106,7 +106,7 @@ file.
 
   $ rm -f bar.opam
   $ cat > dune-project << EOF
-  > (lang dune 3.23)
+  > (lang dune 3.24)
   > (using menhir 2.1)
   > (generate_opam_files true)
   > (package
@@ -127,7 +127,7 @@ Case 5 left `foo.opam` behind; remove it so this case starts fresh.
 
   $ rm -rf _build foo.opam
   $ cat > dune-project << EOF
-  > (lang dune 3.23)
+  > (lang dune 3.24)
   > (using menhir 2.1)
   > (generate_opam_files true)
   > (package
@@ -147,9 +147,11 @@ at `_build/default/foo.opam.generated`.
   $ grep menhir _build/default/foo.opam.generated
     "menhir" {>= "20180523"}
 
-Case 7: with `(lang dune 3.22)`, the menhir constraint is preserved verbatim.
-The 3.23 gate avoids changing opam output on dune-binary upgrade for projects
-pinned to an older lang version (parallels #14466 / fix for #14436).
+Case 7: at `(lang dune 3.22)` (below the 3.23 menhir-injection gate added by
+#14453), `upgrade_menhir_constraint` is skipped entirely. A user-written menhir
+constraint is emitted verbatim — neither merged nor filled. Parallels the
+#14466 fix for #14436 in protecting older lang versions from silent opam
+output changes on dune-binary upgrade.
 
   $ rm -rf _build foo.opam
   $ cat > dune-project << EOF
@@ -165,9 +167,10 @@ pinned to an older lang version (parallels #14466 / fix for #14436).
   $ grep menhir foo.opam
     "menhir" {>= "20100101"}
 
-Case 8: with `(lang dune 3.22)` and a bare `(menhir)` dep, dune does not inject
-`>= "20180523"`. Together with Case 7, this verifies the gate covers both bare
-deps (from #14434) and deps with a user-written constraint.
+Case 8: at `(lang dune 3.22)` with a bare `(menhir)` dep, the lower bound
+`>= "20180523"` is not injected — the < 3.23 gate skips the bare-fill from
+#14434 entirely. Together with Case 7, this verifies the gate covers both bare
+deps and deps with a user-written constraint.
 
   $ rm -rf _build foo.opam
   $ cat > dune-project << EOF
@@ -193,7 +196,7 @@ and is below dune's minimum. Dune warns and the generated opam file uses `>=
 
   $ rm -rf _build foo.opam
   $ cat > dune-project << EOF
-  > (lang dune 3.23)
+  > (lang dune 3.24)
   > (using menhir 2.1)
   > (generate_opam_files true)
   > (package
@@ -215,7 +218,7 @@ no warning.
 
   $ rm -rf _build foo.opam
   $ cat > dune-project << EOF
-  > (lang dune 3.23)
+  > (lang dune 3.24)
   > (using menhir 2.1)
   > (generate_opam_files true)
   > (package
@@ -235,7 +238,7 @@ versions.
 
   $ rm -rf _build foo.opam
   $ cat > dune-project << EOF
-  > (lang dune 3.23)
+  > (lang dune 3.24)
   > (using menhir 2.1)
   > (generate_opam_files true)
   > (package
@@ -257,7 +260,7 @@ minimum. Dune warns; the upper bound is preserved and the lower bound becomes
 
   $ rm -rf _build foo.opam
   $ cat > dune-project << EOF
-  > (lang dune 3.23)
+  > (lang dune 3.24)
   > (using menhir 2.1)
   > (generate_opam_files true)
   > (package
@@ -281,7 +284,7 @@ constraints) rather than at opam-file generation.
 
   $ rm -rf _build foo.opam
   $ cat > dune-project << EOF
-  > (lang dune 3.23)
+  > (lang dune 3.24)
   > (using menhir 2.1)
   > (generate_opam_files true)
   > (package
@@ -299,7 +302,7 @@ already implies the lower bound, so the generated opam file uses it verbatim.
 
   $ rm -rf _build foo.opam
   $ cat > dune-project << EOF
-  > (lang dune 3.23)
+  > (lang dune 3.24)
   > (using menhir 2.1)
   > (generate_opam_files true)
   > (package
@@ -323,7 +326,7 @@ Cases 13 and 21). No warning, since nothing was rewritten.
 
   $ rm -rf _build foo.opam
   $ cat > dune-project << EOF
-  > (lang dune 3.23)
+  > (lang dune 3.24)
   > (using menhir 2.1)
   > (generate_opam_files true)
   > (package
@@ -342,7 +345,7 @@ verbatim; no warning, no extra `>= "20180523"` clause.
 
   $ rm -rf _build foo.opam
   $ cat > dune-project << EOF
-  > (lang dune 3.23)
+  > (lang dune 3.24)
   > (using menhir 2.1)
   > (generate_opam_files true)
   > (package
@@ -361,7 +364,7 @@ minimum; preserved verbatim, no warning.
 
   $ rm -rf _build foo.opam
   $ cat > dune-project << EOF
-  > (lang dune 3.23)
+  > (lang dune 3.24)
   > (using menhir 2.1)
   > (generate_opam_files true)
   > (package
@@ -382,7 +385,7 @@ warning is emitted (the user's clause is not rewritten in place; only bare
 
   $ rm -rf _build foo.opam
   $ cat > dune-project << EOF
-  > (lang dune 3.23)
+  > (lang dune 3.24)
   > (using menhir 2.1)
   > (generate_opam_files true)
   > (package
@@ -401,7 +404,7 @@ minimum), so it's preserved verbatim; no warning.
 
   $ rm -rf _build foo.opam
   $ cat > dune-project << EOF
-  > (lang dune 3.23)
+  > (lang dune 3.24)
   > (using menhir 2.1)
   > (generate_opam_files true)
   > (package
@@ -419,7 +422,7 @@ literal to `>= "20180523"`, mirroring the `>=`-below-min behaviour of Case 6.
 
   $ rm -rf _build foo.opam
   $ cat > dune-project << EOF
-  > (lang dune 3.23)
+  > (lang dune 3.24)
   > (using menhir 2.1)
   > (generate_opam_files true)
   > (package
@@ -443,7 +446,7 @@ and Case 15.
 
   $ rm -rf _build foo.opam
   $ cat > dune-project << EOF
-  > (lang dune 3.23)
+  > (lang dune 3.24)
   > (using menhir 2.1)
   > (generate_opam_files true)
   > (package
@@ -465,7 +468,7 @@ since dune ends up using neither `>= v` nor a substitute.
 
   $ rm -rf _build foo.opam
   $ cat > dune-project << EOF
-  > (lang dune 3.23)
+  > (lang dune 3.24)
   > (using menhir 2.1)
   > (generate_opam_files true)
   > (package
@@ -480,3 +483,49 @@ since dune ends up using neither `>= v` nor a substitute.
   [1]
   $ grep menhir foo.opam
     "menhir" {>= "20211128" & >= "10"}
+
+Cases 23-24: at `(lang dune 3.23)` — between the 3.23 menhir-gating threshold
+(below which the bare-fill is skipped) and the 3.24 merge gate. These verify
+that 3.23 projects keep the pre-#14453 simple `upgrade_menhir_constraint`
+behaviour: bare deps still get the lower bound filled in (preserving #14434
+behaviour shipped in 3.23.x), but user-written constraints are emitted
+verbatim — the new merge-with-required-minimum logic is gated at 3.24.
+
+Case 23: at `(lang dune 3.23)`, a bare `(menhir)` dep is filled with
+`{>= "20180523"}` — same as in 3.23.x dune binaries — so no silent change to
+opam output on dune-binary upgrade.
+
+  $ rm -rf _build foo.opam
+  $ cat > dune-project << EOF
+  > (lang dune 3.23)
+  > (using menhir 2.1)
+  > (generate_opam_files true)
+  > (package
+  >  (name foo)
+  >  (allow_empty)
+  >  (depends menhir))
+  > EOF
+  $ dune build @opam --auto-promote > /dev/null 2>&1
+  [1]
+  $ grep menhir foo.opam
+    "menhir" {>= "20180523"}
+
+Case 24: at `(lang dune 3.23)`, a user-written menhir constraint below dune's
+required minimum is emitted verbatim — the simple bare-fill function does not
+touch existing constraints, mirroring 3.23.x behaviour. The 3.24 merge gate
+gates the new "warn-and-AND" behaviour.
+
+  $ rm -rf _build foo.opam
+  $ cat > dune-project << EOF
+  > (lang dune 3.23)
+  > (using menhir 2.1)
+  > (generate_opam_files true)
+  > (package
+  >  (name foo)
+  >  (allow_empty)
+  >  (depends (menhir (>= 20100101))))
+  > EOF
+  $ dune build @opam --auto-promote > /dev/null 2>&1
+  [1]
+  $ grep menhir foo.opam
+    "menhir" {>= "20100101"}

@@ -281,6 +281,31 @@ let merge_dune_constraints ~min_version user_constraint =
   merge_with_min_lower_bound ~min_version ~warning user_constraint
 ;;
 
+(* Pre-#14453 [merge_dune_constraints]: simple dedup that only handles
+   the trivial [(>= "v")] / [(>= "v")] shape. Retained as the [(lang
+   dune 3.23)] tier so projects that shipped under 3.23 (with the
+   #14436 / #14466 dedup) keep that behaviour after dune-binary
+   upgrade. [(lang dune 3.24)] and newer use [merge_dune_constraints]
+   above. *)
+let merge_dune_constraints_simple lang_constraint user_constraint =
+  match lang_constraint, user_constraint with
+  | ( Package_constraint.Uop (Gte, String_literal lang_v)
+    , Package_constraint.Uop (Gte, String_literal user_v) ) ->
+    if OpamVersionCompare.compare lang_v user_v <= 0
+    then user_constraint
+    else (
+      User_warning.emit
+        [ Pp.textf
+            "The lower bound >= %s on dune in the depends field is less than the dune \
+             language version %s. The generated opam file will use >= %s instead."
+            user_v
+            lang_v
+            lang_v
+        ];
+      lang_constraint)
+  | _ -> And [ lang_constraint; user_constraint ]
+;;
+
 let insert_dune_dep depends dune_version =
   let min_version = Dune_lang.Syntax.Version.to_string dune_version in
   let lang_constraint : Package_constraint.t = Uop (Gte, String_literal min_version) in
@@ -303,8 +328,10 @@ let insert_dune_dep depends dune_version =
                   (match dep.constraint_ with
                    | None -> lang_constraint
                    | Some user_constraint ->
-                     if dune_version >= (3, 23)
+                     if dune_version >= (3, 24)
                      then merge_dune_constraints ~min_version user_constraint
+                     else if dune_version >= (3, 23)
+                     then merge_dune_constraints_simple lang_constraint user_constraint
                      else And [ lang_constraint; user_constraint ])
             }
         in
@@ -377,6 +404,22 @@ let upgrade_menhir_constraint depends =
     else dep)
 ;;
 
+(* Pre-#14453 [upgrade_menhir_constraint]: simple bare-fill only, no
+   merge of user-written constraints. Retained as the [(lang dune
+   3.23)] tier so projects that shipped under 3.23 (with the #14168 /
+   #14434 bare-fill, then unversioned) keep that behaviour after
+   dune-binary upgrade. [(lang dune 3.24)] and newer use
+   [upgrade_menhir_constraint] above. *)
+let upgrade_menhir_constraint_simple depends =
+  List.map depends ~f:(fun (dep : Package_dependency.t) ->
+    if Package.Name.equal dep.name menhir_name
+    then
+      { dep with
+        constraint_ = Some (Option.value dep.constraint_ ~default:menhir_constraint)
+      }
+    else dep)
+;;
+
 let maintenance_intent dune_version info =
   if dune_version < (3, 18)
   then None
@@ -401,12 +444,14 @@ let opam_fields project (package : Package.t) =
     else Package.map_depends package ~f:insert_odoc_dep
   in
   let package =
-    if dune_version < (3, 23)
-    then package
-    else (
-      match Dune_project.find_extension_version project Dune_lang.Menhir.syntax with
-      | None -> package
-      | Some _ -> Package.map_depends package ~f:upgrade_menhir_constraint)
+    match Dune_project.find_extension_version project Dune_lang.Menhir.syntax with
+    | None -> package
+    | Some _ ->
+      if dune_version < (3, 23)
+      then package
+      else if dune_version < (3, 24)
+      then Package.map_depends package ~f:upgrade_menhir_constraint_simple
+      else Package.map_depends package ~f:upgrade_menhir_constraint
   in
   let package_fields = package_fields package ~project in
   let open Opam_file.Create in

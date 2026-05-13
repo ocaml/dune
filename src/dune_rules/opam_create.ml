@@ -281,12 +281,13 @@ let merge_dune_constraints ~min_version user_constraint =
   merge_with_min_lower_bound ~min_version ~warning user_constraint
 ;;
 
-(* Pre-#14453 [merge_dune_constraints]: simple dedup that only handles
-   the trivial [(>= "v")] / [(>= "v")] shape. Retained as the [(lang
-   dune 3.23)] tier so projects that shipped under 3.23 (with the
-   #14436 / #14466 dedup) keep that behaviour after dune-binary
-   upgrade. [(lang dune 3.24)] and newer use [merge_dune_constraints]
-   above. *)
+(* Simple dune-version constraint dedup for the [(lang dune 3.23)]
+   tier: handles only the trivial [(>= "v")] / [(>= "v")] shape. If
+   the user's lower bound is at or above the lang version, preserve
+   it; otherwise warn and substitute the lang version. Any other
+   shape falls through to a bare AND. [(lang dune 3.24)] and newer
+   use [merge_dune_constraints] above, which handles nested And/Or
+   structures and emits a single composite warning. *)
 let merge_dune_constraints_simple lang_constraint user_constraint =
   match lang_constraint, user_constraint with
   | ( Package_constraint.Uop (Gte, String_literal lang_v)
@@ -404,12 +405,13 @@ let upgrade_menhir_constraint depends =
     else dep)
 ;;
 
-(* Pre-#14453 [upgrade_menhir_constraint]: simple bare-fill only, no
-   merge of user-written constraints. Retained as the [(lang dune
-   3.23)] tier so projects that shipped under 3.23 (with the #14168 /
-   #14434 bare-fill, then unversioned) keep that behaviour after
-   dune-binary upgrade. [(lang dune 3.24)] and newer use
-   [upgrade_menhir_constraint] above. *)
+(* Simple menhir bare-fill for the [(lang dune 3.23)] tier: if the
+   package's [(depends ...)] field already lists [menhir] without a
+   constraint, fill in [menhir_constraint] as the lower bound. Existing
+   user-written constraints pass through unchanged. [(lang dune 3.24)]
+   and newer use [upgrade_menhir_constraint] above, which additionally
+   merges user-written constraints with dune's required minimum via
+   [merge_menhir_constraint]. *)
 let upgrade_menhir_constraint_simple depends =
   List.map depends ~f:(fun (dep : Package_dependency.t) ->
     if Package.Name.equal dep.name menhir_name

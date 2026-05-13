@@ -93,8 +93,8 @@ when source files change. For experiments that exercise dune's rule
 generation or build-system behavior — anything depending on
 `src/dune_rules/*` — use the fully-built dune at
 `_build/install/default/bin/dune` and run `make dev` first. Cram tests
-already use the built dune via `%{bin:dune}`; manual reproductions driven
-by `./dune.exe` can diverge silently from the source being investigated.
+already use the built dune; manual reproductions driven by `./dune.exe`
+can diverge silently from the source being investigated.
 
 When a test result disagrees with a manual reproduction — or CI disagrees
 with local — verify both are the same binary built from the same source:

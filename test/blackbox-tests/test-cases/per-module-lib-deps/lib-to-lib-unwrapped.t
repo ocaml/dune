@@ -1,8 +1,8 @@
-Baseline: library-to-library recompilation (unwrapped).
+Per-module library-to-library filtering (unwrapped).
 
 When an unwrapped library A depends on an unwrapped library B with multiple
-modules, and one module in B changes, all modules in A are recompiled due to
-coarse dependency analysis.
+modules, modules of A that do not reference a given module of B must not be
+recompiled when that module of B changes.
 
 See: https://github.com/ocaml/dune/issues/4572
 
@@ -80,11 +80,11 @@ Change only alpha.mli:
   > let new_alpha_fn () = "alpha"
   > EOF
 
-uses_beta is recompiled even though it only references Beta, not Alpha:
+uses_beta references Beta only, not Alpha, so it is not recompiled:
 
   $ dune build ./main.exe
   $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("uses_beta"))] | length'
-  2
+  0
 
 Change only beta.mli:
 
@@ -97,8 +97,8 @@ Change only beta.mli:
   > let new_beta_fn () = "beta"
   > EOF
 
-uses_alpha is recompiled even though it only references Alpha, not Beta:
+uses_alpha references Alpha only, not Beta, so it is not recompiled:
 
   $ dune build ./main.exe
   $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("uses_alpha"))] | length'
-  2
+  0

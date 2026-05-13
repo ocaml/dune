@@ -259,6 +259,19 @@ let create
     let profile = Context.profile context in
     eval_opaque ocaml profile opaque
   in
+  let* has_library_deps =
+    (* Single-module stanzas still run ocamldep when they have library deps so
+       the per-module filter can inform the result. *)
+    let open Resolve.Memo.O in
+    let+ direct = direct_requires
+    and+ hidden = hidden_requires in
+    match direct, hidden with
+    | [], [] -> false
+    | _ -> true
+  in
+  (* Resolution errors surface later through the normal compilation rules;
+     assume deps are present here. *)
+  let has_library_deps = Resolve.peek has_library_deps |> Result.value ~default:true in
   let+ dep_graphs =
     Dep_rules.rules
       ~dir:(Obj_dir.dir obj_dir)
@@ -268,6 +281,7 @@ let create
       ~impl:implements
       ~modules
       ~for_
+      ~has_library_deps
   and+ bin_annot =
     match bin_annot with
     | Some b -> Memo.return b

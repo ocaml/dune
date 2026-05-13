@@ -27,6 +27,7 @@ val create
   -> flags:Ocaml_flags.t
   -> requires_compile:Lib.t list Resolve.Memo.t
   -> requires_link:Lib.t list Resolve.t Memo.Lazy.t
+  -> ?pps_runtime_libs:Lib.t list Resolve.Memo.t
   -> ?preprocessing:Pp_spec.t
   -> opaque:opaque
   -> js_of_ocaml:Js_of_ocaml.In_context.t option Js_of_ocaml.Mode.Pair.t
@@ -62,7 +63,22 @@ val requires_hidden : t -> Lib.t list Resolve.Memo.t
 val requires_compile : t -> Lib.t list Resolve.Memo.t
 val parameters : t -> Module_name.t list Resolve.Memo.t
 val includes : t -> Command.Args.without_targets Command.Args.t Lib_mode.Cm_kind.Map.t
+val lib_index : t -> Lib_file_deps.Lib_index.t Resolve.Memo.t
+
+(** [true] iff any library in the compilation context's direct or hidden
+    requires implements a virtual library. Memoized per cctx. *)
+val has_virtual_impl : t -> bool Resolve.Memo.t
+
 val preprocessing : t -> Pp_spec.t
+
+(** Direct [ppx_runtime_deps] of every [pps] in this stanza's preprocessor
+    (a flat concatenation; not closed transitively — consumers that need
+    closure semantics wrap with [Lib.closure]). These libraries' modules are
+    visible only to ppx-rewritten output, so the per-module dependency
+    filter cannot reason about which of them are referenced — they must be
+    treated as opaque [must-glob] dependencies. *)
+val pps_runtime_libs : t -> Lib.t list Resolve.Memo.t
+
 val opaque : t -> bool
 val js_of_ocaml : t -> Js_of_ocaml.In_context.t option Js_of_ocaml.Mode.Pair.t
 val sandbox : t -> Sandbox_config.t

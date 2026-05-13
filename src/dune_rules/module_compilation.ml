@@ -85,103 +85,149 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
     Action_builder.return
       (cctx_includes_for_cm_kind (), Lib_file_deps.deps_of_entries ~opaque ~cm_kind libs)
   else
-    let* lib_index = Resolve.Memo.read (Compilation_context.lib_index cctx) in
-    let sandbox = Compilation_context.sandbox cctx in
-    let sctx = Compilation_context.super_context cctx in
-    let* trans_deps = Dep_graph.deps_of dep_graph m in
-    (* Read [dep_m]'s [.ml]-side ocamldep only when its references can
-       propagate to the consumer:
+    let* has_virtual_impl =
+      Resolve.Memo.read (Compilation_context.has_virtual_impl cctx)
+    in
+    if has_virtual_impl
+    then
+      Action_builder.return
+        (cctx_includes_for_cm_kind (), Lib_file_deps.deps_of_entries ~opaque ~cm_kind libs)
+    else
+      let* lib_index = Resolve.Memo.read (Compilation_context.lib_index cctx) in
+      let sandbox = Compilation_context.sandbox cctx in
+      let sctx = Compilation_context.super_context cctx in
+      let* trans_deps = Dep_graph.deps_of dep_graph m in
+      (* Read [dep_m]'s [.ml]-side ocamldep only when its references can
+         propagate to the consumer:
 
-       | [dep_m] is              | [cm_kind]   | [opaque] | read [.ml]?  |
-       | ----------------------- | ----------- | -------- | ------------ |
-       | consumer ([m] itself)   | any         | any      | iff [Impl]   |
-       | trans_dep, no [.mli]    | any         | any      | yes          |
-       | trans_dep, has [.mli]   | [Cmx]       | false    | yes (inline) |
-       | trans_dep, has [.mli]   | [Cmx]       | true     | no           |
-       | trans_dep, has [.mli]   | [Cmi]/[Cmo] | any      | no           | *)
-    let need_impl_deps_of dep_m ~is_consumer =
-      if is_consumer
-      then (
-        match ml_kind with
-        | Ml_kind.Impl -> true
-        | Intf -> false)
-      else
-        (not (Module.has dep_m ~ml_kind:Intf))
-        ||
-        match cm_kind with
-        | Ocaml Cmx -> not opaque
-        | Ocaml (Cmi | Cmo) | Melange _ -> false
-    in
-    let read_dep_m_raw dep_m ~is_consumer =
-      let* impl_deps =
-        if need_impl_deps_of dep_m ~is_consumer
-        then
-          Ocamldep.read_immediate_deps_raw_of ~sandbox ~sctx ~obj_dir ~ml_kind:Impl dep_m
-        else Action_builder.return Module_name.Set.empty
+         | [dep_m] is              | [cm_kind]   | [opaque] | read [.ml]?  |
+         | ----------------------- | ----------- | -------- | ------------ |
+         | consumer ([m] itself)   | any         | any      | iff [Impl]   |
+         | trans_dep, no [.mli]    | any         | any      | yes          |
+         | trans_dep, has [.mli]   | [Cmx]       | false    | yes (inline) |
+         | trans_dep, has [.mli]   | [Cmx]       | true     | no           |
+         | trans_dep, has [.mli]   | [Cmi]/[Cmo] | any      | no           | *)
+      let need_impl_deps_of dep_m ~is_consumer =
+        if is_consumer
+        then (
+          match ml_kind with
+          | Ml_kind.Impl -> true
+          | Intf -> false)
+        else
+          (not (Module.has dep_m ~ml_kind:Intf))
+          ||
+          match cm_kind with
+          | Ocaml Cmx -> not opaque
+          | Ocaml (Cmi | Cmo) | Melange _ -> false
       in
-      let+ intf_deps =
-        Ocamldep.read_immediate_deps_raw_of ~sandbox ~sctx ~obj_dir ~ml_kind:Intf dep_m
+      let read_dep_m_raw dep_m ~is_consumer =
+        let* impl_deps =
+          if need_impl_deps_of dep_m ~is_consumer
+          then
+            Ocamldep.read_immediate_deps_raw_of
+              ~sandbox
+              ~sctx
+              ~obj_dir
+              ~ml_kind:Impl
+              dep_m
+          else Action_builder.return Module_name.Set.empty
+        in
+        let+ intf_deps =
+          Ocamldep.read_immediate_deps_raw_of ~sandbox ~sctx ~obj_dir ~ml_kind:Intf dep_m
+        in
+        Module_name.Set.union impl_deps intf_deps
       in
-      Module_name.Set.union impl_deps intf_deps
-    in
-    let* m_raw = read_dep_m_raw m ~is_consumer:true in
-    let* trans_raw =
-      union_module_name_sets_mapped trans_deps ~f:(read_dep_m_raw ~is_consumer:false)
-    in
-    let all_raw = Module_name.Set.union m_raw trans_raw in
-    let* flags = Ocaml_flags.get (Compilation_context.flags cctx) mode in
-    let open_modules = Ocaml_flags.extract_open_module_names flags in
-    let referenced = Module_name.Set.union all_raw open_modules in
-    let { Lib_file_deps.Lib_index.tight; non_tight } =
-      Lib_file_deps.Lib_index.filter_libs_with_modules
-        lib_index
-        ~referenced_modules:referenced
-    in
-    let direct_libs =
-      List.sort_uniq ~compare:Lib.compare (Lib.Map.keys tight @ Lib.Set.to_list non_tight)
-    in
-    (* Close transitively over transparent aliases that ocamldep doesn't
-       report. *)
-    let* all_libs = Resolve.Memo.read (Lib.closure direct_libs ~linking:false ~for_) in
-    let* tight_set =
-      cross_lib_tight_set ~sandbox ~sctx ~lib_index ~initial_refs:referenced
-    in
-    (* Classify each lib in [all_libs]: - lib has [None]-entry referenced
-       (mixed-entry or wrapped) → glob (covers the None entries' [.cmi]s); -
-       lib has only [Some] entries referenced → per-module deps; - lib
-       unreached but tight-eligible → drop (link rule pulls it in via
-       [requires_link]); - lib unreached and not tight-eligible → glob.
-       [kept_libs] gets every lib that contributes a tight or glob dep — used
-       by [Compilation_context.filtered_include_flags] to scope the consumer's
-       [-I]/[-H] flags. *)
-    let { Lib_file_deps.Lib_index.tight = tight_modules; non_tight = non_tight_set } =
-      Lib_file_deps.Lib_index.filter_libs_with_modules
-        lib_index
-        ~referenced_modules:tight_set
-    in
-    let tight_deps, glob_libs, _kept_libs =
-      List.fold_left
-        all_libs
-        ~init:(Dep.Set.empty, [], Lib.Set.empty)
-        ~f:(fun (td, gl, kl) lib ->
-          if Lib.Set.mem non_tight_set lib
-          then td, lib :: gl, Lib.Set.add kl lib
-          else (
-            match Lib.Map.find tight_modules lib with
-            | Some modules ->
-              ( Dep.Set.union
-                  td
-                  (Lib_file_deps.deps_of_entry_modules ~opaque ~cm_kind lib modules)
-              , gl
-              , Lib.Set.add kl lib )
-            | None ->
-              if Lib_file_deps.Lib_index.is_tight_eligible lib_index lib
-              then td, gl, kl
-              else td, lib :: gl, Lib.Set.add kl lib))
-    in
-    let glob_deps = Lib_file_deps.deps_of_entries ~opaque ~cm_kind glob_libs in
-    Action_builder.return
-      (cctx_includes_for_cm_kind (), Dep.Set.union tight_deps glob_deps)
+      let* m_raw = read_dep_m_raw m ~is_consumer:true in
+      let* trans_raw =
+        union_module_name_sets_mapped trans_deps ~f:(read_dep_m_raw ~is_consumer:false)
+      in
+      let all_raw = Module_name.Set.union m_raw trans_raw in
+      let* flags = Ocaml_flags.get (Compilation_context.flags cctx) mode in
+      let open_modules = Ocaml_flags.extract_open_module_names flags in
+      let referenced = Module_name.Set.union all_raw open_modules in
+      let { Lib_file_deps.Lib_index.tight; non_tight } =
+        Lib_file_deps.Lib_index.filter_libs_with_modules
+          lib_index
+          ~referenced_modules:referenced
+      in
+      (* [ppx_runtime_libraries] introduce module references through post-pp
+         source that ocamldep cannot see; carry them through to [all_libs] so
+         the classification fold sees them, and force them onto the glob path
+         via [must_glob_set]. *)
+      let* pps_runtime_libs =
+        Resolve.Memo.read (Compilation_context.pps_runtime_libs cctx)
+      in
+      (* [Lib.closure]'s memo key is order- and multiplicity-sensitive on the
+         input list. [pps_runtime_libs] can both contain duplicates (multiple
+         pps sharing a runtime dep) and overlap with [tight]/[non_tight] (a lib
+         referenced both syntactically and via [add_pp_runtime_deps]).
+         [sort_uniq] keeps the input canonical for memoization. *)
+      let direct_libs =
+        List.sort_uniq
+          ~compare:Lib.compare
+          (Lib.Map.keys tight @ Lib.Set.to_list non_tight @ pps_runtime_libs)
+      in
+      (* Close transitively over transparent aliases that ocamldep doesn't
+         report. *)
+      let* all_libs = Resolve.Memo.read (Lib.closure direct_libs ~linking:false ~for_) in
+      (* Wrapped-lib soundness recovery: when [referenced] names a wrapped local
+         lib's wrapper, the consumer may reach the lib's transitive closure
+         through aliases the cross-library walk cannot see; glob that closure
+         unconditionally. *)
+      let wrapped_referenced =
+        Lib_file_deps.Lib_index.wrapped_libs_referenced
+          lib_index
+          ~referenced_modules:referenced
+      in
+      let* must_glob_libs =
+        Resolve.Memo.read
+          (Lib.closure
+             (List.sort_uniq
+                ~compare:Lib.compare
+                (Lib.Set.to_list wrapped_referenced @ pps_runtime_libs))
+             ~linking:false
+             ~for_)
+      in
+      let must_glob_set = Lib.Set.of_list must_glob_libs in
+      let* tight_set =
+        cross_lib_tight_set ~sandbox ~sctx ~lib_index ~initial_refs:referenced
+      in
+      (* Classify each lib in [all_libs]: - lib has [None]-entry referenced
+         (mixed-entry or wrapped) → glob (covers the None entries' [.cmi]s); -
+         lib has only [Some] entries referenced → per-module deps; - lib
+         unreached but tight-eligible → drop (link rule pulls it in via
+         [requires_link]); - lib unreached and not tight-eligible → glob.
+         [kept_libs] gets every lib that contributes a tight or glob dep — used
+         by [Compilation_context.filtered_include_flags] to scope the consumer's
+         [-I]/[-H] flags. *)
+      let { Lib_file_deps.Lib_index.tight = tight_modules; non_tight = non_tight_set } =
+        Lib_file_deps.Lib_index.filter_libs_with_modules
+          lib_index
+          ~referenced_modules:tight_set
+      in
+      let tight_deps, glob_libs, _kept_libs =
+        List.fold_left
+          all_libs
+          ~init:(Dep.Set.empty, [], Lib.Set.empty)
+          ~f:(fun (td, gl, kl) lib ->
+            if Lib.Set.mem must_glob_set lib || Lib.Set.mem non_tight_set lib
+            then td, lib :: gl, Lib.Set.add kl lib
+            else (
+              match Lib.Map.find tight_modules lib with
+              | Some modules ->
+                ( Dep.Set.union
+                    td
+                    (Lib_file_deps.deps_of_entry_modules ~opaque ~cm_kind lib modules)
+                , gl
+                , Lib.Set.add kl lib )
+              | None ->
+                if Lib_file_deps.Lib_index.is_tight_eligible lib_index lib
+                then td, gl, kl
+                else td, lib :: gl, Lib.Set.add kl lib))
+      in
+      let glob_deps = Lib_file_deps.deps_of_entries ~opaque ~cm_kind glob_libs in
+      Action_builder.return
+        (cctx_includes_for_cm_kind (), Dep.Set.union tight_deps glob_deps)
 ;;
 
 let lib_cm_deps ~cctx ~cm_kind ~ml_kind ~mode m =

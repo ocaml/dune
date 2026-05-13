@@ -217,8 +217,8 @@ let odoc_name = Package.Name.of_string "odoc"
 let menhir_name = Package.Name.of_string "menhir"
 
 let rec has_sufficient_lower_bound ~min_version : Package_constraint.t -> bool = function
-  | Uop (Gte, String_literal v) | Uop (Eq, String_literal v) ->
-    OpamVersionCompare.compare v min_version >= 0
+  | Uop (Gte, String_literal v) | Uop (Gt, String_literal v) | Uop (Eq, String_literal v)
+    -> OpamVersionCompare.compare v min_version >= 0
   | Not (Uop (Lt, String_literal v)) | Not (Uop (Lte, String_literal v)) ->
     OpamVersionCompare.compare v min_version >= 0
   | And ts -> List.exists ts ~f:(has_sufficient_lower_bound ~min_version)
@@ -235,7 +235,7 @@ let normalize_lower_bounds ~min_version c =
   let rewrote = ref false in
   let min_constraint : Package_constraint.t = Uop (Gte, String_literal min_version) in
   let rec loop : Package_constraint.t -> Package_constraint.t = function
-    | Uop (Gte, String_literal v) as c ->
+    | (Uop (Gte, String_literal v) | Uop (Gt, String_literal v)) as c ->
       if OpamVersionCompare.compare v min_version >= 0
       then c
       else (

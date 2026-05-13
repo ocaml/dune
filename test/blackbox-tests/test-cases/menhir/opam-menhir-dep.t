@@ -375,8 +375,8 @@ minimum; preserved verbatim, no warning.
 Case 18: `(not (< v))` with `v` below dune's minimum. The expression is
 equivalent to `(>= v)` but `v` is too low to satisfy dune's requirement; the
 generated opam file ANDs `>= "20180523"` with the user's expression. No
-warning is emitted (the user's clause is not rewritten in place; only `>= v`
-literals are rewritten by `normalize_lower_bounds`).
+warning is emitted (the user's clause is not rewritten in place; only bare
+`>= v` and `> v` literals are rewritten by `normalize_lower_bounds`).
 
   $ rm -rf _build foo.opam
   $ cat > dune-project << EOF
@@ -392,3 +392,64 @@ literals are rewritten by `normalize_lower_bounds`).
   [1]
   $ grep menhir foo.opam
     "menhir" {>= "20180523" & !< "20100101"}
+
+Case 19: `(> v)` with `v` at or above dune's minimum. The expression is a
+sufficient lower bound (everything strictly above `v` is also above the
+minimum), so it's preserved verbatim; no warning.
+
+  $ rm -rf _build foo.opam
+  $ cat > dune-project << EOF
+  > (lang dune 3.23)
+  > (using menhir 2.1)
+  > (generate_opam_files true)
+  > (package
+  >  (name foo)
+  >  (allow_empty)
+  >  (depends (menhir (> 20211128))))
+  > EOF
+  $ dune build @opam --auto-promote > /dev/null 2>&1
+  [1]
+  $ grep menhir foo.opam
+    "menhir" {> "20211128"}
+
+Case 20: `(> v)` with `v` below dune's minimum. Dune warns and rewrites the
+literal to `>= "20180523"`, mirroring the `>=`-below-min behaviour of Case 6.
+
+  $ rm -rf _build foo.opam
+  $ cat > dune-project << EOF
+  > (lang dune 3.23)
+  > (using menhir 2.1)
+  > (generate_opam_files true)
+  > (package
+  >  (name foo)
+  >  (allow_empty)
+  >  (depends (menhir (> 20100101))))
+  > EOF
+  $ dune build @opam 2>&1 | dune_cmd print-from '^Warning:' | dune_cmd print-until 'instead\.$'
+  Warning: A lower bound on menhir in the depends field is less than the
+  version dune's menhir rules require. The generated opam file will use >=
+  20180523 instead.
+  [1]
+  $ grep menhir _build/default/foo.opam.generated
+    "menhir" {>= "20180523"}
+
+Case 21: `(= v)` with `v` below dune's minimum. The expression is a pin to an
+unsupported version. Dune does not rewrite the pin — that would silently drop
+the user's intent — and instead ANDs `>= "20180523"` with the pin, producing
+an unsatisfiable combination that surfaces at install time. Mirrors Case 13
+and Case 15.
+
+  $ rm -rf _build foo.opam
+  $ cat > dune-project << EOF
+  > (lang dune 3.23)
+  > (using menhir 2.1)
+  > (generate_opam_files true)
+  > (package
+  >  (name foo)
+  >  (allow_empty)
+  >  (depends (menhir (= 20100101))))
+  > EOF
+  $ dune build @opam --auto-promote > /dev/null 2>&1
+  [1]
+  $ grep menhir foo.opam
+    "menhir" {>= "20180523" & = "20100101"}

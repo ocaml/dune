@@ -1,7 +1,9 @@
-Reproduction for https://github.com/ocaml/dune/issues/12964
+Regression test for https://github.com/ocaml/dune/issues/12964
 
-A library with mode-dependent foreign stubs where the .cmxs build does not
-depend on the native stubs archive.
+The .cmxa for a library with mode-dependent foreign stubs links against
+-l<lib>_stubs_native (via -cclib). The .cmxs build, which links the .cmxa
+shared, must therefore depend on libfoo_stubs_native.a — otherwise the link
+can race with the native stubs archive build.
 
   $ cat > dune-project << EOF
   > (lang dune 3.5)
@@ -28,13 +30,8 @@ depend on the native stubs archive.
   $ cat > hash.c
   $ cat > stub.c
 
-Check that the .cmxs rule depends on the native stubs archive.
+The .cmxs rule depends on the native stubs archive, not the byte one.
 
   $ dune rules --format=json foo.cmxs | \
   >   jq -r 'include "dune"; .[] | ruleDepFilePaths | select(test("stubs"))'
-  _build/default/libfoo_stubs_byte.a
-
-This is wrong: the .cmxs links against -lfoo_stubs_native (embedded in the
-.cmxa), so it should depend on libfoo_stubs_native.a, not libfoo_stubs_byte.a.
-This causes a race condition where the .cmxs link can run before the native
-stubs archive is built.
+  _build/default/libfoo_stubs_native.a

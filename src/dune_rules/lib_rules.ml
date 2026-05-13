@@ -369,7 +369,7 @@ let build_shared (lib : Library.t) ~native_archives ~sctx ~dir ~flags =
     ; Hidden_deps
         (let ext_lib = ocaml.lib_config.ext_lib in
          List.rev_concat
-           [ Library.foreign_lib_files lib ~dir ~ext_lib ~for_mode:(Only Byte)
+           [ Library.foreign_lib_files lib ~dir ~ext_lib ~for_mode:(Only Native)
            ; Library.foreign_lib_files lib ~dir ~ext_lib ~for_mode:All
            ; native_archives
            ]

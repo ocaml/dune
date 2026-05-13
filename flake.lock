@@ -173,17 +173,17 @@
     "odoc-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1764246576,
-        "narHash": "sha256-/rU7van8mtF1TEMZLDL3Kj0FUYfF5oc6yg4yvFf6JE8=",
+        "lastModified": 1778577916,
+        "narHash": "sha256-h9FeLycuYBV7ufGv2toyqNnyIxq+sdtk4M/V+T95z3U=",
         "owner": "ocaml",
         "repo": "odoc",
-        "rev": "d8460cdaa2b91a03434a9a045d673703b7fabfb2",
+        "rev": "6427579346781df958b3bdfe8ac6d4550194012a",
         "type": "github"
       },
       "original": {
         "owner": "ocaml",
         "repo": "odoc",
-        "rev": "d8460cdaa2b91a03434a9a045d673703b7fabfb2",
+        "rev": "6427579346781df958b3bdfe8ac6d4550194012a",
         "type": "github"
       }
     },

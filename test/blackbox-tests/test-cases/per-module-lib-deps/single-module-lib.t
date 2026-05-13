@@ -1,11 +1,10 @@
-Single-module library consumers and recompilation behavior.
+Per-module filtering for single-module library consumers.
 
-When a consumer library has only one module, dune skips ocamldep for that
-stanza as an optimization (no intra-stanza deps to compute). This means
-per-module library dependency filtering cannot determine which libraries
-the module actually references, so the consumer depends on all library
-files via glob. Modifying an unused module in a dependency triggers
-unnecessary recompilation of the consumer module's .cmo/.cmx.
+A consumer library with a single module still runs ocamldep when it has
+library dependencies, and the per-module filter uses that output to
+dep on only the specific entry modules of an unwrapped dependency that
+the consumer actually references. Modifying an unreferenced module of
+the dependency does not recompile the consumer.
 
 See: https://github.com/ocaml/dune/issues/4572
 
@@ -61,25 +60,8 @@ Modify only the unused module:
   > let new_fn () = "new"
   > EOF
 
-uses_alpha.cmx is recompiled even though uses_alpha.ml only references
-Alpha, not Unused. This is because the consumer_lib stanza has a single
-module, so dune skips ocamldep for it and falls back to glob deps on all
-of base_lib's .cmi files. The trace shows compilation targets for
-uses_alpha being rebuilt:
+uses_alpha.ml references Alpha only, not Unused, so it is not recompiled:
 
   $ dune build ./main.exe
   $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("uses_alpha"))]'
-  [
-    {
-      "target_files": [
-        "_build/default/consumer_lib/.consumer_lib.objs/byte/uses_alpha.cmi",
-        "_build/default/consumer_lib/.consumer_lib.objs/byte/uses_alpha.cmti"
-      ]
-    },
-    {
-      "target_files": [
-        "_build/default/consumer_lib/.consumer_lib.objs/native/uses_alpha.cmx",
-        "_build/default/consumer_lib/.consumer_lib.objs/native/uses_alpha.o"
-      ]
-    }
-  ]
+  []

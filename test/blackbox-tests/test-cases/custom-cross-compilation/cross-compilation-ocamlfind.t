@@ -107,6 +107,31 @@ Dune should be able to find it too
       "user_cpu_time"
     ]
   }
+  {
+    "process_args": [
+      "-modules",
+      "-impl",
+      "repro.ml-gen"
+    ],
+    "categories": [],
+    "prog": "$TESTCASE_ROOT/notocamldep-foo",
+    "dir": "_build/default.foo",
+    "exit": 0,
+    "target_files": [
+      "_build/.actions/default.foo/$ACTION"
+    ],
+    "rusage": [
+      "inblock",
+      "majflt",
+      "maxrss",
+      "minflt",
+      "nivcsw",
+      "nvcsw",
+      "oublock",
+      "system_cpu_time",
+      "user_cpu_time"
+    ]
+  }
 
 Library is built in the target context
 

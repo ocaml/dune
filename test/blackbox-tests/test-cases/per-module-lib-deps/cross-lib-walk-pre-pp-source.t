@@ -83,13 +83,15 @@ this test will fail with a syntax error from [dep/foo.ml].
 
   $ dune build @check
 
-Confirm that [consumer/c.cmi] depends on [dep]'s objdir for cmis,
-and not on any path that names the pre-pp source. The dep is
-registered as a [*.cmi] glob over the dep's objdir; a future
-regression that switched to a per-file dep on the wrong basename
-(e.g. [dep/.dep.objs/byte/foo.pp.cmi] instead of [foo.cmi]) would
-surface here as a different recorded dep:
+Confirm that [consumer/c.cmi] depends specifically on
+[dep/.dep.objs/byte/foo.cmi] — the per-module filter records only
+the cmis the consumer's ocamldep output names (here, [Foo]), not
+a glob over the whole library's objdir, and not [bar.cmi] which
+the consumer does not reference. A regression that resurrected
+the broad-glob form, or that switched to the wrong basename
+(e.g. [foo.pp.cmi] instead of [foo.cmi]), would surface here as a
+different recorded dep:
 
   $ dune rules --root . --format=json --deps _build/default/consumer/.consumer.objs/byte/c.cmi |
-  > jq -r 'include "dune"; .[] | depsGlobPredicates'
-  *.cmi
+  > jq -r 'include "dune"; .[] | depsFilePaths | select(test("dep/.dep.objs"))'
+  _build/default/dep/.dep.objs/byte/foo.cmi

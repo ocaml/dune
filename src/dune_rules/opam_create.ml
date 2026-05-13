@@ -253,21 +253,24 @@ let normalize_lower_bounds ~min_version c =
 let merge_dune_constraints lang_constraint user_constraint =
   match lang_constraint with
   | Package_constraint.Uop (Gte, String_literal lang_v) ->
-    let user_constraint, rewrote =
-      normalize_lower_bounds ~min_version:lang_v user_constraint
-    in
-    if rewrote
-    then
-      User_warning.emit
-        [ Pp.textf
-            "A lower bound on dune in the depends field is less than the dune language \
-             version %s. The generated opam file will use >= %s instead."
-            lang_v
-            lang_v
-        ];
     if has_sufficient_lower_bound ~min_version:lang_v user_constraint
     then user_constraint
-    else And [ lang_constraint; user_constraint ]
+    else (
+      let user_constraint, rewrote =
+        normalize_lower_bounds ~min_version:lang_v user_constraint
+      in
+      if rewrote
+      then
+        User_warning.emit
+          [ Pp.textf
+              "A lower bound on dune in the depends field is less than the dune language \
+               version %s. The generated opam file will use >= %s instead."
+              lang_v
+              lang_v
+          ];
+      if has_sufficient_lower_bound ~min_version:lang_v user_constraint
+      then user_constraint
+      else And [ lang_constraint; user_constraint ])
   | _ ->
     (* [insert_dune_dep] always supplies the [Gte] shape; this arm
        is defensive. *)
@@ -343,25 +346,32 @@ let menhir_min_version = "20180523"
 let menhir_constraint : Package_constraint.t = Uop (Gte, String_literal menhir_min_version)
 
 (* Merge an existing user-written menhir constraint with dune's
-   required lower bound. Tightens any nested [>= "v"] literal below
-   the minimum, then AND's [menhir_constraint] at the top level
-   unless the (post-tightening) expression already implies the
-   lower bound on every satisfying valuation. *)
+   required lower bound. If the user's expression already implies
+   the lower bound, preserve it verbatim and emit no warning —
+   even if it contains a sub-minimum literal masked by a stronger
+   sibling. Otherwise tighten any nested [>= "v"] or [> "v"] literal
+   below the minimum, then AND [menhir_constraint] at the top level
+   unless the post-tightening expression now implies the lower
+   bound. *)
 let merge_menhir_constraint user_constraint =
-  let user_constraint, rewrote =
-    normalize_lower_bounds ~min_version:menhir_min_version user_constraint
-  in
-  if rewrote
-  then
-    User_warning.emit
-      [ Pp.textf
-          "A lower bound on menhir in the depends field is less than the version dune's \
-           menhir rules require. The generated opam file will use >= %s instead."
-          menhir_min_version
-      ];
   if has_sufficient_lower_bound ~min_version:menhir_min_version user_constraint
   then user_constraint
-  else And [ menhir_constraint; user_constraint ]
+  else (
+    let user_constraint, rewrote =
+      normalize_lower_bounds ~min_version:menhir_min_version user_constraint
+    in
+    if rewrote
+    then
+      User_warning.emit
+        [ Pp.textf
+            "A lower bound on menhir in the depends field is less than the version \
+             dune's menhir rules require. The generated opam file will use >= %s \
+             instead."
+            menhir_min_version
+        ];
+    if has_sufficient_lower_bound ~min_version:menhir_min_version user_constraint
+    then user_constraint
+    else And [ menhir_constraint; user_constraint ])
 ;;
 
 (* If the package's [(depends ...)] field already lists [menhir],

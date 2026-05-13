@@ -453,3 +453,28 @@ and Case 15.
   [1]
   $ grep menhir foo.opam
     "menhir" {>= "20180523" & = "20100101"}
+
+Case 22: `(and (>= w) (>= v))` with `w >= min_version` and `v < min_version`.
+The `>= w` branch already establishes a sufficient lower bound, so the `>= v`
+literal is masked — every satisfying valuation has version >= w >= min_version.
+Dune preserves the user's expression verbatim and does NOT warn: the warning
+("the generated opam file will use >= min_version instead") would be misleading,
+since dune ends up using neither `>= v` nor a substitute.
+
+  $ rm -rf _build foo.opam
+  $ cat > dune-project << EOF
+  > (lang dune 3.23)
+  > (using menhir 2.1)
+  > (generate_opam_files true)
+  > (package
+  >  (name foo)
+  >  (allow_empty)
+  >  (depends (menhir (and (>= 20211128) (>= 10)))))
+  > EOF
+  $ dune build @opam 2>&1 | grep -c '^Warning:'
+  0
+  [1]
+  $ dune build @opam --auto-promote > /dev/null 2>&1
+  [1]
+  $ grep menhir foo.opam
+    "menhir" {>= "20211128" & >= "10"}

@@ -333,3 +333,62 @@ expression. The combination is unsatisfiable, as in Case 13.
   [1]
   $ grep menhir _build/default/foo.opam.generated
     "menhir" {>= "20180523" & !>= "20180523"}
+
+Case 16: `(not (< v))` with `v` at or above dune's minimum. The expression is
+equivalent to `(>= v)`, so it's a sufficient lower bound and is preserved
+verbatim; no warning, no extra `>= "20180523"` clause.
+
+  $ rm -rf _build foo.opam
+  $ cat > dune-project << EOF
+  > (lang dune 3.23)
+  > (using menhir 2.1)
+  > (generate_opam_files true)
+  > (package
+  >  (name foo)
+  >  (allow_empty)
+  >  (depends (menhir (not (< 20211128)))))
+  > EOF
+  $ dune build @opam --auto-promote > /dev/null 2>&1
+  [1]
+  $ grep menhir foo.opam
+    "menhir" {!< "20211128"}
+
+Case 17: `(not (<= v))` with `v` at or above dune's minimum. The expression is
+equivalent to `(> v)`, which strictly exceeds `v` and therefore exceeds dune's
+minimum; preserved verbatim, no warning.
+
+  $ rm -rf _build foo.opam
+  $ cat > dune-project << EOF
+  > (lang dune 3.23)
+  > (using menhir 2.1)
+  > (generate_opam_files true)
+  > (package
+  >  (name foo)
+  >  (allow_empty)
+  >  (depends (menhir (not (<= 20211128)))))
+  > EOF
+  $ dune build @opam --auto-promote > /dev/null 2>&1
+  [1]
+  $ grep menhir foo.opam
+    "menhir" {!<= "20211128"}
+
+Case 18: `(not (< v))` with `v` below dune's minimum. The expression is
+equivalent to `(>= v)` but `v` is too low to satisfy dune's requirement; the
+generated opam file ANDs `>= "20180523"` with the user's expression. No
+warning is emitted (the user's clause is not rewritten in place; only `>= v`
+literals are rewritten by `normalize_lower_bounds`).
+
+  $ rm -rf _build foo.opam
+  $ cat > dune-project << EOF
+  > (lang dune 3.23)
+  > (using menhir 2.1)
+  > (generate_opam_files true)
+  > (package
+  >  (name foo)
+  >  (allow_empty)
+  >  (depends (menhir (not (< 20100101)))))
+  > EOF
+  $ dune build @opam --auto-promote > /dev/null 2>&1
+  [1]
+  $ grep menhir foo.opam
+    "menhir" {>= "20180523" & !< "20100101"}

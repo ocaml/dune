@@ -42,9 +42,9 @@ module Lib_index : sig
 
   (** Third tuple element is [Some m] for local + unwrapped libs (with the
       entry's [Module.t]) and [None] otherwise (wrapped locals, externals).
-      [no_ocamldep] names local libs whose [.d] files don't exist
-      (short-circuited by [Dep_rules.skip_ocamldep]); the cross-library walk
-      skips them. *)
+      [no_ocamldep] names local libs that are walker-terminal (singletons
+      with no resolved requires) — the cross-library walk would gain nothing
+      by running ocamldep on them, so it skips them. *)
   val create
     :  no_ocamldep:Lib.Set.t
     -> (Module_name.t * Lib.t * Module.t option) list

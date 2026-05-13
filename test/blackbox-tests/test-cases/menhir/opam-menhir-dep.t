@@ -312,9 +312,14 @@ already implies the lower bound, so the generated opam file uses it verbatim.
   $ grep menhir foo.opam
     "menhir" {= "20211128"}
 
-Case 15: a `(not (>= v))` expression with `v` below dune's minimum. Dune warns
-and the generated opam file enforces `>= "20180523"` alongside the user's
-expression. The combination is unsatisfiable, as in Case 13.
+Case 15: a `(not (>= v))` expression with `v` below dune's minimum. The
+expression is equivalent to `(< v)`, an upper bound that excludes every
+version dune's menhir rules support. `normalize_lower_bounds` does not
+recurse under `Not` — rewriting the inner `>= v` would shift the upper
+bound rather than tightening a lower bound — so the user's literal is
+preserved. Dune still ANDs `>= "20180523"` at the top level, producing
+an unsatisfiable combination that surfaces at install time (mirrors
+Cases 13 and 21). No warning, since nothing was rewritten.
 
   $ rm -rf _build foo.opam
   $ cat > dune-project << EOF
@@ -326,13 +331,10 @@ expression. The combination is unsatisfiable, as in Case 13.
   >  (allow_empty)
   >  (depends (menhir (not (>= 20100101)))))
   > EOF
-  $ dune build @opam 2>&1 | dune_cmd print-from '^Warning:' | dune_cmd print-until 'instead\.$'
-  Warning: A lower bound on menhir in the depends field is less than the
-  version dune's menhir rules require. The generated opam file will use >=
-  20180523 instead.
+  $ dune build @opam --auto-promote > /dev/null 2>&1
   [1]
-  $ grep menhir _build/default/foo.opam.generated
-    "menhir" {>= "20180523" & !>= "20180523"}
+  $ grep menhir foo.opam
+    "menhir" {>= "20180523" & !>= "20100101"}
 
 Case 16: `(not (< v))` with `v` at or above dune's minimum. The expression is
 equivalent to `(>= v)`, so it's a sufficient lower bound and is preserved

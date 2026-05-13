@@ -226,11 +226,13 @@ let rec has_sufficient_lower_bound ~min_version : Package_constraint.t -> bool =
   | Uop _ | Bop _ | Bvar _ | Not _ -> false
 ;;
 
-(* Walk [c] replacing each [>= "v"] literal where [v < min_version]
-   with [>= min_version]. Returns the rewritten constraint and a
-   flag indicating whether any rewrite occurred (so the caller can
-   emit a single user-facing warning). [Not], [Bop], and [Bvar]
-   pass through unchanged. *)
+(* Walk [c] replacing each lower-bound literal [(>= "v")] or [(> "v")]
+   with [v < min_version] by [(>= min_version)]. Returns the rewritten
+   constraint and a flag indicating whether any rewrite occurred (so
+   the caller can emit a single user-facing warning). [Not], [Bop],
+   and [Bvar] subtrees pass through unchanged: under a [Not], a
+   [(>= v)] literal contributes to an upper bound, not a lower bound,
+   so rewriting it would loosen rather than tighten the constraint. *)
 let normalize_lower_bounds ~min_version c =
   let rewrote = ref false in
   let min_constraint : Package_constraint.t = Uop (Gte, String_literal min_version) in
@@ -243,8 +245,7 @@ let normalize_lower_bounds ~min_version c =
         min_constraint)
     | And ts -> And (List.map ts ~f:loop)
     | Or ts -> Or (List.map ts ~f:loop)
-    | Not t -> Not (loop t)
-    | (Uop _ | Bop _ | Bvar _) as c -> c
+    | (Uop _ | Bop _ | Bvar _ | Not _) as c -> c
   in
   let c' = loop c in
   c', !rewrote

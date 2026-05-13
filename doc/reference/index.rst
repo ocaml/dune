@@ -76,7 +76,6 @@ These documents specify the various features and languages present in Dune.
        :caption: Integrations
 
        ../rocq
-       ../coq
        ../rpc
        packages
        findlib

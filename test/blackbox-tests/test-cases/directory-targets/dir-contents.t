@@ -1,4 +1,4 @@
-Directory targets and ocaml/coq/etc sources
+Directory targets and ocaml/rocq/etc sources
 
   $ cat >dune-project <<EOF
   > (lang dune 3.2)

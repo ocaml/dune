@@ -363,7 +363,6 @@ let check_dynamic_stanza =
     match Stanza.repr stanza with
     | Install_conf.T { section = loc, Section Bin; _ } ->
       User_error.raise ~loc [ Pp.text "binary section cannot be generated dynamically" ]
-    | Coq_stanza.Theory.T { buildable = { Coq_stanza.Buildable.loc; _ }; _ }
     | Rocq_stanza.Theory.T { buildable = { Rocq_stanza.Buildable.loc; _ }; _ }
     | Library.T { buildable = { loc; _ }; _ }
     | Install_conf.T { section = _, Site { loc; _ }; _ }

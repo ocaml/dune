@@ -251,11 +251,8 @@ We have the following shells for specific tasks:
 - ``nix develop .#slim-melange``: same as above, but additionally includes the
   ``melange`` and ``mel`` packages
 - Building documentation requires ``nix develop .#doc``.
-- For running the Coq tests, you can use ``nix develop .#coq``. NB: Coq native
-  is not currently installed; this will cause some of the tests to fail. It's
-  currently better to fallback to opam in this case.
-- We don't have yet a Nix setup for running the Rocq tests, as of
-  today, there are two classes of tests:
+- For running the Rocq tests, you can use ``nix develop .#rocq``. There are
+  two classes of tests:
   + ``make test-rocq``: these work well on a regular Dune opam dev switch
   + ``make test-rocq-native``: these require the Rocq native compiler to run, and thus need OCaml 4.x
 
@@ -364,7 +361,7 @@ Sometimes, Dune's versioning policy is too strict. For example, it doesn't work
 in the following situations:
 
 - When most Dune independent extensions only exist inside Dune for development
-  convenience, e.g., build rules for Coq. Such extensions would like to impose
+  convenience, e.g., build rules for Rocq. Such extensions would like to impose
   their own versioning policy.
 
 - When experimental features cannot guarantee Dune's strict backwards
@@ -373,13 +370,13 @@ in the following situations:
 To handle both of these use cases, Dune allows the definition of new languages
 (with the same syntax). These languages have their own versioning scheme and
 their own stanzas (or fields). In Dune itself, ``Syntax.t`` represents such
-languages. Here's an example of how the Coq syntax is defined:
+languages. Here's an example of how the Rocq syntax is defined:
 
 .. code:: ocaml
 
-   let coq_syntax =
-     Dune_lang.Syntax.create ~name:"coq" ~desc:"the coq extension (experimental)"
-      [ ((0, 1), `Since (1, 9)); ((0, 2), `Since (2, 5)) ]
+   let rocq_syntax =
+     Dune_lang.Syntax.create ~name:"rocq" ~desc:"Rocq Prover build language"
+      [ ((0, 11), `Since (3, 21)); ((0, 12), `Since (3, 22)) ]
 
 The list provides which versions of the syntax are provided and which version of
 Dune introduced them.
@@ -389,7 +386,7 @@ Such languages must be enabled in the ``dune`` project file separately:
 .. code:: dune
 
    (lang dune {{latest}})
-   (using coq 0.8)
+   (using rocq 0.13)
 
 If such extensions are experimental, it's recommended that they pass
 ``~experimental:true``, and that their versions are below 1.0.

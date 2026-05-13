@@ -826,13 +826,6 @@ let expand_pform_macro
             ]
         | Ok s -> s)
       |> strings)
-  | Coq_config ->
-    Need_full_expander
-      (fun t ->
-        Without
-          (let open Memo.O in
-           let* artifacts_host = t.artifacts_host in
-           Coq_config.expand source macro_invocation ~dir:t.dir artifacts_host))
   | Ppx ->
     Need_full_expander
       (fun t ->

@@ -4,7 +4,6 @@ open Memo.O
 type t =
   { project : Dune_project.t
   ; db : Lib.DB.t
-  ; coq_db : Coq_lib.DB.t Memo.t
   ; rocq_db : Rocq_lib.DB.t Memo.t
   ; root : Path.Build.t
   }
@@ -12,7 +11,6 @@ type t =
 let root t = t.root
 let project t = t.project
 let libs t = t.db
-let coq_libs t = t.coq_db
 let rocq_libs t = t.rocq_db
 
 module DB = struct
@@ -304,7 +302,6 @@ module DB = struct
         ~instrument_with
         context
         stanzas
-        coq_stanzas
         rocq_stanzas
     =
     let stanzas_by_project_dir =
@@ -332,9 +329,6 @@ module DB = struct
         in
         project, db)
     in
-    let coq_scopes =
-      Coq_scope.make context ~public_libs coq_stanzas ~db_by_project_dir ~projects_by_root
-    in
     let rocq_scopes =
       Rocq_scope.make
         context
@@ -345,12 +339,11 @@ module DB = struct
     in
     Path.Source.Map.mapi db_by_project_dir ~f:(fun dir (project, db) ->
       let root = Path.Build.append_source build_dir (Dune_project.root project) in
-      let coq_db = Coq_scope.find coq_scopes ~dir in
       let rocq_db = Rocq_scope.find rocq_scopes ~dir in
-      { project; db; coq_db; rocq_db; root })
+      { project; db; rocq_db; root })
   ;;
 
-  let create ~context ~projects_by_root stanzas coq_stanzas rocq_stanzas =
+  let create ~context ~projects_by_root stanzas rocq_stanzas =
     let t = Fdecl.create Dyn.opaque in
     let* context = Context.DB.get context in
     let build_dir = Context.build_dir context in
@@ -372,7 +365,6 @@ module DB = struct
         ~instrument_with
         context
         stanzas
-        coq_stanzas
         rocq_stanzas
     in
     let value = { by_dir } in
@@ -381,31 +373,28 @@ module DB = struct
   ;;
 
   let create_from_stanzas ~projects_by_root ~(context : Context_name.t) stanzas =
-    let stanzas, coq_stanzas, rocq_stanzas =
+    let stanzas, rocq_stanzas =
       let build_dir = Context_name.build_dir context in
       Dune_file.fold_static_stanzas
         stanzas
-        ~init:([], [], [])
-        ~f:(fun dune_file stanza (acc, coq_acc, rocq_acc) ->
+        ~init:([], [])
+        ~f:(fun dune_file stanza (acc, rocq_acc) ->
           match Stanza.repr stanza with
           | Library.T lib ->
             let ctx_dir = Path.Build.append_source build_dir (Dune_file.dir dune_file) in
-            (ctx_dir, Library_related_stanza.Library lib) :: acc, coq_acc, rocq_acc
+            (ctx_dir, Library_related_stanza.Library lib) :: acc, rocq_acc
           | Deprecated_library_name.T d ->
             let ctx_dir = Path.Build.append_source build_dir (Dune_file.dir dune_file) in
-            (ctx_dir, Deprecated_library_name d) :: acc, coq_acc, rocq_acc
+            (ctx_dir, Deprecated_library_name d) :: acc, rocq_acc
           | Library_redirect.Local.T d ->
             let ctx_dir = Path.Build.append_source build_dir (Dune_file.dir dune_file) in
-            (ctx_dir, Library_redirect d) :: acc, coq_acc, rocq_acc
-          | Coq_stanza.Theory.T coq_lib ->
-            let ctx_dir = Path.Build.append_source build_dir (Dune_file.dir dune_file) in
-            acc, (ctx_dir, coq_lib) :: coq_acc, rocq_acc
+            (ctx_dir, Library_redirect d) :: acc, rocq_acc
           | Rocq_stanza.Theory.T rocq_lib ->
             let ctx_dir = Path.Build.append_source build_dir (Dune_file.dir dune_file) in
-            acc, coq_acc, (ctx_dir, rocq_lib) :: rocq_acc
-          | _ -> acc, coq_acc, rocq_acc)
+            acc, (ctx_dir, rocq_lib) :: rocq_acc
+          | _ -> acc, rocq_acc)
     in
-    create ~projects_by_root ~context stanzas coq_stanzas rocq_stanzas
+    create ~projects_by_root ~context stanzas rocq_stanzas
   ;;
 
   let all =

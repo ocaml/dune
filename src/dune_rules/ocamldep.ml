@@ -22,27 +22,27 @@ let parse_module_names ~dir ~(unit : Module.t) ~modules words =
         ])
 ;;
 
-let parse_deps_exn =
-  let invalid file lines =
-    User_error.raise
-      [ Pp.textf
-          "ocamldep returned unexpected output for %s:"
-          (Path.to_string_maybe_quoted file)
-      ; Pp.vbox
-          (Pp.concat_map lines ~sep:Pp.cut ~f:(fun line ->
-             Pp.seq (Pp.verbatim "> ") (Pp.verbatim line)))
-      ]
-  in
-  fun ~file lines ->
-    match lines with
-    | [] | _ :: _ :: _ -> invalid file lines
-    | [ line ] ->
-      (match String.lsplit2 line ~on:':' with
-       | None -> invalid file lines
-       | Some (basename, deps) ->
-         let basename = Filename.basename basename in
-         if basename <> Path.basename file then invalid file lines;
-         String.extract_blank_separated_words deps)
+let invalid_ocamldep_output file lines =
+  User_error.raise
+    [ Pp.textf
+        "ocamldep returned unexpected output for %s:"
+        (Path.to_string_maybe_quoted file)
+    ; Pp.vbox
+        (Pp.concat_map lines ~sep:Pp.cut ~f:(fun line ->
+           Pp.seq (Pp.verbatim "> ") (Pp.verbatim line)))
+    ]
+;;
+
+let parse_deps_exn ~file lines =
+  match lines with
+  | [] | _ :: _ :: _ -> invalid_ocamldep_output file lines
+  | [ line ] ->
+    (match String.lsplit2 line ~on:':' with
+     | None -> invalid_ocamldep_output file lines
+     | Some (basename, deps) ->
+       let basename = Filename.basename basename in
+       if basename <> Path.basename file then invalid_ocamldep_output file lines;
+       String.extract_blank_separated_words deps)
 ;;
 
 let ocamldep_action ~sandbox ~sctx ~dir ~ml_kind unit =
@@ -79,24 +79,72 @@ let ocamldep_action ~sandbox ~sctx ~dir ~ml_kind unit =
   }
 ;;
 
+(* Top-level cache per (source path, ml_kind). Without it, each caller's
+   [Action_builder.memoize] cell has a different digest (pp-flags closure
+   identity varies), causing ocamldep to run multiply per source.
+
+   The key omits [sctx], [obj_dir], and [pp_flags], but suffices because
+   [Module.File.path] is build-dir-qualified for ocamldep'd modules (see
+   [ml_sources.ml]'s [modules_of_files] and Melange/OxCaml equivalents):
+   a build-qualified path uniquely determines its workspace context and
+   stanza, and therefore all closure inputs. If that invariant ever
+   stops holding, scope the cache per [Super_context]. *)
+module Cache_key = struct
+  type t =
+    { source : Path.t
+    ; ml_kind : Ml_kind.t
+    }
+
+  let equal = Poly.equal
+  let hash = Poly.hash
+
+  let to_dyn { source; ml_kind } =
+    Dyn.record [ "source", Path.to_dyn source; "ml_kind", Ml_kind.to_dyn ml_kind ]
+  ;;
+end
+
+let read_immediate_deps_words =
+  let cache = Table.create (module Cache_key) 64 in
+  fun ~sandbox ~sctx ~obj_dir ~ml_kind unit ->
+    match Module.source ~ml_kind unit with
+    | None -> Action_builder.return None
+    | Some source ->
+      let source_path = Module.File.path source in
+      let cache_key = { Cache_key.source = source_path; ml_kind } in
+      (match Table.find cache cache_key with
+       | Some builder -> builder
+       | None ->
+         let dir = Obj_dir.dir obj_dir in
+         let builder =
+           ocamldep_action ~sandbox ~sctx ~dir ~ml_kind unit
+           |> Build_system.execute_action_stdout
+           |> Memo.map ~f:(fun output ->
+             Some (String.split_lines output |> parse_deps_exn ~file:source_path))
+           |> Action_builder.of_memo
+           |> Action_builder.memoize "Ocamldep.read_immediate_deps_words"
+         in
+         Table.set cache cache_key builder;
+         builder)
+;;
+
 let read_immediate_deps_of ~sandbox ~sctx ~obj_dir ~modules ~ml_kind unit =
-  match Module.source ~ml_kind unit with
-  | None -> Action_builder.return []
-  | Some source ->
+  let open Action_builder.O in
+  let+ words = read_immediate_deps_words ~sandbox ~sctx ~obj_dir ~ml_kind unit in
+  match words with
+  | None -> []
+  | Some words ->
     let dir = Obj_dir.dir obj_dir in
-    let memo_name =
-      sprintf
-        "%s.%s.ocamldep"
-        (Path.to_string (Module.File.path source))
-        (Ml_kind.to_string ml_kind)
-    in
-    ocamldep_action ~sandbox ~sctx ~dir ~ml_kind unit
-    |> Build_system.execute_action_stdout
-    |> Memo.map ~f:(fun output ->
-      String.split_lines output
-      |> parse_deps_exn ~file:(Module.File.path source)
-      |> parse_module_names ~dir ~unit ~modules
-      |> Stdlib.( @ ) (Modules.With_vlib.implicit_deps modules ~of_:unit))
-    |> Action_builder.of_memo
-    |> Action_builder.memoize memo_name
+    parse_module_names ~dir ~unit ~modules words
+    |> List.append (Modules.With_vlib.implicit_deps modules ~of_:unit)
+;;
+
+(* Returns raw module names without resolving against the stanza's module set.
+   Preserves references to external libraries, which [parse_module_names] would
+   discard. Used for per-module inter-library dependency filtering (#4572). *)
+let read_immediate_deps_raw_of ~sandbox ~sctx ~obj_dir ~ml_kind unit =
+  let open Action_builder.O in
+  let+ words = read_immediate_deps_words ~sandbox ~sctx ~obj_dir ~ml_kind unit in
+  match words with
+  | None -> Module_name.Set.empty
+  | Some words -> Module_name.Set.of_list_map words ~f:Module_name.of_checked_string
 ;;

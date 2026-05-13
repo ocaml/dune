@@ -1,6 +1,54 @@
 open Import
 open Memo.O
 
+let all_libs cctx =
+  let open Resolve.Memo.O in
+  let+ d = Compilation_context.requires_compile cctx
+  and+ h = Compilation_context.requires_hidden cctx in
+  d @ h
+;;
+
+(* Returns the include flags and lib-file deps for compiling [m]. The scaffold
+   form is glob-only: include flags come from the cctx's [Includes] (-I/-H over
+   the full lib list) and deps come from [deps_of_entries] over the same list.
+   The per-module tight filter activates in a follow-up; arguments unused by
+   this form are reserved for that filter. *)
+let lib_deps_for_module
+      ~cctx
+      ~obj_dir:_
+      ~for_:_
+      ~dep_graph:_
+      ~opaque
+      ~cm_kind
+      ~ml_kind:(_ : Ml_kind.t)
+      ~mode:(_ : Lib_mode.t)
+      _m
+  =
+  let open Action_builder.O in
+  let* libs = Resolve.Memo.read (all_libs cctx) in
+  Action_builder.return
+    ( Lib_mode.Cm_kind.Map.get (Compilation_context.includes cctx) cm_kind
+    , Lib_file_deps.deps_of_entries ~opaque ~cm_kind libs )
+;;
+
+let lib_cm_deps ~cctx ~cm_kind ~ml_kind ~mode m =
+  let obj_dir = Compilation_context.obj_dir cctx in
+  let opaque = Compilation_context.opaque cctx in
+  let for_ = Compilation_context.for_ cctx in
+  let dep_graph = Ml_kind.Dict.get (Compilation_context.dep_graphs cctx) ml_kind in
+  Action_builder.dyn_deps
+    (lib_deps_for_module
+       ~cctx
+       ~obj_dir
+       ~for_
+       ~dep_graph
+       ~opaque
+       ~cm_kind
+       ~ml_kind
+       ~mode
+       m)
+;;
+
 (* Arguments for the compiler to prevent it from being too clever.
 
    The compiler creates the cmi when it thinks a .ml file has no corresponding
@@ -281,6 +329,20 @@ let build_cm
         | Some All | None -> Hidden_targets [ obj ])
    in
    let opaque = Compilation_context.opaque cctx in
+   let skip_lib_deps =
+     match Module.kind m with
+     | Alias _ ->
+       not (Modules.With_vlib.is_stdlib_alias (Compilation_context.modules cctx) m)
+     | Wrapped_compat -> true
+     | Intf_only | Virtual | Impl | Impl_vmodule | Root | Parameter -> false
+   in
+   let lib_cm_args =
+     if skip_lib_deps
+     then
+       Action_builder.return
+         (Lib_mode.Cm_kind.Map.get (Compilation_context.includes cctx) cm_kind)
+     else lib_cm_deps ~cctx ~cm_kind ~ml_kind ~mode m
+   in
    let other_cm_files =
      let dep_graph = Ml_kind.Dict.get (Compilation_context.dep_graphs cctx) ml_kind in
      let module_deps = Dep_graph.deps_of dep_graph m in
@@ -407,8 +469,7 @@ let build_cm
             ; cmt_args
             ; cms_args
             ; Command.Args.S obj_dirs
-            ; Command.Args.as_any
-                (Lib_mode.Cm_kind.Map.get (Compilation_context.includes cctx) cm_kind)
+            ; Command.Args.Dyn lib_cm_args
             ; extra_args
             ; As as_parameter_arg
             ; as_argument_for
@@ -524,6 +585,9 @@ let ocamlc_i ~deps cctx (m : Module.t) ~output =
        List.concat_map deps ~f:(fun m ->
          [ Path.build (Obj_dir.Module.cm_file_exn obj_dir m ~kind:(Ocaml Cmi)) ]))
   in
+  let lib_cm_args =
+    lib_cm_deps ~cctx ~cm_kind:(Ocaml Cmo) ~ml_kind:Impl ~mode:(Ocaml Byte) m
+  in
   let ocaml_flags = Ocaml_flags.get (Compilation_context.flags cctx) (Ocaml Byte) in
   let modules = Compilation_context.modules cctx in
   let ocaml = Compilation_context.ocaml cctx in
@@ -541,10 +605,7 @@ let ocamlc_i ~deps cctx (m : Module.t) ~output =
               [ Command.Args.dyn ocaml_flags
               ; A "-I"
               ; Path (Path.build (Obj_dir.byte_dir obj_dir))
-              ; Command.Args.as_any
-                  (Lib_mode.Cm_kind.Map.get
-                     (Compilation_context.includes cctx)
-                     (Ocaml Cmo))
+              ; Command.Args.Dyn lib_cm_args
               ; opens modules m
               ; A "-short-paths"
               ; A "-i"

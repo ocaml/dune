@@ -205,7 +205,7 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
           lib_index
           ~referenced_modules:tight_set
       in
-      let tight_deps, glob_libs, _kept_libs =
+      let tight_deps, glob_libs, kept_libs =
         List.fold_left
           all_libs
           ~init:(Dep.Set.empty, [], Lib.Set.empty)
@@ -226,8 +226,10 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
                 else td, lib :: gl, Lib.Set.add kl lib))
       in
       let glob_deps = Lib_file_deps.deps_of_entries ~opaque ~cm_kind glob_libs in
-      Action_builder.return
-        (cctx_includes_for_cm_kind (), Dep.Set.union tight_deps glob_deps)
+      let+ include_flags =
+        Compilation_context.filtered_include_flags cctx ~cm_kind ~kept_libs
+      in
+      include_flags, Dep.Set.union tight_deps glob_deps
 ;;
 
 let lib_cm_deps ~cctx ~cm_kind ~ml_kind ~mode m =

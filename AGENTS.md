@@ -115,6 +115,20 @@ This output will appear in cram test diffs, making it easy to observe values.
 **Trace Inspection:** Use `dune trace cat | jq` to inspect build traces. See
 `doc/hacking.rst` for details on using jq with traces in cram tests.
 
+**Cram test environment.** Cram tests under `test/blackbox-tests/test-cases/`
+run with a specific environment configured in
+`test/blackbox-tests/test-cases/dune`:
+
+- `DUNE_JOBS=1`
+- `DUNE_CONFIG__BACKGROUND_SANDBOXES=disabled`
+- `DUNE_CONFIG__BACKGROUND_DIGESTS=disabled`
+- `OCAML_COLOR=always`
+
+`test/blackbox-tests/setup-script.sh` also redefines `jq` to auto-include
+`dune.jq` via `-L"$INSIDE_DUNE"/test/blackbox-tests`. When a cram test's
+behavior differs from a hand-built reproduction, these environmental
+differences are the first place to check before deeper investigation.
+
 ### Development Guidelines
 - Always verify changes build with `dune build @check`
 - Run `dune fmt` to ensure code formatting (requires ocamlformat)

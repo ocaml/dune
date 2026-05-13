@@ -124,8 +124,10 @@ run with a specific environment configured in
 - `DUNE_CONFIG__BACKGROUND_DIGESTS=disabled`
 - `OCAML_COLOR=always`
 
-`test/blackbox-tests/setup-script.sh` also redefines `jq` to auto-include
-`dune.jq` via `-L"$INSIDE_DUNE"/test/blackbox-tests`. When a cram test's
+`test/blackbox-tests/setup-script.sh` also redefines `jq` to add
+`test/blackbox-tests` to its library search path (via
+`-L"$INSIDE_DUNE"/test/blackbox-tests`), so `include "dune";` in
+cram-test jq expressions resolves to `dune.jq`. When a cram test's
 behavior differs from a hand-built reproduction, these environmental
 differences are the first place to check before deeper investigation.
 

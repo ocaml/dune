@@ -87,16 +87,13 @@ or `make dev`. Bootstrap is only needed for the specific circumstances above.
 - `make test-bootstrap` - Test bootstrap mechanism
 - `make dev` - Automatically bootstraps only if necessary
 
-**Bootstrap vs. built dune.** `_boot/dune.exe` (the binary behind
-`./dune.exe`) is produced by the bootstrap script — either an explicit
-`make bootstrap` or the first `make dev` after `_boot/` is missing —
-and is **not** refreshed automatically when source files change. For
-experiments that exercise dune's rule generation or build-system
-behavior — anything depending on `src/dune_rules/*` — use the
-fully-built dune at `_build/install/default/bin/dune` and run
-`make dev` first. Cram tests already use the built dune; manual
-reproductions driven by `./dune.exe` can diverge silently from the
-source being investigated.
+**Bootstrap vs. built dune.** `_boot/dune.exe` (behind `./dune.exe`)
+is not refreshed when source files change. For experiments that
+exercise dune's rule generation or build-system behavior, use the
+fully-built dune at `_build/install/default/bin/dune` (run `make dev`
+first). Cram tests already use the built dune; manual reproductions
+driven by `./dune.exe` can diverge silently from the source being
+investigated.
 
 When a test result disagrees with a manual reproduction — or CI disagrees
 with local — verify both are the same binary built from the same source:

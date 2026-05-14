@@ -80,6 +80,13 @@ semantic action type-checks against `dep`:
     ]
   ]
 
+The mock-compile rule's declared dep set (no `%{...}` variable
+resolves the menhir-generated mock target, hence the literal path):
+
+  $ dune rules --root . --format=json --deps _build/default/parser/grammar__mock.mli.inferred |
+  > jq -r 'include "dune"; .[] | depsGlobs | "\(.dir_kind) \(.dir) \(.predicate)"'
+  In_build_dir _build/default/dep/.dep.objs/byte *.cmi
+
 Case 2: editing `dep`'s `.mli` to expose `extra` must invalidate
 both consumers — the menhir mock-compile and `helper`'s `.cmo`.
 The `.ml` already carries `extra`, so this is an interface-only

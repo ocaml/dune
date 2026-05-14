@@ -35,7 +35,7 @@ module Clflags = struct
   let t () = Fdecl.get t
 end
 
-type t = Package.t Package.Name.Map.t option
+type t = Package.t list Package.Name.Map.t option
 
 let enumerate = function
   | None -> `All
@@ -50,12 +50,19 @@ let mem t name =
   | Some map -> Package.Name.Map.mem map name
 ;;
 
-let mask packages ~vendored : t =
-  let enabled, disabled =
-    Package.Name.Map.partition_map packages ~f:(fun (package, status) ->
-      match status with
-      | `Enabled -> Left package
-      | `Disabled -> Right ())
+let mask packages : t =
+  let enabled, has_disabled =
+    Package.Name.Map.foldi
+      packages
+      ~init:(Package.Name.Map.empty, false)
+      ~f:(fun name packages acc ->
+        List.fold_left
+          ~init:acc
+          ~f:(fun (enabled, has_disabled) (pkg, status) ->
+            if status.Package.enabled
+            then Package.Name.Map.add_multi enabled name pkg, has_disabled
+            else enabled, true)
+          packages)
   in
   match
     match Clflags.t () with
@@ -76,14 +83,18 @@ let mask packages ~vendored : t =
                  pkg_name
                  ~candidates:
                    (Package.Name.Map.keys packages |> List.map ~f:Package.Name.to_string))));
-      Package.Name.Map.filter_map packages ~f:(fun (pkg, _) ->
-        let name = Package.name pkg in
-        let vendored = Package.Name.Set.mem vendored name in
-        let included = Package.Name.Set.mem names name in
-        Option.some_if (vendored || included) pkg)
+      Package.Name.Map.filter_map packages ~f:(fun packages ->
+        match
+          List.filter_map packages ~f:(fun (pkg, { enabled; vendored }) ->
+            let name = Package.name pkg in
+            let included = Package.Name.Set.mem names name in
+            Option.some_if (enabled && (vendored || included)) pkg)
+        with
+        | [] -> None
+        | l -> Some l)
       |> Option.some
   with
-  | None -> if Package.Name.Map.is_empty disabled then None else Some enabled
+  | None -> if has_disabled then Some enabled else None
   | Some p ->
     Some
       (Package.Name.Map.merge p enabled ~f:(fun _ masked enabled ->

@@ -121,7 +121,7 @@ let unset_solver_vars_of_workspace workspace ~lock_dir_path =
 
 let find_local_packages =
   let open Memo.O in
-  Dune_rules.Dune_load.packages ()
+  Dune_rules.Scope.DB.packages ()
   >>| Package.Name.Map.map ~f:Dune_pkg.Local_package.of_package
 ;;
 

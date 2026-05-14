@@ -72,3 +72,4 @@ module Copy_files = Copy_files
 module Enabled_if = Enabled_if
 module Alias_conf = Alias_conf
 module Include_subdirs = Include_subdirs
+module Scope_stanza = Scope_stanza

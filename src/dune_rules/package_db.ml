@@ -9,7 +9,7 @@ type any_package =
   | Build of unit Action_builder.t
 
 let find_package ctx pkg =
-  let* packages = Dune_load.packages () in
+  let* packages = Scope.DB.packages () in
   match Package.Name.Map.find packages pkg with
   | Some p -> Memo.return (Some (Local p))
   | None ->

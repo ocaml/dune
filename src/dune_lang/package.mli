@@ -14,6 +14,11 @@ type opam_file =
   | Generated
   | Generated_with_diff
 
+type status =
+  { enabled : bool
+  ; vendored : bool
+  }
+
 type t
 
 val loc : t -> Loc.t

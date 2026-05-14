@@ -76,9 +76,10 @@ module DB = struct
 end
 
 let resolve_link ~dir ~fname (kind : File_kind.t) =
+  let fname_s = Filename.to_string fname in
   match kind with
   | S_LNK ->
-    (match Path.Untracked.stat (Path.relative dir fname) with
+    (match Path.Untracked.stat (Path.relative dir fname_s) with
      | Ok { Unix.st_kind; _ } -> Some st_kind
      | Error _ -> None)
   | _ -> Some kind
@@ -187,7 +188,10 @@ let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib ~external_loc
         [], []
       | Ok dir_contents ->
         List.rev_filter_partition_map dir_contents ~f:(fun f ->
-          let ext = Filename.extension f in
+          let f = Filename.to_string f in
+          let ext =
+            Stdlib.Filename.extension f |> Filename.Extension.Or_empty.of_string_exn
+          in
           if Filename.Extension.Or_empty.check ext ext_lib
           then (
             let file = Path.relative t.dir f in
@@ -219,17 +223,18 @@ let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib ~external_loc
             | Ok dir_contents ->
               let ext = Filename.Extension.to_string (Cm_kind.ext Cmi) in
               Result.List.filter_map dir_contents ~f:(fun fname ->
-                match String.ends_with ~suffix:ext fname with
+                let fname_s = Filename.to_string fname in
+                match String.ends_with ~suffix:ext fname_s with
                 | false -> Ok None
                 | true ->
                   if
                     (* We add this hack to skip manually mangled
                         libraries *)
-                    String.contains_double_underscore fname
+                    String.contains_double_underscore fname_s
                   then Ok None
                   else (
                     match
-                      let name = Filename.remove_extension fname in
+                      let name = Filename.remove_extension fname |> Filename.to_string in
                       Module_name.of_string_user_error (Loc.in_dir src_dir, name)
                     with
                     | Ok s -> Ok (Some s)
@@ -296,7 +301,7 @@ module Loader = struct
       }
 
     let empty = { sub_dirs = Filename.Set.empty; metas = Filename.Set.empty }
-    let file_prefix = Findlib.Package.meta_fn ^ "."
+    let file_prefix = Filename.to_string Findlib.Package.meta_fn ^ "."
 
     let of_path =
       let impl path =
@@ -308,7 +313,9 @@ module Loader = struct
             List.filter_partition_map contents ~f:(fun (name, kind) ->
               match resolve_link ~dir:path ~fname:name kind with
               | Some S_DIR -> Left name
-              | Some S_REG when String.starts_with ~prefix:file_prefix name -> Right name
+              | Some S_REG
+                when String.starts_with ~prefix:file_prefix (Filename.to_string name) ->
+                Right name
               | _ -> Skip)
           in
           Ok
@@ -414,14 +421,22 @@ module Loader = struct
     in
     let* dir_contents = Findlib_dir.of_path_ignore_error findlib_dir in
     (* XXX DUNE4 why do we allow [META.foo] override [dune-package] file? *)
-    let meta_fn = Findlib_dir.file_prefix ^ Package.Name.to_string name in
+    let meta_fn =
+      Filename.add_extension
+        Findlib.Package.meta_fn
+        (Filename.Extension.of_string_exn ("." ^ Package.Name.to_string name))
+    in
     if Filename.Set.mem dir_contents.metas meta_fn
     then
-      Path.relative findlib_dir meta_fn
+      Path.relative_fname findlib_dir meta_fn
       |> load_meta ~findlib_dir ~dir:Path.Local.root
       >>| Option.map ~f:Result.ok
     else (
-      match Filename.Set.mem dir_contents.sub_dirs (Package.Name.to_string name) with
+      match
+        Filename.Set.mem
+          dir_contents.sub_dirs
+          (Filename.of_string_exn (Package.Name.to_string name))
+      with
       | false -> Memo.return None
       | true ->
         let dir = Path.relative findlib_dir (Package.Name.to_string name) in
@@ -431,7 +446,10 @@ module Loader = struct
            | Error _ -> []
            | Ok s -> s)
           >>| List.filter_map ~f:(fun (name, (kind : File_kind.t)) ->
-            match name = Dune_package.fn || name = Findlib.Package.meta_fn with
+            match
+              String.equal (Filename.to_string name) Dune_package.fn
+              || Filename.equal name Findlib.Package.meta_fn
+            with
             | false -> None
             | true ->
               (match resolve_link ~dir ~fname:name kind with
@@ -439,7 +457,7 @@ module Loader = struct
                | _ -> None))
           >>| Filename.Set.of_list
         in
-        (if Filename.Set.mem files Dune_package.fn
+        (if Filename.Set.mem files (Filename.of_string_exn Dune_package.fn)
          then Path.relative dir Dune_package.fn |> Dune_package.Or_meta.load
          else Memo.return (Ok Dune_package.Or_meta.Use_meta))
         >>= (function
@@ -450,7 +468,7 @@ module Loader = struct
            (match Filename.Set.mem files Findlib.Package.meta_fn with
             | false -> Memo.return None
             | true ->
-              Path.relative dir Findlib.Package.meta_fn
+              Path.relative_fname dir Findlib.Package.meta_fn
               |> load_meta
                    ~findlib_dir
                    ~dir:(Path.Local.of_string (Package.Name.to_string name))
@@ -487,7 +505,8 @@ module Loader = struct
           let+ sub_dirs =
             Filename.Set.to_list sub_dirs
             |> Memo.List.filter_map ~f:(fun name ->
-              Path.L.relative dir [ name; Findlib.Package.meta_fn ]
+              let name = Filename.to_string name in
+              Path.L.relative dir [ name; Filename.to_string Findlib.Package.meta_fn ]
               |> Fs.file_exists
               >>| function
               | true -> Some (Package.Name.of_string name)
@@ -495,7 +514,7 @@ module Loader = struct
           in
           let metas =
             Filename.Set.to_list_map metas ~f:(fun fn ->
-              String.drop_prefix ~prefix:Findlib_dir.file_prefix fn
+              String.drop_prefix ~prefix:Findlib_dir.file_prefix (Filename.to_string fn)
               |> Option.value_exn
               |> Package.Name.of_string)
           in

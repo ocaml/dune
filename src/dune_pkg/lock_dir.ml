@@ -539,11 +539,11 @@ let in_source_tree path =
   | In_source_tree s -> s
   | In_build_dir b ->
     let in_source = Path.drop_build_context_exn path in
-    (match Path.Source.explode in_source with
+    (match Path.Source.explode in_source |> Filename.L.to_string with
      | "default" :: ".lock" :: components ->
        Path.Source.L.relative Path.Source.root components
      | source_components ->
-       (match Path.Build.explode b with
+       (match Path.Build.explode b |> Filename.L.to_string with
         | (".dev-tools.locks" as prefix) :: dev_tool :: components ->
           let build_as_source =
             Path.build_dir |> Path.to_string |> Path.Source.of_string
@@ -1232,7 +1232,7 @@ let create_latest_version
   }
 ;;
 
-let metadata_filename = "lock.dune"
+let metadata_filename = Filename.lock_dune
 
 module Metadata = Dune_sexp.Versioned_file.Make (Unit)
 
@@ -1324,13 +1324,14 @@ module Package_filename = struct
        because if portable lockdirs is not enabled then we want to fall back to
        the behaviour where version numbers are not included in lockfile names.
        Make it non-optional when lockdirs become portable by default. *)
-    match maybe_package_version with
-    | None -> Package_name.to_string package_name ^ file_extension_string
-    | Some package_version ->
-      Package_name.to_string package_name
-      ^ "."
-      ^ Package_version.to_string package_version
-      ^ file_extension_string
+    (match maybe_package_version with
+     | None -> Package_name.to_string package_name ^ file_extension_string
+     | Some package_version ->
+       Package_name.to_string package_name
+       ^ "."
+       ^ Package_version.to_string package_version
+       ^ file_extension_string)
+    |> Filename.of_string_exn
   ;;
 
   let to_package_name_and_version package_filename =
@@ -1341,7 +1342,9 @@ module Package_filename = struct
            (Filename.Extension.Or_empty.extension_exn ext)
            file_extension
     then (
-      let without_extension = Filename.remove_extension package_filename in
+      let without_extension =
+        Filename.remove_extension package_filename |> Filename.to_string
+      in
       match String.lsplit2 without_extension ~on:'.' with
       | Some (left, right) ->
         Ok (Package_name.of_string left, Some (Package_version.of_string right))
@@ -1351,7 +1354,7 @@ module Package_filename = struct
 end
 
 let file_contents_by_path ~portable_lock_dir t =
-  (metadata_filename, encode_metadata ~portable_lock_dir t)
+  (Filename.to_string metadata_filename, encode_metadata ~portable_lock_dir t)
   :: (Packages.to_pkg_list t.packages
       |> List.map ~f:(fun (pkg : Pkg.t) ->
         let _loc, solved_for_platforms = t.solved_for_platforms in
@@ -1360,7 +1363,8 @@ let file_contents_by_path ~portable_lock_dir t =
           then Package_filename.make pkg.info.name (Some pkg.info.version)
           else Package_filename.make pkg.info.name None
         in
-        package_filename, Pkg.encode ~portable_lock_dir ~solved_for_platforms pkg))
+        ( Filename.to_string package_filename
+        , Pkg.encode ~portable_lock_dir ~solved_for_platforms pkg )))
 ;;
 
 module Write_disk = struct
@@ -1372,7 +1376,7 @@ module Write_disk = struct
   let check_existing_lock_dir path =
     match Path.stat path with
     | Ok { st_kind = S_DIR; _ } ->
-      let metadata_path = Path.relative path metadata_filename in
+      let metadata_path = Path.relative_fname path metadata_filename in
       (match Path.stat metadata_path with
        | Ok { st_kind = S_REG; _ } ->
          (match Metadata.load metadata_path ~f:(Fun.const decode_metadata) with
@@ -1394,7 +1398,9 @@ module Write_disk = struct
           "Specified lock dir path (%s) is not a directory"
           (Path.to_string_maybe_quoted path)
       | `No_metadata_file ->
-        Pp.textf "Specified lock dir lacks metadata file (%s)" metadata_filename
+        Pp.textf
+          "Specified lock dir lacks metadata file (%s)"
+          (Filename.to_string metadata_filename)
       | `Failed_to_parse_metadata (path, exn) ->
         Pp.concat
           ~sep:Pp.cut
@@ -1440,12 +1446,12 @@ module Write_disk = struct
     | Error e -> raise_user_error_on_check_existance src e
     | Ok `Non_existant -> ()
     | Ok `Is_existing_lock_dir ->
-      let dst_of ~dir fname = Path.relative dst (Filename.concat dir fname) in
+      let dst_of ~dir fname = Path.relative dst (Filename.append dir fname) in
       Fpath.traverse
         ~dir:(Path.to_string src)
         ~init:()
         ~on_file:(fun ~dir fname () ->
-          let child_src = Path.relative src (Filename.concat dir fname) in
+          let child_src = Path.relative src (Filename.append dir fname) in
           let child_dst = dst_of ~dir fname in
           Path.mkdir_p (Path.relative dst dir);
           Io.copy_file ~src:child_src ~dst:child_dst ())
@@ -1492,7 +1498,9 @@ module Write_disk = struct
     =
     let lock_dir_hidden =
       (* The original lockdir path with the lockdir renamed to begin with a ".". *)
-      let hidden_basename = sprintf ".%s" (Path.basename lock_dir_path_external) in
+      let hidden_basename =
+        sprintf ".%s" (Path.basename lock_dir_path_external |> Filename.to_string)
+      in
       Path.relative (Path.parent_exn lock_dir_path_external) hidden_basename
     in
     let remove_hidden_dir_if_exists () =
@@ -1629,7 +1637,7 @@ struct
     =
     let open Io.O in
     let pkg_file_path =
-      Path.relative
+      Path.relative_fname
         lock_dir_path
         (Package_filename.make package_name maybe_package_version)
     in
@@ -1698,7 +1706,7 @@ struct
          , expanded_solver_variable_bindings
          , solved_for_platforms )
       =
-      load_metadata (Path.relative lock_dir_path metadata_filename)
+      load_metadata (Path.relative_fname lock_dir_path metadata_filename)
     in
     let portable_lock_dir, solved_for_platforms =
       match solved_for_platforms with

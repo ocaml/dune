@@ -245,6 +245,7 @@ let rm_rf ?(chmod = false) fn =
 ;;
 
 let default ~dir:_ _ acc = acc
+let filename = Filename.of_string_exn
 
 (* CR-someday rgrinberg: maybe we should make sure that we don't hit any
    symlink loops here? *)
@@ -270,20 +271,21 @@ let traverse
           [ Pp.textf
               "unrecognized file kind %s in %S"
               (File_kind.to_string_hum kind)
-              (Filename.concat dir fname)
+              (Filename.append dir fname)
           ]
   in
   let handle_kind ~dir fname kind stack acc =
+    let filename = filename fname in
     match (kind : Unix.file_kind) with
     | S_DIR ->
-      (match enter_dir ~dir fname with
+      (match enter_dir ~dir filename with
        | false -> stack, acc
        | true ->
-         let acc = on_dir ~dir fname acc in
+         let acc = on_dir ~dir filename acc in
          let stack = Filename.concat dir fname :: stack in
          stack, acc)
-    | S_REG -> stack, on_file ~dir fname acc
-    | kind -> stack, on_other ~dir fname kind acc
+    | S_REG -> stack, on_file ~dir filename acc
+    | kind -> stack, on_other ~dir filename kind acc
   in
   let on_error =
     match on_error with
@@ -328,7 +330,7 @@ let traverse
                      stack, on_error ~dir (x, y, z) acc
                    | stat -> handle_kind ~dir fname stat.st_kind stack acc)
                 | `Call f ->
-                  let acc, kind = f ~dir fname acc in
+                  let acc, kind = f ~dir (filename fname) acc in
                   (match kind with
                    | None -> stack, acc
                    | Some kind -> handle_kind ~dir fname kind stack acc))
@@ -343,7 +345,7 @@ let traverse_files ~dir ~init ~f =
   let skip = fun ~dir:_ _fname acc -> acc in
   let root = dir in
   let on_symlink ~dir fname acc =
-    let path = Filename.concat (Filename.concat root dir) fname in
+    let path = Filename.append (Filename.concat root dir) fname in
     match Unix.stat path with
     | { Unix.st_kind = kind; _ } -> acc, Some kind
     | exception Unix.Unix_error (Unix.ENOENT, _, _) -> acc, None

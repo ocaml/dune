@@ -200,7 +200,7 @@ let lint_module sctx ~sandbox ~dir ~expander ~lint ~lib_name ~scope =
             add_alias
               ~loc
               (promote_correction
-                 ~suffix:corrected_suffix
+                 ~suffix:(Filename.of_string_exn corrected_suffix)
                  ~ml_kind
                  source
                  (let* exe, flags, args = driver_and_flags in
@@ -350,7 +350,7 @@ let pp_one_module
             ~loc
             ~dir
             (promote_correction_with_target
-               ~suffix:corrected_suffix
+               ~suffix:(Filename.of_string_exn corrected_suffix)
                (pp_input_path m ~ml_kind |> Path.as_in_build_dir_exn)
                (Action_builder.with_file_targets
                   ~file_targets:[ dst ]

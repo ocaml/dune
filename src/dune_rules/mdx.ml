@@ -18,14 +18,16 @@ module Files = struct
     }
 
   let corrected_file build_path =
-    Path.Build.extend_basename ~suffix:".corrected" build_path
+    Path.Build.extend_basename ~suffix:Filename.corrected build_path
   ;;
 
-  let deps_file build_path = Path.Build.extend_basename ~suffix:".mdx.deps" build_path
+  let deps_file build_path =
+    Path.Build.extend_basename ~suffix:Filename.mdx_deps build_path
+  ;;
 
   let from_source_file ~mdx_dir src =
     let dot_mdx_path =
-      let basename = Path.Build.basename src in
+      let basename = Path.Build.basename src |> Filename.to_string in
       Path.Build.relative mdx_dir basename
     in
     let deps = deps_file dot_mdx_path in
@@ -290,7 +292,7 @@ let () =
     stanza and context *)
 let files_to_mdx t ~sctx ~dir =
   let must_mdx src_path =
-    let file = Path.Source.basename src_path in
+    let file = Path.Source.basename src_path |> Filename.to_string in
     let standard = default_files_of_version t.version in
     Predicate_lang.Glob.test t.files ~standard file
   in

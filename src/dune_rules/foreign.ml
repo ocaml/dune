@@ -269,7 +269,13 @@ module Source = struct
     t.path |> Path.Build.split_extension |> fst |> Path.Build.basename
   ;;
 
-  let object_name t = user_object_name t |> add_mode_suffix (mode t)
+  let object_name t =
+    user_object_name t
+    |> Filename.to_string
+    |> add_mode_suffix (mode t)
+    |> Filename.of_string_exn
+  ;;
+
   let make kind ~path = { kind; path }
 end
 

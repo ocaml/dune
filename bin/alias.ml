@@ -56,7 +56,7 @@ let of_string (root : Workspace_root.t) ~recursive s ~contexts =
       [ Pp.textf "@ on the command line must be followed by a valid alias name" ]
   else (
     let dir = Path.parent_exn path in
-    let name = Alias.Name.of_string (Path.basename path) in
+    let name = Alias.Name.of_string (Path.basename path |> Filename.to_string) in
     in_dir ~name ~recursive ~contexts dir)
 ;;
 

@@ -87,7 +87,9 @@ let scan_files_entries path =
             ~dir:(Path.to_string path)
             ~init:[]
             ~f:(fun ~dir filename acc ->
-              let local_path = Path.Local.relative (Path.Local.of_string dir) filename in
+              let local_path =
+                Path.Local.relative_fname (Path.Local.of_string dir) filename
+              in
               local_path :: acc))
      with
      | Unix.Unix_error (err, a, e) ->

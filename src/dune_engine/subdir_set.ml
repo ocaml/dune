@@ -11,7 +11,7 @@ let to_dir_set = function
   | All -> Dir_set.universal
   | These s ->
     Filename.Set.fold s ~init:Dir_set.empty ~f:(fun path acc ->
-      let path = Path.Local.of_string path in
+      let path = Path.Local.relative_fname Path.Local.root path in
       Dir_set.union acc (Dir_set.singleton path))
 ;;
 

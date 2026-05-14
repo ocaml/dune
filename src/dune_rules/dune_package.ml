@@ -138,7 +138,7 @@ module Lib = struct
       | None -> []
       | Some stublibs ->
         List.map
-          ~f:(fun file -> Path.relative stublibs (Path.basename file))
+          ~f:(fun file -> Path.relative_fname stublibs (Path.basename file))
           (Lib_info.foreign_dll_files info)
     in
     record_fields

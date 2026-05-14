@@ -67,13 +67,16 @@ module Link_params = struct
         (match mode with
          | Byte_for_jsoo | Byte | Byte_with_stubs_statically_linked_in ->
            let cmo_ext = Filename.Extension.to_string (Cm_kind.ext Cmo) in
-           Path.extend_basename obj_name ~suffix:cmo_ext :: hidden_deps
+           Path.extend_basename obj_name ~suffix:(Filename.of_string_exn cmo_ext)
+           :: hidden_deps
          | Native ->
            let cmx_ext = Filename.Extension.to_string (Cm_kind.ext Cmx) in
-           Path.extend_basename obj_name ~suffix:cmx_ext
+           Path.extend_basename obj_name ~suffix:(Filename.of_string_exn cmx_ext)
            :: Path.extend_basename
                 obj_name
-                ~suffix:(Filename.Extension.to_string lib_config.ext_obj)
+                ~suffix:
+                  (Filename.of_string_exn
+                     (Filename.Extension.to_string lib_config.ext_obj))
            :: hidden_deps)
     in
     { deps; hidden_deps; include_dirs }

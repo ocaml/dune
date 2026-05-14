@@ -70,7 +70,7 @@ let value ~default ~f =
 
 let profile ~dir =
   let name, _ = Path.Build.extract_build_context_exn dir in
-  let context = Context_name.of_string name in
+  let context = Context_name.of_string (Filename.to_string name) in
   Per_context.profile context
 ;;
 

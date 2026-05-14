@@ -554,10 +554,12 @@ let to_lib_info
             match pform with
             | Var Context_name ->
               let context, _ = Path.Build.extract_build_context_exn dir in
-              Memo.return context
+              Memo.return (Filename.to_string context)
             | Var Profile ->
               let context, _ = Path.Build.extract_build_context_exn dir in
-              let+ profile = Per_context.profile (Context_name.of_string context) in
+              let+ profile =
+                Per_context.profile (Context_name.of_string (Filename.to_string context))
+              in
               Profile.to_string profile
             | _ -> Memo.return @@ Lib_config.get_for_enabled_if lib_config pform
           in

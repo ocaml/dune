@@ -254,7 +254,7 @@ end = struct
       |> Filename.Array.Map.to_list
       |> Memo.parallel_map ~f:(fun (basename, st_dir) ->
         let* st_dir = Source_tree.Dir.sub_dir_as_t st_dir in
-        let dir = Path.Build.relative dir basename in
+        let dir = Path.Build.relative_fname dir basename in
         let local = basename :: local in
         walk st_dir ~dir ~local)
       >>| Appendable_list.concat
@@ -320,7 +320,7 @@ end = struct
          Is_component_of_a_group_but_not_the_root { stanzas = None; group_root })
     | Some (ctx, st_dir) ->
       let src_dir = Source_tree.Dir.path st_dir in
-      Pkg_rules.lock_dir_path (Context_name.of_string ctx)
+      Pkg_rules.lock_dir_path (Context_name.of_string (Filename.to_string ctx))
       >>| (function
        | None -> false
        | Some of_ -> Path.is_descendant ~of_ (Path.source src_dir))

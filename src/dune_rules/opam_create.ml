@@ -383,12 +383,12 @@ let opam_fields project (package : Package.t) =
   if dune_version < (1, 11) then fields else Opam_file.Create.normalise_field_order fields
 ;;
 
-let template_file = Path.extend_basename ~suffix:".template"
+let template_file = Path.extend_basename ~suffix:Filename.template
 
 let build_path ~build_dir pkg =
   let opam_path = Path.Build.append_source build_dir (Package.opam_file pkg) in
   match Package.has_opam_file pkg with
-  | Generated_with_diff -> Path.Build.extend_basename opam_path ~suffix:".generated"
+  | Generated_with_diff -> Path.Build.extend_basename opam_path ~suffix:Filename.generated
   | Exists _ | Generated -> opam_path
 ;;
 
@@ -546,7 +546,8 @@ let gen_rules sctx ~dir ~nearest_src_dir ~src_dir =
        else (
          let allowed_subdirs =
            match opam_file_location with
-           | `Inside_opam_directory when project_rules -> Filename.Set.singleton opam_dir
+           | `Inside_opam_directory when project_rules ->
+             Filename.Set.singleton Filename.opam
            | `Relative_to_project | `Inside_opam_directory -> Filename.Set.empty
          in
          let rules =

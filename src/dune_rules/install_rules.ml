@@ -3,9 +3,10 @@ open Memo.O
 
 let install_file ~(package : Package.Name.t) ~findlib_toolchain =
   let package = Package.Name.to_string package in
-  match findlib_toolchain with
-  | None -> package ^ ".install"
-  | Some x -> sprintf "%s-%s.install" package (Context_name.to_string x)
+  (match findlib_toolchain with
+   | None -> package ^ ".install"
+   | Some x -> sprintf "%s-%s.install" package (Context_name.to_string x))
+  |> Filename.of_string_exn
 ;;
 
 let with_doc = Package_variable_name.with_doc
@@ -71,7 +72,7 @@ module Package_paths = struct
   ;;
 
   let meta_template ctx pkg =
-    Path.Build.extend_basename (meta_file ctx pkg) ~suffix:".template"
+    Path.Build.extend_basename (meta_file ctx pkg) ~suffix:Filename.template
   ;;
 end
 
@@ -185,7 +186,7 @@ end = struct
             (let dst =
                match dst with
                | Some s -> s
-               | None -> Path.Build.basename fn
+               | None -> Path.Build.basename fn |> Filename.to_string
              in
              match in_sub_dir sub_dir with
              | None -> dst
@@ -266,10 +267,12 @@ end = struct
                   Melange.Install.maybe_prepend_melange_install_dir ~for_ base
                   |> Option.map ~f:Path.Local.to_string
                 in
-                subdir, Some (Path.Local.basename p)
+                subdir, Some (Path.Local.basename p |> Filename.to_string)
               | None ->
                 let dst =
-                  Path.Build.basename source |> String.drop_suffix ~suffix:"-gen"
+                  Path.Build.basename source
+                  |> Filename.to_string
+                  |> String.drop_suffix ~suffix:"-gen"
                 in
                 let sub_dir =
                   let base =
@@ -647,7 +650,7 @@ end = struct
               let file local_file install_fn =
                 file Lib_root local_file (Package.Name.to_string name ^ "/" ^ install_fn)
               in
-              [ file meta_file Dune_findlib.Package.meta_fn
+              [ file meta_file (Dune_findlib.Package.meta_fn |> Filename.to_string)
               ; file dune_package_file Dune_package.fn
               ])
           in
@@ -658,7 +661,7 @@ end = struct
             | None -> []
             | Some config_file -> [ file Doc config_file "odoc-config.sexp" ]
           in
-          (file Lib meta_file Dune_findlib.Package.meta_fn
+          (file Lib meta_file (Dune_findlib.Package.meta_fn |> Filename.to_string)
            :: file Lib dune_package_file Dune_package.fn
            :: odoc_config_file)
           @
@@ -674,9 +677,9 @@ end = struct
           let pkg_dir = Path.Build.append_source ctx.build_dir pkg_dir in
           Source_tree.Dir.filenames dir
           |> Filename.Array.Set.fold ~init ~f:(fun fn acc ->
-            if is_odig_doc_file fn
+            if is_odig_doc_file (Filename.to_string fn)
             then (
-              let odig_file = Path.Build.relative pkg_dir fn in
+              let odig_file = Path.Build.relative_fname pkg_dir fn in
               let entry =
                 Install.Entry.Unexpanded.make
                   Doc
@@ -1204,7 +1207,7 @@ let packages_file_is_part_of path =
   Memo.Option.bind
     (let open Option.O in
      let* ctx_name, _ = Path.Build.extract_build_context path in
-     Context_name.of_string_opt ctx_name)
+     Context_name.of_string_opt (Filename.to_string ctx_name))
     ~f:Super_context.find
   >>= function
   | None -> Memo.return Package.Id.Set.empty
@@ -1298,7 +1301,7 @@ struct
         ~dir:(Path.to_string entry.src)
         ~init:[]
         ~on_file:(fun ~dir fname acc ->
-          let file = Filename.concat dir fname in
+          let file = Filename.append dir fname in
           let path = Path.relative entry.src file in
           let comps = Path.Local.of_string file |> Path.Local.explode in
           (path, comps) :: acc)
@@ -1416,7 +1419,7 @@ let gen_package_install_file_rules sctx (package : Package.t) =
   let action =
     let findlib_toolchain = Context.findlib_toolchain context in
     let install_file =
-      Path.Build.relative
+      Path.Build.relative_fname
         pkg_build_dir
         (install_file ~package:package_name ~findlib_toolchain)
     in
@@ -1539,7 +1542,7 @@ let gen_install_alias sctx (package : Package.t) =
     in
     let path = Package_paths.build_dir (Context.build_context context) package in
     let install_alias = Alias.make Alias0.install ~dir:path in
-    let install_file = Path.relative (Path.build path) install_fn in
+    let install_file = Path.relative_fname (Path.build path) install_fn in
     Rules.Produce.Alias.add_deps install_alias (Action_builder.path install_file))
 ;;
 

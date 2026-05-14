@@ -41,7 +41,8 @@ let parse_deps_exn ~file lines =
      | None -> invalid_ocamldep_output file lines
      | Some (basename, deps) ->
        let basename = Filename.basename basename in
-       if basename <> Path.basename file then invalid_ocamldep_output file lines;
+       if basename <> (Path.basename file |> Filename.to_string)
+       then invalid_ocamldep_output file lines;
        String.extract_blank_separated_words deps)
 ;;
 

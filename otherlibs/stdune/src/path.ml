@@ -32,6 +32,8 @@ module Local = struct
         [ Pp.textf "path outside the workspace: %s from %s" path (to_string t) ]
   ;;
 
+  let relative_fname ?error_loc t fn = relative ?error_loc t (Filename.to_string fn)
+
   let parse_string_exn ~loc s =
     match parse_string_result s with
     | Ok t -> t
@@ -89,6 +91,8 @@ module Source0 = struct
         ?loc:error_loc
         [ Pp.textf "path outside the workspace: %s from %s" path (to_string t) ]
   ;;
+
+  let relative_fname ?error_loc t fn = relative ?error_loc t (Filename.to_string fn)
 
   let parse_string_exn ~loc s =
     match parse_string_result s with
@@ -168,6 +172,8 @@ module Outside_build_dir = struct
     | External t -> External (External.relative t s)
   ;;
 
+  let relative_fname t fn = relative t (Filename.to_string fn)
+
   let extend_basename t ~suffix =
     match t with
     | In_source_dir t -> In_source_dir (Source0.extend_basename t ~suffix)
@@ -243,6 +249,8 @@ module Build = struct
         [ Pp.textf "path outside the workspace: %s from %s" path (to_string t) ]
   ;;
 
+  let relative_fname ?error_loc t fn = relative ?error_loc t (Filename.to_string fn)
+
   let parse_string_exn ~loc s =
     match parse_string_result s with
     | Ok t -> t
@@ -274,16 +282,16 @@ module Build = struct
 
   let extract_build_context_dir t =
     Option.map (split_first_component t) ~f:(fun (before, after) ->
-      of_local (Local.of_string before), Source0.of_local after)
+      of_local (Local.of_string (Filename.to_string before)), Source0.of_local after)
   ;;
 
   let split_sandbox_root t_original =
     match split_first_component t_original with
-    | Some (".sandbox", t) ->
+    | Some (component, t) when String.equal (Filename.to_string component) ".sandbox" ->
       let t = of_local t in
       (match split_first_component t with
        | Some (sandbox_name, t) ->
-         Some (of_string (".sandbox" ^ "/" ^ sandbox_name)), of_local t
+         Some (of_string (".sandbox" ^ "/" ^ Filename.to_string sandbox_name)), of_local t
        | None -> None, t_original)
     | Some _ | None -> None, t_original
   ;;
@@ -489,6 +497,8 @@ let relative ?error_loc t fn =
      | In_build_dir p -> in_build_dir (Build.relative p fn ?error_loc)
      | External s -> external_ (External.relative s fn))
 ;;
+
+let relative_fname ?error_loc t fn = relative ?error_loc t (Filename.to_string fn)
 
 let parse_string_exn ~loc s =
   match s with
@@ -776,12 +786,26 @@ let relative_to_source_in_build_or_external ?error_loc ~dir s =
     let path = relative ?error_loc (in_source_tree source) s in
     (match path with
      | In_source_tree s ->
-       in_build_dir (Build.relative (Build.of_string bctxt) (Source0.to_string s))
+       in_build_dir
+         (Build.relative
+            (Build.of_string (Filename.to_string bctxt))
+            (Source0.to_string s))
      | In_build_dir _ | External _ -> path)
 ;;
 
-let readdir_unsorted t = Readdir.read_directory (to_string t)
-let readdir_unsorted_with_kinds t = Readdir.read_directory_with_kinds (to_string t)
+let readdir_unsorted t =
+  Result.map
+    (Readdir.read_directory (to_string t))
+    ~f:(List.map ~f:Filename.of_string_exn)
+;;
+
+let readdir_unsorted_with_kinds t =
+  Result.map
+    (Readdir.read_directory_with_kinds (to_string t))
+    ~f:(fun entries ->
+      List.map entries ~f:(fun (name, kind) -> Filename.of_string_exn name, kind))
+;;
+
 let build_dir_exists () = Fpath.is_directory (to_string build_dir)
 
 let ensure_build_dir_exists () =
@@ -855,7 +879,8 @@ let set_extension t ~ext =
 
 let map_extension t ~f =
   let base, ext = split_extension t in
-  extend_basename ~suffix:(Filename.Extension.Or_empty.to_string (f ext)) base
+  let suffix = Filename.Extension.Or_empty.to_string (f ext) in
+  extend_basename ~suffix:(Filename.of_string_exn suffix) base
 ;;
 
 module O = Comparable.Make (T)
@@ -864,7 +889,9 @@ module Map = O.Map
 module Set = struct
   include O.Set
 
-  let of_listing ~dir ~filenames = of_list_map filenames ~f:(fun f -> relative dir f)
+  let of_listing ~dir ~filenames =
+    of_list_map filenames ~f:(fun f -> relative dir (Filename.to_string f))
+  ;;
 end
 
 let source s = in_source_tree s

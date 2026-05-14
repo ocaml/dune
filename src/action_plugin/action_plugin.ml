@@ -38,7 +38,7 @@ let exec ~(ectx : context) ~(eenv : env) prog args =
             ~loc:ectx.rule_loc
             [ Pp.text "Directory targets are not compatible with dynamic actions" ];
         Filename.Set.to_list_map targets.files ~f:(fun target ->
-          Path.Build.relative targets.root target
+          Path.Build.relative_fname targets.root target
           |> Path.build
           |> Path.reach ~from:eenv.working_dir)
         |> String.Set.of_list

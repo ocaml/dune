@@ -263,6 +263,7 @@ let is_descendant t ~of_ =
    with regular directories containing the same contents. *)
 let resolve_directory_symlinks_in root =
   let on_symlink ~dir:raw_dir name () =
+    let name = Filename.to_string name in
     let relative = Path.relative (Path.relative root raw_dir) name in
     let full_name = Path.to_string relative in
     match Fpath.follow_symlink full_name with
@@ -410,6 +411,7 @@ let%test_module "resolve symlink tests" =
        - other (pipes, sockets, etc.): "path [kind]" *)
     let dump_tree root =
       let str ~dir fname =
+        let fname = Filename.to_string fname in
         let dir = if String.is_empty dir then root else Path.relative root dir in
         Path.to_string (Path.relative dir fname)
       in

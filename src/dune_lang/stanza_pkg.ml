@@ -67,7 +67,7 @@ let resolve (project : Dune_project.t) mask (loc, name) =
                "To declare elements to be installed as part of package %S, add a %S file \
                 at the root of your project."
                name_s
-               (Package.Name.opam_fn name)
+               (Package.Name.opam_fn name |> Filename.to_string)
            ; Pp.textf
                "Root of the project as discovered by dune: %s"
                (Path.Source.to_string_maybe_quoted (Dune_project.root project))

@@ -443,7 +443,7 @@ let scan_lock_directory =
            ~empty:Path.Set.empty
            ~combine:Path.Set.union
            ~f:(fun (entry, kind) ->
-             let path = Path.Outside_build_dir.relative dir entry in
+             let path = Path.Outside_build_dir.relative_fname dir entry in
              match (kind : File_kind.t) with
              | S_REG -> Memo.return (Path.Set.singleton (Path.outside_build_dir path))
              | S_DIR -> scan path
@@ -518,7 +518,7 @@ let setup_rules ~components ~dir =
       let+ dev_tool_rules = setup_dev_tool_lock_rules ~dir dev_tool in
       Gen_rules.combine rules dev_tool_rules)
   | [] ->
-    let sub_dirs = [ ".lock"; ".dev-tool-locks" ] in
+    let sub_dirs = [ Filename.lock_dir_basename; Filename.dev_tool_locks_dir_basename ] in
     let build_dir_only_sub_dirs =
       Gen_rules.Build_only_sub_dirs.singleton ~dir @@ Subdir_set.of_list sub_dirs
     in

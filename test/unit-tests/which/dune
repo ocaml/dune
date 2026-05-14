@@ -2,7 +2,7 @@
  (name which_tests)
  (enabled_if
   (= %{os_type} Win32))
- (libraries dyn dune_rules))
+ (libraries dyn dune_rules stdune))
 
 (alias
  (name runtest-windows)

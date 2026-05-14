@@ -196,10 +196,10 @@ let snapshot t =
       ~dir:(Path.to_string root)
       ~init:Path.Map.empty
       ~on_dir:(fun ~dir fname acc ->
-        let path = Path.relative root (Filename.concat dir fname) in
+        let path = Path.relative root (Filename.append dir fname) in
         Path.Map.add_exn acc path `Dir)
       ~on_file:(fun ~dir fname acc ->
-        let p = Path.relative root (Filename.concat dir fname) in
+        let p = Path.relative root (Filename.append dir fname) in
         let stats = Stat.stat (Path.to_string p) in
         Path.Map.add_exn acc p (`File stats))
       ~on_other:`Ignore
@@ -221,11 +221,12 @@ let find_corrected_files (t : real) ~deps =
       ~init:[]
       ~on_dir:(fun ~dir:_ _ acc -> acc)
       ~enter_dir:(fun ~dir:_ fname ->
+        let fname = Filename.to_string fname in
         (* We don't want to traverse the corrections produced by a nested dune *)
         not (String.equal fname ".sandbox" || String.equal fname "_build"))
       ~on_file:(fun ~dir fname acc ->
         match
-          let path = Path.Build.relative t.dir (Filename.concat dir fname) in
+          let path = Path.Build.relative t.dir (Filename.append dir fname) in
           if
             let extension = Filename.extension fname in
             Filename.Extension.Or_empty.check extension Filename.Extension.corrected
@@ -258,7 +259,7 @@ let build_path_without_corrected_suffix path =
   assert (Filename.Extension.Or_empty.check extension Filename.Extension.corrected);
   let basename = Filename.remove_extension basename in
   let parent = Path.Build.parent_exn path in
-  Path.Build.relative parent basename
+  Path.Build.relative_fname parent basename
 ;;
 
 let register_corrected_file_promotions t ~deps =

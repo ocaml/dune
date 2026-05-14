@@ -261,7 +261,12 @@ let expand source macro ~dir artifacts_host =
   let s = Pform.Macro_invocation.Args.whole macro in
   let open Memo.O in
   let* rocq =
-    Artifacts.binary artifacts_host ~where:Original_path ~dir ~loc:None "rocq"
+    Artifacts.binary
+      artifacts_host
+      ~where:Original_path
+      ~dir
+      ~loc:None
+      (Filename.to_string Filename.rocq)
   in
   let expand m k s =
     let+ t = m ~rocq in

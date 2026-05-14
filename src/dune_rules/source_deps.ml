@@ -27,7 +27,7 @@ let files_with_filter dir ~filter =
           let files =
             Source_tree.Dir.filenames dir
             |> Filename.Array.Set.to_list
-            |> Path.Set.of_list_map ~f:(fun fn -> Path.relative path fn)
+            |> Path.Set.of_list_map ~f:(fun fn -> Path.relative_fname path fn)
             |> Path.Set.filter ~f:filter
           in
           let empty_directories =

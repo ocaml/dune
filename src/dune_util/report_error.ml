@@ -69,7 +69,7 @@ let get_error_from_exn = function
         let path = Path.of_string path |> Path.drop_optional_sandbox_root in
         (match Path.extract_build_context path with
          | None -> msg
-         | Some (ctxt, _) -> { msg with context = Some ctxt })
+         | Some (ctxt, _) -> { msg with context = Some (Filename.to_string ctxt) })
     in
     { responsible = User; msg; has_embedded_location; needs_stack_trace }
   | Code_error.E e ->

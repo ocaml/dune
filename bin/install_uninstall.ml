@@ -97,7 +97,7 @@ module Workspace = struct
       let name = Package.name p in
       let dir = Package.dir p in
       Ok
-        (Path.Source.relative
+        (Path.Source.relative_fname
            dir
            (Dune_rules.Install_rules.install_file ~package:name ~findlib_toolchain))
   ;;
@@ -134,7 +134,7 @@ module Special_file = struct
     match e.section with
     | Lib ->
       let dst = Install.Entry.Dst.to_string e.dst in
-      if dst = Dune_findlib.Findlib.Package.meta_fn
+      if String.equal dst (Filename.to_string Dune_findlib.Findlib.Package.meta_fn)
       then Some META
       else if dst = Dune_package.fn
       then Some Dune_package

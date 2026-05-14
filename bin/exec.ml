@@ -88,7 +88,7 @@ let not_found_with_suggestions ~dir ~prog =
       |> List.filter ~f:(fun filename ->
         let ext = Filename.extension filename in
         Filename.Extension.Or_empty.check ext Filename.Extension.exe)
-      |> List.map ~f:(fun filename -> "./" ^ filename)
+      |> List.map ~f:(fun filename -> "./" ^ Filename.to_string filename)
     in
     User_message.did_you_mean prog ~candidates
   in
@@ -124,6 +124,10 @@ let dir_of_context common sctx =
 ;;
 
 let get_path common sctx ~prog =
+  if
+    String.equal (Filename.basename prog) Filename.current_dir_name
+    || String.equal (Filename.basename prog) Filename.parent_dir_name
+  then not_found ~hints:[] ~prog;
   let open Memo.O in
   let dir = dir_of_context common sctx in
   match Filename.analyze_program_name prog with

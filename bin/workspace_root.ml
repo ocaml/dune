@@ -17,7 +17,7 @@ module Kind = struct
   let lowest_priority = max_int
 
   let of_dir_contents files =
-    if String.Set.mem files Source.Workspace.filename
+    if Filename.Set.mem files Source.Workspace.filename
     then Some Dune_workspace
     else if Filename.Set.mem files Dune_lang.Dune_project.filename
     then Some Dune_project
@@ -56,7 +56,9 @@ let find from =
         ];
       candidate
     | files ->
-      let files = String.Set.of_list (Array.to_list files) in
+      let files =
+        Array.to_list files |> List.map ~f:Filename.of_string_exn |> Filename.Set.of_list
+      in
       let candidate =
         let candidate_priority =
           match candidate with

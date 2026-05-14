@@ -1,8 +1,8 @@
 open Import
 open Memo.O
 
-let bin_dir_basename = ".bin"
-let local_bin p = Path.Build.relative p bin_dir_basename
+let bin_dir_basename = Filename.bin_dir_basename
+let local_bin p = Path.Build.relative_fname p bin_dir_basename
 
 type origin =
   { binding : File_binding.Unexpanded.t
@@ -47,22 +47,29 @@ let local_binaries { local_bins; _ } =
 ;;
 
 let analyze_binary t ~dir name =
-  match Filename.is_relative name with
-  | false -> Memo.return (`Resolved (Path.of_filename_relative_to_initial_cwd name))
-  | true ->
+  match Filename.analyze_program_name name with
+  | Absolute -> Memo.return (`Resolved (Path.of_filename_relative_to_initial_cwd name))
+  | (In_path | Relative_to_current_dir) as kind ->
     let* local_bins = Memo.Lazy.force t.local_bins in
     let lookup_name =
-      match Filename.analyze_program_name name with
-      | Absolute | In_path -> name
-      | Relative_to_current_dir -> Path.Build.relative dir name |> Path.Build.basename
+      match kind with
+      | In_path -> Filename.of_string name
+      | Relative_to_current_dir -> Path.Build.relative dir name |> Path.Build.basename_opt
+      | Absolute ->
+        Code_error.raise
+          "Artifacts.analyze_binary: unexpected absolute program name"
+          [ "name", Dyn.string name ]
     in
     let which () =
-      Context.which t.context lookup_name
-      >>| function
-      | None -> `None
-      | Some path -> `Resolved path
+      match lookup_name with
+      | None -> Memo.return `None
+      | Some lookup_name ->
+        Context.which t.context lookup_name
+        >>| (function
+         | None -> `None
+         | Some path -> `Resolved path)
     in
-    (match Filename.Map.find local_bins lookup_name with
+    (match Option.bind lookup_name ~f:(Filename.Map.find local_bins) with
      | Some (Resolved p) -> Memo.return (`Resolved (Path.build p.path))
      | None -> which ()
      | Some (Origin origins) ->
@@ -137,7 +144,8 @@ let create =
     Memo.lazy_ (fun () ->
       let+ local_bins = Memo.Lazy.force local_bins in
       Filename.Map.to_list_map local_bins ~f:(fun name sources ->
-        Bin.strip_exe name, Origin (Appendable_list.to_list sources))
+        ( Filename.of_string_exn (Bin.strip_exe (Filename.to_string name))
+        , Origin (Appendable_list.to_list sources) ))
       |> Filename.Map.of_list_exn)
   in
   { context; local_bins }

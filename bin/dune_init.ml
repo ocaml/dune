@@ -635,7 +635,7 @@ module Component = struct
             in
             [ File.make_text
                 ~dir:(Path.Source.parent_exn opam_file)
-                (Path.Source.basename opam_file)
+                (Path.Source.basename opam_file |> Filename.to_string)
                 content
             ]
           | Esy -> [ File.make_text ~dir "package.json" "" ]

@@ -51,9 +51,12 @@ let test t path =
   Predicate_lang.Glob.test
     t.predicate
     ~standard:Predicate_lang.false_
-    (Path.basename path)
+    (Path.basename path |> Filename.to_string)
 ;;
 
 let test_basename t ~basename =
-  Predicate_lang.Glob.test t.predicate ~standard:Predicate_lang.false_ basename
+  Predicate_lang.Glob.test
+    t.predicate
+    ~standard:Predicate_lang.false_
+    (Filename.to_string basename)
 ;;

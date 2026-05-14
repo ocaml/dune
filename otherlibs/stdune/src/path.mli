@@ -83,6 +83,7 @@ module External : sig
   val cwd : unit -> t
   val parse_string_exn : loc:Loc0.t -> string -> t
   val relative : t -> string -> t
+  val relative_fname : t -> Filename.t -> t
   val of_filename_relative_to_initial_cwd : string -> t
   val append_local : t -> Local.t -> t
 
@@ -125,6 +126,7 @@ module Outside_build_dir : sig
 
   val hash : t -> int
   val relative : t -> string -> t
+  val relative_fname : t -> Filename.t -> t
   val extend_basename : t -> suffix:Filename.t -> t
   val append_local : t -> Local.t -> t
   val equal : t -> t -> bool

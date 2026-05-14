@@ -23,6 +23,12 @@ let external_append_local a b =
   |> print_endline
 ;;
 
+let external_basename s =
+  match Path.External.basename (Path.External.of_string s) with
+  | basename -> print_endline (Filename.to_string basename)
+  | exception Code_error.E _ -> print_endline "invalid"
+;;
+
 let descendant p ~of_ = Dyn.option Path.to_dyn (Path.descendant p ~of_) |> print_dyn
 let is_descendant p ~of_ = Dyn.bool (Path.is_descendant p ~of_) |> print_dyn
 
@@ -447,6 +453,16 @@ External "/absolute/path"
 |}]
 ;;
 
+let%expect_test "external basename validates filename invariants" =
+  external_basename "/";
+  external_basename "/absolute/path";
+  [%expect
+    {|
+invalid
+path
+|}]
+;;
+
 let%expect_test _ =
   Path.is_managed (e "relative/path") |> Dyn.bool |> print_dyn;
   [%expect
@@ -597,7 +613,7 @@ let%expect_test _ =
 
 let%expect_test _ =
   Path.Build.extract_first_component Path.Build.root
-  |> Dyn.(option (pair string Local.to_dyn))
+  |> Dyn.(option (pair Filename.to_dyn Local.to_dyn))
   |> print_dyn;
   [%expect
     {|

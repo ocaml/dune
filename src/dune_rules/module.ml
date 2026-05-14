@@ -420,7 +420,7 @@ let ml_source =
     | None -> f
     | Some suffix ->
       let path =
-        Path.extend_basename f.path ~suffix:(Filename.Extension.to_string suffix)
+        Path.extend_basename f.path ~suffix:(Filename.Extension.to_filename suffix)
       in
       { f with dialect = Dialect.ocaml; path })
 ;;

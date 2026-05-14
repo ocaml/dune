@@ -118,7 +118,7 @@ module Spec = struct
         Predicate_lang.Glob.test pred ~standard)
     in
     Filename.Array.Set.fold dirs ~init:Filename.Map.empty ~f:(fun dir acc ->
-      match Map.map f ~f:(fun pred -> pred dir) |> Set.to_list with
+      match Map.map f ~f:(fun pred -> pred (Filename.to_string dir)) |> Set.to_list with
       | [] -> acc
       | statuses ->
         (* If a directory has a status other than [Normal], then the [Normal]
@@ -136,7 +136,7 @@ module Spec = struct
             User_error.raise
               [ Pp.textf
                   "Directory %s was marked as %s, it can't be marked as %s."
-                  dir
+                  (Filename.to_string dir)
                   (String.enumerate_and (List.map statuses ~f:to_string))
                   (match List.length statuses with
                    | 2 -> "both"

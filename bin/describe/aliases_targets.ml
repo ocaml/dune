@@ -29,7 +29,8 @@ let ls_term (fetch_results : Path.Build.t -> string list Action_builder.t) =
                 if
                   Dune_engine.Context_name.equal
                     context
-                    (Dune_engine.Context_name.of_string dir_context_name)
+                    (Dune_engine.Context_name.of_string
+                       (Filename.to_string dir_context_name))
                 then d
                 else
                   User_error.raise
@@ -129,8 +130,9 @@ module Targets_cmd = struct
         *)
         Some
           (match kind with
-           | Target.File -> Path.Build.basename path
-           | Directory -> Path.Build.basename path ^ Filename.dir_sep))
+           | Target.File -> Path.Build.basename path |> Filename.to_string
+           | Directory ->
+             (Path.Build.basename path |> Filename.to_string) ^ Filename.dir_sep))
   ;;
 
   let term = ls_term fetch_results

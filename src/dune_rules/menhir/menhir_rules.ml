@@ -198,7 +198,9 @@ module Run (P : PARAMS) = struct
       match stanza.merge_into with
       | None ->
         Path.Set.fold deps ~init:[] ~f:(fun p acc ->
-          let merge_into = Filename.remove_extension (Path.basename p) in
+          let merge_into =
+            Path.basename p |> Filename.remove_extension |> Filename.to_string
+          in
           ({ stanza with merge_into = Some merge_into }, Path.Set.singleton p) :: acc)
       | Some _ -> [ stanza, deps ])
   ;;

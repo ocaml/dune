@@ -108,7 +108,7 @@ let promote ~(targets : _ Targets.Produced.t) ~(promote : Rule.Promote.t) ~promo
   let selected_for_promotion : Path.Local.t -> bool =
     match promote.only with
     | None -> fun (_ : Path.Local.t) -> true
-    | Some pred -> fun target -> Predicate.test pred (Path.Local.to_string target)
+    | Some pred -> fun target -> Predicate.test pred (Path.Local.basename target)
   in
   let open Fiber.O in
   (* Map target paths taking into account the (promote (into <dir>)) field. *)
@@ -136,7 +136,7 @@ let promote ~(targets : _ Targets.Produced.t) ~(promote : Rule.Promote.t) ~promo
       Memo.run (Fs_memo.path_kind (In_source_dir into_dir))
       >>| (function
        | Ok S_DIR | Error (ENOENT, _, _) ->
-         fun src -> Path.Source.relative into_dir (Path.Build.basename src)
+         fun src -> Path.Source.relative_fname into_dir (Path.Build.basename src)
        | Ok _other_kind -> promote_into_error (Pp.textf "%S is not a directory.")
        | Error unix_error ->
          promote_into_error ~unix_error (Pp.textf "Cannot promote to directory %S."))
@@ -218,13 +218,16 @@ let promote ~(targets : _ Targets.Produced.t) ~(promote : Rule.Promote.t) ~promo
       Fs_memo.Dir_contents.iter dir_contents ~f:(fun file_name kind ->
         match kind with
         | S_REG ->
-          if not (Targets.Produced.mem targets (Path.Build.relative build_dir file_name))
-          then Fpath.unlink_no_err (Path.to_string (Path.relative dst_dir file_name))
+          let file_name_s = Filename.to_string file_name in
+          if
+            not (Targets.Produced.mem targets (Path.Build.relative build_dir file_name_s))
+          then Fpath.unlink_no_err (Path.to_string (Path.relative dst_dir file_name_s))
         | S_DIR ->
-          let src_dir = Path.Build.relative build_dir file_name in
+          let src_dir = Path.Build.relative_fname build_dir file_name in
           if not (Targets.Produced.mem_dir targets src_dir)
-          then Path.rm_rf (Path.relative dst_dir file_name)
-        | _kind -> Fpath.unlink_no_err (Path.to_string (Path.relative dst_dir file_name)))
+          then Path.rm_rf (Path.relative_fname dst_dir file_name)
+        | _kind ->
+          Fpath.unlink_no_err (Path.to_string (Path.relative_fname dst_dir file_name)))
   in
   Fiber.sequential_iter_seq (Targets.Produced.all_dirs_seq targets) ~f:(fun dir ->
     remove_stale_files_and_subdirectories ~dir)

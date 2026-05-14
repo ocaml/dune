@@ -99,7 +99,7 @@ let stat t path =
           if
             Rev_store.File.Set.exists files ~f:(fun file ->
               let path = Rev_store.File.path file in
-              String.equal basename (Path.Local.basename path))
+              Filename.equal basename (Path.Local.basename path))
           then `File
           else `Absent_or_unrecognized))
 ;;
@@ -123,7 +123,9 @@ let readdir t dir =
            | S_REG -> Some `File
            | S_DIR -> Some `Dir
            | S_LNK ->
-             (match (Unix.stat (Path.to_string (Path.relative dir name))).st_kind with
+             (match
+                (Unix.stat (Path.to_string (Path.relative_fname dir name))).st_kind
+              with
               | S_REG -> Some `File
               | S_DIR -> Some `Dir
               | _ -> None)

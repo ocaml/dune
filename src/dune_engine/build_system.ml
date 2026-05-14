@@ -166,7 +166,7 @@ module Internal = struct
 
   let digest_target_paths d (rule : Rule.t) =
     let digest_target_path name =
-      Path.Build.relative rule.targets.root name
+      Path.Build.relative_fname rule.targets.root name
       |> Path.Build.to_string
       |> Digest.Manual.string d
     in
@@ -846,7 +846,7 @@ module Internal = struct
          let matching_dirs =
            Filename.Set.to_list_map rule.targets.dirs ~f:(fun dir ->
              (* CR-someday rleshchinskiy: This test can probably be simplified. *)
-             let dir = Path.Build.relative rule.targets.root dir in
+             let dir = Path.Build.relative_fname rule.targets.root dir in
              match Path.Build.is_descendant path ~of_:dir with
              | true -> [ dir ]
              | false -> [])

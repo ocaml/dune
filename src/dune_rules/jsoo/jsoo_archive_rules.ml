@@ -83,13 +83,13 @@ end
 let parse_lib_archive_dir dir =
   let jsoo_dir_config =
     match Path.Build.basename dir with
-    | s when Obj_dir.is_jsoo_dirname s -> Some (dir, None)
+    | s when Obj_dir.is_jsoo_dirname (Filename.to_string s) -> Some (dir, None)
     | config ->
       (match Path.Build.parent dir with
        | Some parent
          when (not (Path.Build.is_root parent))
-              && Obj_dir.is_jsoo_dirname (Path.Build.basename parent) ->
-         Some (parent, Some config)
+              && Obj_dir.is_jsoo_dirname (Path.Build.basename parent |> Filename.to_string)
+         -> Some (parent, Some (Filename.to_string config))
        | _ -> None)
   in
   match jsoo_dir_config with
@@ -99,7 +99,7 @@ let parse_lib_archive_dir dir =
     (* The ".<lib_name>.objs" convention comes from
        [Obj_dir.Paths.library_object_directory]. *)
     let lib_name =
-      String.drop_prefix (Path.Build.basename obj_dir) ~prefix:"."
+      String.drop_prefix (Path.Build.basename obj_dir |> Filename.to_string) ~prefix:"."
       |> Option.bind ~f:(String.drop_suffix ~suffix:".objs")
     in
     Option.map lib_name ~f:(fun lib_name ->

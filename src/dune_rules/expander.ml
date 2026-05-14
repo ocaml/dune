@@ -187,7 +187,8 @@ let expand_artifact ~source t artifact arg =
   match artifact with
   | Pform.Artifact.Mod kind ->
     let name =
-      Module_name.of_string_allow_invalid (Dune_lang.Template.Pform.loc source, name)
+      Module_name.of_string_allow_invalid
+        (Dune_lang.Template.Pform.loc source, Filename.to_string name)
       |> Module_name.Unchecked.allow_invalid
     in
     (match Artifacts_obj.lookup_module artifacts name with
@@ -202,7 +203,10 @@ let expand_artifact ~source t artifact arg =
         | None -> Action_builder.return [ Value.String "" ]
         | Some path -> dep (Path.build path)))
   | Lib mode ->
-    let name = Lib_name.parse_string_exn (Dune_lang.Template.Pform.loc source, name) in
+    let name =
+      Lib_name.parse_string_exn
+        (Dune_lang.Template.Pform.loc source, Filename.to_string name)
+    in
     (match Artifacts_obj.lookup_library artifacts name with
      | None -> does_not_exist ~what:"Library" (Lib_name.to_string name)
      | Some lib ->
@@ -400,13 +404,19 @@ let expand_lib_variable t source ~lib ~file ~lib_exec ~lib_private =
               ]
       | _ ->
         let has_exe_ext =
-          let extension = Filename.extension file in
+          let extension =
+            Stdlib.Filename.extension file |> Filename.Extension.Or_empty.of_string_exn
+          in
           Filename.Extension.Or_empty.check extension Filename.Extension.exe
         in
         if (not lib_exec) || (not Sys.win32) || has_exe_ext
         then dep p
         else (
-          let p_exe = Path.extend_basename p ~suffix:".exe" in
+          let p_exe =
+            Path.extend_basename
+              p
+              ~suffix:(Filename.Extension.to_filename Filename.Extension.exe)
+          in
           Action_builder.if_file_exists p_exe ~then_:(dep p_exe) ~else_:(dep p)))
    | Error () ->
      (if lib_private

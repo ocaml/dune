@@ -24,7 +24,7 @@ let find_module sctx src =
     let* name =
       let fname = Path.Build.basename src in
       let name = Filename.remove_extension fname in
-      if String.equal fname name then None else Some name
+      if Filename.equal fname name then None else Some (Filename.to_string name)
     in
     Module_name.of_string_opt name
   with
@@ -90,7 +90,7 @@ let gen_rules sctx ~dir:rules_dir ~comps =
        >>| List.filter_map ~f:(Obj_dir.Module.cm_file obj_dir ~kind:(Ocaml Cmi)))
       >>= Memo.parallel_iter ~f:(fun file ->
         (let src = Path.build file in
-         let dst = Path.Build.relative rules_dir (Path.Build.basename file) in
+         let dst = Path.Build.relative_fname rules_dir (Path.Build.basename file) in
          Action_builder.symlink ~src ~dst)
         |> Super_context.add_rule sctx ~dir:rules_dir)
     in

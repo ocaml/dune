@@ -264,6 +264,7 @@ let gen_rules_for_checksum_or_url (loc_url, (url : OpamUrl.t)) checksum =
 ;;
 
 let gen_rules ~dir ~components =
+  let components = Filename.L.to_string components in
   match components with
   | [] ->
     Memo.return Rules.empty
@@ -271,7 +272,7 @@ let gen_rules ~dir ~components =
          ~build_dir_only_sub_dirs:
            (Gen_rules.Build_only_sub_dirs.singleton
               ~dir
-              (Subdir_set.of_list [ "checksum"; "url" ]))
+              (Subdir_set.of_list [ Filename.checksum; Filename.url ]))
     |> Memo.return
   | [ ("url" | "checksum") ] ->
     Memo.return Rules.empty
@@ -318,8 +319,9 @@ module Copy = struct
         ~init:()
         ~dir:(Path.to_string src_dir)
         ~on_dir:(fun ~dir fname () ->
-          Path.L.relative dst_dir [ dir; fname ] |> Path.mkdir_p)
+          Path.L.relative dst_dir [ dir; Filename.to_string fname ] |> Path.mkdir_p)
         ~on_file:(fun ~dir fname () ->
+          let fname = Filename.to_string fname in
           let src = Path.L.relative src_dir [ dir; fname ] in
           let dst = Path.L.relative dst_dir [ dir; fname ] in
           Io.copy_file ~src ~dst ())

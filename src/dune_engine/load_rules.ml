@@ -108,7 +108,9 @@ let get_dir_triage ~dir =
     let+ contexts = Memo.Lazy.force (Build_config.get ()).contexts in
     let allowed_subdirs =
       [ Path.Build.basename Dpath.Build.anonymous_actions_dir ]
-      @ (Context_name.Map.keys contexts |> List.map ~f:Context_name.to_string)
+      @ (Context_name.Map.keys contexts
+         |> List.map ~f:(fun name -> Filename.of_string_exn (Context_name.to_string name))
+        )
       |> Subdir_set.of_list
       |> Subdir_set.to_dir_set
     in
@@ -195,7 +197,7 @@ let remove_old_artifacts
   | Error _ -> ()
   | Ok files ->
     List.iter files ~f:(fun (fn, kind) ->
-      let path = Path.Build.relative dir fn in
+      let path = Path.Build.relative_fname dir fn in
       let path_is_a_target =
         Path.Build.Map.mem rules_here.by_file_targets path
         || Path.Build.Map.mem rules_here.by_directory_targets path
@@ -220,7 +222,7 @@ let remove_old_sub_dirs_in_anonymous_actions_dir ~dir ~(subdirs_to_keep : Subdir
   | Error _ -> ()
   | Ok files ->
     List.iter files ~f:(fun (fn, kind) ->
-      let path = Path.Build.relative dir fn in
+      let path = Path.Build.relative_fname dir fn in
       match kind with
       | Unix.S_DIR ->
         if not (Subdir_set.mem subdirs_to_keep fn)
@@ -301,7 +303,7 @@ end = struct
 
   let create_copy_rules ~dir ~ctx_dir ~non_target_source_filenames =
     Filename.Array.Set.to_list_map non_target_source_filenames ~f:(fun filename ->
-      let src_path = Path.Source.relative dir filename in
+      let src_path = Path.Source.relative_fname dir filename in
       let build_path = Path.Build.append_source ctx_dir src_path in
       Rule.make
         ~info:(Source_file_copy src_path)
@@ -313,16 +315,16 @@ end = struct
     let file_targets, directory_targets =
       let check_for_source_dir_conflict rule target =
         if Filename.Array.Set.mem source_dirs target
-        then report_rule_src_dir_conflict dir target rule
+        then report_rule_src_dir_conflict dir (Filename.to_string target) rule
       in
       List.map rules ~f:(fun rule ->
         assert (Path.Build.( = ) dir rule.Rule.targets.root);
         ( Filename.Set.to_list_map rule.targets.files ~f:(fun target ->
             check_for_source_dir_conflict rule target;
-            Path.Build.relative rule.targets.root target, rule)
+            Path.Build.relative_fname rule.targets.root target, rule)
         , Filename.Set.to_list_map rule.targets.dirs ~f:(fun target ->
             check_for_source_dir_conflict rule target;
-            Path.Build.relative rule.targets.root target, rule) ))
+            Path.Build.relative_fname rule.targets.root target, rule) ))
       |> List.unzip
     in
     let by_file_targets =
@@ -419,12 +421,16 @@ end = struct
             ; Pp.text "The following targets are present:"
             ; Pp.enumerate
                 ~f:Path.pp
-                (Filename.Array.Set.to_list_map present_targets ~f:(Path.relative dir))
+                (Filename.Array.Set.to_list_map
+                   present_targets
+                   ~f:(Path.relative_fname dir))
             ; Pp.nop
             ; Pp.text "The following targets are not:"
             ; Pp.enumerate
                 ~f:Path.pp
-                (Filename.Array.Set.to_list_map absent_targets ~f:(Path.relative dir))
+                (Filename.Array.Set.to_list_map
+                   absent_targets
+                   ~f:(Path.relative_fname dir))
             ]))
   ;;
 
@@ -586,7 +592,7 @@ end = struct
            d)
       =
       let (module RG : Rule_generator) = (Build_config.get ()).rule_generator in
-      let sub_dir_components = Path.Source.explode sub_dir in
+      let sub_dir_components = Path.Source.explode sub_dir |> Filename.L.to_string in
       RG.gen_rules context_name ~dir sub_dir_components
       >>= function
       | Rules rules -> Memo.return @@ Normal (Normal.make_rules_gen_result ~of_:dir rules)
@@ -633,7 +639,7 @@ end = struct
       [ Pp.textf
           "This rule defines a target %S whose name conflicts with an internal directory \
            used by Dune. Please use a different name."
-          target_name
+          (Filename.to_string target_name)
       ]
   ;;
 
@@ -676,10 +682,7 @@ end = struct
              match only with
              | None -> target_filenames
              | Some pred ->
-               let is_promoted filename =
-                 let file = Path.Build.relative dir filename in
-                 Predicate.test pred (Path.reach (Path.build file) ~from:(Path.build dir))
-               in
+               let is_promoted filename = Predicate.test pred filename in
                Filename.Set.filter target_filenames ~f:is_promoted
            in
            iter
@@ -762,7 +765,7 @@ end = struct
     in
     let source_dirs_to_keep =
       Filename.Array.Set.fold source_dirs ~init:Dir_set.empty ~f:(fun path acc ->
-        let path = Path.Local.of_string path in
+        let path = Path.Local.relative_fname Path.Local.root path in
         Dir_set.union acc (Dir_set.singleton path))
     in
     let subdirs_to_keep =

@@ -241,7 +241,7 @@ module Opam : sig
 end = struct
   let opam =
     Memo.Lazy.create ~name:"context-opam" (fun () ->
-      Which.which ~path:(Env_path.path Env.initial) "opam"
+      Which.which ~path:(Env_path.path Env.initial) Filename.opam
       >>= function
       | None -> Utils.program_not_found "opam" ~loc:None
       | Some opam ->
@@ -441,7 +441,7 @@ let create (builder : Builder.t) ~(kind : Kind.t) =
           ~human_readable_description:(fun () ->
             Pp.textf
               "looking up binary %S in context %S"
-              prog
+              (Filename.to_string prog)
               (Context_name.to_string builder.name))
           (fun () ->
              which prog

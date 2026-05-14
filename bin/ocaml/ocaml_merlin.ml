@@ -102,13 +102,13 @@ end = struct
      this directory. *)
   let get_merlin_files_paths dir =
     let merlin_path =
-      Path.Build.relative dir Dune_rules.Merlin_ident.merlin_folder_name
+      Path.Build.relative_fname dir Dune_rules.Merlin_ident.merlin_folder_name
     in
     Path.build merlin_path
     |> Path.readdir_unsorted
     |> Result.value ~default:[]
-    |> List.sort ~compare:String.compare
-    |> List.map ~f:(fun f -> Path.Build.relative merlin_path f |> Path.build)
+    |> List.sort ~compare:Filename.compare
+    |> List.map ~f:(fun f -> Path.Build.relative_fname merlin_path f |> Path.build)
   ;;
 
   module Merlin = Dune_rules.Merlin

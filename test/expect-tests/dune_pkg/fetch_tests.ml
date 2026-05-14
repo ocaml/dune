@@ -191,6 +191,7 @@ let%expect_test "downloading, tarball with no checksum match" =
     print_endline "------\nfiles in target dir:";
     Dune_engine.No_io.Path.Untracked.readdir_unsorted target
     |> Result.value ~default:[]
+    |> Filename.L.to_string
     |> List.sort ~compare:String.compare
     |> List.iter ~f:print_endline
   in

@@ -18,7 +18,11 @@ module Promote = struct
        in
        let only =
          Option.map only ~f:(fun only ->
-           Predicate.create (Predicate_lang.Glob.test only ~standard:Predicate_lang.true_))
+           Predicate.create (fun fn ->
+             Predicate_lang.Glob.test
+               only
+               ~standard:Predicate_lang.true_
+               (Filename.to_string fn)))
        in
        { Rule_mode.Promote.lifetime = (if until_clean then Until_clean else Unlimited)
        ; into

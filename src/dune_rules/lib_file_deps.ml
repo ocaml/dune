@@ -55,7 +55,6 @@ let deps_of_lib (lib : Lib.t) ~groups =
   |> Dep.Set.of_list
 ;;
 
-let deps_with_exts = Dep.Set.union_map ~f:(fun (lib, groups) -> deps_of_lib lib ~groups)
 let deps libs ~groups = Dep.Set.union_map libs ~f:(deps_of_lib ~groups)
 
 let groups_for_cm_kind ~opaque ~(cm_kind : Lib_mode.Cm_kind.t) lib =

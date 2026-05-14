@@ -27,7 +27,7 @@ Depend on a pair of packages which can't be coinstalled:
   > EOF
 
 Solver error when solving fails with the same error on all platforms:
-  $ dune pkg lock
+  $ DUNE_TRACE=+sat dune pkg lock
   Error:
   Unable to solve dependencies while generating lock directory: dune.lock
   
@@ -44,6 +44,32 @@ Solver error when solving fails with the same error on all platforms:
       Rejected candidates:
         c.0.2: Incompatible with restriction: = 0.1
   [1]
+
+Under single-solve, the SAT engine runs once across all platforms even on
+failure.
+
+  $ dune trace cat \
+  > | jq -s 'include "dune"; [ .[] | satSolveEvents | .args ]'
+  [
+    {
+      "num_variables": 21,
+      "num_clauses": 37,
+      "num_decisions": 0,
+      "num_conflicts": 0
+    },
+    {
+      "num_variables": 21,
+      "num_clauses": 37,
+      "num_decisions": 0,
+      "num_conflicts": 0
+    },
+    {
+      "num_variables": 38,
+      "num_clauses": 37,
+      "num_decisions": 14,
+      "num_conflicts": 0
+    }
+  ]
 
 Modify the "a" package so the solver error is different on different platforms:
   $ mkpkg a <<EOF
@@ -62,6 +88,8 @@ with the platforms where they are relevant:
   The dependency solver failed to find a solution for the following platforms:
   - arch = x86_64; os = linux
   - arch = arm64; os = linux
+  - arch = x86_64; os = macos
+  - arch = arm64; os = macos
   ...with this error:
   Couldn't solve the package dependency formula.
   Selected candidates: a.0.0.1 b.0.0.1 foo.dev
@@ -69,15 +97,4 @@ with the platforms where they are relevant:
       a 0.0.1 requires = 0.1
       Rejected candidates:
         c.0.2: Incompatible with restriction: = 0.1
-  
-  The dependency solver failed to find a solution for the following platforms:
-  - arch = x86_64; os = macos
-  - arch = arm64; os = macos
-  ...with this error:
-  Couldn't solve the package dependency formula.
-  Selected candidates: a.0.0.1 b.0.0.1 foo.dev
-  - c -> (problem)
-      a 0.0.1 requires = 0.3
-      Rejected candidates:
-        c.0.2: Incompatible with restriction: = 0.3
   [1]

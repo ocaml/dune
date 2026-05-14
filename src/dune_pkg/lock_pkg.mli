@@ -8,9 +8,10 @@ val add_self_to_filter_env
   -> OpamVariable.variable_contents option
 
 (** Convert a selected opam package to a package that dune can save to the lock
-    directory *)
+    directory. For portable lockdirs, all solver_envs are used to set conditions
+    on conditional fields. The first solver_env is used for evaluating filters. *)
 val opam_package_to_lock_file_pkg
-  :  Solver_env.t
+  :  Solver_env.t list
   -> Solver_stats.Updater.t
   -> Package_version.t Package_name.Map.t
   -> OpamPackage.t

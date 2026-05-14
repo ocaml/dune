@@ -57,6 +57,24 @@ module Priority = struct
   let rejected version = { avoid = true; version }
 end
 
+(* Platform identifier for multi-platform solving.
+   Each platform (e.g., linux-x64, macos-arm64) gets a unique id.
+   The actual platform data is stored in Context.platform_envs. *)
+module Platform_id = struct
+  module T = struct
+    type t = int
+
+    let compare = Int.compare
+    let to_dyn = Int.to_dyn
+  end
+
+  include T
+  module Map = Map.Make (T)
+
+  let hash = Int.hash
+  let of_int x = x
+end
+
 module Context = struct
   type rejection =
     | Unavailable
@@ -86,6 +104,12 @@ module Context = struct
     ; local_packages : local_package Package_name.Map.t Lazy.t
     ; local_constraints : (Package_name.t, local_package list) Table.t Lazy.t
     ; solver_env : Solver_env.t
+      (* Base solver env. Full platform-specific envs are computed by extending
+         this with platform_overlays. *)
+    ; platform_overlays : Solver_env.t Platform_id.Map.t
+      (* Platform-specific variable overlays. Extended onto solver_env to get
+         full platform envs. For single-platform solving, this contains an
+         empty overlay. *)
     ; dune_version : OpamPackage.Version.t
     ; stats_updater : Solver_stats.Updater.t
     ; candidates_cache : (Package_name.t, candidates) Fiber.Cache.t
@@ -103,6 +127,7 @@ module Context = struct
   let create
         ~pinned_packages
         ~solver_env
+        ~platform_overlays
         ~repos
         ~local_packages
         ~version_preference
@@ -149,6 +174,9 @@ module Context = struct
     ; local_packages
     ; pinned_packages
     ; solver_env = Solver_env.add_sentinel_values_for_unset_platform_vars solver_env
+    ; platform_overlays
+      (* Overlays don't need sentinel values - they only contain platform-specific
+         vars that will override the sentinels in solver_env when extended. *)
     ; dune_version = Dune_dep.version
     ; stats_updater
     ; candidates_cache
@@ -157,6 +185,16 @@ module Context = struct
     ; expanded_packages
     ; local_constraints
     }
+  ;;
+
+  (* Compute full platform-specific env by extending base with overlay *)
+  let platform_env t platform_id =
+    match Platform_id.Map.find t.platform_overlays platform_id with
+    | Some overlay -> Solver_env.extend t.solver_env overlay
+    | None ->
+      Code_error.raise
+        "Platform_id not found in platform_overlays"
+        [ "platform_id", Platform_id.to_dyn platform_id ]
   ;;
 
   let pp_rejection = function
@@ -209,6 +247,24 @@ module Context = struct
     if is_opam_available t opam_file then Ok opam_file else Error Unavailable
   ;;
 
+  (* Check availability for a specific platform. Used for multi-platform solving
+     where packages may be available on some platforms but not others. *)
+  let is_available_for_platform t ~platform_id opam =
+    let solver_env = platform_env t platform_id in
+    let package = OpamFile.OPAM.package opam in
+    let available = OpamFile.OPAM.available opam in
+    match
+      OpamFilter.partial_eval
+        (Solver_env.to_env solver_env
+         |> Solver_stats.Updater.wrap_env t.stats_updater
+         |> Lock_pkg.add_self_to_filter_env package)
+        available
+      |> eval_to_bool
+    with
+    | Ok available -> available
+    | Error (`Not_a_bool _) -> false
+  ;;
+
   let pinned_candidate t resolved_package =
     let version = Resolved_package.package resolved_package |> OpamPackage.version in
     let available =
@@ -222,7 +278,8 @@ module Context = struct
     { available; resolved }
   ;;
 
-  let filter_deps t package filtered_formula =
+  (* Filter deps using a specific solver_env *)
+  let filter_deps_with_env t ~solver_env package filtered_formula =
     (* Add additional constraints to the formula. This works in two steps.
        First identify all the additional constraints applied to packages which
        appear in the current package's dependency formula. Then each additional
@@ -245,11 +302,22 @@ module Context = struct
       |> Package_name.of_opam_package_name
       |> Package_name.Map.mem (Lazy.force t.local_packages)
     in
-    let with_test = package_is_local && with_test t.solver_env in
-    Solver_env.to_env t.solver_env
+    let with_test = package_is_local && with_test solver_env in
+    Solver_env.to_env solver_env
     |> Solver_stats.Updater.wrap_env t.stats_updater
     |> Lock_pkg.add_self_to_filter_env package
     |> Resolve_opam_formula.apply_filter ~with_test ~formula:filtered_formula
+  ;;
+
+  (* Filter deps for local packages using primary solver_env *)
+  let filter_deps_local t package filtered_formula =
+    filter_deps_with_env t ~solver_env:t.solver_env package filtered_formula
+  ;;
+
+  (* Filter deps for a specific platform *)
+  let filter_deps t ~platform_id package filtered_formula =
+    let solver_env = platform_env t platform_id in
+    filter_deps_with_env t ~solver_env package filtered_formula
   ;;
 
   exception Found of Package_name.t
@@ -350,6 +418,37 @@ module Context = struct
       res.available
   ;;
 
+  (* Get all candidates with their opam files, without pre-filtering by availability.
+     Used for multi-platform solving where availability is checked per-platform. *)
+  let candidates_unfiltered t name =
+    let* () = Fiber.return () in
+    let key = Package_name.of_opam_package_name name in
+    match Package_name.Map.find (Lazy.force t.local_packages) key with
+    | Some local_package ->
+      let priority = Priority.allowed local_package.version in
+      Fiber.return [ priority, local_package.opam_file ]
+    | None ->
+      let+ res =
+        Fiber.Cache.find_or_add t.candidates_cache key ~f:(fun () ->
+          match Package_name.Map.find t.pinned_packages key with
+          | Some resolved_package -> Fiber.return (pinned_candidate t resolved_package)
+          | None -> repo_candidate t name)
+      in
+      (* Return all versions from resolved, with priority info *)
+      OpamPackage.Version.Map.bindings res.resolved
+      |> List.map ~f:(fun (version, resolved_pkg) ->
+        let opam = Resolved_package.opam_file resolved_pkg in
+        let avoid =
+          List.mem
+            (OpamFile.OPAM.flags opam)
+            OpamTypes.Pkgflag_AvoidVersion
+            ~equal:Poly.equal
+        in
+        { Priority.version; avoid }, opam)
+      |> List.sort ~compare:(fun (x, _) (y, _) ->
+        Priority.compare t.version_preference x y)
+  ;;
+
   let user_restrictions : t -> OpamPackage.Name.t -> OpamFormula.version_constraint option
     =
     fun t pkg ->
@@ -444,7 +543,7 @@ module Solver = struct
     end
 
     type role =
-      | Real of OpamPackage.Name.t
+      | Real of OpamPackage.Name.t * Platform_id.t
       | Virtual of Virtual_id.t * impl list
 
     and real_impl =
@@ -466,11 +565,27 @@ module Solver = struct
       | Reject of OpamPackage.t
       | Dummy (* Used for diagnostics *)
 
+    (* Deduplicate a list of dependencies by package name for display purposes.
+       This avoids showing the same package multiple times for different platforms. *)
+    let deduplicate_deps_by_name deps =
+      let seen = ref OpamPackage.Name.Set.empty in
+      List.filter deps ~f:(fun (d : dependency) ->
+        match d.drole with
+        | Virtual _ -> true
+        | Real (name, _platform) ->
+          if OpamPackage.Name.Set.mem name !seen
+          then false
+          else (
+            seen := OpamPackage.Name.Set.add name !seen;
+            true))
+    ;;
+
     let rec pp_version = function
       | RealImpl impl ->
         Pp.text (OpamPackage.Version.to_string (OpamPackage.version impl.pkg))
       | Reject pkg -> Pp.text (OpamPackage.version_to_string pkg)
       | VirtualImpl (_i, deps) ->
+        let deps = deduplicate_deps_by_name deps in
         Pp.concat_map ~sep:(Pp.char '&') deps ~f:(fun d -> pp_role d.drole)
       | Dummy -> Pp.text "(no version)"
 
@@ -481,7 +596,9 @@ module Solver = struct
       | Dummy -> Pp.text "(no solution found)"
 
     and pp_role = function
-      | Real name -> Pp.text (OpamPackage.Name.to_string name)
+      | Real (name, _platform) ->
+        (* Don't show platform in user-facing output for now *)
+        Pp.text (OpamPackage.Name.to_string name)
       | Virtual (_, impls) -> Pp.concat_map ~sep:(Pp.char '|') impls ~f:pp_impl
     ;;
 
@@ -493,7 +610,10 @@ module Solver = struct
 
         let compare a b =
           match a, b with
-          | Real a, Real b -> Ordering.of_int (OpamPackage.Name.compare a b)
+          | Real (a_name, a_plat), Real (b_name, b_plat) ->
+            (match Ordering.of_int (OpamPackage.Name.compare a_name b_name) with
+             | Eq -> Platform_id.compare a_plat b_plat
+             | x -> x)
           | Virtual (a, _), Virtual (b, _) -> Virtual_id.compare a b
           | Real _, Virtual _ -> Lt
           | Virtual _, Real _ -> Gt
@@ -505,13 +625,17 @@ module Solver = struct
       include T
 
       let equal x y = Ordering.is_eq (compare x y)
-      let hash = Poly.hash
+
+      let hash = function
+        | Real (name, platform) -> Poly.hash (Poly.hash name, Platform_id.hash platform)
+        | Virtual (id, _) -> Virtual_id.hash id
+      ;;
 
       let user_restrictions t context =
         match t with
         | Virtual _ -> None
-        | Real role ->
-          Context.user_restrictions context role
+        | Real (name, _platform) ->
+          Context.user_restrictions context name
           |> Option.map ~f:(fun f ->
             { Restriction.kind = Ensure; expr = OpamFormula.Atom f })
       ;;
@@ -521,13 +645,13 @@ module Solver = struct
       let rejects role context =
         match role with
         | Virtual _ -> Fiber.return ([], [])
-        | Real role ->
+        | Real (name, _platform) ->
           let+ rejects =
-            Context.candidates context role
+            Context.candidates context name
             >>| List.filter_map ~f:(function
               | _, Ok _ -> None
               | { Priority.version; _ }, Error reason ->
-                let pkg = OpamPackage.create role version in
+                let pkg = OpamPackage.create name version in
                 Some (Reject pkg, reason))
           in
           let notes = [] in
@@ -619,11 +743,12 @@ module Solver = struct
     ;;
 
     (* Turn an opam dependency formula into a 0install list of dependencies. *)
-    let list_deps ~importance ~rank deps =
+    let list_deps ~importance ~rank ~platform deps =
       let rec aux (formula : _ OpamTypes.generic_formula) =
         match formula with
         | Empty -> []
-        | Atom (name, restrictions) -> [ { drole = Real name; restrictions; importance } ]
+        | Atom (name, restrictions) ->
+          [ { drole = Real (name, platform); restrictions; importance } ]
         | Block x -> aux x
         | And (x, y) -> aux x @ aux y
         | Or _ as o ->
@@ -639,30 +764,35 @@ module Solver = struct
       aux deps
     ;;
 
-    (* Get all the candidates for a role. *)
+    (* Get all the candidates for a role. For multi-platform solving,
+       we check availability per-platform so packages that are only
+       available on certain platforms (e.g., linux-only, macos-only) work. *)
     let implementations role context =
       match role with
       | Virtual (_, impls) -> Fiber.return impls
-      | Real role ->
-        Context.candidates context role
-        >>| List.filter_map ~f:(function
-          | _, Error _rejection -> None
-          | { Priority.version; avoid }, Ok opam ->
-            let pkg = OpamPackage.create role version in
+      | Real (name, platform) ->
+        Context.candidates_unfiltered context name
+        >>| List.filter_map ~f:(fun (priority, opam) ->
+          (* Check availability for this specific platform *)
+          if not (Context.is_available_for_platform context ~platform_id:platform opam)
+          then None
+          else (
+            let { Priority.version; avoid } = priority in
+            let pkg = OpamPackage.create name version in
             (* Note: we ignore depopts here: see opam/doc/design/depopts-and-features *)
             let requires =
               lazy
                 (let rank = Rank.assign () in
                  let make_deps importance xform deps =
-                   Context.filter_deps context pkg deps
+                   Context.filter_deps context ~platform_id:platform pkg deps
                    |> xform
-                   |> list_deps ~importance ~rank
+                   |> list_deps ~importance ~rank ~platform
                  in
                  (OpamFile.OPAM.depends opam |> make_deps Ensure ensure)
                  @ (OpamFile.OPAM.conflicts opam |> make_deps Prevent prevent))
             in
             let conflict_class = OpamFile.OPAM.conflict_class opam in
-            Some (RealImpl { pkg; avoid; requires; conflict_class }))
+            Some (RealImpl { pkg; avoid; requires; conflict_class })))
     ;;
 
     let meets_restriction impl { Restriction.kind; expr } =
@@ -753,38 +883,154 @@ module Solver = struct
     end
 
     module Conflict_classes = struct
-      type t = { mutable groups : Sat.lit list ref OpamPackage.Name.Map.t }
+      (* Key is (conflict_class_name, platform_id) to ensure conflict classes
+         are enforced per-platform, not across platforms. In multi-platform solving,
+         it's valid to select the same package with a conflict class on multiple
+         platforms, but within each platform, at most one package with the conflict
+         class can be selected. *)
+      module Key = struct
+        type t = OpamPackage.Name.t * Platform_id.t
 
-      let create () = { groups = OpamPackage.Name.Map.empty }
+        let compare (name1, plat1) (name2, plat2) =
+          match Ordering.of_int (OpamPackage.Name.compare name1 name2) with
+          | Eq -> Platform_id.compare plat1 plat2
+          | x -> x
+        ;;
 
-      let var t name =
-        match OpamPackage.Name.Map.find_opt name t.groups with
+        let to_dyn (name, plat) =
+          Dyn.Tuple
+            [ Dyn.string (OpamPackage.Name.to_string name); Platform_id.to_dyn plat ]
+        ;;
+      end
+
+      module Key_map = Map.Make (Key)
+
+      type t = { mutable groups : Sat.lit list ref Key_map.t }
+
+      let create () = { groups = Key_map.empty }
+
+      let var t key =
+        match Key_map.find t.groups key with
         | Some v -> v
         | None ->
           let v = ref [] in
-          t.groups <- OpamPackage.Name.Map.add name v t.groups;
+          t.groups <- Key_map.set t.groups key v;
           v
       ;;
 
-      (* Add [impl] to its conflict groups, if any. *)
-      let process t impl_var impl =
-        Input.Impl.conflict_class impl
-        |> List.iter ~f:(fun name ->
-          let impls = var t name in
-          impls := impl_var :: !impls)
+      (* Add [impl] to its conflict groups, if any.
+         [role] is used to extract the platform_id for the group key.
+         Virtual roles never carry conflict classes (see [Input.Impl.conflict_class]
+         which returns [] for VirtualImpl), so there's nothing to do for them. *)
+      let process t role impl_var impl =
+        match role with
+        | Input.Virtual _ -> ()
+        | Input.Real (_, platform_id) ->
+          Input.Impl.conflict_class impl
+          |> List.iter ~f:(fun name ->
+            let impls = var t (name, platform_id) in
+            impls := impl_var :: !impls)
       ;;
 
       (* Call this at the end to add the final clause with all discovered groups.
          [t] must not be used after this. *)
       let seal t =
+        Key_map.iter t.groups ~f:(fun impls ->
+          match !impls with
+          | _ :: _ :: _ ->
+            let (_ : Sat.at_most_one_clause) = Sat.at_most_one !impls in
+            ()
+          | _ -> ())
+      ;;
+    end
+
+    module Cross_platform_version = struct
+      (* Implements @art-w's cross-platform version equality constraint from
+         https://github.com/ocaml/dune/issues/13647. For each (package_name,
+         version) appearing as an impl on any platform, introduce a "somewhere"
+         SAT variable that is true iff some platform selected [package_name] at
+         [version]. Two kinds of clauses are added:
+         - For each per-platform impl: [impl_var implies somewhere].
+         - At-most-one across the somewhere-vars of each [name].
+         Together these force every platform that selects [name] to select the
+         same version, while still permitting platforms to omit a package
+         entirely (e.g. unix-only packages on Windows). *)
+      module Key = struct
+        type t = OpamPackage.Name.t * OpamPackage.Version.t
+
+        let compare (n1, v1) (n2, v2) =
+          match Ordering.of_int (OpamPackage.Name.compare n1 n2) with
+          | Eq -> Ordering.of_int (OpamPackage.Version.compare v1 v2)
+          | x -> x
+        ;;
+
+        let to_dyn (n, v) =
+          Dyn.Tuple
+            [ Dyn.string (OpamPackage.Name.to_string n)
+            ; Dyn.string (OpamPackage.Version.to_string v)
+            ]
+        ;;
+      end
+
+      module Key_map = Map.Make (Key)
+
+      type t =
+        { sat : Sat.t
+        ; mutable somewhere_vars : Sat.lit Key_map.t
+        ; (* For each package name, the list of somewhere-vars across its
+             versions. Used at seal time to add the at-most-one clauses. *)
+          mutable per_name : Sat.lit list ref OpamPackage.Name.Map.t
+        }
+
+      let create sat =
+        { sat; somewhere_vars = Key_map.empty; per_name = OpamPackage.Name.Map.empty }
+      ;;
+
+      let somewhere_var t name version =
+        let key = name, version in
+        match Key_map.find t.somewhere_vars key with
+        | Some v -> v
+        | None ->
+          (* The user data attached to this SAT variable is opaque to the SAT
+             engine — we use Dummy since the variable doesn't represent a real
+             package selection. *)
+          let v = Sat.add_variable t.sat Input.Dummy in
+          t.somewhere_vars <- Key_map.set t.somewhere_vars key v;
+          let bucket =
+            match OpamPackage.Name.Map.find_opt name t.per_name with
+            | Some b -> b
+            | None ->
+              let b = ref [] in
+              t.per_name <- OpamPackage.Name.Map.add name b t.per_name;
+              b
+          in
+          bucket := v :: !bucket;
+          v
+      ;;
+
+      (* If this impl represents a real (name, version, platform) selection,
+         add the implication [impl_var implies somewhere(name, version)]. Other
+         impl kinds (Virtual, Reject, Dummy) don't participate. *)
+      let process t impl_var (impl : Input.impl) =
+        match impl with
+        | RealImpl real_impl ->
+          let pkg = real_impl.pkg in
+          let name = OpamPackage.name pkg in
+          let version = OpamPackage.version pkg in
+          let som = somewhere_var t name version in
+          Sat.implies t.sat impl_var [ som ] ~reason:"cross-platform version equality"
+        | VirtualImpl _ | Reject _ | Dummy -> ()
+      ;;
+
+      (* Add at-most-one over the somewhere-vars per package name. Call after
+         all impls have been processed. *)
+      let seal t =
         OpamPackage.Name.Map.iter
-          (fun _ impls ->
-             match !impls with
-             | _ :: _ :: _ ->
-               let (_ : Sat.at_most_one_clause) = Sat.at_most_one !impls in
-               ()
-             | _ -> ())
-          t.groups
+          (fun _name bucket ->
+             match !bucket with
+             | [] | [ _ ] -> ()
+             | vars -> ignore (Sat.at_most_one vars : Sat.at_most_one_clause))
+          t.per_name
       ;;
     end
 
@@ -794,6 +1040,7 @@ module Solver = struct
       (* For each (iface, source) we have a list of implementations. *)
       let impl_cache = Fiber.Cache.create (module Input.Role) in
       let conflict_classes = Conflict_classes.create () in
+      let cross_platform_versions = Cross_platform_version.create sat in
       let avoids = ref [] in
       let+ () =
         let rec lookup_impl expand_deps role =
@@ -808,7 +1055,8 @@ module Solver = struct
           in
           let+ () =
             Fiber.parallel_iter !impls ~f:(fun { var = impl_var; impl } ->
-              Conflict_classes.process conflict_classes impl_var impl;
+              Conflict_classes.process conflict_classes role impl_var impl;
+              Cross_platform_version.process cross_platform_versions impl_var impl;
               if Input.Impl.avoid impl then avoids := impl_var :: !avoids;
               match expand_deps with
               | `No_expand -> Fiber.return ()
@@ -881,6 +1129,7 @@ module Solver = struct
         (* All impl_candidates have now been added, so snapshot the cache. *)
       in
       Conflict_classes.seal conflict_classes;
+      Cross_platform_version.seal cross_platform_versions;
       (match max_avoids, !avoids with
        | None, _ | _, [] -> ()
        | Some max_avoids, avoids ->
@@ -948,7 +1197,19 @@ module Solver = struct
         in
         find_undecided root_req
       in
-      match Sat.run_solver sat decider with
+      let start = Time.now () in
+      let result = Sat.run_solver sat decider in
+      let stop = Time.now () in
+      Dune_trace.emit Sat (fun () ->
+        let stats = Sat.get_stats sat in
+        Dune_trace.Event.sat_solve
+          ~start
+          ~dur:(Time.diff stop start)
+          ~num_variables:stats.num_variables
+          ~num_clauses:stats.num_clauses
+          ~num_decisions:stats.num_decisions
+          ~num_conflicts:stats.num_conflicts);
+      match result with
       | false -> None
       | true ->
         (* Build the results object *)
@@ -1315,6 +1576,16 @@ module Solver = struct
         |> Option.iter ~f:(Component.apply_user_restriction component))
     ;;
 
+    (* Check if two roles refer to the same package (ignoring platform_id).
+       Used for conflict class checking - same package on different platforms
+       should not be considered in conflict with itself. *)
+    let same_package_name (role1 : Input.Role.t) (role2 : Input.Role.t) =
+      match role1, role2 with
+      | Real (name1, _), Real (name2, _) -> OpamPackage.Name.equal name1 name2
+      | Virtual (id1, _), Virtual (id2, _) -> Input.Virtual_id.equal id1 id2
+      | Real _, Virtual _ | Virtual _, Real _ -> false
+    ;;
+
     (** For each selected implementation with a conflict class, reject all candidates
         with the same class. *)
     let check_conflict_classes report =
@@ -1335,8 +1606,7 @@ module Solver = struct
           Input.Impl.conflict_class impl
           |> List.find_map ~f:(fun cl ->
             match OpamPackage.Name.Map.find_opt cl classes with
-            | Some other_role
-              when not (Ordering.is_eq (Input.Role.compare role other_role)) ->
+            | Some other_role when not (same_package_name role other_role) ->
               Some (`ClassConflict (other_role, cl))
             | _ -> None)))
     ;;
@@ -1374,24 +1644,91 @@ module Solver = struct
     ;;
   end
 
-  let solve context pkgs =
+  let solve context pkgs ~platforms =
     let req =
-      match pkgs with
-      | [ pkg ] -> Input.Real pkg
-      | pkgs ->
-        let impl : Input.Impl.t =
-          let depends =
+      match pkgs, platforms with
+      | [ pkg ], [ platform ] ->
+        (* Single package, single platform - use Real directly *)
+        Input.Real (pkg, platform)
+      | _ ->
+        (* Multiple packages or platforms - create virtual root *)
+        let depends =
+          List.concat_map platforms ~f:(fun platform ->
             List.map pkgs ~f:(fun name ->
-              { Input.drole = Real name; importance = Ensure; restrictions = [] })
-          in
-          VirtualImpl (Input.Rank.bottom, depends)
+              { Input.drole = Real (name, platform)
+              ; importance = Ensure
+              ; restrictions = []
+              }))
         in
+        let impl : Input.Impl.t = VirtualImpl (Input.Rank.bottom, depends) in
         Input.virtual_role [ impl ]
     in
     Solver.do_solve context ~closest_match:false req
     >>| function
     | Some sels -> Ok sels
     | None -> Error req
+  ;;
+
+  (* Filter a list, keeping the first occurrence of each [Some name] key. Items
+     whose [key] is [None] are kept unconditionally (used to pass Virtual roles
+     through, since they don't carry a package name to deduplicate on). *)
+  let filter_dedup_by_name ~key items =
+    let seen = ref OpamPackage.Name.Set.empty in
+    List.filter items ~f:(fun item ->
+      match key item with
+      | None -> true
+      | Some name ->
+        if OpamPackage.Name.Set.mem name !seen
+        then false
+        else (
+          seen := OpamPackage.Name.Set.add name !seen;
+          true))
+  ;;
+
+  let role_name = function
+    | Input.Virtual _ -> None
+    | Input.Real (name, _) -> Some name
+  ;;
+
+  let deduplicate_roles_by_name = filter_dedup_by_name ~key:role_name
+
+  let deduplicate_components_by_name =
+    filter_dedup_by_name ~key:(fun (c : Diagnostics.Component.t) -> role_name c.role)
+  ;;
+
+  (* Deduplicate impls by package name, keeping one representative per package.
+     For VirtualImpls, skip them if all their deps point to packages we've already seen. *)
+  let deduplicate_impls_by_name impls =
+    let seen = ref OpamPackage.Name.Set.empty in
+    List.filter impls ~f:(fun impl ->
+      match impl with
+      | Input.VirtualImpl (_, deps) ->
+        (* Check if this VirtualImpl has any deps we haven't seen yet *)
+        let has_new_deps =
+          List.exists deps ~f:(fun (d : Input.dependency) ->
+            match d.drole with
+            | Input.Virtual _ -> true
+            | Input.Real (name, _) -> not (OpamPackage.Name.Set.mem name !seen))
+        in
+        if has_new_deps
+        then (
+          (* Add all dep names to seen *)
+          List.iter deps ~f:(fun (d : Input.dependency) ->
+            match d.drole with
+            | Input.Virtual _ -> ()
+            | Input.Real (name, _) -> seen := OpamPackage.Name.Set.add name !seen);
+          true)
+        else false
+      | _ ->
+        (match Input.Impl.version impl with
+         | None -> true
+         | Some pkg ->
+           let name = OpamPackage.name pkg in
+           if OpamPackage.Name.Set.mem name !seen
+           then false
+           else (
+             seen := OpamPackage.Name.Set.add name !seen;
+             true)))
   ;;
 
   let pp_rolemap ~verbose reasons =
@@ -1405,6 +1742,25 @@ module Solver = struct
            | _, `No_candidates -> `Right role
            | _, _ -> `Middle component))
     in
+    (* Deduplicate to avoid showing the same package multiple times for different platforms.
+       Also exclude packages from 'bad' if they appear in 'good' (a package that's
+       selected on one platform shouldn't be shown as a problem due to another platform). *)
+    let good = deduplicate_impls_by_name good in
+    let good_names =
+      List.filter_map good ~f:(fun impl ->
+        match Input.Impl.version impl with
+        | Some pkg -> Some (OpamPackage.name pkg)
+        | None -> None)
+      |> OpamPackage.Name.Set.of_list
+    in
+    let bad =
+      List.filter bad ~f:(fun (component : Diagnostics.Component.t) ->
+        match component.role with
+        | Input.Virtual _ -> true
+        | Input.Real (name, _) -> not (OpamPackage.Name.Set.mem name good_names))
+    in
+    let bad = deduplicate_components_by_name bad in
+    let unknown = deduplicate_roles_by_name unknown in
     let pp_bad = Diagnostics.Component.pp ~verbose in
     let pp_unknown role = Pp.box (Input.Role.pp role) in
     match unknown with
@@ -1438,9 +1794,32 @@ module Solver = struct
     Input.Role.Map.values sels
     |> List.filter_map ~f:(fun (sel : Solver.selection) -> Input.Impl.version sel.impl)
   ;;
+
+  (* Extract packages grouped by platform from the solver result.
+     Returns a map: package_name -> (platform_id -> version)
+     This lets us detect if a package has different versions on different platforms. *)
+  let packages_by_platform sels =
+    Input.Role.Map.foldi
+      sels
+      ~init:OpamPackage.Name.Map.empty
+      ~f:(fun role (sel : Solver.selection) acc ->
+        match role with
+        | Input.Virtual _ -> acc
+        | Input.Real (name, platform_id) ->
+          (match Input.Impl.version sel.impl with
+           | None -> acc
+           | Some pkg ->
+             let version = OpamPackage.version pkg in
+             let platforms =
+               match OpamPackage.Name.Map.find_opt name acc with
+               | None -> Platform_id.Map.singleton platform_id version
+               | Some platforms -> Platform_id.Map.set platforms platform_id version
+             in
+             OpamPackage.Name.Map.add name platforms acc))
+  ;;
 end
 
-let solve_package_list packages ~context =
+let solve_package_list packages ~context ~platforms =
   Fiber.collect_errors (fun () ->
     (* [Solver.solve] returns [Error] when it's unable to find a solution to
        the dependencies, but can also raise exceptions, for example if opam
@@ -1448,7 +1827,7 @@ let solve_package_list packages ~context =
        an unexpected opam exception from crashing dune, we catch all
        exceptions raised by the solver and report them as [User_error]s
        instead. *)
-    Solver.solve context packages)
+    Solver.solve context packages ~platforms)
   >>| (function
    | Ok (Ok res) -> Ok res
    | Ok (Error e) -> Error (`Diagnostics e)
@@ -1457,7 +1836,10 @@ let solve_package_list packages ~context =
      (* CR-rgrinberg: this needs to be handled right *)
      Error (`Exn exn))
   >>= function
-  | Ok packages -> Fiber.return @@ Ok (Solver.packages_of_result packages)
+  | Ok sels ->
+    let packages = Solver.packages_of_result sels in
+    let packages_by_platform = Solver.packages_by_platform sels in
+    Fiber.return @@ Ok (packages, packages_by_platform)
   | Error (`Diagnostics e) ->
     let+ diagnostics = Solver.diagnostics context e in
     Error (`Solve_error diagnostics)
@@ -1719,6 +2101,7 @@ let resolve_opam_packages opam_packages_to_lock candidates_cache =
 
 let solve_lock_dir
       solver_env
+      ~platform_overlays
       version_preference
       repos
       ~local_packages
@@ -1727,211 +2110,306 @@ let solve_lock_dir
       ~selected_depopts
       ~portable_lock_dir
   =
-  match Package_name.Map.add pinned_packages Dune_dep.name Resolved_package.dune with
-  | Error p ->
-    let loc = Resolved_package.loc p in
-    let message =
-      User_error.make
-        ~loc
-        [ Pp.text
-            "Dune cannot be pinned. The currently running version is the only one that \
-             may be used"
-        ]
-    in
-    Fiber.return (Error (`Manifest_error message))
-  | Ok pinned_packages ->
-    let pinned_package_names = Package_name.Set.of_keys pinned_packages in
-    let stats_updater = Solver_stats.Updater.init () in
-    let context =
-      let rec context =
-        lazy
-          (Context.create
-             ~pinned_packages
-             ~solver_env
-             ~repos
-             ~version_preference
-             ~local_packages:local_packages'
-             ~stats_updater
-             ~constraints)
-      and local_packages' =
-        lazy
-          (Package_name.Map.map local_packages ~f:(fun local ->
-             let opam_file = Local_package.For_solver.to_opam_file local in
-             let version =
-               Option.value
-                 opam_file.version
-                 ~default:Context.local_package_default_version
-             in
-             let deps =
-               lazy
-                 (let opam_package =
-                    OpamPackage.create (OpamFile.OPAM.name opam_file) version
-                  in
-                  Context.filter_deps (Lazy.force context) opam_package)
-             in
-             let depends = lazy (Lazy.force deps (OpamFile.OPAM.depends opam_file)) in
-             let conflicts = lazy (Lazy.force deps (OpamFile.OPAM.conflicts opam_file)) in
-             { Context.opam_file; version; depends; conflicts; name = local.name }))
-      in
-      Lazy.force context
-    in
-    Package_name.Map.keys local_packages @ selected_depopts
-    |> List.map ~f:Package_name.to_opam_package_name
-    |> solve_package_list ~context
-    >>= (function
-     | Error _ as e -> Fiber.return e
-     | Ok solution ->
-       let is_dune name = Package_name.equal Dune_dep.name name in
-       (* don't include local packages or dune in the lock dir *)
-       let opam_packages_to_lock =
-         let is_local_package = Package_name.Map.mem local_packages in
-         List.filter solution ~f:(fun package ->
-           let name = OpamPackage.name package |> Package_name.of_opam_package_name in
-           (not (is_local_package name)) && not (is_dune name))
+  match platform_overlays with
+  | [] -> Code_error.raise "solve_lock_dir called with empty platform_overlays" []
+  | _ ->
+    (match Package_name.Map.add pinned_packages Dune_dep.name Resolved_package.dune with
+     | Error p ->
+       let loc = Resolved_package.loc p in
+       let message =
+         User_error.make
+           ~loc
+           [ Pp.text
+               "Dune cannot be pinned. The currently running version is the only one \
+                that may be used"
+           ]
        in
-       let* candidates_cache = Fiber.Cache.to_table context.candidates_cache in
-       let resolve_package name version =
-         (Table.find_exn candidates_cache name).resolved
-         |> OpamPackage.Version.Map.find version
+       Fiber.return (Error (`Manifest_error message))
+     | Ok pinned_packages ->
+       let pinned_package_names = Package_name.Set.of_keys pinned_packages in
+       let stats_updater = Solver_stats.Updater.init () in
+       (* Assign each overlay a Platform_id by its position in the input list.
+          The convention "Platform_id = index into [platform_overlays]" is
+          shared with [full_solver_envs] below and with [packages_by_platform]
+          returned by [Solver]; do not reorder one without the others. *)
+       let platform_overlays_map, platforms =
+         List.fold_left
+           platform_overlays
+           ~init:(Platform_id.Map.empty, [])
+           ~f:(fun (map, platforms) overlay ->
+             let id = Platform_id.of_int (List.length platforms) in
+             Platform_id.Map.set map id overlay, platforms @ [ id ])
        in
-       let* pkgs_by_name =
-         let+ pkgs =
-           let version_by_package_name =
-             Package_name.Map.of_list_map_exn
-               solution
-               ~f:(fun (package : OpamPackage.t) ->
-                 ( Package_name.of_opam_package_name (OpamPackage.name package)
-                 , Package_version.of_opam_package_version (OpamPackage.version package) ))
-           in
-           let+ resolved_pkgs =
-             resolve_opam_packages opam_packages_to_lock candidates_cache
-           in
-           List.map resolved_pkgs ~f:(fun (name, opam_package, resolved_package) ->
-             Lock_pkg.opam_package_to_lock_file_pkg
-               solver_env
-               stats_updater
-               version_by_package_name
-               opam_package
-               ~pinned:(Package_name.Set.mem pinned_package_names name)
-               resolved_package
-               ~portable_lock_dir)
-           |> Result.List.all
+       let full_solver_envs =
+         List.map platform_overlays ~f:(fun overlay ->
+           Solver_env.extend solver_env overlay)
+       in
+       (* Used where the surrounding code still needs a single platform's
+          full env (e.g. choosing reachability for the primary platform).
+          The empty-list case is unreachable: [platform_overlays = []] is
+          rejected with [Code_error] above. *)
+       let primary_full_solver_env =
+         match full_solver_envs with
+         | env :: _ -> env
+         | [] -> solver_env
+       in
+       let context =
+         let rec context =
+           lazy
+             (Context.create
+                ~pinned_packages
+                ~solver_env
+                ~platform_overlays:platform_overlays_map
+                ~repos
+                ~version_preference
+                ~local_packages:local_packages'
+                ~stats_updater
+                ~constraints)
+         and local_packages' =
+           lazy
+             (Package_name.Map.map local_packages ~f:(fun local ->
+                let opam_file = Local_package.For_solver.to_opam_file local in
+                let version =
+                  Option.value
+                    opam_file.version
+                    ~default:Context.local_package_default_version
+                in
+                let deps =
+                  lazy
+                    (let opam_package =
+                       OpamPackage.create (OpamFile.OPAM.name opam_file) version
+                     in
+                     Context.filter_deps_local (Lazy.force context) opam_package)
+                in
+                let depends = lazy (Lazy.force deps (OpamFile.OPAM.depends opam_file)) in
+                let conflicts =
+                  lazy (Lazy.force deps (OpamFile.OPAM.conflicts opam_file))
+                in
+                { Context.opam_file; version; depends; conflicts; name = local.name }))
          in
-         Result.map pkgs ~f:(fun pkgs ->
-           match Package_name.Map.of_list_map pkgs ~f:(fun pkg -> pkg.info.name, pkg) with
-           | Error (name, _pkg1, _pkg2) ->
-             Code_error.raise
-               "Solver selected multiple versions for the same package"
-               [ "name", Package_name.to_dyn name ]
-           | Ok pkgs_by_name ->
-             let reachable =
-               reject_unreachable_packages
-                 solver_env
-                 ~dune_version:
-                   (Package_version.of_opam_package_version context.dune_version)
-                 ~local_packages
-                 ~pkgs_by_name
-             in
-             Package_name.Map.filteri pkgs_by_name ~f:(fun name _ ->
-               Package_name.Set.mem reachable name))
+         Lazy.force context
        in
-       let ocaml =
-         let open Result.O in
-         let* pkgs_by_name = pkgs_by_name in
-         (* This doesn't allow the compiler to live in the source tree. Oh
+       Package_name.Map.keys local_packages @ selected_depopts
+       |> List.map ~f:Package_name.to_opam_package_name
+       |> solve_package_list ~context ~platforms
+       >>= (function
+        | Error _ as e -> Fiber.return e
+        | Ok (solution, packages_by_platform) ->
+          (* Look up the full solver_envs for the platforms a package is
+             selected on. A package missing from [packages_by_platform] means
+             the solver didn't pick it on any platform; we fall back to all
+             full envs since a downstream consumer ([Lock_pkg]) raises on
+             empty lists. *)
+          let solver_envs_for_package opam_name =
+            match OpamPackage.Name.Map.find_opt opam_name packages_by_platform with
+            | None -> full_solver_envs
+            | Some platform_map ->
+              let platform_ids = Platform_id.Map.keys platform_map in
+              if List.length platform_ids = List.length full_solver_envs
+              then full_solver_envs
+              else
+                List.filter_map platform_ids ~f:(fun id ->
+                  Platform_id.Map.find platform_overlays_map id
+                  |> Option.map ~f:(fun overlay -> Solver_env.extend solver_env overlay))
+          in
+          let is_dune name = Package_name.equal Dune_dep.name name in
+          (* don't include local packages or dune in the lock dir.
+          Deduplicate since multi-platform solving returns same package for each platform. *)
+          let opam_packages_to_lock =
+            let is_local_package = Package_name.Map.mem local_packages in
+            List.filter solution ~f:(fun package ->
+              let name = OpamPackage.name package |> Package_name.of_opam_package_name in
+              (not (is_local_package name)) && not (is_dune name))
+            |> List.sort_uniq ~compare:(fun a b ->
+              Ordering.of_int (OpamPackage.compare a b))
+          in
+          let* candidates_cache = Fiber.Cache.to_table context.candidates_cache in
+          let resolve_package name version =
+            (Table.find_exn candidates_cache name).resolved
+            |> OpamPackage.Version.Map.find version
+          in
+          let* pkgs_by_name =
+            let+ pkgs =
+              (* Deduplicate packages - same package may appear for multiple
+                 platforms. The SAT-level cross-platform version equality
+                 constraint guarantees the version is identical across
+                 platforms, so the fold below either inserts a fresh entry or
+                 sees a matching version. A mismatch indicates a bug in the
+                 SAT setup, not user error. *)
+              let version_by_package_name =
+                List.fold_left
+                  solution
+                  ~init:Package_name.Map.empty
+                  ~f:(fun acc package ->
+                    let name =
+                      Package_name.of_opam_package_name (OpamPackage.name package)
+                    in
+                    let version =
+                      Package_version.of_opam_package_version
+                        (OpamPackage.version package)
+                    in
+                    match Package_name.Map.find acc name with
+                    | None -> Package_name.Map.set acc name version
+                    | Some existing_version ->
+                      if not (Package_version.equal existing_version version)
+                      then
+                        Code_error.raise
+                          "Cross-platform version equality SAT constraint failed: solver \
+                           selected multiple versions of the same package"
+                          [ "name", Package_name.to_dyn name
+                          ; "version_a", Package_version.to_dyn existing_version
+                          ; "version_b", Package_version.to_dyn version
+                          ];
+                      acc)
+              in
+              let+ resolved_pkgs =
+                resolve_opam_packages opam_packages_to_lock candidates_cache
+              in
+              (* Generate lock file entries for each package.
+                 Lock_pkg handles per-platform evaluation and merging when needed. *)
+              List.map resolved_pkgs ~f:(fun (name, opam_package, resolved_package) ->
+                let opam_name = Package_name.to_opam_package_name name in
+                let package_solver_envs = solver_envs_for_package opam_name in
+                Lock_pkg.opam_package_to_lock_file_pkg
+                  package_solver_envs
+                  stats_updater
+                  version_by_package_name
+                  opam_package
+                  ~pinned:(Package_name.Set.mem pinned_package_names name)
+                  resolved_package
+                  ~portable_lock_dir)
+              |> Result.List.all
+            in
+            Result.map pkgs ~f:(fun pkgs ->
+              match
+                Package_name.Map.of_list_map pkgs ~f:(fun pkg -> pkg.info.name, pkg)
+              with
+              | Error (name, _pkg1, _pkg2) ->
+                Code_error.raise
+                  "Solver selected multiple versions for the same package"
+                  [ "name", Package_name.to_dyn name ]
+              | Ok pkgs_by_name ->
+                (* Compute reachability for ALL platform envs and union the results.
+                   A package is reachable if it's reachable on any platform. *)
+                let reachable =
+                  List.fold_left
+                    full_solver_envs
+                    ~init:Package_name.Set.empty
+                    ~f:(fun acc solver_env ->
+                      let reachable_on_platform =
+                        reject_unreachable_packages
+                          solver_env
+                          ~dune_version:
+                            (Package_version.of_opam_package_version context.dune_version)
+                          ~local_packages
+                          ~pkgs_by_name
+                      in
+                      Package_name.Set.union acc reachable_on_platform)
+                in
+                Package_name.Map.filteri pkgs_by_name ~f:(fun name _ ->
+                  Package_name.Set.mem reachable name))
+          in
+          let ocaml =
+            let open Result.O in
+            let* pkgs_by_name = pkgs_by_name in
+            (* This doesn't allow the compiler to live in the source tree. Oh
          well, it's not possible now anyway. *)
-         match
-           Package_name.Map.filter_map pkgs_by_name ~f:(fun (pkg : Lock_dir.Pkg.t) ->
-             match
-               let version = Package_version.to_opam_package_version pkg.info.version in
-               resolve_package pkg.info.name version |> package_kind
-             with
-             | `Compiler -> Some pkg.info.name
-             | `Non_compiler -> None)
-           |> Package_name.Map.values
-         with
-         | [] -> Ok None
-         | [ x ] -> Ok (Some (Loc.none, x))
-         | _ ->
-           Error
-             (User_error.make
-                (* CR rgrinberg: needs to include locations *)
-                [ Pp.text "multiple compilers selected" ]
-                ~hints:[ Pp.text "add a conflict" ])
-       in
-       let lock_dir =
-         let open Result.O in
-         let* pkgs_by_name = pkgs_by_name
-         and* ocaml = ocaml in
-         let+ () =
-           Package_name.Map.values pkgs_by_name
-           |> Result.List.map ~f:(fun { Lock_dir.Pkg.depends; info = { name; _ }; _ } ->
-             match
-               Lock_dir.Conditional_choice.choose_for_platform
-                 depends
-                 ~platform:solver_env
-             with
-             | None -> Ok ()
-             | Some depends ->
-               Result.List.map
-                 depends
-                 ~f:(fun { Lock_dir.Dependency.name = dep_name; loc } ->
-                   match
-                     (not (is_dune dep_name))
-                     && Package_name.Map.mem local_packages dep_name
-                   with
-                   | false -> Ok ()
-                   | true ->
-                     Error
-                       (User_error.make
-                          ~loc
-                          [ Pp.textf
-                              "Dune does not support packages outside the workspace \
-                               depending on packages in the workspace. The package %S is \
-                               not in the workspace but it depends on the package %S \
-                               which is in the workspace."
-                              (Package_name.to_string name)
-                              (Package_name.to_string dep_name)
-                          ]))
-               |> Result.map ~f:(fun (_ : unit list) -> ()))
-           |> Result.map ~f:(fun (_ : unit list) -> ())
-         in
-         let expanded_solver_variable_bindings =
-           let stats = Solver_stats.Updater.snapshot stats_updater in
-           Solver_stats.Expanded_variable_bindings.of_variable_set
-             stats.expanded_variables
-             solver_env
-         in
-         Lock_dir.create_latest_version
-           pkgs_by_name
-           ~local_packages:(Package_name.Map.values local_packages)
-           ~ocaml
-           ~repos:(Some repos)
-           ~expanded_solver_variable_bindings
-           ~solved_for_platform:(Some solver_env)
-           ~portable_lock_dir
-       in
-       let+ files =
-         match pkgs_by_name with
-         | Error e -> Fiber.return (Error e)
-         | Ok pkgs_by_name ->
-           let+ files =
-             Package_name.Map.to_list_map
-               pkgs_by_name
-               ~f:(fun name (package : Lock_dir.Pkg.t) ->
-                 Package_version.to_opam_package_version package.info.version
-                 |> resolve_package name)
-             |> files
-           in
-           files
-       in
-       (match Result.both lock_dir files with
-        | Error e -> Error (`Manifest_error e)
-        | Ok (lock_dir, files) ->
-          Ok
-            { Solver_result.lock_dir
-            ; files
-            ; pinned_packages = pinned_package_names
-            ; num_expanded_packages = Context.count_expanded_packages context
-            }))
+            match
+              Package_name.Map.filter_map pkgs_by_name ~f:(fun (pkg : Lock_dir.Pkg.t) ->
+                match
+                  let version =
+                    Package_version.to_opam_package_version pkg.info.version
+                  in
+                  resolve_package pkg.info.name version |> package_kind
+                with
+                | `Compiler -> Some pkg.info.name
+                | `Non_compiler -> None)
+              |> Package_name.Map.values
+            with
+            | [] -> Ok None
+            | [ x ] -> Ok (Some (Loc.none, x))
+            | _ ->
+              Error
+                (User_error.make
+                   (* CR rgrinberg: needs to include locations *)
+                   [ Pp.text "multiple compilers selected" ]
+                   ~hints:[ Pp.text "add a conflict" ])
+          in
+          let lock_dir =
+            let open Result.O in
+            let* pkgs_by_name = pkgs_by_name
+            and* ocaml = ocaml in
+            let+ () =
+              Package_name.Map.values pkgs_by_name
+              |> Result.List.map
+                   ~f:(fun { Lock_dir.Pkg.depends; info = { name; _ }; _ } ->
+                     match
+                       Lock_dir.Conditional_choice.choose_for_platform
+                         depends
+                         ~platform:primary_full_solver_env
+                     with
+                     | None -> Ok ()
+                     | Some depends ->
+                       Result.List.map
+                         depends
+                         ~f:(fun { Lock_dir.Dependency.name = dep_name; loc } ->
+                           match
+                             (not (is_dune dep_name))
+                             && Package_name.Map.mem local_packages dep_name
+                           with
+                           | false -> Ok ()
+                           | true ->
+                             Error
+                               (User_error.make
+                                  ~loc
+                                  [ Pp.textf
+                                      "Dune does not support packages outside the \
+                                       workspace depending on packages in the workspace. \
+                                       The package %S is not in the workspace but it \
+                                       depends on the package %S which is in the \
+                                       workspace."
+                                      (Package_name.to_string name)
+                                      (Package_name.to_string dep_name)
+                                  ]))
+                       |> Result.map ~f:(fun (_ : unit list) -> ()))
+              |> Result.map ~f:(fun (_ : unit list) -> ())
+            in
+            let expanded_solver_variable_bindings =
+              let stats = Solver_stats.Updater.snapshot stats_updater in
+              Solver_stats.Expanded_variable_bindings.of_variable_set
+                stats.expanded_variables
+                solver_env
+            in
+            Lock_dir.create_latest_version
+              pkgs_by_name
+              ~local_packages:(Package_name.Map.values local_packages)
+              ~ocaml
+              ~repos:(Some repos)
+              ~expanded_solver_variable_bindings
+              ~solved_for_platforms:full_solver_envs
+              ~portable_lock_dir
+          in
+          let+ files =
+            match pkgs_by_name with
+            | Error e -> Fiber.return (Error e)
+            | Ok pkgs_by_name ->
+              let+ files =
+                Package_name.Map.to_list_map
+                  pkgs_by_name
+                  ~f:(fun name (package : Lock_dir.Pkg.t) ->
+                    Package_version.to_opam_package_version package.info.version
+                    |> resolve_package name)
+                |> files
+              in
+              files
+          in
+          (match Result.both lock_dir files with
+           | Error e -> Error (`Manifest_error e)
+           | Ok (lock_dir, files) ->
+             Ok
+               { Solver_result.lock_dir
+               ; files
+               ; pinned_packages = pinned_package_names
+               ; num_expanded_packages = Context.count_expanded_packages context
+               })))
 ;;

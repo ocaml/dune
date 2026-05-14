@@ -73,9 +73,23 @@ Generate all lockdirs:
   $ dune pkg lock dune.macos.lock
   Solution for dune.macos.lock:
   - macos-only.0.0.1
-  $ dune pkg lock dune.linux.lock
+  $ DUNE_TRACE=+sat dune pkg lock dune.linux.lock
   Solution for dune.linux.lock:
   - linux-only.0.0.1
+
+The trace file is reset per dune invocation, so the assertion below
+covers only the last pkg lock above (one SAT engine run, non-portable).
+
+  $ dune trace cat \
+  > | jq -s 'include "dune"; [ .[] | satSolveEvents | .args ]'
+  [
+    {
+      "num_variables": 4,
+      "num_clauses": 4,
+      "num_decisions": 0,
+      "num_conflicts": 0
+    }
+  ]
 
 Demonstrate that the correct lockdir is being chosen by building packages that
 are only dependent on on certain systems.

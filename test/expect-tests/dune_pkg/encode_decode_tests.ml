@@ -111,7 +111,7 @@ let%expect_test "encode/decode round trip test for lockdir with no deps" =
          ~ocaml:None
          ~repos:None
          ~expanded_solver_variable_bindings:Expanded_variable_bindings.empty
-         ~solved_for_platform:None
+         ~solved_for_platforms:[]
          ~portable_lock_dir:false)
     ();
   [%expect
@@ -164,7 +164,7 @@ let%expect_test "encode/decode round trip test for lockdir with simple deps" =
                [ Package_variable_name.os, Variable_value.string "linux" ]
            ; unset_variables = [ Package_variable_name.os_family ]
            }
-         ~solved_for_platform:None
+         ~solved_for_platforms:[]
          ~portable_lock_dir:false
          (Package_name.Map.of_list_exn
             [ mk_pkg_basic ~name:"foo" ~version:(Package_version.of_string "0.1.0")
@@ -326,7 +326,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
       ~ocaml:(Some (Loc.none, Package_name.of_string "ocaml"))
       ~repos:(Some [ opam_repo ])
       ~expanded_solver_variable_bindings:Expanded_variable_bindings.empty
-      ~solved_for_platform:None
+      ~solved_for_platforms:[]
       ~portable_lock_dir:false
       (Package_name.Map.of_list_exn [ pkg_a; pkg_b; pkg_c ])
   in
@@ -474,7 +474,7 @@ let%expect_test "encode/decode round trip test with locked repo revision" =
         ~ocaml:(Some (Loc.none, Package_name.of_string "ocaml"))
         ~repos:(Some [ opam_repo ])
         ~expanded_solver_variable_bindings:Expanded_variable_bindings.empty
-        ~solved_for_platform:None
+        ~solved_for_platforms:[]
         ~portable_lock_dir:false
         (Package_name.Map.of_list_exn [ pkg_a; pkg_b; pkg_c ])
     in

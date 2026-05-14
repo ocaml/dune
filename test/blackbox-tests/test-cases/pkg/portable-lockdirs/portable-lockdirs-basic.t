@@ -32,11 +32,26 @@ Create a package that writes a different value to some files depending on the os
   >  (libraries foo))
   > EOF
 
-  $ dune pkg lock
+  $ DUNE_TRACE=+sat dune pkg lock
   Solution for dune.lock
   
   Dependencies common to all supported platforms:
   - foo.0.0.1
+
+Under single-solve, the SAT engine runs once for all default platforms.
+With the cross-platform version equality SAT constraint, extra `somewhere`
+variables (one per candidate version) are added to the problem.
+
+  $ dune trace cat \
+  > | jq -s 'include "dune"; [ .[] | satSolveEvents | .args ]'
+  [
+    {
+      "num_variables": 11,
+      "num_clauses": 17,
+      "num_decisions": 0,
+      "num_conflicts": 0
+    }
+  ]
 
   $ cat ${default_lock_dir}/lock.dune
   (lang package 0.1)

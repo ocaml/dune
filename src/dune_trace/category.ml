@@ -23,6 +23,7 @@ type t =
   | Digest
   | Artifact_substitution
   | Thread
+  | Sat
 
 let all =
   [ Rpc
@@ -47,6 +48,7 @@ let all =
   ; Digest
   ; Artifact_substitution
   ; Thread
+  ; Sat
   ]
 ;;
 
@@ -73,6 +75,7 @@ let to_string = function
   | Digest -> "digest"
   | Artifact_substitution -> "artifact_subtitution"
   | Thread -> "thread"
+  | Sat -> "sat"
 ;;
 
 let of_string =
@@ -111,6 +114,7 @@ module Set = Bit_set.Make (struct
       | Digest -> 19
       | Artifact_substitution -> 20
       | Thread -> 21
+      | Sat -> 22
     ;;
   end)
 

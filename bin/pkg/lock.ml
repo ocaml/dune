@@ -115,9 +115,7 @@ module Platforms_by_message = struct
      are relevant, deduplicating common messages. *)
   type t = Solver_env.t list Message_map.t
 
-  let singleton message platform : t = Message_map.singleton message [ platform ]
   let to_list (t : t) : (Message.t * Solver_env.t list) list = Message_map.to_list t
-  let union_all ts : t = Message_map.union_all ts ~f:(fun _ a b -> Some (a @ b))
 
   let all_solver_errors_raising_if_any_manifest_errors t =
     let solver_errors, manifest_errors =
@@ -144,9 +142,24 @@ let solve_multiple_platforms
       ~portable_lock_dir
   =
   let open Fiber.O in
-  let solve_for_env env =
+  (* For portable lockdirs, use a portable base env (vars unset) + platform overlays.
+     For non-portable, use the full env + empty overlay. *)
+  let solver_env, platform_overlays =
+    if portable_lock_dir
+    then (
+      let portable_solver_env =
+        Solver_env.unset_multi
+          base_solver_env
+          Dune_lang.Package_variable_name.platform_specific
+      in
+      portable_solver_env, solve_for_platforms)
+    else base_solver_env, [ Solver_env.empty ]
+  in
+  (* Single solve for all platforms *)
+  let+ result =
     Dune_pkg.Opam_solver.solve_lock_dir
-      env
+      solver_env
+      ~platform_overlays
       version_preference
       repos
       ~pins
@@ -155,45 +168,20 @@ let solve_multiple_platforms
       ~selected_depopts
       ~portable_lock_dir
   in
-  let portable_solver_env =
-    Solver_env.unset_multi
-      base_solver_env
-      Dune_lang.Package_variable_name.platform_specific
-  in
-  let+ results =
-    Fiber.parallel_map solve_for_platforms ~f:(fun platform_env ->
-      let solver_env = Solver_env.extend portable_solver_env platform_env in
-      let+ solver_result = solve_for_env solver_env in
-      Result.map_error solver_result ~f:(fun message ->
-        let message : Platforms_by_message.Message.t =
-          match message with
-          | `Solve_error m -> Solve_error m
-          | `Manifest_error m -> Manifest_error m
-        in
-        Platforms_by_message.singleton message platform_env))
-  in
-  let solver_results, errors =
-    List.partition_map results ~f:(function
-      | Ok result -> Left result
-      | Error e -> Right e)
-  in
-  match solver_results, errors with
-  | [], [] -> Code_error.raise "Solver did not run for any platforms." []
-  | [], errors ->
-    `All_error
-      (Platforms_by_message.union_all errors
-       |> Platforms_by_message.all_solver_errors_raising_if_any_manifest_errors)
-  | x :: xs, errors ->
-    let merged_solver_result =
-      List.fold_left xs ~init:x ~f:Dune_pkg.Opam_solver.Solver_result.merge
+  match result with
+  | Ok solver_result -> `All_ok solver_result
+  | Error message ->
+    let error_message : Platforms_by_message.Message.t =
+      match message with
+      | `Solve_error m -> Solve_error m
+      | `Manifest_error m -> Manifest_error m
     in
-    if List.is_empty errors
-    then `All_ok merged_solver_result
-    else
-      `Partial
-        ( merged_solver_result
-        , Platforms_by_message.union_all errors
-          |> Platforms_by_message.all_solver_errors_raising_if_any_manifest_errors )
+    (* Associate error with all platforms (filtered to platform-specific vars only
+       for cleaner display). Single-solve fails for all platforms together. *)
+    let platform_envs =
+      List.map platform_overlays ~f:Solver_env.remove_all_except_platform_specific
+    in
+    `All_error (Platforms_by_message.Message_map.singleton error_message platform_envs)
 ;;
 
 let user_lock_dir_path path =
@@ -381,32 +369,6 @@ let solve_lock_dir
     match result with
     | `All_error messages -> Error messages
     | `All_ok solver_result -> Ok (solver_result, [])
-    | `Partial (solver_result, errors) ->
-      Log.info
-        "Solver found partial solution"
-        [ "error_count", Dyn.int (List.length errors) ];
-      let all_platforms =
-        List.concat_map errors ~f:snd |> List.sort_uniq ~compare:Solver_env.compare
-      in
-      Ok
-        ( solver_result
-        , [ Pp.nop
-          ; Pp.tag User_message.Style.Warning
-            @@ Pp.vbox
-            @@ Pp.concat
-                 ~sep:Pp.cut
-                 [ Pp.box
-                   @@ Pp.text "No package solution was found for some requsted platforms."
-                 ; Pp.nop
-                 ; Pp.box @@ Pp.text "Platforms with no solution:"
-                 ; Pp.box @@ Pp.enumerate all_platforms ~f:Solver_env.pp_oneline
-                 ; Pp.nop
-                 ; Pp.box
-                   @@ Pp.text
-                        "See the trace file with --trace-file for more details. \
-                         Configure platforms to solve for in the dune-workspace file."
-                 ]
-          ] )
   in
   match solver_result with
   | Error messages -> Fiber.return (Error (lock_dir_path, messages))
@@ -497,18 +459,26 @@ let solve
     if portable_lock_dir
     then
       User_error.raise
-        (List.concat_map errors ~f:(fun (path, errors) ->
+        (List.concat_map errors ~f:(fun (path, platforms_by_message) ->
+           let solver_errors =
+             Platforms_by_message.all_solver_errors_raising_if_any_manifest_errors
+               platforms_by_message
+           in
            [ Pp.box
              @@ Pp.textf
                   "Unable to solve dependencies while generating lock directory: %s"
                   (Path.to_string_maybe_quoted path)
-           ; Pp.vbox (Pp.concat ~sep:Pp.cut (pp_solve_errors_by_platforms errors))
+           ; Pp.vbox (Pp.concat ~sep:Pp.cut (pp_solve_errors_by_platforms solver_errors))
            ]))
     else
       User_error.raise
         ([ Pp.text "Unable to solve dependencies for the following lock directories:" ]
-         @ List.concat_map errors ~f:(fun (path, errors) ->
-           let messages = List.map errors ~f:fst in
+         @ List.concat_map errors ~f:(fun (path, platforms_by_message) ->
+           let solver_errors =
+             Platforms_by_message.all_solver_errors_raising_if_any_manifest_errors
+               platforms_by_message
+           in
+           let messages = List.map solver_errors ~f:fst in
            [ Pp.textf
                "Lock directory %s:"
                (Path.to_string_maybe_quoted (user_lock_dir_path path))

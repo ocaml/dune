@@ -44,6 +44,10 @@ module Conditional_choice : sig
   val empty : 'a t
   val singleton : Solver_env.t -> 'a -> 'a t
 
+  (** Create a conditional choice with a condition covering multiple platforms.
+      Used when a single solve produces a result valid for all platforms. *)
+  val singleton_multi : Solver_env.t list -> 'a -> 'a t
+
   (** Returns the first value whose associated environment is a subset of the
       specified environment. *)
   val choose_for_platform : 'a t -> platform:Solver_env.t -> 'a option
@@ -81,6 +85,10 @@ module Pkg : sig
     -> Package_version.t option
     -> lock_dir:Path.t
     -> Path.Source.t
+
+  (** Merge platform-specific fields from two packages. Raises a code error if
+      the packages differ in non-platform-specific fields. *)
+  val merge_conditionals : t -> t -> t
 end
 
 module Repositories : sig
@@ -133,9 +141,7 @@ val create_latest_version
   -> ocaml:(Loc.t * Package_name.t) option
   -> repos:Opam_repo.t list option
   -> expanded_solver_variable_bindings:Solver_stats.Expanded_variable_bindings.t
-  -> solved_for_platform:Solver_env.t option
-       (* TODO: make the [solved_for_platform] argument non-optional when
-          portable lockdirs becomes the default *)
+  -> solved_for_platforms:Solver_env.t list
   -> portable_lock_dir:bool
   -> t
 

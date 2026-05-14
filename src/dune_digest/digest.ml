@@ -137,7 +137,7 @@ let file_async file =
 ;;
 
 let equal = Blake3_mini.Digest.equal
-let hash = Poly.hash
+let hash = Blake3_mini.Digest.hash
 let file p = file (Path.to_string p)
 let file_async p = file_async (Path.to_string p)
 let from_hex s = Blake3_mini.Digest.of_hex s

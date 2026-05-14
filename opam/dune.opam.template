@@ -16,7 +16,7 @@ depends: [
   "mdx" { with-dev-setup & >= "2.3.0" & os != "win32" }
   "menhir" { with-dev-setup & os != "win32" }
   "ocamlfind" { with-dev-setup & os != "win32" }
-  "odoc" { with-dev-setup & >= "2.4.0" & os != "win32" }
+  "odoc" { with-dev-setup & >= "3.2.0" & os != "win32" }
   "ppx_expect" { with-dev-setup & >= "v0.17" & os != "win32" }
   "spawn" { with-dev-setup }
   "ppx_inline_test" { with-dev-setup & os != "win32" }

@@ -49,3 +49,25 @@ external feed_bigstring_release_lock
   = "blake3_mini_feed_bigstring_unlock"
 
 external fd : Unix.file_descr -> string = "blake3_mini_fd"
+external file_with_size_unix : string -> Digest.t * int = "blake3_mini_file_with_size"
+
+let file_with_size_ocaml file =
+  let digest_fd = fd in
+  let fd = Unix.openfile file [ Unix.O_RDONLY; Unix.O_SHARE_DELETE; Unix.O_CLOEXEC ] 0 in
+  match
+    let size = (Unix.fstat fd).st_size in
+    let digest = digest_fd fd in
+    digest, size
+  with
+  | exception exn ->
+    let bt = Printexc.get_raw_backtrace () in
+    (match Unix.close fd with
+     | () -> ()
+     | exception _ -> ());
+    Printexc.raise_with_backtrace exn bt
+  | res ->
+    Unix.close fd;
+    res
+;;
+
+let file_with_size = if Sys.win32 then file_with_size_ocaml else file_with_size_unix

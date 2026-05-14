@@ -15,6 +15,12 @@ let%expect_test "128 bits fd" =
   [%expect {| 7a7d692dfca02a756fea9a8a77903807 |}]
 ;;
 
+let%expect_test "file with size" =
+  let hash, size = Blake3_mini.file_with_size "somefile" in
+  printf "%s %d\n" (Blake3_mini.Digest.to_hex hash) size;
+  [%expect {| 7a7d692dfca02a756fea9a8a77903807 11 |}]
+;;
+
 let read_file name =
   let chan = open_in name in
   let size = in_channel_length chan in

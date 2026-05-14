@@ -1,4 +1,12 @@
 #include <errno.h>
+#ifndef _WIN32
+#ifndef O_CLOEXEC
+#define O_CLOEXEC 0
+#endif
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#endif
 
 #include <caml/alloc.h>
 #include <caml/bigarray.h>
@@ -6,6 +14,7 @@
 #include <caml/fail.h>
 #include <caml/memory.h>
 #include <caml/mlvalues.h>
+#include <caml/osdeps.h>
 #include <caml/threads.h>
 #include <caml/unixsupport.h>
 
@@ -53,6 +62,84 @@ CAMLprim value blake3_mini_fd(value v_fd) {
   CAMLlocal1(v_ret);
   v_ret = alloc_hash(&hasher, 16);
   CAMLreturn(v_ret);
+}
+
+CAMLprim value blake3_mini_file_with_size(value v_path) {
+  CAMLparam1(v_path);
+#ifdef _WIN32
+  caml_failwith("blake3_mini_file_with_size is not implemented on Windows");
+#else
+  CAMLlocal3(v_digest, v_size, v_result);
+  caml_unix_check_path(v_path, "open");
+  char_os *path = caml_stat_strdup_to_os(String_val(v_path));
+  blake3_hasher hasher;
+  blake3_hasher_init(&hasher);
+  int err = 0;
+  const char *err_op = NULL;
+  int fd = -1;
+  intnat size = 0;
+
+  caml_release_runtime_system();
+
+  while (1) {
+    fd = open(path, O_RDONLY | O_CLOEXEC);
+    if (fd != -1 || errno != EINTR)
+      break;
+  }
+  if (fd == -1) {
+    err = errno;
+    err_op = "open";
+    goto done;
+  }
+
+  struct stat st;
+  while (fstat(fd, &st) == -1) {
+    if (errno == EINTR)
+      continue;
+    err = errno;
+    err_op = "fstat";
+    goto close;
+  }
+  size = st.st_size;
+
+  char buffer[UNIX_BUFFER_SIZE];
+  ssize_t bytes_read;
+  while (1) {
+    bytes_read = read(fd, buffer, sizeof(buffer));
+    if (bytes_read == 0) {
+      break;
+    } else if (bytes_read < 0) {
+      if (errno == EINTR)
+        continue;
+      err = errno;
+      err_op = "read";
+      break;
+    } else {
+      blake3_hasher_update(&hasher, buffer, bytes_read);
+    }
+  }
+
+close:
+  if (close(fd) == -1 && err == 0) {
+    err = errno;
+    err_op = "close";
+  }
+
+done:
+  caml_acquire_runtime_system();
+  caml_stat_free(path);
+  if (err != 0) {
+    errno = err;
+    uerror(err_op, v_path);
+  }
+
+  v_digest = alloc_hash(&hasher, 16);
+  v_size = Val_long(size);
+  v_result = caml_alloc_tuple(2);
+  Store_field(v_result, 0, v_digest);
+  Store_field(v_result, 1, v_size);
+  CAMLreturn(v_result);
+#endif
 }
 
 static void blake3_mini_finalize(value v_t) {

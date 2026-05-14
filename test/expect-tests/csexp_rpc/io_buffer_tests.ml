@@ -27,8 +27,7 @@ let%expect_test "empty atom exact-fit write" =
   let buf = Io_buffer.create ~size:2 in
   Io_buffer.write_csexps buf [ Csexp.Atom "" ];
   print_dyn buf;
-  [%expect.unreachable]
-[@@expect.uncaught_exn {| "Assert_failure src/rpc/io_buffer.ml:53:2" |}]
+  [%expect {| { total_written = 0; contents = "0:"; pos_w = 2; pos_r = 0 } |}]
 ;;
 
 let%expect_test "compaction does not grow the buffer" =
@@ -42,7 +41,7 @@ let%expect_test "compaction does not grow the buffer" =
   [%expect
     {|
     capacity before: 8
-    capacity after: 16
+    capacity after: 8
     { total_written = 4; contents = "cde1:x"; pos_w = 6; pos_r = 0 }
     |}]
 ;;

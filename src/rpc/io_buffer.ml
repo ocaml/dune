@@ -26,17 +26,18 @@ let maybe_resize_to_fit t write_size =
   let capacity = buf_len - t.pos_w in
   if capacity < write_size
   then (
-    let bytes =
-      let new_size =
-        let needed =
-          let free_space = capacity + t.pos_r in
-          buf_len + max 0 (write_size - free_space)
-        in
-        max (min max_buffer_size (buf_len * 2)) needed
-      in
-      Bytes.create new_size
-    in
     let len = length t in
+    let free_space = capacity + t.pos_r in
+    let bytes =
+      if free_space >= write_size
+      then t.bytes
+      else (
+        let new_size =
+          let needed = buf_len + max 0 (write_size - free_space) in
+          max (min max_buffer_size (buf_len * 2)) needed
+        in
+        Bytes.create new_size)
+    in
     Bytes.blit ~src:t.bytes ~src_pos:t.pos_r ~dst:bytes ~dst_pos:0 ~len;
     t.bytes <- bytes;
     t.pos_w <- len;
@@ -50,8 +51,8 @@ let write_char_exn t c =
 ;;
 
 let write_string_exn t src =
-  assert (t.pos_w < Bytes.length t.bytes);
   let len = String.length src in
+  assert (t.pos_w + len <= Bytes.length t.bytes);
   Bytes.blit_string ~src ~src_pos:0 ~dst:t.bytes ~dst_pos:t.pos_w ~len;
   t.pos_w <- t.pos_w + len
 ;;

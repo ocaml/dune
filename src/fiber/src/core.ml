@@ -217,8 +217,21 @@ module Ivar = struct
   type 'a t = 'a ivar
 
   let create () = { state = Empty }
-  let read t k = Read_ivar (t, k)
-  let fill t x k = Fill_ivar (t, x, k)
+
+  let read t k =
+    match t.state with
+    | Full x -> k x
+    | Empty_with_readers _ | Empty -> Read_ivar (t, k)
+  ;;
+
+  let fill t x k =
+    match t.state with
+    | Empty ->
+      t.state <- Full x;
+      k ()
+    | Full _ | Empty_with_readers _ -> Fill_ivar (t, x, k)
+  ;;
+
   let create_full a = { state = Full a }
 
   let peek t =

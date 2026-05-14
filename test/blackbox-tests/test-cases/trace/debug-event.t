@@ -8,14 +8,16 @@ The debug event can be triggered with Sigusr1
   $ wait_for_trace_events () {
   >   jq_program="$1"
   >   expected="$2"
+  >   dune="$(command -v dune)"
   >   with_timeout bash -lc '
   >     jq_program="$1"
   >     expected="$2"
-  >     while [ "$(dune trace cat | jq -r "$jq_program" | wc -l)" -lt "$expected" ]
+  >     dune="$3"
+  >     while [ "$("$dune" trace cat | jq -r "$jq_program" | wc -l)" -lt "$expected" ]
   >     do
   >       sleep 0.1
   >     done
-  >   ' bash "$jq_program" "$expected"
+  >   ' bash "$jq_program" "$expected" "$dune"
   > }
 
   $ make_dune_project 3.22

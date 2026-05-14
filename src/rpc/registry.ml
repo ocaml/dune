@@ -39,6 +39,7 @@ let register t =
     in
     let (_ : Fpath.mkdir_p_result) = Fpath.mkdir_p (Filename.dirname path) in
     Io.String_path.write_file path contents;
+    Dune_trace.emit Rpc (fun () -> Dune_trace.Event.Rpc.registry_write ~path);
     t.path <- Some path;
     at_exit (fun () -> cleanup t)
 ;;

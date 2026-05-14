@@ -520,6 +520,12 @@ module Rpc = struct
     Event.instant ~args ~name:"startup-failure" now Rpc
   ;;
 
+  let registry_write ~path =
+    let now = Time.now () in
+    let args = [ "path", Arg.string path ] in
+    Event.instant ~args ~name:"registry-write" now Rpc
+  ;;
+
   let close ~id =
     let now = Time.now () in
     let args = [ "id", Arg.int id ] in

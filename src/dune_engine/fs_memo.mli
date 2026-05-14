@@ -40,12 +40,41 @@ val path_kind
   :  Path.Outside_build_dir.t
   -> (File_kind.t, Unix_error.Detailed.t) result Memo.t
 
-(** Digest the contents of a source or external file and declare a dependency on
-    it. When [force_update = true], evict the file from all digest caches and
-    force the recomputation of the digest. This can be useful if Dune made a
-    change to the file and therefore knows that the cached digest is stale and
-    is about to be invalidated by an incoming file-system event. By not using
-    the cache in this situation, it's possible to avoid unnecessary restarts. *)
+(** Track a promoted source file without digesting it. Unlike
+    direct source readers, this does not mark the file as directly read by the
+    build, so Dune's self-generated promotion events can still be suppressed
+    when the promoted file is up to date. *)
+val track_promoted_file_changes : Path.Source.t -> unit Memo.t
+
+(** Track a source file that is copied into the build directory. File-change
+    events for the source may be ignored when all registered build-directory
+    copies already have the same contents and executable bit, and there are no
+    direct source readers for the path. *)
+val track_source_file_copy : src:Path.Source.t -> dst:Path.Build.t -> unit Memo.t
+
+(** Check whether a source-copy target is already up to date. This does not
+    register a dependency. *)
+val source_file_copy_is_up_to_date : src:Path.Source.t -> dst:Path.Build.t -> bool
+
+(** Ignore file-change events for [path] while [f] returns [true]. This is used
+    for source-tree files that Dune updates itself and can validate without
+    computing source-tree content digests. *)
+val ignore_file_changed_events_if : Path.Outside_build_dir.t -> f:(unit -> bool) -> unit
+
+(** Track a source-tree path and return a change stamp without digesting its
+    contents. *)
+val source_path_change_stamp_exn
+  :  loc:(unit -> Loc.t option Memo.t)
+  -> Path.Source.t
+  -> Digest.t Memo.t
+
+(** Digest the contents of an external file and declare a dependency on it.
+    [In_source_dir] paths are not allowed. When [force_update = true], evict the
+    file from all digest caches and force the recomputation of the digest. This
+    can be useful if Dune made a change to the file and therefore knows that the
+    cached digest is stale and is about to be invalidated by an incoming
+    file-system event. By not using the cache in this situation, it's possible
+    to avoid unnecessary restarts. *)
 val file_digest
   :  ?force_update:bool
   -> Path.Outside_build_dir.t

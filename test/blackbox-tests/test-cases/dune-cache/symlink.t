@@ -22,19 +22,19 @@ produced symbolic links work correctly and are appropriately cached.
   > EOF
   $ dune build target
 
-Dune cache contains entries for [source] and [target] but not for [link]
+Dune cache contains an entry for [target] but not for the source-copy primitive
+or the symbolic link.
 
   $ (cd "$DUNE_CACHE_ROOT/db/meta/v5"; grep -rs . -e 'source' | dune_cmd count-lines)
-  1
+  0
+  [1]
   $ (cd "$DUNE_CACHE_ROOT/db/meta/v5"; grep -rs . -e 'target' | dune_cmd count-lines)
   1
   $ (cd "$DUNE_CACHE_ROOT/db/meta/v5"; grep -rs . -e 'link' | dune_cmd count-lines)
   0
   [1]
 
-The files in the build directory are shared with the cache entries
+The generated target is shared with its cache entry
 
-  $ dune_cmd stat hardlinks _build/default/source
-  2
   $ dune_cmd stat hardlinks _build/default/target
   2

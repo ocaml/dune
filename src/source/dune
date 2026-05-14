@@ -4,6 +4,7 @@
   dune_config_file
   dune_digest
   dune_engine
+  fiber
   dune_glob
   dune_lang
   dune_pkg

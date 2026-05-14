@@ -321,6 +321,70 @@ let find_dir =
     ~on_last_found:(fun _ -> Memo.return None)
 ;;
 
+let raise_source_file_unavailable ~src details =
+  User_error.raise
+    ~loc:(Loc.in_file (Path.source src))
+    (Pp.textf "File unavailable: %s" (Path.Source.to_string_maybe_quoted src) :: details)
+;;
+
+let raise_source_file_unavailable_for_exception ~src src_path exn =
+  let details_from_exception () =
+    match exn with
+    | Unix.Unix_error (error, syscall, arg) ->
+      [ Unix_error.Detailed.pp (Unix_error.Detailed.create error ~syscall ~arg) ]
+    | Sys_error message -> [ Pp.text message ]
+    | _ -> Exn.reraise exn
+  in
+  let details =
+    match Unix.stat (Path.to_string src_path) with
+    | _ -> details_from_exception ()
+    | exception Unix.Unix_error (error, syscall, arg) ->
+      (match error with
+       | ENOENT ->
+         (match Unix.lstat (Path.to_string src_path) with
+          | { st_kind = S_LNK; _ } -> [ Pp.text "Broken symbolic link" ]
+          | _ -> []
+          | exception Unix.Unix_error (ENOENT, _, _) -> []
+          | exception Unix.Unix_error (error, syscall, arg) ->
+            [ Unix_error.Detailed.pp (Unix_error.Detailed.create error ~syscall ~arg) ])
+       | _ -> [ Unix_error.Detailed.pp (Unix_error.Detailed.create error ~syscall ~arg) ])
+  in
+  raise_source_file_unavailable ~src details
+;;
+
+let copy_source ~src ~dst =
+  let open Fiber.O in
+  let* () = Memo.run (Fs_memo.track_source_file_copy ~src ~dst) in
+  let src_path = Path.source src in
+  let dst_path = Path.build dst in
+  let start = Time.now () in
+  let result = ref `Already_up_to_date in
+  let+ () =
+    Fiber.of_thunk (fun () ->
+      if not (Fs_memo.source_file_copy_is_up_to_date ~src ~dst)
+      then (
+        result := `Copied;
+        Path.parent dst_path |> Option.iter ~f:Path.mkdir_p;
+        (match Fpath.unlink (Path.to_string dst_path) with
+         | Success | Does_not_exist -> ()
+         | Is_a_directory -> Path.rm_rf dst_path
+         | Error exn -> Exn.reraise exn);
+        match Io.copy_file ~src:src_path ~dst:dst_path () with
+        | () -> ()
+        | exception ((Unix.Unix_error (_, _, arg) | Sys_error arg) as exn) ->
+          let src_path_string = Path.to_string src_path in
+          if
+            String.equal arg src_path_string
+            || String.starts_with arg ~prefix:(src_path_string ^ ":")
+          then raise_source_file_unavailable_for_exception ~src src_path exn
+          else Exn.reraise exn);
+      Fiber.return ())
+  in
+  let stop = Time.now () in
+  Dune_trace.emit Source_copy (fun () ->
+    Dune_trace.Event.source_copy ~src ~dst ~start ~stop ~result:!result)
+;;
+
 let nearest_dir = gen_find_dir ~on_success:Memo.return ~on_last_found:Memo.return
 
 let find_excluded_ancestor path =

@@ -276,14 +276,17 @@ module Workspace_local = struct
         | (deps, old_digest) :: rest ->
           let open Fiber.O in
           let* deps = Memo.run (build_deps deps) in
-          let new_digest =
-            let d = Digest.Manual.create () in
-            Dep.Facts.digest deps d ~env;
-            Digest.Manual.get d
-          in
-          if Digest.equal old_digest new_digest
-          then loop rest
-          else Fiber.return (Miss Miss_reason.Dynamic_deps_changed)
+          if Dep.Facts.has_source_tree_paths deps
+          then Fiber.return (Miss Miss_reason.Dynamic_deps_changed)
+          else (
+            let new_digest =
+              let d = Digest.Manual.create () in
+              Dep.Facts.digest deps d ~env;
+              Digest.Manual.get d
+            in
+            if Digest.equal old_digest new_digest
+            then loop rest
+            else Fiber.return (Miss Miss_reason.Dynamic_deps_changed))
       in
       loop prev_trace.dynamic_deps_stages
   ;;

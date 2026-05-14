@@ -823,6 +823,19 @@ let artifact_substitution ~file ~placeholder ~value =
   Event.instant ~args ~name:"debug" now Artifact_substitution
 ;;
 
+let source_copy ~src ~dst ~start ~stop ~result =
+  let dur = Time.diff stop start in
+  let result =
+    match result with
+    | `Already_up_to_date -> "already_up_to_date"
+    | `Copied -> "copied"
+  in
+  let args =
+    [ "src", Arg.source_path src; "dst", Arg.build_path dst; "result", Arg.string result ]
+  in
+  Event.complete ~name:"copy" ~args ~start ~dur Source_copy
+;;
+
 let spawn_thread ~name =
   let now = Time.now () in
   let args = [ "name", Arg.string name ] in

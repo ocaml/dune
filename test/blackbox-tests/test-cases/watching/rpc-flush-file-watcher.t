@@ -1,7 +1,7 @@
 The flush-file-watcher RPC waits for pending file watcher notifications to be
 handled by the watch server.
 
-  $ export DUNE_TRACE=cache
+  $ export DUNE_TRACE=cache,rpc
   $ setup_xdg_runtime_dir
 
   $ cat > dune-project <<EOF
@@ -34,16 +34,20 @@ events preceding the request have reached the scheduler.
 
   $ stop_dune_quiet
 
-  $ dune trace cat | jq -s 'include "dune";
-  > [ .[] | fsUpdateWithPath("x")
-  >        | select(.cache_type == "file_digest" and .result == "changed")
-  >        | {cache_type, path, result}
-  > ] | unique | .[]'
-  {
-    "cache_type": "file_digest",
-    "path": "x",
-    "result": "changed"
-  }
+The source event should have been processed before the flush RPC returned, not
+later during shutdown.
+
+  $ dune trace cat | jq -s '
+  > ([ .[] | select(.name == "fs_update" and .args.path == "x") | .ts ] | max) as $last_fs_update
+  > | ([ .[]
+  >      | select(.cat == "rpc"
+  >               and .name == "request"
+  >               and .args.meth == "flush-file-watcher"
+  >               and .args.stage == "stop")
+  >      | .ts
+  >    ] | min) as $flush_done
+  > | ($last_fs_update != null and $flush_done != null and $last_fs_update <= $flush_done)'
+  true
 
 The RPC reports [`Not_in_watch_mode] when the server is only running for a
 batch build. The action uses [dynamic-run] because Dune starts the batch RPC

@@ -104,6 +104,7 @@ module Facts : sig
       directory. Needed for sandboxing *)
   val necessary_dirs_for_sandboxing : t -> Path.Build.Set.t
 
+  val has_source_tree_paths : t -> bool
   val digest : t -> Digest.Manual.t -> env:Env.t -> unit
   val to_dyn : t -> Dyn.t
 end

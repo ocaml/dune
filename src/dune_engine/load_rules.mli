@@ -6,8 +6,14 @@ open Import
 val set_current_rule_loc : (unit -> Loc.t option Memo.t) -> unit
 
 module Loaded : sig
+  module File_target : sig
+    type t =
+      | Rule of Rule.t
+      | Source_file_copy of Path.Source.t
+  end
+
   type rules_here =
-    { by_file_targets : Rule.t Path.Build.Map.t
+    { by_file_targets : File_target.t Path.Build.Map.t
     ; by_directory_targets : Rule.t Path.Build.Map.t
     }
 
@@ -71,5 +77,9 @@ val is_under_directory_target : Path.t -> bool Memo.t
 type rule_or_source =
   | Source of Digest.t
   | Rule of Path.Build.t * Rule.t
+  | Source_file_copy of
+      { src : Path.Source.t
+      ; dst : Path.Build.t
+      }
 
 val get_rule_or_source : Path.t -> rule_or_source Memo.t

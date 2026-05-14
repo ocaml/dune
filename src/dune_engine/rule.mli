@@ -7,7 +7,6 @@ module Info : sig
   type t =
     | From_dune_file of Loc.t
     | Internal
-    | Source_file_copy of Path.Source.t
 
   val of_loc_opt : Loc.t option -> t
 end

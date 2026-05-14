@@ -257,8 +257,8 @@ let promote_one dst srcs =
 
        amokhov: I removed this logic. In the current state of the world, files
        in the build directory should be redigested automatically (plus we do
-       not promote into the build directory anyway), and source digests should
-       be correctly invalidated via [fs_memo]. If that doesn't happen, we
+       not promote into the build directory anyway), and source paths should be
+       invalidated via [fs_memo] change tracking. If that doesn't happen, we
        should fix [fs_memo] instead of manually resetting the caches here. *)
     (match
        List.find srcs ~f:(function

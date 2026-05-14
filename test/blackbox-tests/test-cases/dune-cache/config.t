@@ -15,12 +15,8 @@ Check that old cache configuration format works fine with an old language
   > EOF
   $ cat > dune <<EOF
   > (rule
-  >   (deps source)
   >   (targets target)
-  >   (action (copy source target)))
-  > EOF
-  $ cat > source <<EOF
-  > \_o< COIN
+  >   (action (with-stdout-to target (echo target))))
   > EOF
 
 Test that DUNE_CACHE_ROOT can be used to control the cache location
@@ -49,7 +45,7 @@ Build succeeds and the 'hardlink' mode is respected
   $ rm -rf _build/
   $ dune build --config-file config target
   $ dune_cmd stat hardlinks _build/default/target
-  3
+  2
 
 Now repeat the tests with the old configuration format but 3.0 language
 
@@ -159,7 +155,7 @@ Build succeeds and the 'hardlink' mode is respected
   $ rm -rf _build/
   $ dune build --config-file config target
   $ dune_cmd stat hardlinks _build/default/target
-  3
+  2
 
 Let's disable the cache
 
@@ -184,7 +180,7 @@ Test that the cache can be enabled via the environment variable
   $ rm -rf _build/
   $ DUNE_CACHE=enabled dune build --config-file config target
   $ dune_cmd stat hardlinks _build/default/target
-  3
+  2
   $ dune_cmd exists $DUNE_CACHE_ROOT
   true
 
@@ -217,4 +213,4 @@ Test that we can override the environment variable from the command line
   $ rm -rf _build
   $ DUNE_CACHE_STORAGE_MODE=copy dune build --config-file config target --cache-storage-mode=hardlink
   $ dune_cmd stat hardlinks _build/default/target
-  3
+  2

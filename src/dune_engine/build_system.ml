@@ -126,6 +126,20 @@ type rule_execution_result =
   }
 
 module Internal = struct
+  module Source_file_copy = struct
+    type t =
+      { src : Path.Source.t
+      ; dst : Path.Build.t
+      }
+
+    let equal { src; dst } t = Path.Source.equal src t.src && Path.Build.equal dst t.dst
+    let hash { src; dst } = Tuple.T2.hash Path.Source.hash Path.Build.hash (src, dst)
+
+    let to_dyn { src; dst } =
+      Dyn.record [ "src", Path.Source.to_dyn src; "dst", Path.Build.to_dyn dst ]
+    ;;
+  end
+
   let file_selector_stack_frame_description file_selector =
     Pp.concat [ Pp.text (File_selector.to_dyn file_selector |> Dyn.to_string) ]
   ;;
@@ -550,7 +564,7 @@ module Internal = struct
           | Anonymous_action a -> a.attached_to_alias
         in
         let force_rerun = !Clflags.force && is_test in
-        force_rerun || Dep.Map.has_universe facts
+        force_rerun || Dep.Map.has_universe facts || Dep.Facts.has_source_tree_paths facts
       in
       let rule_digest =
         compute_rule_digest rule ~facts ~action ~sandbox_mode ~execution_parameters
@@ -824,6 +838,11 @@ module Internal = struct
     Load_rules.get_rule_or_source path
     >>= function
     | Source digest -> Memo.return (digest, File_target)
+    | Source_file_copy { src; dst } ->
+      let+ digest =
+        Memo.exec (Lazy.force build_source_file_copy_memo) { Source_file_copy.src; dst }
+      in
+      digest, File_target
     | Rule (path, rule) ->
       let* { facts = _; targets } =
         Memo.push_stack_frame
@@ -871,6 +890,38 @@ module Internal = struct
                target
            ])
 
+  and build_source_file_copy_impl { Source_file_copy.src; dst } =
+    let module Source_tree = (val (Build_config.get ()).source_tree) in
+    Memo.of_reproducible_fiber
+      (let open Fiber.O in
+       (match Path.Untracked.stat (Path.build dst) with
+        | Ok { st_kind = S_DIR; _ } -> Rule_cache.Workspace_local.remove_subtree dst
+        | Ok _ | Error _ -> ());
+       Rule_cache.Workspace_local.remove_target dst;
+       let* () = Source_tree.copy_source ~src ~dst in
+       let path = Path.build dst in
+       let executable =
+         match Unix.stat (Path.to_string path) with
+         | { st_kind = S_REG; st_perm; _ } ->
+           Permissions.test_any Permissions.execute st_perm
+         | { st_kind; _ } ->
+           User_error.raise
+             [ Pp.textf
+                 "Expected source copy target %s to be a file, but got %s"
+                 (Path.to_string_maybe_quoted path)
+                 (File_kind.to_string_hum st_kind)
+             ]
+         | exception Unix.Unix_error (e, _, _) ->
+           User_error.raise
+             [ Pp.textf
+                 "Failed to copy source file %s to %s: %s"
+                 (Path.Source.to_string_maybe_quoted src)
+                 (Path.Build.to_string_maybe_quoted dst)
+                 (Unix.error_message e)
+             ]
+       in
+       Digest.file_with_executable_bit ~executable path)
+
   and execute_anonymous_action action =
     let* action, facts = Action_builder.evaluate_and_collect_facts action in
     execute_action action ~observing_facts:facts
@@ -911,15 +962,12 @@ module Internal = struct
       let only_generated_files = File_selector.only_generated_files g in
       (* We look only at [by_file_targets] because [File_selector] does not
          match directories. *)
-      Path.Build.Map.foldi
-        ~init:[]
-        rules_here.by_file_targets
-        ~f:(fun path { Rule.info; _ } acc ->
-          match info with
-          | Rule.Info.Source_file_copy _ when only_generated_files -> acc
-          | _ ->
-            let basename = Path.Build.basename path in
-            if File_selector.test_basename g ~basename then basename :: acc else acc)
+      Path.Build.Map.foldi ~init:[] rules_here.by_file_targets ~f:(fun path target acc ->
+        match target with
+        | Source_file_copy _ when only_generated_files -> acc
+        | Rule _ | Source_file_copy _ ->
+          let basename = Path.Build.basename path in
+          if File_selector.test_basename g ~basename then basename :: acc else acc)
       |> List.rev
       |> Filename.Array.Set.of_sorted_list
       |> Filename_set.create ~dir
@@ -967,6 +1015,14 @@ module Internal = struct
          ~input:(module File_selector)
          ~cutoff:Filename_set.equal
          eval_pred_impl)
+
+  and build_source_file_copy_memo =
+    lazy
+      (Memo.create
+         "build-source-file-copy"
+         ~input:(module Source_file_copy)
+         ~cutoff:Digest.equal
+         build_source_file_copy_impl)
 
   and build_file_memo =
     lazy

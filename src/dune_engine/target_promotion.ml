@@ -49,52 +49,50 @@ end
 let save = To_delete.dump
 let files_in_source_tree_to_delete () = To_delete.get_db ()
 
-let promote_target_if_not_up_to_date
-      ~src
-      ~src_digest
-      ~dst
-      ~promote_source
-      ~promote_until_clean
-  =
+let promoted_file_is_up_to_date ~src ~dst =
+  let src = Path.build src in
+  let dst = Path.source dst in
+  match Path.Untracked.stat src, Path.Untracked.stat dst with
+  | ( Ok { st_kind = S_REG; st_perm = src_perm; _ }
+    , Ok { st_kind = S_REG; st_perm = dst_perm; _ } ) ->
+    let executable perm = Permissions.test_any Permissions.execute perm in
+    executable src_perm = executable dst_perm
+    &&
+      (match Io.compare_files src dst with
+      | Eq -> true
+      | Lt | Gt -> false
+      | exception (_ : exn) -> false)
+  | _ -> false
+;;
+
+let promote_target_if_not_up_to_date ~src ~dst ~promote_source ~promote_until_clean =
   let open Fiber.O in
-  (* It is OK to use [Fs_memo.Untracked.file_digest] here because below we use
-     the tracked [Fs_memo.file_digest] to subscribe to the promotion result. *)
-  let* promoted =
-    match
-      Fs_memo.Untracked.file_digest (In_source_dir dst)
-      |> Dune_digest.Digest_result.to_option
-    with
-    | Some dst_digest when Digest.equal src_digest dst_digest ->
-      (* CR-someday amokhov: We skip promotion if [src_digest = dst_digest] but
-         this only works if [src] has no artifact substitution placeholders.
-         Artifact substitution changes [dst]'s contents and digest, which makes
-         this equality check ineffective. As a result, Dune currently executes
-         [promote_source] on all such targets on every start-up. We should fix
-         this, perhaps, by making artifact substitution a field of [promote]. *)
-      Fiber.return false
-    | _ ->
+  let ignore_promoted_file_changed_events () =
+    Fs_memo.ignore_file_changed_events_if (In_source_dir dst) ~f:(fun () ->
+      promoted_file_is_up_to_date ~src ~dst)
+  in
+  ignore_promoted_file_changed_events ();
+  let* () =
+    if promoted_file_is_up_to_date ~src ~dst
+    then
+      (* CR-someday amokhov: We skip promotion if [src] and [dst] have the same
+         bytes and executable bit, but this only works if [src] has no artifact
+         substitution placeholders. Artifact substitution changes [dst]'s
+         contents, which makes this equality check ineffective. As a result,
+         Dune currently executes [promote_source] on all such targets on every
+         start-up. We should fix this, perhaps, by making artifact substitution
+         a field of [promote]. *)
+      Fiber.return ()
+    else (
       Dune_trace.emit Promote (fun () -> Dune_trace.Event.Promote.promote src dst);
       if promote_until_clean then To_delete.add dst;
       (* The file in the build directory might be read-only if it comes from the
          shared cache. However, we want the file in the source tree to be
          writable by the user, so we explicitly set the user writable bit. *)
       let chmod = Permissions.add Permissions.write in
-      let+ () = promote_source ~chmod ~delete_dst_if_it_is_a_directory:true ~src ~dst in
-      true
+      promote_source ~chmod ~delete_dst_if_it_is_a_directory:true ~src ~dst)
   in
-  let+ dst_digest_result =
-    Memo.run (Fs_memo.file_digest ~force_update:promoted (In_source_dir dst))
-  in
-  match Dune_digest.Digest_result.to_option dst_digest_result with
-  | Some dst_digest ->
-    (* It's tempting to assert [src_digest = dst_digest] here but it turns out
-       this is not necessarily true: artifact substitution can change the
-       contents of promoted files. *)
-    ignore dst_digest
-  | None ->
-    Code_error.raise
-      (sprintf "Could not compute digest of promoted file %S" (Path.Source.to_string dst))
-      [ "dst_digest_result", Dune_digest.Digest_result.to_dyn dst_digest_result ]
+  Memo.run (Fs_memo.track_promoted_file_changes dst)
 ;;
 
 (* CR-someday amokhov: If a build causes N file promotions, Dune can potentially
@@ -184,20 +182,13 @@ let promote ~(targets : _ Targets.Produced.t) ~(promote : Rule.Promote.t) ~promo
     | Unlimited -> false
   in
   let* () =
-    Fiber.sequential_iter_seq
-      (Targets.Produced.all_files_seq targets)
-      ~f:(fun (src, src_digest) ->
-        match selected_for_promotion src with
-        | false -> Fiber.return ()
-        | true ->
-          let src = Path.Build.append_local targets.root src in
-          let dst = relocate src in
-          promote_target_if_not_up_to_date
-            ~src
-            ~src_digest
-            ~dst
-            ~promote_source
-            ~promote_until_clean)
+    Fiber.sequential_iter_seq (Targets.Produced.all_files_seq targets) ~f:(fun (src, _) ->
+      match selected_for_promotion src with
+      | false -> Fiber.return ()
+      | true ->
+        let src = Path.Build.append_local targets.root src in
+        let dst = relocate src in
+        promote_target_if_not_up_to_date ~src ~dst ~promote_source ~promote_until_clean)
   in
   (* There can be some files or directories left over from earlier builds, so we
      need to remove them from [targets]. *)

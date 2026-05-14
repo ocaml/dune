@@ -40,19 +40,9 @@ and shared cache misses, because we've never built target1 before.
   $ export DUNE_TRACE=cache
   $ dune build --config-file=config target1
 
-Verify we see cache miss events for our targets in the trace:
+Verify we see cache miss events for the generated target in the trace:
 
-  $ dune trace cat | jq -s 'include "dune"; cacheMissesMatching("source|target1")'
-  {
-    "name": "workspace_local_miss",
-    "target": "_build/default/source",
-    "reason": "never seen this target before"
-  }
-  {
-    "name": "miss",
-    "target": "_build/default/source",
-    "reason": "not found in cache"
-  }
+  $ dune trace cat | jq -s 'include "dune"; cacheMissesMatching("target1")'
   {
     "name": "workspace_local_miss",
     "target": "_build/default/target1",
@@ -63,6 +53,10 @@ Verify we see cache miss events for our targets in the trace:
     "target": "_build/default/target1",
     "reason": "not found in cache"
   }
+  $ dune trace cat | jq -s 'include "dune";
+  > [ .[] | cacheMisses | select((.args.target // .args.head) == "_build/default/source") ]
+  > | length'
+  0
 
   $ dune_cmd stat hardlinks _build/default/source
   1
@@ -79,19 +73,19 @@ misses, because we've cleaned _build/default but not the shared cache.
   $ rm -rf _build/
   $ dune build --config-file=config target1
 
-Verify we see only workspace-local miss events for our targets (shared cache hits should not appear as misses):
+Verify we see only workspace-local miss events for the generated target (shared
+cache hits should not appear as misses):
 
-  $ dune trace cat | jq -s 'include "dune"; cacheMissesMatching("source|target1")'
-  {
-    "name": "workspace_local_miss",
-    "target": "_build/default/source",
-    "reason": "never seen this target before"
-  }
+  $ dune trace cat | jq -s 'include "dune"; cacheMissesMatching("target1")'
   {
     "name": "workspace_local_miss",
     "target": "_build/default/target1",
     "reason": "never seen this target before"
   }
+  $ dune trace cat | jq -s 'include "dune";
+  > [ .[] | cacheMisses | select((.args.target // .args.head) == "_build/default/source") ]
+  > | length'
+  0
 
   $ dune_cmd stat hardlinks _build/default/source
   1

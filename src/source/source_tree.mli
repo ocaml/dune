@@ -48,6 +48,7 @@ module Make_map_reduce_with_progress (M : Memo.S) (Outcome : Monoid) : sig
 end
 
 val find_dir : Path.Source.t -> Dir.t option Memo.t
+val copy_source : src:Path.Source.t -> dst:Path.Build.t -> unit Fiber.t
 
 (** [find_excluded_ancestor path] is the ancestor of [path] that was excluded by
     a dirs stanza, if any. *)

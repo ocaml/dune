@@ -62,9 +62,6 @@ First, create a symbolic link. Dune correctly updates the [result].
   {"cache_type":"dir_contents","path":"dir","result":"changed"}
   {"cache_type":"dir_contents","path":"dir/file-6","result":"skipped"}
   {"cache_type":"dir_contents","path":"dune-workspace","result":"skipped"}
-  {"cache_type":"file_digest","path":"dir","result":"skipped"}
-  {"cache_type":"file_digest","path":"dir/file-6","result":"skipped"}
-  {"cache_type":"file_digest","path":"dune-workspace","result":"skipped"}
   {"cache_type":"path_stat","path":"dir","result":"unchanged"}
   {"cache_type":"path_stat","path":"dir/file-6","result":"skipped"}
   {"cache_type":"path_stat","path":"dune-workspace","result":"unchanged"}
@@ -83,9 +80,6 @@ reruns the affected action.
   {"cache_type":"dir_contents","path":"dir","result":"changed"}
   {"cache_type":"dir_contents","path":"dir/file-6","result":"skipped"}
   {"cache_type":"dir_contents","path":"dune-workspace","result":"skipped"}
-  {"cache_type":"file_digest","path":"dir","result":"skipped"}
-  {"cache_type":"file_digest","path":"dir/file-6","result":"changed"}
-  {"cache_type":"file_digest","path":"dune-workspace","result":"skipped"}
   {"cache_type":"path_stat","path":"dir","result":"unchanged"}
   {"cache_type":"path_stat","path":"dir/file-6","result":"changed"}
   {"cache_type":"path_stat","path":"dune-workspace","result":"unchanged"}
@@ -111,10 +105,6 @@ and re-execute the rule.
   {"cache_type":"dir_contents","path":"dir/file-7","result":"skipped"}
   {"cache_type":"dir_contents","path":"dir/file-7","result":"skipped"}
   {"cache_type":"dir_contents","path":"dune-workspace","result":"skipped"}
-  {"cache_type":"file_digest","path":"dir","result":"skipped"}
-  {"cache_type":"file_digest","path":"dir/file-7","result":"skipped"}
-  {"cache_type":"file_digest","path":"dir/file-7","result":"skipped"}
-  {"cache_type":"file_digest","path":"dune-workspace","result":"skipped"}
   {"cache_type":"path_stat","path":"dir","result":"unchanged"}
   {"cache_type":"path_stat","path":"dir/file-7","result":"skipped"}
   {"cache_type":"path_stat","path":"dir/file-7","result":"skipped"}
@@ -133,9 +123,6 @@ Deleting [dir] triggers a rebuild.
   {"cache_type":"dir_contents","path":".","result":"changed"}
   {"cache_type":"dir_contents","path":"dir","result":"changed"}
   {"cache_type":"dir_contents","path":"dune-workspace","result":"skipped"}
-  {"cache_type":"file_digest","path":".","result":"skipped"}
-  {"cache_type":"file_digest","path":"dir","result":"skipped"}
-  {"cache_type":"file_digest","path":"dune-workspace","result":"skipped"}
   {"cache_type":"path_stat","path":".","result":"unchanged"}
   {"cache_type":"path_stat","path":"dir","result":"changed"}
   {"cache_type":"path_stat","path":"dune-workspace","result":"unchanged"}
@@ -153,9 +140,6 @@ Restoring the symlink is correctly noticed.
   {"cache_type":"dir_contents","path":".","result":"changed"}
   {"cache_type":"dir_contents","path":"dir","result":"skipped"}
   {"cache_type":"dir_contents","path":"dune-workspace","result":"skipped"}
-  {"cache_type":"file_digest","path":".","result":"skipped"}
-  {"cache_type":"file_digest","path":"dir","result":"skipped"}
-  {"cache_type":"file_digest","path":"dune-workspace","result":"skipped"}
   {"cache_type":"path_stat","path":".","result":"unchanged"}
   {"cache_type":"path_stat","path":"dir","result":"skipped"}
   {"cache_type":"path_stat","path":"dune-workspace","result":"unchanged"}
@@ -177,11 +161,6 @@ However, deleting [another-dir] isn't handled correctly.
   {"cache_type":"dir_contents","path":"dir","result":"changed"}
   {"cache_type":"dir_contents","path":"dir/file-7","result":"skipped"}
   {"cache_type":"dir_contents","path":"dune-workspace","result":"skipped"}
-  {"cache_type":"file_digest","path":".","result":"skipped"}
-  {"cache_type":"file_digest","path":"another-dir","result":"skipped"}
-  {"cache_type":"file_digest","path":"dir","result":"skipped"}
-  {"cache_type":"file_digest","path":"dir/file-7","result":"changed"}
-  {"cache_type":"file_digest","path":"dune-workspace","result":"skipped"}
   {"cache_type":"path_stat","path":".","result":"unchanged"}
   {"cache_type":"path_stat","path":"another-dir","result":"changed"}
   {"cache_type":"path_stat","path":"dir","result":"unchanged"}
@@ -202,7 +181,5 @@ should fix this too.
   ------------------------------------------
   {"cache_type":"dir_contents","path":"dep","result":"skipped"}
   {"cache_type":"dir_contents","path":"dune-workspace","result":"skipped"}
-  {"cache_type":"file_digest","path":"dep","result":"changed"}
-  {"cache_type":"file_digest","path":"dune-workspace","result":"skipped"}
   {"cache_type":"path_stat","path":"dep","result":"skipped"}
   {"cache_type":"path_stat","path":"dune-workspace","result":"unchanged"}

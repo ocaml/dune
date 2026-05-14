@@ -197,8 +197,8 @@ module Ivar : sig
       given ivar. *)
   val fill : 'a t -> 'a -> unit fiber
 
-  (** Return [Some x] is [fill t x] has been called previously. *)
-  val peek : 'a t -> 'a option fiber
+  (** Return [Some x] if [fill t x] has been called previously. *)
+  val peek : 'a t -> 'a option
 end
 
 (** Mailbox variables *)

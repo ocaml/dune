@@ -26,6 +26,53 @@ module Workspace_local = struct
       ;;
     end
 
+    module Rules = struct
+      type t = Entry.t Filename.Table.t Path.Table.t
+
+      let repr =
+        Repr.abstract (Path.Table.to_dyn (Filename.Table.to_dyn (Repr.to_dyn Entry.repr)))
+      ;;
+
+      let create () = Path.Table.create ()
+
+      let split_path path =
+        match Path.parent path, Path.basename_opt path with
+        | Some dir, Some filename -> dir, filename
+        | None, _ | _, None ->
+          Code_error.raise
+            "Rule_cache.Workspace_local.Database.Rules.split_path"
+            [ "path", Path.to_dyn path ]
+      ;;
+
+      let find t path =
+        let dir, filename = split_path path in
+        Option.bind (Path.Table.find t dir) ~f:(fun rules ->
+          Filename.Table.find rules filename)
+      ;;
+
+      let set t path entry =
+        let dir, filename = split_path path in
+        let rules =
+          match Path.Table.find t dir with
+          | Some rules -> rules
+          | None ->
+            let rules = Filename.Table.create 0 in
+            Path.Table.set t dir rules;
+            rules
+        in
+        Filename.Table.set rules filename entry
+      ;;
+
+      let remove t path =
+        let dir, filename = split_path path in
+        match Path.Table.find t dir with
+        | None -> ()
+        | Some rules ->
+          Filename.Table.remove rules filename;
+          if Filename.Table.length rules = 0 then Path.Table.remove t dir
+      ;;
+    end
+
     type digest =
       { digest : Digest.t
       ; siblings : Digest.t Targets.Produced.t
@@ -42,9 +89,9 @@ module Workspace_local = struct
         ]
     ;;
 
-    (* Keyed by the first target of the rule. *)
+    (* Keyed by the directory and basename of the first target of the rule. *)
     type t =
-      { rules : Entry.t Path.Table.t
+      { rules : Rules.t
       ; digests : digest Path.Build.Table.t
       ; invalidated_subtrees : int Path.Build.Table.t
         (* A digest is only valid if its generation is greater or equal to the
@@ -57,10 +104,7 @@ module Workspace_local = struct
     let repr =
       Repr.record
         "rule-cache-workspace-local-database"
-        [ Repr.field
-            "rules"
-            (Repr.abstract (Path.Table.to_dyn (Repr.to_dyn Entry.repr)))
-            ~get:(fun t -> t.rules)
+        [ Repr.field "rules" Rules.repr ~get:(fun t -> t.rules)
         ; Repr.field
             "digests"
             (Repr.abstract (Path.Build.Table.to_dyn (Repr.to_dyn digest_repr)))
@@ -77,7 +121,7 @@ module Workspace_local = struct
         type nonrec t = t
 
         let name = "INCREMENTAL-DB"
-        let version = 8
+        let version = 9
         let sharing = true
         let repr = repr
       end)
@@ -92,7 +136,7 @@ module Workspace_local = struct
             decide whether to rebuild a rule or not; [execute_rule_impl] ensures
             that the targets are produced deterministically. *)
          | None ->
-           { rules = Path.Table.create ()
+           { rules = Rules.create ()
            ; digests = Path.Build.Table.create 128
            ; invalidated_subtrees = Path.Build.Table.create 16
            ; generation = 0
@@ -117,13 +161,13 @@ module Workspace_local = struct
 
     let get path =
       let t = Lazy.force t in
-      Path.Table.find t.rules path
+      Rules.find t.rules path
     ;;
 
     let set path e (targets : _ Targets.Produced.t) =
       let t = Lazy.force t in
       needs_dumping := true;
-      Path.Table.set t.rules path e;
+      Rules.set t.rules path e;
       let set_digest p digest =
         let digest = { digest; siblings = targets; generation = t.generation } in
         Path.Build.Table.set t.digests (Path.Build.append_local targets.root p) digest
@@ -145,7 +189,7 @@ module Workspace_local = struct
       | None -> ()
       | Some { digest = _; siblings; _ } ->
         let head = Targets.Produced.head siblings in
-        Path.Table.remove t.rules (Path.build head);
+        Rules.remove t.rules (Path.build head);
         Targets.Produced.iter_files siblings ~f:(fun path (_ : Digest.t) ->
           let path = Path.Build.append_local siblings.root path in
           Path.Build.Table.remove t.digests path)

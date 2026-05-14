@@ -205,10 +205,6 @@ let extract_directory_targets ~jsoo_enabled ~dir stanzas =
     | Executables.T exes | Tests.T { exes; _ } ->
       directory_targets_of_executables ~jsoo_enabled ~dir exes
     | Library.T lib -> directory_targets_of_library ~jsoo_enabled ~dir lib
-    | Coq_stanza.Theory.T m ->
-      (* It's unfortunate that we need to pull in the coq rules here. But
-         we don't have a generic mechanism for this yet. *)
-      Coq_doc.coqdoc_directory_targets ~dir m
     | Rocq_stanza.Theory.T m -> Rocq_doc.rocqdoc_directory_targets ~dir m
     | _ -> Memo.return Path.Build.Map.empty)
   >>| Path.Build.Map.union_all ~f:(fun path loc1 loc2 ->

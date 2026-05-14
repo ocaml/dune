@@ -297,7 +297,6 @@ module Macro = struct
     | Read_lines
     | Path_no_dep
     | Ocaml_config
-    | Coq_config
     | Rocq_config
     | Env
     | Artifact of Artifact.t
@@ -349,9 +348,6 @@ module Macro = struct
     | Ocaml_config, Ocaml_config -> Eq
     | Ocaml_config, _ -> Lt
     | _, Ocaml_config -> Gt
-    | Coq_config, Coq_config -> Eq
-    | Coq_config, _ -> Lt
-    | _, Coq_config -> Gt
     | Rocq_config, Rocq_config -> Eq
     | Rocq_config, _ -> Lt
     | _, Rocq_config -> Gt
@@ -389,7 +385,6 @@ module Macro = struct
     | Read_lines -> string "Read_lines"
     | Path_no_dep -> string "Path_no_dep"
     | Ocaml_config -> string "Ocaml_config"
-    | Coq_config -> string "Coq_config"
     | Rocq_config -> string "Rocq_config"
     | Env -> string "Env"
     | Artifact ext -> variant "Artifact" [ Artifact.to_dyn ext ]
@@ -415,7 +410,6 @@ module Macro = struct
     | Read_lines -> Ok "read-lines"
     | Path_no_dep -> Error `Pform_was_deleted
     | Ocaml_config -> Ok "ocaml-config"
-    | Coq_config -> Ok "coq"
     | Rocq_config -> Ok "rocq"
     | Env -> Ok "env"
     | Pkg -> Ok "pkg"
@@ -693,7 +687,6 @@ module Env = struct
          ; "env", since ~version:(1, 4) Macro.Env
          ; "ppx", since ~version:(3, 21) Macro.Ppx
          ; "pkg", since ~version:(3, 24) Macro.Pkg
-         ; "coq", macro Coq_config
          ; "rocq", macro Rocq_config
          ]
          @ List.map ~f:artifact Artifact.all)

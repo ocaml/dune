@@ -251,7 +251,10 @@ module Extension = struct
 
   type info =
     | Extension of packed_extension
-    | Deleted_in of Syntax.Version.t
+    | Deleted_in of
+        { version : Syntax.Version.t
+        ; hints : User_message.Style.t Pp.t list
+        }
 
   type instance =
     { extension : packed_extension
@@ -278,8 +281,8 @@ module Extension = struct
     key
   ;;
 
-  let register_deleted ~name ~deleted_in =
-    Table.add_exn extensions name (Deleted_in deleted_in)
+  let register_deleted ~name ?(hints = []) ~deleted_in () =
+    Table.add_exn extensions name (Deleted_in { version = deleted_in; hints })
   ;;
 
   let register_unit syntax stanzas =
@@ -305,14 +308,15 @@ module Extension = struct
         ~loc:name_loc
         [ Pp.textf "Unknown extension %S." name ]
         ~hints:(User_message.did_you_mean name ~candidates)
-    | Some (Deleted_in v) ->
+    | Some (Deleted_in { version; hints }) ->
       let name = Syntax.Name.to_string name in
       User_error.raise
         ~loc
+        ~hints
         [ Pp.textf
             "Extension %s was deleted in the %s version of the dune language"
             name
-            (Syntax.Version.to_string v)
+            (Syntax.Version.to_string version)
         ]
     | Some (Extension (Packed e)) ->
       Syntax.check_supported ~dune_lang_ver e.syntax (ver_loc, ver);
@@ -1163,3 +1167,15 @@ let () =
 ;;
 
 let () = Extension.register_simple Unreleased.syntax (Decoder.return [])
+
+let () =
+  Extension.register_deleted
+    ~name:(Syntax.Name.parse "coq")
+    ~hints:
+      [ Pp.text
+          "The Coq Build Language has been replaced by the Rocq Build Language. Use \
+           (using rocq <version>) instead."
+      ]
+    ~deleted_in:(3, 24)
+    ()
+;;

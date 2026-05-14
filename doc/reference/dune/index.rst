@@ -71,7 +71,6 @@ The following pages describe the available stanzas and their meanings.
 
       cinaps
       rocq_theory
-      coq_theory
       mdx
       menhir
       ocamllex

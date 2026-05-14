@@ -86,10 +86,7 @@ Fields supported in ``<settings>`` are:
 - ``(odoc <fields>)`` allows passing options to ``odoc``. See
   :ref:`odoc-options` for more details.
 
-- ``(rocq <rocq_fields>)`` allow passing options to Coq. See :ref:`rocq-env`
-  for more details.
-
-- ``(coq <coq_fields>)`` allow passing options to Coq. See :ref:`coq-env`
+- ``(rocq <rocq_fields>)`` allow passing options to Rocq. See :ref:`rocq-env`
   for more details.
 
 - ``(formatting <settings>)`` allows the user to set auto-formatting in the

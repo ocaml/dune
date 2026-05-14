@@ -82,7 +82,12 @@ module Extension : sig
   val register_simple : Syntax.t -> Stanza.Parser.t list Decoder.t -> unit
 
   (** Register experimental extensions that were deleted *)
-  val register_deleted : name:Syntax.Name.t -> deleted_in:Syntax.Version.t -> unit
+  val register_deleted
+    :  name:Syntax.Name.t
+    -> ?hints:User_message.Style.t Pp.t list
+    -> deleted_in:Syntax.Version.t
+    -> unit
+    -> unit
 
   (** An instantiated extension with captured arguments *)
   type instance

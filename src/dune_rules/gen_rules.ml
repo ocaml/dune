@@ -304,14 +304,6 @@ let gen_rules_for_stanzas sctx dir_contents cctxs expander ~dune_file ~dir:ctx_d
                            ])
                    }
                  |> Action_builder.with_file_targets ~file_targets)))
-      | Coq_stanza.Theory.T m ->
-        Expander.eval_blang expander m.enabled_if
-        >>= (function
-         | false -> Memo.return ()
-         | true -> Coq_rules.setup_theory_rules ~sctx ~dir:ctx_dir ~dir_contents m)
-      | Coq_stanza.Extraction.T m ->
-        Coq_rules.setup_extraction_rules ~sctx ~dir:ctx_dir ~dir_contents m
-      | Coq_stanza.Coqpp.T m -> Coq_rules.setup_coqpp_rules ~sctx ~dir:ctx_dir m
       | Rocq_stanza.Theory.T m ->
         Expander.eval_blang expander m.enabled_if
         >>= (function

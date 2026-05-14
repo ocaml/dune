@@ -521,7 +521,6 @@ end = struct
              in
              let+ requires = Lib.Compile.direct_requires compile_info ~for_:Ocaml in
              Resolve.is_ok requires)
-      | Coq_stanza.Theory.T d -> Memo.return (Option.is_some d.package)
       | Rocq_stanza.Theory.T d -> Memo.return (Option.is_some d.package)
       | _ -> Memo.return false
     in
@@ -606,7 +605,6 @@ end = struct
           let sub_dir = Library.sub_dir lib in
           let* dir_contents = Dir_contents.get sctx ~dir in
           lib_install_files sctx ~scope ~dir ~sub_dir lib ~dir_contents
-        | Coq_stanza.Theory.T coqlib -> Coq_rules.install_rules ~sctx ~dir coqlib
         | Rocq_stanza.Theory.T theory -> Rocq_rules.install_rules ~sctx ~dir theory
         | Documentation.T stanza ->
           let* dir_contents = Dir_contents.get sctx ~dir in

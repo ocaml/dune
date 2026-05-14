@@ -23,6 +23,7 @@ type t =
   ; cats : Category.Set.t
   ; mutex : Mutex.t
   ; path : Path.t
+  ; mutable alloc : Alloc.t option
   }
 
 (* CR-someday rgrinberg: remove this once we drop support for < 5.2 *)
@@ -78,7 +79,8 @@ let create cats path =
   in
   let cats = Category.Set.of_list cats in
   let buf = Buffer.create (1 lsl 16) in
-  { fd; cats; buf; mutex = Mutex.create (); path }
+  let alloc = if Category.Set.mem cats Alloc then Some (Alloc.start ()) else None in
+  { fd; cats; buf; mutex = Mutex.create (); path; alloc }
 ;;
 
 let to_buffer t sexp =

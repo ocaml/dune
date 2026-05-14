@@ -4,6 +4,7 @@ module Category : sig
   type t =
     | Rpc
     | Gc
+    | Alloc
     | Fd
     | Sandbox
     | Persistent
@@ -37,6 +38,18 @@ module Event : sig
   end
 
   type t
+
+  type alloc_entry =
+    { trace : string list
+    ; estimated_words : int
+    ; samples : int
+    }
+
+  type alloc_heap =
+    { total_words : int
+    ; total_samples : int
+    ; top : alloc_entry list
+    }
 
   val sandbox
     :  [ `Create | `Snapshot | `Destroy | `Extract | `Corrected ]
@@ -131,6 +144,14 @@ module Event : sig
     -> start:Time.t
     -> stop:Time.t
     -> restart_duration:Time.Span.t option
+    -> t
+
+  val alloc_summary
+    :  phase:[ `Build | `Exit ]
+    -> run_id:int option
+    -> minor:alloc_heap
+    -> major:alloc_heap
+    -> promoted:alloc_heap
     -> t
 
   val init : version:string option -> t
@@ -279,6 +300,8 @@ val enabled : Category.t -> bool
 val emit : ?buffered:bool -> Category.t -> (unit -> Event.t) -> unit
 val emit_all : ?buffered:bool -> Category.t -> (unit -> Event.t list) -> unit
 val flush : unit -> unit
+val reset_alloc_profile : unit -> unit
+val capture_alloc_profile : [ `Build of int | `Exit ] -> Event.t option
 val at_exit : At_exit.t
 
 module Private : sig

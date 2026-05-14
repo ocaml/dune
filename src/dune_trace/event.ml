@@ -111,6 +111,18 @@ end
 
 type t = Event.t
 
+type alloc_entry =
+  { trace : string list
+  ; estimated_words : int
+  ; samples : int
+  }
+
+type alloc_heap =
+  { total_words : int
+  ; total_samples : int
+  ; top : alloc_entry list
+  }
+
 let scan_source ~name ~start ~stop ~dir =
   let dur = Time.diff stop start in
   let args = [ "dir", Arg.source_path dir ] in
@@ -262,6 +274,42 @@ let watch_build_finish ~run_id ~outcome ~start ~stop ~restart_duration =
     @ make_rusage_args (Proc.Resource_usage.get_self ())
   in
   Event.complete ~name:"build-finish" ~args ~start ~dur Build
+;;
+
+let alloc_summary ~phase ~run_id ~minor ~major ~promoted =
+  let now = Time.now () in
+  let entry { trace; estimated_words; samples } =
+    Arg.record
+      [ "trace", Arg.list (List.map trace ~f:Arg.string)
+      ; "estimated_words", Arg.int estimated_words
+      ; "samples", Arg.int samples
+      ]
+    |> Arg.list
+  in
+  let heap { total_words; total_samples; top } =
+    Arg.record
+      [ "total_words", Arg.int total_words
+      ; "total_samples", Arg.int total_samples
+      ; "top", Arg.list (List.map top ~f:entry)
+      ]
+    |> Arg.list
+  in
+  let args =
+    [ ( "phase"
+      , Arg.string
+          (match phase with
+           | `Build -> "build"
+           | `Exit -> "exit") )
+    ; "minor", heap minor
+    ; "major", heap major
+    ; "promoted", heap promoted
+    ]
+    @
+    match run_id with
+    | None -> []
+    | Some run_id -> [ "run_id", Arg.int run_id ]
+  in
+  Event.instant ~name:"summary" ~args now Alloc
 ;;
 
 module Exit_status = struct

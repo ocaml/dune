@@ -56,7 +56,7 @@ jobs:
       - name: Install and test transitive closure of ${{ matrix.package }}
         run: |
           opam install --with-test --yes --confirm-level=unsafe-yes \
-          $(OPAMCOLOR=never opam list -s --installable --available --recursive --required-by ${{matrix.package }} | grep -v dune)
+          $(OPAMCOLOR=never opam list -s --coinstallable-with ${{ matrix.package }} --installable --available --recursive --required-by ${{matrix.package }} | grep -v dune)
  
       - name: Show installed package list on failure
         if: failure()

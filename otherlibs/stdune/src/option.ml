@@ -141,8 +141,8 @@ module List = struct
 end
 
 let hash f = function
-  | None -> Stdlib.Hashtbl.hash None
-  | Some s -> Stdlib.Hashtbl.hash (f s)
+  | None -> 0
+  | Some s -> (f s * 31) + 1
 ;;
 
 let merge x y ~f =

@@ -202,7 +202,14 @@ let rec equal eq xs ys =
   | _, _ -> false
 ;;
 
-let hash f xs = Stdlib.Hashtbl.hash (map ~f xs)
+let hash f xs =
+  let rec loop acc = function
+    | [] -> acc
+    | x :: xs -> loop (Hash.feed acc (f x)) xs
+  in
+  loop (Hash.create ()) xs |> Hash.hash
+;;
+
 let cons x xs = x :: xs
 
 (* copy&paste from [base] *)

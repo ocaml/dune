@@ -334,8 +334,17 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
   let headers =
     gen_headers ~expander ctypes.headers |> Action_builder.memoize "ctypes-gen-headers"
   in
-  let deps, sandbox =
+  let action_env, sandbox =
     Dep_conf_eval.unnamed Sandbox_config.no_special_requirements ~expander ctypes.deps
+  in
+  let action_env = Action_builder.memoize "ctypes action_env" action_env in
+  let deps = Action_builder.ignore action_env in
+  let with_action_env build =
+    Action_builder.With_targets.map_build build ~f:(fun build ->
+      let open Action_builder.O in
+      let+ action = build
+      and+ env = action_env in
+      Action.Full.add_env env action)
   in
   let exe_link_only = exe_link_only ~deps ~dir ~shared_cctx:cctx ~sandbox in
   (* Type_gen produces a .c file, taking your type description module above as
@@ -374,7 +383,7 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
         ~loc:Loc.none
         (let exe = Ok (Path.build (Path.Build.relative dir (type_gen_script ^ ".exe"))) in
          let stdout_to = Path.Build.relative dir c_generated_types_cout_c in
-         Command.run ~stdout_to ~dir:(Path.build dir) exe [])
+         Command.run ~stdout_to ~dir:(Path.build dir) exe [] |> with_action_env)
     in
     let* () =
       let foreign_archives_deps =
@@ -407,7 +416,7 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
          |> Path.Build.relative dir
        in
        let exe = Ok (Path.build (Path.Build.relative dir c_generated_types_cout_exe)) in
-       Command.run ~stdout_to ~dir:(Path.build dir) exe [])
+       Command.run ~stdout_to ~dir:(Path.build dir) exe [] |> with_action_env)
   in
   (* Function_gen is similar to type_gen above, though it produces both an .ml
      file and a .c file. These files correspond to the files you would have to
@@ -443,6 +452,7 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
         in
         fun ~stdout_to ~what ->
           Command.run ~stdout_to ~dir:(Path.build dir) exe [ A what; A stubs_prefix ]
+          |> with_action_env
       in
       let* () =
         Super_context.add_rule

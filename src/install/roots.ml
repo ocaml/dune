@@ -109,10 +109,36 @@ let sep var =
   else None
 ;;
 
+let path_vars =
+  Env.Var.Set.of_list
+    (Env_path.var
+     :: List.map ~f:fst (to_env_without_path (make_all ()) ~relative:(fun () _ -> ())))
+;;
+
 let add_to_env t env =
-  to_env_without_path t ~relative:Path.Build.relative
-  |> List.fold_left ~init:env ~f:(fun env (var, path) ->
-    Env.update env ~var ~f:(fun _PATH ->
-      let path_sep = sep var in
-      Some (Bin.cons_path ?path_sep (Path.build path) ~_PATH)))
+  let env =
+    to_env_without_path t ~relative:Path.Build.relative
+    |> List.fold_left ~init:env ~f:(fun env (var, path) ->
+      Env.update env ~var ~f:(fun _PATH ->
+        let path_sep = sep var in
+        Some (Bin.cons_path ?path_sep (Path.build path) ~_PATH)))
+  in
+  Env.update env ~var:Env_path.var ~f:(fun _PATH ->
+    Some (Bin.cons_path (Path.build t.bin) ~_PATH))
+;;
+
+let extend_env_concat_path a b =
+  let a =
+    Env.Var.Set.fold path_vars ~init:a ~f:(fun var env ->
+      match Env.get b var with
+      | None -> env
+      | Some value ->
+        let path_sep = sep var in
+        let dirs = Bin.parse_path ?sep:path_sep value in
+        Env.update env ~var ~f:(fun init ->
+          List.fold_right dirs ~init ~f:(fun dir acc ->
+            Some (Bin.cons_path ?path_sep dir ~_PATH:acc))))
+  in
+  let b = Env.Var.Set.fold path_vars ~init:b ~f:(fun var env -> Env.remove env ~var) in
+  Env.extend_env a b
 ;;

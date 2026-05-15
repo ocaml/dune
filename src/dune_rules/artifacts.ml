@@ -9,6 +9,7 @@ type origin =
   ; dir : Path.Build.t
   ; dst : Path.Local.t
   ; enabled_if : bool Memo.t
+  ; package : Package.Name.t option
   }
 
 type where =
@@ -87,7 +88,7 @@ let analyze_binary t ~dir name =
             ]))
 ;;
 
-let binary t ?hint ?(where = Install_dir) ~dir ~loc name =
+let binary t ?hint ?(where = Original_path) ~dir ~loc name =
   analyze_binary t ~dir name
   >>= function
   | `Resolved path -> Memo.return @@ Ok path
@@ -95,7 +96,7 @@ let binary t ?hint ?(where = Install_dir) ~dir ~loc name =
     let context = Context.name t.context in
     Memo.return
     @@ Error (Action.Prog.Not_found.create ~program:name ?hint ~context ~loc ())
-  | `Origin { dir; binding; dst; enabled_if = _ } ->
+  | `Origin { dir; binding; dst; enabled_if = _; package = _ } ->
     (match where with
      | Install_dir ->
        let install_dir = Install.Context.bin_dir ~context:(Context.name t.context) in
@@ -110,6 +111,13 @@ let binary t ?hint ?(where = Install_dir) ~dir ~loc name =
        in
        let src = File_binding.Expanded.src expanded in
        Ok (Path.build src))
+;;
+
+let binary_package t ~dir name =
+  analyze_binary t ~dir name
+  >>| function
+  | `Origin { package; _ } -> package
+  | `Resolved _ | `None -> None
 ;;
 
 let binary_available t ~dir name =

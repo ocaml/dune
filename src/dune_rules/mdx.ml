@@ -372,7 +372,7 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog ~mdx_prog_ge
             ; Dep (Path.build files.src)
             ] )
       in
-      let deps, sandbox =
+      let action_env, sandbox =
         let mdx_generic_deps = Bindings.to_list stanza.deps in
         let mdx_package_deps =
           stanza.packages
@@ -387,9 +387,8 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog ~mdx_prog_ge
           (mdx_package_deps @ mdx_generic_deps)
       in
       let+ action =
-        Action_builder.with_no_targets deps
-        >>> Action_builder.with_no_targets
-              (Action_builder.env_var "MDX_RUN_NON_DETERMINISTIC")
+        Action_builder.with_no_targets
+          (Action_builder.env_var "MDX_RUN_NON_DETERMINISTIC")
         >>> Action_builder.with_no_targets
               (Action_builder.map mdx_input_dependencies ~f:(fun d -> (), d)
                |> Action_builder.dyn_deps)
@@ -400,8 +399,10 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog ~mdx_prog_ge
               command_line
       and+ locks =
         Expander.expand_locks expander stanza.locks |> Action_builder.with_no_targets
-      in
-      Action.Full.add_locks locks action |> Action.Full.add_sandbox sandbox
+      and+ env = Action_builder.with_no_targets action_env in
+      Action.Full.add_locks locks action
+      |> Action.Full.add_sandbox sandbox
+      |> Action.Full.add_env env
     in
     Super_context.add_rule sctx ~loc ~dir mdx_action
   in

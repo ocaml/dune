@@ -32,7 +32,7 @@ The special form %{bin:public_name} is supported.
 
   $ dune exec %{bin:e} a b c
   Hello
-  argv[0] = ./_build/install/default/bin/e
+  argv[0] = ./_build/default/e.exe
   argv[1] = a
   argv[2] = b
   argv[3] = c
@@ -58,7 +58,7 @@ It is possible to put the %{bin:...} pform in arguments rather than first.
   Got option: y
   Before
   Hello
-  argv[0] = _build/install/default/bin/e
+  argv[0] = _build/default/e.exe
   argv[1] = a
   argv[2] = b
   argv[3] = c
@@ -67,13 +67,13 @@ It is possible to put the %{bin:...} pform in arguments rather than first.
 The first item is still looked up in PATH.
 
   $ dune exec ls %{bin:e}
-  _build/install/default/bin/e
+  _build/default/e.exe
 
 Pforms can appear several times.
 
   $ dune exec ls %{bin:e} %{bin:e}
-  _build/install/default/bin/e
-  _build/install/default/bin/e
+  _build/default/e.exe
+  _build/default/e.exe
 
 It should also be possible to call another program that is also supposed to be
 built if referenced, for this we create a new binary that calls its first
@@ -103,6 +103,6 @@ If we then ask it to execute, both `call_arg` and `called` should be compiled
 and run, successfully.
 
   $ dune exec %{bin:call_arg} %{bin:called}
-  Calling my first arg, "_build/install/default/bin/called":
+  Calling my first arg, "_build/default/called.exe":
   I was called
   All good

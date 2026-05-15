@@ -33,7 +33,7 @@ Tests package-scoped library dependencies.
   >   (echo "let () = Printf.printf \"%d %s\" Foo.x Bar.x")))
   > 
   > (rule
-  >  (deps    test.ml (package bar))
+  >  (deps    test.ml (package foo) (package bar))
   >  (targets test.exe)
   >  (action  (run ocamlfind ocamlc -linkpkg -package bar -o test.exe test.ml)))
   > 

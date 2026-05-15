@@ -1,6 +1,5 @@
 %{bin:NAME} as a (run ...) target invokes the binary; as a deps
-entry it tracks the staging binary. The install bin dir is on the
-action's PATH (always-on for actions, not added by the dep).
+entry it adds a bin-layout dir to the action's PATH.
 
   $ cat >dune-project <<EOF
   > (lang dune 3.24)
@@ -22,13 +21,14 @@ action's PATH (always-on for actions, not added by the dep).
 
   $ dune build path-output
   hello from mybin
-  $ env_added "$(cat _build/default/path-output)" "$PATH"
-  $TESTCASE_ROOT/_build/install/default/bin
+  $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
+  $PWD/_build/install/default/.binaries/$DIGEST
 
-Both pform usages dedupe to a single dep on the install staging
-path:
+The rule's deps include the build artifact and the bin-layout
+symlink:
 
   $ dune rules --format=json _build/default/path-output \
   >   | jq 'include "dune"; .[] | ruleDepFilePaths' \
-  >   | grep mybin
-  "_build/install/default/bin/mybin"
+  >   | grep mybin | censor
+  "_build/default/mybin.exe"
+  "_build/install/default/.binaries/$DIGEST/mybin"

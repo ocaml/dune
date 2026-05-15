@@ -8,6 +8,15 @@ let install_file ~(package : Package.Name.t) ~findlib_toolchain =
   | Some x -> sprintf "%s-%s.install" package (Context_name.to_string x)
 ;;
 
+(** Alias for all the files in [_build/install] that belong to a package. *)
+let package_install ~(context : Build_context.t) ~(pkg : Package.t) =
+  let dir = Path.Build.append_source context.build_dir (Package.dir pkg) in
+  let name = Package.name pkg in
+  sprintf ".%s-files" (Package.Name.to_string name)
+  |> Alias.Name.of_string
+  |> Alias.make ~dir
+;;
+
 let with_doc = Package_variable_name.with_doc
 
 let need_odoc_config (pkg : Package.t) =
@@ -1176,6 +1185,49 @@ let install_entries sctx package =
   Package.Name.Map.Multi.find packages package
 ;;
 
+let () =
+  Install_layout.set_entry_resolver (fun context_name package ->
+    let open Memo.O in
+    let* sctx = Super_context.find_exn context_name in
+    let+ entries = install_entries sctx package in
+    let roots = Install.Roots.opam_from_prefix Path.root ~relative:Path.relative in
+    let install_paths = Install.Paths.make ~relative:Path.relative ~package ~roots in
+    List.filter_map entries ~f:(fun (s : Install.Entry.Sourced.Unexpanded.t) ->
+      let entry = s.entry in
+      match entry.kind with
+      | Install.Entry.Unexpanded.Source_tree -> None
+      | File | Directory ->
+        let relative =
+          Install.Entry.relative_installed_path entry ~paths:install_paths
+          |> Path.as_in_source_tree_exn
+        in
+        Some { Install_layout.src = Path.build entry.src; relative }))
+;;
+
+(** Generates the symlink rules for the install layout under
+    [_build/install/<context>/.packages/<key>/]. One rule per entry,
+    emitted when [gen_rules.ml] visits the entry's parent directory. *)
+let layout_gen_rules context_name ~dir key =
+  match Digest.from_hex key with
+  | None ->
+    (* This dispatch arm fires from [gen_rules.ml] when the build system
+       visits a path under [.packages/<key>/]. A non-hex key here means
+       the build system asked for a directory we never advertise, which
+       is an internal invariant violation, not user input. *)
+    Code_error.raise "invalid install layout key" [ "key", Dyn.string key ]
+  | Some digest ->
+    let* entries = Memo.exec Install_layout.entries_memo (context_name, digest) in
+    Memo.parallel_iter entries ~f:(fun (src, dst, _) ->
+      let rule_dir = Path.Build.parent_exn dst in
+      if Path.Build.equal rule_dir dir
+      then (
+        let { Action_builder.With_targets.build; targets } =
+          Action_builder.symlink ~src ~dst
+        in
+        Rules.Produce.rule (Rule.make ~info:(Rule.Info.of_loc_opt None) ~targets build))
+      else Memo.return ())
+;;
+
 let packages =
   let f sctx =
     let* packages = Dune_load.packages () in
@@ -1395,9 +1447,7 @@ let gen_package_install_file_rules sctx (package : Package.t) =
   in
   let* () =
     let* all_packages = Dune_load.packages () in
-    let target_alias =
-      Dep_conf_eval.package_install ~context:build_context ~pkg:package
-    in
+    let target_alias = package_install ~context:build_context ~pkg:package in
     let open Action_builder.O in
     Rules.Produce.Alias.add_deps
       target_alias
@@ -1411,7 +1461,7 @@ let gen_package_install_file_rules sctx (package : Package.t) =
                 let name = Package.Id.name pkg in
                 Package.Name.Map.find_exn all_packages name
               in
-              Dep_conf_eval.package_install ~context:build_context ~pkg |> Dep.alias) )))
+              package_install ~context:build_context ~pkg |> Dep.alias) )))
   in
   let action =
     let findlib_toolchain = Context.findlib_toolchain context in

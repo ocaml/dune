@@ -30,5 +30,5 @@ mytest.exe.output, which we then read.
 
   $ dune runtest 2>/dev/null
   [1]
-  $ env_added "$(cat _build/default/mytest.exe.output)" "$PATH"
-  $TESTCASE_ROOT/_build/install/default/bin
+  $ env_added "$(cat _build/default/mytest.exe.output)" "$PATH" | censor
+  $PWD/_build/install/default/.binaries/$DIGEST

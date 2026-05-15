@@ -272,7 +272,14 @@ let c_compile_args ~sctx ~dir ~expander ~src ~include_flags =
     ]
 ;;
 
-let build_c ~sctx ~dir ~expander ~include_flags (loc, (src : Foreign.Source.t), dst) =
+let build_c
+      ~sctx
+      ~dir
+      ~expander
+      ~include_flags
+      ~action_env
+      (loc, (src : Foreign.Source.t), dst)
+  =
   let ctx = Super_context.context sctx in
   let* ocaml = Context.ocaml ctx in
   (* Emit warning for Stubs case when standard flags are overridden *)
@@ -321,8 +328,7 @@ let build_c ~sctx ~dir ~expander ~include_flags (loc, (src : Foreign.Source.t), 
     sctx
     ~loc
     ~dir
-    (let open Action_builder.With_targets.O in
-     let src_path = Path.build (Foreign.Source.path src) in
+    (let src_path = Path.build (Foreign.Source.path src) in
      (* We have to execute the rule in the library directory as the .o is
         produced in the current directory *)
      let c_compiler =
@@ -347,7 +353,12 @@ let build_c ~sctx ~dir ~expander ~include_flags (loc, (src : Foreign.Source.t), 
      (* With sandboxing we get errors like: bar.c:2:19: fatal error: foo.cxx:
         No such file or directory #include "foo.cxx". (These errors happen only
         when compiling c files.) *)
-     >>| Action.Full.add_sandbox Sandbox_config.no_sandboxing)
+     |> Action_builder.With_targets.map_build ~f:(fun build ->
+       let open Action_builder.O in
+       let+ action = build
+       and+ env = action_env in
+       Action.Full.add_sandbox Sandbox_config.no_sandboxing action
+       |> Action.Full.add_env env))
 ;;
 
 (* TODO: [requires] is a confusing name, probably because it's too general: it
@@ -377,25 +388,30 @@ let build_include_flags ~sctx ~dir ~expander ~dir_contents ~requires ~src =
              ])
       ]
   in
-  let extra_deps =
-    let extra_deps, sandbox =
+  let extra_deps, action_env =
+    let action_env, sandbox =
       match Foreign.Source.kind src with
       | Stubs stubs ->
         Dep_conf_eval.unnamed
           Sandbox_config.no_special_requirements
           stubs.extra_deps
           ~expander
-      | Ctypes _ -> Action_builder.return (), Sandbox_config.default
+      | Ctypes _ -> Action_builder.return Env.empty, Sandbox_config.default
     in
     (* We don't sandbox the C compiler, see comment in [build_c] about
        this. *)
     ignore sandbox;
-    Action_builder.map extra_deps ~f:(fun () -> Command.Args.empty)
+    let action_env = Action_builder.memoize "foreign action_env" action_env in
+    let extra_deps =
+      Action_builder.map (Action_builder.ignore action_env) ~f:(fun () ->
+        Command.Args.empty)
+    in
+    extra_deps, action_env
   in
   let extra_flags =
     include_dir_flags ~expander ~dir ~include_dirs:(Foreign.Source.include_dirs src)
   in
-  Command.Args.S [ includes; extra_flags; Dyn extra_deps ]
+  Command.Args.S [ includes; extra_flags; Dyn extra_deps ], action_env
 ;;
 
 let build_o_files
@@ -417,11 +433,13 @@ let build_o_files
     foreign_sources
     ~f:(fun obj (loc, (src : Foreign.Source.t)) ->
       let+ build_file =
-        let include_flags =
+        let include_flags, action_env =
           build_include_flags ~sctx ~dir ~expander ~dir_contents ~requires ~src
         in
         let dst = Path.Build.relative dir (obj ^ Filename.Extension.to_string ext_obj) in
-        let+ () = build_c ~sctx ~dir ~expander ~include_flags (loc, src, dst) in
+        let+ () =
+          build_c ~sctx ~dir ~expander ~include_flags ~action_env (loc, src, dst)
+        in
         dst
       in
       Foreign.Source.mode src, Path.build build_file)

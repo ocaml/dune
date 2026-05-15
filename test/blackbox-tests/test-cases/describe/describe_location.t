@@ -18,7 +18,7 @@ Exercise the various ways of resolving executable names with `dune exec`.
 
 An executable that would be installed by the current package:
   $ dune describe location foo
-  _build/install/default/bin/foo
+  _build/default/foo.exe
 
 An executable from the current project:
   $ dune describe location ./foo.exe
@@ -64,4 +64,4 @@ Test that executables from PATH are located correctly:
   $TESTCASE_ROOT/bin/baz
 
   $ dune exec echo '%{bin:foo}'
-  _build/install/default/bin/foo
+  _build/default/foo.exe

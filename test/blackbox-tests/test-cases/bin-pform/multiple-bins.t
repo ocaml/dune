@@ -24,18 +24,22 @@ Multiple %{bin:...} deps in a single rule.
   >    (bash "echo $PATH"))))
   > EOF
 
-Both binaries live in the same install bin dir, which is on PATH:
+PATH gets a bin-layout dir with symlinks to both bins:
 
   $ dune build path-output
-  $ env_added "$(cat _build/default/path-output)" "$PATH"
-  $TESTCASE_ROOT/_build/install/default/bin
+  $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
+  $PWD/_build/install/default/.binaries/$DIGEST
 
-The rule depends on both staging binaries:
+The rule depends on each binary via two paths: the build artifact
+(from the pform expansion) and the bin-layout symlink (from the PATH
+machinery):
 
   $ dune rules --format=json _build/default/path-output \
-  >   | jq 'include "dune"; .[] | ruleDepFilePaths'
-  "_build/install/default/bin/bar"
-  "_build/install/default/bin/foo"
+  >   | jq 'include "dune"; .[] | ruleDepFilePaths' | censor
+  "_build/default/src/bar.exe"
+  "_build/default/src/foo.exe"
+  "_build/install/default/.binaries/$DIGEST/bar"
+  "_build/install/default/.binaries/$DIGEST/foo"
 
 Both binaries are callable by name:
 

@@ -108,6 +108,20 @@ let program_not_built_yet prog =
     ]
 ;;
 
+(* Cons the workspace's install staging dir ([_build/install/<ctx>/]) onto
+   the env's path-like vars (OCAMLPATH, PATH, etc.) for [dune exec]. This
+   does NOT trigger any build; if the staging dir isn't populated (no
+   [@install] was run), the entries on the path simply don't resolve. The
+   point is to preserve the old [dune exec] contract that workspace
+   libraries are visible via OCAMLPATH to anything the binary delegates to
+   (findlib, ocamlfind, dune-site's plugin lookup, etc.). Per-action rule
+   envs are unaffected — only [dune exec]'s own env extension. *)
+let extend_with_staging_env context base =
+  let staging = Install.Context.dir ~context in
+  let roots = Install.Roots.opam_from_prefix staging ~relative:Path.Build.relative in
+  Install.Roots.add_to_env roots base
+;;
+
 let build_prog ~no_rebuild ~prog p =
   if no_rebuild
   then
@@ -172,6 +186,7 @@ let step ~prog ~args ~common ~no_rebuild ~context ~on_exit () =
     Memo.parallel_map args ~f:(Cmd_arg.expand ~root:(Common.root common) ~sctx)
   in
   let* env = Super_context.context_env sctx in
+  let env = extend_with_staging_env context env in
   Memo.of_non_reproducible_fiber
   @@ Dune_engine.Process.run_inherit_std_in_out
        ~dir:(Path.of_string Fpath.initial_cwd)
@@ -305,6 +320,7 @@ let exec_building_directly ~common ~config ~context ~prog ~args ~no_rebuild =
       and* args =
         Memo.parallel_map ~f:(Cmd_arg.expand ~root:(Common.root common) ~sctx) args
       in
+      let env = extend_with_staging_env context env in
       Util.restore_cwd_and_execve (Common.root common) prog args env)
 ;;
 

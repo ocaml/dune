@@ -1,4 +1,4 @@
-%{bin:...} in (inline_tests (deps ...)) adds the install bin dir to
+%{bin:...} in (inline_tests (deps ...)) adds a bin-layout dir to
 the test runner's PATH.
 
   $ cat >dune-project <<EOF
@@ -40,5 +40,5 @@ sandbox:
   > EOF
 
   $ dune runtest 2>&1
-  $ env_added "$(cat path.out)" "$PATH"
-  $TESTCASE_ROOT/_build/install/default/bin
+  $ env_added "$(cat path.out)" "$PATH" | censor
+  $PWD/_build/install/default/.binaries/$DIGEST

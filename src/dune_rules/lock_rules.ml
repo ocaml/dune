@@ -510,6 +510,7 @@ let setup_rules ~components ~dir =
       let lock_dir = Path.Source.to_local lock_dir_path in
       let+ lock_rule = setup_lock_rules_with_source workspace ~dir ~lock_dir in
       Gen_rules.combine rules lock_rule)
+  | ".lock" :: _ :: _ -> Memo.return (Gen_rules.redirect_to_parent Gen_rules.Rules.empty)
   | [ ".dev-tool-locks" ] ->
     Memo.List.fold_left Dev_tool.all ~init:empty ~f:(fun rules dev_tool ->
       let+ dev_tool_rules = setup_dev_tool_lock_rules ~dir dev_tool in

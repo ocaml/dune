@@ -13,7 +13,11 @@ module Where =
       end
     end)
     (struct
-      let read_file f = Ok (Io.String_path.read_file f)
+      let read_file f =
+        match Io.String_path.read_file f with
+        | contents -> Ok contents
+        | exception exn -> Error exn
+      ;;
 
       let analyze_path s =
         match (Unix.stat s).st_kind with
@@ -44,7 +48,14 @@ let default () = Where.default ~build_dir:(Lazy.force build_dir) ()
 
 let to_socket = function
   | `Unix p -> Unix.ADDR_UNIX p
-  | `Ip (`Host host, `Port port) -> Unix.ADDR_INET (Unix.inet_addr_of_string host, port)
+  | `Ip (`Host host, `Port port) ->
+    (match
+       Unix.getaddrinfo host (Int.to_string port) [ Unix.AI_SOCKTYPE Unix.SOCK_STREAM ]
+     with
+     | { Unix.ai_addr; _ } :: _ -> ai_addr
+     | [] ->
+       User_error.raise
+         [ Pp.textf "Unable to resolve dune rpc host %S" host; Pp.textf "port: %d" port ])
 ;;
 
 let to_string t = Dune_rpc.Private.Where.to_string t

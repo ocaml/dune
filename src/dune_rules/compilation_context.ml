@@ -340,6 +340,24 @@ let create
 
 let for_ t = t.for_
 
+let filtered_include_flags t ~cm_kind ~kept_libs =
+  let lib_mode = Lib_mode.of_cm_kind cm_kind in
+  let open Action_builder.O in
+  let* direct_requires = Resolve.Memo.read t.requires_compile in
+  let+ hidden_requires = Resolve.Memo.read t.requires_hidden in
+  let direct_filtered = List.filter direct_requires ~f:(Lib.Set.mem kept_libs) in
+  let hidden_filtered = List.filter hidden_requires ~f:(Lib.Set.mem kept_libs) in
+  let project = Scope.project t.scope in
+  let lib_config = t.ocaml.lib_config in
+  Lib_flags.L.include_flags
+    ~project
+    ~direct_libs:direct_filtered
+    ~hidden_libs:hidden_filtered
+    lib_mode
+    lib_config
+  |> Command.Args.memo
+;;
+
 let alias_and_root_module_flags =
   let extra = [ "-w"; "-49" ] in
   fun base -> Ocaml_flags.append_common base extra |> Ocaml_flags.append_nostdlib

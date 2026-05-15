@@ -33,6 +33,44 @@ module Includes = struct
   let empty = Lib_mode.Cm_kind.Map.make_all Command.Args.empty
 end
 
+(* Key omits [t.requires_compile] / [t.requires_hidden] because they're
+   immutable on the cctx from [create]. The exception —
+   [for_module_generated_at_link_time]'s derived cctxs — takes the
+   [can_filter = false] arm in [lib_deps_for_module] and so never reaches this
+   cache. *)
+module Filtered_includes = struct
+  module Key = struct
+    type t =
+      { lib_mode : Lib_mode.t
+      ; kept_libs : Lib.Set.t
+      }
+
+    let equal a b =
+      Lib_mode.equal a.lib_mode b.lib_mode && Lib.Set.equal a.kept_libs b.kept_libs
+    ;;
+
+    let hash { lib_mode; kept_libs } =
+      Lib.Set.fold kept_libs ~init:(Lib_mode.hash lib_mode) ~f:(fun lib acc ->
+        acc lxor Lib.hash lib)
+    ;;
+
+    let repr =
+      Repr.record
+        "Filtered_includes.Key"
+        [ Repr.field "lib_mode" (Repr.abstract Lib_mode.to_dyn) ~get:(fun t -> t.lib_mode)
+        ; Repr.field "kept_libs" (Repr.abstract Lib.Set.to_dyn) ~get:(fun t ->
+            t.kept_libs)
+        ]
+    ;;
+
+    let to_dyn = Repr.to_dyn repr
+  end
+
+  type t = (Key.t, Command.Args.without_targets Command.Args.t Action_builder.t) Table.t
+
+  let create () : t = Table.create (module Key) 16
+end
+
 type opaque =
   | Explicit of bool
   | Inherit_from_settings
@@ -81,6 +119,7 @@ type t =
   ; loc : Loc.t option
   ; ocaml : Ocaml_toolchain.t
   ; for_ : Compilation_mode.t
+  ; filtered_includes : Filtered_includes.t
   }
 
 let loc t = t.loc
@@ -335,6 +374,7 @@ let create
   ; ocaml
   ; instances
   ; for_
+  ; filtered_includes = Filtered_includes.create ()
   }
 ;;
 
@@ -342,20 +382,34 @@ let for_ t = t.for_
 
 let filtered_include_flags t ~cm_kind ~kept_libs =
   let lib_mode = Lib_mode.of_cm_kind cm_kind in
-  let open Action_builder.O in
-  let* direct_requires = Resolve.Memo.read t.requires_compile in
-  let+ hidden_requires = Resolve.Memo.read t.requires_hidden in
-  let direct_filtered = List.filter direct_requires ~f:(Lib.Set.mem kept_libs) in
-  let hidden_filtered = List.filter hidden_requires ~f:(Lib.Set.mem kept_libs) in
-  let project = Scope.project t.scope in
-  let lib_config = t.ocaml.lib_config in
-  Lib_flags.L.include_flags
-    ~project
-    ~direct_libs:direct_filtered
-    ~hidden_libs:hidden_filtered
-    lib_mode
-    lib_config
-  |> Command.Args.memo
+  let cache_key = { Filtered_includes.Key.lib_mode; kept_libs } in
+  match Table.find t.filtered_includes cache_key with
+  | Some builder -> builder
+  | None ->
+    (* Cache the [Action_builder.t] (not the resolved args) up-front at
+       rule-construction time so all compile rules sharing this
+       [(lib_mode, kept_libs)] share one builder; [Action_builder.memoize] then
+       dedupes its evaluation. Mirrors the cache pattern in
+       [Ocamldep.read_immediate_deps_words]. *)
+    let builder =
+      let open Action_builder.O in
+      let* direct_requires = Resolve.Memo.read t.requires_compile in
+      let+ hidden_requires = Resolve.Memo.read t.requires_hidden in
+      let direct_filtered = List.filter direct_requires ~f:(Lib.Set.mem kept_libs) in
+      let hidden_filtered = List.filter hidden_requires ~f:(Lib.Set.mem kept_libs) in
+      let project = Scope.project t.scope in
+      let lib_config = t.ocaml.lib_config in
+      Lib_flags.L.include_flags
+        ~project
+        ~direct_libs:direct_filtered
+        ~hidden_libs:hidden_filtered
+        lib_mode
+        lib_config
+      |> Command.Args.memo
+    in
+    let builder = Action_builder.memoize "filtered_include_flags" builder in
+    Table.set t.filtered_includes cache_key builder;
+    builder
 ;;
 
 let alias_and_root_module_flags =

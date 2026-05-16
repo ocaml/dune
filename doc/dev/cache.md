@@ -19,8 +19,14 @@ purpose, especially when using a weak hash like MD5.
 The cache stores build _artifacts_ and _values_.
 
 * An _artifact_ is a file produced by a build rule. As any file, it has a name
-  as well as content. Note that we treat a file's executable permission bit as
-  part of its content.
+  as well as content. Dune includes its executable flag in the artifact digest,
+  but it does not treat the full Unix file mode as part of the artifact's
+  content.
+
+  As a result, two artifacts with the same file contents and executable flag
+  but different ignored permission bits share the same cache entry. This is
+  intentional: in hardlink mode, all copies of a cached artifact share one inode
+  and therefore must have one set of permissions.
 
 * A _value_ is anything else produced during a build that is not written to a
   file but which is worth storing persistently between successive builds. A

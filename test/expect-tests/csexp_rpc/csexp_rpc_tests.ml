@@ -58,26 +58,19 @@ let run_scheduler f =
   Scheduler.Run.go scheduler_config f ~on_event:(fun _ -> ())
 ;;
 
-let stop_server server addr =
-  run_scheduler (fun () -> Server.stop server);
-  match (addr : Unix.sockaddr) with
-  | ADDR_UNIX path -> Fpath.unlink_no_err path
-  | ADDR_INET _ -> ()
-;;
+let stop_server server = run_scheduler (fun () -> Server.stop server)
 
 let temp_rpc_dir () =
   Temp.temp_dir ~parent_dir:(Path.of_string ".") ~prefix:"test" ~suffix:"dune_rpc"
 ;;
 
 let%expect_test "csexp server create on unix sockets" =
-  if not Sys.win32
-  then (
-    let tmp_dir = temp_rpc_dir () in
-    let addr : Unix.sockaddr =
-      Unix.ADDR_UNIX (Path.to_string (Path.relative tmp_dir "dunerpc.sock"))
-    in
-    let server = server addr in
-    stop_server server addr);
+  (let tmp_dir = temp_rpc_dir () in
+   let addr : Unix.sockaddr =
+     Unix.ADDR_UNIX (Path.to_string (Path.relative tmp_dir "dunerpc.sock"))
+   in
+   let server = server addr in
+   stop_server server);
   [%expect {| |}]
 ;;
 
@@ -129,9 +122,7 @@ let%expect_test "csexp session reports malformed eof" =
 let%expect_test "csexp server life cycle" =
   let tmp_dir = temp_rpc_dir () in
   let addr : Unix.sockaddr =
-    if Sys.win32
-    then ADDR_INET (Unix.inet_addr_loopback, 0)
-    else ADDR_UNIX (Path.to_string (Path.relative tmp_dir "dunerpc.sock"))
+    ADDR_UNIX (Path.to_string (Path.relative tmp_dir "dunerpc.sock"))
   in
   let client_log = Logger.create ~name:"client" in
   let server_log = Logger.create ~name:"server" in
@@ -184,9 +175,7 @@ let%expect_test "csexp server life cycle" =
 let%expect_test "csexp server stop rejects new connections" =
   let tmp_dir = temp_rpc_dir () in
   let addr : Unix.sockaddr =
-    if Sys.win32
-    then ADDR_INET (Unix.inet_addr_loopback, 0)
-    else ADDR_UNIX (Path.to_string (Path.relative tmp_dir "dunerpc.sock"))
+    ADDR_UNIX (Path.to_string (Path.relative tmp_dir "dunerpc.sock"))
   in
   let run () =
     let server = server addr in

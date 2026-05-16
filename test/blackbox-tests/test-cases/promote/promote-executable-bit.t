@@ -27,4 +27,4 @@ removes the executable bit.
 
   $ dune build script
   $ test -x script && echo executable || echo not-executable
-  not-executable
+  executable

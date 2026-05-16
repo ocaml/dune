@@ -4,7 +4,6 @@ module Name : sig
   include module type of Stdune.Alias_name with type t = Stdune.Alias_name.t
 
   val default : t
-  val parse_local_path : Loc.t * Path.Local.t -> Path.Local.t * t
 
   include Comparable_intf.S with type key := t
 end

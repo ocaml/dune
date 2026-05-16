@@ -740,11 +740,11 @@ let plain_string f =
       User_error.raise ~loc [ Pp.text "Atom or quoted string expected" ])
 ;;
 
-let filename =
+let file_path =
   plain_string (fun ~loc s ->
     match s with
     | "." | ".." ->
-      User_error.raise ~loc [ Pp.textf "'.' and '..' are not valid filenames" ]
+      User_error.raise ~loc [ Pp.textf "'.' and '..' are not valid file paths" ]
     | fn -> fn)
 ;;
 
@@ -759,7 +759,7 @@ let relative_file =
   plain_string (fun ~loc fn ->
     if Filename.is_relative fn
     then fn
-    else User_error.raise ~loc [ Pp.textf "relative filename expected" ])
+    else User_error.raise ~loc [ Pp.textf "relative file path expected" ])
 ;;
 
 let enter t = Enter t

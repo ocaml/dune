@@ -139,8 +139,8 @@ let decode files =
           Sandbox_config config )
       ; ( "include"
         , let+ () = Syntax.since Stanza.syntax (3, 1)
-          and+ filename = filename in
-          Include filename )
+          and+ file_path = file_path in
+          Include file_path )
       ]
   in
   decode

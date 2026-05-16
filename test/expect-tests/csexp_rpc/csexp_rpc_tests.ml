@@ -371,5 +371,5 @@ let%expect_test "csexp client stop does not close an active session" =
            Fiber.Ivar.fill server_read ()))
   in
   run_scheduler run;
-  [%expect {| server: session closed |}]
+  [%expect {| server: session remained open |}]
 ;;

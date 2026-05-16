@@ -1,6 +1,7 @@
 Tests for [Fs_memo] symlink handling.
 
   $ export DUNE_TRACE=cache
+  $ setup_xdg_runtime_dir
 
   $ test () {
   >   echo "------------------------------------------"

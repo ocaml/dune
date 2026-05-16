@@ -84,6 +84,13 @@ module Socket = struct
   ;;
 end
 
+let close_bound_socket ((addr : Unix.sockaddr), fd) =
+  let+ () = Async_io.close fd in
+  match addr with
+  | ADDR_UNIX path -> Fpath.unlink_no_err path
+  | _ -> ()
+;;
+
 module Session = struct
   module Session_id = Id.Make ()
   module Id = Session_id
@@ -380,11 +387,7 @@ module Server = struct
             in
             ()
         in
-        let* () = Fiber.parallel_iter t.sockets ~f:(fun (_, fd) -> Async_io.close fd) in
-        List.iter t.sockets ~f:(fun (addr, _) ->
-          match (addr : Unix.sockaddr) with
-          | ADDR_UNIX p -> Fpath.unlink_no_err p
-          | _ -> ());
+        let* () = Fiber.parallel_iter t.sockets ~f:close_bound_socket in
         Fiber.Ivar.fill t.closed ()
     ;;
 
@@ -499,7 +502,8 @@ module Server = struct
         match t.state with
         | `Closed -> Fiber.return ()
         | `Running transport -> Transport.stop transport
-        | `Init fds -> Fiber.parallel_iter fds ~f:Async_io.close
+        | `Init fds ->
+          Fiber.parallel_iter (List.combine t.sockaddrs fds) ~f:close_bound_socket
       in
       let+ () = Fiber.return () in
       t.state <- `Closed;

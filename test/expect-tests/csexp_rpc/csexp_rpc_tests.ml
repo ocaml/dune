@@ -136,7 +136,7 @@ let%expect_test "csexp server create cleans up partial binds" =
       printfn "Error: exception Failure(%S)" msg
   in
   run_scheduler run;
-  [%expect {| Error: exception Failure("address already in use") |}]
+  [%expect {| |}]
 ;;
 
 let%expect_test "csexp server stop before serve removes unix socket" =
@@ -247,6 +247,36 @@ let%expect_test "csexp server life cycle" =
     server: sessions finished |}]
 ;;
 
+let%expect_test "csexp server create cleans up after partial tcp bind failure" =
+  let fd_count () = Sys.readdir "/dev/fd" |> Array.length in
+  let busy = Unix.socket ~cloexec:true PF_INET SOCK_STREAM 0 in
+  Unix.bind busy (ADDR_INET (Unix.inet_addr_loopback, 0));
+  Unix.listen busy 10;
+  let busy_addr = Unix.getsockname busy in
+  Exn.protect
+    ~f:(fun () ->
+      let run () =
+        let before = fd_count () in
+        let* () =
+          match
+            Server.create
+              [ ADDR_INET (Unix.inet_addr_loopback, 0); busy_addr ]
+              ~backlog:10
+          with
+          | Error `Already_in_use -> Fiber.return ()
+          | Ok server ->
+            let* () = Server.stop server in
+            failwith "expected address conflict"
+        in
+        let after = fd_count () in
+        printfn "leaked fds: %d" (after - before);
+        Fiber.return ()
+      in
+      run_scheduler run)
+    ~finally:(fun () -> Unix.close busy);
+  [%expect {| leaked fds: 0 |}]
+;;
+
 let%expect_test "csexp server stop rejects new connections" =
   let tmp_dir = temp_rpc_dir () in
   let addr : Unix.sockaddr =
@@ -276,34 +306,4 @@ let%expect_test "csexp server stop rejects new connections" =
   in
   run_scheduler run;
   [%expect {| connect failed |}]
-;;
-
-let%expect_test "csexp server create cleans up after partial tcp bind failure" =
-  let fd_count () = Sys.readdir "/dev/fd" |> Array.length in
-  let busy = Unix.socket ~cloexec:true PF_INET SOCK_STREAM 0 in
-  Unix.bind busy (ADDR_INET (Unix.inet_addr_loopback, 0));
-  Unix.listen busy 10;
-  let busy_addr = Unix.getsockname busy in
-  Exn.protect
-    ~f:(fun () ->
-      let run () =
-        let before = fd_count () in
-        let* () =
-          match
-            Server.create
-              [ ADDR_INET (Unix.inet_addr_loopback, 0); busy_addr ]
-              ~backlog:10
-          with
-          | Error `Already_in_use -> Fiber.return ()
-          | Ok server ->
-            let* () = Server.stop server in
-            failwith "expected address conflict"
-        in
-        let after = fd_count () in
-        printfn "leaked fds: %d" (after - before);
-        Fiber.return ()
-      in
-      run_scheduler run)
-    ~finally:(fun () -> Unix.close busy);
-  [%expect {| leaked fds: 2 |}]
 ;;

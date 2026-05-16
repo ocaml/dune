@@ -4,18 +4,6 @@ module Name = struct
   include Stdune.Alias_name
 
   let default = of_string "default"
-
-  let parse_local_path (loc, p) =
-    match Path.Local.parent p with
-    | Some dir ->
-      ( dir
-      , (* TODO one day we should validate the name properly here *)
-        Path.Local.basename p |> of_string_opt_loose |> Option.value_exn )
-    | None ->
-      User_error.raise
-        ~loc
-        [ Pp.textf "Invalid alias path: %S" (Path.Local.to_string_maybe_quoted p) ]
-  ;;
 end
 
 module T : sig

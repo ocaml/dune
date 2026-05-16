@@ -85,7 +85,7 @@ let write_raw addr data =
   let fd = Unix.socket ~cloexec:true (Unix.domain_of_sockaddr addr) Unix.SOCK_STREAM 0 in
   Unix.connect fd addr;
   let (_ : int) = Unix.single_write_substring fd data 0 (String.length data) in
-  Unix.close fd
+  fd
 ;;
 
 let%expect_test "csexp session reports malformed eof" =
@@ -93,18 +93,23 @@ let%expect_test "csexp session reports malformed eof" =
   let path = Path.to_string (Path.relative tmp_dir "dunerpc.sock") in
   let addr = Unix.ADDR_UNIX path in
   let run () =
+    let accepted = Fiber.Ivar.create () in
     let server = server addr in
     let* sessions = Server.serve server in
     Fiber.fork_and_join_unit
       (fun () ->
-         write_raw addr "5:abc";
-         Fiber.return ())
+         let fd = write_raw addr "5:abc" in
+         let+ () = Fiber.Ivar.read accepted in
+         Unix.close fd)
       (fun () ->
          Fiber.Stream.In.parallel_iter sessions ~f:(fun session ->
-           let* res = Session.read session in
-           (match res with
-            | None -> printfn "server: read returned None"
-            | Some sexp -> printfn "server: received %s" (Csexp.to_string sexp));
+           let* () = Fiber.Ivar.fill accepted () in
+           let* () =
+             Session.read session
+             >>| function
+             | None -> printfn "server: read returned None"
+             | Some sexp -> printfn "server: received %s" (Csexp.to_string sexp)
+           in
            Server.stop server))
   in
   let old_verbose = !Log.verbose in

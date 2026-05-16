@@ -185,6 +185,9 @@ let rec exec t ~ectx ~eenv : Done_or_more_deps.t Produce.t =
   | Run (Ok prog, args) ->
     let+ () = exec_run ~ectx ~eenv prog (Array.Immutable.to_list args) in
     Done
+  | Allow_action_runner t ->
+    let metadata = { ectx.metadata with can_run_in_action_runner = true } in
+    exec t ~ectx:{ ectx with metadata } ~eenv
   | With_accepted_exit_codes (exit_codes, t) ->
     let eenv =
       let exit_codes =
@@ -310,7 +313,10 @@ and redirect t ~ectx ~eenv ?in_ ?out () =
     | None -> eenv.stdout_to, eenv.stderr_to, ignore
     | Some (outputs, fn, perm) ->
       let out =
-        Process.Io.file fn Process.Io.Out ~perm:(Action.File_perm.to_unix_perm perm)
+        Process.Io.file
+          fn
+          Process.Io.Out
+          ~perm:(Action.File_perm.to_unix_perm perm |> Permissions.Mode.of_int)
       in
       let stdout_to, stderr_to =
         match outputs with

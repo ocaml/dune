@@ -3,6 +3,8 @@ type t =
   | Watch of int
 
 val to_int : t -> int
+val compare : t -> t -> Ordering.t
+val equal : t -> t -> bool
 
 module State : sig
   type run_id := t

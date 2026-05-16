@@ -56,7 +56,7 @@ module Io : sig
       input from the file. The returned channel can only be used by a single
       call to {!run}. If you want to use it multiple times, you need to use
       [clone]. *)
-  val file : Path.t -> ?perm:int -> 'a mode -> 'a t
+  val file : Path.t -> ?perm:Permissions.Mode.t -> 'a mode -> 'a t
 
   (** Call this when you no longer need this redirection *)
   val release : 'a t -> unit
@@ -78,6 +78,9 @@ type metadata =
   ; name : string option
     (** name when emitting stats. defaults to the basename of the executable *)
   ; categories : string list (** additional categories when emitting stats *)
+  ; can_run_in_action_runner : bool
+    (** Whether the process may be delegated to the action runner when one is
+        active. *)
   ; purpose : purpose
   ; has_embedded_location : bool
   ; promotion : User_message.Diff_annot.t option
@@ -89,10 +92,70 @@ val create_metadata
   -> ?has_embedded_location:bool
   -> ?name:string
   -> ?categories:string list
+  -> ?can_run_in_action_runner:bool
   -> ?purpose:purpose
   -> ?promotion:User_message.Diff_annot.t
   -> unit
   -> metadata
+
+module Runner : sig
+  module Input : sig
+    type t =
+      | Null
+      | Terminal
+      | File of Path.t
+  end
+
+  module Output : sig
+    type t =
+      | Null
+      | Terminal
+      | File of
+          { path : Path.t
+          ; perm : Permissions.Mode.t
+          }
+  end
+
+  module Stderr : sig
+    type t =
+      | Same_as_stdout
+      | Output of Output.t
+  end
+
+  (** The current runner contract is path-based: stdin/stdout/stderr file
+      redirections assume the runner executes in the same filesystem namespace
+      as the parent process. *)
+  type request =
+    { dir : Path.t option
+    ; env : Env.t
+    ; metadata : metadata
+    ; prog : Path.t
+    ; args : string list
+    ; stdin_from : Input.t
+    ; stdout_to : Output.t
+    ; stderr_to : Stderr.t
+    ; create_process_group : bool
+    ; timeout : Time.Span.t option
+    ; queued : Time.Span.t
+    }
+
+  type response =
+    { started_at : Time.t
+    ; process_info : Proc.Process_info.t
+    ; termination_reason : Scheduler.termination_reason
+    ; times : Proc.Times.t
+    ; trace_args : (string * Sexp.t) list
+      (** Extra fields to append to the parent-owned process trace events. *)
+    }
+
+  (** Install the process runner hook for this process. The installed runner is
+      expected to preserve the path-based redirection contract of [request]. *)
+  val set : (request -> response Fiber.t option) -> unit
+end
+
+(** Execute a [Runner.request] locally without taking another scheduler job
+    slot. This is intended for the external worker implementation. *)
+val exec_locally : Runner.request -> Runner.response Fiber.t
 
 (** [run ?dir ?stdout_to prog args] spawns a sub-process and wait for its
     termination. [stdout_to] [stderr_to] are released *)

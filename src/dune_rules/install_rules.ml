@@ -1283,6 +1283,7 @@ struct
 
     let name = "gen-install-file"
     let version = 2
+    let runs_process = false
     let bimap (entries, dst) _ g = entries, g dst
     let is_useful_to ~memoize = memoize
     let encode (_entries, dst) _path target : Sexp.t = List [ target dst ]

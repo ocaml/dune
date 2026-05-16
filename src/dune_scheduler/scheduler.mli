@@ -99,6 +99,20 @@ val wait_for_build_process
 (** Number of jobs currently running in the background *)
 val running_jobs_count : t -> int
 
+(** Run id of the currently executing build. *)
+val current_run_id : unit -> Run_id.t
+
+(** [with_current_build_cancellation_handler ~on_cancel f] runs [f] and runs
+    [on_cancel] if the current build is cancelled. *)
+val with_current_build_cancellation_handler
+  :  on_cancel:(unit -> unit Fiber.t)
+  -> (unit -> 'a Fiber.t)
+  -> 'a Fiber.t
+
+(** Reset the current build cancellation token. This is intended for long-lived
+    action-runner workers that serve multiple parent build runs. *)
+val reset_current_build_cancellation : unit -> unit
+
 (** Abort any on-going [Run.go], making it raise [Run.Shutdown_requested].
 
     To understand the exact effect of [shutdown], one needs to understand how

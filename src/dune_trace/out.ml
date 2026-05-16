@@ -22,8 +22,10 @@ type t =
   ; buf : Buffer.t
   ; cats : Category.Set.t
   ; mutex : Mutex.t
-  ; path : Path.t
+  ; path : Path.t option
   ; mutable alloc : Alloc.t option
+  ; terminate_process_on_error : bool
+  ; mutable failed : bool
   }
 
 (* CR-someday rgrinberg: remove this once we drop support for < 5.2 *)
@@ -35,7 +37,7 @@ external write_bigstring
   -> int
   = "dune_trace_write"
 
-let flush =
+let flush_unlocked =
   (* This loop will almost always result in a single write, but we make sure to
      write everything (albeit inefficiently) if the user is running out of disk
      space, is on NFS, or some exotic operation system that doesn't give us
@@ -63,10 +65,33 @@ let flush =
   fun t -> loop t 0 (Buffer.pos t.buf)
 ;;
 
-let close t =
+let mark_failed t =
   Mutex.protect t.mutex (fun () ->
-    flush t;
-    Fd.close t.fd)
+    if not t.failed
+    then (
+      t.failed <- true;
+      Buffer.clear t.buf))
+;;
+
+let handle_emit_error t exn =
+  mark_failed t;
+  if t.terminate_process_on_error then Stdlib.exit 1 else raise exn
+;;
+
+let close t =
+  match
+    Mutex.protect t.mutex (fun () ->
+      if t.failed
+      then (
+        match Fd.close t.fd with
+        | () -> ()
+        | exception _ -> ())
+      else (
+        flush_unlocked t;
+        Fd.close t.fd))
+  with
+  | () -> ()
+  | exception exn -> handle_emit_error t exn
 ;;
 
 let create cats path =
@@ -80,7 +105,29 @@ let create cats path =
   let cats = Category.Set.of_list cats in
   let buf = Buffer.create (1 lsl 16) in
   let alloc = if Category.Set.mem cats Alloc then Some (Alloc.start ()) else None in
-  { fd; cats; buf; mutex = Mutex.create (); path; alloc }
+  { fd
+  ; cats
+  ; buf
+  ; mutex = Mutex.create ()
+  ; path = Some path
+  ; alloc
+  ; terminate_process_on_error = false
+  ; failed = false
+  }
+;;
+
+let of_fd cats fd =
+  let cats = Category.Set.of_list cats in
+  let buf = Buffer.create (1 lsl 16) in
+  { fd
+  ; cats
+  ; buf
+  ; mutex = Mutex.create ()
+  ; path = None
+  ; alloc = (if Category.Set.mem cats Alloc then Some (Alloc.start ()) else None)
+  ; terminate_process_on_error = true
+  ; failed = false
+  }
 ;;
 
 let to_buffer t sexp =
@@ -107,12 +154,26 @@ let emit_buffered t event =
 ;;
 
 let emit ?(buffered = false) t event =
-  Mutex.protect t.mutex (fun () ->
-    emit_buffered t event;
-    if not buffered then flush t)
+  if not t.failed
+  then (
+    match
+      Mutex.protect t.mutex (fun () ->
+        if not t.failed
+        then (
+          emit_buffered t event;
+          if not buffered then flush_unlocked t))
+    with
+    | () -> ()
+    | exception exn -> handle_emit_error t exn)
 ;;
 
-let flush t = Mutex.protect t.mutex (fun () -> flush t)
+let flush t =
+  if not t.failed
+  then (
+    match Mutex.protect t.mutex (fun () -> if not t.failed then flush_unlocked t) with
+    | () -> ()
+    | exception exn -> handle_emit_error t exn)
+;;
 
 let start t k : Event.Async.t option =
   match t with

@@ -109,7 +109,11 @@ let dep_prog = function
   | Error _ -> Action_builder.return ()
 ;;
 
-let run_dyn_prog ~dir ?sandbox ?stdout_to prog args =
+let maybe_allow_action_runner ~can_run_in_action_runner action =
+  if can_run_in_action_runner then Action.allow_action_runner action else action
+;;
+
+let run_dyn_prog ~dir ?sandbox ?stdout_to ?(can_run_in_action_runner = false) prog args =
   Action_builder.With_targets.add
     ~file_targets:(Option.to_list stdout_to)
     (let open Action_builder.With_targets.O in
@@ -123,6 +127,7 @@ let run_dyn_prog ~dir ?sandbox ?stdout_to prog args =
      and+ args = expand ~dir (S args) in
      let action =
        let action = Action.Run (prog, Appendable_list.to_immutable_array args) in
+       let action = maybe_allow_action_runner ~can_run_in_action_runner action in
        match stdout_to with
        | None -> action
        | Some path -> Action.with_stdout_to path action
@@ -130,15 +135,22 @@ let run_dyn_prog ~dir ?sandbox ?stdout_to prog args =
      Action.chdir dir action |> Action.Full.make ?sandbox)
 ;;
 
-let run ~dir ?sandbox ?stdout_to prog args =
-  run_dyn_prog ~dir ?sandbox ?stdout_to (Action_builder.return prog) args
+let run ~dir ?sandbox ?stdout_to ?can_run_in_action_runner prog args =
+  run_dyn_prog
+    ~dir
+    ?sandbox
+    ?stdout_to
+    ?can_run_in_action_runner
+    (Action_builder.return prog)
+    args
 ;;
 
-let run' ?sandbox ~dir prog args =
+let run' ?sandbox ~dir ?(can_run_in_action_runner = false) prog args =
   let open Action_builder.O in
   let+ () = dep_prog prog
   and+ args = expand_no_targets ~dir (S args) in
   Action.Run (prog, Appendable_list.to_immutable_array args)
+  |> maybe_allow_action_runner ~can_run_in_action_runner
   |> Action.chdir dir
   |> Action.Full.make ?sandbox
 ;;

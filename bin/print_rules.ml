@@ -49,6 +49,7 @@ let rec encode_action : Action.For_shell.t -> Dune_lang.t =
   function
   | Run (a, xs) ->
     List (atom "run" :: program a :: List.map (Array.Immutable.to_list xs) ~f:string)
+  | Allow_action_runner t -> encode_action t
   | With_accepted_exit_codes (pred, t) ->
     List
       [ atom "with-accepted-exit-codes"

@@ -34,7 +34,8 @@ let action
       | Native | Best | Byte -> None
       | Jsoo _ -> Some Jsoo_rules.runner
     with
-    | None -> flags >>| Action.run (Ok exe)
+    | None ->
+      flags >>| fun flags -> Action.run (Ok exe) flags |> Action.allow_action_runner
     | Some runner ->
       let* prog =
         Super_context.resolve_program
@@ -47,6 +48,7 @@ let action
       let action =
         Path.reach exe ~from:(Path.build dir) :: flags
         |> Action.run prog
+        |> Action.allow_action_runner
         |> Action_builder.return
       in
       (* jeremiedimino: it feels like this pattern should be pushed

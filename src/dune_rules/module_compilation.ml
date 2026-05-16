@@ -354,10 +354,11 @@ let build_cm
         >>| List.concat_map ~f:(fun m -> [ "-parameter"; Module_name.to_string m ]))
    in
    let flags = Command.Args.dyn (Ocaml_flags.get (Compilation_context.flags cctx) mode) in
-   let pp_flags, sandbox =
+   let pp_flags, sandbox, can_run_in_action_runner =
      match Module.pp_flags m with
-     | None -> Command.Args.empty, sandbox
-     | Some (pp, sandbox') -> Command.Args.dyn pp, Sandbox_config.inter sandbox sandbox'
+     | None -> Command.Args.empty, sandbox, false
+     | Some (pp, sandbox') ->
+       Command.Args.dyn pp, Sandbox_config.inter sandbox sandbox', true
    in
    let output =
      match phase with
@@ -401,6 +402,7 @@ let build_cm
       Action_builder.with_no_targets other_cm_files
       >>> Command.run
             ~dir:(Path.build (Context.build_dir ctx))
+            ~can_run_in_action_runner
             compiler
             [ flags
             ; pp_flags

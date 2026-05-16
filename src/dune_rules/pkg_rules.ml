@@ -661,6 +661,7 @@ module Substitute = struct
 
     let name = "substitute"
     let version = 4
+    let runs_process = false
     let bimap t f g = { t with src = f t.src; dst = g t.dst }
     let is_useful_to ~memoize = memoize
 
@@ -1710,6 +1711,7 @@ module Install_action = struct
 
     let name = "install-file-run"
     let version = 1
+    let runs_process = false
 
     let bimap
           ({ install_file

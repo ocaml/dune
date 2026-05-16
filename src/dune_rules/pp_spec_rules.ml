@@ -207,6 +207,7 @@ let lint_module sctx ~sandbox ~dir ~expander ~lint ~lib_name ~scope =
                   let dir = ctx |> Context.build_dir |> Path.build in
                   Command.run'
                     ~dir
+                    ~can_run_in_action_runner:true
                     (Ok (Path.build exe))
                     [ As args
                     ; Command.Ml_kind.ppx_driver_flag ml_kind
@@ -362,6 +363,7 @@ let pp_one_module
                        in
                        Command.run'
                          ~dir
+                         ~can_run_in_action_runner:true
                          (Ok (Path.build exe))
                          [ As args
                          ; A "-o"

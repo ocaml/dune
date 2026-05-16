@@ -3,12 +3,17 @@ type t =
   ; mutable closed : bool
   }
 
-let unsafe_to_int (fd : Unix.file_descr) = (Obj.magic fd : int)
+let unsafe_file_descr_to_int (fd : Unix.file_descr) = (Obj.magic fd : int)
+let unsafe_file_descr_of_int (fd : int) : Unix.file_descr = Obj.magic fd
+let unsafe_to_int t = unsafe_file_descr_to_int t.fd
 let equal_raw_fd = Poly.equal
-let hash_raw_fd fd = Int.hash (unsafe_to_int fd)
-let raw_fd_repr = Repr.view Repr.int ~to_:unsafe_to_int
+let hash_raw_fd fd = Int.hash (unsafe_file_descr_to_int fd)
+let raw_fd_repr = Repr.view Repr.int ~to_:unsafe_file_descr_to_int
 let unsafe_to_unix_file_descr t = t.fd
 let unsafe_of_unix_file_descr fd = { fd; closed = false }
+let unsafe_of_int fd = unsafe_of_unix_file_descr (unsafe_file_descr_of_int fd)
+let set_close_on_exec t = Unix.set_close_on_exec t.fd
+let clear_close_on_exec t = Unix.clear_close_on_exec t.fd
 
 let close t =
   if not t.closed

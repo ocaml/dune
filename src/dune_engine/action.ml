@@ -25,6 +25,7 @@ struct
   include Ast
 
   let run prog args = Run (prog, Array.Immutable.of_list args)
+  let allow_action_runner t = Allow_action_runner t
   let chdir path t = Chdir (path, t)
   let setenv var value t = Setenv (var, value, t)
 
@@ -214,6 +215,7 @@ let digest =
       for i = 0 to Array.Immutable.length args - 1 do
         string d (Array.Immutable.get args i)
       done
+    | Allow_action_runner t -> loop d t ~dir
     | With_accepted_exit_codes (pred, t) ->
       int d 1;
       repr d (Predicate_lang.repr Repr.int) pred;
@@ -314,6 +316,7 @@ let fold_one_step t ~init:acc ~f =
   | Redirect_out (_, _, _, t)
   | Redirect_in (_, _, t)
   | Ignore (_, t)
+  | Allow_action_runner t
   | With_accepted_exit_codes (_, t) -> f acc t
   | Progn l | Pipe (_, l) | Concurrent l -> List.fold_left l ~init:acc ~f
   | Run _
@@ -359,6 +362,7 @@ let rec is_dynamic = function
   | Redirect_out (_, _, _, t)
   | Redirect_in (_, _, t)
   | Ignore (_, t)
+  | Allow_action_runner t
   | With_accepted_exit_codes (_, t) -> is_dynamic t
   | Progn l | Pipe (_, l) | Concurrent l -> List.exists l ~f:is_dynamic
   | Run _
@@ -374,6 +378,28 @@ let rec is_dynamic = function
   | Diff _
   | Mkdir _ -> false
   | Extension (module A) -> A.Spec.is_dynamic
+;;
+
+let rec runs_process = function
+  | Chdir (_, t)
+  | Setenv (_, _, t)
+  | Redirect_out (_, _, _, t)
+  | Redirect_in (_, _, t)
+  | Ignore (_, t)
+  | Allow_action_runner t
+  | With_accepted_exit_codes (_, t) -> runs_process t
+  | Progn l | Pipe (_, l) | Concurrent l -> List.exists l ~f:runs_process
+  | Run _ | Bash _ | Diff _ -> true
+  | Echo _
+  | Cat _
+  | Copy _
+  | Symlink _
+  | Hardlink _
+  | Write_file _
+  | Rename _
+  | Remove_tree _
+  | Mkdir _ -> false
+  | Extension (module A) -> A.Spec.runs_process
 ;;
 
 let maybe_sandbox_path sandbox p =
@@ -411,7 +437,7 @@ let is_useful_to memoize =
     | Setenv (_, _, t) -> loop t
     | Redirect_out (_, _, _, t) -> memoize || loop t
     | Redirect_in (_, _, t) -> loop t
-    | Ignore (_, t) | With_accepted_exit_codes (_, t) -> loop t
+    | Ignore (_, t) | Allow_action_runner t | With_accepted_exit_codes (_, t) -> loop t
     | Progn l | Pipe (_, l) | Concurrent l -> List.exists l ~f:loop
     | Echo _ -> false
     | Cat _ -> memoize

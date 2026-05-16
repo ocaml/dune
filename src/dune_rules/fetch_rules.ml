@@ -75,6 +75,7 @@ module Spec = struct
 
   let name = "source-fetch"
   let version = 2
+  let runs_process = false
   let bimap t _ g = { t with target = g t.target }
   let is_useful_to ~memoize = memoize
 
@@ -302,6 +303,7 @@ module Copy = struct
 
     let name = "copy-dir"
     let version = 2
+    let runs_process = false
     let bimap t f g = { src_dir = f t.src_dir; dst_dir = g t.dst_dir }
     let is_useful_to ~memoize = memoize
 

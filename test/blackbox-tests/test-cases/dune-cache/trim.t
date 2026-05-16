@@ -78,8 +78,8 @@ entries uniformly.
 
   $ (cd "$PWD/.xdg-cache/dune/db/meta/v5"; grep -rws . -e 'metadata' | sort ) > out
   $ cat out | censor
-  ./59/$DIGEST1:((8:metadata)(5:files(8:target_b32:$DIGEST2)))
-  ./78/$DIGEST3:((8:metadata)(5:files(8:target_a32:$DIGEST4)))
+  ./0c/$DIGEST1:((8:metadata)(5:files(8:target_a32:$DIGEST2)))
+  ./3f/$DIGEST3:((8:metadata)(5:files(8:target_b32:$DIGEST4)))
 
   $ digest="$(awk -F: '/target_b/ { digest=$1 } END { print digest }' < out)"
 

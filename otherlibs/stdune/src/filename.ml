@@ -13,7 +13,6 @@ module Extension = struct
   let vo = ".vo"
   let vos = ".vos"
   let mllib = ".mllib"
-  let mlpack = ".mllib"
   let mll = ".mll"
   let mly = ".mly"
   let theory_d = ".theory.d"

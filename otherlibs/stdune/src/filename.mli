@@ -25,7 +25,6 @@ module Extension : sig
   val corrected : t
   val ml : t
   val mli : t
-  val mlpack : t
   val mllib : t
   val mll : t
   val vo : t

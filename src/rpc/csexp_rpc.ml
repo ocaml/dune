@@ -555,6 +555,7 @@ module Client = struct
         |> Fd.unsafe_of_unix_file_descr
       in
       Unix.set_nonblock (Fd.unsafe_to_unix_file_descr fd);
+      Socket.maybe_set_nosigpipe fd;
       { fd }
     ;;
   end

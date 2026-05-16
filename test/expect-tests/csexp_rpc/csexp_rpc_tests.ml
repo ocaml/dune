@@ -24,6 +24,12 @@ let server (where : Unix.sockaddr) =
 
 let client where = Csexp_rpc.Client.create where
 
+let create_server_exn addr =
+  match Server.create [ addr ] ~backlog:10 with
+  | Ok server -> server
+  | Error `Already_in_use -> failwith "address already in use"
+;;
+
 module Logger = struct
   (* A little helper to make the output from the client and server
      deterministic. Log messages are batched and outputted at the end. *)
@@ -72,6 +78,60 @@ let%expect_test "csexp server create on unix sockets" =
    let server = server addr in
    stop_server server);
   [%expect {| |}]
+;;
+
+let%expect_test "csexp server stop before serve releases address" =
+  (let tmp_dir = temp_rpc_dir () in
+   let path = Path.to_string (Path.relative tmp_dir "dunerpc.sock") in
+   let addr = Unix.ADDR_UNIX path in
+   Fpath.unlink_no_err path;
+   let run () =
+     let server = create_server_exn addr in
+     let* () = Server.stop server in
+     let replacement = create_server_exn addr in
+     Server.stop replacement
+   in
+   run_scheduler run);
+  [%expect.unreachable]
+[@@expect.uncaught_exn
+  {|
+  (Dune_util__Report_error.Already_reported)
+  Trailing output
+  ---------------
+  Error: exception Failure("address already in use")
+
+  I must not crash.  Uncertainty is the mind-killer. Exceptions are the
+  little-death that brings total obliteration.  I will fully express my cases.
+  Execution will pass over me and through me.  And when it has gone past, I
+  will unwind the stack along its path.  Where the cases are handled there will
+  be nothing.  Only I will remain.
+  |}]
+;;
+
+let%expect_test "csexp server stop before consuming serve stream releases address" =
+  let tmp_dir = temp_rpc_dir () in
+  let path = Path.to_string (Path.relative tmp_dir "dunerpc.sock") in
+  let addr = Unix.ADDR_UNIX path in
+  Fpath.unlink_no_err path;
+  let run () =
+    let server = create_server_exn addr in
+    let* _sessions = Server.serve server in
+    let* () = Server.stop server in
+    let replacement = create_server_exn addr in
+    Server.stop replacement
+  in
+  run_scheduler run;
+  [%expect {| |}]
+;;
+
+let%expect_test "csexp server stop before serve removes unix socket" =
+  let tmp_dir = temp_rpc_dir () in
+  let path = Path.to_string (Path.relative tmp_dir "dunerpc.sock") in
+  let addr = Unix.ADDR_UNIX path in
+  let server = server addr in
+  run_scheduler (fun () -> Server.stop server);
+  printfn "%b" (Fpath.exists path);
+  [%expect {| true |}]
 ;;
 
 let write_raw addr data =

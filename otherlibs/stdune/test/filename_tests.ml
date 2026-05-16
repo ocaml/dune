@@ -75,3 +75,25 @@ let%expect_test _ =
 .
 |}]
 ;;
+
+let or_empty_extension_of_string_exn s =
+  match Filename.Extension.Or_empty.of_string_exn s with
+  | ext -> Printf.printf "%S -> %S\n" s (Filename.Extension.Or_empty.to_string ext)
+  | exception Code_error.E _ -> Printf.printf "%S -> invalid\n" s
+;;
+
+let%expect_test "extension or_empty validates non-empty extensions" =
+  List.iter
+    [ ""; "."; ".ml"; ".tar.gz"; "ml"; ".foo/bar"; "./foo" ]
+    ~f:or_empty_extension_of_string_exn;
+  [%expect
+    {|
+"" -> ""
+"." -> "."
+".ml" -> ".ml"
+".tar.gz" -> ".tar.gz"
+"ml" -> invalid
+".foo/bar" -> invalid
+"./foo" -> invalid
+|}]
+;;

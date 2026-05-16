@@ -487,7 +487,7 @@ let common =
     field_o
       "bootstrap_info"
       (let+ loc = loc
-       and+ fname = filename
+       and+ fname = file_path
        and+ project = Dune_project.get_exn () in
        if not (Dune_project.is_extension_set project bootstrap_info_extension)
        then User_error.raise ~loc [ Pp.text "This field is reserved for Dune itself" ];

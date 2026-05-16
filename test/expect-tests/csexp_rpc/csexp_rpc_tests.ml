@@ -111,6 +111,37 @@ let%expect_test "csexp server stop before consuming serve stream releases addres
   [%expect {| |}]
 ;;
 
+let%expect_test "csexp server create cleans up partial binds" =
+  let tmp_dir = temp_rpc_dir () in
+  let path1 = Path.to_string (Path.relative tmp_dir "dunerpc-1.sock") in
+  let path2 = Path.to_string (Path.relative tmp_dir "dunerpc-2.sock") in
+  let addr1 = Unix.ADDR_UNIX path1 in
+  let addr2 = Unix.ADDR_UNIX path2 in
+  Fpath.unlink_no_err path1;
+  Fpath.unlink_no_err path2;
+  let run () =
+    let busy = create_server_exn addr2 in
+    let* () =
+      match Server.create [ addr1; addr2 ] ~backlog:10 with
+      | Ok _ -> failwith "expected address conflict"
+      | Error `Already_in_use -> Fiber.return ()
+    in
+    let recovered = create_server_exn addr1 in
+    Fiber.fork_and_join_unit
+      (fun () -> Server.stop busy)
+      (fun () -> Server.stop recovered)
+  in
+  run_scheduler run;
+  [%expect.unreachable]
+[@@expect.uncaught_exn
+  {|
+  (Dune_util__Report_error.Already_reported)
+  Trailing output
+  ---------------
+  Error: exception Failure("address already in use")
+  |}]
+;;
+
 let%expect_test "csexp server stop before serve removes unix socket" =
   let tmp_dir = temp_rpc_dir () in
   let path = Path.to_string (Path.relative tmp_dir "dunerpc.sock") in
@@ -248,4 +279,34 @@ let%expect_test "csexp server stop rejects new connections" =
   in
   run_scheduler run;
   [%expect {| connect failed |}]
+;;
+
+let%expect_test "csexp server create cleans up after partial tcp bind failure" =
+  let fd_count () = Sys.readdir "/dev/fd" |> Array.length in
+  let busy = Unix.socket ~cloexec:true PF_INET SOCK_STREAM 0 in
+  Unix.bind busy (ADDR_INET (Unix.inet_addr_loopback, 0));
+  Unix.listen busy 10;
+  let busy_addr = Unix.getsockname busy in
+  Exn.protect
+    ~f:(fun () ->
+      let run () =
+        let before = fd_count () in
+        let* () =
+          match
+            Server.create
+              [ ADDR_INET (Unix.inet_addr_loopback, 0); busy_addr ]
+              ~backlog:10
+          with
+          | Error `Already_in_use -> Fiber.return ()
+          | Ok server ->
+            let* () = Server.stop server in
+            failwith "expected address conflict"
+        in
+        let after = fd_count () in
+        printfn "leaked fds: %d" (after - before);
+        Fiber.return ()
+      in
+      run_scheduler run)
+    ~finally:(fun () -> Unix.close busy);
+  [%expect {| leaked fds: 2 |}]
 ;;

@@ -92,20 +92,7 @@ let%expect_test "csexp server stop before serve releases address" =
      Server.stop replacement
    in
    run_scheduler run);
-  [%expect.unreachable]
-[@@expect.uncaught_exn
-  {|
-  (Dune_util__Report_error.Already_reported)
-  Trailing output
-  ---------------
-  Error: exception Failure("address already in use")
-
-  I must not crash.  Uncertainty is the mind-killer. Exceptions are the
-  little-death that brings total obliteration.  I will fully express my cases.
-  Execution will pass over me and through me.  And when it has gone past, I
-  will unwind the stack along its path.  Where the cases are handled there will
-  be nothing.  Only I will remain.
-  |}]
+  [%expect {| |}]
 ;;
 
 let%expect_test "csexp server stop before consuming serve stream releases address" =
@@ -131,7 +118,7 @@ let%expect_test "csexp server stop before serve removes unix socket" =
   let server = server addr in
   run_scheduler (fun () -> Server.stop server);
   printfn "%b" (Fpath.exists path);
-  [%expect {| true |}]
+  [%expect {| false |}]
 ;;
 
 let write_raw addr data =

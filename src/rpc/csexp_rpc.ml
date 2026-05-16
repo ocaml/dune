@@ -151,6 +151,14 @@ module Session = struct
     | Open ({ fd; in_buf; read_mutex; _ } as open_) ->
       let lexer = Lexer.create () in
       let buf = Buffer.create 16 in
+      let eof parser =
+        match parser with
+        | Stack.Empty ->
+          (match Lexer.feed_eoi lexer with
+           | () -> Ok None
+           | exception exn -> Error exn)
+        | _ -> Error (Csexp.Parser.Parse_error Csexp.Parser.premature_end_of_input)
+      in
       let rec refill () =
         if Io_buffer.length in_buf > 0
         then Fiber.return (Ok `Continue)
@@ -188,7 +196,7 @@ module Session = struct
         let* res = refill () in
         match res with
         | Error _ as e -> Fiber.return e
-        | Ok `Eof -> Fiber.return (Ok None)
+        | Ok `Eof -> Fiber.return (eof parser)
         | Ok `Continue ->
           let char = Io_buffer.read_char_exn in_buf in
           let token = Lexer.feed lexer char in
@@ -212,7 +220,9 @@ module Session = struct
           refill ()
           >>= function
           | Error _ as e -> Fiber.return e
-          | Ok `Eof -> Fiber.return (Ok None)
+          | Ok `Eof ->
+            Fiber.return
+              (Error (Csexp.Parser.Parse_error Csexp.Parser.premature_end_of_input))
           | Ok `Continue ->
             let n' = Io_buffer.read_into_buffer in_buf buf ~max_len:n in
             atom parser (n - n')
@@ -221,12 +231,18 @@ module Session = struct
         let* res = Fiber.Mutex.with_lock read_mutex ~f:(fun () -> read Stack.Empty) in
         match res with
         | Error exn ->
+          let error = Printexc.to_string exn in
           Dune_trace.emit Rpc (fun () ->
             Dune_trace.Event.Rpc.packet_read
               ~id:(Id.to_int t.id)
               ~success:false
-              ~error:(Some (Printexc.to_string exn)));
-          Dune_util.Report_error.report_exception exn;
+              ~error:(Some error));
+          (match exn with
+           | Csexp.Parser.Parse_error _ ->
+             Log.warn
+               "malformed csexp rpc packet"
+               [ "id", Dyn.int (Id.to_int t.id); "error", Dyn.string error ]
+           | _ -> Dune_util.Report_error.report_exception exn);
           let+ () = close_fd t in
           None
         | Ok None ->

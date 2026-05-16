@@ -81,6 +81,37 @@ let%expect_test "csexp server create on unix sockets" =
   [%expect {| |}]
 ;;
 
+let write_raw addr data =
+  let fd = Unix.socket ~cloexec:true (Unix.domain_of_sockaddr addr) Unix.SOCK_STREAM 0 in
+  Unix.connect fd addr;
+  let (_ : int) = Unix.single_write_substring fd data 0 (String.length data) in
+  Unix.close fd
+;;
+
+let%expect_test "csexp session reports malformed eof" =
+  let tmp_dir = temp_rpc_dir () in
+  let path = Path.to_string (Path.relative tmp_dir "dunerpc.sock") in
+  let addr = Unix.ADDR_UNIX path in
+  let run () =
+    let server = server addr in
+    let* sessions = Server.serve server in
+    Fiber.fork_and_join_unit
+      (fun () ->
+         write_raw addr "5:abc";
+         Fiber.return ())
+      (fun () ->
+         Fiber.Stream.In.parallel_iter sessions ~f:(fun session ->
+           let* res = Session.read session in
+           (match res with
+            | None -> printfn "server: read returned None"
+            | Some sexp -> printfn "server: received %s" (Csexp.to_string sexp));
+           Server.stop server))
+  in
+  run_scheduler run;
+  Fpath.unlink_no_err path;
+  [%expect {| server: read returned None |}]
+;;
+
 let%expect_test "csexp server life cycle" =
   let tmp_dir = temp_rpc_dir () in
   let addr : Unix.sockaddr =

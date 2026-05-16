@@ -529,11 +529,16 @@ module Server = struct
         Dune_trace.Event.Rpc.shutdown ~id:(Id.to_int t.id) `Stop)
   ;;
 
+  let socket_name ((addr, fd) : Unix.sockaddr * Fd.t) =
+    match addr with
+    | ADDR_UNIX _ -> addr
+    | ADDR_INET _ -> Unix.getsockname (Fd.unsafe_to_unix_file_descr fd)
+  ;;
+
   let listening_address t =
     match t.state with
-    | `Init fds ->
-      List.map ~f:(fun fd -> Unix.getsockname (Fd.unsafe_to_unix_file_descr fd)) fds
-    | `Running { Transport.sockets; _ } -> List.map ~f:fst sockets
+    | `Init fds -> List.map ~f:socket_name (List.combine t.sockaddrs fds)
+    | `Running { Transport.sockets; _ } -> List.map ~f:socket_name sockets
     | `Closed -> Code_error.raise "server is already closed" []
   ;;
 end

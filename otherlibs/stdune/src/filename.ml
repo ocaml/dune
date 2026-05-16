@@ -81,10 +81,11 @@ module Extension = struct
 
     let check = String.equal
 
-    let of_string_exn = function
+    let of_string_exn =
+      let of_non_empty_string_exn = of_string_exn in
+      function
       | "" -> ""
-      | s when s.[0] = '.' -> s
-      | s -> Code_error.raise "invalid extension" [ "s", Dyn.string s ]
+      | s -> of_non_empty_string_exn s
     ;;
 
     let empty = ""

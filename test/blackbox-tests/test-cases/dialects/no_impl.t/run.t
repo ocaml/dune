@@ -6,14 +6,14 @@ Test the (dialect ...) stanza inside the `dune-project` file.
   Formatting main.mfi
   File "fmt.ml", line 1, characters 0-0:
   --- fmt.ml
-  +++ .formatted/fmt.ml
+  +++ fmt.ml.corrected
   @@ -1 +1 @@
   -prerr_endline ("Formatting " ^ Sys.argv.(1))
   +(* fake ocamlformat output *)
   \ No newline at end of file
   File "main.ml", line 1, characters 0-0:
   --- main.ml
-  +++ .formatted/main.ml
+  +++ main.ml.corrected
   @@ -1 +1 @@
   -let () = ()
   +(* fake ocamlformat output *)

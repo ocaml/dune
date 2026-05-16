@@ -321,7 +321,7 @@ let gen_rules_for_stanzas sctx dir_contents cctxs expander ~dune_file ~dir:ctx_d
 ;;
 
 let gen_format_and_cram_rules sctx ~dir source_dir =
-  let+ () = Format_rules.setup_alias ~dir
+  let+ () = Format_rules.setup_alias sctx ~dir
   and+ () = Cram_rules.rules source_dir ~sctx ~dir in
   ()
 ;;
@@ -463,15 +463,11 @@ module Automatic_subdir = struct
      the ones that have a corresponding source directory. *)
   type t =
     | Utop
-    | Formatted
     | Bin
 
   let map =
     Filename.Map.of_list_exn
-      [ Utop.utop_dir_basename, Utop
-      ; Format_rules.formatted_dir_basename, Formatted
-      ; Artifacts.bin_dir_basename, Bin
-      ]
+      [ Utop.utop_dir_basename, Utop; Artifacts.bin_dir_basename, Bin ]
   ;;
 
   let of_src_dir src_dir =
@@ -490,7 +486,6 @@ module Automatic_subdir = struct
   let gen_rules ~sctx ~dir kind =
     match kind with
     | Utop -> sctx >>= Utop.setup ~dir:(Path.Build.parent_exn dir)
-    | Formatted -> Format_rules.gen_rules sctx ~output_dir:dir
     | Bin ->
       let* sctx = sctx in
       Super_context.env_node sctx ~dir:(Path.Build.parent_exn dir)

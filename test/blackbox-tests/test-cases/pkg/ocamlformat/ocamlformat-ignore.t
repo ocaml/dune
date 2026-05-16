@@ -17,13 +17,11 @@ Check without ".ocamlformat-ignore" file and the feature.
   $ dune fmt --preview
   File "foo.ml", line 1, characters 0-0:
   --- foo.ml
-  +++ .formatted/foo.ml
+  +++ foo.ml.corrected
   @@ -1 +1 @@
   -let () = print_endline "Hello, world"
   +fake ocamlformat from PATH
   [1]
-  $ cat _build/default/.formatted/foo.ml
-  fake ocamlformat from PATH
 
 Create ".ocamlformat-ignore"
   $ touch .ocamlformat-ignore
@@ -34,7 +32,7 @@ Check with the feature when ".ocamlformat-ignore" file exists.
   - ocamlformat.0.26.2
   File "foo.ml", line 1, characters 0-0:
   --- foo.ml
-  +++ .formatted/foo.ml
+  +++ foo.ml.corrected
   @@ -1 +1,2 @@
   -let () = print_endline "Hello, world"
   +ignoring some files
@@ -42,9 +40,6 @@ Check with the feature when ".ocamlformat-ignore" file exists.
   [1]
   $ ls _build/default/.ocamlformat-ignore
   _build/default/.ocamlformat-ignore
-  $ cat _build/default/.formatted/foo.ml
-  ignoring some files
-  formatted with version 0.26.2
 
 An important cleaning here, "dune fmt" takes the dev-tool when the lock directory
 exists even if the dev-tool feature is disabled.
@@ -54,12 +49,12 @@ Check without the feature when ".ocamlformat-ignore" file exists.
   $ DUNE_CONFIG__LOCK_DEV_TOOL=disabled dune fmt
   File "foo.ml", line 1, characters 0-0:
   --- foo.ml
-  +++ .formatted/foo.ml
+  +++ foo.ml.corrected
   @@ -1 +1,2 @@
   -let () = print_endline "Hello, world"
   +ignoring some files
   +fake ocamlformat from PATH
-  Promoting _build/default/.formatted/foo.ml to foo.ml.
+  Promoting _build/default/foo.ml.corrected to foo.ml.
   [1]
   $ ls _build/default/.ocamlformat-ignore
   _build/default/.ocamlformat-ignore

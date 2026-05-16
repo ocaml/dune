@@ -34,13 +34,11 @@ executable from the package dependencies (ie., 'ocamlformat.0.26.2').
   $ dune fmt --preview
   File "foo.ml", line 1, characters 0-0:
   --- foo.ml
-  +++ .formatted/foo.ml
+  +++ foo.ml.corrected
   @@ -1 +1 @@
   -let () = print_endline "Hello, world"
   +formatted with version 0.26.2
   [1]
-  $ cat _build/default/.formatted/foo.ml
-  formatted with version 0.26.2
 
 Format using the dev-tools feature, it does not invoke the OCamlFormat binary from
 the project dependencies (0.26.2) but instead builds and runs the OCamlFormat binary as a
@@ -50,11 +48,11 @@ dev-tool (0.26.3).
   - ocamlformat.0.26.3
   File "foo.ml", line 1, characters 0-0:
   --- foo.ml
-  +++ .formatted/foo.ml
+  +++ foo.ml.corrected
   @@ -1 +1 @@
   -let () = print_endline "Hello, world"
   +formatted with version 0.26.3
-  Promoting _build/default/.formatted/foo.ml to foo.ml.
+  Promoting _build/default/foo.ml.corrected to foo.ml.
   [1]
   $ cat foo.ml
   formatted with version 0.26.3
@@ -67,10 +65,8 @@ regular package dependency.
   $ dune fmt --preview
   File "foo.ml", line 1, characters 0-0:
   --- foo.ml
-  +++ .formatted/foo.ml
+  +++ foo.ml.corrected
   @@ -1 +1 @@
   -formatted with version 0.26.3
   +formatted with version 0.26.2
   [1]
-  $ cat _build/default/.formatted/foo.ml
-  formatted with version 0.26.2

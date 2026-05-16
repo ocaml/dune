@@ -7,7 +7,7 @@ Test the (dialect ...) stanza inside the dune-project file.
   Formatting main.mf
   File "fmt.ml", line 1, characters 0-0:
   --- fmt.ml
-  +++ .formatted/fmt.ml
+  +++ fmt.ml.corrected
   @@ -1 +1 @@
   -prerr_endline ("Formatting " ^ Sys.argv.(1))
   +(* fake ocamlformat output *)

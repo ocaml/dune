@@ -57,48 +57,6 @@ let restore_file_content path : string Restore_result.t =
     Error e
 ;;
 
-module Matches_existing_query = struct
-  type t =
-    | Match
-    | Mismatch of Sexp.t
-end
-
-(* Store [metadata] corresponding to a given [rule_or_action_digest] to the
-   cache using the supplied [to_sexp] serializer. If the cache already contains
-   an entry for the hash, we use [matches_existing_entry] to check that the
-   given [content] matches the previously stored one. If this is not the case,
-   we return [Will_not_store_due_to_non_determinism]. *)
-let store_metadata ~mode ~rule_or_action_digest ~metadata ~to_sexp ~matches_existing_entry
-  : Store_result.t
-  =
-  let content = Csexp.to_string (to_sexp metadata) in
-  let path_in_cache = Lazy.force (Layout.metadata_path ~rule_or_action_digest) in
-  match Util.write_atomically ~mode ~content path_in_cache with
-  | Ok -> Stored
-  | Error e -> Error e
-  | Already_present ->
-    (match restore_file_content path_in_cache with
-     | Not_found_in_cache ->
-       (* This can actually happen, but we think it's an unlikely case. The
-          [Already_present] branch should already be rarely visited (only if
-          multiple build systems attempt to store the same entry), but also a
-          trimmer must be running in parallel to delete this file. *)
-       Error (Failure "Race in store_metadata")
-     | Error e -> Error e
-     | Restored existing_content ->
-       (match
-          (matches_existing_entry metadata ~existing_content : Matches_existing_query.t)
-        with
-        | Mismatch details -> Will_not_store_due_to_non_determinism details
-        | Match ->
-          (* At this point we could in principle overwrite the existing metadata
-             file with the new [content] because it seems fresher. We choose not
-             to do that because in practice we end up here only due to racing. The
-             racing processes are not totally ordered, so neither content is
-             really fresher than the other. *)
-          Already_present))
-;;
-
 let restore_metadata_file file ~of_sexp : _ Restore_result.t =
   restore_file_content file
   |> Restore_result.bind ~f:(fun content ->
@@ -108,14 +66,6 @@ let restore_metadata_file file ~of_sexp : _ Restore_result.t =
       (match of_sexp sexp with
        | Ok content -> Restored content
        | Error e -> Error e))
-;;
-
-(* Read a metadata file corresponding to a given [rule_or_action_digest] from
-   the cache and parse it using the supplied [of_sexp] parser. *)
-let restore_metadata ~rule_or_action_digest ~of_sexp : _ Restore_result.t =
-  Layout.metadata_path ~rule_or_action_digest
-  |> Lazy.force
-  |> restore_metadata_file ~of_sexp
 ;;
 
 type metadata = Sexp.t list
@@ -182,29 +132,34 @@ module Artifacts = struct
 
   module Metadata_file = struct
     type t =
-      { metadata : Sexp.t list
-      ; (* The entries are listed in the same order that they were provided when
+      { (* The entries are listed in the same order that they were provided when
            storing artifacts in the cache. We keep the order to avoid confusion
            even though sorting the entres is tempting. *)
         entries : Metadata_entry.t list
       }
 
-    let to_sexp { metadata; entries } =
+    let to_sexp { entries } =
       Sexp.List
-        [ List (Atom "metadata" :: metadata)
+        [ List [ Atom "metadata" ]
         ; List (Atom "files" :: List.map entries ~f:Metadata_entry.to_sexp)
         ]
     ;;
 
     let of_sexp = function
-      | Sexp.List [ List (Atom "metadata" :: metadata); List (Atom "files" :: entries) ]
+      | Sexp.List [ List (Atom "metadata" :: _metadata); List (Atom "files" :: entries) ]
         ->
         let entries = List.map entries ~f:Metadata_entry.of_sexp in
         (match Result.List.all entries with
-         | Ok entries -> Ok { metadata; entries }
+         | Ok entries -> Ok { entries }
          | Error e -> Error e)
       | _ -> Error (Failure "Cannot parse cache metadata")
     ;;
+
+    module Matches_existing_query = struct
+      type t =
+        | Match
+        | Mismatch of Sexp.t
+    end
 
     let matches_existing_entry t ~existing_content : Matches_existing_query.t =
       match Csexp.parse_string existing_content with
@@ -224,23 +179,48 @@ module Artifacts = struct
                    ])))
     ;;
 
-    let store entries ~mode ~rule_digest =
-      store_metadata
-        ~mode
-        ~rule_or_action_digest:rule_digest
-        ~metadata:{ entries; metadata = [] }
-        ~to_sexp
-        ~matches_existing_entry
+    let store entries ~mode ~rule_digest : Store_result.t =
+      let metadata = { entries } in
+      let path_in_cache =
+        Lazy.force (Layout.metadata_path ~rule_or_action_digest:rule_digest)
+      in
+      match
+        let content = Csexp.to_string (to_sexp metadata) in
+        Util.write_atomically ~mode ~content path_in_cache
+      with
+      | Ok -> Stored
+      | Error e -> Error e
+      | Already_present ->
+        (match restore_file_content path_in_cache with
+         | Not_found_in_cache ->
+           (* This can actually happen, but we think it's an unlikely case. The
+              [Already_present] branch should already be rarely visited (only if
+              multiple build systems attempt to store the same entry), but also a
+              trimmer must be running in parallel to delete this file. *)
+           Error (Failure "Race in artifact metadata store")
+         | Error e -> Error e
+         | Restored existing_content ->
+           (match matches_existing_entry metadata ~existing_content with
+            | Mismatch details -> Will_not_store_due_to_non_determinism details
+            | Match ->
+              (* At this point we could in principle overwrite the existing metadata
+                 file with the new [content] because it seems fresher. We choose not
+                 to do that because in practice we end up here only due to racing. The
+                 racing processes are not totally ordered, so neither content is
+                 really fresher than the other. *)
+              Already_present))
     ;;
 
     let restore ~rule_digest =
-      restore_metadata ~rule_or_action_digest:rule_digest ~of_sexp
+      Layout.metadata_path ~rule_or_action_digest:rule_digest
+      |> Lazy.force
+      |> restore_metadata_file ~of_sexp
     ;;
   end
 
   let list ~rule_digest =
     Metadata_file.restore ~rule_digest
-    |> Restore_result.map ~f:(fun ({ entries; _ } : Metadata_file.t) -> entries)
+    |> Restore_result.map ~f:(fun ({ entries } : Metadata_file.t) -> entries)
   ;;
 end
 

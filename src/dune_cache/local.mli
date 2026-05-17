@@ -65,8 +65,7 @@ module Artifacts : sig
 
   module Metadata_file : sig
     type t =
-      { metadata : metadata
-      ; (* The entries are listed in the same order that they were provided when
+      { (* The entries are listed in the same order that they were provided when
            storing artifacts in the cache. We keep the order to avoid confusion
            even though sorting the entres is tempting. *)
         entries : Metadata_entry.t list

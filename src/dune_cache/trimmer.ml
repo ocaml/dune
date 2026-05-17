@@ -46,7 +46,7 @@ let trim_broken_metadata_entries ~trimmed_so_far =
                     (* We do not expect to see any value entries in the cache. Let's
                     keep them untrimmed for now. *)
                     false
-                  | Artifacts { entries; metadata = _ } ->
+                  | Artifacts { entries } ->
                     List.exists entries ~f:(function
                       | { Local.Artifacts.Metadata_entry.digest = None; path = _ } ->
                         (* no digest means it's a directory. *)

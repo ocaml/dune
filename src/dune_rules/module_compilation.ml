@@ -27,18 +27,43 @@ let module_kind_is_filterable m =
    [lookup_tight_entries], terminating chains through them. The [Module.t]
    supplied here is the post-pp form (constructed in [build_lib_index]), so
    ocamldep runs on the dep lib's [.pp.ml] (action / non-staged Pps) or directly
-   on the source (no preprocessing / future-syntax). *)
-let cross_lib_tight_set ~sandbox ~sctx ~lib_index ~initial_refs =
+   on the source (no preprocessing / future-syntax).
+
+   Each visited local lib's [-open Foo] flags also extend the frontier: a dep
+   lib whose effective flags open [Foo] can use [Foo]'s identifiers without
+   naming [Foo] in its source, so ocamldep on the dep lib's source produces
+   no token to walk through. The opened module names are the missing edges.
+   Both the stanza's own [(flags ...)] and any [(env ...)] stanza that
+   contributes default flags to the dep lib's directory can inject [-open]
+   entries; we evaluate the fully-merged flags so neither path is missed
+   (see #14517 for the env-stanza case). External libs are short-circuited:
+   their [src_dir] is not a build path, and env stanzas cannot inject flags
+   into already-compiled artifacts. *)
+let cross_lib_tight_set ~sandbox ~sctx ~lib_index ~mode ~initial_refs =
   let open Action_builder.O in
+  let read_lib_opens lib =
+    if not (Lib.is_local lib)
+    then Action_builder.return Module_name.Set.empty
+    else (
+      let info = Lib.info lib in
+      let spec = Lib_info.stanza_flags info in
+      let dir = Lib_info.src_dir info |> Path.as_in_build_dir_exn in
+      let* ocaml_flags =
+        Action_builder.of_memo (Ocaml_flags_db.ocaml_flags sctx ~dir spec)
+      in
+      let+ flag_strings = Ocaml_flags.get ocaml_flags mode in
+      Ocaml_flags.extract_open_module_names flag_strings)
+  in
   let read_entry_deps (lib, m) =
     let obj_dir = Lib.info lib |> Lib_info.obj_dir |> Obj_dir.as_local_exn in
     let* impl_deps =
       Ocamldep.read_immediate_deps_raw_of ~sandbox ~sctx ~obj_dir ~ml_kind:Impl m
     in
-    let+ intf_deps =
+    let* intf_deps =
       Ocamldep.read_immediate_deps_raw_of ~sandbox ~sctx ~obj_dir ~ml_kind:Intf m
     in
-    Module_name.Set.union impl_deps intf_deps
+    let+ lib_opens = read_lib_opens lib in
+    Module_name.Set.union impl_deps (Module_name.Set.union intf_deps lib_opens)
   in
   let rec loop ~seen ~frontier =
     if Module_name.Set.is_empty frontier
@@ -192,7 +217,7 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
       in
       let must_glob_set = Lib.Set.of_list must_glob_libs in
       let* tight_set =
-        cross_lib_tight_set ~sandbox ~sctx ~lib_index ~initial_refs:referenced
+        cross_lib_tight_set ~sandbox ~sctx ~lib_index ~mode ~initial_refs:referenced
       in
       (* Classify each lib in [all_libs]: - lib has [None]-entry referenced
          (mixed-entry or wrapped) → glob (covers the None entries' [.cmi]s); -

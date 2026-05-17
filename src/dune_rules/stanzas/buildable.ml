@@ -100,6 +100,7 @@ let decode (for_ : for_) =
   and+ modules = decode_modules
   and+ melange_modules =
     Ordered_set_lang.Unexpanded.field_o
+      ~check:(Dune_lang.Syntax.since Stanza.syntax (3, 24))
       ~since_expanded:Modules_settings.since_expanded
       "melange.modules"
   and+ self_build_stubs_archive_loc, self_build_stubs_archive =

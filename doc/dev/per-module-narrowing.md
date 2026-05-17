@@ -312,7 +312,7 @@ classification.
 ```ocaml
 let* tight_set =
   cross_lib_tight_set
-    ~sandbox ~sctx ~lib_index ~initial_refs:referenced
+    ~sandbox ~sctx ~lib_index ~mode ~initial_refs:referenced
 in
 ```
 
@@ -342,11 +342,36 @@ Each frontier iteration:
    entries`. The lookup skips entries with `None`-module (wrapped
    locals, externals) — those are non-tight-eligible and terminate
    chains through them.
-2. For each `(lib, entry)`, read the entry module's impl + intf
-   ocamldep raw refs.
+2. For each `(lib, entry)`, the helper `read_entry_deps` returns the
+   union of three contributions:
+   - the entry module's impl ocamldep raw refs;
+   - the entry module's intf ocamldep raw refs;
+   - the modules named by `-open` flags injected through the
+     entry's owning library's stanza `(flags (...))`. The stanza
+     flags are expanded via `Ocaml_flags_db.ocaml_flags sctx ~dir`
+     against the consumer's `mode`, and the `-open M` tokens are
+     extracted with `Ocaml_flags.extract_open_module_names`. The
+     short-circuit `Dune_lang.Ocaml_flags.Spec.equal spec standard`
+     avoids the expansion for libraries that carry the default
+     (`Spec.standard`), which includes every external lib.
 3. Union all the discovered names into `discovered`.
 4. Add the current frontier to `seen`; the new frontier is
    `discovered \ seen`.
+
+The stanza-opens contribution closes a soundness gap that the three
+must-glob recoveries (step 5) and the syntactic ocamldep walk
+together cannot cover. When a dependency library's stanza injects
+`-open Foo`, its source can reference `Foo`'s identifiers without
+ever naming `Foo` syntactically, so ocamldep on the dep lib's source
+produces no token to drive the walker — and `Foo`'s defining
+library may then be silently dropped from the consumer's compile
+even though the consumer transitively needs its `.cmi`. Treating
+the stanza opens as a third class of frontier edge ensures the BFS
+reaches those libraries through the very same fixpoint that handles
+ocamldep-visible references. The reachability rule the BFS computes
+is: a module is reachable from the consumer iff the consumer
+references it, OR some reached module's ocamldep names it, OR some
+reached module's owning lib stanza-opens it.
 
 The post-pp module map (built by `Compilation_context.build_lib_
 index`) ensures that the entry module passed to ocamldep is the form
@@ -526,6 +551,16 @@ Three categories of fallback to the glob:
    classification fold force-globs these libraries even when their
    tight classification would otherwise narrow them.
 
+4. **Stanza-injected `-open` on dep libraries**: handled inside the
+   BFS itself (step 6). When the walker visits a module of library
+   `L`, it extends the frontier with the modules named by `L`'s
+   stanza `-open` flags in addition to the module's ocamldep raw
+   refs. Without this, a consumer that pattern-matches a type from
+   a library reached only via an intermediate's stanza `-open` (the
+   type being inherited into the intermediate's `.mli` via the
+   open) would silently drop the leaf library's `.cmi` from its
+   compile rule.
+
 `Melange` paths bypass the narrowing entirely at the `can_filter`
 check; the cm_kind machinery there is different and L9 leaves it
 unchanged.
@@ -542,6 +577,12 @@ Per consumer module, the narrowing does:
 - One BFS over the cross-library reference graph (state machine runs
   per module; the individual ocamldep reads inside it hit L8 across
   modules).
+- Per visited entry, an `Ocaml_flags_db.ocaml_flags` expansion of the
+  owning lib's stanza `(flags ...)` followed by
+  `Ocaml_flags.extract_open_module_names`, when the lib's
+  `stanza_flags` differs from `Spec.standard`. External libs always
+  carry `Spec.standard`, so the expansion is skipped for them. Each
+  expansion is memoised through `Ocaml_flags_db`'s underlying Memo.
 - Two `filter_libs_with_modules` calls (step 3 and step 7).
 - One `filtered_include_flags` lookup (memoised by L7 — shared with
   siblings whose `kept_libs` match).
@@ -571,7 +612,9 @@ For reference, the algorithm above is the cumulative result of:
   `lib_deps_for_module` body); the `can_filter` gate is added.
 - **L5** (#14517): soundness recovery —
   `has_virtual_impl` early-out, `pps_runtime_libs` fold-in,
-  `must_glob_set` from wrapped-referenced libs.
+  `must_glob_set` from wrapped-referenced libs, plus stanza-open
+  BFS expansion (each visited lib's stanza `-open` modules join
+  the frontier).
 - **L6** (#14518): `filtered_include_flags` per `kept_libs`.
 - **L7** (#14519): `Filtered_includes.t` per-cctx cache keyed by
   `(lib_mode, kept_libs)`.

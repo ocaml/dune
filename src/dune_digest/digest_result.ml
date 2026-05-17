@@ -88,3 +88,22 @@ let catch_fs_errors f =
   | result -> result
   | exception exn -> Error (Error.of_exn exn)
 ;;
+
+let error_of_path_digest_error ~file_kind = function
+  | Digest.Path_digest_error.Unexpected_kind -> Error.Unexpected_kind file_kind
+  | Unix_error (ENOENT, _, _) -> No_such_file
+  | Unix_error other_error -> Unix_error other_error
+;;
+
+let path_with_stats ~allow_dirs path stats =
+  Digest.Stats_for_digest.of_time_stat stats
+  |> Digest.path_with_stats ~allow_dirs path
+  |> Result.map_error ~f:(error_of_path_digest_error ~file_kind:stats.Stat.kind)
+;;
+
+let path_with_unix_stats_async ~allow_dirs path stats =
+  let open Fiber.O in
+  Digest.Stats_for_digest.of_unix_stats stats
+  |> Digest.path_with_stats_async ~allow_dirs path
+  >>| Result.map_error ~f:(error_of_path_digest_error ~file_kind:stats.Unix.st_kind)
+;;

@@ -98,6 +98,10 @@ let decode (for_ : for_) =
     located
       (only_in_library (field_o "cxx_names" (use_foreign >>> Ordered_set_lang.decode)))
   and+ modules = decode_modules
+  and+ melange_modules =
+    Ordered_set_lang.Unexpanded.field_o
+      ~since_expanded:Modules_settings.since_expanded
+      "melange.modules"
   and+ self_build_stubs_archive_loc, self_build_stubs_archive =
     located
       (only_in_library
@@ -179,7 +183,7 @@ let decode (for_ : for_) =
   ; preprocess
   ; lint
   ; modules
-  ; melange_modules = Some modules.modules
+  ; melange_modules
   ; empty_module_interface_if_absent
   ; foreign_stubs
   ; foreign_archives

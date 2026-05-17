@@ -27,6 +27,22 @@ Only supported after Dune 3.20
   - 0.1
   [1]
 
+Version 0.1 was deleted in Dune 3.24
+
+  $ cat > dune-project <<EOF
+  > (lang dune 3.24)
+  > (using melange 0.1)
+  > (package (name pkg))
+  > EOF
+
+  $ dune rules --root . --format=json app/.pkg.objs/melange/pkg__App.cmj
+  File "dune-project", line 2, characters 15-18:
+  2 | (using melange 0.1)
+                     ^^^
+  Error: Version 0.1 of the melange extension has been deleted in Dune 3.24.
+  Please port this project to a newer version of the extension, such as 1.0.
+  [1]
+
   $ cat > dune-project <<EOF
   > (lang dune 3.20)
   > (using melange 1.0)

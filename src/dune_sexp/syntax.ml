@@ -212,12 +212,14 @@ end = struct
   ;;
 
   let status t ver ~dune_lang_ver =
-    if is_supported t ver dune_lang_ver
-    then `Supported
-    else (
-      match Version.Map.find t.deleted_in ver with
-      | Some version -> `Deleted_in version
-      | None ->
+    let is_supported = is_supported t ver dune_lang_ver in
+    match Version.Map.find t.deleted_in ver with
+    | Some version when dune_lang_ver >= version || not is_supported ->
+      `Deleted_in version
+    | Some _ | None ->
+      if is_supported
+      then `Supported
+      else (
         let supported_ranges = supported_ranges dune_lang_ver t in
         let min_lang_ver = get_min_lang_ver t ver in
         `Unsupported_in_project (supported_ranges, min_lang_ver))
@@ -404,18 +406,18 @@ let check_supported ~dune_lang_ver t (loc, ver) =
   match Supported_versions.status t.supported_versions ver ~dune_lang_ver with
   | `Supported -> ()
   | `Deleted_in deleted_in ->
-    let min_ext_ver, min_dune_lang_ver =
+    let min_dune_lang_ver =
       match Supported_versions.minimum_versions t.supported_versions with
-      | None -> None, None
-      | Some (x, y) -> Some x, Some y
+      | None -> None
+      | Some (_, y) -> Some y
     in
     let please_port_message =
-      match min_ext_ver with
+      match Supported_versions.greatest_supported_version t.supported_versions with
       | None -> ""
-      | Some min_ext_ver ->
+      | Some greatest_ext_ver ->
         sprintf
           " Please port this project to a newer version of the extension, such as %s."
-          (Version.to_string min_ext_ver)
+          (Version.to_string greatest_ext_ver)
     in
     let hints =
       match min_dune_lang_ver with

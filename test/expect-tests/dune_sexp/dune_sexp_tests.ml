@@ -87,3 +87,26 @@ let%expect_test "parsing TiB suffix" =
   test_bytes_hex "1TiB" ~check:(long_power 1024L 4);
   [%expect {| 0x10_000_000_000 |}]
 ;;
+
+let%expect_test "deleted extension version" =
+  let supported_versions =
+    [ (0, 1), `Since (1, 0); (0, 1), `Deleted_in (3, 24); (0, 2), `Since (3, 24) ]
+  in
+  let syntax =
+    Dune_sexp.Syntax.create
+      ~name:(Dune_sexp.Syntax.Name.parse "test-extension")
+      ~desc:"the test extension"
+      supported_versions
+  in
+  Dune_sexp.Syntax.check_supported ~dune_lang_ver:(3, 23) syntax (Loc.none, (0, 1));
+  (try
+     Dune_sexp.Syntax.check_supported ~dune_lang_ver:(3, 24) syntax (Loc.none, (0, 1))
+   with
+   | User_error.E message -> User_message.print message);
+  [%expect
+    {|
+    File "<none>", line 1, characters 0-0:
+    Error: Version 0.1 of the test-extension extension has been deleted in Dune
+    3.24. Please port this project to a newer version of the extension, such as
+    0.2. |}]
+;;

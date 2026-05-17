@@ -92,7 +92,7 @@ let directory_targets_extension =
       ~name:(Syntax.Name.parse "directory-targets")
       ~desc:"experimental support for directory targets"
       ~experimental:true
-      [ (0, 1), `Since (3, 0) ]
+      [ (0, 1), `Since (3, 0); (0, 1), `Deleted_in (3, 24) ]
   in
   Dune_project.Extension.register syntax (Dune_lang.Decoder.return ((), [])) Dyn.unit
 ;;
@@ -103,7 +103,8 @@ let long_form ~loc =
   let* deps = field "deps" (Bindings.decode Dep_conf.decode) ~default:Bindings.empty in
   let* project = Dune_project.get_exn () in
   let allow_directory_targets =
-    Dune_project.is_extension_set project directory_targets_extension
+    Dune_project.dune_version project >= (3, 24)
+    || Dune_project.is_extension_set project directory_targets_extension
   in
   String_with_vars.add_user_vars_to_decoding_env
     (Bindings.var_names deps)

@@ -4,7 +4,6 @@ with "Is a directory" due to a stale staging directory in _build.
 
   $ cat > dune-project <<'EOF'
   > (lang dune 3.24)
-  > (using directory-targets 0.1)
   > EOF
 
 Start with a rule that produces a directory target, diffed against an expected

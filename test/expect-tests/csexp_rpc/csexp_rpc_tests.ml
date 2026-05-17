@@ -126,20 +126,17 @@ let%expect_test "csexp server create cleans up partial binds" =
       | Ok _ -> failwith "expected address conflict"
       | Error `Already_in_use -> Fiber.return ()
     in
-    let recovered = create_server_exn addr1 in
-    Fiber.fork_and_join_unit
-      (fun () -> Server.stop busy)
-      (fun () -> Server.stop recovered)
+    match create_server_exn addr1 with
+    | recovered ->
+      Fiber.fork_and_join_unit
+        (fun () -> Server.stop busy)
+        (fun () -> Server.stop recovered)
+    | exception Failure msg ->
+      let+ () = Server.stop busy in
+      printfn "Error: exception Failure(%S)" msg
   in
   run_scheduler run;
-  [%expect.unreachable]
-[@@expect.uncaught_exn
-  {|
-  (Dune_util__Report_error.Already_reported)
-  Trailing output
-  ---------------
-  Error: exception Failure("address already in use")
-  |}]
+  [%expect {| Error: exception Failure("address already in use") |}]
 ;;
 
 let%expect_test "csexp server stop before serve removes unix socket" =

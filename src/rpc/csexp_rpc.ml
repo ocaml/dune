@@ -84,11 +84,20 @@ module Socket = struct
   ;;
 end
 
-let close_bound_socket ((addr : Unix.sockaddr), fd) =
-  let+ () = Async_io.close fd in
+let unlink_socket_path (addr : Unix.sockaddr) =
   match addr with
   | ADDR_UNIX path -> Fpath.unlink_no_err path
   | _ -> ()
+;;
+
+let close_bound_socket_sync (addr, fd) =
+  Fd.close fd;
+  unlink_socket_path addr
+;;
+
+let close_bound_socket (addr, fd) =
+  let+ () = Async_io.close fd in
+  unlink_socket_path addr
 ;;
 
 module Session = struct
@@ -430,32 +439,41 @@ module Server = struct
     }
 
   let create sockaddrs ~backlog =
-    try
-      let fds =
-        List.map sockaddrs ~f:(fun sockaddr ->
-          let fd =
-            Unix.socket
-              ~cloexec:true
-              (Unix.domain_of_sockaddr sockaddr)
-              Unix.SOCK_STREAM
-              0
-            |> Fd.unsafe_of_unix_file_descr
-          in
+    let bound = ref [] in
+    let cleanup () =
+      List.iter !bound ~f:close_bound_socket_sync;
+      bound := []
+    in
+    let bind_socket sockaddr =
+      let fd =
+        Unix.socket ~cloexec:true (Unix.domain_of_sockaddr sockaddr) Unix.SOCK_STREAM 0
+        |> Fd.unsafe_of_unix_file_descr
+      in
+      let in_bound = ref false in
+      Exn.protect
+        ~f:(fun () ->
           Unix.set_nonblock (Fd.unsafe_to_unix_file_descr fd);
           (match (sockaddr : Unix.sockaddr) with
            | ADDR_UNIX _ -> ()
            | ADDR_INET _ ->
              Unix.setsockopt (Fd.unsafe_to_unix_file_descr fd) Unix.SO_REUSEADDR true);
           Socket.bind fd sockaddr;
+          bound := (sockaddr, fd) :: !bound;
+          in_bound := true;
           fd)
-      in
-      Ok
-        { id = Id.gen ()
-        ; sockaddrs
-        ; backlog
-        ; state = `Init fds
-        ; ready = Fiber.Ivar.create ()
-        }
+        ~finally:(fun () -> if not !in_bound then Fd.close fd)
+    in
+    try
+      Exn.protect ~finally:cleanup ~f:(fun () ->
+        let fds = List.map sockaddrs ~f:bind_socket in
+        bound := [];
+        Ok
+          { id = Id.gen ()
+          ; sockaddrs
+          ; backlog
+          ; state = `Init fds
+          ; ready = Fiber.Ivar.create ()
+          })
     with
     | Unix.Unix_error (EADDRINUSE, _, _) -> Error `Already_in_use
   ;;

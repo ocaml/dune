@@ -80,6 +80,41 @@ let%expect_test "csexp server create on unix sockets" =
   [%expect {| |}]
 ;;
 
+let%expect_test "csexp server listening_address preserves long unix socket path" =
+  let tmp_dir = temp_rpc_dir () in
+  let dir = Path.relative tmp_dir (String.make 60 'a') in
+  let path = Path.relative dir "dunerpc.sock" |> Path.to_absolute_filename in
+  let addr = Unix.ADDR_UNIX path in
+  let server = server addr in
+  let path_kind path = if Filename.is_relative path then "relative" else "absolute" in
+  (match Csexp_rpc.Server.listening_address server |> List.hd with
+   | ADDR_UNIX path' ->
+     printfn "requested path: %s" (path_kind path);
+     printfn "reported path: %s" (path_kind path');
+     printfn "relationship: %s" (if String.equal path path' then "same" else "different")
+   | ADDR_INET _ -> printfn "not a unix socket");
+  stop_server server;
+  [%expect
+    {|
+    requested path: absolute
+    reported path: relative
+    relationship: different |}]
+;;
+
+let%expect_test "csexp server listening_address reports tcp port after serve" =
+  let run () =
+    let server = server (ADDR_INET (Unix.inet_addr_loopback, 0)) in
+    let* _sessions = Server.serve server in
+    (match Csexp_rpc.Server.listening_address server |> List.hd with
+     | ADDR_UNIX _ -> printfn "not a tcp socket"
+     | ADDR_INET (_, port) ->
+       printfn "reported port: %s" (if port = 0 then "zero" else "non-zero"));
+    Server.stop server
+  in
+  run_scheduler run;
+  [%expect {| reported port: zero |}]
+;;
+
 let%expect_test "csexp server stop before serve releases address" =
   (let tmp_dir = temp_rpc_dir () in
    let path = Path.to_string (Path.relative tmp_dir "dunerpc.sock") in

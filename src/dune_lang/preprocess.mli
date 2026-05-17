@@ -10,6 +10,7 @@ module Pps : sig
 
   val repr : 'a Repr.t -> 'a t Repr.t
   val compare_no_locs : ('a -> 'a -> Ordering.t) -> 'a t -> 'a t -> Ordering.t
+  val decode : (Loc.t * Lib_name.t) t Decoder.t
 end
 
 type 'a t =

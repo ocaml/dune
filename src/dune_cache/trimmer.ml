@@ -89,6 +89,25 @@ let files_in_cache_for_all_supported_versions () =
    skip it while trimming. *)
 let file_exists_and_is_unused ~stats = stats.Unix.st_nlink = 1
 
+module Unused_file = struct
+  type t =
+    { path : Path.t
+    ; size : int
+    ; ctime : float
+    }
+end
+
+let unused_files_in_cache () =
+  files_in_cache_for_all_supported_versions ()
+  |> List.filter_map ~f:(fun (path, _) ->
+    match Path.stat path with
+    | Error _ -> None
+    | Ok stats ->
+      if file_exists_and_is_unused ~stats
+      then Some { Unused_file.path; size = stats.st_size; ctime = stats.st_ctime }
+      else None)
+;;
+
 (* Dune uses [ctime] to prioritise entries for deletion. How does this work?
 
    - In the [Hardlink] mode, an entry to become unused when it loses the last
@@ -103,41 +122,26 @@ let file_exists_and_is_unused ~stats = stats.Unix.st_nlink = 1
      starting from the one that was least recently created or used. *)
 let trim ~goal =
   let files =
-    files_in_cache_for_all_supported_versions ()
-    |> List.filter_map ~f:(fun (path, _) ->
-      match Path.stat path with
-      | Error _ -> None
-      | Ok stats ->
-        if file_exists_and_is_unused ~stats
-        then Some (path, stats.st_size, stats.st_ctime)
-        else None)
-    |> List.sort ~compare:(fun (_, _, ctime1) (_, _, ctime2) ->
-      Float.compare ctime1 ctime2)
+    unused_files_in_cache ()
+    |> List.sort ~compare:(fun x y -> Float.compare x.Unused_file.ctime y.ctime)
   in
-  let delete (trimmed_so_far : Trimming_result.t) (path, bytes, _) =
+  let delete (trimmed_so_far : Trimming_result.t) { Unused_file.path; size; _ } =
     if trimmed_so_far.trimmed_bytes >= goal
     then trimmed_so_far
     else (
       Fpath.unlink_no_err (Path.to_string path);
       (* CR-someday amokhov: We should really be using block_size * #blocks
          because that's how much we save actually. *)
-      Trimming_result.add trimmed_so_far ~bytes)
+      Trimming_result.add trimmed_so_far ~bytes:size)
   in
   let trimmed_so_far = List.fold_left ~init:Trimming_result.empty ~f:delete files in
   trim_broken_metadata_entries ~trimmed_so_far
 ;;
 
 let overhead_size () =
-  files_in_cache_for_all_supported_versions ()
-  |> List.fold_left ~init:0L ~f:(fun acc (p, _) ->
-    let size =
-      try
-        let stats = Unix.stat (Path.to_string p) in
-        if file_exists_and_is_unused ~stats then Int64.of_int stats.st_size else 0L
-      with
-      | Unix.Unix_error (Unix.ENOENT, _, _) -> 0L
-    in
-    Int64.add acc size)
+  unused_files_in_cache ()
+  |> List.fold_left ~init:0L ~f:(fun acc file ->
+    Int64.add acc (Int64.of_int file.Unused_file.size))
 ;;
 
 let clear () =

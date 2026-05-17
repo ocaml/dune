@@ -68,28 +68,6 @@ let restore_metadata_file file ~of_sexp : _ Restore_result.t =
        | Error e -> Error e))
 ;;
 
-type metadata = Sexp.t list
-
-module Value = struct
-  module Metadata_file = struct
-    type t =
-      { metadata : metadata
-      ; value_digest : Digest.t
-      }
-
-    let of_sexp = function
-      | Sexp.List
-          [ List (Atom "metadata" :: metadata)
-          ; List [ Atom "value"; Sexp.Atom value_hash ]
-          ] ->
-        (match Digest.from_hex value_hash with
-         | Some value_digest -> Ok { metadata; value_digest }
-         | None -> Error (Failure "Cannot parse cache metadata: malformed value digest"))
-      | _ -> Error (Failure "Cannot parse cache metadata")
-    ;;
-  end
-end
-
 module Artifacts = struct
   module Metadata_entry = struct
     type t =
@@ -225,21 +203,10 @@ module Artifacts = struct
 end
 
 module Metadata = struct
-  type t =
-    | Artifacts of Artifacts.Metadata_file.t
-    | Value of Value.Metadata_file.t
-
-  let of_sexp sexp : (t, exn) result =
-    match Artifacts.Metadata_file.of_sexp sexp with
-    | Ok res -> Ok (Artifacts res)
-    | Error _exn ->
-      (* CR-someday amokhov: Here we are discarding the [_exn] but it may be
-         better to combine the two exceptions when both parsers fail. *)
-      Value.Metadata_file.of_sexp sexp |> Result.map ~f:(fun res -> Value res)
-  ;;
-
   let restore ~metadata_path ~rule_or_action_digest =
-    metadata_path ~rule_or_action_digest |> Lazy.force |> restore_metadata_file ~of_sexp
+    metadata_path ~rule_or_action_digest
+    |> Lazy.force
+    |> restore_metadata_file ~of_sexp:Artifacts.Metadata_file.of_sexp
   ;;
 
   module Versioned = struct

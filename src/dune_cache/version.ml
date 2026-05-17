@@ -12,17 +12,6 @@ module File = struct
   ;;
 end
 
-module Value = struct
-  type t = V3
-
-  let current = V3
-  let all = [ V3 ]
-
-  let to_string = function
-    | V3 -> "v3"
-  ;;
-end
-
 module Metadata = struct
   type t =
     | V3
@@ -41,9 +30,5 @@ module Metadata = struct
   let file_version = function
     | V3 -> File.V3
     | V4 | V5 -> File.V4
-  ;;
-
-  let value_version = function
-    | V3 | V4 | V5 -> Value.V3
   ;;
 end

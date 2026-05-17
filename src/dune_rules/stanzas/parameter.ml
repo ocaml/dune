@@ -72,6 +72,7 @@ let decode =
        ; extra_objects = Foreign.Objects.empty
        ; foreign_stubs = []
        ; preprocess
+       ; melange_preprocess = preprocess
        ; lint
        ; flags
        ; js_of_ocaml =

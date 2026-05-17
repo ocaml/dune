@@ -15,6 +15,7 @@ type t =
   ; extra_objects : Foreign.Objects.t
   ; foreign_stubs : Foreign.Stubs.t list
   ; preprocess : Preprocess.preprocess
+  ; melange_preprocess : Preprocess.preprocess
   ; lint : Lint.t
   ; flags : Ocaml_flags.Spec.t
   ; js_of_ocaml : Js_of_ocaml.In_buildable.t Js_of_ocaml.Mode.Pair.t

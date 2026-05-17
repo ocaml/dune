@@ -97,8 +97,8 @@ let%expect_test "csexp server listening_address preserves long unix socket path"
   [%expect
     {|
     requested path: absolute
-    reported path: relative
-    relationship: different |}]
+    reported path: absolute
+    relationship: same |}]
 ;;
 
 let%expect_test "csexp server listening_address reports tcp port after serve" =
@@ -112,7 +112,7 @@ let%expect_test "csexp server listening_address reports tcp port after serve" =
     Server.stop server
   in
   run_scheduler run;
-  [%expect {| reported port: zero |}]
+  [%expect {| reported port: non-zero |}]
 ;;
 
 let%expect_test "csexp server stop before serve releases address" =

@@ -26,18 +26,38 @@ let module_kind_is_filterable m =
    [lookup_tight_entries], terminating chains through them. The [Module.t]
    supplied here is the post-pp form (constructed in [build_lib_index]), so
    ocamldep runs on the dep lib's [.pp.ml] (action / non-staged Pps) or directly
-   on the source (no preprocessing / future-syntax). *)
-let cross_lib_tight_set ~sandbox ~sctx ~lib_index ~initial_refs =
+   on the source (no preprocessing / future-syntax).
+
+   Each visited lib's stanza [(flags (... -open Foo))] also extends the
+   frontier: a dep lib whose stanza opens [Foo] can use [Foo]'s identifiers
+   without naming [Foo] in its source, so ocamldep on the dep lib's source
+   produces no token to walk through. The stanza-open names are the missing
+   edges. *)
+let cross_lib_tight_set ~sandbox ~sctx ~lib_index ~mode ~initial_refs =
   let open Action_builder.O in
+  let read_stanza_opens lib =
+    let info = Lib.info lib in
+    let spec = Lib_info.stanza_flags info in
+    if Dune_lang.Ocaml_flags.Spec.equal spec Dune_lang.Ocaml_flags.Spec.standard
+    then Action_builder.return Module_name.Set.empty
+    else (
+      let dir = Lib_info.src_dir info |> Path.as_in_build_dir_exn in
+      let* ocaml_flags =
+        Action_builder.of_memo (Ocaml_flags_db.ocaml_flags sctx ~dir spec)
+      in
+      let+ flag_strings = Ocaml_flags.get ocaml_flags mode in
+      Ocaml_flags.extract_open_module_names flag_strings)
+  in
   let read_entry_deps (lib, m) =
     let obj_dir = Lib.info lib |> Lib_info.obj_dir |> Obj_dir.as_local_exn in
     let* impl_deps =
       Ocamldep.read_immediate_deps_raw_of ~sandbox ~sctx ~obj_dir ~ml_kind:Impl m
     in
-    let+ intf_deps =
+    let* intf_deps =
       Ocamldep.read_immediate_deps_raw_of ~sandbox ~sctx ~obj_dir ~ml_kind:Intf m
     in
-    Module_name.Set.union impl_deps intf_deps
+    let+ stanza_opens = read_stanza_opens lib in
+    Module_name.Set.union impl_deps (Module_name.Set.union intf_deps stanza_opens)
   in
   let rec loop ~seen ~frontier =
     if Module_name.Set.is_empty frontier
@@ -202,7 +222,7 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
       in
       let must_glob_set = Lib.Set.of_list must_glob_libs in
       let* tight_set =
-        cross_lib_tight_set ~sandbox ~sctx ~lib_index ~initial_refs:referenced
+        cross_lib_tight_set ~sandbox ~sctx ~lib_index ~mode ~initial_refs:referenced
       in
       (* Classify each lib in [all_libs]: - lib has [None]-entry referenced
          (mixed-entry or wrapped) → glob (covers the None entries' [.cmi]s); -

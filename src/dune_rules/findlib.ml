@@ -268,6 +268,7 @@ let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib ~external_loc
       ~jsoo_runtime
       ~wasmoo_runtime
       ~preprocess
+      ~stanza_flags:Dune_lang.Ocaml_flags.Spec.standard
       ~enabled
       ~virtual_deps
       ~dune_version

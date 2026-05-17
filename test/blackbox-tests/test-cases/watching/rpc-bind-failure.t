@@ -25,10 +25,7 @@ _build/.rpc/dune fails during startup.
   $ grep "Uncaught RPC Error" "$OUTPUT"
   Uncaught RPC Error
 
-  $ grep "bind" "$OUTPUT"
-  Unix.Unix_error(Unix.ENOTDIR, "bind", "")
-  Raised by primitive operation at Rpc__Csexp_rpc.Socket.U.bind in file
-  Called from Rpc__Csexp_rpc.Socket.bind in file "src/rpc/csexp_rpc.ml"
+  $ grep '^Error: bind(): Not a directory$' "$OUTPUT"
   Error: bind(): Not a directory
 
   $ grep '^exit 1$' "$OUTPUT"

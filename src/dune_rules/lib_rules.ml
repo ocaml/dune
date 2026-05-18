@@ -498,6 +498,7 @@ let cctx
       ~dir
       scope
       source_modules
+      ~for_
   in
   let modules = Virtual_rules.impl_modules implements modules in
   let requires_compile = Lib.Compile.direct_requires compile_info ~for_ in

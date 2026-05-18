@@ -84,6 +84,12 @@ module Pps = struct
     let= () = List.compare flags t.flags ~compare:String_with_vars.compare_no_loc in
     List.compare pps t.pps ~compare:compare_pps
   ;;
+
+  let decode =
+    let+ loc = loc
+    and+ pps, flags = Pps_and_flags.decode in
+    { loc; pps; flags; staged = false }
+  ;;
 end
 
 type 'a t =

@@ -149,7 +149,7 @@ let modules_rules
   modules, pp
 ;;
 
-let modules_rules sctx kind expander ~dir scope modules =
+let modules_rules sctx kind expander ~dir scope modules ~for_ =
   let* () =
     match kind with
     | Executables _ | Library _ | Melange _ -> Memo.return ()
@@ -164,8 +164,15 @@ let modules_rules sctx kind expander ~dir scope modules =
   in
   let preprocess, lint, empty_module_interface_if_absent =
     match kind with
-    | Executables (buildable, _) | Library (buildable, _) | Parameter (buildable, _) ->
+    | Executables (buildable, _) | Parameter (buildable, _) ->
       buildable.preprocess, buildable.lint, buildable.empty_module_interface_if_absent
+    | Library (buildable, _) ->
+      let preprocess =
+        match for_ with
+        | Compilation_mode.Ocaml -> buildable.preprocess
+        | Melange -> buildable.melange_preprocess
+      in
+      preprocess, buildable.lint, buildable.empty_module_interface_if_absent
     | Melange { preprocess; lint; empty_module_interface_if_absent } ->
       preprocess, lint, empty_module_interface_if_absent
   in

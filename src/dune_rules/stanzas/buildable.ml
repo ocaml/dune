@@ -16,6 +16,7 @@ type t =
   ; extra_objects : Foreign.Objects.t
   ; foreign_stubs : Foreign.Stubs.t list
   ; preprocess : Preprocess.preprocess
+  ; melange_preprocess : Preprocess.preprocess
   ; lint : Preprocess.Without_instrumentation.t Preprocess.Per_module.t
   ; flags : Ocaml_flags.Spec.t
   ; js_of_ocaml : Js_of_ocaml.In_buildable.t Js_of_ocaml.Mode.Pair.t
@@ -47,6 +48,12 @@ let decode_allow_unused_libraries =
     ~default:[]
 ;;
 
+let decode_melange_pps =
+  field_o
+    "melange.pps"
+    (Dune_lang.Syntax.since Stanza.syntax (3, 24) >>> Preprocess.Pps.decode)
+;;
+
 let decode (for_ : for_) =
   let use_foreign =
     Dune_lang.Syntax.deleted_in
@@ -69,7 +76,9 @@ let decode (for_ : for_) =
       Foreign.Stubs.make ~loc ~language ~names ~flags :: foreign_stubs
   in
   let+ loc = loc
-  and+ preprocess = decode_preprocess
+  and+ instrumentation = Preprocess.Instrumentation.instrumentation
+  and+ preprocess, preprocessor_deps = Preprocess.preprocess_fields
+  and+ melange_pps = decode_melange_pps
   and+ lint = decode_lint
   and+ foreign_stubs =
     multi_field
@@ -140,6 +149,16 @@ let decode (for_ : for_) =
       "empty_module_interface_if_absent"
       ~check:(Dune_lang.Syntax.since Stanza.syntax (3, 0))
   in
+  let preprocess =
+    Preprocess.preprocess_config ~preprocess ~instrumentation ~preprocessor_deps
+  in
+  let melange_preprocess =
+    match melange_pps with
+    | None -> preprocess
+    | Some pps ->
+      let preprocess = Module_name.Per_item.for_all (Preprocess.Pps pps) in
+      Preprocess.preprocess_config ~preprocess ~instrumentation ~preprocessor_deps:[]
+  in
   let foreign_stubs =
     foreign_stubs
     |> add_stubs C ~loc:c_names_loc ~names:c_names ~flags:c_flags
@@ -182,6 +201,7 @@ let decode (for_ : for_) =
   in
   { loc
   ; preprocess
+  ; melange_preprocess
   ; lint
   ; modules
   ; melange_modules

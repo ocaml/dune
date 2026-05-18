@@ -530,6 +530,7 @@ let setup_emit_cmj_rules
           ~dir
           scope
           source_modules
+          ~for_
       in
       Modules.With_vlib.modules modules, pp
     in

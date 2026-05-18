@@ -133,6 +133,7 @@ let compiler_package_names =
     ; "ocaml-variants"
     ; "ocaml-compiler"
     ; "relocatable-compiler"
+    ; "oxcaml-compiler"
     ]
 ;;
 

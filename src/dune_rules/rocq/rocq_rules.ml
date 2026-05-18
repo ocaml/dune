@@ -336,12 +336,16 @@ let directories_of_lib ~sctx lib =
 
 let setup_native_theory_includes ~sctx ~theories_deps ~theory_dirs =
   Resolve.Memo.bind theories_deps ~f:(fun theories_deps ->
-    let+ l =
-      Memo.parallel_map theories_deps ~f:(fun lib ->
-        let+ theory_dirs = directories_of_lib ~sctx lib in
-        Path.Build.Set.of_list theory_dirs)
+    let+ theory_dirs =
+      Memo.map_reduce
+        theories_deps
+        ~empty:theory_dirs
+        ~combine:Path.Build.Set.union
+        ~f:(fun lib ->
+          let+ theory_dirs = directories_of_lib ~sctx lib in
+          Path.Build.Set.of_list theory_dirs)
     in
-    Resolve.return (Path.Build.Set.union_all (theory_dirs :: l)))
+    Resolve.return theory_dirs)
 ;;
 
 let rocqc_native_flags ~sctx ~dir ~theories_deps ~theory_dirs ~(mode : Rocq_mode.t) =
@@ -945,15 +949,19 @@ let setup_rocqdoc_rules ~sctx ~dir ~theories_deps (s : Rocq_stanza.Theory.t) roc
              @@
              let open Memo.O in
              let+ deps =
-               Memo.parallel_map theories_deps ~f:(fun theory ->
-                 let+ theory_dirs = directories_of_lib ~sctx theory in
-                 Dep.Set.of_list_map theory_dirs ~f:(fun dir ->
-                   (* TODO *)
-                   Glob.of_string_exn Loc.none "*.glob"
-                   |> File_selector.of_glob ~dir:(Path.build dir)
-                   |> Dep.file_selector))
+               Memo.map_reduce
+                 theories_deps
+                 ~empty:Dep.Set.empty
+                 ~combine:Dep.Set.union
+                 ~f:(fun theory ->
+                   let+ theory_dirs = directories_of_lib ~sctx theory in
+                   Dep.Set.of_list_map theory_dirs ~f:(fun dir ->
+                     (* TODO *)
+                     Glob.of_string_exn Loc.none "*.glob"
+                     |> File_selector.of_glob ~dir:(Path.build dir)
+                     |> Dep.file_selector))
              in
-             Command.Args.Hidden_deps (Dep.Set.union_all deps)
+             Command.Args.Hidden_deps deps
            in
            let mode_flag =
              match mode with

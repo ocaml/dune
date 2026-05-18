@@ -2634,9 +2634,11 @@ module DB = struct
     let open Memo.O in
     let* l =
       Memo.Lazy.force t.all
-      >>= Memo.parallel_map ~f:(find t)
-      >>| List.filter_opt
-      >>| Set.of_list
+      >>= Memo.map_reduce ~empty:Set.empty ~combine:Set.union ~f:(fun name ->
+        find t name
+        >>| function
+        | None -> Set.empty
+        | Some lib -> Set.singleton lib)
     in
     match recursive, t.parent with
     | true, Some t ->

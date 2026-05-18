@@ -118,9 +118,16 @@ let rec eval : type a m. a t -> m eval_mode -> (a * m) Memo.t =
     res, Deps_or_facts.union_all mode deps
   | All_unit ts ->
     let open Memo.O in
-    let+ res = Memo.parallel_map ts ~f:(fun t -> eval t mode) in
-    let deps = List.map res ~f:snd in
-    (), Deps_or_facts.union_all mode deps
+    let+ deps =
+      Memo.map_reduce
+        ts
+        ~f:(fun t ->
+          let+ (), deps = eval t mode in
+          deps)
+        ~empty:(Deps_or_facts.empty mode)
+        ~combine:(Deps_or_facts.union mode)
+    in
+    (), deps
   | Of_memo memo ->
     let open Memo.O in
     let+ x = memo in

@@ -24,34 +24,39 @@ end = struct
         "expand-alias"
         ~input:(module Alias)
         (fun alias ->
-           let* l =
+           let* deps =
              Load_rules.get_alias_definition alias
-             >>= Memo.parallel_map ~f:(fun (loc, definition) ->
-               Memo.push_stack_frame
-                 (fun () ->
-                    Action_builder.evaluate_and_collect_deps
-                      (Build_system.dep_on_alias_definition definition)
-                    >>| snd)
-                 ~human_readable_description:(fun () -> Alias.describe alias ~loc))
+             >>= Memo.map_reduce
+                   ~empty:Dep.Set.empty
+                   ~combine:Dep.Set.union
+                   ~f:(fun (loc, definition) ->
+                     Memo.push_stack_frame
+                       (fun () ->
+                          Action_builder.evaluate_and_collect_deps
+                            (Build_system.dep_on_alias_definition definition)
+                          >>| snd)
+                       ~human_readable_description:(fun () -> Alias.describe alias ~loc))
            in
-           let deps = List.fold_left l ~init:Dep.Set.empty ~f:Dep.Set.union in
            Expand.deps deps)
     in
     Memo.exec memo
   ;;
 
   let deps deps =
-    Memo.parallel_map (Dep.Set.to_list deps) ~f:(fun (dep : Dep.t) ->
-      match dep with
-      | File p -> Memo.return (Path.Set.singleton p)
-      | File_selector g ->
-        let+ filenames = Build_system.eval_pred g in
-        (* Alas, we can't use filename sets here because we end up putting paths coming
+    Memo.map_reduce
+      (Dep.Set.to_list deps)
+      ~empty:Path.Set.empty
+      ~combine:Path.Set.union
+      ~f:(fun (dep : Dep.t) ->
+        match dep with
+        | File p -> Memo.return (Path.Set.singleton p)
+        | File_selector g ->
+          let+ filenames = Build_system.eval_pred g in
+          (* Alas, we can't use filename sets here because we end up putting paths coming
            from different directories together. *)
-        Path.Set.of_list (Filename_set.to_list filenames)
-      | Alias a -> Expand.alias a
-      | Env _ | Universe -> Memo.return Path.Set.empty)
-    >>| Path.Set.union_all
+          Path.Set.of_list (Filename_set.to_list filenames)
+        | Alias a -> Expand.alias a
+        | Env _ | Universe -> Memo.return Path.Set.empty)
   ;;
 end
 

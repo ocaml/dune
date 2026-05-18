@@ -82,7 +82,11 @@ module Facts : sig
   type dep := t
 
   (* There is an invariant that is not currently enforced: values correspond to
-     keys. For example, we can't have [Map.find (File f) = File_selector _]. *)
+     keys. For example, we can't have [Map.find (File f) = File_selector _].
+
+     It is also invalid for the same dependency to be associated with two
+     different facts. In particular, overlapping keys passed to [union] or
+     [union_all] must have equal facts. *)
   type t = Fact.t Map.t
 
   val singleton : dep -> Fact.t -> t

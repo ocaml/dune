@@ -135,8 +135,14 @@ module Deps = struct
     | Error e -> Memo.return (Error e)
     | Ok (dirs, files) ->
       let dep_set = Dep.Set.of_files files in
-      let+ l = Memo.parallel_map dirs ~f:(fun dir -> Source_deps.files dir >>| fst) in
-      Ok (Dep.Set.union_all (dep_set :: l))
+      let+ deps =
+        Memo.map_reduce
+          dirs
+          ~f:(fun dir -> Source_deps.files dir >>| fst)
+          ~empty:dep_set
+          ~combine:Dep.Set.union
+      in
+      Ok deps
   ;;
 end
 

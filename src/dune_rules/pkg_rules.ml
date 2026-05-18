@@ -508,10 +508,11 @@ module Pkg = struct
             | _ -> if skip_file name then Skip else Left relative)
         in
         let acc = Path.Local.Set.of_list files |> Path.Local.Set.union acc in
-        let+ dirs =
-          Memo.parallel_map dirs ~f:(fun dir -> loop root Path.Local.Set.empty dir)
-        in
-        Path.Local.Set.union_all (acc :: dirs)
+        Memo.map_reduce
+          dirs
+          ~f:(fun dir -> loop root Path.Local.Set.empty dir)
+          ~empty:acc
+          ~combine:Path.Local.Set.union
     in
     (match t.info.source with
      | None -> Memo.return None

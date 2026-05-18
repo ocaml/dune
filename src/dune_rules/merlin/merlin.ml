@@ -697,18 +697,18 @@ module Unprocessed = struct
   ;;
 
   let add_lib_dirs sctx ~for_ libs =
-    Memo.parallel_map libs ~f:(fun lib ->
-      let+ dirs = src_dirs sctx lib ~for_ in
-      lib, dirs)
-    >>| List.fold_left
-          ~init:(Path.Set.empty, Path.Set.empty)
-          ~f:(fun (src_dirs, obj_dirs) (lib, more_src_dirs) ->
-            ( Path.Set.union src_dirs more_src_dirs
-            , let public_cmi_dir =
-                let info = Lib.info lib in
-                obj_dir_of_lib `Public for_ (Lib_info.obj_dir info)
-              in
-              Path.Set.add obj_dirs public_cmi_dir ))
+    Memo.map_reduce
+      libs
+      ~empty:(Path.Set.empty, Path.Set.empty)
+      ~combine:(fun (src_dirs1, obj_dirs1) (src_dirs2, obj_dirs2) ->
+        Path.Set.union src_dirs1 src_dirs2, Path.Set.union obj_dirs1 obj_dirs2)
+      ~f:(fun lib ->
+        let+ src_dirs = src_dirs sctx lib ~for_ in
+        let obj_dir =
+          let info = Lib.info lib in
+          obj_dir_of_lib `Public for_ (Lib_info.obj_dir info)
+        in
+        src_dirs, Path.Set.singleton obj_dir)
     |> Action_builder.of_memo
   ;;
 

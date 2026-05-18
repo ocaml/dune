@@ -629,7 +629,7 @@ let rec expand (t : Dune_lang.Action.t) : Action.t Action_expander.t =
 
 let expand_no_targets t sandbox ~loc ~chdir ~deps:deps_written_by_user ~expander ~what =
   let open Action_builder.O in
-  let deps_builder, expander, sandbox =
+  let action_env, expander, sandbox =
     Dep_conf_eval.named ~expander sandbox deps_written_by_user
   in
   let expander =
@@ -650,11 +650,11 @@ let expand_no_targets t sandbox ~loc ~chdir ~deps:deps_written_by_user ~expander
           (String.capitalize what)
       ; pp_targets targets
       ];
-  let+ () = deps_builder
-  and+ sandbox = sandbox
+  let+ sandbox = sandbox
+  and+ env = action_env
   and+ action = build in
   let action = Action.Chdir (Path.build chdir, action) in
-  Action.Full.make action ~sandbox
+  Action.Full.make action ~sandbox |> Action.Full.add_env env
 ;;
 
 let expand
@@ -668,7 +668,7 @@ let expand
       ~expander
   =
   let open Action_builder.O in
-  let deps_builder, expander, sandbox =
+  let action_env, expander, sandbox =
     Dep_conf_eval.named sandbox ~expander deps_written_by_user
   in
   let expander =
@@ -711,10 +711,11 @@ let expand
       Targets.combine targets (Targets.create ~files ~dirs)
   in
   let build =
-    let+ () = deps_builder
-    and+ sandbox = sandbox
+    let+ sandbox = sandbox
+    and+ env = action_env
     and+ action = build in
     Action.Full.make (Action.Chdir (Path.build chdir, action)) ~sandbox
+    |> Action.Full.add_env env
   in
   Action_builder.with_targets ~targets build
 ;;

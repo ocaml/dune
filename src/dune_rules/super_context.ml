@@ -150,6 +150,10 @@ let extend_action t ~dir action =
       (let open Memo.O in
        t.get_node dir >>= Env_node.external_env)
   in
+  (* [action.env] is expected to contain only PATH-prepend hints from
+     [Dep_conf_eval.make_bin_env]. Splice its PATH entries in front of the
+     external env's PATH, keep other vars as-is. *)
+  let env = Env_path.extend_env_concat_path env action.env in
   Action.Full.add_env env action
   |> Action.Full.map ~f:(function
     | Chdir _ as a -> a
@@ -270,6 +274,8 @@ let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
   let artifacts = Artifacts_db.get context in
   let+ root_expander =
     let public_libs = Scope.DB.public_libs context_name in
+    (* CR-someday Alizter: factor this Context.for_host fallback shared
+       with dep_conf_eval.ml:make_bin_env into a single helper. *)
     let artifacts_host, public_libs_host, context_host =
       match Context.for_host context with
       | None -> artifacts, public_libs, Memo.return context
@@ -286,6 +292,7 @@ let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
       ~scope
       ~scope_host
       ~context
+      ~context_host
       ~env
       ~public_libs
       ~artifacts_host

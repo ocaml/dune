@@ -224,6 +224,7 @@ let pp_one_module
       ~lib_name
       ~scope
       ~preprocessor_deps
+      ~action_env
       ~(lint_module : source:_ -> ast:_ -> unit Memo.t)
       ~sandbox
       ~dir
@@ -251,6 +252,11 @@ let pp_one_module
       pped_module m ~f:(fun _kind src dst ->
         let action =
           action_for_pp_with_target ~sandbox ~loc ~expander ~action ~src ~target:dst
+          |> Action_builder.With_targets.map_build ~f:(fun build ->
+            let open Action_builder.O in
+            let+ action = build
+            and+ env = action_env in
+            Action.Full.add_env env action)
         in
         Super_context.add_rule
           sctx
@@ -360,23 +366,25 @@ let pp_one_module
                        let dir =
                          Super_context.context sctx |> Context.build_dir |> Path.build
                        in
-                       Command.run'
-                         ~dir
-                         (Ok (Path.build exe))
-                         [ As args
-                         ; A "-o"
-                         ; Path (Path.build dst)
-                         ; Command.Ml_kind.ppx_driver_flag ml_kind
-                         ; Dep (Path.build src)
-                         ; Hidden_deps
-                             (Module.source m ~ml_kind
-                              |> Option.value_exn
-                              |> Module.File.path
-                              |> Dep.file
-                              |> Dep.Set.singleton)
-                         ; As flags
-                         ]
-                       >>| Action.Full.add_sandbox sandbox)))))
+                       let+ action =
+                         Command.run'
+                           ~dir
+                           (Ok (Path.build exe))
+                           [ As args
+                           ; A "-o"
+                           ; Path (Path.build dst)
+                           ; Command.Ml_kind.ppx_driver_flag ml_kind
+                           ; Dep (Path.build src)
+                           ; Hidden_deps
+                               (Module.source m ~ml_kind
+                                |> Option.value_exn
+                                |> Module.File.path
+                                |> Dep.file
+                                |> Dep.Set.singleton)
+                           ; As flags
+                           ]
+                       and+ env = action_env in
+                       Action.Full.add_sandbox sandbox action |> Action.Full.add_env env)))))
 ;;
 
 let make
@@ -396,12 +404,14 @@ let make
     Module_name.Per_item.map preprocess ~f:(fun pp ->
       Preprocess.remove_future_syntax ~for_:Compiler pp ocaml.version)
   in
-  let preprocessor_deps, sandbox =
+  let action_env, sandbox =
     Dep_conf_eval.unnamed
       Sandbox_config.no_special_requirements
       preprocessor_deps
       ~expander
   in
+  let action_env = Action_builder.memoize "preprocessor action_env" action_env in
+  let preprocessor_deps = Action_builder.ignore action_env in
   let sandbox =
     match Sandbox_config.equal Sandbox_config.no_special_requirements sandbox with
     | false -> `Set_by_user sandbox
@@ -423,6 +433,7 @@ let make
          ~lib_name
          ~scope
          ~preprocessor_deps
+         ~action_env
          ~lint_module
          ~sandbox
          ~dir

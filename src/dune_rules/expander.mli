@@ -13,11 +13,18 @@ val make_root
   -> scope:Scope.t Memo.t
   -> scope_host:Scope.t Memo.t
   -> context:Context.t
+  -> context_host:Context.t Memo.t
   -> env:Env.t Memo.t
   -> public_libs:Lib.DB.t Memo.t
   -> public_libs_host:Lib.DB.t Memo.t
   -> artifacts_host:Artifacts.t Memo.t
   -> t
+
+(** The host context this expander resolves to (the current context if there
+    is no cross-compilation). Used for resolving [%{bin:...}] artifacts and
+    package layouts, which must live in the context that produced the
+    binaries the action will execute. *)
+val host_context : t -> Context.t Memo.t
 
 val set_local_env_var : t -> var:string -> value:string Action_builder.t -> t
 

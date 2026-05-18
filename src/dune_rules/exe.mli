@@ -61,6 +61,7 @@ val link_many
   -> ?o_files:Path.t Mode.Map.Multi.t
   -> ?embed_in_plugin_libraries:(Loc.t * Lib_name.t) list
   -> ?sandbox:Sandbox_config.t
+  -> ?action_env:Env.t Action_builder.t
   -> programs:Program.t list
   -> linkages:Linkage.t list
   -> promote:Rule_mode.Promote.t option
@@ -72,6 +73,7 @@ val build_and_link
   -> ?o_files:Path.t Mode.Map.Multi.t
   -> ?embed_in_plugin_libraries:(Loc.t * Lib_name.t) list
   -> ?sandbox:Sandbox_config.t
+  -> ?action_env:Env.t Action_builder.t
   -> program:Program.t
   -> linkages:Linkage.t list
   -> promote:Rule_mode.Promote.t option
@@ -83,6 +85,7 @@ val build_and_link_many
   -> ?o_files:Path.t Mode.Map.Multi.t
   -> ?embed_in_plugin_libraries:(Loc.t * Lib_name.t) list
   -> ?sandbox:Sandbox_config.t
+  -> ?action_env:Env.t Action_builder.t
   -> programs:Program.t list
   -> linkages:Linkage.t list
   -> promote:Rule_mode.Promote.t option

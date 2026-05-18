@@ -67,7 +67,7 @@ let collect_from_foreign_sources
     ocaml.lib_config.ext_obj
   in
   Foreign.Sources.to_list_map foreign_sources ~f:(fun _ (_, src) ->
-    let include_flags =
+    let include_flags, _action_env =
       Foreign_rules.build_include_flags ~sctx ~dir ~expander ~dir_contents ~requires ~src
     in
     build_c_command ~sctx ~dir ~expander ~include_flags src ~ext_obj)

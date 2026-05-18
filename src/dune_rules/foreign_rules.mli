@@ -23,7 +23,9 @@ val foreign_flags_env
 
 (** Build the common include flags for C compilation: header hidden deps,
     library include flags, per-source include_dir_flags, and extra_deps.
-    Shared between [build_o_files] and [Compile_commands]. *)
+    Shared between [build_o_files] and [Compile_commands]. Also returns the
+    action env derived from any [%{bin:...}] pforms in the source's
+    [extra_deps], so callers can fold it into the resulting action. *)
 val build_include_flags
   :  sctx:Super_context.t
   -> dir:Path.Build.t
@@ -31,7 +33,7 @@ val build_include_flags
   -> dir_contents:Dir_contents.t
   -> requires:Lib.t list Resolve.t
   -> src:Foreign.Source.t
-  -> Command.Args.without_targets Command.Args.t
+  -> Command.Args.without_targets Command.Args.t * Env.t Action_builder.t
 
 (** Construct Command.Args.t for C compilation (flags + stdlib include + include_flags).
     Does not include output (-o) or source (-c) arguments. *)

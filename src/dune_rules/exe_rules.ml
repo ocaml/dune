@@ -242,17 +242,18 @@ let executables_rules
     let* dep_graphs =
       (* Building an archive for foreign stubs, we link the corresponding object
        files directly to improve perf. *)
-      let link_deps, sandbox =
+      let action_env, sandbox =
         Dep_conf_eval.unnamed
           Sandbox_config.no_special_requirements
           ~expander
           exes.link_deps
       in
+      let action_env = Action_builder.memoize "exe link action_env" action_env in
       let link_args : Command.Args.without_targets Command.Args.t Action_builder.t =
         Command.Args.S
           [ Dyn
               (let open Action_builder.O in
-               let* () = link_deps in
+               let* _env = action_env in
                let use_standard_cxx_flags =
                  match Dune_project.use_standard_c_and_cxx_flags project with
                  | Some true -> Buildable.has_foreign_cxx exes.buildable
@@ -304,6 +305,7 @@ let executables_rules
           ~promote:exes.promote
           ~embed_in_plugin_libraries
           ~sandbox
+          ~action_env
       | Some _ ->
         (* Ctypes stubgen builds utility .exe files that need to share modules
          with this compilation context. To support that, we extract the one-time
@@ -324,6 +326,7 @@ let executables_rules
             ~embed_in_plugin_libraries
             cctx
             ~sandbox
+            ~action_env
         in
         link
     in

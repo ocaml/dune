@@ -1,8 +1,7 @@
-(run NAME) with a bare literal name and (run %{bin:NAME}) record
-different deps. The bare-literal form resolves with where=Original_path
-(for lang >= 3.14) and records a dep on the build artifact; the pform
-form uses the default where=Install_dir and records a dep on the
-install staging path.
+(run NAME) with a bare literal name and (run %{bin:NAME}) both record
+a dep on the build artifact. Before wrv only the bare-literal form
+did, since the pform default was where=Install_dir; wrv flips the
+pform default to Original_path so both paths agree.
 
   $ cat >dune-project <<EOF
   > (lang dune 3.24)
@@ -31,9 +30,9 @@ install staging path.
   >   | grep mybin
   "_build/default/src/mybin.exe"
 
-(run %{bin:mybin}) records a dep on the install staging path:
+(run %{bin:mybin}) records a dep on the build artifact too:
 
   $ dune rules --format=json _build/default/out-pform \
   >   | jq 'include "dune"; .[] | ruleDepFilePaths' \
   >   | grep mybin
-  "_build/install/default/bin/mybin"
+  "_build/default/src/mybin.exe"

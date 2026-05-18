@@ -171,6 +171,7 @@ let link_exe
       ~link_args
       ~o_files
       ?(sandbox = Sandbox_config.default)
+      ?(action_env = Action_builder.return Env.empty)
       cctx
   =
   let sctx = Compilation_context.super_context cctx in
@@ -235,7 +236,11 @@ let link_exe
           ; fdo_linker_script_flags
           ; Dyn link_args
           ]
-    >>| Action.Full.add_sandbox sandbox
+    |> Action_builder.With_targets.map_build ~f:(fun build ->
+      let open Action_builder.O in
+      let+ action = build
+      and+ env = action_env in
+      Action.Full.add_sandbox sandbox action |> Action.Full.add_env env)
   and* mode =
     let sctx = Compilation_context.super_context cctx in
     let* expander = Super_context.expander sctx ~dir in
@@ -296,6 +301,7 @@ let link_many
       ?o_files
       ?(embed_in_plugin_libraries = [])
       ?sandbox
+      ?action_env
       ~programs
       ~linkages
       ~promote
@@ -417,7 +423,8 @@ let link_many
               ~promote
               ~link_args
               ~o_files
-              ?sandbox)
+              ?sandbox
+              ?action_env)
       in
       top_sorted_modules)
   in
@@ -429,6 +436,7 @@ let build_and_link_many
       ?o_files
       ?embed_in_plugin_libraries
       ?sandbox
+      ?action_env
       ~programs
       ~linkages
       ~promote
@@ -444,6 +452,7 @@ let build_and_link_many
     ?o_files
     ?embed_in_plugin_libraries
     ?sandbox
+    ?action_env
     ~programs
     ~linkages
     ~promote
@@ -455,6 +464,7 @@ let build_and_link
       ?o_files
       ?embed_in_plugin_libraries
       ?sandbox
+      ?action_env
       ~program
       ~linkages
       ~promote
@@ -465,6 +475,7 @@ let build_and_link
     ?o_files
     ?embed_in_plugin_libraries
     ?sandbox
+    ?action_env
     ~programs:[ program ]
     ~linkages
     ~promote

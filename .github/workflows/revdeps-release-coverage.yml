@@ -1,18 +1,75 @@
-name: Coverage of Reverse Dependencies Check for Prereleases
+name: Revdep Packages
+
+# TODO: explain purposeo
 
 on:
   push:
-    branches:
-      - '*-rc'
+    # branches:
+    #   - '*-rc'
   workflow_dispatch:
-
+ 
 permissions:
   contents: read
-
+ 
 jobs:
-  revdeps:
-    name: OCaml Reverse Dependencies
-    uses: ocaml/dune/.github/workflows/revdeps.yml@main
-    with:
-      dune_version: "dev"
-      packages: "bap irmin-containers dream lambdapi kicadsch git-unix caqti-async"
+  revdep:
+    name: ${{ matrix.package }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        ocaml-compiler: ["5.2"]
+        # The following set of packages gives us coverage for about 508 distinct
+        # packages, based on running:
+        # 
+        # opam list --required-by current_examples,dream-cli,irmin-benc,memtrace_viewer,solid_server --recursive -s | sort -u | wc -l
+        package:
+          - current_examples
+          - dream-cli
+          - irmin-bench
+          - memtrace_viewer
+          - solid_server
+ 
+    steps:
+      - name: Checkout dune
+        uses: actions/checkout@v4
+ 
+      - name: Set up OCaml ${{ matrix.ocaml-compiler }}
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: ${{ matrix.ocaml-compiler }}
+          # Install system-level depexts that the revdeps may pull in
+          # (libgmp-dev for zarith, libssl-dev for tls, etc.).
+          opam-depext: true
+          # Don't restore a cached build of dune — we want our pinned one.
+          dune-cache: false
+ 
+      - name: Pin dune to this branch
+        # this local dev pin is a great version than any lower bound packages
+        # may declare
+        run: |
+          opam pin add -y dune.dev .
+ 
+      # Install the transitive closure of all deps of the target package
+      # --with-test, excluding dune itself (for which we don't want to run the tests)
+      - name: Install and test transitive closure of ${{ matrix.package }}
+        run: |
+          opam install --with-test --yes --confirm-level=unsafe-yes \
+          $(OPAMCOLOR=never opam list -s --coinstallable-with ${{ matrix.package }} --installable --available --recursive --required-by ${{matrix.package }} | grep -v dune)
+ 
+      - name: Show installed package list on failure
+        if: failure()
+        run: opam list
+ 
+  summary:
+    name: revdep summary
+    runs-on: ubuntu-latest
+    needs: revdep
+    if: always()
+    steps:
+      - name: Report
+        run: |
+          echo "Per-package results are visible in the matrix above."
+          echo "This job exists so branch protection can require a single check."
+

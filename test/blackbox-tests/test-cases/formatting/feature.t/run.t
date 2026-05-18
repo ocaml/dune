@@ -382,7 +382,7 @@ The formatter action is not re-run if the following diff action fails.
   $ (cd using-env && dune build @fmt)
   File "subdir/foo.ml", line 1, characters 0-0:
   --- subdir/foo.ml
-  +++ subdir/foo.ml.corrected
+  +++ subdir/.formatted/foo.ml
   @@ -1 +1 @@
   -let x =     12
   +(* fake ocamlformat output *)

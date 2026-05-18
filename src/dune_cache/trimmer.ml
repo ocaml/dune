@@ -40,20 +40,14 @@ let trim_broken_metadata_entries ~trimmed_so_far =
                | Error _exn ->
                  (* If a metadata file can't be restored, let's trim it. *)
                  true
-               | Restored metadata ->
-                 (match metadata with
-                  | Value _ ->
-                    (* We do not expect to see any value entries in the cache. Let's
-                    keep them untrimmed for now. *)
-                    false
-                  | Artifacts { entries } ->
-                    List.exists entries ~f:(function
-                      | { Local.Artifacts.Metadata_entry.digest = None; path = _ } ->
-                        (* no digest means it's a directory. *)
-                        false
-                      | { digest = Some file_digest; path = _ } ->
-                        let reference = Lazy.force (file_path ~file_digest) in
-                        not (Fpath.exists (Path.to_string reference))))
+               | Restored { entries } ->
+                 List.exists entries ~f:(function
+                   | { Local.Artifacts.Metadata_entry.digest = None; path = _ } ->
+                     (* no digest means it's a directory. *)
+                     false
+                   | { digest = Some file_digest; path = _ } ->
+                     let reference = Lazy.force (file_path ~file_digest) in
+                     not (Fpath.exists (Path.to_string reference)))
              in
              match should_be_removed with
              | false -> trimmed_so_far

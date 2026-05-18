@@ -14,14 +14,6 @@ module File : sig
   val to_string : t -> string
 end
 
-module Value : sig
-  type t = V3
-
-  val current : t
-  val all : t list
-  val to_string : t -> string
-end
-
 module Metadata : sig
   type t =
     | V3
@@ -35,7 +27,4 @@ module Metadata : sig
   (** Metadata entries contain references to file entries. This function links
       the two versions. We guarantee that [file_version current = File.current]. *)
   val file_version : t -> File.t
-
-  (** Like [file_version] but for value entries. *)
-  val value_version : t -> Value.t
 end

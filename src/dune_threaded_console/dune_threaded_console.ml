@@ -15,13 +15,17 @@ let make ~frames_per_second (module Base : S) : (module Console.Backend) =
       }
     ;;
 
+    let terminal_signal_mask = ref None
+
     let finish () =
       Mutex.protect mutex (fun () ->
         state.dirty <- true;
         state.finish_requested <- true;
         while not state.finished do
           Condition.wait finish_cv mutex
-        done)
+        done;
+        Option.iter !terminal_signal_mask ~f:Terminal_signals.restore;
+        terminal_signal_mask := None)
     ;;
 
     let print_user_message m =
@@ -62,6 +66,7 @@ let make ~frames_per_second (module Base : S) : (module Console.Backend) =
 
     let start () =
       Base.start ();
+      terminal_signal_mask := Some (Terminal_signals.block ());
       Scheduler.spawn_thread ~name:"console"
       @@ fun () ->
       Terminal_signals.unblock ();

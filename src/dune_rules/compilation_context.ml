@@ -91,7 +91,10 @@ type t =
   ; parameters : Module_name.t list Resolve.Memo.t
   ; instances : Parameterised_instances.t Resolve.Memo.t option
   ; includes : Includes.t
+  ; lib_index : Lib_file_deps.Lib_index.t Resolve.t Memo.Lazy.t
+  ; has_virtual_impl : bool Resolve.t Memo.Lazy.t
   ; preprocessing : Pp_spec.t
+  ; pps_runtime_libs : Lib.t list Resolve.Memo.t
   ; opaque : bool
   ; js_of_ocaml : Js_of_ocaml.In_context.t option Js_of_ocaml.Mode.Pair.t
   ; sandbox : Sandbox_config.t
@@ -118,7 +121,10 @@ let requires_hidden t = t.requires_hidden
 let requires_link t = Memo.Lazy.force t.requires_link
 let parameters t = t.parameters
 let includes t = t.includes
+let lib_index t = Memo.Lazy.force t.lib_index
+let has_virtual_impl t = Memo.Lazy.force t.has_virtual_impl
 let preprocessing t = t.preprocessing
+let pps_runtime_libs t = t.pps_runtime_libs
 let opaque t = t.opaque
 let js_of_ocaml t = t.js_of_ocaml
 let sandbox t = t.sandbox
@@ -147,6 +153,74 @@ let parameters_main_modules parameters =
         [ "param", Lib.to_dyn param ])
 ;;
 
+(* Hidden libs must be indexed: otherwise unreached ones fall to the glob branch
+   and over-invalidate. *)
+let build_lib_index ~super_context ~libs ~for_ =
+  let open Resolve.Memo.O in
+  let instrument_with = Context.instrument_with (Super_context.context super_context) in
+  let+ per_lib =
+    Resolve.Memo.List.map libs ~f:(fun lib ->
+      match Lib_info.entry_modules (Lib.info lib) ~for_ with
+      | External (Ok names) ->
+        Resolve.Memo.return (List.map names ~f:(fun n -> n, lib, None), None)
+      | External (Error e) -> Resolve.Memo.of_result (Error e)
+      | Local ->
+        let* mods =
+          Resolve.Memo.lift_memo
+            (Dir_contents.modules_of_local_lib
+               super_context
+               (Lib.Local.of_lib_exn lib)
+               ~for_)
+        in
+        (* [no_ocamldep_lib] tags libs that are walker-terminal: running
+           ocamldep on their entry module via the cross-lib walk can't
+           propagate anywhere, so the walker skips them. A singleton lib is
+           terminal only when its resolved requires are empty; otherwise the
+           walker must read its post-pp ocamldep to discover transitive refs
+           (incl. pps runtime libs added via [add_pp_runtime_deps]). *)
+        let+ requires_resolved = Lib.requires lib ~for_ in
+        (* [Some m] only for unwrapped locals (tight-eligible); wrapped locals
+           and externals → [None]. *)
+        let unwrapped =
+          match Lib_info.wrapped (Lib.info lib) with
+          | Some (This w) -> not (Wrapped.to_bool w)
+          | Some (From _) | None -> false
+        in
+        (* Mirror [Pp_spec.pped_modules_map] so the cross-lib walker reads
+           ocamldep on the source the dep lib's compile pipeline produces. *)
+        let preprocess = Lib_info.preprocess (Lib.info lib) ~for_ in
+        let post_pp_module m =
+          match Preprocess.Per_module.find (Module.name m) preprocess with
+          | No_preprocessing | Future_syntax _ -> Some (Module.ml_source m)
+          | Action _ -> Some (Module.ml_source (Module.pped m))
+          | Pps { staged = false; pps; _ } ->
+            let any_active =
+              List.exists pps ~f:(function
+                | Preprocess.With_instrumentation.Ordinary _ -> true
+                | Instrumentation_backend { libname = _, name; _ } ->
+                  List.mem instrument_with name ~equal:Lib_name.equal)
+            in
+            if any_active
+            then Some (Module.pped (Module.ml_source m))
+            else Some (Module.ml_source m)
+          | Pps { staged = true; _ } -> None
+        in
+        let entries =
+          List.map (Modules.entry_modules mods) ~f:(fun m ->
+            Module.name m, lib, if unwrapped then post_pp_module m else None)
+        in
+        let no_ocamldep_lib =
+          match Modules.as_singleton mods with
+          | Some _ when List.is_empty requires_resolved -> Some lib
+          | _ -> None
+        in
+        entries, no_ocamldep_lib)
+  in
+  let entries = List.concat_map per_lib ~f:fst in
+  let no_ocamldep = List.filter_map per_lib ~f:snd |> Lib.Set.of_list in
+  Lib_file_deps.Lib_index.create ~no_ocamldep entries
+;;
+
 let create
       ~super_context
       ~scope
@@ -155,6 +229,7 @@ let create
       ~flags
       ~requires_compile
       ~requires_link
+      ?(pps_runtime_libs = Resolve.Memo.return [])
       ?(preprocessing = Pp_spec.dummy)
       ~opaque
       ~js_of_ocaml
@@ -246,7 +321,20 @@ let create
   ; parameters
   ; includes =
       Includes.make ~project ~opaque ~direct_requires ~hidden_requires ocaml.lib_config
+  ; lib_index =
+      Memo.lazy_ (fun () ->
+        let open Resolve.Memo.O in
+        let* d = direct_requires
+        and* h = hidden_requires in
+        build_lib_index ~super_context ~libs:(d @ h) ~for_)
+  ; has_virtual_impl =
+      Memo.lazy_ (fun () ->
+        let open Resolve.Memo.O in
+        let+ direct = direct_requires
+        and+ hidden = hidden_requires in
+        List.exists (direct @ hidden) ~f:(fun lib -> Option.is_some (Lib.implements lib)))
   ; preprocessing
+  ; pps_runtime_libs
   ; opaque
   ; js_of_ocaml
   ; sandbox
@@ -347,7 +435,21 @@ let for_module_generated_at_link_time cctx ~requires ~module_ =
   ; flags = Ocaml_flags.empty
   ; requires_link = Memo.lazy_ (fun () -> requires)
   ; requires_compile = requires
+  ; requires_hidden = Resolve.Memo.return []
   ; includes
+  ; lib_index =
+      Memo.lazy_ (fun () ->
+        (* Unreachable: synthesised modules use [Dep_graph.dummy] (whose [dir]
+           is [Path.Build.root]), so [lib_deps_for_module]'s [can_filter]
+           dir-equality guard fails and the non-filter fallback is taken. *)
+        Code_error.raise
+          "Compilation_context.lib_index forced for a module synthesised at link time; \
+           this should be unreachable."
+          [])
+  ; (* Link-time-generated modules cannot participate in virtual-impl
+       relationships; override the parent's value so the accessor reflects
+       this cctx's [requires_compile]/[requires_link]. *)
+    has_virtual_impl = Memo.Lazy.of_val (Resolve.return false)
   ; modules
   }
 ;;

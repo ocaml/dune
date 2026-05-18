@@ -373,3 +373,20 @@ let%expect_test "csexp client stop does not close an active session" =
   run_scheduler run;
   [%expect {| server: session remained open |}]
 ;;
+
+let%expect_test "csexp server stop after serve releases tcp port" =
+  let addr =
+    let run () =
+      let server = server (ADDR_INET (Unix.inet_addr_loopback, 0)) in
+      let* _sessions = Server.serve server in
+      let addr = Csexp_rpc.Server.listening_address server |> List.hd in
+      let+ () = Server.stop server in
+      addr
+    in
+    run_scheduler run
+  in
+  let server = server addr in
+  stop_server server;
+  print_endline "rebound";
+  [%expect {| rebound |}]
+;;

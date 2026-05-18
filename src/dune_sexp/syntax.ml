@@ -213,7 +213,10 @@ end = struct
 
   let status t ver ~dune_lang_ver =
     if is_supported t ver dune_lang_ver
-    then `Supported
+    then (
+      match Version.Map.find t.deleted_in ver with
+      | Some version when dune_lang_ver >= version -> `Deleted_in version
+      | Some _ | None -> `Supported)
     else (
       match Version.Map.find t.deleted_in ver with
       | Some version -> `Deleted_in version
@@ -413,9 +416,13 @@ let check_supported ~dune_lang_ver t (loc, ver) =
       match min_ext_ver with
       | None -> ""
       | Some min_ext_ver ->
-        sprintf
-          " Please port this project to a newer version of the extension, such as %s."
-          (Version.to_string min_ext_ver)
+        let open Version.Infix in
+        if min_ext_ver <= ver
+        then ""
+        else
+          sprintf
+            " Please port this project to a newer version of the extension, such as %s."
+            (Version.to_string min_ext_ver)
     in
     let hints =
       match min_dune_lang_ver with

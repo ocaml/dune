@@ -19,6 +19,35 @@ Directory targets require an extension.
   Error: Directory targets require the 'directory-targets' extension
   [1]
 
+Starting from Dune 3.24, directory targets no longer require an extension.
+
+  $ cat > dune-project <<EOF
+  > (lang dune 3.24)
+  > EOF
+
+  $ cat > dune <<EOF
+  > (rule
+  >   (target (dir builtin-output))
+  >   (action (bash "mkdir builtin-output; echo ok > builtin-output/x")))
+  > EOF
+
+  $ dune build builtin-output/x
+
+Using the directory-targets extension is rejected starting from Dune 3.24.
+
+  $ cat > dune-project <<EOF
+  > (lang dune 3.24)
+  > (using directory-targets 0.1)
+  > EOF
+
+  $ dune build builtin-output/x
+  File "dune-project", line 2, characters 25-28:
+  2 | (using directory-targets 0.1)
+                               ^^^
+  Error: Version 0.1 of the directory-targets extension has been deleted in
+  Dune 3.24.
+  [1]
+
   $ cat > dune-project <<EOF
   > (lang dune 3.0)
   > (using directory-targets 0.1)

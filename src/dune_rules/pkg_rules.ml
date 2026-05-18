@@ -502,10 +502,11 @@ module Pkg = struct
           let contents = Fs_memo.Dir_contents.to_list contents in
           List.rev_filter_partition_map contents ~f:(fun (name, kind) ->
             (* TODO handle links and cycles correctly *)
-            let relative = Path.Local.relative path name in
+            let name_s = Filename.to_string name in
+            let relative = Path.Local.relative_fname path name in
             match kind with
-            | S_DIR -> if skip_dir name then Skip else Right relative
-            | _ -> if skip_file name then Skip else Left relative)
+            | S_DIR -> if skip_dir name_s then Skip else Right relative
+            | _ -> if skip_file name_s then Skip else Left relative)
         in
         let acc = Path.Local.Set.of_list files |> Path.Local.Set.union acc in
         Memo.map_reduce
@@ -694,7 +695,7 @@ module Substitute = struct
     let hash_input_repr =
       Repr.T4.repr
         paths_repr
-        Repr.(list (pair String.repr Path.repr))
+        Repr.(list (pair Filename.repr Path.repr))
         Repr.(list (pair variable_map_repr paths_repr))
         Package_version.repr
     ;;
@@ -705,7 +706,7 @@ module Substitute = struct
         Digest.repr
           hash_input_repr
           ( paths expander.paths
-          , String.Map.to_list artifacts
+          , Filename.Map.to_list artifacts
           , Package.Name.Map.to_list_map depends ~f:(fun _ (m, p) -> m, paths p)
           , expander.version )
         |> Digest.to_string_raw
@@ -979,6 +980,7 @@ module Action_expander = struct
                 let dune = Path.of_string Sys.executable_name in
                 Memo.return @@ Ok dune
               | program ->
+                let program = Filename.of_string_exn program in
                 let* artifacts = t.artifacts in
                 (match Filename.Map.find artifacts program with
                  | Some s -> Memo.return @@ Ok s
@@ -996,7 +998,7 @@ module Action_expander = struct
                       Error
                         (Action.Prog.Not_found.create
                            ?hint
-                           ~program
+                           ~program:(Filename.to_string program)
                            ~context:t.context
                            ~loc:(Some loc)
                            ())))))
@@ -1154,7 +1156,11 @@ module Action_expander = struct
             let binaries =
               Section.Map.Multi.find cookie.files Bin
               |> List.fold_left ~init:binaries ~f:(fun acc bin ->
-                Filename.Map.set acc (Bin.strip_exe (Path.basename bin)) bin)
+                Filename.Map.set
+                  acc
+                  (Filename.of_string_exn
+                     (Bin.strip_exe (Path.basename bin |> Filename.to_string)))
+                  bin)
             in
             let dep_info =
               let variables =
@@ -1216,7 +1222,7 @@ module Action_expander = struct
   ;;
 
   let dune_exe context =
-    Which.which ~path:(Env_path.path Env.initial) "dune"
+    Which.which ~path:(Env_path.path Env.initial) Filename.dune
     >>| function
     | Some s -> Ok s
     | None -> Error (Action.Prog.Not_found.create ~loc:None ~context ~program:"dune" ())
@@ -1769,6 +1775,7 @@ module Install_action = struct
           let package =
             Path.basename install_file
             |> Filename.remove_extension
+            |> Filename.to_string
             |> Package.Name.of_string
           in
           let roots =
@@ -1785,7 +1792,7 @@ module Install_action = struct
 
     let collect_files ~root ~skip_dirs =
       List.iter skip_dirs ~f:(fun s -> assert (Path.equal root (Path.parent_exn s)));
-      let path_of ~dir fname = Path.relative root (Filename.concat dir fname) in
+      let path_of ~dir fname = Path.relative root (Filename.append dir fname) in
       Fpath.traverse
         ~dir:(Path.to_string root)
         ~init:[]
@@ -1806,7 +1813,7 @@ module Install_action = struct
       | Some (sandbox, source) ->
         let ctx =
           let name = Path.basename sandbox in
-          Path.relative (Path.build Path.Build.root) name
+          Path.relative_fname (Path.build Path.Build.root) name
         in
         Path.append_source ctx source
     ;;
@@ -1894,7 +1901,11 @@ module Install_action = struct
                  to be deleted, so we don't be able to fetch the part of the
                  file that's bad *)
               let open Pp.O in
-              let error = Pp.textf "Error parsing %s" (Path.basename config_file) in
+              let error =
+                Pp.textf
+                  "Error parsing %s"
+                  (Path.basename config_file |> Filename.to_string)
+              in
               match loc with
               | None -> error
               | Some loc ->
@@ -1958,7 +1969,7 @@ module Install_action = struct
 
     let resolve_symlinks_in root =
       let on_symlink ~dir fname () =
-        let path = Filename.concat root (Filename.concat dir fname) in
+        let path = Filename.concat root (Filename.append dir fname) in
         match Fpath.follow_symlink path with
         | Error (Unix_error e) -> Unix_error.Detailed.raise e
         | Error Not_a_symlink ->
@@ -2480,7 +2491,10 @@ let setup_rules ~components ~dir ctx =
   | true, ".dev-tool" :: _ :: _ :: _ ->
     Memo.return @@ Gen_rules.redirect_to_parent Gen_rules.Rules.empty
   | is_default, [] ->
-    let sub_dirs = ".pkg" :: (if is_default then [ ".dev-tool" ] else []) in
+    let sub_dirs =
+      Filename.pkg_dir_basename
+      :: (if is_default then [ Filename.dev_tool_dir_basename ] else [])
+    in
     let build_dir_only_sub_dirs =
       Gen_rules.Build_only_sub_dirs.singleton ~dir @@ Subdir_set.of_list sub_dirs
     in

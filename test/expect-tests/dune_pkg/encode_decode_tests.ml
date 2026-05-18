@@ -69,7 +69,7 @@ let lock_dir_encode_decode_round_trip_test ?commit ~lock_dir_path ~lock_dir () =
   let lock_dir_round_tripped =
     try Lock_dir.read_disk_exn lock_dir_path with
     | User_error.E _ as exn ->
-      let metadata_path = Path.relative lock_dir_path Lock_dir.metadata_filename in
+      let metadata_path = Path.relative_fname lock_dir_path Lock_dir.metadata_filename in
       let metadata_file_contents = Io.read_file metadata_path in
       print_endline
         "Failed to parse lockdir. Dumping raw metadata file to assist debugging.";

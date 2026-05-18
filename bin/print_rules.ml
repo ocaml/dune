@@ -207,7 +207,7 @@ let action_repr =
 
 let target_names ~root names =
   Filename.Set.to_list_map names ~f:(fun name ->
-    Path.Build.relative root name |> Path.Build.to_string)
+    Path.Build.relative_fname root name |> Path.Build.to_string)
 ;;
 
 let targets_repr =
@@ -223,7 +223,7 @@ let targets_repr =
 let rule_context (rule : Dune_engine.Reflection.Rule.t) =
   match Path.Build.extract_build_context rule.targets.Targets.Validated.root with
   | None -> None
-  | Some (context, _) -> Some context
+  | Some (context, _) -> Some (Filename.to_string context)
 ;;
 
 let rule_repr =

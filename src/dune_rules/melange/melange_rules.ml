@@ -93,7 +93,8 @@ let make_js_name ~js_ext ~output m =
         (src_dir |> Path.as_in_build_dir_exn |> Path.Build.drop_build_context_exn)
   in
   let basename =
-    Module_compilation.melange_js_basename m ^ Filename.Extension.to_string js_ext
+    Filename.to_string (Module_compilation.melange_js_basename m)
+    ^ Filename.Extension.to_string js_ext
   in
   Path.Build.relative dst_dir basename
 ;;
@@ -1163,7 +1164,8 @@ let setup_emit_js_rules sctx ~dir =
      | Some dune_file ->
        let+ build_dir_only_sub_dirs =
          Dune_file.find_stanzas dune_file Melange_stanzas.Emit.key
-         >>| List.map ~f:(fun (mel : Melange_stanzas.Emit.t) -> mel.target)
+         >>| List.map ~f:(fun (mel : Melange_stanzas.Emit.t) ->
+           Filename.of_string_exn mel.target)
          >>| Subdir_set.of_list
          >>| Gen_rules.Build_only_sub_dirs.singleton ~dir
        in

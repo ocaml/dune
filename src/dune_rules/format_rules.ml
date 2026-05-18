@@ -45,7 +45,7 @@ let formatter_diff_action =
       and+ () = Action_builder.path (Path.build input) in
       Action.chdir
         (Path.build (Path.Build.parent_exn input))
-        (let output = Path.Build.extend_basename input ~suffix:".corrected" in
+        (let output = Path.Build.extend_basename input ~suffix:Filename.corrected in
          Action.progn
            [ Action.write_file output formatter; Action.diff (Path.build input) output ])
       |> Action.Full.make
@@ -97,7 +97,9 @@ module Ocamlformat = struct
       and+ () = Action_builder.path (Path.build input) in
       Action.chdir
         (Path.build dir)
-        (Action.run (Ok path) [ flag_of_kind kind; Path.Build.basename input ])
+        (Action.run
+           (Ok path)
+           [ flag_of_kind kind; Path.Build.basename input |> Filename.to_string ])
       |> Action.Full.make
     in
     (* Depend on [extra_deps] so if the ocamlformat config file
@@ -177,14 +179,14 @@ let setup_source_file
   | None -> Action_builder.return ()
   | Some (kind, format) ->
     let loc = Loc.in_file (Path.source file) in
-    let input = Path.Build.relative dir (Path.Source.basename file) in
+    let input = Path.Build.relative_fname dir (Path.Source.basename file) in
     format_action format ~ocamlformat_is_locked ~input ~expander kind
     |> formatter_diff_action ~loc alias ~input
 ;;
 
 let setup_dune_files =
   let setup_dune_file ~version ~dir alias path =
-    let input_build = Path.Source.basename path |> Path.Build.relative dir in
+    let input_build = Path.Build.relative_fname dir (Path.Source.basename path) in
     let build =
       let input = Path.build input_build in
       let open Action_builder.O in
@@ -221,7 +223,7 @@ let setup_source_files
   Source_tree.Dir.filenames source_dir
   |> Filename.Array.Set.to_list
   |> List.map ~f:(fun file ->
-    Path.Source.relative (Source_tree.Dir.path source_dir) file
+    Path.Source.relative_fname (Source_tree.Dir.path source_dir) file
     |> setup_source_file config ~dialects ~ocamlformat_is_locked ~expander ~dir alias)
   |> Action_builder.all_unit
 ;;

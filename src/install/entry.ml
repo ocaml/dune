@@ -85,7 +85,9 @@ type ('src, 'kind) t =
   }
 
 let has_extension filename ext =
-  let extension = Filename.extension filename in
+  let extension =
+    Stdlib.Filename.extension filename |> Filename.Extension.Or_empty.of_string_exn
+  in
   Filename.Extension.Or_empty.check extension ext
 ;;
 
@@ -218,7 +220,11 @@ module Expanded = struct
   let of_install_file ~optional ~src ~dst ~section =
     { src
     ; section
-    ; dst = Dst.of_install_file ~section ~src_basename:(Path.basename src) dst
+    ; dst =
+        Dst.of_install_file
+          ~section
+          ~src_basename:(Path.basename src |> Filename.to_string)
+          dst
     ; kind = File
     ; optional
     }
@@ -238,7 +244,10 @@ module Expanded = struct
       |> List.iter ~f:(fun (e : Path.t t) ->
         let src = Path.to_string e.src in
         match
-          Dst.to_install_file ~src_basename:(Path.basename e.src) ~section:e.section e.dst
+          Dst.to_install_file
+            ~src_basename:(Path.basename e.src |> Filename.to_string)
+            ~section:e.section
+            e.dst
         with
         | None -> pr "  %S" src
         | Some dst -> pr "  %S {%S}" src dst);

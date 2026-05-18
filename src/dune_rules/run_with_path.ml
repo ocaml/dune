@@ -128,7 +128,9 @@ module Windows_executables = struct
              User_error.raise
                ?loc
                ~compound
-               [ Pp.textf "Dune could not parse the shebang line in %s:" prog_name
+               [ Pp.textf
+                   "Dune could not parse the shebang line in %s:"
+                   (Filename.to_string prog_name)
                ; Pp.textf "  #!%s" line
                ; Pp.textf
                    "Dune currently only supports the following forms of shebang lines:"
@@ -150,7 +152,7 @@ module Windows_executables = struct
          User_error.raise
            ?loc
            ~compound
-           [ Pp.textf "%s: No such file or directory" prog_name ]
+           [ Pp.textf "%s: No such file or directory" (Filename.to_string prog_name) ]
        | Some cmd ->
          let prog_str = Path.reach_for_running ?from:dir prog in
          let args = List.concat [ extra_args; prog_str :: args ] in

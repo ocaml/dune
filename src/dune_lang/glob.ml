@@ -17,4 +17,4 @@ let decode =
 ;;
 
 let filter t = List.filter ~f:(test t)
-let to_predicate t = Predicate.create (test t)
+let to_predicate t = Predicate.create (fun fn -> test t (Filename.to_string fn))

@@ -55,7 +55,7 @@ let is_universal = function
 ;;
 
 let merge_exceptions a b ~default ~f =
-  String.Map.merge a.exceptions b.exceptions ~f:(fun _ x y ->
+  Filename.Map.merge a.exceptions b.exceptions ~f:(fun _ x y ->
     let x = Option.value x ~default:(trivial a.default) in
     let y = Option.value y ~default:(trivial b.default) in
     match default, f x y with
@@ -179,7 +179,8 @@ let rec to_dyn =
       (((match here with
          | true -> [ ".", String "true" ]
          | false -> [])
-        @ Filename.Map.to_list_map exceptions ~f:(fun s t -> s, to_dyn t)
+        @ Filename.Map.to_list_map exceptions ~f:(fun s t ->
+          Filename.to_string s, to_dyn t)
         @
         match default with
         | false -> []

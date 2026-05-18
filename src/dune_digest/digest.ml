@@ -470,6 +470,7 @@ let path_with_stats_internal
        | Ok listing ->
          (match
             List.rev_map listing ~f:(fun name ->
+              let name = Filename.to_string name in
               let path = Path.relative path name in
               let stats =
                 match Path.lstat path with

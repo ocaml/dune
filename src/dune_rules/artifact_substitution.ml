@@ -687,7 +687,7 @@ let copy_file ~conf ?chmod ?(delete_dst_if_it_is_a_directory = false) ~src ~dst 
      file will not trigger a rebuild. *)
   let temp_file =
     let dst_dir = Path.parent_exn dst in
-    let dst_name = Path.basename dst in
+    let dst_name = Path.basename dst |> Filename.to_string in
     Path.relative dst_dir (sprintf ".#%s.dune-temp" dst_name)
   in
   Fiber.finalize

@@ -166,7 +166,9 @@ end = struct
               Path.Build.set_extension mlg_file ~ext:Filename.Extension.ml
               |> Path.Build.basename)
           | Rocq_stanza.Extraction.T s ->
-            Memo.return (Rocq_stanza.Extraction.target_fnames s)
+            Memo.return
+              (Rocq_stanza.Extraction.target_fnames s
+               |> List.map ~f:Filename.of_string_exn)
           | Rule_conf.T rule ->
             Simple_rules.user_rule sctx rule ~dir ~expander
             >>| (function
@@ -178,7 +180,8 @@ end = struct
             Simple_rules.copy_files sctx def ~src_dir ~dir ~expander
             >>| Path.Set.to_list_map ~f:Path.basename
           | Generate_sites_module_stanza.T def ->
-            Generate_sites_module_rules.setup_rules sctx ~dir def >>| List.singleton
+            Generate_sites_module_rules.setup_rules sctx ~dir def
+            >>| fun fn -> [ Filename.of_string_exn fn ]
           | Library.T { buildable; _ }
           | Executables.T { buildable; _ }
           | Tests.T { exes = { buildable; _ }; _ } ->
@@ -189,7 +192,8 @@ end = struct
               Option.map buildable.ctypes ~f:Ctypes_field.generated_ml_and_c_files
               |> Option.value ~default:[]
             in
-            Memo.return (select_deps_files @ ctypes_files)
+            Memo.return
+              (List.map (select_deps_files @ ctypes_files) ~f:Filename.of_string_exn)
           | _ -> Memo.return [])
         >>| List.concat
         >>| Filename.Array.Set.of_list

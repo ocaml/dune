@@ -256,7 +256,7 @@ module Stanza = struct
       let resolved = make ~cctx ~source ~preprocess:toplevel.pps expander in
       setup_rules_and_return_exe_path resolved ~linkage
     in
-    let symlink = Path.Build.relative dir (Path.Build.basename exe) in
+    let symlink = Path.Build.relative_fname dir (Path.Build.basename exe) in
     Super_context.add_rule
       sctx
       ~dir

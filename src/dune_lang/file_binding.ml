@@ -44,7 +44,7 @@ module Expanded = struct
     match dst with
     | Some (_, dst) -> dst
     | None ->
-      let basename = Path.Build.basename src in
+      let basename = Path.Build.basename src |> Filename.to_string in
       String.drop_suffix basename ~suffix:".exe" |> Option.value ~default:basename
   ;;
 

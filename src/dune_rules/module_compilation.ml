@@ -118,12 +118,12 @@ let melange_js_basename m =
   | Some s ->
     (* we aren't using Filename.extension because we want to handle
        filenames such as foo.pp.ml *)
-    (match String.lsplit2 (Path.basename s) ~on:'.' with
+    (match String.lsplit2 (Path.basename s |> Filename.to_string) ~on:'.' with
      | None ->
        Code_error.raise
          "could not extract module name from file path"
          [ "module", Module.to_dyn m ]
-     | Some (module_name, _) -> module_name)
+     | Some (module_name, _) -> Filename.of_string_exn module_name)
   | None ->
     Code_error.raise
       "could not find melange source from module"
@@ -177,14 +177,14 @@ let melange_args (cctx : Compilation_context.t) (cm_kind : Lib_mode.Cm_kind.t) m
       :: A "--mel-package-output"
       :: Command.Args.Path mel_package_output
       :: A "--mel-module-name"
-      :: A (melange_js_basename module_)
+      :: A (melange_js_basename module_ |> Filename.to_string)
       :: mel_package_name
     else
       Command.Args.A "--bs-stop-after-cmj"
       :: A "--bs-package-output"
       :: Command.Args.Path mel_package_output
       :: A "--bs-module-name"
-      :: A (melange_js_basename module_)
+      :: A (melange_js_basename module_ |> Filename.to_string)
       :: mel_package_name
 ;;
 

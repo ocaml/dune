@@ -113,7 +113,10 @@ let encode
         ; field_b "allow_empty" allow_empty
         ; field_o
             "dir"
-            (fun (_, dir) -> Path.Source.basename dir |> Dune_sexp.atom_or_quoted_string)
+            (fun (_, dir) ->
+               Path.Source.basename dir
+               |> Filename.to_string
+               |> Dune_sexp.atom_or_quoted_string)
             exclusive_dir
         ]
   in
@@ -332,7 +335,8 @@ let create
   ; opam_file = Name.file name ~dir
   ; original_opam_file
   ; exclusive_dir =
-      Option.map contents_basename ~f:(fun (loc, s) -> loc, Path.Source.relative dir s)
+      Option.map contents_basename ~f:(fun (loc, s) ->
+        loc, Path.Source.relative_fname dir s)
   ; duplicate_dep_warnings = []
   ; enabled_if
   }

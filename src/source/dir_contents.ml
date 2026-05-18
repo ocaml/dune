@@ -48,11 +48,12 @@ let empty = { files = Filename.Array.Set.empty; dirs = Filename.Array.Map.empty 
 let to_dyn { files; dirs } =
   let open Dyn in
   record
-    [ "files", Set (Filename.Array.Set.to_list_map files ~f:Dyn.string)
+    [ "files", Set (Filename.Array.Set.to_list_map files ~f:Filename.to_dyn)
     ; ( "dirs"
       , list
           (pair string File.to_dyn)
-          (Filename.Array.Map.to_list_map dirs ~f:(fun name file -> name, file)) )
+          (Filename.Array.Map.to_list_map dirs ~f:(fun name file ->
+             Filename.to_string name, file)) )
     ]
 ;;
 
@@ -65,6 +66,7 @@ let is_special (st_kind : Unix.file_kind) =
 ;;
 
 let is_temp_file fn =
+  let fn = Filename.to_string fn in
   String.starts_with ~prefix:".#" fn
   || String.ends_with ~suffix:".swp" fn
   || String.ends_with ~suffix:"~" fn
@@ -79,7 +81,7 @@ let of_source_path_impl path =
           "Unable to read directory %s. Ignoring."
           (Path.Source.to_string_maybe_quoted path)
       ; Pp.text "Remove this message by ignoring by adding:"
-      ; Pp.textf "(dirs \\ %s)" (Path.Source.basename path)
+      ; Pp.textf "(dirs \\ %s)" (Path.Source.basename path |> Filename.to_string)
       ; Pp.textf
           "to the dune file: %s"
           (Path.Source.to_string_maybe_quoted
@@ -91,7 +93,7 @@ let of_source_path_impl path =
     let+ files, dirs =
       Fs_memo.Dir_contents.to_list dir_contents
       |> Memo.parallel_map ~f:(fun (fn, (kind : File_kind.t)) ->
-        let path = Path.Source.relative path fn in
+        let path = Path.Source.relative_fname path fn in
         if is_special kind || Path.Source.is_in_build_dir path || is_temp_file fn
         then Memo.return List.Skip
         else

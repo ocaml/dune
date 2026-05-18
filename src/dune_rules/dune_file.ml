@@ -113,7 +113,7 @@ let parse_stanzas ~file ~(eval : eval) sexps =
       | Some f -> f
       | None ->
         (* TODO this is wrong *)
-        Path.Source.relative eval.dir Source.Dune_file.fname
+        Path.Source.relative_fname eval.dir Source.Dune_file.fname
     in
     let stanza_parser =
       Dune_project.stanza_parser ~dir:eval.dir eval.project
@@ -317,7 +317,11 @@ module Script = struct
         (Path.Build.relative generated_dune_files_dir (Context_name.to_string context))
         file
     in
-    let wrapper = Path.Build.extend_basename generated_dune_file ~suffix:".ml" in
+    let wrapper =
+      Path.Build.extend_basename
+        generated_dune_file
+        ~suffix:(Filename.Extension.to_filename Filename.Extension.ml)
+    in
     generated_dune_file |> Path.build |> Path.parent |> Option.iter ~f:Path.mkdir_p;
     let* context = Context.DB.get context in
     let* ocaml = Context.ocaml context in
@@ -431,7 +435,7 @@ module Eval = struct
           let origin =
             Path.Build.append_source
               (Context_name.build_dir context)
-              (Path.Source.relative eval.dir Source.Dune_file.fname)
+              (Path.Source.relative_fname eval.dir Source.Dune_file.fname)
           in
           let include_context = Include_stanza.in_build_file origin in
           collect_dynamic_includes eval include_context origin dynamic_includes

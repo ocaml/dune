@@ -4,7 +4,7 @@ open Memo.O
 let remove_extension file =
   let dir = Path.Build.parent_exn file in
   let basename =
-    let basename = Path.Build.basename file in
+    let basename = Path.Build.basename file |> Filename.to_string in
     match String.lsplit2 basename ~on:'.' with
     | Some (basename, _ext) -> basename
     | None -> basename
@@ -145,7 +145,10 @@ module Processed = struct
       Json.assoc
         [ "module_name", Json.string (Module_name.to_string module_name)
         ; ( "source_path"
-          , Json.string (Filename.concat context (Path.Source.to_string source_path)) )
+          , Json.string
+              (Filename.concat
+                 (Filename.to_string context)
+                 (Path.Source.to_string source_path)) )
         ; "config", sexp_to_json config
         ]
     ;;

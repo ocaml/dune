@@ -35,7 +35,7 @@ val binary
   -> ?where:where
   -> dir:Path.Build.t
   -> loc:Loc.t option
-  -> Filename.t
+  -> string
   -> Action.Prog.t Memo.t
 
 val binary_available : t -> dir:Path.Build.t -> string -> bool Memo.t

@@ -22,5 +22,6 @@ let create ?filter ~dir filenames =
 ;;
 
 let to_list { dir; filenames } =
-  Filename.Array.Set.to_list_map filenames ~f:(Path.relative dir)
+  Filename.Array.Set.to_list_map filenames ~f:(fun filename ->
+    Path.relative_fname dir filename)
 ;;

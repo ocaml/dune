@@ -67,11 +67,11 @@ module Dir0 = struct
     Dyn.record
       [ "path", Path.Source.to_dyn path
       ; "status", Source_dir_status.to_dyn status
-      ; "files", Dyn.Set (Filename.Array.Set.to_list_map files ~f:Dyn.string)
+      ; "files", Dyn.Set (Filename.Array.Set.to_list_map files ~f:Filename.to_dyn)
       ; ( "sub_dirs"
         , Dyn.Map
             (Filename.Array.Map.to_list_map sub_dirs ~f:(fun name sub_dir ->
-               Dyn.string name, dyn_of_sub_dir sub_dir)) )
+               Filename.to_dyn name, dyn_of_sub_dir sub_dir)) )
       ; ("dune_file", Dyn.(option opaque dune_file))
       ]
 
@@ -126,7 +126,7 @@ let rec physical
     match eval_status ~status_map ~parent_status fn with
     | None -> None
     | Some dir_status ->
-      let path = Path.Source.relative dir fn in
+      let path = Path.Source.relative_fname dir fn in
       let dirs_visited = Dirs_visited.add dirs_visited path file in
       Some
         { Dir0.sub_dir_status = dir_status
@@ -167,7 +167,7 @@ and virtual_ ~project ~sub_dirs ~parent_status ~dune_file ~init ~path =
                     Memo.lazy_cell (fun () ->
                       find_dir_raw
                         ~default_vcs:Dir0.Vcs.Ancestor_vcs
-                        ~path:(Path.Source.relative path fn)
+                        ~path:(Path.Source.relative_fname path fn)
                         ~basename:fn
                         ~virtual_:true
                         ~dune_file
@@ -338,7 +338,7 @@ let find_excluded_ancestor path =
             ->
             dir.dune_file
             |> Option.bind ~f:Dune_file.dirs_stanza_loc
-            |> Option.map ~f:(fun loc -> Path.Source.relative dir.path sub_dir, loc)
+            |> Option.map ~f:(fun loc -> Path.Source.relative_fname dir.path sub_dir, loc)
           | _ -> None))
   in
   let* root = Memo.Cell.read root in
@@ -354,7 +354,7 @@ let files_of path =
   | Some dir ->
     Dir0.filenames dir
     |> Filename.Array.Set.to_list
-    |> Path.Source.Set.of_list_map ~f:(Path.Source.relative path)
+    |> Path.Source.Set.of_list_map ~f:(Path.Source.relative_fname path)
 ;;
 
 module Dir = struct
@@ -445,7 +445,10 @@ let ancestor_vcs =
           let dir = Filename.dirname dir in
           match
             let files =
-              Sys.readdir dir |> Stdlib.Array.to_list |> Filename.Array.Set.of_list
+              Sys.readdir dir
+              |> Stdlib.Array.to_list
+              |> List.map ~f:Filename.of_string_exn
+              |> Filename.Array.Set.of_list
             in
             Vcs.Kind.of_dir_contents ~files ~dirs:Filename.Array.Map.empty
           with

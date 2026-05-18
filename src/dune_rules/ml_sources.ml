@@ -238,6 +238,7 @@ let modules_of_files ~dialects ~dir ~files =
     in
     let loc = Loc.in_dir dir in
     List.filter_partition_map (Filename.Array.Set.to_list files) ~f:(fun fn ->
+      let fn = Filename.to_string fn in
       (* we aren't using Filename.extension because we want to ignore
          filenames such as `foo.cppo.ml` or `foo.{filter}.ml` (e.g. from the
          `(select ..)` field) *)
@@ -290,6 +291,7 @@ let melange_modules_of_files ~root_dir ~dialects ~dir ~files =
     in
     let loc = Loc.in_dir (Path.build dir) in
     List.filter_partition_map (Filename.Array.Set.to_list files) ~f:(fun fn ->
+      let fn = Filename.to_string fn in
       (* we aren't using Filename.extension because we want to handle
          filenames such as foo.cppo.ml *)
       match String.lsplit2 fn ~on:'.' with
@@ -914,10 +916,13 @@ module Generated_modules = struct
                            ~loc:(Some loc)
                            ~include_subdirs
                            ~dir
-                           (Path.Local.parent_exn descendant |> Path.Local.explode)
+                           (Path.Local.parent_exn descendant
+                            |> Path.Local.explode
+                            |> Filename.L.to_string)
                      in
                      let module_name =
-                       Module_name.of_string_allow_invalid (loc, basename)
+                       Module_name.of_string_allow_invalid
+                         (loc, Filename.to_string basename)
                        |> Module_name.Unchecked.validate_exn
                      in
                      Nonempty_list.(base_path @ [ Module_name.unchecked module_name ])
@@ -1012,7 +1017,11 @@ module Generated_modules = struct
               | false -> Memo.return `Skip
               | true ->
                 let module_path =
-                  module_path ~loc:None ~include_subdirs ~dir path_to_root
+                  module_path
+                    ~loc:None
+                    ~include_subdirs
+                    ~dir
+                    (Filename.L.to_string path_to_root)
                 in
                 (match Stanza.repr stanza with
                  | Parser_generators.Stanzas.Ocamllex.T ocamllex ->
@@ -1279,7 +1288,13 @@ let make
           ~init:Module_trie.Unchecked.empty
           ~f:(fun acc { Source_file_dir.dir; files; path_to_root; _ } ->
             match
-              let path = module_path ~loc:None ~include_subdirs ~dir path_to_root in
+              let path =
+                module_path
+                  ~loc:None
+                  ~include_subdirs
+                  ~dir
+                  (Filename.L.to_string path_to_root)
+              in
               let modules =
                 modules_of_files ~root_dir ~dialects ~dir ~files ~path ~for_
               in

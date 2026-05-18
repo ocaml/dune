@@ -55,7 +55,7 @@ let make_tar_args ~tar_impl ~archive ~target_in_temp =
       then
         User_error.raise
           ~hints:[ Pp.text "Install GNU tar or bsdtar (libarchive) for XZ support." ]
-          [ Pp.textf "Cannot extract '%s'" (Path.basename archive)
+          [ Pp.textf "Cannot extract '%s'" (Path.basename archive |> Filename.to_string)
           ; Pp.text
               "The detected tar does not support XZ decompression. XZ archives require \
                GNU tar or libarchive."
@@ -64,7 +64,7 @@ let make_tar_args ~tar_impl ~archive ~target_in_temp =
       then
         User_error.raise
           ~hints:[ Pp.text "Install GNU tar or bsdtar (libarchive) for LZMA support." ]
-          [ Pp.textf "Cannot extract '%s'" (Path.basename archive)
+          [ Pp.textf "Cannot extract '%s'" (Path.basename archive |> Filename.to_string)
           ; Pp.text
               "The detected tar does not support LZMA decompression. LZMA archives \
                require GNU tar or libarchive."
@@ -158,9 +158,9 @@ let choose_for_filename_default_to_tar filename =
 let extract t ~archive ~target =
   let* () = Fiber.return () in
   let* command = Fiber.Lazy.force t.command in
-  let prefix = Path.basename target in
+  let prefix = Path.basename target |> Filename.to_string in
   let target_in_temp =
-    let suffix = Path.basename archive in
+    let suffix = Path.basename archive |> Filename.to_string in
     Temp_dir.dir_for_target ~target ~prefix ~suffix
   in
   let temp_stderr_path = Temp.create File ~prefix ~suffix:"stderr" in
@@ -187,7 +187,7 @@ let extract t ~archive ~target =
           ; Pp.text "reason:"
           ; Pp.text (Unix_error.Detailed.to_string_hum e)
           ]
-      | Ok [ (fname, S_DIR) ] -> Path.relative target_in_temp fname
+      | Ok [ (fname, S_DIR) ] -> Path.relative_fname target_in_temp fname
       | Ok _ -> target_in_temp
     in
     Path.mkdir_p (Path.parent_exn target);
@@ -197,11 +197,11 @@ let extract t ~archive ~target =
     Io.with_file_in temp_stderr_path ~f:(fun err_channel ->
       let stderr_lines = Io.input_lines err_channel in
       User_error.raise
-        [ Pp.textf "failed to extract '%s'" (Path.basename archive)
+        [ Pp.textf "failed to extract '%s'" (Path.basename archive |> Filename.to_string)
         ; Pp.concat
             ~sep:Pp.space
             [ Pp.text "Reason:"
-            ; User_message.command @@ Path.basename command.bin
+            ; User_message.command (Path.basename command.bin |> Filename.to_string)
             ; Pp.textf "failed with non-zero exit code '%d' and output:" exit_code
             ]
         ; Pp.enumerate stderr_lines ~f:Pp.text

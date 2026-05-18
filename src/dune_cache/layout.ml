@@ -13,6 +13,7 @@ let cache_path ~dir ~hex =
 let list_entries ~storage =
   let open Result.O in
   let entries dir =
+    let dir = Filename.to_string dir in
     match String.length dir = 2 && String.for_all ~f:Char.is_lowercase_hex dir with
     | false ->
       (* Ignore directories whose name isn't a two-character hex value. *)
@@ -21,6 +22,7 @@ let list_entries ~storage =
       let dir = storage / dir in
       Path.readdir_unsorted dir
       >>| List.filter_map ~f:(fun entry_name ->
+        let entry_name = Filename.to_string entry_name in
         match Digest.from_hex entry_name with
         | None ->
           (* Ignore entries whose names are not hex values. *)

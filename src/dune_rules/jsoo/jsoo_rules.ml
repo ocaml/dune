@@ -673,7 +673,8 @@ let exe_rule
 ;;
 
 let with_js_ext ~mode s =
-  let name, ext = Filename.split_extension s in
+  let ext = Stdlib.Filename.extension s |> Filename.Extension.Or_empty.of_string_exn in
+  let name = Stdlib.Filename.remove_extension s in
   let ext = Filename.Extension.Or_empty.extension_exn ext in
   if Filename.Extension.equal ext Filename.Extension.cma
   then name ^ Filename.Extension.to_string (Js_of_ocaml.Ext.cma ~mode)
@@ -692,7 +693,7 @@ let jsoo_archives ~mode ctx config lib =
       in_obj_dir'
         ~obj_dir
         ~config:(Some config)
-        [ with_js_ext ~mode (Path.basename archive) ])
+        [ with_js_ext ~mode (Path.basename archive |> Filename.to_string) ])
   | false ->
     List.map archives.byte ~f:(fun archive ->
       Path.build
@@ -700,7 +701,7 @@ let jsoo_archives ~mode ctx config lib =
            ctx
            ~config
            [ Lib_name.to_string (Lib.name lib)
-           ; with_js_ext ~mode (Path.basename archive)
+           ; with_js_ext ~mode (Path.basename archive |> Filename.to_string)
            ]))
 ;;
 
@@ -846,7 +847,7 @@ let build_cm'
 
 let build_from_cm sctx ~dir ~in_context ~mode ~src ~obj_dir ~shapes ~config ~sourcemap =
   let target =
-    let name = with_js_ext ~mode (Path.basename src) in
+    let name = with_js_ext ~mode (Path.basename src |> Filename.to_string) in
     in_obj_dir ~obj_dir ~config [ name ]
   in
   build_cm'
@@ -991,13 +992,14 @@ let setup_separate_compilation_rules sctx components =
          Memo.parallel_iter archives ~f:(fun fn ->
            let build_context = Context.build_context ctx in
            let name = Path.basename fn in
+           let name_s = Filename.to_string name in
            let dir = in_build_dir build_context ~config [ lib_name ] in
            let src =
              let src_dir = Lib_info.src_dir info in
-             Path.relative src_dir name
+             Path.relative src_dir name_s
            in
            let target =
-             in_build_dir build_context ~config [ lib_name; with_js_ext ~mode name ]
+             in_build_dir build_context ~config [ lib_name; with_js_ext ~mode name_s ]
            in
            let shapes =
              let open Action_builder.O in
@@ -1217,6 +1219,7 @@ let build_exe
             ~config:None
             [ Path.Build.basename
                 (Path.Build.set_extension src ~ext:(Js_of_ocaml.Ext.runtime ~mode))
+              |> Filename.to_string
             ]
         in
         Action_builder.return (Command.Args.Dep (Path.build path)), Some path

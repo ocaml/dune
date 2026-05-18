@@ -113,7 +113,7 @@ let run_expect_test file ~f =
     let lexbuf = Lexbuf.from_string file_contents ~fname:(Path.to_string file) in
     f lexbuf
   in
-  let corrected_file = Path.extend_basename file ~suffix:".corrected" in
+  let corrected_file = Path.extend_basename file ~suffix:Filename.corrected in
   Scheduler.async_exn (fun () ->
     if file_contents <> expected
     then (
@@ -522,11 +522,11 @@ let make_temp_dir ~script =
     let suffix =
       let basename = Path.basename script in
       let suffix =
-        if basename = Cram_test.fname_in_dir_test
+        if Filename.equal basename Cram_test.fname_in_dir_test
         then Path.basename (Path.parent_exn script)
         else basename
       in
-      "." ^ suffix
+      "." ^ Filename.to_string suffix
     in
     Temp.create Dir ~prefix:"dune_cram" ~suffix
   in
@@ -565,7 +565,7 @@ let run_cram_test
   let metadata =
     let name =
       let base = Path.basename src in
-      (match String.equal base "run.t" with
+      (match Filename.equal base Filename.run_t with
        | false -> src
        | true -> Path.parent_exn src)
       |> Path.drop_build_context_exn
@@ -872,7 +872,7 @@ module Diff = struct
         loop [] current_stanzas out |> List.rev
       in
       let expected = compose_cram_output combined in
-      let corrected_file = Path.extend_basename script ~suffix:".corrected" in
+      let corrected_file = Path.extend_basename script ~suffix:Filename.corrected in
       if String.equal current expected
       then Path.rm_rf corrected_file
       else Io.write_file ~binary:false corrected_file expected;

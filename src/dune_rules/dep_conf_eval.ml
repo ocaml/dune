@@ -119,7 +119,7 @@ let rec dir_contents ~loc d =
   | Ok contents ->
     Fs_memo.Dir_contents.to_list contents
     |> Memo.parallel_map ~f:(fun (entry, kind) ->
-      let path = Path.Outside_build_dir.relative d entry in
+      let path = Path.Outside_build_dir.relative d (Filename.to_string entry) in
       match kind with
       | Unix.S_REG -> Memo.return [ path ]
       | S_DIR -> dir_contents ~loc path

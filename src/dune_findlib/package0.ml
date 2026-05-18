@@ -2,7 +2,7 @@ open Import
 module P = Ocaml.Variant
 module Ps = Ocaml.Variant.Set
 
-let meta_fn = "META"
+let meta_fn = Filename.meta
 let findlib_predicates_set_by_dune = Ps.of_list [ P.ppx_driver; P.mt; P.mt_posix ]
 
 type t =
@@ -81,6 +81,8 @@ let exists t ~is_builtin =
 ;;
 
 let candidates ~dir name =
-  [ meta_fn ^ "." ^ Package.Name.to_string name; meta_fn ]
+  [ Filename.to_string meta_fn ^ "." ^ Package.Name.to_string name
+  ; Filename.to_string meta_fn
+  ]
   |> List.map ~f:(Path.Outside_build_dir.relative dir)
 ;;

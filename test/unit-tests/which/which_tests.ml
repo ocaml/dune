@@ -5,7 +5,8 @@
    "prog.exe.exe". This test only runs on Windows (via enabled_if in dune). *)
 
 let test prog =
-  Dune_rules.For_tests.Which.candidates prog
+  Dune_rules.For_tests.Which.candidates (Stdune.Filename.of_string_exn prog)
+  |> Stdune.Filename.L.to_string
   |> Dyn.list Dyn.string
   |> Dyn.to_string
   |> Printf.printf "candidates %S = %s\n" prog

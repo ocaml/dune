@@ -481,7 +481,7 @@ let interpret_lang_and_extensions ~(lang : Lang.Instance.t) ~explicit_extensions
   parsing_context, stanza_parser, extension_args
 ;;
 
-let filename = "dune-project"
+let filename = Filename.dune_project
 let opam_file_location_default ~lang:_ = `Relative_to_project
 let wrapped_executables_default ~(lang : Lang.Instance.t) = lang.version >= (2, 0)
 let map_workspace_root_default ~(lang : Lang.Instance.t) = lang.version >= (3, 0)
@@ -1114,7 +1114,7 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
 ;;
 
 let load_dune_project ~read ~dir opam_packages : t Memo.t =
-  let file = Path.Source.relative dir filename in
+  let file = Path.Source.relative_fname dir filename in
   let open Memo.O in
   let* lexbuf =
     let+ contents = read file in
@@ -1132,7 +1132,7 @@ let gen_load ~read ~dir ~files ~infer_from_opam_files ~load_opam_file_with_conte
       match Package.Name.of_opam_file_basename fn with
       | None -> acc
       | Some name ->
-        let opam_file = Path.Source.relative dir fn in
+        let opam_file = Path.Source.relative_fname dir fn in
         let loc = Loc.in_file (Path.source opam_file) in
         let pkg =
           let+ contents = read opam_file in

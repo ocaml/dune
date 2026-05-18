@@ -435,7 +435,10 @@ module Short_display = struct
         split_paths [] Context_name.Set.empty targets
       in
       let targets =
-        List.map target_names ~f:Filename.split_extension_after_dot
+        List.map target_names ~f:(fun fn ->
+          match Stdlib.Filename.extension fn with
+          | "" -> fn, ""
+          | s -> String.split_n fn (String.length fn - String.length s + 1))
         |> String.Map.of_list_multi
         |> String.Map.to_list_map ~f:(fun prefix suffixes ->
           match suffixes with

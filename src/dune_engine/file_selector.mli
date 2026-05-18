@@ -26,5 +26,5 @@ val repr : t Repr.t
 
 val to_dyn : t -> Dyn.t
 val test : t -> Path.t -> bool
-val test_basename : t -> basename:string -> bool
+val test_basename : t -> basename:Filename.t -> bool
 val digest : t -> Digest.t

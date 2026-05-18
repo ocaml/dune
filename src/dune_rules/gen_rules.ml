@@ -207,7 +207,8 @@ let define_all_alias ~dir ~project ~js_targets =
           assert (Path.Build.equal (Path.Build.parent_exn js_target) dir));
         Predicate_lang.not
           (Predicate_lang.Glob.of_string_set
-             (String.Set.of_list_map js_targets ~f:Path.Build.basename)))
+             (String.Set.of_list_map js_targets ~f:(fun path ->
+                Path.Build.basename path |> Filename.to_string))))
     in
     let only_generated_files = Dune_project.dune_version project >= (3, 0) in
     File_selector.of_predicate_lang ~dir:(Path.build dir) ~only_generated_files predicate
@@ -480,7 +481,9 @@ module Automatic_subdir = struct
     match List.last components with
     | None -> Filename.Set.of_keys map
     | Some comp ->
-      if Filename.Map.mem map comp then Filename.Set.empty else Filename.Set.of_keys map
+      if Filename.Map.mem map (Filename.of_string_exn comp)
+      then Filename.Set.empty
+      else Filename.Set.of_keys map
   ;;
 
   let gen_rules ~sctx ~dir kind =
@@ -579,13 +582,13 @@ let gen_rules_regular_directory (sctx : Super_context.t Memo.t) ~src_dir ~compon
                 (* XXX sync this list with the pattern matches above. It's quite ugly
                    we need this, we should rewrite this code to avoid this. *)
                 Filename.Set.of_list
-                  [ ".js"
-                  ; "_doc"
-                  ; "_doc_new"
-                  ; ".ppx"
-                  ; ".dune"
-                  ; ".topmod"
-                  ; Dune_lang.Oxcaml.parameterised_dir
+                  [ Filename.js_dir_basename
+                  ; Filename.doc_dir_basename
+                  ; Filename.doc_new_dir_basename
+                  ; Filename.ppx_dir_basename
+                  ; Filename.dune_dir_basename
+                  ; Filename.topmod_dir_basename
+                  ; Filename.of_string_exn Dune_lang.Oxcaml.parameterised_dir
                   ]
             in
             Filename.Set.union automatic toplevel
@@ -687,7 +690,7 @@ let gen_rules ctx sctx ~dir components : Gen_rules.result Memo.t =
   | [ ".dune" ] ->
     has_rules
       ~dir
-      (Subdir_set.of_set (Filename.Set.of_list [ "cc_vendor" ]))
+      (Subdir_set.of_set (Filename.Set.of_list [ Filename.cc_vendor ]))
       (fun () -> Configurator_rules.gen_rules ctx)
   | parameterised_dir :: rest
     when String.equal parameterised_dir Dune_lang.Oxcaml.parameterised_dir ->
@@ -739,7 +742,9 @@ let private_context ~dir components _ctx =
     let build_dir_only_sub_dirs =
       Gen_rules.Build_only_sub_dirs.singleton
         ~dir
-        (Subdir_set.of_list (List.rev_map contexts ~f:Context_name.to_string))
+        (Subdir_set.of_list
+           (List.rev_map contexts ~f:(fun context_name ->
+              Filename.of_string_exn (Context_name.to_string context_name))))
     in
     Gen_rules.make ~build_dir_only_sub_dirs (Memo.return Rules.empty)
 ;;
@@ -784,7 +789,8 @@ let gen_rules ctx ~dir components =
         let+ context_dirs =
           let+ workspace = Workspace.workspace () in
           Workspace.build_contexts workspace
-          |> List.map ~f:(fun (ctx : Build_context.t) -> Context_name.to_string ctx.name)
+          |> List.map ~f:(fun (ctx : Build_context.t) ->
+            Filename.of_string_exn (Context_name.to_string ctx.name))
           |> Subdir_set.of_list
         in
         Gen_rules.Build_only_sub_dirs.singleton ~dir context_dirs
@@ -802,7 +808,8 @@ let gen_rules ctx ~dir components =
   else if Context_name.equal ctx Private_context.t.name
   then private_context ~dir components ctx
   else if Context_name.equal ctx Fetch_rules.context.name
-  then Fetch_rules.gen_rules ~dir ~components
+  then
+    Fetch_rules.gen_rules ~dir ~components:(List.map components ~f:Filename.of_string_exn)
   else
     let* () = raise_on_lock_dir_out_of_sync ctx in
     let gen_pkg_alias_rule = Pkg_rules.setup_pkg_install_alias ~dir ctx in

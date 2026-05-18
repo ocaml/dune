@@ -3,8 +3,11 @@ open Import
 module Build = struct
   type t = Path.Build.t
 
-  let anonymous_actions_dir_basename = ".actions"
-  let anonymous_actions_dir = Path.Build.(relative root) anonymous_actions_dir_basename
+  let anonymous_actions_dir_basename = Filename.actions_dir_basename
+
+  let anonymous_actions_dir =
+    Path.Build.(relative root) (Filename.to_string anonymous_actions_dir_basename)
+  ;;
 end
 
 type target_kind =
@@ -34,15 +37,15 @@ module Target_dir = struct
     match Path.Build.extract_first_component fn with
     | None -> Regular Root
     | Some (name, sub) ->
-      if name = Build.anonymous_actions_dir_basename
+      if Filename.equal name Build.anonymous_actions_dir_basename
       then (
         match Path.Local.split_first_component sub with
         | None -> Anonymous_action Root
         | Some (ctx, fn) ->
-          let ctx = Context_name.of_string ctx in
+          let ctx = Context_name.of_string (Filename.to_string ctx) in
           Anonymous_action (With_context (ctx, Path.Source.of_local fn)))
       else (
-        match Context_name.of_string_opt name with
+        match Context_name.of_string_opt (Filename.to_string name) with
         | None -> Invalid fn
         | Some ctx -> Regular (With_context (ctx, Path.Source.of_local sub)))
   ;;
@@ -63,7 +66,7 @@ let analyse_target (fn as original_fn) : target_kind =
     if Path.Source.is_root fn
     then Other original_fn
     else (
-      let basename = Path.Source.basename fn in
+      let basename = Path.Source.basename fn |> Filename.to_string in
       match String.rsplit2 basename ~on:'-' with
       | None -> if is_digest basename then Anonymous_action ctx else Other original_fn
       | Some (basename, suffix) ->

@@ -21,7 +21,7 @@ let test content =
       let test_file = Path.relative temp_dir "test.t" in
       Io.write_file test_file content;
       let lexbuf = Lexing.from_string ~with_positions:true content in
-      Stdlib.Lexing.set_filename lexbuf (Path.basename test_file);
+      Stdlib.Lexing.set_filename lexbuf (Path.basename test_file |> Filename.to_string);
       cram_stanzas lexbuf
       |> Pp.concat_map ~sep:Pp.cut ~f:(fun (loc, block) ->
         [ Loc.pp loc; dyn_of_block block |> Dyn.pp; Loc.to_dyn loc |> Dyn.pp ]

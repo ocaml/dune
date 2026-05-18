@@ -453,7 +453,7 @@ include Sub_system.Register_end_point (struct
              let diffs =
                List.map promotion_targets ~f:(fun fn ->
                  Path.as_in_build_dir_exn fn
-                 |> Path.Build.extend_basename ~suffix:".corrected"
+                 |> Path.Build.extend_basename ~suffix:Filename.corrected
                  |> Action.diff ~optional:true fn)
                |> Action.concurrent
              in

@@ -472,7 +472,7 @@ module Context = struct
       | None -> ""
       | Some file ->
         let name, _ = Path.split_extension file in
-        "-fdo-" ^ Path.basename name
+        "-fdo-" ^ (Path.basename name |> Filename.to_string)
     ;;
 
     let decode =
@@ -493,9 +493,11 @@ module Context = struct
         not disable
       and+ fdo_target_exe =
         let f file =
-          let ext = Filename.extension file in
+          let ext =
+            Stdlib.Filename.extension file |> Filename.Extension.Or_empty.of_string_exn
+          in
           if Filename.Extension.Or_empty.check ext Filename.Extension.exe
-          then Path.(relative root file)
+          then Path.relative Path.root file
           else
             User_error.raise
               [ Pp.concat
@@ -814,7 +816,7 @@ let source_path_of_lock_dir_path path =
   match (path : Path.t) with
   | In_source_tree s -> s
   | In_build_dir b ->
-    (match Path.Build.explode b with
+    (match Path.Build.explode b |> Filename.L.to_string with
      | _ :: _ :: ".lock" :: (_ :: _ as lock_dir_segs) ->
        Path.Source.L.relative Path.Source.root lock_dir_segs
      | [ ".dev-tools.locks"; dev_tool ] ->
@@ -1214,7 +1216,7 @@ let load_step1 clflags p =
           (step1 ~lang clflags)))
 ;;
 
-let filename = "dune-workspace"
+let filename = Filename.dune_workspace
 
 let workspace_step1 =
   let open Memo.O in
@@ -1223,7 +1225,7 @@ let workspace_step1 =
     let* workspace_file =
       match clflags.workspace_file with
       | None ->
-        let p = Path.Outside_build_dir.of_string filename in
+        let p = Path.Outside_build_dir.of_string (Filename.to_string filename) in
         let+ exists = Fs_memo.file_exists p in
         Option.some_if exists p
       | Some p ->

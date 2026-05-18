@@ -7,7 +7,8 @@ module Kind = struct
     | Git
     | Hg
 
-  let of_dir_name = function
+  let of_dir_name name =
+    match Filename.to_string name with
     | ".git" -> Some Git
     | ".hg" -> Some Hg
     | _ -> None
@@ -19,9 +20,9 @@ module Kind = struct
       then of_dir_name name
       else None
     in
-    match kind ".git" with
+    match kind Filename.git_dir_basename with
     | Some _ as kind -> kind
-    | None -> kind ".hg"
+    | None -> kind Filename.hg_dir_basename
   ;;
 
   let to_dyn t =

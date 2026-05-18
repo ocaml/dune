@@ -18,7 +18,7 @@ module In_melange_target_dir = struct
       let* { Alias_build_info.alias_status; allowed_build_only_subdirs } = f dir in
       (* TODO there should be traversals that don't require this conversion *)
       Filename.Set.to_list allowed_build_only_subdirs
-      |> Action_builder.List.map ~f:(fun s -> fold (Path.Build.relative dir s) ~f)
+      |> Action_builder.List.map ~f:(fun s -> fold (Path.Build.relative_fname dir s) ~f)
       >>| List.fold_left ~init:alias_status ~f:Alias_builder.Alias_status.combine
     in
     fun dir ~f:dep_on_alias_if_exists ->
@@ -33,7 +33,9 @@ include Alias_builder.Alias_rec (struct
       let open Action_builder.O in
       let ctx_name, src_dir = Path.Build.extract_build_context_exn dir in
       let f =
-        let build_dir = Context_name.build_dir (Context_name.of_string ctx_name) in
+        let build_dir =
+          Context_name.build_dir (Context_name.of_string (Filename.to_string ctx_name))
+        in
         fun dir ->
           let build_path =
             Path.Build.append_source build_dir (Source_tree.Dir.path dir)

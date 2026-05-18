@@ -27,8 +27,8 @@ open Memo.O
    are somewhat mixed together.
 *)
 
-let fname = "dune"
-let alternative_fname = "dune-file"
+let fname = Filename.dune
+let alternative_fname = Filename.dune_file
 
 type kind =
   | Plain
@@ -67,7 +67,10 @@ module Dir_map = struct
         | None -> files
         | Some (_, glob) ->
           Filename.Array.Set.filter files ~f:(fun filename ->
-            Predicate_lang.Glob.test glob ~standard:Predicate_lang.true_ filename)
+            Predicate_lang.Glob.test
+              glob
+              ~standard:Predicate_lang.true_
+              (Filename.to_string filename))
       ;;
     end
 
@@ -560,7 +563,7 @@ let ensure_dune_project_file_exists =
     let project_dir = Dune_project.root project in
     let+ exists =
       let supposed_project_file =
-        Path.Source.relative project_dir Dune_project.filename
+        Path.Source.relative_fname project_dir Dune_project.filename
       in
       Path.Outside_build_dir.In_source_dir supposed_project_file |> Fs_memo.file_exists
     in
@@ -616,6 +619,6 @@ let load ~dir (status : Source_dir_status.t) project ~files ~parent =
       | None -> Memo.return ()
       | Some _ -> ensure_dune_project_file_exists project
     in
-    let file = Option.map file ~f:(Path.Source.relative dir) in
+    let file = Option.map file ~f:(fun file -> Path.Source.relative_fname dir file) in
     load file ~from_parent:parent ~project >>| Option.some
 ;;

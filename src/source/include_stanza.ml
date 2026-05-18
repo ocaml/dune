@@ -6,7 +6,7 @@ module type Path = sig
 
   val parent_exn : t -> t
   val to_string_maybe_quoted : t -> string
-  val relative : t -> Loc.t -> Filename.t -> t
+  val relative : t -> Loc.t -> string -> t
   val equal : t -> t -> bool
   val file_exists : t -> bool Memo.t
   val with_lexbuf_from_file : t -> f:(Lexing.lexbuf -> 'a) -> 'a Memo.t

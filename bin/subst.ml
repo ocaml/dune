@@ -193,7 +193,7 @@ module Dune_project = struct
     ; project : Dune_project.t
     }
 
-  let filename = Path.Source.of_string Dune_project.filename
+  let filename = Path.Source.of_string (Filename.to_string Dune_project.filename)
 
   let load ~dir ~files ~infer_from_opam_files =
     let open Memo.O in
@@ -364,7 +364,7 @@ let subst vcs =
                  |> Filename.Array.Set.fold
                       ~init:Path.Source.Set.empty
                       ~f:(fun fname acc ->
-                        Path.Source.relative (Source_tree.Dir.path dir) fname
+                        Path.Source.relative_fname (Source_tree.Dir.path dir) fname
                         |> Path.Source.Set.add acc)
                  |> Memo.return)
        in
@@ -380,8 +380,7 @@ let subst vcs =
          (* Filter-out files form sub-directories *)
          List.filter_map files ~f:(fun fn ->
            let fn = Path.source fn in
-           (* CR-soon rgrinberg: this conversion to string looks wrong *)
-           if Path.is_root (Path.parent_exn fn) then Some (Path.to_string fn) else None)
+           if Path.is_root (Path.parent_exn fn) then Some (Path.basename fn) else None)
          |> Filename.Array.Set.of_list
        in
        Dune_project.load ~dir:Path.Source.root ~files ~infer_from_opam_files:true)

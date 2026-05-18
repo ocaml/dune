@@ -334,7 +334,7 @@ let args_of_targets =
       [ ( name
         , Arg.list
             (Filename.Set.to_list_map set ~f:(fun x ->
-               Arg.build_path (Path.Build.relative root x))) )
+               Arg.build_path (Path.Build.relative_fname root x))) )
       ]
   in
   fun { root; files; dirs } ->

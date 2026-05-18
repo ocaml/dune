@@ -106,7 +106,7 @@ let test_rule
            | Dir d -> d.dir
          in
          let dir = Path.Source.parent_exn path in
-         let basename = Path.Source.basename path in
+         let basename = Path.Source.basename path |> Filename.to_string in
          Path.Source.relative dir (".cram." ^ basename))
     in
     let script_sh = Path.Build.relative base_path "cram.sh" in
@@ -165,7 +165,7 @@ let test_rule
           ~optional:true
           ~mode:Text
           (Path.build script)
-          (Path.Build.extend_basename script ~suffix:".corrected")
+          (Path.Build.extend_basename script ~suffix:Filename.corrected)
       ]
     |> Action.Full.make
 ;;
@@ -387,7 +387,7 @@ let cram_tests dir =
       |> Filename.Array.Set.to_list
       |> List.filter_map ~f:(fun s ->
         if Cram_test.is_cram_suffix s
-        then Some (Ok (Cram_test.File (Path.Source.relative path s)))
+        then Some (Ok (Cram_test.File (Path.Source.relative_fname path s)))
         else None)
     in
     let+ dir_tests =
@@ -401,7 +401,7 @@ let cram_tests dir =
           let fname = Cram_test.fname_in_dir_test in
           let test =
             let dir = Source_tree.Dir.path sub_dir in
-            let file = Path.Source.relative dir fname in
+            let file = Path.Source.relative_fname dir fname in
             Cram_test.Dir { file; dir }
           in
           let files = Source_tree.Dir.filenames sub_dir in

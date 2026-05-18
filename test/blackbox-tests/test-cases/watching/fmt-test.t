@@ -23,10 +23,10 @@ Remove the fake ocamlformat from the dune file to see the real output
   fake ocamlformat is running: "--impl" "foo.ml"
   File "foo.ml", line 1, characters 0-0:
   --- foo.ml
-  +++ .formatted/foo.ml
+  +++ foo.ml.corrected
   @@ -1 +1 @@
   -let ()=print_int (5+4)
   +(* fake ocamlformat output *)
   \ No newline at end of file
   Had 1 error, waiting for filesystem changes...
-  Promoting _build/default/.formatted/foo.ml to foo.ml.
+  Promoting _build/default/foo.ml.corrected to foo.ml.

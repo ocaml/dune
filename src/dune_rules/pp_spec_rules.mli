@@ -16,6 +16,14 @@ val make
 
 val gen_rules : Super_context.t -> string list -> unit Memo.t
 
+val action_for_pp
+  :  sandbox:Sandbox_config.t
+  -> loc:Loc.t
+  -> expander:Expander.t
+  -> action:Action_unexpanded.t
+  -> src:Path.Build.t
+  -> Action.Full.t Action_builder.t
+
 val action_for_pp_with_target
   :  sandbox:Sandbox_config.t
   -> loc:Loc.t

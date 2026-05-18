@@ -24,7 +24,7 @@ dune file.
   $ dune build @fmt
   File "dune", line 1, characters 0-0:
   --- dune
-  +++ .formatted/dune
+  +++ dune.corrected
   @@ -1,2 +1,4 @@
    ; this file should be formatted
   -(rule (write-file a b))

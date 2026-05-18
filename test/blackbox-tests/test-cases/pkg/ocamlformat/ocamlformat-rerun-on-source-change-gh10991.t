@@ -22,11 +22,11 @@ Initial file:
   - ocamlformat.0.0.1
   File "foo.ml", line 1, characters 0-0:
   --- foo.ml
-  +++ .formatted/foo.ml
+  +++ foo.ml.corrected
   @@ -1 +1,2 @@
    let () = print_endline "Hello, world"
   +(* formatted with fake ocamlformat *)
-  Promoting _build/default/.formatted/foo.ml to foo.ml.
+  Promoting _build/default/foo.ml.corrected to foo.ml.
   [1]
 
 After formatting the fake ocamlformat has added a suffix:
@@ -42,11 +42,11 @@ Update the file:
   $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune fmt
   File "foo.ml", line 1, characters 0-0:
   --- foo.ml
-  +++ .formatted/foo.ml
+  +++ foo.ml.corrected
   @@ -1 +1,2 @@
    let () = print_endline "Hello, ocaml!"
   +(* formatted with fake ocamlformat *)
-  Promoting _build/default/.formatted/foo.ml to foo.ml.
+  Promoting _build/default/foo.ml.corrected to foo.ml.
   [1]
 
 The update to the file persists after formatting it a second time:

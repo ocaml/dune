@@ -36,10 +36,8 @@ Set up the project to be able to use ocamlformat:
 We have no lock dir for ocamlformat, it should use the one from path
 
   $ dune fmt --preview
+  File "foo.ml", line 1, characters 0-0:
   ocamlformat from PATH, not pkg
-  -> required by _build/default/.formatted/foo.ml
-  -> required by alias .formatted/fmt
-  -> required by alias fmt
   [1]
 
 Installing ocamlformat via `dune tools install` should work:
@@ -53,7 +51,7 @@ Formatting should use the locked ocamlformat with the feature flag enabled:
   $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune fmt --preview
   File "foo.ml", line 1, characters 0-0:
   --- foo.ml
-  +++ .formatted/foo.ml
+  +++ foo.ml.corrected
   @@ -1 +1 @@
   -let () = print_endline "Hello, world"
   +formatted with version 0.26.2
@@ -64,7 +62,7 @@ It should also use the locked dev tool when the feature flag is not passed:
   $ dune fmt --preview
   File "foo.ml", line 1, characters 0-0:
   --- foo.ml
-  +++ .formatted/foo.ml
+  +++ foo.ml.corrected
   @@ -1 +1 @@
   -let () = print_endline "Hello, world"
   +formatted with version 0.26.2
@@ -74,8 +72,6 @@ It should use the ocamlformat from PATH when the lock dir is deleted:
 
   $ rm -r "${dev_tool_lock_dir}"
   $ dune fmt --preview
+  File "foo.ml", line 1, characters 0-0:
   ocamlformat from PATH, not pkg
-  -> required by _build/default/.formatted/foo.ml
-  -> required by alias .formatted/fmt
-  -> required by alias fmt
   [1]

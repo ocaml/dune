@@ -13,14 +13,14 @@ Dune files names dune-file should be formatted
   $ dune fmt
   File "dune-file", line 1, characters 0-0:
   --- dune-file
-  +++ .formatted/dune-file
+  +++ dune-file.corrected
   @@ -1,2 +1,4 @@
    (rule
   -(with-stdout-to foo (echo bar)))
   + (with-stdout-to
   +  foo
   +  (echo bar)))
-  Promoting _build/default/.formatted/dune-file to dune-file.
+  Promoting _build/default/dune-file.corrected to dune-file.
   [1]
 
   $ cat dune-file

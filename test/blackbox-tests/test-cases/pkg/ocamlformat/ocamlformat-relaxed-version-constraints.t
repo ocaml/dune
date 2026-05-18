@@ -32,11 +32,11 @@ This should choose the 0.24+foo version:
   - ocamlformat.0.24+foo
   File "foo.ml", line 1, characters 0-0:
   --- foo.ml
-  +++ .formatted/foo.ml
+  +++ foo.ml.corrected
   @@ -1 +1,2 @@
    let () = print_endline "Hello, world"
   +(* formatted with fake ocamlformat 0.24+foo *)
-  Promoting _build/default/.formatted/foo.ml to foo.ml.
+  Promoting _build/default/foo.ml.corrected to foo.ml.
   [1]
   $ cat foo.ml
   let () = print_endline "Hello, world"
@@ -50,12 +50,12 @@ This should choose the 0.24+bar version:
   - ocamlformat.0.25+bar
   File "foo.ml", line 1, characters 0-0:
   --- foo.ml
-  +++ .formatted/foo.ml
+  +++ foo.ml.corrected
   @@ -1,2 +1,3 @@
    let () = print_endline "Hello, world"
    (* formatted with fake ocamlformat 0.24+foo *)
   +(* formatted with fake ocamlformat 0.25+bar *)
-  Promoting _build/default/.formatted/foo.ml to foo.ml.
+  Promoting _build/default/foo.ml.corrected to foo.ml.
   [1]
   $ cat foo.ml
   let () = print_endline "Hello, world"

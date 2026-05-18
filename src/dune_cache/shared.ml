@@ -470,20 +470,9 @@ module File_digest = struct
   module Digest_result = Dune_digest.Digest_result
   module Error = Digest_result.Error
 
-  (* CR-soon rgrinberg: a bunch of this is duplicated from cached_digest.ml.
-     This is temporary since [Cached_digest] is going to be limited source
-     files *)
-
   let refresh_async ~allow_dirs stats path =
     let path = Path.build path in
-    let open Fiber.O in
-    Digest.Stats_for_digest.of_unix_stats stats
-    |> Digest.path_with_stats_async ~allow_dirs path
-    >>| function
-    | Ok digest -> Ok digest
-    | Error Unexpected_kind -> Error (Error.Unexpected_kind stats.st_kind)
-    | Error (Unix_error (ENOENT, _, _)) -> Error No_such_file
-    | Error (Unix_error other_error) -> Error (Unix_error other_error)
+    Digest_result.path_with_unix_stats_async ~allow_dirs path stats
   ;;
 
   let refresh_without_removing_write_permissions_async ~allow_dirs path =

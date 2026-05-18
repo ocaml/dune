@@ -9,9 +9,13 @@ type 'a t =
   ; etc_root : 'a
   ; doc_root : 'a
   ; man : 'a
+  ; prefix : 'a
   }
 
-let to_dyn f { lib_root; libexec_root; bin; sbin; share_root; etc_root; doc_root; man } =
+let to_dyn
+      f
+      { lib_root; libexec_root; bin; sbin; share_root; etc_root; doc_root; man; prefix }
+  =
   let open Dyn in
   record
     [ "lib_root", f lib_root
@@ -22,6 +26,7 @@ let to_dyn f { lib_root; libexec_root; bin; sbin; share_root; etc_root; doc_root
     ; "etc_root", f etc_root
     ; "doc_root", f doc_root
     ; "man", f man
+    ; "prefix", f prefix
     ]
 ;;
 
@@ -35,6 +40,7 @@ let make prefix ~relative =
   ; man = relative prefix "man"
   ; doc_root = relative prefix "doc"
   ; etc_root = relative prefix "etc"
+  ; prefix
   }
 ;;
 
@@ -47,6 +53,7 @@ let make_all a =
   ; man = a
   ; doc_root = a
   ; etc_root = a
+  ; prefix = a
   }
 ;;
 
@@ -67,6 +74,7 @@ let map ~f x =
   ; etc_root = f x.etc_root
   ; doc_root = f x.doc_root
   ; man = f x.man
+  ; prefix = f x.prefix
   }
 ;;
 
@@ -79,6 +87,7 @@ let map2 ~f x y =
   ; etc_root = f x.etc_root y.etc_root
   ; doc_root = f x.doc_root y.doc_root
   ; man = f x.man y.man
+  ; prefix = f x.prefix y.prefix
   }
 ;;
 

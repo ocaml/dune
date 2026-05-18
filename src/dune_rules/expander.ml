@@ -186,12 +186,36 @@ let expand_artifact ~source t artifact arg =
   in
   match artifact with
   | Pform.Artifact.Mod kind ->
-    let name =
-      Module_name.of_string_allow_invalid (Dune_lang.Template.Pform.loc source, name)
-      |> Module_name.Unchecked.allow_invalid
+    let module_path =
+      let stanza_dir = Artifacts_obj.stanza_dir artifacts in
+      let rel =
+        match
+          Path.Local.descendant (Path.Build.local path) ~of_:(Path.Build.local stanza_dir)
+        with
+        | Some rel -> rel
+        | None ->
+          User_error.raise
+            ~loc
+            [ Pp.textf
+                "%S is not under the stanza directory %s."
+                arg
+                (Path.Build.to_string_maybe_quoted stanza_dir)
+            ]
+      in
+      let make_segment seg =
+        Module_name.of_string_allow_invalid (Dune_lang.Template.Pform.loc source, seg)
+        |> Module_name.Unchecked.allow_invalid
+      in
+      match Path.Local.explode rel with
+      | [] ->
+        User_error.raise
+          ~loc
+          [ Pp.textf "module artifact target is missing a module name." ]
+      | first :: rest ->
+        Nonempty_list.(make_segment first :: List.map rest ~f:make_segment)
     in
-    (match Artifacts_obj.lookup_module artifacts name with
-     | None -> does_not_exist ~what:"Module" (Module_name.to_string name)
+    (match Artifacts_obj.lookup_module artifacts module_path with
+     | None -> does_not_exist ~what:"Module" (Module_name.Path.to_string module_path)
      | Some (t, m) ->
        (match
           match kind with

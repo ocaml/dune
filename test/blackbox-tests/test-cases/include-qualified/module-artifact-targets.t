@@ -21,45 +21,26 @@ A normal build succeeds:
 
   $ dune build @check
 
-Asking for any module artifact of a module in the stanza crashes with the
-same internal error:
+A module artifact target for the top-level module works:
 
-  $ dune build %{cmi:main} 2>&1 | head -5
-  Internal error! Please report to https://github.com/ocaml/dune/issues,
-  providing the file _build/trace.csexp, if possible. This includes build
-  commands, message logs, and file paths.
-  Description:
-    ("Map.add_exn: key already exists", { key = "Group" })
-  [1]
+  $ dune build %{cmi:main}
+  $ dune build %{cmo:main}
+  $ dune build %{cmx:main}
+  $ dune build %{cmt:main}
+  $ dune build %{cmti:main}
 
-  $ dune build %{cmo:main} 2>&1 | head -5
-  Internal error! Please report to https://github.com/ocaml/dune/issues,
-  providing the file _build/trace.csexp, if possible. This includes build
-  commands, message logs, and file paths.
-  Description:
-    ("Map.add_exn: key already exists", { key = "Group" })
-  [1]
+A module artifact target for a module in a qualified subdirectory works:
 
-  $ dune build %{cmx:main} 2>&1 | head -5
-  Internal error! Please report to https://github.com/ocaml/dune/issues,
-  providing the file _build/trace.csexp, if possible. This includes build
-  commands, message logs, and file paths.
-  Description:
-    ("Map.add_exn: key already exists", { key = "Group" })
-  [1]
+  $ dune build %{cmi:sub_a/group}
+  $ dune build %{cmi:sub_b/group}
+  $ dune build %{cmo:sub_a/group}
+  $ dune build %{cmo:sub_b/group}
 
-  $ dune build %{cmt:main} 2>&1 | head -5
-  Internal error! Please report to https://github.com/ocaml/dune/issues,
-  providing the file _build/trace.csexp, if possible. This includes build
-  commands, message logs, and file paths.
-  Description:
-    ("Map.add_exn: key already exists", { key = "Group" })
-  [1]
+An unqualified leaf name [group] is not the module path of any module
+(the modules are [Sub_a.Group] and [Sub_b.Group]), so it is reported as
+missing:
 
-  $ dune build %{cmti:main} 2>&1 | head -5
-  Internal error! Please report to https://github.com/ocaml/dune/issues,
-  providing the file _build/trace.csexp, if possible. This includes build
-  commands, message logs, and file paths.
-  Description:
-    ("Map.add_exn: key already exists", { key = "Group" })
+  $ dune build %{cmi:group}
+  File "command line", line 1, characters 0-12:
+  Error: Module Group does not exist.
   [1]

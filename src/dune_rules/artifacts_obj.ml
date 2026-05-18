@@ -2,13 +2,21 @@ open Import
 open Memo.O
 
 type t =
-  { libraries : Lib_info.local Lib_name.Map.t
-  ; modules : (Path.Build.t Obj_dir.t * Module.t) Module_name.Map.t
+  { stanza_dir : Path.Build.t
+  ; libraries : Lib_info.local Lib_name.Map.t
+  ; modules : (Path.Build.t Obj_dir.t * Module.t) Module_name.Path.Map.t
   }
 
-let empty = { libraries = Lib_name.Map.empty; modules = Module_name.Map.empty }
-let lookup_module { modules; libraries = _ } = Module_name.Map.find modules
-let lookup_library { libraries; modules = _ } = Lib_name.Map.find libraries
+let empty =
+  { stanza_dir = Path.Build.root
+  ; libraries = Lib_name.Map.empty
+  ; modules = Module_name.Path.Map.empty
+  }
+;;
+
+let stanza_dir t = t.stanza_dir
+let lookup_module { modules; _ } = Module_name.Path.Map.find modules
+let lookup_library { libraries; _ } = Lib_name.Map.find libraries
 
 let make ~dir ~expander ~lib_config ~libs ~exes =
   let+ libraries =
@@ -22,16 +30,16 @@ let make ~dir ~expander ~lib_config ~libs ~exes =
     >>| Lib_name.Map.of_list_exn
   in
   let modules =
-    let by_name modules obj_dir =
+    let by_path modules obj_dir =
       Modules.fold_user_available ~init:modules ~f:(fun m modules ->
-        Module_name.Map.add_exn modules (Module.name m) (obj_dir, m))
+        Module_name.Path.Map.add_exn modules (Module.path m) (obj_dir, m))
     in
     let init =
-      List.fold_left exes ~init:Module_name.Map.empty ~f:(fun modules (m, obj_dir) ->
-        by_name modules obj_dir m)
+      List.fold_left exes ~init:Module_name.Path.Map.empty ~f:(fun modules (m, obj_dir) ->
+        by_path modules obj_dir m)
     in
     List.fold_left libs ~init ~f:(fun modules (_, m, obj_dir) ->
-      by_name modules obj_dir m)
+      by_path modules obj_dir m)
   in
-  { libraries; modules }
+  { stanza_dir = dir; libraries; modules }
 ;;

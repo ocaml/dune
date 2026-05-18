@@ -65,10 +65,10 @@ module Versioned = struct
   ;;
 
   let list_metadata_entries t =
-    lazy (list_entries ~storage:(Lazy.force (metadata_storage_dir t)))
+    list_entries ~storage:(Lazy.force (metadata_storage_dir t))
   ;;
 
-  let list_file_entries t = lazy (list_entries ~storage:(Lazy.force (file_storage_dir t)))
+  let list_file_entries t = list_entries ~storage:(Lazy.force (file_storage_dir t))
 end
 
 let metadata_storage_dir = Versioned.metadata_storage_dir Version.Metadata.current

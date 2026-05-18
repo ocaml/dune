@@ -28,7 +28,6 @@ let trim_broken_metadata_entries ~trimmed_so_far =
         Layout.Versioned.file_path (Version.Metadata.file_version version)
       in
       Layout.Versioned.list_metadata_entries version
-      |> Lazy.force
       |> List.fold_left
            ~init:trimmed_so_far
            ~f:(fun trimmed_so_far (path, rule_or_action_digest) ->
@@ -79,7 +78,7 @@ let garbage_collect () =
 
 let files_in_cache_for_all_supported_versions () =
   List.concat_map Version.File.all ~f:(fun file_version ->
-    Lazy.force (Layout.Versioned.list_file_entries file_version))
+    Layout.Versioned.list_file_entries file_version)
 ;;
 
 (* We call a cached file "unused" if there are currently no hard links to it

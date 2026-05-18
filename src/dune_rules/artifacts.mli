@@ -7,6 +7,7 @@ type origin =
   ; dir : Path.Build.t
   ; dst : Path.Local.t
   ; enabled_if : bool Memo.t
+  ; package : Package.Name.t option
   }
 
 type where =
@@ -38,6 +39,7 @@ val binary
   -> Filename.t
   -> Action.Prog.t Memo.t
 
+val binary_package : t -> dir:Path.Build.t -> string -> Package.Name.t option Memo.t
 val binary_available : t -> dir:Path.Build.t -> string -> bool Memo.t
 val add_binaries : t -> dir:Path.Build.t -> File_binding.Expanded.t list -> t
 

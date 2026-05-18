@@ -48,7 +48,7 @@ let rec encode_action : Action.For_shell.t -> Dune_lang.t =
   let target = Encoder.string in
   function
   | Run (a, xs) ->
-    List (atom "run" :: program a :: List.map (Array.Immutable.to_list xs) ~f:string)
+    List (atom "run" :: program a :: List.map (Appendable_list.to_list xs) ~f:string)
   | With_accepted_exit_codes (pred, t) ->
     List
       [ atom "with-accepted-exit-codes"

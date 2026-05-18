@@ -73,10 +73,7 @@ let rec expand
     List.map fns ~f:(Path.reach ~from:dir)
     |> Appendable_list.of_list
     |> Action_builder.With_targets.return
-  | S ts ->
-    List.map ts ~f:(expand ~dir)
-    |> Action_builder.With_targets.all
-    |> Action_builder.With_targets.map ~f:Appendable_list.concat
+  | S ts -> expand_list ~dir ts
   | Concat (sep, ts) ->
     expand ~dir (S ts)
     |> Action_builder.With_targets.map ~f:(fun x ->
@@ -98,8 +95,26 @@ let rec expand
     |> Action_builder.with_file_targets ~file_targets:fns
   | Expand f -> f ~dir |> Action_builder.with_no_targets
 
+and expand_list
+  : type a.
+    dir:Path.t -> a t list -> string Appendable_list.t Action_builder.With_targets.t
+  =
+  fun ~dir ts ->
+  match ts with
+  | [] -> Appendable_list.empty |> Action_builder.With_targets.return
+  | t :: ts ->
+    let open Action_builder.With_targets.O in
+    let+ t = expand ~dir t
+    and+ ts = expand_list ~dir ts in
+    Appendable_list.(t @ ts)
+
 and expand_no_targets ~dir (t : without_targets t) =
   let { Action_builder.With_targets.build; targets } = expand ~dir t in
+  assert (Targets.is_empty targets);
+  build
+
+and expand_list_no_targets ~dir (ts : without_targets t list) =
+  let { Action_builder.With_targets.build; targets } = expand_list ~dir ts in
   assert (Targets.is_empty targets);
   build
 ;;
@@ -120,9 +135,9 @@ let run_dyn_prog ~dir ?sandbox ?stdout_to prog args =
        let* prog = prog in
        let+ () = dep_prog prog in
        prog
-     and+ args = expand ~dir (S args) in
+     and+ args = expand_list ~dir args in
      let action =
-       let action = Action.Run (prog, Appendable_list.to_immutable_array args) in
+       let action = Action.Run (prog, args) in
        match stdout_to with
        | None -> action
        | Some path -> Action.with_stdout_to path action
@@ -137,10 +152,8 @@ let run ~dir ?sandbox ?stdout_to prog args =
 let run' ?sandbox ~dir prog args =
   let open Action_builder.O in
   let+ () = dep_prog prog
-  and+ args = expand_no_targets ~dir (S args) in
-  Action.Run (prog, Appendable_list.to_immutable_array args)
-  |> Action.chdir dir
-  |> Action.Full.make ?sandbox
+  and+ args = expand_list_no_targets ~dir args in
+  Action.Run (prog, args) |> Action.chdir dir |> Action.Full.make ?sandbox
 ;;
 
 let quote_args =

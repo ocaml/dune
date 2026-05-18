@@ -119,6 +119,16 @@ let concat = function
   | xs -> Concat xs
 ;;
 
+let rec map t ~f =
+  match t with
+  | Empty -> Empty
+  | Singleton x -> Singleton (f x)
+  | Cons (x, xs) -> Cons (f x, map xs ~f)
+  | List xs -> List (List.map xs ~f)
+  | Append (x, y) -> Append (map x ~f, map y ~f)
+  | Concat xs -> Concat (List.map xs ~f:(map ~f))
+;;
+
 let rec exists t ~f =
   match t with
   | Empty -> false

@@ -647,7 +647,7 @@ module Unprocessed = struct
            | Error _ -> None
            | Ok bin ->
              let args =
-               let args = Array.Immutable.to_list args in
+               let args = Appendable_list.to_list args in
                encode_command ~bin ~args
              in
              Some { Processed.flag = Processed.Pp_kind.Pp; args }

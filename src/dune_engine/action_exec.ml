@@ -183,7 +183,7 @@ let rec exec t ~ectx ~eenv : Done_or_more_deps.t Produce.t =
   match (t : Action.t) with
   | Run (Error e, _) -> Action.Prog.Not_found.raise e
   | Run (Ok prog, args) ->
-    let+ () = exec_run ~ectx ~eenv prog (Array.Immutable.to_list args) in
+    let+ () = exec_run ~ectx ~eenv prog (Appendable_list.to_list args) in
     Done
   | With_accepted_exit_codes (exit_codes, t) ->
     let eenv =

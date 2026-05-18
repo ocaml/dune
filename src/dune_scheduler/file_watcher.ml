@@ -164,11 +164,11 @@ end
 
 let process_inotify_event (event : Inotify.Event.t) should_exclude : Event.t list =
   let create_event_unless_excluded ~kind ~path =
-    match should_exclude path with
-    | true -> []
-    | false ->
+    if should_exclude path
+    then []
+    else (
       let path = Path.of_string path in
-      [ Event.Fs_memo_event (Fs_memo_event.create ~kind ~path) ]
+      [ Event.Fs_memo_event (Fs_memo_event.create ~kind ~path) ])
   in
   match event with
   | Created path -> create_event_unless_excluded ~kind:Created ~path

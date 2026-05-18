@@ -136,18 +136,43 @@ module Cache = struct
      now, we allow it to raise. It won't be visible to most users due to the
      cache size we have chosen. *)
 
-  let rev_store_cache =
-    (* CR-soon Alizter: For now the cache is disabled by default. Once we add
-       versioning to the cache it will be safe to enable by default. 
+  (* The cache is stored at [$DUNE_CACHE_ROOT/rev_store/<version>/]. Bump
+     [version] whenever the bytes we write to the cache change shape.
+     Concretely:
 
-       When we do this we should check [Int.equal Sys.word_size 64] since
-       32-bit platforms won't handle our cache size well. *)
-    Config.make_toggle ~name:"rev_store_cache" ~default:`Disabled
+       1. The [git ls-tree] invocation changes (different flags or a
+          different command) so that the cached output is a different
+          format than before.
+       2. A new LMDB map is added, or an existing one is removed.
+       3. The key or value [Lmdb.Conv] of an existing map changes (today
+          all values are plain strings, but if we ever swap to a typed
+          converter the on-disk bytes change).
+
+     Changes that are NOT triggers: parser-only changes to [Entry.parse]
+     (the cached bytes are still the same git output, the new parser just
+     interprets them), and renames of OCaml types or fields (nothing is
+     marshalled, so OCaml-side renames do not affect on-disk bytes).
+
+     Old version directories left behind by previous builds are dormant
+     and can be removed by the user if desired. *)
+  let version = "v1"
+
+  let rev_store_cache =
+    (* Enabled by default on 64-bit non-Windows platforms. 32-bit is opted
+       out because the 5GB LMDB map size does not fit in virtual address
+       space. Windows is opted out until we can determine that LMDB is
+       not detrimental to performance there. Either default can be
+       overridden via [DUNE_CONFIG__REV_STORE_CACHE=enabled]. *)
+    let default : Config.Toggle.t =
+      if Int.equal Sys.word_size 64 && not Sys.win32 then `Enabled else `Disabled
+    in
+    Config.make_toggle ~name:"rev_store_cache" ~default
   ;;
 
   let revision_store_dir =
     lazy
-      (let path = Path.relative (Lazy.force Dune_util.cache_root_dir) "rev_store" in
+      (let base = Path.relative (Lazy.force Dune_util.cache_root_dir) "rev_store" in
+       let path = Path.relative base version in
        let rev_store_cache = Config.get rev_store_cache in
        Log.info "Revision store cache" [ "status", Config.Toggle.to_dyn rev_store_cache ];
        match rev_store_cache with
@@ -234,21 +259,25 @@ module Cache = struct
       ;;
     end
 
-    module Value = struct
-      let conv : (File.Set.t * Commit.Set.t) Lmdb.Conv.t =
-        Lmdb.Conv.make
-          ~serialise:(fun alloc v ->
-            Marshal.to_string v ~sharing:true |> Lmdb.Conv.(serialise string alloc))
-          ~deserialise:(fun bs -> Marshal.from_string Lmdb.Conv.(deserialise string bs))
-          ()
-      ;;
-    end
-
     let map =
       lazy
         (Lazy.force db
          |> Option.map ~f:(fun env ->
-           Lmdb.Map.create Nodup ~key:Key.conv ~value:Value.conv ~name:"ls-tree" env))
+           Lmdb.Map.create Nodup ~key:Key.conv ~value:Lmdb.Conv.string ~name:"ls-tree" env)
+        )
+    ;;
+
+    (* Cached value is the raw [git ls-tree -z --long -r] output, rejoined
+       with the NUL separator that git uses. Storing the literal subprocess
+       output avoids any OCaml-side serialisation and keeps the on-disk
+       format independent of the OCaml compiler used to build dune. Lines
+       produced by [-z] never contain NUL, so encode/decode are
+       unambiguous. *)
+    let encode_lines = String.concat ~sep:"\000"
+
+    let decode_lines = function
+      | "" -> []
+      | s -> String.split ~on:'\000' s
     ;;
 
     let get key =
@@ -256,15 +285,15 @@ module Cache = struct
       let* m = Lazy.force map in
       match Lmdb.Map.get m key with
       | exception Not_found -> None
-      | v -> Some v
+      | v -> Some (decode_lines v)
     ;;
 
-    let set key value =
+    let set key lines =
       ignore
       @@
       let open Option.O in
       let+ map = Lazy.force map in
-      Lmdb.Map.set map key value
+      Lmdb.Map.set map key (encode_lines lines)
     ;;
   end
 
@@ -937,28 +966,32 @@ module At_rev = struct
     ;;
   end
 
+  let parse_ls_tree_lines lines =
+    List.fold_left
+      lines
+      ~init:(File.Set.empty, Commit.Set.empty)
+      ~f:(fun (files, commits) line ->
+        match Entry.parse line with
+        | None -> files, commits
+        | Some (File file) -> File.Set.add files file, commits
+        | Some (Commit commit) -> files, Commit.Set.add commits commit)
+  ;;
+
   let files_and_submodules repo key =
     let cached = Cache.Files_and_submodules.get key in
     if !Debug.files_and_submodules_cache
     then Debug.print "files_and_submodules" [ "cached", Dyn.option Dyn.opaque cached ];
     match cached with
-    | Some v -> Fiber.return v
+    | Some lines -> Fiber.return (parse_ls_tree_lines lines)
     | None ->
-      let+ value =
+      let+ lines =
         run_capture_zero_separated_lines
           repo
           [ "ls-tree"; "-z"; "--long"; "-r"; Object.to_hex key ]
         >>| Git_error.result_get_or_code_error
-        >>| List.fold_left
-              ~init:(File.Set.empty, Commit.Set.empty)
-              ~f:(fun (files, commits) line ->
-                match Entry.parse line with
-                | None -> files, commits
-                | Some (File file) -> File.Set.add files file, commits
-                | Some (Commit commit) -> files, Commit.Set.add commits commit)
       in
-      Cache.Files_and_submodules.set key value;
-      value
+      Cache.Files_and_submodules.set key lines;
+      parse_ls_tree_lines lines
   ;;
 
   let path_commit_map submodules =

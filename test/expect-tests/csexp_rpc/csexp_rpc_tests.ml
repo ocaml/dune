@@ -59,9 +59,9 @@ let scheduler_config =
   }
 ;;
 
-let run_scheduler f =
+let run_scheduler ?timeout f =
   Dune_engine.Clflags.display := Quiet;
-  Scheduler.Run.go scheduler_config f ~on_event:(fun _ -> ())
+  Scheduler.Run.go scheduler_config ?timeout f ~on_event:(fun _ -> ())
 ;;
 
 let stop_server server = run_scheduler (fun () -> Server.stop server)
@@ -341,4 +341,35 @@ let%expect_test "csexp server stop rejects new connections" =
   in
   run_scheduler run;
   [%expect {| connect failed |}]
+;;
+
+let%expect_test "csexp client stop does not close an active session" =
+  let run () =
+    let server = server (ADDR_INET (Unix.inet_addr_loopback, 0)) in
+    let* sessions = Server.serve server in
+    let client = Csexp_rpc.Server.listening_address server |> List.hd |> client in
+    let server_read = Fiber.Ivar.create () in
+    let cleanup = ref false in
+    Fiber.fork_and_join_unit
+      (fun () ->
+         let* session = Client.connect_exn client in
+         Client.stop client;
+         let* () = Scheduler.sleep (Time.Span.of_secs 0.1) in
+         (match Fiber.Ivar.peek server_read with
+          | Some () -> ()
+          | None -> printfn "server: session remained open");
+         cleanup := true;
+         let* () = Session.close session in
+         let* () = Fiber.Ivar.read server_read in
+         Server.stop server)
+      (fun () ->
+         Fiber.Stream.In.parallel_iter sessions ~f:(fun session ->
+           let* response = Session.read session in
+           (match response with
+            | None -> if not !cleanup then printfn "server: session closed"
+            | Some sexp -> printfn "server: received %s" (Csexp.to_string sexp));
+           Fiber.Ivar.fill server_read ()))
+  in
+  run_scheduler run;
+  [%expect {| server: session closed |}]
 ;;

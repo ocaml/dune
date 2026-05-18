@@ -216,7 +216,79 @@ let dune_name = Package.Name.of_string "dune"
 let odoc_name = Package.Name.of_string "odoc"
 let menhir_name = Package.Name.of_string "menhir"
 
-let merge_dune_constraints lang_constraint user_constraint =
+let rec has_sufficient_lower_bound ~min_version : Package_constraint.t -> bool = function
+  | Uop (Gte, String_literal v) | Uop (Gt, String_literal v) | Uop (Eq, String_literal v)
+    -> OpamVersionCompare.compare v min_version >= 0
+  | Not (Uop (Lt, String_literal v)) | Not (Uop (Lte, String_literal v)) ->
+    OpamVersionCompare.compare v min_version >= 0
+  | And ts -> List.exists ts ~f:(has_sufficient_lower_bound ~min_version)
+  | Or ts -> List.for_all ts ~f:(has_sufficient_lower_bound ~min_version)
+  | Uop _ | Bop _ | Bvar _ | Not _ -> false
+;;
+
+(* Walk [c] replacing each lower-bound literal [(>= "v")] or [(> "v")]
+   with [v < min_version] by [(>= min_version)]. Returns the rewritten
+   constraint and a flag indicating whether any rewrite occurred (so
+   the caller can emit a single user-facing warning). [Not], [Bop],
+   and [Bvar] subtrees pass through unchanged: under a [Not], a
+   [(>= v)] literal contributes to an upper bound, not a lower bound,
+   so rewriting it would loosen rather than tighten the constraint. *)
+let normalize_lower_bounds ~min_version c =
+  let rewrote = ref false in
+  let min_constraint : Package_constraint.t = Uop (Gte, String_literal min_version) in
+  let rec loop : Package_constraint.t -> Package_constraint.t = function
+    | (Uop (Gte, String_literal v) | Uop (Gt, String_literal v)) as c ->
+      if OpamVersionCompare.compare v min_version >= 0
+      then c
+      else (
+        rewrote := true;
+        min_constraint)
+    | And ts -> And (List.map ts ~f:loop)
+    | Or ts -> Or (List.map ts ~f:loop)
+    | (Uop _ | Bop _ | Bvar _ | Not _) as c -> c
+  in
+  let c' = loop c in
+  c', !rewrote
+;;
+
+(* Merge a user-written constraint with a required lower bound. If
+   the user's expression already implies the bound, preserve it
+   verbatim. Otherwise tighten any nested [>= "v"] or [> "v"]
+   literal below the minimum (emitting [warning] if so), then AND
+   [>= min_version] at the top level unless the post-tightening
+   expression now implies the bound. *)
+let merge_with_min_lower_bound ~min_version ~warning user_constraint =
+  let min_constraint : Package_constraint.t = Uop (Gte, String_literal min_version) in
+  if has_sufficient_lower_bound ~min_version user_constraint
+  then user_constraint
+  else (
+    let user_constraint, rewrote = normalize_lower_bounds ~min_version user_constraint in
+    if rewrote then User_warning.emit warning;
+    if has_sufficient_lower_bound ~min_version user_constraint
+    then user_constraint
+    else And [ min_constraint; user_constraint ])
+;;
+
+let merge_dune_constraints ~min_version user_constraint =
+  let warning =
+    [ Pp.textf
+        "A lower bound on dune in the depends field is less than the dune language \
+         version %s. The generated opam file will use >= %s instead."
+        min_version
+        min_version
+    ]
+  in
+  merge_with_min_lower_bound ~min_version ~warning user_constraint
+;;
+
+(* Simple dune-version constraint dedup for the [(lang dune 3.23)]
+   tier: handles only the trivial [(>= "v")] / [(>= "v")] shape. If
+   the user's lower bound is at or above the lang version, preserve
+   it; otherwise warn and substitute the lang version. Any other
+   shape falls through to a bare AND. [(lang dune 3.24)] and newer
+   use [merge_dune_constraints] above, which handles nested And/Or
+   structures and emits a single composite warning. *)
+let merge_dune_constraints_simple lang_constraint user_constraint =
   match lang_constraint, user_constraint with
   | ( Package_constraint.Uop (Gte, String_literal lang_v)
     , Package_constraint.Uop (Gte, String_literal user_v) ) ->
@@ -236,10 +308,8 @@ let merge_dune_constraints lang_constraint user_constraint =
 ;;
 
 let insert_dune_dep depends dune_version =
-  let lang_constraint : Package_constraint.t =
-    let dune_version = Dune_lang.Syntax.Version.to_string dune_version in
-    Uop (Gte, String_literal dune_version)
-  in
+  let min_version = Dune_lang.Syntax.Version.to_string dune_version in
+  let lang_constraint : Package_constraint.t = Uop (Gte, String_literal min_version) in
   let rec loop acc = function
     | [] ->
       let dune_dep =
@@ -259,8 +329,10 @@ let insert_dune_dep depends dune_version =
                   (match dep.constraint_ with
                    | None -> lang_constraint
                    | Some user_constraint ->
-                     if dune_version >= (3, 23)
-                     then merge_dune_constraints lang_constraint user_constraint
+                     if dune_version >= (3, 24)
+                     then merge_dune_constraints ~min_version user_constraint
+                     else if dune_version >= (3, 23)
+                     then merge_dune_constraints_simple lang_constraint user_constraint
                      else And [ lang_constraint; user_constraint ])
             }
         in
@@ -300,15 +372,47 @@ let insert_odoc_dep depends =
 
 (* Menhir 20180523 added --infer-write-query and --infer-read-reply,
    which dune's menhir rules rely on unconditionally. *)
-let menhir_constraint : Package_constraint.t = Uop (Gte, String_literal "20180523")
+let menhir_min_version = "20180523"
+let menhir_constraint : Package_constraint.t = Uop (Gte, String_literal menhir_min_version)
 
-(* If the package's [(depends ...)] field already lists [menhir]
-   without a constraint, fill in the lower bound. Existing user-
-   written constraints (whether version bounds, [{with-test}], or
-   anything else) are preserved verbatim. We do not add menhir as a
-   new dependency: doing so unconditionally is the over-injection
+let merge_menhir_constraint user_constraint =
+  let warning =
+    [ Pp.textf
+        "A lower bound on menhir in the depends field is less than the version dune's \
+         menhir rules require. The generated opam file will use >= %s instead."
+        menhir_min_version
+    ]
+  in
+  merge_with_min_lower_bound ~min_version:menhir_min_version ~warning user_constraint
+;;
+
+(* If the package's [(depends ...)] field already lists [menhir],
+   fill in the lower bound — combining it with any user-written
+   constraint via [merge_menhir_constraint]. We do not add menhir as
+   a new dependency: doing so unconditionally is the over-injection
    bug reported in #14428. *)
 let upgrade_menhir_constraint depends =
+  List.map depends ~f:(fun (dep : Package_dependency.t) ->
+    if Package.Name.equal dep.name menhir_name
+    then
+      { dep with
+        constraint_ =
+          Some
+            (match dep.constraint_ with
+             | None -> menhir_constraint
+             | Some user_constraint -> merge_menhir_constraint user_constraint)
+      }
+    else dep)
+;;
+
+(* Simple menhir bare-fill for the [(lang dune 3.23)] tier: if the
+   package's [(depends ...)] field already lists [menhir] without a
+   constraint, fill in [menhir_constraint] as the lower bound. Existing
+   user-written constraints pass through unchanged. [(lang dune 3.24)]
+   and newer use [upgrade_menhir_constraint] above, which additionally
+   merges user-written constraints with dune's required minimum via
+   [merge_menhir_constraint]. *)
+let upgrade_menhir_constraint_simple depends =
   List.map depends ~f:(fun (dep : Package_dependency.t) ->
     if Package.Name.equal dep.name menhir_name
     then
@@ -344,7 +448,12 @@ let opam_fields project (package : Package.t) =
   let package =
     match Dune_project.find_extension_version project Dune_lang.Menhir.syntax with
     | None -> package
-    | Some _ -> Package.map_depends package ~f:upgrade_menhir_constraint
+    | Some _ ->
+      if dune_version < (3, 23)
+      then package
+      else if dune_version < (3, 24)
+      then Package.map_depends package ~f:upgrade_menhir_constraint_simple
+      else Package.map_depends package ~f:upgrade_menhir_constraint
   in
   let package_fields = package_fields package ~project in
   let open Opam_file.Create in

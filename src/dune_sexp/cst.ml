@@ -2,7 +2,7 @@ open Stdune
 
 type t =
   | Atom of Loc.t * Atom.t
-  | Quoted_string of Loc.t * string
+  | Quoted_string of Loc.t * Quoted_string.t
   | Template of Template.t
   | List of Loc.t * t list
   | Comment of Loc.t * string list
@@ -11,7 +11,7 @@ let rec to_dyn =
   let open Dyn in
   function
   | Atom (_, a) -> variant "Atom" [ Atom.to_dyn a ]
-  | Quoted_string (_, s) -> variant "Quoted_string" [ string s ]
+  | Quoted_string (_, qs) -> variant "Quoted_string" [ Quoted_string.to_dyn qs ]
   | Template t -> variant "Template" [ Template.to_dyn t ]
   | List (_, l) -> variant "List" [ list to_dyn l ]
   | Comment (_, c) -> variant "Comment" [ Dyn.(list string) c ]
@@ -29,7 +29,10 @@ let loc
 
 let rec abstract : t -> Ast.t option = function
   | Atom (loc, atom) -> Some (Atom (loc, atom))
-  | Quoted_string (loc, s) -> Some (Quoted_string (loc, s))
+  | Quoted_string (loc, qs) ->
+    (match Quoted_string.flatten qs with
+     | String s -> Some (Quoted_string (loc, s))
+     | Parts parts -> Some (Template { quoted = true; parts; loc }))
   | Template t -> Some (Template t)
   | List (loc, l) -> Some (List (loc, List.filter_map ~f:abstract l))
   | Comment _ -> None
@@ -37,7 +40,7 @@ let rec abstract : t -> Ast.t option = function
 
 let rec concrete : Ast.t -> t = function
   | Atom (loc, atom) -> Atom (loc, atom)
-  | Quoted_string (loc, s) -> Quoted_string (loc, s)
+  | Quoted_string (loc, s) -> Quoted_string (loc, Quoted_string.Single s)
   | Template t -> Template t
   | List (loc, l) -> List (loc, List.map ~f:concrete l)
 ;;

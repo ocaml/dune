@@ -35,6 +35,14 @@ Testing install actions
          [ In_build_dir
              "_private/default/.pkg/test.0.0.1-$DIGEST/target/lib/xxx"
          ])
+      ; (PREFIX,
+         [ In_build_dir
+             "_private/default/.pkg/test.0.0.1-$DIGEST/target/lib/xxx"
+         ])
+      ; (PREFIXEXEC,
+         [ In_build_dir
+             "_private/default/.pkg/test.0.0.1-$DIGEST/target/lib/xxx"
+         ])
       ]
   ; variables = []
   }

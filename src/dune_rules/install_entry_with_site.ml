@@ -30,6 +30,8 @@ let make_with_site (section : Section_with_site.t) ?dst get_section ~kind src =
       | Share_root
       | Stublibs
       | Man
+      | Prefix
+      | Prefixexec
       | Misc -> section, dst
     in
     Entry.Unexpanded.make_with_dst section dst ~kind ~src

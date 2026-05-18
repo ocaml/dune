@@ -41,6 +41,7 @@ let encode v =
 let all = Set.of_list (List.map ~f:fst Dune_section.all)
 
 let should_set_executable_bit = function
-  | Lib | Lib_root | Toplevel | Share | Share_root | Etc | Doc | Man | Misc -> false
-  | Libexec | Libexec_root | Bin | Sbin | Stublibs -> true
+  | Lib | Lib_root | Toplevel | Share | Share_root | Etc | Doc | Man | Misc | Prefix ->
+    false
+  | Libexec | Libexec_root | Bin | Sbin | Stublibs | Prefixexec -> true
 ;;

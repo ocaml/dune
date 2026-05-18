@@ -193,6 +193,11 @@ let executables_rules
   let* cctx =
     let requires_compile = Lib.Compile.direct_requires compile_info ~for_ in
     let requires_link = Lib.Compile.requires_link compile_info ~for_ in
+    let pps_runtime_libs =
+      let open Resolve.Memo.O in
+      let* pps = Lib.Compile.pps compile_info ~for_ in
+      Resolve.Memo.List.concat_map pps ~f:(Lib.ppx_runtime_deps ~for_)
+    in
     let instances =
       Parameterised_instances.instances
         ~sctx
@@ -215,6 +220,7 @@ let executables_rules
       ~flags
       ~requires_link
       ~requires_compile
+      ~pps_runtime_libs
       ~preprocessing:pp
       ~js_of_ocaml
       ~opaque:Inherit_from_settings

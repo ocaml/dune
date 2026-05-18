@@ -642,6 +642,7 @@ let to_lib_info
     ~jsoo_runtime
     ~wasmoo_runtime
     ~preprocess
+    ~stanza_flags:conf.buildable.flags
     ~enabled
     ~virtual_deps
     ~dune_version

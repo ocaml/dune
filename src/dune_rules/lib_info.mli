@@ -170,6 +170,12 @@ val preprocess
   -> for_:Compilation_mode.t
   -> Preprocess.With_instrumentation.t Preprocess.Per_module.t
 
+(** Unexpanded [(flags ...)] from the library's stanza. [Spec.standard] for
+    libraries assembled from META / dune-package files. The per-module narrowing
+    pipeline uses this to recover [-open]-induced cross-library [.cmi] reads
+    that ocamldep cannot see. *)
+val stanza_flags : _ t -> Dune_lang.Ocaml_flags.Spec.t
+
 val sub_systems : _ t -> Sub_system_info.t Sub_system_name.Map.t
 val enabled : _ t -> Enabled_status.t Memo.t
 val orig_src_dir : 'path t -> 'path option
@@ -239,6 +245,7 @@ val create
   -> preprocess:
        Preprocess.With_instrumentation.t Preprocess.Per_module.t
          Compilation_mode.By_mode.t
+  -> stanza_flags:Dune_lang.Ocaml_flags.Spec.t
   -> enabled:Enabled_status.t Memo.t
   -> virtual_deps:(Loc.t * Lib_name.t) list
   -> dune_version:Dune_lang.Syntax.Version.t option

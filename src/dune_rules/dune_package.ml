@@ -336,6 +336,7 @@ module Lib = struct
            ~jsoo_runtime
            ~wasmoo_runtime
            ~preprocess
+           ~stanza_flags:Dune_lang.Ocaml_flags.Spec.standard
            ~enabled
            ~virtual_deps
            ~dune_version

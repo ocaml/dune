@@ -496,6 +496,7 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~mdx_prog =
       ~flags
       ~requires_compile
       ~requires_link
+      ~pps_runtime_libs:(Resolve.Memo.return [])
       ~opaque:(Explicit false)
       ~js_of_ocaml:(Js_of_ocaml.Mode.Pair.make None)
       ~melange_package_name:None

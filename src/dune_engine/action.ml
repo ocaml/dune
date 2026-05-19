@@ -24,7 +24,7 @@ module Make
 struct
   include Ast
 
-  let run prog args = Run (prog, Array.Immutable.of_list args)
+  let run prog args = Run (prog, Appendable_list.of_list args)
   let chdir path t = Chdir (path, t)
   let setenv var value t = Setenv (var, value, t)
 
@@ -210,10 +210,8 @@ let digest =
     | Run (prog, args) ->
       int d 0;
       digest_program d ~dir prog;
-      int d (Array.Immutable.length args);
-      for i = 0 to Array.Immutable.length args - 1 do
-        string d (Array.Immutable.get args i)
-      done
+      int d (Appendable_list.length args);
+      Appendable_list.iter args ~f:(string d)
     | With_accepted_exit_codes (pred, t) ->
       int d 1;
       repr d (Predicate_lang.repr Repr.int) pred;

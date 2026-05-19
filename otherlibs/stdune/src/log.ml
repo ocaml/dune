@@ -100,6 +100,7 @@ let warn message args = info ("Warning: " ^ message) args
 let command ~command_line ~output ~exit_status =
   if !verbose
   then (
+    let command_line = Lazy.force command_line in
     let command_line = Ansi_color.strip command_line in
     let exit_status =
       match (exit_status : Unix.process_status) with

@@ -229,7 +229,7 @@ let create
       ~flags
       ~requires_compile
       ~requires_link
-      ?(pps_runtime_libs = Resolve.Memo.return [])
+      ~pps_runtime_libs
       ?(preprocessing = Pp_spec.dummy)
       ~opaque
       ~js_of_ocaml

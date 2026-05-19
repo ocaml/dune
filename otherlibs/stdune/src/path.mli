@@ -184,6 +184,7 @@ module Build : sig
   val split_sandbox_root : t -> t option * t
   val of_local : Local.t -> t
 
+  module Array : Array_intf.S with type Set.elt = t
   module Table : Hashtbl.S with type key = t
 end
 

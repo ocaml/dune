@@ -4,6 +4,10 @@ module type S = sig
     type t
 
     val empty : t
+    val singleton : elt -> t
+    val choose : t -> elt option
+    val iter : t -> f:(elt -> unit) -> unit
+    val to_dyn : t -> Dyn.t
     val is_empty : t -> bool
     val mem : t -> elt -> bool
     val of_list : elt list -> t

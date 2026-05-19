@@ -376,6 +376,13 @@ module Build = struct
 
   let to_string_maybe_quoted p = String.maybe_quoted (to_string p)
   let to_dyn s = Dyn.variant "In_build_dir" [ Path0.Local_gen.to_dyn s ]
+
+  module Array = Array.Sorted.Make (struct
+      type nonrec t = t
+
+      let compare = compare
+      let to_dyn = to_dyn
+    end)
 end
 
 module T : sig

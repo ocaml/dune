@@ -69,6 +69,7 @@ end
 module type Poly = sig
   type t
 
+  val hash : t -> int
   val equal : t -> t -> bool
   val compare : t -> t -> Ordering.t
 end

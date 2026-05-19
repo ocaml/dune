@@ -33,8 +33,6 @@ let rec pp = function
        ++ Pp.text ")")
 ;;
 
-let hash = Stdlib.Hashtbl.hash
-
 include Repr.Poly (struct
     type nonrec t = t
 

@@ -70,8 +70,6 @@ include Repr.Poly (struct
     let repr = repr
   end)
 
-let hash = Poly.hash
-
 let package_name = function
   | Ocamlformat -> Package_name.of_string "ocamlformat"
   | Odoc -> Package_name.of_string "odoc"

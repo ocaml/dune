@@ -35,7 +35,12 @@ let repr =
     ]
 ;;
 
-let equal, compare = Repr.make_compare repr
+include Repr.Poly (struct
+    type nonrec t = t
+
+    let repr = repr
+  end)
+
 let map = [ "=", Eq; ">=", Gte; "<=", Lte; ">", Gt; "<", Lt; "<>", Neq ]
 let to_dyn = Repr.to_dyn repr
 

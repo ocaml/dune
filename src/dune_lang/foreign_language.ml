@@ -17,7 +17,12 @@ module T = struct
       ]
   ;;
 
-  let equal, compare = Repr.make_compare repr
+  include Repr.Poly (struct
+      type nonrec t = t
+
+      let repr = repr
+    end)
+
   let to_dyn = Repr.to_dyn repr
 end
 

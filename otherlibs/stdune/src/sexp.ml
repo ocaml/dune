@@ -34,7 +34,12 @@ let rec pp = function
 ;;
 
 let hash = Stdlib.Hashtbl.hash
-let equal, compare = Repr.make_compare repr
+
+include Repr.Poly (struct
+    type nonrec t = t
+
+    let repr = repr
+  end)
 
 let rec of_dyn : Dyn.t -> t = function
   | Opaque -> Atom "<opaque>"

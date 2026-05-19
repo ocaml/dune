@@ -21,7 +21,11 @@ module Mode = struct
       ]
   ;;
 
-  let equal, compare = Repr.make_compare repr
+  include Repr.Poly (struct
+      type nonrec t = t
+
+      let repr = repr
+    end)
 
   let select ~mode ~js ~wasm =
     match mode with
@@ -89,7 +93,11 @@ module Sourcemap = struct
     | Wasm -> enum [ "no", No; "inline", Inline ]
   ;;
 
-  let equal, _ = Repr.make_compare repr
+  include Repr.Poly (struct
+      type nonrec t = t
+
+      let repr = repr
+    end)
 end
 
 module Flags = struct
@@ -187,7 +195,11 @@ module Compilation_mode = struct
     Decoder.enum [ "whole_program", Whole_program; "separate", Separate_compilation ]
   ;;
 
-  let equal, _ = Repr.make_compare repr
+  include Repr.Poly (struct
+      type nonrec t = t
+
+      let repr = repr
+    end)
 end
 
 module In_buildable = struct

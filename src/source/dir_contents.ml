@@ -17,7 +17,12 @@ module File = struct
     ;;
 
     let to_dyn = Repr.to_dyn repr
-    let _, compare = Repr.make_compare repr
+
+    include Repr.Poly (struct
+        type nonrec t = t
+
+        let repr = repr
+      end)
   end
 
   include T

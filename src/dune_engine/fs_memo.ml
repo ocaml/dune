@@ -54,7 +54,11 @@ module Cached_digest = struct
       }
     ;;
 
-    let _, compare = Repr.make_compare repr
+    include Repr.Poly (struct
+        type nonrec t = t
+
+        let repr = repr
+      end)
   end
 
   type 'a file =

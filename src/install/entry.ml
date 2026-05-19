@@ -163,7 +163,7 @@ let adjust_dst' ~src ~dst ~section =
   adjust_dst_gen ~src_suffix:(Full (Path.to_string (Path.build src))) ~dst ~section
 ;;
 
-let compare
+let compare_entry
       (type a)
       (type b)
       (compare_src : a -> a -> Ordering.t)
@@ -198,7 +198,13 @@ module Expanded = struct
       ]
   ;;
 
-  let _, compare_kind = Repr.make_compare repr_kind
+  include Repr.Poly (struct
+      type t = kind
+
+      let repr = repr_kind
+    end)
+
+  let compare_kind = compare
 
   type nonrec 'src t = ('src, kind) t
 
@@ -240,7 +246,7 @@ module Expanded = struct
     let pr fmt = Printf.bprintf buf (fmt ^^ "\n") in
     Section.Map.iteri (group entries) ~f:(fun section entries ->
       pr "%s: [" (Section.to_string section);
-      List.sort ~compare:(compare Path.compare compare_kind) entries
+      List.sort ~compare:(compare_entry Path.compare compare_kind) entries
       |> List.iter ~f:(fun (e : Path.t t) ->
         let src = Path.to_string e.src in
         match
@@ -322,7 +328,13 @@ module Unexpanded = struct
       ]
   ;;
 
-  let _, compare_kind = Repr.make_compare repr_kind
+  include Repr.Poly (struct
+      type t = kind
+
+      let repr = repr_kind
+    end)
+
+  let compare_kind = compare
 
   type nonrec t = (Path.Build.t, kind) t
 
@@ -346,7 +358,7 @@ module Unexpanded = struct
     { t with kind }
   ;;
 
-  let compare a b = compare Path.Build.compare compare_kind a b
+  let compare a b = compare_entry Path.Build.compare compare_kind a b
 end
 
 module Sourced = struct

@@ -264,8 +264,10 @@ let make_root_env (context : Context.t) ~(host : t option) : Env.t Memo.t =
 let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
   let context_name = Context.name context in
   let env =
-    let* base = make_root_env context ~host in
-    Site_env.add_packages_env context_name ~base stanzas packages
+    Memo.lazy_ (fun () ->
+      let* base = make_root_env context ~host in
+      Site_env.add_packages_env context_name ~base stanzas packages)
+    |> Memo.Lazy.force
   in
   let artifacts = Artifacts_db.get context in
   let+ root_expander =

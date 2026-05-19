@@ -27,7 +27,7 @@ val create
   -> flags:Ocaml_flags.t
   -> requires_compile:Lib.t list Resolve.Memo.t
   -> requires_link:Lib.t list Resolve.t Memo.Lazy.t
-  -> ?pps_runtime_libs:Lib.t list Resolve.Memo.t
+  -> pps_runtime_libs:Lib.t list Resolve.Memo.t
   -> ?preprocessing:Pp_spec.t
   -> opaque:opaque
   -> js_of_ocaml:Js_of_ocaml.In_context.t option Js_of_ocaml.Mode.Pair.t

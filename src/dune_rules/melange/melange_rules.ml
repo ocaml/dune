@@ -555,6 +555,7 @@ let setup_emit_cmj_rules
         ~flags
         ~requires_link
         ~requires_compile:direct_requires
+        ~pps_runtime_libs:(Resolve.Memo.return [])
         ~preprocessing:pp
         ~js_of_ocaml:(Js_of_ocaml.Mode.Pair.make None)
         ~opaque:Inherit_from_settings

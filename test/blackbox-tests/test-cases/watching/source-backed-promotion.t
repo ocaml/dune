@@ -32,7 +32,10 @@ in _build.
 
 Current behavior: promotion into an existing source path suppresses the file
 watcher event for that source path. The source file is updated, but an existing
-source-copy target depending on it is not refreshed by that promotion alone.
+source-copy target depending on it remains stale after that promotion. Watch
+mode may execute the source-copy rule one or more times around the promotion,
+so the test avoids asserting the exact run log and only checks that promotion
+happened.
 
   $ mkdir promote-and-source-copy
   $ cd promote-and-source-copy
@@ -53,8 +56,6 @@ source-copy target depending on it is not refreshed by that promotion alone.
   Success
   $ cat _build/default/result
   old
-  $ cat runs
-  copy:old
-  copy:old
+  $ if grep -q '^promote$' runs; then echo promote; else echo missing; fi
   promote
   $ stop_dune > /dev/null

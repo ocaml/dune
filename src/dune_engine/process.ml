@@ -435,7 +435,10 @@ module Short_display = struct
         split_paths [] Context_name.Set.empty targets
       in
       let targets =
-        List.map target_names ~f:Filename.split_extension_after_dot
+        List.map target_names ~f:(fun fn ->
+          match Stdlib.Filename.extension fn with
+          | "" -> fn, ""
+          | s -> String.split_n fn (String.length fn - String.length s + 1))
         |> String.Map.of_list_multi
         |> String.Map.to_list_map ~f:(fun prefix suffixes ->
           match suffixes with
@@ -909,6 +912,14 @@ let spawn
     | _ -> (None, stdout), (None, stderr)
   in
   let prog_str = Path.reach_for_running ?from:dir prog in
+  (* Normalise to backslashes on Windows. Dune's path representation uses '/'
+     across platforms for consistency, but some Windows programs (notably
+     cmd.exe, which scans argv[0] for '/c') misparse mixed separators.
+     Backslashes are the native form on Windows, so we normalise here at the
+     boundary between Dune's path representation and the OS. *)
+  let prog_str =
+    if Sys.win32 then String.replace_char prog_str ~from:'/' ~to_:'\\' else prog_str
+  in
   let args, response_file =
     if Sys.win32 && cmdline_approximate_length prog_str args >= 1024
     then (

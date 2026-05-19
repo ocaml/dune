@@ -32,7 +32,10 @@ let build_c_command ~sctx ~dir ~expander ~include_flags (src : Foreign.Source.t)
     >>| Appendable_list.to_list
   in
   let src_relative =
-    Foreign.Source.path src |> Path.Build.basename |> Path.Local.of_string
+    Foreign.Source.path src
+    |> Path.Build.basename
+    |> Filename.to_string
+    |> Path.Local.of_string
   in
   { directory = Path.build dir
   ; file = src_relative
@@ -41,7 +44,8 @@ let build_c_command ~sctx ~dir ~expander ~include_flags (src : Foreign.Source.t)
         [ [ Ocaml_config.c_compiler ocaml.ocaml_config ]
         ; args
         ; (let dst =
-             Foreign.Source.object_name src ^ Filename.Extension.to_string ext_obj
+             Filename.to_string (Foreign.Source.object_name src)
+             ^ Filename.Extension.to_string ext_obj
            in
            match ocaml.lib_config.ccomp_type with
            | Msvc -> [ "/Fo" ^ dst ]

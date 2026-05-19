@@ -4,6 +4,7 @@ module Category : sig
   type t =
     | Rpc
     | Gc
+    | Alloc
     | Fd
     | Sandbox
     | Persistent
@@ -37,6 +38,18 @@ module Event : sig
   end
 
   type t
+
+  type alloc_entry =
+    { trace : string list
+    ; estimated_words : int
+    ; samples : int
+    }
+
+  type alloc_heap =
+    { total_words : int
+    ; total_samples : int
+    ; top : alloc_entry list
+    }
 
   val sandbox
     :  [ `Create | `Snapshot | `Destroy | `Extract | `Corrected ]
@@ -115,7 +128,14 @@ module Event : sig
   val process_cleanup_start : unit -> t
   val process_cleanup_sigkill : unit -> t
   val process_cleanup_finish : unit -> t
-  val watch_build_start : run_id:int -> restart:bool -> start:Time.t -> t
+
+  val watch_build_start
+    :  run_id:int
+    -> restart:bool
+    -> files:Path.t list option
+    -> start:Time.t
+    -> t
+
   val watch_build_restart : run_id:int -> reasons:string list -> at:Time.t -> t
 
   val watch_build_finish
@@ -124,6 +144,14 @@ module Event : sig
     -> start:Time.t
     -> stop:Time.t
     -> restart_duration:Time.Span.t option
+    -> t
+
+  val alloc_summary
+    :  phase:[ `Build | `Exit ]
+    -> run_id:int option
+    -> minor:alloc_heap
+    -> major:alloc_heap
+    -> promoted:alloc_heap
     -> t
 
   val init : version:string option -> t
@@ -189,6 +217,7 @@ module Event : sig
 
     val shutdown : id:int -> stage -> t
     val startup_failure : Exn_with_backtrace.t -> t
+    val registry_write : path:string -> t
     val close : id:int -> t
     val dropped_write_client_disconnect : Exn.t -> t
   end
@@ -240,6 +269,14 @@ module Event : sig
       -> new_stats:Dyn.t
       -> t
 
+    val reread_dir
+      :  path:Path.t
+      -> old_contents:Dyn.t
+      -> new_contents:Dyn.t
+      -> old_stats:Dyn.t
+      -> new_stats:Dyn.t
+      -> t
+
     val dropped_stale_mtimes : Path.t list -> fs_now:Time.t -> t
   end
 
@@ -263,6 +300,8 @@ val enabled : Category.t -> bool
 val emit : ?buffered:bool -> Category.t -> (unit -> Event.t) -> unit
 val emit_all : ?buffered:bool -> Category.t -> (unit -> Event.t list) -> unit
 val flush : unit -> unit
+val reset_alloc_profile : unit -> unit
+val capture_alloc_profile : [ `Build of int | `Exit ] -> Event.t option
 val at_exit : At_exit.t
 
 module Private : sig

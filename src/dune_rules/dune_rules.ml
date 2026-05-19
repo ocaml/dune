@@ -89,16 +89,6 @@ module For_tests = struct
   module Which = Which
 end
 
-module Coq = struct
-  module Coq_mode = Coq_mode
-  module Coq_rules = Coq_rules
-  module Coq_module = Coq_module
-  module Coq_sources = Coq_sources
-  module Coq_lib_name = Coq_lib_name
-  module Coq_lib = Coq_lib
-  module Coq_flags = Coq_flags
-end
-
 module Rocq = struct
   module Rocq_mode = Rocq_mode
   module Rocq_rules = Rocq_rules

@@ -24,7 +24,7 @@ let to_dune_dep_set =
 
 let exec ~(ectx : context) ~(eenv : env) prog args =
   let open Fiber.O in
-  let* () = Rpc.ensure_ready () in
+  let* () = Rpc.Global.ensure_ready () in
   let run_arguments_fn = Temp.create File ~prefix:"dune" ~suffix:"run" in
   let response_fn = Temp.create File ~prefix:"dune" ~suffix:"response" in
   let run_arguments =
@@ -38,7 +38,7 @@ let exec ~(ectx : context) ~(eenv : env) prog args =
             ~loc:ectx.rule_loc
             [ Pp.text "Directory targets are not compatible with dynamic actions" ];
         Filename.Set.to_list_map targets.files ~f:(fun target ->
-          Path.Build.relative targets.root target
+          Path.Build.relative_fname targets.root target
           |> Path.build
           |> Path.reach ~from:eenv.working_dir)
         |> String.Set.of_list

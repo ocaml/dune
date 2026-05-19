@@ -4,6 +4,7 @@
   stdune
   dune_engine
   dune_targets
+  rpc
   predicate_lang
   fiber
   csexp

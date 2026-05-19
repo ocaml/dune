@@ -48,7 +48,7 @@ let rec encode_action : Action.For_shell.t -> Dune_lang.t =
   let target = Encoder.string in
   function
   | Run (a, xs) ->
-    List (atom "run" :: program a :: List.map (Array.Immutable.to_list xs) ~f:string)
+    List (atom "run" :: program a :: List.map (Appendable_list.to_list xs) ~f:string)
   | With_accepted_exit_codes (pred, t) ->
     List
       [ atom "with-accepted-exit-codes"
@@ -207,7 +207,7 @@ let action_repr =
 
 let target_names ~root names =
   Filename.Set.to_list_map names ~f:(fun name ->
-    Path.Build.relative root name |> Path.Build.to_string)
+    Path.Build.relative_fname root name |> Path.Build.to_string)
 ;;
 
 let targets_repr =
@@ -223,7 +223,7 @@ let targets_repr =
 let rule_context (rule : Dune_engine.Reflection.Rule.t) =
   match Path.Build.extract_build_context rule.targets.Targets.Validated.root with
   | None -> None
-  | Some (context, _) -> Some context
+  | Some (context, _) -> Some (Filename.to_string context)
 ;;
 
 let rule_repr =

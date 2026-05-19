@@ -33,6 +33,11 @@ let of_mode_set (modes : Lib_mode.Map.Set.t) =
   | false, false, false -> { modes = []; for_merlin = Ocaml }
 ;;
 
+let default_sandbox = function
+  | Ocaml -> Sandbox_config.no_special_requirements
+  | Melange -> Sandbox_config.needs_sandboxing
+;;
+
 module By_mode = struct
   type nonrec 'a t =
     { ocaml : 'a
@@ -40,6 +45,13 @@ module By_mode = struct
     }
 
   let both t = { ocaml = t; melange = t }
+
+  let choose t =
+    match t.ocaml, t.melange with
+    | Some m, _ | None, Some m -> Some m
+    | None, None -> None
+  ;;
+
   let from_fun f = { ocaml = f ~for_:Ocaml; melange = f ~for_:Melange }
 
   let of_list xs ~init =
@@ -47,6 +59,14 @@ module By_mode = struct
       match k with
       | Ocaml -> { acc with ocaml = item }
       | Melange -> { acc with melange = item })
+  ;;
+
+  let to_list t =
+    match t.ocaml, t.melange with
+    | Some ocaml, Some melange -> [ Ocaml, ocaml; Melange, melange ]
+    | Some ocaml, None -> [ Ocaml, ocaml ]
+    | None, Some melange -> [ Melange, melange ]
+    | None, None -> []
   ;;
 
   let just t ~for_ = of_list ~init:None [ for_, Some t ]

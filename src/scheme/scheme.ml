@@ -20,24 +20,24 @@ module Evaluated : sig
   val empty : unit -> 'a t
   val restrict : Path.Build.w Dir_set.t -> 'a t Memo.Lazy.t -> 'a t Memo.t
   val finite : union_rules:('a -> 'a -> 'a) -> 'a Path.Build.Map.t -> 'a t
-  val get_rules : 'a t -> dir:Path.Build.t -> ('a option * String.Set.t) Memo.t
+  val get_rules : 'a t -> dir:Path.Build.t -> ('a option * Filename.Set.t) Memo.t
 end = struct
   type 'rules t =
-    { by_child : 'rules t Memo.Lazy.t String.Map.t
+    { by_child : 'rules t Memo.Lazy.t Filename.Map.t
     ; rules_here : 'rules option Memo.Lazy.t
     }
 
-  let empty () = { by_child = String.Map.empty; rules_here = Memo.Lazy.of_val None }
+  let empty () = { by_child = Filename.Map.empty; rules_here = Memo.Lazy.of_val None }
 
   let descend t dir =
-    match String.Map.find t.by_child dir with
+    match Filename.Map.find t.by_child dir with
     | None -> Memo.return (empty ())
     | Some res -> Memo.Lazy.force res
   ;;
 
   let rec union ~union_rules x y =
     { by_child =
-        String.Map.union x.by_child y.by_child ~f:(fun _key data1 data2 ->
+        Filename.Map.union x.by_child y.by_child ~f:(fun _key data1 data2 ->
           Some
             (Memo.Lazy.create ~name:"scheme-union" (fun () ->
                let+ x = Memo.Lazy.force data1
@@ -67,12 +67,12 @@ end = struct
            user is interested in is not actually in the set. We're not fully
            committed to supporting this case though, anyway. *)
         let+ t = Memo.Lazy.force t in
-        String.Map.mapi t.by_child ~f:(fun dir v ->
+        Filename.Map.mapi t.by_child ~f:(fun dir v ->
           Memo.lazy_ ~name:"restrict-by-child-default" (fun () ->
             restrict (Dir_set.descend dirs dir) v))
       | false ->
         Dir_set.exceptions dirs
-        |> String.Map.mapi ~f:(fun dir v ->
+        |> Filename.Map.mapi ~f:(fun dir v ->
           Memo.lazy_ ~name:"restrict-by-child-non-default-outer" (fun () ->
             restrict
               v
@@ -88,9 +88,10 @@ end = struct
 
   let singleton =
     let rec go rules = function
-      | [] -> { by_child = String.Map.empty; rules_here = Memo.Lazy.of_val (Some rules) }
+      | [] ->
+        { by_child = Filename.Map.empty; rules_here = Memo.Lazy.of_val (Some rules) }
       | x :: xs ->
-        { by_child = String.Map.singleton x (Memo.Lazy.of_val (go rules xs))
+        { by_child = Filename.Map.singleton x (Memo.Lazy.of_val (go rules xs))
         ; rules_here = Memo.Lazy.of_val None
         }
     in
@@ -111,7 +112,7 @@ end = struct
     fun t ~dir ->
       let* t = loop (Path.Build.explode dir) t in
       let+ rules = Memo.Lazy.force t.rules_here in
-      rules, String.Set.of_keys t.by_child
+      rules, Filename.Set.of_keys t.by_child
   ;;
 end
 

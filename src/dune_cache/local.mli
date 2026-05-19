@@ -41,18 +41,6 @@ module Restore_result : sig
   val bind : 'a t -> f:('a -> 'b t) -> 'b t
 end
 
-type metadata
-
-(** A [Value] entry corresponds to the standard output of an action. *)
-module Value : sig
-  module Metadata_file : sig
-    type t = private
-      { metadata : metadata
-      ; value_digest : Digest.t
-      }
-  end
-end
-
 (** An [Artifacts] entry corresponds to the targets produced by an action. *)
 module Artifacts : sig
   module Metadata_entry : sig
@@ -65,8 +53,7 @@ module Artifacts : sig
 
   module Metadata_file : sig
     type t =
-      { metadata : metadata
-      ; (* The entries are listed in the same order that they were provided when
+      { (* The entries are listed in the same order that they were provided when
            storing artifacts in the cache. We keep the order to avoid confusion
            even though sorting the entres is tempting. *)
         entries : Metadata_entry.t list
@@ -85,17 +72,13 @@ module Artifacts : sig
   val list : rule_digest:Dune_digest.t -> Metadata_entry.t list Restore_result.t
 end
 
-(** Some generic operations on metadata files. *)
+(** Operations on metadata files. *)
 module Metadata : sig
-  type t =
-    | Artifacts of Artifacts.Metadata_file.t
-    | Value of Value.Metadata_file.t
-
   module Versioned : sig
     (** Same as the unversioned function but supports old metadata versions. *)
     val restore
       :  Version.Metadata.t
       -> rule_or_action_digest:Dune_digest.t
-      -> t Restore_result.t
+      -> Artifacts.Metadata_file.t Restore_result.t
   end
 end

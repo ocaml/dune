@@ -64,9 +64,9 @@ As expected, Dune can no longer build A:
 
   $ dune build --root A
   Entering directory 'A'
-  File "dune", line 3, characters 19-20:
-  3 |  (theories Corelib B))
-                         ^
+  File "dune", line 3, characters 11-12:
+  3 |  (theories B))
+                 ^
   Theory "B" has not been found.
   -> required by theory A in dune:2
   -> required by _build/default/.A.theory.d

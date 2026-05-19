@@ -80,11 +80,12 @@ module Unresolved = struct
 
   let load ~dune_version ~dir ~files =
     let init = String.Map.empty in
-    String.Set.fold files ~init ~f:(fun fn acc ->
-      match drop_source_extension fn ~dune_version with
+    Filename.Array.Set.fold files ~init ~f:(fun fn acc ->
+      let fn_s = Filename.to_string fn in
+      match drop_source_extension fn_s ~dune_version with
       | None -> acc
       | Some (obj, language) ->
-        let path = Path.Build.relative dir fn in
+        let path = Path.Build.relative dir fn_s in
         String.Map.add_multi acc obj (language, path))
   ;;
 
@@ -140,7 +141,8 @@ let ctypes_stubs sources (ctypes : Ctypes_field.t) =
         (* TODO *)
       in
       let name =
-        Ctypes_field.c_generated_functions_cout_c ctypes fd |> Filename.remove_extension
+        Ctypes_field.c_generated_functions_cout_c ctypes fd
+        |> Stdlib.Filename.remove_extension
       in
       let path =
         match Unresolved.find_source sources C (loc, name) with
@@ -188,7 +190,7 @@ let eval_foreign_stubs
       match Unresolved.find_source sources language (loc, name) with
       | Some path ->
         let src = Foreign.Source.make (Stubs stubs) ~path in
-        let new_key = Foreign.Source.object_name src in
+        let new_key = Foreign.Source.object_name src |> Filename.to_string in
         String.Map.add_exn acc new_key (loc, src)
       | None ->
         User_error.raise
@@ -209,7 +211,7 @@ let eval_foreign_stubs
   in
   List.fold_left stub_maps ~init:String.Map.empty ~f:(fun a b ->
     String.Map.union a b ~f:(fun _name (loc, src1) (_, src2) ->
-      let name = Foreign.Source.user_object_name src1 in
+      let name = Foreign.Source.user_object_name src1 |> Filename.to_string in
       let mode = Foreign.Source.mode src1 in
       multiple_sources_error
         ~name
@@ -255,7 +257,7 @@ let make stanzas ~(sources : Unresolved.t) ~dune_version =
         ]
       |> List.concat_map ~f:(fun sources ->
         Foreign.Sources.to_list_map sources ~f:(fun _ (loc, source) ->
-          Foreign.Source.object_name source, loc))
+          Foreign.Source.object_name source |> Filename.to_string, loc))
     in
     match String.Map.of_list objects with
     | Ok _ -> ()

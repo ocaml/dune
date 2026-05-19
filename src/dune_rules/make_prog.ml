@@ -4,11 +4,11 @@ open Memo.O
 let which loc context ~path =
   (let which = Which.which ~path in
    match Sys.unix with
-   | false -> which "make"
+   | false -> which Filename.make
    | true ->
-     which "gmake"
+     which Filename.gmake
      >>= (function
-      | None -> which "make"
+      | None -> which Filename.make
       | Some _ as s -> Memo.return s))
   >>| function
   | Some p -> p

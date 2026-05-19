@@ -420,8 +420,6 @@ let try_to_store_to_shared_cache ~mode ~rule_digest ~loc ~produced_targets
     Targets.Produced.map_with_errors
       produced_targets
       ~f:(fun target ->
-        (* All of this monad boilerplate seems unnecessary since we
-           don't care about errors... *)
         match Target.create target with
         | Some t -> Ok t
         | None -> Error ())
@@ -430,7 +428,13 @@ let try_to_store_to_shared_cache ~mode ~rule_digest ~loc ~produced_targets
         | Some _ -> Ok ()
         | None -> Error ())
   with
-  | Error _ -> Fiber.return None
+  | Error errors ->
+    Log.info
+      "cache store target creation errors"
+      [ ( "failed"
+        , Dyn.list (fun (t, _) -> Path.Build.to_dyn t) (Nonempty_list.to_list errors) )
+      ];
+    Fiber.return None
   | Ok targets ->
     store_artifacts ~mode ~rule_digest targets
     >>= (function
@@ -466,20 +470,9 @@ module File_digest = struct
   module Digest_result = Dune_digest.Digest_result
   module Error = Digest_result.Error
 
-  (* CR-soon rgrinberg: a bunch of this is duplicated from cached_digest.ml.
-     This is temporary since [Cached_digest] is going to be limited source
-     files *)
-
   let refresh_async ~allow_dirs stats path =
     let path = Path.build path in
-    let open Fiber.O in
-    Digest.Stats_for_digest.of_unix_stats stats
-    |> Digest.path_with_stats_async ~allow_dirs path
-    >>| function
-    | Ok digest -> Ok digest
-    | Error Unexpected_kind -> Error (Error.Unexpected_kind stats.st_kind)
-    | Error (Unix_error (ENOENT, _, _)) -> Error No_such_file
-    | Error (Unix_error other_error) -> Error (Unix_error other_error)
+    Digest_result.path_with_unix_stats_async ~allow_dirs path stats
   ;;
 
   let refresh_without_removing_write_permissions_async ~allow_dirs path =

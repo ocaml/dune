@@ -97,7 +97,7 @@ module Workspace = struct
       let name = Package.name p in
       let dir = Package.dir p in
       Ok
-        (Path.Source.relative
+        (Path.Source.relative_fname
            dir
            (Dune_rules.Install_rules.install_file ~package:name ~findlib_toolchain))
   ;;
@@ -134,7 +134,7 @@ module Special_file = struct
     match e.section with
     | Lib ->
       let dst = Install.Entry.Dst.to_string e.dst in
-      if dst = Dune_findlib.Findlib.Package.meta_fn
+      if String.equal dst (Filename.to_string Dune_findlib.Findlib.Package.meta_fn)
       then Some META
       else if dst = Dune_package.fn
       then Some Dune_package
@@ -517,6 +517,16 @@ let run
          User_error.raise
            [ Pp.textf "Context %S not found!" (Dune_engine.Context_name.to_string name) ])
   in
+  let* source_workspace = Memo.run (Source.Workspace.workspace ()) in
+  let lock_dir_paths =
+    Pkg.Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace
+      Pkg.Pkg_common.Lock_dirs_arg.all
+      source_workspace
+  in
+  if Pkg.Pkg_common.pkg_enabled ~workspace:source_workspace ~lock_dir_paths
+  then
+    User_error.raise
+      [ Pp.text "dune install is not supported with Dune package management." ];
   let* pkgs =
     match pkgs with
     | _ :: _ -> Fiber.return pkgs

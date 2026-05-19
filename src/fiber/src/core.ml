@@ -133,6 +133,15 @@ let rec nfork_seq left_over x (seq : _ Seq.t) f =
      | eff -> Fork (eff, fun () -> nfork_seq left_over y seq f))
 ;;
 
+let rec nfork_array a i f =
+  if i = Array.length a - 1
+  then f a.(i)
+  else (
+    match apply f a.(i) with
+    | End_of_fiber () -> nfork_array a (i + 1) f
+    | eff -> Fork (eff, fun () -> nfork_array a (i + 1) f))
+;;
+
 let parallel_iter_seq (seq : _ Seq.t) ~f k =
   match seq () with
   | Nil -> k ()
@@ -144,6 +153,51 @@ let parallel_iter_seq (seq : _ Seq.t) ~f k =
         if !left_over = 0 then k () else end_of_fiber)
     in
     nfork_seq left_over x seq f
+;;
+
+let map_reduce_seq (seq : _ Seq.t) ~f ~empty ~combine k =
+  match seq () with
+  | Nil -> k empty
+  | Cons (x, seq) ->
+    let current = ref empty in
+    let running = ref 1 in
+    let f x =
+      f x (fun y ->
+        current := combine !current y;
+        decr running;
+        if !running = 0 then k !current else end_of_fiber)
+    in
+    nfork_seq running x seq f
+;;
+
+let map_reduce_array a ~f ~empty ~combine k =
+  match Array.length a with
+  | 0 -> k empty
+  | len ->
+    let current = ref empty in
+    let running = ref len in
+    let f x =
+      f x (fun y ->
+        current := combine !current y;
+        decr running;
+        if !running = 0 then k !current else end_of_fiber)
+    in
+    nfork_array a 0 f
+;;
+
+let map_reduce l ~f ~empty ~combine k =
+  match l with
+  | [] -> k empty
+  | x :: l ->
+    let current = ref empty in
+    let running = ref (List.length l + 1) in
+    let f x =
+      f x (fun y ->
+        current := combine !current y;
+        decr running;
+        if !running = 0 then k !current else end_of_fiber)
+    in
+    nfork x l f
 ;;
 
 type ('a, 'b) fork_and_join_state =
@@ -217,14 +271,27 @@ module Ivar = struct
   type 'a t = 'a ivar
 
   let create () = { state = Empty }
-  let read t k = Read_ivar (t, k)
-  let fill t x k = Fill_ivar (t, x, k)
 
-  let peek t k =
-    k
-      (match t.state with
-       | Empty | Empty_with_readers _ -> None
-       | Full x -> Some x)
+  let read t k =
+    match t.state with
+    | Full x -> k x
+    | Empty_with_readers _ | Empty -> Read_ivar (t, k)
+  ;;
+
+  let fill t x k =
+    match t.state with
+    | Empty ->
+      t.state <- Full x;
+      k ()
+    | Full _ | Empty_with_readers _ -> Fill_ivar (t, x, k)
+  ;;
+
+  let create_full a = { state = Full a }
+
+  let peek t =
+    match t.state with
+    | Empty | Empty_with_readers _ -> None
+    | Full x -> Some x
   ;;
 end
 

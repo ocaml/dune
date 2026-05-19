@@ -10,6 +10,6 @@ type mld =
 val build_mlds_map
   :  Dune_file.t
   -> dir:Path.Build.t
-  -> files:Filename.Set.t
+  -> files:Filename.Array.Set.t
   -> Expander.t
   -> (Documentation.t * mld list) list Memo.t

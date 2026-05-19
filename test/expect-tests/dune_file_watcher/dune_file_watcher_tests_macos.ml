@@ -12,7 +12,7 @@ let%expect_test _ =
       ~scheduler:
         { thread_safe_send_emit_events_job =
             (fun job ->
-              critical_section mutex ~f:(fun () ->
+              Mutex.protect mutex (fun () ->
                 let events = job () in
                 events_buffer := !events_buffer @ events))
         }
@@ -20,7 +20,7 @@ let%expect_test _ =
       ()
   in
   let try_to_get_events () =
-    critical_section mutex ~f:(fun () ->
+    Mutex.protect mutex (fun () ->
       match !events_buffer with
       | [] -> None
       | list ->

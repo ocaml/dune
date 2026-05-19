@@ -38,7 +38,10 @@ module Session : sig
       [payload].
 
       Note that any request must be declared with [declare_request] before
-      sending it *)
+      sending it.
+
+      Raises [Response.Error.E] with kind [Connection_dead] if the session is
+      closed before a response is received. *)
   val request
     :  _ t
     -> ('a, 'b) Decl.Request.witness

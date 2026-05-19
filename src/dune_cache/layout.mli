@@ -1,10 +1,5 @@
 (** The layout of the Dune cache storage, used by local and cloud build caches. *)
 
-(* CR-someday amokhov: Jenga used "value" entries to store the standard output
-   of anonymous actions, but Dune currently stores everything in "file" entries.
-   We decided to keep support for values for now but will re-evaluate this
-   decision in 6 months. *)
-
 open Stdune
 module Digest := Dune_digest
 
@@ -45,9 +40,6 @@ val file_storage_dir : Path.t Lazy.t
 (** Path to the artifact corresponding to a given [file_digest]. *)
 val file_path : file_digest:Digest.t -> Path.t Lazy.t
 
-(** Path to the value corresponding to a given [value_digest]. *)
-val value_path : value_digest:Digest.t -> Path.t Lazy.t
-
 (** This directory contains temporary files used for atomic file operations
     needed when storing new artifacts in the cache. See [write_atomically]. *)
 val temp_dir : Path.t Lazy.t
@@ -69,8 +61,8 @@ module Versioned : sig
   (** List all metadata entries currently stored in the cache. Note that there
       is no guarantee that the result is up-to-date, since files can be added or
       removed concurrently by other processes. *)
-  val list_metadata_entries : Version.Metadata.t -> (Path.t * Digest.t) list Lazy.t
+  val list_metadata_entries : Version.Metadata.t -> (Path.t * Digest.t) list
 
   (** List [list_metadata_entries] but for file entries. *)
-  val list_file_entries : Version.File.t -> (Path.t * Digest.t) list Lazy.t
+  val list_file_entries : Version.File.t -> (Path.t * Digest.t) list
 end

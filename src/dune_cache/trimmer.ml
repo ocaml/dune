@@ -28,7 +28,6 @@ let trim_broken_metadata_entries ~trimmed_so_far =
         Layout.Versioned.file_path (Version.Metadata.file_version version)
       in
       Layout.Versioned.list_metadata_entries version
-      |> Lazy.force
       |> List.fold_left
            ~init:trimmed_so_far
            ~f:(fun trimmed_so_far (path, rule_or_action_digest) ->
@@ -41,20 +40,14 @@ let trim_broken_metadata_entries ~trimmed_so_far =
                | Error _exn ->
                  (* If a metadata file can't be restored, let's trim it. *)
                  true
-               | Restored metadata ->
-                 (match metadata with
-                  | Value _ ->
-                    (* We do not expect to see any value entries in the cache. Let's
-                    keep them untrimmed for now. *)
-                    false
-                  | Artifacts { entries; metadata = _ } ->
-                    List.exists entries ~f:(function
-                      | { Local.Artifacts.Metadata_entry.digest = None; path = _ } ->
-                        (* no digest means it's a directory. *)
-                        false
-                      | { digest = Some file_digest; path = _ } ->
-                        let reference = Lazy.force (file_path ~file_digest) in
-                        not (Fpath.exists (Path.to_string reference))))
+               | Restored { entries } ->
+                 List.exists entries ~f:(function
+                   | { Local.Artifacts.Metadata_entry.digest = None; path = _ } ->
+                     (* no digest means it's a directory. *)
+                     false
+                   | { digest = Some file_digest; path = _ } ->
+                     let reference = Lazy.force (file_path ~file_digest) in
+                     not (Fpath.exists (Path.to_string reference)))
              in
              match should_be_removed with
              | false -> trimmed_so_far
@@ -79,7 +72,7 @@ let garbage_collect () =
 
 let files_in_cache_for_all_supported_versions () =
   List.concat_map Version.File.all ~f:(fun file_version ->
-    Lazy.force (Layout.Versioned.list_file_entries file_version))
+    Layout.Versioned.list_file_entries file_version)
 ;;
 
 (* We call a cached file "unused" if there are currently no hard links to it
@@ -88,6 +81,25 @@ let files_in_cache_for_all_supported_versions () =
    claim that its removal is the result of cache trimming and we, therefore,
    skip it while trimming. *)
 let file_exists_and_is_unused ~stats = stats.Unix.st_nlink = 1
+
+module Unused_file = struct
+  type t =
+    { path : Path.t
+    ; size : int
+    ; ctime : float
+    }
+end
+
+let unused_files_in_cache () =
+  files_in_cache_for_all_supported_versions ()
+  |> List.filter_map ~f:(fun (path, _) ->
+    match Path.stat path with
+    | Error _ -> None
+    | Ok stats ->
+      if file_exists_and_is_unused ~stats
+      then Some { Unused_file.path; size = stats.st_size; ctime = stats.st_ctime }
+      else None)
+;;
 
 (* Dune uses [ctime] to prioritise entries for deletion. How does this work?
 
@@ -103,41 +115,26 @@ let file_exists_and_is_unused ~stats = stats.Unix.st_nlink = 1
      starting from the one that was least recently created or used. *)
 let trim ~goal =
   let files =
-    files_in_cache_for_all_supported_versions ()
-    |> List.filter_map ~f:(fun (path, _) ->
-      match Path.stat path with
-      | Error _ -> None
-      | Ok stats ->
-        if file_exists_and_is_unused ~stats
-        then Some (path, stats.st_size, stats.st_ctime)
-        else None)
-    |> List.sort ~compare:(fun (_, _, ctime1) (_, _, ctime2) ->
-      Float.compare ctime1 ctime2)
+    unused_files_in_cache ()
+    |> List.sort ~compare:(fun x y -> Float.compare x.Unused_file.ctime y.ctime)
   in
-  let delete (trimmed_so_far : Trimming_result.t) (path, bytes, _) =
+  let delete (trimmed_so_far : Trimming_result.t) { Unused_file.path; size; _ } =
     if trimmed_so_far.trimmed_bytes >= goal
     then trimmed_so_far
     else (
       Fpath.unlink_no_err (Path.to_string path);
       (* CR-someday amokhov: We should really be using block_size * #blocks
          because that's how much we save actually. *)
-      Trimming_result.add trimmed_so_far ~bytes)
+      Trimming_result.add trimmed_so_far ~bytes:size)
   in
   let trimmed_so_far = List.fold_left ~init:Trimming_result.empty ~f:delete files in
   trim_broken_metadata_entries ~trimmed_so_far
 ;;
 
 let overhead_size () =
-  files_in_cache_for_all_supported_versions ()
-  |> List.fold_left ~init:0L ~f:(fun acc (p, _) ->
-    let size =
-      try
-        let stats = Unix.stat (Path.to_string p) in
-        if file_exists_and_is_unused ~stats then Int64.of_int stats.st_size else 0L
-      with
-      | Unix.Unix_error (Unix.ENOENT, _, _) -> 0L
-    in
-    Int64.add acc size)
+  unused_files_in_cache ()
+  |> List.fold_left ~init:0L ~f:(fun acc file ->
+    Int64.add acc (Int64.of_int file.Unused_file.size))
 ;;
 
 let clear () =

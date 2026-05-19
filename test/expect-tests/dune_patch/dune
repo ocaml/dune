@@ -5,6 +5,7 @@
   dune_tests_common
   stdune
   fiber
+  patch
   dune_patch
   dune_engine
   dune_scheduler

@@ -34,7 +34,7 @@ val create
   -> melange_package_name:Lib_name.t option
   -> ?implements:Virtual_rules.t
   -> ?parameters:Lib.t list Resolve.Memo.t
-  -> ?modes:Lib_mode.Map.Set.t
+  -> ?modes:Mode.Dict.Set.t
   -> ?bin_annot:bool
   -> ?bin_annot_cms:bool
   -> ?cms_cmt_dependency:Workspace.Context.Cms_cmt_dependency.t
@@ -70,7 +70,7 @@ val set_sandbox : t -> Sandbox_config.t -> t
 val package : t -> Package.t option
 val implements : t -> Virtual_rules.t
 val melange_package_name : t -> Lib_name.t option
-val modes : t -> Lib_mode.Map.Set.t
+val modes : t -> Mode.Dict.Set.t option
 val for_wrapped_compat : t -> t
 val for_root_module : t -> Module.t -> t
 val ocaml : t -> Ocaml_toolchain.t
@@ -93,5 +93,5 @@ val dep_graphs : t -> Dep_graph.t Ml_kind.Dict.t
 
 val loc : t -> Loc.t option
 val set_obj_dir : t -> Path.Build.t Obj_dir.t -> t
-val set_modes : t -> modes:Lib_mode.Map.Set.t -> t
+val set_modes : t -> modes:Mode.Dict.Set.t -> t
 val instances : t -> Parameterised_instances.t Action_builder.t

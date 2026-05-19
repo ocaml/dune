@@ -508,7 +508,10 @@ let is_local t =
     (match Path.Build.extract_build_context dir with
      | None -> true
      | Some (name, _) ->
-       not (Context_name.equal (Context_name.of_string name) Private_context.t.name))
+       not
+         (Context_name.equal
+            (Context_name.of_string (Filename.to_string name))
+            Private_context.t.name))
 ;;
 
 let resolve_main_module_name t =
@@ -2634,9 +2637,11 @@ module DB = struct
     let open Memo.O in
     let* l =
       Memo.Lazy.force t.all
-      >>= Memo.parallel_map ~f:(find t)
-      >>| List.filter_opt
-      >>| Set.of_list
+      >>= Memo.map_reduce ~empty:Set.empty ~combine:Set.union ~f:(fun name ->
+        find t name
+        >>| function
+        | None -> Set.empty
+        | Some lib -> Set.singleton lib)
     in
     match recursive, t.parent with
     | true, Some t ->

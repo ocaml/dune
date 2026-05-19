@@ -123,17 +123,17 @@ These currently expand to absolute paths instead of relative ones:
   >   (run cat %{pkg:dep:stublibs}/stublibs-file)))
   > EOF
 
-  $ build_pkg run-consumer 2>&1 | strip_sandbox | censor | dune_cmd subst '/[^ ]*/cat:' 'cat:'
-  $SANDBOX/_private/default/.pkg/dep.0.0.1-$DIGEST/target/lib/dep
-  $SANDBOX/_private/default/.pkg/dep.0.0.1-$DIGEST/target/lib/dep
-  $SANDBOX/_private/default/.pkg/dep.0.0.1-$DIGEST/target/bin
-  $SANDBOX/_private/default/.pkg/dep.0.0.1-$DIGEST/target/sbin
-  $SANDBOX/_private/default/.pkg/dep.0.0.1-$DIGEST/target/share/dep
-  $SANDBOX/_private/default/.pkg/dep.0.0.1-$DIGEST/target/etc/dep
-  $SANDBOX/_private/default/.pkg/dep.0.0.1-$DIGEST/target/doc/dep
-  $SANDBOX/_private/default/.pkg/dep.0.0.1-$DIGEST/target/man
-  $SANDBOX/_private/default/.pkg/dep.0.0.1-$DIGEST/target/lib/toplevel
-  $SANDBOX/_private/default/.pkg/dep.0.0.1-$DIGEST/target/lib/stublibs
+  $ build_pkg run-consumer 2>&1 | censor | dune_cmd subst '/[^ ]*/cat:' 'cat:'
+  $PWD/_build/.sandbox/$DIGEST1/_private/default/.pkg/dep.0.0.1-$DIGEST2/target/lib/dep
+  $PWD/_build/.sandbox/$DIGEST1/_private/default/.pkg/dep.0.0.1-$DIGEST2/target/lib/dep
+  $PWD/_build/.sandbox/$DIGEST1/_private/default/.pkg/dep.0.0.1-$DIGEST2/target/bin
+  $PWD/_build/.sandbox/$DIGEST1/_private/default/.pkg/dep.0.0.1-$DIGEST2/target/sbin
+  $PWD/_build/.sandbox/$DIGEST1/_private/default/.pkg/dep.0.0.1-$DIGEST2/target/share/dep
+  $PWD/_build/.sandbox/$DIGEST1/_private/default/.pkg/dep.0.0.1-$DIGEST2/target/etc/dep
+  $PWD/_build/.sandbox/$DIGEST1/_private/default/.pkg/dep.0.0.1-$DIGEST2/target/doc/dep
+  $PWD/_build/.sandbox/$DIGEST1/_private/default/.pkg/dep.0.0.1-$DIGEST2/target/man
+  $PWD/_build/.sandbox/$DIGEST1/_private/default/.pkg/dep.0.0.1-$DIGEST2/target/lib/toplevel
+  $PWD/_build/.sandbox/$DIGEST1/_private/default/.pkg/dep.0.0.1-$DIGEST2/target/lib/stublibs
   lib-data
   libexec-data
   bin-data

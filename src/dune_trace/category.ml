@@ -3,6 +3,7 @@ open Stdune
 type t =
   | Rpc
   | Gc
+  | Alloc
   | Fd
   | Sandbox
   | Persistent
@@ -27,6 +28,7 @@ type t =
 let all =
   [ Rpc
   ; Gc
+  ; Alloc
   ; Fd
   ; Sandbox
   ; Persistent
@@ -53,6 +55,7 @@ let all =
 let to_string = function
   | Rpc -> "rpc"
   | Gc -> "gc"
+  | Alloc -> "alloc"
   | Fd -> "fd"
   | Sandbox -> "sandbox"
   | Persistent -> "persistent"
@@ -91,26 +94,27 @@ module Set = Bit_set.Make (struct
     let to_int = function
       | Rpc -> 0
       | Gc -> 1
-      | Fd -> 2
-      | Sandbox -> 3
-      | Persistent -> 4
-      | Process -> 5
-      | Rules -> 6
-      | Pkg -> 7
-      | Scheduler -> 8
-      | Promote -> 9
-      | Build -> 10
-      | Debug -> 11
-      | Config -> 12
-      | File_watcher -> 13
-      | Diagnostics -> 14
-      | Log -> 15
-      | Cram -> 16
-      | Action -> 17
-      | Cache -> 18
-      | Digest -> 19
-      | Artifact_substitution -> 20
-      | Thread -> 21
+      | Alloc -> 2
+      | Fd -> 3
+      | Sandbox -> 4
+      | Persistent -> 5
+      | Process -> 6
+      | Rules -> 7
+      | Pkg -> 8
+      | Scheduler -> 9
+      | Promote -> 10
+      | Build -> 11
+      | Debug -> 12
+      | Config -> 13
+      | File_watcher -> 14
+      | Diagnostics -> 15
+      | Log -> 16
+      | Cram -> 17
+      | Action -> 18
+      | Cache -> 19
+      | Digest -> 20
+      | Artifact_substitution -> 21
+      | Thread -> 22
     ;;
   end)
 

@@ -36,14 +36,16 @@ let find_or_add t key ~f =
 let to_table t =
   let* () = return () in
   let+ values_by_key =
-    Table.foldi t.table ~init:[] ~f:(fun key ivar acc ->
-      (let+ value_result = Ivar.read ivar in
-       match value_result with
-       | Ok value -> Some (key, value)
-       | Error _ -> None)
-      :: acc)
-    |> all_concurrently
-    >>| List.filter_opt
+    Table.foldi t.table ~init:[] ~f:(fun key ivar acc -> (key, ivar) :: acc)
+    |> map_reduce
+         ~empty:Appendable_list.empty
+         ~combine:Appendable_list.( @ )
+         ~f:(fun (key, ivar) ->
+           let+ value_result = Ivar.read ivar in
+           match value_result with
+           | Ok value -> Appendable_list.singleton (key, value)
+           | Error _ -> Appendable_list.empty)
+    >>| Appendable_list.to_list
   in
   let table = Table.create t.key_module 1 in
   List.iter values_by_key ~f:(fun (key, value) -> Table.add_exn table key value);

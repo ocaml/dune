@@ -53,19 +53,17 @@ let test f =
   let mutex = Mutex.create () in
   let finished = ref false in
   let finish () =
-    Mutex.lock mutex;
-    finished := true;
-    Condition.signal cv;
-    Mutex.unlock mutex
+    Mutex.protect mutex (fun () ->
+      finished := true;
+      Condition.signal cv)
   in
   timeout_thread ~wait:3.0 (fun () ->
-    Mutex.lock mutex;
-    if not !finished
-    then (
-      Format.eprintf "Test timed out@.";
-      finished := true;
-      Condition.signal cv);
-    Mutex.unlock mutex);
+    Mutex.protect mutex (fun () ->
+      if not !finished
+      then (
+        Format.eprintf "Test timed out@.";
+        finished := true;
+        Condition.signal cv)));
   let test () =
     let dir = Temp.create Dir ~prefix:"fsevents_dune" ~suffix:"" in
     let old = Sys.getcwd () in
@@ -77,11 +75,10 @@ let test f =
         Temp.destroy Dir dir)
   in
   let (_ : Thread.t) = Thread.create test () in
-  Mutex.lock mutex;
-  while not !finished do
-    Condition.wait cv mutex
-  done;
-  Mutex.unlock mutex
+  Mutex.protect mutex (fun () ->
+    while not !finished do
+      Condition.wait cv mutex
+    done)
 ;;
 
 let print_event ~logger ~cwd e =

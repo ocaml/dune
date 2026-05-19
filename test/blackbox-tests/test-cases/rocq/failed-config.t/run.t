@@ -33,7 +33,7 @@ These should fail.
   [1]
 
 Now we create a simple project that uses this coqc wrapper, should
-fail when the stdlib cannot be determined
+fail when Corelib cannot be determined
 
   $ cat > dune <<EOF
   > (rocq.theory
@@ -49,20 +49,21 @@ fail when the stdlib cannot be determined
   > EOF
 
 Should fail: first warning that installed theories are being skipped due to the
-failure, then, as the library requires the stdlib, it fails:
+failure, then, as the library requires Corelib, it fails:
   $ FAIL_CONFIG=1 \
   > dune build
   Warning: Skipping installed theories due to 'rocq c --config' failure:
   - $TESTCASE_ROOT/bin/rocq c --config failed with exit code 1.
   Hint: Try running 'rocq c --config' manually to see the error.
-  Couldn't find Rocq standard library, and theory is not using (stdlib no)
+  Couldn't find Rocq Corelib, and the theory does not disable automatic Corelib
+  inclusion with (no_corelib).
   -> required by _build/default/.foo.theory.d
   -> required by alias all
   -> required by alias default
   [1]
 
 Here we build a simple Coq project. Neither a failing --config or --print-version should
-block this as it doesn't depend on the stdlib.
+block this as it doesn't depend on Corelib.
 
   $ cat > dune <<EOF
   > (rocq.theory

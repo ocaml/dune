@@ -51,5 +51,5 @@ module Spec : sig
 
   val default : t
   val create : input -> t
-  val eval : t -> dirs:Filename.t list -> Per_dir.t
+  val eval : t -> dirs:Filename.Array.Set.t -> Per_dir.t
 end

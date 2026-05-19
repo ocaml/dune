@@ -112,6 +112,10 @@ let%expect_test "print digests for all declared RPCs" =
       Version 1:
         Request: Unit
         Response: Unit
+    flush-file-watcher
+      Version 1:
+        Request: Unit
+        Response: 14894520de5f9b49826c37876bedfaad
     format-dune-file
       Version 1:
         Request: 15eae4b546faf05a0fc3b6d03aed0c63

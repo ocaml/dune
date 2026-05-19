@@ -55,6 +55,34 @@ module Public = struct
     ;;
   end
 
+  module Flush_file_watcher = struct
+    type t =
+      [ `Ok
+      | `Not_in_watch_mode
+      ]
+
+    let sexp : (t, Conv.values) Conv.t =
+      let open Conv in
+      let ok = constr "ok" unit (fun () -> `Ok) in
+      let not_in_watch_mode =
+        constr "not_in_watch_mode" unit (fun () -> `Not_in_watch_mode)
+      in
+      sum
+        [ econstr ok; econstr not_in_watch_mode ]
+        (function
+          | `Ok -> case () ok
+          | `Not_in_watch_mode -> case () not_in_watch_mode)
+    ;;
+
+    let v1 = Decl.Request.make_current_gen ~req:Conv.unit ~resp:sexp ~version:1
+
+    let decl =
+      Decl.Request.make
+        ~method_:(Method.Name.of_string "flush-file-watcher")
+        ~generations:[ v1 ]
+    ;;
+  end
+
   module Format_dune_file = struct
     module V1 = struct
       let req =
@@ -135,6 +163,7 @@ module Public = struct
   let diagnostics = Diagnostics.decl
   let shutdown = Shutdown.decl
   let format = Format.decl
+  let flush_file_watcher = Flush_file_watcher.decl
   let format_dune_file = Format_dune_file.decl
   let promote = Promote.decl
   let promote_many = Promote_many.decl
@@ -351,6 +380,7 @@ module Builtin = struct
     ; request Public.diagnostics
     ; notification Public.shutdown
     ; request Public.format
+    ; request Public.flush_file_watcher
     ; request Public.format_dune_file
     ; request Public.promote
     ; request Public.promote_many

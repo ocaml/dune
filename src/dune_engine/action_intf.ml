@@ -26,7 +26,7 @@ module type Ast = sig
   type ext
 
   type t =
-    | Run of program * string Array.Immutable.t
+    | Run of program * string Appendable_list.t
     | With_accepted_exit_codes of int Predicate_lang.t * t
     | Chdir of path * t
     | Setenv of string * string * t
@@ -60,7 +60,6 @@ module type Helpers = sig
   type string
   type t
 
-  (* TODO consider changing this to a [string array] to save some conversion *)
   val run : program -> string list -> t
   val chdir : path -> t -> t
   val setenv : string -> string -> t -> t

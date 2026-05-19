@@ -53,7 +53,6 @@ The runtime_dep index.txt was copied to the library build folder
 
   $ ls _build/default/lib
   foo.ml
-  foo.pp.ml
   index.txt
 
 The runtime_dep index.txt was copied to the build folder

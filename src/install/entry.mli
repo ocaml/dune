@@ -6,13 +6,13 @@ module Dst : sig
   type t
 
   val to_string : t -> string
-  val add_prefix : string -> t -> t
-  val add_suffix : t -> string -> t
-  val concat_all : t -> string list -> t
+  val local : t -> Path.Local.t
+  val prepend_local : Path.Local.t -> t -> t
+  val append_local : t -> Path.Local.t -> t
 
   include Dune_lang.Conv.S with type t := t
 
-  val explicit : string -> t
+  val maybe_add_exe : t -> t
   val to_dyn : t -> Dyn.t
   val install_path : Path.t Paths.t -> Section.t -> t -> Path.t
 end

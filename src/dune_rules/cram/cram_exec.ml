@@ -113,7 +113,7 @@ let run_expect_test file ~f =
     let lexbuf = Lexbuf.from_string file_contents ~fname:(Path.to_string file) in
     f lexbuf
   in
-  let corrected_file = Path.extend_basename file ~suffix:".corrected" in
+  let corrected_file = Path.extend_basename file ~suffix:Filename.corrected in
   Scheduler.async_exn (fun () ->
     if file_contents <> expected
     then (
@@ -154,21 +154,29 @@ type metadata_entry =
   ; build_path_prefix_map : string
   }
 
-let dyn_of_metadata_entry { exit_code; build_path_prefix_map } =
-  let open Dyn in
-  record
-    [ "exit_code", int exit_code; "build_path_prefix_map", string build_path_prefix_map ]
+let metadata_entry_repr =
+  Repr.record
+    "cram-metadata-entry"
+    [ Repr.field "exit_code" Repr.int ~get:(fun t -> t.exit_code)
+    ; Repr.field "build_path_prefix_map" Repr.string ~get:(fun t ->
+        t.build_path_prefix_map)
+    ]
 ;;
 
 type metadata_result =
   | Present of metadata_entry
   | Missing_unreachable
 
-let dyn_of_metadata_result =
-  let open Dyn in
-  function
-  | Missing_unreachable -> variant "Missing_unreachable" []
-  | Present p -> variant "Present" [ dyn_of_metadata_entry p ]
+let metadata_result_repr =
+  Repr.variant
+    "cram-metadata-result"
+    [ Repr.case "Present" metadata_entry_repr ~proj:(function
+        | Present p -> Some p
+        | _ -> None)
+    ; Repr.case0 "Missing_unreachable" ~test:(function
+        | Missing_unreachable -> true
+        | _ -> false)
+    ]
 ;;
 
 type full_block_result =
@@ -305,12 +313,12 @@ type command_out =
   ; output : string option
   }
 
-let dyn_of_command_out { command; metadata; output } =
-  let open Dyn in
-  record
-    [ "command", (list string) command
-    ; "metadata", dyn_of_metadata_result metadata
-    ; "output", (option string) output
+let command_out_repr =
+  Repr.record
+    "cram-command-output"
+    [ Repr.field "command" (Repr.list Repr.string) ~get:(fun t -> t.command)
+    ; Repr.field "metadata" metadata_result_repr ~get:(fun t -> t.metadata)
+    ; Repr.field "output" (Repr.option Repr.string) ~get:(fun t -> t.output)
     ]
 ;;
 
@@ -514,11 +522,11 @@ let make_temp_dir ~script =
     let suffix =
       let basename = Path.basename script in
       let suffix =
-        if basename = Cram_test.fname_in_dir_test
+        if Filename.equal basename Cram_test.fname_in_dir_test
         then Path.basename (Path.parent_exn script)
         else basename
       in
-      "." ^ suffix
+      "." ^ Filename.to_string suffix
     in
     Temp.create Dir ~prefix:"dune_cram" ~suffix
   in
@@ -557,7 +565,7 @@ let run_cram_test
   let metadata =
     let name =
       let base = Path.basename src in
-      (match String.equal base "run.t" with
+      (match Filename.equal base Filename.run_t with
        | false -> src
        | true -> Path.parent_exn src)
       |> Path.drop_build_context_exn
@@ -663,7 +671,7 @@ module Script = Persistent.Make (struct
     let name = "CRAM-RESULT"
     let sharing = false
     let version = 2
-    let to_dyn = Dyn.list dyn_of_command_out
+    let repr = Repr.list command_out_repr
   end)
 
 let run_and_produce_output
@@ -864,7 +872,7 @@ module Diff = struct
         loop [] current_stanzas out |> List.rev
       in
       let expected = compose_cram_output combined in
-      let corrected_file = Path.extend_basename script ~suffix:".corrected" in
+      let corrected_file = Path.extend_basename script ~suffix:Filename.corrected in
       if String.equal current expected
       then Path.rm_rf corrected_file
       else Io.write_file ~binary:false corrected_file expected;

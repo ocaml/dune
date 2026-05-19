@@ -66,6 +66,14 @@ module type S2 = sig
   val repr : 'a repr -> 'b repr -> ('a, 'b) t repr
 end
 
+module type Poly = sig
+  type t
+
+  val hash : t -> int
+  val equal : t -> t -> bool
+  val compare : t -> t -> Ordering.t
+end
+
 module T3 = struct
   type ('a, 'b, 'c) t = 'a * 'b * 'c
 
@@ -170,11 +178,11 @@ and to_dyn_case : type a. string -> a case list -> a -> Dyn.t =
      | None -> to_dyn_case type_name rest value)
 ;;
 
-let make_compare repr =
+let validate_compare repr =
   let phys_equal left right = Stdlib.( == ) left right in
   let fail ~path ~repr_kind =
     Code_error.raise
-      "Repr.make_compare: repr is not sound for polymorphic comparison"
+      "Repr.Poly: repr is not sound for polymorphic comparison"
       [ "path", Dyn.list Dyn.string (List.rev path); "repr_kind", Dyn.string repr_kind ]
   in
   let rec validate : type a. path:string list -> seen:Obj.t list -> a t -> unit =
@@ -224,9 +232,15 @@ let make_compare repr =
       validate ~path:(("case:" ^ tag) :: path) ~seen repr;
       validate_cases ~path ~seen rest
   in
-  validate ~path:[ "root" ] ~seen:[] repr;
-  Poly.equal, Poly.compare
+  validate ~path:[ "root" ] ~seen:[] repr
 ;;
+
+module Poly (T : S) : Poly with type t := T.t = struct
+  let () = validate_compare T.repr
+  let hash = Poly.hash
+  let equal = Stdlib.( = )
+  let compare x y = Ordering.of_int (Stdlib.compare x y)
+end
 
 module Make (T : S) = struct
   let to_dyn = to_dyn T.repr

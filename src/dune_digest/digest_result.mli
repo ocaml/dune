@@ -18,6 +18,8 @@ end
 type t = (Digest.t, Error.t) result
 
 val catch_fs_errors : (unit -> ('a, Error.t) result) -> ('a, Error.t) result
+val path_with_stats : allow_dirs:bool -> Path.t -> Stat.t -> t
+val path_with_unix_stats_async : allow_dirs:bool -> Path.t -> Unix.stats -> t Fiber.t
 val equal : t -> t -> bool
 val to_option : t -> Digest.t option
 val to_dyn : t -> Dyn.t

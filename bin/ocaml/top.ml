@@ -118,7 +118,7 @@ module Module = struct
     then User_error.raise [ Pp.text "file is missing an extension" ];
     let open Memo.O in
     let module_name =
-      let name = Filename.remove_extension filename in
+      let name = Filename.remove_extension filename |> Filename.to_string in
       Dune_lang.Module_name.of_string_user_error (Loc.none, name) |> User_error.ok_exn
     in
     let* expander = Super_context.expander sctx ~dir in
@@ -157,9 +157,8 @@ module Module = struct
                      (Dune_lang.Glob.of_string_exn Loc.none "*.cmi")
                  in
                  let* files = Build_system.eval_pred glob in
-                 Memo.parallel_iter
-                   (Filename_set.to_list files)
-                   ~f:Build_system.build_file
+                 Filename_set.to_list files
+                 |> Memo.parallel_iter ~f:Build_system.build_file
                in
                let cmos () =
                  let obj_dir = Compilation_context.obj_dir cctx in

@@ -485,7 +485,7 @@ let rec expand (t : Dune_lang.Action.t) : Action.t Action_expander.t =
     match string_args with
     | prog :: args ->
       let+ prog, args = expand_run ~force_host prog args in
-      O.Run (prog, Array.Immutable.of_list args)
+      O.Run (prog, Appendable_list.of_list args)
     | [] ->
       User_error.raise
         [ Pp.textf "\"%s\" action must have at least one argument" action_name ]

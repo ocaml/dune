@@ -12,7 +12,7 @@ commands would also print the diff of what would be changed.
   $ dune fmt --preview
   File "dune", line 1, characters 0-0:
   --- dune
-  +++ .formatted/dune
+  +++ dune.corrected
   @@ -1 +1,2 @@
   -(rule (write-file a b))
   +(rule
@@ -21,28 +21,26 @@ commands would also print the diff of what would be changed.
   $ dune fmt --preview
   File "dune", line 1, characters 0-0:
   --- dune
-  +++ .formatted/dune
+  +++ dune.corrected
   @@ -1 +1,2 @@
   -(rule (write-file a b))
   +(rule
   + (write-file a b))
   [1]
 
-Show the formatted file from _build.
-  $ cat _build/default/.formatted/dune
-  (rule
-   (write-file a b))
+No formatted file target is materialized under _build.
+  $ test ! -e _build/default/.formatted/dune
 
 Actually format the file
   $ dune fmt
   File "dune", line 1, characters 0-0:
   --- dune
-  +++ .formatted/dune
+  +++ dune.corrected
   @@ -1 +1,2 @@
   -(rule (write-file a b))
   +(rule
   + (write-file a b))
-  Promoting _build/default/.formatted/dune to dune.
+  Promoting _build/default/dune.corrected to dune.
   [1]
 
 Now the output of `dune fmt --preview is empty`.

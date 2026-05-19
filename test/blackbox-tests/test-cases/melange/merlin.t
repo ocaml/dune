@@ -30,6 +30,50 @@
   > ]
   > | .[]'
   {
+    "module_name": "Foo__",
+    "source_path": "_build/default/.melange_src/foo__",
+    "config": [
+      [
+        "FLG",
+        [
+          "-w",
+          "@1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40",
+          "-strict-sequence",
+          "-strict-formats",
+          "-short-paths",
+          "-keep-locs",
+          "-g"
+        ]
+      ],
+      [
+        "UNIT_NAME",
+        "foo__"
+      ]
+    ]
+  }
+  {
+    "module_name": "Foo__",
+    "source_path": "_build/default/.melange_src/foo__.ml-gen",
+    "config": [
+      [
+        "FLG",
+        [
+          "-w",
+          "@1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40",
+          "-strict-sequence",
+          "-strict-formats",
+          "-short-paths",
+          "-keep-locs",
+          "-g"
+        ]
+      ],
+      [
+        "UNIT_NAME",
+        "foo__"
+      ]
+    ]
+  }
+  {
     "module_name": "Bar",
     "source_path": "_build/default/bar",
     "config": [
@@ -145,50 +189,6 @@
       ]
     ]
   }
-  {
-    "module_name": "Foo__",
-    "source_path": "_build/default/foo__",
-    "config": [
-      [
-        "FLG",
-        [
-          "-w",
-          "@1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40",
-          "-strict-sequence",
-          "-strict-formats",
-          "-short-paths",
-          "-keep-locs",
-          "-g"
-        ]
-      ],
-      [
-        "UNIT_NAME",
-        "foo__"
-      ]
-    ]
-  }
-  {
-    "module_name": "Foo__",
-    "source_path": "_build/default/foo__.ml-gen",
-    "config": [
-      [
-        "FLG",
-        [
-          "-w",
-          "@1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40",
-          "-strict-sequence",
-          "-strict-formats",
-          "-short-paths",
-          "-keep-locs",
-          "-g"
-        ]
-      ],
-      [
-        "UNIT_NAME",
-        "foo__"
-      ]
-    ]
-  }
 
 Paths to Melange stdlib appear in B and S entries without melange.emit stanza
 
@@ -255,7 +255,7 @@ Dump-dot-merlin includes the melange flags
   S /MELC_STDLIB/__private__/melange_mini_stdlib
   S /MELC_STDLIB
   S $TESTCASE_ROOT
-  INDEX $TESTCASE_ROOT/_build/default/.output.mobjs/cctx.ocaml-index
+  INDEX $TESTCASE_ROOT/_build/default/.output.mobjs/melange/cctx.ocaml-index
   # FLG -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g --mel-noassertfalse
   
 Check for flag directives ordering when another preprocessor is defined
@@ -297,7 +297,73 @@ User ppx flags should appear in merlin config
   >   .[]
   >   | merlinConfigSummary(["STDLIB", "FLG", "UNIT_NAME"])
   > ]
-  > | .[]' | censor_ppx
+  > | .[]' | censor
+  {
+    "module_name": "Foo",
+    "source_path": "_build/default/.melange_src/foo",
+    "config": [
+      [
+        "STDLIB",
+        "/MELC_STDLIB/melange"
+      ],
+      [
+        "FLG",
+        [
+          "-w",
+          "@1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40",
+          "-strict-sequence",
+          "-strict-formats",
+          "-short-paths",
+          "-keep-locs",
+          "-g"
+        ]
+      ],
+      [
+        "FLG",
+        [
+          "-ppx",
+          "$PWD/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name=\"foo\"'"
+        ]
+      ],
+      [
+        "UNIT_NAME",
+        "foo"
+      ]
+    ]
+  }
+  {
+    "module_name": "Foo",
+    "source_path": "_build/default/.melange_src/foo.ml-gen",
+    "config": [
+      [
+        "STDLIB",
+        "/MELC_STDLIB/melange"
+      ],
+      [
+        "FLG",
+        [
+          "-w",
+          "@1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40",
+          "-strict-sequence",
+          "-strict-formats",
+          "-short-paths",
+          "-keep-locs",
+          "-g"
+        ]
+      ],
+      [
+        "FLG",
+        [
+          "-ppx",
+          "$PWD/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name=\"foo\"'"
+        ]
+      ],
+      [
+        "UNIT_NAME",
+        "foo"
+      ]
+    ]
+  }
   {
     "module_name": "Bar",
     "source_path": "_build/default/bar",
@@ -322,7 +388,7 @@ User ppx flags should appear in merlin config
         "FLG",
         [
           "-ppx",
-          "$TESTCASE_ROOT/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name=\"foo\"'"
+          "$PWD/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name=\"foo\"'"
         ]
       ],
       [
@@ -362,7 +428,7 @@ User ppx flags should appear in merlin config
         "FLG",
         [
           "-ppx",
-          "$TESTCASE_ROOT/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name=\"foo\"'"
+          "$PWD/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name=\"foo\"'"
         ]
       ],
       [
@@ -375,72 +441,6 @@ User ppx flags should appear in merlin config
       [
         "UNIT_NAME",
         "foo__Bar"
-      ]
-    ]
-  }
-  {
-    "module_name": "Foo",
-    "source_path": "_build/default/foo",
-    "config": [
-      [
-        "STDLIB",
-        "/MELC_STDLIB/melange"
-      ],
-      [
-        "FLG",
-        [
-          "-w",
-          "@1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40",
-          "-strict-sequence",
-          "-strict-formats",
-          "-short-paths",
-          "-keep-locs",
-          "-g"
-        ]
-      ],
-      [
-        "FLG",
-        [
-          "-ppx",
-          "$TESTCASE_ROOT/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name=\"foo\"'"
-        ]
-      ],
-      [
-        "UNIT_NAME",
-        "foo"
-      ]
-    ]
-  }
-  {
-    "module_name": "Foo",
-    "source_path": "_build/default/foo.ml-gen",
-    "config": [
-      [
-        "STDLIB",
-        "/MELC_STDLIB/melange"
-      ],
-      [
-        "FLG",
-        [
-          "-w",
-          "@1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40",
-          "-strict-sequence",
-          "-strict-formats",
-          "-short-paths",
-          "-keep-locs",
-          "-g"
-        ]
-      ],
-      [
-        "FLG",
-        [
-          "-ppx",
-          "$TESTCASE_ROOT/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name=\"foo\"'"
-        ]
-      ],
-      [
-        "UNIT_NAME",
-        "foo"
       ]
     ]
   }

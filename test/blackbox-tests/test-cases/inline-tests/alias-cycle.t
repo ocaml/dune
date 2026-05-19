@@ -29,14 +29,13 @@ turn depends on the inline-test-name alias of the inline tests of the library.
 This kind of cycle has a difficult to understand error message.
   $ dune build 2>&1 | grep -vwE "sed"
   Error: Dependency cycle between:
-     _build/default/.foo_simple.objs/foo_simple__Bar.impl.all-deps
+     transitive deps of foo_simple__Bar.impl in _build/default
   -> _build/default/.foo_simple.objs/byte/foo_simple__Bar.cmi
   -> _build/default/.foo_simple.inline-tests/.t.eobjs/native/dune__exe__Main.cmx
   -> _build/default/.foo_simple.inline-tests/inline-test-runner.exe
   -> alias runtest-foo_simple in dune:9
   -> _build/default/bar.ml
-  -> _build/default/.foo_simple.objs/foo_simple__Bar.impl.d
-  -> _build/default/.foo_simple.objs/foo_simple__Bar.impl.all-deps
+  -> transitive deps of foo_simple__Bar.impl in _build/default
   -> required by _build/default/.foo_simple.objs/byte/foo_simple__Bar.cmo
   -> required by _build/default/foo_simple.cma
   -> required by alias all

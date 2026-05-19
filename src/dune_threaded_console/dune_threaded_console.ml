@@ -16,45 +16,42 @@ let make ~frames_per_second (module Base : S) : (module Console.Backend) =
     ;;
 
     let finish () =
-      Mutex.lock mutex;
-      state.dirty <- true;
-      state.finish_requested <- true;
-      while not state.finished do
-        Condition.wait finish_cv mutex
-      done;
-      Mutex.unlock mutex
+      Mutex.protect mutex (fun () ->
+        state.dirty <- true;
+        state.finish_requested <- true;
+        while not state.finished do
+          Condition.wait finish_cv mutex
+        done)
     ;;
 
     let print_user_message m =
-      Mutex.lock mutex;
-      state.dirty <- true;
-      Queue.push state.messages m;
-      Mutex.unlock mutex
+      Mutex.protect mutex (fun () ->
+        state.dirty <- true;
+        Queue.push state.messages m)
     ;;
 
     let set_status_line sl =
-      Mutex.lock mutex;
-      state.dirty <- true;
-      state.status_line <- sl;
-      Mutex.unlock mutex
+      Mutex.protect mutex (fun () ->
+        state.dirty <- true;
+        state.status_line <- sl)
     ;;
 
     let print_if_no_status_line _msg = ()
 
     let reset () =
-      Mutex.lock mutex;
-      state.dirty <- true;
-      Queue.clear state.messages;
-      state.status_line <- None;
-      Exn.protect ~f:Base.reset ~finally:(fun () -> Mutex.unlock mutex)
+      Mutex.protect mutex (fun () ->
+        state.dirty <- true;
+        Queue.clear state.messages;
+        state.status_line <- None;
+        Base.reset ())
     ;;
 
     let reset_flush_history () =
-      Mutex.lock mutex;
-      state.dirty <- true;
-      Queue.clear state.messages;
-      state.status_line <- None;
-      Exn.protect ~f:Base.reset_flush_history ~finally:(fun () -> Mutex.unlock mutex)
+      Mutex.protect mutex (fun () ->
+        state.dirty <- true;
+        Queue.clear state.messages;
+        state.status_line <- None;
+        Base.reset_flush_history ())
     ;;
 
     type source =

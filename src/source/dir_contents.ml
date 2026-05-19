@@ -17,7 +17,12 @@ module File = struct
     ;;
 
     let to_dyn = Repr.to_dyn repr
-    let _, compare = Repr.make_compare repr
+
+    include Repr.Poly (struct
+        type nonrec t = t
+
+        let repr = repr
+      end)
   end
 
   include T
@@ -31,24 +36,30 @@ module File = struct
 end
 
 type t =
-  { files : Filename.Set.t
-  ; dirs : (Filename.t * File.t) list
+  { files : Filename.Array.Set.t
+  ; dirs : File.t Filename.Array.Map.t
   }
 
 let files t = t.files
 let dirs t = t.dirs
 
-let equal =
-  let dirs_equal (s1, f1) (s2, f2) = Filename.equal s1 s2 && File.compare f1 f2 = Eq in
-  fun x y -> Filename.Set.equal x.files y.files && List.equal dirs_equal x.dirs y.dirs
+let equal x y =
+  Filename.Array.Set.equal x.files y.files
+  && Filename.Array.Map.equal x.dirs y.dirs ~equal:(fun f1 f2 -> File.compare f1 f2 = Eq)
 ;;
 
-let empty = { files = Filename.Set.empty; dirs = [] }
+let empty = { files = Filename.Array.Set.empty; dirs = Filename.Array.Map.empty }
 
 let to_dyn { files; dirs } =
   let open Dyn in
   record
-    [ "files", Filename.Set.to_dyn files; "dirs", list (pair string File.to_dyn) dirs ]
+    [ "files", Set (Filename.Array.Set.to_list_map files ~f:Filename.to_dyn)
+    ; ( "dirs"
+      , list
+          (pair string File.to_dyn)
+          (Filename.Array.Map.to_list_map dirs ~f:(fun name file ->
+             Filename.to_string name, file)) )
+    ]
 ;;
 
 (* Returns [true] for special files such as character devices of sockets; see
@@ -60,6 +71,7 @@ let is_special (st_kind : Unix.file_kind) =
 ;;
 
 let is_temp_file fn =
+  let fn = Filename.to_string fn in
   String.starts_with ~prefix:".#" fn
   || String.ends_with ~suffix:".swp" fn
   || String.ends_with ~suffix:"~" fn
@@ -74,7 +86,7 @@ let of_source_path_impl path =
           "Unable to read directory %s. Ignoring."
           (Path.Source.to_string_maybe_quoted path)
       ; Pp.text "Remove this message by ignoring by adding:"
-      ; Pp.textf "(dirs \\ %s)" (Path.Source.basename path)
+      ; Pp.textf "(dirs \\ %s)" (Path.Source.basename path |> Filename.to_string)
       ; Pp.textf
           "to the dune file: %s"
           (Path.Source.to_string_maybe_quoted
@@ -86,7 +98,7 @@ let of_source_path_impl path =
     let+ files, dirs =
       Fs_memo.Dir_contents.to_list dir_contents
       |> Memo.parallel_map ~f:(fun (fn, (kind : File_kind.t)) ->
-        let path = Path.Source.relative path fn in
+        let path = Path.Source.relative_fname path fn in
         if is_special kind || Path.Source.is_in_build_dir path || is_temp_file fn
         then Memo.return List.Skip
         else
@@ -110,7 +122,8 @@ let of_source_path_impl path =
           if is_directory then List.Right (fn, file) else Left fn)
       >>| List.filter_partition_map ~f:Fun.id
     in
-    { files = Filename.Set.of_list files; dirs } |> Result.ok
+    let dirs = Filename.Array.Map.of_sorted_list_exn dirs in
+    { files = Filename.Array.Set.of_sorted_list files; dirs } |> Result.ok
 ;;
 
 (* Having a cutoff here speeds up incremental rebuilds quite a bit when a

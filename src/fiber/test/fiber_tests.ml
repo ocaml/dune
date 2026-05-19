@@ -113,7 +113,7 @@ let%expect_test "execution context of ivars" =
   let run_when_filled () =
     let var = Fiber.Var.create None in
     Fiber.Var.set var (Some 42) (fun () ->
-      let* peek = Fiber.Ivar.peek ivar in
+      let peek = Fiber.Ivar.peek ivar in
       assert (peek = None);
       let* () = Fiber.Ivar.read ivar in
       let+ value = Fiber.Var.get_exn var in

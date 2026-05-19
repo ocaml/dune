@@ -17,7 +17,12 @@ module T = struct
       ]
   ;;
 
-  let equal, compare = Repr.make_compare repr
+  include Repr.Poly (struct
+      type nonrec t = t
+
+      let repr = repr
+    end)
+
   let to_dyn = Repr.to_dyn repr
 end
 
@@ -71,7 +76,7 @@ let source_extensions =
 ;;
 
 let has_foreign_extension ~fn =
-  let ext = Filename.extension fn in
+  let ext = Stdlib.Filename.extension fn |> Filename.Extension.Or_empty.of_string_exn in
   if Filename.Extension.Or_empty.is_empty ext
   then false
   else (

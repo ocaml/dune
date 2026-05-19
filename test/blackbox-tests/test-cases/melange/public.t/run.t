@@ -4,7 +4,7 @@ Cmj rules should include --bs-package-output
   $ dune rules my_project/app/.app.objs/melange/app.cmj |
   > grep -e "--bs-package-output" --after-context=1
       --bs-package-output
-      .
+      .melange_src
 
 Cmj rules should include --bs-package-name
   $ dune rules my_project/app/.app.objs/melange/app.cmj |

@@ -44,7 +44,12 @@ module Toggle = struct
   ;;
 
   let all : (string * t) list = [ "enabled", `Enabled; "disabled", `Disabled ]
-  let equal, _ = Repr.make_compare repr
+
+  include Repr.Poly (struct
+      type nonrec t = t
+
+      let repr = repr
+    end)
 
   let to_string t =
     List.find_map all ~f:(fun (k, v) -> if equal v t then Some k else None)

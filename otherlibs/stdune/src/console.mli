@@ -130,5 +130,15 @@ module Status_line : sig
       ]} *)
   val with_overlay : t -> f:(unit -> 'a) -> 'a
 
+  type section
+
+  (** Add a section to the current status line. Sections are rendered after the
+      current status line, separated by [" | "], and stay active across [set]
+      and [clear] until removed. *)
+  val add_section : t -> section
+
+  (** Remove a section if it is still active. Do nothing otherwise. *)
+  val remove_section : section -> unit
+
   val refresh : unit -> unit
 end

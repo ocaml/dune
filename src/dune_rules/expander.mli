@@ -131,4 +131,14 @@ val foreign_flags
       Fdecl.t
 
 val lookup_artifacts : (dir:Path.Build.t -> Artifacts_obj.t Memo.t) Fdecl.t
+
+val resolve_pkg_install_file
+  : (loc:Loc.t
+     -> Context_name.t
+     -> pkg:Package.Name.t
+     -> section:Section.t
+     -> file:Path.Local.t
+     -> Path.Build.t Memo.t)
+      Fdecl.t
+
 val to_expander0 : t -> Expander0.t

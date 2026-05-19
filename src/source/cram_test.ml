@@ -7,9 +7,9 @@ type t =
       ; dir : Path.Source.t
       }
 
-let fname_in_dir_test = "run.t"
+let fname_in_dir_test = Filename.run_t
 let suffix = ".t"
-let is_cram_suffix = String.ends_with ~suffix
+let is_cram_suffix fn = String.ends_with (Filename.to_string fn) ~suffix
 
 let to_dyn =
   let open Dyn in
@@ -27,7 +27,11 @@ let path = function
 ;;
 
 let name t =
-  path t |> Path.Source.basename |> String.drop_suffix ~suffix |> Option.value_exn
+  path t
+  |> Path.Source.basename
+  |> Filename.to_string
+  |> String.drop_suffix ~suffix
+  |> Option.value_exn
 ;;
 
 let script t =

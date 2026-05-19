@@ -1,5 +1,11 @@
 open Import
 
+val setup_melange_sources_copy_rules
+  :  sctx:Super_context.t
+  -> dir:Path.Build.t
+  -> Modules.t
+  -> unit Memo.t
+
 val setup_emit_cmj_rules
   :  sctx:Super_context.t
   -> scope:Scope.t

@@ -40,7 +40,11 @@ module OS = struct
       ]
   ;;
 
-  let equal, _ = Repr.make_compare repr
+  include Repr.Poly (struct
+      type nonrec t = t
+
+      let repr = repr
+    end)
 
   external is_darwin : unit -> bool = "stdune_is_darwin"
   external is_freebsd : unit -> bool = "stdune_is_freebsd"

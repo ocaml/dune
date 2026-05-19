@@ -4,18 +4,6 @@ module Name = struct
   include Stdune.Alias_name
 
   let default = of_string "default"
-
-  let parse_local_path (loc, p) =
-    match Path.Local.parent p with
-    | Some dir ->
-      ( dir
-      , (* TODO one day we should validate the name properly here *)
-        Path.Local.basename p |> of_string_opt_loose |> Option.value_exn )
-    | None ->
-      User_error.raise
-        ~loc
-        [ Pp.textf "Invalid alias path: %S" (Path.Local.to_string_maybe_quoted p) ]
-  ;;
 end
 
 module T : sig
@@ -38,7 +26,10 @@ end = struct
     match Path.as_in_build_dir path with
     | Some path ->
       let name =
-        Path.Build.basename path |> Name.of_string_opt_loose |> Option.value_exn
+        Path.Build.basename path
+        |> Filename.to_string
+        |> Name.of_string_opt_loose
+        |> Option.value_exn
       in
       { dir = Path.Build.parent_exn path; name }
     | None ->
@@ -62,21 +53,21 @@ let compare { dir; name } t =
 
 let equal x y = compare x y = Eq
 let hash { dir; name } = Tuple.T2.hash Path.Build.hash Name.hash (dir, name)
+let name t = t.name
+let dir t = t.dir
 
 let to_dyn { dir; name } =
   let open Dyn in
   Record [ "dir", Path.Build.to_dyn dir; "name", Name.to_dyn name ]
 ;;
 
-let name t = t.name
-let dir t = t.dir
 let fully_qualified_name t = Path.Build.relative t.dir (Name.to_string t.name)
 
 let get_ctx (path : Path.Build.t) =
   match Path.Build.extract_first_component path with
   | None -> None
   | Some (name, sub) ->
-    (match Context_name.of_string_opt name with
+    (match Context_name.of_string_opt (Filename.to_string name) with
      | None -> None
      | Some ctx -> Some (ctx, Path.Source.of_local sub))
 ;;

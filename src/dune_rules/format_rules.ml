@@ -1,18 +1,6 @@
 open Import
 open Memo.O
 
-let add_diff loc alias ~input ~output =
-  let open Action_builder.O in
-  let dir = Alias.dir alias in
-  let action =
-    let dir = Path.Build.parent_exn dir in
-    Action.Chdir (Path.build dir, Action.diff input output)
-  in
-  Action_builder.paths [ input; Path.build output ]
-  >>> Action_builder.return (Action.Full.make action)
-  |> Rules.Produce.Alias.add_action alias ~loc
-;;
-
 let rec subdirs_until_root dir =
   match Path.parent dir with
   | None -> [ dir ]
@@ -25,11 +13,46 @@ let depend_on_files ~named dir =
   |> Action_builder.paths_existing
 ;;
 
-let formatted_dir_basename = ".formatted"
-
-module Alias = struct
-  let fmt ~dir = Alias.make Alias0.fmt ~dir
-end
+let formatter_diff_action =
+  let dep_on_alias_action alias ~loc action =
+    let action =
+      let open Action_builder.O in
+      let+ action = action in
+      { Rule.Anonymous_action.action
+      ; loc
+      ; dir = Alias.dir alias
+      ; alias = Some (Alias.name alias)
+      }
+    in
+    Build_system.dep_on_alias_definition (Rules.Dir_rules.Alias_spec.Action action)
+  in
+  let formatter_stdout ~loc alias action =
+    let action =
+      let open Action_builder.O in
+      let+ action = action in
+      { Rule.Anonymous_action.action
+      ; loc
+      ; dir = Alias.dir alias
+      ; alias = Some (Alias.name alias)
+      }
+    in
+    Build_system.execute_action_stdout action |> Action_builder.of_memo
+  in
+  fun ~loc alias ~input formatter ->
+    let open Action_builder.O in
+    let action =
+      let+ formatter = formatter_stdout ~loc alias formatter
+      and+ () = Action_builder.path (Path.build input) in
+      Action.chdir
+        (Path.build (Path.Build.parent_exn input))
+        (let output = Path.Build.extend_basename input ~suffix:Filename.corrected in
+         Action.progn
+           [ Action.write_file output formatter; Action.diff (Path.build input) output ])
+      |> Action.Full.make
+      |> Action.Full.add_sandbox Sandbox_config.needs_sandboxing
+    in
+    dep_on_alias_action alias ~loc action
+;;
 
 module Ocamlformat = struct
   let dev_tool_lock_dir_exists () =
@@ -53,7 +76,7 @@ module Ocamlformat = struct
   let extra_deps dir =
     (* Set up the dependency on ocamlformat config files so changing
        these files triggers ocamlformat to run again. *)
-    depend_on_files ~named:config_files (Path.build dir) |> Action_builder.with_no_targets
+    depend_on_files ~named:config_files (Path.build dir)
   ;;
 
   let flag_of_kind = function
@@ -61,152 +84,171 @@ module Ocamlformat = struct
     | Intf -> "--intf"
   ;;
 
-  let action_when_ocamlformat_is_locked ~input ~output kind =
-    let path = Path.build @@ Pkg_dev_tool.exe_path Ocamlformat in
+  let action_when_ocamlformat_is_locked ~input kind =
+    let open Action_builder.O in
     let dir = Path.Build.parent_exn input in
     let action =
-      (* An action which runs at on the file at [input] and stores the
-         resulting diff in the file at [output] *)
-      Action_builder.with_stdout_to
-        output
-        (let open Action_builder.O in
-         (* This ensures that at is installed as a dev tool before
-            running it. *)
-         let+ () = Action_builder.path path
-         (* Declare the dependency on the input file so changes to the input
-            file trigger ocamlformat to run again on the updated file. *)
-         and+ () = Action_builder.path (Path.build input) in
-         let args = [ flag_of_kind kind; Path.Build.basename input ] in
-         Action.chdir (Path.build dir) @@ Action.run (Ok path) args |> Action.Full.make)
+      let path = Path.build @@ Pkg_dev_tool.exe_path Ocamlformat in
+      (* This ensures that ocamlformat is installed as a dev tool before
+         running it. *)
+      let+ () = Action_builder.path path
+      (* Declare the dependency on the input file so changes to the input file
+         trigger ocamlformat to run again on the updated file. *)
+      and+ () = Action_builder.path (Path.build input) in
+      Action.chdir
+        (Path.build dir)
+        (Action.run
+           (Ok path)
+           [ flag_of_kind kind; Path.Build.basename input |> Filename.to_string ])
+      |> Action.Full.make
     in
-    let open Action_builder.With_targets.O in
     (* Depend on [extra_deps] so if the ocamlformat config file
        changes then ocamlformat will run again. *)
-    extra_deps dir
-    >>> action
-    |> With_targets.map ~f:(Action.Full.add_sandbox Sandbox_config.needs_sandboxing)
+    extra_deps dir >>> action >>| Action.Full.add_sandbox Sandbox_config.needs_sandboxing
   ;;
 
   let action_when_ocamlformat_isn't_locked ~input kind =
+    let open Action_builder.O in
     let module S = String_with_vars in
-    let dir = Path.Build.parent_exn input in
-    ( Dune_lang.Action.chdir
-        (S.make_pform Loc.none (Var Workspace_root))
-        (Dune_lang.Action.run
-           (S.make_text Loc.none (Pkg_dev_tool.exe_name Ocamlformat))
-           [ S.make_text Loc.none (flag_of_kind kind)
-           ; S.make_pform Loc.none (Var Input_file)
-           ])
-    , extra_deps dir )
+    let+ () = Path.Build.parent_exn input |> extra_deps in
+    Dune_lang.Action.chdir
+      (S.make_pform Loc.none (Var Workspace_root))
+      (Dune_lang.Action.run
+         (S.make_text Loc.none (Pkg_dev_tool.exe_name Ocamlformat))
+         [ S.make_text Loc.none (flag_of_kind kind)
+         ; S.make_pform Loc.none (Var Input_file)
+         ])
   ;;
 end
 
-let format_action format ~ocamlformat_is_locked ~input ~output ~expander kind =
+let format_action format ~ocamlformat_is_locked ~input ~expander kind =
+  let open Action_builder.O in
   match (format : Dialect.Format.t) with
   | Ocamlformat when ocamlformat_is_locked ->
-    Memo.return (Ocamlformat.action_when_ocamlformat_is_locked ~input ~output kind)
+    let+ build = Ocamlformat.action_when_ocamlformat_is_locked ~input kind
+    and+ env = Action_builder.of_memo (Pkg_rules.dev_tool_env Ocamlformat) in
+    Action.Full.add_env env build
   | _ ->
     assert (not ocamlformat_is_locked);
-    let loc, (action, extra_deps) =
+    let* expander = Action_builder.of_memo expander
+    and* loc, action =
       match format with
+      | Action (loc, action) -> Action_builder.return (loc, action)
       | Ocamlformat ->
-        Loc.none, Ocamlformat.action_when_ocamlformat_isn't_locked ~input kind
-      | Action (loc, action) -> loc, (action, With_targets.return ())
+        let+ action = Ocamlformat.action_when_ocamlformat_isn't_locked ~input kind in
+        Loc.none, action
     in
-    let+ expander = expander in
-    let open Action_builder.With_targets.O in
-    extra_deps
-    >>> Pp_spec_rules.action_for_pp_with_target
-          ~sandbox:Sandbox_config.default
-          ~loc
-          ~expander
-          ~action
-          ~src:input
-          ~target:output
+    Pp_spec_rules.action_for_pp
+      ~sandbox:Sandbox_config.default
+      ~loc
+      ~expander
+      ~action
+      ~src:input
 ;;
 
-let gen_rules_output
-      sctx
+let setup_source_file
       (config : Format_config.t)
-      ~version
       ~dialects
+      ~ocamlformat_is_locked
       ~expander
-      ~output_dir
+      ~dir
+      alias
+      file
   =
-  assert (formatted_dir_basename = Path.Build.basename output_dir);
-  let loc = Format_config.loc config in
-  let dir = Path.Build.parent_exn output_dir in
-  let alias_formatted = Alias.fmt ~dir:output_dir in
-  let* ocamlformat_is_locked = Ocamlformat.dev_tool_lock_dir_exists () in
-  let setup_formatting file =
-    (let input_basename = Path.Source.basename file in
-     let input = Path.Build.relative dir input_basename in
-     let output = Path.Build.relative output_dir input_basename in
-     let open Option.O in
-     let* dialect, kind =
-       Path.Source.extension file
-       |> Filename.Extension.Or_empty.extension
-       |> Option.bind ~f:(Dialect.DB.find_by_extension dialects)
-     in
-     let* () =
-       Option.some_if (Format_config.includes config (Dialect (Dialect.name dialect))) ()
-     in
-     let+ format =
-       match Dialect.format dialect kind with
-       | Some _ as action -> action
-       | None ->
-         (match Dialect.preprocess dialect kind with
-          | None -> Dialect.format Dialect.ocaml kind
-          | Some _ -> None)
-     in
-     format_action format ~ocamlformat_is_locked ~input ~output ~expander kind
-     |> Memo.bind ~f:(fun rule ->
-       if ocamlformat_is_locked
-       then (
-         let { Action_builder.With_targets.build; targets } = rule in
-         let build =
-           let open Action_builder.O in
-           let+ build = build
-           and+ env = Action_builder.of_memo (Pkg_rules.dev_tool_env Ocamlformat) in
-           Action.Full.add_env env build
-         in
-         Rule.make ~mode:Standard ~targets build |> Rules.Produce.rule)
-       else
-         let open Memo.O in
-         let* sctx = sctx in
-         Super_context.add_rule sctx ~mode:Standard ~loc ~dir rule)
-     >>> add_diff loc alias_formatted ~input:(Path.build input) ~output)
-    |> Memo.Option.iter ~f:Fun.id
+  let action =
+    let open Option.O in
+    let* dialect, kind =
+      Path.Source.extension file
+      |> Filename.Extension.Or_empty.extension
+      |> Option.bind ~f:(Dialect.DB.find_by_extension dialects)
+    in
+    let* () =
+      Option.some_if (Format_config.includes config (Dialect (Dialect.name dialect))) ()
+    in
+    let+ format =
+      match Dialect.format dialect kind with
+      | Some _ as action -> action
+      | None ->
+        (match Dialect.preprocess dialect kind with
+         | None -> Dialect.format Dialect.ocaml kind
+         | Some _ -> None)
+    in
+    kind, format
   in
-  let* source_dir = Source_tree.find_dir (Path.Build.drop_build_context_exn dir) in
-  let* () =
-    Memo.Option.iter source_dir ~f:(fun source_dir ->
-      Source_tree.Dir.filenames source_dir
-      |> Filename.Set.to_seq
-      |> Memo.parallel_iter_seq ~f:(fun file ->
-        Path.Source.relative (Source_tree.Dir.path source_dir) file |> setup_formatting))
-  and* () =
+  match action with
+  | None -> Action_builder.return ()
+  | Some (kind, format) ->
+    let loc = Loc.in_file (Path.source file) in
+    let input = Path.Build.relative_fname dir (Path.Source.basename file) in
+    format_action format ~ocamlformat_is_locked ~input ~expander kind
+    |> formatter_diff_action ~loc alias ~input
+;;
+
+let setup_dune_files =
+  let setup_dune_file ~version ~dir alias path =
+    let input_build = Path.Build.relative_fname dir (Path.Source.basename path) in
+    let build =
+      let input = Path.build input_build in
+      let open Action_builder.O in
+      let+ () = Action_builder.path input in
+      Action.Full.make (Format_dune_file.action_stdout ~version input)
+    in
+    formatter_diff_action
+      ~loc:(Loc.in_file (Path.source path))
+      alias
+      ~input:input_build
+      build
+  in
+  fun (config : Format_config.t) ~version ~dir alias source_dir ->
     match Format_config.includes config Dune with
-    | false -> Memo.return ()
+    | false -> Action_builder.return ()
     | true ->
-      Memo.Option.iter source_dir ~f:(fun source_dir ->
-        Source_tree.Dir.dune_file source_dir
-        |> Memo.Option.iter ~f:(fun f ->
-          Source.Dune_file.path f
-          |> Memo.Option.iter ~f:(fun path ->
-            let input_basename = Path.Source.basename path in
-            let input = Path.build (Path.Build.relative dir input_basename) in
-            let output = Path.Build.relative output_dir input_basename in
-            let { Action_builder.With_targets.build; targets } =
-              (let open Action_builder.O in
-               let+ () = Action_builder.path input in
-               Action.Full.make (Format_dune_file.action ~version input output))
-              |> Action_builder.with_file_targets ~file_targets:[ output ]
-            in
-            let rule = Rule.make ~mode:Standard ~targets build in
-            Rules.Produce.rule rule >>> add_diff loc alias_formatted ~input ~output)))
-  in
-  Rules.Produce.Alias.add_deps alias_formatted (Action_builder.return ())
+      (match Source_tree.Dir.dune_file source_dir with
+       | None -> Action_builder.return ()
+       | Some dune_file ->
+         (match Source.Dune_file.path dune_file with
+          | None -> Action_builder.return ()
+          | Some path -> setup_dune_file ~version ~dir alias path))
+;;
+
+let setup_source_files
+      config
+      ~dialects
+      ~ocamlformat_is_locked
+      ~expander
+      ~dir
+      alias
+      source_dir
+  =
+  Source_tree.Dir.filenames source_dir
+  |> Filename.Array.Set.to_list
+  |> List.map ~f:(fun file ->
+    Path.Source.relative_fname (Source_tree.Dir.path source_dir) file
+    |> setup_source_file config ~dialects ~ocamlformat_is_locked ~expander ~dir alias)
+  |> Action_builder.all_unit
+;;
+
+let gen_format_alias (config : Format_config.t) ~version ~dialects ~expander ~dir =
+  let open Action_builder.O in
+  Action_builder.of_memo (Source_tree.find_dir (Path.Build.drop_build_context_exn dir))
+  >>= function
+  | None -> Action_builder.return ()
+  | Some source_dir ->
+    let* ocamlformat_is_locked =
+      Action_builder.of_memo (Ocamlformat.dev_tool_lock_dir_exists ())
+    in
+    let alias = Alias.make Alias0.fmt ~dir in
+    let+ () =
+      setup_source_files
+        config
+        ~dialects
+        ~ocamlformat_is_locked
+        ~expander
+        ~dir
+        alias
+        source_dir
+    and+ () = setup_dune_files config ~version ~dir alias source_dir in
+    ()
 ;;
 
 let format_config ~dir =
@@ -233,20 +275,17 @@ let with_config ~dir f =
   else f config
 ;;
 
-let gen_rules sctx ~output_dir =
-  let dir = Path.Build.parent_exn output_dir in
+let setup_alias sctx ~dir =
   with_config ~dir (fun config ->
-    let expander = sctx >>= Super_context.expander ~dir in
-    let* project = Dune_load.find_project ~dir in
-    let dialects = Dune_project.dialects project in
-    let version = Dune_project.dune_version project in
-    gen_rules_output sctx config ~version ~dialects ~expander ~output_dir)
-;;
-
-let setup_alias ~dir =
-  with_config ~dir (fun (_ : Format_config.t) ->
-    let output_dir = Path.Build.relative dir formatted_dir_basename in
-    let alias = Alias.fmt ~dir in
-    let alias_formatted = Alias.fmt ~dir:output_dir in
-    Rules.Produce.Alias.add_deps alias (Action_builder.dep (Dep.alias alias_formatted)))
+    (* Keep formatter discovery behind the alias dependency. Loading a directory
+       should not enumerate format inputs unless @fmt is built. *)
+    let format =
+      let open Action_builder.O in
+      let expander = Super_context.expander sctx ~dir in
+      let* project = Action_builder.of_memo (Dune_load.find_project ~dir) in
+      let dialects = Dune_project.dialects project in
+      let version = Dune_project.dune_version project in
+      gen_format_alias config ~version ~dialects ~expander ~dir
+    in
+    Rules.Produce.Alias.add_deps (Alias.make Alias0.fmt ~dir) format)
 ;;

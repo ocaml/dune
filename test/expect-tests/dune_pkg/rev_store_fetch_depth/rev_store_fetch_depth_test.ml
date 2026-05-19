@@ -71,9 +71,14 @@ let%expect_test "second fetch uses refs for efficient negotiation (fix #13323)" 
      Unix.close sock;
      port
    in
-   let url = sprintf "git://127.0.0.1:%d/%s" port (Path.basename repo_dir) in
+   let url =
+     sprintf "git://127.0.0.1:%d/%s" port (Path.basename repo_dir |> Filename.to_string)
+   in
    let unrelated_url =
-     sprintf "git://127.0.0.1:%d/%s" port (Path.basename unrelated_repo_dir)
+     sprintf
+       "git://127.0.0.1:%d/%s"
+       port
+       (Path.basename unrelated_repo_dir |> Filename.to_string)
    in
    (* Run daemon in background while we do the test. The test cancels the
        build to kill the daemon, so we catch errors. *)

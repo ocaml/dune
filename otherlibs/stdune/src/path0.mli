@@ -28,8 +28,10 @@ module Local : sig
   module Table : Hashtbl.S with type key = t
 
   val root : t
+  val of_comps : Filename.t list -> t
   val is_root : t -> bool
   val relative : t -> string -> t
+  val relative_fname : t -> Filename.t -> t
   val relative_result : t -> string -> (t, [ `Outside_the_workspace ]) Result.t
   val parse_string_result : string -> (t, [ `Outside_the_workspace ]) Result.t
   val append : t -> t -> t
@@ -42,8 +44,8 @@ module Local : sig
     val relative_result : t -> string list -> (t, [ `Outside_the_workspace ]) Result.t
   end
 
-  val split_first_component : t -> (string * t) option
-  val explode : t -> string list
+  val split_first_component : t -> (Filename.t * t) option
+  val explode : t -> Filename.t list
   val of_local : t -> t
 
   module Prefix : sig
@@ -69,6 +71,7 @@ module Source : sig
   val root : t
   val is_root : t -> bool
   val relative : t -> string -> t
+  val relative_fname : t -> Filename.t -> t
   val relative_result : t -> string -> (t, [ `Outside_the_workspace ]) Result.t
   val parse_string_result : string -> (t, [ `Outside_the_workspace ]) Result.t
   val append : t -> Unspecified.w Local_gen.t -> t
@@ -81,8 +84,8 @@ module Source : sig
     val relative_result : t -> string list -> (t, [ `Outside_the_workspace ]) Result.t
   end
 
-  val split_first_component : t -> (string * Unspecified.w Local_gen.t) option
-  val explode : t -> string list
+  val split_first_component : t -> (Filename.t * Unspecified.w Local_gen.t) option
+  val explode : t -> Filename.t list
   val of_local : Local.t -> t
   val to_local : t -> Local.t
 
@@ -109,6 +112,7 @@ module Build : sig
   val root : t
   val is_root : t -> bool
   val relative : t -> string -> t
+  val relative_fname : t -> Filename.t -> t
   val relative_result : t -> string -> (t, [ `Outside_the_workspace ]) Result.t
   val parse_string_result : string -> (t, [ `Outside_the_workspace ]) Result.t
   val append : t -> Unspecified.w Local_gen.t -> t
@@ -121,8 +125,8 @@ module Build : sig
     val relative_result : t -> string list -> (t, [ `Outside_the_workspace ]) Result.t
   end
 
-  val split_first_component : t -> (string * Unspecified.w Local_gen.t) option
-  val explode : t -> string list
+  val split_first_component : t -> (Filename.t * Unspecified.w Local_gen.t) option
+  val explode : t -> Filename.t list
   val of_local : Local.t -> t
   val local : t -> Local.t
 

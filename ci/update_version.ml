@@ -10,6 +10,6 @@ let () =
   let major, minor = Dune_rpc.Private.Version.latest in
   let version_string = sprintf "%d.%d.0" major minor in
   let content = Re.replace_string version ~by:version_string content in
-  Printf.printf "# This file is auto-generated. Edit ci/%s instead\n" filename;
+  Printf.printf "# This file is auto-generated. Edit %s instead\n" filename;
   Printf.printf "%s" content
 ;;

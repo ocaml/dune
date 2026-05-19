@@ -79,9 +79,6 @@ let open_for_digest file =
   |> Fd.unsafe_of_unix_file_descr
 ;;
 
-(* CR-someday rgrinberg: maybe this should exist in blake3_mini? *)
-let zero = lazy (Hasher.with_singleton (fun _f -> ()))
-
 let digest_and_close_fd fd =
   let start = Counter.Timer.start () in
   let res =
@@ -104,32 +101,23 @@ let file file =
   digest_and_close_fd fd
 ;;
 
-let async_digest_minimum = 1_000
-
-let file_async file =
-  let open Fiber.O in
-  let* () = Fiber.return () in
-  let fd = open_for_digest file in
-  Counter.incr Metrics.Digest.File.count;
-  let size =
-    match Unix.fstat (Fd.unsafe_to_unix_file_descr fd) with
-    | exception exn ->
-      Fd.close fd;
-      raise exn
-    | stat -> stat.st_size
-  in
-  Counter.add Metrics.Digest.File.bytes size;
-  if size = 0
-  then
-    let+ () = Fiber.return @@ Fd.close fd in
-    Lazy.force zero
-  else if size < async_digest_minimum
-  then Fiber.return (digest_and_close_fd fd)
-  else Dune_scheduler.Scheduler.async_exn (fun () -> digest_and_close_fd fd)
+let file_async =
+  let digest_throttle = lazy (Fiber.Throttle.create 32) in
+  fun file ->
+    Fiber.Throttle.run (Lazy.force digest_throttle) ~f:(fun () ->
+      let open Fiber.O in
+      let start = Counter.Timer.start () in
+      let+ digest, size =
+        Dune_scheduler.Scheduler.async_exn (fun () -> Blake3_mini.file_with_size file)
+      in
+      Counter.incr Metrics.Digest.File.count;
+      Counter.add Metrics.Digest.File.bytes size;
+      Counter.Timer.stop Metrics.Digest.File.time start;
+      digest)
 ;;
 
 let equal = Blake3_mini.Digest.equal
-let hash = Poly.hash
+let hash = Blake3_mini.Digest.hash
 let file p = file (Path.to_string p)
 let file_async p = file_async (Path.to_string p)
 let from_hex s = Blake3_mini.Digest.of_hex s
@@ -482,6 +470,7 @@ let path_with_stats_internal
        | Ok listing ->
          (match
             List.rev_map listing ~f:(fun name ->
+              let name = Filename.to_string name in
               let path = Path.relative path name in
               let stats =
                 match Path.lstat path with

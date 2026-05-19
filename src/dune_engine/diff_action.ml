@@ -194,7 +194,7 @@ let plan_tree_diff ({ mode; source_root; _ } as t) =
       |> List.fold_left
            ~init:(add_create_directory ~announce:false plan rel)
            ~f:(fun plan name ->
-             let rel = Path.Local.relative rel name in
+             let rel = Path.Local.relative_fname rel name in
              collect_target_only rel (kind_of_target rel) plan)
   and loop rel source_kind target_kind plan =
     match source_kind, target_kind with
@@ -218,7 +218,7 @@ let plan_tree_diff ({ mode; source_root; _ } as t) =
       then plan
       else
         List.fold_left entries ~init:plan ~f:(fun plan name ->
-          let rel = Path.Local.relative rel name in
+          let rel = Path.Local.relative_fname rel name in
           loop rel Missing (kind_of_target rel) plan)
     | File, Directory ->
       list_target_directory rel
@@ -229,32 +229,32 @@ let plan_tree_diff ({ mode; source_root; _ } as t) =
                 plan
                 (Pp.textf "File %s should be replaced with a directory" (path_name rel)))
            ~f:(fun plan name ->
-             let rel = Path.Local.relative rel name in
+             let rel = Path.Local.relative_fname rel name in
              collect_target_only rel (kind_of_target rel) plan)
     | Directory, Directory ->
       let rec merge source_entries target_entries plan =
         match source_entries, target_entries with
         | [], [] -> plan
         | name :: source_entries, [] ->
-          let rel = Path.Local.relative rel name in
+          let rel = Path.Local.relative_fname rel name in
           let plan = loop rel (kind_of_source rel) Missing plan in
           merge source_entries [] plan
         | [], name :: target_entries ->
-          let rel = Path.Local.relative rel name in
+          let rel = Path.Local.relative_fname rel name in
           let plan = loop rel Missing (kind_of_target rel) plan in
           merge [] target_entries plan
         | source_name :: source_entries, target_name :: target_entries ->
           (match Filename.compare source_name target_name with
            | Lt ->
-             let rel = Path.Local.relative rel source_name in
+             let rel = Path.Local.relative_fname rel source_name in
              let plan = loop rel (kind_of_source rel) Missing plan in
              merge source_entries (target_name :: target_entries) plan
            | Eq ->
-             let rel = Path.Local.relative rel source_name in
+             let rel = Path.Local.relative_fname rel source_name in
              let plan = loop rel (kind_of_source rel) (kind_of_target rel) plan in
              merge source_entries target_entries plan
            | Gt ->
-             let rel = Path.Local.relative rel target_name in
+             let rel = Path.Local.relative_fname rel target_name in
              let plan = loop rel Missing (kind_of_target rel) plan in
              merge (source_name :: source_entries) target_entries plan)
       in

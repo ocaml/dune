@@ -3,8 +3,8 @@ Test basic cache store/restore functionality in the [copy] mode.
 Dune supports setting the cache directory in two ways, via the [XDG_CACHE_HOME]
 variable, and via the [DUNE_CACHE_ROOT] variable. Here we test the former.
 
-  $ export XDG_RUNTIME_DIR=$PWD/.xdg-runtime
   $ export XDG_CACHE_HOME=$PWD/.xdg-cache
+  $ setup_xdg_runtime_dir
 
   $ cat > config <<EOF
   > (lang dune 3.0)

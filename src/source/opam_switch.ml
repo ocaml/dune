@@ -14,7 +14,12 @@ let repr =
 ;;
 
 let to_dyn = Repr.to_dyn repr
-let equal, _ = Repr.make_compare repr
+
+include Repr.Poly (struct
+    type nonrec t = t
+
+    let repr = repr
+  end)
 
 let hash { root; switch } =
   Tuple.T2.hash (Option.hash String.hash) String.hash (root, switch)

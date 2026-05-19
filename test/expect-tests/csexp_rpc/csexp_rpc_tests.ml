@@ -24,6 +24,12 @@ let server (where : Unix.sockaddr) =
 
 let client where = Csexp_rpc.Client.create where
 
+let create_server_exn addr =
+  match Server.create [ addr ] ~backlog:10 with
+  | Ok server -> server
+  | Error `Already_in_use -> failwith "address already in use"
+;;
+
 module Logger = struct
   (* A little helper to make the output from the client and server
      deterministic. Log messages are batched and outputted at the end. *)
@@ -53,40 +59,180 @@ let scheduler_config =
   }
 ;;
 
-let run_scheduler f =
+let run_scheduler ?timeout f =
   Dune_engine.Clflags.display := Quiet;
-  Scheduler.Run.go scheduler_config f ~on_event:(fun _ -> ())
+  Scheduler.Run.go scheduler_config ?timeout f ~on_event:(fun _ -> ())
 ;;
 
-let stop_server server addr =
-  run_scheduler (fun () -> Server.stop server);
-  match (addr : Unix.sockaddr) with
-  | ADDR_UNIX path -> Fpath.unlink_no_err path
-  | ADDR_INET _ -> ()
-;;
+let stop_server server = run_scheduler (fun () -> Server.stop server)
 
 let temp_rpc_dir () =
   Temp.temp_dir ~parent_dir:(Path.of_string ".") ~prefix:"test" ~suffix:"dune_rpc"
 ;;
 
 let%expect_test "csexp server create on unix sockets" =
-  if not Sys.win32
-  then (
-    let tmp_dir = temp_rpc_dir () in
-    let addr : Unix.sockaddr =
-      Unix.ADDR_UNIX (Path.to_string (Path.relative tmp_dir "dunerpc.sock"))
-    in
-    let server = server addr in
-    stop_server server addr);
+  (let tmp_dir = temp_rpc_dir () in
+   let addr : Unix.sockaddr =
+     Unix.ADDR_UNIX (Path.to_string (Path.relative tmp_dir "dunerpc.sock"))
+   in
+   let server = server addr in
+   stop_server server);
   [%expect {| |}]
+;;
+
+let%expect_test "csexp server listening_address preserves long unix socket path" =
+  let tmp_dir = temp_rpc_dir () in
+  let dir = Path.relative tmp_dir (String.make 60 'a') in
+  let path = Path.relative dir "dunerpc.sock" |> Path.to_absolute_filename in
+  let addr = Unix.ADDR_UNIX path in
+  let server = server addr in
+  let path_kind path = if Filename.is_relative path then "relative" else "absolute" in
+  (match Csexp_rpc.Server.listening_address server |> List.hd with
+   | ADDR_UNIX path' ->
+     printfn "requested path: %s" (path_kind path);
+     printfn "reported path: %s" (path_kind path');
+     printfn "relationship: %s" (if String.equal path path' then "same" else "different")
+   | ADDR_INET _ -> printfn "not a unix socket");
+  stop_server server;
+  [%expect
+    {|
+    requested path: absolute
+    reported path: absolute
+    relationship: same |}]
+;;
+
+let%expect_test "csexp server listening_address reports tcp port after serve" =
+  let run () =
+    let server = server (ADDR_INET (Unix.inet_addr_loopback, 0)) in
+    let* _sessions = Server.serve server in
+    (match Csexp_rpc.Server.listening_address server |> List.hd with
+     | ADDR_UNIX _ -> printfn "not a tcp socket"
+     | ADDR_INET (_, port) ->
+       printfn "reported port: %s" (if port = 0 then "zero" else "non-zero"));
+    Server.stop server
+  in
+  run_scheduler run;
+  [%expect {| reported port: non-zero |}]
+;;
+
+let%expect_test "csexp server stop before serve releases address" =
+  (let tmp_dir = temp_rpc_dir () in
+   let path = Path.to_string (Path.relative tmp_dir "dunerpc.sock") in
+   let addr = Unix.ADDR_UNIX path in
+   Fpath.unlink_no_err path;
+   let run () =
+     let server = create_server_exn addr in
+     let* () = Server.stop server in
+     let replacement = create_server_exn addr in
+     Server.stop replacement
+   in
+   run_scheduler run);
+  [%expect {| |}]
+;;
+
+let%expect_test "csexp server stop before consuming serve stream releases address" =
+  let tmp_dir = temp_rpc_dir () in
+  let path = Path.to_string (Path.relative tmp_dir "dunerpc.sock") in
+  let addr = Unix.ADDR_UNIX path in
+  Fpath.unlink_no_err path;
+  let run () =
+    let server = create_server_exn addr in
+    let* _sessions = Server.serve server in
+    let* () = Server.stop server in
+    let replacement = create_server_exn addr in
+    Server.stop replacement
+  in
+  run_scheduler run;
+  [%expect {| |}]
+;;
+
+let%expect_test "csexp server create cleans up partial binds" =
+  let tmp_dir = temp_rpc_dir () in
+  let path1 = Path.to_string (Path.relative tmp_dir "dunerpc-1.sock") in
+  let path2 = Path.to_string (Path.relative tmp_dir "dunerpc-2.sock") in
+  let addr1 = Unix.ADDR_UNIX path1 in
+  let addr2 = Unix.ADDR_UNIX path2 in
+  Fpath.unlink_no_err path1;
+  Fpath.unlink_no_err path2;
+  let run () =
+    let busy = create_server_exn addr2 in
+    let* () =
+      match Server.create [ addr1; addr2 ] ~backlog:10 with
+      | Ok _ -> failwith "expected address conflict"
+      | Error `Already_in_use -> Fiber.return ()
+    in
+    match create_server_exn addr1 with
+    | recovered ->
+      Fiber.fork_and_join_unit
+        (fun () -> Server.stop busy)
+        (fun () -> Server.stop recovered)
+    | exception Failure msg ->
+      let+ () = Server.stop busy in
+      printfn "Error: exception Failure(%S)" msg
+  in
+  run_scheduler run;
+  [%expect {| |}]
+;;
+
+let%expect_test "csexp server stop before serve removes unix socket" =
+  let tmp_dir = temp_rpc_dir () in
+  let path = Path.to_string (Path.relative tmp_dir "dunerpc.sock") in
+  let addr = Unix.ADDR_UNIX path in
+  let server = server addr in
+  run_scheduler (fun () -> Server.stop server);
+  printfn "%b" (Fpath.exists path);
+  [%expect {| false |}]
+;;
+
+let write_raw addr data =
+  let fd = Unix.socket ~cloexec:true (Unix.domain_of_sockaddr addr) Unix.SOCK_STREAM 0 in
+  Unix.connect fd addr;
+  let (_ : int) = Unix.single_write_substring fd data 0 (String.length data) in
+  fd
+;;
+
+let%expect_test "csexp session reports malformed eof" =
+  let tmp_dir = temp_rpc_dir () in
+  let path = Path.to_string (Path.relative tmp_dir "dunerpc.sock") in
+  let addr = Unix.ADDR_UNIX path in
+  let run () =
+    let accepted = Fiber.Ivar.create () in
+    let server = server addr in
+    let* sessions = Server.serve server in
+    Fiber.fork_and_join_unit
+      (fun () ->
+         let fd = write_raw addr "5:abc" in
+         let+ () = Fiber.Ivar.read accepted in
+         Unix.close fd)
+      (fun () ->
+         Fiber.Stream.In.parallel_iter sessions ~f:(fun session ->
+           let* () = Fiber.Ivar.fill accepted () in
+           let* () =
+             Session.read session
+             >>| function
+             | None -> printfn "server: read returned None"
+             | Some sexp -> printfn "server: received %s" (Csexp.to_string sexp)
+           in
+           Server.stop server))
+  in
+  let old_verbose = !Log.verbose in
+  Exn.protect
+    ~f:(fun () ->
+      Log.verbose := true;
+      run_scheduler run)
+    ~finally:(fun () -> Log.verbose := old_verbose);
+  Fpath.unlink_no_err path;
+  [%expect
+    {|
+    Warning: malformed csexp rpc packet id: 0 error: "Csexp.Make(Sexp).Parser.Parse_error(\"premature end of input\")"
+    server: read returned None
+    |}]
 ;;
 
 let%expect_test "csexp server life cycle" =
   let tmp_dir = temp_rpc_dir () in
   let addr : Unix.sockaddr =
-    if Sys.win32
-    then ADDR_INET (Unix.inet_addr_loopback, 0)
-    else ADDR_UNIX (Path.to_string (Path.relative tmp_dir "dunerpc.sock"))
+    ADDR_UNIX (Path.to_string (Path.relative tmp_dir "dunerpc.sock"))
   in
   let client_log = Logger.create ~name:"client" in
   let server_log = Logger.create ~name:"server" in
@@ -136,12 +282,40 @@ let%expect_test "csexp server life cycle" =
     server: sessions finished |}]
 ;;
 
+let%expect_test "csexp server create cleans up after partial tcp bind failure" =
+  let fd_count () = Sys.readdir "/dev/fd" |> Array.length in
+  let busy = Unix.socket ~cloexec:true PF_INET SOCK_STREAM 0 in
+  Unix.bind busy (ADDR_INET (Unix.inet_addr_loopback, 0));
+  Unix.listen busy 10;
+  let busy_addr = Unix.getsockname busy in
+  Exn.protect
+    ~f:(fun () ->
+      let run () =
+        let before = fd_count () in
+        let* () =
+          match
+            Server.create
+              [ ADDR_INET (Unix.inet_addr_loopback, 0); busy_addr ]
+              ~backlog:10
+          with
+          | Error `Already_in_use -> Fiber.return ()
+          | Ok server ->
+            let* () = Server.stop server in
+            failwith "expected address conflict"
+        in
+        let after = fd_count () in
+        printfn "leaked fds: %d" (after - before);
+        Fiber.return ()
+      in
+      run_scheduler run)
+    ~finally:(fun () -> Unix.close busy);
+  [%expect {| leaked fds: 0 |}]
+;;
+
 let%expect_test "csexp server stop rejects new connections" =
   let tmp_dir = temp_rpc_dir () in
   let addr : Unix.sockaddr =
-    if Sys.win32
-    then ADDR_INET (Unix.inet_addr_loopback, 0)
-    else ADDR_UNIX (Path.to_string (Path.relative tmp_dir "dunerpc.sock"))
+    ADDR_UNIX (Path.to_string (Path.relative tmp_dir "dunerpc.sock"))
   in
   let run () =
     let server = server addr in
@@ -167,4 +341,52 @@ let%expect_test "csexp server stop rejects new connections" =
   in
   run_scheduler run;
   [%expect {| connect failed |}]
+;;
+
+let%expect_test "csexp client stop does not close an active session" =
+  let run () =
+    let server = server (ADDR_INET (Unix.inet_addr_loopback, 0)) in
+    let* sessions = Server.serve server in
+    let client = Csexp_rpc.Server.listening_address server |> List.hd |> client in
+    let server_read = Fiber.Ivar.create () in
+    let cleanup = ref false in
+    Fiber.fork_and_join_unit
+      (fun () ->
+         let* session = Client.connect_exn client in
+         Client.stop client;
+         let* () = Scheduler.sleep (Time.Span.of_secs 0.1) in
+         (match Fiber.Ivar.peek server_read with
+          | Some () -> ()
+          | None -> printfn "server: session remained open");
+         cleanup := true;
+         let* () = Session.close session in
+         let* () = Fiber.Ivar.read server_read in
+         Server.stop server)
+      (fun () ->
+         Fiber.Stream.In.parallel_iter sessions ~f:(fun session ->
+           let* response = Session.read session in
+           (match response with
+            | None -> if not !cleanup then printfn "server: session closed"
+            | Some sexp -> printfn "server: received %s" (Csexp.to_string sexp));
+           Fiber.Ivar.fill server_read ()))
+  in
+  run_scheduler run;
+  [%expect {| server: session remained open |}]
+;;
+
+let%expect_test "csexp server stop after serve releases tcp port" =
+  let addr =
+    let run () =
+      let server = server (ADDR_INET (Unix.inet_addr_loopback, 0)) in
+      let* _sessions = Server.serve server in
+      let addr = Csexp_rpc.Server.listening_address server |> List.hd in
+      let+ () = Server.stop server in
+      addr
+    in
+    run_scheduler run
+  in
+  let server = server addr in
+  stop_server server;
+  print_endline "rebound";
+  [%expect {| rebound |}]
 ;;

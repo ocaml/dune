@@ -48,6 +48,8 @@ module Resource_usage = struct
     ; nivcsw = 0
     }
   ;;
+
+  external get_self : unit -> t option = "dune_getrusage_self"
 end
 
 module Times = struct

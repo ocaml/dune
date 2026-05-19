@@ -42,6 +42,19 @@ let%expect_test "multiple timers" =
     finished 0.30 |}]
 ;;
 
+let%expect_test "simultaneous timers are deterministic" =
+  Scheduler.Run.go ~on_event config (fun () ->
+    [ "first"; "second"; "third" ]
+    |> Fiber.parallel_iter ~f:(fun name ->
+      let+ () = Scheduler.sleep Time.Span.zero in
+      print_endline name));
+  [%expect
+    {|
+    first
+    second
+    third |}]
+;;
+
 let%expect_test "run process with timeout" =
   Scheduler.Run.go
     ~on_event:(fun _ -> ())

@@ -216,7 +216,8 @@ let all_packages_in_dir_at_path ~dir ~path loc =
 
 let all_packages_versions_in_dir loc ~dir opam_package_name =
   let path = Paths.package_root opam_package_name in
-  all_packages_in_dir_at_path ~dir ~path loc |> List.map ~f:OpamPackage.of_string
+  all_packages_in_dir_at_path ~dir ~path loc
+  |> List.map ~f:(fun name -> OpamPackage.of_string (Filename.to_string name))
 ;;
 
 let all_packages_versions_at_rev_at_path ~path rev =
@@ -226,10 +227,14 @@ let all_packages_versions_at_rev_at_path ~path rev =
     let path = Rev_store.File.path file in
     let open Option.O in
     Path.Local.basename_opt path
-    >>= function
+    >>= fun basename ->
+    match Filename.to_string basename with
     | "opam" ->
       let+ package =
-        Path.Local.parent path >>| Path.Local.basename >>| OpamPackage.of_string
+        Path.Local.parent path
+        >>| Path.Local.basename
+        >>| Filename.to_string
+        >>| OpamPackage.of_string
       in
       file, package
     | _ -> None)
@@ -323,7 +328,7 @@ let packages_in_repo repo =
     |> OpamPackage.Name.Set.elements
   | Directory dir ->
     all_packages_in_dir_at_path ~path ~dir repo.loc
-    |> List.map ~f:OpamPackage.Name.of_string
+    |> List.map ~f:(fun name -> OpamPackage.Name.of_string (Filename.to_string name))
 ;;
 
 module Private = struct

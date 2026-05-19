@@ -44,7 +44,11 @@ module Dune_config = struct
         ]
     ;;
 
-    let equal, _ = Repr.make_compare repr
+    include Repr.Poly (struct
+        type nonrec t = t
+
+        let repr = repr
+      end)
 
     let decode =
       fields
@@ -115,7 +119,12 @@ module Dune_config = struct
       Set (Loc loc, value)
     ;;
 
-    let equal, _ = Repr.make_compare repr
+    include Repr.Poly (struct
+        type nonrec t = t
+
+        let repr = repr
+      end)
+
     let to_dyn = Repr.to_dyn repr
 
     let all where =
@@ -151,7 +160,12 @@ module Dune_config = struct
       ]
     ;;
 
-    let equal, _ = Repr.make_compare repr
+    include Repr.Poly (struct
+        type nonrec t = t
+
+        let repr = repr
+      end)
+
     let to_dyn = Repr.to_dyn repr
     let decode = enum all
   end
@@ -173,7 +187,12 @@ module Dune_config = struct
         ]
     ;;
 
-    let equal, _ = Repr.make_compare repr
+    include Repr.Poly (struct
+        type nonrec t = t
+
+        let repr = repr
+      end)
+
     let error = Error "invalid concurrency value, must be 'auto' or a positive number"
 
     let of_string = function
@@ -239,7 +258,11 @@ module Dune_config = struct
           ]
       ;;
 
-      let equal, _ = Repr.make_compare repr
+      include Repr.Poly (struct
+          type nonrec t = t
+
+          let repr = repr
+        end)
 
       let to_string = function
         | Disabled -> "disabled"

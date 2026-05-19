@@ -1,26 +1,65 @@
-let sprintf = Printf.sprintf
+type kind =
+  | Impl
+  | Intf
 
-type ('impl, 'intf) intf_or_impl =
-  | Impl of 'impl
-  | Intf of 'intf
+type mode =
+  | Format
+  | Print_binary
+  | Parse_binary
 
-module File = struct
-  let of_filename s = if String.ends_with ~suffix:".rei" s then Intf s else Impl s
+let kind_of_filename s = if String.ends_with ~suffix:".rei" s then Intf else Impl
 
-  let output_fn = function
-    | Impl fn -> fn ^ ".ml"
-    | Intf fn -> fn ^ ".mli"
-  ;;
-end
+let read_all file =
+  let ic = open_in_bin file in
+  Fun.protect
+    ~finally:(fun () -> close_in_noerr ic)
+    (fun () -> really_input_string ic (in_channel_length ic))
+;;
+
+let write_stdout file = output_string stdout (read_all file)
+
+let write_binary_ast source kind =
+  let tmp = Filename.temp_file "refmt" ".ast" in
+  Fun.protect
+    ~finally:(fun () -> Sys.remove tmp)
+    (fun () ->
+       (match kind with
+        | Impl ->
+          Pparse.parse_implementation ~tool_name:"refmt" source
+          |> Pparse.write_ast Structure tmp
+        | Intf ->
+          Pparse.parse_interface ~tool_name:"refmt" source
+          |> Pparse.write_ast Signature tmp);
+       write_stdout tmp)
+;;
+
+let write_parsed_binary_ast source kind =
+  let ppf = Format.std_formatter in
+  (match kind with
+   | Impl -> Pparse.read_ast Structure source |> Pprintast.structure ppf
+   | Intf -> Pparse.read_ast Signature source |> Pprintast.signature ppf);
+  Format.pp_print_flush ppf ()
+;;
 
 let () =
+  let mode = ref Format in
   let set_binary = function
     | "binary" -> ()
     | _ -> failwith "Only the value 'binary' is allowed for --parse / --print"
   in
   let args =
-    [ "--print", Arg.String set_binary, ""
-    ; "--parse", Arg.String set_binary, ""
+    [ ( "--print"
+      , Arg.String
+          (fun s ->
+            set_binary s;
+            mode := Print_binary)
+      , "" )
+    ; ( "--parse"
+      , Arg.String
+          (fun s ->
+            set_binary s;
+            mode := Parse_binary)
+      , "" )
     ; "-i", Arg.Bool ignore, ""
     ]
   in
@@ -36,22 +75,9 @@ let () =
     | None -> failwith "source file isn't set"
     | Some s -> s
   in
-  let ic = open_in source in
-  let source_file = File.of_filename source in
-  let out_fn = File.output_fn source_file in
-  let out = open_out_bin out_fn in
-  output_string out (sprintf "# 1 %S\n" source);
-  let rec loop () =
-    match input_char ic with
-    | exception End_of_file -> ()
-    | s ->
-      output_char out s;
-      loop ()
-  in
-  loop ();
-  close_out_noerr out;
-  let inch = open_in_bin out_fn in
-  let contents = really_input_string inch (in_channel_length inch) in
-  close_in inch;
-  Printf.printf "%s" contents
+  let kind = kind_of_filename source in
+  match !mode with
+  | Format -> write_stdout source
+  | Parse_binary -> write_parsed_binary_ast source kind
+  | Print_binary -> write_binary_ast source kind
 ;;

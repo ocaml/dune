@@ -106,7 +106,7 @@ let test_rule
            | Dir d -> d.dir
          in
          let dir = Path.Source.parent_exn path in
-         let basename = Path.Source.basename path in
+         let basename = Path.Source.basename path |> Filename.to_string in
          Path.Source.relative dir (".cram." ^ basename))
     in
     let script_sh = Path.Build.relative base_path "cram.sh" in
@@ -165,7 +165,7 @@ let test_rule
           ~optional:true
           ~mode:Text
           (Path.build script)
-          (Path.Build.extend_basename script ~suffix:".corrected")
+          (Path.Build.extend_basename script ~suffix:Filename.corrected)
       ]
     |> Action.Full.make
 ;;
@@ -242,7 +242,7 @@ let rules ~sctx ~dir tests project =
       in
       let test_name_alias = Alias.Name.of_string name in
       let init = None, Spec.make_empty ~test_name_alias in
-      let+ runtest_alias, acc =
+      let* runtest_alias, acc =
         Memo.List.fold_left
           stanzas
           ~init
@@ -286,8 +286,8 @@ let rules ~sctx ~dir tests project =
                 | None -> None
                 | Some (loc, set) ->
                   (match runtest_alias with
-                   | None -> Some (loc, set)
-                   | Some (loc', _) ->
+                   | None -> Some (loc, expander, set)
+                   | Some (loc', _, _) ->
                      let main_message =
                        [ Pp.text
                            "enabling or disabling the runtest alias for a cram test may \
@@ -361,11 +361,14 @@ let rules ~sctx ~dir tests project =
                 ; shell
                 } ))
       in
-      let extra_aliases =
-        let to_add =
-          match runtest_alias with
-          | None | Some (_, true) -> Alias.Name.Set.singleton Alias0.runtest
-          | Some (_, false) -> Alias.Name.Set.empty
+      let+ extra_aliases =
+        let+ to_add =
+          (match runtest_alias with
+           | None -> Memo.return true
+           | Some (_, expander, set) -> Expander.eval_blang expander set)
+          >>| function
+          | true -> Alias.Name.Set.singleton Alias0.runtest
+          | false -> Alias.Name.Set.empty
         in
         Alias.Name.Set.union to_add acc.extra_aliases
       in
@@ -381,15 +384,15 @@ let cram_tests dir =
     let path = Source_tree.Dir.path dir in
     let file_tests =
       Source_tree.Dir.filenames dir
-      |> Filename.Set.to_list
+      |> Filename.Array.Set.to_list
       |> List.filter_map ~f:(fun s ->
         if Cram_test.is_cram_suffix s
-        then Some (Ok (Cram_test.File (Path.Source.relative path s)))
+        then Some (Ok (Cram_test.File (Path.Source.relative_fname path s)))
         else None)
     in
     let+ dir_tests =
       Source_tree.Dir.sub_dirs dir
-      |> Filename.Map.to_list
+      |> Filename.Array.Map.to_list
       |> Memo.parallel_map ~f:(fun (name, sub_dir) ->
         match Cram_test.is_cram_suffix name with
         | false -> Memo.return None
@@ -398,15 +401,15 @@ let cram_tests dir =
           let fname = Cram_test.fname_in_dir_test in
           let test =
             let dir = Source_tree.Dir.path sub_dir in
-            let file = Path.Source.relative dir fname in
+            let file = Path.Source.relative_fname dir fname in
             Cram_test.Dir { file; dir }
           in
           let files = Source_tree.Dir.filenames sub_dir in
-          if Filename.Set.is_empty files
+          if Filename.Array.Set.is_empty files
           then None
           else
             Some
-              (if Filename.Set.mem files fname
+              (if Filename.Array.Set.mem files fname
                then Ok test
                else Error (Missing_run_t test)))
       >>| List.filter_opt

@@ -103,3 +103,14 @@ end
 (** [preprocess] and [preprocessor_deps] fields *)
 val preprocess_fields
   : (Without_instrumentation.t Per_module.t * Dep_conf.t list) Decoder.fields_parser
+
+type preprocess =
+  { config : With_instrumentation.t Per_module.t
+  ; preprocessor_deps : Dep_conf.t list
+  }
+
+val preprocess_config
+  :  preprocess:Without_instrumentation.t t Module_name.Per_item.t
+  -> instrumentation:Instrumentation.t list
+  -> preprocessor_deps:Dep_conf.t list
+  -> preprocess

@@ -55,8 +55,9 @@ depends: [
   "mdx" { with-dev-setup & >= "2.3.0" & os != "win32" }
   "menhir" { with-dev-setup & os != "win32" }
   "ocamlfind" { with-dev-setup & os != "win32" }
-  "odoc" { with-dev-setup & >= "2.4.0" & os != "win32" }
+  "odoc" { with-dev-setup & >= "3.2.0" & os != "win32" }
   "ppx_expect" { with-dev-setup & >= "v0.17" & os != "win32" }
+  "ppx_optcomp" {with-dev-setup}
   "spawn" { with-dev-setup }
   "ppx_inline_test" { with-dev-setup & os != "win32" }
   "ppxlib" { with-dev-setup & >= "0.37.0" & os != "win32" }
@@ -64,9 +65,7 @@ depends: [
   "utop" { with-dev-setup & >= "2.6.0" & os != "win32" }
   "melange" { with-dev-setup & >= "5.1.0-51" & os != "win32" }
   "uutf" { with-dev-setup }
-]
-depexts: [
   # the rev store negotiation test launches a git daemon, needs it to be
-  # installed, which is not the case on Fedora by default
-  ["git-daemon"] { with-test & os-family = "fedora" }
+  # installed on some distributions
+  "conf-git-daemon" { with-test }
 ]

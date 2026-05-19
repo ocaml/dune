@@ -709,7 +709,7 @@ let for_dune_package
             if Path.is_managed p
             then (
               match kind with
-              | Install.Entry.Expanded.File -> Path.relative dir (Path.basename p)
+              | Install.Entry.Expanded.File -> Path.relative_fname dir (Path.basename p)
               | Directory -> dir)
             else p)
 ;;

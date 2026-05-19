@@ -437,6 +437,10 @@ module Sed = struct
         { rex : Re.re
         ; replacement : string
         }
+    | Subst_unique of
+        { rex : Re.re
+        ; replacement : string
+        }
     | Delete of Re.re
     | Delete_between of
         { from : Re.re
@@ -458,6 +462,12 @@ module Sed = struct
   let subst ?file ~rex ~replacement () =
     let io = io file in
     let action = Subst { rex; replacement } in
+    { io; action }
+  ;;
+
+  let subst_unique ?file ~rex ~replacement () =
+    let io = io file in
+    let action = Subst_unique { rex; replacement } in
     { io; action }
   ;;
 
@@ -493,6 +503,35 @@ module Sed = struct
     | Subst { rex; replacement } ->
       List.map inputs ~f:(fun line ->
         Re.Pcre.substitute ~rex ~subst:(fun _ -> replacement) line)
+    | Subst_unique { rex; replacement } ->
+      let tbl = Table.create (module String) 16 in
+      let count =
+        List.fold_left inputs ~init:0 ~f:(fun counter line ->
+          List.fold_left
+            (Re.Pcre.full_split ~rex line)
+            ~init:counter
+            ~f:(fun counter token ->
+              match token with
+              | Re.Pcre.Delim matched ->
+                (match Table.find tbl matched with
+                 | Some _ -> counter
+                 | None ->
+                   let n = counter + 1 in
+                   Table.set tbl matched n;
+                   n)
+              | _ -> counter))
+      in
+      List.map inputs ~f:(fun line ->
+        Re.Pcre.full_split ~rex line
+        |> List.map ~f:(fun token ->
+          match token with
+          | Re.Pcre.Text s -> s
+          | Re.Pcre.Delim matched ->
+            let n = Table.find_exn tbl matched in
+            if count <= 1 then replacement else Printf.sprintf "%s%d" replacement n
+          | Re.Pcre.Group (_, s) -> s
+          | Re.Pcre.NoGroup -> "")
+        |> String.concat ~sep:"")
     | Delete rex -> List.filter inputs ~f:(fun line -> not @@ Re.Pcre.pmatch ~rex line)
     | Delete_between { from; to' } ->
       inputs
@@ -584,6 +623,23 @@ module Subst = Run_sed (struct
           | _ :: _ :: _ -> raise (Arg.Bad "Too many arguments")
         in
         Sed.subst ?file ~rex ~replacement ()
+      | _ -> raise (Arg.Bad "Required arguments are <pattern> <replacement> [file]")
+    ;;
+  end)
+
+module Subst_unique = Run_sed (struct
+    let name = "subst-unique"
+
+    let of_args = function
+      | pattern :: replacement :: optional ->
+        let rex = Re.Pcre.regexp pattern in
+        let file =
+          match optional with
+          | [] -> None
+          | [ filename ] -> Some (Path.of_filename_relative_to_initial_cwd filename)
+          | _ :: _ :: _ -> raise (Arg.Bad "Too many arguments")
+        in
+        Sed.subst_unique ?file ~rex ~replacement ()
       | _ -> raise (Arg.Bad "Required arguments are <pattern> <replacement> [file]")
     ;;
   end)

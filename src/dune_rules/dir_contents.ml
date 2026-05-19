@@ -20,10 +20,9 @@ let loc_of_dune_file st_dir =
 type t =
   { kind : kind
   ; dir : Path.Build.t
-  ; text_files : Filename.Set.t
+  ; text_files : Filename.Array.Set.t
   ; foreign_sources : Foreign_sources.t Memo.Lazy.t
   ; mlds : (Documentation.t * Doc_sources.mld list) list Memo.Lazy.t
-  ; coq : Coq_sources.t Memo.Lazy.t
   ; rocq : Rocq_sources.t Memo.Lazy.t
   ; ocaml : Ml_sources.t Memo.Lazy.t
   ; melange : Ml_sources.t Memo.Lazy.t
@@ -39,12 +38,11 @@ let empty kind ~dir ~source_dir =
   { kind
   ; dir
   ; source_dir
-  ; text_files = Filename.Set.empty
+  ; text_files = Filename.Array.Set.empty
   ; ocaml = Memo.Lazy.of_val Ml_sources.empty
   ; melange = Memo.Lazy.of_val Ml_sources.empty
   ; mlds = Memo.Lazy.of_val []
   ; foreign_sources = Memo.Lazy.of_val Foreign_sources.empty
-  ; coq = Memo.Lazy.of_val Coq_sources.empty
   ; rocq = Memo.Lazy.of_val Rocq_sources.empty
   }
 ;;
@@ -91,15 +89,13 @@ type triage =
 
 let dir t = t.dir
 let source_dir t = t.source_dir
-let coq t = Memo.Lazy.force t.coq
 let rocq t = Memo.Lazy.force t.rocq
-let ocaml t = Memo.Lazy.force t.ocaml
-let melange t = Memo.Lazy.force t.melange
 
-let ml t ~for_ =
+let ml =
+  fun t ~for_ ->
   match for_ with
-  | Compilation_mode.Ocaml -> ocaml t
-  | Melange -> melange t
+  | Compilation_mode.Ocaml -> Memo.Lazy.force t.ocaml
+  | Melange -> Memo.Lazy.force t.melange
 ;;
 
 let dirs t =
@@ -164,20 +160,15 @@ end = struct
         let* expander = Super_context.expander sctx ~dir in
         Memo.parallel_map stanzas ~f:(fun stanza ->
           match Stanza.repr stanza with
-          | Coq_stanza.Coqpp.T { modules; _ } ->
-            Coq_sources.mlg_files ~sctx ~dir ~modules
-            >>| List.rev_map ~f:(fun mlg_file ->
-              Path.Build.set_extension mlg_file ~ext:Filename.Extension.ml
-              |> Path.Build.basename)
-          | Coq_stanza.Extraction.T s ->
-            Memo.return (Coq_stanza.Extraction.ml_target_fnames s)
           | Rocq_stanza.Rocqpp.T { modules; _ } ->
             Rocq_sources.mlg_files ~sctx ~dir ~modules
             >>| List.rev_map ~f:(fun mlg_file ->
               Path.Build.set_extension mlg_file ~ext:Filename.Extension.ml
               |> Path.Build.basename)
           | Rocq_stanza.Extraction.T s ->
-            Memo.return (Rocq_stanza.Extraction.target_fnames s)
+            Memo.return
+              (Rocq_stanza.Extraction.target_fnames s
+               |> List.map ~f:Filename.of_string_exn)
           | Rule_conf.T rule ->
             Simple_rules.user_rule sctx rule ~dir ~expander
             >>| (function
@@ -189,7 +180,8 @@ end = struct
             Simple_rules.copy_files sctx def ~src_dir ~dir ~expander
             >>| Path.Set.to_list_map ~f:Path.basename
           | Generate_sites_module_stanza.T def ->
-            Generate_sites_module_rules.setup_rules sctx ~dir def >>| List.singleton
+            Generate_sites_module_rules.setup_rules sctx ~dir def
+            >>| fun fn -> [ Filename.of_string_exn fn ]
           | Library.T { buildable; _ }
           | Executables.T { buildable; _ }
           | Tests.T { exes = { buildable; _ }; _ } ->
@@ -200,12 +192,13 @@ end = struct
               Option.map buildable.ctypes ~f:Ctypes_field.generated_ml_and_c_files
               |> Option.value ~default:[]
             in
-            Memo.return (select_deps_files @ ctypes_files)
+            Memo.return
+              (List.map (select_deps_files @ ctypes_files) ~f:Filename.of_string_exn)
           | _ -> Memo.return [])
         >>| List.concat
-        >>| Filename.Set.of_list
+        >>| Filename.Array.Set.of_list
       in
-      Filename.Set.union generated_files from_source
+      Filename.Array.Set.union generated_files from_source
   ;;
 
   module Key = struct
@@ -276,7 +269,26 @@ end = struct
           in
           let ml =
             Memo.lazy_ (fun () ->
-              let lookup_vlib = lookup_vlib sctx ~current_dir:dir ~for_:Ocaml in
+              let for_ = Compilation_mode.Ocaml in
+              let lookup_vlib = lookup_vlib sctx ~current_dir:dir ~for_ in
+              let loc = loc_of_dune_file st_dir in
+              let libs = Scope.DB.find_by_dir dir >>| Scope.libs in
+              let* expander = Super_context.expander sctx ~dir
+              and* dirs = Memo.Lazy.force dirs in
+              Ml_sources.make
+                ~expander
+                ~libs
+                ~for_
+                ~project
+                ~lib_config
+                ~loc
+                ~include_subdirs
+                ~lookup_vlib
+                dirs)
+          and melange =
+            Memo.lazy_ (fun () ->
+              let for_ = Compilation_mode.Melange in
+              let lookup_vlib = lookup_vlib sctx ~current_dir:dir ~for_ in
               let loc = loc_of_dune_file st_dir in
               let libs = Scope.DB.find_by_dir dir >>| Scope.libs in
               let* expander = Super_context.expander sctx ~dir
@@ -289,6 +301,7 @@ end = struct
                 ~loc
                 ~include_subdirs
                 ~lookup_vlib
+                ~for_
                 dirs)
           in
           let mlds = mlds ~sctx ~dir ~dune_file:d ~files in
@@ -298,7 +311,7 @@ end = struct
               ; dir
               ; text_files = files
               ; ocaml = ml
-              ; melange = ml
+              ; melange
               ; mlds
               ; foreign_sources =
                   Memo.lazy_ (fun () ->
@@ -306,11 +319,6 @@ end = struct
                     let* stanzas = stanzas
                     and* dirs = Memo.Lazy.force dirs in
                     Foreign_sources.make stanzas ~dir ~dune_version ~dirs)
-              ; coq =
-                  Memo.lazy_ (fun () ->
-                    let+ stanzas = stanzas
-                    and+ dirs = Memo.Lazy.force dirs in
-                    Coq_sources.of_dir stanzas ~dir ~include_subdirs ~dirs)
               ; rocq =
                   Memo.lazy_ (fun () ->
                     let+ stanzas = stanzas
@@ -388,7 +396,8 @@ end = struct
            in
            let ml =
              Memo.lazy_ (fun () ->
-               let lookup_vlib = lookup_vlib sctx ~current_dir:dir ~for_:Ocaml in
+               let for_ = Compilation_mode.Ocaml in
+               let lookup_vlib = lookup_vlib sctx ~current_dir:dir ~for_ in
                let libs = Scope.DB.find_by_dir dir >>| Scope.libs in
                let* expander = Super_context.expander sctx ~dir
                and* dirs = Memo.Lazy.force dirs in
@@ -396,6 +405,24 @@ end = struct
                  ~expander
                  ~project
                  ~libs
+                 ~for_
+                 ~lib_config
+                 ~loc
+                 ~lookup_vlib
+                 ~include_subdirs
+                 dirs)
+           and melange =
+             Memo.lazy_ (fun () ->
+               let for_ = Compilation_mode.Melange in
+               let lookup_vlib = lookup_vlib sctx ~current_dir:dir ~for_ in
+               let libs = Scope.DB.find_by_dir dir >>| Scope.libs in
+               let* expander = Super_context.expander sctx ~dir
+               and* dirs = Memo.Lazy.force dirs in
+               Ml_sources.make
+                 ~expander
+                 ~project
+                 ~libs
+                 ~for_
                  ~lib_config
                  ~loc
                  ~lookup_vlib
@@ -408,12 +435,6 @@ end = struct
                let* stanzas = stanzas
                and* dirs = Memo.Lazy.force dirs in
                Foreign_sources.make stanzas ~dir ~dune_version ~dirs)
-           in
-           let coq =
-             Memo.lazy_ (fun () ->
-               let+ stanzas = stanzas
-               and+ dirs = Memo.Lazy.force dirs in
-               Coq_sources.of_dir stanzas ~dir ~dirs ~include_subdirs)
            in
            let rocq =
              Memo.lazy_ (fun () ->
@@ -439,10 +460,9 @@ end = struct
                  ; dir
                  ; text_files = files
                  ; ocaml = ml
-                 ; melange = ml
+                 ; melange
                  ; foreign_sources
                  ; mlds
-                 ; coq
                  ; rocq
                  })
            in
@@ -452,10 +472,9 @@ end = struct
              ; dir
              ; text_files = files
              ; ocaml = ml
-             ; melange = ml
+             ; melange
              ; foreign_sources
              ; mlds
-             ; coq
              ; rocq
              }
            in

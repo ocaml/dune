@@ -29,8 +29,12 @@ let ocaml_index sctx ~dir =
 
 let index_file_name = "cctx.ocaml-index"
 
-let index_path_in_obj_dir obj_dir =
-  let dir = Obj_dir.obj_dir obj_dir in
+let index_path_in_obj_dir obj_dir ~for_ =
+  let dir =
+    match for_ with
+    | Compilation_mode.Ocaml -> Obj_dir.obj_dir obj_dir
+    | Melange -> Obj_dir.melange_dir obj_dir
+  in
   Path.Build.relative dir index_file_name
 ;;
 
@@ -44,7 +48,7 @@ let cctx_rules cctx =
   let dir = Compilation_context.dir cctx in
   let aggregate =
     let obj_dir = Compilation_context.obj_dir cctx in
-    let target = index_path_in_obj_dir obj_dir in
+    let target = index_path_in_obj_dir obj_dir ~for_ in
     let additional_libs =
       let* () = Memo.return () in
       let scope = Compilation_context.scope cctx in
@@ -54,6 +58,11 @@ let cctx_rules cctx =
         Resolve.Memo.return Command.Args.empty
       else
         let open Resolve.Memo.O in
+        let mode =
+          match for_ with
+          | Ocaml -> Lib_mode.Ocaml Byte
+          | Melange -> Melange
+        in
         let+ non_compile_libs =
           let* req_compile = Compilation_context.requires_compile cctx in
           Compilation_context.requires_link cctx
@@ -62,7 +71,7 @@ let cctx_rules cctx =
         Lib_flags.L.include_flags
           ~direct_libs:non_compile_libs
           ~hidden_libs:[]
-          (Lib_mode.Ocaml Byte)
+          mode
           (Compilation_context.ocaml cctx).lib_config
     in
     (* Indexing depends (recursively) on [required_compile] libs:
@@ -75,7 +84,7 @@ let cctx_rules cctx =
         >>| List.filter_map ~f:(fun lib ->
           Lib.Local.of_lib lib
           |> Option.map ~f:(fun lib ->
-            Lib.Local.obj_dir lib |> index_path_in_obj_dir |> Path.build))
+            Lib.Local.obj_dir lib |> index_path_in_obj_dir ~for_ |> Path.build))
         >>| Dep.Set.of_files
       in
       Command.Args.Hidden_deps deps
@@ -127,33 +136,44 @@ let cctx_rules cctx =
 ;;
 
 let context_indexes =
-  let memo =
-    Action_builder.create_memo
-      "indixes"
-      ~input:(module Context)
-      (fun ctx ->
-         Context.name ctx
-         |> Dune_load.dune_files
-         >>| Dune_file.fold_static_stanzas ~init:[] ~f:(fun dune_file stanza acc ->
-           let obj =
-             let dir =
-               let build_dir = Context.build_dir ctx in
-               Path.Build.append_source build_dir (Dune_file.dir dune_file)
+  let context_indexes =
+    let module Input : Memo.Input with type t = Context.t * Compilation_mode.t = struct
+      type t = Context.t * Compilation_mode.t
+
+      let hash = Tuple.T2.hash Context.hash Poly.hash
+      let equal = Tuple.T2.equal Context.equal Compilation_mode.equal
+      let to_dyn = Tuple.T2.to_dyn Context.to_dyn Compilation_mode.to_dyn
+    end
+    in
+    let memo =
+      Action_builder.create_memo
+        "indixes"
+        ~input:(module Input)
+        (fun (ctx, for_) ->
+           Context.name ctx
+           |> Dune_load.dune_files
+           >>| Dune_file.fold_static_stanzas ~init:[] ~f:(fun dune_file stanza acc ->
+             let obj =
+               let dir =
+                 let build_dir = Context.build_dir ctx in
+                 Path.Build.append_source build_dir (Dune_file.dir dune_file)
+               in
+               match Stanza.repr stanza with
+               | Executables.T exes | Tests.T { exes; _ } ->
+                 Some (Executables.obj_dir ~dir exes)
+               | Library.T lib -> Some (Library.obj_dir ~dir lib)
+               | Melange_stanzas.Emit.T { target; _ } ->
+                 Some (Obj_dir.make_melange_emit ~dir ~name:target)
+               | _ -> None
              in
-             match Stanza.repr stanza with
-             | Executables.T exes | Tests.T { exes; _ } ->
-               Some (Executables.obj_dir ~dir exes)
-             | Library.T lib -> Some (Library.obj_dir ~dir lib)
-             | Melange_stanzas.Emit.T { target; _ } ->
-               Some (Obj_dir.make_melange_emit ~dir ~name:target)
-             | _ -> None
-           in
-           match obj with
-           | None -> acc
-           | Some obj_dir -> Path.build (index_path_in_obj_dir obj_dir) :: acc)
-         |> Action_builder.of_memo)
+             match obj with
+             | None -> acc
+             | Some obj_dir -> Path.build (index_path_in_obj_dir obj_dir ~for_) :: acc)
+           |> Action_builder.of_memo)
+    in
+    Action_builder.exec_memo memo
   in
-  Action_builder.exec_memo memo
+  fun ctx ~for_ -> context_indexes (ctx, for_)
 ;;
 
 let project_rule sctx project =
@@ -168,5 +188,5 @@ let project_rule sctx project =
     Rules.Produce.Alias.add_deps
       ocaml_index_alias
       (let open Action_builder.O in
-       context_indexes ctx >>= Action_builder.paths_existing))
+       context_indexes ctx ~for_:Ocaml >>= Action_builder.paths_existing))
 ;;

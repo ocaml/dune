@@ -32,11 +32,11 @@ Test `melange.runtime_deps` in a public library in the workspace
   lib: [
     "_build/install/default/lib/foo/META"
     "_build/install/default/lib/foo/dune-package"
-    "_build/install/default/lib/foo/foo.ml"
     "_build/install/default/lib/foo/index.txt"
     "_build/install/default/lib/foo/melange/foo.cmi" {"melange/foo.cmi"}
     "_build/install/default/lib/foo/melange/foo.cmj" {"melange/foo.cmj"}
     "_build/install/default/lib/foo/melange/foo.cmt" {"melange/foo.cmt"}
+    "_build/install/default/lib/foo/melange/foo.ml" {"melange/foo.ml"}
     "_build/install/default/lib/foo/nested/hello.txt" {"nested/hello.txt"}
   ]
 
@@ -70,7 +70,6 @@ The runtime_dep index.txt was copied to the build folder
 
   $ ls _build/default/lib
   foo.ml
-  foo.pp.ml
   index.txt
   nested
   $ ls _build/default/output/node_modules/foo/

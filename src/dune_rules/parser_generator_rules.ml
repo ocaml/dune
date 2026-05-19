@@ -50,7 +50,9 @@ let gen_rules sctx ~dir_contents ~dir ~for_ =
     | Parser_generators.Ocamllex s -> s, Ml_sources.Parser_generators.Ocamllex s.loc
     | Ocamlyacc s -> s, Ocamlyacc s.loc
   in
-  Dir_contents.ocaml dir_contents
+  (* NOTE(anmonteiro): Parser generator rules run in the "OCaml module space":
+    `Ml_sources` generates `foo.mll` -> `foo.ml`. Melange  *)
+  Dir_contents.ml dir_contents ~for_:Ocaml
   >>| Ml_sources.Parser_generators.modules ~for_:modules_for
   >>= fun { deps = _; targets } ->
   let { Parser_generators.mode; _ } = ocamllex_or_ocamlyacc in

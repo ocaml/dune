@@ -137,16 +137,21 @@ However, it is also possible to declare specific revisions of the repositories,
 to get a reproducible solution. Due to using Git, any previous revision of the
 repository can be used by specifying a commit hash.
 
-Dune uses two repositories by default:
+Dune uses three repositories by default, in order of priority:
 
-* `upstream` refers to the default branch of `opam-repository`, which contains
-  all the publicly released packages.
 * `overlay` refers to
   [opam-overlays](https://github.com/ocaml-dune/opam-overlays), which defines
   packages patched to work with package management. The long-term goal is to
   have as few packages as possible in this repository as more and more packages
   work within Dune Package Management upstream. Check the
   [compatibility](#compatibility) section for details.
+* `relocatable` refers to the `relocatable` branch of
+  [dra27/opam-repository](https://github.com/dra27/opam-repository/tree/relocatable),
+  which provides a relocatable version of the OCaml compiler. This allows the
+  compiler to be built and cached independently of the project's build
+  directory.
+* `upstream` refers to the default branch of `opam-repository`, which contains
+  all the publicly released packages.
 
 #### Solving
 

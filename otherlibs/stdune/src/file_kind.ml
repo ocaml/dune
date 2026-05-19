@@ -54,5 +54,10 @@ let repr =
     ]
 ;;
 
-let equal, _ = Repr.make_compare repr
+include Repr.Poly (struct
+    type nonrec t = t
+
+    let repr = repr
+  end)
+
 let to_dyn = Repr.to_dyn repr

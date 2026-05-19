@@ -29,8 +29,8 @@ Reference a branch that does not exist in the pin:
   > EOF
 
   $ export BUILD_PATH_PREFIX_MAP="PWD=//$PWD:$BUILD_PATH_PREFIX_MAP"
-  $ dune pkg lock 2>&1 | dune_cmd subst '-\d+' '-eol' | dune_cmd delete '\^+'
-  File "dune-project", line 3, characters 6-eol:
+  $ dune pkg lock 2>&1 | dune_cmd subst 'characters \d+-\d+:' 'characters start-eol:' | dune_cmd delete '\^+'
+  File "dune-project", line 3, characters start-eol:
   3 |  (url "git+file:PWD/_repo#nonexistent-branch")
   revision "nonexistent-branch" not found in
   file:PWD/_repo

@@ -56,7 +56,7 @@ let collect { dir; digest } =
   let root = dir in
   let root_path = Path.build root in
   if Fpath.exists (Path.to_string root_path) then needs_cleanup := true;
-  let build_path_of ~dir fname = Path.Build.relative root (Filename.concat dir fname) in
+  let build_path_of ~dir fname = Path.Build.relative root (Filename.append dir fname) in
   let build_dir_of dir =
     if String.equal dir "" then root else Path.Build.relative root dir
   in

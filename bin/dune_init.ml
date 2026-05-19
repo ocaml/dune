@@ -188,7 +188,7 @@ module Init_context = struct
       (* CR-someday rgrinberg: why not get the project from the source tree? *)
       Dune_project.load
         ~dir:Path.Source.root
-        ~files:Filename.Set.empty
+        ~files:Filename.Array.Set.empty
         ~infer_from_opam_files:true
         ~load_opam_file_with_contents:Dune_pkg.Opam_file.load_opam_file_with_contents
       >>| function
@@ -635,7 +635,7 @@ module Component = struct
             in
             [ File.make_text
                 ~dir:(Path.Source.parent_exn opam_file)
-                (Path.Source.basename opam_file)
+                (Path.Source.basename opam_file |> Filename.to_string)
                 content
             ]
           | Esy -> [ File.make_text ~dir "package.json" "" ]

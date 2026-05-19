@@ -212,14 +212,16 @@ val junk_everything : (unit, _) parser
     i.e. either an atom or a quoted string, but not a template nor a list. *)
 val plain_string : (loc:Loc.t -> string -> 'a) -> 'a t
 
-(** A valid filename, i.e. a string other than "." or "..". *)
-val filename : Filename.t t
+(** A file path atom in dune syntax, i.e. a string other than "." or "..".
+    This is not necessarily a [Filename.t]: callers may accept relative paths
+    such as [./deps.d]. *)
+val file_path : string t
 
 (** An extension: a string not starting with ".". The value returned by the
     parser is prefixed with ".". *)
 val extension : string t
 
-(** A relative filename. *)
+(** A relative file path. *)
 val relative_file : string t
 
 (** [fix f] is the fixpoint of the endofunction of parsers [f]. *)

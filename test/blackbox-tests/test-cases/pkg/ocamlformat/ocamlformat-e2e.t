@@ -28,13 +28,11 @@ OCamlFormat.
   - ocamlformat.0.26.3
   File "foo.ml", line 1, characters 0-0:
   --- foo.ml
-  +++ .formatted/foo.ml
+  +++ foo.ml.corrected
   @@ -1 +1 @@
   -let () = print_endline "Hello, world"
   +formatted with version 0.26.3
   [1]
-  $ cat _build/default/.formatted/foo.ml
-  formatted with version 0.26.3
 
 Create .ocamlformat file
   $ cat > .ocamlformat <<EOF
@@ -52,25 +50,21 @@ file.
   - ocamlformat.0.26.2
   File "foo.ml", line 1, characters 0-0:
   --- foo.ml
-  +++ .formatted/foo.ml
+  +++ foo.ml.corrected
   @@ -1 +1 @@
   -let () = print_endline "Hello, world"
   +formatted with version 0.26.2
   [1]
-  $ cat _build/default/.formatted/foo.ml
-  formatted with version 0.26.2
 
 Formating a second time would not trigger the lock/solve.
   $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune fmt --preview
   File "foo.ml", line 1, characters 0-0:
   --- foo.ml
-  +++ .formatted/foo.ml
+  +++ foo.ml.corrected
   @@ -1 +1 @@
   -let () = print_endline "Hello, world"
   +formatted with version 0.26.2
   [1]
-  $ cat _build/default/.formatted/foo.ml
-  formatted with version 0.26.2
 
 When the lock dir is removed, the solving/lock is renewed:
 
@@ -80,7 +74,7 @@ When the lock dir is removed, the solving/lock is renewed:
   - ocamlformat.0.26.2
   File "foo.ml", line 1, characters 0-0:
   --- foo.ml
-  +++ .formatted/foo.ml
+  +++ foo.ml.corrected
   @@ -1 +1 @@
   -let () = print_endline "Hello, world"
   +formatted with version 0.26.2

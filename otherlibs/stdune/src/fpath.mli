@@ -76,6 +76,7 @@ val traverse
   -> ?enter_dir:(dir:string -> Filename.t -> bool)
   -> ?on_error:
        [ `Ignore | `Raise | `Call of dir:string -> Unix_error.Detailed.t -> 'acc -> 'acc ]
+  -> ?sort_entries:bool
   -> unit
   -> 'acc
 

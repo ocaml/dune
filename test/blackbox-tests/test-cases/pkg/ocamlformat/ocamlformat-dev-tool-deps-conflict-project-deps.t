@@ -98,13 +98,11 @@ versions of the same dependency.
   - printer.1.0
   File "foo.ml", line 1, characters 0-0:
   --- foo.ml
-  +++ .formatted/foo.ml
+  +++ foo.ml.corrected
   @@ -1 +1 @@
   -let () = Printer.print ()
   +formatted
   [1]
-  $ cat _build/default/.formatted/foo.ml
-  formatted
 
 Update "dune-project", removing the dependency on the "printer" package. This
 demonstrates that even though OCamlFormat depends on the "printer" package, building the

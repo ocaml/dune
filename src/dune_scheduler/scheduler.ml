@@ -80,20 +80,22 @@ let wait_for_build_process t ~is_process_group_leader pid =
       t.cancel
       ~on_cancel:(fun () ->
         if not Sys.win32 then Process_watcher.killall t.process_watcher Sys.sigterm;
-        let alarm_clock = Lazy.force t.alarm_clock in
-        let sleep = Alarm_clock.sleep alarm_clock sigterm_grace_period in
+        let sleep = Async_io.sleep t.async_io sigterm_grace_period in
         sigkill_alarm := Some sleep;
-        Alarm_clock.await sleep
+        Async_io.Task.await sleep
         >>| function
-        | `Cancelled -> ()
-        | `Finished -> Process_watcher.killall t.process_watcher Sys.sigkill)
+        | Error `Cancelled -> ()
+        | Ok () -> Process_watcher.killall t.process_watcher Sys.sigkill
+        | Error (`Exn _) -> assert false)
       (fun () ->
-         let+ r = wait_for_process t ~is_process_group_leader pid in
+         let* r = wait_for_process t ~is_process_group_leader pid in
          if not Sys.win32
          then Process_watcher.kill_process_group pid Sys.sigterm ~is_process_group_leader;
-         (match !sigkill_alarm with
-          | None -> ()
-          | Some alarm -> Alarm_clock.cancel (Lazy.force t.alarm_clock) alarm);
+         let+ () =
+           match !sigkill_alarm with
+           | None -> Fiber.return ()
+           | Some alarm -> Async_io.Task.cancel alarm
+         in
          r)
   in
   ( res
@@ -190,6 +192,7 @@ let prepare (config : Config.t) ~(handler : Handler.t) ~events ~file_watcher =
   in
   let cancel = Fiber.Cancel.create () in
   let process_watcher = Process_watcher.init events in
+  let async_io = Async_io.create events in
   let t =
     { status =
         (* Slightly weird initialization happening here: for polling mode we
@@ -202,6 +205,7 @@ let prepare (config : Config.t) ~(handler : Handler.t) ~events ~file_watcher =
     ; invalidation = Memo.Invalidation.empty
     ; run_id_state = Run_id.State.create ~watch_mode:(Option.is_some file_watcher)
     ; watch_restart_started_at = None
+    ; watch_restart_files = None
     ; job_throttle = Fiber.Throttle.create config.concurrency
     ; process_watcher
     ; events
@@ -209,11 +213,10 @@ let prepare (config : Config.t) ~(handler : Handler.t) ~events ~file_watcher =
     ; file_watcher
     ; fs_syncs = Table.create (module File_watcher.Sync_id) 64
     ; build_inputs_changed = Trigger.create ()
-    ; alarm_clock = lazy (Alarm_clock.create events (Time.Span.of_secs 0.1))
     ; cancel
     ; thread_pool = lazy (Thread_pool.create ~min_workers:4 ~max_workers:50)
     ; signal_watcher
-    ; async_io = Async_io.create events
+    ; async_io
     }
   in
   current := Some t;
@@ -278,10 +281,10 @@ module Run_once = struct
     then iter t
     else (
       let now = Time.now () in
-      let reasons = Memo.Invalidation.details_hum ~max_elements:max_int invalidation in
       if Run_id.State.is_watch t.run_id_state
       then (
         let run_id = Run_id.State.next_to_start t.run_id_state in
+        let reasons = Memo.Invalidation.details_hum ~max_elements:max_int invalidation in
         if Option.is_none t.watch_restart_started_at
         then t.watch_restart_started_at <- Some now;
         Dune_trace.emit Build (fun () ->
@@ -369,7 +372,7 @@ let async_exn f =
   | Ok e -> e
 ;;
 
-let flush_file_watcher t =
+let flush_file_watcher_impl t =
   match t.file_watcher with
   | None -> Fiber.return ()
   | Some file_watcher ->
@@ -378,6 +381,9 @@ let flush_file_watcher t =
     Table.set t.fs_syncs id ivar;
     Fiber.Ivar.read ivar
 ;;
+
+let flush_file_watcher () = flush_file_watcher_impl (t ())
+let is_watch_mode () = Run_id.State.is_watch (t ()).run_id_state
 
 module Run = struct
   exception Build_cancelled = Build_cancelled
@@ -398,93 +404,38 @@ module Run = struct
   module Event_queue = Event.Queue
   module Event = Handler.Event
 
-  let allocate_run_id t =
-    let state, run_id = Run_id.State.start t.run_id_state in
-    t.run_id_state <- state;
-    run_id
-  ;;
-
-  let emit_build_start ~run_id ~restart ~start =
-    Dune_trace.emit ~buffered:true Build (fun () ->
-      Dune_trace.Event.watch_build_start ~run_id:(Run_id.to_int run_id) ~restart ~start)
-  ;;
-
-  let emit_build_finish ~run_id ~start ~stop ~outcome ~restart_duration =
-    Dune_trace.emit ~buffered:true Build (fun () ->
-      Dune_trace.Event.watch_build_finish
-        ~run_id:(Run_id.to_int run_id)
-        ~outcome
-        ~start
-        ~stop
-        ~restart_duration)
-  ;;
-
   let rec poll_iter t step =
-    if Memo.Invalidation.is_empty t.invalidation
-    then Memo.Metrics.reset ()
-    else (
-      let details_hum = Memo.Invalidation.details_hum t.invalidation in
-      t.handler (Source_files_changed { details_hum });
-      Memo.reset t.invalidation;
-      t.invalidation <- Memo.Invalidation.empty;
-      t.build_inputs_changed <- Trigger.create ());
-    let started_at = Time.now () in
-    let run_id = allocate_run_id t in
-    emit_build_start
-      ~run_id
-      ~restart:(Option.is_some t.watch_restart_started_at)
-      ~start:started_at;
+    t.watch_restart_files
+    <- (if Memo.Invalidation.is_empty t.invalidation
+        then (
+          Memo.Metrics.reset ();
+          None)
+        else (
+          let files = Memo.Invalidation.changed_paths t.invalidation in
+          let details_hum = Memo.Invalidation.details_hum t.invalidation in
+          t.handler (Source_files_changed { details_hum });
+          Memo.reset t.invalidation;
+          t.invalidation <- Memo.Invalidation.empty;
+          t.build_inputs_changed <- Trigger.create ();
+          Some files));
     let cancel = Fiber.Cancel.create () in
     t.status <- Building cancel;
     t.cancel <- cancel;
     let* res = step in
+    let res : Build_outcome.t =
+      match res with
+      | Error `Already_reported -> Failure
+      | Ok () -> Success
+    in
     match t.status with
     | Standing_by ->
-      let res : Build_outcome.t =
-        match res with
-        | Error `Already_reported -> Failure
-        | Ok () -> Success
-      in
-      let stop = Time.now () in
-      let restart_duration =
-        Option.map t.watch_restart_started_at ~f:(fun restart_started_at ->
-          Time.diff stop restart_started_at)
-      in
-      t.watch_restart_started_at <- None;
-      emit_build_finish
-        ~run_id
-        ~start:started_at
-        ~stop
-        ~outcome:
-          (match res with
-           | Success -> `Success
-           | Failure -> `Failure)
-        ~restart_duration;
       t.handler (Build_finish res);
       Fiber.return res
     | Restarting_build -> poll_iter t step
     | Building _ ->
-      let res : Build_outcome.t =
-        match res with
-        | Error `Already_reported -> Failure
-        | Ok () -> Success
-      in
       t.status <- Standing_by;
-      let stop = Time.now () in
-      let restart_duration =
-        Option.map t.watch_restart_started_at ~f:(fun restart_started_at ->
-          Time.diff stop restart_started_at)
-      in
       t.watch_restart_started_at <- None;
-      emit_build_finish
-        ~run_id
-        ~start:started_at
-        ~stop
-        ~outcome:
-          (match res with
-           | Success -> `Success
-           | Failure -> `Failure)
-        ~restart_duration;
+      t.watch_restart_files <- None;
       t.handler (Build_finish res);
       Fiber.return res
   ;;
@@ -533,22 +484,7 @@ module Run = struct
       (* Flush before to make the build reproducible. The passive watch mode is
          designed for tests and We want to observe all the change made by the
          test before starting the build. *)
-      let* () = flush_file_watcher t in
-      let step =
-        let* res = step in
-        (* Flush after the build to make sure we reach a fix point if the build
-           interrupts itself. Without that, a file change caused by the build
-           itself might be picked up before or after the build finishes, which
-           makes the behavior racy and not good for tests.
-
-           Flushing here makes the previous [flush_file_watcher] less useful,
-           however we keep it because without it we might start the build
-           without having observed all the changes made by the current test.
-           Such an intermediate state might result in a build error, which would
-           make the test racy.*)
-        let+ () = flush_file_watcher t in
-        res
-      in
+      let* () = flush_file_watcher () in
       let* res = poll_iter t step in
       let* () = Fiber.Ivar.fill response_ivar res in
       loop ()
@@ -589,17 +525,16 @@ module Run = struct
         | None -> run
         | Some timeout ->
           fun () ->
-            let sleep = Alarm_clock.sleep (Lazy.force t.alarm_clock) timeout in
+            let sleep = Async_io.sleep t.async_io timeout in
             Fiber.fork_and_join_unit
               (fun () ->
-                 let+ res = Alarm_clock.await sleep in
+                 let+ res = Async_io.Task.await sleep in
                  match res with
-                 | `Finished -> Event_queue.send_shutdown t.events Timeout
-                 | `Cancelled -> ())
+                 | Ok () -> Event_queue.send_shutdown t.events Timeout
+                 | Error `Cancelled -> ()
+                 | Error (`Exn _) -> assert false)
               (fun () ->
-                 Fiber.finalize run ~finally:(fun () ->
-                   Alarm_clock.cancel (Lazy.force t.alarm_clock) sleep;
-                   Fiber.return ()))
+                 Fiber.finalize run ~finally:(fun () -> Async_io.Task.cancel sleep))
       in
       match Run_once.run_and_cleanup t run with
       | Ok a -> Result.Ok a
@@ -607,7 +542,6 @@ module Run = struct
       | Error Already_reported -> Error (Dune_util.Report_error.Already_reported, None)
       | Error (Exn exn_with_bt) -> Error (exn_with_bt.exn, Some exn_with_bt.backtrace)
     in
-    if Lazy.is_val t.alarm_clock then Alarm_clock.close (Lazy.force t.alarm_clock);
     match result with
     | Ok a -> a
     | Error (exn, None) -> Exn.raise exn
@@ -618,6 +552,38 @@ end
 let shutdown () =
   let t = t () in
   Event.Queue.send_shutdown t.events Requested
+;;
+
+type build_finish =
+  | Finished of { restart_duration : Time.Span.t option }
+  | Restarting
+
+let start_build () =
+  let t = t () in
+  let state, run_id = Run_id.State.start t.run_id_state in
+  t.run_id_state <- state;
+  run_id
+;;
+
+let watch_restart_files () = (t ()).watch_restart_files
+
+let finish_build ~stop =
+  let t = t () in
+  let finish () =
+    let restart_duration =
+      Option.map t.watch_restart_started_at ~f:(fun restart_started_at ->
+        Time.diff stop restart_started_at)
+    in
+    t.watch_restart_started_at <- None;
+    t.watch_restart_files <- None;
+    Finished { restart_duration }
+  in
+  match t.status with
+  | Restarting_build -> Restarting
+  | Standing_by -> finish ()
+  | Building _ ->
+    t.status <- Standing_by;
+    finish ()
 ;;
 
 let cancel_current_build () =
@@ -633,21 +599,22 @@ let cancel_current_build () =
 
 let wait_for_process_with_timeout t pid waiter ~timeout ~is_process_group_leader =
   Fiber.of_thunk (fun () ->
-    let sleep = Alarm_clock.sleep (Lazy.force t.alarm_clock) timeout in
+    let sleep = Async_io.sleep t.async_io timeout in
     let+ clock_result =
-      Alarm_clock.await sleep
+      Async_io.Task.await sleep
       >>| function
-      | `Finished when Process_watcher.is_running t.process_watcher pid ->
+      | Ok () when Process_watcher.is_running t.process_watcher pid ->
         Process_watcher.kill_process_group pid Sys.sigkill ~is_process_group_leader;
         Dune_trace.emit Process (fun () ->
           Dune_trace.Event.signal_sent
             Kill
             (`Timeout { pid; group_leader = is_process_group_leader; timeout }));
         `Timed_out
-      | _ -> `Finished
+      | Ok () | Error `Cancelled -> `Finished
+      | Error (`Exn _) -> assert false
     and+ res, termination_reason =
-      let+ res = waiter t ~is_process_group_leader pid in
-      Alarm_clock.cancel (Lazy.force t.alarm_clock) sleep;
+      let* res = waiter t ~is_process_group_leader pid in
+      let+ () = Async_io.Task.cancel sleep in
       res
     in
     ( res
@@ -677,13 +644,13 @@ let wait_for_process ?timeout ~is_process_group_leader pid =
 let sleep dur =
   let* () = Fiber.return () in
   (let t = t () in
-   let alarm_clock = Lazy.force t.alarm_clock in
-   Alarm_clock.await (Alarm_clock.sleep alarm_clock dur))
+   Async_io.Task.await (Async_io.sleep t.async_io dur))
   >>| function
-  | `Finished -> ()
-  | `Cancelled ->
+  | Ok () -> ()
+  | Error `Cancelled ->
     (* cancellation mechanism isn't exposed to the user *)
     assert false
+  | Error (`Exn _) -> assert false
 ;;
 
 let set_fs_memo_impl = Fs_memo.set_impl

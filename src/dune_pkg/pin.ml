@@ -143,7 +143,7 @@ end
 module Scan_project = struct
   type t =
     read:(Path.Source.t -> string Fiber.t)
-    -> files:Filename.Set.t
+    -> files:Filename.Array.Set.t
     -> (DB.t * Dune_lang.Package.t Package_name.Map.t) option Fiber.t
 
   type state =
@@ -162,7 +162,8 @@ module Scan_project = struct
         >>| Filename.Map.filter ~f:(function
           | `File -> true
           | `Dir -> false)
-        >>| Filename.Set.of_keys
+        >>| Filename.Map.keys
+        >>| Filename.Array.Set.of_sorted_list
       in
       let read path =
         let path = Path.Source.to_local path in

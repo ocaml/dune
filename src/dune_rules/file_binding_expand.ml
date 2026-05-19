@@ -3,7 +3,7 @@ open Memo.O
 
 let relative_path_starts_with_parent relative_path =
   match String.lsplit2 relative_path ~on:'/' with
-  | None -> Filename.(equal relative_path parent_dir_name)
+  | None -> String.equal relative_path Filename.parent_dir_name
   | Some (first, _) -> String.equal first Filename.parent_dir_name
 ;;
 

@@ -84,6 +84,22 @@ module Socket = struct
   ;;
 end
 
+let unlink_socket_path (addr : Unix.sockaddr) =
+  match addr with
+  | ADDR_UNIX path -> Fpath.unlink_no_err path
+  | _ -> ()
+;;
+
+let close_bound_socket_sync (addr, fd) =
+  Fd.close fd;
+  unlink_socket_path addr
+;;
+
+let close_bound_socket (addr, fd) =
+  let+ () = Async_io.close fd in
+  unlink_socket_path addr
+;;
+
 module Session = struct
   module Session_id = Id.Make ()
   module Id = Session_id
@@ -151,6 +167,14 @@ module Session = struct
     | Open ({ fd; in_buf; read_mutex; _ } as open_) ->
       let lexer = Lexer.create () in
       let buf = Buffer.create 16 in
+      let eof parser =
+        match parser with
+        | Stack.Empty ->
+          (match Lexer.feed_eoi lexer with
+           | () -> Ok None
+           | exception exn -> Error exn)
+        | _ -> Error (Csexp.Parser.Parse_error Csexp.Parser.premature_end_of_input)
+      in
       let rec refill () =
         if Io_buffer.length in_buf > 0
         then Fiber.return (Ok `Continue)
@@ -188,7 +212,7 @@ module Session = struct
         let* res = refill () in
         match res with
         | Error _ as e -> Fiber.return e
-        | Ok `Eof -> Fiber.return (Ok None)
+        | Ok `Eof -> Fiber.return (eof parser)
         | Ok `Continue ->
           let char = Io_buffer.read_char_exn in_buf in
           let token = Lexer.feed lexer char in
@@ -212,7 +236,9 @@ module Session = struct
           refill ()
           >>= function
           | Error _ as e -> Fiber.return e
-          | Ok `Eof -> Fiber.return (Ok None)
+          | Ok `Eof ->
+            Fiber.return
+              (Error (Csexp.Parser.Parse_error Csexp.Parser.premature_end_of_input))
           | Ok `Continue ->
             let n' = Io_buffer.read_into_buffer in_buf buf ~max_len:n in
             atom parser (n - n')
@@ -221,12 +247,18 @@ module Session = struct
         let* res = Fiber.Mutex.with_lock read_mutex ~f:(fun () -> read Stack.Empty) in
         match res with
         | Error exn ->
+          let error = Printexc.to_string exn in
           Dune_trace.emit Rpc (fun () ->
             Dune_trace.Event.Rpc.packet_read
               ~id:(Id.to_int t.id)
               ~success:false
-              ~error:(Some (Printexc.to_string exn)));
-          Dune_util.Report_error.report_exception exn;
+              ~error:(Some error));
+          (match exn with
+           | Csexp.Parser.Parse_error _ ->
+             Log.warn
+               "malformed csexp rpc packet"
+               [ "id", Dyn.int (Id.to_int t.id); "error", Dyn.string error ]
+           | _ -> Dune_util.Report_error.report_exception exn);
           let+ () = close_fd t in
           None
         | Ok None ->
@@ -364,11 +396,7 @@ module Server = struct
             in
             ()
         in
-        let* () = Fiber.parallel_iter t.sockets ~f:(fun (_, fd) -> Async_io.close fd) in
-        List.iter t.sockets ~f:(fun (addr, _) ->
-          match (addr : Unix.sockaddr) with
-          | ADDR_UNIX p -> Fpath.unlink_no_err p
-          | _ -> ());
+        let* () = Fiber.parallel_iter t.sockets ~f:close_bound_socket in
         Fiber.Ivar.fill t.closed ()
     ;;
 
@@ -411,32 +439,41 @@ module Server = struct
     }
 
   let create sockaddrs ~backlog =
-    try
-      let fds =
-        List.map sockaddrs ~f:(fun sockaddr ->
-          let fd =
-            Unix.socket
-              ~cloexec:true
-              (Unix.domain_of_sockaddr sockaddr)
-              Unix.SOCK_STREAM
-              0
-            |> Fd.unsafe_of_unix_file_descr
-          in
+    let bound = ref [] in
+    let cleanup () =
+      List.iter !bound ~f:close_bound_socket_sync;
+      bound := []
+    in
+    let bind_socket sockaddr =
+      let fd =
+        Unix.socket ~cloexec:true (Unix.domain_of_sockaddr sockaddr) Unix.SOCK_STREAM 0
+        |> Fd.unsafe_of_unix_file_descr
+      in
+      let in_bound = ref false in
+      Exn.protect
+        ~f:(fun () ->
           Unix.set_nonblock (Fd.unsafe_to_unix_file_descr fd);
           (match (sockaddr : Unix.sockaddr) with
            | ADDR_UNIX _ -> ()
            | ADDR_INET _ ->
              Unix.setsockopt (Fd.unsafe_to_unix_file_descr fd) Unix.SO_REUSEADDR true);
           Socket.bind fd sockaddr;
+          bound := (sockaddr, fd) :: !bound;
+          in_bound := true;
           fd)
-      in
-      Ok
-        { id = Id.gen ()
-        ; sockaddrs
-        ; backlog
-        ; state = `Init fds
-        ; ready = Fiber.Ivar.create ()
-        }
+        ~finally:(fun () -> if not !in_bound then Fd.close fd)
+    in
+    try
+      Exn.protect ~finally:cleanup ~f:(fun () ->
+        let fds = List.map sockaddrs ~f:bind_socket in
+        bound := [];
+        Ok
+          { id = Id.gen ()
+          ; sockaddrs
+          ; backlog
+          ; state = `Init fds
+          ; ready = Fiber.Ivar.create ()
+          })
     with
     | Unix.Unix_error (EADDRINUSE, _, _) -> Error `Already_in_use
   ;;
@@ -483,7 +520,8 @@ module Server = struct
         match t.state with
         | `Closed -> Fiber.return ()
         | `Running transport -> Transport.stop transport
-        | `Init fds -> Fiber.parallel_iter fds ~f:Async_io.close
+        | `Init fds ->
+          Fiber.parallel_iter (List.combine t.sockaddrs fds) ~f:close_bound_socket
       in
       let+ () = Fiber.return () in
       t.state <- `Closed;
@@ -491,11 +529,16 @@ module Server = struct
         Dune_trace.Event.Rpc.shutdown ~id:(Id.to_int t.id) `Stop)
   ;;
 
+  let socket_name ((addr, fd) : Unix.sockaddr * Fd.t) =
+    match addr with
+    | ADDR_UNIX _ -> addr
+    | ADDR_INET _ -> Unix.getsockname (Fd.unsafe_to_unix_file_descr fd)
+  ;;
+
   let listening_address t =
     match t.state with
-    | `Init fds ->
-      List.map ~f:(fun fd -> Unix.getsockname (Fd.unsafe_to_unix_file_descr fd)) fds
-    | `Running { Transport.sockets; _ } -> List.map ~f:fst sockets
+    | `Init fds -> List.map ~f:socket_name (List.combine t.sockaddrs fds)
+    | `Running { Transport.sockets; _ } -> List.map ~f:socket_name sockets
     | `Closed -> Code_error.raise "server is already closed" []
   ;;
 end
@@ -512,6 +555,7 @@ module Client = struct
         |> Fd.unsafe_of_unix_file_descr
       in
       Unix.set_nonblock (Fd.unsafe_to_unix_file_descr fd);
+      Socket.maybe_set_nosigpipe fd;
       { fd }
     ;;
   end
@@ -528,22 +572,21 @@ module Client = struct
     let backtrace = Printexc.get_callstack 10 in
     let transport = Transport.create t.sockaddr in
     let fd = transport.fd in
-    (* CR-soon rgrinberg:
-
-      [t.transport] keeps owning [fd] across both failed and successful
-       connects. That means callers must remember to [stop] a failed client to
-       avoid leaking the socket, while calling [stop] after a successful
-       [connect] can still close the live session transport. We should transfer
-       ownership on success/failure or tighten the API so [stop] is only valid
-       before [connect]. *)
     t.transport <- Some transport;
     Async_io.connect Socket.connect fd t.sockaddr
     >>| function
-    | Ok () -> Ok (Session.create fd)
+    | Ok () ->
+      t.transport <- None;
+      Ok (Session.create fd)
     | Error `Cancelled ->
+      Transport.close transport;
+      t.transport <- None;
       let exn = Failure "connect cancelled" in
       Error { Exn_with_backtrace.exn; backtrace }
-    | Error (`Exn exn) -> Error { Exn_with_backtrace.exn; backtrace }
+    | Error (`Exn exn) ->
+      Transport.close transport;
+      t.transport <- None;
+      Error { Exn_with_backtrace.exn; backtrace }
   ;;
 
   let connect_exn t =
@@ -553,5 +596,11 @@ module Client = struct
     | Error e -> Exn_with_backtrace.reraise e
   ;;
 
-  let stop t = Option.iter t.transport ~f:Transport.close
+  let stop t =
+    match t.transport with
+    | None -> ()
+    | Some transport ->
+      t.transport <- None;
+      Transport.close transport
+  ;;
 end

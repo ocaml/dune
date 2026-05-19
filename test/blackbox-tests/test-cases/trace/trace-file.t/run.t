@@ -9,7 +9,7 @@ This captures the commands that are being run:
   > | del(.pid)
   > | .prog |= sub(".*/"; "")
   > | .rusage |= keys
-  > '
+  > ' | censor
   {
     "process_args": [
       "-config"
@@ -41,7 +41,7 @@ This captures the commands that are being run:
     "dir": "_build/default",
     "exit": 0,
     "target_files": [
-      "_build/default/.prog.eobjs/prog.impl.d"
+      "_build/.actions/default/$DIGEST"
     ],
     "rusage": [
       "inblock",

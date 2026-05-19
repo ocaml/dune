@@ -19,12 +19,3 @@ let of_string s =
 
 let to_string s = s
 let to_dyn = String.to_dyn
-
-let parse_local_path (loc, p) =
-  match Path.Local.parent p with
-  | Some dir -> dir, Path.Local.basename p
-  | None ->
-    User_error.raise
-      ~loc
-      [ Pp.textf "Invalid alias path: %S" (Path.Local.to_string_maybe_quoted p) ]
-;;

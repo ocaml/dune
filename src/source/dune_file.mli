@@ -32,18 +32,18 @@ module Files : sig
   type t
 
   val default : t
-  val eval : t -> files:Filename.Set.t -> Filename.Set.t
+  val eval : t -> files:Filename.Array.Set.t -> Filename.Array.Set.t
 end
 
 val files : t -> Files.t
 
 (** Directories introduced via [(subdir ..)] *)
-val sub_dirnames : t -> Filename.t list
+val sub_dirnames : t -> Filename.Array.Set.t
 
 val load
   :  dir:Path.Source.t
   -> Source_dir_status.t
   -> Dune_project.t
-  -> files:Filename.Set.t
+  -> files:Filename.Array.Set.t
   -> parent:t option
   -> t option Memo.t

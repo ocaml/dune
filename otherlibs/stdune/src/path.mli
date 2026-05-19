@@ -70,6 +70,7 @@ module Local : sig
   val split_first_component : t -> (Filename.t * t) option
   val explode : t -> Filename.t list
   val descendant : t -> of_:t -> t option
+  val of_comps : Filename.t list -> t
 
   module Table : Hashtbl.S with type key = t
 end
@@ -82,6 +83,7 @@ module External : sig
   val cwd : unit -> t
   val parse_string_exn : loc:Loc0.t -> string -> t
   val relative : t -> string -> t
+  val relative_fname : t -> Filename.t -> t
   val of_filename_relative_to_initial_cwd : string -> t
   val append_local : t -> Local.t -> t
 
@@ -124,6 +126,7 @@ module Outside_build_dir : sig
 
   val hash : t -> int
   val relative : t -> string -> t
+  val relative_fname : t -> Filename.t -> t
   val extend_basename : t -> suffix:Filename.t -> t
   val append_local : t -> Local.t -> t
   val equal : t -> t -> bool

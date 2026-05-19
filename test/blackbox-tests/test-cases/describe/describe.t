@@ -241,7 +241,7 @@ not stable across different setups.
    (executables
     ((names (main))
      (requires
-      ($DIGEST $DIGEST))
+      ($DIGEST1 $DIGEST2))
      (modules
       (((name Main)
         (impl (_build/default/main.ml))
@@ -252,7 +252,7 @@ not stable across different setups.
    (executables
     ((names (main2))
      (requires
-      ($DIGEST $DIGEST))
+      ($DIGEST1 $DIGEST2))
      (modules
       (((name Main2_aux4)
         (impl ())
@@ -287,7 +287,7 @@ not stable across different setups.
      (include_dirs (_build/default/.main2.eobjs/byte))))
    (executables
     ((names (main3))
-     (requires ($DIGEST))
+     (requires ($DIGEST3))
      (modules
       (((name Main3)
         (impl (_build/default/main3.ml))
@@ -348,7 +348,7 @@ not stable across different setups.
      (include_dirs (_build/default/.re_exe.eobjs/byte))))
    (library
     ((name bar)
-     (uid $DIGEST)
+     (uid $DIGEST4)
      (local true)
      (requires ())
      (source_dir _build/default)
@@ -371,7 +371,7 @@ not stable across different setups.
      (include_dirs (_build/default/.bar.objs/byte))))
    (library
     ((name cmdliner)
-     (uid $DIGEST)
+     (uid $DIGEST3)
      (local false)
      (requires ())
      (source_dir /FINDLIB/cmdliner)
@@ -379,7 +379,7 @@ not stable across different setups.
      (include_dirs (/FINDLIB/cmdliner))))
    (library
     ((name compiler-libs)
-     (uid $DIGEST)
+     (uid $DIGEST5)
      (local false)
      (requires ())
      (source_dir /FINDLIB/compiler-libs)
@@ -387,18 +387,18 @@ not stable across different setups.
      (include_dirs (/FINDLIB/compiler-libs))))
    (library
     ((name compiler-libs.common)
-     (uid $DIGEST)
+     (uid $DIGEST6)
      (local false)
-     (requires ($DIGEST))
+     (requires ($DIGEST5))
      (source_dir /FINDLIB/compiler-libs)
      (modules ())
      (include_dirs (/FINDLIB/compiler-libs))))
    (library
     ((name dummy_ppx)
-     (uid $DIGEST)
+     (uid $DIGEST7)
      (local true)
      (requires
-      ($DIGEST $DIGEST))
+      ($DIGEST8 $DIGEST9))
      (source_dir _build/default)
      (modules
       (((name Dummy_ppx)
@@ -409,9 +409,9 @@ not stable across different setups.
      (include_dirs (_build/default/.dummy_ppx.objs/byte))))
    (library
     ((name foo)
-     (uid $DIGEST)
+     (uid $DIGEST2)
      (local true)
-     (requires ($DIGEST))
+     (requires ($DIGEST1))
      (source_dir _build/default)
      (modules
       (((name Foo)
@@ -422,7 +422,7 @@ not stable across different setups.
      (include_dirs (_build/default/.foo.objs/byte))))
    (library
     ((name foo.x)
-     (uid $DIGEST)
+     (uid $DIGEST1)
      (local true)
      (requires ())
      (source_dir _build/default)
@@ -435,15 +435,15 @@ not stable across different setups.
      (include_dirs (_build/default/.foo_x.objs/byte))))
    (library
     ((name ocaml-compiler-libs.common)
-     (uid $DIGEST)
+     (uid $DIGEST10)
      (local false)
-     (requires ($DIGEST))
+     (requires ($DIGEST6))
      (source_dir /FINDLIB/ocaml-compiler-libs/common)
      (modules ())
      (include_dirs (/FINDLIB/ocaml-compiler-libs/common))))
    (library
     ((name ocaml-compiler-libs.shadow)
-     (uid $DIGEST)
+     (uid $DIGEST11)
      (local false)
      (requires ())
      (source_dir /FINDLIB/ocaml-compiler-libs/shadow)
@@ -451,7 +451,7 @@ not stable across different setups.
      (include_dirs (/FINDLIB/ocaml-compiler-libs/shadow))))
    (library
     ((name per_module_action_exe)
-     (uid $DIGEST)
+     (uid $DIGEST12)
      (local true)
      (requires ())
      (source_dir _build/default)
@@ -483,7 +483,7 @@ not stable across different setups.
      (include_dirs (_build/default/.per_module_action_exe.objs/byte))))
    (library
     ((name per_module_action_lib)
-     (uid $DIGEST)
+     (uid $DIGEST13)
      (local true)
      (requires ())
      (source_dir _build/default)
@@ -509,7 +509,7 @@ not stable across different setups.
      (include_dirs (_build/default/.per_module_action_lib.objs/byte))))
    (library
     ((name per_module_pp_lib)
-     (uid $DIGEST)
+     (uid $DIGEST14)
      (local true)
      (requires ())
      (source_dir _build/default)
@@ -535,7 +535,7 @@ not stable across different setups.
      (include_dirs (_build/default/.per_module_pp_lib.objs/byte))))
    (library
     ((name ppx_derivers)
-     (uid $DIGEST)
+     (uid $DIGEST15)
      (local false)
      (requires ())
      (source_dir /FINDLIB/ppx_derivers)
@@ -543,43 +543,43 @@ not stable across different setups.
      (include_dirs (/FINDLIB/ppx_derivers))))
    (library
     ((name ppxlib)
-     (uid $DIGEST)
+     (uid $DIGEST9)
      (local false)
      (requires
-      ($DIGEST
-       $DIGEST
-       $DIGEST
-       $DIGEST
-       $DIGEST
-       $DIGEST
-       $DIGEST
-       $DIGEST
-       $DIGEST
-       $DIGEST))
+      ($DIGEST8
+       $DIGEST11
+       $DIGEST16
+       $DIGEST17
+       $DIGEST15
+       $DIGEST18
+       $DIGEST19
+       $DIGEST20
+       $DIGEST21
+       $DIGEST6))
      (source_dir /FINDLIB/ppxlib)
      (modules ())
      (include_dirs (/FINDLIB/ppxlib))))
    (library
     ((name ppxlib.ast)
-     (uid $DIGEST)
+     (uid $DIGEST8)
      (local false)
      (requires
-      ($DIGEST $DIGEST))
+      ($DIGEST16 $DIGEST20))
      (source_dir /FINDLIB/ppxlib/ast)
      (modules ())
      (include_dirs (/FINDLIB/ppxlib/ast))))
    (library
     ((name ppxlib.astlib)
-     (uid $DIGEST)
+     (uid $DIGEST16)
      (local false)
      (requires
-      ($DIGEST $DIGEST))
+      ($DIGEST10 $DIGEST6))
      (source_dir /FINDLIB/ppxlib/astlib)
      (modules ())
      (include_dirs (/FINDLIB/ppxlib/astlib))))
    (library
     ((name ppxlib.print_diff)
-     (uid $DIGEST)
+     (uid $DIGEST17)
      (local false)
      (requires ())
      (source_dir /FINDLIB/ppxlib/print_diff)
@@ -587,16 +587,16 @@ not stable across different setups.
      (include_dirs (/FINDLIB/ppxlib/print_diff))))
    (library
     ((name ppxlib.stdppx)
-     (uid $DIGEST)
+     (uid $DIGEST19)
      (local false)
      (requires
-      ($DIGEST $DIGEST))
+      ($DIGEST21 $DIGEST20))
      (source_dir /FINDLIB/ppxlib/stdppx)
      (modules ())
      (include_dirs (/FINDLIB/ppxlib/stdppx))))
    (library
     ((name ppxlib.traverse_builtins)
-     (uid $DIGEST)
+     (uid $DIGEST18)
      (local false)
      (requires ())
      (source_dir /FINDLIB/ppxlib/traverse_builtins)
@@ -604,7 +604,7 @@ not stable across different setups.
      (include_dirs (/FINDLIB/ppxlib/traverse_builtins))))
    (library
     ((name re_lib)
-     (uid $DIGEST)
+     (uid $DIGEST22)
      (local true)
      (requires ())
      (source_dir _build/default)
@@ -627,7 +627,7 @@ not stable across different setups.
      (include_dirs (_build/default/.re_lib.objs/byte))))
    (library
     ((name sexplib0)
-     (uid $DIGEST)
+     (uid $DIGEST21)
      (local false)
      (requires ())
      (source_dir /FINDLIB/sexplib0)
@@ -635,7 +635,7 @@ not stable across different setups.
      (include_dirs (/FINDLIB/sexplib0))))
    (library
     ((name stdlib-shims)
-     (uid $DIGEST)
+     (uid $DIGEST20)
      (local false)
      (requires ())
      (source_dir /FINDLIB/stdlib-shims)
@@ -643,7 +643,7 @@ not stable across different setups.
      (include_dirs (/FINDLIB/stdlib-shims))))
    (library
     ((name subfolder_lib)
-     (uid $DIGEST)
+     (uid $DIGEST23)
      (local true)
      (requires ())
      (source_dir _build/default/subdir/subfolder)
@@ -657,7 +657,7 @@ not stable across different setups.
      (include_dirs (_build/default/subdir/subfolder/.subfolder_lib.objs/byte))))
    (library
     ((name virtual)
-     (uid $DIGEST)
+     (uid $DIGEST24)
      (local true)
      (requires ())
      (source_dir _build/default/virtual)
@@ -670,9 +670,9 @@ not stable across different setups.
      (include_dirs (_build/default/virtual/.virtual.objs/byte))))
    (library
     ((name virtual_impl1)
-     (uid $DIGEST)
+     (uid $DIGEST25)
      (local true)
-     (requires ($DIGEST))
+     (requires ($DIGEST24))
      (source_dir _build/default/virtual_impl1)
      (modules
       (((name Virtual)
@@ -690,9 +690,9 @@ not stable across different setups.
      (include_dirs (_build/default/virtual_impl1/.virtual_impl1.objs/byte))))
    (library
     ((name virtual_impl2)
-     (uid $DIGEST)
+     (uid $DIGEST26)
      (local true)
-     (requires ($DIGEST))
+     (requires ($DIGEST24))
      (source_dir _build/default/virtual_impl2)
      (modules
       (((name Virtual)
@@ -726,7 +726,7 @@ not stable across different setups.
    (executables
     ((names (main))
      (requires
-      ($DIGEST $DIGEST))
+      ($DIGEST1 $DIGEST2))
      (modules
       (((name Main)
         (impl (_build/default/main.ml))
@@ -738,7 +738,7 @@ not stable across different setups.
    (executables
     ((names (main2))
      (requires
-      ($DIGEST $DIGEST))
+      ($DIGEST1 $DIGEST2))
      (modules
       (((name Main2_aux4)
         (impl ())
@@ -793,7 +793,7 @@ not stable across different setups.
      (include_dirs (_build/default/.main2.eobjs/byte))))
    (executables
     ((names (main3))
-     (requires ($DIGEST))
+     (requires ($DIGEST3))
      (modules
       (((name Main3)
         (impl (_build/default/main3.ml))
@@ -880,7 +880,7 @@ not stable across different setups.
      (include_dirs (_build/default/.re_exe.eobjs/byte))))
    (library
     ((name bar)
-     (uid $DIGEST)
+     (uid $DIGEST4)
      (local true)
      (requires ())
      (source_dir _build/default)
@@ -912,7 +912,7 @@ not stable across different setups.
      (include_dirs (_build/default/.bar.objs/byte))))
    (library
     ((name cmdliner)
-     (uid $DIGEST)
+     (uid $DIGEST3)
      (local false)
      (requires ())
      (source_dir /FINDLIB/cmdliner)
@@ -920,7 +920,7 @@ not stable across different setups.
      (include_dirs (/FINDLIB/cmdliner))))
    (library
     ((name compiler-libs)
-     (uid $DIGEST)
+     (uid $DIGEST5)
      (local false)
      (requires ())
      (source_dir /FINDLIB/compiler-libs)
@@ -928,18 +928,18 @@ not stable across different setups.
      (include_dirs (/FINDLIB/compiler-libs))))
    (library
     ((name compiler-libs.common)
-     (uid $DIGEST)
+     (uid $DIGEST6)
      (local false)
-     (requires ($DIGEST))
+     (requires ($DIGEST5))
      (source_dir /FINDLIB/compiler-libs)
      (modules ())
      (include_dirs (/FINDLIB/compiler-libs))))
    (library
     ((name dummy_ppx)
-     (uid $DIGEST)
+     (uid $DIGEST7)
      (local true)
      (requires
-      ($DIGEST $DIGEST))
+      ($DIGEST8 $DIGEST9))
      (source_dir _build/default)
      (modules
       (((name Dummy_ppx)
@@ -951,9 +951,9 @@ not stable across different setups.
      (include_dirs (_build/default/.dummy_ppx.objs/byte))))
    (library
     ((name foo)
-     (uid $DIGEST)
+     (uid $DIGEST2)
      (local true)
-     (requires ($DIGEST))
+     (requires ($DIGEST1))
      (source_dir _build/default)
      (modules
       (((name Foo)
@@ -965,7 +965,7 @@ not stable across different setups.
      (include_dirs (_build/default/.foo.objs/byte))))
    (library
     ((name foo.x)
-     (uid $DIGEST)
+     (uid $DIGEST1)
      (local true)
      (requires ())
      (source_dir _build/default)
@@ -979,15 +979,15 @@ not stable across different setups.
      (include_dirs (_build/default/.foo_x.objs/byte))))
    (library
     ((name ocaml-compiler-libs.common)
-     (uid $DIGEST)
+     (uid $DIGEST10)
      (local false)
-     (requires ($DIGEST))
+     (requires ($DIGEST6))
      (source_dir /FINDLIB/ocaml-compiler-libs/common)
      (modules ())
      (include_dirs (/FINDLIB/ocaml-compiler-libs/common))))
    (library
     ((name ocaml-compiler-libs.shadow)
-     (uid $DIGEST)
+     (uid $DIGEST11)
      (local false)
      (requires ())
      (source_dir /FINDLIB/ocaml-compiler-libs/shadow)
@@ -995,7 +995,7 @@ not stable across different setups.
      (include_dirs (/FINDLIB/ocaml-compiler-libs/shadow))))
    (library
     ((name per_module_action_exe)
-     (uid $DIGEST)
+     (uid $DIGEST12)
      (local true)
      (requires ())
      (source_dir _build/default)
@@ -1040,7 +1040,7 @@ not stable across different setups.
      (include_dirs (_build/default/.per_module_action_exe.objs/byte))))
    (library
     ((name per_module_action_lib)
-     (uid $DIGEST)
+     (uid $DIGEST13)
      (local true)
      (requires ())
      (source_dir _build/default)
@@ -1075,7 +1075,7 @@ not stable across different setups.
      (include_dirs (_build/default/.per_module_action_lib.objs/byte))))
    (library
     ((name per_module_pp_lib)
-     (uid $DIGEST)
+     (uid $DIGEST14)
      (local true)
      (requires ())
      (source_dir _build/default)
@@ -1110,7 +1110,7 @@ not stable across different setups.
      (include_dirs (_build/default/.per_module_pp_lib.objs/byte))))
    (library
     ((name ppx_derivers)
-     (uid $DIGEST)
+     (uid $DIGEST15)
      (local false)
      (requires ())
      (source_dir /FINDLIB/ppx_derivers)
@@ -1118,43 +1118,43 @@ not stable across different setups.
      (include_dirs (/FINDLIB/ppx_derivers))))
    (library
     ((name ppxlib)
-     (uid $DIGEST)
+     (uid $DIGEST9)
      (local false)
      (requires
-      ($DIGEST
-       $DIGEST
-       $DIGEST
-       $DIGEST
-       $DIGEST
-       $DIGEST
-       $DIGEST
-       $DIGEST
-       $DIGEST
-       $DIGEST))
+      ($DIGEST8
+       $DIGEST11
+       $DIGEST16
+       $DIGEST17
+       $DIGEST15
+       $DIGEST18
+       $DIGEST19
+       $DIGEST20
+       $DIGEST21
+       $DIGEST6))
      (source_dir /FINDLIB/ppxlib)
      (modules ())
      (include_dirs (/FINDLIB/ppxlib))))
    (library
     ((name ppxlib.ast)
-     (uid $DIGEST)
+     (uid $DIGEST8)
      (local false)
      (requires
-      ($DIGEST $DIGEST))
+      ($DIGEST16 $DIGEST20))
      (source_dir /FINDLIB/ppxlib/ast)
      (modules ())
      (include_dirs (/FINDLIB/ppxlib/ast))))
    (library
     ((name ppxlib.astlib)
-     (uid $DIGEST)
+     (uid $DIGEST16)
      (local false)
      (requires
-      ($DIGEST $DIGEST))
+      ($DIGEST10 $DIGEST6))
      (source_dir /FINDLIB/ppxlib/astlib)
      (modules ())
      (include_dirs (/FINDLIB/ppxlib/astlib))))
    (library
     ((name ppxlib.print_diff)
-     (uid $DIGEST)
+     (uid $DIGEST17)
      (local false)
      (requires ())
      (source_dir /FINDLIB/ppxlib/print_diff)
@@ -1162,16 +1162,16 @@ not stable across different setups.
      (include_dirs (/FINDLIB/ppxlib/print_diff))))
    (library
     ((name ppxlib.stdppx)
-     (uid $DIGEST)
+     (uid $DIGEST19)
      (local false)
      (requires
-      ($DIGEST $DIGEST))
+      ($DIGEST21 $DIGEST20))
      (source_dir /FINDLIB/ppxlib/stdppx)
      (modules ())
      (include_dirs (/FINDLIB/ppxlib/stdppx))))
    (library
     ((name ppxlib.traverse_builtins)
-     (uid $DIGEST)
+     (uid $DIGEST18)
      (local false)
      (requires ())
      (source_dir /FINDLIB/ppxlib/traverse_builtins)
@@ -1179,7 +1179,7 @@ not stable across different setups.
      (include_dirs (/FINDLIB/ppxlib/traverse_builtins))))
    (library
     ((name re_lib)
-     (uid $DIGEST)
+     (uid $DIGEST22)
      (local true)
      (requires ())
      (source_dir _build/default)
@@ -1211,7 +1211,7 @@ not stable across different setups.
      (include_dirs (_build/default/.re_lib.objs/byte))))
    (library
     ((name sexplib0)
-     (uid $DIGEST)
+     (uid $DIGEST21)
      (local false)
      (requires ())
      (source_dir /FINDLIB/sexplib0)
@@ -1219,7 +1219,7 @@ not stable across different setups.
      (include_dirs (/FINDLIB/sexplib0))))
    (library
     ((name stdlib-shims)
-     (uid $DIGEST)
+     (uid $DIGEST20)
      (local false)
      (requires ())
      (source_dir /FINDLIB/stdlib-shims)
@@ -1227,7 +1227,7 @@ not stable across different setups.
      (include_dirs (/FINDLIB/stdlib-shims))))
    (library
     ((name subfolder_lib)
-     (uid $DIGEST)
+     (uid $DIGEST23)
      (local true)
      (requires ())
      (source_dir _build/default/subdir/subfolder)
@@ -1242,7 +1242,7 @@ not stable across different setups.
      (include_dirs (_build/default/subdir/subfolder/.subfolder_lib.objs/byte))))
    (library
     ((name virtual)
-     (uid $DIGEST)
+     (uid $DIGEST24)
      (local true)
      (requires ())
      (source_dir _build/default/virtual)
@@ -1256,9 +1256,9 @@ not stable across different setups.
      (include_dirs (_build/default/virtual/.virtual.objs/byte))))
    (library
     ((name virtual_impl1)
-     (uid $DIGEST)
+     (uid $DIGEST25)
      (local true)
-     (requires ($DIGEST))
+     (requires ($DIGEST24))
      (source_dir _build/default/virtual_impl1)
      (modules
       (((name Virtual)
@@ -1282,9 +1282,9 @@ not stable across different setups.
      (include_dirs (_build/default/virtual_impl1/.virtual_impl1.objs/byte))))
    (library
     ((name virtual_impl2)
-     (uid $DIGEST)
+     (uid $DIGEST26)
      (local true)
-     (requires ($DIGEST))
+     (requires ($DIGEST24))
      (source_dir _build/default/virtual_impl2)
      (modules
       (((name Virtual)

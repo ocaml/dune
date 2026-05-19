@@ -110,31 +110,7 @@ module Spec = struct
        ~target
        ~url:(loc_url, url))
     >>= function
-    | Ok () ->
-      (match kind with
-       | `File -> ()
-       | `Directory ->
-         (* Delete any broken symlinks from the unpacked archive. Dune can't
-            handle broken symlinks in the _build directory, but some opam
-            package contain broken symlinks. The logic here is applied to the
-            contents of package source archives but not to packages whose source
-            is in a local directory (e.g. when a package is pinned from the
-            filesystem). Broken symlinks are excluded while copying files from
-            local directories into the build directory, and the logic for
-            excluding them lives in [Pkg_rules.source_rules]. *)
-         let target_abs = Path.to_absolute_filename target in
-         let on_symlink ~dir fname () =
-           let path = Filename.concat target_abs (Filename.concat dir fname) in
-           match Unix.stat path with
-           | { Unix.st_kind = kind; _ } -> (), Some kind
-           | exception Unix.Unix_error (Unix.ENOENT, _, _) ->
-             Fpath.rm_rf path;
-             (), None
-           | exception Unix.Unix_error (error, syscall, arg) ->
-             Unix_error.Detailed.raise (Unix_error.Detailed.create error ~syscall ~arg)
-         in
-         Fpath.traverse ~init:() ~dir:target_abs ~on_symlink:(`Call on_symlink) ());
-      Fiber.return ()
+    | Ok () -> Fiber.return ()
     | Error (Checksum_mismatch actual_checksum) ->
       (match checksum with
        | None ->
@@ -288,6 +264,7 @@ let gen_rules_for_checksum_or_url (loc_url, (url : OpamUrl.t)) checksum =
 ;;
 
 let gen_rules ~dir ~components =
+  let components = Filename.L.to_string components in
   match components with
   | [] ->
     Memo.return Rules.empty
@@ -295,7 +272,7 @@ let gen_rules ~dir ~components =
          ~build_dir_only_sub_dirs:
            (Gen_rules.Build_only_sub_dirs.singleton
               ~dir
-              (Subdir_set.of_list [ "checksum"; "url" ]))
+              (Subdir_set.of_list [ Filename.checksum; Filename.url ]))
     |> Memo.return
   | [ ("url" | "checksum") ] ->
     Memo.return Rules.empty
@@ -342,8 +319,9 @@ module Copy = struct
         ~init:()
         ~dir:(Path.to_string src_dir)
         ~on_dir:(fun ~dir fname () ->
-          Path.L.relative dst_dir [ dir; fname ] |> Path.mkdir_p)
+          Path.L.relative dst_dir [ dir; Filename.to_string fname ] |> Path.mkdir_p)
         ~on_file:(fun ~dir fname () ->
+          let fname = Filename.to_string fname in
           let src = Path.L.relative src_dir [ dir; fname ] in
           let dst = Path.L.relative dst_dir [ dir; fname ] in
           Io.copy_file ~src ~dst ())

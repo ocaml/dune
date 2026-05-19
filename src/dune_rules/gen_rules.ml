@@ -118,7 +118,10 @@ end = struct
       in
       if_available_buildable
         ~loc:lib.buildable.loc
-        (fun () -> Lib_rules.rules lib ~sctx ~scope ~dir_contents ~expander)
+        (fun () ->
+           Lib_rules.rules lib ~sctx ~scope ~dir_contents ~expander
+           >>| Compilation_mode.By_mode.choose
+           >>| Option.value_exn)
         enabled_if
     | Foreign_library.T lib ->
       Expander.eval_blang expander lib.enabled_if
@@ -193,6 +196,26 @@ end = struct
     >>| rev
   ;;
 end
+
+let define_all_alias ~dir ~project ~js_targets =
+  let deps =
+    let predicate =
+      if Dune_project.explicit_js_mode project
+      then Predicate_lang.true_
+      else (
+        List.iter js_targets ~f:(fun js_target ->
+          assert (Path.Build.equal (Path.Build.parent_exn js_target) dir));
+        Predicate_lang.not
+          (Predicate_lang.Glob.of_string_set
+             (String.Set.of_list_map js_targets ~f:(fun path ->
+                Path.Build.basename path |> Filename.to_string))))
+    in
+    let only_generated_files = Dune_project.dune_version project >= (3, 0) in
+    File_selector.of_predicate_lang ~dir:(Path.build dir) ~only_generated_files predicate
+    |> Action_builder.paths_matching_unit ~loc:Loc.none
+  in
+  Rules.Produce.Alias.add_deps (Alias.make Alias0.all ~dir) deps
+;;
 
 let gen_rules_for_stanzas sctx dir_contents cctxs expander ~dune_file ~dir:ctx_dir =
   let src_dir = Dune_file.dir dune_file in
@@ -282,14 +305,6 @@ let gen_rules_for_stanzas sctx dir_contents cctxs expander ~dune_file ~dir:ctx_d
                            ])
                    }
                  |> Action_builder.with_file_targets ~file_targets)))
-      | Coq_stanza.Theory.T m ->
-        Expander.eval_blang expander m.enabled_if
-        >>= (function
-         | false -> Memo.return ()
-         | true -> Coq_rules.setup_theory_rules ~sctx ~dir:ctx_dir ~dir_contents m)
-      | Coq_stanza.Extraction.T m ->
-        Coq_rules.setup_extraction_rules ~sctx ~dir:ctx_dir ~dir_contents m
-      | Coq_stanza.Coqpp.T m -> Coq_rules.setup_coqpp_rules ~sctx ~dir:ctx_dir m
       | Rocq_stanza.Theory.T m ->
         Expander.eval_blang expander m.enabled_if
         >>= (function
@@ -301,13 +316,13 @@ let gen_rules_for_stanzas sctx dir_contents cctxs expander ~dune_file ~dir:ctx_d
       | _ -> Memo.return ())
   and+ () =
     let project = Dune_file.project dune_file in
-    Alias_builder.define_all_alias ~project ~js_targets ctx_dir
+    define_all_alias ~dir:ctx_dir ~project ~js_targets
   in
   cctxs
 ;;
 
 let gen_format_and_cram_rules sctx ~dir source_dir =
-  let+ () = Format_rules.setup_alias ~dir
+  let+ () = Format_rules.setup_alias sctx ~dir
   and+ () = Cram_rules.rules source_dir ~sctx ~dir in
   ()
 ;;
@@ -318,10 +333,7 @@ let gen_rules_source_only sctx ~dir source_dir =
     let+ () = gen_format_and_cram_rules sctx ~dir source_dir
     and+ () = Revdep_rules.add ~sctx ~dir
     and+ () =
-      Alias_builder.define_all_alias
-        ~js_targets:[]
-        ~project:(Source_tree.Dir.project source_dir)
-        dir
+      define_all_alias ~dir ~js_targets:[] ~project:(Source_tree.Dir.project source_dir)
     in
     ())
 ;;
@@ -340,7 +352,7 @@ let gen_rules_group_part_or_root sctx dir_contents cctxs ~source_dir ~dir
       >>= gen_rules_for_stanzas sctx dir_contents cctxs ~dune_file ~dir
     | None ->
       let project = Source_tree.Dir.project source_dir in
-      let+ () = Alias_builder.define_all_alias ~js_targets:[] ~project dir in
+      let+ () = define_all_alias ~dir ~js_targets:[] ~project in
       Loc.Map.empty
   in
   contexts
@@ -452,15 +464,11 @@ module Automatic_subdir = struct
      the ones that have a corresponding source directory. *)
   type t =
     | Utop
-    | Formatted
     | Bin
 
   let map =
     Filename.Map.of_list_exn
-      [ Utop.utop_dir_basename, Utop
-      ; Format_rules.formatted_dir_basename, Formatted
-      ; Artifacts.bin_dir_basename, Bin
-      ]
+      [ Utop.utop_dir_basename, Utop; Artifacts.bin_dir_basename, Bin ]
   ;;
 
   let of_src_dir src_dir =
@@ -473,13 +481,14 @@ module Automatic_subdir = struct
     match List.last components with
     | None -> Filename.Set.of_keys map
     | Some comp ->
-      if Filename.Map.mem map comp then Filename.Set.empty else Filename.Set.of_keys map
+      if Filename.Map.mem map (Filename.of_string_exn comp)
+      then Filename.Set.empty
+      else Filename.Set.of_keys map
   ;;
 
   let gen_rules ~sctx ~dir kind =
     match kind with
     | Utop -> sctx >>= Utop.setup ~dir:(Path.Build.parent_exn dir)
-    | Formatted -> Format_rules.gen_rules sctx ~output_dir:dir
     | Bin ->
       let* sctx = sctx in
       Super_context.env_node sctx ~dir:(Path.Build.parent_exn dir)
@@ -573,13 +582,13 @@ let gen_rules_regular_directory (sctx : Super_context.t Memo.t) ~src_dir ~compon
                 (* XXX sync this list with the pattern matches above. It's quite ugly
                    we need this, we should rewrite this code to avoid this. *)
                 Filename.Set.of_list
-                  [ ".js"
-                  ; "_doc"
-                  ; "_doc_new"
-                  ; ".ppx"
-                  ; ".dune"
-                  ; ".topmod"
-                  ; Dune_lang.Oxcaml.parameterised_dir
+                  [ Filename.js_dir_basename
+                  ; Filename.doc_dir_basename
+                  ; Filename.doc_new_dir_basename
+                  ; Filename.ppx_dir_basename
+                  ; Filename.dune_dir_basename
+                  ; Filename.topmod_dir_basename
+                  ; Filename.of_string_exn Dune_lang.Oxcaml.parameterised_dir
                   ]
             in
             Filename.Set.union automatic toplevel
@@ -681,7 +690,7 @@ let gen_rules ctx sctx ~dir components : Gen_rules.result Memo.t =
   | [ ".dune" ] ->
     has_rules
       ~dir
-      (Subdir_set.of_set (Filename.Set.of_list [ "cc_vendor" ]))
+      (Subdir_set.of_set (Filename.Set.of_list [ Filename.cc_vendor ]))
       (fun () -> Configurator_rules.gen_rules ctx)
   | parameterised_dir :: rest
     when String.equal parameterised_dir Dune_lang.Oxcaml.parameterised_dir ->
@@ -733,7 +742,9 @@ let private_context ~dir components _ctx =
     let build_dir_only_sub_dirs =
       Gen_rules.Build_only_sub_dirs.singleton
         ~dir
-        (Subdir_set.of_list (List.rev_map contexts ~f:Context_name.to_string))
+        (Subdir_set.of_list
+           (List.rev_map contexts ~f:(fun context_name ->
+              Filename.of_string_exn (Context_name.to_string context_name))))
     in
     Gen_rules.make ~build_dir_only_sub_dirs (Memo.return Rules.empty)
 ;;
@@ -778,7 +789,8 @@ let gen_rules ctx ~dir components =
         let+ context_dirs =
           let+ workspace = Workspace.workspace () in
           Workspace.build_contexts workspace
-          |> List.map ~f:(fun (ctx : Build_context.t) -> Context_name.to_string ctx.name)
+          |> List.map ~f:(fun (ctx : Build_context.t) ->
+            Filename.of_string_exn (Context_name.to_string ctx.name))
           |> Subdir_set.of_list
         in
         Gen_rules.Build_only_sub_dirs.singleton ~dir context_dirs
@@ -796,10 +808,19 @@ let gen_rules ctx ~dir components =
   else if Context_name.equal ctx Private_context.t.name
   then private_context ~dir components ctx
   else if Context_name.equal ctx Fetch_rules.context.name
-  then Fetch_rules.gen_rules ~dir ~components
+  then
+    Fetch_rules.gen_rules ~dir ~components:(List.map components ~f:Filename.of_string_exn)
   else
     let* () = raise_on_lock_dir_out_of_sync ctx in
     let gen_pkg_alias_rule = Pkg_rules.setup_pkg_install_alias ~dir ctx in
     let+ sctx_rules = gen_rules ctx (Super_context.find_exn ctx) ~dir components in
     Gen_rules.combine sctx_rules gen_pkg_alias_rule
+;;
+
+let () =
+  Fdecl.set Expander.resolve_pkg_install_file
+  @@ fun ~loc context_name ~pkg ~section ~file ->
+  let open Memo.O in
+  let* sctx = Super_context.find_exn context_name in
+  Install_rules.resolve_package_install_file sctx ~loc ~pkg ~section ~file
 ;;

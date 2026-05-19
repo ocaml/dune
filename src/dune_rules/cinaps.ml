@@ -110,7 +110,7 @@ let gen_rules sctx t ~dir ~scope =
       if
         Predicate_lang.Glob.test
           t.files
-          (Path.Source.basename p)
+          (Path.Source.basename p |> Filename.to_string)
           ~standard:Predicate_lang.true_
       then
         Some
@@ -271,7 +271,7 @@ let gen_rules sctx t ~dir ~scope =
                   Action.diff
                     ~optional:true
                     (Path.build fn)
-                    (Path.Build.extend_basename fn ~suffix:".cinaps-corrected"))
+                    (Path.Build.extend_basename fn ~suffix:Filename.cinaps_corrected))
               ])
     in
     Super_context.add_alias_action sctx ~dir ~loc cinaps_alias action

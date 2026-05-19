@@ -4,7 +4,7 @@ open Memo.O
 let remove_extension file =
   let dir = Path.Build.parent_exn file in
   let basename =
-    let basename = Path.Build.basename file in
+    let basename = Path.Build.basename file |> Filename.to_string in
     match String.lsplit2 basename ~on:'.' with
     | Some (basename, _ext) -> basename
     | None -> basename
@@ -24,11 +24,16 @@ module Processed = struct
       | Pp
       | Ppx
 
-    let to_dyn =
-      let open Dyn in
-      function
-      | Pp -> variant "Pp" []
-      | Ppx -> variant "Ppx" []
+    let repr =
+      Repr.variant
+        "merlin-pp-kind"
+        [ Repr.case0 "Pp" ~test:(function
+            | Pp -> true
+            | Ppx -> false)
+        ; Repr.case0 "Ppx" ~test:(function
+            | Ppx -> true
+            | Pp -> false)
+        ]
     ;;
 
     let to_flag = function
@@ -42,9 +47,12 @@ module Processed = struct
     ; args : string
     }
 
-  let dyn_of_pp_flag { flag; args } =
-    let open Dyn in
-    record [ "flag", Pp_kind.to_dyn flag; "args", string args ]
+  let pp_flag_repr =
+    Repr.record
+      "merlin-pp-flag"
+      [ Repr.field "flag" Pp_kind.repr ~get:(fun t -> t.flag)
+      ; Repr.field "args" Repr.string ~get:(fun t -> t.args)
+      ]
   ;;
 
   let pp_kind x = x.flag
@@ -64,31 +72,32 @@ module Processed = struct
     ; parameters : Module_name.t list
     }
 
-  let dyn_of_config
-        { stdlib_dir
-        ; source_root
-        ; obj_dirs
-        ; src_dirs
-        ; hidden_obj_dirs
-        ; hidden_src_dirs
-        ; flags
-        ; extensions
-        ; indexes
-        ; parameters
-        }
-    =
-    let open Dyn in
-    record
-      [ "stdlib_dir", option Path.to_dyn stdlib_dir
-      ; "source_root", Path.to_dyn source_root
-      ; "obj_dirs", Path.Set.to_dyn obj_dirs
-      ; "src_dirs", Path.Set.to_dyn src_dirs
-      ; "hidden_obj_dirs", Path.Set.to_dyn hidden_obj_dirs
-      ; "hidden_src_dirs", Path.Set.to_dyn hidden_src_dirs
-      ; "flags", list string flags
-      ; "extensions", list (Ml_kind.Dict.to_dyn (Dyn.option string)) extensions
-      ; "indexes", list Path.to_dyn indexes
-      ; "parameters", list Module_name.to_dyn parameters
+  let path_set_repr = Repr.abstract Path.Set.to_dyn
+
+  let ml_kind_dict_repr value_repr =
+    Repr.record
+      "ml-kind-dict"
+      [ Repr.field "impl" value_repr ~get:(fun t -> t.Ml_kind.Dict.impl)
+      ; Repr.field "intf" value_repr ~get:(fun t -> t.Ml_kind.Dict.intf)
+      ]
+  ;;
+
+  let config_repr =
+    Repr.record
+      "merlin-config"
+      [ Repr.field "stdlib_dir" (Repr.option Path.repr) ~get:(fun t -> t.stdlib_dir)
+      ; Repr.field "source_root" Path.repr ~get:(fun t -> t.source_root)
+      ; Repr.field "obj_dirs" path_set_repr ~get:(fun t -> t.obj_dirs)
+      ; Repr.field "src_dirs" path_set_repr ~get:(fun t -> t.src_dirs)
+      ; Repr.field "hidden_obj_dirs" path_set_repr ~get:(fun t -> t.hidden_obj_dirs)
+      ; Repr.field "hidden_src_dirs" path_set_repr ~get:(fun t -> t.hidden_src_dirs)
+      ; Repr.field "flags" (Repr.list Repr.string) ~get:(fun t -> t.flags)
+      ; Repr.field
+          "extensions"
+          (Repr.list (ml_kind_dict_repr (Repr.option Repr.string)))
+          ~get:(fun t -> t.extensions)
+      ; Repr.field "indexes" (Repr.list Path.repr) ~get:(fun t -> t.indexes)
+      ; Repr.field "parameters" (Repr.list Module_name.repr) ~get:(fun t -> t.parameters)
       ]
   ;;
 
@@ -98,12 +107,12 @@ module Processed = struct
     ; reader : string list option
     }
 
-  let dyn_of_module_config { opens; module_; reader } =
-    let open Dyn in
-    record
-      [ "opens", list Module_name.to_dyn opens
-      ; "module_", Module.to_dyn module_
-      ; "reader", option (list string) reader
+  let module_config_repr =
+    Repr.record
+      "merlin-module-config"
+      [ Repr.field "opens" (Repr.list Module_name.repr) ~get:(fun t -> t.opens)
+      ; Repr.field "module_" (Repr.abstract Module.to_dyn) ~get:(fun t -> t.module_)
+      ; Repr.field "reader" (Repr.option (Repr.list Repr.string)) ~get:(fun t -> t.reader)
       ]
   ;;
 
@@ -136,20 +145,31 @@ module Processed = struct
       Json.assoc
         [ "module_name", Json.string (Module_name.to_string module_name)
         ; ( "source_path"
-          , Json.string (Filename.concat context (Path.Source.to_string source_path)) )
+          , Json.string
+              (Filename.concat
+                 (Filename.to_string context)
+                 (Path.Source.to_string source_path)) )
         ; "config", sexp_to_json config
         ]
     ;;
   end
 
-  let to_dyn { config; per_file_config; pp_config } =
-    let open Dyn in
-    record
-      [ "config", dyn_of_config config
-      ; "per_file_config", Path.Build.Map.to_dyn dyn_of_module_config per_file_config
-      ; "pp_config", Module_name.Per_item.to_dyn (option dyn_of_pp_flag) pp_config
+  let repr =
+    Repr.record
+      "merlin-processed"
+      [ Repr.field "config" config_repr ~get:(fun t -> t.config)
+      ; Repr.field
+          "per_file_config"
+          (Repr.abstract (Path.Build.Map.to_dyn (Repr.to_dyn module_config_repr)))
+          ~get:(fun t -> t.per_file_config)
+      ; Repr.field
+          "pp_config"
+          (Module_name.Per_item.repr (Repr.option pp_flag_repr))
+          ~get:(fun t -> t.pp_config)
       ]
   ;;
+
+  let to_dyn = Repr.to_dyn repr
 
   module D = struct
     type nonrec t = t
@@ -157,7 +177,10 @@ module Processed = struct
     let name = "merlin-conf"
     let sharing = false
     let version = 8
-    let to_dyn _ = Dyn.String "Use [dune ocaml dump-dot-merlin] instead"
+
+    let repr =
+      Repr.view Repr.string ~to_:(fun _ -> "Use [dune ocaml dump-dot-merlin] instead")
+    ;;
   end
 
   module Persist = Dune_util.Persistent.Make (D)
@@ -624,7 +647,7 @@ module Unprocessed = struct
            | Error _ -> None
            | Ok bin ->
              let args =
-               let args = Array.Immutable.to_list args in
+               let args = Appendable_list.to_list args in
                encode_command ~bin ~args
              in
              Some { Processed.flag = Processed.Pp_kind.Pp; args }
@@ -677,18 +700,18 @@ module Unprocessed = struct
   ;;
 
   let add_lib_dirs sctx ~for_ libs =
-    Memo.parallel_map libs ~f:(fun lib ->
-      let+ dirs = src_dirs sctx lib ~for_ in
-      lib, dirs)
-    >>| List.fold_left
-          ~init:(Path.Set.empty, Path.Set.empty)
-          ~f:(fun (src_dirs, obj_dirs) (lib, more_src_dirs) ->
-            ( Path.Set.union src_dirs more_src_dirs
-            , let public_cmi_dir =
-                let info = Lib.info lib in
-                obj_dir_of_lib `Public for_ (Lib_info.obj_dir info)
-              in
-              Path.Set.add obj_dirs public_cmi_dir ))
+    Memo.map_reduce
+      libs
+      ~empty:(Path.Set.empty, Path.Set.empty)
+      ~combine:(fun (src_dirs1, obj_dirs1) (src_dirs2, obj_dirs2) ->
+        Path.Set.union src_dirs1 src_dirs2, Path.Set.union obj_dirs1 obj_dirs2)
+      ~f:(fun lib ->
+        let+ src_dirs = src_dirs sctx lib ~for_ in
+        let obj_dir =
+          let info = Lib.info lib in
+          obj_dir_of_lib `Public for_ (Lib_info.obj_dir info)
+        in
+        src_dirs, Path.Set.singleton obj_dir)
     |> Action_builder.of_memo
   ;;
 
@@ -761,7 +784,7 @@ module Unprocessed = struct
                List.concat [ requires_compile; libs ])
       in
       let+ flags = flags
-      and+ indexes = Ocaml_index.context_indexes context
+      and+ indexes = Ocaml_index.context_indexes context ~for_:t.config.for_
       and+ deps_src_dirs, deps_obj_dirs = add_lib_dirs sctx ~for_ requires_compile
       and+ hidden_src_dirs, hidden_obj_dirs =
         let requires_hidden = Resolve.peek requires_hidden |> Result.value ~default:[] in

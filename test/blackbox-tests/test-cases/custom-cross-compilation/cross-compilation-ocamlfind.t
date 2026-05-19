@@ -80,6 +80,7 @@ Dune should be able to find it too
   > | select(.prog | contains("notocamldep-foo"))
   > | del(.pid)
   > | .rusage |= keys
+  > | censorActionTargets
   > '
   {
     "process_args": [
@@ -92,7 +93,7 @@ Dune should be able to find it too
     "dir": "_build/default.foo",
     "exit": 0,
     "target_files": [
-      "_build/default.foo/.repro.objs/repro__Foo.impl.d"
+      "_build/.actions/default.foo/$ACTION"
     ],
     "rusage": [
       "inblock",

@@ -247,7 +247,7 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
            (Path.to_string_maybe_quoted glob_in_src)
            (Path.Source.to_string_maybe_quoted src_dir));
   let src_in_src = Path.parent_exn glob_in_src in
-  let glob = Path.basename glob_in_src |> Glob.of_string_exn loc in
+  let glob = Path.basename glob_in_src |> Filename.to_string |> Glob.of_string_exn loc in
   let src_in_build =
     match Path.as_in_source_tree src_in_src with
     | None -> src_in_src
@@ -295,26 +295,27 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
      add the corresponding rules, and then to convert the files to [targets]. To
      do only one traversal we need [Memo.parallel_map_set]. *)
   let* () =
-    Memo.parallel_iter_seq
-      (Filename.Set.to_seq (Filename_set.filenames files))
-      ~f:(fun basename ->
-        let file_src = Path.relative src_in_build basename in
-        let file_dst = Path.Build.relative dir basename in
-        let context = Super_context.context sctx in
-        Super_context.add_rule
-          sctx
-          ~loc
-          ~dir
-          ~mode
-          ((if def.add_line_directive
-            then Copy_line_directive.builder context
-            else Action_builder.copy)
-             ~src:file_src
-             ~dst:file_dst))
+    Filename_set.filenames files
+    |> Filename.Array.Set.to_list
+    |> Memo.parallel_iter ~f:(fun basename ->
+      let basename = Filename.to_string basename in
+      let file_src = Path.relative src_in_build basename in
+      let file_dst = Path.Build.relative dir basename in
+      let context = Super_context.context sctx in
+      Super_context.add_rule
+        sctx
+        ~loc
+        ~dir
+        ~mode
+        ((if def.add_line_directive
+          then Copy_line_directive.builder context
+          else Action_builder.copy)
+           ~src:file_src
+           ~dst:file_dst))
   in
   let targets =
-    Filename.Set.to_list_map (Filename_set.filenames files) ~f:(fun basename ->
-      let file_dst = Path.Build.relative dir basename in
+    Filename.Array.Set.to_list_map (Filename_set.filenames files) ~f:(fun basename ->
+      let file_dst = Path.Build.relative_fname dir basename in
       Path.build file_dst)
     |> Path.Set.of_list
   in

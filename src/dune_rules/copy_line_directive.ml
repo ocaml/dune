@@ -12,7 +12,7 @@ module DB = struct
       let name = "COPY-LINE-DIRECTIVE-MAP"
       let sharing = true
       let version = 3
-      let to_dyn = Path.Build.Table.to_dyn Path.Build.to_dyn
+      let repr = Repr.abstract (Path.Build.Table.to_dyn Path.Build.to_dyn)
     end)
 
   let needs_dumping = ref false

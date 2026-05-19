@@ -51,7 +51,11 @@ let archives ?(preds = []) lib =
   let info = Lib.info lib in
   let archives = Lib_info.archives info in
   let plugins = Lib_info.plugins info in
-  let make ps = String.concat ~sep:" " (List.map ps ~f:Path.basename) in
+  let make ps =
+    String.concat
+      ~sep:" "
+      (List.map ps ~f:(fun p -> Path.basename p |> Filename.to_string))
+  in
   [ archive (preds @ [ Pos "byte" ]) (make archives.byte)
   ; archive (preds @ [ Pos "native" ]) (make archives.native)
   ; plugin (preds @ [ Pos "byte" ]) (make plugins.byte)
@@ -159,12 +163,12 @@ let gen_lib pub_name lib ~version =
     ; (match Lib_info.jsoo_runtime info with
        | [] -> []
        | l ->
-         let l = List.map l ~f:Path.basename in
+         let l = List.map l ~f:(fun p -> Path.basename p |> Filename.to_string) in
          [ rule "jsoo_runtime" [] Set (String.concat l ~sep:" ") ])
     ; (match Lib_info.wasmoo_runtime info with
        | [] -> []
        | l ->
-         let l = List.map l ~f:Path.basename in
+         let l = List.map l ~f:(fun p -> Path.basename p |> Filename.to_string) in
          [ rule "wasmoo_runtime" [] Set (String.concat l ~sep:" ") ])
     ]
 ;;

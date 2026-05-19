@@ -25,15 +25,17 @@ Test that markdown generation includes all modules following naming conventions.
   
   # Module `Mylib`
   
-  ```
+  ```ocaml
   module Main : sig ... end
   ```
-  ```
+  ```ocaml
   module Main_nested : sig ... end
   ```
-  ```
+  ```ocaml
   module Main_nested_deep : sig ... end
   ```
-  ```
+  ```ocaml
   module Main_sub : sig ... end
   ```
+
+

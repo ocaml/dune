@@ -93,6 +93,33 @@ val parallel_map : 'a list -> f:('a -> 'b t) -> 'b list t
 val parallel_iter : 'a list -> f:('a -> unit t) -> unit t
 val parallel_iter_seq : 'a Seq.t -> f:('a -> unit t) -> unit t
 
+(** [map_reduce_seq xs ~f ~empty ~combine] runs [f] on every element of
+    [xs] in parallel and combines the returned values with [combine], starting
+    with [empty]. If [xs] is empty, [empty] is returned. [empty] should be an
+    identity for [combine].
+
+    Results are combined as the fibers finish, so the order is
+    nondeterministic. Therefore [combine] should be associative and
+    commutative (or otherwise insensitive to ordering), or callers must be
+    prepared to tolerate the nondeterminism. *)
+val map_reduce_seq
+  :  'a Seq.t
+  -> f:('a -> 'b t)
+  -> empty:'b
+  -> combine:('b -> 'b -> 'b)
+  -> 'b t
+
+(** Like [map_reduce_seq], for arrays. *)
+val map_reduce_array
+  :  'a array
+  -> f:('a -> 'b t)
+  -> empty:'b
+  -> combine:('b -> 'b -> 'b)
+  -> 'b t
+
+(** Like [map_reduce_seq], for lists. *)
+val map_reduce : 'a list -> f:('a -> 'b t) -> empty:'b -> combine:('b -> 'b -> 'b) -> 'b t
+
 module Make_parallel_map (Map : Map.S) : sig
   val parallel_map : 'a Map.t -> f:(Map.key -> 'a -> 'b t) -> 'b Map.t t
 end
@@ -198,6 +225,10 @@ module Invalidation : sig
       The list is truncated to [max_elements] elements, with [max_elements = 1]
       by default. Raises if [max_elements <= 0]. *)
   val details_hum : ?max_elements:int -> t -> string list
+
+  (** The list of changed paths that contributed [Path_changed] invalidations.
+      The list is deduplicated and not truncated. *)
+  val changed_paths : t -> Path.t list
 end
 
 (** Notify the memoization system that the build system has restarted. This

@@ -66,6 +66,14 @@ module type S2 = sig
   val repr : 'a repr -> 'b repr -> ('a, 'b) t repr
 end
 
+module type Poly = sig
+  type t
+
+  val hash : t -> int
+  val equal : t -> t -> bool
+  val compare : t -> t -> Ordering.t
+end
+
 module T3 : sig
   type ('a, 'b, 'c) t = 'a * 'b * 'c
 
@@ -102,7 +110,8 @@ val case : string -> 'b t -> proj:('a -> 'b option) -> 'a case
 val case0 : string -> test:('a -> bool) -> 'a case
 val variant : string -> 'a case list -> 'a t
 val abstract : ('a -> Dyn.t) -> 'a t
-val make_compare : 'a t -> ('a -> 'a -> bool) * ('a -> 'a -> Ordering.t)
+
+module Poly (T : S) : Poly with type t := T.t
 
 module Make (T : S) : sig
   val to_dyn : T.t -> Dyn.t

@@ -357,7 +357,8 @@ let header_files dir_contents =
   Dir_contents.dirs dir_contents
   |> List.fold_left ~init:[] ~f:(fun acc dc ->
     Dir_contents.text_files dc
-    |> Filename.Set.fold ~init:acc ~f:(fun fn acc ->
+    |> Filename.Array.Set.fold ~init:acc ~f:(fun fn acc ->
+      let fn = Filename.to_string fn in
       if String.ends_with fn ~suffix:header_ext
       then Path.relative (Path.build (Dir_contents.dir dc)) fn :: acc
       else acc))

@@ -23,6 +23,7 @@ let choose byte native melange = function
 ;;
 
 let to_string = choose "byte" "native" "melange"
+let to_dyn t = Dyn.string (to_string t)
 let encode t = Encoder.string (to_string t)
 
 module Cm_kind = struct

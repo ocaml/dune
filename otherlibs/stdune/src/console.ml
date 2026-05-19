@@ -143,16 +143,32 @@ module Status_line = struct
 
   let toplevel = Id.gen ()
   let stack = ref []
+  let sections = ref []
+
+  let pp_if_not_nop t =
+    let pp =
+      match t with
+      | Live f -> f ()
+      | Constant x -> x
+    in
+    match Pp.to_ast pp with
+    | Nop -> []
+    | _ -> [ pp ]
+  ;;
 
   let refresh () =
-    match !stack with
-    | [] -> set_status_line None
-    | (_id, t) :: _ ->
-      let pp =
-        match t with
-        | Live f -> f ()
-        | Constant x -> x
+    let pps =
+      let section_pps =
+        List.rev !sections |> List.concat_map ~f:(fun (_id, t) -> pp_if_not_nop t)
       in
+      match !stack with
+      | [] -> section_pps
+      | (_id, t) :: _ -> pp_if_not_nop t @ section_pps
+    in
+    match pps with
+    | [] -> set_status_line None
+    | _ :: _ ->
+      let pp = Pp.concat pps ~sep:(Pp.verbatim " | ") in
       (* Always put the status line inside a horizontal box to force the
          [Format] module to prefer a single line. In particular, it seems that
          [Format.pp_print_text] split the line before the last word, unless it
@@ -193,6 +209,20 @@ module Status_line = struct
   let with_overlay t ~f =
     let id = add_overlay t in
     Exn.protect ~f ~finally:(fun () -> remove_overlay id)
+  ;;
+
+  type section = Id.t
+
+  let add_section t =
+    let id = Id.gen () in
+    sections := (id, t) :: !sections;
+    refresh ();
+    id
+  ;;
+
+  let remove_section id =
+    sections := List.filter !sections ~f:(fun (id', _) -> not (Id.equal id id'));
+    refresh ()
   ;;
 end
 

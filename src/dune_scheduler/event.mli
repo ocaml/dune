@@ -59,6 +59,5 @@ module Queue : sig
   val send_job_completed : t -> job -> Proc.Process_info.t -> unit
   val send_job_completed_ready : t -> unit
   val send_shutdown : t -> Shutdown.Reason.t -> unit
-  val send_timers_completed : t -> Fiber.fill Nonempty_list.t -> unit
   val yield_if_there_are_pending_events : t -> unit Fiber.t
 end

@@ -31,8 +31,9 @@
   matching the existing FreeBSD/OpenBSD guard.
   (#14512, fixes #14484, @0-wiz-0)
 
-3.23.0~alpha2 (2026-04-29)
---------------------------
+
+3.23.0 (2026-05-04)
+-------------------
 
 ### Fixed
 

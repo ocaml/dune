@@ -10,20 +10,20 @@ in the same dune file, but require different ppx specifications
   >   .[]
   >   | select(.module_name | test("^Usesppx"))
   >   | merlinJsonEntryWithConfigNames(["FLG", "UNIT_NAME"])
-  > ' | censor_ppx
+  > ' | censor
   Usesppx1: _build/default/usesppx1
   ["FLG",["-w","-40","-g"]]
-  ["FLG",["-ppx","$TESTCASE_ROOT/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name=\"usesppx1\"'"]]
+  ["FLG",["-ppx","$PWD/_build/default/.ppx/$DIGEST1/ppx.exe --as-ppx --cookie 'library-name=\"usesppx1\"'"]]
   ["UNIT_NAME","usesppx1"]
   Usesppx1: _build/default/usesppx1.ml-gen
   ["FLG",["-w","-40","-g"]]
-  ["FLG",["-ppx","$TESTCASE_ROOT/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name=\"usesppx1\"'"]]
+  ["FLG",["-ppx","$PWD/_build/default/.ppx/$DIGEST1/ppx.exe --as-ppx --cookie 'library-name=\"usesppx1\"'"]]
   ["UNIT_NAME","usesppx1"]
   Usesppx2: _build/default/usesppx2
   ["FLG",["-w","-40","-g"]]
-  ["FLG",["-ppx","$TESTCASE_ROOT/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name=\"usesppx2\"'"]]
+  ["FLG",["-ppx","$PWD/_build/default/.ppx/$DIGEST2/ppx.exe --as-ppx --cookie 'library-name=\"usesppx2\"'"]]
   ["UNIT_NAME","usesppx2"]
   Usesppx2: _build/default/usesppx2.ml-gen
   ["FLG",["-w","-40","-g"]]
-  ["FLG",["-ppx","$TESTCASE_ROOT/_build/default/.ppx/$DIGEST/ppx.exe --as-ppx --cookie 'library-name=\"usesppx2\"'"]]
+  ["FLG",["-ppx","$PWD/_build/default/.ppx/$DIGEST2/ppx.exe --as-ppx --cookie 'library-name=\"usesppx2\"'"]]
   ["UNIT_NAME","usesppx2"]

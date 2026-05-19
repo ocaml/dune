@@ -1,5 +1,5 @@
 (rocq.theory
  (name basic)
  (package no-stdlib)
- (stdlib no)
+ (no_corelib)
  (synopsis "Test Coq library"))

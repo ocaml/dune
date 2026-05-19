@@ -32,14 +32,6 @@ documentation for each command is available through ``dune COMMAND --help``.
 
       Execute a Rocq toplevel with the local configuration.
 
-.. describe:: dune coq
-
-   Command group related to Coq.
-
-   .. describe:: dune coq top
-
-      Execute a Coq toplevel with the local configuration.
-
 .. describe:: dune describe
 
    Describe the workspace.

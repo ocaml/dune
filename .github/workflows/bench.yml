@@ -1,4 +1,4 @@
-# This file is auto-generated. Edit ci/bench.yml.in instead
+# This file is auto-generated. Edit bench.yml.in instead
 name: Build time benchmarks
 
 # Do not run this workflow on pull request since this workflow has permission to modify contents.
@@ -42,7 +42,7 @@ jobs:
 
       - name: Install deps on Unix
         run: |
-          opam pin -n . --with-version=3.23.0
+          opam pin -n . --with-version=3.24.0
           opam install . --deps-only --with-test
           opam exec -- make dev-deps
           # Install hyperfine

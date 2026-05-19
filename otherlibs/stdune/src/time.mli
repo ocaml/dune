@@ -1,5 +1,6 @@
 type t
 
+val repr : t Repr.t
 val start : t
 val now : unit -> t
 val compare : t -> t -> Ordering.t

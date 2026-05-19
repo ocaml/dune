@@ -6,6 +6,7 @@ events. This is a known bug.
 # CR-someday amokhov: Fix this.
 
   $ export DUNE_TRACE=cache
+  $ setup_xdg_runtime_dir
 
   $ test () {
   >   echo "------------------------------------------"

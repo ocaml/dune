@@ -580,7 +580,7 @@ For example, if you use the ``cppo`` preprocessor to generate the file
 ``real_module_name.ml``, then the source file could be named
 ``real_module_name.cppo.ml``.
 
-Running a Coq Toplevel
-======================
+Running a Rocq Toplevel
+=======================
 
-See :ref:`running-coq-top`.
+See :ref:`running-rocq-top`.

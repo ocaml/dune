@@ -28,7 +28,11 @@ let repr =
     ]
 ;;
 
-let _, compare = Repr.make_compare repr
+include Repr.Poly (struct
+    type nonrec t = t
+
+    let repr = repr
+  end)
 
 let decode =
   let open Decoder in

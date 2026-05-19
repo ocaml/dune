@@ -65,7 +65,7 @@ let on_event ~terminal_persistence = function
 ;;
 
 let rpc server =
-  { Dune_engine.Rpc.run = Dune_rpc_impl.Server.run server
+  { Root.Rpc.Global.run = Dune_rpc_impl.Server.run server
   ; stop = Dune_rpc_impl.Server.stop server
   ; ready = Dune_rpc_impl.Server.ready server
   }
@@ -92,7 +92,7 @@ let go_without_rpc_server ~(common : Common.t) ~config:dune_config f =
 let go_with_rpc_server ~common ~config f =
   let f =
     match Common.rpc common with
-    | `Allow server -> fun () -> Dune_engine.Rpc.with_background_rpc (rpc server) f
+    | `Allow server -> fun () -> Root.Rpc.Global.with_background_rpc (rpc server) f
     | `Forbid_builds -> f
   in
   go_without_rpc_server ~common ~config f
@@ -103,11 +103,12 @@ let go_with_rpc_server_and_console_status_reporting
       ~config:dune_config
       run
   =
-  let server =
+  let rpc_server =
     match Common.rpc common with
-    | `Allow server -> rpc server
+    | `Allow server -> server
     | `Forbid_builds -> Code_error.raise "rpc must be enabled in polling mode" []
   in
+  let server = rpc rpc_server in
   let config =
     let watch_exclusions = Common.watch_exclusions common in
     Dune_config.for_scheduler dune_config ~print_ctrl_c_warning:true ~watch_exclusions
@@ -116,9 +117,9 @@ let go_with_rpc_server_and_console_status_reporting
   let file_watcher = Common.file_watcher common in
   let run () =
     let open Fiber.O in
-    Dune_engine.Rpc.with_background_rpc server
+    Root.Rpc.Global.with_background_rpc server
     @@ fun () ->
-    let* () = Dune_engine.Rpc.ensure_ready () in
+    let* () = Root.Rpc.Global.ensure_ready () in
     run ()
   in
   Run.go

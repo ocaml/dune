@@ -8,8 +8,8 @@ type phase =
 
 let linear_ext = Filename.Extension.of_string_exn ".cmir-linear"
 let linear_fdo_ext = Filename.Extension.(of_string_exn (to_string linear_ext ^ "-fdo"))
-let fdo_profile s = Path.extend_basename s ~suffix:".fdo-profile"
-let linker_script s = Path.extend_basename s ~suffix:".linker-script"
+let fdo_profile s = Path.extend_basename s ~suffix:Filename.fdo_profile
+let linker_script s = Path.extend_basename s ~suffix:Filename.linker_script
 
 let phase_flags = function
   | None -> []

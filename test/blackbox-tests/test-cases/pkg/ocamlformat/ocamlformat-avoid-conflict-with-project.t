@@ -32,7 +32,7 @@ Build the OCamlFormat binary dev-tool
   - ocamlformat.0.26.2
   File "dune", line 1, characters 0-0:
   --- dune
-  +++ .formatted/dune
+  +++ dune.corrected
   @@ -1,8 +1,9 @@
    (executable
     (public_name foo))
@@ -48,7 +48,7 @@ Build the OCamlFormat binary dev-tool
   +   (run touch none))))
   File "foo.ml", line 1, characters 0-0:
   --- foo.ml
-  +++ .formatted/foo.ml
+  +++ foo.ml.corrected
   @@ -1 +1 @@
   -let () = print_endline "Hello, world"
   +formatted with version 0.26.2

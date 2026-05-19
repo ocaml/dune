@@ -65,6 +65,17 @@ let test_status_line_overwrite (module Console : New_console) =
   Status_line.clear ()
 ;;
 
+let test_status_line_section (module Console : New_console) =
+  let open Console in
+  Status_line.set (Status_line.Live (fun () -> Pp.text "Done: 50%"));
+  let section =
+    Status_line.add_section
+      (Status_line.Live (fun () -> Pp.text "Connected to RPC server"))
+  in
+  Status_line.remove_section section;
+  Status_line.clear ()
+;;
+
 (* Dumb backend *)
 
 let%expect_test "basic usage" =
@@ -192,4 +203,13 @@ let%expect_test "Status line overwriting." =
     {|
 Here is a status line\r                     \rHere is another status line\r                           \r
   |}]
+;;
+
+let%expect_test "Status line sections." =
+  let module Console = New () in
+  Console.Backend.set Console.Backend.progress;
+  test_status_line_section (module Console);
+  escape [%expect.output];
+  [%expect
+    {| Done: 50%\r         \rDone: 50% | Connected to RPC server\r                                   \rDone: 50%\r         \r |}]
 ;;

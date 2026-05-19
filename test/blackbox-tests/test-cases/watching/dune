@@ -23,6 +23,13 @@
  (enabled_if
   (<> %{ocaml-config:system} win)))
 
+(cram
+ (applies_to
+  promotion-event-suppression
+  promotion-executable-bit
+  source-backed-promotion)
+ (setup_scripts promotion-helpers.sh))
+
 ;; Disabled due to timeouts
 
 (cram

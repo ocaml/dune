@@ -11,7 +11,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     odoc-src = {
-      url = "github:ocaml/odoc/d8460cdaa2b91a03434a9a045d673703b7fabfb2";
+      url = "github:ocaml/odoc/6427579346781df958b3bdfe8ac6d4550194012a";
       flake = false;
     };
     oxcaml = {
@@ -79,12 +79,12 @@
                       dontGzipMan = true;
                     };
                     odoc-parser = osuper.odoc-parser.overrideAttrs (old: {
-                      version = "3.1.0";
+                      version = "3.2.1";
                       src = odoc-src;
                       doCheck = false;
                     });
                     odoc = osuper.odoc.overrideAttrs (old: {
-                      version = "3.1.0";
+                      version = "3.2.1";
                       src = odoc-src;
                       doCheck = false;
                     });
@@ -239,10 +239,14 @@
                 inherit pkgs menhir-src;
               };
             in
+            # nix build .#oxcaml-trunk-build --no-link --impure
             pkgs.stdenv.mkDerivation {
               pname = "oxcaml-trunk-build";
               version = "check";
-              src = oxcaml;
+              src = builtins.fetchGit {
+                url = "https://github.com/oxcaml/oxcaml.git";
+                ref = "main";
+              };
               nativeBuildInputs = [
                 dune
                 pkgs.autoconf
@@ -254,7 +258,7 @@
               strictDeps = true;
               buildPhase = ''
                 autoconf
-                ./configure --prefix $PWD/_install --enable-dev --enable-runtime5
+                ./configure --prefix $PWD/_install --enable-runtime5 --disable-warn-error
                 make SHELL=$SHELL
               '';
               installPhase = ''

@@ -57,7 +57,7 @@ let find_cram_test cram_tests path =
     - [Error `Not_a_test] if not part of any test stanza *)
 let classify_ml_test ~sctx ~dir ~ml_file =
   let open Memo.O in
-  let ml_file_no_ext = Filename.remove_extension ml_file in
+  let ml_file_no_ext = Filename.remove_extension ml_file |> Filename.to_string in
   match Dune_lang.Module_name.of_string_opt ml_file_no_ext with
   | None -> Memo.return (Error `Not_a_test)
   | Some module_name ->
@@ -67,7 +67,7 @@ let classify_ml_test ~sctx ~dir ~ml_file =
         ~dir:
           (Path.Build.append_source (Context.build_dir (Super_context.context sctx)) dir)
     in
-    let* ml_sources = Dir_contents.ocaml dir_contents
+    let* ml_sources = Dir_contents.ml dir_contents ~for_:Ocaml
     and* scope = Dir_contents.dir dir_contents |> Dune_rules.Scope.DB.find_by_dir in
     Dune_rules.Ml_sources.find_origin
       ml_sources
@@ -105,16 +105,17 @@ let all_tests_of_dir ~sctx parent_dir =
     | None -> Memo.return []
     | Some source_dir ->
       Source_tree.Dir.filenames source_dir
-      |> Filename.Set.to_list
+      |> Filename.Array.Set.to_list
       |> Memo.List.filter ~f:(fun ml_file ->
         classify_ml_test ~sctx ~dir:parent_dir ~ml_file >>| Result.is_ok)
+      >>| Filename.L.to_string
   and+ dir_candidates =
     let* parent_source_dir = Source_tree.find_dir parent_dir in
     match parent_source_dir with
     | None -> Memo.return []
     | Some parent_source_dir ->
       let dirs = Source_tree.Dir.sub_dirs parent_source_dir in
-      String.Map.to_list dirs
+      Filename.Array.Map.to_list dirs
       |> Memo.List.map ~f:(fun (_candidate, candidate_path) ->
         Source_tree.Dir.sub_dir_as_t candidate_path
         >>| Source_tree.Dir.path
@@ -158,7 +159,7 @@ let disambiguate_test_name ~sctx path =
           User_error.raise
             [ Pp.textf
                 "%S is used by multiple test executables and cannot be run directly."
-                filename
+                (Filename.to_string filename)
             ]
         | Error `Not_a_test ->
           (* Assume the user intended a directory for @runtest to be used. *)
@@ -182,7 +183,9 @@ let make_request ~scontexts ~to_cwd ~test_paths =
       | In_source_dir dir ->
         (* We need to adjust the path here to make up for the current working directory. *)
         let dir =
-          Path.Source.L.relative Path.Source.root (to_cwd @ Path.Source.explode dir)
+          Path.Source.L.relative
+            Path.Source.root
+            (to_cwd @ (Path.Source.explode dir |> Filename.L.to_string))
         in
         let sctx =
           match Context_name.Map.find scontexts Context_name.default with

@@ -11,3 +11,4 @@ val to_string : t -> string
 val to_string_hum : t -> string
 val equal : t -> t -> bool
 val to_dyn : t -> Dyn.t
+val repr : t Repr.t

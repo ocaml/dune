@@ -65,10 +65,14 @@ module Opam_compatible = struct
   let to_package_name s = s
 end
 
-let opam_ext = ".opam"
-let opam_fn (t : t) = to_string t ^ opam_ext
+let opam_ext = Filename.Extension.to_string Filename.Extension.opam
+
+let opam_fn (t : t) =
+  Filename.add_extension (Filename.of_string_exn (to_string t)) Filename.Extension.opam
+;;
+
 let is_opam_compatible s = Option.is_some (Opam_compatible.of_string_opt (to_string s))
-let file t ~dir = Path.Source.relative dir (to_string t ^ opam_ext)
+let file t ~dir = Path.Source.relative_fname dir (opam_fn t)
 
 let decode_opam_compatible =
   Decoder.map ~f:Opam_compatible.to_package_name Opam_compatible.decode
@@ -76,7 +80,7 @@ let decode_opam_compatible =
 
 let of_opam_file_basename basename =
   let open Option.O in
-  let* name = String.drop_suffix basename ~suffix:opam_ext in
+  let* name = String.drop_suffix (Filename.to_string basename) ~suffix:opam_ext in
   of_string_opt name
 ;;
 

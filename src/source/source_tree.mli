@@ -6,11 +6,11 @@ module Dir : sig
   type t
 
   val path : t -> Path.Source.t
-  val filenames : t -> Filename.Set.t
+  val filenames : t -> Filename.Array.Set.t
 
   type sub_dir
 
-  val sub_dirs : t -> sub_dir Filename.Map.t
+  val sub_dirs : t -> sub_dir Filename.Array.Map.t
   val sub_dir_as_t : sub_dir -> t Memo.t
 
   module Make_map_reduce (M : Memo.S) (Outcome : Monoid) : sig
@@ -24,7 +24,7 @@ module Dir : sig
       -> Outcome.t M.t
   end
 
-  val sub_dir_names : t -> Filename.Set.t
+  val sub_dir_names : t -> Filename.Array.Set.t
   val status : t -> Source_dir_status.t
 
   (** Return the contents of the dune (or jbuild) file in this directory *)

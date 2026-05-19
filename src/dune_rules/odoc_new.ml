@@ -169,7 +169,10 @@ module Index = struct
     in
     let s = Path.Local.explode local in
     let index =
-      List.fold_left s ~f:(fun acc s -> Sub_dir s :: acc) ~init:[ Top_dir top ]
+      List.fold_left
+        s
+        ~f:(fun acc s -> Sub_dir (Filename.to_string s) :: acc)
+        ~init:[ Top_dir top ]
     in
     Some index
   ;;
@@ -713,11 +716,16 @@ end = struct
   let reference v =
     match v.ty with
     | Mld ->
-      let basename = Path.basename v.source |> Filename.remove_extension in
+      let basename =
+        Path.basename v.source |> Filename.remove_extension |> Filename.to_string
+      in
       sprintf "page-\"%s\"" basename
     | Module _ ->
       let basename =
-        Path.basename v.source |> Filename.remove_extension |> Stdune.String.capitalize
+        Path.basename v.source
+        |> Filename.remove_extension
+        |> Filename.to_string
+        |> Stdune.String.capitalize
       in
       sprintf "module-%s" basename
   ;;
@@ -726,7 +734,10 @@ end = struct
     match v.ty with
     | Module _ ->
       let basename =
-        Path.basename v.source |> Filename.remove_extension |> Stdune.String.capitalize
+        Path.basename v.source
+        |> Filename.remove_extension
+        |> Filename.to_string
+        |> Stdune.String.capitalize
       in
       Some
         (Module_name.of_string_allow_invalid (Loc.none, basename)
@@ -734,12 +745,15 @@ end = struct
     | _ -> None
   ;;
 
-  let name v = Path.basename v.source |> Filename.remove_extension
+  let name v = Path.basename v.source |> Filename.remove_extension |> Filename.to_string
   let v ~source ~odoc ~html_dir ~html_file ~ty = { source; odoc; html_dir; html_file; ty }
 
   let make_module ctx ~all index source ~visible =
     let basename =
-      Path.basename source |> Filename.remove_extension |> Stdune.String.uncapitalize
+      Path.basename source
+      |> Filename.remove_extension
+      |> Filename.to_string
+      |> Stdune.String.uncapitalize
     in
     let odoc = Index.odoc_dir ctx ~all index ++ (basename ^ ".odoc") in
     let html_dir = Index.html_dir ctx ~all index ++ Stdune.String.capitalize basename in
@@ -772,7 +786,7 @@ end = struct
       let dir = Index.obj_dir ctx ~all index in
       Path.build (dir ++ filename)
     in
-    let name = Filename.remove_extension filename in
+    let name = Stdlib.Filename.remove_extension filename in
     int_make_mld ctx ~all index source ~name ~is_index:true
   ;;
 end
@@ -920,12 +934,15 @@ let compile_requires stdlib_opt libs =
     List.filter requires ~f:(fun l -> not (List.mem libs l ~equal:lib_equal)))
 ;;
 
-let link_requires stdlib_opt libs (* ~for_ *) =
-  Lib.closure libs ~linking:false ~for_:Ocaml
-  |> Resolve.Memo.map ~f:(fun libs ->
-    match stdlib_opt with
-    | None -> libs
-    | Some stdlib -> stdlib :: libs)
+(* TODO(anmonteiro): this is likely wrong? *)
+let link_requires stdlib_opt libs =
+  let open Resolve.Memo.O in
+  let+ ocaml = Lib.closure libs ~linking:false ~for_:Ocaml
+  and+ melange = Lib.closure libs ~linking:false ~for_:Melange in
+  let libs = ocaml @ melange in
+  match stdlib_opt with
+  | None -> libs
+  | Some stdlib -> stdlib :: libs
 ;;
 
 let compile_mld sctx a ~parent_opt ~quiet ~is_index ~children =
@@ -1153,24 +1170,36 @@ let compile_odocs sctx ~all ~quiet artifacts parent libs =
    inside. This is used in the fallback case where we don't know what modules
    there are in a particular switch directory. *)
 let modules_of_dir d : (Module_name.t * (Path.t * [ `Cmti | `Cmt | `Cmi ])) list Memo.t =
-  let extensions = [ ".cmti", `Cmti; ".cmt", `Cmt; ".cmi", `Cmi ] in
+  let extensions =
+    [ Filename.Extension.cmti, `Cmti
+    ; Filename.Extension.cmt, `Cmt
+    ; Filename.Extension.cmi, `Cmi
+    ]
+  in
+  let ty_of_ext ext =
+    List.find_map extensions ~f:(fun (ext', ty) ->
+      Option.some_if (Filename.Extension.equal ext ext') ty)
+  in
   Fs_memo.dir_contents (Path.as_outside_build_dir_exn d)
   >>| function
   | Error _ -> []
   | Ok dc ->
     let list = Fs_memo.Dir_contents.to_list dc in
     List.filter_map list ~f:(fun (x, ty) ->
-      let ext = Filename.Extension.Or_empty.to_string (Filename.extension x) in
-      match ty, List.assoc extensions ext with
-      | Unix.S_REG, Some _ -> Some (Filename.remove_extension x)
+      match ty, Filename.extension x |> Filename.Extension.Or_empty.extension with
+      | Unix.S_REG, Some ext when Option.is_some (ty_of_ext ext) ->
+        Some (Filename.remove_extension x)
       | _, _ -> None)
-    |> List.sort_uniq ~compare:String.compare
+    |> List.sort_uniq ~compare:Filename.compare
     |> List.map ~f:(fun m ->
       let ext, ty =
         List.find_exn extensions ~f:(fun (ext, _ty) ->
-          List.exists list ~f:(fun (n, _) -> n = m ^ ext))
+          let fname = Filename.add_extension m ext in
+          List.exists list ~f:(fun (n, _) -> Filename.equal n fname))
       in
-      Module_name.of_checked_string m, (Path.relative d (m ^ ext), ty))
+      let fname = Filename.add_extension m ext in
+      ( Module_name.of_checked_string (Filename.to_string m)
+      , (Path.relative_fname d fname, ty) ))
 ;;
 
 (* Here we are constructing the list of artifacts for various types of things
@@ -1271,7 +1300,7 @@ let pkg_mlds sctx pkg =
 let check_mlds_no_dupes ~pkg ~mlds =
   match
     List.rev_map mlds ~f:(fun ((_path, mld_name) as mld) -> mld_name, mld)
-    |> Filename.Map.of_list
+    |> String.Map.of_list
   with
   | Ok m -> m
   | Error (_, (p1, _name1), (p2, _name2)) ->

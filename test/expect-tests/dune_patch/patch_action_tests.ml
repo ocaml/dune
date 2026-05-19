@@ -1,14 +1,10 @@
 open Stdune
 
-include struct
-  open Dune_engine
-  module Display = Display
-  module Process = Process
-end
+let () = Dune_tests_common.init ()
+
+(* Testing the patch action *)
 
 open Dune_scheduler
-
-let () = Dune_tests_common.init ()
 
 let create_files =
   List.iter ~f:(fun (f, contents) ->
@@ -23,7 +19,6 @@ let create_files =
 
 let test files (patch, patch_contents) =
   let dir = Temp.create Dir ~prefix:"dune" ~suffix:"patch_test" in
-  let display = Display.Quiet in
   Sys.chdir (Path.to_string dir);
   let patch_file = Path.append_local dir (Path.Local.of_string patch) in
   let config =
@@ -40,7 +35,10 @@ let test files (patch, patch_contents) =
   @@ fun () ->
   let open Fiber.O in
   let* () = Fiber.return @@ create_files ((patch, patch_contents) :: files) in
-  Dune_patch.For_tests.exec display ~patch:patch_file ~dir ~stderr:Process.Io.stderr
+  Dune_patch.For_tests.exec
+    ~loc:(Loc.in_file (Path.of_string "dune.patch.test"))
+    ~patch:patch_file
+    ~dir
 ;;
 
 let check path =
@@ -82,8 +80,7 @@ let%expect_test "action test - delete_file" =
   let filename = "foo.ml" in
   test [ filename, "This is wrong\n" ] ("foo.patch", Patch_examples.delete_file);
   match Unix.stat filename with
-  | { st_kind = S_REG; st_size; _ } -> assert (st_size == 0)
-  | _ -> failwith "Not a regular file"
+  | _ -> failwith "Still exists"
   | exception Unix.Unix_error (Unix.ENOENT, _, _) -> ()
 ;;
 
@@ -135,31 +132,19 @@ let%expect_test "action test - spaces" =
   with
   | Dune_util.Report_error.Already_reported ->
     print_endline @@ normalize_error_path [%expect.output];
-    [%expect {| Error: foo: No such file or directory |}]
+    [%expect {| Error: Cannot edit file "foo": file does not exist |}]
 ;;
 
-(* CR-soon alizter: the old implementation passes the quoted
-   filename through the regex which computes the wrong prefix,
-   causing the external patch to fail. *)
 let%expect_test "action test - unified_spaces" =
-  try
-    test [ "foo bar", "This is wrong\n" ] ("foo.patch", Patch_examples.unified_spaces);
-    check "foo bar";
-    [%expect.unreachable]
-  with
-  | Dune_util.Report_error.Already_reported ->
-    print_endline @@ normalize_error_path [%expect.output];
-    [%expect {| Error: foo: No such file or directory |}]
+  test [ "foo bar", "This is wrong\n" ] ("foo.patch", Patch_examples.unified_spaces);
+  check "foo bar";
+  [%expect {| This is right |}]
 ;;
 
 let%expect_test "action test - git_ext_delete_only" =
-  let filename = "foo.ml" in
-  test [ filename, "Hello World\n" ] ("foo.patch", Patch_examples.git_ext_delete_only);
-  (* macOS patch truncates to 0 bytes instead of deleting *)
-  match Unix.stat filename with
-  | { st_kind = S_REG; st_size; _ } -> assert (st_size == 0)
-  | _ -> failwith "Not a regular file"
-  | exception Unix.Unix_error (Unix.ENOENT, _, _) -> ()
+  test [ "foo.ml", "Hello World\n" ] ("foo.patch", Patch_examples.git_ext_delete_only);
+  check "foo.ml";
+  [%expect {| File foo.ml not found |}]
 ;;
 
 let%expect_test "action test - git_ext_create_only" =
@@ -168,16 +153,14 @@ let%expect_test "action test - git_ext_create_only" =
   [%expect {| Hello World |}]
 ;;
 
-(* CR-soon alizter: the old implementation doesn't strip the
-   prefix correctly for edit-with-rename patches, causing the
-   external patch to fail. *)
+let%expect_test "action test - rename_patch" =
+  test [ "old.ml", "content\n" ] ("foo.patch", Patch_examples.rename_patch);
+  check "new.ml";
+  [%expect {| content |}]
+;;
+
 let%expect_test "action test - edit_with_rename" =
-  try
-    test [ "source.ml", "This is wrong\n" ] ("foo.patch", Patch_examples.edit_with_rename);
-    check "target.ml";
-    [%expect.unreachable]
-  with
-  | Dune_util.Report_error.Already_reported ->
-    print_endline @@ normalize_error_path [%expect.output];
-    [%expect {| Error: target.ml: No such file or directory |}]
+  test [ "source.ml", "This is wrong\n" ] ("foo.patch", Patch_examples.edit_with_rename);
+  check "target.ml";
+  [%expect {| This is right |}]
 ;;

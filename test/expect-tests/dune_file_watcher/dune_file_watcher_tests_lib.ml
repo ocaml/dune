@@ -3,17 +3,6 @@ let printf = Printf.printf
 open Base
 open Stdune
 
-let critical_section mutex ~f =
-  (* Since 5.0, using "Mutex" with Base open rings an alert and suggests
-     we use "Stdlib.Mutex" instead.
-     Prior to OCaml 5.0, "Stdlib.Mutex" didn't exist, it was just "Mutex".
-     Since 5.1 there is Stdlib.Mutex.protect which replaces this function.
-  *)
-  let module Mutex = Mutex [@alert "-deprecated"] in
-  Mutex.lock mutex;
-  Exn.protect ~f ~finally:(fun () -> Mutex.unlock mutex)
-;;
-
 let init () =
   let tmp_dir = Stdlib.Filename.concat (Unix.getcwd ()) "working-dir" in
   let () =

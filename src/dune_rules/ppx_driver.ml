@@ -325,11 +325,12 @@ let build_ppx_driver =
         ~melange_package_name:None
         ~package:None
         ~bin_annot:false
-        Ocaml
+        for_
     in
     let+ (_ : Exe.dep_graphs) =
       let program : Exe.Program.t =
-        { name = Filename.remove_extension (Path.Build.basename target)
+        { name =
+            Path.Build.basename target |> Filename.remove_extension |> Filename.to_string
         ; main_module_name
         ; loc = Loc.none
         }

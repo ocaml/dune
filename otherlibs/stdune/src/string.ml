@@ -196,6 +196,8 @@ let maybe_quoted s =
 
 include Comparable.Make (T)
 module Table = Hashtbl.Make (T)
+module Array0 = Array
+module Array = Array0.Sorted.Make (T)
 
 let enumerate_gen s =
   let s = " " ^ s ^ " " in

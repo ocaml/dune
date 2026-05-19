@@ -47,14 +47,15 @@ let rocq_modules_of_files ~dirs =
   let build_mod_dir (sd : Source_file_dir.t) =
     let prefix = sd.path_to_root in
     let v_files =
-      String.Set.filter sd.files ~f:(fun f -> String.ends_with ~suffix:".v" f)
+      Filename.Array.Set.filter sd.files ~f:(fun f ->
+        String.ends_with ~suffix:".v" (Filename.to_string f))
     in
-    String.Set.to_list_map v_files ~f:(fun file ->
+    Filename.Array.Set.to_list_map v_files ~f:(fun file ->
       let name, _ = Filename.split_extension file in
-      let name = Rocq_module.Name.make name in
+      let name = Rocq_module.Name.make (Filename.to_string name) in
       Rocq_module.make
-        ~source:(Path.build @@ Path.Build.relative sd.dir file)
-        ~prefix
+        ~source:(Path.build @@ Path.Build.relative_fname sd.dir file)
+        ~prefix:(Filename.L.to_string prefix)
         ~name)
   in
   List.concat_map ~f:build_mod_dir (Nonempty_list.to_list dirs)
@@ -63,14 +64,15 @@ let rocq_modules_of_files ~dirs =
 let expected_files_of_dirs ~dirs =
   let build_expected (sd : Source_file_dir.t) =
     let v_files =
-      String.Set.filter sd.files ~f:(fun f -> String.ends_with ~suffix:".v" f)
+      Filename.Array.Set.filter sd.files ~f:(fun f ->
+        String.ends_with ~suffix:".v" (Filename.to_string f))
     in
-    String.Set.to_list_map v_files ~f:(fun file ->
+    Filename.Array.Set.to_list_map v_files ~f:(fun file ->
       let name, _ = Filename.split_extension file in
-      let expected_name = name ^ ".expected" in
-      let source = Path.Build.relative sd.dir file in
-      if String.Set.mem sd.files expected_name
-      then Some (source, Path.Build.relative sd.dir expected_name)
+      let expected_name = Filename.add_extension name Filename.Extension.expected in
+      let source = Path.Build.relative_fname sd.dir file in
+      if Filename.Array.Set.mem sd.files expected_name
+      then Some (source, Path.Build.relative_fname sd.dir expected_name)
       else None)
     |> List.filter_opt
   in

@@ -205,10 +205,6 @@ let extract_directory_targets ~jsoo_enabled ~dir stanzas =
     | Executables.T exes | Tests.T { exes; _ } ->
       directory_targets_of_executables ~jsoo_enabled ~dir exes
     | Library.T lib -> directory_targets_of_library ~jsoo_enabled ~dir lib
-    | Coq_stanza.Theory.T m ->
-      (* It's unfortunate that we need to pull in the coq rules here. But
-         we don't have a generic mechanism for this yet. *)
-      Coq_doc.coqdoc_directory_targets ~dir m
     | Rocq_stanza.Theory.T m -> Rocq_doc.rocqdoc_directory_targets ~dir m
     | _ -> Memo.return Path.Build.Map.empty)
   >>| Path.Build.Map.union_all ~f:(fun path loc1 loc2 ->
@@ -255,10 +251,10 @@ end = struct
     and walk_children st_dir ~dir ~local =
       (* TODO take account of directory targets *)
       Source_tree.Dir.sub_dirs st_dir
-      |> Filename.Map.to_list
+      |> Filename.Array.Map.to_list
       |> Memo.parallel_map ~f:(fun (basename, st_dir) ->
         let* st_dir = Source_tree.Dir.sub_dir_as_t st_dir in
-        let dir = Path.Build.relative dir basename in
+        let dir = Path.Build.relative_fname dir basename in
         let local = basename :: local in
         walk st_dir ~dir ~local)
       >>| Appendable_list.concat
@@ -324,7 +320,7 @@ end = struct
          Is_component_of_a_group_but_not_the_root { stanzas = None; group_root })
     | Some (ctx, st_dir) ->
       let src_dir = Source_tree.Dir.path st_dir in
-      Pkg_rules.lock_dir_path (Context_name.of_string ctx)
+      Pkg_rules.lock_dir_path (Context_name.of_string (Filename.to_string ctx))
       >>| (function
        | None -> false
        | Some of_ -> Path.is_descendant ~of_ (Path.source src_dir))

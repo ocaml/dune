@@ -13,6 +13,7 @@ let cache_path ~dir ~hex =
 let list_entries ~storage =
   let open Result.O in
   let entries dir =
+    let dir = Filename.to_string dir in
     match String.length dir = 2 && String.for_all ~f:Char.is_lowercase_hex dir with
     | false ->
       (* Ignore directories whose name isn't a two-character hex value. *)
@@ -21,6 +22,7 @@ let list_entries ~storage =
       let dir = storage / dir in
       Path.readdir_unsorted dir
       >>| List.filter_map ~f:(fun entry_name ->
+        let entry_name = Filename.to_string entry_name in
         match Digest.from_hex entry_name with
         | None ->
           (* Ignore entries whose names are not hex values. *)
@@ -42,10 +44,6 @@ module Versioned = struct
     lazy (Lazy.force build_cache_dir / "files" / Version.File.to_string t)
   ;;
 
-  let value_storage_dir t =
-    lazy (Lazy.force build_cache_dir / "values" / Version.Value.to_string t)
-  ;;
-
   let metadata_path t ~rule_or_action_digest =
     lazy
       (let dir = Lazy.force (metadata_storage_dir t) in
@@ -58,24 +56,17 @@ module Versioned = struct
        cache_path ~dir ~hex:(Digest.to_string file_digest))
   ;;
 
-  let value_path t ~value_digest =
-    lazy
-      (let dir = Lazy.force (value_storage_dir t) in
-       cache_path ~dir ~hex:(Digest.to_string value_digest))
-  ;;
-
   let list_metadata_entries t =
-    lazy (list_entries ~storage:(Lazy.force (metadata_storage_dir t)))
+    list_entries ~storage:(Lazy.force (metadata_storage_dir t))
   ;;
 
-  let list_file_entries t = lazy (list_entries ~storage:(Lazy.force (file_storage_dir t)))
+  let list_file_entries t = list_entries ~storage:(Lazy.force (file_storage_dir t))
 end
 
 let metadata_storage_dir = Versioned.metadata_storage_dir Version.Metadata.current
 let metadata_path = Versioned.metadata_path Version.Metadata.current
 let file_storage_dir = Versioned.file_storage_dir Version.File.current
 let file_path = Versioned.file_path Version.File.current
-let value_path = Versioned.value_path Version.Value.current
 
 let create_cache_directories () =
   [ Lazy.force temp_dir; Lazy.force metadata_storage_dir; Lazy.force file_storage_dir ]

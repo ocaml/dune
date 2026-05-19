@@ -151,10 +151,10 @@ let executables_rules
      of the same name *)
   let* modules, obj_dir =
     let first_exe = first_exe exes in
-    Dir_contents.ocaml dir_contents
+    Dir_contents.ml dir_contents ~for_
     >>= Ml_sources.modules_and_obj_dir ~libs:(Scope.libs scope) ~for_:(Exe { first_exe })
   in
-  let* () = Check_rules.add_obj_dir sctx ~obj_dir Ocaml in
+  let* () = Check_rules.add_obj_dir sctx ~obj_dir for_ in
   let ctx = Super_context.context sctx in
   let* ocaml = Context.ocaml ctx in
   let project = Scope.project scope in
@@ -206,7 +206,7 @@ let executables_rules
           x)
     in
     Compilation_context.create
-      Ocaml
+      for_
       ~loc:exes.buildable.loc
       ~super_context:sctx
       ~scope
@@ -340,7 +340,7 @@ let executables_rules
       ~libname:None
       ~obj_dir
       ~preprocess:
-        (Preprocess.Per_module.without_instrumentation exes.buildable.preprocess)
+        (Preprocess.Per_module.without_instrumentation exes.buildable.preprocess.config)
       ~dialects:(Dune_project.dialects (Scope.project scope))
       ~ident:(Merlin_ident.for_exes ~names:(Nonempty_list.map ~f:snd exes.names))
       ~for_
@@ -354,7 +354,7 @@ let compile_info ~scope (exes : Executables.t) =
   let+ pps =
     (* TODO resolution should be delayed *)
     Instrumentation.with_instrumentation
-      exes.buildable.preprocess
+      exes.buildable.preprocess.config
       ~instrumentation_backend:(Lib.DB.instrumentation_backend (Scope.libs scope))
     |> Resolve.Memo.read_memo
     >>| Preprocess.Per_module.pps

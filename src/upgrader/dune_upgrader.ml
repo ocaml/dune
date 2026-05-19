@@ -162,7 +162,9 @@ module Common = struct
     | Some _ -> ()
     | None ->
       let fn =
-        Path.Source.relative (Dune_project.root project) Dune_project.filename
+        Path.Source.relative
+          (Dune_project.root project)
+          (Filename.to_string Dune_project.filename)
         |> Path.source
       in
       Console.print [ Pp.textf "Creating %s..." (Path.to_string_maybe_quoted fn) ];
@@ -274,10 +276,10 @@ module V2 = struct
   ;;
 
   let upgrade_dune_files todo dir =
-    if String.Set.mem (Source_tree.Dir.filenames dir) Dune_file.fname
+    if Filename.Array.Set.mem (Source_tree.Dir.filenames dir) Dune_file.fname
     then (
       let path = Source_tree.Dir.path dir in
-      let fn = Path.Source.relative path Dune_file.fname in
+      let fn = Path.Source.relative_fname path Dune_file.fname in
       if Io.with_lexbuf_from_file (Path.source fn) ~f:Dune_lang.Dune_file_script.is_script
       then
         User_warning.emit
@@ -332,9 +334,9 @@ language. Use the (foreign_archives ...) field instead.|}
 end
 
 let detect_project_version project dir =
-  let in_tree = String.Set.mem (Source_tree.Dir.filenames dir) in
+  let in_tree = Filename.Array.Set.mem (Source_tree.Dir.filenames dir) in
   Dune_project.default_dune_language_version := 0, 1;
-  if in_tree "jbuild"
+  if in_tree Filename.jbuild
   then (
     let fn = Path.relative (Path.source (Source_tree.Dir.path dir)) "jbuild" in
     User_warning.emit

@@ -78,9 +78,8 @@ and Dune : sig
     { loc : Loc.t
     ; boot_id : Id.t option (** boot library that was selected to build this theory *)
     ; id : Id.t
-    ; implicit : bool (* Only useful for the stdlib *)
-    ; use_stdlib : bool
-      (* whether this theory uses the stdlib, eventually set to false for all libs *)
+    ; implicit : bool (* Only useful for Corelib *)
+    ; use_corelib : bool (* Whether this theory automatically includes Corelib. *)
     ; src_root : Path.Build.t
     ; obj_root : Path.Build.t
     ; theories : (Loc.t * R.t) list Resolve.t
@@ -101,9 +100,8 @@ end = struct
     { loc : Loc.t
     ; boot_id : Id.t option (** boot library that was selected to build this theory *)
     ; id : Id.t
-    ; implicit : bool (* Only useful for the stdlib *)
-    ; use_stdlib : bool
-      (* whether this theory uses the stdlib, eventually set to false for all libs *)
+    ; implicit : bool (* Only useful for Corelib *)
+    ; use_corelib : bool (* Whether this theory automatically includes Corelib. *)
     ; src_root : Path.Build.t
     ; obj_root : Path.Build.t
     ; theories : (Loc.t * R.t) list Resolve.t
@@ -117,7 +115,7 @@ end = struct
         ; boot_id
         ; id
         ; implicit
-        ; use_stdlib
+        ; use_corelib
         ; src_root
         ; obj_root
         ; theories
@@ -132,7 +130,7 @@ end = struct
         ; "boot_id", Dyn.option Id.to_dyn boot_id
         ; "id", Id.to_dyn id
         ; "implicit", Bool.to_dyn implicit
-        ; "use_stdlib", Bool.to_dyn use_stdlib
+        ; "use_corelib", Bool.to_dyn use_corelib
         ; "src_root", Path.Build.to_dyn src_root
         ; "obj_root", Path.Build.to_dyn obj_root
         ; "theories", Resolve.to_dyn (Dyn.list (Dyn.pair Loc.to_dyn R.to_dyn)) theories
@@ -154,7 +152,7 @@ and Legacy : sig
   type t =
     { boot_id : Id.t option
     ; id : Id.t
-    ; implicit : bool (* Only useful for the stdlib *)
+    ; implicit : bool (* Only useful for Corelib *)
     ; installed_root : Path.t (* ; libraries : (Loc.t * Lib.t) list Resolve.t *)
     ; vo : Path.t list
     }
@@ -167,7 +165,7 @@ end = struct
   type t =
     { boot_id : Id.t option
     ; id : Id.t
-    ; implicit : bool (* Only useful for the stdlib *)
+    ; implicit : bool (* Only useful for Corelib *)
     ; installed_root : Path.t (* ; libraries : (Loc.t * Lib.t) list Resolve.t *)
     ; vo : Path.t list
     }
@@ -383,8 +381,8 @@ module DB = struct
       | _, _ -> Resolve.return ()
     ;;
 
-    let maybe_add_boot ~boot ~use_stdlib ~is_boot theories =
-      if use_stdlib && not is_boot
+    let maybe_add_boot ~boot ~use_corelib ~is_boot theories =
+      if use_corelib && not is_boot
       then
         let open Resolve.O in
         let* boot = boot in
@@ -428,13 +426,13 @@ module DB = struct
       let open Memo.O in
       let boot_id = if s.boot then None else boot_library_id rocq_db in
       let allow_private_deps = Option.is_none s.package in
-      let use_stdlib = s.buildable.use_stdlib in
+      let use_corelib = s.buildable.use_corelib in
       let+ libraries =
         resolve_plugins ~db ~allow_private_deps ~name:(snd name) s.buildable.plugins
       and+ theories =
         resolve_theories ~rocq_db ~allow_private_deps ~boot_id s.buildable.theories
       and+ boot = resolve_boot ~rocq_db boot_id in
-      let theories = maybe_add_boot ~boot ~use_stdlib ~is_boot:s.boot theories in
+      let theories = maybe_add_boot ~boot ~use_corelib ~is_boot:s.boot theories in
       let map_error x =
         let human_readable_description () = Id.pp id in
         Resolve.push_stack_frame ~human_readable_description x
@@ -444,7 +442,7 @@ module DB = struct
       { Dune.loc = s.buildable.loc
       ; boot_id
       ; id
-      ; use_stdlib
+      ; use_corelib
       ; implicit = s.boot
       ; obj_root = dir
       ; src_root = dir

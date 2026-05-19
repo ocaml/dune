@@ -5,6 +5,8 @@ type t =
   | Melange
 
 val decode : t Decoder.t
+val equal : t -> t -> bool
+val to_dyn : t -> Dyn.t
 
 module Cm_kind : sig
   type t =

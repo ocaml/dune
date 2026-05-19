@@ -13,11 +13,11 @@
 
 open Import
 
-(** [deps_of ~dir ~use_stdlib ~wrapper_name rocq_module] action that builds the
+(** [deps_of ~dir ~use_corelib ~wrapper_name rocq_module] action that builds the
     deps of [rocq_module] *)
 val deps_of
   :  dir:Path.Build.t
-  -> use_stdlib:bool
+  -> use_corelib:bool
   -> wrapper_name:string
   -> mode:Rocq_mode.t
   -> Rocq_module.t

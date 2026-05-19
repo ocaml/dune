@@ -96,112 +96,112 @@ let%expect_test "termination is always called" =
     print_endline "---------------");
   [%expect
     {|
-        { on_init = Print; on_terminate = Print; on_upgrade = Print }
-        server: init
-        server: upgrade
-        client: sending request
-        { payload =
-            Some [ [ [ "exn"; "Failure(\"never works\")" ]; [ "backtrace"; "" ] ] ]
-        ; message = "server error"
-        ; kind = Code_error
-        }
-        server: terminate
-        server: finished.
-        ---------------
-        { on_init = Print; on_terminate = Print; on_upgrade = Fail }
-        server: init
-        server: upgrade
-        server: terminate
-        server: finished.
-        client: sending request
-        { payload =
-            Some
-              [ [ "id"; [ "auto"; "0" ] ]
-              ; [ "req"; [ [ "method"; "double" ]; [ "params"; [] ] ] ]
-              ]
-        ; message = "request sent while connection is dead"
-        ; kind = Connection_dead
-        }
-        ---------------
-        { on_init = Print; on_terminate = Fail; on_upgrade = Print }
-        server: init
-        server: upgrade
-        client: sending request
-        { payload =
-            Some [ [ [ "exn"; "Failure(\"never works\")" ]; [ "backtrace"; "" ] ] ]
-        ; message = "server error"
-        ; kind = Code_error
-        }
-        server: terminate
-        server: finished.
-        ---------------
-        { on_init = Print; on_terminate = Fail; on_upgrade = Fail }
-        server: init
-        server: upgrade
-        server: terminate
-        /-----------------------------------------------------------------------
-        | Internal error: Uncaught exception.
-        | Dune_util__Report_error.Already_reported
-        \-----------------------------------------------------------------------
+    { on_init = Print; on_terminate = Print; on_upgrade = Print }
+    server: init
+    server: upgrade
+    client: sending request
+    { payload =
+        Some [ [ [ "exn"; "Failure(\"never works\")" ]; [ "backtrace"; "" ] ] ]
+    ; message = "server error"
+    ; kind = Code_error
+    }
+    server: terminate
+    server: finished.
+    ---------------
+    { on_init = Print; on_terminate = Print; on_upgrade = Fail }
+    server: init
+    server: upgrade
+    server: terminate
+    server: finished.
+    client: sending request
+    { payload =
+        Some
+          [ [ "id"; [ "auto"; "0" ] ]
+          ; [ "req"; [ [ "method"; "double" ]; [ "params"; [] ] ] ]
+          ]
+    ; message = "request sent while connection is dead"
+    ; kind = Connection_dead
+    }
+    ---------------
+    { on_init = Print; on_terminate = Fail; on_upgrade = Print }
+    server: init
+    server: upgrade
+    client: sending request
+    { payload =
+        Some [ [ [ "exn"; "Failure(\"never works\")" ]; [ "backtrace"; "" ] ] ]
+    ; message = "server error"
+    ; kind = Code_error
+    }
+    server: terminate
+    server: finished.
+    ---------------
+    { on_init = Print; on_terminate = Fail; on_upgrade = Fail }
+    server: init
+    server: upgrade
+    server: terminate
+    /-----------------------------------------------------------------------
+    | Internal error: Uncaught exception.
+    | Dune_util__Report_error.Already_reported
+    \-----------------------------------------------------------------------
 
 
-        ---------------
-        { on_init = Fail; on_terminate = Print; on_upgrade = Print }
-        server: init
-        server: terminate
-        server: finished.
-        /-----------------------------------------------------------------------
-        | Internal error: Uncaught exception.
-        | Response.E
-        |   { payload = Some [ [ "id"; [ "initialize" ] ] ]
-        |   ; message =
-        |       "Connection terminated. This request will never receive a response."
-        |   ; kind = Connection_dead
-        |   }
-        \-----------------------------------------------------------------------
+    ---------------
+    { on_init = Fail; on_terminate = Print; on_upgrade = Print }
+    server: init
+    server: terminate
+    server: finished.
+    /-----------------------------------------------------------------------
+    | Internal error: Uncaught exception.
+    | Response.E
+    |   { payload = Some [ [ "id"; [ "initialize" ] ] ]
+    |   ; message =
+    |       "Connection terminated. This request will never receive a response."
+    |   ; kind = Connection_dead
+    |   }
+    \-----------------------------------------------------------------------
 
 
-        ---------------
-        { on_init = Fail; on_terminate = Print; on_upgrade = Fail }
-        server: init
-        server: terminate
-        server: finished.
-        /-----------------------------------------------------------------------
-        | Internal error: Uncaught exception.
-        | Response.E
-        |   { payload = Some [ [ "id"; [ "initialize" ] ] ]
-        |   ; message =
-        |       "Connection terminated. This request will never receive a response."
-        |   ; kind = Connection_dead
-        |   }
-        \-----------------------------------------------------------------------
+    ---------------
+    { on_init = Fail; on_terminate = Print; on_upgrade = Fail }
+    server: init
+    server: terminate
+    server: finished.
+    /-----------------------------------------------------------------------
+    | Internal error: Uncaught exception.
+    | Response.E
+    |   { payload = Some [ [ "id"; [ "initialize" ] ] ]
+    |   ; message =
+    |       "Connection terminated. This request will never receive a response."
+    |   ; kind = Connection_dead
+    |   }
+    \-----------------------------------------------------------------------
 
 
-        ---------------
-        { on_init = Fail; on_terminate = Fail; on_upgrade = Print }
-        server: init
-        server: terminate
-        /-----------------------------------------------------------------------
-        | Internal error: Uncaught exception.
-        | Dune_util__Report_error.Already_reported
-        \-----------------------------------------------------------------------
+    ---------------
+    { on_init = Fail; on_terminate = Fail; on_upgrade = Print }
+    server: init
+    server: terminate
+    /-----------------------------------------------------------------------
+    | Internal error: Uncaught exception.
+    | Dune_util__Report_error.Already_reported
+    \-----------------------------------------------------------------------
 
 
-        ---------------
-        { on_init = Fail; on_terminate = Fail; on_upgrade = Fail }
-        server: init
-        server: terminate
-        /-----------------------------------------------------------------------
-        | Internal error: Uncaught exception.
-        | Dune_util__Report_error.Already_reported
-        \-----------------------------------------------------------------------
+    ---------------
+    { on_init = Fail; on_terminate = Fail; on_upgrade = Fail }
+    server: init
+    server: terminate
+    /-----------------------------------------------------------------------
+    | Internal error: Uncaught exception.
+    | Dune_util__Report_error.Already_reported
+    \-----------------------------------------------------------------------
 
 
-        ---------------
-        |}]
+    ---------------
+    |}]
 ;;
 
-let%expect_test "server-side pending request stays pending on disconnect" =
+let%expect_test "server-side pending request fails on client disconnect" =
   let module Client = struct
     include
       Dune_rpc.Client.Make
@@ -214,8 +214,8 @@ let%expect_test "server-side pending request stays pending on disconnect" =
             >>| function
             | Ok () -> ()
             | Error `Closed ->
-              (* Keep this test focused on the server-side pending request bug.
-               The default test client raises [Already_reported] here instead. *)
+              (* Keep this test focused on the server-side pending request path.
+                 The default test client raises [Already_reported] here instead. *)
               ()
           ;;
         end)
@@ -258,11 +258,16 @@ let%expect_test "server-side pending request stays pending on disconnect" =
     let requester () =
       let* session = Fiber.Ivar.read upgraded_session in
       let id = Id.make (Atom "server-request") in
-      let* () =
-        Session.request session (Decl.Request.witness server_request_decl) id ()
+      let* result =
+        Fiber.collect_errors (fun () ->
+          Session.request session (Decl.Request.witness server_request_decl) id ())
       in
-      printfn "server: request returned";
-      Fiber.return ()
+      match result with
+      | Ok () -> Code_error.raise "server request unexpectedly completed" []
+      | Error exns ->
+        printfn "server: request failed";
+        print_dyn (Dyn.list Exn_with_backtrace.to_dyn exns);
+        Fiber.return ()
     in
     let server () =
       let+ () = Drpc.Server.serve sessions (Rpc.Server.make handler) in
@@ -270,14 +275,113 @@ let%expect_test "server-side pending request stays pending on disconnect" =
     in
     Fiber.parallel_iter [ client; requester; server ] ~f:(fun f -> f ())
   in
-  let scheduler = Scheduler.create () in
-  (try Scheduler.run scheduler run with
-   | Scheduler.Never -> printfn "server: request remained pending after close");
+  Scheduler.run (Scheduler.create ()) run;
   [%expect
     {|
     client: closing channel
     server: finished.
-    server: request remained pending after close |}]
+    server: request failed
+    [ { exn =
+          "Response.E\n\
+          \  { payload = Some [ [ \"id\"; \"server-request\" ] ]\n\
+          \  ; message =\n\
+          \      \"Connection terminated. This request will never receive a response.\"\n\
+          \  ; kind = Connection_dead\n\
+          \  }"
+      ; backtrace = ""
+      }
+    ]
+    |}]
+;;
+
+let%expect_test "server-side pending request keeps a response read before close" =
+  let server_request_id = Id.make (Atom "server-request") in
+  let upgraded_session = Fiber.Ivar.create () in
+  let response_written = Fiber.Ivar.create () in
+  let module Client = struct
+    include
+      Dune_rpc.Client.Make
+        (Rpc.Private.Fiber)
+        (struct
+          include Chan
+
+          let is_server_request_response sexp =
+            match Conv.of_sexp ~version:(1, 1) Packet.sexp sexp with
+            | Ok (Response (id, _)) -> Id.equal id server_request_id
+            | Ok _ | Error _ -> false
+          ;;
+
+          let write t packets =
+            let close_after_write = List.exists packets ~f:is_server_request_response in
+            let* () =
+              Chan.write t packets
+              >>| function
+              | Ok () -> ()
+              | Error `Closed -> ()
+            in
+            if close_after_write
+            then (
+              printfn "client: closing channel";
+              let* () = Chan.close t in
+              Fiber.Ivar.fill response_written ())
+            else Fiber.return ()
+          ;;
+        end)
+  end
+  in
+  let handler =
+    let on_upgrade session _menu = Fiber.Ivar.fill upgraded_session session in
+    let rpc = Handler.create ~on_init ~on_upgrade ~version:(1, 1) () in
+    let () = Handler.declare_request rpc server_request_decl in
+    rpc
+  in
+  let init =
+    { Initialize.Request.dune_version = 1, 1
+    ; protocol_version = Protocol.latest_version
+    ; id = Id.make (Atom "test-client")
+    }
+  in
+  let run =
+    let client_chan, sessions = setup_direct_client_server () in
+    let client () =
+      let private_menu =
+        [ Client.Handle_request (server_request_decl, fun () -> Fiber.return ()) ]
+      in
+      Client.connect_with_menu client_chan init ~private_menu ~f:(fun _client ->
+        Fiber.Ivar.read response_written)
+    in
+    let requester () =
+      let* session = Fiber.Ivar.read upgraded_session in
+      let* result =
+        Fiber.collect_errors (fun () ->
+          Session.request
+            session
+            (Decl.Request.witness server_request_decl)
+            server_request_id
+            ())
+      in
+      match result with
+      | Ok () ->
+        printfn "server: request completed";
+        Fiber.return ()
+      | Error exns ->
+        printfn "server: request failed";
+        print_dyn (Dyn.list Exn_with_backtrace.to_dyn exns);
+        Fiber.return ()
+    in
+    let server () =
+      let+ () = Drpc.Server.serve sessions (Rpc.Server.make handler) in
+      printfn "server: finished."
+    in
+    Fiber.parallel_iter [ client; requester; server ] ~f:(fun f -> f ())
+  in
+  Scheduler.run (Scheduler.create ()) run;
+  [%expect
+    {|
+    client: closing channel
+    server: request completed
+    server: finished.
+    |}]
 ;;
 
 let%expect_test "client-side reply write raises on disconnect" =
@@ -319,12 +423,16 @@ let%expect_test "client-side reply write raises on disconnect" =
     let requester () =
       let* session = Fiber.Ivar.read upgraded_session in
       let id = Id.make (Atom "server-request") in
-      let* (_result : (unit, Exn_with_backtrace.t list) result) =
+      let* result =
         Fiber.collect_errors (fun () ->
           Session.request session (Decl.Request.witness server_request_decl) id ())
       in
-      printfn "server: request returned";
-      Fiber.return ()
+      match result with
+      | Ok () -> Code_error.raise "server request unexpectedly completed" []
+      | Error exns ->
+        printfn "server: request failed";
+        print_dyn (Dyn.list Exn_with_backtrace.to_dyn exns);
+        Fiber.return ()
     in
     let server () =
       let+ () = Drpc.Server.serve sessions (Rpc.Server.make handler) in
@@ -333,14 +441,22 @@ let%expect_test "client-side reply write raises on disconnect" =
     Fiber.parallel_iter [ client; requester; server ] ~f:(fun f -> f ())
   in
   Scheduler.run (Scheduler.create ()) run;
-  [%expect.unreachable]
-[@@expect.uncaught_exn
-  {|
-  (Dune_util__Report_error.Already_reported)
-  Trailing output
-  ---------------
-  client: closing channel
-  |}]
+  [%expect
+    {|
+    client: closing channel
+    server: finished.
+    server: request failed
+    [ { exn =
+          "Response.E\n\
+          \  { payload = Some [ [ \"id\"; \"server-request\" ] ]\n\
+          \  ; message =\n\
+          \      \"Connection terminated. This request will never receive a response.\"\n\
+          \  ; kind = Connection_dead\n\
+          \  }"
+      ; backtrace = ""
+      }
+    ]
+    |}]
 ;;
 
 let%expect_test "client-side request write raises after close" =

@@ -13,7 +13,7 @@ Overview
 Introduction
 ============
 
-Dune is a build system for OCaml (with support for Reason and Coq). It is not
+Dune is a build system for OCaml (with support for Reason and Rocq). It is not
 intended as a completely generic build system that's able to build any project
 in any language. On the contrary, it makes lots of choices in order to encourage
 a consistent development style.

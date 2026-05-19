@@ -27,6 +27,7 @@ module Resource_usage : sig
     }
 
   val zero : t
+  val get_self : unit -> t option
 end
 
 module Times : sig

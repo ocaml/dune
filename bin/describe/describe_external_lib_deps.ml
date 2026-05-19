@@ -151,7 +151,7 @@ let libs db (context : Context.t) =
           db
           dir
           exes.buildable.libraries
-          exes.buildable.preprocess
+          exes.buildable.preprocess.config
           (Nonempty_list.to_list_map exes.names ~f:snd)
           exes.package
           Item.Kind.Executables
@@ -162,7 +162,7 @@ let libs db (context : Context.t) =
           db
           dir
           lib.buildable.libraries
-          lib.buildable.preprocess
+          lib.buildable.preprocess.config
           [ Dune_rules.Library.best_name lib |> Lib_name.to_string ]
           (Dune_rules.Library.package lib)
           Item.Kind.Library
@@ -174,7 +174,7 @@ let libs db (context : Context.t) =
           db
           dir
           tests.exes.buildable.libraries
-          tests.exes.buildable.preprocess
+          tests.exes.buildable.preprocess.config
           (Nonempty_list.to_list_map tests.exes.names ~f:snd)
           (if Option.is_none tests.package then tests.exes.package else tests.package)
           Item.Kind.Tests

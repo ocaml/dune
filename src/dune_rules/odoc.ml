@@ -161,7 +161,7 @@ module Output_format = struct
     let base = Paths.toplevel_index ctx in
     match format with
     | Html -> base
-    | Json -> Path.Build.extend_basename base ~suffix:".json"
+    | Json -> Path.Build.extend_basename base ~suffix:Filename.json
     | Markdown -> Paths.markdown_index ctx
   ;;
 end
@@ -282,12 +282,18 @@ let odoc_dev_tool_exe_path_building_if_necessary () =
 ;;
 
 let odoc_program sctx dir =
-  let odoc_dev_tool_lock_dir_exists =
-    match Config.get Compile_time.lock_dev_tools with
-    | `Enabled -> true
-    | `Disabled -> false
+  let open Action_builder.O in
+  let* lock_dir_exists =
+    Action_builder.of_memo
+      (match Config.get Compile_time.lock_dev_tools with
+       | `Enabled -> Memo.return true
+       | `Disabled ->
+         (* even if lock_dev_tools is disabled, there might be a lock dir
+            created by `dune tools install odoc` *)
+         let path = Lock_dir.dev_tool_external_lock_dir Odoc in
+         Fs_memo.dir_exists (Path.Outside_build_dir.External path))
   in
-  match odoc_dev_tool_lock_dir_exists with
+  match lock_dir_exists with
   | true -> odoc_dev_tool_exe_path_building_if_necessary ()
   | false ->
     Super_context.resolve_program
@@ -460,16 +466,14 @@ let setup_library_odoc_rules cctx (local_lib : Lib.Local.t) =
   |> Modules.With_vlib.drop_vlib
   |> Modules.fold ~init:[] ~f:(fun m acc ->
     let compiled =
-      let { Compilation_mode.for_merlin; _ } =
-        Compilation_mode.of_mode_set (Lib_info.modes info)
-      in
+      let for_ = Compilation_context.for_ cctx in
       compile_module
         sctx
         ~includes
         ~dep_graphs:(Compilation_context.dep_graphs cctx)
         ~obj_dir
         ~pkg_or_lnu
-        ~mode:for_merlin
+        ~mode:for_
         m
     in
     compiled :: acc)
@@ -693,7 +697,9 @@ let create_odoc ctx ~target odoc_file =
   let html_base = Paths.html ctx target in
   let markdown_base = Paths.markdown ctx target in
   let odocl_base = Paths.odocl ctx target in
-  let basename = Path.Build.basename odoc_file |> Filename.remove_extension in
+  let basename =
+    Path.Build.basename odoc_file |> Filename.remove_extension |> Filename.to_string
+  in
   let odocl_file = odocl_base ++ (basename ^ ".odocl") in
   match target with
   | Lib _ ->
@@ -702,10 +708,12 @@ let create_odoc ctx ~target odoc_file =
       match output with
       | Output_format.Html | Json ->
         html_dir ++ "index"
-        |> Path.Build.extend_basename ~suffix:(Output_format.extension output)
+        |> Path.Build.extend_basename
+             ~suffix:(Filename.of_string_exn (Output_format.extension output))
       | Markdown ->
         markdown_base ++ Stdune.String.capitalize basename
-        |> Path.Build.extend_basename ~suffix:(Output_format.extension output)
+        |> Path.Build.extend_basename
+             ~suffix:(Filename.of_string_exn (Output_format.extension output))
     in
     { odoc_file
     ; odocl_file
@@ -721,7 +729,8 @@ let create_odoc ctx ~target odoc_file =
         | Html | Json -> html_base
       in
       base ++ (basename |> String.drop_prefix ~prefix:"page-" |> Option.value_exn)
-      |> Path.Build.extend_basename ~suffix:(Output_format.extension output)
+      |> Path.Build.extend_basename
+           ~suffix:(Filename.of_string_exn (Output_format.extension output))
     in
     { odoc_file
     ; odocl_file
@@ -734,7 +743,7 @@ let create_odoc ctx ~target odoc_file =
 let check_mlds_no_dupes ~pkg ~mlds =
   match
     List.rev_map mlds ~f:(fun ((_path, mld_name) as mld) -> mld_name, mld)
-    |> Filename.Map.of_list
+    |> String.Map.of_list
   with
   | Ok m -> m
   | Error (_, (p1, _name1), (p2, _name2)) ->
@@ -772,7 +781,7 @@ let mlds sctx pkg =
     | [ name ] ->
       let ext = Filename.extension name in
       if Filename.Extension.Or_empty.check ext mld_ext
-      then Left (mld.path, Filename.remove_extension name)
+      then Left (mld.path, Filename.remove_extension name |> Filename.to_string)
       else Right mld
     | _ -> Right mld)
 ;;
@@ -785,11 +794,11 @@ let odoc_artefacts sctx target =
     let+ mlds =
       let+ mlds, _ = mlds sctx pkg in
       let mlds = check_mlds_no_dupes ~pkg ~mlds in
-      Filename.Map.update mlds "index" ~f:(function
+      String.Map.update mlds "index" ~f:(function
         | None -> Some (Paths.gen_mld_dir ctx pkg ++ "index.mld", "index")
         | Some _ as s -> s)
     in
-    Filename.Map.to_list_map mlds ~f:(fun _ (path, name) ->
+    String.Map.to_list_map mlds ~f:(fun _ (path, name) ->
       Mld.create ~path ~name |> Mld.odoc_file ~doc_dir:dir |> create_odoc ctx ~target)
   | Lib lib ->
     let info = Lib.Local.info lib in
@@ -1118,7 +1127,7 @@ let package_mlds =
            report_warnings warnings;
            let mlds = check_mlds_no_dupes ~pkg ~mlds in
            let ctx = Super_context.context sctx in
-           if Filename.Map.mem mlds "index"
+           if String.Map.mem mlds "index"
            then Memo.return mlds
            else (
              let gen_mld = Paths.gen_mld_dir ctx pkg ++ "index.mld" in
@@ -1128,7 +1137,7 @@ let package_mlds =
                  sctx
                  (Action_builder.write_file gen_mld (default_index ~pkg entry_modules))
              in
-             Filename.Map.set mlds "index" (gen_mld, "index"))))
+             String.Map.set mlds "index" (gen_mld, "index"))))
   in
   fun sctx ~pkg -> Memo.exec memo (sctx, pkg)
 ;;
@@ -1139,7 +1148,7 @@ let setup_package_odoc_rules sctx ~pkg =
   (* CR-someday jeremiedimino: it is weird that we drop the [Package.t] and go
      back to a package name here. Need to try and change that one day. *)
   let* odocs =
-    Filename.Map.values mlds
+    String.Map.values mlds
     |> Memo.parallel_map ~f:(fun (path, name) ->
       compile_mld
         sctx

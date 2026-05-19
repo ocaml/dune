@@ -251,7 +251,10 @@ module Extension = struct
 
   type info =
     | Extension of packed_extension
-    | Deleted_in of Syntax.Version.t
+    | Deleted_in of
+        { version : Syntax.Version.t
+        ; hints : User_message.Style.t Pp.t list
+        }
 
   type instance =
     { extension : packed_extension
@@ -278,8 +281,8 @@ module Extension = struct
     key
   ;;
 
-  let register_deleted ~name ~deleted_in =
-    Table.add_exn extensions name (Deleted_in deleted_in)
+  let register_deleted ~name ?(hints = []) ~deleted_in () =
+    Table.add_exn extensions name (Deleted_in { version = deleted_in; hints })
   ;;
 
   let register_unit syntax stanzas =
@@ -305,14 +308,15 @@ module Extension = struct
         ~loc:name_loc
         [ Pp.textf "Unknown extension %S." name ]
         ~hints:(User_message.did_you_mean name ~candidates)
-    | Some (Deleted_in v) ->
+    | Some (Deleted_in { version; hints }) ->
       let name = Syntax.Name.to_string name in
       User_error.raise
         ~loc
+        ~hints
         [ Pp.textf
             "Extension %s was deleted in the %s version of the dune language"
             name
-            (Syntax.Version.to_string v)
+            (Syntax.Version.to_string version)
         ]
     | Some (Extension (Packed e)) ->
       Syntax.check_supported ~dune_lang_ver e.syntax (ver_loc, ver);
@@ -477,7 +481,7 @@ let interpret_lang_and_extensions ~(lang : Lang.Instance.t) ~explicit_extensions
   parsing_context, stanza_parser, extension_args
 ;;
 
-let filename = "dune-project"
+let filename = Filename.dune_project
 let opam_file_location_default ~lang:_ = `Relative_to_project
 let wrapped_executables_default ~(lang : Lang.Instance.t) = lang.version >= (2, 0)
 let map_workspace_root_default ~(lang : Lang.Instance.t) = lang.version >= (3, 0)
@@ -1110,7 +1114,7 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
 ;;
 
 let load_dune_project ~read ~dir opam_packages : t Memo.t =
-  let file = Path.Source.relative dir filename in
+  let file = Path.Source.relative_fname dir filename in
   let open Memo.O in
   let* lexbuf =
     let+ contents = read file in
@@ -1124,11 +1128,11 @@ let gen_load ~read ~dir ~files ~infer_from_opam_files ~load_opam_file_with_conte
   =
   let open Memo.O in
   let opam_packages =
-    Filename.Set.fold files ~init:[] ~f:(fun fn acc ->
+    Filename.Array.Set.fold files ~init:[] ~f:(fun fn acc ->
       match Package.Name.of_opam_file_basename fn with
       | None -> acc
       | Some name ->
-        let opam_file = Path.Source.relative dir fn in
+        let opam_file = Path.Source.relative_fname dir fn in
         let loc = Loc.in_file (Path.source opam_file) in
         let pkg =
           let+ contents = read opam_file in
@@ -1137,7 +1141,7 @@ let gen_load ~read ~dir ~files ~infer_from_opam_files ~load_opam_file_with_conte
         (name, (loc, pkg)) :: acc)
     |> Package.Name.Map.of_list_exn
   in
-  if Filename.Set.mem files filename
+  if Filename.Array.Set.mem files filename
   then load_dune_project ~read ~dir opam_packages >>| Option.some
   else if infer_from_opam_files && not (Package.Name.Map.is_empty opam_packages)
   then
@@ -1163,3 +1167,15 @@ let () =
 ;;
 
 let () = Extension.register_simple Unreleased.syntax (Decoder.return [])
+
+let () =
+  Extension.register_deleted
+    ~name:(Syntax.Name.parse "coq")
+    ~hints:
+      [ Pp.text
+          "The Coq Build Language has been replaced by the Rocq Build Language. Use \
+           (using rocq <version>) instead."
+      ]
+    ~deleted_in:(3, 24)
+    ()
+;;

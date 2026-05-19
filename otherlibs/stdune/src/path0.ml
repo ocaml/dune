@@ -70,13 +70,16 @@ module Local_gen = struct
   ;;
 
   let basename t =
-    if is_root t
-    then Code_error.raise "Path.Local.basename called on the root" []
-    else (
-      let len = String.length t in
-      match String.rindex_from t (len - 1) '/' with
-      | None -> t
-      | Some i -> String.sub t ~pos:(i + 1) ~len:(len - i - 1))
+    let basename =
+      if is_root t
+      then Code_error.raise "Path.Local.basename called on the root" []
+      else (
+        let len = String.length t in
+        match String.rindex_from t (len - 1) '/' with
+        | None -> t
+        | Some i -> String.sub t ~pos:(i + 1) ~len:(len - i - 1))
+    in
+    Filename.of_string_exn basename
   ;;
 
   let to_dyn t = Dyn.String t
@@ -124,6 +127,8 @@ module Local_gen = struct
         "Local.relative: path outside the workspace"
         [ "t", to_dyn t; "path", String path ]
   ;;
+
+  let relative_fname t fn = relative t (Filename.to_string fn)
 
   (* Check whether a path is in canonical form: no '.' or '..' components, no
      repeated '/' components, no backslashes '\\' (on Windows only), and not
@@ -335,9 +340,16 @@ module Local_gen = struct
   end
 
   let reach = Reach.reach
-  let extend_basename t ~suffix = t ^ suffix
-  let extension t = Filename.extension t
-  let split_extension t = Filename.split_extension t
+  let extend_basename t ~suffix = t ^ Filename.to_string suffix
+
+  let extension t =
+    Stdlib.Filename.extension t |> Filename.Extension.Or_empty.of_string_exn
+  ;;
+
+  let split_extension t =
+    let ext = extension t in
+    Filename.Extension.Or_empty.drop_suffix t ext, ext
+  ;;
 
   let set_extension t ~ext =
     let base, _ = split_extension t in
@@ -376,11 +388,19 @@ module Local_gen = struct
     then None
     else (
       match String.lsplit2 t ~on:'/' with
-      | None -> Some (t, root)
-      | Some (before, after) -> Some (before, after |> of_string))
+      | None -> Some (Filename.of_string_exn t, root)
+      | Some (before, after) -> Some (Filename.of_string_exn before, after |> of_string))
   ;;
 
-  let explode p = if is_root p then [] else String.split p ~on:'/'
+  let explode p =
+    if is_root p then [] else String.split p ~on:'/' |> List.map ~f:Filename.of_string_exn
+  ;;
+
+  let of_comps = function
+    | [] -> root
+    | x -> Filename.L.to_string x |> String.concat ~sep:"/"
+  ;;
+
   let to_string_maybe_quoted t = String.maybe_quoted t
 
   let parent_exn t =
@@ -401,7 +421,9 @@ module Local_gen = struct
     module Set = struct
       include String.Set
 
-      let of_listing ~dir ~filenames = of_list_map filenames ~f:(fun f -> relative dir f)
+      let of_listing ~dir ~filenames =
+        of_list_map filenames ~f:(fun f -> relative dir (Filename.to_string f))
+      ;;
     end
   end
 end

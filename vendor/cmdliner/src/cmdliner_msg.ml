@@ -1,100 +1,98 @@
 (*---------------------------------------------------------------------------
    Copyright (c) 2011 The cmdliner programmers. All rights reserved.
-   Distributed under the ISC license, see terms at the end of the file.
+   SPDX-License-Identifier: ISC
   ---------------------------------------------------------------------------*)
 
-let strf = Printf.sprintf
-let quote = Cmdliner_base.quote
-
-let pp = Format.fprintf
-let pp_text = Cmdliner_base.pp_text
-let pp_lines = Cmdliner_base.pp_lines
+module Fmt = Cmdliner_base.Fmt
 
 (* Environment variable errors *)
 
 let err_env_parse env ~err =
-  let var = Cmdliner_info.Env.info_var env in
-  strf "environment variable %s: %s" (quote var) err
+  let var = Cmdliner_def.Env.info_var env in
+  Fmt.str "@[environment variable %a: %s@]" Fmt.code_or_quote var err
 
 (* Positional argument errors *)
 
 let err_pos_excess excess =
-  strf "too many arguments, don't know what to do with %s"
-    (String.concat ", " (List.map quote excess))
+  Fmt.str "@[%a, don't know what to do with %a@]"
+    Fmt.ereason "too many arguments"
+    Fmt.(list ~sep:comma code_or_quote) excess
 
-let err_pos_miss a = match Cmdliner_info.Arg.docv a with
-| "" -> "a required argument is missing"
-| v -> strf "required argument %s is missing" v
+let err_pos_miss a = match Cmdliner_def.Arg_info.docv a with
+| "" -> Fmt.str "@[a required argument is %a@]" Fmt.missing ()
+| v -> Fmt.str "@[required argument %a is %a@]" Fmt.code_var v Fmt.missing ()
 
 let err_pos_misses = function
 | [] -> assert false
 | [a] -> err_pos_miss a
 | args ->
-    let add_arg acc a = match Cmdliner_info.Arg.docv a with
+    let add_arg acc a = match Cmdliner_def.Arg_info.docv a with
     | "" -> "ARG" :: acc
     | argv -> argv :: acc
     in
-    let rev_args = List.sort Cmdliner_info.Arg.rev_pos_cli_order args in
+    let rev_args = List.sort Cmdliner_def.Arg_info.rev_pos_cli_order args in
     let args = List.fold_left add_arg [] rev_args in
-    let args = String.concat ", " args in
-    strf "required arguments %s are missing" args
+    Fmt.str "@[required arguments %a@ are@ %a@]"
+      Fmt.(list ~sep:comma code_var) args Fmt.missing ()
 
-let err_pos_parse a ~err = match Cmdliner_info.Arg.docv a with
+let err_pos_parse a ~err = match Cmdliner_def.Arg_info.docv a with
 | "" -> err
 | argv ->
-    match Cmdliner_info.Arg.(pos_len @@ pos_kind a) with
-    | Some 1 -> strf "%s argument: %s" argv err
-    | None | Some _ -> strf "%s… arguments: %s" argv err
+    match Cmdliner_def.Arg_info.(pos_len @@ pos_kind a) with
+    | Some 1 -> Fmt.str "@[%a argument: %s@]" Fmt.code_var argv err
+    | None | Some _ -> Fmt.str "@[%a… arguments: %s@]" Fmt.code_var argv err
 
 (* Optional argument errors *)
 
 let err_flag_value flag v =
-  strf "option %s is a flag, it cannot take the argument %s"
-    (quote flag) (quote v)
+  Fmt.str "@[option %a is a flag, it@ %a@ %a@]"
+    Fmt.code_or_quote flag Fmt.ereason "cannot take the argument"
+    Fmt.code_or_quote v
 
-let err_opt_value_missing f = strf "option %s needs an argument" (quote f)
-let err_opt_parse f ~err = strf "option %s: %s" (quote f) err
+let err_opt_value_missing f =
+  Fmt.str "@[option %a %a@]" Fmt.code_or_quote f Fmt.ereason "needs an argument"
+
+let err_opt_parse f ~err =
+  Fmt.str "@[option %a: %a@]" Fmt.code_or_quote f Fmt.styled_text err
+
 let err_opt_repeated f f' =
-  if f = f' then strf "option %s cannot be repeated" (quote f) else
-  strf "options %s and %s cannot be present at the same time"
-    (quote f) (quote f')
+  if f = f' then
+    Fmt.str "@[option %a %a@]"
+      Fmt.code_or_quote f Fmt.ereason "cannot be repeated"
+  else
+  Fmt.str "@[options %a and %a@ %a@]"
+    Fmt.code_or_quote f Fmt.code_or_quote f'
+    Fmt.ereason "cannot be present at the same time"
 
 (* Argument errors *)
 
 let err_arg_missing a =
-  if Cmdliner_info.Arg.is_pos a then err_pos_miss a else
-  strf "required option %s is missing" (Cmdliner_info.Arg.opt_name_sample a)
+  if Cmdliner_def.Arg_info.is_pos a then err_pos_miss a else
+  Fmt.str "@[required option %a is %a@]"
+    Fmt.code (Cmdliner_def.Arg_info.opt_name_sample a) Fmt.missing ()
 
 let err_cmd_missing ~dom =
-  strf "required COMMAND name is missing, must be %s."
-    (Cmdliner_base.alts_str ~quoted:true dom)
+  Fmt.str "@[required %a name is %a,@ must@ be@ %a@]"
+    Fmt.code_var "COMMAND" Fmt.missing () Cmdliner_base.pp_alts dom
 
 (* Other messages *)
 
-let exec_name ei = Cmdliner_info.Cmd.name @@ Cmdliner_info.Eval.main ei
-
 let pp_version ppf ei =
-  match Cmdliner_info.Cmd.version @@ Cmdliner_info.Eval.main ei with
+  match Cmdliner_def.Cmd_info.version (Cmdliner_def.Eval.main ei) with
   | None -> assert false
-  | Some v -> pp ppf "@[%a@]@." Cmdliner_base.pp_text v
+  | Some v -> Fmt.pf ppf "@[%s@]@." v
 
-let pp_try_help ppf ei =
-  let rcmds = Cmdliner_info.Eval.(cmd ei :: parents ei) in
-  match List.rev_map Cmdliner_info.Cmd.name rcmds with
-  | [] -> assert false
-  | [n] -> pp ppf "@[<2>Try '%s --help' for more information.@]" n
-  | n :: _ as cmds ->
-      let cmds = String.concat " " cmds in
-      pp ppf "@[<2>Try '%s --help' or '%s --help' for more information.@]"
-        cmds n
+let exec_name ei = Cmdliner_def.Cmd_info.name (Cmdliner_def.Eval.main ei)
 
-let pp_err ppf ei ~err = pp ppf "%s: @[%a@]@." (exec_name ei) pp_lines err
+let pp_exec_msg ppf ei = Fmt.pf ppf "%s:" (exec_name ei)
 
-let pp_err_usage ppf ei ~err_lines ~err =
-  let pp_err = if err_lines then pp_lines else pp_text in
-  pp ppf "@[<v>%s: @[%a@]@,@[Usage: @[%a@]@]@,%a@]@."
-    (exec_name ei) pp_err err (Cmdliner_docgen.pp_plain_synopsis ~errs:ppf) ei
-    pp_try_help ei
+let pp_err ppf ei ~err =
+  Fmt.pf ppf "@[%a @[%a@]@]@." pp_exec_msg ei Fmt.styled_text err
+
+let pp_usage_and_err ppf ei ~err =
+  Fmt.pf ppf "@[Usage: @[%a@]@]@."
+    Fmt.styled_text (Cmdliner_docgen.styled_usage_synopsis ~errs:ppf ei);
+  pp_err ppf ei ~err
 
 let pp_backtrace ppf ei e bt =
   let bt = Printexc.raw_backtrace_to_string bt in
@@ -102,21 +100,7 @@ let pp_backtrace ppf ei e bt =
     let len = String.length bt in
     if len > 0 then String.sub bt 0 (len - 1) (* remove final '\n' *) else bt
   in
-  pp ppf "%s: @[internal error, uncaught exception:@\n%a@]@."
-    (exec_name ei) pp_lines (strf "%s\n%s" (Printexc.to_string e) bt)
-
-(*---------------------------------------------------------------------------
-   Copyright (c) 2011 The cmdliner programmers
-
-   Permission to use, copy, modify, and/or distribute this software for any
-   purpose with or without fee is hereby granted, provided that the above
-   copyright notice and this permission notice appear in all copies.
-
-   THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
-   WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
-   MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
-   ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
-   WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
-   ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
-   OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-  ---------------------------------------------------------------------------*)
+  Fmt.pf ppf "@[%a @[internal error, %a:@\n%a@]@]@."
+    pp_exec_msg ei
+    Fmt.ereason "uncaught exception"
+    Fmt.lines (String.concat "\n" [Printexc.to_string e; bt])

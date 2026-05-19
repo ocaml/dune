@@ -1,15 +1,15 @@
 (*---------------------------------------------------------------------------
    Copyright (c) 2011 The cmdliner programmers. All rights reserved.
-   Distributed under the ISC license, see terms at the end of the file.
+   SPDX-License-Identifier: ISC
   ---------------------------------------------------------------------------*)
 
-module Cmap = Map.Make (Char)                           (* character maps. *)
+module Cmap = Map.Make (Char) (* character maps. *)
 
-type 'a value =                         (* type for holding a bound value. *)
-| Pre of 'a                    (* value is bound by the prefix of a key. *)
-| Key of 'a                          (* value is bound by an entire key. *)
-| Amb                     (* no value bound because of ambiguous prefix. *)
-| Nil                            (* not bound (only for the empty trie). *)
+type 'a value = (* type for holding a bound value. *)
+| Pre of 'a (* value is bound by the prefix of a key. *)
+| Key of 'a (* value is bound by an entire key. *)
+| Amb (* no value bound because of ambiguous prefix. *)
+| Nil (* not bound (only for the empty trie). *)
 
 type 'a t = { v : 'a value; succs : 'a t Cmap.t }
 let empty = { v = Nil; succs = Cmap.empty }
@@ -45,10 +45,14 @@ let find_node t k =
   in
   aux t k (String.length k) 0
 
-let find t k =
-  try match (find_node t k).v with
-  | Key v | Pre v -> `Ok v | Amb -> `Ambiguous | Nil -> `Not_found
-  with Not_found -> `Not_found
+let find ~legacy_prefixes t k = match (find_node t k).v with
+| Key v -> Ok v
+| Pre v when legacy_prefixes -> Ok v
+| Pre v -> Error `Not_found
+| Amb when legacy_prefixes -> Error `Ambiguous
+| Amb -> Error `Not_found
+| Nil -> Error `Not_found
+| exception Not_found -> Error `Not_found
 
 let ambiguities t p =                        (* ambiguities of [p] in [t]. *)
   try
@@ -79,18 +83,9 @@ let of_list l =
   let add t (s, v) = match add t s v with `New t -> t | `Replaced (_, t) -> t in
   List.fold_left add empty l
 
-(*---------------------------------------------------------------------------
-   Copyright (c) 2011 The cmdliner programmers
-
-   Permission to use, copy, modify, and/or distribute this software for any
-   purpose with or without fee is hereby granted, provided that the above
-   copyright notice and this permission notice appear in all copies.
-
-   THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
-   WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
-   MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
-   ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
-   WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
-   ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
-   OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-  ---------------------------------------------------------------------------*)
+let legacy_prefixes ~env = match env "CMDLINER_LEGACY_PREFIXES" with
+| None -> false
+| Some s ->
+    match String.lowercase_ascii s with
+    | "true" | "yes" | "y" | "1" -> true
+    | _ -> false

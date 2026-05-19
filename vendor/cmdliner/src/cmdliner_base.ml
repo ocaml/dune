@@ -1,6 +1,6 @@
 (*---------------------------------------------------------------------------
    Copyright (c) 2011 The cmdliner programmers. All rights reserved.
-   Distributed under the ISC license, see terms at the end of the file.
+   SPDX-License-Identifier: ISC
   ---------------------------------------------------------------------------*)
 
 let strf = Printf.sprintf
@@ -16,7 +16,10 @@ let uid =
     let id = !c in
     incr c; if id > !c then assert false (* too many ids *) else id
 
-(* Edit distance *)
+(* Edit distance
+
+   The stdlib has much better in but this will be only >= 5.4, maybe
+   in twenty years. *)
 
 let edit_distance s0 s1 =
   let minimum (a : int) (b : int) (c : int) : int = min a (min b c) in
@@ -44,314 +47,208 @@ let suggest s candidates =
   let dist, suggs = List.fold_left add (max_int, []) candidates in
   if dist < 3 (* suggest only if not too far *) then suggs else []
 
+(* Stdlib compatibility *)
+
+let is_space = function ' ' | '\n' | '\r' | '\t' -> true | _ -> false
+
+let string_starts_with ~prefix s = (* available in 4.13 *)
+  let prefix_len = String.length prefix in
+  let s_len = String.length s in
+  if prefix_len > s_len then false else
+  let rec loop i =
+    if i = prefix_len then true
+    else if String.get prefix i = String.get s i then loop (i + 1)
+    else false
+  in
+  loop 0
+
+let string_drop_first n s =
+  if n <= 0 then s else
+  if n >= String.length s then "" else
+  String.sub s n (String.length s - n)
+
 (* Invalid argument strings *)
 
 let err_empty_list = "empty list"
-let err_incomplete_enum ss =
-  strf "Arg.enum: missing printable string for a value, other strings are: %s"
-    (String.concat ", " ss)
 
 (* Formatting tools *)
 
-let pp = Format.fprintf
-let pp_sp = Format.pp_print_space
-let pp_str = Format.pp_print_string
-let pp_char = Format.pp_print_char
-let pp_text = Format.pp_print_text
-let pp_lines ppf s =
-  let rec stop_at sat ~start ~max s =
-    if start > max then start else
-    if sat s.[start] then start else
-    stop_at sat ~start:(start + 1) ~max s
-  in
-  let sub s start stop ~max =
-    if start = stop then "" else
-    if start = 0 && stop > max then s else
-    String.sub s start (stop - start)
-  in
-  let is_nl c = c = '\n' in
-  let max = String.length s - 1 in
-  let rec loop start s = match stop_at is_nl ~start ~max s with
-  | stop when stop > max -> Format.pp_print_string ppf (sub s start stop ~max)
-  | stop ->
-      Format.pp_print_string ppf (sub s start stop ~max);
-      Format.pp_force_newline ppf ();
-      loop (stop + 1) s
-  in
-  loop 0 s
+module Fmt = struct
+  type 'a t = Format.formatter -> 'a -> unit
+  let str = Format.asprintf
+  let pf = Format.fprintf
+  let nop ppf _ = ()
+  let sp = Format.pp_print_space
+  let cut = Format.pp_print_cut
+  let string = Format.pp_print_string
+  let char = Format.pp_print_char
+  let comma ppf () = char ppf ','; sp ppf ()
+  let indent ppf c = for i = 1 to c do char ppf ' ' done
+  let list ?sep pp_v ppf l = Format.pp_print_list ?pp_sep:sep pp_v ppf l
+  let text = Format.pp_print_text
+  let lines ppf s =
+    let rec stop_at sat ~start ~max s =
+      if start > max then start else
+      if sat s.[start] then start else
+      stop_at sat ~start:(start + 1) ~max s
+    in
+    let sub s start stop ~max =
+      if start = stop then "" else
+      if start = 0 && stop > max then s else
+      String.sub s start (stop - start)
+    in
+    let is_nl c = c = '\n' in
+    let max = String.length s - 1 in
+    let rec loop start s = match stop_at is_nl ~start ~max s with
+    | stop when stop > max -> Format.pp_print_string ppf (sub s start stop ~max)
+    | stop ->
+        Format.pp_print_string ppf (sub s start stop ~max);
+        Format.pp_force_newline ppf ();
+        loop (stop + 1) s
+    in
+    loop 0 s
 
-let pp_tokens ~spaces ppf s = (* collapse white and hint spaces (maybe) *)
-  let is_space = function ' ' | '\n' | '\r' | '\t' -> true | _ -> false in
-  let i_max = String.length s - 1 in
-  let flush start stop = pp_str ppf (String.sub s start (stop - start + 1)) in
-  let rec skip_white i =
-    if i > i_max then i else
-    if is_space s.[i] then skip_white (i + 1) else i
-  in
-  let rec loop start i =
-    if i > i_max then flush start i_max else
-    if not (is_space s.[i]) then loop start (i + 1) else
-    let next_start = skip_white i in
-    (flush start (i - 1); if spaces then pp_sp ppf () else pp_char ppf ' ';
-     if next_start > i_max then () else loop next_start next_start)
-  in
-  loop 0 0
+  let tokens ~spaces ppf s = (* collapse white and hint spaces (maybe) *)
+    let i_max = String.length s - 1 in
+    let flush start stop = string ppf (String.sub s start (stop - start + 1)) in
+    let rec skip_white i =
+      if i > i_max then i else
+      if is_space s.[i] then skip_white (i + 1) else i
+    in
+    let rec loop start i =
+      if i > i_max then flush start i_max else
+      if not (is_space s.[i]) then loop start (i + 1) else
+      let next_start = skip_white i in
+      (flush start (i - 1); if spaces then sp ppf () else char ppf ' ';
+       if next_start > i_max then () else loop next_start next_start)
+    in
+    loop 0 0
+
+  (* Text styling *)
+
+  type styler = Ansi | Plain
+  let styler' =
+    ref begin match Sys.getenv_opt "NO_COLOR" with
+    | Some s when s <> "" -> Plain
+    | _ ->
+        match Sys.getenv_opt "TERM" with
+        | Some "dumb" -> Plain
+        | None when Sys.backend_type <> Other "js_of_ocaml" -> Plain
+        | _ -> Ansi
+    end
+
+  let set_styler styler = styler' := styler
+  let styler () = !styler'
+
+  let sgr_of_style = function
+  | `Bold -> "01"
+  | `Underline -> "04"
+  | `Fg `Red -> string_of_int (30 + 1)
+  | `Fg `Yellow -> string_of_int (30 + 3)
+
+  let sgrs_of_styles styles = String.concat ";" (List.map sgr_of_style styles)
+  let ansi_esc = "\x1B["
+  let sgr_reset = "\x1B[m"
+
+  let ansi styles ppf s =
+    let sgrs = String.concat "" [ansi_esc; sgrs_of_styles styles; "m"] in
+    Format.pp_print_as ppf 0 sgrs;
+    string ppf s;
+    Format.pp_print_as ppf 0 sgr_reset
+
+  let st styles ppf s = match !styler' with
+  | Plain -> string ppf s
+  | Ansi -> ansi styles ppf s
+
+  let code ppf v = st [`Bold] ppf v
+  let code_var ppf v = st [`Underline] ppf v
+  let code_or_quote ppf v = match !styler' with
+  | Plain -> char ppf '\''; string ppf v; char ppf '\''
+  | Ansi -> ansi [`Bold] ppf v
+
+  let ereason ppf s = match !styler' with
+  | Plain -> string ppf s
+  | Ansi -> ansi [`Fg `Red] ppf s
+
+  let wreason ppf s = match !styler' with
+  | Plain -> string ppf s
+  | Ansi -> ansi [`Fg `Yellow] ppf s
+
+  let missing ppf () = ereason ppf "missing"
+  let invalid ppf () = ereason ppf "invalid"
+  let unknown ppf () = ereason ppf "unknown"
+  let deprecated ppf () = wreason ppf "deprecated"
+
+  let puterr ppf () = st [`Bold; `Fg `Red] ppf "Error"; char ppf ':'
+
+  let styled_text ppf s =
+    (* Detects ANSI escapes and prints them as 0 width. Collapses spaces
+       and newlines to single space except for blank lines which are
+       preserved. *)
+    let rec loop ppf s i max =
+      if i > max then () else
+      let ansi = s.[i] = '\x1B' && i + 1 < max && s.[i+1] = '[' in
+      if not ansi then match s.[i] with
+      | ' ' when i = max || s.[i+1] = ' ' || s.[i+1] = '\n' ->
+          loop ppf s (i + 1) max
+      | ' ' -> sp ppf (); loop ppf s (i + 1) max
+      | '\n' when i = max || s.[i+1] = ' ' -> loop ppf s (i + 1) max
+      | '\n' when s.[i+1] = '\n' ->
+          Format.pp_force_newline ppf ();
+          if i > 0 && s.[i-1] <> '\n' then Format.pp_force_newline ppf ();
+          loop ppf s (i + 1) max
+      | '\n' -> sp ppf (); loop ppf s (i + 1) max
+      | c -> char ppf s.[i]; loop ppf s (i + 1) max
+      else begin
+        let k = ref (i + 2) in
+        while (!k <= max && s.[!k] <> 'm') do incr k done;
+        let esc = String.sub s i (!k - i + 1) in
+        Format.pp_print_as ppf 0 esc;
+        loop ppf s (!k + 1) max
+      end
+    in
+    loop ppf s 0 (String.length s - 1)
+end
 
 (* Converter (end-user) error messages *)
 
-let quote s = strf "'%s'" s
-let alts_str ?quoted alts =
-  let quote = match quoted with
-  | None -> strf "$(b,%s)"
-  | Some quoted -> if quoted then quote else (fun s -> s)
-  in
-  match alts with
-  | [] -> invalid_arg err_empty_list
-  | [a] -> (quote a)
-  | [a; b] -> strf "either %s or %s" (quote a) (quote b)
-  | alts ->
-      let rev_alts = List.rev alts in
-      strf "one of %s or %s"
-        (String.concat ", " (List.rev_map quote (List.tl rev_alts)))
-        (quote (List.hd rev_alts))
-
-let err_multi_def ~kind name doc v v' =
+let err_multi_def ~kind name doc v v' = (* programming error *)
   strf "%s %s defined twice (doc strings are '%s' and '%s')"
     kind name (doc v) (doc v')
 
+let quote s = strf "'%s'" s (* Exposed in the API do not change *)
+let _alts_str ~styled ?quoted ppf alts =
+  let quote = match quoted with
+  | None -> fun ppf s -> Fmt.pf ppf "$(b,%s)" s
+  | Some quoted ->
+      if not quoted then Fmt.string else
+      if styled then Fmt.code_or_quote else
+      fun ppf s -> Fmt.pf ppf "'%s'" s
+  in
+  match alts with
+  | [] -> invalid_arg err_empty_list
+  | [a] -> quote ppf a
+  | [a; b] -> Fmt.pf ppf "either@ %a@ or@ %a" quote a quote b
+  | alts ->
+      let rev_alts = List.rev alts in
+      Fmt.pf ppf "one@ of@ %a@ or@ %a"
+        Fmt.(list ~sep:comma quote) (List.rev (List.tl rev_alts))
+        quote (List.hd rev_alts)
+
+let alts_str ?quoted alts = (* Exposed in the API do not change *)
+  Fmt.str "@[%a@]" (_alts_str ~styled:false ?quoted) alts
+
+let pp_alts ppf alts =
+  _alts_str ~styled:true ~quoted:true ppf alts
+
 let err_ambiguous ~kind s ~ambs =
-  strf "%s %s ambiguous and could be %s" kind (quote s)
-    (alts_str ~quoted:true ambs)
+  Fmt.str "@[%s %a %a@ and@ could@ be@ %a@]"
+    kind Fmt.code_or_quote s Fmt.ereason "ambiguous" pp_alts ambs
 
 let err_unknown ?(dom = []) ?(hints = []) ~kind v =
-  let hints = match hints, dom with
-  | [], [] -> "."
-  | [], dom -> strf ", must be %s." (alts_str ~quoted:true dom)
-  | hints, _ -> strf ", did you mean %s?" (alts_str ~quoted:true hints)
+  let hints ppf () = match hints, dom with
+  | [], [] -> ()
+  | [], dom -> Fmt.pf ppf ". Must@ be@ %a" pp_alts dom
+  | hints, _ -> Fmt.pf ppf ". Did@ you@ mean@ %a?" pp_alts hints
   in
-  strf "unknown %s %s%s" kind (quote v) hints
-
-let err_no kind s = strf "no %s %s" (quote s) kind
-let err_not_dir s = strf "%s is not a directory" (quote s)
-let err_is_dir s = strf "%s is a directory" (quote s)
-let err_element kind s exp =
-  strf "invalid element in %s ('%s'): %s" kind s exp
-
-let err_invalid kind s exp = strf "invalid %s %s, %s" kind (quote s) exp
-let err_invalid_val = err_invalid "value"
-let err_sep_miss sep s =
-  err_invalid_val s (strf "missing a '%c' separator" sep)
-
-(* Converters *)
-
-type 'a parser = string -> [ `Ok of 'a | `Error of string ]
-type 'a printer = Format.formatter -> 'a -> unit
-type 'a conv = 'a parser * 'a printer
-
-let some ?(none = "") (parse, print) =
-  let parse s = match parse s with `Ok v -> `Ok (Some v) | `Error _ as e -> e in
-  let print ppf v = match v with
-  | None -> Format.pp_print_string ppf none
-  | Some v -> print ppf v
-  in
-  parse, print
-
-let some' ?none (parse, print) =
-  let parse s = match parse s with `Ok v -> `Ok (Some v) | `Error _ as e -> e in
-  let print ppf = function
-  | None -> (match none with None -> () | Some v -> print ppf v)
-  | Some v -> print ppf v
-  in
-  parse, print
-
-let bool =
-  let parse s = try `Ok (bool_of_string s) with
-  | Invalid_argument _ ->
-      `Error (err_invalid_val s (alts_str ~quoted:true ["true"; "false"]))
-  in
-  parse, Format.pp_print_bool
-
-let char =
-  let parse s = match String.length s = 1 with
-  | true -> `Ok s.[0]
-  | false -> `Error (err_invalid_val s "expected a character")
-  in
-  parse, pp_char
-
-let parse_with t_of_str exp s =
-  try `Ok (t_of_str s) with Failure _ -> `Error (err_invalid_val s exp)
-
-let int =
-  parse_with int_of_string "expected an integer", Format.pp_print_int
-
-let int32 =
-  parse_with Int32.of_string "expected a 32-bit integer",
-  (fun ppf -> pp ppf "%ld")
-
-let int64 =
-  parse_with Int64.of_string "expected a 64-bit integer",
-  (fun ppf -> pp ppf "%Ld")
-
-let nativeint =
-  parse_with Nativeint.of_string "expected a processor-native integer",
-  (fun ppf -> pp ppf "%nd")
-
-let float =
-  parse_with float_of_string "expected a floating point number",
-  Format.pp_print_float
-
-let string = (fun s -> `Ok s), pp_str
-let enum sl =
-  if sl = [] then invalid_arg err_empty_list else
-  let t = Cmdliner_trie.of_list sl in
-  let parse s = match Cmdliner_trie.find t s with
-  | `Ok _ as r -> r
-  | `Ambiguous ->
-      let ambs = List.sort compare (Cmdliner_trie.ambiguities t s) in
-      `Error (err_ambiguous ~kind:"enum value" s ~ambs)
-  | `Not_found ->
-        let alts = List.rev (List.rev_map (fun (s, _) -> s) sl) in
-        `Error (err_invalid_val s ("expected " ^ (alts_str ~quoted:true alts)))
-  in
-  let print ppf v =
-    let sl_inv = List.rev_map (fun (s,v) -> (v,s)) sl in
-    try pp_str ppf (List.assoc v sl_inv)
-    with Not_found -> invalid_arg (err_incomplete_enum (List.map fst sl))
-  in
-  parse, print
-
-let file =
-  let parse s = match Sys.file_exists s with
-  | true -> `Ok s
-  | false -> `Error (err_no "file or directory" s)
-  in
-  parse, pp_str
-
-let dir =
-  let parse s = match Sys.file_exists s with
-  | true -> if Sys.is_directory s then `Ok s else `Error (err_not_dir s)
-  | false -> `Error (err_no "directory" s)
-  in
-  parse, pp_str
-
-let non_dir_file =
-  let parse s = match Sys.file_exists s with
-  | true -> if not (Sys.is_directory s) then `Ok s else `Error (err_is_dir s)
-  | false -> `Error (err_no "file" s)
-  in
-  parse, pp_str
-
-let split_and_parse sep parse s = (* raises [Failure] *)
-  let parse sub = match parse sub with
-  | `Error e -> failwith e | `Ok v -> v
-  in
-  let rec split accum j =
-    let i = try String.rindex_from s j sep with Not_found -> -1 in
-    if (i = -1) then
-      let p = String.sub s 0 (j + 1) in
-      if p <> "" then parse p :: accum else accum
-    else
-    let p = String.sub s (i + 1) (j - i) in
-    let accum' = if p <> "" then parse p :: accum else accum in
-    split accum' (i - 1)
-  in
-  split [] (String.length s - 1)
-
-let list ?(sep = ',') (parse, pp_e) =
-  let parse s = try `Ok (split_and_parse sep parse s) with
-  | Failure e -> `Error (err_element "list" s e)
-  in
-  let rec print ppf = function
-  | v :: l -> pp_e ppf v; if (l <> []) then (pp_char ppf sep; print ppf l)
-  | [] -> ()
-  in
-  parse, print
-
-let array ?(sep = ',') (parse, pp_e) =
-  let parse s = try `Ok (Array.of_list (split_and_parse sep parse s)) with
-  | Failure e -> `Error (err_element "array" s e)
-  in
-  let print ppf v =
-    let max = Array.length v - 1 in
-    for i = 0 to max do pp_e ppf v.(i); if i <> max then pp_char ppf sep done
-  in
-  parse, print
-
-let split_left sep s =
-  try
-    let i = String.index s sep in
-    let len = String.length s in
-    Some ((String.sub s 0 i), (String.sub s (i + 1) (len - i - 1)))
-  with Not_found -> None
-
-let pair ?(sep = ',') (pa0, pr0) (pa1, pr1) =
-  let parser s = match split_left sep s with
-  | None -> `Error (err_sep_miss sep s)
-  | Some (v0, v1) ->
-      match pa0 v0, pa1 v1 with
-      | `Ok v0, `Ok v1 -> `Ok (v0, v1)
-      | `Error e, _ | _, `Error e -> `Error (err_element "pair" s e)
-  in
-  let printer ppf (v0, v1) = pp ppf "%a%c%a" pr0 v0 sep pr1 v1 in
-  parser, printer
-
-let t2 = pair
-let t3 ?(sep = ',') (pa0, pr0) (pa1, pr1) (pa2, pr2) =
-  let parse s = match split_left sep s with
-  | None -> `Error (err_sep_miss sep s)
-  | Some (v0, s) ->
-      match split_left sep s with
-      | None -> `Error (err_sep_miss sep s)
-      | Some (v1, v2) ->
-          match pa0 v0, pa1 v1, pa2 v2 with
-          | `Ok v0, `Ok v1, `Ok v2 -> `Ok (v0, v1, v2)
-          | `Error e, _, _ | _, `Error e, _ | _, _, `Error e ->
-              `Error (err_element "triple" s e)
-  in
-  let print ppf (v0, v1, v2) =
-    pp ppf "%a%c%a%c%a" pr0 v0 sep pr1 v1 sep pr2 v2
-  in
-  parse, print
-
-let t4 ?(sep = ',') (pa0, pr0) (pa1, pr1) (pa2, pr2) (pa3, pr3) =
-  let parse s = match split_left sep s with
-  | None -> `Error (err_sep_miss sep s)
-  | Some(v0, s) ->
-      match split_left sep s with
-      | None -> `Error (err_sep_miss sep s)
-      | Some (v1, s) ->
-          match split_left sep s with
-          | None -> `Error (err_sep_miss sep s)
-          | Some (v2, v3) ->
-              match pa0 v0, pa1 v1, pa2 v2, pa3 v3 with
-              | `Ok v1, `Ok v2, `Ok v3, `Ok v4 -> `Ok (v1, v2, v3, v4)
-              | `Error e, _, _, _ | _, `Error e, _, _ | _, _, `Error e, _
-              | _, _, _, `Error e -> `Error (err_element "quadruple" s e)
-  in
-  let print ppf (v0, v1, v2, v3) =
-    pp ppf "%a%c%a%c%a%c%a" pr0 v0 sep pr1 v1 sep pr2 v2 sep pr3 v3
-  in
-  parse, print
-
-let env_bool_parse s = match String.lowercase_ascii s with
-| "" | "false" | "no" | "n" | "0" -> `Ok false
-| "true" | "yes" | "y" | "1" -> `Ok true
-| s ->
-    let alts = alts_str ~quoted:true ["true"; "yes"; "false"; "no" ] in
-    `Error (err_invalid_val s alts)
-
-(*---------------------------------------------------------------------------
-   Copyright (c) 2011 The cmdliner programmers
-
-   Permission to use, copy, modify, and/or distribute this software for any
-   purpose with or without fee is hereby granted, provided that the above
-   copyright notice and this permission notice appear in all copies.
-
-   THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
-   WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
-   MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
-   ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
-   WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
-   ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
-   OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-  ---------------------------------------------------------------------------*)
+  Fmt.str "@[%a %s@ %a%a@]" Fmt.unknown () kind Fmt.code_or_quote v hints ()

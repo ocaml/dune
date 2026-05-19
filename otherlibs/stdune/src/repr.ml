@@ -69,6 +69,7 @@ end
 module type Poly = sig
   type t
 
+  val hash : t -> int
   val equal : t -> t -> bool
   val compare : t -> t -> Ordering.t
 end
@@ -236,6 +237,7 @@ let validate_compare repr =
 
 module Poly (T : S) : Poly with type t := T.t = struct
   let () = validate_compare T.repr
+  let hash = Poly.hash
   let equal = Stdlib.( = )
   let compare x y = Ordering.of_int (Stdlib.compare x y)
 end

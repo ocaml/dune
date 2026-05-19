@@ -82,6 +82,11 @@ module Socket = struct
   let maybe_set_nosigpipe fd =
     if is_osx () then Mac.set_nosigpipe (Fd.unsafe_to_unix_file_descr fd)
   ;;
+
+  let prepare_fd fd =
+    maybe_set_nosigpipe fd;
+    Fd.set_nonblock fd
+  ;;
 end
 
 let unlink_socket_path (addr : Unix.sockaddr) =
@@ -125,7 +130,7 @@ module Session = struct
     }
 
   let create fd =
-    Unix.set_nonblock (Fd.unsafe_to_unix_file_descr fd);
+    Socket.prepare_fd fd;
     let id = Id.gen () in
     Dune_trace.emit Rpc (fun () -> Dune_trace.Event.Rpc.session ~id:(Id.to_int id) `Start);
     let state =
@@ -375,7 +380,7 @@ module Server = struct
     let create sockets ~backlog =
       List.iter sockets ~f:(fun (_, fd) ->
         Unix.listen (Fd.unsafe_to_unix_file_descr fd) backlog;
-        Unix.set_nonblock (Fd.unsafe_to_unix_file_descr fd));
+        Socket.prepare_fd fd);
       { sockets; task = None; running = true; closed = Fiber.Ivar.create () }
     ;;
 
@@ -424,8 +429,7 @@ module Server = struct
            let+ () = stop t in
            Ok None
          | Ok (fd, _) ->
-           Socket.maybe_set_nosigpipe fd;
-           Unix.set_nonblock (Fd.unsafe_to_unix_file_descr fd);
+           Socket.prepare_fd fd;
            Fiber.return @@ Ok (Some fd))
     ;;
   end
@@ -452,7 +456,7 @@ module Server = struct
       let in_bound = ref false in
       Exn.protect
         ~f:(fun () ->
-          Unix.set_nonblock (Fd.unsafe_to_unix_file_descr fd);
+          Socket.prepare_fd fd;
           (match (sockaddr : Unix.sockaddr) with
            | ADDR_UNIX _ -> ()
            | ADDR_INET _ ->
@@ -554,8 +558,7 @@ module Client = struct
         Unix.socket ~cloexec:true (Unix.domain_of_sockaddr sockaddr) Unix.SOCK_STREAM 0
         |> Fd.unsafe_of_unix_file_descr
       in
-      Unix.set_nonblock (Fd.unsafe_to_unix_file_descr fd);
-      Socket.maybe_set_nosigpipe fd;
+      Socket.prepare_fd fd;
       { fd }
     ;;
   end

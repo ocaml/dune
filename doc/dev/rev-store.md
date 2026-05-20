@@ -267,9 +267,84 @@ When reading multiple files, the `content_of_files` function first checks the
 cache for each file's hash, then fetches any uncached files in a single
 batched `git show` call, and stores the results back in the cache.
 
-The cache is currently disabled by default as it lacks cache versioning, which
-means incompatible cache formats could cause issues after Dune upgrades. It can
-be enabled by setting the environment variable
-`DUNE_CONFIG__REV_STORE_CACHE=enabled`. When enabled, the cache uses up to 5GB
-of disk space.
+### Storage format
+
+The cache stores raw bytes only. The `ls-tree` map's value is the literal
+`git ls-tree -z --long -r` output (lines rejoined on the NUL separator
+that git uses), and the `objects` map's value is the raw blob content. No
+OCaml-side serialisation is involved. On a cache hit, `Entry.parse` runs
+over the cached bytes to reconstruct `File.t` and `Commit.t` values, the
+same parse that runs on a cache miss after the subprocess returns.
+
+This is a deliberate choice. Earlier iterations of the cache stored the
+parsed `File.Set.t * Commit.Set.t` via `Marshal.to_string ~sharing:true`.
+That had two failure modes:
+
+  * **OCaml compiler coupling.** `Marshal`'s binary format depends on the
+    OCaml runtime's in-memory representation, especially with sharing.
+    Two builds of the same dune source against different OCaml versions
+    could produce mutually unreadable caches.
+  * **Silent schema drift.** Any change to a type reachable from the
+    marshalled value (`File.t`, `Commit.t`, the set comparator, even the
+    representation of `Path.Local.t`) silently changed the on-disk format.
+    Structurally compatible changes did not raise; they decoded wrong
+    values.
+
+Storing the raw subprocess output sidesteps both. The trade-off is that
+parsing runs on every cache hit, but the parse is a single regex pass per
+line and the cost is dwarfed by the millisecond-scale subprocess cost the
+cache exists to avoid.
+
+### Versioning
+
+The cache directory is keyed by a manual version string:
+
+  `$DUNE_CACHE_ROOT/rev_store/<version>/`
+
+The current `version` is `v1`. Bump the constant in
+`src/dune_pkg/rev_store.ml` whenever the bytes we write to the cache
+change shape. That happens when the `git ls-tree` invocation changes
+(different flags or a different command), when a map is added or
+removed from the cache, or when the key or value `Lmdb.Conv` of an
+existing map changes. Parser-only changes to `Entry.parse` are not
+triggers, because the cached bytes are still the same git output; the
+new parser just interprets them differently. OCaml-side type or field
+renames are also not triggers, because nothing is marshalled.
+
+Older version directories left behind by previous builds are dormant;
+the running dune only ever reads and writes the current version, and
+the user can remove stale directories manually.
+
+### Future extensibility
+
+The single-cache raw-bytes design is intentionally minimal but does not
+constrain future use. There are vague plans to use LMDB for other
+parsing caches (e.g. parsed dune or opam files). Those will need a real
+encoder and decoder, since the cached value is no longer a natural
+subprocess output. When that work happens, two paths are open:
+
+  * **Add a new, independent cache.** A parsed-dune-files cache can live
+    at a different path (e.g. `$DUNE_CACHE_ROOT/dune_files/<version>/`)
+    with its own `version` constant and its own LMDB env. The rev-store
+    cache is untouched.
+  * **Migrate the rev-store cache itself.** Bump `version` from `v1` to
+    `v2`, swap the `Lmdb.Conv.string` for a typed converter, and rewrite
+    `Entry.parse` callers accordingly. Old data at `v1/` is abandoned
+    without migration code; the path-keyed versioning makes that
+    costless.
+
+Either way, the encoder/decoder choice (something like a `Repr`-driven
+binary format, canonical S-expressions, or hand-rolled per type) is a
+local decision for whatever cache introduces it, not a project-wide
+contract. The only thing that needs to stay constant for all caches is
+that **`Marshal` is not used**, so the on-disk format remains independent
+of the OCaml compiler.
+
+The cache is enabled by default on 64-bit non-Windows platforms. It
+defaults to disabled on 32-bit (the 5GB LMDB map size does not fit in
+virtual address space) and on Windows (until we can determine that LMDB
+is not detrimental to performance there). Users can override the default
+either way via `DUNE_CONFIG__REV_STORE_CACHE=enabled` or
+`DUNE_CONFIG__REV_STORE_CACHE=disabled`. When enabled, the cache uses up
+to 5GB of disk space.
 

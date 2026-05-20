@@ -62,7 +62,7 @@ for free.
  (dir otherlibs/dune-build-info)
  (synopsis "Embed build information inside executable")
  (depends
-  (ocaml (>= 4.08)))
+  (ocaml (>= 4.14)))
  (description "\
 The build-info library allows to access information about how the
 executable was built, such as the version of the project at which it
@@ -98,7 +98,7 @@ no stability guarantee.
  (dir otherlibs/configurator)
  (synopsis "Helper library for gathering system configuration")
  (depends
-  (ocaml (>= 4.08.0))
+  (ocaml (>= 4.14))
   base-unix
   (csexp (>= 1.5.0)))
  (description "\

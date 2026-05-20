@@ -892,15 +892,15 @@ let setup_rocqc_rule
     ~dir
     sctx
     (Action_builder.with_no_targets deps_of
+     (* The way we handle the transitive dependencies of .vo files is not safe for
+        sandboxing *)
      >>> Action_builder.With_targets.add ~file_targets
          @@ Command.run
               ~dir:(Path.build rocqc_dir)
               ?stdout_to:output_file
+              ~sandbox:Sandbox_config.no_sandboxing
               rocq
-              (cflag :: targets :: args)
-     (* The way we handle the transitive dependencies of .vo files is not safe for
-        sandboxing *)
-     >>| Action.Full.add_sandbox Sandbox_config.no_sandboxing)
+              (cflag :: targets :: args))
 ;;
 
 let rocq_modules_of_theory ~sctx lib =

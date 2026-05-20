@@ -15,7 +15,6 @@ include struct
   open Dune_engine
   module Build_config = Build_config
   module Diff_promotion = Diff_promotion
-  module Build_outcome = Scheduler.Run.Build_outcome
 end
 
 include struct
@@ -79,7 +78,7 @@ type 'build_arg pending_action_kind =
 
 type 'build_arg pending_action =
   { kind : 'build_arg pending_action_kind
-  ; outcome : Scheduler.Run.Build_outcome.t Fiber.Ivar.t
+  ; outcome : Build_outcome.t Fiber.Ivar.t
   }
 
 module Client = Stdune.Unit
@@ -392,7 +391,7 @@ let handler (t : _ t Fdecl.t) : 'build_arg Handler.t =
   in
   let () =
     let f _ () =
-      if Scheduler.is_watch_mode ()
+      if Scheduler.Build_loop.is_watch_mode ()
       then
         let+ () = Scheduler.flush_file_watcher () in
         `Ok

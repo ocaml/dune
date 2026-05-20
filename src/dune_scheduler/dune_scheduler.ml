@@ -1,3 +1,4 @@
+module Build_outcome = Build_outcome
 module Scheduler = Scheduler
 module Async_io = Async_io
 module File_watcher = File_watcher

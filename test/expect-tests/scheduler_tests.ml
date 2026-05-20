@@ -30,7 +30,7 @@ let%expect_test "cancelling a build" =
   go (fun () ->
     Fiber.fork_and_join_unit
       (fun () ->
-         Scheduler.Run.poll
+         Build_loop.poll
            (let* () = Fiber.Ivar.fill build_started () in
             let* () = Fiber.Ivar.read build_cancelled in
             let* res =
@@ -61,7 +61,7 @@ let%expect_test "cancelling a build: effect on other fibers" =
   go (fun () ->
     Fiber.fork_and_join_unit
       (fun () ->
-         Scheduler.Run.poll
+         Build_loop.poll
            (let* () = Fiber.Ivar.fill build_started () in
             Fiber.never))
       (fun () ->

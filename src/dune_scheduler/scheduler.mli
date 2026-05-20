@@ -11,12 +11,6 @@ module Config : sig
 end
 
 module Run : sig
-  module Build_outcome : sig
-    type t =
-      | Success
-      | Failure
-  end
-
   module Event : sig
     type t =
       | Tick
@@ -32,25 +26,6 @@ module Run : sig
   val file_watcher_equal : file_watcher -> file_watcher -> bool
 
   exception Build_cancelled
-
-  type step = (unit, [ `Already_reported ]) Result.t Fiber.t
-
-  (** [poll once] runs [once] in a loop.
-
-      If any source files change in the middle of iteration, it gets canceled.
-
-      If [shutdown] is called, the current build will be canceled and new builds
-      will not start. *)
-  val poll : step -> unit Fiber.t
-
-  (** [poll_passive] is similar to [poll], but it can be used to drive the
-      polling loop explicitly instead of starting new iterations automatically.
-
-      The fiber [get_build_request] is run at the beginning of every iteration
-      to wait for the build signal. *)
-  val poll_passive
-    :  get_build_request:(step * Build_outcome.t Fiber.Ivar.t) Fiber.t
-    -> unit Fiber.t
 
   val go
     :  Config.t
@@ -132,16 +107,25 @@ val cancel_current_build : unit -> unit Fiber.t
 val sleep : Time.Span.t -> unit Fiber.t
 
 val spawn_thread : name:string -> (unit -> unit) -> Thread.t
-
-type build_finish =
-  | Finished of { restart_duration : Time.Span.t option }
-  | Restarting
-
-val start_build : unit -> Run_id.t
-val watch_restart_files : unit -> Path.t list option
-val finish_build : stop:Time.t -> build_finish
 val flush_file_watcher : unit -> unit Fiber.t
-val is_watch_mode : unit -> bool
+
+module Build_loop : sig
+  type t
+
+  type build_finish =
+    | Finished of { restart_duration : Time.Span.t option }
+    | Restarting
+
+  val is_watch_mode : unit -> bool
+  val start_build : unit -> Run_id.t * [ `Changed_paths of Path.t list option ]
+  val finish_build : stop:Time.t -> build_finish
+  val init : unit -> t Fiber.t
+  val pending_invalidation : t -> Memo.Invalidation.t
+  val start_iteration : t -> changed_paths:Path.t list option -> unit
+  val finish_iteration : t -> Build_outcome.t -> [ `Done | `Restart ]
+  val source_files_changed : t -> details_hum:string list -> unit
+  val wait_for_build_input_change : t -> unit Fiber.t
+end
 
 (** [set_fs_memo_impl] registers the file system memoization callbacks.
     This must be called by dune_engine at initialization before starting

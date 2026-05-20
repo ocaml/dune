@@ -84,8 +84,13 @@ module Socket = struct
   ;;
 
   let prepare_fd fd =
-    maybe_set_nosigpipe fd;
-    Fd.set_nonblock fd
+    match maybe_set_nosigpipe fd with
+    | exception exn ->
+      Fd.close fd;
+      Error exn
+    | () ->
+      Fd.set_nonblock fd;
+      Ok ()
   ;;
 end
 
@@ -130,7 +135,6 @@ module Session = struct
     }
 
   let create fd =
-    Socket.prepare_fd fd;
     let id = Id.gen () in
     Dune_trace.emit Rpc (fun () -> Dune_trace.Event.Rpc.session ~id:(Id.to_int id) `Start);
     let state =
@@ -379,8 +383,7 @@ module Server = struct
 
     let create sockets ~backlog =
       List.iter sockets ~f:(fun (_, fd) ->
-        Unix.listen (Fd.unsafe_to_unix_file_descr fd) backlog;
-        Socket.prepare_fd fd);
+        Unix.listen (Fd.unsafe_to_unix_file_descr fd) backlog);
       { sockets; task = None; running = true; closed = Fiber.Ivar.create () }
     ;;
 
@@ -415,22 +418,24 @@ module Server = struct
             let fd, sockaddr =
               Unix.accept ~cloexec:true (Fd.unsafe_to_unix_file_descr fd)
             in
-            Fd.unsafe_of_unix_file_descr fd, sockaddr)
+            let fd = Fd.unsafe_of_unix_file_descr fd in
+            let () = Result.ok_exn (Socket.prepare_fd fd) in
+            fd, sockaddr)
         in
         t.task <- Some task;
         let* res = Async_io.Task.await task in
         t.task <- None;
         (match res with
          | Error (`Exn (Unix.Unix_error (Unix.EAGAIN, _, _))) -> accept t
+         | Error (`Exn (Unix.Unix_error (Unix.EINVAL, _, _)))
+           when Platform.OS.(value = Darwin) -> accept t
          | Error (`Exn exn) ->
            let+ () = stop t in
            Error (Exn_with_backtrace.capture exn)
          | Error `Cancelled ->
            let+ () = stop t in
            Ok None
-         | Ok (fd, _) ->
-           Socket.prepare_fd fd;
-           Fiber.return @@ Ok (Some fd))
+         | Ok (fd, _) -> Fiber.return (Ok (Some fd)))
     ;;
   end
 
@@ -455,8 +460,9 @@ module Server = struct
       in
       let in_bound = ref false in
       Exn.protect
+        ~finally:(fun () -> if not !in_bound then Fd.close fd)
         ~f:(fun () ->
-          Socket.prepare_fd fd;
+          Fd.set_nonblock fd;
           (match (sockaddr : Unix.sockaddr) with
            | ADDR_UNIX _ -> ()
            | ADDR_INET _ ->
@@ -465,7 +471,6 @@ module Server = struct
           bound := (sockaddr, fd) :: !bound;
           in_bound := true;
           fd)
-        ~finally:(fun () -> if not !in_bound then Fd.close fd)
     in
     try
       Exn.protect ~finally:cleanup ~f:(fun () ->
@@ -558,8 +563,9 @@ module Client = struct
         Unix.socket ~cloexec:true (Unix.domain_of_sockaddr sockaddr) Unix.SOCK_STREAM 0
         |> Fd.unsafe_of_unix_file_descr
       in
-      Socket.prepare_fd fd;
-      { fd }
+      match Socket.prepare_fd fd with
+      | Ok () -> Ok { fd }
+      | Error exn -> Error exn
     ;;
   end
 
@@ -573,23 +579,25 @@ module Client = struct
   let connect t =
     let* () = Fiber.return () in
     let backtrace = Printexc.get_callstack 10 in
-    let transport = Transport.create t.sockaddr in
-    let fd = transport.fd in
-    t.transport <- Some transport;
-    Async_io.connect Socket.connect fd t.sockaddr
-    >>| function
-    | Ok () ->
-      t.transport <- None;
-      Ok (Session.create fd)
-    | Error `Cancelled ->
-      Transport.close transport;
-      t.transport <- None;
-      let exn = Failure "connect cancelled" in
-      Error { Exn_with_backtrace.exn; backtrace }
-    | Error (`Exn exn) ->
-      Transport.close transport;
-      t.transport <- None;
-      Error { Exn_with_backtrace.exn; backtrace }
+    match Transport.create t.sockaddr with
+    | Error exn -> Fiber.return (Error { Exn_with_backtrace.exn; backtrace })
+    | Ok transport ->
+      let fd = transport.fd in
+      t.transport <- Some transport;
+      Async_io.connect Socket.connect fd t.sockaddr
+      >>| (function
+       | Ok () ->
+         t.transport <- None;
+         Ok (Session.create fd)
+       | Error `Cancelled ->
+         Transport.close transport;
+         t.transport <- None;
+         let exn = Failure "connect cancelled" in
+         Error { Exn_with_backtrace.exn; backtrace }
+       | Error (`Exn exn) ->
+         Transport.close transport;
+         t.transport <- None;
+         Error { Exn_with_backtrace.exn; backtrace })
   ;;
 
   let connect_exn t =

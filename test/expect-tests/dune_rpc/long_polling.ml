@@ -266,21 +266,16 @@ let%expect_test "long polling - cancelled explicit poll id can be reused" =
     print_next "second poll" poller
   in
   test ~init ~client ~handler ~private_menu:[ Poll sub_proc ] ();
-  [%expect.unreachable]
-[@@expect.uncaught_exn
-  {|
-  ( "(\"unexpected response\",\
-   \n { id = [ [ \"poll\"; \"reused-poll\" ]; [ \"i\"; \"0\" ] ]\
-   \n ; response = Ok [ \"Some\"; \"2\" ]\
-   \n })")
-  Trailing output
-  ---------------
-  client: first poll received 1
-  client: waiting on first poll
-  client: cancelling first poll
-  client: first poll no more values
-  client: first poll cancelled
-  |}]
+  [%expect
+    {|
+    client: first poll received 1
+    client: waiting on first poll
+    client: cancelling first poll
+    client: first poll no more values
+    client: first poll cancelled
+    client: second poll received 2
+    server: finished.
+    |}]
 ;;
 
 let%expect_test "long polling - late response after cancel is ignored" =
@@ -318,20 +313,15 @@ let%expect_test "long polling - late response after cancel is ignored" =
     | Error error -> printfn "%s" (Dyn.to_string (Response.Error.to_dyn error))
   in
   test ~init ~client ~handler ~private_menu:[ Poll sub_proc; Request ping_decl ] ();
-  [%expect.unreachable]
-[@@expect.uncaught_exn
-  {|
-  ( "(\"unexpected response\",\
-   \n { id = [ [ \"poll\"; [ \"auto\"; \"0\" ] ]; [ \"i\"; \"0\" ] ]\
-   \n ; response = Ok [ \"Some\"; \"7\" ]\
-   \n })")
-  Trailing output
-  ---------------
-  client: cancelling
-  client: poll no more values
-  server: polling cancelled
-  server: sending late response
-  |}]
+  [%expect
+    {|
+    client: cancelling
+    client: poll no more values
+    server: polling cancelled
+    server: sending late response
+    client: ping 42
+    server: finished.
+    |}]
 ;;
 
 let%expect_test "long polling - session close cancels in-flight poll" =
@@ -393,21 +383,16 @@ let%expect_test "long polling - cancelling one poller does not stop another" =
     Fiber.return ()
   in
   test ~init ~client ~handler ~private_menu:[ Poll sub_proc ] ();
-  [%expect.unreachable]
-[@@expect.uncaught_exn
-  {|
-  ( "(\"unexpected response\",\
-   \n { id = [ [ \"poll\"; [ \"auto\"; \"0\" ] ]; [ \"i\"; \"0\" ] ]\
-   \n ; response = Ok [ \"Some\"; \"1\" ]\
-   \n })")
-  Trailing output
-  ---------------
-  client: first poll received 1
-  client: second poll received 1
-  client: cancelling first poll
-  client: updating state
-  client: first poll no more values
-  |}]
+  [%expect
+    {|
+    client: first poll received 1
+    client: second poll received 1
+    client: cancelling first poll
+    client: updating state
+    client: first poll no more values
+    client: second poll received 1
+    server: finished.
+    |}]
 ;;
 
 let%expect_test "long polling - server side termination" =

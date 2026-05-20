@@ -341,7 +341,7 @@ struct
     match Table.find t.requests id with
     | None | Some `Cancelled -> Fiber.return ()
     | Some (`Pending ivar) ->
-      Table.remove t.requests id;
+      Table.set t.requests id `Cancelled;
       Fiber.Ivar.fill ivar `Cancelled
   ;;
 
@@ -401,7 +401,6 @@ struct
       ; client : t
       ; id : Id.t
       ; mutable pending_request_id : Id.t option
-      ; counter : int
       ; mutable active : bool
       }
 
@@ -410,7 +409,7 @@ struct
       let open Result.O in
       let+ poll = V.Handler.prepare_request handler (Sub.poll sub)
       and+ cancel = V.Handler.prepare_notification handler (Sub.poll_cancel sub) in
-      { poll; cancel; client; id; pending_request_id = None; counter = 0; active = true }
+      { poll; cancel; client; id; pending_request_id = None; active = true }
     ;;
 
     let check_active t =
@@ -424,10 +423,7 @@ struct
        | Some _ ->
          Code_error.raise "Poll.next: previous Poll.next did not terminate yet" []
        | None -> ());
-      let id =
-        Sexp.record [ "poll", Id.to_sexp t.id; "i", Sexp.Atom (string_of_int t.counter) ]
-        |> Id.make
-      in
+      let id = gen_id t.client None in
       t.pending_request_id <- Some id;
       let+ res = request t.client id t.poll t.id in
       t.pending_request_id <- None;

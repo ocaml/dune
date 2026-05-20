@@ -401,6 +401,7 @@ let build_cm
       Action_builder.with_no_targets other_cm_files
       >>> Command.run
             ~dir:(Path.build (Context.build_dir ctx))
+            ~sandbox
             compiler
             [ flags
             ; pp_flags
@@ -428,8 +429,7 @@ let build_cm
                  location snippets. *)
               Hidden_deps (Dep.Set.of_files (Option.to_list original))
             ; other_targets
-            ]
-      >>| Action.Full.add_sandbox sandbox))
+            ]))
   |> Memo.Option.iter ~f:Fun.id
 ;;
 
@@ -538,6 +538,7 @@ let ocamlc_i ~deps cctx (m : Module.t) ~output =
               (Ok ocaml.ocamlc)
               ~dir:(Path.build (Context.build_dir ctx))
               ~stdout_to:output
+              ~sandbox
               [ Command.Args.dyn ocaml_flags
               ; A "-I"
               ; Path (Path.build (Obj_dir.byte_dir obj_dir))
@@ -550,8 +551,7 @@ let ocamlc_i ~deps cctx (m : Module.t) ~output =
               ; A "-i"
               ; Command.Ml_kind.flag Impl
               ; Dep src
-              ]
-        >>| Action.Full.add_sandbox sandbox))
+              ]))
 ;;
 
 module Alias_module = struct

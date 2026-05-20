@@ -56,6 +56,22 @@ let server_long_poll svar =
   rpc
 ;;
 
+let poll_exn client =
+  Client.poll client sub_decl
+  >>| function
+  | Ok poller -> poller
+  | Error e -> raise (Version_error.E e)
+;;
+
+let print_next label poller =
+  Client.Stream.next poller
+  >>| function
+  | None -> printfn "client: %s no more values" label
+  | Some a -> printfn "client: %s received %d" label a
+;;
+
+let ping_decl = simple_request ~method_:(Method.Name.of_string "ping") Conv.unit Conv.int
+
 let%expect_test "long polling - client side termination" =
   let client client =
     let* poller = Client.poll client sub_decl in
@@ -166,6 +182,54 @@ let%expect_test "long polling - client cancels while request is in-flight" =
       client: cancelling
       client: no more values
       client: finishing session |}]
+;;
+
+let%expect_test "long polling - connection remains usable after in-flight cancel" =
+  let ready_to_cancel : unit Fiber.Ivar.t = Fiber.Ivar.create () in
+  let svar = Fiber.Svar.create 0 in
+  let handler =
+    let rpc = server_long_poll svar in
+    Rpc.Server.Handler.implement_request rpc ping_decl (fun _ () -> Fiber.return 42);
+    rpc
+  in
+  let client client =
+    let* poller = poll_exn client in
+    let* () = Fiber.Svar.write svar 1 in
+    let* () = print_next "poll" poller in
+    let* () =
+      Fiber.fork_and_join_unit
+        (fun () ->
+           let* () = Fiber.Ivar.read ready_to_cancel in
+           printfn "client: cancelling";
+           Client.Stream.cancel poller)
+        (fun () ->
+           printfn "client: waiting for second value";
+           let+ () =
+             Fiber.fork_and_join_unit
+               (fun () -> print_next "poll" poller)
+               (Fiber.Ivar.fill ready_to_cancel)
+           in
+           printfn "client: cancelled poll returned")
+    in
+    request_exn client (Decl.Request.witness ping_decl) ()
+    >>| function
+    | Ok n -> printfn "client: ping %d" n
+    | Error error -> printfn "%s" (Dyn.to_string (Response.Error.to_dyn error))
+  in
+  test ~init ~client ~handler ~private_menu:[ Poll sub_proc; Request ping_decl ] ();
+  [%expect.unreachable]
+[@@expect.uncaught_exn
+  {|
+  (Test_scheduler.Never)
+  Trailing output
+  ---------------
+  client: poll received 1
+  client: waiting for second value
+  client: cancelling
+  client: poll no more values
+  client: cancelled poll returned
+  client: ping 42
+  |}]
 ;;
 
 let%expect_test "long polling - server side termination" =

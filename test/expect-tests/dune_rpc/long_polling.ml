@@ -56,8 +56,8 @@ let server_long_poll svar =
   rpc
 ;;
 
-let poll_exn client =
-  Client.poll client sub_decl
+let poll_exn ?id client =
+  Client.poll ?id client sub_decl
   >>| function
   | Ok poller -> poller
   | Error e -> raise (Version_error.E e)
@@ -229,6 +229,52 @@ let%expect_test "long polling - connection remains usable after in-flight cancel
   client: poll no more values
   client: cancelled poll returned
   client: ping 42
+  |}]
+;;
+
+let%expect_test "long polling - cancelled explicit poll id can be reused" =
+  let ready_to_cancel : unit Fiber.Ivar.t = Fiber.Ivar.create () in
+  let svar = Fiber.Svar.create 0 in
+  let handler = server_long_poll svar in
+  let poll_id = Id.make (Atom "reused-poll") in
+  let client client =
+    let* poller = poll_exn ~id:poll_id client in
+    let* () = Fiber.Svar.write svar 1 in
+    let* () = print_next "first poll" poller in
+    let* () =
+      Fiber.fork_and_join_unit
+        (fun () ->
+           let* () = Fiber.Ivar.read ready_to_cancel in
+           printfn "client: cancelling first poll";
+           Client.Stream.cancel poller)
+        (fun () ->
+           printfn "client: waiting on first poll";
+           let+ () =
+             Fiber.fork_and_join_unit
+               (fun () -> print_next "first poll" poller)
+               (Fiber.Ivar.fill ready_to_cancel)
+           in
+           printfn "client: first poll cancelled")
+    in
+    let* poller = poll_exn ~id:poll_id client in
+    let* () = Fiber.Svar.write svar 2 in
+    print_next "second poll" poller
+  in
+  test ~init ~client ~handler ~private_menu:[ Poll sub_proc ] ();
+  [%expect.unreachable]
+[@@expect.uncaught_exn
+  {|
+  ( "(\"unexpected response\",\
+   \n { id = [ [ \"poll\"; \"reused-poll\" ]; [ \"i\"; \"0\" ] ]\
+   \n ; response = Ok [ \"Some\"; \"2\" ]\
+   \n })")
+  Trailing output
+  ---------------
+  client: first poll received 1
+  client: waiting on first poll
+  client: cancelling first poll
+  client: first poll no more values
+  client: first poll cancelled
   |}]
 ;;
 

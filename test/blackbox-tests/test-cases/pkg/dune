@@ -67,6 +67,7 @@
   tarball
   pin-depends
   extra-sources
+  fetch-cache-symlink
   broken-symlink-in-dependency))
 
 (cram

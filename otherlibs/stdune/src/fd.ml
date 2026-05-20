@@ -10,6 +10,11 @@ let raw_fd_repr = Repr.view Repr.int ~to_:unsafe_to_int
 let unsafe_to_unix_file_descr t = t.fd
 let unsafe_of_unix_file_descr fd = { fd; closed = false }
 
+let set_nonblock t =
+  assert (not t.closed);
+  Unix.set_nonblock t.fd
+;;
+
 let close t =
   if not t.closed
   then (

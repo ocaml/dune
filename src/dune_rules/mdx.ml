@@ -403,14 +403,13 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog ~mdx_prog_ge
         >>> Command.run_dyn_prog
               ~dir:(Path.build dir)
               ~stdout_to:files.corrected
+              ~env
               executable
               command_line
       and+ locks =
         Expander.expand_locks expander stanza.locks |> Action_builder.with_no_targets
-      and+ env = Action_builder.with_no_targets env in
-      Action.Full.add_locks locks action
-      |> Action.Full.add_sandbox sandbox
-      |> Action.Full.add_env env
+      in
+      Action.Full.add_locks locks action |> Action.Full.add_sandbox sandbox
     in
     Super_context.add_rule sctx ~loc ~dir mdx_action
   in

@@ -71,6 +71,11 @@ let print_next label poller =
 ;;
 
 let ping_decl = simple_request ~method_:(Method.Name.of_string "ping") Conv.unit Conv.int
+let ping_witness = Decl.Request.witness ping_decl
+
+let add_ping rpc =
+  Rpc.Server.Handler.implement_request rpc ping_decl (fun _ () -> Fiber.return 42)
+;;
 
 let%expect_test "long polling - client side termination" =
   let client client =
@@ -189,7 +194,7 @@ let%expect_test "long polling - connection remains usable after in-flight cancel
   let svar = Fiber.Svar.create 0 in
   let handler =
     let rpc = server_long_poll svar in
-    Rpc.Server.Handler.implement_request rpc ping_decl (fun _ () -> Fiber.return 42);
+    add_ping rpc;
     rpc
   in
   let client client =
@@ -211,7 +216,7 @@ let%expect_test "long polling - connection remains usable after in-flight cancel
            in
            printfn "client: cancelled poll returned")
     in
-    request_exn client (Decl.Request.witness ping_decl) ()
+    request_exn client ping_witness ()
     >>| function
     | Ok n -> printfn "client: ping %d" n
     | Error error -> printfn "%s" (Dyn.to_string (Response.Error.to_dyn error))
@@ -275,6 +280,57 @@ let%expect_test "long polling - cancelled explicit poll id can be reused" =
   client: cancelling first poll
   client: first poll no more values
   client: first poll cancelled
+  |}]
+;;
+
+let%expect_test "long polling - late response after cancel is ignored" =
+  let poll_started : unit Fiber.Ivar.t = Fiber.Ivar.create () in
+  let release_response : unit Fiber.Ivar.t = Fiber.Ivar.create () in
+  let handler =
+    let rpc = rpc () in
+    let on_poll _session =
+      let* () = Fiber.Ivar.fill poll_started () in
+      let+ () = Fiber.Ivar.read release_response in
+      printfn "server: sending late response";
+      Some 7
+    in
+    let on_cancel _session =
+      printfn "server: polling cancelled";
+      Fiber.Ivar.fill release_response ()
+    in
+    Rpc.Server.Handler.For_tests.implement_poll rpc sub_proc ~on_poll ~on_cancel;
+    add_ping rpc;
+    rpc
+  in
+  let client client =
+    let* poller = poll_exn client in
+    let* () =
+      Fiber.fork_and_join_unit
+        (fun () -> print_next "poll" poller)
+        (fun () ->
+           let* () = Fiber.Ivar.read poll_started in
+           printfn "client: cancelling";
+           Client.Stream.cancel poller)
+    in
+    request_exn client ping_witness ()
+    >>| function
+    | Ok n -> printfn "client: ping %d" n
+    | Error error -> printfn "%s" (Dyn.to_string (Response.Error.to_dyn error))
+  in
+  test ~init ~client ~handler ~private_menu:[ Poll sub_proc; Request ping_decl ] ();
+  [%expect.unreachable]
+[@@expect.uncaught_exn
+  {|
+  ( "(\"unexpected response\",\
+   \n { id = [ [ \"poll\"; [ \"auto\"; \"0\" ] ]; [ \"i\"; \"0\" ] ]\
+   \n ; response = Ok [ \"Some\"; \"7\" ]\
+   \n })")
+  Trailing output
+  ---------------
+  client: cancelling
+  client: poll no more values
+  server: polling cancelled
+  server: sending late response
   |}]
 ;;
 

@@ -334,6 +334,41 @@ let%expect_test "long polling - late response after cancel is ignored" =
   |}]
 ;;
 
+let%expect_test "long polling - session close cancels in-flight poll" =
+  let svar = Fiber.Svar.create 0 in
+  let handler = server_long_poll svar in
+  let run =
+    let client_chan, sessions = setup_direct_client_server () in
+    let client () =
+      Client.connect_with_menu
+        client_chan
+        init
+        ~private_menu:[ Poll sub_proc ]
+        ~f:(fun client ->
+          let* poller = poll_exn client in
+          let* () = Fiber.Svar.write svar 1 in
+          let* () = print_next "poll" poller in
+          Fiber.fork_and_join_unit
+            (fun () -> print_next "poll" poller)
+            (fun () ->
+               printfn "client: closing channel";
+               Chan.close client_chan))
+    in
+    let server () =
+      let+ () = Server.serve sessions (Rpc.Server.make handler) in
+      printfn "server: finished."
+    in
+    Fiber.parallel_iter [ client; server ] ~f:(fun f -> f ())
+  in
+  Scheduler.run (Scheduler.create ()) run;
+  [%expect
+    {|
+    client: poll received 1
+    client: closing channel
+    client: poll no more values
+    server: finished. |}]
+;;
+
 let%expect_test "long polling - server side termination" =
   let client client =
     printfn "client: long polling";

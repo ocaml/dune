@@ -36,7 +36,7 @@ val warn : string -> (string * Dyn.t) list -> unit
 
 (** Print an executed command in the log *)
 val command
-  :  command_line:string
+  :  command_line:string Lazy.t
   -> output:string
   -> exit_status:Unix.process_status
   -> unit

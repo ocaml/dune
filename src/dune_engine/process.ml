@@ -636,7 +636,9 @@ module Handle_exit_status = struct
     in
     let add_command_line paragraphs =
       if show_command
-      then Pp.tag User_message.Style.Details (Pp.verbatim command_line) :: paragraphs
+      then
+        Pp.tag User_message.Style.Details (Pp.verbatim (Lazy.force command_line))
+        :: paragraphs
       else paragraphs
     in
     let purpose = metadata.purpose in
@@ -1021,7 +1023,7 @@ let run_internal
     let id = Running_jobs.Id.gen () in
     let prog_str = Path.reach_for_running ?from:dir prog in
     let command_line =
-      command_line ~prog:prog_str ~args ~dir ~stdout_to ~stderr_to ~stdin_from
+      lazy (command_line ~prog:prog_str ~args ~dir ~stdout_to ~stderr_to ~stdin_from)
     in
     let fancy_command_line =
       match display with

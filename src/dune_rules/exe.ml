@@ -213,6 +213,8 @@ let link_exe
     Action_builder.with_no_targets prefix
     >>> Command.run
           ~dir:(Path.build (Context.build_dir ctx))
+          ~sandbox
+          ~env
           (Ocaml_toolchain.compiler ocaml mode)
           [ Command.Args.dyn ocaml_flags
           ; A "-o"
@@ -236,11 +238,6 @@ let link_exe
           ; fdo_linker_script_flags
           ; Dyn link_args
           ]
-    |> Action_builder.With_targets.map_build ~f:(fun build ->
-      let open Action_builder.O in
-      let+ action = build
-      and+ env = env in
-      Action.Full.add_sandbox sandbox action |> Action.Full.add_env env)
   and* mode =
     let sctx = Compilation_context.super_context cctx in
     let* expander = Super_context.expander sctx ~dir in

@@ -62,6 +62,9 @@ for free.
  (dir otherlibs/dune-build-info)
  (synopsis "Embed build information inside executable")
  (depends
+  ; NOTE: The wider OCaml ecosystem can be deeply affected by changes to the dune
+  ; lower bound. Increases should be announced in advance, and only occur at
+  ; minor version bounds.
   (ocaml (>= 4.14)))
  (description "\
 The build-info library allows to access information about how the

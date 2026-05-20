@@ -65,10 +65,10 @@ CAMLprim value blake3_mini_fd(value v_fd) {
 }
 
 CAMLprim value blake3_mini_file_with_size(value v_path) {
-  CAMLparam1(v_path);
 #ifdef _WIN32
   caml_failwith("blake3_mini_file_with_size is not implemented on Windows");
 #else
+  CAMLparam1(v_path);
   CAMLlocal3(v_digest, v_size, v_result);
   caml_unix_check_path(v_path, "open");
   char_os *path = caml_stat_strdup_to_os(String_val(v_path));

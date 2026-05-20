@@ -454,6 +454,7 @@ let build_js
         in
         Command.run
           ~dir:(Super_context.context sctx |> Context.build_dir |> Path.build)
+          ~sandbox:Sandbox_config.needs_sandboxing
           compiler
           [ Command.Args.S obj_dir
           ; Command.Args.as_any includes
@@ -468,10 +469,6 @@ let build_js
         let open Action_builder.O in
         let* same_lib_deps = same_lib_emission_deps m in
         Action_builder.deps same_lib_deps >>> command)
-    in
-    let build =
-      let open Action_builder.With_targets.O in
-      build >>| Action.Full.add_sandbox Sandbox_config.needs_sandboxing
     in
     add_rule sctx ~dir ~loc ~mode build)
 ;;

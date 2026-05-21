@@ -151,7 +151,6 @@ present even if the binary is not optional.
   Error: Library "doesnotexistatall" not found.
   -> required by _build/default/exe/.bar.eobjs/native/dune__exe__Bar.cmx
   -> required by _build/default/exe/bar.exe
-  -> required by _build/install/default/bin/dunetestbar
   -> required by %{bin:dunetestbar} at dune:3
   -> required by alias run-x in dune:1
   [1]

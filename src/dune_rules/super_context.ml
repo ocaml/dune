@@ -150,6 +150,10 @@ let extend_action t ~dir action =
       (let open Memo.O in
        t.get_node dir >>= Env_node.external_env)
   in
+  (* [action.env] is expected to contain only PATH-prepend hints from
+     [Dep_conf_eval.make_bin_env]. Splice its PATH entries in front of the
+     external env's PATH, keep other vars as-is. *)
+  let env = Env_path.extend_env_concat_path env action.env in
   Action.Full.add_env env action
   |> Action.Full.map ~f:(function
     | Chdir _ as a -> a
@@ -272,16 +276,16 @@ let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
   let artifacts = Artifacts_db.get context in
   let+ root_expander =
     let public_libs = Scope.DB.public_libs context_name in
-    let artifacts_host, public_libs_host, context_host =
+    let artifacts_host, public_libs_host, host_build_dir =
       match Context.for_host context with
-      | None -> artifacts, public_libs, Memo.return context
+      | None -> artifacts, public_libs, Memo.return (Context.build_dir context)
       | Some host ->
         let artifacts = host >>= Artifacts_db.get in
         let public_libs = host >>| Context.name >>= Scope.DB.public_libs in
-        artifacts, public_libs, host
+        artifacts, public_libs, host >>| Context.build_dir
     in
     let scope = Scope.DB.find_by_dir (Context.build_dir context) in
-    let scope_host = context_host >>| Context.build_dir >>= Scope.DB.find_by_dir in
+    let scope_host = host_build_dir >>= Scope.DB.find_by_dir in
     let+ project = Dune_load.find_project ~dir:(Context.build_dir context) in
     Expander.make_root
       ~project

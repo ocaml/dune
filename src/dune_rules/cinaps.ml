@@ -238,6 +238,7 @@ let gen_rules sctx t ~dir ~scope =
       ~program:{ name; main_module_name; loc }
       ~linkages:[ Exe.Linkage.native_or_custom (Compilation_context.ocaml cctx) ]
       ~promote:None
+      ~env:(Action_builder.return Env.empty)
   in
   let cinaps_alias = Alias.make ~dir @@ Option.value t.alias ~default:cinaps_alias in
   let* () =
@@ -247,7 +248,7 @@ let gen_rules sctx t ~dir ~scope =
         let cinaps_exe = Path.Build.relative cinaps_dir (name ^ ".exe") in
         Path.build cinaps_exe
       in
-      let runtime_deps, sandbox =
+      let env, sandbox =
         let sandbox =
           if t.cinaps_version >= (1, 1)
           then Sandbox_config.needs_sandboxing
@@ -255,12 +256,11 @@ let gen_rules sctx t ~dir ~scope =
         in
         Dep_conf_eval.unnamed sandbox ~expander t.runtime_deps
       in
-      let* () = runtime_deps in
       let+ () =
         cinaps_exe :: List.rev_map cinapsed_files ~f:Path.build
         |> Dep.Set.of_files
         |> Action_builder.deps
-      in
+      and+ env in
       Action.Full.make ~sandbox
       @@ Action.chdir
            (Path.build dir)
@@ -273,6 +273,7 @@ let gen_rules sctx t ~dir ~scope =
                     (Path.build fn)
                     (Path.Build.extend_basename fn ~suffix:Filename.cinaps_corrected))
               ])
+      |> Action.Full.add_env env
     in
     Super_context.add_alias_action sctx ~dir ~loc cinaps_alias action
   in

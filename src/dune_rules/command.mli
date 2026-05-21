@@ -76,6 +76,7 @@ val run_dyn_prog
   :  dir:Path.t
   -> ?sandbox:Sandbox_config.t
   -> ?stdout_to:Path.Build.t
+  -> ?env:Env.t Action_builder.t
   -> Action.Prog.t Action_builder.t
   -> Args.any Args.t list
   -> Action.Full.t Action_builder.With_targets.t
@@ -84,6 +85,7 @@ val run
   :  dir:Path.t
   -> ?sandbox:Sandbox_config.t
   -> ?stdout_to:Path.Build.t
+  -> ?env:Env.t Action_builder.t
   -> Action.Prog.t
   -> Args.any Args.t list
   -> Action.Full.t Action_builder.With_targets.t
@@ -91,6 +93,7 @@ val run
 (** Same as [run], but for actions that don't produce targets *)
 val run'
   :  ?sandbox:Sandbox_config.t
+  -> ?env:Env.t Action_builder.t
   -> dir:Path.t
   -> Action.Prog.t
   -> Args.without_targets Args.t list

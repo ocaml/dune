@@ -169,7 +169,7 @@ let build_c_program
       ~scope
       ~cflags
       ~output
-      ~deps
+      ~env
   =
   let ctx = Super_context.context sctx in
   let ocaml = Context.ocaml ctx in
@@ -229,18 +229,14 @@ let build_c_program
     Command.Args.S
       (List.map include_dirs ~f:(fun dir -> Command.Args.S [ A "-I"; Path dir ]))
   in
-  let deps =
+  let extra_deps =
     let source_file_deps =
       List.map source_files ~f:(Path.relative (Path.build dir)) |> Dep.Set.of_files
     in
     let foreign_archives_deps =
       List.map foreign_archives_deps ~f:Path.build |> Dep.Set.of_files
     in
-    let open Action_builder.O in
-    let* () =
-      Dep.Set.union source_file_deps foreign_archives_deps |> Action_builder.deps
-    in
-    deps
+    Dep.Set.union source_file_deps foreign_archives_deps |> Action_builder.deps
   in
   let all_flags =
     Command.Args.S
@@ -258,8 +254,8 @@ let build_c_program
       ]
     in
     let open Action_builder.With_targets.O in
-    Action_builder.with_no_targets deps
-    >>> Command.run_dyn_prog ~dir:(Path.build dir) exe args
+    Action_builder.with_no_targets extra_deps
+    >>> Command.run_dyn_prog ~dir:(Path.build dir) ~env exe args
   in
   Super_context.add_rule sctx ~dir action
 ;;
@@ -272,20 +268,15 @@ let program_of_module_and_dir ~dir program =
   }
 ;;
 
-let exe_link_only ~dir ~shared_cctx ~sandbox program ~deps =
-  let link_args =
-    let open Action_builder.O in
-    let+ () = deps in
-    Command.Args.empty
-  in
+let exe_link_only ~dir ~shared_cctx ~sandbox ~env program =
   let program = program_of_module_and_dir ~dir program in
   Exe.link_many
-    ~link_args
     ~programs:[ program ]
     ~linkages:[ Exe.Linkage.native ]
     ~promote:None
     shared_cctx
     ~sandbox
+    ~env
 ;;
 
 let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
@@ -334,10 +325,17 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
   let headers =
     gen_headers ~expander ctypes.headers |> Action_builder.memoize "ctypes-gen-headers"
   in
-  let deps, sandbox =
+  let action_env, sandbox =
     Dep_conf_eval.unnamed Sandbox_config.no_special_requirements ~expander ctypes.deps
   in
-  let exe_link_only = exe_link_only ~deps ~dir ~shared_cctx:cctx ~sandbox in
+  let with_action_env build =
+    Action_builder.With_targets.map_build build ~f:(fun build ->
+      let open Action_builder.O in
+      let+ action = build
+      and+ env = action_env in
+      Action.Full.add_env env action)
+  in
+  let exe_link_only = exe_link_only ~dir ~shared_cctx:cctx ~sandbox ~env:action_env in
   (* Type_gen produces a .c file, taking your type description module above as
      an input. The .c file is compiled into an .exe. The .exe, when run produces
      an .ml file. The .ml file is compiled into a module that will have the
@@ -374,7 +372,7 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
         ~loc:Loc.none
         (let exe = Ok (Path.build (Path.Build.relative dir (type_gen_script ^ ".exe"))) in
          let stdout_to = Path.Build.relative dir c_generated_types_cout_c in
-         Command.run ~stdout_to ~dir:(Path.build dir) exe [])
+         Command.run ~stdout_to ~dir:(Path.build dir) exe [] |> with_action_env)
     in
     let* () =
       let foreign_archives_deps =
@@ -394,8 +392,8 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
         ~scope
         ~source_files:[ c_generated_types_cout_c ]
         ~output:c_generated_types_cout_exe
-        ~deps
         ~cflags
+        ~env:action_env
     in
     Super_context.add_rule
       sctx
@@ -407,7 +405,7 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
          |> Path.Build.relative dir
        in
        let exe = Ok (Path.build (Path.Build.relative dir c_generated_types_cout_exe)) in
-       Command.run ~stdout_to ~dir:(Path.build dir) exe [])
+       Command.run ~stdout_to ~dir:(Path.build dir) exe [] |> with_action_env)
   in
   (* Function_gen is similar to type_gen above, though it produces both an .ml
      file and a .c file. These files correspond to the files you would have to
@@ -443,6 +441,7 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
         in
         fun ~stdout_to ~what ->
           Command.run ~stdout_to ~dir:(Path.build dir) exe [ A what; A stubs_prefix ]
+          |> with_action_env
       in
       let* () =
         Super_context.add_rule

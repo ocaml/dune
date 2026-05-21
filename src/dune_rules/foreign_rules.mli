@@ -22,7 +22,7 @@ val foreign_flags_env
   -> string list Action_builder.t Foreign_language.Dict.t Memo.t
 
 (** Build the common include flags for C compilation: header hidden deps,
-    library include flags, per-source include_dir_flags, and extra_deps.
+    library include flags, and per-source include_dir_flags.
     Shared between [build_o_files] and [Compile_commands]. *)
 val build_include_flags
   :  sctx:Super_context.t

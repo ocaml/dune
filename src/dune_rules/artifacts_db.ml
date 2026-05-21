@@ -55,7 +55,7 @@ let get_installed_binaries ~(context : Context.t) stanzas =
       >>| fst
     in
     let eval_blang = Expander0.eval_blang expander in
-    let binaries_from_install ~enabled_if files =
+    let binaries_from_install ~enabled_if ~package files =
       let* unexpanded_file_bindings =
         Install_entry.File.to_file_bindings_unexpanded files ~expand:expand_value ~dir
       in
@@ -70,7 +70,7 @@ let get_installed_binaries ~(context : Context.t) stanzas =
         let dst = Install.Entry.Dst.local p in
         if Path.Local.is_root (Path.Local.parent_exn dst)
         then (
-          let origin = { Artifacts.binding = fb; dir; dst; enabled_if } in
+          let origin = { Artifacts.binding = fb; dir; dst; enabled_if; package } in
           Some (Path.Local.basename dst, origin))
         else None)
       >>| List.filter_opt
@@ -83,12 +83,13 @@ let get_installed_binaries ~(context : Context.t) stanzas =
     Dune_file.static_stanzas d
     |> Memo.List.map ~f:(fun stanza ->
       match Stanza.repr stanza with
-      | Install_conf.T { section = _loc, Section Bin; files; enabled_if; _ } ->
+      | Install_conf.T { section = _loc, Section Bin; files; enabled_if; package; _ } ->
         let enabled_if = eval_blang enabled_if in
-        binaries_from_install ~enabled_if files
+        let package = Some (Package.name package) in
+        binaries_from_install ~enabled_if ~package files
       | Executables.T
-          ({ install_conf = Some { section = _loc, Section Bin; files; _ }; _ } as exes)
-        ->
+          ({ install_conf = Some { section = _loc, Section Bin; files; package; _ }; _ }
+           as exes) ->
         let enabled_if =
           let enabled_if = eval_blang exes.enabled_if in
           match exes.optional with
@@ -99,7 +100,8 @@ let get_installed_binaries ~(context : Context.t) stanzas =
              | false -> Memo.return false
              | true -> available_exes ~dir exes)
         in
-        binaries_from_install ~enabled_if files
+        let package = Some (Package.name package) in
+        binaries_from_install ~enabled_if ~package files
       | _ -> Memo.return Filename.Map.empty)
     >>| Filename.Map.union_all ~f:merge)
   >>| Filename.Map.union_all ~f:merge

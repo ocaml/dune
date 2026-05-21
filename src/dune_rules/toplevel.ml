@@ -151,6 +151,7 @@ let setup_rules_and_return_exe_path t ~linkage =
       ~link_args:
         (Action_builder.return (Command.Args.As [ "-linkall"; "-warn-error"; "-31" ]))
       ~promote:None
+      ~env:(Action_builder.return Env.empty)
   in
   let+ () = setup_module_rules t in
   Exe.exe_path t.cctx ~program ~linkage

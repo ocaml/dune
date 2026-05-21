@@ -13,13 +13,6 @@ Build a binary using a %{bin:..} form.
   >  (public_name bar))
   > EOF
 
-BUG: %{bin:bar} expands using _build/default as its base, producing
-"../install/default/bin/bar" rather than a path to a buildable
-target. See #3324.
-
-CR-soon Alizter: fix the expansion to point at the build artifact.
-
   $ dune build '%{bin:bar}'
-  Error: File unavailable:
-  $TESTCASE_ROOT/../install/default/bin/bar
-  [1]
+  $ ls _build/default/bin/bar.exe
+  _build/default/bin/bar.exe

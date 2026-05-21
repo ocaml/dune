@@ -257,14 +257,17 @@ module L = struct
           let dir = Path.as_in_build_dir_exn @@ Lib_info.src_dir info in
           let headers =
             let+ expander = Super_context.expander sctx ~dir in
-            let deps, sandbox =
+            let env, sandbox =
               Dep_conf_eval.unnamed
                 Sandbox_config.no_special_requirements
                 ~expander
                 public_headers
             in
             assert (Sandbox_config.equal sandbox Sandbox_config.no_special_requirements);
-            deps
+            (* [public_headers] are installed source files, not commands;
+               there is no action here for the bin-layout PATH hint in
+               [action_env] to apply to. Discard env, keep the deps. *)
+            Action_builder.ignore env
           in
           headers :: local, external_)
     in

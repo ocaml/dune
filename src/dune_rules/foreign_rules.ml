@@ -273,6 +273,17 @@ let c_compile_args ~sctx ~dir ~expander ~src ~include_flags =
 ;;
 
 let build_c ~sctx ~dir ~expander ~include_flags (loc, (src : Foreign.Source.t), dst) =
+  let env, _sandbox =
+    (* We don't sandbox the C compiler, see comment at the
+       [Action.Full.add_sandbox Sandbox_config.no_sandboxing] call below. *)
+    match Foreign.Source.kind src with
+    | Stubs stubs ->
+      Dep_conf_eval.unnamed
+        Sandbox_config.no_special_requirements
+        stubs.extra_deps
+        ~expander
+    | Ctypes _ -> Action_builder.return Env.empty, Sandbox_config.default
+  in
   let ctx = Super_context.context sctx in
   let* ocaml = Context.ocaml ctx in
   (* Emit warning for Stubs case when standard flags are overridden *)
@@ -338,6 +349,7 @@ let build_c ~sctx ~dir ~expander ~include_flags (loc, (src : Foreign.Source.t), 
      in
      Command.run_dyn_prog
        ~dir:(Path.build dir)
+       ~env
        c_compiler
        ([ c_compile_args ~sctx ~dir ~expander ~src ~include_flags
         ; Hidden_deps (Dep.Set.singleton (Dep.file_selector caml_headers))
@@ -378,25 +390,10 @@ let build_include_flags ~sctx ~dir ~expander ~dir_contents ~requires ~src =
              ])
       ]
   in
-  let extra_deps =
-    let extra_deps, sandbox =
-      match Foreign.Source.kind src with
-      | Stubs stubs ->
-        Dep_conf_eval.unnamed
-          Sandbox_config.no_special_requirements
-          stubs.extra_deps
-          ~expander
-      | Ctypes _ -> Action_builder.return (), Sandbox_config.default
-    in
-    (* We don't sandbox the C compiler, see comment in [build_c] about
-       this. *)
-    ignore sandbox;
-    Action_builder.map extra_deps ~f:(fun () -> Command.Args.empty)
-  in
   let extra_flags =
     include_dir_flags ~expander ~dir ~include_dirs:(Foreign.Source.include_dirs src)
   in
-  Command.Args.S [ includes; extra_flags; Dyn extra_deps ]
+  Command.Args.S [ includes; extra_flags ]
 ;;
 
 let build_o_files

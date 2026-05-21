@@ -335,7 +335,12 @@ let build_ppx_driver =
         ; loc = Loc.none
         }
       in
-      Exe.build_and_link ~program ~linkages cctx ~promote:None
+      Exe.build_and_link
+        ~program
+        ~linkages
+        cctx
+        ~promote:None
+        ~env:(Action_builder.return Env.empty)
     in
     ()
 ;;

@@ -72,8 +72,6 @@ val create_default
 (** The action that needs to be taken to shutdown the watcher. *)
 val shutdown : t -> [ `Kill of Pid.t | `No_op | `Thunk of unit -> unit ]
 
-val wait_for_initial_watches_established_blocking : t -> unit
-
 (** Cause a [Sync] event to be propagated through the notification subsystem to
     attempt to make sure that we've processed all the events that happened so
     far. *)

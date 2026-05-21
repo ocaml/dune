@@ -35,7 +35,6 @@ let%expect_test _ =
   (match Dune_scheduler.File_watcher.add_watch watcher (Path.of_string ".") with
    | Error _ -> assert false
    | Ok () -> ());
-  Dune_scheduler.File_watcher.wait_for_initial_watches_established_blocking watcher;
   Stdio.Out_channel.write_all "x" ~data:"x";
   print_events 2;
   [%expect

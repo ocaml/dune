@@ -6,7 +6,7 @@ let%expect_test _ = init ()
 let%expect_test _ =
   let mutex = Mutex.create () in
   let events_buffer = ref [] in
-  let watcher =
+  let (_ : Dune_scheduler.File_watcher.t) =
     Dune_scheduler.File_watcher.create_default
       ~fsevents_debounce:(Time.Span.of_secs 0.)
       ~scheduler:
@@ -33,7 +33,6 @@ let%expect_test _ =
              | Watcher_terminated -> assert false)))
   in
   let print_events n = print_events ~try_to_get_events ~expected:n in
-  Dune_scheduler.File_watcher.wait_for_initial_watches_established_blocking watcher;
   Stdio.Out_channel.write_all "x" ~data:"x";
   print_events 3;
   [%expect

@@ -55,7 +55,6 @@ module Scheduler = struct
   module Handler = struct
     module Event = struct
       type t =
-        | Tick
         | Source_files_changed of { details_hum : string list }
         | Build_interrupted
         | Build_finish of Build_outcome.t

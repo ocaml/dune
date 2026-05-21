@@ -23,8 +23,7 @@ let maybe_clear_screen
 ;;
 
 let on_event ~terminal_persistence = function
-  | Run.Event.Tick -> Console.Status_line.refresh ()
-  | Source_files_changed { details_hum } ->
+  | Run.Event.Source_files_changed { details_hum } ->
     maybe_clear_screen ~terminal_persistence ~details_hum
   | Build_interrupted ->
     Console.Status_line.set

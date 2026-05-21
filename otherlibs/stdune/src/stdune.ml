@@ -85,6 +85,7 @@ module Global_lock = Global_lock
 module At_exit = At_exit
 module Permissions = Permissions
 module Console = Console
+module Terminal_persistence = Terminal_persistence
 module Repr = Repr
 module Marshal = Marshal
 module Fd = Fd

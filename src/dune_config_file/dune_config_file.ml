@@ -132,44 +132,6 @@ module Dune_config = struct
     ;;
   end
 
-  module Terminal_persistence = struct
-    type t =
-      | Preserve
-      | Clear_on_rebuild
-      | Clear_on_rebuild_and_flush_history
-
-    let repr =
-      Repr.variant
-        "terminal-persistence"
-        [ Repr.case0 "Preserve" ~test:(function
-            | Preserve -> true
-            | Clear_on_rebuild | Clear_on_rebuild_and_flush_history -> false)
-        ; Repr.case0 "Clear_on_rebuild" ~test:(function
-            | Clear_on_rebuild -> true
-            | Preserve | Clear_on_rebuild_and_flush_history -> false)
-        ; Repr.case0 "Clear_on_rebuild_and_flush_history" ~test:(function
-            | Clear_on_rebuild_and_flush_history -> true
-            | Preserve | Clear_on_rebuild -> false)
-        ]
-    ;;
-
-    let all =
-      [ "preserve", Preserve
-      ; "clear-on-rebuild", Clear_on_rebuild
-      ; "clear-on-rebuild-and-flush-history", Clear_on_rebuild_and_flush_history
-      ]
-    ;;
-
-    include Repr.Poly (struct
-        type nonrec t = t
-
-        let repr = repr
-      end)
-
-    let to_dyn = Repr.to_dyn repr
-    let decode = enum all
-  end
-
   module Concurrency = struct
     type t =
       | Fixed of int
@@ -593,7 +555,7 @@ module Dune_config = struct
     let+ display = field_o "display" (1, 0) (enum Display.all)
     and+ concurrency = field_o "jobs" (1, 0) Concurrency.decode
     and+ terminal_persistence =
-      field_o "terminal-persistence" (1, 0) Terminal_persistence.decode
+      field_o "terminal-persistence" (1, 0) (enum Terminal_persistence.all)
     and+ sandboxing_preference =
       field_o "sandboxing_preference" (1, 0) Sandboxing_preference.decode
     and+ cache_enabled = field_o "cache" (2, 0) (Cache.Toggle.decode ~check)

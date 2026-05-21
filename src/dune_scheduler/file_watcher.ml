@@ -462,7 +462,7 @@ let with_buffering ~create ~(scheduler : Scheduler.t) ~debounce_interval =
     in
     scheduler.thread_safe_send_emit_events_job (fun () ->
       List.concat_map jobs_batch ~f:(fun job -> job ()));
-    Thread.delay debounce_interval;
+    Thread.delay (Time.Span.to_secs debounce_interval);
     buffer_thread ()
   in
   let (_ : Thread.t) = Thread0.spawn ~name:"file-watcher" buffer_thread in
@@ -650,7 +650,7 @@ let create_default ?fsevents_debounce ~watch_exclusions ~scheduler () =
     create_external
       ~scheduler
       ~root:Path.root
-      ~debounce_interval:(Some 0.5 (* seconds *))
+      ~debounce_interval:(Some (Time.Span.of_secs 0.5))
       ~backend
       ~watch_exclusions
   | `Fsevents -> create_fsevents ?latency:fsevents_debounce ~scheduler ~should_exclude ()

@@ -31,10 +31,6 @@
  (applies_to autolock-with-watch-server))
 
 (cram
- (deps %{bin:patch})
- (applies_to patch opam-package-with-patch extra-sources))
-
-(cram
  (applies_to rev-store-lock-linux)
  (enabled_if
   (= %{system} linux))

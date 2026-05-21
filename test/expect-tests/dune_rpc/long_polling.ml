@@ -361,12 +361,53 @@ let%expect_test "long polling - session close cancels in-flight poll" =
     Fiber.parallel_iter [ client; server ] ~f:(fun f -> f ())
   in
   Scheduler.run (Scheduler.create ()) run;
-  [%expect
-    {|
-    client: poll received 1
-    client: closing channel
-    client: poll no more values
-    server: finished. |}]
+  [%expect.unreachable]
+[@@expect.uncaught_exn
+  {|
+  (Test_scheduler.Never)
+  Trailing output
+  ---------------
+  client: poll received 1
+  client: closing channel
+  client: poll no more values
+  |}]
+;;
+
+let%expect_test "long polling - cancelling one poller does not stop another" =
+  let svar = Fiber.Svar.create 0 in
+  let handler = server_long_poll svar in
+  let client client =
+    let* first = poll_exn client in
+    let* second = poll_exn client in
+    let* () = Fiber.Svar.write svar 1 in
+    let* () = print_next "first poll" first in
+    let* () = print_next "second poll" second in
+    let* () = print_next "first poll" first
+    and+ () = print_next "second poll" second
+    and+ () =
+      printfn "client: cancelling first poll";
+      let* () = Client.Stream.cancel first in
+      printfn "client: updating state";
+      Fiber.Svar.write svar 2
+    in
+    Fiber.return ()
+  in
+  test ~init ~client ~handler ~private_menu:[ Poll sub_proc ] ();
+  [%expect.unreachable]
+[@@expect.uncaught_exn
+  {|
+  ( "(\"unexpected response\",\
+   \n { id = [ [ \"poll\"; [ \"auto\"; \"0\" ] ]; [ \"i\"; \"0\" ] ]\
+   \n ; response = Ok [ \"Some\"; \"1\" ]\
+   \n })")
+  Trailing output
+  ---------------
+  client: first poll received 1
+  client: second poll received 1
+  client: cancelling first poll
+  client: updating state
+  client: first poll no more values
+  |}]
 ;;
 
 let%expect_test "long polling - server side termination" =

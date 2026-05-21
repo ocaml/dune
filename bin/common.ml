@@ -478,7 +478,7 @@ let shared_with_config_file ~allow_pkg_flag =
                         Dune_engine.Sandbox_mode.all_except_patch_back_source_tree
                         ~f:Dune_engine.Sandbox_mode.to_string)))))
   and+ terminal_persistence =
-    let modes = Dune_config.Terminal_persistence.all in
+    let modes = Terminal_persistence.all in
     let doc =
       let f s = fst s |> Printf.sprintf "$(b,%s)" in
       Printf.sprintf

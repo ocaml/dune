@@ -1,5 +1,7 @@
 module type Backend = Backend_intf.S
 
+let sprintf = Printf.sprintf
+
 module Backend = struct
   type t = Backend_intf.t
 
@@ -240,4 +242,22 @@ let () =
       else Printf.sprintf "%s %s" msg formatted_args
     in
     print [ Pp.verbatim full_msg ])
+;;
+
+let maybe_clear_screen (terminal_persistence : Terminal_persistence.t) ~details_hum =
+  match Execution_env.inside_dune with
+  | true -> (* Don't print anything here to make tests less verbose *) ()
+  | false ->
+    (match terminal_persistence with
+     | Clear_on_rebuild -> reset ()
+     | Clear_on_rebuild_and_flush_history -> reset_flush_history ()
+     | Preserve ->
+       let message =
+         sprintf
+           "********** NEW BUILD (%s) **********"
+           (String.concat ~sep:", " details_hum)
+       in
+       print_user_message
+         (User_message.make
+            [ Pp.nop; Pp.tag User_message.Style.Success (Pp.verbatim message); Pp.nop ]))
 ;;

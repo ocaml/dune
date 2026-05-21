@@ -290,9 +290,7 @@ let exec_building_directly ~common ~config ~context ~prog ~args ~no_rebuild =
     @@
     let* () =
       Fiber.return
-      @@ Scheduler_setup.maybe_clear_screen
-           ~details_hum:[]
-           ~terminal_persistence:config.terminal_persistence
+      @@ Console.maybe_clear_screen ~details_hum:[] config.terminal_persistence
     in
     Build.build_memo @@ step ~prog ~args ~common ~no_rebuild ~context ~on_exit
   | No ->

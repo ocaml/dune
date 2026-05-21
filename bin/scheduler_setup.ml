@@ -1,30 +1,9 @@
 open Import
 open Scheduler
 
-let maybe_clear_screen
-      ~(terminal_persistence : Dune_config.Terminal_persistence.t)
-      ~details_hum
-  =
-  match Execution_env.inside_dune with
-  | true -> (* Don't print anything here to make tests less verbose *) ()
-  | false ->
-    (match terminal_persistence with
-     | Clear_on_rebuild -> Console.reset ()
-     | Clear_on_rebuild_and_flush_history -> Console.reset_flush_history ()
-     | Preserve ->
-       let message =
-         sprintf
-           "********** NEW BUILD (%s) **********"
-           (String.concat ~sep:", " details_hum)
-       in
-       Console.print_user_message
-         (User_message.make
-            [ Pp.nop; Pp.tag User_message.Style.Success (Pp.verbatim message); Pp.nop ]))
-;;
-
 let on_event ~terminal_persistence = function
   | Run.Event.Source_files_changed { details_hum } ->
-    maybe_clear_screen ~terminal_persistence ~details_hum
+    Console.maybe_clear_screen terminal_persistence ~details_hum
   | Build_interrupted ->
     Console.Status_line.set
       (Live

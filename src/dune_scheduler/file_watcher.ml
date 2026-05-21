@@ -168,6 +168,7 @@ let process_inotify_event (event : Inotify.Event.t) should_exclude : Event.t lis
       [ Event.Fs_memo_event (Fs_memo_event.create ~kind ~path) ])
   in
   match event with
+  | Queue_overflow -> [ Queue_overflow ]
   | Created path -> create_event_unless_excluded ~kind:Created ~path
   | Unlinked path -> create_event_unless_excluded ~kind:Deleted ~path
   | Modified path -> create_event_unless_excluded ~kind:File_changed ~path
@@ -178,7 +179,6 @@ let process_inotify_event (event : Inotify.Event.t) should_exclude : Event.t lis
      | Move { src; dst } ->
        create_event_unless_excluded ~kind:Deleted ~path:src
        @ create_event_unless_excluded ~kind:Created ~path:dst)
-  | Queue_overflow -> [ Queue_overflow ]
 ;;
 
 let emit_events events =
@@ -266,17 +266,6 @@ end = struct
 end
 
 let command ~root ~backend ~watch_exclusions =
-  let exclude_paths =
-    (* These paths should already exist on the filesystem when the watches are
-       initially set up, otherwise the @<path> has no effect for inotifywait. If
-       the file is deleted and re-created then "exclusion" is lost. This is why
-       we're not including "_opam" and "_esy" in this list, in case they are
-       created when dune is already running. *)
-    (* these paths are used as patterns for fswatch, so they better not contain
-       any regex-special characters *)
-    [ "_build" ]
-  in
-  let root = Path.to_string root in
   let inotify_special_path = Lazy.force Fs_sync.special_dir in
   match backend with
   | `Fswatch fswatch ->
@@ -284,13 +273,22 @@ let command ~root ~backend ~watch_exclusions =
        not reliable (at least on Linux), so don't try to use it, instead act on
        all events. *)
     let excludes =
-      List.concat_map
-        (watch_exclusions @ List.map exclude_paths ~f:(fun p -> "/" ^ p))
-        ~f:(fun x -> [ "--exclude"; x ])
+      let exclude_paths =
+        (* These paths should already exist on the filesystem when the watches are
+       initially set up, otherwise the @<path> has no effect for inotifywait. If
+       the file is deleted and re-created then "exclusion" is lost. This is why
+       we're not including "_opam" and "_esy" in this list, in case they are
+       created when dune is already running. *)
+        (* these paths are used as patterns for fswatch, so they better not contain
+       any regex-special characters *)
+        [ "_build" ]
+      in
+      watch_exclusions @ List.map exclude_paths ~f:(fun p -> "/" ^ p)
+      |> List.concat_map ~f:(fun x -> [ "--exclude"; x ])
     in
     ( fswatch
     , [ "-r"
-      ; root
+      ; Path.to_string root
       ; (* If [inotify_special_path] is not passed here, then the [--exclude
            _build] makes fswatch not descend into [_build], which means it never
            even discovers that [inotify_special_path] exists. This is despite
@@ -309,12 +307,10 @@ let command ~root ~backend ~watch_exclusions =
 ;;
 
 let fswatch_backend () =
-  let try_fswatch () =
-    Option.map
-      (Bin.which ~path:(Env_path.path Env.initial) "fswatch")
-      ~f:(fun fswatch -> `Fswatch fswatch)
-  in
-  match try_fswatch () with
+  match
+    Bin.which ~path:(Env_path.path Env.initial) "fswatch"
+    |> Option.map ~f:(fun fswatch -> `Fswatch fswatch)
+  with
   | Some res -> res
   | None ->
     let hints =
@@ -363,13 +359,14 @@ let prepare_sync () =
 let spawn_external_watcher ~root ~backend ~watch_exclusions =
   prepare_sync ();
   let prog, args, parse_line = command ~root ~backend ~watch_exclusions in
-  let prog = Path.to_absolute_filename prog in
-  let argv = prog :: args in
   let r_stdout, w_stdout = Unix.pipe () in
-  let stderr = None in
-  let pid = Spawn.spawn () ~prog ~argv ~stdout:w_stdout ?stderr |> Pid.of_int in
+  let pid =
+    let prog = Path.to_absolute_filename prog in
+    let argv = prog :: args in
+    (* CR-someday rgrinberg: we sohuldn't let this program write anything to our stderr *)
+    Spawn.spawn () ~prog ~argv ~stdout:w_stdout |> Pid.of_int
+  in
   Unix.close w_stdout;
-  Option.iter stderr ~f:Unix.close;
   (Unix.in_channel_of_descr r_stdout, parse_line), pid
 ;;
 
@@ -501,8 +498,8 @@ let fsevents_callback ?exclusion_paths (scheduler : Scheduler.t) ~f events =
 ;;
 
 let fsevents ?exclusion_paths ~latency ~paths scheduler f =
-  let paths = List.map paths ~f:Path.to_absolute_filename in
   let fsevents =
+    let paths = List.map paths ~f:Path.to_absolute_filename in
     Fsevents.create ~latency ~paths ~f:(fsevents_callback ?exclusion_paths scheduler ~f)
   in
   Option.iter exclusion_paths ~f:(fun paths ->
@@ -591,8 +588,10 @@ let create_fsevents
 ;;
 
 let fswatch_win_callback ~(scheduler : Scheduler.t) ~sync_table ~should_exclude event =
-  let dir = Fswatch_win.Event.directory event in
-  let filename = Filename.concat dir (Fswatch_win.Event.path event) in
+  let filename =
+    let dir = Fswatch_win.Event.directory event in
+    Filename.concat dir (Fswatch_win.Event.path event)
+  in
   let localized_path = Path.Expert.try_localize_external (Path.of_string filename) in
   match localized_path with
   | In_build_dir _ ->

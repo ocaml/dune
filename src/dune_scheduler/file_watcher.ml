@@ -370,30 +370,27 @@ let spawn_external_watcher ~backend ~watch_exclusions =
 ;;
 
 let create_inotifylib_watcher ~sync_table ~(scheduler : Scheduler.t) should_exclude =
-  Inotify.create
-    ~modify_event_selector:`Closed_writable_fd
-    ~send_emit_events_job_to_scheduler:(fun f ->
-      scheduler.thread_safe_send_emit_events_job (fun () ->
-        let events = f () in
-        List.concat_map events ~f:(fun event ->
-          let is_fs_sync_event_generated_by_dune =
-            match (event : Inotify.Event.t) with
-            | Modified path | Created path | Unlinked path ->
-              Option.some_if
-                (Fs_sync.is_special_file ~path_as_reported_by_file_watcher:path)
-                path
-            | Moved _ | Queue_overflow -> None
-          in
-          let events =
-            match is_fs_sync_event_generated_by_dune with
-            | None -> process_inotify_event event should_exclude
-            | Some path ->
-              (match Fs_sync.consume_event sync_table path with
-               | None -> []
-               | Some id -> [ Event.Sync id ])
-          in
-          emit_events events;
-          events)))
+  Inotify.create ~modify_event_selector:`Closed_writable_fd ~emit_events:(fun events ->
+    scheduler.thread_safe_send_emit_events_job (fun () ->
+      List.concat_map events ~f:(fun event ->
+        let is_fs_sync_event_generated_by_dune =
+          match (event : Inotify.Event.t) with
+          | Modified path | Created path | Unlinked path ->
+            Option.some_if
+              (Fs_sync.is_special_file ~path_as_reported_by_file_watcher:path)
+              path
+          | Moved _ | Queue_overflow -> None
+        in
+        let events =
+          match is_fs_sync_event_generated_by_dune with
+          | None -> process_inotify_event event should_exclude
+          | Some path ->
+            (match Fs_sync.consume_event sync_table path with
+             | None -> []
+             | Some id -> [ Event.Sync id ])
+        in
+        emit_events events;
+        events)))
 ;;
 
 let create_external_fswatch ~(scheduler : Scheduler.t) ~backend ~watch_exclusions =

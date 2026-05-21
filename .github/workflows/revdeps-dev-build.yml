@@ -33,4 +33,4 @@ jobs:
           gc-max-store-size-linux: 2G
 
       - name: Build OxCaml with Dune
-        run: nix build .#oxcaml-trunk-build
+        run: nix build .#oxcaml-trunk-build --impure

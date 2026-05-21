@@ -57,7 +57,6 @@ end
 type t =
   { fd : Fd.t
   ; watch_table : (Inotify_watch.t, string) Table.t
-  ; path_table : (string, Inotify.watch) Table.t
   ; send_emit_events_job_to_scheduler : (unit -> Event.t list) -> unit
   ; select_events : Inotify.selector list
   }
@@ -72,8 +71,7 @@ let add t path =
     Inotify.add_watch (Fd.unsafe_to_unix_file_descr t.fd) path t.select_events
   in
   (* XXX why are we just overwriting existing watches? *)
-  Table.set t.watch_table watch path;
-  Table.set t.path_table path watch
+  Table.set t.watch_table watch path
 ;;
 
 let process_raw_events t events =
@@ -168,7 +166,6 @@ let create ~modify_event_selector ~send_emit_events_job_to_scheduler =
   let t =
     { fd
     ; watch_table
-    ; path_table = Table.create (module String) 10
     ; select_events =
         [ S_Create; S_Delete; modify_selector; S_Move_self; S_Moved_from; S_Moved_to ]
     ; send_emit_events_job_to_scheduler

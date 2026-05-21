@@ -495,7 +495,7 @@ let opam_package_to_lock_file_pkg
         what
     in
     let depends =
-      match resolve opam_file.depends with
+      match resolve (Dune_dep.strip_upper_version_constraints opam_file.depends) with
       | Ok { regular; _ } -> regular
       | Error (`Formula_could_not_be_satisfied hints) ->
         Code_error.raise

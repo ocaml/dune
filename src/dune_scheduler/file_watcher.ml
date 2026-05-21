@@ -302,8 +302,7 @@ let command ~root ~backend ~watch_exclusions =
       ; "Removed"
       ]
       @ [ "--include"; inotify_special_path ]
-      @ excludes
-    , fun s -> Ok s )
+      @ excludes )
 ;;
 
 let fswatch_backend () =
@@ -358,7 +357,7 @@ let prepare_sync () =
 
 let spawn_external_watcher ~root ~backend ~watch_exclusions =
   prepare_sync ();
-  let prog, args, parse_line = command ~root ~backend ~watch_exclusions in
+  let prog, args = command ~root ~backend ~watch_exclusions in
   let r_stdout, w_stdout = Unix.pipe () in
   let pid =
     let prog = Path.to_absolute_filename prog in
@@ -367,7 +366,7 @@ let spawn_external_watcher ~root ~backend ~watch_exclusions =
     Spawn.spawn () ~prog ~argv ~stdout:w_stdout |> Pid.of_int
   in
   Unix.close w_stdout;
-  (Unix.in_channel_of_descr r_stdout, parse_line), pid
+  Unix.in_channel_of_descr r_stdout, pid
 ;;
 
 let create_inotifylib_watcher ~sync_table ~(scheduler : Scheduler.t) should_exclude =
@@ -399,26 +398,23 @@ let create_inotifylib_watcher ~sync_table ~(scheduler : Scheduler.t) should_excl
 
 let create_no_buffering ~(scheduler : Scheduler.t) ~root ~backend ~watch_exclusions =
   let sync_table = Table.create (module String) 64 in
-  let (pipe, parse_line), pid = spawn_external_watcher ~root ~backend ~watch_exclusions in
+  let pipe, pid = spawn_external_watcher ~root ~backend ~watch_exclusions in
   let worker_thread pipe =
     while true do
       (* This job runs on the scheduler thread because it uses [sync_table]. *)
       let job =
         match input_line pipe with
         | exception End_of_file -> fun () -> [ Event.Watcher_terminated ]
-        | line ->
+        | path_s ->
           fun () ->
-            (match parse_line line with
-             | Error s -> failwith s
-             | Ok path_s ->
-               if Fs_sync.is_special_file ~path_as_reported_by_file_watcher:path_s
-               then (
-                 match Fs_sync.consume_event sync_table path_s with
-                 | None -> []
-                 | Some id -> [ Event.Sync id ])
-               else (
-                 let path = Path.Expert.try_localize_external (Path.of_string path_s) in
-                 [ Fs_memo_event (Fs_memo_event.create ~kind:File_changed ~path) ]))
+            if Fs_sync.is_special_file ~path_as_reported_by_file_watcher:path_s
+            then (
+              match Fs_sync.consume_event sync_table path_s with
+              | None -> []
+              | Some id -> [ Event.Sync id ])
+            else (
+              let path = Path.Expert.try_localize_external (Path.of_string path_s) in
+              [ Fs_memo_event (Fs_memo_event.create ~kind:File_changed ~path) ])
       in
       scheduler.thread_safe_send_emit_events_job job
     done

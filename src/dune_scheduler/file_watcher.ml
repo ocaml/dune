@@ -632,25 +632,14 @@ let create_fswatch_win ~(scheduler : Scheduler.t) ~debounce_interval:sleep ~shou
   { kind = Fswatch_win { t; scheduler }; sync_table }
 ;;
 
-let create_external ~root ~debounce_interval ~scheduler ~backend =
-  match debounce_interval with
-  | None -> create_no_buffering ~root ~scheduler ~backend
-  | Some debounce_interval ->
-    with_buffering
-      ~scheduler
-      ~debounce_interval
-      ~create:(create_no_buffering ~root)
-      ~backend
-;;
-
 let create_default ?fsevents_debounce ~watch_exclusions ~scheduler () =
   let should_exclude = create_should_exclude_predicate ~watch_exclusions in
   match select_watcher_backend () with
   | `Fswatch _ as backend ->
-    create_external
+    with_buffering
       ~scheduler
-      ~root:Path.root
-      ~debounce_interval:(Some (Time.Span.of_secs 0.5))
+      ~debounce_interval:(Time.Span.of_secs 0.5)
+      ~create:(create_no_buffering ~root:Path.root)
       ~backend
       ~watch_exclusions
   | `Fsevents -> create_fsevents ?latency:fsevents_debounce ~scheduler ~should_exclude ()

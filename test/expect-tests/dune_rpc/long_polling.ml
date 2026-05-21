@@ -385,16 +385,13 @@ let%expect_test "long polling - session close cancels in-flight poll" =
     Fiber.parallel_iter [ client; server ] ~f:(fun f -> f ())
   in
   Scheduler.run (Scheduler.create ()) run;
-  [%expect.unreachable]
-[@@expect.uncaught_exn
-  {|
-  (Test_scheduler.Never)
-  Trailing output
-  ---------------
-  client: poll received 1
-  client: closing channel
-  client: poll no more values
-  |}]
+  [%expect
+    {|
+    client: poll received 1
+    client: closing channel
+    server: finished.
+    client: poll no more values
+    |}]
 ;;
 
 let%expect_test "long polling - cancelling one poller does not stop another" =

@@ -13,7 +13,6 @@ end
 module Run : sig
   module Event : sig
     type t =
-      | Source_files_changed of { details_hum : string list }
       | Build_interrupted
       | Build_finish of Build_outcome.t
   end
@@ -122,7 +121,6 @@ module Build_loop : sig
   val pending_invalidation : t -> Memo.Invalidation.t
   val start_iteration : t -> changed_paths:Path.t list option -> unit
   val finish_iteration : t -> Build_outcome.t -> [ `Done | `Restart ]
-  val source_files_changed : t -> details_hum:string list -> unit
   val wait_for_build_input_change : t -> unit Fiber.t
 end
 

@@ -13,7 +13,7 @@ let rec poll_iter t step =
     else (
       let files = Memo.Invalidation.changed_paths invalidation in
       let details_hum = Memo.Invalidation.details_hum invalidation in
-      Scheduler.Build_loop.source_files_changed t ~details_hum;
+      Console.maybe_clear_screen ~details_hum;
       Memo.reset invalidation;
       Some files)
   in

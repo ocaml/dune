@@ -215,17 +215,15 @@ let%expect_test "long polling - client cancels while request is in-flight" =
          printfn "client: finishing session")
   in
   test ~init ~client ~handler ~private_menu:[ Poll sub_proc ] ();
-  [%expect.unreachable]
-[@@expect.uncaught_exn
-  {|
-      (Test_scheduler.Never)
-      Trailing output
-      ---------------
-      client: received 1
-      client: waiting for second value (that will never come)
-      client: cancelling
-      client: no more values
-      client: finishing session |}]
+  [%expect
+    {|
+    client: received 1
+    client: waiting for second value (that will never come)
+    client: cancelling
+    client: no more values
+    client: finishing session
+    server: finished.
+    |}]
 ;;
 
 let%expect_test "long polling - connection remains usable after in-flight cancel" =
@@ -261,19 +259,16 @@ let%expect_test "long polling - connection remains usable after in-flight cancel
     | Error error -> printfn "%s" (Dyn.to_string (Response.Error.to_dyn error))
   in
   test ~init ~client ~handler ~private_menu:[ Poll sub_proc; Request ping_decl ] ();
-  [%expect.unreachable]
-[@@expect.uncaught_exn
-  {|
-  (Test_scheduler.Never)
-  Trailing output
-  ---------------
-  client: poll received 1
-  client: waiting for second value
-  client: cancelling
-  client: poll no more values
-  client: cancelled poll returned
-  client: ping 42
-  |}]
+  [%expect
+    {|
+    client: poll received 1
+    client: waiting for second value
+    client: cancelling
+    client: poll no more values
+    client: cancelled poll returned
+    client: ping 42
+    server: finished.
+    |}]
 ;;
 
 let%expect_test "long polling - cancelled explicit poll id can be reused" =

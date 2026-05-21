@@ -254,7 +254,7 @@ module Run_once = struct
       - starting cancellations
       - terminating the scheduler on signals *)
   let rec iter (t : t) : Fiber.fill list =
-    t.build_loop.handler Tick;
+    Console.Status_line.refresh ();
     match Event.Queue.next t.events with
     | File_watcher_task job ->
       let events = job () in

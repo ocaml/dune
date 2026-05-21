@@ -127,10 +127,7 @@ end = struct
 end
 
 type kind =
-  | Fswatch of
-      { pid : Pid.t
-      ; wait_for_watches_established : unit -> unit
-      }
+  | Fswatch of { pid : Pid.t }
   | Fsevents of
       { mutable external_ : Fsevents.t Watch_trie.t
       ; dispatch_queue : Fsevents.Dispatch_queue.t
@@ -369,11 +366,11 @@ let spawn_external_watcher ~root ~backend ~watch_exclusions =
   let prog = Path.to_absolute_filename prog in
   let argv = prog :: args in
   let r_stdout, w_stdout = Unix.pipe () in
-  let stderr, wait = None, fun () -> () in
+  let stderr = None in
   let pid = Spawn.spawn () ~prog ~argv ~stdout:w_stdout ?stderr |> Pid.of_int in
   Unix.close w_stdout;
   Option.iter stderr ~f:Unix.close;
-  (Unix.in_channel_of_descr r_stdout, parse_line, wait), pid
+  (Unix.in_channel_of_descr r_stdout, parse_line), pid
 ;;
 
 let create_inotifylib_watcher ~sync_table ~(scheduler : Scheduler.t) should_exclude =
@@ -405,9 +402,7 @@ let create_inotifylib_watcher ~sync_table ~(scheduler : Scheduler.t) should_excl
 
 let create_no_buffering ~(scheduler : Scheduler.t) ~root ~backend ~watch_exclusions =
   let sync_table = Table.create (module String) 64 in
-  let (pipe, parse_line, wait), pid =
-    spawn_external_watcher ~root ~backend ~watch_exclusions
-  in
+  let (pipe, parse_line), pid = spawn_external_watcher ~root ~backend ~watch_exclusions in
   let worker_thread pipe =
     while true do
       (* This job runs on the scheduler thread because it uses [sync_table]. *)
@@ -434,7 +429,7 @@ let create_no_buffering ~(scheduler : Scheduler.t) ~root ~backend ~watch_exclusi
   let (_ : Thread.t) =
     Thread0.spawn ~name:"file-watcher" (fun () -> worker_thread pipe)
   in
-  { kind = Fswatch { pid; wait_for_watches_established = wait }; sync_table }
+  { kind = Fswatch { pid }; sync_table }
 ;;
 
 let with_buffering ~create ~(scheduler : Scheduler.t) ~debounce_interval =
@@ -670,15 +665,6 @@ let create_default ?fsevents_debounce ~watch_exclusions ~scheduler () =
       ~scheduler
       ~should_exclude
       ~debounce_interval:500 (* milliseconds *)
-;;
-
-let wait_for_initial_watches_established_blocking t =
-  match t.kind with
-  | Fswatch c -> c.wait_for_watches_established ()
-  | Fsevents _ | Inotify _ | Fswatch_win _ ->
-    (* no initial watches needed: all watches should be set up at the time just
-       before file access *)
-    ()
 ;;
 
 (* Return the parent directory of [ext] if [ext] denotes a file. *)

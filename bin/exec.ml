@@ -288,10 +288,8 @@ let exec_building_directly ~common ~config ~context ~prog ~args ~no_rebuild =
     let on_exit = Console.printf "Program exited with code [%d]" in
     Dune_engine.Build_loop.poll
     @@
-    let* () =
-      Fiber.return
-      @@ Console.maybe_clear_screen ~details_hum:[] config.terminal_persistence
-    in
+    let* () = Fiber.return () in
+    Console.maybe_clear_screen ~details_hum:[];
     Build.build_memo @@ step ~prog ~args ~common ~no_rebuild ~context ~on_exit
   | No ->
     Scheduler_setup.go_with_rpc_server ~common ~config

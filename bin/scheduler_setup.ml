@@ -1,9 +1,9 @@
 open Import
 open Scheduler
 
-let on_event ~terminal_persistence = function
+let on_event = function
   | Run.Event.Source_files_changed { details_hum } ->
-    Console.maybe_clear_screen terminal_persistence ~details_hum
+    Console.maybe_clear_screen ~details_hum
   | Build_interrupted ->
     Console.Status_line.set
       (Live
@@ -63,7 +63,6 @@ let go_without_rpc_server ~(common : Common.t) ~config:dune_config f =
     Dune_config.for_scheduler dune_config ~print_ctrl_c_warning:true ~watch_exclusions
   in
   Dune_rules.Clflags.concurrency := config.concurrency;
-  let on_event = on_event ~terminal_persistence:dune_config.terminal_persistence in
   Run.go config ~on_event f
 ;;
 
@@ -100,9 +99,5 @@ let go_with_rpc_server_and_console_status_reporting
     let* () = Root.Rpc.Global.ensure_ready () in
     run ()
   in
-  Run.go
-    config
-    ~file_watcher
-    ~on_event:(on_event ~terminal_persistence:dune_config.terminal_persistence)
-    run
+  Run.go config ~file_watcher ~on_event run
 ;;

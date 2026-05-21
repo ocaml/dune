@@ -244,11 +244,21 @@ let () =
     print [ Pp.verbatim full_msg ])
 ;;
 
-let maybe_clear_screen (terminal_persistence : Terminal_persistence.t) ~details_hum =
+let terminal_persistence = ref Terminal_persistence.Preserve
+
+let init (terminal_persistence' : Terminal_persistence.t) =
+  terminal_persistence := terminal_persistence';
+  match !terminal_persistence with
+  | Preserve -> ()
+  | Clear_on_rebuild -> reset ()
+  | Clear_on_rebuild_and_flush_history -> reset_flush_history ()
+;;
+
+let maybe_clear_screen ~details_hum =
   match Execution_env.inside_dune with
   | true -> (* Don't print anything here to make tests less verbose *) ()
   | false ->
-    (match terminal_persistence with
+    (match !terminal_persistence with
      | Clear_on_rebuild -> reset ()
      | Clear_on_rebuild_and_flush_history -> reset_flush_history ()
      | Preserve ->

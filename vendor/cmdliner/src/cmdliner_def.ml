@@ -110,7 +110,11 @@ module Arg_info = struct
       pos : pos_kind; (* positional arg kind. *)
       opt_kind : opt_kind; (* optional arg kind. *)
       opt_names : string list; (* names (for opt args). *)
-      opt_all : bool; } (* repeatable (for opt args). *)
+      opt_all : bool;  (* repeatable (for opt args). *)
+      opt_alias: string -> string option -> (string list, string) Result.t;
+    (* [opt_alias arg value], [arg] is the name of the argument,
+        and [value] is the possible value *)
+  }
 
   let make
       ?deprecated ?(absent = "") ?docs ?(doc_envs = []) ?(docv = "")
@@ -127,7 +131,8 @@ module Arg_info = struct
     in
     { id = Cmdliner_base.uid (); deprecated; absent = Doc absent;
       env; doc; docv; doc_envs; docs; pos = dumb_pos;
-      opt_kind = Flag; opt_names; opt_all = false; }
+      opt_kind = Flag; opt_names; opt_all = false;
+      opt_alias = fun _ _ -> Ok [] }
 
   let id i = i.id
   let deprecated i = i.deprecated
@@ -141,6 +146,7 @@ module Arg_info = struct
   let opt_kind i = i.opt_kind
   let opt_names i = i.opt_names
   let opt_all i = i.opt_all
+  let alias a = a.opt_alias
   let opt_name_sample i =
     (* First long or short name (in that order) in the list; this
        allows the client to control which name is shown *)
@@ -160,6 +166,7 @@ module Arg_info = struct
 
   let make_pos ~docv ~pos i = { i with pos; docv }
   let make_pos_abs ~docv ~absent ~pos i = { i with absent; pos; docv }
+  let aliases ~aliases a = {a with opt_alias = aliases;}
 
   let is_opt i = i.opt_names <> []
   let is_pos i = i.opt_names = []

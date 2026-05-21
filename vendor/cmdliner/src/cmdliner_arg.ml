@@ -174,6 +174,40 @@ let vflag_all v l =
 let parse_opt_value parse f v = match parse v with
 | Ok v -> v | Error err -> failwith (Cmdliner_msg.err_opt_parse f ~err)
 
+let alias_opt aliases a =
+  let docv = Cmdliner_def.Arg_info.docv a in
+  let a = Cmdliner_def.Arg_info.make_opt ~docv ~absent:Err ~kind:Opt a in
+  let aliases f = function
+    | Some o -> Ok (aliases o)
+    | None -> Error (Cmdliner_msg.err_opt_value_missing f)
+  in
+  let a = Cmdliner_def.Arg_info.aliases ~aliases a in
+  if Cmdliner_def.Arg_info.is_pos a then invalid_arg err_not_opt;
+  let convert ei cl =
+    match Cmdliner_def.Cline.get_opt_arg cl a with
+    | [] -> try_env ei a env_bool_parse ~absent:false
+    | [_] -> Ok true
+    | (_, f, _) :: (_ ,g, _) :: _  -> parse_error (Cmdliner_msg.err_opt_repeated f g)
+  in
+  Cmdliner_term.make (arg_to_args a (Conv none)) convert
+
+let alias aliases a =
+  let aliases f = function
+    | Some v -> Error (Cmdliner_msg.err_flag_value f v)
+    | None -> Ok aliases
+  in
+  let a = Cmdliner_def.Arg_info.aliases ~aliases a in
+  if Cmdliner_def.Arg_info.is_pos a then invalid_arg err_not_opt;
+  let convert ei cl =
+    match Cmdliner_def.Cline.get_opt_arg cl a with
+    | [] -> try_env ei a env_bool_parse ~absent:false
+    | [_, _, None] -> Ok true
+    | [_, f, Some v] -> parse_error (Cmdliner_msg.err_flag_value f v)
+    | (_, f, _) :: (_ , g, _) :: _  -> parse_error (Cmdliner_msg.err_opt_repeated f g)
+  in
+  Cmdliner_term.make (arg_to_args a (Conv none)) convert
+
+
 let opt ?vopt conv v a =
   if Cmdliner_def.Arg_info.is_pos a then invalid_arg err_not_opt else
   let absent = match Cmdliner_def.Arg_info.absent a with

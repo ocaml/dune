@@ -83,9 +83,4 @@ let of_list l =
   let add t (s, v) = match add t s v with `New t -> t | `Replaced (_, t) -> t in
   List.fold_left add empty l
 
-let legacy_prefixes ~env = match env "CMDLINER_LEGACY_PREFIXES" with
-| None -> false
-| Some s ->
-    match String.lowercase_ascii s with
-    | "true" | "yes" | "y" | "1" -> true
-    | _ -> false
+let legacy_prefixes ~env:_ = true

@@ -89,6 +89,7 @@ module Arg_info : sig
   val opt_name_sample : t -> string (* warning must be an opt arg *)
   val opt_kind : t -> opt_kind
   val pos_kind : t -> pos_kind
+  val alias : t -> string -> string option -> (string list, string) Result.t
 
   val make_req : t -> t
   val make_all_opts : t -> t
@@ -96,6 +97,7 @@ module Arg_info : sig
   val make_opt_all : docv:string -> absent:absence -> kind:opt_kind -> t -> t
   val make_pos : docv:string -> pos:pos_kind -> t -> t
   val make_pos_abs : docv:string -> absent:absence -> pos:pos_kind -> t -> t
+  val aliases : aliases:(string -> string option -> (string list, string) Result.t) -> t -> t
 
   val is_opt : t -> bool
   val is_pos : t -> bool

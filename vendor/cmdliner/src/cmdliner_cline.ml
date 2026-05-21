@@ -201,6 +201,11 @@ let parse_opt_args
                Cmdliner_def.Cline.get_opt_arg cline arg_info)
           in
           let cline = Cmdliner_def.Cline.add arg_info arg cline in
+          let errs, args =
+            match Cmdliner_def.Arg_info.alias arg_info name value with
+            | Ok l -> errs, l @ args
+            | Error err -> err :: errs, args
+          in
           loop errs (k + 1) comp cline pargs args
       | Error (`Not_found | `Ambiguous) when for_completion ->
           if not is_completion then

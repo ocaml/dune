@@ -18,6 +18,7 @@ module Rule = Rule
 module Target_promotion = Target_promotion
 module Build_context = Build_context
 module Build_config = Build_config
+module Build_loop = Build_loop
 module Build_system = Build_system
 module Build_system_error = Build_system_error
 module Load_rules = Load_rules

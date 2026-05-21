@@ -22,7 +22,7 @@ type 'build_arg pending_action_kind =
     with the outcome of their request. *)
 type 'build_arg pending_action =
   { kind : 'build_arg pending_action_kind
-  ; outcome : Scheduler.Run.Build_outcome.t Fiber.Ivar.t
+  ; outcome : Build_outcome.t Fiber.Ivar.t
   }
 
 val pending_action : 'build_arg t -> 'build_arg pending_action Fiber.t

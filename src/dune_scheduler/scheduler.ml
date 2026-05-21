@@ -32,7 +32,7 @@ let running_jobs_count (t : t) = Event.Queue.pending_jobs t.events
 exception Build_cancelled
 
 let cancelled () = raise (Memo.Non_reproducible Build_cancelled)
-let check_cancelled t = if Fiber.Cancel.fired t.cancel then cancelled ()
+let check_cancelled t = if Fiber.Cancel.fired t.build_loop.cancel then cancelled ()
 
 let check_point =
   let* () = Fiber.return () in
@@ -77,7 +77,7 @@ let wait_for_build_process t ~is_process_group_leader pid =
   let sigkill_alarm = ref None in
   let+ res, outcome =
     Fiber.Cancel.with_handler
-      t.cancel
+      t.build_loop.cancel
       ~on_cancel:(fun () ->
         if not Sys.win32 then Process_watcher.killall t.process_watcher Sys.sigterm;
         let sleep = Async_io.sleep t.async_io sigterm_grace_period in
@@ -193,8 +193,8 @@ let prepare (config : Config.t) ~(handler : Handler.t) ~events ~file_watcher =
   let cancel = Fiber.Cancel.create () in
   let process_watcher = Process_watcher.init events in
   let async_io = Async_io.create events in
-  let t =
-    { status =
+  let build_loop =
+    { Types.Scheduler.Build_loop.status =
         (* Slightly weird initialization happening here: for polling mode we
            initialize in "Building" state, immediately switch to Standing_by
            and then back to "Building". It would make more sense to start in
@@ -206,14 +206,18 @@ let prepare (config : Config.t) ~(handler : Handler.t) ~events ~file_watcher =
     ; run_id_state = Run_id.State.create ~watch_mode:(Option.is_some file_watcher)
     ; watch_restart_started_at = None
     ; watch_restart_files = None
+    ; handler
+    ; build_inputs_changed = Trigger.create ()
+    ; cancel
+    }
+  in
+  let t =
+    { build_loop
     ; job_throttle = Fiber.Throttle.create config.concurrency
     ; process_watcher
     ; events
-    ; handler
     ; file_watcher
     ; fs_syncs = Table.create (module File_watcher.Sync_id) 64
-    ; build_inputs_changed = Trigger.create ()
-    ; cancel
     ; thread_pool = lazy (Thread_pool.create ~min_workers:4 ~max_workers:50)
     ; signal_watcher
     ; async_io
@@ -250,7 +254,7 @@ module Run_once = struct
       - starting cancellations
       - terminating the scheduler on signals *)
   let rec iter (t : t) : Fiber.fill list =
-    t.handler Tick;
+    t.build_loop.handler Tick;
     match Event.Queue.next t.events with
     | File_watcher_task job ->
       let events = job () in
@@ -281,27 +285,29 @@ module Run_once = struct
     then iter t
     else (
       let now = Time.now () in
-      if Run_id.State.is_watch t.run_id_state
+      let build_loop = t.build_loop in
+      if Run_id.State.is_watch build_loop.run_id_state
       then (
-        let run_id = Run_id.State.next_to_start t.run_id_state in
+        let run_id = Run_id.State.next_to_start build_loop.run_id_state in
         let reasons = Memo.Invalidation.details_hum ~max_elements:max_int invalidation in
-        if Option.is_none t.watch_restart_started_at
-        then t.watch_restart_started_at <- Some now;
+        if Option.is_none build_loop.watch_restart_started_at
+        then build_loop.watch_restart_started_at <- Some now;
         Dune_trace.emit Build (fun () ->
           Dune_trace.Event.watch_build_restart
             ~run_id:(Run_id.to_int run_id)
             ~reasons
             ~at:now));
-      t.invalidation <- Memo.Invalidation.combine t.invalidation invalidation;
+      build_loop.invalidation
+      <- Memo.Invalidation.combine build_loop.invalidation invalidation;
       let fills =
-        match t.status with
+        match build_loop.status with
         | Restarting_build | Standing_by -> []
         | Building cancellation ->
-          t.handler Build_interrupted;
-          t.status <- Restarting_build;
+          build_loop.handler Build_interrupted;
+          build_loop.status <- Restarting_build;
           Fiber.Cancel.fire' cancellation
       in
-      let fills = Trigger.trigger t.build_inputs_changed @ fills in
+      let fills = Trigger.trigger build_loop.build_inputs_changed @ fills in
       match fills with
       | [] -> iter t
       | fills -> fills)
@@ -383,7 +389,91 @@ let flush_file_watcher_impl t =
 ;;
 
 let flush_file_watcher () = flush_file_watcher_impl (t ())
-let is_watch_mode () = Run_id.State.is_watch (t ()).run_id_state
+
+module Build_loop = struct
+  open Types.Scheduler.Build_loop
+
+  type nonrec t = t
+
+  type build_finish =
+    | Finished of { restart_duration : Time.Span.t option }
+    | Restarting
+
+  let is_watch_mode () = Run_id.State.is_watch (t ()).build_loop.run_id_state
+
+  let start_build () =
+    let build_loop = (t ()).build_loop in
+    let state, run_id = Run_id.State.start build_loop.run_id_state in
+    build_loop.run_id_state <- state;
+    run_id, `Changed_paths build_loop.watch_restart_files
+  ;;
+
+  let finish_build ~stop =
+    let build_loop = (t ()).build_loop in
+    let finish () =
+      let restart_duration =
+        Option.map build_loop.watch_restart_started_at ~f:(fun restart_started_at ->
+          Time.diff stop restart_started_at)
+      in
+      build_loop.watch_restart_started_at <- None;
+      build_loop.watch_restart_files <- None;
+      Finished { restart_duration }
+    in
+    match build_loop.status with
+    | Restarting_build -> Restarting
+    | Standing_by -> finish ()
+    | Building _ ->
+      build_loop.status <- Standing_by;
+      finish ()
+  ;;
+
+  let init () =
+    let+ () = Fiber.return () in
+    let scheduler = t () in
+    let t = scheduler.build_loop in
+    assert (
+      match t.status with
+      | Building _ -> true
+      | _ -> false);
+    t.status <- Standing_by;
+    t
+  ;;
+
+  let pending_invalidation t = t.invalidation
+
+  let start_iteration t ~changed_paths =
+    t.watch_restart_files <- changed_paths;
+    Option.iter changed_paths ~f:(fun (_ : Path.t list) ->
+      t.invalidation <- Memo.Invalidation.empty;
+      t.build_inputs_changed <- Trigger.create ());
+    (match t.status with
+     | Building _ -> assert false
+     | Standing_by | Restarting_build -> ());
+    let cancel = Fiber.Cancel.create () in
+    t.status <- Building cancel;
+    t.cancel <- cancel
+  ;;
+
+  let finish_iteration t res =
+    match t.status with
+    | Standing_by ->
+      t.handler (Build_finish res);
+      `Done
+    | Restarting_build -> `Restart
+    | Building _ ->
+      t.status <- Standing_by;
+      t.watch_restart_started_at <- None;
+      t.watch_restart_files <- None;
+      t.handler (Build_finish res);
+      `Done
+  ;;
+
+  let source_files_changed t ~details_hum =
+    t.handler (Source_files_changed { details_hum })
+  ;;
+
+  let wait_for_build_input_change t = Trigger.wait t.build_inputs_changed
+end
 
 module Run = struct
   exception Build_cancelled = Build_cancelled
@@ -400,97 +490,8 @@ module Run = struct
     | _, _ -> false
   ;;
 
-  module Build_outcome = Build_outcome
   module Event_queue = Event.Queue
   module Event = Handler.Event
-
-  let rec poll_iter t step =
-    t.watch_restart_files
-    <- (if Memo.Invalidation.is_empty t.invalidation
-        then (
-          Memo.Metrics.reset ();
-          None)
-        else (
-          let files = Memo.Invalidation.changed_paths t.invalidation in
-          let details_hum = Memo.Invalidation.details_hum t.invalidation in
-          t.handler (Source_files_changed { details_hum });
-          Memo.reset t.invalidation;
-          t.invalidation <- Memo.Invalidation.empty;
-          t.build_inputs_changed <- Trigger.create ();
-          Some files));
-    let cancel = Fiber.Cancel.create () in
-    t.status <- Building cancel;
-    t.cancel <- cancel;
-    let* res = step in
-    let res : Build_outcome.t =
-      match res with
-      | Error `Already_reported -> Failure
-      | Ok () -> Success
-    in
-    match t.status with
-    | Standing_by ->
-      t.handler (Build_finish res);
-      Fiber.return res
-    | Restarting_build -> poll_iter t step
-    | Building _ ->
-      t.status <- Standing_by;
-      t.watch_restart_started_at <- None;
-      t.watch_restart_files <- None;
-      t.handler (Build_finish res);
-      Fiber.return res
-  ;;
-
-  let poll_iter t step =
-    match t.status with
-    | Building _ | Restarting_build -> assert false
-    | Standing_by -> poll_iter t step
-  ;;
-
-  type step = (unit, [ `Already_reported ]) Result.t Fiber.t
-
-  let poll_init () =
-    let+ () = Fiber.return () in
-    let t = t () in
-    assert (
-      match t.status with
-      | Building _ -> true
-      | _ -> false);
-    t.status <- Standing_by;
-    t
-  ;;
-
-  (* Work we're allowed to do between successive polling iterations. this work
-     should be fast and never fail (within reason) *)
-  let run_when_idle () : unit =
-    Dune_trace.emit ~buffered:true Scheduler Dune_trace.Event.scheduler_idle;
-    Dune_trace.flush ()
-  ;;
-
-  let poll step =
-    let* t = poll_init () in
-    let rec loop () =
-      let* _res = poll_iter t step in
-      run_when_idle ();
-      let* () = Trigger.wait t.build_inputs_changed in
-      loop ()
-    in
-    loop ()
-  ;;
-
-  let poll_passive ~get_build_request =
-    let* t = poll_init () in
-    let rec loop () =
-      let* step, response_ivar = get_build_request in
-      (* Flush before to make the build reproducible. The passive watch mode is
-         designed for tests and We want to observe all the change made by the
-         test before starting the build. *)
-      let* () = flush_file_watcher () in
-      let* res = poll_iter t step in
-      let* () = Fiber.Ivar.fill response_ivar res in
-      loop ()
-    in
-    loop ()
-  ;;
 
   let go
         (config : Config.t)
@@ -554,46 +555,14 @@ let shutdown () =
   Event.Queue.send_shutdown t.events Requested
 ;;
 
-type build_finish =
-  | Finished of { restart_duration : Time.Span.t option }
-  | Restarting
-
-let start_build () =
-  let t = t () in
-  let state, run_id = Run_id.State.start t.run_id_state in
-  t.run_id_state <- state;
-  run_id
-;;
-
-let watch_restart_files () = (t ()).watch_restart_files
-
-let finish_build ~stop =
-  let t = t () in
-  let finish () =
-    let restart_duration =
-      Option.map t.watch_restart_started_at ~f:(fun restart_started_at ->
-        Time.diff stop restart_started_at)
-    in
-    t.watch_restart_started_at <- None;
-    t.watch_restart_files <- None;
-    Finished { restart_duration }
-  in
-  match t.status with
-  | Restarting_build -> Restarting
-  | Standing_by -> finish ()
-  | Building _ ->
-    t.status <- Standing_by;
-    finish ()
-;;
-
 let cancel_current_build () =
   let* () = Fiber.return () in
-  let t = t () in
-  match t.status with
+  let build_loop = (t ()).build_loop in
+  match build_loop.status with
   | Restarting_build | Standing_by -> Fiber.return ()
   | Building cancellation ->
-    t.handler Build_interrupted;
-    t.status <- Standing_by;
+    build_loop.handler Build_interrupted;
+    build_loop.status <- Standing_by;
     Fiber.Cancel.fire cancellation
 ;;
 
@@ -658,8 +627,8 @@ let set_fs_memo_impl = Fs_memo.set_impl
 module For_tests = struct
   let wait_for_build_input_change () =
     let* () = Fiber.return () in
-    let t = t () in
-    Trigger.wait t.build_inputs_changed
+    let build_loop = (t ()).build_loop in
+    Trigger.wait build_loop.build_inputs_changed
   ;;
 
   let inject_memo_invalidation invalidation =

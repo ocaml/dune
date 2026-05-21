@@ -1112,8 +1112,7 @@ let run f =
   in
   let open Fiber.O in
   let f () =
-    let run_id = Scheduler.start_build () in
-    let files = Scheduler.watch_restart_files () in
+    let run_id, `Changed_paths files = Scheduler.Build_loop.start_build () in
     let start = Time.now () in
     Dune_trace.emit ~buffered:false Build (fun () ->
       Dune_trace.Event.watch_build_start
@@ -1163,7 +1162,7 @@ let run f =
       | Watch _ -> Scheduler.flush_file_watcher ()
     in
     let stop = Time.now () in
-    (match Scheduler.finish_build ~stop with
+    (match Scheduler.Build_loop.finish_build ~stop with
      | Restarting -> ()
      | Finished { restart_duration } ->
        let alloc_summary =

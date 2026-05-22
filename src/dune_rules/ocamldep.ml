@@ -58,26 +58,24 @@ let ocamldep_action ~sandbox ~sctx ~dir ~ml_kind unit =
   in
   let+ action =
     let source = Option.value_exn (Module.source unit ~ml_kind) in
+    let env =
+      (* CR-someday rgrinberg: consider getting rid of this *)
+      Action_builder.of_memo
+        (let open Memo.O in
+         Super_context.env_node sctx ~dir >>= Env_node.external_env)
+    in
     Command.run'
       ~dir:(Path.build (Context.build_dir context))
+      ~sandbox
+      ~env
       ocamldep
       [ A "-modules"
       ; Command.Args.dyn flags
       ; Command.Ml_kind.flag ml_kind
       ; Dep (Module.File.path source)
       ]
-  and+ env =
-    (* CR-someday rgrinberg: consider getting rid of this *)
-    Action_builder.of_memo
-      (let open Memo.O in
-       Super_context.env_node sctx ~dir >>= Env_node.external_env)
   in
-  { Rule.Anonymous_action.action =
-      action |> Action.Full.add_env env |> Action.Full.add_sandbox sandbox
-  ; loc = Loc.none
-  ; dir
-  ; alias = None
-  }
+  { Rule.Anonymous_action.action; loc = Loc.none; dir; alias = None }
 ;;
 
 (* Top-level cache per (source path, ml_kind). Without it, each caller's

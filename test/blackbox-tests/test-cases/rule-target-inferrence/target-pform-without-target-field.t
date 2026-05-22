@@ -13,5 +13,6 @@ https://github.com/ocaml/dune/issues/12439.
   File "dune", line 3, characters 14-23:
   3 |   (write-file %{target} hello)))
                     ^^^^^^^^^
-  Error: You cannot use %{target} with inferred rules.
+  Error: You cannot use %{target} unless the rule has a (target ...) or
+  (targets ...) field.
   [1]

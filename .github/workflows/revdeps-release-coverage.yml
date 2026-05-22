@@ -28,11 +28,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ocaml-compiler: ["5.2"]
+        ocaml-compiler: ["5"]
         package:
           # Has a tight coupling with stdune
           - ocaml-lsp-server
-          # An important package, that also depends on dune-configurator
+          # An important package, that also depends on dune-configurator and has
+          # robust tests we want to run
           - lwt
           # The following set of packages gives us coverage for about 508 distinct
           # packages, based on running:

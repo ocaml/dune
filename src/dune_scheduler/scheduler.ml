@@ -205,7 +205,6 @@ let prepare (config : Config.t) ~(handler : Handler.t) ~events ~file_watcher =
     ; invalidation = Memo.Invalidation.empty
     ; run_id_state = Run_id.State.create ~watch_mode:(Option.is_some file_watcher)
     ; watch_restart_started_at = None
-    ; watch_restart_files = None
     ; handler
     ; build_inputs_changed = Trigger.create ()
     ; cancel
@@ -404,8 +403,9 @@ module Build_loop = struct
   let start_build () =
     let build_loop = (t ()).build_loop in
     let state, run_id = Run_id.State.start build_loop.run_id_state in
+    let restart = Option.is_some build_loop.watch_restart_started_at in
     build_loop.run_id_state <- state;
-    run_id, `Changed_paths build_loop.watch_restart_files
+    run_id, `Restart restart
   ;;
 
   let finish_build ~stop =
@@ -416,7 +416,6 @@ module Build_loop = struct
           Time.diff stop restart_started_at)
       in
       build_loop.watch_restart_started_at <- None;
-      build_loop.watch_restart_files <- None;
       Finished { restart_duration }
     in
     match build_loop.status with
@@ -441,11 +440,9 @@ module Build_loop = struct
 
   let pending_invalidation t = t.invalidation
 
-  let start_iteration t ~changed_paths =
-    t.watch_restart_files <- changed_paths;
-    Option.iter changed_paths ~f:(fun (_ : Path.t list) ->
-      t.invalidation <- Memo.Invalidation.empty;
-      t.build_inputs_changed <- Trigger.create ());
+  let start_iteration t =
+    t.invalidation <- Memo.Invalidation.empty;
+    t.build_inputs_changed <- Trigger.create ();
     (match t.status with
      | Building _ -> assert false
      | Standing_by | Restarting_build -> ());
@@ -461,7 +458,6 @@ module Build_loop = struct
     | Building _ ->
       t.status <- Standing_by;
       t.watch_restart_started_at <- None;
-      t.watch_restart_files <- None;
       `Done
   ;;
 

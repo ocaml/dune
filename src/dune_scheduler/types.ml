@@ -76,7 +76,6 @@ module Scheduler = struct
       ; mutable invalidation : Memo.Invalidation.t
       ; mutable run_id_state : Run_id.State.t
       ; mutable watch_restart_started_at : Time.t option
-      ; mutable watch_restart_files : Path.t list option
       ; handler : Handler.t
       ; mutable build_inputs_changed : Trigger.t
       ; mutable cancel : Fiber.Cancel.t

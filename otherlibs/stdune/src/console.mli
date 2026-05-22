@@ -85,7 +85,8 @@ val finish : unit -> unit
     ]} *)
 val print : User_message.Style.t Pp.t list -> unit
 
-val maybe_clear_screen : Terminal_persistence.t -> details_hum:string list -> unit
+val maybe_clear_screen : details_hum:string list -> unit
+val init : Terminal_persistence.t -> unit
 
 (** [printf fmt] is a convenient function for debugging. It formats a string and
     then print it raw followed by a newline. It is the same as:

@@ -688,12 +688,7 @@ module Dune_config = struct
   let init t ~watch =
     Config.init (String.Map.of_list_exn t.experimental);
     Console.Backend.set (Display.console_backend t.display);
-    if watch
-    then (
-      match t.terminal_persistence with
-      | Preserve -> ()
-      | Clear_on_rebuild -> Console.reset ()
-      | Clear_on_rebuild_and_flush_history -> Console.reset_flush_history ());
+    if watch then Console.init t.terminal_persistence;
     Stdune.Io.set_copy_impl Config.(get copy_file);
     Log.verbose
     := match t.display with

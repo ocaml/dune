@@ -42,6 +42,7 @@ val modules_rules
   -> dir:Path.Build.t
   -> Scope.t
   -> Modules.t
+  -> for_:Compilation_mode.t
   -> (Modules.t * Pp_spec.t) Memo.t
 
 (** Compute the ocaml flags based on the directory environment and a buildable

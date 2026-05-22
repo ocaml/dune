@@ -186,6 +186,7 @@ let executables_rules
         ~dir
         scope
         modules
+        ~for_
     in
     Modules.With_vlib.modules modules, pp
   in

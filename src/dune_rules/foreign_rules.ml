@@ -332,8 +332,7 @@ let build_c ~sctx ~dir ~expander ~include_flags (loc, (src : Foreign.Source.t), 
     sctx
     ~loc
     ~dir
-    (let open Action_builder.With_targets.O in
-     let src_path = Path.build (Foreign.Source.path src) in
+    (let src_path = Path.build (Foreign.Source.path src) in
      (* We have to execute the rule in the library directory as the .o is
         produced in the current directory *)
      let c_compiler =
@@ -350,16 +349,17 @@ let build_c ~sctx ~dir ~expander ~include_flags (loc, (src : Foreign.Source.t), 
      Command.run_dyn_prog
        ~dir:(Path.build dir)
        ~env
+         (* With sandboxing we get errors like: bar.c:2:19: fatal error:
+            foo.cxx: No such file or directory #include "foo.cxx". (These
+            errors happen only when compiling c files.) *)
+       ~sandbox:Sandbox_config.no_sandboxing
        c_compiler
-       ([ c_compile_args ~sctx ~dir ~expander ~src ~include_flags
-        ; Hidden_deps (Dep.Set.singleton (Dep.file_selector caml_headers))
-        ]
-        @ output_param
-        @ [ A "-c"; Dep src_path ])
-     (* With sandboxing we get errors like: bar.c:2:19: fatal error: foo.cxx:
-        No such file or directory #include "foo.cxx". (These errors happen only
-        when compiling c files.) *)
-     >>| Action.Full.add_sandbox Sandbox_config.no_sandboxing)
+       [ c_compile_args ~sctx ~dir ~expander ~src ~include_flags
+       ; Hidden_deps (Dep.Set.singleton (Dep.file_selector caml_headers))
+       ; S output_param
+       ; A "-c"
+       ; Dep src_path
+       ])
 ;;
 
 (* TODO: [requires] is a confusing name, probably because it's too general: it

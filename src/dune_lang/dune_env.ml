@@ -284,10 +284,12 @@ let config =
 let rule =
   enter
     (let+ pat =
-       keyword "_"
-       >>> return Any
-       <|> let+ p = Profile.decode in
-           Profile p
+       peek_exn
+       >>= function
+       | Atom (_, A "_") -> junk >>> return Any
+       | _ ->
+         let+ p = Profile.decode in
+         Profile p
      and+ configs = fields config in
      pat, configs)
 ;;

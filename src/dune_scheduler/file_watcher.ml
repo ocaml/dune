@@ -396,7 +396,7 @@ let create_inotifylib_watcher ~sync_table ~(scheduler : Scheduler.t) should_excl
           events)))
 ;;
 
-let with_buffering ~(scheduler : Scheduler.t) ~backend ~watch_exclusions =
+let create_external_fswatch ~(scheduler : Scheduler.t) ~backend ~watch_exclusions =
   let debounce_interval = Time.Span.of_secs 0.5 in
   let jobs = ref [] in
   let event_mtx = Mutex.create () in
@@ -404,34 +404,33 @@ let with_buffering ~(scheduler : Scheduler.t) ~backend ~watch_exclusions =
   let res =
     let sync_table = Table.create (module String) 64 in
     let pipe, pid = spawn_external_watcher ~backend ~watch_exclusions in
-    let worker_thread pipe =
-      while true do
-        (* This job runs on the scheduler thread because it uses [sync_table]. *)
-        let job =
-          match input_line pipe with
-          | exception End_of_file -> fun () -> [ Event.Watcher_terminated ]
-          | path_s ->
-            fun () ->
-              if Fs_sync.is_special_file ~path_as_reported_by_file_watcher:path_s
-              then (
-                match Fs_sync.consume_event sync_table path_s with
-                | None -> []
-                | Some id -> [ Event.Sync id ])
-              else (
-                let path = Path.Expert.try_localize_external (Path.of_string path_s) in
-                [ Fs_memo_event (Fs_memo_event.create ~kind:File_changed ~path) ])
-        in
-        Mutex.protect event_mtx (fun () ->
-          jobs := job :: !jobs;
-          Condition.signal event_cv)
-      done
-    in
     let (_ : Thread.t) =
-      Thread0.spawn ~name:"file-watcher" (fun () -> worker_thread pipe)
+      Thread0.spawn ~name:"file-watcher" (fun () ->
+        while true do
+          (* This job runs on the scheduler thread because it uses [sync_table]. *)
+          let job =
+            match input_line pipe with
+            | exception End_of_file -> fun () -> [ Event.Watcher_terminated ]
+            | path_s ->
+              fun () ->
+                if Fs_sync.is_special_file ~path_as_reported_by_file_watcher:path_s
+                then (
+                  match Fs_sync.consume_event sync_table path_s with
+                  | None -> []
+                  | Some id -> [ Event.Sync id ])
+                else (
+                  let path = Path.Expert.try_localize_external (Path.of_string path_s) in
+                  [ Fs_memo_event (Fs_memo_event.create ~kind:File_changed ~path) ])
+          in
+          Mutex.protect event_mtx (fun () ->
+            jobs := job :: !jobs;
+            Condition.signal event_cv)
+        done)
     in
     { kind = Fswatch { pid }; sync_table }
   in
-  (* The buffer thread is used to avoid flooding the main thread with file
+  let (_ : Thread.t) =
+    (* The buffer thread is used to avoid flooding the main thread with file
      changes events when a lot of file changes are reported at once. In
      particular, this avoids restarting the build over and over in a short
      period of time when many events are reported at once.
@@ -443,22 +442,23 @@ let with_buffering ~(scheduler : Scheduler.t) ~backend ~watch_exclusions =
 
      - after the first event is received, buffer subsequent events for
        [debounce_interval] *)
-  let rec buffer_thread () =
-    let jobs_batch =
-      Mutex.protect event_mtx (fun () ->
-        while List.is_empty !jobs do
-          Condition.wait event_cv event_mtx
-        done;
-        let jobs_batch = List.rev !jobs in
-        jobs := [];
-        jobs_batch)
+    let rec buffer_thread () =
+      let jobs_batch =
+        Mutex.protect event_mtx (fun () ->
+          while List.is_empty !jobs do
+            Condition.wait event_cv event_mtx
+          done;
+          let jobs_batch = List.rev !jobs in
+          jobs := [];
+          jobs_batch)
+      in
+      scheduler.thread_safe_send_emit_events_job (fun () ->
+        List.concat_map jobs_batch ~f:(fun job -> job ()));
+      Thread.delay (Time.Span.to_secs debounce_interval);
+      buffer_thread ()
     in
-    scheduler.thread_safe_send_emit_events_job (fun () ->
-      List.concat_map jobs_batch ~f:(fun job -> job ()));
-    Thread.delay (Time.Span.to_secs debounce_interval);
-    buffer_thread ()
+    Thread0.spawn ~name:"file-watcher-buffer" buffer_thread
   in
-  let (_ : Thread.t) = Thread0.spawn ~name:"file-watcher-buffer" buffer_thread in
   res
 ;;
 
@@ -628,7 +628,7 @@ let create_fswatch_win ~(scheduler : Scheduler.t) ~debounce_interval:sleep ~shou
 let create_default ?fsevents_debounce ~watch_exclusions ~scheduler () =
   let should_exclude = create_should_exclude_predicate ~watch_exclusions in
   match select_watcher_backend () with
-  | `Fswatch _ as backend -> with_buffering ~scheduler ~backend ~watch_exclusions
+  | `Fswatch _ as backend -> create_external_fswatch ~scheduler ~backend ~watch_exclusions
   | `Fsevents -> create_fsevents ?latency:fsevents_debounce ~scheduler ~should_exclude ()
   | `Inotify_lib -> create_inotifylib ~scheduler ~should_exclude
   | `Fswatch_win ->

@@ -172,7 +172,6 @@ let ocamlmklib
         ~f:(cclibs ocaml.lib_config.ccomp_type ~flag:"-ldopt")
     in
     fun ~custom ~sandbox targets ->
-      let open Action_builder.With_targets.O in
       let ctx = Super_context.context sctx in
       [ Command.Args.A "-g"
       ; (if custom then A "-custom" else Command.Args.empty)
@@ -185,8 +184,7 @@ let ocamlmklib
       ; Dyn cclibs
       ; Hidden_targets targets
       ]
-      |> Command.run ~dir:(Path.build (Context.build_dir ctx)) ocaml.ocamlmklib
-      >>| Action.Full.add_sandbox sandbox
+      |> Command.run ~dir:(Path.build (Context.build_dir ctx)) ~sandbox ocaml.ocamlmklib
       |> Super_context.add_rule sctx ~dir ~loc
   in
   let { Lib_config.ext_lib; ext_dll; _ } = ocaml.lib_config in

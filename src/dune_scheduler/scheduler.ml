@@ -468,10 +468,6 @@ module Build_loop = struct
       `Done
   ;;
 
-  let source_files_changed t ~details_hum =
-    t.handler (Source_files_changed { details_hum })
-  ;;
-
   let wait_for_build_input_change t = Trigger.wait t.build_inputs_changed
 end
 

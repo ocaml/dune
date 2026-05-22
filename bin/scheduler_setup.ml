@@ -2,9 +2,7 @@ open Import
 open Scheduler
 
 let on_event = function
-  | Run.Event.Source_files_changed { details_hum } ->
-    Console.maybe_clear_screen ~details_hum
-  | Build_interrupted ->
+  | Run.Event.Build_interrupted ->
     Console.Status_line.set
       (Live
          (fun () ->

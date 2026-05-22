@@ -12,9 +12,7 @@ end
 
 module Run : sig
   module Event : sig
-    type t =
-      | Build_interrupted
-      | Build_finish of Build_outcome.t
+    type t = Build_interrupted
   end
 
   type file_watcher =
@@ -120,7 +118,7 @@ module Build_loop : sig
   val init : unit -> t Fiber.t
   val pending_invalidation : t -> Memo.Invalidation.t
   val start_iteration : t -> changed_paths:Path.t list option -> unit
-  val finish_iteration : t -> Build_outcome.t -> [ `Done | `Restart ]
+  val finish_iteration : t -> [ `Done | `Restart ]
   val wait_for_build_input_change : t -> unit Fiber.t
 end
 

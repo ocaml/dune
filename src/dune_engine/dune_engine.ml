@@ -35,4 +35,5 @@ module No_io = No_io
 module Action_exec = Action_exec
 module Running_jobs = Running_jobs
 module Rule_cache = Rule_cache
+module Build_outcome = Build_outcome
 module Fs = Fs

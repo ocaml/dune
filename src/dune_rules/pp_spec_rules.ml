@@ -354,6 +354,7 @@ let pp_one_module
                    in
                    Command.run'
                      ~dir
+                     ~sandbox
                      ~env
                      (Ok (Path.build exe))
                      [ As args
@@ -368,8 +369,7 @@ let pp_one_module
                           |> Dep.file
                           |> Dep.Set.singleton)
                      ; As flags
-                     ]
-                   >>| Action.Full.add_sandbox sandbox)))))
+                     ])))))
 ;;
 
 let make

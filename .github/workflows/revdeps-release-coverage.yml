@@ -13,8 +13,8 @@ name: Revdep Packages
 
 on:
   push:
-    # branches:
-    #   - '*-rc'
+    branches:
+      - '*-rc'
   workflow_dispatch:
  
 permissions:

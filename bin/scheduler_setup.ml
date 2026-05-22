@@ -21,23 +21,6 @@ let on_event = function
                    ", restarting current build... (%u/%u)"
                    progression.number_of_rules_executed
                    progression.number_of_rules_discovered))))
-  | Build_finish build_result ->
-    let message =
-      match build_result with
-      | Success -> Pp.tag User_message.Style.Success (Pp.verbatim "Success")
-      | Failure ->
-        let failure_message =
-          match
-            Build_system_error.(
-              Id.Map.cardinal (Set.current (Fiber.Svar.read Build_system.errors)))
-          with
-          | 1 -> Pp.textf "Had 1 error"
-          | n -> Pp.textf "Had %d errors" n
-        in
-        Pp.tag User_message.Style.Error failure_message
-    in
-    Console.Status_line.set
-      (Constant (Pp.seq message (Pp.verbatim ", waiting for filesystem changes...")))
 ;;
 
 let rpc server =

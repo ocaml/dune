@@ -8,6 +8,7 @@ include struct
   module Build_system = Build_system
   module Build_system_error = Build_system_error
   module Running_jobs = Running_jobs
+  module Build_outcome = Build_outcome
 end
 
 include struct

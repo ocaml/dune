@@ -3,6 +3,25 @@ open Fiber.O
 
 type step = (unit, [ `Already_reported ]) Result.t Fiber.t
 
+let build_finish (build_result : Build_outcome.t) =
+  let message =
+    match build_result with
+    | Success -> Pp.tag User_message.Style.Success (Pp.verbatim "Success")
+    | Failure ->
+      let failure_message =
+        match
+          Build_system_error.(
+            Id.Map.cardinal (Set.current (Fiber.Svar.read Build_system.errors)))
+        with
+        | 1 -> Pp.textf "Had 1 error"
+        | n -> Pp.textf "Had %d errors" n
+      in
+      Pp.tag User_message.Style.Error failure_message
+  in
+  Console.Status_line.set
+    (Constant (Pp.seq message (Pp.verbatim ", waiting for filesystem changes...")))
+;;
+
 let rec poll_iter t step =
   let invalidation = Scheduler.Build_loop.pending_invalidation t in
   let changed_paths =
@@ -24,9 +43,11 @@ let rec poll_iter t step =
     | Error `Already_reported -> Failure
     | Ok () -> Success
   in
-  match Scheduler.Build_loop.finish_iteration t res with
-  | `Done -> Fiber.return res
+  match Scheduler.Build_loop.finish_iteration t with
   | `Restart -> poll_iter t step
+  | `Done ->
+    build_finish res;
+    Fiber.return res
 ;;
 
 (* Work we're allowed to do between successive polling iterations. this work

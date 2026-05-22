@@ -454,17 +454,14 @@ module Build_loop = struct
     t.cancel <- cancel
   ;;
 
-  let finish_iteration t res =
+  let finish_iteration t =
     match t.status with
-    | Standing_by ->
-      t.handler (Build_finish res);
-      `Done
+    | Standing_by -> `Done
     | Restarting_build -> `Restart
     | Building _ ->
       t.status <- Standing_by;
       t.watch_restart_started_at <- None;
       t.watch_restart_files <- None;
-      t.handler (Build_finish res);
       `Done
   ;;
 

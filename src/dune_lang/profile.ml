@@ -31,15 +31,25 @@ include (
     let module_ = "Profile"
 
     let of_string_opt p =
-      (* TODO actually validate *)
-      Some
-        (match p with
-         | "dev" -> Dev
-         | "release" -> Release
-         | s -> User_defined s)
+      let is_valid_char = function
+        | 'a' .. 'z' | 'A' .. 'Z' | '0' .. '9' | '_' | '-' -> true
+        | _ -> false
+      in
+      let is_valid_string s = s <> "" && String.for_all s ~f:is_valid_char in
+      match p with
+      | "dev" -> Some Dev
+      | "release" -> Some Release
+      | "_" -> None
+      | s -> if is_valid_string s then Some (User_defined s) else None
     ;;
 
-    let description_of_valid_string = None
+    let description_of_valid_string =
+      Some
+        (Pp.text
+           "Profile names must be non-empty and can only contain letters, digits, '_' \
+            and '-'. The name '_' is reserved as a wildcard.")
+    ;;
+
     let hint_valid = None
 
     let to_string = function

@@ -85,6 +85,11 @@ module Scheduler = struct
       }
   end
 
+  type signal_interruptions =
+    { timestamps : Time.t Queue.t
+    ; print_ctrl_c_warning : bool
+    }
+
   type t =
     { build_loop : Build_loop.t
     ; job_throttle : Fiber.Throttle.t
@@ -93,8 +98,8 @@ module Scheduler = struct
     ; file_watcher : File_watcher.t option
     ; fs_syncs : (File_watcher.Sync_id.t, unit Fiber.Ivar.t) Table.t
     ; thread_pool : Thread_pool.t Lazy.t
-    ; signal_watcher : Thread.t
     ; async_io : Async_io.t
+    ; signal_interruptions : signal_interruptions
     }
 
   let current : t option ref = ref None

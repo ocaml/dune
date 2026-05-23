@@ -345,41 +345,108 @@ CAMLprim value dune_fsevents_flush_sync(value v_t) {
   CAMLreturn(Val_unit);
 }
 
+// Keep in sync with the Event.Kind.t variant in fsevents.ml.
+enum dune_fsevents_kind_tag {
+  DUNE_FSEVENTS_KIND_DIR = 0,
+  DUNE_FSEVENTS_KIND_FILE = 1,
+  DUNE_FSEVENTS_KIND_DIR_AND_DESCENDANTS = 2,
+};
+
+static value dune_fsevents_kind_of_flags(FSEventStreamEventFlags flags) {
+  if (flags & kFSEventStreamEventFlagMustScanSubDirs) {
+    return Val_int(DUNE_FSEVENTS_KIND_DIR_AND_DESCENDANTS);
+  } else if (flags & kFSEventStreamEventFlagItemIsDir) {
+    return Val_int(DUNE_FSEVENTS_KIND_DIR);
+  } else {
+    return Val_int(DUNE_FSEVENTS_KIND_FILE);
+  }
+}
+
 CAMLprim value dune_fsevents_kind(value v_flags) {
   CAMLparam1(v_flags);
-  CAMLlocal1(v_kind);
-  uint32_t flags = Int32_val(v_flags);
-  if (flags & kFSEventStreamEventFlagItemIsDir) {
-    v_kind = Val_int(flags & kFSEventStreamEventFlagMustScanSubDirs ? 2 : 0);
-  } else {
-    v_kind = Val_int(1);
-  };
-  CAMLreturn(v_kind);
+  CAMLreturn(dune_fsevents_kind_of_flags(Int32_val(v_flags)));
 }
 
 static const FSEventStreamEventFlags action_mask =
     kFSEventStreamEventFlagItemCreated | kFSEventStreamEventFlagItemRemoved |
     kFSEventStreamEventFlagItemRenamed | kFSEventStreamEventFlagItemModified;
 
+// Keep in sync with the Event.action variant in fsevents.ml.
+enum dune_fsevents_action_tag {
+  DUNE_FSEVENTS_ACTION_CREATE = 0,
+  DUNE_FSEVENTS_ACTION_REMOVE = 1,
+  DUNE_FSEVENTS_ACTION_MODIFY = 2,
+  DUNE_FSEVENTS_ACTION_RENAME = 3,
+  DUNE_FSEVENTS_ACTION_UNKNOWN = 4,
+};
+
+static value dune_fsevents_action_of_flags(FSEventStreamEventFlags flags) {
+  flags &= action_mask;
+  if (flags == kFSEventStreamEventFlagItemCreated) {
+    return Val_int(DUNE_FSEVENTS_ACTION_CREATE);
+  } else if (flags == kFSEventStreamEventFlagItemRemoved) {
+    return Val_int(DUNE_FSEVENTS_ACTION_REMOVE);
+  } else if (flags == kFSEventStreamEventFlagItemModified) {
+    return Val_int(DUNE_FSEVENTS_ACTION_MODIFY);
+  } else if (flags == kFSEventStreamEventFlagItemRenamed) {
+    return Val_int(DUNE_FSEVENTS_ACTION_RENAME);
+  } else {
+    return Val_int(DUNE_FSEVENTS_ACTION_UNKNOWN);
+  }
+}
+
 CAMLprim value dune_fsevents_action(value v_flags) {
   CAMLparam1(v_flags);
-  CAMLlocal1(v_action);
-
-  uint32_t flags = Int32_val(v_flags) & action_mask;
-  if (flags & kFSEventStreamEventFlagItemCreated) {
-    v_action = Val_int(0);
-  } else if (flags & kFSEventStreamEventFlagItemRemoved) {
-    v_action = Val_int(1);
-  } else if (flags & kFSEventStreamEventFlagItemModified) {
-    v_action = Val_int(2);
-  } else if (flags & kFSEventStreamEventFlagItemRenamed) {
-    v_action = Val_int(3);
-  } else {
-    v_action = Val_int(4);
-  }
-
-  CAMLreturn(v_action);
+  CAMLreturn(dune_fsevents_action_of_flags(Int32_val(v_flags)));
 }
+
+typedef struct dune_fsevents_flag_example {
+  const char *name;
+  FSEventStreamEventFlags flags;
+} dune_fsevents_flag_example;
+
+static const dune_fsevents_flag_example flag_examples[] = {
+    {"created_file", kFSEventStreamEventFlagItemCreated |
+                         kFSEventStreamEventFlagItemIsFile},
+    {"removed_file", kFSEventStreamEventFlagItemRemoved |
+                         kFSEventStreamEventFlagItemIsFile},
+    {"modified_file", kFSEventStreamEventFlagItemModified |
+                          kFSEventStreamEventFlagItemIsFile},
+    {"renamed_file", kFSEventStreamEventFlagItemRenamed |
+                         kFSEventStreamEventFlagItemIsFile},
+    {"created_dir", kFSEventStreamEventFlagItemCreated |
+                        kFSEventStreamEventFlagItemIsDir},
+    {"must_scan_subdirs", kFSEventStreamEventFlagMustScanSubDirs},
+    {"must_scan_dir", kFSEventStreamEventFlagMustScanSubDirs |
+                          kFSEventStreamEventFlagItemIsDir},
+    {"created_and_modified", kFSEventStreamEventFlagItemCreated |
+                               kFSEventStreamEventFlagItemModified |
+                               kFSEventStreamEventFlagItemIsFile},
+    {"removed_and_renamed", kFSEventStreamEventFlagItemRemoved |
+                             kFSEventStreamEventFlagItemRenamed |
+                             kFSEventStreamEventFlagItemIsFile},
+};
+
+CAMLprim value dune_fsevents_flag_examples(value v_unit) {
+  CAMLparam1(v_unit);
+  CAMLlocal5(v_list, v_cons, v_tuple, v_name, v_flags);
+  size_t len = sizeof(flag_examples) / sizeof(dune_fsevents_flag_example);
+  v_list = Val_emptylist;
+  for (size_t i = len; i > 0; i--) {
+    dune_fsevents_flag_example example = flag_examples[i - 1];
+    v_name = caml_copy_string(example.name);
+    v_flags = caml_copy_int32(example.flags);
+    v_tuple = caml_alloc_tuple(2);
+    Store_field(v_tuple, 0, v_name);
+    Store_field(v_tuple, 1, v_flags);
+    v_cons = caml_alloc(2, 0);
+    Store_field(v_cons, 0, v_tuple);
+    Store_field(v_cons, 1, v_list);
+    v_list = v_cons;
+  }
+  CAMLreturn(v_list);
+}
+
 static const FSEventStreamEventFlags all_flags[] = {
     kFSEventStreamEventFlagMustScanSubDirs,
     kFSEventStreamEventFlagUserDropped,
@@ -469,6 +536,10 @@ CAMLprim value dune_fsevents_kind(value v_flags) {
 }
 CAMLprim value dune_fsevents_action(value v_flags) {
   (void)v_flags;
+  caml_failwith(unavailable_message);
+}
+CAMLprim value dune_fsevents_flag_examples(value v_unit) {
+  (void)v_unit;
   caml_failwith(unavailable_message);
 }
 CAMLprim value dune_fsevents_raw(value v_flags) {

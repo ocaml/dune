@@ -506,8 +506,8 @@ let create_fsevents ?(latency = Time.Span.of_secs 0.2) ~event_queue ~should_excl
            match Fsevents.Event.action event with
            | Remove -> None
            | Rename | Unknown | Create | Modify ->
-             Option.map (Fs_sync.consume_event sync_table path) ~f:(fun id ->
-               Event.Sync id)))
+             Fs_sync.consume_event sync_table path
+             |> Option.map ~f:(fun id -> Event.Sync id)))
   in
   let on_event = fsevents_standard_event ~should_exclude in
   let source =

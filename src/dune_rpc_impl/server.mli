@@ -9,6 +9,7 @@ val create
   :  lock_timeout:Time.Span.t option
   -> registry:[ `Add | `Skip ]
   -> root:string
+  -> Watch_mode_config.t
   -> Dune_lang.Dep_conf.t t
 
 type 'build_arg pending_action_kind =

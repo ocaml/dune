@@ -1178,7 +1178,11 @@ let build (root : Workspace_root.t) (builder : Builder.t) =
              | Yes Passive -> Some (Time.Span.of_secs 1.0)
              | _ -> None
            in
-           Dune_rpc_impl.Server.create ~lock_timeout ~registry ~root:root.dir))
+           Dune_rpc_impl.Server.create
+             ~lock_timeout
+             ~registry
+             ~root:root.dir
+             builder.watch))
     else `Forbid_builds
   in
   { builder; root; rpc }

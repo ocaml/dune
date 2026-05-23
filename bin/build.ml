@@ -1,7 +1,8 @@
 open Import
 
-let run_build_system ~request =
+let run_build_system ~run_id ~request =
   Dune_engine.Build_system.run_action_builder
+    ~run_id
     (let open Action_builder.O in
      Action_builder.of_memo (Util.setup ()) >>= request)
 ;;
@@ -16,17 +17,20 @@ let poll_handling_rpc_build_requests ~(common : Common.t) =
   Dune_engine.Build_loop.poll_passive
     ~get_build_request:
       (let+ { kind; outcome } = Dune_rpc_impl.Server.pending_action rpc in
-       let request setup =
-         let root = Common.root common in
-         match kind with
-         | Build targets -> Target.interpret_targets (Common.root common) setup targets
-         | Runtest test_paths ->
-           Runtest_common.make_request
-             ~scontexts:setup.scontexts
-             ~to_cwd:root.to_cwd
-             ~test_paths
-       in
-       run_build_system ~request, outcome)
+       ( (fun ~run_id ->
+           let request setup =
+             let root = Common.root common in
+             match kind with
+             | Build targets ->
+               Target.interpret_targets (Common.root common) setup targets
+             | Runtest test_paths ->
+               Runtest_common.make_request
+                 ~scontexts:setup.scontexts
+                 ~to_cwd:root.to_cwd
+                 ~test_paths
+           in
+           run_build_system ~run_id ~request)
+       , outcome ))
 ;;
 
 let run_build_command_poll_eager ~(common : Common.t) ~config ~request : unit =
@@ -36,9 +40,10 @@ let run_build_command_poll_eager ~(common : Common.t) ~config ~request : unit =
     (fun () ->
        let open Fiber.O in
        (* Run two fibers concurrently. One is responible for rebuilding targets
-       named on the command line in reaction to file system changes. The other
-       is responsible for building targets named in RPC build requests. *)
-       let+ () = Dune_engine.Build_loop.poll (run_build_system ~request)
+          named on the command line in reaction to file system changes. The other
+          is responsible for building targets named in RPC build requests. *)
+       let+ () =
+         Dune_engine.Build_loop.poll (fun ~run_id -> run_build_system ~run_id ~request)
        and+ () = poll_handling_rpc_build_requests ~common in
        ())
 ;;
@@ -55,7 +60,7 @@ let run_build_command_poll_passive ~common ~config ~request:_ : unit =
 let run_build_command_once ~(common : Common.t) ~config ~request =
   let open Fiber.O in
   let once () =
-    run_build_system ~request
+    run_build_system ~run_id:Dune_engine.Run_id.Batch ~request
     >>| function
     | Error `Already_reported -> raise Dune_util.Report_error.Already_reported
     | Ok () -> ()

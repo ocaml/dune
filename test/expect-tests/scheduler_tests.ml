@@ -30,18 +30,18 @@ let%expect_test "cancelling a build" =
   go (fun () ->
     Fiber.fork_and_join_unit
       (fun () ->
-         Build_loop.poll
-           (let* () = Fiber.Ivar.fill build_started () in
-            let* () = Fiber.Ivar.read build_cancelled in
-            let* res =
-              Fiber.collect_errors (fun () -> Scheduler.with_job_slot Fiber.return)
-            in
-            print_endline
-              (match res with
-               | Ok () -> "FAIL: build wasn't cancelled"
-               | Error _ -> "PASS: build was cancelled");
-            let () = Scheduler.shutdown () in
-            Fiber.never))
+         Build_loop.poll (fun ~run_id:_ ->
+           let* () = Fiber.Ivar.fill build_started () in
+           let* () = Fiber.Ivar.read build_cancelled in
+           let* res =
+             Fiber.collect_errors (fun () -> Scheduler.with_job_slot Fiber.return)
+           in
+           print_endline
+             (match res with
+              | Ok () -> "FAIL: build wasn't cancelled"
+              | Error _ -> "PASS: build was cancelled");
+           let () = Scheduler.shutdown () in
+           Fiber.never))
       (fun () ->
          let* () = Fiber.Ivar.read build_started in
          let* () =
@@ -61,9 +61,9 @@ let%expect_test "cancelling a build: effect on other fibers" =
   go (fun () ->
     Fiber.fork_and_join_unit
       (fun () ->
-         Build_loop.poll
-           (let* () = Fiber.Ivar.fill build_started () in
-            Fiber.never))
+         Build_loop.poll (fun ~run_id:_ ->
+           let* () = Fiber.Ivar.fill build_started () in
+           Fiber.never))
       (fun () ->
          let* () = Fiber.Ivar.read build_started in
          let* () =

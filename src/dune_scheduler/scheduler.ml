@@ -24,7 +24,6 @@ end
 
 let spawn_thread ~name f = Thread0.spawn ~name f
 
-module Run_id = Run_id
 include Types.Scheduler
 
 let running_jobs_count (t : t) = Event.Queue.pending_jobs t.events
@@ -203,7 +202,6 @@ let prepare (config : Config.t) ~(handler : Handler.t) ~events ~file_watcher =
            mode, which is even weirder. *)
         Building cancel
     ; invalidation = Memo.Invalidation.empty
-    ; run_id_state = Run_id.State.create ~watch_mode:(Option.is_some file_watcher)
     ; watch_restart_started_at = None
     ; handler
     ; build_inputs_changed = Trigger.create ()
@@ -285,17 +283,8 @@ module Run_once = struct
     else (
       let now = Time.now () in
       let build_loop = t.build_loop in
-      if Run_id.State.is_watch build_loop.run_id_state
-      then (
-        let run_id = Run_id.State.next_to_start build_loop.run_id_state in
-        let reasons = Memo.Invalidation.details_hum ~max_elements:max_int invalidation in
-        if Option.is_none build_loop.watch_restart_started_at
-        then build_loop.watch_restart_started_at <- Some now;
-        Dune_trace.emit Build (fun () ->
-          Dune_trace.Event.watch_build_restart
-            ~run_id:(Run_id.to_int run_id)
-            ~reasons
-            ~at:now));
+      if Option.is_none build_loop.watch_restart_started_at
+      then build_loop.watch_restart_started_at <- Some now;
       build_loop.invalidation
       <- Memo.Invalidation.combine build_loop.invalidation invalidation;
       let fills =
@@ -400,10 +389,8 @@ module Build_loop = struct
 
   let start_build () =
     let build_loop = (t ()).build_loop in
-    let state, run_id = Run_id.State.start build_loop.run_id_state in
     let restart = Option.is_some build_loop.watch_restart_started_at in
-    build_loop.run_id_state <- state;
-    run_id, `Restart restart
+    `Restart restart
   ;;
 
   let finish_build ~stop =

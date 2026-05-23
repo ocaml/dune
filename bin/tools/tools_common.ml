@@ -22,7 +22,7 @@ let dev_tool_build_target dev_tool =
 let build_dev_tool_directly dev_tool =
   let open Fiber.O in
   let+ result =
-    Build.run_build_system ~request:(fun _build_system ->
+    Build.run_build_system ~run_id:Dune_engine.Run_id.Batch ~request:(fun _build_system ->
       let open Action_builder.O in
       let* () = dev_tool |> Lock_dev_tool.lock_dev_tool |> Action_builder.of_memo in
       (* Make sure the tool's lockdir is generated before building the tool. *)

@@ -1,7 +1,7 @@
 open Import
 
 (** A build request run by the watch-mode build loop. *)
-type step = (unit, [ `Already_reported ]) Result.t Fiber.t
+type step = run_id:Run_id.t -> (unit, [ `Already_reported ]) Result.t Fiber.t
 
 (** [poll step] runs [step] in a loop.
 

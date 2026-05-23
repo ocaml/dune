@@ -1,7 +1,9 @@
 open Import
 open Fiber.O
 
-type step = (unit, [ `Already_reported ]) Result.t Fiber.t
+type step = run_id:Run_id.t -> (unit, [ `Already_reported ]) Result.t Fiber.t
+
+let next_run_id = ref 1
 
 let build_finish (build_result : Build_outcome.t) =
   let message =
@@ -23,23 +25,34 @@ let build_finish (build_result : Build_outcome.t) =
 ;;
 
 let rec poll_iter t step =
+  let run_id =
+    let run_id = Run_id.Watch !next_run_id in
+    incr next_run_id;
+    run_id
+  in
   let invalidation = Scheduler.Build_loop.pending_invalidation t in
   if Memo.Invalidation.is_empty invalidation
   then Memo.Metrics.reset ()
   else (
+    Dune_trace.emit Build (fun () ->
+      let reasons = Memo.Invalidation.details_hum ~max_elements:max_int invalidation in
+      Dune_trace.Event.watch_build_restart
+        ~run_id:(Run_id.to_int run_id)
+        ~reasons
+        ~at:(Time.now ()));
     let details_hum = Memo.Invalidation.details_hum invalidation in
     Console.maybe_clear_screen ~details_hum;
     Memo.reset invalidation);
   Scheduler.Build_loop.start_iteration t;
-  let* res = step in
-  let res : Build_outcome.t =
-    match res with
-    | Error `Already_reported -> Failure
-    | Ok () -> Success
-  in
+  let* res = step ~run_id in
   match Scheduler.Build_loop.finish_iteration t with
   | `Restart -> poll_iter t step
   | `Done ->
+    let res : Build_outcome.t =
+      match res with
+      | Error `Already_reported -> Failure
+      | Ok () -> Success
+    in
     build_finish res;
     Fiber.return res
 ;;

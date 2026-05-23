@@ -19,7 +19,6 @@ type build_input_change =
   | Invalidation of Memo.Invalidation.t
 
 type t =
-  | File_watcher_task of (unit -> File_watcher.Event.t list)
   | Build_inputs_changed of build_input_change Nonempty_list.t
   | File_system_sync of File_watcher.Sync_id.t
   | File_system_watcher_terminated
@@ -38,7 +37,6 @@ module Queue = struct
 
   type t =
     { jobs_completed : (job * Proc.Process_info.t) Queue.t
-    ; file_watcher_tasks : (unit -> File_watcher.Event.t list) Queue.t
     ; mutable invalidation_events : Invalidation_event.t list
     ; mutable shutdown_reasons : Shutdown.Reason.Set.t
     ; mutex : Mutex.t
@@ -60,7 +58,6 @@ module Queue = struct
 
   let create () =
     let jobs_completed = Queue.create () in
-    let file_watcher_tasks = Queue.create () in
     let worker_tasks_completed = Queue.create () in
     let invalidation_events = [] in
     let shutdown_reasons = Shutdown.Reason.Set.empty in
@@ -69,7 +66,6 @@ module Queue = struct
     let pending_jobs = 0 in
     let pending_worker_tasks = 0 in
     { jobs_completed
-    ; file_watcher_tasks
     ; invalidation_events
     ; shutdown_reasons
     ; mutex
@@ -140,10 +136,6 @@ module Queue = struct
         Some Job_complete_ready
     ;;
 
-    let file_watcher_task q =
-      Option.map (Queue.pop q.file_watcher_tasks) ~f:(fun job -> File_watcher_task job)
-    ;;
-
     let invalidation q =
       match q.invalidation_events with
       | [] -> None
@@ -206,13 +198,12 @@ module Queue = struct
   let events_in_order =
     (* Event sources are listed in priority order. Signals are the
        highest priority to maximize responsiveness to Ctrl+C.
-       [file_watcher_task], [worker_tasks_completed] and [invalidation] are
-       used for reacting to user input, so their latency is also important.
+       [invalidation] and [worker_tasks_completed] are used for reacting to
+       user input, so their latency is also important.
        [jobs_completed] and [yield] are where the bulk of the work is done, so
        they are the lowest priority to avoid starving other things. *)
     Event_source.
       [ shutdown
-      ; file_watcher_task
       ; invalidation
       ; worker_tasks_completed
       ; (if Sys.win32 then jobs_completed else job_complete_ready)
@@ -278,10 +269,6 @@ module Queue = struct
   let send_shutdown q signal =
     add_event q (fun q ->
       q.shutdown_reasons <- Shutdown.Reason.Set.add q.shutdown_reasons signal)
-  ;;
-
-  let send_file_watcher_task q job =
-    add_event q (fun q -> Queue.push q.file_watcher_tasks job)
   ;;
 
   let pending_jobs q = q.pending_jobs

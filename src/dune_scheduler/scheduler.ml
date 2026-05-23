@@ -255,10 +255,6 @@ module Run_once = struct
   let rec iter (t : t) : Fiber.fill list =
     Console.Status_line.refresh ();
     match Event.Queue.next t.events with
-    | File_watcher_task job ->
-      let events = job () in
-      Event.Queue.send_file_watcher_events t.events events;
-      iter t
     | File_system_sync id ->
       (match Table.find t.fs_syncs id with
        | None -> iter t
@@ -495,9 +491,7 @@ module Run = struct
         Some
           (File_watcher.create_default
              ~scheduler:
-               { thread_safe_send_emit_events_job =
-                   (fun job -> Event_queue.send_file_watcher_task events job)
-               }
+               { thread_safe_send_events = Event_queue.send_file_watcher_events events }
              ~watch_exclusions:config.watch_exclusions
              ())
     in

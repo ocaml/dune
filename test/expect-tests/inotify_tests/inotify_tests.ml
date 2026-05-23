@@ -55,6 +55,7 @@ let watch, collect_events =
   let cond = Condition.create () in
   let inotify =
     Inotify.create
+      ~mutex
       ~modify_event_selector:`Closed_writable_fd
       ~emit_events:(fun file_events ->
         Mutex.protect mutex (fun () ->

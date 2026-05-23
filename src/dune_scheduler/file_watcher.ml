@@ -102,8 +102,9 @@ end = struct
       match String.split ~on:'/' (Path.External.to_string key) with
       | "" :: comps -> comps
       | _ ->
-        (* fsevents gives us only absolute paths *)
-        assert false
+        Code_error.raise
+          "Watch_trie.add called with a non-absolute path"
+          [ "key", Path.External.to_dyn key ]
     in
     let rec add comps t =
       match comps, t with
@@ -138,10 +139,7 @@ type kind =
       ; on_event : Fsevents.Event.t -> Path.t -> Event.t option
       }
   | Inotify of Inotify.t
-  | Fswatch_win of
-      { t : Fswatch_win.t
-      ; scheduler : Scheduler.t
-      }
+  | Fswatch_win of { t : Fswatch_win.t }
 
 type t =
   { kind : kind
@@ -211,7 +209,7 @@ let shutdown t =
         Fsevents.stop fsevents.sync;
         Watch_trie.to_list fsevents.external_
         |> List.iter ~f:(fun (_, fs) -> Fsevents.stop fs))
-  | Fswatch_win { t; _ } -> `Thunk (fun () -> Fswatch_win.shutdown t)
+  | Fswatch_win { t } -> `Thunk (fun () -> Fswatch_win.shutdown t)
 ;;
 
 module Fs_sync : sig
@@ -517,8 +515,8 @@ let create_fsevents
   prepare_sync ();
   let sync_table = Table.create (module String) 64 in
   let sync =
-    (* We don't use the [fsevents] function here as we want to match on the
-       original file path *)
+    (* Keep the original event path for consuming the sync file; use the
+       localized path only to check whether the event is in the build directory. *)
     fsevents
       ~latency
       ~paths:[ Path.build (Lazy.force Fs_sync.special_dir_path) ]
@@ -619,7 +617,7 @@ let create_fswatch_win ~(scheduler : Scheduler.t) ~debounce_interval:sleep ~shou
         List.iter ~f:(fswatch_win_callback ~scheduler ~sync_table ~should_exclude) events
       done)
   in
-  { kind = Fswatch_win { t; scheduler }; sync_table }
+  { kind = Fswatch_win { t }; sync_table }
 ;;
 
 let create_default ?fsevents_debounce ~watch_exclusions ~scheduler () =

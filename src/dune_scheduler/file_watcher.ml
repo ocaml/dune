@@ -675,6 +675,31 @@ let parent_directory ext =
   loop ext
 ;;
 
+let%expect_test "parent_directory" =
+  let print_parent_directory path =
+    let path = Path.External.of_string path in
+    let result =
+      match parent_directory path with
+      | None -> "none"
+      | Some dir -> Filename.basename (Path.External.to_string dir)
+    in
+    Printf.printf "%s -> %s\n" (Filename.basename (Path.External.to_string path)) result
+  in
+  let cwd = Unix.getcwd () in
+  let dir = Filename.concat cwd "parent-directory" in
+  (try Unix.mkdir dir 0o755 with
+   | Unix.Unix_error (Unix.EEXIST, _, _) -> ());
+  let file = Filename.concat dir "file.ml" in
+  close_out (open_out file);
+  print_parent_directory dir;
+  print_parent_directory file;
+  [%expect
+    {|
+    parent-directory -> parent-directory
+    file.ml -> parent-directory
+    |}]
+;;
+
 let add_watch t path =
   match t.kind with
   | Fsevents f ->

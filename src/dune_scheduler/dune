@@ -2,6 +2,11 @@
  (name dune_scheduler)
  (library_flags
   (:include flags/sexp))
+ (inline_tests
+  (deps
+   (sandbox always)))
+ (preprocess
+  (pps ppx_expect))
  (foreign_stubs
   (language c)
   (names fsevents_stubs fswatch_win_stubs))

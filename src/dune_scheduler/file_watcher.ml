@@ -401,26 +401,28 @@ let create_external_fswatch ~(scheduler : Scheduler.t) ~backend ~watch_exclusion
     let pipe, pid = spawn_external_watcher ~backend ~watch_exclusions in
     let (_ : Thread.t) =
       Thread0.spawn ~name:"file-watcher" (fun () ->
-        while true do
-          (* This job runs on the scheduler thread because it uses [sync_table]. *)
-          let job =
-            match input_line pipe with
-            | exception End_of_file -> fun () -> [ Event.Watcher_terminated ]
-            | path_s ->
-              fun () ->
-                if Fs_sync.is_special_file ~path_as_reported_by_file_watcher:path_s
-                then (
-                  match Fs_sync.consume_event sync_table path_s with
-                  | None -> []
-                  | Some id -> [ Event.Sync id ])
-                else (
-                  let path = Path.Expert.try_localize_external (Path.of_string path_s) in
-                  [ Fs_memo_event (Fs_memo_event.create ~kind:File_changed ~path) ])
-          in
+        let enqueue job =
           Mutex.protect event_mtx (fun () ->
             jobs := job :: !jobs;
             Condition.signal event_cv)
-        done)
+        in
+        let rec loop () =
+          (* This job runs on the scheduler thread because it uses [sync_table]. *)
+          match input_line pipe with
+          | exception End_of_file -> enqueue (fun () -> [ Event.Watcher_terminated ])
+          | path_s ->
+            enqueue (fun () ->
+              if Fs_sync.is_special_file ~path_as_reported_by_file_watcher:path_s
+              then (
+                match Fs_sync.consume_event sync_table path_s with
+                | None -> []
+                | Some id -> [ Event.Sync id ])
+              else (
+                let path = Path.Expert.try_localize_external (Path.of_string path_s) in
+                [ Fs_memo_event (Fs_memo_event.create ~kind:File_changed ~path) ]));
+            loop ()
+        in
+        loop ())
     in
     { kind = Fswatch { pid }; sync_table }
   in

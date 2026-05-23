@@ -24,19 +24,13 @@ let build_finish (build_result : Build_outcome.t) =
 
 let rec poll_iter t step =
   let invalidation = Scheduler.Build_loop.pending_invalidation t in
-  let changed_paths =
-    if Memo.Invalidation.is_empty invalidation
-    then (
-      Memo.Metrics.reset ();
-      None)
-    else (
-      let files = Memo.Invalidation.changed_paths invalidation in
-      let details_hum = Memo.Invalidation.details_hum invalidation in
-      Console.maybe_clear_screen ~details_hum;
-      Memo.reset invalidation;
-      Some files)
-  in
-  Scheduler.Build_loop.start_iteration t ~changed_paths;
+  if Memo.Invalidation.is_empty invalidation
+  then Memo.Metrics.reset ()
+  else (
+    let details_hum = Memo.Invalidation.details_hum invalidation in
+    Console.maybe_clear_screen ~details_hum;
+    Memo.reset invalidation);
+  Scheduler.Build_loop.start_iteration t;
   let* res = step in
   let res : Build_outcome.t =
     match res with

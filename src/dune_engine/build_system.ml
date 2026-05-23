@@ -1112,14 +1112,10 @@ let run f =
   in
   let open Fiber.O in
   let f () =
-    let run_id, `Changed_paths files = Scheduler.Build_loop.start_build () in
+    let run_id, `Restart restart = Scheduler.Build_loop.start_build () in
     let start = Time.now () in
     Dune_trace.emit ~buffered:false Build (fun () ->
-      Dune_trace.Event.watch_build_start
-        ~run_id:(Run_id.to_int run_id)
-        ~restart:(Option.is_some files)
-        ~files
-        ~start);
+      Dune_trace.Event.watch_build_start ~run_id:(Run_id.to_int run_id) ~restart ~start);
     Dune_trace.reset_alloc_profile ();
     (* CR-someday amokhov: Currently we invalidate cached timestamps on every
        incremental rebuild. This conservative approach helps us to work around

@@ -128,14 +128,7 @@ module Event : sig
   val process_cleanup_start : unit -> t
   val process_cleanup_sigkill : unit -> t
   val process_cleanup_finish : unit -> t
-
-  val watch_build_start
-    :  run_id:int
-    -> restart:bool
-    -> files:Path.t list option
-    -> start:Time.t
-    -> t
-
+  val watch_build_start : run_id:int -> restart:bool -> start:Time.t -> t
   val watch_build_restart : run_id:int -> reasons:string list -> at:Time.t -> t
 
   val watch_build_finish

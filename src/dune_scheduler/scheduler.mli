@@ -113,11 +113,11 @@ module Build_loop : sig
     | Restarting
 
   val is_watch_mode : unit -> bool
-  val start_build : unit -> Run_id.t * [ `Changed_paths of Path.t list option ]
+  val start_build : unit -> Run_id.t * [ `Restart of bool ]
   val finish_build : stop:Time.t -> build_finish
   val init : unit -> t Fiber.t
   val pending_invalidation : t -> Memo.Invalidation.t
-  val start_iteration : t -> changed_paths:Path.t list option -> unit
+  val start_iteration : t -> unit
   val finish_iteration : t -> [ `Done | `Restart ]
   val wait_for_build_input_change : t -> unit Fiber.t
 end

@@ -127,10 +127,6 @@ restart events so the test checks the run id and reasons, not the batching.
     "args": {
       "run_id": 2,
       "restart": true,
-      "files": [
-        "x",
-        "z"
-      ],
       "rusage": [
         "inblock",
         "majflt",

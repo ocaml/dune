@@ -474,18 +474,69 @@ let fsevents ?exclusion_paths ~latency ~paths event_queue f =
   fsevents
 ;;
 
-let fsevents_standard_event ~should_exclude event path =
-  if should_exclude (Path.to_string path)
+let fsevents_standard_event_impl
+      ~should_exclude
+      ~(action : Fsevents.Event.Action.t)
+      ~(kind : Fsevents.Event.Kind.t)
+      path
+  =
+  if Option.is_some (Path.as_in_build_dir path) || should_exclude (Path.to_string path)
   then None
   else (
-    let kind =
-      match Fsevents.Event.action event with
-      | Rename | Unknown -> Fs_memo_event.Unknown
-      | Create -> Created
-      | Remove -> Deleted
-      | Modify -> if Fsevents.Event.kind event = File then File_changed else Unknown
+    let fs_memo_event kind =
+      Some (Event.Fs_memo_event (Fs_memo_event.create ~kind ~path))
     in
-    Some (Event.Fs_memo_event (Fs_memo_event.create ~kind ~path)))
+    match kind with
+    | Dir_and_descendants -> Some Event.Queue_overflow
+    | Dir ->
+      (match action with
+       | Remove | Rename | Unknown ->
+         (* FSEvents can report directory-wide or ambiguous changes without
+            listing all affected descendants. Until Fs_memo supports subtree
+            invalidation, over-invalidate by clearing the filesystem caches. *)
+         Some Event.Queue_overflow
+       | Create -> fs_memo_event Created
+       | Modify -> fs_memo_event Unknown)
+    | File ->
+      (match action with
+       | Rename | Unknown -> fs_memo_event Unknown
+       | Create -> fs_memo_event Created
+       | Remove -> fs_memo_event Deleted
+       | Modify -> fs_memo_event File_changed))
+;;
+
+let%expect_test "fsevents standard event handling" =
+  let print
+        ?(should_exclude = Fun.const false)
+        ?(path = Path.source (Path.Source.relative Path.Source.root "x"))
+        (action : Fsevents.Event.Action.t)
+        (kind : Fsevents.Event.Kind.t)
+    =
+    match fsevents_standard_event_impl ~should_exclude ~action ~kind path with
+    | None -> print_endline "None"
+    | Some Event.Queue_overflow -> print_endline "Queue_overflow"
+    | Some (Event.Fs_memo_event event) ->
+      Fs_memo_event.to_dyn event |> Dyn.to_string |> print_endline
+    | Some (Event.Sync _ | Watcher_terminated) ->
+      Code_error.raise "unexpected fsevents standard event" []
+  in
+  print Modify File;
+  print Rename Dir;
+  print Remove Dir;
+  print Unknown Dir;
+  print Modify Dir_and_descendants;
+  print Create File ~path:(Path.build (Path.Build.relative Path.Build.root "x"));
+  print Create File ~should_exclude:(Fun.const true);
+  [%expect
+    {|
+    { path = In_source_tree "x"; kind = "File_changed" }
+    Queue_overflow
+    Queue_overflow
+    Queue_overflow
+    Queue_overflow
+    None
+    None
+    |}]
 ;;
 
 let create_fsevents ?(latency = Time.Span.of_secs 0.2) ~event_queue ~should_exclude () =
@@ -509,7 +560,13 @@ let create_fsevents ?(latency = Time.Span.of_secs 0.2) ~event_queue ~should_excl
              Fs_sync.consume_event sync_table path
              |> Option.map ~f:(fun id -> Event.Sync id)))
   in
-  let on_event = fsevents_standard_event ~should_exclude in
+  let on_event event path =
+    fsevents_standard_event_impl
+      ~should_exclude
+      ~action:(Fsevents.Event.action event)
+      ~kind:(Fsevents.Event.kind event)
+      path
+  in
   let source =
     let paths = [ Path.root ] in
     let exclusion_paths =

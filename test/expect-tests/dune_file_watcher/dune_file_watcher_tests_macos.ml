@@ -14,11 +14,10 @@ let%expect_test _ =
   in
   let print_events n = print_events ~try_to_get_events ~expected:n in
   Stdio.Out_channel.write_all "x" ~data:"x";
-  print_events 3;
+  print_events 2;
   [%expect
     {|
     { path = In_source_tree "."; kind = "Created" }
-    { path = In_build_dir "."; kind = "Created" }
     { path = In_source_tree "x"; kind = "Unknown" } |}];
   Unix.rename "x" "y";
   print_events 2;

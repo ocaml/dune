@@ -188,7 +188,7 @@ let process_inotify_event (event : Inotify.Event.t) should_exclude : Event.t lis
        @ create_event_unless_excluded ~kind:Created ~path:dst)
 ;;
 
-let emit_events events =
+let send_events (scheduler : Scheduler.t) events =
   Dune_trace.emit_all ~buffered:true File_watcher (fun () ->
     List.map events ~f:(fun (event : Event.t) ->
       Dune_trace.Event.file_watcher
@@ -204,7 +204,8 @@ let emit_events events =
              | File_changed -> `File_changed
              | Unknown -> `Unknown
            in
-           `File (path, kind))))
+           `File (path, kind))));
+  scheduler.thread_safe_send_events events
 ;;
 
 let shutdown t =
@@ -399,18 +400,14 @@ let create_inotifylib_watcher ~sync_table ~(scheduler : Scheduler.t) should_excl
                 path
             | Moved _ | Queue_overflow -> None
           in
-          let events =
-            match is_fs_sync_event_generated_by_dune with
-            | None -> process_inotify_event event should_exclude
-            | Some path ->
-              (match Fs_sync.consume_event sync_table path with
-               | None -> []
-               | Some id -> [ Event.Sync id ])
-          in
-          emit_events events;
-          events)
+          match is_fs_sync_event_generated_by_dune with
+          | None -> process_inotify_event event should_exclude
+          | Some path ->
+            (match Fs_sync.consume_event sync_table path with
+             | None -> []
+             | Some id -> [ Event.Sync id ]))
       in
-      scheduler.thread_safe_send_events events)
+      send_events scheduler events)
 ;;
 
 let create_external_fswatch ~(scheduler : Scheduler.t) ~backend ~watch_exclusions =
@@ -472,7 +469,7 @@ let create_external_fswatch ~(scheduler : Scheduler.t) ~backend ~watch_exclusion
           jobs := [];
           jobs_batch)
       in
-      scheduler.thread_safe_send_events (List.concat jobs_batch);
+      send_events scheduler (List.concat jobs_batch);
       Thread.delay (Time.Span.to_secs debounce_interval);
       buffer_thread ()
     in
@@ -504,7 +501,7 @@ let fsevents_callback ?exclusion_paths (scheduler : Scheduler.t) ~f events =
       in
       if skip_path path then None else f event path)
   in
-  scheduler.thread_safe_send_events events
+  send_events scheduler events
 ;;
 
 let fsevents ?exclusion_paths ~latency ~paths scheduler f =
@@ -611,7 +608,7 @@ let fswatch_win_callback ~(scheduler : Scheduler.t) ~sync_table ~should_exclude 
       | Added | Modified ->
         (match Fs_sync.consume_event sync_table filename with
          | None -> ()
-         | Some id -> scheduler.thread_safe_send_events [ Sync id ])
+         | Some id -> send_events scheduler [ Sync id ])
       | Removed | Renamed_new | Renamed_old -> ())
   | path ->
     let normalized_filename =
@@ -627,7 +624,7 @@ let fswatch_win_callback ~(scheduler : Scheduler.t) ~sync_table ~should_exclude 
         | Removed | Renamed_old -> Deleted
         | Modified -> File_changed
       in
-      scheduler.thread_safe_send_events [ Fs_memo_event { kind; path } ])
+      send_events scheduler [ Fs_memo_event { kind; path } ])
 ;;
 
 let create_fswatch_win ~(scheduler : Scheduler.t) ~debounce_interval:sleep ~should_exclude

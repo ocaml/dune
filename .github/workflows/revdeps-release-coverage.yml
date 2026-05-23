@@ -1,18 +1,77 @@
-name: Coverage of Reverse Dependencies Check for Prereleases
+name: Revdep Packages
+
+# When we publish release to opam, we have the benefit and burden of testing
+# the release against all of its reverse dependencies in the opam repo
+# (See https://ocaml.org/backstage/2025-11-05-how-the-opam-repository-works).
+# These tests often catch unintended breaking API changes or regressions.
+#
+# The earlier we can catch these kinds of defects in our development cycle,
+# the quicker we can produce fixes, and the less overall toil. This workflow
+# tests our package-level integration with a selection of representative
+# packages, to give an early warning sign of regressions before we try
+# publishing to opam.
 
 on:
   push:
     branches:
       - '*-rc'
   workflow_dispatch:
-
+ 
 permissions:
   contents: read
-
+ 
 jobs:
-  revdeps:
-    name: OCaml Reverse Dependencies
-    uses: ocaml/dune/.github/workflows/revdeps.yml@main
-    with:
-      dune_version: "dev"
-      packages: "bap irmin-containers dream lambdapi kicadsch git-unix caqti-async"
+  revdep:
+    name: ${{ matrix.package }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        ocaml-compiler: ["5"]
+        package:
+          # Has a tight coupling with stdune
+          - ocaml-lsp-server
+          # An important package, that also depends on dune-configurator and has
+          # robust tests we want to run
+          - lwt
+          # The following set of packages gives us coverage for about 508 distinct
+          # packages, based on running:
+          # opam list --required-by current_examples,dream-cli,irmin-benc,memtrace_viewer,solid_server --recursive -s | sort -u | wc -l
+          - current_examples
+          - dream-cli
+          - irmin-bench
+          - memtrace_viewer
+          - solid_server
+ 
+    steps:
+      - name: Checkout dune
+        uses: actions/checkout@v4
+ 
+      - name: Set up OCaml ${{ matrix.ocaml-compiler }}
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: ${{ matrix.ocaml-compiler }}
+          # Install system-level depexts that the revdeps may pull in
+          opam-depext: true
+          # Don't restore a cached build of dune — we want our pinned one.
+          dune-cache: false
+ 
+      - name: Pin all repo packages from source
+        run: opam pin add -y -n --with-version=dev .
+ 
+      # We allow --update-invariant in case the compiler version needs to be adjusted
+      - name: Install and test ${{ matrix.package }}
+        run: opam install --update-invariant --with-test --yes --confirm-level=unsafe-yes ${{ matrix.package }}
+ 
+  # Allows setting a single required check to signal dependency on success of
+  # all jobs in the matrix.
+  result:
+    name: Revdeps Result
+    runs-on: ubuntu-latest
+    if: always()
+    needs: revdep
+    steps:
+      - name: Check matrix status
+        if: needs.revdep.result != 'success' && needs.test.result != 'skipped'
+        run: exit 1

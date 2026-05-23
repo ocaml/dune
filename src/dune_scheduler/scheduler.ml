@@ -398,8 +398,6 @@ module Build_loop = struct
     | Finished of { restart_duration : Time.Span.t option }
     | Restarting
 
-  let is_watch_mode () = Run_id.State.is_watch (t ()).build_loop.run_id_state
-
   let start_build () =
     let build_loop = (t ()).build_loop in
     let state, run_id = Run_id.State.start build_loop.run_id_state in

@@ -112,7 +112,6 @@ module Build_loop : sig
     | Finished of { restart_duration : Time.Span.t option }
     | Restarting
 
-  val is_watch_mode : unit -> bool
   val start_build : unit -> Run_id.t * [ `Restart of bool ]
   val finish_build : stop:Time.t -> build_finish
   val init : unit -> t Fiber.t

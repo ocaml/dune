@@ -35,6 +35,7 @@ module Run = struct
     ; server : Csexp_rpc.Server.t Lazy.t
     ; startup_ivar : (Csexp_rpc.Server.t, Exn_with_backtrace.t) result Fiber.Ivar.t
     ; registry : [ `Add | `Skip ]
+    ; watch_mode : Watch_mode_config.t
     }
 
   let run t =
@@ -391,11 +392,12 @@ let handler (t : _ t Fdecl.t) : 'build_arg Handler.t =
   in
   let () =
     let f _ () =
-      if Scheduler.Build_loop.is_watch_mode ()
-      then
+      let t = Fdecl.get t in
+      match t.server.config.watch_mode with
+      | No -> Fiber.return `Not_in_watch_mode
+      | Yes _ ->
         let+ () = Scheduler.flush_file_watcher () in
         `Ok
-      else Fiber.return `Not_in_watch_mode
     in
     Handler.implement_request rpc Procedures.Public.flush_file_watcher f
   in
@@ -488,7 +490,7 @@ let handler (t : _ t Fdecl.t) : 'build_arg Handler.t =
   rpc
 ;;
 
-let create ~lock_timeout ~registry ~root =
+let create ~lock_timeout ~registry ~root watch_mode =
   let where = Where.default () in
   Global_lock.lock_exn ~timeout:lock_timeout;
   let t = Fdecl.create Dyn.opaque in
@@ -521,6 +523,7 @@ let create ~lock_timeout ~registry ~root =
     ; server
     ; registry
     ; startup_ivar = Fiber.Ivar.create ()
+    ; watch_mode
     }
   in
   let server = { config; clients = Clients.empty } in

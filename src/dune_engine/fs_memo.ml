@@ -383,9 +383,7 @@ module Cached_digest = struct
 
   let entries { table; _ } =
     let entries = ref [] in
-    Path.Table.filteri_inplace table ~f:(fun ~key ~data ->
-      entries := (key, data) :: !entries;
-      true);
+    Path.Table.iteri table ~f:(fun ~key ~data -> entries := (key, data) :: !entries);
     List.sort !entries ~compare:(fun (path_a, _) (path_b, _) ->
       Path.compare path_a path_b)
   ;;

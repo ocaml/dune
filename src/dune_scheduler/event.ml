@@ -257,9 +257,12 @@ module Queue = struct
   ;;
 
   let send_file_watcher_events q files =
-    send_invalidation_events
-      q
-      (List.map files ~f:(fun file : Invalidation_event.t -> Filesystem_event file))
+    match files with
+    | [] -> ()
+    | _ :: _ ->
+      send_invalidation_events
+        q
+        (List.map files ~f:(fun file : Invalidation_event.t -> Filesystem_event file))
   ;;
 
   let send_invalidation_event q invalidation =

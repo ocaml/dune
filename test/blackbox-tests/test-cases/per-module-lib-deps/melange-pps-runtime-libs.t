@@ -41,6 +41,7 @@ stub-driver pattern in `ppx-runtime-libraries.t`).
   >     ; ("--impl", Arg.Set_string (ref ""), "")
   >     ; ("--as-ppx", Arg.Set (ref false), "")
   >     ; ("--cookie", Arg.Set (ref false), "")
+  >     ; ("-loc-filename", Arg.String ignore, "")
   >     ]
   >   in
   >   let anon _ = () in
@@ -52,7 +53,10 @@ The melange.emit preprocesses with `hello_ppx`:
 
   $ mkdir me
   $ cat > me/dune <<EOF
-  > (melange.emit (target output) (preprocess (pps hello_ppx)))
+  > (melange.emit
+  >  (target output)
+  >  (emit_stdlib false)
+  >  (preprocess (pps hello_ppx)))
   > EOF
   $ cat > me/foo.ml <<EOF
   > let _ = ()

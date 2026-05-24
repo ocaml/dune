@@ -23,7 +23,7 @@ module Dir_contents = struct
 end
 
 module Cached_digest = struct
-  module Reduced_stats = struct
+  module Stats = struct
     type t =
       { mtime : Time.t
       ; size : int
@@ -63,7 +63,7 @@ module Cached_digest = struct
 
   type 'a file =
     { mutable contents : 'a
-    ; mutable stats : Reduced_stats.t
+    ; mutable stats : Stats.t
     ; mutable stats_checked : int
     }
 
@@ -81,7 +81,7 @@ module Cached_digest = struct
     Repr.record
       "fs-memo-cached-digest-file"
       [ Repr.field "contents" contents_repr ~get:(fun t -> t.contents)
-      ; Repr.field "stats" Reduced_stats.repr ~get:(fun t -> t.stats)
+      ; Repr.field "stats" Stats.repr ~get:(fun t -> t.stats)
       ; Repr.field "stats_checked" Repr.int ~get:(fun t -> t.stats_checked)
       ]
   ;;
@@ -212,7 +212,7 @@ module Cached_digest = struct
     Path.Table.set
       (table cache)
       path
-      { contents; stats = Reduced_stats.of_stat stat; stats_checked = cache.checked_key }
+      { contents; stats = Stats.of_stat stat; stats_checked = cache.checked_key }
   ;;
 
   let digest_path_with_stats path stats =
@@ -261,8 +261,8 @@ module Cached_digest = struct
            with
            | Error e -> Error e
            | Ok stats ->
-             let reduced_stats = Reduced_stats.of_stat stats in
-             if Reduced_stats.equal x.stats reduced_stats
+             let reduced_stats = Stats.of_stat stats in
+             if Stats.equal x.stats reduced_stats
              then (
                (* Even though we're modifying the [stats_checked] field, we don't
                   need to set [needs_dumping := true] here. This is because
@@ -303,8 +303,8 @@ module Cached_digest = struct
                 ~path
                 ~old_digest:(Digest.to_string old_contents)
                 ~new_digest:(Digest.to_string new_contents)
-                ~old_stats:(Reduced_stats.to_dyn old_stats)
-                ~new_stats:(Reduced_stats.to_dyn new_stats)))
+                ~old_stats:(Stats.to_dyn old_stats)
+                ~new_stats:(Stats.to_dyn new_stats)))
       with
       | Some digest_result -> digest_result
       | None -> refresh path
@@ -360,8 +360,8 @@ module Cached_digest = struct
                     ~path
                     ~old_contents:(Dir_contents.to_dyn old_contents)
                     ~new_contents:(Dir_contents.to_dyn new_contents)
-                    ~old_stats:(Reduced_stats.to_dyn old_stats)
-                    ~new_stats:(Reduced_stats.to_dyn new_stats)))
+                    ~old_stats:(Stats.to_dyn old_stats)
+                    ~new_stats:(Stats.to_dyn new_stats)))
           with
           | Some contents -> contents
           | None ->
@@ -434,7 +434,7 @@ module Debug = struct
           ~get:(fun (_, { Cached_digest.contents; _ }) -> contents)
       ; Repr.field
           "stats"
-          Cached_digest.Reduced_stats.repr
+          Cached_digest.Stats.repr
           ~get:(fun (_, { Cached_digest.stats; _ }) -> stats)
       ; Repr.field
           "stats_checked"
@@ -484,7 +484,7 @@ module Debug = struct
         match Stat.stat path_string with
         | stats ->
           Ok
-            ( Some (Cached_digest.Reduced_stats.of_stat stats)
+            ( Some (Cached_digest.Stats.of_stat stats)
             , Cached_digest.digest_path_with_stats path stats )
         | exception Unix.Unix_error (ENOENT, _, _) ->
           (match Unix.lstat path_string with
@@ -520,8 +520,8 @@ module Debug = struct
       else (
         let status =
           match current_stats with
-          | Some current_stats when Cached_digest.Reduced_stats.equal stats current_stats
-            -> "invalid"
+          | Some current_stats when Cached_digest.Stats.equal stats current_stats ->
+            "invalid"
           | Some _ | None -> "stale"
         in
         Some (finding_to_dyn { status; path; cached_digest; actual })))

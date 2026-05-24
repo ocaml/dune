@@ -208,6 +208,7 @@ module Table : sig
   val set : 'a t -> path -> 'a -> unit
   val remove : 'a t -> path -> unit
   val iter : 'a t -> f:('a -> unit) -> unit
+  val iteri : 'a t -> f:(key:path -> data:'a -> unit) -> unit
   val find : 'a t -> path -> 'a option
   val filteri_inplace : 'a t -> f:(key:path -> data:'a -> bool) -> unit
   val filter_inplace : 'a t -> f:('a -> bool) -> unit

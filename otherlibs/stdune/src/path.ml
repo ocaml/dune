@@ -946,6 +946,15 @@ module Table = struct
     External.Table.iter external_ ~f
   ;;
 
+  let iteri { source; build; external_ } ~f =
+    Source0.Table.foldi source ~init:() ~f:(fun key data () ->
+      f ~key:(In_source_tree key) ~data);
+    Build.Table.foldi build ~init:() ~f:(fun key data () ->
+      f ~key:(In_build_dir key) ~data);
+    External.Table.foldi external_ ~init:() ~f:(fun key data () ->
+      f ~key:(External key) ~data)
+  ;;
+
   let[@inline] find { source; build; external_ } = function
     | In_source_tree p -> Source0.Table.find source p
     | In_build_dir p -> Build.Table.find build p

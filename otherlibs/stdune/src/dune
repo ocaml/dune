@@ -7,6 +7,7 @@
   unix
   csexp
   threads
+  threads.posix
   (re_export top-closure)
   (re_export ordering)
   (re_export dyn)

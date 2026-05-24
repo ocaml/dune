@@ -318,8 +318,7 @@ module Cached_digest = struct
       | Some entry ->
         (* Make [stats_checked] unequal to [cache.checked_key] so that [peek]
          is forced to re-[stat] the [path]. *)
-        let entry = { entry with stats_checked = cache.checked_key - 1 } in
-        Path.Table.set (table cache) path entry
+        entry.stats_checked <- cache.checked_key - 1
     ;;
 
     let invalidate_cached_timestamp_file path =

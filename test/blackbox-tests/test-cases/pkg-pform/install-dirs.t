@@ -29,8 +29,7 @@ The directory entry itself resolves to its source path:
   $ dune build @dir-path 2>&1
   src/generated
 
-A file inside the installed directory cannot be referenced with the
-descent path:
+A file inside the installed directory resolves by descent:
 
   $ cat >dune <<EOF
   > (rule
@@ -39,13 +38,9 @@ descent path:
   > EOF
 
   $ dune build @file-inside 2>&1
-  File "dune", line 3, characters 16-48:
-  3 |  (action (echo "%{pkg:foo:share:generated/a.txt}\n")))
-                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  Error: File generated/a.txt not found in section share of package foo.
-  [1]
+  src/generated/a.txt
 
-Nested descent likewise fails:
+Nested descent works too:
 
   $ cat >dune <<EOF
   > (rule
@@ -54,14 +49,9 @@ Nested descent likewise fails:
   > EOF
 
   $ dune build @nested-inside 2>&1
-  File "dune", line 3, characters 16-52:
-  3 |  (action (echo "%{pkg:foo:share:generated/sub/b.txt}\n")))
-                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  Error: File generated/sub/b.txt not found in section share of package foo.
-  [1]
+  src/generated/sub/b.txt
 
-The directory contents are reachable by appending to the dir-path result
-(this is the workaround consumers use today):
+Appending to the dir-path result also works (the pre-existing pattern):
 
   $ cat >dune <<EOF
   > (rule
@@ -71,3 +61,19 @@ The directory contents are reachable by appending to the dir-path result
 
   $ dune build @append-path 2>&1
   top
+
+A path that's not inside the installed directory errors:
+
+  $ cat >dune <<EOF
+  > (rule
+  >  (alias missing)
+  >  (action (echo "%{pkg:foo:share:generated/missing.txt}\n")))
+  > EOF
+
+  $ dune build @missing 2>&1
+  File "dune", line 3, characters 16-54:
+  3 |  (action (echo "%{pkg:foo:share:generated/missing.txt}\n")))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: File missing.txt not found inside directory generated installed by
+  package foo.
+  [1]

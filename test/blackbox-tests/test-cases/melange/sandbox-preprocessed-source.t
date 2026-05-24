@@ -131,7 +131,9 @@ filename even though the PPX reads the copied Melange source.
 
   $ dune build --root cases --sandbox=symlink @logical-ocaml-impl/src/all
   Entering directory 'cases'
-  File "logical-ocaml-impl/src/.melange_src/x.ml", line 1, characters 8-12:
+  File "logical-ocaml-impl/src/x.ml", line 1, characters 8-12:
+  1 | let x = "ocaml"
+              ^^^^
   Error: Unbound type constructor nope
   Leaving directory 'cases'
   [1]
@@ -160,7 +162,9 @@ Melange source filename even though the PPX reads the copied Melange source.
 
   $ dune build --root cases --sandbox=symlink @logical-melange-impl/src/all
   Entering directory 'cases'
-  File "logical-melange-impl/src/.melange_src/x.ml", line 1, characters 8-12:
+  File "logical-melange-impl/src/x.melange.ml", line 1, characters 8-12:
+  1 | let x = "melange"
+              ^^^^
   Error: Unbound type constructor nope
   Leaving directory 'cases'
   [1]
@@ -189,7 +193,9 @@ filename even though the PPX reads the copied Melange source.
 
   $ dune build --root cases --sandbox=symlink @logical-ocaml-intf/src/all
   Entering directory 'cases'
-  File "logical-ocaml-intf/src/.melange_src/x.mli", line 1, characters 8-12:
+  File "logical-ocaml-intf/src/x.mli", line 1, characters 8-12:
+  1 | val x : int
+              ^^^^
   Error: Unbound type constructor nope
   Leaving directory 'cases'
   [1]
@@ -222,7 +228,9 @@ Melange source filename even though the PPX reads the copied Melange source.
 
   $ dune build --root cases --sandbox=symlink @logical-melange-intf/src/all
   Entering directory 'cases'
-  File "logical-melange-intf/src/.melange_src/x.mli", line 1, characters 8-12:
+  File "logical-melange-intf/src/x.melange.mli", line 1, characters 8-12:
+  1 | val x : string
+              ^^^^
   Error: Unbound type constructor nope
   Leaving directory 'cases'
   [1]

@@ -62,7 +62,9 @@ diagnostics can print the correct snippet.
 
   $ dune build --root cases --sandbox=symlink @src/all
   Entering directory 'cases'
-  File "src/.melange_src/x.re", line 1, characters 8-12:
+  File "src/x.re", line 1, characters 8-12:
+  1 | let x = "reason"
+              ^^^^
   Error: Unbound type constructor nope
   Leaving directory 'cases'
   [1]

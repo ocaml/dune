@@ -31,6 +31,10 @@ let run_task t task =
   match task () with
   | () -> Mutex.lock t.mutex
   | exception exn ->
+    Mutex.lock t.mutex;
+    t.running <- t.running - 1;
+    t.dead <- Thread.self () :: t.dead;
+    Mutex.unlock t.mutex;
     Code_error.raise "thread pool tasks must not raise" [ "exn", Exn.to_dyn exn ]
 ;;
 
@@ -107,7 +111,7 @@ let%expect_test "failed task updates worker accounting" =
   Mutex.unlock t.mutex;
   [%expect
     {|
-    running: 1
-    dead: 0
+    running: 0
+    dead: 1
     mutex unlocked: true |}]
 ;;

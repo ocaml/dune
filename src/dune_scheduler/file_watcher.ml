@@ -585,9 +585,10 @@ let fswatch_win_callback ~(scheduler : Scheduler.t) ~sync_table ~should_exclude 
     then (
       match Fswatch_win.Event.action event with
       | Added | Modified ->
-        (match Fs_sync.consume_event sync_table filename with
-         | None -> ()
-         | Some id -> scheduler.thread_safe_send_emit_events_job (fun () -> [ Sync id ]))
+        scheduler.thread_safe_send_emit_events_job (fun () ->
+          match Fs_sync.consume_event sync_table filename with
+          | None -> []
+          | Some id -> [ Sync id ])
       | Removed | Renamed_new | Renamed_old -> ())
   | path ->
     let normalized_filename =
@@ -609,6 +610,7 @@ let fswatch_win_callback ~(scheduler : Scheduler.t) ~sync_table ~should_exclude 
 
 let create_fswatch_win ~(scheduler : Scheduler.t) ~debounce_interval:sleep ~should_exclude
   =
+  prepare_sync ();
   let sync_table = Table.create (module String) 64 in
   let t = Fswatch_win.create () in
   Fswatch_win.add t (Path.to_absolute_filename Path.root);

@@ -1099,7 +1099,7 @@ let handle_final_exns exns =
     List.iter exns ~f:report
 ;;
 
-let run f =
+let run ?(run_id = Run_id.Batch) f =
   let f =
     (* CR-someday cmoseley: Can we avoid creating a new lazy memo node every
        time the build system is rerun? *)
@@ -1112,7 +1112,7 @@ let run f =
   in
   let open Fiber.O in
   let f () =
-    let run_id, `Restart restart = Scheduler.Build_loop.start_build () in
+    let (`Restart restart) = Scheduler.Build_loop.start_build () in
     let start = Time.now () in
     Dune_trace.emit ~buffered:false Build (fun () ->
       Dune_trace.Event.watch_build_start ~run_id:(Run_id.to_int run_id) ~restart ~start);
@@ -1188,8 +1188,8 @@ let run_exn f =
   | Error `Already_reported -> raise Dune_util.Report_error.Already_reported
 ;;
 
-let run_action_builder request =
-  run (fun () ->
+let run_action_builder ?run_id request =
+  run ?run_id (fun () ->
     let+ (), (_ : Dep.Fact.t Dep.Map.t) =
       Action_builder.evaluate_and_collect_facts request
     in

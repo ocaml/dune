@@ -74,7 +74,6 @@ module Scheduler = struct
     type t =
       { mutable status : status
       ; mutable invalidation : Memo.Invalidation.t
-      ; mutable run_id_state : Run_id.State.t
       ; mutable watch_restart_started_at : Time.t option
       ; handler : Handler.t
       ; mutable build_inputs_changed : Trigger.t

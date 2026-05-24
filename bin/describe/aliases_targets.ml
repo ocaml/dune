@@ -106,7 +106,8 @@ let ls_term_gen extra_args fetch_results =
   Scheduler_setup.go_with_rpc_server ~common ~config
   @@ fun () ->
   let open Fiber.O in
-  Build.run_build_system ~request >>| fun (_ : (unit, [ `Already_reported ]) result) -> ()
+  Build.run_build_system ~run_id:Dune_engine.Run_id.Batch ~request
+  >>| fun (_ : (unit, [ `Already_reported ]) result) -> ()
 ;;
 
 module Aliases_cmd = struct

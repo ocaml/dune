@@ -51,13 +51,17 @@ val dep_on_alias_definition : Rules.Dir_rules.Alias_spec.item -> unit Action_bui
 
 (** {2 Running the build system} *)
 
-val run : (unit -> 'a Memo.t) -> ('a, [ `Already_reported ]) Result.t Fiber.t
+val run
+  :  ?run_id:Run_id.t
+  -> (unit -> 'a Memo.t)
+  -> ('a, [ `Already_reported ]) Result.t Fiber.t
 
 (** A variant of [run] that raises an [Already_reported] exception on error. *)
 val run_exn : (unit -> 'a Memo.t) -> 'a Fiber.t
 
 val run_action_builder
-  :  unit Action_builder.t
+  :  ?run_id:Run_id.t
+  -> unit Action_builder.t
   -> (unit, [ `Already_reported ]) result Fiber.t
 
 (** {2 Misc} *)

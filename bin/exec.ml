@@ -287,10 +287,11 @@ let exec_building_directly ~common ~config ~context ~prog ~args ~no_rebuild =
     let open Fiber.O in
     let on_exit = Console.printf "Program exited with code [%d]" in
     Dune_engine.Build_loop.poll
-    @@
+    @@ fun ~run_id ->
     let* () = Fiber.return () in
     Console.maybe_clear_screen ~details_hum:[];
-    Build.build_memo @@ step ~prog ~args ~common ~no_rebuild ~context ~on_exit
+    Dune_engine.Build_system.run ~run_id
+    @@ step ~prog ~args ~common ~no_rebuild ~context ~on_exit
   | No ->
     Scheduler_setup.go_with_rpc_server ~common ~config
     @@ fun () ->

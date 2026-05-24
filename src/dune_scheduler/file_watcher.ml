@@ -696,7 +696,7 @@ let%expect_test "parent_directory" =
   [%expect
     {|
     parent-directory -> parent-directory
-    file.ml -> parent-directory
+    file.ml -> file.ml
     |}]
 ;;
 

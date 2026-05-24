@@ -57,3 +57,56 @@ The field is available starting in Dune 3.24.
   $ find ./app/_build/default -name '*.pp.ml' | censor | sort
   ./app/_build/default/.melange_src/foo.pp.ml
   ./app/_build/default/.melange_src/melange_only.pp.ml
+
+`melange.preprocessor_deps` is available starting in Dune 3.24.
+
+  $ mkdir old-preprocessor-deps
+  $ cat > old-preprocessor-deps/dune-project <<EOF
+  > (lang dune 3.23)
+  > (using melange 0.1)
+  > EOF
+  $ cat > old-preprocessor-deps/dune <<EOF
+  > (library
+  >  (name old_preprocessor_deps)
+  >  (modes melange)
+  >  (melange.preprocessor_deps dep.txt))
+  > EOF
+  $ dune build --root old-preprocessor-deps
+  Entering directory 'old-preprocessor-deps'
+  File "dune", line 4, characters 1-36:
+  4 |  (melange.preprocessor_deps dep.txt))
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: 'melange.preprocessor_deps' is only available since version 3.24 of
+  the dune language. Please update your dune-project file to have (lang dune
+  3.24).
+  Leaving directory 'old-preprocessor-deps'
+  [1]
+
+`melange.preprocessor_deps` applies only to Melange preprocessing.
+
+  $ mkdir deps
+  $ cat > deps/dune-project <<EOF
+  > (lang dune 3.24)
+  > (using melange 0.1)
+  > EOF
+  $ cat > deps/dune <<EOF
+  > (library
+  >  (modes melange :standard)
+  >  (name deps)
+  >  (melange.preprocess (action (run ./pp.sh %{input-file})))
+  >  (melange.preprocessor_deps pp.sh))
+  > EOF
+
+  $ cat > deps/foo.ml <<EOF
+  > let x = "foo"
+  > EOF
+  $ cat > deps/pp.sh <<EOF
+  > #!/bin/sh
+  > cat "\$1"
+  > echo 'let y = "from melange preprocessor"'
+  > EOF
+  $ chmod +x deps/pp.sh
+
+  $ dune build --root deps
+  $ grep y deps/_build/default/.melange_src/foo.pp.ml
+  let y = "from melange preprocessor"

@@ -9,11 +9,8 @@ let%expect_test _ =
   let (_ : Dune_scheduler.File_watcher.t) =
     Dune_scheduler.File_watcher.create_default
       ~fsevents_debounce:(Time.Span.of_secs 0.)
-      ~scheduler:
-        { thread_safe_send_events =
-            (fun events ->
-              Mutex.protect mutex (fun () -> events_buffer := !events_buffer @ events))
-        }
+      ~send_events:(fun events ->
+        Mutex.protect mutex (fun () -> events_buffer := !events_buffer @ events))
       ~watch_exclusions:[]
       ()
   in

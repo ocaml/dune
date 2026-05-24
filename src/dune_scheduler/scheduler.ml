@@ -477,8 +477,7 @@ module Run = struct
       | Automatic ->
         Some
           (File_watcher.create_default
-             ~scheduler:
-               { thread_safe_send_events = Event_queue.send_file_watcher_events events }
+             ~send_events:(Event_queue.send_file_watcher_events events)
              ~watch_exclusions:config.watch_exclusions
              ())
     in

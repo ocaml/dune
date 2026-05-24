@@ -157,7 +157,7 @@ let pump_events t =
   ()
 ;;
 
-let create ~modify_event_selector ~emit_events =
+let create ~mutex ~modify_event_selector ~emit_events =
   let fd = Inotify.create () |> Fd.unsafe_of_unix_file_descr in
   let watch_table = Table.create (module Inotify_watch) 10 in
   let modify_selector : Inotify.selector =
@@ -167,7 +167,7 @@ let create ~modify_event_selector ~emit_events =
   in
   let t =
     { fd
-    ; mutex = Mutex.create ()
+    ; mutex
     ; watch_table
     ; select_events =
         [ S_Create; S_Delete; modify_selector; S_Move_self; S_Moved_from; S_Moved_to ]

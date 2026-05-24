@@ -54,10 +54,9 @@ end
 module Scheduler : sig
   (** Hook into the fiber scheduler. *)
   type t =
-    { thread_safe_send_emit_events_job : (unit -> Event.t list) -> unit
-      (** Send some events to the scheduler. The events are sent in the form
-        of a thunk to be executed on the scheduler thread, so that we can
-        do some bookkeeping that needs to happen there. *)
+    { thread_safe_send_events : Event.t list -> unit
+      (** Send some events to the scheduler. This function must be safe to call
+          from file watcher threads. *)
     }
 end
 

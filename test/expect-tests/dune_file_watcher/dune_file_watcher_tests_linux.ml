@@ -9,11 +9,9 @@ let%expect_test _ =
   let watcher =
     Dune_scheduler.File_watcher.create_default
       ~scheduler:
-        { thread_safe_send_emit_events_job =
-            (fun job ->
-              Mutex.protect mutex (fun () ->
-                let events = job () in
-                events_buffer := !events_buffer @ events))
+        { thread_safe_send_events =
+            (fun events ->
+              Mutex.protect mutex (fun () -> events_buffer := !events_buffer @ events))
         }
       ~watch_exclusions:[]
       ()

@@ -51,9 +51,14 @@ type modify_event_selector =
 
 (** [create] creates an inotify watcher.
 
+    [mutex] is used for the inotify bookkeeping. This is useful when
+    [emit_events] needs to synchronize its own bookkeeping with inotify event
+    processing.
+
     [emit_events] is called with events emitted by the watcher. *)
 val create
-  :  modify_event_selector:modify_event_selector
+  :  mutex:Mutex.t
+  -> modify_event_selector:modify_event_selector
   -> emit_events:(Event.t list -> unit)
   -> t
 

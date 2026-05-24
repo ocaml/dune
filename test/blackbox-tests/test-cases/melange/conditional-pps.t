@@ -1,26 +1,26 @@
-Test that `(melange.pps ...)` applies only to Melange compilation.
+Test that `(melange.preprocess (pps ...))` applies only to Melange compilation.
 
 The field is available starting in Dune 3.24.
 
-  $ mkdir old
-  $ cat > old/dune-project <<EOF
+  $ mkdir old-preprocess
+  $ cat > old-preprocess/dune-project <<EOF
   > (lang dune 3.23)
   > (using melange 0.1)
   > EOF
-  $ cat > old/dune <<EOF
+  $ cat > old-preprocess/dune <<EOF
   > (library
-  >  (name old)
+  >  (name old_preprocess)
   >  (modes melange)
-  >  (melange.pps melange.ppx))
+  >  (melange.preprocess (pps melange.ppx)))
   > EOF
-  $ dune build --root old
-  Entering directory 'old'
-  File "dune", line 4, characters 1-26:
-  4 |  (melange.pps melange.ppx))
-       ^^^^^^^^^^^^^^^^^^^^^^^^^
-  Error: 'melange.pps' is only available since version 3.24 of the dune
+  $ dune build --root old-preprocess
+  Entering directory 'old-preprocess'
+  File "dune", line 4, characters 1-39:
+  4 |  (melange.preprocess (pps melange.ppx)))
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: 'melange.preprocess' is only available since version 3.24 of the dune
   language. Please update your dune-project file to have (lang dune 3.24).
-  Leaving directory 'old'
+  Leaving directory 'old-preprocess'
   [1]
 
   $ mkdir app
@@ -32,7 +32,7 @@ The field is available starting in Dune 3.24.
   > (library
   >  (name app)
   >  (modes melange :standard)
-  >  (melange.pps noop_ppx))
+  >  (melange.preprocess (pps noop_ppx)))
   > EOF
 
   $ mkdir app/ppx

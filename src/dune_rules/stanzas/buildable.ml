@@ -48,14 +48,11 @@ let decode_allow_unused_libraries =
     ~default:[]
 ;;
 
-let decode_melange_pps =
-  field_o
-    "melange.pps"
-    (Dune_lang.Syntax.since Stanza.syntax (3, 24) >>> Preprocess.Pps.decode)
-;;
-
 let decode_melange_preprocess =
-  let+ preprocess = field_o "melange.preprocess" Preprocess.Per_module.decode
+  let+ preprocess =
+    field_o
+      "melange.preprocess"
+      (Dune_lang.Syntax.since Stanza.syntax (3, 24) >>> Preprocess.Per_module.decode)
   and+ preprocessor_deps =
     field_o
       "melange.preprocessor_deps"
@@ -113,7 +110,6 @@ let decode (for_ : for_) =
   and+ instrumentation = Preprocess.Instrumentation.instrumentation
   and+ preprocess, preprocessor_deps = Preprocess.preprocess_fields
   and+ melange_preprocess, melange_preprocessor_deps = decode_melange_preprocess
-  and+ melange_pps = decode_melange_pps
   and+ lint = decode_lint
   and+ foreign_stubs =
     multi_field
@@ -188,20 +184,13 @@ let decode (for_ : for_) =
     Preprocess.preprocess_config ~preprocess ~instrumentation ~preprocessor_deps
   in
   let melange_preprocess =
-    match melange_preprocess, melange_pps with
-    | None, None -> preprocess
-    | Some preprocess, None ->
+    match melange_preprocess with
+    | None -> preprocess
+    | Some preprocess ->
       Preprocess.preprocess_config
         ~preprocess
         ~instrumentation
         ~preprocessor_deps:melange_preprocessor_deps
-    | None, Some pps ->
-      let preprocess = Module_name.Per_item.for_all (Preprocess.Pps pps) in
-      Preprocess.preprocess_config ~preprocess ~instrumentation ~preprocessor_deps:[]
-    | Some _, Some pps ->
-      User_error.raise
-        ~loc:pps.loc
-        [ Pp.text "Cannot use both melange.pps and melange.preprocess." ]
   in
   let foreign_stubs =
     foreign_stubs

@@ -3,8 +3,10 @@
 (** A thread pool *)
 type t
 
+(** [create ~min_workers ~max_workers] requires
+    [0 <= min_workers <= max_workers] and [max_workers > 0]. *)
 val create
-  :  min_workers:int (** minimum number of threads to spawn *)
+  :  min_workers:int (** minimum number of threads to keep alive *)
   -> max_workers:int (** maximum number of threads to spawn *)
   -> t
 

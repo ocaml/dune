@@ -67,6 +67,7 @@ let decode =
        ; modules
        ; empty_module_interface_if_absent = false
        ; libraries
+       ; melange_libraries = None
        ; melange_modules = None
        ; foreign_archives = []
        ; extra_objects = Foreign.Objects.empty

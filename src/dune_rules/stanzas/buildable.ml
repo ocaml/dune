@@ -12,6 +12,7 @@ type t =
   ; melange_modules : Ordered_set_lang.Unexpanded.t option
   ; empty_module_interface_if_absent : bool
   ; libraries : Lib_dep.t list
+  ; melange_libraries : Lib_dep.t list option
   ; foreign_archives : (Loc.t * Foreign.Archive.t) list
   ; extra_objects : Foreign.Objects.t
   ; foreign_stubs : Foreign.Stubs.t list
@@ -156,6 +157,11 @@ let decode (for_ : for_) =
              >>> enter (maybe string))))
   and+ libraries =
     field "libraries" (Lib_dep.L.decode ~allow_re_export:in_library) ~default:[]
+  and+ melange_libraries =
+    field_o
+      "melange.libraries"
+      (Dune_lang.Syntax.since Stanza.syntax (3, 24)
+       >>> Lib_dep.L.decode ~allow_re_export:in_library)
   and+ flags = decode_ocaml_flags
   and+ js_of_ocaml =
     field
@@ -243,6 +249,7 @@ let decode (for_ : for_) =
   ; foreign_archives
   ; extra_objects
   ; libraries
+  ; melange_libraries
   ; flags
   ; js_of_ocaml = { js = js_of_ocaml; wasm = wasm_of_ocaml }
   ; allow_overlapping_dependencies

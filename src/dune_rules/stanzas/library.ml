@@ -453,6 +453,25 @@ let to_lib_id ~src_dir t =
   Lib_id.Local.make ~loc ~src_dir (Lib_name.of_local t.name)
 ;;
 
+let library_deps ~modes (buildable : Buildable.t) =
+  let ocaml, melange =
+    let { Lib_mode.Map.ocaml = { byte; native }; melange } = modes in
+    let ocaml_libraries = if byte || native then buildable.libraries else [] in
+    let melange_libraries =
+      match melange, buildable.melange_libraries with
+      | true, Some melange_libraries -> melange_libraries
+      | true, None -> buildable.libraries
+      | false, None -> []
+      | false, Some _ ->
+        User_error.raise
+          ~loc:buildable.loc
+          [ Pp.text "Cannot specify `melange.libraries' without `melange' mode" ]
+    in
+    ocaml_libraries, melange_libraries
+  in
+  { Compilation_mode.By_mode.ocaml; melange }
+;;
+
 let to_lib_info
       conf
       ~expander
@@ -576,14 +595,10 @@ let to_lib_info
     | Public (_, pkg) -> Package.version pkg
     | Installed_private | Installed | Private _ -> None
   in
-  let requires =
-    { Compilation_mode.By_mode.ocaml = conf.buildable.libraries
-    ; melange = conf.buildable.libraries
-    }
-  in
+  let loc = conf.buildable.loc in
+  let requires = library_deps ~modes conf.buildable in
   let parameters = conf.parameters in
   let allow_unused_libraries = conf.buildable.allow_unused_libraries in
-  let loc = conf.buildable.loc in
   let kind = conf.kind in
   let src_dir = dir in
   let orig_src_dir = None in

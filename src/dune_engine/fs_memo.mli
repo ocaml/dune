@@ -17,10 +17,6 @@ module Reduced_stats : sig
     }
 end
 
-(** [init] must be called at initialization. Returns the set of nodes that need
-    to be invalidated because they were accessed before [init] was called. *)
-val init : dune_file_watcher:Dune_scheduler.File_watcher.t option -> Memo.Invalidation.t
-
 (** Check if a source or external file exists and declare a dependency on it. *)
 val file_exists : Path.Outside_build_dir.t -> bool Memo.t
 

@@ -772,9 +772,12 @@ end = struct
   ;;
 
   let watch ~try_to_watch_via_parent path =
-    match try_to_watch_via_parent with
-    | false -> Memo.exec memo_for_watching_directly path
-    | true -> Memo.exec memo_for_watching_via_parent path
+    match !state with
+    | No_file_watcher -> Memo.return ()
+    | Waiting_for_file_watcher _ | File_watcher _ ->
+      (match try_to_watch_via_parent with
+       | false -> Memo.exec memo_for_watching_directly path
+       | true -> Memo.exec memo_for_watching_via_parent path)
   ;;
 
   let update_all p =

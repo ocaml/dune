@@ -221,7 +221,7 @@ let get_with_path =
          "read-lock-dir"
          ~input:(module Path)
          (fun path ->
-            let* () = Build_system.build_dir path in
+            let* () = Build_system.build_file path in
             Load.load path))
   in
   Per_context.create_by_name ~name:"lock-dir-get" (fun ctx ->
@@ -257,7 +257,7 @@ let get_exn ctx = get ctx >>| User_error.ok_exn
 let of_dev_tool dev_tool =
   let path = dev_tool |> dev_tool_external_lock_dir |> Path.external_ in
   (* Ensure the internal lock dir is built so copy rules run *)
-  let* () = Build_system.build_dir (dev_tool_lock_dir dev_tool) in
+  let* () = Build_system.build_file (dev_tool_lock_dir dev_tool) in
   Load.load_exn path
 ;;
 

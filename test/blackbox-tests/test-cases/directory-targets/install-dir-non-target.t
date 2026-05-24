@@ -19,7 +19,9 @@ A plain source directory:
   File "dune", line 3, characters 7-13:
   3 |  (dirs assets))
              ^^^^^^
-  Error: No rule found for assets
+  Error: _build/default/assets is neither a directory target nor a subdirectory
+  of one.
+  Hint: Use (install (source_trees ...)) for source directories.
   [1]
 
 A plain file (not a directory):
@@ -35,8 +37,8 @@ A plain file (not a directory):
   File "dune", line 3, characters 7-14:
   3 |  (dirs foo.txt))
              ^^^^^^^
-  Error: Rule produced unreadable directory "default/share/p/foo.txt"
-  Not a directory
+  Error: _build/default/foo.txt is a file, not a directory.
+  Hint: Use (install (files ...)) for files.
   [1]
 
 A subdirectory of a directory target:

@@ -244,6 +244,39 @@ More precisely, when installing a file via an ``(install ...)`` stanza, Dune
 implicitly adds the ``.exe`` extension to the destination, if the source file
 has extension ``.exe`` or ``.bc`` and if it's not already present
 
+Installing Directory Targets
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To install a directory target (see :doc:`/reference/dune/rule`), the
+``dirs`` field can be used:
+
+.. code:: dune
+
+   (rule
+    (target (dir generated))
+    (action (run ./gen.sh %{target})))
+   (install
+    (section share)
+    (dirs generated))
+
+This example results in the contents of the ``generated`` directory
+target being installed under ``<prefix>/share/<package>/generated/``.
+
+As with ``(files ...)`` the destination can be changed with the ``as``
+keyword. For example, to install the contents of ``generated`` directly
+into ``<prefix>/share/<package>/`` you can write:
+
+.. code:: dune
+
+   (install
+    (section share)
+    (dirs (generated as .)))
+
+Starting in 3.24, multiple ``(install (dirs ...))`` entries can resolve
+to the same destination directory; their contents are combined. Two
+entries that would install the same file under that destination report
+an error.
+
 Installing Source Directories
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

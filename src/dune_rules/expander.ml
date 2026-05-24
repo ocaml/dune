@@ -278,7 +278,8 @@ let[@inline never] invalid_use_of_target_variable
        User_error.raise
          ~loc:source.loc
          [ Pp.textf
-             "You cannot use %s with inferred rules."
+             "You cannot use %s unless the rule has a (target ...) or (targets ...) \
+              field."
              (Dune_lang.Template.Pform.describe source)
          ]
      | Static { targets = _; multiplicity } ->

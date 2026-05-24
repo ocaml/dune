@@ -39,7 +39,7 @@ module For_stanza : sig
 
   val of_stanzas
     :  Stanza.t list
-    -> cctxs:Compilation_context.t Loc.Map.t
+    -> cctxs:Compilation_context.t option Compilation_mode.By_mode.t Loc.Map.t
     -> sctx:Super_context.t
     -> src_dir:Path.Source.t
     -> ctx_dir:Path.Build.t
@@ -47,7 +47,7 @@ module For_stanza : sig
     -> dir_contents:Dir_contents.t
     -> expander:Expander.t
     -> ( Merlin.t list
-         , Compilation_context.t Loc.Map.t
+         , Compilation_context.t option Compilation_mode.By_mode.t Loc.Map.t
          , Path.Build.t list
          , Path.Source.t list )
          t
@@ -65,7 +65,20 @@ end = struct
 
   let add_map_maybe hd_o tl =
     match hd_o with
-    | Some (loc, hd) -> Loc.Map.add_exn tl loc hd
+    | Some (loc, hd) ->
+      Loc.Map.update tl loc ~f:(function
+        | None ->
+          Some
+            (Compilation_mode.By_mode.of_list
+               ~init:None
+               [ Compilation_context.for_ hd, Some hd ])
+        | Some e ->
+          let current = Compilation_mode.By_mode.to_list e in
+          Some
+            (Compilation_mode.By_mode.of_list
+               ~init:None
+               ((Compilation_context.for_ hd, Some hd)
+                :: List.map current ~f:(fun (k, v) -> k, Some v))))
     | None -> tl
   ;;
 
@@ -281,7 +294,11 @@ let gen_rules_for_stanzas sctx dir_contents cctxs expander ~dune_file ~dir:ctx_d
            >>= (function
             | Some (module_path, cctx) ->
               let module_path, _ = Nonempty_list.destruct_last module_path in
-              Menhir_rules.gen_rules cctx m ~dir:ctx_dir ~module_path
+              Menhir_rules.gen_rules
+                (Option.value_exn cctx.ocaml)
+                m
+                ~dir:ctx_dir
+                ~module_path
             | None ->
               (* This happens often when passing a [-p ...] option that hides a
                  library *)
@@ -339,7 +356,7 @@ let gen_rules_source_only sctx ~dir source_dir =
 ;;
 
 let gen_rules_group_part_or_root sctx dir_contents cctxs ~source_dir ~dir
-  : Compilation_context.t Loc.Map.t Memo.t
+  : Compilation_context.t option Compilation_mode.By_mode.t Loc.Map.t Memo.t
   =
   let+ () = gen_format_and_cram_rules sctx ~dir source_dir
   and+ () = Revdep_rules.add ~sctx ~dir
@@ -527,7 +544,7 @@ let gen_rules_standalone_or_root sctx ~dir ~source_dir =
       Dir_contents.Standalone_or_root.subdirs standalone_or_root
       >>= Memo.parallel_iter ~f:(fun dc ->
         let source_dir = Option.value_exn (Dir_contents.source_dir dc) in
-        let+ (_ : Compilation_context.t Loc.Map.t) =
+        let+ (_ : Compilation_context.t option Compilation_mode.By_mode.t Loc.Map.t) =
           gen_rules_group_part_or_root
             sctx
             dir_contents

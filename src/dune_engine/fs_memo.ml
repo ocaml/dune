@@ -262,31 +262,31 @@ module Cached_digest = struct
            | Error e -> Error e
            | Ok stats ->
              let reduced_stats = Reduced_stats.of_stat stats in
-             (match Reduced_stats.compare x.stats reduced_stats with
-              | Eq ->
-                (* Even though we're modifying the [stats_checked] field, we don't
-                   need to set [needs_dumping := true] here. This is because
-                   [checked_key] is incremented every time we load from disk, which
-                   makes it so that [stats_checked < checked_key] for all entries
-                   after loading, regardless of whether we save the new value here
-                   or not. *)
-                x.stats_checked <- cache.checked_key;
-                Ok x.contents
-              | Gt | Lt ->
-                let contents = f path stats in
-                Result.iter contents ~f:(fun contents ->
-                  emit
-                    path
-                    ~old_contents:x.contents
-                    ~new_contents:contents
-                    ~old_stats:x.stats
-                    ~new_stats:reduced_stats;
-                  needs_dumping := true;
-                  set_max_timestamp cache stats;
-                  x.contents <- contents;
-                  x.stats <- reduced_stats;
-                  x.stats_checked <- cache.checked_key);
-                contents)))
+             if Reduced_stats.equal x.stats reduced_stats
+             then (
+               (* Even though we're modifying the [stats_checked] field, we don't
+                  need to set [needs_dumping := true] here. This is because
+                  [checked_key] is incremented every time we load from disk, which
+                  makes it so that [stats_checked < checked_key] for all entries
+                  after loading, regardless of whether we save the new value here
+                  or not. *)
+               x.stats_checked <- cache.checked_key;
+               Ok x.contents)
+             else (
+               let contents = f path stats in
+               Result.iter contents ~f:(fun contents ->
+                 emit
+                   path
+                   ~old_contents:x.contents
+                   ~new_contents:contents
+                   ~old_stats:x.stats
+                   ~new_stats:reduced_stats;
+                 needs_dumping := true;
+                 set_max_timestamp cache stats;
+                 x.contents <- contents;
+                 x.stats <- reduced_stats;
+                 x.stats_checked <- cache.checked_key);
+               contents)))
   ;;
 
   module Untracked = struct
@@ -520,8 +520,8 @@ module Debug = struct
       else (
         let status =
           match current_stats with
-          | Some current_stats
-            when Cached_digest.Reduced_stats.compare stats current_stats = Eq -> "invalid"
+          | Some current_stats when Cached_digest.Reduced_stats.equal stats current_stats
+            -> "invalid"
           | Some _ | None -> "stale"
         in
         Some (finding_to_dyn { status; path; cached_digest; actual })))

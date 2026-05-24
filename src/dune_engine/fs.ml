@@ -8,7 +8,7 @@ let dir_contents (dir : Path.t) =
     Fs_memo.dir_contents dir >>| Result.map ~f:Fs_memo.Dir_contents.to_list
   | `Inside _ ->
     let* already_exists = Build_system.file_exists dir in
-    let+ () = if already_exists then Build_system.build_dir dir else Memo.return () in
+    let+ () = if already_exists then Build_system.build_file dir else Memo.return () in
     Path.readdir_unsorted_with_kinds dir
 ;;
 

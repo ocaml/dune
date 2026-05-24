@@ -1201,10 +1201,7 @@ let build_file p =
   ()
 ;;
 
-let build_dir p =
-  let+ (_ : Digest.t Targets.Produced.t) = build_dir p in
-  ()
-;;
+let build_dir p = build_dir (Path.build p)
 
 let with_file p ~f =
   let+ () = build_file p in

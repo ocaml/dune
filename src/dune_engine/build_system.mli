@@ -5,8 +5,8 @@ open Import
 (** Build a target, which may be a file or a directory. *)
 val build_file : Path.t -> unit Memo.t
 
-(** Build a directory. *)
-val build_dir : Path.t -> unit Memo.t
+(** Build a directory target and return its produced files. *)
+val build_dir : Path.Build.t -> Digest.t Targets.Produced.t Memo.t
 
 (** Build a file and read its contents with [f]. The execution of [f] is not memoized, so
     call sites should be careful to avoid duplicating [f]'s work. *)

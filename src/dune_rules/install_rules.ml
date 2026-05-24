@@ -1109,45 +1109,169 @@ let symlink_source_dir ~dir ~dst =
     suffix, dst, Action_builder.symlink ~src ~dst)
 ;;
 
+let compute_dst ~install_dir ~install_paths (entry : _ Install.Entry.t) =
+  let relative =
+    Install.Entry.relative_installed_path entry ~paths:install_paths
+    |> Path.as_in_source_tree_exn
+  in
+  Path.Build.append_source install_dir relative
+;;
+
+let entry_loc (s : Install.Entry.Sourced.Unexpanded.t) =
+  match s.source with
+  | User l -> l
+  | Dune -> Loc.in_file (Path.build s.entry.src)
+;;
+
+(* Classify a build path for the install machinery. *)
+let classify_install_src src
+  : [ `File
+    | `Directory
+    | `File_under_dir_target
+    | `Directory_under_dir_target
+    | `Missing
+    | `Not_target
+    ]
+      Memo.t
+  =
+  let open Memo.O in
+  Load_rules.is_target src
+  >>= function
+  | Yes File -> Memo.return `File
+  | Yes Directory -> Memo.return `Directory
+  | No -> Memo.return `Not_target
+  | Under_directory_target_so_cannot_say ->
+    Load_rules.load_dir ~dir:(Path.parent_exn src)
+    >>= (function
+     | Build_under_directory_target { directory_target_ancestor } ->
+       let+ targets = Build_system.build_dir directory_target_ancestor in
+       let src_b = Path.as_in_build_dir_exn src in
+       if Targets.Produced.mem_dir targets src_b
+       then `Directory_under_dir_target
+       else if Targets.Produced.mem targets src_b
+       then `File_under_dir_target
+       else `Missing
+     | _ -> Memo.return `Not_target)
+;;
+
+(* Build a directory target and return its leaf files keyed by their path
+   relative to [src]. Reads the file list straight out of the engine's
+   [Targets.Produced.t]; no filesystem stating. If [src] is a subpath
+   inside a directory target (e.g. [(install (dirs (a/share as .)))] where
+   the directory target is [a]), [Targets.Produced.t.root] is the actual
+   target [a] and [all_files_seq] yields paths relative to it; we filter
+   to leaves under [src] and strip the root-to-src prefix. *)
+let directory_target_leaves (src : Path.Build.t) =
+  let open Memo.O in
+  let+ targets = Build_system.build_dir src in
+  let prefix =
+    match
+      Path.Local.descendant (Path.Build.local src) ~of_:(Path.Build.local targets.root)
+    with
+    | Some p -> p
+    | None ->
+      Code_error.raise
+        "install dir src is not a descendant of its directory target root"
+        [ "src", Path.Build.to_dyn src; "root", Path.Build.to_dyn targets.root ]
+  in
+  Targets.Produced.all_files_seq targets
+  |> Seq.fold_left ~init:Path.Local.Map.empty ~f:(fun acc (rel_from_root, _digest) ->
+    match Path.Local.descendant rel_from_root ~of_:prefix with
+    | None -> acc
+    | Some rel -> Path.Local.Map.add_exn acc rel (Path.Build.append_local src rel))
+;;
+
+let install_dirs_overlap_min_version = 3, 24
+
+let check_dirs_overlap_version_gate ~contributors =
+  Memo.parallel_iter contributors ~f:(fun (s : Install.Entry.Sourced.Unexpanded.t) ->
+    let loc = entry_loc s in
+    let scope_dir = Path.Build.parent_exn s.entry.src in
+    let* scope = Scope.DB.find_by_dir scope_dir in
+    let v = Scope.project scope |> Dune_project.dune_version in
+    if Dune_lang.Syntax.Version.Infix.(v < install_dirs_overlap_min_version)
+    then
+      User_error.raise
+        ~loc
+        [ Pp.textf
+            "Multiple (install (dirs ...)) entries resolve to the same destination \
+             directory. Merging is supported with (lang dune %d.%d) or later; this \
+             stanza uses (lang dune %s)."
+            (fst install_dirs_overlap_min_version)
+            (snd install_dirs_overlap_min_version)
+            (Dune_lang.Syntax.Version.to_string v)
+        ]
+        ~hints:
+          [ Pp.textf
+              "Upgrade the project's (lang dune ...) version, or split the entries into \
+               distinct destination directories."
+          ]
+    else Memo.return ())
+;;
+
 let symlink_installed_artifacts_to_build_install
+      ~sctx:_
       (ctx : Build_context.t)
       (entries : Install.Entry.Sourced.Unexpanded.t list)
       ~install_paths
   =
   let install_dir = Install.Context.dir ~context:ctx.name in
+  (* Index Directory entries by their resolved destination, so we can detect
+     overlap (for the version gate) and route singletons vs multi-contributor
+     groups to the appropriate rule shape. *)
+  let dirs_by_dst =
+    List.filter_map entries ~f:(fun s ->
+      match s.entry.kind with
+      | Install.Entry.Unexpanded.Directory ->
+        let dst = compute_dst ~install_dir ~install_paths s.entry in
+        Some (dst, s)
+      | File | Source_tree -> None)
+    |> Path.Build.Map.of_list_multi
+  in
+  let* () =
+    Memo.parallel_iter
+      (Path.Build.Map.to_list dirs_by_dst)
+      ~f:(fun (_dst, contributors) ->
+        match contributors with
+        | [] | [ _ ] -> Memo.return ()
+        | _ :: _ :: _ -> check_dirs_overlap_version_gate ~contributors)
+  in
   Memo.parallel_map entries ~f:(fun (s : Install.Entry.Sourced.Unexpanded.t) ->
     let entry = s.entry in
-    let dst =
-      let relative =
-        Install.Entry.relative_installed_path entry ~paths:install_paths
-        |> Path.as_in_source_tree_exn
-      in
-      Path.Build.append_source install_dir relative
-    in
-    let loc =
-      match s.source with
-      | User l -> l
-      | Dune -> Loc.in_file (Path.build entry.src)
-    in
+    let dst = compute_dst ~install_dir ~install_paths entry in
+    let loc = entry_loc s in
     let src = Path.build entry.src in
     let rule { Action_builder.With_targets.targets; build } =
       Rule.make ~info:(From_dune_file loc) ~targets build
     in
+    let per_leaf_entry suffix leaf_dst =
+      let entry =
+        let entry =
+          Install.Entry.map_dst entry ~f:(fun dst ->
+            Install.Entry.Dst.append_local dst suffix)
+        in
+        let entry = Install.Entry.Unexpanded.expand entry in
+        Install.Entry.Expanded.set_src entry leaf_dst
+      in
+      { s with entry }
+    in
     match entry.kind with
     | Install.Entry.Unexpanded.Source_tree ->
       symlink_source_dir ~dir:src ~dst
-      >>| List.map ~f:(fun (suffix, dst, build) ->
-        let rule = rule build in
-        let entry =
-          let entry =
-            Install.Entry.map_dst entry ~f:(fun dst ->
-              Install.Entry.Dst.append_local dst suffix)
-          in
-          let entry = Install.Entry.Unexpanded.expand entry in
-          Install.Entry.Expanded.set_src entry dst
-        in
-        { s with entry }, rule)
+      >>| List.map ~f:(fun (suffix, leaf_dst, build) ->
+        per_leaf_entry suffix leaf_dst, rule build)
     | File ->
+      let* () =
+        classify_install_src src
+        >>| function
+        | `File | `File_under_dir_target | `Missing | `Not_target -> ()
+        | `Directory | `Directory_under_dir_target ->
+          User_error.raise
+            ~loc
+            ~hints:[ Pp.text "Use (install (dirs ...)) for directory targets." ]
+            [ Pp.textf "%s is a directory, not a file." (Path.to_string_maybe_quoted src)
+            ]
+      in
       let entry =
         let entry = Install.Entry.Unexpanded.expand entry in
         let entry = Install.Entry.Expanded.set_src entry dst in
@@ -1156,13 +1280,65 @@ let symlink_installed_artifacts_to_build_install
       let action = Action_builder.symlink ~src ~dst in
       Memo.return [ entry, rule action ]
     | Directory ->
-      let entry =
-        let entry = Install.Entry.Unexpanded.expand entry in
-        let entry = Install.Entry.Expanded.set_src entry dst in
-        { s with entry }
+      (* [(install (dirs X))] requires [X] to be a directory target (or a
+         subdirectory of one). Reject paths that are file targets or have no
+         producing rule, with a clean user-level error before [build_dir]
+         would Code_error on a file target. *)
+      let* () =
+        classify_install_src src
+        >>= function
+        | `Directory | `Directory_under_dir_target -> Memo.return ()
+        | `File | `File_under_dir_target ->
+          User_error.raise
+            ~loc
+            ~hints:[ Pp.text "Use (install (files ...)) for files." ]
+            [ Pp.textf "%s is a file, not a directory." (Path.to_string_maybe_quoted src)
+            ]
+        | `Missing ->
+          User_error.raise
+            ~loc
+            [ Pp.textf
+                "%s does not exist inside the directory target."
+                (Path.to_string_maybe_quoted src)
+            ]
+        | `Not_target ->
+          let+ hints =
+            match Path.as_in_build_dir src with
+            | None -> Memo.return []
+            | Some build_path ->
+              Source_tree.find_dir (Path.Build.drop_build_context_exn build_path)
+              >>| (function
+               | Some _ ->
+                 [ Pp.text "Use (install (source_trees ...)) for source directories." ]
+               | None -> [])
+          in
+          User_error.raise
+            ~loc
+            ~hints
+            [ Pp.textf
+                "%s is neither a directory target nor a subdirectory of one."
+                (Path.to_string_maybe_quoted src)
+            ]
       in
-      let action = Action_builder.symlink_dir ~src ~dst in
-      Memo.return [ entry, rule action ])
+      (* Expand each Directory entry into per-leaf symlink rules with
+         [kind = File]. The engine catches per-leaf collisions across
+         contributors via [Path.Build.Map.add_exn] at rule registration;
+         the multi-contributor version gate above (3.24) ensures pre-3.24
+         projects get a clean error before reaching that point. *)
+      directory_target_leaves entry.src
+      >>| Path.Local.Map.to_list_map ~f:(fun suffix leaf_src ->
+        let leaf_dst = Path.Build.append_local dst suffix in
+        let action = Action_builder.symlink ~src:(Path.build leaf_src) ~dst:leaf_dst in
+        let entry =
+          Install.Entry.Unexpanded.make_with_dst
+            entry.section
+            (Install.Entry.Dst.append_local entry.dst suffix)
+            ~kind:File
+            ~src:leaf_src
+          |> Install.Entry.Unexpanded.expand
+          |> Fun.flip Install.Entry.Expanded.set_src leaf_dst
+        in
+        { s with entry }, rule action))
 ;;
 
 let promote_install_file (ctx : Context.t) =
@@ -1224,7 +1400,7 @@ let symlinked_entries sctx package =
   in
   let build_context = Super_context.context sctx |> Context.build_context in
   install_entries sctx package
-  >>= symlink_installed_artifacts_to_build_install build_context ~install_paths
+  >>= symlink_installed_artifacts_to_build_install ~sctx build_context ~install_paths
   >>| List.rev_concat
   >>| List.split
 ;;

@@ -26,6 +26,14 @@ type t =
     mutable dead : Thread.t list
   }
 
+let run_task t task =
+  Mutex.unlock t.mutex;
+  match task () with
+  | () -> Mutex.lock t.mutex
+  | exception exn ->
+    Code_error.raise "thread pool tasks must not raise" [ "exn", Exn.to_dyn exn ]
+;;
+
 let spawn_worker t =
   let rec loop () =
     while Queue.is_empty t.tasks do
@@ -34,12 +42,7 @@ let spawn_worker t =
     done;
     let task = Queue.pop_exn t.tasks in
     t.idle <- t.idle - 1;
-    Mutex.unlock t.mutex;
-    (match task () with
-     | () -> ()
-     | exception exn ->
-       Code_error.raise "thread pool tasks must not raise" [ "exn", Exn.to_dyn exn ]);
-    Mutex.lock t.mutex;
+    run_task t task;
     maybe_retry ()
   and start () =
     Mutex.lock t.mutex;
@@ -89,4 +92,22 @@ let task t ~f =
   maybe_spawn_worker t;
   Condition.signal t.cv;
   Mutex.unlock t.mutex
+;;
+
+let%expect_test "failed task updates worker accounting" =
+  let t = create ~min_workers:0 ~max_workers:1 in
+  t.running <- 1;
+  Mutex.lock t.mutex;
+  (match run_task t (fun () -> raise Exit) with
+   | () -> Code_error.raise "run_task unexpectedly returned" []
+   | exception Code_error.E _ -> ());
+  Printf.printf "running: %d\n" t.running;
+  Printf.printf "dead: %d\n" (List.length t.dead);
+  Printf.printf "mutex unlocked: %b\n" (Mutex.try_lock t.mutex);
+  Mutex.unlock t.mutex;
+  [%expect
+    {|
+    running: 1
+    dead: 0
+    mutex unlocked: true |}]
 ;;

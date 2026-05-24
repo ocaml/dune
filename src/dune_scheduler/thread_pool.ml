@@ -68,6 +68,11 @@ let spawn_worker t =
 let maybe_spawn_worker t = if t.idle = 0 && t.running < t.max_workers then spawn_worker t
 
 let create ~min_workers ~max_workers =
+  if min_workers < 0 || max_workers <= 0 || min_workers > max_workers
+  then
+    Code_error.raise
+      "Thread_pool.create got invalid worker bounds"
+      [ "min_workers", Dyn.int min_workers; "max_workers", Dyn.int max_workers ];
   let t =
     { min_workers
     ; max_workers

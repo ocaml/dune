@@ -38,8 +38,8 @@ compiler diagnostic should still print the original Reason source line.
   $ dune build --root cases --sandbox=symlink @src/all
   Entering directory 'cases'
   File "src/x.re", line 2, characters 40-48:
-   |  1 + 1 + 1 + 1 + 1 + 1 + "reason"
-                                      ^^^^^^^^
+  2 | let x = 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + "reason"
+                                              ^^^^^^^^
   Error: This constant has type string but an expression was expected of type
            int
   Leaving directory 'cases'

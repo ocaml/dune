@@ -573,7 +573,11 @@ let library_rules
   let* () = gen_wrapped_compat_modules lib cctx
   and* () =
     Memo.when_ (Compilation_mode.equal for_ Melange) (fun () ->
-      Melange_rules.setup_melange_sources_copy_rules ~sctx ~dir source_modules)
+      Melange_rules.setup_melange_sources_copy_rules
+        ~sctx
+        ~dir
+        ~preprocess:lib.buildable.preprocess.config
+        source_modules)
   and* () = Module_compilation.build_all cctx
   and* () = Check_rules.add_obj_dir sctx ~obj_dir for_
   and* () =

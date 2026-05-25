@@ -19,17 +19,22 @@ let read_all file =
 let write_stdout file = output_string stdout (read_all file)
 
 let write_binary_ast source kind =
+  let source =
+    if Filename.is_relative source then Filename.concat (Sys.getcwd ()) source else source
+  in
   let tmp = Filename.temp_file "refmt" ".ast" in
+  let ic = open_in source in
   Fun.protect
-    ~finally:(fun () -> Sys.remove tmp)
+    ~finally:(fun () ->
+      close_in_noerr ic;
+      Sys.remove tmp)
     (fun () ->
+       Location.input_name := source;
+       let lb = Lexing.from_channel ic in
+       Location.init lb source;
        (match kind with
-        | Impl ->
-          Pparse.parse_implementation ~tool_name:"refmt" source
-          |> Pparse.write_ast Structure tmp
-        | Intf ->
-          Pparse.parse_interface ~tool_name:"refmt" source
-          |> Pparse.write_ast Signature tmp);
+        | Impl -> Pparse.write_ast Structure tmp (Parse.implementation lb)
+        | Intf -> Pparse.write_ast Signature tmp (Parse.interface lb));
        write_stdout tmp)
 ;;
 

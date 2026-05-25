@@ -26,7 +26,7 @@ module Output_kind = struct
   ;;
 end
 
-let setup_melange_sources_copy_rules ~sctx ~dir modules =
+let setup_melange_sources_copy_rules ~sctx ~dir ~preprocess modules =
   let mods = Modules.fold_user_written modules ~init:[] ~f:List.cons in
   let context = Super_context.context sctx in
   Memo.parallel_iter mods ~f:(fun m ->
@@ -40,7 +40,16 @@ let setup_melange_sources_copy_rules ~sctx ~dir modules =
       match Path.equal src (Path.build dst) with
       | true -> Memo.return ()
       | false ->
-        Super_context.add_rule sctx ~dir (Copy_line_directive.builder context ~src ~dst)))
+        let builder =
+          match Preprocess.Per_module.find (Module.name m) preprocess with
+          | Pps { staged = false; _ } ->
+            (* Non-staged PPX preprocessing receives [-loc-filename] separately,
+               so adding a line directive here would shift diagnostics twice. *)
+            Action_builder.copy ~src ~dst
+          | No_preprocessing | Future_syntax _ | Action _ | Pps { staged = true; _ } ->
+            Copy_line_directive.builder context ~src ~dst
+        in
+        Super_context.add_rule sctx ~dir builder))
 ;;
 
 let output_of_lib =
@@ -552,7 +561,13 @@ let setup_emit_cmj_rules
         ~melange_package_name:None
         ~package:mel.package
     in
-    let* () = setup_melange_sources_copy_rules ~sctx ~dir source_modules in
+    let* () =
+      setup_melange_sources_copy_rules
+        ~sctx
+        ~dir
+        ~preprocess:mel.preprocess.config
+        source_modules
+    in
     let* () = Module_compilation.build_all cctx in
     let* () =
       Memo.when_ (Compilation_context.bin_annot cctx) (fun () ->

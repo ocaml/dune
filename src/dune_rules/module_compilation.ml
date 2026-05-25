@@ -90,13 +90,10 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
     Lib_mode.Cm_kind.Map.get (Compilation_context.includes cctx) cm_kind
   in
   let can_filter =
-    (match Lib_mode.of_cm_kind cm_kind with
-     | Melange -> false
-     | Ocaml _ -> true)
     (* Skip when [dep_graph] is the dummy ([Dep_graph.dummy] with
        [dir = Path.Build.root]); used for singleton-module stanzas and
        link-time-synthesised modules where no transitive deps are available. *)
-    && Path.Build.equal (Dep_graph.dir dep_graph) (Obj_dir.dir obj_dir)
+    Path.Build.equal (Dep_graph.dir dep_graph) (Obj_dir.dir obj_dir)
     (* Modules synthesised outside the stanza, handed to [ocamlc_i]. *)
     && Dep_graph.mem dep_graph m
     && module_kind_is_filterable m

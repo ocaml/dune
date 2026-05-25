@@ -57,6 +57,7 @@ Test dependency on installed package
       ocamldep (internal)
       ocamldep (internal)
           melc .b.objs/melange/b.{cmi,cmj,cmt}
+      ocamldep (internal)
           melc .b.objs/melange/b__Bar.{cmi,cmj,cmt}
           melc .b.objs/melange/b__Foo.{cmi,cmj,cmt}
   Leaving directory 'b'

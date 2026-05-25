@@ -59,6 +59,7 @@ Test dependency on installed package
   Entering directory 'b'
           melc dist/node_modules/a/a.js
           melc dist/node_modules/a/foo.js
+      ocamldep (internal)
           melc dist/bar.js
   Leaving directory 'b'
 

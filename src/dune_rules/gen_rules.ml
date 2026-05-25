@@ -727,10 +727,58 @@ let analyze_private_context_path components =
         | false -> `Invalid_context))
 ;;
 
+let is_private_pkg_path = function
+  | ".pkg" :: _ -> true
+  | _ -> false
+;;
+
+let raise_on_lock_dir_out_of_sync =
+  Per_context.create_by_name ~name:"check-lock-dir" (fun ctx ->
+    Memo.lazy_ (fun () ->
+      let* lock_dir_available = Lock_dir.lock_dir_active ctx in
+      if lock_dir_available
+      then (
+        let* path, lock_dir = Lock_dir.get_with_path ctx >>| User_error.ok_exn in
+        let* packages = Dune_load.packages () in
+        let local_packages =
+          Dune_lang.Package.Name.Map.map packages ~f:Dune_pkg.Local_package.of_package
+        in
+        (match
+           Dune_pkg.Package_universe.up_to_date
+             local_packages
+             ~dependency_hash:(Option.map ~f:snd lock_dir.dependency_hash)
+         with
+         | `Valid -> ()
+         | `Invalid ->
+           let source_path = Dune_pkg.Lock_dir.in_source_tree path in
+           let loc_path = Path.source source_path in
+           let loc = Loc.in_file (Path.relative loc_path "lock.dune") in
+           let hints = Pp.[ text "run dune pkg lock" ] in
+           User_error.raise
+             ~loc
+             ~hints
+             [ Pp.text "The lock dir is not sync with your dune-project" ]);
+        let external_packages = Dune_lang.Package.Name.Set.of_keys packages in
+        Memo.return
+          (Dune_pkg.Lock_dir.check_packages
+             lock_dir.packages
+             ~lock_dir_path:path
+             ~external_packages
+           |> User_error.ok_exn))
+      else Memo.return ())
+    |> Memo.Lazy.force)
+  |> Staged.unstage
+;;
+
 let private_context ~dir components _ctx =
   analyze_private_context_path components
   >>= function
   | `Invalid_context -> Memo.return Gen_rules.unknown_context
+  | `Valid (ctx, components) when is_private_pkg_path components ->
+    let* () = raise_on_lock_dir_out_of_sync ctx in
+    let+ lock_rules = Lock_rules.setup_rules ~dir ~components
+    and+ pkg_rules = Pkg_rules.setup_rules ctx ~dir ~components in
+    Gen_rules.combine lock_rules pkg_rules
   | `Valid (ctx, components) ->
     let+ lock_rules = Lock_rules.setup_rules ~dir ~components
     and+ pkg_rules = Pkg_rules.setup_rules ctx ~dir ~components in
@@ -745,37 +793,6 @@ let private_context ~dir components _ctx =
               Filename.of_string_exn (Context_name.to_string context_name))))
     in
     Gen_rules.make ~build_dir_only_sub_dirs (Memo.return Rules.empty)
-;;
-
-let raise_on_lock_dir_out_of_sync =
-  Per_context.create_by_name ~name:"check-lock-dir" (fun ctx ->
-    Memo.lazy_ (fun () ->
-      let* lock_dir_available = Lock_dir.lock_dir_active ctx in
-      if lock_dir_available
-      then
-        let* path, lock_dir = Lock_dir.get_with_path ctx >>| User_error.ok_exn in
-        let+ local_packages =
-          Dune_load.packages ()
-          >>| Dune_lang.Package.Name.Map.map ~f:Dune_pkg.Local_package.of_package
-        in
-        match
-          Dune_pkg.Package_universe.up_to_date
-            local_packages
-            ~dependency_hash:(Option.map ~f:snd lock_dir.dependency_hash)
-        with
-        | `Valid -> ()
-        | `Invalid ->
-          let source_path = Dune_pkg.Lock_dir.in_source_tree path in
-          let loc_path = Path.source source_path in
-          let loc = Loc.in_file (Path.relative loc_path "lock.dune") in
-          let hints = Pp.[ text "run dune pkg lock" ] in
-          User_error.raise
-            ~loc
-            ~hints
-            [ Pp.text "The lock dir is not sync with your dune-project" ]
-      else Memo.return ())
-    |> Memo.Lazy.force)
-  |> Staged.unstage
 ;;
 
 let gen_rules ctx ~dir components =
@@ -817,6 +834,17 @@ let gen_rules ctx ~dir components =
     let gen_pkg_alias_rule = Pkg_rules.setup_pkg_install_alias ~dir ctx in
     let+ sctx_rules = gen_rules ctx (Super_context.find_exn ctx) ~dir components in
     Gen_rules.combine sctx_rules gen_pkg_alias_rule
+;;
+
+let () =
+  Pkg_rules.set_project_package_universe (fun context_name ->
+    let* lock_dir = Lock_dir.get_exn context_name
+    and* platform = Lock_dir.Sys_vars.solver_env
+    and* local_packages =
+      Dune_load.packages () >>| Package.Name.Map.map ~f:Dune_pkg.Local_package.of_package
+    in
+    Dune_pkg.Package_universe.create_for_build ~platform local_packages lock_dir
+    |> Memo.return)
 ;;
 
 let () =

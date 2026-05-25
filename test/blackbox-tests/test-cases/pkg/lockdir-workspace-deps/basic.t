@@ -16,17 +16,29 @@ A rule depends on the lock-dir package:
 
   $ write_lockdir_consumer_rule
 
-Lock-dir validation does not currently recognise workspace packages as
-valid dependency targets:
+The build succeeds. The rule depends on consumer's cookie; the
+workspace install layout is materialized as part of consumer's build:
 
-  $ dune build out 2>&1
-  File "_build/_private/default/.lock/dune.lock/consumer.pkg", line 2,
-  characters 9-22:
-  The package "consumer" depends on the package "workspace-lib", but
-  "workspace-lib" does not appear in the lockdir
-  _build/_private/default/.lock/dune.lock.
-  Error: At least one package dependency is itself not present as a package in
-  the lockdir _build/_private/default/.lock/dune.lock.
-  Hint: This could indicate that the lockdir is corrupted. Delete it and then
-  regenerate it by running: 'dune pkg lock'
-  [1]
+  $ dune build out
+  building consumer
+
+  $ dune rules --format=json _build/default/out | jq 'include "dune"; .[] | ruleDepFilePaths' | censor | sort
+  "_build/_private/default/.pkg/consumer.0.0.1-$DIGEST/target/cookie"
+
+  $ find _build/install/default/.packages -name '*.cmi' -o -name 'META' | censor | sort
+  _build/install/default/.packages/$DIGEST/lib/workspace-lib/META
+  _build/install/default/.packages/$DIGEST/lib/workspace-lib/workspace_lib.cmi
+
+Editing the workspace library and rebuilding incrementally still works:
+
+  $ cat > src/workspace_lib.ml <<EOF
+  > let greeting = "Updated!"
+  > let version = 2
+  > EOF
+
+  $ dune build out
+  building consumer
+
+The full build including the lock-dir consumer also succeeds:
+
+  $ dune build @install

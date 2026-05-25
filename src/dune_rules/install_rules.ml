@@ -1208,6 +1208,28 @@ let () =
     install_entries sctx package)
 ;;
 
+let package_variables package =
+  let module Variable = OpamVariable in
+  let+ packages = Dune_load.packages () in
+  match Package.Name.Map.find packages package with
+  | None -> Package_variable_name.Map.empty
+  | Some package ->
+    let version = Package.version package in
+    let dev = Option.is_none version in
+    let version = Option.value version ~default:Dune_pkg.Package_version.dev in
+    Package_variable_name.Map.of_list_exn
+      [ ( Package_variable_name.name
+        , Variable.S (Package.Name.to_string (Package.name package)) )
+      ; Package_variable_name.version, S (Package_version.to_string version)
+      ; Package_variable_name.dev, B dev
+      ]
+;;
+
+let () =
+  Install_layout.set_package_variable_resolver (fun _context_name package ->
+    package_variables package)
+;;
+
 let packages =
   let f sctx =
     let* packages = Dune_load.packages () in

@@ -91,6 +91,7 @@ module Packages : sig
   type t
 
   val to_pkg_list : t -> Pkg.t list
+  val mem : t -> Package_name.t -> bool
   val pkgs_on_platform_by_name : t -> platform:Solver_env.t -> Pkg.t Package_name.Map.t
 
   (** All the packages grouped by the platforms where they are enabled. *)
@@ -157,8 +158,28 @@ module Write_disk : sig
   val commit : t -> unit
 end
 
-val read_disk : Path.t -> (t, User_message.t) result
-val read_disk_exn : Path.t -> t
+(** Read a lockdir from disk and verify that every dependency edge resolves
+    to either another package in the lockdir, dune itself, or a name in
+    [external_packages]. Pass [external_packages:Package_name.Set.empty]
+    to require the lockdir to be self-contained; pass workspace package
+    names to permit hand-written lockdirs that reference them. *)
+val read_disk
+  :  Path.t
+  -> external_packages:Package_name.Set.t
+  -> (t, User_message.t) result
+
+val read_disk_exn : Path.t -> external_packages:Package_name.Set.t -> t
+
+(** Verify the dependency graph of a loaded lockdir against an
+    [external_packages] set. Reports each missing or ambiguous edge with its
+    source location and returns a single [User_message.t] describing the
+    overall failure. An edge is ambiguous when its target appears both in the
+    lockdir and in [external_packages]. *)
+val check_packages
+  :  Packages.t
+  -> lock_dir_path:Path.t
+  -> external_packages:Package_name.Set.t
+  -> (unit, User_message.t) result
 
 module Make_load (Io : sig
     include Monad.S
@@ -167,8 +188,10 @@ module Make_load (Io : sig
     val readdir_with_kinds : Path.t -> (Filename.t * Unix.file_kind) list t
     val with_lexbuf_from_file : Path.t -> f:(Lexing.lexbuf -> 'a) -> 'a t
   end) : sig
-  val load : Path.t -> (t, User_message.t) result Io.t
-  val load_exn : Path.t -> t Io.t
+  (** Load a lockdir from disk without validating its dependency graph.
+      Callers are responsible for running {!check_packages} with the
+      appropriate [external_packages] set. *)
+  val load : Path.t -> t Io.t
 end
 
 (** [transitive_dependency_closure t ~platform names] returns the set of package names

@@ -506,10 +506,11 @@ let for_module ~obj_dir ~modules ~sandbox ~impl ~dir ~sctx ~for_ module_ =
 
 let rules ~obj_dir ~modules ~sandbox ~impl ~sctx ~dir ~for_ ~has_library_deps =
   match Modules.With_vlib.as_singleton modules with
-  | Some m when (not has_library_deps) || Compilation_mode.equal for_ Melange ->
-    (* Single-module stanzas have no intra-stanza deps; the dep graph is only
-       consumed by the per-module filter in [lib_deps_for_module]. That filter
-       doesn't activate for Melange (see its [can_filter]) — skip ocamldep. *)
+  | Some m when not has_library_deps ->
+    (* Single-module stanzas with no library deps have nothing to filter — the
+       dep graph is only consumed by the per-module filter in
+       [lib_deps_for_module], and that filter has no libs to narrow. Skip
+       ocamldep. *)
     Memo.return (Dep_graph.Ml_kind.dummy m)
   | Some _ | None ->
     let transitive_deps, imported_vlib_deps =

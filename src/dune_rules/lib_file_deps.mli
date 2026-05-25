@@ -22,12 +22,10 @@ val deps_of_entries : opaque:bool -> cm_kind:Lib_mode.Cm_kind.t -> Lib.t list ->
 (** Specific-file deps on the [modules] of [lib]. Only valid for local libraries
     (where [Module.t] values are available).
 
-    Currently produces complete per-module deps only for [cm_kind = Ocaml _]
-    (cmi + cmx); for [Melange _] only the cmi is emitted — there is no
-    per-module cmj arm, asymmetric with [deps_of_entries]. The sole caller
-    ([Module_compilation.lib_deps_for_module]) gates Melange out before
-    reaching this function, so this asymmetry is not observable today. If a
-    future Melange caller is added, extend with a [want_cmj] arm. *)
+    Per [cm_kind]: [Ocaml Cmx] emits cmi + cmx (cmx omitted when [opaque] and
+    [Lib.is_local lib]); [Ocaml (Cmi | Cmo)] emits cmi only; [Melange Cmj]
+    emits cmi + cmj; [Melange Cmi] emits cmi only. The cmi/cmj selection
+    mirrors [groups_for_cm_kind] used by the broad-dep path. *)
 val deps_of_entry_modules
   :  opaque:bool
   -> cm_kind:Lib_mode.Cm_kind.t

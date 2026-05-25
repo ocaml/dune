@@ -390,6 +390,8 @@ static const FSEventStreamEventFlags all_flags[] = {
     kFSEventStreamEventFlagItemIsLastHardlink,
 #if MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
     kFSEventStreamEventFlagItemCloned,
+#else
+    0,
 #endif
 };
 

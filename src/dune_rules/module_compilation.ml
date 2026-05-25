@@ -180,7 +180,22 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
       let all_raw = Module_name.Set.union m_raw trans_raw in
       let* flags = Ocaml_flags.get (Compilation_context.flags cctx) mode in
       let open_modules = Ocaml_flags.extract_open_module_names flags in
-      let referenced = Module_name.Set.union all_raw open_modules in
+      (* [Stdlib] is implicitly opened by every compile and so is referenced by
+         every consumer even when ocamldep doesn't list it. For OCaml-mode
+         compiles the compiler's built-in stdlib path supplies it (no dune lib
+         to keep); for Melange-mode compiles the [melange]/[stdlib] lib supplies
+         it as a regular dune dependency, and would otherwise be dropped from
+         [kept_libs] for consumers that don't syntactically name a [Stdlib.X]
+         member. Force it onto the frontier so the [Lib_index] lookup adds it
+         when present. *)
+      let referenced =
+        let implicit_stdlib =
+          match Module_name.of_string_opt "Stdlib" with
+          | Some n -> Module_name.Set.singleton n
+          | None -> Module_name.Set.empty
+        in
+        Module_name.Set.union (Module_name.Set.union all_raw open_modules) implicit_stdlib
+      in
       let { Lib_file_deps.Lib_index.tight; non_tight } =
         Lib_file_deps.Lib_index.filter_libs_with_modules
           lib_index

@@ -1,5 +1,5 @@
 (cram
- (applies_to watch-build-events debug-event)
+ (applies_to watch-build-events debug-event interrupted-watch-build-events)
  (enabled_if
   (= %{system} linux)))
 

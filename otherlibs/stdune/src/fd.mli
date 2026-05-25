@@ -5,6 +5,7 @@ val equal : t -> t -> bool
 val hash : t -> int
 val to_dyn : t -> Dyn.t
 val close : t -> unit
+val is_closed : t -> bool
 val set_nonblock : t -> unit
 
 (** Unsafe casts to bridge callers that still use [Unix.file_descr]. *)

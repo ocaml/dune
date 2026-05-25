@@ -65,8 +65,10 @@ let flush =
 
 let close t =
   Mutex.protect t.mutex (fun () ->
-    flush t;
-    Fd.close t.fd)
+    if not (Fd.is_closed t.fd)
+    then (
+      flush t;
+      Fd.close t.fd))
 ;;
 
 let create cats path =
@@ -108,11 +110,13 @@ let emit_buffered t event =
 
 let emit ?(buffered = false) t event =
   Mutex.protect t.mutex (fun () ->
-    emit_buffered t event;
-    if not buffered then flush t)
+    if not (Fd.is_closed t.fd)
+    then (
+      emit_buffered t event;
+      if not buffered then flush t))
 ;;
 
-let flush t = Mutex.protect t.mutex (fun () -> flush t)
+let flush t = Mutex.protect t.mutex (fun () -> if not (Fd.is_closed t.fd) then flush t)
 
 let start t k : Event.Async.t option =
   match t with

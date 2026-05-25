@@ -84,8 +84,12 @@ module Sorted = struct
       type t = elt array
 
       let empty = [||]
+      let to_dyn t = Dyn.array Key.to_dyn t
+      let singleton x = [| x |]
       let is_empty t = Stdlib.Array.length t = 0
       let length = Stdlib.Array.length
+      let choose t = if length t > 0 then Some t.(0) else None
+      let iter t ~f = iter ~f t
 
       let mem t x =
         match binary_search t x with

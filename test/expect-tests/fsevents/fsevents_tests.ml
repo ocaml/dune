@@ -307,3 +307,68 @@ let%expect_test "multiple fsevents" =
     > { action = "Create"; kind = "File"; path = "$TESTCASE_ROOT/foo/file" }
     > { action = "Create"; kind = "File"; path = "$TESTCASE_ROOT/bar/file" } |}]
 ;;
+
+let%expect_test "multiple paths in one fsevents" =
+  test (fun finish ->
+    let cwd = Sys.getcwd () in
+    let foo = Filename.concat cwd "foo" in
+    let bar = Filename.concat cwd "bar" in
+    ignore (Fpath.mkdir foo);
+    ignore (Fpath.mkdir bar);
+    let logger = Logger.create () in
+    let t = ref None in
+    let sync =
+      object
+        val mutable started = false
+        val mutable stopped = false
+        method logger = logger
+        method started = started
+        method stopped = stopped
+        method start = started <- true
+
+        method stop =
+          stopped <- true;
+          Fsevents.stop (Option.value_exn !t)
+
+        method emit_start = if not started then emit_start foo
+        method emit_stop = if not stopped then emit_stop foo
+      end
+    in
+    let fsevents =
+      Fsevents.create
+        ~paths:[ foo; bar ]
+        ~latency:(Time.Span.of_secs 0.0)
+        ~f:(make_callback sync ~f:(print_event ~cwd))
+    in
+    t := Some fsevents;
+    let dispatch_queue = Fsevents.Dispatch_queue.create () in
+    Fsevents.start fsevents dispatch_queue;
+    let (thread : Thread.t) =
+      Thread.create
+        (fun () ->
+           let rec await ~emit ~continue =
+             if continue ()
+             then (
+               emit ();
+               Unix.sleepf 0.2;
+               await ~emit ~continue)
+           in
+           await ~emit:(fun () -> sync#emit_start) ~continue:(fun () -> not sync#started);
+           Io.String_path.write_file "foo/file" "";
+           Io.String_path.write_file "bar/file" "";
+           Io.String_path.write_file "xxx" "";
+           await ~emit:(fun () -> sync#emit_stop) ~continue:(fun () -> not sync#stopped))
+        ()
+    in
+    (match Fsevents.Dispatch_queue.wait_until_stopped dispatch_queue with
+     | Error Exit -> print_endline "[EXIT]"
+     | Error _ -> assert false
+     | Ok () -> ());
+    Thread.join thread;
+    Logger.flush logger;
+    finish ());
+  [%expect
+    {|
+    > { action = "Create"; kind = "File"; path = "$TESTCASE_ROOT/foo/file" }
+    > { action = "Create"; kind = "File"; path = "$TESTCASE_ROOT/bar/file" } |}]
+;;

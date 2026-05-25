@@ -2,3 +2,8 @@
  (applies_to watch-build-events debug-event)
  (enabled_if
   (= %{system} linux)))
+
+(cram
+ (applies_to file-watcher-events)
+ (enabled_if
+  (<> %{system} macosx)))

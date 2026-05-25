@@ -184,7 +184,7 @@ let process_inotify_event (event : Inotify.Event.t) should_exclude : Event.t lis
        @ create_event_unless_excluded ~kind:Created ~path:dst)
 ;;
 
-let emit_events events =
+let trace_and_send_events send_events events =
   Dune_trace.emit_all ~buffered:true File_watcher (fun () ->
     List.map events ~f:(fun (event : Event.t) ->
       Dune_trace.Event.file_watcher
@@ -200,7 +200,8 @@ let emit_events events =
              | File_changed -> `File_changed
              | Unknown -> `Unknown
            in
-           `File (path, kind))))
+           `File (path, kind))));
+  send_events events
 ;;
 
 let shutdown t =
@@ -395,18 +396,14 @@ let create_inotifylib_watcher ~sync_table ~send_events should_exclude =
                 path
             | Moved _ | Queue_overflow -> None
           in
-          let events =
-            match is_fs_sync_event_generated_by_dune with
-            | None -> process_inotify_event event should_exclude
-            | Some path ->
-              (match Fs_sync.consume_event sync_table path with
-               | None -> []
-               | Some id -> [ Event.Sync id ])
-          in
-          emit_events events;
-          events)
+          match is_fs_sync_event_generated_by_dune with
+          | None -> process_inotify_event event should_exclude
+          | Some path ->
+            (match Fs_sync.consume_event sync_table path with
+             | None -> []
+             | Some id -> [ Event.Sync id ]))
       in
-      send_events events)
+      trace_and_send_events send_events events)
 ;;
 
 let create_external_fswatch ~send_events ~backend ~watch_exclusions =
@@ -468,7 +465,7 @@ let create_external_fswatch ~send_events ~backend ~watch_exclusions =
           jobs := [];
           jobs_batch)
       in
-      send_events (List.concat jobs_batch);
+      trace_and_send_events send_events (List.concat jobs_batch);
       Thread.delay (Time.Span.to_secs debounce_interval);
       buffer_thread ()
     in
@@ -500,7 +497,7 @@ let fsevents_callback ?exclusion_paths send_events ~f events =
       in
       if skip_path path then None else f event path)
   in
-  send_events events
+  trace_and_send_events send_events events
 ;;
 
 let fsevents ?exclusion_paths ~latency ~paths send_events f =
@@ -602,7 +599,7 @@ let fswatch_win_callback ~send_events ~sync_table ~should_exclude event =
       | Added | Modified ->
         (match Fs_sync.consume_event sync_table filename with
          | None -> ()
-         | Some id -> send_events [ Event.Sync id ])
+         | Some id -> trace_and_send_events send_events [ Event.Sync id ])
       | Removed | Renamed_new | Renamed_old -> ())
   | path ->
     let normalized_filename =
@@ -618,7 +615,7 @@ let fswatch_win_callback ~send_events ~sync_table ~should_exclude event =
         | Removed | Renamed_old -> Deleted
         | Modified -> File_changed
       in
-      send_events [ Event.Fs_memo_event { kind; path } ])
+      trace_and_send_events send_events [ Event.Fs_memo_event { kind; path } ])
 ;;
 
 let create_fswatch_win ~send_events ~debounce_interval:sleep ~should_exclude =

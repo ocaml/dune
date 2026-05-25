@@ -267,6 +267,24 @@ let%expect_test "raise inside callback" =
     exiting. |}]
 ;;
 
+let%expect_test "stop before wait_until_stopped" =
+  test (fun finish ->
+    let fsevents =
+      Fsevents.create
+        ~paths:[ Sys.getcwd () ]
+        ~latency:(Time.Span.of_secs 0.0)
+        ~f:(fun _ -> ())
+    in
+    let dispatch_queue = Fsevents.Dispatch_queue.create () in
+    Fsevents.start fsevents dispatch_queue;
+    Fsevents.stop fsevents;
+    (match Fsevents.Dispatch_queue.wait_until_stopped dispatch_queue with
+     | Error _ -> assert false
+     | Ok () -> print_endline "stopped");
+    finish ());
+  [%expect {| stopped |}]
+;;
+
 let%expect_test "set exclusion paths" =
   let run paths =
     let ignored = "ignored" in

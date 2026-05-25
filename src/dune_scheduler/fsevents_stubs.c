@@ -5,6 +5,7 @@
 #include <caml/memory.h>
 #include <caml/mlvalues.h>
 #include <caml/threads.h>
+#include <stdbool.h>
 
 #if defined(__APPLE__)
 #include <AvailabilityMacros.h>
@@ -29,6 +30,7 @@ typedef struct dune_dispatch_queue {
   pthread_cond_t dq_finished;
   pthread_mutex_t dq_lock;
   uint32_t fsevent_streams;
+  bool has_exn;
   value v_exn;
 } dune_dispatch_queue;
 
@@ -44,6 +46,7 @@ void dune_fsevents_dispatch_queue_finalize(value v_dq) {
   dune_dispatch_queue *dq = Dispatch_queue_val(v_dq);
   if (dq->dq)
     dispatch_release(dq->dq);
+  caml_remove_global_root(&dq->v_exn);
   pthread_cond_destroy(&dq->dq_finished);
   pthread_mutex_destroy(&dq->dq_lock);
   caml_stat_free(dq);
@@ -78,6 +81,7 @@ CAMLprim value dune_fsevents_dispatch_queue_create(value v_unit) {
   pthread_cond_init(&dq->dq_finished, NULL);
   dq->dq = dispatch_queue_create("build.dune.fsevents", DISPATCH_QUEUE_SERIAL);
   dq->fsevent_streams = 0;
+  dq->has_exn = false;
   dq->v_exn = Val_unit;
   caml_register_global_root(&dq->v_exn);
   v_dq = caml_alloc_custom(&dune_fsevents_dispatch_queue_ops,
@@ -92,11 +96,12 @@ CAMLprim value dune_fsevents_dispatch_queue_wait_until_stopped(value v_dq) {
   dune_dispatch_queue *dq = Dispatch_queue_val(v_dq);
   caml_release_runtime_system();
   pthread_mutex_lock(&dq->dq_lock);
-  pthread_cond_wait(&dq->dq_finished, &dq->dq_lock);
-  v_exn = dq->v_exn;
+  while (dq->fsevent_streams > 0 && !dq->has_exn) {
+    pthread_cond_wait(&dq->dq_finished, &dq->dq_lock);
+  }
   pthread_mutex_unlock(&dq->dq_lock);
   caml_acquire_runtime_system();
-  caml_remove_global_root(&dq->v_exn);
+  v_exn = dq->v_exn;
   if (v_exn != Val_unit) {
     caml_raise(v_exn);
   }
@@ -189,12 +194,11 @@ static void dune_fsevents_callback(const FSEventStreamRef streamRef,
   v_res = caml_callback_exn(t->v_callback, v_events_xs);
   if (Is_exception_result(v_res)) {
     v_res = Extract_exception(v_res);
-    caml_release_runtime_system();
     pthread_mutex_lock(&dq->dq_lock);
     dq->v_exn = v_res;
+    dq->has_exn = true;
     pthread_cond_broadcast(&dq->dq_finished);
     pthread_mutex_unlock(&dq->dq_lock);
-    caml_acquire_runtime_system();
   }
   CAMLdrop;
   caml_release_runtime_system();

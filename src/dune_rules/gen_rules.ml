@@ -752,27 +752,36 @@ let raise_on_lock_dir_out_of_sync =
     Memo.lazy_ (fun () ->
       let* lock_dir_available = Lock_dir.lock_dir_active ctx in
       if lock_dir_available
-      then
+      then (
         let* path, lock_dir = Lock_dir.get_with_path ctx >>| User_error.ok_exn in
-        let+ local_packages =
-          Dune_load.packages ()
-          >>| Dune_lang.Package.Name.Map.map ~f:Dune_pkg.Local_package.of_package
+        let* packages = Dune_load.packages () in
+        let local_packages =
+          Dune_lang.Package.Name.Map.map packages ~f:Dune_pkg.Local_package.of_package
         in
-        match
-          Dune_pkg.Package_universe.up_to_date
-            local_packages
-            ~dependency_hash:(Option.map ~f:snd lock_dir.dependency_hash)
-        with
-        | `Valid -> ()
-        | `Invalid ->
-          let source_path = Dune_pkg.Lock_dir.in_source_tree path in
-          let loc_path = Path.source source_path in
-          let loc = Loc.in_file (Path.relative loc_path "lock.dune") in
-          let hints = Pp.[ text "run dune pkg lock" ] in
-          User_error.raise
-            ~loc
-            ~hints
-            [ Pp.text "The lock dir is not sync with your dune-project" ]
+        (match
+           Dune_pkg.Package_universe.up_to_date
+             local_packages
+             ~dependency_hash:(Option.map ~f:snd lock_dir.dependency_hash)
+         with
+         | `Valid -> ()
+         | `Invalid ->
+           let source_path = Dune_pkg.Lock_dir.in_source_tree path in
+           let loc_path = Path.source source_path in
+           let loc = Loc.in_file (Path.relative loc_path "lock.dune") in
+           let hints = Pp.[ text "run dune pkg lock" ] in
+           User_error.raise
+             ~loc
+             ~hints
+             [ Pp.text "The lock dir is not sync with your dune-project" ]);
+        let external_packages =
+          Dune_lang.Package.Name.Map.keys packages |> Dune_lang.Package.Name.Set.of_list
+        in
+        Memo.return
+          (Dune_pkg.Lock_dir.check_packages
+             lock_dir.packages
+             ~lock_dir_path:path
+             ~external_packages
+           |> User_error.ok_exn))
       else Memo.return ())
     |> Memo.Lazy.force)
   |> Staged.unstage

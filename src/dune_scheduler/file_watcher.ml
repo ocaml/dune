@@ -663,7 +663,7 @@ let create_default ?fsevents_debounce ~watch_exclusions ~scheduler () =
 let parent_directory ext =
   let rec loop p =
     if Fpath.is_directory (Path.External.to_string p)
-    then Some ext
+    then Some p
     else (
       match Path.External.parent p with
       | None ->
@@ -696,7 +696,7 @@ let%expect_test "parent_directory" =
   [%expect
     {|
     parent-directory -> parent-directory
-    file.ml -> file.ml
+    file.ml -> parent-directory
     |}]
 ;;
 
@@ -711,7 +711,12 @@ let add_watch t path =
         | None -> Ok ()
         | Some ext ->
           let watch =
-            lazy (fsevents ~latency:f.latency f.scheduler ~paths:[ path ] f.on_event)
+            lazy
+              (fsevents
+                 ~latency:f.latency
+                 f.scheduler
+                 ~paths:[ Path.external_ ext ]
+                 f.on_event)
           in
           (match Watch_trie.add f.external_ ext watch with
            | Watch_trie.Under_existing_node -> Ok ()
@@ -736,8 +741,8 @@ let add_watch t path =
      | External ext ->
        (match parent_directory ext with
         | None -> Ok ()
-        | Some _ ->
-          Fswatch_win.add fswatch.t (Path.to_absolute_filename path);
+        | Some ext ->
+          Fswatch_win.add fswatch.t (Path.External.to_string ext);
           Ok ()))
 ;;
 

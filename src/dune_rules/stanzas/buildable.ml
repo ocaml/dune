@@ -30,12 +30,6 @@ let decode_libraries ~allow_re_export =
   field "libraries" (Lib_dep.L.decode ~allow_re_export) ~default:[]
 ;;
 
-let decode_preprocess =
-  let+ preprocess, preprocessor_deps = Preprocess.preprocess_fields
-  and+ instrumentation = Preprocess.Instrumentation.instrumentation in
-  Preprocess.preprocess_config ~preprocess ~instrumentation ~preprocessor_deps
-;;
-
 let decode_ocaml_flags = Ocaml_flags.Spec.decode
 let decode_modules = Modules_settings.decode
 let decode_lint = field "lint" Lint.decode ~default:Lint.default

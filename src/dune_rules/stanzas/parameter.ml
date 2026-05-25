@@ -49,6 +49,12 @@ let to_library t =
   }
 ;;
 
+let decode_preprocess =
+  let+ preprocess, preprocessor_deps = Preprocess.preprocess_fields
+  and+ instrumentation = Preprocess.Instrumentation.instrumentation in
+  Preprocess.preprocess_config ~preprocess ~instrumentation ~preprocessor_deps
+;;
+
 let decode =
   let* () = Dune_lang.Syntax.since Dune_lang.Oxcaml.syntax (0, 1) in
   fields
@@ -58,7 +64,7 @@ let decode =
      let+ buildable : Buildable.t =
        let+ loc = loc
        and+ libraries = Buildable.decode_libraries ~allow_re_export:true
-       and+ preprocess = Buildable.decode_preprocess
+       and+ preprocess = decode_preprocess
        and+ lint = Buildable.decode_lint
        and+ flags = Buildable.decode_ocaml_flags
        and+ allow_overlapping_dependencies = Buildable.decode_allow_overlapping

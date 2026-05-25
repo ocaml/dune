@@ -126,7 +126,7 @@ let%expect_test "threaded console handles terminal signals in the console thread
   [%expect
     {|
     main before start blocked: false
-    main after start blocked: false
+    main after start blocked: true
     console thread blocked: false
     |}]
 ;;

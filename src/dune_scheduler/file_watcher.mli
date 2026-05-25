@@ -51,20 +51,11 @@ module Event : sig
     | Watcher_terminated
 end
 
-module Scheduler : sig
-  (** Hook into the fiber scheduler. *)
-  type t =
-    { thread_safe_send_events : Event.t list -> unit
-      (** Send some events to the scheduler. This function must be safe to call
-          from file watcher threads. *)
-    }
-end
-
 (** Create a new file watcher with default settings. *)
 val create_default
   :  ?fsevents_debounce:Time.Span.t
   -> watch_exclusions:string list
-  -> scheduler:Scheduler.t
+  -> send_events:(Event.t list -> unit)
   -> unit
   -> t
 

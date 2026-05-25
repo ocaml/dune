@@ -1,7 +1,7 @@
 (library
  (name dune_file_watcher_tests_lib)
  (modules dune_file_watcher_tests_lib)
- (libraries dune_scheduler base stdune threads.posix stdio unix))
+ (libraries dune_scheduler base stdune fiber threads.posix stdio unix))
 
 (library
  (name dune_file_watcher_tests_macos)

@@ -4,10 +4,7 @@ open Dune_file_watcher_tests_lib
 let%expect_test _ = init ()
 
 let%expect_test _ =
-  let event_queue, try_to_get_events = create_event_queue () in
-  let watcher =
-    Dune_scheduler.File_watcher.create_default ~event_queue ~watch_exclusions:[] ()
-  in
+  let watcher, try_to_get_events = create_watcher ~watch_exclusions:[] () in
   let print_events n = print_events ~try_to_get_events ~expected:n in
   (match Dune_scheduler.File_watcher.add_watch watcher (Path.of_string ".") with
    | Error _ -> assert false

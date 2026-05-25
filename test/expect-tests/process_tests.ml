@@ -10,7 +10,7 @@ let go =
     ; watch_exclusions = []
     }
   in
-  Scheduler.Run.go config ~file_watcher:No_watcher ~on_event:(fun _ -> ())
+  Scheduler.Run.go config ~file_watcher:No_watcher
 ;;
 
 let true_ = Bin.which "true" ~path:(Env_path.path Env.initial) |> Option.value_exn

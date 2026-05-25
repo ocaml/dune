@@ -236,7 +236,7 @@ let () =
     stat.st_size
   in
   let results =
-    Scheduler.Run.go config ~on_event:(fun _ -> ())
+    Scheduler.Run.go config
     @@ fun () ->
     let open Fiber.O in
     (* Prepare the workspace *)

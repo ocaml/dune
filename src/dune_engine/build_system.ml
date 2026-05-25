@@ -1099,16 +1099,18 @@ let handle_final_exns exns =
     List.iter exns ~f:report
 ;;
 
-let run ?(run_id = Run_id.Batch) f =
+let run ?restart_started_at ?(run_id = Run_id.Batch) f =
   let finalize_diff_promotion () =
     protect ~f:Diff_promotion.finalize ~finally:Diff_promotion.clear_cache
   in
   let open Fiber.O in
   let f () =
-    let (`Restart restart) = Scheduler.Build_loop.start_build () in
     let start = Time.now () in
     Dune_trace.emit ~buffered:false Build (fun () ->
-      Dune_trace.Event.watch_build_start ~run_id:(Run_id.to_int run_id) ~restart ~start);
+      Dune_trace.Event.watch_build_start
+        ~run_id:(Run_id.to_int run_id)
+        ~restart:(Option.is_some restart_started_at)
+        ~start);
     Dune_trace.reset_alloc_profile ();
     (* CR-someday amokhov: Currently we invalidate cached timestamps on every
        incremental rebuild. This conservative approach helps us to work around
@@ -1145,32 +1147,28 @@ let run ?(run_id = Run_id.Batch) f =
         Error `Already_reported
     in
     Metrics.reset ();
-    let+ () =
-      match run_id with
-      | Batch -> Fiber.return ()
-      | Watch _ -> Scheduler.flush_file_watcher ()
-    in
-    let stop = Time.now () in
-    (match Scheduler.Build_loop.finish_build ~stop with
-     | Restarting -> ()
-     | Finished { restart_duration } ->
-       let alloc_summary =
-         Dune_trace.capture_alloc_profile (`Build (Run_id.to_int run_id))
-       in
-       Dune_trace.emit Build (fun () ->
-         Dune_trace.Event.watch_build_finish
-           ~run_id:(Run_id.to_int run_id)
-           ~outcome:
-             (match outcome with
-              | Ok _ -> `Success
-              | Error `Already_reported -> `Failure)
-           ~start
-           ~stop
-           ~restart_duration);
-       Option.iter alloc_summary ~f:Dune_trace.always_emit);
+    let+ () = Scheduler.flush_file_watcher () in
+    Dune_trace.emit Build (fun () ->
+      let stop = Time.now () in
+      let restart_duration =
+        Option.map restart_started_at ~f:(fun restart_started_at ->
+          Time.diff stop restart_started_at)
+      in
+      Dune_trace.Event.watch_build_finish
+        ~run_id:(Run_id.to_int run_id)
+        ~outcome:
+          (match outcome with
+           | Ok _ -> `Success
+           | Error `Already_reported -> `Failure)
+        ~start
+        ~stop
+        ~restart_duration);
+    Dune_trace.capture_alloc_profile (`Build (Run_id.to_int run_id))
+    |> Option.iter ~f:Dune_trace.always_emit;
     outcome
   in
-  Fiber.Mutex.with_lock State.build_mutex ~f
+  Fiber.Mutex.with_lock State.build_mutex ~f:(fun () ->
+    Scheduler.with_current_build_cancellation (Fiber.Cancel.create ()) f)
 ;;
 
 let run_exn f =
@@ -1181,8 +1179,8 @@ let run_exn f =
   | Error `Already_reported -> raise Dune_util.Report_error.Already_reported
 ;;
 
-let run_action_builder ?run_id request =
-  run ?run_id (fun () ->
+let run_action_builder ?restart_started_at ?run_id request =
+  run ?restart_started_at ?run_id (fun () ->
     let+ (), (_ : Dep.Fact.t Dep.Map.t) =
       Action_builder.evaluate_and_collect_facts request
     in

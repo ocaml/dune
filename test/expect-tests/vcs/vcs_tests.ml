@@ -129,10 +129,7 @@ let run kind script =
     ; watch_exclusions = []
     }
   in
-  Scheduler.Run.go
-    ~on_event:(fun _ -> ())
-    config
-    (fun () -> Fiber.sequential_iter script ~f:(run_action vcs))
+  Scheduler.Run.go config (fun () -> Fiber.sequential_iter script ~f:(run_action vcs))
 ;;
 
 let script =

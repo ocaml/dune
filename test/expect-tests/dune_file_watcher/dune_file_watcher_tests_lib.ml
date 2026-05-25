@@ -14,13 +14,9 @@ let init () =
   Path.Build.set_build_dir (Path.Outside_build_dir.of_string "_build")
 ;;
 
-let create_event_queue () =
-  let event_queue = Dune_scheduler.Event.Queue.create () in
+let create_watcher ?fsevents_debounce ~watch_exclusions () =
   let mutex = Mutex.create () in
   let events_buffer = ref [] in
-  let add_events events =
-    Mutex.protect mutex (fun () -> events_buffer := !events_buffer @ events)
-  in
   let try_to_get_events () =
     Mutex.protect mutex (fun () ->
       match !events_buffer with
@@ -29,26 +25,37 @@ let create_event_queue () =
         events_buffer := [];
         Some events)
   in
-  let (_ : Thread.t) =
-    Thread.create
-      (fun () ->
-         while true do
-           match Dune_scheduler.Event.Queue.next event_queue with
-           | Build_inputs_changed events ->
-             Nonempty_list.to_list events
-             |> List.filter_map ~f:(function
-               | Dune_scheduler.Event.Fs_event event -> Some event
-               | Dune_scheduler.Event.Invalidation _ -> assert false)
-             |> add_events
-           | File_system_sync _ -> ()
-           | File_system_watcher_terminated
-           | Shutdown _
-           | Fiber_fill_ivar _
-           | Job_complete_ready -> assert false
-         done)
+  let event_queue = Dune_scheduler.Event.Queue.create () in
+  let watcher =
+    Dune_scheduler.File_watcher.create
+      ?fsevents_debounce
+      ~watch_exclusions
+      ~event_queue
       ()
   in
-  event_queue, try_to_get_events
+  let rec read_events () =
+    let open Fiber.O in
+    Dune_scheduler.File_watcher.read watcher
+    >>= function
+    | None -> Fiber.return ()
+    | Some events ->
+      let events =
+        List.map events ~f:(function
+          | Dune_scheduler.Event.File_watcher_event.Fs_memo_event event -> event
+          | Queue_overflow -> assert false)
+      in
+      Mutex.protect mutex (fun () -> events_buffer := !events_buffer @ events);
+      read_events ()
+  in
+  let (_ : Thread.t) =
+    let iter () =
+      match Dune_scheduler.Event.Queue.next event_queue with
+      | Fiber_fill_ivar fill -> [ fill ]
+      | Shutdown _ | Job_complete_ready -> assert false
+    in
+    Thread.create (fun () -> Fiber.run (read_events ()) ~iter) ()
+  in
+  watcher, try_to_get_events
 ;;
 
 let retry_loop (type a) ~period ~timeout ~(f : unit -> a option) : a option =

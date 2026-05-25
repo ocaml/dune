@@ -1,8 +1,12 @@
+open Stdune
+
 val init : unit -> unit
 
-val create_event_queue
-  :  unit
-  -> Dune_scheduler.Event.Queue.t
+val create_watcher
+  :  ?fsevents_debounce:Time.Span.t
+  -> watch_exclusions:string list
+  -> unit
+  -> Dune_scheduler.File_watcher.t
      * (unit -> Dune_scheduler.Event.Fs_memo_event.t list option)
 
 val print_events

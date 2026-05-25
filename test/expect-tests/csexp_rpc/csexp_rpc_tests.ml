@@ -61,7 +61,7 @@ let scheduler_config =
 
 let run_scheduler ?timeout f =
   Dune_engine.Clflags.display := Quiet;
-  Scheduler.Run.go scheduler_config ?timeout f ~on_event:(fun _ -> ())
+  Scheduler.Run.go scheduler_config ?timeout f
 ;;
 
 let stop_server server = run_scheduler (fun () -> Server.stop server)

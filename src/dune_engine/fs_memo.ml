@@ -1022,9 +1022,6 @@ let handle_fs_event ({ kind; path } : Dune_scheduler.Event.Fs_memo_event.t)
 
 let init = Watcher.init
 
-(* Register the Fs_memo implementation with the scheduler *)
-let () = Dune_scheduler.Scheduler.set_fs_memo_impl ~handle_fs_event ~init
-
 module Untracked = struct
   let file_digest = Fs_cache.read Fs_cache.Untracked.file_digest
   let path_stat = Fs_cache.read Fs_cache.Untracked.path_stat

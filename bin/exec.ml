@@ -298,16 +298,17 @@ let exec_building_directly ~common ~config ~context ~prog ~args ~no_rebuild =
   | Yes Passive ->
     User_error.raise [ Pp.textf "passive watch mode is unsupported by exec" ]
   | Yes Eager ->
-    Scheduler_setup.go_with_rpc_server_and_console_status_reporting ~common ~config
+    Scheduler_setup.go_with_rpc_server_and_file_watcher ~common ~config
     @@ fun () ->
     let open Fiber.O in
     let on_exit = Console.printf "Program exited with code [%d]" in
-    Dune_engine.Build_loop.poll
-    @@ fun ~run_id ->
-    let* () = Fiber.return () in
-    Console.maybe_clear_screen ~details_hum:[];
-    Dune_engine.Build_system.run ~run_id
-    @@ step ~prog ~args ~common ~no_rebuild ~context ~on_exit
+    Dune_engine.Build_loop.run (fun build_loop ->
+      Dune_engine.Build_loop.poll build_loop
+      @@ fun ~run_id ~restart_started_at ->
+      let* () = Fiber.return () in
+      Console.maybe_clear_screen ~details_hum:[];
+      Dune_engine.Build_system.run ?restart_started_at ~run_id
+      @@ step ~prog ~args ~common ~no_rebuild ~context ~on_exit)
   | No ->
     Scheduler_setup.go_with_rpc_server ~common ~config
     @@ fun () ->

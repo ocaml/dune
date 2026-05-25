@@ -1,13 +1,16 @@
 open Import
 
-let run_build_system ~run_id ~request =
+let run_build_system_impl ?restart_started_at ~run_id ~request () =
   Dune_engine.Build_system.run_action_builder
+    ?restart_started_at
     ~run_id
     (let open Action_builder.O in
      Action_builder.of_memo (Util.setup ()) >>= request)
 ;;
 
-let poll_handling_rpc_build_requests ~(common : Common.t) =
+let run_build_system ~run_id ~request = run_build_system_impl ~run_id ~request ()
+
+let poll_handling_rpc_build_requests build_loop ~(common : Common.t) =
   let open Fiber.O in
   let rpc =
     match Common.rpc common with
@@ -15,9 +18,10 @@ let poll_handling_rpc_build_requests ~(common : Common.t) =
     | `Forbid_builds -> Code_error.raise "rpc server must be allowed in passive mode" []
   in
   Dune_engine.Build_loop.poll_passive
+    build_loop
     ~get_build_request:
       (let+ { kind; outcome } = Dune_rpc_impl.Server.pending_action rpc in
-       ( (fun ~run_id ->
+       ( (fun ~run_id ~restart_started_at ->
            let request setup =
              let root = Common.root common in
              match kind with
@@ -28,32 +32,30 @@ let poll_handling_rpc_build_requests ~(common : Common.t) =
                  ~to_cwd:root.to_cwd
                  ~test_paths
            in
-           run_build_system ~run_id ~request)
+           run_build_system_impl ?restart_started_at ~run_id ~request ())
        , outcome ))
 ;;
 
 let run_build_command_poll_eager ~(common : Common.t) ~config ~request : unit =
-  Scheduler_setup.go_with_rpc_server_and_console_status_reporting
-    ~common
-    ~config
-    (fun () ->
-       let open Fiber.O in
-       (* Run two fibers concurrently. One is responible for rebuilding targets
+  Scheduler_setup.go_with_rpc_server_and_file_watcher ~common ~config (fun () ->
+    let open Fiber.O in
+    (* Run two fibers concurrently. One is responible for rebuilding targets
           named on the command line in reaction to file system changes. The other
           is responsible for building targets named in RPC build requests. *)
-       let+ () =
-         Dune_engine.Build_loop.poll (fun ~run_id -> run_build_system ~run_id ~request)
-       and+ () = poll_handling_rpc_build_requests ~common in
-       ())
+    Dune_engine.Build_loop.run (fun build_loop ->
+      let+ () =
+        Dune_engine.Build_loop.poll build_loop (fun ~run_id ~restart_started_at ->
+          run_build_system_impl ?restart_started_at ~run_id ~request ())
+      and+ () = poll_handling_rpc_build_requests build_loop ~common in
+      ()))
 ;;
 
 let run_build_command_poll_passive ~common ~config ~request:_ : unit =
   (* CR-someday aalekseyev: It would've been better to complain if [request] is
      non-empty, but we can't check that here because [request] is a function.*)
-  Scheduler_setup.go_with_rpc_server_and_console_status_reporting
-    ~common
-    ~config
-    (fun () -> poll_handling_rpc_build_requests ~common)
+  Scheduler_setup.go_with_rpc_server_and_file_watcher ~common ~config (fun () ->
+    Dune_engine.Build_loop.run (fun build_loop ->
+      poll_handling_rpc_build_requests build_loop ~common))
 ;;
 
 let run_build_command_once ~(common : Common.t) ~config ~request =

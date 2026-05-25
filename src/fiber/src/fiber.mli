@@ -454,6 +454,23 @@ type fill = Fill : 'a Ivar.t * 'a -> fill
     ivar to fill. *)
 val run : 'a t -> iter:(unit -> fill list) -> 'a
 
+module Trigger : sig
+  (** Conceptually, a [unit Ivar.t] that can be filled idempotently. Ivars
+      cannot, in general, have idempotent fill operations, since the second fill
+      might have different data in it than the first. Since this type only
+      contains unit data, we can be sure that every fill will be (). *)
+  type t
+
+  val create : unit -> t
+  val trigger : t -> unit fiber
+
+  (** Version of [trigger] that is suitable to call from the [iter] callback of
+      [Fiber.run]. *)
+  val trigger' : t -> fill list
+
+  val wait : t -> unit fiber
+end
+
 (** Advanced fiber execution *)
 module Scheduler : sig
   (** Represent a fiber that has stalled. *)

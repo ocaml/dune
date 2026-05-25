@@ -206,7 +206,7 @@ let prepare (config : Config.t) ~(handler : Handler.t) ~events ~file_watcher =
     ; invalidation = Memo.Invalidation.empty
     ; watch_restart_started_at = None
     ; handler
-    ; build_inputs_changed = Trigger.create ()
+    ; build_inputs_changed = Fiber.Trigger.create ()
     ; cancel
     }
   in
@@ -293,7 +293,7 @@ module Run_once = struct
           build_loop.status <- Restarting_build;
           Fiber.Cancel.fire' cancellation
       in
-      let fills = Trigger.trigger build_loop.build_inputs_changed @ fills in
+      let fills = Fiber.Trigger.trigger' build_loop.build_inputs_changed @ fills in
       match fills with
       | [] -> iter t
       | fills -> fills)
@@ -423,7 +423,7 @@ module Build_loop = struct
 
   let start_iteration t =
     t.invalidation <- Memo.Invalidation.empty;
-    t.build_inputs_changed <- Trigger.create ();
+    t.build_inputs_changed <- Fiber.Trigger.create ();
     (match t.status with
      | Building _ -> assert false
      | Standing_by | Restarting_build -> ());
@@ -442,7 +442,7 @@ module Build_loop = struct
       `Done
   ;;
 
-  let wait_for_build_input_change t = Trigger.wait t.build_inputs_changed
+  let wait_for_build_input_change t = Fiber.Trigger.wait t.build_inputs_changed
 end
 
 module Run = struct
@@ -599,7 +599,7 @@ module For_tests = struct
   let wait_for_build_input_change () =
     let* () = Fiber.return () in
     let build_loop = (t ()).build_loop in
-    Trigger.wait build_loop.build_inputs_changed
+    Fiber.Trigger.wait build_loop.build_inputs_changed
   ;;
 
   let inject_memo_invalidation invalidation =

@@ -26,6 +26,16 @@ let pp_input_path m ~ml_kind =
   Module.source m ~ml_kind |> Option.value_exn |> pp_input_file ~ml_kind
 ;;
 
+let loc_filename_arg_for_pp ~input_path ~loc_filename =
+  if Path.equal input_path loc_filename
+  then Command.Args.empty
+  else
+    S
+      [ A "-loc-filename"
+      ; A (Path.drop_optional_build_context_maybe_sandboxed loc_filename |> Path.to_string)
+      ]
+;;
+
 let pp_corrected_path m ~ml_kind ~suffix =
   pp_input_path m ~ml_kind
   |> Path.as_in_build_dir_exn
@@ -338,6 +348,11 @@ let pp_one_module
         let* ast = setup_dialect_rules sctx ~sandbox ~dir ~expander m in
         let* () = Memo.when_ lint (fun () -> lint_module ~ast ~source:m) in
         pped_module ast ~f:(fun ml_kind src dst ->
+          let loc_filename_arg =
+            loc_filename_arg_for_pp
+              ~input_path:(Path.build src)
+              ~loc_filename:(pp_input_path m ~ml_kind)
+          in
           Super_context.add_rule
             sctx
             ~loc
@@ -360,6 +375,7 @@ let pp_one_module
                      [ As args
                      ; A "-o"
                      ; Path (Path.build dst)
+                     ; loc_filename_arg
                      ; Command.Ml_kind.ppx_driver_flag ml_kind
                      ; Dep (Path.build src)
                      ; Hidden_deps

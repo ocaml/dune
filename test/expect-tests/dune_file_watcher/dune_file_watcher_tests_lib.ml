@@ -14,6 +14,43 @@ let init () =
   Path.Build.set_build_dir (Path.Outside_build_dir.of_string "_build")
 ;;
 
+let create_event_queue () =
+  let event_queue = Dune_scheduler.Event.Queue.create () in
+  let mutex = Mutex.create () in
+  let events_buffer = ref [] in
+  let add_events events =
+    Mutex.protect mutex (fun () -> events_buffer := !events_buffer @ events)
+  in
+  let try_to_get_events () =
+    Mutex.protect mutex (fun () ->
+      match !events_buffer with
+      | [] -> None
+      | events ->
+        events_buffer := [];
+        Some events)
+  in
+  let (_ : Thread.t) =
+    Thread.create
+      (fun () ->
+         while true do
+           match Dune_scheduler.Event.Queue.next event_queue with
+           | Build_inputs_changed events ->
+             Nonempty_list.to_list events
+             |> List.filter_map ~f:(function
+               | Dune_scheduler.Event.Fs_event event -> Some event
+               | Dune_scheduler.Event.Invalidation _ -> assert false)
+             |> add_events
+           | File_system_sync _ -> ()
+           | File_system_watcher_terminated
+           | Shutdown _
+           | Fiber_fill_ivar _
+           | Job_complete_ready -> assert false
+         done)
+      ()
+  in
+  event_queue, try_to_get_events
+;;
+
 let retry_loop (type a) ~period ~timeout ~(f : unit -> a option) : a option =
   let t0 = Time.now () in
   let rec loop () =
@@ -56,7 +93,7 @@ let get_events ~try_to_get_events ~expected =
 let print_events ~try_to_get_events ~expected =
   let events, status = get_events ~try_to_get_events ~expected in
   List.iter events ~f:(fun event ->
-    Dune_scheduler.File_watcher.Fs_memo_event.to_dyn event
+    Dune_scheduler.Event.Fs_memo_event.to_dyn event
     |> Dyn.to_string
     |> Stdio.print_endline);
   match status with

@@ -4,27 +4,9 @@ open Dune_file_watcher_tests_lib
 let%expect_test _ = init ()
 
 let%expect_test _ =
-  let mutex = Mutex.create () in
-  let events_buffer = ref [] in
+  let event_queue, try_to_get_events = create_event_queue () in
   let watcher =
-    Dune_scheduler.File_watcher.create_default
-      ~send_events:(fun events ->
-        Mutex.protect mutex (fun () -> events_buffer := !events_buffer @ events))
-      ~watch_exclusions:[]
-      ()
-  in
-  let try_to_get_events () =
-    Mutex.protect mutex (fun () ->
-      match !events_buffer with
-      | [] -> None
-      | list ->
-        events_buffer := [];
-        Some
-          (List.map list ~f:(function
-             | Dune_scheduler.File_watcher.Event.Sync _ -> assert false
-             | Queue_overflow -> assert false
-             | Fs_memo_event e -> e
-             | Watcher_terminated -> assert false)))
+    Dune_scheduler.File_watcher.create_default ~event_queue ~watch_exclusions:[] ()
   in
   let print_events n = print_events ~try_to_get_events ~expected:n in
   (match Dune_scheduler.File_watcher.add_watch watcher (Path.of_string ".") with

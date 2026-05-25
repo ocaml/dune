@@ -4,28 +4,13 @@ open Dune_file_watcher_tests_lib
 let%expect_test _ = init ()
 
 let%expect_test _ =
-  let mutex = Mutex.create () in
-  let events_buffer = ref [] in
+  let event_queue, try_to_get_events = create_event_queue () in
   let (_ : Dune_scheduler.File_watcher.t) =
     Dune_scheduler.File_watcher.create_default
       ~fsevents_debounce:(Time.Span.of_secs 0.)
-      ~send_events:(fun events ->
-        Mutex.protect mutex (fun () -> events_buffer := !events_buffer @ events))
+      ~event_queue
       ~watch_exclusions:[]
       ()
-  in
-  let try_to_get_events () =
-    Mutex.protect mutex (fun () ->
-      match !events_buffer with
-      | [] -> None
-      | list ->
-        events_buffer := [];
-        Some
-          (List.filter_map list ~f:(function
-             | Dune_scheduler.File_watcher.Event.Sync _ -> None
-             | Queue_overflow -> assert false
-             | Fs_memo_event e -> Some e
-             | Watcher_terminated -> assert false)))
   in
   let print_events n = print_events ~try_to_get_events ~expected:n in
   Stdio.Out_channel.write_all "x" ~data:"x";

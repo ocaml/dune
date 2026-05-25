@@ -246,9 +246,13 @@ CAMLprim value dune_fsevents_create(value v_paths, value v_latency,
       &context, paths, kFSEventStreamEventIdSinceNow, Double_val(v_latency),
       flags);
   CFRelease(paths);
+  if (stream == NULL) {
+    caml_stat_free(t);
+    caml_failwith("Fsevents.create: failed to create stream");
+  }
   t->dq = NULL;
-  caml_register_global_root(&t->v_callback);
   t->v_callback = v_callback;
+  caml_register_global_root(&t->v_callback);
   t->stream = stream;
 
   v_t = caml_alloc_custom(&dune_fsevents_t_ops, sizeof(dune_fsevents_t *), 0, 1);
@@ -284,6 +288,13 @@ CAMLprim value dune_fsevents_start(value v_t, value v_dq) {
   bool res = FSEventStreamStart(t->stream);
   if (!res) {
     /* the docs say this is impossible anyway */
+    pthread_mutex_lock(&dq->dq_lock);
+    dq->fsevent_streams--;
+    if (dq->fsevent_streams == 0) {
+      pthread_cond_broadcast(&dq->dq_finished);
+    }
+    pthread_mutex_unlock(&dq->dq_lock);
+    t->dq = NULL;
     caml_failwith("Fsevents.start: failed to start");
   }
   CAMLreturn(Val_unit);
@@ -424,8 +435,9 @@ CAMLprim value dune_fsevents_stop(value v_t) {
   caml_failwith(unavailable_message);
 }
 
-CAMLprim value dune_fsevents_start(value v_t) {
+CAMLprim value dune_fsevents_start(value v_t, value v_dq) {
   (void)v_t;
+  (void)v_dq;
   caml_failwith(unavailable_message);
 }
 

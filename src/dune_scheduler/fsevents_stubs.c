@@ -204,16 +204,19 @@ CFMutableArrayRef paths_of_list(value v_paths) {
   CFMutableArrayRef paths =
       CFArrayCreateMutable(kCFAllocatorDefault, 0, &kCFTypeArrayCallBacks);
 
-  int i = 0;
   CAMLparam0();
   CAMLlocal1(path);
   while (v_paths != Val_emptylist) {
     path = Field(v_paths, 0);
     CFStringRef s = CFStringCreateWithCString(
         kCFAllocatorDefault, String_val(path), kCFStringEncodingUTF8);
-    CFArraySetValueAtIndex(paths, i, s);
+    if (s == NULL) {
+      CFRelease(paths);
+      caml_failwith("Fsevents.create: unable to convert path");
+    }
+    CFArrayAppendValue(paths, s);
+    CFRelease(s);
     v_paths = Field(v_paths, 1);
-    i++;
   }
 
   CAMLreturnT(CFMutableArrayRef, paths);

@@ -222,14 +222,17 @@ Users must be able to install specific versions of tools via:
 See [Version syntax](#version-syntax) for CLI syntax and
 [The `(tool)` stanza](#the-tool-stanza) for declarative configuration.
 
-<!-- CR shon: does this make sense? -->
-##### 1.4.1. Version consistency
+##### 1.4.1. Version consistency TODO
 
-Version specifications provided via CLI must override persistent 
+What happens in case of conflict?
 
 - Stanza says `(= 0.26.2)` but CLI requests `0.27.0`: which wins?
 - `.ocamlformat` says `version=0.26.2` but stanza says `(= 0.27.0)`: conflict?
 - Version doesn't exist in opam-repository: error message?
+
+CR Shon: could we require consistency rather than needing to support precedence?
+E.g., setting the version by CLI would cause an update to any config file, and
+config files must be kept up to date?
 
 #### 1.5. Multi-version support
 

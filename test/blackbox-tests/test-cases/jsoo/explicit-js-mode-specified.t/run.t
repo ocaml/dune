@@ -32,7 +32,7 @@ specify js mode (#1940).
   .b.eobjs/jsoo/b.cmo.js
   .e.eobjs/jsoo/e.cmo.js
   .foo.objs/jsoo/default/foo.cma.js
-  .js/default/.runtime/$DIGEST/runtime.bc.runtime.js
+  .js/$DIGEST/runtime.bc.runtime.js
   .js/default/stdlib/std_exit.cmo.js
   .js/default/stdlib/stdlib.cma.js
   b.bc.js

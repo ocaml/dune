@@ -5,12 +5,12 @@ tests js_of_ocaml conigs
   >   processes
   > | select(.args.prog | test("js_of_ocaml$"))
   > | .args | targets | .[] | sub("^_build/[^/]+/"; "")' \
-  > | sort \
-  > | censor
-  .js/effects=disabled+use-js-string=false/.runtime/$DIGEST/runtime.bc.runtime.js
+  > | censor \
+  > | sort
+  .js/$DIGEST1/runtime.bc.runtime.js
+  .js/$DIGEST2/runtime.bc.runtime.js
   .js/effects=disabled+use-js-string=false/stdlib/std_exit.cmo.js
   .js/effects=disabled+use-js-string=false/stdlib/stdlib.cma.js
-  .js/effects=disabled/.runtime/$DIGEST/runtime.bc.runtime.js
   .js/effects=disabled/stdlib/std_exit.cmo.js
   .js/effects=disabled/stdlib/stdlib.cma.js
   bin/.bin1.eobjs/jsoo/dune__exe__Bin1.cmo.js

@@ -32,7 +32,7 @@ specify js mode (#1940).
   .b.eobjs/jsoo/b.cmo.js
   .e.eobjs/jsoo/e.cmo.js
   .foo.objs/jsoo/effects=disabled/foo.cma.js
-  .js/effects=disabled/.runtime/$DIGEST/runtime.bc.runtime.js
+  .js/$DIGEST/runtime.bc.runtime.js
   .js/effects=disabled/stdlib/std_exit.cmo.js
   .js/effects=disabled/stdlib/stdlib.cma.js
   b.bc.js

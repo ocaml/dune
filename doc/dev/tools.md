@@ -199,15 +199,6 @@ isolated tool installations that don't affect other workspaces or the system.
 
 See [Directory structure](#directory-structure) for storage locations.
 
-CR-someday Alizter: Consider supporting `(tool)` stanzas in `dune-project` files
-for per-project tool configuration, similar to how `(pin)` exists in both
-`dune-workspace` and `dune-project`. This would allow different projects within
-a workspace to declare different tool requirements. Conflict resolution:
-workspace wins over project, outer project wins over nested. Sibling projects
-with conflicting declarations can coexist. Within project-scoped rules the
-correct tool is unambiguous. CLI commands without project context (e.g.,
-`dune tools run` from workspace root) should error if declarations conflict.
-
 #### 1.3. Version pinning
 
 Users must be able to install specific versions of tools via:
@@ -2001,3 +1992,14 @@ as platform roadmap integration etc.
 - Tool needing project context: `utop` with `#require`
 
 CR-soon Alizter: I don't like these verifications here, they are out of place
+
+## Ideas
+
+CR-someday Alizter: Consider supporting `(tool)` stanzas in `dune-project` files
+for per-project tool configuration, similar to how `(pin)` exists in both
+`dune-workspace` and `dune-project`. This would allow different projects within
+a workspace to declare different tool requirements. Conflict resolution:
+workspace wins over project, outer project wins over nested. Sibling projects
+with conflicting declarations can coexist. Within project-scoped rules the
+correct tool is unambiguous. CLI commands without project context (e.g.,
+`dune tools run` from workspace root) should error if declarations conflict.

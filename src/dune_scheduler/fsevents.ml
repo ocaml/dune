@@ -209,8 +209,6 @@ module Event = struct
     let to_dyn = Repr.to_dyn repr
   end
 
-  let dyn_of_kind = Kind.to_dyn
-
   external kind_of_flags : Int32.t -> Kind.t = "dune_fsevents_kind"
 
   let kind t = kind_of_flags t.flags
@@ -256,13 +254,12 @@ module Event = struct
   external action_of_flags : Int32.t -> Action.t = "dune_fsevents_action"
 
   let action t = action_of_flags t.flags
-  let dyn_of_action = Action.to_dyn
 
   let to_dyn t =
     let open Dyn in
     record
-      [ "action", dyn_of_action (action t)
-      ; "kind", dyn_of_kind (kind t)
+      [ "action", Action.to_dyn (action t)
+      ; "kind", Kind.to_dyn (kind t)
       ; "path", string t.path
       ]
   ;;

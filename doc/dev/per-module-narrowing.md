@@ -566,10 +566,17 @@ frontier:
    silently drop the leaf library's `.cmi` from its compile rule.
 
 `Melange` consumer compiles run the same narrowing pipeline as `Ocaml`.
-The `can_filter` check is mode-agnostic; the only mode-specific code
-is in `Lib_file_deps.deps_of_entry_modules`, which emits per-module
-`.cmj` deps in addition to `.cmi` when `cm_kind = Melange Cmj`,
-mirroring the broad-dep path's `groups_for_cm_kind`.
+The `can_filter` check is mode-agnostic. Two code paths inside the
+pipeline match on `cm_kind`:
+
+1. `Lib_file_deps.deps_of_entry_modules` emits per-module `.cmj` in
+   addition to `.cmi` when `cm_kind = Melange Cmj`, mirroring the
+   broad-dep path's `groups_for_cm_kind`.
+2. `need_impl_deps_of` (in `lib_deps_for_module`) reads a trans-dep's
+   `.ml`-side ocamldep only for `cm_kind = Ocaml Cmx` (cross-module
+   inlining input). `Ocaml (Cmi | Cmo)` and `Melange _` are handled
+   symmetrically — neither reads impl deps. The distinction is
+   Cmx-vs-rest, not OCaml-vs-Melange.
 
 ## Cost characteristics
 

@@ -7,9 +7,15 @@ Authors: Ali Caglayan (Tarides), Shon Feder (Tarides)
 This document specifies dune's tool management system for tools like
 ocamlformat, ocamllsp, odoc, or elpi.
 
+## Terminology
+
+- A **tool** is just an executable provided by some opam package.
+- A tool is **available** if it is part of a well formed opam package obtainable
+ from any source: opam repository, pinning from a source, or defined locally.
+
 ## Design principles
 
-- **Generality**: Any opam package providing executables can be a tool
+- **Generality**: Any executable defined in an opam packages can be a tool.
 - **Orthogonality**: Tools are solved independently from project dependencies
 - **Clean source tree**: All tool artifacts live in `_build/`, not your repo
 - **Multi-version**: Different projects can use different tool versions

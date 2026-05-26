@@ -190,9 +190,7 @@ Users must be able to install tools via Dune.
 
 #### 1.1. Generality
 
-Any opam package that provides executables can be used as a tool. Unlike the
-legacy system, tools are not hardcoded into dune. Users can install arbitrary
-packages without waiting for dune releases.
+Any installable tool must be supported.
 
 #### 1.2. Workspace-local
 

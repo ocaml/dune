@@ -55,25 +55,6 @@ module Trace = struct
     | Unknown
     | Trace of Printexc.raw_backtrace_slot array
 
-  let equal t t' =
-    match t, t' with
-    | Unknown, Unknown -> true
-    | Trace slots, Trace slots' ->
-      let len = Array.length slots in
-      Int.equal len (Array.length slots')
-      &&
-      let rec loop i = i = len || (Poly.equal slots.(i) slots'.(i) && loop (i + 1)) in
-      loop 0
-    | Unknown, Trace _ | Trace _, Unknown -> false
-  ;;
-
-  let hash = function
-    | Unknown -> 0
-    | Trace slots ->
-      Array.fold_left slots ~init:(Array.length slots) ~f:(fun acc slot ->
-        acc * 65599 lxor Poly.hash slot)
-  ;;
-
   let to_dyn = function
     | Unknown -> Dyn.string "<unknown>"
     | Trace _ -> Dyn.opaque ()
@@ -86,8 +67,8 @@ module Key = struct
     ; trace : Trace.t
     }
 
-  let equal x y = String.equal x.source y.source && Trace.equal x.trace y.trace
-  let hash { source; trace } = String.hash source * 65599 lxor Trace.hash trace
+  let equal = Poly.equal
+  let hash = Poly.hash
 
   let to_dyn { source; trace } =
     Dyn.record [ "source", Dyn.string source; "trace", Trace.to_dyn trace ]
@@ -99,9 +80,11 @@ type tracked_minor =
   ; n_samples : int
   }
 
+type heap_table = (Key.t, int) Table.t
+
 type heap =
   { mutable total_samples : int
-  ; mutable by_key : (Key.t, int) Table.t
+  ; mutable by_key : heap_table
   }
 
 type t =
@@ -327,13 +310,6 @@ let snapshot t =
   { minor; major; promoted }
 ;;
 
-let reset t =
-  ignore
-    (swap t
-     : int
-       * (Key.t, int) Table.t
-       * int
-       * (Key.t, int) Table.t
-       * int
-       * (Key.t, int) Table.t)
-;;
+type swap_result = int * heap_table * int * heap_table * int * heap_table
+
+let reset t = ignore (swap t : swap_result)

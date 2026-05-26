@@ -295,14 +295,13 @@ CR-soon Alizter: Edge cases to specify:
 
 #### 2.3. Programmatic use
 
-Other programs (e.g., editor plugins, scripts) must be able to programmatically
-discover the path to a tool's executable without parsing internal directory
-structures.
+Other programs (e.g., editor plugins) must be able to find and run installed
+tools via a single, transparent mechanism (e.g., an equivalent to `opam env` or
+by adding a single directory of executables to the lookup path, or some other
+means).
 
 See [CLI commands](#cli-commands) for the discovery interface.
 
-CR-soon Alizter: To be clear, this is replacing the `dune tools which <tool>`
-that we currently have. Not sure if its the best design.
 
 CR-soon Alizter: `dune tools path` behavior is underspecified:
 
@@ -1429,6 +1428,12 @@ our design decisions and identifying gaps in our approach.
 
 **Relevance to requirements**:
 
+- 2.1: uv support adding its binary directory to shells https://docs.astral.sh/uv/concepts/tools/#tool-executables
+- 2.2: 
+  - uv uses a simple, predictable location for binary installations
+  https://docs.astral.sh/uv/reference/storage/#tool-executables and it allows 
+  - uv allows configuration of the installation path and an API for locating the
+    bin directory https://docs.astral.sh/uv/reference/storage/#tool-executables 
 - **3.2 Dependency isolation**: Per-tool venvs achieve isolation. Our separate
   lock dirs provide similar isolation.
 

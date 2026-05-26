@@ -121,53 +121,6 @@ module Clients = struct
   ;;
 end
 
-(** Primitive unbounded FIFO channel. Reads are blocking. Writes are not
-    blocking. At most one read is allowed at a time. *)
-module Job_queue : sig
-  type 'a t
-
-  (** Remove the element from the internal queue without waiting for the next
-      element. *)
-  val pop_internal : 'a t -> 'a option
-
-  val create : unit -> 'a t
-  val read : 'a t -> 'a Fiber.t
-  val write : 'a t -> 'a -> unit Fiber.t
-end = struct
-  (* invariant: if reader is Some then queue is empty *)
-  type 'a t =
-    { queue : 'a Queue.t
-    ; mutable reader : 'a Fiber.Ivar.t option
-    }
-
-  let create () = { queue = Queue.create (); reader = None }
-  let pop_internal t = Queue.pop t.queue
-
-  let read t =
-    Fiber.of_thunk (fun () ->
-      match t.reader with
-      | Some _ -> Code_error.raise "multiple concurrent reads of build job queue" []
-      | None ->
-        (match Queue.pop t.queue with
-         | None ->
-           let ivar = Fiber.Ivar.create () in
-           t.reader <- Some ivar;
-           Fiber.Ivar.read ivar
-         | Some v -> Fiber.return v))
-  ;;
-
-  let write t elem =
-    Fiber.of_thunk (fun () ->
-      match t.reader with
-      | Some ivar ->
-        t.reader <- None;
-        Fiber.Ivar.fill ivar elem
-      | None ->
-        Queue.push t.queue elem;
-        Fiber.return ())
-  ;;
-end
-
 type server =
   { config : Run.t
   ; mutable clients : Clients.t

@@ -10,7 +10,8 @@ ocamlformat, ocamllsp, odoc, or elpi.
 ## Terminology
 
 - A **tool** is just an executable provided by some opam package.
-- A tool is **available** if it is part of a well formed opam package obtainable
+- To **install** a tool is to make the executable available within the workspace.
+- A tool is **installable** if it is part of a well formed opam package obtainable
  from any source: opam repository, pinning from a source, or defined locally.
 
 ## Design principles
@@ -173,18 +174,6 @@ requirements in
 [https://ocaml.org/tools/platform-roadmap](https://ocaml.org/tools/platform-roadmap).
 However, wherever the roadmap specifies implementation details, we are free to
 deviate if needed to better satisfy the requirements.
-
-### Terminology
-
-**Tool**: An executable provided by an opam package, used during development but
-not part of the project's build output. Examples: ocamlformat (formatter),
-ocamllsp (language server), odoc (documentation generator), utop (REPL).
-
-**Install**: Make a tool available for execution in the workspace. Unlike global
-installation (`opam install`), tools are workspace-local. See
-[CLI commands](#cli-commands) and [Directory structure](#directory-structure).
-
-CR-soon Alizter: Ephemeral could be explained here, its a bit obscure
 
 ### 1. Installation
 

@@ -999,7 +999,7 @@ let invalidate_path_and_its_parent path =
    - Finally, the result of [dir_contents] queries can be updated without
      calling [Path.Untracked.readdir_unsorted_with_kinds]: we know which file or
      directory should be added to or removed from the result. *)
-let handle_fs_event ({ kind; path } : Dune_scheduler.File_watcher.Fs_memo_event.t)
+let handle_fs_event ({ kind; path } : Dune_scheduler.Event.Fs_memo_event.t)
   : Memo.Invalidation.t
   =
   match Path.destruct_build_dir path with

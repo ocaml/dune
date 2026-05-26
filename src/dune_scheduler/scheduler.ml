@@ -214,7 +214,7 @@ let prepare (config : Config.t) ~(handler : Handler.t) ~events ~file_watcher =
     ; process_watcher
     ; events
     ; file_watcher
-    ; fs_syncs = Table.create (module File_watcher.Sync_id) 64
+    ; fs_syncs = Table.create (module Event.Sync_id) 64
     ; thread_pool = lazy (Thread_pool.create ~min_workers:4 ~max_workers:50)
     ; signal_watcher
     ; async_io
@@ -477,7 +477,7 @@ module Run = struct
       | Automatic ->
         Some
           (File_watcher.create_default
-             ~send_events:(Event_queue.send_file_watcher_events events)
+             ~event_queue:events
              ~watch_exclusions:config.watch_exclusions
              ())
     in

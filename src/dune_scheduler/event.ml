@@ -14,13 +14,52 @@ let dyn_of_job { pid; is_process_group_leader; ivar } =
     ]
 ;;
 
+module Fs_memo_event = struct
+  type kind =
+    | Created
+    | Deleted
+    | File_changed
+    | Unknown
+
+  let dyn_of_kind kind =
+    Dyn.string
+      (match kind with
+       | Created -> "Created"
+       | Deleted -> "Deleted"
+       | File_changed -> "File_changed"
+       | Unknown -> "Unknown")
+  ;;
+
+  type t =
+    { path : Path.t
+    ; kind : kind
+    }
+
+  let to_dyn { path; kind } =
+    let open Dyn in
+    record [ "path", Path.to_dyn path; "kind", dyn_of_kind kind ]
+  ;;
+
+  let create ~kind ~path = { path; kind }
+end
+
+module Sync_id = Id.Make ()
+
+module File_watcher_event = struct
+  type t =
+    | Fs_memo_event of Fs_memo_event.t
+    | Queue_overflow
+    | Sync of Sync_id.t
+    | Watcher_terminated
+end
+
 type build_input_change =
-  | Fs_event of File_watcher.Fs_memo_event.t
+  | Fs_event of Fs_memo_event.t
   | Invalidation of Memo.Invalidation.t
 
 type t =
   | Build_inputs_changed of build_input_change Nonempty_list.t
-  | File_system_sync of File_watcher.Sync_id.t
+  | File_system_sync of Sync_id.t
   | File_system_watcher_terminated
   | Shutdown of Shutdown.Reason.t
   | Fiber_fill_ivar of Fiber.fill
@@ -29,7 +68,7 @@ type t =
 module Invalidation_event = struct
   type t =
     | Invalidation of Memo.Invalidation.t
-    | Filesystem_event of File_watcher.Event.t
+    | Filesystem_event of File_watcher_event.t
 end
 
 module Queue = struct

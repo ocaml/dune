@@ -1,5 +1,6 @@
 module Scheduler = Scheduler
 module Async_io = Async_io
+module Event = Event
 module File_watcher = File_watcher
 module Shutdown = Shutdown
 

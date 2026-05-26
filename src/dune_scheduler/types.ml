@@ -87,7 +87,7 @@ module Scheduler = struct
     ; events : Event.Queue.t
     ; process_watcher : Process_watcher.t
     ; file_watcher : File_watcher.t option
-    ; fs_syncs : (File_watcher.Sync_id.t, unit Fiber.Ivar.t) Table.t
+    ; fs_syncs : (Event.Sync_id.t, unit Fiber.Ivar.t) Table.t
     ; thread_pool : Thread_pool.t Lazy.t
     ; signal_watcher : Thread.t
     ; async_io : Async_io.t

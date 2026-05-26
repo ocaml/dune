@@ -1,51 +1,8 @@
 open Import
-
-module Fs_memo_event = struct
-  type kind =
-    | Created
-    | Deleted
-    | File_changed
-    | Unknown (** Treated conservatively as any possible event. *)
-
-  let dyn_of_kind kind =
-    Dyn.string
-      (match kind with
-       | Created -> "Created"
-       | Deleted -> "Deleted"
-       | File_changed -> "File_changed"
-       | Unknown -> "Unknown")
-  ;;
-
-  type t =
-    { path : Path.t
-    ; kind : kind
-    }
-
-  let to_dyn { path; kind } =
-    let open Dyn in
-    record [ "path", Path.to_dyn path; "kind", dyn_of_kind kind ]
-  ;;
-
-  let create ~kind ~path =
-    (match Path.as_in_build_dir path with
-     | None -> ()
-     | Some dir ->
-       Code_error.raise
-         "Fs_memo.Event.create called on a build path"
-         [ "path", Path.Build.to_dyn dir ]);
-    { path; kind }
-  ;;
-end
-
-module Sync_id = Id.Make ()
-
-module Event = struct
-  type t =
-    | Fs_memo_event of Fs_memo_event.t
-    | Queue_overflow
-    | Sync of Sync_id.t
-    | Watcher_terminated
-end
+module Scheduler_event = Event
+module Fs_memo_event = Scheduler_event.Fs_memo_event
+module Sync_id = Scheduler_event.Sync_id
+module Event = Scheduler_event.File_watcher_event
 
 module Watch_trie : sig
   (** Specialized trie for fsevent watches *)
@@ -128,7 +85,7 @@ type kind =
   | Fsevents of
       { mutable external_ : Fsevents.t Watch_trie.t
       ; dispatch_queue : Fsevents.Dispatch_queue.t
-      ; send_events : Event.t list -> unit
+      ; event_queue : Scheduler_event.Queue.t
       ; source : Fsevents.t
       ; sync : Fsevents.t
       ; latency : Time.Span.t
@@ -202,6 +159,12 @@ let trace_and_send_events send_events events =
            in
            `File (path, kind))));
   send_events events
+;;
+
+let send_events event_queue events =
+  trace_and_send_events
+    (Scheduler_event.Queue.send_file_watcher_events event_queue)
+    events
 ;;
 
 let shutdown t =
@@ -381,7 +344,7 @@ let spawn_external_watcher ~backend ~watch_exclusions =
   Unix.in_channel_of_descr r_stdout, pid
 ;;
 
-let create_inotifylib_watcher ~sync_table ~send_events should_exclude =
+let create_inotifylib_watcher ~sync_table ~event_queue should_exclude =
   Inotify.create
     ~mutex:sync_table.mutex
     ~modify_event_selector:`Closed_writable_fd
@@ -403,10 +366,10 @@ let create_inotifylib_watcher ~sync_table ~send_events should_exclude =
              | None -> []
              | Some id -> [ Event.Sync id ]))
       in
-      trace_and_send_events send_events events)
+      send_events event_queue events)
 ;;
 
-let create_external_fswatch ~send_events ~backend ~watch_exclusions =
+let create_external_fswatch ~event_queue ~backend ~watch_exclusions =
   let debounce_interval = Time.Span.of_secs 0.5 in
   let jobs = ref [] in
   let event_mtx = Mutex.create () in
@@ -465,7 +428,7 @@ let create_external_fswatch ~send_events ~backend ~watch_exclusions =
           jobs := [];
           jobs_batch)
       in
-      trace_and_send_events send_events (List.concat jobs_batch);
+      send_events event_queue (List.concat jobs_batch);
       Thread.delay (Time.Span.to_secs debounce_interval);
       buffer_thread ()
     in
@@ -474,15 +437,15 @@ let create_external_fswatch ~send_events ~backend ~watch_exclusions =
   res
 ;;
 
-let create_inotifylib ~send_events ~should_exclude =
+let create_inotifylib ~event_queue ~should_exclude =
   prepare_sync ();
   let sync_table = create_sync_table () in
-  let inotify = create_inotifylib_watcher ~sync_table ~send_events should_exclude in
+  let inotify = create_inotifylib_watcher ~sync_table ~event_queue should_exclude in
   Inotify.add inotify (Lazy.force Fs_sync.special_dir);
   { kind = Inotify inotify; sync_table }
 ;;
 
-let fsevents_callback ?exclusion_paths send_events ~f events =
+let fsevents_callback ?exclusion_paths event_queue ~f events =
   let skip_path =
     (* excluding a [path] will exclude children under [path] but not [path]
        itself. Hence we need to skip [path] manually *)
@@ -497,13 +460,13 @@ let fsevents_callback ?exclusion_paths send_events ~f events =
       in
       if skip_path path then None else f event path)
   in
-  trace_and_send_events send_events events
+  send_events event_queue events
 ;;
 
-let fsevents ?exclusion_paths ~latency ~paths send_events f =
+let fsevents ?exclusion_paths ~latency ~paths event_queue f =
   let fsevents =
     let paths = List.map paths ~f:Path.to_absolute_filename in
-    Fsevents.create ~latency ~paths ~f:(fsevents_callback ?exclusion_paths send_events ~f)
+    Fsevents.create ~latency ~paths ~f:(fsevents_callback ?exclusion_paths event_queue ~f)
   in
   Option.iter exclusion_paths ~f:(fun paths ->
     let paths = List.rev_map paths ~f:Path.to_absolute_filename in
@@ -522,10 +485,10 @@ let fsevents_standard_event ~should_exclude event path =
       | Remove -> Deleted
       | Modify -> if Fsevents.Event.kind event = File then File_changed else Unknown
     in
-    Some (Event.Fs_memo_event { Fs_memo_event.kind; path }))
+    Some (Event.Fs_memo_event (Fs_memo_event.create ~kind ~path)))
 ;;
 
-let create_fsevents ?(latency = Time.Span.of_secs 0.2) ~send_events ~should_exclude () =
+let create_fsevents ?(latency = Time.Span.of_secs 0.2) ~event_queue ~should_exclude () =
   prepare_sync ();
   let sync_table = create_sync_table () in
   let sync =
@@ -534,7 +497,7 @@ let create_fsevents ?(latency = Time.Span.of_secs 0.2) ~send_events ~should_excl
     fsevents
       ~latency
       ~paths:[ Path.build (Lazy.force Fs_sync.special_dir_path) ]
-      send_events
+      event_queue
       (fun event localized_path ->
          let path = Fsevents.Event.path event in
          if not (Fs_sync.is_special_file_fsevents localized_path)
@@ -554,7 +517,7 @@ let create_fsevents ?(latency = Time.Span.of_secs 0.2) ~send_events ~should_excl
       :: ([ "_esy"; "_opam"; ".git"; ".hg" ]
           |> List.rev_map ~f:(Path.relative (Path.source Path.Source.root)))
     in
-    fsevents ~latency send_events ~exclusion_paths ~paths on_event
+    fsevents ~latency event_queue ~exclusion_paths ~paths on_event
   in
   let cv = Condition.create () in
   let dispatch_queue_ref = ref None in
@@ -580,12 +543,12 @@ let create_fsevents ?(latency = Time.Span.of_secs 0.2) ~send_events ~should_excl
     Option.value_exn !dispatch_queue_ref
   in
   { kind =
-      Fsevents { latency; send_events; sync; source; external_; dispatch_queue; on_event }
+      Fsevents { latency; event_queue; sync; source; external_; dispatch_queue; on_event }
   ; sync_table
   }
 ;;
 
-let fswatch_win_callback ~send_events ~sync_table ~should_exclude event =
+let fswatch_win_callback ~event_queue ~sync_table ~should_exclude event =
   let filename =
     let dir = Fswatch_win.Event.directory event in
     Filename.concat dir (Fswatch_win.Event.path event)
@@ -599,7 +562,7 @@ let fswatch_win_callback ~send_events ~sync_table ~should_exclude event =
       | Added | Modified ->
         (match Fs_sync.consume_event sync_table filename with
          | None -> ()
-         | Some id -> trace_and_send_events send_events [ Event.Sync id ])
+         | Some id -> send_events event_queue [ Event.Sync id ])
       | Removed | Renamed_new | Renamed_old -> ())
   | path ->
     let normalized_filename =
@@ -615,10 +578,10 @@ let fswatch_win_callback ~send_events ~sync_table ~should_exclude event =
         | Removed | Renamed_old -> Deleted
         | Modified -> File_changed
       in
-      trace_and_send_events send_events [ Event.Fs_memo_event { kind; path } ])
+      send_events event_queue [ Event.Fs_memo_event (Fs_memo_event.create ~kind ~path) ])
 ;;
 
-let create_fswatch_win ~send_events ~debounce_interval:sleep ~should_exclude =
+let create_fswatch_win ~event_queue ~debounce_interval:sleep ~should_exclude =
   prepare_sync ();
   let sync_table = create_sync_table () in
   let t = Fswatch_win.create () in
@@ -628,24 +591,24 @@ let create_fswatch_win ~send_events ~debounce_interval:sleep ~should_exclude =
       while true do
         let events = Fswatch_win.wait t ~sleep in
         List.iter
-          ~f:(fswatch_win_callback ~send_events ~sync_table ~should_exclude)
+          ~f:(fswatch_win_callback ~event_queue ~sync_table ~should_exclude)
           events
       done)
   in
   { kind = Fswatch_win { t }; sync_table }
 ;;
 
-let create_default ?fsevents_debounce ~watch_exclusions ~send_events () =
+let create_default ?fsevents_debounce ~watch_exclusions ~event_queue () =
   let should_exclude = create_should_exclude_predicate ~watch_exclusions in
   match select_watcher_backend () with
   | `Fswatch _ as backend ->
-    create_external_fswatch ~send_events ~backend ~watch_exclusions
+    create_external_fswatch ~event_queue ~backend ~watch_exclusions
   | `Fsevents ->
-    create_fsevents ?latency:fsevents_debounce ~send_events ~should_exclude ()
-  | `Inotify_lib -> create_inotifylib ~send_events ~should_exclude
+    create_fsevents ?latency:fsevents_debounce ~event_queue ~should_exclude ()
+  | `Inotify_lib -> create_inotifylib ~event_queue ~should_exclude
   | `Fswatch_win ->
     create_fswatch_win
-      ~send_events
+      ~event_queue
       ~should_exclude
       ~debounce_interval:500 (* milliseconds *)
 ;;
@@ -705,7 +668,7 @@ let add_watch t path =
             lazy
               (fsevents
                  ~latency:f.latency
-                 f.send_events
+                 f.event_queue
                  ~paths:[ Path.external_ ext ]
                  f.on_event)
           in

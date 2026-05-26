@@ -25,11 +25,14 @@ module InAndOut
 
 type set (a : Type) = | Set : set a
 
-/// Packages are the principle object in the domain of package management.
-/// We index packages by a type that allows differentiating sorts of packages.
+/// Packages are the principle object in the domain of package management.  We
+/// index packages by a type that allows differentiating sorts of packages.
 type pkg (a:Type) = | Pkg : #sort:a -> pkg a
 
-/// Because dune package management is part of a project management system used for building new packages, packages are indexed by their locality: it matters whether we are reasoning about a package defined in our projects source code, or defined by sources fetched from someone else's computer.
+/// Because dune package management is part of a project management system used
+/// for building new packages, packages are indexed by their locality: it
+/// matters whether we are reasoning about a package defined in our projects
+/// source code, or defined by sources fetched from someone else's computer.
 type locale = 
   // Packages defined in the workspace
   | Local
@@ -58,16 +61,20 @@ val pkg_dependencies
 /// But, what prevents us from simply lifing this limitation?
 /// It is complexity in the domain of build management.
 
-/// "A software build is the process of converting source code files into standalone software artifact(s)"
+/// "A software build is the process of converting source code files into
+/// standalone software artifact(s)"
 type src = | Files
 type artifact_sort = | Bin | Lib
 type artifact = | Artifact : sort:artifact_sort -> artifact
 
-/// Builds also have dependencies, which are artifacts required to build the sources.
+/// Builds also have dependencies, which are artifacts required to build the
+/// sources.
 type dep (a : Type) = | Dep : #sort:a -> artifact:artifact -> dep a
 
-/// Again, because dune manages projects, the locality of dependencies is important: we have complete transparency with artifacts built from our projects source code, while
-/// artifacts obtained elsewhere may be completely opaque.
+/// Again, because dune manages projects, the locality of dependencies is
+/// important: we have complete transparency with artifacts built from our
+/// projects source code, while artifacts obtained elsewhere may be completely
+/// opaque.
 type dune_dep = dep locale
 let is_local (d:dune_dep) = d.sort = Local
 let is_remote (d:dune_dep) = d.sort = Remote
@@ -88,33 +95,42 @@ type target =
   deps : set string
   }
   
-/// A `target` gives us everything we need to perform a build, except, critically, for the actual dependencies themselves:
+/// A `target` gives us everything we need to perform a build, except,
+/// critically, for the actual dependencies themselves:
 assume
 val build 
   : name:string -> sort:artifact_sort -> src:src // Available from the target
   -> deps:(set dune_dep) // These are specified by the target.deps, but must be found
   -> set (a:artifact{a.sort = sort})
 
-/// Therefore, to perform a build, we need a way to obtain the dependency for each dependecy specificaton.
+/// Therefore, to perform a build, we need a way to obtain the dependency for
+/// each dependecy specificaton.
 assume
 val find_dep 
   : string 
   -> option dune_dep
 
-/// For dependencies defined locally, dune can search the artifacts defined within the local workspace, build any needed, and provide the resulting dependency.
+/// For dependencies defined locally, dune can search the artifacts defined
+/// within the local workspace, build any needed, and provide the resulting
+/// dependency.
 assume
 val find_local_dep
   : string
   -> option local_dep
 
-/// But for dependencies from remote packages, there is no way to know which package is provided by a given backage without building it, and dune currently requires building all the remote packages at once. 
+/// But for dependencies from remote packages, there is no way to know which
+/// package is provided by a given backage without building it, and dune
+/// currently requires building all the remote packages at once.
 assume
 val find_remote_dep
   : string
   -> (all_remote_pkgs:set remote_pkg)
   -> option remote_dep
 
-/// Some package in `all_remote_pkgs` could depend on the target we are trying to build, so given that we have to build all the remote packages at once, we would be stuck on a build cycle even tho there was no cycle at the package level.
+/// Some package in `all_remote_pkgs` could depend on the target we are trying
+/// to build, so given that we have to build all the remote packages at once, we
+/// would be stuck on a build cycle even tho there was no cycle at the package
+/// level.
 
 /// But why are we currently constrained to building all remote packages together?
 /// It is complexity in the domain of OCaml compilation.

@@ -135,7 +135,6 @@ let descend t child =
 ;;
 
 let union_all = List.fold_left ~init:empty ~f:union
-let inter_all = List.fold_left ~init:empty ~f:inter
 
 let of_subtree_gen =
   let rec loop subtree = function

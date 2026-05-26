@@ -111,8 +111,15 @@ end
 
 type t = Event.t
 
+type alloc_source =
+  { source : string
+  ; estimated_words : int
+  ; samples : int
+  }
+
 type alloc_entry =
-  { trace : string list
+  { source : string
+  ; trace : string list
   ; estimated_words : int
   ; samples : int
   }
@@ -120,6 +127,7 @@ type alloc_entry =
 type alloc_heap =
   { total_words : int
   ; total_samples : int
+  ; by_source : alloc_source list
   ; top : alloc_entry list
   }
 
@@ -275,18 +283,28 @@ let watch_build_finish ~run_id ~outcome ~start ~stop ~restart_duration =
 
 let alloc_summary ~phase ~run_id ~minor ~major ~promoted =
   let now = Time.now () in
-  let entry { trace; estimated_words; samples } =
+  let source ({ source; estimated_words; samples } : alloc_source) =
     Arg.record
-      [ "trace", Arg.list (List.map trace ~f:Arg.string)
+      [ "source", Arg.string source
       ; "estimated_words", Arg.int estimated_words
       ; "samples", Arg.int samples
       ]
     |> Arg.list
   in
-  let heap { total_words; total_samples; top } =
+  let entry ({ source; trace; estimated_words; samples } : alloc_entry) =
+    Arg.record
+      [ "source", Arg.string source
+      ; "trace", Arg.list (List.map trace ~f:Arg.string)
+      ; "estimated_words", Arg.int estimated_words
+      ; "samples", Arg.int samples
+      ]
+    |> Arg.list
+  in
+  let heap { total_words; total_samples; by_source; top } =
     Arg.record
       [ "total_words", Arg.int total_words
       ; "total_samples", Arg.int total_samples
+      ; "by_source", Arg.list (List.map by_source ~f:source)
       ; "top", Arg.list (List.map top ~f:entry)
       ]
     |> Arg.list

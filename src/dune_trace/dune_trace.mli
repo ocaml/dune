@@ -39,8 +39,15 @@ module Event : sig
 
   type t
 
+  type alloc_source =
+    { source : string
+    ; estimated_words : int
+    ; samples : int
+    }
+
   type alloc_entry =
-    { trace : string list
+    { source : string
+    ; trace : string list
     ; estimated_words : int
     ; samples : int
     }
@@ -48,6 +55,7 @@ module Event : sig
   type alloc_heap =
     { total_words : int
     ; total_samples : int
+    ; by_source : alloc_source list
     ; top : alloc_entry list
     }
 

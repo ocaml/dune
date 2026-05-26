@@ -6,6 +6,10 @@ module Memprof = struct
   type t = unit
   type allocation_source = |
 
+  let string_of_allocation_source : allocation_source -> string = function
+    | _ -> .
+  ;;
+
   type allocation =
     { n_samples : int
     ; size : int
@@ -76,16 +80,28 @@ module Trace = struct
   ;;
 end
 
-module Trace_table = Hashtbl.Make (Trace)
+module Key = struct
+  type t =
+    { source : string
+    ; trace : Trace.t
+    }
+
+  let equal x y = String.equal x.source y.source && Trace.equal x.trace y.trace
+  let hash { source; trace } = String.hash source * 65599 lxor Trace.hash trace
+
+  let to_dyn { source; trace } =
+    Dyn.record [ "source", Dyn.string source; "trace", Trace.to_dyn trace ]
+  ;;
+end
 
 type tracked_minor =
-  { trace : Trace.t
+  { key : Key.t
   ; n_samples : int
   }
 
 type heap =
   { mutable total_samples : int
-  ; mutable by_trace : int Trace_table.t
+  ; mutable by_key : (Key.t, int) Table.t
   }
 
 type t =
@@ -96,7 +112,7 @@ type t =
   ; mutable profile : Memprof.t option
   }
 
-let create_heap () = { total_samples = 0; by_trace = Trace_table.create 64 }
+let create_heap () = { total_samples = 0; by_key = Table.create (module Key) 64 }
 
 let create () =
   { mutex = Mutex.create ()
@@ -153,29 +169,35 @@ let trace_of_callstack callstack =
   loop 0 callstack_size []
 ;;
 
-let record_sample t heap ~trace ~n_samples =
+let record_sample t heap ~key ~n_samples =
   Mutex.protect t.mutex (fun () ->
     heap.total_samples <- heap.total_samples + n_samples;
-    match Trace_table.find heap.by_trace trace with
-    | None -> Trace_table.set heap.by_trace trace n_samples
-    | Some samples -> Trace_table.set heap.by_trace trace (samples + n_samples))
+    match Table.find heap.by_key key with
+    | None -> Table.set heap.by_key key n_samples
+    | Some samples -> Table.set heap.by_key key (samples + n_samples))
+;;
+
+let key_of_allocation { Memprof.source; callstack; _ } =
+  let source = Memprof.string_of_allocation_source source in
+  let trace = trace_of_callstack callstack in
+  { Key.source; trace }
 ;;
 
 let tracker t =
   { Memprof.null_tracker with
     alloc_minor =
-      (fun { Memprof.n_samples; callstack; _ } ->
-        let trace = trace_of_callstack callstack in
-        record_sample t t.minor ~trace ~n_samples;
-        Some { trace; n_samples })
+      (fun ({ Memprof.n_samples; _ } as allocation) ->
+        let key = key_of_allocation allocation in
+        record_sample t t.minor ~key ~n_samples;
+        Some { key; n_samples })
   ; alloc_major =
-      (fun { Memprof.n_samples; callstack; _ } ->
-        let trace = trace_of_callstack callstack in
-        record_sample t t.major ~trace ~n_samples;
+      (fun ({ Memprof.n_samples; _ } as allocation) ->
+        let key = key_of_allocation allocation in
+        record_sample t t.major ~key ~n_samples;
         None)
   ; promote =
-      (fun { trace; n_samples } ->
-        record_sample t t.promoted ~trace ~n_samples;
+      (fun { key; n_samples } ->
+        record_sample t t.promoted ~key ~n_samples;
         None)
   }
 ;;
@@ -225,42 +247,62 @@ let insert_top_entry entry entries =
   insert entries |> take_top_entries
 ;;
 
-let top_entries by_trace =
-  Trace_table.foldi by_trace ~init:[] ~f:(fun trace samples entries ->
-    insert_top_entry (trace, samples) entries)
-  |> List.map ~f:(fun (trace, samples) ->
+let top_entries by_key =
+  Table.foldi by_key ~init:[] ~f:(fun key samples entries ->
+    insert_top_entry (key, samples) entries)
+  |> List.map ~f:(fun ({ Key.source; trace }, samples) ->
     let estimated_words = estimated_words_of_samples samples in
-    ({ trace = trace_to_strings trace; estimated_words; samples } : Event.alloc_entry))
+    { Event.source; trace = trace_to_strings trace; estimated_words; samples })
 ;;
 
-let summary_of_heap total_samples by_trace =
+let source_entries by_key =
+  let by_source = Table.create (module String) 4 in
+  Table.foldi by_key ~init:() ~f:(fun { Key.source; _ } samples () ->
+    match Table.find by_source source with
+    | None -> Table.set by_source source samples
+    | Some previous -> Table.set by_source source (previous + samples));
+  Table.to_list by_source
+  |> List.sort ~compare:(fun (source, samples) (source', samples') ->
+    match Int.compare samples' samples with
+    | Eq -> String.compare source source'
+    | ordering -> ordering)
+  |> List.map ~f:(fun (source, samples) ->
+    let estimated_words = estimated_words_of_samples samples in
+    ({ source; estimated_words; samples } : Event.alloc_source))
+;;
+
+let summary_of_heap total_samples by_key =
   let total_words = estimated_words_of_samples total_samples in
-  ({ total_words; total_samples; top = top_entries by_trace } : Event.alloc_heap)
+  { Event.total_words
+  ; total_samples
+  ; by_source = source_entries by_key
+  ; top = top_entries by_key
+  }
 ;;
 
 let swap t =
-  let fresh_minor = Trace_table.create 64 in
-  let fresh_major = Trace_table.create 64 in
-  let fresh_promoted = Trace_table.create 64 in
+  let fresh_minor = Table.create (module Key) 64 in
+  let fresh_major = Table.create (module Key) 64 in
+  let fresh_promoted = Table.create (module Key) 64 in
   Mutex.protect t.mutex (fun () ->
     let minor_total_samples = t.minor.total_samples in
-    let minor_by_trace = t.minor.by_trace in
+    let minor_by_key = t.minor.by_key in
     let major_total_samples = t.major.total_samples in
-    let major_by_trace = t.major.by_trace in
+    let major_by_key = t.major.by_key in
     let promoted_total_samples = t.promoted.total_samples in
-    let promoted_by_trace = t.promoted.by_trace in
+    let promoted_by_key = t.promoted.by_key in
     t.minor.total_samples <- 0;
-    t.minor.by_trace <- fresh_minor;
+    t.minor.by_key <- fresh_minor;
     t.major.total_samples <- 0;
-    t.major.by_trace <- fresh_major;
+    t.major.by_key <- fresh_major;
     t.promoted.total_samples <- 0;
-    t.promoted.by_trace <- fresh_promoted;
+    t.promoted.by_key <- fresh_promoted;
     ( minor_total_samples
-    , minor_by_trace
+    , minor_by_key
     , major_total_samples
-    , major_by_trace
+    , major_by_key
     , promoted_total_samples
-    , promoted_by_trace ))
+    , promoted_by_key ))
 ;;
 
 type snapshot =
@@ -271,21 +313,27 @@ type snapshot =
 
 let snapshot t =
   let ( minor_total_samples
-      , minor_by_trace
+      , minor_by_key
       , major_total_samples
-      , major_by_trace
+      , major_by_key
       , promoted_total_samples
-      , promoted_by_trace )
+      , promoted_by_key )
     =
     swap t
   in
-  let minor = summary_of_heap minor_total_samples minor_by_trace in
-  let major = summary_of_heap major_total_samples major_by_trace in
-  let promoted = summary_of_heap promoted_total_samples promoted_by_trace in
+  let minor = summary_of_heap minor_total_samples minor_by_key in
+  let major = summary_of_heap major_total_samples major_by_key in
+  let promoted = summary_of_heap promoted_total_samples promoted_by_key in
   { minor; major; promoted }
 ;;
 
 let reset t =
   ignore
-    (swap t : int * int Trace_table.t * int * int Trace_table.t * int * int Trace_table.t)
+    (swap t
+     : int
+       * (Key.t, int) Table.t
+       * int
+       * (Key.t, int) Table.t
+       * int
+       * (Key.t, int) Table.t)
 ;;

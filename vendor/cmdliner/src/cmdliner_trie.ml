@@ -83,4 +83,10 @@ let of_list l =
   let add t (s, v) = match add t s v with `New t -> t | `Replaced (_, t) -> t in
   List.fold_left add empty l
 
+(** This is a feature that conditionally allows command prefixes: using
+    `dune bui` as a shorthand for `dune build`. This feature was mostly deleted
+    in cmdliner 2.0, with a backdoor allowing these 'legacy prefixes' below.
+    Since we make use of these prefixes in dune, we always allow them.
+    See also https://github.com/ocaml/dune/issues/12515#issuecomment-3802602856
+ *)
 let legacy_prefixes ~env:_ = true

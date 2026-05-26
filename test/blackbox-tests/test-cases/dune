@@ -7,7 +7,8 @@
    ;; We set ocaml to always be colored since it changes the output of
    ;; ocamlc error messages. See https://github.com/ocaml/ocaml/issues/14144
    (OCAML_COLOR always)
-   ;; Cmdliner 2.0 uses colors. With this option we have quotes like before.
+   ;; Cmdliner 2.0 uses colors which don't render in our tests.
+   ;; This option disables them in favour of quotes.
    (NO_COLOR 1))
   (binaries
    ../utils/dune_cmd.exe

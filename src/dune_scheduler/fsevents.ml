@@ -364,8 +364,8 @@ let start t (dq : Dispatch_queue.t) =
         match State.get dq' with
         | Stopped -> Code_error.raise "Fsevents.start: dispatch queue stopped" []
         | Idle dq' | Running dq' ->
-          State.set t (Start (r, dq));
-          Raw.start r dq'))
+          Raw.start r dq';
+          State.set t (Start (r, dq))))
 ;;
 
 let dispatch_queue t =

@@ -50,7 +50,7 @@ type remote_pkg = p:dune_pkg{is_remote_pkg p}
 ///
 /// The current limitation imposed by the in-and-out out problem is captured in
 /// the following refinement placed on the set of dependencies: remote packages
-/// are only able to depend on orher remote packages: installing remote packages
+/// are only able to depend on other remote packages: installing remote packages
 /// that depend on local packages is not permitted.
 assume
 val pkg_dependencies
@@ -58,7 +58,7 @@ val pkg_dependencies
   -> set (p:dune_pkg{if is_remote_pkg target then remote_pkg else dune_pkg})
 
 
-/// But, what prevents us from simply lifing this limitation?
+/// But, what prevents us from simply lifting this limitation?
 /// It is complexity in the domain of build management.
 
 /// "A software build is the process of converting source code files into
@@ -73,7 +73,7 @@ type dep (a : Type) = | Dep : #sort:a -> artifact:artifact -> dep a
 
 /// Again, because dune manages projects, the locality of dependencies is
 /// important: we have complete transparency with artifacts built from our
-/// projects source code, while artifacts obtained elsewhere may be completely
+/// project's source code, while artifacts obtained elsewhere may be completely
 /// opaque.
 type dune_dep = dep locale
 let is_local (d:dune_dep) = d.sort = Local
@@ -104,7 +104,7 @@ val build
   -> set (a:artifact{a.sort = sort})
 
 /// Therefore, to perform a build, we need a way to obtain the dependency for
-/// each dependecy specificaton.
+/// each dependency specification.
 assume
 val find_dep 
   : string 

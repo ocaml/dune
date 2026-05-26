@@ -7,7 +7,7 @@ Authors: Ali Caglayan (Tarides), Shon Feder (Tarides)
 This document specifies dune's tool management system for tools like
 ocamlformat, ocamllsp, odoc, or elpi.
 
-**Design principles:**
+## Design principles
 
 - **Generality**: Any opam package providing executables can be a tool
 - **Orthogonality**: Tools are solved independently from project dependencies

@@ -199,10 +199,6 @@ isolated tool installations that don't affect other workspaces or the system.
 
 See [Directory structure](#directory-structure) for storage locations.
 
-CR-soon Alizter: Once we have the relocatable compiler, tools being built will
-be cached so they aren't "installed". They will materialise in \_build/ but that
-shouldn't be a persistent store.
-
 CR-someday Alizter: Consider supporting `(tool)` stanzas in `dune-project` files
 for per-project tool configuration, similar to how `(pin)` exists in both
 `dune-workspace` and `dune-project`. This would allow different projects within

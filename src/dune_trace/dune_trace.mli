@@ -39,26 +39,6 @@ module Event : sig
 
   type t
 
-  type alloc_source =
-    { source : string
-    ; estimated_words : int
-    ; samples : int
-    }
-
-  type alloc_entry =
-    { source : string
-    ; trace : string list
-    ; estimated_words : int
-    ; samples : int
-    }
-
-  type alloc_heap =
-    { total_words : int
-    ; total_samples : int
-    ; by_source : alloc_source list
-    ; top : alloc_entry list
-    }
-
   val sandbox
     :  [ `Create | `Snapshot | `Destroy | `Extract | `Corrected ]
     -> start:Time.t
@@ -145,14 +125,6 @@ module Event : sig
     -> start:Time.t
     -> stop:Time.t
     -> restart_duration:Time.Span.t option
-    -> t
-
-  val alloc_summary
-    :  phase:[ `Build | `Exit ]
-    -> run_id:int option
-    -> minor:alloc_heap
-    -> major:alloc_heap
-    -> promoted:alloc_heap
     -> t
 
   val init : version:string option -> t

@@ -267,7 +267,11 @@ module Event = struct
       ]
   ;;
 
-  external flag_examples : unit -> (string * Int32.t) list = "dune_fsevents_flag_examples"
+  external
+    [@ocaml.warning "-32"] flag_examples
+    :  unit
+    -> (string * Int32.t) list
+    = "dune_fsevents_flag_examples"
 
   let%expect_test "fsevents flag decoding" =
     if available ()

@@ -139,6 +139,9 @@ nix shell --impure --expr 'let pkgs = import (builtins.getFlake "github:NixOS/ni
 Precise definition of technical terms prevents misunderstandings and certain
 classes of requirement error.
 
+[Design principles](#design-principles) specifies the guiding principles
+informing the design.
+
 [Requirements](#requirements) defines _what_ capabilities the system must
 provide and _why_.  Organized by category. Requirements describe user-facing
 behavior without specifying implementation details. Cross-references point to
@@ -169,7 +172,6 @@ decisions.
 - **Generality**: Any executable defined in an opam packages can be a tool.
 - **Orthogonality**: Tool management should not interfere with other systems,
   including the management of other tools.
-
 
 ## Requirements
 

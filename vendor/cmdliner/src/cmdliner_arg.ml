@@ -175,13 +175,16 @@ let parse_opt_value parse f v = match parse v with
 | Ok v -> v | Error err -> failwith (Cmdliner_msg.err_opt_parse f ~err)
 
 let alias_opt aliases a =
-  let docv = Cmdliner_def.Arg_info.docv a in
-  let a = Cmdliner_def.Arg_info.make_opt ~docv ~absent:Err ~kind:Opt a in
   let aliases f = function
     | Some o -> Ok (aliases o)
     | None -> Error (Cmdliner_msg.err_opt_value_missing f)
   in
-  let a = Cmdliner_def.Arg_info.aliases ~aliases a in
+  let a =
+    let docv = Cmdliner_def.Arg_info.docv a in
+    a
+    |> Cmdliner_def.Arg_info.make_opt ~docv ~absent:Err ~kind:Opt
+    |> Cmdliner_def.Arg_info.aliases ~aliases 
+  in
   if Cmdliner_def.Arg_info.is_pos a then invalid_arg err_not_opt;
   let convert ei cl =
     match Cmdliner_def.Cline.get_opt_arg cl a with

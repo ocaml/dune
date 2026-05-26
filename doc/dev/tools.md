@@ -164,6 +164,8 @@ decisions.
 
 - A **tool** is just an executable provided by some opam package.
 - To **install** a tool is to make the executable available within the workspace.
+- A **well formed opam package** specifies all data necessary to install and
+  build its provided targets.
 - A tool is **installable** if it is part of a well formed opam package obtainable
  from any source: opam repository, pinning from a source, or defined locally.
 

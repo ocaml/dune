@@ -4,10 +4,12 @@ open Fiber.O
 module Fs_memo = struct
   let handle_fs_event = Fdecl.create Dyn.opaque
   let init = Fdecl.create Dyn.opaque
+  let initialized = ref false
 
   let set_impl ~handle_fs_event:handle_fs_event' ~init:init' =
     Fdecl.set handle_fs_event handle_fs_event';
-    Fdecl.set init init'
+    Fdecl.set init init';
+    initialized := true
   ;;
 
   let handle_fs_event event = Fdecl.get handle_fs_event event
@@ -482,11 +484,15 @@ module Run = struct
              ())
     in
     let t = prepare config ~handler:on_event ~events ~file_watcher in
-    Option.iter file_watcher ~f:(fun dune_file_watcher ->
-      let initial_invalidation =
-        Fs_memo.init ~dune_file_watcher:(Some dune_file_watcher)
-      in
-      Memo.reset initial_invalidation);
+    (match file_watcher with
+     | None ->
+       if !Fs_memo.initialized
+       then ignore (Fs_memo.init ~dune_file_watcher:None : Memo.Invalidation.t)
+     | Some dune_file_watcher ->
+       let initial_invalidation =
+         Fs_memo.init ~dune_file_watcher:(Some dune_file_watcher)
+       in
+       Memo.reset initial_invalidation);
     let result =
       let run =
         match timeout with

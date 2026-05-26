@@ -13,26 +13,23 @@ main -> lib1 -> lib2 -> stdlib
 
 When using OCaml < 5.2 there is no proper way to provide that information to
 Merlin.
-  $ FILE=$PWD/bin/main.ml
-  $ printf "(4:File%d:%s)" ${#FILE} $FILE | dune ocaml-merlin |
-  > sed -E "s/[[:digit:]]+:/\?:/g" | tr '(' '\n' | grep -E ":[BS]H?\?"
-  ?:B?:$TESTCASE_ROOT/_build/default/bin/.main.eobjs/byte)
-  ?:B?:$TESTCASE_ROOT/_build/default/src/lib1/.lib1.objs/byte)
-  ?:S?:$TESTCASE_ROOT/bin)
-  ?:S?:$TESTCASE_ROOT/src/lib1)
+  $ dune ocaml merlin dump-config --format=json bin |
+  > jq -r '.[0].config[] | select(.[0] | test("^[BS]H?$")) | "\(.[0]) \(.[1])"'
+  B $TESTCASE_ROOT/_build/default/bin/.main.eobjs/byte
+  B $TESTCASE_ROOT/_build/default/src/lib1/.lib1.objs/byte
+  S $TESTCASE_ROOT/bin
+  S $TESTCASE_ROOT/src/lib1
 
-  $ FILE=$PWD/src/lib1/lib1.ml
-  $ printf "(4:File%d:%s)" ${#FILE} $FILE | dune ocaml-merlin |
-  > sed -E "s/[[:digit:]]+:/\?:/g" | tr '(' '\n' | grep -E ":[BS]H?\?"
-  ?:B?:$TESTCASE_ROOT/_build/default/src/lib1/.lib1.objs/byte)
-  ?:B?:$TESTCASE_ROOT/_build/default/src/lib2/.lib2.objs/byte)
-  ?:S?:$TESTCASE_ROOT/src/lib1)
-  ?:S?:$TESTCASE_ROOT/src/lib2)
+  $ dune ocaml merlin dump-config --format=json src/lib1 |
+  > jq -r '.[0].config[] | select(.[0] | test("^[BS]H?$")) | "\(.[0]) \(.[1])"'
+  B $TESTCASE_ROOT/_build/default/src/lib1/.lib1.objs/byte
+  B $TESTCASE_ROOT/_build/default/src/lib2/.lib2.objs/byte
+  S $TESTCASE_ROOT/src/lib1
+  S $TESTCASE_ROOT/src/lib2
 
-  $ FILE=$PWD/src/lib2/lib2.ml
-  $ printf "(4:File%d:%s)" ${#FILE} $FILE | dune ocaml-merlin |
-  > sed -E "s/[[:digit:]]+:/\?:/g" | tr '(' '\n' | grep -E ":[BS]H?\?"
-  ?:B?:$TESTCASE_ROOT/_build/default/src/lib2/.lib2.objs/byte)
-  ?:B?:$TESTCASE_ROOT/_build/default/src/lib_dep/.dep.objs/byte)
-  ?:S?:$TESTCASE_ROOT/src/lib2)
-  ?:S?:$TESTCASE_ROOT/src/lib_dep)
+  $ dune ocaml merlin dump-config --format=json src/lib2 |
+  > jq -r '.[0].config[] | select(.[0] | test("^[BS]H?$")) | "\(.[0]) \(.[1])"'
+  B $TESTCASE_ROOT/_build/default/src/lib2/.lib2.objs/byte
+  B $TESTCASE_ROOT/_build/default/src/lib_dep/.dep.objs/byte
+  S $TESTCASE_ROOT/src/lib2
+  S $TESTCASE_ROOT/src/lib_dep

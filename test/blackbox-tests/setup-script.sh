@@ -29,6 +29,29 @@ make_dune_project() {
 	EOF
 }
 
+query_ocaml_merlin() {
+  file="$1"
+  shift
+  query=$(mktemp "${TMPDIR:-.}/merlin-query.XXXXXX")
+  printf '(File "%s")\n' "$file" | dune internal sexp-to-csexp > "$query"
+  dune ocaml-merlin "$@" < "$query"
+  rm -f "$query"
+}
+
+query_ocaml_merlin_pp() {
+  output=$(mktemp "${TMPDIR:-.}/merlin-output.XXXXXX")
+  query_ocaml_merlin "$@" > "$output"
+  dune internal sexp-pp --format=csexp "$output"
+  rm -f "$output"
+}
+
+query_ocaml_merlin_sexp() {
+  output=$(mktemp "${TMPDIR:-.}/merlin-output.XXXXXX")
+  query_ocaml_merlin "$@" > "$output"
+  dune internal sexp-pp --format=csexp --compact "$output"
+  rm -f "$output"
+}
+
 make_dir_with_dune() {
   path="$1"
   mkdir -p "$path"

@@ -54,7 +54,7 @@ For libraries, if no melange.emit stanza is found, build does not fail
   > let t = "hello from native"
   > EOF
 
-  $ (unset INSIDE_DUNE; PATH=_path dune build --always-show-command-line --root . main_native.bc)
+  $ (unset INSIDE_DUNE; PATH=_path dune build --display progress --always-show-command-line --root . main_native.bc)
   $ dune exec ./main_native.bc
   hello from native
 
@@ -77,13 +77,13 @@ If melange.emit stanza is found, but no rules are executed, build does not fail
   >  (libraries lib1))
   > EOF
 
-  $ (unset INSIDE_DUNE; PATH=_path dune build --always-show-command-line --root . main_native.bc)
+  $ (unset INSIDE_DUNE; PATH=_path dune build --display progress --always-show-command-line --root . main_native.bc)
   $ dune exec ./main_native.bc
   hello from native
 
 But trying to build any melange artifacts will fail
 
-  $ (unset INSIDE_DUNE; PATH=_path dune build --always-show-command-line --root . output/main_melange.js)
+  $ (unset INSIDE_DUNE; PATH=_path dune build --display progress  --always-show-command-line --root . output/main_melange.js)
   File ".lib1.objs/melange/_unknown_", line 1, characters 0-0:
   Error: Program melc not found in the tree or in PATH
    (context: default)

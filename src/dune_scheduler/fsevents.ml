@@ -267,49 +267,56 @@ module Event = struct
       ]
   ;;
 
-  external flag_examples : unit -> (string * Int32.t) list = "dune_fsevents_flag_examples"
+  let%test_module "fsevents flag decoding" =
+    (module struct
+      external flag_examples
+        :  unit
+        -> (string * Int32.t) list
+        = "dune_fsevents_flag_examples"
 
-  let%expect_test "fsevents flag decoding" =
-    if available ()
-    then (
-      let decoded =
-        flag_examples ()
-        |> List.map ~f:(fun (name, flags) ->
-          name, action_of_flags flags, kind_of_flags flags)
-      in
-      let expected =
-        [ "created_file", Action.Create, Kind.File
-        ; "removed_file", Action.Remove, Kind.File
-        ; "modified_file", Action.Modify, Kind.File
-        ; "renamed_file", Action.Rename, Kind.File
-        ; "created_dir", Action.Create, Kind.Dir
-        ; "must_scan_subdirs", Action.Unknown, Kind.Dir_and_descendants
-        ; "must_scan_dir", Action.Unknown, Kind.Dir_and_descendants
-        ; "created_and_modified", Action.Unknown, Kind.File
-        ; "removed_and_renamed", Action.Unknown, Kind.File
-        ]
-      in
-      let module Decoded = struct
-        type t = string * Action.t * Kind.t
+      let%expect_test "fsevents flag decoding" =
+        if available ()
+        then (
+          let decoded =
+            flag_examples ()
+            |> List.map ~f:(fun (name, flags) ->
+              name, action_of_flags flags, kind_of_flags flags)
+          in
+          let expected =
+            [ "created_file", Action.Create, Kind.File
+            ; "removed_file", Action.Remove, Kind.File
+            ; "modified_file", Action.Modify, Kind.File
+            ; "renamed_file", Action.Rename, Kind.File
+            ; "created_dir", Action.Create, Kind.Dir
+            ; "must_scan_subdirs", Action.Unknown, Kind.Dir_and_descendants
+            ; "must_scan_dir", Action.Unknown, Kind.Dir_and_descendants
+            ; "created_and_modified", Action.Unknown, Kind.File
+            ; "removed_and_renamed", Action.Unknown, Kind.File
+            ]
+          in
+          let module Decoded = struct
+            type t = string * Action.t * Kind.t
 
-        let repr = Repr.triple Repr.string Action.repr Kind.repr
+            let repr = Repr.triple Repr.string Action.repr Kind.repr
 
-        include Repr.Poly (struct
-            type nonrec t = t
+            include Repr.Poly (struct
+                type nonrec t = t
 
-            let repr = repr
-          end)
+                let repr = repr
+              end)
 
-        let to_dyn = Repr.to_dyn repr
-      end
-      in
-      if not (List.equal Decoded.equal decoded expected)
-      then
-        Code_error.raise
-          "unexpected fsevents flag decoding"
-          [ "decoded", Dyn.list Decoded.to_dyn decoded
-          ; "expected", Dyn.list Decoded.to_dyn expected
-          ])
+            let to_dyn = Repr.to_dyn repr
+          end
+          in
+          if not (List.equal Decoded.equal decoded expected)
+          then
+            Code_error.raise
+              "unexpected fsevents flag decoding"
+              [ "decoded", Dyn.list Decoded.to_dyn decoded
+              ; "expected", Dyn.list Decoded.to_dyn expected
+              ])
+      ;;
+    end)
   ;;
 end
 

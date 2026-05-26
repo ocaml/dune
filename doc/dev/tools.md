@@ -274,12 +274,15 @@ for syntax.
 
 Users must be able to run tools installed by Dune.
 
-#### 2.1. Tool invocation
+#### 2.1. Shells
 
-Users must be able to:
+Users must be able to run tools by invoking them directly in any shell (e.g., bash).
 
-- Run installed tools from any shell
-- Request a specific version when multiple versions are installed
+See [CLI commands](#cli-commands) for invocation syntax.
+
+#### 2.2. Version specification TODO
+
+Users must be able run a specific version of a tool when multiple versions are installed.
 
 See [CLI commands](#cli-commands) for invocation syntax.
 
@@ -290,7 +293,7 @@ CR-soon Alizter: Edge cases to specify:
 - Specified version not locked: error with suggestion?
 - Build fails: propagate build error?
 
-#### 2.2. Programmatic use
+#### 2.3. Programmatic use
 
 Other programs (e.g., editor plugins, scripts) must be able to programmatically
 discover the path to a tool's executable without parsing internal directory
@@ -320,12 +323,12 @@ simplifies editor integration (one directory to add to PATH), avoids PATH length
 limits (especially on Windows), and provides a single stable location for
 discovery. Trade-off: need to maintain symlinks as tools are added/removed.
 
-#### 2.3. Dune subcommands
+#### 2.4. Dune subcommands
 
 Dune subcommands that invoke external tools must be able to use tools managed by
 `dune tools`. See [Dune Integration](#5-dune-integration).
 
-#### 2.4. System PATH fallback
+#### 2.5. System PATH fallback
 
 When a tool is not locked and no version is specified (e.g., `.ocamlformat`
 without a version), dune subcommands should fall back to the system PATH.
@@ -340,7 +343,7 @@ CR-Alizter soon: Fixup wording above.
 CR-Alizter soon: How would this even work if we don't know the binary from the
 package?
 
-#### 2.5. Editor integration
+#### 2.6. Editor integration
 
 Editors and IDEs must be able to:
 

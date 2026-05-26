@@ -27,7 +27,6 @@ Organized by category (installation, usability, dependencies, UI). Requirements
 describe user-facing behavior without specifying syntax or implementation.
 Cross-references point to the relevant Specification sections.
 
-**Non-requirements** explicitly lists what's out of scope and why.
 
 **Specification** details _how_ the system implements the requirements: stanza
 syntax, CLI commands, version resolution algorithm, and directory structure.

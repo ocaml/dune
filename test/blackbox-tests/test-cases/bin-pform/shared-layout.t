@@ -34,7 +34,5 @@ $DIGEST2):
 
   $ env_added "$(cat _build/default/out1)" "$PATH" | censor
   $PWD/_build/install/default/.binaries/$DIGEST
-  $PWD/_build/install/default/bin
   $ env_added "$(cat _build/default/out2)" "$PATH" | censor
   $PWD/_build/install/default/.binaries/$DIGEST
-  $PWD/_build/install/default/bin

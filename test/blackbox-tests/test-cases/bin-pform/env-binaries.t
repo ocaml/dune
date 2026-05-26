@@ -32,9 +32,7 @@ The rule depends on the .bin/ symlink:
   >   | jq 'include "dune"; .[] | ruleDepFilePaths'
   "_build/default/.bin/myothername"
 
-The action's PATH gets the .bin/ symlink directory and the workspace
-install bin dir:
+The action's PATH gets the .bin/ symlink directory:
 
   $ env_added "$(cat _build/default/path-output)" "$PATH"
   $TESTCASE_ROOT/_build/default/.bin
-  $TESTCASE_ROOT/_build/install/default/bin

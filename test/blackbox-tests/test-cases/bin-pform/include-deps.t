@@ -27,12 +27,10 @@ tracked dep of the rule.
 
   $ dune build path-output
 
-The action's PATH includes the .binaries dir and the install bin
-dir:
+The action's PATH includes the .binaries dir:
 
   $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
   $PWD/_build/install/default/.binaries/$DIGEST
-  $PWD/_build/install/default/bin
 
 The rule depends on the build artifact and the .binaries symlink:
 

@@ -24,13 +24,11 @@ Multiple %{bin:...} deps in a single rule.
   >    (bash "echo $PATH"))))
   > EOF
 
-PATH gets a .binaries dir (with symlinks to both bins) plus the
-install bin dir:
+PATH gets a .binaries dir with symlinks to both bins:
 
   $ dune build path-output
   $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
   $PWD/_build/install/default/.binaries/$DIGEST
-  $PWD/_build/install/default/bin
 
 The rule depends on each binary via two paths: the build artifact
 (from the pform expansion) and the .binaries symlink (from the PATH

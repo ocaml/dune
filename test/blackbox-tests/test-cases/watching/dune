@@ -24,6 +24,20 @@
   (<> %{ocaml-config:system} win)))
 
 (cram
+ (applies_to rpc-flush-file-watcher rpc-registry)
+ (deps
+  (package dune-action-plugin)
+  (package dune-rpc)
+  (package stdune)
+  (package dune-glob)
+  (package top-closure)
+  (package ordering)
+  (package dyn)
+  (package fs-io)
+  (package ocamlc-loc)
+  (package xdg)))
+
+(cram
  (applies_to
   promotion-event-suppression
   promotion-executable-bit

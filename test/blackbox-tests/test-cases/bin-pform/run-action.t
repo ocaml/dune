@@ -1,6 +1,5 @@
 %{bin:NAME} as a (run ...) target invokes the binary; as a deps
-entry it adds a .binaries dir to the action's PATH (plus the
-always-on install bin dir).
+entry it adds a .binaries dir to the action's PATH.
 
   $ cat >dune-project <<EOF
   > (lang dune 3.24)
@@ -24,7 +23,6 @@ always-on install bin dir).
   hello from mybin
   $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
   $PWD/_build/install/default/.binaries/$DIGEST
-  $PWD/_build/install/default/bin
 
 The rule's deps include the build artifact and the .binaries
 symlink:

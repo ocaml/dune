@@ -20,15 +20,9 @@ let make_alias expander s =
   Expander.expand_path expander s >>| Alias.of_user_written_path ~loc
 ;;
 
-let package_install ~(context : Build_context.t) ~(pkg : Package.t) =
-  let dir =
-    let dir = Package.dir pkg in
-    Path.Build.append_source context.build_dir dir
-  in
-  let name = Package.name pkg in
-  sprintf ".%s-files" (Package.Name.to_string name)
-  |> Alias.Name.of_string
-  |> Alias.make ~dir
+let expand_package_name expander swv =
+  let loc = String_with_vars.loc swv in
+  Expander.expand_str expander swv >>| fun s -> Package.Name.parse_string_exn (loc, s)
 ;;
 
 type dep_evaluation_result =
@@ -45,7 +39,7 @@ let to_action_builder = function
   | Include_result pair -> Action_builder.map pair ~f:fst
 ;;
 
-let include_bin_env = function
+let include_action_env = function
   | Simple _ | Other _ -> None
   | Include_result pair -> Some (Action_builder.map pair ~f:snd)
 ;;
@@ -152,8 +146,13 @@ let make_bin_env expander bin_names =
        let+ () = Action_builder.paths files in
        (* The layout dir on PATH is an absolute build-tree path; dune's
           sandbox does not relocate PATH. See [bin-pform/sandbox.t]. *)
-       Env.update Env.empty ~var:Env_path.var ~f:(fun _PATH ->
-         Some (Bin.cons_path (Path.build layout_dir) ~_PATH)))
+       Install.Roots.cons_path Env.empty ~var:Env_path.var layout_dir)
+;;
+
+let package_dep_swvs (dep : Dep_conf.t) =
+  match dep with
+  | Package p -> [ p, String_with_vars.loc p ]
+  | _ -> []
 ;;
 
 let add_sandbox_config acc (dep : Dep_conf.t) =
@@ -181,15 +180,19 @@ let rec dir_contents ~loc d =
     >>| List.concat
 ;;
 
-let package loc pkg (context : Build_context.t) ~dune_version =
-  let pkg = Package.Name.of_string pkg in
+let package loc pkg_name (context : Build_context.t) ~dune_version =
   Action_builder.of_memo
     (let open Memo.O in
      let* package_db = Package_db.create context.name in
-     Package_db.find_package package_db pkg)
+     Package_db.find_package package_db pkg_name)
   >>= function
   | Some (Build build) -> build
-  | Some (Local pkg) -> Alias_builder.alias (package_install ~context ~pkg)
+  | Some (Local _) ->
+    (* The named/unnamed paths skip [Package _] before reaching here so that
+       [combined_package_deps_builder] handles the whole package set at once.
+       This arm only fires from [unnamed_get_paths] (e.g.
+       [(public_headers (package foo))]) where a no-op is fine. *)
+    Action_builder.return ()
   | Some (Installed pkg) ->
     if dune_version < (2, 9)
     then
@@ -224,7 +227,7 @@ let package loc pkg (context : Build_context.t) ~dune_version =
           (fun () ->
             User_error.raise
               ~loc
-              [ Pp.textf "Package %s does not exist" (Package.Name.to_string pkg) ])
+              [ Pp.textf "Package %s does not exist" (Package.Name.to_string pkg_name) ])
       }
 ;;
 
@@ -238,9 +241,9 @@ let rec dep expander : Dep_conf.t -> _ = function
         let* project = Action_builder.of_memo @@ Dune_load.find_project ~dir in
         expand_include ~dir ~project s
       in
-      let builder, _bindings, bin_env = named_paths_builder ~expander deps in
+      let builder, _bindings, action_env = named_paths_builder ~expander deps in
       let+ paths = builder
-      and+ env = bin_env in
+      and+ env = action_env in
       paths, env
     in
     Include_result (Action_builder.memoize "include-eval" pair)
@@ -294,7 +297,7 @@ let rec dep expander : Dep_conf.t -> _ = function
   | Package p ->
     Other
       (let+ () =
-         let* pkg = Expander.expand_str expander p in
+         let* pkg_name = expand_package_name expander p in
          let context = Build_context.create ~name:(Expander.context expander) in
          let loc = String_with_vars.loc p in
          let* dune_version =
@@ -304,7 +307,7 @@ let rec dep expander : Dep_conf.t -> _ = function
            Dune_load.find_project ~dir:(Expander.dir expander)
            >>| Dune_project.dune_version
          in
-         package loc pkg context ~dune_version
+         package loc pkg_name context ~dune_version
        in
        [])
   | Universe ->
@@ -318,13 +321,68 @@ let rec dep expander : Dep_conf.t -> _ = function
        [])
   | Sandbox_config _ -> Other (Action_builder.return [])
 
+and combined_package_deps_builder expander pkgs =
+  let open Action_builder.O in
+  (* Resolve packages and name the layout dir in the host context, same as
+     [make_bin_env] above. *)
+  let* host_name =
+    Action_builder.of_memo
+      (let open Memo.O in
+       Expander.host_context expander >>| Context.name)
+  in
+  let context = Build_context.create ~name:host_name in
+  let* package_db = Action_builder.of_memo (Package_db.create context.name) in
+  let* classified =
+    Action_builder.List.map pkgs ~f:(fun (swv, loc) ->
+      let* pkg = expand_package_name expander swv in
+      let+ found = Action_builder.of_memo (Package_db.find_package package_db pkg) in
+      loc, pkg, found)
+  in
+  let local_package_names =
+    List.filter_map classified ~f:(fun (_, _, found) ->
+      match found with
+      | Some (Package_db.Local pkg) -> Some (Package.name pkg)
+      | _ -> None)
+    |> Package.Name.Set.of_list
+  in
+  let* env =
+    if Package.Name.Set.is_empty local_package_names
+    then Action_builder.return Env.empty
+    else Install_layout.env context.name local_package_names
+  in
+  let+ () =
+    Action_builder.List.iter classified ~f:(fun (loc, pkg_name, found) ->
+      match found with
+      | Some (Local _) -> Action_builder.return ()
+      | Some (Build build) -> build
+      | Some (Installed _) | None ->
+        let* dune_version =
+          Action_builder.of_memo
+            (let open Memo.O in
+             Dune_load.find_project ~dir:(Expander.dir expander)
+             >>| Dune_project.dune_version)
+        in
+        package loc pkg_name context ~dune_version)
+  in
+  env
+
 and named_paths_builder ~expander l =
-  let builders, bindings, bin_names, include_envs =
+  let builders, bindings, combined_packages_builder, bin_names, include_envs =
     let expander = prepare_expander expander in
+    let package_swvs =
+      List.concat_map l ~f:(function
+        | Bindings.Unnamed dep -> package_dep_swvs dep
+        | Bindings.Named (_, deps) -> List.concat_map deps ~f:package_dep_swvs)
+    in
     let bin_names =
       List.concat_map l ~f:(function
         | Bindings.Unnamed dep -> Option.to_list (bin_dep_name dep)
         | Bindings.Named (_, deps) -> List.filter_map deps ~f:bin_dep_name)
+    in
+    let combined_packages_builder =
+      match package_swvs with
+      | [] -> None
+      | pkgs -> Some (combined_package_deps_builder expander pkgs)
     in
     let builders, bindings, include_envs =
       List.fold_left
@@ -332,10 +390,12 @@ and named_paths_builder ~expander l =
         ~init:([], Pform.Map.empty, [])
         ~f:(fun (builders, bindings, envs) x ->
           match x with
+          | Bindings.Unnamed (Dep_conf.Package _)
+            when Option.is_some combined_packages_builder -> builders, bindings, envs
           | Bindings.Unnamed x ->
             let r = dep expander x in
             let envs =
-              match include_bin_env r with
+              match include_action_env r with
               | Some e -> e :: envs
               | None -> envs
             in
@@ -358,7 +418,7 @@ and named_paths_builder ~expander l =
             in
             let envs =
               List.fold_left x ~init:envs ~f:(fun envs r ->
-                match include_bin_env r with
+                match include_action_env r with
                 | Some e -> e :: envs
                 | None -> envs)
             in
@@ -399,22 +459,36 @@ and named_paths_builder ~expander l =
                in
                x :: builders, bindings, envs))
     in
-    builders, bindings, bin_names, include_envs
+    builders, bindings, combined_packages_builder, bin_names, include_envs
   in
-  let bin_env =
-    let outer = make_bin_env expander bin_names in
+  let builders, package_env =
+    match combined_packages_builder with
+    | None -> builders, Action_builder.return Env.empty
+    | Some b ->
+      let open Action_builder.O in
+      let b = Action_builder.memoize "combined-package-deps" b in
+      (b >>| fun _ -> []) :: builders, b
+  in
+  let bin_env = make_bin_env expander bin_names in
+  let action_env =
+    let outer =
+      let open Action_builder.O in
+      let+ package_env = package_env
+      and+ bin_env = bin_env in
+      Env_path.extend_env_concat_path package_env bin_env
+    in
     List.fold_left include_envs ~init:outer ~f:(fun acc env ->
       let open Action_builder.O in
       let+ acc = acc
       and+ env = env in
-      Env_path.extend_env_concat_path acc env)
+      Install.Roots.extend_env_concat_path_vars acc env)
   in
   let builder = List.rev builders |> Action_builder.all >>| List.concat in
-  builder, bindings, bin_env
+  builder, bindings, action_env
 ;;
 
 let named sandbox ~expander l =
-  let builder, bindings, bin_env = named_paths_builder ~expander l in
+  let builder, bindings, action_env = named_paths_builder ~expander l in
   let builder =
     Action_builder.memoize
       ~cutoff:(List.equal Value.equal)
@@ -448,7 +522,7 @@ let named sandbox ~expander l =
     Action_builder.memoize
       "deps action_env"
       (let+ _paths = builder
-       and+ env = bin_env in
+       and+ env = action_env in
        env)
   in
   action_env, expander, sandbox
@@ -456,16 +530,19 @@ let named sandbox ~expander l =
 
 let unnamed sandbox ~expander l =
   let expander = prepare_expander expander in
+  let package_swvs = List.concat_map l ~f:package_dep_swvs in
+  let package_env =
+    match package_swvs with
+    | [] -> Action_builder.return Env.empty
+    | pkgs -> combined_package_deps_builder expander pkgs
+  in
+  let has_combined = not (List.is_empty package_swvs) in
   let bin_names = List.filter_map l ~f:bin_dep_name in
-  let builders, include_envs =
-    List.fold_left l ~init:([], []) ~f:(fun (builders, envs) x ->
-      let r = dep expander x in
-      let envs =
-        match include_bin_env r with
-        | Some e -> e :: envs
-        | None -> envs
-      in
-      to_action_builder r :: builders, envs)
+  let include_envs =
+    List.fold_left l ~init:[] ~f:(fun envs x ->
+      match include_action_env (dep expander x) with
+      | Some e -> e :: envs
+      | None -> envs)
   in
   let bin_env =
     let outer = make_bin_env expander bin_names in
@@ -473,18 +550,22 @@ let unnamed sandbox ~expander l =
       let open Action_builder.O in
       let+ acc = acc
       and+ env = env in
-      Env_path.extend_env_concat_path acc env)
+      Install.Roots.extend_env_concat_path_vars acc env)
   in
   let action_env =
     Action_builder.memoize
       "deps action_env"
       (let+ () =
-         List.fold_left builders ~init:(Action_builder.return ()) ~f:(fun acc b ->
-           let+ () = acc
-           and+ _x = b in
-           ())
-       and+ env = bin_env in
-       env)
+         List.fold_left l ~init:(Action_builder.return ()) ~f:(fun acc x ->
+           match x with
+           | Dep_conf.Package _ when has_combined -> acc
+           | _ ->
+             let+ () = acc
+             and+ _x = to_action_builder (dep expander x) in
+             ())
+       and+ package_env = package_env
+       and+ bin_env = bin_env in
+       Env_path.extend_env_concat_path package_env bin_env)
   in
   action_env, List.fold_left l ~init:sandbox ~f:add_sandbox_config
 ;;

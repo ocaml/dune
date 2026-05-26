@@ -70,7 +70,7 @@ Test sites plugins (example from the manual)
   > Queue.add (fun () -> print_endline "Plugin1 is doing something...") Registration.todo
   > EOF
 
-  $ dune build @all 2>&1 | dune_cmd sanitize
+  $ dune build @install 2>&1 | dune_cmd sanitize
   $ dune exec ./app.exe
   Registration of Plugin1
   Main app starts...

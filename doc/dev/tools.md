@@ -2,20 +2,10 @@
 
 Authors: Ali Caglayan (Tarides), Shon Feder (Tarides)
 
-This document specifies dune's tool management system for development tools like
-ocamlformat, ocamllsp, and odoc.
-
 ## Summary
 
-Tools are executables you use during development but that aren't part of your
-project's build output. Think of each tool as an invisible opam switch:
-independently solved, with its own dependency closure, isolated from your
-project.
-
-**Why a new system?** The legacy dev-tools system only supported a hardcoded
-list of tools and required dune package management. The new system works with
-any opam package, whether you use dune's package management, an opam switch, or
-system OCaml.
+This document specifies dune's tool management system for tools like
+ocamlformat, ocamllsp, odoc, or elpi.
 
 **Design principles:**
 

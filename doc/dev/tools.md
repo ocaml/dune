@@ -199,7 +199,19 @@ isolated tool installations that don't affect other workspaces or the system.
 
 See [Directory structure](#directory-structure) for storage locations.
 
-#### 1.3. Version pinning
+#### 1.3. System wide
+
+Users should be able to install tools in a way that allows them to be used in the
+system-wide environment (e.g., outside of any particular sandbox).
+
+*NOTE:* This does not dictate that dune must maintain the equivalent of
+default switches, or predetermine any other implementation choice. But the
+support for tool management must be designed in way that makes it simple and
+reliable for users to use installed tools outside of a project sandbox (e.g., by
+adding the location of a directory of binaries to their `PATH` or some other
+means).
+
+#### 1.4. Version specification
 
 Users must be able to install specific versions of tools via:
 

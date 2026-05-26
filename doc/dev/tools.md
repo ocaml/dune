@@ -7,41 +7,6 @@ Authors: Ali Caglayan (Tarides), Shon Feder (Tarides)
 This document specifies dune's tool management system for tools like
 ocamlformat, ocamllsp, odoc, or elpi.
 
-## Terminology
-
-- A **tool** is just an executable provided by some opam package.
-- To **install** a tool is to make the executable available within the workspace.
-- A tool is **installable** if it is part of a well formed opam package obtainable
- from any source: opam repository, pinning from a source, or defined locally.
-
-## Design principles
-
-- **Generality**: Any executable defined in an opam packages can be a tool.
-- **Orthogonality**: Tool management should not interfere with other systems,
-  including the management of other tools.
-
-## How to Read This Document
-
-**Requirements** defines _what_ capabilities the system must provide and _why_.
-Organized by category (installation, usability, dependencies, UI). Requirements
-describe user-facing behavior without specifying syntax or implementation.
-Cross-references point to the relevant Specification sections.
-
-
-**Specification** details _how_ the system implements the requirements: stanza
-syntax, CLI commands, version resolution algorithm, and directory structure.
-Each section notes which requirements it implements. Open questions are marked
-where decisions are pending.
-
-**Relationship to Package Management** explains the orthogonality principle and
-how tools differ from project dependencies.
-
-**Comparison with Other Tools** analyzes how uv, cargo, cargo-run-bin, and npm
-handle tool management, informing our design decisions.
-
-**CR markers** indicate areas needing further work: CR-soon for items to address
-before stable release, CR-someday for post-v1 considerations.
-
 <!-- To regenerate TOC:
 nix shell --impure --expr 'let pkgs = import (builtins.getFlake "github:NixOS/nixpkgs") {}; in (pkgs.emacs.pkgs.withPackages (ps: [ps.markdown-toc]))' -c emacs --batch --eval "(progn (require 'markdown-toc) (find-file \"doc/dev/tools.md\") (markdown-toc-refresh-toc) (save-buffer))"
 -->
@@ -52,8 +17,9 @@ nix shell --impure --expr 'let pkgs = import (builtins.getFlake "github:NixOS/ni
 - [Tools](#tools)
   - [Summary](#summary)
   - [How to Read This Document](#how-to-read-this-document)
+  - [Terminology](#terminology)
+  - [Design principles](#design-principles)
   - [Requirements](#requirements)
-    - [Terminology](#terminology)
     - [1. Installation](#1-installation)
       - [1.1. Generality](#11-generality)
       - [1.2. Workspace-local](#12-workspace-local)
@@ -166,6 +132,41 @@ nix shell --impure --expr 'let pkgs = import (builtins.getFlake "github:NixOS/ni
     - [Reference Packages for Testing](#reference-packages-for-testing)
 
 <!-- markdown-toc end -->
+
+## How to Read This Document
+
+**Requirements** defines _what_ capabilities the system must provide and _why_.
+Organized by category (installation, usability, dependencies, UI). Requirements
+describe user-facing behavior without specifying implementation details.
+Cross-references point to the relevant Implementation sections.
+
+**Implementation** details _how_ the system implements the requirements:
+stanza syntax, CLI commands, version resolution algorithm, and directory
+structure.  Each section notes which requirements it implements. Open questions
+are marked where decisions are pending.
+
+**Relationship to Package Management** explains the orthogonality principle and
+how tools differ from project dependencies.
+
+**Comparison with Other Tools** analyzes how uv, cargo, cargo-run-bin, and npm
+handle tool management, informing our design decisions.
+
+**CR markers** indicate areas needing further work: CR-soon for items to address
+before stable release, CR-someday for post-v1 considerations.
+
+## Terminology
+
+- A **tool** is just an executable provided by some opam package.
+- To **install** a tool is to make the executable available within the workspace.
+- A tool is **installable** if it is part of a well formed opam package obtainable
+ from any source: opam repository, pinning from a source, or defined locally.
+
+## Design principles
+
+- **Generality**: Any executable defined in an opam packages can be a tool.
+- **Orthogonality**: Tool management should not interfere with other systems,
+  including the management of other tools.
+
 
 ## Requirements
 
@@ -618,7 +619,7 @@ CR-soon Alizter: Mention that autolocking makes this somewhat feasable, but it c
 be relied on as it will roll to the newer versions. There are no binary
 installs so therefore it would be slow also
 
-## Specification
+## Implementation
 
 ### The `(tool)` stanza
 

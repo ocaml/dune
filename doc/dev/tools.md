@@ -181,7 +181,8 @@ NOTE: The requirements here should be compatible with the functional
 requirements in
 [https://ocaml.org/tools/platform-roadmap](https://ocaml.org/tools/platform-roadmap).
 However, wherever the roadmap specifies implementation details, we are free to
-deviate if needed to better satisfy the requirements.
+deviate if needed to better satisfy the requirements, and our task here is not
+to realize all of the requirements in the platform roadmap.
 
 ### 1. Installation
 

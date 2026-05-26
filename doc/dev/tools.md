@@ -16,9 +16,8 @@ ocamlformat, ocamllsp, odoc, or elpi.
 ## Design principles
 
 - **Generality**: Any executable defined in an opam packages can be a tool.
-- **Orthogonality**: Tools are solved independently from project dependencies
-- **Clean source tree**: All tool artifacts live in `_build/`, not your repo
-- **Multi-version**: Different projects can use different tool versions
+- **Orthogonality**: Tool management should not interfere with other systems,
+  including the management of other tools.
 
 ## How to Read This Document
 

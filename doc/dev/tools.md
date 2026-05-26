@@ -259,24 +259,13 @@ and becomes fast with full caching.
 
 #### 1.6. Binary selection
 
-When a tool package provides multiple executables, users must be able to:
-
-- Specify which binary to run (per-invocation)
-- Configure a default binary (persistent)
-
-When a package provides a single binary, it should be selected automatically.
+When a package provides multiple tools, users must be able to specify a subset
+for installation. When a package providing tools is installed without
+qualification, all provided tools must be installed. As a special case, when a
+package provides a single binary, it will be installed without need to qualify.
 
 See [The `(tool)` stanza](#the-tool-stanza) and [CLI commands](#cli-commands)
 for syntax.
-
-CR-soon Alizter: Here is an annoyance: opam packages don't specify which
-binaries they install, which is fine. Once we have built the package we can
-inspect which binaries we have. For something like `ocaml-lsp-server` this will
-be the `ocamllsp` binary. For `ocamlformat` there are two: `ocamlformat` which
-is intended and `ocamlformat-rpc` which is likely not, in this case the
-prototype errors and asks the user via the CLI to be more specific by providing
-the `--bin` arg. We should evaluate if this is going to be the best way to solve
-this issue.
 
 ### 2. Usability
 

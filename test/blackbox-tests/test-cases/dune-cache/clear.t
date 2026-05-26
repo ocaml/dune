@@ -6,9 +6,6 @@ Test for the "dune cache clear" command.
 Clearing an absent cache directory is a no-op.
 
   $ dune cache clear
-  Error:
-  rmdir($TESTCASE_ROOT/dune-cache/db): No such file or directory
-  [1]
 
   $ make_dune_project 3.10
 

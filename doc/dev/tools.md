@@ -135,24 +135,27 @@ nix shell --impure --expr 'let pkgs = import (builtins.getFlake "github:NixOS/ni
 
 ## How to Read This Document
 
-**Requirements** defines _what_ capabilities the system must provide and _why_.
-Organized by category (installation, usability, dependencies, UI). Requirements
-describe user-facing behavior without specifying implementation details.
-Cross-references point to the relevant Implementation sections.
+[Terminology](#terminology) defines key terms used throughout the document.
+Precise definition of technical terms prevents misunderstandings and certain
+classes of requirement error.
 
-**Implementation** details _how_ the system implements the requirements:
+[Requirements](#requirements) defines _what_ capabilities the system must
+provide and _why_.  Organized by category. Requirements describe user-facing
+behavior without specifying implementation details. Cross-references point to
+the relevant Implementation sections.
+
+[Implementation](#implementation) details _how_ the system implements the requirements:
 stanza syntax, CLI commands, version resolution algorithm, and directory
 structure.  Each section notes which requirements it implements. Open questions
 are marked where decisions are pending.
 
-**Relationship to Package Management** explains the orthogonality principle and
-how tools differ from project dependencies.
+[Relationship to Package Management](#relationship-to-package-management)
+explains the orthogonality principle and how tools differ from project
+dependencies.
 
-**Comparison with Other Tools** analyzes how uv, cargo, cargo-run-bin, and npm
-handle tool management, informing our design decisions.
-
-**CR markers** indicate areas needing further work: CR-soon for items to address
-before stable release, CR-someday for post-v1 considerations.
+[Comparison with Other Tools](comparison-with-other-tools) analyzes how uv,
+cargo, cargo-run-bin, and npm handle tool management, informing our design
+decisions.
 
 ## Terminology
 

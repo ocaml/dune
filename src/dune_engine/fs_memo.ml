@@ -154,9 +154,12 @@ module Cached_digest = struct
     match Time.compare cache.max_timestamp now with
     | Lt -> ()
     | Eq | Gt ->
+      let max_timestamp = ref (Time.of_ns 0) in
       let filter (data : _ file) =
         match Time.compare data.stats.mtime now with
-        | Lt -> true
+        | Lt ->
+          max_timestamp := Time.max !max_timestamp data.stats.mtime;
+          true
         | Gt | Eq -> false
       in
       (match Dune_trace.enabled Digest with
@@ -177,7 +180,8 @@ module Cached_digest = struct
           | [] -> ()
           | _ :: _ ->
             Dune_trace.emit ~buffered:true Digest (fun () ->
-              Dune_trace.Event.Digest.dropped_stale_mtimes !dropped ~fs_now:now)))
+              Dune_trace.Event.Digest.dropped_stale_mtimes !dropped ~fs_now:now)));
+      cache.max_timestamp <- !max_timestamp
   ;;
 
   let dump () =

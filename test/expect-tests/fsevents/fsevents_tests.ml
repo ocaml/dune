@@ -85,8 +85,8 @@ let print_event ~logger ~cwd e =
   let dyn =
     let open Dyn in
     record
-      [ "action", Event.dyn_of_action (Event.action e)
-      ; "kind", Event.dyn_of_kind (Event.kind e)
+      [ "action", Event.Action.to_dyn (Event.action e)
+      ; "kind", Event.Kind.to_dyn (Event.kind e)
       ; ( "path"
         , string
             (let path = Event.path e in

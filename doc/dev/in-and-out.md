@@ -13,40 +13,113 @@ WIP notes
 - Have shon start asking questions.
 - Review Puneeth's Commits?
 
-## High-level design
+## High-level domain model
 
-### Domain for `dune pkg`
+The following attempts to present the highest-possible level analysis of the domain and
+problem, from a top-down representation of the problem space. (Use of Fstar is
+chosen for purely subjective reasons, as any language capable of high-level
+specification would suffice.)
 
-#### Packages
+```fstar
+module InAndOut
 
-- `pkg = opam_pkg | local_pkg`
-- `opam_pkg = opam packages`
-  - `{ install_layout }`
-- `local_pkg = local packages` (within in workspace)
-- `pkg_depends : 't -> 't set` -- immediate deps only
-  - `pkg_depends : opam_pkg -> opam_pkg set`
-  - `pkg_depends : local_pkg -> pkg set`
+type set (a : Type) = | Set : set a
 
-Cf. `src/dune_rules/package_db.ml` for package lookups.
+/// Packages are the principle object in the domain of package management.
+/// We index packages by a type that allows differentiating sorts of packages.
+type pkg (a:Type) = | Pkg : #sort:a -> pkg a
 
-Not in domain "installed pakages"
+/// Because dune package management is part of a project management system used for building new packages, packages are indexed by their locality: it matters whether we are reasoning about a package defined in our projects source code, or defined by sources fetched from someone else's computer.
+type locale = 
+  // Packages defined in the workspace
+  | Local
+  // Packages from an opam repository or pin
+  | Remote
+type dune_pkg = pkg locale
 
-#### Lock directory
+let is_local_pkg (p:dune_pkg) = p.sort = Local
+let is_remote_pkg (p:dune_pkg) = p.sort = Remote
 
-- `lock: (opam_pkg) set -> lock_dir`
+type local_pkg = p:dune_pkg{is_local_pkg p}
+type remote_pkg = p:dune_pkg{is_remote_pkg p}
 
-#### Components
+/// The dependencies required by a package
+///
+/// The current limitation imposed by the in-and-out out problem is captured in
+/// the following refinement placed on the set of dependencies: remote packages
+/// are only able to depend on orher remote packages: installing remote packages
+/// that depend on local packages is not permitted.
+assume
+val pkg_dependencies
+  : target:dune_pkg 
+  -> set (p:dune_pkg{if is_remote_pkg target then remote_pkg else dune_pkg})
 
-- `component_kind = libs | bins`
-- `components = local | external`
-- `components : pkg -> component set`
-- `defined_in_pkg : component -> pkg`
-- `component_deps : component -> componenet set`
 
-E.g., with stdblib
+/// But, what prevents us from simply lifing this limitation?
+/// It is complexity in the domain of build management.
 
-- `ocaml : opam_pkg`
-- `compenents ocaml = ocamlc, stdlib, unix`
+/// "A software build is the process of converting source code files into standalone software artifact(s)"
+type src = | Files
+type artifact_sort = | Bin | Lib
+type artifact = | Artifact : sort:artifact_sort -> artifact
+
+/// Builds also have dependencies, which are artifacts required to build the sources.
+type dep (a : Type) = | Dep : #sort:a -> artifact:artifact -> dep a
+
+/// Again, because dune manages projects, the locality of dependencies is important: we have complete transparency with artifacts built from our projects source code, while
+/// artifacts obtained elsewhere may be completely opaque.
+type dune_dep = dep locale
+let is_local (d:dune_dep) = d.sort = Local
+let is_remote (d:dune_dep) = d.sort = Remote
+
+type local_dep = d:dune_dep{is_local d}
+type remote_dep = d:dune_dep{is_remote d}
+
+/// A build target specifies what to build, and from which prerequisites
+type target =
+  { 
+  /// the name for the resulting artifact
+  name : string; 
+  /// the kind of artifact to build
+  sort : artifact;
+  /// the sources to build from
+  src : src;
+  /// identifiers specifying the required dependencies
+  deps : set string
+  }
+  
+/// A `target` gives us everything we need to perform a build, except, critically, for the actual dependencies themselves:
+assume
+val build 
+  : name:string -> sort:artifact_sort -> src:src // Available from the target
+  -> deps:(set dune_dep) // These are specified by the target.deps, but must be found
+  -> set (a:artifact{a.sort = sort})
+
+/// Therefore, to perform a build, we need a way to obtain the dependency for each dependecy specificaton.
+assume
+val find_dep 
+  : string 
+  -> option dune_dep
+
+/// For dependencies defined locally, dune can search the artifacts defined within the local workspace, build any needed, and provide the resulting dependency.
+assume
+val find_local_dep
+  : string
+  -> option local_dep
+
+/// But for dependencies from remote packages, there is no way to know which package is provided by a given backage without building it, and dune currently requires building all the remote packages at once. 
+assume
+val find_remote_dep
+  : string
+  -> (all_remote_pkgs:set remote_pkg)
+  -> option remote_dep
+
+/// Some package in `all_remote_pkgs` could depend on the target we are trying to build, so given that we have to build all the remote packages at once, we would be stuck on a build cycle even tho there was no cycle at the package level.
+
+/// But why are we currently constrained to building all remote packages together?
+/// It is complexity in the domain of OCaml compilation.
+/// TODO
+```
 
 ##### Qualifications
 

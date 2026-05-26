@@ -222,24 +222,21 @@ Users must be able to install specific versions of tools via:
 See [Version syntax](#version-syntax) for CLI syntax and
 [The `(tool)` stanza](#the-tool-stanza) for declarative configuration.
 
-CR-soon Alizter: Edge cases to specify:
+<!-- CR shon: does this make sense? -->
+##### 1.4.1. Version consistency
+
+Version specifications provided via CLI must override persistent 
 
 - Stanza says `(= 0.26.2)` but CLI requests `0.27.0`: which wins?
 - `.ocamlformat` says `version=0.26.2` but stanza says `(= 0.27.0)`: conflict?
 - Version doesn't exist in opam-repository: error message?
 
-#### 1.4. Multi-version support
+#### 1.5. Multi-version support
 
 Multiple versions of the same tool can coexist within a workspace. This enables
 per-project tool resolution - for example, different projects within a workspace
 can have different `.ocamlformat` files specifying different versions, and the
 formatting rules will use the correct version for each project.
-
-CR-someday Alizter: Multi-version scaling. Supporting N versions means N
-separate solves, downloads, and builds. In a monorepo migrating ocamlformat
-versions across 50 sub-projects, users could accumulate many versions. Consider:
-(1) warning when version count exceeds threshold, (2) `dune tools gc` to remove
-unused versions, (3) documenting expected steady-state (few versions, not many).
 
 See [Tool pforms](#tool-pforms) for how build rules can reference versioned tool
 executables.
@@ -2015,3 +2012,9 @@ workspace wins over project, outer project wins over nested. Sibling projects
 with conflicting declarations can coexist. Within project-scoped rules the
 correct tool is unambiguous. CLI commands without project context (e.g.,
 `dune tools run` from workspace root) should error if declarations conflict.
+
+CR-someday Alizter: Multi-version scaling. Supporting N versions means N
+separate solves, downloads, and builds. In a monorepo migrating ocamlformat
+versions across 50 sub-projects, users could accumulate many versions. Consider:
+(1) warning when version count exceeds threshold, (2) `dune tools gc` to remove
+unused versions, (3) documenting expected steady-state (few versions, not many).

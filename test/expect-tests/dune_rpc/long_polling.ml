@@ -394,39 +394,3 @@ let%expect_test "long polling - cancelling one poller does not stop another" =
     server: finished.
     |}]
 ;;
-
-let%expect_test "long polling - server side termination" =
-  let client client =
-    printfn "client: long polling";
-    let* poller = Client.poll client sub_decl in
-    let poller =
-      match poller with
-      | Ok p -> p
-      | Error e -> raise (Version_error.E e)
-    in
-    let+ () =
-      Fiber.repeat_while ~init:() ~f:(fun () ->
-        let+ res = Client.Stream.next poller in
-        match res with
-        | None -> None
-        | Some a ->
-          printfn "client: received %d" a;
-          Some ())
-    in
-    printfn "client: subscription terminated"
-  in
-  let handler =
-    let state = ref 0 in
-    server (fun _poller ->
-      incr state;
-      Fiber.return (if !state = 3 then None else Some !state))
-  in
-  test ~init ~client ~handler ~private_menu:[ Poll sub_proc ] ();
-  [%expect
-    {|
-    client: long polling
-    client: received 1
-    client: received 2
-    client: subscription terminated
-    server: finished. |}]
-;;

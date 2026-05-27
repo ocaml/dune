@@ -296,6 +296,34 @@ Depending on a glob in a subdirectory of a directory target works too.
   d.txt
   e
 
+Depending on a glob in a missing subdirectory of a directory target is an error.
+
+  $ cat > dune <<EOF
+  > (rule
+  >   (deps (sandbox always))
+  >   (targets (dir output))
+  >   (action (bash "mkdir output; echo x > output/x")))
+  > (rule
+  >   (deps (glob_files output/missing/*))
+  >   (target missing-glob)
+  >   (action (echo %{deps})))
+  > EOF
+
+  $ dune build missing-glob
+  File "dune", lines 1-4, characters 0-109:
+  1 | (rule
+  2 |   (deps (sandbox always))
+  3 |   (targets (dir output))
+  4 |   (action (bash "mkdir output; echo x > output/x")))
+  Error: This rule defines a directory target "output" that matches the
+  requested path "output/missing" but the rule's action didn't produce it
+  -> required by { dir = In_build_dir "default/output/missing"
+     ; predicate = Element (Glob "*")
+     ; only_generated_files = false
+     }
+  -> required by _build/default/missing-glob
+  [1]
+
 Depending on a directory target directly (rather than on individual files) works
 too. Note that this can be achieved in two ways:
 

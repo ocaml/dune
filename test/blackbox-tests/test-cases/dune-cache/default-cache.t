@@ -32,3 +32,38 @@ Change source files to force a recompilation
   temp
 
 Cache has been written to!
+
+User rules are not cached by default. They only use the shared cache when it is
+explicitly enabled, rather than in the default enabled-except-user-rules mode.
+
+  $ rm -rf _build $DUNE_CACHE_ROOT
+  $ cat > dune <<EOF
+  > (rule
+  >  (target target)
+  >  (action
+  >   (progn
+  >    (no-infer (with-stdout-to marker (echo rebuilt)))
+  >    (with-stdout-to target (echo user-rule)))))
+  > EOF
+
+In the default mode, deleting [_build] causes the rule to run again.
+
+  $ dune build target
+  $ dune_cmd exists _build/default/marker
+  true
+  $ rm -rf _build
+  $ dune build target
+  $ dune_cmd exists _build/default/marker
+  true
+
+With [--cache=enabled], deleting [_build] restores the target from the shared
+cache instead.
+
+  $ rm -rf _build $DUNE_CACHE_ROOT
+  $ dune build --cache=enabled target
+  $ dune_cmd exists _build/default/marker
+  true
+  $ rm -rf _build
+  $ dune build --cache=enabled target
+  $ dune_cmd exists _build/default/marker
+  false

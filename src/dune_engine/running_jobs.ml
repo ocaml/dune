@@ -23,6 +23,8 @@ let current t = t.current
 let jobs = Svar.create { stamp = 0; current = Id.Map.empty; last_event = None }
 
 let start id pid ~description ~started_at =
+  let open Fiber.O in
+  let* () = Fiber.return () in
   let new_jobs =
     let jobs = Svar.read jobs in
     let job = { pid; description; started_at; id } in
@@ -33,6 +35,8 @@ let start id pid ~description ~started_at =
 ;;
 
 let stop id =
+  let open Fiber.O in
+  let* () = Fiber.return () in
   let new_jobs =
     let jobs = Svar.read jobs in
     let current = Id.Map.remove jobs.current id in

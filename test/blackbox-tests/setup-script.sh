@@ -15,6 +15,36 @@ setup_xdg_runtime_dir () {
     chmod 700 "$XDG_RUNTIME_DIR"
 }
 
+setup_basic_shared_cache_project () {
+    local mode="$1"
+
+    cat > config <<EOF
+(lang dune 3.0)
+(cache enabled)
+EOF
+    if [ "$mode" != "default" ]; then
+        cat >> config <<EOF
+(cache-storage-mode $mode)
+EOF
+    fi
+    cat > dune-project <<EOF
+(lang dune 3.5)
+EOF
+    cat > dune <<'EOF'
+(rule
+ (deps source)
+ (targets target1 target2)
+ (action
+  (progn
+   (no-infer (with-stdout-to beacon (echo "")))
+   (with-stdout-to target1 (cat source))
+   (with-stdout-to target2 (cat source source)))))
+EOF
+    cat > source <<'EOF'
+\_o< COIN
+EOF
+}
+
 init_oxcaml_project() {
   cat > "dune-project" <<- EOF
 	(lang dune 3.20)

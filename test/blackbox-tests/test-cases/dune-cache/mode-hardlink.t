@@ -6,25 +6,7 @@ variable, and via the [DUNE_CACHE_ROOT] variable. Here we test the former.
   $ export XDG_CACHE_HOME=$(dune_cmd native-path $PWD/.xdg-cache)
   $ setup_xdg_runtime_dir
 
-  $ cat > config <<EOF
-  > (lang dune 2.1)
-  > (cache enabled)
-  > EOF
-  $ cat > dune-project <<EOF
-  > (lang dune 2.1)
-  > EOF
-  $ cat > dune <<EOF
-  > (rule
-  >   (deps source)
-  >   (targets target1 target2)
-  >   (action (bash "touch beacon; cat source > target1; cat source source > target2")))
-  > EOF
-
-It's a duck. It quacks. (Yes, the author of this comment didn't get it.)
-
-  $ cat > source <<EOF
-  > \_o< COIN
-  > EOF
+  $ setup_basic_shared_cache_project default
 
 Test that after the build, the files in the build directory have the hard link
 counts greater than 1, because they are shared with the corresponding cache entries.

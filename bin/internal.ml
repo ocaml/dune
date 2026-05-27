@@ -198,6 +198,31 @@ module Sexp_to_csexp = struct
   ;;
 end
 
+module Cache_metadata = struct
+  module Metadata_file = Dune_cache.Local.Artifacts.Metadata_file
+  module Restore_result = Dune_cache.Local.Restore_result
+
+  let command =
+    let doc = "Print a cache metadata file as JSON." in
+    let info = Cmd.info "cache-metadata" ~doc in
+    let term =
+      let+ input =
+        let doc = "Read cache metadata from this file." in
+        Arg.(required & pos 0 (some Arg.path) None & info [] ~docv:"FILE" ~doc:(Some doc))
+      in
+      let input = Arg.Path.path input in
+      match Metadata_file.load input with
+      | Restored metadata ->
+        Json.of_repr Metadata_file.repr metadata |> Json.to_string |> print_endline
+      | Not_found_in_cache ->
+        User_error.raise
+          [ Pp.textf "cache metadata not found: %s" (Path.to_string input) ]
+      | Error exn -> User_error.raise [ Pp.textf "%s" (Printexc.to_string exn) ]
+    in
+    Cmd.v info term
+  ;;
+end
+
 let group =
   Cmd.group
     (Cmd.info "internal")
@@ -207,5 +232,6 @@ let group =
     ; bootstrap_info
     ; Sexp_pp.command
     ; Sexp_to_csexp.command
+    ; Cache_metadata.command
     ]
 ;;

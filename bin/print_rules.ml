@@ -276,36 +276,6 @@ let rec normalize_dyn : Dyn.t -> Dyn.t = function
 
 let dyn_of_repr repr value = normalize_dyn (Repr.to_dyn repr value)
 
-let rec json_of_dyn : Dyn.t -> Json.t = function
-  | Opaque -> Json.string "<opaque>"
-  | Unit -> Json.list []
-  | Int value -> Json.int value
-  | Int32 value -> Json.string (Int32.to_string value)
-  | Int64 value -> Json.string (Int64.to_string value)
-  | Nativeint value -> Json.string (Nativeint.to_string value)
-  | Bool value -> Json.bool value
-  | String value -> Json.string value
-  | Bytes value -> Json.string (Bytes.to_string value)
-  | Char value -> Json.string (String.make 1 value)
-  | Float value -> Json.float value
-  | Option None -> `Null
-  | Option (Some value) -> json_of_dyn value
-  | List values -> List.map values ~f:json_of_dyn |> Json.list
-  | Array values -> Array.to_list values |> List.map ~f:json_of_dyn |> Json.list
-  | Tuple values -> List.map values ~f:json_of_dyn |> Json.list
-  | Record fields ->
-    List.map fields ~f:(fun (name, value) -> name, json_of_dyn value) |> Json.assoc
-  | Variant (name, []) -> Json.string name
-  | Variant (name, [ value ]) -> Json.assoc [ name, json_of_dyn value ]
-  | Variant (name, values) ->
-    Json.assoc [ name, Json.list (List.map values ~f:json_of_dyn) ]
-  | Map values ->
-    List.map values ~f:(fun (key, value) ->
-      Json.list [ json_of_dyn key; json_of_dyn value ])
-    |> Json.list
-  | Set values -> Json.list (List.map values ~f:json_of_dyn)
-;;
-
 let rec dune_lang_of_sexp : Sexp.t -> Dune_lang.t = function
   | Atom value -> Dune_lang.atom_or_quoted_string value
   | List values -> List (List.map values ~f:dune_lang_of_sexp)
@@ -388,11 +358,11 @@ let term =
         match format, deps_only with
         | Output_format.Sexp, false -> print_rules_sexp ppf rules
         | Output_format.Sexp, true -> print_rule_deps_only_sexp ppf rules
-        | Json, false -> print_json oc (json_of_dyn (dyn_of_repr rules_repr rules))
+        | Json, false -> print_json oc (Json.of_dyn (dyn_of_repr rules_repr rules))
         | Json, true ->
           print_json
             oc
-            (json_of_dyn (dyn_of_repr deps_only_repr (dep_sets_of_rules rules)))
+            (Json.of_dyn (dyn_of_repr deps_only_repr (dep_sets_of_rules rules)))
       in
       match out with
       | None -> print stdout

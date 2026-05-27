@@ -324,3 +324,34 @@ This is the internal stamp file:
 
   $ ls _build/.actions/default/blah* | dune_cmd subst '/blah-.+' '/blah-REDACTED'
   _build/.actions/default/blah-REDACTED
+
+Patch-back sandboxing with directory targets
+--------------------------------------------
+
+Generated files inside directory targets remain build targets and are omitted
+from promotion output. Unrelated source-tree changes made by the same action are
+still reported.
+
+  $ rm -rf out sub dune
+  $ cat >dune-project<<EOF
+  > (lang dune 3.24)
+  > EOF
+  $ cat >dune<<EOF
+  > (rule
+  >  (deps (sandbox patch_back_source_tree))
+  >  (targets (dir out))
+  >  (action (bash "mkdir -p out sub; echo target > out/file; echo surprise > sub/out")))
+  > EOF
+
+  $ dune build out
+  File "out/file", line 1, characters 0-0:
+  --- out/file
+  +++ _build/default/out/file
+  @@ -0,0 +1 @@
+  +target
+  File "sub/out", line 1, characters 0-0:
+  --- sub/out
+  +++ _build/default/sub/out
+  @@ -0,0 +1 @@
+  +surprise
+  [1]

@@ -27,9 +27,12 @@ let start id pid ~description ~started_at =
   let* () = Fiber.return () in
   let new_jobs =
     let jobs = Svar.read jobs in
-    let job = { pid; description; started_at; id } in
-    let current = Id.Map.set jobs.current id job in
-    { current; stamp = jobs.stamp + 1; last_event = Some (Start job) }
+    match Id.Map.find jobs.current id with
+    | Some _ -> Code_error.raise "running job started twice" [ "id", Id.to_dyn id ]
+    | None ->
+      let job = { pid; description; started_at; id } in
+      let current = Id.Map.set jobs.current id job in
+      { current; stamp = jobs.stamp + 1; last_event = Some (Start job) }
   in
   Svar.write jobs new_jobs
 ;;
@@ -39,8 +42,12 @@ let stop id =
   let* () = Fiber.return () in
   let new_jobs =
     let jobs = Svar.read jobs in
-    let current = Id.Map.remove jobs.current id in
-    { current; stamp = jobs.stamp + 1; last_event = Some (Stop id) }
+    match Id.Map.find jobs.current id with
+    | None ->
+      Code_error.raise "running job stopped before it was started" [ "id", Id.to_dyn id ]
+    | Some _ ->
+      let current = Id.Map.remove jobs.current id in
+      { current; stamp = jobs.stamp + 1; last_event = Some (Stop id) }
   in
   Svar.write jobs new_jobs
 ;;

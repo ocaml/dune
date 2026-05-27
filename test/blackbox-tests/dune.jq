@@ -283,7 +283,7 @@ def cacheMisses:
 
 def cacheMissesMatching($path):
     [ .[] | cacheMisses ]
-  | map(select((.args.target // .args.head) | test("source|target1")))
+  | map(select((.args.target // .args.head) | test($path)))
   | sort_by(.args.target // .args.head)
   | .[] | {name, target: (.args.target // .args.head), reason: .args.reason};
 

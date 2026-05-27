@@ -92,6 +92,15 @@ Verify we see only workspace-local miss events for our targets (shared cache hit
     "target": "_build/default/target1",
     "reason": "never seen this target before"
   }
+  $ dune trace cat | jq -s 'include "dune"; cacheHitsMatching("source|target1")'
+  {
+    "name": "hit",
+    "target": "_build/default/source"
+  }
+  {
+    "name": "hit",
+    "target": "_build/default/target1"
+  }
 
   $ dune_cmd stat hardlinks _build/default/source
   1
@@ -161,3 +170,37 @@ Test that the cache stores all historical build results.
   $ cat _build/default/t2
   v1
   v1
+
+Test that executable permissions are restored from the shared cache.
+
+  $ rm -rf .xdg-cache executable
+  $ mkdir executable
+  $ cat > executable/dune-project <<EOF
+  > (lang dune 3.5)
+  > EOF
+  $ cat > executable/dune <<EOF
+  > (rule
+  >  (target tool)
+  >  (action
+  >   (progn
+  >    (no-infer (with-stdout-to marker (echo ran)))
+  >    (bash "echo '#!/bin/sh' > tool; chmod +x tool"))))
+  > EOF
+
+  $ (cd executable && dune build --cache=enabled --cache-storage-mode=copy tool)
+  $ dune_cmd exists executable/_build/default/marker
+  true
+  $ dune_cmd stat permissions executable/_build/default/tool
+  555
+
+  $ rm -rf executable/_build
+  $ (cd executable && dune build --cache=enabled --cache-storage-mode=copy tool)
+  $ (cd executable && dune trace cat | jq -s 'include "dune"; cacheHitsMatching("^_build/default/tool$")')
+  {
+    "name": "hit",
+    "target": "_build/default/tool"
+  }
+  $ dune_cmd exists executable/_build/default/marker
+  false
+  $ dune_cmd stat permissions executable/_build/default/tool
+  555

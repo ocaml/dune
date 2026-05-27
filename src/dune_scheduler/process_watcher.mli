@@ -12,6 +12,7 @@ val init : Event.Queue.t -> t
 val register_job : t -> Event.job -> unit
 
 val is_running : t -> Pid.t -> bool
+val running_count : t -> int
 
 (** Send the following signal to all running processes. *)
 val killall : t -> int -> unit

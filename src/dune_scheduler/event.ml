@@ -80,20 +80,13 @@ module Queue = struct
     ; mutable shutdown_reasons : Shutdown.Reason.Set.t
     ; mutex : Mutex.t
     ; cond : Condition.t
-    ; mutable pending_jobs : int
-    ; mutable pending_worker_tasks : int
     ; mutable job_complete_ready : bool
     ; worker_tasks_completed : Fiber.fill Queue.t
     ; mutable got_event : bool
     ; mutable yield : unit Fiber.Ivar.t option
     }
 
-  let to_dyn { pending_jobs; pending_worker_tasks; _ } =
-    Dyn.record
-      [ "pending_jobs", Dyn.int pending_jobs
-      ; "pending_worker_tasks", Dyn.int pending_worker_tasks
-      ]
-  ;;
+  let to_dyn _ = Dyn.record []
 
   let create () =
     let jobs_completed = Queue.create () in
@@ -102,34 +95,17 @@ module Queue = struct
     let shutdown_reasons = Shutdown.Reason.Set.empty in
     let mutex = Mutex.create () in
     let cond = Condition.create () in
-    let pending_jobs = 0 in
-    let pending_worker_tasks = 0 in
     { jobs_completed
     ; invalidation_events
     ; shutdown_reasons
     ; mutex
     ; cond
-    ; pending_jobs
     ; worker_tasks_completed
-    ; pending_worker_tasks
     ; got_event = false
     ; yield = None
     ; job_complete_ready = false
     }
   ;;
-
-  let register_job_started q = q.pending_jobs <- q.pending_jobs + 1
-
-  let finish_job q =
-    assert (q.pending_jobs > 0);
-    q.pending_jobs <- q.pending_jobs - 1
-  ;;
-
-  let register_worker_task_started q =
-    q.pending_worker_tasks <- q.pending_worker_tasks + 1
-  ;;
-
-  let cancel_work_task_started q = q.pending_worker_tasks <- q.pending_worker_tasks - 1
 
   let add_event q f =
     Mutex.lock q.mutex;
@@ -214,14 +190,11 @@ module Queue = struct
 
     let jobs_completed q =
       Option.map (Queue.pop q.jobs_completed) ~f:(fun (job, proc_info) ->
-        q.pending_jobs <- q.pending_jobs - 1;
-        assert (q.pending_jobs >= 0);
         Fiber_fill_ivar (Fill (job.ivar, proc_info)))
     ;;
 
     let worker_tasks_completed q =
       Option.map (Queue.pop q.worker_tasks_completed) ~f:(fun fill ->
-        q.pending_worker_tasks <- q.pending_worker_tasks - 1;
         Fiber_fill_ivar fill)
     ;;
 
@@ -309,7 +282,4 @@ module Queue = struct
     add_event q (fun q ->
       q.shutdown_reasons <- Shutdown.Reason.Set.add q.shutdown_reasons signal)
   ;;
-
-  let pending_jobs q = q.pending_jobs
-  let pending_worker_tasks q = q.pending_worker_tasks
 end

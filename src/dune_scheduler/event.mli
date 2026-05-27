@@ -65,22 +65,8 @@ module Queue : sig
       returned first. *)
   val next : t -> event
 
-  (** Pending worker tasks *)
-  val pending_worker_tasks : t -> int
-
-  (** Register the fact that a job was started. *)
-  val register_job_started : t -> unit
-
-  (** Register the fact that a job was finished. *)
-  val finish_job : t -> unit
-
-  (** Number of jobs for which the status hasn't been reported yet. *)
-  val pending_jobs : t -> int
-
   val send_worker_task_completed : t -> Fiber.fill -> unit
   val send_worker_tasks_completed : t -> Fiber.fill list -> unit
-  val register_worker_task_started : t -> unit
-  val cancel_work_task_started : t -> unit
   val send_file_watcher_events : t -> File_watcher_event.t list -> unit
   val send_invalidation_event : t -> Memo.Invalidation.t -> unit
   val send_job_completed : t -> job -> Proc.Process_info.t -> unit

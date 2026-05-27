@@ -114,16 +114,18 @@ module Process_table = struct
 end
 
 let register_job_win32 t job =
-  Event.Queue.register_job_started t.events;
   Mutex.protect (Lazy.force t.mutex) (fun () -> Process_table.add t job)
 ;;
 
-let register_job_unix t job =
-  Event.Queue.register_job_started t.events;
-  Process_table.add t job
+let register_job_unix t job = Process_table.add t job
+let register_job = if Sys.win32 then register_job_win32 else register_job_unix
+
+let running_count_win32 t =
+  Mutex.protect (Lazy.force t.mutex) (fun () -> Process_table.running_count t)
 ;;
 
-let register_job = if Sys.win32 then register_job_win32 else register_job_unix
+let running_count_unix t = Process_table.running_count t
+let running_count = if Sys.win32 then running_count_win32 else running_count_unix
 
 let killall_unix t signal =
   Process_table.iter t ~f:(fun job ->
@@ -167,7 +169,6 @@ let rec wait_unix t acc =
        Dune_trace.emit Process (fun () -> Dune_trace.Event.unknown_process proc_info);
        wait_unix t acc
      | Some job ->
-       Event.Queue.finish_job t.events;
        let acc = Fiber.Fill (job.ivar, proc_info) :: acc in
        wait_unix t acc)
 ;;

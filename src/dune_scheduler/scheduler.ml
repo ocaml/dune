@@ -28,7 +28,7 @@ let spawn_thread ~name f = Thread0.spawn ~name f
 
 include Types.Scheduler
 
-let running_jobs_count (t : t) = Event.Queue.pending_jobs t.events
+let running_jobs_count (t : t) = Process_watcher.running_count t.process_watcher
 
 exception Build_cancelled
 
@@ -131,7 +131,7 @@ let kill_and_wait_for_all_processes t =
        SIGKILL directly; the main drain loop below observes exits via
        [jobs_completed] events pushed by the Win32 polling thread. *)
     Process_watcher.killall t.process_watcher Sys.sigkill
-  else if Event.Queue.pending_jobs t.events > 0
+  else if Process_watcher.running_count t.process_watcher > 0
   then (
     Dune_trace.emit Process Dune_trace.Event.process_cleanup_start;
     (* Send SIGTERM first to give processes a chance to clean up *)
@@ -139,9 +139,9 @@ let kill_and_wait_for_all_processes t =
     (* Poll until all processes exit or the grace period expires, then SIGKILL *)
     let deadline = Time.add (Time.now ()) sigterm_grace_period in
     let sent_sigkill = ref false in
-    while Event.Queue.pending_jobs t.events > 0 do
+    while Process_watcher.running_count t.process_watcher > 0 do
       ignore (Process_watcher.wait_unix t.process_watcher : Fiber.fill list);
-      if Event.Queue.pending_jobs t.events > 0
+      if Process_watcher.running_count t.process_watcher > 0
       then
         if (not !sent_sigkill) && Time.(now () >= deadline)
         then (
@@ -152,7 +152,7 @@ let kill_and_wait_for_all_processes t =
     done;
     Dune_trace.emit Process Dune_trace.Event.process_cleanup_finish);
   let saw_signal = ref Ok in
-  while Event.Queue.pending_jobs t.events > 0 do
+  while Process_watcher.running_count t.process_watcher > 0 do
     match Event.Queue.next t.events with
     | Shutdown reason ->
       got_shutdown reason;
@@ -314,8 +314,7 @@ module Run_once = struct
       ~f:(fun () ->
         match Fiber.run fiber ~iter:(fun () -> iter t) with
         | Ok res ->
-          assert (Event.Queue.pending_jobs t.events = 0);
-          assert (Event.Queue.pending_worker_tasks t.events = 0);
+          assert (Process_watcher.running_count t.process_watcher = 0);
           Result.Ok res
         | Error () -> Error Already_reported
         | exception Abort err -> Error err
@@ -353,7 +352,6 @@ let async f =
     Event.Queue.send_worker_task_completed t.events (Fiber.Fill (ivar, res))
   in
   Thread_pool.task (Lazy.force t.thread_pool) ~f;
-  Event.Queue.register_worker_task_started t.events;
   Fiber.Ivar.read ivar
 ;;
 

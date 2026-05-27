@@ -72,7 +72,7 @@ let%expect_test "reading" =
   ("(\"not enough bytes in buffer\", { len = 2; length = 1 })") |}]
 ;;
 
-let%expect_test "reading" =
+let%expect_test "flush token" =
   let buf = Io_buffer.create ~size:1 in
   Io_buffer.write_csexps buf [ Atom "abc" ];
   print_dyn buf;

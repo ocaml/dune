@@ -31,3 +31,10 @@ Pretty-print canonical s-expressions from a file.
   (bar baz)
   
   hello
+
+Convert regular s-expressions to csexps.
+
+  $ printf '%s' '(foo (bar baz) "hello world")' > input.sexp
+  $ dune internal sexp-to-csexp input.sexp > output.csexp
+  $ dune internal sexp-pp --format=csexp --compact output.csexp
+  (foo (bar baz) "hello world")

@@ -286,5 +286,3 @@ Test metadata for directory targets, which are stored with no digest.
     ]
   }
 
-TODO: Test trimming priority in the [copy] mode. In PR #4497 we added a test but
-it turned out to be flaky so we subsequently deleted it in #4511.

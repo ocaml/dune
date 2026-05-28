@@ -20,6 +20,7 @@ include Comparable_intf.S with type key := Var.t
 
 val equal : t -> t -> bool
 val empty : t
+val is_empty : t -> bool
 val vars : t -> Var.Set.t
 
 (** The environment when the process started *)

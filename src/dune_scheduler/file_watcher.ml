@@ -523,27 +523,53 @@ let create_fsevents ?(latency = Time.Span.of_secs 0.2) ~event_queue ~should_excl
   let dispatch_queue_ref = ref None in
   let mutex = Mutex.create () in
   let (_ : Thread.t) =
-    Thread0.spawn ~name:"file-watcher" (fun () ->
-      let dispatch_queue = Fsevents.Dispatch_queue.create () in
+    let signal_dispatch_queue result =
       Mutex.protect mutex (fun () ->
-        dispatch_queue_ref := Some dispatch_queue;
-        Condition.signal cv);
+        dispatch_queue_ref := Some result;
+        Condition.signal cv)
+    in
+    let start_streams dispatch_queue =
       Fsevents.start source dispatch_queue;
-      Fsevents.start sync dispatch_queue;
-      match Fsevents.Dispatch_queue.wait_until_stopped dispatch_queue with
-      | Ok () -> ()
-      | Error exn -> Code_error.raise "fsevents callback raised" [ "exn", Exn.to_dyn exn ])
+      try Fsevents.start sync dispatch_queue with
+      | exn ->
+        Fsevents.stop source;
+        Exn.reraise exn
+    in
+    Thread0.spawn ~name:"file-watcher" (fun () ->
+      match
+        let dispatch_queue = Fsevents.Dispatch_queue.create () in
+        start_streams dispatch_queue;
+        dispatch_queue
+      with
+      | exception exn -> signal_dispatch_queue (Error (Exn_with_backtrace.capture exn))
+      | dispatch_queue ->
+        signal_dispatch_queue (Ok dispatch_queue);
+        (match Fsevents.Dispatch_queue.wait_until_stopped dispatch_queue with
+         | Ok () -> ()
+         | Error exn ->
+           Code_error.raise "fsevents callback raised" [ "exn", Exn.to_dyn exn ]))
   in
-  let external_ = Watch_trie.empty in
   let dispatch_queue =
-    Mutex.protect mutex (fun () ->
-      while !dispatch_queue_ref = None do
-        Condition.wait cv mutex
-      done);
-    Option.value_exn !dispatch_queue_ref
+    match
+      Mutex.protect mutex (fun () ->
+        while Option.is_none !dispatch_queue_ref do
+          Condition.wait cv mutex
+        done;
+        Option.value_exn !dispatch_queue_ref)
+    with
+    | Ok dispatch_queue -> dispatch_queue
+    | Error exn -> Exn_with_backtrace.reraise exn
   in
   { kind =
-      Fsevents { latency; event_queue; sync; source; external_; dispatch_queue; on_event }
+      Fsevents
+        { latency
+        ; event_queue
+        ; sync
+        ; source
+        ; external_ = Watch_trie.empty
+        ; dispatch_queue
+        ; on_event
+        }
   ; sync_table
   }
 ;;

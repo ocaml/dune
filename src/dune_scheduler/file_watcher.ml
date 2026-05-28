@@ -162,6 +162,21 @@ end = struct
       ;;
     end)
   ;;
+
+  let%expect_test "root watch covers descendants" =
+    let p = Path.External.of_string in
+    let t =
+      match add empty (p "/") (lazy "root") with
+      | Under_existing_node -> Code_error.raise "unexpected existing node" []
+      | Inserted { new_t; removed = [] } -> new_t
+      | Inserted { removed = _ :: _; _ } ->
+        Code_error.raise "unexpected removed watches" []
+    in
+    (match add t (p "/tmp") (lazy "tmp") with
+     | Under_existing_node -> Printf.printf "covered by root\n"
+     | Inserted _ -> Printf.printf "inserted separate watch\n");
+    [%expect {| inserted separate watch |}]
+  ;;
 end
 
 type kind =

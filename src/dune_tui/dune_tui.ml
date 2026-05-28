@@ -394,5 +394,6 @@ let backend =
   fun () ->
     match (Platform.OS.value : Platform.OS.t) with
     | Windows -> User_error.raise [ Pp.text "TUI is currently not supported on Windows." ]
-    | Linux | Darwin | FreeBSD | OpenBSD | NetBSD | Haiku | Other -> Lazy.force t
+    | Linux | Darwin | FreeBSD | OpenBSD | NetBSD | DragonFly | Haiku | Other ->
+      Lazy.force t
 ;;

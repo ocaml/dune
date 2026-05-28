@@ -510,7 +510,7 @@
 # endif
 #endif
 
-#if __FreeBSD__
+#if (defined(__FreeBSD__) || defined(__DragonFly__))
 #define EV_USE_INOTIFY 0
 #define EV_USE_KQUEUE 1
 #endif
@@ -3168,7 +3168,9 @@ ev_recommended_backends (void) EV_NOEXCEPT
   flags &= ~EVBACKEND_KQUEUE; /* horribly broken, even for sockets */
   flags &= ~EVBACKEND_POLL;   /* poll is based on kqueue from 10.5 onwards */
 #endif
-#ifdef __FreeBSD__
+#if (defined(__FreeBSD__) || defined(__DragonFly__))
+  /* Unsure if this applies to DragonFly as well, but KQUEUE definitively is the
+   * better choice */
   flags &= ~EVBACKEND_POLL;   /* poll return value is unusable (http://forums.freebsd.org/archive/index.php/t-10270.html) */
 #endif
 

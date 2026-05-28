@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 #include <math.h>
-#if (defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__))
+#if (defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || defined(__DragonFly__))
 #include <sys/wait.h>
 #endif
 #define TAG_WEXITED 0

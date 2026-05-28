@@ -16,3 +16,15 @@ now we build without the option and see that they are present:
   foo.exe exists
   $ test -f foo.install && echo "foo.install exists"
   foo.install exists
+
+dune fmt rejects --disable-promotion:
+  $ dune fmt --disable-promotion
+  Error: The --disable-promotion flag is not applicable to `dune fmt`. Use
+  --preview to display formatting changes without applying them.
+  [1]
+
+dune promotion apply rejects --disable-promotion:
+  $ dune promotion apply --disable-promotion
+  Error: The --disable-promotion flag is not applicable to `dune promotion
+  apply`.
+  [1]

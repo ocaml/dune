@@ -371,7 +371,7 @@ module Build = struct
     | External b ->
       if Local.is_root p
       then External.to_string b
-      else Filename.concat (External.to_string b) (Local.to_string p)
+      else External.to_string (External.append_local b p)
   ;;
 
   let to_string_maybe_quoted p = String.maybe_quoted (to_string p)

@@ -50,4 +50,5 @@
 (alias
  (name runtest-windows)
  (deps
+  (alias runtest-stdune_path_tests)
   (alias runtest-stdune_external_build_tests)))

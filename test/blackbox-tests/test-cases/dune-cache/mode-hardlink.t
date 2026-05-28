@@ -87,6 +87,15 @@ Verify we see only workspace-local miss events for our targets (shared cache hit
     "target": "_build/default/target1",
     "reason": "never seen this target before"
   }
+  $ dune trace cat | jq -s 'include "dune"; cacheHitsMatching("source|target1")'
+  {
+    "name": "hit",
+    "target": "_build/default/source"
+  }
+  {
+    "name": "hit",
+    "target": "_build/default/target1"
+  }
 
   $ dune_cmd stat hardlinks _build/default/source
   3

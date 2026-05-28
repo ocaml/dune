@@ -26,7 +26,9 @@ same shared cache in copy mode.
   $ (cd b && dune build --cache=enabled --cache-storage-mode=copy out)
   $ cat b/_build/default/out
   shared
-  $ (cd b && dune trace cat | jq 'select(.cat == "cache" and .name == "hit" and .args.head == "_build/default/out") | { name, target: .args.head }')
+  $ (cd b \
+  >   && dune trace cat \
+  >   | jq -s 'include "dune"; cacheHitsMatching("^_build/default/out$")')
   {
     "name": "hit",
     "target": "_build/default/out"

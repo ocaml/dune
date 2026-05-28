@@ -296,6 +296,15 @@ def cacheMissesMatching($path):
   | sort_by(.args.target // .args.head)
   | .[] | {name, target: (.args.target // .args.head), reason: .args.reason};
 
+def cacheHits:
+  select(.cat == "cache" and .name == "hit");
+
+def cacheHitsMatching($path):
+    [ .[] | cacheHits ]
+  | map(select((.args.target // .args.head) | test($path)))
+  | sort_by(.args.target // .args.head)
+  | .[] | {name, target: (.args.target // .args.head)};
+
 def fsUpdateWithPath($path):
     select(.name == "fs_update")
   | .args

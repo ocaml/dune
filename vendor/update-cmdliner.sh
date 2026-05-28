@@ -1,6 +1,6 @@
 #!/bin/bash
 
-version=430664dd13c4645bda0e9c39f7d0ec75c1534874
+version=bdd9c10e9b8a6fdd183d5733bcccb409e8a75731
 
 set -e -o pipefail
 
@@ -15,8 +15,6 @@ mkdir -p cmdliner/src
     git clone https://github.com/ocaml-dune/cmdliner.git
     cd cmdliner
     git checkout $version
-    dune subst
-    cd src
 )
 
 SRC=$TMP/cmdliner

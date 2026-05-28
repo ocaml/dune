@@ -148,9 +148,8 @@ This is different from "nothing to promote" - the file must exist
 in the filesystem to be checked for promotions.
 
   $ dune promotion show does-not-exist.ml 2>&1
+  Usage: dune promotion show [--help] [OPTION]… [FILE]…
   dune: FILE… arguments: no 'does-not-exist.ml' file or directory
-  Usage: dune promotion show [OPTION]… [FILE]…
-  Try 'dune promotion show --help' or 'dune --help' for more information.
   [1]
 
 === TEST: Show all corrected files (no arguments) ===

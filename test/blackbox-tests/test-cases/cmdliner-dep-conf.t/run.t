@@ -16,13 +16,11 @@ Tests TARGET argument parsing for dependency configurations.
   [1]
 
   $ dune build "(fi"
+  Usage: dune build [--help] [OPTION]… [TARGET]…
   dune: TARGET… arguments: unclosed parenthesis at end of input
-  Usage: dune build [OPTION]… [TARGET]…
-  Try 'dune build --help' or 'dune --help' for more information.
   [1]
 
   $ dune build "()"
+  Usage: dune build [--help] [OPTION]… [TARGET]…
   dune: TARGET… arguments: Unexpected list
-  Usage: dune build [OPTION]… [TARGET]…
-  Try 'dune build --help' or 'dune --help' for more information.
   [1]

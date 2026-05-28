@@ -53,7 +53,7 @@ end = struct
     (* wrong in general, but this is only needed for fsevents *)
     let comps =
       match String.split ~on:'/' (Path.External.to_string key) with
-      | "" :: comps -> comps
+      | "" :: comps -> List.filter comps ~f:(fun s -> not (String.is_empty s))
       | _ ->
         Code_error.raise
           "Watch_trie.add called with a non-absolute path"
@@ -175,7 +175,7 @@ end = struct
     (match add t (p "/tmp") (lazy "tmp") with
      | Under_existing_node -> Printf.printf "covered by root\n"
      | Inserted _ -> Printf.printf "inserted separate watch\n");
-    [%expect {| inserted separate watch |}]
+    [%expect {| covered by root |}]
   ;;
 end
 

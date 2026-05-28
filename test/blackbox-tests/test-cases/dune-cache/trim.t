@@ -76,12 +76,43 @@ value in [build_system.ml].
 You will also need to make sure that the cache trimmer treats new and old cache
 entries uniformly.
 
-  $ (cd "$PWD/.xdg-cache/dune/db/meta/v5"; grep -rws . -e 'metadata' | sort ) > out
-  $ cat out | censor
-  ./59/$DIGEST1:((8:metadata)(5:files(8:target_b32:$DIGEST2)))
-  ./78/$DIGEST3:((8:metadata)(5:files(8:target_a32:$DIGEST4)))
+  $ metadata_dir="$PWD/.xdg-cache/dune/db/meta/v5"
+  $ (cd "$metadata_dir"; find . -mindepth 2 -maxdepth 2 -type f | sort) > metadata-paths
+  $ cat metadata-paths | censor
+  ./59/$DIGEST1
+  ./78/$DIGEST2
 
-  $ digest="$(awk -F: '/target_b/ { digest=$1 } END { print digest }' < out)"
+  $ while read path; do dune internal cache-metadata "$metadata_dir/$path"; done < metadata-paths \
+  > | jq -S -s 'include "dune"; sortCacheMetadataByFirstPath' \
+  > | censor
+  [
+    {
+      "files": [
+        {
+          "digest": "$DIGEST1",
+          "path": "target_a"
+        }
+      ]
+    },
+    {
+      "files": [
+        {
+          "digest": "$DIGEST2",
+          "path": "target_b"
+        }
+      ]
+    }
+  ]
+
+  $ digest="$(
+  >   while read path; do
+  >     if dune internal cache-metadata "$metadata_dir/$path" \
+  >        | jq -e 'include "dune"; cacheMetadataForPath("target_b")' >/dev/null
+  >     then
+  >       echo "$path"
+  >     fi
+  >   done < metadata-paths
+  > )"
 
   $ dune_cmd stat size "$PWD/.xdg-cache/dune/db/meta/v5/$digest"
   70
@@ -193,6 +224,67 @@ are part of the same rule.
   $ dune clean _build/default/multi_a _build/default/multi_b
   $ dune cache trim --trimmed-size 1B
   Freed 123B (2 files removed)
+
+Test metadata for multiple file targets produced by the same rule.
+
+  $ reset
+  $ dune build multi_a multi_b
+  $ metadata_dir="$PWD/.xdg-cache/dune/db/meta/v5"
+  $ find "$metadata_dir" -mindepth 2 -maxdepth 2 -type f \
+  > | while read path; do dune internal cache-metadata "$path"; done \
+  > | jq -S -s 'include "dune"; map(cacheMetadataWithPathPrefix("multi_")) | unique | .[]' \
+  > | censor
+  {
+    "files": [
+      {
+        "digest": "$DIGEST1",
+        "path": "multi_a"
+      },
+      {
+        "digest": "$DIGEST2",
+        "path": "multi_b"
+      }
+    ]
+  }
+
+Test metadata for directory targets, which are stored with no digest.
+
+  $ reset
+  $ cat > dune-project <<EOF
+  > (lang dune 3.10)
+  > (using directory-targets 0.1)
+  > EOF
+  $ cat > dune <<EOF
+  > (rule
+  >  (target (dir output))
+  >  (action
+  >   (progn
+  >    (run mkdir output)
+  >    (run mkdir output/child)
+  >    (run touch output/file))))
+  > EOF
+  $ dune build output
+  $ metadata_dir="$PWD/.xdg-cache/dune/db/meta/v5"
+  $ find "$metadata_dir" -mindepth 2 -maxdepth 2 -type f \
+  > | while read path; do dune internal cache-metadata "$path"; done \
+  > | jq -S 'include "dune"; cacheMetadataForPath("output")' \
+  > | censor
+  {
+    "files": [
+      {
+        "digest": null,
+        "path": "output"
+      },
+      {
+        "digest": "$DIGEST",
+        "path": "output/file"
+      },
+      {
+        "digest": null,
+        "path": "output/child"
+      }
+    ]
+  }
 
 TODO: Test trimming priority in the [copy] mode. In PR #4497 we added a test but
 it turned out to be flaky so we subsequently deleted it in #4511.

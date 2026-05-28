@@ -213,6 +213,15 @@ def merlinUnitNameSummary:
 def merlinConfigSummary($names):
   merlinPathSummary + { config: [merlinConfigItemsNamed($names)] };
 
+def cacheMetadataForPath($path):
+  select(.files[].path == $path);
+
+def cacheMetadataWithPathPrefix($prefix):
+  select(.files[].path | startswith($prefix));
+
+def sortCacheMetadataByFirstPath:
+  sort_by(.files[0].path);
+
 def redactedActionTraces:
   [ .[]
   | select(.cat != "config" and .args.digest != null)

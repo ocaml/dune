@@ -547,7 +547,8 @@ let create_fsevents ?(latency = Time.Span.of_secs 0.2) ~event_queue ~should_excl
         (match Fsevents.Dispatch_queue.wait_until_stopped dispatch_queue with
          | Ok () -> ()
          | Error exn ->
-           Code_error.raise "fsevents callback raised" [ "exn", Exn.to_dyn exn ]))
+           Log.warn "FSEvents watcher error" [ "exn", Exn.to_dyn exn ];
+           send_events event_queue [ Event.Watcher_terminated ]))
   in
   let dispatch_queue =
     match

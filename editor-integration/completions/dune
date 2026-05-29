@@ -1,0 +1,41 @@
+;; Command completion from cmdliner
+
+(rule
+ (target
+  (dir cmdliner-support))
+ (deps
+  (:cmdliner %{project_root}/vendor/cmdliner/src/tool/cmdliner_main.exe))
+ (action
+  (ignore-stdout
+   ;; This installs both manpages and the scaffolding for command completion
+   (run %{cmdliner} install tool-support %{bin:dune}:dune cmdliner-support))))
+
+(install
+ (package dune)
+ (section share_root)
+ (files
+  ;;;; BASH
+  ;; The generic completion script from cmdliner
+  (%{project_root}/vendor/cmdliner/src/tool/bash-completion.sh
+   as
+   bash-completion/completions/_cmdliner_generic)
+  ;; Generated completion script for dune
+  (cmdliner-support/share/bash-completion/completions/dune
+   as
+   bash-completion/completions/dune)
+  ;;;; ZSH
+  ;; The generic completion script from cmdliner
+  (%{project_root}/vendor/cmdliner/src/tool/zsh-completion.sh
+   as
+   zsh/site-functions/_cmdliner_generic)
+  ;; Generated completion script for dune
+  (cmdliner-support/share/zsh/site-functions/_dune
+   as
+   zsh/site-functions/_dune)
+  ;;;; POWERSHELL
+  ;; The generic completion script from cmdliner
+  (%{project_root}/vendor/cmdliner/src/tool/pwsh-completion.ps1
+   as
+   powershell/_cmdliner_generic)
+  ;; Generated completion script for dune
+  (cmdliner-support/share/powershell/dune_completion.ps1 as powershell/dune)))

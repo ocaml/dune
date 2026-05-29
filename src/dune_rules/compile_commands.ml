@@ -17,14 +17,22 @@ let entry_to_json { directory; file; arguments } : Json.t =
     ]
 ;;
 
-let build_c_command ~sctx ~dir ~expander ~include_flags (src : Foreign.Source.t) ~ext_obj =
+let build_c_command
+      ~sctx
+      ~dir
+      ~expander
+      ~include_flags
+      ~loc
+      (src : Foreign.Source.t)
+      ~ext_obj
+  =
   let open Action_builder.O in
   let+ ocaml = Action_builder.of_memo (Context.ocaml (Super_context.context sctx))
   and+ args =
     (* Expand the command args to strings, discarding file-level deps (header
        files, include directories). Flag values flow through Memo, so changes
        to dune files or compiler config still invalidate this rule. *)
-    Foreign_rules.c_compile_args ~sctx ~dir ~expander ~src ~include_flags
+    Foreign_rules.c_compile_args ~sctx ~dir ~expander ~loc ~src ~include_flags
     |> Command.expand_no_targets ~dir:(Path.build dir)
     |> Action_builder.evaluate_and_collect_deps
     |> Action_builder.of_memo
@@ -70,11 +78,11 @@ let collect_from_foreign_sources
     let+ ocaml = Action_builder.of_memo (Context.ocaml (Super_context.context sctx)) in
     ocaml.lib_config.ext_obj
   in
-  Foreign.Sources.to_list_map foreign_sources ~f:(fun _ (_, src) ->
+  Foreign.Sources.to_list_map foreign_sources ~f:(fun _ (loc, src) ->
     let include_flags =
       Foreign_rules.build_include_flags ~sctx ~dir ~expander ~dir_contents ~requires ~src
     in
-    build_c_command ~sctx ~dir ~expander ~include_flags src ~ext_obj)
+    build_c_command ~sctx ~dir ~expander ~include_flags ~loc src ~ext_obj)
   |> Action_builder.all
 ;;
 

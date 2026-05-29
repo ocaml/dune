@@ -78,6 +78,90 @@ end = struct
     in
     add comps t
   ;;
+
+  let%test_module "tests" =
+    (module struct
+      let of_string = Path.External.of_string
+
+      let print_entries ?label entries =
+        Option.iter label ~f:(fun label -> Printf.printf "%s:\n" label);
+        List.map entries ~f:(fun (path, value) -> Path.External.to_string path, value)
+        |> List.sort ~compare:(fun (x, _) (y, _) -> String.compare x y)
+        |> List.iter ~f:(fun (path, value) -> Printf.printf "%s -> %s\n" path value)
+      ;;
+
+      let insert_lazy_exn t path value =
+        match add t (of_string path) value with
+        | Under_existing_node -> Code_error.raise "unexpected existing node" []
+        | Inserted { new_t; _ } -> new_t
+      ;;
+
+      let insert_exn t path value = insert_lazy_exn t path (lazy value)
+
+      let sample () =
+        let t = insert_exn empty "/a/b" "ab" in
+        let t = insert_exn t "/a/c" "ac" in
+        insert_exn t "/d" "d"
+      ;;
+
+      let expect_under_existing t path value message =
+        match add t (of_string path) value with
+        | Under_existing_node -> Printf.printf "%s\n" message
+        | Inserted _ -> Code_error.raise "unexpected insertion" []
+      ;;
+
+      let%expect_test "inserting independent watches" =
+        print_entries (to_list (sample ()));
+        [%expect
+          {|
+          /a/b -> ab
+          /a/c -> ac
+          /d -> d
+          |}]
+      ;;
+
+      let%expect_test "inserting an ancestor removes descendants" =
+        match add (sample ()) (of_string "/a") (lazy "a") with
+        | Under_existing_node -> Code_error.raise "unexpected existing node" []
+        | Inserted { new_t; removed } ->
+          print_entries ~label:"removed" removed;
+          print_entries ~label:"remaining" (to_list new_t);
+          [%expect
+            {|
+            removed:
+            /a/b -> ab
+            /a/c -> ac
+            remaining:
+            /a -> a
+            /d -> d
+            |}]
+      ;;
+
+      let%expect_test "existing watches cover descendants and themselves" =
+        let forced = ref [] in
+        let value s =
+          lazy
+            (forced := s :: !forced;
+             s)
+        in
+        let t = insert_lazy_exn empty "/a" (value "a") in
+        let print_forced () =
+          !forced |> List.rev |> String.concat ~sep:", " |> Printf.printf "forced: %s\n"
+        in
+        print_forced ();
+        expect_under_existing t "/a/b" (value "ab") "descendant ignored";
+        expect_under_existing t "/a" (value "a2") "same path ignored";
+        print_forced ();
+        [%expect
+          {|
+          forced: a
+          descendant ignored
+          same path ignored
+          forced: a
+          |}]
+      ;;
+    end)
+  ;;
 end
 
 type kind =

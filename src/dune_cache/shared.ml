@@ -284,8 +284,14 @@ module File_restore = struct
   ;;
 
   let copy ~src ~dst =
-    try Io.copy_file ~src ~dst () with
-    | Sys_error _ -> raise_notrace (E Not_found_in_cache)
+    (try Io.copy_file ~src ~dst () with
+     | Sys_error _ -> raise_notrace (E Not_found_in_cache));
+    let src = Path.to_string src in
+    match Unix.stat src with
+    | exception Unix.Unix_error _ -> ()
+    | stats ->
+      (try Unix.chmod src stats.st_perm with
+       | Unix.Unix_error _ -> ())
   ;;
 
   let create_all_or_none (mode : Mode.t) (artifacts : _ Targets.Produced.t) =

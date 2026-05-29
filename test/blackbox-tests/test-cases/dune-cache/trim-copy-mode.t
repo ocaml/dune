@@ -29,6 +29,6 @@ Test that copy-mode cache trim keeps recently restored entries.
   $ rm -rf _build
   $ dune build copy_a copy_b
   $ dune_cmd exists _build/default/beacon_copy_a
-  true
-  $ dune_cmd exists _build/default/beacon_copy_b
   false
+  $ dune_cmd exists _build/default/beacon_copy_b
+  true

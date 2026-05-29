@@ -14,6 +14,15 @@ def redactCommandTimes:
 
 def targets: (.target_files // []) + (.target_dirs // []);
 
+def actionNames:
+  select(.cat == "action") | .args.name? // empty;
+
+def redactAnonymousActionPath:
+  sub("^_build/.actions/default/[0-9a-f]+"; "_build/.actions/default/<action>");
+
+def traceTargetFilesRedacted:
+  (.args.target_files | values) | map(redactAnonymousActionPath);
+
 def processes: select(.cat == "process" and .name == "finish");
 
 def targetsMatchingFilter(f):

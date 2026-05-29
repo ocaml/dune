@@ -379,7 +379,7 @@ let fswatch_backend () =
             [ User_message.command "fswatch"; Pp.text "is available on HaikuPorts" ]
           |> Pp.hovbox
         ]
-      | FreeBSD -> [ User_message.command "pkg install fswatch-mon" ]
+      | FreeBSD | DragonFly -> [ User_message.command "pkg install fswatch-mon" ]
       | _ -> []
     in
     User_error.raise
@@ -402,7 +402,8 @@ let select_watcher_backend () =
   else (
     match Platform.OS.value with
     | Windows -> `Fswatch_win
-    | Linux | Darwin | FreeBSD | OpenBSD | NetBSD | Haiku | Other -> fswatch_backend ())
+    | Linux | Darwin | FreeBSD | OpenBSD | NetBSD | DragonFly | Haiku | Other ->
+      fswatch_backend ())
 ;;
 
 let prepare_sync () =

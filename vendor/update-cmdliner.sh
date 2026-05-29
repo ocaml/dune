@@ -8,7 +8,7 @@ TMP="$(mktemp -d)"
 trap "rm -rf $TMP" EXIT
 
 rm -rf cmdliner
-mkdir -p cmdliner/src
+mkdir -p cmdliner/src/tool
 
 (
     cd $TMP
@@ -21,6 +21,7 @@ SRC=$TMP/cmdliner
 
 cp -v $SRC/LICENSE.md cmdliner
 cp -v $SRC/src/*.{ml,mli} cmdliner/src
+cp -v $SRC/src/tool/* cmdliner/src/tool
 
 git checkout cmdliner/src/dune
 git add -A .

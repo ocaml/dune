@@ -6,30 +6,7 @@ variable, and via the [DUNE_CACHE_ROOT] variable. Here we test the former.
   $ export XDG_CACHE_HOME=$PWD/.xdg-cache
   $ setup_xdg_runtime_dir
 
-  $ cat > config <<EOF
-  > (lang dune 3.0)
-  > (cache enabled)
-  > (cache-storage-mode copy)
-  > EOF
-  $ cat > dune-project <<EOF
-  > (lang dune 3.5)
-  > EOF
-  $ cat > dune <<EOF
-  > (rule
-  >  (deps source)
-  >  (targets target1 target2)
-  >  (action
-  >   (progn
-  >    (no-infer (with-stdout-to beacon (echo "")))
-  >    (with-stdout-to target1 (cat source))
-  >    (with-stdout-to target2 (cat source source)))))
-  > EOF
-
-It's a duck. It quacks. (Yes, the author of this comment didn't get it.)
-
-  $ cat > source <<EOF
-  > \_o< COIN
-  > EOF
+  $ setup_basic_shared_cache_project copy
 
 Test that after the build, the files in the build directory have the hard link
 count of 1, because they are not shared with the corresponding cache entries.

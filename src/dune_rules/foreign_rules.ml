@@ -225,7 +225,7 @@ let base_flags ~(kind : Foreign_language.t) ~use_standard_flags ~ctx ~ocaml_conf
          ])
 ;;
 
-let compilation_flags ~sctx ~dir ~expander ~(src : Foreign.Source.t) =
+let compilation_flags ~sctx ~dir ~expander ~loc ~(src : Foreign.Source.t) =
   let open Action_builder.O in
   let kind = Foreign.Source.language src in
   let ctx = Super_context.context sctx in
@@ -241,7 +241,7 @@ let compilation_flags ~sctx ~dir ~expander ~(src : Foreign.Source.t) =
          let+ default_flags = default_foreign_flags ~dir ~language:C
          and+ pkg_config_flags =
            Pkg_config.Query.read
-             ~loc:Loc.none
+             ~loc
              ~dir
              (Cflags (External_lib_name.to_string field.external_library_name))
              sctx
@@ -258,11 +258,12 @@ let compilation_flags ~sctx ~dir ~expander ~(src : Foreign.Source.t) =
   @ user_flags
 ;;
 
-let c_compile_args ~sctx ~dir ~expander ~src ~include_flags =
+let c_compile_args ~sctx ~dir ~expander ~loc ~src ~include_flags =
   Command.Args.S
     [ Dyn
-        (Action_builder.map (compilation_flags ~sctx ~dir ~expander ~src) ~f:(fun flags ->
-           Command.Args.As flags))
+        (Action_builder.map
+           (compilation_flags ~sctx ~dir ~expander ~loc ~src)
+           ~f:(fun flags -> Command.Args.As flags))
     ; Dyn
         (let open Action_builder.O in
          let+ ocaml =
@@ -355,7 +356,7 @@ let build_c ~sctx ~dir ~expander ~include_flags (loc, (src : Foreign.Source.t), 
             errors happen only when compiling c files.) *)
        ~sandbox:Sandbox_config.no_sandboxing
        c_compiler
-       [ c_compile_args ~sctx ~dir ~expander ~src ~include_flags
+       [ c_compile_args ~sctx ~dir ~expander ~loc ~src ~include_flags
        ; Hidden_deps (Dep.Set.singleton (Dep.file_selector caml_headers))
        ; S output_param
        ; A "-c"

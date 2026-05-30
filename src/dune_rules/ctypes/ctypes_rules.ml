@@ -477,7 +477,7 @@ let ctypes_cclib_flags sctx ~expander ~(buildable : Buildable.t) =
     (match ctypes.build_flags_resolver with
      | Pkg_config ->
        let dir = Expander.dir expander in
-       Pkg_config.Query.read ~loc:Loc.none (Libs external_library_name) sctx ~dir
+       Pkg_config.Query.read ~loc:buildable.loc (Libs external_library_name) sctx ~dir
      | Vendored { c_library_flags; c_flags = _ } ->
        Expander.expand_and_eval_set expander c_library_flags ~standard)
 ;;

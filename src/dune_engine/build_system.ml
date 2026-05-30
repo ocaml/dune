@@ -1100,13 +1100,6 @@ let handle_final_exns exns =
 ;;
 
 let run ?(run_id = Run_id.Batch) f =
-  let f =
-    (* CR-someday cmoseley: Can we avoid creating a new lazy memo node every
-       time the build system is rerun? *)
-    (* This top-level node is used for traversing the whole Memo graph. *)
-    let _toplevel_cell, toplevel = Memo.Lazy.Expert.create ~name:"toplevel" f in
-    fun () -> Memo.Lazy.force toplevel
-  in
   let finalize_diff_promotion () =
     protect ~f:Diff_promotion.finalize ~finally:Diff_promotion.clear_cache
   in

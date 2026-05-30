@@ -142,7 +142,7 @@ let create ~context ~host_env_tree ~default_env ~root_expander ~artifacts ~conte
   Non_rec.Rec.env_tree ()
 ;;
 
-let extend_action t ~dir action =
+let extend_action_env t ~dir action =
   let open Action_builder.O in
   let+ (action : Action.Full.t) = action
   and+ env =
@@ -155,9 +155,21 @@ let extend_action t ~dir action =
      entries remain visible. Other vars from action.env overwrite dir env. *)
   let env = Install.Roots.extend_env_concat_path_vars env action.env in
   Action.Full.add_env env action
-  |> Action.Full.map ~f:(function
-    | Chdir _ as a -> a
-    | a -> Chdir (Path.build (Context.build_dir t.context), a))
+;;
+
+let execute_action_stdout t ?alias ~loc ~dir action =
+  let open Action_builder.O in
+  (let+ action = extend_action_env t ~dir action in
+   { Rule.Anonymous_action.action; loc; dir; alias })
+  |> Build_system.execute_action_stdout
+;;
+
+let extend_action t ~dir action =
+  extend_action_env t ~dir action
+  |> Action_builder.map ~f:(fun action ->
+    Action.Full.map action ~f:(function
+      | Chdir _ as a -> a
+      | a -> Chdir (Path.build (Context.build_dir t.context), a)))
 ;;
 
 let make_rule t ?mode ?loc ~dir { Action_builder.With_targets.build; targets } =

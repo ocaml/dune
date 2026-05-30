@@ -9,6 +9,7 @@ let hash_raw_fd fd = Int.hash (unsafe_to_int fd)
 let raw_fd_repr = Repr.view Repr.int ~to_:unsafe_to_int
 let unsafe_to_unix_file_descr t = t.fd
 let unsafe_of_unix_file_descr fd = { fd; closed = false }
+let is_closed t = t.closed
 
 let set_nonblock t =
   assert (not t.closed);

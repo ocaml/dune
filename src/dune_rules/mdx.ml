@@ -59,21 +59,12 @@ module Deps = struct
 
   let read ~sctx ~dir ~loc ~mdx_prog (files : Files.t) =
     let open Action_builder.O in
-    (let+ action =
-       let* prog = mdx_prog in
-       let env =
-         Super_context.env_node sctx ~dir
-         |> Memo.bind ~f:Env_node.external_env
-         |> Action_builder.of_memo
-       in
-       Command.run'
-         ~dir:(Path.build dir)
-         ~env
-         prog
-         [ Command.Args.A "deps"; Lazy.force color_always; Dep (Path.build files.src) ]
-     in
-     { Rule.Anonymous_action.action; loc; dir; alias = None })
-    |> Build_system.execute_action_stdout
+    (let* prog = mdx_prog in
+     Command.run'
+       ~dir:(Path.build dir)
+       prog
+       [ Command.Args.A "deps"; Lazy.force color_always; Dep (Path.build files.src) ])
+    |> Super_context.execute_action_stdout sctx ~loc ~dir
     |> Action_builder.of_memo
     >>| parse
     >>| function

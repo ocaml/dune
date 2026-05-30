@@ -46,24 +46,17 @@ module Query = struct
         Super_context.env_node sctx ~dir >>= Env_node.external_env
       in
       let action =
-        let+ action =
-          let* env =
-            Action_builder.of_memo
-              (let open Memo.O in
-               let* dune_version =
-                 Dune_load.find_project ~dir >>| Dune_project.dune_version
-               in
-               if dune_version >= (3, 8) then external_env else Memo.return Env.empty)
-          in
-          Command.run'
-            ~dir:(Path.build dir)
-            ~env:(Action_builder.of_memo external_env)
-            bin
-            (to_args t ~env)
+        let* env =
+          Action_builder.of_memo
+            (let open Memo.O in
+             let* dune_version =
+               Dune_load.find_project ~dir >>| Dune_project.dune_version
+             in
+             if dune_version >= (3, 8) then external_env else Memo.return Env.empty)
         in
-        { Rule.Anonymous_action.action; loc; dir; alias = None }
+        Command.run' ~dir:(Path.build dir) bin (to_args t ~env)
       in
-      Build_system.execute_action_stdout action
+      Super_context.execute_action_stdout sctx ~loc ~dir action
       |> Memo.map ~f:(fun contents ->
         String.split_lines contents |> List.hd |> String.extract_blank_separated_words)
       |> Action_builder.of_memo

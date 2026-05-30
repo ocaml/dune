@@ -241,6 +241,7 @@ let compilation_flags ~sctx ~dir ~expander ~(src : Foreign.Source.t) =
          let+ default_flags = default_foreign_flags ~dir ~language:C
          and+ pkg_config_flags =
            Pkg_config.Query.read
+             ~loc:Loc.none
              ~dir
              (Cflags (External_lib_name.to_string field.external_library_name))
              sctx

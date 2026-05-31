@@ -65,7 +65,8 @@ module Run = struct
            Fiber.Pool.close t.pool)
         (fun () -> Fiber.Pool.run t.pool)
     in
-    Fiber.finalize (with_print_errors run) ~finally:(fun () ->
+    with_print_errors run
+    |> Fiber.finalize ~finally:(fun () ->
       Rpc.Registry.cleanup registry;
       Fiber.return ())
   ;;
@@ -355,7 +356,8 @@ let handler (t : _ t Fdecl.t) : 'build_arg Handler.t =
       let t = Fdecl.get t in
       let terminate_sessions () =
         Fiber.fork_and_join_unit cancel_pending_jobs (fun () ->
-          Fiber.parallel_iter (Clients.to_list t.server.clients) ~f:(fun (_, entry) ->
+          Clients.to_list t.server.clients
+          |> Fiber.parallel_iter ~f:(fun (_, (entry : Clients.entry)) ->
             Session.Stage1.close entry.session))
       in
       let shutdown () =

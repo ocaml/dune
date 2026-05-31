@@ -199,6 +199,9 @@
 
 (require 'smie)
 
+;; Internal SMIE variable, bound dynamically by SMIE during indentation.
+(defvar smie--parent)
+
 (defvar dune-smie-grammar
   (when (fboundp 'smie-prec2->grammar)
     (smie-prec2->grammar

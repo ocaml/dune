@@ -71,7 +71,7 @@ module Prog = struct
   module Not_found = struct
     type t =
       { context : Context_name.t
-      ; program : string
+      ; program : Filename.t
       ; hint : string option
       ; loc : Loc.t option
       }
@@ -79,14 +79,14 @@ module Prog = struct
     let create ?hint ~context ~program ~loc () = { hint; context; program; loc }
 
     let raise { context; program; hint; loc } =
-      Utils.program_not_found ?hint ~loc ~context program
+      Utils.program_not_found ?hint ~loc ~context (Filename.to_string program)
     ;;
 
     let to_dyn { context; program; hint; loc = _ } =
       let open Dyn in
       record
         [ "context", Context_name.to_dyn context
-        ; "program", string program
+        ; "program", Filename.to_dyn program
         ; "hint", option string hint
         ]
     ;;
@@ -180,7 +180,7 @@ let for_shell t =
     ~f_program:(fun ~dir x ->
       match x with
       | Ok p -> Path.reach p ~from:dir
-      | Error e -> e.program)
+      | Error e -> Filename.to_string e.program)
 ;;
 
 let digest =
@@ -192,7 +192,7 @@ let digest =
   let digest_program d ~dir (program : Prog.t) =
     match program with
     | Ok p -> string d (Path.reach p ~from:dir)
-    | Error e -> string d e.program
+    | Error e -> string d (Filename.to_string e.program)
   in
   let digest_path d ~dir path = string d (Path.reach path ~from:dir) in
   let digest_target d ~dir target = string d (Path.reach (Path.build target) ~from:dir) in

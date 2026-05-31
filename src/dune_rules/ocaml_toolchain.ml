@@ -60,7 +60,12 @@ let best_mode t : Mode.t =
 
 let make name ~which ~env ~get_ocaml_tool =
   let not_found ?hint program =
-    Action.Prog.Not_found.create ?hint ~context:name ~loc:None ~program ()
+    Action.Prog.Not_found.create
+      ?hint
+      ~context:name
+      ~loc:None
+      ~program:(Filename.of_string_exn program)
+      ()
   in
   let* ocamlc =
     let program = "ocamlc" in

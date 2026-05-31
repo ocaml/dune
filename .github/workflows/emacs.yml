@@ -1,0 +1,36 @@
+name: Emacs integration
+
+on: [push, pull_request]
+
+jobs:
+  byte-compile:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        emacs_version:
+          - '29.1'
+          - '30.1'
+          - 'snapshot'
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: purcell/setup-emacs@master
+        with:
+          version: ${{ matrix.emacs_version }}
+
+      - name: Byte-compile the Emacs integration
+        working-directory: editor-integration/emacs
+        run: |
+          emacs -Q --batch \
+            --eval '(add-to-list (quote load-path) default-directory)' \
+            --eval '(setq byte-compile-error-on-warn nil)' \
+            -f batch-byte-compile dune.el dune-flymake.el dune-watch.el
+
+      - name: Load the Emacs integration
+        working-directory: editor-integration/emacs
+        run: |
+          emacs -Q --batch \
+            --eval '(add-to-list (quote load-path) default-directory)' \
+            -l dune.el -l dune-flymake.el -l dune-watch.el \
+            --eval '(message "dune Emacs integration loaded")'

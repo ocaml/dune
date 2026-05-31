@@ -2,6 +2,7 @@ Configurator.c_test should use the C compiler from the target context.
 
   $ unset OCAMLFIND_TOOLCHAIN
   $ unset OCAMLFIND_CONF
+  $ external_findlib_path="$(ocamlfind printconf path | tr '\n' ':' | sed 's/:$//')"
 
   $ actual_ocamlc="$(command -v ocamlc)"
   $ actual_cc="$(command -v cc)"
@@ -11,11 +12,11 @@ ocamlc -config.
 
   $ mkdir -p etc/findlib.conf.d
   $ cat >etc/findlib.conf <<EOF
-  > path=""
+  > path="$external_findlib_path"
   > ocamlc="$PWD/ocamlc-host"
   > EOF
   $ cat >etc/findlib.conf.d/foo.conf <<EOF
-  > path(foo)=""
+  > path(foo)="$external_findlib_path"
   > ocamlc(foo)="$PWD/ocamlc-target"
   > EOF
 

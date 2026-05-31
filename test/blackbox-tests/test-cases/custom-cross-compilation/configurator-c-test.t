@@ -89,6 +89,6 @@ C compiler.
   $ build_dir="${DUNE_BUILD_DIR:-_build}"
   $ dune build -x foo selected-cc
   $ cat "$build_dir/default.foo/selected-cc"
-  host
+  target
   $ cat cc-log
-  host
+  target

@@ -104,3 +104,34 @@ Define a PPX rewriter that has different runtime libs (native / melange)
 
   $ dune exec bin/app.exe
   native runtime
+
+The same ppx runtime dependency information is preserved after installation.
+This exercises decoding [melange_ppx_runtime_deps] from the installed
+[dune-package] file of a native-only ppx rewriter.
+
+  $ dune build @install
+  $ dune install --prefix $PWD/prefix > /dev/null
+
+  $ mkdir installed-consumer
+  $ cat > installed-consumer/dune-project <<EOF
+  > (lang dune 3.24)
+  > (package (name installed-consumer))
+  > (using melange 0.1)
+  > EOF
+  $ cat > installed-consumer/dune <<EOF
+  > (melange.emit
+  >  (package installed-consumer)
+  >  (target js-out)
+  >  (preprocess (pps my-ppx))
+  >  (emit_stdlib false))
+  > EOF
+  $ cat > installed-consumer/app.ml <<EOF
+  > let () = Js.log Runtime.msg
+  > EOF
+
+  $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root installed-consumer @melange --display=quiet
+  $ find installed-consumer/_build/default/js-out -type f | sort
+  installed-consumer/_build/default/js-out/app.js
+  installed-consumer/_build/default/js-out/node_modules/my-ppx.runtime/runtime.js
+  $ node installed-consumer/_build/default/js-out/app.js
+  melange runtime

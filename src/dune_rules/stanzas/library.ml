@@ -62,6 +62,7 @@ type t =
   ; install_c_headers : (Loc.t * string) list
   ; public_headers : Loc.t * Dep_conf.t list
   ; ppx_runtime_libraries : (Loc.t * Lib_name.t) list
+  ; melange_ppx_runtime_libraries : (Loc.t * Lib_name.t) list option
   ; modes : Mode_conf.Lib.Set.t
   ; kind : Lib_kind.t
   ; library_flags : Ordered_set_lang.Unexpanded.t
@@ -110,6 +111,11 @@ let decode =
          ~default:(stanza_loc, [])
      and+ ppx_runtime_libraries =
        field "ppx_runtime_libraries" (repeat (located Lib_name.decode)) ~default:[]
+     and+ melange_ppx_runtime_libraries =
+       field_o
+         "melange.ppx_runtime_libraries"
+         (Dune_lang.Syntax.since Stanza.syntax (3, 24)
+          >>> repeat (located Lib_name.decode))
      and+ library_flags = Ordered_set_lang.Unexpanded.field "library_flags"
      and+ c_library_flags = Ordered_set_lang.Unexpanded.field "c_library_flags"
      and+ virtual_deps =
@@ -289,6 +295,7 @@ let decode =
      ; install_c_headers
      ; public_headers
      ; ppx_runtime_libraries
+     ; melange_ppx_runtime_libraries
      ; modes
      ; kind
      ; library_flags
@@ -605,9 +612,10 @@ let to_lib_info
   let synopsis = conf.synopsis in
   let sub_systems = conf.sub_systems in
   let ppx_runtime_deps =
-    { Compilation_mode.By_mode.ocaml = conf.ppx_runtime_libraries
-    ; melange = conf.ppx_runtime_libraries
-    }
+    let melange =
+      Option.value conf.melange_ppx_runtime_libraries ~default:conf.ppx_runtime_libraries
+    in
+    { Compilation_mode.By_mode.ocaml = conf.ppx_runtime_libraries; melange }
   in
   let preprocess =
     { Compilation_mode.By_mode.ocaml = conf.buildable.preprocess.config

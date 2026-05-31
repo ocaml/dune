@@ -45,6 +45,7 @@ let to_library t =
   ; enabled_if = t.enabled_if
   ; instrumentation_backend = None
   ; melange_runtime_deps = loc, []
+  ; melange_ppx_runtime_libraries = None
   ; optional = t.optional
   }
 ;;

@@ -32,6 +32,8 @@
 
 ;;; Code:
 
+(declare-function xref-push-marker-stack "xref" (&optional m))
+
 (defgroup dune nil
   "Integration with the dune build system."
   :tag "Dune build system."

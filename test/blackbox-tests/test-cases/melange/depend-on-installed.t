@@ -101,3 +101,81 @@ Test dependency on installed package
   app/_build/default/dist/node_modules/b/b.js
   app/_build/default/dist/node_modules/b/bar.js
   app/_build/default/dist/node_modules/b/foo.js
+
+An explicitly empty [melange.libraries] field remains empty after installation.
+
+  $ mkdir ocaml_dep shared_empty_melange consumer prefix-empty
+
+  $ cat > ocaml_dep/dune-project <<EOF
+  > (lang dune 3.24)
+  > (package (name ocaml_dep))
+  > EOF
+
+  $ cat > ocaml_dep/dune <<EOF
+  > (library
+  >  (modes byte)
+  >  (public_name ocaml_dep))
+  > EOF
+
+  $ cat > ocaml_dep/foo.ml <<EOF
+  > let value = "ocaml"
+  > EOF
+
+  $ dune build --root ocaml_dep @install
+  $ dune install --root ocaml_dep --prefix $PWD/prefix-empty > /dev/null
+
+  $ cat > shared_empty_melange/dune-project <<EOF
+  > (lang dune 3.24)
+  > (package (name shared_empty_melange))
+  > (using melange 0.1)
+  > EOF
+
+  $ cat > shared_empty_melange/dune <<EOF
+  > (library
+  >  (modes byte melange)
+  >  (public_name shared_empty_melange)
+  >  (libraries ocaml_dep)
+  >  (melange.libraries ))
+  > EOF
+
+  $ cat > shared_empty_melange/shared_empty_melange.ml <<EOF
+  > let value = Ocaml_dep.Foo.value
+  > EOF
+
+  $ cat > shared_empty_melange/shared_empty_melange.melange.ml <<EOF
+  > let value = "melange"
+  > EOF
+
+  $ OCAMLPATH=$PWD/prefix-empty/lib/:$OCAMLPATH dune build --root shared_empty_melange @install
+  $ dune install --root shared_empty_melange --prefix $PWD/prefix-empty > /dev/null
+
+  $ grep -E "requires|melange_requires" prefix-empty/lib/shared_empty_melange/dune-package
+   (requires ocaml_dep)
+   (melange_requires ocaml_dep)
+
+  $ cat > consumer/dune-project <<EOF
+  > (lang dune 3.24)
+  > (package (name consumer))
+  > (using melange 0.1)
+  > EOF
+
+  $ cat > consumer/dune <<EOF
+  > (melange.emit
+  >  (target dist)
+  >  (alias melange-dist)
+  >  (emit_stdlib false)
+  >  (libraries shared_empty_melange))
+  > EOF
+
+  $ cat > consumer/main.ml <<EOF
+  > let () = Js.log Shared_empty_melange.value
+  > EOF
+
+  $ OCAMLPATH=$PWD/prefix-empty/lib/:$OCAMLPATH dune build --root consumer @melange-dist
+  Entering directory 'consumer'
+  Error: The library ocaml_dep was not compiled with Dune or it was compiled
+  with Dune but published with a META template. Such libraries are not
+  compatible with melange support
+  -> required by alias melange-dist
+  Leaving directory 'consumer'
+  [1]

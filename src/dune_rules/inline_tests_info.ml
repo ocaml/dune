@@ -72,26 +72,40 @@ module Mode_conf = struct
       | Jsoo of Js_of_ocaml.Mode.t
       | Native
       | Best
-
-    let compare x y =
-      match x, y with
-      | Byte, Byte -> Eq
-      | Byte, _ -> Lt
-      | _, Byte -> Gt
-      | Jsoo m, Jsoo m' -> Js_of_ocaml.Mode.compare m m'
-      | Jsoo _, _ -> Lt
-      | _, Jsoo _ -> Gt
-      | Native, Native -> Eq
-      | Native, _ -> Lt
-      | _, Native -> Gt
-      | Best, Best -> Eq
-    ;;
-
-    let to_dyn = Dyn.opaque
   end
 
   include T
+
+  let repr =
+    Repr.variant
+      "inline-tests-mode-conf"
+      [ Repr.case0 "byte" ~test:(function
+          | Byte -> true
+          | Jsoo _ | Native | Best -> false)
+      ; Repr.case0 "js" ~test:(function
+          | Jsoo JS -> true
+          | Byte | Jsoo Wasm | Native | Best -> false)
+      ; Repr.case0 "wasm" ~test:(function
+          | Jsoo Wasm -> true
+          | Byte | Jsoo JS | Native | Best -> false)
+      ; Repr.case0 "native" ~test:(function
+          | Native -> true
+          | Byte | Jsoo _ | Best -> false)
+      ; Repr.case0 "best" ~test:(function
+          | Best -> true
+          | Byte | Jsoo _ | Native -> false)
+      ]
+  ;;
+
+  include Repr.Poly (struct
+      type nonrec t = t
+
+      let repr = repr
+    end)
+
   open Dune_lang.Decoder
+
+  let to_dyn = Repr.to_dyn repr
 
   let to_string = function
     | Byte -> "byte"
@@ -111,7 +125,13 @@ module Mode_conf = struct
       ]
   ;;
 
-  module O = Comparable.Make (T)
+  module O = Comparable.Make (struct
+      type nonrec t = T.t
+
+      let compare = compare
+      let to_dyn = Repr.to_dyn repr
+    end)
+
   module Map = O.Map
 
   module Set = struct

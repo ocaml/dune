@@ -1,6 +1,9 @@
 def logs($m):
   select(.cat == "log" and (.args.message | contains($m))) | .args;
 
+def inlineTestPartitions:
+  logs("inline-test partitions") | {library, mode, partitions};
+
 def redactCommandTimes:
   walk(if type == "object" then
     with_entries(

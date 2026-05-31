@@ -164,6 +164,19 @@ let stop (t : _ t) =
     | Some (Ok server) -> Csexp_rpc.Server.stop server)
 ;;
 
+let current_errors () =
+  Fiber.Svar.read Build_system.errors
+  |> Build_system_error.Set.current
+  |> Build_system_error.Id.Map.values
+;;
+
+let diff_map_entry ~on_add ~on_remove last now =
+  match last, now with
+  | Some last, None -> Some (on_remove last)
+  | None, Some now -> Some (on_add now)
+  | Some _, Some _ | None, None -> None
+;;
+
 let enqueue_pending_action (t : _ t) kind =
   let outcome = Fiber.Ivar.create () in
   let* () = Job_queue.write t.pending_jobs { kind; outcome } in
@@ -190,20 +203,22 @@ let handler (t : _ t Fdecl.t) : 'build_arg Handler.t =
     let diff ~last ~(now : Error.Set.t) =
       match last with
       | None ->
-        Error.Id.Map.to_list_map (Error.Set.current now) ~f:(fun _ e ->
-          Diagnostic.Event.Add (Diagnostics.diagnostic_of_error e))
+        Error.Set.current now
+        |> Error.Id.Map.values
+        |> List.map ~f:(fun error ->
+          Diagnostics.diagnostic_event_of_error_event (Add error))
       | Some prev ->
         Error.Id.Map.merge
           (Error.Set.current prev)
           (Error.Set.current now)
           ~f:(fun _ prev now ->
-            match prev, now with
-            | None, None -> assert false
-            | Some prev, None ->
-              Some (Diagnostics.diagnostic_event_of_error_event (Remove prev))
-            | None, Some next ->
-              Some (Diagnostics.diagnostic_event_of_error_event (Add next))
-            | Some _, Some _ -> None)
+            diff_map_entry
+              prev
+              now
+              ~on_add:(fun error ->
+                Diagnostics.diagnostic_event_of_error_event (Add error))
+              ~on_remove:(fun error ->
+                Diagnostics.diagnostic_event_of_error_event (Remove error)))
         |> Error.Id.Map.values
     in
     Handler.implement_long_poll
@@ -221,14 +236,15 @@ let handler (t : _ t Fdecl.t) : 'build_arg Handler.t =
       Job.Event.Start { Job.started_at; id; pid; description }
     in
     let stop_job id = Job.Event.Stop (Job.Id.create (Running_jobs.Id.to_int id)) in
+    let stop_running_job ({ Running_jobs.id; _ } : Running_jobs.job) = stop_job id in
     let diff ~(last : Running_jobs.t option) ~(now : Running_jobs.t) =
       match last with
       | None ->
         Running_jobs.current now |> Running_jobs.Id.Map.values |> List.map ~f:start_job
       | Some last ->
         (match Running_jobs.one_event_diff ~last ~now with
-         | Some last_event ->
-           [ (match last_event with
+         | Some event ->
+           [ (match event with
               | Start job -> start_job job
               | Stop id -> stop_job id)
            ]
@@ -236,12 +252,8 @@ let handler (t : _ t Fdecl.t) : 'build_arg Handler.t =
            Running_jobs.Id.Map.merge
              (Running_jobs.current last)
              (Running_jobs.current now)
-             ~f:(fun id last now ->
-               match last, now with
-               | None, None -> assert false
-               | Some _, Some _ -> None
-               | Some _, None -> Some (stop_job id)
-               | _, Some now -> Some (start_job now))
+             ~f:(fun _ last now ->
+               diff_map_entry last now ~on_add:start_job ~on_remove:stop_running_job)
            |> Running_jobs.Id.Map.values)
     in
     Handler.implement_long_poll
@@ -284,9 +296,7 @@ let handler (t : _ t Fdecl.t) : 'build_arg Handler.t =
       | Success -> Dune_rpc.Build_outcome_with_diagnostics.Success
       | Failure ->
         let diagnostics =
-          Fiber.Svar.read Build_system.errors
-          |> Build_system_error.Set.current
-          |> Build_system_error.Id.Map.values
+          current_errors ()
           |> List.filter_map ~f:(fun error ->
             match Build_system_error.description error with
             | `Exn _ -> None
@@ -382,11 +392,7 @@ let handler (t : _ t Fdecl.t) : 'build_arg Handler.t =
   in
   let () =
     let f _ () =
-      let errors = Fiber.Svar.read Build_system.errors in
-      Build_system_error.Set.current errors
-      |> Build_system_error.Id.Map.values
-      |> List.map ~f:Diagnostics.diagnostic_of_error
-      |> Fiber.return
+      current_errors () |> List.map ~f:Diagnostics.diagnostic_of_error |> Fiber.return
     in
     Handler.implement_request rpc Procedures.Public.diagnostics f
   in

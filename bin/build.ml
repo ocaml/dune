@@ -21,8 +21,7 @@ let poll_handling_rpc_build_requests ~(common : Common.t) =
            let request setup =
              let root = Common.root common in
              match kind with
-             | Build targets ->
-               Target.interpret_targets (Common.root common) setup targets
+             | Build targets -> Target.interpret_targets root setup targets
              | Runtest test_paths ->
                Runtest_common.make_request
                  ~scontexts:setup.scontexts

@@ -70,6 +70,13 @@ module Lib = struct
     let name = Lib_info.name info in
     let kind = Lib_info.kind info in
     let modes = Lib_info.modes info in
+    let melange_libs name encode equal ~ocaml ~melange =
+      match ocaml, melange with
+      | [], [] -> field_b name false
+      | _ :: _, [] -> field_b name true
+      | _, _ when List.equal equal ocaml melange -> field_b name false
+      | _, _ :: _ -> field_l name encode melange
+    in
     let synopsis = Lib_info.synopsis info in
     let obj_dir = Lib_info.obj_dir info in
     let additional_paths (paths : _ Lib_info.File_deps.t) =
@@ -164,9 +171,12 @@ module Lib = struct
            (if modes.melange then requires.melange else [])
            ~name:"melange_requires"
        ; libs "ppx_runtime_deps" ppx_runtime_deps.ocaml
-       ; libs
+       ; melange_libs
            "melange_ppx_runtime_deps"
-           (if modes.melange then ppx_runtime_deps.melange else [])
+           (no_loc Lib_name.encode)
+           (fun (_, x) (_, y) -> Lib_name.equal x y)
+           ~ocaml:ppx_runtime_deps.ocaml
+           ~melange:ppx_runtime_deps.melange
        ; field_o "implements" (no_loc Lib_name.encode) implements
        ; field_o "default_implementation" (no_loc Lib_name.encode) default_implementation
        ; field_o "main_module_name" Module_name.encode main_module_name
@@ -346,10 +356,8 @@ module Lib = struct
            { Compilation_mode.By_mode.ocaml = ppx_runtime_deps
            ; melange =
                (match modes.melange, melange_ppx_runtime_deps with
-                | true, Some melange_ppx_runtime_deps -> melange_ppx_runtime_deps
-                | true, None -> ppx_runtime_deps
-                | false, None -> []
-                | false, Some _ -> assert false)
+                | _, Some melange_ppx_runtime_deps -> melange_ppx_runtime_deps
+                | _, None -> ppx_runtime_deps)
            }
          in
          Lib_info.create

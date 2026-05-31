@@ -48,7 +48,7 @@
 
 (defcustom dune-watch-delete-buffer-on-termination t
   "Whether to delete the dune watch buffer when the dune watch process terminates."
-  :type 'bool
+  :type 'boolean
   :group 'dune-watch)
 
 (defcustom dune-watch-popup-function #'display-buffer-pop-up-window
@@ -58,7 +58,7 @@
 
 (defcustom dune-watch-read-command t
   "Whether the user should be prompted to select a build task."
-  :type 'bool
+  :type 'boolean
   :group 'dune-watch)
 
 ;;;; Constants 

@@ -30,6 +30,11 @@
 
 ;;; Code:
 
+;; Legacy flymake variable used only on Emacs versions that lack the
+;; flymake-proc-* names; forward-declared so the byte-compiler does not
+;; treat it as a free variable.
+(defvar flymake-allowed-file-name-masks)
+
 (defvar dune-flymake-temporary-file-directory
   (expand-file-name "dune" temporary-file-directory)
   "Directory where to duplicate the files for flymake.")

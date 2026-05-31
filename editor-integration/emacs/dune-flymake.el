@@ -1,4 +1,4 @@
-;;; dune-flymake.el --- Flymake support for dune files   -*- coding: utf-8 -*-
+;;; dune-flymake.el --- Flymake support for dune files   -*- coding: utf-8; lexical-binding: t; -*-
 
 ;; Copyright 2017- Christophe Troestler
 ;; URL: https://github.com/ocaml/dune

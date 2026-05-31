@@ -142,11 +142,11 @@ EVENT is the text output by the sentinel."
   (when dune-watch-buffer
     (display-buffer dune-watch-buffer dune-watch-popup-function)))
 
-(defun dune-watch-filter-function (watch-buffer process event)
+(defun dune-watch-filter-function (watch-buffer _process event)
   "Process filter function used by dune watch.
 
 WATCH-BUFFER is the buffer corresponding to the process.
-PROCESS is the name of the process.
+_PROCESS is the name of the process.
 EVENT is the string returned by the dune watch."
   (when (and watch-buffer (buffer-live-p watch-buffer))
     (with-current-buffer watch-buffer

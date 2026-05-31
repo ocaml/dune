@@ -61,7 +61,7 @@ characters \\([0-9]+\\)-\\([0-9]+\\): +\\([^\n]*\\)$"
 This is needed as long as https://github.com/ocaml/dune/issues/241
 is not fixed."
   (unless (file-exists-p dune-flymake-program)
-    (let ((dir (file-name-directory dune-program))
+    (let ((dir (file-name-directory dune-flymake-program))
           (pgm "#!/usr/bin/env ocaml
 ;;
 #load \"unix.cma\";;
@@ -114,8 +114,8 @@ let () =
                  errors in
   print_string errors"))
       (make-directory dir t)
-      (append-to-file pgm nil dune-program)
-      (set-file-modes dune-program #o777)
+      (append-to-file pgm nil dune-flymake-program)
+      (set-file-modes dune-flymake-program #o777)
       )))
 
 (defun dune-flymake--temp-name (absolute-path)
@@ -195,7 +195,7 @@ Do not fail on error."
   (let ((fname (dune-flymake--create-temp-buffer-copy
                 'dune-flymake-create-temp))
         (root (or (dune-flymake--root buffer-file-name) "")))
-    (list dune-program (list fname root))))
+    (list dune-flymake-program (list fname root))))
 
 (defun dune-flymake-dune-mode-hook ()
   "Hook to add to `dune-mode-hook' to enable lint tests."

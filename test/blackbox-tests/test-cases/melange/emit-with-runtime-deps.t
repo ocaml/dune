@@ -33,7 +33,7 @@ Test simple interactions between melange.emit and copy_files
 
 Rules created for the assets in the output directory
 
-  $ dune build output/assets/file.txt --display=short
+  $ dune build output/assets/file.txt
   $ find _build/default/output
   _build/default/output
   _build/default/output/assets
@@ -60,7 +60,7 @@ The runtime_dep index.txt was copied to the build folder
   globbed
   main.js
 
-  $ dune build output/assets/file.txt --display=short
+  $ dune build output/assets/file.txt
   $ ls _build/default/output
   assets
   globbed

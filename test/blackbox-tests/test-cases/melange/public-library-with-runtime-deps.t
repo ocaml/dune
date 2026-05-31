@@ -101,7 +101,7 @@ Now try to depend on an external path in a public library
 
 Try to depend on it via `melange.emit`
 
-  $ dune build @mel --display=short
+  $ dune build @mel
   File "lib/dune", line 4, characters 23-33:
   4 |  (melange.runtime_deps /etc/hosts))
                              ^^^^^^^^^^

@@ -24,5 +24,5 @@ Building a project with 2 melange.emit stanzas should add rules to both aliases
   >   (es6 mjs)))
   > EOF
 
-  $ dune build @mel --display=short
-  $ dune build @second --display=short
+  $ dune build @mel
+  $ dune build @second

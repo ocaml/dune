@@ -52,14 +52,17 @@ Test dependency on installed package
   > let x = Bar.x
   > EOF
 
-  $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root b @install --display=short
-  Entering directory 'b'
-      ocamldep (internal)
-      ocamldep (internal)
-          melc .b.objs/melange/b.{cmi,cmj,cmt}
-          melc .b.objs/melange/b__Bar.{cmi,cmj,cmt}
-          melc .b.objs/melange/b__Foo.{cmi,cmj,cmt}
-  Leaving directory 'b'
+  $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root b @install
+  $ find b/_build/default/.b.objs/melange -type f | sort
+  b/_build/default/.b.objs/melange/b.cmi
+  b/_build/default/.b.objs/melange/b.cmj
+  b/_build/default/.b.objs/melange/b.cmt
+  b/_build/default/.b.objs/melange/b__Bar.cmi
+  b/_build/default/.b.objs/melange/b__Bar.cmj
+  b/_build/default/.b.objs/melange/b__Bar.cmt
+  b/_build/default/.b.objs/melange/b__Foo.cmi
+  b/_build/default/.b.objs/melange/b__Foo.cmj
+  b/_build/default/.b.objs/melange/b__Foo.cmt
 
   $ dune install --root b --prefix $PWD/prefix --display=short
   Installing $TESTCASE_ROOT/prefix/lib/b/META
@@ -91,11 +94,10 @@ Test dependency on installed package
   >  (libraries b))
   > EOF
 
-  $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root app @melange-dist --display=short
-  Entering directory 'app'
-          melc dist/node_modules/a/a.js
-          melc dist/node_modules/a/foo.js
-          melc dist/node_modules/b/b.js
-          melc dist/node_modules/b/bar.js
-          melc dist/node_modules/b/foo.js
-  Leaving directory 'app'
+  $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root app @melange-dist
+  $ find app/_build/default/dist -type f | sort
+  app/_build/default/dist/node_modules/a/a.js
+  app/_build/default/dist/node_modules/a/foo.js
+  app/_build/default/dist/node_modules/b/b.js
+  app/_build/default/dist/node_modules/b/bar.js
+  app/_build/default/dist/node_modules/b/foo.js

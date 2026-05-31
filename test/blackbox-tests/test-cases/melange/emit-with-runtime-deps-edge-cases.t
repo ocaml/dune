@@ -204,10 +204,15 @@ Test depending on runtime assets inside `(include_subdirs ..)`
   > let () = Js.log file_content
   > EOF
 
-  $ dune build @mel --display=short 2>&1 | grep -i main
-           ppx incl/.melange_src/sub/main.pp.ml
-          melc incl/.incl-output.mobjs/melange/melange__Main.{cmi,cmj,cmt}
-          melc incl/incl-output/incl/sub/main.js
+  $ dune build @mel
+  $ find _build/default/incl -type f -iname '*main*' | sort
+  _build/default/incl/.incl-output.mobjs/melange/melange__Main.cmi
+  _build/default/incl/.incl-output.mobjs/melange/melange__Main.cmj
+  _build/default/incl/.incl-output.mobjs/melange/melange__Main.cmt
+  _build/default/incl/.melange_src/sub/main.ml
+  _build/default/incl/.melange_src/sub/main.pp.ml
+  _build/default/incl/incl-output/incl/sub/main.js
+  _build/default/incl/sub/main.ml
 
   $ node _build/default/incl/incl-output/incl/sub/main.js
   hello from sub file

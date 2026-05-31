@@ -93,7 +93,11 @@
 (defvar-local dune-watch-header-start nil
   "Start of the header of the most recent dune watch output.")
 
-;;;; Implementation 
+;; Defined below by `define-minor-mode'; forward-declared so functions
+;; that run before the mode definition can reference it.
+(defvar dune-watch-minor-mode)
+
+;;;; Implementation
 
 (defun dune-watch-generate-new-buffer ()
   "Return a new buffer to be used by dune watch."

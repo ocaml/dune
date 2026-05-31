@@ -199,10 +199,13 @@ Do not fail on error."
 
 (defun dune-flymake-dune-mode-hook ()
   "Hook to add to `dune-mode-hook' to enable lint tests."
-  (push dune-flymake--allowed-file-name-masks
-        (if (boundp 'flymake-proc-allowed-file-name-masks)
-            flymake-proc-allowed-file-name-masks
-          flymake-allowed-file-name-masks))
+  ;; The else branch intentionally references the pre-26.1 variable as a
+  ;; fallback for old Emacs; suppress its obsoletion warning at the site.
+  (with-suppressed-warnings ((obsolete flymake-allowed-file-name-masks))
+    (push dune-flymake--allowed-file-name-masks
+          (if (boundp 'flymake-proc-allowed-file-name-masks)
+              flymake-proc-allowed-file-name-masks
+            flymake-allowed-file-name-masks)))
   (set (make-local-variable (if (boundp 'flymake-proc-err-line-patterns)
                                  'flymake-proc-err-line-patterns
                                'flymake-err-line-patterns))

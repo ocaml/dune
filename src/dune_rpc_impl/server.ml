@@ -164,14 +164,10 @@ let stop (t : _ t) =
     | Some (Ok server) -> Csexp_rpc.Server.stop server)
 ;;
 
-let get_current_diagnostic_errors () =
-  Fiber.Svar.read Build_system.errors
-  |> Build_system_error.Set.current
-  |> Build_system_error.Id.Map.values
-  |> List.filter_map ~f:(fun error ->
-    match Build_system_error.description error with
-    | `Exn _ -> None
-    | `Diagnostic compound_user_error -> Some compound_user_error)
+let enqueue_pending_action (t : _ t) kind =
+  let outcome = Fiber.Ivar.create () in
+  let* () = Job_queue.write t.pending_jobs { kind; outcome } in
+  Fiber.Ivar.read outcome
 ;;
 
 let handler (t : _ t Fdecl.t) : 'build_arg Handler.t =
@@ -283,15 +279,20 @@ let handler (t : _ t Fdecl.t) : 'build_arg Handler.t =
   let () = Handler.implement_request rpc Procedures.Public.ping (fun _ -> Fiber.return) in
   let implement_request_pending_action decl ~f =
     let handler _session input =
-      let outcome = Fiber.Ivar.create () in
-      let* () =
-        let server = Fdecl.get t in
-        Job_queue.write server.pending_jobs { kind = f input; outcome }
-      in
-      Fiber.Ivar.read outcome
-      >>| function
+      let+ outcome = enqueue_pending_action (Fdecl.get t) (f input) in
+      match outcome with
       | Success -> Dune_rpc.Build_outcome_with_diagnostics.Success
-      | Failure -> Failure (get_current_diagnostic_errors ())
+      | Failure ->
+        let diagnostics =
+          Fiber.Svar.read Build_system.errors
+          |> Build_system_error.Set.current
+          |> Build_system_error.Id.Map.values
+          |> List.filter_map ~f:(fun error ->
+            match Build_system_error.description error with
+            | `Exn _ -> None
+            | `Diagnostic compound_user_error -> Some compound_user_error)
+        in
+        Dune_rpc.Build_outcome_with_diagnostics.Failure diagnostics
     in
     Handler.implement_request rpc decl handler
   in
@@ -306,16 +307,12 @@ let handler (t : _ t Fdecl.t) : 'build_arg Handler.t =
   in
   let () =
     let f _ () =
-      let outcome = Fiber.Ivar.create () in
-      let* () =
-        let server = Fdecl.get t in
-        let target =
-          Dune_lang.Dep_conf.Alias_rec
-            (Dune_lang.String_with_vars.make_text Loc.none "fmt")
-        in
-        Job_queue.write server.pending_jobs { kind = Build [ target ]; outcome }
-      in
-      Fiber.Ivar.read outcome
+      enqueue_pending_action
+        (Fdecl.get t)
+        (Build
+           [ (let alias = Dune_lang.String_with_vars.make_text Loc.none "fmt" in
+              Dune_lang.Dep_conf.Alias_rec alias)
+           ])
       >>| function
       (* A 'successful' formatting means there is nothing to promote. *)
       | Success -> ()

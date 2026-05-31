@@ -24,7 +24,7 @@ jobs:
         run: |
           emacs -Q --batch \
             --eval '(add-to-list (quote load-path) default-directory)' \
-            --eval '(setq byte-compile-error-on-warn nil)' \
+            --eval '(setq byte-compile-error-on-warn t)' \
             -f batch-byte-compile dune.el dune-flymake.el dune-watch.el
 
       - name: Load the Emacs integration

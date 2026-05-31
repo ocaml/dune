@@ -110,3 +110,33 @@ The field is available starting in Dune 3.24.
   $ dune build --root deps
   $ grep y deps/_build/default/.melange_src/foo.pp.ml
   let y = "from melange preprocessor"
+
+`melange.preprocess` can use Melange syntax in a Melange-only module of a
+mixed-mode library.
+
+  $ mkdir melange-ppx
+  $ cat > melange-ppx/dune-project <<EOF
+  > (lang dune 3.24)
+  > (package (name melange-ppx))
+  > (using melange 0.1)
+  > EOF
+  $ cat > melange-ppx/dune <<EOF
+  > (library
+  >  (modes melange :standard)
+  >  (name melange_ppx)
+  >  (public_name melange-ppx)
+  >  (melange.preprocess (pps melange.ppx)))
+  > EOF
+
+  $ cat > melange-ppx/foo.ml <<EOF
+  > let x = "foo"
+  > EOF
+  $ cat > melange-ppx/melange_only.melange.ml <<EOF
+  > external x : unit -> < > Js.t = "" [@@mel.obj]
+  > let x = x ()
+  > EOF
+
+  $ dune build --root melange-ppx
+  $ find melange-ppx/_build/default/.melange_src -name '*.pp.ml' | sort
+  melange-ppx/_build/default/.melange_src/foo.pp.ml
+  melange-ppx/_build/default/.melange_src/melange_only.pp.ml

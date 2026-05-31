@@ -4,7 +4,6 @@ open Fiber.O
 include struct
   open Dune_rpc
   module Initialize = Initialize
-  module Sub = Sub
   module Progress = Progress
   module Procedures = Procedures
   module Diagnostic = Diagnostic
@@ -13,7 +12,6 @@ end
 
 include struct
   open Dune_engine
-  module Build_config = Build_config
   module Diff_promotion = Diff_promotion
 end
 
@@ -83,15 +81,6 @@ type 'build_arg pending_action =
   }
 
 module Client = Stdune.Unit
-
-module Session_comparable = Comparable.Make (struct
-    type t = Client.t Session.t
-
-    let compare = Session.compare
-    let to_dyn s = Session.to_dyn Client.to_dyn s
-  end)
-
-module Session_set = Session_comparable.Set
 
 module Clients = struct
   type entry = { session : Client.t Session.Stage1.t }

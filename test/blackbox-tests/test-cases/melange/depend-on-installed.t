@@ -151,7 +151,7 @@ An explicitly empty [melange.libraries] field remains empty after installation.
 
   $ grep -E "requires|melange_requires" prefix-empty/lib/shared_empty_melange/dune-package
    (requires ocaml_dep)
-   (melange_requires ocaml_dep)
+   (melange_requires)
 
   $ cat > consumer/dune-project <<EOF
   > (lang dune 3.24)
@@ -172,10 +172,6 @@ An explicitly empty [melange.libraries] field remains empty after installation.
   > EOF
 
   $ OCAMLPATH=$PWD/prefix-empty/lib/:$OCAMLPATH dune build --root consumer @melange-dist
-  Entering directory 'consumer'
-  Error: The library ocaml_dep was not compiled with Dune or it was compiled
-  with Dune but published with a META template. Such libraries are not
-  compatible with melange support
-  -> required by alias melange-dist
-  Leaving directory 'consumer'
-  [1]
+  $ node consumer/_build/default/dist/main.js
+  melange
+

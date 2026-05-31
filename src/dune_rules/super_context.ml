@@ -252,12 +252,16 @@ let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
   let context_name = Context.name context in
   let env =
     Memo.lazy_ (fun () ->
-      let env_context =
+      let* base =
+        let* base = Context.installed_env context in
         match host with
-        | None -> context
-        | Some host -> host.context
+        | None -> Memo.return base
+        | Some { context; _ } ->
+          let+ env = Context.installed_env context in
+          (match Env.get env Env_path.var with
+           | None -> Env.remove base ~var:Env_path.var
+           | Some value -> Env.add base ~var:Env_path.var ~value)
       in
-      let* base = Context.installed_env env_context in
       Site_env.add_packages_env context_name ~base stanzas packages)
     |> Memo.Lazy.force
   in

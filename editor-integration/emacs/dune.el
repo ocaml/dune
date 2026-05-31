@@ -1,4 +1,4 @@
-;;; dune.el --- Integration with the dune build system
+;;; dune.el --- Integration with the dune build system  -*- lexical-binding: t; -*-
 
 ;; Copyright 2018 Jane Street Group, LLC <opensource@janestreet.com>
 ;;           2017- Christophe Troestler

@@ -148,7 +148,7 @@
 (defmacro dune--field-vals (field &rest vals)
   "Build a `font-lock-keywords' rule for the dune FIELD accepting values VALS."
   `(list (concat "(" ,field "[[:space:]]+" ,(regexp-opt vals t))
-         1 font-lock-constant-face))
+         1 'font-lock-constant-face))
 
 (defvar dune-font-lock-keywords
   `((,(concat "(\\(" dune-stanzas-regex "\\)") 1 font-lock-keyword-face)

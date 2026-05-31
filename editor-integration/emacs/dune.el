@@ -203,9 +203,8 @@
 (defvar smie--parent)
 
 (defvar dune-smie-grammar
-  (when (fboundp 'smie-prec2->grammar)
-    (smie-prec2->grammar
-     (smie-bnf->prec2 '()))))
+  (smie-prec2->grammar
+   (smie-bnf->prec2 '())))
 
 (defun dune-smie-rules (kind token)
   "Rules for `smie-setup'.

@@ -378,8 +378,7 @@ See `smie-rules-function' for the meaning of KIND and TOKEN."
        ["test" dune-insert-test-form t]
        ["env" dune-insert-env-form t]
        ["ignored_subdirs" dune-insert-ignored-subdirs-form t]
-       )))
-  (easy-menu-add dune-mode-menu))
+       ))))
 
 
 ;;;###autoload

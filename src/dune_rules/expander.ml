@@ -599,6 +599,16 @@ let expand_pform_var (context : Context.t) ~dir ~source (var : Pform.Var.t) =
            let+ scope = scope in
            let dune_version = Dune_project.dune_version (Scope.project scope) in
            Value.L.strings (Ocaml_flags.dune_warnings ~dune_version ~profile:Dev)))
+  | Git_sha ->
+    (let open Memo.O in
+     let+ sha =
+       Source_tree.nearest_vcs Path.Source.root
+       >>= function
+       | None -> Memo.return None
+       | Some vcs -> Vcs.git_sha_short vcs
+     in
+     string (Option.value sha ~default:""))
+    |> static
 ;;
 
 let ocaml_config_macro source macro_invocation context =

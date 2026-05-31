@@ -998,7 +998,7 @@ module Action_expander = struct
                       Error
                         (Action.Prog.Not_found.create
                            ?hint
-                           ~program:(Filename.to_string program)
+                           ~program
                            ~context:t.context
                            ~loc:(Some loc)
                            ())))))
@@ -1225,7 +1225,8 @@ module Action_expander = struct
     Which.which ~path:(Env_path.path Env.initial) Filename.dune
     >>| function
     | Some s -> Ok s
-    | None -> Error (Action.Prog.Not_found.create ~loc:None ~context ~program:"dune" ())
+    | None ->
+      Error (Action.Prog.Not_found.create ~loc:None ~context ~program:Filename.dune ())
   ;;
 
   let build_command context (pkg : Pkg.t) =

@@ -55,7 +55,7 @@ module Prog : sig
   module Not_found : sig
     type t = private
       { context : Context_name.t
-      ; program : string
+      ; program : Filename.t
       ; hint : string option
       ; loc : Loc.t option
       }
@@ -63,7 +63,7 @@ module Prog : sig
     val create
       :  ?hint:string
       -> context:Context_name.t
-      -> program:string
+      -> program:Filename.t
       -> loc:Loc.t option
       -> unit
       -> t

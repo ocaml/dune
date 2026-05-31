@@ -198,7 +198,7 @@ module Spec = struct
     let prog : Sexp.t =
       match prog with
       | Ok p -> path p
-      | Error e -> Atom e.program
+      | Error e -> Atom (Filename.to_string e.program)
     in
     let args =
       Array.Immutable.to_list_map args ~f:(fun x ->

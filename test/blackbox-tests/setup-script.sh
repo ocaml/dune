@@ -190,6 +190,41 @@ make_two_context_workspace() {
 	EOF
 }
 
+make_promotion_test_project() {
+  make_dune_project 2.0
+  cat > dune <<-'EOF'
+	(rule
+	 (alias runtest)
+	 (action
+	  (diff a.expected a.actual)))
+	
+	(rule
+	 (with-stdout-to a.actual
+	  (echo "A actual\n")))
+	
+	(rule
+	 (alias runtest)
+	 (action
+	  (progn
+	   (with-stdout-to b.actual
+	    (echo "B actual\n"))
+	   (diff? b.expected b.actual))))
+	EOF
+  if [ "${1:-}" = "with-c" ]; then
+    cat >> dune <<-'EOF'
+	
+	(rule
+	 (with-stdout-to c.actual
+	  (echo "C actual\n")))
+	
+	(rule
+	 (alias runtest)
+	 (action
+	  (diff? c.expected c.actual)))
+	EOF
+  fi
+}
+
 make_simple_rpc_watch_project() {
   make_dune_project 3.23
   cat > dune <<-'EOF'

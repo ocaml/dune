@@ -43,11 +43,13 @@ Testsuite for the (foreign_stubs ...) field.
   > let () = Printf.printf "%d" (Quad.quad ())
   > EOF
 
-  $ cat >dune <<EOF
+  $ write_quad_dune() {
+  > local c_stubs="$1"
+  > cat >dune <<EOF
   > (library
   >  (name quad)
   >  (modules quad)
-  >  (foreign_stubs (language c) (names foo))
+  >  $c_stubs
   >  (foreign_archives bar qux)
   >  (foreign_stubs (language cxx) (names baz)))
   > (rule
@@ -80,6 +82,9 @@ Testsuite for the (foreign_stubs ...) field.
   >  (libraries quad)
   >  (modules main))
   > EOF
+  > }
+
+  $ write_quad_dune "(foreign_stubs (language c) (names foo))"
 
   $ dune build
 
@@ -116,43 +121,7 @@ Testsuite for the (foreign_stubs ...) field.
   > #define EIGHT 8
   > EOF
 
-  $ cat >dune <<EOF
-  > (library
-  >  (name quad)
-  >  (modules quad)
-  >  (foreign_stubs (language c) (names foo) (extra_deps eight.h))
-  >  (foreign_archives bar qux)
-  >  (foreign_stubs (language cxx) (names baz)))
-  > (rule
-  >  (targets bar%{ext_obj})
-  >  (deps bar.c)
-  >  (action (run %{cc} -c -I %{ocaml-config:standard_library} -o %{targets} %{deps})))
-  > (rule
-  >  (targets libbar.a)
-  >  (deps bar%{ext_obj})
-  >  (action (run ar rcs %{targets} %{deps})))
-  > (rule
-  >  (targets dllbar%{ext_dll})
-  >  (deps bar%{ext_obj})
-  >  (action (run %{cc} -shared -o %{targets} %{deps})))
-  > (rule
-  >  (targets qux%{ext_obj})
-  >  (deps qux.cpp)
-  >  (action (run %{cxx} -c -I %{ocaml-config:standard_library} -o %{targets} %{deps})))
-  > (rule
-  >  (targets libqux.a)
-  >  (deps qux%{ext_obj})
-  >  (action (run ar rcs %{targets} %{deps})))
-  > (rule
-  >  (targets dllqux%{ext_dll})
-  >  (deps qux%{ext_obj})
-  >  (action (run %{cc} -shared -o %{targets} %{deps})))
-  > (executable
-  >  (name main)
-  >  (modes exe byte)
-  >  (libraries quad)
-  >  (modules main))
-  > EOF
+  $ write_quad_dune "(foreign_stubs (language c) (names foo) (extra_deps eight.h))"
 
   $ dune exec ./main.exe
   2019
@@ -181,43 +150,7 @@ Testsuite for the (foreign_stubs ...) field.
   > #define ONE 1
   > EOF
 
-  $ cat >dune <<EOF
-  > (library
-  >  (name quad)
-  >  (modules quad)
-  >  (foreign_stubs (language c) (names foo) (extra_deps eight.h) (include_dirs another/dir))
-  >  (foreign_archives bar qux)
-  >  (foreign_stubs (language cxx) (names baz)))
-  > (rule
-  >  (targets bar%{ext_obj})
-  >  (deps bar.c)
-  >  (action (run %{cc} -c -I %{ocaml-config:standard_library} -o %{targets} %{deps})))
-  > (rule
-  >  (targets libbar.a)
-  >  (deps bar%{ext_obj})
-  >  (action (run ar rcs %{targets} %{deps})))
-  > (rule
-  >  (targets dllbar%{ext_dll})
-  >  (deps bar%{ext_obj})
-  >  (action (run %{cc} -shared -o %{targets} %{deps})))
-  > (rule
-  >  (targets qux%{ext_obj})
-  >  (deps qux.cpp)
-  >  (action (run %{cxx} -c -I %{ocaml-config:standard_library} -o %{targets} %{deps})))
-  > (rule
-  >  (targets libqux.a)
-  >  (deps qux%{ext_obj})
-  >  (action (run ar rcs %{targets} %{deps})))
-  > (rule
-  >  (targets dllqux%{ext_dll})
-  >  (deps qux%{ext_obj})
-  >  (action (run %{cc} -shared -o %{targets} %{deps})))
-  > (executable
-  >  (name main)
-  >  (modes exe byte)
-  >  (libraries quad)
-  >  (modules main))
-  > EOF
+  $ write_quad_dune "(foreign_stubs (language c) (names foo) (extra_deps eight.h) (include_dirs another/dir))"
 
   $ dune exec ./main.exe
   2019

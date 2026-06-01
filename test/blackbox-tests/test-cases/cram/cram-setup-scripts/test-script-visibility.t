@@ -2,9 +2,7 @@ Test that setup scripts are NOT visible in the test directory
 
 Create a project with a helper script:
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.21)
-  > EOF
+  $ make_dune_project 3.21
 
   $ cat > helpers.sh << 'EOF'
   > #!/bin/sh

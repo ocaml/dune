@@ -5,9 +5,7 @@ the compiler is the authority on whether a given [-open] argument
 is acceptable, and dune should not pre-empt that decision by
 raising on syntactically invalid names.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.23)
-  > EOF
+  $ make_dune_project 3.23
 
 A trivial dependency library so the consumer's compile rule has
 inter-library deps to filter — this exercises any future code path

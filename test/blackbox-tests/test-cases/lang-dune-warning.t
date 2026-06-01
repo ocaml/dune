@@ -1,9 +1,7 @@
 If (lang dune) does not use a valid format on a 2.x project, a warning is
 emitted:
 
-  $ cat > dune-project << EOF
-  > (lang dune 2.3.0)
-  > EOF
+  $ make_dune_project 2.3.0
 
   $ dune build
   File "dune-project", line 1, characters 11-16:
@@ -12,9 +10,7 @@ emitted:
   Warning: The ".0" part is ignored here.
   This version is parsed as just 2.3.
 
-  $ cat > dune-project << EOF
-  > (lang dune 2.4suffix)
-  > EOF
+  $ make_dune_project 2.4suffix
 
   $ dune build
   File "dune-project", line 1, characters 11-20:
@@ -25,17 +21,13 @@ emitted:
 
 If the version is valid, no warning is emitted:
 
-  $ cat > dune-project << EOF
-  > (lang dune 2.2)
-  > EOF
+  $ make_dune_project 2.2
 
   $ dune build
 
 Starting with lang 3.0, the warning turns into an error.
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.0suffix)
-  > EOF
+  $ make_dune_project 3.0suffix
 
   $ dune build
   File "dune-project", line 1, characters 11-20:
@@ -47,8 +39,6 @@ Starting with lang 3.0, the warning turns into an error.
 
 And without suffix it is accepted.
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.0)
-  > EOF
+  $ make_dune_project 3.0
 
   $ dune build

@@ -10,9 +10,7 @@ Check that old cache configuration format works fine with an old language
   > (cache-trim-period 1h)
   > (cache-trim-size 1GB)
   > EOF
-  $ cat > dune-project <<EOF
-  > (lang dune 2.1)
-  > EOF
+  $ make_dune_project 2.1
   $ cat > dune <<EOF
   > (rule
   >   (deps source)

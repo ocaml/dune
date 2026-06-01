@@ -1,6 +1,6 @@
 Test that includes vlib and implementations all in the same folder.
 
-  $ echo "(lang dune 3.6)" > dune-project
+  $ make_dune_project 3.6
 
   $ touch empty.mli
   $ cat >dune <<EOF

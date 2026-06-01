@@ -1,9 +1,7 @@
 Test that depending on a non-existent package produces an error with a
 proper source location.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.24)
-  > EOF
+  $ make_dune_project 3.24
 
   $ cat >dune <<EOF
   > (rule

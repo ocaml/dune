@@ -4,7 +4,7 @@ adding . to $CWD
 Reproduce #6907
 
   $ export PATH=.:$PATH
-  $ echo "(lang dune 2.0)" > dune-project
+  $ make_dune_project 2.0
 
   $ start_dune
 

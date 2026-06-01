@@ -8,9 +8,7 @@ must always trigger it.
 
 See: https://github.com/ocaml/dune/issues/4572
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.23)
-  > EOF
+  $ make_dune_project 3.23
 
 A library where we'll perform the changes:
 

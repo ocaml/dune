@@ -5,9 +5,7 @@ Test that copy-mode cache trim keeps recently restored entries.
   $ export XDG_CACHE_HOME=$PWD/.xdg-cache
   $ setup_xdg_runtime_dir
 
-  $ cat > dune-project <<EOF
-  > (lang dune 2.1)
-  > EOF
+  $ make_dune_project 2.1
   $ cat > dune <<EOF
   > (rule
   >   (targets copy_a)

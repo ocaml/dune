@@ -5,9 +5,7 @@ Currently, all inner modules are recompiled when any library dependency changes.
 
 See: https://github.com/ocaml/dune/issues/4572
 
-  $ cat > dune-project <<EOF
-  > (lang dune 2.0)
-  > EOF
+  $ make_dune_project 2.0
 
   $ mkdir baselib
   $ cat > baselib/dune <<EOF

@@ -1,8 +1,6 @@
 Test running inline tests by specifying ML source files directly.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.21)
-  > EOF
+  $ make_dune_project 3.21
 
 Set up a simple inline tests backend and libraries:
 

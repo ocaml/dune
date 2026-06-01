@@ -37,9 +37,7 @@ transitively-globbed lib still rebuilds the consumer.
 A future filter improvement that walks wrapped libs' children
 flips the expected target_files array to [].
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.23)
-  > EOF
+  $ make_dune_project 3.23
 
   $ cat > dune <<EOF
   > (library

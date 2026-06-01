@@ -3,9 +3,7 @@ executable that uses as staged_pps it in bin/.
 This test ensures that path expansion is done relatively to the right
 directory.
 
-  $ cat > dune-project << EOF
-  > (lang dune 1.1)
-  > EOF
+  $ make_dune_project 1.1
 
   $ mkdir ppx
   $ cat > ppx/dune << EOF

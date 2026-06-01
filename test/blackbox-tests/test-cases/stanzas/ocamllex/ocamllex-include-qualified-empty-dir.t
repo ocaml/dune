@@ -1,9 +1,7 @@
 Test `(include_subdirs qualified)` in the presence of invalid module name
 directories that don't contain source files
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.22)
-  > EOF
+  $ make_dune_project 3.22
 
   $ cat > dune <<EOF
   > (include_subdirs qualified)

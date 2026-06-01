@@ -1,7 +1,7 @@
 ----------------------------------------------------------------------------------
 * (foreign_library ...) is unavailable before Dune 2.0.
 
-  $ echo "(lang dune 1.0)" > dune-project
+  $ make_dune_project 1.0
   $ mkdir -p lib
 
   $ cat >lib/dune <<EOF
@@ -23,7 +23,7 @@
 * (foreign_library ...) is available in Dune 2.0.
 * "archive_name" is a required field.
 
-  $ echo "(lang dune 2.0)" > dune-project
+  $ make_dune_project 2.0
 
   $ dune build
   File "lib/dune", lines 1-3, characters 0-44:

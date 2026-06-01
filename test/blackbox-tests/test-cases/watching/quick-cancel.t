@@ -1,7 +1,7 @@
 Modify an input file during the build so that dune interrupts the
 build
 
-  $ echo "(lang dune 2.0)" > dune-project
+  $ make_dune_project 2.0
 
   $ cat > x <<EOF
   > original-contents

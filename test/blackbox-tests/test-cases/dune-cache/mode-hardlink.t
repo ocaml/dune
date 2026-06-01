@@ -105,9 +105,7 @@ No cache misses should appear in the trace.
 
 Test that the cache stores all historical build results.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 2.1)
-  > EOF
+  $ make_dune_project 2.1
   $ cat > dune-v1 <<EOF
   > (rule
   >   (targets t1)

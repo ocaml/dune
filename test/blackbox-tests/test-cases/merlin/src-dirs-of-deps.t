@@ -1,7 +1,7 @@
 We create two libraries where one depends on the other. The dependency library
 also has more than one src dir.
 
-  $ echo "(lang dune 2.0)" > dune-project
+  $ make_dune_project 2.0
   $ mkdir -p lib1/sub
   $ cat >lib1/dune <<EOF
   > (include_subdirs unqualified)

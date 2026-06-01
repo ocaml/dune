@@ -3,9 +3,7 @@ actions should receive SIGTERM before SIGKILL so they can run cleanup handlers.
 
 See https://github.com/ocaml/dune/issues/2445
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.18)
-  > EOF
+  $ make_dune_project 3.18
 
   $ cat > dune <<EOF
   > (executable (name main) (libraries unix))

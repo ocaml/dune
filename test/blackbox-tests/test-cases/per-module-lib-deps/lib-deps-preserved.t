@@ -3,9 +3,7 @@ Verify that library file deps are declared for module compilation rules.
 Every non-alias module should declare glob deps on its library
 dependencies' .cmi files.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.23)
-  > EOF
+  $ make_dune_project 3.23
 
   $ mkdir lib
   $ cat > lib/dune <<EOF

@@ -5,9 +5,7 @@ A library migrating from unwrapped to wrapped exposes compat shims so that
 downstream code can keep using the bare module name (Foo) instead of the
 new qualified name (Mylib.Foo). 
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.23)
-  > EOF
+  $ make_dune_project 3.23
 
   $ mkdir mylib
   $ cat > mylib/dune <<EOF

@@ -17,7 +17,7 @@ Testsuite for the %{libexec...} and %{libexec-private...} variable.
 ----------------------------------------------------------------------------------
 * Find a host-context public library using the %{libexec:...} variable
 
-  $ echo "(lang dune 2.8)" > dune-project
+  $ make_dune_project 2.8
   $ mkdir -p src
   $ cat >src/dune <<EOF
   > (library

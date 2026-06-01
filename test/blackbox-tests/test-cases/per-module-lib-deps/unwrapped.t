@@ -6,9 +6,7 @@ different modules in the library.
 
 See: https://github.com/ocaml/dune/issues/4572
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.0)
-  > EOF
+  $ make_dune_project 3.0
 
   $ mkdir unwrapped
   $ cat > unwrapped/dune <<EOF

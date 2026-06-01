@@ -1,8 +1,6 @@
 Interaction of the foreign_library stanza and the enabled_if field.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.18)
-  > EOF
+  $ make_dune_project 3.18
 
   $ cat > a.c <<EOF
   > int foo() {

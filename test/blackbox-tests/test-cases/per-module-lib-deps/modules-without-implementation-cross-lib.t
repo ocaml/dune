@@ -12,9 +12,7 @@ libs might escape the per-module dep filter (the intra-stanza
 rule without a dep on the aliased lib's [.cmi] — which surfaces
 as a hard build error on rebuild.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.23)
-  > EOF
+  $ make_dune_project 3.23
 
   $ cat > dune <<EOF
   > (library (name dep_lib) (wrapped false) (modules original_name))

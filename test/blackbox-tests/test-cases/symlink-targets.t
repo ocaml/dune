@@ -1,6 +1,6 @@
 Test demonstrating the handling of actions that produce symlinks.
 
-  $ echo "(lang dune 2.8)" > dune-project
+  $ make_dune_project 2.8
   $ cat >dune <<EOF
   > (rule (targets b) (deps a) (action (run ln -s a b)))
   > EOF

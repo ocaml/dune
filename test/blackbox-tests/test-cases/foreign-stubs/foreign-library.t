@@ -2,7 +2,7 @@
 Testsuite for the (foreign_library ...) stanza.
 
   $ export DUNE_SANDBOX=symlink
-  $ echo "(lang dune 3.0)" > dune-project
+  $ make_dune_project 3.0
 
 ----------------------------------------------------------------------------------
 * Multiple (foreign_library ...) declarations.

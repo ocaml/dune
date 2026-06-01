@@ -1,6 +1,4 @@
-  $ cat > dune-project << EOF
-  > (lang dune 3.4)
-  > EOF
+  $ make_dune_project 3.4
 
 It is an error to pass an empty list:
 
@@ -46,9 +44,7 @@ The cat action supports several files.
 
 This requires 3.4.
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.3)
-  > EOF
+  $ make_dune_project 3.3
 
   $ dune runtest
   File "dune", line 8, characters 2-13:

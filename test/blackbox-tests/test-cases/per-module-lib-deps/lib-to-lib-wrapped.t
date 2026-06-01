@@ -5,9 +5,7 @@ in A are recompiled due to coarse dependency analysis.
 
 See: https://github.com/ocaml/dune/issues/4572
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.0)
-  > EOF
+  $ make_dune_project 3.0
 
   $ mkdir base_lib
   $ cat > base_lib/dune <<EOF

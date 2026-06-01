@@ -23,9 +23,7 @@ The inline-tests runner generator becomes sandboxed starting with dune 3.23.
 
 At dune 3.22 the generator still runs outside the sandbox.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.22)
-  > EOF
+  $ make_dune_project 3.22
 
   $ dune test lib.ml
   File "dune", line 13, characters 1-38:
@@ -45,9 +43,7 @@ At dune 3.22 the generator still runs outside the sandbox.
 At dune 3.23 the generator is sandboxed and %{impl-files} still works.
 
   $ rm -rf _build
-  $ cat > dune-project <<EOF
-  > (lang dune 3.23)
-  > EOF
+  $ make_dune_project 3.23
 
   $ dune test lib.ml
   File "dune", line 13, characters 1-38:

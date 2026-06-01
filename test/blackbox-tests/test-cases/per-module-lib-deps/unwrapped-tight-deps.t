@@ -18,9 +18,7 @@ list becomes empty.
 
 See: https://github.com/ocaml/dune/issues/4572
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.23)
-  > EOF
+  $ make_dune_project 3.23
 
 [dep_lib] is an unwrapped library with three entry modules, each
 with an explicit interface so signature changes propagate through

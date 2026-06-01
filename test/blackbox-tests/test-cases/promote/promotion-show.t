@@ -33,9 +33,7 @@ We create different promotion scenarios to test various behaviors:
 - b.expected: uses 'diff?' in progn (creates promotion when files differ)
 - c.expected: uses 'diff?' in separate action (may not create promotion)
 
-  $ cat > dune-project << EOF
-  > (lang dune 2.0)
-  > EOF
+  $ make_dune_project 2.0
 
   $ cat > dune << EOF
   > (rule

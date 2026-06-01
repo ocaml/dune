@@ -11,9 +11,7 @@ library's objdir from the [-I] path. This test records today's
 [-I] contents so that a future filter improvement can flip the
 asserted array to a single entry.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.0)
-  > EOF
+  $ make_dune_project 3.0
 
   $ cat > dune <<EOF
   > (library (name dep_lib) (wrapped false) (modules dep_module))

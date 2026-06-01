@@ -1,4 +1,4 @@
-  $ echo "(lang dune 3.0)" > dune-project
+  $ make_dune_project 3.0
 
 ----------------------------------------------------------------------------------
 * Error message for a missing source file.

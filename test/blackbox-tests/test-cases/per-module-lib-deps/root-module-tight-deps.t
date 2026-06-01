@@ -10,9 +10,7 @@ Root that references itself transitively). Any future change to
 inter-library dep handling that misses this short-circuit would
 regress this scenario.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.23)
-  > EOF
+  $ make_dune_project 3.23
 
 [dep_lib]: an unwrapped dep library.
 

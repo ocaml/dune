@@ -5,9 +5,7 @@ modules in stanzas that depend on it, even those that don't reference it.
 
 See: https://github.com/ocaml/dune/issues/4572
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.0)
-  > EOF
+  $ make_dune_project 3.0
 
   $ mkdir vlib
   $ cat > vlib/dune <<EOF

@@ -4,9 +4,7 @@ source tree should not appear as dependencies of any build rule.
 
 See https://github.com/ocaml/dune/issues/2370
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.23)
-  > EOF
+  $ make_dune_project 3.23
 
 A library with no C stubs — .h files should not be a dependency of any rule:
 

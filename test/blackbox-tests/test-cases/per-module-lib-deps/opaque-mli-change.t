@@ -5,9 +5,7 @@ whether cross-module inlining tracks a dep's [.cmx].
 
 Companion to [opaque.t], which covers the [.ml]-only change axis.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.23)
-  > EOF
+  $ make_dune_project 3.23
 
   $ mkdir dep_lib
   $ cat > dep_lib/dune <<EOF

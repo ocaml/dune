@@ -1,7 +1,7 @@
 This test demonstrates the handling of invalid dune-package files
   $ mkdir -p findlib/baz
   $ touch findlib/baz/dune-package
-  $ echo "(lang dune 2.0)" > dune-project
+  $ make_dune_project 2.0
   $ echo 'let () = print_endline "foo"' > foo.ml
   $ cat >dune <<EOF
   > (executable (name foo))

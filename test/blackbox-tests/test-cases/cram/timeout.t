@@ -3,9 +3,7 @@ Testing the timeout functionality of cram tests.
 First we create a cram test that will take less than our time budget. This will
 allow the test to fail. (Since "hi" needs to be promoted).
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.20)
-  > EOF
+  $ make_dune_project 3.20
 
   $ cat > dune <<EOF
   > (cram

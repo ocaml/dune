@@ -6,7 +6,7 @@ Expands static library artifact variables in dependencies.
   >  (deps %{lib:foo:foo.cma})
   >  (action (echo "deps: %{deps}\n")))
   > EOF
-  $ echo "(lang dune 1.6)" > dune-project
+  $ make_dune_project 1.6
   $ touch foo.opam
   $ mkdir foo && touch foo/foo.ml
   $ cat >foo/dune << EOF

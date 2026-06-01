@@ -20,9 +20,7 @@ runs unconditionally for both stanzas. Single-module stanzas trigger
 a short-circuit in [dep_rules.ml] that skips ocamldep, which would
 mask the per-module dependency filtering being baselined here.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.23)
-  > EOF
+  $ make_dune_project 3.23
 
   $ cat > dune <<EOF
   > (library

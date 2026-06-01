@@ -1,8 +1,6 @@
 Tests dune promotion diff output.
 
-  $ cat > dune-project << EOF
-  > (lang dune 2.0)
-  > EOF
+  $ make_dune_project 2.0
 
   $ cat > dune << EOF
   > (rule

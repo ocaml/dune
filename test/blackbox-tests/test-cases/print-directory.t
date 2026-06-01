@@ -1,9 +1,7 @@
 Test that "Entering directory" messages are only shown when dune changes
 directory and there is actual output. Silent builds should not print anything.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.17)
-  > EOF
+  $ make_dune_project 3.17
 
   $ cat > dune <<EOF
   > (library (name foo))

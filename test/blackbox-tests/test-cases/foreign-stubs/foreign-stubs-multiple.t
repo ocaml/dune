@@ -1,6 +1,6 @@
 Testsuite for the (foreign_stubs ...) field.
 
-  $ echo "(lang dune 3.0)" > dune-project
+  $ make_dune_project 3.0
   $ ./sandboxed.sh
 
 ----------------------------------------------------------------------------------

@@ -1,8 +1,6 @@
 Test building a module group containing a `.mll` file, without `(ocamllex ..)`
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.22)
-  > EOF
+  $ make_dune_project 3.22
   $ cat > dune <<EOF
   > (library (name foo))
   > EOF

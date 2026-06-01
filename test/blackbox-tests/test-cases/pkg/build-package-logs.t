@@ -5,9 +5,7 @@ Test the error message when installing package that fails.
 
 Make a project with two packages, one successful and one that fails:
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.12)
-  > EOF
+  $ make_dune_project 3.12
 
 Create a package with a failing command that throws an error:
 

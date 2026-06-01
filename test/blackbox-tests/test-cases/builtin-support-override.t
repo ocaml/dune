@@ -24,9 +24,7 @@ Create a library called `findlib.dynload`
   > EOF
   $ touch findlib/fl_dynload.ml
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.7)
-  > EOF
+  $ make_dune_project 3.7
 
   $ mkdir lib
   $ cat > lib/dune <<EOF

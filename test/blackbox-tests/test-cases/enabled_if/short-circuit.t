@@ -3,9 +3,7 @@ Test that `and` and `or` in enabled_if should short-circuit.
 When the first conjunct of `and` is false, the second should not be evaluated.
 Currently this is broken: both are evaluated eagerly, causing spurious errors.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.0)
-  > EOF
+  $ make_dune_project 3.0
 
   $ cat >dune <<EOF
   > (rule

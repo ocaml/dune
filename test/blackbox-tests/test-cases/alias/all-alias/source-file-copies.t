@@ -1,8 +1,6 @@
 @all does not depend directly on file copies from the source tree
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.0)
-  > EOF
+  $ make_dune_project 3.0
 
 Add two files
 

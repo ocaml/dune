@@ -1,9 +1,7 @@
 The cache can't be written if the location to where it is supposed to be
 written can't be written to.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.17)
-  > EOF
+  $ make_dune_project 3.17
   $ cat >dune <<EOF
   > (rule (with-stdout-to foo (progn)))
   > EOF

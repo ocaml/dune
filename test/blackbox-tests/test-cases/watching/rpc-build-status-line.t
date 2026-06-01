@@ -2,7 +2,7 @@ Forwarded builds display a rich status line once connected over RPC.
 
   $ setup_xdg_runtime_dir
 
-  $ echo "(lang dune 3.23)" > dune-project
+  $ make_dune_project 3.23
 
   $ cat > dune <<EOF
   > (rule

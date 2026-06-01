@@ -9,9 +9,7 @@ Reproduction case for #3026
   > (cache enabled)
   > EOF
 
-  $ cat > dune-project <<EOF
-  > (lang dune 2.1)
-  > EOF
+  $ make_dune_project 2.1
 
   $ cat > dune <<EOF
   > (rule

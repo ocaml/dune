@@ -10,7 +10,7 @@ Testsuite for the %{lib...} and %{lib-private...} variable.
 ----------------------------------------------------------------------------------
 * Find a public library using the %{lib:...} variable
 
-  $ echo "(lang dune 2.0)" > dune-project
+  $ make_dune_project 2.0
   $ mkdir -p src
   $ cat >src/dune <<EOF
   > (library
@@ -89,7 +89,7 @@ Testsuite for the %{lib...} and %{lib-private...} variable.
 * Find a public library by its private name using the %{lib-private:...} variable
 * Success when using Dune language 2.1
 
-  $ echo "(lang dune 2.1)" > dune-project
+  $ make_dune_project 2.1
 
   $ ./sdune build @find-a
   src/a.ml

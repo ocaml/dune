@@ -1,7 +1,7 @@
 Minimal RPC watch shutdown after an RPC build, separating the shutdown command
 from server exit.
 
-  $ echo "(lang dune 3.23)" > dune-project
+  $ make_dune_project 3.23
 
   $ cat > dune <<EOF
   > (rule

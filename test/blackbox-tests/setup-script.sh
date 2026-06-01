@@ -146,6 +146,29 @@ make_value_library() {
 	EOF
 }
 
+make_melange_runtime_deps_lib() {
+  local dir="${1:-lib}"
+
+  mkdir -p "$dir/nested"
+  echo "Some text" > "$dir/index.txt"
+  echo "Some nested text" > "$dir/nested/hello.txt"
+  cat > "$dir/dune" <<-'EOF'
+	(library
+	 (public_name foo)
+	 (modes melange)
+	 (preprocess (pps melange.ppx))
+	 (melange.runtime_deps index.txt nested/hello.txt))
+	EOF
+  cat > "$dir/foo.ml" <<-'EOF'
+	external readFileSync : string -> encoding:string -> string = "readFileSync"
+	[@@mel.module "fs"]
+	let dirname = [%mel.raw "__dirname"]
+	let () = Js.log2 "dirname:" dirname
+	let file_path = "./index.txt"
+	let read_asset () = readFileSync (dirname ^ "/" ^ file_path) ~encoding:"utf8"
+	EOF
+}
+
 make_foreign_header_consumer() {
   make_dune_project 3.8
   cat > dune <<-'EOF'

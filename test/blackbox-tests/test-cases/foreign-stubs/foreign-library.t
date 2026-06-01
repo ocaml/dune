@@ -12,7 +12,8 @@ Testsuite for the (foreign_library ...) stanza.
 
   $ mkdir lib
 
-  $ cat >lib/dune <<EOF
+  $ write_calc_dune() {
+  > cat >lib/dune <<'EOF'
   > (foreign_library
   >  (archive_name addmul)
   >  (language c)
@@ -21,6 +22,11 @@ Testsuite for the (foreign_library ...) stanza.
   >  (name calc)
   >  (modules calc)
   >  (foreign_archives addmul config))
+  > EOF
+  > cat >>lib/dune
+  > }
+
+  $ write_calc_dune <<EOF
   > (foreign_library
   >  (archive_name config)
   >  (language cxx)
@@ -79,15 +85,7 @@ Testsuite for the (foreign_library ...) stanza.
 * Include directories via the (include_dirs ...) field.
 * Extra dependencies via the (extra_deps ...) field.
 
-  $ cat >lib/dune <<EOF
-  > (foreign_library
-  >  (archive_name addmul)
-  >  (language c)
-  >  (names add mul))
-  > (library
-  >  (name calc)
-  >  (modules calc)
-  >  (foreign_archives addmul config))
+  $ write_calc_dune <<EOF
   > (foreign_library
   >  (archive_name config)
   >  (language cxx)
@@ -131,15 +129,7 @@ Testsuite for the (foreign_library ...) stanza.
 ----------------------------------------------------------------------------------
 * Error message when a given (include_dir ...) is not found.
 
-  $ cat >lib/dune <<EOF
-  > (foreign_library
-  >  (archive_name addmul)
-  >  (language c)
-  >  (names add mul))
-  > (library
-  >  (name calc)
-  >  (modules calc)
-  >  (foreign_archives addmul config))
+  $ write_calc_dune <<EOF
   > (foreign_library
   >  (archive_name config)
   >  (language cxx)
@@ -159,15 +149,7 @@ Testsuite for the (foreign_library ...) stanza.
 ----------------------------------------------------------------------------------
 * Error when specifying a non-existing external directory in (include_dirs... )
 
-  $ cat >lib/dune <<EOF
-  > (foreign_library
-  >  (archive_name addmul)
-  >  (language c)
-  >  (names add mul))
-  > (library
-  >  (name calc)
-  >  (modules calc)
-  >  (foreign_archives addmul config))
+  $ write_calc_dune <<EOF
   > (foreign_library
   >  (archive_name config)
   >  (language cxx)
@@ -188,15 +170,7 @@ Testsuite for the (foreign_library ...) stanza.
 ----------------------------------------------------------------------------------
 * Error when specifying an external file in (include_dirs... )
 
-  $ cat >lib/dune <<EOF
-  > (foreign_library
-  >  (archive_name addmul)
-  >  (language c)
-  >  (names add mul))
-  > (library
-  >  (name calc)
-  >  (modules calc)
-  >  (foreign_archives addmul config))
+  $ write_calc_dune <<EOF
   > (foreign_library
   >  (archive_name config)
   >  (language cxx)

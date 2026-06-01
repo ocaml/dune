@@ -375,6 +375,26 @@ build () {
     with_timeout dune rpc build --wait "$@"
 }
 
+make_fs_memo_project () {
+    make_dune_project 2.0
+    cat >dune <<-'EOF'
+	(rule
+	 (alias default)
+	 (deps dep
+	  (glob_files file-?)
+	  (glob_files dir/file-?)
+	  (glob_files dir/subdir/file-?))
+	 (target result)
+	 (action (system "\| echo Executing rule...
+	               "\| echo %{deps}       |
+	               "\|   tr ' ' '\n'      |
+	               "\|   xargs -n 1       |
+	               "\|   grep -v dep      |
+	               "\|   xargs cat > result
+	)))
+	EOF
+}
+
 fs_memo_test () {
     local action="$1"
     local before between after

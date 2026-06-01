@@ -1,9 +1,6 @@
 Targeted promotion works for directory creation and deletion.
 
-  $ cat > dune-project <<'EOF'
-  > (lang dune 3.23)
-  > (using directory-targets 0.1)
-  > EOF
+  $ make_directory_targets_project
 
 Prefix promotion can create a directory subtree without promoting siblings.
 

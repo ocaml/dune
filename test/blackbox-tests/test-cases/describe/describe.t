@@ -1331,8 +1331,11 @@ not stable across different setups.
 Test other formats
 ------------------
 
-  $ dune describe workspace --format csexp --lang 0.1 --sanitize-for-tests | cut -c 1-85
-  ((4:root15:/WORKSPACE_ROOT)(13:build_context14:_build/default)(11:executables((5:name
+  $ dune describe workspace --format csexp --lang 0.1 --sanitize-for-tests > workspace.csexp
+  $ dune internal sexp-pp --format csexp workspace.csexp | head -3
+  ((root /WORKSPACE_ROOT)
+   (build_context _build/default)
+   (executables
 
 Test errors
 -----------

@@ -1,16 +1,6 @@
 Test that (deps (package ...)) adds lib/ to OCAMLFIND_IGNORE_DUPS_IN.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.24)
-  > (package (name mypkg))
-  > EOF
-  $ mkdir src
-  $ cat >src/dune <<EOF
-  > (library (public_name mypkg))
-  > EOF
-  $ cat >src/mypkg.ml <<'EOF'
-  > let x = 1
-  > EOF
+  $ make_mypkg_lib_project
   $ cat >dune <<'EOF'
   > (rule
   >  (deps (package mypkg))

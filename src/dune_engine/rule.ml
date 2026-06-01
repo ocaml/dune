@@ -11,11 +11,22 @@ module Info = struct
     | Some loc -> From_dune_file loc
   ;;
 
-  let to_dyn : t -> Dyn.t = function
-    | From_dune_file loc -> Dyn.Variant ("From_dune_file", [ Loc.to_dyn loc ])
-    | Internal -> Dyn.Variant ("Internal", [])
-    | Source_file_copy p -> Dyn.Variant ("Source_file_copy", [ Path.Source.to_dyn p ])
+  let repr =
+    Repr.variant
+      "rule-info"
+      [ Repr.case "From_dune_file" (Repr.abstract Loc.to_dyn) ~proj:(function
+          | From_dune_file loc -> Some loc
+          | Internal | Source_file_copy _ -> None)
+      ; Repr.case0 "Internal" ~test:(function
+          | Internal -> true
+          | From_dune_file _ | Source_file_copy _ -> false)
+      ; Repr.case "Source_file_copy" Path.Source.repr ~proj:(function
+          | Source_file_copy path -> Some path
+          | From_dune_file _ | Internal -> None)
+      ]
   ;;
+
+  let to_dyn = Repr.to_dyn repr
 end
 
 module Promote = struct
@@ -63,7 +74,16 @@ module T = struct
   let equal a b = Id.equal a.id b.id
   let hash t = Id.hash t.id
   let loc t = t.loc
-  let to_dyn t : Dyn.t = Record [ "id", Id.to_dyn t.id; "info", Info.to_dyn t.info ]
+
+  let repr =
+    Repr.record
+      "rule"
+      [ Repr.field "id" (Repr.abstract Id.to_dyn) ~get:(fun t -> t.id)
+      ; Repr.field "info" Info.repr ~get:(fun t -> t.info)
+      ]
+  ;;
+
+  let to_dyn = Repr.to_dyn repr
 end
 
 include T

@@ -93,15 +93,21 @@ module Expanded_variable_bindings = struct
     && List.equal Package_variable_name.equal unset_variables t.unset_variables
   ;;
 
-  let to_dyn { variable_values; unset_variables } =
-    Dyn.record
-      [ ( "variable_values"
-        , Dyn.list
-            (Tuple.T2.to_dyn Package_variable_name.to_dyn Variable_value.to_dyn)
-            variable_values )
-      ; "unset_variables", Dyn.list Package_variable_name.to_dyn unset_variables
+  let repr =
+    Repr.record
+      "expanded-variable-bindings"
+      [ Repr.field
+          "variable_values"
+          Repr.(list (pair Package_variable_name.repr Variable_value.repr))
+          ~get:(fun t -> t.variable_values)
+      ; Repr.field
+          "unset_variables"
+          Repr.(list Package_variable_name.repr)
+          ~get:(fun t -> t.unset_variables)
       ]
   ;;
+
+  let to_dyn = Repr.to_dyn repr
 
   let to_solver_env { variable_values; unset_variables = _ } =
     List.fold_left variable_values ~init:Solver_env.empty ~f:(fun acc (variable, value) ->

@@ -11,9 +11,16 @@ let source_equal a b =
   | Path _, Content _ | Content _, Path _ -> false
 ;;
 
-let dyn_of_source = function
-  | Path path -> Dyn.variant "Path" [ Path.to_dyn path ]
-  | Content content -> Dyn.variant "Content" [ Dyn.string content ]
+let source_repr =
+  Repr.variant
+    "file-entry-source"
+    [ Repr.case "Path" Path.repr ~proj:(function
+        | Path path -> Some path
+        | Content _ -> None)
+    ; Repr.case "Content" Repr.string ~proj:(function
+        | Content content -> Some content
+        | Path _ -> None)
+    ]
 ;;
 
 type t =
@@ -25,7 +32,12 @@ let equal { original; local_file } t =
   source_equal original t.original && Path.Local.equal local_file t.local_file
 ;;
 
-let to_dyn { original; local_file } =
-  Dyn.record
-    [ "original", dyn_of_source original; "local_file", Path.Local.to_dyn local_file ]
+let repr =
+  Repr.record
+    "file-entry"
+    [ Repr.field "original" source_repr ~get:(fun t -> t.original)
+    ; Repr.field "local_file" Path.Local.repr ~get:(fun t -> t.local_file)
+    ]
 ;;
+
+let to_dyn = Repr.to_dyn repr

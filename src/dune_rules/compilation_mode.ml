@@ -15,10 +15,19 @@ let equal a b =
   | Ocaml, Melange | Melange, Ocaml -> false
 ;;
 
-let to_dyn = function
-  | Ocaml -> Dyn.variant "Ocaml" []
-  | Melange -> Dyn.variant "Melange" []
+let repr =
+  Repr.variant
+    "compilation-mode"
+    [ Repr.case0 "Ocaml" ~test:(function
+        | Ocaml -> true
+        | Melange -> false)
+    ; Repr.case0 "Melange" ~test:(function
+        | Melange -> true
+        | Ocaml -> false)
+    ]
 ;;
+
+let to_dyn = Repr.to_dyn repr
 
 let of_lib_mode = function
   | Lib_mode.Ocaml _ -> Ocaml

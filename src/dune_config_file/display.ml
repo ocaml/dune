@@ -30,15 +30,27 @@ let all =
   [ "progress", progress; "verbose", verbose; "short", short; "quiet", quiet; "tui", Tui ]
 ;;
 
-let to_dyn : t -> Dyn.t = function
-  | Simple { verbosity; status_line } ->
-    Variant
-      ( "Simple"
-      , [ Record
-            [ "verbosity", Display.to_dyn verbosity; "status_line", Dyn.Bool status_line ]
-        ] )
-  | Tui -> Variant ("Tui", [])
+let simple_repr =
+  Repr.record
+    "simple-display"
+    [ Repr.field "verbosity" (Repr.abstract Display.to_dyn) ~get:fst
+    ; Repr.field "status_line" Repr.bool ~get:snd
+    ]
 ;;
+
+let repr =
+  Repr.variant
+    "display"
+    [ Repr.case "Simple" simple_repr ~proj:(function
+        | Simple { verbosity; status_line } -> Some (verbosity, status_line)
+        | Tui -> None)
+    ; Repr.case0 "Tui" ~test:(function
+        | Tui -> true
+        | Simple _ -> false)
+    ]
+;;
+
+let to_dyn = Repr.to_dyn repr
 
 let console_backend = function
   | Tui -> Dune_tui.backend ()

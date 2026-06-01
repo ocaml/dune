@@ -2,17 +2,7 @@ Two rules with the same set of %{bin:...} deps share a single
 .binaries directory (keyed by the digest of the sorted unique bin
 names).
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.24)
-  > (package (name mypkg))
-  > EOF
-  $ mkdir src
-  $ cat >src/dune <<'EOF'
-  > (executable (public_name mybin) (package mypkg))
-  > EOF
-  $ cat >src/mybin.ml <<'EOF'
-  > let () = print_endline "hello from mybin"
-  > EOF
+  $ make_mypkg_bin_project
 
   $ cat >dune <<'EOF'
   > (rule

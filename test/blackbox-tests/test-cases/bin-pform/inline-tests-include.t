@@ -4,17 +4,7 @@ behavior of a top-level %{bin:NAME} dep (see inline-tests.t).
 Dep_conf_eval.unnamed mirrors named_paths_builder's include_envs
 collection to drain the env contribution from Include_result.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.24)
-  > (package (name mypkg))
-  > EOF
-  $ mkdir src
-  $ cat >src/dune <<'EOF'
-  > (executable (public_name mybin) (package mypkg))
-  > EOF
-  $ cat >src/mybin.ml <<'EOF'
-  > let () = print_endline "hello from mybin"
-  > EOF
+  $ make_mypkg_bin_project
 
   $ cat >dump_path.ml <<EOF
   > let () =

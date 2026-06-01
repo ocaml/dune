@@ -1,17 +1,7 @@
 %{bin:...} in (inline_tests (deps ...)) adds a bin-layout dir to
 the test runner's PATH.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.24)
-  > (package (name mypkg))
-  > EOF
-  $ mkdir src
-  $ cat >src/dune <<'EOF'
-  > (executable (public_name mybin) (package mypkg))
-  > EOF
-  $ cat >src/mybin.ml <<'EOF'
-  > let () = print_endline "hello from mybin"
-  > EOF
+  $ make_mypkg_bin_project
 
 Custom backend whose runner records PATH to a file outside the
 sandbox:

@@ -8,17 +8,7 @@ filesystem paths are still readable from inside the sandbox; it would
 break under remote action execution. Tracked as a follow-up to the
 .binaries PR.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.24)
-  > (package (name mypkg))
-  > EOF
-  $ mkdir src
-  $ cat >src/dune <<'EOF'
-  > (executable (public_name mybin) (package mypkg))
-  > EOF
-  $ cat >src/mybin.ml <<'EOF'
-  > let () = print_endline "hello from mybin"
-  > EOF
+  $ make_mypkg_bin_project
 
   $ cat >dune <<'EOF'
   > (rule

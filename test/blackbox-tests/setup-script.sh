@@ -98,6 +98,21 @@ make_dune_project() {
 	EOF
 }
 
+make_mypkg_bin_project() {
+  local message="${1:-hello from mybin}"
+  cat > dune-project <<- EOF
+	(lang dune 3.24)
+	(package (name mypkg))
+	EOF
+  mkdir src
+  cat > src/dune <<-'EOF'
+	(executable (public_name mybin) (package mypkg))
+	EOF
+  cat > src/mybin.ml <<- EOF
+	let () = print_endline "$message"
+	EOF
+}
+
 make_simple_rpc_watch_project() {
   make_dune_project 3.23
   cat > dune <<-'EOF'

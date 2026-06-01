@@ -3,17 +3,7 @@ a dep on the build artifact. Before wrv only the bare-literal form
 did, since the pform default was where=Install_dir; wrv flips the
 pform default to Original_path so both paths agree.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.24)
-  > (package (name mypkg))
-  > EOF
-  $ mkdir src
-  $ cat >src/dune <<'EOF'
-  > (executable (public_name mybin) (package mypkg))
-  > EOF
-  $ cat >src/mybin.ml <<'EOF'
-  > let () = print_endline "hello"
-  > EOF
+  $ make_mypkg_bin_project hello
   $ cat >dune <<'EOF'
   > (rule
   >  (with-stdout-to out-literal

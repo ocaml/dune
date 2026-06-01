@@ -2,17 +2,7 @@
 .binaries dir gets added to the action's PATH and the binary is a
 tracked dep of the rule.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.24)
-  > (package (name mypkg))
-  > EOF
-  $ mkdir src
-  $ cat >src/dune <<'EOF'
-  > (executable (public_name mybin) (package mypkg))
-  > EOF
-  $ cat >src/mybin.ml <<'EOF'
-  > let () = print_endline "hello from mybin"
-  > EOF
+  $ make_mypkg_bin_project
 
   $ cat >deps.sexp <<'EOF'
   > (%{bin:mybin})

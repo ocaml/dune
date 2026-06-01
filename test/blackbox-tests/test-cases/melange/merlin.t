@@ -529,9 +529,9 @@ Melange-only Merlin configurations use Melange preprocessing.
   > | select(.[0] == "FLG" and .[1][0] == "-pp")
   > | .[1][1]
   > | if contains("pp_melange") then "melange" else "ocaml" end' | sort -u
-  ocaml
+  melange
 
-Mixed OCaml/Melange libraries generate separate Merlin configuration files.
+Mixed OCaml/Melange libraries store both configurations in one stanza file.
 
   $ mkdir mixed
   $ cat > mixed/dune-project <<EOF
@@ -558,13 +558,20 @@ Mixed OCaml/Melange libraries generate separate Merlin configuration files.
   >  (melange.preprocess
   >   (action
   >    (run sh %{dep:pp_melange.sh} %{input-file}))))
+  > (library
+  >  (name aaa)
+  >  (modules aaa))
   > EOF
   $ cat > mixed/foo.ml <<EOF
   > let x = "foo"
   > EOF
+  $ cat > mixed/aaa.ml <<EOF
+  > let x = "aaa"
+  > EOF
 
   $ dune build --root mixed @check
   $ find mixed/_build/default/.merlin-conf -type f | sort
+  mixed/_build/default/.merlin-conf/lib-aaa
   mixed/_build/default/.merlin-conf/lib-mixed
 
 The old `File` query still returns the default OCaml Merlin configuration.
@@ -574,6 +581,11 @@ The old `File` query still returns the default OCaml Merlin configuration.
    (B $TESTCASE_ROOT/mixed/_build/default/.mixed.objs/byte)
   $ query_ocaml_merlin_pp "$PWD/mixed/foo.ml" --root mixed | grep -E 'MELC_STDLIB|\.objs/melange|pp_melange'
   [1]
+
+Dump-dot-merlin also uses the default OCaml configuration.
+
+  $ dune ocaml dump-dot-merlin --root mixed "$PWD/mixed" | grep -E '\.mixed\.objs/(byte|melange)'
+  B $TESTCASE_ROOT/mixed/_build/default/.mixed.objs/byte
 
 Both generated configurations remain available to debug tooling.
 
@@ -597,5 +609,10 @@ Both generated configurations remain available to debug tooling.
       "mode": "ocaml",
       "obj_dir": "_build/default/.mixed.objs/byte",
       "preprocess": "ocaml"
+    },
+    {
+      "mode": "melange",
+      "obj_dir": "_build/default/.mixed.objs/melange",
+      "preprocess": "melange"
     }
   ]

@@ -561,6 +561,7 @@ let library_rules
       ~compile_info
       ~ctx_dir
       ~for_merlin
+      ~merlin_ident
   =
   let modules = Compilation_context.modules cctx in
   let obj_dir = Compilation_context.obj_dir cctx in
@@ -665,8 +666,9 @@ let library_rules
       ~libname:(Some (snd lib.name))
       ~obj_dir
       ~dialects:(Dune_project.dialects (Scope.project scope))
-      ~ident:(Merlin_ident.for_lib (Library.best_name lib))
+      ~ident:merlin_ident
       ~for_
+      ~is_default:for_merlin
       ~parameters
   in
   merlin
@@ -715,7 +717,7 @@ let compile_context (lib : Library.t) ~sctx ~dir_contents ~expander ~scope ~for_
 let rules (lib : Library.t) ~sctx ~dir_contents ~expander ~scope =
   let dir = Dir_contents.dir dir_contents in
   let buildable = lib.buildable in
-  let f ~for_ ~for_merlin =
+  let f ~for_ ~for_merlin ~merlin_ident =
     let* local_lib, compile_info, source_modules, parameters =
       compile_context_data lib ~dir_contents ~scope ~for_
     in
@@ -749,6 +751,7 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~expander ~scope =
         ~compile_info
         ~ctx_dir:dir
         ~for_merlin
+        ~merlin_ident
     in
     cctx, merlin
   in
@@ -765,7 +768,6 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~expander ~scope =
         ~dir
         ~lib_config
     in
-    let merlin_ident = Merlin_ident.for_lib (Library.best_name lib) in
     let* modes =
       let+ effective_modes =
         Lib_info.effective_modes
@@ -789,6 +791,7 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~expander ~scope =
           ~allow_overlaps:buildable.allow_overlapping_dependencies
       in
       let* () = Buildable_rules.gen_select_rules sctx compile_info ~dir ~for_ in
+      let merlin_ident = Merlin_ident.for_lib (Library.best_name lib) in
       let+ r =
         Buildable_rules.with_lib_deps
           (Super_context.context sctx)
@@ -796,7 +799,7 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~expander ~scope =
           ~dir
           ~f:(fun () ->
             let for_merlin = Compilation_mode.equal for_ for_merlin in
-            f ~for_ ~for_merlin)
+            f ~for_ ~for_merlin ~merlin_ident)
       in
       for_, Some r)
   in

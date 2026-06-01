@@ -256,6 +256,19 @@ solve_project() {
   dune_pkg_lock_normalized "$@"
 }
 
+build_single_package() {
+  local pkg="${1}"
+
+  solve_project <<EOF
+(lang dune 3.11)
+(package
+ (name x)
+ (depends
+  ${pkg}))
+EOF
+  build_pkg "${pkg}"
+}
+
 make_lockdir() {
   mkdir -p "${source_lock_dir}"
   cat > "${source_lock_dir}"/lock.dune <<- EOF

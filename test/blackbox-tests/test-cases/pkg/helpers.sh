@@ -85,6 +85,23 @@ mkpkg() {
   cat >> "$mock_packages/$name/$name.$version/opam"
 }
 
+make_foo_tarball() {
+  local implementation="$1"
+
+  mkdir foo
+  cat > foo/dune-project <<-'EOF'
+	(lang dune 3.13)
+	(package (name foo))
+	EOF
+  printf '%s\n' "$implementation" > foo/foo.ml
+  cat > foo/dune <<-'EOF'
+	(library
+	 (public_name foo))
+	EOF
+  tar cf foo.tar foo
+  rm -rf foo
+}
+
 mk_ocaml() {
   local version="$1"
   local major

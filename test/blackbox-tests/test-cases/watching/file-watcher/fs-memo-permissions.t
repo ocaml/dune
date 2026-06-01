@@ -8,23 +8,6 @@ events. This is a known bug.
   $ export DUNE_TRACE=cache
   $ setup_xdg_runtime_dir
 
-  $ test () {
-  >   echo "------------------------------------------"
-  >   before=$(cat _build/default/result 2>/dev/null)
-  >   start_dune
-  >   build . | grep -v Success
-  >   between=$(cat _build/default/result)
-  >   eval "$@"
-  >   build . | grep -v Success
-  >   stop_dune >> .#tmp
-  >   after=$(cat _build/default/result)
-  >   cat .#tmp
-  >   echo "------------------------------------------"
-  >   echo "result = '$before' -> '$between' -> '$after'"
-  >   echo "------------------------------------------"
-  >   dune trace cat | jq -c 'select(.name == "fs_update") | .args' | sort
-  >   rm .#tmp
-  > }
 
   $ make_dune_project 2.0
   $ cat >dune <<EOF
@@ -53,7 +36,7 @@ events. This is a known bug.
 Dune doesn't notice that a directory's permission changed and succeeds instead
 of failing.
 
-  $ test "chmod -r subdir"
+  $ fs_memo_test "chmod -r subdir"
   ------------------------------------------
   Executing rule...
   Success, waiting for filesystem changes...
@@ -67,7 +50,7 @@ of failing.
 
 If we repeat the test, we finally see the failure.
 
-  $ test "echo How about now?"
+  $ fs_memo_test "echo How about now?"
   ------------------------------------------
   Failure
   How about now?
@@ -85,7 +68,7 @@ If we repeat the test, we finally see the failure.
 
 Same problem in the other direction.
 
-  $ test "chmod +r subdir"
+  $ fs_memo_test "chmod +r subdir"
   ------------------------------------------
   Failure
   Failure
@@ -100,7 +83,7 @@ Same problem in the other direction.
   {"cache_type":"file_digest","path":"dune-workspace","result":"skipped"}
   {"cache_type":"path_stat","path":"dune-workspace","result":"unchanged"}
 
-  $ test "echo How about now?"
+  $ fs_memo_test "echo How about now?"
   ------------------------------------------
   How about now?
   Success, waiting for filesystem changes...
@@ -114,7 +97,7 @@ Same problem in the other direction.
 
 Same problem for files.
 
-  $ test "chmod -r file-1"
+  $ fs_memo_test "chmod -r file-1"
   ------------------------------------------
   Success, waiting for filesystem changes...
   Success, waiting for filesystem changes...
@@ -125,7 +108,7 @@ Same problem for files.
   {"cache_type":"file_digest","path":"dune-workspace","result":"skipped"}
   {"cache_type":"path_stat","path":"dune-workspace","result":"unchanged"}
 
-  $ test "chmod +r file-1"
+  $ fs_memo_test "chmod +r file-1"
   ------------------------------------------
   Failure
   Failure

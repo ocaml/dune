@@ -177,6 +177,8 @@ export GIT_CONFIG_SYSTEM="/dev/null"
 
 export DUNE_RUNNING=0
 
+# Called from cram tests with optional dune build arguments.
+# shellcheck disable=SC2120
 start_dune () {
     ( (dune build "$@" --passive-watch-mode > .#dune-output 2>&1) || (echo exit $? >> .#dune-output) ) &
     DUNE_PID=$!;
@@ -258,6 +260,29 @@ stop_dune () {
 
 build () {
     with_timeout dune rpc build --wait "$@"
+}
+
+fs_memo_test () {
+    local action="$1"
+    local before between after
+
+    echo "------------------------------------------"
+    before=$(cat _build/default/result 2>/dev/null)
+    # No initial targets: start the passive watch server only.
+    # shellcheck disable=SC2119
+    start_dune
+    build . | grep -v Success
+    between=$(cat _build/default/result)
+    bash -c "$action"
+    build . | grep -v Success
+    stop_dune >> .#tmp
+    after=$(cat _build/default/result)
+    cat .#tmp
+    echo "------------------------------------------"
+    echo "result = '$before' -> '$between' -> '$after'"
+    echo "------------------------------------------"
+    dune trace cat | jq -c 'select(.name == "fs_update") | .args' | sort
+    rm .#tmp
 }
 
 stop_dune_quiet () {

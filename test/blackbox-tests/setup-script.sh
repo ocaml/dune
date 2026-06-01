@@ -107,6 +107,18 @@ make_simple_rpc_watch_project() {
 	EOF
 }
 
+odoc_detect_syntax() {
+  if grep -q '>sig<' "$1"
+  then
+    echo it is ocaml
+  elif grep -q '{ ... }' "$1"
+  then
+    echo it is reason
+  else
+    echo it is unknown
+  fi
+}
+
 query_ocaml_merlin() {
   file="$1"
   shift

@@ -4,11 +4,11 @@
 
 (cram
  (deps %{bin:curl})
- (applies_to ocamlformat-e2e))
+ (applies_to ocamlformat-e2e.t))
 
 (cram
  (deps %{bin:md5sum})
- (applies_to ocamlformat-patch-extra-files))
+ (applies_to ocamlformat-patch-extra-files.t))
 
 (rule
  (alias runtest)

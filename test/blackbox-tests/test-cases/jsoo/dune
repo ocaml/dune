@@ -3,14 +3,14 @@
  (alias runtest-js))
 
 (cram
- (applies_to inline-tests)
+ (applies_to inline-tests.t)
  (enabled_if
   (<> "macosx" %{ocaml-config:system}))
  (deps
   (package ppx_expect)))
 
 (cram
- (applies_to build-info)
+ (applies_to build-info.t)
  (deps
   %{bin:git}
   (package dune-build-info)))

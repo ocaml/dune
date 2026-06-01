@@ -88,9 +88,12 @@ Adding an OCaml library will introduce OCaml specific aliases:
   revdep-runtest
   unused-libs
 
-Adding a cram test will introduce an alias with the name of the test and also
-introduce the runtest alias:
-bbb
+At dune 3.25, adding a cram test will introduce an alias with the full name of
+the test and also introduce the runtest alias:
+
+  $ rm -f dune-project
+  $ make_dune_project 3.25
+
   $ rm dune
   $ cat > mytest.t
 
@@ -98,7 +101,7 @@ bbb
   all
   default
   fmt
-  mytest
+  mytest.t
   ocaml-index
   pkg-install
   revdep
@@ -114,7 +117,7 @@ We can also show aliases in multiple directories at once:
   all
   default
   fmt
-  mytest
+  mytest.t
   ocaml-index
   pkg-install
   revdep
@@ -141,7 +144,7 @@ Including those in the _build/ directory:
   all
   default
   fmt
-  mytest
+  mytest.t
   ocaml-index
   pkg-install
   revdep
@@ -154,7 +157,7 @@ Including those in the _build/ directory:
   all
   default
   fmt
-  mytest
+  mytest.t
   ocaml-index
   pkg-install
   revdep
@@ -179,10 +182,35 @@ These are context sensitive:
   all
   default
   fmt
-  mytest
+  mytest.t
   pkg-install
   revdep
   revdep-check
   revdep-install
   revdep-runtest
   runtest
+
+Before dune 3.25, cram aliases drop the .t suffix:
+
+  $ rm dune-workspace
+  $ make_dune_project 3.24
+
+  $ dune show aliases > aliases-v324 2>&1
+  $ grep '^mytest' aliases-v324
+  mytest
+
+  $ dune build @mytest
+
+  $ dune test mytest.t
+
+From dune 3.25 onward, cram aliases keep the full test name:
+
+  $ make_dune_project 3.25
+
+  $ dune show aliases > aliases-v325 2>&1
+  $ grep '^mytest' aliases-v325
+  mytest.t
+
+  $ dune build @mytest.t
+
+  $ dune test mytest.t

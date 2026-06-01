@@ -1,5 +1,5 @@
 (cram
- (applies_to mkdir-on-rule-cache-hit)
+ (applies_to mkdir-on-rule-cache-hit.t)
  (enabled_if
   (= %{system} linux))
  (deps %{bin:strace}))

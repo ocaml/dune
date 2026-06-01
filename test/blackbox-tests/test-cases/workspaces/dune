@@ -1,3 +1,3 @@
 (cram
- (applies_to multiple-merlin-contexts opam)
+ (applies_to multiple-merlin-contexts.t opam.t)
  (deps %{bin:opam}))

@@ -24,10 +24,10 @@ val is_cram_suffix : Filename.t -> bool
 (** The "run.t" filename for directory cram tests. *)
 val fname_in_dir_test : Filename.t
 
-(** The [name] of a cram test. If this is a file test, then it will be the file
-    name without the cram suffix. If this is a directory test, then it will be
-    the directory name without the cram suffix. *)
-val name : t -> Name.t
+(** The [name] of a cram test. Starting from dune language 3.25 this is the
+    full basename, including the cram suffix. Before 3.25 the suffix is
+    dropped. *)
+val name : t -> dune_version:Dune_lang.Syntax.Version.t -> Name.t
 
 (** The [path] associated to a cram test. If this is a file test, then it will
     be the file. If this is a directory test, then it will be the directory. *)

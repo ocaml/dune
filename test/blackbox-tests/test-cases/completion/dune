@@ -1,5 +1,5 @@
 (cram
- (applies_to bash)
+ (applies_to bash.t)
  (enabled_if
   (and
    (<> %{system} macosx)
@@ -7,17 +7,17 @@
  (deps %{bin:bash}))
 
 (cram
- (applies_to fish)
+ (applies_to fish.t)
  (enabled_if %{bin-available:fish})
  (deps %{bin:fish}))
 
 (cram
- (applies_to zsh)
+ (applies_to zsh.t)
  (enabled_if %{bin-available:zsh})
  (deps %{bin:zsh}))
 
 (cram
- (applies_to powershell)
+ (applies_to powershell.t)
  (enabled_if %{bin-available:pwsh})
  (alias runtest-windows)
  (deps %{bin:pwsh}))

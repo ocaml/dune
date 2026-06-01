@@ -22,7 +22,7 @@
    ../utils/ocaml_index.exe)))
 
 (cram
- (applies_to pp-cwd)
+ (applies_to pp-cwd.t)
  (deps %{bin:dunepp}))
 
 (cram
@@ -44,18 +44,18 @@
  (timeout 60))
 
 (cram
- (applies_to windows-diff staged-pps-with-sandboxing-gh6644)
+ (applies_to windows-diff.t staged-pps-with-sandboxing-gh6644.t)
  (alias runtest-windows))
 
 (cram
- (applies_to empty-meta-version-gh9176)
+ (applies_to empty-meta-version-gh9176.t)
  (deps
   (package dune-build-info)))
 
 ;; DISABLED TESTS
 
 (cram
- (applies_to fdo)
+ (applies_to fdo.t)
  (enabled_if false))
 
 ;; This test copies a large file, which is too slow to be enabled all the time.
@@ -63,13 +63,13 @@
 ;; nevertheless.
 
 (cram
- (applies_to sendfile-large-file)
+ (applies_to sendfile-large-file.t)
  (enabled_if false))
 
 ;; This test is flaky
 
 (cram
- (applies_to tests-locks)
+ (applies_to tests-locks.t)
  (enabled_if false))
 
 ;; The following test is flaky due to platform sensitivity
@@ -78,31 +78,31 @@
 ;; CONDITIONALLY DISABLED TESTS
 
 (cram
- (applies_to signal-exit-code)
+ (applies_to signal-exit-code.t)
  (enabled_if
   (and
    (<> %{env:CI=false} true) ;; in github action, CI=true
    (= %{system} macosx))))
 
 (cram
- (applies_to symlink-scan-cycle-github764)
+ (applies_to symlink-scan-cycle-github764.t)
  (enabled_if
   (<> %{ocaml-config:system} win)))
 
 (cram
- (applies_to rpc-batch-idle-client)
+ (applies_to rpc-batch-idle-client.t)
  (enabled_if
   (<> %{ocaml-config:system} win)))
 
 (cram
- (applies_to output-obj)
+ (applies_to output-obj.t)
  (enabled_if
   (and
    (<> %{ocaml-config:system} macosx)
    (<> %{ocaml-config:system} win))))
 
 (cram
- (applies_to version-corruption)
+ (applies_to version-corruption.t)
  (deps %{bin:git} %{bin:chmod})
  (enabled_if
   ;; code signing moves placeholders in the binary
@@ -111,39 +111,39 @@
    (<> %{architecture} arm64))))
 
 (cram
- (applies_to corrupt-persistent)
+ (applies_to corrupt-persistent.t)
  (deps %{bin:truncate}))
 
 (cram
- (applies_to repository-lint)
+ (applies_to repository-lint.t)
  (enabled_if %{bin-available:rg})
  (deps
   %{bin:rg}
   (source_tree %{project_root})))
 
 (cram
- (applies_to sendfile-fallback-copy-gh8041)
+ (applies_to sendfile-fallback-copy-gh8041.t)
  (enabled_if
   (= %{system} linux))
  (deps %{bin:strace} %{bin:head}))
 
 (cram
- (applies_to reason)
+ (applies_to reason.t)
  (deps %{bin:refmt}))
 
 (cram
- (applies_to oversize-action-output-gh4194)
+ (applies_to oversize-action-output-gh4194.t)
  (enabled_if
   (not %{arch_sixtyfour}))
  (deps %{bin:ocaml}))
 
 (cram
- (applies_to hidden-deps-supported)
+ (applies_to hidden-deps-supported.t)
  (enabled_if
   (>= %{ocaml_version} 5.2.0)))
 
 (cram
- (applies_to hidden-deps-unsupported)
+ (applies_to hidden-deps-unsupported.t)
  (enabled_if
   (< %{ocaml_version} 5.2.0)))
 
@@ -152,6 +152,6 @@
 ;; platform-independent; this test just cannot exercise it on macOS.
 
 (cram
- (applies_to graceful-shutdown)
+ (applies_to graceful-shutdown.t)
  (enabled_if
   (<> %{system} macosx)))

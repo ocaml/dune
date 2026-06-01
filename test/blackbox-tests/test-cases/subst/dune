@@ -1,5 +1,5 @@
 (cram
- (applies_to 32bit)
+ (applies_to 32bit.t)
  (enabled_if
   (not %{arch_sixtyfour})))
 

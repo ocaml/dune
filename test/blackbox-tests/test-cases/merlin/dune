@@ -3,27 +3,27 @@
  (alias all-merlin-tests))
 
 (cram
- (applies_to merlin-tests instrumentation)
+ (applies_to merlin-tests.t instrumentation.t)
  (deps %{bin:ocamlfind}))
 
 (cram
  (enabled_if
   (not %{env:INSIDE_NIX=false}))
- (applies_to opam-context-merlin-config-github4125)
+ (applies_to opam-context-merlin-config-github4125.t)
  (deps %{bin:opam}))
 
 (cram
- (applies_to implicit-transitive-deps)
+ (applies_to implicit-transitive-deps.t)
  (enabled_if
   (< %{ocaml_version} 5.2)))
 
 (cram
- (applies_to implicit-transitive-deps-5.2)
+ (applies_to implicit-transitive-deps-5.2.t)
  (enabled_if
   (>= %{ocaml_version} 5.2)))
 
 (cram
- (applies_to dialect)
+ (applies_to dialect.t)
  (enabled_if
   (not %{env:INSIDE_NIX=false}))
  (deps %{bin:melc})

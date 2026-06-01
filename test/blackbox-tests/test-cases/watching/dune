@@ -3,32 +3,32 @@
   (binaries ../../utils/action_plugin_helper.exe ../../utils/ocamlformat.exe)))
 
 (cram
- (applies_to fmt-test)
+ (applies_to fmt-test.t)
  (deps %{bin:ocamlformat}))
 
 (cram
  ;; see https://github.com/ocaml/dune/pull/4728
  (enabled_if
   (<> "macosx" %{ocaml-config:system}))
- (applies_to * \ path-pwd))
+ (applies_to * \ path-pwd.t))
 
 (cram
  ;; see https://github.com/ocaml/dune/pull/4728
  (enabled_if
   (= "macosx" %{ocaml-config:system}))
- (applies_to path-pwd))
+ (applies_to path-pwd.t))
 
 (cram
- (applies_to rpc-bind-failure rpc-connect-after-server-killed)
+ (applies_to rpc-bind-failure.t rpc-connect-after-server-killed.t)
  (enabled_if
   (<> %{ocaml-config:system} win)))
 
 (cram
- (applies_to batch-mode watch-mode)
+ (applies_to batch-mode.t watch-mode.t)
  (setup_scripts cached-failed-actions-helpers.sh))
 
 (cram
- (applies_to rpc-flush-file-watcher rpc-registry)
+ (applies_to rpc-flush-file-watcher.t rpc-registry.t)
  (deps
   %{bin:action_plugin_helper}
   (package dune-action-plugin)
@@ -44,13 +44,13 @@
 
 (cram
  (applies_to
-  promotion-event-suppression
-  promotion-executable-bit
-  source-backed-promotion)
+  promotion-event-suppression.t
+  promotion-executable-bit.t
+  source-backed-promotion.t)
  (setup_scripts promotion-helpers.sh))
 
 (cram
- (applies_to action-runner-forwarding action-runner-shutdown)
+ (applies_to action-runner-forwarding.t action-runner-shutdown.t)
  (enabled_if
   (<> %{ocaml-config:system} win)))
 
@@ -58,4 +58,4 @@
 
 (cram
  (enabled_if false)
- (applies_to watching-eager-concurrent-build-command sigpipe))
+ (applies_to watching-eager-concurrent-build-command.t sigpipe.t))

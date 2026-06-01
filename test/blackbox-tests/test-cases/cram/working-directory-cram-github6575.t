@@ -5,7 +5,7 @@ Given a working directory cram test:
   >   foobar
   > EOF
 
-  $ dune build @sometest
+  $ dune build @sometest.t
 
 We turn it into a single-file test:
   $ mv sometest.t sometest.t.bak
@@ -13,7 +13,7 @@ We turn it into a single-file test:
   $ rm -r sometest.t.bak
 
 Dune detects the change:
-  $ dune build @sometest
+  $ dune build @sometest.t
 
 The other way. Turn the file test into a directory test:
 
@@ -22,4 +22,4 @@ The other way. Turn the file test into a directory test:
   $ mv sometest.t.bak sometest.t/run.t
 
 And this works:
-  $ dune build @sometest
+  $ dune build @sometest.t

@@ -28,95 +28,95 @@
  (applies_to :whole_subtree))
 
 (cram
- (applies_to autolock-with-watch-server))
+ (applies_to autolock-with-watch-server.t))
 
 (cram
- (applies_to sites-plugin)
+ (applies_to sites-plugin.t)
  (deps
   (package dune-site)
   (package dune-private-libs)))
 
 (cram
- (applies_to rev-store-lock-linux)
+ (applies_to rev-store-lock-linux.t)
  (enabled_if
   (= %{system} linux))
  (deps %{bin:strace}))
 
 (cram
  (deps %{bin:awk} %{bin:cmp})
- (applies_to git-repo))
+ (applies_to git-repo.t))
 
 (cram
  (deps ../../utils/fakegit.sh)
- (applies_to opam-source-conversion))
+ (applies_to opam-source-conversion.t))
 
 (cram
  (deps %{bin:make})
- (applies_to make))
+ (applies_to make.t))
 
 (cram
  (deps %{bin:which})
- (applies_to pkg-deps))
+ (applies_to pkg-deps.t))
 
 (cram
  (deps %{bin:curl})
  (applies_to
-  unavailable-source-package
-  compute-checksums-when-missing
-  e2e
-  ocamlformat-dev-tool
-  source-caching
-  tarball
-  pin-depends
-  extra-sources
-  fetch-cache-symlink
-  broken-symlink-in-dependency))
+  unavailable-source-package.t
+  compute-checksums-when-missing.t
+  e2e.t
+  ocamlformat-dev-tool.t
+  source-caching.t
+  tarball.t
+  pin-depends.t
+  extra-sources.t
+  fetch-cache-symlink.t
+  broken-symlink-in-dependency.t))
 
 (cram
  (deps %{bin:md5sum})
  (applies_to
-  source-caching
-  extra-sources
-  ocamlformat-dev-tool
-  dev-tool-conflict-test
-  broken-symlink-in-dependency))
+  source-caching.t
+  extra-sources.t
+  ocamlformat-dev-tool.t
+  dev-tool-conflict-test.t
+  broken-symlink-in-dependency.t))
 
 (cram
  (deps %{bin:tar})
  (applies_to
-  source-caching
-  tarball
-  pin-depends
-  extra-sources
-  pkg-extract-fail
-  broken-symlink-in-dependency))
+  source-caching.t
+  tarball.t
+  pin-depends.t
+  extra-sources.t
+  pkg-extract-fail.t
+  broken-symlink-in-dependency.t))
 
 (cram
  (deps %{bin:ocaml_index})
- (applies_to ocaml-index-private-lib-gh10985))
+ (applies_to ocaml-index-private-lib-gh10985.t))
 
 (cram
  (deps %{bin:unzip})
- (applies_to pkg-extract-fail))
+ (applies_to pkg-extract-fail.t))
 
 (cram
- (applies_to build-action-path build-with-executable-script)
+ (applies_to build-action-path.t build-with-executable-script.t)
  (alias runtest-windows))
 
 (cram
- (applies_to build-with-executable-script-on-windows)
+ (applies_to build-with-executable-script-on-windows.t)
  (enabled_if
   (= %{os_type} Win32))
  (alias runtest-windows))
 
 (cram
- (applies_to installed-binary-windows)
+ (applies_to installed-binary-windows.t)
  (enabled_if
   (= %{os_type} Win32))
  (alias runtest-windows))
 
 (cram
- (applies_to install-entry-missing-exe-suffix)
+ (applies_to install-entry-missing-exe-suffix.t)
  (enabled_if
   (= %{os_type} Win32))
  (alias runtest-windows))
@@ -125,4 +125,4 @@
 
 (cram
  (enabled_if false)
- (applies_to watch-exec-crash-gh10959))
+ (applies_to watch-exec-crash-gh10959.t))

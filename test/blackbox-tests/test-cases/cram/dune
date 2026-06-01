@@ -1,36 +1,36 @@
 (cram
- (applies_to subprocess)
+ (applies_to subprocess.t)
  (enabled_if
   (= %{system} linux))
  (deps %{bin:ps}))
 
 (cram
- (applies_to error subprocess)
+ (applies_to error.t subprocess.t)
  (enabled_if false))
 
 ;; mac has a different sh error message
 
 (cram
- (applies_to error)
+ (applies_to error.t)
  (enabled_if
   (<> "macosx" %{ocaml-config:system})))
 
 (cram
- (applies_to hg-access)
+ (applies_to hg-access.t)
  (enabled_if %{bin-available:hg}))
 
 (cram
- (applies_to junction-cleanup)
+ (applies_to junction-cleanup.t)
  (enabled_if
   (= %{os_type} Win32))
  (alias runtest-windows))
 
 (cram
- (applies_to windows-path-rewriting)
+ (applies_to windows-path-rewriting.t)
  (enabled_if
   (= %{os_type} Win32))
  (alias runtest-windows))
 
 (cram
- (applies_to workspace-root-change)
+ (applies_to workspace-root-change.t)
  (deps %{bin:cksum} %{bin:cut}))

@@ -3,7 +3,7 @@ open Import
 module Test_kind = struct
   type t =
     | Runtest of Path.t
-    | Cram of Path.t * Source.Cram_test.t
+    | Cram of Path.t * Source.Cram_test.Name.t
     | Test_executable of
         { dir : Path.t
         ; exe_name : string
@@ -14,8 +14,8 @@ module Test_kind = struct
         }
 
   let alias ~contexts = function
-    | Cram (dir, cram) ->
-      let name = Source.Cram_test.name cram |> Source.Cram_test.Name.to_alias in
+    | Cram (dir, name) ->
+      let name = Source.Cram_test.Name.to_alias name in
       Alias.in_dir ~name ~recursive:false ~contexts dir
     | Test_executable { dir; exe_name } ->
       let name = Dune_engine.Alias.Name.of_string ("runtest-" ^ exe_name) in
@@ -110,8 +110,8 @@ let all_tests_of_dir ~sctx parent_dir =
         classify_ml_test ~sctx ~dir:parent_dir ~ml_file >>| Result.is_ok)
       >>| Filename.L.to_string
   and+ dir_candidates =
-    let* parent_source_dir = Source_tree.find_dir parent_dir in
-    match parent_source_dir with
+    Source_tree.find_dir parent_dir
+    >>= function
     | None -> Memo.return []
     | Some parent_source_dir ->
       let dirs = Source_tree.Dir.sub_dirs parent_source_dir in
@@ -141,11 +141,20 @@ let disambiguate_test_name ~sctx path =
   | None -> Memo.return @@ Test_kind.Runtest (Path.source Path.Source.root)
   | Some parent_dir ->
     let open Memo.O in
-    let* cram_tests = cram_tests_of_dir parent_dir in
-    (match find_cram_test cram_tests path with
-     | Some test ->
+    Source_tree.find_dir parent_dir
+    >>= (function
+     | None -> Memo.return None
+     | Some source_dir ->
+       let+ cram_tests = Dune_rules.Cram_rules.cram_tests source_dir in
+       find_cram_test cram_tests path |> Option.map ~f:(fun test -> source_dir, test))
+    >>= (function
+     | Some (source_dir, test) ->
        (* If we find the cram test, then we request that is run. *)
-       Memo.return (Test_kind.Cram (Path.source parent_dir, test))
+       let dune_version =
+         Source_tree.Dir.project source_dir |> Dune_project.dune_version
+       in
+       let name = Source.Cram_test.name test ~dune_version in
+       Memo.return (Test_kind.Cram (Path.source parent_dir, name))
      | None ->
        let filename = Path.Source.basename path in
        classify_ml_test ~sctx ~dir:parent_dir ~ml_file:filename

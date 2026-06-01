@@ -5,7 +5,7 @@
 ;; issues with dev tool lock dirs in source
 
 (cram
- (applies_to dev-tool-odoc-no-lock-dir)
+ (applies_to dev-tool-odoc-no-lock-dir.t)
  (enabled_if false))
 
 (rule

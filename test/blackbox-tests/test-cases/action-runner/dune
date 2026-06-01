@@ -1,10 +1,17 @@
 (cram
  (alias runtest-action-runner)
- (applies_to basic cancel-disconnect disconnect failure pool runtest trace))
+ (applies_to
+  basic.t
+  cancel-disconnect.t
+  disconnect.t
+  failure.t
+  pool.t
+  runtest.t
+  trace.t))
 
 (cram
  (alias runtest-action-runner)
- (applies_to fd-leak)
+ (applies_to fd-leak.t)
  (enabled_if
   (= %{system} linux)))
 
@@ -14,4 +21,4 @@
 (cram
  (enabled_if false)
  (alias runtest-action-runner)
- (applies_to stop-on-first-error watch-stop-on-first-error))
+ (applies_to stop-on-first-error.t watch-stop-on-first-error.t))

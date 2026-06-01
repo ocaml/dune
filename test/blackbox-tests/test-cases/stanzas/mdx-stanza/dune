@@ -8,7 +8,7 @@
   (<> %{system} macosx)))
 
 (cram
- (applies_to shared-libraries)
+ (applies_to shared-libraries.t)
  (deps
   %{bin:gcc}
   %{bin:ar}

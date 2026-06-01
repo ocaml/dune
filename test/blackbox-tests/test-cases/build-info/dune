@@ -1,4 +1,4 @@
 (cram
- (applies_to link-time-transitive-deps dune-build-info-subdir)
+ (applies_to link-time-transitive-deps.t dune-build-info-subdir.t)
  (deps
   (package dune-build-info)))

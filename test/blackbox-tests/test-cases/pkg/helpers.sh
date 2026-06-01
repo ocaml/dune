@@ -203,6 +203,36 @@ create_mock_repo() {
 	EOF
 }
 
+setup_dev_tool_workspace() {
+  : "${dev_tool_lock_dir:?}"
+  cat > dune-workspace <<- EOF
+	(lang dune 3.20)
+	(lock_dir
+	 (path "${dev_tool_lock_dir}")
+	 (repositories mock))
+	(lock_dir
+	 (repositories mock))
+	(repository
+	 (name mock)
+	 (url "file://$(pwd)/mock-opam-repository"))
+	(pkg enabled)
+	EOF
+}
+
+make_mock_dev_tool_package() {
+  local pkg="$1"
+  local exe="$2"
+  local message="$3"
+
+  mkpkg "${pkg}" <<- EOF
+	install: [
+	  [ "sh" "-c" "echo '#!/bin/sh' > %{bin}%/${exe}" ]
+	  [ "sh" "-c" "echo 'echo ${message}' >> %{bin}%/${exe}" ]
+	  [ "sh" "-c" "chmod a+x %{bin}%/${exe}" ]
+	]
+	EOF
+}
+
 make_lockpkg() {
   local pkg="$1"
   mkdir -p "${source_lock_dir}"

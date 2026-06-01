@@ -1,3 +1,5 @@
+open Stdune
+
 module Promote = struct
   type t =
     | Automatically
@@ -9,10 +11,19 @@ module Promote = struct
     | _, _ -> false
   ;;
 
-  let to_dyn = function
-    | Automatically -> Dyn.variant "Automatically" []
-    | Never -> Dyn.variant "Never" []
+  let repr =
+    Repr.variant
+      "promote"
+      [ Repr.case0 "Automatically" ~test:(function
+          | Automatically -> true
+          | Never -> false)
+      ; Repr.case0 "Never" ~test:(function
+          | Never -> true
+          | Automatically -> false)
+      ]
   ;;
+
+  let to_dyn = Repr.to_dyn repr
 end
 
 let target_exec = ref None

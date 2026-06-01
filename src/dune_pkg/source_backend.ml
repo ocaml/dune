@@ -11,9 +11,16 @@ let equal a b =
   | _, _ -> false
 ;;
 
-let to_dyn =
-  let open Dyn in
-  function
-  | Directory d -> variant "Directory" [ Path.to_dyn d ]
-  | Repo r -> variant "Repo" [ opaque r ]
+let repr =
+  Repr.variant
+    "source-backend"
+    [ Repr.case "Directory" Path.repr ~proj:(function
+        | Directory path -> Some path
+        | Repo _ -> None)
+    ; Repr.case "Repo" (Repr.abstract Dyn.opaque) ~proj:(function
+        | Repo repo -> Some repo
+        | Directory _ -> None)
+    ]
 ;;
+
+let to_dyn = Repr.to_dyn repr

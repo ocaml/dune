@@ -25,12 +25,16 @@ module Kind = struct
     | None -> kind Filename.hg_dir_basename
   ;;
 
-  let to_dyn t =
-    Dyn.Variant
-      ( (match t with
-         | Git -> "Git"
-         | Hg -> "Hg")
-      , [] )
+  let repr =
+    Repr.variant
+      "vcs-kind"
+      [ Repr.case0 "Git" ~test:(function
+          | Git -> true
+          | Hg -> false)
+      ; Repr.case0 "Hg" ~test:(function
+          | Hg -> true
+          | Git -> false)
+      ]
   ;;
 
   let equal = ( = )
@@ -42,9 +46,15 @@ module T = struct
     ; kind : Kind.t
     }
 
-  let to_dyn { root; kind } =
-    Dyn.record [ "root", Path.to_dyn root; "kind", Kind.to_dyn kind ]
+  let repr =
+    Repr.record
+      "vcs"
+      [ Repr.field "root" Path.repr ~get:(fun t -> t.root)
+      ; Repr.field "kind" Kind.repr ~get:(fun t -> t.kind)
+      ]
   ;;
+
+  let to_dyn = Repr.to_dyn repr
 
   let equal { root = ra; kind = ka } { root = rb; kind = kb } =
     Path.equal ra rb && Kind.equal ka kb

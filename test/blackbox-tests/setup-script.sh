@@ -259,6 +259,22 @@ make_promotion_test_project() {
   fi
 }
 
+write_target_promotion_rules() {
+  local mode="$1"
+
+  cat > dune <<- EOF
+	(rule
+	 (mode ${mode})
+	 (deps original)
+	 (target promoted)
+	 (action (copy %{deps} %{target})))
+	(rule
+	 (deps promoted)
+	 (target result)
+	 (action (system "cat promoted promoted > result")))
+	EOF
+}
+
 make_simple_rpc_watch_project() {
   make_dune_project 3.23
   cat > dune <<-'EOF'

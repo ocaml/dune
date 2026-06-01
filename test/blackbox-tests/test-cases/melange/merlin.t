@@ -529,6 +529,7 @@ Mixed OCaml/Melange libraries generate separate Merlin configuration files.
   $ dune build --root mixed @check
   $ find mixed/_build/default/.merlin-conf -type f | sort
   mixed/_build/default/.merlin-conf/lib-mixed
+  mixed/_build/default/.merlin-conf/lib-mixed-melange
 
 The old `File` query still returns the default OCaml Merlin configuration.
 
@@ -560,5 +561,10 @@ Both generated configurations remain available to debug tooling.
       "mode": "ocaml",
       "obj_dir": "_build/default/.mixed.objs/byte",
       "preprocess": "ocaml"
+    },
+    {
+      "mode": "melange",
+      "obj_dir": "_build/default/.mixed.objs/melange",
+      "preprocess": "melange"
     }
   ]

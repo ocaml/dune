@@ -127,6 +127,20 @@ make_mypkg_lib_project() {
 	EOF
 }
 
+make_foreign_header_consumer() {
+  make_dune_project 3.8
+  cat > dune <<-'EOF'
+	(executable
+	 (name bar)
+	 (foreign_stubs
+	  (language c)
+	  (include_dirs (lib mypkg))
+	  (names foo)))
+	EOF
+  touch bar.ml
+  cat > foo.c
+}
+
 make_directory_targets_project() {
   local version="${1:-3.23}"
   cat > dune-project <<- EOF

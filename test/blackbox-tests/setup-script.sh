@@ -113,6 +113,20 @@ make_mypkg_bin_project() {
 	EOF
 }
 
+make_mypkg_lib_project() {
+  make_dune_project 3.24
+  cat >> dune-project <<-'EOF'
+	(package (name mypkg))
+	EOF
+  mkdir src
+  cat > src/dune <<-'EOF'
+	(library (public_name mypkg))
+	EOF
+  cat > src/mypkg.ml <<-'EOF'
+	let x = 1
+	EOF
+}
+
 make_directory_targets_project() {
   local version="${1:-3.23}"
   cat > dune-project <<- EOF

@@ -1,17 +1,7 @@
 Test that (inline_tests (deps (package ...))) sets up layout env vars
 for the test runner.
 
-  $ make_dune_project 3.24
-  $ cat >>dune-project <<EOF
-  > (package (name mypkg))
-  > EOF
-  $ mkdir src
-  $ cat >src/dune <<EOF
-  > (library (public_name mypkg))
-  > EOF
-  $ cat >src/mypkg.ml <<'EOF'
-  > let x = 1
-  > EOF
+  $ make_mypkg_lib_project
 
 Custom backend that writes OCAMLPATH to a file outside the sandbox:
 

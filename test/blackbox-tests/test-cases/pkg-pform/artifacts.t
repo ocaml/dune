@@ -56,7 +56,7 @@ Each section resolves the install name back to the source file:
 
 All source files appear as dependencies (not install staging paths):
 
-  $ dune rules --format=json _build/default/out 2>&1 | jq 'include "dune"; .[] | ruleDepFilePaths' | sort
+  $ dune rules --format=json _build/default/out 2>&1 | jq_dune '.[] | ruleDepFilePaths' | sort
   "_build/default/foo/bin_src"
   "_build/default/foo/doc_src"
   "_build/default/foo/etc_src"

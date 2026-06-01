@@ -51,7 +51,7 @@ an inner ppx with cookies, and a wrapper ppx that depends on the inner one:
 Using the inner ppx directly, the cookie is passed:
 
   $ dune build test_direct.cma
-  $ dune trace cat | jq -c 'include "dune";
+  $ dune trace cat | jq_dune -c '
   >   processes
   > | select(.args.prog | contains("ppx"))
   > | .args.process_args
@@ -63,7 +63,7 @@ Using the inner ppx directly, the cookie is passed:
 Using the wrapper ppx, the cookie from inner_ppx should also be passed:
 
   $ dune build test_wrapped.cma
-  $ dune trace cat | jq -c 'include "dune";
+  $ dune trace cat | jq_dune -c '
   >   processes
   > | select(.args.prog | contains("ppx"))
   > | .args.process_args

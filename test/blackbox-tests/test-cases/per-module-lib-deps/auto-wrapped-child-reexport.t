@@ -87,7 +87,7 @@ Edit [dep_lib]'s interface. [consumer] reaches [dep_lib]'s
   > let y = 42
   > EOF
   $ dune build @check
-  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("consumer"))]'
+  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("consumer"))]'
   [
     {
       "target_files": [

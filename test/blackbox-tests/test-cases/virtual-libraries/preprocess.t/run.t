@@ -6,7 +6,7 @@ The implementation module depends on the modules introduced by preprocessing
 [vdep.mli], not on the module mentioned in the raw source.
 
   $ dune rules --format=json %{cmo:impl/use} \
-  > | jq -r 'include "dune";
+  > | jq_dune -r '
   >   .[]
   > | ruleDepFilePaths
   > | select(test("bar__(Dep_a|Dep_b|Raw_only)\\.cmi$"))' \

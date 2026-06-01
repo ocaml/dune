@@ -56,5 +56,5 @@ See: https://github.com/ocaml/dune/issues/4572
 Uses_stdlib is recompiled even though it only uses Printf, not Mylib:
 
   $ dune build ./main.exe
-  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("Uses_stdlib"))] | length'
+  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("Uses_stdlib"))] | length'
   2

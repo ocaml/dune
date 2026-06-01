@@ -52,7 +52,7 @@ The consumer's compile rule today carries a wide `.cmi` glob over
 
   $ dune rules --root . --format=json --deps '%{cmo:consumer/consumer}' > deps.json
 
-  $ jq -r 'include "dune"; .[] | depsGlobs
+  $ jq_dune -r '.[] | depsGlobs
   >   | select(.dir | endswith("middle/.middle.objs/byte"))
   >   | .dir + " " + .predicate' < deps.json
   _build/default/middle/.middle.objs/byte *.cmi

@@ -2,6 +2,45 @@ jq() {
   command jq -L"$INSIDE_DUNE"/test/blackbox-tests "$@"
 }
 
+jq_dune() {
+  local args=()
+  local filter_set=0
+
+  while [ "$#" -gt 0 ]
+  do
+    case "$1" in
+      -L|-f|--from-file)
+        args+=("$1" "$2")
+        shift 2
+        ;;
+      --arg|--argjson|--slurpfile|--rawfile|--argfile)
+        args+=("$1" "$2" "$3")
+        shift 3
+        ;;
+      --)
+        args+=("$1")
+        shift
+        ;;
+      -*)
+        args+=("$1")
+        shift
+        ;;
+      *)
+        if [ "$filter_set" -eq 0 ]
+        then
+          args+=("include \"dune\"; $1")
+          filter_set=1
+        else
+          args+=("$1")
+        fi
+        shift
+        ;;
+    esac
+  done
+
+  jq "${args[@]}"
+}
+
 is_linked() {
   nlinks=$(dune_cmd stat hardlinks "$1")
   [ "$nlinks" -gt 1 ] && echo linked || echo not linked

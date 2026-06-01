@@ -13,7 +13,7 @@ Dune should collect traces from all actions
 
   $ dune build @foo
 
-  $ dune trace cat | jq -s 'include "dune"; redactedActionTraces'
+  $ dune trace cat | jq_dune -s 'redactedActionTraces'
   {
     "cat": "bar",
     "name": "foo1",

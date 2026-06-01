@@ -64,13 +64,13 @@ byte objdir — which materialises `b.cmi` and so forces dune to
 compile `b.ml`.
 
   $ dune rules --root . --format=json --deps '%{cmo:consumer/consumer}' > deps.json
-  $ jq -r 'include "dune"; .[] | depsGlobs
+  $ jq_dune -r '.[] | depsGlobs
   >   | select(.dir | endswith("mylib/.mylib.objs/byte"))
   >   | .dir + " " + .predicate' < deps.json
   _build/default/mylib/.mylib.objs/byte *.cmi
-  $ jq -r 'include "dune"; .[] | depsFilePaths
+  $ jq_dune -r '.[] | depsFilePaths
   >   | select(endswith("mylib/.mylib.objs/byte/a.cmi"))' < deps.json
-  $ jq -r 'include "dune"; .[] | depsFilePaths
+  $ jq_dune -r '.[] | depsFilePaths
   >   | select(endswith("mylib/.mylib.objs/byte/b.cmi"))' < deps.json
 
 Build only the consumer's `.cmo` (compile rule, not link). Today,

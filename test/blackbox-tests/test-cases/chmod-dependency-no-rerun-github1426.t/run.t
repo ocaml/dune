@@ -2,8 +2,8 @@ Changing write permissions of a dependency doesn't cause a re-run
 
   $ checkrun() {
   > dune build a_target
-  > dune trace cat | jq -c '
-  > include "dune"; progMatching("script")
+  > dune trace cat | jq_dune -c '
+  > progMatching("script")
   > '
   > }
 

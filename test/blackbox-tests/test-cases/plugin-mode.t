@@ -79,8 +79,7 @@ Testsuite for (mode plugin).
 
   $ dune build @all
 
-  $ dune trace cat | jq -c '
-  > include "dune";
+  $ dune trace cat | jq_dune -c '
   >   targetsMatchingFilter(test("\\.cmxs$"))
   > | select(length > 0)
   > ' | sort

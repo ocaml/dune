@@ -12,7 +12,7 @@ Test cases to check Coq's flag setting is correct:
   $ runFlags() {
   > dune clean
   > dune build foo.vo
-  > dune trace cat | jq -c 'include "dune"; rocqFlags'
+  > dune trace cat | jq_dune -c 'rocqFlags'
   > }
 
 Test case: default flags

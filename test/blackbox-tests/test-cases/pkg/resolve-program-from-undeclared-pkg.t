@@ -76,7 +76,7 @@ Test that the fake ocamllex from tool_provider is used:
 
 The rule depends on the ocamllex binary from the tool_provider lockdir package:
 
-  $ dune rules --format=json foo.ml | jq 'include "dune"; .[] | ruleDepFilePaths' | censor
+  $ dune rules --format=json foo.ml | jq_dune '.[] | ruleDepFilePaths' | censor
   "_build/_private/default/.pkg/tool_provider.0.0.1-$DIGEST/target/bin/ocamllex"
   "_build/default/foo.mll"
 
@@ -108,6 +108,6 @@ Similarly, [(menhir ...)] resolves [menhir] from the lockdir package:
 
 The rule depends on the menhir binary from the tool_provider lockdir package:
 
-  $ dune rules --format=json bar.ml | jq 'include "dune"; .[] | ruleDepFilePaths' | censor
+  $ dune rules --format=json bar.ml | jq_dune '.[] | ruleDepFilePaths' | censor
   "_build/_private/default/.pkg/tool_provider.0.0.1-$DIGEST/target/bin/menhir"
   "_build/default/bar.mly"

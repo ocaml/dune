@@ -81,7 +81,7 @@ reference — and record the rebuild targets for [consumer]:
   > let extra () = 7
   > EOF
   $ dune build @check
-  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("consumer_lib/\\.consumer_lib\\.objs/byte/consumer\\."))]'
+  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("consumer_lib/\\.consumer_lib\\.objs/byte/consumer\\."))]'
   [
     {
       "target_files": [
@@ -103,7 +103,7 @@ Same for [Unread_dep_b]:
   > let other = "hi"
   > EOF
   $ dune build @check
-  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("consumer_lib/\\.consumer_lib\\.objs/byte/consumer\\."))]'
+  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("consumer_lib/\\.consumer_lib\\.objs/byte/consumer\\."))]'
   [
     {
       "target_files": [
@@ -127,7 +127,7 @@ rebuild):
   > let new_fn x = x + 1
   > EOF
   $ dune build @check
-  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("consumer_lib/\\.consumer_lib\\.objs/byte/consumer\\."))]'
+  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("consumer_lib/\\.consumer_lib\\.objs/byte/consumer\\."))]'
   [
     {
       "target_files": [

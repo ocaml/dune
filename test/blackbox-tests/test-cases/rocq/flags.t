@@ -19,7 +19,7 @@ Test case: default flags
   $ runFlags() {
   > dune clean
   > dune build foo.vo
-  > dune trace cat | jq -c 'include "dune"; rocqFlags'
+  > dune trace cat | jq_dune -c 'rocqFlags'
   > }
 
   $ runFlags

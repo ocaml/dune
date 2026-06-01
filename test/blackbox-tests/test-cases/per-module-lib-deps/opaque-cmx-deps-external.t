@@ -23,7 +23,7 @@ role of "external".
 
   $ dune build ./main.exe
   $ dune rules --root . --format=json --deps _build/default/.main.eobjs/native/dune__exe__Main.cmx |
-  > jq -r 'include "dune"; .[] | depsGlobPredicates' | sort -u
+  > jq_dune -r '.[] | depsGlobPredicates' | sort -u
   *.cmi
   *.cmx
 
@@ -36,6 +36,6 @@ role of "external".
 
   $ dune build ./main.exe
   $ dune rules --root . --format=json --deps _build/default/.main.eobjs/native/dune__exe__Main.cmx |
-  > jq -r 'include "dune"; .[] | depsGlobPredicates' | sort -u
+  > jq_dune -r '.[] | depsGlobPredicates' | sort -u
   *.cmi
   *.cmx

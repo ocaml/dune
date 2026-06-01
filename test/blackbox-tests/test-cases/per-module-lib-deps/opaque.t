@@ -63,7 +63,7 @@ Change ONLY the implementation (not the interface):
 No_use_lib is recompiled even though it doesn't reference Mylib:
 
   $ dune build ./main.exe
-  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("No_use_lib"))] | length'
+  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("No_use_lib"))] | length'
   1
 
 --- Dev profile (opaque=true): .cmx deps are NOT tracked for local libs ---
@@ -87,5 +87,5 @@ No modules recompile (opaque means only .cmi is a dependency, and .cmi
 didn't change):
 
   $ dune build ./main.exe
-  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("dune__exe"))] | length'
+  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("dune__exe"))] | length'
   0

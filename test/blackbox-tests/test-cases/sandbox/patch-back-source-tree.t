@@ -40,8 +40,7 @@ All modified dependencies are promoted
   +Hello, world!
   [1]
 
-  $ dune trace cat | jq '
-  > include "dune";
+  $ dune trace cat | jq_dune '
   >   select(.cat == "sandbox" and .name == "snapshot")
   > | censorDigestDir
   > | .args

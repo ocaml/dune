@@ -35,7 +35,7 @@ The rule depends on each binary via two paths: the build artifact
 machinery):
 
   $ dune rules --format=json _build/default/path-output \
-  >   | jq 'include "dune"; .[] | ruleDepFilePaths' | censor
+  >   | jq_dune '.[] | ruleDepFilePaths' | censor
   "_build/default/src/bar.exe"
   "_build/default/src/foo.exe"
   "_build/install/default/.binaries/$DIGEST/bar"

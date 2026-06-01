@@ -43,7 +43,7 @@ Rules created for the assets in the output directory
 Alias is found even if source dir "output" isn't present
 
   $ dune rules --root . --format=json @mel |
-  > jq -r 'include "dune"; rulesMatchingTarget("output/assets/file.txt") | select(ruleHasCopy("assets/file.txt"; "output/assets/file.txt")) | ruleDepFilePaths'
+  > jq_dune -r 'rulesMatchingTarget("output/assets/file.txt") | select(ruleHasCopy("assets/file.txt"; "output/assets/file.txt")) | ruleDepFilePaths'
   _build/default/assets/file.txt
 
   $ dune build @mel

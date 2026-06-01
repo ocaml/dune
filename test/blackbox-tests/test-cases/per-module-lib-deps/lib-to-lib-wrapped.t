@@ -63,5 +63,5 @@ See: https://github.com/ocaml/dune/issues/4572
 Standalone in middle_lib is recompiled even though it doesn't use base_lib:
 
   $ dune build ./main.exe
-  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("Standalone"))] | length'
+  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("Standalone"))] | length'
   2

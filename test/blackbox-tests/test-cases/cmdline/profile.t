@@ -6,7 +6,7 @@ Bug #4632
 
   $ runtest() {
   > dune build $@
-  > dune trace cat | jq 'include "dune"; logs("Dune context") | .context.profile'
+  > dune trace cat | jq_dune 'logs("Dune context") | .context.profile'
   > }
 
   $ runtest

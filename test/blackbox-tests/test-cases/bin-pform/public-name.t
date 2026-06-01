@@ -23,6 +23,6 @@ The pform resolves to the build artifact:
 The rule depends on the build artifact:
 
   $ dune rules --format=json _build/default/bin-path \
-  >   | jq 'include "dune"; .[] | ruleDepFilePaths' \
+  >   | jq_dune '.[] | ruleDepFilePaths' \
   >   | grep mybin
   "_build/default/mybin.exe"

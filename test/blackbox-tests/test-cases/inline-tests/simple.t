@@ -46,7 +46,7 @@ Make sure building both aliases doesn't build both
   Fatal error: exception File ".foo_simple.inline-tests/main.ml-gen", line 1, characters 40-46: Assertion failed
   [1]
 This test demonstrates that the action is being run once
-  $ dune trace cat | jq 'include "dune";
+  $ dune trace cat | jq_dune '
   >   processes
   > | .args.prog
   > | select(contains("inline-test-runner.exe"))

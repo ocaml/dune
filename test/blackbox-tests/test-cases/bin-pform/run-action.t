@@ -28,7 +28,7 @@ The rule's deps include the build artifact and the .binaries
 symlink:
 
   $ dune rules --format=json _build/default/path-output \
-  >   | jq 'include "dune"; .[] | ruleDepFilePaths' \
+  >   | jq_dune '.[] | ruleDepFilePaths' \
   >   | grep mybin | censor
   "_build/default/mybin.exe"
   "_build/install/default/.binaries/$DIGEST/mybin"

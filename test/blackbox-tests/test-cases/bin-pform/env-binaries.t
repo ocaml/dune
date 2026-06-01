@@ -27,7 +27,7 @@ The pform resolves to the .bin/ symlink:
 The rule depends on the .bin/ symlink:
 
   $ dune rules --format=json _build/default/bin-path \
-  >   | jq 'include "dune"; .[] | ruleDepFilePaths'
+  >   | jq_dune '.[] | ruleDepFilePaths'
   "_build/default/.bin/myothername"
 
 The action's PATH gets the .bin/ symlink directory:

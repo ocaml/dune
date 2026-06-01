@@ -57,7 +57,7 @@ Verify that the compilation rule depends on .cmi files from all libraries
 in the chain, not just the directly referenced one:
 
   $ dune rules --root . --format=json liba/.liba.objs/byte/liba__Consumer.cmo |
-  > jq -r 'include "dune"; .[] | (ruleDepFilePathsOfKind("In_build_dir"), (ruleDepGlobEntries | .dir)) | split("/")[2]' | sort -u
+  > jq_dune -r '.[] | (ruleDepFilePathsOfKind("In_build_dir"), (ruleDepGlobEntries | .dir)) | split("/")[2]' | sort -u
   liba
   libb
   libc

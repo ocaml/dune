@@ -16,7 +16,7 @@ See that `test2/runtest`, which uses `fake_backend_2`, runs one inline test runn
 
 See that the trace reports 3 partitions
 
-  $ dune trace cat | jq -c 'include "dune"; inlineTestPartitions'
+  $ dune trace cat | jq_dune -c 'inlineTestPartitions'
   {"library":"test_lib2","mode":"best","partitions":["p1","p2","p3"]}
 
 
@@ -25,5 +25,5 @@ See that the trace reports 3 partitions
 
 See that the trace reports no partition.
 
-  $ dune trace cat | jq -c 'include "dune"; inlineTestPartitions'
+  $ dune trace cat | jq_dune -c 'inlineTestPartitions'
   {"library":"test_lib3","mode":"best","partitions":[]}

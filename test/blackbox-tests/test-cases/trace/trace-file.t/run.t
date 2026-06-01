@@ -3,7 +3,7 @@
 
 This captures the commands that are being run:
 
-  $ dune trace cat | jq 'include "dune";
+  $ dune trace cat | jq_dune '
   >   processes
   > | .args
   > | del(.pid)

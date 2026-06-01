@@ -42,7 +42,7 @@ not what this test is about. Today both [dep_lib]'s objdir and
 [unrelated_lib]'s objdir appear:
 
   $ dune rules --root . --format=json _build/default/.consumer_lib.objs/byte/consumer_module.cmo \
-  > | jq 'include "dune"; .[] | [ruleActionFlagValues("-I") | select(test("\\.dep_lib\\.objs|\\.unrelated_lib\\.objs"))]'
+  > | jq_dune '.[] | [ruleActionFlagValues("-I") | select(test("\\.dep_lib\\.objs|\\.unrelated_lib\\.objs"))]'
   [
     ".dep_lib.objs/byte",
     ".unrelated_lib.objs/byte"

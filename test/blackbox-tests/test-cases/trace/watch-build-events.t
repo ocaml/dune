@@ -20,7 +20,7 @@ build trace events.
 
   $ dune build y
 
-  $ dune trace cat | jq -s 'include "dune"; .[] | buildEvents'
+  $ dune trace cat | jq_dune -s '.[] | buildEvents'
   {
     "args": {
       "run_id": 0,
@@ -74,8 +74,7 @@ build trace events.
 File watcher backends may batch file changes differently. Normalize contiguous
 restart events so the test checks the run id and reasons, not the batching.
 
-  $ dune trace cat | jq -s '
-  > include "dune";
+  $ dune trace cat | jq_dune -s '
   > [ .[] | buildEvents ] | normalizeBuildRestartEvents'
   {
     "args": {

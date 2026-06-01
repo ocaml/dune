@@ -16,7 +16,7 @@
   > EOF
 
   $ dune rules --root . --format=json @melange |
-  > jq -r 'include "dune"; .[] | ruleDepFilePaths | select(test("\\.cmj$"))'
+  > jq_dune -r '.[] | ruleDepFilePaths | select(test("\\.cmj$"))'
   _build/default/.out.mobjs/melange/melange__X.cmj
   $ dune build @melange
 

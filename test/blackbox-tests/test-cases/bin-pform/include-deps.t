@@ -35,7 +35,7 @@ The action's PATH includes the .binaries dir:
 The rule depends on the build artifact and the .binaries symlink:
 
   $ dune rules --format=json _build/default/path-output \
-  >   | jq 'include "dune"; .[] | ruleDepFilePaths' \
+  >   | jq_dune '.[] | ruleDepFilePaths' \
   >   | grep mybin | censor
   "_build/default/src/mybin.exe"
   "_build/install/default/.binaries/$DIGEST/mybin"

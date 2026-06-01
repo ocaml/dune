@@ -41,7 +41,7 @@ The rule's deps include the build artifact and the .binaries
 symlink. Both are paths under the un-sandboxed _build/:
 
   $ dune rules --format=json _build/default/out \
-  >   | jq 'include "dune"; .[] | ruleDepFilePaths' \
+  >   | jq_dune '.[] | ruleDepFilePaths' \
   >   | grep mybin | censor
   "_build/default/src/mybin.exe"
   "_build/install/default/.binaries/$DIGEST/mybin"

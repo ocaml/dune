@@ -32,6 +32,6 @@ The action invokes the install-renamed binary via PATH:
 The .binaries symlink uses the install name:
 
   $ dune rules --format=json _build/default/out \
-  >   | jq 'include "dune"; .[] | ruleDepFilePaths' | censor
+  >   | jq_dune '.[] | ruleDepFilePaths' | censor
   "_build/default/script.sh"
   "_build/install/default/.binaries/$DIGEST/renamed"

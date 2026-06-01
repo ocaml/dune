@@ -44,8 +44,7 @@ own source invalidation.
 
   $ stop_dune > /dev/null
 
-  $ dune trace cat | jq -s '
-  > include "dune";
+  $ dune trace cat | jq_dune -s '
   > [ .[] | buildEvents | del(.args.rusage) ] | .[-4:]'
   [
     {

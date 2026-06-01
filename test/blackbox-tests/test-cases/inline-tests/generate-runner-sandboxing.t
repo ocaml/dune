@@ -32,7 +32,7 @@ At dune 3.22 the generator still runs outside the sandbox.
   Fatal error: exception File ".mylib.inline-tests/main.ml-gen", line 2, characters 40-46: Assertion failed
   [1]
 
-  $ dune trace cat | jq -sc 'include "dune";
+  $ dune trace cat | jq_dune -sc '
   >   [ .[]
   >   | processes
   >   | select(.args.prog | basename | startswith("sed"))
@@ -52,7 +52,7 @@ At dune 3.23 the generator is sandboxed and %{impl-files} still works.
   Fatal error: exception File ".mylib.inline-tests/main.ml-gen", line 2, characters 40-46: Assertion failed
   [1]
 
-  $ dune trace cat | jq -sc 'include "dune";
+  $ dune trace cat | jq_dune -sc '
   >   [ .[]
   >   | processes
   >   | select(.args.prog | basename | startswith("sed"))

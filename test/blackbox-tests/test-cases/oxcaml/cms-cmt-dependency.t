@@ -73,13 +73,13 @@ Build everything first so rules are generated:
 Check that User.cmx does NOT depend on Dep's .cms/.cmsi files:
 
   $ dune rules --root . --format=json mylib/.mylib.objs/native/mylib__User.cmx |
-  > jq 'include "dune"; [ .[] | ruleDepFilePaths | select(test("mylib__Dep\\.cms")) ] | length'
+  > jq_dune '[ .[] | ruleDepFilePaths | select(test("mylib__Dep\\.cms")) ] | length'
   0
 
 Check that User.cmx does NOT depend on Dep's .cmt/.cmti files:
 
   $ dune rules --root . --format=json mylib/.mylib.objs/native/mylib__User.cmx |
-  > jq 'include "dune"; [ .[] | ruleDepFilePaths | select(test("mylib__Dep\\.cmt")) ] | length'
+  > jq_dune '[ .[] | ruleDepFilePaths | select(test("mylib__Dep\\.cmt")) ] | length'
   0
 
 Test 2: cms_cmt_dependency = cms

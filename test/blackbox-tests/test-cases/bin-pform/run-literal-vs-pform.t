@@ -26,13 +26,13 @@ pform default to Original_path so both paths agree.
 (run mybin) records a dep on the build artifact:
 
   $ dune rules --format=json _build/default/out-literal \
-  >   | jq 'include "dune"; .[] | ruleDepFilePaths' \
+  >   | jq_dune '.[] | ruleDepFilePaths' \
   >   | grep mybin
   "_build/default/src/mybin.exe"
 
 (run %{bin:mybin}) records a dep on the build artifact too:
 
   $ dune rules --format=json _build/default/out-pform \
-  >   | jq 'include "dune"; .[] | ruleDepFilePaths' \
+  >   | jq_dune '.[] | ruleDepFilePaths' \
   >   | grep mybin
   "_build/default/src/mybin.exe"

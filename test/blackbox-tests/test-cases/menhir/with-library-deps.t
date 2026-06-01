@@ -47,7 +47,7 @@ Confirm via the trace that menhir's [--infer] pass invoked
 The presence of this event positively asserts that the [--infer]
 code path ran, rather than being silently skipped:
 
-  $ dune trace cat | jq -s 'include "dune"; [.[] | progMatching("ocamlc") | select(.process_args | index("-i") != null) | .target_files]'
+  $ dune trace cat | jq_dune -s '[.[] | progMatching("ocamlc") | select(.process_args | index("-i") != null) | .target_files]'
   [
     [
       "_build/default/parser/grammar__mock.mli.inferred"
@@ -59,7 +59,7 @@ search path. This is exactly the property the test guards: dune
 must propagate the parent library's [(libraries ...)] onto the
 mock compile's [-I] flags.
 
-  $ dune trace cat | jq -s 'include "dune"; [.[] | progMatching("ocamlc") | select(.process_args | index("-i") != null) | .process_args | [.[] | select(startswith("dep/"))]]'
+  $ dune trace cat | jq_dune -s '[.[] | progMatching("ocamlc") | select(.process_args | index("-i") != null) | .process_args | [.[] | select(startswith("dep/"))]]'
   [
     [
       "dep/.dep.objs/byte"

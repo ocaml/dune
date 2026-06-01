@@ -104,7 +104,7 @@ references to hidden module names can normally not be used in hand-written
 code. The dependency is missing:
 
   $ dune describe rules --format=json %{cmi:parser} \
-  > | jq 'include "dune"; [ .[] | ruleDepFilePathsOfKind("In_build_dir") ]'
+  > | jq_dune '[ .[] | ruleDepFilePathsOfKind("In_build_dir") ]'
   [
     "_build/default/.mylib.objs/byte/mylib.cmi",
     "_build/default/parser.mli",

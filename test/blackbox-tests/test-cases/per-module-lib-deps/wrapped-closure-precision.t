@@ -93,7 +93,7 @@ the [.cmi] content change invalidates the consumer:
   > let y = 1
   > EOF
   $ dune build @check
-  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("\\.consumer_lib\\.objs/byte/consumer\\."))]'
+  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("\\.consumer_lib\\.objs/byte/consumer\\."))]'
   [
     {
       "target_files": [

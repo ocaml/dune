@@ -73,8 +73,7 @@ Dune should be able to find it too
 
   $ dune build --root=app @install -x foo # grep notocamldep-foo
 
-  $ dune trace cat --trace-file app/_build/trace.csexp | jq '
-  > include "dune";
+  $ dune trace cat --trace-file app/_build/trace.csexp | jq_dune '
   >    processes
   > | .args
   > | select(.prog | contains("notocamldep-foo"))

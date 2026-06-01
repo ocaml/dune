@@ -250,6 +250,147 @@ let collect_stanzas =
     | Some dir -> collect_whole_subtree [ acc ] dir
 ;;
 
+let spec_for_test ~stanzas test =
+  let name =
+    match test with
+    | Ok test -> Cram_test.name test
+    | Error (Missing_run_t test) -> Cram_test.name test
+  in
+  let test_name_alias = Alias.Name.of_string name in
+  let init = None, Spec.make_empty ~test_name_alias in
+  let* runtest_alias, acc =
+    Memo.List.fold_left
+      stanzas
+      ~init
+      ~f:(fun (runtest_alias, (acc : Spec.t)) { dir; stanza; prepared } ->
+        match
+          match stanza.applies_to with
+          | Whole_subtree -> true
+          | Files_matching_in_this_dir pred ->
+            Predicate_lang.Glob.test pred ~standard:Predicate_lang.true_ name
+        with
+        | false -> Memo.return (runtest_alias, acc)
+        | true ->
+          let+ { expander; deps } = Memo.Lazy.force prepared in
+          let deps, sandbox, env =
+            match deps with
+            | None -> acc.deps, acc.sandbox, acc.env
+            | Some (sandbox, env) ->
+              let sandbox =
+                let open Action_builder.O in
+                let+ acc = acc.sandbox
+                and+ sandbox = sandbox in
+                Sandbox_config.inter acc sandbox
+              in
+              let env =
+                let open Action_builder.O in
+                let+ acc = acc.env
+                and+ env in
+                Install.Roots.extend_env_concat_path_vars acc env
+              in
+              acc.deps, sandbox, env
+          in
+          let locks =
+            let open Action_builder.O in
+            let+ more_locks =
+              Expander.expand_locks expander stanza.locks >>| Path.Set.of_list
+            and+ locks = acc.locks in
+            Path.Set.union locks more_locks
+          in
+          let runtest_alias =
+            match stanza.runtest_alias with
+            | None -> None
+            | Some (loc, set) ->
+              (match runtest_alias with
+               | None -> Some (loc, expander, set)
+               | Some (loc', _, _) ->
+                 let main_message =
+                   [ Pp.text
+                       "enabling or disabling the runtest alias for a cram test may only \
+                        be set once."
+                   ; Pp.textf "It's already set for the test %S" name
+                   ]
+                 in
+                 let compound =
+                   let main = User_message.make ~loc:loc' main_message in
+                   let related =
+                     [ User_message.make ~loc [ Pp.text "Already set here" ] ]
+                   in
+                   [ Compound_user_error.make ~main ~related ]
+                 in
+                 User_error.raise
+                   ~compound
+                   ~loc
+                   (main_message
+                    @ [ Pp.text "The first definition is at:"
+                      ; Pp.text (Loc.to_file_colon_line loc')
+                      ]))
+          in
+          let enabled_if = (expander, stanza.enabled_if) :: acc.enabled_if in
+          let extra_aliases =
+            match stanza.alias with
+            | None -> acc.extra_aliases
+            | Some a -> Alias.Name.Set.add acc.extra_aliases a
+          in
+          let packages =
+            match stanza.package with
+            | None -> acc.packages
+            | Some (p : Package.t) -> Package.Name.Set.add acc.packages (Package.name p)
+          in
+          let timeout =
+            Option.merge
+              acc.timeout
+              stanza.timeout
+              ~f:(Ordering.min (fun x y -> Time.Span.compare (snd x) (snd y)))
+          in
+          let conflict_markers =
+            Option.value ~default:acc.conflict_markers stanza.conflict_markers
+          in
+          let shell = Option.value ~default:acc.shell stanza.shell in
+          let setup_scripts =
+            let more_current_scripts =
+              List.map stanza.setup_scripts ~f:(fun (_loc, script) ->
+                (* Handle both relative and absolute paths *)
+                if Filename.is_relative script
+                then Path.build (Path.Build.relative dir script)
+                else Path.external_ (Path.External.of_string script))
+            in
+            (* This is a silly way to dedupe, but we aim to preserve the
+               order as much as possible. *)
+            more_current_scripts
+            @ List.filter acc.setup_scripts ~f:(fun x ->
+              not (List.mem more_current_scripts x ~equal:Path.equal))
+          in
+          ( runtest_alias
+          , { acc with
+              enabled_if
+            ; locks
+            ; deps
+            ; test_name_alias
+            ; extra_aliases
+            ; packages
+            ; sandbox
+            ; env
+            ; timeout
+            ; conflict_markers
+            ; setup_scripts
+            ; shell
+            } ))
+  in
+  let+ extra_aliases =
+    let+ to_add =
+      (match runtest_alias with
+       | None -> Memo.return true
+       | Some (_, expander, set) -> Expander.eval_blang expander set)
+      >>| function
+      | true -> Alias.Name.Set.singleton Alias0.runtest
+      | false -> Alias.Name.Set.empty
+    in
+    Alias.Name.Set.union to_add acc.extra_aliases
+  in
+  { acc with extra_aliases }
+;;
+
 let rules ~sctx ~dir tests project =
   let* stanzas = collect_stanzas ~dir
   and* with_package_mask =
@@ -287,147 +428,7 @@ let rules ~sctx ~dir tests project =
          else fun packages _f -> with_validate_packages packages ~f:Memo.return)
   in
   Memo.parallel_iter tests ~f:(fun test ->
-    let* spec =
-      let name =
-        match test with
-        | Ok test -> Cram_test.name test
-        | Error (Missing_run_t test) -> Cram_test.name test
-      in
-      let test_name_alias = Alias.Name.of_string name in
-      let init = None, Spec.make_empty ~test_name_alias in
-      let* runtest_alias, acc =
-        Memo.List.fold_left
-          stanzas
-          ~init
-          ~f:(fun (runtest_alias, (acc : Spec.t)) { dir; stanza; prepared } ->
-            match
-              match stanza.applies_to with
-              | Whole_subtree -> true
-              | Files_matching_in_this_dir pred ->
-                Predicate_lang.Glob.test pred ~standard:Predicate_lang.true_ name
-            with
-            | false -> Memo.return (runtest_alias, acc)
-            | true ->
-              let+ { expander; deps } = Memo.Lazy.force prepared in
-              let deps, sandbox, env =
-                match deps with
-                | None -> acc.deps, acc.sandbox, acc.env
-                | Some (sandbox, env) ->
-                  let sandbox =
-                    let open Action_builder.O in
-                    let+ acc = acc.sandbox
-                    and+ sandbox = sandbox in
-                    Sandbox_config.inter acc sandbox
-                  in
-                  let env =
-                    let open Action_builder.O in
-                    let+ acc = acc.env
-                    and+ env in
-                    Install.Roots.extend_env_concat_path_vars acc env
-                  in
-                  acc.deps, sandbox, env
-              in
-              let locks =
-                let open Action_builder.O in
-                let+ more_locks =
-                  Expander.expand_locks expander stanza.locks >>| Path.Set.of_list
-                and+ locks = acc.locks in
-                Path.Set.union locks more_locks
-              in
-              let runtest_alias =
-                match stanza.runtest_alias with
-                | None -> None
-                | Some (loc, set) ->
-                  (match runtest_alias with
-                   | None -> Some (loc, expander, set)
-                   | Some (loc', _, _) ->
-                     let main_message =
-                       [ Pp.text
-                           "enabling or disabling the runtest alias for a cram test may \
-                            only be set once."
-                       ; Pp.textf "It's already set for the test %S" name
-                       ]
-                     in
-                     let compound =
-                       let main = User_message.make ~loc:loc' main_message in
-                       let related =
-                         [ User_message.make ~loc [ Pp.text "Already set here" ] ]
-                       in
-                       [ Compound_user_error.make ~main ~related ]
-                     in
-                     User_error.raise
-                       ~compound
-                       ~loc
-                       (main_message
-                        @ [ Pp.text "The first definition is at:"
-                          ; Pp.text (Loc.to_file_colon_line loc')
-                          ]))
-              in
-              let enabled_if = (expander, stanza.enabled_if) :: acc.enabled_if in
-              let extra_aliases =
-                match stanza.alias with
-                | None -> acc.extra_aliases
-                | Some a -> Alias.Name.Set.add acc.extra_aliases a
-              in
-              let packages =
-                match stanza.package with
-                | None -> acc.packages
-                | Some (p : Package.t) ->
-                  Package.Name.Set.add acc.packages (Package.name p)
-              in
-              let timeout =
-                Option.merge
-                  acc.timeout
-                  stanza.timeout
-                  ~f:(Ordering.min (fun x y -> Time.Span.compare (snd x) (snd y)))
-              in
-              let conflict_markers =
-                Option.value ~default:acc.conflict_markers stanza.conflict_markers
-              in
-              let shell = Option.value ~default:acc.shell stanza.shell in
-              let setup_scripts =
-                let more_current_scripts =
-                  List.map stanza.setup_scripts ~f:(fun (_loc, script) ->
-                    (* Handle both relative and absolute paths *)
-                    if Filename.is_relative script
-                    then Path.build (Path.Build.relative dir script)
-                    else Path.external_ (Path.External.of_string script))
-                in
-                (* This is a silly way to dedupe, but we aim to preserve the
-                   order as much as possible. *)
-                more_current_scripts
-                @ List.filter acc.setup_scripts ~f:(fun x ->
-                  not (List.mem more_current_scripts x ~equal:Path.equal))
-              in
-              ( runtest_alias
-              , { acc with
-                  enabled_if
-                ; locks
-                ; deps
-                ; test_name_alias
-                ; extra_aliases
-                ; packages
-                ; sandbox
-                ; env
-                ; timeout
-                ; conflict_markers
-                ; setup_scripts
-                ; shell
-                } ))
-      in
-      let+ extra_aliases =
-        let+ to_add =
-          (match runtest_alias with
-           | None -> Memo.return true
-           | Some (_, expander, set) -> Expander.eval_blang expander set)
-          >>| function
-          | true -> Alias.Name.Set.singleton Alias0.runtest
-          | false -> Alias.Name.Set.empty
-        in
-        Alias.Name.Set.union to_add acc.extra_aliases
-      in
-      { acc with extra_aliases }
-    in
+    let* spec = spec_for_test ~stanzas test in
     with_package_mask spec.packages (fun () -> test_rule ~sctx ~dir spec test))
 ;;
 

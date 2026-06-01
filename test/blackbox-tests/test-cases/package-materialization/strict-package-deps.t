@@ -46,5 +46,5 @@ validation in install_rules, not layout closure.
 
 Only foo appears, same as without strict_package_deps:
 
-  $ dune rules --format=json _build/default/out | jq 'include "dune"; .[] | ruleDepFilePaths' | censor | grep dune-package | sort
+  $ dune rules --format=json _build/default/out | jq_dune '.[] | ruleDepFilePaths' | censor | grep dune-package | sort
   "_build/install/default/.packages/$DIGEST/lib/foo/dune-package"

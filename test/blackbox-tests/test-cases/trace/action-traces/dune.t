@@ -12,7 +12,7 @@ Dune itself produces action traces
 
   $ dune build @foo
 
-  $ dune trace cat | jq 'include "dune";
+  $ dune trace cat | jq_dune '
   >   select(.name == "init")
   > | { args: .args | keys, keys: keys, argv: .args.argv | .[1:] }
   > '

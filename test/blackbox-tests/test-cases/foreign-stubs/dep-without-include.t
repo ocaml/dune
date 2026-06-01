@@ -35,5 +35,5 @@ The rules include the dependency on foo.h, but the include directory has to be
 added manually.
 
   $ dune rules --root . --format=json _build/default/bar.o |
-  > jq -r 'include "dune"; .[] | ruleDepFilePaths | select(test("subdir"))'
+  > jq_dune -r '.[] | ruleDepFilePaths | select(test("subdir"))'
   _build/default/subdir/foo.h

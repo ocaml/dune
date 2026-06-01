@@ -73,7 +73,7 @@ objdir — both `a.cmi` (referenced) and `b.cmi` (needed for the
 type of `A.identity`).
 
   $ dune rules --root . --format=json --deps '%{cmo:consumer/consumer}' > deps.json
-  $ jq -r 'include "dune"; .[] | depsGlobs
+  $ jq_dune -r '.[] | depsGlobs
   >   | select(.dir | endswith("mylib/.mylib.objs/byte"))
   >   | .dir + " " + .predicate' < deps.json
   _build/default/mylib/.mylib.objs/byte *.cmi

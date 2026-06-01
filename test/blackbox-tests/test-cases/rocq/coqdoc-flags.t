@@ -19,7 +19,7 @@ Testing the coqdoc flags field of the env stanza.
 
   $ dune build @doc
 
-  $ dune trace cat | jq 'include "dune"; coqdocFlags'
+  $ dune trace cat | jq_dune 'coqdocFlags'
   "-R"
   "coq/theories"
   "Corelib"

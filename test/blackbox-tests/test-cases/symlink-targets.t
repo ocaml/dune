@@ -8,8 +8,7 @@ Test demonstrating the handling of actions that produce symlinks.
   $ dune build ./b
 
   $ function print_trace() {
-  > dune trace cat | jq '
-  > include "dune";
+  > dune trace cat | jq_dune '
   >   processes
   > | .args
   > | .prog |= basename

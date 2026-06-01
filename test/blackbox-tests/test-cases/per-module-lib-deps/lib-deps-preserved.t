@@ -34,9 +34,9 @@ dependencies' .cmi files.
 Both modules declare glob deps on mylib's .cmi files:
 
   $ dune rules --root . --format=json --deps _build/default/.main.eobjs/native/dune__exe__Uses_lib.cmx |
-  > jq -r 'include "dune"; .[] | depsGlobPredicates'
+  > jq_dune -r '.[] | depsGlobPredicates'
   *.cmi
 
   $ dune rules --root . --format=json --deps _build/default/.main.eobjs/native/dune__exe__Main.cmx |
-  > jq -r 'include "dune"; .[] | depsGlobPredicates'
+  > jq_dune -r '.[] | depsGlobPredicates'
   *.cmi

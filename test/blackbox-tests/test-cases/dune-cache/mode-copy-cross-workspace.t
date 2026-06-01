@@ -28,7 +28,7 @@ same shared cache in copy mode.
   shared
   $ (cd b \
   >   && dune trace cat \
-  >   | jq -s 'include "dune"; cacheHitsMatching("^_build/default/out$")')
+  >   | jq_dune -s 'cacheHitsMatching("^_build/default/out$")')
   {
     "name": "hit",
     "target": "_build/default/out"

@@ -39,7 +39,7 @@ Editing only [dep_lib.mli] (the [.ml] is unchanged) changes
   > val extra : int
   > EOF
   $ dune build @check
-  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("\\.consumer_lib\\.objs/"))]'
+  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("\\.consumer_lib\\.objs/"))]'
   [
     {
       "target_files": [
@@ -65,5 +65,5 @@ untouched, so [consumer_lib] is not rebuilt:
   > let greeting = "hello-" ^ string_of_int extra
   > EOF
   $ dune build @check
-  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("\\.consumer_lib\\.objs/"))]'
+  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("\\.consumer_lib\\.objs/"))]'
   []

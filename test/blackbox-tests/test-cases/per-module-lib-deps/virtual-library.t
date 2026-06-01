@@ -65,5 +65,5 @@ See: https://github.com/ocaml/dune/issues/4572
 No_vlib is recompiled even though it doesn't reference the virtual library:
 
   $ dune build ./main.exe
-  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("No_vlib"))] | length'
+  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("No_vlib"))] | length'
   2

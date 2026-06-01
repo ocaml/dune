@@ -35,7 +35,7 @@ Only supported after Dune 3.20
 
 Cmj rules should include --mel-package-output
   $ dune rules --root . --format=json app/.pkg.objs/melange/pkg__App.cmj |
-  > jq -r 'include "dune"; .[] | ruleActionFlagValues("--mel-package-name")'
+  > jq_dune -r '.[] | ruleActionFlagValues("--mel-package-name")'
   pkg
 
 

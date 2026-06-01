@@ -23,7 +23,7 @@ specify js mode (#1940).
 
   $ dune clean
   $ dune build @@all
-  $ dune trace cat | jq -r 'include "dune";
+  $ dune trace cat | jq_dune -r '
   >   processes
   > | select(.args.prog | test("js_of_ocaml$"))
   > | .args | targets | .[] | sub("^_build/[^/]+/"; "")' \

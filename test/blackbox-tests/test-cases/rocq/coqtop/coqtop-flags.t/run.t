@@ -2,7 +2,7 @@ Testing that the correct flags are being passed to dune rocq top
 
 The flags passed to coqc:
   $ dune build
-  $ dune trace cat | jq 'include "dune"; rocqFlags'
+  $ dune trace cat | jq_dune 'rocqFlags'
   {
     "name": "rocq",
     "args": [

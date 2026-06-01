@@ -66,7 +66,7 @@ of base_lib's .cmi files. The trace shows compilation targets for
 uses_alpha being rebuilt:
 
   $ dune build ./main.exe
-  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("uses_alpha"))]'
+  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("uses_alpha"))]'
   [
     {
       "target_files": [

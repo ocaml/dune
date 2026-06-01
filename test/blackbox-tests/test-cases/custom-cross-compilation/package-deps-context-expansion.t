@@ -34,6 +34,6 @@ The layout dir should be under install/host/ (the layout for a
 target-context action uses host artifacts):
 
   $ dune rules --format=json _build/target/out \
-  >   | jq 'include "dune"; .[] | ruleDepFilePaths' \
+  >   | jq_dune '.[] | ruleDepFilePaths' \
   >   | grep dune-package | censor
   "_build/install/host/.packages/$DIGEST/lib/mypkg/dune-package"

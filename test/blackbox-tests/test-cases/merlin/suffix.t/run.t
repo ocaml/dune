@@ -2,8 +2,7 @@ Tests Merlin suffix handling.
 
   $ dune build @check
 
-  $ dune ocaml merlin dump-config --format=json $PWD | jq -c '
-  > include "dune";
+  $ dune ocaml merlin dump-config --format=json $PWD | jq_dune -c '
   > .[] | merlinConfigItemsNamed(["SUFFIX"])
   > '
   ["SUFFIX",".aml .amli"]

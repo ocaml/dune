@@ -69,7 +69,7 @@ Add [added_lib] to [consumer_lib]'s [(libraries ...)]. Neither
   > EOF
 
   $ dune build @check
-  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("consumes_dep"))]'
+  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("consumes_dep"))]'
   [
     {
       "target_files": [
@@ -79,7 +79,7 @@ Add [added_lib] to [consumer_lib]'s [(libraries ...)]. Neither
       ]
     }
   ]
-  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("unrelated_module"))]'
+  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("unrelated_module"))]'
   [
     {
       "target_files": [

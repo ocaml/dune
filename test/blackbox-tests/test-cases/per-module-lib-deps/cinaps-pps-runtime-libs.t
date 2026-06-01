@@ -67,7 +67,7 @@ exe lives under a digest-named subdir; locate the `.cmo` first.)
 
   $ CMO=$(find _build -name 'dune__exe__Cinaps.cmo' | head -1)
   $ dune rules --root . --format=json --deps "$CMO" > deps.json
-  $ jq -r 'include "dune"; .[] | depsGlobs
+  $ jq_dune -r '.[] | depsGlobs
   >   | select(.dir | endswith("hello/.hello.objs/byte"))
   >   | .dir + " " + .predicate' < deps.json
   _build/default/hello/.hello.objs/byte *.cmi

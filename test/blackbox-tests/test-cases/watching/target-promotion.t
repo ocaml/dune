@@ -173,7 +173,7 @@ Now test file-system events generated during target promotion.
 
 Show that Dune ignores the initial "dune-workspace" events (injected by Dune).
 
-  $ dune trace cat | jq 'include "dune"; fsUpdateWithPath("dune-workspace")'
+  $ dune trace cat | jq_dune 'fsUpdateWithPath("dune-workspace")'
   {
     "cache_type": "dir_contents",
     "path": "dune-workspace",
@@ -196,7 +196,7 @@ event for [promoted] is more interesting: the file's content did change from "hi
 to "bye" but Dune subscribed to it *after* making the promotion, precisely to
 avoid unnecessarily restarting after receiving the event that it caused itself.
 
-  $ dune trace cat | jq 'include "dune"; fsUpdateWithPath("promoted")'
+  $ dune trace cat | jq_dune 'fsUpdateWithPath("promoted")'
   {
     "cache_type": "dir_contents",
     "path": "promoted",
@@ -218,7 +218,7 @@ because [promoted] existed before running the build. Also, the subset of fields
 of [path_stat] that matter to Dune didn't change either (the [mtime] field did
 change but [fs_memo] does not provide a way to subscribe to it).
 
-  $ dune trace cat | jq 'include "dune"; fsUpdateWithPath(".")'
+  $ dune trace cat | jq_dune 'fsUpdateWithPath(".")'
   {
     "cache_type": "dir_contents",
     "path": ".",

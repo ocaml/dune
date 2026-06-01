@@ -17,8 +17,7 @@ Show that the merlin config knows about melange.compile_flags
   $ touch bar.ml $lib.ml
   $ dune build @check
 
-  $ dune ocaml merlin dump-config --format=json "$PWD" | jq -r '
-  > include "dune";
+  $ dune ocaml merlin dump-config --format=json "$PWD" | jq_dune -r '
   > merlinEntry("Foo")
   > | merlinConfigItemsNamed(["FLG"])
   > | select(.[0] == "FLG" and (.[1] | index("+42")))
@@ -35,8 +34,7 @@ Show that the merlin config knows about melange.compile_flags
 
   $ dune build @check
 
-  $ dune ocaml merlin dump-config --format=json "$PWD" | jq -r '
-  > include "dune";
+  $ dune ocaml merlin dump-config --format=json "$PWD" | jq_dune -r '
   > merlinEntry("Melange")
   > | merlinConfigItemsNamed(["FLG"])
   > | select(.[0] == "FLG" and (.[1] | index("+42")))

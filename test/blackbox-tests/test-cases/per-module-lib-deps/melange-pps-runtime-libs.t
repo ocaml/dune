@@ -72,7 +72,7 @@ resolve cleanly; locate the `.cmj` under the stanza dir.)
 
   $ CMJ=$(find _build/default/me -name '*.cmj' | head -1)
   $ dune rules --root . --format=json --deps "$CMJ" > deps.json
-  $ jq -r 'include "dune"; .[] | depsGlobs
+  $ jq_dune -r '.[] | depsGlobs
   >   | select(.dir | endswith("hello/.hello.objs/melange"))
   >   | .dir + " " + .predicate' < deps.json
   _build/default/hello/.hello.objs/melange *.cmi

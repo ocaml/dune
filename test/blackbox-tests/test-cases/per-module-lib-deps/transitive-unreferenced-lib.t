@@ -79,7 +79,7 @@ untouched. Today [Main] is rebuilt:
 
   $ echo > unreferenced_dep.ml
   $ dune build @check
-  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("dune__exe__Main\\."))]'
+  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("dune__exe__Main\\."))]'
   [
     {
       "target_files": [

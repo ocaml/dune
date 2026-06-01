@@ -81,7 +81,7 @@ entries uniformly.
   ./78/$DIGEST2
 
   $ while read path; do dune internal cache-metadata "$metadata_dir/$path"; done < metadata-paths \
-  > | jq -S -s 'include "dune"; sortCacheMetadataByFirstPath' \
+  > | jq_dune -S -s 'sortCacheMetadataByFirstPath' \
   > | censor
   [
     {
@@ -105,7 +105,7 @@ entries uniformly.
   $ digest="$(
   >   while read path; do
   >     if dune internal cache-metadata "$metadata_dir/$path" \
-  >        | jq -e 'include "dune"; cacheMetadataForPath("target_b")' >/dev/null
+  >        | jq_dune -e 'cacheMetadataForPath("target_b")' >/dev/null
   >     then
   >       echo "$path"
   >     fi
@@ -230,7 +230,7 @@ Test metadata for multiple file targets produced by the same rule.
   $ metadata_dir="$PWD/.xdg-cache/dune/db/meta/v5"
   $ find "$metadata_dir" -mindepth 2 -maxdepth 2 -type f \
   > | while read path; do dune internal cache-metadata "$path"; done \
-  > | jq -S -s 'include "dune"; map(cacheMetadataWithPathPrefix("multi_")) | unique | .[]' \
+  > | jq_dune -S -s 'map(cacheMetadataWithPathPrefix("multi_")) | unique | .[]' \
   > | censor
   {
     "files": [
@@ -265,7 +265,7 @@ Test metadata for directory targets, which are stored with no digest.
   $ metadata_dir="$PWD/.xdg-cache/dune/db/meta/v5"
   $ find "$metadata_dir" -mindepth 2 -maxdepth 2 -type f \
   > | while read path; do dune internal cache-metadata "$path"; done \
-  > | jq -S 'include "dune"; cacheMetadataForPath("output")' \
+  > | jq_dune -S 'cacheMetadataForPath("output")' \
   > | censor
   {
     "files": [

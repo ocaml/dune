@@ -6,8 +6,7 @@
 We dump the config for Foo and Bar modules but the pp.exe preprocessor
 should appear only once since only Foo is using it.
 
-  $ dune ocaml merlin dump-config --format=json $PWD | jq -r '
-  >   include "dune";
+  $ dune ocaml merlin dump-config --format=json $PWD | jq_dune -r '
   >   .[]
   >   | select(.module_name == "Bar" or .module_name == "Foo")
   >   | merlinJsonEntryWithConfigNames(["FLG", "UNIT_NAME"])

@@ -112,7 +112,7 @@ stage the installed Melange object dirs rather than only the entry module's
   > EOF
 
   $ OCAMLPATH=$PWD/prefix/lib:$OCAMLPATH dune rules --format=json --deps --root app --display=quiet dist/node_modules/repro.foo/foo_map.js > deps.json
-  $ jq -r 'include "dune"; .[] | depsGlobEntriesWithPredicate("*.cmj") | select(.dir | endswith("/repro/foo")) | "\(.dir_kind) \(.dir)"' deps.json
+  $ jq_dune -r '.[] | depsGlobEntriesWithPredicate("*.cmj") | select(.dir | endswith("/repro/foo")) | "\(.dir_kind) \(.dir)"' deps.json
   External $TESTCASE_ROOT/prefix/lib/repro/foo
-  $ jq -r 'include "dune"; .[] | depsGlobEntriesWithPredicate("*.cmi") | select(.dir | endswith("/repro/foo")) | "\(.dir_kind) \(.dir)"' deps.json
+  $ jq_dune -r '.[] | depsGlobEntriesWithPredicate("*.cmi") | select(.dir | endswith("/repro/foo")) | "\(.dir_kind) \(.dir)"' deps.json
   External $TESTCASE_ROOT/prefix/lib/repro/foo

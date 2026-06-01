@@ -28,8 +28,7 @@ The eager loop still reacts to filesystem changes after the RPC build has run.
   $ with_timeout dune rpc flush-file-watcher --wait
   $ stop_dune > /dev/null
 
-  $ dune trace cat | jq -s '
-  > include "dune";
+  $ dune trace cat | jq_dune -s '
   > [ [ .[] | buildEvents ] | normalizeBuildRestartEvents ]
   > | map(select(
   >     (.name == "build-restart" and (.args.reasons | index("dune changed")))

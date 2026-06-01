@@ -45,5 +45,5 @@ transitive package dependencies. Actions should declare what they need.
 Only foo appears, neither bar nor baz, even though foo declares
 (depends bar) and bar declares (depends baz):
 
-  $ dune rules --format=json _build/default/out | jq 'include "dune"; .[] | ruleDepFilePaths' | censor | grep dune-package | sort
+  $ dune rules --format=json _build/default/out | jq_dune '.[] | ruleDepFilePaths' | censor | grep dune-package | sort
   "_build/install/default/.packages/$DIGEST/lib/foo/dune-package"

@@ -124,7 +124,7 @@ Test that workspace-local cache works for directory targets.
 
   $ export DUNE_TRACE=cache
   $ dune build output/x
-  $ dune trace cat | jq 'include "dune"; cacheMisses'
+  $ dune trace cat | jq_dune 'cacheMisses'
 
 Requesting the directory target directly works too.
 

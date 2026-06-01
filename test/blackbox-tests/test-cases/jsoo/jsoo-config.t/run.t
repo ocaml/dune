@@ -1,7 +1,7 @@
 tests js_of_ocaml conigs
 
   $ dune build bin/bin1.bc.js bin/bin2.bc.js bin/bin3.bc.js
-  $ dune trace cat | jq -r 'include "dune";
+  $ dune trace cat | jq_dune -r '
   >   processes
   > | select(.args.prog | test("js_of_ocaml$"))
   > | .args | targets | .[] | sub("^_build/[^/]+/"; "")' \

@@ -3,7 +3,7 @@ Demonstrate the shell field in the cram stanza
   $ make_dune_project 3.22
 
   $ printShell() {
-  > dune trace cat | jq 'include "dune"; processes | select(.args.categories | index("cram")) | .args | .prog | split("/") | last'
+  > dune trace cat | jq_dune 'processes | select(.args.categories | index("cram")) | .args | .prog | split("/") | last'
   > }
 
   $ cat >foo.t <<'EOF'

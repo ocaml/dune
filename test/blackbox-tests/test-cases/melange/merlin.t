@@ -22,8 +22,7 @@
 
   $ touch bar.ml $lib.ml
   $ dune build @check
-  $ dune ocaml merlin dump-config --format=json "$PWD" | jq '
-  > include "dune";
+  $ dune ocaml merlin dump-config --format=json "$PWD" | jq_dune '
   > [
   >   .[]
   >   | merlinConfigSummary(["FLG", "UNIT_NAME"])
@@ -213,8 +212,7 @@ Paths to Melange stdlib appear in B and S entries without melange.emit stanza
 
   $ touch main.ml
   $ dune build @check
-  $ dune ocaml merlin dump-config --format=json $PWD | jq '
-  > include "dune";
+  $ dune ocaml merlin dump-config --format=json $PWD | jq_dune '
   > [
   >   .[]
   >   | merlinConfigSummary(["UNIT_NAME"])
@@ -291,8 +289,7 @@ Check for flag directives ordering when another preprocessor is defined
 
 User ppx flags should appear in merlin config
 
-  $ dune ocaml merlin dump-config --format=json $PWD | jq '
-  > include "dune";
+  $ dune ocaml merlin dump-config --format=json $PWD | jq_dune '
   > [
   >   .[]
   >   | merlinConfigSummary(["STDLIB", "FLG", "UNIT_NAME"])

@@ -61,5 +61,5 @@ rebuild targets observed in the trace:
   > let y = "hello"
   > EOF
   $ dune build @check
-  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("spurious_rebuild"))] | length'
+  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("spurious_rebuild"))] | length'
   1

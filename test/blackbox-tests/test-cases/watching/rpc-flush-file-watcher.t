@@ -34,7 +34,7 @@ events preceding the request have reached the scheduler.
 
   $ stop_dune_quiet
 
-  $ dune trace cat | jq -s 'include "dune";
+  $ dune trace cat | jq_dune -s '
   > [ .[] | fsUpdateWithPath("x")
   >        | select(.cache_type == "file_digest" and .result == "changed")
   >        | {cache_type, path, result}

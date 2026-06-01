@@ -19,7 +19,7 @@ and shared cache misses, because we've never built target1 before.
 
 Verify we see cache miss events for our targets in the trace:
 
-  $ dune trace cat | jq -s 'include "dune"; cacheMissesMatching("source|target1")'
+  $ dune trace cat | jq_dune -s 'cacheMissesMatching("source|target1")'
   {
     "name": "workspace_local_miss",
     "target": "_build/default/source",
@@ -58,7 +58,7 @@ misses, because we've cleaned _build/default but not the shared cache.
 
 Verify we see only workspace-local miss events for our targets (shared cache hits should not appear as misses):
 
-  $ dune trace cat | jq -s 'include "dune"; cacheMissesMatching("source|target1")'
+  $ dune trace cat | jq_dune -s 'cacheMissesMatching("source|target1")'
   {
     "name": "workspace_local_miss",
     "target": "_build/default/source",
@@ -69,7 +69,7 @@ Verify we see only workspace-local miss events for our targets (shared cache hit
     "target": "_build/default/target1",
     "reason": "never seen this target before"
   }
-  $ dune trace cat | jq -s 'include "dune"; cacheHitsMatching("source|target1")'
+  $ dune trace cat | jq_dune -s 'cacheHitsMatching("source|target1")'
   {
     "name": "hit",
     "target": "_build/default/source"
@@ -100,7 +100,7 @@ No cache misses should appear in the trace.
 
   $ dune build --config-file=config target1
 
-  $ dune trace cat | jq -s 'include "dune"; [ .[] | cacheMisses ] | length'
+  $ dune trace cat | jq_dune -s '[ .[] | cacheMisses ] | length'
   0
 
 Test that the cache stores all historical build results.
@@ -170,7 +170,7 @@ Test that executable permissions are restored from the shared cache.
 
   $ rm -rf executable/_build
   $ (cd executable && dune build --cache=enabled --cache-storage-mode=copy tool)
-  $ (cd executable && dune trace cat | jq -s 'include "dune"; cacheHitsMatching("^_build/default/tool$")')
+  $ (cd executable && dune trace cat | jq_dune -s 'cacheHitsMatching("^_build/default/tool$")')
   {
     "name": "hit",
     "target": "_build/default/tool"

@@ -62,5 +62,5 @@ not error out with "inconsistent assumptions over interface":
   > let y = 42
   > EOF
   $ dune build @check
-  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("consumer"))] | length'
+  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("consumer"))] | length'
   1

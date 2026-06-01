@@ -26,7 +26,7 @@ Testing the rocqdoc_header and rocqdoc_footer field of the env stanza.
 
   $ dune build @doc
 
-  $ dune trace cat | jq -c 'include "dune"; coqdocFlags'
+  $ dune trace cat | jq_dune -c 'coqdocFlags'
   "-R"
   "coq/theories"
   "Corelib"
@@ -45,7 +45,7 @@ Testing the rocqdoc_header and rocqdoc_footer field of the env stanza.
 
   $ dune build @doc-latex
 
-  $ dune trace cat | jq -c 'include "dune"; coqdocFlags'
+  $ dune trace cat | jq_dune -c 'coqdocFlags'
   "-R"
   "coq/theories"
   "Corelib"

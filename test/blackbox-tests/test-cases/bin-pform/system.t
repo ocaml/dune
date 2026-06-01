@@ -16,6 +16,6 @@ The pform resolves to the same path as which:
 The rule depends on the system binary as an external path:
 
   $ dune rules --format=json _build/default/bin-path \
-  >   | jq 'include "dune"; .[] | ruleDepFilePaths' \
+  >   | jq_dune '.[] | ruleDepFilePaths' \
   >   | dune_cmd subst "$(which sh)" '$WHICH_SH'
   "$WHICH_SH"

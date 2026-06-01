@@ -114,7 +114,7 @@ Now test file-system events generated during directory target promotion.
 
 Show that Dune ignores the initial "dune-workspace" events (injected by Dune).
 
-  $ dune trace cat | jq 'include "dune"; cacheEvent("dune-workspace")'
+  $ dune trace cat | jq_dune 'cacheEvent("dune-workspace")'
   {
     "cache_type": "dir_contents",
     "path": "dune-workspace",
@@ -133,7 +133,7 @@ Show that Dune ignores the initial "dune-workspace" events (injected by Dune).
 
 Dune correctly notices that the contents of . changed because [d1] was created.
 
-  $ dune trace cat | jq 'include "dune"; cacheEvent(".")'
+  $ dune trace cat | jq_dune 'cacheEvent(".")'
   {
     "cache_type": "dir_contents",
     "path": ".",
@@ -157,7 +157,7 @@ result remained unchanged (because fields like [mtime] are ignored). The result
 of [dir_contents] also remained unchanged because Dune fixed the listing of [d1]
 by re-promoting the directory target.
 
-  $ dune trace cat | jq 'include "dune"; cacheEvent("d1")'
+  $ dune trace cat | jq_dune 'cacheEvent("d1")'
   {
     "cache_type": "dir_contents",
     "path": "d1",
@@ -193,7 +193,7 @@ Events below occurred because we replaced file [d1/b] with a directory. Dune
 undid this change to bring the promoted directory target up to date, which
 explains why [file_digest] remained unchanged.
 
-  $ dune trace cat | jq 'include "dune"; cacheEvent("d1/b")'
+  $ dune trace cat | jq_dune 'cacheEvent("d1/b")'
   {
     "cache_type": "dir_contents",
     "path": "d1/b",

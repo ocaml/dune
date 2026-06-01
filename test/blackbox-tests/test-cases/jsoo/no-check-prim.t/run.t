@@ -1,7 +1,7 @@
 Compilation using jsoo
 
   $ dune build bin/technologic.bc.js @install
-  $ dune trace cat | jq -r 'include "dune";
+  $ dune trace cat | jq_dune -r '
   >   processes
   > | select(.args.prog | test("js_of_ocaml$"))
   > | .args | targets | .[] | sub("^_build/[^/]+/"; "")' | sort

@@ -20,8 +20,7 @@ Generates Merlin config for `(include_subdirs qualified)` libraries.
   $ export BUILD_PATH_PREFIX_MAP="/OPAM_PREFIX=$opam_prefix:$BUILD_PATH_PREFIX_MAP"
 
   $ dune build .merlin-conf/lib-foo
-  $ dune ocaml merlin dump-config --format=json . | jq '
-  >   include "dune";
+  $ dune ocaml merlin dump-config --format=json . | jq_dune '
   >   [
   >     .[]
   >     | merlinConfigSummary(["FLG", "UNIT_NAME"])
@@ -403,8 +402,7 @@ Generates Merlin config for `(include_subdirs qualified)` libraries.
       ]
     ]
   }
-  $ dune ocaml merlin dump-config --format=json utils | jq '
-  >   include "dune";
+  $ dune ocaml merlin dump-config --format=json utils | jq_dune '
   >   [
   >     .[]
   >     | merlinConfigSummary(["FLG", "UNIT_NAME"])

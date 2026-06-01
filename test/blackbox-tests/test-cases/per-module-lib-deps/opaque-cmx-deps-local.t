@@ -29,7 +29,7 @@ behave differently; see [opaque-cmx-deps-external.t].
 
   $ dune build ./main.exe
   $ dune rules --root . --format=json --deps _build/default/.main.eobjs/native/dune__exe__Main.cmx |
-  > jq -r 'include "dune"; .[] | depsGlobPredicates' | sort -u
+  > jq_dune -r '.[] | depsGlobPredicates' | sort -u
   *.cmi
   *.cmx
 
@@ -42,5 +42,5 @@ behave differently; see [opaque-cmx-deps-external.t].
 
   $ dune build ./main.exe
   $ dune rules --root . --format=json --deps _build/default/.main.eobjs/native/dune__exe__Main.cmx |
-  > jq -r 'include "dune"; .[] | depsGlobPredicates' | sort -u
+  > jq_dune -r '.[] | depsGlobPredicates' | sort -u
   *.cmi

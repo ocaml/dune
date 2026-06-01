@@ -47,7 +47,7 @@ left unexported, which would trip warning 32 under dev):
   > EOF
 
   $ dune build ./main.exe
-  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("dune__exe__Main"))]'
+  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("dune__exe__Main"))]'
   [
     {
       "target_files": [
@@ -86,7 +86,7 @@ Add another paired declaration:
   > EOF
 
   $ dune build ./main.exe
-  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("dune__exe__Main"))]'
+  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("dune__exe__Main"))]'
   [
     {
       "target_files": [

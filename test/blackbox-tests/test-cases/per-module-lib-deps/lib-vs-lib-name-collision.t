@@ -69,5 +69,5 @@ directory is a glob:
   > let also_from_shadowed = 42
   > EOF
   $ dune build @check
-  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("consumer_lib/\\.consumer_lib\\.objs/byte/consumer\\."))] | length > 0'
+  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("consumer_lib/\\.consumer_lib\\.objs/byte/consumer\\."))] | length > 0'
   true

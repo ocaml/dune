@@ -6,8 +6,7 @@ We build the project
   bar
 
 Verify that merlin configuration was generated...
-  $ dune ocaml merlin dump-config --format=json $PWD | jq -r '
-  >   include "dune";
+  $ dune ocaml merlin dump-config --format=json $PWD | jq_dune -r '
   >   .[]
   >   | merlinJsonEntry'
   Test: _build/default/test
@@ -58,8 +57,7 @@ Verify that merlin configuration was generated...
   ["UNIT_NAME","foo"]
 
 ...but not in the sub-folder whose content was copied
-  $ dune ocaml merlin dump-config --format=json $PWD/411 | jq -r '
-  >   include "dune";
+  $ dune ocaml merlin dump-config --format=json $PWD/411 | jq_dune -r '
   >   .[]
   >   | merlinJsonEntry'
 

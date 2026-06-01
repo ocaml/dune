@@ -1,8 +1,6 @@
 Dune itself produces action traces
 
-  $ cat >dune-project<<EOF
-  > (lang dune 3.22)
-  > EOF
+  $ make_dune_project 3.22
 
   $ cat >dune <<EOF
   > (rule (with-stdout-to foo (echo bar)))

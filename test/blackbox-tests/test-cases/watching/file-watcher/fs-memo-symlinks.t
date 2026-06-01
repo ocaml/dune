@@ -24,7 +24,7 @@ Tests for [Fs_memo] symlink handling.
 The action ignores the dependency [dep]. We use it to force rerunning the action
 when necessary.
 
-  $ echo "(lang dune 2.0)" > dune-project
+  $ make_dune_project 2.0
   $ cat >dune <<EOF
   > (rule
   >  (alias default)

@@ -4,7 +4,7 @@ Test where a single include directory is added via a `(include ...)` statement
 ----------------------------------------------------------------------------------
 * Versions of dune before 3.5 do not support this feature
 
-  $ echo "(lang dune 3.4)" > dune-project
+  $ make_dune_project 3.4
   $ cat >dune <<EOF
   > (library
   >  (name foo)
@@ -24,7 +24,7 @@ Test where a single include directory is added via a `(include ...)` statement
 ----------------------------------------------------------------------------------
 * Error if include file is missing
 
-  $ echo "(lang dune 3.5)" > dune-project
+  $ make_dune_project 3.5
 
   $ cat >bar.c <<EOF
   > #include <caml/mlvalues.h>

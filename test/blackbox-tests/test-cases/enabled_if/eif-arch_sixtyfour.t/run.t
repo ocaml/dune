@@ -1,17 +1,13 @@
 Testing %{arch_sixtyfour} in enabled_if
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.11)
-  > EOF
+  $ make_dune_project 3.11
 
   $ dune exec -- ./hello.exe
   Hello, World!
 
 Testing the version guard
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.10)
-  > EOF
+  $ make_dune_project 3.10
 
   $ dune exec -- ./hello.exe
   File "dune", line 4, characters 5-22:

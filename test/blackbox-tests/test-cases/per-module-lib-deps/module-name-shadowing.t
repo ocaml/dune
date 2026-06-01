@@ -5,9 +5,7 @@ internal) correctly reflects the compiler's resolution order.
 
 See: https://github.com/ocaml/dune/issues/4572
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.0)
-  > EOF
+  $ make_dune_project 3.0
 
 --- Unwrapped library: internal module shadows library module ---
 

@@ -1,6 +1,6 @@
 A default implementation of a library must belong to the same package
 
-  $ echo "(lang dune 2.6)" > dune-project
+  $ make_dune_project 2.6
   $ touch dummyfoo2.opam
   $ mkdir -p vlib impl
   $ touch vlib/vlib.mli impl/vlib.ml

@@ -5,9 +5,7 @@ direct library reference, but the compiler follows alias chains and reads
 
 Any per-module inter-library dependency optimization must account for this.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.23)
-  > EOF
+  $ make_dune_project 3.23
 
 Set up a chain: libA -> libB -> libC -> libD, where each intermediate
 library creates a transparent alias to the next.

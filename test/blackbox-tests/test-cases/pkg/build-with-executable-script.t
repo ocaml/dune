@@ -7,9 +7,7 @@ Setup dune-project, dune-workspace, etc.
 
   $ mkdir scripts/
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.22)
-  > EOF
+  $ make_dune_project 3.22
 
   $ pkg() {
   > make_lockpkg $1 <<EOF

@@ -1,8 +1,6 @@
 Show an edge case of `(include_subdirs ..)` and ocamllex
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.13)
-  > EOF
+  $ make_dune_project 3.13
 
   $ mkdir -p src/a
   $ cat > dune << EOF

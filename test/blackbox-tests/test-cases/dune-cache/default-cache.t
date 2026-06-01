@@ -1,6 +1,6 @@
 The dune cache should be enabled by default
 
-  $ echo "(lang dune 3.17)" > dune-project
+  $ make_dune_project 3.17
 
   $ cat > dune << EOF
   > (library

@@ -1,9 +1,7 @@
 Testing multiple aliases in rules stanza
 
 First we start with a dune-project before alias was introduced:
-  $ cat > dune-project << EOF
-  > (lang dune 1.9)
-  > EOF
+  $ make_dune_project 1.9
 
   $ cat > dune << EOF
   > (rule
@@ -20,9 +18,7 @@ First we start with a dune-project before alias was introduced:
   [1]
 
 Next we update the dune-project file to use dune 2.0:
-  $ cat > dune-project << EOF
-  > (lang dune 2.0)
-  > EOF
+  $ make_dune_project 2.0
 
   $ dune build @a
   I have run
@@ -57,9 +53,7 @@ That doesn't work so we use the aliases field
   [1]
 
 Updating the dune-project file to use dune 3.5 allows the build to succeed:
-  $ cat > dune-project << EOF
-  > (lang dune 3.5)
-  > EOF
+  $ make_dune_project 3.5
 
   $ dune build @a
   I have run

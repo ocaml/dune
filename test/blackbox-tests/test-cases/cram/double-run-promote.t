@@ -1,9 +1,7 @@
 This test demonstrates that we pointlessly re-run cram tests
 after they're promted
 
-  $ cat >dune-project<<EOF
-  > (lang dune 3.12)
-  > EOF
+  $ make_dune_project 3.12
 
   $ cat >foo.t <<EOF
   >   $ echo run >> $PWD/side-effect

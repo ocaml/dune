@@ -6,7 +6,7 @@ Expands library artifact variables in alias dependencies.
   >  (deps %{lib:foo:theories/a})
   >  (action (echo "deps: %{deps}\n")))
   > EOF
-  $ echo "(lang dune 1.6)" > dune-project
+  $ make_dune_project 1.6
   $ touch foo.opam
   $ mkdir foo && touch foo/a
   $ cat >foo/dune <<EOF

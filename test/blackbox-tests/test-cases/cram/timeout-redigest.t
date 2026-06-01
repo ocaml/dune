@@ -1,8 +1,6 @@
 Testing how timeout affects the digest:
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.20)
-  > EOF
+  $ make_dune_project 3.20
 
   $ cat > mytest.t
 

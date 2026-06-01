@@ -1,9 +1,7 @@
 RPC build requests sent while the eager loop is building are serialized with
 that eager iteration instead of entering the build loop concurrently.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.18)
-  > EOF
+  $ make_dune_project 3.18
 
   $ marker_dir="$(mktemp -d)"
   $ marker="$marker_dir/eager-build-started"

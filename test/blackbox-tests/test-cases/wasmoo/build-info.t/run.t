@@ -1,6 +1,6 @@
 Jsoo and build-info
 
-  $ echo "(lang dune 3.17)" > dune-project
+  $ make_dune_project 3.17
   $ dune build
   Warning [missing-debug-event]: '--source-map' is enabled but the bytecode program was compiled with no debugging information.
   Warning: Consider passing '-g' option to ocamlc.

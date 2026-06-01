@@ -16,9 +16,7 @@ the stanza's [(libraries ...)] list. Neither [consumes_dep] nor
 rebuild. Records the rebuild counts on each so a future change
 can flip them to 0.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.23)
-  > EOF
+  $ make_dune_project 3.23
 
   $ cat > dune <<EOF
   > (library

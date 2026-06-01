@@ -6,9 +6,7 @@ Set up a PPX driver that accepts --cookie and produces a valid output file,
 an inner ppx with cookies, and a wrapper ppx that depends on the inner one:
 
   $ export DUNE_TRACE="process"
-  $ cat > dune-project <<EOF
-  > (lang dune 3.0)
-  > EOF
+  $ make_dune_project 3.0
   $ cat > dune <<EOF
   > (library
   >  (name driver)

@@ -1,8 +1,6 @@
 Suggests the `(alias ...)` stanza when a dependency-only rule is missing an action.
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.0)
-  > EOF
+  $ make_dune_project 3.0
 
   $ cat > dune << EOF
   > (rule

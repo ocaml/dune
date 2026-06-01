@@ -1,8 +1,6 @@
 Tests version-based build_if constraints.
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.8)
-  > EOF
+  $ make_dune_project 3.8
 
   $ cat > dune << EOF
   > (test
@@ -20,8 +18,6 @@ Tests version-based build_if constraints.
   Please update your dune-project file to have (lang dune 3.9).
   [1]
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.9)
-  > EOF
+  $ make_dune_project 3.9
 
   $ dune build

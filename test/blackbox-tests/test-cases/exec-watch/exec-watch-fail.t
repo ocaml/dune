@@ -3,9 +3,7 @@ non-zero exit code.
 
   $ DONE_FLAG=_build/done_flag
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.18)
-  > EOF
+  $ make_dune_project 3.18
 
   $ cat > dune <<EOF
   > (executable

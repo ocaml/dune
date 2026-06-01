@@ -1,8 +1,6 @@
 Specification of the concurrency action:
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.7)
-  > EOF
+  $ make_dune_project 3.7
 
   $ cat > dune << EOF
   > (rule
@@ -20,9 +18,7 @@ Specification of the concurrency action:
 
 Requires Dune 3.8.
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.8)
-  > EOF
+  $ make_dune_project 3.8
 
 (concurrent ...) runs actions concurrently. Here we mock up an example where two
 subactions rely on eachother to also be running in order to terminate.

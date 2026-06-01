@@ -6,9 +6,7 @@ Fallback rules must either have:
 Here we me makes sure that having some targets in the source and some not is
 impossible.
 
-  $ cat>dune-project <<EOF
-  > (lang dune 3.10)
-  > EOF
+  $ make_dune_project 3.10
 
   $ cat >dune <<EOF
   > (rule

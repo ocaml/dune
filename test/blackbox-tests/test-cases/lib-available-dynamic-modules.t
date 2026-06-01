@@ -1,9 +1,7 @@
 Demonstrate a dependency cycle between library modules field and a rule that
 generates them dynamically in the same directory
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.13)
-  > EOF
+  $ make_dune_project 3.13
 
   $ mkdir gen
   $ cat > gen/dune << EOF

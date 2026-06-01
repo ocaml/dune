@@ -10,9 +10,7 @@ Create a test that uses cygpath to get the native Windows path of the root
 (with a drive letter like C:\...), adds it to BUILD_PATH_PREFIX_MAP, and
 verifies the path gets rewritten in output.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.23)
-  > EOF
+  $ make_dune_project 3.23
 
   $ cat >t1.t <<'EOF'
   > Get a native Windows path with a drive letter colon:

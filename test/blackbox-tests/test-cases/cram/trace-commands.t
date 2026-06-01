@@ -1,8 +1,6 @@
 Demonstrate command level trace events
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.22)
-  > EOF
+  $ make_dune_project 3.22
 
   $ cat > dune <<EOF
   > (cram

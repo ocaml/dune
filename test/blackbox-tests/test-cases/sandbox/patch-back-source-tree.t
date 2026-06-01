@@ -3,9 +3,7 @@ Test for (sandbox patch_back_source_tree)
 This sandbox allows to safely "modify" source files by turning modifications
 into promotions.
 
-  $ cat >dune-project<<EOF
-  > (lang dune 3.23)
-  > EOF
+  $ make_dune_project 3.23
 
 Targest are not promoted
 ------------------------
@@ -333,9 +331,7 @@ from promotion output. Unrelated source-tree changes made by the same action are
 still reported.
 
   $ rm -rf out sub dune
-  $ cat >dune-project<<EOF
-  > (lang dune 3.24)
-  > EOF
+  $ make_dune_project 3.24
   $ cat >dune<<EOF
   > (rule
   >  (deps (sandbox patch_back_source_tree))

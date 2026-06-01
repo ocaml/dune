@@ -1,8 +1,6 @@
 Create ppx1 and exe:
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.7)
-  > EOF
+  $ make_dune_project 3.7
   $ cat > dune <<EOF
   > (library
   >  (name ppx)
@@ -43,7 +41,5 @@ Create ppx1 and exe:
 
 Works since Dune 3.18
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.18)
-  > EOF
+  $ make_dune_project 3.18
   $ dune build ./the_exe.exe

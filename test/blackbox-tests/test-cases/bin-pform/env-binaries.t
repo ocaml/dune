@@ -1,8 +1,6 @@
 %{bin:...} for a binary added via (env (binaries ...)).
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.24)
-  > EOF
+  $ make_dune_project 3.24
   $ cat >dune <<'EOF'
   > (executable (name mybin))
   > (env (_ (binaries (mybin.exe as myothername))))

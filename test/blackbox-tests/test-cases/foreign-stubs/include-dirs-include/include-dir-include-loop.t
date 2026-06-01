@@ -1,7 +1,7 @@
 ----------------------------------------------------------------------------------
 Detect loops of `(include ...)` statements
 
-  $ echo "(lang dune 3.5)" > dune-project
+  $ make_dune_project 3.5
 
   $ cat >dune <<EOF
   > (library

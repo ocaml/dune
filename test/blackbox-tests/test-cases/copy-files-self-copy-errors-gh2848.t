@@ -12,7 +12,7 @@ is <dir>/<glob> where <dir> is not the current directory.
 ----------------------------------------------------------------------------------
 * Good error message when <dir> is the current directory
 
-  $ echo "(lang dune 2.2)" > dune-project
+  $ make_dune_project 2.2
 
   $ cat >dune <<EOF
   > (executable (name foo))
@@ -40,7 +40,7 @@ is <dir>/<glob> where <dir> is not the current directory.
 ----------------------------------------------------------------------------------
 * Good error message when <dir> is missing
 
-  $ echo "(lang dune 2.2)" > dune-project
+  $ make_dune_project 2.2
 
   $ cat >dune <<EOF
   > (executable (name foo))

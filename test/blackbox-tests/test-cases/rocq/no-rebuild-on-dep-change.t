@@ -1,5 +1,5 @@
   $ echo "(rocq.theory (name bug) (mode vo))" > dune
-  $ echo "(lang dune 3.21)" > dune-project
+  $ make_dune_project 3.21
   $ echo "(using rocq 0.11)" >> dune-project
   $ touch root.v leaf.v
   $ dune build

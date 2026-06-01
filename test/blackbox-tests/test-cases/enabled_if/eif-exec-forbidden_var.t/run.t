@@ -1,8 +1,6 @@
 The next ones use forbidden variables For dune 2.3 -> 2.5 it is a warning
 
-  $ cat > dune-project <<EOF
-  > (lang dune 2.3)
-  > EOF
+  $ make_dune_project 2.3
   $ dune exec ./foo.exe
   File "dune", line 3, characters 17-32:
   3 |  (enabled_if (<> %{project_root} "")))
@@ -13,9 +11,7 @@ The next ones use forbidden variables For dune 2.3 -> 2.5 it is a warning
   bar
 
 For dune >= 2.6 it is an error
-  $ cat > dune-project <<EOF
-  > (lang dune 2.6)
-  > EOF
+  $ make_dune_project 2.6
   $ dune exec ./foo.exe
   File "dune", line 3, characters 17-32:
   3 |  (enabled_if (<> %{project_root} "")))

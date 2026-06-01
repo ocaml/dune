@@ -1,7 +1,7 @@
 ----------------------------------------------------------------------------------
 Test where a multiple include directories are added via a `(include ...)` statement
 
-  $ echo "(lang dune 3.5)" > dune-project
+  $ make_dune_project 3.5
 
   $ cat >dune <<EOF
   > (library

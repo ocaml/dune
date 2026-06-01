@@ -1,9 +1,7 @@
 Test building 2 ocamllex stanzas in the same group, by 2 different stanzas 
 (library + executable)
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.21)
-  > EOF
+  $ make_dune_project 3.21
   $ cat > dune <<EOF
   > (library (name foo) (modules foo foo_lex))
   > (executable (name bar) (modules bar bar_lex))

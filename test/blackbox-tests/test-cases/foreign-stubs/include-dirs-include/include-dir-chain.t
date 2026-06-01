@@ -2,7 +2,7 @@
 Include a file with an `(include ...)` statement, which iteslf contains an
 `(include ...`) statement.
 
-  $ echo "(lang dune 3.5)" > dune-project
+  $ make_dune_project 3.5
 
   $ cat >dune <<EOF
   > (library

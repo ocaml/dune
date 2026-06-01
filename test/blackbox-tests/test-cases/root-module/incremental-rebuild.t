@@ -5,9 +5,7 @@ implementation changes. This locks in the incremental-rebuild
 property for [Root]-aliased dependencies that any future change
 to dune's inter-library-dependency tracking must preserve.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.23)
-  > EOF
+  $ make_dune_project 3.23
 
   $ mkdir dep_lib consumer_lib
   $ cat > dep_lib/dune <<EOF

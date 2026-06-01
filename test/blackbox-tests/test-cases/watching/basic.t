@@ -3,7 +3,7 @@ Basic tests for the file-watching mode.
 ----------------------------------------------------------------------------------
 * Compile a simple rule
 
-  $ echo "(lang dune 2.0)" > dune-project
+  $ make_dune_project 2.0
 
   $ cat > x <<EOF
   > original-contents

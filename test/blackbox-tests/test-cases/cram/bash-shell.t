@@ -1,8 +1,6 @@
 Demonstrate the shell field in the cram stanza
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.22)
-  > EOF
+  $ make_dune_project 3.22
 
   $ printShell() {
   > dune trace cat | jq 'include "dune"; processes | select(.args.categories | index("cram")) | .args | .prog | split("/") | last'

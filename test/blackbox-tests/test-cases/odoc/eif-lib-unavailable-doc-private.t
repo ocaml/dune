@@ -1,8 +1,6 @@
 Show behavior of doc-private alias when it's part of an unavailable library
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.13)
-  > EOF
+  $ make_dune_project 3.13
 
   $ cat > dune << EOF
   > (library

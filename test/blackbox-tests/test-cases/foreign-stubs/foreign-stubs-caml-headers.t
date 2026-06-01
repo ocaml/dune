@@ -1,8 +1,6 @@
 Check that C stub compilation rules are made to depend on the Caml header files.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.21)
-  > EOF
+  $ make_dune_project 3.21
 
   $ cat >dune <<EOF
   > (executable

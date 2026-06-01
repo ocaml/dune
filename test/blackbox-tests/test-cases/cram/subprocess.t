@@ -1,9 +1,7 @@
 Testing the termination of subprocesses in cram tests. We first create a dune
 project with a single cram test.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.19)
-  > EOF
+  $ make_dune_project 3.19
 
 We create a file for tracking the PID of a subprocess.
 

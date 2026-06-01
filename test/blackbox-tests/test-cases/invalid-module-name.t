@@ -1,5 +1,5 @@
 Dune does not report an invalid module name as an error
-  $ echo "(lang dune 2.2)" > dune-project
+  $ make_dune_project 2.2
   $ cat >dune <<EOF
   > (library (name foo))
   > EOF

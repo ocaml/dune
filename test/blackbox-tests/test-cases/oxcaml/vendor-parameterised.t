@@ -1,8 +1,6 @@
 Testing that vendoring a parameterised library works as expected:
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.20)
-  > EOF
+  $ make_dune_project 3.20
 
 Note that this root `dune-project` does not enables `(using oxcaml 0.1)`, but
 will depend on a vendored project that does.

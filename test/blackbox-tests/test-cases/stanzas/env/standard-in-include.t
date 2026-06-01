@@ -3,9 +3,7 @@
 When :standard is used inside an :include'd file, environment flags are not
 applied.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.18)
-  > EOF
+  $ make_dune_project 3.18
 
 Set a custom flag in the environment:
 

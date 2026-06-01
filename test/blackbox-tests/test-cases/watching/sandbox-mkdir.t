@@ -3,7 +3,7 @@ Test that Dune mkdirs the right set of directories in the sandbox.
 ----------------------------------------------------------------------------------
 * Compile a simple rule
 
-  $ echo "(lang dune 2.0)" > dune-project
+  $ make_dune_project 2.0
 
   $ mkdir test
   $ touch test/baz

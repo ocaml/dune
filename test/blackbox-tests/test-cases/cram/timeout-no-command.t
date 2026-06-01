@@ -3,9 +3,7 @@ Testing that timeout errors don't include the command that caused the timeout.
 This test demonstrates the current behavior where timeout error messages
 don't include information about which specific command caused the timeout.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.20)
-  > EOF
+  $ make_dune_project 3.20
 
   $ cat > dune <<EOF
   > (cram

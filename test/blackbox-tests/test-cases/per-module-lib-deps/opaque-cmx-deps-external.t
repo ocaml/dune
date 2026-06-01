@@ -5,9 +5,7 @@ omits the [.cmx] from the dep set for *local* libraries. The [unix]
 library, shipped with OCaml and resolved through findlib, plays the
 role of "external".
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.23)
-  > EOF
+  $ make_dune_project 3.23
 
   $ cat > dune <<EOF
   > (executable (name main) (libraries unix))

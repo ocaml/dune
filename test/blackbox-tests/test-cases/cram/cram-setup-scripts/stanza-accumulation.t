@@ -1,8 +1,6 @@
 Test that setup scripts accumulate when multiple stanzas match the same test
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.21)
-  > EOF
+  $ make_dune_project 3.21
 
 Create three different setup scripts:
 

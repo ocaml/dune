@@ -20,9 +20,7 @@ Structure: [dep_lib] is unwrapped with module [Original_name];
 and uses [-open Lib_re_export] in its flags; [consumer.ml] writes
 [Re.x] without naming [dep_lib] or [lib_re_export] in source.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.23)
-  > EOF
+  $ make_dune_project 3.23
 
   $ cat > dune <<EOF
   > (library (name dep_lib) (wrapped false) (modules original_name))

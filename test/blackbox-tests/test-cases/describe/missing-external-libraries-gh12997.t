@@ -1,8 +1,6 @@
 `dune describe workspace` should not fail on missing external libraries.
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.22)
-  > EOF
+  $ make_dune_project 3.22
 
   $ cat > dune << EOF
   > (library

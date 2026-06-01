@@ -20,9 +20,7 @@ Test reproducibility check
   >   sed '/^Warning:/,/^action at dune:6/d; /^build /d' dune-build-output
   > }
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.0)
-  > EOF
+  $ make_dune_project 3.0
   $ cat > dune <<EOF
   > (rule
   >   (deps dep)

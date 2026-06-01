@@ -135,9 +135,7 @@ the hash:
 Make sure that the hash changes when the formula changes from a conjunction to
 a disjunction, thus changing the solution:
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.11)
-  > EOF
+  $ make_dune_project 3.11
   $ cat > local.opam <<EOF
   > opam-version: "2.0"
   > depends: [ "a" "b" ]

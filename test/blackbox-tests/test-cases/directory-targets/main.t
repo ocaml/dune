@@ -1,8 +1,6 @@
 Tests for directory targets.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.0)
-  > EOF
+  $ make_dune_project 3.0
 
 Directory targets require an extension.
 
@@ -21,9 +19,7 @@ Directory targets require an extension.
 
 Starting from Dune 3.24, directory targets no longer require an extension.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.24)
-  > EOF
+  $ make_dune_project 3.24
 
   $ cat > dune <<EOF
   > (rule

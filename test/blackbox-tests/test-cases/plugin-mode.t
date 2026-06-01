@@ -1,8 +1,6 @@
 Testsuite for (mode plugin).
 
-  $ cat > dune-project <<EOF
-  > (lang dune 2.4)
-  > EOF
+  $ make_dune_project 2.4
 
   $ cat > dune <<EOF
   > (executable

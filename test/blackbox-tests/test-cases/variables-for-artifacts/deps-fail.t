@@ -4,7 +4,7 @@ field of a (rule).
 This test is no longer failing. It should fail because
 %{cmo:...} wasn't allowed in the deps field in (lang dune <3.0).
 
-  $ echo "(lang dune 2.1)" > dune-project
+  $ make_dune_project 2.1
   $ cat > dune << EOF
   > (rule
   >  (target t)

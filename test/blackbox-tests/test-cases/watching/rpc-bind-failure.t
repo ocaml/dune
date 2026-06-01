@@ -2,7 +2,7 @@ Startup RPC bind failures should be reported immediately and terminate dune.
 
   $ export DUNE_TRACE=rpc
 
-  $ echo "(lang dune 3.23)" > dune-project
+  $ make_dune_project 3.23
 
   $ cat > dune <<EOF
   > (rule

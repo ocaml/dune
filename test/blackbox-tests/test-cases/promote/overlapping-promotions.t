@@ -3,7 +3,7 @@ Targets can be promoted on to existing targets
 The test is not reproducible without this
   $ export DUNE_CONFIG__BACKGROUND_DIGESTS=disabled
 
-  $ echo "(lang dune 3.20)" > dune-project
+  $ make_dune_project 3.20
 
   $ mkdir subdir
 

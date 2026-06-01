@@ -3,9 +3,7 @@ Test that disabled cram tests can still be run explicitly.
 The enabled_if field controls whether a test is included in @runtest,
 but does not prevent the test from being run explicitly.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.21)
-  > EOF
+  $ make_dune_project 3.21
 
   $ cat > dune <<EOF
   > (cram

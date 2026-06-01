@@ -1,9 +1,7 @@
 We test the `(select)` field of the `(libraries)` field in the presence of
 a conflicting rule
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.22)
-  > EOF
+  $ make_dune_project 3.22
 
   $ cat > dune <<EOF
   > (ocamllex (modules lexer))

@@ -277,16 +277,23 @@ make_lockdir() {
 	EOF
 }
 
-make_package_project() {
-  local version="$1"
-  shift
+make_named_package_project() {
+  local name="$1"
+  local version="$2"
+  shift 2
   cat > dune-project <<- EOF
 	(lang dune ${version})
 	(package
-	 (name x)
+	 (name ${name})
 	 (allow_empty)
 	 (depends $@))
 	EOF
+}
+
+make_package_project() {
+  local version="$1"
+  shift
+  make_named_package_project x "${version}" "$@"
 }
 
 make_project() {

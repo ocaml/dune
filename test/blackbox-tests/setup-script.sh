@@ -294,6 +294,14 @@ summarize_rpc_trace () {
         end'
 }
 
+trace_rocq_flags () {
+    local target="${1}"
+
+    dune clean
+    dune build "${target}"
+    dune trace cat | jq_dune -c 'rocqFlags'
+}
+
 wait_for_dune_exit_with_timeout () {
     exit_code=0
     wait_for_pid_to_exit_with_timeout "$DUNE_PID" 200 || exit_code=$?

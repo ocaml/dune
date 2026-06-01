@@ -3,23 +3,6 @@ Tests for [Fs_memo] module.
   $ export DUNE_TRACE=cache
   $ setup_xdg_runtime_dir
 
-  $ test () {
-  >   echo "------------------------------------------"
-  >   before=$(cat _build/default/result 2>/dev/null)
-  >   start_dune
-  >   build . | grep -v Success
-  >   between=$(cat _build/default/result)
-  >   eval "$@"
-  >   build . | grep -v Success
-  >   stop_dune >> .#tmp
-  >   after=$(cat _build/default/result)
-  >   cat .#tmp
-  >   echo "------------------------------------------"
-  >   echo "result = '$before' -> '$between' -> '$after'"
-  >   echo "------------------------------------------"
-  >   dune trace cat | jq -c 'select(.name == "fs_update") | .args' | sort
-  >   rm .#tmp
-  > }
 
 The action ignores the dependency [dep]. We use it to force rerunning the action
 when necessary.
@@ -48,7 +31,7 @@ when necessary.
 Note that we receive two events for [file-2] because it's first created empty
 and then the contents is written to it.
 
-  $ test "echo -n 2 > file-2"
+  $ fs_memo_test "echo -n 2 > file-2"
   ------------------------------------------
   Executing rule...
   Success, waiting for filesystem changes...
@@ -78,7 +61,7 @@ Verify that filesystem cache events are being traced:
 Note that Dune did not re-execute the rule because the set of files matching
 the glob remains unchanged.
 
-  $ test "mkdir dir"
+  $ fs_memo_test "mkdir dir"
   ------------------------------------------
   Success, waiting for filesystem changes...
   Success, waiting for filesystem changes...
@@ -99,7 +82,7 @@ We create [dir/file-3] before running Dune, so we only observe a single
 [file_digest] change event with the file watcher.
 
   $ echo -n '?' > dir/file-3
-  $ test "echo -n 3 > dir/file-3"
+  $ fs_memo_test "echo -n 3 > dir/file-3"
   ------------------------------------------
   Executing rule...
   Success, waiting for filesystem changes...
@@ -117,7 +100,7 @@ We create [dir/file-3] before running Dune, so we only observe a single
 
 Now, Dune similarly updates [file_digest] for [file-2].
 
-  $ test "echo -n '*' > file-2"
+  $ fs_memo_test "echo -n '*' > file-2"
   ------------------------------------------
   Success, waiting for filesystem changes...
   Executing rule...
@@ -134,7 +117,7 @@ Now, Dune similarly updates [file_digest] for [file-2].
 
 On deletion of a file, we receive events for the file and the parent directory.
 
-  $ test "rm file-2"
+  $ fs_memo_test "rm file-2"
   ------------------------------------------
   Success, waiting for filesystem changes...
   Executing rule...
@@ -155,7 +138,7 @@ On deletion of a file, we receive events for the file and the parent directory.
 Dune notices that [dir_contents] of both [dir] and [.] changed, and also that
 [dir/file-3]'s digest changed (from a digest to the error about missing file).
 
-  $ test "mv dir/file-3 ."
+  $ fs_memo_test "mv dir/file-3 ."
   ------------------------------------------
   Success, waiting for filesystem changes...
   Executing rule...
@@ -179,7 +162,7 @@ Dune notices that [dir_contents] of both [dir] and [.] changed, and also that
   {"cache_type":"path_stat","path":"dune-workspace","result":"unchanged"}
   {"cache_type":"path_stat","path":"file-3","result":"skipped"}
 
-  $ test "mkdir dir/subdir"
+  $ fs_memo_test "mkdir dir/subdir"
   ------------------------------------------
   Success, waiting for filesystem changes...
   Success, waiting for filesystem changes...
@@ -198,7 +181,7 @@ Dune notices that [dir_contents] of both [dir] and [.] changed, and also that
 
 Again, there are two events for [file-4]: for creation and modification.
 
-  $ test "echo -n 4 > dir/subdir/file-4"
+  $ fs_memo_test "echo -n 4 > dir/subdir/file-4"
   ------------------------------------------
   Success, waiting for filesystem changes...
   Executing rule...
@@ -222,7 +205,7 @@ Again, there are two events for [file-4]: for creation and modification.
 Here we are getting duplicate events for directories [dir] and [dir/subdir]
 because we watch each of them both directly and via their parents.
 
-  $ test "mv dir/subdir ."
+  $ fs_memo_test "mv dir/subdir ."
   ------------------------------------------
   Success, waiting for filesystem changes...
   Executing rule...
@@ -257,7 +240,7 @@ and two events for [file-5]: for moving and for changing. There are two events
 for [dir_contents] of [.] because moving a file is interpreted as deleting and
 then creating a file.
 
-  $ test "mv file-1 file-5; echo -n 5 > file-5"
+  $ fs_memo_test "mv file-1 file-5; echo -n 5 > file-5"
   ------------------------------------------
   Success, waiting for filesystem changes...
   Executing rule...

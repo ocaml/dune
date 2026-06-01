@@ -10,17 +10,7 @@ See: https://github.com/ocaml/dune/issues/4572
 
   $ make_dune_project 3.0
 
-  $ mkdir lib
-  $ cat > lib/dune <<EOF
-  > (library
-  >  (name mylib))
-  > EOF
-  $ cat > lib/mylib.ml <<EOF
-  > let value = 42
-  > EOF
-  $ cat > lib/mylib.mli <<EOF
-  > val value : int
-  > EOF
+  $ make_value_library lib mylib 42
 
   $ cat > dune <<EOF
   > (executable

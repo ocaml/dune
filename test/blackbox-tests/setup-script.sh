@@ -275,6 +275,74 @@ write_target_promotion_rules() {
 	EOF
 }
 
+write_toplevel_plugin_sources() {
+  cat > top_with_plugins.ml <<-'EOF'
+	let main () =
+	  print_endline "\nMain app really starts...";
+	  (* load all the available plugins *)
+	  Sites.Plugins.Top_plugins.load_all ();
+	  print_endline "Main app after loading plugins...";
+	  (* Execute the code registered by the plugins *)
+	  print_endline "Main app executing registered plugins...";
+	  Queue.iter (fun f -> f ()) Registration.todo;
+	  print_endline "Main app after executing registered plugins...";
+	  exit (Topmain.main ())
+	
+	let () =
+	    main()
+	EOF
+
+  cat > registration.ml <<-'EOF'
+	let todo : (unit -> unit) Queue.t = Queue.create ()
+	let register f =
+	  print_endline "In register";
+	  Queue.add f todo;
+	  print_endline "Done in register";
+	EOF
+}
+
+make_toplevel_plugin() {
+  local n="$1"
+  local dir="plugin${n}"
+  local impl="plugin${n}_impl"
+
+  mkdir "$dir"
+  cat > "$dir/dune-project" <<- EOF
+	(lang dune 3.7)
+	(using dune_site 0.1)
+	
+	(generate_opam_files true)
+	(wrapped_executables false)
+	(map_workspace_root false)
+	(package
+	 (name top-plugin${n}))
+	EOF
+
+  cat > "$dir/dune" <<- EOF
+	(library
+	 (public_name top-plugin${n}.${impl})
+	 (modes byte)
+	 (name ${impl})
+	 (modules ${impl})
+	 (libraries top_with_plugins.register))
+	
+	(plugin
+	 (name plugin${n})
+	 (libraries top-plugin${n}.${impl})
+	 (site (top_with_plugins top_plugins)))
+	EOF
+
+  cat > "$dir/${impl}.ml" <<- EOF
+	let myfun () =
+	  print_endline "Plugin${n} is doing something..."
+	
+	let () =
+	  print_endline "Registration of Plugin${n}";
+	  Registration.register myfun;
+	  print_endline "Done with registration of Plugin${n}";
+	EOF
+}
+
 make_simple_rpc_watch_project() {
   make_dune_project 3.23
   cat > dune <<-'EOF'

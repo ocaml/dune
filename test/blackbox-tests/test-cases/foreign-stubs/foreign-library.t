@@ -66,7 +66,6 @@ Testsuite for the (foreign_library ...) stanza.
   > let () = Printf.printf "%d" (Calc.calc 1 2 3)
   > EOF
 
-  $ rm -rf _build
   $ dune build
 
   $ dune exec ./main.exe
@@ -119,7 +118,6 @@ Testsuite for the (foreign_library ...) stanza.
   > #define EIGHT 8
   > EOF
 
-  $ rm -rf _build
   $ dune build
 
   $ dune exec ./main.exe
@@ -292,7 +290,6 @@ Testsuite for the (foreign_library ...) stanza.
   > let () = Printf.printf "%s %d" (Calc.month ()) (Calc.calc 1 2 3)
   > EOF
 
-  $ rm -rf _build
   $ dune build
 
   $ dune exec ./main.exe
@@ -404,7 +401,6 @@ Testsuite for the (foreign_library ...) stanza.
   > let () = Printf.printf "%d %s %d" (day ()) (Calc.month ()) (Calc.calc 1 2 3)
   > EOF
 
-  $ rm -rf _build
   $ dune build
 
   $ dune exec ./main.exe
@@ -510,7 +506,6 @@ Testsuite for the (foreign_library ...) stanza.
   > let () = Printf.printf "%s: %d %s %d" (today ()) (day ()) (Calc.month ()) (Calc.calc 1 2 3)
   > EOF
 
-  $ rm -rf _build
   $ dune exec ./main.exe
   Today: 8 October 2019
 
@@ -545,7 +540,6 @@ Testsuite for the (foreign_library ...) stanza.
   >          Printf.printf "%s: %02d %s %d\n" (today ()) (new_day ()) (Calc.month ()) (Calc.calc 1 2 3);
   > EOF
 
-  $ rm -rf _build
   $ dune exec ./main.exe
   Today: 08 October 2019
   Today: 14 October 2019
@@ -587,7 +581,6 @@ Testsuite for the (foreign_library ...) stanza.
   > let () = Printf.printf "Answer = %d\n" (answer ());
   > EOF
 
-  $ rm -rf _build
   $ dune exec some/dir/main.exe 2> /dev/null
   [1]
 
@@ -608,7 +601,6 @@ Testsuite for the (foreign_library ...) stanza.
   >  (modules main))
   > EOF
 
-  $ rm -rf _build
   $ dune exec some/dir/main.exe
   Answer = 42
 
@@ -634,7 +626,6 @@ Testsuite for the (foreign_library ...) stanza.
   > #define CORRECTION (-21)
   > EOF
 
-  $ rm -rf _build
   $ touch external/external_library.opam
   $ ( cd external && dune build @install \
   > && dune install --prefix install --display=short 2>&1 | dune_cmd sanitize )
@@ -692,7 +683,6 @@ Testsuite for the (foreign_library ...) stanza.
   >  (modules main))
   > EOF
 
-  $ rm -rf _build
   $ dune exec some/dir/main.exe
   File "some/dir/dune", line 4, characters 33-44:
   4 |  (include_dirs (lib answer) (lib unknown_lib))

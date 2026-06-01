@@ -17,7 +17,8 @@
 (library
  (name install)
  (synopsis "the handling of installation paths")
- (inline_tests)
+ (inline_tests
+  (modes byte))
  (preprocess
   (pps ppx_expect -- %{read-lines:ppx-extra-flags}))
  (libraries

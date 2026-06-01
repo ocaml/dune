@@ -20,7 +20,8 @@
  (foreign_stubs
   (names md5_stubs)
   (language c))
- (inline_tests)
+ (inline_tests
+  (modes byte))
  (preprocess
   (pps ppx_expect -- %{read-lines:ppx-extra-flags}))
  (libraries

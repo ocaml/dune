@@ -19,6 +19,7 @@
  (library_flags
   (:include flags/sexp))
  (inline_tests
+  (modes byte)
   (deps
    (sandbox always)))
  (preprocess

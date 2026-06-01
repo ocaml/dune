@@ -1,7 +1,8 @@
 (library
  (name dune_sexp)
  (synopsis "[Internal] S-expression library")
- (inline_tests)
+ (inline_tests
+  (modes byte))
  (preprocess
   (pps ppx_expect))
  (libraries stdune uutf))

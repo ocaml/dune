@@ -71,11 +71,12 @@ build trace events.
 
   $ stop_dune > /dev/null
 
-File watcher backends may batch file changes differently. Normalize contiguous
-restart events so the test checks the run id and reasons, not the batching.
+File changes observed while the build is idle are reflected by the next
+build-start event's restart flag. A build-restart event is only emitted when an
+active build is interrupted.
 
   $ dune trace cat | jq_dune -s '
-  > [ .[] | buildEvents ] | normalizeBuildRestartEvents'
+  > .[] | buildEvents'
   {
     "args": {
       "run_id": 1,
@@ -111,16 +112,6 @@ restart events so the test checks the run id and reasons, not the batching.
       ]
     },
     "name": "build-finish"
-  }
-  {
-    "args": {
-      "run_id": 2,
-      "reasons": [
-        "x changed",
-        "z changed"
-      ]
-    },
-    "name": "build-restart"
   }
   {
     "args": {

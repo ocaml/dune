@@ -52,45 +52,15 @@ module Async_io = struct
 end
 
 module Scheduler = struct
-  module Handler = struct
-    module Event = struct
-      type t = Build_interrupted
-    end
-
-    type t = Event.t -> unit
-  end
-
-  module Build_loop = struct
-    type status =
-      | (* We are not doing a build. Just accumulating invalidations until the next
-         build starts. *)
-        Standing_by
-      | (* Running a build *)
-        Building of Fiber.Cancel.t
-      | (* Cancellation requested. Build jobs are immediately rejected in this
-         state *)
-        Restarting_build
-
-    type t =
-      { mutable status : status
-      ; mutable invalidation : Memo.Invalidation.t
-      ; mutable watch_restart_started_at : Time.t option
-      ; handler : Handler.t
-      ; mutable build_inputs_changed : Fiber.Trigger.t
-      ; mutable cancel : Fiber.Cancel.t
-      }
-  end
-
   type t =
-    { build_loop : Build_loop.t
-    ; job_throttle : Fiber.Throttle.t
+    { job_throttle : Fiber.Throttle.t
     ; events : Event.Queue.t
     ; process_watcher : Process_watcher.t
     ; file_watcher : File_watcher.t option
-    ; fs_syncs : (Event.Sync_id.t, unit Fiber.Ivar.t) Table.t
     ; thread_pool : Thread_pool.t Lazy.t
     ; signal_watcher : Thread.t
     ; async_io : Async_io.t
+    ; mutable current_build_cancel : Fiber.Cancel.t option
     }
 
   let current : t option ref = ref None

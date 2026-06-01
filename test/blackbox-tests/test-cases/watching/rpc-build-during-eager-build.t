@@ -31,19 +31,12 @@ The eager loop still reacts to filesystem changes after the RPC build has run.
   $ dune trace cat | jq_dune -s '
   > [ [ .[] | buildEvents ] | normalizeBuildRestartEvents ]
   > | map(select(
-  >     (.name == "build-restart" and (.args.reasons | index("dune changed")))
-  >     or (.name == "build-start" and .args.restart == true)
+  >     (.name == "build-start" and .args.restart == true)
   >     or (.name == "build-finish" and .args.outcome == "success")))
-  > | .[-3:]
-  > | map({ name, restart: .args.restart, outcome: .args.outcome, reasons: .args.reasons }
+  > | .[-2:]
+  > | map({ name, restart: .args.restart, outcome: .args.outcome }
   >       | del(.. | nulls))'
   [
-    {
-      "name": "build-restart",
-      "reasons": [
-        "dune changed"
-      ]
-    },
     {
       "name": "build-start",
       "restart": true

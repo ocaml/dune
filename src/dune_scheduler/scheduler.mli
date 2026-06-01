@@ -11,10 +11,6 @@ module Config : sig
 end
 
 module Run : sig
-  module Event : sig
-    type t = Build_interrupted
-  end
-
   type file_watcher =
     | Automatic
     | No_watcher
@@ -27,7 +23,6 @@ module Run : sig
     :  Config.t
     -> ?timeout:Time.Span.t
     -> ?file_watcher:file_watcher
-    -> on_event:(Event.t -> unit)
     -> (unit -> 'a Fiber.t)
     -> 'a
 end
@@ -86,11 +81,11 @@ val running_jobs_count : t -> int
     do a bit cleanup, such as killing with [SIGKILL] all running external
     processes and will then raise [Run.Shutdown_requested].
 
-    Fibers that are suspended on a call such as [wait_for_process] or
-    [wait_for_build_input_change] by the time [shutdown] is called will
-    effectively never restart. If a fiber calls [wait_for_process] or any other
-    function from this module that needs an external event to make progress, it
-    will get suspended and will never restart. *)
+    Fibers that are suspended on a call such as [wait_for_process] by the time
+    [shutdown] is called will effectively never restart. If a fiber calls
+    [wait_for_process] or any other function from this module that needs an
+    external event to make progress, it will get suspended and will never
+    restart. *)
 val shutdown : unit -> unit
 
 (** Cancel the current build. Superficially, this function is like [shutdown]
@@ -104,39 +99,5 @@ val sleep : Time.Span.t -> unit Fiber.t
 
 val spawn_thread : name:string -> (unit -> unit) -> Thread.t
 val flush_file_watcher : unit -> unit Fiber.t
-
-module Build_loop : sig
-  type t
-
-  type build_finish =
-    | Finished of { restart_duration : Time.Span.t option }
-    | Restarting
-
-  val start_build : unit -> [ `Restart of bool ]
-  val finish_build : stop:Time.t -> build_finish
-  val init : unit -> t Fiber.t
-  val pending_invalidation : t -> Memo.Invalidation.t
-  val start_iteration : t -> unit
-  val finish_iteration : t -> [ `Done | `Restart ]
-  val wait_for_build_input_change : t -> unit Fiber.t
-end
-
-(** [set_fs_memo_impl] registers the file system memoization callbacks.
-    This must be called by dune_engine at initialization before starting
-    the scheduler to enable proper file system event handling. *)
-val set_fs_memo_impl
-  :  handle_fs_event:(Event.Fs_memo_event.t -> Memo.Invalidation.t)
-  -> init:(dune_file_watcher:File_watcher.t option -> Memo.Invalidation.t)
-  -> unit
-
-module For_tests : sig
-  (** Wait for a build input to change. If a build input change was seen but
-      hasn't been handled yet, return immediately.
-
-      Return even for build input change that are not significant, so that RPC
-      clients may observe that Dune reacted to a file change. This is needed
-      for benchmarking the watch mode of Dune. *)
-  val wait_for_build_input_change : unit -> unit Fiber.t
-
-  val inject_memo_invalidation : Memo.Invalidation.t -> unit Fiber.t
-end
+val file_watcher : unit -> File_watcher.t option
+val with_current_build_cancellation : Fiber.Cancel.t -> (unit -> 'a Fiber.t) -> 'a Fiber.t

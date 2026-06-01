@@ -8,6 +8,7 @@ module For_tests = struct
   module Inotify = Inotify
   module Fsevents = Fsevents
   module Fswatch_win = Fswatch_win
+  module Thread_safe_channel = Thread_safe_channel
 end
 
 module For_benchmarks = struct

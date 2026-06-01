@@ -280,11 +280,7 @@ let command =
     let config =
       Dune_config.for_scheduler config ~print_ctrl_c_warning:true ~watch_exclusions:[]
     in
-    Scheduler.Run.go
-      config
-      ~on_event:(fun (_ : Scheduler.Run.Event.t) -> ())
-      ~file_watcher:No_watcher
-      (monitor ~quit_on_disconnect)
+    Scheduler.Run.go config ~file_watcher:No_watcher (monitor ~quit_on_disconnect)
   in
   Cmd.v info term
 ;;

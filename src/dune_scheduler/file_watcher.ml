@@ -1,8 +1,84 @@
 open Import
 module Scheduler_event = Event
 module Fs_memo_event = Scheduler_event.Fs_memo_event
-module Sync_id = Scheduler_event.Sync_id
 module Event = Scheduler_event.File_watcher_event
+
+module Sync = struct
+  module Id = Id.Make ()
+
+  type t =
+    { id : Id.t
+    ; ivar : unit Fiber.Ivar.t
+    }
+
+  module Table = struct
+    type nonrec t =
+      { table : (string, t) Table.t
+      ; mutex : Mutex.t
+      }
+
+    let create () = { table = Table.create (module String) 64; mutex = Mutex.create () }
+
+    let create_sync_file t ~fn ~sync ~path =
+      Mutex.protect t.mutex (fun () ->
+        Table.set t.table fn sync;
+        match
+          Unix.close (Unix.openfile path [ O_WRONLY; O_CREAT; O_TRUNC; O_CLOEXEC ] 0o666)
+        with
+        | () -> ()
+        | exception exn ->
+          Table.remove t.table fn;
+          Exn.reraise exn)
+    ;;
+
+    let consume_event t path =
+      Mutex.protect t.mutex (fun () ->
+        let basename = Filename.basename path in
+        match Table.find t.table basename with
+        | None -> None
+        | Some sync ->
+          Fpath.unlink_no_err path;
+          Table.remove t.table basename;
+          Some sync)
+    ;;
+  end
+
+  let special_dir_path = lazy (Path.Build.relative Path.Build.root ".sync")
+  let special_dir = lazy (Lazy.force special_dir_path |> Path.Build.to_string)
+
+  let flush sync_table =
+    let ivar = Fiber.Ivar.create () in
+    let id = Id.gen () in
+    let sync = { id; ivar } in
+    let fn = Id.to_int id |> string_of_int in
+    let path = Filename.concat (Lazy.force special_dir) fn in
+    Table.create_sync_file sync_table ~fn ~sync ~path;
+    Fiber.Ivar.read ivar
+  ;;
+
+  let is_special_file ~path_as_reported_by_file_watcher =
+    (* We use string matching here and that's fine because we match on the path
+       reported by the file watcher backend which will always report the same
+       string that was used to setup the watch. *)
+    Filename.dirname path_as_reported_by_file_watcher = Lazy.force special_dir
+  ;;
+
+  (* fsevents always reports absolute paths. therefore, we need callers to make
+     an effort to determine if an absolute path is in fact in the build dir *)
+  let is_special_file_fsevents (path : Path.t) =
+    match path with
+    | In_source_tree _ | External _ -> false
+    | In_build_dir build_path ->
+      (match Path.Build.parent build_path with
+       | None -> false
+       | Some dir -> Path.Build.equal dir (Lazy.force special_dir_path))
+  ;;
+end
+
+type backend_event =
+  | Filesystem_event of Event.t
+  | Sync of Sync.t
+  | Watcher_terminated
 
 module Watch_trie : sig
   (** Specialized trie for fsevent watches *)
@@ -184,28 +260,19 @@ type kind =
   | Fsevents of
       { mutable external_ : Fsevents.t Watch_trie.t
       ; dispatch_queue : Fsevents.Dispatch_queue.t
-      ; event_queue : Scheduler_event.Queue.t
       ; source : Fsevents.t
       ; sync : Fsevents.t
       ; latency : Time.Span.t
-      ; on_event : Fsevents.Event.t -> Path.t -> Event.t option
+      ; on_event : Fsevents.Event.t -> Path.t -> backend_event option
       }
   | Inotify of Inotify.t
   | Fswatch_win of { t : Fswatch_win.t }
 
-type sync_table =
-  { table : (string, Sync_id.t) Table.t
-  ; mutex : Mutex.t
-  }
-
-let create_sync_table () =
-  { table = Table.create (module String) 64; mutex = Mutex.create () }
-;;
-
 type t =
   { kind : kind
-  ; sync_table : sync_table
+  ; sync_table : Sync.Table.t
     (* Pending fs sync operations indexed by the special sync filename. *)
+  ; events : Event.t list Thread_safe_channel.t
   }
 
 let create_should_exclude_predicate ~watch_exclusions =
@@ -214,20 +281,16 @@ let create_should_exclude_predicate ~watch_exclusions =
   Re.execp (Re.compile (Re.alt (List.map watch_exclusions ~f:Re.Posix.re)))
 ;;
 
-module For_tests = struct
-  let should_exclude = create_should_exclude_predicate
-end
-
-let process_inotify_event (event : Inotify.Event.t) should_exclude : Event.t list =
+let process_inotify_event (event : Inotify.Event.t) should_exclude : backend_event list =
   let create_event_unless_excluded ~kind ~path =
     if should_exclude path
     then []
     else (
       let path = Path.of_string path in
-      [ Event.Fs_memo_event (Fs_memo_event.create ~kind ~path) ])
+      [ Filesystem_event (Event.Fs_memo_event (Fs_memo_event.create ~kind ~path)) ])
   in
   match event with
-  | Queue_overflow -> [ Queue_overflow ]
+  | Queue_overflow -> [ Filesystem_event Queue_overflow ]
   | Created path -> create_event_unless_excluded ~kind:Created ~path
   | Unlinked path -> create_event_unless_excluded ~kind:Deleted ~path
   | Modified path -> create_event_unless_excluded ~kind:File_changed ~path
@@ -240,33 +303,83 @@ let process_inotify_event (event : Inotify.Event.t) should_exclude : Event.t lis
        @ create_event_unless_excluded ~kind:Created ~path:dst)
 ;;
 
-let trace_and_send_events send_events events =
-  Dune_trace.emit_all ~buffered:true File_watcher (fun () ->
-    List.map events ~f:(fun (event : Event.t) ->
-      Dune_trace.Event.file_watcher
-        (match event with
-         | Queue_overflow -> `Queue_overflow
-         | Sync sync -> `Sync (Sync_id.to_int sync)
-         | Watcher_terminated -> `Watcher_terminated
-         | Fs_memo_event { path; kind } ->
-           let kind =
-             match kind with
-             | Created -> `Created
-             | Deleted -> `Deleted
-             | File_changed -> `File_changed
-             | Unknown -> `Unknown
-           in
-           `File (path, kind))));
-  send_events events
+let event_to_trace_event = function
+  | Sync { id; _ } -> `Sync (Sync.Id.to_int id)
+  | Watcher_terminated -> `Watcher_terminated
+  | Filesystem_event Queue_overflow -> `Queue_overflow
+  | Filesystem_event (Fs_memo_event { path; kind }) ->
+    `File
+      ( path
+      , match kind with
+        | Created -> `Created
+        | Deleted -> `Deleted
+        | File_changed -> `File_changed
+        | Unknown -> `Unknown )
 ;;
 
-let send_events event_queue events =
-  trace_and_send_events
-    (Scheduler_event.Queue.send_file_watcher_events event_queue)
-    events
+let trace_event_to_dyn = function
+  | `Sync id -> Dyn.variant "Sync" [ Dyn.int id ]
+  | `Queue_overflow -> Dyn.variant "Queue_overflow" []
+  | `Watcher_terminated -> Dyn.variant "Watcher_terminated" []
+  | `File (path, kind) ->
+    let kind =
+      match kind with
+      | `Created -> "Created"
+      | `Deleted -> "Deleted"
+      | `File_changed -> "File_changed"
+      | `Unknown -> "Unknown"
+    in
+    Dyn.variant "File" [ Path.to_dyn path; Dyn.string kind ]
 ;;
+
+let emit_events events =
+  Dune_trace.emit_all ~buffered:true File_watcher (fun () ->
+    List.map events ~f:(fun event ->
+      Dune_trace.Event.file_watcher (event_to_trace_event event)))
+;;
+
+let log_dropped_events events =
+  Log.info
+    "file watcher events dropped: channel closed"
+    [ "events", Dyn.list trace_event_to_dyn (List.map events ~f:event_to_trace_event) ]
+;;
+
+let dispatch_backend_events events backend_events =
+  let send_file_events file_events =
+    match List.rev file_events with
+    | [] -> ()
+    | file_events ->
+      let backend_events =
+        List.map file_events ~f:(fun event -> Filesystem_event event)
+      in
+      (match Thread_safe_channel.write events file_events with
+       | `Ok -> emit_events backend_events
+       | `Closed -> log_dropped_events backend_events)
+  in
+  let rec loop file_events = function
+    | [] -> send_file_events file_events
+    | Filesystem_event event :: backend_events ->
+      loop (event :: file_events) backend_events
+    | Sync ({ ivar; _ } as sync) :: backend_events ->
+      send_file_events file_events;
+      let backend_event = Sync sync in
+      (match Thread_safe_channel.write_fill events (Fiber.Fill (ivar, ())) with
+       | `Ok -> emit_events [ backend_event ]
+       | `Closed -> log_dropped_events [ backend_event ]);
+      loop [] backend_events
+    | Watcher_terminated :: _ ->
+      send_file_events file_events;
+      Thread_safe_channel.close events;
+      emit_events [ Watcher_terminated ]
+  in
+  loop [] backend_events
+;;
+
+let close t = Thread_safe_channel.close t.events
+let read t = Thread_safe_channel.read t.events
 
 let shutdown t =
+  close t;
   match t.kind with
   | Fswatch { pid; _ } -> `Kill pid
   | Inotify _ -> `No_op
@@ -280,67 +393,8 @@ let shutdown t =
   | Fswatch_win { t } -> `Thunk (fun () -> Fswatch_win.shutdown t)
 ;;
 
-module Fs_sync : sig
-  val special_dir_path : Path.Build.t Lazy.t
-  val special_dir : string Lazy.t
-  val emit : sync_table -> Sync_id.t
-  val is_special_file : path_as_reported_by_file_watcher:string -> bool
-
-  (** fsevents always reports absolute paths. therefore, we need callers to make
-      an effort to determine if an absolute path is in fact in the build dir *)
-  val is_special_file_fsevents : Path.t -> bool
-
-  val consume_event : sync_table -> string -> Sync_id.t option
-end = struct
-  let special_dir_path = lazy (Path.Build.relative Path.Build.root ".sync")
-  let special_dir = lazy (Lazy.force special_dir_path |> Path.Build.to_string)
-
-  let emit sync_table =
-    let id = Sync_id.gen () in
-    let fn = id |> Sync_id.to_int |> string_of_int in
-    let path = Filename.concat (Lazy.force special_dir) fn in
-    Mutex.protect sync_table.mutex (fun () ->
-      Table.set sync_table.table fn id;
-      match
-        Unix.close (Unix.openfile path [ O_WRONLY; O_CREAT; O_TRUNC; O_CLOEXEC ] 0o666)
-      with
-      | () -> ()
-      | exception exn ->
-        Table.remove sync_table.table fn;
-        Exn.reraise exn);
-    id
-  ;;
-
-  let is_special_file ~path_as_reported_by_file_watcher =
-    (* We use string matching here and that's fine because we match on the path
-       reported by the file watcher backend which will always report the same
-       string that was used to setup the watch. *)
-    Filename.dirname path_as_reported_by_file_watcher = Lazy.force special_dir
-  ;;
-
-  let consume_event sync_table path =
-    Mutex.protect sync_table.mutex (fun () ->
-      let basename = Filename.basename path in
-      match Table.find sync_table.table basename with
-      | None -> None
-      | Some id ->
-        Fpath.unlink_no_err path;
-        Table.remove sync_table.table basename;
-        Some id)
-  ;;
-
-  let is_special_file_fsevents (path : Path.t) =
-    match path with
-    | In_source_tree _ | External _ -> false
-    | In_build_dir build_path ->
-      (match Path.Build.parent build_path with
-       | None -> false
-       | Some dir -> Path.Build.equal dir (Lazy.force special_dir_path))
-  ;;
-end
-
 let command ~backend ~watch_exclusions =
-  let inotify_special_path = Lazy.force Fs_sync.special_dir in
+  let inotify_special_path = Lazy.force Sync.special_dir in
   match backend with
   | `Fswatch fswatch ->
     (* On all other platforms, try to use fswatch. fswatch's event filtering is
@@ -422,7 +476,7 @@ let select_watcher_backend () =
 ;;
 
 let prepare_sync () =
-  let dir = Lazy.force Fs_sync.special_dir in
+  let dir = Lazy.force Sync.special_dir in
   match Fpath.clear_dir dir with
   | Cleared -> ()
   | Directory_does_not_exist ->
@@ -444,9 +498,10 @@ let spawn_external_watcher ~backend ~watch_exclusions =
   Unix.in_channel_of_descr r_stdout, pid
 ;;
 
-let create_inotifylib_watcher ~sync_table ~event_queue should_exclude =
+let create_inotifylib_watcher ~sync_table ~event_channel should_exclude =
+  let { Sync.Table.mutex; _ } = sync_table in
   Inotify.create
-    ~mutex:sync_table.mutex
+    ~mutex
     ~modify_event_selector:`Closed_writable_fd
     ~emit_events:(fun events ->
       let events =
@@ -455,97 +510,94 @@ let create_inotifylib_watcher ~sync_table ~event_queue should_exclude =
             match (event : Inotify.Event.t) with
             | Modified path | Created path | Unlinked path ->
               Option.some_if
-                (Fs_sync.is_special_file ~path_as_reported_by_file_watcher:path)
+                (Sync.is_special_file ~path_as_reported_by_file_watcher:path)
                 path
             | Moved _ | Queue_overflow -> None
           in
           match is_fs_sync_event_generated_by_dune with
           | None -> process_inotify_event event should_exclude
           | Some path ->
-            (match Fs_sync.consume_event sync_table path with
+            (match Sync.Table.consume_event sync_table path with
              | None -> []
-             | Some id -> [ Event.Sync id ]))
+             | Some sync -> [ Sync sync ]))
       in
-      send_events event_queue events)
+      dispatch_backend_events event_channel events)
 ;;
 
-let create_external_fswatch ~event_queue ~backend ~watch_exclusions =
+let create_external_fswatch ~sync_table ~event_channel ~backend ~watch_exclusions =
   let debounce_interval = Time.Span.of_secs 0.5 in
-  let jobs = ref [] in
+  let pending_events = ref [] in
   let event_mtx = Mutex.create () in
   let event_cv = Condition.create () in
-  let res =
-    let sync_table = create_sync_table () in
-    let pipe, pid = spawn_external_watcher ~backend ~watch_exclusions in
-    let (_ : Thread.t) =
-      Thread0.spawn ~name:"file-watcher" (fun () ->
-        let enqueue events =
-          Mutex.protect event_mtx (fun () ->
-            jobs := events :: !jobs;
-            Condition.signal event_cv)
-        in
-        let rec loop () =
-          match input_line pipe with
-          | exception End_of_file -> enqueue [ Event.Watcher_terminated ]
-          | path_s ->
-            let events =
-              if Fs_sync.is_special_file ~path_as_reported_by_file_watcher:path_s
-              then (
-                match Fs_sync.consume_event sync_table path_s with
-                | None -> []
-                | Some id -> [ Event.Sync id ])
-              else (
-                let path = Path.Expert.try_localize_external (Path.of_string path_s) in
-                [ Fs_memo_event (Fs_memo_event.create ~kind:File_changed ~path) ])
-            in
-            enqueue events;
-            loop ()
-        in
-        loop ())
-    in
-    { kind = Fswatch { pid }; sync_table }
+  let pipe, pid = spawn_external_watcher ~backend ~watch_exclusions in
+  let (_ : Thread.t) =
+    Thread0.spawn ~name:"file-watcher" (fun () ->
+      let enqueue events =
+        Mutex.protect event_mtx (fun () ->
+          pending_events := events :: !pending_events;
+          Condition.signal event_cv)
+      in
+      let rec loop () =
+        match input_line pipe with
+        | exception End_of_file -> enqueue [ Watcher_terminated ]
+        | path_s ->
+          let events =
+            if Sync.is_special_file ~path_as_reported_by_file_watcher:path_s
+            then (
+              match Sync.Table.consume_event sync_table path_s with
+              | None -> []
+              | Some sync -> [ Sync sync ])
+            else (
+              let path = Path.Expert.try_localize_external (Path.of_string path_s) in
+              [ Filesystem_event
+                  (Fs_memo_event (Fs_memo_event.create ~kind:File_changed ~path))
+              ])
+          in
+          enqueue events;
+          loop ()
+      in
+      loop ())
   in
   let (_ : Thread.t) =
     (* The buffer thread is used to avoid flooding the main thread with file
-     changes events when a lot of file changes are reported at once. In
-     particular, this avoids restarting the build over and over in a short
-     period of time when many events are reported at once.
+       changes events when a lot of file changes are reported at once. In
+       particular, this avoids restarting the build over and over in a short
+       period of time when many events are reported at once.
 
-     It works as follow:
+       It works as follow:
 
-     - when the first event is received, send it to the main thread immediately
-       so that we get a fast response time
+       - when the first event is received, send it to the main thread immediately
+         so that we get a fast response time
 
-     - after the first event is received, buffer subsequent events for
-       [debounce_interval] *)
+       - after the first event is received, buffer subsequent events for
+         [debounce_interval] *)
     let rec buffer_thread () =
-      let jobs_batch =
+      let events =
         Mutex.protect event_mtx (fun () ->
-          while List.is_empty !jobs do
+          while List.is_empty !pending_events do
             Condition.wait event_cv event_mtx
           done;
-          let jobs_batch = List.rev !jobs in
-          jobs := [];
-          jobs_batch)
+          let events = List.rev !pending_events |> List.concat in
+          pending_events := [];
+          events)
       in
-      send_events event_queue (List.concat jobs_batch);
+      dispatch_backend_events event_channel events;
       Thread.delay (Time.Span.to_secs debounce_interval);
       buffer_thread ()
     in
     Thread0.spawn ~name:"file-watcher-buffer" buffer_thread
   in
-  res
+  Fswatch { pid }
 ;;
 
-let create_inotifylib ~event_queue ~should_exclude =
+let create_inotifylib ~sync_table ~event_channel ~should_exclude =
   prepare_sync ();
-  let sync_table = create_sync_table () in
-  let inotify = create_inotifylib_watcher ~sync_table ~event_queue should_exclude in
-  Inotify.add inotify (Lazy.force Fs_sync.special_dir);
-  { kind = Inotify inotify; sync_table }
+  let inotify = create_inotifylib_watcher ~sync_table ~event_channel should_exclude in
+  Inotify.add inotify (Lazy.force Sync.special_dir);
+  Inotify inotify
 ;;
 
-let fsevents_callback ?exclusion_paths event_queue ~f events =
+let fsevents_callback ?exclusion_paths event_channel ~f events =
   let skip_path =
     (* excluding a [path] will exclude children under [path] but not [path]
        itself. Hence we need to skip [path] manually *)
@@ -560,13 +612,16 @@ let fsevents_callback ?exclusion_paths event_queue ~f events =
       in
       if skip_path path then None else f event path)
   in
-  send_events event_queue events
+  dispatch_backend_events event_channel events
 ;;
 
-let fsevents ?exclusion_paths ~latency ~paths event_queue f =
+let fsevents ?exclusion_paths ~latency ~paths event_channel f =
   let fsevents =
     let paths = List.map paths ~f:Path.to_absolute_filename in
-    Fsevents.create ~latency ~paths ~f:(fsevents_callback ?exclusion_paths event_queue ~f)
+    Fsevents.create
+      ~latency
+      ~paths
+      ~f:(fsevents_callback ?exclusion_paths event_channel ~f)
   in
   Option.iter exclusion_paths ~f:(fun paths ->
     let paths = List.rev_map paths ~f:Path.to_absolute_filename in
@@ -584,17 +639,17 @@ let fsevents_standard_event_impl
   then None
   else (
     let fs_memo_event kind =
-      Some (Event.Fs_memo_event (Fs_memo_event.create ~kind ~path))
+      Some (Filesystem_event (Event.Fs_memo_event (Fs_memo_event.create ~kind ~path)))
     in
     match kind with
-    | Dir_and_descendants -> Some Event.Queue_overflow
+    | Dir_and_descendants -> Some (Filesystem_event Event.Queue_overflow)
     | Dir ->
       (match action with
        | Remove | Rename | Unknown ->
          (* FSEvents can report directory-wide or ambiguous changes without
             listing all affected descendants. Until Fs_memo supports subtree
             invalidation, over-invalidate by clearing the filesystem caches. *)
-         Some Event.Queue_overflow
+         Some (Filesystem_event Event.Queue_overflow)
        | Create -> fs_memo_event Created
        | Modify -> fs_memo_event Unknown)
     | File ->
@@ -614,10 +669,10 @@ let%expect_test "fsevents standard event handling" =
     =
     match fsevents_standard_event_impl ~should_exclude ~action ~kind path with
     | None -> print_endline "None"
-    | Some Event.Queue_overflow -> print_endline "Queue_overflow"
-    | Some (Event.Fs_memo_event event) ->
+    | Some (Filesystem_event Event.Queue_overflow) -> print_endline "Queue_overflow"
+    | Some (Filesystem_event (Event.Fs_memo_event event)) ->
       Fs_memo_event.to_dyn event |> Dyn.to_string |> print_endline
-    | Some (Event.Sync _ | Watcher_terminated) ->
+    | Some (Sync _ | Watcher_terminated) ->
       Code_error.raise "unexpected fsevents standard event" []
   in
   print Modify File;
@@ -639,26 +694,31 @@ let%expect_test "fsevents standard event handling" =
     |}]
 ;;
 
-let create_fsevents ?(latency = Time.Span.of_secs 0.2) ~event_queue ~should_exclude () =
+let create_fsevents
+      ~sync_table
+      ~event_channel
+      ?(latency = Time.Span.of_secs 0.2)
+      ~should_exclude
+      ()
+  =
   prepare_sync ();
-  let sync_table = create_sync_table () in
   let sync =
     (* Keep the original event path for consuming the sync file; use the
        localized path only to check whether the event is in the build directory. *)
     fsevents
       ~latency
-      ~paths:[ Path.build (Lazy.force Fs_sync.special_dir_path) ]
-      event_queue
+      ~paths:[ Path.build (Lazy.force Sync.special_dir_path) ]
+      event_channel
       (fun event localized_path ->
          let path = Fsevents.Event.path event in
-         if not (Fs_sync.is_special_file_fsevents localized_path)
-         then None
-         else (
-           match Fsevents.Event.action event with
-           | Remove -> None
-           | Rename | Unknown | Create | Modify ->
-             Fs_sync.consume_event sync_table path
-             |> Option.map ~f:(fun id -> Event.Sync id)))
+         match Sync.is_special_file_fsevents localized_path with
+         | false -> None
+         | true ->
+           (match Fsevents.Event.action event with
+            | Remove -> None
+            | Rename | Unknown | Create | Modify ->
+              Sync.Table.consume_event sync_table path
+              |> Option.map ~f:(fun sync -> Sync sync)))
   in
   let on_event event path =
     fsevents_standard_event_impl
@@ -674,7 +734,7 @@ let create_fsevents ?(latency = Time.Span.of_secs 0.2) ~event_queue ~should_excl
       :: ([ "_esy"; "_opam"; ".git"; ".hg" ]
           |> List.rev_map ~f:(Path.relative (Path.source Path.Source.root)))
     in
-    fsevents ~latency event_queue ~exclusion_paths ~paths on_event
+    fsevents ~latency event_channel ~exclusion_paths ~paths on_event
   in
   let cv = Condition.create () in
   let dispatch_queue_ref = ref None in
@@ -705,7 +765,7 @@ let create_fsevents ?(latency = Time.Span.of_secs 0.2) ~event_queue ~should_excl
          | Ok () -> ()
          | Error exn ->
            Log.warn "FSEvents watcher error" [ "exn", Exn.to_dyn exn ];
-           send_events event_queue [ Event.Watcher_terminated ]))
+           dispatch_backend_events event_channel [ Watcher_terminated ]))
   in
   let dispatch_queue =
     match
@@ -718,21 +778,11 @@ let create_fsevents ?(latency = Time.Span.of_secs 0.2) ~event_queue ~should_excl
     | Ok dispatch_queue -> dispatch_queue
     | Error exn -> Exn_with_backtrace.reraise exn
   in
-  { kind =
-      Fsevents
-        { latency
-        ; event_queue
-        ; sync
-        ; source
-        ; external_ = Watch_trie.empty
-        ; dispatch_queue
-        ; on_event
-        }
-  ; sync_table
-  }
+  Fsevents
+    { latency; sync; source; external_ = Watch_trie.empty; dispatch_queue; on_event }
 ;;
 
-let fswatch_win_callback ~event_queue ~sync_table ~should_exclude event =
+let fswatch_win_event ~sync_table ~should_exclude event =
   let filename =
     let dir = Fswatch_win.Event.directory event in
     Filename.concat dir (Fswatch_win.Event.path event)
@@ -740,62 +790,88 @@ let fswatch_win_callback ~event_queue ~sync_table ~should_exclude event =
   let localized_path = Path.Expert.try_localize_external (Path.of_string filename) in
   match localized_path with
   | In_build_dir _ ->
-    if Fs_sync.is_special_file_fsevents localized_path
+    if Sync.is_special_file_fsevents localized_path
     then (
       match Fswatch_win.Event.action event with
       | Added | Modified ->
-        (match Fs_sync.consume_event sync_table filename with
-         | None -> ()
-         | Some id -> send_events event_queue [ Event.Sync id ])
-      | Removed | Renamed_new | Renamed_old -> ())
+        Sync.Table.consume_event sync_table filename
+        |> Option.map ~f:(fun sync -> Sync sync)
+      | Removed | Renamed_new | Renamed_old -> None)
+    else None
   | path ->
     let normalized_filename =
       String.concat
         ~sep:"/"
         (String.split_on_char ~sep:'\\' (String.lowercase_ascii filename))
     in
-    if not (should_exclude normalized_filename)
-    then (
-      let kind =
-        match Fswatch_win.Event.action event with
-        | Added | Renamed_new -> Fs_memo_event.Created
-        | Removed | Renamed_old -> Deleted
-        | Modified -> File_changed
-      in
-      send_events event_queue [ Event.Fs_memo_event (Fs_memo_event.create ~kind ~path) ])
+    if should_exclude normalized_filename
+    then None
+    else
+      Some
+        (let kind =
+           match Fswatch_win.Event.action event with
+           | Added | Renamed_new -> Fs_memo_event.Created
+           | Removed | Renamed_old -> Deleted
+           | Modified -> File_changed
+         in
+         Filesystem_event (Event.Fs_memo_event (Fs_memo_event.create ~kind ~path)))
 ;;
 
-let create_fswatch_win ~event_queue ~debounce_interval:sleep ~should_exclude =
+let create_fswatch_win ~sync_table ~event_channel ~debounce_interval:sleep ~should_exclude
+  =
   prepare_sync ();
-  let sync_table = create_sync_table () in
   let t = Fswatch_win.create () in
   Fswatch_win.add t (Path.to_absolute_filename Path.root);
   let (_ : Thread.t) =
     Thread0.spawn ~name:"file-watcher" (fun () ->
       while true do
         let events = Fswatch_win.wait t ~sleep in
-        List.iter
-          ~f:(fswatch_win_callback ~event_queue ~sync_table ~should_exclude)
-          events
+        let events =
+          List.filter_map events ~f:(fswatch_win_event ~sync_table ~should_exclude)
+        in
+        dispatch_backend_events event_channel events
       done)
   in
-  { kind = Fswatch_win { t }; sync_table }
+  Fswatch_win { t }
 ;;
 
-let create_default ?fsevents_debounce ~watch_exclusions ~event_queue () =
+let create ?fsevents_debounce ~watch_exclusions ~event_queue () =
+  let events = Thread_safe_channel.create event_queue in
+  let sync_table = Sync.Table.create () in
   let should_exclude = create_should_exclude_predicate ~watch_exclusions in
-  match select_watcher_backend () with
-  | `Fswatch _ as backend ->
-    create_external_fswatch ~event_queue ~backend ~watch_exclusions
-  | `Fsevents ->
-    create_fsevents ?latency:fsevents_debounce ~event_queue ~should_exclude ()
-  | `Inotify_lib -> create_inotifylib ~event_queue ~should_exclude
-  | `Fswatch_win ->
-    create_fswatch_win
-      ~event_queue
-      ~should_exclude
-      ~debounce_interval:500 (* milliseconds *)
+  { kind =
+      (match select_watcher_backend () with
+       | `Fswatch _ as backend ->
+         create_external_fswatch
+           ~sync_table
+           ~event_channel:events
+           ~backend
+           ~watch_exclusions
+       | `Fsevents ->
+         create_fsevents
+           ~sync_table
+           ~event_channel:events
+           ?latency:fsevents_debounce
+           ~should_exclude
+           ()
+       | `Inotify_lib ->
+         create_inotifylib ~sync_table ~event_channel:events ~should_exclude
+       | `Fswatch_win ->
+         create_fswatch_win
+           ~sync_table
+           ~event_channel:events
+           ~should_exclude
+           ~debounce_interval:500)
+  ; sync_table
+  ; events
+  }
 ;;
+
+module For_tests = struct
+  let should_exclude = create_should_exclude_predicate
+end
+
+let flush t = Sync.flush t.sync_table
 
 (* Return the parent directory of [ext] if [ext] denotes a file. *)
 let parent_directory ext =
@@ -852,7 +928,7 @@ let add_watch t path =
             lazy
               (fsevents
                  ~latency:f.latency
-                 f.event_queue
+                 t.events
                  ~paths:[ Path.external_ ext ]
                  f.on_event)
           in
@@ -883,5 +959,3 @@ let add_watch t path =
           Fswatch_win.add fswatch.t (Path.External.to_string ext);
           Ok ()))
 ;;
-
-let emit_sync t = Fs_sync.emit t.sync_table

@@ -45,7 +45,7 @@ own source invalidation.
   $ stop_dune > /dev/null
 
   $ dune trace cat | jq_dune -s '
-  > [ .[] | buildEvents | del(.args.rusage) ] | .[-4:]'
+  > [ .[] | buildEvents | del(.args.rusage) ] | .[-5:]'
   [
     {
       "args": {
@@ -56,12 +56,20 @@ own source invalidation.
     },
     {
       "args": {
-        "run_id": 3,
+        "run_id": 2,
         "reasons": [
           "x changed"
         ]
       },
       "name": "build-restart"
+    },
+    {
+      "args": {
+        "run_id": 2,
+        "outcome": "failure",
+        "restart_duration": "number"
+      },
+      "name": "build-finish"
     },
     {
       "args": {

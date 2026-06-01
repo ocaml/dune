@@ -4,13 +4,8 @@ open Dune_file_watcher_tests_lib
 let%expect_test _ = init ()
 
 let%expect_test _ =
-  let event_queue, try_to_get_events = create_event_queue () in
-  let (_ : Dune_scheduler.File_watcher.t) =
-    Dune_scheduler.File_watcher.create_default
-      ~fsevents_debounce:(Time.Span.of_secs 0.)
-      ~event_queue
-      ~watch_exclusions:[]
-      ()
+  let (_ : Dune_scheduler.File_watcher.t), try_to_get_events =
+    create_watcher ~fsevents_debounce:(Time.Span.of_secs 0.) ~watch_exclusions:[] ()
   in
   let print_events n = print_events ~try_to_get_events ~expected:n in
   Stdio.Out_channel.write_all "x" ~data:"x";

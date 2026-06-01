@@ -2,13 +2,7 @@ Minimal RPC watch shutdown, separating the shutdown command from server exit.
 
   $ export DUNE_TRACE=rpc
 
-  $ make_dune_project 3.23
-
-  $ cat > dune <<EOF
-  > (rule
-  >  (target x)
-  >  (action (write-file %{target} ok)))
-  > EOF
+  $ make_simple_rpc_watch_project
 
   $ start_dune
 

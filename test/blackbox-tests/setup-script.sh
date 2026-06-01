@@ -98,6 +98,15 @@ make_dune_project() {
 	EOF
 }
 
+make_simple_rpc_watch_project() {
+  make_dune_project 3.23
+  cat > dune <<-'EOF'
+	(rule
+	 (target x)
+	 (action (write-file %{target} ok)))
+	EOF
+}
+
 query_ocaml_merlin() {
   file="$1"
   shift

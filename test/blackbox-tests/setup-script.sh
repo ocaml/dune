@@ -113,6 +113,14 @@ make_mypkg_bin_project() {
 	EOF
 }
 
+make_directory_targets_project() {
+  local version="${1:-3.23}"
+  cat > dune-project <<- EOF
+	(lang dune ${version})
+	(using directory-targets 0.1)
+	EOF
+}
+
 make_simple_rpc_watch_project() {
   make_dune_project 3.23
   cat > dune <<-'EOF'

@@ -1,9 +1,6 @@
 Directory diff records file deletions.
 
-  $ cat > dune-project <<'EOF'
-  > (lang dune 3.23)
-  > (using directory-targets 0.1)
-  > EOF
+  $ make_directory_targets_project
 
   $ mkdir expected
   $ printf 'keep\n' > expected/keep

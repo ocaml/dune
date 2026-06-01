@@ -10,16 +10,7 @@ Test the special compiler version is picked up by ocamllsp.
 
   $ setup_ocamllsp_workspace
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.21)
-  > 
-  > (package
-  >  (name foo)
-  >  (allow_empty)
-  >  (depends
-  >    (ocaml (= 5.2.0))
-  >    (ocaml-variants (= 5.2.0+ox))))
-  > EOF
+  $ make_named_package_project foo 3.21 "(ocaml (= 5.2.0))" "(ocaml-variants (= 5.2.0+ox))"
 
   $ dune build
 

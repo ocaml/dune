@@ -13,13 +13,7 @@ directories that don't contain source files
 There's no corresponding `(ocamllex ..)` stanza for `lexer.mll`, so it should
 not be considered as a module source.
 
-  $ cat > bar-baz/lexer.mll <<EOF
-  > {
-  > }
-  > rule lex = parse
-  >   | _   { true  }
-  >   | eof { false }
-  > EOF
+  $ make_trivial_ocamllex bar-baz/lexer.mll
 
 The directory `bar-baz`, even though not a valid module name, doesn't have any
 source files. The library should still compile.
@@ -34,21 +28,9 @@ lexer with the invalid name.
   > (ocamllex lexer)
   > EOF
 
-  $ cat > bar/lexer.mll <<EOF
-  > {
-  > }
-  > rule lex = parse
-  >   | _   { true  }
-  >   | eof { false }
-  > EOF
+  $ make_trivial_ocamllex bar/lexer.mll
 
-  $ cat > bar/lex-er.mll <<EOF
-  > {
-  > }
-  > rule lex = parse
-  >   | _   { true  }
-  >   | eof { false }
-  > EOF
+  $ make_trivial_ocamllex bar/lex-er.mll
 
   $ dune build foo.cma
 

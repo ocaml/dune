@@ -14,11 +14,5 @@ Builds `ocamllex` generators under `(include_subdirs unqualified)`.
   $ cat > lib/foo.ml <<EOF
   > let x = Lexer.lex
   > EOF
-  $ cat > lib/foo/lexer.mll <<EOF
-  > {
-  > }
-  > rule lex = parse
-  >   | _   { true  }
-  >   | eof { false }
-  > EOF
+  $ make_trivial_ocamllex lib/foo/lexer.mll
   $ dune build

@@ -12,13 +12,7 @@ a conflicting rule
   >    (unix -> lexer.unix.ml)
   >    (!unix -> lexer.nounix.ml))))
   > EOF
-  $ cat > lexer.mll <<EOF
-  > {
-  > }
-  > rule lex = parse
-  >   | _   { true  }
-  >   | eof { false }
-  > EOF
+  $ make_trivial_ocamllex lexer.mll
 
   $ cat > lexer.unix.ml <<EOF
   > let () = print_endline "Test: Unix was found!"

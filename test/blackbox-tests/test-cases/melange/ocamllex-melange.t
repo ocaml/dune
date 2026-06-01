@@ -10,13 +10,7 @@ directories that don't contain source files
   > (library (name foo) (modes melange))
   > (ocamllex lexer)
   > EOF
-  $ cat > lexer.mll <<EOF
-  > {
-  > }
-  > rule lex = parse
-  >   | _   { true  }
-  >   | eof { false }
-  > EOF
+  $ make_trivial_ocamllex lexer.mll
   $ dune build
 
 Lexer ends up in the melange src

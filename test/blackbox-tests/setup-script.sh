@@ -141,6 +141,16 @@ make_foreign_header_consumer() {
   cat > foo.c
 }
 
+make_trivial_ocamllex() {
+  cat > "$1" <<-'EOF'
+	{
+	}
+	rule lex = parse
+	  | _   { true  }
+	  | eof { false }
+	EOF
+}
+
 make_directory_targets_project() {
   local version="${1:-3.23}"
   cat > dune-project <<- EOF

@@ -24,13 +24,7 @@ Create a package with a symlink pointing outside target:
   >    && touch %{lib}/%{pkg-self:name}/META"))
   > EOF
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.22)
-  > (package
-  >  (name x)
-  >  (allow_empty)
-  >  (depends foo))
-  > EOF
+  $ make_package_project 3.22 foo
 
   $ build_pkg foo
 

@@ -2,13 +2,7 @@ Startup RPC bind failures should be reported immediately and terminate dune.
 
   $ export DUNE_TRACE=rpc
 
-  $ make_dune_project 3.23
-
-  $ cat > dune <<EOF
-  > (rule
-  >  (target x)
-  >  (action (write-file %{target} ok)))
-  > EOF
+  $ make_simple_rpc_watch_project
 
 Poison the parent of the Unix-domain RPC socket so that binding
 _build/.rpc/dune fails during startup.

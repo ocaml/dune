@@ -2,13 +2,7 @@ Forwarded builds display a rich status line once connected over RPC.
 
   $ setup_xdg_runtime_dir
 
-  $ make_dune_project 3.23
-
-  $ cat > dune <<EOF
-  > (rule
-  >  (target x)
-  >  (action (write-file %{target} ok)))
-  > EOF
+  $ make_simple_rpc_watch_project
 
   $ export INSIDE_EMACS=1
   $ export DUNE_CONFIG__THREADED_CONSOLE=disabled

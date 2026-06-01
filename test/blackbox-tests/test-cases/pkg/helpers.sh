@@ -277,6 +277,18 @@ make_lockdir() {
 	EOF
 }
 
+make_package_project() {
+  local version="$1"
+  shift
+  cat > dune-project <<- EOF
+	(lang dune ${version})
+	(package
+	 (name x)
+	 (allow_empty)
+	 (depends $@))
+	EOF
+}
+
 make_project() {
   cat <<- EOF
 	(lang dune 3.20)

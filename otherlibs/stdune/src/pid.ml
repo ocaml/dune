@@ -32,6 +32,12 @@ let signal pid where signal =
   | exception Unix.Unix_error (Unix.ESRCH, _, _) -> `Dead
 ;;
 
+let check pid where =
+  match signal pid where `Null with
+  | `Not_allowed | `Delivered -> `Alive
+  | `Dead -> `Dead
+;;
+
 let kill pid where (signal' : Signal.t) =
   match signal pid where (`Signal signal') with
   | `Delivered -> `Delivered

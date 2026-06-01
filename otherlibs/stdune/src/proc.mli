@@ -48,6 +48,8 @@ module Process_info : sig
 end
 
 module Linux : sig
+  val read_pid_max : unit -> int option
+
   module Process_tree : sig
     type error
 

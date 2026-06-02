@@ -248,19 +248,7 @@ Test metadata for multiple file targets produced by the same rule.
 Test metadata for directory targets, which are stored with no digest.
 
   $ reset
-  $ cat > dune-project <<EOF
-  > (lang dune 3.10)
-  > (using directory-targets 0.1)
-  > EOF
-  $ cat > dune <<EOF
-  > (rule
-  >  (target (dir output))
-  >  (action
-  >   (progn
-  >    (run mkdir output)
-  >    (run mkdir output/child)
-  >    (run touch output/file))))
-  > EOF
+  $ make_empty_child_directory_target_project
   $ dune build output
   $ metadata_dir="$PWD/.xdg-cache/dune/db/meta/v5"
   $ find "$metadata_dir" -mindepth 2 -maxdepth 2 -type f \

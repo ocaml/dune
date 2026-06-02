@@ -169,6 +169,104 @@ make_melange_runtime_deps_lib() {
 	EOF
 }
 
+make_melange_virtual_time_project() {
+  local vlib_public_name="$1"
+  local impl_public_name="$2"
+  local emit_impl_name="$3"
+
+  mkdir -p vlib js_impl test
+  {
+    echo "(library"
+    echo " (name the_lib)"
+    echo " (modes melange native)"
+    if [ -n "$vlib_public_name" ]; then
+      echo " (public_name ${vlib_public_name})"
+    fi
+    echo " (virtual_modules virt))"
+  } > vlib/dune
+  cat > vlib/the_lib.mli <<-'EOF'
+	module Time : sig
+	  val gettimeofday : unit -> float
+	end
+	EOF
+  cat > vlib/the_lib.ml <<-'EOF'
+	module Time = struct
+	  let gettimeofday () = Virt.gettimeofday ()
+	end
+	EOF
+  cat > vlib/virt.mli <<-'EOF'
+	val gettimeofday : unit -> float
+	EOF
+
+  {
+    echo "(library"
+    echo " (name timeJs)"
+    if [ -n "$impl_public_name" ]; then
+      echo " (public_name ${impl_public_name})"
+    fi
+    echo " (implements the_lib)"
+    echo " (modes melange))"
+  } > js_impl/dune
+  cat > js_impl/virt.ml <<-'EOF'
+	let gettimeofday : unit -> float = fun () -> 42.
+	EOF
+
+  cat > test/dune <<- EOF
+	(melange.emit
+	 (target output)
+	 (libraries the_lib ${emit_impl_name})
+	 (emit_stdlib false))
+	EOF
+}
+
+make_hello_ppx_runtime_fixture() {
+  local mode="${1:-byte}"
+
+  mkdir hello
+  if [ "$mode" = "melange" ]; then
+    cat > hello/dune <<-'EOF'
+	(library (name hello) (modes melange))
+	EOF
+  else
+    cat > hello/dune <<-'EOF'
+	(library (name hello))
+	EOF
+  fi
+  cat > hello/hello.ml <<-'EOF'
+	type t = int
+	EOF
+
+  mkdir hello_ppx
+  cat > hello_ppx/dune <<-'EOF'
+	(library
+	 (name hello_ppx)
+	 (kind ppx_rewriter)
+	 (ppx_runtime_libraries hello)
+	 (ppx.driver (main Hello_ppx.main)))
+	EOF
+  cat > hello_ppx/hello_ppx.ml <<-'EOF'
+	let main () =
+	  let out = ref "" in
+	  let args =
+	    [ ("-o", Arg.Set_string out, "")
+	    ; ("--impl", Arg.Set_string (ref ""), "")
+	    ; ("--as-ppx", Arg.Set (ref false), "")
+	    ; ("--cookie", Arg.Set (ref false), "")
+	EOF
+  if [ "$mode" = "melange" ]; then
+    cat >> hello_ppx/hello_ppx.ml <<-'EOF'
+	    ; ("-loc-filename", Arg.String ignore, "")
+	EOF
+  fi
+  cat >> hello_ppx/hello_ppx.ml <<-'EOF'
+	    ]
+	  in
+	  let anon _ = () in
+	  Arg.parse (Arg.align args) anon "";
+	  close_out (open_out !out)
+	EOF
+}
+
 make_foreign_header_consumer() {
   make_dune_project 3.8
   cat > dune <<-'EOF'

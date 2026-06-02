@@ -3,17 +3,7 @@ Test target promotion in file-watching mode.
   $ export DUNE_TRACE="cache"
 
   $ echo '(lang dune 3.0)' > dune-project
-  $ cat > dune <<EOF
-  > (rule
-  >  (mode promote)
-  >  (deps original)
-  >  (target promoted)
-  >  (action (copy %{deps} %{target})))
-  > (rule
-  >  (deps promoted)
-  >  (target result)
-  >  (action (system "cat promoted promoted > result")))
-  > EOF
+  $ write_target_promotion_rules promote
   $ echo hi > original
 
   $ start_dune
@@ -62,17 +52,7 @@ Now try replacing its content.
 Now switch the mode to standard. Dune reports an error about multiple rules for
 [_build/default/promoted], as expected (see the error at the end of the test).
 
-  $ cat > dune <<EOF
-  > (rule
-  >  (mode standard)
-  >  (deps original)
-  >  (target promoted)
-  >  (action (copy %{deps} %{target})))
-  > (rule
-  >  (deps promoted)
-  >  (target result)
-  >  (action (system "cat promoted promoted > result")))
-  > EOF
+  $ write_target_promotion_rules standard
 
   $ build result
   Failure
@@ -93,17 +73,7 @@ We use the hint and it starts to work.
 
 Now use [fallback] to override the rule that generates [promoted].
 
-  $ cat > dune <<EOF
-  > (rule
-  >  (mode fallback)
-  >  (deps original)
-  >  (target promoted)
-  >  (action (copy %{deps} %{target})))
-  > (rule
-  >  (deps promoted)
-  >  (target result)
-  >  (action (system "cat promoted promoted > result")))
-  > EOF
+  $ write_target_promotion_rules fallback
 
 At first, we don't have the source, so the rule is used.
 
@@ -149,17 +119,7 @@ We're done.
 
 Now test file-system events generated during target promotion.
 
-  $ cat > dune <<EOF
-  > (rule
-  >  (mode promote)
-  >  (deps original)
-  >  (target promoted)
-  >  (action (copy %{deps} %{target})))
-  > (rule
-  >  (deps promoted)
-  >  (target result)
-  >  (action (system "cat promoted promoted > result")))
-  > EOF
+  $ write_target_promotion_rules promote
 
   $ cat promoted
   hi

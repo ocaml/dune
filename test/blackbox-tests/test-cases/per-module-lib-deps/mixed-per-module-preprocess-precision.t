@@ -12,23 +12,7 @@ Companion to `mixed-per-module-preprocess.t` (the soundness sibling).
 
 A no-op staged ppx (identical to the soundness reproducer).
 
-  $ mkdir ppx
-  $ cat > ppx/dune <<EOF
-  > (library
-  >  (name ppx_noop)
-  >  (kind ppx_rewriter)
-  >  (ppx.driver (main Ppx_noop.main)))
-  > EOF
-  $ cat > ppx/ppx_noop.ml <<EOF
-  > let main () =
-  >   let n = Array.length Sys.argv in
-  >   if n < 4 || Sys.argv.(1) <> "--as-ppx" then assert false;
-  >   let input = Sys.argv.(n - 2) in
-  >   let output = Sys.argv.(n - 1) in
-  >   Filename.quote_command "cp" [input; output]
-  >   |> Sys.command
-  >   |> exit
-  > EOF
+  $ make_noop_ppx_rewriter
 
 `mylib`: `a` uses default preprocessing (Some-entry); `b` uses
 `(staged_pps ...)` (None-entry). `a`'s source is independent of `b`;

@@ -260,6 +260,26 @@ make_private_module_virtual_lib_fixture() {
 	EOF
 }
 
+make_noop_ppx_rewriter() {
+  mkdir ppx
+  cat > ppx/dune <<-'EOF'
+	(library
+	 (name ppx_noop)
+	 (kind ppx_rewriter)
+	 (ppx.driver (main Ppx_noop.main)))
+	EOF
+  cat > ppx/ppx_noop.ml <<-'EOF'
+	let main () =
+	  let n = Array.length Sys.argv in
+	  if n < 4 || Sys.argv.(1) <> "--as-ppx" then assert false;
+	  let input = Sys.argv.(n - 2) in
+	  let output = Sys.argv.(n - 1) in
+	  Filename.quote_command "cp" [input; output]
+	  |> Sys.command
+	  |> exit
+	EOF
+}
+
 make_hello_ppx_runtime_fixture() {
   local mode="${1:-byte}"
 

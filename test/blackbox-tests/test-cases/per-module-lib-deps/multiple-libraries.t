@@ -8,29 +8,9 @@ See: https://github.com/ocaml/dune/issues/4572
 
   $ make_dune_project 3.0
 
-  $ mkdir lib
-  $ cat > lib/dune <<EOF
-  > (library
-  >  (name mylib))
-  > EOF
-  $ cat > lib/mylib.ml <<EOF
-  > let value = 42
-  > EOF
-  $ cat > lib/mylib.mli <<EOF
-  > val value : int
-  > EOF
+  $ make_value_library lib mylib 42
 
-  $ mkdir lib2
-  $ cat > lib2/dune <<EOF
-  > (library
-  >  (name otherlib))
-  > EOF
-  $ cat > lib2/otherlib.ml <<EOF
-  > let other_value = 100
-  > EOF
-  $ cat > lib2/otherlib.mli <<EOF
-  > val other_value : int
-  > EOF
+  $ make_value_library lib2 otherlib 100 other_value
 
   $ cat > uses_lib.ml <<EOF
   > let get_value () = Mylib.value

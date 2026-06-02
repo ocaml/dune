@@ -127,6 +127,25 @@ make_mypkg_lib_project() {
 	EOF
 }
 
+make_value_library() {
+  local dir="$1"
+  local name="$2"
+  local value="$3"
+  local value_name="${4:-value}"
+
+  mkdir "$dir"
+  cat > "$dir/dune" <<- EOF
+	(library
+	 (name ${name}))
+	EOF
+  cat > "$dir/${name}.ml" <<- EOF
+	let ${value_name} = ${value}
+	EOF
+  cat > "$dir/${name}.mli" <<- EOF
+	val ${value_name} : int
+	EOF
+}
+
 make_foreign_header_consumer() {
   make_dune_project 3.8
   cat > dune <<-'EOF'

@@ -147,6 +147,24 @@ make_mypkg_stubs_project() {
 	EOF
 }
 
+make_install_include_project() {
+  make_dune_project 3.5
+  cat >> dune-project <<-'EOF'
+	(package (name hello))
+	EOF
+  cat > dune <<-'EOF'
+	(executable
+	 (public_name hello))
+	
+	(install
+	 (files (include foo.sexp))
+	 (section share))
+	EOF
+  cat > hello.ml <<-'EOF'
+	let () = print_endline "Hello, World!"
+	EOF
+}
+
 make_value_library() {
   local dir="$1"
   local name="$2"

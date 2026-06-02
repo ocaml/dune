@@ -50,6 +50,30 @@ Testsuite for the (foreign_library ...) stanza.
   > cat >>lib/dune
   > }
 
+  $ write_calc_dune_with_headers_config() {
+  > write_calc_dune <<'EOF'
+  > (foreign_library
+  >  (archive_name config)
+  >  (language cxx)
+  >  (include_dirs headers)
+  >  (extra_deps eight.h)
+  >  (flags :standard -DCONFIG_VALUE=2000)
+  >  (names config))
+  > EOF
+  > }
+
+  $ write_calc_with_month_headers_config_dune() {
+  > write_calc_with_month_dune "$@" <<'EOF'
+  > (foreign_library
+  >  (archive_name config)
+  >  (language cxx)
+  >  (include_dirs headers)
+  >  (extra_deps eight.h)
+  >  (flags :standard -DCONFIG_VALUE=2000)
+  >  (names config))
+  > EOF
+  > }
+
   $ write_calc_dune <<EOF
   > (foreign_library
   >  (archive_name config)
@@ -109,15 +133,7 @@ Testsuite for the (foreign_library ...) stanza.
 * Include directories via the (include_dirs ...) field.
 * Extra dependencies via the (extra_deps ...) field.
 
-  $ write_calc_dune <<EOF
-  > (foreign_library
-  >  (archive_name config)
-  >  (language cxx)
-  >  (include_dirs headers)
-  >  (extra_deps eight.h)
-  >  (flags :standard -DCONFIG_VALUE=2000)
-  >  (names config))
-  > EOF
+  $ write_calc_dune_with_headers_config
 
   $ cat >lib/config.cpp <<EOF
   > #include <caml/mlvalues.h>
@@ -248,15 +264,7 @@ Testsuite for the (foreign_library ...) stanza.
 ----------------------------------------------------------------------------------
 * Interaction of (foreign_stubs ...) and (foreign_archives ...).
 
-  $ write_calc_with_month_dune <<EOF
-  > (foreign_library
-  >  (archive_name config)
-  >  (language cxx)
-  >  (include_dirs headers)
-  >  (extra_deps eight.h)
-  >  (flags :standard -DCONFIG_VALUE=2000)
-  >  (names config))
-  > EOF
+  $ write_calc_with_month_headers_config_dune
 
   $ cat >lib/month.c <<EOF
   > #include <caml/mlvalues.h>
@@ -293,15 +301,7 @@ Testsuite for the (foreign_library ...) stanza.
 ----------------------------------------------------------------------------------
 * Error when using (foreign_archives ...) and a pure bytecode (executable ...).
 
-  $ write_calc_with_month_dune with-day <<EOF
-  > (foreign_library
-  >  (archive_name config)
-  >  (language cxx)
-  >  (include_dirs headers)
-  >  (extra_deps eight.h)
-  >  (flags :standard -DCONFIG_VALUE=2000)
-  >  (names config))
-  > EOF
+  $ write_calc_with_month_headers_config_dune with-day
 
   $ cat >dune <<EOF
   > (executable
@@ -338,15 +338,7 @@ Testsuite for the (foreign_library ...) stanza.
 * Interaction of (foreign_archives ...) and (executables ...).
 * Foreign archives in subdirectories.
 
-  $ write_calc_with_month_dune with-day <<EOF
-  > (foreign_library
-  >  (archive_name config)
-  >  (language cxx)
-  >  (include_dirs headers)
-  >  (extra_deps eight.h)
-  >  (flags :standard -DCONFIG_VALUE=2000)
-  >  (names config))
-  > EOF
+  $ write_calc_with_month_headers_config_dune with-day
 
   $ cat >dune <<EOF
   > (executable

@@ -5,9 +5,11 @@ Promotion of directory targets.
   > (lang dune 3.0)
   > (using directory-targets 0.1)
   > EOF
-  $ cat > dune <<EOF
+  $ write_promoted_directory_target_rule() {
+  > local mode="$1"
+  > cat > dune <<EOF
   > (rule
-  >  (mode promote)
+  >  (mode ${mode})
   >  (deps (sandbox always))
   >  (targets a (dir dir))
   >  (action (bash "\| echo a > a;
@@ -17,6 +19,8 @@ Promotion of directory targets.
   >                "\| echo d > dir/subdir/d
   > )))
   > EOF
+  > }
+  $ write_promoted_directory_target_rule promote
 
   $ dune build a
   $ cat a dir/b dir/c dir/subdir/d
@@ -73,35 +77,13 @@ Promoting a badly specified directory target gives a weird error:
 
 Test error message for (promote (into <dir>)) if <dir> is missing.
 
-  $ cat > dune <<EOF
-  > (rule
-  >  (mode (promote (into another_dir)))
-  >  (deps (sandbox always))
-  >  (targets a (dir dir))
-  >  (action (bash "\| echo a > a;
-  >                "\| mkdir -p dir/subdir;
-  >                "\| echo b > dir/b;
-  >                "\| echo c > dir/c;
-  >                "\| echo d > dir/subdir/d
-  > )))
-  > EOF
+  $ write_promoted_directory_target_rule "(promote (into another_dir))"
 
   $ dune build a
 
 Test cleaning up unexpected files and directories in directory targets.
 
-  $ cat > dune <<EOF
-  > (rule
-  >  (mode (promote))
-  >  (deps (sandbox always))
-  >  (targets a (dir dir))
-  >  (action (bash "\| echo a > a;
-  >                "\| mkdir -p dir/subdir;
-  >                "\| echo b > dir/b;
-  >                "\| echo c > dir/c;
-  >                "\| echo d > dir/subdir/d
-  > )))
-  > EOF
+  $ write_promoted_directory_target_rule "(promote)"
 
   $ mkdir -p dir/unexpected-dir-1
   $ mkdir -p dir/subdir/unexpected-dir-2

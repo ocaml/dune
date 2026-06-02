@@ -27,18 +27,7 @@ Now we try to use the installed headers:
   $ mkdir subdir
   $ cd subdir
 
-  $ make_dune_project 3.8
-
-  $ cat >dune <<EOF
-  > (executable
-  >  (name bar)
-  >  (foreign_stubs
-  >   (language c)
-  >   (include_dirs (lib mypkg))
-  >   (names foo)))
-  > EOF
-  $ touch bar.ml
-  $ cat >foo.c <<EOF
+  $ make_foreign_header_consumer <<EOF
   > #include <foo.h>
   > #include <inc/foo.h>
   > EOF

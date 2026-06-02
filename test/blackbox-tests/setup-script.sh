@@ -544,10 +544,10 @@ write_menhir_merge_into_sources() {
 	EOF
 }
 
-write_melange_app_using_foo() {
+make_melange_app_with_asset_reader() {
   local dir="${1:-app}"
 
-  mkdir -p "$dir"
+  write_melange_asset_reader "$dir"
   cat > "$dir/dune-project" <<-'EOF'
 	(lang dune 3.8)
 	(package (name app))
@@ -561,13 +561,6 @@ write_melange_app_using_foo() {
 	 (libraries foo)
 	 (preprocess (pps melange.ppx)))
 	EOF
-}
-
-make_melange_app_with_asset_reader() {
-  local dir="${1:-app}"
-
-  write_melange_asset_reader "$dir"
-  write_melange_app_using_foo "$dir"
 }
 
 make_melange_virtual_time_project() {

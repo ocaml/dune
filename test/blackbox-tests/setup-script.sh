@@ -296,6 +296,20 @@ write_melange_asset_reader() {
 	EOF
 }
 
+write_menhir_unit_parser_sources() {
+  cat >lang/ast.ml <<-'EOF'
+	type expr =
+	  | Unit
+	EOF
+  cat >lang/parser.mly <<-'EOF'
+	%token EOF
+	%start <Ast.expr> expr
+	%%
+	expr:
+	| EOF { Ast.Unit }
+	EOF
+}
+
 make_melange_virtual_time_project() {
   local vlib_public_name="$1"
   local impl_public_name="$2"

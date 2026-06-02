@@ -30,17 +30,7 @@ $ cat >ast.ml <<EOF
   > (menhir (modules parser))
   > EOF
 
-  $ cat >lang/ast.ml <<EOF
-  > type expr =
-  >   | Unit
-  > EOF
-  $ cat >lang/parser.mly <<EOF
-  > %token EOF
-  > %start <Ast.expr> expr
-  > %%
-  > expr:
-  > | EOF { Ast.Unit }
-  > EOF
+  $ write_menhir_unit_parser_sources
 
 Menhir parsers in qualified subdirectories should be able to refer to sibling modules:
 

@@ -40,8 +40,14 @@
   };
 
   nixConfig = {
-    extra-substituters = "https://anmonteiro.nix-cache.workers.dev";
-    extra-trusted-public-keys = "ocaml.nix-cache.com-1:/xI2h2+56rwFfKyyFVbkJSeGqSIYMC/Je+7XXqGKDIY=";
+    extra-substituters = [
+      "https://ocaml-dune.cachix.org"
+      "https://anmonteiro.nix-cache.workers.dev"
+    ];
+    extra-trusted-public-keys = [
+      "ocaml-dune.cachix.org-1:kDYe5JY2FtD9pPxkikNA9QgtPrLvl6ryizPxW+0BsqA="
+      "ocaml.nix-cache.com-1:/xI2h2+56rwFfKyyFVbkJSeGqSIYMC/Je+7XXqGKDIY="
+    ];
   };
 
   outputs =
@@ -266,6 +272,33 @@
                 touch $out/success
               '';
             };
+          cache-bundle =
+            let
+              system = pkgs.stdenv.hostPlatform.system;
+              shells = self.devShells.${system};
+              # Skip shells using repo-built dune; closure changes per commit.
+              shellNames =
+                if system == "x86_64-linux" then
+                  [
+                    "default"
+                    "fmt"
+                    "doc"
+                    "microbench"
+                    "bootstrap-check"
+                    "bootstrap-check_4_14"
+                    "bootstrap-ox"
+                    "rocq"
+                    "rocq-native"
+                  ]
+                else
+                  [ ];
+            in
+            pkgs.linkFarm "dune-cache-bundle-${system}" (
+              map (n: {
+                name = "shell-${n}";
+                path = shells.${n}.inputDerivation;
+              }) shellNames
+            );
         }
       );
 

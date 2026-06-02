@@ -102,6 +102,50 @@ make_foo_tarball() {
   rm -rf foo
 }
 
+make_foo_tarball_package() {
+  : "${PORT:?}"
+
+  mkpkg foo <<- EOF
+	build: [
+	  ["dune" "subst"] {dev}
+	  [
+	    "dune"
+	    "build"
+	    "-p"
+	    name
+	    "-j"
+	    jobs
+	    "@install"
+	    "@runtest" {with-test}
+	    "@doc" {with-doc}
+	  ]
+	]
+	url {
+	 src: "http://0.0.0.0:${PORT}"
+	 checksum: [
+	  "md5=$(md5sum foo.tar | cut -f1 -d' ')"
+	 ]
+	}
+	EOF
+}
+
+make_bar_executable_depends_foo_project() {
+  cat > dune-project <<-'EOF'
+	(lang dune 3.13)
+	(package
+	 (name bar)
+	 (depends foo))
+	EOF
+  cat > bar.ml <<-'EOF'
+	let () = print_endline Foo.foo
+	EOF
+  cat > dune <<-'EOF'
+	(executable
+	 (public_name bar)
+	 (libraries foo))
+	EOF
+}
+
 make_project_pinned_to_foo() {
   cat >dune-project <<- EOF
 	(lang dune 3.13)

@@ -273,29 +273,9 @@ Testsuite for the %{libexec...} and %{libexec-private...} variable.
 In this test, two packages are defined in the same project, but we may not
 access the artifacts through %{libexec-private}
 
-  $ mkdir lib-private-only-packages
-  $ cd lib-private-only-packages
-  $ mkdir lib1 lib2
-  $ cat >dune-project <<EOF
-  > (lang dune 2.8)
-  > (name lib-private-test)
-  > (package (name public_lib1))
-  > (package (name public_lib2))
-  > EOF
-  $ cat >lib1/dune <<EOF
-  > (library
-  >  (name lib1)
-  >  (enabled_if (= %{context_name} host))
-  >  (public_name public_lib1))
-  > EOF
-  $ touch lib1/lib1.ml
-  $ cat >lib2/dune <<EOF
-  > (library
-  >  (name lib2)
-  >  (public_name public_lib2))
-  > (rule
-  >  (with-stdout-to lib2.ml (echo "let _ = {|%{libexec-private:lib1:lib1.ml}|}")))
-  > EOF
+  $ make_private_only_packages_project \
+  >   libexec-private \
+  >   "(enabled_if (= %{context_name} host))"
   $ cat >dune <<EOF
   > (alias
   >  (name host)

@@ -40,18 +40,7 @@ Test sites plugins (example from the manual)
   >  (name plugin1))
   > EOF
 
-  $ cat > plugin/dune <<EOF
-  > (library
-  >  (public_name plugin1.plugin1_impl)
-  >  (name plugin1_impl)
-  >  (modules plugin1_impl)
-  >  (libraries app.register))
-  > 
-  > (plugin
-  >  (name plugin1)
-  >  (libraries plugin1.plugin1_impl)
-  >  (site (app plugins)))
-  > EOF
+  $ write_sites_plugin_dune
 
   $ write_sites_plugin_impl
 

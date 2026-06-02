@@ -38,21 +38,6 @@ Menhir parsers in qualified subdirectories should be able to refer to sibling mo
 
 Use `merge_into`
 
-  $ cat >lang/sub/tokens.mly <<EOF
-  > %token <char> TOKEN
-  > %token EOF
-  > %%
-  > EOF
-  $ cat >lang/sub/parser.mly <<EOF
-  > %start <char list> main
-  > %%
-  > main:
-  > | c = TOKEN EOF { [c] }
-  > | c = TOKEN xs = main  { c :: xs }
-  > EOF
-
-  $ cat >lang/sub/dune <<EOF
-  > (menhir (modules tokens parser) (merge_into both))
-  > EOF
+  $ write_menhir_merge_into_sources
 
   $ dune build

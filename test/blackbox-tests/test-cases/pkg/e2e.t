@@ -4,22 +4,7 @@ Exercises end to end locking and building a simple project.
   $ add_mock_repo_if_needed
 
 Make a library:
-  $ mkdir foo
-  $ cd foo
-  $ cat > dune-project <<EOF
-  > (lang dune 3.13)
-  > (package (name foo))
-  > EOF
-  $ cat > foo.ml <<EOF
-  > let foo = "Hello, World!"
-  > EOF
-  $ cat > dune <<EOF
-  > (library
-  >  (public_name foo))
-  > EOF
-  $ cd ..
-  $ tar cf foo.tar foo
-  $ rm -rf foo
+  $ make_foo_tarball 'let foo = "Hello, World!"'
 
 Configure our fake curl to serve the tarball
 

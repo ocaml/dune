@@ -7,14 +7,7 @@ Promotion with targets `(into ..)` a directory
 
   $ mkdir app
   $ mkdir app/foo
-  $ cat > app/dune <<EOF
-  > (include_subdirs unqualified)
-  > (melange.emit
-  >  (alias dist)
-  >  (emit_stdlib false)
-  >  (promote (into ../../foo))
-  >  (target dist))
-  > EOF
+  $ write_melange_promote_app_dune "(into ../../foo)"
   $ cat > app/x.ml <<EOF
   > let () = print_endline "hello"
   > EOF

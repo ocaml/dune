@@ -265,6 +265,19 @@ make_melange_sandbox_project() {
 	EOF
 }
 
+write_melange_promote_app_dune() {
+  local promote="$1"
+
+  cat > app/dune <<- EOF
+	(include_subdirs unqualified)
+	(melange.emit
+	 (alias dist)
+	 (emit_stdlib false)
+	 (promote ${promote})
+	 (target dist))
+	EOF
+}
+
 make_melange_virtual_time_project() {
   local vlib_public_name="$1"
   local impl_public_name="$2"

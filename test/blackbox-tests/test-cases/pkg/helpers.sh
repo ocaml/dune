@@ -102,6 +102,18 @@ make_foo_tarball() {
   rm -rf foo
 }
 
+make_project_pinned_to_foo() {
+  cat >dune-project <<- EOF
+	(lang dune 3.13)
+	(pin
+	 (url "file://$PWD/_foo")
+	 (package (name foo)))
+	(package
+	 (name main)
+	 (depends foo))
+	EOF
+}
+
 mk_ocaml() {
   local version="$1"
   local major

@@ -127,6 +127,26 @@ make_mypkg_lib_project() {
 	EOF
 }
 
+make_mypkg_stubs_project() {
+  make_dune_project 3.24
+  cat >> dune-project <<-'EOF'
+	(package (name mypkg))
+	EOF
+  mkdir src
+  cat > src/dune <<-'EOF'
+	(library
+	 (public_name mypkg)
+	 (foreign_stubs (language c) (names stub)))
+	EOF
+  cat > src/mypkg.ml <<-'EOF'
+	let x = 1
+	EOF
+  cat > src/stub.c <<-'EOF'
+	#include <caml/mlvalues.h>
+	CAMLprim value mypkg_stub(value unit) { return Val_unit; }
+	EOF
+}
+
 make_value_library() {
   local dir="$1"
   local name="$2"

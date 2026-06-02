@@ -1,22 +1,6 @@
 Test that (deps (package ...)) in a cram stanza sets up all layout env vars.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.24)
-  > (package (name mypkg))
-  > EOF
-  $ mkdir src
-  $ cat >src/dune <<EOF
-  > (library
-  >  (public_name mypkg)
-  >  (foreign_stubs (language c) (names stub)))
-  > EOF
-  $ cat >src/mypkg.ml <<'EOF'
-  > let x = 1
-  > EOF
-  $ cat >src/stub.c <<'EOF'
-  > #include <caml/mlvalues.h>
-  > CAMLprim value mypkg_stub(value unit) { return Val_unit; }
-  > EOF
+  $ make_mypkg_stubs_project
 
 Capture baselines into a setup script for the inner test:
 

@@ -219,6 +219,47 @@ make_melange_virtual_time_project() {
 	EOF
 }
 
+make_private_module_virtual_lib_fixture() {
+  local modes="${1:-}"
+
+  mkdir -p vlib impl
+  {
+    echo "(library"
+    echo " (name vlib)"
+    if [ -n "$modes" ]; then
+      echo " ${modes}"
+    fi
+    echo " (public_name pkg.vlib)"
+    echo " (virtual_modules virt)"
+    echo " (private_modules helper))"
+  } > vlib/dune
+  cat > vlib/vlib.ml <<-'EOF'
+	let run () = Virt.run () + Helper.value
+	EOF
+  cat > vlib/vlib.mli <<-'EOF'
+	val run : unit -> int
+	EOF
+  cat > vlib/virt.mli <<-'EOF'
+	val run : unit -> int
+	EOF
+  cat > vlib/helper.ml <<-'EOF'
+	let value = 42
+	EOF
+
+  {
+    echo "(library"
+    echo " (name impl)"
+    if [ -n "$modes" ]; then
+      echo " ${modes}"
+    fi
+    echo " (public_name pkg.impl)"
+    echo " (implements pkg.vlib))"
+  } > impl/dune
+  cat > impl/virt.ml <<-'EOF'
+	let run () = 1
+	EOF
+}
+
 make_hello_ppx_runtime_fixture() {
   local mode="${1:-byte}"
 

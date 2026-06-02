@@ -26,6 +26,30 @@ Testsuite for the (foreign_library ...) stanza.
   > cat >>lib/dune
   > }
 
+  $ write_calc_with_month_dune() {
+  > local day="${1:-}"
+  > cat >lib/dune <<'EOF'
+  > (foreign_library
+  >  (archive_name addmul)
+  >  (language c)
+  >  (names add mul))
+  > (library
+  >  (name calc)
+  >  (modules calc)
+  >  (foreign_stubs (language c) (names month))
+  >  (foreign_archives addmul config))
+  > EOF
+  > if [ "$day" = "with-day" ]; then
+  > cat >>lib/dune <<'EOF'
+  > (foreign_library
+  >  (archive_name day)
+  >  (language c)
+  >  (names day))
+  > EOF
+  > fi
+  > cat >>lib/dune
+  > }
+
   $ write_calc_dune <<EOF
   > (foreign_library
   >  (archive_name config)
@@ -224,16 +248,7 @@ Testsuite for the (foreign_library ...) stanza.
 ----------------------------------------------------------------------------------
 * Interaction of (foreign_stubs ...) and (foreign_archives ...).
 
-  $ cat >lib/dune <<EOF
-  > (foreign_library
-  >  (archive_name addmul)
-  >  (language c)
-  >  (names add mul))
-  > (library
-  >  (name calc)
-  >  (modules calc)
-  >  (foreign_stubs (language c) (names month))
-  >  (foreign_archives addmul config))
+  $ write_calc_with_month_dune <<EOF
   > (foreign_library
   >  (archive_name config)
   >  (language cxx)
@@ -278,20 +293,7 @@ Testsuite for the (foreign_library ...) stanza.
 ----------------------------------------------------------------------------------
 * Error when using (foreign_archives ...) and a pure bytecode (executable ...).
 
-  $ cat >lib/dune <<EOF
-  > (foreign_library
-  >  (archive_name addmul)
-  >  (language c)
-  >  (names add mul))
-  > (library
-  >  (name calc)
-  >  (modules calc)
-  >  (foreign_stubs (language c) (names month))
-  >  (foreign_archives addmul config))
-  > (foreign_library
-  >  (archive_name day)
-  >  (language c)
-  >  (names day))
+  $ write_calc_with_month_dune with-day <<EOF
   > (foreign_library
   >  (archive_name config)
   >  (language cxx)
@@ -336,20 +338,7 @@ Testsuite for the (foreign_library ...) stanza.
 * Interaction of (foreign_archives ...) and (executables ...).
 * Foreign archives in subdirectories.
 
-  $ cat >lib/dune <<EOF
-  > (foreign_library
-  >  (archive_name addmul)
-  >  (language c)
-  >  (names add mul))
-  > (library
-  >  (name calc)
-  >  (modules calc)
-  >  (foreign_stubs (language c) (names month))
-  >  (foreign_archives addmul config))
-  > (foreign_library
-  >  (archive_name day)
-  >  (language c)
-  >  (names day))
+  $ write_calc_with_month_dune with-day <<EOF
   > (foreign_library
   >  (archive_name config)
   >  (language cxx)
@@ -387,20 +376,7 @@ Testsuite for the (foreign_library ...) stanza.
 ----------------------------------------------------------------------------------
 * Use (env ...) to pass C++ flags.
 
-  $ cat >lib/dune <<EOF
-  > (foreign_library
-  >  (archive_name addmul)
-  >  (language c)
-  >  (names add mul))
-  > (library
-  >  (name calc)
-  >  (modules calc)
-  >  (foreign_stubs (language c) (names month))
-  >  (foreign_archives addmul config))
-  > (foreign_library
-  >  (archive_name day)
-  >  (language c)
-  >  (names day))
+  $ write_calc_with_month_dune with-day <<EOF
   > (foreign_library
   >  (archive_name config)
   >  (language cxx)
@@ -425,20 +401,7 @@ Testsuite for the (foreign_library ...) stanza.
 ----------------------------------------------------------------------------------
 * Generated header.
 
-  $ cat >lib/dune <<EOF
-  > (foreign_library
-  >  (archive_name addmul)
-  >  (language c)
-  >  (names add mul))
-  > (library
-  >  (name calc)
-  >  (modules calc)
-  >  (foreign_stubs (language c) (names month))
-  >  (foreign_archives addmul config))
-  > (foreign_library
-  >  (archive_name day)
-  >  (language c)
-  >  (names day))
+  $ write_calc_with_month_dune with-day <<EOF
   > (foreign_library
   >  (archive_name config)
   >  (language cxx)

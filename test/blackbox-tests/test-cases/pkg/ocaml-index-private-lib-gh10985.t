@@ -3,19 +3,7 @@ installed through a lock file.
 
 We set up a library that will be installed as part of the package:
 
-  $ mkdir external_sources
-  $ cat >external_sources/dune-project <<EOF
-  > (lang dune 3.11)
-  > (package (name mypkg))
-  > EOF
-  $ cat >external_sources/dune <<EOF
-  > (library
-  >  (public_name mypkg.lib)
-  >  (name test_lib))
-  > EOF
-  $ cat >external_sources/test_lib.ml <<EOF
-  > let x = ()
-  > EOF
+  $ make_external_mypkg_lib_source 'let x = ()'
 
 We put the actual build in a separate directory, so we don't have to ignore
 the package directory in the dune file:

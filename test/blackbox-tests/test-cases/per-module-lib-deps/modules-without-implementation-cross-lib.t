@@ -53,14 +53,7 @@ Edit [dep_lib]'s interface. [consumer] reaches [Original_name]
 through [Foo.Re], so it must rebuild — and must rebuild cleanly,
 not error out with "inconsistent assumptions over interface":
 
-  $ cat > original_name.mli <<EOF
-  > val x : string
-  > val y : int
-  > EOF
-  $ cat > original_name.ml <<EOF
-  > let x = "hello"
-  > let y = 42
-  > EOF
+  $ write_original_name_xy
   $ dune build @check
   $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("consumer"))] | length'
   1

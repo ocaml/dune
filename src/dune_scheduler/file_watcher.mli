@@ -2,6 +2,9 @@ open Stdune
 
 type t
 
+(** Standard path exclusions used by the file watcher. *)
+val standard_watch_exclusions : string list
+
 (** Create a new file watcher. *)
 val create
   :  ?fsevents_debounce:Time.Span.t
@@ -18,7 +21,3 @@ val flush : t -> unit Fiber.t
 val shutdown : t -> [ `Kill of Pid.t | `No_op | `Thunk of unit -> unit ]
 
 val add_watch : t -> Path.t -> (unit, [ `Does_not_exist ]) result
-
-module For_tests : sig
-  val should_exclude : watch_exclusions:string list -> string -> bool
-end

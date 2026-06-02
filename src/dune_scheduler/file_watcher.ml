@@ -281,6 +281,68 @@ let create_should_exclude_predicate ~watch_exclusions =
   Re.execp (Re.compile (Re.alt (List.map watch_exclusions ~f:Re.Posix.re)))
 ;;
 
+let standard_watch_exclusions =
+  [ {|^_opam|}
+  ; {|/_opam|}
+  ; {|^_esy|}
+  ; {|/_esy|}
+  ; {|^\.#.*|} (* Such files can be created by Emacs and also Dune itself. *)
+  ; {|/\.#.*|}
+  ; {|~$|}
+  ; {|^#[^#]*#$|}
+  ; {|/#[^#]*#$|}
+  ; {|^4913$|} (* https://github.com/neovim/neovim/issues/3460 *)
+  ; {|/4913$|}
+  ; {|/.git|}
+  ; {|/.hg|}
+  ; {|:/windows|}
+  ]
+;;
+
+let%expect_test "watch exclusion patterns" =
+  let should_exclude =
+    create_should_exclude_predicate ~watch_exclusions:standard_watch_exclusions
+  in
+  let test string =
+    Printf.printf "should_exclude(%s) = %b\n" string (should_exclude string)
+  in
+  test "file.ml";
+  test "dir/file.ml";
+  test "4913";
+  test "dir/4913";
+  test "4913.ml";
+  test "84913";
+  test "_opam";
+  test "dir/_opam";
+  test "this_is_not_opam";
+  test "#file#";
+  test "dir/#file#";
+  test "dir/#subdir#/file";
+  test ".#file";
+  test ".#foobar.ml";
+  test "dir/.#file";
+  test "dir/.#subdir/file";
+  [%expect
+    {|
+    should_exclude(file.ml) = false
+    should_exclude(dir/file.ml) = false
+    should_exclude(4913) = true
+    should_exclude(dir/4913) = true
+    should_exclude(4913.ml) = false
+    should_exclude(84913) = false
+    should_exclude(_opam) = true
+    should_exclude(dir/_opam) = true
+    should_exclude(this_is_not_opam) = false
+    should_exclude(#file#) = true
+    should_exclude(dir/#file#) = true
+    should_exclude(dir/#subdir#/file) = false
+    should_exclude(.#file) = true
+    should_exclude(.#foobar.ml) = true
+    should_exclude(dir/.#file) = true
+    should_exclude(dir/.#subdir/file) = true
+    |}]
+;;
+
 let process_inotify_event (event : Inotify.Event.t) should_exclude : backend_event list =
   let create_event_unless_excluded ~kind ~path =
     if should_exclude path
@@ -866,10 +928,6 @@ let create ?fsevents_debounce ~watch_exclusions ~event_queue () =
   ; events
   }
 ;;
-
-module For_tests = struct
-  let should_exclude = create_should_exclude_predicate
-end
 
 let flush t = Sync.flush t.sync_table
 

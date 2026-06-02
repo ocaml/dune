@@ -78,7 +78,7 @@ module Pkg_config : sig
         [pkgconf] then [pkg-config]. Append the [PKG_CONFIG_PATH]
         environment variable to the searched pathes. Returns [None] if
         nothing is not found. *)
-    val get : configurator -> t option
+    val get : ?static:bool -> configurator -> t option
 
     type package_conf =
       { libs : string list

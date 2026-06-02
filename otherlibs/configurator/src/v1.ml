@@ -657,11 +657,14 @@ module Pkg_config = struct
     ; configurator : t
     }
 
-  let get c =
+  let get ?(static=false) c =
     let get_pkg_config_args default =
-      match Sys.getenv "PKG_CONFIG_ARGN" with
-      | s -> String.split ~on:' ' s
-      | exception Not_found -> default
+      let args =
+        match Sys.getenv "PKG_CONFIG_ARGN" with
+        | s -> String.split ~on:' ' s
+        | exception Not_found -> default
+      in
+      if static then "--static" :: args else args
     in
     match Sys.getenv "PKG_CONFIG" with
     | s ->

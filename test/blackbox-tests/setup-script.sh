@@ -354,6 +354,22 @@ write_melange_repro_foo_consumer() {
 	EOF
 }
 
+make_melange_foo_library_project() {
+  local dir="$1"
+  local package="$2"
+
+  mkdir -p "$dir"
+  cat > "$dir/dune-project" <<- EOF
+	(lang dune 3.8)
+	(package (name ${package}))
+	(using melange 0.1)
+	EOF
+  cat > "$dir/dune"
+  cat > "$dir/foo.ml" <<-'EOF'
+	let x = "foo"
+	EOF
+}
+
 make_melange_sandbox_project() {
   local runtime_deps="${1:-}"
 

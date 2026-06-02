@@ -2,19 +2,10 @@ Test dependency on installed package
 
   $ mkdir a b prefix app
 
-  $ cat > a/dune-project <<EOF
-  > (lang dune 3.8)
-  > (package (name a))
-  > (using melange 0.1)
-  > EOF
-  $ cat > a/dune <<EOF
+  $ make_melange_foo_library_project a a <<EOF
   > (library
   >  (modes melange)
   >  (public_name a))
-  > EOF
-
-  $ cat > a/foo.ml <<EOF
-  > let x = "foo"
   > EOF
 
   $ dune build --root a

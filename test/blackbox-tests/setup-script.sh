@@ -170,6 +170,17 @@ make_trivial_ocamllex() {
 	EOF
 }
 
+make_foreign_stubs_include_dirs_project() {
+  cat > dune <<-'EOF'
+	(library
+	 (name foo)
+	 (foreign_stubs
+	  (language c)
+	  (names bar)
+	  (include_dirs (include foo))))
+	EOF
+}
+
 make_directory_targets_project() {
   local version="${1:-3.23}"
   cat > dune-project <<- EOF

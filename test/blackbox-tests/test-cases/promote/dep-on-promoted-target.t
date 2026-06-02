@@ -2,9 +2,11 @@ Depending on a promoted file works.
 
   $ make_dune_project 2.0
 
-  $ cat > dune <<EOF
+  $ write_promoted_target_rules() {
+  > local mode="$1"
+  > cat > dune <<EOF
   > (rule
-  >   (mode promote)
+  >   (mode ${mode})
   >   (deps original)
   >   (target promoted)
   >   (action (copy %{deps} %{target})))
@@ -13,6 +15,9 @@ Depending on a promoted file works.
   >   (target result)
   >   (action (bash "cat promoted promoted > result")))
   > EOF
+  > }
+
+  $ write_promoted_target_rules promote
 
   $ echo hi > original
   $ dune build result
@@ -35,17 +40,7 @@ Now change the [original] and rebuild.
 Now switch the mode to standard. Dune reports an error about multiple rules for
 [_build/default/promoted], as expected.
 
-  $ cat > dune <<EOF
-  > (rule
-  >   (mode standard)
-  >   (deps original)
-  >   (target promoted)
-  >   (action (copy %{deps} %{target})))
-  > (rule
-  >   (deps promoted)
-  >   (target result)
-  >   (action (bash "cat promoted promoted > result")))
-  > EOF
+  $ write_promoted_target_rules standard
 
   $ dune build result
   Error: Multiple rules generated for _build/default/promoted:
@@ -69,17 +64,7 @@ We use the hint and it starts to work.
 
 Now use [fallback] to override the rule that generates [promoted].
 
-  $ cat > dune <<EOF
-  > (rule
-  >   (mode fallback)
-  >   (deps original)
-  >   (target promoted)
-  >   (action (copy %{deps} %{target})))
-  > (rule
-  >   (deps promoted)
-  >   (target result)
-  >   (action (bash "cat promoted promoted > result")))
-  > EOF
+  $ write_promoted_target_rules fallback
 
 At first, we don't have the source, so the rule is used.
 

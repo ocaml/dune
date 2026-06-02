@@ -416,6 +416,18 @@ make_directory_targets_project() {
 	EOF
 }
 
+write_directory_diff_keep_rule() {
+  cat > dune <<-'EOF'
+	(rule
+	 (targets (dir actual))
+	 (action (system "mkdir -p actual && printf 'keep\n' > actual/keep")))
+	
+	(rule
+	 (alias runtest)
+	 (action (diff expected actual)))
+	EOF
+}
+
 make_two_context_workspace() {
   cat > dune-workspace <<- EOF
 	(lang dune 3.13)

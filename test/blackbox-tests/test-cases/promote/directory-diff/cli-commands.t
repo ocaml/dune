@@ -7,15 +7,7 @@ Deletion promotions are visible to `dune promotion list` and `diff`.
   $ mkdir expected
   $ printf 'keep\n' > expected/keep
   $ printf 'delete me\n' > expected/delete
-  $ cat > dune <<'EOF'
-  > (rule
-  >  (targets (dir actual))
-  >  (action (system "mkdir -p actual && printf 'keep\n' > actual/keep")))
-  > 
-  > (rule
-  >  (alias runtest)
-  >  (action (diff expected actual)))
-  > EOF
+  $ write_directory_diff_keep_rule
 
   $ dune runtest
   File "dune", lines 5-7, characters 0-56:

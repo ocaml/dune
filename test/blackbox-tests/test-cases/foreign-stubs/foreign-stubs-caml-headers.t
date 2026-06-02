@@ -22,12 +22,12 @@ Copy a minimal set of Caml header and config files for the test.
 We compile a first time...
 
   $ dune build _build/default/cstub.o
-  $ dune trace cat | jq '.args.target_files | values'
+  $ dune trace cat | jq 'include "dune"; traceTargetFilesRedacted'
   [
-    "_build/default/.dune/cc_vendor/cc_vendor"
+    "_build/.actions/default/<action>"
   ]
   [
-    "_build/default/.dune/cc_vendor/cc_vendor"
+    "_build/.actions/default/<action>"
   ]
   [
     "_build/default/cstub.o"
@@ -40,7 +40,7 @@ And check that we recompile the stub after modifying a Caml header file.
 
   $ touch _caml/caml/new-header.h
   $ dune build _build/default/cstub.o
-  $ dune trace cat | jq '.args.target_files | values'
+  $ dune trace cat | jq 'include "dune"; traceTargetFilesRedacted'
   [
     "_build/default/cstub.o"
   ]

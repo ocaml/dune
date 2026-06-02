@@ -34,14 +34,7 @@ See: https://github.com/ocaml/dune/issues/4572
 
   $ dune build ./main.exe
 
-  $ cat > lib/mylib.mli <<EOF
-  > val value : int
-  > val new_function : unit -> string
-  > EOF
-  $ cat > lib/mylib.ml <<EOF
-  > let value = 42
-  > let new_function () = "hello"
-  > EOF
+  $ write_mylib_with_new_function
 
 Uses_stdlib is recompiled even though it only uses Printf, not Mylib:
 

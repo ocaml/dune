@@ -23,21 +23,18 @@ disabling the download of the source a second time.
 
   $ build_pkg test
 
-We see cache store events for our targets in the trace:
+We see no cache store errors and the cache store events for the fetched dir,
+pkg-$DIGEST/source and pkg-$DIGEST/target in the trace:
 
   $ dune trace cat | jq -s '[.[] | select(.args.message == "cache store target creation errors") ] | length'
-  1
+  0
+  $ dune trace cat | jq -s '[.[] | select(.args.message == "cache store success") ] | length'
+  3
 
-Cleaning the project to force rebuilding. This triggers an attempt to
-re-download the source, since it contains a symlink and wasn't cached:
+Cleaning the project to force rebuilding. This no longer triggers an attempt to
+re-download the source after the change to turn symlinks in the fetched source
+into hardlinks:
 
   $ dune clean
   $ export DUNE_CACHE=enabled
   $ build_pkg test
-  File "dune.lock/test.pkg", line 4, characters 7-25:
-  4 |   (url http://localhost:1)
-             ^^^^^^^^^^^^^^^^^^
-  Error: Download failed with code 404
-         
-  [1]
-

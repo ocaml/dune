@@ -36,19 +36,7 @@ Test `melange.runtime_deps` in a library that has been installed
 
   $ write_melange_asset_reader app
 
-  $ cat > app/dune-project <<EOF
-  > (lang dune 3.8)
-  > (package (name app))
-  > (using melange 0.1)
-  > EOF
-  $ cat > app/dune <<EOF
-  > (melange.emit
-  >  (target output)
-  >  (alias mel)
-  >  (emit_stdlib false)
-  >  (libraries foo)
-  >  (preprocess (pps melange.ppx)))
-  > EOF
+  $ write_melange_app_using_foo app
 
 
   $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root app @mel --debug-dependency-path

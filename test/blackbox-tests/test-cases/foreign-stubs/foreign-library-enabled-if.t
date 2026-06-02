@@ -8,53 +8,31 @@ Interaction of the foreign_library stanza and the enabled_if field.
   > }
   > EOF
 
+  $ write_enabled_if_foreign_libraries() {
+  > : > dune
+  > for enabled_if in "$@"; do
+  > cat >> dune <<EOF
+  > (foreign_library
+  >  (enabled_if ${enabled_if})
+  >  (language c)
+  >  (archive_name a)
+  >  (names a))
+  > 
+  > EOF
+  > done
+  > }
+
 We should allow multiple foreign libraries to define the same archive if only
 one of them is enabled:
 
-  $ cat > dune <<EOF
-  > (foreign_library
-  >  (enabled_if true)
-  >  (language c)
-  >  (archive_name a)
-  >  (names a))
-  > 
-  > (foreign_library
-  >  (enabled_if false)
-  >  (language c)
-  >  (archive_name a)
-  >  (names a))
-  > 
-  > (foreign_library
-  >  (enabled_if false)
-  >  (language c)
-  >  (archive_name a)
-  >  (names a))
-  > EOF
+  $ write_enabled_if_foreign_libraries true false false
   $ dune build
 
 
 Repeat the test, but now two of the libraries are indeed enabled which is
 illegal:
 
-  $ cat > dune <<EOF
-  > (foreign_library
-  >  (enabled_if true)
-  >  (language c)
-  >  (archive_name a)
-  >  (names a))
-  > 
-  > (foreign_library
-  >  (enabled_if true)
-  >  (language c)
-  >  (archive_name a)
-  >  (names a))
-  > 
-  > (foreign_library
-  >  (enabled_if false)
-  >  (language c)
-  >  (archive_name a)
-  >  (names a))
-  > EOF
+  $ write_enabled_if_foreign_libraries true true false
 
   $ dune build
   File "dune", line 5, characters 8-9:

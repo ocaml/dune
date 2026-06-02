@@ -266,6 +266,35 @@ make_with_patch_package() {
 	EOF
 }
 
+append_wrong_to_right_patch() {
+  local patch="$1"
+  local target="${2:-foo.ml}"
+
+  mkdir -p "$(dirname "$patch")"
+  if [ -s "$patch" ]; then
+    printf '
+' >> "$patch"
+  fi
+  cat >> "$patch" <<- EOF
+	diff --git a/${target} b/${target}
+	index b69a69a5a..ea988f6bd 100644
+	--- a/${target}
+	+++ b/${target}
+	@@ -1,1 +1,1 @@
+	-This is wrong
+	+This is right
+	EOF
+}
+
+write_wrong_to_right_patch() {
+  local patch="$1"
+  local target="${2:-foo.ml}"
+
+  mkdir -p "$(dirname "$patch")"
+  : > "$patch"
+  append_wrong_to_right_patch "$patch" "$target"
+}
+
 mk_ocaml() {
   local version="$1"
   local major

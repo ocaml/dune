@@ -6,28 +6,7 @@ the test runner's PATH.
 Custom backend whose runner records PATH to a file outside the
 sandbox:
 
-  $ cat >dump_path.ml <<EOF
-  > let () =
-  >   let oc = open_out "$PWD/path.out" in
-  >   output_string oc (Sys.getenv "PATH");
-  >   close_out oc
-  > EOF
-
-  $ cat >dune <<'EOF'
-  > (library
-  >  (name check_backend)
-  >  (modules ())
-  >  (inline_tests.backend
-  >   (generate_runner (cat dump_path.ml))))
-  > (library
-  >  (name testlib)
-  >  (inline_tests
-  >   (backend check_backend)
-  >   (deps %{bin:mybin})))
-  > EOF
-
-  $ cat >testlib.ml <<EOF
-  > EOF
+  $ write_bin_pform_inline_tests_fixture '%{bin:mybin}'
 
   $ dune runtest 2>&1
   $ env_added "$(cat path.out)" "$PATH" | censor

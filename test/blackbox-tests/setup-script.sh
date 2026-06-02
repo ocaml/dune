@@ -509,6 +509,28 @@ write_target_promotion_rules() {
 	EOF
 }
 
+write_sites_plugin_app_sources() {
+  cat > registration.ml <<-'EOF'
+	let todo : (unit -> unit) Queue.t = Queue.create ()
+	EOF
+  cat > app.ml <<-'EOF'
+	(* load all the available plugins *)
+	let () = Sites.Plugins.Plugins.load_all ()
+	
+	let () = print_endline "Main app starts..."
+	(* Execute the code registered by the plugins *)
+	let () = Queue.iter (fun f -> f ()) Registration.todo
+	EOF
+}
+
+write_sites_plugin_impl() {
+  cat > plugin/plugin1_impl.ml <<-'EOF'
+	let () =
+	print_endline "Registration of Plugin1";
+	Queue.add (fun () -> print_endline "Plugin1 is doing something...") Registration.todo
+	EOF
+}
+
 make_toplevel_plugin_host() {
   local loader="${1:-}"
 

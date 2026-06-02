@@ -31,17 +31,7 @@ Make an executable using dune-site (example mostly from the manual)
   > (module sites)
   > (plugins (app plugins)))
   > EOF
-  $ cat > registration.ml <<EOF
-  > let todo : (unit -> unit) Queue.t = Queue.create ()
-  > EOF
-  $ cat > app.ml <<EOF
-  > (* load all the available plugins *)
-  > let () = Sites.Plugins.Plugins.load_all ()
-  > 
-  > let () = print_endline "Main app starts..."
-  > (* Execute the code registered by the plugins *)
-  > let () = Queue.iter (fun f -> f ()) Registration.todo
-  > EOF
+  $ write_sites_plugin_app_sources
   $ mkdir plugin
   $ cat > plugin/dune-project <<EOF
   > (lang dune 3.8)
@@ -70,11 +60,7 @@ Make an executable using dune-site (example mostly from the manual)
   >  (action
   >   (run app)))
   > EOF
-  $ cat > plugin/plugin1_impl.ml <<EOF
-  > let () =
-  > print_endline "Registration of Plugin1";
-  > Queue.add (fun () -> print_endline "Plugin1 is doing something...") Registration.todo
-  > EOF
+  $ write_sites_plugin_impl
   $ dune build @all 2>&1 | dune_cmd sanitize
   $ dune build @runtest 2>&1 | dune_cmd sanitize
   Registration of Plugin1

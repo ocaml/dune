@@ -26,19 +26,7 @@ semantic action references [Dep.value]. The build succeeds only if
 menhir's [--infer] pass sees [dep] on its [-I] path during the
 [ocamlc -i] inference step.
 
-  $ mkdir parser
-  $ cat > parser/dune <<EOF
-  > (library
-  >  (name parser)
-  >  (libraries dep))
-  > (menhir (modules grammar))
-  > EOF
-  $ cat > parser/grammar.mly <<EOF
-  > %token EOF
-  > %start <int> main
-  > %%
-  > main: EOF { Dep.value }
-  > EOF
+  $ make_menhir_parser_using_dep
 
   $ dune build @check
 

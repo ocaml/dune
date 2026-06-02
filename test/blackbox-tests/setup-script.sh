@@ -483,6 +483,22 @@ write_bin_pform_inline_tests_fixture() {
   : > testlib.ml
 }
 
+make_menhir_parser_using_dep() {
+  mkdir -p parser
+  cat > parser/dune <<-'EOF'
+	(library
+	 (name parser)
+	 (libraries dep))
+	(menhir (modules grammar))
+	EOF
+  cat > parser/grammar.mly <<-'EOF'
+	%token EOF
+	%start <int> main
+	%%
+	main: EOF { Dep.value }
+	EOF
+}
+
 make_melange_virtual_time_project() {
   local vlib_public_name="$1"
   local impl_public_name="$2"

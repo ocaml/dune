@@ -278,6 +278,24 @@ write_melange_promote_app_dune() {
 	EOF
 }
 
+write_melange_asset_reader() {
+  local dir="${1:-.}"
+
+  mkdir -p "$dir/assets"
+  cat > "$dir/assets/file.txt" <<-'EOF'
+	hello from file
+	EOF
+  cat > "$dir/main.ml" <<-'EOF'
+	external readFileSync : string -> encoding:string -> string = "readFileSync"
+	[@@mel.module "fs"]
+	let dirname = [%mel.raw "__dirname"]
+	let file_path = "./assets/file.txt"
+	let file_content = readFileSync (dirname ^ "/" ^ file_path) ~encoding:"utf8"
+	let () = Js.log file_content
+	let () = Js.log (Foo.read_asset ())
+	EOF
+}
+
 make_melange_virtual_time_project() {
   local vlib_public_name="$1"
   local impl_public_name="$2"

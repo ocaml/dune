@@ -32,20 +32,7 @@ Test `melange.runtime_deps` in a private library
   > let read_asset () = readFileSync (dirname ^ "/" ^ file_path) ~encoding:"utf8"
   > EOF
 
-  $ mkdir assets
-  $ cat > assets/file.txt <<EOF
-  > hello from file
-  > EOF
-
-  $ cat > main.ml <<EOF
-  > external readFileSync : string -> encoding:string -> string = "readFileSync"
-  > [@@mel.module "fs"]
-  > let dirname = [%mel.raw "__dirname"]
-  > let file_path = "./assets/file.txt"
-  > let file_content = readFileSync (dirname ^ "/" ^ file_path) ~encoding:"utf8"
-  > let () = Js.log file_content
-  > let () = Js.log (Foo.read_asset ())
-  > EOF
+  $ write_melange_asset_reader
 
   $ dune build @mel
 

@@ -23,10 +23,7 @@ Test `melange.runtime_deps` in a public library in the workspace
     "_build/install/default/lib/foo/nested/hello.txt" {"nested/hello.txt"}
   ]
 
-  $ mkdir assets
-  $ cat > assets/file.txt <<EOF
-  > hello from file
-  > EOF
+  $ write_melange_asset_reader
   $ cat > dune <<EOF
   > (melange.emit
   >  (alias mel)
@@ -35,16 +32,6 @@ Test `melange.runtime_deps` in a public library in the workspace
   >  (preprocess (pps melange.ppx))
   >  (emit_stdlib false)
   >  (runtime_deps assets/file.txt))
-  > EOF
-
-  $ cat > main.ml <<EOF
-  > external readFileSync : string -> encoding:string -> string = "readFileSync"
-  > [@@mel.module "fs"]
-  > let dirname = [%mel.raw "__dirname"]
-  > let file_path = "./assets/file.txt"
-  > let file_content = readFileSync (dirname ^ "/" ^ file_path) ~encoding:"utf8"
-  > let () = Js.log file_content
-  > let () = Js.log (Foo.read_asset ())
   > EOF
 
   $ dune build @mel

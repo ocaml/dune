@@ -142,6 +142,22 @@ make_external_mypkg_lib_source() {
   printf '%s\n' "$implementation" > external_sources/test_lib.ml
 }
 
+make_executable_script_pkg() {
+  local pkg="$1"
+  local script="$2"
+
+  make_lockpkg "$pkg" <<- EOF
+	(build (run ${script}))
+	(version dev)
+	EOF
+  local files="${source_lock_dir}/${pkg}.files"
+  local exec_path="${files}/${script}"
+  mkdir -p "${files}"
+  touch "${exec_path}"
+  chmod a+x "${exec_path}"
+  cat > "${exec_path}"
+}
+
 mk_ocaml() {
   local version="$1"
   local major

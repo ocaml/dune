@@ -1173,16 +1173,7 @@ let build (root : Workspace_root.t) (builder : Builder.t) =
              | Yes _ -> `Add
              | No -> `Skip
            in
-           let lock_timeout =
-             match builder.watch with
-             | Yes Passive -> Some (Time.Span.of_secs 1.0)
-             | _ -> None
-           in
-           Dune_rpc_impl.Server.create
-             ~lock_timeout
-             ~registry
-             ~root:root.dir
-             builder.watch))
+           Dune_rpc_impl.Server.create ~registry ~root:root.dir builder.watch))
     else `Forbid_builds
   in
   { builder; root; rpc }
@@ -1220,7 +1211,7 @@ let init_with_root ~(root : Workspace_root.t) (builder : Builder.t) =
            an existing trace from another dune process *)
          match trace_config with
          | `Default ->
-           (match Global_lock.lock ~timeout:None with
+           (match Global_lock.lock () with
             | Ok () -> `Create
             | Error _ -> `Skip)
          | `User_specified _ -> `Create

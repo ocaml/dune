@@ -213,7 +213,7 @@ module Internal = struct
 
   (* The current version of the rule digest scheme. We should increment it when
      making any changes to the scheme, to avoid collisions. *)
-  let rule_digest_version = 28
+  let rule_digest_version = 29
 
   let compute_rule_digest
         (rule : Rule.t)

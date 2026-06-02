@@ -542,6 +542,25 @@ make_empty_child_directory_target_project() {
 	EOF
 }
 
+write_directory_target_contents_rules() {
+  local deps="$1"
+
+  cat > dune <<- EOF
+	(rule
+	  (deps ${deps})
+	  (targets (dir output))
+	  (action (bash "\| echo running;
+	                "\| mkdir -p output/subdir;
+	                "\| cat src_a > output/new-a;
+	                "\| cat src_b > output/subdir/b
+	 )))
+	(rule
+	  (deps output)
+	  (target contents)
+	  (action (bash "echo running; echo 'new-a:' > contents; cat output/new-a >> contents; echo 'b:' >> contents; cat output/subdir/b >> contents")))
+	EOF
+}
+
 write_directory_diff_keep_rule() {
   cat > dune <<-'EOF'
 	(rule

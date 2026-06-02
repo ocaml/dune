@@ -26,23 +26,12 @@ stanza in older dune lang versions:
 
 Check that the executable is correctly enabled:
 
-  $ make_dune_project 3.24
+  $ make_dune_project 3.25
   $ dune exec ./main.exe
-  File "dune", line 5, characters 16-50:
-  5 |  (enabled_if (= %{read:./config/enable_executable} "true")))
-                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  Error: Only architecture, system, model, os_type, ccomp_type, profile,
-  ocaml_version, context_name, arch_sixtyfour and env variables are allowed in
-  this 'enabled_if' field. Please upgrade your dune language to at least 3.15.
-  [1]
+  hello
 
 Check that the executable is correctly disabled:
 
   $ dune exec ./disabled.exe
-  File "dune", line 5, characters 16-50:
-  5 |  (enabled_if (= %{read:./config/enable_executable} "true")))
-                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  Error: Only architecture, system, model, os_type, ccomp_type, profile,
-  ocaml_version, context_name, arch_sixtyfour and env variables are allowed in
-  this 'enabled_if' field. Please upgrade your dune language to at least 3.15.
+  Error: Program './disabled.exe' not found!
   [1]

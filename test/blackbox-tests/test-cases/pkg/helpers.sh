@@ -294,6 +294,20 @@ create_mock_repo() {
 	EOF
 }
 
+create_mock_repo_with_doc_workspace() {
+  cat >dune-workspace <<- EOF
+	(lang dune 3.20)
+	(pkg enabled)
+	(lock_dir
+	 (repositories mock)
+	 (solver_env
+	  (with-doc true)))
+	(repository
+	 (name mock)
+	 (url "$PWD/mock-opam-repository"))
+	EOF
+}
+
 setup_dev_tool_workspace() {
   : "${dev_tool_lock_dir:?}"
   cat > dune-workspace <<- EOF

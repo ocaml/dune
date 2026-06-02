@@ -158,6 +158,24 @@ make_executable_script_pkg() {
   cat > "${exec_path}"
 }
 
+make_fetch_cache_project() {
+  tar cf test.tar "$@"
+  echo test.tar > fake-curls
+  local src_checksum
+  src_checksum=$(md5sum test.tar | cut -f1 -d' ')
+  make_lockpkg test <<- EOF
+	(version 0.0.1)
+	(source
+	 (fetch
+	  (url http://localhost:1)
+	  (checksum md5=${src_checksum})))
+	EOF
+  cat > dune-project <<-'EOF'
+	(lang dune 3.17)
+	(package (name my) (depends test) (allow_empty))
+	EOF
+}
+
 mk_ocaml() {
   local version="$1"
   local major

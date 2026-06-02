@@ -33,9 +33,7 @@ Test `melange.runtime_deps` in a library that has been installed
 
   $ dune install --root lib --prefix $PWD/prefix
 
-  $ write_melange_asset_reader app
-
-  $ write_melange_app_using_foo app
+  $ make_melange_app_with_asset_reader app
 
 
   $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root app @mel --debug-dependency-path

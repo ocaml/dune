@@ -563,6 +563,13 @@ write_melange_app_using_foo() {
 	EOF
 }
 
+make_melange_app_with_asset_reader() {
+  local dir="${1:-app}"
+
+  write_melange_asset_reader "$dir"
+  write_melange_app_using_foo "$dir"
+}
+
 make_melange_virtual_time_project() {
   local vlib_public_name="$1"
   local impl_public_name="$2"

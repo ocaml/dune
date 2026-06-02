@@ -146,6 +146,31 @@ make_value_library() {
 	EOF
 }
 
+make_mylib_consumer_executable() {
+  cat > dune <<-'EOF'
+	(executable
+	 (name main)
+	 (libraries mylib))
+	EOF
+  cat > uses_lib.ml <<-'EOF'
+	let get_value () = Mylib.value
+	EOF
+  cat > uses_lib.mli <<-'EOF'
+	val get_value : unit -> int
+	EOF
+  cat > no_use_lib.ml <<-'EOF'
+	let compute x = x + 1
+	EOF
+  cat > no_use_lib.mli <<-'EOF'
+	val compute : int -> int
+	EOF
+  cat > main.ml <<-'EOF'
+	let () =
+	  print_int (Uses_lib.get_value ());
+	  print_int (No_use_lib.compute 5)
+	EOF
+}
+
 make_melange_runtime_deps_lib() {
   local dir="${1:-lib}"
 

@@ -7,16 +7,8 @@ turn depends on the inline-test-name alias of the inline tests of the library.
   > (*TEST: assert (1 = 2) *)
   > EOF
 
-  $ cat >dune <<EOF
-  > (library
-  >  (name backend_simple)
-  >  (modules ())
-  >  (inline_tests.backend
-  >   (generate_runner (run sed "s/(\\\\*TEST:\\\\(.*\\\\)\\\\*)/let () = if \\"%{inline_tests}\\" = \\"enabled\\" then \\\\1;;/" %{impl-files}))))
-  > 
-  > (library
-  >  (name foo_simple)
-  >  (inline_tests (backend backend_simple)))
+  $ write_simple_inline_tests_backend
+  $ cat >>dune <<EOF
   > 
   > (rule
   >  (deps

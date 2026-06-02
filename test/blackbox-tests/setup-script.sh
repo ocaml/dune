@@ -327,6 +327,33 @@ write_menhir_unit_parser_sources() {
 	EOF
 }
 
+write_melange_dir_target_runtime_deps_lib() {
+  local dir="${1:-lib}"
+  local runtime_deps="$2"
+  local file_path="$3"
+
+  mkdir -p "$dir"
+  cat > "$dir/dune" <<- EOF
+	(rule (target (dir some_dir))
+	 (action
+	  (progn (system "mkdir %{target}")
+	   (system "echo hello from file inside dir target > %{target}/inside-dir-target.txt"))))
+	(library
+	 (public_name foo)
+	 (modes melange)
+	 (preprocess (pps melange.ppx))
+	 (melange.runtime_deps ${runtime_deps}))
+	EOF
+  cat > "$dir/foo.ml" <<- EOF
+	external readFileSync : string -> encoding:string -> string = "readFileSync"
+	[@@mel.module "fs"]
+	let dirname = [%mel.raw "__dirname"]
+	let () = Js.log2 "dirname:" dirname
+	let file_path = "${file_path}"
+	let read_asset () = readFileSync (dirname ^ "/" ^ file_path) ~encoding:"utf8"
+	EOF
+}
+
 make_melange_virtual_time_project() {
   local vlib_public_name="$1"
   local impl_public_name="$2"

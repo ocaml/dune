@@ -1,30 +1,6 @@
 Test sites plugins (example from the manual)
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.8)
-  > (using dune_site 0.1)
-  > (name app)
-  > 
-  > (package
-  >  (name app)
-  >  (sites (lib plugins)))
-  > EOF
-
-  $ cat > dune <<EOF
-  > (executable
-  >  (public_name app)
-  >  (modules sites app)
-  >  (libraries app.register dune-site dune-site.plugins))
-  > 
-  > (library
-  >  (public_name app.register)
-  >  (name registration)
-  >  (modules registration))
-  > 
-  > (generate_sites_module
-  > (module sites)
-  > (plugins (app plugins)))
-  > EOF
+  $ write_sites_plugin_app_dune 3.8
 
   $ write_sites_plugin_app_sources
 

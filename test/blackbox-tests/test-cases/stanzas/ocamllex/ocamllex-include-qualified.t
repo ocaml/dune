@@ -15,12 +15,6 @@ Builds `ocamllex` generators under `(include_subdirs qualified)`.
   > (ocamllex lexer)
   > EOF
 
-  $ cat > lib/bar/lexer.mll <<EOF
-  > {
-  > }
-  > rule lex = parse
-  >   | _   { true  }
-  >   | eof { false }
-  > EOF
+  $ make_trivial_ocamllex lib/bar/lexer.mll
 
   $ dune build

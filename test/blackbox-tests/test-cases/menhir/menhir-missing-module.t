@@ -14,13 +14,7 @@ We add a `(menhir ..)` stanza in the group root dune file
   > (menhir
   >  (modules parser))
   > EOF
-  $ cat >src/lexer.mll  <<EOF
-  > {
-  > }
-  > rule lex = parse
-  >   | _   { true  }
-  >   | eof { false }
-  > EOF
+  $ make_trivial_ocamllex src/lexer.mll
 
 Show that the menhir stanza must live next to the source
 

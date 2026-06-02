@@ -16,13 +16,7 @@ in a nested subdirectory.
   $ cat > a/b/c/dune <<EOF
   > (ocamllex lexer)
   > EOF
-  $ cat > a/b/c/lexer.mll <<EOF
-  > {
-  > }
-  > rule lex = parse
-  >   | _   { true  }
-  >   | eof { false }
-  > EOF
+  $ make_trivial_ocamllex a/b/c/lexer.mll
 
   $ cat > a/foo.ml <<EOF
   > module L = B.C.Lexer

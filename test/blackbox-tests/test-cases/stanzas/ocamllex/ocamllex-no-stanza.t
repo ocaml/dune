@@ -4,13 +4,7 @@ Test building a module group containing a `.mll` file, without `(ocamllex ..)`
   $ cat > dune <<EOF
   > (library (name foo))
   > EOF
-  $ cat > lexer.mll <<EOF
-  > {
-  > }
-  > rule lex = parse
-  >   | _   { true  }
-  >   | eof { false }
-  > EOF
+  $ make_trivial_ocamllex lexer.mll
 
 module `Lexer` can't be found if no `(ocamllex ..)` stanza defines it
 

@@ -6,6 +6,22 @@ considered relocatable if the solution contains either:
   $ mkrepo
   $ mkdir -p relocatable-repo/packages
 
+  $ append_fake_compiler_commands() {
+  > local opam="$1"
+  > local contents="$2"
+  > cat >> "$opam" <<EOF
+  > build: [
+  >   [ "sh" "-c" "echo '${contents}' > ocamlc.opt" ]
+  >   [ "ln" "-s" "ocamlc.opt" "ocamlc" ]
+  > ]
+  > install: [
+  >   [ "mkdir" "-p" "%{bin}%" ]
+  >   [ "cp" "ocamlc.opt" "%{bin}%/" ]
+  >   [ "cp" "-P" "ocamlc" "%{bin}%/" ]
+  > ]
+  > EOF
+  > }
+
 Create the relocatable compiler packages in separate repo:
 
   $ mkdir -p relocatable-repo/packages/compiler-cloning/compiler-cloning.0.0.1
@@ -25,16 +41,10 @@ Create the relocatable compiler packages in separate repo:
   $ cat > relocatable-repo/packages/ocaml-base-compiler/ocaml-base-compiler.5.4.0/opam << 'EOF'
   > opam-version: "2.0"
   > depends: [ "relocatable-compiler" {= "5.4.0"} ]
-  > build: [
-  >   [ "sh" "-c" "echo 'ocamlc binary' > ocamlc.opt" ]
-  >   [ "ln" "-s" "ocamlc.opt" "ocamlc" ]
-  > ]
-  > install: [
-  >   [ "mkdir" "-p" "%{bin}%" ]
-  >   [ "cp" "ocamlc.opt" "%{bin}%/" ]
-  >   [ "cp" "-P" "ocamlc" "%{bin}%/" ]
-  > ]
   > EOF
+  $ append_fake_compiler_commands \
+  >   relocatable-repo/packages/ocaml-base-compiler/ocaml-base-compiler.5.4.0/opam \
+  >   "ocamlc binary"
 
   $ mkdir -p relocatable-repo/packages/ocaml/ocaml.5.4.0
   $ cat > relocatable-repo/packages/ocaml/ocaml.5.4.0/opam << 'EOF'
@@ -115,30 +125,18 @@ The non-relocatable compiler in the mock repo conflicts with relocatable:
 
   $ mkpkg ocaml-base-compiler 5.3.0 << 'EOF'
   > conflicts: [ "relocatable" ]
-  > build: [
-  >   [ "sh" "-c" "echo 'ocamlc binary' > ocamlc.opt" ]
-  >   [ "ln" "-s" "ocamlc.opt" "ocamlc" ]
-  > ]
-  > install: [
-  >   [ "mkdir" "-p" "%{bin}%" ]
-  >   [ "cp" "ocamlc.opt" "%{bin}%/" ]
-  >   [ "cp" "-P" "ocamlc" "%{bin}%/" ]
-  > ]
   > EOF
+  $ append_fake_compiler_commands \
+  >   "$mock_packages/ocaml-base-compiler/ocaml-base-compiler.5.3.0/opam" \
+  >   "ocamlc binary"
 
 A relocatable compiler does not conflict with relocatable:
 
   $ mkpkg ocaml-base-compiler 5.3.0+relocatable << 'EOF'
-  > build: [
-  >   [ "sh" "-c" "echo 'relocatable ocamlc' > ocamlc.opt" ]
-  >   [ "ln" "-s" "ocamlc.opt" "ocamlc" ]
-  > ]
-  > install: [
-  >   [ "mkdir" "-p" "%{bin}%" ]
-  >   [ "cp" "ocamlc.opt" "%{bin}%/" ]
-  >   [ "cp" "-P" "ocamlc" "%{bin}%/" ]
-  > ]
   > EOF
+  $ append_fake_compiler_commands \
+  >   "$mock_packages/ocaml-base-compiler/ocaml-base-compiler.5.3.0+relocatable/opam" \
+  >   "relocatable ocamlc"
 
   $ mkpkg ocaml 5.3.0 << 'EOF'
   > depends: [ "ocaml-base-compiler" {>= "5.3.0"} ]

@@ -2,17 +2,7 @@
 
 The field is available starting in Dune 3.24.
 
-  $ mkdir old
-  $ cat > old/dune-project <<EOF
-  > (lang dune 3.23)
-  > (using melange 0.1)
-  > EOF
-  $ cat > old/dune <<EOF
-  > (library
-  >  (name old)
-  >  (modes melange)
-  >  (melange.libraries dep))
-  > EOF
+  $ make_old_melange_field_project melange.libraries dep
   $ dune build --root old
   Entering directory 'old'
   File "dune", line 4, characters 1-24:

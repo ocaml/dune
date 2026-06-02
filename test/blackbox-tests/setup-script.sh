@@ -232,6 +232,23 @@ make_melange_runtime_deps_lib() {
 	EOF
 }
 
+make_old_melange_field_project() {
+  local field="$1"
+  local value="$2"
+
+  mkdir -p old
+  cat > old/dune-project <<-'EOF'
+	(lang dune 3.23)
+	(using melange 0.1)
+	EOF
+  cat > old/dune <<- EOF
+	(library
+	 (name old)
+	 (modes melange)
+	 (${field} ${value}))
+	EOF
+}
+
 make_melange_sandbox_project() {
   local runtime_deps="${1:-}"
 

@@ -10,7 +10,6 @@ Test `melange.runtime_deps` in a library that has been installed
 
   $ echo 'hello' > lib/file.txt
   $ write_melange_dir_target_runtime_deps_lib \
-  >   lib \
   >   "./some_dir ./file.txt" \
   >   "./index.txt"
 
@@ -28,7 +27,6 @@ Test `melange.runtime_deps` in a library that has been installed
   $ rm -rf $PWD/prefix
   $ dune clean
   $ write_melange_dir_target_runtime_deps_lib \
-  >   lib \
   >   "./some_dir/inside-dir-target.txt ./some_dir ./file.txt" \
   >   "./index.txt"
 

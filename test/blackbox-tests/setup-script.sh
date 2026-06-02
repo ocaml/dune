@@ -460,9 +460,9 @@ write_menhir_unit_parser_sources() {
 }
 
 write_melange_dir_target_runtime_deps_lib() {
-  local dir="${1:-lib}"
-  local runtime_deps="$2"
-  local file_path="$3"
+  local runtime_deps="$1"
+  local file_path="$2"
+  local dir="${3:-lib}"
 
   mkdir -p "$dir"
   cat > "$dir/dune" <<- EOF

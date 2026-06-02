@@ -11,7 +11,6 @@ Test `melange.runtime_deps` in a library that has been installed
   $ mkdir -p lib
   $ echo "Some text" > lib/index.txt
   $ write_melange_dir_target_runtime_deps_lib \
-  >   lib \
   >   "./some_dir ./index.txt" \
   >   "./some_dir/inside-dir-target.txt"
 

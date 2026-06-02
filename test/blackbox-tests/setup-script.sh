@@ -539,6 +539,25 @@ make_promotion_test_project() {
   fi
 }
 
+make_bar_baz_packages_project() {
+  cat > dune-project <<-'EOF'
+	(lang dune 3.13)
+	(package (name bar) (allow_empty))
+	(package (name baz) (allow_empty))
+	EOF
+}
+
+write_duplicate_foo_public_libraries() {
+  cat > dune <<-'EOF'
+	(library
+	 (name foo)
+	 (public_name bar.foo))
+	(library
+	 (name foo)
+	 (public_name baz.foo))
+	EOF
+}
+
 write_target_promotion_rules() {
   local mode="$1"
 

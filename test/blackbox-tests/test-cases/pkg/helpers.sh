@@ -114,6 +114,22 @@ make_project_pinned_to_foo() {
 	EOF
 }
 
+make_external_mypkg_lib_source() {
+  local implementation="$1"
+
+  mkdir external_sources
+  cat >external_sources/dune-project <<-'EOF'
+	(lang dune 3.11)
+	(package (name mypkg))
+	EOF
+  cat >external_sources/dune <<-'EOF'
+	(library
+	 (public_name mypkg.lib)
+	 (name test_lib))
+	EOF
+  printf '%s\n' "$implementation" > external_sources/test_lib.ml
+}
+
 mk_ocaml() {
   local version="$1"
   local major

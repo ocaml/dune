@@ -27,17 +27,7 @@ $ cat >ast.ml <<EOF
   $ cat >lang/dune <<EOF
   > (menhir (modules parser))
   > EOF
-  $ cat >lang/ast.ml <<EOF
-  > type expr =
-  >   | Unit
-  > EOF
-  $ cat >lang/parser.mly <<EOF
-  > %token EOF
-  > %start <Ast.expr> expr
-  > %%
-  > expr:
-  > | EOF { Ast.Unit }
-  > EOF
+  $ write_menhir_unit_parser_sources
 
   $ dune build
 

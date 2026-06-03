@@ -28,10 +28,7 @@ Test `melange.runtime_deps` in a library that has been installed
 
   $ dune install --root lib --prefix $PWD/prefix
 
-  $ mkdir -p app/assets
-  $ cat > app/assets/file.txt <<EOF
-  > hello from file
-  > EOF
+  $ write_melange_asset_reader app
 
   $ cat > app/dune-project <<EOF
   > (lang dune 3.8)
@@ -47,15 +44,6 @@ Test `melange.runtime_deps` in a library that has been installed
   >  (preprocess (pps melange.ppx)))
   > EOF
 
-  $ cat > app/main.ml <<EOF
-  > external readFileSync : string -> encoding:string -> string = "readFileSync"
-  > [@@mel.module "fs"]
-  > let dirname = [%mel.raw "__dirname"]
-  > let file_path = "./assets/file.txt"
-  > let file_content = readFileSync (dirname ^ "/" ^ file_path) ~encoding:"utf8"
-  > let () = Js.log file_content
-  > let () = Js.log (Foo.read_asset ())
-  > EOF
 
   $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root app @mel
 

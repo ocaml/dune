@@ -118,6 +118,7 @@ let got_shutdown reason =
   if !Log.verbose
   then (
     match (reason : Shutdown.Reason.t) with
+    | Failure -> Log.info "Shutdown" [ "reason", Dyn.variant "Failure" [] ]
     | Timeout -> Log.info "Shutdown" [ "reason", Dyn.variant "Timeout" [] ]
     | Requested -> Log.info "Shutdown" [ "reason", Dyn.variant "Requested" [] ]
     | Signal signal ->
@@ -370,9 +371,14 @@ module Run = struct
   ;;
 end
 
-let shutdown () =
+let shutdown reason =
+  let reason =
+    match reason with
+    | `Ok -> Shutdown.Reason.Requested
+    | `Failure -> Shutdown.Reason.Failure
+  in
   let t = t () in
-  Event.Queue.send_shutdown t.events Requested
+  Event.Queue.send_shutdown t.events reason
 ;;
 
 let cancel_current_build () =

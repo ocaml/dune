@@ -34,13 +34,12 @@ let go_with_rpc_server ~common ~config f =
   go_without_rpc_server ~common ~config f
 ;;
 
-let go_with_rpc_server_and_file_watcher ~(common : Common.t) ~config:dune_config run =
-  let rpc_server =
-    match Common.rpc common with
-    | `Allow server -> server
-    | `Forbid_builds -> Code_error.raise "rpc must be enabled in polling mode" []
-  in
-  let server = rpc rpc_server in
+let go_with_rpc_server_and_file_watcher
+      ~(common : Common.t)
+      ~config:dune_config
+      ~rpc_server
+      run
+  =
   let config =
     let watch_exclusions = Common.watch_exclusions common in
     Dune_config.for_scheduler dune_config ~print_ctrl_c_warning:true ~watch_exclusions
@@ -48,11 +47,9 @@ let go_with_rpc_server_and_file_watcher ~(common : Common.t) ~config:dune_config
   Dune_rules.Clflags.concurrency := config.concurrency;
   let file_watcher = Common.file_watcher common in
   let run () =
-    let open Fiber.O in
+    let server = rpc rpc_server in
     Root.Rpc.Global.with_background_rpc server
-    @@ fun () ->
-    let* () = Root.Rpc.Global.ensure_ready () in
-    run ()
+    @@ fun () -> Fiber.fork_and_join_unit Root.Rpc.Global.ensure_ready run
   in
   Run.go config ~file_watcher run
 ;;

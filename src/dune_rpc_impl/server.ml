@@ -12,6 +12,8 @@ end
 
 include struct
   open Dune_engine
+  module Action_builder = Action_builder
+  module Build_loop = Build_loop
   module Diff_promotion = Diff_promotion
 end
 
@@ -38,32 +40,30 @@ module Run = struct
 
   let run t =
     let registry = Rpc.Registry.create ~root:t.root ~where:t.where t.registry in
+    let print_uncaught_rpc_error exn =
+      Console.print [ Pp.text "Uncaught RPC Error"; Exn_with_backtrace.pp exn ]
+    in
     let with_print_errors f () =
       Fiber.with_error_handler f ~on_error:(fun exn ->
-        Console.print [ Pp.text "Uncaught RPC Error"; Exn_with_backtrace.pp exn ];
+        print_uncaught_rpc_error exn;
         Exn_with_backtrace.reraise exn)
     in
     let run () =
       let open Fiber.O in
-      let* server =
-        match Exn_with_backtrace.try_with (fun () -> Lazy.force t.server) with
-        | Ok server ->
-          let+ () = Fiber.Ivar.fill t.startup_ivar (Ok server) in
-          server
-        | Error exn ->
-          let () =
-            Dune_trace.emit Rpc (fun () -> Dune_trace.Event.Rpc.startup_failure exn)
-          in
-          let* () = Fiber.Ivar.fill t.startup_ivar (Error exn) in
-          Exn_with_backtrace.reraise exn
-      in
-      Fiber.fork_and_join_unit
-        (fun () ->
-           let* sessions = Csexp_rpc.Server.serve server in
-           let () = Rpc.Registry.register registry in
-           let* () = Rpc.Server.serve sessions t.handler in
-           Fiber.Pool.close t.pool)
-        (fun () -> Fiber.Pool.run t.pool)
+      match Exn_with_backtrace.try_with (fun () -> Lazy.force t.server) with
+      | Error exn ->
+        Dune_trace.emit Rpc (fun () -> Dune_trace.Event.Rpc.startup_failure exn);
+        print_uncaught_rpc_error exn;
+        Fiber.Ivar.fill t.startup_ivar (Error exn)
+      | Ok server ->
+        let* () = Fiber.Ivar.fill t.startup_ivar (Ok server) in
+        Fiber.fork_and_join_unit
+          (fun () ->
+             let* sessions = Csexp_rpc.Server.serve server in
+             let () = Rpc.Registry.register registry in
+             let* () = Rpc.Server.serve sessions t.handler in
+             Fiber.Pool.close t.pool)
+          (fun () -> Fiber.Pool.run t.pool)
     in
     with_print_errors run
     |> Fiber.finalize ~finally:(fun () ->
@@ -72,19 +72,19 @@ module Run = struct
   ;;
 end
 
-type 'build_arg pending_action_kind =
-  | Build of 'build_arg list
+type build_request =
+  | Build of Dune_lang.Dep_conf.t list
   | Runtest of string list
 
-type 'build_arg pending_action =
-  { kind : 'build_arg pending_action_kind
-  ; outcome : Build_outcome.t Fiber.Ivar.t
-  }
-
-module Client = Stdune.Unit
+type build =
+  | Disabled
+  | Enabled of
+      { build_loop : Build_loop.t
+      ; build_action : build_request -> unit Action_builder.t
+      }
 
 module Clients = struct
-  type entry = { session : Client.t Session.Stage1.t }
+  type entry = { session : unit Session.Stage1.t }
   type t = entry Session.Id.Map.t
 
   let empty = Session.Id.Map.empty
@@ -105,7 +105,7 @@ module Clients = struct
   let to_list_map = Session.Id.Map.to_list_map
 
   let repr =
-    let session_repr = Repr.abstract (Session.Stage1.to_dyn Client.to_dyn) in
+    let session_repr = Repr.abstract (Session.Stage1.to_dyn Dyn.unit) in
     Repr.view (Repr.list session_repr) ~to_:(fun t ->
       Session.Id.Map.values t |> List.map ~f:(fun { session } -> session))
   ;;
@@ -123,9 +123,9 @@ let repr =
 let to_dyn = Repr.to_dyn repr
 let current : server option ref = ref None
 
-type 'build_arg t =
+type t =
   { server : server
-  ; pending_jobs : 'build_arg pending_action Job_queue.t
+  ; build : build
   }
 
 let client_count t = Clients.cardinal t.server.clients
@@ -149,14 +149,17 @@ let () =
     | Some server -> to_dyn server)
 ;;
 
-let ready (t : _ t) =
+let ready (t : t) =
   Fiber.Ivar.read t.server.config.startup_ivar
   >>= function
   | Ok server -> Csexp_rpc.Server.ready server
-  | Error _exn -> raise Dune_util.Report_error.Already_reported
+  | Error exn ->
+    Dune_util.Report_error.report exn;
+    Scheduler.shutdown `Failure;
+    raise Dune_util.Report_error.Already_reported
 ;;
 
-let stop (t : _ t) =
+let stop (t : t) =
   Fiber.of_thunk (fun () ->
     match Fiber.Ivar.peek t.server.config.startup_ivar with
     | None -> Fiber.return ()
@@ -177,13 +180,34 @@ let diff_map_entry ~on_add ~on_remove last now =
   | Some _, Some _ | None, None -> None
 ;;
 
-let enqueue_pending_action (t : _ t) kind =
-  let outcome = Fiber.Ivar.create () in
-  let* () = Job_queue.write t.pending_jobs { kind; outcome } in
-  Fiber.Ivar.read outcome
+let submit_build_request t session request_id kind =
+  match t.build with
+  | Disabled ->
+    Code_error.raise "RPC build request received by a server without build handling" []
+  | Enabled { build_loop; build_action } ->
+    Build_loop.submit_rpc_request
+      build_loop
+      ~session_id:(Session.id session)
+      ~request_id
+      ~build:(build_action kind)
 ;;
 
-let handler (t : _ t Fdecl.t) : 'build_arg Handler.t =
+let cancel_build_requests_for_session t session =
+  match t.build with
+  | Disabled -> Fiber.return ()
+  | Enabled { build_loop; _ } ->
+    Build_loop.cancel_rpc_requests_by_session
+      build_loop
+      ~session_id:(Session.Stage1.id session)
+;;
+
+let cancel_all_build_requests t =
+  match t.build with
+  | Disabled -> Fiber.return ()
+  | Enabled { build_loop; _ } -> Build_loop.cancel_all_rpc_requests build_loop
+;;
+
+let handler (t : t Fdecl.t) : unit Handler.t =
   let on_init session (_ : Initialize.Request.t) =
     let t = Fdecl.get t in
     let client = () in
@@ -195,7 +219,7 @@ let handler (t : _ t Fdecl.t) : 'build_arg Handler.t =
     let t = Fdecl.get t in
     t.server.clients <- Clients.remove_session t.server.clients session;
     refresh_client_count_status_line t;
-    Fiber.return ()
+    cancel_build_requests_for_session t session
   in
   let rpc = Handler.create ~on_terminate ~on_init ~version:Dune_rpc.Version.latest () in
   let () =
@@ -289,9 +313,9 @@ let handler (t : _ t Fdecl.t) : 'build_arg Handler.t =
     Handler.declare_notification rpc Procedures.Server_side.log
   in
   let () = Handler.implement_request rpc Procedures.Public.ping (fun _ -> Fiber.return) in
-  let implement_request_pending_action decl ~f =
-    let handler _session input =
-      let+ outcome = enqueue_pending_action (Fdecl.get t) (f input) in
+  let implement_build_request decl ~f =
+    let handler session request_id input =
+      let+ outcome = submit_build_request (Fdecl.get t) session request_id (f input) in
       match outcome with
       | Success -> Dune_rpc.Build_outcome_with_diagnostics.Success
       | Failure ->
@@ -304,21 +328,22 @@ let handler (t : _ t Fdecl.t) : 'build_arg Handler.t =
         in
         Dune_rpc.Build_outcome_with_diagnostics.Failure diagnostics
     in
-    Handler.implement_request rpc decl handler
+    Handler.implement_request_with_id rpc decl handler
   in
   let () =
-    implement_request_pending_action Decl.build ~f:(fun targets ->
+    implement_build_request Decl.build ~f:(fun targets ->
       let targets = List.map targets ~f:Dune_rules_rpc.parse_build_arg in
       Build targets)
   in
   let () =
-    implement_request_pending_action Procedures.Public.runtest ~f:(fun paths ->
-      Runtest paths)
+    implement_build_request Procedures.Public.runtest ~f:(fun paths -> Runtest paths)
   in
   let () =
-    let f _ () =
-      enqueue_pending_action
+    let f session request_id () =
+      submit_build_request
         (Fdecl.get t)
+        session
+        request_id
         (Build
            [ (let alias = Dune_lang.String_with_vars.make_text Loc.none "fmt" in
               Dune_lang.Dep_conf.Alias_rec alias)
@@ -338,7 +363,7 @@ let handler (t : _ t Fdecl.t) : 'build_arg Handler.t =
              "promote_files_registered_in_last_run All should always return an empty list"
              [])
     in
-    Handler.implement_request rpc Procedures.Public.format f
+    Handler.implement_request_with_id rpc Procedures.Public.format f
   in
   let () =
     let f _ () =
@@ -352,24 +377,19 @@ let handler (t : _ t Fdecl.t) : 'build_arg Handler.t =
     Handler.implement_request rpc Procedures.Public.flush_file_watcher f
   in
   let () =
-    let rec cancel_pending_jobs () =
-      match Job_queue.pop_internal (Fdecl.get t).pending_jobs with
-      | None -> Fiber.return ()
-      | Some { kind = _; outcome } ->
-        let* () = Fiber.Ivar.fill outcome Build_outcome.Failure in
-        cancel_pending_jobs ()
-    in
     let shutdown _ () =
       let t = Fdecl.get t in
       let terminate_sessions () =
-        Fiber.fork_and_join_unit cancel_pending_jobs (fun () ->
-          Clients.to_list t.server.clients
-          |> Fiber.parallel_iter ~f:(fun (_, (entry : Clients.entry)) ->
-            Session.Stage1.close entry.session))
+        Fiber.fork_and_join_unit
+          (fun () -> cancel_all_build_requests t)
+          (fun () ->
+             Clients.to_list t.server.clients
+             |> Fiber.parallel_iter ~f:(fun (_, (entry : Clients.entry)) ->
+               Session.Stage1.close entry.session))
       in
       let shutdown () =
         let* () = Csexp_rpc.Server.stop (Lazy.force t.server.config.server) in
-        Scheduler.shutdown ();
+        Scheduler.shutdown `Ok;
         Fiber.return ()
       in
       Fiber.fork_and_join_unit terminate_sessions shutdown
@@ -437,7 +457,7 @@ let handler (t : _ t Fdecl.t) : 'build_arg Handler.t =
   rpc
 ;;
 
-let create ~registry ~root watch_mode =
+let create ~registry ~root ~build watch_mode =
   let where = Where.default () in
   Global_lock.lock_exn ();
   let t = Fdecl.create Dyn.opaque in
@@ -474,7 +494,7 @@ let create ~registry ~root watch_mode =
     }
   in
   let server = { config; clients = Clients.empty } in
-  let res = { server; pending_jobs = Job_queue.create () } in
+  let res = { server; build } in
   current := Some server;
   Fdecl.set t res;
   res
@@ -491,5 +511,3 @@ let run t =
         Console.Status_line.remove_section section;
         Fiber.return ())
 ;;
-
-let pending_action t = Job_queue.read t.pending_jobs

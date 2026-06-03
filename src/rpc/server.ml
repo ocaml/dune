@@ -669,6 +669,11 @@ module H = struct
     ;;
 
     let implement_request (t : _ t) = V.Builder.implement_request t.builder
+
+    let implement_request_with_id (t : _ t) =
+      V.Builder.implement_request_with_id t.builder
+    ;;
+
     let implement_notification (t : _ t) = V.Builder.implement_notification t.builder
     let declare_notification (t : _ t) = V.Builder.declare_notification t.builder
     let declare_request (t : _ t) = V.Builder.declare_request t.builder

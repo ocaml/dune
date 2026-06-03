@@ -41,3 +41,4 @@ Now we set up a lock file with this package and then attempt to use it:
   hello
   $ kill $PID
   $ wait $PID
+  [130]

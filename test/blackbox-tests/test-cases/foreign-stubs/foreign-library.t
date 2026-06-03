@@ -50,8 +50,8 @@ Testsuite for the (foreign_library ...) stanza.
   > cat >>lib/dune
   > }
 
-  $ write_calc_dune_with_headers_config() {
-  > write_calc_dune <<'EOF'
+  $ write_headers_config_foreign_library() {
+  > cat <<'EOF'
   > (foreign_library
   >  (archive_name config)
   >  (language cxx)
@@ -62,16 +62,12 @@ Testsuite for the (foreign_library ...) stanza.
   > EOF
   > }
 
+  $ write_calc_dune_with_headers_config() {
+  > write_headers_config_foreign_library | write_calc_dune
+  > }
+
   $ write_calc_with_month_headers_config_dune() {
-  > write_calc_with_month_dune "$@" <<'EOF'
-  > (foreign_library
-  >  (archive_name config)
-  >  (language cxx)
-  >  (include_dirs headers)
-  >  (extra_deps eight.h)
-  >  (flags :standard -DCONFIG_VALUE=2000)
-  >  (names config))
-  > EOF
+  > write_headers_config_foreign_library | write_calc_with_month_dune "$@"
   > }
 
   $ write_calc_dune <<EOF

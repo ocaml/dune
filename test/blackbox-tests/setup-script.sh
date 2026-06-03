@@ -232,6 +232,39 @@ make_melange_runtime_deps_lib() {
 	EOF
 }
 
+make_melange_sandbox_project() {
+  local runtime_deps="${1:-}"
+
+  cat > dune-project <<-'EOF'
+	(lang dune 3.22)
+	(using melange 1.0)
+	EOF
+  {
+    cat <<-'EOF'
+	(library
+	 (name lib)
+	 (modes melange)
+	 (modules lib))
+	(melange.emit
+	 (target output)
+	 (alias mel)
+	 (modules main)
+	 (libraries lib)
+	 (emit_stdlib false)
+	EOF
+    if [ -n "$runtime_deps" ]; then
+      echo " (runtime_deps ${runtime_deps})"
+    fi
+    echo ")"
+  } > dune
+  cat > lib.ml <<-'EOF'
+	let message = "hello from lib"
+	EOF
+  cat > main.ml <<-'EOF'
+	let () = Js.log Lib.message
+	EOF
+}
+
 make_melange_virtual_time_project() {
   local vlib_public_name="$1"
   local impl_public_name="$2"

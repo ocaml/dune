@@ -14,15 +14,7 @@ Thus we first create a repo:
 
 We set the project up to depend on `foo`
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.10)
-  > 
-  > (package
-  >  (name bar)
-  >  (depends foo))
-  > EOF
-  $ cat > dune <<EOF
-  > EOF
+  $ make_bar_depends_foo_project
 
 There should be some kind of error message if getting the revision store lock
 fails (simulated here with a failing flock(2) call):

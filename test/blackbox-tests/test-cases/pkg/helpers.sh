@@ -114,6 +114,18 @@ make_project_pinned_to_foo() {
 	EOF
 }
 
+make_bar_depends_foo_project() {
+  cat > dune-project <<-'EOF'
+	(lang dune 3.10)
+	
+	(package
+	 (name bar)
+	 (depends foo))
+	EOF
+  cat > dune <<-'EOF'
+	EOF
+}
+
 make_external_mypkg_lib_source() {
   local implementation="$1"
 

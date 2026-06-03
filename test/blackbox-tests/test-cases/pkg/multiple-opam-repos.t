@@ -39,15 +39,7 @@ We have to define both repositories in the workspace, but will only use `new`.
   >  (url "git+file://$(pwd)/old-mock-opam-repository"))
   > EOF
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.10)
-  > 
-  > (package
-  >  (name bar)
-  >  (depends foo))
-  > EOF
-  $ cat > dune <<EOF
-  > EOF
+  $ make_bar_depends_foo_project
 
 Locking should produce the newest package from `new`
 

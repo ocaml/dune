@@ -17,15 +17,7 @@ We set this repository as sole source for opam repositories.
 
 We set the project up to depend on `foo`
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.10)
-  > 
-  > (package
-  >  (name bar)
-  >  (depends foo))
-  > EOF
-  $ cat > dune <<EOF
-  > EOF
+  $ make_bar_depends_foo_project
 
 Creating a lock should thus work.
 

@@ -6,8 +6,7 @@ open Import
 type 'build_arg t
 
 val create
-  :  lock_timeout:Time.Span.t option
-  -> registry:[ `Add | `Skip ]
+  :  registry:[ `Add | `Skip ]
   -> root:string
   -> Watch_mode_config.t
   -> Dune_lang.Dep_conf.t t

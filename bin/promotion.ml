@@ -51,7 +51,7 @@ module Apply = struct
     let matching : Dune_rpc.Promote_targets.Matching.t =
       if exact then Exact else Prefix
     in
-    match Global_lock.lock ~timeout:None with
+    match Global_lock.lock () with
     | Ok () ->
       Diff_promotion.promote_files_registered_in_last_run ~matching files_to_promote
       |> on_missing

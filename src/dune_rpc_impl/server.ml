@@ -437,9 +437,9 @@ let handler (t : _ t Fdecl.t) : 'build_arg Handler.t =
   rpc
 ;;
 
-let create ~lock_timeout ~registry ~root watch_mode =
+let create ~registry ~root watch_mode =
   let where = Where.default () in
-  Global_lock.lock_exn ~timeout:lock_timeout;
+  Global_lock.lock_exn ();
   let t = Fdecl.create Dyn.opaque in
   let config =
     let server =

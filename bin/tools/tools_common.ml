@@ -49,7 +49,7 @@ let try_build_dev_tool_via_rpc builder lock_held_by dev_tool =
 
 let lock_and_build_dev_tool ~common ~config builder dev_tool =
   let open Fiber.O in
-  match Global_lock.lock ~timeout:None with
+  match Global_lock.lock () with
   | Error lock_held_by ->
     Scheduler_setup.no_build_no_rpc ~config (fun () ->
       let* () = Lock_dev_tool.lock_dev_tool dev_tool |> Memo.run in

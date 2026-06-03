@@ -35,18 +35,7 @@ menhir grammar will reference. `dep.ml` carries both `value` and
 references `Dep.value`, plus a sibling module `helper` that also
 references `Dep.value`.
 
-  $ make_dir_with_dune parser <<EOF
-  > (library
-  >  (name parser)
-  >  (libraries dep))
-  > (menhir (modules grammar))
-  > EOF
-  $ cat > parser/grammar.mly <<EOF
-  > %token EOF
-  > %start <int> main
-  > %%
-  > main: EOF { Dep.value }
-  > EOF
+  $ make_menhir_parser_using_dep
   $ cat > parser/helper.ml <<EOF
   > let echo () = Dep.value
   > EOF

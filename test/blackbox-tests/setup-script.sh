@@ -554,6 +554,41 @@ write_directory_diff_keep_rule() {
 	EOF
 }
 
+write_cross_compilation_repro_project() {
+  local dir="${1:-.}"
+  local modules="${2:-}"
+
+  mkdir -p "$dir"
+  cat > "$dir/dune-project" <<-'EOF'
+	(lang dune 3.7)
+	(package (name repro))
+	EOF
+  cat > "$dir/dune" <<- EOF
+	(executable
+	 (name gen)
+	 (modules gen)
+	 (enabled_if
+	  (= %{context_name} "default"))
+	 (libraries libdep))
+	(rule
+	 (with-stdout-to
+	  gen.ml
+	  (echo "let () = Format.printf \"let x = 1\"")))
+	(library
+	 (name repro)
+	 (public_name repro)
+	 (modules${modules:+ ${modules}}))
+	EOF
+  if [ -n "$modules" ]; then
+    cat >> "$dir/dune" <<-'EOF'
+	(rule
+	 (with-stdout-to
+	  foo.ml
+	  (run ./gen.exe)))
+	EOF
+  fi
+}
+
 make_two_context_workspace() {
   local version="${1:-3.13}"
   local name="${2:-alt-context}"

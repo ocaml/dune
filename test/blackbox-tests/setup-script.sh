@@ -300,6 +300,60 @@ make_melange_runtime_deps_project() {
 	EOF
 }
 
+write_melange_private_map_library() {
+  cat > lib/dune <<-'EOF'
+	(library
+	 (name foo)
+	 (public_name repro.foo)
+	 (wrapped true)
+	 (libraries melange)
+	 (modes melange))
+	EOF
+  cat > lib/foo.ml <<-'EOF'
+	module Foo_map = Foo_map
+	EOF
+  cat > lib/foo_map.mli <<-'EOF'
+	module Int = Foo_mapInt
+	val size : Int.t -> int
+	EOF
+  cat > lib/foo_map.ml <<-'EOF'
+	module Int = Foo_mapInt
+	let size x = Int.size x
+	EOF
+  cat > lib/foo_mapInt.mli <<-'EOF'
+	type t
+	val size : t -> int
+	EOF
+  cat > lib/foo_mapInt.ml <<-'EOF'
+	type t = Foo_internalMapInt.t
+	let size x = Foo_internalMapInt.size x
+	EOF
+  cat > lib/foo_internalMapInt.mli <<-'EOF'
+	type t
+	val size : t -> int
+	EOF
+  cat > lib/foo_internalMapInt.ml <<-'EOF'
+	type t = int array
+	let size x = Foo_internalAVLtree.size x
+	EOF
+  cat > lib/foo_internalAVLtree.ml <<-'EOF'
+	let size x = Array.length x
+	EOF
+}
+
+write_melange_repro_foo_consumer() {
+  cat > app/dune <<-'EOF'
+	(melange.emit
+	 (target dist)
+	 (alias mel)
+	 (emit_stdlib false)
+	 (libraries repro.foo))
+	EOF
+  cat > app/main.ml <<-'EOF'
+	let () = ignore (Foo.Foo_map.Int.size (Obj.magic 0))
+	EOF
+}
+
 make_melange_sandbox_project() {
   local runtime_deps="${1:-}"
 

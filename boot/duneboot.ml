@@ -1139,6 +1139,12 @@ let copy_parser ~header src dst =
 
 (** {2 Preparation of library files} *)
 module Build_info = struct
+  let has_git_dir () =
+    match Unix.stat ".git" with
+    | { st_kind = S_DIR; _ } -> true
+    | _ | (exception Unix.Unix_error (_, _, _)) -> false
+  ;;
+
   let get_version () =
     match
       match Io.read_lines "dune-project" with
@@ -1151,7 +1157,7 @@ module Build_info = struct
     with
     | Some _ as s -> Fiber.return s
     | None ->
-      if not (Sys.file_exists ".git")
+      if not (has_git_dir ())
       then Fiber.return None
       else (
         match

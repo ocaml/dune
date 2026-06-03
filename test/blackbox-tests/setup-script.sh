@@ -235,6 +235,17 @@ write_original_name_xy() {
 	EOF
 }
 
+write_mylib_with_new_function() {
+  cat > lib/mylib.mli <<-'EOF'
+	val value : int
+	val new_function : unit -> string
+	EOF
+  cat > lib/mylib.ml <<-'EOF'
+	let value = 42
+	let new_function () = "hello"
+	EOF
+}
+
 make_melange_runtime_deps_lib() {
   local dir="${1:-lib}"
 

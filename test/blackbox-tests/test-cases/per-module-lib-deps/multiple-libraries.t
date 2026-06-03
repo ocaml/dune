@@ -47,14 +47,7 @@ See: https://github.com/ocaml/dune/issues/4572
 
 Change only mylib's interface:
 
-  $ cat > lib/mylib.mli <<EOF
-  > val value : int
-  > val new_function : unit -> string
-  > EOF
-  $ cat > lib/mylib.ml <<EOF
-  > let value = 42
-  > let new_function () = "hello"
-  > EOF
+  $ write_mylib_with_new_function
 
 Uses_other is recompiled even though it only uses Otherlib, not Mylib:
 

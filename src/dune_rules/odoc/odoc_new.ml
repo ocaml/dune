@@ -1071,26 +1071,23 @@ let html_generate sctx all ~search_db (a : Artifact.t) =
 (* Intra-library module dependencies have to be found out for
    external libraries, but dune already knows these for internal libraries.
    For consistency however, we use the same method for both - we ask odoc. *)
-let external_module_deps_rule sctx ~all a =
+let external_module_deps sctx ~all a =
   match Artifact.artifact_ty a with
   | Module _ ->
-    let ctx = Super_context.context sctx in
-    let deps_file =
-      Path.Build.set_extension (Artifact.odoc_file a) ~ext:Filename.Extension.deps
+    let dir =
+      let ctx = Super_context.context sctx in
+      Paths.root ctx ~all
     in
-    let+ () =
-      let odoc = Odoc.odoc_program sctx (Paths.root ctx ~all) in
-      Super_context.add_rule
-        sctx
-        ~dir:(Paths.root ctx ~all)
-        (Command.run_dyn_prog
-           odoc
-           ~dir:(Path.parent_exn (Path.build deps_file))
-           ~stdout_to:deps_file
-           [ A "compile-deps"; Dep (Artifact.source_file a) ])
+    let deps =
+      let open Action_builder.O in
+      (let* odoc = Odoc.odoc_program sctx dir in
+       let deps_dir = Artifact.odoc_file a |> Path.build |> Path.parent_exn in
+       Command.run' odoc ~dir:deps_dir [ A "compile-deps"; Dep (Artifact.source_file a) ])
+      |> Super_context.execute_action_stdout sctx ~loc:Loc.none ~dir
+      |> Action_builder.of_memo
     in
-    Some deps_file
-  | _ -> Memo.return None
+    Some deps
+  | _ -> None
 ;;
 
 (* We run [odoc compile-deps] on the cmti files to find out the dependencies.
@@ -1117,8 +1114,7 @@ let compile_odocs sctx ~all ~quiet artifacts parent libs =
       Resolve.return libs)
   in
   Memo.parallel_iter artifacts ~f:(fun a ->
-    external_module_deps_rule sctx ~all a
-    >>= function
+    match external_module_deps sctx ~all a with
     | None ->
       (* mld file *)
       let+ (_ : Path.Build.t) =
@@ -1131,10 +1127,10 @@ let compile_odocs sctx ~all ~quiet artifacts parent libs =
           ~children:[]
       in
       ()
-    | Some deps_file ->
+    | Some deps_output ->
       let module_deps =
         let open Action_builder.O in
-        let* l = Action_builder.lines_of (Path.build deps_file) in
+        let* l = deps_output >>| String.split_lines in
         let deps' =
           parse_odoc_deps l
           |> List.filter_map ~f:(fun (m', _) ->

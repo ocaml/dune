@@ -209,6 +209,17 @@ make_mylib_consumer_executable() {
 	EOF
 }
 
+write_original_name_xy() {
+  cat > original_name.mli <<-'EOF'
+	val x : string
+	val y : int
+	EOF
+  cat > original_name.ml <<-'EOF'
+	let x = "hello"
+	let y = 42
+	EOF
+}
+
 make_melange_runtime_deps_lib() {
   local dir="${1:-lib}"
 

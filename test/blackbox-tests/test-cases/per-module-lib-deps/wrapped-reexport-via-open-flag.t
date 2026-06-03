@@ -62,14 +62,7 @@ Edit [dep_lib]'s interface. [consumer] reaches [dep_lib]'s
 [Lib_re_export] wrapper. The cctx-wide compile-rule deps include
 [dep_lib], so [consumer] rebuilds:
 
-  $ cat > original_name.mli <<EOF
-  > val x : string
-  > val y : int
-  > EOF
-  $ cat > original_name.ml <<EOF
-  > let x = "hello"
-  > let y = 42
-  > EOF
+  $ write_original_name_xy
   $ dune build @check
   $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("consumer"))]'
   [

@@ -526,6 +526,24 @@ make_menhir_parser_using_dep() {
 	EOF
 }
 
+write_menhir_merge_into_sources() {
+  cat >lang/sub/tokens.mly <<-'EOF'
+	%token <char> TOKEN
+	%token EOF
+	%%
+	EOF
+  cat >lang/sub/parser.mly <<-'EOF'
+	%start <char list> main
+	%%
+	main:
+	| c = TOKEN EOF { [c] }
+	| c = TOKEN xs = main  { c :: xs }
+	EOF
+  cat >lang/sub/dune <<-'EOF'
+	(menhir (modules tokens parser) (merge_into both))
+	EOF
+}
+
 make_melange_virtual_time_project() {
   local vlib_public_name="$1"
   local impl_public_name="$2"

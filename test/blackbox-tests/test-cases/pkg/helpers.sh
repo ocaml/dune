@@ -85,6 +85,21 @@ mkpkg() {
   cat >> "$mock_packages/$name/$name.$version/opam"
 }
 
+make_committed_mock_repo_package() {
+  local package="$1"
+  local version="$2"
+
+  mkrepo
+  mkpkg "$package" "$version" <<-'EOF'
+	EOF
+  (
+    cd mock-opam-repository || exit 1
+    git init --quiet
+    git add -A
+    git commit --quiet -m "Initial commit"
+  )
+}
+
 make_foo_tarball() {
   local implementation="$1"
 

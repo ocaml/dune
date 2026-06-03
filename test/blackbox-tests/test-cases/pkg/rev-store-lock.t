@@ -2,14 +2,7 @@ Testing whether the revision store locks properly.
 
 To start with we create a repository in with a `foo` package.
 
-  $ mkrepo
-  $ mkpkg foo 1.0 <<EOF
-  > EOF
-  $ cd mock-opam-repository
-  $ git init --quiet
-  $ git add -A
-  $ git commit --quiet -m "Initial commit"
-  $ cd ..
+  $ make_committed_mock_repo_package foo 1.0
 
 We set this repository as sole source for opam repositories.
 

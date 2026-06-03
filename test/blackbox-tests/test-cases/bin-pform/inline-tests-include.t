@@ -6,32 +6,11 @@ collection to drain the env contribution from Include_result.
 
   $ make_mypkg_bin_project
 
-  $ cat >dump_path.ml <<EOF
-  > let () =
-  >   let oc = open_out "$PWD/path.out" in
-  >   output_string oc (Sys.getenv "PATH");
-  >   close_out oc
-  > EOF
-
   $ cat >deps.sexp <<'EOF'
   > (%{bin:mybin})
   > EOF
 
-  $ cat >dune <<'EOF'
-  > (library
-  >  (name check_backend)
-  >  (modules ())
-  >  (inline_tests.backend
-  >   (generate_runner (cat dump_path.ml))))
-  > (library
-  >  (name testlib)
-  >  (inline_tests
-  >   (backend check_backend)
-  >   (deps (include deps.sexp))))
-  > EOF
-
-  $ cat >testlib.ml <<EOF
-  > EOF
+  $ write_bin_pform_inline_tests_fixture '(include deps.sexp)'
 
   $ dune runtest 2>&1
 

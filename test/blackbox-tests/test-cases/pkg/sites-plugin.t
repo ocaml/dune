@@ -6,31 +6,7 @@ Test sites plugins from another package
 Make an executable using dune-site (example mostly from the manual)
   $ mkdir app
   $ cd app
-  $ cat > dune-project <<EOF
-  > (lang dune 3.20)
-  > (using dune_site 0.1)
-  > (name app)
-  > 
-  > (package
-  >  (name app)
-  >  (sites (lib plugins)))
-  > EOF
-  $ cat > dune <<EOF
-  > (executable
-  >  (public_name app)
-  >  (package app)
-  >  (modules sites app)
-  >  (libraries app.register dune-site dune-site.plugins))
-  > 
-  > (library
-  >  (public_name app.register)
-  >  (name registration)
-  >  (modules registration))
-  > 
-  > (generate_sites_module
-  > (module sites)
-  > (plugins (app plugins)))
-  > EOF
+  $ write_sites_plugin_app_dune 3.20 "(package app)"
   $ write_sites_plugin_app_sources
   $ mkdir plugin
   $ cat > plugin/dune-project <<EOF

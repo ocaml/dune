@@ -605,6 +605,41 @@ write_target_promotion_rules() {
 	EOF
 }
 
+write_sites_plugin_app_dune() {
+  local version="$1"
+  local executable_package="${2:-}"
+
+  cat > dune-project <<- EOF
+	(lang dune ${version})
+	(using dune_site 0.1)
+	(name app)
+	
+	(package
+	 (name app)
+	 (sites (lib plugins)))
+	EOF
+  {
+    echo "(executable"
+    echo " (public_name app)"
+    if [ -n "$executable_package" ]; then
+      echo " ${executable_package}"
+    fi
+    cat <<-'EOF'
+	 (modules sites app)
+	 (libraries app.register dune-site dune-site.plugins))
+	
+	(library
+	 (public_name app.register)
+	 (name registration)
+	 (modules registration))
+	
+	(generate_sites_module
+	 (module sites)
+	 (plugins (app plugins)))
+	EOF
+  } > dune
+}
+
 write_sites_plugin_app_sources() {
   cat > registration.ml <<-'EOF'
 	let todo : (unit -> unit) Queue.t = Queue.create ()

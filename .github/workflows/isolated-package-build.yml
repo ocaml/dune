@@ -18,6 +18,12 @@ on:
 jobs:
   packaging-check:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ocaml-compiler:
+          - "4.14" # The oldest supported compiler version
+          - "5"    # The latest available compiler version
 
     steps:
       - uses: actions/checkout@v6
@@ -38,7 +44,7 @@ jobs:
 
       - uses: ocaml/setup-ocaml@v3
         with:
-          ocaml-compiler: 5.4
+          ocaml-compiler: ${{ matrix.ocaml-compiler }}
           dune-cache: true
           opam-pin: false
 

@@ -509,6 +509,50 @@ write_target_promotion_rules() {
 	EOF
 }
 
+make_toplevel_plugin_host() {
+  local loader="${1:-}"
+
+  cat > dune-project <<-'EOF'
+	(lang dune 3.7)
+	(using dune_site 0.1)
+	(name top_with_plugins)
+	(wrapped_executables false)
+	(map_workspace_root false)
+	
+	(package
+	 (name top_with_plugins)
+	 (sites (lib top_plugins)))
+	EOF
+
+  cat > dune <<-'EOF'
+	(executable
+	 (public_name top_with_plugins)
+	 (name top_with_plugins)
+	 (modes byte)
+	 (flags :standard -safe-string)
+	 (modules sites top_with_plugins)
+	 (link_flags (-linkall))
+	 (libraries compiler-libs.toplevel
+	  top_with_plugins.register dune-site dune-site.plugins
+	EOF
+  if [ -n "$loader" ]; then
+    printf '\t  %s\n' "$loader" >> dune
+  fi
+  cat >> dune <<-'EOF'
+	))
+	
+	(library
+	 (public_name top_with_plugins.register)
+	 (modes byte)
+	 (name registration)
+	 (modules registration))
+	
+	(generate_sites_module
+	 (module sites)
+	 (plugins (top_with_plugins top_plugins)))
+	EOF
+}
+
 write_toplevel_plugin_sources() {
   cat > top_with_plugins.ml <<-'EOF'
 	let main () =

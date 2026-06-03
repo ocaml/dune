@@ -467,6 +467,19 @@ make_directory_targets_project() {
 	EOF
 }
 
+make_empty_child_directory_target_project() {
+  make_directory_targets_project 3.10
+  cat > dune <<-'EOF'
+	(rule
+	 (target (dir output))
+	 (action
+	  (progn
+	   (run mkdir output)
+	   (run mkdir output/child)
+	   (run touch output/file))))
+	EOF
+}
+
 write_directory_diff_keep_rule() {
   cat > dune <<-'EOF'
 	(rule

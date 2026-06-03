@@ -555,14 +555,17 @@ write_directory_diff_keep_rule() {
 }
 
 make_two_context_workspace() {
+  local version="${1:-3.13}"
+  local name="${2:-alt-context}"
+
   cat > dune-workspace <<- EOF
-	(lang dune 3.13)
+	(lang dune ${version})
 	
 	(context default)
 	
 	(context
 	 (default
-	  (name alt-context)))
+	  (name ${name})))
 	EOF
 }
 

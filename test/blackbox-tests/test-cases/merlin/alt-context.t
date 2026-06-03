@@ -2,15 +2,7 @@ Showcase behavior when passing the `--context` flag to ocaml-merlin
 
   $ make_dune_project 3.14
 
-  $ cat > dune-workspace << EOF
-  > (lang dune 3.14)
-  > 
-  > (context default)
-  > 
-  > (context
-  >  (default
-  >   (name alt)))
-  > EOF
+  $ make_two_context_workspace 3.14 alt
 
   $ lib1=foo
   $ lib2=bar

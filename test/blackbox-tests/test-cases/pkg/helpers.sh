@@ -188,6 +188,33 @@ make_x_depends_bar_project() {
 	EOF
 }
 
+make_lockdir_validation_packages() {
+  mkpkg a 0.0.1 <<-'EOF'
+	depends: [ "c" "d" ]
+	EOF
+  mkpkg b 0.0.1 <<-'EOF'
+	EOF
+  mkpkg b 0.0.2 <<-'EOF'
+	EOF
+  mkpkg c <<-'EOF'
+	depends: [ "e" ]
+	EOF
+  mkpkg d <<-'EOF'
+	EOF
+  mkpkg e <<-'EOF'
+	EOF
+}
+
+make_lockdir_validation_project() {
+  local version="${1:?}"
+
+  cat >dune-project <<- EOF
+	(lang dune ${version})
+	(package (name foo) (depends a (b (>= 0.0.2))))
+	(package (name bar) (depends foo c))
+	EOF
+}
+
 make_bar_depends_foo_project() {
   cat > dune-project <<-'EOF'
 	(lang dune 3.10)

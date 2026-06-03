@@ -260,6 +260,31 @@ make_old_melange_field_project() {
 	EOF
 }
 
+make_melange_runtime_deps_project() {
+  local directory_targets="${1:-}"
+
+  cat > dune-project <<- EOF
+	(lang dune 3.8)
+	EOF
+  if [ -n "$directory_targets" ]; then
+    cat >> dune-project <<-'EOF'
+	(using directory-targets 0.1)
+	EOF
+  fi
+  cat >> dune-project <<-'EOF'
+	(using melange 0.1)
+	EOF
+  cat > dune <<-'EOF'
+	(melange.emit
+	 (target output)
+	 (alias mel)
+	 (libraries foo)
+	 (emit_stdlib false)
+	 (preprocess (pps melange.ppx))
+	 (runtime_deps assets/file.txt))
+	EOF
+}
+
 make_melange_sandbox_project() {
   local runtime_deps="${1:-}"
 

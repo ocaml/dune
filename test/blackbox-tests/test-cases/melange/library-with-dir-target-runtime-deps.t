@@ -1,20 +1,6 @@
 Test `melange.runtime_deps` in a private library
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.8)
-  > (using directory-targets 0.1)
-  > (using melange 0.1)
-  > EOF
-
-  $ cat > dune <<EOF
-  > (melange.emit
-  >  (target output)
-  >  (alias mel)
-  >  (libraries foo)
-  >  (emit_stdlib false)
-  >  (preprocess (pps melange.ppx))
-  >  (runtime_deps assets/file.txt))
-  > EOF
+  $ make_melange_runtime_deps_project with-directory-targets
 
   $ mkdir lib
   $ cat > lib/dune <<EOF

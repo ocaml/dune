@@ -165,6 +165,21 @@ make_install_include_project() {
 	EOF
 }
 
+write_stdlib_mystdlib_sources() {
+  mkdir -p stdlib
+  cat > stdlib/other.ml <<-'EOF'
+	let other () = Mystdlib.defined_in_stdlib
+	EOF
+  cat > stdlib/one_module.ml <<-'EOF'
+	let foo = "foo"
+	EOF
+  cat > stdlib/mystdlib.ml <<-'EOF'
+	let defined_in_stdlib = "defined"
+	module One_module = One_module
+	module Other = Other
+	EOF
+}
+
 make_value_library() {
   local dir="$1"
   local name="$2"

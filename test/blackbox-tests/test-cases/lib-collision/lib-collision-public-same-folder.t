@@ -1,20 +1,9 @@
 Public libraries using the same library name, in the same context, defined in
 the same folder.
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.13)
-  > (package (name bar) (allow_empty))
-  > (package (name baz) (allow_empty))
-  > EOF
+  $ make_bar_baz_packages_project
 
-  $ cat > dune << EOF
-  > (library
-  >  (name foo)
-  >  (public_name bar.foo))
-  > (library
-  >  (name foo)
-  >  (public_name baz.foo))
-  > EOF
+  $ write_duplicate_foo_public_libraries
 
 Without any consumers of the libraries
 

@@ -42,17 +42,8 @@ Make an executable using dune-site (example mostly from the manual)
   >  (depends app)
   >  (name plugin1))
   > EOF
-  $ cat > plugin/dune <<EOF
-  > (library
-  >  (public_name plugin1.plugin1_impl)
-  >  (name plugin1_impl)
-  >  (modules plugin1_impl)
-  >  (libraries app.register))
-  > 
-  > (plugin
-  >  (name plugin1)
-  >  (libraries plugin1.plugin1_impl)
-  >  (site (app plugins)))
+  $ write_sites_plugin_dune
+  $ cat >> plugin/dune <<EOF
   > 
   > (rule
   >  (alias runtest)

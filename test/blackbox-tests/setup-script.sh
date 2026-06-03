@@ -609,6 +609,21 @@ write_sites_plugin_impl() {
 	EOF
 }
 
+write_sites_plugin_dune() {
+  cat > plugin/dune <<-'EOF'
+	(library
+	 (public_name plugin1.plugin1_impl)
+	 (name plugin1_impl)
+	 (modules plugin1_impl)
+	 (libraries app.register))
+	
+	(plugin
+	 (name plugin1)
+	 (libraries plugin1.plugin1_impl)
+	 (site (app plugins)))
+	EOF
+}
+
 make_toplevel_plugin_host() {
   local loader="${1:-}"
 

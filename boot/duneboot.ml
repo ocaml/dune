@@ -849,18 +849,35 @@ end = struct
       let stderr_fn, stderr_fd =
         if split then open_temp_file () else stdout_fn, stdout_fd
       in
-      Option.iter cwd ~f:Sys.chdir;
       let pid =
-        Unix.create_process
-          prog
-          (Array.of_list (prog :: args))
-          Unix.stdin
-          stdout_fd
-          stderr_fd
+        let res =
+          let max_retries = 5 in
+          let initial_delay = 0.01 in
+          let argv = Array.of_list (prog :: args) in
+          let rec loop retries_left delay =
+            Option.iter cwd ~f:Sys.chdir;
+            let res =
+              match Unix.create_process prog argv Unix.stdin stdout_fd stderr_fd with
+              | pid -> Ok pid
+              | exception exn -> Error exn
+            in
+            Option.iter cwd ~f:(fun (_ : string) -> Sys.chdir initial_cwd);
+            match res with
+            | Ok pid -> pid
+            | Error (Unix.Unix_error (Unix.EAGAIN, _, _)) when retries_left > 0 ->
+              Unix.sleepf delay;
+              loop (retries_left - 1) (delay *. 2.0)
+            | Error exn -> raise exn
+          in
+          try Ok (loop max_retries initial_delay) with
+          | exn -> Error exn
+        in
+        Unix.close stdout_fd;
+        if split then Unix.close stderr_fd;
+        match res with
+        | Ok pid -> pid
+        | Error exn -> raise exn
       in
-      Option.iter cwd ~f:(fun _ -> Sys.chdir initial_cwd);
-      Unix.close stdout_fd;
-      if split then Unix.close stderr_fd;
       let ivar = Ivar.create () in
       Hashtbl.add running ~key:pid ~data:ivar;
       let* (status : Unix.process_status) = Ivar.read ivar in

@@ -77,7 +77,13 @@ module Pkg_config : sig
         defined in [PKG_CONFIG] environment variable if set else try
         [pkgconf] then [pkg-config]. Append the [PKG_CONFIG_PATH]
         environment variable to the searched pathes. Returns [None] if
-        nothing is not found. *)
+        nothing is not found.
+
+        If [static] is [true], calls to pkg-config will be made with the
+        [--static] argument. Additional arguments can be specified by setting
+        the [PKG_CONFIG_ARGN] environment variable. All of these additional
+        arguments are added to every invocations done by the querying functions
+        below. *)
     val get : ?static:bool -> configurator -> t option
 
     type package_conf =
@@ -89,8 +95,7 @@ module Pkg_config : sig
         not contain a version constraint. Multiple, unversioned packages are
         separated with spaces, for example "gtk+-3.0 gtksourceview-3.0". By
         default, the OCaml compiler [target] is passed to pkgconf as
-        [--personality] argument. An alternative list of arguments can be
-        specified by setting the [PKG_CONFIG_ARGN] environment variable.
+        [--personality] argument.
         Returns [None] if [package] is not available *)
     val query : t -> package:string -> package_conf option
 
@@ -101,9 +106,7 @@ module Pkg_config : sig
         [expr] may contain a version constraint, for example "gtk+-3.0 >= 3.18".
         [package] must be just the name of the package. If [expr] is specified,
         [package] must be specified as well. By default, the OCaml compiler
-        "target" is passed to pkgconf as [--personality] argument. An
-        alternative list of arguments can be specified by setting the
-        [PKG_CONFIG_ARGN] environment variable.
+        "target" is passed to pkgconf as [--personality] argument.
         Returns [Error error_msg] if [package] is not available *)
     val query_expr_err
       :  t

@@ -179,6 +179,17 @@ let commit_id =
          Some res)
 ;;
 
+let git_sha_short =
+  Staged.unstage
+  @@ make_fun
+       "vcs-git-sha-short"
+       ~git:(fun t ->
+         match run_git t [ "rev-parse"; "--short"; "HEAD" ] with
+         | exception _ -> Fiber.return None
+         | fiber -> fiber)
+       ~hg:(fun _ -> Fiber.return None)
+;;
+
 let files =
   let run_zero_separated_hg t args =
     Process.run_capture_zero_separated

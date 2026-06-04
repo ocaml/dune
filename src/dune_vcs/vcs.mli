@@ -29,6 +29,9 @@ val describe : t -> string option Memo.t
 (** String uniquely identifying the current head commit *)
 val commit_id : t -> string option Memo.t
 
+(** Short git SHA of the current head commit, or [None] if unavailable *)
+val git_sha_short : t -> string option Memo.t
+
 (** List of files committed in the repo *)
 val files : t -> Path.Source.t list Memo.t
 

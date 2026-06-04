@@ -78,6 +78,9 @@ Dune supports the following variables:
   stricter warning set. The old behaviour of Dune can be recovered by using the
   following stanza in a top-level ``dune`` file: ``(env (dev (flags :standard
   %{dune-warnings})))``.
+- ``git-sha`` expands to the short git SHA of the HEAD commit of the workspace's
+  git repository (equivalent to ``git rev-parse --short HEAD``). Expands to the
+  empty string when no commit sha was found. Available since Dune 3.24.
 - ``<ext>:<path>`` where ``<ext>`` is one of ``cmo``, ``cmi``, ``cma``,
   ``cmx``, or ``cmxa``. See :ref:`variables-for-artifacts`.
 - ``env:<var>=<default`` expands to the value of the environment

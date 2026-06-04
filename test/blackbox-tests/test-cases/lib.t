@@ -221,28 +221,7 @@ Testsuite for the %{lib...} and %{lib-private...} variable.
 In this test, two packages are defined in the same project, but we may not
 access the artifacts through %{lib-private}
 
-  $ mkdir lib-private-only-packages
-  $ cd lib-private-only-packages
-  $ mkdir lib1 lib2
-  $ cat >dune-project <<EOF
-  > (lang dune 2.8)
-  > (name lib-private-test)
-  > (package (name public_lib1))
-  > (package (name public_lib2))
-  > EOF
-  $ cat >lib1/dune <<EOF
-  > (library
-  >  (name lib1)
-  >  (public_name public_lib1))
-  > EOF
-  $ touch lib1/lib1.ml
-  $ cat >lib2/dune <<EOF
-  > (library
-  >  (name lib2)
-  >  (public_name public_lib2))
-  > (rule
-  >  (with-stdout-to lib2.ml (echo "let _ = {|%{lib-private:lib1:lib1.ml}|}")))
-  > EOF
+  $ make_private_only_packages_project lib-private
 
 The build works in development:
   $ dune build @install

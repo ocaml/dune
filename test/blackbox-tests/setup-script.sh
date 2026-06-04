@@ -563,6 +563,37 @@ make_melange_app_with_asset_reader() {
 	EOF
 }
 
+make_private_only_packages_project() {
+  local macro="$1"
+  local lib1_extra="${2:-}"
+
+  mkdir lib-private-only-packages
+  cd lib-private-only-packages || return
+  mkdir lib1 lib2
+  cat >dune-project <<-'EOF'
+	(lang dune 2.8)
+	(name lib-private-test)
+	(package (name public_lib1))
+	(package (name public_lib2))
+	EOF
+  {
+    echo "(library"
+    echo " (name lib1)"
+    if [ -n "$lib1_extra" ]; then
+      echo " ${lib1_extra}"
+    fi
+    echo " (public_name public_lib1))"
+  } > lib1/dune
+  touch lib1/lib1.ml
+  cat >lib2/dune <<- EOF
+	(library
+	 (name lib2)
+	 (public_name public_lib2))
+	(rule
+	 (with-stdout-to lib2.ml (echo "let _ = {|%{${macro}:lib1:lib1.ml}|}")))
+	EOF
+}
+
 make_melange_virtual_time_project() {
   local vlib_public_name="$1"
   local impl_public_name="$2"

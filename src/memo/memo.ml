@@ -1016,12 +1016,7 @@ let make_dep_node ~spec ~input : _ Dep_node.t =
 ;;
 
 let dep_node (t : (_, _) Table.t) input =
-  match Store.find t.cache input with
-  | Some dep_node -> dep_node
-  | None ->
-    let dep_node = make_dep_node ~spec:t.spec ~input in
-    Store.set t.cache input dep_node;
-    dep_node
+  Store.find_or_add t.cache input ~f:(fun input -> make_dep_node ~spec:t.spec ~input)
 ;;
 
 let report_and_collect_errors f =

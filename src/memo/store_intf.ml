@@ -23,6 +23,12 @@ module type Instance = sig
   val clear : t -> unit
   val set : t -> key -> value -> unit
   val find : t -> key -> value option
+
+  (** [find_or_add t key ~f] returns the value associated with [key], or, if [key] is not
+      present, adds [f key] and returns it. This performs a single hash-table lookup,
+      unlike a [find] followed by a [set]. *)
+  val find_or_add : t -> key -> f:(key -> value) -> value
+
   val iter : t -> f:(value -> unit) -> unit
   val store : t
 end

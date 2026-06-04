@@ -10,4 +10,11 @@ let () =
     in
     let query package = ignore (C.Pkg_config.query pkg_config ~package) in
     query "dummy-pkg";
+    let pkg_config_static =
+      match C.Pkg_config.get ~static:true t with
+      | None -> assert false
+      | Some p -> p
+    in
+    let query package = ignore (C.Pkg_config.query pkg_config ~package) in
+    query "dummy-pkg";
   )

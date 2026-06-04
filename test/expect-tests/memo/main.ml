@@ -2338,3 +2338,29 @@ let%expect_test "create_rec" =
     calls = 11
     |}]
 ;;
+
+let%expect_test "Var.Unit" =
+  let var = Memo.Var.Unit.create () in
+  let calls = ref 0 in
+  let downstream =
+    Memo.create
+      "var-unit-downstream"
+      ~input:(module Unit)
+      (fun () ->
+         incr calls;
+         Memo.Var.Unit.read var)
+  in
+  let run_downstream () = run (Memo.exec downstream ()) in
+  run_downstream ();
+  Format.printf "calls = %d@." !calls;
+  [%expect {| calls = 1 |}];
+  (* Without invalidation the result is cached, so there is no recomputation. *)
+  run_downstream ();
+  Format.printf "calls = %d@." !calls;
+  [%expect {| calls = 1 |}];
+  (* Invalidating the unit variable forces the downstream computation to rerun. *)
+  Memo.reset (Memo.Var.Unit.invalidate var ~reason:Test);
+  run_downstream ();
+  Format.printf "calls = %d@." !calls;
+  [%expect {| calls = 2 |}]
+;;

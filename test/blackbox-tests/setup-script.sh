@@ -544,6 +544,25 @@ write_menhir_merge_into_sources() {
 	EOF
 }
 
+write_melange_app_using_foo() {
+  local dir="${1:-app}"
+
+  mkdir -p "$dir"
+  cat > "$dir/dune-project" <<-'EOF'
+	(lang dune 3.8)
+	(package (name app))
+	(using melange 0.1)
+	EOF
+  cat > "$dir/dune" <<-'EOF'
+	(melange.emit
+	 (target output)
+	 (alias mel)
+	 (emit_stdlib false)
+	 (libraries foo)
+	 (preprocess (pps melange.ppx)))
+	EOF
+}
+
 make_melange_virtual_time_project() {
   local vlib_public_name="$1"
   local impl_public_name="$2"

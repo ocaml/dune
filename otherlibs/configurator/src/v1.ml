@@ -664,7 +664,7 @@ module Pkg_config = struct
         | s -> String.split ~on:' ' s
         | exception Not_found -> default
       in
-      if static then "--static" :: args else args
+      if static && not (List.mem "--static" ~set:args) then "--static" :: args else args
     in
     match Sys.getenv "PKG_CONFIG" with
     | s ->

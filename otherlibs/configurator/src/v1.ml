@@ -657,7 +657,7 @@ module Pkg_config = struct
     ; configurator : t
     }
 
-  let get ?(static=false) c =
+  let get ?(static = false) c =
     let get_pkg_config_args default =
       let args =
         match Sys.getenv "PKG_CONFIG_ARGN" with

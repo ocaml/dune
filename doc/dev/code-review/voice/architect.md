@@ -36,7 +36,7 @@ future cases.
 - "It's not immediately clear to me what is the cost of doing this. For
   instance the `Gen` functor will now be applied for every .ml file. It's
   fine if it only contains functions, but if we start adding toplevel values
-  in the future performances might degrade."
+  in the future performance might degrade."
 
 - "`Path.t` values in argument specification eventually get translated to
   `Path.reach <path> ~from:<dir-where-the-command-is-executed>`. So for a file

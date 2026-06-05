@@ -144,13 +144,15 @@ shrink 30–50% in this step. If yours doesn't, you weren't strict enough.
 
 ## Voice
 
-Pick one voice from `voice/` at random unless the user names a specific one in
-their request. The voice shapes phrasing — what to ask, what to declare, how
-much to elaborate. Currently available:
+Default to `voice/foreman.md` — short, declarative, no padding. Use a
+different voice only if the user names one in their request, or if the PR
+matches the "When this voice fits" section of another voice file better
+than foreman's terse style serves it. The voice shapes phrasing — what to
+ask, what to declare, how much to elaborate. Currently available:
+
+- `voice/foreman.md` — short orders, declarative, no padding. **Default.**
 
 - `voice/architect.md` — layered architectural reasoning, code-block alternatives.
-
-- `voice/foreman.md` — short orders, declarative, no padding.
 
 - `voice/pair.md` — Socratic, suggestion-blocks, ratifies progress.
 

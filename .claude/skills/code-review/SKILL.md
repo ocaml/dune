@@ -15,8 +15,8 @@ The substantive review guidance lives in `doc/dev/code-review/`:
 
 - `code-style.md` — OCaml style guide. Read when style nits surface.
 
-- `voice/` — review voices. Pick one at random unless the user names a voice
-  in their request.
+- `voice/` — review voices. Default to `voice/foreman.md` unless the user
+  names a different voice in their request.
 
 This file (the skill) covers the agent-specific tooling for executing those
 steps.
@@ -70,9 +70,11 @@ Subagent constraints:
   (no Edit/Write/Bash mutations) — its job is to judge the draft, not
   rewrite the code.
 
-- Pass the diff and any pre-state files in via the prompt or stage them
-  in a path the subagent can read (sandbox sometimes blocks `/tmp/`;
-  prefer staging inside the project tree, e.g. `.review-experiment/`).
+- Prefer passing the diff and any pre-state files in via the prompt. Only
+  stage to a path on disk if the content is too large to fit comfortably in
+  a prompt; in that case use an existing scratch location rather than
+  creating a new directory in the repo (per `AGENTS.md`: avoid creating
+  files unless necessary).
 
 - Sandbox often blocks file writes from subagents. Have each subagent
   return the review inline in its final response between delimiters

@@ -708,6 +708,43 @@ module Or_meta = struct
          Dune_package package)
   ;;
 
+  let unsupported_dune_language_version (message : User_message.t) =
+    let prefix = "Version " in
+    let suffix = " of the dune language is not supported." in
+    let is_newer_than_latest version =
+      match
+        Scanf.sscanf version "%u.%u%s" (fun major minor rest -> (major, minor), rest)
+      with
+      | Ok (version, "") -> Syntax.Version.compare version Stanza.latest_version = Gt
+      | Ok (_, _) | Error () -> false
+    in
+    match message.loc, String.split_lines (User_message.to_string message) with
+    | Some loc, line :: _ when (Loc.start loc).pos_lnum = 1 ->
+      (match String.drop_prefix line ~prefix with
+       | None -> None
+       | Some line ->
+         Option.bind (String.drop_suffix line ~suffix) ~f:(fun version ->
+           Option.some_if (is_newer_than_latest version) version))
+    | _ -> None
+  ;;
+
+  let clearer_unsupported_dune_language_version_error message =
+    match unsupported_dune_language_version message with
+    | None -> message
+    | Some version ->
+      User_error.make
+        ?loc:message.loc
+        ~hints:[ Pp.text "Upgrade your version of Dune." ]
+        [ Pp.textf
+            "The installed dune package was generated with dune language version %s, \
+             which this version of dune cannot read."
+            version
+        ; Pp.textf
+            "This version of Dune supports dune-package files up to version %s."
+            (Syntax.Version.to_string Stanza.latest_version)
+        ]
+  ;;
+
   let parse file lexbuf =
     let dir = Path.parent_exn file in
     let extensions = [ Dune_lang.Oxcaml.(syntax, latest_version) ] in
@@ -722,7 +759,8 @@ module Or_meta = struct
           (with_extensions (decode ~lang ~dir)))
     with
     | contents -> Ok contents
-    | exception User_error.E message -> Error message
+    | exception User_error.E message ->
+      Error (clearer_unsupported_dune_language_version_error message)
     | exception Sys_error msg ->
       Error
         (User_message.make

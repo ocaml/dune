@@ -20,3 +20,19 @@ Now we attempt to use an invalid dune-package library:
   -> required by _build/default/.foo.eobjs/native/dune__exe__Foo.cmx
   -> required by _build/default/foo.exe
   [1]
+
+Now we attempt to use a dune-package file produced by a future version of Dune:
+  $ cat >findlib/baz/dune-package <<EOF
+  > (lang dune 99.0)
+  > EOF
+  $ OCAMLPATH=$PWD/findlib dune exec ./foo.exe
+  File "$TESTCASE_ROOT/findlib/baz/dune-package", line 1, characters 11-15:
+  1 | (lang dune 99.0)
+                 ^^^^
+  Error: The installed dune package was generated with dune language version
+  99.0, which this version of dune cannot read.
+  This version of Dune supports dune-package files up to version 3.25.
+  -> required by _build/default/.foo.eobjs/native/dune__exe__Foo.cmx
+  -> required by _build/default/foo.exe
+  Hint: Upgrade your version of Dune.
+  [1]

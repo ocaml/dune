@@ -1452,6 +1452,23 @@ module Invalidation = struct
       | Test -> Some "Rebuild initiated by an internal testsuite"
       | Variable_changed v -> Some (sprintf "Variable %s changed" v)
     ;;
+
+    let equal a b =
+      match a, b with
+      | Unknown, Unknown
+      | Event_queue_overflow, Event_queue_overflow
+      | Upgrade, Upgrade
+      | Test, Test -> true
+      | Path_changed a, Path_changed b -> Path.equal a b
+      | Variable_changed a, Variable_changed b -> String.equal a b
+      | ( ( Unknown
+          | Path_changed _
+          | Event_queue_overflow
+          | Upgrade
+          | Test
+          | Variable_changed _ )
+        , _ ) -> false
+    ;;
   end
 
   module Leaf = struct
@@ -1459,6 +1476,7 @@ module Invalidation = struct
       | Invalidate_node : _ Dep_node.t -> kind
       | Clear_cache : ('input, ('input, 'output) Dep_node.t) Store.t -> kind
       | Clear_caches
+      | Custom of (unit -> unit)
 
     type t =
       { kind : kind
@@ -1492,6 +1510,7 @@ module Invalidation = struct
     | Invalidate_node dep_node -> invalidate_dep_node dep_node
     | Clear_cache store -> invalidate_store store
     | Clear_caches -> Caches.clear ()
+    | Custom f -> f ()
   ;;
 
   let rec execute x xs =
@@ -1575,6 +1594,16 @@ module Invalidation = struct
 
   let invalidate_node ~reason (dep_node : _ Dep_node.t) =
     Leaf { kind = Invalidate_node dep_node; reason }
+  ;;
+
+  (* For out-of-band caching mechanisms that need to run an arbitrary action when the build
+     is invalidated. *)
+  let custom ~reason ~f = Leaf { kind = Custom f; reason }
+
+  let to_reason_list t =
+    List.fold_left (to_list t) ~init:[] ~f:(fun acc ({ Leaf.reason; _ } : Leaf.t) ->
+      if List.mem acc reason ~equal:Reason.equal then acc else reason :: acc)
+    |> List.rev
   ;;
 end
 

@@ -1772,36 +1772,36 @@ module Var = struct
 
      [Cell.t]s already store all the information we need, and the only change that needs
      to happen is making [Cell.invalidate] smart enough to return [Invalidation.empty]
-     when the [cutoff] fires. (Better do this after adding tests for [Var.t] though.)
+     when the [cutoff] fires.
 
      Once we have that, we should also be able to implement [Fs_memo] on top of [Var.t]s
      instead of hand-written "variable tables".
   *)
   type 'a t =
     { cell : (unit, 'a) Cell.t
-    ; mutable value : 'a
-      (* We manually cutoff instead of depending on [Cell.t] cutoff mechanism,
-           so that we don't pay for invalidation when the value doesn't change. *)
+    ; value : 'a ref
+      (* We manually cutoff instead of depending on [Cell.t] cutoff mechanism, so that
+           we don't pay for invalidation when the value doesn't change. *)
     ; cutoff : ('a -> 'a -> bool) option
     }
 
   let create (type a) ?cutoff value ~name : a t =
-    let rec t =
-      lazy
-        { cell =
-            lazy_cell ~name (fun () ->
-              let t = Stdlib.Lazy.force t in
-              return t.value)
-        ; value
-        ; cutoff
-        }
+    let value = ref value in
+    let spec =
+      Spec.create
+        ~name:(Some name)
+        ~input:(module Stdune.Unit)
+        ~human_readable_description:None
+        ~cutoff:None
+        (fun () -> return !value)
     in
-    Stdlib.Lazy.force t
+    let cell = make_dep_node ~spec ~input:() in
+    { cell; value; cutoff }
   ;;
 
   let set t v =
     match t.cutoff with
-    | Some cutoff when cutoff t.value v ->
+    | Some cutoff when cutoff !(t.value) v ->
       (* Note: We do *not* set [t.value := v] when the change is insignificant according
          to the [cutoff]. This is consistent with how cutoffs work in the rest of Memo,
          e.g., see the [compute] and [confirm_old_value] functions.
@@ -1811,7 +1811,7 @@ module Var = struct
          goes unnoticed, even when the aggregate change far exceeds the 1% threshold. *)
       Invalidation.empty
     | Some _ | None ->
-      t.value <- v;
+      t.value := v;
       Cell.invalidate
         t.cell
         ~reason:(Variable_changed (Stdune.Option.value_exn t.cell.spec.name))

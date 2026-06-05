@@ -567,41 +567,73 @@ module Call_stack = struct
     Fiber.Var.set call_stack_var (Some stack) (fun () -> Implicit_output.forbid f)
   ;;
 
+  (* As soon as we hit a cycle error in the current run, we stop adding new edges to the
+     cycle detection DAG. Calling [Dag.add_assuming_missing] after a cycle has been
+     detected is unsafe: it can violate the DAG's internal invariants (and previously
+     caused Dune to hang). This holds the first (and only) cycle error we hit in the
+     current run; it is reset by [reset]. *)
+  let cycle_error_in_the_current_run : Cycle_error.t option ref = ref None
+  let reset_cycle_error_in_the_current_run () = cycle_error_in_the_current_run := None
+
+  (* Record a cycle error hit during the current run, returning the first cycle error
+     seen this run. Once any cycle is hit we report that same cycle for the rest of the
+     run (see [cycle_error_in_the_current_run]). *)
+  let note_cycle_error cycle =
+    match !cycle_error_in_the_current_run with
+    | Some first -> first
+    | None ->
+      cycle_error_in_the_current_run := Some cycle;
+      cycle
+  ;;
+
   (* Add all edges leading from the root of the call stack to [dag_node] to the cycle
      detection DAG. *)
   let add_path_to ~dag_node : (unit, Cycle_error.t) result Fiber.t =
     let+ stack = get_call_stack () in
-    let rec add_path_impl stack dag_node edges_added =
-      match stack with
-      | [] -> Ok (), edges_added
-      | frame :: stack ->
-        let dag_node_id = Dag.node_id dag_node in
-        let children_added_to_dag = Stack_frame_with_state.children_added_to_dag frame in
-        (match Dag.Id.Set.mem children_added_to_dag dag_node_id with
-         | true ->
-           (* Here we know that the current [frame] has already been traversed in
-              a previous [add_path_to] call. Therefore, the DAG already contains
-              all the edges that we will discover by continuing the recursive
-              traversal. We might as well stop here and save time. *)
-           Ok (), edges_added
-         | false ->
-           let caller_dag_node = Stack_frame_with_state.dag_node frame in
-           (match Dag.add_assuming_missing caller_dag_node dag_node with
-            | exception Dag.Cycle cycle ->
-              Error (List.map cycle ~f:Dag.value), edges_added
-            | () ->
-              let edges_added = edges_added + 1 in
-              let not_traversed_before = Dag.Id.Set.is_empty children_added_to_dag in
-              Stack_frame_with_state.record_child_added_to_dag frame ~dag_node_id;
-              (match not_traversed_before with
-               | true -> add_path_impl stack caller_dag_node edges_added
-               | false ->
-                 (* Same optimisation as above: no need to traverse again. *)
-                 Ok (), edges_added)))
-    in
-    let result, edges_added = add_path_impl stack dag_node 0 in
-    Counter.add Metrics.Cycle_detection.edges edges_added;
-    result
+    (match !cycle_error_in_the_current_run with
+     | Some _ ->
+       (* We already hit a cycle in this run, so we must not touch the DAG again (see the
+          comment on [cycle_error_in_the_current_run]). Report the first cycle below. *)
+       ()
+     | None ->
+       let rec add_path_impl stack dag_node edges_added =
+         match stack with
+         | [] -> Ok (), edges_added
+         | frame :: stack ->
+           let dag_node_id = Dag.node_id dag_node in
+           let children_added_to_dag =
+             Stack_frame_with_state.children_added_to_dag frame
+           in
+           (match Dag.Id.Set.mem children_added_to_dag dag_node_id with
+            | true ->
+              (* Here we know that the current [frame] has already been traversed in a
+                 previous [add_path_to] call. Therefore, the DAG already contains all the
+                 edges that we will discover by continuing the recursive traversal. We
+                 might as well stop here and save time. *)
+              Ok (), edges_added
+            | false ->
+              let caller_dag_node = Stack_frame_with_state.dag_node frame in
+              (match Dag.add_assuming_missing caller_dag_node dag_node with
+               | exception Dag.Cycle cycle ->
+                 Error (List.map cycle ~f:Dag.value), edges_added
+               | () ->
+                 let edges_added = edges_added + 1 in
+                 let not_traversed_before = Dag.Id.Set.is_empty children_added_to_dag in
+                 Stack_frame_with_state.record_child_added_to_dag frame ~dag_node_id;
+                 (match not_traversed_before with
+                  | true -> add_path_impl stack caller_dag_node edges_added
+                  | false ->
+                    (* Same optimisation as above: no need to traverse again. *)
+                    Ok (), edges_added)))
+       in
+       let result, edges_added = add_path_impl stack dag_node 0 in
+       Counter.add Metrics.Cycle_detection.edges edges_added;
+       (match result with
+        | Ok () -> ()
+        | Error cycle_error -> cycle_error_in_the_current_run := Some cycle_error));
+    match !cycle_error_in_the_current_run with
+    | None -> Ok ()
+    | Some cycle_error -> Error cycle_error
   ;;
 
   (* Add a dependency on the [dep_node] from the caller, if there is one. *)
@@ -723,7 +755,7 @@ module Computation = struct
         | Some callers -> Some (dep_node :: callers)
       in
       (match immediate_self_cycle with
-       | Some cycle -> Fiber.return (Error cycle)
+       | Some cycle -> Fiber.return (Error (Call_stack.note_cycle_error cycle))
        | None ->
          (match (phase : Stack_frame_with_state.phase) with
           | Restore_from_cache -> Counter.incr Metrics.Restore.blocked
@@ -1545,6 +1577,12 @@ let run t =
      non-toplevel [run] would be better. *)
   match is_top_level with
   | true ->
+    (* Start each top-level run with a clean cycle-detection state so that a cycle hit in
+       one run does not leak into independent later runs. In production Memo performs a
+       single run per build with a [reset] in between, so this matches resetting in
+       [reset]. (Concurrent top-level runs do not occur in Dune; if that ever changes,
+       this reset would need to be scoped to the individual run rather than shared.) *)
+    Call_stack.reset_cycle_error_in_the_current_run ();
     run_with_error_handler
       (fun () -> t)
       ~handle_error_no_raise:(fun _exn -> Fiber.return ())
@@ -1665,6 +1703,7 @@ let reset invalidation =
      justifies the [~reason:Unknown] below. *)
   let invalidate_current_run = Current_run.invalidate ~reason:Unknown in
   Invalidation.execute (Invalidation.combine invalidation invalidate_current_run);
+  Call_stack.reset_cycle_error_in_the_current_run ();
   Run.restart ()
 ;;
 

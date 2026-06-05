@@ -79,11 +79,16 @@ module Pkg_config : sig
         environment variable to the searched pathes. Returns [None] if
         nothing is not found.
 
+        Additional arguments can be specified by setting the [PKG_CONFIG_ARGN]
+        environment variable.
+
         If [static] is [true], calls to pkg-config will be made with the
-        [--static] argument. Additional arguments can be specified by setting
-        the [PKG_CONFIG_ARGN] environment variable. All of these additional
-        arguments are added to every invocations done by the querying functions
-        below. *)
+        [--static] argument (regardless of the content of [PKG_CONFIG_ARGN]).
+        If [false], calls to pkg-config will be made without.
+        If [static] is not set ([None]), then [PKG_CONFIG_ARGN] is untouched.
+
+        All of these additional arguments are added to
+        every invocations done by the querying functions below. *)
     val get : ?static:bool -> configurator -> t option
 
     type package_conf =

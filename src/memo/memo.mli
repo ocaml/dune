@@ -263,6 +263,7 @@ end
 val create
   :  string
   -> input:(module Input with type t = 'i)
+  -> ?initial_store_size:int
   -> ?cutoff:('o -> 'o -> bool)
   -> ?human_readable_description:('i -> User_message.Style.t Pp.t)
   -> ('i -> 'o t)
@@ -306,6 +307,7 @@ val create_with_store
 val create_rec
   :  string
   -> input:(module Input with type t = 'i)
+  -> ?initial_store_size:int
   -> ?cutoff:('o -> 'o -> bool)
   -> ?human_readable_description:('i -> User_message.Style.t Pp.t)
   -> (('i -> 'o t) -> 'i -> 'o t)

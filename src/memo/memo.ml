@@ -1001,12 +1001,13 @@ let create
       (type i)
       name
       ~input:(module Input : Input with type t = i)
+      ?(initial_store_size = 2)
       ?cutoff
       ?human_readable_description
       f
   =
   (* This mutable table is safe: the implementation tracks all dependencies. *)
-  let cache = Store.of_table (Stdune.Table.create (module Input) 2) in
+  let cache = Store.of_table (Stdune.Table.create (module Input) initial_store_size) in
   let input = (module Input : Store_intf.Input with type t = i) in
   create_with_cache name ~cache ~input ~cutoff ~human_readable_description f
 ;;
@@ -1306,12 +1307,18 @@ end
 
 let exec (type i o) (t : (i, o) Table.t) i = Exec.exec_dep_node (dep_node t i)
 
-let create_rec name ~input ?cutoff ?human_readable_description f =
+let create_rec name ~input ?initial_store_size ?cutoff ?human_readable_description f =
   let rec table =
     lazy
-      (create name ~input ?cutoff ?human_readable_description (fun input ->
-         let table = Stdlib.Lazy.force table in
-         f (exec table) input))
+      (create
+         name
+         ~input
+         ?initial_store_size
+         ?cutoff
+         ?human_readable_description
+         (fun input ->
+            let table = Stdlib.Lazy.force table in
+            f (exec table) input))
   in
   Stdlib.Lazy.force table
 ;;

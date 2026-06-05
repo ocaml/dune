@@ -46,9 +46,10 @@ module M = struct
   module rec Cached_value : sig
     type 'a t =
       { value : 'a Value.t
-      ; (* We store [last_changed_at] and [last_validated_at] for early cutoff.
-           See Section 5.2.2 of "Build Systems a la Carte: Theory and Practice"
-           for more details (https://doi.org/10.1017/S0956796820000088).
+      ; (* We store [last_changed_at] and [last_validated_at] for early cutoff, packed
+           into a single immediate [Run.Pair.t] to save memory. See Section 5.2.2 of
+           "Build Systems a la Carte: Theory and Practice" for more details
+           (https://doi.org/10.1017/S0956796820000088).
 
            - [last_changed_at] is the run when the value changed last time.
 
@@ -57,15 +58,14 @@ module M = struct
 
            Consider a dependency [dep] of a node [caller].
 
-           If [dep.last_changed_at > caller.last_validated_at], then the [dep]'s
-           value has changed since it had been previously used by the [caller]
-           and therefore the [caller] needs to be recomputed. *)
-        last_changed_at : Run.t
-      ; mutable last_validated_at : Run.t
-      ; (* The list of dependencies [deps], as captured at [last_validated_at].
-           Note that the list of dependencies can change over the lifetime of
-           [Cached_value]: this happens if the value gets re-computed but is
-           declared unchanged by the cutoff check.
+           If [dep]'s [last_changed_at] is greater than [caller]'s [last_validated_at],
+           then the [dep]'s value has changed since it had been previously used by the
+           [caller] and therefore the [caller] needs to be recomputed. *)
+        mutable runs : Run.Pair.t
+      ; (* The list of dependencies [deps], as captured at [last_validated_at]. Note that
+           the list of dependencies can change over the lifetime of [Cached_value]: this
+           happens if the value gets re-computed but is declared unchanged by the cutoff
+           check.
 
            Note that [deps] should be listed in the order in which they were
            depended on to avoid recomputations of the dependencies that are no
@@ -846,12 +846,16 @@ let dump_stack () =
 
 let get_cached_value_in_current_run (dep_node : _ Dep_node.t) =
   match dep_node.state with
-  | Cached_value cv -> if Run.is_current cv.last_validated_at then Some cv else None
+  | Cached_value cv ->
+    if Run.is_current (Run.Pair.last_validated_at cv.runs) then Some cv else None
   | Out_of_date _ | Restoring _ | Computing _ -> None
 ;;
 
 module Cached_value = struct
   include M.Cached_value
+
+  let last_changed_at t = Run.Pair.last_changed_at t.runs
+  let last_validated_at t = Run.Pair.last_validated_at t.runs
 
   let capture_deps ~deps_rev =
     if !Debug.check_invariants
@@ -874,17 +878,17 @@ module Cached_value = struct
   ;;
 
   let create x ~deps_rev =
+    let now = Run.current () in
     { value = x
-    ; last_changed_at = Run.current ()
-    ; last_validated_at = Run.current ()
+    ; runs = Run.Pair.create ~last_changed_at:now ~last_validated_at:now
     ; deps = capture_deps ~deps_rev
     }
   ;;
 
   let create_cancelled ~dependency_cycle =
+    let now = Run.current () in
     { value = Cancelled { dependency_cycle }
-    ; last_changed_at = Run.current ()
-    ; last_validated_at = Run.current ()
+    ; runs = Run.Pair.create ~last_changed_at:now ~last_validated_at:now
     ; deps =
         (* CR-someday amokhov: Dependencies of cancelled computations are not accurate,
            so we store [Deps.empty] in this case. In future, it may be better to refactor
@@ -894,7 +898,7 @@ module Cached_value = struct
   ;;
 
   let confirm_old_value t ~deps_rev =
-    t.last_validated_at <- Run.current ();
+    t.runs <- Run.Pair.with_last_validated_at t.runs ~last_validated_at:(Run.current ());
     t.deps <- capture_deps ~deps_rev;
     t
   ;;
@@ -914,11 +918,11 @@ module Cached_value = struct
       not (Exn_set.equal prev_exns cur_exns)
   ;;
 
-  let to_dyn { value = _; last_changed_at; last_validated_at; deps = _ } =
+  let to_dyn { value = _; runs; deps = _ } =
     Dyn.record
       [ "value", Opaque
-      ; "last_changed_at", Run.to_dyn last_changed_at
-      ; "last_validated_at", Run.to_dyn last_validated_at
+      ; "last_changed_at", Run.to_dyn (Run.Pair.last_changed_at runs)
+      ; "last_validated_at", Run.to_dyn (Run.Pair.last_validated_at runs)
       ; "deps", Opaque
       ]
   ;;
@@ -1099,12 +1103,14 @@ end = struct
         Deps.changed_or_not cached_value.deps ~f:(fun[@inline] (Dep_node.T dep) ->
           match dep.state with
           | Cached_value dep_cached_value
-            when Run.is_current dep_cached_value.last_validated_at ->
+            when Run.is_current (Cached_value.last_validated_at dep_cached_value) ->
             (* Fast path: [dep] is already up to date in the current run, so there is no
                need to restore it (which would allocate a fiber). We can compare the
                timestamps directly. *)
             (match
-               Run.compare dep_cached_value.last_changed_at cached_value.last_validated_at
+               Run.compare
+                 (Cached_value.last_changed_at dep_cached_value)
+                 (Cached_value.last_validated_at cached_value)
              with
              | Gt -> Fiber.return Changed_or_not.Changed
              | Eq | Lt -> Fiber.return Changed_or_not.Unchanged)
@@ -1117,8 +1123,8 @@ end = struct
                   [cached_value_of_dep] changed. *)
                (match
                   Run.compare
-                    cached_value_of_dep.last_changed_at
-                    cached_value.last_validated_at
+                    (Cached_value.last_changed_at cached_value_of_dep)
+                    (Cached_value.last_validated_at cached_value)
                 with
                 | Gt -> Fiber.return Changed_or_not.Changed
                 | Eq | Lt -> Fiber.return Changed_or_not.Unchanged)
@@ -1144,8 +1150,8 @@ end = struct
                         so we will take the [Changed] branch. *)
                      (match
                         Run.compare
-                          cached_value_of_dep.last_changed_at
-                          cached_value.last_validated_at
+                          (Cached_value.last_changed_at cached_value_of_dep)
+                          (Cached_value.last_validated_at cached_value)
                       with
                       | Gt -> Changed_or_not.Changed
                       | Eq | Lt -> Unchanged)
@@ -1153,7 +1159,10 @@ end = struct
       in
       (match deps_changed with
        | Unchanged ->
-         cached_value.last_validated_at <- Run.current ();
+         cached_value.runs
+         <- Run.Pair.with_last_validated_at
+              cached_value.runs
+              ~last_validated_at:(Run.current ());
          Cache_lookup.Ok cached_value
        | Changed -> Out_of_date { old_value = Option.Unboxed.some cached_value }
        | Cancelled { dependency_cycle } -> Cancelled { dependency_cycle })
@@ -1250,10 +1259,10 @@ end = struct
     match dep_node.state with
     | Cached_value cached_value ->
       (* CR-someday amokhov: The happy path here is excruciatingly slow: read
-         [dep_node.state], get [cached_value] via an indirection, jump through
-         another hoop [cached_value.last_validated_at] and then, finally, make
-         the [Run.is_current] check. We should try to find a shortcut. *)
-      if Run.is_current cached_value.last_validated_at
+         [dep_node.state], get [cached_value] via an indirection, jump through another
+         hoop [cached_value.last_validated_at] and then, finally, make the
+         [Run.is_current] check. We should try to find a shortcut. *)
+      if Run.is_current (Cached_value.last_validated_at cached_value)
       then Fiber.return (Cache_lookup.Ok cached_value)
       else start_restoring ~dep_node ~cached_value
     | Restoring { restore_from_cache } ->
@@ -1277,11 +1286,11 @@ end = struct
     fun dep_node ->
     match dep_node.state with
     | Cached_value cached_value ->
-      (* CR-someday amokhov: We hit this branch in [dir-targets-promotion.t] but
-         how is this possible? We need to investigate. For now, I'm replacing
-         the [assert false] that we had here with [return (Ok cached_value)] if
-         the [cached_value] turns out to be up to date. *)
-      if not (Run.is_current cached_value.last_validated_at)
+      (* CR-someday amokhov: We hit this branch in [dir-targets-promotion.t] but how is
+         this possible? We need to investigate. For now, I'm replacing the [assert false]
+         that we had here with [return (Ok cached_value)] if the [cached_value] turns out
+         to be up to date. *)
+      if not (Run.is_current (Cached_value.last_validated_at cached_value))
       then
         Code_error.raise
           "consider_and_compute_without_adding_dep"
@@ -1304,7 +1313,8 @@ end = struct
     fun dep_node ->
     Fiber.of_thunk (fun () ->
       match dep_node.state with
-      | Cached_value cached_value when Run.is_current cached_value.last_validated_at ->
+      | Cached_value cached_value
+        when Run.is_current (Cached_value.last_validated_at cached_value) ->
         (* Fast path: the value is already up to date in the current run. Doing this check
            here, before allocating the fibers needed by
            [consider_and_restore_from_cache_without_adding_dep], is a measurable win. *)

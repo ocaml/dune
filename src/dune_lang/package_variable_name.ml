@@ -131,9 +131,12 @@ module Project = struct
   let encode name = Encoder.string (":" ^ to_string name)
 
   let decode =
-    Decoder.atom_matching ~desc:"variable" (fun s ->
-      if String.starts_with ~prefix:":" s
-      then Some (of_string (String.drop s 1))
-      else None)
+    let open Decoder in
+    peek_exn
+    >>= function
+    | Atom (loc, A s) when String.starts_with ~prefix:":" s ->
+      let+ () = junk in
+      parse_string_exn (loc, String.drop s 1)
+    | sexp -> User_error.raise ~loc:(Ast.loc sexp) [ Pp.text "variable expected" ]
   ;;
 end

@@ -95,9 +95,12 @@ let decode =
      | None -> ());
     result
   in
-  enter constrained
-  <|> let+ name = Well_formed_name.decode in
-      { name; constraint_ = None }
+  peek_exn
+  >>= function
+  | List _ -> enter constrained
+  | _ ->
+    let+ name = Well_formed_name.decode in
+    { name; constraint_ = None }
 ;;
 
 let repr =

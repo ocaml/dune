@@ -1061,51 +1061,62 @@ end = struct
          fact non-deterministic, there is no way to force rerunning it, apart
          from changing some of its dependencies. *)
       let+ deps_changed =
-        (* Make sure [f] gets inlined to avoid unnecessary closure allocations
-           and improve stack traces in profiling. *)
+        (* Make sure [f] gets inlined to avoid unnecessary closure allocations and improve
+           stack traces in profiling. *)
         Deps.changed_or_not cached_value.deps ~f:(fun[@inline] (Dep_node.T dep) ->
-          consider_and_restore_from_cache_without_adding_dep dep
-          >>= function
-          | Ok cached_value_of_dep ->
-            (* The [Changed] branch will be taken if [cached_value]'s node was
-               skipped in the previous run (it was unreachable), while [dep]
-               wasn't skipped and [cached_value_of_dep] changed. *)
+          match dep.state with
+          | Cached_value dep_cached_value
+            when Run.is_current dep_cached_value.last_validated_at ->
+            (* Fast path: [dep] is already up to date in the current run, so there is no
+               need to restore it (which would allocate a fiber). We can compare the
+               timestamps directly. *)
             (match
-               Run.compare
-                 cached_value_of_dep.last_changed_at
-                 cached_value.last_validated_at
+               Run.compare dep_cached_value.last_changed_at cached_value.last_validated_at
              with
              | Gt -> Fiber.return Changed_or_not.Changed
              | Eq | Lt -> Fiber.return Changed_or_not.Unchanged)
-          | Cancelled { dependency_cycle } ->
-            Fiber.return (Changed_or_not.Cancelled { dependency_cycle })
-          | Out_of_date _old_value ->
-            (match dep.spec.allow_cutoff with
-             | No ->
-               (* If [dep] has no cutoff, it is sufficient to check whether it
-                  is up to date. If not, we must recompute the
-                  [cached_value]. *)
-               Fiber.return Changed_or_not.Changed
-             | Yes _equal ->
-               (* If [dep] has a cutoff predicate, it is not sufficient to
-                  check whether it is up to date: even if it isn't, after we
-                  recompute it, the resulting value may remain unchanged,
-                  allowing us to skip recomputing the [cached_value]. *)
-               consider_and_compute_without_adding_dep dep
-               >>| (function
-                | Ok cached_value_of_dep ->
-                  (* Note: [cached_value_of_dep.value] will be [Cancelled _] if
-                     [dep] itself doesn't introduce a dependency cycle but one
-                     of its transitive dependencies does. In this case, the
-                     value will be new, so we will take the [Changed] branch. *)
-                  (match
-                     Run.compare
-                       cached_value_of_dep.last_changed_at
-                       cached_value.last_validated_at
-                   with
-                   | Gt -> Changed_or_not.Changed
-                   | Eq | Lt -> Unchanged)
-                | Error dependency_cycle -> Cancelled { dependency_cycle })))
+          | _ ->
+            consider_and_restore_from_cache_without_adding_dep dep
+            >>= (function
+             | Ok cached_value_of_dep ->
+               (* The [Changed] branch will be taken if [cached_value]'s node was skipped
+                  in the previous run (it was unreachable), while [dep] wasn't skipped and
+                  [cached_value_of_dep] changed. *)
+               (match
+                  Run.compare
+                    cached_value_of_dep.last_changed_at
+                    cached_value.last_validated_at
+                with
+                | Gt -> Fiber.return Changed_or_not.Changed
+                | Eq | Lt -> Fiber.return Changed_or_not.Unchanged)
+             | Cancelled { dependency_cycle } ->
+               Fiber.return (Changed_or_not.Cancelled { dependency_cycle })
+             | Out_of_date _old_value ->
+               (match dep.spec.allow_cutoff with
+                | No ->
+                  (* If [dep] has no cutoff, it is sufficient to check whether it is up to
+                     date. If not, we must recompute the [cached_value]. *)
+                  Fiber.return Changed_or_not.Changed
+                | Yes _equal ->
+                  (* If [dep] has a cutoff predicate, it is not sufficient to check
+                     whether it is up to date: even if it isn't, after we recompute it,
+                     the resulting value may remain unchanged, allowing us to skip
+                     recomputing the [cached_value]. *)
+                  consider_and_compute_without_adding_dep dep
+                  >>| (function
+                   | Ok cached_value_of_dep ->
+                     (* Note: [cached_value_of_dep.value] will be [Cancelled _] if [dep]
+                        itself doesn't introduce a dependency cycle but one of its
+                        transitive dependencies does. In this case, the value will be new,
+                        so we will take the [Changed] branch. *)
+                     (match
+                        Run.compare
+                          cached_value_of_dep.last_changed_at
+                          cached_value.last_validated_at
+                      with
+                      | Gt -> Changed_or_not.Changed
+                      | Eq | Lt -> Unchanged)
+                   | Error dependency_cycle -> Cancelled { dependency_cycle }))))
       in
       (match deps_changed with
        | Unchanged ->
@@ -1259,27 +1270,37 @@ end = struct
   let exec_dep_node : 'i 'o. ('i, 'o) Dep_node.t -> 'o Fiber.t =
     fun dep_node ->
     Fiber.of_thunk (fun () ->
-      let* result =
-        consider_and_restore_from_cache_without_adding_dep dep_node
-        >>= function
-        | Ok cached_value -> Fiber.return (Ok cached_value)
-        | Cancelled { dependency_cycle } ->
-          (* If restoring from cache failed with a cycle error, and the node's
-             function is deterministic (as it should be), then we will hit the
-             same cycle when trying to recompute the result. We therefore
-             return the cycle error as is. Note that apart from saving some
-             work, this also helps us work around the limitation of the cycle
-             detection library that can't detect the same cycle twice. *)
-          dep_node.state <- Cached_value (Cached_value.create_cancelled ~dependency_cycle);
-          Fiber.return (Error dependency_cycle)
-        | Out_of_date _old_value -> consider_and_compute_without_adding_dep dep_node
-      in
-      match result with
-      | Ok res ->
+      match dep_node.state with
+      | Cached_value cached_value when Run.is_current cached_value.last_validated_at ->
+        (* Fast path: the value is already up to date in the current run. Doing this check
+           here, before allocating the fibers needed by
+           [consider_and_restore_from_cache_without_adding_dep], is a measurable win. *)
         let* () = Call_stack.add_dep_from_caller dep_node in
         let stack_frame = Dep_node.T dep_node in
-        Value.get_exn res.value ~stack_frame
-      | Error cycle_error -> raise (Cycle_error.E cycle_error))
+        Value.get_exn cached_value.value ~stack_frame
+      | _ ->
+        let* result =
+          consider_and_restore_from_cache_without_adding_dep dep_node
+          >>= function
+          | Ok cached_value -> Fiber.return (Ok cached_value)
+          | Cancelled { dependency_cycle } ->
+            (* If restoring from cache failed with a cycle error, and the node's function
+               is deterministic (as it should be), then we will hit the same cycle when
+               trying to recompute the result. We therefore return the cycle error as is.
+               Note that apart from saving some work, this also helps us work around the
+               limitation of the cycle detection library that can't detect the same cycle
+               twice. *)
+            dep_node.state
+            <- Cached_value (Cached_value.create_cancelled ~dependency_cycle);
+            Fiber.return (Error dependency_cycle)
+          | Out_of_date _old_value -> consider_and_compute_without_adding_dep dep_node
+        in
+        (match result with
+         | Ok res ->
+           let* () = Call_stack.add_dep_from_caller dep_node in
+           let stack_frame = Dep_node.T dep_node in
+           Value.get_exn res.value ~stack_frame
+         | Error cycle_error -> raise (Cycle_error.E cycle_error)))
   ;;
 end
 

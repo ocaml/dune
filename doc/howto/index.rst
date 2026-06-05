@@ -24,6 +24,7 @@ These guides will help you use Dune's features in your project.
    toplevel
    rule-generation
    override-default-entrypoint
+   organize-multiple-executables
    release-binaries-with-github-action
    homebrew-package
    use-opam-alongside-dune-package-management

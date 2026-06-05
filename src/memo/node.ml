@@ -352,3 +352,115 @@ let _print_dep_node ?prefix (dep_node : _ Dep_node.t) =
   then
     Format.printf "%s%s\n" prefix (Dep_node.to_dyn_without_state dep_node |> Dyn.to_string)
 ;;
+
+let get_cached_value_in_current_run (dep_node : _ Dep_node.t) =
+  match dep_node.state with
+  | Cached_value cv ->
+    if Run.is_current (Run.Pair.last_validated_at cv.runs) then Some cv else None
+  | Out_of_date _ | Restoring _ | Computing _ -> None
+;;
+
+module Cached_value = struct
+  include M.Cached_value
+
+  let last_changed_at t = Run.Pair.last_changed_at t.runs
+  let last_validated_at t = Run.Pair.last_validated_at t.runs
+
+  let capture_deps ~deps =
+    if !Debug.check_invariants
+    then
+      List.iter (Deps.For_debugging.to_list deps) ~f:(function Dep_node.T dep_node ->
+          (match get_cached_value_in_current_run dep_node with
+           | None ->
+             let reason =
+               match dep_node.state with
+               | Out_of_date _ -> "(out of date)"
+               | Cached_value _ -> "(old run)"
+               | Restoring _ -> "(restoring)"
+               | Computing _ -> "(computing)"
+             in
+             Code_error.raise
+               ("Attempted to create a cached value based on some stale inputs " ^ reason)
+               []
+           | Some _up_to_date_cached_value -> ()));
+    deps
+  ;;
+
+  let create x ~deps =
+    let now = Run.current () in
+    { value = x
+    ; runs = Run.Pair.create ~last_changed_at:now ~last_validated_at:now
+    ; deps = capture_deps ~deps
+    }
+  ;;
+
+  let create_cancelled ~dependency_cycle =
+    let now = Run.current () in
+    { value =
+        Error
+          { Collect_errors_monoid.exns =
+              Exn_set.singleton
+                (Exn_with_backtrace.capture (Cycle_error.E dependency_cycle))
+          ; reproducible = false
+          }
+    ; runs = Run.Pair.create ~last_changed_at:now ~last_validated_at:now
+    ; deps =
+        (* Dependencies of cancelled computations are not accurate, so we store
+           [Deps.empty] in this case. *)
+        Deps.empty
+    }
+  ;;
+
+  let confirm_old_value t ~deps =
+    t.runs <- Run.Pair.with_last_validated_at t.runs ~last_validated_at:(Run.current ());
+    t.deps <- capture_deps ~deps;
+    t
+  ;;
+
+  let value_changed (node : _ Dep_node.t) prev_value cur_value =
+    match (prev_value : _ Value.t), (cur_value : _ Value.t) with
+    | Error { reproducible = false; _ }, _
+    | _, Error { reproducible = false; _ }
+    | Error _, Ok _
+    | Ok _, Error _ -> true
+    | Ok prev_value, Ok cur_value ->
+      (match node.spec.allow_cutoff with
+       | Yes equal -> not (equal prev_value cur_value)
+       | No -> true)
+    | ( Error { exns = prev_exns; reproducible = true }
+      , Error { exns = cur_exns; reproducible = true } ) ->
+      not (Exn_set.equal prev_exns cur_exns)
+  ;;
+
+  let to_dyn { value = _; runs; deps = _ } =
+    Dyn.record
+      [ "value", Opaque
+      ; "last_changed_at", Run.to_dyn (Run.Pair.last_changed_at runs)
+      ; "last_validated_at", Run.to_dyn (Run.Pair.last_validated_at runs)
+      ; "deps", Opaque
+      ]
+  ;;
+end
+
+module State = struct
+  include M.State
+
+  let to_dyn = function
+    | Cached_value cached_value ->
+      Dyn.variant "Cached_value" [ Cached_value.to_dyn cached_value ]
+    | Restoring _ -> Dyn.variant "Restoring" [ Opaque ]
+    | Computing _ -> Dyn.variant "Computing" [ Opaque ]
+    | Out_of_date { old_value } ->
+      Dyn.variant
+        "Out_of_date"
+        [ Dyn.record [ "old_value", Option.Unboxed.to_dyn Cached_value.to_dyn old_value ]
+        ]
+  ;;
+end
+
+module Table = struct
+  type ('input, 'output) t =
+    { spec : ('input, 'output) Spec.t
+    ; cache : ('input, ('input, 'output) Dep_node.t) Store.t
+    }
+end

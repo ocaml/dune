@@ -221,7 +221,7 @@ Testsuite for the %{lib...} and %{lib-private...} variable.
 In this test, two packages are defined in the same project, but we may not
 access the artifacts through %{lib-private}
 
-  $ make_private_only_packages_project lib-private
+  $ make_and_enter_private_only_packages_project lib-private
 
 The build works in development:
   $ dune build @install

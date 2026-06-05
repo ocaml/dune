@@ -273,7 +273,7 @@ Testsuite for the %{libexec...} and %{libexec-private...} variable.
 In this test, two packages are defined in the same project, but we may not
 access the artifacts through %{libexec-private}
 
-  $ make_private_only_packages_project \
+  $ make_and_enter_private_only_packages_project \
   >   libexec-private \
   >   "(enabled_if (= %{context_name} host))"
   $ cat >dune <<EOF

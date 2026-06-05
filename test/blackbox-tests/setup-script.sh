@@ -563,7 +563,7 @@ make_melange_app_with_asset_reader() {
 	EOF
 }
 
-make_private_only_packages_project() {
+make_and_enter_private_only_packages_project() {
   local macro="$1"
   local lib1_extra="${2:-}"
 

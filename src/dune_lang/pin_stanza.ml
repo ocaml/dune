@@ -46,8 +46,23 @@ let decode_with_name =
   fields
   @@
   let+ t = common_fields
-  and+ name = field "name" (located string) in
-  name, t
+  and+ loc = loc
+  and+ name = field_o "name" (located string) in
+  match name with
+  | Some name -> name, t
+  | None ->
+    User_error.raise
+      ~loc
+      [ Pp.text "Pin stanzas in dune-workspace must have a name."
+      ; Pp.text
+          "Workspace pins are named so lock_dir stanzas can choose which pins \
+           to use."
+      ]
+      ~hints:
+        [ Pp.text
+            "Add a (name <pin>) field to this pin and list the name in the \
+             relevant lock_dir's (pins ...) field."
+        ]
 ;;
 
 module Project = struct

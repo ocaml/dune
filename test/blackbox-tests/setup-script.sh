@@ -875,6 +875,19 @@ write_cross_compilation_repro_project() {
   fi
 }
 
+make_dune_cache_copy_project() {
+  make_dune_project 2.1
+  cat > dune <<-'EOF'
+	(rule
+	  (deps source)
+	  (targets target)
+	  (action (copy source target)))
+	EOF
+  cat > source <<-'EOF'
+	\_o< COIN
+	EOF
+}
+
 make_two_context_workspace() {
   local version="${1:-3.13}"
   local name="${2:-alt-context}"

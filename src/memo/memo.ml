@@ -173,43 +173,6 @@ module M = struct
     exception E of t
   end
 
-  and Exn_comparable : (Comparable_intf.S with type key := Exn_with_backtrace.t) =
-  Comparable.Make (struct
-      type t = Exn_with_backtrace.t
-
-      let unwrap = function
-        | Error.E { exn; _ } -> exn
-        | exn -> exn
-      ;;
-
-      let compare { Exn_with_backtrace.exn; backtrace = _ } (t : t) =
-        Poly.compare (unwrap exn) (unwrap t.exn)
-      ;;
-
-      let to_dyn = Exn_with_backtrace.to_dyn
-    end)
-
-  and Exn_set : (Set.S with type elt := Exn_with_backtrace.t) = Exn_comparable.Set
-
-  and Collect_errors_monoid : sig
-    type t =
-      { exns : Exn_set.t
-      ; reproducible : bool
-      }
-  end =
-    Collect_errors_monoid
-
-  (* Restoring or computing a value can fail when the user-supplied function raises one or
-     more exceptions, recorded in the [Collect_errors_monoid.t]. A computation cancelled due
-     to a dependency cycle is recorded as a non-reproducible [Error] whose exception set
-     holds the corresponding [Cycle_error.E]. *)
-  and Value : sig
-    type 'a t =
-      | Ok of 'a
-      | Error of Collect_errors_monoid.t
-  end =
-    Value
-
   and Cache_lookup : sig
     (* Looking up a value cached in a previous run can fail in three possible ways:
 
@@ -359,6 +322,15 @@ module Error = struct
   ;;
 end
 
+(* Now that [Error] is defined, teach [Value]'s error-set comparison to unwrap [Error.E]
+   (see the comment on [Value.unwrap_exn]). *)
+let () =
+  Value.unwrap_exn
+  := function
+     | Error.E { exn; _ } -> exn
+     | exn -> exn
+;;
+
 let () =
   Printexc.register_printer (fun exn ->
     let dyn =
@@ -373,39 +345,8 @@ let () =
     Option.map dyn ~f:Dyn.to_string)
 ;;
 
-module Exn_set = M.Exn_set
-
-module Collect_errors_monoid = struct
-  module T = struct
-    include M.Collect_errors_monoid
-
-    let empty = { exns = Exn_set.empty; reproducible = true }
-
-    let combine
-          { exns = exns1; reproducible = reproducible1 }
-          { exns = exns2; reproducible = reproducible2 }
-      =
-      { exns = Exn_set.union exns1 exns2; reproducible = reproducible1 && reproducible2 }
-    ;;
-  end
-
-  include T
-  include Monoid.Make (T)
-end
-
-module Value = struct
-  include M.Value
-
-  let get_exn t ~stack_frame =
-    match t with
-    | Ok a -> Fiber.return a
-    | Error { exns; _ } ->
-      Fiber.reraise_all
-        (Exn_set.to_list_map exns ~f:(fun exn ->
-           { exn with exn = Error.extend_stack exn.exn ~stack_frame }))
-  ;;
-end
-
+module Exn_set = Value.Exn_set
+module Collect_errors_monoid = Value.Collect_errors_monoid
 module Cache_lookup = M.Cache_lookup
 module Dag = M.Dag
 
@@ -1341,7 +1282,8 @@ end = struct
            [consider_and_restore_from_cache_without_adding_dep], is a measurable win. *)
         let* () = Call_stack.add_dep_from_caller dep_node in
         let stack_frame = Dep_node.T dep_node in
-        Value.get_exn cached_value.value ~stack_frame
+        Value.get_exn cached_value.value ~map_exn:(fun exn ->
+          Error.extend_stack exn ~stack_frame)
       | _ ->
         let* result =
           consider_and_restore_from_cache_without_adding_dep dep_node
@@ -1363,7 +1305,8 @@ end = struct
          | Ok res ->
            let* () = Call_stack.add_dep_from_caller dep_node in
            let stack_frame = Dep_node.T dep_node in
-           Value.get_exn res.value ~stack_frame
+           Value.get_exn res.value ~map_exn:(fun exn ->
+             Error.extend_stack exn ~stack_frame)
          | Error cycle_error -> raise (Cycle_error.E cycle_error)))
   ;;
 end

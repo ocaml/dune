@@ -1762,4 +1762,23 @@ module Var = struct
   ;;
 
   let read t = Cell.read t.cell
+
+  module Unit = struct
+    type t = (unit, unit) Cell.t
+
+    (* All [unit]-valued variables share a single spec; they only differ by node identity,
+       which is what invalidation acts on. *)
+    let spec =
+      Spec.create
+        ~name:(Some "Memo.Var.Unit")
+        ~input:(module Stdune.Unit)
+        ~human_readable_description:None
+        ~cutoff:None
+        (fun () -> return ())
+    ;;
+
+    let create () : t = make_dep_node ~spec ~input:()
+    let invalidate t ~reason = Cell.invalidate t ~reason
+    let read t = Cell.read t
+  end
 end

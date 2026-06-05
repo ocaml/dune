@@ -459,6 +459,22 @@ module Var : sig
   (** [read t] returns the value [t] and introduces a dependency on this node in the
       current Memo computation. *)
   val read : 'a t -> 'a memo
+
+  (** Like [Var] but specialized to the [unit] type, which makes the implementation
+      simpler and also allows sharing the underlying spec. Unlike [set], [invalidate]
+      takes a [reason], and unlike [create], it takes no [name]. *)
+  module Unit : sig
+    type t
+
+    (** Create a [unit]-valued variable.
+
+        Doesn't take a [cutoff] because there is no point: [unit]-valued variables can
+        only be useful if invalidating them causes downstream computations to rerun. *)
+    val create : unit -> t
+
+    val invalidate : t -> reason:Invalidation.Reason.t -> Invalidation.t
+    val read : t -> unit memo
+  end
 end
 
 (** Memoization of polymorphic functions ['a input -> 'a output t]. The provided

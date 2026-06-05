@@ -2305,3 +2305,36 @@ let%expect_test "Ensure that implicit output storage cell is not reused between 
   set_invalidate_print_run ();
   [%expect {| Some [ "x" ] |}]
 ;;
+
+let%expect_test "create_rec" =
+  let calls = ref 0 in
+  let fib =
+    Memo.create_rec
+      "fib"
+      ~input:(module Int)
+      (fun fib n ->
+         incr calls;
+         if n <= 1
+         then Memo.return n
+         else
+           let* r1 = fib (n - 1) in
+           let+ r2 = fib (n - 2) in
+           r1 + r2)
+  in
+  Format.printf "fib 10 = %d@." (run_memo fib 10);
+  (* Each input from 0 to 10 is computed exactly once thanks to memoization. *)
+  Format.printf "calls = %d@." !calls;
+  [%expect
+    {|
+    fib 10 = 55
+    calls = 11
+    |}];
+  (* A second evaluation reuses the cached results: no extra calls. *)
+  Format.printf "fib 10 = %d@." (run_memo fib 10);
+  Format.printf "calls = %d@." !calls;
+  [%expect
+    {|
+    fib 10 = 55
+    calls = 11
+    |}]
+;;

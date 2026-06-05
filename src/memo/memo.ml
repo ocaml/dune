@@ -1290,6 +1290,16 @@ end
 
 let exec (type i o) (t : (i, o) Table.t) i = Exec.exec_dep_node (dep_node t i)
 
+let create_rec name ~input ?cutoff ?human_readable_description f =
+  let rec table =
+    lazy
+      (create name ~input ?cutoff ?human_readable_description (fun input ->
+         let table = Stdlib.Lazy.force table in
+         f (exec table) input))
+  in
+  Stdlib.Lazy.force table
+;;
+
 let dump_cached_graph ?(on_not_cached = `Raise) ?(time_nodes = false) cell =
   let rec collect_graph (Dep_node.T dep_node) graph : Graph.t Fiber.t =
     let src_id = Id.to_int dep_node.id in

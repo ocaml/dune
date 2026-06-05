@@ -290,6 +290,27 @@ val create_with_store
   -> ('i -> 'o t)
   -> ('i, 'o) Table.t
 
+(** Like [create] but allows the memoized function to call itself recursively. The
+    function receives, as its first argument, the memoized version of itself.
+
+    {[
+      Memo.create_rec "fib" ~input:(module Int) (fun fib n ->
+        if n <= 1
+        then Memo.return n
+        else
+          let open Memo.O in
+          let* r1 = fib (n - 1) in
+          let+ r2 = fib (n - 2) in
+          r1 + r2)
+    ]} *)
+val create_rec
+  :  string
+  -> input:(module Input with type t = 'i)
+  -> ?cutoff:('o -> 'o -> bool)
+  -> ?human_readable_description:('i -> User_message.Style.t Pp.t)
+  -> (('i -> 'o t) -> 'i -> 'o t)
+  -> ('i, 'o) Table.t
+
 (** Execute a memoized function. *)
 val exec : ('i, 'o) Table.t -> 'i -> 'o t
 

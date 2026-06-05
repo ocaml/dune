@@ -39,6 +39,7 @@ Dune is a self-hosting OCaml build system that uses itself to build itself.
 - `bin` - dune's command line interface
 - `boot` - bootstrap mechanism for building dune itself
 - `doc` - user documentation
+- `doc/dev` - developer documentation (specs, design notes, review guidance)
 - `otherlibs` - public libraries (dune-configurator, dune-build-info, etc.)
 - `src` - the majority of the source code
   - `src/dune_rules` - build rule generation (main logic)
@@ -152,6 +153,11 @@ This output will appear in cram test diffs, making it easy to observe values.
   `record.Module.field`
 - Do not write `to_dyn` functions. Write `Repr.t` values and use those to
   construct `to_dyn`.
+
+## Reviewing PRs
+
+When asked to review a PR, commit, or diff, see
+`doc/dev/code-review/general.md` and follow the instructions there.
 
 ## Critical Constraints
 

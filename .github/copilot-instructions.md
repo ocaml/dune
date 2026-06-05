@@ -35,3 +35,20 @@ nix develop -c dune fmt                   # Auto-format code (run before committ
 nix develop -c dune promote               # Accept test output changes (ask user first)
 nix develop -c make dev                   # Full build (bootstraps if necessary)
 ```
+
+## Reviewing PRs
+
+See [doc/dev/code-review/general.md](../doc/dev/code-review/general.md) and
+follow the instructions there.
+
+For high-stakes reviews (public API changes, security-sensitive code, large
+PRs), prefer a two-pass workflow:
+
+1. A first agent drafts the review against `general.md`'s guidance.
+2. A second, fresh-context agent (no prior conversation with the drafter)
+   reads the draft and applies the "Validation pass" criteria from
+   `general.md`.
+
+The validator must not be the drafter — the value comes from independent
+judgement. Use whichever multi-agent primitive your harness provides
+(subagents, separate sessions, parallel runs).

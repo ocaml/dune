@@ -2364,3 +2364,41 @@ let%expect_test "Var.Unit" =
   Format.printf "calls = %d@." !calls;
   [%expect {| calls = 2 |}]
 ;;
+
+let%expect_test "Var: create and read" =
+  let var = Memo.Var.create ~name:"foo" 200 in
+  Printf.printf "var: %d\n" (run (Memo.Var.read var));
+  [%expect {| var: 200 |}]
+;;
+
+let%expect_test "Var: invalidation" =
+  let var = Memo.Var.create ~name:"foo" 200 in
+  let show () = Printf.printf "var: %d\n" (run (Memo.Var.read var)) in
+  show ();
+  [%expect {| var: 200 |}];
+  let invalidation = Memo.Var.set var 400 in
+  print_endline (String.concat ~sep:"\n" (Memo.Invalidation.details_hum invalidation));
+  Memo.reset invalidation;
+  show ();
+  [%expect
+    {|
+    Variable foo changed
+    var: 400
+    |}]
+;;
+
+let%expect_test "Var: cutoff" =
+  let var = Memo.Var.create ~name:"foo" ~cutoff:(fun x y -> x mod 2 = y mod 2) 200 in
+  let node = Memo.Var.read var |> Memo.map ~f:Fun.id in
+  let set_invalidate_print_run value =
+    Memo.reset (Memo.Var.set var value);
+    Printf.printf "var: %d\n" (run node)
+  in
+  (* 202 has the same parity as 200, so the cutoff suppresses the change. *)
+  set_invalidate_print_run 202;
+  [%expect {| var: 200 |}];
+  set_invalidate_print_run 203;
+  [%expect {| var: 203 |}];
+  set_invalidate_print_run 202;
+  [%expect {| var: 202 |}]
+;;

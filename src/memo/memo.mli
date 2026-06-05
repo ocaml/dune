@@ -253,6 +253,11 @@ end
     and advances the current run. *)
 val reset : Invalidation.t -> unit
 
+(** Like [reset], but does nothing when [invalidation] is empty and no non-reproducible
+    error was produced during the current run. Use this to avoid advancing the run (and
+    thus invalidating the whole cache) when nothing relevant has changed. *)
+val reset_if_necessary : Invalidation.t -> unit
+
 module type Input = sig
   type t
 

@@ -1079,6 +1079,11 @@ let report_and_collect_errors f =
 
 let check_point = ref (Fiber.return ())
 
+(* The run in which we last computed a non-reproducible error. [reset_if_necessary]
+   uses it to force a new run even when the invalidation is empty, so that
+   non-reproducible errors (which are never restored from the cache) get recomputed. *)
+let last_saw_non_reproducible_exn_at = ref Run.invalid
+
 module Exec : sig
   val exec_dep_node : ('i, 'o) Dep_node.t -> 'o Fiber.t
 end = struct
@@ -1191,6 +1196,10 @@ end = struct
       | Ok res -> Value.Ok res
       | Error errors -> Error errors
     in
+    (match res with
+     | Error { reproducible = false; _ } ->
+       last_saw_non_reproducible_exn_at := Run.current ()
+     | Ok _ | Error { reproducible = true; _ } -> ());
     let deps_rev = Stack_frame_with_state.deps_rev stack_frame in
     Option.Unboxed.match_
       old_value
@@ -1771,6 +1780,17 @@ let reset invalidation =
   Invalidation.execute (Invalidation.combine invalidation invalidate_current_run);
   Call_stack.reset_cycle_error_in_the_current_run ();
   Run.restart ()
+;;
+
+(* Like [reset], but a no-op when nothing can have changed: the [invalidation] is empty and
+   no non-reproducible error was computed in the current run. This lets a caller (e.g. a
+   file-watcher waking up with no relevant changes) avoid advancing the run and discarding
+   the whole cache. *)
+let reset_if_necessary invalidation =
+  if
+    (not (Invalidation.is_empty invalidation))
+    || Run.is_current !last_saw_non_reproducible_exn_at
+  then reset invalidation
 ;;
 
 module For_tests = struct

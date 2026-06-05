@@ -8,6 +8,7 @@ let current = ref 0
 let is_current t = Int.equal !current t
 let restart () = incr current
 let current () = !current
+let invalid = -1
 
 module Pair = struct
   (* The high [63 - delta_bits] bits store [last_validated_at + 1] (so that a pair of two

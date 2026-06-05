@@ -26,6 +26,10 @@ val compare : t -> t -> Ordering.t
 (** End the current run and start a new one. *)
 val restart : unit -> unit
 
+(** A run that is never current: [is_current invalid] is always [false]. Used as the
+    initial value of trackers that record "the run in which X last happened". *)
+val invalid : t
+
 (** A pair of [t]s representing the [(last_changed_at, last_validated_at)]
     timestamps of a memoized value, with the invariant
     [last_changed_at <= last_validated_at], packed into a single immediate.

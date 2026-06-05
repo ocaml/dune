@@ -1254,10 +1254,6 @@ let%expect_test "cancelling a computing node wakes waiters" =
     Started evaluating B
     Started evaluating C
     Dependency cycle detected:
-    - ("B", ())
-    - called by ("C", ())
-    - called by ("A", ())
-    Dependency cycle detected:
     - ("C", ())
     - called by ("A", ())
     Dependency cycle detected:
@@ -1319,14 +1315,8 @@ let%expect_test "overlapping cycles with waiters can deadlock" =
     - called by ("inner_repro", ())
     - called by ("outer_repro", ())
     Dependency cycle detected:
-    - ("join_repro", ())
-    - called by ("inner_repro", ())
-    Dependency cycle detected:
     - ("inner_repro", ())
     - called by ("outer_repro", ())
-    - called by ("join_repro", ())
-    Dependency cycle detected:
-    - ("inner_repro", ())
     - called by ("join_repro", ())
     |}]
 ;;
@@ -1338,7 +1328,7 @@ let lazy_rec ~name f =
   node
 ;;
 
-let%expect_test "two similar, but not physically-equal, cycle errors" =
+let%expect_test "only the first cycle in a run is reported" =
   let cycle1 = lazy_rec ~name:"cycle" (fun node -> Memo.Lazy.force node) in
   let cycle2 = lazy_rec ~name:"cycle" (fun node -> Memo.Lazy.force node) in
   let both =
@@ -1348,16 +1338,12 @@ let%expect_test "two similar, but not physically-equal, cycle errors" =
         (fun () -> Memo.Lazy.force cycle2))
   in
   run_and_log_errors (Memo.Lazy.force both);
-  (* Even though these errors look similar, they are actually talking about two
-     different cycles which can be distinguished by the internal node ids, so
-     they are not deduplicated. *)
+  (* [cycle1] and [cycle2] are two physically distinct cycles. Once we hit the first cycle
+     in a run we stop adding edges to the cycle-detection graph (otherwise we risk
+     violating its invariants), so both branches report the same first cycle and the two
+     errors deduplicate into one. *)
   [%expect
     {|
-    Error: { exn =
-               "Memo.Error.E\n\
-               \  { exn = \"Cycle_error.E [ (\\\"cycle\\\", ()) ]\"; stack = [ (\"both\", ()) ] }"
-           ; backtrace = ""
-           }
     Error: { exn =
                "Memo.Error.E\n\
                \  { exn = \"Cycle_error.E [ (\\\"cycle\\\", ()) ]\"; stack = [ (\"both\", ()) ] }"

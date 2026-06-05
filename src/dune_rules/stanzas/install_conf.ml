@@ -48,5 +48,11 @@ let decode =
          , Option.value dirs ~default:[]
          , Option.value source_trees ~default:[] )
      in
+     (match section with
+      | loc, Section Misc ->
+        User_error.raise
+          ~loc
+          [ Pp.text "The misc section is not supported by install stanzas." ]
+      | _ -> ());
      { section; dirs; files; source_trees; package; enabled_if })
 ;;

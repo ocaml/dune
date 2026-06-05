@@ -79,10 +79,15 @@ val create
 val original_opam_file : t -> original_opam_file option
 
 module Duplicate_dep_warning : sig
+  type joiner =
+    | And
+    | Or
+
   type t =
     { loc : Loc.t
     ; dep_string : string
     ; field_name : string
+    ; joiner : joiner
     }
 end
 

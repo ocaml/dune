@@ -451,15 +451,21 @@ let gen_project_rules =
                  duplicate_deps
                  (Warning_emit.Context.project project)
                  (fun () ->
+                    let joiner =
+                      match warning.joiner with
+                      | And -> "(and ...)"
+                      | Or -> "(or ...)"
+                    in
                     Memo.return
                       (User_message.make
                          ~loc:warning.loc
                          [ Pp.textf
                              "Duplicate dependency on package %s in '%s' field. If you \
                               want to specify multiple constraints, combine them using \
-                              (and ...)."
+                              %s."
                              warning.dep_string
                              warning.field_name
+                             joiner
                          ]))))
     in
     ()

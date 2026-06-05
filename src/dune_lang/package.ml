@@ -15,10 +15,15 @@ type original_opam_file =
   }
 
 module Duplicate_dep_warning = struct
+  type joiner =
+    | And
+    | Or
+
   type t =
     { loc : Loc.t
     ; dep_string : string
     ; field_name : string
+    ; joiner : joiner
     }
 end
 
@@ -127,6 +132,8 @@ let decode_name ~version =
   if version >= (3, 11) then Name.decode_opam_compatible else Name.decode
 ;;
 
+let disjunction_fields = String.Set.of_list [ "conflicts" ]
+
 let decode =
   let enabled_if =
     String_with_vars.set_decoding_env
@@ -158,7 +165,12 @@ let decode =
         then (
           let dep_sexp = Package_dependency.encode dep in
           let dep_string = Dune_sexp.to_string dep_sexp in
-          let warning = { Duplicate_dep_warning.loc; dep_string; field_name } in
+          let joiner =
+            match String.Set.mem disjunction_fields field_name with
+            | true -> Duplicate_dep_warning.Or
+            | false -> Duplicate_dep_warning.And
+          in
+          let warning = { Duplicate_dep_warning.loc; dep_string; field_name; joiner } in
           warning :: warnings, (loc, dep) :: seen)
         else warnings, (loc, dep) :: seen)
     in

@@ -6,6 +6,12 @@ module Allow_cutoff = struct
     | Yes of ('o -> 'o -> bool)
 end
 
+module Event = struct
+  type t =
+    | Live
+    | Validated
+end
+
 type ('i, 'o) t =
   { name : string option
   ; (* If the field [witness] precedes any of the functional values ([input]
@@ -15,9 +21,10 @@ type ('i, 'o) t =
   ; allow_cutoff : 'o Allow_cutoff.t
   ; f : 'i -> 'o Fiber.t
   ; human_readable_description : ('i -> User_message.Style.t Pp.t) option
+  ; on_event : ('i -> Event.t -> unit) option
   }
 
-let create ~name ~input ~human_readable_description ~cutoff f =
+let create ~name ~input ~human_readable_description ~cutoff ?on_event f =
   let name =
     match name with
     | None when !Memo_debug.track_locations_of_lazy_values ->
@@ -36,5 +43,12 @@ let create ~name ~input ~human_readable_description ~cutoff f =
   ; witness = Type_eq.Id.create ()
   ; f
   ; human_readable_description
+  ; on_event
   }
+;;
+
+let notify t input event =
+  match t.on_event with
+  | None -> ()
+  | Some f -> f input event
 ;;

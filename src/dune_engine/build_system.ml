@@ -970,16 +970,11 @@ module Internal = struct
 
   and build_file_memo =
     lazy
-      (let cutoff =
-         match Config.(get cutoffs_that_reduce_concurrency_in_watch_mode) with
-         | `Disabled -> None
-         | `Enabled -> Some (Tuple.T2.equal Digest.equal target_kind_equal)
-       in
-       Memo.create_with_store
+      (Memo.create_with_store
          "build-file"
          ~store:(module Path.Table)
          ~input:(module Path)
-         ?cutoff
+         ~cutoff:(Tuple.T2.equal Digest.equal target_kind_equal)
          build_file_impl)
 
   and build_alias_memo =

@@ -116,13 +116,6 @@ let make_toggle ~name ~default =
 let make ~name ~of_string ~default = make ~lazy_init:false ~name ~of_string ~default
 let global_lock = make ~name:"global_lock" ~of_string:Toggle.of_string ~default:`Enabled
 
-let cutoffs_that_reduce_concurrency_in_watch_mode =
-  make
-    ~name:"cutoffs_that_reduce_concurrency_in_watch_mode"
-    ~of_string:Toggle.of_string
-    ~default:`Disabled
-;;
-
 let copy_file =
   make
     ~name:"copy_file"

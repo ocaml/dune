@@ -20,3 +20,8 @@ For dune >= 2.6 it is an error
   ocaml_version, context_name, arch_sixtyfour and env variables are allowed in
   this 'enabled_if' field. Please upgrade your dune language to at least 3.15.
   [1]
+
+In dune >= 3.25, we allow use of any variables in the executable stanza
+  $ make_dune_project 3.25
+  $ dune exec ./foo.exe
+  bar

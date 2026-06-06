@@ -5,10 +5,7 @@ that the compile rule has a glob over `hello`'s byte objdir,
 sourced from the ppx runtime declaration alone — never named in
 source.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.24)
-  > (using cinaps 1.0)
-  > EOF
+  $ make_cinaps_project 3.24 1.0
 
 `hello` is the ppx runtime lib and `hello_ppx` is a no-op
 ppx_rewriter declaring it as a runtime lib. The helper uses the

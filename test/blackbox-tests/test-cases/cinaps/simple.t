@@ -1,9 +1,6 @@
 Test of cinaps integration
 
-  $ cat > dune-project <<EOF
-  > (lang dune 1.11)
-  > (using cinaps 1.0)
-  > EOF
+  $ make_cinaps_project 1.11 1.0
 
   $ cat > dune <<EOF
   > (cinaps (files *.ml))

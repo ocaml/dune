@@ -108,34 +108,31 @@ make_dune_project_with_package() {
 	EOF
 }
 
-make_melange_project() {
+make_dune_project_with_extension() {
   local dune_version="$1"
-  local melange_version="$2"
+  local extension="$2"
+  local extension_version="$3"
 
   make_dune_project "$dune_version"
   cat >> dune-project <<- EOF
-	(using melange ${melange_version})
+	(using ${extension} ${extension_version})
 	EOF
+}
+
+make_melange_project() {
+  make_dune_project_with_extension "$1" melange "$2"
 }
 
 make_rocq_project() {
-  local dune_version="$1"
-  local rocq_version="$2"
-
-  make_dune_project "$dune_version"
-  cat >> dune-project <<- EOF
-	(using rocq ${rocq_version})
-	EOF
+  make_dune_project_with_extension "$1" rocq "$2"
 }
 
 make_menhir_project() {
-  local dune_version="$1"
-  local menhir_version="$2"
+  make_dune_project_with_extension "$1" menhir "$2"
+}
 
-  make_dune_project "$dune_version"
-  cat >> dune-project <<- EOF
-	(using menhir ${menhir_version})
-	EOF
+make_cinaps_project() {
+  make_dune_project_with_extension "$1" cinaps "$2"
 }
 
 make_sandboxed_dune() {

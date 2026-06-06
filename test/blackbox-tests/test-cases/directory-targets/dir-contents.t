@@ -1,9 +1,6 @@
 Directory targets and ocaml/rocq/etc sources
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.2)
-  > (using directory-targets 0.1)
-  > EOF
+  $ make_directory_targets_project 3.2
 
   $ cat >produce.sh <<EOF
   > mkdir sources

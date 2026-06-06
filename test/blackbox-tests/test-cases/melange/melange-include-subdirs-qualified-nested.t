@@ -1,10 +1,7 @@
 Test Melange compilation for a `(include_subdirs qualified)` stanza appearing
 in a nested subdirectory.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.22)
-  > (using melange 1.0)
-  > EOF
+  $ make_melange_project 3.22 1.0
 
   $ mkdir -p a/b/c
 

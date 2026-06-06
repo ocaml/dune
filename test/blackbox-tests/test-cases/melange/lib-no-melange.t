@@ -1,9 +1,6 @@
 Test what happens when melange.emit stanza depends on non-Melange libraries
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.14)
-  > (using melange 0.1)
-  > EOF
+  $ make_melange_project 3.14 0.1
 
   $ cat > dune <<EOF
   > (melange.emit

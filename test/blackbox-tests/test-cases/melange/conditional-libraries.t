@@ -14,10 +14,7 @@ The field is available starting in Dune 3.24.
   [1]
   $ rm -rf old
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.24)
-  > (using melange 0.1)
-  > EOF
+  $ make_melange_project 3.24 0.1
 
   $ mkdir lib_for_melange lib_for_native app
   $ cat > lib_for_melange/dune <<EOF

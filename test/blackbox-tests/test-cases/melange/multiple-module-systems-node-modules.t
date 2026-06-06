@@ -3,10 +3,7 @@ Show multiple module systems fighting for the same targets
 When `(using melange 0.1)`, promoted targets will be in their `target/`
 directories, so there's no overlap
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.22)
-  > (using melange 0.1)
-  > EOF
+  $ make_melange_project 3.22 0.1
 
   $ write_module_systems_dune() {
   > local promote_commonjs="$1"
@@ -54,10 +51,7 @@ directories, so there's no overlap
 Switching to `(using melange 1.0)` overwrites files in `node_modules/`. Last
 write wins
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.22)
-  > (using melange 1.0)
-  > EOF
+  $ make_melange_project 3.22 1.0
 
   $ dune build
   $ cat node_modules/melange.js/caml_string.js | head -n3

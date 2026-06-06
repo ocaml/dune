@@ -5,10 +5,7 @@ that the compile rule has globs over `hello`'s melange objdir,
 sourced from the ppx runtime declaration alone — never named in
 source.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.24)
-  > (using melange 0.1)
-  > EOF
+  $ make_melange_project 3.24 0.1
 
 `hello` is the ppx runtime lib and `hello_ppx` is a no-op
 ppx_rewriter declaring it as a runtime lib. The helper uses the

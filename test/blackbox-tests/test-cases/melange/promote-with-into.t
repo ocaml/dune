@@ -1,9 +1,6 @@
 Promotion with targets `(into ..)` a directory
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.8)
-  > (using melange 0.1)
-  > EOF
+  $ make_melange_project 3.8 0.1
 
   $ mkdir app
   $ mkdir app/foo

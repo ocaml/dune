@@ -1,9 +1,6 @@
 Building a project with 2 melange.emit stanzas should add rules to both aliases
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.8)
-  > (using melange 0.1)
-  > EOF
+  $ make_melange_project 3.8 0.1
   $ cat > dune <<EOF
   > (melange.emit
   >  (target dist)

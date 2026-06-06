@@ -1,9 +1,6 @@
 Test error message for modules belonging to melange.emit and another stanza
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.8)
-  > (using melange 0.1)
-  > EOF
+  $ make_melange_project 3.8 0.1
 
   $ cat > dune <<EOF
   > (library

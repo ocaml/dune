@@ -2,10 +2,7 @@ Test a case of virtual libraries where libraries depend on the virtual library
 transitively
 
   $ mkdir -p foo vlib vlib_impl
-  $ cat > dune-project <<EOF
-  > (lang dune 3.13)
-  > (using melange 0.1)
-  > EOF
+  $ make_melange_project 3.13 0.1
   $ cat > foo/dune <<EOF
   > (library
   >  (name foo)

@@ -1,10 +1,7 @@
 Using same melange.emit target in two contexts
 
   $ mkdir -p a b
-  $ cat > dune-project << EOF
-  > (lang dune 3.13)
-  > (using melange 0.1)
-  > EOF
+  $ make_melange_project 3.13 0.1
 
   $ make_two_context_workspace
   $ cat > a/dune << EOF

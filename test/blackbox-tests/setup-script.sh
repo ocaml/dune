@@ -108,6 +108,16 @@ make_dune_project_with_package() {
 	EOF
 }
 
+make_melange_project() {
+  local dune_version="$1"
+  local melange_version="$2"
+
+  make_dune_project "$dune_version"
+  cat >> dune-project <<- EOF
+	(using melange ${melange_version})
+	EOF
+}
+
 make_sandboxed_dune() {
   {
     echo "#!$(command -v bash)"

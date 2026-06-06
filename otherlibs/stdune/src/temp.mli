@@ -10,14 +10,14 @@ type what =
 
 (** Create a temporary file or directory inside an existing directory. *)
 val temp_in_dir
-  :  ?perms:int
+  :  ?perms:Permissions.Mode.t
   -> what
   -> dir:Path.t
   -> prefix:string
   -> suffix:string
   -> Path.t
 
-val create : ?perms:int -> what -> prefix:string -> suffix:string -> Path.t
+val create : ?perms:Permissions.Mode.t -> what -> prefix:string -> suffix:string -> Path.t
 val destroy : what -> Path.t -> unit
 
 (** Delete the contents of a temporary directory without deleting the directory

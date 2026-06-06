@@ -1844,7 +1844,9 @@ module Install_action = struct
             with
             | None -> section
             | Some section' ->
-              let perm = (Unix.stat (Path.to_string file)).st_perm in
+              let perm =
+                (Unix.stat (Path.to_string file)).st_perm |> Permissions.Mode.of_int
+              in
               if Permissions.(test execute perm) then section' else section
           in
           section, maybe_drop_sandbox_dir file))
@@ -1857,8 +1859,8 @@ module Install_action = struct
       | true ->
         let dst = Path.to_string dst in
         let permission =
-          let perm = (Unix.stat dst).st_perm in
-          Permissions.(add execute) perm
+          let perm = (Unix.stat dst).st_perm |> Permissions.Mode.of_int in
+          Permissions.(add execute) perm |> Permissions.Mode.to_int
         in
         Unix.chmod dst permission
     ;;

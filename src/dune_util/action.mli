@@ -48,5 +48,5 @@ module File_perm : sig
 
   val repr : t Repr.t
   val suffix : t -> string
-  val to_unix_perm : t -> int
+  val to_unix_perm : t -> Permissions.Mode.t
 end

@@ -161,8 +161,8 @@ module Io = struct
     { kind = Null; fd; channel; status = Keep_open }
   ;;
 
-  let file : type a. _ -> ?perm:int -> a mode -> a t =
-    fun fn ?(perm = 0o666) mode ->
+  let file : type a. _ -> ?perm:Permissions.Mode.t -> a mode -> a t =
+    fun fn ?(perm = Permissions.Mode.default_file) mode ->
     let fd =
       lazy
         (let flags =
@@ -170,7 +170,10 @@ module Io = struct
            | Out -> [ Unix.O_WRONLY; O_CREAT; O_TRUNC ]
            | In -> [ O_RDONLY ]
          in
-         Unix.openfile (Path.to_string fn) (O_CLOEXEC :: O_SHARE_DELETE :: flags) perm
+         Unix.openfile
+           (Path.to_string fn)
+           (O_CLOEXEC :: O_SHARE_DELETE :: flags)
+           (Permissions.Mode.to_int perm)
          |> Fd.unsafe_of_unix_file_descr)
     in
     let channel = lazy (channel_of_descr (Lazy.force fd) mode) in

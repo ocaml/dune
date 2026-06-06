@@ -100,7 +100,7 @@ end
 val set
   :  contexts:(Build_context.t * Context_type.t) list Memo.Lazy.t
   -> promote_source:
-       (chmod:(int -> int)
+       (chmod:(Permissions.Mode.t -> Permissions.Mode.t)
         -> delete_dst_if_it_is_a_directory:bool
         -> src:Path.Build.t
         -> dst:Path.Source.t
@@ -118,7 +118,7 @@ type t = private
   ; rule_generator : (module Gen_rules.Rule_generator)
   ; sandboxing_preference : Sandbox_mode.t list
   ; promote_source :
-      chmod:(int -> int)
+      chmod:(Permissions.Mode.t -> Permissions.Mode.t)
       -> delete_dst_if_it_is_a_directory:bool
       -> src:Path.Build.t
       -> dst:Path.Source.t

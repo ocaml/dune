@@ -20,7 +20,9 @@ let contents =
 let () =
   let src = Path.relative dir "initial" in
   Io.write_file (Path.relative dir "initial") contents;
-  let chmod _ = 444 in
+  (* CR-someday rgrinberg: This preserves a likely bug: decimal [444] is
+     [0o674], not the probably intended [0o444]. Fix separately. *)
+  let chmod _ = Permissions.Mode.of_int 444 in
   for i = 1 to 10_000 do
     let dst = Path.relative dir (sprintf "dst-%d" i) in
     Io.copy_file ~chmod ~src ~dst ()

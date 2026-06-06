@@ -16,7 +16,7 @@ module File_perm : sig
     | Normal
     | Executable
 
-  val to_unix_perm : t -> int
+  val to_unix_perm : t -> Permissions.Mode.t
 end
 
 module Outputs : sig

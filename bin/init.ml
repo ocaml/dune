@@ -268,6 +268,7 @@ let project =
        | None -> Dune_lang.Atom.to_string common.name
        | Some public -> Dune_init.Public_name.to_string public
      in
+     check_module_name common.name;
      let context =
        let init_context = Init_context.make path in
        let root =

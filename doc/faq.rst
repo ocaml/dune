@@ -174,6 +174,8 @@ directory - not the project root. If the library defines a ``name`` distinct fro
 its ``public_name`` then that can be used interchangeably with the ``public_name``
 in this command.
 
+.. _source-tree-hidden-files:
+
 Why does ``source_tree`` ignore files and directories when they begin with a "." (period)?
 ==========================================================================================
 

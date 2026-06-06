@@ -113,12 +113,15 @@ When Dune runs external commands, it redirects and saves their output, then
 displays it when complete. This ensures that there's no interleaving when
 writing to the console.
 
-But this might not be what the you want. For example, when you debug a hanging
-build.
+But this might not be what you want. For example, when you debug a hanging
+build or need to inspect a large command output without truncation.
 
 In that case, one can pass ``-j1 --no-buffer`` so the commands are directly
 printed on the console (and the parallelism is disabled so the output stays
-readable).
+readable). This also avoids Dune's buffering of command output, so redirecting
+Dune's output to a file can be used to capture the full, untruncated output.
+If the captured output contains terminal colour escape sequences, set
+``CLICOLOR=0`` in the environment to disable colours.
 
 How can I generate an ``mli`` file from an ``ml`` file?
 =======================================================

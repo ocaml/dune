@@ -23,6 +23,8 @@ module Public_name : sig
   val of_name_exn : Dune_lang.Atom.t -> t
 end
 
+val check_module_name : Dune_lang.Atom.t -> unit
+
 (** A [Component.t] is a set of files that can be built or included as part of a
     build. *)
 module Component : sig

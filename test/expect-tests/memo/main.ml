@@ -2388,3 +2388,38 @@ let%expect_test "Var: cutoff" =
   set_invalidate_print_run 202;
   [%expect {| var: 202 |}]
 ;;
+
+let%expect_test "on_event fires Live and Validated" =
+  let events = ref [] in
+  let f =
+    Memo.create
+      "ev"
+      ~input:(module Int)
+      ~on_event:(fun input (event : Memo.Event.t) ->
+        let tag =
+          match event with
+          | Live -> "live"
+          | Validated -> "validated"
+        in
+        events := Printf.sprintf "%d:%s" input tag :: !events)
+      (fun n -> Memo.return (n * 2))
+  in
+  let print_events () =
+    print_endline (String.concat ~sep:" " (List.rev !events));
+    events := []
+  in
+  (* First evaluation computes the node: [Live] then [Validated]. *)
+  ignore (run_memo f 1 : int);
+  print_events ();
+  [%expect {| 1:live 1:validated |}];
+  (* Re-running in the same build run hits the cache: no event. *)
+  ignore (run_memo f 1 : int);
+  print_events ();
+  [%expect {| |}];
+  (* In a fresh run with unchanged dependencies the node is revalidated:
+     [Live] (it became live again) then [Validated]. *)
+  Memo.reset Memo.Invalidation.empty;
+  ignore (run_memo f 1 : int);
+  print_events ();
+  [%expect {| 1:live 1:validated |}]
+;;

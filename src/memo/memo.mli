@@ -20,6 +20,16 @@ include S with type 'a t := 'a t
 module Option : Monad.Option with type 'a t := 'a t
 module Result : Monad.Result with type 'a t := 'a t
 
+(** Events in the life-cycle of a memoized node, for instrumentation (see the [?on_event]
+    arguments of [create] and friends). *)
+module Event : sig
+  type t =
+    | Live (** The node became live, i.e. used in the current run. *)
+    | Validated
+    (** The node's output has been validated for the current run, either by computing it
+        or by confirming that a cached value is still up to date. *)
+end
+
 (* CR-someday amokhov: Return the set of exceptions explicitly. *)
 val run : 'a t -> 'a Fiber.t
 
@@ -266,6 +276,7 @@ val create
   -> ?initial_store_size:int
   -> ?cutoff:('o -> 'o -> bool)
   -> ?human_readable_description:('i -> User_message.Style.t Pp.t)
+  -> ?on_event:('i -> Event.t -> unit)
   -> ('i -> 'o t)
   -> ('i, 'o) Table.t
 
@@ -288,6 +299,7 @@ val create_with_store
   -> input:(module Store.Input with type t = 'i)
   -> ?cutoff:('o -> 'o -> bool)
   -> ?human_readable_description:('i -> User_message.Style.t Pp.t)
+  -> ?on_event:('i -> Event.t -> unit)
   -> ('i -> 'o t)
   -> ('i, 'o) Table.t
 
@@ -310,6 +322,7 @@ val create_rec
   -> ?initial_store_size:int
   -> ?cutoff:('o -> 'o -> bool)
   -> ?human_readable_description:('i -> User_message.Style.t Pp.t)
+  -> ?on_event:('i -> Event.t -> unit)
   -> (('i -> 'o t) -> 'i -> 'o t)
   -> ('i, 'o) Table.t
 
@@ -364,6 +377,7 @@ val lazy_cell
   :  ?cutoff:('a -> 'a -> bool)
   -> ?name:string
   -> ?human_readable_description:(unit -> User_message.Style.t Pp.t)
+  -> ?on_event:(Event.t -> unit)
   -> (unit -> 'a t)
   -> (unit, 'a) Cell.t
 
@@ -383,6 +397,7 @@ module Lazy : sig
     :  ?cutoff:('a -> 'a -> bool)
     -> ?name:string
     -> ?human_readable_description:(unit -> User_message.Style.t Pp.t)
+    -> ?on_event:(Event.t -> unit)
     -> (unit -> 'a memo)
     -> 'a t
 
@@ -396,6 +411,7 @@ module Lazy : sig
       :  ?cutoff:('a -> 'a -> bool)
       -> ?name:string
       -> ?human_readable_description:(unit -> User_message.Style.t Pp.t)
+      -> ?on_event:(Event.t -> unit)
       -> (unit -> 'a memo)
       -> (unit, 'a) Cell.t * 'a t
   end
@@ -405,6 +421,7 @@ val lazy_
   :  ?cutoff:('a -> 'a -> bool)
   -> ?name:string
   -> ?human_readable_description:(unit -> User_message.Style.t Pp.t)
+  -> ?on_event:(Event.t -> unit)
   -> (unit -> 'a t)
   -> 'a Lazy.t
 

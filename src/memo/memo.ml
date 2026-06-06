@@ -5,6 +5,7 @@ open Fiber.O
 module Graph = Dune_graph.Graph
 module Console = Console
 module Debug = Memo_debug
+module Event = Spec.Event
 include Fiber
 
 let when_ x y =
@@ -1010,10 +1011,13 @@ let create_with_cache
       ~input
       ~cutoff
       ~human_readable_description
+      ~on_event
       (f : i -> o Fiber.t)
   : (i, o) Table.t
   =
-  let spec = Spec.create ~name:(Some name) ~input ~cutoff ~human_readable_description f in
+  let spec =
+    Spec.create ~name:(Some name) ~input ~cutoff ~human_readable_description ?on_event f
+  in
   Caches.register ~clear:(fun () ->
     Store.clear cache;
     invalidate_store cache);
@@ -1027,10 +1031,11 @@ let create_with_store
       ~input
       ?cutoff
       ?human_readable_description
+      ?on_event
       f
   =
   let cache = Store.make (module S) in
-  create_with_cache name ~cache ~input ~cutoff ~human_readable_description f
+  create_with_cache name ~cache ~input ~cutoff ~human_readable_description ~on_event f
 ;;
 
 let create
@@ -1040,12 +1045,13 @@ let create
       ?(initial_store_size = 2)
       ?cutoff
       ?human_readable_description
+      ?on_event
       f
   =
   (* This mutable table is safe: the implementation tracks all dependencies. *)
   let cache = Store.of_table (Stdune.Table.create (module Input) initial_store_size) in
   let input = (module Input : Store_intf.Input with type t = i) in
-  create_with_cache name ~cache ~input ~cutoff ~human_readable_description f
+  create_with_cache name ~cache ~input ~cutoff ~human_readable_description ~on_event f
 ;;
 
 let make_dep_node ~spec ~input : _ Dep_node.t =
@@ -1230,9 +1236,12 @@ end = struct
       let+ restore_result = restore_from_cache ~cached_value in
       Counter.incr Metrics.Restore.nodes;
       (match restore_result with
-       | Ok cached_value -> dep_node.state <- Cached_value cached_value
+       | Ok cached_value ->
+         dep_node.state <- Cached_value cached_value;
+         Spec.notify dep_node.spec dep_node.input Validated
        | Cancelled { dependency_cycle } ->
-         dep_node.state <- Cached_value (Cached_value.create_cancelled ~dependency_cycle)
+         dep_node.state <- Cached_value (Cached_value.create_cancelled ~dependency_cycle);
+         Spec.notify dep_node.spec dep_node.input Validated
        | Out_of_date { old_value } -> dep_node.state <- Out_of_date { old_value });
       restore_result)
 
@@ -1250,6 +1259,7 @@ end = struct
       Counter.incr Metrics.Compute.nodes;
       Counter.add Metrics.Compute.edges (Deps.length cached_value.deps);
       dep_node.state <- Cached_value cached_value;
+      Spec.notify dep_node.spec dep_node.input Validated;
       cached_value)
 
   and consider_and_restore_from_cache_without_adding_dep
@@ -1264,7 +1274,9 @@ end = struct
          [Run.is_current] check. We should try to find a shortcut. *)
       if Run.is_current (Cached_value.last_validated_at cached_value)
       then Fiber.return (Cache_lookup.Ok cached_value)
-      else start_restoring ~dep_node ~cached_value
+      else (
+        Spec.notify dep_node.spec dep_node.input Live;
+        start_restoring ~dep_node ~cached_value)
     | Restoring { restore_from_cache } ->
       Computation.read_but_first_check_for_cycles
         ~phase:Restore_from_cache
@@ -1299,7 +1311,12 @@ end = struct
           ];
       Fiber.return (Ok cached_value)
     | Restoring _ -> assert false
-    | Out_of_date { old_value } -> start_computing ~dep_node ~old_value >>| Result.ok
+    | Out_of_date { old_value } ->
+      (* Fire [Live] only for never-computed (fresh) nodes. A stale node ([old_value] is
+         set) has already fired [Live] when it started restoring, so we don't fire again. *)
+      if Option.Unboxed.is_none old_value
+      then Spec.notify dep_node.spec dep_node.input Live;
+      start_computing ~dep_node ~old_value >>| Result.ok
     | Computing { compute; _ } ->
       Computation.read_but_first_check_for_cycles ~phase:Compute compute ~dep_node
       >>= (function
@@ -1349,7 +1366,15 @@ end
 
 let exec (type i o) (t : (i, o) Table.t) i = Exec.exec_dep_node (dep_node t i)
 
-let create_rec name ~input ?initial_store_size ?cutoff ?human_readable_description f =
+let create_rec
+      name
+      ~input
+      ?initial_store_size
+      ?cutoff
+      ?human_readable_description
+      ?on_event
+      f
+  =
   let rec table =
     lazy
       (create
@@ -1358,6 +1383,7 @@ let create_rec name ~input ?initial_store_size ?cutoff ?human_readable_descripti
          ?initial_store_size
          ?cutoff
          ?human_readable_description
+         ?on_event
          (fun input ->
             let table = Stdlib.Lazy.force table in
             f (exec table) input))
@@ -1628,9 +1654,10 @@ let cell = dep_node
 
 module Implicit_output = Implicit_output
 
-let lazy_cell ?cutoff ?name ?human_readable_description f =
+let lazy_cell ?cutoff ?name ?human_readable_description ?on_event f =
+  let on_event = Option.map on_event ~f:(fun on_event () event -> on_event event) in
   let spec =
-    Spec.create ~name ~input:(module Unit) ~cutoff ~human_readable_description f
+    Spec.create ~name ~input:(module Unit) ~cutoff ~human_readable_description ?on_event f
   in
   make_dep_node ~spec ~input:()
 ;;
@@ -1645,14 +1672,14 @@ module Lazy = struct
   let of_val a () = Fiber.return a
 
   module Expert = struct
-    let create ?cutoff ?name ?human_readable_description f =
-      let cell = lazy_cell ?cutoff ?name ?human_readable_description f in
+    let create ?cutoff ?name ?human_readable_description ?on_event f =
+      let cell = lazy_cell ?cutoff ?name ?human_readable_description ?on_event f in
       cell, fun () -> Cell.read cell
     ;;
   end
 
-  let create ?cutoff ?name ?human_readable_description f =
-    let cell = lazy_cell ?cutoff ?name ?human_readable_description f in
+  let create ?cutoff ?name ?human_readable_description ?on_event f =
+    let cell = lazy_cell ?cutoff ?name ?human_readable_description ?on_event f in
     fun () -> Cell.read cell
   ;;
 

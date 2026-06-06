@@ -55,13 +55,12 @@ let decode_with_name =
       ~loc
       [ Pp.text "Pin stanzas in dune-workspace must have a name."
       ; Pp.text
-          "Workspace pins are named so lock_dir stanzas can choose which pins \
-           to use."
+          "Workspace pins are named so lock_dir stanzas can choose which pins to use."
       ]
       ~hints:
         [ Pp.text
-            "Add a (name <pin>) field to this pin and list the name in the \
-             relevant lock_dir's (pins ...) field."
+            "Add a (name <pin>) field to this pin and list the name in the relevant \
+             lock_dir's (pins ...) field."
         ]
 ;;
 

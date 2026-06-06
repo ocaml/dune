@@ -1092,11 +1092,15 @@ let report_early_exn exn =
 let handle_final_exns exns =
   match !Clflags.report_errors_config with
   | Early -> ()
-  | Twice | Deterministic ->
-    let report exn =
-      if not (caused_by_cancellation exn) then Dune_util.Report_error.report exn
-    in
-    List.iter exns ~f:report
+  | Deterministic ->
+    List.iter exns ~f:(fun exn ->
+      if not (caused_by_cancellation exn) then Dune_util.Report_error.report exn)
+  | Twice ->
+    (match List.filter exns ~f:(fun exn -> not (caused_by_cancellation exn)) with
+     | [] -> ()
+     | exns ->
+       Console.print [ Pp.verbatim "==== Error Summary ====" ];
+       List.iter exns ~f:Dune_util.Report_error.report)
 ;;
 
 let run ?restart_started_at ?(run_id = Run_id.Batch) f =

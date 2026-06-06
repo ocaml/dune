@@ -1,10 +1,7 @@
 The project has an `.mld` file that needs to be fixed. At first, we determine
 that that file is not being picked up:
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.7)
-  > (using mdx 0.3)
-  > EOF
+  $ make_mdx_project 3.7 0.3
   $ cat > dune <<EOF
   > (mdx)
   > EOF
@@ -87,10 +84,7 @@ the test should succeed this time.
 The 0.4 version of the stanza adds support for `.mld` files by default, so bump
 the stanza version.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.7)
-  > (using mdx 0.4)
-  > EOF
+  $ make_mdx_project 3.7 0.4
   $ cat > dune <<EOF
   > (mdx)
   > EOF
@@ -110,10 +104,7 @@ the stanza version.
 
 Updating the dune-lang should make the test run.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.8)
-  > (using mdx 0.4)
-  > EOF
+  $ make_mdx_project 3.8 0.4
   $ dune runtest
   File "needs-fixes.mld", line 1, characters 0-0:
   --- needs-fixes.mld

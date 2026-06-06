@@ -1,9 +1,6 @@
 The MDX stanza requires dune lang 2.4 or higher
 
-  $ cat >dune-project <<EOF
-  > (lang dune 2.3)
-  > (using mdx 0.1)
-  > EOF
+  $ make_mdx_project 2.3 0.1
 
   $ dune build @install
   File "dune-project", line 2, characters 11-14:

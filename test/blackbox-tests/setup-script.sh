@@ -135,6 +135,10 @@ make_cinaps_project() {
   make_dune_project_with_extension "$1" cinaps "$2"
 }
 
+make_mdx_project() {
+  make_dune_project_with_extension "$1" mdx "$2"
+}
+
 make_sandboxed_dune() {
   {
     echo "#!$(command -v bash)"

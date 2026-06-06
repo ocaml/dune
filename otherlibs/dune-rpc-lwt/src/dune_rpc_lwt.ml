@@ -45,53 +45,46 @@ module V1 = struct
       (struct
         type t = Lwt_io.input_channel * Lwt_io.output_channel
 
-        let read (i, o) =
-          (* The input and output channels share the same file descriptor. If
-             the output channel has been closed, reading from the input channel
-             will result in an error. *)
-          let is_channel_closed () = Lwt_io.is_closed o in
+        let read (i, _) =
           let open Csexp.Parser in
           let lexer = Lexer.create () in
-          let rec loop depth stack =
-            if is_channel_closed ()
-            then (
-              Lexer.feed_eoi lexer;
-              Lwt.return_none)
-            else
-              let* res = Lwt_io.read_char_opt i in
-              match res with
-              | None ->
-                Lexer.feed_eoi lexer;
-                Lwt.return_none
-              | Some c ->
-                (match Lexer.feed lexer c with
-                 | Await -> loop depth stack
-                 | Lparen -> loop (depth + 1) (Stack.open_paren stack)
-                 | Rparen ->
-                   let stack = Stack.close_paren stack in
-                   let depth = depth - 1 in
-                   if depth = 0
-                   then (
-                     let sexps = Stack.to_list stack in
-                     sexps |> List.hd |> Lwt.return_some)
-                   else loop depth stack
-                 | Atom count ->
-                   if is_channel_closed ()
-                   then (
-                     Lexer.feed_eoi lexer;
-                     Lwt.return_none)
-                   else
-                     let* atom =
-                       let bytes = Bytes.create count in
-                       let+ () = Lwt_io.read_into_exactly i bytes 0 count in
-                       Bytes.to_string bytes
-                     in
-                     loop depth (Stack.add_atom atom stack))
+          let eoi () =
+            Lexer.feed_eoi lexer;
+            Lwt.return_none
           in
-          loop 0 Stack.Empty
+          let rec loop depth stack =
+            let open Lwt.Infix in
+            Lwt_io.read_char_opt i
+            >>= function
+            | None -> eoi ()
+            | Some c ->
+              (match Lexer.feed lexer c with
+               | Await -> loop depth stack
+               | Lparen -> loop (depth + 1) (Stack.open_paren stack)
+               | Rparen ->
+                 let stack = Stack.close_paren stack in
+                 let depth = depth - 1 in
+                 if depth = 0
+                 then Stack.to_list stack |> List.hd |> Lwt.return_some
+                 else loop depth stack
+               | Atom count ->
+                 let* atom =
+                   let bytes = Bytes.create count in
+                   let+ () = Lwt_io.read_into_exactly i bytes 0 count in
+                   Bytes.to_string bytes
+                 in
+                 loop depth (Stack.add_atom atom stack))
+          in
+          Lwt.catch
+            (fun () -> loop 0 Stack.Empty)
+            (function
+              | Lwt_io.Channel_closed _ -> eoi ()
+              | exn -> Lwt.fail exn)
         ;;
 
-        let close (_, o) = Lwt_io.close o
+        let close (i, o) =
+          Lwt.finalize (fun () -> Lwt_io.close o) (fun () -> Lwt_io.close i)
+        ;;
 
         let write (_, o) csexps =
           Lwt_list.iter_s (fun sexp -> Lwt_io.write o (Csexp.to_string sexp)) csexps
@@ -134,7 +127,15 @@ module V1 = struct
       let+ () = Lwt_unix.connect fd sockaddr in
       fd
     in
-    let fd mode = Lwt_io.of_fd fd ~mode in
-    fd Input, fd Output
+    let output =
+      Lwt_io.of_fd fd ~mode:Output ~close:(fun () ->
+        Lwt_unix.shutdown fd Unix.SHUTDOWN_SEND;
+        Lwt.return_unit)
+    in
+    let input =
+      Lwt_io.of_fd fd ~mode:Input ~close:(fun () ->
+        Lwt.finalize (fun () -> Lwt_io.close output) (fun () -> Lwt_unix.close fd))
+    in
+    input, output
   ;;
 end

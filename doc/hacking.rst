@@ -54,31 +54,15 @@ Here are the most common commands you'll be running:
    $ ./dune.exe build @foo
 
 
-Note that tests are currently written for version 5.4.0 of the OCaml compiler.
-Some tests depend on the specific wording of compilation errors which can change
-between compiler versions, so to reliably run the tests make sure that
-``ocaml.5.4.0`` is installed. The ``TEST_OCAMLVERSION`` in the ``Makefile`` at
-the root of the Dune repo contains the current compiler version for which tests
-are written.
-
 .. seealso:: :doc:`explanation/bootstrap`
 
 Writing Tests
 =============
 
-Most of our tests are written as expectation-style tests. While creating such
-tests, the developer writes some code and then lets the system insert the output
-produced during the code execution. The system puts it right next to the code in
-the source file.
-
-Once you write and commit a test, the system checks that the captured output
-matches the one produced by a fresh code execution. When the two don't match,
-the test fails. The system then displays a diff between what was expected and
-what the code produced.
-
-We write both our unit tests and integration tests in this way. For unit tests,
-we use the ppx_expect_ framework, where we introduce tests via
-``let%expect_test``, and ``[%expect ...]`` nodes capture expectations:
+Dune uses expectation-style tests for both unit tests and integration tests. For
+unit tests, we use the ppx_expect_ framework, where we introduce tests via
+``let%expect_test``, and where we use ``[%expect ...]`` nodes to capture
+expectations:
 
 .. code:: ocaml
 
@@ -89,15 +73,25 @@ we use the ppx_expect_ framework, where we introduce tests via
       |}]
 
 For integration tests, we use a system similar to `Cram tests
-<https://bitheap.org/cram/>`_ for testing shell commands and their behavior:
+<https://bitheap.org/cram/>`_ for testing shell commands and their behavior.
+
+Test the output of ``echo``:
 
 .. code:: console
 
    $ echo 'Hello, world!'
    Hello, world!
 
+Test a nonzero exit status:
+
+.. code:: console
+
    $ false
    [1]
+
+Test a multi-line shell invocation:
+
+.. code:: console
 
    $ cat <<EOF
    > multi
@@ -105,6 +99,9 @@ For integration tests, we use a system similar to `Cram tests
    > EOF
    multi
    line
+
+Cram tests run with ``sh`` by default. Use only portable shell syntax unless a
+:doc:`/reference/dune/cram` stanza selects ``(shell bash)`` for the test.
 
 These tests must be reproducible, so it is often necessary to filter command
 output to show only relevant parts. This also prevents tests from breaking due
@@ -129,11 +126,16 @@ with stable labels. Distinct digests get distinct labels:
 
 .. seealso::
 
-   `actions_to_sh tests <https://github.com/ocaml/dune/blob/3.12.2/test/expect-tests/dune_engine/action_to_sh_tests.ml>`_
+   `timer tests`_
      An example of expect-tests.
 
-   `mdx-stanza/locks.t <https://github.com/ocaml/dune/blob/3.12.2/test/blackbox-tests/test-cases/mdx-stanza/locks.t>`_
-     An example of Cram test.
+   `Cram test examples`_
+     A collection of Cram tests.
+
+.. _timer tests:
+   https://github.com/ocaml/dune/blob/main/test/expect-tests/timer_tests.ml
+.. _Cram test examples:
+   https://github.com/ocaml/dune/tree/main/test/blackbox-tests/test-cases/cram
 
 When running Dune inside tests, the ``INSIDE_DUNE`` environment variable is set.
 This has the following effects:

@@ -31,10 +31,7 @@ Starting from Dune 3.24, directory targets no longer require an extension.
 
 Using the directory-targets extension is rejected starting from Dune 3.24.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.24)
-  > (using directory-targets 0.1)
-  > EOF
+  $ make_directory_targets_project 3.24
 
   $ dune build builtin-output/x
   File "dune-project", line 2, characters 25-28:
@@ -44,10 +41,7 @@ Using the directory-targets extension is rejected starting from Dune 3.24.
   Dune 3.24.
   [1]
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.0)
-  > (using directory-targets 0.1)
-  > EOF
+  $ make_directory_targets_project 3.0
 
 Ensure directory targets are produced.
 

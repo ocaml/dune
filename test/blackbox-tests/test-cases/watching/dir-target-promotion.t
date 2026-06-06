@@ -2,10 +2,7 @@ Test directory target promotion in file-watching mode.
 
   $ echo '(lang dune 3.0)' > dune-project
   $ mkdir test; cd test
-  $ cat > dune-project <<EOF
-  > (lang dune 3.0)
-  > (using directory-targets 0.1)
-  > EOF
+  $ make_directory_targets_project 3.0
   $ cat > dune <<EOF
   > (rule
   >  (mode promote)

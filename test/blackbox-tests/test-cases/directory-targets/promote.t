@@ -1,10 +1,7 @@
 Promotion of directory targets.
 
   $ mkdir test; cd test
-  $ cat > dune-project <<EOF
-  > (lang dune 3.0)
-  > (using directory-targets 0.1)
-  > EOF
+  $ make_directory_targets_project 3.0
   $ write_promoted_directory_target_rule() {
   > local mode="$1"
   > cat > dune <<EOF
@@ -55,10 +52,7 @@ If a destination file is taken up by a directory, Dune deletes it.
 
 Promoting a badly specified directory target gives a weird error:
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.2)
-  > (using directory-targets 0.1)
-  > EOF
+  $ make_directory_targets_project 3.2
 
   $ cat > dune <<EOF
   > (rule

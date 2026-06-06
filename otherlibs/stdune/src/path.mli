@@ -340,7 +340,7 @@ val is_dir_sep : char -> bool
 (** If the path does not exist, this function is a no-op. *)
 val rm_rf : ?chmod:bool -> ?allow_external:bool -> t -> unit
 
-val mkdir_p : ?perms:int -> t -> unit
+val mkdir_p : ?perms:Permissions.Mode.t -> t -> unit
 val build_dir_exists : unit -> bool
 val ensure_build_dir_exists : unit -> unit
 val source : Source.t -> t

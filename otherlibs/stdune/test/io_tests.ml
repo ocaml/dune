@@ -28,7 +28,13 @@ let%expect_test "copy file chmod" =
   let src = Path.relative dir "initial" in
   let dst = Path.relative dir "final" in
   Io.write_file src "foobarbaz";
-  Io.copy_file ~chmod:(fun _ -> 428) ~src ~dst ();
+  Io.copy_file
+    ~chmod:(fun _ ->
+      let open Permissions in
+      Mode.create ~user:(read + write) ~group:(read + execute) ~other:read ())
+    ~src
+    ~dst
+    ();
   print_endline (Io.read_file dst);
   Printf.printf "permissions: %d\n" (Unix.stat (Path.to_string dst)).st_perm;
   [%expect

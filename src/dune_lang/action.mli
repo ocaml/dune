@@ -61,7 +61,7 @@ module File_perm : sig
     | Executable
 
   val suffix : t -> string
-  val to_unix_perm : t -> int
+  val to_unix_perm : t -> Permissions.Mode.t
 end
 
 module Env_update : sig

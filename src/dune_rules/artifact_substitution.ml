@@ -176,7 +176,8 @@ module Conf = struct
       let executable =
         match Path.Untracked.stat file with
         | Error _ -> false
-        | Ok { st_perm; _ } -> Permissions.test_any Permissions.execute st_perm
+        | Ok { st_perm; _ } ->
+          Permissions.test_any Permissions.execute (Permissions.Mode.of_int st_perm)
       in
       if executable
       then
@@ -649,7 +650,11 @@ let copy_file_non_atomic ~conf ?chmod ~src ~dst () =
     avoid unnecessary retriggering of Dune and other file-watching systems. *)
 let replace_if_different ~delete_dst_if_it_is_a_directory ~src ~dst =
   let files_are_up_to_date src_stats dst_stats =
-    let executable stats = Permissions.test_any Permissions.execute stats.Unix.st_perm in
+    let executable stats =
+      Permissions.test_any
+        Permissions.execute
+        (Permissions.Mode.of_int stats.Unix.st_perm)
+    in
     Bool.equal (executable src_stats) (executable dst_stats)
     &&
     let temp_file_digest = Digest.file src in

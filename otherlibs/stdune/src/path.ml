@@ -813,7 +813,7 @@ let readdir_unsorted_with_kinds t =
 let build_dir_exists () = Fpath.is_directory (to_string build_dir)
 
 let ensure_build_dir_exists () =
-  let perms = 0o777 in
+  let perms = Permissions.Mode.default_dir in
   match local_or_external build_dir with
   | In_source_dir p -> Relative_to_source_root.mkdir_p (Source0.to_local p) ~perms
   | External p ->

@@ -302,7 +302,18 @@ module File_ops_real (W : sig
         ~package
         ~(conf : Artifact_substitution.Conf.t)
     =
-    let chmod = if executable then fun _ -> 0o755 else fun _ -> 0o644 in
+    let mode =
+      let open Permissions in
+      if executable
+      then
+        Mode.create
+          ~user:(read + write + execute)
+          ~group:(read + execute)
+          ~other:(read + execute)
+          ()
+      else Mode.create ~user:(read + write) ~group:read ~other:read ()
+    in
+    let chmod _ = mode in
     let plain_copy () = Io.copy_file ~chmod ~src ~dst () in
     match kind with
     | Substitute -> Artifact_substitution.copy_file ~conf ~src ~dst ~chmod ()

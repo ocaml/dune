@@ -1,9 +1,6 @@
 # Test installation display output
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.7)
-  > (package (name foo))
-  > EOF
+  $ make_dune_project_with_package 3.7 foo
   $ cat >dune <<EOF
   > (library
   >  (public_name foo))

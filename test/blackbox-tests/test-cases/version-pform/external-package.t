@@ -31,10 +31,7 @@ Using a package that is installed needs 2.9 and above
 Now we install foo without a library
   $ dir=_without_lib
   $ mkdir $dir && cd $dir
-  $ cat >dune-project <<EOF
-  > (lang dune 3.13)
-  > (package (name foo))
-  > EOF
+  $ make_dune_project_with_package 3.13 foo
   $ cat >dune <<EOF
   > (rule (with-stdout-to foo (echo "")))
   > (install (section share) (files foo))
@@ -54,10 +51,7 @@ Now we install foo without a library
 Now we install foo with a library
   $ dir=with_lib
   $ mkdir $dir && cd $dir
-  $ cat >dune-project <<EOF
-  > (lang dune 3.13)
-  > (package (name foo))
-  > EOF
+  $ make_dune_project_with_package 3.13 foo
   $ cat >dune <<EOF
   > (library (public_name foo))
   > EOF

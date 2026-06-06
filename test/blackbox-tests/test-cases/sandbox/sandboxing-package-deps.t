@@ -1,10 +1,7 @@
 Test sandboxing when depending on things from the install context using
 (package ...).
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.16)
-  > (package (name foo))
-  > EOF
+  $ make_dune_project_with_package 3.16 foo
   $ mkdir foo
   $ cat >foo/dune <<EOF
   > (executable

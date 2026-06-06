@@ -3,10 +3,7 @@ Regression test: when a package installs a built directory target via
 not crash. The layout has to symlink the directory entry with
 `Action_builder.symlink_dir`, not plain `symlink`.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.24)
-  > (package (name dirpkg))
-  > EOF
+  $ make_dune_project_with_package 3.24 dirpkg
 
   $ mkdir src
   $ cat >src/dune <<EOF

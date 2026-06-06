@@ -1,10 +1,7 @@
 %{bin:NAME} for a binary installed via an (install) stanza, where
 the install name differs from the source name.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.24)
-  > (package (name mypkg))
-  > EOF
+  $ make_dune_project_with_package 3.24 mypkg
 
   $ cat >script.sh <<'EOF'
   > #!/bin/sh

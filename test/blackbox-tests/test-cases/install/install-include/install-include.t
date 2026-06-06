@@ -1,9 +1,6 @@
 Simple example of including a file in the install stanza
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.4)
-  > (package (name hello))
-  > EOF
+  $ make_dune_project_with_package 3.4 hello
 
   $ cat >dune <<EOF
   > (executable
@@ -28,10 +25,7 @@ Simple example of including a file in the install stanza
   Please update your dune-project file to have (lang dune 3.5).
   [1]
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.5)
-  > (package (name hello))
-  > EOF
+  $ make_dune_project_with_package 3.5 hello
 
   $ dune build @install
   File "_unknown_", line 1, characters 0-0:

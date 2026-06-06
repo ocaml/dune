@@ -2,10 +2,7 @@ We create two libraries `l.one` and `l.two` with a conflicting module.
 They build fine, are not co-linkable, but documentation should be able to be
 built. See #1645.
 
-  $ cat > dune-project << EOF
-  > (lang dune 1.0)
-  > (package (name l))
-  > EOF
+  $ make_dune_project_with_package 1.0 l
 
   $ mkdir one
   $ cat > one/dune << EOF

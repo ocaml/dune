@@ -1,10 +1,7 @@
 We should forbid private libraries that belong to a package from depending on a
 private library
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.5)
-  > (package (name pkg))
-  > EOF
+  $ make_dune_project_with_package 3.5 pkg
 
   $ cat >dune <<EOF
   > (library

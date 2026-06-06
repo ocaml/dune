@@ -1,11 +1,7 @@
 ----------------------------------------------------------------------------------
 Testsuite for the %{libexec...} and %{libexec-private...} variable.
 
-  $ cat >sdune <<'EOF'
-  > #!/usr/bin/env bash
-  > DUNE_SANDBOX=symlink dune "$@"
-  > EOF
-  $ chmod +x sdune
+  $ make_sandboxed_dune
   $ cat >dune-workspace <<EOF
   > (lang dune 2.0)
   > (context (default (name host)))

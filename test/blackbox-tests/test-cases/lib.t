@@ -1,11 +1,7 @@
 ----------------------------------------------------------------------------------
 Testsuite for the %{lib...} and %{lib-private...} variable.
 
-  $ cat >sdune <<'EOF'
-  > #!/usr/bin/env bash
-  > DUNE_SANDBOX=symlink dune "$@"
-  > EOF
-  $ chmod +x sdune
+  $ make_sandboxed_dune
 
 ----------------------------------------------------------------------------------
 * Find a public library using the %{lib:...} variable

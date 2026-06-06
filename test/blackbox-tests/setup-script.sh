@@ -98,6 +98,14 @@ make_dune_project() {
 	EOF
 }
 
+make_sandboxed_dune() {
+  {
+    echo "#!$(command -v bash)"
+    echo 'DUNE_SANDBOX=symlink dune "$@"'
+  } >sdune
+  chmod +x sdune
+}
+
 make_mypkg_bin_project() {
   local message="${1:-hello from mybin}"
   cat > dune-project <<- EOF

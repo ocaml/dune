@@ -83,11 +83,7 @@ Libraries
   $ dune clean
 
 Now we try will being in the sandbox
-  $ cat >sdune <<'EOF'
-  > #!/usr/bin/env bash
-  > DUNE_SANDBOX=symlink dune "$@"
-  > EOF
-  $ chmod +x sdune
+  $ make_sandboxed_dune
 
   $ ./sdune exec ./stubs_exe.exe
   Byte (0) or native (1) ? 1

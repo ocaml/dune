@@ -129,6 +129,31 @@ write_lockdir_consumer_rule() {
 	EOF
 }
 
+write_portable_lockdirs_project() {
+  cat > dune-project <<-'EOF'
+	(lang dune 3.18)
+	(package
+	 (name x)
+	 (depends foo))
+	EOF
+}
+
+write_portable_lockdirs_executable() {
+  cat > dune <<-'EOF'
+	(executable
+	 (public_name x)
+	 (libraries foo))
+	EOF
+}
+
+make_portable_lockdirs_project() {
+  write_portable_lockdirs_project
+  cat > x.ml <<-'EOF'
+	let () = print_endline "Hello, World!"
+	EOF
+  write_portable_lockdirs_executable
+}
+
 make_dune_project_with_extension() {
   local dune_version="$1"
   local extension="$2"

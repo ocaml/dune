@@ -594,6 +594,20 @@ make_and_enter_private_only_packages_project() {
 	EOF
 }
 
+write_simple_inline_tests_backend() {
+  cat >dune <<-'EOF'
+	(library
+	 (name backend_simple)
+	 (modules ())
+	 (inline_tests.backend
+	  (generate_runner (run sed "s/(\\*TEST:\\(.*\\)\\*)/let () = if \"%{inline_tests}\" = \"enabled\" then \\1;;/" %{impl-files}))))
+	
+	(library
+	 (name foo_simple)
+	 (inline_tests (backend backend_simple)))
+	EOF
+}
+
 make_melange_virtual_time_project() {
   local vlib_public_name="$1"
   local impl_public_name="$2"

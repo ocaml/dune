@@ -4,16 +4,8 @@
 
   $ make_dune_project 2.6
 
-  $ cat >dune <<EOF
-  > (library
-  >  (name backend_simple)
-  >  (modules ())
-  >  (inline_tests.backend
-  >   (generate_runner (run sed "s/(\\\\*TEST:\\\\(.*\\\\)\\\\*)/let () = if \\"%{inline_tests}\\" = \\"enabled\\" then \\\\1;;/" %{impl-files}))))
-  > 
-  > (library
-  >  (name foo_simple)
-  >  (inline_tests (backend backend_simple)))
+  $ write_simple_inline_tests_backend
+  $ cat >>dune <<EOF
   > 
   > (env
   >  (ignore-inline-tests (inline_tests ignored))

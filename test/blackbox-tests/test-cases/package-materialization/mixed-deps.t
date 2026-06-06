@@ -1,9 +1,6 @@
 Test that package deps and file deps work together in the same (deps ...).
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.24)
-  > (package (name foo))
-  > EOF
+  $ make_dune_project_with_package 3.24 foo
 
   $ mkdir src
 

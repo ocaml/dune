@@ -61,10 +61,7 @@ Now add a newer version of foo to the repository:
 
   $ mkdir foo
   $ cd foo
-  $ cat > dune-project <<EOF
-  > (lang dune 3.13)
-  > (package (name foo))
-  > EOF
+  $ make_dune_project_with_package 3.13 foo
   $ cat > foo.ml <<EOF
   > let message = "Hello from foo 0.0.2!"
   > EOF

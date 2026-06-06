@@ -1,10 +1,7 @@
 Observe what `(install (dirs ...))` does when the path is not a
 directory target.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.24)
-  > (package (name p))
-  > EOF
+  $ make_dune_project_with_package 3.24 p
 
 A plain source directory:
 

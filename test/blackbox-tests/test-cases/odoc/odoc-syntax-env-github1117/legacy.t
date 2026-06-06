@@ -1,10 +1,7 @@
 The rules that call odoc know that it is going to read the ODOC_SYNTAX
 variable, and can rebuild as needed.
 
-  $ cat > dune-project << EOF
-  > (lang dune 1.1)
-  > (package (name l))
-  > EOF
+  $ make_dune_project_with_package 1.1 l
 
   $ cat > dune << EOF
   > (library

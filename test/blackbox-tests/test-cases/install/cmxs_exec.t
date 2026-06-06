@@ -1,9 +1,6 @@
 # Test that .cmxs are installed with the executable bit set
 
-  $ cat >dune-project <<EOF
-  > (lang dune 2.8)
-  > (package (name foo))
-  > EOF
+  $ make_dune_project_with_package 2.8 foo
   $ cat >dune <<EOF
   > (library
   >  (public_name foo))

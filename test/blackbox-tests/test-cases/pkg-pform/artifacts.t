@@ -1,10 +1,7 @@
 Test that %{pkg:...} resolves through install renames across all sections
 and tracks source files as dependencies.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.24)
-  > (package (name foo))
-  > EOF
+  $ make_dune_project_with_package 3.24 foo
 
   $ mkdir foo
 

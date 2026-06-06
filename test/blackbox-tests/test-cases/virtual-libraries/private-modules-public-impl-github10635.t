@@ -1,10 +1,7 @@
 Test that virtual libraries with private modules work with public implementations
 (Issue #10635)
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.13)
-  > (package (name pkg))
-  > EOF
+  $ make_dune_project_with_package 3.13 pkg
 
 Virtual library with a private (non-virtual) helper module:
 

@@ -1,9 +1,6 @@
 Test that (deps (package ...)) adds the package's bin/ to PATH.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.24)
-  > (package (name mypkg))
-  > EOF
+  $ make_dune_project_with_package 3.24 mypkg
   $ mkdir src
   $ cat >src/dune <<EOF
   > (executable (name mytool) (public_name mytool) (package mypkg) (modules mytool))

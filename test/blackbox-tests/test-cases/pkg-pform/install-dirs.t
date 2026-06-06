@@ -1,10 +1,7 @@
 Observe `%{pkg:...}` behaviour against an `(install (dirs ...))` entry
 for a built directory target.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.24)
-  > (package (name foo))
-  > EOF
+  $ make_dune_project_with_package 3.24 foo
 
   $ mkdir src
   $ cat >src/dune <<EOF

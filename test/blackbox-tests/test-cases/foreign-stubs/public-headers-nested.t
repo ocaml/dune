@@ -1,9 +1,6 @@
 Headers with the same filename cannot be installed together:
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.8)
-  > (package (name mypkg))
-  > EOF
+  $ make_dune_project_with_package 3.8 mypkg
 
   $ mkdir -p packages/lib/mypkg/inc
 

@@ -4,10 +4,7 @@ Test for the `dune describe tests` command
 Setup with various test configurations
 --------------------------------------
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.21)
-  > (package (name test-pkg))
-  > EOF
+  $ make_dune_project_with_package 3.21 test-pkg
 
 Simple test
 -----------

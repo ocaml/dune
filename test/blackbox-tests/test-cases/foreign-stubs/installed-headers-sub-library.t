@@ -1,9 +1,6 @@
 Headers of libraries are accidentally visible
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.8)
-  > (package (name mypkg))
-  > EOF
+  $ make_dune_project_with_package 3.8 mypkg
 
   $ cat >dune <<EOF
   > (library

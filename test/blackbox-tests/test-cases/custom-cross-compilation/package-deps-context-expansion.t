@@ -1,10 +1,7 @@
 (deps (package NAME)) in a cross-compilation context. The install
 layout dir should sit under the host context's install tree.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.24)
-  > (package (name mypkg))
-  > EOF
+  $ make_dune_project_with_package 3.24 mypkg
 
   $ cat >dune-workspace <<EOF
   > (lang dune 3.24)

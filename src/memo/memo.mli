@@ -231,9 +231,16 @@ module Invalidation : sig
   (** Invalidate all computations stored in a given [memo] table. *)
   val invalidate_cache : reason:Reason.t -> _ Table.t -> t
 
-  (** A list of human-readable strings explaining the reasons for invalidation.
-      The list is truncated to [max_elements] elements, with [max_elements = 1]
-      by default. Raises if [max_elements <= 0]. *)
+  (** A custom invalidation, for use by out-of-band caching mechanisms: [f] is run when the
+      invalidation is applied. *)
+  val custom : reason:Reason.t -> f:(unit -> unit) -> t
+
+  (** All reasons contributing to an invalidation, deduplicated and in first-seen order. *)
+  val to_reason_list : t -> Reason.t list
+
+  (** A list of human-readable strings explaining the reasons for invalidation. The list
+      is truncated to [max_elements] elements, with [max_elements = 1] by default. Raises
+      if [max_elements <= 0]. *)
   val details_hum : ?max_elements:int -> t -> string list
 
   (** The list of changed paths that contributed [Path_changed] invalidations.

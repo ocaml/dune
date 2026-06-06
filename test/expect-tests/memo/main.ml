@@ -2325,6 +2325,36 @@ let%expect_test "create_rec" =
     |}]
 ;;
 
+let%expect_test "Invalidation.custom runs its action on reset" =
+  let ran = ref 0 in
+  let inv = Memo.Invalidation.custom ~reason:Test ~f:(fun () -> incr ran) in
+  printf "before: %d\n" !ran;
+  Memo.reset inv;
+  printf "after: %d\n" !ran;
+  [%expect
+    {|
+    before: 0
+    after: 1
+    |}]
+;;
+
+let%expect_test "Invalidation.to_reason_list deduplicates reasons" =
+  let open Memo.Invalidation in
+  let inv =
+    combine
+      (combine (custom ~reason:Test ~f:ignore) (custom ~reason:Test ~f:ignore))
+      (custom ~reason:(Variable_changed "x") ~f:ignore)
+  in
+  printf "%d reasons\n" (List.length (to_reason_list inv));
+  List.iter (details_hum ~max_elements:10 inv) ~f:print_endline;
+  [%expect
+    {|
+    2 reasons
+    Rebuild initiated by an internal testsuite
+    Variable x changed
+    |}]
+;;
+
 let%expect_test "Var.Unit" =
   let var = Memo.Var.Unit.create () in
   let calls = ref 0 in

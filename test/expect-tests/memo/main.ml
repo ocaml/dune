@@ -2355,6 +2355,63 @@ let%expect_test "Invalidation.to_reason_list deduplicates reasons" =
     |}]
 ;;
 
+let%expect_test "reset_if_necessary" =
+  let calls = ref 0 in
+  let cell =
+    Memo.lazy_cell (fun () ->
+      incr calls;
+      Memo.return ())
+  in
+  let eval () = run (Memo.Cell.read cell) in
+  eval ();
+  printf "calls = %d\n" !calls;
+  [%expect {| calls = 1 |}];
+  (* An empty invalidation is a no-op: the run is not advanced, so the cached value is
+     reused and the computation does not run again. *)
+  Memo.reset_if_necessary Memo.Invalidation.empty;
+  eval ();
+  printf "calls = %d\n" !calls;
+  [%expect {| calls = 1 |}];
+  (* A non-empty invalidation forces a reset, so the cell is recomputed. *)
+  Memo.reset_if_necessary (Memo.Cell.invalidate ~reason:Test cell);
+  eval ();
+  printf "calls = %d\n" !calls;
+  [%expect {| calls = 2 |}]
+;;
+
+let%expect_test "reset_if_necessary retries non-reproducible errors" =
+  let calls = ref 0 in
+  let cell =
+    Memo.lazy_cell (fun () ->
+      incr calls;
+      raise (Memo.Non_reproducible (Failure "boom")))
+  in
+  run_and_log_errors (Memo.Cell.read cell);
+  printf "calls = %d\n" !calls;
+  [%expect
+    {|
+    Error: { exn =
+               "Memo.Error.E { exn = \"Failure(\\\"boom\\\")\"; stack = [ (\"<unnamed>\", ()) ] }"
+           ; backtrace = ""
+           }
+    calls = 1
+    |}];
+  (* The invalidation is empty, but a non-reproducible error was produced in the current
+     run, so [reset_if_necessary] still advances the run and the computation is retried
+     instead of being served stale from the cache. *)
+  Memo.reset_if_necessary Memo.Invalidation.empty;
+  run_and_log_errors (Memo.Cell.read cell);
+  printf "calls = %d\n" !calls;
+  [%expect
+    {|
+    Error: { exn =
+               "Memo.Error.E { exn = \"Failure(\\\"boom\\\")\"; stack = [ (\"<unnamed>\", ()) ] }"
+           ; backtrace = ""
+           }
+    calls = 2
+    |}]
+;;
+
 let%expect_test "Var.Unit" =
   let var = Memo.Var.Unit.create () in
   let calls = ref 0 in

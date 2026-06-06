@@ -199,20 +199,14 @@ module M = struct
   end =
     Collect_errors_monoid
 
-  (* Restoring or computing a value can fail for two reasons:
-
-     - [Error]: the user-supplied function that was called to compute the value
-       raised one or more exceptions recorded in the [Collect_errors_monoid.t].
-
-     - [Cancelled]: the attempt was cancelled due to a dependency cycle.
-
-     Note that we plan to make [Cancelled] more general and store the reason for
-     cancellation: a dependency cycle or a request to cancel the current run. *)
+  (* Restoring or computing a value can fail when the user-supplied function raises one or
+     more exceptions, recorded in the [Collect_errors_monoid.t]. A computation cancelled due
+     to a dependency cycle is recorded as a non-reproducible [Error] whose exception set
+     holds the corresponding [Cycle_error.E]. *)
   and Value : sig
     type 'a t =
       | Ok of 'a
       | Error of Collect_errors_monoid.t
-      | Cancelled of { dependency_cycle : Cycle_error.t }
   end =
     Value
 
@@ -409,7 +403,6 @@ module Value = struct
       Fiber.reraise_all
         (Exn_set.to_list_map exns ~f:(fun exn ->
            { exn with exn = Error.extend_stack exn.exn ~stack_frame }))
-    | Cancelled { dependency_cycle } -> raise (Cycle_error.E dependency_cycle)
   ;;
 end
 
@@ -888,12 +881,17 @@ module Cached_value = struct
 
   let create_cancelled ~dependency_cycle =
     let now = Run.current () in
-    { value = Cancelled { dependency_cycle }
+    { value =
+        Error
+          { Collect_errors_monoid.exns =
+              Exn_set.singleton
+                (Exn_with_backtrace.capture (Cycle_error.E dependency_cycle))
+          ; reproducible = false
+          }
     ; runs = Run.Pair.create ~last_changed_at:now ~last_validated_at:now
     ; deps =
-        (* CR-someday amokhov: Dependencies of cancelled computations are not accurate,
-           so we store [Deps.empty] in this case. In future, it may be better to refactor
-           the code to avoid storing the list altogether in this case. *)
+        (* Dependencies of cancelled computations are not accurate, so we store
+           [Deps.empty] in this case. *)
         Deps.empty
     }
   ;;
@@ -906,8 +904,8 @@ module Cached_value = struct
 
   let value_changed (node : _ Dep_node.t) prev_value cur_value =
     match (prev_value : _ Value.t), (cur_value : _ Value.t) with
-    | (Cancelled _ | Error { reproducible = false; _ }), _
-    | _, (Cancelled _ | Error { reproducible = false; _ })
+    | Error { reproducible = false; _ }, _
+    | _, Error { reproducible = false; _ }
     | Error _, Ok _
     | Ok _, Error _ -> true
     | Ok prev_value, Ok cur_value ->
@@ -1092,13 +1090,10 @@ end = struct
     =
     fun ~cached_value ->
     match cached_value.value with
-    | Cancelled _dependency_cycle ->
-      (* Dependencies of cancelled computations are not accurate (in fact, they
-         are set to [Deps.empty]), so we can't use [deps_changed] in this
-         case. *)
-      Fiber.return (Cache_lookup.Out_of_date { old_value = Option.Unboxed.none })
     | Error { reproducible = false; _ } ->
-      (* We do not cache non-reproducible errors. *)
+      (* Non-reproducible errors are not restored from the cache. This includes the cycle
+         errors of cancelled computations, whose deps are inaccurate ([Deps.empty]) anyway,
+         so we must not use [Deps.changed_or_not] on them. *)
       Fiber.return (Cache_lookup.Out_of_date { old_value = Option.Unboxed.none })
     | Ok _ | Error { reproducible = true; _ } ->
       (* We cache reproducible errors just like normal values. We assume that
@@ -1217,7 +1212,7 @@ end = struct
     =
     fun ~dep_node ~dependency_cycle ->
     match dep_node.state with
-    | Cached_value { value = Cancelled _; _ } -> Fiber.return ()
+    | Cached_value { value = Error { reproducible = false; _ }; _ } -> Fiber.return ()
     | Cached_value _ | Out_of_date _ ->
       dep_node.state <- Cached_value (Cached_value.create_cancelled ~dependency_cycle);
       Fiber.return ()

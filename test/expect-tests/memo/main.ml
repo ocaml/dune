@@ -986,56 +986,56 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
   [%expect
     {|
     Dependency cycle detected:
-    - ("incrementing_chain_4_yes_cutoff", ())
-    - called by ("incrementing_chain_plus_input", 2)
-    - called by ("cycle_creator_no_cutoff", ())
+    - ("cycle_creator_no_cutoff", ())
     - called by ("incrementing_chain_1_no_cutoff", ())
     - called by ("incrementing_chain_2_yes_cutoff", ())
     - called by ("incrementing_chain_3_no_cutoff", ())
+    - called by ("incrementing_chain_4_yes_cutoff", ())
+    - called by ("incrementing_chain_plus_input", 2)
     f 2 = Error
             [ { exn =
                   "Cycle_error.E\n\
-                  \  [ (\"incrementing_chain_4_yes_cutoff\", ())\n\
-                  \  ; (\"incrementing_chain_plus_input\", 2)\n\
-                  \  ; (\"cycle_creator_no_cutoff\", ())\n\
+                  \  [ (\"cycle_creator_no_cutoff\", ())\n\
                   \  ; (\"incrementing_chain_1_no_cutoff\", ())\n\
                   \  ; (\"incrementing_chain_2_yes_cutoff\", ())\n\
                   \  ; (\"incrementing_chain_3_no_cutoff\", ())\n\
+                  \  ; (\"incrementing_chain_4_yes_cutoff\", ())\n\
+                  \  ; (\"incrementing_chain_plus_input\", 2)\n\
                   \  ]"
               ; backtrace = ""
               }
             ]
     Memo graph: 0/0/0 nodes/edges/blocked (restore), 0/0/0 nodes/edges/blocked (compute)
     Memo cycle detection graph: 0/0/0 nodes/edges/paths
-  |}];
+    |}];
   Memo.Metrics.reset ();
   evaluate_and_print summit_yes_cutoff 2;
   print_metrics ();
   [%expect
     {|
     Dependency cycle detected:
-    - ("incrementing_chain_4_no_cutoff", ())
-    - called by ("incrementing_chain_plus_input", 2)
-    - called by ("cycle_creator_yes_cutoff", ())
+    - ("cycle_creator_yes_cutoff", ())
     - called by ("incrementing_chain_1_yes_cutoff", ())
     - called by ("incrementing_chain_2_no_cutoff", ())
     - called by ("incrementing_chain_3_yes_cutoff", ())
+    - called by ("incrementing_chain_4_no_cutoff", ())
+    - called by ("incrementing_chain_plus_input", 2)
     f 2 = Error
             [ { exn =
                   "Cycle_error.E\n\
-                  \  [ (\"incrementing_chain_4_no_cutoff\", ())\n\
-                  \  ; (\"incrementing_chain_plus_input\", 2)\n\
-                  \  ; (\"cycle_creator_yes_cutoff\", ())\n\
+                  \  [ (\"cycle_creator_yes_cutoff\", ())\n\
                   \  ; (\"incrementing_chain_1_yes_cutoff\", ())\n\
                   \  ; (\"incrementing_chain_2_no_cutoff\", ())\n\
                   \  ; (\"incrementing_chain_3_yes_cutoff\", ())\n\
+                  \  ; (\"incrementing_chain_4_no_cutoff\", ())\n\
+                  \  ; (\"incrementing_chain_plus_input\", 2)\n\
                   \  ]"
               ; backtrace = ""
               }
             ]
     Memo graph: 0/0/0 nodes/edges/blocked (restore), 0/0/0 nodes/edges/blocked (compute)
     Memo cycle detection graph: 0/0/0 nodes/edges/paths
-  |}];
+    |}];
   Memo.reset Memo.Invalidation.empty;
   evaluate_and_print summit_no_cutoff 0;
   print_metrics ();
@@ -1257,8 +1257,8 @@ let%expect_test "cancelling a computing node wakes waiters" =
     - ("C", ())
     - called by ("A", ())
     Dependency cycle detected:
-    - ("A", ())
-    - called by ("C", ())
+    - ("C", ())
+    - called by ("A", ())
     |}]
 ;;
 

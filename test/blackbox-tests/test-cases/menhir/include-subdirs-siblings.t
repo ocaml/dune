@@ -1,8 +1,5 @@
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.21)
-  > (using menhir 3.0)
-  > EOF
+  $ make_menhir_project 3.21 3.0
 
   $ cat >dune <<EOF
   > (include_subdirs qualified)

@@ -11,10 +11,7 @@ must invalidate when the dep's interface changes.
 
 Code under test: `src/dune_rules/menhir/menhir_rules.ml`.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.24)
-  > (using menhir 3.0)
-  > EOF
+  $ make_menhir_project 3.24 3.0
 
 `dep` is a sibling library exposing a value the parent library's
 menhir grammar will reference. `dep.ml` carries both `value` and

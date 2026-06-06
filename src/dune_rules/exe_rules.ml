@@ -101,9 +101,7 @@ let o_files
   then Memo.return @@ Mode.Map.empty
   else (
     let has_foreign_stubs = not (List.is_empty exes.buildable.foreign_stubs) in
-    let what =
-      if has_foreign_stubs then "stubs" else "archives"
-    in
+    let what = if has_foreign_stubs then "stubs" else "archives" in
     let native_only_hint =
       Pp.text "If you only need to build a native executable use \"(modes exe)\"."
     in
@@ -112,8 +110,8 @@ let o_files
       then
         [ native_only_hint
         ; Pp.text
-            "To build a bytecode executable with foreign stubs, put the stubs \
-             in a library and depend on that library."
+            "To build a bytecode executable with foreign stubs, put the stubs in a \
+             library and depend on that library."
         ]
       else [ native_only_hint ]
     in

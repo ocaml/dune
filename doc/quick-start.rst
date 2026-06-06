@@ -382,6 +382,8 @@ this ``dune`` file:
       (flags -I/blah/include))
      (c_library_flags (-lblah)))
 
+.. _defining-library-with-c-stubs-pkg-config:
+
 Defining a Library with C Stubs using ``pkg-config``
 ====================================================
 

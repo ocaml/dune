@@ -24,20 +24,21 @@ val equal : t -> t -> bool
 val to_dyn : t -> Dyn.t
 
 (** Nice description of the current tip *)
-val describe : t -> string option Memo.t
+val describe : t -> needed_for:string -> string option Memo.t
 
 (** String uniquely identifying the current head commit *)
-val commit_id : t -> string option Memo.t
+val commit_id : t -> needed_for:string -> string option Memo.t
 
 (** Short git SHA of the current head commit, or [None] if unavailable *)
 val git_sha_short : t -> string option Memo.t
 
 (** List of files committed in the repo *)
-val files : t -> Path.Source.t list Memo.t
+val files : t -> needed_for:string -> Path.Source.t list Memo.t
 
 (** VCS commands *)
 val git : Path.t Lazy.t
 
+val git_for : needed_for:string -> Path.t
 val hg : Path.t Lazy.t
 
 (** Valid git exit codes *)

@@ -5,10 +5,7 @@ run time. This test makes sure that this is recorded as a dependency.
   > (mdx (preludes prelude.ml))
   > EOF
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.6)
-  > (using mdx 0.3)
-  > EOF
+  $ make_mdx_project 3.6 0.3
 
   $ cat > prelude.ml << EOF
   > let foo () = 1

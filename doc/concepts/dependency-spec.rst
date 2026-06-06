@@ -23,7 +23,15 @@ Dependencies in ``dune`` files can be specified using one of the following:
 - ``(glob_files_rec <glob>)`` is the recursive version of
   ``(glob_files <glob>)``. See the :ref:`glob <glob>` for details.
 - ``(source_tree <dir>)`` depends on all source files in the subtree with root
-  ``<dir>``.
+  ``<dir>``. A source file is a file that exists in the source tree rather than
+  a target produced by Dune. Source files may still be raw data: for example,
+  files in :doc:`/reference/dune/data_only_dirs` directories are source files,
+  even though Dune does not interpret ``dune`` files in those directories.
+
+  Dune does not traverse directories excluded by the
+  :doc:`/reference/dune/dirs` stanza. In addition, files and directories whose
+  names begin with ``.`` are
+  ignored by ``source_tree`` by default; see :ref:`source-tree-hidden-files`.
 - ``(universe)`` depends on everything in the universe. This is for
   cases where dependencies are too hard to specify. Note that Dune
   will not be able to cache the result of actions that depend on the

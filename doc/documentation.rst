@@ -60,6 +60,16 @@ But these libraries will not be in the main HTML listing above, since they
 don't belong to any particular package, but the generated HTML will still be
 found in ``_build/default/_doc/_html/<library>``.
 
+Documentation for public libraries can also be generated as JSON files with the
+:doc:`/reference/aliases/doc-json` alias:
+
+.. code:: console
+
+  $ dune build @doc-json
+
+These files are produced by ``odoc`` and can be used by external tools or
+custom documentation websites.
+
 
 Documentation Stanza: Examples
 ------------------------------

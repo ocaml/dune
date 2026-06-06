@@ -305,9 +305,13 @@ And build it with:
 
   $ dune build hello_world.bc
 
-The executable will be built as ``_build/default/hello_world.bc``.
-The executable can be built and run in a single
-step with ``dune exec ./hello_world.bc``. This bytecode version allows the usage of 
+The executable will be built as ``_build/default/hello_world.bc``. If the
+executable stanza is in a subdirectory, include that path in the target. For
+example, an executable named ``main`` declared in ``bin/dune`` is built with
+``dune build bin/main.bc``.
+
+The executable can be built and run in a single step with
+``dune exec ./hello_world.bc``. This bytecode version allows the usage of
 ``ocamldebug``.
 
 Setting the OCaml Compilation Flags Globally

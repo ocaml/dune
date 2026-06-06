@@ -95,8 +95,14 @@ value dune_wait4(value v_pid, value flags) {
   struct rusage ru;
 
   caml_enter_blocking_section();
+  // On Solaris/illumos, wait4(-1, ...) semantics are different, so in
+  // that case use 0 and effectively act the same as wait3().
+#if defined(__sun)
+  pid = wait4(pid == -1 ? 0 : pid, &status, cv_flags, &ru);
+#else
   // returns the pid of the terminated process, or -1 on error
   pid = wait4(pid, &status, cv_flags, &ru);
+#endif
   int wait_errno = errno;
   time_ns = dune_clock_gettime_ns();
   caml_leave_blocking_section();

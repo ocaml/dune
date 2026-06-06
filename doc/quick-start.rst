@@ -463,7 +463,8 @@ And run the tests with:
   $ dune runtest
 
 It will run the test program (the main module is ``my_test_program.ml``) and
-error if it exits with a nonzero code.
+error if it exits with a nonzero code. See :ref:`writing-tests` for a more
+complete guide to testing with Dune.
 
 In addition, if a ``my_test_program.expected`` file exists, it will be compared
 to the standard output of the test program and the differences will be

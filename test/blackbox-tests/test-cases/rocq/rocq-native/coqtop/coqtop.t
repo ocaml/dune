@@ -7,10 +7,7 @@ Running the Coq Toplevel on a file with a dependency.
   $ cat >foo.v <<EOF
   > Definition mynat := nat.
   > EOF
-  $ cat >dune-project <<EOF
-  > (lang dune 3.21)
-  > (using rocq 0.11)
-  > EOF
+  $ make_rocq_project 3.21 0.11
   $ cat >dune <<EOF
   > (rocq.theory
   >  (name basic))

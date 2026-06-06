@@ -100,16 +100,29 @@ let o_files
   if not (Executables.has_foreign exes)
   then Memo.return @@ Mode.Map.empty
   else (
+    let has_foreign_stubs = not (List.is_empty exes.buildable.foreign_stubs) in
     let what =
-      if List.is_empty exes.buildable.foreign_stubs then "archives" else "stubs"
+      if has_foreign_stubs then "stubs" else "archives"
+    in
+    let native_only_hint =
+      Pp.text "If you only need to build a native executable use \"(modes exe)\"."
+    in
+    let hints =
+      if has_foreign_stubs
+      then
+        [ native_only_hint
+        ; Pp.text
+            "To build a bytecode executable with foreign stubs, put the stubs \
+             in a library and depend on that library."
+        ]
+      else [ native_only_hint ]
     in
     if List.exists linkages ~f:Exe.Linkage.is_byte
     then
       User_error.raise
         ~loc:exes.buildable.loc
         [ Pp.textf "Pure bytecode executables cannot contain foreign %s." what ]
-        ~hints:
-          [ Pp.text "If you only need to build a native executable use \"(modes exe)\"." ];
+        ~hints;
     let* foreign_sources =
       let+ foreign_sources = Dir_contents.foreign_sources dir_contents in
       let first_exe = first_exe exes in

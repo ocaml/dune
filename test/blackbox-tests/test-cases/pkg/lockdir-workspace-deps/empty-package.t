@@ -18,11 +18,7 @@ as a dependency:
 
 A rule depends on the lock-dir package:
 
-  $ cat > dune <<EOF
-  > (rule
-  >  (deps (package consumer))
-  >  (action (with-stdout-to out (echo "ok"))))
-  > EOF
+  $ write_lockdir_consumer_rule
 
 Lock-dir validation does not currently recognise workspace packages as
 valid dependency targets:

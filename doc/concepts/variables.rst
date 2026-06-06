@@ -66,6 +66,22 @@ Dune supports the following variables:
   the same as ``ocaml-config:model``.
 - ``system`` is the name of the OS the build is targeting. This is the same as
   ``ocaml-config:system``.
+
+The target values of ``os_type``, ``architecture``, ``model``, and ``system``
+come from the OCaml compiler configuration used by the build context. For
+example, to inspect the values for the current context, run:
+
+.. code:: console
+
+   $ dune exec -- ocamlc -config-var os_type
+   $ dune exec -- ocamlc -config-var architecture
+   $ dune exec -- ocamlc -config-var model
+   $ dune exec -- ocamlc -config-var system
+
+On a typical Linux switch these may print ``Unix``, ``x86_64`` or ``arm64``,
+``default``, and ``linux`` respectively. When writing Dune files, the
+corresponding ``%{ocaml-config:...}`` variables expand to the same values.
+
 - ``ignoring_promoted_rules`` is ``true`` if
   ``--ignore-promoted-rules`` was passed on the command line and
   ``false`` otherwise.

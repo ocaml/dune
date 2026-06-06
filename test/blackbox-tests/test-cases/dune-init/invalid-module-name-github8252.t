@@ -8,3 +8,8 @@
   Hint: M01_module would be a correct module name
   Leaving directory '01_module'
   [1]
+
+The aborted init should not leave behind the project directory (#9963).
+
+  $ dune_cmd exists 01_module
+  true

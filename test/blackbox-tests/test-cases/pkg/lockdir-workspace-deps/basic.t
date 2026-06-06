@@ -1,19 +1,6 @@
 A lock-dir package depends on a workspace library package.
 
-  $ make_dune_project 3.24
-  $ cat >> dune-project <<EOF
-  > (package (name workspace-lib))
-  > EOF
-
-  $ mkdir src
-  $ cat > src/dune <<EOF
-  > (library
-  >  (name workspace_lib)
-  >  (public_name workspace-lib))
-  > EOF
-  $ cat > src/workspace_lib.ml <<EOF
-  > let greeting = "Hello from workspace-lib!"
-  > EOF
+  $ make_workspace_lib_package
 
 The lock dir contains one package "consumer" that declares
 "workspace-lib" as a dependency:
@@ -27,11 +14,7 @@ The lock dir contains one package "consumer" that declares
 
 A rule depends on the lock-dir package:
 
-  $ cat > dune <<EOF
-  > (rule
-  >  (deps (package consumer))
-  >  (action (with-stdout-to out (echo "ok"))))
-  > EOF
+  $ write_lockdir_consumer_rule
 
 Lock-dir validation does not currently recognise workspace packages as
 valid dependency targets:

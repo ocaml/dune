@@ -108,6 +108,27 @@ make_dune_project_with_package() {
 	EOF
 }
 
+make_workspace_lib_package() {
+  make_dune_project_with_package 3.24 workspace-lib
+  mkdir src
+  cat > src/dune <<-'EOF'
+	(library
+	 (name workspace_lib)
+	 (public_name workspace-lib))
+	EOF
+  cat > src/workspace_lib.ml <<-'EOF'
+	let greeting = "Hello from workspace-lib!"
+	EOF
+}
+
+write_lockdir_consumer_rule() {
+  cat > dune <<-'EOF'
+	(rule
+	 (deps (package consumer))
+	 (action (with-stdout-to out (echo "ok"))))
+	EOF
+}
+
 make_dune_project_with_extension() {
   local dune_version="$1"
   local extension="$2"

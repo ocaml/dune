@@ -1,20 +1,7 @@
 A lock-dir package depends on a workspace library and its build
 action inspects [OCAMLPATH].
 
-  $ make_dune_project 3.24
-  $ cat >> dune-project <<EOF
-  > (package (name workspace-lib))
-  > EOF
-
-  $ mkdir src
-  $ cat > src/dune <<EOF
-  > (library
-  >  (name workspace_lib)
-  >  (public_name workspace-lib))
-  > EOF
-  $ cat > src/workspace_lib.ml <<EOF
-  > let greeting = "Hello from workspace-lib!"
-  > EOF
+  $ make_workspace_lib_package
 
 The lock dir contains one package "consumer" whose build action
 writes [OCAMLPATH] to a file and installs it. The intent is that the
@@ -33,11 +20,7 @@ layout was prepended.
 
 A rule depends on the lock-dir package:
 
-  $ cat > dune <<EOF
-  > (rule
-  >  (deps (package consumer))
-  >  (action (with-stdout-to out (echo "ok"))))
-  > EOF
+  $ write_lockdir_consumer_rule
 
 Lock-dir validation does not currently recognise workspace packages as
 valid dependency targets, so the consumer's build action never runs:

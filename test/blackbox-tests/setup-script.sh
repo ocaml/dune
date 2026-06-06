@@ -118,6 +118,16 @@ make_melange_project() {
 	EOF
 }
 
+make_rocq_project() {
+  local dune_version="$1"
+  local rocq_version="$2"
+
+  make_dune_project "$dune_version"
+  cat >> dune-project <<- EOF
+	(using rocq ${rocq_version})
+	EOF
+}
+
 make_sandboxed_dune() {
   {
     echo "#!$(command -v bash)"

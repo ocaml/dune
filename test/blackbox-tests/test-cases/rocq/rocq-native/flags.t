@@ -1,9 +1,6 @@
 Test cases to check Coq's flag setting is correct:
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.21)
-  > (using rocq 0.11)
-  > EOF
+  $ make_rocq_project 3.21 0.11
 
   $ cat > foo.v <<EOF
   > Definition t := 3.

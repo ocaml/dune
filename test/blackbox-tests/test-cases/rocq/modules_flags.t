@@ -1,9 +1,6 @@
 Reproducing test case for https://github.com/ocaml/dune/issues/12638.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.21)
-  > (using rocq 0.11)
-  > EOF
+  $ make_rocq_project 3.21 0.11
 
   $ touch foo.v bar.v
 

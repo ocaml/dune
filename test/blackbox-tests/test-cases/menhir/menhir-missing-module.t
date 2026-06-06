@@ -1,9 +1,6 @@
 Show error when menhir sources don't exist
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.22)
-  > (using menhir 3.0)
-  > EOF
+  $ make_menhir_project 3.22 3.0
 
 We add a `(menhir ..)` stanza in the group root dune file
 

@@ -5,10 +5,7 @@ from the grammar; for the type inference to succeed, dune must put the
 parent library's library deps on that mock compile's [-I] search path.
 This test guards against regressions in that wiring.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.23)
-  > (using menhir 3.0)
-  > EOF
+  $ make_menhir_project 3.23 3.0
 
 [dep] is a small library exposing a value that the parent library's
 menhir grammar will reference from a semantic action:

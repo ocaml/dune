@@ -1,9 +1,6 @@
 Show an edge case of `(include_subdirs ..)` and ocamllex / menhir
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.22)
-  > (using menhir 3.0)
-  > EOF
+  $ make_menhir_project 3.22 3.0
 
   $ mkdir -p gen
 

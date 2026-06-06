@@ -128,6 +128,16 @@ make_rocq_project() {
 	EOF
 }
 
+make_menhir_project() {
+  local dune_version="$1"
+  local menhir_version="$2"
+
+  make_dune_project "$dune_version"
+  cat >> dune-project <<- EOF
+	(using menhir ${menhir_version})
+	EOF
+}
+
 make_sandboxed_dune() {
   {
     echo "#!$(command -v bash)"

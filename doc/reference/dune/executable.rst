@@ -70,6 +70,10 @@ files for executables. See
 - ``(link_flags <flags>)`` specifies additional flags to pass to the linker.
   This field supports ``(:include ...)`` forms.
 
+  Some dependencies require Dune to link executables with ``-linkall`` even if
+  it is not present in ``link_flags``. This is currently the case for
+  ``dune-site``, ``dune-site.plugins``, and ``findlib.dynload``.
+
 - ``(link_deps (<deps-conf list>))`` specifies the dependencies used only by the
   linker, i.e., when using a version script. See
   :doc:`/concepts/dependency-spec` for more details.

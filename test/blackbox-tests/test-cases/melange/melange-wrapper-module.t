@@ -1,10 +1,7 @@
 Show that Dune shouldn't emit a JS file for the `melange.emit` module group
 wrapper
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.18)
-  > (using melange 0.1)
-  > EOF
+  $ make_melange_project 3.18 0.1
 
   $ cat > dune <<EOF
   > (melange.emit

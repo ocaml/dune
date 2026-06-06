@@ -13,10 +13,7 @@ Melange compilation.
   [1]
   $ rm -rf old
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.24)
-  > (using melange 0.1)
-  > EOF
+  $ make_melange_project 3.24 0.1
   $ mkdir app
   $ cat > app/dune <<EOF
   > (library

@@ -2,10 +2,7 @@ Test Melange dependent recompilation
 
 Set up and build a Melange library and `melange.emit`
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.13)
-  > (using melange 0.1)
-  > EOF
+  $ make_melange_project 3.13 0.1
 
   $ mkdir lib
   $ cat > lib/dune <<EOF

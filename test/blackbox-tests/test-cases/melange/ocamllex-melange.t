@@ -1,10 +1,7 @@
 Test `(include_subdirs qualified)` in the presence of invalid module name
 directories that don't contain source files
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.22)
-  > (using melange 1.0)
-  > EOF
+  $ make_melange_project 3.22 1.0
 
   $ cat > dune <<EOF
   > (library (name foo) (modes melange))

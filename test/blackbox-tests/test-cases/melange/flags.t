@@ -1,9 +1,6 @@
 Test flags and compile_flags fields on melange.emit stanza
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.8)
-  > (using melange 0.1)
-  > EOF
+  $ make_melange_project 3.8 0.1
 
 Using flags field in melange.emit stanzas is not supported
 

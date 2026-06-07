@@ -1,7 +1,4 @@
 (cram
- (deps bin/sub_process.exe))
-
-(cram
  (applies_to stray-process)
  (enabled_if
   (<> %{system} macosx)))

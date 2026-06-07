@@ -411,6 +411,30 @@ module Make_fakenode_modules = struct
   let () = register name of_args run
 end
 
+module Spawn_stray_process = struct
+  let name = "spawn-stray-process"
+
+  let of_args = function
+    | [] -> `Parent
+    | [ "sub" ] -> `Child
+    | _ -> raise (Arg.Bad "Usage: dune_cmd spawn-stray-process")
+  ;;
+
+  let run = function
+    | `Parent ->
+      let command = Stdlib.Filename.quote_command Sys.executable_name [ name; "sub" ] in
+      exit (Sys.command command)
+    | `Child ->
+      let oc = open_out (Sys.getenv "BEACON_FILE") in
+      Fun.protect
+        ~finally:(fun () -> close_out_noerr oc)
+        (fun () -> Printf.fprintf oc "%d" (Unix.getpid ()));
+      Unix.sleep max_int
+  ;;
+
+  let () = register name of_args run
+end
+
 module Override_on = struct
   module Configurator = Configurator.V1
 

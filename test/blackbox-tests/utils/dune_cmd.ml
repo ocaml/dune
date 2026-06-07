@@ -435,6 +435,34 @@ module Spawn_stray_process = struct
   let () = register name of_args run
 end
 
+module Sigterm_cleanup_sleeper = struct
+  let name = "sigterm-cleanup-sleeper"
+
+  let of_args = function
+    | [] -> ()
+    | _ -> raise (Arg.Bad "Usage: dune_cmd sigterm-cleanup-sleeper")
+  ;;
+
+  let touch dir file contents =
+    let path = Filename.concat dir file in
+    Io.String_path.write_file path contents
+  ;;
+
+  let run () =
+    let dir = Sys.getenv "TEST_DIR" in
+    Sys.set_signal Sys.sigint Sys.Signal_ignore;
+    Sys.set_signal
+      Sys.sigterm
+      (Sys.Signal_handle (fun _ -> touch dir "cleanup_ran" "cleanup ran\n"));
+    touch dir "ready" "";
+    while true do
+      Unix.sleepf 0.1
+    done
+  ;;
+
+  let () = register name of_args run
+end
+
 module Override_on = struct
   module Configurator = Configurator.V1
 

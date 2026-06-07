@@ -21,13 +21,24 @@ or, for more complex forms that take an argument:
 In order to write a plain ``%{``, you need to write ``\%{`` in a
 string.
 
+Unless otherwise noted, path variables in actions refer to paths in the current
+build context and are rendered relative to the action's current working
+directory. By default, an action in ``src/foo/dune`` runs from
+``_build/default/src/foo``, so ``%{workspace_root}`` may be rendered as
+``../..``. These variables do not point directly to your source checkout. If an
+action needs to read a source file, declare the file as a dependency and refer
+to it with a dependency variable such as ``%{dep:path/to/file}``. This lets
+Dune track the dependency and make it available to sandboxed actions.
+
 Dune supports the following variables:
 
-- ``project_root`` is the root of the current project. It is typically the root
-  of your project, and as long as you have a ``dune-project`` file there,
-  ``project_root`` is independent of the workspace configuration.
-- ``workspace_root`` is the root of the current workspace. Note that
-  the value of ``workspace_root`` isn't constant and depends on
+- ``project_root`` is the root of the current project in the current build
+  context. It is typically the root of your project under ``_build/<context>``,
+  and as long as you have a ``dune-project`` file there, ``project_root`` is
+  independent of the workspace configuration.
+- ``workspace_root`` is the root of the current workspace in the current build
+  context. For the default build context this is typically ``_build/default``.
+  Note that the value of ``workspace_root`` isn't constant and depends on
   whether your project is vendored or not.
 -  ``cc`` is the C compiler command line (list made of the compiler
    name followed by its flags) that will be used to compile foreign code. For

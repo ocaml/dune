@@ -1,13 +1,11 @@
 Shows what happens when Dune tries to kill an action that has sub-processes.
 
-  $ export PATH=$PWD/bin:$PATH
-
   $ echo '(lang dune 3.0)' > dune-project
   $ cat >dune <<"EOF"
   > (rule
   >  (action
   >   (progn
-  >    (run sub_process.exe)
+  >    (run dune_cmd spawn-stray-process)
   >    (with-stdout-to x (echo "")))))
   > EOF
 
@@ -16,7 +14,7 @@ Shows what happens when Dune tries to kill an action that has sub-processes.
   $ start_dune
   $ build x >/dev/null 2>&1 &
 
-sub_process.exe spawns a sub-process that creates $BEACON_FILE. We
+dune_cmd spawns a sub-process that creates $BEACON_FILE. We
 wait for the beacon to be notified that the sub-process has started:
 
   $ with_timeout dune_cmd wait-for-file-to-appear $BEACON_FILE

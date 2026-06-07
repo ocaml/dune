@@ -5,7 +5,7 @@ module Error = Build_system_error
 module Progress = struct
   type t =
     { number_of_rules_discovered : int
-    ; number_of_rules_executed : int
+    ; number_of_rules_validated : int
     ; number_of_rules_failed : int
     }
 
@@ -14,8 +14,8 @@ module Progress = struct
       "Progress"
       [ Repr.field "number_of_rules_discovered" Repr.int ~get:(fun t ->
           t.number_of_rules_discovered)
-      ; Repr.field "number_of_rules_executed" Repr.int ~get:(fun t ->
-          t.number_of_rules_executed)
+      ; Repr.field "number_of_rules_validated" Repr.int ~get:(fun t ->
+          t.number_of_rules_validated)
       ; Repr.field "number_of_rules_failed" Repr.int ~get:(fun t ->
           t.number_of_rules_failed)
       ]
@@ -29,9 +29,14 @@ module Progress = struct
 
   let init =
     { number_of_rules_discovered = 0
-    ; number_of_rules_executed = 0
+    ; number_of_rules_validated = 0
     ; number_of_rules_failed = 0
     }
+  ;;
+
+  (* Rules that have become live but whose value has not yet been validated this run. *)
+  let number_of_rules_in_progress t =
+    t.number_of_rules_discovered - t.number_of_rules_validated
   ;;
 end
 
@@ -89,45 +94,57 @@ module State = struct
       let repr = repr
     end)
 
-  let t = Fiber.Svar.create Initializing
+  (* The build progress lives in a plain [ref], not a [Fiber.Svar.t], so that [on_rule_event]
+     (a synchronous Memo callback) can update it. Observers (the status line, the RPC server)
+     read it directly or poll it; see [Rpc.Server.Source.Computed]. *)
+  let t = ref Initializing
 
   (* This mutable table is safe: it maps paths to lazily created mutexes. *)
   let locks : (Path.t, Fiber.Mutex.t) Table.t = Table.create (module Path) 32
 
   (* This mutex ensures that at most one [run] is running in parallel. *)
   let build_mutex = Fiber.Mutex.create ()
-  let reset_progress () = Svar.write t (Building Progress.init)
-  let set what = Svar.write t what
+  let reset_progress () = t := Building Progress.init
+  let set what = t := what
 
   let update_build_progress_exn ~f =
-    let current = Svar.read t in
-    match current with
-    | Building current -> Svar.write t @@ Building (f current)
+    match !t with
+    | Building current -> t := Building (f current)
     | other ->
       Code_error.raise
         "Unexpected build progress state (expected [Building _])"
         [ "current", to_dyn other ]
   ;;
 
-  let incr_rule_done_exn () =
-    update_build_progress_exn ~f:(fun p ->
-      { p with number_of_rules_executed = p.number_of_rules_executed + 1 })
+  (* Like [update_build_progress_exn] but a no-op outside of a running build. Used by
+     [on_rule_event], which can fire from tests that drive the build engine directly. *)
+  let update_build_progress ~f =
+    match !t with
+    | Building progress -> t := Building (f progress)
+    | Initializing
+    | Restarting_current_build
+    | Build_succeeded__now_waiting_for_changes
+    | Build_failed__now_waiting_for_changes -> ()
   ;;
 
-  let start_rule_exn () =
-    update_build_progress_exn ~f:(fun p ->
-      { p with number_of_rules_discovered = p.number_of_rules_discovered + 1 })
+  (* Fired by Memo for rule and anonymous-action nodes. [Live] fires when a node becomes
+     live in the current run, so [number_of_rules_discovered] counts every live rule,
+     including ones restored from the cache - the true total. [Validated] fires when a
+     node's value is established for the run, advancing [number_of_rules_validated]. *)
+  let on_rule_event _input (event : Memo.Event.t) =
+    update_build_progress ~f:(fun p ->
+      match event with
+      | Live -> { p with number_of_rules_discovered = p.number_of_rules_discovered + 1 }
+      | Validated ->
+        { p with number_of_rules_validated = p.number_of_rules_validated + 1 })
   ;;
 
   let errors = Svar.create Error.Set.empty
   let reset_errors () = Svar.write errors Error.Set.empty
 
   let add_errors error_list =
-    let open Fiber.O in
-    let* () =
-      update_build_progress_exn ~f:(fun p ->
-        { p with number_of_rules_failed = p.number_of_rules_failed + 1 })
-    in
+    update_build_progress_exn ~f:(fun p ->
+      { p with number_of_rules_failed = p.number_of_rules_failed + 1 });
     List.fold_left error_list ~init:(Svar.read errors) ~f:Error.Set.add
     |> Svar.write errors
   ;;
@@ -278,7 +295,7 @@ module Internal = struct
   let report_evaluated_rule_exn () =
     Dune_trace.emit Debug (fun () ->
       let rule_total =
-        match Fiber.Svar.read State.t with
+        match !State.t with
         | Building progress -> progress.number_of_rules_discovered
         | _ -> assert false
       in
@@ -506,11 +523,6 @@ module Internal = struct
 
   and execute_rule_impl ~rule_kind rule =
     let { Rule.id = _; targets; mode; action; info = _; loc } = rule in
-    (* We run [State.start_rule_exn ()] entirely for its side effect, so one
-       might be tempted to use [Memo.of_non_reproducible_fiber] here but that is
-       wrong, because that would force us to rerun [execute_rule_impl] on every
-       incremental build. *)
-    let* () = Memo.of_reproducible_fiber (State.start_rule_exn ()) in
     let head_target = Targets.Validated.head targets in
     let* execution_parameters =
       match Dpath.Target_dir.of_target targets.root with
@@ -694,13 +706,12 @@ module Internal = struct
             ~targets_digest:(Targets.Produced.digest produced_targets);
           Fiber.return produced_targets
       in
-      let* () =
+      let+ () =
         promote_targets
           ~rule_mode:mode
           ~targets:produced_targets
           ~promote_source:config.promote_source
       in
-      let+ () = State.incr_rule_done_exn () in
       produced_targets)
     (* jeremidimino: We need to include the dependencies discovered while
        running the action here. Otherwise, package dependencies are broken in
@@ -983,6 +994,7 @@ module Internal = struct
          "execute-action"
          ~input:(module Anonymous_action)
          ~cutoff:String.equal
+         ~on_event:State.on_rule_event
          execute_action_generic_stage2_impl)
 
   and eval_pred_memo =
@@ -1016,6 +1028,7 @@ module Internal = struct
       (Memo.create
          "execute-rule"
          ~input:(module Rule)
+         ~on_event:State.on_rule_event
          (execute_rule_impl ~rule_kind:Normal_rule))
   ;;
 
@@ -1157,7 +1170,7 @@ let run_with_error_collection ?restart_started_at ~build collect_errors =
        in the [_build] directory. For now, it's unclear if optimising this is
        worth the effort. *)
     Fs_memo.invalidate_cached_timestamps ();
-    let* () = State.reset_progress () in
+    State.reset_progress ();
     let* () = State.reset_errors () in
     let* outcome = collect_errors () in
     Dtemp.clear ();
@@ -1170,8 +1183,8 @@ let run_with_error_collection ?restart_started_at ~build collect_errors =
       match outcome with
       | Ok res ->
         finalize_diff_promotion ();
-        let+ () = State.set Build_succeeded__now_waiting_for_changes in
-        Ok res
+        State.set Build_succeeded__now_waiting_for_changes;
+        Fiber.return (Ok res)
       | Error exns ->
         handle_final_exns exns;
         finalize_diff_promotion ();
@@ -1180,8 +1193,8 @@ let run_with_error_collection ?restart_started_at ~build collect_errors =
           then State.Restarting_current_build
           else Build_failed__now_waiting_for_changes
         in
-        let+ () = State.set final_status in
-        Error `Already_reported
+        State.set final_status;
+        Fiber.return (Error `Already_reported)
     in
     Metrics.reset ();
     let+ () = Scheduler.flush_file_watcher () in

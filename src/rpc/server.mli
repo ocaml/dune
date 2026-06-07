@@ -72,6 +72,21 @@ module Session : sig
   end
 end
 
+(** A source of state observed by long polling. [Svar] blocks in [wait] until the value
+    changes; [Computed] reads the value from a thunk and polls it every [poll_every] (used
+    for state held in a plain [ref], which cannot wake waiters on its own). *)
+module Source : sig
+  type 'a t =
+    | Svar of 'a Fiber.Svar.t
+    | Computed of
+        { get : unit -> 'a
+        ; poll_every : Time.Span.t
+        }
+
+  val read : 'a t -> 'a
+  val wait : 'a t -> until:('a -> bool) -> unit Fiber.t
+end
+
 module Handler : sig
   (** A handler defines everything necessary to serve a session. It contains
 
@@ -126,14 +141,14 @@ module Handler : sig
       according to the metadata [decl]. *)
   val declare_request : 's t -> ('a, 'b) Decl.request -> unit
 
-  (** [implement_long_poll t proc_diff svar ~equal ~diff] will implement long
-      polling routines to sync the state variable [svar]. [equal] is used to
+  (** [implement_long_poll t proc_diff source ~equal ~diff] will implement long
+      polling routines to sync the state observed through [source]. [equal] is used to
       prevent updates that do not modify the state. [diff] is used to generate
       efficient operations to bring the state up to date. *)
   val implement_long_poll
     :  _ t
     -> 'diff Procedures.Poll.t
-    -> 'state Fiber.Svar.t
+    -> 'state Source.t
     -> equal:('state -> 'state -> bool)
     -> diff:(last:'state option -> now:'state -> 'diff)
     -> unit

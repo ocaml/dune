@@ -9,7 +9,7 @@ Dune not recognizing it
   >  (targets
   >   (dir fakenode_modules))
   >  (action
-  >   (run ./fakenpm.exe)))
+  >   (run dune_cmd make-fakenode-modules)))
   > EOF
   dune: Permission denied
   [1]

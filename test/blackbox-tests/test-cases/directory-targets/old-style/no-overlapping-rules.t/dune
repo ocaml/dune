@@ -1,10 +1,6 @@
-(executable
- (name foo)
- (libraries unix))
-
 (rule
  (targets dir)
- (action (run ./foo.exe dir)))
+ (action (run dune_cmd make-dir-with-files dir)))
 
 (alias
  (name default)

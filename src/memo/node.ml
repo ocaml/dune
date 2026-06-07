@@ -6,6 +6,7 @@ module Console = Console
 module Debug = Memo_debug
 module Event = Spec.Event
 include Fiber
+open Fiber.O
 module Id = Id.Make ()
 
 module M = struct
@@ -463,4 +464,272 @@ module Table = struct
     { spec : ('input, 'output) Spec.t
     ; cache : ('input, ('input, 'output) Dep_node.t) Store.t
     }
+end
+
+module Stack_frame_with_state : sig
+  type phase =
+    | Restore_from_cache
+    | Compute
+
+  type t
+
+  val to_dyn : t -> Dyn.t
+
+  (* Create a new stack frame related to restoring or computing a [dep_node]. *)
+  val create : dag_node:Lazy_dag_node.t -> phase -> dep_node:_ Dep_node.t -> t
+  val dep_node : t -> Dep_node.packed
+  val dag_node : t -> Dag.node
+  val children_added_to_dag : t -> Dag.Id.Set.t
+  val record_child_added_to_dag : t -> dag_node_id:Dag.Id.t -> unit
+end = struct
+  type phase =
+    | Restore_from_cache
+    | Compute
+
+  type t =
+    { dep_node : Dep_node.packed
+    ; dag_node : Lazy_dag_node.t
+    ; (* This [children_added_to_dag] table serves dual purpose:
+
+         (1) guarantee that we never add the same edge twice to the cycle
+         detection graph;
+
+         (2) to mark the "forcing" stacks in the computation graph that were
+         already added to the cycle detection graph.
+
+         For the purpose (2) a simple [bool] could suffice instead, but we can't
+         ensure (1) without an explicit set representation.
+
+         Implementation note: We use [Dag.Id.Set.t] instead of [Dag.Id.Table.t]
+         for two reasons: (i) the new cycle detection algorithm reduces the size
+         of the DAG, so [children_added_to_dag] will often be empty or small,
+         and in these cases [Set] is fast enough; (ii) we don't have hash sets
+         in Stdune and using [unit] hash maps is disturbing. *)
+      mutable children_added_to_dag : Dag.Id.Set.t
+    }
+
+  let to_dyn t = Dep_node.Packed.to_dyn_without_state t.dep_node
+
+  let create ~dag_node (_ : phase) ~dep_node =
+    { dep_node = Dep_node.T dep_node; dag_node; children_added_to_dag = Dag.Id.Set.empty }
+  ;;
+
+  let dep_node t = t.dep_node
+  let dag_node t = Lazy_dag_node.force t.dag_node ~dep_node:t.dep_node
+
+  let record_child_added_to_dag t ~dag_node_id =
+    t.children_added_to_dag <- Dag.Id.Set.add t.children_added_to_dag dag_node_id
+  ;;
+
+  let children_added_to_dag t = t.children_added_to_dag
+end
+
+module Call_stack = struct
+  type t = Stack_frame_with_state.t list
+
+  (* The variable holding the call stack for the current context. *)
+  let call_stack_var : t option Fiber.Var.t = Fiber.Var.create None
+  let get_call_stack () = Fiber.Var.get call_stack_var >>| Option.value ~default:[]
+
+  let get_call_stack_without_state () =
+    get_call_stack () >>| List.map ~f:Stack_frame_with_state.dep_node
+  ;;
+
+  let push_frame (frame : Stack_frame_with_state.t) f =
+    let* stack = get_call_stack () in
+    let stack = frame :: stack in
+    Fiber.Var.set call_stack_var (Some stack) (fun () -> Implicit_output.forbid f)
+  ;;
+
+  (* As soon as we hit a cycle error in the current run, we stop adding new edges to the
+     cycle detection DAG. Calling [Dag.add_assuming_missing] after a cycle has been
+     detected is unsafe: it can violate the DAG's internal invariants (and previously
+     caused Dune to hang). This holds the first (and only) cycle error we hit in the
+     current run; it is reset by [reset]. *)
+  let cycle_error_in_the_current_run : Cycle_error.t option ref = ref None
+  let reset_cycle_error_in_the_current_run () = cycle_error_in_the_current_run := None
+
+  (* Record a cycle error hit during the current run, returning the first cycle error
+     seen this run. Once any cycle is hit we report that same cycle for the rest of the
+     run (see [cycle_error_in_the_current_run]). *)
+  let note_cycle_error cycle =
+    match !cycle_error_in_the_current_run with
+    | Some first -> first
+    | None ->
+      cycle_error_in_the_current_run := Some cycle;
+      cycle
+  ;;
+
+  (* Add all edges leading from the root of the call stack to [dag_node] to the cycle
+     detection DAG. *)
+  let add_path_to ~dag_node : (unit, Cycle_error.t) result Fiber.t =
+    let+ stack = get_call_stack () in
+    (match !cycle_error_in_the_current_run with
+     | Some _ ->
+       (* We already hit a cycle in this run, so we must not touch the DAG again (see the
+          comment on [cycle_error_in_the_current_run]). Report the first cycle below. *)
+       ()
+     | None ->
+       let rec add_path_impl stack dag_node edges_added =
+         match stack with
+         | [] -> Ok (), edges_added
+         | frame :: stack ->
+           let dag_node_id = Dag.node_id dag_node in
+           let children_added_to_dag =
+             Stack_frame_with_state.children_added_to_dag frame
+           in
+           (match Dag.Id.Set.mem children_added_to_dag dag_node_id with
+            | true ->
+              (* Here we know that the current [frame] has already been traversed in a
+                 previous [add_path_to] call. Therefore, the DAG already contains all the
+                 edges that we will discover by continuing the recursive traversal. We
+                 might as well stop here and save time. *)
+              Ok (), edges_added
+            | false ->
+              let caller_dag_node = Stack_frame_with_state.dag_node frame in
+              (match Dag.add_assuming_missing caller_dag_node dag_node with
+               | exception Dag.Cycle cycle ->
+                 Error (List.map cycle ~f:Dag.value), edges_added
+               | () ->
+                 let edges_added = edges_added + 1 in
+                 let not_traversed_before = Dag.Id.Set.is_empty children_added_to_dag in
+                 Stack_frame_with_state.record_child_added_to_dag frame ~dag_node_id;
+                 (match not_traversed_before with
+                  | true -> add_path_impl stack caller_dag_node edges_added
+                  | false ->
+                    (* Same optimisation as above: no need to traverse again. *)
+                    Ok (), edges_added)))
+       in
+       let result, edges_added = add_path_impl stack dag_node 0 in
+       Counter.add Metrics.Cycle_detection.edges edges_added;
+       (match result with
+        | Ok () -> ()
+        | Error cycle_error -> cycle_error_in_the_current_run := Some cycle_error));
+    match !cycle_error_in_the_current_run with
+    | None -> Ok ()
+    | Some cycle_error -> Error cycle_error
+  ;;
+
+  (* Add a dependency on the [dep_node] from the caller, if there is one. *)
+end
+
+(* This module contains the essence of our cycle detection algorithm. Briefly,
+   the idea is as follows: whenever we are about to get blocked to wait for the
+   result of a computation that is currently running, we add the current call
+   stack to the cycle detection DAG. If this creates a cycle, we stop and report
+   a "dependency cycle" error; otherwise, we proceed with the blocking.
+
+   Below are some notes on how/why this algorithm works.
+
+   By "computation" we mean execution of a "shared fiber", which we represent by
+   a [Computation.t]. Computations can be in one of three states: not started,
+   running, and finished. Multiple readers may want the result of a computation:
+   the first reader "forces" its execution (moving it to the running state), and
+   subsequent readers either get blocked if the computation is still running, or
+   get the cached result if the computation has finished. Blocking can lead to a
+   deadlock if there is a dependency cycle between different computations. We
+   therefore need to check for cycles *before* getting blocked.
+
+   One simple algorithm to check for cycles is to create a DAG node for every
+   computation, and add a DAG edge whenever a computation would like to read the
+   result of another computation. If adding an edge creates a cycle, then we
+   stop and report an error instead of getting blocked and deadlocked.
+
+   A simple optimisation is to skip adding an edge when reading the result of a
+   computation that has already finished, since a computation can't finish if it
+   participates in a dependency cycle.
+
+   This algorithm is simple and it works, and Memo used it in the past. However,
+   the resulting DAG was often large, and so cycle detection was taking ~35% of
+   incremental zero rebuilds. As a further optimisation, we developed another
+   algorithm described below.
+
+   The DAG produced by the above algorithm can contain many uninteresting nodes
+   and edges. For example, every node will have at least one incoming edge that
+   is added when the corresponding computation was initially "forced". But these
+   "forcing edges" cannot cause deadlocks by themselves because the fiber that
+   forces a computation is not blocked, so it will keep making progress until it
+   encounters a blocking edge.
+
+   Here is an optimisation idea. Since blocking edges are the real cause of
+   deadlocks, we will focus our attention on them: when we hit a blocking edge,
+   we will add it to the DAG *along with the path that led us to it*. This path
+   is readily available to us in the form of the call stack.
+
+   Here is a proof sketch that this algorithm finds all possible cycles. We are
+   going to make use of the following three observations:
+
+   (1) If there is a cycle, it must contain at least one blocking edge.
+
+   (2) Every path that we are going to add to the DAG will contain a sequence of
+   forcing edges followed by one blocking edge.
+
+   (3) Every node has at most one incoming forcing edge. In other words, forcing
+   edges form a forest.
+
+   Now consider a reachable cycle in our computation graph. It contains at least
+   one blocking edge (1) and some number of forcing edges. All blocking edges of
+   the cycle will be added to the DAG because our algorithm unconditionally adds
+   them. What about the remaining forcing edges of the cycle? We claim that they
+   must be added to the DAG together with the blocking edges, because they will
+   be on the corresponding call stacks. This follows from (2) and (3): indeed,
+   if a blocking edge is preceded by a sequence of forcing edges on the cycle,
+   then there is only one possible call stack that contains that blocking edge
+   and it must pass through that sequence of forcing edges. There is no freedom
+   when we retrace the forcing edges back, since there is always at most one to
+   choose from. Therefore, our algorithm will add all the edges of the cycle to
+   the DAG: both blocking and forcing ones. *)
+module Computation = struct
+  include Computation0
+
+  (* Each computation should be forced exactly once. Not forcing it will lead to
+     a deadlock. Forcing it twice will lead to [Fiber.Ivar.fill] raising. *)
+  let force { ivar; dag_node } ~phase ~dep_node fiber =
+    let frame = Stack_frame_with_state.create phase ~dag_node ~dep_node in
+    let* result =
+      (* The only reason we make the stack [frame] available to the [fiber] is
+         to let the latter get the discovered dependencies [deps_rev]. *)
+      Call_stack.push_frame frame (fun () -> fiber frame)
+    in
+    match Fiber.Ivar.peek ivar with
+    | Some _ -> Fiber.return result
+    | None ->
+      let+ () = Fiber.Ivar.fill ivar result in
+      result
+  ;;
+
+  let read_but_first_check_for_cycles { ivar; dag_node } ~phase ~dep_node =
+    match Fiber.Ivar.peek ivar with
+    | Some res -> Fiber.return (Ok res)
+    | None ->
+      let dep_node = Dep_node.T dep_node in
+      let* immediate_self_cycle =
+        let+ stack = Call_stack.get_call_stack () in
+        let rec collect_callers_to_dep_node = function
+          | [] -> None
+          | frame :: rest ->
+            let stack_dep_node = Stack_frame_with_state.dep_node frame in
+            if Dep_node.Packed.equal stack_dep_node dep_node
+            then Some []
+            else (
+              match collect_callers_to_dep_node rest with
+              | None -> None
+              | Some callers -> Some (stack_dep_node :: callers))
+        in
+        match collect_callers_to_dep_node stack with
+        | None -> None
+        | Some callers -> Some (dep_node :: callers)
+      in
+      (match immediate_self_cycle with
+       | Some cycle -> Fiber.return (Error (Call_stack.note_cycle_error cycle))
+       | None ->
+         (match (phase : Stack_frame_with_state.phase) with
+          | Restore_from_cache -> Counter.incr Metrics.Restore.blocked
+          | Compute -> Counter.incr Metrics.Compute.blocked);
+         let dag_node = Lazy_dag_node.force dag_node ~dep_node in
+         Call_stack.add_path_to ~dag_node
+         >>= (function
+          | Ok () -> Fiber.Ivar.read ivar >>| Result.ok
+          | Error _ as cycle_error -> Fiber.return cycle_error))
+  ;;
 end

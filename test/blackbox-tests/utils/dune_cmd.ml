@@ -351,6 +351,66 @@ module Append_to_lines = struct
   let () = register name of_args run
 end
 
+module Make_dir_with_files = struct
+  let name = "make-dir-with-files"
+
+  let of_args = function
+    | [ dir ] -> dir
+    | _ -> raise (Arg.Bad "Usage: dune_cmd make-dir-with-files <dir>")
+  ;;
+
+  let write dir file =
+    let path = Filename.concat dir file in
+    Io.String_path.write_file path (file ^ " contents\n")
+  ;;
+
+  let run dir =
+    Unix.mkdir dir 0o777;
+    write dir "foo";
+    write dir "bar"
+  ;;
+
+  let () = register name of_args run
+end
+
+module Cat_dir = struct
+  let name = "cat-dir"
+
+  let of_args = function
+    | [ dir ] -> dir
+    | _ -> raise (Arg.Bad "Usage: dune_cmd cat-dir <dir>")
+  ;;
+
+  let run dir =
+    Sys.readdir dir
+    |> Array.to_list
+    |> List.sort ~compare:String.compare
+    |> List.iter ~f:(fun file ->
+      let contents = Io.String_path.read_file (Filename.concat dir file) in
+      Printf.printf "%s:\n%s\n" file contents)
+  ;;
+
+  let () = register name of_args run
+end
+
+module Make_fakenode_modules = struct
+  let name = "make-fakenode-modules"
+
+  let of_args = function
+    | [] -> ()
+    | _ -> raise (Arg.Bad "Usage: dune_cmd make-fakenode-modules")
+  ;;
+
+  let run () =
+    Unix.mkdir "fakenode_modules" 0o777;
+    Unix.mkdir "fakenode_modules/foo" 0o777;
+    Io.String_path.write_file "fakenode_modules/foo/file" "";
+    Unix.symlink "file" "./fakenode_modules/foo/bar"
+  ;;
+
+  let () = register name of_args run
+end
+
 module Override_on = struct
   module Configurator = Configurator.V1
 

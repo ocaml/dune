@@ -407,13 +407,13 @@ let check_supported ~dune_lang_ver t (loc, ver) =
   match Supported_versions.status t.supported_versions ver ~dune_lang_ver with
   | `Supported -> ()
   | `Deleted_in deleted_in ->
-    let min_ext_ver, min_dune_lang_ver =
+    let min_dune_lang_ver =
       match Supported_versions.minimum_versions t.supported_versions with
-      | None -> None, None
-      | Some (x, y) -> Some x, Some y
+      | None -> None
+      | Some (_, y) -> Some y
     in
     let please_port_message =
-      match min_ext_ver with
+      match Supported_versions.greatest_supported_version t.supported_versions with
       | None -> ""
       | Some min_ext_ver ->
         let open Version.Infix in

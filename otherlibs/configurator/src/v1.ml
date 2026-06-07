@@ -801,6 +801,19 @@ module Pkg_config = struct
   ;;
 
   let query_expr_err t ~package ~expr = gen_query t ~package ~expr:(Some expr)
+
+  let query_variable t ~package ~variable =
+    let env = pkg_config_env t ~package in
+    let { Process.exit_code; stdout; _ } =
+      Process.run_process
+        t.configurator
+        ~dir:t.configurator.dest_dir
+        ?env
+        t.pkg_config
+        (t.pkg_config_args @ [ "--variable=" ^ variable; package ])
+    in
+    if exit_code = 0 then Some (String.trim stdout) else None
+  ;;
 end
 
 let main ?(args = []) ~name f =

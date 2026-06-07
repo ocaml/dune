@@ -22,16 +22,6 @@ is used when generating OPAM files (see :doc:`generate_opam_files`).
 
       A longer package description.
 
-   .. describe:: (version <version>)
-
-      .. versionadded:: 2.5
-
-      The version of this package. This overrides the top-level
-      :doc:`version` field for this package.
-
-      See :doc:`/advanced/package-version` for details on how Dune determines
-      package versions.
-
    .. describe:: (depends <dep-specification>)
 
       Package dependencies, as :token:`~pkg-dep:dep_specification`.

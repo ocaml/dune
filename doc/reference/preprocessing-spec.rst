@@ -122,3 +122,32 @@ If your preprocessor needs extra dependencies, you should use the
 ``preprocessor_deps`` field available in the ``library``, ``executable``, and
 ``executables`` stanzas. It uses the :doc:`../concepts/dependency-spec` to
 declare what the preprocessor needs.
+
+.. _lint-field:
+
+Linting
+-------
+
+The ``lint`` field available in ``library``, ``executable``, ``executables``,
+``test``, ``tests``, ``library_parameter``, and ``melange.emit`` stanzas uses
+syntax similar to ``preprocess``:
+
+.. code:: dune
+
+   (lint <preprocess-spec>)
+
+The default is ``no_preprocessing``. Linting actions are attached to the
+:doc:`aliases/lint` alias and are run by building it, for example with
+``dune build @lint``.
+
+The ``future_syntax`` and ``staged_pps`` forms are not supported in ``lint``
+fields. The ``(per_module ...)`` form is supported, as with ``preprocess``.
+
+With ``(lint (action <action>))``, Dune runs ``<action>`` for each matching
+implementation and interface source. The ``%{input-file}`` variable is bound to
+the source file, as for preprocessing actions. The action should report lint
+errors in the usual way, such as by exiting with a non-zero status.
+
+With ``(lint (pps ...))``, Dune runs the PPX driver in lint mode. Corrections
+registered by the PPX, for example through ppxlib, are displayed as diffs
+against the source files and can be applied with ``dune promote``.

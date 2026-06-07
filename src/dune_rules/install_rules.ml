@@ -237,10 +237,9 @@ end = struct
         ~dir
         ~lib_config
     in
-    let ({ Lib_mode.Map.ocaml = { Mode.Dict.byte; native } as ocaml; melange } as
-         lib_modes)
-      =
-      Lib_info.modes info
+    let* lib_modes = Melange_binary.effective_lib_modes sctx ~dir (Lib_info.modes info) in
+    let { Lib_mode.Map.ocaml = { Mode.Dict.byte; native } as ocaml; melange } =
+      lib_modes
     in
     let lib_name = Library.best_name lib in
     let* installable_modules =
@@ -331,7 +330,8 @@ end = struct
         in
         make_entry ~kind ?sub_dir Lib path)
     in
-    let+ melange_runtime_entries = additional_deps lib.melange_runtime_deps
+    let+ melange_runtime_entries =
+      if melange then additional_deps lib.melange_runtime_deps else Memo.return []
     and+ public_headers = additional_deps lib.public_headers
     and+ module_files =
       let obj_dir = Lib_info.obj_dir info in
@@ -797,6 +797,9 @@ end = struct
           let obj_dir = Lib.Local.obj_dir lib in
           let lib = Lib.Local.to_lib lib in
           let name = Lib.name lib in
+          let* lib_modes =
+            Melange_binary.effective_lib_modes sctx ~dir (Lib_info.modes info)
+          in
           let* expander = Super_context.expander sctx ~dir in
           let file_deps (deps : _ Lib_info.File_deps.t) =
             match deps with
@@ -824,7 +827,7 @@ end = struct
           and* modules =
             let* libs = Scope.DB.find_by_dir dir >>| Scope.libs in
             let+ modules =
-              let lib_modes = Compilation_mode.of_mode_set (Lib_info.modes info) in
+              let lib_modes = Compilation_mode.of_mode_set lib_modes in
               Memo.parallel_map lib_modes.modes ~f:(fun for_ ->
                 let+ modules =
                   Dir_contents.ml dir_contents ~for_
@@ -836,11 +839,15 @@ end = struct
                 for_, Some modules)
             in
             Compilation_mode.By_mode.of_list modules ~init:None
-          and* melange_runtime_deps = file_deps (Lib_info.melange_runtime_deps info)
+          and* melange_runtime_deps =
+            if lib_modes.melange
+            then file_deps (Lib_info.melange_runtime_deps info)
+            else Memo.return []
           and* public_headers = file_deps (Lib_info.public_headers info) in
           let+ dune_lib =
             Lib.to_dune_lib
               lib
+              ~modes:lib_modes
               ~dir:(Path.build (lib_root lib))
               ~modules
               ~foreign_objects

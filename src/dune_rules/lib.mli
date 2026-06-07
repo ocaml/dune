@@ -264,6 +264,7 @@ end
 
 val to_dune_lib
   :  t
+  -> modes:Lib_mode.Map.Set.t
   -> modules:Modules.With_vlib.t option Compilation_mode.By_mode.t
   -> foreign_objects:Path.t list
   -> melange_runtime_deps:Path.t list

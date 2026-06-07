@@ -666,6 +666,7 @@ let for_dune_package
       ~sub_systems
       ~melange_runtime_deps
       ~public_headers
+      ~modes
       ~(modules : Modules.With_vlib.t option Compilation_mode.By_mode.t)
   =
   let foreign_objects = Source.External foreign_objects in
@@ -698,6 +699,7 @@ let for_dune_package
   ; sub_systems
   ; orig_src_dir
   ; native_archives
+  ; modes
   ; modules
   ; melange_runtime_deps
   ; public_headers

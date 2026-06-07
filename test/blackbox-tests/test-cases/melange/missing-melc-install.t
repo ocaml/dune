@@ -50,13 +50,6 @@ A bytecode and native library with Melange mode keeps both OCaml modes.
   > (PATH=$PWD/_path dune install --root package-byte-native --prefix "$PWD/prefix") && \
   > (PATH=$PWD/_path OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build \
   >    --root consumer-byte-native main.exe)
-  Entering directory 'package-byte-native'
-  File ".mylib.objs/melange/_unknown_", line 1, characters 0-0:
-  Error: Program melc not found in the tree or in PATH
-   (context: default)
-  Hint: opam install melange
-  Leaving directory 'package-byte-native'
-  [1]
 
 Melange-only libraries still require melc at the package boundary.
 

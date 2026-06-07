@@ -287,6 +287,31 @@ module Exit_code = struct
   let () = register name of_args run
 end
 
+module Count_args = struct
+  let name = "count-args"
+  let of_args args = args
+  let run args = Printf.printf "Number of args: %d\n%!" (List.length args)
+  let () = register name of_args run
+end
+
+module Printenv = struct
+  let name = "printenv"
+
+  let of_args = function
+    | [] -> raise (Arg.Bad "Usage: dune_cmd printenv <var>...")
+    | vars -> vars
+  ;;
+
+  let print_var var =
+    match Sys.getenv var with
+    | value -> Printf.printf "%s=%s\n%!" var value
+    | exception Not_found -> Printf.printf "%s is not set\n%!" var
+  ;;
+
+  let run vars = List.iter vars ~f:print_var
+  let () = register name of_args run
+end
+
 module Override_on = struct
   module Configurator = Configurator.V1
 

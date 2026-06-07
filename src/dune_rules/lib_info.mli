@@ -201,6 +201,7 @@ val for_dune_package
   -> sub_systems:Sub_system_info.t Sub_system_name.Map.t
   -> melange_runtime_deps:Path.t list
   -> public_headers:Path.t list
+  -> modes:Lib_mode.Map.Set.t
   -> modules:Modules.With_vlib.t option Compilation_mode.By_mode.t
   -> Path.t t
 

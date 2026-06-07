@@ -2668,6 +2668,7 @@ let to_resolve_memo
 
 let to_dune_lib
       ({ info; _ } as lib)
+      ~(modes : Lib_mode.Map.Set.t)
       ~modules
       ~foreign_objects
       ~melange_runtime_deps
@@ -2750,6 +2751,9 @@ let to_dune_lib
               ; new_name = None
               })))
   in
+  let requires =
+    if modes.melange then requires else { requires with melange = requires.ocaml }
+  in
   let name = mangled_name lib in
   let remove_public_dep_prefix paths =
     let prefix = Lib_info.src_dir lib.info in
@@ -2772,6 +2776,7 @@ let to_dune_lib
       ~modules
       ~melange_runtime_deps
       ~public_headers
+      ~modes
   in
   Dune_package.Lib.of_dune_lib ~info ~main_module_name
 ;;

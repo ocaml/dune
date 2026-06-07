@@ -272,6 +272,21 @@ module Count_lines = struct
   let () = register name of_args run
 end
 
+module Exit_code = struct
+  let name = "exit-code"
+
+  let of_args = function
+    | [ code ] ->
+      (match int_of_string_opt code with
+       | Some code -> code
+       | None -> raise (Arg.Bad "exit code must be an integer"))
+    | _ -> raise (Arg.Bad "Usage: dune_cmd exit-code <code>")
+  ;;
+
+  let run code = exit code
+  let () = register name of_args run
+end
+
 module Override_on = struct
   module Configurator = Configurator.V1
 

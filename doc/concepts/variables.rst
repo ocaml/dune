@@ -124,9 +124,14 @@ In addition, ``(action ...)`` fields support the following special variables:
 - ``^`` expands to the list of dependencies, separated by spaces.
 - ``dep:<path>`` expands to ``<path>`` (and adds ``<path>`` as a dependency of
   the action).
-- ``exe:<path>`` is the same as ``<path>``, except when cross-compiling, in
-  which case it will expand to ``<path>`` from the host build context.
-- ``bin:<program>`` expands to the path of ``program``. If ``program``
+- ``exe:<path>`` expands to an executable target in the source tree and adds it
+  as a dependency of the action. Use this form to run an in-tree executable by
+  path, for example ``%{exe:./tool.exe}`` or ``%{exe:../bin/tool.exe}``. The
+  executable does not need a ``public_name`` and does not need to be installed.
+  This is similar to ``dep:<path>``, except that Dune will map the executable to
+  a version that can run on the build machine when cross-compiling.
+- ``bin:<program>`` expands to the path of ``program``. This form looks up a
+  program by command name rather than by source-tree path. If ``program``
   is installed by a workspace package (see :doc:`/reference/dune/install`
   stanzas), it expands to the build artifact path of the locally built
   binary; otherwise the program is looked up in the ``PATH`` of the

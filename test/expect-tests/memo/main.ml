@@ -2216,14 +2216,121 @@ let%expect_test "loss of concurrency" =
     (Memo.Invalidation.combine
        (Memo.Cell.invalidate a ~reason:Test)
        (Memo.Cell.invalidate b ~reason:Test));
-  (* Now we recompute [c]. Notice that [a] and [b] are no longer computed concurrently *)
+  (* Now we recompute [c]. Because [c] recorded [a] and [b] as a parallel section (via
+     [fork_and_join]), restoring [c] from the cache checks them concurrently, so the
+     cutoff-driven recomputations of [a] and [b] also run concurrently. *)
   read c;
   [%expect
     {|
     start a
-    finish a
     start b
-    finish b |}]
+    finish a
+    finish b
+    |}]
+;;
+
+(* A memoized node that prints ["<name>+ "] when it starts computing, yields (so that
+   nodes computing in parallel interleave observably in the output), then prints
+   ["<name>- "] -- or ["<name>! "] and raises, when [fail] is set. Reading [var] makes the
+   node depend on it, so invalidating [var] forces a recomputation; the [Unit.equal] cutoff
+   means that recomputation produces the same value and so does not invalidate callers. *)
+let yielding_node ?(fail = false) ~name () =
+  let var = Memo.Var.Unit.create () in
+  let table =
+    Memo.create
+      name
+      ~input:(module Unit)
+      ~cutoff:Unit.equal
+      (fun () ->
+         let* () = Memo.Var.Unit.read var in
+         Memo.of_reproducible_fiber
+         @@ Fiber.of_thunk (fun () ->
+           let open Fiber.O in
+           printf "%s+ " name;
+           let+ () = Scheduler.yield () in
+           if fail
+           then (
+             printf "%s! " name;
+             raise_notrace (Failure name))
+           else printf "%s- " name))
+  in
+  table, var
+;;
+
+let%expect_test "fork_and_join: parallel cutoff restore" =
+  let a, a_var = yielding_node ~name:"a" () in
+  let b, b_var = yielding_node ~name:"b" () in
+  let top =
+    Memo.lazy_cell (fun () ->
+      printf "top* ";
+      Memo.fork_and_join (fun () -> Memo.exec a ()) (fun () -> Memo.exec b ()))
+  in
+  let evaluate () = run (Memo.map ~f:ignore (Memo.Cell.read top)) in
+  printf "1st run: ";
+  evaluate ();
+  Memo.reset
+    (Memo.Invalidation.combine
+       (Memo.Var.Unit.invalidate a_var ~reason:Test)
+       (Memo.Var.Unit.invalidate b_var ~reason:Test));
+  printf "\n2nd run: ";
+  evaluate ();
+  printf "\n";
+  (* On the 2nd run [top] is restored from the cache thanks to the cutoffs on [a] and [b]
+     (note the absence of ["top* "]); because [top] recorded [a] and [b] as a parallel
+     section, they are re-checked -- and hence recomputed -- concurrently (["a+ b+ a- b-"],
+     not the sequential ["a+ a- b+ b-"]). *)
+  [%expect
+    {|
+    1st run: top* a+ b+ a- b-
+    2nd run: a+ b+ a- b-
+    |}]
+;;
+
+let%expect_test "parallel_map: parallel cutoff restore" =
+  let a, a_var = yielding_node ~name:"a" () in
+  let b, b_var = yielding_node ~name:"b" () in
+  let top =
+    Memo.lazy_cell (fun () ->
+      printf "top* ";
+      Memo.parallel_map [ a; b ] ~f:(fun node -> Memo.exec node ()))
+  in
+  let evaluate () = run (Memo.map ~f:ignore (Memo.Cell.read top)) in
+  printf "1st run: ";
+  evaluate ();
+  Memo.reset
+    (Memo.Invalidation.combine
+       (Memo.Var.Unit.invalidate a_var ~reason:Test)
+       (Memo.Var.Unit.invalidate b_var ~reason:Test));
+  printf "\n2nd run: ";
+  evaluate ();
+  printf "\n";
+  (* As above, but the parallel section is recorded by [parallel_map] rather than
+     [fork_and_join]. *)
+  [%expect
+    {|
+    1st run: top* a+ b+ a- b-
+    2nd run: a+ b+ a- b-
+    |}]
+;;
+
+let%expect_test "fork_and_join: a failing thread still lets its sibling run" =
+  let a, _ = yielding_node ~name:"a" ~fail:true () in
+  let b, _ = yielding_node ~name:"b" () in
+  let top =
+    Memo.lazy_cell (fun () ->
+      Memo.fork_and_join (fun () -> Memo.exec a ()) (fun () -> Memo.exec b ()))
+  in
+  run_and_log_errors (Memo.map ~f:ignore (Memo.Cell.read top));
+  (* [a] raises, but [b] still runs to completion ([a+ b+ a! b-]) and the error from [a]
+     propagates. *)
+  [%expect
+    {|
+    a+ b+ a! b- Error: { exn =
+               "Memo.Error.E\n\
+               \  { exn = \"Failure(\\\"a\\\")\"; stack = [ (\"a\", ()); (\"<unnamed>\", ()) ] }"
+           ; backtrace = ""
+           }
+    |}]
 ;;
 
 let%expect_test "variables - print new" =

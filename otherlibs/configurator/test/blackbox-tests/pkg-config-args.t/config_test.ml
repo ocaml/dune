@@ -10,4 +10,8 @@ let () =
     in
     let query package = ignore (C.Pkg_config.query pkg_config ~package) in
     query "dummy-pkg";
+    (match C.Pkg_config.query_variable pkg_config ~package:"dummy-pkg" ~variable:"prefix" with
+     | Some "value-for-prefix" -> ()
+     | Some value -> failwith ("unexpected pkg-config variable value: " ^ value)
+     | None -> failwith "pkg-config variable query failed")
   )

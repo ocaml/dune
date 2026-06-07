@@ -24,6 +24,10 @@ These tests show that setting `PKG_CONFIG_ARGN` passes extra args to `pkg-config
    | $TARGET
    | --libs
    | dummy-pkg
+  run: $TESTCASE_ROOT/_build/default/.bin/pkgconf --personality $TARGET --variable=prefix dummy-pkg
+  -> process exited with code 0
+  -> stdout:
+   | value-for-prefix
 
   $ dune clean
   $ PKG_CONFIG_ARGN="--static" dune build 2>&1 | awk '/run:.*bin\/pkgconf/{a=1}/stderr/{a=0}a'
@@ -44,3 +48,7 @@ These tests show that setting `PKG_CONFIG_ARGN` passes extra args to `pkg-config
    | --static
    | --libs
    | dummy-pkg
+  run: $TESTCASE_ROOT/_build/default/.bin/pkgconf --static --variable=prefix dummy-pkg
+  -> process exited with code 0
+  -> stdout:
+   | value-for-prefix

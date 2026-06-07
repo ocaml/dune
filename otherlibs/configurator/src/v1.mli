@@ -118,6 +118,10 @@ module Pkg_config : sig
       -> package:string
       -> expr:string
       -> (package_conf, string) result
+
+    (** [query_variable t ~package ~variable] query pkg-config for [variable]
+        from [package]. Returns [None] if [package] is not available. *)
+    val query_variable : t -> package:string -> variable:string -> string option
   end
   with type configurator := t
 

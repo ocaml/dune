@@ -696,6 +696,35 @@ module Pkg_config = struct
     ; cflags : string list
     }
 
+  let pkg_config_env t ~package =
+    let c = t.configurator in
+    let dir = c.dest_dir in
+    match ocaml_config_var c "system" with
+    | Some "macosx" ->
+      let open Option.O in
+      which c "brew"
+      >>= fun brew ->
+      let new_pkg_config_path =
+        let prefix = String.trim (Process.run_capture_exn c ~dir brew [ "--prefix" ]) in
+        let p = sprintf "%s/opt/%s/lib/pkgconfig" (quote_if_needed prefix) package in
+        Option.some_if
+          (match Sys.is_directory p with
+           | s -> s
+           | exception Sys_error _ -> false)
+          p
+      in
+      new_pkg_config_path
+      >>| fun new_pkg_config_path ->
+      let _PKG_CONFIG_PATH = "PKG_CONFIG_PATH" in
+      let pkg_config_path =
+        match Sys.getenv _PKG_CONFIG_PATH with
+        | s -> s ^ ":"
+        | exception Not_found -> ""
+      in
+      [ sprintf "%s=%s%s" _PKG_CONFIG_PATH pkg_config_path new_pkg_config_path ]
+    | _ -> None
+  ;;
+
   let gen_query t ~package ~expr =
     let c = t.configurator in
     let dir = c.dest_dir in
@@ -714,32 +743,7 @@ module Pkg_config = struct
             package;
         package
     in
-    let env =
-      match ocaml_config_var c "system" with
-      | Some "macosx" ->
-        let open Option.O in
-        which c "brew"
-        >>= fun brew ->
-        let new_pkg_config_path =
-          let prefix = String.trim (Process.run_capture_exn c ~dir brew [ "--prefix" ]) in
-          let p = sprintf "%s/opt/%s/lib/pkgconfig" (quote_if_needed prefix) package in
-          Option.some_if
-            (match Sys.is_directory p with
-             | s -> s
-             | exception Sys_error _ -> false)
-            p
-        in
-        new_pkg_config_path
-        >>| fun new_pkg_config_path ->
-        let _PKG_CONFIG_PATH = "PKG_CONFIG_PATH" in
-        let pkg_config_path =
-          match Sys.getenv _PKG_CONFIG_PATH with
-          | s -> s ^ ":"
-          | exception Not_found -> ""
-        in
-        [ sprintf "%s=%s%s" _PKG_CONFIG_PATH pkg_config_path new_pkg_config_path ]
-      | _ -> None
-    in
+    let env = pkg_config_env t ~package in
     let pc_flags = "--print-errors" in
     let { Process.exit_code; stderr; _ } =
       Process.run_process c ~dir ?env t.pkg_config (t.pkg_config_args @ [ pc_flags; expr ])
@@ -770,6 +774,21 @@ module Pkg_config = struct
   ;;
 
   let query_expr_err t ~package ~expr = gen_query t ~package ~expr:(Some expr)
+
+  let query_variable t ~package ~variable =
+    let c = t.configurator in
+    let dir = c.dest_dir in
+    let env = pkg_config_env t ~package in
+    let { Process.exit_code; stdout; _ } =
+      Process.run_process
+        c
+        ~dir
+        ?env
+        t.pkg_config
+        (t.pkg_config_args @ [ sprintf "--variable=%s" variable; package ])
+    in
+    if exit_code = 0 then Some (String.trim stdout) else None
+  ;;
 end
 
 let main ?(args = []) ~name f =

@@ -312,6 +312,45 @@ module Printenv = struct
   let () = register name of_args run
 end
 
+module Echo_outputs = struct
+  let name = "echo-outputs"
+
+  let of_args = function
+    | [ arg ] -> arg
+    | _ -> raise (Arg.Bad "Usage: dune_cmd echo-outputs <arg>")
+  ;;
+
+  let run arg =
+    Printf.printf "o %s\n%!" arg;
+    Printf.eprintf "e %s\n%!" arg
+  ;;
+
+  let () = register name of_args run
+end
+
+module Append_to_lines = struct
+  let name = "append-to-lines"
+
+  let of_args = function
+    | [ arg ] -> arg
+    | _ -> raise (Arg.Bad "Usage: dune_cmd append-to-lines <arg>")
+  ;;
+
+  let run arg =
+    let rec loop () =
+      match read_line () with
+      | exception End_of_file -> ()
+      | line ->
+        Printf.printf "%s | o %s\n%!" line arg;
+        Printf.eprintf "%s | e %s\n%!" line arg;
+        loop ()
+    in
+    loop ()
+  ;;
+
+  let () = register name of_args run
+end
+
 module Override_on = struct
   module Configurator = Configurator.V1
 

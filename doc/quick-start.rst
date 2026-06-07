@@ -91,20 +91,22 @@ which you can dive deeper into Dune's capabilities:
   placeholder values. See :doc:`/reference/dune-project/index` for
   details.
 * The ``test`` directory contains a skeleton for your project's tests. Add to
-  the tests by editing ``test/test_project_name.ml``. See :ref:`writing-tests` for
-  details on testing.
-* The ``lib`` directory will hold the library you write to provide your executable's core
-  functionality. Add modules to your library by creating new
+  the tests by editing ``test/test_project_name.ml``. The generated tests can
+  also use modules from ``lib``; see the note about module names in the ``bin``
+  item below. See :ref:`writing-tests` for details on testing.
+* The ``lib`` directory will hold the library you write to provide your
+  executable's core functionality. Add modules to your library by creating new
   ``.ml`` files in this directory. See :doc:`/reference/dune/library` for
   details on specifying libraries manually.
 * The ``bin`` directory holds a skeleton for the executable program. Within the
-  modules in this directory, you can access the modules in your ``lib`` under
-  the namespace ``project_name.Mod``, where ``project_name`` is replaced with
-  the name of your project and ``Mod`` corresponds to the name of the file in
-  the ``lib`` directory. You can run the executable with ``dune exec
-  project_name``.  See :ref:`hello-world-program` for an example of specifying
-  an executable manually and :doc:`/reference/dune/executable` for
-  details.
+  modules in this directory, you can access modules in your ``lib`` through the
+  generated library's OCaml module name. For a project initialized as
+  ``project_name``, a source file such as ``lib/foo.ml`` is available as
+  ``Project_name.Foo`` from both ``bin`` and ``test``. In other words,
+  ``project_name`` is not written literally in OCaml code: OCaml module names
+  are capitalized. You can run the executable with ``dune exec project_name``.
+  See :ref:`hello-world-program` for an example of specifying an executable
+  manually and :doc:`/reference/dune/executable` for details.
 * The ``project_name.opam`` file will be freshly generated from the
   ``dune-project`` file whenever you build your project. You shouldn't need to
   worry about this, but you can see :doc:`explanation/opam-integration` for

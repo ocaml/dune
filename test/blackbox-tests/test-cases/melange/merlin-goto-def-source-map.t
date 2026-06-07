@@ -31,7 +31,8 @@ Show Melange-specific Merlin configuration for source lookup
 
   $ dune build @all @check
   $ dune ocaml dump-dot-merlin "$PWD" > merlin.conf
-  $ cat merlin.conf | grep '\.melange_src'
-  S $TESTCASE_ROOT/lib/.melange_src
+  $ cat merlin.conf | grep "S $PWD"
+  S $TESTCASE_ROOT
+  S $TESTCASE_ROOT/lib
   $ cat merlin.conf | grep '^SUFFIX '
   [1]

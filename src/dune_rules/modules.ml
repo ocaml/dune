@@ -982,7 +982,7 @@ let virtual_module_names =
 
 let source_dirs =
   fold_user_written ~init:Path.Set.empty ~f:(fun m acc ->
-    Module.sources m
+    Module.sources_without_pp m
     |> List.fold_left ~init:acc ~f:(fun acc f -> Path.Set.add acc (Path.parent_exn f)))
 ;;
 

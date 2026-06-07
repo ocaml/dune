@@ -82,7 +82,8 @@ non-fatal:
 - You can pass ``--profile release`` to ``dune``. It will set up different
   compilation options that usually make sense for release builds, including
   making warnings non-fatal. This is done by default when installing packages
-  from opam.
+  from opam. See :doc:`/reference/dune-workspace/profile` for the exact
+  defaults associated with each standard profile.
 - You can change the flags used by the ``dev`` profile by adding the following
   stanza to a ``dune`` file:
 

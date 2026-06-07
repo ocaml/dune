@@ -16,6 +16,12 @@ The first form ``(<profile> <settings>)`` that corresponds to the selected build
 profile will be used to modify the environment in this directory. You can use
 ``_`` to match any build profile.
 
+Profiles are not declared by ``env`` stanzas. Any valid profile name can be
+selected on the command line or in ``dune-workspace``. ``env`` stanzas only
+provide settings that are looked up later when a context is built with a
+matching profile. For example, a workspace context using ``(profile dbg)`` can
+pick up settings from an ``(env (dbg ...))`` stanza in the project.
+
 Fields supported in ``<settings>`` are:
 
 - any OCaml flags field. See :doc:`/concepts/ocaml-flags` for more details.

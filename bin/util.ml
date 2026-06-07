@@ -83,13 +83,13 @@ let setup () =
   Console.Status_line.set
     (Live
        (fun () ->
-         match Fiber.Svar.read Build_system.state with
+         match !Build_system.state with
          | Initializing
          | Restarting_current_build
          | Build_succeeded__now_waiting_for_changes
          | Build_failed__now_waiting_for_changes -> Pp.nop
          | Building
-             { Build_system.Progress.number_of_rules_executed = done_
+             { Build_system.Progress.number_of_rules_validated = done_
              ; number_of_rules_discovered = total
              ; number_of_rules_failed = failed
              } ->

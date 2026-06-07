@@ -95,7 +95,7 @@ let show_build_interrupted_status_line () =
     (Live
        (fun () ->
          let progress =
-           match Fiber.Svar.read Build_system.state with
+           match !Build_system.state with
            | Initializing
            | Restarting_current_build
            | Build_succeeded__now_waiting_for_changes
@@ -107,7 +107,7 @@ let show_build_interrupted_status_line () =
            (Pp.verbatim
               (sprintf
                  ", restarting current build... (%u/%u)"
-                 progress.number_of_rules_executed
+                 progress.number_of_rules_validated
                  progress.number_of_rules_discovered))))
 ;;
 

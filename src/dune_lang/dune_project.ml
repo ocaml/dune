@@ -1074,8 +1074,9 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
     let dialects =
       let dialects =
         match Syntax.Name.Map.find explicit_extensions_map Melange_syntax.name with
-        | Some extension -> (extension.loc, Dialect.rescript) :: dialects
-        | None -> dialects
+        | Some extension when extension.version < (1, 0) ->
+          (extension.loc, Dialect.rescript) :: dialects
+        | Some _ | None -> dialects
       in
       List.fold_left dialects ~init:Dialect.DB.builtin ~f:(fun dialects (loc, dialect) ->
         Dialect.DB.add dialects ~loc dialect)

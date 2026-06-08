@@ -13,6 +13,7 @@ module Cm_kind : module type of Dune_lang.Melange.Cm_kind
 
 module Source : sig
   val dir : string
+  val extension_prefix : string
 end
 
 module Install : sig

@@ -52,6 +52,7 @@ module DB : sig
   val to_dyn : t -> Dyn.t
   val builtin : t
   val is_default : t -> bool
+  val source_suffixes : t -> string option Ml_kind.Dict.t list
 
   type for_merlin =
     { extensions : string option Ml_kind.Dict.t list

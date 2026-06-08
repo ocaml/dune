@@ -356,6 +356,22 @@ module DB = struct
       { extensions; readers }
   ;;
 
+  let source_suffixes { by_name; _ } =
+    let extensions =
+      String.Map.fold by_name ~init:[] ~f:(fun dialect extensions ->
+        let impl =
+          extension dialect Ml_kind.Impl |> Option.map ~f:Filename.Extension.to_string
+        in
+        let intf =
+          extension dialect Ml_kind.Intf |> Option.map ~f:Filename.Extension.to_string
+        in
+        match impl, intf with
+        | None, None -> extensions
+        | _ -> { Ml_kind.Dict.impl; intf } :: extensions)
+    in
+    List.sort ~compare:(Ml_kind.Dict.compare (Option.compare String.compare)) extensions
+  ;;
+
   let for_merlin t = Lazy.force t.for_merlin
 
   let add { by_name; by_extension; for_merlin = _ } ~loc dialect =

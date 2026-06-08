@@ -39,8 +39,16 @@ CRAM sanitization
   >   | select(.module_name == "X_mel" and (.source_path | startswith("default/melange/")))
   >   | merlinJsonEntryWithConfigNames(["SUFFIX", "READER"])'
   X_mel: _build/default/melange/x_mel
+  ["SUFFIX",".melange.ml .melange.mli"]
+  ["SUFFIX",".melange.mlx .melange.mlx"]
+  ["SUFFIX",".melange.re .melange.rei"]
+  ["SUFFIX",".melange.res .melange.resi"]
   ["SUFFIX",".mlx .mlx"]
   ["READER",["mlx"]]
   X_mel: _build/default/melange/x_mel.mlx
+  ["SUFFIX",".melange.ml .melange.mli"]
+  ["SUFFIX",".melange.mlx .melange.mlx"]
+  ["SUFFIX",".melange.re .melange.rei"]
+  ["SUFFIX",".melange.res .melange.resi"]
   ["SUFFIX",".mlx .mlx"]
   ["READER",["mlx"]]

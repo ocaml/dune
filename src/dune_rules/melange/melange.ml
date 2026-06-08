@@ -17,6 +17,7 @@ module Cm_kind = Dune_lang.Melange.Cm_kind
 
 module Source = struct
   let dir = ".melange_src"
+  let extension_prefix = ".melange"
 end
 
 module Install = struct

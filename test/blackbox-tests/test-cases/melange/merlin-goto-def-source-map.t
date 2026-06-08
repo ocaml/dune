@@ -3,6 +3,13 @@ Show Melange-specific Merlin configuration for source lookup
   $ cat > dune-project <<EOF
   > (lang dune 3.24)
   > (using melange 1.0)
+  > 
+  > (dialect
+  >  (name alpha)
+  >  (implementation
+  >   (extension alpha))
+  >  (interface
+  >   (extension alphai)))
   > EOF
   $ cat > dune <<EOF
   > (melange.emit
@@ -13,6 +20,7 @@ Show Melange-specific Merlin configuration for source lookup
   > EOF
   $ cat > main.ml <<EOF
   > let _ = Foo.foo
+  > let _ = Bar.foo
   > EOF
   $ mkdir lib
   $ cat > lib/dune <<EOF
@@ -28,6 +36,12 @@ Show Melange-specific Merlin configuration for source lookup
   $ cat > lib/foo.melange.ml <<EOF
   > let foo = "melange"
   > EOF
+  $ cat > lib/bar.alpha <<EOF
+  > let foo = "dialect"
+  > EOF
+  $ cat > lib/bar.melange.alpha <<EOF
+  > let foo = "melange dialect"
+  > EOF
 
   $ dune build @all @check
   $ dune ocaml dump-dot-merlin "$PWD" > merlin.conf
@@ -35,4 +49,7 @@ Show Melange-specific Merlin configuration for source lookup
   S $TESTCASE_ROOT
   S $TESTCASE_ROOT/lib
   $ cat merlin.conf | grep '^SUFFIX '
-  [1]
+  SUFFIX .melange.alpha .melange.alphai
+  SUFFIX .melange.ml .melange.mli
+  SUFFIX .melange.re .melange.rei
+  SUFFIX .alpha .alphai

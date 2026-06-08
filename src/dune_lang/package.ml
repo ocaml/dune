@@ -15,16 +15,36 @@ type original_opam_file =
   }
 
 module Duplicate_dep_warning = struct
-  type joiner =
-    | And
-    | Or
+  type field =
+    | Depends
+    | Conflicts
+    | Depopts
 
   type t =
     { loc : Loc.t
     ; dep_string : string
-    ; field_name : string
-    ; joiner : joiner
+    ; field : field
     }
+
+  let field_name { field; _ } =
+    match field with
+    | Depends -> "depends"
+    | Conflicts -> "conflicts"
+    | Depopts -> "depopts"
+  ;;
+
+  let field_of_string = function
+    | "depends" -> Some Depends
+    | "conflicts" -> Some Conflicts
+    | "depopts" -> Some Depopts
+    | _ -> None
+  ;;
+
+  let combine_constraint_op { field; _ } =
+    match field with
+    | Conflicts -> "(or ...)"
+    | Depends | Depopts -> "(and ...)"
+  ;;
 end
 
 type t =
@@ -132,8 +152,6 @@ let decode_name ~version =
   if version >= (3, 11) then Name.decode_opam_compatible else Name.decode
 ;;
 
-let disjunction_fields = String.Set.of_list [ "conflicts" ]
-
 let decode =
   let enabled_if =
     String_with_vars.set_decoding_env
@@ -165,12 +183,15 @@ let decode =
         then (
           let dep_sexp = Package_dependency.encode dep in
           let dep_string = Dune_sexp.to_string dep_sexp in
-          let joiner =
-            match String.Set.mem disjunction_fields field_name with
-            | true -> Duplicate_dep_warning.Or
-            | false -> Duplicate_dep_warning.And
+          let field =
+            match Duplicate_dep_warning.field_of_string field_name with
+            | Some field -> field
+            | None ->
+              Code_error.raise
+                "Unsupported field name"
+                [ "field_name", Dyn.string field_name ]
           in
-          let warning = { Duplicate_dep_warning.loc; dep_string; field_name; joiner } in
+          let warning = { Duplicate_dep_warning.loc; dep_string; field } in
           warning :: warnings, (loc, dep) :: seen)
         else warnings, (loc, dep) :: seen)
     in

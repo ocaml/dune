@@ -147,11 +147,8 @@ let run_parallel ~num_threads k =
       in
       let* result = Fiber.collect_errors (fun () -> k (Some run_thread)) in
       t
-      := Deps.Dynamic.append_par
-           !t
-           ~threads:
-             (List.init num_threads ~f:(fun i ->
-                Deps.Dynamic.to_static !(Pool.get threads i)));
+      := Deps.Dynamic.append_par_init !t ~num_threads ~f:(fun i ->
+           Deps.Dynamic.to_static !(Pool.get threads i));
       Pool.release threads;
       (match result with
        | Ok res -> Fiber.return res

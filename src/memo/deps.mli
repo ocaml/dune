@@ -21,9 +21,10 @@ module Dynamic : sig
   (** Append a dependency discovered after the existing ones. *)
   val append_seq : 'node t -> node:'node -> 'node t
 
-  (** Append a parallel section consisting of the dependencies of [threads], each captured
-      independently. *)
-  val append_par : 'node t -> threads:'node static list -> 'node t
+  (** Append a parallel section of [num_threads] threads, where thread [i]'s dependencies
+      are [f i], each captured independently. Builds the section directly from [f], avoiding
+      an intermediate list of the threads' dependencies. *)
+  val append_par_init : 'node t -> num_threads:int -> f:(int -> 'node static) -> 'node t
 
   val to_static : 'node t -> 'node static
 end

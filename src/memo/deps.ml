@@ -30,19 +30,26 @@ module Static = struct
     | _ :: _ :: _ -> Seq (Array.Immutable.of_list flat)
   ;;
 
-  (* Flatten a list of parallel threads into a parallel section, flattening nested [Par]s:
-     (x | (y | z)) = (x | y | z). *)
-  let flatten_pars (threads : 'node t list) : 'node t =
-    let flat =
-      List.concat_map threads ~f:(function
-        | Empty -> []
-        | Par arr -> Array.Immutable.to_list arr
-        | (Singleton _ | Seq _) as t -> [ t ])
+  (* Flatten a parallel section of [num_threads] threads, where thread [i]'s section is
+     [f i], flattening nested [Par]s: (x | (y | z)) = (x | y | z). Building the flattened
+     list directly from [f] avoids allocating an intermediate list of the threads' sections. *)
+  let flatten_pars_init num_threads ~f =
+    let rec loop i acc =
+      if i < 0
+      then acc
+      else (
+        let elements =
+          match f i with
+          | Empty -> []
+          | Par arr -> Array.Immutable.to_list arr
+          | (Singleton _ | Seq _) as t -> [ t ]
+        in
+        loop (i - 1) (elements @ acc))
     in
-    match flat with
+    match loop (num_threads - 1) [] with
     | [] -> Empty
     | [ t ] -> t
-    | _ :: _ :: _ -> Par (Array.Immutable.of_list flat)
+    | _ :: _ :: _ as flat -> Par (Array.Immutable.of_list flat)
   ;;
 end
 
@@ -61,8 +68,8 @@ module Dynamic = struct
     Static.Singleton node :: t
   ;;
 
-  let append_par t ~threads =
-    match Static.flatten_pars threads with
+  let append_par_init t ~num_threads ~f =
+    match Static.flatten_pars_init num_threads ~f with
     | Static.Empty -> t
     | section -> section :: t
   ;;

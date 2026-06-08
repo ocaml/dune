@@ -251,6 +251,9 @@ Dump-dot-merlin includes the melange flags
   S /MELC_STDLIB
   S $TESTCASE_ROOT
   INDEX $TESTCASE_ROOT/_build/default/.output.mobjs/melange/cctx.ocaml-index
+  SUFFIX .melange.ml .melange.mli
+  SUFFIX .melange.re .melange.rei
+  SUFFIX .melange.res .melange.resi
   # FLG -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g --mel-noassertfalse
   
 Check for flag directives ordering when another preprocessor is defined

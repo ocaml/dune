@@ -32,9 +32,13 @@ module Cm_kind = struct
   end
 end
 
+module Source = struct
+  let extension_prefix = ".melange"
+end
+
 let syntax =
   Syntax.create
-    ~name:Dune_project.Melange_syntax.name
+    ~name:(Syntax.Name.parse "melange")
     ~desc:"the Melange extension"
     [ (0, 1), `Since (3, 8); (1, 0), `Since (3, 20) ]
 ;;

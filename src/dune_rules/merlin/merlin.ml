@@ -587,7 +587,7 @@ module Unprocessed = struct
          | Melange -> Melange
          | Ocaml -> Ocaml Byte)
     in
-    let { Dialect.DB.extensions; readers } = Dialect.DB.for_merlin dialects in
+    let { Dialect.DB.extensions; readers } = Dialect.DB.for_merlin dialects ~for_ in
     let config =
       { stdlib_dir
       ; for_

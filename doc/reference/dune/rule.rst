@@ -2,7 +2,8 @@ rule
 ----
 
 The ``rule`` stanza is used to create custom user rules. It tells Dune how to
-generate a specific set of files from a specific set of dependencies.
+generate files from dependencies, or how to run an action when an alias is
+requested.
 
 The syntax is as follows:
 
@@ -12,16 +13,23 @@ The syntax is as follows:
      (action <action>)
      <optional-fields>)
 
-``<action>`` is what you run to produce the targets from the dependencies. See
-:doc:`/reference/actions/index` for more details.
+``<action>`` is what you run to produce the targets from the dependencies, or
+to build the attached aliases. See :doc:`/reference/actions/index` for more
+details.
+
+A rule must either have at least one target or be attached to at least one
+alias. Targets may be listed explicitly with ``target`` or ``targets``, or
+inferred from the action. Alias-only rules are useful for commands that don't
+produce files, such as benchmarks.
 
 ``<optional-fields>`` are:
 
 - ``(target <filename>)`` or ``(targets <filenames>)`` is a list of filenames
   (if defined with ``targets``) or exactly one filename (if defined with
-  ``target``). Dune needs to statically know targets of each rule.
+  ``target``). Dune needs to statically know file targets of each rule.
   ``(targets)`` can be omitted if it can be inferred from the action. See
-  `inferred rules`_.
+  `inferred rules`_. It can also be omitted when the rule is only attached to
+  an alias.
 
 - ``(deps <deps-conf list>)`` specifies the dependencies of the rule. See
   :doc:`/concepts/dependency-spec` for more details.
@@ -34,8 +42,9 @@ The syntax is as follows:
 - ``(locks (<lock-names>))`` specifies that the action must be run while holding
   the following locks. See :doc:`/concepts/locks` for more details.
 
-- ``(alias <alias-name>)`` specifies this rule's alias. Building this alias
-  means building the targets of this rule.
+- ``(alias <alias-name>)`` specifies this rule's alias. If the rule has file
+  targets, building this alias builds those targets. If the rule has no file
+  targets, building this alias runs the rule's action.
 
 - ``(aliases <alias-name list>)`` specifies many aliases for this rule.
 

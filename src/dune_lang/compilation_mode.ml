@@ -47,7 +47,7 @@ let default_sandbox = function
   | Melange -> Dune_engine.Sandbox_config.needs_sandboxing
 ;;
 
-module By_mode = struct
+module Per_mode = struct
   type nonrec 'a t =
     { ocaml : 'a
     ; melange : 'a

@@ -301,7 +301,7 @@ module DB = struct
   type t =
     { by_name : dialect String.Map.t
     ; by_extension : dialect Filename.Extension.Map.t
-    ; for_merlin : for_merlin Compilation_mode.By_mode.t Lazy.t
+    ; for_merlin : for_merlin Compilation_mode.Per_mode.t Lazy.t
     }
 
   and for_merlin =
@@ -315,7 +315,7 @@ module DB = struct
     let for_merlin = { extensions = []; readers = String.Map.empty } in
     { by_name = String.Map.empty
     ; by_extension = Filename.Extension.Map.empty
-    ; for_merlin = lazy (Compilation_mode.By_mode.both for_merlin)
+    ; for_merlin = lazy (Compilation_mode.Per_mode.both for_merlin)
     }
   ;;
 
@@ -384,10 +384,10 @@ module DB = struct
           extensions = melange_source_suffixes (source_suffixes by_name) @ extensions
         }
       in
-      { Compilation_mode.By_mode.ocaml; melange }
+      { Compilation_mode.Per_mode.ocaml; melange }
   ;;
 
-  let for_merlin t ~for_ = Compilation_mode.By_mode.get ~for_ (Lazy.force t.for_merlin)
+  let for_merlin t ~for_ = Compilation_mode.Per_mode.get ~for_ (Lazy.force t.for_merlin)
 
   let add { by_name; by_extension; for_merlin = _ } ~loc dialect =
     let by_name =

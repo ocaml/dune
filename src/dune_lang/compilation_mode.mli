@@ -14,7 +14,7 @@ val of_lib_mode : Lib_mode.t -> t
 val of_mode_set : Lib_mode.Map.Set.t -> modes
 val default_sandbox : t -> Dune_engine.Sandbox_config.t
 
-module By_mode : sig
+module Per_mode : sig
   type mode := t
 
   type 'a t =

@@ -156,13 +156,13 @@ val modules : _ t -> for_:Compilation_mode.t -> Modules.With_vlib.t option Sourc
 
 val modules_by_mode
   :  _ t
-  -> Modules.With_vlib.t option Compilation_mode.By_mode.t Source.t
+  -> Modules.With_vlib.t option Compilation_mode.Per_mode.t Source.t
 
 val implements : _ t -> (Loc.t * Lib_name.t) option
 val requires : _ t -> for_:Compilation_mode.t -> Lib_dep.t list
-val requires_by_mode : _ t -> Lib_dep.t list Compilation_mode.By_mode.t
+val requires_by_mode : _ t -> Lib_dep.t list Compilation_mode.Per_mode.t
 val parameters : _ t -> (Loc.t * Lib_name.t) list
-val ppx_runtime_deps : _ t -> (Loc.t * Lib_name.t) list Compilation_mode.By_mode.t
+val ppx_runtime_deps : _ t -> (Loc.t * Lib_name.t) list Compilation_mode.Per_mode.t
 val allow_unused_libraries : _ t -> (Loc.t * Lib_name.t) list
 
 val preprocess
@@ -191,8 +191,8 @@ val set_version : 'a t -> Package_version.t option -> 'a t
 val for_dune_package
   :  Path.t t
   -> name:Lib_name.t
-  -> ppx_runtime_deps:(Loc.t * Lib_name.t) list Compilation_mode.By_mode.t
-  -> requires:Lib_dep.t list Compilation_mode.By_mode.t
+  -> ppx_runtime_deps:(Loc.t * Lib_name.t) list Compilation_mode.Per_mode.t
+  -> requires:Lib_dep.t list Compilation_mode.Per_mode.t
   -> foreign_objects:Path.t list
   -> obj_dir:Path.t Obj_dir.t
   -> implements:(Loc.t * Lib_name.t) option
@@ -202,7 +202,7 @@ val for_dune_package
   -> melange_runtime_deps:Path.t list
   -> public_headers:Path.t list
   -> modes:Lib_mode.Map.Set.t
-  -> modules:Modules.With_vlib.t option Compilation_mode.By_mode.t
+  -> modules:Modules.With_vlib.t option Compilation_mode.Per_mode.t
   -> Path.t t
 
 type 'a path =
@@ -224,13 +224,13 @@ val create
   -> main_module_name:Main_module_name.t
   -> local_main_module_name:Module_name.t option
   -> sub_systems:Sub_system_info.t Sub_system_name.Map.t
-  -> requires:Lib_dep.t list Compilation_mode.By_mode.t
+  -> requires:Lib_dep.t list Compilation_mode.Per_mode.t
   -> parameters:(Loc.t * Lib_name.t) list
   -> foreign_objects:'a list Source.t
   -> public_headers:'a File_deps.t
   -> plugins:'a list Mode.Dict.t
   -> archives:'a list Mode.Dict.t
-  -> ppx_runtime_deps:(Loc.t * Lib_name.t) list Compilation_mode.By_mode.t
+  -> ppx_runtime_deps:(Loc.t * Lib_name.t) list Compilation_mode.Per_mode.t
   -> allow_unused_libraries:(Loc.t * Lib_name.t) list
   -> foreign_archives:'a Mode.Map.Multi.t
   -> native_archives:'a native_archives
@@ -239,17 +239,17 @@ val create
   -> wasmoo_runtime:'a list
   -> preprocess:
        Preprocess.With_instrumentation.t Preprocess.Per_module.t
-         Compilation_mode.By_mode.t
+         Compilation_mode.Per_mode.t
   -> enabled:Enabled_status.t Memo.t
   -> virtual_deps:(Loc.t * Lib_name.t) list
   -> dune_version:Dune_lang.Syntax.Version.t option
   -> entry_modules:
-       (Module_name.t list option Compilation_mode.By_mode.t, User_message.t) result
+       (Module_name.t list option Compilation_mode.Per_mode.t, User_message.t) result
          Source.t
   -> implements:(Loc.t * Lib_name.t) option
   -> default_implementation:(Loc.t * Lib_name.t) option
   -> modes:Lib_mode.Map.Set.t
-  -> modules:Modules.With_vlib.t option Compilation_mode.By_mode.t Source.t
+  -> modules:Modules.With_vlib.t option Compilation_mode.Per_mode.t Source.t
   -> wrapped:Wrapped.t Inherited.t option
   -> special_builtin_support:(Loc.t * Special_builtin_support.t) option
   -> exit_module:Module_name.t option

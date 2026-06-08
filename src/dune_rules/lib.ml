@@ -379,14 +379,14 @@ module T = struct
     { info : Lib_info.external_
     ; name : Lib_name.t
     ; unique_id : Id.t
-    ; re_exports : t list Resolve.t Compilation_mode.By_mode.t
+    ; re_exports : t list Resolve.t Compilation_mode.Per_mode.t
     ; (* [requires] is contains all required libraries, including the ones
          mentioned in [re_exports]. *)
-      requires : t list Resolve.t Compilation_mode.By_mode.t
-    ; user_written_requires : (Loc.t * t) list Resolve.Memo.t Compilation_mode.By_mode.t
-    ; ppx_runtime_deps : t list Resolve.t Compilation_mode.By_mode.t
-    ; pps : t list Resolve.t Compilation_mode.By_mode.t
-    ; resolved_selects : Resolved_select.t list Resolve.t Compilation_mode.By_mode.t
+      requires : t list Resolve.t Compilation_mode.Per_mode.t
+    ; user_written_requires : (Loc.t * t) list Resolve.Memo.t Compilation_mode.Per_mode.t
+    ; ppx_runtime_deps : t list Resolve.t Compilation_mode.Per_mode.t
+    ; pps : t list Resolve.t Compilation_mode.Per_mode.t
+    ; resolved_selects : Resolved_select.t list Resolve.t Compilation_mode.Per_mode.t
     ; allow_unused_libraries : t list Resolve.t
     ; parameters : (Loc.t * t) list Resolve.t
     ; arguments : t option list
@@ -491,14 +491,14 @@ let info t = t.info
 let project t = t.project
 let implements t = Option.map ~f:Memo.return t.implements
 let parameters t = Resolve.Memo.lift (Resolve.map ~f:(List.map ~f:snd) t.parameters)
-let requires t ~for_ = Memo.return (Compilation_mode.By_mode.get ~for_ t.requires)
-let re_exports t ~for_ = Memo.return (Compilation_mode.By_mode.get ~for_ t.re_exports)
+let requires t ~for_ = Memo.return (Compilation_mode.Per_mode.get ~for_ t.requires)
+let re_exports t ~for_ = Memo.return (Compilation_mode.Per_mode.get ~for_ t.re_exports)
 
 let ppx_runtime_deps t ~for_ =
-  Memo.return (Compilation_mode.By_mode.get ~for_ t.ppx_runtime_deps)
+  Memo.return (Compilation_mode.Per_mode.get ~for_ t.ppx_runtime_deps)
 ;;
 
-let pps t ~for_ = Memo.return (Compilation_mode.By_mode.get ~for_ t.pps)
+let pps t ~for_ = Memo.return (Compilation_mode.Per_mode.get ~for_ t.pps)
 
 let is_local t =
   match Lib_info.obj_dir t.info |> Obj_dir.byte_dir with
@@ -678,7 +678,7 @@ module Parameterised = struct
   let requires (lib : lib) ~for_ =
     let open Resolve.O in
     let+ deps =
-      Compilation_mode.By_mode.get lib.requires ~for_
+      Compilation_mode.Per_mode.get lib.requires ~for_
       >>= Resolve.List.map ~f:(complement_arguments ~parent:lib)
     in
     let deps = List.filter_opt lib.arguments @ deps in
@@ -1470,12 +1470,12 @@ end = struct
           |> Instrumentation.with_instrumentation ~instrumentation_backend
           >>| fun pps -> for_, Preprocess.Per_module.pps pps)
         |> Memo.map ~f:Resolve.all
-        >>| Compilation_mode.By_mode.of_list ~init:[]
+        >>| Compilation_mode.Per_mode.of_list ~init:[]
       in
       let* parameters = Resolve.Memo.lift parameters in
       let dune_version = Lib_info.dune_version info in
       let resolved =
-        Compilation_mode.By_mode.map pps ~f:(fun ~for_ pps ->
+        Compilation_mode.Per_mode.map pps ~f:(fun ~for_ pps ->
           let open Memo.O in
           let+ resolved =
             Lib_info.requires info ~for_
@@ -1492,7 +1492,7 @@ end = struct
       let open Memo.O in
       let+ ocaml = resolved.ocaml
       and+ melange = resolved.melange in
-      Resolve.return { Compilation_mode.By_mode.ocaml; melange }
+      Resolve.return { Compilation_mode.Per_mode.ocaml; melange }
     in
     let* implements =
       match Lib_info.implements info with
@@ -1554,10 +1554,10 @@ end = struct
                    ])))
     in
     let* requires =
-      Compilation_mode.By_mode.Memo.from_fun (fun ~for_ ->
+      Compilation_mode.Per_mode.Memo.from_fun (fun ~for_ ->
         let open Resolve.Memo.O in
         let* resolved = Memo.return resolved in
-        let { Resolved.requires; _ } = Compilation_mode.By_mode.get ~for_ resolved in
+        let { Resolved.requires; _ } = Compilation_mode.Per_mode.get ~for_ resolved in
         let* requires = Memo.return requires in
         let+ requires_params = Memo.return parameters
         and+ requires_implements =
@@ -1593,12 +1593,12 @@ end = struct
     in
     let* ppx_runtime_deps =
       let ppx_runtime_deps = Lib_info.ppx_runtime_deps info in
-      Compilation_mode.By_mode.Memo.from_fun (fun ~for_ ->
-        let deps = Compilation_mode.By_mode.get ppx_runtime_deps ~for_ in
+      Compilation_mode.Per_mode.Memo.from_fun (fun ~for_ ->
+        let deps = Compilation_mode.Per_mode.get ppx_runtime_deps ~for_ in
         resolve_simple_deps db ~private_deps deps)
     in
     let user_written_requires =
-      Compilation_mode.By_mode.from_fun (fun ~for_ ->
+      Compilation_mode.Per_mode.from_fun (fun ~for_ ->
         let open Memo.O in
         let+ complex =
           Lib_info.requires info ~for_
@@ -1611,7 +1611,7 @@ end = struct
     in
     let src_dir = Lib_info.src_dir info in
     let map_error =
-      Compilation_mode.By_mode.map ~f:(fun ~for_:_ x ->
+      Compilation_mode.Per_mode.map ~f:(fun ~for_:_ x ->
         Resolve.push_stack_frame x ~human_readable_description:(fun () ->
           Dep_path.Entry.Lib.pp { name; path = src_dir }))
     in
@@ -1629,19 +1629,19 @@ end = struct
     let rec t =
       lazy
         (let resolved_selects =
-           Compilation_mode.By_mode.from_fun (fun ~for_ ->
+           Compilation_mode.Per_mode.from_fun (fun ~for_ ->
              let open Resolve.O in
-             resolved >>| Compilation_mode.By_mode.get ~for_ >>| fun r -> r.selects)
+             resolved >>| Compilation_mode.Per_mode.get ~for_ >>| fun r -> r.selects)
          in
          let pps =
-           Compilation_mode.By_mode.from_fun (fun ~for_ ->
+           Compilation_mode.Per_mode.from_fun (fun ~for_ ->
              let open Resolve.O in
-             resolved >>| Compilation_mode.By_mode.get ~for_ >>= fun r -> r.pps)
+             resolved >>| Compilation_mode.Per_mode.get ~for_ >>= fun r -> r.pps)
          in
          let re_exports =
-           Compilation_mode.By_mode.from_fun (fun ~for_ ->
+           Compilation_mode.Per_mode.from_fun (fun ~for_ ->
              let open Resolve.O in
-             resolved >>| Compilation_mode.By_mode.get ~for_ >>= fun r -> r.re_exports)
+             resolved >>| Compilation_mode.Per_mode.get ~for_ >>= fun r -> r.re_exports)
          in
          { info
          ; name
@@ -1976,7 +1976,7 @@ end = struct
         let* pps = pps in
         Resolve.List.concat_map pps ~f:(fun pp ->
           let open Resolve.O in
-          Compilation_mode.By_mode.get pp.ppx_runtime_deps ~for_
+          Compilation_mode.Per_mode.get pp.ppx_runtime_deps ~for_
           >>= Resolve.List.map ~f:(fun dep ->
             check_private_deps ~loc ~private_deps dep |> Resolve.of_result))
         |> Memo.return
@@ -2236,14 +2236,14 @@ let descriptive_closure (l : lib list) ~with_pps ~for_ : lib list Memo.t =
         and acc = Set.add acc lib in
         let* todo =
           if with_pps
-          then register_work todo (Compilation_mode.By_mode.get ~for_:Ocaml lib.pps)
+          then register_work todo (Compilation_mode.Per_mode.get ~for_:Ocaml lib.pps)
           else Memo.return todo
         in
         let* todo =
-          register_work todo (Compilation_mode.By_mode.get lib.ppx_runtime_deps ~for_)
+          register_work todo (Compilation_mode.Per_mode.get lib.ppx_runtime_deps ~for_)
         in
         let* todo =
-          let requires = Compilation_mode.By_mode.get lib.requires ~for_ in
+          let requires = Compilation_mode.Per_mode.get lib.requires ~for_ in
           register_work todo requires
         in
         work todo acc ~for_)
@@ -2258,18 +2258,18 @@ module Compile = struct
   module Resolved_select = Resolved_select
 
   type nonrec t =
-    { direct_requires : t list Resolve.Memo.t Compilation_mode.By_mode.t
-    ; user_written_requires : (Loc.t * t) list Resolve.Memo.t Compilation_mode.By_mode.t
-    ; requires_link : t list Resolve.t Memo.Lazy.t Compilation_mode.By_mode.t
-    ; pps : t list Resolve.Memo.t Compilation_mode.By_mode.t
-    ; resolved_selects : Resolved_select.t list Resolve.Memo.t Compilation_mode.By_mode.t
+    { direct_requires : t list Resolve.Memo.t Compilation_mode.Per_mode.t
+    ; user_written_requires : (Loc.t * t) list Resolve.Memo.t Compilation_mode.Per_mode.t
+    ; requires_link : t list Resolve.t Memo.Lazy.t Compilation_mode.Per_mode.t
+    ; pps : t list Resolve.Memo.t Compilation_mode.Per_mode.t
+    ; resolved_selects : Resolved_select.t list Resolve.Memo.t Compilation_mode.Per_mode.t
     ; allow_unused_libraries : t list Resolve.Memo.t
     ; sub_systems : Sub_system0.Instance.t Memo.Lazy.t Sub_system_name.Map.t
     }
 
   let for_lib ~allow_overlaps db (t : lib) =
     let requires =
-      Compilation_mode.By_mode.map t.requires ~f:(fun ~for_:_ requires ->
+      Compilation_mode.Per_mode.map t.requires ~f:(fun ~for_:_ requires ->
         (* This makes sure that the default implementation belongs to the same
          package before we build the virtual library *)
         let* () =
@@ -2281,9 +2281,9 @@ module Compile = struct
         in
         Memo.return requires)
     in
-    let requires_link : lib list Resolve.t Memo.Lazy.t Compilation_mode.By_mode.t =
+    let requires_link : lib list Resolve.t Memo.Lazy.t Compilation_mode.Per_mode.t =
       let db = Option.some_if (not allow_overlaps) db in
-      Compilation_mode.By_mode.map requires ~f:(fun ~for_ requires ->
+      Compilation_mode.Per_mode.map requires ~f:(fun ~for_ requires ->
         Memo.lazy_ (fun () ->
           let open Resolve.Memo.O in
           requires
@@ -2296,22 +2296,22 @@ module Compile = struct
     ; user_written_requires = t.user_written_requires
     ; requires_link
     ; resolved_selects =
-        Compilation_mode.By_mode.map t.resolved_selects ~f:(fun ~for_:_ -> Memo.return)
-    ; pps = Compilation_mode.By_mode.map t.pps ~f:(fun ~for_:_ -> Memo.return)
+        Compilation_mode.Per_mode.map t.resolved_selects ~f:(fun ~for_:_ -> Memo.return)
+    ; pps = Compilation_mode.Per_mode.map t.pps ~f:(fun ~for_:_ -> Memo.return)
     ; allow_unused_libraries = Memo.return t.allow_unused_libraries
     ; sub_systems = t.sub_systems
     }
   ;;
 
-  let direct_requires t ~for_ = Compilation_mode.By_mode.get t.direct_requires ~for_
+  let direct_requires t ~for_ = Compilation_mode.Per_mode.get t.direct_requires ~for_
 
   let user_written_requires t ~for_ =
-    Compilation_mode.By_mode.get t.user_written_requires ~for_
+    Compilation_mode.Per_mode.get t.user_written_requires ~for_
   ;;
 
-  let requires_link t ~for_ = Compilation_mode.By_mode.get t.requires_link ~for_
-  let resolved_selects t ~for_ = Compilation_mode.By_mode.get t.resolved_selects ~for_
-  let pps t ~for_ = Compilation_mode.By_mode.get t.pps ~for_
+  let requires_link t ~for_ = Compilation_mode.Per_mode.get t.requires_link ~for_
+  let resolved_selects t ~for_ = Compilation_mode.Per_mode.get t.resolved_selects ~for_
+  let pps t ~for_ = Compilation_mode.Per_mode.get t.pps ~for_
   let allow_unused_libraries t = t.allow_unused_libraries
 
   let sub_systems t =
@@ -2525,7 +2525,7 @@ module DB = struct
           ~dune_version:(Some dune_version)
           ~for_)
     in
-    let requires_link : lib list Resolve.t Memo.Lazy.t Compilation_mode.By_mode.t =
+    let requires_link : lib list Resolve.t Memo.Lazy.t Compilation_mode.Per_mode.t =
       let requires_link =
         Memo.Lazy.create (fun () ->
           let* forbidden_libraries =
@@ -2567,28 +2567,28 @@ module DB = struct
                   (Loc.to_file_colon_line loc)))
       in
       let init = Memo.lazy_ (fun () -> Resolve.Memo.return []) in
-      Compilation_mode.By_mode.of_list ~init [ for_, requires_link ]
+      Compilation_mode.Per_mode.of_list ~init [ for_, requires_link ]
     in
-    let pps : lib list Resolve.Memo.t Compilation_mode.By_mode.t =
+    let pps : lib list Resolve.Memo.t Compilation_mode.Per_mode.t =
       let pps =
         let open Memo.O in
         let+ resolved = Memo.Lazy.force resolved in
         resolved.pps
       in
       let init = Resolve.Memo.return [] in
-      Compilation_mode.By_mode.of_list ~init [ for_, pps ]
+      Compilation_mode.Per_mode.of_list ~init [ for_, pps ]
     in
-    let direct_requires : lib list Resolve.Memo.t Compilation_mode.By_mode.t =
+    let direct_requires : lib list Resolve.Memo.t Compilation_mode.Per_mode.t =
       let direct_requires =
         let open Memo.O in
         let+ resolved = Memo.Lazy.force resolved in
         resolved.requires
       in
       let init = Resolve.Memo.return [] in
-      Compilation_mode.By_mode.of_list ~init [ for_, direct_requires ]
+      Compilation_mode.Per_mode.of_list ~init [ for_, direct_requires ]
     in
     let resolved_selects
-      : Resolved_select.t list Resolve.Memo.t Compilation_mode.By_mode.t
+      : Resolved_select.t list Resolve.Memo.t Compilation_mode.Per_mode.t
       =
       let resolved_selects =
         let open Memo.O in
@@ -2596,13 +2596,13 @@ module DB = struct
         Resolve.return resolved.selects
       in
       let init = Resolve.Memo.return [] in
-      Compilation_mode.By_mode.of_list ~init [ for_, resolved_selects ]
+      Compilation_mode.Per_mode.of_list ~init [ for_, resolved_selects ]
     in
     let allow_unused_libraries =
       Resolve_names.resolve_simple_deps t ~private_deps:Allow_all allow_unused_libraries
     in
     let user_written_requires
-      : (Loc.t * lib) list Resolve.Memo.t Compilation_mode.By_mode.t
+      : (Loc.t * lib) list Resolve.Memo.t Compilation_mode.Per_mode.t
       =
       let resolved_user_written_requires =
         Memo.lazy_ (fun () ->
@@ -2616,7 +2616,7 @@ module DB = struct
         |> Memo.Lazy.force
       in
       let init = Resolve.Memo.return [] in
-      Compilation_mode.By_mode.of_list ~init [ for_, resolved_user_written_requires ]
+      Compilation_mode.Per_mode.of_list ~init [ for_, resolved_user_written_requires ]
     in
     { Compile.direct_requires
     ; user_written_requires
@@ -2656,14 +2656,14 @@ module DB = struct
 end
 
 let to_resolve_memo
-  :  lib list Resolve.t Compilation_mode.By_mode.t
-  -> lib list Compilation_mode.By_mode.t Resolve.Memo.t
+  :  lib list Resolve.t Compilation_mode.Per_mode.t
+  -> lib list Compilation_mode.Per_mode.t Resolve.Memo.t
   =
   fun t ->
   let open Resolve.Memo.O in
   let+ ocaml = Resolve.Memo.lift t.ocaml
   and+ melange = Resolve.Memo.lift t.melange in
-  { Compilation_mode.By_mode.ocaml; melange }
+  { Compilation_mode.Per_mode.ocaml; melange }
 ;;
 
 let to_dune_lib
@@ -2684,7 +2684,7 @@ let to_dune_lib
     | _ -> lib.name
   in
   let add_loc =
-    Compilation_mode.By_mode.map ~f:(fun ~for_:_ ->
+    Compilation_mode.Per_mode.map ~f:(fun ~for_:_ ->
       List.map ~f:(fun x -> loc, mangled_name x))
   in
   let obj_dir =
@@ -2696,7 +2696,7 @@ let to_dune_lib
   in
   let modules =
     let install_dir = Obj_dir.dir obj_dir in
-    Compilation_mode.By_mode.map modules ~f:(fun ~for_:_for_ modules ->
+    Compilation_mode.Per_mode.map modules ~f:(fun ~for_:_for_ modules ->
       Option.map modules ~f:(fun modules ->
         Modules.With_vlib.version_installed
           modules
@@ -2731,10 +2731,10 @@ let to_dune_lib
   and+ re_exports = to_resolve_memo lib.re_exports in
   let ppx_runtime_deps = add_loc ppx_runtime_deps in
   let requires =
-    Compilation_mode.By_mode.map requires ~f:(fun ~for_ requires ->
+    Compilation_mode.Per_mode.map requires ~f:(fun ~for_ requires ->
       List.map requires ~f:(fun lib ->
         if
-          List.exists (Compilation_mode.By_mode.get re_exports ~for_) ~f:(fun r ->
+          List.exists (Compilation_mode.Per_mode.get re_exports ~for_) ~f:(fun r ->
             r = lib)
         then Lib_dep.Re_export (loc, mangled_name lib)
         else (

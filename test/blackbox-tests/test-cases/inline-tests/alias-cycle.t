@@ -24,8 +24,8 @@ This kind of cycle has a difficult to understand error message.
      _build/default/bar.ml
   -> transitive deps of foo_simple__Bar.impl in _build/default
   -> _build/default/.foo_simple.objs/byte/foo_simple__Bar.cmi
-  -> _build/default/.foo_simple.inline-tests/.t.eobjs/native/dune__exe__Main.cmx
-  -> _build/default/.foo_simple.inline-tests/inline-test-runner.exe
+  -> _build/default/.foo_simple.inline-tests/.t.eobjs/byte/dune__exe__Main.cmo
+  -> _build/default/.foo_simple.inline-tests/inline-test-runner.bc
   -> alias runtest-foo_simple in dune:9
   -> _build/default/bar.ml
   -> required by _build/default/.foo_simple.objs/native/foo_simple.cmx

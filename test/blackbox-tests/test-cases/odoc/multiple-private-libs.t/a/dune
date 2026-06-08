@@ -1,1 +1,3 @@
-(library (name test))
+(library
+ (name test)
+ (modes byte))

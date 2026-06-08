@@ -1,4 +1,6 @@
 (library
  (name test_lib2)
  (libraries fake_backend_runner)
- (inline_tests (backend fake_backend_2)))
+ (inline_tests
+  (modes byte)
+  (backend fake_backend_2)))

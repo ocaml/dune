@@ -14,17 +14,19 @@
   > EOF
 
   $ env -u OCAMLRUNPARAM dune runtest
-  File "dune", line 9, characters 1-40:
-  9 |  (inline_tests (backend backend_simple)))
-       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "dune", lines 9-11, characters 1-57:
+   9 |  (inline_tests
+  10 |   (modes byte)
+  11 |   (backend backend_simple)))
   Fatal error: exception File ".foo_simple.inline-tests/main.ml-gen", line 1, characters 40-46: Assertion failed
   [1]
 
 Inline tests also generate an alias
   $ dune build @runtest-foo_simple
-  File "dune", line 9, characters 1-40:
-  9 |  (inline_tests (backend backend_simple)))
-       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "dune", lines 9-11, characters 1-57:
+   9 |  (inline_tests
+  10 |   (modes byte)
+  11 |   (backend backend_simple)))
   Fatal error: exception File ".foo_simple.inline-tests/main.ml-gen", line 1, characters 40-46: Assertion failed
   [1]
 
@@ -32,18 +34,19 @@ Make sure building both aliases doesn't build both
   $ dune build @runtest @lib-foo_simple
   Error: Alias "lib-foo_simple" specified on the command line is empty.
   It is not defined in . or any of its descendants.
-  File "dune", line 9, characters 1-40:
-  9 |  (inline_tests (backend backend_simple)))
-       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "dune", lines 9-11, characters 1-57:
+   9 |  (inline_tests
+  10 |   (modes byte)
+  11 |   (backend backend_simple)))
   Fatal error: exception File ".foo_simple.inline-tests/main.ml-gen", line 1, characters 40-46: Assertion failed
   [1]
 This test demonstrates that the action is being run once
   $ dune trace cat | jq_dune '
   >   processes
   > | .args.prog
-  > | select(contains("inline-test-runner.exe"))
+  > | select(contains("inline-test-runner.bc"))
   > '
-  ".foo_simple.inline-tests/inline-test-runner.exe"
+  ".foo_simple.inline-tests/inline-test-runner.bc"
 
 The expected behavior for the following three tests is to output nothing: the tests are disabled or ignored.
   $ env -u OCAMLRUNPARAM dune runtest --profile release
@@ -53,8 +56,9 @@ The expected behavior for the following three tests is to output nothing: the te
   $ env -u OCAMLRUNPARAM dune runtest --profile ignore-inline-tests
 
   $ env -u OCAMLRUNPARAM dune runtest --profile enable-inline-tests
-  File "dune", line 9, characters 1-40:
-  9 |  (inline_tests (backend backend_simple)))
-       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "dune", lines 9-11, characters 1-57:
+   9 |  (inline_tests
+  10 |   (modes byte)
+  11 |   (backend backend_simple)))
   Fatal error: exception File ".foo_simple.inline-tests/main.ml-gen", line 1, characters 40-46: Assertion failed
   [1]

@@ -19,6 +19,7 @@ EOF
 (library
  (public_name hello)
  (modules hello)
+ (modes byte)
  (instrumentation.backend
   (ppx hello.ppx)))
 EOF
@@ -109,12 +110,14 @@ EOF
   cat >dune <<'EOF'
 (executable
  (name main)
+ (modes byte)
  (modules main)
  (libraries mylib)
  (instrumentation (backend hello)))
 
 (library
  (name mylib)
+ (modes byte)
  (modules mylib)
  (instrumentation (backend hello)))
 EOF
@@ -140,6 +143,7 @@ EOF
   cat >dune <<'EOF'
 (executable
  (name main)
+ (modes byte)
  (modules main)
  (preprocess (pps trivial.ppx))
  (instrumentation (backend hello -place Spain)))
@@ -154,6 +158,7 @@ make_dependency_instrumentation_project() {
 (subdir input (rule (with-stdout-to input (echo "really"))))
 (executable
  (name main)
+ (modes byte)
  (modules main)
  (instrumentation (backend hello -place Spain -file input/input) (deps input/input)))
 EOF

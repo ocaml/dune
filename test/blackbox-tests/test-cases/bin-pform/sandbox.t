@@ -33,5 +33,5 @@ symlink. Both are paths under the un-sandboxed _build/:
   $ dune rules --format=json _build/default/out \
   >   | jq_dune '.[] | ruleDepFilePaths' \
   >   | grep mybin | censor
-  "_build/default/src/mybin.exe"
+  "_build/default/src/mybin.bc"
   "_build/install/default/.binaries/$DIGEST/mybin"

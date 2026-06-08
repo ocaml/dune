@@ -27,5 +27,5 @@ The rule depends on the build artifact and the .binaries symlink:
   $ dune rules --format=json _build/default/path-output \
   >   | jq_dune '.[] | ruleDepFilePaths' \
   >   | grep mybin | censor
-  "_build/default/src/mybin.exe"
+  "_build/default/src/mybin.bc"
   "_build/install/default/.binaries/$DIGEST/mybin"

@@ -76,6 +76,7 @@ include struct
   module Section = Section
   module Dune_project_name = Dune_project_name
   module Dune_project = Dune_project
+  module Compilation_mode = Compilation_mode
 end
 
 include struct

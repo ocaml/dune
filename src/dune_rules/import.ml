@@ -113,6 +113,7 @@ include struct
   module Package_constraint = Package_constraint
   module Dune_project_name = Dune_project_name
   module Package = Package
+  module Compilation_mode = Compilation_mode
   module Dialect = Dialect
   module Lib_mode = Lib_mode
   module Module_name = Module_name

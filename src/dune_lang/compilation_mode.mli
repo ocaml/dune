@@ -1,5 +1,3 @@
-open Import
-
 type t =
   | Ocaml
   | Melange
@@ -14,7 +12,7 @@ type modes =
 
 val of_lib_mode : Lib_mode.t -> t
 val of_mode_set : Lib_mode.Map.Set.t -> modes
-val default_sandbox : t -> Sandbox_config.t
+val default_sandbox : t -> Dune_engine.Sandbox_config.t
 
 module By_mode : sig
   type mode := t

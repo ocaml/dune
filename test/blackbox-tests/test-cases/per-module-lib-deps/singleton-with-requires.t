@@ -65,15 +65,15 @@ rule must surface `Mod_leaf.cmi` — reached transitively through
   $ jq -r 'include "dune"; .[] | depsGlobs
   >   | select(.dir | endswith("bridge/.bridge.objs/byte"))
   >   | .dir + " " + .predicate' < deps_uses.json
-  _build/default/bridge/.bridge.objs/byte *.cmi
   $ jq -r 'include "dune"; .[] | depsGlobs
   >   | select(.dir | endswith("leaf/.leaf.objs/byte"))
   >   | .dir + " " + .predicate' < deps_uses.json
-  _build/default/leaf/.leaf.objs/byte *.cmi
   $ jq -r 'include "dune"; .[] | depsFilePaths
   >   | select(endswith("bridge/.bridge.objs/byte/mod_bridge.cmi"))' < deps_uses.json
+  _build/default/bridge/.bridge.objs/byte/mod_bridge.cmi
   $ jq -r 'include "dune"; .[] | depsFilePaths
   >   | select(endswith("leaf/.leaf.objs/byte/mod_leaf.cmi"))' < deps_uses.json
+  _build/default/leaf/.leaf.objs/byte/mod_leaf.cmi
 
 Case 2: `sibling` references neither lib in source.
 
@@ -81,8 +81,6 @@ Case 2: `sibling` references neither lib in source.
   $ jq -r 'include "dune"; .[] | depsGlobs
   >   | select(.dir | endswith("bridge/.bridge.objs/byte"))
   >   | .dir + " " + .predicate' < deps_sib.json
-  _build/default/bridge/.bridge.objs/byte *.cmi
   $ jq -r 'include "dune"; .[] | depsGlobs
   >   | select(.dir | endswith("leaf/.leaf.objs/byte"))
   >   | .dir + " " + .predicate' < deps_sib.json
-  _build/default/leaf/.leaf.objs/byte *.cmi

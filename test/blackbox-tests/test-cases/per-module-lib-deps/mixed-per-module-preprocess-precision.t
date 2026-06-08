@@ -67,9 +67,9 @@ compile `b.ml`.
   $ jq -r 'include "dune"; .[] | depsGlobs
   >   | select(.dir | endswith("mylib/.mylib.objs/byte"))
   >   | .dir + " " + .predicate' < deps.json
-  _build/default/mylib/.mylib.objs/byte *.cmi
   $ jq -r 'include "dune"; .[] | depsFilePaths
   >   | select(endswith("mylib/.mylib.objs/byte/a.cmi"))' < deps.json
+  _build/default/mylib/.mylib.objs/byte/a.cmi
   $ jq -r 'include "dune"; .[] | depsFilePaths
   >   | select(endswith("mylib/.mylib.objs/byte/b.cmi"))' < deps.json
 
@@ -78,8 +78,3 @@ dune attempts to compile `b.ml` to produce `b.cmi` and fails on
 the unresolvable identifier.
 
   $ dune build '%{cmo:consumer/consumer}'
-  File "mylib/b.ml", line 1, characters 10-23:
-  1 | let bar = no_such_thing
-                ^^^^^^^^^^^^^
-  Error: Unbound value no_such_thing
-  [1]

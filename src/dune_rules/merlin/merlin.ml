@@ -350,7 +350,7 @@ module Processed = struct
     List.iter indexes ~f:(fun p -> printf "INDEX %s\n" (serialize_path p));
     List.iter extensions ~f:(fun x ->
       Option.iter (get_ext x) ~f:(fun (impl, intf) ->
-        printf "SUFFIX %s" (Printf.sprintf "%s %s" impl intf)));
+        printf "SUFFIX %s\n" (Printf.sprintf "%s %s" impl intf)));
     (* We print all FLG directives as comments *)
     List.iter
       pp_configs

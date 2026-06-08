@@ -28,4 +28,5 @@ Text dump-dot-merlin prints each SUFFIX directive on its own line.
   $ dune build @check
   $ dune ocaml dump-dot-merlin "$PWD" > merlin.conf
   $ cat merlin.conf | grep '^SUFFIX '
-  SUFFIX .alpha .alphaiSUFFIX .beta .betai# FLG -short-paths -keep-locs -warn-error +a -g
+  SUFFIX .alpha .alphai
+  SUFFIX .beta .betai

@@ -41,6 +41,7 @@ module Package_info = Package_info
 module Section = Section
 module Package = Package
 module Dune_project_name = Dune_project_name
+module Compilation_mode = Compilation_mode
 module Dialect = Dialect
 module Lib_mode = Lib_mode
 module Melange = Melange

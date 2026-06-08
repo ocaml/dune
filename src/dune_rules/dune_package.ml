@@ -313,12 +313,12 @@ module Lib = struct
          let foreign_objects = Lib_info.Source.External foreign_objects in
          let public_headers = Lib_info.File_deps.External public_headers in
          let preprocess =
-           Compilation_mode.By_mode.both (Preprocess.Per_module.no_preprocessing ())
+           Compilation_mode.Per_mode.both (Preprocess.Per_module.no_preprocessing ())
          in
          let virtual_deps = [] in
          let dune_version = None in
          let modules =
-           { Compilation_mode.By_mode.ocaml = modules
+           { Compilation_mode.Per_mode.ocaml = modules
            ; melange =
                (match modes.melange, melange_modules with
                 | true, Some _ -> melange_modules
@@ -328,12 +328,12 @@ module Lib = struct
            }
          in
          let entry_modules =
-           Compilation_mode.By_mode.map modules ~f:(fun ~for_:_ modules ->
+           Compilation_mode.Per_mode.map modules ~f:(fun ~for_:_ modules ->
              Option.map modules ~f:(fun modules ->
                Modules.entry_modules modules |> List.map ~f:Module.name))
          in
          let modules =
-           Compilation_mode.By_mode.map modules ~f:(fun ~for_:_ modules ->
+           Compilation_mode.Per_mode.map modules ~f:(fun ~for_:_ modules ->
              Option.map modules ~f:(fun modules -> Modules.With_vlib.modules modules))
          in
          let wrapped =
@@ -348,7 +348,7 @@ module Lib = struct
          let modules = Lib_info.Source.External modules in
          let melange_runtime_deps = Lib_info.File_deps.External melange_runtime_deps in
          let requires =
-           { Compilation_mode.By_mode.ocaml = requires
+           { Compilation_mode.Per_mode.ocaml = requires
            ; melange =
                (match modes.melange, melange_requires with
                 | true, Some melange_requires -> melange_requires
@@ -358,7 +358,7 @@ module Lib = struct
            }
          in
          let ppx_runtime_deps =
-           { Compilation_mode.By_mode.ocaml = ppx_runtime_deps
+           { Compilation_mode.Per_mode.ocaml = ppx_runtime_deps
            ; melange =
                (match modes.melange, melange_ppx_runtime_deps with
                 | _, Some melange_ppx_runtime_deps -> melange_ppx_runtime_deps

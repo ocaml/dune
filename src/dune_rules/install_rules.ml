@@ -838,7 +838,7 @@ end = struct
                 in
                 for_, Some modules)
             in
-            Compilation_mode.By_mode.of_list modules ~init:None
+            Compilation_mode.Per_mode.of_list modules ~init:None
           and* melange_runtime_deps =
             if lib_modes.melange
             then file_deps (Lib_info.melange_runtime_deps info)

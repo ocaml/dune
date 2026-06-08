@@ -39,7 +39,7 @@ module For_stanza : sig
 
   val of_stanzas
     :  Stanza.t list
-    -> cctxs:Compilation_context.t option Compilation_mode.By_mode.t Loc.Map.t
+    -> cctxs:Compilation_context.t option Compilation_mode.Per_mode.t Loc.Map.t
     -> sctx:Super_context.t
     -> src_dir:Path.Source.t
     -> ctx_dir:Path.Build.t
@@ -47,7 +47,7 @@ module For_stanza : sig
     -> dir_contents:Dir_contents.t
     -> expander:Expander.t
     -> ( Merlin.t list
-         , Compilation_context.t option Compilation_mode.By_mode.t Loc.Map.t
+         , Compilation_context.t option Compilation_mode.Per_mode.t Loc.Map.t
          , Path.Build.t list
          , Path.Source.t list )
          t
@@ -69,13 +69,13 @@ end = struct
       Loc.Map.update tl loc ~f:(function
         | None ->
           Some
-            (Compilation_mode.By_mode.of_list
+            (Compilation_mode.Per_mode.of_list
                ~init:None
                [ Compilation_context.for_ hd, Some hd ])
         | Some e ->
-          let current = Compilation_mode.By_mode.to_list e in
+          let current = Compilation_mode.Per_mode.to_list e in
           Some
-            (Compilation_mode.By_mode.of_list
+            (Compilation_mode.Per_mode.of_list
                ~init:None
                ((Compilation_context.for_ hd, Some hd)
                 :: List.map current ~f:(fun (k, v) -> k, Some v))))
@@ -133,7 +133,7 @@ end = struct
         ~loc:lib.buildable.loc
         (fun () ->
            Lib_rules.rules lib ~sctx ~scope ~dir_contents ~expander
-           >>| Compilation_mode.By_mode.choose
+           >>| Compilation_mode.Per_mode.choose
            >>| Option.value_exn)
         enabled_if
     | Foreign_library.T lib ->
@@ -356,7 +356,7 @@ let gen_rules_source_only sctx ~dir source_dir =
 ;;
 
 let gen_rules_group_part_or_root sctx dir_contents cctxs ~source_dir ~dir
-  : Compilation_context.t option Compilation_mode.By_mode.t Loc.Map.t Memo.t
+  : Compilation_context.t option Compilation_mode.Per_mode.t Loc.Map.t Memo.t
   =
   let+ () = gen_format_and_cram_rules sctx ~dir source_dir
   and+ () = Revdep_rules.add ~sctx ~dir
@@ -544,7 +544,7 @@ let gen_rules_standalone_or_root sctx ~dir ~source_dir =
       Dir_contents.Standalone_or_root.subdirs standalone_or_root
       >>= Memo.parallel_iter ~f:(fun dc ->
         let source_dir = Option.value_exn (Dir_contents.source_dir dc) in
-        let+ (_ : Compilation_context.t option Compilation_mode.By_mode.t Loc.Map.t) =
+        let+ (_ : Compilation_context.t option Compilation_mode.Per_mode.t Loc.Map.t) =
           gen_rules_group_part_or_root
             sctx
             dir_contents

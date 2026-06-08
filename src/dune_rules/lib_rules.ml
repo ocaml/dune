@@ -786,5 +786,5 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~expander ~scope =
       in
       for_, Some r)
   in
-  Compilation_mode.By_mode.of_list cctxs ~init:None
+  Compilation_mode.Per_mode.of_list cctxs ~init:None
 ;;

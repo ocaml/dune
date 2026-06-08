@@ -317,18 +317,19 @@ type 'path t =
   ; foreign_dll_files : 'path list
   ; jsoo_runtime : 'path list
   ; wasmoo_runtime : 'path list
-  ; requires : Lib_dep.t list Compilation_mode.By_mode.t
+  ; requires : Lib_dep.t list Compilation_mode.Per_mode.t
   ; parameters : (Loc.t * Lib_name.t) list
-  ; ppx_runtime_deps : (Loc.t * Lib_name.t) list Compilation_mode.By_mode.t
+  ; ppx_runtime_deps : (Loc.t * Lib_name.t) list Compilation_mode.Per_mode.t
   ; allow_unused_libraries : (Loc.t * Lib_name.t) list
   ; preprocess :
-      Preprocess.With_instrumentation.t Preprocess.Per_module.t Compilation_mode.By_mode.t
+      Preprocess.With_instrumentation.t Preprocess.Per_module.t
+        Compilation_mode.Per_mode.t
   ; enabled : Enabled_status.t Memo.t
   ; virtual_deps : (Loc.t * Lib_name.t) list
   ; dune_version : Dune_lang.Syntax.Version.t option
   ; sub_systems : Sub_system_info.t Sub_system_name.Map.t
   ; entry_modules :
-      (Module_name.t list option Compilation_mode.By_mode.t, User_message.t) result
+      (Module_name.t list option Compilation_mode.Per_mode.t, User_message.t) result
         Source.t
   ; implements : (Loc.t * Lib_name.t) option
   ; default_implementation : (Loc.t * Lib_name.t) option
@@ -336,7 +337,7 @@ type 'path t =
   ; main_module_name : Main_module_name.t
   ; local_main_module_name : Module_name.t option
   ; modes : Lib_mode.Map.Set.t
-  ; modules : Modules.With_vlib.t option Compilation_mode.By_mode.t Source.t
+  ; modules : Modules.With_vlib.t option Compilation_mode.Per_mode.t Source.t
   ; special_builtin_support : (Loc.t * Special_builtin_support.t) option
   ; exit_module : Module_name.t option
   ; instrumentation_backend : (Loc.t * Lib_name.t) option
@@ -351,14 +352,14 @@ let version t = t.version
 let dune_version t = t.dune_version
 let loc t = t.loc
 let parameters t = t.parameters
-let requires t ~for_ = Compilation_mode.By_mode.get t.requires ~for_
+let requires t ~for_ = Compilation_mode.Per_mode.get t.requires ~for_
 let requires_by_mode t = t.requires
-let preprocess t ~for_ = Compilation_mode.By_mode.get t.preprocess ~for_
+let preprocess t ~for_ = Compilation_mode.Per_mode.get t.preprocess ~for_
 let ppx_runtime_deps t = t.ppx_runtime_deps
 let allow_unused_libraries t = t.allow_unused_libraries
 let sub_systems t = t.sub_systems
 let modes t = t.modes
-let modules t ~for_ = Source.map t.modules ~f:(Compilation_mode.By_mode.get ~for_)
+let modules t ~for_ = Source.map t.modules ~f:(Compilation_mode.Per_mode.get ~for_)
 let modules_by_mode t = t.modules
 let archives t = t.archives
 let foreign_archives t = t.foreign_archives
@@ -393,7 +394,7 @@ let set_version t version = { t with version }
 let entry_modules t ~for_ =
   Source.map t.entry_modules ~f:(fun entry_modules ->
     Result.map entry_modules ~f:(fun entry_modules ->
-      Compilation_mode.By_mode.get entry_modules ~for_ |> Option.value_exn))
+      Compilation_mode.Per_mode.get entry_modules ~for_ |> Option.value_exn))
 ;;
 
 let dynlink_supported t = Mode.Dict.get t.plugins Native <> []
@@ -615,16 +616,16 @@ let to_dyn
     ; "jsoo_runtime", list path jsoo_runtime
     ; "wasmoo_runtime", list path wasmoo_runtime
     ; "parameters", list (snd Lib_name.to_dyn) parameters
-    ; "requires", Compilation_mode.By_mode.to_dyn (list Lib_dep.to_dyn) requires
+    ; "requires", Compilation_mode.Per_mode.to_dyn (list Lib_dep.to_dyn) requires
     ; ( "ppx_runtime_deps"
-      , Compilation_mode.By_mode.to_dyn (list (snd Lib_name.to_dyn)) ppx_runtime_deps )
+      , Compilation_mode.Per_mode.to_dyn (list (snd Lib_name.to_dyn)) ppx_runtime_deps )
     ; "virtual_deps", list (snd Lib_name.to_dyn) virtual_deps
     ; "dune_version", option Dune_lang.Syntax.Version.to_dyn dune_version
     ; "sub_systems", Sub_system_name.Map.to_dyn Dyn.opaque sub_systems
     ; ( "entry_modules"
       , Source.to_dyn
           (Result.to_dyn
-             (Compilation_mode.By_mode.to_dyn (option (list Module_name.to_dyn)))
+             (Compilation_mode.Per_mode.to_dyn (option (list Module_name.to_dyn)))
              string)
           (Source.map entry_modules ~f:(Result.map_error ~f:User_message.to_string)) )
     ; "implements", option (snd Lib_name.to_dyn) implements
@@ -635,7 +636,7 @@ let to_dyn
     ; "modes", Lib_mode.Map.Set.to_dyn modes
     ; ( "modules"
       , Source.to_dyn
-          (Compilation_mode.By_mode.to_dyn (option Modules.With_vlib.to_dyn))
+          (Compilation_mode.Per_mode.to_dyn (option Modules.With_vlib.to_dyn))
           modules )
     ; ( "special_builtin_support"
       , option (snd Special_builtin_support.to_dyn) special_builtin_support )
@@ -667,7 +668,7 @@ let for_dune_package
       ~melange_runtime_deps
       ~public_headers
       ~modes
-      ~(modules : Modules.With_vlib.t option Compilation_mode.By_mode.t)
+      ~(modules : Modules.With_vlib.t option Compilation_mode.Per_mode.t)
   =
   let foreign_objects = Source.External foreign_objects in
   let orig_src_dir =
@@ -742,7 +743,7 @@ let for_instance ~dir ~ext_lib t =
     obj_dir
   ; archives
   ; native_archives
-  ; modules = External (Compilation_mode.By_mode.both None)
+  ; modules = External (Compilation_mode.Per_mode.both None)
   ; src_dir = dir
   ; orig_src_dir = None
   ; plugins = Mode.Dict.make ~byte:[] ~native:[]

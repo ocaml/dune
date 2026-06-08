@@ -476,7 +476,7 @@ let library_deps ~modes (buildable : Buildable.t) =
     in
     ocaml_libraries, melange_libraries
   in
-  { Compilation_mode.By_mode.ocaml; melange }
+  { Compilation_mode.Per_mode.ocaml; melange }
 ;;
 
 let to_lib_info
@@ -615,10 +615,10 @@ let to_lib_info
     let melange =
       Option.value conf.melange_ppx_runtime_libraries ~default:conf.ppx_runtime_libraries
     in
-    { Compilation_mode.By_mode.ocaml = conf.ppx_runtime_libraries; melange }
+    { Compilation_mode.Per_mode.ocaml = conf.ppx_runtime_libraries; melange }
   in
   let preprocess =
-    { Compilation_mode.By_mode.ocaml = conf.buildable.preprocess.config
+    { Compilation_mode.Per_mode.ocaml = conf.buildable.preprocess.config
     ; melange = conf.buildable.melange_preprocess.config
     }
   in

@@ -442,25 +442,25 @@ let gen_project_rules =
     and+ () =
       (* Emit warnings for duplicate dependencies in packages *)
       let packages = Dune_project.packages project in
+      let module Duplicate_dep_warning = Dune_lang.Package.Duplicate_dep_warning in
       Dune_lang.Package.Name.Map.values packages
       |> Memo.parallel_iter ~f:(fun pkg ->
         Dune_lang.Package.duplicate_dep_warnings pkg
-        |> Memo.parallel_iter
-             ~f:(fun (warning : Dune_lang.Package.Duplicate_dep_warning.t) ->
-               Warning_emit.emit
-                 duplicate_deps
-                 (Warning_emit.Context.project project)
-                 (fun () ->
-                    Memo.return
-                      (User_message.make
-                         ~loc:warning.loc
-                         [ Pp.textf
-                             "Duplicate dependency on package %s in '%s' field. If you \
-                              want to specify multiple constraints, combine them using \
-                              (and ...)."
-                             warning.dep_string
-                             warning.field_name
-                         ]))))
+        |> Memo.parallel_iter ~f:(fun (warning : Duplicate_dep_warning.t) ->
+          Warning_emit.emit
+            duplicate_deps
+            (Warning_emit.Context.project project)
+            (fun () ->
+               Memo.return
+                 (User_message.make
+                    ~loc:warning.loc
+                    [ Pp.textf
+                        "Duplicate dependency on package %s in '%s' field. If you want \
+                         to specify multiple constraints, combine them using %s."
+                        warning.dep_string
+                        (Duplicate_dep_warning.field_name warning)
+                        (Duplicate_dep_warning.combine_constraint_op warning)
+                    ]))))
     in
     ()
   in

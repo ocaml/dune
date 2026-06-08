@@ -112,7 +112,7 @@ Duplicates in conflicts field
   6 |  (conflicts base base))
                        ^^^^
   Warning: Duplicate dependency on package base in 'conflicts' field. If you
-  want to specify multiple constraints, combine them using (and ...).
+  want to specify multiple constraints, combine them using (or ...).
   Hint: To disable this warning, add the following to your dune-project file:
   (warnings (duplicate_deps disabled))
 

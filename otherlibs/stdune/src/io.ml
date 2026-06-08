@@ -456,7 +456,15 @@ let portable_symlink ~src ~dst =
     let src =
       match Path.parent dst with
       | None -> Path.to_string src
-      | Some from -> Path.reach ~from src
+      | Some from ->
+        (* A relative symlink target is resolved from the real directory that
+           contains [dst], not necessarily from the lexical spelling of [from].
+           External paths may contain symlinked prefixes (for example
+           /var -> /private/var on macOS), so keep external-to-external symlink
+           targets absolute. *)
+        (match Path.as_external src, Path.as_external from with
+         | Some _, Some _ -> Path.to_string src
+         | _ -> Path.reach ~from src)
     in
     let dst = Path.to_string dst in
     match Unix.readlink dst with

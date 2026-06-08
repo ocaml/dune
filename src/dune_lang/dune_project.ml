@@ -382,7 +382,7 @@ module Extension = struct
 end
 
 module Melange_syntax = struct
-  let name = Syntax.Name.parse "melange"
+  let name = Syntax.name Melange.syntax
 end
 
 let make_parsing_context ~(lang : Lang.Instance.t) extensions =

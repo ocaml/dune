@@ -562,17 +562,6 @@ module Unprocessed = struct
     ; modules : Modules.With_vlib.t
     }
 
-  let melange_source_suffixes ~source_suffixes ~extensions =
-    let melange_prefixed =
-      source_suffixes
-      |> List.map
-           ~f:
-             (Ml_kind.Dict.map
-                ~f:(Option.map ~f:(fun ext -> Melange.Source.extension_prefix ^ ext)))
-    in
-    List.append melange_prefixed extensions
-  ;;
-
   let make
         ~requires_compile
         ~requires_hidden
@@ -598,15 +587,7 @@ module Unprocessed = struct
          | Melange -> Melange
          | Ocaml -> Ocaml Byte)
     in
-    let { Dialect.DB.extensions; readers } = Dialect.DB.for_merlin dialects in
-    let extensions =
-      match for_ with
-      | Ocaml -> extensions
-      | Melange ->
-        melange_source_suffixes
-          ~source_suffixes:(Dialect.DB.source_suffixes dialects)
-          ~extensions
-    in
+    let { Dialect.DB.extensions; readers } = Dialect.DB.for_merlin dialects ~for_ in
     let config =
       { stdlib_dir
       ; for_

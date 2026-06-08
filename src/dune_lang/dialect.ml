@@ -372,7 +372,20 @@ module DB = struct
     List.sort ~compare:(Ml_kind.Dict.compare (Option.compare String.compare)) extensions
   ;;
 
-  let for_merlin t = Lazy.force t.for_merlin
+  let melange_source_suffixes t =
+    source_suffixes t
+    |> List.map
+         ~f:
+           (Ml_kind.Dict.map
+              ~f:(Option.map ~f:(fun ext -> Melange.Source.extension_prefix ^ ext)))
+  ;;
+
+  let for_merlin t ~for_ =
+    let ({ extensions; _ } as for_merlin) = Lazy.force t.for_merlin in
+    match (for_ : Compilation_mode.t) with
+    | Ocaml -> for_merlin
+    | Melange -> { for_merlin with extensions = melange_source_suffixes t @ extensions }
+  ;;
 
   let add { by_name; by_extension; for_merlin = _ } ~loc dialect =
     let by_name =

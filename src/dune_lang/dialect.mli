@@ -52,12 +52,11 @@ module DB : sig
   val to_dyn : t -> Dyn.t
   val builtin : t
   val is_default : t -> bool
-  val source_suffixes : t -> string option Ml_kind.Dict.t list
 
   type for_merlin =
     { extensions : string option Ml_kind.Dict.t list
     ; readers : string list String.Map.t
     }
 
-  val for_merlin : t -> for_merlin
+  val for_merlin : t -> for_:Compilation_mode.t -> for_merlin
 end

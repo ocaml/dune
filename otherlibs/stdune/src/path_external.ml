@@ -88,6 +88,59 @@ let cwd () = Sys.getcwd ()
 let initial_cwd = Fpath.initial_cwd
 let as_local t = "." ^ t
 
+let is_slash = function
+  | '/' -> true
+  | '\\' when Sys.win32 -> true
+  | _ -> false
+;;
+
+let skip_slashes t pos =
+  let len = String.length t in
+  let rec loop pos = if pos < len && is_slash t.[pos] then loop (pos + 1) else pos in
+  loop pos
+;;
+
+let find_slash t pos =
+  let len = String.length t in
+  let rec loop pos =
+    if pos = len then None else if is_slash t.[pos] then Some pos else loop (pos + 1)
+  in
+  loop pos
+;;
+
+let local_part t pos =
+  let len = String.length t in
+  let pos = skip_slashes t pos in
+  if pos = len then Local.root else Local.of_string (String.drop t pos)
+;;
+
+let unc_root t =
+  match find_slash t 2 with
+  | None -> t, Local.root
+  | Some server_end ->
+    let share_start = skip_slashes t server_end in
+    (match find_slash t share_start with
+     | None -> t, Local.root
+     | Some share_end -> String.take t share_end, local_part t share_end)
+;;
+
+let split_root t =
+  let len = String.length t in
+  if Sys.win32 && len >= 2 && Char.equal t.[1] ':'
+  then String.lowercase (String.take t 2), local_part t 2
+  else if Sys.win32 && len >= 2 && is_slash t.[0] && is_slash t.[1]
+  then (
+    let root, local = unc_root t in
+    String.lowercase root, local)
+  else "/", local_part t 0
+;;
+
+let reach t ~from =
+  let root, local = split_root t in
+  let from_root, from_local = split_root from in
+  if String.equal root from_root then Local.reach local ~from:from_local else to_string t
+;;
+
 let of_filename_relative_to_initial_cwd fn =
   if Filename.is_relative fn then relative initial_cwd fn else of_string fn
 ;;

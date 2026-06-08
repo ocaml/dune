@@ -1,4 +1,7 @@
 (library
  (name memo)
  (libraries stdune dyn dune_graph dag fiber unix)
+ (foreign_stubs
+  (language c)
+  (names dune_memo_stubs))
  (synopsis "Incremental computation library that powers Dune"))

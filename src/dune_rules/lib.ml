@@ -209,7 +209,7 @@ module Error = struct
       ~loc
       [ Pp.textf
           "Library %S is private, it cannot be a dependency of a %s. You need to give %S \
-           a public name."
+           a public name or add a (package ...) field to its stanza."
           (Lib_name.to_string name)
           (match kind with
            | `Private_package -> "private library attached to a package"

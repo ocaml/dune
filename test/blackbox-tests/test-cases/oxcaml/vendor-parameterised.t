@@ -186,7 +186,8 @@ The parameter itself could be private too,
   5 |    (implements param))
                      ^^^^^
   Error: Library "param" is private, it cannot be a dependency of a public
-  library. You need to give "param" a public name.
+  library. You need to give "param" a public name or add a (package ...) field
+  to its stanza.
   [1]
 
 But only if there are no public stanza depending on it:

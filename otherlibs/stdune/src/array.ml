@@ -58,6 +58,7 @@ module Immutable = struct
   include T
 
   let of_array_unsafe a = a
+  let to_array_unsafe a = a
   let of_array a = copy a
   let to_list_map t ~f = to_list_map t ~f
   let of_list_map t ~f = of_list_map t ~f

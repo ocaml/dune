@@ -301,7 +301,7 @@ module DB = struct
   type t =
     { by_name : dialect String.Map.t
     ; by_extension : dialect Filename.Extension.Map.t
-    ; for_merlin : for_merlin Lazy.t
+    ; for_merlin : for_merlin Compilation_mode.By_mode.t Lazy.t
     }
 
   and for_merlin =
@@ -312,10 +312,35 @@ module DB = struct
   let fold { by_name; _ } = String.Map.fold by_name
 
   let empty =
+    let for_merlin = { extensions = []; readers = String.Map.empty } in
     { by_name = String.Map.empty
     ; by_extension = Filename.Extension.Map.empty
-    ; for_merlin = lazy { extensions = []; readers = String.Map.empty }
+    ; for_merlin = lazy (Compilation_mode.By_mode.both for_merlin)
     }
+  ;;
+
+  let source_suffixes by_name =
+    let extensions =
+      String.Map.fold by_name ~init:[] ~f:(fun dialect extensions ->
+        let impl =
+          extension dialect Ml_kind.Impl |> Option.map ~f:Filename.Extension.to_string
+        in
+        let intf =
+          extension dialect Ml_kind.Intf |> Option.map ~f:Filename.Extension.to_string
+        in
+        match impl, intf with
+        | None, None -> extensions
+        | _ -> { Ml_kind.Dict.impl; intf } :: extensions)
+    in
+    List.sort ~compare:(Ml_kind.Dict.compare (Option.compare String.compare)) extensions
+  ;;
+
+  let melange_source_suffixes source_suffixes =
+    source_suffixes
+    |> List.map
+         ~f:
+           (Ml_kind.Dict.map
+              ~f:(Option.map ~f:(fun ext -> Melange.Source.extension_prefix ^ ext)))
   ;;
 
   let compute_for_merlin =
@@ -353,39 +378,16 @@ module DB = struct
           ~compare:(Ml_kind.Dict.compare (Option.compare String.compare))
           extensions
       in
-      { extensions; readers }
+      let ocaml = { extensions; readers } in
+      let melange =
+        { ocaml with
+          extensions = melange_source_suffixes (source_suffixes by_name) @ extensions
+        }
+      in
+      { Compilation_mode.By_mode.ocaml; melange }
   ;;
 
-  let source_suffixes { by_name; _ } =
-    let extensions =
-      String.Map.fold by_name ~init:[] ~f:(fun dialect extensions ->
-        let impl =
-          extension dialect Ml_kind.Impl |> Option.map ~f:Filename.Extension.to_string
-        in
-        let intf =
-          extension dialect Ml_kind.Intf |> Option.map ~f:Filename.Extension.to_string
-        in
-        match impl, intf with
-        | None, None -> extensions
-        | _ -> { Ml_kind.Dict.impl; intf } :: extensions)
-    in
-    List.sort ~compare:(Ml_kind.Dict.compare (Option.compare String.compare)) extensions
-  ;;
-
-  let melange_source_suffixes t =
-    source_suffixes t
-    |> List.map
-         ~f:
-           (Ml_kind.Dict.map
-              ~f:(Option.map ~f:(fun ext -> Melange.Source.extension_prefix ^ ext)))
-  ;;
-
-  let for_merlin t ~for_ =
-    let ({ extensions; _ } as for_merlin) = Lazy.force t.for_merlin in
-    match (for_ : Compilation_mode.t) with
-    | Ocaml -> for_merlin
-    | Melange -> { for_merlin with extensions = melange_source_suffixes t @ extensions }
-  ;;
+  let for_merlin t ~for_ = Compilation_mode.By_mode.get ~for_ (Lazy.force t.for_merlin)
 
   let add { by_name; by_extension; for_merlin = _ } ~loc dialect =
     let by_name =

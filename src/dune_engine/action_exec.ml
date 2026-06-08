@@ -240,15 +240,22 @@ let rec exec t ~ectx ~eenv : Done_or_more_deps.t Produce.t =
     in
     let+ () =
       maybe_async (fun () ->
-        (* NOTE(anmonteiro): we may reconsider relaxing the directory target
-           constraint (see [test/blackbox-tests/test-cases/pkg/source-with-directory-symlink.t]).
+        match
+          (* NOTE(anmonteiro): we may reconsider relaxing the directory target
+             constraint (see [test/blackbox-tests/test-cases/pkg/source-with-directory-symlink.t]).
 
-           [Copy] stays file-oriented by default. We only use recursive copying
-           when [dst] is a directory target. *)
-        match ectx.targets with
-        | Some { dirs; _ } when Filename.Set.mem dirs (Path.basename dst) ->
-          Tree_copy.copy ~src ~dst ~copy_file ~mkdir ~on_unsupported ()
-        | _ -> copy_file ~src ~dst)
+             [Copy] stays file-oriented by default. We only use recursive copying
+             when [dst] is a directory target. *)
+          match ectx.targets with
+          | Some { dirs; _ } when Filename.Set.mem dirs (Path.basename dst) ->
+            Tree_copy.copy ~src ~dst ~copy_file ~mkdir ~on_unsupported ()
+          | _ -> copy_file ~src ~dst
+        with
+        | () -> ()
+        | exception Unix.Unix_error (error, syscall, arg) ->
+          User_error.raise
+            ~loc:ectx.rule_loc
+            [ Unix_error.Detailed.pp (error, syscall, arg) ])
     in
     Done
   | Symlink (src, dst) ->
@@ -320,9 +327,15 @@ and redirect t ~ectx ~eenv ?in_ ?out () =
       in
       stdout_to, stderr_to, fun () -> Process.Io.release out
   in
+  let release_io release =
+    match release () with
+    | () -> ()
+    | exception Unix.Unix_error (error, syscall, arg) ->
+      User_error.raise ~loc:ectx.rule_loc [ Unix_error.Detailed.pp (error, syscall, arg) ]
+  in
   let+ result = exec t ~ectx ~eenv:{ eenv with stdin_from; stdout_to; stderr_to } in
-  release_in ();
-  release_out ();
+  release_io release_in;
+  release_io release_out;
   result
 
 and exec_list ts ~ectx ~eenv : Done_or_more_deps.t Produce.t =

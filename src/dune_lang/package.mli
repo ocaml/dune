@@ -77,22 +77,4 @@ val create
   -> t
 
 val original_opam_file : t -> original_opam_file option
-
-module Duplicate_dep_warning : sig
-  type field =
-    | Depends
-    | Conflicts
-    | Depopts
-
-  type t =
-    { loc : Loc.t
-    ; dep_string : string
-    ; field : field
-    }
-
-  val field_of_string : string -> field option
-  val combine_constraint_op : t -> string
-  val field_name : t -> string
-end
-
-val duplicate_dep_warnings : t -> Duplicate_dep_warning.t list
+val duplicate_dep_warnings : t -> User_message.t list

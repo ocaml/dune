@@ -83,12 +83,12 @@ let rec restore_from_cache
              | Cancelled { dependency_cycle } ->
                Fiber.return (Changed_or_not.Cancelled { dependency_cycle })
              | Out_of_date _old_value ->
-               (match dep.spec.allow_cutoff with
-                | No when not ok_to_recompute_eagerly ->
+               (match Spec.has_cutoff dep.spec with
+                | false when not ok_to_recompute_eagerly ->
                   (* If [dep] has no cutoff, it is sufficient to check whether it is up to
                      date. If not, we must recompute the [cached_value]. *)
                   Fiber.return Changed_or_not.Changed
-                | No ->
+                | false ->
                   (* [dep] is a direct child of a parallel section, so recompute it eagerly
                      (in parallel with its siblings) rather than deferring. It has no
                      cutoff, so the outcome is [Changed] regardless of the new value. *)
@@ -97,7 +97,7 @@ let rec restore_from_cache
                    | Ok (_ : _ Cached_value.t) -> Changed_or_not.Changed
                    | Error dependency_cycle ->
                      Changed_or_not.Cancelled { dependency_cycle })
-                | Yes _equal ->
+                | true ->
                   (* If [dep] has a cutoff predicate, it is not sufficient to check
                      whether it is up to date: even if it isn't, after we recompute it,
                      the resulting value may remain unchanged, allowing us to skip

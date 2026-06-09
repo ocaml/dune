@@ -415,10 +415,10 @@ let raise_module_conflict_error ~module_path origins =
     [ main_message
     ; Pp.enumerate locs ~f:(fun loc -> Pp.verbatim (Loc.to_file_colon_line loc))
     ; Pp.text
-        "To fix this error, you must specify an explicit \"modules\" field in every \
-         library, executable, and executables stanzas in this dune file. Note that each \
-         module cannot appear in more than one \"modules\" field - it must belong to a \
-         single library or executable."
+        "To fix this error, you must specify explicit \"modules\" fields so that each \
+         module belongs to only one stanza. Stanzas without an explicit \"modules\" \
+         field use all modules in the directory by default. This applies to library, \
+         executable, executables, test, tests, and melange.emit stanzas."
     ]
 ;;
 

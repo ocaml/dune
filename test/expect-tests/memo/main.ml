@@ -942,8 +942,8 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
               ; backtrace = ""
               }
             ]
-    Memo graph: 8/8/0 nodes/edges/blocked (restore), 8/7/0 nodes/edges/blocked (compute)
-    Memo cycle detection graph: 0/0/0 nodes/edges/paths
+    Memo graph: 8/8/1 nodes/edges/blocked (restore), 8/7/0 nodes/edges/blocked (compute)
+    Memo cycle detection graph: 6/5/1 nodes/edges/paths
     |}];
   Memo.Metrics.reset ();
   evaluate_and_print summit_yes_cutoff 0;
@@ -977,8 +977,8 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
               ; backtrace = ""
               }
             ]
-    Memo graph: 7/7/0 nodes/edges/blocked (restore), 6/6/0 nodes/edges/blocked (compute)
-    Memo cycle detection graph: 0/0/0 nodes/edges/paths
+    Memo graph: 7/7/1 nodes/edges/blocked (restore), 6/6/0 nodes/edges/blocked (compute)
+    Memo cycle detection graph: 6/5/1 nodes/edges/paths
     |}];
   Memo.Metrics.reset ();
   evaluate_and_print summit_no_cutoff 2;
@@ -1041,11 +1041,11 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
   print_metrics ();
   [%expect
     {|
-    Started evaluating base
-    Evaluated base: 3
     Started evaluating incrementing_chain_2_yes_cutoff
     Started evaluating incrementing_chain_1_no_cutoff
     Started evaluating cycle_creator_no_cutoff
+    Started evaluating base
+    Evaluated base: 3
     Evaluated cycle_creator_no_cutoff: 3
     Evaluated incrementing_chain_1_no_cutoff: 4
     Evaluated incrementing_chain_2_yes_cutoff: 5
@@ -1056,9 +1056,9 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     Started evaluating the summit with input 0
     Evaluated the summit with input 0: 7
     f 0 = Ok 7
-    Memo graph: 7/7/0 nodes/edges/blocked (restore), 8/7/0 nodes/edges/blocked (compute)
+    Memo graph: 7/6/0 nodes/edges/blocked (restore), 8/7/0 nodes/edges/blocked (compute)
     Memo cycle detection graph: 0/0/0 nodes/edges/paths
-  |}];
+    |}];
   Memo.Metrics.reset ();
   evaluate_and_print summit_yes_cutoff 0;
   print_metrics ();
@@ -1077,9 +1077,9 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     Evaluated incrementing_chain_4_no_cutoff: 7
     Evaluated the summit with input 0: 7
     f 0 = Ok 7
-    Memo graph: 6/6/0 nodes/edges/blocked (restore), 6/6/0 nodes/edges/blocked (compute)
+    Memo graph: 6/5/0 nodes/edges/blocked (restore), 6/6/0 nodes/edges/blocked (compute)
     Memo cycle detection graph: 0/0/0 nodes/edges/paths
-  |}];
+    |}];
   Memo.Metrics.reset ();
   evaluate_and_print summit_no_cutoff 2;
   print_metrics ();
@@ -1187,24 +1187,26 @@ let%expect_test "No deadlocks when creating the same cycle twice" =
   evaluate_and_print summit 2;
   [%expect
     {|
+    Started evaluating cycle_creator
+    Started evaluating base
     Dependency cycle detected:
-    - ("base", ())
-    - called by ("cycle_creator", ())
+    - ("cycle_creator", ())
+    - called by ("base", ())
     f 0 = Error
-            [ { exn = "Cycle_error.E [ (\"base\", ()); (\"cycle_creator\", ()) ]"
+            [ { exn = "Cycle_error.E [ (\"cycle_creator\", ()); (\"base\", ()) ]"
               ; backtrace = ""
               }
             ]
     Started evaluating summit
     Dependency cycle detected:
-    - ("base", ())
-    - called by ("cycle_creator", ())
+    - ("cycle_creator", ())
+    - called by ("base", ())
     f 2 = Error
-            [ { exn = "Cycle_error.E [ (\"base\", ()); (\"cycle_creator\", ()) ]"
+            [ { exn = "Cycle_error.E [ (\"cycle_creator\", ()); (\"base\", ()) ]"
               ; backtrace = ""
               }
             ]
-  |}]
+    |}]
 ;;
 
 let%expect_test "cancelling a computing node wakes waiters" =

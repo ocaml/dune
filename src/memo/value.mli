@@ -23,6 +23,8 @@ end
 type 'a t =
   | Ok of 'a
   | Error of Collect_errors_monoid.t
+  | Uninitialized
+  (** [Uninitialized] is the value of a node that has never been computed. *)
 
 (** Get the value, or reraise the contained errors after remapping each one with [map_exn]. *)
 val get_exn : 'a t -> map_exn:(exn -> exn) -> 'a Fiber.t

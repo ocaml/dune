@@ -109,9 +109,8 @@ end
    documenting in the code. *)
 let invalidate_dep_node (dep_node : _ Dep_node.t) =
   match dep_node.state with
-  | Cached_value cached_value ->
-    dep_node.state <- Out_of_date { old_value = Option.Unboxed.some cached_value }
-  | Out_of_date { old_value = _ } -> ()
+  | Cached -> dep_node.state <- Out_of_date
+  | Not_cached | Out_of_date -> ()
   | Restoring _ ->
     Code_error.raise
       "invalidate_dep_node called on a node in Restoring state"
@@ -175,7 +174,14 @@ let create
 ;;
 
 let make_dep_node ~spec ~input : _ Dep_node.t =
-  { id = Id.gen (); input; spec; state = Out_of_date { old_value = Option.Unboxed.none } }
+  { id = Id.gen ()
+  ; input
+  ; spec
+  ; state = Not_cached
+  ; value = Uninitialized
+  ; runs = Run.Pair.create ~last_changed_at:Run.invalid ~last_validated_at:Run.invalid
+  ; deps = Deps.empty
+  }
 ;;
 
 let dep_node (t : (_, _) Table.t) input =
@@ -213,8 +219,8 @@ let create_rec
 let dump_cached_graph ?(on_not_cached = `Raise) ?(time_nodes = false) cell =
   let rec collect_graph (Dep_node.T dep_node) graph : Graph.t Fiber.t =
     let src_id = Id.to_int dep_node.id in
-    match get_cached_value_in_current_run dep_node with
-    | Some cached ->
+    match get_cached_deps_in_current_run dep_node with
+    | Some deps ->
       let* attributes =
         if time_nodes
         then (
@@ -230,7 +236,7 @@ let dump_cached_graph ?(on_not_cached = `Raise) ?(time_nodes = false) cell =
       in
       let graph = Graph.add_node graph ~id:src_id ?label:dep_node.spec.name ~attributes in
       List.fold_left
-        (Deps.For_debugging.to_list cached.deps)
+        (Deps.For_debugging.to_list deps)
         ~init:(Fiber.return graph)
         ~f:(fun graph (Dep_node.T dst_node as packed) ->
           let* graph = graph in
@@ -608,11 +614,11 @@ module For_tests = struct
     match Store.find t.cache inp with
     | None -> None
     | Some dep_node ->
-      (match get_cached_value_in_current_run dep_node with
+      (match get_cached_deps_in_current_run dep_node with
        | None -> None
-       | Some cv ->
+       | Some deps ->
          Some
-           (Deps.For_debugging.to_list cv.deps
+           (Deps.For_debugging.to_list deps
             |> List.map ~f:(fun (Dep_node.T dep) ->
               dep.spec.name, Dep_node.input_to_dyn dep)))
   ;;
@@ -690,7 +696,7 @@ module Var = struct
     | Some cutoff when cutoff !(t.value) v ->
       (* Note: We do *not* set [t.value := v] when the change is insignificant according
          to the [cutoff]. This is consistent with how cutoffs work in the rest of Memo,
-         e.g., see the [compute] and [confirm_old_value] functions.
+         e.g., see the [compute] and [update_value] functions.
 
          This prevents the "cutoff creep" where, e.g., the [cutoff] returns [true] for
          changes within 1% of the current [float] value and a sequence of smaller changes

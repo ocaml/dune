@@ -3,6 +3,31 @@
 This file provides guidance to AI agents (Claude Code, Codex, etc) when working with
 the Dune codebase.
 
+## General Rules
+
+- Every commit must be pass the following check `$ dune build @check @fmt @runtest`.
+  Commits that introduce a failing test should also pass this check even if the
+  test introduces failure
+
+- Unless otherwise stated, prefer to create commits for every logical change
+  that you make. When in a `jj` repo, detected by the presence of `.jj/`, use
+  the `jj` tool create commits. Commits should come with a brief description of
+  the change.
+
+- In a `jj` repo, orient yourself using `$ jj show` and `$ jj log`. Are you
+  working off the right commit? Is it correct to modify the current commit?
+
+- Before fixing a bug, demonstrate it first in a test. A fix should ideally
+  flip the output of an existing test from failure to success.
+
+- Before writing large changes, try to estimate the scope of the change you
+  intend to make. Attempt to understand how  will the change interact with
+  other features, what will be the testing strategy to make sure the test is
+  correctly implemented.
+
+- Push back against user requirements before working on large changes. Ask for
+  clarifying questions.
+
 ## Quick Reference
 
 **Most Common Commands:**

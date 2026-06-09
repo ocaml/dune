@@ -2,12 +2,6 @@
 
 open! Import
 
-module Allow_cutoff : sig
-  type 'o t =
-    | No
-    | Yes of ('o -> 'o -> bool)
-end
-
 (** Events in the life-cycle of a memoized node, used for instrumentation. *)
 module Event : sig
   type t =
@@ -16,16 +10,22 @@ module Event : sig
     (** The node's output was validated (confirmed up to date) in the current run. *)
 end
 
+(** Memo nodes can have some special features, for example, [cutoff]
+    predicates. *)
+module Node_kind : sig
+  type ('i, 'o) t
+end
+
 type ('i, 'o) t =
   { name : string option
-  ; (* If the field [witness] precedes any of the functional values ([input]
-         and [f]), then polymorphic comparison actually works for [Spec.t]s. *)
+  ; (* If the field [witness] precedes any of the functional values ([input],
+         [f], and the closures inside [node_kind]), then polymorphic comparison
+         actually works for [Spec.t]s. *)
     witness : 'i Type_eq.Id.t
   ; input : (module Store_intf.Input with type t = 'i)
-  ; allow_cutoff : 'o Allow_cutoff.t
+  ; node_kind : ('i, 'o) Node_kind.t
   ; f : 'i -> 'o Fiber.t
   ; human_readable_description : ('i -> User_message.Style.t Pp.t) option
-  ; on_event : ('i -> Event.t -> unit) option
   }
 
 val create
@@ -36,6 +36,14 @@ val create
   -> ?on_event:('a -> Event.t -> unit)
   -> ('a -> 'b Fiber.t)
   -> ('a, 'b) t
+
+(** Does the [new_value] differ from the [old_value]? Always [true] for nodes
+    without a cutoff predicate. *)
+val output_changed : (_, 'o) t -> old_value:'o -> new_value:'o -> bool
+
+(** Whether the node has a cutoff predicate. If [false], [output_changed] is
+    guaranteed to return [true] for any pair of values. *)
+val has_cutoff : _ t -> bool
 
 (** [notify spec input event] runs [spec]'s [on_event] callback, if it has one. *)
 val notify : ('i, _) t -> 'i -> Event.t -> unit

@@ -425,9 +425,7 @@ module Cached_value = struct
     | Error _, Ok _
     | Ok _, Error _ -> true
     | Ok prev_value, Ok cur_value ->
-      (match node.spec.allow_cutoff with
-       | Yes equal -> not (equal prev_value cur_value)
-       | No -> true)
+      Spec.output_changed node.spec ~old_value:prev_value ~new_value:cur_value
     | ( Error { exns = prev_exns; reproducible = true }
       , Error { exns = cur_exns; reproducible = true } ) ->
       not (Exn_set.equal prev_exns cur_exns)

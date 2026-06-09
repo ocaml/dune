@@ -83,7 +83,43 @@ let build =
   let doc = "Build the given targets, or the default ones if none are given." in
   let man =
     [ `S "DESCRIPTION"
-    ; `P {|Targets starting with a $(b,@) are interpreted as aliases.|}
+    ; `P {|Each $(b,TARGET) argument is one of the following forms:|}
+    ; `I
+        ( {|$(i,PATH)|}
+        , {|A file or directory path. If a build rule produces it (including a
+          directory target), that rule is run; otherwise, if $(i,PATH) is a
+          source directory, dune builds the $(b,@@default) alias in that
+          directory. The path may contain any percent form accepted in dune
+          stanzas, such as $(b,%{bin:foo}) or $(b,%{cmi:lib/mod}).|}
+        )
+    ; `I
+        ( {|$(b,@)$(i,name)|}
+        , {|Build the alias $(i,name) in the current directory and all
+          subdirectories. The name may be prefixed with a build-context path
+          such as $(b,@_build/foo/runtest) to restrict to a single context.
+          Equivalent to $(b,--alias-rec) $(i,name).|}
+        )
+    ; `I
+        ( {|$(b,@@)$(i,name)|}
+        , {|Build the alias $(i,name) in the current directory only. Equivalent
+          to $(b,--alias) $(i,name).|}
+        )
+    ; `I
+        ( {|$(b,\(file PATH\))|}
+        , {|Equivalent to $(i,PATH), but disambiguates paths starting with
+          $(b,@).|}
+        )
+    ; `I
+        ( {|$(b,\(alias NAME\)), $(b,\(alias_rec NAME\))|}
+        , {|Equivalent to $(b,@@)$(i,NAME) and $(b,@)$(i,NAME) respectively.|} )
+    ; `P
+        {|When no $(b,TARGET) is given, dune builds the default target
+        (configurable with $(b,--default-target)).|}
+    ; `P
+        {|If another instance of dune is running in watch mode in the same
+        workspace (started with $(b,--watch) / $(b,-w)), $(b,dune build)
+        forwards the build request to it over RPC. If another instance is
+        running but not in watch mode, the build is aborted.|}
     ; `Blocks Common.help_secs
     ; Common.examples
         [ "Build all targets in the current source tree", "dune build"
@@ -91,12 +127,20 @@ let build =
         ; ( "Build the minimal set of targets required for tooling such as Merlin \
              (useful for quickly detecting errors)"
           , "dune build @check" )
+        ; "Build the public executable `foo'", "dune build %{bin:foo}"
         ; "Run all code formatting tools in-place", "dune build --auto-promote @fmt"
         ]
     ]
   in
-  (* CR-someday Alizter: document this option *)
-  let name_ = Arg.info [] ~docv:"TARGET" ~doc:None in
+  let name_ =
+    Arg.info
+      []
+      ~docv:"TARGET"
+      ~doc:
+        (Some
+           "A path, alias (such as $(b,@runtest)), or S-expression to build. See the \
+            $(b,DESCRIPTION) section for the accepted forms. Can be repeated.")
+  in
   let term =
     let+ builder = Common.Builder.term
     and+ targets = Arg.(value & pos_all dep [] name_)
@@ -112,7 +156,7 @@ let build =
                  "Build the alias $(docv) in its parent directory and all \
                   subdirectories. Equivalent to the build target $(b,@)$(docv). Example: \
                   $(b,--alias-rec dir/foo) builds the $(b,foo) alias in $(b,dir/) and \
-                  all its subdirectories. Repeatable."))
+                  all its subdirectories. Can be repeated."))
     and+ aliases =
       Arg.(
         value
@@ -124,7 +168,7 @@ let build =
               (Some
                  "Build $(docv) in its parent directory only. Equivalent to the build \
                   target $(b,@@)$(docv). Example: $(b,--alias dir/foo) builds the \
-                  $(b,foo) alias in $(b,dir/) only. Repeatable."))
+                  $(b,foo) alias in $(b,dir/) only. Can be repeated."))
     in
     let targets = List.concat [ targets; aliases; aliases_rec ] in
     let targets =

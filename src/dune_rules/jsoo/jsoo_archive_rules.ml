@@ -130,23 +130,25 @@ let lib_archive_rules_memo =
          let in_context =
            Js_of_ocaml.In_context.make ~dir:lib_dir lib.buildable.js_of_ocaml
          in
-         let config = Jsoo_rules.Config.of_string config in
-         let+ rules =
-           Rules.collect_unit (fun () ->
-             Memo.parallel_iter Js_of_ocaml.Mode.all ~f:(fun mode ->
-               let in_context = Js_of_ocaml.Mode.Pair.select ~mode in_context in
-               Jsoo_rules.build_cm
-                 cctx
-                 ~dir:obj_dir_dir
-                 ~in_context
-                 ~mode
-                 ~config:(Some config)
-                 ~src:(Path.build src)
-                 ~deps:(Action_builder.return [])
-                 ~obj_dir
-               |> Super_context.add_rule sctx ~dir:obj_dir_dir ~loc:lib.buildable.loc))
-         in
-         Some rules)
+         (match Jsoo_rules.Config.decode_path_digest config with
+          | None -> Memo.return None
+          | Some config ->
+            let+ rules =
+              Rules.collect_unit (fun () ->
+                Memo.parallel_iter Js_of_ocaml.Mode.all ~f:(fun mode ->
+                  let in_context = Js_of_ocaml.Mode.Pair.select ~mode in_context in
+                  Jsoo_rules.build_cm
+                    cctx
+                    ~dir:obj_dir_dir
+                    ~in_context
+                    ~mode
+                    ~config:(Some config)
+                    ~src:(Path.build src)
+                    ~deps:(Action_builder.return [])
+                    ~obj_dir
+                  |> Super_context.add_rule sctx ~dir:obj_dir_dir ~loc:lib.buildable.loc))
+            in
+            Some rules))
 ;;
 
 type lib_archive_rules =

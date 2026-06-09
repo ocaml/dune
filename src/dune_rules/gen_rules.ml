@@ -655,7 +655,7 @@ let gen_rules ctx sctx ~dir components : Gen_rules.result Memo.t =
       ~dir
       (match rest with
        | [] -> Subdir_set.all
-       | [ s ] when Option.is_none (Digest.from_hex s) -> Subdir_set.all
+       | [ s ] when Jsoo_rules.Config.is_known_path_digest s -> Subdir_set.all
        | _ -> Subdir_set.empty)
       (fun () ->
          (* XXX the use of the super context is dubious here. We're using it to

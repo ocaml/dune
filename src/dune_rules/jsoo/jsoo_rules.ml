@@ -128,6 +128,14 @@ module Config : sig
   val remove_config_flags : string list -> string list
   val equal : t -> t -> bool
   val repr : t Repr.t
+
+  (** Hex digest of [t], used as a path component instead of [path] to keep
+      build paths short. Records the digest in a reverse table so it can be
+      decoded later in the same process. *)
+  val path_digest : t -> string
+
+  val decode_path_digest : string -> t option
+  val is_known_path_digest : string -> bool
 end = struct
   type effects_backend =
     | Cps
@@ -281,6 +289,19 @@ end = struct
   let to_flags ~jsoo_version t = flags_of_config ~jsoo_version (config_of_string t)
   let equal = String.equal
   let repr = String.repr
+  let path_digest_table : (Digest.t, t) Table.t = Table.create (module Digest) 32
+
+  let path_digest t =
+    let digest = Digest.string t in
+    Table.set path_digest_table digest t;
+    Digest.to_string digest
+  ;;
+
+  let decode_path_digest s =
+    Option.bind (Digest.from_hex s) ~f:(Table.find path_digest_table)
+  ;;
+
+  let is_known_path_digest s = Option.is_some (decode_path_digest s)
 
   let remove_config_flags flags =
     let rec loop acc = function
@@ -312,14 +333,15 @@ let install_jsoo_hint = "opam install js_of_ocaml-compiler"
 let install_wasmoo_hint = "opam install wasm_of_ocaml-compiler"
 
 let in_build_dir (ctx : Build_context.t) ~config args =
-  Path.Build.L.relative ctx.build_dir (".js" :: Config.path config :: args)
+  Path.Build.L.relative ctx.build_dir (".js" :: Config.path_digest config :: args)
 ;;
 
 let in_obj_dir ~obj_dir ~config args =
   let dir =
     match config with
     | None -> Obj_dir.jsoo_dir obj_dir
-    | Some config -> Path.Build.relative (Obj_dir.jsoo_dir obj_dir) (Config.path config)
+    | Some config ->
+      Path.Build.relative (Obj_dir.jsoo_dir obj_dir) (Config.path_digest config)
   in
   Path.Build.L.relative dir args
 ;;
@@ -328,7 +350,7 @@ let in_obj_dir' ~obj_dir ~config args =
   let dir =
     match config with
     | None -> Obj_dir.jsoo_dir obj_dir
-    | Some config -> Path.relative (Obj_dir.jsoo_dir obj_dir) (Config.path config)
+    | Some config -> Path.relative (Obj_dir.jsoo_dir obj_dir) (Config.path_digest config)
   in
   Path.L.relative dir args
 ;;
@@ -509,6 +531,7 @@ module Runtime_key : sig
 
   val encode : Decoded.t -> encoded
   val decode : encoded -> Decoded.t
+  val is_known : string -> bool
 end = struct
   type encoded = Digest.t
 
@@ -613,6 +636,12 @@ end = struct
             "I don't know what jsoo runtime set %s correspond to."
             (Digest.to_string y)
         ]
+  ;;
+
+  let is_known s =
+    match Digest.from_hex s with
+    | None -> false
+    | Some d -> Table.mem reverse_table d
   ;;
 end
 
@@ -981,11 +1010,10 @@ let setup_shared_runtime_rule sctx s_digest =
 
 let setup_separate_compilation_rules sctx components =
   match components with
-  | [ s_digest ] when Option.is_some (Digest.from_hex s_digest) ->
-    setup_shared_runtime_rule sctx s_digest
+  | [ s ] when Runtime_key.is_known s -> setup_shared_runtime_rule sctx s
   | [] | [ _ ] -> Memo.return ()
-  | [ s_config; s_pkg ] ->
-    let config = Config.of_string s_config in
+  | [ s_config; s_pkg ] when Config.is_known_path_digest s_config ->
+    let config = Option.value_exn (Config.decode_path_digest s_config) in
     let pkg = Lib_name.parse_string_exn (Loc.none, s_pkg) in
     let ctx = Super_context.context sctx in
     let* installed_libs = Lib.DB.installed ctx in

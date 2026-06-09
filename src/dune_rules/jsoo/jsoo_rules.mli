@@ -6,6 +6,8 @@ module Config : sig
   type t
 
   val of_string : string -> t
+  val decode_path_digest : string -> t option
+  val is_known_path_digest : string -> bool
 end
 
 module Version : sig

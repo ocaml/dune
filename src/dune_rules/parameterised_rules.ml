@@ -371,13 +371,15 @@ let instantiate ~sctx lib =
 ;;
 
 let instantiate_jsoo ~sctx lib s_config =
-  let config = Jsoo_rules.Config.of_string s_config in
-  let ctx = Super_context.context sctx in
-  let build_dir = Context.build_dir ctx in
-  let lib = Lib.Parameterised.for_instance ~build_dir ~ext_lib:None lib in
-  let obj_dir = Lib_info.obj_dir (Lib.info lib) |> Obj_dir.as_local_exn in
-  Memo.parallel_iter Js_of_ocaml.Mode.all ~f:(fun mode ->
-    build_jsoo ~sctx ~obj_dir ~dir:build_dir ~lib ~mode ~config:(Some config))
+  match Jsoo_rules.Config.decode_path_digest s_config with
+  | None -> Memo.return ()
+  | Some config ->
+    let ctx = Super_context.context sctx in
+    let build_dir = Context.build_dir ctx in
+    let lib = Lib.Parameterised.for_instance ~build_dir ~ext_lib:None lib in
+    let obj_dir = Lib_info.obj_dir (Lib.info lib) |> Obj_dir.as_local_exn in
+    Memo.parallel_iter Js_of_ocaml.Mode.all ~f:(fun mode ->
+      build_jsoo ~sctx ~obj_dir ~dir:build_dir ~lib ~mode ~config:(Some config))
 ;;
 
 let resolve_instantiation scope instance_name =

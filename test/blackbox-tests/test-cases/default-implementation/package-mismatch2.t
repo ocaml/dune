@@ -22,5 +22,6 @@ A default implementation of a library must belong to the same package
   4 |  (implements vlib))
                    ^^^^
   Error: Library "vlib" is private, it cannot be a dependency of a public
-  library. You need to give "vlib" a public name.
+  library. You need to give "vlib" a public name or add a (package ...) field
+  to its stanza.
   [1]

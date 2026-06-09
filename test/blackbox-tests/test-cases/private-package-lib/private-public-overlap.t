@@ -19,5 +19,6 @@ private library
   3 |  (libraries bar)
                   ^^^
   Error: Library "bar" is private, it cannot be a dependency of a private
-  library attached to a package. You need to give "bar" a public name.
+  library attached to a package. You need to give "bar" a public name or add a
+  (package ...) field to its stanza.
   [1]

@@ -211,6 +211,7 @@ module Table : sig
   val iter : 'a t -> f:('a -> unit) -> unit
   val iteri : 'a t -> f:(key:path -> data:'a -> unit) -> unit
   val find : 'a t -> path -> 'a option
+  val find_or_add : 'a t -> path -> f:(path -> 'a) -> 'a
   val filteri_inplace : 'a t -> f:(key:path -> data:'a -> bool) -> unit
   val filter_inplace : 'a t -> f:('a -> bool) -> unit
   val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t

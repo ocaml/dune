@@ -965,6 +965,14 @@ module Table = struct
     | External p -> External.Table.find external_ p
   ;;
 
+  let[@inline] find_or_add { source; build; external_ } k ~f =
+    match k with
+    | In_source_tree p ->
+      Source0.Table.find_or_add source p ~f:(fun p -> f (In_source_tree p))
+    | In_build_dir p -> Build.Table.find_or_add build p ~f:(fun p -> f (In_build_dir p))
+    | External p -> External.Table.find_or_add external_ p ~f:(fun p -> f (External p))
+  ;;
+
   let filteri_inplace { source; build; external_ } ~f =
     Source0.Table.filteri_inplace source ~f:(fun[@inline] ~key ~data ->
       f ~key:(In_source_tree key) ~data);

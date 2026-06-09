@@ -12,6 +12,11 @@ module type S = sig
   val clear : 'a t -> unit
   val set : 'a t -> key -> 'a -> unit
   val find : 'a t -> key -> 'a option
+
+  (** [find_or_add t key ~f] returns the value associated with [key], or, if [key] is not
+      present, adds [f key] and returns it, in a single hash-table lookup. *)
+  val find_or_add : 'a t -> key -> f:(key -> 'a) -> 'a
+
   val iter : 'a t -> f:('a -> unit) -> unit
 end
 

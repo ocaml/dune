@@ -1,7 +1,9 @@
-Regression baseline for an unwrapped library declaring
+Per-module narrowing on an unwrapped library declaring
 `(instrumentation (backend X))` without `--instrument-with` at
-build time. Today, the consumer's compile rule depends on the
-lib's full `.cmi` glob over its objdir.
+build time. The narrowing must (a) not demand non-existent
+`.pp.ml` files from the instrumentation-disabled lib, and (b)
+emit per-module deps instead of the cctx-wide `.cmi` glob over
+`middle`'s objdir.
 
   $ make_dune_project 3.24
 
@@ -41,18 +43,16 @@ no `.pp.ml` files are produced.
   > let _ = Middle.identity 0
   > EOF
 
-Build without `--instrument-with`. Today this succeeds with the
-cctx-wide `.cmi` glob covering `leaf.cmi` through `middle`'s objdir
-chain.
+Build without `--instrument-with`. The narrowing produces per-
+module narrow deps on the consumer's compile rule.
 
   $ dune build consumer/consumer.exe
 
-The consumer's compile rule today carries a wide `.cmi` glob over
-`middle`'s objdir.
+The consumer's compile rule has no glob entry over `middle`'s
+objdir.
 
   $ dune rules --root . --format=json --deps '%{cmo:consumer/consumer}' > deps.json
 
   $ jq -r 'include "dune"; .[] | depsGlobs
   >   | select(.dir | endswith("middle/.middle.objs/byte"))
   >   | .dir + " " + .predicate' < deps.json
-  _build/default/middle/.middle.objs/byte *.cmi

@@ -207,7 +207,10 @@ let eval t ~(conf : Conf.t) =
        >>= function
        | None -> Memo.return ""
        | Some vcs ->
-         let+ res = Vcs.describe vcs in
+         let needed_for =
+           "to infer version information for artifact substitution and build info"
+         in
+         let+ res = Vcs.describe ~needed_for vcs in
          Option.value res ~default:"")
   | Location (name, lib_name) ->
     conf.get_location name lib_name |> relocatable |> Memo.run

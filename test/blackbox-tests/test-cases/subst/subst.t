@@ -135,3 +135,22 @@ Test subst and files with unicode (#3879)
   $ dune subst
 
   $ rm -rf .git
+
+Missing git
+-----------
+
+  $ cat > dune-project <<EOF
+  > (lang dune 3.0)
+  > (name foo)
+  > EOF
+
+  $ git init --quiet
+  $ git add .
+  $ git commit -am _ --quiet
+  $ git tag -a 1.0 -m 1.0
+
+  $ PATH=$(dirname $(which dune)) dune subst
+  Error: Program git not found in the tree or in PATH
+  Hint: Git is required by 'dune subst' to infer version information and list
+  files. Install git or add it to your PATH.
+  [1]

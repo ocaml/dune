@@ -228,7 +228,11 @@ module File_ops_real (W : sig
       in
       match packages with
       | None -> Fiber.return None
-      | Some vcs -> Memo.run (Vcs.describe vcs)
+      | Some vcs ->
+        Memo.run
+          (Vcs.describe
+             vcs
+             ~needed_for:"to infer package versions while installing files")
     in
     try f ~get_version ic ~src oc with
     | _ (* XXX should we really be catching everything here? *) ->

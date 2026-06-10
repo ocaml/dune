@@ -136,7 +136,7 @@ let make_dep_node ~spec ~input : _ Dep_node.t =
   ; spec
   ; state = Not_cached
   ; value = Uninitialized
-  ; runs = Run.Pair.create ~last_changed_at:Run.invalid ~last_validated_at:Run.invalid
+  ; runs = Run.Pair.invalid
   ; deps = Deps.empty
   }
 ;;
@@ -418,6 +418,10 @@ module Run = struct
   module For_tests = struct
     let compare = Run.compare
     let current = Run.current
+    let of_int = Run.For_testing.of_int
+    let to_int = Run.For_testing.to_int
+
+    module Pair = Run.Pair
   end
 end
 

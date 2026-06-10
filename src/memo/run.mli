@@ -49,4 +49,15 @@ module Pair : sig
   (** [with_last_validated_at t ~last_validated_at] preserves [last_changed_at t].
       The caller must ensure [last_changed_at t <= last_validated_at] still holds. *)
   val with_last_validated_at : t -> last_validated_at:run -> t
+
+  (** The pair of two invalid runs. *)
+  val invalid : t
+end
+
+module For_testing : sig
+  (** [of_int] / [to_int] are the identity; they expose the [int] representation
+      of [t] for tests. *)
+  val of_int : int -> t
+
+  val to_int : t -> int
 end

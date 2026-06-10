@@ -34,4 +34,12 @@ module Pair = struct
   let[@inline always] with_last_validated_at t ~last_validated_at =
     create ~last_changed_at:(last_changed_at t) ~last_validated_at
   ;;
+
+  (* The pair of two invalid runs; packs to [0]. *)
+  let invalid = create ~last_changed_at:invalid ~last_validated_at:invalid
+end
+
+module For_testing = struct
+  let of_int t = t
+  let to_int t = t
 end

@@ -258,6 +258,28 @@ We have the following shells for specific tasks:
   + ``make test-rocq``: these work well on a regular Dune opam dev switch
   + ``make test-rocq-native``: these require the Rocq native compiler to run, and thus need OCaml 4.x
 
+Warming the Cachix Cache
+========================
+
+Stable devShell closures are cached at ``https://ocaml-dune.cachix.org`` so
+contributors and CI don't rebuild them from scratch. The contents are
+declared by the ``cache-bundle`` package in ``flake.nix``.
+
+Maintainers with write access can refresh the cache after a ``flake.lock``
+change:
+
+.. code:: console
+
+   $ export CACHIX_AUTH_TOKEN=...
+   $ out=$(nix build --no-link --print-out-paths .#cache-bundle)
+   $ cachix push ocaml-dune "$out"
+
+The bundle excludes the ``ox`` and ``scope`` devShells because they override
+``dune_3`` to the repo-built binary, so their closures change per commit and
+would churn the cache without giving cross-PR hits. When adding a new
+devShell, include it in ``cache-bundle`` only if its closure is stable per
+``flake.lock``.
+
 Testing Reverse Dependencies
 ============================
 

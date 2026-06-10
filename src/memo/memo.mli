@@ -364,6 +364,19 @@ module Run : sig
   module For_tests : sig
     val compare : t -> t -> Ordering.t
     val current : unit -> t
+    val of_int : int -> t
+    val to_int : t -> int
+
+    module Pair : sig
+      type run := t
+      type t
+
+      val create : last_changed_at:run -> last_validated_at:run -> t
+      val last_changed_at : t -> run
+      val last_validated_at : t -> run
+      val with_last_validated_at : t -> last_validated_at:run -> t
+      val invalid : t
+    end
   end
 end
 

@@ -54,7 +54,7 @@ let extra_files = function
 let git_repo package (loc, opam_file) rev ~files_dir ~url =
   let opam_file = Opam_file.opam_file_with ~package ~url opam_file in
   Rest
-    { dune_build = false
+    { dune_build = Dune_default_build_commands.is_dune_default opam_file
     ; loc
     ; package
     ; opam_file
@@ -66,7 +66,7 @@ let local_fs package (loc, opam_file) ~dir ~files_dir ~url =
   let files_dir = Option.map files_dir ~f:(Path.append_local dir) in
   let opam_file = Opam_file.opam_file_with ~package ~url opam_file in
   Rest
-    { dune_build = false
+    { dune_build = Dune_default_build_commands.is_dune_default opam_file
     ; loc
     ; package
     ; extra_files = Inside_files_dir files_dir
@@ -105,7 +105,7 @@ let local_package ~command_source (loc, opam_file) opam_package =
   let dune_build =
     match (command_source : Local_package.command_source) with
     | Assume_defaults -> true
-    | Opam_file _ -> false
+    | Opam_file _ -> Dune_default_build_commands.is_dune_default opam_file
   in
   let opam_file = Opam_file.opam_file_with ~package:opam_package ~url:None opam_file in
   let package = OpamFile.OPAM.package opam_file in

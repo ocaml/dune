@@ -696,65 +696,76 @@ module Pkg_config = struct
     ; cflags : string list
     }
 
+  let pkg_config_env t ~package =
+    match ocaml_config_var t.configurator "system" with
+    | Some "macosx" ->
+      let open Option.O in
+      which t.configurator "brew"
+      >>= fun brew ->
+      let new_pkg_config_path =
+        let prefix =
+          Process.run_capture_exn
+            t.configurator
+            ~dir:t.configurator.dest_dir
+            brew
+            [ "--prefix" ]
+          |> String.trim
+        in
+        let p = sprintf "%s/opt/%s/lib/pkgconfig" (quote_if_needed prefix) package in
+        Option.some_if
+          (match Sys.is_directory p with
+           | s -> s
+           | exception Sys_error _ -> false)
+          p
+      in
+      new_pkg_config_path
+      >>| fun new_pkg_config_path ->
+      let _PKG_CONFIG_PATH = "PKG_CONFIG_PATH" in
+      let pkg_config_path =
+        match Sys.getenv _PKG_CONFIG_PATH with
+        | s -> s ^ ":"
+        | exception Not_found -> ""
+      in
+      [ sprintf "%s=%s%s" _PKG_CONFIG_PATH pkg_config_path new_pkg_config_path ]
+    | _ -> None
+  ;;
+
   let gen_query t ~package ~expr =
-    let c = t.configurator in
-    let dir = c.dest_dir in
-    let expr =
-      match expr with
-      | Some e -> e
-      | None ->
-        if
-          String.exists package ~f:(function
-            | '=' | '>' | '<' -> true
-            | _ -> false)
-        then
-          warn
-            "Package name %S contains invalid characters. Use Pkg_config.query_expr to \
-             construct proper queries"
-            package;
-        package
-    in
-    let env =
-      match ocaml_config_var c "system" with
-      | Some "macosx" ->
-        let open Option.O in
-        which c "brew"
-        >>= fun brew ->
-        let new_pkg_config_path =
-          let prefix = String.trim (Process.run_capture_exn c ~dir brew [ "--prefix" ]) in
-          let p = sprintf "%s/opt/%s/lib/pkgconfig" (quote_if_needed prefix) package in
-          Option.some_if
-            (match Sys.is_directory p with
-             | s -> s
-             | exception Sys_error _ -> false)
-            p
-        in
-        new_pkg_config_path
-        >>| fun new_pkg_config_path ->
-        let _PKG_CONFIG_PATH = "PKG_CONFIG_PATH" in
-        let pkg_config_path =
-          match Sys.getenv _PKG_CONFIG_PATH with
-          | s -> s ^ ":"
-          | exception Not_found -> ""
-        in
-        [ sprintf "%s=%s%s" _PKG_CONFIG_PATH pkg_config_path new_pkg_config_path ]
-      | _ -> None
-    in
-    let pc_flags = "--print-errors" in
+    let env = pkg_config_env t ~package in
     let { Process.exit_code; stderr; _ } =
-      Process.run_process c ~dir ?env t.pkg_config (t.pkg_config_args @ [ pc_flags; expr ])
+      let expr =
+        match expr with
+        | Some e -> e
+        | None ->
+          if
+            String.exists package ~f:(function
+              | '=' | '>' | '<' -> true
+              | _ -> false)
+          then
+            warn
+              "Package name %S contains invalid characters. Use Pkg_config.query_expr to \
+               construct proper queries"
+              package;
+          package
+      in
+      Process.run_process
+        t.configurator
+        ~dir:t.configurator.dest_dir
+        ?env
+        t.pkg_config
+        (t.pkg_config_args @ [ "--print-errors"; expr ])
     in
     if exit_code = 0
     then (
       let run what =
         match
-          String.trim
-            (Process.run_capture_exn
-               c
-               ~dir
-               ?env
-               t.pkg_config
-               (t.pkg_config_args @ [ what; package ]))
+          Process.run_capture_exn
+            t.configurator
+            ~dir:t.configurator.dest_dir
+            ?env
+            t.pkg_config
+            (t.pkg_config_args @ [ what; package ])
+          |> String.trim
         with
         | "" -> []
         | s -> String.extract_blank_separated_words s

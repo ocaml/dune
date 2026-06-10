@@ -14,8 +14,8 @@ Test `dune describe pkg lock` with autolocking (no committed lock dir).
   >  (depends A B))
   > EOF
 
-Before any build there is no lock dir, so describe reports none rather than
-failing:
+Before any build there is no lock dir, so describe reports it can't find a
+lockfile:
   $ dune describe pkg lock
   Error: dune.lock/lock.dune: No such file or directory
   [1]
@@ -23,7 +23,8 @@ failing:
 Trigger autolocking with a build:
   $ dune build @pkg-install 2>&1
 
-After the build, describe reads the internal autolocked lock:
+After the build the lockdir is still not read because the command is looking for
+a lockfile in the source directory:
   $ dune describe pkg lock
   Error: dune.lock/lock.dune: No such file or directory
   [1]

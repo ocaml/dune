@@ -124,4 +124,15 @@ module For_debugging = struct
     in
     loop [] t
   ;;
+
+  let to_dyn node_to_dyn t =
+    let rec loop (t : _ Static.t) =
+      match t with
+      | Empty -> Dyn.variant "Empty" []
+      | Singleton node -> Dyn.variant "Singleton" [ node_to_dyn node ]
+      | Seq arr -> Dyn.variant "Seq" [ Dyn.list loop (Array.Immutable.to_list arr) ]
+      | Par arr -> Dyn.variant "Par" [ Dyn.list loop (Array.Immutable.to_list arr) ]
+    in
+    loop t
+  ;;
 end

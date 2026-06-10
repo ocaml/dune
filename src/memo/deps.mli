@@ -43,4 +43,8 @@ val changed_or_not
 
 module For_debugging : sig
   val to_list : 'node t -> 'node list
+
+  (** A structural rendering that preserves the [Seq]/[Par]/[Singleton]/[Empty]
+      nesting (and intra-[Seq] order), unlike [to_list] which flattens. *)
+  val to_dyn : ('node -> Dyn.t) -> 'node t -> Dyn.t
 end

@@ -1460,14 +1460,31 @@ let gen_package_install_file_rules sctx (package : Package.t) =
             let toolchain = Context_name.to_string toolchain in
             Path.of_string (toolchain ^ "-sysroot")
           in
-          List.rev_map entries ~f:(fun (e : Install.Entry.Sourced.Expanded.t) ->
-            { e with
-              entry =
-                Install.Entry.Expanded.add_install_prefix
-                  e.entry
-                  ~paths:install_paths
-                  ~prefix
-            })
+          let parent_dir_hacked =
+            (* pre-opam 2.6, the best way to install an alternative sysroot
+               was to generate .install files with ../.., which was disallowed in opam 2.5.1 *)
+            List.rev_map entries ~f:(fun (e : Install.Entry.Sourced.Expanded.t) ->
+              { e with
+                entry =
+                  Install.Entry.Expanded.add_install_prefix
+                    e.entry
+                    ~paths:install_paths
+                    ~prefix
+              })
+          in
+          let prefix_entries =
+            (* opam 2.6+ supports a 'prefix' and 'prefixexec' key that allows us to directly specify this *)
+            List.rev_map entries ~f:(fun (e : Install.Entry.Sourced.Expanded.t) ->
+              { e with
+                entry =
+                  Install.Entry.Expanded.install_in_sysroot
+                    e.entry
+                    ~paths:install_paths
+                    ~prefix
+              })
+          in
+          (* generating both is fine, since any given version of opam will only recognize one or the other *)
+          parent_dir_hacked @ prefix_entries
       in
       if not (Package.allow_empty package)
       then

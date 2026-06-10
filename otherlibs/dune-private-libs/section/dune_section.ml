@@ -13,6 +13,8 @@ type t =
   | Stublibs
   | Man
   | Misc
+  | Prefix
+  | Prefixexec
 
 let all =
   [ Lib, "lib"
@@ -29,6 +31,8 @@ let all =
   ; Stublibs, "stublibs"
   ; Man, "man"
   ; Misc, "misc"
+  ; Prefix, "prefix"
+  ; Prefixexec, "prefixexec"
   ]
 ;;
 

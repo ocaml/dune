@@ -57,11 +57,13 @@ let get_dirs context ~prefix_from_command_line ~from_command_line =
         ~hints:
           [ Pp.concat
               ~sep:Pp.space
-              [ Pp.text "It can be specified with"
-              ; User_message.command "--prefix"
-              ; Pp.textf "or by setting"
-              ; User_message.command (sprintf "--%s" name)
-              ]
+              ([ Pp.text "It can be specified with"; User_message.command "--prefix" ]
+               @
+               if String.equal name "prefix"
+               then []
+               else
+                 [ Pp.textf "or by setting"; User_message.command (sprintf "--%s" name) ]
+              )
             |> Pp.hovbox
           ]
   in
@@ -73,6 +75,7 @@ let get_dirs context ~prefix_from_command_line ~from_command_line =
   ; doc_root = must_be_defined "docdir" roots.doc_root
   ; share_root = must_be_defined "datadir" roots.share_root
   ; man = must_be_defined "mandir" roots.man
+  ; prefix = must_be_defined "prefix" roots.prefix
   }
 ;;
 
@@ -639,7 +642,7 @@ let run
     if relocatable
     then (
       match prefix_from_command_line with
-      | Some dir -> Some (Path.of_string dir)
+      | Some dir -> Some (Path.of_string_allow_outside_workspace dir)
       | None ->
         User_error.raise
           [ Pp.concat
@@ -868,16 +871,18 @@ let make ~what =
     let common, config = Common.init builder in
     Scheduler_setup.no_build_no_rpc ~config (fun () ->
       let from_command_line =
-        { Install.Roots.lib_root = libdir_from_command_line
-        ; etc_root = etcdir_from_command_line
-        ; doc_root = docdir_from_command_line
-        ; man = mandir_from_command_line
-        ; bin = bindir_from_command_line
-        ; sbin = sbindir_from_command_line
-        ; libexec_root = libexecdir_from_command_line
-        ; share_root = datadir_from_command_line
+        let path_of_string = Option.map ~f:Path.of_string in
+        { Install.Roots.lib_root = path_of_string libdir_from_command_line
+        ; etc_root = path_of_string etcdir_from_command_line
+        ; doc_root = path_of_string docdir_from_command_line
+        ; man = path_of_string mandir_from_command_line
+        ; bin = path_of_string bindir_from_command_line
+        ; sbin = path_of_string sbindir_from_command_line
+        ; libexec_root = path_of_string libexecdir_from_command_line
+        ; share_root = path_of_string datadir_from_command_line
+        ; prefix =
+            Option.map ~f:Path.of_string_allow_outside_workspace prefix_from_command_line
         }
-        |> Install.Roots.map ~f:(Option.map ~f:Path.of_string)
         |> Install.Roots.complete
       in
       run

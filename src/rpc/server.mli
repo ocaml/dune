@@ -102,6 +102,12 @@ module Handler : sig
     -> ('s Session.t -> 'a -> 'b Fiber.t)
     -> unit
 
+  val implement_request_with_id
+    :  's t
+    -> ('a, 'b) Decl.request
+    -> ('s Session.t -> Dune_rpc.Private.Id.t -> 'a -> 'b Fiber.t)
+    -> unit
+
   (** [implement_notification handler decl callback] Add a notification to
       [handler] using [callback] as the implementation and [decl] as the
       metadata *)

@@ -3,34 +3,29 @@ open Import
 (** State shared by watch-mode build loops. *)
 type t
 
-(** A build request run by the watch-mode build loop. *)
-type step =
-  run_id:Run_id.t
-  -> restart_started_at:Time.t option
-  -> (unit, [ `Already_reported ]) Result.t Fiber.t
+val create : unit -> t
 
-(** [run f] initializes watch-mode state and runs [f] with it. *)
-val run : (t -> 'a Fiber.t) -> 'a Fiber.t
+(** [run t f] initializes watch-mode file-watcher state and runs [f]. *)
+val run : t -> (unit -> 'a Fiber.t) -> 'a Fiber.t
 
-(** [poll t step] runs [step] in a loop.
-
-    If any source files change in the middle of iteration, it gets canceled.
-
-    If [Scheduler.shutdown] is called, the current build will be canceled and
-    new builds will not start. *)
-val poll : t -> step -> unit Fiber.t
-
-(** [poll_passive] is similar to [poll], but it can be used to drive the
-    polling loop explicitly instead of starting new iterations automatically.
-
-    The fiber [get_build_request] is run at the beginning of every iteration to
-    wait for the build signal. *)
-val poll_passive
+(** [submit_rpc_request t ~session_id ~request_id ~build] adds a one-shot RPC
+    build request. If a build is already running, it is cancelled and restarted
+    with [build] included in the combined build request. *)
+val submit_rpc_request
   :  t
-  -> get_build_request:(step * Build_outcome.t Fiber.Ivar.t) Fiber.t
+  -> session_id:Rpc.Server.Session.Id.t
+  -> request_id:Dune_rpc.Id.t
+  -> build:unit Action_builder.t
+  -> Build_outcome.t Fiber.t
+
+val cancel_rpc_requests_by_session
+  :  t
+  -> session_id:Rpc.Server.Session.Id.t
   -> unit Fiber.t
 
-module For_tests : sig
-  val wait_for_build_input_change : t -> unit Fiber.t
-  val inject_memo_invalidation : t -> Memo.Invalidation.t -> unit Fiber.t
-end
+val cancel_all_rpc_requests : t -> unit Fiber.t
+
+(** [poll t ~sticky_goal] runs the watch loop managed by [t]. [sticky_goal]
+    is rebuilt after file changes and is also included in builds started for
+    one-shot RPC requests. *)
+val poll : t -> sticky_goal:unit Action_builder.t option -> unit Fiber.t

@@ -109,6 +109,7 @@ let () =
     | Ok _ -> exit_and_flush Success
     | Error _ -> exit_and_flush Error
   with
+  | Dune_scheduler.Shutdown.E Failure -> exit_and_flush Error
   | Dune_scheduler.Shutdown.E Requested -> exit_and_flush Success
   | Dune_scheduler.Shutdown.E (Signal _) -> exit_and_flush Signal
   | exn ->

@@ -4,9 +4,10 @@ module Id = struct
   module T = struct
     type t = Sexp.t
 
+    let repr = Sexp.repr
     let equal = Poly.equal
     let compare = Poly.compare
-    let to_dyn s = Sexp.to_dyn s
+    let to_dyn = Stdune.Repr.to_dyn repr
   end
 
   include T

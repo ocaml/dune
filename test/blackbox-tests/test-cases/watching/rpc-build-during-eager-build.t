@@ -1,5 +1,5 @@
-RPC build requests sent while the eager loop is building are serialized with
-that eager iteration instead of entering the build loop concurrently.
+RPC build requests sent while the eager loop is building cancel the current
+iteration and restart it with the RPC request incorporated.
 
   $ make_dune_project 3.18
 
@@ -46,3 +46,25 @@ The eager loop still reacts to filesystem changes after the RPC build has run.
       "outcome": "success"
     }
   ]
+
+The sticky goal is not rebuilt when nothing changes (idle optimization).
+
+  $ rm -rf _build
+  $ make_dune_project 3.18
+  $ marker="$(mktemp -u)"
+  $ cat > dune <<EOF
+  > (rule
+  >  (alias default)
+  >  (action (bash "touch '$marker'; echo idle > idle.txt")))
+  > EOF
+
+  $ dune build @default --watch > .#dune-output 2>&1 &
+  $ DUNE_PID=$!
+  $ wait_for_rpc_server
+  $ wait_for_file "$marker"
+  $ with_timeout dune rpc flush-file-watcher --wait
+  $ stop_dune > /dev/null
+
+  $ dune trace cat | jq_dune -s '
+  > [ .[] | buildEvents | select(.name == "build-start") ] | length'
+  1

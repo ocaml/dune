@@ -1,61 +1,44 @@
 open Import
 
-let run_build_system_impl ?restart_started_at ~run_id ~request () =
-  Dune_engine.Build_system.run_action_builder
-    ?restart_started_at
-    ~run_id
-    (let open Action_builder.O in
-     Action_builder.of_memo (Util.setup ()) >>= request)
+let action_builder_of_request request =
+  let open Action_builder.O in
+  Action_builder.of_memo (Memo.of_thunk Util.setup) >>= request
 ;;
 
-let run_build_system ~run_id ~request = run_build_system_impl ~run_id ~request ()
+let run_build_system ~run_id ~request =
+  Dune_engine.Build_system.run_action_builder ~run_id (action_builder_of_request request)
+;;
 
-let poll_handling_rpc_build_requests build_loop ~(common : Common.t) =
-  let open Fiber.O in
-  let rpc =
-    match Common.rpc common with
-    | `Allow server -> server
-    | `Forbid_builds -> Code_error.raise "rpc server must be allowed in passive mode" []
+let rpc_request_action ~(common : Common.t) (kind : Dune_rpc_impl.Server.build_request) =
+  action_builder_of_request (fun setup ->
+    let root = Common.root common in
+    match kind with
+    | Build targets -> Target.interpret_targets root setup targets
+    | Runtest test_paths ->
+      Runtest_common.make_request
+        ~scontexts:setup.scontexts
+        ~to_cwd:root.to_cwd
+        ~test_paths)
+;;
+
+let run_build_command_poll ~(common : Common.t) ~config ~sticky_goal : unit =
+  let build_loop = Dune_engine.Build_loop.create () in
+  let rpc_server =
+    Dune_rpc_impl.Server.create
+      ~registry:`Add
+      ~root:(Common.root common).dir
+      ~build:
+        (Dune_rpc_impl.Server.Enabled
+           { build_loop; build_action = rpc_request_action ~common })
+      (Common.watch common)
   in
-  Dune_engine.Build_loop.poll_passive
-    build_loop
-    ~get_build_request:
-      (let+ { kind; outcome } = Dune_rpc_impl.Server.pending_action rpc in
-       ( (fun ~run_id ~restart_started_at ->
-           let request setup =
-             let root = Common.root common in
-             match kind with
-             | Build targets -> Target.interpret_targets root setup targets
-             | Runtest test_paths ->
-               Runtest_common.make_request
-                 ~scontexts:setup.scontexts
-                 ~to_cwd:root.to_cwd
-                 ~test_paths
-           in
-           run_build_system_impl ?restart_started_at ~run_id ~request ())
-       , outcome ))
-;;
-
-let run_build_command_poll_eager ~(common : Common.t) ~config ~request : unit =
-  Scheduler_setup.go_with_rpc_server_and_file_watcher ~common ~config (fun () ->
-    let open Fiber.O in
-    (* Run two fibers concurrently. One is responible for rebuilding targets
-          named on the command line in reaction to file system changes. The other
-          is responsible for building targets named in RPC build requests. *)
-    Dune_engine.Build_loop.run (fun build_loop ->
-      let+ () =
-        Dune_engine.Build_loop.poll build_loop (fun ~run_id ~restart_started_at ->
-          run_build_system_impl ?restart_started_at ~run_id ~request ())
-      and+ () = poll_handling_rpc_build_requests build_loop ~common in
-      ()))
-;;
-
-let run_build_command_poll_passive ~common ~config ~request:_ : unit =
-  (* CR-someday aalekseyev: It would've been better to complain if [request] is
-     non-empty, but we can't check that here because [request] is a function.*)
-  Scheduler_setup.go_with_rpc_server_and_file_watcher ~common ~config (fun () ->
-    Dune_engine.Build_loop.run (fun build_loop ->
-      poll_handling_rpc_build_requests build_loop ~common))
+  Scheduler_setup.go_with_rpc_server_and_file_watcher
+    ~common
+    ~config
+    ~rpc_server
+    (fun () ->
+       Dune_engine.Build_loop.run build_loop (fun () ->
+         Dune_engine.Build_loop.poll build_loop ~sticky_goal))
 ;;
 
 let run_build_command_once ~(common : Common.t) ~config ~request =
@@ -70,13 +53,19 @@ let run_build_command_once ~(common : Common.t) ~config ~request =
 ;;
 
 let run_build_command ~(common : Common.t) ~config ~request =
-  (match Common.watch common with
-   | Yes Eager -> run_build_command_poll_eager
-   | Yes Passive -> run_build_command_poll_passive
-   | No -> run_build_command_once)
-    ~common
-    ~config
-    ~request
+  match Common.watch common with
+  | No -> run_build_command_once ~common ~config ~request
+  | Yes kind ->
+    let sticky_goal =
+      match kind with
+      | Eager -> Some (action_builder_of_request request)
+      | Passive ->
+        (* CR-someday aalekseyev: It would've been better to complain if
+           [request] is non-empty, but we can't check that here because
+           [request] is a function. *)
+        None
+    in
+    run_build_command_poll ~common ~config ~sticky_goal
 ;;
 
 let build =

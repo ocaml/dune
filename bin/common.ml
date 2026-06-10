@@ -1080,8 +1080,7 @@ end
 type t =
   { builder : Builder.t
   ; root : Workspace_root.t
-  ; rpc :
-      [ `Allow of Dune_lang.Dep_conf.t Dune_rpc_impl.Server.t Lazy.t | `Forbid_builds ]
+  ; rpc : [ `Allow of Dune_rpc_impl.Server.t Lazy.t | `Forbid_builds ]
   }
 
 let capture_outputs t = t.builder.capture_outputs
@@ -1173,7 +1172,11 @@ let build (root : Workspace_root.t) (builder : Builder.t) =
              | Yes _ -> `Add
              | No -> `Skip
            in
-           Dune_rpc_impl.Server.create ~registry ~root:root.dir builder.watch))
+           Dune_rpc_impl.Server.create
+             ~registry
+             ~root:root.dir
+             ~build:Disabled
+             builder.watch))
     else `Forbid_builds
   in
   { builder; root; rpc }

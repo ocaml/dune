@@ -1,5 +1,7 @@
 Demonstrate running "dune runtest" concurrently with an eager rpc server.
 
+  $ export DUNE_TRACE=rpc
+
   $ echo '(lang dune 3.18)' > dune-project
 
 Define a test that just prints "Hello, World!"
@@ -25,3 +27,10 @@ mode:
 
   $ dune shutdown
   $ wait
+
+  $ dune trace cat | jq -r '
+  >   select(.cat == "rpc" and .name == "request" and .args.meth == "runtest")
+  > | "runtest \(.args.stage)"
+  > '
+  runtest start
+  runtest stop

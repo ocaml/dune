@@ -86,7 +86,7 @@ val running_jobs_count : t -> int
     [wait_for_process] or any other function from this module that needs an
     external event to make progress, it will get suspended and will never
     restart. *)
-val shutdown : unit -> unit
+val shutdown : [ `Ok | `Failure ] -> unit
 
 (** Cancel the current build. Superficially, this function is like [shutdown]
     in that it stops the build early, but it is different because the [Run.go]

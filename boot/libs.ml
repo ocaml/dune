@@ -226,6 +226,12 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
+  ; { path = "src/rpc"
+    ; main_module_name = Some "Rpc"
+    ; include_subdirs = No
+    ; special_builtin_support = None
+    ; root_module = None
+    }
   ; { path = "src/dune_engine"
     ; main_module_name = Some "Dune_engine"
     ; include_subdirs = No
@@ -294,12 +300,6 @@ let local_libraries =
     }
   ; { path = "src/action_ext"
     ; main_module_name = Some "Action_ext"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-  ; { path = "src/rpc"
-    ; main_module_name = Some "Rpc"
     ; include_subdirs = No
     ; special_builtin_support = None
     ; root_module = None

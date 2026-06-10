@@ -60,6 +60,8 @@ User-defined profiles are not aliases for ``dev`` or ``release``. They select
 matching :doc:`/reference/dune/env` stanzas by name and otherwise use Dune's
 defaults for profiles that are neither ``dev`` nor ``release``.
 
+.. _default-ocaml-flags:
+
 Default OCaml Flags
 ~~~~~~~~~~~~~~~~~~~
 

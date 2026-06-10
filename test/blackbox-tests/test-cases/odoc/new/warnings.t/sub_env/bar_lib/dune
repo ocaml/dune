@@ -1,4 +1,5 @@
 (library
  (name bar)
+ (modes byte)
  (public_name bar_lib)
  (modules_without_implementation bar))

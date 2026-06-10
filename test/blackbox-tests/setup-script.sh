@@ -142,6 +142,7 @@ write_portable_lockdirs_executable() {
   cat > dune <<-'EOF'
 	(executable
 	 (public_name x)
+	 (modes byte)
 	 (libraries foo))
 	EOF
 }
@@ -201,7 +202,10 @@ make_mypkg_bin_project() {
 	EOF
   mkdir src
   cat > src/dune <<-'EOF'
-	(executable (public_name mybin) (package mypkg))
+	(executable
+	 (public_name mybin)
+	 (package mypkg)
+	 (modes byte))
 	EOF
   cat > src/mybin.ml <<- EOF
 	let () = print_endline "$message"
@@ -249,7 +253,8 @@ make_install_include_project() {
 	EOF
   cat > dune <<-'EOF'
 	(executable
-	 (public_name hello))
+	 (public_name hello)
+	 (modes byte))
 	
 	(install
 	 (files (include foo.sexp))
@@ -599,6 +604,7 @@ write_bin_pform_inline_tests_fixture() {
 	(library
 	 (name testlib)
 	 (inline_tests
+	  (modes byte)
 	  (backend check_backend)
 	  (deps ${deps})))
 	EOF
@@ -699,7 +705,9 @@ write_simple_inline_tests_backend() {
 	
 	(library
 	 (name foo_simple)
-	 (inline_tests (backend backend_simple)))
+	 (inline_tests
+	  (modes byte)
+	  (backend backend_simple)))
 	EOF
 }
 
@@ -1098,6 +1106,7 @@ write_sites_plugin_app_dune() {
   {
     echo "(executable"
     echo " (public_name app)"
+    echo " (modes byte)"
     if [ -n "$executable_package" ]; then
       echo " ${executable_package}"
     fi
@@ -1107,6 +1116,7 @@ write_sites_plugin_app_dune() {
 	
 	(library
 	 (public_name app.register)
+	 (modes byte)
 	 (name registration)
 	 (modules registration))
 	

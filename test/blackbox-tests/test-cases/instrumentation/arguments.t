@@ -4,8 +4,8 @@
 We check that we can pass arguments to the ppx.
 
   $ dune build --instrument-with hello
-  File "dune", line 5, characters 33-39:
-  5 |  (instrumentation (backend hello -place Spain)))
+  File "dune", line 6, characters 33-39:
+  6 |  (instrumentation (backend hello -place Spain)))
                                        ^^^^^^
   Error: The possibility to pass arguments to instrumentation backends is only
   available since version 2.8 of the dune language. Please update your
@@ -28,8 +28,8 @@ We also check that we can declare dependencies to the ppx.
 
   $ make_dependency_instrumentation_project 2.8
   $ dune build --instrument-with hello
-  File "dune", line 6, characters 65-83:
-  6 |  (instrumentation (backend hello -place Spain -file input/input) (deps input/input)))
+  File "dune", line 7, characters 65-83:
+  7 |  (instrumentation (backend hello -place Spain -file input/input) (deps input/input)))
                                                                        ^^^^^^^^^^^^^^^^^^
   Error: 'deps' is only available since version 2.9 of the dune language.
   Please update your dune-project file to have (lang dune 2.9).

@@ -1,5 +1,6 @@
 (library
  (name sublib2)
+ (modes byte)
  (wrapped false)
  (public_name odoctest3.sublib2)
  (libraries sublib1))

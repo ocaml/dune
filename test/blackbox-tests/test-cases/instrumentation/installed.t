@@ -18,6 +18,7 @@ Check that the backend can be used when it is installed.
   $ cat >installed/dune <<EOF
   > (executable
   >  (name main)
+  >  (modes byte)
   >  (instrumentation (backend hello)))
   > EOF
   $ cat >installed/main.ml <<EOF

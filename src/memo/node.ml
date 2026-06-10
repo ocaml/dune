@@ -347,6 +347,43 @@ module State = struct
   ;;
 end
 
+(* There are two approaches to invalidating memoization nodes. Currently, when a
+   node is invalidated by calling [invalidate], only the node itself is
+   marked as "changed" (by setting its [state] to [Out_of_date]). Then the whole
+   graph is marked as "possibly changed" by calling [Run.restart ()] that makes
+   all remaining [last_validated_at : Run.t] values out of date in O(1) time. In
+   the next run, the whole graph is traversed from top to bottom to discover
+   "actual changes" and recompute all the nodes affected by these changes. One
+   disadvantage of this approach is that the whole graph needs to be traversed
+   even if only a small part of it depends on the set of invalidated nodes.
+
+   An alternative approach is as follows. When [invalidate] is called,
+   recursively mark all of its reverse dependencies as "possibly changed". Then,
+   in the next run, traverse only the marked part of graph (instead of the whole
+   graph as we do currently). One disadvantage of this approach is that every
+   node needs to store a list of its reverse dependencies, which introduces
+   cyclic memory references and complicates garbage collection. Another issue is
+   that recursively marking all reverse dependencies as "possibly changed" can
+   still result in marking too much, because there is no way to take the cutoff
+   predicate into account when propagating "possible changes".
+
+   Is it worth switching from the current approach to the alternative? It's best
+   to answer this question by benchmarking. This is not urgent but is worth
+   documenting in the code. *)
+let invalidate (dep_node : _ Dep_node.t) =
+  match dep_node.state with
+  | Cached -> dep_node.state <- Out_of_date
+  | Not_cached | Out_of_date -> ()
+  | Restoring _ ->
+    Code_error.raise
+      "Node.invalidate called on a node in Restoring state"
+      [ "dep_node", Dep_node.to_dyn_without_state dep_node ]
+  | Computing _ ->
+    Code_error.raise
+      "Node.invalidate called on a node in Computing state"
+      [ "dep_node", Dep_node.to_dyn_without_state dep_node ]
+;;
+
 module Stack_frame_with_state : sig
   type phase =
     | Restore_from_cache

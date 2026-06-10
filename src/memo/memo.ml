@@ -1,6 +1,8 @@
 module Metrics0 = Metrics
+module Table0 = Table
 open Stdune
 module Metrics = Metrics0
+module Table = Table0
 open Fiber.O
 module Graph = Dune_graph.Graph
 module Console = Console
@@ -19,7 +21,7 @@ let of_reproducible_fiber = Fun.id
 module type Input = sig
   type t
 
-  include Table.Key with type t := t
+  include Stdune.Table.Key with type t := t
 end
 
 (* We can get rid of this once we use the memoization system more pervasively
@@ -35,7 +37,6 @@ exception Non_reproducible = Exec.Non_reproducible
 open Node
 module Error = Node.Error
 module Cycle_error = Node.Cycle_error
-module Table = Node.Table
 
 let () =
   Printexc.register_printer (fun exn ->

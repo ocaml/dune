@@ -1,5 +1,3 @@
-open Stdune
-
 type ('k, 'v) t = (module Store_intf.Instance with type key = 'k and type value = 'v)
 
 let make (type k v) (module S : Store_intf.S with type key = k) : (k, v) t =
@@ -27,19 +25,19 @@ let find_or_add (type k v) ((module S) : (k, v) t) (k : k) ~(f : k -> v) : v =
 
 let iter (type k v) ((module S) : (k, v) t) ~(f : v -> unit) : unit = S.iter S.store ~f
 
-let of_table (type k v) (table : (k, v) Table.t) : (k, v) t =
+let of_table (type k v) (table : (k, v) Stdune.Table.t) : (k, v) t =
   (module struct
     type key = k
     type value = v
 
     let store = table
 
-    type t = (key, v) Table.t
+    type t = (key, v) Stdune.Table.t
 
-    let clear = Table.clear
-    let find = Table.find
-    let find_or_add = Table.find_or_add
-    let set = Table.set
-    let iter = Table.iter
+    let clear = Stdune.Table.clear
+    let find = Stdune.Table.find
+    let find_or_add = Stdune.Table.find_or_add
+    let set = Stdune.Table.set
+    let iter = Stdune.Table.iter
   end)
 ;;

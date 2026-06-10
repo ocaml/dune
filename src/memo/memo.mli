@@ -557,6 +557,12 @@ module For_tests : sig
       Returns [None] if the dependencies were not computed yet. *)
   val get_deps : ('i, _) Table.t -> 'i -> (string option * Dyn.t) list option
 
+  (** Like [get_deps] but preserves the series-parallel structure
+      ([Seq]/[Par]/[Singleton]/[Empty]) instead of flattening it. Each leaf is
+      rendered as [(name, input)]. Returns [None] if the cell's dependencies were
+      not computed in the current run. *)
+  val get_deps_structured : (_, _) Cell.t -> Dyn.t option
+
   (** Forget all memoized values, forcing them to be recomputed on the next
       build run. *)
   val clear_memoization_caches : unit -> unit

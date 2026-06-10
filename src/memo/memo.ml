@@ -407,6 +407,17 @@ module For_tests = struct
               dep.spec.name, Dep_node.input_to_dyn dep)))
   ;;
 
+  let get_deps_structured (cell : (_, _) Cell.t) =
+    match get_cached_deps_in_current_run cell with
+    | None -> None
+    | Some deps ->
+      Some
+        (Deps.For_debugging.to_dyn
+           (fun (Dep_node.T dep) ->
+              Dyn.Tuple [ Dyn.option Dyn.string dep.spec.name; Dep_node.input_to_dyn dep ])
+           deps)
+  ;;
+
   let clear_memoization_caches () = Caches.clear ()
 end
 

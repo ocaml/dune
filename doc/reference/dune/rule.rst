@@ -60,6 +60,12 @@ Please note: contrary to makefiles or other build systems, user rules currently
 don't support patterns, such as a rule to produce ``%.y`` from ``%.x`` for any
 given ``%``. This might be supported in the future.
 
+After a rule's action exits, Dune records the produced targets. It must be able
+to read every target, including files inside directory targets. Dune also
+removes write permissions from generated files in the build directory before
+recording them. Actions may write their targets while they run, but generated
+targets should be treated as immutable once the rule finishes.
+
 .. _modes:
 
 Modes

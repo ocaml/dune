@@ -89,6 +89,20 @@ documentation for each command is available through ``dune COMMAND --help``.
 
    Execute a command in a similar environment as if installation was performed.
 
+   Dune's options and the executed program's options share the same command
+   line. If an argument to the program starts with ``-``, separate it from
+   Dune's options with ``--``:
+
+   .. code:: console
+
+      $ dune exec ./tool.exe -- --program-option
+
+   Equivalently, put the separator before the whole command:
+
+   .. code:: console
+
+      $ dune exec -- ./tool.exe --program-option
+
 .. describe:: dune fmt
 
    Format source code.

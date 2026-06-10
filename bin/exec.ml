@@ -20,11 +20,22 @@ let man =
           path is interpreted as relative to the build context + current
           working directory (or the value of $(b,--root) when ran outside of
           the project root)|}
+  ; `S "PASSING ARGUMENTS"
+  ; `P
+      {|Options accepted by $(b,dune exec) and options accepted by the
+          executed program share the same command line. If an argument to the
+          program starts with $(b,-), separate it from Dune's options with
+          $(b,--):|}
+  ; `Pre "  \\$ dune exec PROG -- --program-option"
+  ; `P {|Equivalently, put the separator before the whole command:|}
+  ; `Pre "  \\$ dune exec -- PROG --program-option"
   ; `Blocks Common.help_secs
   ; Common.examples
       [ "Run the executable named `my_exec'", "dune exec my_exec"
       ; ( "Run the executable defined in `foo.ml' with the argument `arg'"
         , "dune exec -- ./foo.exe arg" )
+      ; ( "Pass an option to the executed program"
+        , "dune exec ./foo.exe -- --program-option" )
       ]
   ]
 ;;

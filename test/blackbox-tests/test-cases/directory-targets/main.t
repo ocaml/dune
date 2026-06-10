@@ -137,6 +137,10 @@ Requesting the directory target directly works too.
   $ cat _build/default/output/y
   y
 
+Requesting the directory target with a trailing slash works too.
+
+  $ dune build output/
+
 Rebuilding works correctly.
 
   $ echo new-x > src_x
@@ -164,6 +168,19 @@ Print rules:
 
   $ dune rules --deps output
   ((File (In_build_dir _build/default/src_x)))
+
+File targets currently accept trailing slashes.
+
+  $ touch source-file
+  $ dune build source-file/
+  $ cat > dune <<EOF
+  > (rule
+  >   (target generated-file)
+  >   (action (with-stdout-to generated-file (echo generated))))
+  > EOF
+  $ dune build generated-file/
+  $ cat _build/default/generated-file
+  generated
 
 Error when requesting a missing subdirectory of a directory target.
 

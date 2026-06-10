@@ -25,6 +25,7 @@ let all : _ Cmdliner.Cmd.t list =
       ; Shutdown.command
       ; Diagnostics.command
       ; Monitor.command
+      ; Completion.command
       ]
   in
   let groups =

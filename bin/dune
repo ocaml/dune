@@ -31,6 +31,7 @@
   dune_upgrader
   dune_pkg
   cmdliner
+  cmdliner_data
   build_info
   dune_config_file
   chrome_trace

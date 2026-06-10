@@ -6,6 +6,5 @@
 
 (subdir
  tool
- (executable
-  (name cmdliner_main)
-  (libraries cmdliner)))
+ (library
+  (name cmdliner_data)))

@@ -30,13 +30,25 @@ files following the syntax described in the section ``Text formatting`` of
 the `OCaml manual <http://caml.inria.fr/pub/docs/manual-ocaml/ocamldoc.html>`_.
 
 Additional documentation pages may be attached to a package using the
-:doc:`/reference/dune/documentation` stanza.
+:doc:`/reference/dune/documentation` stanza. This stanza attaches ``.mld``
+pages to packages rather than to executables.
 
 Building Documentation
 ======================
 
-To generate documentation using the :doc:`/reference/aliases/doc` alias, all
-that's required to is to build this alias:
+Dune's generated documentation is package-oriented. The
+:doc:`/reference/aliases/doc` alias builds HTML documentation for public
+libraries, that is, libraries with a ``(public_name ...)``, and for ``.mld``
+pages attached to packages. Packages are declared with
+:doc:`/reference/dune-project/package` stanzas or inferred from ``.opam`` files.
+
+Executable stanzas are not documented as API pages by ``@doc``. A project that
+contains only executables may therefore build ``@doc`` successfully without
+producing package API pages. To produce API documentation, put the documented
+code in a library with a ``(public_name ...)`` or attach ``.mld`` pages to a
+package.
+
+To generate documentation using ``@doc``, build this alias:
 
 .. code:: console
 

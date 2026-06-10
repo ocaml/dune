@@ -347,13 +347,6 @@ module State = struct
   ;;
 end
 
-module Table = struct
-  type ('input, 'output) t =
-    { spec : ('input, 'output) Spec.t
-    ; cache : ('input, ('input, 'output) Dep_node.t) Store.t
-    }
-end
-
 module Stack_frame_with_state : sig
   type phase =
     | Restore_from_cache

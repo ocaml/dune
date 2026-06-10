@@ -1,5 +1,3 @@
-open Stdune
-
 type ('a, 'b) t
 
 val make : (module Store_intf.S with type key = 'a) -> ('a, 'b) t
@@ -12,4 +10,4 @@ val find : ('a, 'b) t -> 'a -> 'b option
 val find_or_add : ('a, 'b) t -> 'a -> f:('a -> 'b) -> 'b
 
 val iter : ('a, 'b) t -> f:('b -> unit) -> unit
-val of_table : ('a, 'b) Table.t -> ('a, 'b) t
+val of_table : ('a, 'b) Stdune.Table.t -> ('a, 'b) t

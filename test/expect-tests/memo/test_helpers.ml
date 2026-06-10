@@ -12,6 +12,7 @@ module Make () = struct
 
   let () = init ()
   let printf = Printf.printf
+  let printfn fmt = Printf.ksprintf (fun s -> printf "%s\n" s) fmt
   let () = Memo.Debug.check_invariants := true
 
   let print_metrics () =

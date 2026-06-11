@@ -1,4 +1,4 @@
-Concurrent RPC build requests currently finish together even if one target is done.
+Concurrent RPC build requests finish independently when their targets are done.
 
   $ make_dune_project 3.23
   $ export DUNE_TRACE=rpc,process
@@ -19,15 +19,19 @@ Concurrent RPC build requests currently finish together even if one target is do
   >     done
   >   ' bash "$jq_program" "$expected" "$dune"
   > }
-  $ wait_for_success_with_timeout () {
+  $ wait_for_line_with_timeout () {
   >   output="$1"
-  >   iterations="$2"
-  >   while ! grep -qx Success "$output" 2>/dev/null
+  >   line="$2"
+  >   iterations="$3"
+  >   while ! grep -qx "$line" "$output" 2>/dev/null
   >   do
   >     if [ "$iterations" = 0 ]; then return 124; fi
   >     iterations=$((iterations - 1))
   >     sleep 0.01
   >   done
+  > }
+  $ wait_for_success_with_timeout () {
+  >   wait_for_line_with_timeout "$1" Success "$2"
   > }
 
   $ fast_started="$(mktemp -u)"
@@ -56,6 +60,12 @@ Concurrent RPC build requests currently finish together even if one target is do
   $ SLOW=$!
   $ with_timeout dune_cmd wait-for-file-to-appear "$fast_started"
   $ with_timeout dune_cmd wait-for-file-to-appear "$slow_started"
+  $ if grep -qx Success fast.out 2>/dev/null; then
+  >   echo "fast rpc request finished before release"
+  > else
+  >   echo "fast rpc request is waiting"
+  > fi
+  fast rpc request is waiting
 
 Let the fast action finish, and wait until dune has observed its process exit.
 
@@ -65,15 +75,14 @@ Let the fast action finish, and wait until dune has observed its process exit.
   $ cat _build/default/fast-target
   fast
 
-The fast RPC build should finish now, but it remains blocked until the slow
-request is also done.
+The fast RPC build should finish now, before the slow request is done.
 
   $ if wait_for_success_with_timeout fast.out 200; then
   >   echo "fast rpc request finished"
   > else
   >   echo "fast rpc request timed out"
   > fi
-  fast rpc request timed out
+  fast rpc request finished
   $ file_status _build/default/slow-target
   _build/default/slow-target missing
 
@@ -90,19 +99,8 @@ request is also done.
   slow
   $ stop_dune_quiet
 
-Concurrent RPC build failures also currently finish together with unrelated
-requests.
+Concurrent RPC build failures also finish independently.
 
-  $ wait_for_failure_with_timeout () {
-  >   output="$1"
-  >   iterations="$2"
-  >   while ! grep -qx Failure "$output" 2>/dev/null
-  >   do
-  >     if [ "$iterations" = 0 ]; then return 124; fi
-  >     iterations=$((iterations - 1))
-  >     sleep 0.01
-  >   done
-  > }
   $ fail_started="$(mktemp -u)"
   $ fail_release="$(mktemp -u)"
   $ slow_started="$(mktemp -u)"
@@ -129,12 +127,12 @@ requests.
   $ with_timeout dune_cmd wait-for-file-to-appear "$slow_started"
 
   $ printf '.\n' > "$fail_release"
-  $ if wait_for_failure_with_timeout fail.out 200; then
+  $ if wait_for_line_with_timeout fail.out Failure 200; then
   >   echo "failing rpc request finished"
   > else
   >   echo "failing rpc request timed out"
   > fi
-  failing rpc request timed out
+  failing rpc request finished
   $ file_status _build/default/slow-after-fail
   _build/default/slow-after-fail missing
 
@@ -145,7 +143,7 @@ requests.
   $ wait "$SLOW"
   $ cat fail.out slow-after-fail.out | sort
   Failure
-  Failure
+  Success
   $ cat _build/default/slow-after-fail
   slow
   $ stop_dune_quiet

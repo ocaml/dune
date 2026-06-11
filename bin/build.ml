@@ -6,7 +6,10 @@ let action_builder_of_request request =
 ;;
 
 let run_build_system ~run_id ~request =
-  Dune_engine.Build_system.run_action_builder ~run_id (action_builder_of_request request)
+  let request =
+    action_builder_of_request request |> Dune_engine.Build_system.Build_request.create
+  in
+  Dune_engine.Build_system.run_build_requests ~run_id [ request ]
 ;;
 
 let rpc_request_action ~(common : Common.t) (kind : Dune_rpc_impl.Server.build_request) =

@@ -34,7 +34,9 @@ directories, so there's no overlap
 
   $ write_module_systems_dune yes
 
-  $ dune build
+  $ dune build \
+  >   target_esm/node_modules/melange.js/caml_string.js \
+  >   target_commonjs/node_modules/melange.js/caml_string.js
 
   $ cat target_esm/node_modules/melange.js/caml_string.js | head -n3
   

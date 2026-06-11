@@ -229,7 +229,7 @@ module Invalidation : sig
   val clear_caches : reason:Reason.t -> t
 
   (** Invalidate all computations stored in a given [memo] table. *)
-  val invalidate_cache : reason:Reason.t -> _ Table.t -> t
+  val invalidate_table : reason:Reason.t -> _ Table.t -> t
 
   (** A custom invalidation, for use by out-of-band caching mechanisms: [f] is run when the
       invalidation is applied. *)

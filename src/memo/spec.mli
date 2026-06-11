@@ -18,10 +18,12 @@ end
 
 type ('i, 'o) t =
   { name : string option
-  ; (* If the field [witness] precedes any of the functional values ([input],
-         [f], and the closures inside [node_kind]), then polymorphic comparison
-         actually works for [Spec.t]s. *)
-    witness : 'i Type_eq.Id.t
+  ; (* [witness] is [Some] only for named tables, which may be downcast to their
+         input type via [as_instance_of]; it is [None] for lazy values, stack
+         frames, and variables, avoiding a [Type_eq.Id.t] allocation per such cell.
+         If [witness] precedes the functional values ([input], [f], and the
+         closures inside [node_kind]), polymorphic comparison works for [Spec.t]s. *)
+    witness : 'i Type_eq.Id.t option
   ; input : (module Store_intf.Input with type t = 'i)
   ; node_kind : ('i, 'o) Node_kind.t
   ; f : 'i -> 'o Fiber.t
@@ -33,6 +35,7 @@ val create
   -> input:(module Store_intf.Input with type t = 'a)
   -> human_readable_description:('a -> User_message.Style.t Pp.t) option
   -> cutoff:('b -> 'b -> bool) option
+  -> ?witness:bool
   -> ?on_event:('a -> Event.t -> unit)
   -> ('a -> 'b Fiber.t)
   -> ('a, 'b) t

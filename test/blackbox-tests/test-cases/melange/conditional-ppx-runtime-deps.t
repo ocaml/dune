@@ -84,11 +84,14 @@ Define a PPX rewriter that has different runtime libs (native / melange)
   > let () = Js.log Runtime.msg
   > EOF
 
-  $ dune build @src/melange
-  $ find _build/default/src/js-out -type f | sort
+  $ js_out=_build/default/src/js-out
+  $ dune build \
+  >   "$js_out/node_modules/my-ppx.runtime/runtime.js" \
+  >   "$js_out/src/app.js"
+  $ find "$js_out" -type f | sort
   _build/default/src/js-out/node_modules/my-ppx.runtime/runtime.js
   _build/default/src/js-out/src/app.js
-  $ node _build/default/src/js-out/src/app.js
+  $ node "$js_out/src/app.js"
   melange runtime
 
   $ mkdir bin
@@ -129,9 +132,13 @@ This exercises decoding [melange_ppx_runtime_deps] from the installed
   > let () = Js.log Runtime.msg
   > EOF
 
-  $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root installed-consumer @melange --display=quiet
-  $ find installed-consumer/_build/default/js-out -type f | sort
+  $ consumer_js_out=_build/default/js-out
+  $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root installed-consumer \
+  >   "$consumer_js_out/app.js" \
+  >   "$consumer_js_out/node_modules/my-ppx.runtime/runtime.js" \
+  >   --display=quiet
+  $ find "installed-consumer/$consumer_js_out" -type f | sort
   installed-consumer/_build/default/js-out/app.js
   installed-consumer/_build/default/js-out/node_modules/my-ppx.runtime/runtime.js
-  $ node installed-consumer/_build/default/js-out/app.js
+  $ node "installed-consumer/$consumer_js_out/app.js"
   melange runtime

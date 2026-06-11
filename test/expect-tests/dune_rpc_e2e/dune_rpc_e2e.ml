@@ -33,7 +33,7 @@ let init_chan ~root_dir =
     let* res = once () in
     match res with
     | Some res -> Fiber.return res
-    | None -> Scheduler.sleep (Time.Span.of_secs 0.2) >>= loop
+    | None -> Scheduler.sleep (Time.Span.of_secs 0.05) >>= loop
   in
   loop ()
 ;;

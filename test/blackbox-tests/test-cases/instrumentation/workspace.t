@@ -1,5 +1,8 @@
   $ make_instrumentation_backends
   $ make_dependency_instrumentation_project
+  $ default_exe=./main.exe
+  $ built_default_exe=_build/default/main.exe
+  $ coverage_exe=_build/coverage/main.exe
 
 Instrumentation can also be controlled by using the dune-workspace file.
 
@@ -8,9 +11,9 @@ Instrumentation can also be controlled by using the dune-workspace file.
   > (instrument_with hello)
   > EOF
 
-  $ dune build
+  $ dune build "$default_exe"
 
-  $ _build/default/main.exe
+  $ "$built_default_exe"
   Hello from Spain (really)!
 
 It can also be controlled on a per-context scope.
@@ -20,9 +23,9 @@ It can also be controlled on a per-context scope.
   > (context (default (name coverage) (instrument_with hello)))
   > EOF
 
-  $ dune build
+  $ dune build "$coverage_exe"
 
-  $ _build/coverage/main.exe
+  $ "$coverage_exe"
   Hello from Spain (really)!
 
 Per-context setting takes precedence over per-workspace setting.
@@ -33,6 +36,6 @@ Per-context setting takes precedence over per-workspace setting.
   > (context (default (name coverage) (instrument_with)))
   > EOF
 
-  $ dune build
+  $ dune build "$coverage_exe"
 
-  $ _build/coverage/main.exe
+  $ "$coverage_exe"

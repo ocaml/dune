@@ -37,7 +37,7 @@ Building `./output` should now produce a file with contents "depA depB"
   $ dune build ./output
 
   $ cat _build/default/output
-  depA depB
+  ./depA ./depB
 
 Doesn't work in dune pre 3.0
 
@@ -90,7 +90,7 @@ Works with aliases and other dependency specifications
   $ dune build @output
   building depA
   building depB
-  dependencies depB another_dep
+  dependencies ./depB ./another_dep
 
 Multiple `(include)` nesting
 
@@ -107,4 +107,4 @@ Multiple `(include)` nesting
   > EOF
 
   $ dune build @nested
-  metadeps: depB another_dep
+  metadeps: ./depB ./another_dep

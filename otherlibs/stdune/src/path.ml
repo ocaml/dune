@@ -562,7 +562,7 @@ let reach t ~from =
 let reach_for_running ?(from = root) t =
   let fn = reach t ~from in
   match Filename.analyze_program_name fn with
-  | In_path -> "./" ^ fn
+  | In_path when not (String.equal fn ".") -> "./" ^ fn
   | _ -> fn
 ;;
 

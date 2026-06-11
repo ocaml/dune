@@ -574,7 +574,7 @@ let%expect_test _ =
   reach_for_running (Path.relative root "foo") ~from:(Path.relative root "foo");
   [%expect
     {|
-"./."
+"."
 |}]
 ;;
 

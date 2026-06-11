@@ -5,7 +5,7 @@
  (deps    dune (glob_files *.txt))
  (action  (progn
            (with-stdout-to result   (echo %{deps}))
-           (with-stdout-to expected (echo "dune a.txt b.txt c.txt")))))
+           (with-stdout-to expected (echo "./dune ./a.txt ./b.txt ./c.txt")))))
 
 (rule
  (targets result2 expected2)

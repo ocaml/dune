@@ -27,8 +27,8 @@ is ignored because the contents of new-source.txt is the same,
 i.e. the empty file.
 
   $ cat ../output
-  I'm seeing: old-source.txt
-  I'm seeing: new-source.txt old-source.txt
+  I'm seeing: ./old-source.txt
+  I'm seeing: ./new-source.txt ./old-source.txt
 
   $ stop_dune
   Success, waiting for filesystem changes...

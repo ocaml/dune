@@ -179,11 +179,6 @@ This output will appear in cram test diffs, making it easy to observe values.
 - Do not write `to_dyn` functions. Write `Repr.t` values and use those to
   construct `to_dyn`.
 
-## Reviewing PRs
-
-When asked to review a PR, commit, or diff, see
-`doc/dev/code-review/general.md` and follow the instructions there.
-
 ## Critical Constraints
 
 **NEVER do these things:**

@@ -392,6 +392,15 @@ module Node : sig
   (** Mark this node as invalid, forcing recomputation of this value. The
       consumers may be recomputed or not, depending on early cutoff. *)
   val invalidate : reason:Invalidation.Reason.t -> _ t -> Invalidation.t
+
+  (** Like [Node.t] but with the input type hidden. *)
+  module Packed : sig
+    type 'o t
+
+    val read : 'o t -> 'o memo
+  end
+
+  val pack : ('i, 'o) t -> 'o Packed.t
 end
 
 (** Create a "memoization node" that focuses on a single input/output pair of a

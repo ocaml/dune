@@ -296,6 +296,14 @@ module Node = struct
   let input (t : (_, _) t) = t.input
   let read = Exec.exec_dep_node
   let invalidate = Invalidation.invalidate_node
+
+  module Packed = struct
+    type 'o t = T : (_, 'o) Dep_node.t -> 'o t [@@unboxed]
+
+    let read (T node) = read node
+  end
+
+  let pack node = Packed.T node
 end
 
 let node = dep_node

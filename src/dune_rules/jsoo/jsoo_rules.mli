@@ -38,9 +38,7 @@ val build_cm
   -> config:Config.t option
   -> Action.Full.t Action_builder.With_targets.t
 
-type standalone_runtime =
-  | Shared of Digest.t
-  | Per_stanza of Path.Build.t
+type standalone_runtime
 
 val build_standalone_runtime
   :  Compilation_context.t

@@ -191,3 +191,36 @@ let%expect_test _ =
     </graph>
     </gexf> |}]
 ;;
+
+let%expect_test "dump_cached_graph: on_not_cached" =
+  let leaf = Memo.create "Leaf" ~input:(module Unit) (fun () -> Memo.return ()) in
+  let root =
+    Memo.create
+      "Root"
+      ~input:(module Unit)
+      (fun () ->
+         let+ () = Memo.exec leaf () in
+         ())
+  in
+  run_memo root ();
+  (* Advance the run without recomputing, so [root] is no longer validated in the
+     current run (its deps are not cached now). *)
+  Memo.reset Memo.Invalidation.empty;
+  (* [`Ignore] stops at the uncached node and returns the graph built so far. *)
+  let graph =
+    Scheduler.run (Memo.dump_cached_graph ~on_not_cached:`Ignore (Memo.cell root ()))
+  in
+  Graph.print graph ~format:Graph.File_format.Dot;
+  [%expect
+    {|
+    strict digraph {
+    }
+    |}];
+  (* [`Raise] (the default) raises when a reachable node is not cached. *)
+  (match
+     Scheduler.run (Memo.dump_cached_graph ~on_not_cached:`Raise (Memo.cell root ()))
+   with
+   | (_ : Graph.t) -> print_endline "no error"
+   | exception Failure msg -> Printf.printf "raised: %s\n" msg);
+  [%expect {| raised: Memo graph contains uncached nodes |}]
+;;

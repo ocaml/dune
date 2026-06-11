@@ -19,10 +19,11 @@ module M = struct
      keeps its value across state transitions (e.g. an invalidated node keeps its
      old value for the early cutoff check).
 
-     [Not_cached] is the state of a freshly created (never computed) node;
-     [Out_of_date] marks a previously computed node as stale. Both lead to a
-     recomputation, but only [Not_cached] fires a [Live] event on recompute (an
-     [Out_of_date] node already fired [Live] when it started restoring). *)
+     [Not_cached] is the state of a freshly created (never computed) node or a
+     node that has been invalidated; [Out_of_date] marks a node found stale
+     while restoring it. Both lead to a recomputation, but only [Not_cached]
+     fires a [Live] event on recompute (an [Out_of_date] node already fired
+     [Live] when it started restoring). *)
   module rec State : sig
     type t =
       | Cached
@@ -375,8 +376,8 @@ end
    documenting in the code. *)
 let invalidate (dep_node : _ Dep_node.t) =
   match dep_node.state with
-  | Cached -> dep_node.state <- Out_of_date
-  | Not_cached | Out_of_date -> ()
+  | Cached | Out_of_date -> dep_node.state <- Not_cached
+  | Not_cached -> ()
   | Restoring _ ->
     Code_error.raise
       "Node.invalidate called on a node in Restoring state"

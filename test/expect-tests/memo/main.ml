@@ -367,14 +367,14 @@ let%expect_test _ =
     running foobar |}]
 ;;
 
-(* Tests for Memo.Cell *)
+(* Tests for Memo.Node *)
 
 let%expect_test _ =
   let f x = Memo.return ("*" ^ x) in
   let memo = Memo.create "for-cell" ~input:(module String) ~cutoff:String.equal f in
-  let cell = Memo.cell memo "foobar" in
-  print_endline (run (Memo.Cell.read cell));
-  print_endline (run (Memo.Cell.read cell));
+  let cell = Memo.node memo "foobar" in
+  print_endline (run (Memo.Node.read cell));
+  print_endline (run (Memo.Node.read cell));
   [%expect
     {|
     *foobar
@@ -385,18 +385,18 @@ let%expect_test "fib linked list" =
   Memo.Metrics.reset ();
   let module Element = struct
     type t =
-      { prev_cell : (int, t) Memo.Cell.t
+      { prev_cell : (int, t) Memo.Node.t
       ; value : int
-      ; next_cell : (int, t) Memo.Cell.t
+      ; next_cell : (int, t) Memo.Node.t
       }
   end
   in
-  let force cell : Element.t Memo.t = Memo.Cell.read cell in
+  let force cell : Element.t Memo.t = Memo.Node.read cell in
   let memo_fdecl = Fdecl.create Dyn.opaque in
   let compute_element x =
     let memo = Fdecl.get memo_fdecl in
     printf "computing %d\n" x;
-    let prev_cell = Memo.cell memo (x - 1) in
+    let prev_cell = Memo.node memo (x - 1) in
     let+ value =
       if x < 1
       then Memo.return 0
@@ -408,7 +408,7 @@ let%expect_test "fib linked list" =
         let+ z = force y.prev_cell in
         x.value + z.value
     in
-    { Element.next_cell = Memo.cell memo (x + 1); prev_cell; value }
+    { Element.next_cell = Memo.node memo (x + 1); prev_cell; value }
   in
   let memo = Memo.create "fib" ~input:(module Int) compute_element in
   Fdecl.set memo_fdecl memo;
@@ -1446,7 +1446,7 @@ let%expect_test "Test that there are no phantom dependencies" =
       printf "base = %d\n" result;
       Memo.return result)
   in
-  let cell = Memo.cell const_8 () in
+  let cell = Memo.node const_8 () in
   let summit =
     Memo.create
       "summit"
@@ -1459,7 +1459,7 @@ let%expect_test "Test that there are no phantom dependencies" =
              match !counter with
              | 1 ->
                printf "*** middle depends on base ***\n";
-               Memo.Cell.read cell
+               Memo.Node.read cell
              | _ ->
                printf "*** middle does not depend on base ***\n";
                Memo.return 0)
@@ -1491,7 +1491,7 @@ let%expect_test "Test that there are no phantom dependencies" =
     Memo graph: 3/2/0 nodes/edges/blocked (restore), 0/0/0 nodes/edges/blocked (compute)
     Memo cycle detection graph: 0/0/0 nodes/edges/paths
   |}];
-  Memo.reset (Memo.Cell.invalidate ~reason:Test cell);
+  Memo.reset (Memo.Node.invalidate ~reason:Test cell);
   evaluate_and_print summit 0;
   (* Note that we no longer depend on the [cell]. *)
   [%expect
@@ -1501,7 +1501,7 @@ let%expect_test "Test that there are no phantom dependencies" =
     Evaluated summit: 0
     f 0 = Ok 0
   |}];
-  Memo.reset (Memo.Cell.invalidate ~reason:Test cell);
+  Memo.reset (Memo.Node.invalidate ~reason:Test cell);
   evaluate_and_print summit 0;
   print_metrics ();
   (* [middle] is not recomputed, since it no longer depends on the [cell]. In the past,
@@ -1915,7 +1915,7 @@ let%expect_test "Test that there are no spurious cycles" =
     Memo graph: 0/0/0 nodes/edges/blocked (restore), 2/1/0 nodes/edges/blocked (compute)
     Memo cycle detection graph: 0/0/0 nodes/edges/paths
   |}];
-  Memo.reset (Memo.Cell.invalidate ~reason:Test (Memo.cell task_b 0));
+  Memo.reset (Memo.Node.invalidate ~reason:Test (Memo.node task_b 0));
   evaluate_and_print task_a 0;
   (* Note that here task B blows up with a cycle error when trying to restore
      its result from the cache. A doesn't need it and terminates correctly. *)
@@ -2171,8 +2171,8 @@ let%expect_test "Simple computation chain with a cutoff" =
     Memo graph: 0/0/0 nodes/edges/blocked (restore), 4/3/0 nodes/edges/blocked (compute)
     Memo cycle detection graph: 0/0/0 nodes/edges/paths
   |}];
-  let cell = Memo.cell f 1 in
-  Memo.reset (Memo.Cell.invalidate ~reason:Test cell);
+  let cell = Memo.node f 1 in
+  Memo.reset (Memo.Node.invalidate ~reason:Test cell);
   evaluate_and_print f 3;
   print_metrics ();
   (* CR-someday amokhov: f(1) is recomputed because we've just invalidated it.
@@ -2189,7 +2189,7 @@ let%expect_test "Simple computation chain with a cutoff" =
 
 let%expect_test "loss of concurrency" =
   let cell name =
-    Memo.lazy_cell ~cutoff:Unit.equal (fun () ->
+    Memo.lazy_node ~cutoff:Unit.equal (fun () ->
       (* this hackery needed to observe concurrency *)
       Memo.of_reproducible_fiber
       @@ Fiber.of_thunk (fun () ->
@@ -2201,10 +2201,10 @@ let%expect_test "loss of concurrency" =
   let a = cell "a" in
   let b = cell "b" in
   let c =
-    Memo.lazy_cell (fun () ->
-      Memo.fork_and_join (fun () -> Memo.Cell.read a) (fun () -> Memo.Cell.read b))
+    Memo.lazy_node (fun () ->
+      Memo.fork_and_join (fun () -> Memo.Node.read a) (fun () -> Memo.Node.read b))
   in
-  let read x = run @@ Memo.map ~f:ignore @@ Memo.Cell.read x in
+  let read x = run @@ Memo.map ~f:ignore @@ Memo.Node.read x in
   (* First we evaluate everything. Note that [a] and [b] are evalauted concurrently *)
   read c;
   [%expect
@@ -2216,8 +2216,8 @@ let%expect_test "loss of concurrency" =
   (* Now we invalidate [a] and [b]. As a consequence [c] should be recomputed. *)
   Memo.reset
     (Memo.Invalidation.combine
-       (Memo.Cell.invalidate a ~reason:Test)
-       (Memo.Cell.invalidate b ~reason:Test));
+       (Memo.Node.invalidate a ~reason:Test)
+       (Memo.Node.invalidate b ~reason:Test));
   (* Now we recompute [c]. Because [c] recorded [a] and [b] as a parallel section (via
      [fork_and_join]), restoring [c] from the cache checks them concurrently, so the
      cutoff-driven recomputations of [a] and [b] also run concurrently. *)
@@ -2263,11 +2263,11 @@ let%expect_test "fork_and_join: parallel cutoff restore" =
   let a, a_var = yielding_node ~name:"a" () in
   let b, b_var = yielding_node ~name:"b" () in
   let top =
-    Memo.lazy_cell (fun () ->
+    Memo.lazy_node (fun () ->
       printf "top* ";
       Memo.fork_and_join (fun () -> Memo.exec a ()) (fun () -> Memo.exec b ()))
   in
-  let evaluate () = run (Memo.map ~f:ignore (Memo.Cell.read top)) in
+  let evaluate () = run (Memo.map ~f:ignore (Memo.Node.read top)) in
   printf "1st run: ";
   evaluate ();
   Memo.reset
@@ -2292,11 +2292,11 @@ let%expect_test "parallel_map: parallel cutoff restore" =
   let a, a_var = yielding_node ~name:"a" () in
   let b, b_var = yielding_node ~name:"b" () in
   let top =
-    Memo.lazy_cell (fun () ->
+    Memo.lazy_node (fun () ->
       printf "top* ";
       Memo.parallel_map [ a; b ] ~f:(fun node -> Memo.exec node ()))
   in
-  let evaluate () = run (Memo.map ~f:ignore (Memo.Cell.read top)) in
+  let evaluate () = run (Memo.map ~f:ignore (Memo.Node.read top)) in
   printf "1st run: ";
   evaluate ();
   Memo.reset
@@ -2319,10 +2319,10 @@ let%expect_test "fork_and_join: a failing thread still lets its sibling run" =
   let a, _ = yielding_node ~name:"a" ~fail:true () in
   let b, _ = yielding_node ~name:"b" () in
   let top =
-    Memo.lazy_cell (fun () ->
+    Memo.lazy_node (fun () ->
       Memo.fork_and_join (fun () -> Memo.exec a ()) (fun () -> Memo.exec b ()))
   in
-  run_and_log_errors (Memo.map ~f:ignore (Memo.Cell.read top));
+  run_and_log_errors (Memo.map ~f:ignore (Memo.Node.read top));
   (* [a] raises, but [b] still runs to completion ([a+ b+ a! b-]) and the error from [a]
      propagates. *)
   [%expect
@@ -2467,11 +2467,11 @@ let%expect_test "Invalidation.to_reason_list deduplicates reasons" =
 let%expect_test "reset_if_necessary" =
   let calls = ref 0 in
   let cell =
-    Memo.lazy_cell (fun () ->
+    Memo.lazy_node (fun () ->
       incr calls;
       Memo.return ())
   in
-  let eval () = run (Memo.Cell.read cell) in
+  let eval () = run (Memo.Node.read cell) in
   eval ();
   printf "calls = %d\n" !calls;
   [%expect {| calls = 1 |}];
@@ -2482,7 +2482,7 @@ let%expect_test "reset_if_necessary" =
   printf "calls = %d\n" !calls;
   [%expect {| calls = 1 |}];
   (* A non-empty invalidation forces a reset, so the cell is recomputed. *)
-  Memo.reset_if_necessary (Memo.Cell.invalidate ~reason:Test cell);
+  Memo.reset_if_necessary (Memo.Node.invalidate ~reason:Test cell);
   eval ();
   printf "calls = %d\n" !calls;
   [%expect {| calls = 2 |}]
@@ -2491,11 +2491,11 @@ let%expect_test "reset_if_necessary" =
 let%expect_test "reset_if_necessary retries non-reproducible errors" =
   let calls = ref 0 in
   let cell =
-    Memo.lazy_cell (fun () ->
+    Memo.lazy_node (fun () ->
       incr calls;
       raise (Memo.Non_reproducible (Failure "boom")))
   in
-  run_and_log_errors (Memo.Cell.read cell);
+  run_and_log_errors (Memo.Node.read cell);
   printf "calls = %d\n" !calls;
   [%expect
     {|
@@ -2509,7 +2509,7 @@ let%expect_test "reset_if_necessary retries non-reproducible errors" =
      run, so [reset_if_necessary] still advances the run and the computation is retried
      instead of being served stale from the cache. *)
   Memo.reset_if_necessary Memo.Invalidation.empty;
-  run_and_log_errors (Memo.Cell.read cell);
+  run_and_log_errors (Memo.Node.read cell);
   printf "calls = %d\n" !calls;
   [%expect
     {|

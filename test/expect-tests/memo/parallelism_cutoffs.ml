@@ -9,7 +9,7 @@
    recomputation.
 
    Notes on scope:
-   - [Memo.Map.parallel_iter] does not exist (only the [Make_parallel_map] functor exposes
+   - [Memo.Map.parallel_iter] does not exist (only the [Map] functor exposes
      [parallel_map]), so the map-based cases are not covered here.
    - Memo errors carry no dependency subtrees, so the error case asserts only the marker
      interleaving and the raised exception, not dep structure.
@@ -23,11 +23,11 @@ open Test_helpers.Make ()
    the variable forces the node to recompute. *)
 module Node = struct
   type t =
-    { cell : (unit, unit) Memo.Cell.t
+    { cell : (unit, unit) Memo.Node.t
     ; var : Memo.Var.Unit.t
     }
 
-  let read t = Memo.Cell.read t.cell
+  let read t = Memo.Node.read t.cell
 end
 
 (* A computation with a [Scheduler.yield] between its start and end markers, making it
@@ -67,19 +67,19 @@ let node ?dep ~cutoff ?(fail = false) name : Node.t =
              raise_notrace (Failure name));
            printf "%s- " name)))
   in
-  { cell = Memo.cell table (); var }
+  { cell = Memo.node table (); var }
 ;;
 
-let evaluate (top : (unit, _) Memo.Cell.t) : unit =
-  run (Memo.map ~f:ignore (Memo.Cell.read top))
+let evaluate (top : (unit, _) Memo.Node.t) : unit =
+  run (Memo.map ~f:ignore (Memo.Node.read top))
 ;;
 
 (* Like [evaluate], but reports (rather than raises) errors so the error case can observe
    both the marker interleaving and the raised exception. *)
-let evaluate_and_log_errors (top : (unit, _) Memo.Cell.t) : unit =
+let evaluate_and_log_errors (top : (unit, _) Memo.Node.t) : unit =
   match
     Scheduler.run
-      (Fiber.collect_errors (fun () -> Memo.run (Memo.map ~f:ignore (Memo.Cell.read top))))
+      (Fiber.collect_errors (fun () -> Memo.run (Memo.map ~f:ignore (Memo.Node.read top))))
   with
   | Ok () -> ()
   | Error exns ->
@@ -113,7 +113,7 @@ let test ~nodes ~top =
 let%expect_test "fork_and_join" =
   let a, b = node ~cutoff:true "a", node ~cutoff:true "b" in
   let top =
-    Memo.lazy_cell ~name:"top" (fun () ->
+    Memo.lazy_node ~name:"top" (fun () ->
       Memo.fork_and_join (fun () -> Node.read a) (fun () -> Node.read b))
   in
   test ~nodes:[ a; b ] ~top;
@@ -132,7 +132,7 @@ let%expect_test "fork_and_join" =
 let%expect_test "fork_and_join_unit" =
   let a, b = node ~cutoff:true "a", node ~cutoff:true "b" in
   let top =
-    Memo.lazy_cell ~name:"top" (fun () ->
+    Memo.lazy_node ~name:"top" (fun () ->
       Memo.fork_and_join_unit (fun () -> Node.read a) (fun () -> Node.read b))
   in
   test ~nodes:[ a; b ] ~top;
@@ -150,7 +150,7 @@ let%expect_test "fork_and_join_unit" =
 
 let%expect_test "parallel_map" =
   let nodes = List.map [ "a"; "b"; "c"; "d"; "e" ] ~f:(node ~cutoff:true) in
-  let top = Memo.lazy_cell ~name:"top" (fun () -> Memo.parallel_map nodes ~f:Node.read) in
+  let top = Memo.lazy_node ~name:"top" (fun () -> Memo.parallel_map nodes ~f:Node.read) in
   test ~nodes ~top;
   [%expect
     {|
@@ -176,7 +176,7 @@ let%expect_test "seq inside par: no-cutoff nodes are not eagerly recomputed" =
   let b = node ~dep:shared ~cutoff:false "b" in
   let c = node ~dep:shared ~cutoff:true "c" in
   let top =
-    Memo.lazy_cell ~name:"top" (fun () ->
+    Memo.lazy_node ~name:"top" (fun () ->
       Memo.fork_and_join_unit
         (fun () ->
            let* () = Node.read a in
@@ -203,7 +203,7 @@ let%expect_test "par with all no-cutoff nodes preserves parallelism" =
   let a = node ~dep:shared ~cutoff:false "a" in
   let b = node ~dep:shared ~cutoff:false "b" in
   let top =
-    Memo.lazy_cell ~name:"top" (fun () ->
+    Memo.lazy_node ~name:"top" (fun () ->
       Memo.fork_and_join_unit (fun () -> Node.read a) (fun () -> Node.read b))
   in
   test ~nodes:[ shared ] ~top;
@@ -226,7 +226,7 @@ let%expect_test "error in no-cutoff node inside par" =
   let a = node ~dep:shared ~cutoff:false ~fail:true "a" in
   let b = node ~dep:shared ~cutoff:true "b" in
   let top =
-    Memo.lazy_cell ~name:"top" (fun () ->
+    Memo.lazy_node ~name:"top" (fun () ->
       Memo.fork_and_join_unit (fun () -> Node.read a) (fun () -> Node.read b))
   in
   printf "1st run: ";
@@ -264,7 +264,7 @@ let%expect_test "nested par-seq-par: eagerness re-enables under a Par" =
   let c = node ~dep:shared ~cutoff:false "c" in
   let d = node ~dep:shared ~cutoff:true "d" in
   let top =
-    Memo.lazy_cell ~name:"top" (fun () ->
+    Memo.lazy_node ~name:"top" (fun () ->
       Memo.fork_and_join_unit
         (fun () ->
            let* () = Node.read a in

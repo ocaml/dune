@@ -6,11 +6,11 @@ open Test_helpers.Make ()
    series-parallel Seq/Par/Singleton/Empty structure - by driving each shape through the
    public Memo combinators and reading it back with [Memo.For_tests.get_deps_structured]. *)
 
-let leaf name = Memo.lazy_cell ~name (fun () -> Memo.return ())
-let read = Memo.Cell.read
+let leaf name = Memo.lazy_node ~name (fun () -> Memo.return ())
+let read = Memo.Node.read
 
 let print_deps label m =
-  let cell = Memo.lazy_cell ~name:"top" (fun () -> m) in
+  let cell = Memo.lazy_node ~name:"top" (fun () -> m) in
   let () = run (read cell) in
   match Memo.For_tests.get_deps_structured cell with
   | None -> printfn "%s: <none>" label

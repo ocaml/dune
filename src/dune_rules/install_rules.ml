@@ -629,7 +629,7 @@ end = struct
       Some (name, entries)
   ;;
 
-  module Package_map_traversals = Memo.Make_parallel_map (Package.Name.Map)
+  module Package_map_traversals = Memo.Map (Package.Name.Map)
 
   let stanzas_to_entries sctx =
     let context = Super_context.context sctx in

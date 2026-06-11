@@ -1,6 +1,6 @@
 open Import
 open Memo.O
-module Parallel_map = Memo.Make_parallel_map (Module_name.Map)
+module Parallel_map = Memo.Map (Module_name.Map)
 
 module Common = struct
   module Encode = struct

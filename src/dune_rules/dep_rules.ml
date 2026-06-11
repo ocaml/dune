@@ -1,6 +1,6 @@
 open Import
 open Memo.O
-module Parallel_map = Memo.Make_parallel_map (Module_name.Unique.Map)
+module Parallel_map = Memo.Map (Module_name.Unique.Map)
 
 module Merge_dep_output = struct
   module Spec = struct

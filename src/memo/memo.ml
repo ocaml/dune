@@ -53,6 +53,7 @@ end
 
 open To_open
 include Parallel
+module Map = Make_parallel_map
 
 let pp_stack () =
   let open Pp.O in
@@ -182,7 +183,7 @@ let create_rec
   Stdlib.Lazy.force table
 ;;
 
-let dump_cached_graph ?(on_not_cached = `Raise) ?(time_nodes = false) cell =
+let dump_cached_graph ?(on_not_cached = `Raise) ?(time_nodes = false) node =
   let rec collect_graph (Dep_node.T dep_node) graph : Graph.t Fiber.t =
     let src_id = Id.to_int dep_node.id in
     match get_cached_deps_in_current_run dep_node with
@@ -218,7 +219,7 @@ let dump_cached_graph ?(on_not_cached = `Raise) ?(time_nodes = false) cell =
   in
   Error_handler.with_error_handler
     (fun (_ : Exn_with_backtrace.t) -> Fiber.return ())
-    (fun () -> collect_graph (Dep_node.T cell) Graph.empty)
+    (fun () -> collect_graph (Dep_node.T node) Graph.empty)
 ;;
 
 let get_call_stack = Call_stack.get_call_stack_without_state
@@ -289,7 +290,7 @@ module With_implicit_output = struct
   let exec t = t
 end
 
-module Cell = struct
+module Node = struct
   type ('i, 'o) t = ('i, 'o) Dep_node.t
 
   let input (t : (_, _) t) = t.input
@@ -297,11 +298,11 @@ module Cell = struct
   let invalidate = Invalidation.invalidate_node
 end
 
-let cell = dep_node
+let node = dep_node
 
 module Implicit_output = Implicit_output
 
-let lazy_cell ?cutoff ?name ?human_readable_description ?on_event f =
+let lazy_node ?cutoff ?name ?human_readable_description ?on_event f =
   let on_event = Option.map on_event ~f:(fun on_event () event -> on_event event) in
   let spec =
     Spec.create ~name ~input:(module Unit) ~cutoff ~human_readable_description ?on_event f
@@ -310,7 +311,7 @@ let lazy_cell ?cutoff ?name ?human_readable_description ?on_event f =
 ;;
 
 let push_stack_frame ~human_readable_description f =
-  Cell.read (lazy_cell ~human_readable_description f)
+  Node.read (lazy_node ~human_readable_description f)
 ;;
 
 module Lazy = struct
@@ -320,14 +321,14 @@ module Lazy = struct
 
   module Expert = struct
     let create ?cutoff ?name ?human_readable_description ?on_event f =
-      let cell = lazy_cell ?cutoff ?name ?human_readable_description ?on_event f in
-      cell, fun () -> Cell.read cell
+      let node = lazy_node ?cutoff ?name ?human_readable_description ?on_event f in
+      node, fun () -> Node.read node
     ;;
   end
 
   let create ?cutoff ?name ?human_readable_description ?on_event f =
-    let cell = lazy_cell ?cutoff ?name ?human_readable_description ?on_event f in
-    fun () -> Cell.read cell
+    let node = lazy_node ?cutoff ?name ?human_readable_description ?on_event f in
+    fun () -> Node.read node
   ;;
 
   let force f = f ()
@@ -416,8 +417,8 @@ module For_tests = struct
               dep.spec.name, Dep_node.input_to_dyn dep)))
   ;;
 
-  let get_deps_structured (cell : (_, _) Cell.t) =
-    match get_cached_deps_in_current_run cell with
+  let get_deps_structured (node : (_, _) Node.t) =
+    match get_cached_deps_in_current_run node with
     | None -> None
     | Some deps ->
       Some
@@ -468,19 +469,19 @@ module Option = Monad.Option (Fiber)
 module Result = Monad.Result (Fiber)
 
 module Var = struct
-  (* CR-soon amokhov: Simplify this to [type 'a t = (unit, 'a) Cell.t].
+  (* CR-soon amokhov: Simplify this to [type 'a t = (unit, 'a) Node.t].
 
-     [Cell.t]s already store all the information we need, and the only change that needs
-     to happen is making [Cell.invalidate] smart enough to return [Invalidation.empty]
+     [Node.t]s already store all the information we need, and the only change that needs
+     to happen is making [Node.invalidate] smart enough to return [Invalidation.empty]
      when the [cutoff] fires.
 
      Once we have that, we should also be able to implement [Fs_memo] on top of [Var.t]s
      instead of hand-written "variable tables".
   *)
   type 'a t =
-    { cell : (unit, 'a) Cell.t
+    { node : (unit, 'a) Node.t
     ; value : 'a ref
-      (* We manually cutoff instead of depending on [Cell.t] cutoff mechanism, so that
+      (* We manually cutoff instead of depending on [Node.t] cutoff mechanism, so that
            we don't pay for invalidation when the value doesn't change. *)
     ; cutoff : ('a -> 'a -> bool) option
     }
@@ -495,8 +496,8 @@ module Var = struct
         ~cutoff:None
         (fun () -> return !value)
     in
-    let cell = make_dep_node ~spec ~input:() in
-    { cell; value; cutoff }
+    let node = make_dep_node ~spec ~input:() in
+    { node; value; cutoff }
   ;;
 
   let set t v =
@@ -512,15 +513,15 @@ module Var = struct
       Invalidation.empty
     | Some _ | None ->
       t.value := v;
-      Cell.invalidate
-        t.cell
-        ~reason:(Variable_changed (Stdune.Option.value_exn t.cell.spec.name))
+      Node.invalidate
+        t.node
+        ~reason:(Variable_changed (Stdune.Option.value_exn t.node.spec.name))
   ;;
 
-  let read t = Cell.read t.cell
+  let read t = Node.read t.node
 
   module Unit = struct
-    type t = (unit, unit) Cell.t
+    type t = (unit, unit) Node.t
 
     (* All [unit]-valued variables share a single spec; they only differ by node identity,
        which is what invalidation acts on. *)
@@ -534,7 +535,7 @@ module Var = struct
     ;;
 
     let create () : t = make_dep_node ~spec ~input:()
-    let invalidate t ~reason = Cell.invalidate t ~reason
-    let read t = Cell.read t
+    let invalidate t ~reason = Node.invalidate t ~reason
+    let read t = Node.read t
   end
 end

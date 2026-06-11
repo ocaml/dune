@@ -131,7 +131,7 @@ let rec physical
       Some
         { Dir0.sub_dir_status = dir_status
         ; sub_dir_as_t =
-            Memo.lazy_cell (fun () ->
+            Memo.lazy_node (fun () ->
               find_dir_raw
                 ~default_vcs
                 ~path
@@ -141,7 +141,7 @@ let rec physical
                 ~dune_file
                 ~status:dir_status
                 ~project)
-            |> Memo.Cell.read
+            |> Memo.Node.read
         })
 
 and virtual_ ~project ~sub_dirs ~parent_status ~dune_file ~init ~path =
@@ -164,7 +164,7 @@ and virtual_ ~project ~sub_dirs ~parent_status ~dune_file ~init ~path =
               ( fn
               , { Dir0.sub_dir_status = status
                 ; sub_dir_as_t =
-                    Memo.lazy_cell (fun () ->
+                    Memo.lazy_node (fun () ->
                       find_dir_raw
                         ~default_vcs:Dir0.Vcs.Ancestor_vcs
                         ~path:(Path.Source.relative_fname path fn)
@@ -174,7 +174,7 @@ and virtual_ ~project ~sub_dirs ~parent_status ~dune_file ~init ~path =
                         ~status
                         ~dirs_visited:Dirs_visited.empty
                         ~project)
-                    |> Memo.Cell.read
+                    |> Memo.Node.read
                 } ))
       |> List.filter_opt
       |> Filename.Array.Map.of_sorted_list_exn
@@ -264,7 +264,7 @@ and find_dir_raw
 ;;
 
 let root =
-  Memo.lazy_cell
+  Memo.lazy_node
   @@ fun () ->
   let path = Path.Source.root in
   let dir_status : Source_dir_status.t = Normal in
@@ -312,7 +312,7 @@ let gen_find_dir =
        | Some dir -> dir.sub_dir_as_t >>= loop on_success on_last_found xs)
   in
   fun ~on_success ~on_last_found p ->
-    Memo.Cell.read root >>= loop on_success on_last_found (Path.Source.explode p)
+    Memo.Node.read root >>= loop on_success on_last_found (Path.Source.explode p)
 ;;
 
 let find_dir =
@@ -341,11 +341,11 @@ let find_excluded_ancestor path =
             |> Option.map ~f:(fun loc -> Path.Source.relative_fname dir.path sub_dir, loc)
           | _ -> None))
   in
-  let* root = Memo.Cell.read root in
+  let* root = Memo.Node.read root in
   loop root (Path.Source.explode path)
 ;;
 
-let root () = Memo.Cell.read root
+let root () = Memo.Node.read root
 
 let files_of path =
   find_dir path

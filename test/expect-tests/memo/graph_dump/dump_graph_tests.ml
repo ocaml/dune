@@ -58,7 +58,7 @@ let e =
 let () = run_memo e ()
 
 let%expect_test _ =
-  let graph = Scheduler.run (Memo.dump_cached_graph (Memo.cell d ())) in
+  let graph = Scheduler.run (Memo.dump_cached_graph (Memo.node d ())) in
   Graph.print graph ~format:Graph.File_format.Gexf;
   [%expect
     {|
@@ -82,7 +82,7 @@ let%expect_test _ =
 ;;
 
 let%expect_test _ =
-  let graph = Scheduler.run (Memo.dump_cached_graph (Memo.cell d ())) in
+  let graph = Scheduler.run (Memo.dump_cached_graph (Memo.node d ())) in
   Graph.print graph ~format:Graph.File_format.Dot;
   [%expect
     {|
@@ -95,7 +95,7 @@ let%expect_test _ =
 ;;
 
 let%expect_test _ =
-  let graph = Scheduler.run (Memo.dump_cached_graph ~time_nodes:true (Memo.cell d ())) in
+  let graph = Scheduler.run (Memo.dump_cached_graph ~time_nodes:true (Memo.node d ())) in
   Graph.For_tests.print
     graph
     ~format:Graph.File_format.Gexf
@@ -141,7 +141,7 @@ let%expect_test _ =
 ;;
 
 let%expect_test _ =
-  let graph = Scheduler.run (Memo.dump_cached_graph ~time_nodes:true (Memo.cell e ())) in
+  let graph = Scheduler.run (Memo.dump_cached_graph ~time_nodes:true (Memo.node e ())) in
   Graph.For_tests.print
     graph
     ~format:Graph.File_format.Gexf
@@ -208,7 +208,7 @@ let%expect_test "dump_cached_graph: on_not_cached" =
   Memo.reset Memo.Invalidation.empty;
   (* [`Ignore] stops at the uncached node and returns the graph built so far. *)
   let graph =
-    Scheduler.run (Memo.dump_cached_graph ~on_not_cached:`Ignore (Memo.cell root ()))
+    Scheduler.run (Memo.dump_cached_graph ~on_not_cached:`Ignore (Memo.node root ()))
   in
   Graph.print graph ~format:Graph.File_format.Dot;
   [%expect
@@ -218,7 +218,7 @@ let%expect_test "dump_cached_graph: on_not_cached" =
     |}];
   (* [`Raise] (the default) raises when a reachable node is not cached. *)
   (match
-     Scheduler.run (Memo.dump_cached_graph ~on_not_cached:`Raise (Memo.cell root ()))
+     Scheduler.run (Memo.dump_cached_graph ~on_not_cached:`Raise (Memo.node root ()))
    with
    | (_ : Graph.t) -> print_endline "no error"
    | exception Failure msg -> Printf.printf "raised: %s\n" msg);

@@ -76,7 +76,9 @@ module Stack_frame = struct
   let to_dyn = Dep_node.Packed.to_dyn_without_state
 
   let as_instance_of stack_frame ~(of_ : _ Table.t) =
-    Dep_node.Packed.as_instance_of stack_frame of_.spec.witness
+    match of_.spec.witness with
+    | None -> None
+    | Some witness -> Dep_node.Packed.as_instance_of stack_frame witness
   ;;
 end
 
@@ -92,7 +94,14 @@ let create_with_cache
   : (i, o) Table.t
   =
   let spec =
-    Spec.create ~name:(Some name) ~input ~cutoff ~human_readable_description ?on_event f
+    Spec.create
+      ~name:(Some name)
+      ~witness:true
+      ~input
+      ~cutoff
+      ~human_readable_description
+      ?on_event
+      f
   in
   Caches.register ~clear:(fun () ->
     Store.clear cache;

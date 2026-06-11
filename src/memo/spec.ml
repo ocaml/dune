@@ -67,17 +67,20 @@ end
 
 type ('i, 'o) t =
   { name : string option
-  ; (* If the field [witness] precedes any of the functional values ([input],
-         [f], and the closures inside [node_kind]), then polymorphic comparison
-         actually works for [Spec.t]s. *)
-    witness : 'i Type_eq.Id.t
+  ; (* [witness] is [Some] only for named tables, which may be downcast to their
+         input type via [as_instance_of]; it is [None] for lazy values, stack
+         frames, and variables, avoiding a [Type_eq.Id.t] allocation per such cell.
+         If [witness] precedes the functional values ([input], [f], and the
+         closures inside [node_kind]), polymorphic comparison works for [Spec.t]s. *)
+    witness : 'i Type_eq.Id.t option
   ; input : (module Store_intf.Input with type t = 'i)
   ; node_kind : ('i, 'o) Node_kind.t
   ; f : 'i -> 'o Fiber.t
   ; human_readable_description : ('i -> User_message.Style.t Pp.t) option
   }
 
-let create ~name ~input ~human_readable_description ~cutoff ?on_event f =
+let create ~name ~input ~human_readable_description ~cutoff ?(witness = false) ?on_event f
+  =
   let name =
     match name with
     | None when !Memo_debug.track_locations_of_lazy_values ->
@@ -88,7 +91,7 @@ let create ~name ~input ~human_readable_description ~cutoff ?on_event f =
   { name
   ; input
   ; node_kind = Node_kind.create ~cutoff ~on_event
-  ; witness = Type_eq.Id.create ()
+  ; witness = (if witness then Some (Type_eq.Id.create ()) else None)
   ; f
   ; human_readable_description
   }

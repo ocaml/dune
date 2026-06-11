@@ -155,9 +155,12 @@ module Dep_node = struct
     let to_dyn_without_state (T t) = to_dyn_without_state t
 
     let as_instance_of (type i) (T t) (witness : i Type_eq.Id.t) : i option =
-      match Type_eq.Id.same witness t.spec.witness with
-      | Some Type_eq.T -> Some t.input
+      match t.spec.witness with
       | None -> None
+      | Some w ->
+        (match Type_eq.Id.same witness w with
+         | Some Type_eq.T -> Some t.input
+         | None -> None)
     ;;
 
     let human_readable_description (T t) =

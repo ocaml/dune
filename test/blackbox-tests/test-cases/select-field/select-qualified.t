@@ -30,6 +30,9 @@ correctly. This is a bug.
   6 |    (unix -> bar.unix.ml)
   7 |    (!unix -> bar.nounix.ml))))
   Error: No rule found for bar.unix.ml
+  Hint: If this is a source file or directory, make sure it exists in the
+  source tree. If it is generated, add or fix the rule that produces
+  bar.unix.ml.
   [1]
 
   $ cat > dune <<EOF

@@ -998,14 +998,16 @@ module Internal = struct
       let+ stack = Memo.get_call_stack () in
       List.find_map stack ~f:(fun frame ->
         match
-          Memo.Stack_frame.as_instance_of frame ~of_:(Lazy.force execute_rule_memo)
+          Memo.Stack_frame.as_instance_of
+            frame
+            ~of_:(Memo.Table.spec (Lazy.force execute_rule_memo))
         with
         | Some r -> Some (Rule.loc r)
         | None ->
           Option.bind
             (Memo.Stack_frame.as_instance_of
                frame
-               ~of_:(Lazy.force execute_action_generic_stage2_memo))
+               ~of_:(Memo.Table.spec (Lazy.force execute_action_generic_stage2_memo)))
             ~f:(fun (x : Anonymous_action.t) ->
               Option.some_if (not @@ Loc.is_none x.action.loc) x.action.loc)))
   ;;

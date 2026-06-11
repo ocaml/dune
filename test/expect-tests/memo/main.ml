@@ -159,7 +159,8 @@ let%expect_test _ =
   | Memo.Cycle_error.E err ->
     let cycle =
       Memo.Cycle_error.get err
-      |> List.filter_map ~f:(Memo.Stack_frame.as_instance_of ~of_:mcompcycle)
+      |> List.filter_map
+           ~f:(Memo.Stack_frame.as_instance_of ~of_:(Memo.Table.spec mcompcycle))
     in
     print (Pp.enumerate cycle ~f:(Pp.textf "%d"));
     print (Pp.textf "%d" !counter);

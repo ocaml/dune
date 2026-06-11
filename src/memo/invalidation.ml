@@ -157,7 +157,7 @@ let is_empty = function
 
 let clear_caches ~reason = Leaf { kind = Clear_caches; reason }
 
-let invalidate_cache ~reason ({ cache; _ } : _ Table0.t) =
+let invalidate_table ~reason ({ cache; _ } : _ Table0.t) =
   Leaf { kind = Clear_cache cache; reason }
 ;;
 

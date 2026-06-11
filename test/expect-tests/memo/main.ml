@@ -1986,7 +1986,7 @@ let%expect_test "Test Memo.clear_cache" =
     Memo graph: 0/0/0 nodes/edges/blocked (restore), 4/2/0 nodes/edges/blocked (compute)
     Memo cycle detection graph: 0/0/0 nodes/edges/paths
   |}];
-  let invalidation = Memo.Invalidation.invalidate_cache ~reason:Test add_one in
+  let invalidation = Memo.Invalidation.invalidate_table ~reason:Test add_one in
   Memo.reset invalidation;
   evaluate_and_print add_one 1;
   evaluate_and_print add_one 2;

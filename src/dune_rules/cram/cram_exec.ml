@@ -287,9 +287,26 @@ let rewrite_paths ~build_path_prefix_map ~parent_script ~command_script s =
       "Cannot decode build prefix map"
       [ "build_path_prefix_map", String build_path_prefix_map; "msg", String msg ]
   | Ok map ->
-    let abs_path_re =
-      let not_dir = Printf.sprintf " \n\r\t%c" Bin.path_sep in
-      Re.(compile (seq [ char '/'; rep1 (diff any (set not_dir)) ]))
+    let s =
+      (* Match map sources literally, longest first, so spaced paths match. *)
+      match
+        (* Drop None and empty sources: [Re.str ""] would match everywhere. *)
+        List.filter_map map ~f:(function
+          | None | Some { Build_path_prefix_map.source = ""; _ } -> None
+          | Some { Build_path_prefix_map.source; target = _ } -> Some source)
+      with
+      | [] -> s
+      | sources ->
+        let abs_path_re =
+          sources
+          |> List.sort ~compare:(fun a b ->
+            Int.compare (String.length b) (String.length a))
+          |> List.map ~f:Re.str
+          |> Re.alt
+          |> Re.compile
+        in
+        Re.replace abs_path_re s ~f:(fun g ->
+          Build_path_prefix_map.rewrite map (Re.Group.get g 0))
     in
     let error_msg =
       let open Re in
@@ -302,9 +319,7 @@ let rewrite_paths ~build_path_prefix_map ~parent_script ~command_script s =
       let b = seq [ command_script; str ": line "; line_number; str ": " ] in
       [ a; b ] |> List.map ~f:(fun re -> seq [ bol; re ]) |> alt |> compile
     in
-    Re.replace abs_path_re s ~f:(fun g ->
-      Build_path_prefix_map.rewrite map (Re.Group.get g 0))
-    |> Re.replace_string error_msg ~by:""
+    Re.replace_string error_msg ~by:"" s
 ;;
 
 type command_out =

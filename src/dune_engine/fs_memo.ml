@@ -806,8 +806,8 @@ end = struct
         Path_changed (Path.outside_build_dir path)
       in
       Memo.Invalidation.combine
-        (Memo.Cell.invalidate (Memo.cell memo_for_watching_directly path) ~reason)
-        (Memo.Cell.invalidate (Memo.cell memo_for_watching_via_parent path) ~reason)
+        (Memo.Node.invalidate (Memo.node memo_for_watching_directly path) ~reason)
+        (Memo.Node.invalidate (Memo.node memo_for_watching_via_parent path) ~reason)
   ;;
 
   let init ~dune_file_watcher =

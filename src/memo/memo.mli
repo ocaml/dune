@@ -130,7 +130,7 @@ val map_reduce_array
 (** Like [map_reduce_seq], for lists. *)
 val map_reduce : 'a list -> f:('a -> 'b t) -> empty:'b -> combine:('b -> 'b -> 'b) -> 'b t
 
-module Make_parallel_map (Map : Map.S) : sig
+module Map (Map : Map.S) : sig
   val parallel_map : 'a Map.t -> f:(Map.key -> 'a -> 'b t) -> 'b Map.t t
 end
 
@@ -383,34 +383,34 @@ end
 (** Introduces a dependency on the current build run. *)
 val current_run : unit -> Run.t t
 
-module Cell : sig
+module Node : sig
   type ('i, 'o) t
 
   val input : ('i, _) t -> 'i
   val read : (_, 'o) t -> 'o memo
 
-  (** Mark this cell as invalid, forcing recomputation of this value. The
+  (** Mark this node as invalid, forcing recomputation of this value. The
       consumers may be recomputed or not, depending on early cutoff. *)
   val invalidate : reason:Invalidation.Reason.t -> _ t -> Invalidation.t
 end
 
-(** Create a "memoization cell" that focuses on a single input/output pair of a
+(** Create a "memoization node" that focuses on a single input/output pair of a
     memoized function. *)
-val cell : ('i, 'o) Table.t -> 'i -> ('i, 'o) Cell.t
+val node : ('i, 'o) Table.t -> 'i -> ('i, 'o) Node.t
 
-val lazy_cell
+val lazy_node
   :  ?cutoff:('a -> 'a -> bool)
   -> ?name:string
   -> ?human_readable_description:(unit -> User_message.Style.t Pp.t)
   -> ?on_event:(Event.t -> unit)
   -> (unit -> 'a t)
-  -> (unit, 'a) Cell.t
+  -> (unit, 'a) Node.t
 
 (** Returns the cached dependency graph discoverable from the specified node *)
 val dump_cached_graph
   :  ?on_not_cached:[ `Ignore | `Raise ]
   -> ?time_nodes:bool
-  -> ('i, 'o) Cell.t
+  -> ('i, 'o) Node.t
   -> Dune_graph.Graph.t Fiber.t
 
 module Lazy : sig
@@ -430,7 +430,7 @@ module Lazy : sig
   val map : 'a t -> f:('a -> 'b) -> 'b t
 
   module Expert : sig
-    (** Like [Lazy.create] but returns the underlying Memo [Cell], which can be
+    (** Like [Lazy.create] but returns the underlying Memo [Node], which can be
         useful for testing and debugging. *)
     val create
       :  ?cutoff:('a -> 'a -> bool)
@@ -438,7 +438,7 @@ module Lazy : sig
       -> ?human_readable_description:(unit -> User_message.Style.t Pp.t)
       -> ?on_event:(Event.t -> unit)
       -> (unit -> 'a memo)
-      -> (unit, 'a) Cell.t * 'a t
+      -> (unit, 'a) Node.t * 'a t
   end
 end
 
@@ -559,9 +559,9 @@ module For_tests : sig
 
   (** Like [get_deps] but preserves the series-parallel structure
       ([Seq]/[Par]/[Singleton]/[Empty]) instead of flattening it. Each leaf is
-      rendered as [(name, input)]. Returns [None] if the cell's dependencies were
+      rendered as [(name, input)]. Returns [None] if the node's dependencies were
       not computed in the current run. *)
-  val get_deps_structured : (_, _) Cell.t -> Dyn.t option
+  val get_deps_structured : (_, _) Node.t -> Dyn.t option
 
   (** Forget all memoized values, forcing them to be recomputed on the next
       build run. *)

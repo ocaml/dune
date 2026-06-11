@@ -1147,7 +1147,7 @@ let gen_load ~read ~dir ~files ~infer_from_opam_files ~load_opam_file_with_conte
   else if infer_from_opam_files && not (Package.Name.Map.is_empty opam_packages)
   then
     let+ opam_packages =
-      let module Memo_package_name = Memo.Make_parallel_map (Package.Name.Map) in
+      let module Memo_package_name = Memo.Map (Package.Name.Map) in
       Memo_package_name.parallel_map opam_packages ~f:(fun _ (_loc, pkg) -> pkg)
     in
     Some (infer Package_info.empty ~dir opam_packages)

@@ -17,46 +17,41 @@ let () =
 ;;
 
 let with_git_daemon ~parent_dir ~port ~repo_dir ~unrelated_repo_dir ~f =
-  let build =
-    Dune_engine.Process.Build.create
-      ~action_runner:None
-      ~run_id:Dune_engine.Run_id.Batch
-      ~cancellation:(Fiber.Cancel.create ())
-  in
   let git_prog = Lazy.force Dune_vcs.Vcs.git in
-  (* Run daemon in background while we do the test. The test cancels the build
-     to kill the daemon, so we catch errors. *)
-  Fiber.map ~f:(fun _ -> ())
-  @@ Fiber.map_reduce_errors (module Monoid.Unit) ~on_error:(fun _ -> Fiber.return ())
-  @@ fun () ->
-  Fiber.fork_and_join_unit
-    (fun () ->
-       (* Start git daemon to serve both repos over git:// protocol. This is
-          needed because file:// URLs don't use pack protocol negotiation. The
-          daemon has a timeout as a safety backstop. *)
-       Dune_engine.Process.run
-         ~dir:parent_dir
-         ~display
-         ~build
-         ~stdout_to:(make_stdout ())
-         ~stderr_to:(make_stderr ())
-         Dune_engine.Process.Failure_mode.(
-           Timeout { timeout = Some (Time.Span.of_secs 5.0); failure_mode = Return })
-         git_prog
-         [ "daemon"
-         ; "--verbose"
-         ; "--export-all"
-         ; sprintf "--base-path=%s" (Path.to_string parent_dir)
-         ; "--listen=127.0.0.1"
-         ; sprintf "--port=%d" port
-         ; "--reuseaddr"
-         ; Path.to_string repo_dir
-         ; Path.to_string unrelated_repo_dir
-         ]
-       >>| fun _ -> ())
-    (fun () ->
-       let* () = f ~git_prog in
-       Fiber.Cancel.fire (Dune_engine.Process.Build.cancellation build))
+  let git_prog_str = Path.to_string git_prog in
+  let daemon_pid =
+    Spawn.spawn
+      ~prog:git_prog_str
+      ~argv:
+        [ git_prog_str
+        ; "daemon"
+        ; "--export-all"
+        ; sprintf "--base-path=%s" (Path.to_string parent_dir)
+        ; "--listen=127.0.0.1"
+        ; sprintf "--port=%d" port
+        ; "--reuseaddr"
+        ; Path.to_string repo_dir
+        ; Path.to_string unrelated_repo_dir
+        ]
+      ~stdin:(Fd.unsafe_to_unix_file_descr (Lazy.force Dev_null.in_))
+      ~stdout:(Fd.unsafe_to_unix_file_descr (Lazy.force Dev_null.out))
+      ~stderr:(Fd.unsafe_to_unix_file_descr (Lazy.force Dev_null.out))
+      ()
+    |> Pid.of_int_exn
+  in
+  let stop_daemon () =
+    (* The scheduler's process watcher can reap an unregistered child that exits
+       before cleanup runs. Don't turn that into a second failure. *)
+    match Unix.kill (Pid.to_int daemon_pid) Sys.sigterm with
+    | exception Unix.Unix_error (ESRCH, _, _) -> Fiber.return ()
+    | () ->
+      Dune_scheduler.Scheduler.wait_for_process
+        ~timeout:(Time.Span.of_secs 1.0)
+        ~is_process_group_leader:false
+        daemon_pid
+      >>| fun _ -> ()
+  in
+  Fiber.finalize ~finally:stop_daemon (fun () -> f ~git_prog)
 ;;
 
 let%expect_test "second fetch uses refs for efficient negotiation (fix #13323)" =

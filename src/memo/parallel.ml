@@ -31,6 +31,13 @@ let all_concurrently l =
       Fiber.parallel_map l ~f:(fun x -> run ~f:(fun () -> x)))
 ;;
 
+let all_concurrently_unit l =
+  Deps_collector.run_parallel ~num_threads:(List.length l) (function
+    | None -> Fiber.all_concurrently_unit l
+    | Some { Deps_collector.run } ->
+      Fiber.all_concurrently_unit (List.map l ~f:(fun x -> run ~f:(fun () -> x))))
+;;
+
 let parallel_map l ~f =
   Deps_collector.run_parallel ~num_threads:(List.length l) (function
     | None -> Fiber.parallel_map l ~f
@@ -43,6 +50,15 @@ let parallel_iter l ~f =
     | None -> Fiber.parallel_iter l ~f
     | Some { Deps_collector.run } ->
       Fiber.parallel_iter l ~f:(fun value -> run ~f:(fun () -> f value)))
+;;
+
+let parallel_iter_set
+      (type a s)
+      (module S : Set.S with type elt = a and type t = s)
+      (set : s)
+      ~f
+  =
+  parallel_iter (S.to_list set) ~f
 ;;
 
 let map_reduce l ~f ~empty ~combine =

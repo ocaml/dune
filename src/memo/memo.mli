@@ -96,11 +96,19 @@ val fork_and_join_unit : (unit -> unit t) -> (unit -> 'a t) -> 'a t
 val all : 'a t list -> 'a list t
 
 val all_concurrently : 'a t list -> 'a list t
+val all_concurrently_unit : unit t list -> unit t
 val when_ : bool -> (unit -> unit t) -> unit t
 val sequential_map : 'a list -> f:('a -> 'b t) -> 'b list t
 val sequential_iter : 'a list -> f:('a -> unit t) -> unit t
 val parallel_map : 'a list -> f:('a -> 'b t) -> 'b list t
 val parallel_iter : 'a list -> f:('a -> unit t) -> unit t
+
+val parallel_iter_set
+  :  (module Set.S with type elt = 'a and type t = 's)
+  -> 's
+  -> f:('a -> unit t)
+  -> unit t
+
 val parallel_iter_seq : 'a Seq.t -> f:('a -> unit t) -> unit t
 
 (** [map_reduce_seq xs ~f ~empty ~combine] runs [f] on every element of
@@ -132,6 +140,7 @@ val map_reduce : 'a list -> f:('a -> 'b t) -> empty:'b -> combine:('b -> 'b -> '
 
 module Map (Map : Map.S) : sig
   val parallel_map : 'a Map.t -> f:(Map.key -> 'a -> 'b t) -> 'b Map.t t
+  val parallel_iter : 'a Map.t -> f:(Map.key -> 'a -> unit t) -> unit t
 end
 
 (** The specification of a memoized function. *)

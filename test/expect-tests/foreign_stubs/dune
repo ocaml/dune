@@ -1,0 +1,27 @@
+(rule
+ (target dune_under_test.ml)
+ (deps %{bin:dune})
+ (action
+  (with-stdout-to
+   %{target}
+   (echo "let path = {|%{bin:dune}|}"))))
+
+(library
+ (name foreign_stubs_archive_creation_tests)
+ (enabled_if
+  (>= %{ocaml_version} 4.12.0))
+ (inline_tests
+  (deps %{bin:dune}))
+ (libraries
+  stdune
+  dune_tests_common
+  spawn
+  unix
+  ;; This is because of the (implicit_transitive_deps false)
+  ;; in dune-project
+  ppx_expect.config
+  ppx_expect.config_types
+  base
+  ppx_inline_test.config)
+ (preprocess
+  (pps ppx_expect)))

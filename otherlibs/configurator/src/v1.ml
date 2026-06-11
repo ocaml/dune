@@ -657,12 +657,31 @@ module Pkg_config = struct
     ; configurator : t
     }
 
+  (* The [--personality] flag was added in pkgconf 1.5.0. However, up to
+     and including 1.6.x, pkgconf crashes when no personality file exists
+     for the given triplet; from 1.7.0 it falls back to the default
+     personality instead. We therefore only pass [--personality] to
+     pkgconf 1.7.0 and newer. *)
+  let supports_personality c pkg_config =
+    let { Process.exit_code; stdout; _ } =
+      Process.run_process c ~dir:c.dest_dir pkg_config [ "--version" ]
+    in
+    exit_code = 0
+    &&
+    match String.split (String.trim stdout) ~on:'.' with
+    | major :: minor :: _ ->
+      (match Int.of_string major, Int.of_string minor with
+       | Some major, Some minor -> major > 1 || (major = 1 && minor >= 7)
+       | _ -> false)
+    | _ -> false
+  ;;
+
   let get ?static c =
     let get_pkg_config_args default =
       let args =
         match Sys.getenv "PKG_CONFIG_ARGN" with
         | s -> String.split ~on:' ' s
-        | exception Not_found -> default
+        | exception Not_found -> default ()
       in
       match static with
       | None -> args
@@ -673,20 +692,21 @@ module Pkg_config = struct
     match Sys.getenv "PKG_CONFIG" with
     | s ->
       Option.map (which c s) ~f:(fun pkg_config ->
-        let pkg_config_args = get_pkg_config_args [] in
+        let pkg_config_args = get_pkg_config_args (fun () -> []) in
         { pkg_config; pkg_config_args; configurator = c })
     | exception Not_found ->
       (match which c "pkgconf" with
        | None ->
          Option.map (which c "pkg-config") ~f:(fun pkg_config ->
-           let pkg_config_args = get_pkg_config_args [] in
+           let pkg_config_args = get_pkg_config_args (fun () -> []) in
            { pkg_config; pkg_config_args; configurator = c })
        | Some pkg_config ->
          let pkg_config_args =
-           get_pkg_config_args
-             (match ocaml_config_var c "target" with
-              | None -> []
-              | Some target -> [ "--personality"; target ])
+           get_pkg_config_args (fun () ->
+             match ocaml_config_var c "target" with
+             | Some target when supports_personality c pkg_config ->
+               [ "--personality"; target ]
+             | None | Some _ -> [])
          in
          Some { pkg_config; pkg_config_args; configurator = c })
   ;;

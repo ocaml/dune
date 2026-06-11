@@ -4,6 +4,10 @@
 These tests show that setting `PKG_CONFIG_ARGN` passes extra args to `pkg-config`
 
   $ STATIC_TEST__=true dune build 2>&1 | awk '/run:.*bin\/pkgconf/{a=1}/stderr/{a=0}a' | sed s/$(ocamlc -config | sed -n "/^target:/ {s/target: //; p; }")/\$TARGET/g
+  run: $TESTCASE_ROOT/_build/default/.bin/pkgconf --version
+  -> process exited with code 0
+  -> stdout:
+   | 2.4.3
   run: $TESTCASE_ROOT/_build/default/.bin/pkgconf --static --personality $TARGET --print-errors dummy-pkg
   -> process exited with code 0
   -> stdout:
@@ -53,6 +57,10 @@ These tests show that setting `PKG_CONFIG_ARGN` passes extra args to `pkg-config
 
   $ dune clean
   $ STATIC_TEST__=false dune build 2>&1 | awk '/run:.*bin\/pkgconf/{a=1}/stderr/{a=0}a' | sed s/$(ocamlc -config | sed -n "/^target:/ {s/target: //; p; }")/\$TARGET/g
+  run: $TESTCASE_ROOT/_build/default/.bin/pkgconf --version
+  -> process exited with code 0
+  -> stdout:
+   | 2.4.3
   run: $TESTCASE_ROOT/_build/default/.bin/pkgconf --personality $TARGET --print-errors dummy-pkg
   -> process exited with code 0
   -> stdout:
@@ -96,6 +104,10 @@ These tests show that setting `PKG_CONFIG_ARGN` passes extra args to `pkg-config
 
   $ dune clean
   $ dune build 2>&1 | awk '/run:.*bin\/pkgconf/{a=1}/stderr/{a=0}a' | sed s/$(ocamlc -config | sed -n "/^target:/ {s/target: //; p; }")/\$TARGET/g
+  run: $TESTCASE_ROOT/_build/default/.bin/pkgconf --version
+  -> process exited with code 0
+  -> stdout:
+   | 2.4.3
   run: $TESTCASE_ROOT/_build/default/.bin/pkgconf --personality $TARGET --print-errors dummy-pkg
   -> process exited with code 0
   -> stdout:

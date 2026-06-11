@@ -13,10 +13,11 @@ variable, and can rebuild as needed.
   > EOF
 
 
-  $ dune build @doc-new
-  $ odoc_detect_syntax _build/default/_doc_new/html/docs/local/l/L/index.html
+  $ html=_build/default/_doc_new/html/docs/local/l/L/index.html
+  $ dune build "$html"
+  $ odoc_detect_syntax "$html"
   it is ocaml
 
-  $ ODOC_SYNTAX=re dune build @doc-new
-  $ odoc_detect_syntax _build/default/_doc_new/html/docs/local/l/L/index.html
+  $ ODOC_SYNTAX=re dune build "$html"
+  $ odoc_detect_syntax "$html"
   it is reason

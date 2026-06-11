@@ -3,6 +3,16 @@ is adopted by Dune and cleaned up after the build.
 
   $ make_dune_project 3.23
 
+  $ wait_for_child_process_cleanup_finished () {
+  >   child_pid="$1"
+  >   wait_for_trace_jq_true '
+  >     any(.[];
+  >       .name == "child-process-cleanup"
+  >       and .args.stage == "finished"
+  >       and ((.args.pids // []) | index('"$child_pid"')))
+  >   '
+  > }
+
   $ pid_file=$TMPDIR/escaped-pid
   $ cat >dune <<EOF
   > (rule
@@ -24,6 +34,7 @@ processes.
 
   $ with_timeout dune_cmd wait-for-file-to-appear "$pid_file"
   $ child_pid=$(cat "$pid_file")
+  $ wait_for_child_process_cleanup_finished "$child_pid"
   $ if kill -0 "$child_pid" 2>/dev/null; then
   >   echo "FAILURE: escaped process is still running"
   > else

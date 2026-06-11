@@ -28,5 +28,5 @@ Remove the fake ocamlformat from the dune file to see the real output
   -let ()=print_int (5+4)
   +(* fake ocamlformat output *)
   \ No newline at end of file
-  Had 1 error, waiting for filesystem changes...
   Promoting _build/default/foo.ml.corrected to foo.ml.
+  Had 1 error, waiting for filesystem changes...

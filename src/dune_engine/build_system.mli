@@ -66,12 +66,17 @@ module Request : sig
 
     val create : unit Action_builder.t -> t
     val await : t -> Build_outcome.t Fiber.t
+    val is_finished : t -> bool
     val complete : t -> Build_outcome.t -> unit Fiber.t
   end
 
   type t
 
   val create : Goal.t list -> t
+
+  (** Prevent this request from completing goals that have not already
+      completed. *)
+  val cancel_completion : t -> unit
 end
 
 val run_build_requests

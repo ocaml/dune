@@ -33,7 +33,7 @@ let to_dyn = function
   | Dir p -> Dyn.variant "dir" [ Path.to_dyn p ]
 ;;
 
-let string_of_path ~dir p = Path.reach ~from:dir p
+let string_of_path ~dir p = Path.reach_for_running ~from:dir p
 
 let to_string t ~dir =
   match t with

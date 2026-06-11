@@ -63,9 +63,9 @@
 (alias
  (name   runtest)
  (deps   test.bc%{ext_dll})
- (action (run ./dynamic.exe ./%{deps})))
+ (action (run ./dynamic.exe %{deps})))
 
 (alias
  (name   runtest)
  (deps   test%{ext_dll})
- (action (run ./dynamic.exe ./%{deps})))
+ (action (run ./dynamic.exe %{deps})))

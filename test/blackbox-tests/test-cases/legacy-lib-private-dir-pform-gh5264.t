@@ -23,9 +23,9 @@ compatibility purposes:
 
   $ echo '(lang dune 2.9)' > dune-project
   $ dune build @a
-  .
+  ./.
   $ dune build @b
-  .
+  ./.
 
 But we are more strict since 3.0:
 

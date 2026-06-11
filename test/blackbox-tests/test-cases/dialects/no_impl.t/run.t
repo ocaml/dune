@@ -3,7 +3,7 @@ Test the (dialect ...) stanza inside the `dune-project` file.
   $ dune exec ./main.exe
 
   $ dune build @fmt 2>&1 | grep -v "fake ocamlformat is running"
-  Formatting main.mfi
+  Formatting ./main.mfi
   File "fmt.ml", line 1, characters 0-0:
   --- fmt.ml
   +++ fmt.ml.corrected
@@ -26,5 +26,5 @@ Test the (dialect ...) stanza inside the `dune-project` file.
   > | .args.stderr
   > | gsub("^\\s+|\\s+$"; "")
   > ' | sort
-  fake ocamlformat is running: "--impl" "fmt.ml"
-  fake ocamlformat is running: "--impl" "main.ml"
+  fake ocamlformat is running: "--impl" "./fmt.ml"
+  fake ocamlformat is running: "--impl" "./main.ml"

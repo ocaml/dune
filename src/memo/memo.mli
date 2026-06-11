@@ -134,9 +134,17 @@ module Map (Map : Map.S) : sig
   val parallel_map : 'a Map.t -> f:(Map.key -> 'a -> 'b t) -> 'b Map.t t
 end
 
+(** The specification of a memoized function. *)
+module Spec : sig
+  type ('input, 'output) t
+end
+
 (** A table memoizing results of executing a function. *)
 module Table : sig
   type ('input, 'output) t
+
+  (** The specification of the memoized function backing this table. *)
+  val spec : ('input, 'output) t -> ('input, 'output) Spec.t
 end
 
 (** A stack frame within a computation. *)
@@ -149,7 +157,7 @@ module Stack_frame : sig
 
   (** Checks if the stack frame is a frame of the given memoized function and if
       so, returns [Some i] where [i] is the argument of the function. *)
-  val as_instance_of : t -> of_:('input, _) Table.t -> 'input option
+  val as_instance_of : t -> of_:('input, _) Spec.t -> 'input option
 
   val human_readable_description : t -> User_message.Style.t Pp.t option
 end

@@ -2,7 +2,14 @@ module Metrics0 = Metrics
 module Table0 = Table
 open Stdune
 module Metrics = Metrics0
-module Table = Table0
+
+module Table = struct
+  include Table0
+
+  let spec (t : (_, _) t) = t.spec
+end
+
+module Spec = Spec
 open Fiber.O
 module Graph = Dune_graph.Graph
 module Console = Console
@@ -76,8 +83,8 @@ module Stack_frame = struct
   let input (Dep_node.T t) = Dep_node.input_to_dyn t
   let to_dyn = Dep_node.Packed.to_dyn_without_state
 
-  let as_instance_of stack_frame ~(of_ : _ Table.t) =
-    match of_.spec.witness with
+  let as_instance_of stack_frame ~(of_ : _ Spec.t) =
+    match of_.witness with
     | None -> None
     | Some witness -> Dep_node.Packed.as_instance_of stack_frame witness
   ;;

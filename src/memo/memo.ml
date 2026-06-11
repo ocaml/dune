@@ -60,7 +60,12 @@ end
 
 open To_open
 include Parallel
-module Map = Make_parallel_map
+
+module Map (M : Map.S) = struct
+  include Make_parallel_map (M)
+
+  let parallel_iter t ~f = parallel_iter (M.to_list t) ~f:(fun (key, data) -> f key data)
+end
 
 let pp_stack () =
   let open Pp.O in

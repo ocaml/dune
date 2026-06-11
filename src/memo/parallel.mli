@@ -8,8 +8,15 @@ open! Import
 val fork_and_join : (unit -> 'a Fiber.t) -> (unit -> 'b Fiber.t) -> ('a * 'b) Fiber.t
 val fork_and_join_unit : (unit -> unit Fiber.t) -> (unit -> 'a Fiber.t) -> 'a Fiber.t
 val all_concurrently : 'a Fiber.t list -> 'a list Fiber.t
+val all_concurrently_unit : unit Fiber.t list -> unit Fiber.t
 val parallel_map : 'a list -> f:('a -> 'b Fiber.t) -> 'b list Fiber.t
 val parallel_iter : 'a list -> f:('a -> unit Fiber.t) -> unit Fiber.t
+
+val parallel_iter_set
+  :  (module Set.S with type elt = 'a and type t = 's)
+  -> 's
+  -> f:('a -> unit Fiber.t)
+  -> unit Fiber.t
 
 val map_reduce
   :  'a list

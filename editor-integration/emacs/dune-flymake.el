@@ -1,4 +1,4 @@
-;;; dune-flymake.el --- Flymake support for dune files   -*- coding: utf-8 -*-
+;;; dune-flymake.el --- Flymake support for dune files   -*- coding: utf-8; lexical-binding: t; -*-
 
 ;; Copyright 2017- Christophe Troestler
 ;; URL: https://github.com/ocaml/dune
@@ -30,6 +30,11 @@
 
 ;;; Code:
 
+;; Legacy flymake variable used only on Emacs versions that lack the
+;; flymake-proc-* names; forward-declared so the byte-compiler does not
+;; treat it as a free variable.
+(defvar flymake-allowed-file-name-masks)
+
 (defvar dune-flymake-temporary-file-directory
   (expand-file-name "dune" temporary-file-directory)
   "Directory where to duplicate the files for flymake.")
@@ -56,7 +61,7 @@ characters \\([0-9]+\\)-\\([0-9]+\\): +\\([^\n]*\\)$"
 This is needed as long as https://github.com/ocaml/dune/issues/241
 is not fixed."
   (unless (file-exists-p dune-flymake-program)
-    (let ((dir (file-name-directory dune-program))
+    (let ((dir (file-name-directory dune-flymake-program))
           (pgm "#!/usr/bin/env ocaml
 ;;
 #load \"unix.cma\";;
@@ -109,8 +114,8 @@ let () =
                  errors in
   print_string errors"))
       (make-directory dir t)
-      (append-to-file pgm nil dune-program)
-      (set-file-modes dune-program #o777)
+      (append-to-file pgm nil dune-flymake-program)
+      (set-file-modes dune-flymake-program #o777)
       )))
 
 (defun dune-flymake--temp-name (absolute-path)
@@ -190,14 +195,17 @@ Do not fail on error."
   (let ((fname (dune-flymake--create-temp-buffer-copy
                 'dune-flymake-create-temp))
         (root (or (dune-flymake--root buffer-file-name) "")))
-    (list dune-program (list fname root))))
+    (list dune-flymake-program (list fname root))))
 
 (defun dune-flymake-dune-mode-hook ()
   "Hook to add to `dune-mode-hook' to enable lint tests."
-  (push dune-flymake--allowed-file-name-masks
-        (if (boundp 'flymake-proc-allowed-file-name-masks)
-            flymake-proc-allowed-file-name-masks
-          flymake-allowed-file-name-masks))
+  ;; The else branch intentionally references the pre-26.1 variable as a
+  ;; fallback for old Emacs; suppress its obsoletion warning at the site.
+  (with-suppressed-warnings ((obsolete flymake-allowed-file-name-masks))
+    (push dune-flymake--allowed-file-name-masks
+          (if (boundp 'flymake-proc-allowed-file-name-masks)
+              flymake-proc-allowed-file-name-masks
+            flymake-allowed-file-name-masks)))
   (set (make-local-variable (if (boundp 'flymake-proc-err-line-patterns)
                                  'flymake-proc-err-line-patterns
                                'flymake-err-line-patterns))

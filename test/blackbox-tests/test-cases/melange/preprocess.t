@@ -39,13 +39,17 @@ Reason dialect preprocessor to the PPX driver.
 
   $ cat > ppx/reason_ppx.ml <<'EOF'
   > let () =
-  >   Array.iter
-  >     (fun arg ->
+  >   let rec loop = function
+  >     | [] -> ()
+  >     | "-loc-filename" :: _ :: rest -> loop rest
+  >     | arg :: rest ->
   >       if Filename.check_suffix arg ".re" || Filename.check_suffix arg ".rei"
   >       then (
   >         Printf.eprintf "ppx saw Reason source: %s\n" arg;
-  >         exit 1))
-  >     Sys.argv
+  >         exit 1)
+  >       else loop rest
+  >   in
+  >   loop (Array.to_list Sys.argv)
   > ;;
   > let () = Ppxlib.Driver.register_transformation "reason_ppx"
   > EOF

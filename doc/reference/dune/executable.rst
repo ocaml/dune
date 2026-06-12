@@ -158,10 +158,10 @@ Linking Modes
 ~~~~~~~~~~~~~
 
 The ``modes`` field allows selecting which linking modes will be used to link
-executables. Each mode is a pair ``(<compilation-mode> <binary-kind>)``, where
+executables. Most modes are pairs ``(<compilation-mode> <binary-kind>)``, where
 ``<compilation-mode>`` describes whether the bytecode or native code backend of
 the OCaml compiler should be used and ``<binary-kind>`` describes what kind of
-file should be produced.
+file should be produced. The special mode ``byte_complete`` is described below.
 
 ``<compilation-mode>`` must be ``byte``, ``native``, or ``best``, where ``best``
 is ``native`` with a fallback to bytecode when native compilation isn't
@@ -212,42 +212,57 @@ For instance, the following ``modes`` fields are all equivalent:
            (best object)
            (best shared_object)))
 
-Lastly, use the special mode ``byte_complete`` for building a bytecode
-executable as a native self-contained executable, i.e., an executable that
-doesn't require the ``ocamlrun`` program to run and doesn't require the C stubs
-to be installed as shared object files.
+Use the special mode ``byte_complete`` for building a bytecode executable as a
+native self-contained executable, i.e., an executable that doesn't require the
+``ocamlrun`` program to run and doesn't require the C stubs to be installed as
+shared object files. This mode has been available since Dune 3.6.
 
 The extensions for the various linking modes are chosen as follows:
 
-.. =========================== =================
-.. linking mode                extensions
-.. --------------------------- -----------------
-.. byte                        .bc
-.. native/best                 .exe
-.. byte_complete               .bc.exe
-.. (byte object)               .bc%{ext_obj}
-.. (native/best object)        .exe%{ext_obj}
-.. (byte shared_object)        .bc%{ext_dll}
-.. (native/best shared_object) %{ext_dll}
-.. c                           .bc.c
-.. js                          .bc.js
-.. wasm                        .bc.wasm.js
-.. (best plugin)               %{ext_plugin}
-.. (byte plugin)               .cma
-.. (native plugin)             .cmxs
-.. =========================== =================
+.. list-table::
+   :header-rows: 1
+
+   * - Linking mode
+     - Extension
+   * - ``byte``
+     - ``.bc``
+   * - ``native`` or ``best``
+     - ``.exe``
+   * - ``byte_complete``
+     - ``.bc.exe``
+   * - ``(byte object)``
+     - ``.bc%{ext_obj}``
+   * - ``(native object)`` or ``(best object)``
+     - ``.exe%{ext_obj}``
+   * - ``(byte shared_object)``
+     - ``.bc%{ext_dll}``
+   * - ``(native shared_object)`` or ``(best shared_object)``
+     - ``%{ext_dll}``
+   * - ``c``
+     - ``.bc.c``
+   * - ``js``
+     - ``.bc.js``
+   * - ``wasm``
+     - ``.bc.wasm.js``
+   * - ``(best plugin)``
+     - ``%{ext_plugin}``
+   * - ``(byte plugin)``
+     - ``.cma``
+   * - ``(native plugin)``
+     - ``.cmxs``
 
 ``%{ext_obj}`` and ``%{ext_dll}`` are the extensions for object and shared
 object files. Their value depends on the OS. For instance, on Unix
 ``%{ext_obj}`` is usually ``.o`` and ``%{ext_dll}`` is usually ``.so``, while on
 Windows ``%{ext_obj}`` is ``.obj`` and ``%{ext_dll}`` is ``.dll``.
 
-Up to version 3.0 of the Dune language, when ``byte`` is specified but none of
-``native``, ``exe``, or ``byte_complete`` are specified, Dune implicitly adds a
-linking mode that's the same as ``byte_complete``, but it uses the extension
-``.exe``. ``.bc`` files require additional files at runtime that aren't
-currently tracked by Dune, so they don't run ``.bc`` files during the build. Run
-the ``.bc.exe`` or ``.exe`` ones instead, as these are self-contained.
+When ``byte`` is specified but neither ``native`` nor ``exe`` is specified,
+Dune also builds a self-contained bytecode executable with the ``.exe``
+extension for compatibility. This is similar to ``byte_complete``, but uses the
+``.exe`` extension rather than ``.bc.exe``. ``.bc`` files require additional
+files at runtime that aren't currently tracked by Dune, so Dune doesn't run
+``.bc`` files during the build. Run the ``.bc.exe`` or ``.exe`` targets instead,
+as these are self-contained.
 
 Lastly, note that ``.bc`` executables cannot contain C stubs. If your executable
 contains C stubs you may want to use ``(modes exe)``.

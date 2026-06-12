@@ -81,7 +81,8 @@ let decode_opam_compatible =
 let of_opam_file_basename basename =
   let open Option.O in
   let* name = String.drop_suffix (Filename.to_string basename) ~suffix:opam_ext in
-  of_string_opt name
+  let+ name = Opam_compatible.of_string_opt name in
+  Opam_compatible.to_package_name name
 ;;
 
 let digest_feed = Dune_digest.Feed.string

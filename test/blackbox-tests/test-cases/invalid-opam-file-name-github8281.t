@@ -1,6 +1,7 @@
 Reproduce #8281
 
-Whenever an invalid package name is used, dune crashes when building @doc
+When a secondary .opam file has an invalid package name, dune should not crash
+when building @doc.
 
   $ make_dune_project 2.4
   $ touch x.opam x.y.opam
@@ -21,21 +22,4 @@ Whenever an invalid package name is used, dune crashes when building @doc
 
   $ cd ..
 
-  $ dune build @doc 2>&1 | awk '/Internal error/,/Raised/'
-  Internal error! Please report to https://github.com/ocaml/dune/issues,
-  providing the file _build/trace.csexp, if possible. This includes build
-  commands, message logs, and file paths.
-  Description:
-    ("[gen_rules] returned rules in a directory that is not a descendant of the directory it was called for",
-     { dir = In_build_dir "default/_doc/_html/x.y"
-     ; example =
-         Rule
-           { targets =
-               { root = In_build_dir "default/_doc/_html/x"
-               ; files = set { "db.js" }
-               ; dirs = set {}
-               }
-           }
-     })
-  Raised at Stdune__Code_error.raise in file
-  [1]
+  $ dune build @doc

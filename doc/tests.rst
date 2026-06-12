@@ -51,6 +51,13 @@ with other targets by passing ``@runtest`` to ``dune build``. For instance:
    $ dune build @install @runtest
    $ dune build @install @test/runtest
 
+This is distinct from plain ``dune build``, which builds the
+:doc:`default alias </reference/aliases/default>`. By default, that alias
+recursively builds :doc:`all </reference/aliases/all>` file targets, including
+test executables and generated files in test directories, but it doesn't run
+actions attached only to ``runtest``. If you want plain ``dune build`` to skip a
+tests subtree, override ``default`` in a parent directory.
+
 
 Running a Single Test
 ---------------------

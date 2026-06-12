@@ -791,6 +791,16 @@ end = struct
   ;;
 end
 
+let odoc_files_in_dirs dirs =
+  let predicate =
+    Glob.matching_extensions [ Filename.Extension.odoc ] |> Predicate_lang.Glob.of_glob
+  in
+  Command.Args.Hidden_deps
+    (List.fold_left dirs ~init:Dune_engine.Dep.Set.empty ~f:(fun deps dir ->
+       let selector = File_selector.of_predicate_lang ~dir predicate in
+       Dune_engine.Dep.Set.add deps (Dune_engine.Dep.file_selector selector)))
+;;
+
 (* A parent is always an index. Here we operate on the parent as an artifact
    to find the arguments to odoc. *)
 let parent_args parent_opt =
@@ -842,9 +852,10 @@ let odoc_include_flags ctx all maps pkg requires indices =
       let odoc_dir = Artifact.odoc_file index |> Path.Build.parent_exn in
       Path.Set.add p (Path.build odoc_dir))
   in
+  let paths = Path.Set.to_list paths in
   Command.Args.S
-    (Path.Set.to_list paths
-     |> List.concat_map ~f:(fun dir -> [ Command.Args.A "-I"; Path dir ]))
+    (odoc_files_in_dirs paths
+     :: List.concat_map paths ~f:(fun dir -> [ Command.Args.A "-I"; Path dir ]))
 ;;
 
 (* Create a dependency on the odoc file of an index *)
@@ -1082,7 +1093,11 @@ let external_module_deps sctx ~all a =
       let open Action_builder.O in
       (let* odoc = Odoc.odoc_program sctx dir in
        let deps_dir = Artifact.odoc_file a |> Path.build |> Path.parent_exn in
-       Command.run' odoc ~dir:deps_dir [ A "compile-deps"; Dep (Artifact.source_file a) ])
+       Command.run'
+         odoc
+         ~sandbox:Sandbox_config.needs_sandboxing
+         ~dir:deps_dir
+         [ A "compile-deps"; Dep (Artifact.source_file a) ])
       |> Super_context.execute_action_stdout sctx ~loc:Loc.none ~dir
       |> Action_builder.of_memo
     in

@@ -26,7 +26,7 @@ These packages are in a nested env, the option is disabled, should success with 
 
 In release mode, no error:
 
-  $ dune build -p foo_doc,foo_lib @doc
+  $ dune build -p foo_doc,foo_lib @doc 2>&1 | sed -E 's#_build/\.sandbox/[0-9a-f]+/default#_build/default#g'
   (cd _build/default/_doc/_odoc/pkg/foo_doc && odoc compile --pkg foo_doc -o page-foo.odoc ../../../../foo_doc/foo.mld)
   File "../../../../foo_doc/foo.mld", line 4, characters 0-0:
   Warning: End of text is not allowed in '[...]' (code).

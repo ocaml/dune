@@ -843,9 +843,10 @@ let odoc_include_flags ctx all maps pkg requires indices =
       let odoc_dir = Artifact.odoc_file index |> Path.Build.parent_exn in
       Path.Set.add p (Path.build odoc_dir))
   in
+  let paths = Path.Set.to_list paths in
   Command.Args.S
-    (Path.Set.to_list paths
-     |> List.concat_map ~f:(fun dir -> [ Command.Args.A "-I"; Path dir ]))
+    (Odoc.odoc_files_in_dirs paths
+     :: List.concat_map paths ~f:(fun dir -> [ Command.Args.A "-I"; Path dir ]))
 ;;
 
 (* Create a dependency on the odoc file of an index *)
@@ -1084,7 +1085,11 @@ let external_module_deps sctx ~all a =
       let open Action_builder.O in
       (let* odoc = Odoc.odoc_program sctx dir in
        let deps_dir = Artifact.odoc_file a |> Path.build |> Path.parent_exn in
-       Command.run' odoc ~dir:deps_dir [ A "compile-deps"; Dep (Artifact.source_file a) ])
+       Command.run'
+         odoc
+         ~sandbox:Sandbox_config.needs_sandboxing
+         ~dir:deps_dir
+         [ A "compile-deps"; Dep (Artifact.source_file a) ])
       |> Super_context.execute_action_stdout sctx ~loc:Loc.none ~dir
       |> Action_builder.of_memo
     in

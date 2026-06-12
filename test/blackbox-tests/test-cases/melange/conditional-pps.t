@@ -53,8 +53,11 @@ The field is available starting in Dune 3.24.
   > let x = "melange only"
   > EOF
 
-  $ dune build --root app
-  $ find ./app/_build/default -name '*.pp.ml' | censor | sort
+  $ pp_dir=_build/default/.melange_src
+  $ dune build --root app \
+  >   "$pp_dir/foo.pp.ml" \
+  >   "$pp_dir/melange_only.pp.ml"
+  $ find "./app/$pp_dir" -name '*.pp.ml' | censor | sort
   ./app/_build/default/.melange_src/foo.pp.ml
   ./app/_build/default/.melange_src/melange_only.pp.ml
 
@@ -107,8 +110,9 @@ The field is available starting in Dune 3.24.
   > EOF
   $ chmod +x deps/pp.sh
 
-  $ dune build --root deps
-  $ grep y deps/_build/default/.melange_src/foo.pp.ml
+  $ pp=_build/default/.melange_src/foo.pp.ml
+  $ dune build --root deps "$pp"
+  $ grep y "deps/$pp"
   let y = "from melange preprocessor"
 
 `melange.preprocess` can use Melange syntax in a Melange-only module of a
@@ -136,7 +140,10 @@ mixed-mode library.
   > let x = x ()
   > EOF
 
-  $ dune build --root melange-ppx
-  $ find melange-ppx/_build/default/.melange_src -name '*.pp.ml' | sort
+  $ pp_dir=_build/default/.melange_src
+  $ dune build --root melange-ppx \
+  >   "$pp_dir/foo.pp.ml" \
+  >   "$pp_dir/melange_only.pp.ml"
+  $ find "melange-ppx/$pp_dir" -name '*.pp.ml' | sort
   melange-ppx/_build/default/.melange_src/foo.pp.ml
   melange-ppx/_build/default/.melange_src/melange_only.pp.ml

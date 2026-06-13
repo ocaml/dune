@@ -201,12 +201,23 @@ Install with an absolute build directory outside the workspace
   > DUNE_INSTALL_PREFIX="$PWD/../external-prefix" \
   > dune install ext
 
-  $ grep -e external-project ../external-prefix/lib/ext/dune-package | sed 's/^ *//; s/)*$//'
-  $TESTCASE_ROOT/external-project/../external-prefix/lib/ext
-  $TESTCASE_ROOT/external-project/../external-prefix/lib/ext
-  $TESTCASE_ROOT/external-project/../external-build-dir/install/default/lib/ext/ext.cma
-  $TESTCASE_ROOT/external-project/../external-build-dir/install/default/lib/ext/ext.cmxa
-  $TESTCASE_ROOT/external-project/../external-build-dir/install/default/lib/ext/ext.cma
-  $TESTCASE_ROOT/external-project/../external-build-dir/install/default/lib/ext/ext.cmxs
-  $TESTCASE_ROOT/external-project/../external-build-dir/install/default/lib/ext/ext.a
-  $TESTCASE_ROOT/external-project/../external-build-dir/install/default/lib/ext/ext.ml
+  $ dune_cmd cat ../external-prefix/lib/ext/dune-package \
+  > | awk '
+  >     /^[[:space:]]*\((archives|plugins|native_archives|source)/ { active = 1 }
+  >     active {
+  >       line = $0
+  >       print line
+  >       opens = gsub(/\(/, "(", line)
+  >       closes = gsub(/\)/, ")", line)
+  >       depth += opens - closes
+  >       if (depth <= 0) { active = 0; depth = 0 }
+  >     }' \
+  > | tr ' ()' '\n' \
+  > | grep -Eo '(^|/)ext[.](a|cma|cmxa|cmxs|ml)$' \
+  > | sed 's#^/##'
+  ext.cma
+  ext.cmxa
+  ext.cma
+  ext.cmxs
+  ext.a
+  ext.ml

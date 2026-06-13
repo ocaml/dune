@@ -26,7 +26,7 @@ Add some files which don't match the glob.
   $ mkdir b/d
   $ touch b/d/d
 
-  $ dune build
+  $ dune build @install
   File "dune", line 2, characters 8-32:
   2 |  (files (glob_files_rec b/*.txt))
               ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -36,7 +36,7 @@ Add some files which don't match the glob.
 
   $ make_dune_project_with_package 3.6 foo
 
-  $ dune build
+  $ dune build @install
 
   $ cat _build/default/foo.install
   lib: [

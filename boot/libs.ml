@@ -304,12 +304,6 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
-  ; { path = "src/action_plugin"
-    ; main_module_name = Some "Action_plugin"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
   ; { path = "src/dune_threaded_console"
     ; main_module_name = Some "Dune_threaded_console"
     ; include_subdirs = No
@@ -352,6 +346,24 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
+  ; { path = "src/source"
+    ; main_module_name = Some "Source"
+    ; include_subdirs = No
+    ; special_builtin_support = None
+    ; root_module = None
+    }
+  ; { path = "src/dune_rpc_impl"
+    ; main_module_name = Some "Dune_rpc_impl"
+    ; include_subdirs = No
+    ; special_builtin_support = None
+    ; root_module = None
+    }
+  ; { path = "src/action_plugin"
+    ; main_module_name = Some "Action_plugin"
+    ; include_subdirs = No
+    ; special_builtin_support = None
+    ; root_module = None
+    }
   ; { path = "vendor/patch/src"
     ; main_module_name = Some "Patch"
     ; include_subdirs = No
@@ -376,12 +388,6 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
-  ; { path = "src/source"
-    ; main_module_name = Some "Source"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
   ; { path = "src/dune_rules"
     ; main_module_name = Some "Dune_rules"
     ; include_subdirs = Unqualified
@@ -402,12 +408,6 @@ let local_libraries =
     }
   ; { path = "otherlibs/chrome-trace/src"
     ; main_module_name = Some "Chrome_trace"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-  ; { path = "src/dune_rpc_impl"
-    ; main_module_name = Some "Dune_rpc_impl"
     ; include_subdirs = No
     ; special_builtin_support = None
     ; root_module = None

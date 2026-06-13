@@ -28,6 +28,11 @@ the Dune codebase.
 - Push back against user requirements before working on large changes. Ask for
   clarifying questions.
 
+- Avoid introducing callbacks, optional arguments, and general ways of
+  indirection. Write code that is as direct as possible. If it can't be done,
+  explain why not. Propose ways to re-arrange the code so that things can be done
+  without indirection.
+
 ## Quick Reference
 
 **Most Common Commands:**

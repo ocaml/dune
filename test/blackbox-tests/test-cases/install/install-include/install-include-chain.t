@@ -1,6 +1,7 @@
 Including a file in the install stanza which includes another file
 
   $ make_install_include_project
+  $ install_file=_build/default/hello.install
 
   $ cat >foo.sexp <<EOF
   > ((include bar.sexp))
@@ -12,9 +13,9 @@ Including a file in the install stanza which includes another file
 
   $ touch a.txt
 
-  $ dune build @install
+  $ dune build "$install_file"
 
-  $ cat _build/default/hello.install
+  $ cat "$install_file"
   lib: [
     "_build/install/default/lib/hello/META"
     "_build/install/default/lib/hello/dune-package"

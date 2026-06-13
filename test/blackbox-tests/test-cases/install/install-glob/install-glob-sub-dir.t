@@ -16,7 +16,7 @@ Make sure we can handle globs in dune files inside subdirectories
   $ touch sub-dir/x/y/foo.txt
   $ touch sub-dir/x/y/z/foo.txt
 
-  $ dune build @sub-dir/all
+  $ dune build @install
 
   $ find _build/default/sub-dir | sort
   _build/default/sub-dir

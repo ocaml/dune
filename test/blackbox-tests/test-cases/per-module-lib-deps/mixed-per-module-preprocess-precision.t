@@ -1,10 +1,10 @@
-Reproduction: today, building only the consumer's `.cmo` of an
-executable that depends on `mylib` (where `mylib` has two modules,
-`a` default-pp and `b` `(staged_pps ...)`) fails on a compile error
-in `mylib/b.ml` — even though the consumer references only `A`.
-The cctx-wide `.cmi` glob over `mylib`'s objdir pulls `b.cmi` into
-the consumer's compile rule, which forces dune to compile `b.ml`,
-and `b.ml` contains an unresolvable identifier.
+Precision regression guard for per-pair tight-eligibility on an
+unwrapped library with mixed per-module preprocessing. When a
+consumer references only the default-pp module of a mixed-pp lib,
+the per-module narrowing excludes the staged-pps module from the
+consumer's compile-rule deps. Asserted by giving the staged-pps
+module an unresolvable identifier; if the narrowing regressed,
+dune would compile that module and fail.
 
 Companion to `mixed-per-module-preprocess.t` (the soundness sibling).
 
@@ -12,7 +12,23 @@ Companion to `mixed-per-module-preprocess.t` (the soundness sibling).
 
 A no-op staged ppx (identical to the soundness reproducer).
 
-  $ make_noop_ppx_rewriter
+  $ mkdir ppx
+  $ cat > ppx/dune <<EOF
+  > (library
+  >  (name ppx_noop)
+  >  (kind ppx_rewriter)
+  >  (ppx.driver (main Ppx_noop.main)))
+  > EOF
+  $ cat > ppx/ppx_noop.ml <<EOF
+  > let main () =
+  >   let n = Array.length Sys.argv in
+  >   if n < 4 || Sys.argv.(1) <> "--as-ppx" then assert false;
+  >   let input = Sys.argv.(n - 2) in
+  >   let output = Sys.argv.(n - 1) in
+  >   Filename.quote_command "cp" [input; output]
+  >   |> Sys.command
+  >   |> exit
+  > EOF
 
 `mylib`: `a` uses default preprocessing (Some-entry); `b` uses
 `(staged_pps ...)` (None-entry). `a`'s source is independent of `b`;
@@ -43,27 +59,21 @@ it will fail.
   > let () = print_int A.answer
   > EOF
 
-The consumer's compile rule tracks the wide glob over `mylib`'s
-byte objdir — which materialises `b.cmi` and so forces dune to
-compile `b.ml`.
+The consumer's compile rule tracks only `a.cmi` from `mylib`'s
+byte objdir — narrowing dropped the wide glob, so `b.cmi` is not
+materialised and `b.ml` is not compiled.
 
   $ dune rules --root . --format=json --deps '%{cmo:consumer/consumer}' > deps.json
-  $ jq_dune -r '.[] | depsGlobs
+  $ jq -r 'include "dune"; .[] | depsGlobs
   >   | select(.dir | endswith("mylib/.mylib.objs/byte"))
   >   | .dir + " " + .predicate' < deps.json
-  _build/default/mylib/.mylib.objs/byte *.cmi
-  $ jq_dune -r '.[] | depsFilePaths
+  $ jq -r 'include "dune"; .[] | depsFilePaths
   >   | select(endswith("mylib/.mylib.objs/byte/a.cmi"))' < deps.json
-  $ jq_dune -r '.[] | depsFilePaths
+  _build/default/mylib/.mylib.objs/byte/a.cmi
+  $ jq -r 'include "dune"; .[] | depsFilePaths
   >   | select(endswith("mylib/.mylib.objs/byte/b.cmi"))' < deps.json
 
-Build only the consumer's `.cmo` (compile rule, not link). Today,
-dune attempts to compile `b.ml` to produce `b.cmi` and fails on
-the unresolvable identifier.
+Build only the consumer's `.cmo` (compile rule, not link). The
+narrowed dep set means `b.ml` is not compiled.
 
   $ dune build '%{cmo:consumer/consumer}'
-  File "mylib/b.ml", line 1, characters 10-23:
-  1 | let bar = no_such_thing
-                ^^^^^^^^^^^^^
-  Error: Unbound value no_such_thing
-  [1]

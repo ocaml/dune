@@ -324,6 +324,7 @@ type 'path t =
   ; preprocess :
       Preprocess.With_instrumentation.t Preprocess.Per_module.t
         Compilation_mode.Per_mode.t
+  ; stanza_flags : Dune_lang.Ocaml_flags.Spec.t
   ; enabled : Enabled_status.t Memo.t
   ; virtual_deps : (Loc.t * Lib_name.t) list
   ; dune_version : Dune_lang.Syntax.Version.t option
@@ -355,6 +356,7 @@ let parameters t = t.parameters
 let requires t ~for_ = Compilation_mode.Per_mode.get t.requires ~for_
 let requires_by_mode t = t.requires
 let preprocess t ~for_ = Compilation_mode.Per_mode.get t.preprocess ~for_
+let stanza_flags t = t.stanza_flags
 let ppx_runtime_deps t = t.ppx_runtime_deps
 let allow_unused_libraries t = t.allow_unused_libraries
 let sub_systems t = t.sub_systems
@@ -436,6 +438,7 @@ let create
       ~jsoo_runtime
       ~wasmoo_runtime
       ~preprocess
+      ~stanza_flags
       ~enabled
       ~virtual_deps
       ~dune_version
@@ -477,6 +480,7 @@ let create
   ; jsoo_runtime
   ; wasmoo_runtime
   ; preprocess
+  ; stanza_flags
   ; enabled
   ; virtual_deps
   ; dune_version
@@ -576,6 +580,7 @@ let to_dyn
       ; jsoo_runtime
       ; wasmoo_runtime
       ; preprocess = _
+      ; stanza_flags = _
       ; enabled = _
       ; virtual_deps
       ; dune_version

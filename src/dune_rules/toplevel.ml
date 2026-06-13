@@ -237,6 +237,11 @@ module Stanza = struct
         in
         let requires_compile = Lib.Compile.direct_requires compile_info ~for_ in
         let requires_link = Lib.Compile.requires_link compile_info ~for_ in
+        let pps_runtime_libs =
+          let open Resolve.Memo.O in
+          let* pps = Lib.Compile.pps compile_info ~for_ in
+          Resolve.Memo.List.concat_map pps ~f:(Lib.ppx_runtime_deps ~for_)
+        in
         let obj_dir = Source.obj_dir source in
         Compilation_context.create
           for_
@@ -247,6 +252,7 @@ module Stanza = struct
           ~opaque:(Explicit false)
           ~requires_compile
           ~requires_link
+          ~pps_runtime_libs
           ~flags
           ~js_of_ocaml:(Js_of_ocaml.Mode.Pair.make None)
           ~melange_package_name:None

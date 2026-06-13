@@ -428,21 +428,23 @@ let compile_mld sctx (m : Mld.t) ~includes ~doc_dir ~pkg =
 let odoc_include_flags ctx pkg requires =
   Resolve.args
     (let open Resolve.O in
-     let+ libs = requires in
-     let paths =
-       List.fold_left libs ~init:Path.Set.empty ~f:(fun paths lib ->
-         match Lib.Local.of_lib lib with
+     let+ paths =
+       let+ libs = requires in
+       let paths =
+         List.fold_left libs ~init:Path.Set.empty ~f:(fun paths lib ->
+           match Lib.Local.of_lib lib with
+           | None -> paths
+           | Some lib -> Path.Set.add paths (Path.build (Paths.odocs ctx (Lib lib))))
+       in
+       let paths =
+         match pkg with
+         | Some p -> Path.Set.add paths (Path.build (Paths.odocs ctx (Pkg p)))
          | None -> paths
-         | Some lib -> Path.Set.add paths (Path.build (Paths.odocs ctx (Lib lib))))
-     in
-     let paths =
-       match pkg with
-       | Some p -> Path.Set.add paths (Path.build (Paths.odocs ctx (Pkg p)))
-       | None -> paths
+       in
+       Path.Set.to_list paths
      in
      Command.Args.S
-       (List.concat_map (Path.Set.to_list paths) ~f:(fun dir ->
-          [ Command.Args.A "-I"; Path dir ])))
+       (List.concat_map paths ~f:(fun dir -> [ Command.Args.A "-I"; Path dir ])))
 ;;
 
 let link_odoc_rules sctx (odoc_file : Artifact.t) ~pkg ~requires =

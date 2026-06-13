@@ -7,18 +7,19 @@ the dependency library [dep_lib] has its interface edited.
 [consumer] references only [Referenced_dep] from [dep_lib];
 [Unread_dep_a] and [Unread_dep_b] are present but unreferenced.
 
-On current main, editing any of the three rebuilds [consumer]
-because library-level dependency filtering (and, within that,
-per-module tightening) is not yet in place: the consumer is
-conservatively rebuilt whenever any entry module's cmi changes.
-Work on https://github.com/ocaml/dune/issues/4572 is expected to
-tighten this, at which point editing [Unread_dep_a] or
-[Unread_dep_b] leaves [consumer] untouched and the emitted target
-list becomes empty.
+The per-module filter restricts [consumer]'s deps to modules of
+[dep_lib] that [consumer]'s ocamldep output names — only
+[Referenced_dep]. Editing [Unread_dep_a] or [Unread_dep_b] thus
+leaves [consumer] untouched (empty target list); editing
+[Referenced_dep] still rebuilds it. Previously all three edits
+rebuilt [consumer] because the consumer was conservatively
+rebuilt whenever any entry module's cmi changed.
 
 See: https://github.com/ocaml/dune/issues/4572
 
-  $ make_dune_project 3.23
+  $ cat > dune-project <<EOF
+  > (lang dune 3.23)
+  > EOF
 
 [dep_lib] is an unwrapped library with three entry modules, each
 with an explicit interface so signature changes propagate through
@@ -81,16 +82,8 @@ reference — and record the rebuild targets for [consumer]:
   > let extra () = 7
   > EOF
   $ dune build @check
-  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("consumer_lib/\\.consumer_lib\\.objs/byte/consumer\\."))]'
-  [
-    {
-      "target_files": [
-        "_build/default/consumer_lib/.consumer_lib.objs/byte/consumer.cmi",
-        "_build/default/consumer_lib/.consumer_lib.objs/byte/consumer.cmo",
-        "_build/default/consumer_lib/.consumer_lib.objs/byte/consumer.cmt"
-      ]
-    }
-  ]
+  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("consumer_lib/\\.consumer_lib\\.objs/byte/consumer\\."))]'
+  []
 
 Same for [Unread_dep_b]:
 
@@ -103,16 +96,8 @@ Same for [Unread_dep_b]:
   > let other = "hi"
   > EOF
   $ dune build @check
-  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("consumer_lib/\\.consumer_lib\\.objs/byte/consumer\\."))]'
-  [
-    {
-      "target_files": [
-        "_build/default/consumer_lib/.consumer_lib.objs/byte/consumer.cmi",
-        "_build/default/consumer_lib/.consumer_lib.objs/byte/consumer.cmo",
-        "_build/default/consumer_lib/.consumer_lib.objs/byte/consumer.cmt"
-      ]
-    }
-  ]
+  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("consumer_lib/\\.consumer_lib\\.objs/byte/consumer\\."))]'
+  []
 
 Edit [Referenced_dep]'s interface — the one module [consumer] does
 reference — and record the rebuild targets ([consumer] must
@@ -127,7 +112,7 @@ rebuild):
   > let new_fn x = x + 1
   > EOF
   $ dune build @check
-  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("consumer_lib/\\.consumer_lib\\.objs/byte/consumer\\."))]'
+  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("consumer_lib/\\.consumer_lib\\.objs/byte/consumer\\."))]'
   [
     {
       "target_files": [

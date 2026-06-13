@@ -240,6 +240,7 @@ let setup sctx ~dir =
       ~requires_link
       ~requires_compile:requires
       ~user_written_requires:None
+      ~pps_runtime_libs:(Resolve.Memo.return [])
       ~flags
       ~js_of_ocaml:(Js_of_ocaml.Mode.Pair.make None)
       ~melange_package_name:None

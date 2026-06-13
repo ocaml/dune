@@ -13,9 +13,7 @@ the new -H feature added.
 
   $ getincludes
   -I .bar.objs/byte
-  -I .bar.objs/byte
   -I .bar.objs/native
-  -I .foo.objs/byte
   -I .foo.objs/byte
   -I .foo.objs/native
   -I .run.eobjs/byte
@@ -36,8 +34,6 @@ the new -H feature added.
 
   $ getincludes
   -I .bar.objs/byte
-  -I .bar.objs/byte
   -I .bar.objs/native
-  -I .run.eobjs/byte
   -I .run.eobjs/byte
   -I .run.eobjs/native

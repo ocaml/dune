@@ -1100,7 +1100,7 @@ let handle_final_exns exns =
        List.iter exns ~f:Dune_util.Report_error.report)
 ;;
 
-let run ?restart_started_at ?(run_id = Run_id.Batch) f =
+let run_with_error_collection ?restart_started_at ?(run_id = Run_id.Batch) collect_errors =
   let finalize_diff_promotion () =
     protect ~f:Diff_promotion.finalize ~finally:Diff_promotion.clear_cache
   in
@@ -1123,10 +1123,7 @@ let run ?restart_started_at ?(run_id = Run_id.Batch) f =
     Fs_memo.invalidate_cached_timestamps ();
     let* () = State.reset_progress () in
     let* () = State.reset_errors () in
-    let* outcome =
-      Fiber.collect_errors (fun () ->
-        Memo.run_with_error_handler f ~handle_error_no_raise:report_early_exn)
-    in
+    let* outcome = collect_errors () in
     Dtemp.clear ();
     Sandbox.cleanup_pending_targets ();
     Target_promotion.save ();
@@ -1172,6 +1169,12 @@ let run ?restart_started_at ?(run_id = Run_id.Batch) f =
     Scheduler.with_current_build_cancellation (Fiber.Cancel.create ()) f)
 ;;
 
+let run ?restart_started_at ?run_id f =
+  run_with_error_collection ?restart_started_at ?run_id (fun () ->
+    Fiber.collect_errors (fun () ->
+      Memo.run_with_error_handler f ~handle_error_no_raise:report_early_exn))
+;;
+
 let run_exn f =
   let open Fiber.O in
   run f
@@ -1180,12 +1183,64 @@ let run_exn f =
   | Error `Already_reported -> raise Dune_util.Report_error.Already_reported
 ;;
 
-let run_action_builder ?restart_started_at ?run_id request =
-  run ?restart_started_at ?run_id (fun () ->
-    let+ (), (_ : Dep.Fact.t Dep.Map.t) =
-      Action_builder.evaluate_and_collect_facts request
-    in
-    ())
+let evaluate_action_builder request =
+  let+ (), (_ : Dep.Fact.t Dep.Map.t) =
+    Action_builder.evaluate_and_collect_facts request
+  in
+  ()
+;;
+
+module Build_request = struct
+  type t =
+    { build : unit Action_builder.t
+    ; outcome : Build_outcome.t Fiber.Ivar.t
+    }
+
+  let create build = { build; outcome = Fiber.Ivar.create () }
+  let await t = Fiber.Ivar.read t.outcome
+  let is_finished t = Option.is_some (Fiber.Ivar.peek t.outcome)
+
+  let complete t outcome =
+    Fiber.of_thunk (fun () ->
+      match Fiber.Ivar.peek t.outcome with
+      | Some _ -> Fiber.return ()
+      | None -> Fiber.Ivar.fill t.outcome outcome)
+  ;;
+
+  let cancel t = complete t Failure
+  let build t = t.build
+end
+
+let run_build_requests ?restart_started_at ?run_id requests =
+  let open Fiber.O in
+  let run_action_builder_fiber request =
+    Fiber.collect_errors (fun () ->
+      Memo.run_with_error_handler
+        (fun () -> evaluate_action_builder request)
+        ~handle_error_no_raise:report_early_exn)
+  in
+  let run_request request =
+    Build_request.build request
+    |> run_action_builder_fiber
+    >>= function
+    | Ok () ->
+      let+ () = Build_request.complete request Build_outcome.Success in
+      Ok ()
+    | Error exns when List.for_all exns ~f:caused_by_cancellation ->
+      Fiber.return (Error exns)
+    | Error exns ->
+      let+ () = Build_request.complete request Build_outcome.Failure in
+      Error exns
+  in
+  run_with_error_collection ?restart_started_at ?run_id (fun () ->
+    let+ results = Fiber.parallel_map requests ~f:run_request in
+    match
+      List.concat_map results ~f:(function
+        | Ok () -> []
+        | Error exns -> exns)
+    with
+    | [] -> Ok ()
+    | exns -> Error exns)
 ;;
 
 let build_file p =

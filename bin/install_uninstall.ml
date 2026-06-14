@@ -609,7 +609,7 @@ let run
           in
           match
             List.filter_map entries ~f:(fun entry ->
-              (* CR rgrinberg: this is ignoring optional entries *)
+              (* CR-someday rgrinberg: this is ignoring optional entries *)
               Option.some_if (not (Fpath.exists (Path.to_string entry.src))) entry.src)
           with
           | [] -> package, entries
@@ -669,7 +669,7 @@ let run
         let conf = Artifact_substitution.Conf.of_install ~relocatable ~roots ~context in
         Fiber.sequential_iter entries_per_package ~f:(fun (package, entries) ->
           let+ entries =
-            (* CR rgrinberg: why don't we install things concurrently? *)
+            (* CR-someday rgrinberg: why don't we install things concurrently? *)
             Fiber.sequential_map entries ~f:(fun entry ->
               let dst =
                 let paths = Install.Paths.make ~relative:Path.relative ~package ~roots in

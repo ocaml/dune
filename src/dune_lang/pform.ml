@@ -783,7 +783,7 @@ module Env = struct
     let syntax_lang = Unreleased.syntax in
     let vars =
       let os = os ~what:syntax_lang ~version:syntax_version () in
-      (* CR rgrinberg: This has to be disabled for multi context builds *)
+      (* CR-someday rgrinberg: This has to be disabled for multi context builds *)
       ("architecture", No_info Var.Architecture) :: os
     in
     { syntax_version = 0, 1

@@ -32,9 +32,10 @@ Fields supported in ``<settings>`` are:
 - ``(c_flags <flags>)`` and ``(cxx_flags <flags>)`` specify compilation flags
   for C and C++ stubs, respectively. See :doc:`library` for more details.
 
-- ``(env-vars (<var1> <val1>) .. (<varN> <valN>))`` will add the corresponding
+- ``(env_vars (<var1> <val1>) .. (<varN> <valN>))`` will add the corresponding
   variables to the environment where the build commands are executed and are
-  used by ``dune exec``.
+  used by ``dune exec``. This field has been available since Dune 3.24. The
+  dashed spelling ``env-vars`` is also supported for compatibility.
 
 - ``(menhir_flags <flags>))`` specifies flags for Menhir stanzas. This flag was
   replaced by the ``(menhir)`` field (see below) starting in version 3.0 of the

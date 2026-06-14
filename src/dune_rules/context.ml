@@ -632,7 +632,7 @@ module Group = struct
     let path =
       match Env.Map.find vars Env_path.var with
       | None ->
-        (* CR rgrinberg: Is this even possible? *)
+        (* CR-someday rgrinberg: Is this even possible? *)
         Env_path.path env
       | Some s -> Bin.parse_path s
     in

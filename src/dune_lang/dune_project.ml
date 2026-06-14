@@ -526,7 +526,7 @@ let subst_config t =
 
 let default_name ~dir ~(packages : Package.t Package.Name.Map.t) =
   match
-    (* CR rgrinberg: why do we pick a name randomly? How about just making it
+    (* CR-someday rgrinberg: why do we pick a name randomly? How about just making it
        anonymous here *)
     Package.Name.Map.min_binding packages
   with

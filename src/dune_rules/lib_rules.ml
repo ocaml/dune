@@ -325,7 +325,7 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents ~vlib_stubs_o_f
         in
         let+ c_lib = Expander.expand_and_eval_set expander lib.c_library_flags ~standard
         and+ ctypes_lib =
-          (* CR rgrinberg: Should we add these flags to :standard? to make
+          (* CR-someday rgrinberg: Should we add these flags to :standard? to make
            it possible for users to remove these *)
           Ctypes_rules.ctypes_cclib_flags sctx ~expander ~buildable:lib.buildable
         in

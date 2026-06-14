@@ -31,7 +31,7 @@ end = struct
 
   let include_flags ts = include_paths ts |> Lib_flags.L.to_iflags
 
-  (* CR alizter: move this to Lib.DB *)
+  (* CR-someday alizter: move this to Lib.DB *)
 
   (** Given a list of library names, we try to resolve them in order, returning
       the first one that exists. *)

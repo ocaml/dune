@@ -45,7 +45,7 @@ let with_redirect decode =
   let+ (x : Library.t) = decode in
   let base =
     let package =
-      (* CR rgrinberg: we need to check this *)
+      (* CR-someday rgrinberg: we need to check this *)
       match x.visibility with
       | Public p -> Some (Package.id p.package)
       | Private p -> Option.map p ~f:Package.id

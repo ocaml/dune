@@ -44,7 +44,7 @@ module Version = struct
 
   let to_string x = x.raw
 
-  (* CR rgrinberg: get rid of this once we drop 4.08 support *)
+  (* CR-someday rgrinberg: get rid of this once we drop 4.08 support *)
   let rev_concat_map t ~f =
     let rec aux f acc = function
       | [] -> acc

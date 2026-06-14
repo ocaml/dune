@@ -46,7 +46,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: nixbuild/nix-quick-install-action@v34
-      - run: nix develop -i -c make test
+      - run: nix develop -i -s CI true -c make test
 
   fmt:
     name: Format

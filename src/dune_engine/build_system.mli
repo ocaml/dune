@@ -73,12 +73,16 @@ module Progress : sig
 
   type t =
     { number_of_rules_discovered : int
-    ; number_of_rules_executed : int
+    ; number_of_rules_validated : int
     ; number_of_rules_failed : int
     }
 
   (** Initialize with zeros on all measures. *)
   val init : t
+
+  (** Rules that have become live but are not yet validated this run
+      ([number_of_rules_discovered - number_of_rules_validated]). *)
+  val number_of_rules_in_progress : t -> int
 end
 
 module State : sig
@@ -92,7 +96,7 @@ module State : sig
   val equal : t -> t -> bool
 end
 
-val state : State.t Fiber.Svar.t
+val state : State.t ref
 
 (** The current set of active errors. *)
 val errors : Build_system_error.Set.t Fiber.Svar.t

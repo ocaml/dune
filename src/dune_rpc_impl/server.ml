@@ -27,53 +27,6 @@ module Session = Rpc.Server.Session
 module Handler = Rpc.Server.Handler
 module Csexp_rpc = Rpc.Csexp_rpc
 
-module Run = struct
-  type t =
-    { handler : Rpc.Server.t
-    ; action_runner : Action_runner.Rpc_server.t
-    ; pool : Fiber.Pool.t
-    ; root : string
-    ; where : Dune_rpc.Where.t
-    ; server : Csexp_rpc.Server.t Lazy.t
-    ; startup_ivar : (Csexp_rpc.Server.t, Exn_with_backtrace.t) result Fiber.Ivar.t
-    ; registry : [ `Add | `Skip ]
-    ; watch_mode : Watch_mode_config.t
-    }
-
-  let run t =
-    let registry = Rpc.Registry.create ~root:t.root ~where:t.where t.registry in
-    let print_uncaught_rpc_error exn =
-      Console.print [ Pp.text "Uncaught RPC Error"; Exn_with_backtrace.pp exn ]
-    in
-    let with_print_errors f () =
-      Fiber.with_error_handler f ~on_error:(fun exn ->
-        print_uncaught_rpc_error exn;
-        Exn_with_backtrace.reraise exn)
-    in
-    let run () =
-      let open Fiber.O in
-      match Exn_with_backtrace.try_with (fun () -> Lazy.force t.server) with
-      | Error exn ->
-        Dune_trace.emit Rpc (fun () -> Dune_trace.Event.Rpc.startup_failure exn);
-        print_uncaught_rpc_error exn;
-        Fiber.Ivar.fill t.startup_ivar (Error exn)
-      | Ok server ->
-        let* () = Fiber.Ivar.fill t.startup_ivar (Ok server) in
-        Fiber.fork_and_join_unit
-          (fun () ->
-             let* sessions = Csexp_rpc.Server.serve server in
-             let () = Rpc.Registry.register registry in
-             let* () = Rpc.Server.serve sessions t.handler in
-             Fiber.Pool.close t.pool)
-          (fun () -> Fiber.Pool.run t.pool)
-    in
-    with_print_errors run
-    |> Fiber.finalize ~finally:(fun () ->
-      Rpc.Registry.cleanup registry;
-      Fiber.return ())
-  ;;
-end
-
 type build_request =
   | Build of Dune_lang.Dep_conf.t list
   | Runtest of string list
@@ -114,7 +67,11 @@ module Clients = struct
 end
 
 type server =
-  { config : Run.t
+  { lifecycle : Rpc.Server.Lifecycle.t
+  ; action_runner : Action_runner.Rpc_server.t
+  ; where : Dune_rpc.Where.t
+  ; registry : [ `Add | `Skip ]
+  ; watch_mode : Watch_mode_config.t
   ; mutable clients : Clients.t
   }
 
@@ -139,7 +96,7 @@ let pp_client_count t =
 ;;
 
 let refresh_client_count_status_line t =
-  match t.server.config.registry with
+  match t.server.registry with
   | `Skip -> ()
   | `Add -> Console.Status_line.refresh ()
 ;;
@@ -152,9 +109,9 @@ let () =
 ;;
 
 let ready (t : t) =
-  Fiber.Ivar.read t.server.config.startup_ivar
+  Rpc.Server.Lifecycle.ready t.server.lifecycle
   >>= function
-  | Ok server -> Csexp_rpc.Server.ready server
+  | Ok () -> Fiber.return ()
   | Error exn ->
     Dune_util.Report_error.report exn;
     Scheduler.shutdown `Failure;
@@ -163,13 +120,8 @@ let ready (t : t) =
 
 let stop (t : t) =
   Fiber.fork_and_join_unit
-    (fun () -> Action_runner.Rpc_server.stop t.server.config.action_runner)
-    (fun () ->
-       Fiber.of_thunk (fun () ->
-         match Fiber.Ivar.peek t.server.config.startup_ivar with
-         | None -> Fiber.return ()
-         | Some (Error _) -> Fiber.return ()
-         | Some (Ok server) -> Csexp_rpc.Server.stop server))
+    (fun () -> Action_runner.Rpc_server.stop t.server.action_runner)
+    (fun () -> Rpc.Server.Lifecycle.stop t.server.lifecycle)
 ;;
 
 let current_errors () =
@@ -373,7 +325,7 @@ let handler (t : t Fdecl.t) action_runner_server : unit Handler.t =
   let () =
     let f _ () =
       let t = Fdecl.get t in
-      match t.server.config.watch_mode with
+      match t.server.watch_mode with
       | No -> Fiber.return `Not_in_watch_mode
       | Yes _ ->
         let+ () = Scheduler.flush_file_watcher () in
@@ -393,7 +345,7 @@ let handler (t : t Fdecl.t) action_runner_server : unit Handler.t =
                Session.Stage1.close entry.session))
       in
       let shutdown () =
-        let* () = Csexp_rpc.Server.stop (Lazy.force t.server.config.server) in
+        let* () = stop t in
         Scheduler.shutdown `Ok;
         Fiber.return ()
       in
@@ -490,18 +442,13 @@ let create ~registry ~root ~build watch_mode =
     in
     let action_runner = Action_runner.Rpc_server.create () in
     let handler = Rpc.Server.make (handler t action_runner) in
-    { Run.handler
-    ; action_runner
-    ; pool = Fiber.Pool.create ()
-    ; root
-    ; where
-    ; server
-    ; registry
-    ; startup_ivar = Fiber.Ivar.create ()
-    ; watch_mode
-    }
+    let lifecycle = Rpc.Server.Lifecycle.create ~handler ~root ~where ~registry ~server in
+    action_runner, lifecycle
   in
-  let server = { config; clients = Clients.empty } in
+  let action_runner, lifecycle = config in
+  let server =
+    { lifecycle; action_runner; where; registry; watch_mode; clients = Clients.empty }
+  in
   let res = { server; build } in
   current := Some server;
   Fdecl.set t res;
@@ -511,10 +458,10 @@ let create ~registry ~root ~build watch_mode =
 let run t =
   let run () =
     Fiber.fork_and_join_unit
-      (fun () -> Run.run t.server.config)
-      (fun () -> Action_runner.Rpc_server.run t.server.config.action_runner)
+      (fun () -> Rpc.Server.Lifecycle.run t.server.lifecycle)
+      (fun () -> Action_runner.Rpc_server.run t.server.action_runner)
   in
-  match t.server.config.registry with
+  match t.server.registry with
   | `Skip -> run ()
   | `Add ->
     let section = Console.Status_line.add_section (Live (fun () -> pp_client_count t)) in
@@ -578,5 +525,5 @@ end
 
 let with_background_rpc = Background.with_background_rpc
 let ensure_ready = Background.ensure_ready
-let listening_address t = t.server.config.where
-let action_runner t = t.server.config.action_runner
+let listening_address t = t.server.where
+let action_runner t = t.server.action_runner

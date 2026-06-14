@@ -21,11 +21,6 @@ val create
   -> Watch_mode_config.t
   -> t
 
-(** Stop accepting new rpc connections. Fiber returns when all existing
-    connections terminate *)
-val stop : t -> unit Fiber.t
-
-val ready : t -> unit Fiber.t
 val run : t -> unit Fiber.t
 val with_background_rpc : t -> (unit -> 'a Fiber.t) -> 'a Fiber.t
 val ensure_ready : unit -> unit Fiber.t

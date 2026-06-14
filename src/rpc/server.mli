@@ -154,6 +154,24 @@ type t
 val make : 'a Handler.t -> t
 val serve : Csexp_rpc.Session.t Fiber.Stream.In.t -> t -> unit Fiber.t
 
+module Lifecycle : sig
+    type handler
+    type t
+
+    val create
+      :  handler:handler
+      -> root:string
+      -> where:Where.t
+      -> registry:[ `Add | `Skip ]
+      -> server:Csexp_rpc.Server.t Lazy.t
+      -> t
+
+    val run : t -> unit Fiber.t
+    val ready : t -> (unit, Exn_with_backtrace.t) result Fiber.t
+    val stop : t -> unit Fiber.t
+  end
+  with type handler := t
+
 (** Test only things below *)
 
 module type Session = Server_intf.Session

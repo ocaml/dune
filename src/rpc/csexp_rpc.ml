@@ -441,9 +441,7 @@ module Server = struct
 
   type t =
     { id : Id.t
-    ; mutable state : [ `Init of Fd.t list | `Running of Transport.t | `Closed ]
-    ; backlog : int
-    ; sockaddrs : Unix.sockaddr list
+    ; mutable state : [ `Listening of Transport.t | `Serving of Transport.t | `Closed ]
     ; ready : unit Fiber.Ivar.t
     }
 
@@ -475,14 +473,9 @@ module Server = struct
     try
       Exn.protect ~finally:cleanup ~f:(fun () ->
         let fds = List.map sockaddrs ~f:bind_socket in
+        let transport = Transport.create (List.combine sockaddrs fds) ~backlog in
         bound := [];
-        Ok
-          { id = Id.gen ()
-          ; sockaddrs
-          ; backlog
-          ; state = `Init fds
-          ; ready = Fiber.Ivar.create ()
-          })
+        Ok { id = Id.gen (); state = `Listening transport; ready = Fiber.Ivar.create () })
     with
     | Unix.Unix_error (EADDRINUSE, _, _) -> Error `Already_in_use
   ;;
@@ -490,47 +483,44 @@ module Server = struct
   let ready t = Fiber.Ivar.read t.ready
 
   let serve (t : t) =
-    match t.state with
-    | `Closed -> Code_error.raise "already closed" []
-    | `Running _ -> Code_error.raise "already running" []
-    | `Init fds ->
-      let transport =
-        Transport.create (List.combine t.sockaddrs fds) ~backlog:t.backlog
-      in
-      t.state <- `Running transport;
-      let+ () = Fiber.Ivar.fill t.ready () in
-      let loop () =
-        Dune_trace.emit Rpc (fun () ->
-          Dune_trace.Event.Rpc.accept ~id:(Id.to_int t.id) `Start None);
-        let+ accept = Transport.accept transport in
-        Dune_trace.emit Rpc (fun () ->
-          let res =
-            match accept with
-            | Error exn -> `Error exn
-            | Ok None -> `Close
-            | Ok (Some _) -> `Accept
-          in
-          Dune_trace.Event.Rpc.accept ~id:(Id.to_int t.id) `Stop (Some res));
-        match accept with
-        | Error _ | Ok None -> None
-        | Ok (Some fd) -> Some (Session.create fd)
-      in
-      Fiber.Stream.In.create loop
+    let transport =
+      match t.state with
+      | `Closed -> Code_error.raise "already closed" []
+      | `Serving _ -> Code_error.raise "already running" []
+      | `Listening transport -> transport
+    in
+    t.state <- `Serving transport;
+    let+ () = Fiber.Ivar.fill t.ready () in
+    let loop () =
+      Dune_trace.emit Rpc (fun () ->
+        Dune_trace.Event.Rpc.accept ~id:(Id.to_int t.id) `Start None);
+      let+ accept = Transport.accept transport in
+      Dune_trace.emit Rpc (fun () ->
+        let res =
+          match accept with
+          | Error exn -> `Error exn
+          | Ok None -> `Close
+          | Ok (Some _) -> `Accept
+        in
+        Dune_trace.Event.Rpc.accept ~id:(Id.to_int t.id) `Stop (Some res));
+      match accept with
+      | Error _ | Ok None -> None
+      | Ok (Some fd) -> Some (Session.create fd)
+    in
+    Fiber.Stream.In.create loop
   ;;
 
   let stop t =
     let* () = Fiber.return () in
     match t.state with
     | `Closed -> Fiber.return ()
-    | `Running _ | `Init _ ->
+    | `Listening _ | `Serving _ ->
       Dune_trace.emit Rpc (fun () ->
         Dune_trace.Event.Rpc.shutdown ~id:(Id.to_int t.id) `Start);
       let* () =
         match t.state with
         | `Closed -> Fiber.return ()
-        | `Running transport -> Transport.stop transport
-        | `Init fds ->
-          Fiber.parallel_iter (List.combine t.sockaddrs fds) ~f:close_bound_socket
+        | `Listening transport | `Serving transport -> Transport.stop transport
       in
       let+ () = Fiber.return () in
       t.state <- `Closed;
@@ -546,8 +536,8 @@ module Server = struct
 
   let listening_address t =
     match t.state with
-    | `Init fds -> List.map ~f:socket_name (List.combine t.sockaddrs fds)
-    | `Running { Transport.sockets; _ } -> List.map ~f:socket_name sockets
+    | `Listening { Transport.sockets; _ } | `Serving { Transport.sockets; _ } ->
+      List.map ~f:socket_name sockets
     | `Closed -> Code_error.raise "server is already closed" []
   ;;
 end

@@ -44,16 +44,19 @@ module Server : sig
   (** RPC Server *)
   type t
 
+  (** [create sockaddrs ~backlog] binds and starts listening on [sockaddrs]. *)
   val create : Unix.sockaddr list -> backlog:int -> (t, [ `Already_in_use ]) result
 
-  (** [ready t] returns a fiber that completes when clients can start connecting
-      to the server *)
+  (** [ready t] returns a fiber that completes once [serve t] is accepting
+      clients. *)
   val ready : t -> unit Fiber.t
 
   (** [stop t] completes only after the listening sockets are closed and no new
       clients can connect. *)
   val stop : t -> unit Fiber.t
 
+  (** [serve t] accepts clients from [t]. It must be called at most once. *)
   val serve : t -> Session.t Fiber.Stream.In.t Fiber.t
+
   val listening_address : t -> Unix.sockaddr list
 end

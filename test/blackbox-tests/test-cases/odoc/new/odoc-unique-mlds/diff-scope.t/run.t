@@ -1,5 +1,22 @@
 Duplicate mld's in different scope
-  $ dune build @doc-new
+  $ index_dir=_build/default/_doc_new/index
+  $ index_local_dir="$index_dir/local"
+  $ odoc_local_dir=_build/default/_doc_new/odoc/local
+  $ dune build \
+  >   "$index_dir/page-docs.odoc" \
+  >   "$index_dir/stdlib/page-stdlib.odoc" \
+  >   "$index_local_dir/page-local.odoc" \
+  >   "$index_local_dir/scope2/page-scope2.odoc" \
+  >   "$index_local_dir/scope1/page-scope1.odoc" \
+  >   "$odoc_local_dir/scope2/page-foo.odoc" \
+  >   "$odoc_local_dir/scope1/page-foo.odoc" \
+  >   "$index_dir/stdlib/page-stdlib.odocl" \
+  >   "$index_local_dir/page-local.odocl" \
+  >   "$index_dir/page-docs.odocl" \
+  >   "$index_local_dir/scope2/page-scope2.odocl" \
+  >   "$odoc_local_dir/scope2/page-foo.odocl" \
+  >   "$index_local_dir/scope1/page-scope1.odocl" \
+  >   "$odoc_local_dir/scope1/page-foo.odocl"
 
   $ dune trace cat | jq_dune -c 'targetsMatching("page")'
   {"target_files":["_build/default/_doc_new/index/page-docs.odoc"]}

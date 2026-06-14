@@ -15,6 +15,7 @@ include struct
   module Action_builder = Action_builder
   module Build_loop = Build_loop
   module Diff_promotion = Diff_promotion
+  module Action_runner = Action_runner
 end
 
 include struct
@@ -29,6 +30,7 @@ module Csexp_rpc = Rpc.Csexp_rpc
 module Run = struct
   type t =
     { handler : Rpc.Server.t
+    ; action_runner : Action_runner.Rpc_server.t
     ; pool : Fiber.Pool.t
     ; root : string
     ; where : Dune_rpc.Where.t
@@ -160,11 +162,14 @@ let ready (t : t) =
 ;;
 
 let stop (t : t) =
-  Fiber.of_thunk (fun () ->
-    match Fiber.Ivar.peek t.server.config.startup_ivar with
-    | None -> Fiber.return ()
-    | Some (Error _) -> Fiber.return ()
-    | Some (Ok server) -> Csexp_rpc.Server.stop server)
+  Fiber.fork_and_join_unit
+    (fun () -> Action_runner.Rpc_server.stop t.server.config.action_runner)
+    (fun () ->
+       Fiber.of_thunk (fun () ->
+         match Fiber.Ivar.peek t.server.config.startup_ivar with
+         | None -> Fiber.return ()
+         | Some (Error _) -> Fiber.return ()
+         | Some (Ok server) -> Csexp_rpc.Server.stop server))
 ;;
 
 let current_errors () =
@@ -207,7 +212,7 @@ let cancel_all_build_requests t =
   | Enabled { build_loop; _ } -> Build_loop.cancel_all_rpc_requests build_loop
 ;;
 
-let handler (t : t Fdecl.t) : unit Handler.t =
+let handler (t : t Fdecl.t) action_runner_server : unit Handler.t =
   let on_init session (_ : Initialize.Request.t) =
     let t = Fdecl.get t in
     let client = () in
@@ -453,6 +458,7 @@ let handler (t : t Fdecl.t) : unit Handler.t =
     let f _ () = Fiber.return Path.Build.(to_string root) in
     Handler.implement_request rpc Procedures.Public.build_dir f
   in
+  Action_runner.Rpc_server.implement_handler action_runner_server rpc;
   Dune_rules_rpc.register rpc;
   rpc
 ;;
@@ -482,8 +488,10 @@ let create ~registry ~root ~build watch_mode =
                  (Path.Build.to_string_maybe_quoted (Where.rpc_socket_file ()))
              ])
     in
-    let handler = Rpc.Server.make (handler t) in
+    let action_runner = Action_runner.Rpc_server.create () in
+    let handler = Rpc.Server.make (handler t action_runner) in
     { Run.handler
+    ; action_runner
     ; pool = Fiber.Pool.create ()
     ; root
     ; where
@@ -501,13 +509,19 @@ let create ~registry ~root ~build watch_mode =
 ;;
 
 let run t =
+  let run () =
+    Fiber.fork_and_join_unit
+      (fun () -> Run.run t.server.config)
+      (fun () -> Action_runner.Rpc_server.run t.server.config.action_runner)
+  in
   match t.server.config.registry with
-  | `Skip -> Run.run t.server.config
+  | `Skip -> run ()
   | `Add ->
     let section = Console.Status_line.add_section (Live (fun () -> pp_client_count t)) in
-    Fiber.finalize
-      (fun () -> Run.run t.server.config)
-      ~finally:(fun () ->
-        Console.Status_line.remove_section section;
-        Fiber.return ())
+    Fiber.finalize run ~finally:(fun () ->
+      Console.Status_line.remove_section section;
+      Fiber.return ())
 ;;
+
+let listening_address t = t.server.config.where
+let action_runner t = t.server.config.action_runner

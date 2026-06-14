@@ -3,7 +3,7 @@ open Import
 (** State shared by watch-mode build loops. *)
 type t
 
-val create : unit -> t
+val create : action_runner:Action_runner.t option -> unit -> t
 
 (** [run t f] initializes watch-mode file-watcher state and runs [f]. *)
 val run : t -> (unit -> 'a Fiber.t) -> 'a Fiber.t

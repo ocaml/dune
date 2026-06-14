@@ -46,26 +46,39 @@ let parse_deps_exn ~file lines =
        String.extract_blank_separated_words deps)
 ;;
 
-let ocamldep_action ~sandbox ~sctx ~ml_kind unit =
+let ocamldep_action ~sandbox ~sctx ~dir ~ml_kind unit =
   let context = Super_context.context sctx in
-  let flags, sandbox =
-    Module.pp_flags unit |> Option.value ~default:(Action_builder.return [], sandbox)
+  let flags, sandbox, can_run_in_action_runner =
+    match Module.pp_flags unit with
+    | None -> Action_builder.return [], sandbox, false
+    | Some (flags, sandbox) -> flags, sandbox, true
   in
   let open Action_builder.O in
   let* ocamldep =
     let+ ocaml = Action_builder.of_memo (Context.ocaml context) in
     ocaml.ocamldep
   in
-  let source = Option.value_exn (Module.source unit ~ml_kind) in
-  Command.run'
-    ~dir:(Path.build (Context.build_dir context))
-    ~sandbox
-    ocamldep
-    [ A "-modules"
-    ; Command.Args.dyn flags
-    ; Command.Ml_kind.flag ml_kind
-    ; Dep (Module.File.path source)
-    ]
+  let+ action =
+    let source = Option.value_exn (Module.source unit ~ml_kind) in
+    let env =
+      (* CR-someday rgrinberg: consider getting rid of this *)
+      Action_builder.of_memo
+        (let open Memo.O in
+         Super_context.env_node sctx ~dir >>= Env_node.external_env)
+    in
+    Command.run'
+      ~dir:(Path.build (Context.build_dir context))
+      ~sandbox
+      ~env
+      ~can_run_in_action_runner
+      ocamldep
+      [ A "-modules"
+      ; Command.Args.dyn flags
+      ; Command.Ml_kind.flag ml_kind
+      ; Dep (Module.File.path source)
+      ]
+  in
+  { Rule.Anonymous_action.action; loc = Loc.none; dir; alias = None }
 ;;
 
 (* Top-level cache per (source path, ml_kind). Without it, each caller's
@@ -105,8 +118,8 @@ let read_immediate_deps_words =
        | None ->
          let dir = Obj_dir.dir obj_dir in
          let builder =
-           ocamldep_action ~sandbox ~sctx ~ml_kind unit
-           |> Super_context.execute_action_stdout sctx ~loc:Loc.none ~dir
+           ocamldep_action ~sandbox ~sctx ~dir ~ml_kind unit
+           |> Build_system.execute_action_stdout
            |> Memo.map ~f:(fun output ->
              Some (String.split_lines output |> parse_deps_exn ~file:source_path))
            |> Action_builder.of_memo

@@ -6,6 +6,7 @@ module To_file = struct
 
     let name = "format-dune-file"
     let version = 1
+    let runs_process = false
     let bimap (ver, src, dst) f g = ver, f src, g dst
     let is_useful_to ~memoize = memoize
 
@@ -32,6 +33,7 @@ module To_stdout = struct
 
     let name = "format-dune-file-stdout"
     let version = 1
+    let runs_process = false
     let bimap (ver, src) f _ = ver, f src
     let is_useful_to ~memoize = memoize
 

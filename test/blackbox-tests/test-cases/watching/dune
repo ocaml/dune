@@ -45,6 +45,11 @@
   source-backed-promotion)
  (setup_scripts promotion-helpers.sh))
 
+(cram
+ (applies_to action-runner-shutdown)
+ (enabled_if
+  (<> %{ocaml-config:system} win)))
+
 ;; Disabled due to timeouts
 
 (cram

@@ -120,6 +120,9 @@ val empty : t
 (** Checks, if action contains a [Dynamic_run]. *)
 val is_dynamic : t -> bool
 
+(** Checks if executing the action may spawn a process. *)
+val runs_process : t -> bool
+
 (** Re-root all the paths in the action to their sandbox version *)
 val sandbox : t -> Sandbox.t -> t
 
@@ -149,6 +152,7 @@ module Full : sig
     ; env : Env.t
     ; locks : Path.t list
     ; can_go_in_shared_cache : bool
+    ; can_run_in_action_runner : bool
     ; sandbox : Sandbox_config.t
     ; corrections : Corrections.t option
     }
@@ -158,6 +162,9 @@ module Full : sig
     -> ?locks:Path.t list (** default [[]] *)
     -> ?can_go_in_shared_cache:bool
          (** default [!Clflags.can_fo_in_shared_cache_default] *)
+    -> ?can_run_in_action_runner:bool
+         (** default [false]. Whether processes in this action may be delegated
+             to the action runner when one is active. *)
     -> ?sandbox:Sandbox_config.t (** default [Sandbox_config.default] *)
     -> ?corrections:Corrections.t (** default [Corrections.Ignore] *)
     -> action

@@ -654,7 +654,8 @@ let expand_no_targets t sandbox ~loc ~chdir ~deps:deps_written_by_user ~expander
   and+ env
   and+ action in
   let action = Action.Chdir (Path.build chdir, action) in
-  Action.Full.make action ~sandbox |> Action.Full.add_env env
+  Action.Full.make action ~sandbox ~can_run_in_action_runner:true
+  |> Action.Full.add_env env
 ;;
 
 let expand
@@ -714,7 +715,10 @@ let expand
     let+ sandbox
     and+ env
     and+ action in
-    Action.Full.make (Action.Chdir (Path.build chdir, action)) ~sandbox
+    Action.Full.make
+      (Action.Chdir (Path.build chdir, action))
+      ~sandbox
+      ~can_run_in_action_runner:true
     |> Action.Full.add_env env
   in
   Action_builder.with_targets ~targets build

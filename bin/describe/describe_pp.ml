@@ -32,7 +32,7 @@ let execute_pp_action ~sctx file pp_file dump_file =
   let context = Dune_rules.Expander.context expander in
   let build_dir = Context_name.build_dir context in
   let* input =
-    let* action, _observing_facts =
+    let* (action, can_run_in_action_runner), _observing_facts =
       let* loc, action =
         let+ dialect, ml_kind = dialect_and_ml_kind file in
         match Dialect.print_ast dialect ml_kind with
@@ -54,7 +54,7 @@ let execute_pp_action ~sctx file pp_file dump_file =
             ~deps:[]
             ~what:"describe pp"
         in
-        Action.with_outputs_to dump_file build.action
+        Action.with_outputs_to dump_file build.action, build.can_run_in_action_runner
       in
       Action_builder.evaluate_and_collect_facts build
     in
@@ -74,6 +74,7 @@ let execute_pp_action ~sctx file pp_file dump_file =
     ; env
     ; rule_loc = Loc.none
     ; execution_parameters
+    ; can_run_in_action_runner
     ; action
     }
   in

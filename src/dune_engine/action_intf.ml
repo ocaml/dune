@@ -121,6 +121,7 @@ module Ext = struct
     val version : int
     val is_useful_to : memoize:bool -> bool
     val is_dynamic : bool
+    val runs_process : bool
     val encode : ('p, 't) t -> ('p -> Sexp.t) -> ('t -> Sexp.t) -> Sexp.t
     val bimap : ('a, 'b) t -> ('a -> 'x) -> ('b -> 'y) -> ('x, 'y) t
 

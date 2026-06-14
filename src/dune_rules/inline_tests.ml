@@ -33,7 +33,7 @@ let action
       | Native | Best | Byte -> None
       | Jsoo _ -> Some Jsoo_rules.runner
     with
-    | None -> flags >>| Action.run (Ok exe)
+    | None -> flags >>| fun flags -> Action.run (Ok exe) flags
     | Some runner ->
       let* prog =
         Super_context.resolve_program
@@ -393,7 +393,8 @@ include Sub_system.Register_end_point (struct
         let action =
           let+ action = test_action mode partitions_flags
           and+ env in
-          Action.Full.make ~sandbox action |> Action.Full.add_env env
+          Action.Full.make ~sandbox ~can_run_in_action_runner:true action
+          |> Action.Full.add_env env
         in
         let+ partitions =
           Super_context.execute_action_stdout sctx ~loc ~dir action
@@ -462,7 +463,10 @@ include Sub_system.Register_end_point (struct
                  |> Action.diff ~optional:true fn)
                |> Action.concurrent
              in
-             Action.Full.make ~sandbox (Action.progn [ run_tests; diffs ])
+             Action.Full.make
+               ~sandbox
+               ~can_run_in_action_runner:true
+               (Action.progn [ run_tests; diffs ])
              |> Action.Full.add_env env))
     ;;
 

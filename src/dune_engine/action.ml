@@ -374,6 +374,27 @@ let rec is_dynamic = function
   | Extension (module A) -> A.Spec.is_dynamic
 ;;
 
+let rec runs_process = function
+  | Chdir (_, t)
+  | Setenv (_, _, t)
+  | Redirect_out (_, _, _, t)
+  | Redirect_in (_, _, t)
+  | Ignore (_, t)
+  | With_accepted_exit_codes (_, t) -> runs_process t
+  | Progn l | Pipe (_, l) | Concurrent l -> List.exists l ~f:runs_process
+  | Run _ | Bash _ | Diff _ -> true
+  | Echo _
+  | Cat _
+  | Copy _
+  | Symlink _
+  | Hardlink _
+  | Write_file _
+  | Rename _
+  | Remove_tree _
+  | Mkdir _ -> false
+  | Extension (module A) -> A.Spec.runs_process
+;;
+
 let maybe_sandbox_path sandbox p =
   match Path.as_in_build_dir p with
   | None -> p
@@ -441,6 +462,7 @@ module Full = struct
       ; env : Env.t
       ; locks : Path.t list
       ; can_go_in_shared_cache : bool
+      ; can_run_in_action_runner : bool
       ; sandbox : Sandbox_config.t
       ; corrections : Corrections.t option
       }
@@ -450,6 +472,7 @@ module Full = struct
       ; env = Env.empty
       ; locks = []
       ; can_go_in_shared_cache = true
+      ; can_run_in_action_runner = false
       ; sandbox = Sandbox_config.default
       ; corrections = None
       }
@@ -467,11 +490,26 @@ module Full = struct
           [ "x", Corrections.to_dyn x; "y", Corrections.to_dyn y ]
     ;;
 
-    let combine { action; env; locks; can_go_in_shared_cache; sandbox; corrections } x =
+    let combine
+          { action
+          ; env
+          ; locks
+          ; can_go_in_shared_cache
+          ; can_run_in_action_runner
+          ; sandbox
+          ; corrections
+          }
+          x
+      =
+      let action_runs_process = runs_process action in
+      let x_runs_process = runs_process x.action in
       { action = combine action x.action
       ; env = Env.extend_env env x.env
       ; locks = locks @ x.locks
       ; can_go_in_shared_cache = can_go_in_shared_cache && x.can_go_in_shared_cache
+      ; can_run_in_action_runner =
+          (can_run_in_action_runner || not action_runs_process)
+          && (x.can_run_in_action_runner || not x_runs_process)
       ; sandbox = Sandbox_config.inter sandbox x.sandbox
       ; corrections = combine_corrections corrections x.corrections
       }
@@ -485,11 +523,19 @@ module Full = struct
         ?(env = Env.empty)
         ?(locks = [])
         ?(can_go_in_shared_cache = !Clflags.can_go_in_shared_cache_default)
+        ?(can_run_in_action_runner = false)
         ?(sandbox = Sandbox_config.default)
         ?corrections
         action
     =
-    { action; env; locks; can_go_in_shared_cache; sandbox; corrections }
+    { action
+    ; env
+    ; locks
+    ; can_go_in_shared_cache
+    ; can_run_in_action_runner
+    ; sandbox
+    ; corrections
+    }
   ;;
 
   let map t ~f = { t with action = f t.action }

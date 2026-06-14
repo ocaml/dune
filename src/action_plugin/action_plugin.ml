@@ -122,6 +122,7 @@ module Spec = struct
   let version = 1
   let is_useful_to ~memoize = memoize
   let is_dynamic = true
+  let runs_process = true
 
   let encode (prog, args) f _ : Sexp.t =
     let open Sexp in

@@ -226,11 +226,17 @@ module Internal = struct
         ; env
         ; locks
         ; can_go_in_shared_cache
+        ; can_run_in_action_runner = _
         ; sandbox = _ (* already taken into account in [sandbox_mode] *)
         ; corrections
         }
       =
       action
+    in
+    let execution_parameters =
+      if Action.runs_process action
+      then execution_parameters
+      else Execution_parameters.set_sandbox_actions false execution_parameters
     in
     let digest =
       let d = Digest.Manual.create () in
@@ -378,6 +384,7 @@ module Internal = struct
         ; env
         ; locks
         ; can_go_in_shared_cache = _
+        ; can_run_in_action_runner
         ; sandbox = _
         ; corrections
         }
@@ -422,6 +429,7 @@ module Internal = struct
             ; targets = Some targets
             ; rule_loc = loc
             ; execution_parameters
+            ; can_run_in_action_runner
             ; action
             }
           in
@@ -751,7 +759,14 @@ module Internal = struct
     ignore observing_facts;
     let digest =
       let { Rule.Anonymous_action.action =
-              { action; env; locks; can_go_in_shared_cache; sandbox; corrections }
+              { action
+              ; env
+              ; locks
+              ; can_go_in_shared_cache
+              ; can_run_in_action_runner = _
+              ; sandbox
+              ; corrections
+              }
           ; loc = _
           ; dir
           ; alias
@@ -1078,7 +1093,7 @@ let report_early_exn exn =
     let+ () = State.add_errors errors
     and+ () =
       match !Clflags.stop_on_first_error with
-      | true -> Scheduler.cancel_current_build ()
+      | true -> Process.Build.cancel_current ()
       | false -> Fiber.return ()
     in
     (match !Clflags.report_errors_config with
@@ -1100,7 +1115,20 @@ let handle_final_exns exns =
        List.iter exns ~f:Dune_util.Report_error.report)
 ;;
 
-let run ?restart_started_at ?(run_id = Run_id.Batch) f =
+let run ?restart_started_at ?build f =
+  let build =
+    match build with
+    | Some build -> build
+    | None ->
+      (match Process.Build.get () with
+       | Some build -> build
+       | None ->
+         Process.Build.create
+           ~action_runner:None
+           ~run_id:Run_id.Batch
+           ~cancellation:(Fiber.Cancel.create ()))
+  in
+  let run_id = Process.Build.run_id build in
   let finalize_diff_promotion () =
     protect ~f:Diff_promotion.finalize ~finally:Diff_promotion.clear_cache
   in
@@ -1168,8 +1196,7 @@ let run ?restart_started_at ?(run_id = Run_id.Batch) f =
     |> Option.iter ~f:Dune_trace.always_emit;
     outcome
   in
-  Fiber.Mutex.with_lock State.build_mutex ~f:(fun () ->
-    Scheduler.with_current_build_cancellation (Fiber.Cancel.create ()) f)
+  Fiber.Mutex.with_lock State.build_mutex ~f:(fun () -> Process.Build.with_ build f)
 ;;
 
 let run_exn f =
@@ -1180,8 +1207,8 @@ let run_exn f =
   | Error `Already_reported -> raise Dune_util.Report_error.Already_reported
 ;;
 
-let run_action_builder ?restart_started_at ?run_id request =
-  run ?restart_started_at ?run_id (fun () ->
+let run_action_builder ?restart_started_at ?build request =
+  run ?restart_started_at ?build (fun () ->
     let+ (), (_ : Dep.Fact.t Dep.Map.t) =
       Action_builder.evaluate_and_collect_facts request
     in

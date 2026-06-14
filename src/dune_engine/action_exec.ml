@@ -411,15 +411,26 @@ type input =
   ; env : Env.t
   ; rule_loc : Loc.t
   ; execution_parameters : Execution_parameters.t
+  ; can_run_in_action_runner : bool
   ; action : Action.t
   }
 
 let exec
-      { targets; root; context; env; rule_loc; execution_parameters; action = t }
+      { targets
+      ; root
+      ; context
+      ; env
+      ; rule_loc
+      ; execution_parameters
+      ; can_run_in_action_runner
+      ; action = t
+      }
       ~build_deps
   =
   let ectx =
-    let metadata = Process.create_metadata ~purpose:(Build_job targets) () in
+    let metadata =
+      Process.create_metadata ~purpose:(Build_job targets) ~can_run_in_action_runner ()
+    in
     { targets; metadata; context; rule_loc; build_deps }
   and eenv =
     let env =

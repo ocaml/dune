@@ -177,6 +177,7 @@ module Spec = struct
 
   let name = "run-with-path"
   let version = 2
+  let runs_process = true
 
   let map_arg arg ~f =
     Array.Immutable.map arg ~f:(function
@@ -227,7 +228,12 @@ module Spec = struct
             | Path p -> Path.to_absolute_filename p)
           |> String.concat ~sep:"")
       in
-      let metadata = Process.create_metadata ~purpose:ectx.metadata.purpose () in
+      let metadata =
+        Process.create_metadata
+          ~can_run_in_action_runner:ectx.metadata.can_run_in_action_runner
+          ~purpose:ectx.metadata.purpose
+          ()
+      in
       let dune_folder =
         let bin_folder = Temp.create Dir ~prefix:"dune" ~suffix:"self-in-path" in
         let src = Path.of_string Sys.executable_name in

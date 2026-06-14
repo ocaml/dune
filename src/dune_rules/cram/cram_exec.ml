@@ -571,7 +571,7 @@ let run_cram_test
       |> Path.drop_build_context_exn
       |> Path.Source.to_string
     in
-    Process.create_metadata ~name ~categories:[ "cram" ] ()
+    Process.create_metadata ~can_run_in_action_runner:true ~name ~categories:[ "cram" ] ()
   in
   Process.run
     ~display:Quiet
@@ -727,6 +727,7 @@ module Run = struct
 
     let name = "cram-run"
     let version = 6
+    let runs_process = true
 
     let bimap
           ({ src = _; dir; script; output; timeout; setup_scripts; shell = _ } as t)
@@ -794,6 +795,7 @@ module Make_script = struct
 
     let name = "cram-generate"
     let version = 2
+    let runs_process = false
     let bimap t f g = { t with script = f t.script; target = g t.target }
     let is_useful_to ~memoize:_ = true
 
@@ -840,6 +842,7 @@ module Diff = struct
 
     let name = "cram-generate"
     let version = 1
+    let runs_process = false
     let bimap { script; out } f _ = { script = f script; out = f out }
     let is_useful_to ~memoize:_ = true
     let encode { script; out } path _ : Sexp.t = List [ path script; path out ]
@@ -891,6 +894,7 @@ module Action = struct
 
     let name = "cram"
     let version = 2
+    let runs_process = true
     let bimap path f _ = f path
     let is_useful_to ~memoize:_ = true
     let encode script path _ : Sexp.t = List [ path script ]

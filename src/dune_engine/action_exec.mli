@@ -35,6 +35,7 @@ type input =
   ; env : Env.t
   ; rule_loc : Loc.t
   ; execution_parameters : Execution_parameters.t
+  ; can_run_in_action_runner : bool
   ; action : Action.t
   }
 

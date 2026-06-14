@@ -34,8 +34,9 @@ Show `(melange.modules ..)` subset is preferred when compiling in Melange mode
           melc lib/.a.objs/melange/a.{cmi,cmj,cmt}
       ocamldep (internal)
       ocamldep (internal)
-          melc lib/.a.objs/melange/a__Foo.{cmi,cmj,cmt}
+      ocamldep (internal)
         ocamlc lib/.a.objs/byte/a__Helper.{cmi,cmo,cmt}
+          melc lib/.a.objs/melange/a__Foo.{cmi,cmj,cmt}
         ocamlc lib/.a.objs/byte/a__Foo.{cmi,cmo,cmt}
         ocamlc lib/a.cma
   Leaving directory 'a'

@@ -45,8 +45,7 @@ the source-language kind (`Ml_kind.t` — `Impl` or `Intf`), and the mode
 1. If a small set of preconditions fails (`can_filter = false`), fall
    back to the cctx-wide glob — the same dep set every compile rule
    would have had prior to this work. This avoids needing soundness
-   arguments for module kinds that the narrowing was not designed for,
-   and lets `Melange` paths pass through unchanged.
+   arguments for module kinds that the narrowing was not designed for.
 
 2. Otherwise, if the consumer cctx already carries a virtual library
    in `requires` (`has_virtual_impl = true`), fall back to the
@@ -95,8 +94,6 @@ The entry point for the narrowing is
 (`src/dune_rules/module_compilation.ml`). Before any narrowing runs,
 the function computes a `can_filter` boolean conjunction:
 
-- The compile is `Ocaml _` (Melange has its own cm-kind story and is
-  not narrowed).
 - The supplied `dep_graph` is the real one for this cctx (its `dir`
   equals the cctx's `obj_dir`), not a `Dep_graph.dummy` — synthesised
   / link-time-generated / alias / root modules have no usable
@@ -566,9 +563,18 @@ Three categories of fallback to the glob:
    inherited into the intermediate's `.mli` via the open) would
    silently drop the leaf library's `.cmi` from its compile rule.
 
-`Melange` paths bypass the narrowing entirely at the `can_filter`
-check; the cm_kind machinery there is different and L9 leaves it
-unchanged.
+`Melange` consumer compiles run the same narrowing pipeline as `Ocaml`.
+The `can_filter` check is mode-agnostic. Two code paths inside the
+pipeline match on `cm_kind`:
+
+1. `Lib_file_deps.deps_of_entry_modules` emits per-module `.cmj` in
+   addition to `.cmi` when `cm_kind = Melange Cmj`, mirroring the
+   broad-dep path's `groups_for_cm_kind`.
+2. `need_impl_deps_of` (in `lib_deps_for_module`) reads a trans-dep's
+   `.ml`-side ocamldep only for `cm_kind = Ocaml Cmx` (cross-module
+   inlining input). `Ocaml (Cmi | Cmo)` and `Melange _` are handled
+   symmetrically — neither reads impl deps. The distinction is
+   Cmx-vs-rest, not OCaml-vs-Melange.
 
 ## Cost characteristics
 

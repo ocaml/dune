@@ -88,4 +88,13 @@ But trying to build any melange artifacts will fail
   Error: Program melc not found in the tree or in PATH
    (context: default)
   Hint: opam install melange
+  File "dune", lines 10-14, characters 0-94:
+  10 | (melange.emit
+  11 |  (target output)
+  12 |  (emit_stdlib false)
+  13 |  (modules main_melange)
+  14 |  (libraries lib1))
+  Error: Program melc not found in the tree or in PATH
+   (context: default)
+  Hint: opam install melange
   [1]

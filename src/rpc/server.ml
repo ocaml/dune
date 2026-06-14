@@ -159,9 +159,8 @@ module Session = struct
         Fiber.Ivar.fill ivar Pending_response.Closed)
     ;;
 
-    let create (type s) ~name ~version (chan, s) ~finalizer =
+    let create (type s) ~id ~pool ~name ~version (chan, s) ~finalizer =
       let pending = Table.create (module Dune_rpc.Private.Id) 16 in
-      let pool = Fiber.Pool.create () in
       let module Chan = (val chan : Session with type t = s) in
       { version
       ; chan = Chan (chan, s)
@@ -175,7 +174,7 @@ module Session = struct
             and+ () = close_pending_requests pending in
             ())
       ; state = Uninitialized
-      ; id = Id.gen ()
+      ; id
       ; pool
       ; pending
       ; requests_in_flight = Dune_rpc.Private.Id.Map.empty
@@ -773,23 +772,36 @@ type t = Server : 'a H.stage1 -> t
 let make (type a) (h : a H.Builder.t) : t = Server (H.Builder.to_handler h)
 
 let new_session (Server handler) ~name chan =
-  let session = Fdecl.create Dyn.opaque in
-  Fdecl.set
-    session
-    (Session.Stage1.create ~name ~version:handler.base.version chan ~finalizer:(fun () ->
-       let session : _ Session.Stage1.t = Fdecl.get session in
-       handler.base.on_terminate session));
-  let session = Fdecl.get session in
+  let id = Session.Id.gen () in
+  let session = ref None in
   object
-    method id = session.id
-    method close = Session.Stage1.close session
+    method id = id
+
+    method close =
+      match !session with
+      | None -> Fiber.return ()
+      | Some session -> Session.Stage1.close session
 
     method start =
-      Fiber.fork_and_join_unit
-        (fun () -> Fiber.Pool.run session.pool)
-        (fun () ->
-           let* () = H.handle handler session in
-           Session.Stage1.close session)
+      Fiber.Pool.with_ (fun pool ->
+        let session_fdecl = Fdecl.create Dyn.opaque in
+        Fdecl.set
+          session_fdecl
+          (Session.Stage1.create
+             ~id
+             ~pool
+             ~name
+             ~version:handler.base.version
+             chan
+             ~finalizer:(fun () ->
+               let session : _ Session.Stage1.t = Fdecl.get session_fdecl in
+               handler.base.on_terminate session));
+        let session' = Fdecl.get session_fdecl in
+        session := Some session';
+        let* () = H.handle handler session' in
+        let* () = Session.Stage1.close session' in
+        session := None;
+        Fiber.return ())
   end
 ;;
 

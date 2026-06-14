@@ -420,6 +420,10 @@ module Pool : sig
   (** Create a new pool. *)
   val create : unit -> t
 
+  (** [with_ f] runs [f pool] with a fresh pool. Tasks submitted to [pool] run
+      in parallel, and [pool] is closed when [f pool] terminates. *)
+  val with_ : (t -> 'a fiber) -> 'a fiber
+
   (** [running pool] returns whether it's possible to submit tasks to [pool] *)
   val running : t -> bool fiber
 

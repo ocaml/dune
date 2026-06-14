@@ -540,18 +540,17 @@ module Background = struct
   ;;
 
   let with_background_rpc server f =
-    let pool = Fiber.Pool.create () in
-    let v = { state = `Awaiting_start; server; pool } in
-    let previous = !current in
-    current := Some v;
-    Fiber.finalize
-      (fun () ->
-         Fiber.fork_and_join_unit
-           (fun () -> Fiber.Pool.run pool)
-           (fun () -> Fiber.finalize f ~finally:(fun () -> stop_background v)))
-      ~finally:(fun () ->
-        current := previous;
-        Fiber.return ())
+    Fiber.of_thunk (fun () ->
+      let previous = !current in
+      Fiber.finalize
+        (fun () ->
+           Fiber.Pool.with_ (fun pool ->
+             let v = { state = `Awaiting_start; server; pool } in
+             current := Some v;
+             Fiber.finalize f ~finally:(fun () -> stop_background v)))
+        ~finally:(fun () ->
+          current := previous;
+          Fiber.return ()))
   ;;
 
   let ensure_ready () =

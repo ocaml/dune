@@ -511,3 +511,60 @@ let run t =
         Console.Status_line.remove_section section;
         Fiber.return ())
 ;;
+
+module Background = struct
+  type rpc_server = t
+
+  type t =
+    { server : rpc_server
+    ; pool : Fiber.Pool.t
+    ; mutable state : [ `Awaiting_start | `Running | `Stopped ]
+    }
+
+  let current : t option ref = ref None
+
+  let get_exn () =
+    match !current with
+    | Some t -> t
+    | None -> Code_error.raise "rpc server not available" []
+  ;;
+
+  let stop_background ({ state; server; pool } as t) =
+    let* () = Fiber.return () in
+    match state with
+    | `Stopped -> Fiber.return ()
+    | `Awaiting_start -> Fiber.Pool.close pool
+    | `Running ->
+      t.state <- `Stopped;
+      Fiber.fork_and_join_unit (fun () -> Fiber.Pool.close pool) (fun () -> stop server)
+  ;;
+
+  let with_background_rpc server f =
+    let pool = Fiber.Pool.create () in
+    let v = { state = `Awaiting_start; server; pool } in
+    let previous = !current in
+    current := Some v;
+    Fiber.finalize
+      (fun () ->
+         Fiber.fork_and_join_unit
+           (fun () -> Fiber.Pool.run pool)
+           (fun () -> Fiber.finalize f ~finally:(fun () -> stop_background v)))
+      ~finally:(fun () ->
+        current := previous;
+        Fiber.return ())
+  ;;
+
+  let ensure_ready () =
+    let ({ state; server; pool } as t) = get_exn () in
+    match state with
+    | `Stopped -> Code_error.raise "server already stopped" []
+    | `Running -> Fiber.return ()
+    | `Awaiting_start ->
+      t.state <- `Running;
+      let* () = Fiber.Pool.task pool ~f:(fun () -> run server) in
+      ready server
+  ;;
+end
+
+let with_background_rpc = Background.with_background_rpc
+let ensure_ready = Background.ensure_ready

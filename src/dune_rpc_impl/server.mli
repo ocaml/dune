@@ -25,3 +25,5 @@ val stop : t -> unit Fiber.t
 
 val ready : t -> unit Fiber.t
 val run : t -> unit Fiber.t
+val with_background_rpc : t -> (unit -> 'a Fiber.t) -> 'a Fiber.t
+val ensure_ready : unit -> unit Fiber.t

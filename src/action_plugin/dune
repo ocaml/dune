@@ -3,8 +3,8 @@
  (libraries
   stdune
   dune_engine
+  dune_rpc_impl
   dune_targets
-  rpc
   predicate_lang
   fiber
   csexp

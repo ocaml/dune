@@ -149,3 +149,50 @@ requests.
   $ cat _build/default/slow-after-fail
   slow
   $ stop_dune_quiet
+
+RPC build requests cancelled by --stop-on-first-error complete with the batch
+failure.
+
+  $ cancelled="$(mktemp -u)"
+  $ fail_started="$(mktemp -u)"
+  $ fail_release="$(mktemp -u)"
+  $ slow_started="$(mktemp -u)"
+  $ mkfifo "$fail_release"
+  $ cat > dune <<EOF
+  > (rule
+  >  (target fail-stop)
+  >  (action
+  >   (bash "touch '$fail_started'; read _ < '$fail_release'; exit 1")))
+  > (rule
+  >  (target slow-stop)
+  >  (action
+  >   (bash "touch '$slow_started'; trap \"touch '$cancelled'; exit 0\" TERM; while true; do sleep 1; done")))
+  > EOF
+
+  $ start_dune -j 2 --stop-on-first-error
+  $ dune rpc build --wait fail-stop > fail-stop.out 2>&1 &
+  $ FAIL=$!
+  $ dune rpc build --wait slow-stop > slow-stop.out 2>&1 &
+  $ SLOW=$!
+  $ with_timeout dune_cmd wait-for-file-to-appear "$fail_started"
+  $ with_timeout dune_cmd wait-for-file-to-appear "$slow_started"
+
+  $ printf '.\n' > "$fail_release"
+  $ wait_for_pid_to_exit_with_timeout "$FAIL" 200 || (cat fail-stop.out; false)
+  $ wait "$FAIL"
+  $ cat fail-stop.out
+  Failure
+  $ with_timeout dune_cmd wait-for-file-to-appear "$cancelled"
+
+  $ if wait_for_pid_to_exit_with_timeout "$SLOW" 200; then
+  >   echo "slow rpc request finished"
+  >   wait "$SLOW" || true
+  >   cat slow-stop.out
+  > else
+  >   echo "slow rpc request timed out"
+  >   kill "$SLOW" 2>/dev/null || true
+  >   wait "$SLOW" || true
+  > fi
+  slow rpc request finished
+  Failure
+  $ stop_dune_quiet

@@ -551,6 +551,7 @@ let library_rules
       ~compile_info
       ~ctx_dir
       ~for_merlin
+      ~merlin_ident
   =
   let modules = Compilation_context.modules cctx in
   let obj_dir = Compilation_context.obj_dir cctx in
@@ -640,18 +641,22 @@ let library_rules
     let+ requires_hidden = Compilation_context.requires_hidden cctx
     and+ parameters = Compilation_context.parameters cctx in
     let flags = Compilation_context.flags cctx in
+    let preprocess =
+      match for_ with
+      | Ocaml -> lib.buildable.preprocess.config
+      | Melange -> lib.buildable.melange_preprocess.config
+    in
     Merlin.make
       ~requires_compile
       ~requires_hidden
       ~stdlib_dir:lib_config.stdlib_dir
       ~flags
       ~modules
-      ~preprocess:
-        (Preprocess.Per_module.without_instrumentation lib.buildable.preprocess.config)
+      ~preprocess:(Preprocess.Per_module.without_instrumentation preprocess)
       ~libname:(Some (snd lib.name))
       ~obj_dir
       ~dialects:(Dune_project.dialects (Scope.project scope))
-      ~ident:(Merlin_ident.for_lib (Library.best_name lib))
+      ~ident:merlin_ident
       ~for_
       ~parameters
   in
@@ -701,7 +706,7 @@ let compile_context (lib : Library.t) ~sctx ~dir_contents ~expander ~scope ~for_
 let rules (lib : Library.t) ~sctx ~dir_contents ~expander ~scope =
   let dir = Dir_contents.dir dir_contents in
   let buildable = lib.buildable in
-  let f ~for_ ~for_merlin =
+  let f ~for_ ~for_merlin ~merlin_ident =
     let* local_lib, compile_info, source_modules, parameters =
       compile_context_data lib ~dir_contents ~scope ~for_
     in
@@ -735,6 +740,7 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~expander ~scope =
         ~compile_info
         ~ctx_dir:dir
         ~for_merlin
+        ~merlin_ident
     in
     cctx, merlin
   in
@@ -751,7 +757,6 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~expander ~scope =
         ~dir
         ~lib_config
     in
-    let merlin_ident = Merlin_ident.for_lib (Library.best_name lib) in
     let { Compilation_mode.for_merlin; modes = _ } =
       Compilation_mode.of_mode_set (Lib_info.modes lib_info)
     in
@@ -760,6 +765,11 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~expander ~scope =
     in
     let { Compilation_mode.modes; for_merlin = _ } =
       Compilation_mode.of_mode_set effective_modes
+    in
+    let mode_suffix =
+      match modes with
+      | _ :: _ :: _ -> true
+      | [] | [ _ ] -> false
     in
     Memo.parallel_map modes ~f:(fun for_ ->
       let buildable = lib.buildable in
@@ -775,6 +785,9 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~expander ~scope =
           ~allow_overlaps:buildable.allow_overlapping_dependencies
       in
       let* () = Buildable_rules.gen_select_rules sctx compile_info ~dir ~for_ in
+      let merlin_ident =
+        Merlin_ident.for_lib (Library.best_name lib) ~for_ ~mode_suffix
+      in
       let+ r =
         Buildable_rules.with_lib_deps
           (Super_context.context sctx)
@@ -782,7 +795,7 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~expander ~scope =
           ~dir
           ~f:(fun () ->
             let for_merlin = Compilation_mode.equal for_ for_merlin in
-            f ~for_ ~for_merlin)
+            f ~for_ ~for_merlin ~merlin_ident)
       in
       for_, Some r)
   in

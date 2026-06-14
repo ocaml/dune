@@ -4,7 +4,7 @@ open Import
     to a specific [library] or [executable] stanza. *)
 type t
 
-val for_lib : Lib_name.t -> t
+val for_lib : Lib_name.t -> for_:Compilation_mode.t -> mode_suffix:bool -> t
 val for_exes : names:string Nonempty_list.t -> t
 val for_melange : target:string -> t
 

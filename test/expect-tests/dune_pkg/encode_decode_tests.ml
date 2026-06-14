@@ -365,7 +365,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
                                { url = "file://randomurl"; checksum = None })
                             ]
                         }
-                    ; exported_env = [ { op = "="; var = "foo"; value = "bar" } ]
+                    ; exported_env = [ { op = =; var = "foo"; value = "bar" } ]
                     ; enabled_on_platforms = []
                     }
                 }

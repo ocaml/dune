@@ -27,13 +27,13 @@ type ('i, 'o) t =
   ; input : (module Store_intf.Input with type t = 'i)
   ; node_kind : ('i, 'o) Node_kind.t
   ; f : 'i -> 'o Fiber.t
-  ; human_readable_description : ('i -> User_message.Style.t Pp.t) option
+  ; human_readable_description : ('i -> User_message.Style.t Pp.t option) option
   }
 
 val create
   :  name:string option
   -> input:(module Store_intf.Input with type t = 'a)
-  -> human_readable_description:('a -> User_message.Style.t Pp.t) option
+  -> human_readable_description:('a -> User_message.Style.t Pp.t option) option
   -> cutoff:('b -> 'b -> bool) option
   -> ?witness:bool
   -> ?on_event:('a -> Event.t -> unit)

@@ -55,7 +55,6 @@ module Clients = struct
     Session.Id.Map.remove t id
   ;;
 
-  let cardinal = Session.Id.Map.cardinal
   let to_list = Session.Id.Map.to_list
   let to_list_map = Session.Id.Map.to_list_map
 
@@ -69,7 +68,6 @@ end
 type server =
   { lifecycle : Rpc.Server.Lifecycle.t
   ; action_runner : Action_runner.t option
-  ; registry : [ `Add | `Skip ]
   ; watch_mode : Watch_mode_config.t
   ; mutable clients : Clients.t
   }
@@ -85,20 +83,6 @@ type t =
   { server : server
   ; build : build
   }
-
-let client_count t = Clients.cardinal t.server.clients
-
-let pp_client_count t =
-  match client_count t with
-  | 0 -> Pp.nop
-  | count -> Pp.textf "[rpc %d]" count
-;;
-
-let refresh_client_count_status_line t =
-  match t.server.registry with
-  | `Skip -> ()
-  | `Add -> Console.Status_line.refresh ()
-;;
 
 let () =
   Debug.register ~name:"rpc" (fun () ->
@@ -159,15 +143,12 @@ let cancel_all_build_requests t =
 let handler (t : t Fdecl.t) action_runner_server : unit Handler.t =
   let on_init session (_ : Initialize.Request.t) =
     let t = Fdecl.get t in
-    let client = () in
     t.server.clients <- Clients.add_session t.server.clients session;
-    refresh_client_count_status_line t;
-    Fiber.return client
+    Fiber.return ()
   in
   let on_terminate session =
     let t = Fdecl.get t in
     t.server.clients <- Clients.remove_session t.server.clients session;
-    refresh_client_count_status_line t;
     cancel_build_requests_for_session t session
   in
   let rpc = Handler.create ~on_terminate ~on_init ~version:Dune_rpc.Version.latest () in
@@ -410,7 +391,7 @@ let handler (t : t Fdecl.t) action_runner_server : unit Handler.t =
 let create ~registry ~root ~build ~where ~action_runner watch_mode =
   Global_lock.lock_exn ();
   let t = Fdecl.create Dyn.opaque in
-  let config =
+  let action_runner, lifecycle =
     let server =
       lazy
         (let socket_file = Where.rpc_socket_file () in
@@ -436,10 +417,7 @@ let create ~registry ~root ~build ~where ~action_runner watch_mode =
     let lifecycle = Rpc.Server.Lifecycle.create ~handler ~root ~where ~registry ~server in
     action_runner, lifecycle
   in
-  let action_runner, lifecycle = config in
-  let server =
-    { lifecycle; action_runner; registry; watch_mode; clients = Clients.empty }
-  in
+  let server = { lifecycle; action_runner; watch_mode; clients = Clients.empty } in
   let res = { server; build } in
   current := Some server;
   Fdecl.set t res;
@@ -447,19 +425,10 @@ let create ~registry ~root ~build ~where ~action_runner watch_mode =
 ;;
 
 let run t =
-  let run () =
-    Fiber.fork_and_join_unit
-      (fun () -> Rpc.Server.Lifecycle.run t.server.lifecycle)
-      (fun () ->
-         match t.server.action_runner with
-         | None -> Fiber.return ()
-         | Some runner -> Action_runner.run runner)
-  in
-  match t.server.registry with
-  | `Skip -> run ()
-  | `Add ->
-    let section = Console.Status_line.add_section (Live (fun () -> pp_client_count t)) in
-    Fiber.finalize run ~finally:(fun () ->
-      Console.Status_line.remove_section section;
-      Fiber.return ())
+  Fiber.fork_and_join_unit
+    (fun () -> Rpc.Server.Lifecycle.run t.server.lifecycle)
+    (fun () ->
+       match t.server.action_runner with
+       | None -> Fiber.return ()
+       | Some runner -> Action_runner.run runner)
 ;;

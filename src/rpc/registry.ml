@@ -8,6 +8,7 @@ type t =
   }
 
 let create ~root ~where registry = { root; where; registry; path = None }
+let mode t = t.registry
 
 let cleanup t =
   match t.path with

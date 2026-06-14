@@ -846,6 +846,7 @@ let new_session
 let close_all active_sessions =
   let sessions = Table.values active_sessions in
   Table.clear active_sessions;
+  Console.Status_line.refresh ();
   Fiber.parallel_iter sessions ~f:(fun { close; _ } -> close)
 ;;
 
@@ -859,6 +860,7 @@ module Make (S : Session) = struct
         new_session server ~name ((module S), session)
       in
       Table.set active_sessions session.id session;
+      Console.Status_line.refresh ();
       Fiber.finalize
         (fun () ->
            let id = session.id in
@@ -888,6 +890,7 @@ module Make (S : Session) = struct
              ())
         ~finally:(fun () ->
           Table.remove active_sessions session.id;
+          Console.Status_line.refresh ();
           Fiber.return ()))
   ;;
 
@@ -920,8 +923,8 @@ module Lifecycle = struct
     ; active_sessions : (Session.Id.t, served_session) Table.t
     }
 
-  let create ~handler ~root ~where ~registry ~server =
-    let registry = Rpc_registry.create ~root ~where registry in
+  let create ~handler ~root ~where ~registry:registry_mode ~server =
+    let registry = Rpc_registry.create ~root ~where registry_mode in
     Rpc_registry.register registry;
     { handler; registry; server; active_sessions = Table.create (module Session.Id) 16 }
   ;;
@@ -930,22 +933,39 @@ module Lifecycle = struct
     Console.print [ Pp.text "Uncaught RPC Error"; Exn_with_backtrace.pp exn ]
   ;;
 
+  let pp_active_sessions t =
+    match Table.length t.active_sessions with
+    | 0 -> Pp.nop
+    | count -> Pp.textf "[rpc %d]" count
+  ;;
+
   let run t =
-    let run () =
+    let run_server () =
       let* sessions = Csexp_rpc.Server.serve t.server in
       serve_with_active_sessions t.active_sessions sessions t.handler
     in
-    Fiber.finalize
-      (fun () ->
-         Fiber.with_error_handler run ~on_error:(fun exn ->
-           print_uncaught_rpc_error exn;
-           Exn_with_backtrace.reraise exn))
-      ~finally:(fun () ->
-        Fiber.finalize
-          (fun () -> close_all t.active_sessions)
-          ~finally:(fun () ->
-            Rpc_registry.cleanup t.registry;
-            Fiber.return ()))
+    let run_with_cleanup () =
+      Fiber.finalize
+        (fun () ->
+           Fiber.with_error_handler run_server ~on_error:(fun exn ->
+             print_uncaught_rpc_error exn;
+             Exn_with_backtrace.reraise exn))
+        ~finally:(fun () ->
+          Fiber.finalize
+            (fun () -> close_all t.active_sessions)
+            ~finally:(fun () ->
+              Rpc_registry.cleanup t.registry;
+              Fiber.return ()))
+    in
+    match Rpc_registry.mode t.registry with
+    | `Skip -> run_with_cleanup ()
+    | `Add ->
+      let section =
+        Console.Status_line.add_section (Live (fun () -> pp_active_sessions t))
+      in
+      Fiber.finalize run_with_cleanup ~finally:(fun () ->
+        Console.Status_line.remove_section section;
+        Fiber.return ())
   ;;
 
   let stop t =

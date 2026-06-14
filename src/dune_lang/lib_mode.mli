@@ -6,6 +6,7 @@ type t =
 
 val decode : t Decoder.t
 val equal : t -> t -> bool
+val hash : t -> int
 val to_dyn : t -> Dyn.t
 
 module Cm_kind : sig

@@ -57,7 +57,7 @@ invalidate `consumer`.
 Glob coverage on `consumer.cmi`'s compile rule:
 
   $ dune rules --root . --format=json --deps '%{cmi:consumer}' |
-  > jq_dune -r '.[] | depsGlobs | "\(.dir_kind) \(.dir) \(.predicate)"'
+  > jq -r 'include "dune"; .[] | depsGlobs | "\(.dir_kind) \(.dir) \(.predicate)"'
   In_build_dir _build/default/.wrapped_lib.objs/byte *.cmi
 
 Case 1 (soundness): edit `inner_a`'s interface to expose `z`.
@@ -70,7 +70,7 @@ the compile-rule deps must cover `wrapped_lib__Inner_a.cmi`, so
   > val z : int
   > EOF
   $ dune build @check
-  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("\\.consumer\\.objs/byte/consumer\\.cm"))]'
+  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("\\.consumer\\.objs/byte/consumer\\.cm"))]'
   [
     {
       "target_files": [
@@ -93,7 +93,7 @@ Promote when per-module narrowing within a library lands.
   > val w : string
   > EOF
   $ dune build @check
-  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("\\.consumer\\.objs/byte/consumer\\.cm"))]'
+  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("\\.consumer\\.objs/byte/consumer\\.cm"))]'
   [
     {
       "target_files": [

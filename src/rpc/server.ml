@@ -796,38 +796,43 @@ type t = Server : 'a H.stage1 -> t
 
 let make (type a) (h : a H.Builder.t) : t = Server (H.Builder.to_handler h)
 
+type served_session =
+  { id : Session.Id.t
+  ; close : unit Fiber.t
+  ; start : unit Fiber.t
+  }
+
 let new_session (Server handler) ~name chan =
   let id = Session.Id.gen () in
   let session = ref None in
-  object
-    method id = id
-
-    method close =
+  let close =
+    Fiber.of_thunk (fun () ->
       match !session with
       | None -> Fiber.return ()
-      | Some session -> Session.Stage1.close session
-
-    method start =
-      Fiber.Pool.with_ (fun pool ->
-        let session_fdecl = Fdecl.create Dyn.opaque in
-        Fdecl.set
-          session_fdecl
-          (Session.Stage1.create
-             ~id
-             ~pool
-             ~name
-             ~version:handler.base.version
-             chan
-             ~finalizer:(fun () ->
-               let session : _ Session.Stage1.t = Fdecl.get session_fdecl in
-               handler.base.on_terminate session));
-        let session' = Fdecl.get session_fdecl in
-        session := Some session';
-        let* () = H.handle handler session' in
-        let* () = Session.Stage1.close session' in
-        session := None;
-        Fiber.return ())
-  end
+      | Some session -> Session.Stage1.close session)
+  in
+  let start =
+    Fiber.Pool.with_ (fun pool ->
+      let session_fdecl = Fdecl.create Dyn.opaque in
+      Fdecl.set
+        session_fdecl
+        (Session.Stage1.create
+           ~id
+           ~pool
+           ~name
+           ~version:handler.base.version
+           chan
+           ~finalizer:(fun () ->
+             let session : _ Session.Stage1.t = Fdecl.get session_fdecl in
+             handler.base.on_terminate session));
+      let session' = Fdecl.get session_fdecl in
+      session := Some session';
+      let* () = H.handle handler session' in
+      let* () = Session.Stage1.close session' in
+      session := None;
+      Fiber.return ())
+  in
+  { id; close; start }
 ;;
 
 module Make (S : Session) = struct
@@ -839,12 +844,12 @@ module Make (S : Session) = struct
         let name = S.name session in
         new_session server ~name ((module S), session)
       in
-      let id = session#id in
+      let id = session.id in
       Event.emit (Session `Start) id;
       let+ res =
         Fiber.map_reduce_errors
           (module Monoid.Unit)
-          (fun () -> session#start)
+          (fun () -> session.start)
           ~on_error:(fun exn ->
             (* TODO report errors in dune_stats as well *)
             (match exn.exn with
@@ -856,7 +861,7 @@ module Make (S : Session) = struct
                  ; "error", Exn_with_backtrace.to_dyn exn
                  ];
                Dune_util.Report_error.report exn);
-            session#close)
+            session.close)
       in
       Event.emit (Session `Stop) id;
       match res with

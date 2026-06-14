@@ -31,36 +31,44 @@ module Lock_dir = struct
     ; solve_for_platforms : Solver_env.t list
     }
 
-  let to_dyn
-        { loc
-        ; path
-        ; version_preference
-        ; solver_env
-        ; unset_solver_vars
-        ; repositories
-        ; constraints
-        ; pins
-        ; depopts
-        ; solve_for_platforms
-        }
-    =
-    Dyn.record
-      [ "loc", Loc.to_dyn loc
-      ; "path", Path.Source.to_dyn path
-      ; ( "version_preference"
-        , Dyn.option Dune_pkg.Version_preference.to_dyn version_preference )
-      ; "solver_env", Dyn.option Solver_env.to_dyn solver_env
-      ; "unset_solver_vars", Dyn.option Package_variable_name.Set.to_dyn unset_solver_vars
-      ; ( "repositories"
-        , Dyn.list
-            Dune_pkg.Pkg_workspace.Repository.Name.to_dyn
-            (List.map repositories ~f:snd) )
-      ; "constraints", Dyn.list Dune_lang.Package_dependency.to_dyn constraints
-      ; "pins", (Dyn.list Dyn.string) (List.map pins ~f:snd)
-      ; "depopts", (Dyn.list Package.Name.to_dyn) (List.map ~f:snd depopts)
-      ; "solve_for_platforms", (Dyn.list Solver_env.to_dyn) solve_for_platforms
+  let repr =
+    Repr.record
+      "lock-dir"
+      [ Repr.field "loc" Loc.repr ~get:(fun t -> t.loc)
+      ; Repr.field "path" Path.Source.repr ~get:(fun t -> t.path)
+      ; Repr.field
+          "version_preference"
+          (Repr.option (Repr.abstract Dune_pkg.Version_preference.to_dyn))
+          ~get:(fun t -> t.version_preference)
+      ; Repr.field
+          "solver_env"
+          (Repr.option (Repr.abstract Solver_env.to_dyn))
+          ~get:(fun t -> t.solver_env)
+      ; Repr.field
+          "unset_solver_vars"
+          (Repr.option (Repr.abstract Package_variable_name.Set.to_dyn))
+          ~get:(fun t -> t.unset_solver_vars)
+      ; Repr.field
+          "repositories"
+          (Repr.list (Repr.abstract Dune_pkg.Pkg_workspace.Repository.Name.to_dyn))
+          ~get:(fun t -> List.map t.repositories ~f:snd)
+      ; Repr.field
+          "constraints"
+          (Repr.list (Repr.abstract Dune_lang.Package_dependency.to_dyn))
+          ~get:(fun t -> t.constraints)
+      ; Repr.field "pins" (Repr.list Repr.string) ~get:(fun t -> List.map t.pins ~f:snd)
+      ; Repr.field
+          "depopts"
+          (Repr.list (Repr.abstract Package.Name.to_dyn))
+          ~get:(fun t -> List.map t.depopts ~f:snd)
+      ; Repr.field
+          "solve_for_platforms"
+          (Repr.list (Repr.abstract Solver_env.to_dyn))
+          ~get:(fun t -> t.solve_for_platforms)
       ]
   ;;
+
+  let to_dyn = Repr.to_dyn repr
 
   let hash
         { loc
@@ -254,9 +262,16 @@ module Lock_dir_selection = struct
     | Name of string
     | Cond of Dune_lang.Cond.t
 
-  let to_dyn = function
-    | Name name -> Dyn.variant "Name" [ Dyn.string name ]
-    | Cond cond -> Dyn.variant "Cond" [ Dune_lang.Cond.to_dyn cond ]
+  let repr =
+    Repr.variant
+      "lock-dir-selection"
+      [ Repr.case "Name" Repr.string ~proj:(function
+          | Name name -> Some name
+          | Cond _ -> None)
+      ; Repr.case "Cond" (Repr.abstract Dune_lang.Cond.to_dyn) ~proj:(function
+          | Cond cond -> Some cond
+          | Name _ -> None)
+      ]
   ;;
 
   let decode =
@@ -340,19 +355,29 @@ module Context = struct
          | _ -> Named { name = context_name; target_exec = None })
     ;;
 
-    let to_dyn =
-      let open Dyn in
-      function
-      | Native -> variant "Native" []
-      | Named ({ name; target_exec } : named) ->
-        variant
-          "Named"
-          [ record
-              [ "name", Context_name.to_dyn name
-              ; ( "target_exec"
-                , option (fun (prog, args) -> list string (prog :: args)) target_exec )
-              ]
-          ]
+    let target_exec_repr =
+      Repr.view (Repr.list Repr.string) ~to_:(fun (prog, args) -> prog :: args)
+    ;;
+
+    let named_repr =
+      Repr.record
+        "Named"
+        [ Repr.field "name" (Repr.abstract Context_name.to_dyn) ~get:(fun t -> t.name)
+        ; Repr.field "target_exec" (Repr.option target_exec_repr) ~get:(fun t ->
+            t.target_exec)
+        ]
+    ;;
+
+    let repr =
+      Repr.variant
+        "target"
+        [ Repr.case0 "Native" ~test:(function
+            | Native -> true
+            | Named _ -> false)
+        ; Repr.case "Named" named_repr ~proj:(function
+            | Named named -> Some named
+            | Native -> None)
+        ]
     ;;
 
     let add ts x =
@@ -368,20 +393,28 @@ module Context = struct
       | Rules_only
       | Not_selected
 
-    let equal x y =
-      match x, y with
-      | Selected, Selected | Rules_only, Rules_only | Not_selected, Not_selected -> true
-      | Selected, (Rules_only | Not_selected)
-      | (Rules_only | Not_selected), Selected
-      | Rules_only, Not_selected
-      | Not_selected, Rules_only -> false
+    let repr =
+      Repr.variant
+        "merlin"
+        [ Repr.case0 "Selected" ~test:(function
+            | Selected -> true
+            | Rules_only | Not_selected -> false)
+        ; Repr.case0 "Rules_only" ~test:(function
+            | Rules_only -> true
+            | Selected | Not_selected -> false)
+        ; Repr.case0 "Not_selected" ~test:(function
+            | Not_selected -> true
+            | Selected | Rules_only -> false)
+        ]
     ;;
 
-    let to_dyn : t -> Dyn.t = function
-      | Selected -> String "selected"
-      | Rules_only -> String "rules_only"
-      | Not_selected -> String "not_selected"
-    ;;
+    let to_dyn = Repr.to_dyn repr
+
+    include Repr.Poly (struct
+        type nonrec t = t
+
+        let repr = repr
+      end)
   end
 
   module Cms_cmt_dependency = struct
@@ -390,19 +423,28 @@ module Context = struct
       | Depends_on_cms
       | Depends_on_cmt
 
-    let equal x y =
-      match x, y with
-      | No_dependency, No_dependency
-      | Depends_on_cms, Depends_on_cms
-      | Depends_on_cmt, Depends_on_cmt -> true
-      | (No_dependency | Depends_on_cms | Depends_on_cmt), _ -> false
+    let repr =
+      Repr.variant
+        "cms-cmt-dependency"
+        [ Repr.case0 "No_dependency" ~test:(function
+            | No_dependency -> true
+            | Depends_on_cms | Depends_on_cmt -> false)
+        ; Repr.case0 "Depends_on_cms" ~test:(function
+            | Depends_on_cms -> true
+            | No_dependency | Depends_on_cmt -> false)
+        ; Repr.case0 "Depends_on_cmt" ~test:(function
+            | Depends_on_cmt -> true
+            | No_dependency | Depends_on_cms -> false)
+        ]
     ;;
 
-    let to_dyn : t -> Dyn.t = function
-      | No_dependency -> String "none"
-      | Depends_on_cms -> String "cms"
-      | Depends_on_cmt -> String "cmt"
-    ;;
+    let to_dyn = Repr.to_dyn repr
+
+    include Repr.Poly (struct
+        type nonrec t = t
+
+        let repr = repr
+      end)
 
     let decode =
       enum [ "none", No_dependency; "cms", Depends_on_cms; "cmt", Depends_on_cmt ]
@@ -426,11 +468,15 @@ module Context = struct
       ; cms_cmt_dependency : Cms_cmt_dependency.t
       }
 
-    let to_dyn { name; targets; host_context; _ } =
-      Dyn.record
-        [ "name", Context_name.to_dyn name
-        ; "targets", Dyn.list Target.to_dyn targets
-        ; "host_context", Dyn.option Context_name.to_dyn host_context
+    let repr =
+      Repr.record
+        "common"
+        [ Repr.field "name" (Repr.abstract Context_name.to_dyn) ~get:(fun t -> t.name)
+        ; Repr.field "targets" (Repr.list Target.repr) ~get:(fun t -> t.targets)
+        ; Repr.field
+            "host_context"
+            (Repr.option (Repr.abstract Context_name.to_dyn))
+            ~get:(fun t -> t.host_context)
         ]
     ;;
 
@@ -586,9 +632,12 @@ module Context = struct
       ; switch : Opam_switch.t
       }
 
-    let to_dyn { base; switch } =
-      let open Dyn in
-      record [ "base", Common.to_dyn base; "switch", Opam_switch.to_dyn switch ]
+    let repr =
+      Repr.record
+        "opam"
+        [ Repr.field "base" Common.repr ~get:(fun t -> t.base)
+        ; Repr.field "switch" (Repr.abstract Opam_switch.to_dyn) ~get:(fun t -> t.switch)
+        ]
     ;;
 
     let equal { base; switch } t =
@@ -638,10 +687,12 @@ module Context = struct
       ; lock_dir : Lock_dir_selection.t option
       }
 
-    let to_dyn { base; lock_dir } =
-      Dyn.record
-        [ "base", Common.to_dyn base
-        ; "lock_dir", Dyn.(option Lock_dir_selection.to_dyn) lock_dir
+    let repr =
+      Repr.record
+        "default"
+        [ Repr.field "base" Common.repr ~get:(fun t -> t.base)
+        ; Repr.field "lock_dir" (Repr.option Lock_dir_selection.repr) ~get:(fun t ->
+            t.lock_dir)
         ]
     ;;
 
@@ -680,12 +731,19 @@ module Context = struct
 
   let hash = Poly.hash
 
-  let to_dyn =
-    let open Dyn in
-    function
-    | Default d -> variant "Default" [ Default.to_dyn d ]
-    | Opam o -> variant "Opam" [ Opam.to_dyn o ]
+  let repr =
+    Repr.variant
+      "context"
+      [ Repr.case "Default" Default.repr ~proj:(function
+          | Default d -> Some d
+          | Opam _ -> None)
+      ; Repr.case "Opam" Opam.repr ~proj:(function
+          | Opam o -> Some o
+          | Default _ -> None)
+      ]
   ;;
+
+  let to_dyn = Repr.to_dyn repr
 
   let equal x y =
     match x, y with
@@ -775,19 +833,27 @@ type t =
   ; pins : Pin_stanza.Workspace.t
   }
 
-let to_dyn { merlin_context; contexts; env; config; repos; lock_dirs; pins; dir } =
-  let open Dyn in
-  record
-    [ "merlin_context", option Context_name.to_dyn merlin_context
-    ; "contexts", list Context.to_dyn contexts
-    ; "env", option Dune_env.to_dyn env
-    ; "config", Dune_config.to_dyn config
-    ; "repos", list Repository.to_dyn repos
-    ; "solver", (list Lock_dir.to_dyn) lock_dirs
-    ; "dir", Path.Source.to_dyn dir
-    ; "pins", Pin_stanza.Workspace.to_dyn pins
+let repr =
+  Repr.record
+    "workspace"
+    [ Repr.field
+        "merlin_context"
+        (Repr.option (Repr.abstract Context_name.to_dyn))
+        ~get:(fun t -> t.merlin_context)
+    ; Repr.field "contexts" (Repr.list Context.repr) ~get:(fun t -> t.contexts)
+    ; Repr.field "env" (Repr.option (Repr.abstract Dune_env.to_dyn)) ~get:(fun t -> t.env)
+    ; Repr.field "config" (Repr.abstract Dune_config.to_dyn) ~get:(fun t -> t.config)
+    ; Repr.field
+        "repos"
+        (Repr.list (Repr.abstract Repository.to_dyn))
+        ~get:(fun t -> t.repos)
+    ; Repr.field "solver" (Repr.list Lock_dir.repr) ~get:(fun t -> t.lock_dirs)
+    ; Repr.field "dir" Path.Source.repr ~get:(fun t -> t.dir)
+    ; Repr.field "pins" (Repr.abstract Pin_stanza.Workspace.to_dyn) ~get:(fun t -> t.pins)
     ]
 ;;
+
+let to_dyn = Repr.to_dyn repr
 
 let equal { merlin_context; contexts; env; config; repos; lock_dirs; dir; pins } w =
   Option.equal Context_name.equal merlin_context w.merlin_context
@@ -871,26 +937,37 @@ module Clflags = struct
     && Dune_config.Partial.equal t.config_from_config_file config_from_config_file
   ;;
 
-  let to_dyn
-        { x
-        ; profile
-        ; instrument_with
-        ; workspace_file
-        ; config_from_command_line
-        ; config_from_config_file
-        }
-    =
-    let open Dyn in
-    record
-      [ "x", option Context_name.to_dyn x
-      ; "profile", option Profile.to_dyn profile
-      ; "instrument_with", option (list Lib_name.to_dyn) instrument_with
-      ; "workspace_file", option Path.Outside_build_dir.to_dyn workspace_file
-      ; "config_from_command_line", Dune_config.Partial.to_dyn config_from_command_line
-      ; "config_from_config_file", Dune_config.Partial.to_dyn config_from_config_file
+  let repr =
+    Repr.record
+      "clflags"
+      [ Repr.field
+          "x"
+          (Repr.option (Repr.abstract Context_name.to_dyn))
+          ~get:(fun t -> t.x)
+      ; Repr.field
+          "profile"
+          (Repr.option (Repr.abstract Profile.to_dyn))
+          ~get:(fun t -> t.profile)
+      ; Repr.field
+          "instrument_with"
+          (Repr.option (Repr.list (Repr.abstract Lib_name.to_dyn)))
+          ~get:(fun t -> t.instrument_with)
+      ; Repr.field
+          "workspace_file"
+          (Repr.option (Repr.abstract Path.Outside_build_dir.to_dyn))
+          ~get:(fun t -> t.workspace_file)
+      ; Repr.field
+          "config_from_command_line"
+          (Repr.abstract Dune_config.Partial.to_dyn)
+          ~get:(fun t -> t.config_from_command_line)
+      ; Repr.field
+          "config_from_config_file"
+          (Repr.abstract Dune_config.Partial.to_dyn)
+          ~get:(fun t -> t.config_from_config_file)
       ]
   ;;
 
+  let to_dyn = Repr.to_dyn repr
   let t = Fdecl.create to_dyn
   let set v = Fdecl.set t v
   let t () = Fdecl.get t

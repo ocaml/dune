@@ -1283,7 +1283,7 @@ module File_kind = struct
         let fn = Filename.remove_extension fn in
         let check suffix = String.ends_with fn ~suffix in
         let x86 gnu _msvc =
-          (* CR rgrinberg: select msvc flags on windows *)
+          (* CR-someday rgrinberg: select msvc flags on windows *)
           Some `amd64, gnu
         in
         if check "_sse2"
@@ -1673,7 +1673,7 @@ module Library = struct
       Fiber.return [ mangled ]
     | Ml { kind = `Mll; _ } -> copy_lexer fn dst ~header >>> Fiber.return [ mangled ]
     | Ml { kind = `Mly; _ } ->
-      (* CR rgrinberg: what if the parser already has an mli? *)
+      (* CR-someday rgrinberg: what if the parser already has an mli? *)
       copy_parser fn dst ~header >>> Fiber.return [ mangled; mangled ^ "i" ]
   ;;
 

@@ -72,6 +72,13 @@ val init : Builder.t -> t * Dune_config_file.Dune_config.t
     commands. *)
 val examples : (string * string) list -> Cmdliner.Manpage.block
 
+val command_alias
+  :  ?orig_name:string
+  -> 'a Cmdliner.Cmd.t
+  -> 'b Cmdliner.Term.t
+  -> string
+  -> 'b Cmdliner.Cmd.t
+
 (** [command_synopsis subcommands] is a custom [SYNOPSIS] manpage section
     listing the given [subcommands]. Each subcommand is prefixed with the `dune`
     top-level command. *)

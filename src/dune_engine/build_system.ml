@@ -9,22 +9,23 @@ module Progress = struct
     ; number_of_rules_failed : int
     }
 
-  let to_dyn t =
-    Dyn.record
-      [ "number_of_rules_discovered", Dyn.int t.number_of_rules_discovered
-      ; "number_of_rules_executed", Dyn.int t.number_of_rules_executed
-      ; "number_of_rules_failed", Dyn.int t.number_of_rules_failed
+  let repr =
+    Repr.record
+      "Progress"
+      [ Repr.field "number_of_rules_discovered" Repr.int ~get:(fun t ->
+          t.number_of_rules_discovered)
+      ; Repr.field "number_of_rules_executed" Repr.int ~get:(fun t ->
+          t.number_of_rules_executed)
+      ; Repr.field "number_of_rules_failed" Repr.int ~get:(fun t ->
+          t.number_of_rules_failed)
       ]
   ;;
 
-  let equal
-        { number_of_rules_discovered; number_of_rules_executed; number_of_rules_failed }
-        t
-    =
-    Int.equal number_of_rules_discovered t.number_of_rules_discovered
-    && Int.equal number_of_rules_executed t.number_of_rules_executed
-    && Int.equal number_of_rules_failed t.number_of_rules_failed
-  ;;
+  include Repr.Poly (struct
+      type nonrec t = t
+
+      let repr = repr
+    end)
 
   let init =
     { number_of_rules_discovered = 0
@@ -44,29 +45,49 @@ module State = struct
     | Build_succeeded__now_waiting_for_changes
     | Build_failed__now_waiting_for_changes
 
-  let to_dyn = function
-    | Initializing -> Dyn.variant "Initializing" []
-    | Building progress -> Dyn.variant "Building" [ Progress.to_dyn progress ]
-    | Restarting_current_build -> Dyn.variant "Restarting_current_build" []
-    | Build_succeeded__now_waiting_for_changes ->
-      Dyn.variant "Build_succeeded__now_waiting_for_changes" []
-    | Build_failed__now_waiting_for_changes ->
-      Dyn.variant "Build_failed__now_waiting_for_changes" []
+  let repr =
+    Repr.variant
+      "State"
+      [ Repr.case0 "Initializing" ~test:(function
+          | Initializing -> true
+          | Building _
+          | Restarting_current_build
+          | Build_succeeded__now_waiting_for_changes
+          | Build_failed__now_waiting_for_changes -> false)
+      ; Repr.case "Building" Progress.repr ~proj:(function
+          | Building progress -> Some progress
+          | Initializing
+          | Restarting_current_build
+          | Build_succeeded__now_waiting_for_changes
+          | Build_failed__now_waiting_for_changes -> None)
+      ; Repr.case0 "Restarting_current_build" ~test:(function
+          | Restarting_current_build -> true
+          | Initializing
+          | Building _
+          | Build_succeeded__now_waiting_for_changes
+          | Build_failed__now_waiting_for_changes -> false)
+      ; Repr.case0 "Build_succeeded__now_waiting_for_changes" ~test:(function
+          | Build_succeeded__now_waiting_for_changes -> true
+          | Initializing
+          | Building _
+          | Restarting_current_build
+          | Build_failed__now_waiting_for_changes -> false)
+      ; Repr.case0 "Build_failed__now_waiting_for_changes" ~test:(function
+          | Build_failed__now_waiting_for_changes -> true
+          | Initializing
+          | Building _
+          | Restarting_current_build
+          | Build_succeeded__now_waiting_for_changes -> false)
+      ]
   ;;
 
-  let equal x y =
-    match x, y with
-    | Building x, Building y -> Progress.equal x y
-    | Initializing, Initializing
-    | Restarting_current_build, Restarting_current_build
-    | Build_succeeded__now_waiting_for_changes, Build_succeeded__now_waiting_for_changes
-    | Build_failed__now_waiting_for_changes, Build_failed__now_waiting_for_changes -> true
-    | Building _, _
-    | Initializing, _
-    | Restarting_current_build, _
-    | Build_succeeded__now_waiting_for_changes, _
-    | Build_failed__now_waiting_for_changes, _ -> false
-  ;;
+  let to_dyn = Repr.to_dyn repr
+
+  include Repr.Poly (struct
+      type nonrec t = t
+
+      let repr = repr
+    end)
 
   let t = Fiber.Svar.create Initializing
 

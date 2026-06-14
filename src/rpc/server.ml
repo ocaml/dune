@@ -14,7 +14,12 @@ module Poller = struct
     }
 
   let create session_id name = { id = Id.gen (); name; session_id }
-  let to_dyn { id; name = _; session_id = _ } = Id.to_dyn id
+
+  let repr =
+    Repr.view (Repr.abstract Id.to_dyn) ~to_:(fun { id; name = _; session_id = _ } -> id)
+  ;;
+
+  let to_dyn = Repr.to_dyn repr
   let compare x y = Id.compare x.id y.id
 end
 
@@ -40,6 +45,7 @@ module type Session = Server_intf.Session
 module Session = struct
   module Id = Session_id
 
+  let id_repr = Repr.abstract Id.to_dyn
   let rpc_id_repr = Repr.abstract Dune_rpc.Private.Id.to_dyn
   let rpc_call_repr = Repr.abstract Dune_rpc.Private.Call.to_dyn
 
@@ -69,15 +75,23 @@ module Session = struct
           Fiber.Ivar.fill t.ivar ())
     ;;
 
-    let to_dyn { state; ivar = _; finalizer = _ } =
-      let name =
-        match state with
-        | `Open -> "Open"
-        | `Closed -> "Closed"
-        | `Closing -> "Closing"
-      in
-      Dyn.variant name []
+    let state_repr =
+      Repr.variant
+        "Close.state"
+        [ Repr.case0 "Open" ~test:(function
+            | `Open -> true
+            | `Closed | `Closing -> false)
+        ; Repr.case0 "Closed" ~test:(function
+            | `Closed -> true
+            | `Open | `Closing -> false)
+        ; Repr.case0 "Closing" ~test:(function
+            | `Closing -> true
+            | `Open | `Closed -> false)
+        ]
     ;;
+
+    let repr = Repr.view state_repr ~to_:(fun { state; ivar = _; finalizer = _ } -> state)
+    let to_dyn = Repr.to_dyn repr
   end
 
   type 'a state =
@@ -112,6 +126,26 @@ module Session = struct
           (Repr.pair Repr.int Repr.int)
           ~get:Initialize.Request.dune_version
       ; Repr.field "protocol_version" Repr.int ~get:Initialize.Request.protocol_version
+      ]
+  ;;
+
+  let initialized_state_repr state_repr =
+    Repr.record
+      "Initialized"
+      [ Repr.field "init" initialize_request_repr ~get:fst
+      ; Repr.field "state" state_repr ~get:snd
+      ]
+  ;;
+
+  let session_state_repr state_repr =
+    Repr.variant
+      "Session.state"
+      [ Repr.case0 "Uninitialized" ~test:(function
+          | Uninitialized -> true
+          | Initialized _ -> false)
+      ; Repr.case "Initialized" (initialized_state_repr state_repr) ~proj:(function
+          | Uninitialized -> None
+          | Initialized { init; state } -> Some (init, state))
       ]
   ;;
 
@@ -275,17 +309,6 @@ module Session = struct
 
     let compare x y = Id.compare x.id y.id
 
-    let dyn_of_state f =
-      let open Dyn in
-      function
-      | Uninitialized -> variant "Uninitialized" []
-      | Initialized { init; state } ->
-        let record =
-          record [ "init", Repr.to_dyn initialize_request_repr init; "state", f state ]
-        in
-        variant "Initialized" [ record ]
-    ;;
-
     let pending_requests_repr =
       Repr.view (Repr.list Pending_request.repr) ~to_:(fun pending ->
         Table.to_list pending
@@ -297,32 +320,28 @@ module Session = struct
       Repr.view (Repr.list request_repr) ~to_:Dune_rpc.Private.Id.Map.values
     ;;
 
-    let to_dyn
-          f
-          { id
-          ; version = _
-          ; state
-          ; close
-          ; chan = _
-          ; pool = _
-          ; pending
-          ; requests_in_flight
-          ; menu
-          ; name
-          }
-      =
-      let open Dyn in
-      record
-        [ "id", Id.to_dyn id
-        ; "state", dyn_of_state f state
-        ; "menu", Dyn.option Menu.to_dyn menu
-        ; "name", Dyn.string name
-        ; "close", Close.to_dyn close
-        ; "requests_in_flight", Repr.to_dyn requests_in_flight_repr requests_in_flight
-        ; "pending_requests", Repr.to_dyn pending_requests_repr pending
+    let repr state_repr =
+      Repr.record
+        "Stage1"
+        [ Repr.field "id" id_repr ~get:(fun { id; _ } -> id)
+        ; Repr.field "state" (session_state_repr state_repr) ~get:(fun { state; _ } ->
+            state)
+        ; Repr.field
+            "menu"
+            (Repr.option (Repr.abstract Menu.to_dyn))
+            ~get:(fun { menu; _ } -> menu)
+        ; Repr.field "name" Repr.string ~get:(fun { name; _ } -> name)
+        ; Repr.field "close" (Repr.abstract Close.to_dyn) ~get:(fun { close; _ } -> close)
+        ; Repr.field
+            "requests_in_flight"
+            requests_in_flight_repr
+            ~get:(fun { requests_in_flight; _ } -> requests_in_flight)
+        ; Repr.field "pending_requests" pending_requests_repr ~get:(fun { pending; _ } ->
+            pending)
         ]
     ;;
 
+    let to_dyn f = Repr.to_dyn (repr (Repr.abstract f))
     let name t = t.name
   end
 
@@ -389,9 +408,15 @@ module Session = struct
                  [ "error", Response.Error.to_dyn error ])))
   ;;
 
-  let to_dyn f t =
-    Dyn.Record [ "handler", Dyn.String "<handler>"; "base", Stage1.to_dyn f t.base ]
+  let repr state_repr =
+    Repr.record
+      "Session"
+      [ Repr.field "handler" Repr.string ~get:(fun _ -> "<handler>")
+      ; Repr.field "base" (Stage1.repr state_repr) ~get:(fun { base; _ } -> base)
+      ]
   ;;
+
+  let to_dyn f = Repr.to_dyn (repr (Repr.abstract f))
 
   let find_or_create_poller t (name : Procedures.Poll.Name.t) id =
     match Dune_rpc.Private.Id.Map.find t.pollers id with

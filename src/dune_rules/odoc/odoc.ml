@@ -243,6 +243,16 @@ end
 
 let odoc_ext = ".odoc"
 
+let odoc_files_in_dirs dirs =
+  let predicate =
+    Glob.matching_extensions [ Filename.Extension.odoc ] |> Predicate_lang.Glob.of_glob
+  in
+  Command.Args.Hidden_deps
+    (List.fold_left dirs ~init:Dune_engine.Dep.Set.empty ~f:(fun deps dir ->
+       let selector = File_selector.of_predicate_lang ~dir predicate in
+       Dune_engine.Dep.Set.add deps (Dune_engine.Dep.file_selector selector)))
+;;
+
 module Mld : sig
   type t
 
@@ -341,7 +351,11 @@ let run_odoc sctx ~dir command ~quiet ~flags_for args =
   let deps = Action_builder.env_var "ODOC_SYNTAX" in
   let open Action_builder.With_targets.O in
   Action_builder.with_no_targets deps
-  >>> Command.run_dyn_prog ~dir program [ A command; Dyn base_flags; S args ]
+  >>> Command.run_dyn_prog
+        ~dir
+        ~sandbox:Sandbox_config.needs_sandboxing
+        program
+        [ A command; Dyn base_flags; S args ]
 ;;
 
 let module_deps (m : Module.t) ~obj_dir ~(dep_graphs : Dep_graph.Ml_kind.t) =
@@ -444,7 +458,8 @@ let odoc_include_flags ctx pkg requires =
        Path.Set.to_list paths
      in
      Command.Args.S
-       (List.concat_map paths ~f:(fun dir -> [ Command.Args.A "-I"; Path dir ])))
+       (odoc_files_in_dirs paths
+        :: List.concat_map paths ~f:(fun dir -> [ Command.Args.A "-I"; Path dir ])))
 ;;
 
 let link_odoc_rules sctx (odoc_file : Artifact.t) ~pkg ~requires =
@@ -507,6 +522,33 @@ let setup_library_odoc_rules cctx (local_lib : Lib.Local.t) =
   >>= Dep.setup_deps ctx (Lib local_lib)
 ;;
 
+let odoc_output_targets sctx odoc_file (out : Output_format.t) ~output_dir =
+  let action =
+    let command =
+      match out with
+      | Html | Json -> "html-targets"
+      | Markdown -> "markdown-targets"
+    in
+    let ctx = Super_context.context sctx in
+    let open Action_builder.O in
+    let* odoc = odoc_program sctx output_dir in
+    Command.run'
+      odoc
+      ~sandbox:Sandbox_config.needs_sandboxing
+      ~dir:(Path.build output_dir)
+      [ Command.Args.A command
+      ; A "-o"
+      ; Path (Path.build output_dir)
+      ; Dep (Path.build (Artifact.odocl_file ctx odoc_file))
+      ; Output_format.args out
+      ]
+  in
+  Super_context.execute_action_stdout sctx ~loc:Loc.none ~dir:output_dir action
+  >>| String.split_lines
+  >>| List.filter ~f:(fun s -> not (String.is_empty s))
+  >>| List.map ~f:(Path.Build.relative output_dir)
+;;
+
 let setup_generate sctx ~search_db odoc_file out =
   let ctx = Super_context.context sctx in
   let odoc_support_path = Paths.odoc_support ctx in
@@ -518,7 +560,6 @@ let setup_generate sctx ~search_db odoc_file out =
       , [ Command.Args.A "-o"
         ; Command.Args.Path (Path.build (Paths.markdown_root ctx))
         ; Command.Args.Dep (Path.build (Artifact.odocl_file ctx odoc_file))
-        ; Command.Args.Hidden_targets [ Artifact.output_file ctx out odoc_file ]
         ] )
     | Html | Json ->
       let search_args =
@@ -538,18 +579,59 @@ let setup_generate sctx ~search_db odoc_file out =
         ; Command.Args.Path (Path.build odoc_support_path)
         ; Command.Args.Dep (Path.build (Artifact.odocl_file ctx odoc_file))
         ; Output_format.args out
-        ; Command.Args.Hidden_targets [ Artifact.output_file ctx out odoc_file ]
         ] )
+  in
+  let* targets =
+    match out with
+    | Markdown -> odoc_output_targets sctx odoc_file out ~output_dir
+    | Html | Json -> Memo.return [ Artifact.output_file ctx out odoc_file ]
   in
   let run_odoc =
     run_odoc sctx ~dir:(Path.build output_dir) command ~quiet:false ~flags_for:None args
+    |> Action_builder.With_targets.add ~file_targets:targets
   in
   add_rule sctx run_odoc
 ;;
 
+let setup_generate_module_html_and_json sctx ~search_db odoc_file =
+  let ctx = Super_context.context sctx in
+  let odoc_support_path = Paths.odoc_support ctx in
+  let html_root = Paths.html_root ctx in
+  let run_odoc out =
+    let search_args =
+      Sherlodoc.odoc_args sctx ~search_db ~dir_sherlodoc_dot_js:(Paths.html_root ctx)
+    in
+    run_odoc
+      sctx
+      ~dir:(Path.build html_root)
+      "html-generate"
+      ~quiet:false
+      ~flags_for:None
+      [ search_args
+      ; Command.Args.A "-o"
+      ; Command.Args.Path (Path.build html_root)
+      ; Command.Args.A "--support-uri"
+      ; Command.Args.Path (Path.build odoc_support_path)
+      ; Command.Args.A "--theme-uri"
+      ; Command.Args.Path (Path.build odoc_support_path)
+      ; Command.Args.Dep (Path.build (Artifact.odocl_file ctx odoc_file))
+      ; Output_format.args out
+      ]
+  in
+  let dir = Artifact.output_file ctx Html odoc_file |> Path.Build.parent_exn in
+  let rule =
+    Action_builder.progn [ run_odoc Html; run_odoc Json ]
+    |> Action_builder.With_targets.add_directories ~directory_targets:[ dir ]
+  in
+  add_rule sctx rule
+;;
+
 let setup_generate_html_and_json sctx ~search_db odoc_file =
-  let* () = setup_generate sctx ~search_db:(Some search_db) odoc_file Html in
-  setup_generate sctx ~search_db:(Some search_db) odoc_file Json
+  match odoc_file.Artifact.target with
+  | Lib _ -> setup_generate_module_html_and_json sctx ~search_db odoc_file
+  | Pkg _ ->
+    let* () = setup_generate sctx ~search_db:(Some search_db) odoc_file Html in
+    setup_generate sctx ~search_db:(Some search_db) odoc_file Json
 ;;
 
 let setup_generate_markdown sctx odoc_file =
@@ -1158,8 +1240,14 @@ let setup_private_library_doc_alias sctx ~scope ~dir (l : Library.t) =
 ;;
 
 let has_rules ?(directory_targets = Path.Build.Map.empty) m =
-  let rules = Rules.collect_unit (fun () -> m) in
-  Memo.return (Gen_rules.make ~directory_targets rules)
+  let+ rules = Rules.collect_unit (fun () -> m) in
+  let directory_targets =
+    Path.Build.Map.union
+      directory_targets
+      (Rules.directory_targets rules)
+      ~f:(fun _ loc _ -> Some loc)
+  in
+  Gen_rules.make ~directory_targets (Memo.return rules)
 ;;
 
 let with_package pkg ~f =

@@ -15,6 +15,7 @@ let add_index_db_rule sctx ~dir ~external_odocls odocls =
   let action =
     Command.run_dyn_prog
       ~dir:(Path.build dir)
+      ~sandbox:Sandbox_config.needs_sandboxing
       program
       Command.Args.
         [ A "index"
@@ -37,6 +38,7 @@ let sherlodoc_dot_js sctx ~dir =
     sctx
     (Command.run_dyn_prog
        ~dir:(Path.build dir)
+       ~sandbox:Sandbox_config.needs_sandboxing
        program
        [ A "js"; Target (Paths.sherlodoc_dot_js ~dir) ])
 ;;

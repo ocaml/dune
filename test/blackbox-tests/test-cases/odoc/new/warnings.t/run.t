@@ -37,7 +37,7 @@ In release mode, no error:
 
   $ dune build -p foo_doc,foo_lib \
   >   "$foo_doc_odoc" \
-  >   "$foo_lib_odoc"
+  >   "$foo_lib_odoc" 2>&1 | sed -E 's#_build/\.sandbox/[0-9a-f]+/default#_build/default#g'
   (cd _build/default/_doc_new/odoc/local/foo_doc && odoc compile -o page-foo.odoc ../../../../foo_doc/foo.mld -I ../../../index/local/foo_doc --parent 'page-"foo_doc"')
   File "../../../../foo_doc/foo.mld", line 4, characters 0-0:
   Warning: End of text is not allowed in '[...]' (code).

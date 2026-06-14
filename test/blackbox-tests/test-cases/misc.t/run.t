@@ -1,6 +1,19 @@
   $ dune runtest --display short
           diff alias runtest
-          diff alias runtest
+  File "dune", lines 17-20, characters 0-91:
+  17 | (alias
+  18 |  (name   runtest)
+  19 |  (deps   result expected)
+  20 |  (action (run diff -u result expected)))
+          diff alias runtest (exit 1)
+  --- result	2026-06-12 15:55:16.510796208 +0100
+  +++ expected	2026-06-12 15:55:16.510796208 +0100
+  @@ -1 +1 @@
+  -./dune ./a.txt ./b.txt ./c.txt
+  \ No newline at end of file
+  +dune a.txt b.txt c.txt
+  \ No newline at end of file
+  [1]
 
 Test that incompatible options are properly reported
 ----------------------------------------------------

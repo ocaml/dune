@@ -26,9 +26,9 @@ Expanding a pform with multiple values:
 
   $ dune build foo.txt
   $ cat _build/default/foo.txt
-  foo.txt bar.txt
-  foo.txt bar.txt
-  beforefoo.txtbar.txtafter
-  beforefoo.txt bar.txtafter
-  foo.txtbar.txtfoo.txtbar.txt
-  foo.txt bar.txtfoo.txt bar.txt
+  ./foo.txt ./bar.txt
+  ./foo.txt ./bar.txt
+  before./foo.txt./bar.txtafter
+  before./foo.txt ./bar.txtafter
+  ./foo.txt./bar.txt./foo.txt./bar.txt
+  ./foo.txt ./bar.txt./foo.txt ./bar.txt

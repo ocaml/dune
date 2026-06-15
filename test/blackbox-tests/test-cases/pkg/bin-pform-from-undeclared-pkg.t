@@ -110,7 +110,7 @@ All the packages' bin layouts are added to $PATH:
 
 
 With a package defined in the project, *with a dir field, but no dependencies*,
-the behavior is still the same.
+the program mybin is on the PATH, but not found via the bin pform.
 
   $ make_dune_project 3.24
   $ cat >> dune-project << 'EOF'
@@ -122,11 +122,20 @@ the behavior is still the same.
 
   $ dune clean
   $ dune build @all
+  File "dune", line 10, characters 37-49:
+  10 |    (with-stdout-to mybin-output (run %{bin:mybin}))))
+                                            ^^^^^^^^^^^^
+  Error: Program mybin not found in the tree or in PATH
+   (context: default)
+  [1]
 
   $ cat _build/default/mybin-output
-  from provider
+  cat: _build/default/mybin-output: No such file or directory
+  [1]
 
-All the packages' bin layouts are added to $PATH:
+Currently, the filtering is only happening within the 'which' function, and not
+when setting up the context's env. So, all the packages' bin layouts are added
+to $PATH:
 
   $ cat _build/default/system-mybin-output
   from provider
@@ -136,10 +145,9 @@ All the packages' bin layouts are added to $PATH:
   $PWD/_build/_private/default/.pkg/check-env.0.0.1-$DIGEST2/target/bin
 
 
-
-
 With a package defined in the project, *with a dir field, and explicit depends
-on only [check-env]*, the behavior remains the same.
+on only [check-env]*, the program mybin is still not found via the bin pform,
+but can be found on the PATH.
 
   $ make_dune_project 3.24
   $ cat >> dune-project << 'EOF'
@@ -152,11 +160,20 @@ on only [check-env]*, the behavior remains the same.
 
   $ dune clean
   $ dune build @all
+  File "dune", line 10, characters 37-49:
+  10 |    (with-stdout-to mybin-output (run %{bin:mybin}))))
+                                            ^^^^^^^^^^^^
+  Error: Program mybin not found in the tree or in PATH
+   (context: default)
+  [1]
 
   $ cat _build/default/mybin-output
-  from provider
+  cat: _build/default/mybin-output: No such file or directory
+  [1]
 
-All the packages' bin layouts are added to $PATH:
+Currently, the filtering is only happening when running 'which' and not when
+setting up the context's env. So, all the packages' bin layouts are added to
+$PATH:
 
   $ cat _build/default/system-mybin-output
   from provider
@@ -166,8 +183,11 @@ All the packages' bin layouts are added to $PATH:
   $PWD/_build/_private/default/.pkg/check-env.0.0.1-$DIGEST2/target/bin
 
 
+
+
 With a package defined in the project, *with a dir field, and explicit depends
-on only [provider]*, the behavior remains the same.
+on only [provider]*, the program mybin can be found via the bin pform and is
+also on the PATH.
 
   $ make_dune_project 3.24
   $ cat >> dune-project << 'EOF'

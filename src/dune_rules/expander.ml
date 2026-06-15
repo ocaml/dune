@@ -759,6 +759,37 @@ let expand_pkg_macro ~loc { context; _ } macro_invocation =
   [ Value.Path path ]
 ;;
 
+let package_depends_by_src_dir t =
+  let open Memo.O in
+  let context_name = Context.name t.context in
+  let* lock_active = Pkg_rules.lock_dir_active context_name in
+  if not lock_active
+  then Memo.return None
+  else (
+    let src_dir = Path.Build.drop_build_context_exn t.dir in
+    match Dune_project.exclusive_package t.project ~dir:src_dir with
+    | None ->
+      (* No owning package implies no narrowing. Use the previous default of
+         all lock packages *)
+      Memo.return None
+    | Some pkg_id ->
+      let package_deps =
+        match
+          Package.Name.Map.find (Dune_project.packages t.project) (Package.Id.name pkg_id)
+        with
+        | None ->
+          (* Package ID couldn't be mapped to an actual package in the
+             project. Use the previous default of all lock packages *)
+          None
+        | Some pkg ->
+          Package.depends pkg
+          |> List.map ~f:(fun (pd : Package_dependency.t) -> pd.name)
+          |> Package.Name.Set.of_list
+          |> Option.some
+      in
+      Memo.return package_deps)
+;;
+
 let expand_pform_macro
       (context : Context.t)
       ~dir
@@ -794,10 +825,12 @@ let expand_pform_macro
           (let* prog =
              Action_builder.of_memo
                (let open Memo.O in
-                let* artifacts_host = t.artifacts_host in
+                let* artifacts_host = t.artifacts_host
+                and* narrow_to_deps = package_depends_by_src_dir t in
                 Artifacts.binary
                   ~loc:(Some (Dune_lang.Template.Pform.loc source))
                   ~dir:t.dir
+                  ~narrow_to_deps
                   artifacts_host
                   s)
            in

@@ -47,7 +47,7 @@ let local_binaries { local_bins; _ } =
     | _, Origin _origins -> None)
 ;;
 
-let analyze_binary t ~dir name =
+let analyze_binary t ~dir ?(narrow_to_deps = None) name =
   match Filename.analyze_program_name name with
   | Absolute -> Memo.return (`Resolved (Path.of_filename_relative_to_initial_cwd name))
   | (In_path | Relative_to_current_dir) as kind ->
@@ -65,7 +65,7 @@ let analyze_binary t ~dir name =
       match lookup_name with
       | None -> Memo.return `None
       | Some lookup_name ->
-        Context.which t.context lookup_name
+        Context.which t.context ~narrow_to_deps lookup_name
         >>| (function
          | None -> `None
          | Some path -> `Resolved path)
@@ -95,8 +95,8 @@ let analyze_binary t ~dir name =
             ]))
 ;;
 
-let binary t ?hint ?(where = Original_path) ~dir ~loc name =
-  analyze_binary t ~dir name
+let binary t ?hint ?(where = Original_path) ?(narrow_to_deps = None) ~dir ~loc name =
+  analyze_binary t ~dir ~narrow_to_deps name
   >>= function
   | `Resolved path -> Memo.return @@ Ok path
   | `None ->

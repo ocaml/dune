@@ -34,6 +34,7 @@ val binary
   :  t
   -> ?hint:string
   -> ?where:where
+  -> ?narrow_to_deps:Package.Name.Set.t option
   -> dir:Path.Build.t
   -> loc:Loc.t option
   -> string

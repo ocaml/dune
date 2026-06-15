@@ -8,6 +8,16 @@ val dir : t -> Path.Build.t
 val context : t -> Context_name.t
 val project : t -> Dune_project.t
 
+(** The packages whose binaries the stanzas in this expander's directory may
+    use: the package owning the directory (via its [(dir ...)] field) and the
+    packages listed in that package's [(depends ...)] and [(depopts ...)]
+    fields. Dependencies of those packages are not included unless they are
+    listed too.
+
+    [None] when dune pkg management is not enabled or the directory has no
+    owning package, and means that every package is visible. *)
+val visible_packages : t -> Package.Name.Selection.t Memo.t
+
 val make_root
   :  project:Dune_project.t
   -> scope:Scope.t Memo.t

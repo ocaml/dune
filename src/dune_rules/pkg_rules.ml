@@ -2568,23 +2568,57 @@ let all_deps universe =
 
 let all_project_deps context = all_deps (Dependencies context)
 
-let which context =
-  let artifacts_and_deps =
-    Memo.lazy_
-      ~name:"lock-directory-binaries"
-      ~human_readable_description:(fun () ->
-        Pp.textf
-          "Loading all binaries in the lock directory for %S"
-          (Context_name.to_string context))
-      (fun () ->
-         let+ { binaries; dep_info = _ } =
-           all_project_deps context >>= Action_expander.Artifacts_and_deps.of_closure
-         in
-         binaries)
-  in
-  Staged.stage (fun program ->
-    let+ artifacts = Memo.Lazy.force artifacts_and_deps in
-    Filename.Map.find artifacts program)
+(* The packages of the lock directory reachable from [packages], or all of them
+   when [packages] is [All]. [packages] holds the names visible to a directory,
+   which include the workspace packages; those are absent from the lock
+   directory and so drop out of the filter. *)
+let project_deps_closure ~(packages : Package.Name.Selection.t) context =
+  let+ all_project_deps = all_project_deps context in
+  match packages with
+  | All -> all_project_deps
+  | Only packages ->
+    List.filter all_project_deps ~f:(fun (pkg : Pkg.t) ->
+      Package.Name.Set.mem packages pkg.info.name)
+    |> Pkg.top_closure
+;;
+
+let describe_packages : Package.Name.Selection.t -> string = function
+  | All -> "all packages"
+  | Only packages ->
+    Package.Name.Set.to_list packages
+    |> List.map ~f:Package.Name.to_string
+    |> String.concat ~sep:", "
+;;
+
+module Context_and_packages = struct
+  type t = Context_name.t * Package.Name.Selection.t
+
+  let to_dyn = Tuple.T2.to_dyn Context_name.to_dyn Package.Name.Selection.to_dyn
+  let equal = Tuple.T2.equal Context_name.equal Package.Name.Selection.equal
+  let hash = Tuple.T2.hash Context_name.hash Package.Name.Selection.hash
+end
+
+let lock_dir_binaries =
+  Memo.create
+    "lock-directory-binaries"
+    ~input:(module Context_and_packages)
+    ~human_readable_description:(fun (context, packages) ->
+      Some
+        (Pp.textf
+           "Loading the binaries of %s in the lock directory for %S"
+           (describe_packages packages)
+           (Context_name.to_string context)))
+    (fun (context, packages) ->
+       let+ { binaries; dep_info = _ } =
+         project_deps_closure ~packages context
+         >>= Action_expander.Artifacts_and_deps.of_closure
+       in
+       binaries)
+;;
+
+let which ~packages context program =
+  let+ binaries = Memo.exec lock_dir_binaries (context, packages) in
+  Filename.Map.find binaries program
 ;;
 
 let ocamlpath universe =

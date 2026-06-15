@@ -127,7 +127,7 @@ check: $(BIN)
 
 .PHONY: start
 start: $(BIN)
-	@$(BIN) init start-file
+	@[ -e start/dune ] || $(BIN) init start-file
 	@$(BIN) build @start/build -w
 
 .PHONY: fmt

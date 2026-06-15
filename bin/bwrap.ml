@@ -5,15 +5,9 @@ type command =
   ; argv : string list
   }
 
-let find_in_path_exn prog =
-  match Bin.which ~path:(Env_path.path Env.initial) prog with
-  | Some path -> path
-  | None -> User_error.raise [ Pp.textf "unable to find %s in PATH" prog ]
-;;
-
 let prog () =
   match Platform.OS.value with
-  | Linux -> find_in_path_exn "bwrap"
+  | Linux -> Util.find_in_path_exn "bwrap"
   | _ ->
     User_error.raise [ Pp.text "--sandbox-actions is currently only supported on Linux" ]
 ;;

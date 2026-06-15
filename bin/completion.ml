@@ -53,8 +53,18 @@ let term shell =
 
 let bash =
   let info =
-    let doc = "TODO doc1" in
-    let man = [ `P "TODO description1" ] in
+    let doc = "Generate a bash completion script for the dune binary." in
+    let man =
+      [ `P
+          "Print out a bash completion script. It should then be written to a file that \
+           will be sourced, for example in \
+           ~/.local/share/bash-completion/completions/dune, or it can be sourced \
+           directly by adding this line to your .bashrc:"
+      ; `Pre
+          {|
+      eval "\$(dune completion bash)"|}
+      ]
+    in
     Cmd.info "bash" ~doc ~man
   in
   Cmd.v info (term Bash)
@@ -62,8 +72,17 @@ let bash =
 
 let zsh =
   let info =
-    let doc = "TODO doc2" in
-    let man = [ `P "TODO description2" ] in
+    let doc = "Generate a zsh completion script for the dune binary." in
+    let man =
+      [ `P
+          "Print out a zsh completion script. It should then be written to a file that \
+           will be sourced, for example in ~/.local/share/zsh/site-functions/_dune, or \
+           it can be sourced directly by adding this line to your .zshrc:"
+      ; `Pre
+          {|
+          eval "\$(dune completion zsh)"|}
+      ]
+    in
     Cmd.info "zsh" ~doc ~man
   in
   Cmd.v info (term Zsh)
@@ -71,8 +90,17 @@ let zsh =
 
 let pwsh =
   let info =
-    let doc = "TODO doc3" in
-    let man = [ `P "TODO description3" ] in
+    let doc = "Generate a powershell completion script for the dune binary." in
+    let man =
+      [ `P
+          "Print out a powershell completion script. It should then be written to a file \
+           that will be sourced, for example in \\$PROFILE.CurrentUserCurrentHost, or it \
+           can be sourced directly by adding this line to your profile script:"
+      ; `Pre
+          {|
+      Invoke-Expression -Command \$(dune completion pwsh | Out-String)|}
+      ]
+    in
     Cmd.info "pwsh" ~doc ~man
   in
   Cmd.v info (term Pwsh)
@@ -80,8 +108,14 @@ let pwsh =
 
 let command =
   let info =
-    let doc = "TODO doc" in
-    let man = [ `S "DESCRIPTION"; `P "TODO description" ] in
+    let doc = "Generate shell completion scripts." in
+    let man =
+      [ `S "DESCRIPTION"
+      ; `P
+          "Generate a completion script in the specified shell for the dune binary. This \
+           script should be written to a file that will then get sourced."
+      ]
+    in
     Cmd.info "completion" ~doc ~man
   in
   Cmd.group info [ bash; zsh; pwsh ]

@@ -24,7 +24,6 @@ let to_dune_dep_set =
 
 let exec ~(ectx : context) ~(eenv : env) prog args =
   let open Fiber.O in
-  let* () = Dune_rpc_impl.Server.ensure_ready () in
   let run_arguments_fn = Temp.create File ~prefix:"dune" ~suffix:"run" in
   let response_fn = Temp.create File ~prefix:"dune" ~suffix:"response" in
   let run_arguments =

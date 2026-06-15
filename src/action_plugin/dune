@@ -3,7 +3,6 @@
  (libraries
   stdune
   dune_engine
-  dune_rpc_impl
   dune_targets
   predicate_lang
   fiber

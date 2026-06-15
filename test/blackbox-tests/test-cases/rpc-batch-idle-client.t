@@ -40,6 +40,7 @@ the ping times out and is ignored.
   > else
   >   echo "batch build waited for idle rpc client"
   > fi
+  batch build waited for idle rpc client
   $ kill "$CLIENT_PID" 2>/dev/null || true
   $ wait "$CLIENT_PID" 2>/dev/null || true
   $ if kill -0 "$BATCH_PID" 2>/dev/null; then

@@ -1,6 +1,5 @@
-Per-package narrowing with multiple owning packages: Currently, any workspace
-package's stanzas resolve all the lockdir packages' binaries. Every workspace
-package can see and resolve all the binaries provided by the lockdir packages.
+Per-package narrowing with multiple owning packages: each workspace package's
+stanzas resolve only the lockdir binaries of the packages it depends on.
 
   $ make_lockdir
 
@@ -48,19 +47,20 @@ different lockdir tool:
   > EOF
 
   $ dune build @all
-pkg-a (depends tool-a) sees both bin-a and bin-b:
+
+pkg-a (depends tool-a) sees bin-a, but not bin-b:
 
   $ cat _build/default/a/a-sees-a
   true
   $ cat _build/default/a/a-sees-b
-  true
+  false
 
-pkg-b (depends tool-b) sees both bin-a and bin-b:
+pkg-b (depends tool-b) sees bin-b, but not bin-a:
 
   $ cat _build/default/b/b-sees-b
   true
   $ cat _build/default/b/b-sees-a
-  true
+  false
 
 Both packages' env also gets every lockdir package's bin layout on $PATH,
 regardless of which tool each declares:
@@ -73,22 +73,16 @@ regardless of which tool each declares:
   $PWD/_build/_private/default/.pkg/tool-a.0.0.1-$DIGEST2/target/bin
 
 The narrowing is ultimately about the build-dependency set, not just what is
-visible: an unnarrowed lookup forces every lockdir package's cookie. From a
-clean build, resolving only [pkg-a]'s rule still builds [tool-b] -- its install
-cookie is materialised -- even though [pkg-a] does not depend on it:
+visible. Previously, a lookup forced every lockdir package's cookie. With the
+current narrowing, only the packages in the transitive dependency closure of
+[pkg-a] get built:
 
   $ dune clean
   $ dune build a/a-sees-a
   $ if test -f "$(get_build_pkg_dir tool-b)/target/cookie"
   >  then echo "tool-b *was* built"; else echo "tool-b was not built"; fi
-  tool-b *was* built
+  tool-b was not built
 
-Once narrowing lands, each package sees only its own declared tool: [a-sees-b]
-and [b-sees-a] flip to false while [a-sees-a]/[b-sees-b] stay true, and each
-[*-path] shrinks to just its own tool. Crucially, the cookie check above flips
--- [tool-b] is no longer built -- proving the force-set itself is narrowed per
-owner, not merely visibility and PATH. That is the property that actually
-breaks the in-and-out cycle. The load-bearing pair is [a-sees-b] false
-alongside [b-sees-b] true -- the same lockdir package [tool-b] is hidden from
-[pkg-a] yet visible to [pkg-b], showing the narrowing set is keyed on each
-dir's owning package, not a single global set.
+The load-bearing pair is [a-sees-b] false alongside [b-sees-b] true -- the same
+lockdir package [tool-b] is hidden from [pkg-a] yet visible to [pkg-b], so the
+narrowing set is keyed on each dir's owning package, not a single global set.

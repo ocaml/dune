@@ -39,7 +39,7 @@ complete -F %s %s
       {|
 %s
 
-Register-ArgumentCompleter -Native -CommandName %s -ScriptBlock %s
+Register-ArgumentCompleter -Native -CommandName %s -ScriptBlock $%s
 |}
       fun_def
       "dune"

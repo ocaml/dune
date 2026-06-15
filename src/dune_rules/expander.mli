@@ -8,6 +8,14 @@ val dir : t -> Path.Build.t
 val context : t -> Context_name.t
 val project : t -> Dune_project.t
 
+(** The packages whose binaries the stanzas in this expander's directory may
+    use: the transitive closure of the [(depends ...)] fields, starting at the
+    package owning the directory (via its [(dir ...)] field).
+
+    [None] when there is no lock directory or the directory has no owning
+    package, and means that every package is visible. *)
+val visible_packages : t -> Package.Name.Set.t option Memo.t
+
 val make_root
   :  project:Dune_project.t
   -> scope:Scope.t Memo.t

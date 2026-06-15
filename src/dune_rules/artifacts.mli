@@ -54,3 +54,9 @@ val create
   :  Context.t
   -> local_bins:origin Appendable_list.t Filename.Map.t Memo.Lazy.t
   -> t
+
+(** Restrict the lock directory binaries that [binary] and [binary_available]
+    resolve to the ones installed by [visible_packages]. [None] means that every
+    package in the lock directory is visible. Binaries installed by workspace
+    packages are unaffected. *)
+val set_visible_packages : t -> visible_packages:Package.Name.Set.t option -> t

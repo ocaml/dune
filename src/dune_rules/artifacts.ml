@@ -133,8 +133,8 @@ let binary_package t ~dir name =
   | `Resolved _ | `None -> None
 ;;
 
-let binary_available t ~dir name =
-  analyze_binary t ~dir name
+let binary_available t ?(narrow_to_deps = None) ~dir name =
+  analyze_binary t ~dir ~narrow_to_deps name
   >>| function
   | `None -> false
   | `Resolved _ | `Origin _ -> true

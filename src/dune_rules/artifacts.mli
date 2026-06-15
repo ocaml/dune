@@ -41,7 +41,14 @@ val binary
   -> Action.Prog.t Memo.t
 
 val binary_package : t -> dir:Path.Build.t -> string -> Package.Name.t option Memo.t
-val binary_available : t -> dir:Path.Build.t -> string -> bool Memo.t
+
+val binary_available
+  :  t
+  -> ?narrow_to_deps:Package.Name.Set.t option
+  -> dir:Path.Build.t
+  -> string
+  -> bool Memo.t
+
 val add_binaries : t -> dir:Path.Build.t -> File_binding.Expanded.t list -> t
 
 val create

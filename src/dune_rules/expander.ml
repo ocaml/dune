@@ -858,8 +858,11 @@ let expand_pform_macro
       (fun t ->
         Without
           (let open Memo.O in
-           let* artifacts_host = t.artifacts_host in
-           let+ b = Artifacts.binary_available artifacts_host ~dir:t.dir s in
+           let* artifacts_host = t.artifacts_host
+           and* narrow_to_deps = package_depends_by_src_dir t in
+           let+ b =
+             Artifacts.binary_available artifacts_host ~dir:t.dir ~narrow_to_deps s
+           in
            b |> string_of_bool |> string))
   | File_available ->
     Direct

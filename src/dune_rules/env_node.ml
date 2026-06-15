@@ -27,6 +27,7 @@ let make
       ~expander
       ~default_env
       ~default_artifacts
+      ~owning_package_deps
   =
   let open Memo.O in
   let config = Dune_env.find config_stanza ~profile in
@@ -52,10 +53,12 @@ let make
   in
   let artifacts =
     inherited ~field:artifacts ~root:default_artifacts (fun binaries ->
+      let* owning_package_deps = owning_package_deps in
       Memo.parallel_map
         config_binaries
         ~f:(File_binding_expand.expand ~dir ~f:(expand_str_lazy expander))
-      >>| Artifacts.add_binaries binaries ~dir)
+      >>| Artifacts.add_binaries binaries ~dir
+      >>| Artifacts.set_owning_package_deps ~owning_package_deps)
   in
   let local_binaries =
     Memo.lazy_ (fun () -> Memo.Lazy.force artifacts >>= Artifacts.local_binaries)

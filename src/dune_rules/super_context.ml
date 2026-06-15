@@ -89,6 +89,7 @@ let get_impl t dir =
     Memo.lazy_ (fun () -> expander_for_artifacts t ~dir) |> Memo.Lazy.force
   in
   let profile = Context.profile t.context in
+  let owning_package_deps = expander >>= Expander.package_depends_by_src_dir in
   Env_node.make
     ~dir
     ~config_stanza
@@ -97,6 +98,7 @@ let get_impl t dir =
     ~expander
     ~default_env:t.context_env
     ~default_artifacts:t.artifacts
+    ~owning_package_deps
 ;;
 
 (* Here we jump through some hoops to construct [t] as well as create a
@@ -239,6 +241,7 @@ let make_default_env_node
       ~expander
       ~default_env:root_env
       ~default_artifacts:artifacts
+      ~owning_package_deps:(Memo.return None)
   in
   make
     ~config_stanza:env_nodes.context

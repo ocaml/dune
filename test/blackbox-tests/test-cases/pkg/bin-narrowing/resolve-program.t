@@ -4,8 +4,9 @@ Several stanzas resolve their tool binaries via [Super_context.resolve_program]
 [(cinaps ...)], [(mdx ...)], etc.
 
 [Artifacts.binary]'s default [Context.which] step falls through to
-[Pkg_rules.which], which currently scans every lockdir package's binary index.
-So a binary installed by any locked package is discoverable from any stanza.
+[Pkg_rules.which], which scans the narrowed lockdir dependency closure's binary
+index. So a binary installed by any package in the dependency closure of a
+stanza's owning package is discoverable from it.
 
   $ make_lockdir
 
@@ -125,7 +126,8 @@ same.
   $PWD/_build/_private/default/.pkg/tool_provider.0.0.1-$DIGEST/target/bin
 
 With a package defined in the project, *with a dir field, but no dependencies*,
-the behavior is still the same.
+the tools are not resolved. NOTE that the bin layout of [tool_provider] is
+still on $PATH.
 
   $ make_dune_project 3.24
   $ cat >> dune-project << 'EOF'
@@ -140,15 +142,17 @@ the behavior is still the same.
   $ dune build foo.ml bar.ml path-output 2>/dev/null
 
   $ grep -c "fake ocamllex" _build/default/foo.ml
-  1
+  0
+  [1]
   $ grep -c "fake menhir" _build/default/bar.ml
-  1
+  0
+  [1]
 
   $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
   $PWD/_build/_private/default/.pkg/tool_provider.0.0.1-$DIGEST/target/bin
 
 With a package defined in the project, *with a dir field, and explicit depends on
-[tool_provider]*, the behavior remains the same.
+[tool_provider]*, the tools are now resolved.
 
   $ make_dune_project 3.24
   $ cat >> dune-project << 'EOF'

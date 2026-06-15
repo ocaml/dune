@@ -34,6 +34,8 @@ type t =
        but the artifacts database is depended on by the logic which expands
        globs. The computation of this field is deferred to break the cycle. *)
     local_bins : local_bins Memo.Lazy.t
+  ; (* Package names of dependencies of the dir's owning package. *)
+    owning_package_deps : Package.Name.Set.t option
   }
 
 let force { local_bins; _ } =
@@ -66,7 +68,7 @@ let analyze_binary t ~dir name =
       match lookup_name with
       | None -> Memo.return `None
       | Some lookup_name ->
-        Context.which t.context lookup_name
+        Context.which t.context ~narrow_to_packages:t.owning_package_deps lookup_name
         >>| (function
          | None -> `None
          | Some path -> `Resolved path)
@@ -101,6 +103,16 @@ let binary t ?hint ?(where = Original_path) ~dir ~loc name =
   >>= function
   | `Resolved path -> Memo.return @@ Ok path
   | `None ->
+    let hint =
+      match t.owning_package_deps, hint with
+      | Some _, None ->
+        Some
+          (sprintf
+             "%S is not provided by any dependency of this directory's package. Add a \
+              dependency on the package that provides it."
+             name)
+      | _ -> hint
+    in
     let context = Context.name t.context in
     Memo.return
     @@ Error
@@ -152,6 +164,8 @@ let add_binaries t ~dir l =
   { t with local_bins }
 ;;
 
+let set_owning_package_deps t ~owning_package_deps = { t with owning_package_deps }
+
 let create =
   fun (context : Context.t)
     ~(local_bins : origin Appendable_list.t Filename.Map.t Memo.Lazy.t) ->
@@ -163,5 +177,5 @@ let create =
         , Origin (Appendable_list.to_list sources) ))
       |> Filename.Map.of_list_exn)
   in
-  { context; local_bins }
+  { context; local_bins; owning_package_deps = None }
 ;;

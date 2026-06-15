@@ -2589,6 +2589,42 @@ let which context =
     Filename.Map.find artifacts program)
 ;;
 
+let which_narrowed_to_packages ~(packages : Package.Name.Set.t option) context =
+  match packages with
+  | None -> which context
+  | Some packages ->
+    let artifacts_and_deps =
+      Memo.lazy_
+        ~human_readable_description:(fun () ->
+          Pp.textf
+            "Loading binaries for packages %s in the lock directory for %S"
+            (String.concat
+               ~sep:", "
+               (List.map (Package.Name.Set.to_list packages) ~f:Package.Name.to_string))
+            (Context_name.to_string context))
+        (fun () ->
+           let* all_project_deps = all_project_deps context in
+           let known =
+             all_project_deps
+             |> List.map ~f:(fun (pkg : Pkg.t) -> pkg.info.name)
+             |> Package.Name.Set.of_list
+           in
+           let+ { binaries; dep_info = _ } =
+             packages
+             |> Package.Name.Set.inter known
+             |> Package.Name.Set.to_list
+             |> List.map ~f:(fun pkg_name -> Loc.none, pkg_name)
+             |> Memo.parallel_map ~f:(resolve_pkg_dep context)
+             >>| Pkg.top_closure
+             >>= Action_expander.Artifacts_and_deps.of_closure
+           in
+           binaries)
+    in
+    Staged.stage (fun program ->
+      let+ artifacts = Memo.Lazy.force artifacts_and_deps in
+      Filename.Map.find artifacts program)
+;;
+
 let ocamlpath universe =
   let+ all_project_deps = all_deps universe in
   let env = Pkg.build_env_of_deps all_project_deps in

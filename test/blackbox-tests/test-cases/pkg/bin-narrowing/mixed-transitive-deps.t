@@ -34,12 +34,17 @@ A lockdir package [r] that installs [r-tool]:
   > EOF
 
   $ dune build p/r-avail
-[r-tool] is resolved since all lockdir packages binaries are available:
+
+[r-tool] is NOT resolved. [r] is only reachable transitively through the
+workspace package [q], but workspace bins and lockdir bins are resolved via two
+separate dependency closures that don't cross the workspace/lockdir boundary, so
+[r] is not in [p]'s lockdir closure.
 
   $ cat _build/default/p/r-avail
-  true
+  false
 
-Declaring [r] directly on [p] works too:
+Declaring [r] directly on [p] works. This is a workaround until the unified
+dependency closure lands from the in-and-out work:
 
   $ make_dune_project 3.25
   $ cat >> dune-project <<'EOF'
@@ -51,8 +56,9 @@ Declaring [r] directly on [p] works too:
   $ cat _build/default/p/r-avail
   true
 
-Both blocks above print [true] today, so the transitive-only block looks
-redundant. It earns its place only once narrowing lands.
+The two blocks differ under narrowing: the transitive-only edge (block 1) is
+narrowed out (false); declaring [r] directly (block 2) resolves it (true).
+Before narrowing both were true, so block 1 looked redundant.
 
 [p] (workspace) -> [q] (lockdir) -> [r] (workspace). Now the [q] -> [r] edge is
 a lockdir package depending on a workspace package. This is a lock-VALIDATION

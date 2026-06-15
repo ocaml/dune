@@ -1,5 +1,8 @@
-Currently, no narrowing of lockdir %{bin:X} and %{bin-available:X} lookups is
-present, and all the binaries provided by all of the lockdir packages resolve.
+%{bin:X} and %{bin-available:X} lookups are narrowed to the dependency closure
+of the packages declared in the (depends ...) field. All the binaries,
+including those of transitive deps, can be resolved. Binaries provided by
+packages not in the dependency closure are not resolved.
+
 
   $ make_lockdir
 
@@ -89,10 +92,10 @@ narrowing kicks in):
   $ cat _build/default/transitive-out
   true
 
-[other-bin] (package not in the closure) is also available:
+[other-bin] (package not in the deps closure) is not available:
 
   $ cat _build/default/other-out
-  true
+  false
 
 All the lockdir packages' bin layout is added to $PATH:
 
@@ -101,16 +104,17 @@ All the lockdir packages' bin layout is added to $PATH:
   $PWD/_build/_private/default/.pkg/direct.0.0.1-$DIGEST2/target/bin
   $PWD/_build/_private/default/.pkg/transitive.0.0.1-$DIGEST3/target/bin
 
-In the current code, expanding a %{bin:X}/%{bin-available:X} pform forces the
-install [cookie] of every lockdir package through [Artifacts_and_deps.of_closure]
-(pkg_rules.ml). So even a build of a single pform-expanding target pulls in
-[other], a package entirely outside [direct]'s closure:
+Narrowing shrinks the build-dependency set, not just visibility. Previously,
+expanding a %{bin:X}/%{bin-available:X} pform forced the install [cookie] of
+every lockdir package through [Artifacts_and_deps.of_closure] (pkg_rules.ml).
+Now only [direct]'s closure is forced, so building a single pform-expanding
+target no longer pulls in [other], a package outside that closure:
 
   $ dune clean
   $ dune build direct-out
   $ if test -f "$(get_build_pkg_dir other)/target/cookie"
   >  then echo "other *was* built"; else echo "other was not built"; fi
-  other *was* built
+  other was not built
 
 [transitive] (in [direct]'s closure) is built too, as it must be:
 
@@ -118,6 +122,6 @@ install [cookie] of every lockdir package through [Artifacts_and_deps.of_closure
   >  then echo "transitive *was* built"; else echo "transitive was not built"; fi
   transitive *was* built
 
-The spurious [other] build dependency (not merely the visibility above) is what
-causes the in-out cycles that the narrowing removes; once it lands, [other] is
-no longer built here, while [direct] and [transitive] still are.
+Removing this [other] build dependency -- not merely the visibility above -- is
+what breaks the in-out cycles: [other] is not built here, while [direct] and
+[transitive] (in the closure) still are.

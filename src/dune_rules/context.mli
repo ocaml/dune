@@ -57,7 +57,19 @@ val hash : t -> int
 val to_dyn : t -> Dyn.t
 val to_dyn_concise : t -> Dyn.t
 val name : t -> Context_name.t
+
+(** Look [program] up in the context. This is not narrowed: it is for lookups
+    that are not tied to a directory, and so have no owning package. *)
 val which : t -> Filename.t -> Path.t option Memo.t
+
+(** Like [which], but in a context with a lock directory only the binaries
+    installed by [packages] are considered, not their dependencies. The
+    ambient [PATH] is still searched if none of them provide the program. *)
+val which_narrowed_to_packages
+  :  t
+  -> packages:Package.Name.Selection.t
+  -> Filename.t
+  -> Path.t option Memo.t
 
 (** By default Dune builds and installs dynamically linked foreign
     archives (usually named [dll*.so]). It is possible to disable this by

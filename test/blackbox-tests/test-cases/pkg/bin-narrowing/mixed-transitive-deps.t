@@ -1,5 +1,6 @@
 A "mixed" transitive dependency chain [p] -> [q] -> [r] has one edge crossing
-the workspace/lockdir boundary. The two directions behave differently today.
+the workspace/lockdir boundary, but the narrowing of lockdir packages correctly
+handles these edges.
 
 [p] (workspace) -> [q] (workspace) -> [r] (lockdir). The [q] -> [r] edge is
 allowed, so this builds and [r-tool] resolves from [p]'s stanza.
@@ -30,7 +31,8 @@ A lockdir package [r] that installs [r-tool]:
   > EOF
 
   $ dune build p/r-avail
-[r-tool] is resolved since all lockdir packages binaries are available:
+
+[r] is reachable transitively through the workspace package [q]:
 
   $ cat _build/default/p/r-avail
   true
@@ -47,8 +49,10 @@ Declaring [r] directly on [p] works too:
   $ cat _build/default/p/r-avail
   true
 
-Both blocks above print [true] today, so the transitive-only block looks
-redundant. It earns its place only once narrowing lands.
+Both blocks above continue to print [true]. Before narrowing was added, all
+lockdir packages were built, and so transitive deps worked correctly. The
+current narrowing handles the workspace -> lockdir dependencies edge correctly,
+and so both block still print [true].
 
 [p] (workspace) -> [q] (lockdir) -> [r] (workspace). Now the [q] -> [r] edge is
 a lockdir package depending on a workspace package. This is a lock-VALIDATION

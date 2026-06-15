@@ -2,9 +2,9 @@
 present, and [%{bin-available:...}] is how a rule asks whether it is. The two
 are meant to be used together.
 
-This records the behaviour before any narrowing, when every package in the
-lock directory is searched: the tool is found whether the project declares it
-in [(depends ...)] or in [(depopts ...)].
+The narrowing walks the owning package's [(depends ...)] and [(depopts ...)]
+fields. Rule guarded by [%{bin-available:...}] should run correctly when the
+package providing the binary is listed in either of the fields.
 
   $ make_lockdir
 

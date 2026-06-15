@@ -62,6 +62,8 @@ module Detect = struct
     let version = 1
     let bimap t f _ = { t with c_compiler = f t.c_compiler }
     let is_useful_to ~memoize:_ = true
+    let runs_process = true
+    let can_run_in_action_runner = true
 
     let encode { c_compiler; ccomp_type } path _target =
       Sexp.List

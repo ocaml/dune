@@ -53,7 +53,7 @@ val dep_on_alias_definition : Rules.Dir_rules.Alias_spec.item -> unit Action_bui
 
 val run
   :  ?restart_started_at:Time.t
-  -> ?run_id:Run_id.t
+  -> ?build:Process.Build.t
   -> (unit -> 'a Memo.t)
   -> ('a, [ `Already_reported ]) Result.t Fiber.t
 
@@ -62,7 +62,7 @@ val run_exn : (unit -> 'a Memo.t) -> 'a Fiber.t
 
 val run_action_builder
   :  ?restart_started_at:Time.t
-  -> ?run_id:Run_id.t
+  -> ?build:Process.Build.t
   -> unit Action_builder.t
   -> (unit, [ `Already_reported ]) result Fiber.t
 

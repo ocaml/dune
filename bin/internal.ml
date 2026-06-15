@@ -228,6 +228,8 @@ let group =
     (Cmd.info "internal")
     [ Internal_dump.command
     ; Internal_digest_db.command
+    ; Internal_action_runner.group
+    ; Bwrap.With_bwrap.command
     ; latest_lang_version
     ; bootstrap_info
     ; Sexp_pp.command

@@ -141,7 +141,10 @@ end
 
 open Produce.O
 
-let exec_run ~(ectx : context) ~(eenv : env) prog args : _ Produce.t =
+let exec_run ~(ectx : context) ~(eenv : env) ~can_run_in_action_runner prog args
+  : _ Produce.t
+  =
+  let metadata = { ectx.metadata with can_run_in_action_runner } in
   let* (res : (Proc.Times.t, int) result) =
     Produce.of_fiber
     @@ Process.run_with_times
@@ -152,7 +155,7 @@ let exec_run ~(ectx : context) ~(eenv : env) prog args : _ Produce.t =
          ~stdout_to:eenv.stdout_to
          ~stderr_to:eenv.stderr_to
          ~stdin_from:eenv.stdin_from
-         ~metadata:ectx.metadata
+         ~metadata
          prog
          args
   in
@@ -181,9 +184,12 @@ let maybe_async f = Produce.of_fiber (maybe_async f)
 
 let rec exec t ~ectx ~eenv : Done_or_more_deps.t Produce.t =
   match (t : Action.t) with
-  | Run (Error e, _) -> Action.Prog.Not_found.raise e
-  | Run (Ok prog, args) ->
-    let+ () = exec_run ~ectx ~eenv prog (Appendable_list.to_list args) in
+  | Run { prog = Error e; args = _; can_run_in_action_runner = _ } ->
+    Action.Prog.Not_found.raise e
+  | Run { prog = Ok prog; args; can_run_in_action_runner } ->
+    let+ () =
+      exec_run ~ectx ~eenv ~can_run_in_action_runner prog (Appendable_list.to_list args)
+    in
     Done
   | With_accepted_exit_codes (exit_codes, t) ->
     let eenv =
@@ -257,13 +263,14 @@ let rec exec t ~ectx ~eenv : Done_or_more_deps.t Produce.t =
   | Hardlink (src, dst) ->
     let+ () = maybe_async (fun () -> Io.portable_hardlink ~src ~dst:(Path.build dst)) in
     Done
-  | Bash cmd ->
+  | Bash { script; can_run_in_action_runner } ->
     let+ () =
       exec_run
         ~ectx
         ~eenv
+        ~can_run_in_action_runner
         (bash_exn ~loc:ectx.rule_loc ~needed_to:"interpret (bash ...) actions")
-        [ "-e"; "-u"; "-o"; "pipefail"; "-c"; cmd ]
+        [ "-e"; "-u"; "-o"; "pipefail"; "-c"; script ]
     in
     Done
   | Write_file (fn, perm, s) ->
@@ -290,7 +297,11 @@ let rec exec t ~ectx ~eenv : Done_or_more_deps.t Produce.t =
   | Diff diff ->
     let+ () = Produce.of_fiber (Diff_action.exec ~patch_back:None ectx.rule_loc diff) in
     Done
-  | Extension (module A) -> Produce.of_fiber @@ A.Spec.action A.v ~ectx ~eenv
+  | Extension (module A) ->
+    let metadata =
+      { ectx.metadata with can_run_in_action_runner = A.Spec.can_run_in_action_runner }
+    in
+    Produce.of_fiber @@ A.Spec.action A.v ~ectx:{ ectx with metadata } ~eenv
 
 and redirect_out t ~ectx ~eenv ~perm outputs fn =
   redirect t ~ectx ~eenv ~out:(outputs, fn, perm) ()
@@ -419,7 +430,9 @@ let exec
       ~build_deps
   =
   let ectx =
-    let metadata = Process.create_metadata ~purpose:(Build_job targets) () in
+    let metadata =
+      Process_metadata.create ~purpose:(Process_metadata.Build_job targets) ()
+    in
     { targets; metadata; context; rule_loc; build_deps }
   and eenv =
     let env =

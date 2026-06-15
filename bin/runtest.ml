@@ -38,7 +38,7 @@ let runtest_term =
   let name = Arg.info [] ~docv:"TEST" ~doc:None in
   let+ builder = Common.Builder.term
   and+ test_paths = Arg.(value & pos_all string [ "." ] name) in
-  let common, config = Common.init builder in
+  let common, config = Common.init_build builder in
   match Global_lock.lock () with
   | Ok () ->
     Build.run_build_command ~common ~config ~request:(fun setup ->

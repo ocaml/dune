@@ -653,9 +653,11 @@ module Unprocessed = struct
              Some { Processed.flag = Processed.Pp_kind.Pp; args }
          in
          (match action.action with
-          | Run (exe, args) -> pp_of_action exe args
-          | Chdir (_, Run (exe, args)) -> pp_of_action exe args
-          | Chdir (_, Chdir (_, Run (exe, args))) -> pp_of_action exe args
+          | Run { prog; args; can_run_in_action_runner = _ } -> pp_of_action prog args
+          | Chdir (_, Run { prog; args; can_run_in_action_runner = _ }) ->
+            pp_of_action prog args
+          | Chdir (_, Chdir (_, Run { prog; args; can_run_in_action_runner = _ })) ->
+            pp_of_action prog args
           | _ -> None))
     | _ -> Action_builder.return None
   ;;

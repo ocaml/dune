@@ -1,0 +1,7 @@
+(cram
+ (applies_to :whole_subtree)
+ (alias runtest-bwrap)
+ (runtest_alias
+  (<> %{env:CI=false} true))
+ (deps %{bin:bwrap})
+ (enabled_if %{bin-available:bwrap}))

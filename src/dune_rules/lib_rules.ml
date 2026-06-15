@@ -111,7 +111,10 @@ let build_lib
            ~ext_obj:ocaml.lib_config.ext_obj
            ~dir)
     ]
-    |> Command.run (Ok compiler) ~dir:(Path.build (Context.build_dir ctx))
+    |> Command.run
+         (Ok compiler)
+         ~dir:(Path.build (Context.build_dir ctx))
+         ~forbid_action_runner:true
     |> Super_context.add_rule ~dir sctx ~loc:lib.buildable.loc)
 ;;
 
@@ -391,7 +394,10 @@ let build_shared (lib : Library.t) ~native_archives ~sctx ~dir ~flags =
         (let ext = Mode.compiled_lib_ext Native in
          Path.build (Library.archive lib ~dir ~ext))
     ]
-    |> Command.run ~dir:(Path.build (Context.build_dir ctx)) (Ok ocamlopt)
+    |> Command.run
+         ~dir:(Path.build (Context.build_dir ctx))
+         ~forbid_action_runner:true
+         (Ok ocamlopt)
     |> Super_context.add_rule sctx ~dir ~loc:lib.buildable.loc)
 ;;
 

@@ -25,7 +25,12 @@ val cancel_rpc_requests_by_session
 
 val cancel_all_rpc_requests : t -> unit Fiber.t
 
-(** [poll t ~sticky_goal] runs the watch loop managed by [t]. [sticky_goal]
-    is rebuilt after file changes and is also included in builds started for
+(** [poll t ~action_runner ~sticky_goal] runs the watch loop managed by [t].
+    [action_runner] is used for each build started by the loop. [sticky_goal] is
+    rebuilt after file changes and is also included in builds started for
     one-shot RPC requests. *)
-val poll : t -> sticky_goal:unit Action_builder.t option -> unit Fiber.t
+val poll
+  :  t
+  -> action_runner:Action_runner.t option
+  -> sticky_goal:unit Action_builder.t option
+  -> unit Fiber.t

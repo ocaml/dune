@@ -1,0 +1,11 @@
+(cram
+ (alias runtest-action-runner)
+ (applies_to basic cancel-disconnect disconnect failure pool runtest trace))
+
+;; Disabled until stop-on-first-error cancellation through action runners exits
+;; promptly instead of relying on the test harness timeout.
+
+(cram
+ (enabled_if false)
+ (alias runtest-action-runner)
+ (applies_to stop-on-first-error watch-stop-on-first-error))

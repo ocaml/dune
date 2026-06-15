@@ -182,6 +182,8 @@ module Action = Action_ext.Make (struct
 
     let name = "patch"
     let version = 3
+    let runs_process = false
+    let can_run_in_action_runner = false
     let bimap patch f _ = f patch
     let is_useful_to ~memoize = memoize
     let encode patch input _ : Sexp.t = input patch

@@ -47,8 +47,8 @@ let rec encode_action : Action.For_shell.t -> Dune_lang.t =
   let path = Encoder.string in
   let target = Encoder.string in
   function
-  | Run (a, xs) ->
-    List (atom "run" :: program a :: List.map (Appendable_list.to_list xs) ~f:string)
+  | Run { prog; args; can_run_in_action_runner = _ } ->
+    List (atom "run" :: program prog :: List.map (Appendable_list.to_list args) ~f:string)
   | With_accepted_exit_codes (pred, t) ->
     List
       [ atom "with-accepted-exit-codes"
@@ -78,7 +78,7 @@ let rec encode_action : Action.For_shell.t -> Dune_lang.t =
   | Copy (x, y) -> List [ atom "copy"; path x; target y ]
   | Symlink (x, y) -> List [ atom "symlink"; path x; target y ]
   | Hardlink (x, y) -> List [ atom "hardlink"; path x; target y ]
-  | Bash x -> List [ atom "bash"; string x ]
+  | Bash { script; can_run_in_action_runner = _ } -> List [ atom "bash"; string script ]
   | Write_file (x, perm, y) ->
     List [ atom ("write-file" ^ File_perm.suffix perm); target x; string y ]
   | Rename (x, y) -> List [ atom "rename"; target x; target y ]

@@ -28,20 +28,23 @@ let lock_ocamlformat () =
 
 let run_fmt_command ~common ~config ~preview builder =
   let open Fiber.O in
-  let once () =
+  let once common () =
     let* () = lock_ocamlformat () in
     let request (setup : Dune_rules.Main.build_system) =
       let dir = Path.(relative root) (Common.prefix_target common ".") in
       Alias.in_dir ~name:Dune_rules.Alias.fmt ~recursive:true ~contexts:setup.contexts dir
       |> Alias.request
     in
-    Build.run_build_system ~run_id:Dune_engine.Run_id.Batch ~request
+    Build.run_build_system
+      ~action_runner:(Common.action_runner common)
+      ~run_id:Dune_engine.Run_id.Batch
+      ~request
     >>| function
     | Ok () -> ()
     | Error `Already_reported -> raise Dune_util.Report_error.Already_reported
   in
   match Global_lock.lock () with
-  | Ok () -> Scheduler_setup.go_with_rpc_server ~common ~config once
+  | Ok () -> Scheduler_setup.go_with_rpc_server ~common ~config (once common)
   | Error lock_held_by ->
     (* The --preview flag is being ignored by the RPC server, warn the user. *)
     if preview then Rpc.Rpc_common.warn_ignore_arguments lock_held_by;

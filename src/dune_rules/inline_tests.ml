@@ -33,7 +33,7 @@ let action
       | Native | Best | Byte -> None
       | Jsoo _ -> Some Jsoo_rules.runner
     with
-    | None -> flags >>| Action.run (Ok exe)
+    | None -> flags >>| fun flags -> Action.run (Ok exe) flags
     | Some runner ->
       let* prog =
         Super_context.resolve_program
@@ -462,7 +462,8 @@ include Sub_system.Register_end_point (struct
                  |> Action.diff ~optional:true fn)
                |> Action.concurrent
              in
-             Action.Full.make ~sandbox (Action.progn [ run_tests; diffs ])
+             Action.progn [ run_tests; diffs ]
+             |> Action.Full.make ~sandbox
              |> Action.Full.add_env env))
     ;;
 

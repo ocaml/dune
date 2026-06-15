@@ -39,8 +39,9 @@ type t
 val t : unit -> t
 
 (** [with_job_slot f] waits for one job slot (as per [-j <jobs] to become
-    available and then calls [f]. *)
-val with_job_slot : (unit -> 'a Fiber.t) -> 'a Fiber.t
+    available and then calls [f]. If [cancellation] is fired before the job
+    starts, the job is cancelled. *)
+val with_job_slot : ?cancellation:Fiber.Cancel.t -> (unit -> 'a Fiber.t) -> 'a Fiber.t
 
 (** Wait for the following process to terminate. If [is_process_group_leader] is
     true, kill the entire process group instead of just the process in case of
@@ -57,7 +58,8 @@ type termination_reason =
   | Timeout
 
 val wait_for_build_process
-  :  ?timeout:Time.Span.t
+  :  ?cancellation:Fiber.Cancel.t
+  -> ?timeout:Time.Span.t
   -> is_process_group_leader:bool
   -> Pid.t
   -> (Proc.Process_info.t * termination_reason) Fiber.t
@@ -88,16 +90,9 @@ val running_jobs_count : t -> int
     restart. *)
 val shutdown : [ `Ok | `Failure ] -> unit
 
-(** Cancel the current build. Superficially, this function is like [shutdown]
-    in that it stops the build early, but it is different because the [Run.go]
-    call is allowed to complete its fiber. In this respect, the behavior is
-    similar to what happens on file system events in polling mode. *)
-val cancel_current_build : unit -> unit Fiber.t
-
 (** [sleep duration] waits for [duration] to elapse. *)
 val sleep : Time.Span.t -> unit Fiber.t
 
 val spawn_thread : name:string -> (unit -> unit) -> Thread.t
 val flush_file_watcher : unit -> unit Fiber.t
 val file_watcher : unit -> File_watcher.t option
-val with_current_build_cancellation : Fiber.Cancel.t -> (unit -> 'a Fiber.t) -> 'a Fiber.t

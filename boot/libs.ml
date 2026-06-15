@@ -236,7 +236,38 @@ let local_libraries =
     ; main_module_name = Some "Dune_engine"
     ; include_subdirs = No
     ; special_builtin_support = None
-    ; root_module = None
+    ; root_module =
+        Some
+          { name = "Root"
+          ; entries =
+              [ "Build_path_prefix_map"
+              ; "Csexp"
+              ; "Dune_action_plugin"
+              ; "Dune_action_trace"
+              ; "Dune_cache"
+              ; "Dune_digest"
+              ; "Dune_glob"
+              ; "Dune_rpc"
+              ; "Dune_scheduler"
+              ; "Dune_targets"
+              ; "Dune_trace"
+              ; "Dune_util"
+              ; "Dyn"
+              ; "Event"
+              ; "Fiber"
+              ; "Memo"
+              ; "Ordering"
+              ; "Pp"
+              ; "Predicate_lang"
+              ; "Rpc"
+              ; "Spawn"
+              ; "Stdune"
+              ; "Thread"
+              ; "Top_closure"
+              ; "Unix"
+              ; "UnixLabels"
+              ]
+          }
     }
   ; { path = "otherlibs/dune-private-libs/section"
     ; main_module_name = Some "Dune_section"

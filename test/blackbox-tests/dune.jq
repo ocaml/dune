@@ -296,6 +296,112 @@ def normalizeBuildRestartEvents:
   | flush
   | .[];
 
+def runnerEvent:
+  { cat
+  , name
+  , args:
+      ({ name: .args.name }
+       + (if .args.action_runner? then { action_runner: .args.action_runner } else {} end)
+       + (if .args.pid? then { pid: (.args.pid | type) } else {} end))
+  };
+
+def runnerEventRank:
+  if .name == "runner-spawn" then 0
+  elif .name == "runner-connection-start" then 1
+  elif .name == "runner-connection-established" then 2
+  elif .name == "runner-connected" then 3
+  elif .name == "runner-request-sent" then 4
+  elif .name == "runner-cancel-request-sent" then 5
+  elif .name == "runner-exec-start" then 6
+  elif .name == "runner-cancel-start" then 7
+  elif .name == "runner-disconnected" then 8
+  else 9
+  end;
+
+def runnerEvents:
+  [ .[]
+  | select(.cat == "action" and (.name | startswith("runner-")))
+  | runnerEvent
+  ] | sort_by(runnerEventRank, .name, .args.name, (.args.action_runner // ""));
+
+def runnerRequestEvents:
+  [ runnerEvents[]
+  | select(.name == "runner-request-sent" or .name == "runner-exec-start")
+  ];
+
+def processStartEvents:
+  .[] | select(.cat == "process" and .name == "start");
+
+def processHasArg($arg):
+  (.args.process_args // []) | index($arg);
+
+def processUsesPreprocessor:
+  processHasArg("-pp") or processHasArg("-ppx");
+
+def ocamldepActionRunnerStartCount:
+  [ processStartEvents
+  | select((.args.prog | contains("ocamldep")) and .args.action_runner?)
+  ] | length;
+
+def ocamldepPreprocessorUsesActionRunner($runner_name):
+  [ processStartEvents
+  | select(
+      (.args.prog | contains("ocamldep"))
+      and processUsesPreprocessor
+      and .args.action_runner == $runner_name)
+  ] | length > 0;
+
+def runnerSpawnEvents:
+  [ runnerEvents[]
+  | select(.name == "runner-spawn")
+  ];
+
+def runnerEventCount($name):
+  [ .[]
+  | select(.cat == "action" and .name == $name)
+  ] | length;
+
+def actionRunnerTraceEventRank:
+  if .cat == "action" then runnerEventRank
+  elif .cat == "process" and .name == "start" then 10
+  elif .cat == "process" and .name == "finish" then 11
+  else 12
+  end;
+
+def actionRunnerTraceEvents($runner_name):
+  [ .[]
+  | select(.args.action_runner? == $runner_name)
+  | select(
+      (.cat == "action" and (.name | startswith("runner-")))
+      or (.cat == "process" and (.name == "start" or .name == "finish")))
+  | if .cat == "action" then
+      runnerEvent
+    else
+      { cat
+      , name
+      , args:
+          ({ action_runner: .args.action_runner
+           , prog: (.args.prog | basename)
+           }
+           + (if .name == "finish" then { exit: .args.exit } else {} end))
+      }
+    end
+  ] | sort_by(actionRunnerTraceEventRank, .cat, .name, (.args.prog // ""));
+
+def lastRunnerSpawnPid:
+  [ .[]
+  | select(.cat == "action" and .name == "runner-spawn")
+  | .args.pid
+  ] | last;
+
+def writeFileCountBySuffix($suffix):
+  [ .[]
+  | select(
+      .cat == "action"
+      and .name == "write-file"
+      and (.args.file | endswith($suffix)))
+  ] | length;
+
 def cacheEvent($path):
   select(.cat == "cache") | .args | select(.path == $path);
 

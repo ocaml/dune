@@ -17,6 +17,5 @@ val go_with_rpc_server
 val go_with_rpc_server_and_file_watcher
   :  common:Common.t
   -> config:Dune_config.t
-  -> rpc_server:Dune_rpc_impl.Server.t
   -> (unit -> 'a Fiber.t)
   -> 'a

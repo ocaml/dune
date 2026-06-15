@@ -22,6 +22,8 @@ include Repr.Poly (struct
     let repr = repr
   end)
 
+let to_dyn = Repr.to_dyn repr
+
 let to_int = function
   | Batch -> 0
   | Watch n -> n

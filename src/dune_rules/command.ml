@@ -124,7 +124,7 @@ let dep_prog = function
   | Error _ -> Action_builder.return ()
 ;;
 
-let run_dyn_prog ~dir ?sandbox ?stdout_to ?env prog args =
+let run_dyn_prog ~dir ?sandbox ?stdout_to ?env ?(forbid_action_runner = false) prog args =
   Action_builder.With_targets.add
     ~file_targets:(Option.to_list stdout_to)
     (let open Action_builder.With_targets.O in
@@ -143,7 +143,9 @@ let run_dyn_prog ~dir ?sandbox ?stdout_to ?env prog args =
           | None -> Action_builder.return None)
      in
      let action =
-       let action = Action.Run (prog, args) in
+       Action.Run { prog; args; can_run_in_action_runner = not forbid_action_runner }
+     in
+     let action =
        match stdout_to with
        | None -> action
        | Some path -> Action.with_stdout_to path action
@@ -151,11 +153,18 @@ let run_dyn_prog ~dir ?sandbox ?stdout_to ?env prog args =
      Action.chdir dir action |> Action.Full.make ?sandbox ?env)
 ;;
 
-let run ~dir ?sandbox ?stdout_to ?env prog args =
-  run_dyn_prog ~dir ?sandbox ?stdout_to ?env (Action_builder.return prog) args
+let run ~dir ?sandbox ?stdout_to ?env ?forbid_action_runner prog args =
+  run_dyn_prog
+    ~dir
+    ?sandbox
+    ?stdout_to
+    ?env
+    ?forbid_action_runner
+    (Action_builder.return prog)
+    args
 ;;
 
-let run' ?sandbox ?env ~dir prog args =
+let run' ?sandbox ?env ~dir ?(forbid_action_runner = false) prog args =
   let open Action_builder.O in
   let+ () = dep_prog prog
   and+ args = expand_list_no_targets ~dir args
@@ -164,7 +173,9 @@ let run' ?sandbox ?env ~dir prog args =
     | Some env -> Action_builder.map env ~f:Option.some
     | None -> Action_builder.return None
   in
-  Action.Run (prog, args) |> Action.chdir dir |> Action.Full.make ?sandbox ?env
+  Action.Run { prog; args; can_run_in_action_runner = not forbid_action_runner }
+  |> Action.chdir dir
+  |> Action.Full.make ?sandbox ?env
 ;;
 
 let quote_args =

@@ -1,0 +1,141 @@
+open Import
+open Fiber.O
+module Client = Root.Rpc.Client
+module Request = Action_runner_protocol.Request
+module Decl = Action_runner_protocol.Decl
+
+type active_build =
+  { build : Process.Build.t
+  ; mutable count : int
+  ; drained : unit Fiber.Ivar.t
+  }
+
+type t =
+  { active_builds : (Run_id.t, active_build) Table.t
+  ; mutable highest_cancelled_run_id : Run_id.t option
+  }
+
+let create () =
+  { active_builds = Table.create (module Run_id) 8; highest_cancelled_run_id = None }
+;;
+
+let mark_cancelled t run_id =
+  match t.highest_cancelled_run_id with
+  | None -> t.highest_cancelled_run_id <- Some run_id
+  | Some highest when Run_id.compare highest run_id = Lt ->
+    t.highest_cancelled_run_id <- Some run_id
+  | Some _ -> ()
+;;
+
+let is_cancelled t run_id =
+  match t.highest_cancelled_run_id with
+  | None -> false
+  | Some highest -> Run_id.compare run_id highest <> Gt
+;;
+
+let start_build t run_id =
+  match Table.find t.active_builds run_id with
+  | Some active ->
+    active.count <- active.count + 1;
+    active.build
+  | None ->
+    let build =
+      Process.Build.create
+        ~action_runner:None
+        ~run_id
+        ~cancellation:(Fiber.Cancel.create ())
+    in
+    let active = { build; count = 1; drained = Fiber.Ivar.create () } in
+    Table.set t.active_builds run_id active;
+    build
+;;
+
+let finish_build t run_id =
+  match Table.find t.active_builds run_id with
+  | None ->
+    Code_error.raise
+      "action runner finished a build that was not recorded as active"
+      [ "run_id", Run_id.to_dyn run_id ]
+  | Some active when active.count > 1 ->
+    active.count <- active.count - 1;
+    Fiber.return ()
+  | Some active ->
+    Table.remove t.active_builds run_id;
+    Fiber.Ivar.fill active.drained ()
+;;
+
+let exec_process t ~name ({ Request.Exec.run_id; process } : Request.Exec.t) =
+  if is_cancelled t run_id
+  then Fiber.return Request.Exec.Cancelled
+  else (
+    let build = start_build t run_id in
+    Fiber.finalize
+      (fun () ->
+         Dune_trace.emit Action (fun () ->
+           Dune_trace.Event.Action.Runner.runner_event
+             ~name
+             Dune_trace.Event.Action.Runner.Exec_start);
+         let+ response = Process.exec_locally ~build process in
+         Request.Exec.Completed response)
+      ~finally:(fun () -> finish_build t run_id))
+;;
+
+let cancel_build t ~name ({ Request.Cancel_build.run_id } : Request.Cancel_build.t) =
+  Dune_trace.emit Action (fun () ->
+    Dune_trace.Event.Action.Runner.runner_event
+      ~name
+      Dune_trace.Event.Action.Runner.Cancel_start);
+  mark_cancelled t run_id;
+  let active_builds =
+    Table.values t.active_builds
+    |> List.filter ~f:(fun active ->
+      Run_id.compare (Process.Build.run_id active.build) run_id <> Gt)
+  in
+  Fiber.parallel_iter active_builds ~f:(fun active ->
+    let* () = Fiber.Cancel.fire (Process.Build.cancellation active.build) in
+    Fiber.Ivar.read active.drained)
+;;
+
+let start ~name ~where =
+  let t = create () in
+  let name_string = Action_runner_name.to_string name in
+  Dune_trace.emit Action (fun () ->
+    Dune_trace.Event.Action.Runner.runner_event
+      ~name
+      Dune_trace.Event.Action.Runner.Connection_start);
+  let* connection = Client.Connection.connect_exn where in
+  Dune_trace.emit Action (fun () ->
+    Dune_trace.Event.Action.Runner.runner_event
+      ~name
+      Dune_trace.Event.Action.Runner.Connection_established);
+  let private_menu : Client.proc list =
+    [ Client.Request Decl.ready
+    ; Client.Handle_request (Decl.exec, exec_process t ~name)
+    ; Client.Handle_request (Decl.cancel_build, cancel_build t ~name)
+    ]
+  in
+  let id = Dune_rpc.Id.make (Sexp.Atom name_string) in
+  let initialize = Dune_rpc.Initialize.Request.create ~id in
+  Client.client ~private_menu connection initialize ~f:(fun client ->
+    let* request =
+      Client.Versioned.prepare_request client (Dune_rpc.Decl.Request.witness Decl.ready)
+    in
+    match request with
+    | Error version_error ->
+      User_error.raise
+        [ Pp.textf
+            "Server does not agree on the menu. Are you running the same dune binary for \
+             the worker?"
+        ; Pp.text (Dune_rpc.Version_error.message version_error)
+        ]
+    | Ok request ->
+      let payload = { Request.Ready.name } in
+      let* response = Client.request client request payload in
+      (match response with
+       | Ok () -> Client.disconnected client
+       | Error error ->
+         User_error.raise
+           [ Pp.text "Failed to signal readiness to the server"
+           ; Pp.text (Dune_rpc.Response.Error.message error)
+           ]))
+;;

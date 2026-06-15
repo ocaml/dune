@@ -32,7 +32,7 @@ end
 
 type command =
   { dir : Path.t
-  ; metadata : Process.metadata
+  ; metadata : Process_metadata.t
   ; prog : Path.t
   ; args : string list
   }
@@ -79,16 +79,16 @@ end = struct
           ~metadata
       in
       (match code with
-       | 1 -> Fiber.return (Ok { Diff.output; loc = metadata.loc })
+       | 1 -> Fiber.return (Ok { Diff.output; loc = metadata.Process_metadata.loc })
        | _ -> capture { commands; error })
   ;;
 end
 
 let make_metadata ~has_embedded_location promotion loc =
-  Process.create_metadata
+  Process_metadata.create
     ~categories:[ "diff" ]
     ~has_embedded_location
-    ~purpose:Internal_job
+    ~purpose:Process_metadata.Internal_job
     ~loc
     ?promotion
     ()

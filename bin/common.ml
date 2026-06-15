@@ -625,6 +625,7 @@ module Builder = struct
     ; target_exec : string option
     ; action_runner : bool
     ; sandbox_actions : bool
+    ; sandbox_actions_backend : Action_runner.Sandbox_actions_backend.t
     }
 
   let set_no_build t no_build = { t with no_build }
@@ -961,8 +962,24 @@ module Builder = struct
             ~docs
             ~doc:
               (Some
-                 "Run spawned build processes in an external dune action runner wrapped \
-                  with bubblewrap."))
+                 "Run spawned build processes in an external dune action runner with \
+                  shared-cache writes blocked."))
+    and+ sandbox_actions_backend =
+      Arg.(
+        value
+        & opt
+            (enum Action_runner.Sandbox_actions_backend.all)
+            Action_runner.Sandbox_actions_backend.default
+        & info
+            [ "sandbox-actions-backend" ]
+            ~docs
+            ~docv:"BACKEND"
+            ~doc:
+              (Some
+                 "Select the mechanism used by --sandbox-actions to block writes to the \
+                  shared cache. $(b,auto) uses Landlock on Linux when available, and \
+                  falls back to bubblewrap. $(b,landlock) requires Landlock. $(b,bwrap) \
+                  requires bubblewrap."))
     and+ action_runner =
       Arg.(
         value
@@ -1017,6 +1034,7 @@ module Builder = struct
     ; target_exec
     ; action_runner
     ; sandbox_actions
+    ; sandbox_actions_backend
     }
   ;;
 
@@ -1058,6 +1076,7 @@ module Builder = struct
         ; target_exec
         ; action_runner
         ; sandbox_actions
+        ; sandbox_actions_backend
         }
     =
     No_build.equal t.no_build no_build
@@ -1099,6 +1118,9 @@ module Builder = struct
     && Option.equal String.equal t.target_exec target_exec
     && Bool.equal t.action_runner action_runner
     && Bool.equal t.sandbox_actions sandbox_actions
+    && Action_runner.Sandbox_actions_backend.equal
+         t.sandbox_actions_backend
+         sandbox_actions_backend
   ;;
 end
 
@@ -1391,7 +1413,8 @@ let init_with_root_and_rpc ~(root : Workspace_root.t) ~rpc_build (builder : Buil
            (Action_runner.create
               ~where:(Lazy.force where)
               ~config
-              ~sandbox_actions:c.builder.sandbox_actions)
+              ~sandbox_actions:c.builder.sandbox_actions
+              ~sandbox_actions_backend:c.builder.sandbox_actions_backend)
        else None)
   in
   let rpc =

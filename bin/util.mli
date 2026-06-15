@@ -1,5 +1,9 @@
 open Import
 
+val find_in_path_exn : string -> Path.t
+val resolve_prog : string -> string
+val resolve_program_path : string -> Path.t
+
 type checked =
   | In_build_dir of (Context.t * Path.Source.t)
   | In_private_context of Path.Build.t

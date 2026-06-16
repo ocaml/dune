@@ -35,28 +35,19 @@ let kill_process_group pid signal ~is_process_group_leader =
      | Unix.Unix_error _ -> ())
 ;;
 
-type process_state =
-  | Running of Event.job
-  | Zombie of Proc.Process_info.t
-
-let dyn_of_process_state = function
-  | Running job -> Dyn.variant "Running" [ Event.dyn_of_job job ]
-  | Zombie _ -> Dyn.variant "Zombie" []
-;;
-
 (* This mutable table is safe: it does not interact with the state we track in
    the build system. *)
 type t =
   { mutex : Mutex.t Lazy.t
   ; something_is_running : Condition.t option
-  ; table : (Pid.t, process_state) Table.t
+  ; table : (Pid.t, Event.job) Table.t
   ; events : Event.Queue.t
   ; mutable running_count : int
   }
 
 let to_dyn { table; running_count; _ } =
   Dyn.record
-    [ "table", Table.to_dyn dyn_of_process_state table
+    [ "table", Table.to_dyn Event.dyn_of_job table
     ; "running_count", Dyn.int running_count
     ]
 ;;
@@ -73,16 +64,13 @@ module Process_table = struct
   let add t (job : Event.job) =
     match Table.find t.table job.pid with
     | None ->
-      Table.set t.table job.pid (Running job);
+      Table.set t.table job.pid job;
       t.running_count <- t.running_count + 1;
       (match t.something_is_running with
        | None -> ()
        | Some something_is_running ->
          if t.running_count = 1 then Condition.signal something_is_running)
-    | Some (Zombie proc_info) ->
-      Table.remove t.table job.pid;
-      Event.Queue.send_job_completed t.events job proc_info
-    | Some (Running _) ->
+    | Some _ ->
       Code_error.raise
         "process watcher registered a running job twice"
         [ "pid", Dyn.int (Pid.to_int job.pid) ]
@@ -90,26 +78,14 @@ module Process_table = struct
 
   let remove t (proc_info : Proc.Process_info.t) =
     match Table.find t.table proc_info.pid with
-    | None ->
-      Table.set t.table proc_info.pid (Zombie proc_info);
-      None
-    | Some (Running job) ->
+    | None -> None
+    | Some job ->
       t.running_count <- t.running_count - 1;
       Table.remove t.table proc_info.pid;
       Some job
-    | Some (Zombie _) ->
-      Code_error.raise
-        "process watcher saw the same process exit twice"
-        [ "pid", Dyn.int (Pid.to_int proc_info.pid) ]
   ;;
 
-  let iter t ~f =
-    Table.iter t.table ~f:(fun data ->
-      match data with
-      | Running job -> f job
-      | Zombie _ -> ())
-  ;;
-
+  let iter t ~f = Table.iter t.table ~f
   let running_count t = t.running_count
 end
 

@@ -5,16 +5,29 @@ module Local_package = Dune_pkg.Local_package
 module Show_lock = struct
   let print_lock lock_dir_arg () =
     let open Fiber.O in
-    let* lock_dir_paths =
+    let* source_paths =
       Memo.run (Workspace.workspace ())
       >>| Pkg.Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dir_arg
     in
-    Fiber.parallel_map lock_dir_paths ~f:(fun source_path ->
+    let exists path = Fpath.exists (Path.to_string path) in
+    (* Only build for autolocking: lock dirs that are already committed are read
+       directly from disk. Those without a committed lock dir are autolocked via
+       the build system to produce the most up-to-date build solution. *)
+    let to_autolock =
+      List.filter source_paths ~f:(fun source_path ->
+        not (exists (Path.source source_path)))
+    in
+    let* () =
+      match to_autolock with
+      | [] -> Fiber.return ()
+      | _ :: _ ->
+        Build.build_memo_exn (fun () ->
+          Memo.parallel_iter to_autolock ~f:(fun source_path ->
+            Build_system.build_dir (Dune_rules.Lock_dir.lock_dir_of_source source_path)))
+    in
+    Fiber.parallel_map source_paths ~f:(fun source_path ->
       let lock_dir_path = Path.source source_path in
       let+ platform = Pkg.Pkg_common.solver_env_from_system_and_context ~lock_dir_path in
-      (* Prefer the committed source lock dir; otherwise fall back to the
-         internal lock dir produced by autolocking during a previous build. *)
-      let exists path = Fpath.exists (Path.to_string path) in
       let read_path =
         if exists lock_dir_path
         then Some lock_dir_path
@@ -47,7 +60,6 @@ module Show_lock = struct
   let term =
     let+ builder = Common.Builder.term
     and+ lock_dir_arg = Pkg.Pkg_common.Lock_dirs_arg.term in
-    let builder = Common.Builder.forbid_builds builder in
     let common, config = Common.init builder in
     Scheduler_setup.go_with_rpc_server ~common ~config @@ print_lock lock_dir_arg
   ;;

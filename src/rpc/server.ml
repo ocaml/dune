@@ -1,4 +1,5 @@
 open Stdune
+module Rpc_registry = Registry
 open Dune_rpc.Private
 open Fiber.O
 module Session_id = Stdune.Id.Make ()
@@ -883,3 +884,63 @@ let serve =
   in
   M.serve
 ;;
+
+module Lifecycle = struct
+  type nonrec t =
+    { handler : t
+    ; registry : Rpc_registry.t
+    ; server : Csexp_rpc.Server.t Lazy.t
+    ; startup_ivar : (Csexp_rpc.Server.t, Exn_with_backtrace.t) result Fiber.Ivar.t
+    }
+
+  let create ~handler ~root ~where ~registry ~server =
+    let registry = Rpc_registry.create ~root ~where registry in
+    { handler; registry; server; startup_ivar = Fiber.Ivar.create () }
+  ;;
+
+  let print_uncaught_rpc_error exn =
+    Console.print [ Pp.text "Uncaught RPC Error"; Exn_with_backtrace.pp exn ]
+  ;;
+
+  let run t =
+    let with_print_errors f () =
+      Fiber.with_error_handler f ~on_error:(fun exn ->
+        print_uncaught_rpc_error exn;
+        Exn_with_backtrace.reraise exn)
+    in
+    let run () =
+      match Exn_with_backtrace.try_with (fun () -> Lazy.force t.server) with
+      | Error exn ->
+        Dune_trace.emit Rpc (fun () -> Dune_trace.Event.Rpc.startup_failure exn);
+        print_uncaught_rpc_error exn;
+        Fiber.Ivar.fill t.startup_ivar (Error exn)
+      | Ok server ->
+        let* () = Fiber.Ivar.fill t.startup_ivar (Ok server) in
+        let* sessions = Csexp_rpc.Server.serve server in
+        let () = Rpc_registry.register t.registry in
+        serve sessions t.handler
+    in
+    with_print_errors run
+    |> Fiber.finalize ~finally:(fun () ->
+      Rpc_registry.cleanup t.registry;
+      Fiber.return ())
+  ;;
+
+  let ready t =
+    Fiber.Ivar.read t.startup_ivar
+    >>= function
+    | Ok server ->
+      let+ () = Csexp_rpc.Server.ready server in
+      Ok ()
+    | Error _ as error -> Fiber.return error
+  ;;
+
+  let stop t =
+    Fiber.of_thunk (fun () ->
+      (* CR-soon rgrinberg: this is weird. we shouldn't be ignoring [stop] like this *)
+      match Fiber.Ivar.peek t.startup_ivar with
+      | None -> Fiber.return ()
+      | Some (Error _) -> Fiber.return ()
+      | Some (Ok server) -> Csexp_rpc.Server.stop server)
+  ;;
+end

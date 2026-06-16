@@ -1,14 +1,30 @@
 open Import
 
-type shell =
-  | Bash
-  | Zsh
-  | Pwsh
+module type Shell = sig
+  val name : string
+  val aliases : string list
+  val description : Manpage.block list
+  val completion_script : fun_name:string -> string
+end
 
-let completion_script shell =
-  let fun_name = "_dune_cmdliner" in
-  match shell with
-  | Bash ->
+module Bash : Shell = struct
+  let name = "bash"
+  let aliases = []
+
+  let description =
+    [ `I
+        ( "$(b,bash)"
+        , "Print out a bash completion script. It should then be written to a file that \
+           will be sourced, for example in \
+           ~/.local/share/bash-completion/completions/dune. Alternatively, it can be \
+           sourced directly by adding this line to your .bashrc:" )
+    ; `Pre
+        {|
+      eval "\$(dune completion bash)"|}
+    ]
+  ;;
+
+  let completion_script ~fun_name =
     let fun_def = Cmdliner_data.bash_generic_completion fun_name in
     sprintf
       {|
@@ -23,7 +39,27 @@ complete -F %s %s
       fun_name
       fun_name
       "dune"
-  | Zsh ->
+  ;;
+end
+
+module Zsh : Shell = struct
+  let name = "zsh"
+  let aliases = []
+
+  let description =
+    [ `I
+        ( "$(b,zsh)"
+        , "Print out a zsh completion script. It should then be written to a file that \
+           will be sourced, for example in ~/.local/share/zsh/site-functions/_dune. \
+           Alternatively, it can be sourced directly by adding this line to your .zshrc:"
+        )
+    ; `Pre
+        {|
+          eval "\$(dune completion zsh)"|}
+    ]
+  ;;
+
+  let completion_script ~fun_name =
     let fun_def = Cmdliner_data.zsh_generic_completion fun_name in
     sprintf
       {|#compdef %s
@@ -33,7 +69,27 @@ complete -F %s %s
       "dune"
       fun_def
       fun_name
-  | Pwsh ->
+  ;;
+end
+
+module Powershell : Shell = struct
+  let name = "pwsh"
+  let aliases = [ "powershell" ]
+
+  let description =
+    [ `I
+        ( "$(b,pwsh) or $(b,powershell)"
+        , "Print out a powershell completion script. It should then be written to a file \
+           that will be sourced, for example in \\$PROFILE.CurrentUserCurrentHost. \
+           Alternatively, it can be sourced directly by adding this line to your profile \
+           script:" )
+    ; `Pre
+        {|
+      Invoke-Expression -Command \$(dune completion pwsh | Out-String)|}
+    ]
+  ;;
+
+  let completion_script ~fun_name =
     let fun_def = Cmdliner_data.pwsh_generic_completion fun_name in
     sprintf
       {|
@@ -44,66 +100,26 @@ Register-ArgumentCompleter -Native -CommandName %s -ScriptBlock $%s
       fun_def
       "dune"
       fun_name
+  ;;
+end
+
+let shells : (module Shell) list = [ (module Bash); (module Zsh); (module Powershell) ]
+
+let all =
+  shells
+  |> List.concat_map ~f:(fun (module S : Shell) ->
+    List.map (S.name :: S.aliases) ~f:(fun name -> name, (module S : Shell)))
 ;;
 
-let term shell =
-  let+ () = Term.const () in
-  print_string (completion_script shell)
+let all_with_aliases =
+  shells
+  |> List.map ~f:(fun (module M : Shell) -> M.name :: M.aliases, (module M : Shell))
 ;;
 
-let bash =
-  let info =
-    let doc = "Generate a bash completion script for the dune binary." in
-    let man =
-      [ `P
-          "Print out a bash completion script. It should then be written to a file that \
-           will be sourced, for example in \
-           ~/.local/share/bash-completion/completions/dune, or it can be sourced \
-           directly by adding this line to your .bashrc:"
-      ; `Pre
-          {|
-      eval "\$(dune completion bash)"|}
-      ]
-    in
-    Cmd.info "bash" ~doc ~man
-  in
-  Cmd.v info (term Bash)
-;;
-
-let zsh =
-  let info =
-    let doc = "Generate a zsh completion script for the dune binary." in
-    let man =
-      [ `P
-          "Print out a zsh completion script. It should then be written to a file that \
-           will be sourced, for example in ~/.local/share/zsh/site-functions/_dune, or \
-           it can be sourced directly by adding this line to your .zshrc:"
-      ; `Pre
-          {|
-          eval "\$(dune completion zsh)"|}
-      ]
-    in
-    Cmd.info "zsh" ~doc ~man
-  in
-  Cmd.v info (term Zsh)
-;;
-
-let pwsh =
-  let info =
-    let doc = "Generate a powershell completion script for the dune binary." in
-    let man =
-      [ `P
-          "Print out a powershell completion script. It should then be written to a file \
-           that will be sourced, for example in \\$PROFILE.CurrentUserCurrentHost, or it \
-           can be sourced directly by adding this line to your profile script:"
-      ; `Pre
-          {|
-      Invoke-Expression -Command \$(dune completion pwsh | Out-String)|}
-      ]
-    in
-    Cmd.info "pwsh" ~doc ~man
-  in
-  Cmd.v info (term Pwsh)
+let term =
+  let info_ = Arg.info ~doc:None ~docv:"SHELL" [] in
+  let+ (module S) = Arg.(required & pos 0 (some (enum all)) None & info_) in
+  print_string (S.completion_script ~fun_name:"_dune_cmdliner")
 ;;
 
 let command =
@@ -113,10 +129,14 @@ let command =
       [ `S "DESCRIPTION"
       ; `P
           "Generate a completion script in the specified shell for the dune binary. This \
-           script should be written to a file that will then get sourced."
+           will enable tab-completion of dune commands, subcommands, and flags."
+      ; `S "SHELL"
+      ; `P "The shell for which you want dune completion."
       ]
+      @ List.concat_map all_with_aliases ~f:(fun (_name, (module S : Shell)) ->
+        S.description)
     in
     Cmd.info "completion" ~doc ~man
   in
-  Cmd.group info [ bash; zsh; pwsh ]
+  Cmd.v info term
 ;;

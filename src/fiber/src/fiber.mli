@@ -171,6 +171,24 @@ module Var : sig
   (** [update var ~f fiber] runs [fiber] with [var] updated by applying [f] to its current
       value. Warning: do not use a lot of stack space in [f]. *)
   val update : 'a t -> f:('a -> 'a) -> (unit -> 'b fiber) -> 'b fiber
+
+  (** The [*_apply] combinators below behave like [get]/[set]/[update] but take a separate
+      argument [x] that is threaded into the continuation. This lets callers on hot paths
+      pass a hoisted (closure-free) function instead of allocating a fresh
+      [unit -> _ fiber] thunk on every call. *)
+
+  (** [get_apply var f x] reads [var] and continues with [f value x]. *)
+  val get_apply : 'a t -> ('a -> 'b -> 'c fiber) -> 'b -> 'c fiber
+
+  (** Like [get_apply] but [f] returns a plain value rather than a fiber. *)
+  val get_apply_map : 'a t -> ('a -> 'b -> 'c) -> 'b -> 'c fiber
+
+  (** [set_apply var value f x] sets [var] to [value] during the execution of [f x]. *)
+  val set_apply : 'a t -> 'a -> ('b -> 'c fiber) -> 'b -> 'c fiber
+
+  (** [update_apply var ~f g x] runs [g x] with [var] updated by applying [f] to its
+      current value. Warning: do not use a lot of stack space in [f]. *)
+  val update_apply : 'a t -> f:('a -> 'a) -> ('b -> 'c fiber) -> 'b -> 'c fiber
 end
 
 (** {1 Error handling} *)

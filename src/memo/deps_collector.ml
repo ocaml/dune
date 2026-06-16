@@ -9,20 +9,25 @@ type t = Dep_node.packed Deps.Dynamic.t ref
 
 let var : t option Fiber.Var.t = Fiber.Var.create None
 let create () : t = ref Deps.Dynamic.empty
-let run (t : t) ~f = Fiber.Var.set var (Some t) f
+let run_apply (t : t) ~f x = Fiber.Var.set_apply var (Some t) f x
 let get (t : t) : Dep_node.packed Deps.t = Deps.Dynamic.to_static !t
 let add (t : t) dep_node = t := Deps.Dynamic.append_seq !t ~node:(Dep_node.T dep_node)
 
-(* Add a dependency on [dep_node] to the currently running computation, if there is one. *)
-let add_dep_from_caller dep_node =
-  Fiber.Var.get var
-  >>| function
+(* Add a dependency on [dep_node] to [collector], if there is an active one. Defined at
+   the top level so it is hoisted (closure-free) when passed to [get_apply_map]. *)
+let add_dep_to_collector collector dep_node =
+  match collector with
   | None -> ()
   | Some t -> add t dep_node
 ;;
 
+(* Add a dependency on [dep_node] to the currently running computation, if there is one. *)
+let add_dep_from_caller dep_node =
+  Fiber.Var.get_apply_map var add_dep_to_collector dep_node
+;;
+
 (* A way to run a parallel thread while collecting its dependencies separately. *)
-type run_thread = { run : 'a. f:(unit -> 'a Fiber.t) -> 'a Fiber.t } [@@unboxed]
+type run_thread = { run : 'a 'b. f:('b -> 'a Fiber.t) -> 'b -> 'a Fiber.t } [@@unboxed]
 
 (* A pool of large per-thread sub-collector arrays, keyed by power-of-two size, to avoid
    repeated major-heap allocations of the outer thread array in [run_parallel] when the
@@ -137,12 +142,12 @@ let run_parallel ~num_threads k =
       let thread_index = ref 0 in
       let run_thread =
         { run =
-            (fun ~f ->
+            (fun ~f x ->
               (* The scheduler is cooperative and single-threaded, so reading and bumping
                    [thread_index] is atomic and each thread gets a distinct sub-collector. *)
               let i = !thread_index in
               incr thread_index;
-              Fiber.Var.set var (Some (Pool.get threads i)) f)
+              Fiber.Var.set_apply var (Some (Pool.get threads i)) f x)
         }
       in
       let* result = Fiber.collect_errors (fun () -> k (Some run_thread)) in

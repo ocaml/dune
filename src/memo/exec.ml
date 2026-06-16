@@ -122,7 +122,10 @@ and compute : 'i 'o. ('i, 'o) Dep_node.t -> unit Fiber.t =
   let+ res =
     report_and_collect_errors (fun () ->
       let* () = !check_point in
-      Deps_collector.run deps_collector ~f:(fun () -> node.spec.f node.input))
+      Deps_collector.run_apply
+        deps_collector
+        ~f:(fun (node : (_, _) Dep_node.t) -> node.spec.f node.input)
+        node)
   in
   (match res with
    | Error { reproducible = false; _ } ->

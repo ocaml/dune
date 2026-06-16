@@ -565,6 +565,10 @@ let setup_rocqproject_for_theory_rule
     sctx
     ~dir
     (Action_builder.write_file_dyn rocqproject contents.build)
+  >>> Rules.Produce.Alias.add_deps
+        (Alias.make Alias0.rocqproject ~dir)
+        ~loc
+        (Action_builder.path (Path.build rocqproject))
 ;;
 
 (* Cons the plugin layout's lib root onto whatever OCAMLPATH [action.env]

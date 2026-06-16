@@ -5,7 +5,7 @@ let hash = Int.hash
 let equal = Int.equal
 let to_int t = t
 
-let of_int t =
+let of_int_exn t =
   assert (t > 0);
   t
 ;;

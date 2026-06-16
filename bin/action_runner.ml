@@ -68,7 +68,7 @@ let create rpc_server ~config ~sandbox_actions =
     Exn.protect
       ~f:(fun () -> Spawn.spawn ~env ~prog ~argv ~setpgid:Spawn.Pgid.new_process_group ())
       ~finally:(fun () -> Option.iter trace_fd ~f:Fd.close)
-    |> Pid.of_int
+    |> Pid.of_int_exn
   in
   Dune_trace.emit Action (fun () ->
     Dune_trace.Event.Action.Runner.runner_event

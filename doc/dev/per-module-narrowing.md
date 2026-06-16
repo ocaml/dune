@@ -45,8 +45,7 @@ the source-language kind (`Ml_kind.t` — `Impl` or `Intf`), and the mode
 1. If a small set of preconditions fails (`can_filter = false`), fall
    back to the cctx-wide glob — the same dep set every compile rule
    would have had prior to this work. This avoids needing soundness
-   arguments for module kinds that the narrowing was not designed for,
-   and lets `Melange` paths pass through unchanged.
+   arguments for module kinds that the narrowing was not designed for.
 
 2. Otherwise, if the consumer cctx already carries a virtual library
    in `requires` (`has_virtual_impl = true`), fall back to the
@@ -57,8 +56,8 @@ the source-language kind (`Ml_kind.t` — `Impl` or `Intf`), and the mode
    1. Read the consumer module's own `ocamldep` raw references (impl
       and intf), and those of every module in `M`'s within-cctx
       transitive `dep_graph`.
-   2. Union them with the `-open` flag modules. The result is
-      `referenced : Module_name.Set.t`.
+   2. Union them with the `-open` flag modules and the implicitly opened
+      `Stdlib` module. The result is `referenced : Module_name.Set.t`.
    3. Use the cctx's `Lib_index` (built once per cctx) to partition
       the cctx's library closure into libraries whose entry modules
       appear in `referenced` (`tight`) and libraries whose `None`-
@@ -95,8 +94,6 @@ The entry point for the narrowing is
 (`src/dune_rules/module_compilation.ml`). Before any narrowing runs,
 the function computes a `can_filter` boolean conjunction:
 
-- The compile is `Ocaml _` (Melange has its own cm-kind story and is
-  not narrowed).
 - The supplied `dep_graph` is the real one for this cctx (its `dir`
   equals the cctx's `obj_dir`), not a `Dep_graph.dummy` — synthesised
   / link-time-generated / alias / root modules have no usable
@@ -203,15 +200,27 @@ in
 let all_raw = Module_name.Set.union m_raw trans_raw in
 let* flags = Ocaml_flags.get (Compilation_context.flags cctx) mode in
 let open_modules = Ocaml_flags.extract_open_module_names flags in
-let referenced = Module_name.Set.union all_raw open_modules in
+let implicit_stdlib =
+  match Module_name.of_string_opt "Stdlib" with
+  | Some n -> Module_name.Set.singleton n
+  | None -> Module_name.Set.empty
+in
+let referenced =
+  Module_name.Set.union
+    (Module_name.Set.union all_raw open_modules)
+    implicit_stdlib
+in
 ```
 
 `open_modules` are module names brought into scope by `-open` flags
 that ocamldep does not see (because they are command-line, not source
 syntax). Without them the consumer can mention a module by short name
-that the raw refs would miss, opening a soundness gap. Their union
-with `all_raw` produces `referenced` — the set of module names this
-compile of `M` can possibly resolve.
+that the raw refs would miss, opening a soundness gap. `Stdlib` is also
+seeded explicitly because compilers open it implicitly. This is a no-op
+for OCaml's built-in standard library, which is not in `Lib_index`, but
+keeps Melange's library-provided `Stdlib` dependency reachable. Their
+union with `all_raw` produces `referenced` — the set of module names
+this compile of `M` can possibly resolve.
 
 ### Step 3: first lib classification
 
@@ -538,9 +547,9 @@ refs.
 
 ## Soundness recovery and known edge cases
 
-Four soundness recoveries — the first three widen to a glob (the first
-two cctx-wide, the third per-library), the fourth extends the BFS
-frontier:
+Five soundness recoveries — the first three widen to a glob (the first
+two cctx-wide, the third per-library), while the final two extend the
+reachable module set:
 
 1. **Module kinds outside `module_kind_is_filterable`**: `Root`,
    `Wrapped_compat`, `Impl_vmodule`, `Virtual`, `Parameter`. Each has
@@ -568,9 +577,24 @@ frontier:
    inherited into the intermediate's `.mli` via the open) would
    silently drop the leaf library's `.cmi` from its compile rule.
 
-`Melange` paths bypass the narrowing entirely at the `can_filter`
-check; the cm_kind machinery there is different and L9 leaves it
-unchanged.
+5. **Implicitly opened `Stdlib`**: seeded into `referenced` before the
+   BFS. OCaml's standard library is supplied directly by the compiler,
+   but Melange exposes `Stdlib` through a regular library dependency.
+   Without the explicit seed, a consumer that does not spell
+   `Stdlib.X` could drop that library and its include path.
+
+`Melange` consumer compiles run the same narrowing pipeline as `Ocaml`.
+The `can_filter` check is mode-agnostic. Two code paths inside the
+pipeline match on `cm_kind`:
+
+1. `Lib_file_deps.deps_of_entry_modules` emits per-module `.cmj` in
+   addition to `.cmi` when `cm_kind = Melange Cmj`, mirroring the
+   broad-dep path's `groups_for_cm_kind`.
+2. `need_impl_deps_of` (in `lib_deps_for_module`) reads a trans-dep's
+   `.ml`-side ocamldep only for `cm_kind = Ocaml Cmx` (cross-module
+   inlining input). `Ocaml (Cmi | Cmo)` and `Melange _` are handled
+   symmetrically — neither reads impl deps. The distinction is
+   Cmx-vs-rest, not OCaml-vs-Melange.
 
 ## Cost characteristics
 

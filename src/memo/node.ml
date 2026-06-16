@@ -458,9 +458,13 @@ module Call_stack = struct
   ;;
 
   let push_frame (frame : Stack_frame_with_state.t) f =
-    let* stack = get_call_stack () in
-    let stack = frame :: stack in
-    Fiber.Var.set call_stack_var (Some stack) (fun () -> Implicit_output.forbid f)
+    (* Update the call-stack variable and run [f] (with implicit output forbidden) in a
+       single effect, without reading the stack first or allocating a thunk per push. *)
+    Fiber.Var.update_apply
+      call_stack_var
+      ~f:(fun stack -> Some (frame :: Option.value stack ~default:[]))
+      Implicit_output.forbid
+      f
   ;;
 
   (* As soon as we hit a cycle error in the current run, we stop adding new edges to the

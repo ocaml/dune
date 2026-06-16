@@ -7,8 +7,8 @@ type t
 
 val create : unit -> t
 
-(** Run [f] with [t] as the active collector. *)
-val run : t -> f:(unit -> 'a Fiber.t) -> 'a Fiber.t
+(** Run [f x] with [t] as the active collector. *)
+val run_apply : t -> f:('b -> 'a Fiber.t) -> 'b -> 'a Fiber.t
 
 (** The dependencies collected so far, as a series-parallel graph. *)
 val get : t -> Dep_node.packed Deps.t
@@ -17,7 +17,7 @@ val get : t -> Dep_node.packed Deps.t
 val add_dep_from_caller : ('i, 'o) Dep_node.t -> unit Fiber.t
 
 (** A way to run one parallel thread while collecting its dependencies separately. *)
-type run_thread = { run : 'a. f:(unit -> 'a Fiber.t) -> 'a Fiber.t } [@@unboxed]
+type run_thread = { run : 'a 'b. f:('b -> 'a Fiber.t) -> 'b -> 'a Fiber.t } [@@unboxed]
 
 (** Run [num_threads] parallel threads, recording their dependencies as a single parallel
     section in the active collector. [k] is called with [None] when [num_threads < 2] or

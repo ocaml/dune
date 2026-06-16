@@ -133,9 +133,9 @@ let write_patch_result ~file target_path = function
 
 let apply_patches ~dir patches =
   let resolve filename = Path.append_local dir (Path.Local.of_string filename) in
-  (*  CR Sudha247: fuzzy offset matching [cleanly] is enabled for two reasons:
-     (1) it matches opam's behaviour  and (2) it makes life easier for some
-     packages, such as OxCaml.*)
+  (* Fuzzy offset matching [cleanly = false] is enabled for two reasons: (1) it
+     matches opam's behaviour  and (2) it makes life easier for some packages,
+     such as OxCaml.*)
   let cleanly = false in
   List.iter patches ~f:(fun (patch : Patch.t) ->
     match patch.operation with

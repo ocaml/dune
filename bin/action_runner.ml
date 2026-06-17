@@ -70,12 +70,7 @@ let create rpc_server ~config ~sandbox_actions =
       ~finally:(fun () -> Option.iter trace_fd ~f:Fd.close)
     |> Pid.of_int_exn
   in
-  Dune_trace.emit Action (fun () ->
-    Dune_trace.Event.Action.Runner.runner_event
-      ~name
-      (Dune_trace.Event.Action.Runner.Spawn pid));
-  let worker = { Dune_engine.Action_runner.Worker.pid; is_process_group_leader = true } in
-  Dune_engine.Action_runner.create rpc ~name ~worker
+  Dune_engine.Action_runner.create rpc name pid
 ;;
 
 let parse_name name = Action_runner_name.parse_string_exn (Loc.none, name)

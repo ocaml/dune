@@ -4,28 +4,10 @@ module Server = Root.Rpc.Server
 module Request = Action_runner_protocol.Request
 module Decl = Action_runner_protocol.Decl
 
-type session = Session : _ Server.Session.t -> session
-
-module Worker = struct
-  type t =
-    { pid : Pid.t
-    ; is_process_group_leader : bool
-    }
-
-  let terminate t =
-    let pid = Pid.to_int t.pid in
-    let pid = if Sys.win32 || not t.is_process_group_leader then pid else -pid in
-    match Unix.kill pid Sys.sigterm with
-    | () -> ()
-    | exception Unix.Unix_error (Unix.ESRCH, _, _) -> ()
-  ;;
-end
-
-type initialized = { session : session }
-type starting = { ready : unit Fiber.Ivar.t }
+type initialized = Session : _ Server.Session.t -> initialized
 
 type status =
-  | Starting of starting
+  | Starting of { ready : unit Fiber.Ivar.t }
   | Initialized of initialized
   | Closed
 
@@ -34,7 +16,7 @@ module Request_id = Stdune.Id.Make ()
 type t =
   { name : Action_runner_name.t
   ; mutable status : status
-  ; worker : Worker.t
+  ; pid : Pid.t
   ; monitor_pool : Fiber.Pool.t
   ; mutable monitoring : bool
   }
@@ -54,20 +36,17 @@ let disconnected_before_initialization t =
 ;;
 
 let disconnect t =
-  let ready =
+  match
     match t.status with
     | Closed -> None
     | Starting { ready } -> Some (Some ready)
     | Initialized _ -> Some None
-  in
-  match ready with
+  with
   | None -> Fiber.return ()
   | Some ready ->
     t.status <- Closed;
     Dune_trace.emit Action (fun () ->
-      Dune_trace.Event.Action.Runner.runner_event
-        ~name:t.name
-        Dune_trace.Event.Action.Runner.Disconnected);
+      Dune_trace.Event.Action.Runner.runner_event ~name:t.name Disconnected);
     (match ready with
      | None -> Fiber.return ()
      | Some ready -> Fiber.Ivar.fill ready ())
@@ -100,9 +79,7 @@ let monitor_worker t =
     t.monitoring <- true;
     Fiber.Pool.task t.monitor_pool ~f:(fun () ->
       let* (_status : Proc.Process_info.t) =
-        Scheduler.wait_for_process
-          t.worker.pid
-          ~is_process_group_leader:t.worker.is_process_group_leader
+        Scheduler.wait_for_process t.pid ~is_process_group_leader:true
       in
       disconnect t))
 ;;
@@ -113,7 +90,7 @@ let ensure_ready t =
 ;;
 
 let send_request ~request ~payload t =
-  let* { session = Session session } = await_initialized t in
+  let* (Session session) = await_initialized t in
   Fiber.collect_errors (fun () ->
     let id =
       Dune_rpc.Id.make (Sexp.Atom (Int.to_string (Request_id.to_int (Request_id.gen ()))))
@@ -134,18 +111,14 @@ let send_request ~request ~payload t =
 let cancel_build t ~run_id =
   let payload = { Request.Cancel_build.run_id } in
   Dune_trace.emit Action (fun () ->
-    Dune_trace.Event.Action.Runner.runner_event
-      ~name:t.name
-      Dune_trace.Event.Action.Runner.Cancel_request_sent);
+    Dune_trace.Event.Action.Runner.runner_event ~name:t.name Cancel_request_sent);
   send_request ~request:Decl.cancel_build ~payload t
 ;;
 
 let exec_process_uncancelled t ~run_id process =
   let* () = ensure_ready t in
   Dune_trace.emit Action (fun () ->
-    Dune_trace.Event.Action.Runner.runner_event
-      ~name:t.name
-      Dune_trace.Event.Action.Runner.Request_sent);
+    Dune_trace.Event.Action.Runner.runner_event ~name:t.name Request_sent);
   (let payload = { Request.Exec.run_id; process } in
    send_request ~request:Decl.exec ~payload t)
   >>| function
@@ -161,11 +134,8 @@ let exec_process_uncancelled t ~run_id process =
 let exec_process t ~run_id ~cancellation process =
   let on_cancel () = cancel_build t ~run_id in
   let* result, outcome =
-    Fiber.Cancel.with_handler
-      cancellation
-      (fun () ->
-         Fiber.collect_errors (fun () -> exec_process_uncancelled t ~run_id process))
-      ~on_cancel
+    Fiber.Cancel.with_handler ~on_cancel cancellation (fun () ->
+      Fiber.collect_errors (fun () -> exec_process_uncancelled t ~run_id process))
   in
   match outcome, result with
   | Cancelled (), _ ->
@@ -187,7 +157,10 @@ module Rpc_server = struct
   let run t = Fiber.Pool.run t.pool
 
   let stop t =
-    Table.iter t.workers ~f:(fun worker -> Worker.terminate worker.worker);
+    Table.iter t.workers ~f:(fun worker ->
+      let pid = Pid.to_int worker.pid in
+      let pid = if Sys.win32 then pid else -pid in
+      Unix.kill pid Sys.sigterm);
     Fiber.Pool.close t.pool
   ;;
 
@@ -219,11 +192,9 @@ module Rpc_server = struct
        | Closed -> invalid_request "disconnected earlier"
        | Initialized _ -> invalid_request "already signalled readiness to the server"
        | Starting { ready } ->
-         worker.status <- Initialized { session = Session session };
+         worker.status <- Initialized (Session session);
          Dune_trace.emit Action (fun () ->
-           Dune_trace.Event.Action.Runner.runner_event
-             ~name:worker.name
-             Dune_trace.Event.Action.Runner.Connected);
+           Dune_trace.Event.Action.Runner.runner_event ~name:worker.name Connected);
          let* () =
            Fiber.Pool.task t.pool ~f:(fun () ->
              let* () = Server.Session.closed session in
@@ -233,12 +204,14 @@ module Rpc_server = struct
   ;;
 end
 
-let create server ~name ~(worker : Worker.t) =
+let create server name pid =
+  Dune_trace.emit Action (fun () ->
+    Dune_trace.Event.Action.Runner.runner_event ~name (Spawn pid));
   let { Rpc_server.pool = monitor_pool; _ } = server in
   let t =
     { name
     ; status = Starting { ready = Fiber.Ivar.create () }
-    ; worker
+    ; pid
     ; monitor_pool
     ; monitoring = false
     }

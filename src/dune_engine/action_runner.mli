@@ -10,13 +10,6 @@ open Import
 
 type t
 
-module Worker : sig
-  type t =
-    { pid : Pid.t
-    ; is_process_group_leader : bool
-    }
-end
-
 module Rpc_server : sig
   (** The server-side component responsible for orchestrating action runners. *)
   type t
@@ -34,7 +27,7 @@ module Rpc_server : sig
   val stop : t -> unit Fiber.t
 end
 
-val create : Rpc_server.t -> name:Action_runner_name.t -> worker:Worker.t -> t
+val create : Rpc_server.t -> Action_runner_name.t -> Pid.t -> t
 val ensure_ready : t -> unit Fiber.t
 
 (** [exec_process t ~run_id ~cancellation process] dispatches [process] to [t]

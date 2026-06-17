@@ -125,7 +125,7 @@ let wait_nonblocking_win32 t =
       then (
         let now = Time.now () in
         let info : Proc.Process_info.t =
-          { pid = Pid.of_int pid; status; end_time = now; resource_usage = None }
+          { pid = Pid.of_int_exn pid; status; end_time = now; resource_usage = None }
         in
         raise_notrace (Finished info)));
     false

@@ -8,4 +8,4 @@ val to_int : t -> int
 
 (** Unsafe cast of integers to pids. Will be removed once we improve the API
     further *)
-val of_int : int -> t
+val of_int_exn : int -> t

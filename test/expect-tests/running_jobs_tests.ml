@@ -9,7 +9,7 @@ let running_count () = Running_jobs.current (state ()) |> Running_jobs.Id.Map.ca
 let start id =
   Running_jobs.start
     id
-    (Pid.of_int 1234)
+    (Pid.of_int_exn 1234)
     ~description:(Pp.text "job")
     ~started_at:(Time.of_ns 0)
 ;;

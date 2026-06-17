@@ -89,7 +89,7 @@ let wait wait flags =
     in
     stub_wait4 pid flags
     |> Option.map ~f:(fun (pid, status, end_time, resource_usage) ->
-      { Process_info.pid = Pid.of_int pid
+      { Process_info.pid = Pid.of_int_exn pid
       ; status
       ; end_time = Time.of_ns end_time
       ; resource_usage = Some resource_usage

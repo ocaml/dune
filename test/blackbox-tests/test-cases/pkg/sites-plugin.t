@@ -33,6 +33,7 @@ Make an executable using dune-site (example mostly from the manual)
   Registration of Plugin1
   Main app starts...
   Plugin1 is doing something...
+  $ tar cf ../plugin.tar plugin
   $ cd ..
   $ tar cf app.tar app
   $ rm -rf app
@@ -40,7 +41,9 @@ Make an executable using dune-site (example mostly from the manual)
 Configure our fake curl to serve the tarball:
 
   $ echo app.tar >> fake-curls
-  $ PORT=1
+  $ APP_PORT=1
+  $ echo plugin.tar >> fake-curls
+  $ PLUGIN_PORT=2
 
 Make a package for the executable and the plugin:
   $ mkpkg app <<EOF
@@ -53,7 +56,7 @@ Make a package for the executable and the plugin:
   >   ]
   > ]
   > url {
-  >  src: "http://0.0.0.0:$PORT"
+  >  src: "http://0.0.0.0:$APP_PORT"
   >  checksum: [
   >   "md5=$(md5sum app.tar | cut -f1 -d' ')"
   >  ]
@@ -72,9 +75,9 @@ Make a package for the executable and the plugin:
   >   ]
   > ]
   > url {
-  >  src: "http://0.0.0.0:$PORT"
+  >  src: "http://0.0.0.0:$PLUGIN_PORT"
   >  checksum: [
-  >   "md5=$(md5sum app.tar | cut -f1 -d' ')"
+  >   "md5=$(md5sum plugin.tar | cut -f1 -d' ')"
   >  ]
   > }
   > EOF
@@ -117,14 +120,13 @@ Main app starts...
 Plugin1 is doing something...
 ```
 
-So, what went wrong?  The findlib library is not available:
+So, what went wrong?  The findlib library is now available:
 
   $ dune exec ocamlfind query plugin1.plugin1_impl | censor
-  ocamlfind: Package `plugin1.plugin1_impl' not found
-  
-  [2]
+  $PWD/_build/_private/default/.pkg/plugin1.0.0.1-$DIGEST/target/lib/plugin1/plugin1_impl
 
-And the corresponding files are missing from the installation:
+And the files have been installed, though maybe the app/plugins directory needs
+to be located under the same target directory?
 
   $ find _build -path '*/target/*' | sort | censor
   _build/_private/default/.pkg/app.0.0.1-$DIGEST1/target/bin
@@ -140,3 +142,21 @@ And the corresponding files are missing from the installation:
   _build/_private/default/.pkg/app.0.0.1-$DIGEST1/target/lib/app/register/registration.cmt
   _build/_private/default/.pkg/app.0.0.1-$DIGEST1/target/lib/app/register/registration.ml
   _build/_private/default/.pkg/plugin1.0.0.1-$DIGEST2/target/cookie
+  _build/_private/default/.pkg/plugin1.0.0.1-$DIGEST2/target/lib
+  _build/_private/default/.pkg/plugin1.0.0.1-$DIGEST2/target/lib/app
+  _build/_private/default/.pkg/plugin1.0.0.1-$DIGEST2/target/lib/app/plugins
+  _build/_private/default/.pkg/plugin1.0.0.1-$DIGEST2/target/lib/app/plugins/plugin1
+  _build/_private/default/.pkg/plugin1.0.0.1-$DIGEST2/target/lib/app/plugins/plugin1/META
+  _build/_private/default/.pkg/plugin1.0.0.1-$DIGEST2/target/lib/plugin1
+  _build/_private/default/.pkg/plugin1.0.0.1-$DIGEST2/target/lib/plugin1/META
+  _build/_private/default/.pkg/plugin1.0.0.1-$DIGEST2/target/lib/plugin1/dune-package
+  _build/_private/default/.pkg/plugin1.0.0.1-$DIGEST2/target/lib/plugin1/opam
+  _build/_private/default/.pkg/plugin1.0.0.1-$DIGEST2/target/lib/plugin1/plugin1_impl
+  _build/_private/default/.pkg/plugin1.0.0.1-$DIGEST2/target/lib/plugin1/plugin1_impl/plugin1_impl.a
+  _build/_private/default/.pkg/plugin1.0.0.1-$DIGEST2/target/lib/plugin1/plugin1_impl/plugin1_impl.cma
+  _build/_private/default/.pkg/plugin1.0.0.1-$DIGEST2/target/lib/plugin1/plugin1_impl/plugin1_impl.cmi
+  _build/_private/default/.pkg/plugin1.0.0.1-$DIGEST2/target/lib/plugin1/plugin1_impl/plugin1_impl.cmt
+  _build/_private/default/.pkg/plugin1.0.0.1-$DIGEST2/target/lib/plugin1/plugin1_impl/plugin1_impl.cmx
+  _build/_private/default/.pkg/plugin1.0.0.1-$DIGEST2/target/lib/plugin1/plugin1_impl/plugin1_impl.cmxa
+  _build/_private/default/.pkg/plugin1.0.0.1-$DIGEST2/target/lib/plugin1/plugin1_impl/plugin1_impl.cmxs
+  _build/_private/default/.pkg/plugin1.0.0.1-$DIGEST2/target/lib/plugin1/plugin1_impl/plugin1_impl.ml

@@ -116,3 +116,27 @@ Registration of Plugin1
 Main app starts...
 Plugin1 is doing something...
 ```
+
+So, what went wrong?  The findlib library is not available:
+
+  $ dune exec ocamlfind query plugin1.plugin1_impl | censor
+  ocamlfind: Package `plugin1.plugin1_impl' not found
+  
+  [2]
+
+And the corresponding files are missing from the installation:
+
+  $ find _build -path '*/target/*' | sort | censor
+  _build/_private/default/.pkg/app.0.0.1-$DIGEST1/target/bin
+  _build/_private/default/.pkg/app.0.0.1-$DIGEST1/target/bin/app
+  _build/_private/default/.pkg/app.0.0.1-$DIGEST1/target/cookie
+  _build/_private/default/.pkg/app.0.0.1-$DIGEST1/target/lib
+  _build/_private/default/.pkg/app.0.0.1-$DIGEST1/target/lib/app
+  _build/_private/default/.pkg/app.0.0.1-$DIGEST1/target/lib/app/META
+  _build/_private/default/.pkg/app.0.0.1-$DIGEST1/target/lib/app/dune-package
+  _build/_private/default/.pkg/app.0.0.1-$DIGEST1/target/lib/app/register
+  _build/_private/default/.pkg/app.0.0.1-$DIGEST1/target/lib/app/register/registration.cma
+  _build/_private/default/.pkg/app.0.0.1-$DIGEST1/target/lib/app/register/registration.cmi
+  _build/_private/default/.pkg/app.0.0.1-$DIGEST1/target/lib/app/register/registration.cmt
+  _build/_private/default/.pkg/app.0.0.1-$DIGEST1/target/lib/app/register/registration.ml
+  _build/_private/default/.pkg/plugin1.0.0.1-$DIGEST2/target/cookie

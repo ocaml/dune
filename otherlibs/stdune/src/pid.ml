@@ -9,3 +9,5 @@ let of_int_exn t =
   assert (t > 0);
   t
 ;;
+
+let me () = Unix.getpid ()

@@ -64,19 +64,18 @@ let proc_fs () =
 ;;
 
 let how = ref `Unknown
-let pid = lazy (Unix.getpid ())
 
 let get () =
   match !how with
   | `Disable -> Unknown
   | `Lsof -> lsof ()
   | `Proc_fs -> proc_fs ()
-  | `Mac -> This (Mac.open_fds ~pid:(Lazy.force pid))
+  | `Mac -> This (Mac.open_fds ~pid:(Pid.me () |> Pid.to_int))
   | `Unknown ->
     if Mac.available ()
     then (
       how := `Mac;
-      This (Mac.open_fds ~pid:(Lazy.force pid)))
+      This (Mac.open_fds ~pid:(Pid.me () |> Pid.to_int)))
     else (
       match proc_fs () with
       | This _ as n ->

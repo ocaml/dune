@@ -20,7 +20,7 @@ Remove the fake ocamlformat from the dune file to see the real output
   (* fake ocamlformat output *)
 
   $ stop_dune
-  fake ocamlformat is running: "--impl" "foo.ml"
+  fake ocamlformat is running: "--impl" "./foo.ml"
   File "foo.ml", line 1, characters 0-0:
   --- foo.ml
   +++ foo.ml.corrected

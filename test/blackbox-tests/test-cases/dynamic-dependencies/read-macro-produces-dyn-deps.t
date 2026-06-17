@@ -40,4 +40,4 @@ Building `./output` should now produce a file with contents "depA depB"
   contentsB
 
   $ cat ./_build/default/output
-  depA depB
+  ./depA ./depB

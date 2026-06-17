@@ -15,7 +15,7 @@ The pform resolves to the build artifact:
 
   $ dune build bin-path
   $ cat _build/default/bin-path
-  mybin.exe
+  ./mybin.exe
 
 The rule depends on the build artifact:
 

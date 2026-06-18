@@ -39,27 +39,18 @@ module Socket = struct
   end
 
   module Unix : Unix_socket = struct
-    let addr socket =
-      Unix.ADDR_UNIX
-        (match
-           let cwd = Sys.getcwd () in
-           String.drop_prefix socket ~prefix:(cwd ^ "/")
-         with
-         | Some s -> "./" ^ s
-         | None -> socket)
-    ;;
-
-    let bind fd ~socket =
+    let with_chdir fd ~socket ~f =
       let old = Sys.getcwd () in
       let dir = Filename.dirname socket in
       let sock = Filename.basename socket in
       Sys.chdir dir;
       Exn.protect
         ~finally:(fun () -> Sys.chdir old)
-        ~f:(fun () -> U.bind fd (Unix.ADDR_UNIX sock))
+        ~f:(fun () -> f fd (Unix.ADDR_UNIX sock))
     ;;
 
-    let connect fd ~socket = U.connect fd (addr socket)
+    let connect fd ~socket = with_chdir fd ~socket ~f:U.connect
+    let bind fd ~socket = with_chdir fd ~socket ~f:U.bind
   end
 
   module Fail : Unix_socket = struct

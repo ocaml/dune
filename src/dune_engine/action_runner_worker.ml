@@ -70,21 +70,17 @@ let exec_process t ~name ({ Request.Exec.run_id; process } : Request.Exec.t) =
   else (
     let build = start_build t run_id in
     Fiber.finalize
+      ~finally:(fun () -> finish_build t run_id)
       (fun () ->
          Dune_trace.emit Action (fun () ->
-           Dune_trace.Event.Action.Runner.runner_event
-             ~name
-             Dune_trace.Event.Action.Runner.Exec_start);
+           Dune_trace.Event.Action.Runner.runner_event ~name Exec_start);
          let+ response = Process.exec_locally ~build process in
-         Request.Exec.Completed response)
-      ~finally:(fun () -> finish_build t run_id))
+         Request.Exec.Completed response))
 ;;
 
 let cancel_build t ~name ({ Request.Cancel_build.run_id } : Request.Cancel_build.t) =
   Dune_trace.emit Action (fun () ->
-    Dune_trace.Event.Action.Runner.runner_event
-      ~name
-      Dune_trace.Event.Action.Runner.Cancel_start);
+    Dune_trace.Event.Action.Runner.runner_event ~name Cancel_start);
   mark_cancelled t run_id;
   let active_builds =
     Table.values t.active_builds
@@ -98,29 +94,25 @@ let cancel_build t ~name ({ Request.Cancel_build.run_id } : Request.Cancel_build
 
 let start ~name ~where =
   let t = create () in
-  let name_string = Action_runner_name.to_string name in
   Dune_trace.emit Action (fun () ->
-    Dune_trace.Event.Action.Runner.runner_event
-      ~name
-      Dune_trace.Event.Action.Runner.Connection_start);
+    Dune_trace.Event.Action.Runner.runner_event ~name Connection_start);
   let* connection = Client.Connection.connect_exn where in
   Dune_trace.emit Action (fun () ->
-    Dune_trace.Event.Action.Runner.runner_event
-      ~name
-      Dune_trace.Event.Action.Runner.Connection_established);
+    Dune_trace.Event.Action.Runner.runner_event ~name Connection_established);
   let private_menu : Client.proc list =
     [ Client.Request Decl.ready
-    ; Client.Handle_request (Decl.exec, exec_process t ~name)
-    ; Client.Handle_request (Decl.cancel_build, cancel_build t ~name)
+    ; Handle_request (Decl.exec, exec_process t ~name)
+    ; Handle_request (Decl.cancel_build, cancel_build t ~name)
     ]
   in
-  let id = Dune_rpc.Id.make (Sexp.Atom name_string) in
-  let initialize = Dune_rpc.Initialize.Request.create ~id in
+  let initialize =
+    let name_string = Action_runner_name.to_string name in
+    let id = Dune_rpc.Id.make (Sexp.Atom name_string) in
+    Dune_rpc.Initialize.Request.create ~id
+  in
   Client.client ~private_menu connection initialize ~f:(fun client ->
-    let* request =
-      Client.Versioned.prepare_request client (Dune_rpc.Decl.Request.witness Decl.ready)
-    in
-    match request with
+    Client.Versioned.prepare_request client (Dune_rpc.Decl.Request.witness Decl.ready)
+    >>= function
     | Error version_error ->
       User_error.raise
         [ Pp.textf

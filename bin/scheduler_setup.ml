@@ -22,6 +22,10 @@ let await_action_runner common =
   if Common.action_runner_requested common
   then
     let open Fiber.O in
+    (* [Common.action_runner] spawns a worker that immediately connects back to
+       Dune over RPC. With eager socket creation, the socket can be connectable
+       before the accept loop is running, so start the server before spawning
+       the worker. *)
     let* () = Dune_rpc_impl.Server.ensure_ready () in
     match Common.action_runner common with
     | None -> Fiber.return ()

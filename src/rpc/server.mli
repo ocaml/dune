@@ -164,11 +164,10 @@ module Lifecycle : sig
       -> root:string
       -> where:Where.t
       -> registry:[ `Add | `Skip ]
-      -> server:Csexp_rpc.Server.t Lazy.t
+      -> server:Csexp_rpc.Server.t
       -> t
 
     val run : t -> unit Fiber.t
-    val ready : t -> (unit, Exn_with_backtrace.t) result Fiber.t
     val stop : t -> unit Fiber.t
   end
   with type handler := t

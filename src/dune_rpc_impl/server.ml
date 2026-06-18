@@ -107,16 +107,6 @@ let () =
     | Some server -> to_dyn server)
 ;;
 
-let ready (t : t) =
-  Rpc.Server.Lifecycle.ready t.server.lifecycle
-  >>= function
-  | Ok () -> Fiber.return ()
-  | Error exn ->
-    Dune_util.Report_error.report exn;
-    Scheduler.shutdown `Failure;
-    raise Dune_util.Report_error.Already_reported
-;;
-
 let stop (t : t) =
   Fiber.fork_and_join_unit
     (fun () -> Action_runner.Rpc_server.stop t.server.action_runner)
@@ -439,6 +429,7 @@ let create ~registry ~root ~build ~where ~action_runner watch_mode =
              ])
     in
     let handler = Rpc.Server.make (handler t action_runner) in
+    let server = Lazy.force server in
     let lifecycle = Rpc.Server.Lifecycle.create ~handler ~root ~where ~registry ~server in
     action_runner, lifecycle
   in
@@ -515,8 +506,7 @@ module Background = struct
     | `Running -> Fiber.return ()
     | `Awaiting_start ->
       t.state <- `Running;
-      let* () = Fiber.Pool.task pool ~f:(fun () -> run server) in
-      ready server
+      Fiber.Pool.task pool ~f:(fun () -> run server)
   ;;
 end
 

@@ -929,9 +929,7 @@ module Lifecycle = struct
   let ready t =
     Fiber.Ivar.read t.startup_ivar
     >>= function
-    | Ok server ->
-      let+ () = Csexp_rpc.Server.ready server in
-      Ok ()
+    | Ok _ -> Fiber.return (Ok ())
     | Error _ as error -> Fiber.return error
   ;;
 

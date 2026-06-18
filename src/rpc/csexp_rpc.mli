@@ -47,10 +47,6 @@ module Server : sig
   (** [create sockaddrs ~backlog] binds and starts listening on [sockaddrs]. *)
   val create : Unix.sockaddr list -> backlog:int -> (t, [ `Already_in_use ]) result
 
-  (** [ready t] returns a fiber that completes once [serve t] is accepting
-      clients. *)
-  val ready : t -> unit Fiber.t
-
   (** [stop t] completes only after the listening sockets are closed and no new
       clients can connect. *)
   val stop : t -> unit Fiber.t

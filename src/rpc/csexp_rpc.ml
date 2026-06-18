@@ -49,8 +49,17 @@ module Socket = struct
          | None -> socket)
     ;;
 
+    let bind fd ~socket =
+      let old = Sys.getcwd () in
+      let dir = Filename.dirname socket in
+      let sock = Filename.basename socket in
+      Sys.chdir dir;
+      Exn.protect
+        ~finally:(fun () -> Sys.chdir old)
+        ~f:(fun () -> U.bind fd (Unix.ADDR_UNIX sock))
+    ;;
+
     let connect fd ~socket = U.connect fd (addr socket)
-    let bind fd ~socket = U.bind fd (addr socket)
   end
 
   module Fail : Unix_socket = struct

@@ -442,7 +442,6 @@ module Server = struct
   type t =
     { id : Id.t
     ; mutable state : [ `Listening of Transport.t | `Serving of Transport.t | `Closed ]
-    ; ready : unit Fiber.Ivar.t
     }
 
   let create sockaddrs ~backlog =
@@ -475,12 +474,10 @@ module Server = struct
         let fds = List.map sockaddrs ~f:bind_socket in
         let transport = Transport.create (List.combine sockaddrs fds) ~backlog in
         bound := [];
-        Ok { id = Id.gen (); state = `Listening transport; ready = Fiber.Ivar.create () })
+        Ok { id = Id.gen (); state = `Listening transport })
     with
     | Unix.Unix_error (EADDRINUSE, _, _) -> Error `Already_in_use
   ;;
-
-  let ready t = Fiber.Ivar.read t.ready
 
   let serve (t : t) =
     let transport =
@@ -490,7 +487,6 @@ module Server = struct
       | `Listening transport -> transport
     in
     t.state <- `Serving transport;
-    let+ () = Fiber.Ivar.fill t.ready () in
     let loop () =
       Dune_trace.emit Rpc (fun () ->
         Dune_trace.Event.Rpc.accept ~id:(Id.to_int t.id) `Start None);
@@ -507,7 +503,7 @@ module Server = struct
       | Error _ | Ok None -> None
       | Ok (Some fd) -> Some (Session.create fd)
     in
-    Fiber.Stream.In.create loop
+    Fiber.return (Fiber.Stream.In.create loop)
   ;;
 
   let stop t =

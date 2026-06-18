@@ -1449,7 +1449,7 @@ let gen_package_install_file_rules sctx (package : Package.t) =
               })
           in
           let prefix_entries =
-            (* opam 2.6+ supports a 'prefix' and 'prefixexec' key that allows us to directly specify this *)
+            (* opam 2.6+ supports a 'root' and 'rootexec' key that allows us to directly specify this *)
             List.rev_map entries ~f:(fun (e : Install.Entry.Sourced.Expanded.t) ->
               { e with
                 entry =

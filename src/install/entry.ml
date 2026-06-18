@@ -226,8 +226,8 @@ module Expanded = struct
       dst = Dst.explicit dst
     ; section =
         (if Section.should_set_executable_bit t.section
-         then Section.Prefixexec
-         else Section.Prefix)
+         then Section.Rootexec
+         else Section.Root)
     }
   ;;
 

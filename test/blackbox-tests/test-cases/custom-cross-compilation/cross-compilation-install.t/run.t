@@ -24,7 +24,7 @@ Installing a library with `-x foo` should install the library for that context
   libexec: [
     "_build/install/default.foo/lib/repro/repro.cmxs" {"../../foo-sysroot/lib/repro/repro.cmxs"}
   ]
-  prefix: [
+  root: [
     "_build/install/default.foo/lib/repro/META" {"foo-sysroot/lib/repro/META"}
     "_build/install/default.foo/lib/repro/dune-package" {"foo-sysroot/lib/repro/dune-package"}
     "_build/install/default.foo/lib/repro/foo.ml" {"foo-sysroot/lib/repro/foo.ml"}
@@ -39,7 +39,7 @@ Installing a library with `-x foo` should install the library for that context
     "_build/install/default.foo/lib/repro/repro__Foo.cmt" {"foo-sysroot/lib/repro/repro__Foo.cmt"}
     "_build/install/default.foo/lib/repro/repro__Foo.cmx" {"foo-sysroot/lib/repro/repro__Foo.cmx"}
   ]
-  prefixexec: [
+  rootexec: [
     "_build/install/default.foo/lib/repro/repro.cmxs" {"foo-sysroot/lib/repro/repro.cmxs"}
   ]
 

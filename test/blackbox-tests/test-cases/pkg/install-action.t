@@ -35,11 +35,11 @@ Testing install actions
          [ In_build_dir
              "_private/default/.pkg/test.0.0.1-$DIGEST/target/lib/xxx"
          ])
-      ; (PREFIX,
+      ; (ROOT,
          [ In_build_dir
              "_private/default/.pkg/test.0.0.1-$DIGEST/target/lib/xxx"
          ])
-      ; (PREFIXEXEC,
+      ; (ROOTEXEC,
          [ In_build_dir
              "_private/default/.pkg/test.0.0.1-$DIGEST/target/lib/xxx"
          ])

@@ -24,7 +24,7 @@ Tests a basic custom cross-compilation setup.
   bin: [
     "_build/install/default.foo/bin/blah" {"../foo-sysroot/bin/blah"}
   ]
-  prefix: [
+  root: [
     "_build/install/default.foo/lib/p/META" {"foo-sysroot/lib/p/META"}
     "_build/install/default.foo/lib/p/dune-package" {"foo-sysroot/lib/p/dune-package"}
     "_build/install/default.foo/lib/p/opam" {"foo-sysroot/lib/p/opam"}
@@ -36,7 +36,7 @@ Tests a basic custom cross-compilation setup.
     "_build/install/default.foo/lib/p/p.cmxa" {"foo-sysroot/lib/p/p.cmxa"}
     "_build/install/default.foo/lib/p/p.ml" {"foo-sysroot/lib/p/p.ml"}
   ]
-  prefixexec: [
+  rootexec: [
     "_build/install/default.foo/bin/blah" {"foo-sysroot/bin/blah"}
     "_build/install/default.foo/lib/p/p.cmxs" {"foo-sysroot/lib/p/p.cmxs"}
   ]

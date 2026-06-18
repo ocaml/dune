@@ -14,8 +14,8 @@ type 'path t =
   ; doc : 'path
   ; stublibs : 'path
   ; man : 'path
-  ; prefix : 'path
-  ; prefixexec : 'path
+  ; root : 'path
+  ; rootexec : 'path
   }
 
 let map
@@ -32,8 +32,8 @@ let map
       ; doc
       ; stublibs
       ; man
-      ; prefix
-      ; prefixexec
+      ; root
+      ; rootexec
       }
       ~f
   =
@@ -50,8 +50,8 @@ let map
   ; doc = f doc
   ; stublibs = f stublibs
   ; man = f man
-  ; prefix = f prefix
-  ; prefixexec = f prefixexec
+  ; root = f root
+  ; rootexec = f rootexec
   }
 ;;
 
@@ -70,8 +70,8 @@ let make ~relative ~package ~(roots : _ Roots.t) =
   ; share = relative roots.share_root package
   ; etc = relative roots.etc_root package
   ; doc = relative roots.doc_root package
-  ; prefix = roots.prefix
-  ; prefixexec = roots.prefix
+  ; root = roots.prefix
+  ; rootexec = roots.prefix
   }
 ;;
 
@@ -90,8 +90,8 @@ let get t (section : Section.t) =
   | Doc -> t.doc
   | Stublibs -> t.stublibs
   | Man -> t.man
-  | Prefix -> t.prefix
-  | Prefixexec -> t.prefixexec
+  | Root -> t.root
+  | Rootexec -> t.rootexec
   | Misc -> Code_error.raise "Install.Paths.get" []
 ;;
 

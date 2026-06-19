@@ -1240,15 +1240,29 @@ module Request = struct
   let goals t = t.goals
 end
 
+let complete_action_runner_build = function
+  | None -> Fiber.return ()
+  | Some build ->
+    (match Process.Build.action_runner build with
+     | None -> Fiber.return ()
+     | Some action_runner ->
+       Action_runner.complete_build
+         action_runner
+         ~run_id:(Process.Build.run_id build)
+         ~cancellation:(Process.Build.cancellation build))
+;;
+
 let run_build_requests ?restart_started_at ?build request =
-  run_with_error_collection ?restart_started_at ~build (fun () ->
-    let build =
-      Request.goals request |> List.map ~f:Request.Goal.build |> Action_builder.all_unit
-    in
-    Fiber.collect_errors (fun () ->
-      Memo.run_with_error_handler
-        (fun () -> evaluate_action_builder build)
-        ~handle_error_no_raise:report_early_exn))
+  Fiber.finalize
+    ~finally:(fun () -> complete_action_runner_build build)
+    (fun () ->
+       run_with_error_collection ?restart_started_at ~build (fun () ->
+         Fiber.collect_errors (fun () ->
+           Memo.run_with_error_handler ~handle_error_no_raise:report_early_exn (fun () ->
+             Request.goals request
+             |> List.map ~f:Request.Goal.build
+             |> Action_builder.all_unit
+             |> evaluate_action_builder))))
 ;;
 
 let run ?restart_started_at ?build f =

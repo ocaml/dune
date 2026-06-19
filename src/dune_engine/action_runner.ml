@@ -180,11 +180,7 @@ module Rpc_server = struct
     raise (Dune_rpc.Response.Error.E error)
   ;;
 
-  let implement_handler t (handler : _ Root.Rpc.Server.Handler.t) =
-    Server.Handler.declare_request handler Decl.exec;
-    Server.Handler.declare_request handler Decl.cancel_build;
-    Server.Handler.implement_request handler Decl.ready
-    @@ fun session ({ Request.Ready.name } : Request.Ready.t) ->
+  let ready t session ({ Request.Ready.name } : Request.Ready.t) =
     match Table.find t.workers name with
     | None -> invalid_request "unexpected action runner"
     | Some worker ->
@@ -201,6 +197,12 @@ module Rpc_server = struct
              disconnect worker)
          in
          Fiber.Ivar.fill ready ())
+  ;;
+
+  let implement_handler t (handler : _ Root.Rpc.Server.Handler.t) =
+    Server.Handler.declare_request handler Decl.exec;
+    Server.Handler.declare_request handler Decl.cancel_build;
+    Server.Handler.implement_request handler Decl.ready (ready t)
   ;;
 end
 

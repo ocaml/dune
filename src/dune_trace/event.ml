@@ -252,6 +252,27 @@ let process_cleanup_finish () =
   Event.instant ~name:"process-cleanup-finish" (Time.now ()) Process
 ;;
 
+let child_process_cleanup ~pids stage =
+  let stage, extra_args =
+    match stage with
+    | `Started -> "started", []
+    | `Sent_signal signal -> "sent-signal", [ "signal", Arg.string (Signal.name signal) ]
+    | `Finished -> "finished", []
+    | `Failed -> "failed", []
+  in
+  let args =
+    [ "stage", Arg.string stage
+    ; "pid_count", Arg.int (List.length pids)
+    ; "pids", Arg.list (List.map pids ~f:(fun pid -> Arg.int (Pid.to_int pid)))
+    ]
+  in
+  Event.instant
+    ~args:(args @ extra_args)
+    ~name:"child-process-cleanup"
+    (Time.now ())
+    Process
+;;
+
 let watch_build_start ~run_id ~restart ~start =
   let args =
     [ "run_id", Arg.int run_id; "restart", Arg.bool restart ]

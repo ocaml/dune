@@ -1,0 +1,5 @@
+(executable
+ (name sub_process)
+ (enabled_if
+  (= %{system} linux))
+ (libraries unix))

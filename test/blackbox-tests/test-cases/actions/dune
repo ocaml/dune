@@ -4,5 +4,12 @@
   (<> %{system} macosx)))
 
 (cram
+ (applies_to subreaper)
+ (deps
+  (source_tree bin))
+ (enabled_if
+  (= %{system} linux)))
+
+(cram
  (applies_to concurrent)
  (enabled_if false))

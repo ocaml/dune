@@ -236,13 +236,14 @@ let run_current_build
    | Building _ -> assert false
    | Standing_by | Restarting_build _ -> ());
   t.status <- Building run_id;
-  let+ outcome =
+  let* outcome =
     let build_ctx =
       Process.Build.create ~action_runner ~run_id ~cancellation:(Fiber.Cancel.create ())
     in
     Process.Build.with_ build_ctx (fun () ->
       Build_system.run_action_builder ?restart_started_at ~build:build_ctx build)
   in
+  let+ () = Scheduler.cleanup_subreaper_child_processes () in
   let next =
     match t.status with
     | Restarting_build _ -> `Restart

@@ -90,6 +90,14 @@ val running_jobs_count : t -> int
     restart. *)
 val shutdown : [ `Ok | `Failure ] -> unit
 
+(** Terminate child processes that Dune adopted as a Linux subreaper. No-op on
+    other platforms. Failures are reported as warnings and do not fail the
+    current operation. *)
+val cleanup_subreaper_child_processes : unit -> unit Fiber.t
+
+(** Prevent subreaper cleanup from treating [pid] as an escaped action child. *)
+val preserve_child_process : Pid.t -> unit
+
 (** [sleep duration] waits for [duration] to elapse. *)
 val sleep : Time.Span.t -> unit Fiber.t
 

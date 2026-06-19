@@ -26,3 +26,19 @@ terminated.
   pid file created
   $ ps -p $(cat $pidFile) > /dev/null || echo "Process terminated"
   Process terminated
+
+Processes that ignore SIGTERM are escalated to SIGKILL before the test action
+finishes.
+
+  $ stubbornPidFile="$PWD/stubborn-pid.txt"
+  $ cat > stubborn.t <<EOF
+  >   $ (trap '' TERM; sleep 5) &
+  >   $ echo \$! > $stubbornPidFile
+  > EOF
+
+  $ dune runtest stubborn.t
+
+  $ [ -s $stubbornPidFile ] && echo pid file created
+  pid file created
+  $ ps -p $(cat $stubbornPidFile) > /dev/null || echo "Process terminated"
+  Process terminated

@@ -55,11 +55,76 @@ let wait_for_process t ~is_process_group_leader pid =
 
 (* Grace period before escalating from SIGTERM to SIGKILL *)
 let sigterm_grace_period = Time.Span.of_secs 0.2
+let process_group_poll_interval = Time.Span.of_secs 0.01
 
 type termination_reason =
   | Normal
   | Cancel
   | Timeout
+
+let trace_process_group_cleanup pid stage =
+  Dune_trace.emit Process (fun () -> Dune_trace.Event.process_group_cleanup ~pid stage)
+;;
+
+let process_group_alive pid =
+  match Unix.kill (-Pid.to_int pid) 0 with
+  | () -> true
+  | exception Unix.Unix_error (Unix.ESRCH, _, _) -> false
+  | exception Unix.Unix_error (Unix.EPERM, _, _) -> true
+  | exception Unix.Unix_error _ -> true
+;;
+
+let await_process_group_exit t pid ~timeout =
+  let deadline = Time.add (Time.now ()) timeout in
+  let rec loop () =
+    if not (process_group_alive pid)
+    then Fiber.return `Exited
+    else if Time.(now () >= deadline)
+    then Fiber.return `Timed_out
+    else
+      let* result =
+        Async_io.Task.await (Async_io.sleep t.async_io process_group_poll_interval)
+      in
+      match result with
+      | Ok () -> loop ()
+      | Error `Cancelled -> Fiber.return `Timed_out
+      | Error (`Exn _) -> assert false
+  in
+  loop ()
+;;
+
+let terminate_process_group t pid ~is_process_group_leader =
+  if Sys.win32 || not is_process_group_leader
+  then Fiber.return ()
+  else if not (process_group_alive pid)
+  then (
+    trace_process_group_cleanup pid `Already_exited;
+    Fiber.return ())
+  else (
+    trace_process_group_cleanup pid `Started;
+    trace_process_group_cleanup pid (`Sent_signal Term);
+    Process_watcher.kill_process_group pid Sys.sigterm ~is_process_group_leader;
+    let* result = await_process_group_exit t pid ~timeout:sigterm_grace_period in
+    match result with
+    | `Exited ->
+      trace_process_group_cleanup pid `Finished;
+      Fiber.return ()
+    | `Timed_out ->
+      trace_process_group_cleanup pid (`Timed_out (Term, sigterm_grace_period));
+      trace_process_group_cleanup pid (`Sent_signal Kill);
+      Process_watcher.kill_process_group pid Sys.sigkill ~is_process_group_leader;
+      await_process_group_exit t pid ~timeout:sigterm_grace_period
+      >>| (function
+       | `Exited -> trace_process_group_cleanup pid `Finished
+       | `Timed_out ->
+         trace_process_group_cleanup pid (`Timed_out (Kill, sigterm_grace_period));
+         trace_process_group_cleanup pid `Failed;
+         User_error.raise
+           [ Pp.textf "failed to terminate process group %d" (Pid.to_int pid)
+           ; Pp.text "Processes remained alive after SIGTERM and SIGKILL."
+           ; Pp.text "This can happen if an action is repeatedly spawning new processes."
+           ]))
+;;
 
 (* We use this version privately in this module whenever we can pass the
    scheduler explicitly *)
@@ -67,8 +132,7 @@ let wait_for_build_process t ?cancellation ~is_process_group_leader pid =
   let sigkill_alarm = ref None in
   let wait () =
     let* r = wait_for_process t ~is_process_group_leader pid in
-    if not Sys.win32
-    then Process_watcher.kill_process_group pid Sys.sigterm ~is_process_group_leader;
+    let* () = terminate_process_group t pid ~is_process_group_leader in
     let+ () =
       match !sigkill_alarm with
       | None -> Fiber.return ()

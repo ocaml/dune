@@ -11,3 +11,5 @@ let of_int_exn t =
 ;;
 
 let me () = Unix.getpid ()
+
+module Set = Int.Set

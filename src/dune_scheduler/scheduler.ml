@@ -406,6 +406,8 @@ module Run_once = struct
 
   let run_and_cleanup t f =
     let res = run t f in
+    if Lazy.force child_subreaper_enabled
+    then Fiber.run (cleanup_subreaper_child_processes_impl t) ~iter:(fun () -> iter t);
     Async_io.shutdown t.async_io;
     Option.iter t.file_watcher ~f:(fun watcher ->
       (* CR-someday rgrinberg: we do not wind down the threads for the file

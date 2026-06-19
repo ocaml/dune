@@ -31,6 +31,12 @@ let install_term_writer path =
          exit 0))
 ;;
 
+let wait_for_file path =
+  while not (Sys.file_exists path) do
+    Unix.sleepf 0.01
+  done
+;;
+
 let () =
   match Sys.argv with
   | [| _; "setsid"; pid_file |] ->
@@ -42,6 +48,20 @@ let () =
        write_pid pid_file;
        signal_ready write_fd;
        sleep_forever ()
+     | _ ->
+       Unix.close write_fd;
+       wait_ready read_fd)
+  | [| _; "setsid-until-file"; pid_file; release_file; survived_file; cleanup_file |] ->
+    let read_fd, write_fd = Unix.pipe () in
+    (match Unix.fork () with
+     | 0 ->
+       Unix.close read_fd;
+       ignore (Unix.setsid () : int);
+       write_pid pid_file;
+       install_term_writer cleanup_file;
+       signal_ready write_fd;
+       wait_for_file release_file;
+       write_pid survived_file
      | _ ->
        Unix.close write_fd;
        wait_ready read_fd)

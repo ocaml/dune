@@ -118,3 +118,38 @@ SIGKILL.
   $ with_timeout dune_cmd wait-for-file-to-appear "$child_cleanup_file"
 
   $ stop_dune_quiet
+
+Shutdown also runs subreaper cleanup, so an escaped child from the final build
+is terminated before Dune exits.
+
+  $ shutdown_pid_file=$TMPDIR/shutdown-pid
+  $ shutdown_release_file=$TMPDIR/shutdown-release
+  $ shutdown_survived_file=$TMPDIR/shutdown-survived
+  $ shutdown_cleanup_file=$TMPDIR/shutdown-cleanup
+  $ cat >>dune <<EOF
+  > (rule
+  >  (target sixth)
+  >  (action
+  >   (progn
+  >    (run %{exe:bin/sub_process.exe} setsid-until-file "$shutdown_pid_file" "$shutdown_release_file" "$shutdown_survived_file" "$shutdown_cleanup_file")
+  >    (with-stdout-to sixth (echo done)))))
+  > EOF
+
+  $ start_dune
+
+  $ build sixth
+  Success
+
+  $ with_timeout dune_cmd wait-for-file-to-appear "$shutdown_pid_file"
+
+  $ stop_dune_quiet
+
+  $ touch "$shutdown_release_file"
+
+  $ if test -e "$shutdown_cleanup_file"; then
+  >   echo "SUCCESS: escaped process was cleaned up during shutdown"
+  > else
+  >   with_timeout dune_cmd wait-for-file-to-appear "$shutdown_survived_file"
+  >   echo "FAILURE: escaped process survived shutdown"
+  > fi
+  SUCCESS: escaped process was cleaned up during shutdown

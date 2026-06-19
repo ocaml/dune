@@ -9,6 +9,13 @@ module Async_io = struct
     ; mutable write_ready : bool
     }
 
+  type 'a or_cancel = ('a, [ `Cancelled | `Exn of exn ]) result
+
+  type status =
+    [ `Filled
+    | `Waiting
+    ]
+
   type t =
     { readers : (Fd.t, packed_task Queue.t) Table.t
     ; writers : (Fd.t, packed_task Queue.t) Table.t
@@ -28,24 +35,24 @@ module Async_io = struct
     }
 
   and timer =
-    { ivar : (unit, [ `Cancelled | `Exn of exn ]) result Fiber.Ivar.t
+    { ivar : unit or_cancel Fiber.Ivar.t
     ; after : Time.Span.t
     ; deadline : Time.t
     ; select : t
     ; id : Task_id.t
     ; mutable watcher : Lev.Timer.t option
     ; mutable ready : bool
-    ; mutable status : [ `Filled | `Waiting ]
+    ; mutable status : status
     }
 
   and ('a, 'label) task =
     { job : 'label -> Fd.t -> 'a
-    ; ivar : ('a, [ `Cancelled | `Exn of exn ]) result Fiber.Ivar.t
+    ; ivar : 'a or_cancel Fiber.Ivar.t
     ; select : t
     ; what : [ `Read | `Write ]
     ; fds : Fd.t list
     ; id : Task_id.t
-    ; mutable status : [ `Filled | `Waiting ]
+    ; mutable status : status
     }
 
   and packed_task = Task : (_, 'label) task * 'label -> packed_task

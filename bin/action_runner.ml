@@ -2,6 +2,14 @@ open Import
 
 let name = Action_runner_name.of_string "action-runner"
 
+type t =
+  { runner : Dune_engine.Action_runner.t
+  ; rpc_server : Dune_engine.Action_runner.Rpc_server.t
+  }
+
+let runner t = t.runner
+let rpc_server t = t.rpc_server
+
 let find_in_path_exn prog =
   match Bin.which ~path:(Env_path.path Env.initial) prog with
   | Some path -> path
@@ -21,56 +29,62 @@ let dune_prog () =
   else Path.of_filename_relative_to_initial_cwd prog
 ;;
 
-let create rpc_server ~config ~sandbox_actions =
-  let rpc = Dune_rpc_impl.Server.action_runner rpc_server in
-  let dune_prog = dune_prog () in
-  let worker_argv =
-    [ Path.to_string dune_prog
-    ; "internal"
-    ; "action-runner"
-    ; "start"
-    ; Action_runner_name.to_string name
-    ]
-  in
-  let prog, argv =
-    if sandbox_actions
-    then (
-      let { Bwrap.prog; argv } =
-        Bwrap.wrap ~cwd:(Path.to_absolute_filename Path.root) worker_argv
+let create ~where ~config ~sandbox_actions =
+  let runner =
+    let pid =
+      let env =
+        let jobs =
+          let scheduler_config =
+            Dune_config.for_scheduler
+              config
+              ~watch_exclusions:[]
+              ~print_ctrl_c_warning:true
+          in
+          Int.to_string scheduler_config.concurrency
+        in
+        Env.add Env.initial ~var:"DUNE_JOBS" ~value:jobs
+        |> Env.add ~var:"DUNE_BUILD_DIR" ~value:(Path.Build.to_string Path.Build.root)
+        |> Env.to_unix
+        |> Spawn.Env.of_list
       in
-      prog, argv)
-    else Path.to_string dune_prog, worker_argv
+      let trace_fd = Dune_trace.duplicate_global_fd () in
+      let prog, argv =
+        let dune_prog = dune_prog () in
+        let worker_argv =
+          [ Path.to_string dune_prog
+          ; "internal"
+          ; "action-runner"
+          ; "start"
+          ; Action_runner_name.to_string name
+          ]
+        in
+        if sandbox_actions
+        then (
+          let { Bwrap.prog; argv } =
+            Bwrap.wrap ~cwd:(Path.to_absolute_filename Path.root) worker_argv
+          in
+          prog, argv)
+        else Path.to_string dune_prog, worker_argv
+      in
+      let argv =
+        let where = Dune_rpc.Where.to_string where in
+        argv
+        @ [ where ]
+        @
+        match trace_fd with
+        | Some fd -> [ "--trace-fd"; Int.to_string (Fd.unsafe_to_int fd) ]
+        | None -> []
+      in
+      Exn.protect
+        ~f:(fun () ->
+          Spawn.spawn ~env ~prog ~argv ~setpgid:Spawn.Pgid.new_process_group ())
+        ~finally:(fun () -> Option.iter trace_fd ~f:Fd.close)
+      |> Pid.of_int_exn
+    in
+    Dune_engine.Action_runner.create name pid
   in
-  let where =
-    Dune_rpc.Where.to_string (Dune_rpc_impl.Server.listening_address rpc_server)
-  in
-  let trace_fd = Dune_trace.duplicate_global_fd () in
-  let argv =
-    argv
-    @ [ where ]
-    @
-    match trace_fd with
-    | Some fd -> [ "--trace-fd"; Int.to_string (Fd.unsafe_to_int fd) ]
-    | None -> []
-  in
-  let scheduler_config =
-    Dune_config.for_scheduler config ~watch_exclusions:[] ~print_ctrl_c_warning:true
-  in
-  let env =
-    let jobs = Int.to_string scheduler_config.concurrency in
-    Env.initial
-    |> Env.add ~var:"DUNE_JOBS" ~value:jobs
-    |> Env.add ~var:"DUNE_BUILD_DIR" ~value:(Path.Build.to_string Path.Build.root)
-    |> Env.to_unix
-    |> Spawn.Env.of_list
-  in
-  let pid =
-    Exn.protect
-      ~f:(fun () -> Spawn.spawn ~env ~prog ~argv ~setpgid:Spawn.Pgid.new_process_group ())
-      ~finally:(fun () -> Option.iter trace_fd ~f:Fd.close)
-    |> Pid.of_int_exn
-  in
-  Dune_engine.Action_runner.create rpc name pid
+  let rpc_server = Dune_engine.Action_runner.Rpc_server.create (Some runner) in
+  { runner; rpc_server }
 ;;
 
 let parse_name name = Action_runner_name.parse_string_exn (Loc.none, name)

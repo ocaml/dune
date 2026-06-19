@@ -18,11 +18,11 @@ val create
   :  registry:[ `Add | `Skip ]
   -> root:string
   -> build:build
+  -> where:Dune_rpc.Where.t
+  -> action_runner:Dune_engine.Action_runner.Rpc_server.t
   -> Watch_mode_config.t
   -> t
 
 val run : t -> unit Fiber.t
 val with_background_rpc : t -> (unit -> 'a Fiber.t) -> 'a Fiber.t
 val ensure_ready : unit -> unit Fiber.t
-val listening_address : t -> Dune_rpc.Where.t
-val action_runner : t -> Dune_engine.Action_runner.Rpc_server.t

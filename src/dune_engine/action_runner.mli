@@ -11,23 +11,26 @@ open Import
 type t
 
 module Rpc_server : sig
-  (** The server-side component responsible for orchestrating action runners. *)
-  type t
+    type action_runner
 
-  val create : unit -> t
+    (** The server-side component responsible for orchestrating action runners. *)
+    type t
 
-  (** [implement_handler t handler] wires the action runner requests into an
+    val create : action_runner option -> t
+
+    (** [implement_handler t handler] wires the action runner requests into an
       existing RPC handler. *)
-  val implement_handler : t -> 'a Root.Rpc.Server.Handler.t -> unit
+    val implement_handler : t -> 'a Root.Rpc.Server.Handler.t -> unit
 
-  (** [run t] is to be run by the RPC server. *)
-  val run : t -> unit Fiber.t
+    (** [run t] is to be run by the RPC server. *)
+    val run : t -> unit Fiber.t
 
-  (** [stop t] is to be run by the RPC server. *)
-  val stop : t -> unit Fiber.t
-end
+    (** [stop t] is to be run by the RPC server. *)
+    val stop : t -> unit Fiber.t
+  end
+  with type action_runner := t
 
-val create : Rpc_server.t -> Action_runner_name.t -> Pid.t -> t
+val create : Action_runner_name.t -> Pid.t -> t
 val ensure_ready : t -> unit Fiber.t
 
 (** [exec_process t ~run_id ~cancellation process] dispatches [process] to [t]

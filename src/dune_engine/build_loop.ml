@@ -239,8 +239,18 @@ let run_current_build
     let build_ctx =
       Process.Build.create ~action_runner ~run_id ~cancellation:(Fiber.Cancel.create ())
     in
-    Process.Build.with_ build_ctx (fun () ->
-      Build_system.run_build_requests ?restart_started_at ~build:build_ctx request)
+    Fiber.finalize
+      (fun () ->
+         Process.Build.with_ build_ctx (fun () ->
+           Build_system.run_build_requests ?restart_started_at ~build:build_ctx request))
+      ~finally:(fun () ->
+        match action_runner with
+        | None -> Fiber.return ()
+        | Some action_runner ->
+          Action_runner.complete_build
+            action_runner
+            ~run_id
+            ~cancellation:(Process.Build.cancellation build_ctx))
   in
   let+ () = Scheduler.cleanup_subreaper_child_processes () in
   let next =

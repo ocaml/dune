@@ -18,7 +18,16 @@ let run_build_system ~action_runner ~run_id ~request =
     |> List.singleton
     |> Dune_engine.Build_system.Request.create
   in
-  Dune_engine.Build_system.run_build_requests ~build request
+  Fiber.finalize
+    (fun () -> Dune_engine.Build_system.run_build_requests ~build request)
+    ~finally:(fun () ->
+      match action_runner with
+      | None -> Fiber.return ()
+      | Some action_runner ->
+        Dune_engine.Action_runner.complete_build
+          action_runner
+          ~run_id
+          ~cancellation:(Dune_engine.Process.Build.cancellation build))
 ;;
 
 let run_build_command_poll ~(common : Common.t) ~config ~sticky_goal : unit =

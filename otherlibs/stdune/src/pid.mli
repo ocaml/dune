@@ -10,3 +10,5 @@ val me : unit -> t
 (** Unsafe cast of integers to pids. Will be removed once we improve the API
     further *)
 val of_int_exn : int -> t
+
+module Set : Set.S with type elt = t

@@ -53,14 +53,6 @@
     },
     {
       "cat": "action",
-      "name": "runner-exec-start",
-      "args": {
-        "name": "action-runner",
-        "action_runner": "action-runner"
-      }
-    },
-    {
-      "cat": "action",
       "name": "runner-disconnected",
       "args": {
         "name": "action-runner"
@@ -118,14 +110,6 @@ Cram test commands are user-controlled and should be routed through the runner.
       "name": "runner-request-sent",
       "args": {
         "name": "action-runner"
-      }
-    },
-    {
-      "cat": "action",
-      "name": "runner-exec-start",
-      "args": {
-        "name": "action-runner",
-        "action_runner": "action-runner"
       }
     },
     {

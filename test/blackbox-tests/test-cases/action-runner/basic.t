@@ -35,14 +35,6 @@
       "args": {
         "name": "action-runner"
       }
-    },
-    {
-      "cat": "action",
-      "name": "runner-exec-start",
-      "args": {
-        "name": "action-runner",
-        "action_runner": "action-runner"
-      }
     }
   ]
 
@@ -67,14 +59,6 @@ that contains a directory component.
       "name": "runner-request-sent",
       "args": {
         "name": "action-runner"
-      }
-    },
-    {
-      "cat": "action",
-      "name": "runner-exec-start",
-      "args": {
-        "name": "action-runner",
-        "action_runner": "action-runner"
       }
     }
   ]

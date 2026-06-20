@@ -2,13 +2,9 @@ open Import
 
 let name = Action_runner_name.of_string "action-runner"
 
-type t =
-  { runner : Dune_engine.Action_runner.t
-  ; rpc_server : Dune_engine.Action_runner.Rpc_server.t
-  }
+type t = { runner : Dune_engine.Action_runner.t }
 
 let runner t = t.runner
-let rpc_server t = t.rpc_server
 
 let find_in_path_exn prog =
   match Bin.which ~path:(Env_path.path Env.initial) prog with
@@ -29,7 +25,7 @@ let dune_prog () =
   else Path.of_filename_relative_to_initial_cwd prog
 ;;
 
-let create ~where ~config ~sandbox_actions =
+let create ~rpc_server ~where ~config ~sandbox_actions =
   let runner =
     let pid =
       let env =
@@ -80,10 +76,9 @@ let create ~where ~config ~sandbox_actions =
         ~finally:(fun () -> Option.iter trace_fd ~f:Fd.close)
       |> Pid.of_int_exn
     in
-    Dune_engine.Action_runner.create name pid
+    Dune_engine.Action_runner.create rpc_server name pid
   in
-  let rpc_server = Dune_engine.Action_runner.Rpc_server.create (Some runner) in
-  { runner; rpc_server }
+  { runner }
 ;;
 
 let parse_where where =

@@ -17,6 +17,9 @@ val close : t -> unit
 val read : t -> Event.File_watcher_event.t list option Fiber.t
 val flush : t -> unit Fiber.t
 
+(** Child processes owned by the file watcher. *)
+val child_pids : t -> Pid.t option
+
 (** The action that needs to be taken to shutdown the watcher. *)
 val shutdown : t -> [ `Kill of Pid.t | `No_op | `Thunk of unit -> unit ]
 

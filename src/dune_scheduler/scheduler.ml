@@ -13,6 +13,15 @@ let spawn_thread ~name f = Thread0.spawn ~name f
 
 include Types.Scheduler
 
+external set_child_subreaper : unit -> bool = "dune_scheduler_set_child_subreaper"
+
+let child_subreaper_enabled =
+  lazy
+    (match Platform.OS.value with
+     | Platform.OS.Linux -> set_child_subreaper ()
+     | _ -> false)
+;;
+
 let running_jobs_count (t : t) = Process_watcher.running_count t.process_watcher
 
 exception Build_cancelled
@@ -50,7 +59,12 @@ let with_job_slot ?cancellation f =
 let wait_for_process t ~is_process_group_leader pid =
   let ivar = Fiber.Ivar.create () in
   Process_watcher.register_job t.process_watcher { pid; is_process_group_leader; ivar };
-  Fiber.Ivar.read ivar
+  let+ proc_info = Fiber.Ivar.read ivar in
+  if Pid.Set.mem t.preserved_child_processes proc_info.pid
+  then
+    t.preserved_child_processes
+    <- Pid.Set.remove t.preserved_child_processes proc_info.pid;
+  proc_info
 ;;
 
 (* Grace period before escalating from SIGTERM to SIGKILL *)
@@ -60,6 +74,135 @@ type termination_reason =
   | Normal
   | Cancel
   | Timeout
+
+let child_process_poll_interval = Time.Span.of_secs 0.01
+
+let preserve_child_process pid =
+  Option.iter (t_opt ()) ~f:(fun t ->
+    t.preserved_child_processes <- Pid.Set.add t.preserved_child_processes pid)
+;;
+
+let trace_child_process_cleanup pids stage =
+  Dune_trace.emit Process (fun () ->
+    let pids = Pid.Set.to_list pids in
+    Dune_trace.Event.child_process_cleanup ~pids stage)
+;;
+
+let warn_child_process_cleanup_failed pids paragraphs =
+  trace_child_process_cleanup pids `Failed;
+  User_warning.emit
+    ([ Pp.text "Unable to clean up subreaper child processes." ]
+     @ paragraphs
+     @ [ Pp.text "Continuing without failing the current operation." ])
+;;
+
+let child_process_cleanup_candidates t =
+  let preserved_child_processes =
+    Pid.Set.union
+      t.preserved_child_processes
+      (Process_watcher.running_pids t.process_watcher)
+  in
+  match Proc.Linux.Process_tree.children_of (Pid.me ()) with
+  | Error _ as error -> error
+  | Ok pids -> Ok (Pid.Set.diff pids preserved_child_processes)
+;;
+
+let child_process_cleanup_candidates_after_reap t =
+  match child_process_cleanup_candidates t with
+  | Error _ as error -> error
+  | Ok pids ->
+    Pid.Set.iter pids ~f:(fun pid ->
+      ignore (Proc.wait (Proc.Pid pid) [ WNOHANG ] : Proc.Process_info.t option));
+    child_process_cleanup_candidates t
+;;
+
+let signal_processes pids signal =
+  if Pid.Set.is_empty pids
+  then Ok ()
+  else (
+    trace_child_process_cleanup pids (`Sent_signal signal);
+    Pid.Set.fold pids ~init:(Ok ()) ~f:(fun pid acc ->
+      match acc with
+      | Error _ -> acc
+      | Ok () ->
+        (match Pid.kill pid `Pid signal with
+         | () -> Ok ()
+         | exception Unix.Unix_error (Unix.ESRCH, _, _) -> Ok ()
+         | exception exn ->
+           Error
+             [ Pp.textf
+                 "failed to signal child process %d with SIG%s"
+                 (Pid.to_int pid)
+                 (Signal.name signal)
+             ; Exn.pp exn
+             ])))
+;;
+
+let rec await_no_child_processes t ~deadline ~signal ~signaled =
+  match child_process_cleanup_candidates_after_reap t with
+  | Error error -> Fiber.return (`Failed [ Proc.Linux.Process_tree.pp_error error ])
+  | Ok pids when Pid.Set.is_empty pids -> Fiber.return `Exited
+  | Ok pids when Time.(now () >= deadline) -> Fiber.return (`Timed_out pids)
+  | Ok pids ->
+    let unsignaled = Pid.Set.diff pids signaled in
+    (match signal_processes unsignaled signal with
+     | Error paragraphs -> Fiber.return (`Failed paragraphs)
+     | Ok () ->
+       Async_io.Task.await (Async_io.sleep t.async_io child_process_poll_interval)
+       >>= (function
+        | Ok () ->
+          let signaled = Pid.Set.union signaled unsignaled in
+          await_no_child_processes t ~deadline ~signal ~signaled
+        | Error (`Exn _) -> assert false
+        | Error `Cancelled ->
+          (match child_process_cleanup_candidates_after_reap t with
+           | Ok pids -> Fiber.return (`Timed_out pids)
+           | Error error ->
+             Fiber.return (`Failed [ Proc.Linux.Process_tree.pp_error error ]))))
+;;
+
+let cleanup_subreaper_child_processes_impl t =
+  match child_process_cleanup_candidates_after_reap t with
+  | Error error ->
+    warn_child_process_cleanup_failed
+      Pid.Set.empty
+      [ Proc.Linux.Process_tree.pp_error error ];
+    Fiber.return ()
+  | Ok pids when Pid.Set.is_empty pids -> Fiber.return ()
+  | Ok pids ->
+    trace_child_process_cleanup pids `Started;
+    let deadline = Time.add (Time.now ()) sigterm_grace_period in
+    await_no_child_processes t ~deadline ~signal:Term ~signaled:Pid.Set.empty
+    >>= (function
+     | `Failed paragraphs ->
+       warn_child_process_cleanup_failed pids paragraphs;
+       Fiber.return ()
+     | `Exited ->
+       trace_child_process_cleanup pids `Finished;
+       Fiber.return ()
+     | `Timed_out _ ->
+       let deadline = Time.add (Time.now ()) sigterm_grace_period in
+       await_no_child_processes t ~deadline ~signal:Kill ~signaled:Pid.Set.empty
+       >>| (function
+        | `Failed paragraphs -> warn_child_process_cleanup_failed pids paragraphs
+        | `Exited -> trace_child_process_cleanup pids `Finished
+        | `Timed_out pids ->
+          warn_child_process_cleanup_failed
+            pids
+            [ Pp.text "child processes remained alive after SIGTERM and SIGKILL"
+            ; Pp.textf
+                "child processes still alive: %s"
+                (Pid.Set.to_list pids
+                 |> List.map ~f:(fun pid -> Pid.to_int pid |> Int.to_string)
+                 |> String.concat ~sep:", ")
+            ]))
+;;
+
+let cleanup_subreaper_child_processes () =
+  if Lazy.force child_subreaper_enabled
+  then cleanup_subreaper_child_processes_impl (t ())
+  else Fiber.return ()
+;;
 
 (* We use this version privately in this module whenever we can pass the
    scheduler explicitly *)
@@ -160,7 +303,7 @@ let kill_and_wait_for_all_processes t =
      reset with the correct event queue. *)
   if not Sys.win32
   then (
-    Unix.kill (Unix.getpid ()) (Signal.to_int Thread0.signal_watcher_interrupt);
+    Pid.kill (Pid.me ()) `Pid Thread0.signal_watcher_interrupt;
     Thread.join t.signal_watcher);
   !saw_signal
 ;;
@@ -180,6 +323,7 @@ let () =
 ;;
 
 let prepare (config : Config.t) ~events ~file_watcher =
+  ignore (Lazy.force child_subreaper_enabled : bool);
   (* The signal watcher must be initialized first so that signals are
      blocked in all threads. *)
   let signal_watcher =
@@ -195,6 +339,14 @@ let prepare (config : Config.t) ~events ~file_watcher =
     ; thread_pool = lazy (Thread_pool.create ~min_workers:4 ~max_workers:50)
     ; signal_watcher
     ; async_io
+    ; preserved_child_processes =
+        (match
+           match file_watcher with
+           | None -> None
+           | Some file_watcher -> File_watcher.child_pids file_watcher
+         with
+         | None -> Pid.Set.empty
+         | Some p -> Pid.Set.singleton p)
     }
   in
   current := Some t;

@@ -25,7 +25,7 @@
   (pps ppx_expect -- %{read-lines:ppx-extra-flags}))
  (foreign_stubs
   (language c)
-  (names fsevents_stubs fswatch_win_stubs))
+  (names fsevents_stubs fswatch_win_stubs subreaper_stubs))
  (libraries
   ocaml_inotify
   lev

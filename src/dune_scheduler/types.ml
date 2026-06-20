@@ -67,6 +67,7 @@ module Scheduler = struct
     ; thread_pool : Thread_pool.t Lazy.t
     ; signal_watcher : Thread.t
     ; async_io : Async_io.t
+    ; mutable preserved_child_processes : Pid.Set.t
     }
 
   let current : t option ref = ref None

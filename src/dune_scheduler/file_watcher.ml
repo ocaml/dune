@@ -440,6 +440,12 @@ let dispatch_backend_events events backend_events =
 let close t = Thread_safe_channel.close t.events
 let read t = Thread_safe_channel.read t.events
 
+let child_pids t =
+  match t.kind with
+  | Fswatch { pid; _ } -> Some pid
+  | Inotify _ | Fsevents _ | Fswatch_win _ -> None
+;;
+
 let shutdown t =
   close t;
   match t.kind with

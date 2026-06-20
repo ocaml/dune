@@ -87,6 +87,10 @@ module Process_table = struct
 
   let iter t ~f = Table.iter t.table ~f
   let running_count t = t.running_count
+
+  let running_pids t =
+    Table.foldi t.table ~init:Pid.Set.empty ~f:(fun pid _ acc -> Pid.Set.add acc pid)
+  ;;
 end
 
 let register_job_win32 t job =
@@ -102,6 +106,12 @@ let running_count_win32 t =
 
 let running_count_unix t = Process_table.running_count t
 let running_count = if Sys.win32 then running_count_win32 else running_count_unix
+
+let running_pids_win32 t =
+  Mutex.protect (Lazy.force t.mutex) (fun () -> Process_table.running_pids t)
+;;
+
+let running_pids = if Sys.win32 then running_pids_win32 else Process_table.running_pids
 
 let killall_unix t signal =
   Process_table.iter t ~f:(fun job ->

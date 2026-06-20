@@ -4,21 +4,20 @@ promptly.
   $ make_dune_project 3.23
   $ export DUNE_TRACE=action
   $ export TEST_DIR=$PWD
+  $ rm -f break-started break-finish
   $ cat > dune <<'EOF'
   > (rule
   >  (target break)
   >  (action
-  >   (bash "touch \"$TEST_DIR/break-started\"; while [ ! -f \"$TEST_DIR/break-finish\" ]; do sleep 0.01; done")))
+  >   (bash "touch \"$TEST_DIR/break-started\"; kill -9 \"$PPID\"; while [ ! -f \"$TEST_DIR/break-finish\" ]; do sleep 0.01; done")))
   > EOF
 
-Start the build, wait until the worker has started the action, then kill the
-worker from the test harness.
+Start the build and wait until the worker has started the action. The action
+kills its parent worker before waiting for the test harness to let it finish.
 
   $ DUNE_JOBS=1 $timeout 10 dune build --action-runner break > /dev/null 2>&1 &
   $ BUILD_PID=$!
-  $ RUNNER_PID=$(wait_for_runner_spawn_pid)
   $ wait_for_file break-started
-  $ kill -9 "$RUNNER_PID"
   $ touch break-finish
   $ wait_for_runner_event_count runner-disconnected 1
   $ wait $BUILD_PID; [ "$?" = 1 ]

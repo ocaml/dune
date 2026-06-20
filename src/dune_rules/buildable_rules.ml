@@ -21,16 +21,16 @@ let gen_select_rules sctx ~dir compile_info ~for_ =
 ;;
 
 let with_lib_deps (t : Context.t) merlin_ident ~dir ~f =
-  let prefix =
-    if Context.merlin t
-    then
+  match Context.merlin t with
+  | false -> f ()
+  | true ->
+    let prefix =
       Merlin_ident.merlin_file_path dir merlin_ident
       |> Path.build
       |> Action_builder.path
       |> Action_builder.goal
-    else Action_builder.return ()
-  in
-  Rules.prefix_rules prefix ~f
+    in
+    Rules.prefix_rules prefix ~f
 ;;
 
 type kind =

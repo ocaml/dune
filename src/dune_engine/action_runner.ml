@@ -161,15 +161,18 @@ module Rpc_server = struct
   ;;
 
   let stop t =
-    let stop_worker () =
-      match t.worker with
-      | None -> Fiber.return ()
-      | Some worker ->
-        let how = if Sys.win32 then `Pid else `Group in
-        Pid.kill worker.pid how Term;
-        Fiber.Pool.close worker.monitor_pool
-    in
-    Fiber.fork_and_join_unit (fun () -> Fiber.Pool.close t.pool) stop_worker
+    Fiber.fork_and_join_unit
+      (fun () -> Fiber.Pool.close t.pool)
+      (fun () ->
+         match t.worker with
+         | None -> Fiber.return ()
+         | Some worker ->
+           let* () =
+             match worker.status with
+             | Starting _ | Closed -> Fiber.return ()
+             | Initialized (Session session) -> Server.Session.close session
+           in
+           Fiber.Pool.close worker.monitor_pool)
   ;;
 
   let invalid_request message =

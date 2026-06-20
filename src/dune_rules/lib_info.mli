@@ -152,6 +152,7 @@ val local_main_module_name : _ t -> Module_name.t option
 val wrapped : _ t -> Wrapped.t Inherited.t option
 val special_builtin_support : _ t -> (Loc.t * Special_builtin_support.t) option
 val modes : _ t -> Lib_mode.Map.Set.t
+val effective_modes : _ t -> melange_available:bool Memo.t -> Lib_mode.Map.Set.t Memo.t
 val modules : _ t -> for_:Compilation_mode.t -> Modules.With_vlib.t option Source.t
 
 val modules_by_mode

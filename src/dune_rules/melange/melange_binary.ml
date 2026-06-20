@@ -16,15 +16,6 @@ let available sctx ~dir =
   Result.is_ok melc
 ;;
 
-let effective_lib_modes sctx ~dir (modes : Lib_mode.Map.Set.t) =
-  let has_ocaml_mode = modes.ocaml.byte || modes.ocaml.native in
-  if modes.melange && has_ocaml_mode
-  then
-    let+ available = available sctx ~dir in
-    if available then modes else { modes with melange = false }
-  else Memo.return modes
-;;
-
 let where =
   let impl bin =
     let* _ = Build_system.build_file bin in

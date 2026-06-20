@@ -237,7 +237,11 @@ end = struct
         ~dir
         ~lib_config
     in
-    let* lib_modes = Melange_binary.effective_lib_modes sctx ~dir (Lib_info.modes info) in
+    let* lib_modes =
+      Lib_info.effective_modes
+        info
+        ~melange_available:(Melange_binary.available sctx ~dir)
+    in
     let { Lib_mode.Map.ocaml = { Mode.Dict.byte; native } as ocaml; melange } =
       lib_modes
     in
@@ -798,7 +802,9 @@ end = struct
           let lib = Lib.Local.to_lib lib in
           let name = Lib.name lib in
           let* lib_modes =
-            Melange_binary.effective_lib_modes sctx ~dir (Lib_info.modes info)
+            Lib_info.effective_modes
+              info
+              ~melange_available:(Melange_binary.available sctx ~dir)
           in
           let* expander = Super_context.expander sctx ~dir in
           let file_deps (deps : _ Lib_info.File_deps.t) =

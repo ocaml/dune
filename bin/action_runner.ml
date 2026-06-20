@@ -87,8 +87,6 @@ let create ~where ~config ~sandbox_actions =
   { runner; rpc_server }
 ;;
 
-let parse_name name = Action_runner_name.parse_string_exn (Loc.none, name)
-
 let parse_where where =
   match
     Dune_rpc.Conv.of_sexp
@@ -113,7 +111,7 @@ let inherit_trace_fd ~name trace_fd =
 ;;
 
 let start_worker ~name ~where ~trace_fd =
-  let name = parse_name name in
+  let name = Action_runner_name.parse_string_exn (Loc.none, name) in
   inherit_trace_fd ~name trace_fd;
   let where = parse_where where in
   Dune_engine.Action_runner_worker.start ~name ~where

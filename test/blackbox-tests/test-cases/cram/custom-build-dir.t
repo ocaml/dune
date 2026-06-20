@@ -18,9 +18,12 @@ path
   File "foo.t", line 1, characters 0-0:
   --- foo.t
   +++ foo.t.corrected
-  @@ -6,3 +6,10 @@
+  @@ -4,5 +4,12 @@
+     > else
+     >   echo ".rpc missing"
      > fi
-     .rpc missing
+  -  .rpc missing
+  +  .rpc exists
      $ env -u DUNE_RPC -u DUNE_BUILD_DIR dune runtest
   +  File "bar.t", line 1, characters 0-0:
   +  --- bar.t
@@ -40,7 +43,7 @@ path
     > else
     >   echo ".rpc missing"
     > fi
-    .rpc missing
+    .rpc exists
     $ env -u DUNE_RPC -u DUNE_BUILD_DIR dune runtest
     File "bar.t", line 1, characters 0-0:
     --- bar.t

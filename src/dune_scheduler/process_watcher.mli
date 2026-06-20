@@ -1,6 +1,6 @@
 open Stdune
 
-val kill_process_group : Pid.t -> int -> is_process_group_leader:bool -> unit
+val kill_process_group : Pid.t -> Signal.t -> is_process_group_leader:bool -> unit
 
 (** Initialize the process watcher thread. *)
 type t
@@ -15,6 +15,6 @@ val is_running : t -> Pid.t -> bool
 val running_count : t -> int
 
 (** Send the following signal to all running processes. *)
-val killall : t -> int -> unit
+val killall : t -> Signal.t -> unit
 
 val wait_unix : t -> Fiber.fill list

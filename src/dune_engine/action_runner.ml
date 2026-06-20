@@ -158,9 +158,8 @@ module Rpc_server = struct
 
   let stop t =
     Table.iter t.workers ~f:(fun worker ->
-      let pid = Pid.to_int worker.pid in
-      let pid = if Sys.win32 then pid else -pid in
-      Unix.kill pid Sys.sigterm);
+      let how = if Sys.win32 then `Pid else `Group in
+      Pid.kill worker.pid how Term);
     Fiber.Pool.close t.pool
   ;;
 

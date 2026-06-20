@@ -61,7 +61,7 @@ let fork_child_with_grandchild () =
 ;;
 
 let cleanup_child_tree (child, _grandchild) =
-  Unix.kill (Pid.to_int child) Sys.sigkill;
+  Pid.kill child `Pid Kill;
   wait_no_eintr child
 ;;
 

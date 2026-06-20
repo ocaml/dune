@@ -68,7 +68,7 @@ let wait_for_build_process t ?cancellation ~is_process_group_leader pid =
   let wait () =
     let* r = wait_for_process t ~is_process_group_leader pid in
     if not Sys.win32
-    then Process_watcher.kill_process_group pid Sys.sigterm ~is_process_group_leader;
+    then Process_watcher.kill_process_group pid Term ~is_process_group_leader;
     let+ () =
       match !sigkill_alarm with
       | None -> Fiber.return ()
@@ -86,14 +86,13 @@ let wait_for_build_process t ?cancellation ~is_process_group_leader pid =
         cancel
         ~on_cancel:(fun () ->
           if not Sys.win32
-          then Process_watcher.kill_process_group pid Sys.sigterm ~is_process_group_leader;
+          then Process_watcher.kill_process_group pid Term ~is_process_group_leader;
           let sleep = Async_io.sleep t.async_io sigterm_grace_period in
           sigkill_alarm := Some sleep;
           Async_io.Task.await sleep
           >>| function
           | Error `Cancelled -> ()
-          | Ok () ->
-            Process_watcher.kill_process_group pid Sys.sigkill ~is_process_group_leader
+          | Ok () -> Process_watcher.kill_process_group pid Kill ~is_process_group_leader
           | Error (`Exn _) -> assert false)
         wait
     in
@@ -125,12 +124,12 @@ let kill_and_wait_for_all_processes t =
        would raise because [Proc.wait] has no implementation there. Send
        SIGKILL directly; the main drain loop below observes exits via
        [jobs_completed] events pushed by the Win32 polling thread. *)
-    Process_watcher.killall t.process_watcher Sys.sigkill
+    Process_watcher.killall t.process_watcher Kill
   else if Process_watcher.running_count t.process_watcher > 0
   then (
     Dune_trace.emit Process Dune_trace.Event.process_cleanup_start;
     (* Send SIGTERM first to give processes a chance to clean up *)
-    Process_watcher.killall t.process_watcher Sys.sigterm;
+    Process_watcher.killall t.process_watcher Term;
     (* Poll until all processes exit or the grace period expires, then SIGKILL *)
     let deadline = Time.add (Time.now ()) sigterm_grace_period in
     let sent_sigkill = ref false in
@@ -141,7 +140,7 @@ let kill_and_wait_for_all_processes t =
         if (not !sent_sigkill) && Time.(now () >= deadline)
         then (
           Dune_trace.emit Process Dune_trace.Event.process_cleanup_sigkill;
-          Process_watcher.killall t.process_watcher Sys.sigkill;
+          Process_watcher.killall t.process_watcher Kill;
           sent_sigkill := true)
         else Unix.sleepf 0.01
     done;
@@ -265,7 +264,7 @@ module Run_once = struct
         (* CR-someday rgrinberg: Instead of this hackery, we should probably
            just rgister the watcher as a non build process. Luckily, this code
            path is incredibly rare as the external file watchers are bad. *)
-        Unix.kill (Pid.to_int pid) Sys.sigterm
+        Pid.kill pid `Pid Term
       | `Thunk f -> f ()
       | `No_op -> ());
     Console.Status_line.clear ();
@@ -376,7 +375,7 @@ let wait_for_process_with_timeout t pid waiter ~timeout ~is_process_group_leader
       Async_io.Task.await sleep
       >>| function
       | Ok () when Process_watcher.is_running t.process_watcher pid ->
-        Process_watcher.kill_process_group pid Sys.sigkill ~is_process_group_leader;
+        Process_watcher.kill_process_group pid Kill ~is_process_group_leader;
         Dune_trace.emit Process (fun () ->
           Dune_trace.Event.signal_sent
             Kill

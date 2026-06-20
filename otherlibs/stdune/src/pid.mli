@@ -11,4 +11,6 @@ val me : unit -> t
     further *)
 val of_int_exn : int -> t
 
+val kill : t -> [ `Pid | `Group ] -> Signal.t -> unit
+
 module Set : Set.S with type elt = t

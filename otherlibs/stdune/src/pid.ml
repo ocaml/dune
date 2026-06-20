@@ -12,4 +12,15 @@ let of_int_exn t =
 
 let me () = Unix.getpid ()
 
+let kill pid where signal =
+  let where =
+    match where with
+    | `Pid -> pid
+    | `Group ->
+      assert (not Sys.win32);
+      -pid
+  in
+  Unix.kill where (Signal.to_int signal)
+;;
+
 module Set = Int.Set

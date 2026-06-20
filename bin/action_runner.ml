@@ -76,8 +76,7 @@ let create ~where ~config ~sandbox_actions =
         | None -> []
       in
       Exn.protect
-        ~f:(fun () ->
-          Spawn.spawn ~env ~prog ~argv ~setpgid:Spawn.Pgid.new_process_group ())
+        ~f:(fun () -> Spawn.spawn ~env ~prog ~argv ())
         ~finally:(fun () -> Option.iter trace_fd ~f:Fd.close)
       |> Pid.of_int_exn
     in

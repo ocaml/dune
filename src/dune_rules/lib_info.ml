@@ -359,6 +359,17 @@ let ppx_runtime_deps t = t.ppx_runtime_deps
 let allow_unused_libraries t = t.allow_unused_libraries
 let sub_systems t = t.sub_systems
 let modes t = t.modes
+
+let effective_modes t ~melange_available =
+  let modes = modes t in
+  match modes.melange, modes.ocaml.byte || modes.ocaml.native with
+  | true, true ->
+    let open Memo.O in
+    let+ melange_available = melange_available in
+    if melange_available then modes else { modes with melange = false }
+  | _has_melange, _has_ocaml -> Memo.return modes
+;;
+
 let modules t ~for_ = Source.map t.modules ~f:(Compilation_mode.Per_mode.get ~for_)
 let modules_by_mode t = t.modules
 let archives t = t.archives

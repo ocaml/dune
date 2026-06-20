@@ -19,12 +19,14 @@ let go_without_rpc_server ~(common : Common.t) ~config:dune_config f =
 ;;
 
 let await_action_runner common =
-  match Common.action_runner common with
-  | None -> Fiber.return ()
-  | Some action_runner ->
+  if Common.action_runner_requested common
+  then
     let open Fiber.O in
     let* () = Dune_rpc_impl.Server.ensure_ready () in
-    Dune_engine.Action_runner.ensure_ready action_runner
+    match Common.action_runner common with
+    | None -> Fiber.return ()
+    | Some action_runner -> Dune_engine.Action_runner.ensure_ready action_runner
+  else Fiber.return ()
 ;;
 
 let go_with_rpc_server ~common ~config f =

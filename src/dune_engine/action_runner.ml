@@ -143,67 +143,48 @@ let exec_process t ~run_id ~cancellation process =
   | Not_cancelled, Error exns -> Fiber.reraise_all exns
 ;;
 
-module Rpc_server = struct
-  type nonrec t =
-    | No_worker
-    | Worker of
-        { worker : t
-        ; pool : Fiber.Pool.t
-        }
+let run t = Fiber.Pool.run t.pool
 
-  let create = function
-    | `Disabled -> No_worker
-    | `Enabled worker -> Worker { worker; pool = worker.pool }
-  ;;
+let stop t =
+  let* () =
+    match t.status with
+    | Starting _ | Closed -> Fiber.return ()
+    | Initialized (Session session) -> Server.Session.close session
+  in
+  Fiber.Pool.close t.pool
+;;
 
-  let run = function
-    | No_worker -> Fiber.return ()
-    | Worker { pool; _ } -> Fiber.Pool.run pool
-  ;;
+let invalid_request message =
+  let error = Dune_rpc.Response.Error.create ~kind:Invalid_request ~message () in
+  raise (Dune_rpc.Response.Error.E error)
+;;
 
-  let stop = function
-    | No_worker -> Fiber.return ()
-    | Worker { worker; pool } ->
-      let* () =
-        match worker.status with
-        | Starting _ | Closed -> Fiber.return ()
-        | Initialized (Session session) -> Server.Session.close session
-      in
-      Fiber.Pool.close pool
-  ;;
+let ready t session ({ Request.Ready.name } : Request.Ready.t) =
+  match t with
+  | None -> invalid_request "unexpected action runner"
+  | Some worker when not (Action_runner_name.equal name worker.name) ->
+    invalid_request "unexpected action runner"
+  | Some worker ->
+    (match worker.status with
+     | Closed -> invalid_request "disconnected earlier"
+     | Initialized _ -> invalid_request "already signalled readiness to the server"
+     | Starting { ready } ->
+       worker.status <- Initialized (Session session);
+       Dune_trace.emit Action (fun () ->
+         Dune_trace.Event.Action.Runner.runner_event ~name:worker.name Connected);
+       let* () =
+         Fiber.Pool.task worker.pool ~f:(fun () ->
+           let* () = Server.Session.closed session in
+           disconnect worker)
+       in
+       Fiber.Ivar.fill ready ())
+;;
 
-  let invalid_request message =
-    let error = Dune_rpc.Response.Error.create ~kind:Invalid_request ~message () in
-    raise (Dune_rpc.Response.Error.E error)
-  ;;
-
-  let ready t session ({ Request.Ready.name } : Request.Ready.t) =
-    match t with
-    | No_worker -> invalid_request "unexpected action runner"
-    | Worker { worker; pool = _ } when not (Action_runner_name.equal name worker.name) ->
-      invalid_request "unexpected action runner"
-    | Worker { worker; pool } ->
-      (match worker.status with
-       | Closed -> invalid_request "disconnected earlier"
-       | Initialized _ -> invalid_request "already signalled readiness to the server"
-       | Starting { ready } ->
-         worker.status <- Initialized (Session session);
-         Dune_trace.emit Action (fun () ->
-           Dune_trace.Event.Action.Runner.runner_event ~name:worker.name Connected);
-         let* () =
-           Fiber.Pool.task pool ~f:(fun () ->
-             let* () = Server.Session.closed session in
-             disconnect worker)
-         in
-         Fiber.Ivar.fill ready ())
-  ;;
-
-  let implement_handler t (handler : _ Root.Rpc.Server.Handler.t) =
-    Server.Handler.declare_request handler Decl.exec;
-    Server.Handler.declare_request handler Decl.cancel_build;
-    Server.Handler.implement_request handler Decl.ready (ready t)
-  ;;
-end
+let implement_handler t (handler : _ Root.Rpc.Server.Handler.t) =
+  Server.Handler.declare_request handler Decl.exec;
+  Server.Handler.declare_request handler Decl.cancel_build;
+  Server.Handler.implement_request handler Decl.ready (ready t)
+;;
 
 let create name pid =
   Dune_trace.emit Action (fun () ->

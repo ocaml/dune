@@ -68,7 +68,7 @@ end
 
 type server =
   { lifecycle : Rpc.Server.Lifecycle.t
-  ; action_runner : Action_runner.Rpc_server.t
+  ; action_runner : Action_runner.t option
   ; registry : [ `Add | `Skip ]
   ; watch_mode : Watch_mode_config.t
   ; mutable clients : Clients.t
@@ -109,7 +109,10 @@ let () =
 
 let stop (t : t) =
   Fiber.fork_and_join_unit
-    (fun () -> Action_runner.Rpc_server.stop t.server.action_runner)
+    (fun () ->
+       match t.server.action_runner with
+       | None -> Fiber.return ()
+       | Some runner -> Action_runner.stop runner)
     (fun () -> Rpc.Server.Lifecycle.stop t.server.lifecycle)
 ;;
 
@@ -399,7 +402,7 @@ let handler (t : t Fdecl.t) action_runner_server : unit Handler.t =
     let f _ () = Fiber.return Path.Build.(to_string root) in
     Handler.implement_request rpc Procedures.Public.build_dir f
   in
-  Action_runner.Rpc_server.implement_handler action_runner_server rpc;
+  Action_runner.implement_handler action_runner_server rpc;
   Dune_rules_rpc.register rpc;
   rpc
 ;;
@@ -447,7 +450,10 @@ let run t =
   let run () =
     Fiber.fork_and_join_unit
       (fun () -> Rpc.Server.Lifecycle.run t.server.lifecycle)
-      (fun () -> Action_runner.Rpc_server.run t.server.action_runner)
+      (fun () ->
+         match t.server.action_runner with
+         | None -> Fiber.return ()
+         | Some runner -> Action_runner.run runner)
   in
   match t.server.registry with
   | `Skip -> run ()

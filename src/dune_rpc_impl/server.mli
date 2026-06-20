@@ -19,7 +19,7 @@ val create
   -> root:string
   -> build:build
   -> where:Dune_rpc.Where.t
-  -> action_runner:Dune_engine.Action_runner.Rpc_server.t
+  -> action_runner:Dune_engine.Action_runner.t option
   -> Watch_mode_config.t
   -> t
 

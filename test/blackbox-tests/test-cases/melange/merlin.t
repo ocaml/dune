@@ -493,3 +493,72 @@ User ppx flags should appear in merlin config
       ]
     ]
   }
+
+Mixed OCaml/Melange libraries generate separate Merlin configuration files.
+
+  $ mkdir mixed
+  $ cat > mixed/dune-project <<EOF
+  > (lang dune 3.24)
+  > (using melange 0.1)
+  > EOF
+  $ cat > mixed/pp_ocaml.sh <<'EOF'
+  > #!/bin/sh
+  > cat "$1"
+  > EOF
+  $ cat > mixed/pp_melange.sh <<'EOF'
+  > #!/bin/sh
+  > cat "$1"
+  > EOF
+  $ chmod +x mixed/pp_ocaml.sh mixed/pp_melange.sh
+  $ cat > mixed/dune <<EOF
+  > (library
+  >  (name mixed)
+  >  (modules foo)
+  >  (modes :standard melange)
+  >  (preprocess
+  >   (action
+  >    (run sh %{dep:pp_ocaml.sh} %{input-file})))
+  >  (melange.preprocess
+  >   (action
+  >    (run sh %{dep:pp_melange.sh} %{input-file}))))
+  > EOF
+  $ cat > mixed/foo.ml <<EOF
+  > let x = "foo"
+  > EOF
+
+  $ dune build --root mixed @check
+  $ find mixed/_build/default/.merlin-conf -type f | sort
+  mixed/_build/default/.merlin-conf/lib-mixed
+
+The old `File` query still returns the default OCaml Merlin configuration.
+
+  $ query_ocaml_merlin_pp "$PWD/mixed/foo.ml" --root mixed | grep -E 'STDLIB|\(B .*\.mixed\.objs'
+   (STDLIB /OCAMLC_WHERE)
+   (B $TESTCASE_ROOT/mixed/_build/default/.mixed.objs/byte)
+  $ query_ocaml_merlin_pp "$PWD/mixed/foo.ml" --root mixed | grep -E 'MELC_STDLIB|\.objs/melange|pp_melange'
+  [1]
+
+Both generated configurations remain available to debug tooling.
+
+  $ dune ocaml merlin dump-config --root mixed --format=json "$PWD/mixed" | jq_dune '
+  > def config($name): .config[] | select(.[0] == $name) | .[1];
+  > def local_path: sub("^.*_build/default/"; "_build/default/");
+  > [
+  >   merlinEntry("Foo")
+  >   | (first(config("B") | select(contains(".mixed.objs"))) | local_path) as $obj_dir
+  >   | first(config("FLG") | select(.[0] == "-pp") | .[1]) as $pp
+  >   | {
+  >       mode: (if $obj_dir | contains("/melange") then "melange" else "ocaml" end),
+  >       obj_dir: $obj_dir,
+  >       preprocess: (if $pp | contains("pp_melange") then "melange" else "ocaml" end)
+  >     }
+  > ]
+  > | unique
+  > | sort_by(.mode == "melange")' | censor
+  [
+    {
+      "mode": "ocaml",
+      "obj_dir": "_build/default/.mixed.objs/byte",
+      "preprocess": "ocaml"
+    }
+  ]

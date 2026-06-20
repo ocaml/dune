@@ -17,7 +17,7 @@ type t =
   { name : Action_runner_name.t
   ; mutable status : status
   ; pid : Pid.t
-  ; monitor_pool : Fiber.Pool.t
+  ; pool : Fiber.Pool.t
   ; mutable monitoring : bool
   }
 
@@ -74,7 +74,7 @@ let monitor_worker t =
   then Fiber.return ()
   else (
     t.monitoring <- true;
-    Fiber.Pool.task t.monitor_pool ~f:(fun () ->
+    Fiber.Pool.task t.pool ~f:(fun () ->
       let* (_status : Proc.Process_info.t) =
         Scheduler.wait_for_process t.pid ~is_process_group_leader:false
       in
@@ -147,35 +147,24 @@ module Rpc_server = struct
   type nonrec t =
     { worker : t option Lazy.t
     ; pool : Fiber.Pool.t
-    ; monitor_pool : Fiber.Pool.t
     }
 
-  let create worker =
-    { worker; pool = Fiber.Pool.create (); monitor_pool = Fiber.Pool.create () }
-  ;;
-
-  let run t =
-    Fiber.fork_and_join_unit
-      (fun () -> Fiber.Pool.run t.pool)
-      (fun () -> Fiber.Pool.run t.monitor_pool)
-  ;;
+  let create worker = { worker; pool = Fiber.Pool.create () }
+  let run t = Fiber.Pool.run t.pool
 
   let stop t =
-    Fiber.fork_and_join_unit
-      (fun () -> Fiber.Pool.close t.pool)
-      (fun () ->
-         let* () =
-           if Lazy.is_val t.worker
-           then (
-             match Lazy.force t.worker with
-             | None -> Fiber.return ()
-             | Some worker ->
-               (match worker.status with
-                | Starting _ | Closed -> Fiber.return ()
-                | Initialized (Session session) -> Server.Session.close session))
-           else Fiber.return ()
-         in
-         Fiber.Pool.close t.monitor_pool)
+    let* () =
+      if Lazy.is_val t.worker
+      then (
+        match Lazy.force t.worker with
+        | None -> Fiber.return ()
+        | Some worker ->
+          (match worker.status with
+           | Starting _ | Closed -> Fiber.return ()
+           | Initialized (Session session) -> Server.Session.close session))
+      else Fiber.return ()
+    in
+    Fiber.Pool.close t.pool
   ;;
 
   let invalid_request message =
@@ -214,11 +203,11 @@ end
 let create server name pid =
   Dune_trace.emit Action (fun () ->
     Dune_trace.Event.Action.Runner.runner_event ~name (Spawn pid));
-  let { Rpc_server.monitor_pool; _ } = server in
+  let { Rpc_server.pool; _ } = server in
   { name
   ; status = Starting { ready = Fiber.Ivar.create () }
   ; pid
-  ; monitor_pool
+  ; pool
   ; monitoring = false
   }
 ;;

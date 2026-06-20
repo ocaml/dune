@@ -1397,26 +1397,26 @@ let init_with_root_and_rpc ~(root : Workspace_root.t) ~rpc_build (builder : Buil
        else None)
   in
   let rpc =
-    let action_runner_server =
-      lazy
-        (match Lazy.force action_runner with
-         | None -> Dune_engine.Action_runner.Rpc_server.create None
-         | Some action_runner -> Action_runner.rpc_server action_runner)
-    in
-    let rpc_build =
-      match rpc_build with
-      | `Disabled -> Dune_rpc_impl.Server.Disabled
-      | `Enabled ->
-        Dune_rpc_impl.Server.Enabled
-          { build_loop = c.build_loop; build_action = rpc_request_action ~root }
-    in
     if c.builder.allow_builds
     then
       `Allow
         (lazy
-          (let registry, build =
+          (let action_runner =
+             match Lazy.force action_runner with
+             | None -> Dune_engine.Action_runner.Rpc_server.create None
+             | Some action_runner -> Action_runner.rpc_server action_runner
+           in
+           let rpc_build =
+             lazy
+               (match rpc_build with
+                | `Disabled -> Dune_rpc_impl.Server.Disabled
+                | `Enabled ->
+                  Dune_rpc_impl.Server.Enabled
+                    { build_loop = c.build_loop; build_action = rpc_request_action ~root })
+           in
+           let registry, build =
              match c.builder.watch with
-             | Yes _ -> `Add, rpc_build
+             | Yes _ -> `Add, Lazy.force rpc_build
              | No -> `Skip, Dune_rpc_impl.Server.Disabled
            in
            Dune_rpc_impl.Server.create
@@ -1424,7 +1424,7 @@ let init_with_root_and_rpc ~(root : Workspace_root.t) ~rpc_build (builder : Buil
              ~root:root.dir
              ~build
              ~where:(Lazy.force where)
-             ~action_runner:(Lazy.force action_runner_server)
+             ~action_runner
              c.builder.watch))
     else `Forbid_builds
   in

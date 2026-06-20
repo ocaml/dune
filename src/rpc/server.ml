@@ -354,6 +354,7 @@ module Session = struct
   let get t = Stage1.get t.base
   let set t = Stage1.set t.base
   let closed t = Fiber.Ivar.read t.base.close.ivar
+  let close t = Stage1.close t.base
   let compare x y = Stage1.compare x.base y.base
   let id t = t.base.id
 

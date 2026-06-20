@@ -52,6 +52,7 @@ module Session : sig
   val compare : 'a t -> 'a t -> Ordering.t
   val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
   val closed : _ t -> unit Fiber.t
+  val close : _ t -> unit Fiber.t
 
   (** A ['a Session.Stage1.t] represents a session prior to version negotiation.
 

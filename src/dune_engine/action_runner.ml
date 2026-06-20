@@ -145,34 +145,37 @@ let exec_process t ~run_id ~cancellation process =
 
 module Rpc_server = struct
   type nonrec t =
-    { worker : t option
+    { worker : t option Lazy.t
     ; pool : Fiber.Pool.t
+    ; monitor_pool : Fiber.Pool.t
     }
 
-  let create worker = { worker; pool = Fiber.Pool.create () }
+  let create worker =
+    { worker; pool = Fiber.Pool.create (); monitor_pool = Fiber.Pool.create () }
+  ;;
 
   let run t =
-    match t.worker with
-    | None -> Fiber.Pool.run t.pool
-    | Some worker ->
-      Fiber.fork_and_join_unit
-        (fun () -> Fiber.Pool.run t.pool)
-        (fun () -> Fiber.Pool.run worker.monitor_pool)
+    Fiber.fork_and_join_unit
+      (fun () -> Fiber.Pool.run t.pool)
+      (fun () -> Fiber.Pool.run t.monitor_pool)
   ;;
 
   let stop t =
     Fiber.fork_and_join_unit
       (fun () -> Fiber.Pool.close t.pool)
       (fun () ->
-         match t.worker with
-         | None -> Fiber.return ()
-         | Some worker ->
-           let* () =
-             match worker.status with
-             | Starting _ | Closed -> Fiber.return ()
-             | Initialized (Session session) -> Server.Session.close session
-           in
-           Fiber.Pool.close worker.monitor_pool)
+         let* () =
+           if Lazy.is_val t.worker
+           then (
+             match Lazy.force t.worker with
+             | None -> Fiber.return ()
+             | Some worker ->
+               (match worker.status with
+                | Starting _ | Closed -> Fiber.return ()
+                | Initialized (Session session) -> Server.Session.close session))
+           else Fiber.return ()
+         in
+         Fiber.Pool.close t.monitor_pool)
   ;;
 
   let invalid_request message =
@@ -181,7 +184,7 @@ module Rpc_server = struct
   ;;
 
   let ready t session ({ Request.Ready.name } : Request.Ready.t) =
-    match t.worker with
+    match Lazy.force t.worker with
     | None -> invalid_request "unexpected action runner"
     | Some worker when not (Action_runner_name.equal name worker.name) ->
       invalid_request "unexpected action runner"
@@ -208,13 +211,14 @@ module Rpc_server = struct
   ;;
 end
 
-let create name pid =
+let create server name pid =
   Dune_trace.emit Action (fun () ->
     Dune_trace.Event.Action.Runner.runner_event ~name (Spawn pid));
+  let { Rpc_server.monitor_pool; _ } = server in
   { name
   ; status = Starting { ready = Fiber.Ivar.create () }
   ; pid
-  ; monitor_pool = Fiber.Pool.create ()
+  ; monitor_pool
   ; monitoring = false
   }
 ;;

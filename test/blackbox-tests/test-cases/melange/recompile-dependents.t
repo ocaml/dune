@@ -38,8 +38,12 @@ Now change `foo.ml`, but keep `foo.mli` intact
   > let x () = "hi"
   > EOF
 
-Build again, noting that x.ml could have been skipped?
+Build again. Even though `foo.mli` did not change, `x.ml` is recompiled
+because Melange compilation depends on the dependency library's `.cmj` files
+for implementation information such as cross-module optimization.
 
   $ dune build
+  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("melange__X"))] | length'
+  1
   $ node ./_build/default/out/x.js
   hi

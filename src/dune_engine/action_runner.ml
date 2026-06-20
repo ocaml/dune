@@ -26,15 +26,6 @@ let disconnected t =
     [ Pp.textf "Action runner %S disconnected." (Action_runner_name.to_string t.name) ]
 ;;
 
-let disconnected_before_initialization t =
-  User_error.raise
-    [ Pp.textf
-        "Action runner %S failed to initialize."
-        (Action_runner_name.to_string t.name)
-    ; Pp.text "It exited before connecting back to Dune."
-    ]
-;;
-
 let disconnect t =
   match
     match t.status with
@@ -59,8 +50,14 @@ let await_initialized t =
   | Starting { ready } ->
     let+ () = Fiber.Ivar.read ready in
     (match t.status with
-     | Closed -> disconnected_before_initialization t
      | Initialized s -> s
+     | Closed ->
+       User_error.raise
+         [ Pp.textf
+             "Action runner %S failed to initialize."
+             (Action_runner_name.to_string t.name)
+         ; Pp.text "It exited before connecting back to Dune."
+         ]
      | Starting _ ->
        Code_error.raise
          "action runner initialization finished without a session"

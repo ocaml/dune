@@ -79,7 +79,7 @@ let monitor_worker t =
     t.monitoring <- true;
     Fiber.Pool.task t.monitor_pool ~f:(fun () ->
       let* (_status : Proc.Process_info.t) =
-        Scheduler.wait_for_process t.pid ~is_process_group_leader:true
+        Scheduler.wait_for_process t.pid ~is_process_group_leader:false
       in
       disconnect t))
 ;;

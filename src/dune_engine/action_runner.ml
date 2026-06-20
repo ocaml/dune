@@ -147,13 +147,13 @@ module Rpc_server = struct
   type nonrec t =
     | No_worker
     | Worker of
-        { worker : t Lazy.t
+        { worker : t
         ; pool : Fiber.Pool.t
         }
 
   let create = function
     | `Disabled -> No_worker
-    | `Enabled worker -> Worker { worker; pool = Fiber.Pool.create () }
+    | `Enabled worker -> Worker { worker; pool = worker.pool }
   ;;
 
   let run = function
@@ -165,13 +165,9 @@ module Rpc_server = struct
     | No_worker -> Fiber.return ()
     | Worker { worker; pool } ->
       let* () =
-        if Lazy.is_val worker
-        then (
-          let worker = Lazy.force worker in
-          match worker.status with
-          | Starting _ | Closed -> Fiber.return ()
-          | Initialized (Session session) -> Server.Session.close session)
-        else Fiber.return ()
+        match worker.status with
+        | Starting _ | Closed -> Fiber.return ()
+        | Initialized (Session session) -> Server.Session.close session
       in
       Fiber.Pool.close pool
   ;;
@@ -184,24 +180,22 @@ module Rpc_server = struct
   let ready t session ({ Request.Ready.name } : Request.Ready.t) =
     match t with
     | No_worker -> invalid_request "unexpected action runner"
+    | Worker { worker; pool = _ } when not (Action_runner_name.equal name worker.name) ->
+      invalid_request "unexpected action runner"
     | Worker { worker; pool } ->
-      let worker = Lazy.force worker in
-      if not (Action_runner_name.equal name worker.name)
-      then invalid_request "unexpected action runner"
-      else (
-        match worker.status with
-        | Closed -> invalid_request "disconnected earlier"
-        | Initialized _ -> invalid_request "already signalled readiness to the server"
-        | Starting { ready } ->
-          worker.status <- Initialized (Session session);
-          Dune_trace.emit Action (fun () ->
-            Dune_trace.Event.Action.Runner.runner_event ~name:worker.name Connected);
-          let* () =
-            Fiber.Pool.task pool ~f:(fun () ->
-              let* () = Server.Session.closed session in
-              disconnect worker)
-          in
-          Fiber.Ivar.fill ready ())
+      (match worker.status with
+       | Closed -> invalid_request "disconnected earlier"
+       | Initialized _ -> invalid_request "already signalled readiness to the server"
+       | Starting { ready } ->
+         worker.status <- Initialized (Session session);
+         Dune_trace.emit Action (fun () ->
+           Dune_trace.Event.Action.Runner.runner_event ~name:worker.name Connected);
+         let* () =
+           Fiber.Pool.task pool ~f:(fun () ->
+             let* () = Server.Session.closed session in
+             disconnect worker)
+         in
+         Fiber.Ivar.fill ready ())
   ;;
 
   let implement_handler t (handler : _ Root.Rpc.Server.Handler.t) =
@@ -211,19 +205,13 @@ module Rpc_server = struct
   ;;
 end
 
-let create (server : Rpc_server.t) name pid =
+let create name pid =
   Dune_trace.emit Action (fun () ->
     Dune_trace.Event.Action.Runner.runner_event ~name (Spawn pid));
-  let pool =
-    match server with
-    | Worker { pool; _ } -> pool
-    | No_worker ->
-      Code_error.raise "cannot create an action runner for a disabled RPC server" []
-  in
   { name
   ; status = Starting { ready = Fiber.Ivar.create () }
   ; pid
-  ; pool
+  ; pool = Fiber.Pool.create ()
   ; monitoring = false
   }
 ;;

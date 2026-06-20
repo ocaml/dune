@@ -145,32 +145,31 @@ let exec_process t ~run_id ~cancellation process =
 
 module Rpc_server = struct
   type nonrec t =
-    { workers : (Action_runner_name.t, t) Table.t
+    { worker : t option
     ; pool : Fiber.Pool.t
     }
 
-  let create () =
-    { workers = Table.create (module Action_runner_name) 16; pool = Fiber.Pool.create () }
-  ;;
+  let create worker = { worker; pool = Fiber.Pool.create () }
 
-  let run t = Fiber.Pool.run t.pool
+  let run t =
+    match t.worker with
+    | None -> Fiber.Pool.run t.pool
+    | Some worker ->
+      Fiber.fork_and_join_unit
+        (fun () -> Fiber.Pool.run t.pool)
+        (fun () -> Fiber.Pool.run worker.monitor_pool)
+  ;;
 
   let stop t =
-    Table.iter t.workers ~f:(fun worker ->
-      let how = if Sys.win32 then `Pid else `Group in
-      Pid.kill worker.pid how Term);
-    Fiber.Pool.close t.pool
-  ;;
-
-  let register t worker =
-    match Table.add t.workers worker.name worker with
-    | Ok () -> ()
-    | Error _ ->
-      User_error.raise
-        [ Pp.textf
-            "Cannot register %s as it already exists"
-            (Action_runner_name.to_string worker.name)
-        ]
+    let stop_worker () =
+      match t.worker with
+      | None -> Fiber.return ()
+      | Some worker ->
+        let how = if Sys.win32 then `Pid else `Group in
+        Pid.kill worker.pid how Term;
+        Fiber.Pool.close worker.monitor_pool
+    in
+    Fiber.fork_and_join_unit (fun () -> Fiber.Pool.close t.pool) stop_worker
   ;;
 
   let invalid_request message =
@@ -179,8 +178,10 @@ module Rpc_server = struct
   ;;
 
   let ready t session ({ Request.Ready.name } : Request.Ready.t) =
-    match Table.find t.workers name with
+    match t.worker with
     | None -> invalid_request "unexpected action runner"
+    | Some worker when not (Action_runner_name.equal name worker.name) ->
+      invalid_request "unexpected action runner"
     | Some worker ->
       (match worker.status with
        | Closed -> invalid_request "disconnected earlier"
@@ -204,18 +205,13 @@ module Rpc_server = struct
   ;;
 end
 
-let create server name pid =
+let create name pid =
   Dune_trace.emit Action (fun () ->
     Dune_trace.Event.Action.Runner.runner_event ~name (Spawn pid));
-  let { Rpc_server.pool = monitor_pool; _ } = server in
-  let t =
-    { name
-    ; status = Starting { ready = Fiber.Ivar.create () }
-    ; pid
-    ; monitor_pool
-    ; monitoring = false
-    }
-  in
-  Rpc_server.register server t;
-  t
+  { name
+  ; status = Starting { ready = Fiber.Ivar.create () }
+  ; pid
+  ; monitor_pool = Fiber.Pool.create ()
+  ; monitoring = false
+  }
 ;;

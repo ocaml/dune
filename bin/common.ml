@@ -1208,28 +1208,9 @@ let rpc_request_action ~root (kind : Dune_rpc_impl.Server.build_request) =
 
 (* CR-someday rleshchinskiy: The split between `build` and `init` seems quite arbitrary,
    we should probably refactor that at some point. *)
-let build (root : Workspace_root.t) (builder : Builder.t) ~rpc_build =
+let build (root : Workspace_root.t) (builder : Builder.t) =
   let build_loop = Dune_engine.Build_loop.create () in
-  let rpc_build =
-    match rpc_build with
-    | `Disabled -> Dune_rpc_impl.Server.Disabled
-    | `Enabled ->
-      Dune_rpc_impl.Server.Enabled { build_loop; build_action = rpc_request_action ~root }
-  in
-  let rpc =
-    if builder.allow_builds
-    then
-      `Allow
-        (lazy
-          (let registry, build =
-             match builder.watch with
-             | Yes _ -> `Add, rpc_build
-             | No -> `Skip, Dune_rpc_impl.Server.Disabled
-           in
-           Dune_rpc_impl.Server.create ~registry ~root:root.dir ~build builder.watch))
-    else `Forbid_builds
-  in
-  { builder; root; build_loop; rpc; action_runner = lazy None }
+  { builder; root; build_loop; rpc = `Forbid_builds; action_runner = lazy None }
 ;;
 
 let maybe_init_cache (cache_config : Dune_cache.Config.t) =
@@ -1249,14 +1230,21 @@ let maybe_init_cache (cache_config : Dune_cache.Config.t) =
        Disabled)
 ;;
 
-let action_runner t = Lazy.force t.action_runner
-
 let action_runner_requested t =
   t.builder.allow_builds && (t.builder.action_runner || t.builder.sandbox_actions)
 ;;
 
+let action_runner t =
+  if action_runner_requested t
+  then (
+    match t.rpc with
+    | `Allow rpc -> ignore (Lazy.force rpc : Dune_rpc_impl.Server.t)
+    | `Forbid_builds -> Code_error.raise "action runners require the dune RPC server" []);
+  Lazy.force t.action_runner
+;;
+
 let init_with_root_and_rpc ~(root : Workspace_root.t) ~rpc_build (builder : Builder.t) =
-  let c = build root builder ~rpc_build in
+  let c = build root builder in
   No_build.set c.builder.no_build;
   if c.root.dir <> Filename.current_dir_name then Sys.chdir c.root.dir;
   Path.set_root (normalize_path (Path.External.cwd ()));
@@ -1396,24 +1384,54 @@ let init_with_root_and_rpc ~(root : Workspace_root.t) ~rpc_build (builder : Buil
       let stat = Gc.stat () in
       let path = Path.external_ file in
       Dune_util.Gc.serialize ~path stat);
+  let where = lazy (Dune_rpc_impl.Where.default ()) in
   let action_runner =
     lazy
-      (if c.builder.allow_builds && (c.builder.action_runner || c.builder.sandbox_actions)
-       then (
-         let rpc_server =
-           match rpc c with
-           | `Allow rpc_server -> rpc_server
-           | `Forbid_builds ->
-             Code_error.raise "action runners require the dune RPC server" []
-         in
+      (if action_runner_requested c
+       then
          Some
            (Action_runner.create
-              rpc_server
+              ~where:(Lazy.force where)
               ~config
-              ~sandbox_actions:c.builder.sandbox_actions))
+              ~sandbox_actions:c.builder.sandbox_actions)
        else None)
   in
-  let c = { c with action_runner } in
+  let rpc =
+    let action_runner_server =
+      lazy
+        (match Lazy.force action_runner with
+         | None -> Dune_engine.Action_runner.Rpc_server.create None
+         | Some action_runner -> Action_runner.rpc_server action_runner)
+    in
+    let rpc_build =
+      match rpc_build with
+      | `Disabled -> Dune_rpc_impl.Server.Disabled
+      | `Enabled ->
+        Dune_rpc_impl.Server.Enabled
+          { build_loop = c.build_loop; build_action = rpc_request_action ~root }
+    in
+    if c.builder.allow_builds
+    then
+      `Allow
+        (lazy
+          (let registry, build =
+             match c.builder.watch with
+             | Yes _ -> `Add, rpc_build
+             | No -> `Skip, Dune_rpc_impl.Server.Disabled
+           in
+           Dune_rpc_impl.Server.create
+             ~registry
+             ~root:root.dir
+             ~build
+             ~where:(Lazy.force where)
+             ~action_runner:(Lazy.force action_runner_server)
+             c.builder.watch))
+    else `Forbid_builds
+  in
+  let action_runner =
+    lazy (Lazy.force action_runner |> Option.map ~f:Action_runner.runner)
+  in
+  let c = { c with rpc; action_runner } in
   c, config
 ;;
 

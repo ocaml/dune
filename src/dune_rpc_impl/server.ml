@@ -69,7 +69,6 @@ end
 type server =
   { lifecycle : Rpc.Server.Lifecycle.t
   ; action_runner : Action_runner.Rpc_server.t
-  ; where : Dune_rpc.Where.t
   ; registry : [ `Add | `Skip ]
   ; watch_mode : Watch_mode_config.t
   ; mutable clients : Clients.t
@@ -415,8 +414,7 @@ let handler (t : t Fdecl.t) action_runner_server : unit Handler.t =
   rpc
 ;;
 
-let create ~registry ~root ~build watch_mode =
-  let where = Where.default () in
+let create ~registry ~root ~build ~where ~action_runner watch_mode =
   Global_lock.lock_exn ();
   let t = Fdecl.create Dyn.opaque in
   let config =
@@ -440,14 +438,13 @@ let create ~registry ~root ~build watch_mode =
                  (Path.Build.to_string_maybe_quoted (Where.rpc_socket_file ()))
              ])
     in
-    let action_runner = Action_runner.Rpc_server.create () in
     let handler = Rpc.Server.make (handler t action_runner) in
     let lifecycle = Rpc.Server.Lifecycle.create ~handler ~root ~where ~registry ~server in
     action_runner, lifecycle
   in
   let action_runner, lifecycle = config in
   let server =
-    { lifecycle; action_runner; where; registry; watch_mode; clients = Clients.empty }
+    { lifecycle; action_runner; registry; watch_mode; clients = Clients.empty }
   in
   let res = { server; build } in
   current := Some server;
@@ -525,5 +522,3 @@ end
 
 let with_background_rpc = Background.with_background_rpc
 let ensure_ready = Background.ensure_ready
-let listening_address t = t.server.where
-let action_runner t = t.server.action_runner

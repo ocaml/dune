@@ -1385,12 +1385,13 @@ let init_with_root_and_rpc ~(root : Workspace_root.t) ~rpc_build (builder : Buil
       let path = Path.external_ file in
       Dune_util.Gc.serialize ~path stat);
   let where = lazy (Dune_rpc_impl.Where.default ()) in
+  let action_runner_requested = action_runner_requested c in
   (* The RPC server must start listening before the action runner is spawned:
      the worker connects back to this server during initialization. Keep the
      worker lazy so constructing the RPC server does not spawn it. *)
   let rec action_runner =
     lazy
-      (if action_runner_requested c
+      (if action_runner_requested
        then
          Some
            (Action_runner.create
@@ -1401,8 +1402,15 @@ let init_with_root_and_rpc ~(root : Workspace_root.t) ~rpc_build (builder : Buil
        else None)
   and engine_action_runner =
     lazy (Lazy.force action_runner |> Option.map ~f:Action_runner.runner)
+  and worker =
+    lazy
+      (match Lazy.force engine_action_runner with
+       | Some action_runner -> action_runner
+       | None -> Code_error.raise "action runner unexpectedly disabled" [])
   and action_runner_server =
-    lazy (Dune_engine.Action_runner.Rpc_server.create engine_action_runner)
+    lazy
+      (Dune_engine.Action_runner.Rpc_server.create
+         (if action_runner_requested then `Enabled worker else `Disabled))
   in
   let action_runner_server = Lazy.force action_runner_server in
   let rpc =

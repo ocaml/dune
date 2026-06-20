@@ -16,7 +16,7 @@ module Rpc_server : sig
     (** The server-side component responsible for orchestrating action runners. *)
     type t
 
-    val create : action_runner option Lazy.t -> t
+    val create : [ `Disabled | `Enabled of action_runner Lazy.t ] -> t
 
     (** [implement_handler t handler] wires the action runner requests into an
       existing RPC handler. *)

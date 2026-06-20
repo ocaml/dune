@@ -224,7 +224,6 @@ module Event : sig
         | Connected
         | Request_sent
         | Cancel_request_sent
-        | Exec_start
         | Cancel_start
         | Disconnected
 

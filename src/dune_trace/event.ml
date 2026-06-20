@@ -793,7 +793,6 @@ module Action = struct
       | Connected
       | Request_sent
       | Cancel_request_sent
-      | Exec_start
       | Cancel_start
       | Disconnected
 
@@ -804,7 +803,6 @@ module Action = struct
       | Connected -> "runner-connected", []
       | Request_sent -> "runner-request-sent", []
       | Cancel_request_sent -> "runner-cancel-request-sent", []
-      | Exec_start -> "runner-exec-start", []
       | Cancel_start -> "runner-cancel-start", []
       | Disconnected -> "runner-disconnected", []
     ;;

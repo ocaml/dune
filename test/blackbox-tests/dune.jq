@@ -312,9 +312,8 @@ def runnerEventRank:
   elif .name == "runner-connected" then 3
   elif .name == "runner-request-sent" then 4
   elif .name == "runner-cancel-request-sent" then 5
-  elif .name == "runner-exec-start" then 6
-  elif .name == "runner-cancel-start" then 7
-  elif .name == "runner-disconnected" then 8
+  elif .name == "runner-cancel-start" then 6
+  elif .name == "runner-disconnected" then 7
   else 9
   end;
 
@@ -326,7 +325,7 @@ def runnerEvents:
 
 def runnerRequestEvents:
   [ runnerEvents[]
-  | select(.name == "runner-request-sent" or .name == "runner-exec-start")
+  | select(.name == "runner-request-sent")
   ];
 
 def processStartEvents:
@@ -381,6 +380,7 @@ def actionRunnerTraceEvents($runner_name):
       , name
       , args:
           ({ action_runner: .args.action_runner
+           , action_runner_pid: (.args.action_runner_pid | type)
            , prog: (.args.prog | basename)
            }
            + (if .name == "finish" then { exit: .args.exit } else {} end))

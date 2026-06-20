@@ -26,14 +26,6 @@ Failures from action-runner actions are reported back to the main process.
       "args": {
         "name": "action-runner"
       }
-    },
-    {
-      "cat": "action",
-      "name": "runner-exec-start",
-      "args": {
-        "name": "action-runner",
-        "action_runner": "action-runner"
-      }
     }
   ]
 

@@ -3,20 +3,23 @@ promptly.
 
   $ make_dune_project 3.23
   $ export DUNE_TRACE=action
+  $ export TEST_DIR=$PWD
   $ cat > dune <<'EOF'
   > (rule
   >  (target break)
-  >  (action (bash "sleep 30")))
+  >  (action
+  >   (bash "touch \"$TEST_DIR/break-started\"; while [ ! -f \"$TEST_DIR/break-finish\" ]; do sleep 0.01; done")))
   > EOF
 
-Start the build, wait until the worker has entered the exec handler, then kill
-the worker from the test harness.
+Start the build, wait until the worker has started the action, then kill the
+worker from the test harness.
 
   $ DUNE_JOBS=1 $timeout 10 dune build --action-runner break > /dev/null 2>&1 &
   $ BUILD_PID=$!
-  $ wait_for_runner_event_count runner-exec-start 1
   $ RUNNER_PID=$(wait_for_runner_spawn_pid)
+  $ wait_for_file break-started
   $ kill -9 "$RUNNER_PID"
+  $ touch break-finish
   $ wait_for_runner_event_count runner-disconnected 1
   $ wait $BUILD_PID; [ "$?" = 1 ]
 
@@ -58,14 +61,6 @@ the worker from the test harness.
       "name": "runner-request-sent",
       "args": {
         "name": "action-runner"
-      }
-    },
-    {
-      "cat": "action",
-      "name": "runner-exec-start",
-      "args": {
-        "name": "action-runner",
-        "action_runner": "action-runner"
       }
     },
     {

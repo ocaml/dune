@@ -122,8 +122,10 @@ let exec_process_uncancelled t ~run_id process =
   | Cancelled -> raise (Memo.Non_reproducible Scheduler.Run.Build_cancelled)
   | Completed response ->
     let trace_args =
-      ("action_runner", Sexp.Atom (Action_runner_name.to_string t.name))
-      :: response.trace_args
+      [ "action_runner", Sexp.Atom (Action_runner_name.to_string t.name)
+      ; "action_runner_pid", Sexp.Atom (Int.to_string (Pid.to_int t.pid))
+      ]
+      @ response.trace_args
     in
     { response with trace_args }
 ;;

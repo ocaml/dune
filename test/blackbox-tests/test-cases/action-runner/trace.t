@@ -1,5 +1,6 @@
-`--action-runner` only dispatches actions that run processes, and trace events
-emitted inside the worker are stamped with the action runner name.
+`--action-runner` only dispatches actions that run processes. Trace events
+emitted inside the worker are stamped with the action runner name, and process
+events routed through the worker record the worker name and pid.
 
   $ make_dune_project 3.23
   $ export DUNE_TRACE=action,process
@@ -41,18 +42,11 @@ emitted inside the worker are stamped with the action runner name.
       }
     },
     {
-      "cat": "action",
-      "name": "runner-exec-start",
-      "args": {
-        "name": "action-runner",
-        "action_runner": "action-runner"
-      }
-    },
-    {
       "cat": "process",
       "name": "start",
       "args": {
         "action_runner": "action-runner",
+        "action_runner_pid": "number",
         "prog": "bash"
       }
     },
@@ -61,6 +55,7 @@ emitted inside the worker are stamped with the action runner name.
       "name": "finish",
       "args": {
         "action_runner": "action-runner",
+        "action_runner_pid": "number",
         "prog": "bash",
         "exit": 0
       }

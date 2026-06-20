@@ -64,7 +64,7 @@ let finish_build t run_id =
     Fiber.Ivar.fill active.drained ()
 ;;
 
-let exec_process t ~name ({ Request.Exec.run_id; process } : Request.Exec.t) =
+let exec_process t ({ Request.Exec.run_id; process } : Request.Exec.t) =
   if is_cancelled t run_id
   then Fiber.return Request.Exec.Cancelled
   else (
@@ -72,8 +72,6 @@ let exec_process t ~name ({ Request.Exec.run_id; process } : Request.Exec.t) =
     Fiber.finalize
       ~finally:(fun () -> finish_build t run_id)
       (fun () ->
-         Dune_trace.emit Action (fun () ->
-           Dune_trace.Event.Action.Runner.runner_event ~name Exec_start);
          let+ response = Process.exec_locally ~build process in
          Request.Exec.Completed response))
 ;;
@@ -101,7 +99,7 @@ let start ~name ~where =
     Dune_trace.Event.Action.Runner.runner_event ~name Connection_established);
   let private_menu : Client.proc list =
     [ Client.Request Decl.ready
-    ; Handle_request (Decl.exec, exec_process t ~name)
+    ; Handle_request (Decl.exec, exec_process t)
     ; Handle_request (Decl.cancel_build, cancel_build t ~name)
     ]
   in

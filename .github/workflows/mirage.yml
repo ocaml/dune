@@ -21,7 +21,8 @@ jobs:
       with:
         ocaml-compiler: 4.14.x
         opam-depext: false
-    - run: opam repo set-url default git+https://github.com/ocaml/opam-repository#a7b8d1036328cf727af175b657f3d2b732b4d868
+        opam-repositories: |
+          default: git+https://github.com/ocaml/opam-repository#38b8d4531633db2f927868caf84e5a9b8992229e
     - run: sed -i s/1.3/2.7/ dune-project
     - run: opam pin add -n dune.dev git+https://github.com/ocaml/dune#$GITHUB_SHA
     - run: sudo apt install libseccomp-dev

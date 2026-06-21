@@ -166,7 +166,7 @@ let metadata_entry_repr =
 type metadata_result =
   | Present of metadata_entry
   | Missing_unreachable
-  | Timed_out
+  | Timed_out of { build_path_prefix_map : string }
   | Not_ran
 
 let metadata_result_repr =
@@ -178,9 +178,9 @@ let metadata_result_repr =
     ; Repr.case0 "Missing_unreachable" ~test:(function
         | Missing_unreachable -> true
         | _ -> false)
-    ; Repr.case0 "Timed_out" ~test:(function
-        | Timed_out -> true
-        | _ -> false)
+    ; Repr.case "Timed_out" Repr.string ~proj:(function
+        | Timed_out { build_path_prefix_map } -> Some build_path_prefix_map
+        | _ -> None)
     ; Repr.case0 "Not_ran" ~test:(function
         | Not_ran -> true
         | _ -> false)
@@ -200,7 +200,14 @@ type sh_script =
   ; time_file : Path.t option
   }
 
-let read_exit_codes_and_prefix_maps file =
+(* Each command first appends its initial build path prefix map, then appends
+   its exit code and final map when it completes. A timed-out command only has
+   the initial map. *)
+type metadata_file_entry =
+  | Completed of metadata_entry
+  | Started of string
+
+let read_metadata_entries file =
   let s =
     match file with
     | None -> ""
@@ -212,7 +219,10 @@ let read_exit_codes_and_prefix_maps file =
          "")
   in
   let rec loop acc = function
-    | exit_code :: build_path_prefix_map :: entries ->
+    | [ "" ] | [] -> List.rev acc
+    | [ build_path_prefix_map ] | [ build_path_prefix_map; _ ] ->
+      List.rev (Started build_path_prefix_map :: acc)
+    | _started_build_path_prefix_map :: exit_code :: build_path_prefix_map :: entries ->
       let exit_code =
         match Int.of_string exit_code with
         | Some s -> s
@@ -221,9 +231,7 @@ let read_exit_codes_and_prefix_maps file =
             "invalid metadata file"
             [ "entries", Dyn.string s; "exit_code", Dyn.string exit_code ]
       in
-      loop ({ exit_code; build_path_prefix_map } :: acc) entries
-    | [ "" ] | [] -> List.rev acc
-    | [ _ ] -> Code_error.raise "odd number of elements" [ "s", Dyn.string s ]
+      loop (Completed { exit_code; build_path_prefix_map } :: acc) entries
   in
   loop [] (String.split ~on:'\000' s)
 ;;
@@ -249,10 +257,10 @@ let read_times =
          | _ -> None))
 ;;
 
-let read_and_attach_exit_codes (sh_script : sh_script)
+let read_and_attach_metadata (sh_script : sh_script) ~timed_out
   : full_block_result Cram_lexer.block list
   =
-  let metadata_entries = read_exit_codes_and_prefix_maps sh_script.metadata_file in
+  let metadata_entries = read_metadata_entries sh_script.metadata_file in
   let times = read_times sh_script.time_file in
   let next_time = function
     | None -> None, None
@@ -264,13 +272,19 @@ let read_and_attach_exit_codes (sh_script : sh_script)
     | [], [] -> List.rev acc
     | (Cram_lexer.Comment _ as comment) :: blocks, _ ->
       loop (comment :: acc) entries blocks times
-    | Command block :: blocks, metadata_entry :: entries ->
+    | Command block :: blocks, Completed metadata_entry :: entries ->
       let duration, times = next_time times in
       loop
         (Command { block; metadata = Present metadata_entry; duration } :: acc)
         entries
         blocks
         times
+    | Command block :: blocks, Started build_path_prefix_map :: entries ->
+      let duration, times = next_time times in
+      let metadata =
+        if timed_out then Timed_out { build_path_prefix_map } else Missing_unreachable
+      in
+      loop (Command { block; metadata; duration } :: acc) entries blocks times
     | Cram_lexer.Command block :: blocks, [] ->
       let duration, times = next_time times in
       loop
@@ -289,19 +303,17 @@ let mark_timed_out_command =
     | (Cram_lexer.Comment _ as comment) :: blocks -> loop (comment :: acc) blocks
     | Command ({ metadata = Present _; _ } as command) :: blocks ->
       loop (Command command :: acc) blocks
-    | Command { metadata = Timed_out | Not_ran; _ } :: _ ->
+    | Command ({ metadata = Timed_out _; _ } as command) :: blocks ->
+      let not_ran_blocks =
+        List.map blocks ~f:(function
+          | Cram_lexer.Comment _ as comment -> comment
+          | Command command ->
+            Command { command with metadata = Not_ran; duration = None })
+      in
+      Some (List.rev acc @ (Command command :: not_ran_blocks))
+    | Command { metadata = Not_ran; _ } :: _ ->
       Code_error.raise "unexpected timeout metadata" []
-    | Command ({ metadata = Missing_unreachable; block; _ } as command) :: blocks ->
-      (match Fpath.exists (Path.to_string block.output_file) with
-       | false -> None
-       | true ->
-         let blocks =
-           List.map blocks ~f:(function
-             | Cram_lexer.Comment _ as comment -> comment
-             | Command command ->
-               Command { command with metadata = Not_ran; duration = None })
-         in
-         Some (List.rev acc @ (Command { command with metadata = Timed_out } :: blocks)))
+    | Command { metadata = Missing_unreachable; _ } :: _ -> None
   in
   fun cram_to_output -> loop [] cram_to_output
 ;;
@@ -377,14 +389,12 @@ let sanitize ~parent_script cram_to_output : command_out Cram_lexer.block list =
         let output =
           match metadata with
           | Not_ran -> None
-          | Present _ | Missing_unreachable | Timed_out ->
+          | Present _ | Missing_unreachable | Timed_out _ ->
             (match Io.read_file ~binary:false block.output_file with
              | exception _ -> None
              | contents -> Some (Ansi_color.strip contents))
         in
-        match metadata with
-        | Missing_unreachable | Not_ran | Timed_out -> output
-        | Present { build_path_prefix_map; exit_code = _ } ->
+        let rewrite build_path_prefix_map =
           Option.map
             output
             ~f:
@@ -392,6 +402,12 @@ let sanitize ~parent_script cram_to_output : command_out Cram_lexer.block list =
                  ~parent_script
                  ~command_script:block.script
                  ~build_path_prefix_map)
+        in
+        match metadata with
+        | Missing_unreachable | Not_ran -> output
+        | Timed_out { build_path_prefix_map } -> rewrite build_path_prefix_map
+        | Present { build_path_prefix_map; exit_code = _ } ->
+          rewrite build_path_prefix_map
       in
       Command { command = block.command; metadata; output })
 ;;
@@ -427,7 +443,7 @@ let compose_cram_output (cram_to_output : _ Cram_lexer.block list) =
          add_output_or_unreachable output;
          Option.iter output ~f:(fun (_ : string) ->
            add_line_prefixed_with_two_space unreachable)
-       | Timed_out ->
+       | Timed_out _ ->
          Option.iter output ~f:add_output;
          add_line_prefixed_with_two_space "[timed out]"
        | Not_ran -> add_line_prefixed_with_two_space "[not ran]"
@@ -514,6 +530,14 @@ let create_sh_script cram_stanzas ~temp_dir ~setup_scripts (shell : Cram_stanza.
       (* Where we store the output of shell code written by the user *)
       let user_shell_code_output_file = file ~ext:".output" in
       let+ user_shell_code_output_file_sh_path = sh_path user_shell_code_output_file in
+      let build_path_prefix_map_var =
+        Dune_util.Build_path_prefix_map._BUILD_PATH_PREFIX_MAP
+      in
+      fprln
+        oc
+        {|printf "%%s\0" "$%s" >> %s|}
+        build_path_prefix_map_var
+        metadata_file_sh_path;
       let untimed_command =
         sprintf
           ". %s > %s 2>&1"
@@ -529,7 +553,7 @@ let create_sh_script cram_stanzas ~temp_dir ~setup_scripts (shell : Cram_stanza.
       fprln
         oc
         {|printf "%%d\0%%s\0" $? "$%s" >> %s|}
-        Dune_util.Build_path_prefix_map._BUILD_PATH_PREFIX_MAP
+        build_path_prefix_map_var
         metadata_file_sh_path;
       Cram_lexer.Command
         { command = lines
@@ -719,7 +743,7 @@ let run_cram_test
      @ [ Path.to_string sh_script.script ])
   >>| function
   | Ok () ->
-    let detailed_output = read_and_attach_exit_codes sh_script in
+    let detailed_output = read_and_attach_metadata sh_script ~timed_out:false in
     Dune_trace.emit Cram (fun () ->
       (* CR-someday rgrinberg: a little lame that we don't have a good way
          to relate these to the underlying process event. *)
@@ -732,7 +756,9 @@ let run_cram_test
       |> Dune_trace.Event.Cram.test ~test:src);
     sanitize ~parent_script:script detailed_output
   | Error `Timed_out ->
-    (match read_and_attach_exit_codes sh_script |> mark_timed_out_command with
+    (match
+       read_and_attach_metadata sh_script ~timed_out:true |> mark_timed_out_command
+     with
      | None -> raise_timeout_error ~src ~timeout
      | Some detailed_output -> sanitize ~parent_script:script detailed_output)
 ;;
@@ -815,7 +841,7 @@ let run_and_produce_output
   in
   if
     List.exists commands ~f:(function
-      | { metadata = Timed_out; _ } -> true
+      | { metadata = Timed_out _; _ } -> true
       | _ -> false)
   then print_timeout_correction_and_fail ~src ~conflict_markers ~timeout commands
   else (

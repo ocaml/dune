@@ -1401,12 +1401,7 @@ let init_with_root_and_rpc ~(root : Workspace_root.t) ~rpc_build (builder : Buil
     then
       `Allow
         (lazy
-          (let action_runner =
-             match Lazy.force action_runner with
-             | None -> Dune_engine.Action_runner.Rpc_server.create `Disabled
-             | Some action_runner -> Action_runner.rpc_server action_runner
-           in
-           let rpc_build =
+          (let rpc_build =
              lazy
                (match rpc_build with
                 | `Disabled -> Dune_rpc_impl.Server.Disabled
@@ -1424,12 +1419,9 @@ let init_with_root_and_rpc ~(root : Workspace_root.t) ~rpc_build (builder : Buil
              ~root:root.dir
              ~build
              ~where:(Lazy.force where)
-             ~action_runner
+             ~action_runner:(Lazy.force action_runner)
              c.builder.watch))
     else `Forbid_builds
-  in
-  let action_runner =
-    lazy (Lazy.force action_runner |> Option.map ~f:Action_runner.runner)
   in
   let c = { c with rpc; action_runner } in
   c, config

@@ -18,7 +18,6 @@ type t =
   ; mutable status : status
   ; pid : Pid.t
   ; pool : Fiber.Pool.t
-  ; mutable monitoring : bool
   }
 
 let disconnected t =
@@ -64,26 +63,9 @@ let await_initialized t =
          [ "name", Dyn.string (Action_runner_name.to_string t.name) ])
 ;;
 
-let await_ready t =
+let ensure_ready t =
   let+ (_initialized : initialized) = await_initialized t in
   ()
-;;
-
-let monitor_worker t =
-  if t.monitoring
-  then Fiber.return ()
-  else (
-    t.monitoring <- true;
-    Fiber.Pool.task t.pool ~f:(fun () ->
-      let* (_status : Proc.Process_info.t) =
-        Scheduler.wait_for_process t.pid ~is_process_group_leader:false
-      in
-      disconnect t))
-;;
-
-let ensure_ready t =
-  let* () = monitor_worker t in
-  await_ready t
 ;;
 
 let send_request ~request ~payload t =
@@ -143,7 +125,15 @@ let exec_process t ~run_id ~cancellation process =
   | Not_cancelled, Error exns -> Fiber.reraise_all exns
 ;;
 
-let run t = Fiber.Pool.run t.pool
+let run t =
+  Fiber.fork_and_join_unit
+    (fun () -> Fiber.Pool.run t.pool)
+    (fun () ->
+       let* (_status : Proc.Process_info.t) =
+         Scheduler.wait_for_process t.pid ~is_process_group_leader:false
+       in
+       disconnect t)
+;;
 
 let stop t =
   let* () =
@@ -177,6 +167,9 @@ let ready t session ({ Request.Ready.name } : Request.Ready.t) =
            let* () = Server.Session.closed session in
            disconnect worker)
        in
+       (* An action runner may only connect once, so there's no need to wait
+          for tasks here *)
+       let* () = Fiber.Pool.close worker.pool in
        Fiber.Ivar.fill ready ())
 ;;
 
@@ -193,6 +186,5 @@ let create name pid =
   ; status = Starting { ready = Fiber.Ivar.create () }
   ; pid
   ; pool = Fiber.Pool.create ()
-  ; monitoring = false
   }
 ;;

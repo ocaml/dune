@@ -58,6 +58,25 @@ behaviour is for dune to present the partially assembled diff.
   A time limit of 0.50s has been set in dune:2
   [1]
 
+Partial output from timed-out commands should still be sanitized.
+
+  $ cat > test.t <<EOF
+  >   $ pwd; sleep 2
+  > EOF
+
+  $ timeout 3 dune test test.t 2>&1 | sed 's/sleep 2/command/'
+  File "test.t", line 1, characters 0-0:
+  --- test.t
+  +++ test.t.corrected
+  @@ -1 +1,3 @@
+     $ pwd; command
+  +  $TESTCASE_ROOT/_build/.sandbox/f1fe2b7a6aa40770133ce517493e9ade/default
+  +  [timed out]
+  File "test.t", line 1, characters 0-0:
+  Error: Cram test timed out
+  A time limit of 0.50s has been set in dune:2
+  [1]
+
 Timeouts should not be cached as successful cram output.
 
   $ cram_process_trace () {

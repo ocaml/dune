@@ -89,6 +89,11 @@
   (<> %{ocaml-config:system} win)))
 
 (cram
+ (applies_to rpc-batch-idle-client)
+ (enabled_if
+  (<> %{ocaml-config:system} win)))
+
+(cram
  (applies_to output-obj)
  (enabled_if
   (and

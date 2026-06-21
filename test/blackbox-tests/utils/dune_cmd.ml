@@ -595,6 +595,37 @@ module Mksocket = struct
   let () = register name of_args run
 end
 
+module Hold_rpc_client = struct
+  type t =
+    { socket_path : string
+    ; connected_file : string
+    }
+
+  let name = "hold-rpc-client"
+  let usage = "Usage: dune_cmd hold-rpc-client <socket> <connected-file>"
+
+  let of_args = function
+    | [ socket_path; connected_file ] -> { socket_path; connected_file }
+    | _ -> raise (Arg.Bad usage)
+  ;;
+
+  let run { socket_path; connected_file } =
+    let socket = Unix.socket Unix.PF_UNIX Unix.SOCK_STREAM 0 in
+    match Unix.connect socket (Unix.ADDR_UNIX socket_path) with
+    | exception exn ->
+      Unix.close socket;
+      raise exn
+    | () ->
+      let (_ : int) = Unix.write_substring socket "(" 0 1 in
+      Io.String_path.write_file connected_file "";
+      while true do
+        Unix.sleep 3600
+      done
+  ;;
+
+  let () = register name of_args run
+end
+
 (* implements `exec -a` in a portable way *)
 module Exec_a = struct
   type t =

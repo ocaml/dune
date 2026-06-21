@@ -48,6 +48,7 @@ type t =
   ; mutable pending_reset : Memo.Invalidation.t option
   ; mutable watch_restart_started_at : Time.t option
   ; mutable status_overlay : Console.Status_line.overlay option
+  ; file_event_debouncer : Debouncer.t
   ; mutable wakeup : Trigger.t
   ; mutable wakeup_generation : int
   ; mutable input_change_generation : int
@@ -146,7 +147,7 @@ let request_restart t invalidation =
       match t.status with
       | Restarting_build _ -> Fiber.return ()
       | Standing_by ->
-        clear_status_overlay t;
+        if not (Debouncer.is_pending t.file_event_debouncer) then clear_status_overlay t;
         Fiber.return ()
       | Building run_id ->
         set_status_overlay
@@ -166,6 +167,42 @@ let request_restart t invalidation =
     trigger_wakeup t)
 ;;
 
+let file_event_debounce_interval =
+  Config.make
+    ~name:"file_event_debounce"
+    ~default:(Time.Span.of_secs 0.1)
+    ~of_string:(fun value ->
+      match Float.of_string value with
+      | Some secs when secs >= 0. -> Ok (Time.Span.of_secs secs)
+      | Some _ | None -> Error "expected a non-negative number of seconds")
+;;
+
+let wait_for_file_event_debounce t =
+  let started_at = Time.now () in
+  set_status_overlay
+    t
+    (Live
+       (fun () ->
+         let elapsed = Time.diff (Time.now ()) started_at |> Time.Span.to_secs in
+         Pp.textf "Waiting for filesystem changes to settle... (%.1fs)" elapsed));
+  let rec loop () =
+    match Debouncer.latest t.file_event_debouncer with
+    | None -> Fiber.return ()
+    | Some token ->
+      let* () = Scheduler.sleep (Config.get file_event_debounce_interval) in
+      ignore (Debouncer.take_if_latest t.file_event_debouncer token : bool);
+      loop ()
+  in
+  Fiber.finalize loop ~finally:(fun () ->
+    clear_status_overlay t;
+    Fiber.return ())
+;;
+
+let flush_file_watcher t =
+  let* () = Scheduler.flush_file_watcher () in
+  wait_for_file_event_debounce t
+;;
+
 let rec handle_file_events t file_watcher =
   File_watcher.read file_watcher
   >>= function
@@ -173,7 +210,25 @@ let rec handle_file_events t file_watcher =
     Scheduler.shutdown `Ok;
     Fiber.return ()
   | Some events ->
-    let* () = request_restart t (invalidation_of_file_events events) in
+    let invalidation = invalidation_of_file_events events in
+    let () =
+      let invalidation_empty = Memo.Invalidation.is_empty invalidation in
+      let pending_before = Debouncer.is_pending t.file_event_debouncer in
+      if (not invalidation_empty) || pending_before
+      then (
+        if pending_before
+        then (
+          Dune_trace.emit File_watcher (fun () ->
+          let files =
+            List.filter_map events ~f:(fun event ->
+              match (event : Event.File_watcher_event.t) with
+              | Queue_overflow -> None
+              | Fs_memo_event { path; kind } -> Some (path, kind))
+          in
+            Dune_trace.File_watcher_event.debounce_extend ~files ~invalidation_empty));
+        ignore (Debouncer.push t.file_event_debouncer : _))
+    in
+    let* () = request_restart t invalidation in
     handle_file_events t file_watcher
 ;;
 
@@ -182,6 +237,7 @@ let create () =
   ; pending_reset = None
   ; watch_restart_started_at = None
   ; status_overlay = None
+  ; file_event_debouncer = Debouncer.create ()
   ; wakeup = Trigger.create ()
   ; wakeup_generation = 0
   ; input_change_generation = 0
@@ -355,8 +411,15 @@ let rpc_poll_iter t ~action_runner ~sticky_goal ~sticky_built_at =
            -> None
          | None | Some _ -> Some sticky_goal)
     in
-    match sticky_goal_to_build, rpc_requests with
-    | None, [] ->
+    let should_wait_for_debounce = Debouncer.is_pending t.file_event_debouncer in
+    match should_wait_for_debounce, sticky_goal_to_build, rpc_requests with
+    | true, _, _ ->
+      (* Wait for a quiet period before starting the next build. Otherwise, an
+         editor save implemented as delete/create can make us observe the
+         source tree between the two events. *)
+      let* () = wait_for_file_event_debounce t in
+      loop ()
+    | false, None, [] ->
       (match t.status with
        | Restarting_build _ ->
          t.status <- Standing_by;
@@ -364,7 +427,7 @@ let rpc_poll_iter t ~action_runner ~sticky_goal ~sticky_built_at =
        | Standing_by | Building _ -> ());
       let* () = reset_wakeup t in
       Fiber.return { wakeup_generation = t.wakeup_generation; sticky_built_at = None }
-    | _ ->
+    | false, _, _ ->
       let* res, next, input_change_generation, wakeup_generation =
         let request =
           Build_system.Request.create

@@ -50,3 +50,20 @@ let to_event event =
   in
   Event.Event.instant ~name ~args now File_watcher
 ;;
+
+let file_arg (path, kind) =
+  Event.Arg.record
+    [ "path", Event.Arg.path path; "kind", Event.Arg.string (kind_to_trace_name kind) ]
+  |> Event.Arg.list
+;;
+
+let debounce_extend ~files ~invalidation_empty =
+  Event.Event.instant
+    ~name:"debounce-extend"
+    ~args:
+      [ "files", Event.Arg.list (List.map files ~f:file_arg)
+      ; "invalidation_empty", Event.Arg.bool invalidation_empty
+      ]
+    (Time.now ())
+    Category.File_watcher
+;;

@@ -44,3 +44,7 @@ module Running_jobs = Running_jobs
 module Rule_cache = Rule_cache
 module Build_outcome = Build_outcome
 module Fs = Fs
+
+module For_tests = struct
+  module Debouncer = Debouncer
+end

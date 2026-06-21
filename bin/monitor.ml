@@ -84,10 +84,6 @@ end = struct
     Pp.seq message (Pp.verbatim ", waiting for filesystem changes...")
   ;;
 
-  let restarting_current_build message =
-    Pp.seq message (Pp.verbatim ", restarting current build...")
-  ;;
-
   let had_errors state =
     match Diagnostic_id_map.cardinal state.diagnostics with
     | 1 -> Pp.verbatim "Had 1 error"
@@ -102,9 +98,7 @@ end = struct
            | Waiting -> Pp.verbatim "Initializing..."
            | In_progress { complete; remaining; failed } ->
              done_status ~complete ~remaining ~failed state
-           | Interrupted ->
-             Pp.tag User_message.Style.Error (Pp.verbatim "Source files changed")
-             |> restarting_current_build
+           | Interrupted -> Pp.verbatim "Restarting current build..."
            | Success ->
              Pp.tag User_message.Style.Success (Pp.verbatim "Success")
              |> waiting_for_file_system_changes

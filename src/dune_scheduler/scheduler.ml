@@ -110,6 +110,7 @@ let child_process_cleanup_candidates t =
 let child_process_cleanup_candidates_after_reap t =
   match child_process_cleanup_candidates t with
   | Error _ as error -> error
+  | Ok pids when Pid.Set.is_empty pids -> Ok pids
   | Ok pids ->
     Pid.Set.iter pids ~f:(fun pid ->
       ignore (Proc.wait (Proc.Pid pid) [ WNOHANG ] : Proc.Process_info.t option));

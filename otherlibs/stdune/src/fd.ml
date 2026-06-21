@@ -13,6 +13,12 @@ let unsafe_to_unix_file_descr t = t.fd
 let unsafe_of_unix_file_descr fd = { fd; closed = false }
 let is_closed t = t.closed
 let unsafe_of_int fd = unsafe_of_unix_file_descr (unsafe_file_descr_of_int fd)
+
+let dup t =
+  assert (not t.closed);
+  unsafe_of_unix_file_descr (Unix.dup t.fd)
+;;
+
 let set_close_on_exec t = Unix.set_close_on_exec t.fd
 let clear_close_on_exec t = Unix.clear_close_on_exec t.fd
 

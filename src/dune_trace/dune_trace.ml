@@ -142,10 +142,7 @@ let duplicate_global_fd () =
     match global () with
     | None -> None
     | Some out ->
-      let fd =
-        Unix.dup (Fd.unsafe_to_unix_file_descr (Out.fd out))
-        |> Fd.unsafe_of_unix_file_descr
-      in
+      let fd = Fd.dup (Out.fd out) in
       Fd.clear_close_on_exec fd;
       Some fd)
 ;;

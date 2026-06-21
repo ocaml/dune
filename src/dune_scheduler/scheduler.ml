@@ -260,7 +260,22 @@ type saw_shutdown =
   | Ok
   | Got_shutdown
 
+let rec cleanup_iter t saw_shutdown =
+  Console.Status_line.refresh ();
+  match Event.Queue.next t.events with
+  | Job_complete_ready ->
+    (match Process_watcher.wait_unix t.process_watcher with
+     | [] -> cleanup_iter t saw_shutdown
+     | fills -> fills)
+  | Fiber_fill_ivar fill -> [ fill ]
+  | Shutdown reason ->
+    got_shutdown reason;
+    saw_shutdown := Got_shutdown;
+    cleanup_iter t saw_shutdown
+;;
+
 let kill_and_wait_for_all_processes t =
+  let saw_shutdown = ref Ok in
   if Sys.win32
   then
     (* SIGTERM is not meaningful on Windows, and [Process_watcher.wait_unix]
@@ -288,16 +303,13 @@ let kill_and_wait_for_all_processes t =
         else Unix.sleepf 0.01
     done;
     Dune_trace.emit Process Dune_trace.Event.process_cleanup_finish);
-  let saw_signal = ref Ok in
   while Process_watcher.running_count t.process_watcher > 0 do
-    match Event.Queue.next t.events with
-    | Shutdown reason ->
-      got_shutdown reason;
-      saw_signal := Got_shutdown
-    | Job_complete_ready ->
-      ignore (Process_watcher.wait_unix t.process_watcher : Fiber.fill list)
-    | _ -> ()
+    ignore (cleanup_iter t saw_shutdown : Fiber.fill list)
   done;
+  if Lazy.force child_subreaper_enabled
+  then
+    Fiber.run (cleanup_subreaper_child_processes_impl t) ~iter:(fun () ->
+      cleanup_iter t saw_shutdown);
   (* This silliness is needed because we have tests that run the scheduler
      more than once per process. Such tests require the signal watcher to be
      reset with the correct event queue. *)
@@ -305,7 +317,7 @@ let kill_and_wait_for_all_processes t =
   then (
     Pid.kill (Pid.me ()) `Pid Thread0.signal_watcher_interrupt;
     Thread.join t.signal_watcher);
-  !saw_signal
+  !saw_shutdown
 ;;
 
 let to_dyn { events; process_watcher; _ } =
@@ -406,10 +418,11 @@ module Run_once = struct
 
   let run_and_cleanup t f =
     let res = run t f in
-    Async_io.shutdown t.async_io;
     Option.iter t.file_watcher ~f:File_watcher.shutdown;
     Console.Status_line.clear ();
-    match kill_and_wait_for_all_processes t with
+    let cleanup_result = kill_and_wait_for_all_processes t in
+    Async_io.shutdown t.async_io;
+    match cleanup_result with
     | Got_shutdown -> Error Already_reported
     | Ok -> res
   ;;

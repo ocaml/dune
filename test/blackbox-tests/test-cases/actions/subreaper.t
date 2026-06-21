@@ -144,4 +144,4 @@ is terminated before Dune exits.
   > else
   >   echo "SUCCESS: escaped process was cleaned up during shutdown"
   > fi
-  FAILURE: escaped process survived shutdown
+  SUCCESS: escaped process was cleaned up during shutdown

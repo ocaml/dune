@@ -20,13 +20,11 @@ A relative path works:
   $ dune utop lib -- init.ml
   foolib
 
-CR-someday Alizter: an absolute path pointing at the same directory should
-work identically to the relative form. Today it crashes with a Code_error
-because Path.Build.relative is called with an absolute string.
+An absolute path pointing at the same directory works identically to the
+relative form:
 
-  $ dune utop $PWD/lib -- init.ml 2>&1 | grep "Internal error"
-  Internal error! Please report to https://github.com/ocaml/dune/issues,
-  [1]
+  $ dune utop $PWD/lib -- init.ml
+  foolib
 
 An absolute path that is genuinely outside the workspace should produce a
 clean user error rather than a crash.

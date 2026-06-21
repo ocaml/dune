@@ -407,18 +407,7 @@ module Run_once = struct
   let run_and_cleanup t f =
     let res = run t f in
     Async_io.shutdown t.async_io;
-    Option.iter t.file_watcher ~f:(fun watcher ->
-      (* CR-someday rgrinberg: we do not wind down the threads for the file
-         watchers currently. Might interefere with tests that spawn the
-         scheduler more than once *)
-      match File_watcher.shutdown watcher with
-      | `Kill pid ->
-        (* CR-someday rgrinberg: Instead of this hackery, we should probably
-           just rgister the watcher as a non build process. Luckily, this code
-           path is incredibly rare as the external file watchers are bad. *)
-        Pid.kill pid `Pid Term
-      | `Thunk f -> f ()
-      | `No_op -> ());
+    Option.iter t.file_watcher ~f:File_watcher.shutdown;
     Console.Status_line.clear ();
     match kill_and_wait_for_all_processes t with
     | Got_shutdown -> Error Already_reported

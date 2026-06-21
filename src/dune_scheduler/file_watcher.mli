@@ -20,7 +20,5 @@ val flush : t -> unit Fiber.t
 (** Child processes owned by the file watcher. *)
 val child_pids : t -> Pid.t option
 
-(** The action that needs to be taken to shutdown the watcher. *)
-val shutdown : t -> [ `Kill of Pid.t | `No_op | `Thunk of unit -> unit ]
-
+val shutdown : t -> unit
 val add_watch : t -> Path.t -> (unit, [ `Does_not_exist ]) result

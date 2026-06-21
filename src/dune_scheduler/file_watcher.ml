@@ -449,16 +449,14 @@ let child_pids t =
 let shutdown t =
   close t;
   match t.kind with
-  | Fswatch { pid; _ } -> `Kill pid
-  | Inotify _ -> `No_op
+  | Inotify _ -> ()
+  | Fswatch { pid; _ } -> Pid.kill pid `Pid Term
+  | Fswatch_win { t } -> Fswatch_win.shutdown t
   | Fsevents fsevents ->
-    `Thunk
-      (fun () ->
-        Fsevents.stop fsevents.source;
-        Fsevents.stop fsevents.sync;
-        Watch_trie.to_list fsevents.external_
-        |> List.iter ~f:(fun (_, fs) -> Fsevents.stop fs))
-  | Fswatch_win { t } -> `Thunk (fun () -> Fswatch_win.shutdown t)
+    Fsevents.stop fsevents.source;
+    Fsevents.stop fsevents.sync;
+    Watch_trie.to_list fsevents.external_
+    |> List.iter ~f:(fun (_, fs) -> Fsevents.stop fs)
 ;;
 
 let command ~backend ~watch_exclusions =

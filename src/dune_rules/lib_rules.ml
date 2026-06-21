@@ -758,15 +758,16 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~expander ~scope =
         ~lib_config
     in
     let merlin_ident = Merlin_ident.for_lib (Library.best_name lib) in
-    let* { Compilation_mode.modes; for_merlin } =
+    let* modes =
       let+ effective_modes =
         Lib_info.effective_modes
           lib_info
           ~melange_available:(Melange_binary.available sctx ~dir)
       in
-      Compilation_mode.of_mode_set effective_modes
+      Compilation_mode.Set.of_lib_mode_set effective_modes
     in
-    Memo.parallel_map modes ~f:(fun for_ ->
+    let for_merlin = Compilation_mode.Set.for_merlin modes in
+    Memo.parallel_map (Compilation_mode.Set.to_list modes) ~f:(fun for_ ->
       let buildable = lib.buildable in
       let libs = Scope.libs scope in
       let lib_id =

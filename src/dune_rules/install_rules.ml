@@ -247,8 +247,8 @@ end = struct
     in
     let lib_name = Library.best_name lib in
     let* installable_modules =
-      let lib_modes = Compilation_mode.of_mode_set lib_modes in
-      Memo.parallel_map lib_modes.modes ~f:(fun for_ ->
+      let lib_modes = Compilation_mode.Set.of_lib_mode_set lib_modes in
+      Memo.parallel_map (Compilation_mode.Set.to_list lib_modes) ~f:(fun for_ ->
         let+ modules =
           Dir_contents.ml dir_contents ~for_
           >>= Ml_sources.modules
@@ -833,8 +833,8 @@ end = struct
           and* modules =
             let* libs = Scope.DB.find_by_dir dir >>| Scope.libs in
             let+ modules =
-              let lib_modes = Compilation_mode.of_mode_set lib_modes in
-              Memo.parallel_map lib_modes.modes ~f:(fun for_ ->
+              let lib_modes = Compilation_mode.Set.of_lib_mode_set lib_modes in
+              Memo.parallel_map (Compilation_mode.Set.to_list lib_modes) ~f:(fun for_ ->
                 let+ modules =
                   Dir_contents.ml dir_contents ~for_
                   >>= Ml_sources.modules

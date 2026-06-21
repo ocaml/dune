@@ -696,8 +696,9 @@ let libs_of_pkg ctx ~pkg =
 
 let entry_modules_by_lib sctx lib =
   let info = Lib.Local.info lib in
-  let { Compilation_mode.for_merlin; _ } =
-    Compilation_mode.of_mode_set (Lib_info.modes info)
+  let for_merlin =
+    Compilation_mode.Set.of_lib_mode_set (Lib_info.modes info)
+    |> Compilation_mode.Set.for_merlin
   in
   Dir_contents.modules_of_local_lib sctx lib ~for_:for_merlin >>| Modules.entry_modules
 ;;
@@ -1234,9 +1235,9 @@ let gen_rules sctx ~dir rest =
          match lib with
          | Some lib ->
            let modes =
-             Lib_info.modes (Lib.Local.info lib) |> Compilation_mode.of_mode_set
+             Lib_info.modes (Lib.Local.info lib) |> Compilation_mode.Set.of_lib_mode_set
            in
-           modes.for_merlin
+           Compilation_mode.Set.for_merlin modes
          | None -> Ocaml
        in
        let+ () =
@@ -1274,9 +1275,9 @@ let gen_rules sctx ~dir rest =
          match lib with
          | Some lib ->
            let modes =
-             Lib_info.modes (Lib.Local.info lib) |> Compilation_mode.of_mode_set
+             Lib_info.modes (Lib.Local.info lib) |> Compilation_mode.Set.of_lib_mode_set
            in
-           modes.for_merlin
+           Compilation_mode.Set.for_merlin modes
          | None -> Ocaml
        in
        let+ () =

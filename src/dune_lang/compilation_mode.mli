@@ -4,15 +4,17 @@ type t =
 
 val equal : t -> t -> bool
 val to_dyn : t -> Dyn.t
-
-type modes =
-  { modes : t list
-  ; for_merlin : t
-  }
-
 val of_lib_mode : Lib_mode.t -> t
-val of_mode_set : Lib_mode.Map.Set.t -> modes
 val default_sandbox : t -> Dune_engine.Sandbox_config.t
+
+module Set : sig
+  type mode := t
+  type t
+
+  val of_lib_mode_set : Lib_mode.Map.Set.t -> t
+  val to_list : t -> mode list
+  val for_merlin : t -> mode
+end
 
 module Per_mode : sig
   type mode := t

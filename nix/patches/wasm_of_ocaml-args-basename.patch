@@ -1,0 +1,9 @@
+--- a/runtime/wasm/args.ml
++++ b/runtime/wasm/args.ml
+@@ -1,4 +1,5 @@
+ let () =
+   for i = 1 to Array.length Sys.argv - 1 do
+-    Format.printf "%s:%s@." (Filename.chop_suffix Sys.argv.(i) ".wat") Sys.argv.(i)
++    let p = Sys.argv.(i) in
++    Format.printf "%s:%s@." (Filename.chop_suffix (Filename.basename p) ".wat") p
+   done

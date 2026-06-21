@@ -565,8 +565,8 @@ let run_cram_test
   let env = make_run_env env ~temp_dir ~cwd in
   let open Fiber.O in
   let sh =
-    let path = Env_path.path Env.initial in
     match
+      let path = Env_path.path Env.initial in
       Bin.which
         ~path
         (match shell with
@@ -579,8 +579,10 @@ let run_cram_test
   in
   let metadata =
     let name =
-      let base = Path.basename src in
-      (match Filename.equal base Filename.run_t with
+      (match
+         let base = Path.basename src in
+         Filename.equal base Filename.run_t
+       with
        | false -> src
        | true -> Path.parent_exn src)
       |> Path.drop_build_context_exn
@@ -618,8 +620,8 @@ let run_cram_test
       |> Dune_trace.Event.Cram.test ~test:src);
     sanitize ~parent_script:script detailed_output
   | Error `Timed_out ->
-    let timeout_loc, timeout = Option.value_exn timeout in
     let timeout_set_message =
+      let timeout_loc, timeout = Option.value_exn timeout in
       [ Pp.textf "A time limit of %.2fs has been set in " (Time.Span.to_secs timeout)
       ; Pp.tag User_message.Style.Loc @@ Loc.pp_file_colon_line timeout_loc
       ]
@@ -634,7 +636,7 @@ let run_cram_test
         let command_blocks_only =
           List.filter_map sh_script.cram_to_output ~f:(function
             | Cram_lexer.Comment _ -> None
-            | Cram_lexer.Command block_result -> Some block_result)
+            | Command block_result -> Some block_result)
         in
         let total_commands = List.length command_blocks_only in
         if completed_count < total_commands
@@ -704,15 +706,18 @@ let run_and_produce_output
       ~setup_scripts
       shell
   =
-  let script_contents = Io.read_file ~binary:false script in
-  let lexbuf = Lexbuf.from_string script_contents ~fname:(Path.to_string script) in
+  let cram_stanzas =
+    Io.read_file ~binary:false script
+    |> Lexbuf.from_string ~fname:(Path.to_string script)
+    |> cram_stanzas ~conflict_markers
+    |> List.map ~f:snd
+  in
   let temp_dir = make_temp_dir ~script in
-  let cram_stanzas = cram_stanzas lexbuf ~conflict_markers |> List.map ~f:snd in
   (* We don't want the ".cram.run.t" dir around when executing the script. *)
   Path.rm_rf (Path.parent_exn script);
-  let env = make_run_env env ~temp_dir ~cwd in
   let open Fiber.O in
   let+ commands =
+    let env = make_run_env env ~temp_dir ~cwd in
     run_cram_test
       env
       ~src

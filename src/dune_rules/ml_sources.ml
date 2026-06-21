@@ -1380,13 +1380,22 @@ let make
           ; List.map modules_of_stanzas.tests ~f:modules_and_obj_dir
           ]
       in
+      let melange_emits =
+        List.map modules_of_stanzas.melange_emits ~f:(fun { Per_stanza.stanza; dir; _ } ->
+          let target_dir = Melange_stanzas.Emit.target_dir stanza ~dir in
+          let output_dir = Melange.output_path ~target_dir dir in
+          let { Melange_stanzas.Emit.alias; loc; _ } = stanza in
+          let alias = Option.value alias ~default:Melange_stanzas.Emit.implicit_alias in
+          target_dir, ({ Melange.Emit.output_dir; stanza_dir = dir; alias }, loc))
+      in
       let { Source_file_dir.dir; _ } = Nonempty_list.hd dirs in
       Artifacts_obj.make
         ~dir
         ~expander:(Expander.to_expander0 expander)
         ~lib_config
         ~libs
-        ~exes)
+        ~exes
+        ~melange_emits)
   in
   { modules; artifacts; include_subdirs }
 ;;

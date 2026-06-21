@@ -49,29 +49,18 @@ stanza's target directory, relative to the dune file where the macro appears.
   > EOF
 
   $ dune build lib/local-paths root-paths
-  File "dune", line 4, characters 2-25:
-  4 |   %{melange.emit:lib/out}
-        ^^^^^^^^^^^^^^^^^^^^^^^
-  Error: Unknown macro %{melange.emit:..}
-  File "lib/dune", line 14, characters 2-21:
-  14 |   %{melange.emit:out}
-         ^^^^^^^^^^^^^^^^^^^
-  Error: Unknown macro %{melange.emit:..}
-  [1]
   $ cat _build/default/lib/local-paths
-  cat: _build/default/lib/local-paths: No such file or directory
-  [1]
+  out/lib
+  out2/lib
   $ cat _build/default/root-paths
-  cat: _build/default/root-paths: No such file or directory
-  [1]
+  lib/out/lib
+  lib/out2/lib
 
 Using the macro as a dependency also builds the JavaScript outputs for the
 selected emits.
 
   $ test -f _build/default/lib/out/lib/index.js
-  [1]
   $ test -f _build/default/lib/out2/lib/other.js
-  [1]
 
 The macro also works when the melange.emit stanza uses a custom alias.
 
@@ -95,21 +84,6 @@ The macro also works when the melange.emit stanza uses a custom alias.
   > EOF
 
   $ dune build custom/custom-path
-  File "custom/dune", line 11, characters 10-30:
-  11 |    (echo "%{melange.emit:dist}\n"))))
-                 ^^^^^^^^^^^^^^^^^^^^
-  Error: Unknown macro %{melange.emit:..}
-  File "dune", line 4, characters 2-25:
-  4 |   %{melange.emit:lib/out}
-        ^^^^^^^^^^^^^^^^^^^^^^^
-  Error: Unknown macro %{melange.emit:..}
-  File "lib/dune", line 14, characters 2-21:
-  14 |   %{melange.emit:out}
-         ^^^^^^^^^^^^^^^^^^^
-  Error: Unknown macro %{melange.emit:..}
-  [1]
   $ cat _build/default/custom/custom-path
-  cat: _build/default/custom/custom-path: No such file or directory
-  [1]
+  dist/custom
   $ test -f _build/default/custom/dist/custom/main.js
-  [1]

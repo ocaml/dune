@@ -10,7 +10,9 @@ val make
   -> lib_config:Lib_config.t Memo.t
   -> libs:(Library.t * Modules.t * Path.Build.t Obj_dir.t) list
   -> exes:(Modules.t * Path.Build.t Obj_dir.t) list
+  -> melange_emits:(Path.Build.t * (Melange.Emit.t * Loc.t)) list
   -> t Memo.t
 
 val lookup_module : t -> Path.Build.t -> (Path.Build.t Obj_dir.t * Module.t) option
 val lookup_library : t -> Lib_name.t -> Lib_info.local option
+val lookup_melange_emit : t -> Path.Build.t -> Melange.Emit.t option

@@ -238,26 +238,33 @@ let rec dep expander : Dep_conf.t -> _ = function
     in
     Include_result (Action_builder.memoize "include-eval" pair)
   | File s ->
-    (match Expander.With_deps_if_necessary.expand_path expander s with
-     | Without paths ->
-       (* This special case is to support this pattern:
+    let expanded = Expander.With_deps_if_necessary.expand_path expander s in
+    (match String_with_vars.pform_only s with
+     | Some (Macro { macro = Melange_emit; _ }) ->
+       (match expanded with
+        | Without paths -> Simple paths
+        | With paths -> Other paths)
+     | _ ->
+       (match expanded with
+        | Without paths ->
+          (* This special case is to support this pattern:
 
-          {v
+             {v
 ... (deps (:x foo)) (action (... (diff? %{x} %{x}.corrected))) ...
-          v}
+             v}
 
-          Indeed, the second argument of [diff?] must be something that can be
-          evaluated at rule production time since the dependency/target inferrer
-          treats this argument as "consuming a target", and targets must be known
-          at rule production time. This is not compatible with computing its
-          expansion in the action builder monad, which is evaluated at rule
-          execution time. *)
-       Simple paths
-     | With paths ->
-       Other
-         (let* paths = paths in
-          let+ () = Action_builder.all_unit (List.map ~f:Action_builder.path paths) in
-          paths))
+             Indeed, the second argument of [diff?] must be something that can be
+             evaluated at rule production time since the dependency/target inferrer
+             treats this argument as "consuming a target", and targets must be known
+             at rule production time. This is not compatible with computing its
+             expansion in the action builder monad, which is evaluated at rule
+             execution time. *)
+          Simple paths
+        | With paths ->
+          Other
+            (let* paths = paths in
+             let+ () = Action_builder.all_unit (List.map ~f:Action_builder.path paths) in
+             paths)))
   | Alias s ->
     Other
       (let* a = make_alias expander s in

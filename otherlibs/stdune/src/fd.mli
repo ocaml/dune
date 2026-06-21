@@ -6,6 +6,7 @@ val hash : t -> int
 val to_dyn : t -> Dyn.t
 val close : t -> unit
 val is_closed : t -> bool
+val dup : t -> t
 val set_nonblock : t -> unit
 val set_close_on_exec : t -> unit
 val clear_close_on_exec : t -> unit

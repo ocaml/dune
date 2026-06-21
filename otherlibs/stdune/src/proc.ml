@@ -111,6 +111,15 @@ module Linux = struct
             | Some _ | None -> Error (Cannot_parse_children_file { path; word }))))
     ;;
 
+    let lines_of_file path =
+      Unix_error.Detailed.catch
+        (fun path ->
+           let fd = Unix.openfile path [ Unix.O_RDONLY ] 0 in
+           let ic = Unix.in_channel_of_descr fd in
+           Exn.protectx ic ~finally:close_in ~f:Io.input_lines)
+        path
+    ;;
+
     let children_of pid =
       let pid = Pid.to_int pid in
       match
@@ -123,7 +132,7 @@ module Linux = struct
       | Ok tasks ->
         Result.List.fold_left tasks ~init:Pid.Set.empty ~f:(fun acc tid ->
           let path = Printf.sprintf "/proc/%d/task/%s/children" pid tid in
-          match Unix_error.Detailed.catch Io.String_path.lines_of_file path with
+          match lines_of_file path with
           | Error (Unix.ENOENT, _, _) -> Ok acc
           | Error error -> Error (Cannot_read_file { path; error })
           | Ok lines ->

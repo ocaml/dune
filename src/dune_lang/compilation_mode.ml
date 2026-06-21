@@ -4,11 +4,6 @@ type t =
   | Ocaml
   | Melange
 
-type modes =
-  { modes : t list
-  ; for_merlin : t
-  }
-
 let equal a b =
   match a, b with
   | Ocaml, Ocaml | Melange, Melange -> true
@@ -29,17 +24,35 @@ let repr =
 
 let to_dyn = Repr.to_dyn repr
 
+module Set = struct
+  type t =
+    { ocaml : bool
+    ; melange : bool
+    }
+
+  let of_lib_mode_set (modes : Lib_mode.Map.Set.t) =
+    { ocaml = modes.ocaml.byte || modes.ocaml.native; melange = modes.melange }
+  ;;
+
+  let to_list { ocaml; melange } =
+    match ocaml, melange with
+    | true, true -> [ Ocaml; Melange ]
+    | true, false -> [ Ocaml ]
+    | false, true -> [ Melange ]
+    | false, false -> []
+  ;;
+
+  let for_merlin { ocaml; melange } =
+    match ocaml, melange with
+    | true, _ -> Ocaml
+    | false, true -> Melange
+    | false, false -> Ocaml
+  ;;
+end
+
 let of_lib_mode = function
   | Lib_mode.Ocaml _ -> Ocaml
   | Melange -> Melange
-;;
-
-let of_mode_set (modes : Lib_mode.Map.Set.t) =
-  match modes.ocaml.byte, modes.ocaml.native, modes.melange with
-  | false, false, true -> { modes = [ Melange ]; for_merlin = Melange }
-  | true, _, false | _, true, false -> { modes = [ Ocaml ]; for_merlin = Ocaml }
-  | true, _, true | _, true, true -> { modes = [ Ocaml; Melange ]; for_merlin = Ocaml }
-  | false, false, false -> { modes = []; for_merlin = Ocaml }
 ;;
 
 let default_sandbox = function

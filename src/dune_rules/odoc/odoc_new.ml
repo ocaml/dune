@@ -371,7 +371,8 @@ module Classify = struct
              let pkg = Lib_name.package_name (Lib_info.name info) in
              (match
                 let for_ =
-                  (Compilation_mode.of_mode_set (Lib_info.modes info)).for_merlin
+                  Compilation_mode.Set.of_lib_mode_set (Lib_info.modes info)
+                  |> Compilation_mode.Set.for_merlin
                 in
                 let mods_opt = Lib_info.modules ~for_ info in
                 mods_opt, Lib_info.entry_modules info ~for_
@@ -443,8 +444,8 @@ module Valid = struct
                 let* acc = acc in
                 let+ libs =
                   let for_ =
-                    (Compilation_mode.of_mode_set (Lib_info.modes (Lib.info lib)))
-                      .for_merlin
+                    Compilation_mode.Set.of_lib_mode_set (Lib_info.modes (Lib.info lib))
+                    |> Compilation_mode.Set.for_merlin
                   in
                   let* libs =
                     Lib.closure (lib :: Option.to_list stdlib) ~linking:false ~for_
@@ -919,7 +920,8 @@ let compile_requires stdlib_opt libs =
   Memo.List.map
     ~f:(fun l ->
       let for_ =
-        (Compilation_mode.of_mode_set (Lib_info.modes (Lib.info l))).for_merlin
+        Compilation_mode.Set.of_lib_mode_set (Lib_info.modes (Lib.info l))
+        |> Compilation_mode.Set.for_merlin
       in
       Lib.closure ~linking:false [ l ] ~for_)
     libs
@@ -1234,7 +1236,7 @@ let lib_artifacts ctx all index lib modules =
   let cm_kind : Lib_mode.Cm_kind.t =
     match
       let modes = Lib_info.modes info in
-      (Compilation_mode.of_mode_set modes).for_merlin
+      Compilation_mode.Set.of_lib_mode_set modes |> Compilation_mode.Set.for_merlin
     with
     | Ocaml -> Ocaml Cmi
     | Melange -> Melange Cmi
@@ -1511,8 +1513,9 @@ let index_info_of_lib_def =
     in
     let info = Lib.info lib in
     let+ artifacts =
-      let { Compilation_mode.for_merlin; _ } =
-        Compilation_mode.of_mode_set (Lib_info.modes info)
+      let for_merlin =
+        Compilation_mode.Set.of_lib_mode_set (Lib_info.modes info)
+        |> Compilation_mode.Set.for_merlin
       in
       let+ modules = Dir_contents.modules_of_lib sctx (lib :> Lib.t) ~for_:for_merlin in
       match modules with

@@ -90,11 +90,15 @@ let cancel_build t ~name ({ Request.Cancel_build.run_id } : Request.Cancel_build
     Fiber.Ivar.read active.drained)
 ;;
 
+let connect_retry_delay = Time.Span.of_secs 0.1
+
 let start ~name ~where =
   let t = create () in
   Dune_trace.emit Action (fun () ->
     Dune_trace.Event.Action.Runner.runner_event ~name Connection_start);
-  let* connection = Client.Connection.connect_exn where in
+  let* connection =
+    Client.Connection.connect_retrying_exn where ~retry_delay:connect_retry_delay
+  in
   Dune_trace.emit Action (fun () ->
     Dune_trace.Event.Action.Runner.runner_event ~name Connection_established);
   let private_menu : Client.proc list =

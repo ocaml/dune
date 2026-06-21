@@ -18,6 +18,8 @@ include
 module Connection = struct
   type t = Csexp_rpc.Session.t
 
+  let connect_sock sock = Csexp_rpc.Client.create sock |> Csexp_rpc.Client.connect
+
   let connect where =
     match Where.to_socket where with
     | exception exn ->
@@ -28,9 +30,8 @@ module Connection = struct
               ; Exn.pp exn
               ]))
     | sock ->
-      let client = Csexp_rpc.Client.create sock in
-      let+ res = Csexp_rpc.Client.connect client in
-      (match res with
+      connect_sock sock
+      >>| (function
        | Ok s -> Ok s
        | Error exn ->
          Error
@@ -40,9 +41,26 @@ module Connection = struct
               ]))
   ;;
 
-  let connect_exn where =
-    let+ conn = connect where in
-    User_error.ok_exn conn
+  let connect_exn where = connect where >>| User_error.ok_exn
+
+  let is_retryable_connect_error { Exn_with_backtrace.exn; _ } =
+    match exn with
+    | Unix.Unix_error ((Unix.ENOENT | Unix.ECONNREFUSED), "connect", _) -> true
+    | _ -> false
+  ;;
+
+  let connect_retrying_exn where ~retry_delay =
+    let sock = Where.to_socket where in
+    let rec loop () =
+      connect_sock sock
+      >>= function
+      | Ok connection -> Fiber.return connection
+      | Error exn when is_retryable_connect_error exn ->
+        let* () = Dune_scheduler.Scheduler.sleep retry_delay in
+        loop ()
+      | Error exn -> Exn_with_backtrace.reraise exn
+    in
+    loop ()
   ;;
 end
 

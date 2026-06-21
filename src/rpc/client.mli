@@ -10,6 +10,9 @@ module Connection : sig
 
   (** like [connect] but fails with a nice error message for the user *)
   val connect_exn : Dune_rpc.Where.t -> t Fiber.t
+
+  (** Connect, retrying only [ENOENT] and [ECONNREFUSED] from [connect]. *)
+  val connect_retrying_exn : Dune_rpc.Where.t -> retry_delay:Time.Span.t -> t Fiber.t
 end
 
 (** [client t where init ~on_notification ~f] Establishes a client connection to

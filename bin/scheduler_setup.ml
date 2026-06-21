@@ -19,18 +19,12 @@ let go_without_rpc_server ~(common : Common.t) ~config:dune_config f =
 ;;
 
 let await_action_runner common =
-  if Common.action_runner_requested common
-  then
+  match Common.action_runner common with
+  | None -> Fiber.return ()
+  | Some action_runner ->
     let open Fiber.O in
-    (* [Common.action_runner] spawns a worker that immediately connects back to
-       Dune over RPC. With eager socket creation, the socket can be connectable
-       before the accept loop is running, so start the server before spawning
-       the worker. *)
     let* () = Dune_rpc_impl.Server.ensure_ready () in
-    match Common.action_runner common with
-    | None -> Fiber.return ()
-    | Some action_runner -> Dune_engine.Action_runner.ensure_ready action_runner
-  else Fiber.return ()
+    Dune_engine.Action_runner.ensure_ready action_runner
 ;;
 
 let go_with_rpc_server ~common ~config f =

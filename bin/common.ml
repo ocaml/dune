@@ -1385,40 +1385,28 @@ let init_with_root_and_rpc ~(root : Workspace_root.t) ~rpc_build (builder : Buil
       let path = Path.external_ file in
       Dune_util.Gc.serialize ~path stat);
   let where = lazy (Dune_rpc_impl.Where.default ()) in
-  let action_runner_requested = action_runner_requested c in
-  (* The RPC server must start listening before the action runner is spawned:
-     the worker connects back to this server during initialization. Keep the
-     worker lazy so constructing the RPC server does not spawn it. *)
-  let rec action_runner =
+  let action_runner =
     lazy
-      (if action_runner_requested
+      (if action_runner_requested c
        then
          Some
            (Action_runner.create
-              ~rpc_server:(Lazy.force action_runner_server)
               ~where:(Lazy.force where)
               ~config
               ~sandbox_actions:c.builder.sandbox_actions)
        else None)
-  and engine_action_runner =
-    lazy (Lazy.force action_runner |> Option.map ~f:Action_runner.runner)
-  and worker =
-    lazy
-      (match Lazy.force engine_action_runner with
-       | Some action_runner -> action_runner
-       | None -> Code_error.raise "action runner unexpectedly disabled" [])
-  and action_runner_server =
-    lazy
-      (Dune_engine.Action_runner.Rpc_server.create
-         (if action_runner_requested then `Enabled worker else `Disabled))
   in
-  let action_runner_server = Lazy.force action_runner_server in
   let rpc =
     if c.builder.allow_builds
     then
       `Allow
         (lazy
-          (let rpc_build =
+          (let action_runner =
+             match Lazy.force action_runner with
+             | None -> Dune_engine.Action_runner.Rpc_server.create `Disabled
+             | Some action_runner -> Action_runner.rpc_server action_runner
+           in
+           let rpc_build =
              lazy
                (match rpc_build with
                 | `Disabled -> Dune_rpc_impl.Server.Disabled
@@ -1436,11 +1424,13 @@ let init_with_root_and_rpc ~(root : Workspace_root.t) ~rpc_build (builder : Buil
              ~root:root.dir
              ~build
              ~where:(Lazy.force where)
-             ~action_runner:action_runner_server
+             ~action_runner
              c.builder.watch))
     else `Forbid_builds
   in
-  let action_runner = engine_action_runner in
+  let action_runner =
+    lazy (Lazy.force action_runner |> Option.map ~f:Action_runner.runner)
+  in
   let c = { c with rpc; action_runner } in
   c, config
 ;;

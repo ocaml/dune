@@ -27,7 +27,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - uses: nixbuild/nix-quick-install-action@v34
+      - uses: nixbuild/nix-quick-install-action@v35
       - name: Bisect
         run: |
           package="${{ inputs.package }}"

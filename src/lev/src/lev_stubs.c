@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include <errno.h>
 #include <math.h>
 #if (defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || defined(__DragonFly__))
 #include <sys/wait.h>
@@ -315,9 +316,29 @@ CAMLprim value lev_ev_create(value v_flags) {
   CAMLreturn(caml_copy_nativeint((intnat)loop));
 }
 
-static void release_lock(EV_P) { caml_release_runtime_system(); }
+static void release_lock(EV_P) {
+  int saved_errno = errno;
+#if _WIN32
+  int saved_wsa_error = WSAGetLastError();
+#endif
+  caml_release_runtime_system();
+#if _WIN32
+  WSASetLastError(saved_wsa_error);
+#endif
+  errno = saved_errno;
+}
 
-static void acquire_lock(EV_P) { caml_acquire_runtime_system(); }
+static void acquire_lock(EV_P) {
+  int saved_errno = errno;
+#if _WIN32
+  int saved_wsa_error = WSAGetLastError();
+#endif
+  caml_acquire_runtime_system();
+#if _WIN32
+  WSASetLastError(saved_wsa_error);
+#endif
+  errno = saved_errno;
+}
 
 CAMLprim value lev_ev_run(value v_ev, value v_run) {
   CAMLparam2(v_ev, v_run);

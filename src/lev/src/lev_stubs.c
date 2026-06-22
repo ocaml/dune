@@ -4,6 +4,11 @@
 #include <stdint.h>
 
 #include <math.h>
+#if _WIN32
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#endif
 #if (defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || defined(__DragonFly__))
 #include <sys/wait.h>
 #endif
@@ -27,6 +32,48 @@
 #define FD_val(value) win_CRT_fd_of_filedescr(value)
 #else
 #define FD_val(value) Int_val(value)
+#endif
+
+#if _WIN32
+static void strip_trailing_crlf(char *message) {
+  size_t len = strlen(message);
+  while (len > 0 && (message[len - 1] == '\r' || message[len - 1] == '\n')) {
+    message[--len] = '\0';
+  }
+}
+
+static void lev_syserr_cb(const char *msg) EV_NOEXCEPT {
+  int saved_errno = errno;
+  int saved_wsa_error = WSAGetLastError();
+
+  if (msg == NULL) {
+    msg = "(libev) system error";
+  }
+
+  fprintf(stderr, "%s: errno=%d (%s)", msg, saved_errno, strerror(saved_errno));
+  fprintf(stderr, ", WSAGetLastError=%d", saved_wsa_error);
+
+  if (saved_wsa_error != 0) {
+    LPSTR message = NULL;
+    DWORD len = FormatMessageA(
+        FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
+            FORMAT_MESSAGE_IGNORE_INSERTS,
+        NULL, (DWORD)saved_wsa_error,
+        MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&message, 0, NULL);
+    if (len != 0 && message != NULL) {
+      strip_trailing_crlf(message);
+      fprintf(stderr, " (%s)", message);
+      LocalFree(message);
+    }
+  }
+
+  fprintf(stderr, "\n");
+  abort();
+}
+
+static void setup_syserr_cb(void) { ev_set_syserr_cb(lev_syserr_cb); }
+#else
+static void setup_syserr_cb(void) {}
 #endif
 
 #define Ev_val(__typ, __v) *(struct __typ **)Data_custom_val(__v)
@@ -284,6 +331,7 @@ CAMLprim value lev_loop_break(value v_loop, value v_break) {
 
 CAMLprim value lev_ev_default(value v_flags) {
   CAMLparam1(v_flags);
+  setup_syserr_cb();
   struct ev_loop *loop = ev_default_loop(Long_val(v_flags));
   if (!loop) {
     caml_failwith("unable to create loop");
@@ -308,6 +356,7 @@ CAMLprim value lev_sleep(value v_ts) {
 
 CAMLprim value lev_ev_create(value v_flags) {
   CAMLparam1(v_flags);
+  setup_syserr_cb();
   struct ev_loop *loop = ev_loop_new(Long_val(v_flags));
   if (!loop) {
     caml_failwith("unable to create loop");

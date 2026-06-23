@@ -259,8 +259,6 @@ module Build = struct
   ;;
 end
 
-module Runner = Process_runner
-
 let io_to_redirection_path (kind : Io.kind) =
   match kind with
   | Terminal _ -> None
@@ -1066,17 +1064,17 @@ let spawn
 
 let runner_input_of_io (io : Io.input Io.t) =
   match io.kind with
-  | Null -> Some Runner.Input.Null
-  | Terminal _ -> Some Runner.Input.Terminal
-  | File { path; _ } -> Some (Runner.Input.File path)
+  | Null -> Some Process_runner.Input.Null
+  | Terminal _ -> Some Process_runner.Input.Terminal
+  | File { path; _ } -> Some (Process_runner.Input.File path)
   | External -> None
 ;;
 
 let runner_output_of_io (io : Io.output Io.t) =
   match io.kind with
-  | Null -> Some Runner.Output.Null
-  | Terminal _ -> Some Runner.Output.Terminal
-  | File { path; perm } -> Some (Runner.Output.File { path; perm })
+  | Null -> Some Process_runner.Output.Null
+  | Terminal _ -> Some Process_runner.Output.Terminal
+  | File { path; perm } -> Some (Process_runner.Output.File { path; perm })
   | External -> None
 ;;
 
@@ -1103,14 +1101,14 @@ let runner_request
     with
     | Some stdin_from, Some stdout_to, true ->
       Some
-        { Runner.dir
+        { Process_runner.dir
         ; env
         ; metadata
         ; prog
         ; args
         ; stdin_from
         ; stdout_to
-        ; stderr_to = Runner.Stderr.Same_as_stdout
+        ; stderr_to = Process_runner.Stderr.Same_as_stdout
         ; create_process_group = Option.is_some setpgid
         ; timeout
         ; queued
@@ -1120,14 +1118,14 @@ let runner_request
        | None -> None
        | Some stderr_to ->
          Some
-           { Runner.dir
+           { Process_runner.dir
            ; env
            ; metadata
            ; prog
            ; args
            ; stdin_from
            ; stdout_to
-           ; stderr_to = Runner.Stderr.Output stderr_to
+           ; stderr_to = Process_runner.Stderr.Output stderr_to
            ; create_process_group = Option.is_some setpgid
            ; timeout
            ; queued
@@ -1137,7 +1135,7 @@ let runner_request
 
 let exec_locally
       ~build
-      ({ Runner.dir
+      ({ Process_runner.dir
        ; env
        ; metadata
        ; prog
@@ -1149,7 +1147,7 @@ let exec_locally
        ; timeout
        ; queued
        } :
-        Runner.request)
+        Process_runner.request)
   =
   let stdin =
     match stdin_from with
@@ -1164,11 +1162,11 @@ let exec_locally
     | File { path; perm } -> Io.file path Io.Out ~perm
   in
   let stderr =
-    let stderr_to : Runner.Stderr.t = stderr_to in
-    let open Runner.Stderr in
+    let stderr_to : Process_runner.Stderr.t = stderr_to in
+    let open Process_runner.Stderr in
     match stderr_to with
     | Same_as_stdout -> stdout
-    | Output (out : Runner.Output.t) ->
+    | Output (out : Process_runner.Output.t) ->
       (match out with
        | Null -> Io.null Io.Out
        | Terminal -> Io.stderr
@@ -1210,7 +1208,7 @@ let exec_locally
          ; resource_usage = process_info.resource_usage
          }
        in
-       { Runner.started_at = t.started_at
+       { Process_runner.started_at = t.started_at
        ; process_info
        ; termination_reason
        ; times
@@ -1335,7 +1333,7 @@ let run_internal
             | Some action_runner ->
               Io.release prepared_outputs.stdout;
               Io.release prepared_outputs.stderr;
-              let+ { Runner.started_at
+              let+ { Process_runner.started_at
                    ; process_info
                    ; termination_reason
                    ; times

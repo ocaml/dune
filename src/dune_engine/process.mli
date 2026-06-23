@@ -82,12 +82,13 @@ module Build : sig
   val cancel_current : unit -> unit Fiber.t
 end
 
-module Runner = Process_runner
-
-(** Execute a [Runner.request] locally without taking another scheduler job
+(** Execute a [Process_runner.request] locally without taking another scheduler job
     slot. The caller must already account for scheduler concurrency. This is
     intended for the external worker implementation. *)
-val exec_locally : build:Build.t -> Runner.request -> Runner.response Fiber.t
+val exec_locally
+  :  build:Build.t
+  -> Process_runner.request
+  -> Process_runner.response Fiber.t
 
 (** [run ?dir ?stdout_to prog args] spawns a sub-process and wait for its
     termination. [stdout_to] [stderr_to] are released *)

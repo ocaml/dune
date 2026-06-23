@@ -85,7 +85,7 @@ module Powershell : Shell = struct
            script:" )
     ; `Pre
         {|
-      Invoke-Expression -Command \$(dune completion pwsh | Out-String)|}
+      dune completion pwsh | Out-String | Invoke-Expression|}
     ]
   ;;
 

@@ -1178,11 +1178,10 @@ let modules_of_dir d : (Module_name.t * (Path.t * [ `Cmti | `Cmt | `Cmi ])) list
     List.find_map extensions ~f:(fun (ext', ty) ->
       Option.some_if (Filename.Extension.equal ext ext') ty)
   in
-  Fs_memo.dir_contents (Path.as_outside_build_dir_exn d)
+  Fs.dir_contents d
   >>| function
   | Error _ -> []
-  | Ok dc ->
-    let list = Fs_memo.Dir_contents.to_list dc in
+  | Ok list ->
     List.filter_map list ~f:(fun (x, ty) ->
       match ty, Filename.extension x |> Filename.Extension.Or_empty.extension with
       | Unix.S_REG, Some ext when Option.is_some (ty_of_ext ext) ->

@@ -1,7 +1,17 @@
 name: Binaries
 
 on:
+  push:
+    branches:
+      - main
+  pull_request:
+  merge_group:
   workflow_dispatch:
+    inputs:
+      upload:
+        description: Upload built binaries as artifacts
+        type: boolean
+        default: false
 
 jobs:
   binary:
@@ -12,10 +22,10 @@ jobs:
         include:
           - os: macos-15-intel
             name: x86_64-apple-darwin
-            installable: .#
+            installable: .#dune
           - os: macos-14
             name: aarch64-apple-darwin
-            installable: .#
+            installable: .#dune
           - os: ubuntu-22.04
             name: x86_64-unknown-linux-musl
             installable: .#dune-static
@@ -27,11 +37,13 @@ jobs:
       - uses: cachix/install-nix-action@v31
       - run: echo "(version $(git describe --always --dirty --abbrev=7))" >> dune-project
       - run: nix build ${{ matrix.installable }}
-      - uses: actions/upload-artifact@v7
+      - if: ${{ inputs.upload }}
+        uses: actions/upload-artifact@v7
         with:
           path: result/bin/dune
           name: dune-${{ matrix.name }}
   combine:
+    if: ${{ inputs.upload }}
     runs-on: ubuntu-latest
     needs: binary
     steps:

@@ -24,8 +24,9 @@
     "_build/install/default/man/man1/man-page-b.default.1"
     "_build/install/default/man/man3/another-man-page.3"
 
-Some variables are restricted in [dst] of [bin] section because evaluating
-them could cause a dependency cycle (also, most of them make no sense in [dst] anyway).
+Variables can be expanded in the [dst] of files in the [bin] section. This was
+once forbidden because evaluating them could cause a dependency cycle, but that
+limitation was removed in #10160.
 
   $ cat > dune <<EOF
   > (install
@@ -35,7 +36,7 @@ them could cause a dependency cycle (also, most of them make no sense in [dst] a
 
   $ dune build @install
 
-This is not a problem outside of bin section:
+Expansion in [dst] also works outside of the [bin] section:
 
   $ cat > dune <<EOF
   > (install
@@ -45,9 +46,9 @@ This is not a problem outside of bin section:
 
   $ dune build @install
 
-Extension of [src] can't use the restricted variables either because
-addition of .exe suffix to dst on Windows is conditional on the
-extension of [src]:
+Variables can also be expanded in the basename of [src] in the [bin] section,
+even though on Windows the .exe suffix added to [dst] depends on the [src]
+extension:
 
   $ cat > dune <<EOF
   > (install
@@ -57,7 +58,7 @@ extension of [src]:
 
   $ dune build @install
 
-This is fine if the destination extension is already .exe:
+This also works when the destination extension is already .exe:
 
   $ cat > dune <<EOF
   > (install
@@ -67,7 +68,7 @@ This is fine if the destination extension is already .exe:
 
   $ dune build @install
 
-Or if the extension of source is clearly not .exe:
+Or when the source extension is clearly not .exe:
 
   $ cat > dune <<EOF
   > (install
@@ -77,7 +78,7 @@ Or if the extension of source is clearly not .exe:
 
   $ dune build @install
 
-Exe basename needs to be fully known if dst is missing though:
+The basename of [src] can be a variable even when [dst] is omitted:
 
   $ cat > dune <<EOF
   > (install
@@ -87,7 +88,7 @@ Exe basename needs to be fully known if dst is missing though:
 
   $ dune build @install
 
-When basename is fully known, all is well:
+And when the basename is given literally:
 
   $ cat > dune <<EOF
   > (install

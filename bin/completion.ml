@@ -49,13 +49,13 @@ module Zsh : Shell = struct
   let description =
     [ `I
         ( "$(b,zsh)"
-        , "Print out a zsh completion script. It should then be written to a file that \
-           will be sourced, for example in ~/.local/share/zsh/site-functions/_dune. \
-           Alternatively, it can be sourced directly by adding this line to your .zshrc:"
-        )
+        , "Print out a zsh completion script. It should then be written to a file named \
+           _dune in a directory that will be autoloaded, for example in \
+           ~/.local/share/zsh/site-functions. Make sure that that directory is in your \
+           \\$fpath by adding this line to your .zshrc before `compinit`:" )
     ; `Pre
         {|
-          eval "\$(dune completion zsh)"|}
+      fpath+=~/.local/share/zsh/site-functions|}
     ]
   ;;
 
@@ -117,7 +117,16 @@ let all_with_aliases =
 ;;
 
 let term =
-  let info_ = Arg.info ~doc:None ~docv:"SHELL" [] in
+  let info_ =
+    Arg.info
+      ~doc:
+        (Some
+           (sprintf
+              "The shell for which you want dune completion. Possible values are %s"
+              (String.enumerate_or (all |> List.map ~f:fst))))
+      ~docv:"SHELL"
+      []
+  in
   let+ (module S) = Arg.(required & pos 0 (some (enum all)) None & info_) in
   print_string (S.completion_script ~fun_name:"_dune_cmdliner")
 ;;

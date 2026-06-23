@@ -5,24 +5,29 @@ module Local_package = Dune_pkg.Local_package
 module Show_lock = struct
   let print_lock lock_dir_arg () =
     let open Fiber.O in
-    let* source_paths =
-      Memo.run (Workspace.workspace ())
-      >>| Pkg.Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dir_arg
+    let* workspace = Memo.run (Workspace.workspace ()) in
+    let source_paths =
+      Pkg.Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dir_arg workspace
     in
     let exists path = Fpath.exists (Path.to_string path) in
-    (* Only build for autolocking: lock dirs that are already committed are read
-       directly from disk. Those without a committed lock dir are autolocked via
-       the build system to produce the most up-to-date build solution. *)
-    let to_autolock =
+    (* Lock dirs that are already committed are read directly from disk. Those
+       without a committed lock dir are autolocked via the build system. *)
+    let uncommitted_lock_dirs =
       List.filter source_paths ~f:(fun source_path ->
         not (exists (Path.source source_path)))
     in
     let* () =
-      match to_autolock with
+      (* Only build when package management is active for these lock dirs. *)
+      match uncommitted_lock_dirs with
       | [] -> Fiber.return ()
+      | _ :: _
+        when not
+               (Pkg.Pkg_common.pkg_enabled
+                  ~workspace
+                  ~lock_dir_paths:uncommitted_lock_dirs) -> Fiber.return ()
       | _ :: _ ->
         Build.build_memo_exn (fun () ->
-          Memo.parallel_iter to_autolock ~f:(fun source_path ->
+          Memo.parallel_iter uncommitted_lock_dirs ~f:(fun source_path ->
             Build_system.build_dir (Dune_rules.Lock_dir.lock_dir_of_source source_path)))
     in
     Fiber.parallel_map source_paths ~f:(fun source_path ->

@@ -15,10 +15,13 @@ on:
 
 jobs:
   binary:
-    name: Create
+    name: ${{ matrix.name }}
     strategy:
       fail-fast: false
       matrix:
+        # `name` follows the LLVM/Rust target-triple convention
+        # (`<arch>-<vendor>-<sys>-<abi>`). For Windows, `-gnu` denotes the
+        # MinGW (GNU) ABI, as opposed to `-msvc`.
         include:
           - os: macos-15-intel
             name: x86_64-apple-darwin
@@ -29,6 +32,10 @@ jobs:
           - os: ubuntu-22.04
             name: x86_64-unknown-linux-musl
             installable: .#dune-static
+          - os: ubuntu-22.04
+            name: x86_64-pc-windows-gnu
+            installable: .#windows-static
+            binary: dune.exe
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
@@ -40,7 +47,7 @@ jobs:
       - if: ${{ inputs.upload }}
         uses: actions/upload-artifact@v7
         with:
-          path: result/bin/dune
+          path: result/bin/${{ matrix.binary || 'dune' }}
           name: dune-${{ matrix.name }}
   combine:
     if: ${{ inputs.upload }}

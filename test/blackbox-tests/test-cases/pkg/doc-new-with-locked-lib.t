@@ -1,9 +1,13 @@
-Reproduction for https://github.com/ocaml/dune/issues/15290
+Regression test for https://github.com/ocaml/dune/issues/15290.
 
-Building @doc-new with package management enabled crashes when a locked
-package installs a library via a META file (without a dune-package), because
-the odoc rules classify it as a "fallback" directory and try to read the
-cmti directory as if it were outside the build tree.
+The lock-dir package below installs a library via a META file only,
+without a dune-package. @doc-new therefore handles it through the
+fallback odoc rules.
+
+Before the fix, those rules tried to list the generated cmti directory
+as if it were outside the build tree and crashed in
+Path.as_outside_build_dir_exn. The build below now reaches odoc instead;
+the expected warnings come from odoc indexing the empty fake library.
 
   $ mkdir external_sources
 
@@ -48,6 +52,8 @@ cmti directory as if it were outside the build tree.
 
   $ touch foo.ml
 
-  $ dune build @doc-new 2>&1 | grep "Internal error"
-  Internal error! Please report to https://github.com/ocaml/dune/issues,
-  [1]
+  $ dune build @doc-new
+  File "fakefmt.mld", line 7, characters 0-11:
+  Warning: '{!modules ...}' should not be empty.
+  File "page-fakefmt.odoc":
+  Warning: Failed to lookup child page dummy

@@ -52,6 +52,7 @@ type t =
   { mutable status : status
   ; mutable pending_reset : Memo.Invalidation.t option
   ; mutable watch_restart_started_at : Time.t option
+  ; mutable status_overlay : Console.Status_line.overlay option
   ; mutable wakeup : Trigger.t
   ; mutable wakeup_generation : int
   ; mutable input_change_generation : int
@@ -62,7 +63,17 @@ type t =
   ; mutable state : [ `Awaiting_init | `Init ]
   }
 
-let build_finish (build_result : Build_outcome.t) =
+let clear_status_overlay t =
+  Option.iter t.status_overlay ~f:Console.Status_line.remove_overlay;
+  t.status_overlay <- None
+;;
+
+let set_status_overlay t message =
+  clear_status_overlay t;
+  t.status_overlay <- Some (Console.Status_line.add_overlay message)
+;;
+
+let build_finish t (build_result : Build_outcome.t) =
   let message =
     match build_result with
     | Success -> Pp.tag User_message.Style.Success (Pp.verbatim "Success")
@@ -77,7 +88,8 @@ let build_finish (build_result : Build_outcome.t) =
       in
       Pp.tag User_message.Style.Error failure_message
   in
-  Console.Status_line.set
+  set_status_overlay
+    t
     (Constant (Pp.seq message (Pp.verbatim ", waiting for filesystem changes...")))
 ;;
 
@@ -88,27 +100,6 @@ let invalidation_of_file_events events =
       (match (event : Event.File_watcher_event.t) with
        | Fs_memo_event event -> Fs_memo.handle_fs_event event
        | Queue_overflow -> Memo.Invalidation.clear_caches ~reason:Event_queue_overflow))
-;;
-
-let show_build_interrupted_status_line () =
-  Console.Status_line.set
-    (Live
-       (fun () ->
-         let progress =
-           match Fiber.Svar.read Build_system.state with
-           | Initializing
-           | Restarting_current_build
-           | Build_succeeded__now_waiting_for_changes
-           | Build_failed__now_waiting_for_changes -> Build_system.Progress.init
-           | Building progress -> progress
-         in
-         Pp.seq
-           (Pp.tag User_message.Style.Error (Pp.verbatim "Source files changed"))
-           (Pp.verbatim
-              (sprintf
-                 ", restarting current build... (%u/%u)"
-                 progress.number_of_rules_executed
-                 progress.number_of_rules_discovered))))
 ;;
 
 let next_watch_run_id t =
@@ -156,9 +147,17 @@ let request_restart t invalidation =
     t.input_change_generation <- t.input_change_generation + 1;
     let* () =
       match t.status with
-      | Restarting_build _ | Standing_by -> Fiber.return ()
+      | Restarting_build _ -> Fiber.return ()
+      | Standing_by ->
+        clear_status_overlay t;
+        Fiber.return ()
       | Building run_id ->
-        show_build_interrupted_status_line ();
+        set_status_overlay
+          t
+          (Live
+             (fun () ->
+               let elapsed = Time.diff (Time.now ()) now |> Time.Span.to_secs in
+               Pp.textf "Restarting current build... (%.1fs)" elapsed));
         t.status <- Restarting_build run_id;
         let+ () = Process.Build.cancel_current () in
         Dune_trace.emit Build (fun () ->
@@ -185,6 +184,7 @@ let create () =
   { status = Standing_by
   ; pending_reset = None
   ; watch_restart_started_at = None
+  ; status_overlay = None
   ; wakeup = Trigger.create ()
   ; wakeup_generation = 0
   ; input_change_generation = 0
@@ -202,13 +202,16 @@ let run t f =
   match Scheduler.file_watcher () with
   | None ->
     ignore (Fs_memo.init ~dune_file_watcher:None : Memo.Invalidation.t);
-    f ()
+    Fiber.finalize f ~finally:(fun () ->
+      clear_status_overlay t;
+      Fiber.return ())
   | Some file_watcher ->
     Fs_memo.init ~dune_file_watcher:(Some file_watcher) |> Memo.reset;
     Fiber.fork_and_join_unit
       (fun () -> handle_file_events t file_watcher)
       (fun () ->
          Fiber.finalize f ~finally:(fun () ->
+           clear_status_overlay t;
            File_watcher.close file_watcher;
            Fiber.return ()))
 ;;
@@ -236,6 +239,7 @@ let run_current_build
    | Building _ -> assert false
    | Standing_by | Restarting_build _ -> ());
   t.status <- Building run_id;
+  clear_status_overlay t;
   let* outcome =
     let build_ctx =
       Process.Build.create ~action_runner ~run_id ~cancellation:(Fiber.Cancel.create ())
@@ -371,7 +375,7 @@ let rpc_poll_iter t ~action_runner ~sticky_goal ~sticky_built_at =
                  t.rpc_requests <- Rpc_request_id.Map.remove t.rpc_requests id;
                  Fiber.Ivar.fill ivar outcome)
            in
-           build_finish outcome
+           build_finish t outcome
          in
          { wakeup_generation
          ; sticky_built_at =

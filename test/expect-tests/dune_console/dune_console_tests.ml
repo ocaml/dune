@@ -65,6 +65,14 @@ let test_status_line_overwrite (module Console : New_console) =
   Status_line.clear ()
 ;;
 
+let test_status_line_constant_overlay (module Console : New_console) =
+  let open Console in
+  let overlay =
+    Status_line.add_overlay (Status_line.Constant (Pp.text "Here is an overlay"))
+  in
+  Status_line.remove_overlay overlay
+;;
+
 let test_status_line_section (module Console : New_console) =
   let open Console in
   Status_line.set (Status_line.Live (fun () -> Pp.text "Done: 50%"));
@@ -137,6 +145,17 @@ let%expect_test "dumb backend: status line overwriting" =
     {|
 Here is a status line
 Here is another status line
+  |}]
+;;
+
+let%expect_test "dumb backend: constant status line overlay" =
+  let module Console = New () in
+  Console.Backend.set Console.Backend.dumb;
+  test_status_line_constant_overlay (module Console);
+  escape [%expect.output];
+  [%expect
+    {|
+Here is an overlay
   |}]
 ;;
 

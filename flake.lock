@@ -230,9 +230,7 @@
         "melange": [
           "melange"
         ],
-        "menhir-src": [
-          "menhir-src"
-        ],
+        "menhir-src": "menhir-src",
         "nixpkgs": [
           "nixpkgs"
         ],
@@ -268,7 +266,6 @@
     "root": {
       "inputs": {
         "melange": "melange",
-        "menhir-src": "menhir-src",
         "nixpkgs": "nixpkgs",
         "ocaml-overlays": "ocaml-overlays",
         "oxcaml": "oxcaml",

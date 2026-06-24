@@ -32,5 +32,5 @@ jobs:
           restore-prefixes-first-match: nix-${{ runner.os }}-${{ github.job }}--
           gc-max-store-size-linux: 2G
 
-      - name: Build OxCaml with Dune
-        run: nix build .#oxcaml-trunk-build --impure
+      - name: Build OxCaml trunk
+        run: nix develop .#ox-minimal-trunk --impure -c true

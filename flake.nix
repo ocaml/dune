@@ -132,56 +132,10 @@
             inherit nixpkgs ocaml-overlays pkgs;
             src = ./.;
           };
-          oxcaml-setup = import ./nix/oxcaml.nix { inherit pkgs; };
         in
         {
           inherit (dune-package) default dune-static;
           dune = self.packages.${pkgs.stdenv.hostPlatform.system}.default;
-          oxcaml-trunk-build =
-            let
-              dune-version =
-                let
-                  types = builtins.readFile ./otherlibs/dune-rpc/types.ml;
-                  match = builtins.match ".*let latest = ([0-9]+), ([0-9]+).*" types;
-                in
-                "${builtins.elemAt match 0}.${builtins.elemAt match 1}.0";
-              dune = (self.packages.${pkgs.stdenv.hostPlatform.system}.default).overrideAttrs {
-                postPatch = ''
-                  echo '(version ${dune-version})' >> dune-project
-                '';
-              };
-              menhirPackages = import ./nix/menhir.nix {
-                inherit pkgs;
-                menhir-src = oxcaml-setup.menhir-src;
-              };
-            in
-            # nix build .#oxcaml-trunk-build --no-link --impure
-            pkgs.stdenv.mkDerivation {
-              pname = "oxcaml-trunk-build";
-              version = "check";
-              src = builtins.fetchGit {
-                url = "https://github.com/oxcaml/oxcaml.git";
-                ref = "main";
-              };
-              nativeBuildInputs = [
-                dune
-                pkgs.autoconf
-                pkgs.which
-                pkgs.ocamlPackages.ocaml
-                pkgs.ocamlPackages.findlib
-                menhirPackages.menhir
-              ];
-              strictDeps = true;
-              buildPhase = ''
-                autoconf
-                ./configure --prefix $PWD/_install --enable-runtime5 --disable-warn-error
-                make SHELL=$SHELL
-              '';
-              installPhase = ''
-                mkdir -p $out
-                touch $out/success
-              '';
-            };
         }
       );
 
@@ -390,6 +344,31 @@
             meta.description = ''
               Provides a minimal shell environment with OxCaml in order to
               run the OxCaml tests.
+            '';
+          };
+
+          # Like ox-minimal but with the OxCaml compiler rebuilt from
+          # the `main` branch. Doubles as the trunk-build smoke test:
+          # `.github/workflows/revdeps-dev-build.yml` runs
+          #   nix develop .#ox-minimal-trunk --impure -c true
+          # which forces the trunk compiler to build while keeping the
+          # rest of the closure to the same minimal set as `ox-minimal`.
+          # Requires `--impure` because the fetchGit ref moves.
+          ox-minimal-trunk = makeDuneDevShell {
+            includeTestDeps = false;
+            packageOverrides =
+              oself: osuper:
+              (oxcaml-setup.packageSet oself osuper)
+              // {
+                ocaml = oxcaml-setup.compiler.overrideAttrs (old: {
+                  src = builtins.fetchGit {
+                    url = "https://github.com/oxcaml/oxcaml.git";
+                    ref = "main";
+                  };
+                });
+              };
+            meta.description = ''
+              Like ox-minimal but with the OxCaml trunk compiler.
             '';
           };
 

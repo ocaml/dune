@@ -72,15 +72,4 @@ in
   );
 
   packageSet = oxPackageSet;
-
-  # Pinned menhir snapshot required by OxCaml trunk builds. Same rev
-  # as the `init-menhir.tar.gz` extra-source in the oxcaml-compiler
-  # opam recipe.
-  menhir-src = builtins.fetchTree {
-    type = "gitlab";
-    host = "gitlab.inria.fr";
-    owner = "fpottier";
-    repo = "menhir";
-    rev = "d3d815e4f554da68b8c247241c8f8678926eecaa";
-  };
 }

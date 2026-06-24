@@ -240,9 +240,7 @@
         "ocaml-overlays": [
           "ocaml-overlays"
         ],
-        "odoc-src": [
-          "odoc-src"
-        ],
+        "odoc-src": "odoc-src",
         "oxcaml": [
           "oxcaml"
         ],
@@ -273,7 +271,6 @@
         "menhir-src": "menhir-src",
         "nixpkgs": "nixpkgs",
         "ocaml-overlays": "ocaml-overlays",
-        "odoc-src": "odoc-src",
         "oxcaml": "oxcaml",
         "oxcaml-opam-repository": "oxcaml-opam-repository",
         "revdeps-dune": "revdeps-dune"

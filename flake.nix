@@ -23,12 +23,7 @@
       inputs.ocaml-overlays.follows = "ocaml-overlays";
       inputs.melange.follows = "melange";
       inputs.oxcaml-opam-repository.follows = "oxcaml-opam-repository";
-      inputs.menhir-src.follows = "menhir-src";
       inputs.revdeps-dune.follows = "revdeps-dune";
-    };
-    menhir-src = {
-      url = "gitlab:fpottier/menhir/20231231?host=gitlab.inria.fr";
-      flake = false;
     };
   };
 
@@ -46,9 +41,16 @@
       oxcaml,
       oxcaml-opam-repository,
       revdeps-dune,
-      menhir-src,
     }:
     let
+      # Pinned menhir snapshot required by OxCaml.
+      menhir-src = builtins.fetchTree {
+        type = "gitlab";
+        host = "gitlab.inria.fr";
+        owner = "fpottier";
+        repo = "menhir";
+        rev = "d3d815e4f554da68b8c247241c8f8678926eecaa";
+      };
       forAllSystems =
         f:
         nixpkgs.lib.genAttrs nixpkgs.lib.systems.flakeExposed (

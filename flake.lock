@@ -84,6 +84,7 @@
     "nix-github-actions": {
       "inputs": {
         "nixpkgs": [
+          "revdeps-dune",
           "oxcaml",
           "nixpkgs"
         ]
@@ -239,12 +240,8 @@
           "ocaml-overlays"
         ],
         "odoc-src": "odoc-src",
-        "oxcaml": [
-          "oxcaml"
-        ],
-        "oxcaml-opam-repository": [
-          "oxcaml-opam-repository"
-        ],
+        "oxcaml": "oxcaml",
+        "oxcaml-opam-repository": "oxcaml-opam-repository",
         "revdeps-dune": [
           "revdeps-dune"
         ]
@@ -268,8 +265,6 @@
         "melange": "melange",
         "nixpkgs": "nixpkgs",
         "ocaml-overlays": "ocaml-overlays",
-        "oxcaml": "oxcaml",
-        "oxcaml-opam-repository": "oxcaml-opam-repository",
         "revdeps-dune": "revdeps-dune"
       }
     },

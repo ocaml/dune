@@ -18,11 +18,15 @@
   excludeTestNativeBuildInputs ? [ ],
   excludeOcamlLibs ? [ ],
   packageOverrides ? (oself: osuper: { }),
+  # Extra overlays to compose on top of `ocamlPackages` after the base
+  # branch above. Each is an `oself: osuper: { ... }` overlay; they're
+  # applied in list order via successive `overrideScope` calls.
+  extraOCamlOverlays ? [ ],
 }:
 let
   hasOcamlOverride = (packageOverrides { } { ocaml = null; }) ? ocaml;
 
-  pkgs' =
+  pkgs'-base =
     if hasOcamlOverride then
       pkgs.extend (
         pself: psuper: {
@@ -74,6 +78,18 @@ let
       )
     else
       pkgs;
+
+  pkgs' =
+    if extraOCamlOverlays == [ ] then
+      pkgs'-base
+    else
+      pkgs'-base.extend (
+        pself: psuper: {
+          ocamlPackages = builtins.foldl' (
+            acc: o: acc.overrideScope o
+          ) psuper.ocamlPackages extraOCamlOverlays;
+        }
+      );
 
   inherit (pkgs') writeScriptBin stdenv;
 

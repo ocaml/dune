@@ -19,16 +19,6 @@ Concurrent RPC build requests currently finish together even if one target is do
   >     done
   >   ' bash "$jq_program" "$expected" "$dune"
   > }
-  $ wait_for_success_with_timeout () {
-  >   output="$1"
-  >   iterations="$2"
-  >   while ! grep -qx Success "$output" 2>/dev/null
-  >   do
-  >     if [ "$iterations" = 0 ]; then return 124; fi
-  >     iterations=$((iterations - 1))
-  >     sleep 0.01
-  >   done
-  > }
 
   $ fast_started="$(mktemp -u)"
   $ slow_started="$(mktemp -u)"

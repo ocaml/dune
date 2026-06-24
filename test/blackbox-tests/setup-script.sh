@@ -1451,6 +1451,25 @@ wait_for_pid_to_exit_with_timeout () {
     done
 }
 
+wait_for_line_with_timeout () {
+    output="$1"
+    line="$2"
+    iterations="$3"
+    while ! grep -qx "$line" "$output" 2>/dev/null
+    do
+        if [ "$iterations" = 0 ]
+        then
+            return 124
+        fi
+        iterations=$((iterations - 1))
+        sleep 0.01
+    done
+}
+
+wait_for_success_with_timeout () {
+    wait_for_line_with_timeout "$1" Success "$2"
+}
+
 stop_dune () {
     shutdown_dune;
     wait_for_dune_exit;

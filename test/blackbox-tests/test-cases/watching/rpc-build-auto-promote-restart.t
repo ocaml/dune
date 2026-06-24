@@ -28,17 +28,6 @@ watch loop to rebuild the alias successfully.
 Unrelated RPC requests may complete before a later auto-promotion restart caused
 by another request in the same batch.
 
-  $ wait_for_line_with_timeout () {
-  >   output="$1"
-  >   line="$2"
-  >   iterations="$3"
-  >   while ! grep -qx "$line" "$output" 2>/dev/null
-  >   do
-  >     if [ "$iterations" = 0 ]; then return 124; fi
-  >     iterations=$((iterations - 1))
-  >     sleep 0.01
-  >   done
-  > }
   $ cat > source2 <<EOF
   > old
   > EOF

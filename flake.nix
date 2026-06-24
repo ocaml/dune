@@ -37,9 +37,6 @@
         nixpkgs.lib.genAttrs nixpkgs.lib.systems.flakeExposed (
           system:
           let
-            # Vanilla nixpkgs scope used to source packages we want to take
-            # ahead of what `ocaml-overlays` ships (e.g. odoc 3.2.1).
-            nixpkgsOcaml = nixpkgs.legacyPackages.${system}.ocaml-ng.ocamlPackages_5_4;
             pkgs = nixpkgs.legacyPackages.${system}.appendOverlays [
               ocaml-overlays.overlays.default
               (self: super: {
@@ -52,14 +49,6 @@
                     utop = osuper.utop.overrideAttrs {
                       dontGzipMan = true;
                     };
-                    odoc-parser = osuper.odoc-parser.overrideAttrs (old: {
-                      inherit (nixpkgsOcaml.odoc-parser) version src;
-                      doCheck = false;
-                    });
-                    odoc = osuper.odoc.overrideAttrs (old: {
-                      inherit (nixpkgsOcaml.odoc) version src;
-                      doCheck = false;
-                    });
                   }
                 );
               })

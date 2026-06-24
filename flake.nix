@@ -393,28 +393,6 @@
             '';
           };
 
-          ox-trunk =
-            let
-              menhirPackages = import ./nix/menhir.nix {
-                inherit pkgs;
-                menhir-src = oxcaml-setup.menhir-src;
-              };
-            in
-            pkgs.mkShell {
-              inherit INSIDE_NIX;
-              shellHook = ''
-                export DUNE_SOURCE_ROOT=$PWD
-              '';
-              inputsFrom = [ pkgs.ocamlPackages.dune_3 ];
-              nativeBuildInputs = [
-                pkgs.autoconf
-                menhirPackages.menhir
-              ];
-              meta.description = ''
-                Provides a shell environment with upstream OCaml and menhir 20231231
-                for building the OxCaml trunk.
-              '';
-            };
           ox = makeDuneDevShell {
             excludeTestNativeBuildInputs = [ "opam" ];
             excludeOcamlLibs = [

@@ -11,4 +11,5 @@ Dune can emit events for threads started
   $ dune build @foo
 
   $ dune trace cat | jq -c 'select(.cat == "thread") | .args' | sort -u
+  {"name":"async-io"}
   {"name":"signal-watcher"}

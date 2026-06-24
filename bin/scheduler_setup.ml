@@ -21,10 +21,13 @@ let go_without_rpc_server ~(common : Common.t) ~config:dune_config f =
 let await_action_runner common =
   match Common.action_runner common with
   | None -> Fiber.return ()
-  | Some action_runner ->
-    let open Fiber.O in
-    let* () = Dune_rpc_impl.Server.ensure_ready () in
-    Dune_engine.Action_runner.ensure_ready action_runner
+  | Some action_runner -> Dune_engine.Action_runner.ensure_ready action_runner
+;;
+
+let run_with_rpc_server server f =
+  Fiber.fork_and_join_unit
+    (fun () -> Dune_rpc_impl.Server.run server)
+    (fun () -> Fiber.finalize f ~finally:(fun () -> Dune_rpc_impl.Server.stop server))
 ;;
 
 let go_with_rpc_server ~common ~config f =
@@ -32,7 +35,7 @@ let go_with_rpc_server ~common ~config f =
     match Common.rpc common with
     | `Allow server ->
       fun () ->
-        Dune_rpc_impl.Server.with_background_rpc server (fun () ->
+        run_with_rpc_server server (fun () ->
           let open Fiber.O in
           let* () = await_action_runner common in
           f ())
@@ -51,12 +54,10 @@ let go_with_rpc_server_and_file_watcher ~(common : Common.t) ~config:dune_config
   let run () =
     match Common.rpc common with
     | `Allow server ->
-      Dune_rpc_impl.Server.with_background_rpc server
-      @@ fun () ->
-      let open Fiber.O in
-      let* () = Dune_rpc_impl.Server.ensure_ready () in
-      let* () = await_action_runner common in
-      run ()
+      run_with_rpc_server server (fun () ->
+        let open Fiber.O in
+        let* () = await_action_runner common in
+        run ())
     | `Forbid_builds -> run ()
   in
   Run.go config ~file_watcher run

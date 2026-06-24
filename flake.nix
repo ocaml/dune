@@ -153,75 +153,14 @@
       packages = forAllSystems (
         pkgs:
         let
-          lib = pkgs.lib;
-          dune-source = lib.cleanSourceWith {
+          dune-package = import ./nix/dune-package.nix {
+            inherit nixpkgs ocaml-overlays pkgs;
             src = ./.;
-            filter = pkgs.nix-gitignore.gitignoreFilterPure (_: _: true) [
-              ".git"
-              ./.gitignore
-            ] ./.;
           };
-          dune-build-files =
-            let
-              fs = lib.fileset;
-            in
-            fs.intersection (fs.fromSource dune-source) (
-              fs.unions [
-                ./bin
-                ./boot
-                ./configure
-                ./dune-project
-                ./dune-file
-                ./src
-                ./plugin
-                ./vendor
-                ./otherlibs
-                ./Makefile
-                (fs.fileFilter (file: file.hasExt "opam" || file.hasExt "template") ./.)
-              ]
-            );
-          dune-static-overlay = self: super: {
-            ocamlPackages = super.ocaml-ng.ocamlPackages_5_4.overrideScope (
-              oself: osuper: {
-                dune_3 = osuper.dune_3.overrideAttrs (a: {
-                  src = dune-source;
-                  preBuild = "ocaml boot/bootstrap.ml --static";
-                });
-              }
-            );
-          };
-          pkgs-static = nixpkgs.legacyPackages.${pkgs.stdenv.hostPlatform.system}.appendOverlays [
-            ocaml-overlays.overlays.default
-            dune-static-overlay
-          ];
-
         in
         {
-          default =
-            with pkgs;
-            stdenv.mkDerivation {
-              pname = "dune";
-              version = "3.x-n/a";
-              src = lib.fileset.toSource {
-                root = ./.;
-                fileset = dune-build-files;
-              };
-              nativeBuildInputs = with ocamlPackages; [
-                ocaml
-                findlib
-              ];
-              strictDeps = true;
-              buildFlags = [ "release" ];
-              dontAddPrefix = true;
-              dontAddStaticConfigureFlags = true;
-              configurePlatforms = [ ];
-              installFlags = [
-                "PREFIX=${placeholder "out"}"
-                "LIBDIR=$(OCAMLFIND_DESTDIR)"
-              ];
-            };
+          inherit (dune-package) default dune-static;
           dune = self.packages.${pkgs.stdenv.hostPlatform.system}.default;
-          dune-static = pkgs-static.pkgsCross.musl64.ocamlPackages.dune;
           oxcaml-trunk-build =
             let
               dune-version =

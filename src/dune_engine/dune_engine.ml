@@ -4,6 +4,7 @@ module Corrections = Corrections
 module Action_builder = Action_builder
 module Dep = Dep
 module Action = Action
+module Action_plugin = Action_plugin
 module Done_or_more_deps = Done_or_more_deps
 module Utils = Utils
 module Dir_set = Dir_set

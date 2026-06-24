@@ -6,7 +6,6 @@
   action_ext
   build_path_prefix_map
   csexp
-  action_plugin
   dune_action_plugin
   dune_config_file
   dune_digest

@@ -9,10 +9,6 @@
       url = "github:nix-ocaml/nix-overlays";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    odoc-src = {
-      url = "github:ocaml/odoc/6427579346781df958b3bdfe8ac6d4550194012a";
-      flake = false;
-    };
     oxcaml = {
       url = "github:oxcaml/oxcaml/5.2.0minus-31";
     };
@@ -23,7 +19,6 @@
     revdeps-dune = {
       url = "github:ocaml/dune";
       inputs.nixpkgs.follows = "nixpkgs";
-      inputs.odoc-src.follows = "odoc-src";
       inputs.oxcaml.follows = "oxcaml";
       inputs.ocaml-overlays.follows = "ocaml-overlays";
       inputs.melange.follows = "melange";
@@ -48,7 +43,6 @@
       nixpkgs,
       melange,
       ocaml-overlays,
-      odoc-src,
       oxcaml,
       oxcaml-opam-repository,
       revdeps-dune,
@@ -60,6 +54,9 @@
         nixpkgs.lib.genAttrs nixpkgs.lib.systems.flakeExposed (
           system:
           let
+            # Vanilla nixpkgs scope used to source packages we want to take
+            # ahead of what `ocaml-overlays` ships (e.g. odoc 3.2.1).
+            nixpkgsOcaml = nixpkgs.legacyPackages.${system}.ocaml-ng.ocamlPackages_5_4;
             pkgs = nixpkgs.legacyPackages.${system}.appendOverlays [
               ocaml-overlays.overlays.default
               (self: super: {
@@ -76,13 +73,11 @@
                       dontGzipMan = true;
                     };
                     odoc-parser = osuper.odoc-parser.overrideAttrs (old: {
-                      version = "3.2.1";
-                      src = odoc-src;
+                      inherit (nixpkgsOcaml.odoc-parser) version src;
                       doCheck = false;
                     });
                     odoc = osuper.odoc.overrideAttrs (old: {
-                      version = "3.2.1";
-                      src = odoc-src;
+                      inherit (nixpkgsOcaml.odoc) version src;
                       doCheck = false;
                     });
                     rocq-core = super.rocqPackages_9_2.rocq-core.override {

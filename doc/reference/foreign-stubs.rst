@@ -60,7 +60,7 @@ Here is a complete list of supported subfields:
     the library ``lib3``, the directory ``dir4``, and the result of recursively
     including the contents of the file ``inc2``.
     The contents of included directories are tracked recursively, e.g., if you
-    use ``(include_dir dir)`` and have headers ``dir/base.h`` and
+    use ``(include_dirs dir)`` and have headers ``dir/base.h`` and
     ``dir/lib/lib.h``, they both will be tracked as dependencies.
 - ``extra_deps`` specifies any other dependencies that should be tracked.  This
     is useful when dealing with ``#include`` statements that escape into a

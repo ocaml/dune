@@ -637,7 +637,6 @@
               oself: osuper:
               (oxPackageSet oself osuper)
               // {
-                dune_3 = self.packages.${pkgs.stdenv.hostPlatform.system}.default;
                 ocaml = oxcamlCompiler;
               };
             meta.description = ''

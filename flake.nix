@@ -49,9 +49,6 @@
                       flambdaSupport = false;
                       framePointerSupport = true;
                     };
-                    mdx = osuper.mdx.override {
-                      logs = oself.logs;
-                    };
                     utop = osuper.utop.overrideAttrs {
                       dontGzipMan = true;
                     };

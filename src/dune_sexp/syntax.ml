@@ -87,6 +87,7 @@ module Supported_versions : sig
     -> Version.t option
 
   val minimum_versions : t -> (Version.t * Version.t) option
+  val all_supported_ranges : t -> (Version.t * Version.t) list
 
   val status
     :  t
@@ -210,6 +211,8 @@ end = struct
     let+ minor, lang = Int.Map.min_binding major_map in
     (major, minor), lang
   ;;
+
+  let all_supported_ranges t = supported_ranges (Int.max_int, Int.max_int) t
 
   let status t ver ~dune_lang_ver =
     if is_supported t ver dune_lang_ver
@@ -455,18 +458,29 @@ let check_supported ~dune_lang_ver t (loc, ver) =
       | Some v -> Printf.sprintf " until %s" (dune_ver_text v)
       | None -> ""
     in
-    let supported =
-      (if List.is_empty supported_ranges
-       then Pp.textf "There are no supported versions of this extension in %s."
-       else Pp.textf "Supported versions of this extension in %s:")
-        (dune_ver_text dune_lang_ver)
-    in
-    let supported_ranges_pp =
-      Pp.enumerate supported_ranges ~f:(fun (a, b) ->
+    let pp_supported_ranges ranges =
+      Pp.enumerate ranges ~f:(fun (a, b) ->
         let open Version.Infix in
         if a = b
         then Pp.text (Version.to_string a)
         else Pp.textf "%s to %s" (Version.to_string a) (Version.to_string b))
+    in
+    let no_supported_ranges = List.is_empty supported_ranges in
+    let supported =
+      (if no_supported_ranges
+       then Pp.textf "There are no supported versions of this extension in %s."
+       else Pp.textf "Supported versions of this extension in %s:")
+        (dune_ver_text dune_lang_ver)
+    in
+    let message =
+      [ Pp.textf
+          "Version %s of %s is not supported%s."
+          (Version.to_string ver)
+          t.desc
+          until
+      ; supported
+      ; pp_supported_ranges supported_ranges
+      ]
     in
     if String.equal t.name Name.dune
     then
@@ -483,7 +497,7 @@ let check_supported ~dune_lang_ver t (loc, ver) =
         [ Pp.textf
             "Version %s of the dune language is not supported by this version of Dune."
             (Version.to_string ver)
-        ; (if List.is_empty supported_ranges
+        ; (if no_supported_ranges
            then
              Pp.text
                "This version of Dune does not support any version of the dune language."
@@ -491,21 +505,41 @@ let check_supported ~dune_lang_ver t (loc, ver) =
              Pp.text
                "This version of Dune supports the following versions of the dune \
                 language:")
-        ; supported_ranges_pp
+        ; pp_supported_ranges supported_ranges
         ]
     else (
       let message =
-        [ Pp.textf
-            "Version %s of %s is not supported%s."
-            (Version.to_string ver)
-            t.desc
-            until
-        ; supported
-        ; supported_ranges_pp
-        ]
+        if no_supported_ranges
+        then (
+          let all_supported_ranges =
+            Supported_versions.all_supported_ranges t.supported_versions
+          in
+          if List.is_empty all_supported_ranges
+          then message
+          else
+            List.concat
+              [ message
+              ; [ Pp.text "Supported versions in newer versions of the dune language:" ]
+              ; [ pp_supported_ranges all_supported_ranges ]
+              ])
+        else message
+      in
+      let hints =
+        if no_supported_ranges
+        then (
+          match Supported_versions.minimum_versions t.supported_versions with
+          | None -> []
+          | Some (min_ext_ver, min_dune_lang_ver) ->
+            [ Pp.textf
+                "The first version of this extension is %s and is available since (lang \
+                 dune %s)."
+                (Version.to_string min_ext_ver)
+                (Version.to_string min_dune_lang_ver)
+            ])
+        else []
       in
       let is_error = String.is_empty until || dune_lang_ver >= (2, 6) in
-      User_warning.emit ~is_error ~loc message)
+      User_warning.emit ~is_error ~loc ~hints message)
 ;;
 
 let greatest_supported_version t =

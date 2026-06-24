@@ -28,6 +28,10 @@ But the toggle only exists in Dune 3.5
   There are no supported versions of this extension in version 3.1 of the dune
   language.
   
+  Supported versions in newer versions of the dune language:
+  - 0.1
+  Hint: The first version of this extension is 0.1 and is available since (lang
+  dune 3.5).
   [1]
 
 With Dune 3.5 no error is displayed

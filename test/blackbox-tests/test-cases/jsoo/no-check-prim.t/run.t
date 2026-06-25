@@ -7,15 +7,15 @@ Compilation using jsoo
   >   processes
   > | select(.args.prog | test("js_of_ocaml$"))
   > | .args | targets | .[] | sub("^_build/[^/]+/"; "")' | sort
-  .js/default/js_of_ocaml-compiler.runtime/jsoo_runtime.cma.js
-  .js/default/js_of_ocaml/js_of_ocaml.cma.js
-  .js/default/stdlib/std_exit.cmo.js
-  .js/default/stdlib/stdlib.cma.js
+  .js/effects=disabled/js_of_ocaml-compiler.runtime/jsoo_runtime.cma.js
+  .js/effects=disabled/js_of_ocaml/js_of_ocaml.cma.js
+  .js/effects=disabled/stdlib/std_exit.cmo.js
+  .js/effects=disabled/stdlib/stdlib.cma.js
   bin/.technologic.eobjs/jsoo/runtime.bc.runtime.js
   bin/.technologic.eobjs/jsoo/technologic.cmo.js
   bin/.technologic.eobjs/jsoo/z.cmo.js
   bin/technologic.bc.js
-  lib/.x.objs/jsoo/default/x.cma.js
+  lib/.x.objs/jsoo/effects=disabled/x.cma.js
   $ node "$built_js"
   buy it
   use it

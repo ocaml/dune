@@ -126,6 +126,8 @@ module Config : sig
   val of_flags : string list -> t
   val to_flags : jsoo_version:Version.t option -> t -> string list
   val remove_config_flags : string list -> string list
+  val equal : t -> t -> bool
+  val repr : t Repr.t
 end = struct
   type effects_backend =
     | Cps
@@ -277,6 +279,8 @@ end = struct
   let of_string x = x
   let of_flags l = path_of_config (config_of_flags l)
   let to_flags ~jsoo_version t = flags_of_config ~jsoo_version (config_of_string t)
+  let equal = String.equal
+  let repr = String.repr
 
   let remove_config_flags flags =
     let rec loop acc = function
@@ -485,13 +489,22 @@ module Runtime_key : sig
   type encoded = Digest.t
 
   module Decoded : sig
+    module Partial : sig
+      type t = private
+        { mode : Js_of_ocaml.Mode.t
+        ; lib_names : Lib_name.t list
+        ; project_root : Path.Source.t option
+        }
+
+      val of_libs : mode:Js_of_ocaml.Mode.t -> Lib.t list -> t
+    end
+
     type t = private
-      { mode : Js_of_ocaml.Mode.t
-      ; lib_names : Lib_name.t list
-      ; project_root : Path.Source.t option
+      { partial : Partial.t
+      ; config : Config.t
       }
 
-    val of_libs : mode:Js_of_ocaml.Mode.t -> Lib.t list -> t
+    val with_config : Partial.t -> config:Config.t -> t
   end
 
   val encode : Decoded.t -> encoded
@@ -500,19 +513,46 @@ end = struct
   type encoded = Digest.t
 
   module Decoded = struct
+    module Partial = struct
+      type t =
+        { mode : Js_of_ocaml.Mode.t
+        ; lib_names : Lib_name.t list
+        ; project_root : Path.Source.t option
+        }
+
+      let equal x y =
+        Js_of_ocaml.Mode.equal x.mode y.mode
+        && List.equal Lib_name.equal x.lib_names y.lib_names
+        && Option.equal Path.Source.equal x.project_root y.project_root
+      ;;
+
+      let of_libs ~mode libs =
+        let libs_with_runtime =
+          List.filter libs ~f:(fun lib ->
+            not (List.is_empty (jsoo_runtime_files ~mode [ lib ])))
+        in
+        (* Keep the topological order from [requires_link]: jsoo runtime
+           contents are concatenated and later files override earlier ones,
+           so reordering (e.g. sorting by name) can change which conflicting
+           binding wins. *)
+        let lib_names = List.map libs_with_runtime ~f:Lib.name in
+        let project_root = Lib.L.project_root libs_with_runtime in
+        { mode; lib_names; project_root }
+      ;;
+    end
+
     type t =
-      { mode : Js_of_ocaml.Mode.t
-      ; lib_names : Lib_name.t list
-      ; project_root : Path.Source.t option
+      { partial : Partial.t
+      ; config : Config.t
       }
 
-    let equal x y =
-      Js_of_ocaml.Mode.equal x.mode y.mode
-      && List.equal Lib_name.equal x.lib_names y.lib_names
-      && Option.equal Path.Source.equal x.project_root y.project_root
+    let with_config partial ~config = { partial; config }
+
+    let equal { partial = p1; config = c1 } { partial = p2; config = c2 } =
+      Partial.equal p1 p2 && Config.equal c1 c2
     ;;
 
-    let to_string { mode; lib_names; project_root } =
+    let to_string { partial = { mode; lib_names; project_root }; config = _ } =
       let s =
         sprintf
           "%s runtime for %s"
@@ -523,20 +563,6 @@ end = struct
       | None -> s
       | Some dir ->
         sprintf "%s (in project: %s)" s (Path.Source.to_string_maybe_quoted dir)
-    ;;
-
-    let of_libs ~mode libs =
-      let libs_with_runtime =
-        List.filter libs ~f:(fun lib ->
-          not (List.is_empty (jsoo_runtime_files ~mode [ lib ])))
-      in
-      (* Keep the topological order from [requires_link]: jsoo runtime
-         contents are concatenated and later files override earlier ones,
-         so reordering (e.g. sorting by name) can change which conflicting
-         binding wins. *)
-      let lib_names = List.map libs_with_runtime ~f:Lib.name in
-      let project_root = Lib.L.project_root libs_with_runtime in
-      { mode; lib_names; project_root }
     ;;
   end
 
@@ -554,11 +580,14 @@ end = struct
       ]
   ;;
 
-  let encode ({ Decoded.mode; lib_names; project_root } as x) =
+  let encode ({ Decoded.partial = { mode; lib_names; project_root }; config } as x) =
     let y =
       Digest.repr
-        Repr.(triple mode_repr (list Lib_name.repr) (option Path.Source.repr))
-        (mode, lib_names, project_root)
+        Repr.(
+          pair
+            (triple mode_repr (list Lib_name.repr) (option Path.Source.repr))
+            Config.repr)
+        ((mode, lib_names, project_root), config)
     in
     match Table.find reverse_table y with
     | None ->
@@ -588,7 +617,7 @@ end = struct
 end
 
 type standalone_runtime =
-  | Shared of Digest.t
+  | Shared of Runtime_key.Decoded.Partial.t
   | Per_stanza of Path.Build.t
 
 let standalone_runtime_rule ~mode cc ~runtime_files ~target ~flags ~sourcemap =
@@ -903,14 +932,17 @@ let build_cm
 
 let for_ = Compilation_mode.Ocaml
 
-let setup_shared_runtime_rule sctx s_config s_digest =
-  let config = Config.of_string s_config in
+let shared_runtime_dir (ctx : Build_context.t) ~s_digest =
+  Path.Build.L.relative ctx.build_dir [ ".js"; s_digest ]
+;;
+
+let setup_shared_runtime_rule sctx s_digest =
   let ctx = Super_context.context sctx in
   let build_context = Context.build_context ctx in
   match Digest.from_hex s_digest with
   | None -> User_error.raise [ Pp.textf "invalid jsoo runtime key: %s" s_digest ]
   | Some digest ->
-    let { Runtime_key.Decoded.mode; lib_names; project_root } =
+    let { Runtime_key.Decoded.partial = { mode; lib_names; project_root }; config } =
       Runtime_key.decode digest
     in
     let* scope =
@@ -927,15 +959,11 @@ let setup_shared_runtime_rule sctx s_config s_digest =
         Lib.DB.resolve lib_db (Loc.none, name) |> Resolve.Memo.read_memo)
     in
     let runtime_files = jsoo_runtime_files ~mode libs in
-    let dir = in_build_dir build_context ~config [ ".runtime"; s_digest ] in
+    let dir = shared_runtime_dir build_context ~s_digest in
     let target =
-      in_build_dir
-        build_context
-        ~config
-        [ ".runtime"
-        ; s_digest
-        ; "runtime" ^ Filename.Extension.to_string (Js_of_ocaml.Ext.runtime ~mode)
-        ]
+      Path.Build.relative
+        dir
+        ("runtime" ^ Filename.Extension.to_string (Js_of_ocaml.Ext.runtime ~mode))
     in
     js_of_ocaml_rule
       sctx
@@ -953,8 +981,9 @@ let setup_shared_runtime_rule sctx s_config s_digest =
 
 let setup_separate_compilation_rules sctx components =
   match components with
-  | [ s_config; ".runtime"; s_digest ] -> setup_shared_runtime_rule sctx s_config s_digest
-  | [] | [ _ ] | [ _; ".runtime" ] -> Memo.return ()
+  | [ s_digest ] when Option.is_some (Digest.from_hex s_digest) ->
+    setup_shared_runtime_rule sctx s_digest
+  | [] | [ _ ] -> Memo.return ()
   | [ s_config; s_pkg ] ->
     let config = Config.of_string s_config in
     let pkg = Lib_name.parse_string_exn (Loc.none, s_pkg) in
@@ -1124,12 +1153,12 @@ let build_standalone_runtime cc ~loc ~in_context ~jsoo_mode:mode =
       then
         Resolve.Memo.peek (Compilation_context.requires_link cc)
         >>| function
-        | Ok libs -> Some (Runtime_key.encode (Runtime_key.Decoded.of_libs ~mode libs))
+        | Ok libs -> Some (Runtime_key.Decoded.Partial.of_libs ~mode libs)
         | Error () -> None
       else Memo.return None
     in
     (match eligible with
-     | Some digest -> Memo.return (Some (Shared digest))
+     | Some partial -> Memo.return (Some (Shared partial))
      | None ->
        let obj_dir = Compilation_context.obj_dir cc in
        let target =
@@ -1195,20 +1224,20 @@ let build_exe
   | Separate_compilation ->
     let runtime_dep, per_exe_runtime_target =
       match standalone_runtime with
-      | Some (Shared digest) ->
+      | Some (Shared partial) ->
         let ctx = Super_context.context sctx |> Context.build_context in
         ( (let open Action_builder.O in
            let+ config = resolve_config sctx ~dir ~mode flags in
+           let digest =
+             Runtime_key.encode (Runtime_key.Decoded.with_config partial ~config)
+           in
+           let s_digest = Digest.to_string digest in
            Command.Args.Dep
              (Path.build
-                (in_build_dir
-                   ctx
-                   ~config
-                   [ ".runtime"
-                   ; Digest.to_string digest
-                   ; "runtime"
-                     ^ Filename.Extension.to_string (Js_of_ocaml.Ext.runtime ~mode)
-                   ])))
+                (Path.Build.relative
+                   (shared_runtime_dir ctx ~s_digest)
+                   ("runtime"
+                    ^ Filename.Extension.to_string (Js_of_ocaml.Ext.runtime ~mode)))))
         , None )
       | Some (Per_stanza path) ->
         Action_builder.return (Command.Args.Dep (Path.build path)), None

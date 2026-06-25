@@ -52,6 +52,10 @@ jobs:
             nix-${{ runner.os }}-${{ github.job }}-${{ matrix.name }}--${{ hashFiles('**/*.nix', '**/flake.lock') }}
           restore-prefixes-first-match: nix-${{ runner.os }}-${{ github.job }}-${{ matrix.name }}--
           gc-max-store-size-linux: 2G
+      - uses: cachix/cachix-action@v15
+        with:
+          name: ocaml-dune
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN_OCAML_DUNE }}
       - run: echo "(version $(git describe --always --dirty --abbrev=7))" >> dune-project
       - run: nix build ${{ matrix.installable }}
       - if: ${{ inputs.upload }}

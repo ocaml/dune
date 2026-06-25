@@ -1126,7 +1126,7 @@ let handle_final_exns exns =
        List.iter exns ~f:Dune_util.Report_error.report)
 ;;
 
-let run ?restart_started_at ?build f =
+let run_with_error_collection ?restart_started_at ~build collect_errors =
   let build =
     match build with
     | Some build -> build
@@ -1162,10 +1162,7 @@ let run ?restart_started_at ?build f =
     Fs_memo.invalidate_cached_timestamps ();
     let* () = State.reset_progress () in
     let* () = State.reset_errors () in
-    let* outcome =
-      Fiber.collect_errors (fun () ->
-        Memo.run_with_error_handler f ~handle_error_no_raise:report_early_exn)
-    in
+    let* outcome = collect_errors () in
     Dtemp.clear ();
     Sandbox.cleanup_pending_targets ();
     Target_promotion.save ();
@@ -1210,12 +1207,11 @@ let run ?restart_started_at ?build f =
   Fiber.Mutex.with_lock State.build_mutex ~f:(fun () -> Process.Build.with_ build f)
 ;;
 
-let run_exn f =
-  let open Fiber.O in
-  run f
-  >>| function
-  | Ok res -> res
-  | Error `Already_reported -> raise Dune_util.Report_error.Already_reported
+let evaluate_action_builder request =
+  let+ (), (_ : Dep.Fact.t Dep.Map.t) =
+    Action_builder.evaluate_and_collect_facts request
+  in
+  ()
 ;;
 
 module Request = struct
@@ -1245,14 +1241,41 @@ module Request = struct
 end
 
 let run_build_requests ?restart_started_at ?build request =
-  run ?restart_started_at ?build (fun () ->
+  run_with_error_collection ?restart_started_at ~build (fun () ->
     let build =
       Request.goals request |> List.map ~f:Request.Goal.build |> Action_builder.all_unit
     in
-    let+ (), (_ : Dep.Fact.t Dep.Map.t) =
-      Action_builder.evaluate_and_collect_facts build
-    in
-    ())
+    Fiber.collect_errors (fun () ->
+      Memo.run_with_error_handler
+        (fun () -> evaluate_action_builder build)
+        ~handle_error_no_raise:report_early_exn))
+;;
+
+let run ?restart_started_at ?build f =
+  let result = ref None in
+  let goal =
+    let open Memo.O in
+    Action_builder.of_memo
+      (let+ result_value = f () in
+       result := Some result_value)
+  in
+  let request = Request.create [ Request.Goal.create goal ] in
+  let open Fiber.O in
+  run_build_requests ?restart_started_at ?build request
+  >>| function
+  | Error `Already_reported -> Error `Already_reported
+  | Ok () ->
+    (match !result with
+     | Some result -> Ok result
+     | None -> Code_error.raise "build request did not produce a result" [])
+;;
+
+let run_exn f =
+  let open Fiber.O in
+  run f
+  >>| function
+  | Ok res -> res
+  | Error `Already_reported -> raise Dune_util.Report_error.Already_reported
 ;;
 
 let build_file p =

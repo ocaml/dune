@@ -174,7 +174,7 @@ let exec ~loc ~dir ~patch =
   Io.read_file patch |> parse_patches ~loc ~patch_file:patch |> apply_patches ~dir
 ;;
 
-module Action = Action_ext.Make (struct
+module Action = Dune_engine.Action_ext.Make (struct
     open Dune_engine
 
     type ('path, 'target) t = 'path

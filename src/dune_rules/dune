@@ -3,7 +3,6 @@
 (library
  (name dune_rules)
  (libraries
-  action_ext
   build_path_prefix_map
   csexp
   dune_action_plugin

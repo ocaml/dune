@@ -52,6 +52,7 @@ include struct
   module Sandbox_config = Sandbox_config
   module Sandbox_mode = Sandbox_mode
   module Action = Action
+  module Action_ext = Action_ext
   module Action_plugin = Action_plugin
   module Process = Process
   module Execution_parameters = Execution_parameters

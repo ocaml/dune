@@ -329,12 +329,6 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
-  ; { path = "src/action_ext"
-    ; main_module_name = Some "Action_ext"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
   ; { path = "src/dune_threaded_console"
     ; main_module_name = Some "Dune_threaded_console"
     ; include_subdirs = No

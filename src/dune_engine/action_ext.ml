@@ -1,7 +1,5 @@
-open Stdune
-module Action = Dune_engine.Action
-module Done_or_more_deps = Dune_engine.Done_or_more_deps
-open Dune_engine.Action.Ext
+open Import
+open Action.Ext
 
 module Make (S : sig
     type ('path, 'target) t

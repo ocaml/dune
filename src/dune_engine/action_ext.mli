@@ -1,5 +1,5 @@
-open Stdune
-open Dune_engine.Action.Ext
+open Import
+open Action.Ext
 
 module Make (S : sig
     type ('path, 'target) t
@@ -18,5 +18,5 @@ module Make (S : sig
       -> eenv:Exec.env
       -> unit Fiber.t
   end) : sig
-  val action : (Path.t, Path.Build.t) S.t -> Dune_engine.Action.t
+  val action : (Path.t, Path.Build.t) S.t -> Action.t
 end

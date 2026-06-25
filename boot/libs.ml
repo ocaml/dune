@@ -415,7 +415,7 @@ let local_libraries =
     }
   ; { path = "vendor/cmdliner/src"
     ; main_module_name = None
-    ; include_subdirs = No
+    ; include_subdirs = Unqualified
     ; special_builtin_support = None
     ; root_module = None
     }
@@ -450,6 +450,7 @@ let main =
             ; "Cmdliner_cline"
             ; "Cmdliner_cmd"
             ; "Cmdliner_completion"
+            ; "Cmdliner_data"
             ; "Cmdliner_def"
             ; "Cmdliner_docgen"
             ; "Cmdliner_eval"

@@ -1,0 +1,5 @@
+(cram
+ (applies_to :whole_subtree)
+ (alias run_dynamic)
+ (deps
+  (package dune)))

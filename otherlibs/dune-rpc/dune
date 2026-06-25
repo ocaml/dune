@@ -2,8 +2,8 @@
  (name dune_rpc)
  (public_name dune-rpc)
  (synopsis "dune rpc client and protocol")
- (libraries dyn ocamlc_loc unix stdune csexp xdg ordering pp))
+ (libraries dyn ocamlc_loc unix stdune csexp xdg ordering pp re))
 
 (ocamllex
- (modules dbus_address)
+ (modules dbus_address glob_lexer)
  (flags -ml))

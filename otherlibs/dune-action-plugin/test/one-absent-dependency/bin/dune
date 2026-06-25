@@ -1,3 +1,0 @@
-(executables
- (names foo)
- (libraries dune-action-plugin))

@@ -100,12 +100,6 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
-  ; { path = "otherlibs/dune-action-plugin/src"
-    ; main_module_name = Some "Dune_action_plugin"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
   ; { path = "vendor/ocaml-inotify/src"
     ; main_module_name = Some "Ocaml_inotify"
     ; include_subdirs = No
@@ -224,7 +218,6 @@ let local_libraries =
           ; entries =
               [ "Build_path_prefix_map"
               ; "Csexp"
-              ; "Dune_action_plugin"
               ; "Dune_action_trace"
               ; "Dune_cache"
               ; "Dune_digest"

@@ -13,6 +13,7 @@ depends: [
   "dune-rpc" {= version}
   "csexp" {>= "1.5.0"}
   "lwt" {>= "5.6.0"}
+  "stdune" {= version}
   "base-unix"
   "odoc" {with-doc}
 ]

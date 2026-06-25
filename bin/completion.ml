@@ -2,14 +2,12 @@ open Import
 
 module type Shell = sig
   val name : string
-  val aliases : string list
   val description : Manpage.block list
   val completion_script : fun_name:string -> string
 end
 
 module Bash : Shell = struct
   let name = "bash"
-  let aliases = []
 
   let description =
     [ `I
@@ -44,7 +42,6 @@ end
 
 module Zsh : Shell = struct
   let name = "zsh"
-  let aliases = []
 
   let description =
     [ `I
@@ -73,19 +70,18 @@ module Zsh : Shell = struct
 end
 
 module Powershell : Shell = struct
-  let name = "pwsh"
-  let aliases = [ "powershell" ]
+  let name = "powershell"
 
   let description =
     [ `I
-        ( "$(b,pwsh) or $(b,powershell)"
+        ( "$(b,powershell)"
         , "Print out a powershell completion script. It should then be written to a file \
            that will be sourced, for example in \\$PROFILE.CurrentUserCurrentHost. \
            Alternatively, it can be sourced directly by adding this line to your profile \
            script:" )
     ; `Pre
         {|
-      dune completion pwsh | Out-String | Invoke-Expression|}
+      dune completion powershell | Out-String | Invoke-Expression|}
     ]
   ;;
 
@@ -104,17 +100,7 @@ Register-ArgumentCompleter -Native -CommandName %s -ScriptBlock $%s
 end
 
 let shells : (module Shell) list = [ (module Bash); (module Zsh); (module Powershell) ]
-
-let all =
-  shells
-  |> List.concat_map ~f:(fun (module S : Shell) ->
-    List.map (S.name :: S.aliases) ~f:(fun name -> name, (module S : Shell)))
-;;
-
-let all_with_aliases =
-  shells
-  |> List.map ~f:(fun (module M : Shell) -> M.name :: M.aliases, (module M : Shell))
-;;
+let all = shells |> List.map ~f:(fun (module S : Shell) -> S.name, (module S : Shell))
 
 let term =
   let info_ =
@@ -142,8 +128,7 @@ let command =
       ; `S "SHELL"
       ; `P "The shell for which you want dune completion."
       ]
-      @ List.concat_map all_with_aliases ~f:(fun (_name, (module S : Shell)) ->
-        S.description)
+      @ List.concat_map all ~f:(fun (_name, (module S : Shell)) -> S.description)
     in
     Cmd.info "completion" ~doc ~man
   in

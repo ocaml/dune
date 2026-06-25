@@ -139,6 +139,14 @@ let%expect_test "print digests for all declared RPCs" =
       Version 1:
         Request: (List String)
         Response: 9b023f3c0fa25b79499054bca94d5498
+    dap/initialize
+      Version 1:
+        Request: String
+        Response: Unit
+    dap/build-deps
+      Version 1:
+        Request: 042dc00d68ff9ee66979e82fefde258a
+        Response: (Sum (None Unit) (Some String))
     notify/abort
       Version 1:
         Payload: 0e9dfd1099101769896cf0bb06f891c6

@@ -9,7 +9,7 @@ module Dune_rpc = Dune_rpc.Private
 module type Stringlike = Dune_util.Stringlike
 
 module Persistent = Dune_util.Persistent
-module Glob = Dune_action_plugin.V1.Glob
+module Glob = Dune_rpc.Action_plugin.Glob
 include No_io
 
 (* To make bug reports usable *)

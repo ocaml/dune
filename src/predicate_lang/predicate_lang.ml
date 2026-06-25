@@ -185,7 +185,7 @@ module Repr_derived = Repr.Make1 (struct
   end)
 
 module Glob = struct
-  module Glob = Dune_action_plugin.V1.Glob
+  module Glob = Dune_rpc.V1.Action_plugin.Glob
 
   module Element = struct
     module Proxy = struct

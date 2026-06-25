@@ -1,4 +1,4 @@
-open Dune_action_plugin.V1
+open Dune_rpc_lwt.V1.Action_plugin
 
 let touch path =
   let oc = open_out path in
@@ -12,18 +12,18 @@ let rec wait_for_file path =
     wait_for_file path)
 ;;
 
-let noop () = run (return ())
+let noop () = run (fun _ -> Lwt.return_unit)
 
 let hold started release =
   touch started;
   wait_for_file release;
-  run (return ())
+  run (fun _ -> Lwt.return_unit)
 ;;
 
 let touch_and_respond path =
   (try touch path with
    | Sys_error _ -> ());
-  run (return ())
+  run (fun _ -> Lwt.return_unit)
 ;;
 
 let () =

@@ -540,6 +540,54 @@ module Where : sig
        end) : S with type 'a fiber := 'a Fiber.t
 end
 
+module Action_plugin : sig
+  module Glob = Glob
+
+  (** An opaque action identifier obtained from [run_context]. *)
+  type action_id
+
+  type run_context =
+    | Outside_of_dune
+    | Under_dune of
+        { action_id : action_id
+        ; where : Where.t
+        }
+
+  (** Determine whether the program is running as a Dune dynamic action. *)
+  val run_context : unit -> run_context
+
+  module Error : sig
+    exception E of string
+  end
+
+  module Make
+      (Fiber : Fiber_intf.S)
+      (Chan : sig
+         type t
+       end)
+      (_ : Client.S with type 'a fiber := 'a Fiber.t and type chan := Chan.t) : sig
+    type t
+
+    (** A context for running without a Dune RPC server. Dependencies are assumed
+        to be available. *)
+    val outside_of_dune : t
+
+    (** Run [f] using a connection to the Dune RPC server. *)
+    val run : Chan.t -> action_id:action_id -> f:(t -> unit Fiber.t) -> unit Fiber.t
+
+    (** Read [path] after asking Dune to build it. *)
+    val read_file : t -> path:string -> string Fiber.t
+
+    (** Read entries of [path] matching [glob] after asking Dune to build the
+        corresponding directory dependency. An absent directory produces an
+        empty listing.
+
+        BUG: the returned listing includes directories even though that dependency
+        is not tracked. *)
+    val read_directory_with_glob : t -> path:string -> glob:Glob.t -> string list Fiber.t
+  end
+end
+
 module Registry : sig
   (** The registry is where all running instances of dune rpc are stored.
 

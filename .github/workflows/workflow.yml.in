@@ -33,6 +33,10 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: nixbuild/nix-quick-install-action@v35
+      - uses: cachix/cachix-action@v15
+        with:
+          name: ocaml-dune
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN_OCAML_DUNE }}
       - run: nix build
 
   nix-test:
@@ -46,6 +50,10 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: nixbuild/nix-quick-install-action@v35
+      - uses: cachix/cachix-action@v15
+        with:
+          name: ocaml-dune
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN_OCAML_DUNE }}
       - run: nix develop -i -s CI true -c make test
 
   fmt:
@@ -54,6 +62,10 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: nixbuild/nix-quick-install-action@v35
+      - uses: cachix/cachix-action@v15
+        with:
+          name: ocaml-dune
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN_OCAML_DUNE }}
       - run: nix develop .#fmt -c make fmt
 
   diff-on-checkout:
@@ -69,6 +81,10 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: nixbuild/nix-quick-install-action@v35
+      - uses: cachix/cachix-action@v15
+        with:
+          name: ocaml-dune
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN_OCAML_DUNE }}
       - run: nix develop .#doc -c make doc
         env:
           LC_ALL: C
@@ -84,6 +100,10 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: nixbuild/nix-quick-install-action@v35
+      - uses: cachix/cachix-action@v15
+        with:
+          name: ocaml-dune
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN_OCAML_DUNE }}
       - run: nix develop -i .#bootstrap-check -c make test-bootstrap-script
 
   nix-build-4-14:
@@ -97,12 +117,10 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: nixbuild/nix-quick-install-action@v35
-      - uses: nix-community/cache-nix-action@v7
+      - uses: cachix/cachix-action@v15
         with:
-          primary-key: |
-            nix-${{ runner.os }}-${{ github.job }}--${{ hashFiles('**/*.nix', '**/flake.lock') }}
-          restore-prefixes-first-match: nix-${{ runner.os }}-${{ github.job }}--
-          gc-max-store-size-linux: 2G
+          name: ocaml-dune
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN_OCAML_DUNE }}
       - run: nix develop -i .#bootstrap-check_4_14 -c make release
 
   nix-build-ox:
@@ -118,12 +136,10 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: nixbuild/nix-quick-install-action@v35
-      - uses: nix-community/cache-nix-action@v7
+      - uses: cachix/cachix-action@v15
         with:
-          primary-key: |
-            nix-${{ runner.os }}-${{ github.job }}--${{ hashFiles('**/*.nix', '**/flake.lock') }}
-          restore-prefixes-first-match: nix-${{ runner.os }}-${{ github.job }}--
-          gc-max-store-size-linux: 2G
+          name: ocaml-dune
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN_OCAML_DUNE }}
       - run: nix develop -i .#bootstrap-ox -c make release
 
 #
@@ -307,12 +323,10 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: nixbuild/nix-quick-install-action@v35
-      - uses: nix-community/cache-nix-action@v7
+      - uses: cachix/cachix-action@v15
         with:
-          primary-key: |
-            nix-${{ runner.os }}-${{ github.job }}--${{ hashFiles('**/*.nix', '**/flake.lock') }}
-          restore-prefixes-first-match: nix-${{ runner.os }}-${{ github.job }}--
-          gc-max-store-size-linux: 5G
+          name: ocaml-dune
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN_OCAML_DUNE }}
       - run: nix develop .#rocq -c make test-rocq
 
   rocq-native:
@@ -322,12 +336,10 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: nixbuild/nix-quick-install-action@v35
-      - uses: nix-community/cache-nix-action@v7
+      - uses: cachix/cachix-action@v15
         with:
-          primary-key: |
-            nix-${{ runner.os }}-${{ github.job }}--${{ hashFiles('**/*.nix', '**/flake.lock') }}
-          restore-prefixes-first-match: nix-${{ runner.os }}-${{ github.job }}--
-          gc-max-store-size-linux: 5G
+          name: ocaml-dune
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN_OCAML_DUNE }}
       - run: nix develop .#rocq-native -c make test-rocq-native
 
   wasm:
@@ -462,12 +474,10 @@ jobs:
       - uses: nixbuild/nix-quick-install-action@v35
         with:
           nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
-      - uses: nix-community/cache-nix-action@v7
+      - uses: cachix/cachix-action@v15
         with:
-          primary-key: |
-            nix-${{ runner.os }}-${{ github.job }}--${{ hashFiles('**/*.nix', '**/flake.lock') }}
-          restore-prefixes-first-match: nix-${{ runner.os }}-${{ github.job }}--
-          gc-max-store-size-linux: 2G
+          name: ocaml-dune
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN_OCAML_DUNE }}
       - name: Build and test with OxCaml
         run: nix develop -i .#ox -c make test-ox
 
@@ -506,6 +516,10 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: nixbuild/nix-quick-install-action@v35
+      - uses: cachix/cachix-action@v15
+        with:
+          name: ocaml-dune
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN_OCAML_DUNE }}
       - run: nix develop .#microbench -c make dune build bench/micro
 
   utop-dev-tool-test:
@@ -514,12 +528,10 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: nixbuild/nix-quick-install-action@v35
-      - uses: nix-community/cache-nix-action@v7
+      - uses: cachix/cachix-action@v15
         with:
-          primary-key: |
-            nix-${{ runner.os }}-${{ github.job }}--${{ hashFiles('**/*.nix', '**/flake.lock') }}
-          restore-prefixes-first-match: nix-${{ runner.os }}-${{ github.job }}--
-          gc-max-store-size-linux: 2G
+          name: ocaml-dune
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN_OCAML_DUNE }}
       - name: Set up a project, install utop as a dev tool, and run it
         shell: nix shell -c bash -e {0}
         run: |

@@ -12,7 +12,13 @@ let run_build_system ~action_runner ~run_id ~request =
       ~run_id
       ~cancellation:(Fiber.Cancel.create ())
   in
-  Dune_engine.Build_system.run_action_builder ~build (action_builder_of_request request)
+  let request =
+    action_builder_of_request request
+    |> Dune_engine.Build_system.Request.Goal.create
+    |> List.singleton
+    |> Dune_engine.Build_system.Request.create
+  in
+  Dune_engine.Build_system.run_build_requests ~build request
 ;;
 
 let run_build_command_poll ~(common : Common.t) ~config ~sticky_goal : unit =

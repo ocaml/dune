@@ -1218,10 +1218,39 @@ let run_exn f =
   | Error `Already_reported -> raise Dune_util.Report_error.Already_reported
 ;;
 
-let run_action_builder ?restart_started_at ?build request =
+module Request = struct
+  module Goal = struct
+    type t =
+      { build : unit Action_builder.t
+      ; outcome : Build_outcome.t Fiber.Ivar.t
+      }
+
+    let create build = { build; outcome = Fiber.Ivar.create () }
+    let await t = Fiber.Ivar.read t.outcome
+
+    let complete t outcome =
+      Fiber.of_thunk (fun () ->
+        match Fiber.Ivar.peek t.outcome with
+        | Some _ -> Fiber.return ()
+        | None -> Fiber.Ivar.fill t.outcome outcome)
+    ;;
+
+    let build t = t.build
+  end
+
+  type t = { goals : Goal.t list }
+
+  let create goals = { goals }
+  let goals t = t.goals
+end
+
+let run_build_requests ?restart_started_at ?build request =
   run ?restart_started_at ?build (fun () ->
+    let build =
+      Request.goals request |> List.map ~f:Request.Goal.build |> Action_builder.all_unit
+    in
     let+ (), (_ : Dep.Fact.t Dep.Map.t) =
-      Action_builder.evaluate_and_collect_facts request
+      Action_builder.evaluate_and_collect_facts build
     in
     ())
 ;;

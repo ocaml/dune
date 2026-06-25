@@ -60,10 +60,24 @@ val run
 (** A variant of [run] that raises an [Already_reported] exception on error. *)
 val run_exn : (unit -> 'a Memo.t) -> 'a Fiber.t
 
-val run_action_builder
+module Request : sig
+  module Goal : sig
+    type t
+
+    val create : unit Action_builder.t -> t
+    val await : t -> Build_outcome.t Fiber.t
+    val complete : t -> Build_outcome.t -> unit Fiber.t
+  end
+
+  type t
+
+  val create : Goal.t list -> t
+end
+
+val run_build_requests
   :  ?restart_started_at:Time.t
   -> ?build:Process.Build.t
-  -> unit Action_builder.t
+  -> Request.t
   -> (unit, [ `Already_reported ]) result Fiber.t
 
 (** {2 Misc} *)

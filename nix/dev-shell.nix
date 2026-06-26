@@ -95,7 +95,7 @@ let
 
   duneScript = writeScriptBin "dune" ''
     #!${stdenv.shell}
-    "$DUNE_SOURCE_ROOT"/_boot/dune.exe $@
+    "$DUNE_SOURCE_ROOT"/_boot/dune.exe "$@"
   '';
 
   baseInputs =

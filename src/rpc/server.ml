@@ -957,15 +957,12 @@ module Lifecycle = struct
               Rpc_registry.cleanup t.registry;
               Fiber.return ()))
     in
-    match Rpc_registry.mode t.registry with
-    | `Skip -> run_with_cleanup ()
-    | `Add ->
-      let section =
-        Console.Status_line.add_section (Live (fun () -> pp_active_sessions t))
-      in
-      Fiber.finalize run_with_cleanup ~finally:(fun () ->
-        Console.Status_line.remove_section section;
-        Fiber.return ())
+    let section =
+      Console.Status_line.add_section (Live (fun () -> pp_active_sessions t))
+    in
+    Fiber.finalize run_with_cleanup ~finally:(fun () ->
+      Console.Status_line.remove_section section;
+      Fiber.return ())
   ;;
 
   let stop t =

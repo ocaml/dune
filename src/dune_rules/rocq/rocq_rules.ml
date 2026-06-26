@@ -821,7 +821,10 @@ let setup_output_diff_rule ~loc ~dir ~sctx ~rocq_lang_version ~rocq_sources rocq
       }
     in
     let alias_dir = Path.Build.parent_exn expected in
-    let alias = Alias.make ~dir:alias_dir Alias0.runtest in
+    let name = Path.Build.basename expected |> Filename.remove_extension in
+    let alias_name = Alias.Name.of_string (Filename.to_string name) in
+    let alias = Alias.make ~dir:alias_dir alias_name in
+    let runtest_alias = Alias.make ~dir:alias_dir Alias0.runtest in
     Simple_rules.Alias_rules.add
       sctx
       ~loc
@@ -829,6 +832,14 @@ let setup_output_diff_rule ~loc ~dir ~sctx ~rocq_lang_version ~rocq_sources rocq
       (let open Action_builder.O in
        let+ () = Action_builder.paths [ diff.file1; Path.build diff.file2 ] in
        Action.Full.make (Action.Diff diff))
+    >>>
+    if Alias.Name.equal alias_name Alias0.runtest
+    then Memo.return ()
+    else
+      Rules.Produce.Alias.add_deps
+        runtest_alias
+        ~loc
+        (Action_builder.dep (Dep.alias alias))
 ;;
 
 let setup_rocqc_rule

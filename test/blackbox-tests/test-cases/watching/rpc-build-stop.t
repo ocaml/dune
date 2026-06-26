@@ -99,4 +99,5 @@ RPC build failures are reported to the client.
   $ start_dune
   $ dune rpc build --wait fail
   Failure
+  [1]
   $ stop_dune_quiet

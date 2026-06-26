@@ -131,8 +131,10 @@ requests.
   $ printf '.\n' > "$slow_release"
   $ wait_for_pid_to_exit_with_timeout "$FAIL" 200 || (cat fail.out; false)
   $ wait "$FAIL"
+  [1]
   $ wait_for_pid_to_exit_with_timeout "$SLOW" 200 || (cat slow-after-fail.out; false)
   $ wait "$SLOW"
+  [1]
   $ cat fail.out slow-after-fail.out | sort
   Failure
   Failure
@@ -170,6 +172,7 @@ failure.
   $ printf '.\n' > "$fail_release"
   $ wait_for_pid_to_exit_with_timeout "$FAIL" 200 || (cat fail-stop.out; false)
   $ wait "$FAIL"
+  [1]
   $ cat fail-stop.out
   Failure
   $ with_timeout dune_cmd wait-for-file-to-appear "$cancelled"

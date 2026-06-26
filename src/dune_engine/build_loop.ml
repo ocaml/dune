@@ -237,7 +237,6 @@ let run_current_build
       ~run_id
       ~finish_when_rpc_requests_finished
       ~request
-      run_build
   =
   let* () = reset_wakeup t in
   (match t.status with
@@ -255,7 +254,7 @@ let run_current_build
              ~run_id
              ~cancellation:(Fiber.Cancel.create ())
          in
-         run_build ?restart_started_at ~build:build_ctx ())
+         Build_system.run_build_requests ?restart_started_at ~build:build_ctx request)
       ~finally:(fun () ->
         t.current_request <- None;
         Fiber.return ())
@@ -394,8 +393,6 @@ let rpc_poll_iter t ~action_runner ~sticky_goal ~sticky_built_at =
           ~run_id
           ~finish_when_rpc_requests_finished
           ~request
-          (fun ?restart_started_at ~build () ->
-             Build_system.run_build_requests ?restart_started_at ~build request)
       in
       (match next with
        | `Restart -> loop ()

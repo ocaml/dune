@@ -98,6 +98,24 @@ make_dune_project() {
 	EOF
 }
 
+# Invoke dune's shell completion protocol for the given subcommand/token and
+# print just the candidate values, one per line. The protocol output also
+# carries Subcommands/Options groups which we filter out here.
+#
+# Cmdliner identifies the word under the cursor with a `--__complete=<token>`
+# marker at that position (see vendor/cmdliner/src/tool/cmdliner_data.ml); the
+# last argument here is treated as that token.
+#
+# Usage: dune_complete <subcmd> [<arg>...] <token>
+dune_complete() {
+  local token="${!#}"
+  local args=("${@:1:$#-1}")
+  dune --__complete "${args[@]}" "--__complete=$token" | awk '
+    /^group$/ { getline g; current = g; next }
+    current == "Values" && /^item$/ { getline name; print name }
+  '
+}
+
 make_dune_project_with_package() {
   local version="$1"
   local package="$2"

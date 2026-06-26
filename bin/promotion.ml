@@ -26,6 +26,47 @@ let init_no_build builder =
   Common.Builder.forbid_builds builder |> Common.Builder.disable_log_file |> Common.init
 ;;
 
+(* Conv for a pending-promotion file: parses as the raw user string (same
+   as [Arg.path]), but completes against the entries recorded in the build
+   dir's [.to-promote] db.
+
+   Cmdliner passes us the [Common.Builder.t] parsed from the command's own
+   term as the completion context, so [--root] / [--build-dir] are honoured.
+   Init goes through [init_no_build] — same as the runtime — so no [_build/]
+   mkdir and no trace-file rewrite on every keystroke.
+
+   CR-someday Alizter: subtract already-typed positional args from the
+   candidate list. Needs cmdliner to pass the previously parsed positional
+   values into the completion func (the current public API exposes only
+   the context value and the cursor token). *)
+let promote_file =
+  let parser s = Ok s in
+  let pp ppf s = Format.pp_print_string ppf s in
+  let candidates ~(builder : Common.Builder.t) ~token =
+    let common, _config = init_no_build builder in
+    let { Diff_promotion.present; missing = _ } =
+      let db = Diff_promotion.load_db () in
+      Diff_promotion.partition_db db Dune_rpc.Files_to_promote.All
+    in
+    let from =
+      Path.source (Path.Source.L.relative Path.Source.root (Common.root common).to_cwd)
+    in
+    List.filter_map present ~f:(fun file ->
+      let cwd_relative =
+        Path.source (Diff_promotion.File.source file) |> Path.reach ~from
+      in
+      Option.some_if (String.starts_with ~prefix:token cwd_relative) cwd_relative)
+    |> List.sort ~compare:String.compare
+    |> List.map ~f:Cmdliner.Arg.Completion.string
+  in
+  let completion =
+    Cmdliner.Arg.Completion.make ~context:Common.Builder.term (fun ctx ~token ->
+      let builder = Option.value ctx ~default:Common.Builder.default in
+      Ok (candidates ~builder ~token))
+  in
+  Cmdliner.Arg.Conv.make ~docv:"FILE" ~parser ~pp ~completion ()
+;;
+
 module Apply = struct
   let info =
     let doc = "Promote files from the last run" in
@@ -60,10 +101,10 @@ module Apply = struct
         & info [ "file" ] ~doc:(Some "Require each FILE argument to match exactly."))
     and+ files =
       (* CR-someday Alizter: document this option *)
-      Arg.(value & pos_all Arg.path [] & info [] ~docv:"FILE" ~doc:None)
+      Arg.(value & pos_all promote_file [] & info [] ~docv:"FILE" ~doc:None)
     in
     let common, config = init_no_build builder in
-    let files_to_promote = List.map files ~f:Arg.Path.arg |> files_to_promote ~common in
+    let files_to_promote = files_to_promote ~common files in
     let matching : Dune_rpc.Promote_targets.Matching.t =
       if exact then Exact else Prefix
     in

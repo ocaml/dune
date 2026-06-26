@@ -50,12 +50,18 @@ Now try replacing its content.
   bye
 
 Now switch the mode to standard. Dune reports an error about multiple rules for
-[_build/default/promoted], as expected (see the error at the end of the test).
+[_build/default/promoted], as expected.
 
   $ write_target_promotion_rules standard
 
   $ build result
   Failure
+  $ wait_for_line_with_timeout .#dune-output "Hint: rm -f promoted" 200
+  $ grep -A3 "Error: Multiple rules generated for _build/default/promoted:" .#dune-output
+  Error: Multiple rules generated for _build/default/promoted:
+  - dune:1
+  - file present in source tree
+  Hint: rm -f promoted
 
 We use the hint and it starts to work.
 
@@ -103,19 +109,7 @@ Now we create the source file and it overrides the rule.
 
 We're done.
 
-  $ stop_dune
-  Success, waiting for filesystem changes...
-  Success, waiting for filesystem changes...
-  Success, waiting for filesystem changes...
-  Success, waiting for filesystem changes...
-  Error: Multiple rules generated for _build/default/promoted:
-  - dune:1
-  - file present in source tree
-  Hint: rm -f promoted
-  Had 1 error, waiting for filesystem changes...
-  Success, waiting for filesystem changes...
-  Success, waiting for filesystem changes...
-  Success, waiting for filesystem changes...
+  $ stop_dune_quiet
 
 Now test file-system events generated during target promotion.
 

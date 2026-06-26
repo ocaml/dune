@@ -40,6 +40,4 @@ before we're able to cancel the build.
   $ cat _build/default/y
   new-contents
 
-  $ stop_dune
-  Success, waiting for filesystem changes...
-  Success, waiting for filesystem changes...
+  $ stop_dune_quiet

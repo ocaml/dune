@@ -24,6 +24,4 @@ Reproduce #6907
   $ build y
   Success
 
-  $ stop_dune
-  Success, waiting for filesystem changes...
-  Success, waiting for filesystem changes...
+  $ stop_dune_quiet

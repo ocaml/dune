@@ -804,13 +804,19 @@ type served_session =
   ; start : unit Fiber.t
   }
 
-let new_session (Server handler) ~name chan =
+let new_session
+      (type s)
+      (Server handler)
+      ~name
+      ((module Chan : Session with type t = s), raw_session)
+  =
+  let chan = (module Chan : Session with type t = s), raw_session in
   let id = Session.Id.gen () in
   let session = ref None in
   let close =
     Fiber.of_thunk (fun () ->
       match !session with
-      | None -> Fiber.return ()
+      | None -> Chan.close raw_session
       | Some session -> Session.Stage1.close session)
   in
   let start =
@@ -837,53 +843,73 @@ let new_session (Server handler) ~name chan =
   { id; close; start }
 ;;
 
+let close_all active_sessions =
+  let sessions = Table.values active_sessions in
+  Table.clear active_sessions;
+  Fiber.parallel_iter sessions ~f:(fun { close; _ } -> close)
+;;
+
 module Make (S : Session) = struct
   open Fiber.O
 
-  let serve sessions server =
+  let serve_with_active_sessions active_sessions sessions server =
     Fiber.Stream.In.parallel_iter sessions ~f:(fun session ->
       let session =
         let name = S.name session in
         new_session server ~name ((module S), session)
       in
-      let id = session.id in
-      Event.emit (Session `Start) id;
-      let+ res =
-        Fiber.map_reduce_errors
-          (module Monoid.Unit)
-          (fun () -> session.start)
-          ~on_error:(fun exn ->
-            (* TODO report errors in dune_stats as well *)
-            (match exn.exn with
-             | Dune_util.Report_error.Already_reported -> ()
-             | _ ->
-               Log.warn
-                 "encountered error serving rpc client"
-                 [ "id", Dyn.int (Session.Id.to_int id)
-                 ; "error", Exn_with_backtrace.to_dyn exn
-                 ];
-               Dune_util.Report_error.report exn);
-            session.close)
-      in
-      Event.emit (Session `Stop) id;
-      match res with
-      | Ok () -> ()
-      | Error () ->
-        (* already reported above *)
-        ())
+      Table.set active_sessions session.id session;
+      Fiber.finalize
+        (fun () ->
+           let id = session.id in
+           Event.emit (Session `Start) id;
+           let+ res =
+             Fiber.map_reduce_errors
+               (module Monoid.Unit)
+               (fun () -> session.start)
+               ~on_error:(fun exn ->
+                 (* TODO report errors in dune_stats as well *)
+                 (match exn.exn with
+                  | Dune_util.Report_error.Already_reported -> ()
+                  | _ ->
+                    Log.warn
+                      "encountered error serving rpc client"
+                      [ "id", Dyn.int (Session.Id.to_int id)
+                      ; "error", Exn_with_backtrace.to_dyn exn
+                      ];
+                    Dune_util.Report_error.report exn);
+                 session.close)
+           in
+           Event.emit (Session `Stop) id;
+           match res with
+           | Ok () -> ()
+           | Error () ->
+             (* already reported above *)
+             ())
+        ~finally:(fun () ->
+          Table.remove active_sessions session.id;
+          Fiber.return ()))
+  ;;
+
+  let serve sessions server =
+    serve_with_active_sessions (Table.create (module Session.Id) 16) sessions server
   ;;
 end
 
 module Handler = H.Builder
 
-let serve =
+let serve_with_active_sessions active_sessions =
   let module M = Make (struct
       include Csexp_rpc.Session
 
       let name _ = "dune"
     end)
   in
-  M.serve
+  M.serve_with_active_sessions active_sessions
+;;
+
+let serve sessions server =
+  serve_with_active_sessions (Table.create (module Session.Id) 16) sessions server
 ;;
 
 module Lifecycle = struct
@@ -891,12 +917,13 @@ module Lifecycle = struct
     { handler : t
     ; registry : Rpc_registry.t
     ; server : Csexp_rpc.Server.t
+    ; active_sessions : (Session.Id.t, served_session) Table.t
     }
 
   let create ~handler ~root ~where ~registry ~server =
     let registry = Rpc_registry.create ~root ~where registry in
     Rpc_registry.register registry;
-    { handler; registry; server }
+    { handler; registry; server; active_sessions = Table.create (module Session.Id) 16 }
   ;;
 
   let print_uncaught_rpc_error exn =
@@ -906,7 +933,7 @@ module Lifecycle = struct
   let run t =
     let run () =
       let* sessions = Csexp_rpc.Server.serve t.server in
-      serve sessions t.handler
+      serve_with_active_sessions t.active_sessions sessions t.handler
     in
     Fiber.finalize
       (fun () ->
@@ -914,13 +941,18 @@ module Lifecycle = struct
            print_uncaught_rpc_error exn;
            Exn_with_backtrace.reraise exn))
       ~finally:(fun () ->
-        Rpc_registry.cleanup t.registry;
-        Fiber.return ())
+        Fiber.finalize
+          (fun () -> close_all t.active_sessions)
+          ~finally:(fun () ->
+            Rpc_registry.cleanup t.registry;
+            Fiber.return ()))
   ;;
 
   let stop t =
     Fiber.finalize
-      (fun () -> Csexp_rpc.Server.stop t.server)
+      (fun () ->
+         let* () = Csexp_rpc.Server.stop t.server in
+         close_all t.active_sessions)
       ~finally:(fun () ->
         Rpc_registry.cleanup t.registry;
         Fiber.return ())

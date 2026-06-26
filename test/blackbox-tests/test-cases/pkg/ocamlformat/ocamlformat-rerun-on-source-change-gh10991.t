@@ -27,7 +27,6 @@ Initial file:
    let () = print_endline "Hello, world"
   +(* formatted with fake ocamlformat *)
   Promoting _build/default/foo.ml.corrected to foo.ml.
-  [1]
 
 After formatting the fake ocamlformat has added a suffix:
   $ cat foo.ml
@@ -47,7 +46,6 @@ Update the file:
    let () = print_endline "Hello, ocaml!"
   +(* formatted with fake ocamlformat *)
   Promoting _build/default/foo.ml.corrected to foo.ml.
-  [1]
 
 The update to the file persists after formatting it a second time:
   $ cat foo.ml

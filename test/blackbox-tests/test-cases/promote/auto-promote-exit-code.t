@@ -1,9 +1,8 @@
 Regression test for https://github.com/ocaml/dune/issues/785.
 
-`dune build --auto-promote` applies the promotion but currently still exits
-with a non-zero code, forcing callers to wrap the command in `|| true`. This
-test captures that behaviour; once #785 is fixed the build should exit 0 once
-the promotion has been applied (a fixpoint is reached).
+`dune build --auto-promote` applies the promotion and now exits with code 0
+once the promotion has been applied (a fixpoint is reached), instead of
+exiting non-zero and forcing callers to wrap the command in `|| true`.
 
   $ make_dune_project 3.25
 
@@ -17,8 +16,7 @@ the promotion has been applied (a fixpoint is reached).
 
   $ printf titi > x
 
-The diff is shown and the file is promoted, but the build still exits with
-code 1 -- this is the bug tracked by #785:
+The diff is shown and the file is promoted, and the build now exits 0:
 
   $ dune build @blah --auto-promote
   File "x", line 1, characters 0-0:
@@ -30,7 +28,6 @@ code 1 -- this is the bug tracked by #785:
   +toto
   \ No newline at end of file
   Promoting _build/default/x.gen to x.
-  [1]
   $ cat x
   toto
 

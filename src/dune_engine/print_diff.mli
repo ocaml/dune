@@ -9,6 +9,16 @@ val print
   -> Path.t
   -> _ Fiber.t
 
+(** Like [print], but displays the diff without raising. Used when the diff is
+    going to be auto-promoted, in which case it is not an error. *)
+val print_no_fail
+  :  skip_trailing_cr:bool
+  -> patch_back:Path.t option
+  -> User_message.Diff_annot.t
+  -> Path.t
+  -> Path.t
+  -> unit Fiber.t
+
 module Diff : sig
   type t
 

@@ -1136,13 +1136,10 @@ let run_with_error_collection ?restart_started_at ~build collect_errors =
        | None ->
          Process.Build.create
            ~action_runner:None
-           ~run_id:Run_id.Batch
+           ~run_id:Batch
            ~cancellation:(Fiber.Cancel.create ()))
   in
   let run_id = Process.Build.run_id build in
-  let finalize_diff_promotion () =
-    protect ~f:Diff_promotion.finalize ~finally:Diff_promotion.clear_cache
-  in
   let open Fiber.O in
   let f () =
     let start = Time.now () in
@@ -1167,6 +1164,9 @@ let run_with_error_collection ?restart_started_at ~build collect_errors =
     Sandbox.cleanup_pending_targets ();
     Target_promotion.save ();
     let* outcome =
+      let finalize_diff_promotion () =
+        protect ~f:Diff_promotion.finalize ~finally:Diff_promotion.clear_cache
+      in
       match outcome with
       | Ok res ->
         finalize_diff_promotion ();

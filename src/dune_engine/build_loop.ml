@@ -55,6 +55,7 @@ type t =
        distinguish input changes from other wakeups. *)
   ; mutable next_run_id : int
   ; mutable rpc_requests : Build_system.Request.Goal.t Rpc_request_id.Map.t
+  ; mutable current_request : Build_system.Request.t option
   ; mutable state : [ `Awaiting_init | `Init ]
   }
 
@@ -140,6 +141,7 @@ let request_restart t invalidation =
     then t.watch_restart_started_at <- Some now;
     add_pending_reset t invalidation;
     t.input_change_generation <- t.input_change_generation + 1;
+    Option.iter t.current_request ~f:Build_system.Request.cancel_completion;
     let* () =
       match t.status with
       | Restarting_build _ -> Fiber.return ()
@@ -185,6 +187,7 @@ let create () =
   ; input_change_generation = 0
   ; next_run_id = 1
   ; rpc_requests = Rpc_request_id.Map.empty
+  ; current_request = None
   ; state = `Awaiting_init
   }
 ;;
@@ -219,6 +222,11 @@ let reset_wakeup t =
   Trigger.trigger previous_wakeup
 ;;
 
+let all_rpc_requests_finished t =
+  Rpc_request_id.Map.to_list t.rpc_requests
+  |> List.for_all ~f:(fun (_, request) -> Build_system.Request.Goal.is_finished request)
+;;
+
 let run_current_build
       ({ watch_restart_started_at = restart_started_at
        ; input_change_generation = build_start_input_change_generation
@@ -227,7 +235,9 @@ let run_current_build
        } as t)
       ~action_runner
       ~run_id
-      request
+      ~finish_when_rpc_requests_finished
+      ~request
+      run_build
   =
   let* () = reset_wakeup t in
   (match t.status with
@@ -235,16 +245,29 @@ let run_current_build
    | Standing_by | Restarting_build _ -> ());
   t.status <- Building run_id;
   clear_status_overlay t;
+  t.current_request <- Some request;
   let* outcome =
-    let build_ctx =
-      Process.Build.create ~action_runner ~run_id ~cancellation:(Fiber.Cancel.create ())
-    in
-    Process.Build.with_ build_ctx (fun () ->
-      Build_system.run_build_requests ?restart_started_at ~build:build_ctx request)
+    Fiber.finalize
+      (fun () ->
+         let build_ctx =
+           Process.Build.create
+             ~action_runner
+             ~run_id
+             ~cancellation:(Fiber.Cancel.create ())
+         in
+         run_build ?restart_started_at ~build:build_ctx ())
+      ~finally:(fun () ->
+        t.current_request <- None;
+        Fiber.return ())
   in
   let+ () = Scheduler.cleanup_subreaper_child_processes () in
   let next =
     match t.status with
+    | Restarting_build _
+      when finish_when_rpc_requests_finished && all_rpc_requests_finished t ->
+      t.status <- Standing_by;
+      t.watch_restart_started_at <- None;
+      `Done
     | Restarting_build _ -> `Restart
     | Standing_by | Building _ ->
       t.status <- Standing_by;
@@ -274,11 +297,17 @@ let cancel_rpc_requests t ~f =
   | to_cancel ->
     List.iter to_cancel ~f:(fun (id, _) ->
       t.rpc_requests <- Rpc_request_id.Map.remove t.rpc_requests id);
+    let to_cancel_unfinished =
+      List.filter to_cancel ~f:(fun (_, request) ->
+        not (Build_system.Request.Goal.is_finished request))
+    in
     let* () =
-      Fiber.parallel_iter to_cancel ~f:(fun (_, request) ->
+      Fiber.parallel_iter to_cancel_unfinished ~f:(fun (_, request) ->
         Build_system.Request.Goal.complete request Failure)
     in
-    request_rebuild_due_to_rpc_request t
+    if List.is_empty to_cancel_unfinished
+    then Fiber.return ()
+    else request_rebuild_due_to_rpc_request t
 ;;
 
 let cancel_rpc_requests_by_session t ~session_id =
@@ -299,7 +328,9 @@ let submit_rpc_request t ~session_id ~request_id ~build =
        [ "id", Rpc_request_id.to_dyn id ]
    | None -> t.rpc_requests <- Rpc_request_id.Map.add_exn t.rpc_requests id request);
   let* () = request_rebuild_due_to_rpc_request t in
-  Build_system.Request.Goal.await request
+  let+ outcome = Build_system.Request.Goal.await request in
+  t.rpc_requests <- Rpc_request_id.Map.remove t.rpc_requests id;
+  outcome
 ;;
 
 type rpc_poll_iter_result =
@@ -309,6 +340,10 @@ type rpc_poll_iter_result =
 
 let rpc_poll_iter t ~action_runner ~sticky_goal ~sticky_built_at =
   let rec loop () =
+    Rpc_request_id.Map.to_list t.rpc_requests
+    |> List.iter ~f:(fun (id, request) ->
+      if Build_system.Request.Goal.is_finished request
+      then t.rpc_requests <- Rpc_request_id.Map.remove t.rpc_requests id);
     let rpc_requests = Rpc_request_id.Map.to_list t.rpc_requests in
     let sticky_goal_to_build =
       match sticky_goal with
@@ -332,15 +367,13 @@ let rpc_poll_iter t ~action_runner ~sticky_goal ~sticky_built_at =
       Fiber.return { wakeup_generation = t.wakeup_generation; sticky_built_at = None }
     | _ ->
       let* res, next, input_change_generation, wakeup_generation =
-        let rpc_requests_in_build = List.map rpc_requests ~f:snd in
         let request =
-          let goals =
-            match sticky_goal_to_build with
-            | None -> rpc_requests_in_build
-            | Some sticky_goal ->
-              Build_system.Request.Goal.create sticky_goal :: rpc_requests_in_build
-          in
-          Build_system.Request.create goals
+          Build_system.Request.create
+            (let rpc_requests_in_build = List.map rpc_requests ~f:snd in
+             match sticky_goal_to_build with
+             | None -> rpc_requests_in_build
+             | Some sticky_goal ->
+               Build_system.Request.Goal.create sticky_goal :: rpc_requests_in_build)
         in
         let run_id = next_watch_run_id t in
         let () =
@@ -354,7 +387,15 @@ let rpc_poll_iter t ~action_runner ~sticky_goal ~sticky_built_at =
               Console.maybe_clear_screen ~details_hum);
             Memo.reset invalidation
         in
-        run_current_build t ~action_runner ~run_id request
+        let finish_when_rpc_requests_finished = Option.is_none sticky_goal_to_build in
+        run_current_build
+          t
+          ~action_runner
+          ~run_id
+          ~finish_when_rpc_requests_finished
+          ~request
+          (fun ?restart_started_at ~build () ->
+             Build_system.run_build_requests ?restart_started_at ~build request)
       in
       (match next with
        | `Restart -> loop ()
@@ -365,15 +406,13 @@ let rpc_poll_iter t ~action_runner ~sticky_goal ~sticky_built_at =
              | Ok () -> Build_outcome.Success
              | Error `Already_reported -> Failure
            in
-           let+ () =
-             Fiber.sequential_iter rpc_requests ~f:(fun (id, _) ->
-               match Rpc_request_id.Map.find t.rpc_requests id with
-               | None -> Fiber.return ()
-               | Some request ->
-                 t.rpc_requests <- Rpc_request_id.Map.remove t.rpc_requests id;
-                 Build_system.Request.Goal.complete request outcome)
+           let* () =
+             Fiber.sequential_iter rpc_requests ~f:(fun (id, request) ->
+               t.rpc_requests <- Rpc_request_id.Map.remove t.rpc_requests id;
+               Build_system.Request.Goal.complete request outcome)
            in
-           build_finish t outcome
+           build_finish t outcome;
+           Fiber.return ()
          in
          { wakeup_generation
          ; sticky_built_at =

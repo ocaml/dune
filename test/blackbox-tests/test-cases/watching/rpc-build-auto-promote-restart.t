@@ -64,7 +64,7 @@ by another request in the same batch.
   > else
   >   echo "fast rpc request timed out"
   > fi
-  fast rpc request timed out
+  fast rpc request finished
   $ cat source2
   old
 

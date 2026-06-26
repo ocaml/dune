@@ -20,6 +20,11 @@ type db
 val finalize : unit -> unit
 
 val clear_cache : unit -> unit
+
+(** Whether the current build has registered promotions that have not been
+    finalized yet. *)
+val has_pending : unit -> bool
+
 val load_db : unit -> db
 
 type all =

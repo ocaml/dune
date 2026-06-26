@@ -43,11 +43,13 @@ Basic tests for the file-watching mode.
   $ mv x z
   $ build y
   Failure
+  [1]
 
   $ echo new-contents3 > z
 
   $ build y
   Failure
+  [1]
 
   $ mv z x
   $ build y

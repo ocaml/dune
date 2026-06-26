@@ -56,6 +56,7 @@ Now switch the mode to standard. Dune reports an error about multiple rules for
 
   $ build result
   Failure
+  [1]
   $ wait_for_line_with_timeout .#dune-output "Hint: rm -f promoted" 200
   $ grep -A3 "Error: Multiple rules generated for _build/default/promoted:" .#dune-output
   Error: Multiple rules generated for _build/default/promoted:

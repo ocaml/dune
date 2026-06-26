@@ -13,9 +13,15 @@
 
 ; 1. Handwritten assembly for x86_64
 
+; Cygwin is amd64 but the assembly rules below don't target it; without
+; this os_type guard it would also enable the portable stanza, and both
+; would clash on (names blake3 ...). Matches boot/duneboot.ml [keep_asm].
+
 (foreign_library
  (enabled_if
-  (= %{architecture} "amd64"))
+  (and
+   (= %{architecture} "amd64")
+   (<> %{os_type} "Cygwin")))
  (archive_name blake3)
  (language c)
  (names blake3 blake3_portable blake3_dispatch)

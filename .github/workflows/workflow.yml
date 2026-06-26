@@ -396,14 +396,8 @@ jobs:
         uses: cygwin/cygwin-install-action@v6
         with:
           packages: ocaml gcc-core make
-      - name: Bootstrap Dune
-        run: make bootstrap
-      ## In order to build dune locally we need to have the re library
-      ## available. Even if we do, it is likely that our vendored blake3 rules
-      ## will miss cygwin support. So for now, we don't enable the rest.
-
-      # - name: Build Dune
-      # run: _boot/dune build dune.install
+      - name: Build Dune
+        run: make release
 
   oxcaml:
     name: OxCaml Tests (opam)

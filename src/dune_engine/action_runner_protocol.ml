@@ -19,6 +19,10 @@ module Request = struct
   module Cancel_build = struct
     type t = { run_id : Run_id.t }
   end
+
+  module Finish_build = struct
+    type t = { run_id : Run_id.t }
+  end
 end
 
 module Decl = struct
@@ -64,7 +68,19 @@ module Decl = struct
     ;;
   end
 
+  module Finish_build = struct
+    let decl =
+      let v1 =
+        Decl.Request.make_current_gen ~req:(marshal ()) ~resp:Conv.unit ~version:1
+      in
+      Decl.Request.make
+        ~method_:(Dune_rpc.Method.Name.of_string "action/finish-build")
+        ~generations:[ v1 ]
+    ;;
+  end
+
   let exec = Exec.decl
   let ready = Ready.decl
   let cancel_build = Cancel_build.decl
+  let finish_build = Finish_build.decl
 end

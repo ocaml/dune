@@ -50,11 +50,11 @@ let start_build t run_id =
     build
 ;;
 
-let finish_build t run_id =
+let finish_exec t run_id =
   match Table.find t.active_builds run_id with
   | None ->
     Code_error.raise
-      "action runner finished a build that was not recorded as active"
+      "action runner finished an exec request that was not recorded as active"
       [ "run_id", Run_id.to_dyn run_id ]
   | Some active when active.count > 1 ->
     active.count <- active.count - 1;
@@ -70,7 +70,7 @@ let exec_process t ({ Request.Exec.run_id; process } : Request.Exec.t) =
   else (
     let build = start_build t run_id in
     Fiber.finalize
-      ~finally:(fun () -> finish_build t run_id)
+      ~finally:(fun () -> finish_exec t run_id)
       (fun () ->
          let+ response = Process.exec_locally ~build process in
          Request.Exec.Completed response))
@@ -85,9 +85,23 @@ let cancel_build t ~name ({ Request.Cancel_build.run_id } : Request.Cancel_build
     |> List.filter ~f:(fun active ->
       Run_id.compare (Process.Build.run_id active.build) run_id <> Gt)
   in
-  Fiber.parallel_iter active_builds ~f:(fun active ->
-    let* () = Fiber.Cancel.fire (Process.Build.cancellation active.build) in
-    Fiber.Ivar.read active.drained)
+  let* () =
+    Fiber.parallel_iter active_builds ~f:(fun active ->
+      let* () = Fiber.Cancel.fire (Process.Build.cancellation active.build) in
+      Fiber.Ivar.read active.drained)
+  in
+  Scheduler.cleanup_subreaper_child_processes ()
+;;
+
+let finish_build t ({ Request.Finish_build.run_id } : Request.Finish_build.t) =
+  let* () =
+    match
+      Table.find t.active_builds run_id |> Option.map ~f:(fun active -> active.drained)
+    with
+    | None -> Fiber.return ()
+    | Some drained -> Fiber.Ivar.read drained
+  in
+  Scheduler.cleanup_subreaper_child_processes ()
 ;;
 
 let connect_retry_delay = Time.Span.of_secs 0.1
@@ -105,6 +119,7 @@ let start ~name ~where =
     [ Client.Request Decl.ready
     ; Handle_request (Decl.exec, exec_process t)
     ; Handle_request (Decl.cancel_build, cancel_build t ~name)
+    ; Handle_request (Decl.finish_build, finish_build t)
     ]
   in
   let initialize =

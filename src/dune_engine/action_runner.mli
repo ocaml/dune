@@ -32,3 +32,5 @@ val exec_process
   -> cancellation:Fiber.Cancel.t
   -> Process_runner.request
   -> Process_runner.response Fiber.t
+
+val complete_build : t -> run_id:Run_id.t -> cancellation:Fiber.Cancel.t -> unit Fiber.t

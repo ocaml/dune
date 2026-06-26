@@ -94,6 +94,18 @@ let cancel_build t ~run_id =
   send_request ~request:Decl.cancel_build ~payload t
 ;;
 
+let finish_build t ~run_id =
+  let* () = ensure_ready t in
+  let payload = { Request.Finish_build.run_id } in
+  send_request ~request:Decl.finish_build ~payload t
+;;
+
+let complete_build t ~run_id ~cancellation =
+  if Fiber.Cancel.fired cancellation
+  then cancel_build t ~run_id
+  else finish_build t ~run_id
+;;
+
 let exec_process_uncancelled t ~run_id process =
   let* () = ensure_ready t in
   Dune_trace.emit Action (fun () ->
@@ -176,12 +188,14 @@ let ready t session ({ Request.Ready.name } : Request.Ready.t) =
 let implement_handler t (handler : _ Root.Rpc.Server.Handler.t) =
   Server.Handler.declare_request handler Decl.exec;
   Server.Handler.declare_request handler Decl.cancel_build;
+  Server.Handler.declare_request handler Decl.finish_build;
   Server.Handler.implement_request handler Decl.ready (ready t)
 ;;
 
 let create name pid =
   Dune_trace.emit Action (fun () ->
     Dune_trace.Event.Action.Runner.runner_event ~name (Spawn pid));
+  Scheduler.preserve_child_process pid;
   { name
   ; status = Starting { ready = Fiber.Ivar.create () }
   ; pid

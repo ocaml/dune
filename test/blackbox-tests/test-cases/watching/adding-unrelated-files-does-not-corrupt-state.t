@@ -33,6 +33,4 @@ knew how to build x.exe. This is now fixed.
   $ _build/default/x.exe
   Hello, world!
 
-  $ stop_dune
-  Success, waiting for filesystem changes...
-  Success, waiting for filesystem changes...
+  $ stop_dune_quiet

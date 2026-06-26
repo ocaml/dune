@@ -30,6 +30,7 @@ Start dune (in passive watch mode)
   $ start_dune
   $ build a.exe
   Success
+  $ wait_for_line_with_timeout .#dune-output "Success, waiting for filesystem changes..." 200
   $ cat .#dune-output
   Success, waiting for filesystem changes...
 
@@ -50,6 +51,4 @@ Run build:
 
 Stop the watch server
 
-  $ stop_dune
-  Success, waiting for filesystem changes...
-  Success, waiting for filesystem changes...
+  $ stop_dune_quiet

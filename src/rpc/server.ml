@@ -24,6 +24,37 @@ module Poller = struct
   let compare x y = Id.compare x.id y.id
 end
 
+(* A source of state observed by long polling. [Svar] uses [Fiber.Svar.wait] to block until
+   the value changes; [Computed] reads the value from a thunk and polls it periodically (for
+   state that lives in a plain [ref] and cannot wake waiters itself). *)
+module Source = struct
+  type 'a t =
+    | Svar of 'a Fiber.Svar.t
+    | Computed of
+        { get : unit -> 'a
+        ; poll_every : Time.Span.t
+        }
+
+  let read = function
+    | Svar svar -> Fiber.Svar.read svar
+    | Computed { get; poll_every = _ } -> get ()
+  ;;
+
+  let wait t ~until =
+    match t with
+    | Svar svar -> Fiber.Svar.wait svar ~until
+    | Computed { get; poll_every } ->
+      let rec loop () =
+        if until (get ())
+        then Fiber.return ()
+        else
+          let* () = Dune_scheduler.Scheduler.sleep poll_every in
+          loop ()
+      in
+      loop ()
+  ;;
+end
+
 module V = Versioned.Make (struct
     include Fiber
 
@@ -750,16 +781,16 @@ module H = struct
         Fiber.return ()
       ;;
 
-      let make_on_poll map svar ~equal ~diff _session poller =
+      let make_on_poll map source ~equal ~diff _session poller =
         let send last =
           let* () =
             match last with
             | None -> Fiber.return ()
             | Some last ->
               let until x = not (equal x last) in
-              Fiber.Svar.wait svar ~until
+              Source.wait source ~until
           in
-          let now = Fiber.Svar.read svar in
+          let now = Source.read source in
           map := Map.set !map poller (Status.Active now);
           let to_send = diff ~last ~now in
           Fiber.return (Some to_send)
@@ -772,13 +803,13 @@ module H = struct
           Fiber.never
       ;;
 
-      let implement_long_poll (rpc : _ t) proc svar ~equal ~diff =
+      let implement_long_poll (rpc : _ t) proc source ~equal ~diff =
         let map = ref Map.empty in
         implement_poll
           rpc
           proc
           ~on_cancel:(on_cancel map)
-          ~on_poll:(make_on_poll map svar ~equal ~diff)
+          ~on_poll:(make_on_poll map source ~equal ~diff)
       ;;
     end
 

@@ -25,6 +25,7 @@ end
 
 module Session = Rpc.Server.Session
 module Handler = Rpc.Server.Handler
+module Source = Rpc.Server.Source
 module Csexp_rpc = Rpc.Csexp_rpc
 
 type build_request =
@@ -178,7 +179,7 @@ let handler (t : t Fdecl.t) action_runner_server : unit Handler.t =
     Handler.implement_long_poll
       rpc
       Procedures.Poll.diagnostic
-      Build_system.errors
+      (Source.Svar Build_system.errors)
       ~equal:Error.Set.equal
       ~diff
   in
@@ -213,7 +214,7 @@ let handler (t : t Fdecl.t) action_runner_server : unit Handler.t =
     Handler.implement_long_poll
       rpc
       Procedures.Poll.running_jobs
-      Running_jobs.jobs
+      (Source.Svar Running_jobs.jobs)
       ~equal:Running_jobs.equal
       ~diff
   in
@@ -226,15 +227,16 @@ let handler (t : t Fdecl.t) action_runner_server : unit Handler.t =
       | Build_failed__now_waiting_for_changes -> Failed
       | Building now ->
         In_progress
-          { complete = now.number_of_rules_executed
-          ; remaining = now.number_of_rules_discovered - now.number_of_rules_executed
+          { complete = now.number_of_rules_validated
+          ; remaining = Build_system.Progress.number_of_rules_in_progress now
           ; failed = now.number_of_rules_failed
           }
     in
     Handler.implement_long_poll
       rpc
       Procedures.Poll.progress
-      Build_system.state
+      (Source.Computed
+         { get = (fun () -> !Build_system.state); poll_every = Time.Span.of_secs 0.2 })
       ~equal:Build_system.State.equal
       ~diff
   in

@@ -46,7 +46,7 @@ let server_long_poll svar =
     Rpc.Server.Handler.implement_long_poll
       rpc
       sub_proc
-      svar
+      (Rpc.Server.Source.Svar svar)
       ~equal:Int.equal
       ~diff:(fun ~last ~now ->
         match last with
@@ -107,6 +107,45 @@ let%expect_test "long polling - client side termination" =
     client: received 1
     client: received 2
     server: polling cancelled
+    server: finished. |}]
+;;
+
+(* A long poll backed by a [Computed] source reads its state from a plain [ref] and polls
+   it for changes. Here we mutate the ref before asking for the next value, so the poll's
+   predicate is already satisfied and the source returns immediately without sleeping. *)
+let server_long_poll_computed r =
+  let rpc = rpc () in
+  let () =
+    Rpc.Server.Handler.implement_long_poll
+      rpc
+      sub_proc
+      (Rpc.Server.Source.Computed
+         { get = (fun () -> !r); poll_every = Time.Span.of_secs 0.01 })
+      ~equal:Int.equal
+      ~diff:(fun ~last ~now ->
+        match last with
+        | None -> now
+        | Some last -> now - last)
+  in
+  rpc
+;;
+
+let%expect_test "long polling - computed (poll/ref) source" =
+  let r = ref 0 in
+  let handler = server_long_poll_computed r in
+  let client client =
+    let* poller = poll_exn client in
+    r := 1;
+    let* () = print_next "first" poller in
+    r := 5;
+    let* () = print_next "second" poller in
+    Client.Stream.cancel poller
+  in
+  test ~init ~client ~handler ~private_menu:[ Poll sub_proc ] ();
+  [%expect
+    {|
+    client: first received 1
+    client: second received 4
     server: finished. |}]
 ;;
 

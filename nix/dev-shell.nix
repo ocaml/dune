@@ -137,6 +137,14 @@ in
 pkgs'.mkShell {
   shellHook = ''
     export DUNE_SOURCE_ROOT=$PWD
+    if [ -x "$DUNE_SOURCE_ROOT/_boot/dune.exe" ] \
+      && _dune_completion=$("$DUNE_SOURCE_ROOT/_boot/dune.exe" completion bash 2>/dev/null); then
+      eval "$_dune_completion"
+    else
+      echo "warning: dune bash completion not loaded (_boot/dune.exe missing or too old)." >&2
+      echo "         run 'make bootstrap' inside this shell and reenter to enable it." >&2
+    fi
+    unset _dune_completion
   '';
   inherit meta;
   nativeBuildInputs =

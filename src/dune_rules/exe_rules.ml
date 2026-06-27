@@ -187,7 +187,7 @@ let executables_rules
       ~jsoo_enabled_modes
       ~jsoo_is_whole_program
   in
-  let* flags = Buildable_rules.ocaml_flags sctx ~dir exes.buildable.flags in
+  let* flags = Ocaml_flags_db.ocaml_flags sctx ~dir exes.buildable.flags in
   let* modules, pp =
     let+ modules, pp =
       Buildable_rules.modules_rules

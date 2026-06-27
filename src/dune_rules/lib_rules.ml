@@ -488,7 +488,7 @@ let cctx
       ~for_
   =
   let* flags =
-    let+ base = Buildable_rules.ocaml_flags sctx ~dir lib.buildable.flags in
+    let+ base = Ocaml_flags_db.ocaml_flags sctx ~dir lib.buildable.flags in
     match lib.stdlib with
     | None -> base
     | Some _ -> Ocaml_flags.append_nostdlib base

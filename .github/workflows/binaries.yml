@@ -29,10 +29,10 @@ jobs:
           - os: macos-14
             name: aarch64-apple-darwin
             installable: .#dune
-          - os: ubuntu-22.04
+          - os: ubuntu-24.04
             name: x86_64-unknown-linux-musl
             installable: .#dune-static
-          - os: ubuntu-22.04
+          - os: ubuntu-24.04
             name: x86_64-pc-windows-gnu
             installable: .#windows-static
             binary: dune.exe

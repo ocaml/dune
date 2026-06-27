@@ -887,7 +887,7 @@ module Generated_modules = struct
     fun ~dir
       ~dialects
       ~include_subdirs
-      ~module_path_translation
+      ~path_to_root_of_dir
       { modules; _ }
       libraries
       ~for_ ->
@@ -921,34 +921,23 @@ module Generated_modules = struct
                      Module.File.make dialect (Path.build file)
                    in
                    let module_path =
+                     let base_path =
+                       match include_subdirs with
+                       | Include_subdirs.No | Include Unqualified -> []
+                       | Include (Qualified _) ->
+                         let target_dir = Path.Build.parent_exn dst in
+                         module_path
+                           ~loc:(Some loc)
+                           ~include_subdirs
+                           ~dir:target_dir
+                           (Filename.L.to_string (path_to_root_of_dir target_dir))
+                     in
                      let module_name =
                        Module_name.of_string_allow_invalid
                          (loc, Filename.to_string basename)
                        |> Module_name.Unchecked.validate_exn
-                       |> Module_name.unchecked
                      in
-                     match include_subdirs with
-                     | Include_subdirs.No | Include Unqualified ->
-                       Nonempty_list.[ module_name ]
-                     | Include (Qualified _) ->
-                       (match
-                          let path_to_root =
-                            Path.Local.parent_exn descendant |> Path.Local.explode
-                          in
-                          module_path
-                            ~loc:(Some loc)
-                            ~include_subdirs
-                            ~dir
-                            (Filename.L.to_string path_to_root)
-                        with
-                        | [] -> Nonempty_list.[ module_name ]
-                        | p :: ps ->
-                          let base_path =
-                            Module_trie.Unchecked.translate_prefix
-                              module_path_translation
-                              (p :: ps)
-                          in
-                          Nonempty_list.(to_list base_path @ [ module_name ]))
+                     Nonempty_list.(base_path @ [ Module_name.unchecked module_name ])
                    in
                    (match ml_kind with
                     | Ml_kind.Impl -> Left (module_path, (loc, file))
@@ -1182,6 +1171,40 @@ let modules_of_stanzas =
     ~for_
     ~include_subdirs:(loc_include_subdirs, include_subdirs) ->
     let dialects = Dune_project.dialects project in
+    let dirs_list = Nonempty_list.to_list dirs in
+    let nearest_path_to_root target_dir =
+      List.fold_left
+        dirs_list
+        ~init:None
+        ~f:(fun best { Source_file_dir.dir; path_to_root; _ } ->
+          match
+            Path.Local.descendant
+              (Path.Build.local target_dir)
+              ~of_:(Path.Build.local dir)
+          with
+          | None -> best
+          | Some suffix ->
+            let suffix = Path.Local.explode suffix in
+            let suffix_len = List.length suffix in
+            let path_to_root = path_to_root @ suffix in
+            (match best with
+             | None -> Some (suffix_len, path_to_root)
+             | Some (best_suffix_len, _) when suffix_len < best_suffix_len ->
+               Some (suffix_len, path_to_root)
+             | Some _ -> best))
+      |> Option.map ~f:snd
+    in
+    let path_to_root_of_dir ~dir ~path_to_root target_dir =
+      match nearest_path_to_root target_dir with
+      | Some path -> path
+      | None ->
+        let suffix =
+          Path.Local.descendant (Path.Build.local target_dir) ~of_:(Path.Build.local dir)
+          |> Option.value_exn
+          |> Path.Local.explode
+        in
+        path_to_root @ suffix
+    in
     let* ({ ocamllexes; ocamlyaccs; menhirs; _ } as modules) =
       Generated_modules.add_generated_modules
         ~expander
@@ -1191,8 +1214,9 @@ let modules_of_stanzas =
         modules
     in
     Memo.parallel_map
-      (Nonempty_list.to_list dirs)
-      ~f:(fun { Source_file_dir.dir; stanzas; module_path_translation; _ } ->
+      dirs_list
+      ~f:(fun { Source_file_dir.dir; path_to_root; stanzas; _ } ->
+        let path_to_root_of_dir = path_to_root_of_dir ~dir ~path_to_root in
         Memo.parallel_map stanzas ~f:(fun stanza ->
           let enabled_if =
             match Stanza.repr stanza with
@@ -1221,7 +1245,7 @@ let modules_of_stanzas =
                      ~dialects
                      ~include_subdirs
                      ~for_
-                     ~module_path_translation
+                     ~path_to_root_of_dir
                      lib.buildable.libraries
                  in
                  make_lib_modules
@@ -1246,7 +1270,7 @@ let modules_of_stanzas =
                    ~dialects
                    ~include_subdirs
                    ~for_
-                   ~module_path_translation
+                   ~path_to_root_of_dir
                    exes.buildable.libraries
                in
                make_executables ~dir ~expander ~include_subdirs ~modules ~project exes
@@ -1258,7 +1282,7 @@ let modules_of_stanzas =
                    ~dialects
                    ~include_subdirs
                    ~for_
-                   ~module_path_translation
+                   ~path_to_root_of_dir
                    tests.exes.buildable.libraries
                in
                make_tests ~dir ~expander ~include_subdirs ~modules ~project tests
@@ -1274,7 +1298,7 @@ let modules_of_stanzas =
                      ~dialects
                      ~include_subdirs
                      ~for_:Compilation_mode.Melange
-                     ~module_path_translation
+                     ~path_to_root_of_dir
                      mel.libraries
                  in
                  let version = Dune_project.dune_version project in

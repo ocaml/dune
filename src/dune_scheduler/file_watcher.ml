@@ -369,14 +369,7 @@ let event_to_trace_event = function
   | Sync { id; _ } -> `Sync (Sync.Id.to_int id)
   | Watcher_terminated -> `Watcher_terminated
   | Filesystem_event Queue_overflow -> `Queue_overflow
-  | Filesystem_event (Fs_memo_event { path; kind }) ->
-    `File
-      ( path
-      , match kind with
-        | Created -> `Created
-        | Deleted -> `Deleted
-        | File_changed -> `File_changed
-        | Unknown -> `Unknown )
+  | Filesystem_event (Fs_memo_event { path; kind }) -> `File (path, kind)
 ;;
 
 let trace_event_to_dyn = function
@@ -384,20 +377,15 @@ let trace_event_to_dyn = function
   | `Queue_overflow -> Dyn.variant "Queue_overflow" []
   | `Watcher_terminated -> Dyn.variant "Watcher_terminated" []
   | `File (path, kind) ->
-    let kind =
-      match kind with
-      | `Created -> "Created"
-      | `Deleted -> "Deleted"
-      | `File_changed -> "File_changed"
-      | `Unknown -> "Unknown"
-    in
-    Dyn.variant "File" [ Path.to_dyn path; Dyn.string kind ]
+    Dyn.variant
+      "File"
+      [ Path.to_dyn path; Repr.to_dyn Dune_trace.File_watcher_event.kind_repr kind ]
 ;;
 
 let emit_events events =
   Dune_trace.emit_all ~buffered:true File_watcher (fun () ->
     List.map events ~f:(fun event ->
-      Dune_trace.Event.file_watcher (event_to_trace_event event)))
+      Dune_trace.File_watcher_event.to_event (event_to_trace_event event)))
 ;;
 
 let log_dropped_events events =
@@ -715,7 +703,7 @@ let fsevents_standard_event_impl
          (* FSEvents can report directory-wide or ambiguous changes without
             listing all affected descendants. Until Fs_memo supports subtree
             invalidation, over-invalidate by clearing the filesystem caches. *)
-         Some (Filesystem_event Event.Queue_overflow)
+         Some (Filesystem_event Queue_overflow)
        | Create -> fs_memo_event Created
        | Modify -> fs_memo_event Unknown)
     | File ->
@@ -750,7 +738,7 @@ let%expect_test "fsevents standard event handling" =
   print Create File ~should_exclude:(Fun.const true);
   [%expect
     {|
-    { path = In_source_tree "x"; kind = "File_changed" }
+    { path = In_source_tree "x"; kind = File_changed }
     Queue_overflow
     Queue_overflow
     Queue_overflow
@@ -876,11 +864,11 @@ let fswatch_win_event ~sync_table ~should_exclude event =
       Some
         (let kind =
            match Fswatch_win.Event.action event with
-           | Added | Renamed_new -> Fs_memo_event.Created
+           | Added | Renamed_new -> Dune_trace.File_watcher_event.Created
            | Removed | Renamed_old -> Deleted
            | Modified -> File_changed
          in
-         Filesystem_event (Event.Fs_memo_event (Fs_memo_event.create ~kind ~path)))
+         Filesystem_event (Fs_memo_event (Fs_memo_event.create ~kind ~path)))
 ;;
 
 let create_fswatch_win ~sync_table ~event_channel ~debounce_interval:sleep ~should_exclude

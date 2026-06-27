@@ -50,6 +50,21 @@ end
 module String = struct
   include String
   let sub0cp s i len = if i > 0 || len < length s then sub s i len else s
+  let fold_utf_8 f acc s =
+    let len = length s in
+    let rec loop acc i =
+      if i >= len then acc else
+        let decode = get_utf_8_uchar s i in
+        let next = i + Uchar.utf_decode_length decode in
+        let acc =
+          if Uchar.utf_decode_is_valid decode then
+            f acc i (`Uchar (Uchar.utf_decode_uchar decode))
+          else
+            f acc i (`Malformed "invalid UTF-8")
+        in
+        loop acc next
+    in
+    loop acc 0
   let of_chars_rev = function
     | []  -> ""
     | [c] -> String.make 1 c
@@ -100,7 +115,7 @@ module Text = struct
       | `Boundary     ->
           let is = match w with 0 -> is | 1 -> i::is | _ -> i::(-1)::is in
           f (is, 0) i `Await in
-    let acc = Uutf.String.fold_utf_8 (fun acc i -> function
+    let acc = String.fold_utf_8 (fun acc i -> function
       | `Malformed err -> err_malformed err str
       | `Uchar _ as u  -> f acc i u
       ) ([0], 0) str in
@@ -842,7 +857,7 @@ module Unescape = struct
   let list_of_utf8 buf i l =
     let f cs _ = function `Uchar c -> c::cs | _ -> cs in
     String.sub0cp (Bytes.unsafe_to_string buf) i l
-    |> Uutf.String.fold_utf_8 f [] |> List.rev
+    |> String.fold_utf_8 f [] |> List.rev
 
   let input t buf i l = t := match !t with
     | (es, false) when l > 0 -> (es @ (list_of_utf8 buf i l |> decode), false)

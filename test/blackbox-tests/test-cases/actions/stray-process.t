@@ -22,7 +22,7 @@ wait for the beacon to be notified that the sub-process has started:
 
 Now we stop Dune, which should normally kill all sub-processes:
 
-  $ stop_dune
+  $ stop_dune_quiet
 
   $ if kill -s 0 $CHILD_PID 2> /dev/null; then
   >   echo "FAILURE: child is still running"

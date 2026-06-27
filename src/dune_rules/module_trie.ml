@@ -216,22 +216,4 @@ module Unchecked = struct
   ;;
 
   include Module_trie_unchecked
-
-  let translate_prefix =
-    let rec translate_prefix t (p :: ps : Module_name.Unchecked.Path.t) acc =
-      match Unchecked.Map.find t p with
-      | None -> None
-      | Some (Leaf (replacement : Module_name.Unchecked.Path.t)) ->
-        let (r :: rs) = replacement in
-        Some (r :: (rs @ ps) : _ Nonempty_list.t)
-      | Some (Map t) ->
-        (match ps with
-         | [] -> None
-         | p' :: ps -> translate_prefix t (p' :: ps) (p :: acc))
-    in
-    fun (t : _ t) prefix ->
-      match translate_prefix t prefix [] with
-      | None -> prefix
-      | Some t -> t
-  ;;
 end

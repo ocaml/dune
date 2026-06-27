@@ -156,14 +156,6 @@ module Event : sig
   val load_dir : Path.t -> t
   val log : Log.Message.t -> t
 
-  val file_watcher
-    :  [ `File of Path.t * [ `Created | `Deleted | `File_changed | `Unknown ]
-       | `Queue_overflow
-       | `Sync of int
-       | `Watcher_terminated
-       ]
-    -> t
-
   val error
     :  Loc.t option
     -> [< `Fatal | `User ]
@@ -278,6 +270,24 @@ module Event : sig
 
   val debug : (string * Dyn.t) list -> t
   val artifact_substitution : file:Path.t -> placeholder:Dyn.t -> value:string -> t
+end
+
+module File_watcher_event : sig
+  type kind =
+    | Created
+    | Deleted
+    | File_changed
+    | Unknown
+
+  type t =
+    [ `File of Path.t * kind
+    | `Queue_overflow
+    | `Sync of int
+    | `Watcher_terminated
+    ]
+
+  val kind_repr : kind Repr.t
+  val to_event : t -> Event.t
 end
 
 module Out : sig

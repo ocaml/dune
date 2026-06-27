@@ -9,18 +9,12 @@ type job =
 val dyn_of_job : job -> Dyn.t
 
 module Fs_memo_event : sig
-  type kind =
-    | Created
-    | Deleted
-    | File_changed
-    | Unknown
-
   type t = private
     { path : Path.t
-    ; kind : kind
+    ; kind : Dune_trace.File_watcher_event.kind
     }
 
-  val create : kind:kind -> path:Path.t -> t
+  val create : kind:Dune_trace.File_watcher_event.kind -> path:Path.t -> t
   val to_dyn : t -> Dyn.t
 end
 

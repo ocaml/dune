@@ -703,25 +703,6 @@ let load_dir dir =
   Event.instant ~name:"load-dir" ~args now Debug
 ;;
 
-let file_watcher event =
-  (* CR-soon rgrinberg: this timestamp is wrong *)
-  let now = Time.now () in
-  let name, args =
-    match event with
-    | `Queue_overflow -> "queue_overflow", []
-    | `Sync id -> "sync", [ "id", Arg.int id ]
-    | `Watcher_terminated -> "watcher_terminated", []
-    | `File (path, kind) ->
-      ( (match kind with
-         | `Created -> "create"
-         | `Deleted -> "delete"
-         | `File_changed -> "changed"
-         | `Unknown -> "unknown")
-      , [ "path", Arg.path path ] )
-  in
-  Event.instant ~name ~args now File_watcher
-;;
-
 let error loc kind exn backtrace memo_stack =
   let now = Time.now () in
   let name =

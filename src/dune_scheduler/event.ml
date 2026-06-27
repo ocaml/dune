@@ -15,29 +15,17 @@ let dyn_of_job { pid; is_process_group_leader; ivar } =
 ;;
 
 module Fs_memo_event = struct
-  type kind =
-    | Created
-    | Deleted
-    | File_changed
-    | Unknown
-
-  let dyn_of_kind kind =
-    Dyn.string
-      (match kind with
-       | Created -> "Created"
-       | Deleted -> "Deleted"
-       | File_changed -> "File_changed"
-       | Unknown -> "Unknown")
-  ;;
-
   type t =
     { path : Path.t
-    ; kind : kind
+    ; kind : Dune_trace.File_watcher_event.kind
     }
 
   let to_dyn { path; kind } =
     let open Dyn in
-    record [ "path", Path.to_dyn path; "kind", dyn_of_kind kind ]
+    record
+      [ "path", Path.to_dyn path
+      ; "kind", Repr.to_dyn Dune_trace.File_watcher_event.kind_repr kind
+      ]
   ;;
 
   let create ~kind ~path = { path; kind }

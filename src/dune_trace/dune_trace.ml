@@ -1,6 +1,7 @@
 open Stdune
 module Category = Category
 module Event = Event
+module File_watcher_event = File_watcher_event
 module Raw_out = Out
 
 module Out = struct

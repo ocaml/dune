@@ -45,14 +45,14 @@ let pp_corrected_path m ~ml_kind ~suffix =
 let get_rules sctx key =
   let ctx = Super_context.context sctx in
   let build_context = Context.build_context ctx in
-  let exe = Ppx_driver.ppx_exe_path build_context ~key in
+  let exe = Ppx_exe.ppx_exe_path build_context ~key in
   let* pp_names, scope =
     match Digest.from_hex key with
     | None ->
       User_error.raise
         [ Pp.textf "invalid ppx key for %s" (Path.Build.to_string_maybe_quoted exe) ]
     | Some key ->
-      let { Ppx_driver.Key.Decoded.pps; project_root } = Ppx_driver.Key.decode key in
+      let { Ppx_exe.Key.Decoded.pps; project_root } = Ppx_exe.Key.decode key in
       let+ scope =
         let dir =
           match project_root with

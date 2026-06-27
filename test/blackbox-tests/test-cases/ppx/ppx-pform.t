@@ -52,10 +52,11 @@ Force the generated ppx executable to be built:
   > EOF
 
   $ dune build @test-ppx-run 2>&1 | censor
-  Error: I don't know what ppx rewriters set $DIGEST
-  correspond to.
-  -> required by _build/default/ppx-help
-  -> required by alias test-ppx-run in dune:1
+  File "_build/default/.ppx/$DIGEST/ppx.exe", line 1, characters 0-0:
+  Error: Failed to create on-demand ppx rewriter for ppx1 and ppx2; no ppx
+  driver were found. It seems that ppx1 and ppx2 are not compatible with Dune.
+  Examples of ppx rewriters that are compatible with Dune are ones using
+  ocaml-migrate-parsetree, ppxlib or ppx_driver.
   [1]
 
 Test that the order of libraries doesn't matter

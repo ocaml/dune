@@ -1300,27 +1300,11 @@ let pkg_mlds sctx pkg =
     ext_package_mlds ctx pkg)
 ;;
 
-let check_mlds_no_dupes ~pkg ~mlds =
-  match
-    List.rev_map mlds ~f:(fun ((_path, mld_name) as mld) -> mld_name, mld)
-    |> String.Map.of_list
-  with
-  | Ok m -> m
-  | Error (_, (p1, _name1), (p2, _name2)) ->
-    User_error.raise
-      [ Pp.textf
-          "Package %s has two mld's with the same basename %s, %s"
-          (Package.Name.to_string pkg)
-          (Path.to_string_maybe_quoted p1)
-          (Path.to_string_maybe_quoted p2)
-      ]
-;;
-
 let pkg_artifacts sctx index pkg =
   let ctx = Super_context.context sctx in
   let+ mlds_map =
     let+ mlds = pkg_mlds sctx pkg in
-    check_mlds_no_dupes ~pkg ~mlds
+    Odoc.check_mlds_no_dupes ~pkg ~mlds ~path_to_string:Path.to_string_maybe_quoted
   in
   let artifacts =
     let mlds_noindex =

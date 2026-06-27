@@ -18,6 +18,12 @@ val mlds
 
 val report_warnings : Doc_sources.mld list -> unit
 
+val check_mlds_no_dupes
+  :  pkg:Package.Name.t
+  -> mlds:('path * string) list
+  -> path_to_string:('path -> string)
+  -> ('path * string) String.Map.t
+
 val run_odoc
   :  Super_context.t
   -> dir:Path.t

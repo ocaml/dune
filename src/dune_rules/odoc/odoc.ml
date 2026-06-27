@@ -802,7 +802,7 @@ let entry_modules sctx ~pkg =
   Lib.Local.Map.of_list_exn l
 ;;
 
-let check_mlds_no_dupes ~pkg ~mlds =
+let check_mlds_no_dupes ~pkg ~mlds ~path_to_string =
   match
     List.rev_map mlds ~f:(fun ((_path, mld_name) as mld) -> mld_name, mld)
     |> String.Map.of_list
@@ -813,8 +813,8 @@ let check_mlds_no_dupes ~pkg ~mlds =
       [ Pp.textf
           "Package %s has two mld's with the same basename %s, %s"
           (Package.Name.to_string pkg)
-          (Path.to_string_maybe_quoted (Path.build p1))
-          (Path.to_string_maybe_quoted (Path.build p2))
+          (path_to_string p1)
+          (path_to_string p2)
       ]
 ;;
 
@@ -855,7 +855,10 @@ let odoc_artefacts sctx target =
   | Pkg pkg ->
     let+ mlds =
       let+ mlds, _ = mlds sctx pkg in
-      let mlds = check_mlds_no_dupes ~pkg ~mlds in
+      let mlds =
+        check_mlds_no_dupes ~pkg ~mlds ~path_to_string:(fun p ->
+          Path.to_string_maybe_quoted (Path.build p))
+      in
       String.Map.update mlds "index" ~f:(function
         | None -> Some (Paths.gen_mld_dir ctx pkg ++ "index.mld", "index")
         | Some _ as s -> s)
@@ -1180,7 +1183,10 @@ let package_mlds =
          Rules.collect (fun () ->
            let* mlds, warnings = mlds sctx pkg in
            report_warnings warnings;
-           let mlds = check_mlds_no_dupes ~pkg ~mlds in
+           let mlds =
+             check_mlds_no_dupes ~pkg ~mlds ~path_to_string:(fun p ->
+               Path.to_string_maybe_quoted (Path.build p))
+           in
            let ctx = Super_context.context sctx in
            if String.Map.mem mlds "index"
            then Memo.return mlds

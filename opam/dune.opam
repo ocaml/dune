@@ -63,7 +63,7 @@ depends: [
   "ppxlib" { with-dev-setup & >= "0.37.0" & os != "win32" }
   "ctypes" { with-dev-setup & os != "win32" }
   "utop" { with-dev-setup & >= "2.6.0" & os != "win32" }
-  "melange" { with-dev-setup & >= "5.1.0-51" & < "7.0" & os != "win32" }
+  "melange" { with-dev-setup & >= "7.0.0" & os != "win32" }
   # the rev store negotiation test launches a git daemon, needs it to be
   # installed on some distributions
   "conf-git-daemon" { with-test }

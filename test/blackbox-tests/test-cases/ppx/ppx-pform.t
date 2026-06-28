@@ -41,6 +41,23 @@ Run the test
   $ dune build @test-ppx 2>&1 | censor
   .ppx/$DIGEST/ppx.exe
 
+Force the generated ppx executable to be built:
+
+  $ cat >dune <<EOF
+  > (rule
+  >  (alias test-ppx-run)
+  >  (action
+  >   (with-stdout-to ppx-help
+  >    (run %{ppx:ppx1+ppx2} --help))))
+  > EOF
+
+  $ dune build @test-ppx-run 2>&1 | censor
+  Error: I don't know what ppx rewriters set $DIGEST
+  correspond to.
+  -> required by _build/default/ppx-help
+  -> required by alias test-ppx-run in dune:1
+  [1]
+
 Test that the order of libraries doesn't matter
 
   $ cat >dune <<EOF

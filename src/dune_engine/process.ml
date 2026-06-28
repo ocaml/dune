@@ -1368,6 +1368,7 @@ let run_internal
          | None -> local ())
       | None -> local ()
     in
+    Option.iter build ~f:(fun _ -> Metrics.Build.add_process_time times.elapsed_time);
     let result = Result.make t process_info fail_mode in
     (match remote_started_at with
      | None ->

@@ -104,7 +104,12 @@ module State = struct
 
   (* This mutex ensures that at most one [run] is running in parallel. *)
   let build_mutex = Fiber.Mutex.create ()
-  let reset_progress () = t := Building Progress.init
+
+  let reset_progress () =
+    Metrics.Build.reset ();
+    t := Building Progress.init
+  ;;
+
   let set what = t := what
 
   let update_build_progress_exn ~f =

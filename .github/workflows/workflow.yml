@@ -229,7 +229,7 @@ jobs:
           path: |
             ~/.opam
             ~/work/dune/dune/_opam
-          key: opam-${{ matrix.os }}-${{ matrix.cache-prefix }}-${{ hashFiles('**.opam') }}
+          key: opam-${{ matrix.os }}-${{ matrix.cache-prefix }}-${{ hashFiles('**/*.opam') }}
 
       - name: Load opam cache when Windows
         if: runner.os == 'Windows'
@@ -239,7 +239,7 @@ jobs:
           path: |
             ~/.opam
             ~/work/dune/dune/_opam
-          key: opam-${{ matrix.os }}-${{ matrix.cache-prefix }}-${{ hashFiles('**.opam') }}
+          key: opam-${{ matrix.os }}-${{ matrix.cache-prefix }}-${{ hashFiles('**/*.opam') }}
 
       # Install ocamlfind-secondary and ocaml-secondary-compiler, if needed
       - run: |
@@ -290,7 +290,7 @@ jobs:
           path: |
             ~/.opam
             ~/work/dune/dune/_opam
-          key: opam-${{ matrix.os }}-${{ matrix.cache-prefix }}-${{ hashFiles('**.opam') }}
+          key: opam-${{ matrix.os }}-${{ matrix.cache-prefix }}-${{ hashFiles('**/*.opam') }}
 
       - name: Save cache when Windows
         uses: actions/cache/save@v5
@@ -299,7 +299,7 @@ jobs:
           path: |
             ~/.opam
             ~/work/dune/dune/_opam
-          key: opam-${{ matrix.os }}-${{ matrix.cache-prefix }}-${{ hashFiles('**.opam') }}
+          key: opam-${{ matrix.os }}-${{ matrix.cache-prefix }}-${{ hashFiles('**/*.opam') }}
 
   rocq:
     name: Rocq Tests
@@ -361,7 +361,7 @@ jobs:
           path: |
             ~/.opam
             ~/work/dune/dune/_opam
-          key: opam-wasm-${{ hashFiles('**.opam') }}
+          key: opam-wasm-${{ hashFiles('**/*.opam') }}
 
       - name: Install faked binaryen-bin package
         # The binaries have already been downloaded
@@ -385,7 +385,7 @@ jobs:
           path: |
             ~/.opam
             ~/work/dune/dune/_opam
-          key: opam-wasm-${{ hashFiles('**.opam') }}
+          key: opam-wasm-${{ hashFiles('**/*.opam') }}
 
   cygwin:
     name: Bootstrap on Cygwin

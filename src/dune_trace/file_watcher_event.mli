@@ -15,3 +15,4 @@ type t =
 
 val kind_repr : kind Repr.t
 val to_event : t -> Event.t
+val debounce_extend : files:(Path.t * kind) list -> invalidation_empty:bool -> Event.t

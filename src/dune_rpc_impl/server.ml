@@ -303,7 +303,11 @@ let handler (t : t Fdecl.t) action_runner_server : unit Handler.t =
       match t.server.watch_mode with
       | No -> Fiber.return `Not_in_watch_mode
       | Yes _ ->
-        let+ () = Scheduler.flush_file_watcher () in
+        let+ () =
+          match t.build with
+          | Disabled -> Scheduler.flush_file_watcher ()
+          | Enabled { build_loop; _ } -> Build_loop.flush_file_watcher build_loop
+        in
         `Ok
     in
     Handler.implement_request rpc Procedures.Public.flush_file_watcher f

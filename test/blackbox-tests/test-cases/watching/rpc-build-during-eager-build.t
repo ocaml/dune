@@ -24,8 +24,14 @@ iteration and restart it with the RPC request incorporated.
 
 The eager loop still reacts to filesystem changes after the RPC build has run.
 
-  $ echo '(rule (alias default) (action (echo changed)))' > dune
+  $ changed_marker="$marker_dir/eager-build-restarted"
+  $ cat > dune <<EOF
+  > (rule
+  >  (alias default)
+  >  (action (bash "touch '$changed_marker'; echo changed")))
+  > EOF
   $ with_timeout dune rpc flush-file-watcher --wait
+  $ with_timeout dune_cmd wait-for-file-to-appear "$changed_marker"
   $ stop_dune > /dev/null
 
   $ dune trace cat | jq_dune -s '

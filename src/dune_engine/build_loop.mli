@@ -25,6 +25,11 @@ val cancel_rpc_requests_by_session
 
 val cancel_all_rpc_requests : t -> unit Fiber.t
 
+(** [flush_file_watcher t] waits until file-watcher notifications that precede
+    the flush have been applied to [t], including any active debounce quiet
+    period. *)
+val flush_file_watcher : t -> unit Fiber.t
+
 (** [poll t ~action_runner ~sticky_goal] runs the watch loop managed by [t].
     [action_runner] is used for each build started by the loop. [sticky_goal] is
     rebuilt after file changes and is also included in builds started for

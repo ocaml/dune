@@ -785,7 +785,7 @@ let run_and_produce_output
       ~setup_scripts
       shell
   =
-    let open Fiber.O in
+  let open Fiber.O in
   let* commands =
     let+ cram_to_output =
       let cram_stanzas =

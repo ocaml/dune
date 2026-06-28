@@ -56,6 +56,10 @@ produce files, such as benchmarks.
   :doc:`/reference/boolean-language`, and the field allows for
   :doc:`/concepts/variables` to appear in the expressions.
 
+- ``(corrections <setting>)`` controls whether the rule's action may produce
+  correction files that Dune reports as promotions. See `Corrections`_ for
+  details. This field has been available since Dune 3.23.
+
 Please note: contrary to makefiles or other build systems, user rules currently
 don't support patterns, such as a rule to produce ``%.y`` from ``%.x`` for any
 given ``%``. This might be supported in the future.
@@ -105,6 +109,44 @@ promote)`` will be ignored, and the source files will be used instead. The
 ``-p/--for-release-of-packages`` flag implies ``--ignore-promote-rules``.
 However, rules that promote only a subset of their targets via ``(only ...)``
 are never ignored.
+
+Corrections
+~~~~~~~~~~~
+
+Rules can opt in to correction discovery with the ``corrections`` field. This
+is useful for custom tools that rewrite, format, lint, or otherwise suggest
+updates to source files without using an explicit ``(diff? ...)`` action.
+
+The field accepts the following settings:
+
+- ``ignore`` is the default. Dune does not look for correction files produced by
+  the rule.
+- ``produce`` makes Dune run the action in a sandbox and, when the action
+  finishes, scan the sandbox for files ending in ``.corrected``. A file named
+  ``foo.corrected`` is treated as the corrected version of ``foo``. If the files
+  differ, Dune prints a diff, fails the rule, and records a promotion from
+  ``foo.corrected`` to ``foo``. The correction can then be applied with
+  ``dune promote`` or ``dune runtest --auto-promote``. If the corrected file is
+  identical to the source file, no promotion is recorded and the rule succeeds.
+
+For example:
+
+.. code:: dune
+
+   (rule
+    (alias runtest)
+    (deps expected-output)
+    (corrections produce)
+    (action
+     (run ./check-and-rewrite.exe expected-output expected-output.corrected)))
+
+The same naming convention applies in subdirectories: ``subdir/foo.corrected``
+is a correction for ``subdir/foo``. Correction files that are themselves
+dependencies of the rule are ignored, so copied dependencies are not promoted by
+accident.
+
+``(corrections produce)`` cannot be combined with ``patch_back_source_tree``
+sandboxing.
 
 Inferred Rules
 ~~~~~~~~~~~~~~

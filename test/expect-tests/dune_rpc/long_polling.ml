@@ -46,7 +46,7 @@ let server_long_poll svar =
     Rpc.Server.Handler.implement_long_poll
       rpc
       sub_proc
-      (Rpc.Server.Source.Svar svar)
+      (Rpc.Long_poll.Source.Svar svar)
       ~equal:Int.equal
       ~diff:(fun ~last ~now ->
         match last with
@@ -119,7 +119,7 @@ let server_long_poll_computed r =
     Rpc.Server.Handler.implement_long_poll
       rpc
       sub_proc
-      (Rpc.Server.Source.Computed
+      (Rpc.Long_poll.Source.Computed
          { get = (fun () -> !r); poll_every = Time.Span.of_secs 0.01 })
       ~equal:Int.equal
       ~diff:(fun ~last ~now ->

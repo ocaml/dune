@@ -96,7 +96,7 @@ module State = struct
 
   (* The build progress lives in a plain [ref], not a [Fiber.Svar.t], so that [on_rule_event]
      (a synchronous Memo callback) can update it. Observers (the status line, the RPC server)
-     read it directly or poll it; see [Rpc.Server.Source.Computed]. *)
+     read it directly or poll it; see [Rpc.Long_poll.Source.Computed]. *)
   let t = ref Initializing
 
   (* This mutable table is safe: it maps paths to lazily created mutexes. *)

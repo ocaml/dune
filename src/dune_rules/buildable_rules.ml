@@ -1,26 +1,6 @@
 open Import
 open Memo.O
 
-let ocaml_flags t ~dir (spec : Dune_lang.Ocaml_flags.Spec.t) =
-  let* expander = Super_context.expander t ~dir in
-  let* flags =
-    let+ ocaml_flags = Ocaml_flags_db.ocaml_flags_env ~dir in
-    Ocaml_flags.make
-      ~spec
-      ~default:ocaml_flags
-      ~eval:(Expander.expand_and_eval_set expander)
-  in
-  Source_tree.is_vendored (Path.Build.drop_build_context_exn dir)
-  >>= function
-  | false -> Memo.return flags
-  | true ->
-    let+ ocaml_version =
-      let+ ocaml = Super_context.context t |> Context.ocaml in
-      ocaml.version
-    in
-    Ocaml_flags.with_vendored_flags ~ocaml_version flags
-;;
-
 let gen_select_rules sctx ~dir compile_info ~for_ =
   Lib.Compile.resolved_selects compile_info ~for_
   |> Resolve.Memo.read_memo

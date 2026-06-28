@@ -1139,7 +1139,7 @@ let handle_final_exns exns =
        List.iter exns ~f:Dune_util.Report_error.report)
 ;;
 
-let run_with_error_collection ?restart_started_at ~build collect_errors =
+let run_with_error_collection ?restart_started_at ~build_started_at ~build collect_errors =
   let build =
     match build with
     | Some build -> build
@@ -1155,12 +1155,11 @@ let run_with_error_collection ?restart_started_at ~build collect_errors =
   let run_id = Process.Build.run_id build in
   let open Fiber.O in
   let f () =
-    let start = Time.now () in
     Dune_trace.emit ~buffered:false Build (fun () ->
       Dune_trace.Event.watch_build_start
         ~run_id:(Run_id.to_int run_id)
         ~restart:(Option.is_some restart_started_at)
-        ~start);
+        ~start:build_started_at);
     Dune_trace.reset_alloc_profile ();
     (* CR-someday amokhov: Currently we invalidate cached timestamps on every
        incremental rebuild. This conservative approach helps us to work around
@@ -1210,7 +1209,7 @@ let run_with_error_collection ?restart_started_at ~build collect_errors =
           (match outcome with
            | Ok _ -> `Success
            | Error `Already_reported -> `Failure)
-        ~start
+        ~start:build_started_at
         ~stop
         ~restart_duration);
     Dune_trace.capture_alloc_profile (`Build (Run_id.to_int run_id))
@@ -1274,7 +1273,7 @@ let complete_action_runner_build = function
          ~cancellation:(Process.Build.cancellation build))
 ;;
 
-let run_build_requests ?restart_started_at ?build (request : Request.t) =
+let run_build_requests ?restart_started_at ~build_started_at ?build (request : Request.t) =
   let open Fiber.O in
   let finish_request goal outcome =
     let* pending =
@@ -1309,7 +1308,7 @@ let run_build_requests ?restart_started_at ?build (request : Request.t) =
   Fiber.finalize
     ~finally:(fun () -> complete_action_runner_build build)
     (fun () ->
-       run_with_error_collection ?restart_started_at ~build (fun () ->
+       run_with_error_collection ?restart_started_at ~build_started_at ~build (fun () ->
          Request.goals request
          |> Fiber.parallel_map ~f:run_request
          >>| List.concat_map ~f:(function
@@ -1330,7 +1329,7 @@ let run ?restart_started_at ?build f =
   in
   let request = Request.create [ Request.Goal.create goal ] in
   let open Fiber.O in
-  run_build_requests ?restart_started_at ?build request
+  run_build_requests ?restart_started_at ~build_started_at:(Time.now ()) ?build request
   >>| function
   | Error `Already_reported -> Error `Already_reported
   | Ok () ->

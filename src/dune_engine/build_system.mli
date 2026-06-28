@@ -81,6 +81,7 @@ end
 
 val run_build_requests
   :  ?restart_started_at:Time.t
+  -> build_started_at:Time.t
   -> ?build:Process.Build.t
   -> Request.t
   -> (unit, [ `Already_reported ]) result Fiber.t

@@ -993,12 +993,6 @@ module Libs = struct
       ; special_builtin_support = None
       ; root_module = None
       }
-    ; { path = "vendor/uutf"
-      ; main_module_name = Some "Uutf"
-      ; include_subdirs = No
-      ; special_builtin_support = None
-      ; root_module = None
-      }
     ]
     @ Libs.local_libraries
     |> List.map ~f:make_lib
@@ -2012,7 +2006,7 @@ let resolve_externals external_libraries =
     let convert = function
       | "threads" -> Some ("threads" ^ Config.ocaml_archive_ext, [ "-I"; "+threads" ])
       | "unix" -> Some ("unix" ^ Config.ocaml_archive_ext, Config.unix_library_flags)
-      | "csexp" | "pp" | "re" | "seq" | "spawn" | "uutf" -> None
+      | "csexp" | "pp" | "re" | "seq" | "spawn" -> None
       | s -> fatal "unhandled external library %s" s
     in
     List.filter_map ~f:convert external_libraries |> List.split

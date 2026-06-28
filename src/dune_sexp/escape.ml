@@ -1,33 +1,8 @@
 open Import
 
-(** Note: on OCaml >= 4.14, this can be switched to the following (and the
-    dependency to [Uutf] can be removed)
-
-    {[
-      let next_valid_utf8_length s i =
-        let decode = String.get_utf_8_uchar s i in
-        Option.some_if (Uchar.utf_decode_is_valid decode) (Uchar.utf_decode_length decode)
-      ;;
-    ]} *)
 let next_valid_utf8_uchar_len s i =
-  let pos = ref i in
-  let buf = Bytes.create 1 in
-  let decoder = Uutf.decoder ~encoding:`UTF_8 `Manual in
-  let rec go () =
-    match Uutf.decode decoder with
-    | `Await ->
-      if !pos >= String.length s
-      then None
-      else (
-        Bytes.set buf 0 (String.get s !pos);
-        incr pos;
-        Uutf.Manual.src decoder buf 0 1;
-        go ())
-    | `Uchar _ -> Some (!pos - i)
-    | `Malformed _ -> None
-    | `End -> Code_error.raise "next_valid_utf8_uchar: `End" []
-  in
-  go ()
+  let decode = String.get_utf_8_uchar s i in
+  Option.some_if (Uchar.utf_decode_is_valid decode) (Uchar.utf_decode_length decode)
 ;;
 
 let quote_length s =

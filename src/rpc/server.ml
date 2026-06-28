@@ -201,6 +201,7 @@ module Session = struct
         (** Pending requests sent to the client. When a response is
           received, the ivar for the response will be filled. *)
       ; mutable requests_in_flight : Request.t Dune_rpc.Private.Id.Map.t
+      ; pollers : Poller.t Dune_rpc.Private.Id.Map.t ref
       ; name : string
       }
 
@@ -231,6 +232,7 @@ module Session = struct
 
     let create (type s) ~id ~pool ~name ~version (chan, s) ~finalizer =
       let pending = Table.create (module Dune_rpc.Private.Id) 16 in
+      let pollers = ref Dune_rpc.Private.Id.Map.empty in
       let module Chan = (val chan : Session with type t = s) in
       { version
       ; chan = Chan (chan, s)
@@ -241,13 +243,18 @@ module Session = struct
             let+ () = Chan.close s
             and+ () = Fiber.of_thunk finalizer
             and+ () = Fiber.Pool.close pool
-            and+ () = close_pending_requests pending in
+            and+ () = close_pending_requests pending
+            and+ () =
+              Dune_rpc.Private.Id.Map.values !pollers
+              |> Fiber.parallel_iter ~f:Poller.fire_cancel
+            in
             ())
       ; state = Uninitialized
       ; id
       ; pool
       ; pending
       ; requests_in_flight = Dune_rpc.Private.Id.Map.empty
+      ; pollers
       ; name
       }
     ;;
@@ -383,7 +390,6 @@ module Session = struct
   type 'a t =
     { base : 'a Stage1.t
     ; handler : 'a t V.Handler.t
-    ; mutable pollers : Poller.t Dune_rpc.Private.Id.Map.t
     }
 
   let get t = Stage1.get t.base
@@ -392,11 +398,7 @@ module Session = struct
   let close t = Stage1.close t.base
   let compare x y = Stage1.compare x.base y.base
   let id t = t.base.id
-
-  let of_stage1 (base : _ Stage1.t) handler =
-    { base; handler; pollers = Dune_rpc.Private.Id.Map.empty }
-  ;;
-
+  let of_stage1 (base : _ Stage1.t) handler = { base; handler }
   let prepare_notification t decl = V.Handler.prepare_notification t.handler decl
 
   let send_notification t { Versioned_intf.Staged.encode } n =
@@ -455,19 +457,19 @@ module Session = struct
   let to_dyn f = Repr.to_dyn (repr (Repr.abstract f))
 
   let find_or_create_poller t id =
-    match Dune_rpc.Private.Id.Map.find t.pollers id with
+    match Dune_rpc.Private.Id.Map.find !(t.base.pollers) id with
     | Some poller -> poller
     | None ->
       let poller = Poller.create () in
-      t.pollers <- Dune_rpc.Private.Id.Map.add_exn t.pollers id poller;
+      t.base.pollers := Dune_rpc.Private.Id.Map.add_exn !(t.base.pollers) id poller;
       poller
   ;;
 
   let cancel_poller t id =
-    match Dune_rpc.Private.Id.Map.find t.pollers id with
+    match Dune_rpc.Private.Id.Map.find !(t.base.pollers) id with
     | None -> None
     | Some poller ->
-      t.pollers <- Dune_rpc.Private.Id.Map.remove t.pollers id;
+      t.base.pollers := Dune_rpc.Private.Id.Map.remove !(t.base.pollers) id;
       Some poller
   ;;
 
@@ -748,17 +750,21 @@ module H = struct
     module Long_poll = struct
       let implement_poll (t : _ t) (sub : _ Procedures.Poll.t) ~on_poll ~on_cancel =
         let on_poll session id =
-          let poller = Session.find_or_create_poller session id in
-          let+ res = on_poll session poller in
-          if Poller.cancelled poller
-          then raise Poll_cancelled
-          else (
-            match res with
-            | Some _ -> ()
-            | None ->
-              let (_ : Poller.t option) = Session.cancel_poller session id in
-              ());
-          res
+          let { Session.base; handler = _ } = session in
+          match base.close.state with
+          | `Closing | `Closed -> raise Poll_cancelled
+          | `Open ->
+            let poller = Session.find_or_create_poller session id in
+            let+ res = on_poll session poller in
+            if Poller.cancelled poller
+            then raise Poll_cancelled
+            else (
+              match res with
+              | Some _ -> ()
+              | None ->
+                let (_ : Poller.t option) = Session.cancel_poller session id in
+                ());
+            res
         in
         let on_cancel session id =
           match Session.cancel_poller session id with

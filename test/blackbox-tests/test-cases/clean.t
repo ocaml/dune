@@ -36,9 +36,9 @@ We can clean the entire workspace to re-run everything:
   foo
   bar
 
-Issue #2288: unlike `dune build`, `dune clean` does not accept source
-directories (or package names); it only accepts paths inside the build
-directory. So cleaning a source directory, or the project root, is rejected.
+Issue #2288: `dune clean` also accepts source directories, not just paths
+inside the build directory, mirroring `dune build`. The corresponding artifacts
+are removed from every build context.
 
   $ mkdir sub
   $ cat >sub/dune <<EOF
@@ -47,19 +47,21 @@ directory. So cleaning a source directory, or the project root, is rejected.
   >  (action (bash "touch baz && echo baz")))
   > EOF
 
-`dune build` accepts the source directory:
-
   $ dune build sub
   baz
+  $ test -e _build/default/sub/baz && echo built
+  built
 
-But `dune clean` rejects it:
+Cleaning the source directory removes its artifacts, leaving the rest intact:
 
   $ dune clean sub
-  Error: sub is not inside the build directory
-  [1]
+  $ test -e _build/default/sub && echo present || echo removed
+  removed
+  $ test -e _build/default/foo && echo present || echo removed
+  present
 
-The project root is rejected too:
+Cleaning the project root cleans the whole build context:
 
   $ dune clean .
-  Error: . is not inside the build directory
-  [1]
+  $ test -e _build/default && echo present || echo removed
+  removed

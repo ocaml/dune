@@ -217,7 +217,8 @@ let get_with_path =
     Memo.exec
       (Memo.create
          ~human_readable_description:(fun p ->
-           Pp.textf "read lock directory %s" (Path.to_string_maybe_quoted p))
+           Pp.textf "read lock directory %s" (Path.to_string_maybe_quoted p)
+           |> Option.some)
          "read-lock-dir"
          ~input:(module Path)
          (fun path ->

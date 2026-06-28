@@ -1673,7 +1673,8 @@ end = struct
         "pkg-resolve"
         ~input:(module Input)
         ~human_readable_description:(fun t ->
-          Pp.textf "- package %s" (Package.Name.to_string t.pkg_digest.name))
+          Pp.textf "- package %s" (Package.Name.to_string t.pkg_digest.name)
+          |> Option.some)
         resolve_impl
     in
     fun (db : DB.t) loc pkg_digest package_universe ->

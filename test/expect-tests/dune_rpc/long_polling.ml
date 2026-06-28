@@ -394,6 +394,62 @@ let%expect_test "long polling - session close cancels in-flight poll" =
     |}]
 ;;
 
+let%expect_test "long polling - session close retains idle poller state" =
+  let current = ref None in
+  let weak = Weak.create 1 in
+  let set_initial_state () =
+    let state = ref 0 in
+    Weak.set weak 0 (Some state);
+    current := Some state
+  in
+  let set_next_state () = current := Some (ref 1) in
+  let read_current () =
+    match !current with
+    | Some state -> state
+    | None -> Code_error.raise "missing state" []
+  in
+  let handler =
+    let rpc = rpc () in
+    Rpc.Server.Handler.implement_long_poll
+      rpc
+      sub_proc
+      (Rpc.Long_poll.Source.Computed
+         { get = read_current; poll_every = Time.Span.of_secs 0.01 })
+      ~equal:( == )
+      ~diff:(fun ~last:_ ~now:_ -> 0);
+    rpc
+  in
+  let run =
+    let client_chan, sessions = setup_direct_client_server () in
+    let client () =
+      Client.connect_with_menu
+        client_chan
+        init
+        ~private_menu:[ Poll sub_proc ]
+        ~f:(fun client ->
+          set_initial_state ();
+          let* poller = poll_exn client in
+          let* (_ : int option) = Client.Stream.next poller in
+          set_next_state ();
+          Chan.close client_chan)
+    in
+    let server () = Server.serve sessions (Rpc.Server.make handler) in
+    Fiber.parallel_iter [ client; server ] ~f:(fun f -> f ())
+  in
+  Scheduler.run (Scheduler.create ()) run;
+  let rec collect = function
+    | 0 -> printfn "state retained"
+    | n ->
+      Gc.full_major ();
+      (match Weak.get weak 0 with
+       | None -> printfn "state collected"
+       | Some _ -> collect (n - 1))
+  in
+  collect 10;
+  ignore (Sys.opaque_identity handler);
+  [%expect {| state retained |}]
+;;
+
 let%expect_test "long polling - cancelling one poller does not stop another" =
   let svar = Fiber.Svar.create 0 in
   let handler = server_long_poll svar in

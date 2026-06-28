@@ -2,7 +2,7 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
     melange = {
-      url = "github:melange-re/melange/v6-54";
+      url = "github:melange-re/melange/v7-54";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     ocaml-overlays = {
@@ -243,15 +243,12 @@
           bootstrap-check =
             let
               # Older nixpkgs needed only to source OCaml 4.02.
-              pkgs_4_02 =
-                import
-                  (builtins.fetchTree {
-                    type = "github";
-                    owner = "nixos";
-                    repo = "nixpkgs";
-                    rev = "7f50d4b33363d3948543f6a02b90a2c66852a453";
-                  })
-                  { inherit (pkgs.stdenv.hostPlatform) system; };
+              pkgs_4_02 = import (builtins.fetchTree {
+                type = "github";
+                owner = "nixos";
+                repo = "nixpkgs";
+                rev = "7f50d4b33363d3948543f6a02b90a2c66852a453";
+              }) { inherit (pkgs.stdenv.hostPlatform) system; };
             in
             pkgs.mkShell {
               inherit INSIDE_NIX;

@@ -3,25 +3,24 @@ module Rpc_registry = Registry
 open Dune_rpc.Private
 open Fiber.O
 module Session_id = Stdune.Id.Make ()
-module User_message = Stdune.User_message
+
+exception Poll_cancelled
 
 module Poller = struct
   module Id = Stdune.Id.Make ()
 
   type t =
     { id : Id.t
-    ; name : Procedures.Poll.Name.t
-    ; session_id : Session_id.t
+    ; cancel : Fiber.Cancel.t
     }
 
-  let create session_id name = { id = Id.gen (); name; session_id }
-
-  let repr =
-    Repr.view (Repr.abstract Id.to_dyn) ~to_:(fun { id; name = _; session_id = _ } -> id)
-  ;;
-
+  let create () = { id = Id.gen (); cancel = Fiber.Cancel.create () }
+  let repr = Repr.view (Repr.abstract Id.to_dyn) ~to_:(fun { id; cancel = _ } -> id)
   let to_dyn = Repr.to_dyn repr
   let compare x y = Id.compare x.id y.id
+  let cancel t = t.cancel
+  let cancelled t = Fiber.Cancel.fired t.cancel
+  let fire_cancel t = Fiber.Cancel.fire t.cancel
 end
 
 (* A source of state observed by long polling. [Svar] uses [Fiber.Svar.wait] to block until
@@ -52,6 +51,11 @@ module Source = struct
           loop ()
       in
       loop ()
+  ;;
+
+  let wake = function
+    | Svar svar -> Fiber.Svar.write svar (Fiber.Svar.read svar)
+    | Computed _ -> Fiber.return ()
   ;;
 end
 
@@ -450,11 +454,11 @@ module Session = struct
 
   let to_dyn f = Repr.to_dyn (repr (Repr.abstract f))
 
-  let find_or_create_poller t (name : Procedures.Poll.Name.t) id =
+  let find_or_create_poller t id =
     match Dune_rpc.Private.Id.Map.find t.pollers id with
     | Some poller -> poller
     | None ->
-      let poller = Poller.create t.base.id name in
+      let poller = Poller.create () in
       t.pollers <- Dune_rpc.Private.Id.Map.add_exn t.pollers id poller;
       poller
   ;;
@@ -561,26 +565,32 @@ module H = struct
                V.Handler.handle_request t.handler session (id, r))
            in
            match result with
-           | Ok r -> r
+           | Ok response -> `Response response
+           | Error [ { Exn_with_backtrace.exn = Poll_cancelled; backtrace = _ } ] ->
+             `Cancelled
            | Error [ { Exn_with_backtrace.exn = Response.Error.E e; backtrace = _ } ] ->
-             Error e
+             `Response (Error e)
            | Error xs ->
              let payload =
                Sexp.List
                  (List.map xs ~f:(fun x -> Exn_with_backtrace.to_dyn x |> Sexp.of_dyn))
              in
-             Error
-               (Response.Error.create
-                  ~kind:Code_error
-                  ~message:"server error"
-                  ~payload
-                  ())
+             `Response
+               (Error
+                  (Response.Error.create
+                     ~kind:Code_error
+                     ~message:"server error"
+                     ~payload
+                     ()))
          in
          Event.emit (Message { kind; meth_; stage = `Stop }) (Session.id session);
-         let+ (_ : [> `Closed | `Ok ]) =
-           Session.Stage1.write session.base (Response (id, response))
-         in
-         ())
+         match response with
+         | `Cancelled -> Fiber.return ()
+         | `Response response ->
+           let+ (_ : [> `Closed | `Ok ]) =
+             Session.Stage1.write session.base (Response (id, response))
+           in
+           ())
       ~finally:(fun () ->
         Session.Stage1.request_finished session.base id;
         Fiber.return ())
@@ -738,24 +748,27 @@ module H = struct
     module Long_poll = struct
       let implement_poll (t : _ t) (sub : _ Procedures.Poll.t) ~on_poll ~on_cancel =
         let on_poll session id =
-          let poller =
-            Session.find_or_create_poller session (Procedures.Poll.name sub) id
-          in
+          let poller = Session.find_or_create_poller session id in
           let+ res = on_poll session poller in
-          let () =
+          if Poller.cancelled poller
+          then raise Poll_cancelled
+          else (
             match res with
             | Some _ -> ()
             | None ->
               let (_ : Poller.t option) = Session.cancel_poller session id in
-              ()
-          in
+              ());
           res
         in
         let on_cancel session id =
-          let poller = Session.cancel_poller session id in
-          match poller with
+          match Session.cancel_poller session id with
           | None -> Fiber.return () (* XXX log *)
-          | Some poller -> on_cancel session poller
+          | Some poller ->
+            Log.verbose_message
+              "rpc poll request cancelled"
+              [ "id", Dune_rpc.Private.Id.to_dyn id ];
+            let* () = Poller.fire_cancel poller in
+            on_cancel session poller
         in
         implement_request t (Procedures.Poll.poll sub) on_poll;
         implement_notification t (Procedures.Poll.cancel sub) on_cancel
@@ -766,41 +779,47 @@ module H = struct
 
       module Status = struct
         type 'a t =
-          | Active of 'a
-          | Cancelled
+          | Idle of 'a
+          | Waiting
       end
 
-      let on_cancel map _session poller =
-        let new_map =
-          Map.update !map poller ~f:(function
-            | None -> assert false
-            | Some Status.Cancelled as s -> s
-            | Some (Active _) -> Some Cancelled)
-        in
-        map := new_map;
-        Fiber.return ()
-      ;;
-
       let make_on_poll map source ~equal ~diff _session poller =
-        let send last =
-          let* () =
+        let cancel = Poller.cancel poller in
+        let wait_for_change last =
+          let wait () =
             match last with
             | None -> Fiber.return ()
             | Some last ->
-              let until x = not (equal x last) in
+              let until x = Fiber.Cancel.fired cancel || not (equal x last) in
               Source.wait source ~until
           in
-          let now = Source.read source in
-          map := Map.set !map poller (Status.Active now);
-          let to_send = diff ~last ~now in
-          Fiber.return (Some to_send)
+          let+ (), _ =
+            Fiber.Cancel.with_handler cancel wait ~on_cancel:(fun () ->
+              Source.wake source)
+          in
+          ()
+        in
+        let send last =
+          map := Map.set !map poller Status.Waiting;
+          let* () = wait_for_change last in
+          if Poller.cancelled poller
+          then (
+            map := Map.remove !map poller;
+            raise Poll_cancelled)
+          else (
+            match Map.find !map poller with
+            | Some Waiting ->
+              let now = Source.read source in
+              map := Map.set !map poller (Status.Idle now);
+              let to_send = diff ~last ~now in
+              Fiber.return (Some to_send)
+            | None | Some (Idle _) ->
+              Code_error.raise "poller changed state while a poll was in flight" [])
         in
         match Map.find !map poller with
         | None -> send None
-        | Some (Active a) -> send (Some a)
-        | Some Cancelled ->
-          map := Map.remove !map poller;
-          Fiber.never
+        | Some (Idle last) -> send (Some last)
+        | Some Waiting -> Code_error.raise "poller already has an in-flight request" []
       ;;
 
       let implement_long_poll (rpc : _ t) proc source ~equal ~diff =
@@ -808,7 +827,9 @@ module H = struct
         implement_poll
           rpc
           proc
-          ~on_cancel:(on_cancel map)
+          ~on_cancel:(fun _session poller ->
+            map := Map.remove !map poller;
+            Fiber.return ())
           ~on_poll:(make_on_poll map source ~equal ~diff)
       ;;
     end

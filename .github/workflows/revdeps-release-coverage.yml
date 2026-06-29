@@ -46,7 +46,7 @@ jobs:
  
     steps:
       - name: Checkout dune
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
  
       - name: Set up OCaml ${{ matrix.ocaml-compiler }}
         uses: ocaml/setup-ocaml@v3

@@ -26,9 +26,7 @@ Set up a nested dune project:
 
   $ checkStart() {
   >   dune trace cat \
-  >     | jq 'select(.name == "init" and .cat == "config")' \
-  >     | head -n 1 \
-  >     || true
+  >     | jq -e 'select(.name == "init" and .cat == "config")'
   > } 1> /dev/null 2>&1
 
   $ dune build ./x &

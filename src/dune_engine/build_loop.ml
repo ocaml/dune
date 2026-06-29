@@ -217,15 +217,15 @@ let rec handle_file_events t file_watcher =
       if (not invalidation_empty) || pending_before
       then (
         if pending_before
-        then (
+        then
           Dune_trace.emit File_watcher (fun () ->
-          let files =
-            List.filter_map events ~f:(fun event ->
-              match (event : Event.File_watcher_event.t) with
-              | Queue_overflow -> None
-              | Fs_memo_event { path; kind } -> Some (path, kind))
-          in
-            Dune_trace.File_watcher_event.debounce_extend ~files ~invalidation_empty));
+            let files =
+              List.filter_map events ~f:(fun event ->
+                match (event : Event.File_watcher_event.t) with
+                | Queue_overflow -> None
+                | Fs_memo_event { path; kind } -> Some (path, kind))
+            in
+            Dune_trace.File_watcher_event.debounce_extend ~files ~invalidation_empty);
         ignore (Debouncer.push t.file_event_debouncer : _))
     in
     let* () = request_restart t invalidation in

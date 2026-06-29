@@ -55,7 +55,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: nixbuild/nix-quick-install-action@v35
-      - run: nix develop .#fmt -c make fmt
+      - run: nix develop .#fmt -c make fmt-preview
 
   diff-on-checkout:
     name: Ensure no files with CRLF line endings are committed to the repo

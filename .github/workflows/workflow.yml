@@ -32,7 +32,7 @@ jobs:
           - ubuntu-latest
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: nixbuild/nix-quick-install-action@v35
       - run: nix build
 
@@ -45,7 +45,7 @@ jobs:
           - ubuntu-latest
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: nixbuild/nix-quick-install-action@v35
       - run: nix develop -i -s CI true -c make test
 
@@ -53,7 +53,7 @@ jobs:
     name: Format
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: nixbuild/nix-quick-install-action@v35
       - run: nix develop .#fmt -c make fmt
 
@@ -61,14 +61,14 @@ jobs:
     name: Ensure no files with CRLF line endings are committed to the repo
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - run: git diff --exit-code
 
   doc:
     name: Documentation
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: nixbuild/nix-quick-install-action@v35
       - run: nix develop .#doc -c make doc
         env:
@@ -83,7 +83,7 @@ jobs:
           - ubuntu-latest
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: nixbuild/nix-quick-install-action@v35
       - run: nix develop -i .#bootstrap-check -c make test-bootstrap-script
 
@@ -96,7 +96,7 @@ jobs:
           - ubuntu-latest
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: nixbuild/nix-quick-install-action@v35
       - uses: nix-community/cache-nix-action@v7
         with:
@@ -117,7 +117,7 @@ jobs:
           - ubuntu-latest
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: nixbuild/nix-quick-install-action@v35
       - uses: nix-community/cache-nix-action@v7
         with:
@@ -208,7 +208,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       # The 32 bit gcc/g++ packages are by default out-of-date so we need to
       # manually update our package listing.
@@ -224,7 +224,7 @@ jobs:
       - name: Load opam cache when not Windows
         if: runner.os != 'Windows'
         id: opam-cache
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: |
             ~/.opam
@@ -234,7 +234,7 @@ jobs:
       - name: Load opam cache when Windows
         if: runner.os == 'Windows'
         id: opam-cache-windows
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: |
             ~/.opam
@@ -284,7 +284,7 @@ jobs:
         if: ${{ matrix.configurator == true }}
 
       - name: Save cache when not Windows
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         if: steps.opam-cache.outputs.cache-hit != 'true' && runner.os != 'Windows'
         with:
           path: |
@@ -293,7 +293,7 @@ jobs:
           key: opam-${{ matrix.os }}-${{ matrix.cache-prefix }}-${{ hashFiles('**/*.opam') }}
 
       - name: Save cache when Windows
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         if: steps.opam-cache-windows.outputs.cache-hit != 'true' && runner.os == 'Windows'
         with:
           path: |
@@ -306,7 +306,7 @@ jobs:
     needs: nix-build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: nixbuild/nix-quick-install-action@v35
       - uses: nix-community/cache-nix-action@v7
         with:
@@ -321,7 +321,7 @@ jobs:
     needs: nix-build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: nixbuild/nix-quick-install-action@v35
       - uses: nix-community/cache-nix-action@v7
         with:
@@ -347,7 +347,7 @@ jobs:
           token: ${{ github.token }}
 
       - name: Checkout Code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Use OCaml 5.2.x
         uses: ocaml/setup-ocaml@v3
@@ -356,7 +356,7 @@ jobs:
       - name: Load opam cache when not Windows
         if: runner.os != 'Windows'
         id: opam-cache
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: |
             ~/.opam
@@ -379,7 +379,7 @@ jobs:
         run: opam exec -- make test-wasm
 
       - name: Save cache when not Windows
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         if: steps.opam-cache.outputs.cache-hit != 'true' && runner.os != 'Windows'
         with:
           path: |
@@ -391,7 +391,7 @@ jobs:
     name: Bootstrap on Cygwin
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Setup Cygwin
         uses: cygwin/cygwin-install-action@v6
         with:
@@ -404,7 +404,7 @@ jobs:
     needs: nix-build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Install OCaml
         uses: ocaml/setup-ocaml@v3
@@ -418,7 +418,7 @@ jobs:
       - name: Load opam cache when not Windows
         if: runner.os != 'Windows'
         id: opam-cache
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: |
             ~/.opam
@@ -440,7 +440,7 @@ jobs:
         run: opam exec -- ./dune.exe test ./test/blackbox-tests/test-cases/oxcaml
 
       - name: Save cache when not Windows
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         if: steps.opam-cache.outputs.cache-hit != 'true' && runner.os != 'Windows'
         with:
           path: |
@@ -453,7 +453,7 @@ jobs:
     needs: nix-build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: nixbuild/nix-quick-install-action@v35
         with:
           nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
@@ -484,7 +484,7 @@ jobs:
         uses: ocaml/setup-ocaml@v3
         with:
           ocaml-compiler: ${{ matrix.ocaml-compiler }}
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Create an empty switch
         run: opam switch create . --empty
       - name: Pin local packages to local dependencies
@@ -499,7 +499,7 @@ jobs:
     needs: nix-build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: nixbuild/nix-quick-install-action@v35
       - run: nix develop .#microbench -c make dune build bench/micro
 
@@ -507,7 +507,7 @@ jobs:
     name: Test that the utop dev tool can be built and run
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: nixbuild/nix-quick-install-action@v35
       - uses: nix-community/cache-nix-action@v7
         with:

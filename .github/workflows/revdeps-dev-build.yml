@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Dune
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up Nix
         uses: nixbuild/nix-quick-install-action@v35

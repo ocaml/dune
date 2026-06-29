@@ -27,20 +27,24 @@ module Source : sig
   val wait : 'a t -> until:('a -> bool) -> unit Fiber.t
 end
 
-module Status : sig
-  type 'a t =
-    | Idle of 'a
-    | Waiting
+(** The set of pollers belonging to a single long-poll implementation. Each poller
+    progresses [Initialized] -> [Active] and may become [Cancelled]. *)
+module Active_set : sig
+  type 'a t
+
+  val create : unit -> 'a t
+
+  (** [cancel t poller] marks [poller] as cancelled, running its [on_cancel] hook with the
+      source's current value. *)
+  val cancel : 'a t -> Poller.t -> unit Fiber.t
 end
 
-module Map : Map.S with type key = Poller.t
-
-(** [make_on_poll map source ~equal ~diff session poller] computes the response for one
-    poll request: it waits (respecting [poller]'s cancellation) until [source]'s value
-    satisfies [equal]-difference from the last one served, then records the new value in
-    [map] and returns [diff ~last ~now]. *)
+(** [make_on_poll set source ~equal ~diff session poller] computes the response for one
+    poll request against [set]: it waits (respecting [poller]'s cancellation) until
+    [source]'s value differs (per [equal]) from the last one served, records it, and
+    returns [diff ~last ~now]. *)
 val make_on_poll
-  :  'a Status.t Map.t ref
+  :  'a Active_set.t
   -> 'a Source.t
   -> equal:('a -> 'a -> bool)
   -> diff:(last:'a option -> now:'a -> 'b)

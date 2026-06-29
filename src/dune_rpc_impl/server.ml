@@ -25,7 +25,7 @@ end
 
 module Session = Rpc.Server.Session
 module Handler = Rpc.Server.Handler
-module Source = Rpc.Server.Source
+module Source = Rpc.Long_poll.Source
 module Csexp_rpc = Rpc.Csexp_rpc
 
 type build_request =

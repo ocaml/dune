@@ -224,7 +224,7 @@ jobs:
       - name: Load opam cache when not Windows
         if: runner.os != 'Windows'
         id: opam-cache
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: |
             ~/.opam
@@ -234,7 +234,7 @@ jobs:
       - name: Load opam cache when Windows
         if: runner.os == 'Windows'
         id: opam-cache-windows
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: |
             ~/.opam
@@ -284,7 +284,7 @@ jobs:
         if: ${{ matrix.configurator == true }}
 
       - name: Save cache when not Windows
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         if: steps.opam-cache.outputs.cache-hit != 'true' && runner.os != 'Windows'
         with:
           path: |
@@ -293,7 +293,7 @@ jobs:
           key: opam-${{ matrix.os }}-${{ matrix.cache-prefix }}-${{ hashFiles('**/*.opam') }}
 
       - name: Save cache when Windows
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         if: steps.opam-cache-windows.outputs.cache-hit != 'true' && runner.os == 'Windows'
         with:
           path: |
@@ -356,7 +356,7 @@ jobs:
       - name: Load opam cache when not Windows
         if: runner.os != 'Windows'
         id: opam-cache
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: |
             ~/.opam
@@ -379,7 +379,7 @@ jobs:
         run: opam exec -- make test-wasm
 
       - name: Save cache when not Windows
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         if: steps.opam-cache.outputs.cache-hit != 'true' && runner.os != 'Windows'
         with:
           path: |
@@ -418,7 +418,7 @@ jobs:
       - name: Load opam cache when not Windows
         if: runner.os != 'Windows'
         id: opam-cache
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: |
             ~/.opam
@@ -440,7 +440,7 @@ jobs:
         run: opam exec -- ./dune.exe test ./test/blackbox-tests/test-cases/oxcaml
 
       - name: Save cache when not Windows
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         if: steps.opam-cache.outputs.cache-hit != 'true' && runner.os != 'Windows'
         with:
           path: |

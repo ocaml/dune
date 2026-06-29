@@ -59,13 +59,70 @@ end
 module Poll_comparable = Comparable.Make (Poller)
 module Map = Poll_comparable.Map
 
+type 'a initial =
+  { source : 'a Source.t
+  ; on_cancel : 'a -> unit Fiber.t
+  }
+
+type 'a active =
+  { value : 'a
+  ; initial : 'a initial
+  }
+
 module Status = struct
   type 'a t =
-    | Idle of 'a
-    | Waiting
+    | Initialized of 'a initial
+    | Active of 'a active
+    | Cancelled
 end
 
-let make_on_poll map source ~equal ~diff _session poller =
+(* The set of pollers belonging to a single long-poll implementation, tracking each
+   poller's lifecycle. Cancelled pollers are kept around so that an in-flight poll can
+   observe the cancellation; they are reclaimed by [find_and_remove_cancelled]. *)
+module Active_set = struct
+  type 'a t = 'a Status.t Map.t ref
+
+  let create () = ref Map.empty
+
+  let initialize (t : _ t) poller initial =
+    match Map.find !t poller with
+    | None | Some Cancelled -> t := Map.set !t poller (Status.Initialized initial)
+    | Some (Active _ | Initialized _) -> Code_error.raise "poller already initialized" []
+  ;;
+
+  let cancel (t : _ t) poller =
+    match Map.find !t poller with
+    | None | Some Cancelled -> Fiber.return ()
+    | Some (Initialized a) ->
+      t := Map.set !t poller Status.Cancelled;
+      a.on_cancel (Source.read a.source)
+    | Some (Active a) ->
+      t := Map.set !t poller Status.Cancelled;
+      a.initial.on_cancel (Source.read a.initial.source)
+  ;;
+
+  let update (t : _ t) poller value =
+    match Map.find !t poller with
+    | Some (Active active) ->
+      t := Map.set !t poller (Status.Active { active with value });
+      `Updated
+    | Some (Initialized initial) ->
+      t := Map.set !t poller (Status.Active { initial; value });
+      `Updated
+    | Some Cancelled -> `Poller_was_cancelled
+    | None -> Code_error.raise "Active_set.update on a non-existent poller" []
+  ;;
+
+  let find_and_remove_cancelled (t : _ t) poller =
+    let res = Map.find !t poller in
+    (match res with
+     | Some Cancelled -> t := Map.remove !t poller
+     | None | Some (Active _) | Some (Initialized _) -> ());
+    res
+  ;;
+end
+
+let make_on_poll active_set source ~equal ~diff _session poller =
   let cancel = Poller.cancel poller in
   let wait_for_change last =
     let wait () =
@@ -81,24 +138,23 @@ let make_on_poll map source ~equal ~diff _session poller =
     ()
   in
   let send last =
-    map := Map.set !map poller Status.Waiting;
     let* () = wait_for_change last in
     if Poller.cancelled poller
-    then (
-      map := Map.remove !map poller;
-      raise Poll_cancelled)
+    then raise Poll_cancelled
     else (
-      match Map.find !map poller with
-      | Some Waiting ->
-        let now = Source.read source in
-        map := Map.set !map poller (Status.Idle now);
+      let now = Source.read source in
+      match Active_set.update active_set poller now with
+      | `Poller_was_cancelled -> raise Poll_cancelled
+      | `Updated ->
         let to_send = diff ~last ~now in
-        Fiber.return (Some to_send)
-      | None | Some (Idle _) ->
-        Code_error.raise "poller changed state while a poll was in flight" [])
+        Fiber.return (Some to_send))
   in
-  match Map.find !map poller with
-  | None -> send None
-  | Some (Idle last) -> send (Some last)
-  | Some Waiting -> Code_error.raise "poller already has an in-flight request" []
+  match Active_set.find_and_remove_cancelled active_set poller with
+  | None ->
+    let initial = { source; on_cancel = (fun _ -> Fiber.return ()) } in
+    Active_set.initialize active_set poller initial;
+    send None
+  | Some (Initialized _) -> send None
+  | Some (Active a) -> send (Some a.value)
+  | Some Cancelled -> raise Poll_cancelled
 ;;

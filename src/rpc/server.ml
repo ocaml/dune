@@ -726,14 +726,12 @@ module H = struct
     ;;
 
     let implement_long_poll (rpc : _ t) proc source ~equal ~diff =
-      let map = ref Long_poll.Map.empty in
+      let active_set = Long_poll.Active_set.create () in
       implement_poll
         rpc
         proc
-        ~on_cancel:(fun _session poller ->
-          map := Long_poll.Map.remove !map poller;
-          Fiber.return ())
-        ~on_poll:(Long_poll.make_on_poll map source ~equal ~diff)
+        ~on_cancel:(fun _session poller -> Long_poll.Active_set.cancel active_set poller)
+        ~on_poll:(Long_poll.make_on_poll active_set source ~equal ~diff)
     ;;
 
     module For_tests = struct

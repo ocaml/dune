@@ -31,6 +31,15 @@ val which
   -> Filename.t
   -> Path.t option Memo.t
 
+(** [bin_path_env ~packages context] is an env holding only the PATH
+    (bin-layout) entries of the dependency closure of [packages] in the lock
+    directory. [None] means the whole lock directory. Empty when the context
+    has no lock directory. *)
+val bin_path_env
+  :  packages:Package.Name.Set.t option
+  -> Context_name.t
+  -> Env.t Memo.t
+
 val exported_env : Context_name.t -> Env.t Memo.t
 val project_ocamlpath : Context_name.t -> Path.t list Memo.t
 val dev_tool_ocamlpath : Dune_pkg.Dev_tool.t -> Path.t list Memo.t

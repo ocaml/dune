@@ -97,15 +97,15 @@ narrowing kicks in):
   $ cat _build/default/other-out
   false
 
-All the lockdir packages' bin layout is added to $PATH:
+Only the transitive dependency closure's packages' bin layouts are added to $PATH:
 
   $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
-  $PWD/_build/_private/default/.pkg/other.0.0.1-$DIGEST1/target/bin
-  $PWD/_build/_private/default/.pkg/direct.0.0.1-$DIGEST2/target/bin
-  $PWD/_build/_private/default/.pkg/transitive.0.0.1-$DIGEST3/target/bin
+  $PWD/_build/_private/default/.pkg/direct.0.0.1-$DIGEST1/target/bin
+  $PWD/_build/_private/default/.pkg/transitive.0.0.1-$DIGEST2/target/bin
 
-Narrowing shrinks the build-dependency set, not just visibility. Previously,
-expanding a %{bin:X}/%{bin-available:X} pform forced the install [cookie] of
+Narrowing shrinks the build-dependency set, not just the visibility and PATH
+shown above. Previously, expanding a %{bin:X}/%{bin-available:X} pform forced
+the install [cookie] of
 every lockdir package through [Artifacts_and_deps.of_closure] (pkg_rules.ml).
 Now only [direct]'s closure is forced, so building a single pform-expanding
 target no longer pulls in [other], a package outside that closure:

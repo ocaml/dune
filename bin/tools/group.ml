@@ -1,32 +1,31 @@
 open Import
 
-module Exec = struct
-  let doc = "Command group for running wrapped tools."
-  let info = Cmd.info ~doc "exec"
-  let group = Cmd.group info (List.map Dune_pkg.Dev_tool.all ~f:Tools_common.exec_command)
-end
+let subcommand ~prefix ~doc f =
+  let info = Cmd.info ~doc prefix in
+  Cmd.group info (List.map Dune_pkg.Dev_tool.all ~f)
+;;
 
-module Install = struct
-  let doc = "Command group for installing wrapped tools."
-  let info = Cmd.info ~doc "install"
+let exec =
+  subcommand
+    ~prefix:"exec"
+    ~doc:"Command group for running wrapped tools."
+    Tools_common.exec_command
+;;
 
-  let group =
-    Cmd.group info (List.map Dune_pkg.Dev_tool.all ~f:Tools_common.install_command)
-  ;;
-end
+let install =
+  subcommand
+    ~prefix:"install"
+    ~doc:"Command group for installing wrapped tools."
+    Tools_common.install_command
+;;
 
-module Which = struct
-  let doc = "Command group for printing the path to wrapped tools."
-  let info = Cmd.info ~doc "which"
-
-  let group =
-    Cmd.group info (List.map Dune_pkg.Dev_tool.all ~f:Tools_common.which_command)
-  ;;
-end
+let which =
+  subcommand
+    ~prefix:"which"
+    ~doc:"Command group for printing the path to wrapped tools."
+    Tools_common.which_command
+;;
 
 let doc = "Command group for wrapped tools."
 let info = Cmd.info ~doc "tools"
-
-let group =
-  Cmd.group info [ Exec.group; Install.group; Which.group; Tools_common.env_command ]
-;;
+let group = Cmd.group info [ exec; install; which; Tools_common.env_command ]

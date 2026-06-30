@@ -26,22 +26,19 @@ let formatter_diff_action =
     in
     Build_system.dep_on_alias_definition (Rules.Dir_rules.Alias_spec.Action action)
   in
-  let formatter_stdout ~loc alias action =
-    let action =
-      let open Action_builder.O in
-      let+ action = action in
-      { Rule.Anonymous_action.action
-      ; loc
-      ; dir = Alias.dir alias
-      ; alias = Some (Alias.name alias)
-      }
-    in
-    Build_system.execute_action_stdout action |> Action_builder.of_memo
+  let formatter_stdout sctx ~loc alias action =
+    Super_context.execute_action_stdout
+      sctx
+      ~alias:(Alias.name alias)
+      ~loc
+      ~dir:(Alias.dir alias)
+      action
+    |> Action_builder.of_memo
   in
-  fun ~loc alias ~input formatter ->
+  fun sctx ~loc alias ~input formatter ->
     let open Action_builder.O in
     let action =
-      let+ formatter = formatter_stdout ~loc alias formatter
+      let+ formatter = formatter_stdout sctx ~loc alias formatter
       and+ () = Action_builder.path (Path.build input) in
       Action.chdir
         (Path.build (Path.Build.parent_exn input))
@@ -147,6 +144,7 @@ let format_action format ~ocamlformat_is_locked ~input ~expander kind =
 ;;
 
 let setup_source_file
+      sctx
       (config : Format_config.t)
       ~dialects
       ~ocamlformat_is_locked
@@ -181,11 +179,11 @@ let setup_source_file
     let loc = Loc.in_file (Path.source file) in
     let input = Path.Build.relative_fname dir (Path.Source.basename file) in
     format_action format ~ocamlformat_is_locked ~input ~expander kind
-    |> formatter_diff_action ~loc alias ~input
+    |> formatter_diff_action sctx ~loc alias ~input
 ;;
 
 let setup_dune_files =
-  let setup_dune_file ~version ~dir alias path =
+  let setup_dune_file sctx ~version ~dir alias path =
     let input_build = Path.Build.relative_fname dir (Path.Source.basename path) in
     let build =
       let input = Path.build input_build in
@@ -194,12 +192,13 @@ let setup_dune_files =
       Action.Full.make (Format_dune_file.action_stdout ~version input)
     in
     formatter_diff_action
+      sctx
       ~loc:(Loc.in_file (Path.source path))
       alias
       ~input:input_build
       build
   in
-  fun (config : Format_config.t) ~version ~dir alias source_dir ->
+  fun sctx (config : Format_config.t) ~version ~dir alias source_dir ->
     match Format_config.includes config Dune with
     | false -> Action_builder.return ()
     | true ->
@@ -208,10 +207,11 @@ let setup_dune_files =
        | Some dune_file ->
          (match Source.Dune_file.path dune_file with
           | None -> Action_builder.return ()
-          | Some path -> setup_dune_file ~version ~dir alias path))
+          | Some path -> setup_dune_file sctx ~version ~dir alias path))
 ;;
 
 let setup_source_files
+      sctx
       config
       ~dialects
       ~ocamlformat_is_locked
@@ -224,11 +224,11 @@ let setup_source_files
   |> Filename.Array.Set.to_list
   |> List.map ~f:(fun file ->
     Path.Source.relative_fname (Source_tree.Dir.path source_dir) file
-    |> setup_source_file config ~dialects ~ocamlformat_is_locked ~expander ~dir alias)
+    |> setup_source_file sctx config ~dialects ~ocamlformat_is_locked ~expander ~dir alias)
   |> Action_builder.all_unit
 ;;
 
-let gen_format_alias (config : Format_config.t) ~version ~dialects ~expander ~dir =
+let gen_format_alias sctx (config : Format_config.t) ~version ~dialects ~expander ~dir =
   let open Action_builder.O in
   Action_builder.of_memo (Source_tree.find_dir (Path.Build.drop_build_context_exn dir))
   >>= function
@@ -240,6 +240,7 @@ let gen_format_alias (config : Format_config.t) ~version ~dialects ~expander ~di
     let alias = Alias.make Alias0.fmt ~dir in
     let+ () =
       setup_source_files
+        sctx
         config
         ~dialects
         ~ocamlformat_is_locked
@@ -247,7 +248,7 @@ let gen_format_alias (config : Format_config.t) ~version ~dialects ~expander ~di
         ~dir
         alias
         source_dir
-    and+ () = setup_dune_files config ~version ~dir alias source_dir in
+    and+ () = setup_dune_files sctx config ~version ~dir alias source_dir in
     ()
 ;;
 
@@ -285,7 +286,7 @@ let setup_alias sctx ~dir =
       let* project = Action_builder.of_memo (Dune_load.find_project ~dir) in
       let dialects = Dune_project.dialects project in
       let version = Dune_project.dune_version project in
-      gen_format_alias config ~version ~dialects ~expander ~dir
+      gen_format_alias sctx config ~version ~dialects ~expander ~dir
     in
     Rules.Produce.Alias.add_deps (Alias.make Alias0.fmt ~dir) format)
 ;;

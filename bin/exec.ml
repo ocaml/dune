@@ -200,7 +200,8 @@ let step ~prog ~args ~common ~no_rebuild ~context ~on_exit () =
   and* args =
     Memo.parallel_map args ~f:(Cmd_arg.expand ~root:(Common.root common) ~sctx)
   in
-  let* env = Super_context.context_env sctx in
+  let dir = dir_of_context common sctx in
+  let* env = Super_context.context_env_by_dir ~dir sctx in
   let env = extend_with_staging_env context env in
   Memo.of_non_reproducible_fiber
   @@ Dune_engine.Process.run_inherit_std_in_out
@@ -347,7 +348,8 @@ let exec_building_directly ~common ~config ~context ~prog ~args ~no_rebuild =
         let open Memo.O in
         let* setup = Util.setup () in
         let sctx = Dune_rules.Main.find_scontext_exn setup ~name:context in
-        let* env = Super_context.context_env sctx
+        let dir = dir_of_context common sctx in
+        let* env = Super_context.context_env_by_dir ~dir sctx
         and* prog =
           let* prog = Cmd_arg.expand ~root:(Common.root common) ~sctx prog in
           get_path_and_build_if_necessary common sctx ~no_rebuild ~prog >>| Path.to_string

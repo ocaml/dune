@@ -56,12 +56,10 @@ lookup resolves to the ambient PATH copy:
   $ cat _build/default/mybin-out
   from system
 
-[(system mybin)] resolves via $PATH. The lockdir provider's bin layout is on
-$PATH, but the shell finds the system binary.
+[(system mybin)] resolves via $PATH.
 
   $ cat _build/default/mybin-system
   from system
 
   $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
-  $PWD/_build/_private/default/.pkg/provider.0.0.1-$DIGEST/target/bin
   $PWD/fakebin

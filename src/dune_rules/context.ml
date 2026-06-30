@@ -87,6 +87,7 @@ and t =
   ; ocaml : Ocaml_toolchain.t Memo.t
   ; findlib_paths : Path.t list Memo.Lazy.t
   ; default_ocamlpath : Path.t list Memo.Lazy.t
+  ; installed_env : Env.t Memo.Lazy.t
   ; build_context : Build_context.t
   ; builder : builder
   ; which : packages:Package.Name.Selection.t -> Filename.t -> Path.t option Memo.t
@@ -204,7 +205,8 @@ let which t fname = t.which ~packages:Package.Name.Selection.All fname
 let which_narrowed_to_packages t ~packages fname = t.which ~packages fname
 let name t = t.builder.name
 let path t = t.builder.path
-let installed_env t = t.builder.env
+let base_env t = t.builder.env
+let installed_env t = Memo.Lazy.force t.installed_env
 let to_dyn_concise t : Dyn.t = Context_name.to_dyn t.builder.name
 let compare a b = Context_name.compare a.builder.name b.builder.name
 
@@ -421,6 +423,10 @@ let create (builder : Builder.t) ~(kind : Kind.t) =
           (fun () ->
              let+ current_env = builder.env
              and+ pkg_env = Pkg_rules.exported_env builder.name in
+             (* [PATH] is not added here because it is contributed per
+                directory by [Env_node], where the set of narrowed lockdir
+                packages is known. *)
+             let pkg_env = Env.remove pkg_env ~var:Env_path.var in
              Env_path.extend_env_concat_path current_env pkg_env)
         |> Memo.Lazy.force
       in
@@ -543,6 +549,13 @@ let create (builder : Builder.t) ~(kind : Kind.t) =
   in
   { kind
   ; builder
+  ; installed_env =
+      Memo.Lazy.create ~name:"context-installed-env-with-lock-dir-path" (fun () ->
+        let* env = builder.env in
+        let+ bin_path =
+          Pkg_rules.bin_path_env ~packages:Package.Name.Selection.All builder.name
+        in
+        Env_path.extend_env_concat_path env bin_path)
   ; build_dir = Context_name.build_dir builder.name
   ; ocaml = Memo.of_thunk (fun () -> Memo.Lazy.force ocaml_and_build_env_kind >>| fst)
   ; findlib_paths =

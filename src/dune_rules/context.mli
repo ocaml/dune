@@ -45,7 +45,16 @@ val ocaml : t -> Ocaml_toolchain.t Memo.t
 val build_context : t -> Build_context.t
 val kind : t -> Kind.t
 val findlib_paths : t -> Path.t list Memo.t
+
+(** The environment for this context, including the [PATH] of every package in
+    the lock directory. Consumers that resolve binaries per directory should use
+    [Super_context.context_env_by_dir] instead, which narrows that [PATH] to the
+    directory's owning package. *)
 val installed_env : t -> Env.t Memo.t
+
+(** [installed_env] without any lock directory [PATH]. *)
+val base_env : t -> Env.t Memo.t
+
 val default_ocamlpath : t -> Path.t list Memo.t
 val findlib_toolchain : t -> Context_name.t option
 val instrument_with : t -> Lib_name.t list

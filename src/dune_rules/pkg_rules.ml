@@ -2561,14 +2561,16 @@ let all_deps universe =
 
 let all_project_deps context = all_deps (Dependencies context)
 
-let project_deps_closure ~(packages : Package.Name.Selection.t) context =
+let project_deps ~(packages : Package.Name.Selection.t) ~(direct_only : bool) context =
   let+ all_project_deps = all_project_deps context in
   match packages with
   | All -> all_project_deps
   | Only packages ->
-    List.filter all_project_deps ~f:(fun (pkg : Pkg.t) ->
-      Package.Name.Set.mem packages pkg.info.name)
-    |> Pkg.top_closure
+    let filtered =
+      List.filter all_project_deps ~f:(fun (pkg : Pkg.t) ->
+        Package.Name.Set.mem packages pkg.info.name)
+    in
+    if direct_only then filtered else Pkg.top_closure filtered
 ;;
 
 let describe_packages : Package.Name.Selection.t -> string = function
@@ -2599,7 +2601,7 @@ let lock_dir_binaries =
            (Context_name.to_string context)))
     (fun (context, packages) ->
        let+ { binaries; dep_info = _ } =
-         project_deps_closure ~packages context
+         project_deps ~direct_only:false ~packages context
          >>= Action_expander.Artifacts_and_deps.of_closure
        in
        binaries)
@@ -2645,6 +2647,29 @@ let exported_env context =
   let env = Pkg.build_env_of_deps all_project_deps in
   let vars = Env.Map.map env ~f:Value_list_env.string_of_env_values in
   Env.extend Env.empty ~vars
+;;
+
+let env_for_packages ~(packages : Package.Name.Selection.t) ~(direct_only : bool) context =
+  Memo.push_stack_frame ~human_readable_description:(fun () ->
+    Pp.textf
+      "lock directory environment of %s for context %S"
+      (describe_packages packages)
+      (Context_name.to_string context))
+  @@ fun () ->
+  lock_dir_active context
+  >>= function
+  | false -> Memo.return Env.empty
+  | true ->
+    let+ deps = project_deps ~packages ~direct_only context in
+    let vars =
+      Pkg.build_env_of_deps deps |> Env.Map.map ~f:Value_list_env.string_of_env_values
+    in
+    Env.extend Env.empty ~vars
+;;
+
+let bin_paths_for_packages ~packages context =
+  let+ env = env_for_packages ~packages ~direct_only:false context in
+  Env_path.path env
 ;;
 
 let find_package ctx pkg =

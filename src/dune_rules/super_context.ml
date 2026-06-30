@@ -90,6 +90,10 @@ let get_impl t dir =
   in
   let profile = Context.profile t.context in
   let owning_package_deps = expander >>= Expander.package_depends_by_src_dir in
+  let lockdir_bin_env =
+    let* packages = owning_package_deps in
+    Pkg_rules.bin_env_for_packages ~packages (Context.name t.context)
+  in
   Env_node.make
     ~dir
     ~config_stanza
@@ -99,6 +103,7 @@ let get_impl t dir =
     ~default_env:t.context_env
     ~default_artifacts:t.artifacts
     ~owning_package_deps
+    ~lockdir_bin_env
 ;;
 
 (* Here we jump through some hoops to construct [t] as well as create a
@@ -232,6 +237,7 @@ let make_default_env_node
       let* () = Memo.return () in
       Code_error.raise "[expander_for_artifacts] in [default_env] is undefined" []
     in
+    let lockdir_bin_env = Pkg_rules.bin_env_for_packages ~packages:None context.name in
     fire_hooks config_stanza ~profile;
     Env_node.make
       ~dir
@@ -242,6 +248,7 @@ let make_default_env_node
       ~default_env:root_env
       ~default_artifacts:artifacts
       ~owning_package_deps:(Memo.return None)
+      ~lockdir_bin_env
   in
   make
     ~config_stanza:env_nodes.context

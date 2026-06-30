@@ -13,6 +13,7 @@ val make
   -> default_env:Env.t Memo.t
   -> default_artifacts:Artifacts.t Memo.t
   -> owning_package_deps:Package.Name.Set.t option Memo.t
+  -> lockdir_bin_env:Env.t Memo.t
   -> t
 
 val external_env : t -> Env.t Memo.t

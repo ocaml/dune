@@ -126,8 +126,8 @@ same.
   $PWD/_build/_private/default/.pkg/tool_provider.0.0.1-$DIGEST/target/bin
 
 With a package defined in the project, *with a dir field, but no dependencies*,
-the tools are not resolved. NOTE that the bin layout of [tool_provider] is
-still on $PATH.
+the tools are not resolved, and [tool_provider]'s bin layout is no longer added
+to $PATH (the package declares no dependencies).
 
   $ make_dune_project 3.24
   $ cat >> dune-project << 'EOF'
@@ -149,7 +149,8 @@ still on $PATH.
   [1]
 
   $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
-  $PWD/_build/_private/default/.pkg/tool_provider.0.0.1-$DIGEST/target/bin
+  
+  [1]
 
 With a package defined in the project, *with a dir field, and explicit depends on
 [tool_provider]*, the tools are now resolved.

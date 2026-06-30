@@ -60,10 +60,11 @@ same:
   $ cat _build/default/mybin-out
   from workspace
 
-The lockdir [provider]'s bin layout is still on $PATH:
+The lockdir [provider]'s bin layout is NOT on $PATH:
 
   $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
-  $PWD/_build/_private/default/.pkg/provider.0.0.1-$DIGEST/target/bin
+  
+  [1]
 
 When the workspace binary is DISABLED via [(enabled_if false)], its
 [local_bins] origin is filtered out and resolution falls through to the lockdir
@@ -117,7 +118,8 @@ lookup fails to resolve:
   $ cat _build/default/mybin-avail
   false
 
-The lockdir [provider]'s bin layout is on $PATH:
+The lockdir [provider]'s bin layout is NOT on $PATH:
 
   $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
-  $PWD/_build/_private/default/.pkg/provider.0.0.1-$DIGEST/target/bin
+  
+  [1]

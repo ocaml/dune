@@ -108,7 +108,6 @@ All the packages' bin layouts are added to $PATH:
   $PWD/_build/_private/default/.pkg/provider.0.0.1-$DIGEST1/target/bin
   $PWD/_build/_private/default/.pkg/check-env.0.0.1-$DIGEST2/target/bin
 
-
 With a package defined in the project, *with a dir field, but no dependencies*,
 the program mybin is not found in PATH or via the bin pform, since the rule for
 building it gets disabled:
@@ -139,9 +138,12 @@ disabled.
   cat: _build/default/path-output: No such file or directory
   
 
+
+
 With a package defined in the project, *with a dir field, and explicit depends
-on only [check-env]*, the program mybin is still not found via the bin pform,
-but can be found on the PATH.
+on only [check-env]*, the program mybin is not found via the bin pform or on
+the PATH.
+
 
   $ make_dune_project 3.24
   $ cat >> dune-project << 'EOF'
@@ -153,7 +155,16 @@ but can be found on the PATH.
   > EOF
 
   $ dune clean
-  $ dune build @all
+  $ dune build @all 2>&1 | dune_cmd subst '.*/bin/sh([:0-9 ]|line)*:' '$SH:' | dune_cmd subst 'command not found' 'not found'
+  File "dune", lines 11-17, characters 0-203:
+  11 | (rule
+  12 |  (alias test-sys)
+  13 |  (enabled_if %{bin-available:check-env})
+  14 |  (deps (package provider))
+  15 |  ; Check that the binary can be found on PATH
+  16 |  (action
+  17 |    (with-stdout-to system-mybin-output (system mybin))))
+  $SH: mybin: not found
   File "dune", line 10, characters 37-49:
   10 |    (with-stdout-to mybin-output (run %{bin:mybin}))))
                                             ^^^^^^^^^^^^
@@ -167,16 +178,14 @@ but can be found on the PATH.
   cat: _build/default/mybin-output: No such file or directory
   [1]
 
-Currently, the filtering is only happening when running 'which' and not when
-setting up the context's env. So, all the packages' bin layouts are added to
-$PATH:
+The PATH is correctly filtered and [mybin] is not found on the PATH:
 
   $ cat _build/default/system-mybin-output
-  from provider
+  cat: _build/default/system-mybin-output: No such file or directory
+  [1]
 
   $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
-  $PWD/_build/_private/default/.pkg/provider.0.0.1-$DIGEST1/target/bin
-  $PWD/_build/_private/default/.pkg/check-env.0.0.1-$DIGEST2/target/bin
+  $PWD/_build/_private/default/.pkg/check-env.0.0.1-$DIGEST/target/bin
 
 With a package defined in the project, *with a dir field, and explicit depends
 on only [provider]*, the rules for building [mybin] are disabled since the
@@ -207,6 +216,8 @@ The path output is not generated since the check-env package is missing from (de
   $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
   cat: _build/default/path-output: No such file or directory
   
+
+
 
 With a package defined in the project, *with a dir field, and explicit depends
 on both [check-env] and [provider]*, mybin is found both on the PATH and via

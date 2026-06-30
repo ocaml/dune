@@ -244,9 +244,10 @@ Formatting actions receive environment variables from the (env ...) stanza:
   File "enabled/env-vars/reason_file.re", line 1, characters 0-0:
   --- enabled/env-vars/reason_file.re
   +++ enabled/env-vars/reason_file.re.corrected
-  @@ -1 +1,2 @@
+  @@ -1 +1,3 @@
   -let z = ();
   +Sys.argv: ../install/default/bin/refmt enabled/env-vars/reason_file.re
+  +REFMT_PRINT_WIDTH=120
   +refmt output
   [1]
   $ dune promote enabled/env-vars/reason_file.re

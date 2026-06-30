@@ -3,23 +3,7 @@ open Import
 module Exec = struct
   let doc = "Command group for running wrapped tools."
   let info = Cmd.info ~doc "exec"
-
-  let group =
-    Cmd.group
-      info
-      (List.map
-         [ Ocamlformat
-         ; Ocamllsp
-         ; Ocamlearlybird
-         ; Odig
-         ; Opam_publish
-         ; Dune_release
-         ; Ocaml_index
-         ; Merlin
-         ; Utop
-         ]
-         ~f:Tools_common.exec_command)
-  ;;
+  let group = Cmd.group info (List.map Dune_pkg.Dev_tool.all ~f:Tools_common.exec_command)
 end
 
 module Install = struct

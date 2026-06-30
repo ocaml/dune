@@ -60,6 +60,12 @@ Output the help text:
              executable (pass flags to odig after the '--' argument, such as
              'dune tools exec odig -- --help').
   
+         odoc [OPTION]… [ARGS]…
+             Wrapper for running odoc intended to be run automatically by a
+             text editor. All positional arguments will be passed to the odoc
+             executable (pass flags to odoc after the '--' argument, such as
+             'dune tools exec odoc -- --help').
+  
          opam-publish [OPTION]… [ARGS]…
              Wrapper for running opam-publish intended to be run automatically
              by a text editor. All positional arguments will be passed to the

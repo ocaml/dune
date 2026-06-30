@@ -48,6 +48,7 @@ type t =
   ; mutable pending_reset : Memo.Invalidation.t option
   ; mutable watch_restart_started_at : Time.t option
   ; mutable status_overlay : Console.Status_line.overlay option
+  ; mutable build_duration_section : Console.Status_line.section option
   ; file_event_debouncer : Debouncer.t
   ; mutable wakeup : Trigger.t
   ; mutable wakeup_generation : int
@@ -68,6 +69,22 @@ let clear_status_overlay t =
 let set_status_overlay t message =
   clear_status_overlay t;
   t.status_overlay <- Some (Console.Status_line.add_overlay message)
+;;
+
+let clear_build_duration_section t =
+  Option.iter t.build_duration_section ~f:Console.Status_line.remove_section;
+  t.build_duration_section <- None
+;;
+
+let set_build_duration_section t message =
+  clear_build_duration_section t;
+  t.build_duration_section <- Some (Console.Status_line.add_section message)
+;;
+
+let format_duration duration = sprintf "%.1fs" (Time.Span.to_secs duration)
+
+let format_elapsed_since started_at =
+  sprintf "[%s]" (format_duration (Time.diff (Time.now ()) started_at))
 ;;
 
 let build_finish t (build_result : Build_outcome.t) =
@@ -154,8 +171,7 @@ let request_restart t invalidation =
           t
           (Live
              (fun () ->
-               let elapsed = Time.diff (Time.now ()) now |> Time.Span.to_secs in
-               Pp.textf "Restarting current build... (%.1fs)" elapsed));
+               Pp.textf "Restarting current build... %s" (format_elapsed_since now)));
         t.status <- Restarting_build run_id;
         let+ () = Process.Build.cancel_current () in
         Dune_trace.emit Build (fun () ->
@@ -183,8 +199,9 @@ let wait_for_file_event_debounce t =
     t
     (Live
        (fun () ->
-         let elapsed = Time.diff (Time.now ()) started_at |> Time.Span.to_secs in
-         Pp.textf "Waiting for filesystem changes to settle... (%.1fs)" elapsed));
+         Pp.textf
+           "Waiting for filesystem changes to settle... %s"
+           (format_elapsed_since started_at)));
   let rec loop () =
     match Debouncer.latest t.file_event_debouncer with
     | None -> Fiber.return ()
@@ -237,6 +254,7 @@ let create () =
   ; pending_reset = None
   ; watch_restart_started_at = None
   ; status_overlay = None
+  ; build_duration_section = None
   ; file_event_debouncer = Debouncer.create ()
   ; wakeup = Trigger.create ()
   ; wakeup_generation = 0
@@ -258,6 +276,7 @@ let run t f =
     ignore (Fs_memo.init ~dune_file_watcher:None : Memo.Invalidation.t);
     Fiber.finalize f ~finally:(fun () ->
       clear_status_overlay t;
+      clear_build_duration_section t;
       Fiber.return ())
   | Some file_watcher ->
     Fs_memo.init ~dune_file_watcher:(Some file_watcher) |> Memo.reset;
@@ -266,6 +285,7 @@ let run t f =
       (fun () ->
          Fiber.finalize f ~finally:(fun () ->
            clear_status_overlay t;
+           clear_build_duration_section t;
            File_watcher.close file_watcher;
            Fiber.return ()))
 ;;
@@ -299,7 +319,11 @@ let run_current_build
    | Building _ -> assert false
    | Standing_by | Restarting_build _ -> ());
   t.status <- Building run_id;
+  let build_started_at = Time.now () in
   clear_status_overlay t;
+  set_build_duration_section
+    t
+    (Live (fun () -> Pp.text (format_elapsed_since build_started_at)));
   t.current_request <- Some request;
   let* outcome =
     Fiber.finalize
@@ -310,12 +334,17 @@ let run_current_build
              ~run_id
              ~cancellation:(Fiber.Cancel.create ())
          in
-         Build_system.run_build_requests ?restart_started_at ~build:build_ctx request)
+         Build_system.run_build_requests
+           ?restart_started_at
+           ~build_started_at
+           ~build:build_ctx
+           request)
       ~finally:(fun () ->
         t.current_request <- None;
         Fiber.return ())
   in
   let+ () = Scheduler.cleanup_subreaper_child_processes () in
+  let duration = Time.diff (Time.now ()) build_started_at in
   let next =
     match t.status with
     | Restarting_build _
@@ -329,6 +358,10 @@ let run_current_build
       t.watch_restart_started_at <- None;
       `Done
   in
+  (match next with
+   | `Restart -> ()
+   | `Done ->
+     set_build_duration_section t (Constant (Pp.textf "[%s]" (format_duration duration))));
   outcome, next, build_start_input_change_generation, build_start_wakeup_generation
 ;;
 

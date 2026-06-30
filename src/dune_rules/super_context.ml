@@ -3,7 +3,9 @@ open Memo.O
 
 type t =
   { context : Context.t
-  ; context_env : Env.t Memo.t (** context env with additional variables *)
+  ; context_env : Env.t Memo.t
+    (** context env with additional variables, but doesn't contain the lockdir
+        packages in PATH. Use context_env_by_dir with ~dir. *)
   ; default_env : Env_node.t Memo.Lazy.t
   ; host : t option
   ; root_expander : Expander.t
@@ -88,6 +90,11 @@ let get_impl t dir =
   in
   let profile = Context.profile t.context in
   let visible_packages = expander >>= Expander.visible_packages in
+  let lockdir_bin_env =
+    let* packages = visible_packages in
+    let* context = Context.host t.context in
+    Pkg_rules.bin_path_env ~packages (Context.name context)
+  in
   Env_node.make
     ~dir
     ~config_stanza
@@ -97,6 +104,7 @@ let get_impl t dir =
     ~default_env:t.context_env
     ~default_artifacts:t.artifacts
     ~visible_packages
+    ~lockdir_bin_env
 ;;
 
 (* Here we jump through some hoops to construct [t] as well as memoized
@@ -243,6 +251,7 @@ let make_default_env_node
       let* () = Memo.return () in
       Code_error.raise "[expander_for_artifacts] in [default_env] is undefined" []
     in
+    let lockdir_bin_env = Pkg_rules.bin_path_env ~packages:None context.name in
     fire_hooks config_stanza ~profile;
     Env_node.make
       ~dir
@@ -253,6 +262,7 @@ let make_default_env_node
       ~default_env:root_env
       ~default_artifacts:artifacts
       ~visible_packages:(Memo.return None)
+      ~lockdir_bin_env
   in
   make
     ~config_stanza:env_nodes.context
@@ -401,4 +411,4 @@ let () =
 
 let context t = t.context
 let env_node t ~dir = t.get_node dir
-let context_env t = t.context_env
+let context_env_by_dir t ~dir = env_node t ~dir >>= Env_node.external_env

@@ -421,6 +421,10 @@ let create (builder : Builder.t) ~(kind : Kind.t) =
           (fun () ->
              let+ current_env = builder.env
              and+ pkg_env = Pkg_rules.exported_env builder.name in
+             (* [PATH] is not added here because it is contributed per
+                directory by [Env_node], where the set of narrowed lockdir
+                packages is known. *)
+             let pkg_env = Env.remove pkg_env ~var:Env_path.var in
              Env_path.extend_env_concat_path current_env pkg_env)
         |> Memo.Lazy.force
       in

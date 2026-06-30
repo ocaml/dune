@@ -74,7 +74,7 @@ The rule depends on the binary from the provider lockdir package:
   $ dune rules --format=json @test | jq_dune '.[] | ruleDepFilePaths' | censor
   "_build/_private/default/.pkg/provider.0.0.1-$DIGEST/target/bin/mybin"
 
-All the packages' bin layouts are added to $PATH:
+All the packages' bin directories are added to $PATH:
 
   $ cat _build/default/system-mybin-output
   from provider
@@ -99,7 +99,7 @@ the same.
   $ cat _build/default/mybin-output
   from provider
 
-All the packages' bin layouts are added to $PATH:
+All the packages' bin directories are added to $PATH:
 
   $ cat _build/default/system-mybin-output
   from provider
@@ -107,7 +107,6 @@ All the packages' bin layouts are added to $PATH:
   $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
   $PWD/_build/_private/default/.pkg/provider.0.0.1-$DIGEST1/target/bin
   $PWD/_build/_private/default/.pkg/check-env.0.0.1-$DIGEST2/target/bin
-
 
 With a package defined in the project, *with a dir field, but no dependencies*,
 the program mybin is not found in PATH or via the bin pform, since the rule for
@@ -139,10 +138,10 @@ disabled.
   cat: _build/default/path-output: No such file or directory
   
 
-
 With a package defined in the project, *with a dir field, and explicit depends
-on only [check-env]*, the program mybin is still not found via the bin pform,
-but can be found on the PATH.
+on only [check-env]*, the program mybin is not found via the bin pform or on
+the PATH.
+
 
   $ make_dune_project 3.24
   $ cat >> dune-project << 'EOF'
@@ -154,7 +153,7 @@ but can be found on the PATH.
   > EOF
 
   $ dune clean
-  $ dune build @all
+  $ dune build @all 2>&1 | dune_cmd subst '.*/bin/sh([:0-9 ]|line)*:' '$SH:' | dune_cmd subst 'command not found' 'not found'
   File "dune", line 10, characters 37-49:
   10 |    (with-stdout-to mybin-output (run %{bin:mybin}))))
                                             ^^^^^^^^^^^^
@@ -167,16 +166,16 @@ but can be found on the PATH.
   cat: _build/default/mybin-output: No such file or directory
   [1]
 
-Currently, the filtering is only happening when running 'which' and not when
-setting up the context's env. So, all the packages' bin layouts are added to
-$PATH:
+The narrowed PATH does not include [provider], since it is not in [mypkg]'s
+dependencies. But the [@test-sys] rule declares [(deps (package provider))],
+which adds that package's install root to the action's environment, so the bare
+name resolves.
+
+  $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
+  $PWD/_build/_private/default/.pkg/check-env.0.0.1-$DIGEST/target/bin
 
   $ cat _build/default/system-mybin-output
   from provider
-
-  $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
-  $PWD/_build/_private/default/.pkg/provider.0.0.1-$DIGEST1/target/bin
-  $PWD/_build/_private/default/.pkg/check-env.0.0.1-$DIGEST2/target/bin
 
 The [(deps (package provider))] declaration on [@test-sys] is an independent,
 action-level dependency. Its documented meaning is to build [provider] and add
@@ -218,7 +217,6 @@ The path output is not generated since the check-env package is missing from (de
   cat: _build/default/path-output: No such file or directory
   
 
-
 With a package defined in the project, *with a dir field, and explicit depends
 on both [check-env] and [provider]*, mybin is found both on the PATH and via
 the bin pform.
@@ -238,7 +236,7 @@ the bin pform.
   $ cat _build/default/mybin-output
   from provider
 
-The bin layouts for all the packages that we depend on, are added to $PATH:
+The bin directories of all the packages we depend on are added to $PATH:
 
   $ cat _build/default/system-mybin-output
   from provider

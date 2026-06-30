@@ -204,7 +204,14 @@ let which t fname = t.which ~packages:None fname
 let which_narrowed_to_packages t ~packages fname = t.which ~packages:(Some packages) fname
 let name t = t.builder.name
 let path t = t.builder.path
-let installed_env t = t.builder.env
+let base_env t = t.builder.env
+
+let installed_env t =
+  let* env = t.builder.env in
+  let+ bin_path = Pkg_rules.bin_path_env ~packages:None t.builder.name in
+  Env_path.extend_env_concat_path env bin_path
+;;
+
 let to_dyn_concise t : Dyn.t = Context_name.to_dyn t.builder.name
 let compare a b = Context_name.compare a.builder.name b.builder.name
 
@@ -421,6 +428,10 @@ let create (builder : Builder.t) ~(kind : Kind.t) =
           (fun () ->
              let+ current_env = builder.env
              and+ pkg_env = Pkg_rules.exported_env builder.name in
+             (* [PATH] is not added here because it is contributed per
+                directory by [Env_node], where the set of narrowed lockdir
+                packages is known. *)
+             let pkg_env = Env.remove pkg_env ~var:Env_path.var in
              Env_path.extend_env_concat_path current_env pkg_env)
         |> Memo.Lazy.force
       in

@@ -20,13 +20,13 @@ let dialect_and_ml_kind file =
 
 let execute_pp_action ~sctx file pp_file dump_file =
   let open Memo.O in
+  let dir = pp_file |> Path.parent_exn |> Path.as_in_build_dir_exn in
   let* expander =
     let bindings =
       Dune_lang.Pform.Map.singleton
         (Var Input_file)
         [ Dune_lang.Value.Path (Path.build (pp_file |> Path.as_in_build_dir_exn)) ]
     in
-    let dir = pp_file |> Path.parent_exn |> Path.as_in_build_dir_exn in
     Super_context.expander sctx ~dir >>| Dune_rules.Expander.add_bindings ~bindings
   in
   let context = Dune_rules.Expander.context expander in
@@ -58,7 +58,7 @@ let execute_pp_action ~sctx file pp_file dump_file =
       in
       Action_builder.evaluate_and_collect_facts build
     in
-    let+ env = Dune_rules.Super_context.context_env sctx
+    let+ env = Dune_rules.Super_context.context_env_by_dir ~dir sctx
     and+ execution_parameters = Dune_engine.Execution_parameters.default in
     let targets =
       let unvalidated = Targets.File.create dump_file in

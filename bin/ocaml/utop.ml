@@ -71,15 +71,13 @@ let term =
             else Memo.return ()
           in
           let sctx = Dune_rules.Main.find_scontext_exn setup ~name:ctx_name in
-          let* requires =
-            let dir = Path.Build.relative (Context.build_dir context) dir in
-            Utop.requires_under_dir sctx ~dir
-          in
+          let build_dir = Path.Build.relative (Context.build_dir context) dir in
+          let* requires = Utop.requires_under_dir sctx ~dir:build_dir in
           let+ requires = Resolve.read_memo requires
           and+ lib_config =
             let+ ocaml = Context.ocaml context in
             ocaml.lib_config
-          and+ env = Super_context.context_env sctx in
+          and+ env = Super_context.context_env_by_dir ~dir:build_dir sctx in
           let env =
             Dune_rules.Lib_flags.L.toplevel_ld_paths requires lib_config
             |> Path.Set.fold

@@ -3,7 +3,9 @@ open Memo.O
 
 type t =
   { context : Context.t
-  ; context_env : Env.t Memo.t (** context env with additional variables *)
+  ; context_env : Env.t Memo.t
+    (** context env with additional variables, but doesn't contain the lockdir
+        packages in PATH. Use context_env_by_dir with ~dir. *)
   ; default_env : Env_node.t Memo.Lazy.t
   ; host : t option
   ; root_expander : Expander.t
@@ -88,6 +90,11 @@ let get_impl t dir =
   in
   let profile = Context.profile t.context in
   let visible_packages = expander >>= Expander.visible_packages in
+  let lockdir_bin_env =
+    let* packages = visible_packages in
+    let* context = Context.host t.context in
+    Pkg_rules.bin_path_env ~packages (Context.name context)
+  in
   Env_node.make
     ~dir
     ~config_stanza
@@ -97,6 +104,7 @@ let get_impl t dir =
     ~default_env:t.context_env
     ~default_artifacts:t.artifacts
     ~visible_packages
+    ~lockdir_bin_env
 ;;
 
 (* Here we jump through some hoops to construct [t] as well as memoized
@@ -159,16 +167,25 @@ let create ~context ~host_env_tree ~default_env ~root_expander ~artifacts ~conte
 let extend_action_env t ~dir action =
   let open Action_builder.O in
   let+ (action : Action.Full.t) = action
-  and+ env =
+  and+ env, local_bin_dirs =
     Action_builder.of_memo
       (let open Memo.O in
-       t.get_node dir >>= Env_node.external_env)
+       let* node = t.get_node dir in
+       let+ env = Env_node.env_without_local_bins node
+       and+ local_bin_dirs = Env_node.local_bin_dirs node in
+       env, local_bin_dirs)
   in
   (* Cons path-like vars from the action's environment (bin-layout PATH,
      package-layout OCAMLPATH/etc.) onto the directory env so that both layout
      and system entries remain visible. Other vars from the action's environment
      overwrite dir env. *)
   let env = Install.Roots.extend_env_concat_path_vars env action.props.env in
+  (* [(env (binaries ...))] is the most specific contributor to [PATH], so it is
+     added last: a binary staged by [(deps (package ...))] must not shadow one
+     the user bound explicitly. *)
+  let env =
+    List.fold_right local_bin_dirs ~init:env ~f:(fun dir env -> Env_path.cons env ~dir)
+  in
   Action.Full.add_env env action
 ;;
 
@@ -243,6 +260,7 @@ let make_default_env_node
       let* () = Memo.return () in
       Code_error.raise "[expander_for_artifacts] in [default_env] is undefined" []
     in
+    let lockdir_bin_env = Pkg_rules.bin_path_env ~packages:None context.name in
     fire_hooks config_stanza ~profile;
     Env_node.make
       ~dir
@@ -253,6 +271,7 @@ let make_default_env_node
       ~default_env:root_env
       ~default_artifacts:artifacts
       ~visible_packages:(Memo.return None)
+      ~lockdir_bin_env
   in
   make
     ~config_stanza:env_nodes.context
@@ -267,11 +286,11 @@ let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
   let env =
     Memo.lazy_ ~name:"super-context-environment" (fun () ->
       let* base =
-        let* base = Context.installed_env context in
+        let* base = Context.base_env context in
         match host with
         | None -> Memo.return base
         | Some { context; _ } ->
-          let+ env = Context.installed_env context in
+          let+ env = Context.base_env context in
           (match Env.get env Env_path.var with
            | None -> Env.remove base ~var:Env_path.var
            | Some value -> Env.add base ~var:Env_path.var ~value)
@@ -401,4 +420,4 @@ let () =
 
 let context t = t.context
 let env_node t ~dir = t.get_node dir
-let context_env t = t.context_env
+let context_env_by_dir t ~dir = env_node t ~dir >>= Env_node.external_env

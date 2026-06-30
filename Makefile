@@ -134,6 +134,10 @@ start: $(BIN)
 fmt: $(BIN)
 	@$(BIN) fmt
 
+.PHONY: fmt-preview
+fmt-preview: $(BIN)
+	@$(BIN) fmt --preview
+
 .PHONY: promote
 promote: $(BIN)
 	@$(BIN) promote

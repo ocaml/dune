@@ -2566,6 +2566,24 @@ let all_deps universe =
 
 let all_project_deps context = all_deps (Dependencies context)
 
+let project_deps_closure ?(packages : Package.Name.Set.t option = None) context =
+  match packages with
+  | None -> all_project_deps context
+  | Some packages ->
+    let+ all_project_deps = all_project_deps context in
+    let known =
+      all_project_deps
+      |> List.map ~f:(fun (pkg : Pkg.t) -> pkg.info.name)
+      |> Package.Name.Set.of_list
+    in
+    let filtered_packages = Package.Name.Set.inter known packages in
+    let filtered_pkgs =
+      List.filter all_project_deps ~f:(fun (pkg : Pkg.t) ->
+        Package.Name.Set.mem filtered_packages pkg.info.name)
+    in
+    Pkg.top_closure filtered_pkgs
+;;
+
 let which context =
   let artifacts_and_deps =
     Memo.lazy_
@@ -2598,19 +2616,8 @@ let which_for_packages ?(packages : Package.Name.Set.t option = None) context =
                (List.map (Package.Name.Set.to_list packages) ~f:Package.Name.to_string))
             (Context_name.to_string context))
         (fun () ->
-           let* all_project_deps = all_project_deps context in
-           let known =
-             all_project_deps
-             |> List.map ~f:(fun (pkg : Pkg.t) -> pkg.info.name)
-             |> Package.Name.Set.of_list
-           in
            let+ { binaries; dep_info = _ } =
-             packages
-             |> Package.Name.Set.inter known
-             |> Package.Name.Set.to_list
-             |> List.map ~f:(fun pkg_name -> Loc.none, pkg_name)
-             |> Memo.parallel_map ~f:(resolve_pkg_dep context)
-             >>| Pkg.top_closure
+             project_deps_closure ~packages:(Some packages) context
              >>= Action_expander.Artifacts_and_deps.of_closure
            in
            binaries)
@@ -2655,6 +2662,33 @@ let exported_env context =
   let env = Pkg.build_env_of_deps all_project_deps in
   let vars = Env.Map.map env ~f:Value_list_env.string_of_env_values in
   Env.extend Env.empty ~vars
+;;
+
+let bin_env_for_packages ?(packages : Package.Name.Set.t option = None) context =
+  Memo.push_stack_frame ~human_readable_description:(fun () ->
+    Pp.textf
+      "lock directory PATH for context %S and packages %s"
+      (Context_name.to_string context)
+      (match packages with
+       | None -> "all"
+       | Some packages ->
+         String.concat
+           ~sep:", "
+           (List.map (Package.Name.Set.to_list packages) ~f:Package.Name.to_string)))
+  @@ fun () ->
+  lock_dir_active context
+  >>= function
+  | false -> Memo.return Env.empty
+  | true ->
+    let+ deps = project_deps_closure ~packages context in
+    let env = Pkg.build_env_of_deps deps in
+    (match Env.Map.find env Env_path.var with
+     | None -> Env.empty
+     | Some values ->
+       Env.add
+         Env.empty
+         ~var:Env_path.var
+         ~value:(Value_list_env.string_of_env_values values))
 ;;
 
 let find_package ctx pkg =

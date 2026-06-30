@@ -1,5 +1,5 @@
 open Import
-open Dune_util.Action
+open Stdune.Action_types
 open Dune_sexp
 
 module Action_plugin = struct

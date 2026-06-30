@@ -1,5 +1,3 @@
-open Stdune
-
 module Diff = struct
   module Mode = struct
     type t =

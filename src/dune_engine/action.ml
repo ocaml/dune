@@ -1,5 +1,5 @@
 open Import
-include Dune_util.Action
+open Stdune.Action_types
 module Ext = Action_intf.Ext
 
 module type T = sig

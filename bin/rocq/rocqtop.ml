@@ -160,7 +160,7 @@ let term =
         in
         Action_builder.evaluate_and_collect_facts args.build
       in
-      let+ env = Super_context.context_env sctx in
+      let+ env = Super_context.context_env_by_dir ~dir sctx in
       Path.to_string prog, rocq_arg, args, env
     in
     (* Careful about the first argument to "rocq" *)

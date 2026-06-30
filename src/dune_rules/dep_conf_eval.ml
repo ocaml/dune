@@ -336,10 +336,30 @@ and combined_package_deps_builder expander pkgs =
       | _ -> None)
     |> Package.Name.Set.of_list
   in
+  let lockdir_package_names =
+    List.filter_map classified ~f:(fun (_, pkg, found) ->
+      match found with
+      | Some (Package_db.Build _) -> Some pkg
+      | _ -> None)
+    |> Package.Name.Set.of_list
+  in
   let* env =
-    if Package.Name.Set.is_empty local_package_names
-    then Action_builder.return Env.empty
-    else Install_layout.env context.name local_package_names
+    let* local_env =
+      if Package.Name.Set.is_empty local_package_names
+      then Action_builder.return Env.empty
+      else Install_layout.env context.name local_package_names
+    in
+    if Package.Name.Set.is_empty lockdir_package_names
+    then Action_builder.return local_env
+    else
+      let+ lockdir_env =
+        Action_builder.of_memo
+          (Pkg_rules.env_for_packages
+             ~packages:(Some lockdir_package_names)
+             ~direct_only:true
+             context.name)
+      in
+      Install.Roots.extend_env_concat_path_vars lockdir_env local_env
   in
   let dune_version = Expander.project expander |> Dune_project.dune_version in
   let+ () =

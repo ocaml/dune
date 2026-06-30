@@ -54,6 +54,13 @@ declaring any package dependencies:
   >  (enabled_if %{bin-available:check-env})
   >  (action
   >    (with-stdout-to mybin-output (run %{bin:mybin}))))
+  > (rule
+  >  (alias test-sys)
+  >  (enabled_if %{bin-available:check-env})
+  >  (deps (package provider))
+  >  ; Check that the binary can be found on PATH
+  >  (action
+  >    (with-stdout-to system-mybin-output (system mybin))))
   > EOF
 
   $ dune build @all
@@ -67,6 +74,9 @@ The rule depends on the binary from the provider lockdir package:
   "_build/_private/default/.pkg/provider.0.0.1-$DIGEST/target/bin/mybin"
 
 All the packages' bin layouts are added to $PATH:
+
+  $ cat _build/default/system-mybin-output
+  from provider
 
   $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
   $PWD/_build/_private/default/.pkg/provider.0.0.1-$DIGEST1/target/bin
@@ -90,6 +100,9 @@ the same.
   from provider
 
 All the packages' bin layouts are added to $PATH:
+
+  $ cat _build/default/system-mybin-output
+  from provider
 
   $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
   $PWD/_build/_private/default/.pkg/provider.0.0.1-$DIGEST1/target/bin
@@ -115,9 +128,14 @@ the behavior is still the same.
 
 All the packages' bin layouts are added to $PATH:
 
+  $ cat _build/default/system-mybin-output
+  from provider
+
   $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
   $PWD/_build/_private/default/.pkg/provider.0.0.1-$DIGEST1/target/bin
   $PWD/_build/_private/default/.pkg/check-env.0.0.1-$DIGEST2/target/bin
+
+
 
 
 With a package defined in the project, *with a dir field, and explicit depends
@@ -139,6 +157,9 @@ on only [check-env]*, the behavior remains the same.
   from provider
 
 All the packages' bin layouts are added to $PATH:
+
+  $ cat _build/default/system-mybin-output
+  from provider
 
   $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
   $PWD/_build/_private/default/.pkg/provider.0.0.1-$DIGEST1/target/bin
@@ -165,9 +186,14 @@ on only [provider]*, the behavior remains the same.
 
 All the packages' bin layouts are added to $PATH:
 
+  $ cat _build/default/system-mybin-output
+  from provider
+
   $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
   $PWD/_build/_private/default/.pkg/provider.0.0.1-$DIGEST1/target/bin
   $PWD/_build/_private/default/.pkg/check-env.0.0.1-$DIGEST2/target/bin
+
+
 
 
 With a package defined in the project, *with a dir field, and explicit depends
@@ -189,6 +215,9 @@ on both [check-env] and [provider]*, the behavior remains the same.
   from provider
 
 All the packages' bin layouts are added to $PATH:
+
+  $ cat _build/default/system-mybin-output
+  from provider
 
   $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
   $PWD/_build/_private/default/.pkg/provider.0.0.1-$DIGEST1/target/bin

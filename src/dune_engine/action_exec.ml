@@ -301,7 +301,10 @@ let rec exec t ~ectx ~eenv : Done_or_more_deps.t Produce.t =
     let metadata =
       { ectx.metadata with can_run_in_action_runner = A.Spec.can_run_in_action_runner }
     in
-    Produce.of_fiber @@ A.Spec.action A.v ~ectx:{ ectx with metadata } ~eenv
+    let start = Time.now () in
+    let* res = Produce.of_fiber @@ A.Spec.action A.v ~ectx:{ ectx with metadata } ~eenv in
+    let+ () = Produce.incr_duration (Time.diff (Time.now ()) start) in
+    res
 
 and redirect_out t ~ectx ~eenv ~perm outputs fn =
   redirect t ~ectx ~eenv ~out:(outputs, fn, perm) ()

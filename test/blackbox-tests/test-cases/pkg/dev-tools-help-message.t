@@ -66,6 +66,12 @@ Output the help text:
              opam-publish executable (pass flags to opam-publish after the '--'
              argument, such as 'dune tools exec opam-publish -- --help').
   
+         utop [OPTION]… [ARGS]…
+             Wrapper for running utop intended to be run automatically by a
+             text editor. All positional arguments will be passed to the utop
+             executable (pass flags to utop after the '--' argument, such as
+             'dune tools exec utop -- --help').
+  
   COMMON OPTIONS
          --help[=FMT] (default=auto)
              Show this help in format FMT. The value FMT must be one of auto,

@@ -16,6 +16,7 @@ module Exec = struct
          ; Dune_release
          ; Ocaml_index
          ; Merlin
+         ; Utop
          ]
          ~f:Tools_common.exec_command)
   ;;

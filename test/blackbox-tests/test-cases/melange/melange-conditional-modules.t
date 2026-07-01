@@ -26,14 +26,20 @@ Show `(melange.modules ..)` subset is preferred when compiling in Melange mode
   > let x = "melange"
   > EOF
 
-  $ dune build --root a
-  $ find a/_build/default/lib/.a.objs/melange -type f | sort
-  a/_build/default/lib/.a.objs/melange/a.cmi
-  a/_build/default/lib/.a.objs/melange/a.cmj
-  a/_build/default/lib/.a.objs/melange/a.cmt
-  a/_build/default/lib/.a.objs/melange/a__Foo.cmi
-  a/_build/default/lib/.a.objs/melange/a__Foo.cmj
-  a/_build/default/lib/.a.objs/melange/a__Foo.cmt
+  $ dune build --root a --display=short
+  Entering directory 'a'
+        ocamlc lib/.a.objs/byte/a.{cmi,cmo,cmt}
+      ocamldep (internal)
+      ocamldep (internal)
+          melc lib/.a.objs/melange/a.{cmi,cmj,cmt}
+      ocamldep (internal)
+      ocamldep (internal)
+      ocamldep (internal)
+        ocamlc lib/.a.objs/byte/a__Helper.{cmi,cmo,cmt}
+          melc lib/.a.objs/melange/a__Foo.{cmi,cmj,cmt}
+        ocamlc lib/.a.objs/byte/a__Foo.{cmi,cmo,cmt}
+        ocamlc lib/a.cma
+  Leaving directory 'a'
   $ find a/_build/default/lib/.melange_src -type f | sort
   a/_build/default/lib/.melange_src/a.ml-gen
   a/_build/default/lib/.melange_src/foo.ml

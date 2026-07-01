@@ -539,6 +539,11 @@ let setup_emit_cmj_rules
       Modules.With_vlib.modules modules, pp
     in
     let requires_link = Lib.Compile.requires_link compile_info ~for_ in
+    let pps_runtime_libs =
+      let open Resolve.Memo.O in
+      let* pps = Lib.Compile.pps compile_info ~for_ in
+      Resolve.Memo.List.concat_map pps ~f:(Lib.ppx_runtime_deps ~for_)
+    in
     let* flags = melange_compile_flags ~sctx ~dir mel in
     let* cctx =
       let direct_requires = Lib.Compile.direct_requires compile_info ~for_ in
@@ -552,6 +557,7 @@ let setup_emit_cmj_rules
         ~flags
         ~requires_link
         ~requires_compile:direct_requires
+        ~pps_runtime_libs
         ~preprocessing:pp
         ~js_of_ocaml:(Js_of_ocaml.Mode.Pair.make None)
         ~opaque:Inherit_from_settings

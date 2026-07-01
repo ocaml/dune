@@ -227,6 +227,7 @@ let build_ppx_driver =
         ~flags
         ~requires_compile:(Memo.return requires_compile)
         ~requires_link
+        ~pps_runtime_libs:(Resolve.Memo.return [])
         ~opaque
         ~js_of_ocaml:(Js_of_ocaml.Mode.Pair.make None)
         ~melange_package_name:None

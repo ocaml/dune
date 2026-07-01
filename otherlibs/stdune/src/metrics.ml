@@ -1,19 +1,30 @@
 module Build = struct
   let count = Counter.create ()
-  let process_time_counter = Counter.Timer.create ()
+  let process_wall_clock = Counter.Timer.create ()
+  let user = Counter.Timer.create ()
+  let system = Counter.Timer.create ()
 
-  let add_process_time process_time =
+  let add_process_times ~elapsed_time ~user_cpu_time ~system_cpu_time =
     Counter.incr count;
-    Counter.Timer.add process_time_counter process_time
+    Counter.Timer.add process_wall_clock elapsed_time;
+    (match user_cpu_time with
+     | None -> ()
+     | Some user_cpu_time -> Counter.Timer.add user user_cpu_time);
+    match system_cpu_time with
+    | None -> ()
+    | Some system_cpu_time -> Counter.Timer.add system system_cpu_time
   ;;
 
-  let process_time () =
-    Option.some_if (Counter.read count > 0) (Counter.Timer.read process_time_counter)
-  ;;
+  let process_count () = Counter.read count
+  let process_time () = Counter.Timer.read process_wall_clock
+  let process_user_cpu_time () = Counter.Timer.read user
+  let process_system_cpu_time () = Counter.Timer.read system
 
   let reset () =
     Counter.reset count;
-    Counter.Timer.reset process_time_counter
+    Counter.Timer.reset process_wall_clock;
+    Counter.Timer.reset user;
+    Counter.Timer.reset system
   ;;
 end
 

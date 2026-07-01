@@ -40,6 +40,7 @@ The cinaps stanza offers a promotion workflow:
    (*$*)
    let x = 1
   Promoting _build/default/test.ml.cinaps-corrected to test.ml.
+  [1]
 
   $ cat test.ml
   (*$ print_endline "\nhello" *)

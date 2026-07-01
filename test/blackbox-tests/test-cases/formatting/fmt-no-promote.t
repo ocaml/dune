@@ -39,6 +39,7 @@ Actually format the file
   +(rule
   + (write-file a b))
   Promoting _build/default/dune.corrected to dune.
+  [1]
 
 Now the output of `dune fmt --preview is empty`.
   $ dune fmt --preview

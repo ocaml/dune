@@ -30,6 +30,7 @@ variable. This is only the case since mdx 2.1.0.
    
    ```ocaml non-deterministic
   Promoting _build/default/.mdx/README.md.corrected to README.md.
+  [1]
 
   $ cat README.md
   ```ocaml
@@ -54,6 +55,7 @@ variable. This is only the case since mdx 2.1.0.
   +- : string = "b"
    ```
   Promoting _build/default/.mdx/README.md.corrected to README.md.
+  [1]
 
   $ cat README.md
   ```ocaml

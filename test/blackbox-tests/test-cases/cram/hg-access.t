@@ -25,6 +25,7 @@ enough for a few hg commands such as "hg root" to succeed:
   +  abort: repository requires features unknown to this Mercurial: Escaping the Dune sandbox
   +  (see https://mercurial-scm.org/wiki/MissingRequirement for more information)
   Promoting _build/default/test.t.corrected to test.t.
+  [1]
 
 The inner call to hg shouldn't be able to access the outer hg repo:
 

@@ -53,6 +53,7 @@ dev-tool (0.26.3).
   -let () = print_endline "Hello, world"
   +formatted with version 0.26.3
   Promoting _build/default/foo.ml.corrected to foo.ml.
+  [1]
   $ cat foo.ml
   formatted with version 0.26.3
 

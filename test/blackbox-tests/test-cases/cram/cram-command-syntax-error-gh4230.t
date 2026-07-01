@@ -10,6 +10,7 @@ Syntax error inside a cram command
   File "t1.t", line 1, characters 0-0:
   Error: Files _build/default/t1.t and _build/default/t1.t.corrected differ.
   Promoting _build/default/t1.t.corrected to t1.t.
+  [1]
 
   $ cat >t1.t <<EOF
   >   $ exit 1
@@ -25,6 +26,7 @@ Syntax error inside a cram command
      $ echo foobar
   +  ***** UNREACHABLE *****
   Promoting _build/default/t1.t.corrected to t1.t.
+  [1]
   $ cat t1.t
     $ exit 1
     ***** UNREACHABLE *****

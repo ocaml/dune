@@ -89,6 +89,12 @@
   still declare `(using coq <version>)` now get an error pointing them
   at Rocq. (#14525, fixes #12788, @Alizter)
 
+- Path-valued pforms (`%{bin:...}`, `%{dep:...}`, `%{path:...}`, and
+  friends) now expand same-directory paths with a leading `./`, so that
+  shells like `bash` in `(bash ...)` and `(system ...)` actions execute
+  them directly instead of looking them up in `PATH`.
+  (#15156, fixes #15147, @Alizter)
+
 3.23.1 (2026-05-14)
 -------------------
 

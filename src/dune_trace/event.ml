@@ -196,6 +196,17 @@ let make_rusage_args resource_usage =
     ]
 ;;
 
+let make_process_times_args () =
+  let args =
+    [ "count", Arg.int (Metrics.Build.process_count ())
+    ; "elapsed_time", Arg.span (Metrics.Build.process_time ())
+    ; "user_cpu_time", Arg.span (Metrics.Build.process_user_cpu_time ())
+    ; "system_cpu_time", Arg.span (Metrics.Build.process_system_cpu_time ())
+    ]
+  in
+  [ "process_times", Arg.record args |> Arg.list ]
+;;
+
 let exit () =
   let now = Time.now () in
   let args =
@@ -300,6 +311,7 @@ let watch_build_finish ~run_id ~outcome ~start ~stop ~restart_duration =
     @ (match restart_duration with
        | None -> []
        | Some restart_duration -> [ "restart_duration", Arg.span restart_duration ])
+    @ make_process_times_args ()
     @ make_rusage_args (Proc.Resource_usage.get_self ())
   in
   Event.complete ~name:"build-finish" ~args ~start ~dur Build

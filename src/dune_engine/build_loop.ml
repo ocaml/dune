@@ -86,8 +86,8 @@ let parallelism ~build_duration ~process_time =
     match Time.Span.compare build_duration Time.Span.zero with
     | Eq | Lt -> None
     | Gt ->
-      Option.map process_time ~f:(fun process_time ->
-        Time.Span.to_secs process_time /. Time.Span.to_secs build_duration)
+      (try Some (Time.Span.to_secs process_time /. Time.Span.to_secs build_duration) with
+       | _ -> None)
   with
   | None -> ""
   | Some s -> sprintf "%.1fx" s

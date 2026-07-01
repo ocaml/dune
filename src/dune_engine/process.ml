@@ -1368,7 +1368,17 @@ let run_internal
          | None -> local ())
       | None -> local ()
     in
-    Option.iter build ~f:(fun _ -> Metrics.Build.add_process_time times.elapsed_time);
+    Option.iter build ~f:(fun (_ : Build.t) ->
+      let user_cpu_time, system_cpu_time =
+        match times.resource_usage with
+        | None -> None, None
+        | Some { Proc.Resource_usage.user_cpu_time; system_cpu_time; _ } ->
+          Some user_cpu_time, Some system_cpu_time
+      in
+      Metrics.Build.add_process_times
+        ~elapsed_time:times.elapsed_time
+        ~user_cpu_time
+        ~system_cpu_time);
     let result = Result.make t process_info fail_mode in
     (match remote_started_at with
      | None ->

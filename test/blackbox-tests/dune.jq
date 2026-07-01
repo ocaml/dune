@@ -251,6 +251,10 @@ def buildEvents:
     then .args.restart_duration |= type
     else .
     end
+  | if .args.process_times? != null
+    then .args.process_times |= keys
+    else .
+    end
   | if .args.rusage? != null
     then .args.rusage |= keys
     else .

@@ -1,5 +1,5 @@
-Batch and watch-mode builds emit run ids and dune's own rusage snapshots on
-build trace events.
+Batch and watch-mode builds emit run ids, process-time totals, and dune's own
+rusage snapshots on build trace events.
 
   $ make_dune_project 3.22
 
@@ -43,6 +43,12 @@ build trace events.
     "args": {
       "run_id": 0,
       "outcome": "success",
+      "process_times": [
+        "count",
+        "elapsed_time",
+        "system_cpu_time",
+        "user_cpu_time"
+      ],
       "rusage": [
         "inblock",
         "majflt",
@@ -99,6 +105,12 @@ active build is interrupted.
     "args": {
       "run_id": 1,
       "outcome": "success",
+      "process_times": [
+        "count",
+        "elapsed_time",
+        "system_cpu_time",
+        "user_cpu_time"
+      ],
       "rusage": [
         "inblock",
         "majflt",
@@ -136,6 +148,12 @@ active build is interrupted.
       "run_id": 2,
       "outcome": "success",
       "restart_duration": "number",
+      "process_times": [
+        "count",
+        "elapsed_time",
+        "system_cpu_time",
+        "user_cpu_time"
+      ],
       "rusage": [
         "inblock",
         "majflt",

@@ -192,10 +192,13 @@ let rocqdoc_footer ~dir ~stanza_rocqdoc_footer ~expander =
 ;;
 
 let theory_rocqc_flag lib =
-  let name = Rocq_lib_name.wrapper (Rocq_lib.name lib) in
-  let dir = Rocq_lib.obj_root lib in
-  let binding_flag = if Rocq_lib.implicit lib then "-R" else "-Q" in
-  Command.Args.S [ A binding_flag; Path dir; A name ]
+  match Rocq_lib.package_name lib with
+  | Some package -> Command.Args.S [ A "-package"; A (Lib_name.to_string package) ]
+  | None ->
+    let name = Rocq_lib_name.wrapper (Rocq_lib.name lib) in
+    let dir = Rocq_lib.obj_root lib in
+    let binding_flag = if Rocq_lib.implicit lib then "-R" else "-Q" in
+    Command.Args.S [ A binding_flag; Path dir; A name ]
 ;;
 
 let theories_flags ~theories_deps =
@@ -215,6 +218,7 @@ module Bootstrap : sig
   val make
     :  scope:Scope.t
     -> use_corelib:bool
+    -> rocq_lang_version:Dune_sexp.Syntax.Version.t
     -> wrapper_name:string
     -> Rocq_module.t
     -> t Resolve.Memo.t
@@ -240,7 +244,7 @@ end = struct
 
   (* [Bootstrap.t] determines, for a concrete Rocq module, how Corelib is being
      handled. See the main modes above. *)
-  let make ~scope ~use_corelib ~wrapper_name rocq_module =
+  let make ~scope ~use_corelib ~rocq_lang_version ~wrapper_name rocq_module =
     let open Resolve.Memo.O in
     let* boot_lib =
       Scope.rocq_libs scope |> Resolve.Memo.lift_memo >>= Rocq_lib.DB.resolve_boot
@@ -249,13 +253,25 @@ end = struct
     then (
       match boot_lib with
       | None ->
-        Resolve.Memo.fail
-          (User_message.make
-             [ Pp.text
-                 "Couldn't find Rocq Corelib, and the theory does not disable automatic \
-                  Corelib inclusion with (no_corelib)."
-             ])
+        if rocq_lang_version >= (0, 15)
+        then Resolve.Memo.return (Corelib (Rocq_lib.Package Rocq_lib.Findlib.corelib))
+        else
+          Resolve.Memo.fail
+            (User_message.make
+               [ Pp.text
+                   "Couldn't find Rocq Corelib, and the theory does not disable \
+                    automatic Corelib inclusion with (no_corelib)."
+               ])
       | Some (_loc, boot_lib) ->
+        let boot_lib =
+          if rocq_lang_version >= (0, 15)
+          then (
+            match boot_lib with
+            | Rocq_lib.Dune _ -> boot_lib
+            | Rocq_lib.Legacy _ | Rocq_lib.Package _ ->
+              Rocq_lib.Package Rocq_lib.Findlib.corelib)
+          else boot_lib
+        in
         Resolve.Memo.return
         @@
         (* TODO: replace with per_file flags *)
@@ -302,7 +318,7 @@ let directories_of_lib ~sctx lib =
     let* dir_contents = Dir_contents.get sctx ~dir in
     let+ rocq_sources = Dir_contents.rocq dir_contents in
     Rocq_sources.directories rocq_sources ~name
-  | Rocq_lib.Legacy _ ->
+  | Rocq_lib.Legacy _ | Rocq_lib.Package _ ->
     (* TODO: we could return this if we don't restrict ourselves to
        Path.Build.t here.
 
@@ -391,9 +407,11 @@ let libs_of_theory ~lib_db ~theories_deps plugins : (Lib.t list * _) Resolve.Mem
   let f (t : Rocq_lib.t) =
     match t with
     | Dune t -> Left t
-    | Legacy t -> Right t
+    | Legacy t -> Right (Some t)
+    | Package _ -> Right None
   in
   let dune_theories, legacy_theories = List.partition_map ~f theories in
+  let legacy_theories = List.filter_opt legacy_theories in
   let* dlibs =
     Resolve.List.concat_map ~f:Rocq_lib.Dune.libraries dune_theories |> Resolve.Memo.lift
   in
@@ -487,6 +505,7 @@ let setup_rocqproject_for_theory_rule
       ~theories_deps
       ~wrapper_name
       ~use_corelib
+      ~rocq_lang_version
       ~ml_flags
       ~stanza_flags
       ~theory_dirs
@@ -496,7 +515,7 @@ let setup_rocqproject_for_theory_rule
   let boot_type =
     match rocq_modules with
     | [] -> Resolve.Memo.return Bootstrap.empty
-    | m :: _ -> Bootstrap.make ~scope ~use_corelib ~wrapper_name m
+    | m :: _ -> Bootstrap.make ~scope ~use_corelib ~rocq_lang_version ~wrapper_name m
   in
   let boot_flags = Resolve.Memo.read boot_type |> Action_builder.map ~f:Bootstrap.flags in
   let* args =
@@ -737,6 +756,7 @@ let deps_of ~dir ~boot_type ~wrapper_name ~mode rocq_module =
       let prelude = "Init/Prelude.vo" in
       match boot_type with
       | Bootstrap.No_corelib -> deps
+      | Bootstrap.Corelib (Rocq_lib.Package _) -> deps
       | Bootstrap.Corelib lib -> Path.relative (Rocq_lib.obj_root lib) prelude :: deps
     in
     Action_builder.paths deps
@@ -851,7 +871,9 @@ let setup_rocqc_rule
       rocq_module
   =
   (* Process rocqdep and generate rules *)
-  let boot_type = Bootstrap.make ~scope ~use_corelib ~wrapper_name rocq_module in
+  let boot_type =
+    Bootstrap.make ~scope ~use_corelib ~rocq_lang_version ~wrapper_name rocq_module
+  in
   let boot_flags = Resolve.Memo.read boot_type |> Action_builder.map ~f:Bootstrap.flags in
   (* TODO: merge with boot_type *)
   let per_file_flags = Per_file.match_ modules_flags rocq_module in
@@ -919,6 +941,7 @@ let rocq_modules_of_theory ~sctx lib =
   let name = Rocq_lib.name lib in
   match lib with
   | Rocq_lib.Legacy lib -> Memo.return @@ Rocq_lib.Legacy.vo lib
+  | Rocq_lib.Package _ -> Memo.return []
   | Rocq_lib.Dune lib ->
     let dir = Rocq_lib.Dune.src_root lib in
     let* dir_contents = Dir_contents.get sctx ~dir in
@@ -1054,10 +1077,16 @@ let setup_rocqdoc_rules ~sctx ~dir ~theories_deps (s : Rocq_stanza.Theory.t) roc
 ;;
 
 (* Common context for a theory, deps and rules *)
-let theory_context ~context ~scope ~name buildable =
+let theory_context ~context ~scope (s : Rocq_stanza.Theory.t) =
+  let buildable = s.buildable in
   let theory =
     let* rocq_lib_db = Scope.rocq_libs scope in
-    Rocq_lib.DB.resolve rocq_lib_db name
+    match s.public_name with
+    | Some public_name ->
+      Rocq_lib.DB.resolve_package
+        rocq_lib_db
+        (Public_lib.loc public_name, Public_lib.name public_name)
+    | None -> Rocq_lib.DB.resolve rocq_lib_db s.name
   in
   let theories_deps =
     Resolve.Memo.bind theory ~f:(fun theory ->
@@ -1076,14 +1105,22 @@ let extraction_context ~context ~scope (buildable : Rocq_stanza.Buildable.t) =
   let rocq_lib_db = Scope.rocq_libs scope in
   let theories_deps =
     let* rocq_lib_db = rocq_lib_db in
-    Resolve.Memo.List.map buildable.theories ~f:(Rocq_lib.DB.resolve rocq_lib_db)
+    Resolve.Memo.List.map buildable.theories ~f:(Rocq_lib.DB.resolve_dep rocq_lib_db)
   in
   (* Extraction requires a boot library so we do this unconditionally
      for now. We must do this because it can happen that
      s.buildable.theories is empty *)
   let boot =
-    let* rocq_lib_db = rocq_lib_db in
-    Rocq_lib.DB.resolve_boot rocq_lib_db
+    let open Resolve.Memo.O in
+    let* rocq_lib_db = Resolve.Memo.lift_memo rocq_lib_db in
+    let* boot = Rocq_lib.DB.resolve_boot rocq_lib_db in
+    if buildable.rocq_lang_version >= (0, 15)
+    then (
+      match boot with
+      | Some (_, Rocq_lib.Dune _) -> Resolve.Memo.return boot
+      | None | Some (_, (Rocq_lib.Legacy _ | Rocq_lib.Package _)) ->
+        Resolve.Memo.return (Some (Loc.none, Rocq_lib.Package Rocq_lib.Findlib.corelib)))
+    else Resolve.Memo.return boot
   in
   let theories_deps =
     let open Resolve.Memo.O in
@@ -1102,11 +1139,10 @@ let extraction_context ~context ~scope (buildable : Rocq_stanza.Buildable.t) =
 
 let setup_theory_rules ~sctx ~dir ~dir_contents (s : Rocq_stanza.Theory.t) =
   let* scope = Scope.DB.find_by_dir dir in
-  let name = s.name in
   let rocq_lang_version = s.buildable.rocq_lang_version in
   let theory, theories_deps, ml_flags, plugin_ocamlpath =
     let context = Super_context.context sctx |> Context.name in
-    theory_context ~context ~scope ~name s.buildable
+    theory_context ~context ~scope s
   in
   let wrapper_name = Rocq_lib_name.wrapper (snd s.name) in
   let use_corelib = s.buildable.use_corelib in
@@ -1139,7 +1175,7 @@ let setup_theory_rules ~sctx ~dir ~dir_contents (s : Rocq_stanza.Theory.t) =
        about -noinit as rocqdep ignores it *)
     match rocq_modules with
     | [] -> Resolve.Memo.return Bootstrap.empty
-    | m :: _ -> Bootstrap.make ~scope ~use_corelib ~wrapper_name m
+    | m :: _ -> Bootstrap.make ~scope ~use_corelib ~rocq_lang_version ~wrapper_name m
   in
   let boot_flags = Resolve.Memo.read boot_type |> Action_builder.map ~f:Bootstrap.flags in
   (if not (snd s.generate_project_file)
@@ -1153,6 +1189,7 @@ let setup_theory_rules ~sctx ~dir ~dir_contents (s : Rocq_stanza.Theory.t) =
        ~theories_deps
        ~wrapper_name
        ~use_corelib
+       ~rocq_lang_version
        ~ml_flags
        ~stanza_flags
        ~theory_dirs
@@ -1202,16 +1239,22 @@ let setup_theory_rules ~sctx ~dir ~dir_contents (s : Rocq_stanza.Theory.t) =
 
 let rocqtop_args_theory ~sctx ~dir ~dir_contents (s : Rocq_stanza.Theory.t) rocq_module =
   let* scope = Scope.DB.find_by_dir dir in
-  let name = s.name in
   let _theory, theories_deps, ml_flags, _plugin_ocamlpath =
     let context = Super_context.context sctx |> Context.name in
-    theory_context ~context ~scope ~name s.buildable
+    theory_context ~context ~scope s
   in
   let wrapper_name = Rocq_lib_name.wrapper (snd s.name) in
   let* mode = select_native_mode ~sctx ~dir s.buildable in
   let name = snd s.name in
   let use_corelib = s.buildable.use_corelib in
-  let boot_type = Bootstrap.make ~scope ~use_corelib ~wrapper_name rocq_module in
+  let boot_type =
+    Bootstrap.make
+      ~scope
+      ~use_corelib
+      ~rocq_lang_version:s.buildable.rocq_lang_version
+      ~wrapper_name
+      rocq_module
+  in
   let* rocq_dir_contents = Dir_contents.rocq dir_contents in
   let theory_dirs =
     Rocq_sources.directories rocq_dir_contents ~name |> Path.Build.Set.of_list
@@ -1253,8 +1296,7 @@ let install_rules ~sctx ~dir s =
     let name = snd s.name in
     (* This must match the wrapper prefix for now to remain compatible *)
     let dst_suffix = Rocq_lib_name.dir name in
-    (* These are the rules for now, rocq lang 2.0 will make this uniform *)
-    let dst_dir =
+    let legacy_dst_dir =
       if s.boot
       then (* We drop the "Corelib" prefix (!) *)
         Path.Local.of_string "coq/theories"
@@ -1262,36 +1304,55 @@ let install_rules ~sctx ~dir s =
         let rocq_root = Path.Local.of_string "coq/user-contrib" in
         Path.Local.relative rocq_root dst_suffix)
     in
+    let findlib_dst_dir public_name =
+      let base =
+        match Public_lib.sub_dir public_name with
+        | None -> Path.Local.root
+        | Some sub_dir -> Path.Local.of_string sub_dir
+      in
+      Path.Local.relative base "rocq.d"
+    in
+    let layouts =
+      match s.public_name with
+      | None -> [ Section.Lib_root, legacy_dst_dir ]
+      | Some public_name ->
+        let layouts = [ Section.Lib, findlib_dst_dir public_name ] in
+        if s.legacy_install
+        then (Section.Lib_root, legacy_dst_dir) :: layouts
+        else layouts
+    in
     let wrapper_name = Rocq_lib_name.wrapper name in
     let to_path f = Path.reach ~from:(Path.build dir) (Path.build f) in
-    let to_dst f = Path.Local.to_string @@ Path.Local.relative dst_dir f in
-    let make_entry (orig_file : Path.Build.t) (dst_file : string) =
+    let make_entry ~section ~dst_dir (orig_file : Path.Build.t) (dst_file : string) =
+      let dst = Path.Local.to_string @@ Path.Local.relative dst_dir dst_file in
       let entry =
         Install.Entry.Unexpanded.make
-          Section.Lib_root
-          ~dst:(to_dst dst_file)
+          section
+          ~dst
           orig_file
           ~kind:Install.Entry.Unexpanded.File
       in
       Install.Entry.Sourced.Unexpanded.create ~loc entry
     in
     let+ rocq_sources = Dir_contents.rocq dir_contents in
-    rocq_sources
-    |> Rocq_sources.library ~name
-    |> List.concat_map ~f:(fun (vfile : Rocq_module.t) ->
-      let obj_files =
-        Rocq_module.obj_files
-          ~wrapper_name
-          ~mode
-          ~obj_dir:dir
-          ~obj_files_mode:Rocq_module.Install
-          vfile
-        |> List.map ~f:(fun ((vo_file : Path.Build.t), (install_vo_file : string)) ->
-          make_entry vo_file install_vo_file)
-      in
-      let vfile = Rocq_module.source vfile |> Path.as_in_build_dir_exn in
-      let vfile_dst = to_path vfile in
-      make_entry vfile vfile_dst :: obj_files)
+    let modules = Rocq_sources.library rocq_sources ~name in
+    List.concat_map layouts ~f:(fun (section, dst_dir) ->
+      modules
+      |> List.concat_map ~f:(fun (vfile : Rocq_module.t) ->
+        let make_entry = make_entry ~section ~dst_dir in
+        let obj_files =
+          Rocq_module.obj_files
+            ~wrapper_name
+            ~mode
+            ~obj_dir:dir
+            ~obj_files_mode:Rocq_module.Install
+            vfile
+          |> List.map ~f:(fun ((vo_file : Path.Build.t), (install_vo_file : string)) ->
+            make_entry vo_file install_vo_file)
+        in
+        let vfile = Rocq_module.source vfile |> Path.as_in_build_dir_exn in
+        let vfile_dst = to_path vfile in
+        make_entry vfile vfile_dst :: obj_files))
 ;;
 
 let setup_rocqpp_rules ~sctx ~dir ({ loc; modules } : Rocq_stanza.Rocqpp.t) =
@@ -1339,7 +1400,7 @@ let setup_extraction_rules ~sctx ~dir ~dir_contents (s : Rocq_stanza.Extraction.
        about -noinit as rocqdep ignores it *)
     match [ rocq_module ] with
     | [] -> Resolve.Memo.return Bootstrap.empty
-    | m :: _ -> Bootstrap.make ~scope ~use_corelib ~wrapper_name m
+    | m :: _ -> Bootstrap.make ~scope ~use_corelib ~rocq_lang_version ~wrapper_name m
   in
   let boot_flags = Resolve.Memo.read boot_type |> Action_builder.map ~f:Bootstrap.flags in
   let modules_flags = None in
@@ -1385,7 +1446,14 @@ let rocqtop_args_extraction ~sctx ~dir (s : Rocq_stanza.Extraction.t) rocq_modul
     extraction_context ~context ~scope s.buildable
   in
   let wrapper_name = extraction_wrapper_name s in
-  let boot_type = Bootstrap.make ~scope ~use_corelib ~wrapper_name rocq_module in
+  let boot_type =
+    Bootstrap.make
+      ~scope
+      ~use_corelib
+      ~rocq_lang_version:s.buildable.rocq_lang_version
+      ~wrapper_name
+      rocq_module
+  in
   let boot_flags = Resolve.Memo.read boot_type |> Action_builder.map ~f:Bootstrap.flags in
   let per_file_flags = None in
   let* mode = select_native_mode ~sctx ~dir s.buildable in
@@ -1409,7 +1477,12 @@ let deps_of ~dir ~use_corelib ~wrapper_name ~mode rocq_module =
   let boot_type =
     let open Memo.O in
     let* scope = Scope.DB.find_by_dir dir in
-    Bootstrap.make ~scope ~use_corelib ~wrapper_name rocq_module
+    Bootstrap.make
+      ~scope
+      ~use_corelib
+      ~rocq_lang_version:(0, 14)
+      ~wrapper_name
+      rocq_module
   in
   deps_of ~dir ~boot_type ~wrapper_name ~mode rocq_module
 ;;

@@ -22,6 +22,7 @@ let rocq_syntax =
     ; (0, 12), `Since (3, 22)
     ; (0, 13), `Since (3, 23)
     ; (0, 14), `Since (3, 24)
+    ; (0, 15), `Since (3, 25)
     ]
 ;;
 
@@ -50,13 +51,30 @@ module Rocqpp = struct
 end
 
 module Buildable = struct
+  module Theory_dep = struct
+    type t =
+      | Logical of (Loc.t * Rocq_lib_name.t)
+      | Package of (Loc.t * Lib_name.t)
+
+    let loc = function
+      | Logical (loc, _) | Package (loc, _) -> loc
+    ;;
+
+    let decode =
+      let* rocq_lang_version = get_rocq_syntax () in
+      if rocq_lang_version < (0, 15)
+      then Rocq_lib_name.decode >>| fun dep -> Logical dep
+      else located Lib_name.decode >>| fun dep -> Package dep
+    ;;
+  end
+
   type t =
     { flags : Ordered_set_lang.Unexpanded.t
     ; rocq_lang_version : Dune_sexp.Syntax.Version.t
     ; mode : Rocq_mode.t option
     ; use_corelib : bool
     ; plugins : (Loc.t * Lib_name.t) list (** ocaml libraries *)
-    ; theories : (Loc.t * Rocq_lib_name.t) list (** rocq libraries *)
+    ; theories : Theory_dep.t list (** rocq libraries *)
     ; loc : Loc.t
     }
 
@@ -78,7 +96,7 @@ module Buildable = struct
     and+ no_corelib_opt =
       field_o "no_corelib" (Dune_lang.Syntax.since rocq_syntax (0, 14) >>> return true)
     and+ plugins = field "plugins" (repeat (located Lib_name.decode)) ~default:[]
-    and+ theories = field "theories" (repeat Rocq_lib_name.decode) ~default:[] in
+    and+ theories = field "theories" (repeat Theory_dep.decode) ~default:[] in
     let use_corelib =
       if rocq_lang_version < (0, 14)
       then Option.value stdlib_opt ~default:true
@@ -146,12 +164,14 @@ end
 module Theory = struct
   type t =
     { name : Loc.t * Rocq_lib_name.t
+    ; public_name : Public_lib.t option
     ; package : Package.t option
     ; project : Dune_project.t
     ; synopsis : string option
     ; modules : Ordered_set_lang.t
     ; modules_flags : (Rocq_module.Name.t * Ordered_set_lang.Unexpanded.t) list option
     ; boot : bool
+    ; legacy_install : bool
     ; generate_project_file : Loc.t * bool
     ; enabled_if : Blang.t
     ; buildable : Buildable.t
@@ -170,7 +190,7 @@ module Theory = struct
     then (
       match theories with
       | [] -> ()
-      | (loc, _) :: _ -> boot_has_deps loc)
+      | dep :: _ -> boot_has_deps (Buildable.Theory_dep.loc dep))
   ;;
 
   let check_generate_project_file (loc, generate_project_file) modules_flags =
@@ -198,10 +218,18 @@ module Theory = struct
   let decode =
     fields
       (let+ name = field "name" Rocq_lib_name.decode
+       and+ public_name =
+         field_o
+           "public_name"
+           (Dune_lang.Syntax.since rocq_syntax (0, 15)
+            >>> Public_lib.decode ~allow_deprecated_names:false)
        and+ package = Stanza_pkg.field_opt () >>| Option.map ~f:snd
        and+ project = Dune_project.get_exn ()
        and+ synopsis = field_o "synopsis" string
        and+ boot = field_b "boot" ~check:(Dune_lang.Syntax.since rocq_syntax (0, 2))
+       and+ legacy_install =
+         located
+         @@ field_b "legacy_install" ~check:(Dune_lang.Syntax.since rocq_syntax (0, 15))
        and+ generate_project_file = located @@ field_b "generate_project_file"
        and+ modules = Ordered_set_lang.field "modules"
        and+ modules_flags = field_o "modules_flags" Per_file.decode
@@ -211,17 +239,30 @@ module Theory = struct
        and+ rocqdoc_flags = Ordered_set_lang.Unexpanded.field "rocqdoc_flags"
        and+ rocqdoc_header = field_o "rocqdoc_header" String_with_vars.decode
        and+ rocqdoc_footer = field_o "rocqdoc_footer" String_with_vars.decode in
+       let package =
+         match public_name with
+         | None -> package
+         | Some public_name -> Some (Public_lib.package public_name)
+       in
+       let legacy_install_loc, legacy_install = legacy_install in
+       if legacy_install && Option.is_none public_name
+       then
+         User_error.raise
+           ~loc:legacy_install_loc
+           [ Pp.text "legacy_install requires public_name" ];
        (* boot libraries cannot depend on other theories *)
        check_boot_has_no_deps boot buildable;
        (* project files can only be generated when no per-module flags are configured. *)
        check_generate_project_file generate_project_file modules_flags;
        { name
+       ; public_name
        ; package
        ; project
        ; synopsis
        ; modules
        ; modules_flags
        ; boot
+       ; legacy_install
        ; generate_project_file
        ; buildable
        ; enabled_if

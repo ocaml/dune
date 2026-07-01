@@ -10,6 +10,6 @@ The META file for plugins is built before calling coqdep
   > EOF
 
   $ dune build .bar.theory.d
-  $ find _build/install/default/.packages -name META | censor
-  _build/install/default/.packages/$DIGEST/lib/bar/META
+  $ find _build/install/default/.packages-rocq -name META | censor
+  _build/install/default/.packages-rocq/$DIGEST/lib/bar/META
 

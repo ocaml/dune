@@ -19,6 +19,7 @@ type t = string list
 let compare = List.compare ~compare:String.compare
 let equal x y = Ordering.is_eq (compare x y)
 let to_string x = String.concat ~sep:"." x
+let of_string s = String.split ~on:'.' s
 let empty = []
 let corelib = [ "Corelib" ]
 let to_list x = x

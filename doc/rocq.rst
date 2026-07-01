@@ -44,7 +44,7 @@ example, adding
 
 .. code:: dune
 
-    (using rocq 0.14)
+    (using rocq 0.15)
 
 to a :doc:`/reference/dune-project/index` file enables using the
 ``rocq.theory`` stanza and other ``rocq.*`` stanzas. See the :ref:`Dune Rocq
@@ -62,12 +62,14 @@ The Rocq theory stanza is very similar in form to the OCaml
 
     (rocq.theory
      (name <module_prefix>)
+     (public_name <findlib_package>)
      (package <package>)
      (synopsis <text>)
      (modules <ordered_set_lang>)
      (plugins <ocaml_plugins>)
      (flags <rocq_flags>)
      (modules_flags <flags_map>)
+     (legacy_install)
      (generate_project_file)
      (rocqdep_flags <rocqdep_flags>)
      (rocqdoc_flags <rocqdoc_flags>)
@@ -110,13 +112,28 @@ The semantics of the fields are:
   the theory, similar to its OCaml counterpart. Modules are specified in Rocq
   notation. That is to say, ``A/b.v`` is written ``A.b`` in this field.
 
+- If the ``public_name`` field is present, Dune exposes the theory as the
+  Findlib package ``<findlib_package>``. The ``name`` field still gives the Rocq
+  logical path, while ``public_name`` is the package name used by downstream
+  ``(theories ...)`` dependencies and Rocq's ``-package`` option.
+
+  .. versionadded:: 3.25
+
 - If the ``package`` field is present, Dune generates install rules for the
   ``.vo`` files of the theory. ``pkg_name`` must be a valid package name.
+  Starting with :ref:`Rocq lang 0.15<rocq-lang>`, ``public_name`` subsumes
+  ``package`` in the same spirit as OCaml libraries: it determines the package
+  the public theory belongs to, but ``package`` may still be kept for migration.
 
-  Note that :ref:`Rocq lang 1.0<rocq-lang-1.0>` uses the Rocq install
-  setup, where all packages share a common root namespace and install
-  directory, ``lib/rocq/user-contrib/<module_prefix>``, as is
-  customary in the Make-based Rocq package ecosystem.
+  With ``public_name``, Dune installs theory files in the new Rocq Findlib
+  layout, under the public package directory's ``rocq.d`` subdirectory, and
+  emits META metadata including the theory's ``rocqpath``. Without
+  ``public_name``, Dune keeps the legacy ``coq/user-contrib/<module_prefix>``
+  layout.
+
+- ``legacy_install`` additionally installs a ``public_name`` theory using the
+  legacy ``coq/user-contrib/<module_prefix>`` layout. This is intended for
+  migration and is available since Rocq lang 0.15.
 
   For compatibility, Dune also installs, under the ``user-contrib`` prefix, the
   ``.cmxs`` files that appear in ``<ocaml_plugins>``. This will be dropped in
@@ -184,8 +201,15 @@ The semantics of the fields are:
 
 - Your Rocq theory can depend on other theories --- globally installed or defined
   in the current workspace --- by adding the theories names to the
-  ``<rocq_theories>`` field. Then, Dune will ensure that the depended theories
-  are present and correctly registered with Rocq.
+  ``<rocq_theories>`` field. In Rocq lang 0.15 and later these names are
+  Findlib package names. If such a package is provided by a theory in the
+  workspace, Dune uses its internal dependency graph and passes explicit ``-Q``
+  and ``-I`` flags as before. Otherwise, Dune passes ``-package <pkg>`` to Rocq,
+  letting Rocq Findlib metadata provide the transitive load path.
+
+  In earlier Rocq language versions, ``<rocq_theories>`` remains a list of Rocq
+  logical paths for backwards compatibility. Then, Dune will ensure that the
+  depended theories are present and correctly registered with Rocq.
 
   See :ref:`Locating Theories<rocq-locating-theories>` for more information on how
   Rocq theories are located by Dune.
@@ -345,8 +369,10 @@ A private theory may depend on both private and public theories; however, a
 public theory may only depend on other public theories.
 
 By default, all :ref:`rocq-theory` stanzas are considered private by Dune. In
-order to make a private theory into a public theory, the ``(package )`` field
-must be specified.
+order to make a private theory into a public theory, either the ``(package )``
+field or the ``(public_name )`` field must be specified. For new Rocq projects,
+``public_name`` is preferred because it gives the Findlib package name used by
+Rocq's ``-package`` option.
 
 .. code:: dune
 
@@ -385,7 +411,7 @@ The Rocq lang can be modified by adding the following to a
 
 .. code:: dune
 
-    (using rocq 0.14)
+    (using rocq 0.15)
 
 The supported Rocq language versions (not the version of Rocq) are:
 
@@ -399,7 +425,11 @@ The supported Rocq language versions (not the version of Rocq) are:
 - ``0.12``: Support for output tests.
 - ``0.13``: ``rocq.extraction`` now uses ``extracted_files`` instead of
   ``extracted_modules``, supporting extraction to languages other than OCaml.
-- ``0.14``: ``(stdlib ...)`` was replaced by ``(no_corelib)``. 
+- ``0.14``: ``(stdlib ...)`` was replaced by ``(no_corelib)``.
+- ``0.15``: ``rocq.theory`` supports ``public_name`` and the Rocq Findlib
+  installation layout. The ``theories`` field is interpreted as Findlib package
+  names, and ``legacy_install`` can be used to additionally install under
+  ``coq/user-contrib``.
 
 .. _rocq-lang-1.0:
 
@@ -407,7 +437,7 @@ Rocq Language Version 1.0
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Guarantees with respect to stability are not yet provided, but we
-intend that the ``(0.14)`` version of the language becomes ``1.0``.
+intend that the ``(0.15)`` version of the language becomes ``1.0``.
 The ``1.0`` version of Rocq lang will commit to a stable set of
 functionality. All the features below are expected to reach ``1.0``
 unchanged or minimally modified.

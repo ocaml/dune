@@ -163,7 +163,11 @@ let wait_unix t = List.rev (wait_unix t [])
 
 let run_win32 t =
   let mutex = Lazy.force t.mutex in
-  let something_is_running = Option.value_exn t.something_is_running in
+  let something_is_running =
+    Option.value_exn'
+      t.something_is_running
+      ~message:"process watcher condition must exist on Windows"
+  in
   Mutex.lock mutex;
   while true do
     while Process_table.running_count t = 0 do

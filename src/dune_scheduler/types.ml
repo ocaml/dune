@@ -72,5 +72,8 @@ module Scheduler = struct
 
   let current : t option ref = ref None
   let t_opt () = !current
-  let t () = Option.value_exn !current
+
+  let t () =
+    Option.value_exn' !current ~message:"scheduler accessed before initialization"
+  ;;
 end

@@ -827,7 +827,9 @@ let create_fsevents
         while Option.is_none !dispatch_queue_ref do
           Condition.wait cv mutex
         done;
-        Option.value_exn !dispatch_queue_ref)
+        Option.value_exn'
+          !dispatch_queue_ref
+          ~message:"FSEvents dispatch queue initialization did not signal")
     with
     | Ok dispatch_queue -> dispatch_queue
     | Error exn -> Exn_with_backtrace.reraise exn

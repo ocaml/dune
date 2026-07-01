@@ -31,8 +31,8 @@ module For_rocq_only : sig
       Returns the layout's [lib] root (suitable for prepending to
       [OCAMLPATH]) and registers the action's dependency on every
       {!Section.Lib} and {!Section.Libexec} entry the layout produces for the
-      set. Files in all-library directories are grouped to share dependency
-      hashes; mixed-directory files remain explicit dependencies. Both are
-      materialized in sandboxes. *)
+      set, except Rocq theory outputs under [rocq.d]. Files in all-library
+      directories are grouped to share dependency hashes; mixed-directory
+      files remain explicit dependencies. Both are materialized in sandboxes. *)
   val lib_root : Context_name.t -> Package.Name.Set.t -> Path.Build.t Action_builder.t
 end

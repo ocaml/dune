@@ -44,6 +44,7 @@ let ppx_runtime_deps ?(preds = []) pkgs =
 
 let description s = rule "description" [] Set s
 let directory s = rule "directory" [] Set s
+let rocqpath s = rule "rocqpath" [] Set s
 let archive preds s = rule "archive" preds Set s
 let plugin preds s = rule "plugin" preds Set s
 
@@ -173,7 +174,19 @@ let gen_lib pub_name lib ~version =
     ]
 ;;
 
-let gen ~(package : Package.t) ~add_directory_entry entries =
+type rocq_theory =
+  { public_name : Lib_name.t
+  ; rocqpath : string
+  ; deps : Lib_name.Set.t
+  ; synopsis : string option
+  }
+
+let gen_rocq_theory ~version { public_name = _; rocqpath = path; deps; synopsis } =
+  let desc = Option.value synopsis ~default:"" in
+  version @ [ description desc; rocqpath path; requires deps ]
+;;
+
+let gen ?(rocq_theories = []) ~(package : Package.t) ~add_directory_entry entries =
   let open Action_builder.O in
   let version =
     match Package.version package with
@@ -219,6 +232,11 @@ let gen ~(package : Package.t) ~add_directory_entry entries =
         Action_builder.return
           ( Pub_name.of_lib_name (Public_lib.name old_public_name)
           , version @ [ requires deps; exports deps ] ))
+  in
+  let pkgs =
+    pkgs
+    @ List.map rocq_theories ~f:(fun theory ->
+      Pub_name.of_lib_name theory.public_name, gen_rocq_theory ~version theory)
   in
   let pkgs =
     List.map pkgs ~f:(fun (pn, meta) ->

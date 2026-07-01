@@ -38,6 +38,9 @@ module Version : sig
       - Throw an [Action.Prog.Not_found] exception if the rocq binary is not found. *)
   val make : rocq:Action.Prog.t -> (t, User_message.Style.t Pp.t) result Memo.t
 
+  val is_at_least : t -> major:int -> minor:int -> bool
+  val to_string : t -> string
+
   (** [by_name t name] returns the value of the field [name] in the Rocq
       version [t]. If the value is not available then [None] is returned.
       Throws a code error if an invalid [name] is requested.

@@ -31,6 +31,7 @@ val decode : (Loc.t * t) Dune_lang.Decoder.t
 
 (* to be removed in favor of encode / decode *)
 val to_string : t -> string
+val of_string : string -> t
 
 (** The Rocq standard library name *)
 val corelib : t

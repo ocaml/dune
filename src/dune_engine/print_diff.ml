@@ -252,40 +252,24 @@ let prepare ~skip_trailing_cr promotion path1 path2 =
   prepare_with_labels ~skip_trailing_cr ~dir loc promotion (label1, path1) (label2, path2)
 ;;
 
-let prepare_print ~skip_trailing_cr ~patch_back promotion path1 path2 =
-  match patch_back with
-  | None -> prepare ~skip_trailing_cr (Some promotion) path1 path2
-  | Some dir ->
-    let path1 = Path.source (Path.drop_optional_build_context_src_exn path1) in
-    let loc = Loc.in_file path1 in
-    let label1 = Path.to_string path1 in
-    let label2 = Path.to_string (Path.drop_optional_sandbox_root path2) in
-    prepare_with_labels
-      ~skip_trailing_cr
-      ~dir
-      loc
-      (Some promotion)
-      (label1, path1)
-      (label2, path2)
-;;
-
 let print ~skip_trailing_cr ~patch_back promotion path1 path2 =
-  With_fallback.exec (prepare_print ~skip_trailing_cr ~patch_back promotion path1 path2)
-;;
-
-let print_no_fail ~skip_trailing_cr ~patch_back promotion path1 path2 =
-  let p = prepare_print ~skip_trailing_cr ~patch_back promotion path1 path2 in
-  let+ result = With_fallback.capture p in
-  (* Route the diff through [Console] so it is interleaved correctly with the
-     "Promoting ..." message printed when the promotion is applied. *)
-  match result with
-  | Ok { Diff.loc; output } ->
-    let diff =
-      Pp.map_tags (Ansi_color.parse output) ~f:(fun styles ->
-        User_message.Style.Ansi_styles styles)
-    in
-    Console.print_user_message (User_message.make ?loc [ diff ])
-  | Error msg -> Console.print_user_message msg
+  let p =
+    match patch_back with
+    | None -> prepare ~skip_trailing_cr (Some promotion) path1 path2
+    | Some dir ->
+      let path1 = Path.source (Path.drop_optional_build_context_src_exn path1) in
+      let loc = Loc.in_file path1 in
+      let label1 = Path.to_string path1 in
+      let label2 = Path.to_string (Path.drop_optional_sandbox_root path2) in
+      prepare_with_labels
+        ~skip_trailing_cr
+        ~dir
+        loc
+        (Some promotion)
+        (label1, path1)
+        (label2, path2)
+  in
+  With_fallback.exec p
 ;;
 
 let get path1 path2 =

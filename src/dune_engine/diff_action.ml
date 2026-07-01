@@ -73,31 +73,26 @@ let promotion source_file =
   }
 ;;
 
-let run_change loc ~patch_back ~fail (mode : Diff.Mode.t) = function
-  | Message messages ->
-    if fail
-    then User_error.raise ~loc messages
-    else (
-      Console.print_user_message (User_message.make ~loc messages);
-      Fiber.return ())
+let run_change loc ~patch_back (mode : Diff.Mode.t) = function
+  | Message messages -> User_error.raise ~loc messages
   | File_diff { source_file; file1; file2 } ->
     (match mode with
      | Text ->
-       let print = if fail then Print_diff.print else Print_diff.print_no_fail in
-       print ~patch_back (promotion source_file) file1 file2 ~skip_trailing_cr:Sys.win32
+       Print_diff.print
+         ~patch_back
+         (promotion source_file)
+         file1
+         file2
+         ~skip_trailing_cr:Sys.win32
      | Binary ->
-       let message =
+       User_error.raise
+         ~promotion:(promotion source_file)
+         ~loc
          [ Pp.textf
              "Files %s and %s differ."
              (Path.to_string_maybe_quoted file1)
              (Path.to_string_maybe_quoted file2)
-         ]
-       in
-       if fail
-       then User_error.raise ~promotion:(promotion source_file) ~loc message
-       else (
-         Console.print_user_message (User_message.make ~loc message);
-         Fiber.return ()))
+         ])
 ;;
 
 let register_promotions how promotions =
@@ -312,26 +307,15 @@ let exec_plan
     let target_is_copied_from_source_tree =
       is_copied_from_source_tree (Path.build file2)
     in
-    (* Whether these changes will be applied as promotions at the end of the build. *)
-    let will_promote =
-      match optional with
-      | false -> in_source_or_target && not target_is_copied_from_source_tree
-      | true -> in_source_or_target
-    in
-    let auto_promote =
-      match !Clflags.promote with
-      | Some Automatically -> true
-      | Some Never | None -> false
-    in
-    (* A diff that will be auto-promoted is displayed but must not fail the build. *)
-    let fail = not (will_promote && auto_promote) in
     Fiber.finalize
-      (fun () -> Fiber.parallel_iter changes ~f:(run_change loc ~patch_back ~fail mode))
+      (fun () -> Fiber.parallel_iter changes ~f:(run_change loc ~patch_back mode))
       ~finally:(fun () ->
         (match optional with
-         | false -> if will_promote then register_promotions `Copy promotions
+         | false ->
+           if in_source_or_target && not target_is_copied_from_source_tree
+           then register_promotions `Copy promotions
          | true ->
-           if will_promote
+           if in_source_or_target
            then register_promotions `Move promotions
            else remove_intermediate_target file2);
         Fiber.return ())

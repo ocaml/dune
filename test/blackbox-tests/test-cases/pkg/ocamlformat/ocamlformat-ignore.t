@@ -55,6 +55,7 @@ Check without the feature when ".ocamlformat-ignore" file exists.
   +ignoring some files
   +fake ocamlformat from PATH
   Promoting _build/default/foo.ml.corrected to foo.ml.
+  [1]
   $ ls _build/default/.ocamlformat-ignore
   _build/default/.ocamlformat-ignore
   $ cat foo.ml

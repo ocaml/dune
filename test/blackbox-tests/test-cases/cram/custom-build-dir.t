@@ -35,6 +35,7 @@ path
   Promoting
     $TESTCASE_ROOT/tmp/default/foo.t.corrected
     to foo.t.
+  [1]
   $ cat foo.t
     $ echo "  $ echo bar" >bar.t
     $ if [ -e "$DUNE_BUILD_DIR/.rpc" ]; then

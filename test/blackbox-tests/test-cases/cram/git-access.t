@@ -17,6 +17,7 @@ Check that actions don't have access to the outer git repository.
   +  fatal: invalid gitfile format: $TESTCASE_ROOT/git/_build/.sandbox/.git
   +  [128]
   Promoting _build/default/test.t.corrected to test.t.
+  [1]
 
 The inner call to git shouldn't be able to access the outer git repo:
 

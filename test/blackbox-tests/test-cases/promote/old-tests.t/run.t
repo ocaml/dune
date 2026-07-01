@@ -65,6 +65,7 @@ Otherwise this test fails on OSX
   +toto
   \ No newline at end of file
   Promoting _build/default/x.gen to x.
+  [1]
   $ cat x
   toto
   $ dune build @blah

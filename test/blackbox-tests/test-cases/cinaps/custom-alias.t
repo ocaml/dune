@@ -1,9 +1,6 @@
 Custom alias for the cinaps
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.7)
-  > (using cinaps 1.2)
-  > EOF
+  $ make_cinaps_project 3.7 1.2
 
   $ cat > dune <<EOF
   > (cinaps

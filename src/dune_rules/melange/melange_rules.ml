@@ -231,17 +231,13 @@ let make_same_lib_emission_deps =
     in
     Dep_graph.make ~dir:(Obj_dir.dir obj_dir) ~per_module
   in
-  let deps_of_impl_closure ~obj_dir modules =
-    let modules = Obj_dir.Module.L.cm_files obj_dir modules ~kind:(Melange Cmj) in
+  let deps_of_closure ~obj_dir ~kind modules =
+    let modules = Obj_dir.Module.L.cm_files obj_dir modules ~kind:(Melange kind) in
     Dep.Set.of_files modules
   in
   let deps_of_xopt_closure ~obj_dir modules =
-    let cmj =
-      Obj_dir.Module.L.cm_files obj_dir modules ~kind:(Melange Cmj) |> Dep.Set.of_files
-    in
-    let cmi =
-      Obj_dir.Module.L.cm_files obj_dir modules ~kind:(Melange Cmi) |> Dep.Set.of_files
-    in
+    let cmj = deps_of_closure ~obj_dir ~kind:Cmj modules in
+    let cmi = deps_of_closure ~obj_dir ~kind:Cmi modules in
     Dep.Set.union cmi cmj
   in
   fun ~sctx ~obj_dir ~modules ~(compile_flags : Ocaml_flags.t) ->
@@ -280,7 +276,7 @@ let make_same_lib_emission_deps =
            emission. Follow the implementation dependency graph directly
            instead. *)
         Dep_graph.top_closed_implementations dep_graph [ module_ ]
-        |> Action_builder.map ~f:(deps_of_impl_closure ~obj_dir)
+        |> Action_builder.map ~f:(deps_of_closure ~obj_dir ~kind:Cmj)
 ;;
 
 let make_external_lib_emission_deps =
@@ -464,6 +460,7 @@ let build_js
         Command.run
           ~dir:(Super_context.context sctx |> Context.build_dir |> Path.build)
           ~sandbox:Sandbox_config.needs_sandboxing
+          ~forbid_action_runner:true
           compiler
           [ Command.Args.S obj_dir
           ; Command.Args.as_any includes

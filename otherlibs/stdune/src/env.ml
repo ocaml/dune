@@ -33,6 +33,7 @@ let equal t { vars; unix = _ } = Map.equal ~equal:String.equal t.vars vars
 let hash { vars; unix = _ } = Poly.hash vars
 let of_map vars = { vars; unix = None }
 let empty = of_map Map.empty
+let is_empty t = Map.is_empty t.vars
 let vars t = Var.Set.of_keys t.vars
 let get t k = Map.find t.vars k
 
@@ -68,7 +69,10 @@ let add t ~var ~value = of_map (Map.set t.vars var value)
 let mem t ~var = Map.mem t.vars var
 let remove t ~var = of_map (Map.remove t.vars var)
 let extend t ~vars = if Map.is_empty vars then t else of_map (Map.superpose vars t.vars)
-let extend_env x y = if Map.is_empty x.vars then y else extend x ~vars:y.vars
+
+let extend_env x y =
+  if is_empty y then x else if is_empty x then y else extend x ~vars:y.vars
+;;
 
 let to_dyn t =
   let open Dyn in

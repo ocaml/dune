@@ -16,7 +16,7 @@ module File_perm : sig
     | Normal
     | Executable
 
-  val to_unix_perm : t -> int
+  val to_unix_perm : t -> Permissions.Mode.t
 end
 
 module Outputs : sig
@@ -55,7 +55,7 @@ module Prog : sig
   module Not_found : sig
     type t = private
       { context : Context_name.t
-      ; program : string
+      ; program : Filename.t
       ; hint : string option
       ; loc : Loc.t option
       }
@@ -63,7 +63,7 @@ module Prog : sig
     val create
       :  ?hint:string
       -> context:Context_name.t
-      -> program:string
+      -> program:Filename.t
       -> loc:Loc.t option
       -> unit
       -> t
@@ -119,6 +119,9 @@ val empty : t
 
 (** Checks, if action contains a [Dynamic_run]. *)
 val is_dynamic : t -> bool
+
+(** Checks if executing the action may spawn a process. *)
+val runs_process : t -> bool
 
 (** Re-root all the paths in the action to their sandbox version *)
 val sandbox : t -> Sandbox.t -> t

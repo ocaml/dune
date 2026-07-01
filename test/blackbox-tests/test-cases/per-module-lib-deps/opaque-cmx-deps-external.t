@@ -5,9 +5,7 @@ omits the [.cmx] from the dep set for *local* libraries. The [unix]
 library, shipped with OCaml and resolved through findlib, plays the
 role of "external".
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.23)
-  > EOF
+  $ make_dune_project 3.23
 
   $ cat > dune <<EOF
   > (executable (name main) (libraries unix))
@@ -25,7 +23,7 @@ role of "external".
 
   $ dune build ./main.exe
   $ dune rules --root . --format=json --deps _build/default/.main.eobjs/native/dune__exe__Main.cmx |
-  > jq -r 'include "dune"; .[] | depsGlobPredicates' | sort -u
+  > jq_dune -r '.[] | depsGlobPredicates' | sort -u
   *.cmi
   *.cmx
 
@@ -38,6 +36,6 @@ role of "external".
 
   $ dune build ./main.exe
   $ dune rules --root . --format=json --deps _build/default/.main.eobjs/native/dune__exe__Main.cmx |
-  > jq -r 'include "dune"; .[] | depsGlobPredicates' | sort -u
+  > jq_dune -r '.[] | depsGlobPredicates' | sort -u
   *.cmi
   *.cmx

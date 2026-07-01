@@ -36,6 +36,26 @@ Supported since 2.1:
     "conf-libX11" {os != "win32"}
 
 
+Malformed dependency variables are rejected:
+
+  $ cat > dune-project <<EOF
+  > (lang dune 3.20)
+  > (generate_opam_files)
+  > (package
+  >  (name foo)
+  >  (allow_empty)
+  >  (depends
+  >   (ocaml-lsp-server : with-dev-setup)))
+  > EOF
+
+  $ dune build
+  File "dune-project", line 7, characters 20-21:
+  7 |   (ocaml-lsp-server : with-dev-setup)))
+                          ^
+  Error: "" is an invalid variable name.
+  [1]
+
+
 Using negation operator for dependencies
 ----------------------------------------
 

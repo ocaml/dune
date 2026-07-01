@@ -20,6 +20,16 @@ include S with type 'a t := 'a t
 module Option : Monad.Option with type 'a t := 'a t
 module Result : Monad.Result with type 'a t := 'a t
 
+(** Events in the life-cycle of a memoized node, for instrumentation (see the [?on_event]
+    arguments of [create] and friends). *)
+module Event : sig
+  type t =
+    | Live (** The node became live, i.e. used in the current run. *)
+    | Validated
+    (** The node's output has been validated for the current run, either by computing it
+        or by confirming that a cached value is still up to date. *)
+end
+
 (* CR-someday amokhov: Return the set of exceptions explicitly. *)
 val run : 'a t -> 'a Fiber.t
 
@@ -86,11 +96,19 @@ val fork_and_join_unit : (unit -> unit t) -> (unit -> 'a t) -> 'a t
 val all : 'a t list -> 'a list t
 
 val all_concurrently : 'a t list -> 'a list t
+val all_concurrently_unit : unit t list -> unit t
 val when_ : bool -> (unit -> unit t) -> unit t
 val sequential_map : 'a list -> f:('a -> 'b t) -> 'b list t
 val sequential_iter : 'a list -> f:('a -> unit t) -> unit t
 val parallel_map : 'a list -> f:('a -> 'b t) -> 'b list t
 val parallel_iter : 'a list -> f:('a -> unit t) -> unit t
+
+val parallel_iter_set
+  :  (module Set.S with type elt = 'a and type t = 's)
+  -> 's
+  -> f:('a -> unit t)
+  -> unit t
+
 val parallel_iter_seq : 'a Seq.t -> f:('a -> unit t) -> unit t
 
 (** [map_reduce_seq xs ~f ~empty ~combine] runs [f] on every element of
@@ -120,13 +138,22 @@ val map_reduce_array
 (** Like [map_reduce_seq], for lists. *)
 val map_reduce : 'a list -> f:('a -> 'b t) -> empty:'b -> combine:('b -> 'b -> 'b) -> 'b t
 
-module Make_parallel_map (Map : Map.S) : sig
+module Map (Map : Map.S) : sig
   val parallel_map : 'a Map.t -> f:(Map.key -> 'a -> 'b t) -> 'b Map.t t
+  val parallel_iter : 'a Map.t -> f:(Map.key -> 'a -> unit t) -> unit t
+end
+
+(** The specification of a memoized function. *)
+module Spec : sig
+  type ('input, 'output) t
 end
 
 (** A table memoizing results of executing a function. *)
 module Table : sig
   type ('input, 'output) t
+
+  (** The specification of the memoized function backing this table. *)
+  val spec : ('input, 'output) t -> ('input, 'output) Spec.t
 end
 
 (** A stack frame within a computation. *)
@@ -139,7 +166,7 @@ module Stack_frame : sig
 
   (** Checks if the stack frame is a frame of the given memoized function and if
       so, returns [Some i] where [i] is the argument of the function. *)
-  val as_instance_of : t -> of_:('input, _) Table.t -> 'input option
+  val as_instance_of : t -> of_:('input, _) Spec.t -> 'input option
 
   val human_readable_description : t -> User_message.Style.t Pp.t option
 end
@@ -219,11 +246,18 @@ module Invalidation : sig
   val clear_caches : reason:Reason.t -> t
 
   (** Invalidate all computations stored in a given [memo] table. *)
-  val invalidate_cache : reason:Reason.t -> _ Table.t -> t
+  val invalidate_table : reason:Reason.t -> _ Table.t -> t
 
-  (** A list of human-readable strings explaining the reasons for invalidation.
-      The list is truncated to [max_elements] elements, with [max_elements = 1]
-      by default. Raises if [max_elements <= 0]. *)
+  (** A custom invalidation, for use by out-of-band caching mechanisms: [f] is run when the
+      invalidation is applied. *)
+  val custom : reason:Reason.t -> f:(unit -> unit) -> t
+
+  (** All reasons contributing to an invalidation, deduplicated and in first-seen order. *)
+  val to_reason_list : t -> Reason.t list
+
+  (** A list of human-readable strings explaining the reasons for invalidation. The list
+      is truncated to [max_elements] elements, with [max_elements = 1] by default. Raises
+      if [max_elements <= 0]. *)
   val details_hum : ?max_elements:int -> t -> string list
 
   (** The list of changed paths that contributed [Path_changed] invalidations.
@@ -235,6 +269,11 @@ end
     removes the values specified by [Invalidation.t] from the memoization cache,
     and advances the current run. *)
 val reset : Invalidation.t -> unit
+
+(** Like [reset], but does nothing when [invalidation] is empty and no non-reproducible
+    error was produced during the current run. Use this to avoid advancing the run (and
+    thus invalidating the whole cache) when nothing relevant has changed. *)
+val reset_if_necessary : Invalidation.t -> unit
 
 module type Input = sig
   type t
@@ -263,8 +302,10 @@ end
 val create
   :  string
   -> input:(module Input with type t = 'i)
+  -> ?initial_store_size:int
   -> ?cutoff:('o -> 'o -> bool)
   -> ?human_readable_description:('i -> User_message.Style.t Pp.t)
+  -> ?on_event:('i -> Event.t -> unit)
   -> ('i -> 'o t)
   -> ('i, 'o) Table.t
 
@@ -287,7 +328,31 @@ val create_with_store
   -> input:(module Store.Input with type t = 'i)
   -> ?cutoff:('o -> 'o -> bool)
   -> ?human_readable_description:('i -> User_message.Style.t Pp.t)
+  -> ?on_event:('i -> Event.t -> unit)
   -> ('i -> 'o t)
+  -> ('i, 'o) Table.t
+
+(** Like [create] but allows the memoized function to call itself recursively. The
+    function receives, as its first argument, the memoized version of itself.
+
+    {[
+      Memo.create_rec "fib" ~input:(module Int) (fun fib n ->
+        if n <= 1
+        then Memo.return n
+        else
+          let open Memo.O in
+          let* r1 = fib (n - 1) in
+          let+ r2 = fib (n - 2) in
+          r1 + r2)
+    ]} *)
+val create_rec
+  :  string
+  -> input:(module Input with type t = 'i)
+  -> ?initial_store_size:int
+  -> ?cutoff:('o -> 'o -> bool)
+  -> ?human_readable_description:('i -> User_message.Style.t Pp.t)
+  -> ?on_event:('i -> Event.t -> unit)
+  -> (('i -> 'o t) -> 'i -> 'o t)
   -> ('i, 'o) Table.t
 
 (** Execute a memoized function. *)
@@ -316,39 +381,62 @@ module Run : sig
   module For_tests : sig
     val compare : t -> t -> Ordering.t
     val current : unit -> t
+    val of_int : int -> t
+    val to_int : t -> int
+
+    module Pair : sig
+      type run := t
+      type t
+
+      val create : last_changed_at:run -> last_validated_at:run -> t
+      val last_changed_at : t -> run
+      val last_validated_at : t -> run
+      val with_last_validated_at : t -> last_validated_at:run -> t
+      val invalid : t
+    end
   end
 end
 
 (** Introduces a dependency on the current build run. *)
 val current_run : unit -> Run.t t
 
-module Cell : sig
+module Node : sig
   type ('i, 'o) t
 
   val input : ('i, _) t -> 'i
   val read : (_, 'o) t -> 'o memo
 
-  (** Mark this cell as invalid, forcing recomputation of this value. The
+  (** Mark this node as invalid, forcing recomputation of this value. The
       consumers may be recomputed or not, depending on early cutoff. *)
   val invalidate : reason:Invalidation.Reason.t -> _ t -> Invalidation.t
+
+  (** Like [Node.t] but with the input type hidden. *)
+  module Packed : sig
+    type 'o t
+
+    val read : 'o t -> 'o memo
+  end
+
+  val pack : ('i, 'o) t -> 'o Packed.t
 end
 
-(** Create a "memoization cell" that focuses on a single input/output pair of a
+(** Create a "memoization node" that focuses on a single input/output pair of a
     memoized function. *)
-val cell : ('i, 'o) Table.t -> 'i -> ('i, 'o) Cell.t
+val node : ('i, 'o) Table.t -> 'i -> ('i, 'o) Node.t
 
-val lazy_cell
+val lazy_node
   :  ?cutoff:('a -> 'a -> bool)
   -> ?name:string
   -> ?human_readable_description:(unit -> User_message.Style.t Pp.t)
+  -> ?on_event:(Event.t -> unit)
   -> (unit -> 'a t)
-  -> (unit, 'a) Cell.t
+  -> (unit, 'a) Node.t
 
 (** Returns the cached dependency graph discoverable from the specified node *)
 val dump_cached_graph
   :  ?on_not_cached:[ `Ignore | `Raise ]
   -> ?time_nodes:bool
-  -> ('i, 'o) Cell.t
+  -> ('i, 'o) Node.t
   -> Dune_graph.Graph.t Fiber.t
 
 module Lazy : sig
@@ -360,6 +448,7 @@ module Lazy : sig
     :  ?cutoff:('a -> 'a -> bool)
     -> ?name:string
     -> ?human_readable_description:(unit -> User_message.Style.t Pp.t)
+    -> ?on_event:(Event.t -> unit)
     -> (unit -> 'a memo)
     -> 'a t
 
@@ -367,14 +456,15 @@ module Lazy : sig
   val map : 'a t -> f:('a -> 'b) -> 'b t
 
   module Expert : sig
-    (** Like [Lazy.create] but returns the underlying Memo [Cell], which can be
+    (** Like [Lazy.create] but returns the underlying Memo [Node], which can be
         useful for testing and debugging. *)
     val create
       :  ?cutoff:('a -> 'a -> bool)
       -> ?name:string
       -> ?human_readable_description:(unit -> User_message.Style.t Pp.t)
+      -> ?on_event:(Event.t -> unit)
       -> (unit -> 'a memo)
-      -> (unit, 'a) Cell.t * 'a t
+      -> (unit, 'a) Node.t * 'a t
   end
 end
 
@@ -382,6 +472,7 @@ val lazy_
   :  ?cutoff:('a -> 'a -> bool)
   -> ?name:string
   -> ?human_readable_description:(unit -> User_message.Style.t Pp.t)
+  -> ?on_event:(Event.t -> unit)
   -> (unit -> 'a t)
   -> 'a Lazy.t
 
@@ -438,6 +529,22 @@ module Var : sig
   (** [read t] returns the value [t] and introduces a dependency on this node in the
       current Memo computation. *)
   val read : 'a t -> 'a memo
+
+  (** Like [Var] but specialized to the [unit] type, which makes the implementation
+      simpler and also allows sharing the underlying spec. Unlike [set], [invalidate]
+      takes a [reason], and unlike [create], it takes no [name]. *)
+  module Unit : sig
+    type t
+
+    (** Create a [unit]-valued variable.
+
+        Doesn't take a [cutoff] because there is no point: [unit]-valued variables can
+        only be useful if invalidating them causes downstream computations to rerun. *)
+    val create : unit -> t
+
+    val invalidate : t -> reason:Invalidation.Reason.t -> Invalidation.t
+    val read : t -> unit memo
+  end
 end
 
 (** Memoization of polymorphic functions ['a input -> 'a output t]. The provided
@@ -475,6 +582,12 @@ module For_tests : sig
 
       Returns [None] if the dependencies were not computed yet. *)
   val get_deps : ('i, _) Table.t -> 'i -> (string option * Dyn.t) list option
+
+  (** Like [get_deps] but preserves the series-parallel structure
+      ([Seq]/[Par]/[Singleton]/[Empty]) instead of flattening it. Each leaf is
+      rendered as [(name, input)]. Returns [None] if the node's dependencies were
+      not computed in the current run. *)
+  val get_deps_structured : (_, _) Node.t -> Dyn.t option
 
   (** Forget all memoized values, forcing them to be recomputed on the next
       build run. *)

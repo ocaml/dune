@@ -1,7 +1,7 @@
 Duplicate mld's in different scope
   $ dune build @doc-new
 
-  $ dune trace cat | jq -c 'include "dune"; targetsMatching("page")'
+  $ dune trace cat | jq_dune -c 'targetsMatching("page")'
   {"target_files":["_build/default/_doc_new/index/page-docs.odoc"]}
   {"target_files":["_build/default/_doc_new/index/stdlib/page-stdlib.odoc"]}
   {"target_files":["_build/default/_doc_new/index/local/page-local.odoc"]}

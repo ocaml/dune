@@ -1,6 +1,6 @@
 open Import
 open Memo.O
-module Parallel_map = Memo.Make_parallel_map (Module_name.Unique.Map)
+module Parallel_map = Memo.Map (Module_name.Unique.Map)
 
 module Merge_dep_output = struct
   module Spec = struct
@@ -11,6 +11,8 @@ module Merge_dep_output = struct
 
     let name = "merge_dep_output"
     let version = 3
+    let runs_process = false
+    let can_run_in_action_runner = false
     let is_useful_to ~memoize:_ = true
 
     let bimap

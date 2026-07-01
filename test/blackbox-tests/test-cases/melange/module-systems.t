@@ -1,9 +1,6 @@
 Parses the full form (<module-system> <extension>)
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.8)
-  > (using melange 0.1)
-  > EOF
+  $ make_melange_project 3.8 0.1
 
   $ cat > dune <<EOF
   > (melange.emit
@@ -18,16 +15,13 @@ Parses the full form (<module-system> <extension>)
   > let () = Js.log "hello"
   > EOF
 
-  $ dune build @mel --display=short
-          melc .output.mobjs/melange/melange__Main.{cmi,cmj,cmt}
-          melc output/main.bs.js
-          melc output/main.mjs
+  $ dune build @mel
 
 Outputs both module systems
 
-  $ ls _build/default/output
-  main.bs.js
-  main.mjs
+  $ find _build/default/output -type f | sort
+  _build/default/output/main.bs.js
+  _build/default/output/main.mjs
   $ node _build/default/output/main.bs.js
   hello
   $ node _build/default/output/main.mjs
@@ -50,14 +44,10 @@ Parses the simplified form and defaults extension to `.js`
   > let () = Js.log "hello"
   > EOF
 
-  $ dune build @mel --display=short
-          melc .output.mobjs/melange/melange__Main.{cmi,cmj,cmt}
-          melc output/main.js
-          melc output/main.mjs
-
-  $ ls _build/default/output
-  main.js
-  main.mjs
+  $ dune build @mel
+  $ find _build/default/output -type f | sort
+  _build/default/output/main.js
+  _build/default/output/main.mjs
 
 Accepts `"esm"` too for ESM modules
 
@@ -88,9 +78,7 @@ Defaults to commonjs / `.js` if no config present at all
   > let () = Js.log "hello"
   > EOF
 
-  $ dune build @mel --display=short
-          melc .output.mobjs/melange/melange__Main.{cmi,cmj,cmt}
-          melc output/main.js
+  $ dune build @mel
 
   $ ls _build/default/output
   main.js
@@ -105,7 +93,7 @@ Errors out if extension starts with dot
   >  (module_systems (commonjs .bs.js)))
   > EOF
 
-  $ dune build @mel --display=short
+  $ dune build @mel
   File "dune", line 5, characters 27-33:
   5 |  (module_systems (commonjs .bs.js)))
                                  ^^^^^^
@@ -126,7 +114,7 @@ Errors if the same extension is present multiple times
   > let () = Js.log "hello"
   > EOF
 
-  $ dune build @mel --display=short
+  $ dune build @mel
   File "dune", line 5, characters 26-29:
   5 |  (module_systems commonjs es6))
                                 ^^^
@@ -149,7 +137,7 @@ Errors if the same extension is present multiple times
   > let () = Js.log "hello"
   > EOF
 
-  $ dune build @mel --display=short
+  $ dune build @mel
   File "dune", line 5, characters 48-53:
   5 |  (module_systems (commonjs bs.js) commonjs (es6 bs.js)))
                                                       ^^^^^

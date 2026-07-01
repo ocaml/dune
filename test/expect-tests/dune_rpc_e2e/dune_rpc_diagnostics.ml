@@ -101,9 +101,28 @@ let poll_exn client decl =
   | Error e -> raise (Dune_rpc.Version_error.E e)
 ;;
 
+let request_exn client req n =
+  Client.Versioned.prepare_request client req
+  >>= function
+  | Ok req -> Client.request client req n
+  | Error e -> raise (Dune_rpc.Version_error.E e)
+;;
+
+let flush_file_watcher client =
+  request_exn client Request.flush_file_watcher ()
+  >>| function
+  | Ok `Ok -> ()
+  | Ok `Not_in_watch_mode ->
+    Code_error.raise "expected the RPC server to run in watch mode" []
+  | Error e ->
+    Code_error.raise
+      "failed to flush the file watcher"
+      [ "error", Response.Error.to_dyn e ]
+;;
+
 let print_diagnostics poll =
-  let+ res = Client.Stream.next poll in
-  match res with
+  Client.Stream.next poll
+  >>| function
   | None -> printfn "client: no more diagnostics"
   | Some diag -> on_diagnostic_event diag
 ;;
@@ -576,6 +595,7 @@ let%expect_test "create and fix error" =
       ]
       |}];
     files [ "foo.ml", "let () = print_endline \"foo\"" ];
+    let* () = flush_file_watcher client in
     let* () = dune_build client "./foo.exe" in
     [%expect
       {|
@@ -619,13 +639,6 @@ let%expect_test "create and fix error" =
       ]
       |}]);
   [%expect {| |}]
-;;
-
-let request_exn client req n =
-  let* staged = Client.Versioned.prepare_request client req in
-  match staged with
-  | Ok req -> Client.request client req n
-  | Error e -> raise (Dune_rpc.Version_error.E e)
 ;;
 
 let%expect_test "formatting dune files" =

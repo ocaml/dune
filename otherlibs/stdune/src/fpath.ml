@@ -14,9 +14,9 @@ type mkdir_result =
   | `Missing_parent_directory
   ]
 
-let mkdir ?(perms = 0o777) t_s =
+let mkdir ?(perms = Permissions.Mode.default_dir) t_s =
   try
-    Unix.mkdir t_s perms;
+    Unix.mkdir t_s (Permissions.Mode.to_int perms);
     `Created
   with
   | Unix.Unix_error (EEXIST, _, _) -> `Already_exists

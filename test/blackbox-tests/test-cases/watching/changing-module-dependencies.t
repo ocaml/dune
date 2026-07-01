@@ -33,9 +33,7 @@ Now let's make [lib/a.ml] depend on [lib/b.ml]. It doesn't work!
 
 Let's try a manual restart.
 
-  $ stop_dune
-  Success, waiting for filesystem changes...
-  Success, waiting for filesystem changes...
+  $ stop_dune_quiet
 
   $ start_dune
 
@@ -46,5 +44,4 @@ It works now!
 
 We're done.
 
-  $ stop_dune
-  Success, waiting for filesystem changes...
+  $ stop_dune_quiet

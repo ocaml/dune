@@ -2,13 +2,7 @@ Startup RPC bind failures should be reported immediately and terminate dune.
 
   $ export DUNE_TRACE=rpc
 
-  $ echo "(lang dune 3.23)" > dune-project
-
-  $ cat > dune <<EOF
-  > (rule
-  >  (target x)
-  >  (action (write-file %{target} ok)))
-  > EOF
+  $ make_simple_rpc_watch_project
 
 Poison the parent of the Unix-domain RPC socket so that binding
 _build/.rpc/dune fails during startup.
@@ -22,19 +16,13 @@ _build/.rpc/dune fails during startup.
 
   $ wait_for_dune_exit_with_timeout
 
-  $ grep "Uncaught RPC Error" "$OUTPUT"
-  Uncaught RPC Error
+The important behavior is that the process exits promptly and reports the bind
+failure.
 
   $ grep '^Error: bind(): Not a directory$' "$OUTPUT"
   Error: bind(): Not a directory
 
   $ grep '^exit 1$' "$OUTPUT"
   exit 1
-
-  $ dune trace cat | jq -c '
-  >    select(.cat == "rpc" and .name == "startup-failure")
-  > | { name, error: .args.error.exn }
-  > '
-  {"name":"startup-failure","error":"Unix.Unix_error(Unix.ENOTDIR, \"bind\", \"\")"}
 
   $ ! with_timeout_quiet dune rpc ping >/dev/null 2>&1

@@ -13,6 +13,10 @@ For all these fields, ``<flags>`` is specified in the
 :doc:`../reference/ordered-set-language`.
 These fields all support ``(:include ...)`` forms.
 
+The value of ``:standard`` depends on the selected build profile. See
+:ref:`default-ocaml-flags` for the default OCaml flags Dune adds, including the
+default ``-g`` in ``ocamlc_flags`` and ``ocamlopt_flags``.
+
 The default value for ``(flags ...)`` is taken from the environment,
 as a result it's recommended to write ``(flags ...)`` fields as
 follows:

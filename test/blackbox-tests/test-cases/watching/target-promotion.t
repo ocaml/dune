@@ -3,17 +3,7 @@ Test target promotion in file-watching mode.
   $ export DUNE_TRACE="cache"
 
   $ echo '(lang dune 3.0)' > dune-project
-  $ cat > dune <<EOF
-  > (rule
-  >  (mode promote)
-  >  (deps original)
-  >  (target promoted)
-  >  (action (copy %{deps} %{target})))
-  > (rule
-  >  (deps promoted)
-  >  (target result)
-  >  (action (system "cat promoted promoted > result")))
-  > EOF
+  $ write_target_promotion_rules promote
   $ echo hi > original
 
   $ start_dune
@@ -60,22 +50,19 @@ Now try replacing its content.
   bye
 
 Now switch the mode to standard. Dune reports an error about multiple rules for
-[_build/default/promoted], as expected (see the error at the end of the test).
+[_build/default/promoted], as expected.
 
-  $ cat > dune <<EOF
-  > (rule
-  >  (mode standard)
-  >  (deps original)
-  >  (target promoted)
-  >  (action (copy %{deps} %{target})))
-  > (rule
-  >  (deps promoted)
-  >  (target result)
-  >  (action (system "cat promoted promoted > result")))
-  > EOF
+  $ write_target_promotion_rules standard
 
   $ build result
   Failure
+  [1]
+  $ wait_for_line_with_timeout .#dune-output "Hint: rm -f promoted" 200
+  $ grep -A3 "Error: Multiple rules generated for _build/default/promoted:" .#dune-output
+  Error: Multiple rules generated for _build/default/promoted:
+  - dune:1
+  - file present in source tree
+  Hint: rm -f promoted
 
 We use the hint and it starts to work.
 
@@ -93,17 +80,7 @@ We use the hint and it starts to work.
 
 Now use [fallback] to override the rule that generates [promoted].
 
-  $ cat > dune <<EOF
-  > (rule
-  >  (mode fallback)
-  >  (deps original)
-  >  (target promoted)
-  >  (action (copy %{deps} %{target})))
-  > (rule
-  >  (deps promoted)
-  >  (target result)
-  >  (action (system "cat promoted promoted > result")))
-  > EOF
+  $ write_target_promotion_rules fallback
 
 At first, we don't have the source, so the rule is used.
 
@@ -133,33 +110,11 @@ Now we create the source file and it overrides the rule.
 
 We're done.
 
-  $ stop_dune
-  Success, waiting for filesystem changes...
-  Success, waiting for filesystem changes...
-  Success, waiting for filesystem changes...
-  Success, waiting for filesystem changes...
-  Error: Multiple rules generated for _build/default/promoted:
-  - dune:1
-  - file present in source tree
-  Hint: rm -f promoted
-  Had 1 error, waiting for filesystem changes...
-  Success, waiting for filesystem changes...
-  Success, waiting for filesystem changes...
-  Success, waiting for filesystem changes...
+  $ stop_dune_quiet
 
 Now test file-system events generated during target promotion.
 
-  $ cat > dune <<EOF
-  > (rule
-  >  (mode promote)
-  >  (deps original)
-  >  (target promoted)
-  >  (action (copy %{deps} %{target})))
-  > (rule
-  >  (deps promoted)
-  >  (target result)
-  >  (action (system "cat promoted promoted > result")))
-  > EOF
+  $ write_target_promotion_rules promote
 
   $ cat promoted
   hi
@@ -173,7 +128,7 @@ Now test file-system events generated during target promotion.
 
 Show that Dune ignores the initial "dune-workspace" events (injected by Dune).
 
-  $ dune trace cat | jq 'include "dune"; fsUpdateWithPath("dune-workspace")'
+  $ dune trace cat | jq_dune 'fsUpdateWithPath("dune-workspace")'
   {
     "cache_type": "dir_contents",
     "path": "dune-workspace",
@@ -196,7 +151,7 @@ event for [promoted] is more interesting: the file's content did change from "hi
 to "bye" but Dune subscribed to it *after* making the promotion, precisely to
 avoid unnecessarily restarting after receiving the event that it caused itself.
 
-  $ dune trace cat | jq 'include "dune"; fsUpdateWithPath("promoted")'
+  $ dune trace cat | jq_dune 'fsUpdateWithPath("promoted")'
   {
     "cache_type": "dir_contents",
     "path": "promoted",
@@ -218,7 +173,7 @@ because [promoted] existed before running the build. Also, the subset of fields
 of [path_stat] that matter to Dune didn't change either (the [mtime] field did
 change but [fs_memo] does not provide a way to subscribe to it).
 
-  $ dune trace cat | jq 'include "dune"; fsUpdateWithPath(".")'
+  $ dune trace cat | jq_dune 'fsUpdateWithPath(".")'
   {
     "cache_type": "dir_contents",
     "path": ".",

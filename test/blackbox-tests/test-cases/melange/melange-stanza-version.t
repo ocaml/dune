@@ -35,7 +35,7 @@ Only supported after Dune 3.20
 
 Cmj rules should include --mel-package-output
   $ dune rules --root . --format=json app/.pkg.objs/melange/pkg__App.cmj |
-  > jq -r 'include "dune"; .[] | ruleActionFlagValues("--mel-package-name")'
+  > jq_dune -r '.[] | ruleActionFlagValues("--mel-package-name")'
   pkg
 
 
@@ -50,3 +50,28 @@ Using `(module_system es6)` is deprecated in `(using melange 1.0)`
                                                   ^^^
   Warning: 'es6' was deprecated in version 1.0 of the Melange extension. Use
   `esm' instead.
+
+Melange 1.0 does not implicitly enable the ReScript dialect
+
+  $ mkdir rescript
+  $ cat > rescript/dune-project <<EOF
+  > (lang dune 3.20)
+  > (using melange 1.0)
+  > EOF
+  $ cat > rescript/dune <<EOF
+  > (library
+  >  (name app)
+  >  (modes melange)
+  >  (modules app))
+  > EOF
+  $ cat > rescript/app.res <<EOF
+  > let x = "hello"
+  > EOF
+  $ dune build --root rescript
+  Entering directory 'rescript'
+  File "dune", line 4, characters 10-13:
+  4 |  (modules app))
+                ^^^
+  Error: Module App doesn't exist.
+  Leaving directory 'rescript'
+  [1]

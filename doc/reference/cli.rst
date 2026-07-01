@@ -71,7 +71,9 @@ documentation for each command is available through ``dune COMMAND --help``.
 
    .. describe:: dune describe targets
 
-      Print targets in a given directory. Works similarly to ls.
+      Print targets in a given directory. Works similarly to ls. The directory
+      may be a path in the source tree, or a build-only directory under
+      ``_build/`` (such as ``_build/default/.lib.objs``).
 
    .. describe:: dune describe workspace
 
@@ -86,6 +88,20 @@ documentation for each command is available through ``dune COMMAND --help``.
 .. describe:: dune exec
 
    Execute a command in a similar environment as if installation was performed.
+
+   Dune's options and the executed program's options share the same command
+   line. If an argument to the program starts with ``-``, separate it from
+   Dune's options with ``--``:
+
+   .. code:: console
+
+      $ dune exec ./tool.exe -- --program-option
+
+   Equivalently, put the separator before the whole command:
+
+   .. code:: console
+
+      $ dune exec -- ./tool.exe --program-option
 
 .. describe:: dune fmt
 

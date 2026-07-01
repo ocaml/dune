@@ -14,7 +14,9 @@ let term =
   in
   match response with
   | Success -> print_endline "Success"
-  | Failure _ -> print_endline "Failure"
+  | Failure _ ->
+    print_endline "Failure";
+    raise Dune_util.Report_error.Already_reported
 ;;
 
 let info =

@@ -1,8 +1,6 @@
 Tests JSOO rules for modules without implementations.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.21)
-  > EOF
+  $ make_dune_project 3.21
 
   $ cat > dune <<EOF
   > (executable

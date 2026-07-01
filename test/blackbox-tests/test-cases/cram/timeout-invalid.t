@@ -2,9 +2,7 @@ Here we check the validation of the timeout field of the cram stanza.
 
 First we check the version guard.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.19)
-  > EOF
+  $ make_dune_project 3.19
 
   $ cat > dune <<EOF
   > (cram
@@ -21,9 +19,7 @@ First we check the version guard.
 
 Next we check some invalid values:
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.20)
-  > EOF
+  $ make_dune_project 3.20
 
   $ cat > test.t <<EOF
   >   $ echo hi

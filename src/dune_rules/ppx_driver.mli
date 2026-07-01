@@ -1,25 +1,5 @@
 open Import
 
-module Key : sig
-  (* This module implements a bi-directional function between [encoded] and
-     [decoded] *)
-  type encoded = Digest.t
-
-  module Decoded : sig
-    type t = private
-      { pps : Lib_name.t list
-      ; project_root : Path.Source.t option
-      }
-
-    val of_libs : Lib.t list -> t
-  end
-
-  (* [decode y] fails if there hasn't been a previous call to [encode] such that
-     [encode x = y]. *)
-  val encode : Decoded.t -> encoded
-  val decode : encoded -> Decoded.t
-end
-
 module Driver : sig
   type t
 
@@ -51,7 +31,6 @@ val ppx_driver_and_flags
   -> (Loc.t * Lib_name.t) list
   -> (Path.Build.t * Driver.t * string list) Action_builder.t
 
-val ppx_exe_path : Build_context.t -> key:string -> Path.Build.t
 val ppx_exe : Context.t -> scope:Scope.t -> Lib_name.t -> Path.Build.t Resolve.Memo.t
 
 (** Get a path to a cached ppx driver with some extra flags for cookies. *)

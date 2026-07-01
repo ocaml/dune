@@ -1,10 +1,7 @@
 Test that the `glob_files` terms are only accepted in the `files` field and not in
 the `dirs` field
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.6)
-  > (package (name foo))
-  > EOF
+  $ make_dune_project_with_package 3.6 foo
 
   $ cat >dune <<EOF
   > (install

@@ -1,5 +1,6 @@
 (library
  (name hello_world)
+ (modes byte)
  (public_name hello_world))
 
 (documentation)

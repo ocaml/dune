@@ -29,6 +29,22 @@ dependencies:
   Error: No non-local dependencies
   [1]
 
+  $ write_dependency_hash_ab_project() {
+  > local b_dep="${1:-}"
+  > cat >dune-project <<EOF
+  > (lang dune 3.11)
+  > (package
+  >  (name a)
+  >  (depends
+  >   foo
+  >   bar))
+  > (package
+  >  (name b)
+  >  (depends
+  >   ${b_dep}))
+  > EOF
+  > }
+
 A single package with a single non-local dependency:
   $ cat >dune-project <<EOF
   > (lang dune 3.11)
@@ -61,18 +77,7 @@ Adding another dependency causes the hash to change:
 Adding a new local package which depends on one of the existing dependencies
 changes the hash:
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.11)
-  > (package
-  >  (name a)
-  >  (depends
-  >   foo
-  >   bar))
-  > (package
-  >  (name b)
-  >  (depends
-  >   foo))
-  > EOF
+  $ write_dependency_hash_ab_project foo
   $ dune describe pkg dependency-hash | tee hash3.txt
   fa35416284004d71ff802a4c582f8797
   $ diff hash2.txt hash3.txt
@@ -83,18 +88,7 @@ changes the hash:
   [1]
 
 Adding a constraint to one of the dependencies causes the hash to change:
-  $ cat >dune-project <<EOF
-  > (lang dune 3.11)
-  > (package
-  >  (name a)
-  >  (depends
-  >   foo
-  >   bar))
-  > (package
-  >  (name b)
-  >  (depends
-  >   (foo (and :with-test (> 0.1)))))
-  > EOF
+  $ write_dependency_hash_ab_project "(foo (and :with-test (> 0.1)))"
   $ dune describe pkg dependency-hash | tee hash4.txt
   fdf713b190b56d52d8cdbdd72a382654
   $ diff hash3.txt hash4.txt
@@ -107,17 +101,8 @@ Adding a constraint to one of the dependencies causes the hash to change:
 Adding another local package with the same dependency and constraint changes
 the hash:
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.11)
-  > (package
-  >  (name a)
-  >  (depends
-  >   foo
-  >   bar))
-  > (package
-  >  (name b)
-  >  (depends
-  >   (foo (and :with-test (> 0.1)))))
+  $ write_dependency_hash_ab_project "(foo (and :with-test (> 0.1)))"
+  $ cat >>dune-project <<EOF
   > (package
   >  (name c)
   >  (depends
@@ -135,9 +120,7 @@ the hash:
 Make sure that the hash changes when the formula changes from a conjunction to
 a disjunction, thus changing the solution:
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.11)
-  > EOF
+  $ make_dune_project 3.11
   $ cat > local.opam <<EOF
   > opam-version: "2.0"
   > depends: [ "a" "b" ]

@@ -8,13 +8,7 @@ The unit `mod.mll` is present in the working tree, `lib.ml` uses it:
   > let lex _ = true
   > EOF
 
-  $ cat > mod.mll <<EOF
-  > {
-  > }
-  > rule lex = parse
-  >   | _   { true  }
-  >   | eof { false }
-  > EOF
+  $ make_trivial_ocamllex mod.mll
   $ cat > mod.mli <<EOF
   > val lex: Lexing.lexbuf -> bool
   > EOF

@@ -3,6 +3,36 @@
 This file provides guidance to AI agents (Claude Code, Codex, etc) when working with
 the Dune codebase.
 
+## General Rules
+
+- Every commit must be pass the following check `$ dune build @check @fmt @runtest`.
+  Commits that introduce a failing test should also pass this check even if the
+  test introduces failure
+
+- Unless otherwise stated, prefer to create commits for every logical change
+  that you make. When in a `jj` repo, detected by the presence of `.jj/`, use
+  the `jj` tool create commits. Commits should come with a brief description of
+  the change.
+
+- In a `jj` repo, orient yourself using `$ jj show` and `$ jj log`. Are you
+  working off the right commit? Is it correct to modify the current commit?
+
+- Before fixing a bug, demonstrate it first in a test. A fix should ideally
+  flip the output of an existing test from failure to success.
+
+- Before writing large changes, try to estimate the scope of the change you
+  intend to make. Attempt to understand how  will the change interact with
+  other features, what will be the testing strategy to make sure the test is
+  correctly implemented.
+
+- Push back against user requirements before working on large changes. Ask for
+  clarifying questions.
+
+- Avoid introducing callbacks, optional arguments, and general ways of
+  indirection. Write code that is as direct as possible. If it can't be done,
+  explain why not. Propose ways to re-arrange the code so that things can be done
+  without indirection.
+
 ## Quick Reference
 
 **Most Common Commands:**
@@ -39,6 +69,7 @@ Dune is a self-hosting OCaml build system that uses itself to build itself.
 - `bin` - dune's command line interface
 - `boot` - bootstrap mechanism for building dune itself
 - `doc` - user documentation
+- `doc/dev` - developer documentation (specs, design notes, review guidance)
 - `otherlibs` - public libraries (dune-configurator, dune-build-info, etc.)
 - `src` - the majority of the source code
   - `src/dune_rules` - build rule generation (main logic)

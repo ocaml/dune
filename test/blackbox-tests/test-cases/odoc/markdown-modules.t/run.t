@@ -1,9 +1,6 @@
 Test that markdown generation includes all modules following naming conventions.
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.0)
-  > (package (name mylib))
-  > EOF
+  $ make_dune_project_with_package 3.0 mylib
 
   $ cat > dune << EOF
   > (library

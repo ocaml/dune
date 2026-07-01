@@ -1,16 +1,7 @@
 %{bin:...} in cram (deps ...) makes the binary callable by name.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.24)
-  > (package (name mypkg))
-  > EOF
-  $ mkdir src tests
-  $ cat >src/dune <<'EOF'
-  > (executable (public_name mybin) (package mypkg))
-  > EOF
-  $ cat >src/mybin.ml <<'EOF'
-  > let () = print_endline "hello from mybin"
-  > EOF
+  $ make_mypkg_bin_project
+  $ mkdir tests
 
   $ cat >tests/dune <<'EOF'
   > (cram (deps %{bin:mybin}))

@@ -8,10 +8,7 @@ Create a git repo to pin:
   $ mkdir _repo
   $ cd _repo
   $ git init --initial-branch=main --quiet
-  $ cat >dune-project <<EOF
-  > (lang dune 3.13)
-  > (package (name foo))
-  > EOF
+  $ make_dune_project_with_package 3.13 foo
   $ git add -A
   $ git commit -qm "initial commit"
   $ cd ..

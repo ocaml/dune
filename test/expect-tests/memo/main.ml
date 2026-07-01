@@ -159,7 +159,8 @@ let%expect_test _ =
   | Memo.Cycle_error.E err ->
     let cycle =
       Memo.Cycle_error.get err
-      |> List.filter_map ~f:(Memo.Stack_frame.as_instance_of ~of_:mcompcycle)
+      |> List.filter_map
+           ~f:(Memo.Stack_frame.as_instance_of ~of_:(Memo.Table.spec mcompcycle))
     in
     print (Pp.enumerate cycle ~f:(Pp.textf "%d"));
     print (Pp.textf "%d" !counter);
@@ -367,14 +368,14 @@ let%expect_test _ =
     running foobar |}]
 ;;
 
-(* Tests for Memo.Cell *)
+(* Tests for Memo.Node *)
 
 let%expect_test _ =
   let f x = Memo.return ("*" ^ x) in
   let memo = Memo.create "for-cell" ~input:(module String) ~cutoff:String.equal f in
-  let cell = Memo.cell memo "foobar" in
-  print_endline (run (Memo.Cell.read cell));
-  print_endline (run (Memo.Cell.read cell));
+  let cell = Memo.node memo "foobar" in
+  print_endline (run (Memo.Node.read cell));
+  print_endline (run (Memo.Node.read cell));
   [%expect
     {|
     *foobar
@@ -385,18 +386,18 @@ let%expect_test "fib linked list" =
   Memo.Metrics.reset ();
   let module Element = struct
     type t =
-      { prev_cell : (int, t) Memo.Cell.t
+      { prev_cell : (int, t) Memo.Node.t
       ; value : int
-      ; next_cell : (int, t) Memo.Cell.t
+      ; next_cell : (int, t) Memo.Node.t
       }
   end
   in
-  let force cell : Element.t Memo.t = Memo.Cell.read cell in
+  let force cell : Element.t Memo.t = Memo.Node.read cell in
   let memo_fdecl = Fdecl.create Dyn.opaque in
   let compute_element x =
     let memo = Fdecl.get memo_fdecl in
     printf "computing %d\n" x;
-    let prev_cell = Memo.cell memo (x - 1) in
+    let prev_cell = Memo.node memo (x - 1) in
     let+ value =
       if x < 1
       then Memo.return 0
@@ -408,7 +409,7 @@ let%expect_test "fib linked list" =
         let+ z = force y.prev_cell in
         x.value + z.value
     in
-    { Element.next_cell = Memo.cell memo (x + 1); prev_cell; value }
+    { Element.next_cell = Memo.node memo (x + 1); prev_cell; value }
   in
   let memo = Memo.create "fib" ~input:(module Int) compute_element in
   Fdecl.set memo_fdecl memo;
@@ -942,8 +943,8 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
               ; backtrace = ""
               }
             ]
-    Memo graph: 8/8/0 nodes/edges/blocked (restore), 8/7/0 nodes/edges/blocked (compute)
-    Memo cycle detection graph: 0/0/0 nodes/edges/paths
+    Memo graph: 8/8/1 nodes/edges/blocked (restore), 8/7/0 nodes/edges/blocked (compute)
+    Memo cycle detection graph: 6/5/1 nodes/edges/paths
     |}];
   Memo.Metrics.reset ();
   evaluate_and_print summit_yes_cutoff 0;
@@ -977,8 +978,8 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
               ; backtrace = ""
               }
             ]
-    Memo graph: 7/7/0 nodes/edges/blocked (restore), 6/6/0 nodes/edges/blocked (compute)
-    Memo cycle detection graph: 0/0/0 nodes/edges/paths
+    Memo graph: 7/7/1 nodes/edges/blocked (restore), 6/6/0 nodes/edges/blocked (compute)
+    Memo cycle detection graph: 6/5/1 nodes/edges/paths
     |}];
   Memo.Metrics.reset ();
   evaluate_and_print summit_no_cutoff 2;
@@ -986,66 +987,66 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
   [%expect
     {|
     Dependency cycle detected:
-    - ("incrementing_chain_4_yes_cutoff", ())
-    - called by ("incrementing_chain_plus_input", 2)
-    - called by ("cycle_creator_no_cutoff", ())
+    - ("cycle_creator_no_cutoff", ())
     - called by ("incrementing_chain_1_no_cutoff", ())
     - called by ("incrementing_chain_2_yes_cutoff", ())
     - called by ("incrementing_chain_3_no_cutoff", ())
+    - called by ("incrementing_chain_4_yes_cutoff", ())
+    - called by ("incrementing_chain_plus_input", 2)
     f 2 = Error
             [ { exn =
                   "Cycle_error.E\n\
-                  \  [ (\"incrementing_chain_4_yes_cutoff\", ())\n\
-                  \  ; (\"incrementing_chain_plus_input\", 2)\n\
-                  \  ; (\"cycle_creator_no_cutoff\", ())\n\
+                  \  [ (\"cycle_creator_no_cutoff\", ())\n\
                   \  ; (\"incrementing_chain_1_no_cutoff\", ())\n\
                   \  ; (\"incrementing_chain_2_yes_cutoff\", ())\n\
                   \  ; (\"incrementing_chain_3_no_cutoff\", ())\n\
+                  \  ; (\"incrementing_chain_4_yes_cutoff\", ())\n\
+                  \  ; (\"incrementing_chain_plus_input\", 2)\n\
                   \  ]"
               ; backtrace = ""
               }
             ]
     Memo graph: 0/0/0 nodes/edges/blocked (restore), 0/0/0 nodes/edges/blocked (compute)
     Memo cycle detection graph: 0/0/0 nodes/edges/paths
-  |}];
+    |}];
   Memo.Metrics.reset ();
   evaluate_and_print summit_yes_cutoff 2;
   print_metrics ();
   [%expect
     {|
     Dependency cycle detected:
-    - ("incrementing_chain_4_no_cutoff", ())
-    - called by ("incrementing_chain_plus_input", 2)
-    - called by ("cycle_creator_yes_cutoff", ())
+    - ("cycle_creator_yes_cutoff", ())
     - called by ("incrementing_chain_1_yes_cutoff", ())
     - called by ("incrementing_chain_2_no_cutoff", ())
     - called by ("incrementing_chain_3_yes_cutoff", ())
+    - called by ("incrementing_chain_4_no_cutoff", ())
+    - called by ("incrementing_chain_plus_input", 2)
     f 2 = Error
             [ { exn =
                   "Cycle_error.E\n\
-                  \  [ (\"incrementing_chain_4_no_cutoff\", ())\n\
-                  \  ; (\"incrementing_chain_plus_input\", 2)\n\
-                  \  ; (\"cycle_creator_yes_cutoff\", ())\n\
+                  \  [ (\"cycle_creator_yes_cutoff\", ())\n\
                   \  ; (\"incrementing_chain_1_yes_cutoff\", ())\n\
                   \  ; (\"incrementing_chain_2_no_cutoff\", ())\n\
                   \  ; (\"incrementing_chain_3_yes_cutoff\", ())\n\
+                  \  ; (\"incrementing_chain_4_no_cutoff\", ())\n\
+                  \  ; (\"incrementing_chain_plus_input\", 2)\n\
                   \  ]"
               ; backtrace = ""
               }
             ]
     Memo graph: 0/0/0 nodes/edges/blocked (restore), 0/0/0 nodes/edges/blocked (compute)
     Memo cycle detection graph: 0/0/0 nodes/edges/paths
-  |}];
+    |}];
   Memo.reset Memo.Invalidation.empty;
   evaluate_and_print summit_no_cutoff 0;
   print_metrics ();
   [%expect
     {|
-    Started evaluating base
-    Evaluated base: 3
     Started evaluating incrementing_chain_2_yes_cutoff
     Started evaluating incrementing_chain_1_no_cutoff
     Started evaluating cycle_creator_no_cutoff
+    Started evaluating base
+    Evaluated base: 3
     Evaluated cycle_creator_no_cutoff: 3
     Evaluated incrementing_chain_1_no_cutoff: 4
     Evaluated incrementing_chain_2_yes_cutoff: 5
@@ -1056,9 +1057,9 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     Started evaluating the summit with input 0
     Evaluated the summit with input 0: 7
     f 0 = Ok 7
-    Memo graph: 7/7/0 nodes/edges/blocked (restore), 8/7/0 nodes/edges/blocked (compute)
+    Memo graph: 7/6/0 nodes/edges/blocked (restore), 8/7/0 nodes/edges/blocked (compute)
     Memo cycle detection graph: 0/0/0 nodes/edges/paths
-  |}];
+    |}];
   Memo.Metrics.reset ();
   evaluate_and_print summit_yes_cutoff 0;
   print_metrics ();
@@ -1077,9 +1078,9 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     Evaluated incrementing_chain_4_no_cutoff: 7
     Evaluated the summit with input 0: 7
     f 0 = Ok 7
-    Memo graph: 6/6/0 nodes/edges/blocked (restore), 6/6/0 nodes/edges/blocked (compute)
+    Memo graph: 6/5/0 nodes/edges/blocked (restore), 6/6/0 nodes/edges/blocked (compute)
     Memo cycle detection graph: 0/0/0 nodes/edges/paths
-  |}];
+    |}];
   Memo.Metrics.reset ();
   evaluate_and_print summit_no_cutoff 2;
   print_metrics ();
@@ -1187,24 +1188,26 @@ let%expect_test "No deadlocks when creating the same cycle twice" =
   evaluate_and_print summit 2;
   [%expect
     {|
+    Started evaluating cycle_creator
+    Started evaluating base
     Dependency cycle detected:
-    - ("base", ())
-    - called by ("cycle_creator", ())
+    - ("cycle_creator", ())
+    - called by ("base", ())
     f 0 = Error
-            [ { exn = "Cycle_error.E [ (\"base\", ()); (\"cycle_creator\", ()) ]"
+            [ { exn = "Cycle_error.E [ (\"cycle_creator\", ()); (\"base\", ()) ]"
               ; backtrace = ""
               }
             ]
     Started evaluating summit
     Dependency cycle detected:
-    - ("base", ())
-    - called by ("cycle_creator", ())
+    - ("cycle_creator", ())
+    - called by ("base", ())
     f 2 = Error
-            [ { exn = "Cycle_error.E [ (\"base\", ()); (\"cycle_creator\", ()) ]"
+            [ { exn = "Cycle_error.E [ (\"cycle_creator\", ()); (\"base\", ()) ]"
               ; backtrace = ""
               }
             ]
-  |}]
+    |}]
 ;;
 
 let%expect_test "cancelling a computing node wakes waiters" =
@@ -1254,15 +1257,11 @@ let%expect_test "cancelling a computing node wakes waiters" =
     Started evaluating B
     Started evaluating C
     Dependency cycle detected:
-    - ("B", ())
-    - called by ("C", ())
+    - ("C", ())
     - called by ("A", ())
     Dependency cycle detected:
     - ("C", ())
     - called by ("A", ())
-    Dependency cycle detected:
-    - ("A", ())
-    - called by ("C", ())
     |}]
 ;;
 
@@ -1319,14 +1318,8 @@ let%expect_test "overlapping cycles with waiters can deadlock" =
     - called by ("inner_repro", ())
     - called by ("outer_repro", ())
     Dependency cycle detected:
-    - ("join_repro", ())
-    - called by ("inner_repro", ())
-    Dependency cycle detected:
     - ("inner_repro", ())
     - called by ("outer_repro", ())
-    - called by ("join_repro", ())
-    Dependency cycle detected:
-    - ("inner_repro", ())
     - called by ("join_repro", ())
     |}]
 ;;
@@ -1338,7 +1331,7 @@ let lazy_rec ~name f =
   node
 ;;
 
-let%expect_test "two similar, but not physically-equal, cycle errors" =
+let%expect_test "only the first cycle in a run is reported" =
   let cycle1 = lazy_rec ~name:"cycle" (fun node -> Memo.Lazy.force node) in
   let cycle2 = lazy_rec ~name:"cycle" (fun node -> Memo.Lazy.force node) in
   let both =
@@ -1348,16 +1341,12 @@ let%expect_test "two similar, but not physically-equal, cycle errors" =
         (fun () -> Memo.Lazy.force cycle2))
   in
   run_and_log_errors (Memo.Lazy.force both);
-  (* Even though these errors look similar, they are actually talking about two
-     different cycles which can be distinguished by the internal node ids, so
-     they are not deduplicated. *)
+  (* [cycle1] and [cycle2] are two physically distinct cycles. Once we hit the first cycle
+     in a run we stop adding edges to the cycle-detection graph (otherwise we risk
+     violating its invariants), so both branches report the same first cycle and the two
+     errors deduplicate into one. *)
   [%expect
     {|
-    Error: { exn =
-               "Memo.Error.E\n\
-               \  { exn = \"Cycle_error.E [ (\\\"cycle\\\", ()) ]\"; stack = [ (\"both\", ()) ] }"
-           ; backtrace = ""
-           }
     Error: { exn =
                "Memo.Error.E\n\
                \  { exn = \"Cycle_error.E [ (\\\"cycle\\\", ()) ]\"; stack = [ (\"both\", ()) ] }"
@@ -1458,7 +1447,7 @@ let%expect_test "Test that there are no phantom dependencies" =
       printf "base = %d\n" result;
       Memo.return result)
   in
-  let cell = Memo.cell const_8 () in
+  let cell = Memo.node const_8 () in
   let summit =
     Memo.create
       "summit"
@@ -1471,7 +1460,7 @@ let%expect_test "Test that there are no phantom dependencies" =
              match !counter with
              | 1 ->
                printf "*** middle depends on base ***\n";
-               Memo.Cell.read cell
+               Memo.Node.read cell
              | _ ->
                printf "*** middle does not depend on base ***\n";
                Memo.return 0)
@@ -1503,7 +1492,7 @@ let%expect_test "Test that there are no phantom dependencies" =
     Memo graph: 3/2/0 nodes/edges/blocked (restore), 0/0/0 nodes/edges/blocked (compute)
     Memo cycle detection graph: 0/0/0 nodes/edges/paths
   |}];
-  Memo.reset (Memo.Cell.invalidate ~reason:Test cell);
+  Memo.reset (Memo.Node.invalidate ~reason:Test cell);
   evaluate_and_print summit 0;
   (* Note that we no longer depend on the [cell]. *)
   [%expect
@@ -1513,7 +1502,7 @@ let%expect_test "Test that there are no phantom dependencies" =
     Evaluated summit: 0
     f 0 = Ok 0
   |}];
-  Memo.reset (Memo.Cell.invalidate ~reason:Test cell);
+  Memo.reset (Memo.Node.invalidate ~reason:Test cell);
   evaluate_and_print summit 0;
   print_metrics ();
   (* [middle] is not recomputed, since it no longer depends on the [cell]. In the past,
@@ -1927,7 +1916,7 @@ let%expect_test "Test that there are no spurious cycles" =
     Memo graph: 0/0/0 nodes/edges/blocked (restore), 2/1/0 nodes/edges/blocked (compute)
     Memo cycle detection graph: 0/0/0 nodes/edges/paths
   |}];
-  Memo.reset (Memo.Cell.invalidate ~reason:Test (Memo.cell task_b 0));
+  Memo.reset (Memo.Node.invalidate ~reason:Test (Memo.node task_b 0));
   evaluate_and_print task_a 0;
   (* Note that here task B blows up with a cycle error when trying to restore
      its result from the cache. A doesn't need it and terminates correctly. *)
@@ -1998,7 +1987,7 @@ let%expect_test "Test Memo.clear_cache" =
     Memo graph: 0/0/0 nodes/edges/blocked (restore), 4/2/0 nodes/edges/blocked (compute)
     Memo cycle detection graph: 0/0/0 nodes/edges/paths
   |}];
-  let invalidation = Memo.Invalidation.invalidate_cache ~reason:Test add_one in
+  let invalidation = Memo.Invalidation.invalidate_table ~reason:Test add_one in
   Memo.reset invalidation;
   evaluate_and_print add_one 1;
   evaluate_and_print add_one 2;
@@ -2183,8 +2172,8 @@ let%expect_test "Simple computation chain with a cutoff" =
     Memo graph: 0/0/0 nodes/edges/blocked (restore), 4/3/0 nodes/edges/blocked (compute)
     Memo cycle detection graph: 0/0/0 nodes/edges/paths
   |}];
-  let cell = Memo.cell f 1 in
-  Memo.reset (Memo.Cell.invalidate ~reason:Test cell);
+  let cell = Memo.node f 1 in
+  Memo.reset (Memo.Node.invalidate ~reason:Test cell);
   evaluate_and_print f 3;
   print_metrics ();
   (* CR-someday amokhov: f(1) is recomputed because we've just invalidated it.
@@ -2201,7 +2190,7 @@ let%expect_test "Simple computation chain with a cutoff" =
 
 let%expect_test "loss of concurrency" =
   let cell name =
-    Memo.lazy_cell ~cutoff:Unit.equal (fun () ->
+    Memo.lazy_node ~cutoff:Unit.equal (fun () ->
       (* this hackery needed to observe concurrency *)
       Memo.of_reproducible_fiber
       @@ Fiber.of_thunk (fun () ->
@@ -2213,10 +2202,10 @@ let%expect_test "loss of concurrency" =
   let a = cell "a" in
   let b = cell "b" in
   let c =
-    Memo.lazy_cell (fun () ->
-      Memo.fork_and_join (fun () -> Memo.Cell.read a) (fun () -> Memo.Cell.read b))
+    Memo.lazy_node (fun () ->
+      Memo.fork_and_join (fun () -> Memo.Node.read a) (fun () -> Memo.Node.read b))
   in
-  let read x = run @@ Memo.map ~f:ignore @@ Memo.Cell.read x in
+  let read x = run @@ Memo.map ~f:ignore @@ Memo.Node.read x in
   (* First we evaluate everything. Note that [a] and [b] are evalauted concurrently *)
   read c;
   [%expect
@@ -2228,16 +2217,123 @@ let%expect_test "loss of concurrency" =
   (* Now we invalidate [a] and [b]. As a consequence [c] should be recomputed. *)
   Memo.reset
     (Memo.Invalidation.combine
-       (Memo.Cell.invalidate a ~reason:Test)
-       (Memo.Cell.invalidate b ~reason:Test));
-  (* Now we recompute [c]. Notice that [a] and [b] are no longer computed concurrently *)
+       (Memo.Node.invalidate a ~reason:Test)
+       (Memo.Node.invalidate b ~reason:Test));
+  (* Now we recompute [c]. Because [c] recorded [a] and [b] as a parallel section (via
+     [fork_and_join]), restoring [c] from the cache checks them concurrently, so the
+     cutoff-driven recomputations of [a] and [b] also run concurrently. *)
   read c;
   [%expect
     {|
     start a
-    finish a
     start b
-    finish b |}]
+    finish a
+    finish b
+    |}]
+;;
+
+(* A memoized node that prints ["<name>+ "] when it starts computing, yields (so that
+   nodes computing in parallel interleave observably in the output), then prints
+   ["<name>- "] -- or ["<name>! "] and raises, when [fail] is set. Reading [var] makes the
+   node depend on it, so invalidating [var] forces a recomputation; the [Unit.equal] cutoff
+   means that recomputation produces the same value and so does not invalidate callers. *)
+let yielding_node ?(fail = false) ~name () =
+  let var = Memo.Var.Unit.create () in
+  let table =
+    Memo.create
+      name
+      ~input:(module Unit)
+      ~cutoff:Unit.equal
+      (fun () ->
+         let* () = Memo.Var.Unit.read var in
+         Memo.of_reproducible_fiber
+         @@ Fiber.of_thunk (fun () ->
+           let open Fiber.O in
+           printf "%s+ " name;
+           let+ () = Scheduler.yield () in
+           if fail
+           then (
+             printf "%s! " name;
+             raise_notrace (Failure name))
+           else printf "%s- " name))
+  in
+  table, var
+;;
+
+let%expect_test "fork_and_join: parallel cutoff restore" =
+  let a, a_var = yielding_node ~name:"a" () in
+  let b, b_var = yielding_node ~name:"b" () in
+  let top =
+    Memo.lazy_node (fun () ->
+      printf "top* ";
+      Memo.fork_and_join (fun () -> Memo.exec a ()) (fun () -> Memo.exec b ()))
+  in
+  let evaluate () = run (Memo.map ~f:ignore (Memo.Node.read top)) in
+  printf "1st run: ";
+  evaluate ();
+  Memo.reset
+    (Memo.Invalidation.combine
+       (Memo.Var.Unit.invalidate a_var ~reason:Test)
+       (Memo.Var.Unit.invalidate b_var ~reason:Test));
+  printf "\n2nd run: ";
+  evaluate ();
+  printf "\n";
+  (* On the 2nd run [top] is restored from the cache thanks to the cutoffs on [a] and [b]
+     (note the absence of ["top* "]); because [top] recorded [a] and [b] as a parallel
+     section, they are re-checked -- and hence recomputed -- concurrently (["a+ b+ a- b-"],
+     not the sequential ["a+ a- b+ b-"]). *)
+  [%expect
+    {|
+    1st run: top* a+ b+ a- b-
+    2nd run: a+ b+ a- b-
+    |}]
+;;
+
+let%expect_test "parallel_map: parallel cutoff restore" =
+  let a, a_var = yielding_node ~name:"a" () in
+  let b, b_var = yielding_node ~name:"b" () in
+  let top =
+    Memo.lazy_node (fun () ->
+      printf "top* ";
+      Memo.parallel_map [ a; b ] ~f:(fun node -> Memo.exec node ()))
+  in
+  let evaluate () = run (Memo.map ~f:ignore (Memo.Node.read top)) in
+  printf "1st run: ";
+  evaluate ();
+  Memo.reset
+    (Memo.Invalidation.combine
+       (Memo.Var.Unit.invalidate a_var ~reason:Test)
+       (Memo.Var.Unit.invalidate b_var ~reason:Test));
+  printf "\n2nd run: ";
+  evaluate ();
+  printf "\n";
+  (* As above, but the parallel section is recorded by [parallel_map] rather than
+     [fork_and_join]. *)
+  [%expect
+    {|
+    1st run: top* a+ b+ a- b-
+    2nd run: a+ b+ a- b-
+    |}]
+;;
+
+let%expect_test "fork_and_join: a failing thread still lets its sibling run" =
+  let a, _ = yielding_node ~name:"a" ~fail:true () in
+  let b, _ = yielding_node ~name:"b" () in
+  let top =
+    Memo.lazy_node (fun () ->
+      Memo.fork_and_join (fun () -> Memo.exec a ()) (fun () -> Memo.exec b ()))
+  in
+  run_and_log_errors (Memo.map ~f:ignore (Memo.Node.read top));
+  (* [a] raises, but [b] still runs to completion ([a+ b+ a! b-]) and the error from [a]
+     propagates. *)
+  [%expect
+    {|
+    a+ b+ a! b- Error: { exn =
+               "Memo.Error.E\n\
+               \  { exn = \"Failure(\\\"a\\\")\"; stack = [ (\"a\", ()); (\"<unnamed>\", ()) ] }"
+           ; backtrace = ""
+           }
+    |}]
 ;;
 
 let%expect_test "variables - print new" =
@@ -2304,4 +2400,223 @@ let%expect_test "Ensure that implicit output storage cell is not reused between 
   [%expect {| Some [ "x" ] |}];
   set_invalidate_print_run ();
   [%expect {| Some [ "x" ] |}]
+;;
+
+let%expect_test "create_rec" =
+  let calls = ref 0 in
+  let fib =
+    Memo.create_rec
+      "fib"
+      ~input:(module Int)
+      (fun fib n ->
+         incr calls;
+         if n <= 1
+         then Memo.return n
+         else
+           let* r1 = fib (n - 1) in
+           let+ r2 = fib (n - 2) in
+           r1 + r2)
+  in
+  Format.printf "fib 10 = %d@." (run_memo fib 10);
+  (* Each input from 0 to 10 is computed exactly once thanks to memoization. *)
+  Format.printf "calls = %d@." !calls;
+  [%expect
+    {|
+    fib 10 = 55
+    calls = 11
+    |}];
+  (* A second evaluation reuses the cached results: no extra calls. *)
+  Format.printf "fib 10 = %d@." (run_memo fib 10);
+  Format.printf "calls = %d@." !calls;
+  [%expect
+    {|
+    fib 10 = 55
+    calls = 11
+    |}]
+;;
+
+let%expect_test "Invalidation.custom runs its action on reset" =
+  let ran = ref 0 in
+  let inv = Memo.Invalidation.custom ~reason:Test ~f:(fun () -> incr ran) in
+  printf "before: %d\n" !ran;
+  Memo.reset inv;
+  printf "after: %d\n" !ran;
+  [%expect
+    {|
+    before: 0
+    after: 1
+    |}]
+;;
+
+let%expect_test "Invalidation.to_reason_list deduplicates reasons" =
+  let open Memo.Invalidation in
+  let inv =
+    combine
+      (combine (custom ~reason:Test ~f:ignore) (custom ~reason:Test ~f:ignore))
+      (custom ~reason:(Variable_changed "x") ~f:ignore)
+  in
+  printf "%d reasons\n" (List.length (to_reason_list inv));
+  List.iter (details_hum ~max_elements:10 inv) ~f:print_endline;
+  [%expect
+    {|
+    2 reasons
+    Rebuild initiated by an internal testsuite
+    Variable x changed
+    |}]
+;;
+
+let%expect_test "reset_if_necessary" =
+  let calls = ref 0 in
+  let cell =
+    Memo.lazy_node (fun () ->
+      incr calls;
+      Memo.return ())
+  in
+  let eval () = run (Memo.Node.read cell) in
+  eval ();
+  printf "calls = %d\n" !calls;
+  [%expect {| calls = 1 |}];
+  (* An empty invalidation is a no-op: the run is not advanced, so the cached value is
+     reused and the computation does not run again. *)
+  Memo.reset_if_necessary Memo.Invalidation.empty;
+  eval ();
+  printf "calls = %d\n" !calls;
+  [%expect {| calls = 1 |}];
+  (* A non-empty invalidation forces a reset, so the cell is recomputed. *)
+  Memo.reset_if_necessary (Memo.Node.invalidate ~reason:Test cell);
+  eval ();
+  printf "calls = %d\n" !calls;
+  [%expect {| calls = 2 |}]
+;;
+
+let%expect_test "reset_if_necessary retries non-reproducible errors" =
+  let calls = ref 0 in
+  let cell =
+    Memo.lazy_node (fun () ->
+      incr calls;
+      raise (Memo.Non_reproducible (Failure "boom")))
+  in
+  run_and_log_errors (Memo.Node.read cell);
+  printf "calls = %d\n" !calls;
+  [%expect
+    {|
+    Error: { exn =
+               "Memo.Error.E { exn = \"Failure(\\\"boom\\\")\"; stack = [ (\"<unnamed>\", ()) ] }"
+           ; backtrace = ""
+           }
+    calls = 1
+    |}];
+  (* The invalidation is empty, but a non-reproducible error was produced in the current
+     run, so [reset_if_necessary] still advances the run and the computation is retried
+     instead of being served stale from the cache. *)
+  Memo.reset_if_necessary Memo.Invalidation.empty;
+  run_and_log_errors (Memo.Node.read cell);
+  printf "calls = %d\n" !calls;
+  [%expect
+    {|
+    Error: { exn =
+               "Memo.Error.E { exn = \"Failure(\\\"boom\\\")\"; stack = [ (\"<unnamed>\", ()) ] }"
+           ; backtrace = ""
+           }
+    calls = 2
+    |}]
+;;
+
+let%expect_test "Var.Unit" =
+  let var = Memo.Var.Unit.create () in
+  let calls = ref 0 in
+  let downstream =
+    Memo.create
+      "var-unit-downstream"
+      ~input:(module Unit)
+      (fun () ->
+         incr calls;
+         Memo.Var.Unit.read var)
+  in
+  let run_downstream () = run (Memo.exec downstream ()) in
+  run_downstream ();
+  Format.printf "calls = %d@." !calls;
+  [%expect {| calls = 1 |}];
+  (* Without invalidation the result is cached, so there is no recomputation. *)
+  run_downstream ();
+  Format.printf "calls = %d@." !calls;
+  [%expect {| calls = 1 |}];
+  (* Invalidating the unit variable forces the downstream computation to rerun. *)
+  Memo.reset (Memo.Var.Unit.invalidate var ~reason:Test);
+  run_downstream ();
+  Format.printf "calls = %d@." !calls;
+  [%expect {| calls = 2 |}]
+;;
+
+let%expect_test "Var: create and read" =
+  let var = Memo.Var.create ~name:"foo" 200 in
+  Printf.printf "var: %d\n" (run (Memo.Var.read var));
+  [%expect {| var: 200 |}]
+;;
+
+let%expect_test "Var: invalidation" =
+  let var = Memo.Var.create ~name:"foo" 200 in
+  let show () = Printf.printf "var: %d\n" (run (Memo.Var.read var)) in
+  show ();
+  [%expect {| var: 200 |}];
+  let invalidation = Memo.Var.set var 400 in
+  print_endline (String.concat ~sep:"\n" (Memo.Invalidation.details_hum invalidation));
+  Memo.reset invalidation;
+  show ();
+  [%expect
+    {|
+    Variable foo changed
+    var: 400
+    |}]
+;;
+
+let%expect_test "Var: cutoff" =
+  let var = Memo.Var.create ~name:"foo" ~cutoff:(fun x y -> x mod 2 = y mod 2) 200 in
+  let node = Memo.Var.read var |> Memo.map ~f:Fun.id in
+  let set_invalidate_print_run value =
+    Memo.reset (Memo.Var.set var value);
+    Printf.printf "var: %d\n" (run node)
+  in
+  (* 202 has the same parity as 200, so the cutoff suppresses the change. *)
+  set_invalidate_print_run 202;
+  [%expect {| var: 200 |}];
+  set_invalidate_print_run 203;
+  [%expect {| var: 203 |}];
+  set_invalidate_print_run 202;
+  [%expect {| var: 202 |}]
+;;
+
+let%expect_test "on_event fires Live and Validated" =
+  let events = ref [] in
+  let f =
+    Memo.create
+      "ev"
+      ~input:(module Int)
+      ~on_event:(fun input (event : Memo.Event.t) ->
+        let tag =
+          match event with
+          | Live -> "live"
+          | Validated -> "validated"
+        in
+        events := Printf.sprintf "%d:%s" input tag :: !events)
+      (fun n -> Memo.return (n * 2))
+  in
+  let print_events () =
+    print_endline (String.concat ~sep:" " (List.rev !events));
+    events := []
+  in
+  (* First evaluation computes the node: [Live] then [Validated]. *)
+  ignore (run_memo f 1 : int);
+  print_events ();
+  [%expect {| 1:live 1:validated |}];
+  (* Re-running in the same build run hits the cache: no event. *)
+  ignore (run_memo f 1 : int);
+  print_events ();
+  [%expect {| |}];
+  (* In a fresh run with unchanged dependencies the node is revalidated:
+     [Live] (it became live again) then [Validated]. *)
+  Memo.reset Memo.Invalidation.empty;
+  ignore (run_memo f 1 : int);
+  print_events ();
+  [%expect {| 1:live 1:validated |}]
 ;;

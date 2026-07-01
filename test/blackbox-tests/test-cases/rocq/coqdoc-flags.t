@@ -1,9 +1,6 @@
 Testing the coqdoc flags field of the env stanza.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.21)
-  > (using rocq 0.11)
-  > EOF
+  $ make_rocq_project 3.21 0.11
 
   $ cat > dune <<EOF
   > (env
@@ -19,7 +16,7 @@ Testing the coqdoc flags field of the env stanza.
 
   $ dune build @doc
 
-  $ dune trace cat | jq 'include "dune"; coqdocFlags'
+  $ dune trace cat | jq_dune 'coqdocFlags'
   "-R"
   "coq/theories"
   "Corelib"

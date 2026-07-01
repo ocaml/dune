@@ -1,26 +1,7 @@
 Dune shows an error message when ocamlfind isn't in PATH and OCAMLFIND_CONF
 isn't set
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.7)
-  > (package (name repro))
-  > EOF
-  $ cat > dune <<EOF
-  > (executable
-  >  (name gen)
-  >  (modules gen)
-  >  (enabled_if
-  >   (= %{context_name} "default"))
-  >  (libraries libdep))
-  > (rule
-  >  (with-stdout-to
-  >   gen.ml
-  >   (echo "let () = Format.printf \"let x = 1\"")))
-  > (library
-  >  (name repro)
-  >  (public_name repro)
-  >  (modules))
-  > EOF
+  $ write_cross_compilation_repro_project
 
   $ mkdir ocaml-bin
   $ cat > ocaml-bin/ocamlc <<EOF

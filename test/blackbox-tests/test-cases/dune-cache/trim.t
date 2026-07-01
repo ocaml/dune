@@ -2,9 +2,7 @@
   $ export XDG_CACHE_HOME=$PWD/.xdg-cache
   $ setup_xdg_runtime_dir
 
-  $ cat > dune-project <<EOF
-  > (lang dune 2.1)
-  > EOF
+  $ make_dune_project 2.1
   $ cat > dune <<EOF
   > (rule
   >   (targets target_a)
@@ -76,12 +74,43 @@ value in [build_system.ml].
 You will also need to make sure that the cache trimmer treats new and old cache
 entries uniformly.
 
-  $ (cd "$PWD/.xdg-cache/dune/db/meta/v5"; grep -rws . -e 'metadata' | sort ) > out
-  $ cat out | censor
-  ./59/$DIGEST1:((8:metadata)(5:files(8:target_b32:$DIGEST2)))
-  ./78/$DIGEST3:((8:metadata)(5:files(8:target_a32:$DIGEST4)))
+  $ metadata_dir="$PWD/.xdg-cache/dune/db/meta/v5"
+  $ (cd "$metadata_dir"; find . -mindepth 2 -maxdepth 2 -type f | sort) > metadata-paths
+  $ cat metadata-paths | censor
+  ./0c/$DIGEST1
+  ./3f/$DIGEST2
 
-  $ digest="$(awk -F: '/target_b/ { digest=$1 } END { print digest }' < out)"
+  $ while read path; do dune internal cache-metadata "$metadata_dir/$path"; done < metadata-paths \
+  > | jq_dune -S -s 'sortCacheMetadataByFirstPath' \
+  > | censor
+  [
+    {
+      "files": [
+        {
+          "digest": "$DIGEST1",
+          "path": "target_a"
+        }
+      ]
+    },
+    {
+      "files": [
+        {
+          "digest": "$DIGEST2",
+          "path": "target_b"
+        }
+      ]
+    }
+  ]
+
+  $ digest="$(
+  >   while read path; do
+  >     if dune internal cache-metadata "$metadata_dir/$path" \
+  >        | jq_dune -e 'cacheMetadataForPath("target_b")' >/dev/null
+  >     then
+  >       echo "$path"
+  >     fi
+  >   done < metadata-paths
+  > )"
 
   $ dune_cmd stat size "$PWD/.xdg-cache/dune/db/meta/v5/$digest"
   70
@@ -194,5 +223,52 @@ are part of the same rule.
   $ dune cache trim --trimmed-size 1B
   Freed 123B (2 files removed)
 
-TODO: Test trimming priority in the [copy] mode. In PR #4497 we added a test but
-it turned out to be flaky so we subsequently deleted it in #4511.
+Test metadata for multiple file targets produced by the same rule.
+
+  $ reset
+  $ dune build multi_a multi_b
+  $ metadata_dir="$PWD/.xdg-cache/dune/db/meta/v5"
+  $ find "$metadata_dir" -mindepth 2 -maxdepth 2 -type f \
+  > | while read path; do dune internal cache-metadata "$path"; done \
+  > | jq_dune -S -s 'map(cacheMetadataWithPathPrefix("multi_")) | unique | .[]' \
+  > | censor
+  {
+    "files": [
+      {
+        "digest": "$DIGEST1",
+        "path": "multi_a"
+      },
+      {
+        "digest": "$DIGEST2",
+        "path": "multi_b"
+      }
+    ]
+  }
+
+Test metadata for directory targets, which are stored with no digest.
+
+  $ reset
+  $ make_empty_child_directory_target_project
+  $ dune build output
+  $ metadata_dir="$PWD/.xdg-cache/dune/db/meta/v5"
+  $ find "$metadata_dir" -mindepth 2 -maxdepth 2 -type f \
+  > | while read path; do dune internal cache-metadata "$path"; done \
+  > | jq_dune -S 'cacheMetadataForPath("output")' \
+  > | censor
+  {
+    "files": [
+      {
+        "digest": null,
+        "path": "output"
+      },
+      {
+        "digest": "$DIGEST",
+        "path": "output/file"
+      },
+      {
+        "digest": null,
+        "path": "output/child"
+      }
+    ]
+  }
+

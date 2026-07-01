@@ -33,7 +33,7 @@ let action
       | Native | Best | Byte -> None
       | Jsoo _ -> Some Jsoo_rules.runner
     with
-    | None -> flags >>| Action.run (Ok exe)
+    | None -> flags >>| fun flags -> Action.run (Ok exe) flags
     | Some runner ->
       let* prog =
         Super_context.resolve_program
@@ -267,7 +267,7 @@ include Sub_system.Register_end_point (struct
         let package = Library.package lib in
         let* flags =
           let+ ocaml_flags =
-            Buildable_rules.ocaml_flags sctx ~dir info.executable_ocaml_flags
+            Ocaml_flags_db.ocaml_flags sctx ~dir info.executable_ocaml_flags
           in
           Ocaml_flags.append_common ocaml_flags [ "-w"; "-24"; "-g" ]
         in
@@ -387,22 +387,28 @@ include Sub_system.Register_end_point (struct
         in
         Dep_conf_eval.unnamed sandbox info.deps ~expander
       in
-      let action = action sctx ~loc ~dir ~inline_test_dir ~runner_name in
+      let test_action = action sctx ~loc ~dir ~inline_test_dir ~runner_name in
+      let list_partitions mode partitions_flags =
+        let open Action_builder.O in
+        let action =
+          let+ action = test_action mode partitions_flags
+          and+ env in
+          Action.Full.make ~sandbox action |> Action.Full.add_env env
+        in
+        let+ partitions =
+          Super_context.execute_action_stdout sctx ~loc ~dir action
+          |> Action_builder.of_memo
+          >>| String.split_lines
+        in
+        Log.info
+          "inline-test partitions"
+          [ "library", Lib_name.Local.to_dyn lib_name
+          ; "mode", Mode_conf.to_dyn mode
+          ; "partitions", Dyn.list Dyn.string partitions
+          ];
+        partitions
+      in
       Memo.parallel_iter modes ~f:(fun (mode : Mode_conf.t) ->
-        let partition_file =
-          Path.Build.relative inline_test_dir ("partitions-" ^ Mode_conf.to_string mode)
-        in
-        let* () =
-          match partitions_flags with
-          | None -> Memo.return ()
-          | Some partitions_flags ->
-            let open Action_builder.O in
-            (let+ action = action mode partitions_flags
-             and+ env in
-             Action.Full.make ~sandbox action |> Action.Full.add_env env)
-            |> Action_builder.with_stdout_to partition_file
-            |> Super_context.add_rule sctx ~dir ~loc
-        in
         let* runtest_alias =
           match mode with
           | Native | Best | Byte -> Memo.return Alias0.runtest
@@ -426,25 +432,23 @@ include Sub_system.Register_end_point (struct
           ~loc:info.loc
           alias
           (let open Action_builder.O in
-           let runner_inputs =
-             List.concat_map source_modules ~f:(fun module_ ->
-               Module.ml_source module_ |> Module.sources)
-           in
            let promotion_targets =
              List.concat_map source_modules ~f:Module.sources_without_pp
            in
            let+ actions =
-             (match partitions_flags with
-              | None -> Action_builder.return [ None ]
-              | Some _ ->
-                Path.build partition_file
-                |> Action_builder.lines_of
-                >>| List.map ~f:(fun x -> Some x))
-             >>| List.map ~f:(fun partition ->
-               flags ~info ~expander ~backends ~lib_name:(snd lib.name) ~partition
-               |> action mode)
-             >>= Action_builder.all
-           and+ () = Action_builder.paths runner_inputs
+             let action_for_partition partition =
+               flags ~info ~expander ~backends ~lib_name ~partition |> test_action mode
+             in
+             match partitions_flags with
+             | None -> action_for_partition None >>| List.singleton
+             | Some partitions_flags ->
+               list_partitions mode partitions_flags
+               >>= Action_builder.List.map ~f:(fun partition ->
+                 action_for_partition (Some partition))
+           and+ () =
+             List.concat_map source_modules ~f:(fun module_ ->
+               Module.ml_source module_ |> Module.sources)
+             |> Action_builder.paths
            and+ () = Action_builder.paths promotion_targets
            and+ env in
            match actions with
@@ -458,7 +462,8 @@ include Sub_system.Register_end_point (struct
                  |> Action.diff ~optional:true fn)
                |> Action.concurrent
              in
-             Action.Full.make ~sandbox (Action.progn [ run_tests; diffs ])
+             Action.progn [ run_tests; diffs ]
+             |> Action.Full.make ~sandbox
              |> Action.Full.add_env env))
     ;;
 

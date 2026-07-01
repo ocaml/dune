@@ -12,21 +12,7 @@ Set up a project that depends on a package that is being downloaded
   $ make_lockdir
   $ echo "Contents" > tar-contents
   $ CONTENT_CHECKSUM=$(md5sum tar-contents | cut -f1 -d' ')
-  $ tar cf test.tar tar-contents
-  $ echo test.tar > fake-curls
-  $ SRC_PORT=1
-  $ SRC_CHECKSUM=$(md5sum test.tar | cut -f1 -d' ')
-  $ make_lockpkg test <<EOF
-  > (version 0.0.1)
-  > (source
-  >  (fetch
-  >   (url http://localhost:$SRC_PORT)
-  >   (checksum md5=$SRC_CHECKSUM)))
-  > EOF
-  $ cat > dune-project <<EOF
-  > (lang dune 3.17)
-  > (package (name my) (depends test) (allow_empty))
-  > EOF
+  $ make_fetch_cache_project tar-contents
 
 The first build should succeed, fetching the source, populating the cache and
 disabling the download of the source a second time.

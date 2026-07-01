@@ -47,8 +47,8 @@ let rec encode_action : Action.For_shell.t -> Dune_lang.t =
   let path = Encoder.string in
   let target = Encoder.string in
   function
-  | Run (a, xs) ->
-    List (atom "run" :: program a :: List.map (Appendable_list.to_list xs) ~f:string)
+  | Run { prog; args; can_run_in_action_runner = _ } ->
+    List (atom "run" :: program prog :: List.map (Appendable_list.to_list args) ~f:string)
   | With_accepted_exit_codes (pred, t) ->
     List
       [ atom "with-accepted-exit-codes"
@@ -78,7 +78,7 @@ let rec encode_action : Action.For_shell.t -> Dune_lang.t =
   | Copy (x, y) -> List [ atom "copy"; path x; target y ]
   | Symlink (x, y) -> List [ atom "symlink"; path x; target y ]
   | Hardlink (x, y) -> List [ atom "hardlink"; path x; target y ]
-  | Bash x -> List [ atom "bash"; string x ]
+  | Bash { script; can_run_in_action_runner = _ } -> List [ atom "bash"; string script ]
   | Write_file (x, perm, y) ->
     List [ atom ("write-file" ^ File_perm.suffix perm); target x; string y ]
   | Rename (x, y) -> List [ atom "rename"; target x; target y ]
@@ -276,36 +276,6 @@ let rec normalize_dyn : Dyn.t -> Dyn.t = function
 
 let dyn_of_repr repr value = normalize_dyn (Repr.to_dyn repr value)
 
-let rec json_of_dyn : Dyn.t -> Json.t = function
-  | Opaque -> Json.string "<opaque>"
-  | Unit -> Json.list []
-  | Int value -> Json.int value
-  | Int32 value -> Json.string (Int32.to_string value)
-  | Int64 value -> Json.string (Int64.to_string value)
-  | Nativeint value -> Json.string (Nativeint.to_string value)
-  | Bool value -> Json.bool value
-  | String value -> Json.string value
-  | Bytes value -> Json.string (Bytes.to_string value)
-  | Char value -> Json.string (String.make 1 value)
-  | Float value -> Json.float value
-  | Option None -> `Null
-  | Option (Some value) -> json_of_dyn value
-  | List values -> List.map values ~f:json_of_dyn |> Json.list
-  | Array values -> Array.to_list values |> List.map ~f:json_of_dyn |> Json.list
-  | Tuple values -> List.map values ~f:json_of_dyn |> Json.list
-  | Record fields ->
-    List.map fields ~f:(fun (name, value) -> name, json_of_dyn value) |> Json.assoc
-  | Variant (name, []) -> Json.string name
-  | Variant (name, [ value ]) -> Json.assoc [ name, json_of_dyn value ]
-  | Variant (name, values) ->
-    Json.assoc [ name, Json.list (List.map values ~f:json_of_dyn) ]
-  | Map values ->
-    List.map values ~f:(fun (key, value) ->
-      Json.list [ json_of_dyn key; json_of_dyn value ])
-    |> Json.list
-  | Set values -> Json.list (List.map values ~f:json_of_dyn)
-;;
-
 let rec dune_lang_of_sexp : Sexp.t -> Dune_lang.t = function
   | Atom value -> Dune_lang.atom_or_quoted_string value
   | List values -> List (List.map values ~f:dune_lang_of_sexp)
@@ -388,11 +358,11 @@ let term =
         match format, deps_only with
         | Output_format.Sexp, false -> print_rules_sexp ppf rules
         | Output_format.Sexp, true -> print_rule_deps_only_sexp ppf rules
-        | Json, false -> print_json oc (json_of_dyn (dyn_of_repr rules_repr rules))
+        | Json, false -> print_json oc (Json.of_dyn (dyn_of_repr rules_repr rules))
         | Json, true ->
           print_json
             oc
-            (json_of_dyn (dyn_of_repr deps_only_repr (dep_sets_of_rules rules)))
+            (Json.of_dyn (dyn_of_repr deps_only_repr (dep_sets_of_rules rules)))
       in
       match out with
       | None -> print stdout

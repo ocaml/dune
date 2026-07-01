@@ -1,12 +1,14 @@
 Compilation using jsoo
-  $ dune build bin/technologic.bc.js @install --profile dev
-  $ node ./_build/default/bin/technologic.bc.js
+  $ js=bin/technologic.bc.js
+  $ built_js=./_build/default/$js
+  $ dune build "$js" --profile dev
+  $ node "$built_js"
   buy it
   use it
   break it
   fix it
-  $ dune build @install --profile release
-  $ node ./_build/default/bin/technologic.bc.js
+  $ dune build "$js" --profile release
+  $ node "$built_js"
   buy it
   use it
   break it
@@ -20,12 +22,12 @@ Compilation using jsoo with disable_dynamically_linked_foreign_archives = true
   >   (default (disable_dynamically_linked_foreign_archives true)))
   > EOF
   $ dune clean
-  $ dune build bin/technologic.bc.js @install --profile dev
+  $ dune build "$js" --profile dev
 
 Js_of_ocaml whole program compilation works with
 disable_dynamically_linked_foreign_archives = true:
 
-  $ dune build bin/technologic.bc.js @install --profile release
+  $ dune build "$js" --profile release
 
 We expect a runtime error when running this bc-for-jsoo file.
 

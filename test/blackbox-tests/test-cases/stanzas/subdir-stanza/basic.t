@@ -1,6 +1,6 @@
 (subdir ..) allows us to interpret stanzas in a sub directory
 
-  $ echo "(lang dune 2.5)" > dune-project
+  $ make_dune_project 2.5
   $ cat >dune <<EOF
   > (rule (with-stdout-to foo.txt (echo "bar")))
   > (subdir bar
@@ -45,7 +45,7 @@ dir.
 Overriding dune files in the sub directory is possible:
 
   $ mkdir override; cd override
-  $ echo "(lang dune 2.5)" > dune-project
+  $ make_dune_project 2.5
   $ cat >dune <<EOF
   > (data_only_dirs shadow)
   > (subdir shadow (rule (with-stdout-to bar (echo shadow))))
@@ -60,7 +60,7 @@ Overriding dune files in the sub directory is possible:
 In conjunction with dune generated files:
 
   $ mkdir dune-syntax; cd dune-syntax
-  $ echo "(lang dune 2.5)" > dune-project
+  $ make_dune_project 2.5
   $ cat >dune <<EOF
   > (subdir sub (rule (with-stdout-to fromparent (echo parent))))
   > EOF
@@ -114,7 +114,7 @@ Include stanzas within subdir stanzas
   Hello!
 
 
-  $ echo "(lang dune 2.5)" > dune-project
+  $ make_dune_project 2.5
   $ cat >dune <<EOF
   > (rule (with-stdout-to foo.txt (echo "bar")))
   > (subdir /absolute/path/to/bar

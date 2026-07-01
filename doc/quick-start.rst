@@ -91,20 +91,22 @@ which you can dive deeper into Dune's capabilities:
   placeholder values. See :doc:`/reference/dune-project/index` for
   details.
 * The ``test`` directory contains a skeleton for your project's tests. Add to
-  the tests by editing ``test/test_project_name.ml``. See :ref:`writing-tests` for
-  details on testing.
-* The ``lib`` directory will hold the library you write to provide your executable's core
-  functionality. Add modules to your library by creating new
+  the tests by editing ``test/test_project_name.ml``. The generated tests can
+  also use modules from ``lib``; see the note about module names in the ``bin``
+  item below. See :ref:`writing-tests` for details on testing.
+* The ``lib`` directory will hold the library you write to provide your
+  executable's core functionality. Add modules to your library by creating new
   ``.ml`` files in this directory. See :doc:`/reference/dune/library` for
   details on specifying libraries manually.
 * The ``bin`` directory holds a skeleton for the executable program. Within the
-  modules in this directory, you can access the modules in your ``lib`` under
-  the namespace ``project_name.Mod``, where ``project_name`` is replaced with
-  the name of your project and ``Mod`` corresponds to the name of the file in
-  the ``lib`` directory. You can run the executable with ``dune exec
-  project_name``.  See :ref:`hello-world-program` for an example of specifying
-  an executable manually and :doc:`/reference/dune/executable` for
-  details.
+  modules in this directory, you can access modules in your ``lib`` through the
+  generated library's OCaml module name. For a project initialized as
+  ``project_name``, a source file such as ``lib/foo.ml`` is available as
+  ``Project_name.Foo`` from both ``bin`` and ``test``. In other words,
+  ``project_name`` is not written literally in OCaml code: OCaml module names
+  are capitalized. You can run the executable with ``dune exec project_name``.
+  See :ref:`hello-world-program` for an example of specifying an executable
+  manually and :doc:`/reference/dune/executable` for details.
 * The ``project_name.opam`` file will be freshly generated from the
   ``dune-project`` file whenever you build your project. You shouldn't need to
   worry about this, but you can see :doc:`explanation/opam-integration` for
@@ -305,9 +307,13 @@ And build it with:
 
   $ dune build hello_world.bc
 
-The executable will be built as ``_build/default/hello_world.bc``.
-The executable can be built and run in a single
-step with ``dune exec ./hello_world.bc``. This bytecode version allows the usage of 
+The executable will be built as ``_build/default/hello_world.bc``. If the
+executable stanza is in a subdirectory, include that path in the target. For
+example, an executable named ``main`` declared in ``bin/dune`` is built with
+``dune build bin/main.bc``.
+
+The executable can be built and run in a single step with
+``dune exec ./hello_world.bc``. This bytecode version allows the usage of
 ``ocamldebug``.
 
 Setting the OCaml Compilation Flags Globally
@@ -377,6 +383,8 @@ this ``dune`` file:
       (names mystubs)
       (flags -I/blah/include))
      (c_library_flags (-lblah)))
+
+.. _defining-library-with-c-stubs-pkg-config:
 
 Defining a Library with C Stubs using ``pkg-config``
 ====================================================
@@ -463,7 +471,8 @@ And run the tests with:
   $ dune runtest
 
 It will run the test program (the main module is ``my_test_program.ml``) and
-error if it exits with a nonzero code.
+error if it exits with a nonzero code. See :ref:`writing-tests` for a more
+complete guide to testing with Dune.
 
 In addition, if a ``my_test_program.expected`` file exists, it will be compared
 to the standard output of the test program and the differences will be

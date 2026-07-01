@@ -1,7 +1,6 @@
 copy_files would break the generation of the preprocessing flags
   $ dune build copy_files/.merlin-conf/exe-foo
-  $ dune ocaml merlin dump-config --format=json $PWD/copy_files | jq -r '
-  >   include "dune";
+  $ dune ocaml merlin dump-config --format=json $PWD/copy_files | jq_dune -r '
   >   merlinEntry("Foo")
   >   | merlinConfigItemsNamed(["FLG"])
   >   | select(.[0] == "FLG" and (.[1] | index("-pp")))

@@ -37,34 +37,10 @@ during their build so we can validate which version was built.
 
 Define a package bar which conditionally depends on different versions of foo:
 
-  $ mkpkg bar <<EOF
-  > build: [
-  >   ["mkdir" "-p" share "%{lib}%/%{name}%"]
-  >   ["touch" "%{lib}%/%{name}%/META"] # needed for dune to recognize this as a library
-  > ]
-  > depends: [
-  >   "foo" {= "1" & os = "linux"}
-  >   "foo" {= "2" & os = "macos"}
-  > ]
-  > EOF
+  $ make_platform_dependent_bar_package
 
 Define a project with a package depending on bar:
-  $ cat > dune-project <<EOF
-  > (lang dune 3.18)
-  > (package
-  >  (name x)
-  >  (depends bar))
-  > EOF
-
-  $ cat > x.ml <<EOF
-  > let () = print_endline "Hello, World!"
-  > EOF
-
-  $ cat > dune <<EOF
-  > (executable
-  >  (public_name x)
-  >  (libraries foo))
-  > EOF
+  $ make_x_depends_bar_project
 
 Solve the project. The solution will contain extra files for both versions of foo:
   $ dune pkg lock

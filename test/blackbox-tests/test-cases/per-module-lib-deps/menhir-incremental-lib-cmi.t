@@ -11,10 +11,7 @@ must invalidate when the dep's interface changes.
 
 Code under test: `src/dune_rules/menhir/menhir_rules.ml`.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.24)
-  > (using menhir 3.0)
-  > EOF
+  $ make_menhir_project 3.24 3.0
 
 `dep` is a sibling library exposing a value the parent library's
 menhir grammar will reference. `dep.ml` carries both `value` and
@@ -35,18 +32,7 @@ menhir grammar will reference. `dep.ml` carries both `value` and
 references `Dep.value`, plus a sibling module `helper` that also
 references `Dep.value`.
 
-  $ make_dir_with_dune parser <<EOF
-  > (library
-  >  (name parser)
-  >  (libraries dep))
-  > (menhir (modules grammar))
-  > EOF
-  $ cat > parser/grammar.mly <<EOF
-  > %token EOF
-  > %start <int> main
-  > %%
-  > main: EOF { Dep.value }
-  > EOF
+  $ make_menhir_parser_using_dep
   $ cat > parser/helper.ml <<EOF
   > let echo () = Dep.value
   > EOF
@@ -63,7 +49,7 @@ Case 1: the mock-compile ran. The invocation is recognisable by
 presence of this event positively asserts the `--infer` code path
 ran:
 
-  $ dune trace cat | jq -s 'include "dune"; [.[] | progMatching("ocamlc") | select(.process_args | index("-i") != null) | .target_files]'
+  $ dune trace cat | jq_dune -s '[.[] | progMatching("ocamlc") | select(.process_args | index("-i") != null) | .target_files]'
   [
     [
       "_build/default/parser/grammar__mock.mli.inferred"
@@ -73,7 +59,7 @@ ran:
 The mock's `-I` path includes `dep`'s objdir, so the grammar's
 semantic action type-checks against `dep`:
 
-  $ dune trace cat | jq -s 'include "dune"; [.[] | progMatching("ocamlc") | select(.process_args | index("-i") != null) | .process_args | [.[] | select(startswith("dep/"))]]'
+  $ dune trace cat | jq_dune -s '[.[] | progMatching("ocamlc") | select(.process_args | index("-i") != null) | .process_args | [.[] | select(startswith("dep/"))]]'
   [
     [
       "dep/.dep.objs/byte"
@@ -84,7 +70,7 @@ The mock-compile rule's declared dep set (no `%{...}` variable
 resolves the menhir-generated mock target, hence the literal path):
 
   $ dune rules --root . --format=json --deps _build/default/parser/grammar__mock.mli.inferred |
-  > jq -r 'include "dune"; .[] | depsGlobs | "\(.dir_kind) \(.dir) \(.predicate)"'
+  > jq_dune -r '.[] | depsGlobs | "\(.dir_kind) \(.dir) \(.predicate)"'
   In_build_dir _build/default/dep/.dep.objs/byte *.cmi
 
 Case 2: editing `dep`'s `.mli` to expose `extra` must invalidate
@@ -105,7 +91,7 @@ cctx-wide-vs-per-module dep filtering and isn't the property
 under guard here.
 
   $ dune build @check
-  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("grammar__mock\\.mli\\.inferred"))]'
+  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("grammar__mock\\.mli\\.inferred"))]'
   [
     {
       "target_files": [
@@ -113,7 +99,7 @@ under guard here.
       ]
     }
   ]
-  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("/parser__Helper\\.cmo$"))]'
+  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("/parser__Helper\\.cmo$"))]'
   [
     {
       "target_files": [

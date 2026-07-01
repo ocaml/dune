@@ -6,11 +6,8 @@
   > (lang dune 3.0)
   > (expand_aliases_in_sandbox)
   > EOF
-  $ echo old-contents > x
-  $ cat >dune <<EOF
-  > (alias
-  >  (name a)
-  >  (deps x))
+  $ append_alias_b_rules() {
+  > cat >>dune <<'EOF'
   > (rule
   >  (alias b)
   >  (deps (alias a))
@@ -22,6 +19,14 @@
   >    (system "printf \"running b: \"; cat x")
   >    (with-stdout-to b (system "cat x")))))
   > EOF
+  > }
+  $ echo old-contents > x
+  $ cat >dune <<EOF
+  > (alias
+  >  (name a)
+  >  (deps x))
+  > EOF
+  $ append_alias_b_rules
   $ dune build @b
   running b: old-contents
   $ dune build @b
@@ -60,17 +65,8 @@ Now test that including an alias into another alias includes its expansion:
   > (alias
   >  (name a)
   >  (deps (alias a0)))
-  > (rule
-  >  (alias b)
-  >  (deps (alias a))
-  >  (action (system "printf \"running b: \"; cat x")))
-  > (rule
-  >  (deps (alias a))
-  >  (action
-  >   (progn
-  >    (system "printf \"running b: \"; cat x")
-  >    (with-stdout-to b (system "cat x")))))
   > EOF
+  $ append_alias_b_rules
   $ rm -r _build
   $ echo old-contents > x
   $ dune build @b

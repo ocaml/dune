@@ -22,9 +22,12 @@ type t =
   ; buf : Buffer.t
   ; cats : Category.Set.t
   ; mutex : Mutex.t
-  ; path : Path.t
-  ; mutable alloc : Alloc.t option
+  ; alloc : Alloc.t option
   }
+
+let fd t = t.fd
+let cats t = t.cats
+let alloc t = t.alloc
 
 (* CR-someday rgrinberg: remove this once we drop support for < 5.2 *)
 external write_bigstring
@@ -35,7 +38,7 @@ external write_bigstring
   -> int
   = "dune_trace_write"
 
-let flush =
+let flush_unlocked =
   (* This loop will almost always result in a single write, but we make sure to
      write everything (albeit inefficiently) if the user is running out of disk
      space, is on NFS, or some exotic operation system that doesn't give us
@@ -65,8 +68,10 @@ let flush =
 
 let close t =
   Mutex.protect t.mutex (fun () ->
-    flush t;
-    Fd.close t.fd)
+    if not (Fd.is_closed t.fd)
+    then (
+      flush_unlocked t;
+      Fd.close t.fd))
 ;;
 
 let create cats path =
@@ -80,7 +85,18 @@ let create cats path =
   let cats = Category.Set.of_list cats in
   let buf = Buffer.create (1 lsl 16) in
   let alloc = if Category.Set.mem cats Alloc then Some (Alloc.start ()) else None in
-  { fd; cats; buf; mutex = Mutex.create (); path; alloc }
+  { fd; cats; buf; mutex = Mutex.create (); alloc }
+;;
+
+let of_fd cats fd =
+  let cats = Category.Set.of_list cats in
+  let buf = Buffer.create (1 lsl 16) in
+  { fd
+  ; cats
+  ; buf
+  ; mutex = Mutex.create ()
+  ; alloc = (if Category.Set.mem cats Alloc then Some (Alloc.start ()) else None)
+  }
 ;;
 
 let to_buffer t sexp =
@@ -108,11 +124,15 @@ let emit_buffered t event =
 
 let emit ?(buffered = false) t event =
   Mutex.protect t.mutex (fun () ->
-    emit_buffered t event;
-    if not buffered then flush t)
+    if not (Fd.is_closed t.fd)
+    then (
+      emit_buffered t event;
+      if not buffered then flush_unlocked t))
 ;;
 
-let flush t = Mutex.protect t.mutex (fun () -> flush t)
+let flush t =
+  Mutex.protect t.mutex (fun () -> if not (Fd.is_closed t.fd) then flush_unlocked t)
+;;
 
 let start t k : Event.Async.t option =
   match t with

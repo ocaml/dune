@@ -13,9 +13,15 @@
 
 ; 1. Handwritten assembly for x86_64
 
+; Cygwin is amd64 but the assembly rules below don't target it; without
+; this os_type guard it would also enable the portable stanza, and both
+; would clash on (names blake3 ...). Matches boot/duneboot.ml [keep_asm].
+
 (foreign_library
  (enabled_if
-  (= %{architecture} "amd64"))
+  (and
+   (= %{architecture} "amd64")
+   (<> %{os_type} "Cygwin")))
  (archive_name blake3)
  (language c)
  (names blake3 blake3_portable blake3_dispatch)
@@ -37,7 +43,8 @@
     (= %{system} "beos")
     (= %{system} "freebsd")
     (= %{system} "openbsd")
-    (= %{system} "netbsd"))))
+    (= %{system} "netbsd")
+    (= %{system} "dragonfly"))))
  (deps blake3_avx2_x86-64_unix.S)
  (targets blake3_avx2_x86-64%{ext_obj})
  (action
@@ -53,7 +60,8 @@
     (= %{system} "beos")
     (= %{system} "freebsd")
     (= %{system} "openbsd")
-    (= %{system} "netbsd"))))
+    (= %{system} "netbsd")
+    (= %{system} "dragonfly"))))
  (deps blake3_avx512_x86-64_unix.S)
  (targets blake3_avx512_x86-64%{ext_obj})
  (action
@@ -69,7 +77,8 @@
     (= %{system} "beos")
     (= %{system} "freebsd")
     (= %{system} "openbsd")
-    (= %{system} "netbsd"))))
+    (= %{system} "netbsd")
+    (= %{system} "dragonfly"))))
  (deps blake3_sse2_x86-64_unix.S)
  (targets blake3_sse2_x86-64%{ext_obj})
  (action
@@ -85,7 +94,8 @@
     (= %{system} "beos")
     (= %{system} "freebsd")
     (= %{system} "openbsd")
-    (= %{system} "netbsd"))))
+    (= %{system} "netbsd")
+    (= %{system} "dragonfly"))))
  (deps blake3_sse41_x86-64_unix.S)
  (targets blake3_sse41_x86-64%{ext_obj})
  (action
@@ -218,7 +228,8 @@
       (= %{system} "beos")
       (= %{system} "freebsd")
       (= %{system} "openbsd")
-      (= %{system} "netbsd"))))
+      (= %{system} "netbsd")
+      (= %{system} "dragonfly"))))
    (not
     (or
      (= %{architecture} "arm64")

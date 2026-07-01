@@ -1,4 +1,5 @@
 (library
  (name foo)
+ (modes byte)
  (public_name foo_lib)
  (modules_without_implementation foo))

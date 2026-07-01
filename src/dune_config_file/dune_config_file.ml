@@ -503,24 +503,7 @@ module Dune_config = struct
         let field f = f
       end)
 
-  let standard_watch_exclusions =
-    [ {|^_opam|}
-    ; {|/_opam|}
-    ; {|^_esy|}
-    ; {|/_esy|}
-    ; {|^\.#.*|} (* Such files can be created by Emacs and also Dune itself. *)
-    ; {|/\.#.*|}
-    ; {|~$|}
-    ; {|^#[^#]*#$|}
-    ; {|/#[^#]*#$|}
-    ; {|^4913$|} (* https://github.com/neovim/neovim/issues/3460 *)
-    ; {|/4913$|}
-    ; {|/.git|}
-    ; {|/.hg|}
-    ; {|:/windows|}
-    ]
-  ;;
-
+  let standard_watch_exclusions = Dune_scheduler.File_watcher.standard_watch_exclusions
   let hash = Poly.hash
 
   let default =

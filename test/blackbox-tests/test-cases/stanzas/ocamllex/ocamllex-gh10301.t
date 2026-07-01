@@ -1,8 +1,6 @@
 Show an edge case of `(include_subdirs ..)` and ocamllex
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.13)
-  > EOF
+  $ make_dune_project 3.13
 
   $ mkdir -p src/a
   $ cat > dune << EOF
@@ -11,13 +9,7 @@ Show an edge case of `(include_subdirs ..)` and ocamllex
   > (ocamllex lexer)
   > EOF
 
-  $ cat > src/a/lexer.mll <<EOF
-  > {
-  > }
-  > rule lex = parse
-  >   | _   { true  }
-  >   | eof { false }
-  > EOF
+  $ make_trivial_ocamllex src/a/lexer.mll
 
   $ dune build
   File "dune", line 3, characters 0-16:

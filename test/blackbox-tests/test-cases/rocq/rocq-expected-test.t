@@ -1,9 +1,6 @@
 Testing the expected test support.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.22)
-  > (using rocq 0.12)
-  > EOF
+  $ make_rocq_project 3.22 0.12
 
   $ cat > dune <<EOF
   > (include_subdirs qualified)

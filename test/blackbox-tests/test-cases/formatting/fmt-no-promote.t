@@ -1,6 +1,4 @@
-  $ cat > dune-project << EOF
-  > (lang dune 3.0)
-  > EOF
+  $ make_dune_project 3.0
 
 Make a dune file that should be formatted.
   $ cat > dune << EOF
@@ -41,7 +39,6 @@ Actually format the file
   +(rule
   + (write-file a b))
   Promoting _build/default/dune.corrected to dune.
-  [1]
 
 Now the output of `dune fmt --preview is empty`.
   $ dune fmt --preview

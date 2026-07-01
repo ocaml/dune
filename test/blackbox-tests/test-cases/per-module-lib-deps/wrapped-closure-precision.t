@@ -37,9 +37,7 @@ transitively-globbed lib still rebuilds the consumer.
 A future filter improvement that walks wrapped libs' children
 flips the expected target_files array to [].
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.23)
-  > EOF
+  $ make_dune_project 3.23
 
   $ cat > dune <<EOF
   > (library
@@ -95,7 +93,7 @@ the [.cmi] content change invalidates the consumer:
   > let y = 1
   > EOF
   $ dune build @check
-  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("\\.consumer_lib\\.objs/byte/consumer\\."))]'
+  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("\\.consumer_lib\\.objs/byte/consumer\\."))]'
   [
     {
       "target_files": [

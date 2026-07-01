@@ -3,9 +3,7 @@ cram tests.
 
 First we make a cram test:
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.7)
-  > EOF
+  $ make_dune_project 3.7
 
   $ cat > mytest.t << EOF
   >   $ echo A

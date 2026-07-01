@@ -10,6 +10,7 @@ module OS : sig
     | FreeBSD
     | NetBSD
     | OpenBSD
+    | DragonFly
     | Haiku
     | Other
 

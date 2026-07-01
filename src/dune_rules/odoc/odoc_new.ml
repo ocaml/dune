@@ -371,7 +371,8 @@ module Classify = struct
              let pkg = Lib_name.package_name (Lib_info.name info) in
              (match
                 let for_ =
-                  (Compilation_mode.of_mode_set (Lib_info.modes info)).for_merlin
+                  Compilation_mode.Set.of_lib_mode_set (Lib_info.modes info)
+                  |> Compilation_mode.Set.for_merlin
                 in
                 let mods_opt = Lib_info.modules ~for_ info in
                 mods_opt, Lib_info.entry_modules info ~for_
@@ -443,8 +444,8 @@ module Valid = struct
                 let* acc = acc in
                 let+ libs =
                   let for_ =
-                    (Compilation_mode.of_mode_set (Lib_info.modes (Lib.info lib)))
-                      .for_merlin
+                    Compilation_mode.Set.of_lib_mode_set (Lib_info.modes (Lib.info lib))
+                    |> Compilation_mode.Set.for_merlin
                   in
                   let* libs =
                     Lib.closure (lib :: Option.to_list stdlib) ~linking:false ~for_
@@ -842,9 +843,10 @@ let odoc_include_flags ctx all maps pkg requires indices =
       let odoc_dir = Artifact.odoc_file index |> Path.Build.parent_exn in
       Path.Set.add p (Path.build odoc_dir))
   in
+  let paths = Path.Set.to_list paths in
   Command.Args.S
-    (Path.Set.to_list paths
-     |> List.concat_map ~f:(fun dir -> [ Command.Args.A "-I"; Path dir ]))
+    (Odoc.odoc_files_in_dirs paths
+     :: List.concat_map paths ~f:(fun dir -> [ Command.Args.A "-I"; Path dir ]))
 ;;
 
 (* Create a dependency on the odoc file of an index *)
@@ -919,7 +921,8 @@ let compile_requires stdlib_opt libs =
   Memo.List.map
     ~f:(fun l ->
       let for_ =
-        (Compilation_mode.of_mode_set (Lib_info.modes (Lib.info l))).for_merlin
+        Compilation_mode.Set.of_lib_mode_set (Lib_info.modes (Lib.info l))
+        |> Compilation_mode.Set.for_merlin
       in
       Lib.closure ~linking:false [ l ] ~for_)
     libs
@@ -1071,26 +1074,27 @@ let html_generate sctx all ~search_db (a : Artifact.t) =
 (* Intra-library module dependencies have to be found out for
    external libraries, but dune already knows these for internal libraries.
    For consistency however, we use the same method for both - we ask odoc. *)
-let external_module_deps_rule sctx ~all a =
+let external_module_deps sctx ~all a =
   match Artifact.artifact_ty a with
   | Module _ ->
-    let ctx = Super_context.context sctx in
-    let deps_file =
-      Path.Build.set_extension (Artifact.odoc_file a) ~ext:Filename.Extension.deps
+    let dir =
+      let ctx = Super_context.context sctx in
+      Paths.root ctx ~all
     in
-    let+ () =
-      let odoc = Odoc.odoc_program sctx (Paths.root ctx ~all) in
-      Super_context.add_rule
-        sctx
-        ~dir:(Paths.root ctx ~all)
-        (Command.run_dyn_prog
-           odoc
-           ~dir:(Path.parent_exn (Path.build deps_file))
-           ~stdout_to:deps_file
-           [ A "compile-deps"; Dep (Artifact.source_file a) ])
+    let deps =
+      let open Action_builder.O in
+      (let* odoc = Odoc.odoc_program sctx dir in
+       let deps_dir = Artifact.odoc_file a |> Path.build |> Path.parent_exn in
+       Command.run'
+         odoc
+         ~sandbox:Sandbox_config.needs_sandboxing
+         ~dir:deps_dir
+         [ A "compile-deps"; Dep (Artifact.source_file a) ])
+      |> Super_context.execute_action_stdout sctx ~loc:Loc.none ~dir
+      |> Action_builder.of_memo
     in
-    Some deps_file
-  | _ -> Memo.return None
+    Some deps
+  | _ -> None
 ;;
 
 (* We run [odoc compile-deps] on the cmti files to find out the dependencies.
@@ -1117,8 +1121,7 @@ let compile_odocs sctx ~all ~quiet artifacts parent libs =
       Resolve.return libs)
   in
   Memo.parallel_iter artifacts ~f:(fun a ->
-    external_module_deps_rule sctx ~all a
-    >>= function
+    match external_module_deps sctx ~all a with
     | None ->
       (* mld file *)
       let+ (_ : Path.Build.t) =
@@ -1131,10 +1134,10 @@ let compile_odocs sctx ~all ~quiet artifacts parent libs =
           ~children:[]
       in
       ()
-    | Some deps_file ->
+    | Some deps_output ->
       let module_deps =
         let open Action_builder.O in
-        let* l = Action_builder.lines_of (Path.build deps_file) in
+        let* l = deps_output >>| String.split_lines in
         let deps' =
           parse_odoc_deps l
           |> List.filter_map ~f:(fun (m', _) ->
@@ -1238,7 +1241,7 @@ let lib_artifacts ctx all index lib modules =
   let cm_kind : Lib_mode.Cm_kind.t =
     match
       let modes = Lib_info.modes info in
-      (Compilation_mode.of_mode_set modes).for_merlin
+      Compilation_mode.Set.of_lib_mode_set modes |> Compilation_mode.Set.for_merlin
     with
     | Ocaml -> Ocaml Cmi
     | Melange -> Melange Cmi
@@ -1297,27 +1300,11 @@ let pkg_mlds sctx pkg =
     ext_package_mlds ctx pkg)
 ;;
 
-let check_mlds_no_dupes ~pkg ~mlds =
-  match
-    List.rev_map mlds ~f:(fun ((_path, mld_name) as mld) -> mld_name, mld)
-    |> String.Map.of_list
-  with
-  | Ok m -> m
-  | Error (_, (p1, _name1), (p2, _name2)) ->
-    User_error.raise
-      [ Pp.textf
-          "Package %s has two mld's with the same basename %s, %s"
-          (Package.Name.to_string pkg)
-          (Path.to_string_maybe_quoted p1)
-          (Path.to_string_maybe_quoted p2)
-      ]
-;;
-
 let pkg_artifacts sctx index pkg =
   let ctx = Super_context.context sctx in
   let+ mlds_map =
     let+ mlds = pkg_mlds sctx pkg in
-    check_mlds_no_dupes ~pkg ~mlds
+    Odoc.check_mlds_no_dupes ~pkg ~mlds ~path_to_string:Path.to_string_maybe_quoted
   in
   let artifacts =
     let mlds_noindex =
@@ -1515,8 +1502,9 @@ let index_info_of_lib_def =
     in
     let info = Lib.info lib in
     let+ artifacts =
-      let { Compilation_mode.for_merlin; _ } =
-        Compilation_mode.of_mode_set (Lib_info.modes info)
+      let for_merlin =
+        Compilation_mode.Set.of_lib_mode_set (Lib_info.modes info)
+        |> Compilation_mode.Set.for_merlin
       in
       let+ modules = Dir_contents.modules_of_lib sctx (lib :> Lib.t) ~for_:for_merlin in
       match modules with

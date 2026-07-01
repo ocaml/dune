@@ -1,9 +1,6 @@
 Testing the rocqdoc_header and rocqdoc_footer field of the env stanza.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.21)
-  > (using rocq 0.11)
-  > EOF
+  $ make_rocq_project 3.21 0.11
 
   $ cat > dune <<EOF
   > (env
@@ -26,7 +23,7 @@ Testing the rocqdoc_header and rocqdoc_footer field of the env stanza.
 
   $ dune build @doc
 
-  $ dune trace cat | jq -c 'include "dune"; coqdocFlags'
+  $ dune trace cat | jq_dune -c 'coqdocFlags'
   "-R"
   "coq/theories"
   "Corelib"
@@ -45,7 +42,7 @@ Testing the rocqdoc_header and rocqdoc_footer field of the env stanza.
 
   $ dune build @doc-latex
 
-  $ dune trace cat | jq -c 'include "dune"; coqdocFlags'
+  $ dune trace cat | jq_dune -c 'coqdocFlags'
   "-R"
   "coq/theories"
   "Corelib"

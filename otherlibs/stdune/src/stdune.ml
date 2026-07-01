@@ -20,6 +20,7 @@ module Exn_with_backtrace = Exn_with_backtrace
 module Filename = Filename
 module Filename_set = Filename_set
 module Format = Format
+module Hash = Hash
 module Hashtbl = Hashtbl
 module Table = Table
 module Int = Int
@@ -113,6 +114,7 @@ module Bit_set = Bit_set
 module Unix_error = Unix_error
 module File_kind = File_kind
 module Alias_name = Alias_name
+module Action_runner_name = Action_runner_name
 
 module type Per_item = Per_item_intf.S
 module type Applicative = Applicative_intf.S

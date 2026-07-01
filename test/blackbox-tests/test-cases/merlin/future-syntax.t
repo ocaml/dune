@@ -17,8 +17,7 @@ Generates Merlin config for executables using `future_syntax` preprocessing.
 
   $ dune build ./.merlin-conf/exe-pp_future_syntax --profile release
   $ dune ocaml merlin dump-config --format=json . | \
-  >   jq -r '
-  >     include "dune";
+  >   jq_dune -r '
   >     merlinEntry("Pp_future_syntax")
   >     | (merlinPathLine | @json),
   >       (merlinConfigItems | @json)

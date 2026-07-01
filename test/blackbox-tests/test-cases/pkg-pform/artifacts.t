@@ -1,10 +1,7 @@
 Test that %{pkg:...} resolves through install renames across all sections
 and tracks source files as dependencies.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.24)
-  > (package (name foo))
-  > EOF
+  $ make_dune_project_with_package 3.24 foo
 
   $ mkdir foo
 
@@ -56,7 +53,7 @@ Each section resolves the install name back to the source file:
 
 All source files appear as dependencies (not install staging paths):
 
-  $ dune rules --format=json _build/default/out 2>&1 | jq 'include "dune"; .[] | ruleDepFilePaths' | sort
+  $ dune rules --format=json _build/default/out 2>&1 | jq_dune '.[] | ruleDepFilePaths' | sort
   "_build/default/foo/bin_src"
   "_build/default/foo/doc_src"
   "_build/default/foo/etc_src"

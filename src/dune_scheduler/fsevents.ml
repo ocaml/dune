@@ -179,51 +179,138 @@ module Event = struct
   let id t = t.id
   let path t = t.path
 
-  type kind =
-    | Dir
-    | File
-    | Dir_and_descendants
+  module Kind = struct
+    type t =
+      | Dir
+      | File
+      | Dir_and_descendants
 
-  let dyn_of_kind kind =
-    Dyn.string
-      (match kind with
-       | Dir -> "Dir"
-       | File -> "File"
-       | Dir_and_descendants -> "Dir_and_descendants")
-  ;;
+    let repr =
+      Repr.variant
+        "fsevents-kind"
+        [ Repr.case0 "Dir" ~test:(function
+            | Dir -> true
+            | File | Dir_and_descendants -> false)
+        ; Repr.case0 "File" ~test:(function
+            | File -> true
+            | Dir | Dir_and_descendants -> false)
+        ; Repr.case0 "Dir_and_descendants" ~test:(function
+            | Dir_and_descendants -> true
+            | Dir | File -> false)
+        ]
+    ;;
 
-  external kind : Int32.t -> kind = "dune_fsevents_kind"
+    include Repr.Poly (struct
+        type nonrec t = t
 
-  let kind t = kind t.flags
+        let repr = repr
+      end)
 
-  type action =
-    | Create
-    | Remove
-    | Modify
-    | Rename
-    | Unknown
+    let to_dyn = Repr.to_dyn repr
+  end
 
-  external action : Int32.t -> action = "dune_fsevents_action"
+  external kind_of_flags : Int32.t -> Kind.t = "dune_fsevents_kind"
 
-  let action t = action t.flags
+  let kind t = kind_of_flags t.flags
 
-  let dyn_of_action a =
-    Dyn.string
-      (match a with
-       | Create -> "Create"
-       | Remove -> "Remove"
-       | Modify -> "Modify"
-       | Unknown -> "Unknown"
-       | Rename -> "Rename")
-  ;;
+  module Action = struct
+    type t =
+      | Create
+      | Remove
+      | Modify
+      | Rename
+      | Unknown
+
+    let repr =
+      Repr.variant
+        "fsevents-action"
+        [ Repr.case0 "Create" ~test:(function
+            | Create -> true
+            | Remove | Modify | Rename | Unknown -> false)
+        ; Repr.case0 "Remove" ~test:(function
+            | Remove -> true
+            | Create | Modify | Rename | Unknown -> false)
+        ; Repr.case0 "Modify" ~test:(function
+            | Modify -> true
+            | Create | Remove | Rename | Unknown -> false)
+        ; Repr.case0 "Rename" ~test:(function
+            | Rename -> true
+            | Create | Remove | Modify | Unknown -> false)
+        ; Repr.case0 "Unknown" ~test:(function
+            | Unknown -> true
+            | Create | Remove | Modify | Rename -> false)
+        ]
+    ;;
+
+    include Repr.Poly (struct
+        type nonrec t = t
+
+        let repr = repr
+      end)
+
+    let to_dyn = Repr.to_dyn repr
+  end
+
+  external action_of_flags : Int32.t -> Action.t = "dune_fsevents_action"
+
+  let action t = action_of_flags t.flags
 
   let to_dyn t =
     let open Dyn in
     record
-      [ "action", dyn_of_action (action t)
-      ; "kind", dyn_of_kind (kind t)
+      [ "action", Action.to_dyn (action t)
+      ; "kind", Kind.to_dyn (kind t)
       ; "path", string t.path
       ]
+  ;;
+
+  external
+    [@ocaml.warning "-32"] flag_examples
+    :  unit
+    -> (string * Int32.t) list
+    = "dune_fsevents_flag_examples"
+
+  let%expect_test "fsevents flag decoding" =
+    if available ()
+    then (
+      let decoded =
+        flag_examples ()
+        |> List.map ~f:(fun (name, flags) ->
+          name, action_of_flags flags, kind_of_flags flags)
+      in
+      let expected =
+        [ "created_file", Action.Create, Kind.File
+        ; "removed_file", Action.Remove, Kind.File
+        ; "modified_file", Action.Modify, Kind.File
+        ; "renamed_file", Action.Rename, Kind.File
+        ; "created_dir", Action.Create, Kind.Dir
+        ; "must_scan_subdirs", Action.Unknown, Kind.Dir_and_descendants
+        ; "must_scan_dir", Action.Unknown, Kind.Dir_and_descendants
+        ; "created_and_modified", Action.Unknown, Kind.File
+        ; "removed_and_renamed", Action.Unknown, Kind.File
+        ]
+      in
+      let module Decoded = struct
+        type t = string * Action.t * Kind.t
+
+        let repr = Repr.triple Repr.string Action.repr Kind.repr
+
+        include Repr.Poly (struct
+            type nonrec t = t
+
+            let repr = repr
+          end)
+
+        let to_dyn = Repr.to_dyn repr
+      end
+      in
+      if not (List.equal Decoded.equal decoded expected)
+      then
+        Code_error.raise
+          "unexpected fsevents flag decoding"
+          [ "decoded", Dyn.list Decoded.to_dyn decoded
+          ; "expected", Dyn.list Decoded.to_dyn expected
+          ])
   ;;
 end
 
@@ -278,8 +365,8 @@ let start t (dq : Dispatch_queue.t) =
         match State.get dq' with
         | Stopped -> Code_error.raise "Fsevents.start: dispatch queue stopped" []
         | Idle dq' | Running dq' ->
-          State.set t (Start (r, dq));
-          Raw.start r dq'))
+          Raw.start r dq';
+          State.set t (Start (r, dq))))
 ;;
 
 let dispatch_queue t =

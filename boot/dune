@@ -11,15 +11,22 @@
  (action
   (with-stdout-to
    libs.ml.gen
-   (run
-    %{dep:../bin/main.exe}
-    internal
-    bootstrap-info
-    --no-print-directory
-    --root
-    %{env:PWD=.}
-    --profile
-    %{profile}))))
+   (chdir
+    %{project_root}
+    (progn
+     ;; ugly renaming needed to prevent the inner dune being confused
+     ;; that it's already built
+     (bash "mv bin/main.exe bin/foo.exe")
+     (no-infer
+      (run
+       ./bin/foo.exe
+       internal
+       bootstrap-info
+       --no-print-directory
+       --root
+       .
+       --profile
+       dev)))))))
 
 (alias
  (name runtest)

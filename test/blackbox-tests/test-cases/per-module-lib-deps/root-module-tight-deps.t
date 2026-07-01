@@ -10,9 +10,7 @@ Root that references itself transitively). Any future change to
 inter-library dep handling that misses this short-circuit would
 regress this scenario.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.23)
-  > EOF
+  $ make_dune_project 3.23
 
 [dep_lib]: an unwrapped dep library.
 
@@ -57,10 +55,10 @@ require deliberate promotion.
 
   $ dune rules --root . --format=json --deps '%{cmi:consumer_lib/root}' > deps.json
 
-  $ jq -r 'include "dune"; .[] | depsFilePaths | select(endswith("root.ml-gen"))' < deps.json
+  $ jq_dune -r '.[] | depsFilePaths | select(endswith("root.ml-gen"))' < deps.json
   _build/default/consumer_lib/root.ml-gen
 
-  $ jq -r 'include "dune"; .[] | depsGlobs
+  $ jq_dune -r '.[] | depsGlobs
   >   | select(.dir | endswith("dep_lib/.dep_lib.objs/byte"))
   >   | .dir + " " + .predicate' < deps.json
   _build/default/dep_lib/.dep_lib.objs/byte *.cmi

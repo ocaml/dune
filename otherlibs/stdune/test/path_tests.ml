@@ -271,10 +271,7 @@ None
 
 let%expect_test _ =
   reach "/foo/baz" ~from:"/foo/bar";
-  [%expect
-    {|
-"/foo/baz"
-|}]
+  [%expect {| "/foo/baz" |}]
 ;;
 
 let%expect_test _ =

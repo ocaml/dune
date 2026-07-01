@@ -228,7 +228,11 @@ module File_ops_real (W : sig
       in
       match packages with
       | None -> Fiber.return None
-      | Some vcs -> Memo.run (Vcs.describe vcs)
+      | Some vcs ->
+        Memo.run
+          (Vcs.describe
+             vcs
+             ~needed_for:"to infer package versions while installing files")
     in
     try f ~get_version ic ~src oc with
     | _ (* XXX should we really be catching everything here? *) ->
@@ -302,7 +306,18 @@ module File_ops_real (W : sig
         ~package
         ~(conf : Artifact_substitution.Conf.t)
     =
-    let chmod = if executable then fun _ -> 0o755 else fun _ -> 0o644 in
+    let mode =
+      let open Permissions in
+      if executable
+      then
+        Mode.create
+          ~user:(read + write + execute)
+          ~group:(read + execute)
+          ~other:(read + execute)
+          ()
+      else Mode.create ~user:(read + write) ~group:read ~other:read ()
+    in
+    let chmod _ = mode in
     let plain_copy () = Io.copy_file ~chmod ~src ~dst () in
     match kind with
     | Substitute -> Artifact_substitution.copy_file ~conf ~src ~dst ~chmod ()
@@ -594,7 +609,7 @@ let run
           in
           match
             List.filter_map entries ~f:(fun entry ->
-              (* CR rgrinberg: this is ignoring optional entries *)
+              (* CR-someday rgrinberg: this is ignoring optional entries *)
               Option.some_if (not (Fpath.exists (Path.to_string entry.src))) entry.src)
           with
           | [] -> package, entries
@@ -654,7 +669,7 @@ let run
         let conf = Artifact_substitution.Conf.of_install ~relocatable ~roots ~context in
         Fiber.sequential_iter entries_per_package ~f:(fun (package, entries) ->
           let+ entries =
-            (* CR rgrinberg: why don't we install things concurrently? *)
+            (* CR-someday rgrinberg: why don't we install things concurrently? *)
             Fiber.sequential_map entries ~f:(fun entry ->
               let dst =
                 let paths = Install.Paths.make ~relative:Path.relative ~package ~roots in

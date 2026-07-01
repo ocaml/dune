@@ -68,7 +68,6 @@ First run of 'dune fmt' is supposed to format the fail.
   -let () = print_endline "Hello, world"
   +formatted with version 0.26.2
   Promoting _build/default/foo.ml.corrected to foo.ml.
-  [1]
 
 The foo.ml file is now formatted with the patched version of ocamlformat.
   $ cat foo.ml

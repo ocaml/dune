@@ -2,17 +2,7 @@ Writing `(package ...)` inside a named dependency binding like
 `(:name (package foo))` is rejected: the binding would resolve to an
 empty path list, which is rarely what the user intended.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.24)
-  > (package (name mypkg))
-  > EOF
-  $ mkdir src
-  $ cat >src/dune <<EOF
-  > (library (public_name mypkg))
-  > EOF
-  $ cat >src/mypkg.ml <<'EOF'
-  > let x = 1
-  > EOF
+  $ make_mypkg_lib_project
 
   $ cat >dune <<'EOF'
   > (rule

@@ -1,9 +1,6 @@
 Test of cinaps integration
 
-  $ cat > dune-project <<EOF
-  > (lang dune 1.11)
-  > (using cinaps 1.0)
-  > EOF
+  $ make_cinaps_project 1.11 1.0
 
   $ cat > dune <<EOF
   > (cinaps (files *.ml))
@@ -43,7 +40,6 @@ The cinaps stanza offers a promotion workflow:
    (*$*)
    let x = 1
   Promoting _build/default/test.ml.cinaps-corrected to test.ml.
-  [1]
 
   $ cat test.ml
   (*$ print_endline "\nhello" *)

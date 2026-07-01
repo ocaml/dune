@@ -1,8 +1,6 @@
 Executables using the same name, defined in the same folder.
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.13)
-  > EOF
+  $ make_dune_project 3.13
 
   $ cat > dune << EOF
   > (executable

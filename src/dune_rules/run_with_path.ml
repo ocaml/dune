@@ -113,7 +113,8 @@ module Windows_executables = struct
   (* This function adds support for shebang line parsing on Windows to allow
      running scripts in run actions using the correct executable. *)
   let adjust_prog_and_args ~metadata ~path ?dir prog args =
-    let { Process.loc; compound; _ } = metadata in
+    let loc = metadata.Dune_engine.Process_metadata.loc in
+    let compound = metadata.Dune_engine.Process_metadata.compound in
     let prog_name = Path.basename prog in
     let parse_win32_prog_and_args prog =
       Stdune.Io.with_file_in ~binary:true prog ~f:(fun ic ->
@@ -177,6 +178,8 @@ module Spec = struct
 
   let name = "run-with-path"
   let version = 2
+  let runs_process = true
+  let can_run_in_action_runner = true
 
   let map_arg arg ~f =
     Array.Immutable.map arg ~f:(function
@@ -198,7 +201,7 @@ module Spec = struct
     let prog : Sexp.t =
       match prog with
       | Ok p -> path p
-      | Error e -> Atom e.program
+      | Error e -> Atom (Filename.to_string e.program)
     in
     let args =
       Array.Immutable.to_list_map args ~f:(fun x ->
@@ -227,7 +230,13 @@ module Spec = struct
             | Path p -> Path.to_absolute_filename p)
           |> String.concat ~sep:"")
       in
-      let metadata = Process.create_metadata ~purpose:ectx.metadata.purpose () in
+      let metadata =
+        Dune_engine.Process_metadata.create
+          ~can_run_in_action_runner:
+            ectx.metadata.Dune_engine.Process_metadata.can_run_in_action_runner
+          ~purpose:ectx.metadata.Dune_engine.Process_metadata.purpose
+          ()
+      in
       let dune_folder =
         let bin_folder = Temp.create Dir ~prefix:"dune" ~suffix:"self-in-path" in
         let src = Path.of_string Sys.executable_name in

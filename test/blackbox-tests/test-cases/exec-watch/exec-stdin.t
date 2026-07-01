@@ -3,9 +3,7 @@ Testing stdin for watch mode dune exec
 We use the done flag as a signal that the program has finished.
   $ DONE_FLAG=_build/done_flag
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.18)
-  > EOF
+  $ make_dune_project 3.18
 
   $ cat > dune <<EOF
   > (executable

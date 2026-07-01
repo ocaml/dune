@@ -49,6 +49,8 @@ module Artifacts : sig
       ; digest : Digest.t option
         (** This digest is always present in case [file_path] points to a file, and absent when it's a directory. *)
       }
+
+    val repr : t Repr.t
   end
 
   module Metadata_file : sig
@@ -58,6 +60,9 @@ module Artifacts : sig
            even though sorting the entres is tempting. *)
         entries : Metadata_entry.t list
       }
+
+    val repr : t Repr.t
+    val load : Path.t -> t Restore_result.t
 
     val store
       :  Metadata_entry.t list

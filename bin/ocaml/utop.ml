@@ -28,7 +28,16 @@ let term =
   (* CR-someday Alizter: document this option *)
   and+ args = Arg.(value & pos_right 0 string [] (Arg.info [] ~docv:"ARGS" ~doc:None)) in
   let common, config = Common.init builder in
-  let dir = Common.prefix_target common dir in
+  let dir =
+    match Path.of_string dir with
+    | External _ as ext ->
+      (* Absolute path: if it's an external path inside the workspace, localize it.
+        Otherwise leave it external so the existing error handling kicks in *)
+      Path.Expert.try_localize_external ext |> Path.to_string
+    | _ ->
+      (* Relative path: account for the cwd when run from a subdirectory. *)
+      Common.prefix_target common dir
+  in
   if not (Fpath.is_directory (Path.to_string (Path.of_string dir)))
   then User_error.raise [ Pp.textf "cannot find directory: %s" (String.maybe_quoted dir) ];
   let env, utop_path =

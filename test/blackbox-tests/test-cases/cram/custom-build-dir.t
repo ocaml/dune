@@ -3,26 +3,51 @@ path
 
   $ make_dune_project 3.5
 
-  $ cat >foo.t <<EOF
+  $ cat >foo.t <<'EOF'
   >   $ echo "  $ echo bar" >bar.t
-  >   $ dune runtest
+  >   $ if [ -e "$DUNE_BUILD_DIR/.rpc" ]; then
+  >   >   echo ".rpc exists"
+  >   > else
+  >   >   echo ".rpc missing"
+  >   > fi
+  >   .rpc missing
+  >   $ env -u DUNE_RPC -u DUNE_BUILD_DIR dune runtest
   > EOF
 
   $ DUNE_BUILD_DIR=$PWD/tmp dune runtest --auto-promote
   File "foo.t", line 1, characters 0-0:
   --- foo.t
   +++ foo.t.corrected
-  @@ -1,2 +1,4 @@
-     $ echo "  $ echo bar" >bar.t
-     $ dune runtest
-  +  Error: Another Dune instance is currently running. Aborting...
+  @@ -4,5 +4,12 @@
+     > else
+     >   echo ".rpc missing"
+     > fi
+  -  .rpc missing
+  +  .rpc exists
+     $ env -u DUNE_RPC -u DUNE_BUILD_DIR dune runtest
+  +  File "bar.t", line 1, characters 0-0:
+  +  --- bar.t
+  +  +++ bar.t.corrected
+  +  @@ -1 +1,2 @@
+  +     $ echo bar
+  +  +  bar
   +  [1]
   Promoting
     $TESTCASE_ROOT/tmp/default/foo.t.corrected
     to foo.t.
-  [1]
   $ cat foo.t
     $ echo "  $ echo bar" >bar.t
-    $ dune runtest
-    Error: Another Dune instance is currently running. Aborting...
+    $ if [ -e "$DUNE_BUILD_DIR/.rpc" ]; then
+    >   echo ".rpc exists"
+    > else
+    >   echo ".rpc missing"
+    > fi
+    .rpc exists
+    $ env -u DUNE_RPC -u DUNE_BUILD_DIR dune runtest
+    File "bar.t", line 1, characters 0-0:
+    --- bar.t
+    +++ bar.t.corrected
+    @@ -1 +1,2 @@
+       $ echo bar
+    +  bar
     [1]

@@ -5,6 +5,7 @@
 #include <caml/memory.h>
 #include <caml/mlvalues.h>
 #include <caml/threads.h>
+#include <stdbool.h>
 
 #if defined(__APPLE__)
 #include <AvailabilityMacros.h>
@@ -29,6 +30,7 @@ typedef struct dune_dispatch_queue {
   pthread_cond_t dq_finished;
   pthread_mutex_t dq_lock;
   uint32_t fsevent_streams;
+  bool has_exn;
   value v_exn;
 } dune_dispatch_queue;
 
@@ -44,6 +46,7 @@ void dune_fsevents_dispatch_queue_finalize(value v_dq) {
   dune_dispatch_queue *dq = Dispatch_queue_val(v_dq);
   if (dq->dq)
     dispatch_release(dq->dq);
+  caml_remove_global_root(&dq->v_exn);
   pthread_cond_destroy(&dq->dq_finished);
   pthread_mutex_destroy(&dq->dq_lock);
   caml_stat_free(dq);
@@ -78,6 +81,7 @@ CAMLprim value dune_fsevents_dispatch_queue_create(value v_unit) {
   pthread_cond_init(&dq->dq_finished, NULL);
   dq->dq = dispatch_queue_create("build.dune.fsevents", DISPATCH_QUEUE_SERIAL);
   dq->fsevent_streams = 0;
+  dq->has_exn = false;
   dq->v_exn = Val_unit;
   caml_register_global_root(&dq->v_exn);
   v_dq = caml_alloc_custom(&dune_fsevents_dispatch_queue_ops,
@@ -92,11 +96,12 @@ CAMLprim value dune_fsevents_dispatch_queue_wait_until_stopped(value v_dq) {
   dune_dispatch_queue *dq = Dispatch_queue_val(v_dq);
   caml_release_runtime_system();
   pthread_mutex_lock(&dq->dq_lock);
-  pthread_cond_wait(&dq->dq_finished, &dq->dq_lock);
-  v_exn = dq->v_exn;
+  while (dq->fsevent_streams > 0 && !dq->has_exn) {
+    pthread_cond_wait(&dq->dq_finished, &dq->dq_lock);
+  }
   pthread_mutex_unlock(&dq->dq_lock);
   caml_acquire_runtime_system();
-  caml_remove_global_root(&dq->v_exn);
+  v_exn = dq->v_exn;
   if (v_exn != Val_unit) {
     caml_raise(v_exn);
   }
@@ -189,12 +194,11 @@ static void dune_fsevents_callback(const FSEventStreamRef streamRef,
   v_res = caml_callback_exn(t->v_callback, v_events_xs);
   if (Is_exception_result(v_res)) {
     v_res = Extract_exception(v_res);
-    caml_release_runtime_system();
     pthread_mutex_lock(&dq->dq_lock);
     dq->v_exn = v_res;
+    dq->has_exn = true;
     pthread_cond_broadcast(&dq->dq_finished);
     pthread_mutex_unlock(&dq->dq_lock);
-    caml_acquire_runtime_system();
   }
   CAMLdrop;
   caml_release_runtime_system();
@@ -204,16 +208,19 @@ CFMutableArrayRef paths_of_list(value v_paths) {
   CFMutableArrayRef paths =
       CFArrayCreateMutable(kCFAllocatorDefault, 0, &kCFTypeArrayCallBacks);
 
-  int i = 0;
   CAMLparam0();
   CAMLlocal1(path);
   while (v_paths != Val_emptylist) {
     path = Field(v_paths, 0);
     CFStringRef s = CFStringCreateWithCString(
         kCFAllocatorDefault, String_val(path), kCFStringEncodingUTF8);
-    CFArraySetValueAtIndex(paths, i, s);
+    if (s == NULL) {
+      CFRelease(paths);
+      caml_failwith("Fsevents.create: unable to convert path");
+    }
+    CFArrayAppendValue(paths, s);
+    CFRelease(s);
     v_paths = Field(v_paths, 1);
-    i++;
   }
 
   CAMLreturnT(CFMutableArrayRef, paths);
@@ -243,9 +250,13 @@ CAMLprim value dune_fsevents_create(value v_paths, value v_latency,
       &context, paths, kFSEventStreamEventIdSinceNow, Double_val(v_latency),
       flags);
   CFRelease(paths);
+  if (stream == NULL) {
+    caml_stat_free(t);
+    caml_failwith("Fsevents.create: failed to create stream");
+  }
   t->dq = NULL;
-  caml_register_global_root(&t->v_callback);
   t->v_callback = v_callback;
+  caml_register_global_root(&t->v_callback);
   t->stream = stream;
 
   v_t = caml_alloc_custom(&dune_fsevents_t_ops, sizeof(dune_fsevents_t *), 0, 1);
@@ -281,6 +292,13 @@ CAMLprim value dune_fsevents_start(value v_t, value v_dq) {
   bool res = FSEventStreamStart(t->stream);
   if (!res) {
     /* the docs say this is impossible anyway */
+    pthread_mutex_lock(&dq->dq_lock);
+    dq->fsevent_streams--;
+    if (dq->fsevent_streams == 0) {
+      pthread_cond_broadcast(&dq->dq_finished);
+    }
+    pthread_mutex_unlock(&dq->dq_lock);
+    t->dq = NULL;
     caml_failwith("Fsevents.start: failed to start");
   }
   CAMLreturn(Val_unit);
@@ -327,41 +345,108 @@ CAMLprim value dune_fsevents_flush_sync(value v_t) {
   CAMLreturn(Val_unit);
 }
 
+// Keep in sync with the Event.Kind.t variant in fsevents.ml.
+enum dune_fsevents_kind_tag {
+  DUNE_FSEVENTS_KIND_DIR = 0,
+  DUNE_FSEVENTS_KIND_FILE = 1,
+  DUNE_FSEVENTS_KIND_DIR_AND_DESCENDANTS = 2,
+};
+
+static value dune_fsevents_kind_of_flags(FSEventStreamEventFlags flags) {
+  if (flags & kFSEventStreamEventFlagMustScanSubDirs) {
+    return Val_int(DUNE_FSEVENTS_KIND_DIR_AND_DESCENDANTS);
+  } else if (flags & kFSEventStreamEventFlagItemIsDir) {
+    return Val_int(DUNE_FSEVENTS_KIND_DIR);
+  } else {
+    return Val_int(DUNE_FSEVENTS_KIND_FILE);
+  }
+}
+
 CAMLprim value dune_fsevents_kind(value v_flags) {
   CAMLparam1(v_flags);
-  CAMLlocal1(v_kind);
-  uint32_t flags = Int32_val(v_flags);
-  if (flags & kFSEventStreamEventFlagItemIsDir) {
-    v_kind = Val_int(flags & kFSEventStreamEventFlagMustScanSubDirs ? 2 : 0);
-  } else {
-    v_kind = Val_int(1);
-  };
-  CAMLreturn(v_kind);
+  CAMLreturn(dune_fsevents_kind_of_flags(Int32_val(v_flags)));
 }
 
 static const FSEventStreamEventFlags action_mask =
     kFSEventStreamEventFlagItemCreated | kFSEventStreamEventFlagItemRemoved |
     kFSEventStreamEventFlagItemRenamed | kFSEventStreamEventFlagItemModified;
 
+// Keep in sync with the Event.action variant in fsevents.ml.
+enum dune_fsevents_action_tag {
+  DUNE_FSEVENTS_ACTION_CREATE = 0,
+  DUNE_FSEVENTS_ACTION_REMOVE = 1,
+  DUNE_FSEVENTS_ACTION_MODIFY = 2,
+  DUNE_FSEVENTS_ACTION_RENAME = 3,
+  DUNE_FSEVENTS_ACTION_UNKNOWN = 4,
+};
+
+static value dune_fsevents_action_of_flags(FSEventStreamEventFlags flags) {
+  flags &= action_mask;
+  if (flags == kFSEventStreamEventFlagItemCreated) {
+    return Val_int(DUNE_FSEVENTS_ACTION_CREATE);
+  } else if (flags == kFSEventStreamEventFlagItemRemoved) {
+    return Val_int(DUNE_FSEVENTS_ACTION_REMOVE);
+  } else if (flags == kFSEventStreamEventFlagItemModified) {
+    return Val_int(DUNE_FSEVENTS_ACTION_MODIFY);
+  } else if (flags == kFSEventStreamEventFlagItemRenamed) {
+    return Val_int(DUNE_FSEVENTS_ACTION_RENAME);
+  } else {
+    return Val_int(DUNE_FSEVENTS_ACTION_UNKNOWN);
+  }
+}
+
 CAMLprim value dune_fsevents_action(value v_flags) {
   CAMLparam1(v_flags);
-  CAMLlocal1(v_action);
-
-  uint32_t flags = Int32_val(v_flags) & action_mask;
-  if (flags & kFSEventStreamEventFlagItemCreated) {
-    v_action = Val_int(0);
-  } else if (flags & kFSEventStreamEventFlagItemRemoved) {
-    v_action = Val_int(1);
-  } else if (flags & kFSEventStreamEventFlagItemModified) {
-    v_action = Val_int(2);
-  } else if (flags & kFSEventStreamEventFlagItemRenamed) {
-    v_action = Val_int(3);
-  } else {
-    v_action = Val_int(4);
-  }
-
-  CAMLreturn(v_action);
+  CAMLreturn(dune_fsevents_action_of_flags(Int32_val(v_flags)));
 }
+
+typedef struct dune_fsevents_flag_example {
+  const char *name;
+  FSEventStreamEventFlags flags;
+} dune_fsevents_flag_example;
+
+static const dune_fsevents_flag_example flag_examples[] = {
+    {"created_file", kFSEventStreamEventFlagItemCreated |
+                         kFSEventStreamEventFlagItemIsFile},
+    {"removed_file", kFSEventStreamEventFlagItemRemoved |
+                         kFSEventStreamEventFlagItemIsFile},
+    {"modified_file", kFSEventStreamEventFlagItemModified |
+                          kFSEventStreamEventFlagItemIsFile},
+    {"renamed_file", kFSEventStreamEventFlagItemRenamed |
+                         kFSEventStreamEventFlagItemIsFile},
+    {"created_dir", kFSEventStreamEventFlagItemCreated |
+                        kFSEventStreamEventFlagItemIsDir},
+    {"must_scan_subdirs", kFSEventStreamEventFlagMustScanSubDirs},
+    {"must_scan_dir", kFSEventStreamEventFlagMustScanSubDirs |
+                          kFSEventStreamEventFlagItemIsDir},
+    {"created_and_modified", kFSEventStreamEventFlagItemCreated |
+                               kFSEventStreamEventFlagItemModified |
+                               kFSEventStreamEventFlagItemIsFile},
+    {"removed_and_renamed", kFSEventStreamEventFlagItemRemoved |
+                             kFSEventStreamEventFlagItemRenamed |
+                             kFSEventStreamEventFlagItemIsFile},
+};
+
+CAMLprim value dune_fsevents_flag_examples(value v_unit) {
+  CAMLparam1(v_unit);
+  CAMLlocal5(v_list, v_cons, v_tuple, v_name, v_flags);
+  size_t len = sizeof(flag_examples) / sizeof(dune_fsevents_flag_example);
+  v_list = Val_emptylist;
+  for (size_t i = len; i > 0; i--) {
+    dune_fsevents_flag_example example = flag_examples[i - 1];
+    v_name = caml_copy_string(example.name);
+    v_flags = caml_copy_int32(example.flags);
+    v_tuple = caml_alloc_tuple(2);
+    Store_field(v_tuple, 0, v_name);
+    Store_field(v_tuple, 1, v_flags);
+    v_cons = caml_alloc(2, 0);
+    Store_field(v_cons, 0, v_tuple);
+    Store_field(v_cons, 1, v_list);
+    v_list = v_cons;
+  }
+  CAMLreturn(v_list);
+}
+
 static const FSEventStreamEventFlags all_flags[] = {
     kFSEventStreamEventFlagMustScanSubDirs,
     kFSEventStreamEventFlagUserDropped,
@@ -387,6 +472,8 @@ static const FSEventStreamEventFlags all_flags[] = {
     kFSEventStreamEventFlagItemIsLastHardlink,
 #if MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
     kFSEventStreamEventFlagItemCloned,
+#else
+    0,
 #endif
 };
 
@@ -421,8 +508,9 @@ CAMLprim value dune_fsevents_stop(value v_t) {
   caml_failwith(unavailable_message);
 }
 
-CAMLprim value dune_fsevents_start(value v_t) {
+CAMLprim value dune_fsevents_start(value v_t, value v_dq) {
   (void)v_t;
+  (void)v_dq;
   caml_failwith(unavailable_message);
 }
 
@@ -448,6 +536,10 @@ CAMLprim value dune_fsevents_kind(value v_flags) {
 }
 CAMLprim value dune_fsevents_action(value v_flags) {
   (void)v_flags;
+  caml_failwith(unavailable_message);
+}
+CAMLprim value dune_fsevents_flag_examples(value v_unit) {
+  (void)v_unit;
   caml_failwith(unavailable_message);
 }
 CAMLprim value dune_fsevents_raw(value v_flags) {

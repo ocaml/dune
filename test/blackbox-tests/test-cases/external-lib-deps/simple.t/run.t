@@ -1,6 +1,6 @@
 external library dependencies of a simple project
 
-  $ echo "(lang dune 2.3)" > dune-project
+  $ make_dune_project 2.3
   $ touch dummypkg.opam
   $ cat >dune <<EOF
   > (library

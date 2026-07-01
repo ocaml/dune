@@ -306,20 +306,12 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
       Foreign_rules.foreign_flags sctx ~dir ~expander ~flags:c_flags ~language:C
       |> Memo.return
     | Pkg_config ->
-      let+ () =
-        let setup query =
-          Pkg_config.gen_rule sctx ~dir ~loc query
-          >>| function
-          | Ok () | Error `Not_found -> ()
-        in
-        let lib = External_lib_name.to_string external_library_name in
-        let* () = setup (Libs lib) in
-        setup (Cflags lib)
-      in
-      Pkg_config.Query.read
-        ~dir
-        (Cflags (External_lib_name.to_string external_library_name))
-        sctx
+      Memo.return
+        (Pkg_config.Query.read
+           ~loc
+           ~dir
+           (Cflags (External_lib_name.to_string external_library_name))
+           sctx)
   in
   let generated_entry_module = ctypes.generated_entry_point in
   let headers =
@@ -485,7 +477,7 @@ let ctypes_cclib_flags sctx ~expander ~(buildable : Buildable.t) =
     (match ctypes.build_flags_resolver with
      | Pkg_config ->
        let dir = Expander.dir expander in
-       Pkg_config.Query.read (Libs external_library_name) sctx ~dir
+       Pkg_config.Query.read ~loc:buildable.loc (Libs external_library_name) sctx ~dir
      | Vendored { c_library_flags; c_flags = _ } ->
        Expander.expand_and_eval_set expander c_library_flags ~standard)
 ;;

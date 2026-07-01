@@ -3,18 +3,7 @@ Test deduplication of build artifacts when using Dune cache with hard links.
   $ export DUNE_CACHE=enabled
   $ export DUNE_CACHE_ROOT=$(dune_cmd native-path $PWD/.cache)
 
-  $ cat > dune-project <<EOF
-  > (lang dune 2.1)
-  > EOF
-  $ cat > dune <<EOF
-  > (rule
-  >   (deps source)
-  >   (targets target)
-  >   (action (copy source target)))
-  > EOF
-  $ cat > source <<EOF
-  > \_o< COIN
-  > EOF
+  $ make_dune_cache_copy_project
 
 Here we build [target], which is a copy of [source]. After the build, the same
 file will appear in the build directory twice: (i) as [_build/default/source],

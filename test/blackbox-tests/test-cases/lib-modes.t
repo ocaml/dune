@@ -1,8 +1,6 @@
 Test library modes field
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.7)
-  > EOF
+  $ make_dune_project 3.7
 
   $ mkdir lib
 
@@ -40,9 +38,7 @@ in a version of dune lang that does not support them
   3.8).
   [1]
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.8)
-  > EOF
+  $ make_dune_project 3.8
 
 Works for the most recent version
 

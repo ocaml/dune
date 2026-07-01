@@ -7,10 +7,11 @@ type t
 val x : t -> Dune_engine.Context_name.t option
 val capture_outputs : t -> bool
 val root : t -> Workspace_root.t
+val build_loop : t -> Dune_engine.Build_loop.t
 
 val rpc
   :  t
-  -> [ `Allow of Dune_lang.Dep_conf.t Dune_rpc_impl.Server.t
+  -> [ `Allow of Dune_rpc_impl.Server.t
        (** Will run rpc if in watch mode and acquire the build lock *)
      | `Forbid_builds (** Promise not to build anything. For now, this isn't checked *)
      ]
@@ -18,6 +19,9 @@ val rpc
 val watch_exclusions : t -> string list
 val watch : t -> Dune_rpc_impl.Watch_mode_config.t
 val file_watcher : t -> Dune_scheduler.Scheduler.Run.file_watcher
+val sandbox_actions : t -> bool
+val action_runner : t -> Dune_engine.Action_runner.t option
+val action_runner_requested : t -> bool
 val prefix_target : t -> string -> string
 val find_default_trace_file : unit -> string
 
@@ -63,6 +67,8 @@ val init_with_root
   -> Builder.t
   -> t * Dune_config_file.Dune_config.t
 
+val init_build : Builder.t -> t * Dune_config_file.Dune_config.t
+
 (** [init] is like [init_with_root], where [root] is the Workspace root
     corresponding to the current working directory. *)
 val init : Builder.t -> t * Dune_config_file.Dune_config.t
@@ -71,6 +77,13 @@ val init : Builder.t -> t * Dune_config_file.Dune_config.t
     section of enumerated examples illustrating how to run the documented
     commands. *)
 val examples : (string * string) list -> Cmdliner.Manpage.block
+
+val command_alias
+  :  ?orig_name:string
+  -> 'a Cmdliner.Cmd.t
+  -> 'b Cmdliner.Term.t
+  -> string
+  -> 'b Cmdliner.Cmd.t
 
 (** [command_synopsis subcommands] is a custom [SYNOPSIS] manpage section
     listing the given [subcommands]. Each subcommand is prefixed with the `dune`

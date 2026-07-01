@@ -94,11 +94,10 @@ let lock_dir_encode_decode_round_trip_test ?commit ~lock_dir_path ~lock_dir () =
 ;;
 
 let run thunk =
-  let on_event _event = () in
   let config : Scheduler.Config.t =
     { concurrency = 1; print_ctrl_c_warning = false; watch_exclusions = [] }
   in
-  Scheduler.Run.go config ~on_event thunk
+  Scheduler.Run.go config thunk
 ;;
 
 let%expect_test "encode/decode round trip test for lockdir with no deps" =
@@ -366,7 +365,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
                                { url = "file://randomurl"; checksum = None })
                             ]
                         }
-                    ; exported_env = [ { op = "="; var = "foo"; value = "bar" } ]
+                    ; exported_env = [ { op = =; var = "foo"; value = "bar" } ]
                     ; enabled_on_platforms = []
                     }
                 }

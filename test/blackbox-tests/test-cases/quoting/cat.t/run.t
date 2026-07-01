@@ -1,8 +1,6 @@
   $ cat > a
   $ cat > b
-  $ cat > dune-project << EOF
-  > (lang dune 3.9)
-  > EOF
+  $ make_dune_project 3.9
 
 It should be possible to expand %{deps} in a cat action since it allows multiple
 arguments.
@@ -27,8 +25,6 @@ This isn't possible in 3.9.
 
 But it is in 3.10:
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.10)
-  > EOF
+  $ make_dune_project 3.10
 
   $ dune build @foo

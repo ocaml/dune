@@ -3,7 +3,7 @@ Test that rule digest doesn't depend on irrelevant details of the dune file
 
   $ export DUNE_PWD_STORE="$(mktemp)"
 
-  $ echo "(lang dune 3.0)" > dune-project
+  $ make_dune_project 3.0
 
   $ cat >dune <<EOF
   > (rule

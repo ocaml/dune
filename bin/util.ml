@@ -59,37 +59,18 @@ let restore_cwd_and_execve (root : Workspace_root.t) prog args env =
   Proc.restore_cwd_and_execve prog args ~env
 ;;
 
-(* Adapted from
-   https://github.com/ocaml/opam/blob/fbbe93c3f67034da62d28c8666ec6b05e0a9b17c/src/client/opamArg.ml#L759 *)
-let command_alias ?orig_name cmd term name =
-  let orig =
-    match orig_name with
-    | Some s -> s
-    | None -> Cmd.name cmd
-  in
-  let doc = Printf.sprintf "An alias for $(b,%s)." orig in
-  let man =
-    [ `S "DESCRIPTION"
-    ; `P (Printf.sprintf "$(mname)$(b, %s) is an alias for $(mname)$(b, %s)." name orig)
-    ; `P (Printf.sprintf "See $(mname)$(b, %s --help) for details." orig)
-    ; `Blocks Common.help_secs
-    ]
-  in
-  Cmd.v (Cmd.info name ~docs:"COMMAND ALIASES" ~doc ~man) term
-;;
-
 let setup () =
   let scheduler = Scheduler.t () in
   Console.Status_line.set
     (Live
        (fun () ->
-         match Fiber.Svar.read Build_system.state with
+         match !Build_system.state with
          | Initializing
          | Restarting_current_build
          | Build_succeeded__now_waiting_for_changes
          | Build_failed__now_waiting_for_changes -> Pp.nop
          | Building
-             { Build_system.Progress.number_of_rules_executed = done_
+             { Build_system.Progress.number_of_rules_validated = done_
              ; number_of_rules_discovered = total
              ; number_of_rules_failed = failed
              } ->

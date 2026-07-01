@@ -154,5 +154,8 @@ let clear () =
   rm_rf (Lazy.force Layout.temp_dir);
   (* Do not catch errors when deleting the root directory so that they are
      reported to the user. *)
-  Layout.build_cache_dir |> Lazy.force |> Path.to_string |> Unix.rmdir
+  let build_cache_dir = Path.to_string (Lazy.force Layout.build_cache_dir) in
+  match Unix.rmdir build_cache_dir with
+  | () -> ()
+  | exception Unix.Unix_error (ENOENT, _, _) -> ()
 ;;

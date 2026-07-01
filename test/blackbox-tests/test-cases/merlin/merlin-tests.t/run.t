@@ -12,8 +12,7 @@ We're going create a fake findlib library for use:
 
 CRAM sanitization
   $ dune build ./exe/.merlin-conf/exe-x --profile release
-  $ dune ocaml merlin dump-config --format=json $PWD/exe | jq '
-  >   include "dune";
+  $ dune ocaml merlin dump-config --format=json $PWD/exe | jq_dune '
   >   [
   >     .[]
   >     | select(.module_name == "X")
@@ -121,8 +120,7 @@ CRAM sanitization
   }
 
   $ dune build ./lib/.merlin-conf/lib-foo ./lib/.merlin-conf/lib-bar --profile release
-  $ dune ocaml merlin dump-config --format=json $PWD/lib | jq '
-  >   include "dune";
+  $ dune ocaml merlin dump-config --format=json $PWD/lib | jq_dune '
   >   [
   >     .[]
   >     | select(.module_name == "Bar" or .module_name == "File" or .module_name == "Foo" or .module_name == "Privmod")
@@ -488,8 +486,7 @@ CRAM sanitization
   }
 
 Make sure a ppx directive is generated (if not, the [grep ppx] step fails)
-  $ dune ocaml merlin dump-config --format=json $PWD/lib | jq '
-  >   include "dune";
+  $ dune ocaml merlin dump-config --format=json $PWD/lib | jq_dune '
   >   [
   >     .[]
   >     | select(.module_name == "Bar" or .module_name == "Foo" or .module_name == "Privmod")
@@ -587,8 +584,7 @@ Make sure a ppx directive is generated (if not, the [grep ppx] step fails)
 Make sure pp flag is correct and variables are expanded
 
   $ dune build ./pp-with-expand/.merlin-conf/exe-foobar --profile release
-  $ dune ocaml merlin dump-config --format=json $PWD/pp-with-expand | jq '
-  >   include "dune";
+  $ dune ocaml merlin dump-config --format=json $PWD/pp-with-expand | jq_dune '
   >   [
   >     .[]
   >     | select(.module_name == "Foobar")
@@ -649,8 +645,7 @@ Make sure pp flag is correct and variables are expanded
 
 Check hash of executables names if more than one
   $ dune build @exes/check
-  $ dune ocaml merlin dump-config --format=json $PWD/exes | jq '
-  >   include "dune";
+  $ dune ocaml merlin dump-config --format=json $PWD/exes | jq_dune '
   >   [
   >     .[]
   >     | select(.module_name == "X" or .module_name == "Y")

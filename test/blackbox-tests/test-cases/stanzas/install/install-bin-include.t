@@ -1,9 +1,6 @@
 Referring to files with an include in the bin section of the install stanza
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.6)
-  > (package (name foo))
-  > EOF
+  $ make_dune_project_with_package 3.6 foo
 
 Make some scripts to install in bin.
   $ cat >hello.sh <<EOF

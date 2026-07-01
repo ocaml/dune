@@ -9,25 +9,9 @@ Test `melange.runtime_deps` in a library that has been installed
   > EOF
 
   $ echo 'hello' > lib/file.txt
-  $ cat > lib/dune <<EOF
-  > (rule (target (dir some_dir))
-  >  (action
-  >   (progn (system "mkdir %{target}")
-  >    (system "echo hello from file inside dir target > %{target}/inside-dir-target.txt"))))
-  > (library
-  >  (public_name foo)
-  >  (modes melange)
-  >  (preprocess (pps melange.ppx))
-  >  (melange.runtime_deps ./some_dir ./file.txt))
-  > EOF
-  $ cat > lib/foo.ml <<EOF
-  > external readFileSync : string -> encoding:string -> string = "readFileSync"
-  > [@@mel.module "fs"]
-  > let dirname = [%mel.raw "__dirname"]
-  > let () = Js.log2 "dirname:" dirname
-  > let file_path = "./index.txt"
-  > let read_asset () = readFileSync (dirname ^ "/" ^ file_path) ~encoding:"utf8"
-  > EOF
+  $ write_melange_dir_target_runtime_deps_lib \
+  >   "./some_dir ./file.txt" \
+  >   "./index.txt"
 
   $ dune build
   $ dune install --prefix $PWD/prefix --display short
@@ -42,17 +26,9 @@ Test `melange.runtime_deps` in a library that has been installed
 
   $ rm -rf $PWD/prefix
   $ dune clean
-  $ cat > lib/dune <<EOF
-  > (rule (target (dir some_dir))
-  >  (action
-  >   (progn (system "mkdir %{target}")
-  >    (system "echo hello from file inside dir target > %{target}/inside-dir-target.txt"))))
-  > (library
-  >  (public_name foo)
-  >  (modes melange)
-  >  (preprocess (pps melange.ppx))
-  >  (melange.runtime_deps ./some_dir/inside-dir-target.txt ./some_dir ./file.txt))
-  > EOF
+  $ write_melange_dir_target_runtime_deps_lib \
+  >   "./some_dir/inside-dir-target.txt ./some_dir ./file.txt" \
+  >   "./index.txt"
 
   $ dune build
   $ dune install --prefix $PWD/prefix --display short

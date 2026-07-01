@@ -1,9 +1,6 @@
 %{pkg:...} resolves files installed by public executables.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.24)
-  > (package (name foo))
-  > EOF
+  $ make_dune_project_with_package 3.24 foo
 
   $ cat >dune <<EOF
   > (executable

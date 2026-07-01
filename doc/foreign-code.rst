@@ -58,6 +58,39 @@ source files or in the same directory group when using
 
 The header files must have the ``.h`` extension.
 
+For headers that are part of the current project, use ``include_dirs`` to add
+an include directory that Dune can track as a dependency:
+
+.. code:: dune
+
+   (library
+    (name mylib)
+    (foreign_stubs
+     (language c)
+     (names mystubs)
+     (include_dirs include)))
+
+For headers and libraries installed by the operating system, prefer querying
+``pkg-config`` with ``dune-configurator`` and passing the discovered compiler
+and linker flags to Dune. This is useful on systems where libraries are
+installed in non-standard locations, such as Homebrew prefixes.
+
+.. code:: dune
+
+   (library
+    (name lz4)
+    (foreign_stubs
+     (language c)
+     (names lz4_stubs)
+     (flags (:standard (:include c_flags.sexp))))
+    (c_library_flags (:standard (:include c_library_flags.sexp))))
+
+The generated ``c_flags.sexp`` file should contain the C compilation flags,
+such as ``-I`` include paths, and ``c_library_flags.sexp`` should contain link
+flags, such as ``-L`` and ``-l`` flags. See the quick-start section on
+:ref:`defining a library with C stubs using pkg-config
+<defining-library-with-c-stubs-pkg-config>` for a complete example.
+
 Installing Header Files
 -----------------------
 

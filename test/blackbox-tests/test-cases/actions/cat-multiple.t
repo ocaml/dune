@@ -1,10 +1,8 @@
-  $ cat > dune-project << EOF
-  > (lang dune 3.4)
-  > EOF
+  $ make_dune_project 3.4
 
-It is an error to pass an empty list:
-
-  $ cat > dune << EOF
+  $ write_cat_result_rule() {
+  > local args="$1"
+  > cat > dune << EOF
   > (rule
   >  (alias runtest)
   >  (action
@@ -12,8 +10,13 @@ It is an error to pass an empty list:
   > 
   > (rule
   >  (with-stdout-to result
-  >   (cat)))
+  >   (cat${args})))
   > EOF
+  > }
+
+It is an error to pass an empty list:
+
+  $ write_cat_result_rule ""
 
   $ dune runtest
   File "dune", line 8, characters 2-7:
@@ -28,16 +31,7 @@ The cat action supports several files.
   $ echo "file b" > b
   $ echo "file c" > c
 
-  $ cat > dune << EOF
-  > (rule
-  >  (alias runtest)
-  >  (action
-  >   (cat result)))
-  > 
-  > (rule
-  >  (with-stdout-to result
-  >   (cat a b c)))
-  > EOF
+  $ write_cat_result_rule " a b c"
 
   $ dune runtest
   file a
@@ -46,9 +40,7 @@ The cat action supports several files.
 
 This requires 3.4.
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.3)
-  > EOF
+  $ make_dune_project 3.3
 
   $ dune runtest
   File "dune", line 8, characters 2-13:

@@ -569,7 +569,7 @@ module Solver = struct
       let compare_version a b =
         match a, b with
         | RealImpl a, RealImpl b ->
-          (* CR rgrinberg: shouldn't we take our version preference into account here? *)
+          (* CR-someday rgrinberg: shouldn't we take our version preference into account here? *)
           Ordering.of_int (OpamPackage.compare a.pkg b.pkg)
         | RealImpl _, _ -> Gt
         | _, RealImpl _ -> Lt
@@ -1083,7 +1083,7 @@ module Solver = struct
          If [t] selected a better version anyway then we don't need to report this rejection. *)
       let affected_selection t impl =
         match t.selected_impl with
-        (* CR rgrinberg: take account version preference here? *)
+        (* CR-someday rgrinberg: take account version preference here? *)
         | Some selected when Input.Impl.compare_version selected impl = Gt -> false
         | _ -> true
       ;;
@@ -1351,7 +1351,7 @@ module Solver = struct
         let get_selected role (sel : Solver.selection) =
           let diagnostics = lazy (explain role) in
           let impl = if sel.impl = Input.Dummy then None else Some sel.impl in
-          (* CR rgrinberg: Are we recomputing things here? *)
+          (* CR-someday rgrinberg: Are we recomputing things here? *)
           let* impl_candidates = Input.implementations role context in
           let+ rejects, feed_problems = Input.Role.rejects role context in
           Component.create
@@ -1855,7 +1855,7 @@ let solve_lock_dir
          | _ ->
            Error
              (User_error.make
-                (* CR rgrinberg: needs to include locations *)
+                (* CR-someday rgrinberg: needs to include locations *)
                 [ Pp.text "multiple compilers selected" ]
                 ~hints:[ Pp.text "add a conflict" ])
        in

@@ -12,11 +12,9 @@ The misc install section isn't supported:
   >  (files foo))
   > EOF
 
-  $ dune build xxx.install 2>&1 | awk '/Internal error/,/Raised/'
-  Internal error! Please report to https://github.com/ocaml/dune/issues,
-  providing the file _build/trace.csexp, if possible. This includes build
-  commands, message logs, and file paths.
-  Description:
-    ("Install.Paths.get", {})
-  Raised at Stdune__Code_error.raise in file
+  $ dune build xxx.install
+  File "dune", line 2, characters 10-14:
+  2 |  (section misc)
+                ^^^^
+  Error: The misc section is not supported by install stanzas.
   [1]

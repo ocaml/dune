@@ -44,10 +44,10 @@ jobs:
           echo "==============================="
 
       - name: Checkout Dune
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up Nix
-        uses: nixbuild/nix-quick-install-action@v34
+        uses: nixbuild/nix-quick-install-action@v35
 
       - name: Cache Nix store
         uses: nix-community/cache-nix-action@v7

@@ -29,6 +29,12 @@ The available ``<facilities>`` are:
   locally when executed with ``dune exec`` or after promotion. The value is
   ``None`` once it has been installed.
 
+  The generated code also recognizes the ``DUNE_SOURCEROOT`` environment
+  variable as a fallback when no source root was embedded in the module. Dune
+  sets this variable to the workspace root when it sets up the runtime
+  environment for sites. In Dune rules, prefer the ``%{workspace_root}`` or
+  ``%{project_root}`` variables when you need the source tree location.
+
 - ``relocatable`` adds a value ``val relocatable: bool`` in the generated
   module, which indicates if the binary has been installed in the relocatable
   mode.

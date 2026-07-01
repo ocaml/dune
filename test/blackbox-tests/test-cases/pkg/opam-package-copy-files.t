@@ -4,19 +4,7 @@ repository are copied correctly to the dune.lock file.
   $ mkrepo
 
 Make a package with a patch
-  $ mkpkg with-patch <<EOF
-  > EOF
-
-  $ fname1="foo.patch"
-  $ fname2="dir/bar.patch"
-  $ opam_repo="$mock_packages/with-patch/with-patch.0.0.1"
-  $ mkdir -p $opam_repo/files/dir
-  $ cat >$opam_repo/files/$fname1 <<EOF
-  > foo
-  > EOF
-  $ cat >$opam_repo/files/$fname2 <<EOF
-  > bar
-  > EOF
+  $ make_with_patch_package
 
   $ solve with-patch
   Solution for dune.lock:

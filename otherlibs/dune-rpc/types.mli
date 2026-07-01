@@ -7,6 +7,7 @@ module Id : sig
   val sexp : (t, Conv.values) Conv.t
   val required_field : (t, Conv.fields) Conv.t
   val optional_field : (t option, Conv.fields) Conv.t
+  val repr : t Stdune.Repr.t
   val to_dyn : t -> Dyn.t
   val hash : t -> int
   val equal : t -> t -> bool

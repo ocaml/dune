@@ -51,7 +51,7 @@ let read_one fd =
 ;;
 
 let%expect_test "read readiness" =
-  (Scheduler.Run.go config ~on_event:(fun _ -> ())
+  (Scheduler.Run.go config
    @@ fun () ->
    let r, w = pipe () in
    if not Sys.win32 then set_nonblock r;
@@ -69,7 +69,7 @@ let%expect_test "read readiness" =
 ;;
 
 let%expect_test "write readiness" =
-  (Scheduler.Run.go config ~on_event:(fun _ -> ())
+  (Scheduler.Run.go config
    @@ fun () ->
    let r, w = pipe () in
    if not Sys.win32 then set_nonblock w;
@@ -86,7 +86,7 @@ let%expect_test "write readiness" =
 ;;
 
 let%expect_test "first ready" =
-  (Scheduler.Run.go config ~on_event:(fun _ -> ())
+  (Scheduler.Run.go config
    @@ fun () ->
    let r1, w1 = pipe () in
    let r2, w2 = pipe () in
@@ -110,7 +110,7 @@ let%expect_test "first ready" =
 ;;
 
 let%expect_test "cancel task" =
-  (Scheduler.Run.go config ~on_event:(fun _ -> ())
+  (Scheduler.Run.go config
    @@ fun () ->
    let r, w = pipe () in
    if not Sys.win32 then set_nonblock r;
@@ -129,7 +129,7 @@ let%expect_test "cancel task" =
 ;;
 
 let%expect_test "close cancels pending readiness" =
-  (Scheduler.Run.go config ~on_event:(fun _ -> ())
+  (Scheduler.Run.go config
    @@ fun () ->
    let r, w = pipe () in
    if not Sys.win32 then set_nonblock r;
@@ -147,7 +147,7 @@ let%expect_test "close cancels pending readiness" =
 ;;
 
 let%expect_test "close cancels unawaited task" =
-  (Scheduler.Run.go config ~on_event:(fun _ -> ())
+  (Scheduler.Run.go config
    @@ fun () ->
    let r, w = pipe () in
    if not Sys.win32 then set_nonblock r;
@@ -159,7 +159,7 @@ let%expect_test "close cancels unawaited task" =
 ;;
 
 let%expect_test "close waits for the loop thread to close the fd" =
-  (Scheduler.Run.go config ~on_event:(fun _ -> ())
+  (Scheduler.Run.go config
    @@ fun () ->
    let is_closed fd =
      let buf = Bytes.make 1 '0' in
@@ -178,7 +178,7 @@ let%expect_test "close waits for the loop thread to close the fd" =
 ;;
 
 let%expect_test "re-arm when watched mask changes" =
-  (Scheduler.Run.go config ~on_event:(fun _ -> ())
+  (Scheduler.Run.go config
    @@ fun () ->
    let a, b = socketpair () in
    set_nonblock a;
@@ -214,7 +214,7 @@ let%expect_test "re-arm when watched mask changes" =
 ;;
 
 let%expect_test "mask switch on same fd" =
-  (Scheduler.Run.go config ~on_event:(fun _ -> ())
+  (Scheduler.Run.go config
    @@ fun () ->
    let client, server = connected_sockets () in
    set_nonblock client;
@@ -237,7 +237,7 @@ let%expect_test "mask switch on same fd" =
 ;;
 
 let%expect_test "close cancels ready_one task" =
-  (Scheduler.Run.go config ~on_event:(fun _ -> ())
+  (Scheduler.Run.go config
    @@ fun () ->
    let r1, w1 = pipe () in
    let r2, w2 = pipe () in

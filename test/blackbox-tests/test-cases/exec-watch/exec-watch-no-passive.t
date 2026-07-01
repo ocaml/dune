@@ -1,9 +1,6 @@
 Trying to run exec in passive watch mode produces and error.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.6)
-  > (package (name foo))
-  > EOF
+  $ make_dune_project_with_package 3.6 foo
 
   $ cat >dune <<EOF
   > (executable

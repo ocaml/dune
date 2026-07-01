@@ -24,7 +24,10 @@ module Make
 struct
   include Ast
 
-  let run prog args = Run (prog, Appendable_list.of_list args)
+  let run prog args =
+    Run { prog; args = Appendable_list.of_list args; can_run_in_action_runner = true }
+  ;;
+
   let chdir path t = Chdir (path, t)
   let setenv var value t = Setenv (var, value, t)
 
@@ -50,7 +53,7 @@ struct
   let cat ps = Cat ps
   let copy a b = Copy (a, b)
   let symlink a b = Symlink (a, b)
-  let bash s = Bash s
+  let bash script = Bash { script; can_run_in_action_runner = true }
   let write_file ?(perm = File_perm.Normal) p s = Write_file (p, perm, s)
   let rename a b = Rename (a, b)
   let remove_tree path = Remove_tree path
@@ -71,7 +74,7 @@ module Prog = struct
   module Not_found = struct
     type t =
       { context : Context_name.t
-      ; program : string
+      ; program : Filename.t
       ; hint : string option
       ; loc : Loc.t option
       }
@@ -79,14 +82,14 @@ module Prog = struct
     let create ?hint ~context ~program ~loc () = { hint; context; program; loc }
 
     let raise { context; program; hint; loc } =
-      Utils.program_not_found ?hint ~loc ~context program
+      Utils.program_not_found ?hint ~loc ~context (Filename.to_string program)
     ;;
 
     let to_dyn { context; program; hint; loc = _ } =
       let open Dyn in
       record
         [ "context", Context_name.to_dyn context
-        ; "program", string program
+        ; "program", Filename.to_dyn program
         ; "hint", option string hint
         ]
     ;;
@@ -180,7 +183,7 @@ let for_shell t =
     ~f_program:(fun ~dir x ->
       match x with
       | Ok p -> Path.reach p ~from:dir
-      | Error e -> e.program)
+      | Error e -> Filename.to_string e.program)
 ;;
 
 let digest =
@@ -192,7 +195,7 @@ let digest =
   let digest_program d ~dir (program : Prog.t) =
     match program with
     | Ok p -> string d (Path.reach p ~from:dir)
-    | Error e -> string d e.program
+    | Error e -> string d (Filename.to_string e.program)
   in
   let digest_path d ~dir path = string d (Path.reach path ~from:dir) in
   let digest_target d ~dir target = string d (Path.reach (Path.build target) ~from:dir) in
@@ -207,7 +210,7 @@ let digest =
   in
   let rec loop d t ~dir =
     match t with
-    | Run (prog, args) ->
+    | Run { prog; args; can_run_in_action_runner = _ } ->
       int d 0;
       digest_program d ~dir prog;
       int d (Appendable_list.length args);
@@ -269,9 +272,9 @@ let digest =
       int d 13;
       digest_path d ~dir src;
       digest_target d ~dir dst
-    | Bash s ->
+    | Bash { script; can_run_in_action_runner = _ } ->
       int d 14;
-      string d s
+      string d script
     | Write_file (target, perm, contents) ->
       int d 15;
       digest_target d ~dir target;
@@ -372,6 +375,27 @@ let rec is_dynamic = function
   | Diff _
   | Mkdir _ -> false
   | Extension (module A) -> A.Spec.is_dynamic
+;;
+
+let rec runs_process = function
+  | Chdir (_, t)
+  | Setenv (_, _, t)
+  | Redirect_out (_, _, _, t)
+  | Redirect_in (_, _, t)
+  | Ignore (_, t)
+  | With_accepted_exit_codes (_, t) -> runs_process t
+  | Progn l | Pipe (_, l) | Concurrent l -> List.exists l ~f:runs_process
+  | Run _ | Bash _ | Diff _ -> true
+  | Echo _
+  | Cat _
+  | Copy _
+  | Symlink _
+  | Hardlink _
+  | Write_file _
+  | Rename _
+  | Remove_tree _
+  | Mkdir _ -> false
+  | Extension (module A) -> A.Spec.runs_process
 ;;
 
 let maybe_sandbox_path sandbox p =
@@ -493,7 +517,7 @@ module Full = struct
   ;;
 
   let map t ~f = { t with action = f t.action }
-  let add_env e t = { t with env = Env.extend_env t.env e }
+  let add_env e t = if Env.is_empty e then t else { t with env = Env.extend_env t.env e }
   let add_locks l t = { t with locks = t.locks @ l }
 
   let add_can_go_in_shared_cache b t =

@@ -1,9 +1,7 @@
 We test the `(select)` field of the `(libraries)` field with relative parent
 paths
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.22)
-  > EOF
+  $ make_dune_project 3.22
 
   $ mkdir -p sub
   $ cat > sub/dune <<EOF

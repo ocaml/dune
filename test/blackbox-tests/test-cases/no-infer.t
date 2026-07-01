@@ -1,9 +1,7 @@
 An action with source dependencies that are generated outside of dune
 should work if wrapped in (no-infer ...) but not otherwise.
 
-  $ cat > dune-project << EOF
-  > (lang dune 2.6)
-  > EOF
+  $ make_dune_project 2.6
 
   $ cat >dune <<EOF
   > (rule

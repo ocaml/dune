@@ -52,6 +52,8 @@ include struct
   module Sandbox_config = Sandbox_config
   module Sandbox_mode = Sandbox_mode
   module Action = Action
+  module Action_ext = Action_ext
+  module Action_plugin = Action_plugin
   module Process = Process
   module Execution_parameters = Execution_parameters
   module Build_context = Build_context
@@ -113,6 +115,7 @@ include struct
   module Package_constraint = Package_constraint
   module Dune_project_name = Dune_project_name
   module Package = Package
+  module Compilation_mode = Compilation_mode
   module Dialect = Dialect
   module Lib_mode = Lib_mode
   module Module_name = Module_name

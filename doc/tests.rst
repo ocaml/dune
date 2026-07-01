@@ -51,6 +51,13 @@ with other targets by passing ``@runtest`` to ``dune build``. For instance:
    $ dune build @install @runtest
    $ dune build @install @test/runtest
 
+This is distinct from plain ``dune build``, which builds the
+:doc:`default alias </reference/aliases/default>`. By default, that alias
+recursively builds :doc:`all </reference/aliases/all>` file targets, including
+test executables and generated files in test directories, but it doesn't run
+actions attached only to ``runtest``. If you want plain ``dune build`` to skip a
+tests subtree, override ``default`` in a parent directory.
+
 
 Running a Single Test
 ---------------------
@@ -482,25 +489,35 @@ build, as this would cause portability problems.
 Custom Tests
 ============
 
-We said in `Running tests`_ that to run tests, Dune simply builds
-the ``runtest`` alias. As a result, you simply need to add an action 
-to this alias in any directory in order to define custom tests. For instance, if
-you have a binary ``tests.exe`` that you want to run as part of
-running your test suite, simply add this to a ``dune`` file:
+For the common case of running an executable as a test, write a
+:ref:`test stanza <tests-stanza>` in your ``dune`` file:
+
+.. code:: dune
+
+   (test
+    (name my_test_program))
+
+This declares a test executable whose main module is
+``my_test_program.ml`` and arranges for ``dune runtest`` to run it. Dune will
+report a test failure if the executable exits with a nonzero status.
+
+The :ref:`tests-stanza` stanza is the multi-test form of ``test``:
+
+.. code:: dune
+
+   (tests (names test1 test2))
+
+More generally, we said in `Running tests`_ that to run tests, Dune simply
+builds the ``runtest`` alias. As a result, you can also add an action to this
+alias in any directory in order to define custom tests. For instance, if you
+have a binary ``tests.exe`` that you want to run as part of running your test
+suite, simply add this to a ``dune`` file:
 
 .. code:: dune
 
    (rule
     (alias  runtest)
     (action (run ./tests.exe)))
-
-Hence to define a test, a pair of alias and executable stanzas are required.
-To simplify this common pattern, Dune provides a :ref:`tests-stanza` stanza to
-define multiple tests and their aliases at once:
-
-.. code:: dune
-
-   (tests (names test1 test2))
 
 
 Diffing the Result

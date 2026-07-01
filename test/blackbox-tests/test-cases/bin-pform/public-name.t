@@ -1,9 +1,6 @@
 %{bin:...} for a workspace executable with (public_name).
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.24)
-  > (package (name mypkg))
-  > EOF
+  $ make_dune_project_with_package 3.24 mypkg
   $ cat >dune <<'EOF'
   > (executable (public_name mybin) (package mypkg))
   > (rule
@@ -23,6 +20,6 @@ The pform resolves to the build artifact:
 The rule depends on the build artifact:
 
   $ dune rules --format=json _build/default/bin-path \
-  >   | jq 'include "dune"; .[] | ruleDepFilePaths' \
+  >   | jq_dune '.[] | ruleDepFilePaths' \
   >   | grep mybin
   "_build/default/mybin.exe"

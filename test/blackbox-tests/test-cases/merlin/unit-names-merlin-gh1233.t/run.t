@@ -4,8 +4,7 @@
   $ dune exec ./foo.exe
   42
 
-  $ dune ocaml merlin dump-config --format=json $PWD | jq '
-  >   include "dune";
+  $ dune ocaml merlin dump-config --format=json $PWD | jq_dune '
   >   merlinEntry("Foo")
   >   | merlinUnitNameSummary'
   {
@@ -19,8 +18,7 @@
     "unit_name": "dune__exe__Foo"
   }
 
-  $ dune ocaml merlin dump-config --format=json $PWD/foo | jq '
-  >   include "dune";
+  $ dune ocaml merlin dump-config --format=json $PWD/foo | jq_dune '
   >   [
   >     (merlinEntry("Bar")
   >      | merlinConfigSummary(["UNIT_NAME", "FLG"])),

@@ -37,10 +37,6 @@ val get : 'a t -> 'a
 (** should dune acquire the global lock before building *)
 val global_lock : Toggle.t t
 
-(** whether dune should add cutoff to various memoized functions where it
-    reduces concurrency *)
-val cutoffs_that_reduce_concurrency_in_watch_mode : Toggle.t t
-
 (** whether dune should optimize file copying on Linux/MacOS *)
 val copy_file : [ `Portable | `Best ] t
 

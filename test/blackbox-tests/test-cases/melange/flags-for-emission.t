@@ -1,9 +1,6 @@
 Test compile_flags are passed to JS file emission
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.13)
-  > (using melange 0.1)
-  > EOF
+  $ make_melange_project 3.13 0.1
 
   $ cat > main.ml <<EOF
   > let () = Js.log "hello"

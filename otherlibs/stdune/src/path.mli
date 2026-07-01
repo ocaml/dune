@@ -184,6 +184,7 @@ module Build : sig
   val split_sandbox_root : t -> t option * t
   val of_local : Local.t -> t
 
+  module Array : Array_intf.S with type Set.elt = t
   module Table : Hashtbl.S with type key = t
 end
 
@@ -208,7 +209,9 @@ module Table : sig
   val set : 'a t -> path -> 'a -> unit
   val remove : 'a t -> path -> unit
   val iter : 'a t -> f:('a -> unit) -> unit
+  val iteri : 'a t -> f:(key:path -> data:'a -> unit) -> unit
   val find : 'a t -> path -> 'a option
+  val find_or_add : 'a t -> path -> f:(path -> 'a) -> 'a
   val filteri_inplace : 'a t -> f:(key:path -> data:'a -> bool) -> unit
   val filter_inplace : 'a t -> f:('a -> bool) -> unit
   val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
@@ -338,7 +341,7 @@ val is_dir_sep : char -> bool
 (** If the path does not exist, this function is a no-op. *)
 val rm_rf : ?chmod:bool -> ?allow_external:bool -> t -> unit
 
-val mkdir_p : ?perms:int -> t -> unit
+val mkdir_p : ?perms:Permissions.Mode.t -> t -> unit
 val build_dir_exists : unit -> bool
 val ensure_build_dir_exists : unit -> unit
 val source : Source.t -> t

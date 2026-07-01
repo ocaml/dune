@@ -33,7 +33,7 @@ let init_chan ~root_dir =
     let* res = once () in
     match res with
     | Some res -> Fiber.return res
-    | None -> Scheduler.sleep (Time.Span.of_secs 0.2) >>= loop
+    | None -> Scheduler.sleep (Time.Span.of_secs 0.05) >>= loop
   in
   loop ()
 ;;
@@ -103,7 +103,7 @@ let run ?env ~prog ~argv () =
       ~stdin:(Fd.unsafe_to_unix_file_descr (Lazy.force Dev_null.in_))
       ?env
       ()
-    |> Pid.of_int
+    |> Pid.of_int_exn
   in
   Unix.close stdout_w;
   Unix.close stderr_w;
@@ -198,5 +198,5 @@ let run run =
     ~finally:(fun () -> Sys.chdir cwd)
     ~f:(fun () ->
       Sys.chdir (Path.to_string dir);
-      Scheduler.Run.go config run ~timeout:(Time.Span.of_secs 5.0) ~on_event:(fun _ -> ()))
+      Scheduler.Run.go config run ~timeout:(Time.Span.of_secs 5.0))
 ;;

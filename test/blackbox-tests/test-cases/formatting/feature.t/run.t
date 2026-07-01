@@ -228,6 +228,32 @@ And fixable files can be promoted:
   (library
    (name lib_reason))
 
+Formatting actions receive environment variables from the (env ...) stanza:
+
+  $ mkdir -p enabled/env-vars
+  $ cat >enabled/env-vars/dune <<EOF
+  > (env
+  >  (_
+  >   (env-vars
+  >    (REFMT_PRINT_WIDTH 120))))
+  > EOF
+  $ cat >enabled/env-vars/reason_file.re <<EOF
+  > let z = ();
+  > EOF
+  $ dune build @enabled/env-vars/fmt
+  File "enabled/env-vars/reason_file.re", line 1, characters 0-0:
+  --- enabled/env-vars/reason_file.re
+  +++ enabled/env-vars/reason_file.re.corrected
+  @@ -1 +1,3 @@
+  -let z = ();
+  +Sys.argv: ../install/default/bin/refmt enabled/env-vars/reason_file.re
+  +REFMT_PRINT_WIDTH=120
+  +refmt output
+  [1]
+  $ dune promote enabled/env-vars/reason_file.re
+  Promoting _build/default/enabled/env-vars/reason_file.re.corrected to
+    enabled/env-vars/reason_file.re.
+
 The fmt command automatically promotes the formatted files:
 
   $ touch fmt-cmd/.ocamlformat

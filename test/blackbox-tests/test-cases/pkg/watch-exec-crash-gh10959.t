@@ -1,18 +1,6 @@
 Repro `dune exec --watch` crash with pkg management
 
-  $ mkdir external_sources
-  $ cat >external_sources/dune-project <<EOF
-  > (lang dune 3.11)
-  > (package (name mypkg))
-  > EOF
-  $ cat >external_sources/dune <<EOF
-  > (library
-  >  (public_name mypkg.lib)
-  >  (name test_lib))
-  > EOF
-  $ cat >external_sources/test_lib.ml <<EOF
-  > let x = "hello"
-  > EOF
+  $ make_external_mypkg_lib_source 'let x = "hello"'
 
 Now we set up a lock file with this package and then attempt to use it:
 
@@ -53,3 +41,4 @@ Now we set up a lock file with this package and then attempt to use it:
   hello
   $ kill $PID
   $ wait $PID
+  [130]

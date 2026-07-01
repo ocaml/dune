@@ -1,8 +1,6 @@
 Dune should collect traces from all actions
 
-  $ cat >dune-project<<EOF
-  > (lang dune 3.22)
-  > EOF
+  $ make_dune_project 3.22
 
   $ cat >dune <<EOF
   > (rule
@@ -15,7 +13,7 @@ Dune should collect traces from all actions
 
   $ dune build @foo
 
-  $ dune trace cat | jq -s 'include "dune"; redactedActionTraces'
+  $ dune trace cat | jq_dune -s 'redactedActionTraces'
   {
     "cat": "bar",
     "name": "foo1",

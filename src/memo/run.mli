@@ -25,3 +25,39 @@ val compare : t -> t -> Ordering.t
 
 (** End the current run and start a new one. *)
 val restart : unit -> unit
+
+(** A run that is never current: [is_current invalid] is always [false]. Used as the
+    initial value of trackers that record "the run in which X last happened". *)
+val invalid : t
+
+(** A pair of [t]s representing the [(last_changed_at, last_validated_at)]
+    timestamps of a memoized value, with the invariant
+    [last_changed_at <= last_validated_at], packed into a single immediate.
+
+    This is a memory-footprint optimization for cached values: a pair takes the
+    same space as a single [t] instead of two. The packing assumes [t] values
+    stay below [2 ^ 31 - 1], which is ample (one [restart] per second for ~68
+    years). *)
+module Pair : sig
+  type run := t
+  type t [@@immediate]
+
+  val create : last_changed_at:run -> last_validated_at:run -> t
+  val last_changed_at : t -> run
+  val last_validated_at : t -> run
+
+  (** [with_last_validated_at t ~last_validated_at] preserves [last_changed_at t].
+      The caller must ensure [last_changed_at t <= last_validated_at] still holds. *)
+  val with_last_validated_at : t -> last_validated_at:run -> t
+
+  (** The pair of two invalid runs. *)
+  val invalid : t
+end
+
+module For_testing : sig
+  (** [of_int] / [to_int] are the identity; they expose the [int] representation
+      of [t] for tests. *)
+  val of_int : int -> t
+
+  val to_int : t -> int
+end

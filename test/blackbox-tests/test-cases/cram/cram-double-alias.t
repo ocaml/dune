@@ -23,5 +23,5 @@ aliases that are being built together.
   [1]
 
 Here we make sure that the cram test is only run once
-  $ dune trace cat | jq -s 'include "dune"; [ .[] | processes | select(.args.categories == ["cram"]) ] | length'
+  $ dune trace cat | jq_dune -s '[ .[] | processes | select(.args.categories == ["cram"]) ] | length'
   1

@@ -1,9 +1,6 @@
 Multiple %{bin:...} deps in a single rule.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.24)
-  > (package (name mypkg))
-  > EOF
+  $ make_dune_project_with_package 3.24 mypkg
   $ mkdir src
   $ cat >src/dune <<'EOF'
   > (executable (public_name foo) (package mypkg) (modules foo))
@@ -24,20 +21,18 @@ Multiple %{bin:...} deps in a single rule.
   >    (bash "echo $PATH"))))
   > EOF
 
-PATH gets a .binaries dir (with symlinks to both bins) plus the
-install bin dir:
+PATH gets a .binaries dir with symlinks to both bins:
 
   $ dune build path-output
   $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
   $PWD/_build/install/default/.binaries/$DIGEST
-  $PWD/_build/install/default/bin
 
 The rule depends on each binary via two paths: the build artifact
 (from the pform expansion) and the .binaries symlink (from the PATH
 machinery):
 
   $ dune rules --format=json _build/default/path-output \
-  >   | jq 'include "dune"; .[] | ruleDepFilePaths' | censor
+  >   | jq_dune '.[] | ruleDepFilePaths' | censor
   "_build/default/src/bar.exe"
   "_build/default/src/foo.exe"
   "_build/install/default/.binaries/$DIGEST/bar"

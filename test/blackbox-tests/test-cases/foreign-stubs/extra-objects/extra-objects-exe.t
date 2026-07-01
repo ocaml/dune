@@ -4,7 +4,7 @@ Build an executable which depends on foreign object files.
 ----------------------------------------------------------------------------------
 * (extra_objects ...) is unavailable before Dune 3.5.
 
-  $ echo "(lang dune 3.4)" > dune-project
+  $ make_dune_project 3.4
   $ mkdir -p bin
 
   $ cat >bin/dune <<EOF
@@ -24,7 +24,7 @@ Build an executable which depends on foreign object files.
 ----------------------------------------------------------------------------------
 * Error for missing object file
 
-  $ echo "(lang dune 3.5)" > dune-project
+  $ make_dune_project 3.5
 
   $ cat >bin/calc.ml <<EOF
   > external add : int -> int -> int = "add"

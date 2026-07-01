@@ -126,7 +126,9 @@ let copy_recursively =
   in
   let copy_file ~src ~dst = Io.copy_file ~chmod:chmod_file ~src ~dst () in
   let mkdir_with_perms ~src ~dst =
-    let perms = (Unix.stat (Path.to_string src)).st_perm |> chmod_dir in
+    let perms =
+      (Unix.stat (Path.to_string src)).st_perm |> Permissions.Mode.of_int |> chmod_dir
+    in
     Path.mkdir_p ~perms dst
   in
   fun ~src ~dst ->

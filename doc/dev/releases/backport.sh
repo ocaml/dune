@@ -79,6 +79,6 @@ fi
 gh pr create \
     --repo ocaml/dune \
     --base "${rc_branch}" \
-    --head "${github_owner}:${rc_branch}" \
+    --head "${github_owner}:${backport_branch}" \
     --title "[${VERSION}] backport #${PR}" \
     --body "Backport #${PR} onto ${rc_branch}"

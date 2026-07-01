@@ -6,9 +6,7 @@ Test for https://github.com/ocaml/dune/issues/13566
   $ export PATH=bin:$PATH
 
 Create project with two executables in same directory:
-  $ cat > dune-project <<EOF
-  > (lang dune 3.22)
-  > EOF
+  $ make_dune_project 3.22
 
   $ cat > dune <<EOF
   > (executable (name foo))

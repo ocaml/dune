@@ -1,8 +1,6 @@
 Testing the empty alias
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.17)
-  > EOF
+  $ make_dune_project 3.17
 
 Building the empty alias does nothing
   $ dune build @empty
@@ -31,9 +29,7 @@ Also creating an alias called empty is allowed prior to 3.20:
 
 For versions 3.20 and after these should fail:
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.20)
-  > EOF
+  $ make_dune_project 3.20
 
   $ cat > dune <<EOF
   > (rule

@@ -331,6 +331,28 @@ let%expect_test "when unknown nil" =
   [%expect {| Nil |}]
 ;;
 
+(* A [(when false _)] expression encodes [Nil], so it folds away inside [concat]
+   and [when] just like a [Nil] does, even when the [Nil] only appears after
+   simplifying a child. *)
+
+let%expect_test "concat with when-false (should simplify to \"ab\")" =
+  print_slang
+    (Slang.concat
+       [ Slang.text "a"; Slang.when_ (const false) (Slang.text ""); Slang.text "b" ]);
+  [%expect
+    {|
+    Literal (template "ab")
+    |}]
+;;
+
+let%expect_test "when-unknown of when-false (should simplify to Nil)" =
+  print_slang (Slang.when_ (expr (pform "x")) (Slang.when_ (const false) (Slang.text "")));
+  [%expect
+    {|
+    Nil
+    |}]
+;;
+
 (* Slang: If *)
 
 let%expect_test "if true" =

@@ -1,8 +1,6 @@
 Builds `ocamllex` generators under `(include_subdirs qualified)`.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.21)
-  > EOF
+  $ make_dune_project 3.21
   $ mkdir -p lib/bar
   $ cat > lib/dune <<EOF
   > (include_subdirs qualified)
@@ -17,12 +15,6 @@ Builds `ocamllex` generators under `(include_subdirs qualified)`.
   > (ocamllex lexer)
   > EOF
 
-  $ cat > lib/bar/lexer.mll <<EOF
-  > {
-  > }
-  > rule lex = parse
-  >   | _   { true  }
-  >   | eof { false }
-  > EOF
+  $ make_trivial_ocamllex lib/bar/lexer.mll
 
   $ dune build

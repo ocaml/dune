@@ -104,7 +104,7 @@ module File_perm = struct
   ;;
 
   let to_unix_perm = function
-    | Normal -> 0o666
-    | Executable -> 0o777
+    | Normal -> Permissions.Mode.default_file
+    | Executable -> Permissions.Mode.executable_file
   ;;
 end

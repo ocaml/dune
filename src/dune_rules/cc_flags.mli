@@ -14,10 +14,6 @@ type cc_vendor =
   | Clang
   | Other of string
 
-(** The name of the file created in the .dune folder after calling the C
-    preprocessor *)
-val preprocessed_filename : string
-
 (** [cc_vendor ctx] returns the C/C++ compiler vendor. *)
 val cc_vendor : Build_context.t -> cc_vendor Action_builder.t
 

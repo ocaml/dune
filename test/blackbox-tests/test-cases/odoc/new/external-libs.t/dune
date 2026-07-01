@@ -1,3 +1,4 @@
 (library
  (public_name odoctest)
- (name odoctest))
+ (name odoctest)
+ (modes byte))

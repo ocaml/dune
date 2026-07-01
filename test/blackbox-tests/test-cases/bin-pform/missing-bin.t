@@ -3,9 +3,7 @@ where the name doesn't resolve all fail with "Program ... not found".
 Three different code paths converge on the same error, and each is
 exercised so any one can regress independently.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.24)
-  > EOF
+  $ make_dune_project 3.24
 
 In an action:
 

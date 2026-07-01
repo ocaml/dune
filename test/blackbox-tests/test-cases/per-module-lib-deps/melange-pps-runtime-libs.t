@@ -5,49 +5,13 @@ that the compile rule has globs over `hello`'s melange objdir,
 sourced from the ppx runtime declaration alone — never named in
 source.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.24)
-  > (using melange 0.1)
-  > EOF
+  $ make_melange_project 3.24 0.1
 
-`hello` is the ppx runtime lib (built for melange):
+`hello` is the ppx runtime lib and `hello_ppx` is a no-op
+ppx_rewriter declaring it as a runtime lib. The helper uses the
+stub-driver pattern from `ppx-runtime-libraries.t`.
 
-  $ mkdir hello
-  $ cat > hello/dune <<EOF
-  > (library (name hello) (modes melange))
-  > EOF
-  $ cat > hello/hello.ml <<EOF
-  > type t = int
-  > EOF
-
-`hello_ppx` is a no-op ppx_rewriter declaring `hello` as a
-runtime lib. The `(ppx.driver ...)` form satisfies dune's
-pps-invocation contract without pulling in ppxlib (matches the
-stub-driver pattern in `ppx-runtime-libraries.t`).
-
-  $ mkdir hello_ppx
-  $ cat > hello_ppx/dune <<EOF
-  > (library
-  >  (name hello_ppx)
-  >  (kind ppx_rewriter)
-  >  (ppx_runtime_libraries hello)
-  >  (ppx.driver (main Hello_ppx.main)))
-  > EOF
-  $ cat > hello_ppx/hello_ppx.ml <<EOF
-  > let main () =
-  >   let out = ref "" in
-  >   let args =
-  >     [ ("-o", Arg.Set_string out, "")
-  >     ; ("--impl", Arg.Set_string (ref ""), "")
-  >     ; ("--as-ppx", Arg.Set (ref false), "")
-  >     ; ("--cookie", Arg.Set (ref false), "")
-  >     ; ("-loc-filename", Arg.String ignore, "")
-  >     ]
-  >   in
-  >   let anon _ = () in
-  >   Arg.parse (Arg.align args) anon "";
-  >   close_out (open_out !out)
-  > EOF
+  $ make_hello_ppx_runtime_fixture melange
 
 The melange.emit preprocesses with `hello_ppx`:
 
@@ -72,7 +36,7 @@ resolve cleanly; locate the `.cmj` under the stanza dir.)
 
   $ CMJ=$(find _build/default/me -name '*.cmj' | head -1)
   $ dune rules --root . --format=json --deps "$CMJ" > deps.json
-  $ jq -r 'include "dune"; .[] | depsGlobs
+  $ jq_dune -r '.[] | depsGlobs
   >   | select(.dir | endswith("hello/.hello.objs/melange"))
   >   | .dir + " " + .predicate' < deps.json
   _build/default/hello/.hello.objs/melange *.cmi

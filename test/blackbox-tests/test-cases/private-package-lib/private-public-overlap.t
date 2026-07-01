@@ -1,10 +1,7 @@
 We should forbid private libraries that belong to a package from depending on a
 private library
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.5)
-  > (package (name pkg))
-  > EOF
+  $ make_dune_project_with_package 3.5 pkg
 
   $ cat >dune <<EOF
   > (library
@@ -22,5 +19,6 @@ private library
   3 |  (libraries bar)
                   ^^^
   Error: Library "bar" is private, it cannot be a dependency of a private
-  library attached to a package. You need to give "bar" a public name.
+  library attached to a package. You need to give "bar" a public name or add a
+  (package ...) field to its stanza.
   [1]

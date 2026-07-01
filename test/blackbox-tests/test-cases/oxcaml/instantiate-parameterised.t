@@ -71,6 +71,7 @@ It's an error for the binary to partially instantiate `lib_ab`:
   3 |   (libraries (instantiate lib_ab b_impl))) ; missing a_impl
                                 ^^^^^^
   Error: Missing argument for parameter "project.a".
+  -> required by _build/default/bin/.bin.eobjs/native/dune__exe__Bin.cmx
   -> required by _build/default/bin/bin.exe
   Hint: Pass an argument implementing "project.a" to the dependency.
   [1]

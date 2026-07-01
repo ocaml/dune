@@ -65,7 +65,6 @@ Otherwise this test fails on OSX
   +toto
   \ No newline at end of file
   Promoting _build/default/x.gen to x.
-  [1]
   $ cat x
   toto
   $ dune build @blah
@@ -188,7 +187,7 @@ Reproduction case for #3069
 ---------------------------
 
   $ mkdir 3069 && cd 3069
-  $ echo "(lang dune 2.0)" > dune-project
+  $ make_dune_project 2.0
   $ cat >dune <<EOF
   > (rule
   >  (action (with-stdout-to x (echo bar)))

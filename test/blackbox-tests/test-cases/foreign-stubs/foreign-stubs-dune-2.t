@@ -6,7 +6,7 @@ Compatability testsuite for the (foreign_stubs ...) field.
 ----------------------------------------------------------------------------------
 * Error when using both (self_build_stubs_archive ...) and (c_names ...) before 2.0.
 
-  $ echo "(lang dune 1.0)" > dune-project
+  $ make_dune_project 1.0
 
   $ cat >dune <<EOF
   > (library
@@ -26,7 +26,7 @@ Compatability testsuite for the (foreign_stubs ...) field.
 ----------------------------------------------------------------------------------
 * Error when using (c_names ...) in (library ...) in Dune 2.0.
 
-  $ echo "(lang dune 2.0)" > dune-project
+  $ make_dune_project 2.0
 
   $ dune build
   File "dune", line 3, characters 1-14:

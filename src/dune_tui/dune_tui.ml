@@ -26,7 +26,7 @@ let term =
                    match Lazy.force old with
                    | Sys.Signal_handle f -> f i
                    | _ ->
-                     Unix.kill (Unix.getpid ()) (Signal.to_int Stop);
+                     Pid.kill (Pid.me ()) `Pid Stop;
                      Dune_trace.emit Process (fun () ->
                        Dune_trace.Event.signal_sent Stop `Ui)))
        in
@@ -270,7 +270,7 @@ let document =
   let keyboard_handler = function
     (* When we encounter q we make sure to quit by signaling termination. *)
     | `ASCII 'q', _ ->
-      Unix.kill (Unix.getpid ()) (Signal.to_int Term);
+      Pid.kill (Pid.me ()) `Pid Term;
       Dune_trace.emit Process (fun () -> Dune_trace.Event.signal_sent Term `Ui);
       `Handled
     (* Toggle help screen *)
@@ -394,5 +394,6 @@ let backend =
   fun () ->
     match (Platform.OS.value : Platform.OS.t) with
     | Windows -> User_error.raise [ Pp.text "TUI is currently not supported on Windows." ]
-    | Linux | Darwin | FreeBSD | OpenBSD | NetBSD | Haiku | Other -> Lazy.force t
+    | Linux | Darwin | FreeBSD | OpenBSD | NetBSD | DragonFly | Haiku | Other ->
+      Lazy.force t
 ;;

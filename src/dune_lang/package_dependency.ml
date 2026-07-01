@@ -95,18 +95,26 @@ let decode =
      | None -> ());
     result
   in
-  enter constrained
-  <|> let+ name = Well_formed_name.decode in
-      { name; constraint_ = None }
+  peek_exn
+  >>= function
+  | List _ -> enter constrained
+  | _ ->
+    let+ name = Well_formed_name.decode in
+    { name; constraint_ = None }
 ;;
 
-let to_dyn { name; constraint_ } =
-  let open Dyn in
-  record
-    [ "name", Package_name.to_dyn name
-    ; "constr", Dyn.Option (Option.map ~f:Package_constraint.to_dyn constraint_)
+let repr =
+  Repr.record
+    "package-dependency"
+    [ Repr.field "name" Package_name.repr ~get:(fun t -> t.name)
+    ; Repr.field
+        "constr"
+        Repr.(option (abstract Package_constraint.to_dyn))
+        ~get:(fun t -> t.constraint_)
     ]
 ;;
+
+let to_dyn = Repr.to_dyn repr
 
 let equal { name; constraint_ } t =
   Package_name.equal name t.name

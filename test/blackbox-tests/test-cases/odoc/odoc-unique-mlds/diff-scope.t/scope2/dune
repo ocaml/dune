@@ -1,5 +1,6 @@
 (library
  (name scope2)
+ (modes byte)
  (public_name scope2))
 
  (documentation)

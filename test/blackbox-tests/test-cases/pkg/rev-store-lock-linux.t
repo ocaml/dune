@@ -2,27 +2,12 @@ We want to test that a failing flock(2) shows an error.
 
 Thus we first create a repo:
 
-  $ mkrepo
-  $ mkpkg foo 1.0 <<EOF
-  > EOF
-  $ cd mock-opam-repository
-  $ git init --quiet
-  $ git add -A
-  $ git commit --quiet -m "Initial commit"
-  $ cd ..
+  $ make_committed_mock_repo_package foo 1.0
   $ add_mock_repo_if_needed "git+file://$(pwd)/mock-opam-repository"
 
 We set the project up to depend on `foo`
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.10)
-  > 
-  > (package
-  >  (name bar)
-  >  (depends foo))
-  > EOF
-  $ cat > dune <<EOF
-  > EOF
+  $ make_bar_depends_foo_project
 
 There should be some kind of error message if getting the revision store lock
 fails (simulated here with a failing flock(2) call):

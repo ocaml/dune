@@ -4,15 +4,7 @@ respect the pin-depends
   $ mkrepo
   $ add_mock_repo_if_needed
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.13)
-  > (pin
-  >  (url "file://$PWD/_foo")
-  >  (package (name foo)))
-  > (package
-  >  (name main)
-  >  (depends foo))
-  > EOF
+  $ make_project_pinned_to_foo
 
   $ mkdir _foo
   $ cat >_foo/foo.opam <<EOF

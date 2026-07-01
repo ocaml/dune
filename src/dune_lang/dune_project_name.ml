@@ -27,12 +27,7 @@ module T = struct
       ]
   ;;
 
-  let to_dyn =
-    let open Dyn in
-    function
-    | Named n -> variant "Named" [ string n ]
-    | Anonymous p -> variant "Anonymous" [ Path.Source.to_dyn p ]
-  ;;
+  let to_dyn = Repr.to_dyn repr
 end
 
 include T

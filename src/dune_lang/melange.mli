@@ -19,4 +19,8 @@ module Cm_kind : sig
   end
 end
 
+module Source : sig
+  val extension_prefix : string
+end
+
 val syntax : Syntax.t

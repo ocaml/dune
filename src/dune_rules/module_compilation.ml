@@ -402,6 +402,7 @@ let build_cm
       >>> Command.run
             ~dir:(Path.build (Context.build_dir ctx))
             ~sandbox
+            ~forbid_action_runner:true
             compiler
             [ flags
             ; pp_flags
@@ -539,6 +540,7 @@ let ocamlc_i ~deps cctx (m : Module.t) ~output =
               ~dir:(Path.build (Context.build_dir ctx))
               ~stdout_to:output
               ~sandbox
+              ~forbid_action_runner:true
               [ Command.Args.dyn ocaml_flags
               ; A "-I"
               ; Path (Path.build (Obj_dir.byte_dir obj_dir))

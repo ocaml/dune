@@ -1,7 +1,5 @@
 For dune >= 3.2, negating expressions is allowed
-  $ cat > dune-project <<EOF
-  > (lang dune 3.2)
-  > EOF
+  $ make_dune_project 3.2
   $ cat > dune <<EOF
   > (executable
   >  (name foo)

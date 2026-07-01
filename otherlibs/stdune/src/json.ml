@@ -104,3 +104,31 @@ let list (xs : t list) : t = `List xs
 let int (x : int) : t = `Int x
 let float (x : float) : t = `Float x
 let bool x = `Bool x
+
+let rec of_dyn : Dyn.t -> t = function
+  | Opaque -> string "<opaque>"
+  | Unit -> list []
+  | Int value -> int value
+  | Int32 value -> string (Int32.to_string value)
+  | Int64 value -> string (Int64.to_string value)
+  | Nativeint value -> string (Nativeint.to_string value)
+  | Bool value -> bool value
+  | String value -> string value
+  | Bytes value -> string (Bytes.to_string value)
+  | Char value -> string (String.make 1 value)
+  | Float value -> float value
+  | Option None -> `Null
+  | Option (Some value) -> of_dyn value
+  | List values -> list (List.map values ~f:of_dyn)
+  | Array values -> list (List.map (Array.to_list values) ~f:of_dyn)
+  | Tuple values -> list (List.map values ~f:of_dyn)
+  | Record fields -> assoc (List.map fields ~f:(fun (name, value) -> name, of_dyn value))
+  | Variant (name, []) -> string name
+  | Variant (name, [ value ]) -> assoc [ name, of_dyn value ]
+  | Variant (name, values) -> assoc [ name, list (List.map values ~f:of_dyn) ]
+  | Map values ->
+    List.map values ~f:(fun (key, value) -> list [ of_dyn key; of_dyn value ]) |> list
+  | Set values -> list (List.map values ~f:of_dyn)
+;;
+
+let of_repr repr value = Repr.to_dyn repr value |> of_dyn

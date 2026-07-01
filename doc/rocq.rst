@@ -207,9 +207,11 @@ The semantics of the fields are:
 - If the ``(generate_project_file)`` is present, a ``_RocqProject`` file is
   generated in the Rocq theory's directory (it is promoted to the source tree).
   This file should be suitable for editor compatibility, and it provides an
-  alternative to using ``dune rocq top``. It is however limited in two ways: it
-  is incompatible with the ``(modules_flags ...)`` field, and it cannot be
-  used for two Rocq theories declared in the same directory.
+  alternative to using ``dune rocq top``. These files are attached to the
+  ``@rocqproject`` alias, so ``dune build @rocqproject`` updates and promotes
+  all of them. This feature is however limited in two ways: it is incompatible
+  with the ``(modules_flags ...)`` field, and it cannot be used for two Rocq
+  theories declared in the same directory.
 
 Rocq Dependencies
 ~~~~~~~~~~~~~~~~~

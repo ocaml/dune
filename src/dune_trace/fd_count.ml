@@ -23,7 +23,7 @@ let lsof =
         let argv =
           [ prog; "-l"; "-O"; "-P"; "-n"; "-w"; "-p"; string_of_int (Unix.getpid ()) ]
         in
-        Spawn.spawn ~prog ~argv ~stdout:lsof_w () |> Pid.of_int
+        Spawn.spawn ~prog ~argv ~stdout:lsof_w () |> Pid.of_int_exn
       in
       Unix.close lsof_w;
       (match
@@ -64,19 +64,18 @@ let proc_fs () =
 ;;
 
 let how = ref `Unknown
-let pid = lazy (Unix.getpid ())
 
 let get () =
   match !how with
   | `Disable -> Unknown
   | `Lsof -> lsof ()
   | `Proc_fs -> proc_fs ()
-  | `Mac -> This (Mac.open_fds ~pid:(Lazy.force pid))
+  | `Mac -> This (Mac.open_fds ~pid:(Pid.me () |> Pid.to_int))
   | `Unknown ->
     if Mac.available ()
     then (
       how := `Mac;
-      This (Mac.open_fds ~pid:(Lazy.force pid)))
+      This (Mac.open_fds ~pid:(Pid.me () |> Pid.to_int)))
     else (
       match proc_fs () with
       | This _ as n ->

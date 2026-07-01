@@ -53,7 +53,7 @@ val decode : string -> t option
     and then atomically renamed to [dst]. *)
 val copy_file
   :  conf:Conf.t
-  -> ?chmod:(int -> int)
+  -> ?chmod:(Permissions.Mode.t -> Permissions.Mode.t)
   -> ?delete_dst_if_it_is_a_directory:bool
   -> src:Path.t
   -> dst:Path.t

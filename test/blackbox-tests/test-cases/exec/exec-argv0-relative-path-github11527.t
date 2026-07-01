@@ -3,9 +3,7 @@ Reproducing github #11527
 When running dune exec on a binary `./bug.exe` we can expect that the working directory
 and argv.(0) can be concatenated to get a valid path.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.18)
-  > EOF
+  $ make_dune_project 3.18
 
   $ cat > dune <<EOF
   > (executable

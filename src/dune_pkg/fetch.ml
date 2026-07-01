@@ -259,9 +259,11 @@ let is_descendant t ~of_ =
   | _ -> Path.is_descendant t ~of_
 ;;
 
-(* Dune can't handle symbolic links pointing to directories, so we replace them
-   with regular directories containing the same contents. *)
-let resolve_directory_symlinks_in root =
+(* Dune's engine cannot handle symlinks to directories and Dune's shared cache
+   rejects directory targets containing symlinks (which project sources are).
+   There are technical reasons for both limitations, but for the sake of
+   building packages, resolving them as hardlinks is good enough. *)
+let resolve_symlinks_in root =
   let on_symlink ~dir:raw_dir name () =
     let name = Filename.to_string name in
     let relative = Path.relative (Path.relative root raw_dir) name in
@@ -308,7 +310,7 @@ let resolve_directory_symlinks_in root =
               (Path.to_string resolved)
           ];
       (match Unix.stat (Path.to_string resolved) with
-       | { Unix.st_kind = S_DIR; _ } ->
+       | { st_kind = S_DIR; _ } ->
          Fpath.unlink_exn full_name;
          let _ : Fpath.mkdir_p_result = Fpath.mkdir_p full_name in
          (match Readdir.read_directory_with_kinds (Path.to_string resolved) with
@@ -329,8 +331,23 @@ let resolve_directory_symlinks_in root =
                   Io.portable_symlink ~src ~dst)
               | _ -> ());
             (), Some Unix.S_DIR)
-       | _ ->
-         (* We do not care about symlinks pointing to anything but directories. *)
+       | { st_kind = S_REG; _ } ->
+         (* We turn file symlinks into hardlinks to be able to cache them. *)
+         Io.portable_hardlink ~src:resolved ~dst:relative;
+         (), None
+       | { st_kind = _; _ } ->
+         (* We do not care about symlinks pointing to anything but directories
+            or files. *)
+         Log.info
+           "Fetch.resolve_symlinks_in: Skipped symlink pointing to unknown kind"
+           [ "full_name", Path.to_dyn resolved ];
+         (), None
+       | exception Unix.Unix_error (err, a, b) ->
+         Log.info
+           "Error when checking file kind"
+           [ "full_name", Path.to_dyn resolved
+           ; "error", Unix_error.Detailed.to_dyn (err, a, b)
+           ];
          (), None)
   in
   Fpath.traverse
@@ -379,8 +396,7 @@ let fetch ~unpack ~checksum ~target ~url:(url_loc, url) =
        match fetch_result with
        | Ok () ->
          let target_str = Path.to_string target in
-         if (Unix.lstat target_str).st_kind = S_DIR
-         then resolve_directory_symlinks_in target;
+         if (Unix.lstat target_str).st_kind = S_DIR then resolve_symlinks_in target;
          Ok ()
        | Error e -> Error e)
 ;;
@@ -485,7 +501,7 @@ let%test_module "resolve symlink tests" =
         make_file dir "other_dir/file1.txt";
         printfn "before";
         dump_tree dir;
-        resolve_directory_symlinks_in dir;
+        resolve_symlinks_in dir;
         printfn "\nafter";
         dump_tree dir;
         [%expect.output]);
@@ -511,7 +527,7 @@ let%test_module "resolve symlink tests" =
         make_dir dir "real_dir/sub";
         make_file dir "real_dir/sub/deep.txt";
         make_symlink dir ~src:"real_dir" ~dst:"link";
-        resolve_directory_symlinks_in dir;
+        resolve_symlinks_in dir;
         dump_tree dir;
         [%expect.output]);
       [%expect
@@ -529,7 +545,7 @@ let%test_module "resolve symlink tests" =
       with_temp_dir "$OUTSIDE" (fun outside ->
         with_temp_dir "$DIR" (fun dir ->
           make_symlink dir ~src:(Path.reach ~from:dir outside) ~dst:"escape";
-          resolve_directory_symlinks_in dir;
+          resolve_symlinks_in dir;
           [%expect.output]);
         [%expect.output]);
       [%expect
@@ -543,13 +559,13 @@ let%test_module "resolve symlink tests" =
       with_temp_dir "$DIR" (fun dir ->
         make_file dir "file.txt";
         make_symlink dir ~src:"file.txt" ~dst:"link";
-        resolve_directory_symlinks_in dir;
+        resolve_symlinks_in dir;
         dump_tree dir;
         [%expect.output]);
       [%expect
         {|
-        $DIR/link [symlink -> file.txt]
-        $DIR/file.txt [file]
+        $DIR/link [hardlink]
+        $DIR/file.txt [hardlink of $DIR/link]
         |}]
     ;;
 
@@ -558,7 +574,7 @@ let%test_module "resolve symlink tests" =
         make_file dir "keep.txt";
         make_symlink dir ~src:"nonexistent" ~dst:"broken_link";
         (* We could check the log here to check the message. *)
-        resolve_directory_symlinks_in dir;
+        resolve_symlinks_in dir;
         dump_tree dir;
         [%expect.output]);
       [%expect {| $DIR/keep.txt [file] |}]
@@ -572,7 +588,7 @@ let%test_module "resolve symlink tests" =
         make_file dir "dir_b/file.txt";
         make_symlink dir ~src:"../dir_b" ~dst:"dir_a/link_to_b";
         make_symlink dir ~src:"../dir_a" ~dst:"dir_b/link_to_a";
-        resolve_directory_symlinks_in dir;
+        resolve_symlinks_in dir;
         [%expect.output]);
       [%expect
         {|
@@ -589,7 +605,7 @@ let%test_module "resolve symlink tests" =
         make_file dir "real_dir/regular.txt";
         make_symlink dir ~src:"../target_dir/file.txt" ~dst:"real_dir/inner_link";
         make_symlink dir ~src:"real_dir" ~dst:"link";
-        resolve_directory_symlinks_in dir;
+        resolve_symlinks_in dir;
         dump_tree dir;
         [%expect.output]);
       [%expect
@@ -598,10 +614,10 @@ let%test_module "resolve symlink tests" =
         $DIR/real_dir/ [dir]
         $DIR/link/ [dir]
         $DIR/link/regular.txt [hardlink]
-        $DIR/link/inner_link [symlink -> ../target_dir/file.txt]
+        $DIR/link/inner_link [hardlink]
         $DIR/real_dir/regular.txt [hardlink of $DIR/link/regular.txt]
-        $DIR/real_dir/inner_link [symlink -> ../target_dir/file.txt]
-        $DIR/target_dir/file.txt [file]
+        $DIR/real_dir/inner_link [hardlink of $DIR/link/inner_link]
+        $DIR/target_dir/file.txt [hardlink of $DIR/link/inner_link, $DIR/real_dir/inner_link]
         |}]
     ;;
 
@@ -613,7 +629,7 @@ let%test_module "resolve symlink tests" =
         Unix.mkfifo (Path.to_string (Path.relative dir "real_dir/my_pipe")) 0o644;
         make_symlink dir ~src:"my_pipe" ~dst:"real_dir/pipelink";
         make_symlink dir ~src:"real_dir" ~dst:"link";
-        resolve_directory_symlinks_in dir;
+        resolve_symlinks_in dir;
         dump_tree dir;
         [%expect.output]);
       [%expect

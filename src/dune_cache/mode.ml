@@ -23,10 +23,19 @@ let to_string = function
   | Copy -> "copy"
 ;;
 
-let to_dyn = function
-  | Copy -> Dyn.Variant ("Copy", [])
-  | Hardlink -> Dyn.Variant ("Hardlink", [])
+let repr =
+  Repr.variant
+    "cache-mode"
+    [ Repr.case0 "Copy" ~test:(function
+        | Copy -> true
+        | Hardlink -> false)
+    ; Repr.case0 "Hardlink" ~test:(function
+        | Hardlink -> true
+        | Copy -> false)
+    ]
 ;;
+
+let to_dyn = Repr.to_dyn repr
 
 (* CR-someday amokhov: Check that hard links can actually be created and, if
    not, return [Copy] instead. *)

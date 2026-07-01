@@ -1,8 +1,6 @@
 Test the error cases for dune's Ordered Set Language (OSL) DSL.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.14)
-  > EOF
+  $ make_dune_project 3.14
 
   $ cat > foo.ml <<EOF
   > let () = print_endline "foo"

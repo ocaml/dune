@@ -20,7 +20,7 @@ build trace events.
 
   $ dune build y
 
-  $ dune trace cat | jq -s 'include "dune"; .[] | buildEvents'
+  $ dune trace cat | jq_dune -s '.[] | buildEvents'
   {
     "args": {
       "run_id": 0,
@@ -71,12 +71,12 @@ build trace events.
 
   $ stop_dune > /dev/null
 
-File watcher backends may batch file changes differently. Normalize contiguous
-restart events so the test checks the run id and reasons, not the batching.
+File changes observed while the build is idle are reflected by the next
+build-start event's restart flag. A build-restart event is only emitted when an
+active build is interrupted.
 
-  $ dune trace cat | jq -s '
-  > include "dune";
-  > [ .[] | buildEvents ] | normalizeBuildRestartEvents'
+  $ dune trace cat | jq_dune -s '
+  > .[] | buildEvents'
   {
     "args": {
       "run_id": 1,
@@ -116,21 +116,7 @@ restart events so the test checks the run id and reasons, not the batching.
   {
     "args": {
       "run_id": 2,
-      "reasons": [
-        "x changed",
-        "z changed"
-      ]
-    },
-    "name": "build-restart"
-  }
-  {
-    "args": {
-      "run_id": 2,
       "restart": true,
-      "files": [
-        "x",
-        "z"
-      ],
       "rusage": [
         "inblock",
         "majflt",

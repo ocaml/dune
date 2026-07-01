@@ -9,9 +9,7 @@ Check that Dune cache can cope with missing file/metadata entries.
   > (cache-duplication copy)
   > (cache-transport direct)
   > EOF
-  $ cat > dune-project <<EOF
-  > (lang dune 2.1)
-  > EOF
+  $ make_dune_project 2.1
   $ cat > dune <<EOF
   > (rule
   >   (deps source)

@@ -1,9 +1,7 @@
 A consumer of an unwrapped library that has [private_modules] builds
 without error.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.23)
-  > EOF
+  $ make_dune_project 3.23
 
 [dep]: unwrapped library with one public entry module [Pub] and one
 private module [Priv]. Consumers can see [Pub] via [-I] search but

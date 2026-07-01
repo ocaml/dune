@@ -16,8 +16,7 @@ are resolved:
 Absolute path with resolved symlinks will match with Dune's root path:
   $ dune ocaml merlin \
   > dump-config --format=json "$(pwd | sed 's/linkroot/realroot/')/realsrc" \
-  > --root="." | jq '
-  > include "dune";
+  > --root="." | jq_dune '
   > .[0] | merlinPathSummary'
   {
     "module_name": "Foo",
@@ -26,8 +25,7 @@ Absolute path with resolved symlinks will match with Dune's root path:
 
 
 Dune ocaml-merlin also accepts paths relative to the current directory
-  $ dune ocaml merlin dump-config --format=json "realsrc" --root="." | jq '
-  > include "dune";
+  $ dune ocaml merlin dump-config --format=json "realsrc" --root="." | jq_dune '
   > .[0] | merlinPathSummary'
   {
     "module_name": "Foo",
@@ -39,8 +37,7 @@ Dune ocaml-merlin also accepts paths relative to the current directory
   $ ocamlc_where="$(ocamlc -where)"
   $ export BUILD_PATH_PREFIX_MAP="/OCAMLC_WHERE=$ocamlc_where:$BUILD_PATH_PREFIX_MAP"
 
-  $ dune ocaml merlin dump-config --format=json "." --root=".." | jq '
-  > include "dune";
+  $ dune ocaml merlin dump-config --format=json "." --root=".." | jq_dune '
   > .[0] | merlinConfigSummary(["INDEX", "STDLIB", "SOURCE_ROOT", "B", "S", "FLG", "UNIT_NAME"])'
   {
     "module_name": "Foo",

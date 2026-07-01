@@ -43,3 +43,35 @@ Demonstrate running an executable via an absolute path:
 
   $ dune shutdown
   $ wait
+
+Demonstrate starting "dune exec --watch" when no other watch server is running.
+The watch server started by exec also accepts build requests forwarded from
+ordinary dune commands.
+
+  $ cat >> dune <<'EOF'
+  > (rule
+  >  (target rpc-target)
+  >  (action (with-stdout-to rpc-target (echo rpc))))
+  > (rule
+  >  (target runtest-output)
+  >  (action (with-stdout-to runtest-output (echo runtest))))
+  > (alias
+  >  (name runtest)
+  >  (deps runtest-output))
+  > EOF
+  $ ((dune exec ./foo.exe --watch > .#exec-watch-output 2>&1) || (echo exit $? >> .#exec-watch-output)) &
+  $ EXEC_DUNE_PID=$!
+  $ wait_for_rpc_server
+  $ dune build rpc-target
+  Success
+  $ cat _build/default/rpc-target
+  rpc
+  $ dune runtest
+  Success
+  $ cat _build/default/runtest-output
+  runtest
+  $ dune shutdown
+  $ wait_for_pid_to_exit_with_timeout "$EXEC_DUNE_PID" 200 || (cat .#exec-watch-output; false)
+  $ wait "$EXEC_DUNE_PID"
+  $ grep -m1 '^foo$' .#exec-watch-output
+  foo

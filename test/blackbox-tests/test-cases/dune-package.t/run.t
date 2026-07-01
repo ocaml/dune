@@ -179,3 +179,45 @@ Install as opam does
 
   $ dune_cmd cat "a/_build/install/default/lib/a/dune-package" | grep -e 'lib [.]' -e 'share [.]'
   (sections (lib .) (libexec .) (share ../../share/a))
+
+Install with an absolute build directory outside the workspace
+
+  $ mkdir external-build-dir external-prefix external-project
+  $ cd external-project
+  $ cat > dune-project <<EOF
+  > (lang dune 3.24)
+  > (package (name ext))
+  > EOF
+  $ cat > ext.opam <<EOF
+  > opam-version: "2.0"
+  > EOF
+  $ cat > dune <<EOF
+  > (library (public_name ext))
+  > EOF
+  $ echo 'let x = 1' > ext.ml
+
+  $ DUNE_BUILD_DIR="$PWD/../external-build-dir" dune build -p ext @install
+  $ DUNE_BUILD_DIR="$PWD/../external-build-dir" \
+  > DUNE_INSTALL_PREFIX="$PWD/../external-prefix" \
+  > dune install ext
+
+  $ dune_cmd cat ../external-prefix/lib/ext/dune-package \
+  > | awk '
+  >     /^[[:space:]]*\((archives|plugins|native_archives|source)/ { active = 1 }
+  >     active {
+  >       line = $0
+  >       print line
+  >       opens = gsub(/\(/, "(", line)
+  >       closes = gsub(/\)/, ")", line)
+  >       depth += opens - closes
+  >       if (depth <= 0) { active = 0; depth = 0 }
+  >     }' \
+  > | tr ' ()' '\n' \
+  > | grep -Eo '(^|/)ext[.](a|cma|cmxa|cmxs|ml)$' \
+  > | sed 's#^/##'
+  ext.cma
+  ext.cmxa
+  ext.cma
+  ext.cmxs
+  ext.a
+  ext.ml

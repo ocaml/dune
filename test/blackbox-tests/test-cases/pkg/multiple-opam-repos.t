@@ -1,13 +1,6 @@
 We want to test that support for multiple opam repositories works.
 
-  $ mkrepo
-  $ mkpkg foo 1.0 <<EOF
-  > EOF
-  $ cd mock-opam-repository
-  $ git init --quiet
-  $ git add -A
-  $ git commit --quiet -m "Initial commit"
-  $ cd ..
+  $ make_committed_mock_repo_package foo 1.0
 
 We move this mock repo to a different place, so we have two mock repos:
 
@@ -15,14 +8,7 @@ We move this mock repo to a different place, so we have two mock repos:
 
 Create a new mock repo, with a different foo package
 
-  $ mkrepo
-  $ mkpkg foo 2.0 <<EOF
-  > EOF
-  $ cd mock-opam-repository
-  $ git init --quiet
-  $ git add -A
-  $ git commit --quiet -m "Initial commit"
-  $ cd ..
+  $ make_committed_mock_repo_package foo 2.0
 
 We have to define both repositories in the workspace, but will only use `new`.
 
@@ -39,15 +25,7 @@ We have to define both repositories in the workspace, but will only use `new`.
   >  (url "git+file://$(pwd)/old-mock-opam-repository"))
   > EOF
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.10)
-  > 
-  > (package
-  >  (name bar)
-  >  (depends foo))
-  > EOF
-  $ cat > dune <<EOF
-  > EOF
+  $ make_bar_depends_foo_project
 
 Locking should produce the newest package from `new`
 

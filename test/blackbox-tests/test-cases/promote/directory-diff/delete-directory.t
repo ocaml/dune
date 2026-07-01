@@ -1,23 +1,12 @@
 Directory diff records directory deletions.
 
-  $ cat > dune-project <<'EOF'
-  > (lang dune 3.23)
-  > (using directory-targets 0.1)
-  > EOF
+  $ make_directory_targets_project
 
   $ mkdir -p expected/stale
   $ printf 'keep\n' > expected/keep
   $ printf 'stale\n' > expected/stale/file
 
-  $ cat > dune <<'EOF'
-  > (rule
-  >  (targets (dir actual))
-  >  (action (system "mkdir -p actual && printf 'keep\n' > actual/keep")))
-  > 
-  > (rule
-  >  (alias runtest)
-  >  (action (diff expected actual)))
-  > EOF
+  $ write_directory_diff_keep_rule
 
   $ dune runtest
   File "dune", lines 5-7, characters 0-56:

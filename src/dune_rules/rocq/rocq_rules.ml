@@ -813,7 +813,7 @@ let setup_output_diff_rule ~loc ~dir ~sctx ~rocq_lang_version ~rocq_sources rocq
   | Some expected ->
     let output = Rocq_module.output_file ~obj_dir:dir rocq_module in
     let diff =
-      { Diff.file1 = Path.build expected
+      { Action_types.Diff.file1 = Path.build expected
       ; file2 = output
       ; optional = false
       ; mode = Text

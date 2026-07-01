@@ -5,47 +5,6 @@
     the user in [Dune_lang.Action.t] *)
 
 open Import
-open Dune_util.Action
-
-module Inputs : sig
-  type t = Inputs.t = Stdin
-end
-
-module File_perm : sig
-  type t = File_perm.t =
-    | Normal
-    | Executable
-
-  val to_unix_perm : t -> Permissions.Mode.t
-end
-
-module Outputs : sig
-  type t = Outputs.t =
-    | Stdout
-    | Stderr
-    | Outputs
-
-  val to_string : t -> string
-end
-
-module Diff : sig
-  open Diff
-
-  module Mode : sig
-    type t = Mode.t =
-      | Binary
-      | Text
-  end
-
-  type nonrec ('path, 'target) t = ('path, 'target) t =
-    { optional : bool
-    ; mode : Mode.t
-    ; directory_diffs : bool
-    ; file1 : 'path
-    ; file2 : 'target
-    }
-end
-
 module Ext : module type of Action_intf.Ext
 include module type of Action_intf.Exec
 

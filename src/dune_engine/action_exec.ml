@@ -1,4 +1,5 @@
 open Import
+open Stdune.Action_types
 open Action_intf.Exec
 open Done_or_more_deps
 module Dependency = Dune_action_plugin.Private.Protocol.Dependency
@@ -128,7 +129,7 @@ let rec exec t ~ectx ~eenv : Done_or_more_deps.t Fiber.t =
   | Setenv (var, value, t) ->
     exec t ~ectx ~eenv:{ eenv with env = Env.add eenv.env ~var ~value }
   | Redirect_out (Stdout, fn, perm, Echo s) ->
-    let perm = Action.File_perm.to_unix_perm perm in
+    let perm = File_perm.to_unix_perm perm in
     let+ () =
       maybe_async (fun () ->
         Io.write_file (Path.build fn) (String.concat s ~sep:" ") ~perm)
@@ -199,7 +200,7 @@ let rec exec t ~ectx ~eenv : Done_or_more_deps.t Fiber.t =
     in
     Done
   | Write_file (fn, perm, s) ->
-    let perm = Action.File_perm.to_unix_perm perm in
+    let perm = File_perm.to_unix_perm perm in
     let fn = Path.build fn in
     let start = Time.now () in
     let* () = maybe_async (fun () -> Io.write_file fn s ~perm) in
@@ -245,9 +246,7 @@ and redirect t ~ectx ~eenv ?in_ ?out () =
     match out with
     | None -> eenv.stdout_to, eenv.stderr_to, ignore
     | Some (outputs, fn, perm) ->
-      let out =
-        Process.Io.file fn Process.Io.Out ~perm:(Action.File_perm.to_unix_perm perm)
-      in
+      let out = Process.Io.file fn Process.Io.Out ~perm:(File_perm.to_unix_perm perm) in
       let stdout_to, stderr_to =
         match outputs with
         | Stdout -> out, eenv.stderr_to
@@ -278,7 +277,7 @@ and exec_list ts ~ectx ~eenv : Done_or_more_deps.t Fiber.t =
 
 and exec_pipe outputs ts ~ectx ~eenv : Done_or_more_deps.t Fiber.t =
   let tmp_file () =
-    Dtemp.file ~prefix:"dune-pipe-action-" ~suffix:("." ^ Action.Outputs.to_string outputs)
+    Dtemp.file ~prefix:"dune-pipe-action-" ~suffix:("." ^ Outputs.to_string outputs)
   in
   let rec loop ~in_ ts =
     match ts with

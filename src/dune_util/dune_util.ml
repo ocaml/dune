@@ -1,4 +1,3 @@
-module Action = Action
 module Build_path_prefix_map = Build_path_prefix_map0
 module Gc = Gc
 module Persistent = Persistent

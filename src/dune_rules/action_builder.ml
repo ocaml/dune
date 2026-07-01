@@ -1,5 +1,6 @@
 open Import
 include Dune_engine.Action_builder
+open Action_types
 open O
 module With_targets = With_targets
 
@@ -52,20 +53,20 @@ let with_file_targets build ~file_targets : _ With_targets.t =
   { build; targets = Targets.Files.create (Path.Build.Set.of_list file_targets) }
 ;;
 
-let write_file ?(perm = Action.File_perm.Normal) fn s =
+let write_file ?(perm = File_perm.Normal) fn s =
   with_file_targets
     ~file_targets:[ fn ]
     (return (Action.Full.make (Action.Write_file (fn, perm, s))))
 ;;
 
-let write_file_dyn ?(perm = Action.File_perm.Normal) fn s =
+let write_file_dyn ?(perm = File_perm.Normal) fn s =
   with_file_targets
     ~file_targets:[ fn ]
     (let+ s = s in
      Action.Full.make (Action.Write_file (fn, perm, s)))
 ;;
 
-let with_stdout_to ?(perm = Action.File_perm.Normal) fn t =
+let with_stdout_to ?(perm = File_perm.Normal) fn t =
   with_targets
     ~targets:(Targets.File.create fn)
     (let+ (act : Action.Full.t) = t in

@@ -1,5 +1,3 @@
-open Stdune
-
 module Diff : sig
   module Mode : sig
     type t =

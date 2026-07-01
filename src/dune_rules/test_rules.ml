@@ -16,7 +16,7 @@ let test_kind ~dir dir_contents name ext =
   if Filename.Array.Set.mem files expected_basename_fn
   then
     `Expect
-      { Diff.file1 = Path.build (Path.Build.relative dir expected_basename)
+      { Action_types.Diff.file1 = Path.build (Path.Build.relative dir expected_basename)
       ; file2 =
           Path.Build.relative dir (name ^ Filename.Extension.to_string ext ^ ".output")
       ; optional = false

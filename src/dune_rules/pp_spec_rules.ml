@@ -348,10 +348,15 @@ let pp_one_module
         let* ast = setup_dialect_rules sctx ~sandbox ~dir ~expander m in
         let* () = Memo.when_ lint (fun () -> lint_module ~ast ~source:m) in
         pped_module ast ~f:(fun ml_kind src dst ->
+          let loc_filename = pp_input_path m ~ml_kind in
           let loc_filename_arg =
-            loc_filename_arg_for_pp
-              ~input_path:(Path.build src)
-              ~loc_filename:(pp_input_path m ~ml_kind)
+            loc_filename_arg_for_pp ~input_path:(Path.build src) ~loc_filename
+          in
+          let hidden_deps =
+            let source =
+              Module.source m ~ml_kind |> Option.value_exn |> Module.File.path
+            in
+            Dep.Set.of_files [ source; loc_filename ]
           in
           Super_context.add_rule
             sctx
@@ -359,7 +364,7 @@ let pp_one_module
             ~dir
             (promote_correction_with_target
                ~suffix:(Filename.of_string_exn corrected_suffix)
-               (pp_input_path m ~ml_kind |> Path.as_in_build_dir_exn)
+               (loc_filename |> Path.as_in_build_dir_exn)
                (Action_builder.with_file_targets
                   ~file_targets:[ dst ]
                   (let open Action_builder.O in
@@ -378,12 +383,7 @@ let pp_one_module
                      ; loc_filename_arg
                      ; Command.Ml_kind.ppx_driver_flag ml_kind
                      ; Dep (Path.build src)
-                     ; Hidden_deps
-                         (Module.source m ~ml_kind
-                          |> Option.value_exn
-                          |> Module.File.path
-                          |> Dep.file
-                          |> Dep.Set.singleton)
+                     ; Hidden_deps hidden_deps
                      ; As flags
                      ])))))
 ;;

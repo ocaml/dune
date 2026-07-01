@@ -1,3 +1,22 @@
+module Build = struct
+  let count = Counter.create ()
+  let process_time_counter = Counter.Timer.create ()
+
+  let add_process_time process_time =
+    Counter.incr count;
+    Counter.Timer.add process_time_counter process_time
+  ;;
+
+  let process_time () =
+    Option.some_if (Counter.read count > 0) (Counter.Timer.read process_time_counter)
+  ;;
+
+  let reset () =
+    Counter.reset count;
+    Counter.Timer.reset process_time_counter
+  ;;
+end
+
 let reset () = ()
 
 module type Stat = sig

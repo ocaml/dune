@@ -13,71 +13,6 @@ let maybe_async =
   fun f -> (Lazy.force maybe_async) f
 ;;
 
-module Duration = struct
-  type t = Time.Span.t option
-
-  let empty = None
-
-  let combine x y =
-    match x, y with
-    | None, None -> None
-    | Some _, None -> x
-    | None, Some _ -> y
-    | Some x, Some y -> Some (Time.Span.add x y)
-  ;;
-end
-
-module Produce = struct
-  module State = struct
-    type t = { duration : Duration.t }
-
-    let empty = { duration = Duration.empty }
-    let combine x { duration } = { duration = Duration.combine x.duration duration }
-  end
-
-  type 'a t = State.t -> ('a * State.t) Fiber.t
-
-  let return : 'a. 'a -> 'a t = fun a state -> Fiber.return (a, state)
-
-  let incr_duration : Time.Span.t -> 'a t =
-    fun how_much state ->
-    Fiber.return ((), State.combine state { duration = Some how_much })
-  ;;
-
-  let of_fiber (type a) (x : a Fiber.t) state : (a * State.t) Fiber.t =
-    Fiber.map x ~f:(fun y -> y, state)
-  ;;
-
-  let run : 'a. State.t -> 'a t -> ('a * State.t) Fiber.t = fun x f -> f x
-
-  let parallel_map : 'a 'b. 'a list -> f:('a -> 'b t) -> 'b list t =
-    fun list ~f state ->
-    let open Fiber.O in
-    let+ list = Fiber.parallel_map list ~f:(fun x -> f x State.empty) in
-    let result, durations = List.split list in
-    let total_duration = List.fold_left durations ~init:state ~f:State.combine in
-    result, total_duration
-  ;;
-
-  module O = struct
-    open Fiber.O
-
-    let ( let* ) : 'a 'b. 'a t -> ('a -> 'b t) -> 'b t =
-      fun (type a b) (x : a t) (f : a -> b t) (state : State.t) : (b * State.t) Fiber.t ->
-      let* res, state = x state in
-      f res state
-    ;;
-
-    let ( >>| ) : 'a 'b. 'a t -> ('a -> 'b) -> 'b t =
-      fun x f state ->
-      let+ res, state = x state in
-      f res, state
-    ;;
-
-    let ( let+ ) x f = x >>| f
-  end
-end
-
 module Exec_result = struct
   module Error = struct
     type t =
@@ -123,11 +58,7 @@ module Exec_result = struct
     ;;
   end
 
-  type ok =
-    { dynamic_deps_stages : (Dep.Set.t * Dep.Facts.t) list
-    ; duration : Time.Span.t option
-    }
-
+  type ok = { dynamic_deps_stages : (Dep.Set.t * Dep.Facts.t) list }
   type t = (ok, Error.t list) Result.t
 
   let ok_exn (t : t) =
@@ -139,33 +70,28 @@ module Exec_result = struct
   ;;
 end
 
-open Produce.O
+open Fiber.O
 
-let exec_run ~(ectx : context) ~(eenv : env) ~can_run_in_action_runner prog args
-  : _ Produce.t
-  =
+let exec_run ~(ectx : context) ~(eenv : env) ~can_run_in_action_runner prog args =
   let metadata = { ectx.metadata with can_run_in_action_runner } in
-  let* (res : (Proc.Times.t, int) result) =
-    Produce.of_fiber
-    @@ Process.run_with_times
-         ~display:!Clflags.display
-         (Accept eenv.exit_codes)
-         ~dir:eenv.working_dir
-         ~env:eenv.env
-         ~stdout_to:eenv.stdout_to
-         ~stderr_to:eenv.stderr_to
-         ~stdin_from:eenv.stdin_from
-         ~metadata
-         prog
-         args
+  let+ (_ : (unit, int) result) =
+    Process.run
+      ~display:!Clflags.display
+      (Accept eenv.exit_codes)
+      ~dir:eenv.working_dir
+      ~env:eenv.env
+      ~stdout_to:eenv.stdout_to
+      ~stderr_to:eenv.stderr_to
+      ~stdin_from:eenv.stdin_from
+      ~metadata
+      prog
+      args
   in
-  match res with
-  | Error _ -> Produce.return ()
-  | Ok times -> Produce.incr_duration times.elapsed_time
+  ()
 ;;
 
 let exec_echo stdout_to str =
-  Produce.return @@ output_string (Process.Io.out_channel stdout_to) str
+  Fiber.return @@ output_string (Process.Io.out_channel stdout_to) str
 ;;
 
 let bash_exn =
@@ -180,9 +106,8 @@ let bash_exn =
 ;;
 
 let zero = Predicate_lang.element 0
-let maybe_async f = Produce.of_fiber (maybe_async f)
 
-let rec exec t ~ectx ~eenv : Done_or_more_deps.t Produce.t =
+let rec exec t ~ectx ~eenv : Done_or_more_deps.t Fiber.t =
   match (t : Action.t) with
   | Run { prog = Error e; args = _; can_run_in_action_runner = _ } ->
     Action.Prog.Not_found.raise e
@@ -216,7 +141,7 @@ let rec exec t ~ectx ~eenv : Done_or_more_deps.t Produce.t =
   | Ignore (outputs, t) -> redirect_out t ~ectx ~eenv ~perm:Normal outputs Dev_null.path
   | Progn ts -> exec_list ts ~ectx ~eenv
   | Concurrent ts ->
-    Produce.parallel_map ts ~f:(exec ~ectx ~eenv)
+    Fiber.parallel_map ts ~f:(exec ~ectx ~eenv)
     >>| List.fold_left ~f:Done_or_more_deps.union ~init:Done
   | Echo strs ->
     let+ () = exec_echo eenv.stdout_to (String.concat strs ~sep:" ") in
@@ -281,7 +206,7 @@ let rec exec t ~ectx ~eenv : Done_or_more_deps.t Produce.t =
     let finish = Time.now () in
     Dune_trace.emit ~buffered:true Action (fun () ->
       Dune_trace.Event.Action.write_file ~start ~finish ~file:fn ~size:(String.length s));
-    Produce.return Done
+    Fiber.return Done
   | Rename (src, dst) ->
     let src = Path.Build.to_string src in
     let dst = Path.Build.to_string dst in
@@ -295,13 +220,13 @@ let rec exec t ~ectx ~eenv : Done_or_more_deps.t Produce.t =
     Done
   | Pipe (outputs, l) -> exec_pipe ~ectx ~eenv outputs l
   | Diff diff ->
-    let+ () = Produce.of_fiber (Diff_action.exec ~patch_back:None ectx.rule_loc diff) in
+    let+ () = Diff_action.exec ~patch_back:None ectx.rule_loc diff in
     Done
   | Extension (module A) ->
     let metadata =
       { ectx.metadata with can_run_in_action_runner = A.Spec.can_run_in_action_runner }
     in
-    Produce.of_fiber @@ A.Spec.action A.v ~ectx:{ ectx with metadata } ~eenv
+    A.Spec.action A.v ~ectx:{ ectx with metadata } ~eenv
 
 and redirect_out t ~ectx ~eenv ~perm outputs fn =
   redirect t ~ectx ~eenv ~out:(outputs, fn, perm) ()
@@ -336,9 +261,9 @@ and redirect t ~ectx ~eenv ?in_ ?out () =
   release_out ();
   result
 
-and exec_list ts ~ectx ~eenv : Done_or_more_deps.t Produce.t =
+and exec_list ts ~ectx ~eenv : Done_or_more_deps.t Fiber.t =
   match ts with
-  | [] -> Produce.return Done
+  | [] -> Fiber.return Done
   | [ t ] -> exec t ~ectx ~eenv
   | t :: rest ->
     let* done_or_deps =
@@ -348,10 +273,10 @@ and exec_list ts ~ectx ~eenv : Done_or_more_deps.t Produce.t =
       exec t ~ectx ~eenv:{ eenv with stdout_to; stderr_to; stdin_from }
     in
     (match done_or_deps with
-     | Need_more_deps _ as need -> Produce.return need
+     | Need_more_deps _ as need -> Fiber.return need
      | Done -> exec_list rest ~ectx ~eenv)
 
-and exec_pipe outputs ts ~ectx ~eenv : Done_or_more_deps.t Produce.t =
+and exec_pipe outputs ts ~ectx ~eenv : Done_or_more_deps.t Fiber.t =
   let tmp_file () =
     Dtemp.file ~prefix:"dune-pipe-action-" ~suffix:("." ^ Action.Outputs.to_string outputs)
   in
@@ -375,7 +300,7 @@ and exec_pipe outputs ts ~ectx ~eenv : Done_or_more_deps.t Produce.t =
       in
       Dtemp.destroy File in_;
       (match done_or_deps with
-       | Need_more_deps _ as need -> Produce.return need
+       | Need_more_deps _ as need -> Fiber.return need
        | Done -> loop ~in_:out ts)
   in
   match ts with
@@ -390,7 +315,7 @@ and exec_pipe outputs ts ~ectx ~eenv : Done_or_more_deps.t Produce.t =
     in
     let* done_or_deps = redirect_out t1 ~ectx ~eenv ~perm:Normal outputs out in
     (match done_or_deps with
-     | Need_more_deps _ as need -> Produce.return need
+     | Need_more_deps _ as need -> Fiber.return need
      | Done -> loop ~in_:out ts)
 ;;
 
@@ -398,9 +323,9 @@ let exec_until_all_deps_ready ~ectx ~eenv t =
   let rec loop ~eenv stages =
     let* result = exec ~ectx ~eenv t in
     match result with
-    | Done -> Produce.return stages
+    | Done -> Fiber.return stages
     | Need_more_deps (relative_deps, deps_to_build) ->
-      let* fact_map = Produce.of_fiber @@ ectx.build_deps deps_to_build in
+      let* fact_map = ectx.build_deps deps_to_build in
       let stages = (deps_to_build, fact_map) :: stages in
       let eenv =
         { eenv with
@@ -410,9 +335,8 @@ let exec_until_all_deps_ready ~ectx ~eenv t =
       in
       loop ~eenv stages
   in
-  let open Fiber.O in
-  let+ stages, state = Produce.run Produce.State.empty (loop ~eenv []) in
-  { Exec_result.dynamic_deps_stages = List.rev stages; duration = state.duration }
+  let+ stages = loop ~eenv [] in
+  { Exec_result.dynamic_deps_stages = List.rev stages }
 ;;
 
 type input =

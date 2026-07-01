@@ -49,27 +49,25 @@ module Id = struct
   ;;
 
   let create ~path ~name:(loc, name) = { path; name; loc }
-
-  module C = Comparable.Make (T)
-  module Top_closure = Top_closure.Make (C.Set) (Resolve)
-
-  let top_closure ~key ~deps xs = Top_closure.top_closure ~key ~deps xs
 end
 
 module rec R : sig
   type t =
     | Dune of Dune.t
     | Legacy of Legacy.t
+    | Package of Findlib.t
 
   val to_dyn : t -> Dyn.t
 end = struct
   type t =
     | Dune of Dune.t
     | Legacy of Legacy.t
+    | Package of Findlib.t
 
   let to_dyn = function
     | Dune t -> Dyn.Variant ("Dune", [ Dune.to_dyn t ])
     | Legacy t -> Dyn.Variant ("Legacy", [ Legacy.to_dyn t ])
+    | Package t -> Dyn.Variant ("Package", [ Findlib.to_dyn t ])
   ;;
 end
 
@@ -85,6 +83,7 @@ and Dune : sig
     ; theories : (Loc.t * R.t) list Resolve.t
     ; libraries : (Loc.t * Lib.t) list Resolve.t
     ; theories_closure : R.t list Resolve.t Lazy.t
+    ; public_name : Lib_name.t option
     ; package : Package.t option
     }
 
@@ -107,6 +106,7 @@ end = struct
     ; theories : (Loc.t * R.t) list Resolve.t
     ; libraries : (Loc.t * Lib.t) list Resolve.t
     ; theories_closure : R.t list Resolve.t Lazy.t
+    ; public_name : Lib_name.t option
     ; package : Package.t option
     }
 
@@ -121,6 +121,7 @@ end = struct
         ; theories
         ; libraries
         ; theories_closure
+        ; public_name
         ; package
         }
     =
@@ -138,6 +139,7 @@ end = struct
           , Resolve.to_dyn (Dyn.list (Dyn.pair Loc.to_dyn Lib.to_dyn)) libraries )
         ; ( "theories_closure"
           , Resolve.to_dyn (Dyn.list R.to_dyn) (Lazy.force theories_closure) )
+        ; "public_name", Dyn.option Lib_name.to_dyn public_name
         ; "package", Dyn.option Package.to_dyn package
         ])
   ;;
@@ -185,31 +187,68 @@ end = struct
   let vo t = t.vo
 end
 
+and Findlib : sig
+  type t =
+    { public_name : Lib_name.t
+    ; name : Rocq_lib_name.t
+    }
+
+  val create : public_name:Lib_name.t -> name:Rocq_lib_name.t -> t
+  val corelib : t
+  val public_name : t -> Lib_name.t
+  val to_dyn : t -> Dyn.t
+end = struct
+  type t =
+    { public_name : Lib_name.t
+    ; name : Rocq_lib_name.t
+    }
+
+  let create ~public_name ~name = { public_name; name }
+
+  let corelib =
+    { public_name = Lib_name.of_string "rocq-core"; name = Rocq_lib_name.corelib }
+  ;;
+
+  let public_name t = t.public_name
+
+  let to_dyn { public_name; name } =
+    Dyn.record
+      [ "public_name", Lib_name.to_dyn public_name; "name", Rocq_lib_name.to_dyn name ]
+  ;;
+end
+
 include R
 
 let boot_id_of_lib = function
   | Dune t -> t.boot_id
   | Legacy t -> t.boot_id
-;;
-
-let id_of_lib = function
-  | Dune t -> t.id
-  | Legacy t -> t.id
+  | Package _ -> None
 ;;
 
 let name = function
   | Dune t -> t.id.name
   | Legacy t -> t.id.name
+  | Package t -> t.name
 ;;
 
 let obj_root = function
   | Dune t -> Dune.obj_root t |> Path.build
   | Legacy t -> Legacy.installed_root t
+  | Package t ->
+    Code_error.raise
+      "findlib package theories do not have a Dune-managed object root"
+      [ "package", Lib_name.to_dyn t.public_name ]
 ;;
 
 let implicit = function
   | Dune t -> Dune.implicit t
   | Legacy t -> Legacy.implicit t
+  | Package _ -> false
+;;
+
+let package_name = function
+  | Package t -> Some t.public_name
+  | Dune _ | Legacy _ -> None
 ;;
 
 module Error = struct
@@ -239,6 +278,15 @@ module Error = struct
          ~loc
          ?hints
          [ Pp.textf "Theory %S has not been found." name ]
+  ;;
+
+  let ambiguous_theory_name ~loc name ids =
+    let name = Rocq_lib_name.to_string name in
+    Resolve.Memo.fail
+    @@ User_message.make
+         ~needs_stack_trace:true
+         ~loc
+         [ Pp.textf "Theory %S is ambiguous:" name; Pp.enumerate ~f:Id.pp ids ]
   ;;
 
   let private_deps_not_allowed ~loc name =
@@ -280,16 +328,45 @@ module Error = struct
   ;;
 end
 
+module Closure_key = struct
+  module T = struct
+    type t =
+      | Id of Id.t
+      | Package of Lib_name.t
+
+    let compare x y =
+      match x, y with
+      | Id x, Id y -> Id.compare x y
+      | Package x, Package y -> Lib_name.compare x y
+      | Id _, Package _ -> Lt
+      | Package _, Id _ -> Gt
+    ;;
+
+    let to_dyn = function
+      | Id id -> Dyn.variant "Id" [ Id.to_dyn id ]
+      | Package package -> Dyn.variant "Package" [ Lib_name.to_dyn package ]
+    ;;
+  end
+
+  include Comparable.Make (T)
+end
+
+module Top_closure = Top_closure.Make (Closure_key.Set) (Resolve)
+
 let top_closure =
-  let key t = id_of_lib t in
+  let key = function
+    | Dune t -> Closure_key.T.Id t.id
+    | Legacy t -> Closure_key.T.Id t.id
+    | Package t -> Closure_key.T.Package t.public_name
+  in
   let deps t =
     match t with
     | Dune t -> t.theories |> Resolve.map ~f:(List.map ~f:snd)
-    | Legacy _ -> Resolve.return []
+    | Legacy _ | Package _ -> Resolve.return []
   in
   fun theories ->
     let open Resolve.O in
-    Id.top_closure theories ~key ~deps
+    Top_closure.top_closure theories ~key ~deps
     >>= function
     | Ok s -> Resolve.return s
     | Error _ -> assert false
@@ -305,18 +382,31 @@ module DB = struct
       | Redirect of 'a
       | Theory of Lib.DB.t * Path.Build.t * Rocq_stanza.Theory.t
       | Legacy_theory of Rocq_path.t
+      | Ambiguous of Id.t list
       | Not_found
   end
 
   type t =
     { parent : t option
-    ; resolve : Rocq_lib_name.t -> t Resolve_result.t
+    ; resolve_logical : Rocq_lib_name.t -> t Resolve_result.t
+    ; resolve_package : Lib_name.t -> t Resolve_result.t
+    ; package_fallback_to_logical : bool
     ; boot_id : Id.t option
     }
 
-  let rec to_dyn { parent; resolve = _; boot_id } =
+  let rec to_dyn
+            { parent
+            ; resolve_logical = _
+            ; resolve_package = _
+            ; package_fallback_to_logical
+            ; boot_id
+            }
+    =
     Dyn.record
-      [ "parent", Dyn.option to_dyn parent; "boot_id", Dyn.option Id.to_dyn boot_id ]
+      [ "parent", Dyn.option to_dyn parent
+      ; "package_fallback_to_logical", Dyn.bool package_fallback_to_logical
+      ; "boot_id", Dyn.option Id.to_dyn boot_id
+      ]
   ;;
 
   module Entry = struct
@@ -337,6 +427,8 @@ module DB = struct
   module rec R : sig
     val resolve_boot : t -> (Loc.t * lib) option Resolve.Memo.t
     val resolve : t -> Loc.t * Rocq_lib_name.t -> lib Resolve.Memo.t
+    val resolve_package : t -> Loc.t * Lib_name.t -> lib Resolve.Memo.t
+    val resolve_dep : t -> Rocq_stanza.Buildable.Theory_dep.t -> lib Resolve.Memo.t
   end = struct
     open R
 
@@ -400,17 +492,18 @@ module DB = struct
       | None -> Resolve.Memo.return None
     ;;
 
-    let resolve_theory ~allow_private_deps ~rocq_db ~boot_id (loc, theory_name) =
+    let resolve_theory ~allow_private_deps ~rocq_db ~boot_id dep =
       let open Resolve.Memo.O in
-      let* theory = resolve rocq_db (loc, theory_name) in
+      let loc = Rocq_stanza.Buildable.Theory_dep.loc dep in
+      let* theory = resolve_dep rocq_db dep in
       let* () = Resolve.Memo.lift @@ check_boot ~boot_id theory in
       let+ () =
         if allow_private_deps
         then Resolve.Memo.return ()
         else (
           match theory with
-          | Dune { package = None; _ } -> Error.private_deps_not_allowed ~loc theory_name
-          | Legacy _ | Dune _ -> Resolve.Memo.return ())
+          | Dune { package = None; id; _ } -> Error.private_deps_not_allowed ~loc id.name
+          | Legacy _ | Dune _ | Package _ -> Resolve.Memo.return ())
       in
       loc, theory
     ;;
@@ -427,11 +520,22 @@ module DB = struct
       let boot_id = if s.boot then None else boot_library_id rocq_db in
       let allow_private_deps = Option.is_none s.package in
       let use_corelib = s.buildable.use_corelib in
+      let use_findlib_corelib = s.buildable.rocq_lang_version >= (0, 15) in
+      let use_boot_id_for_corelib =
+        match boot_id with
+        | Some { Id.path; _ } -> Path.is_in_build_dir path
+        | None -> false
+      in
+      let public_name = Option.map s.public_name ~f:Public_lib.name in
       let+ libraries =
         resolve_plugins ~db ~allow_private_deps ~name:(snd name) s.buildable.plugins
       and+ theories =
         resolve_theories ~rocq_db ~allow_private_deps ~boot_id s.buildable.theories
-      and+ boot = resolve_boot ~rocq_db boot_id in
+      and+ boot =
+        if use_findlib_corelib && not use_boot_id_for_corelib
+        then Resolve.Memo.return (Some (Loc.none, Package Findlib.corelib))
+        else resolve_boot ~rocq_db boot_id
+      in
       let theories = maybe_add_boot ~boot ~use_corelib ~is_boot:s.boot theories in
       let map_error x =
         let human_readable_description () = Id.pp id in
@@ -452,6 +556,7 @@ module DB = struct
           lazy
             (Resolve.bind theories ~f:(fun theories ->
                List.map theories ~f:snd |> top_closure))
+      ; public_name
       ; package = s.package
       }
     ;;
@@ -499,18 +604,47 @@ module DB = struct
       type t =
         | Theory of Lib.db * Path.Build.t * Rocq_stanza.Theory.t
         | Legacy_theory of Rocq_path.t
+        | Ambiguous of Id.t list
         | Not_found
     end
 
-    let rec find rocq_db name : Resolve_result_no_redirect.t =
-      match rocq_db.resolve name with
+    let rec find_logical rocq_db name : Resolve_result_no_redirect.t =
+      match rocq_db.resolve_logical name with
       | Theory (db, dir, stanza) -> Theory (db, dir, stanza)
       | Legacy_theory cp -> Legacy_theory cp
-      | Redirect rocq_db -> find rocq_db name
+      | Ambiguous ids -> Ambiguous ids
+      | Redirect rocq_db -> find_logical rocq_db name
       | Not_found ->
         (match rocq_db.parent with
          | None -> Not_found
-         | Some parent -> find parent name)
+         | Some parent -> find_logical parent name)
+    ;;
+
+    let rec find_package rocq_db name : Resolve_result_no_redirect.t =
+      let logical_fallback () : Resolve_result_no_redirect.t =
+        if rocq_db.package_fallback_to_logical
+        then (
+          let logical = Rocq_lib_name.of_string (Lib_name.to_string name) in
+          match rocq_db.resolve_logical logical with
+          | Theory (db, dir, stanza) -> Theory (db, dir, stanza)
+          | Legacy_theory cp -> Legacy_theory cp
+          | Ambiguous ids -> Ambiguous ids
+          | Redirect rocq_db -> find_package rocq_db name
+          | Not_found -> Not_found)
+        else Not_found
+      in
+      match rocq_db.resolve_package name with
+      | Theory (db, dir, stanza) -> Theory (db, dir, stanza)
+      | Legacy_theory cp -> Legacy_theory cp
+      | Ambiguous ids -> Ambiguous ids
+      | Redirect rocq_db -> find_package rocq_db name
+      | Not_found ->
+        (match logical_fallback () with
+         | (Theory _ | Legacy_theory _ | Ambiguous _) as found -> found
+         | Not_found ->
+           (match rocq_db.parent with
+            | None -> Not_found
+            | Some parent -> find_package parent name))
     ;;
 
     module Resolve_final_result = struct
@@ -518,21 +652,34 @@ module DB = struct
       type t =
         | Found_stanza of Lib.DB.t * Path.Build.t * Rocq_stanza.Theory.t
         | Found_path of Rocq_path.t
+        | Ambiguous of Id.t list
         | Not_found
     end
 
-    let find rocq_db name : Resolve_final_result.t =
-      match find rocq_db name with
+    let find_logical rocq_db name : Resolve_final_result.t =
+      match find_logical rocq_db name with
       | Not_found -> Not_found
+      | Ambiguous ids -> Ambiguous ids
       | Theory (mldb, dir, stanza) -> Found_stanza (mldb, dir, stanza)
       | Legacy_theory cp -> Found_path cp
     ;;
 
-    (** Our final final resolve is used externally, and should return the
-        library data found from the previous iterations. *)
-    let resolve rocq_db (loc, name) =
-      match find rocq_db name with
-      | Not_found -> Error.theory_not_found ~loc name
+    let find_package rocq_db name : Resolve_final_result.t =
+      match find_package rocq_db name with
+      | Not_found -> Not_found
+      | Ambiguous ids -> Ambiguous ids
+      | Theory (mldb, dir, stanza) -> Found_stanza (mldb, dir, stanza)
+      | Legacy_theory cp -> Found_path cp
+    ;;
+
+    let resolve_found ~rocq_db ~loc ~name_for_external = function
+      | Resolve_final_result.Not_found ->
+        let name = Rocq_lib_name.of_string (Lib_name.to_string name_for_external) in
+        Resolve.Memo.return
+          (Package (Findlib.create ~public_name:name_for_external ~name))
+      | Ambiguous ids ->
+        let name = Rocq_lib_name.of_string (Lib_name.to_string name_for_external) in
+        Error.ambiguous_theory_name ~loc name ids
       | Found_stanza (db, dir, stanza) ->
         let open Memo.O in
         let+ theory = create_from_stanza rocq_db db dir stanza in
@@ -545,6 +692,36 @@ module DB = struct
         let boot_id = rocq_db.boot_id in
         let+ theory = create_from_rocqpath ~boot_id cp in
         Legacy theory
+    ;;
+
+    (** Our final final resolve is used externally, and should return the
+        library data found from the previous iterations. *)
+    let resolve rocq_db (loc, name) =
+      match find_logical rocq_db name with
+      | Not_found -> Error.theory_not_found ~loc name
+      | Ambiguous ids -> Error.ambiguous_theory_name ~loc name ids
+      | Found_stanza (db, dir, stanza) ->
+        let open Memo.O in
+        let+ theory = create_from_stanza rocq_db db dir stanza in
+        let open Resolve.O in
+        let* (_ : (Loc.t * Lib.t) list) = theory.libraries in
+        let+ (_ : (Loc.t * lib) list) = theory.theories in
+        Dune theory
+      | Found_path cp ->
+        let open Resolve.Memo.O in
+        let boot_id = rocq_db.boot_id in
+        let+ theory = create_from_rocqpath ~boot_id cp in
+        Legacy theory
+    ;;
+
+    let resolve_package rocq_db (loc, package) =
+      find_package rocq_db package
+      |> resolve_found ~rocq_db ~loc ~name_for_external:package
+    ;;
+
+    let resolve_dep rocq_db = function
+      | Rocq_stanza.Buildable.Theory_dep.Logical dep -> resolve rocq_db dep
+      | Rocq_stanza.Buildable.Theory_dep.Package dep -> resolve_package rocq_db dep
     ;;
 
     let resolve_boot rocq_db =
@@ -576,34 +753,75 @@ module DB = struct
         (entries : (Rocq_stanza.Theory.t * Entry.t) list)
     =
     let boot_id = select_boot_id entries in
-    let map =
-      match
-        Rocq_lib_name.Map.of_list_map
-          entries
-          ~f:(fun ((theory : Rocq_stanza.Theory.t), entry) ->
-            snd theory.name, (theory, entry))
-      with
-      | Ok m -> m
-      | Error (_name, (theory1, entry1), (theory2, entry2)) ->
-        let path entry =
-          match (entry : Entry.t) with
-          | Theory dir -> Path.build dir
-          | Redirect db ->
-            Code_error.raise "created stanza redirected to a library" [ "db", to_dyn db ]
-        in
-        let id1 = Id.create ~path:(path entry1) ~name:theory1.name in
-        let id2 = Id.create ~path:(path entry2) ~name:theory2.name in
-        Error.duplicate_theory_name id1 id2
+    let id_of_entry (theory : Rocq_stanza.Theory.t) (entry : Entry.t) =
+      match entry with
+      | Theory dir -> Id.create ~path:(Path.build dir) ~name:theory.name
+      | Redirect db ->
+        Code_error.raise "created stanza redirected to a library" [ "db", to_dyn db ]
     in
-    let resolve name : t Resolve_result.t =
-      match Rocq_lib_name.Map.find map name with
+    let logical_map =
+      List.map entries ~f:(fun ((theory : Rocq_stanza.Theory.t), entry) ->
+        snd theory.name, (theory, entry))
+      |> Rocq_lib_name.Map.of_list_multi
+    in
+    let (_ : (Rocq_stanza.Theory.t * Entry.t) Rocq_lib_name.Map.t) =
+      List.fold_left
+        entries
+        ~init:Rocq_lib_name.Map.empty
+        ~f:(fun seen ((theory : Rocq_stanza.Theory.t), entry) ->
+          let name = snd theory.name in
+          match Rocq_lib_name.Map.find seen name with
+          | None -> Rocq_lib_name.Map.set seen name (theory, entry)
+          | Some (prev_theory, prev_entry) ->
+            if Option.is_some theory.public_name && Option.is_some prev_theory.public_name
+            then seen
+            else (
+              let id1 = id_of_entry theory entry in
+              let id2 = id_of_entry prev_theory prev_entry in
+              Error.duplicate_theory_name id1 id2))
+    in
+    let package_map =
+      List.filter_map entries ~f:(fun ((theory : Rocq_stanza.Theory.t), entry) ->
+        Option.map theory.public_name ~f:(fun public_name ->
+          Public_lib.name public_name, (theory, entry)))
+    in
+    let package_map =
+      match Lib_name.Map.of_list package_map with
+      | Ok map -> map
+      | Error (public_name, (theory1, entry1), (theory2, entry2)) ->
+        let id1 = id_of_entry theory1 entry1 in
+        let id2 = id_of_entry theory2 entry2 in
+        User_error.raise
+          ~needs_stack_trace:true
+          [ Pp.textf
+              "Rocq theory public name %s is defined twice:"
+              (Lib_name.to_string public_name)
+          ; Pp.enumerate ~f:Id.pp [ id1; id2 ]
+          ]
+    in
+    let resolve_entry (theory, (entry : Entry.t)) : t Resolve_result.t =
+      match entry with
+      | Entry.Theory dir -> Resolve_result.Theory (find_db dir, dir, theory)
+      | Entry.Redirect db -> Resolve_result.Redirect db
+    in
+    let resolve_logical name : t Resolve_result.t =
+      match Rocq_lib_name.Map.find logical_map name with
       | None -> Not_found
-      | Some (theory, entry) ->
-        (match entry with
-         | Theory dir -> Theory (find_db dir, dir, theory)
-         | Redirect db -> Redirect db)
+      | Some [ entry ] -> resolve_entry entry
+      | Some entries ->
+        Ambiguous (List.map entries ~f:(fun (theory, entry) -> id_of_entry theory entry))
     in
-    { boot_id; resolve; parent }
+    let resolve_package name : t Resolve_result.t =
+      match Lib_name.Map.find package_map name with
+      | None -> Not_found
+      | Some entry -> resolve_entry entry
+    in
+    { boot_id
+    ; resolve_logical
+    ; resolve_package
+    ; package_fallback_to_logical = true
+    ; parent
+    }
   ;;
 
   (* XXX: This is basically duplicated from create_from_rocqlib_stanzas
@@ -630,19 +848,25 @@ module DB = struct
          precedence. This is in line with Rocq semantics. *)
       |> Rocq_lib_name.Map.of_list_reducei ~f:(fun _name _cp1 cp2 -> cp2)
     in
-    let resolve name : t Resolve_result.t =
+    let resolve_logical name : t Resolve_result.t =
       match Rocq_lib_name.Map.find map name with
       | None -> Not_found
       | Some cp -> Legacy_theory cp
     in
-    { parent; resolve; boot_id }
+    let resolve_package _ : t Resolve_result.t = Resolve_result.Not_found in
+    { parent
+    ; resolve_logical
+    ; resolve_package
+    ; package_fallback_to_logical = false
+    ; boot_id
+    }
   ;;
 
   (* Resolve helpers *)
-  let find_many t theories = Resolve.Memo.List.map theories ~f:(resolve t)
+  let find_many t theories = Resolve.Memo.List.map theories ~f:(resolve_dep t)
 end
 
 let theories_closure = function
   | Dune t -> Lazy.force t.theories_closure
-  | Legacy _ -> Resolve.return []
+  | Legacy _ | Package _ -> Resolve.return []
 ;;

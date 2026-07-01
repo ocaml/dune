@@ -79,8 +79,3 @@ The original Reason source must be available in the PPX sandbox.
   > EOF
 
   $ dune build --root cases --sandbox=symlink @read-loc/src/all
-  Entering directory 'cases'
-  File "read-loc/src/x.re", line 1:
-  Error: I/O error: read-loc/src/x.re: No such file or directory
-  Leaving directory 'cases'
-  [1]

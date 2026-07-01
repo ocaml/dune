@@ -321,9 +321,7 @@ and redirect t ~ectx ~eenv ?in_ ?out () =
     match out with
     | None -> eenv.stdout_to, eenv.stderr_to, ignore
     | Some (outputs, fn, perm) ->
-      let out =
-        Process.Io.file fn Process.Io.Out ~perm:(File_perm.to_unix_perm perm)
-      in
+      let out = Process.Io.file fn Process.Io.Out ~perm:(File_perm.to_unix_perm perm) in
       let stdout_to, stderr_to =
         match outputs with
         | Stdout -> out, eenv.stderr_to

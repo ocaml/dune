@@ -11,6 +11,10 @@ val of_dev_tool : Dune_pkg.Dev_tool.t -> t Memo.t
 (** Returns [None] if the lock_dir for the specified dev tool does not exist. *)
 val of_dev_tool_if_lock_dir_exists : Dune_pkg.Dev_tool.t -> t option Memo.t
 
+(** The location in the build directory where the lock dir for the given source
+    path is materialized (by copy rules or by autolocking). *)
+val lock_dir_of_source : Path.Source.t -> Path.t
+
 val lock_dir_active : Context_name.t -> bool Memo.t
 val get_path : Context_name.t -> Path.t option Memo.t
 

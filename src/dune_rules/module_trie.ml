@@ -202,10 +202,11 @@ end
 include Make (Module_name)
 
 module Unchecked = struct
-  module Unchecked = Make (Module_name.Unchecked)
+  module Unchecked = Module_name.Unchecked
+  module Module_trie_unchecked = Make (Unchecked)
 
   let check_exn t =
-    Unchecked.foldi t ~init:empty ~f:(fun unchecked_key (loc, m) acc ->
+    Module_trie_unchecked.foldi t ~init:empty ~f:(fun unchecked_key (loc, m) acc ->
       let path_checked =
         let (module_name :: dirs) = Nonempty_list.rev unchecked_key in
         let dirs = List.map dirs ~f:Module_name.Unchecked.validate_exn in
@@ -214,5 +215,5 @@ module Unchecked = struct
       set acc path_checked (loc, m))
   ;;
 
-  include Unchecked
+  include Module_trie_unchecked
 end

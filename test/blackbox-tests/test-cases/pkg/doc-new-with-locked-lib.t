@@ -48,6 +48,8 @@ cmti directory as if it were outside the build tree.
 
   $ touch foo.ml
 
-  $ dune build @doc-new 2>&1 | grep "Internal error"
-  Internal error! Please report to https://github.com/ocaml/dune/issues,
-  [1]
+  $ dune build @doc-new
+  File "fakefmt.mld", line 7, characters 0-11:
+  Warning: '{!modules ...}' should not be empty.
+  File "page-fakefmt.odoc":
+  Warning: Failed to lookup child page dummy

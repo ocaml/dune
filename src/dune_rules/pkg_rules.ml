@@ -451,6 +451,10 @@ module Pkg = struct
     ; build_command : Build_command.t option
     ; install_command : Dune_lang.Action.t option
     ; depends : t list
+    ; workspace_deps : Package.Name.Set.t
+      (* Names of workspace packages this package depends on. Their install
+         entries are materialised through the install layout rather than
+         resolved against the lockdir. *)
     ; depends_on_dune : bool
       (* whether the package declares a dependency on Dune, even if Dune is stripped from [depends] *)
     ; depexts : Depexts.t list
@@ -1271,9 +1275,22 @@ module DB = struct
     type entry =
       { pkg : Pkg.t
       ; deps : dep list
+      ; workspace_deps : Package.Name.Set.t
       ; has_dune_dep : bool
       ; pkg_digest : Pkg_digest.t
       }
+
+    (* By the time we get here, [Lock_dir.check_packages] has already
+       accepted every declared name (see [raise_on_lock_dir_out_of_sync]
+       in gen_rules.ml), so any name not in the lockdir, dune, or
+       [system_provided] is necessarily a workspace package. *)
+    module Resolved_dep = struct
+      type t =
+        | Lockdir of Pkg.t
+        | Workspace
+        | Dune
+        | System
+    end
 
     let entries_by_name_of_lock_dir
           (lock_dir : Dune_pkg.Lock_dir.t)
@@ -1281,6 +1298,16 @@ module DB = struct
           ~system_provided
       =
       let pkgs_by_name = Dune_pkg.Lock_dir.packages_on_platform lock_dir ~platform in
+      let resolve_dep name : Resolved_dep.t =
+        if Dune_lang.Package_name.equal name Dune_dep.name
+        then Dune
+        else if Package.Name.Set.mem system_provided name
+        then System
+        else (
+          match Package.Name.Map.find pkgs_by_name name with
+          | Some pkg -> Lockdir pkg
+          | None -> Workspace)
+      in
       let cache =
         (* Cache so that the digest of each package is only computed once *)
         Package.Name.Table.create 10
@@ -1301,35 +1328,32 @@ module DB = struct
         Package.Name.Table.find_or_add cache pkg.info.name ~f:(fun name ->
           let seen_set = Package.Name.Set.add seen_set name in
           let seen_list = pkg :: seen_list in
-          let has_dune_dep, deps =
+          let has_dune_dep, deps, workspace_deps =
             Dune_pkg.Lock_dir.Conditional_choice.choose_for_platform pkg.depends ~platform
             |> Option.value ~default:[]
             |> List.fold_right
-                 ~init:(false, [])
+                 ~init:(false, [], Package.Name.Set.empty)
                  ~f:
                    (fun
                      { Dune_pkg.Lock_dir.Dependency.name; loc = dep_loc }
-                     (has_dune_dep, acc)
+                     (has_dune_dep, deps, ws_deps)
                    ->
-                   match
-                     ( Dune_lang.Package_name.equal name Dune_dep.name
-                     , Package.Name.Set.mem system_provided name )
-                   with
-                   | true, _ -> true, acc
-                   | false, true -> has_dune_dep, acc
-                   | _, false ->
-                     let dep_pkg = Package.Name.Map.find_exn pkgs_by_name name in
+                   match resolve_dep name with
+                   | Dune -> true, deps, ws_deps
+                   | System -> has_dune_dep, deps, ws_deps
+                   | Workspace -> has_dune_dep, deps, Package.Name.Set.add ws_deps name
+                   | Lockdir dep_pkg ->
                      let dep_entry = compute_entry dep_pkg ~seen_set ~seen_list in
                      ( has_dune_dep
-                     , { dep_pkg; dep_loc; dep_pkg_digest = dep_entry.pkg_digest } :: acc
-                     ))
+                     , { dep_pkg; dep_loc; dep_pkg_digest = dep_entry.pkg_digest } :: deps
+                     , ws_deps ))
           in
           let pkg_digest =
             Pkg_digest.create
               pkg
               (List.map deps ~f:(fun { dep_pkg_digest; _ } -> dep_pkg_digest))
           in
-          { pkg; deps; has_dune_dep; pkg_digest })
+          { pkg; deps; workspace_deps; has_dune_dep; pkg_digest })
       in
       Package.Name.Map.map
         pkgs_by_name
@@ -1352,8 +1376,18 @@ module DB = struct
        dependencies are identical as a sanity check. *)
     let union_check
           pkg_digest
-          ({ pkg = pkg_a; deps = deps_a; has_dune_dep = _; pkg_digest = _ } as entry)
-          { pkg = pkg_b; deps = deps_b; has_dune_dep = _; pkg_digest = _ }
+          ({ pkg = pkg_a
+           ; deps = deps_a
+           ; workspace_deps = _
+           ; has_dune_dep = _
+           ; pkg_digest = _
+           } as entry)
+          { pkg = pkg_b
+          ; deps = deps_b
+          ; workspace_deps = _
+          ; has_dune_dep = _
+          ; pkg_digest = _
+          }
       =
       if not (Pkg.equal (Pkg.remove_locs pkg_a) (Pkg.remove_locs pkg_b))
       then
@@ -1573,6 +1607,7 @@ end = struct
             ; enabled_on_platforms = _
             } as pkg
         ; deps
+        ; workspace_deps
         ; has_dune_dep
         ; pkg_digest = _
         } ->
@@ -1588,9 +1623,9 @@ end = struct
             let package_universe =
               match package_universe with
               | Dev_tool _ ->
-                (* The dependencies of dev tools are installed into the default
-                 context so they may be shared with the project's
-                 dependencies. *)
+                (* The dependencies of dev tools are installed into the
+                   default context so they may be shared with the
+                   project's dependencies. *)
                 Package_universe.Dependencies Context_name.default
               | _ -> package_universe
             in
@@ -1647,6 +1682,7 @@ end = struct
         ; build_command
         ; install_command
         ; depends
+        ; workspace_deps
         ; depends_on_dune = has_dune_dep
         ; depexts
         ; paths
@@ -2128,6 +2164,22 @@ let add_env env action =
   Action_builder.With_targets.map action ~f:(Action.Full.add_env env)
 ;;
 
+(* Extend the action's env with PATH, OCAMLPATH, etc. for the install
+   layout of [pkg]'s workspace deps. Uses concat semantics (the action's
+   existing values for path-like vars are preserved, with the layout's
+   prepended) and registers a dep on every install entry the layout
+   produces. *)
+let add_workspace_env context_name (pkg : Pkg.t) action =
+  if Package.Name.Set.is_empty pkg.workspace_deps
+  then action
+  else
+    Action_builder.With_targets.map_build action ~f:(fun build ->
+      let open Action_builder.O in
+      let+ (a : Action.Full.t) = build
+      and+ ws_env = Install_layout.env context_name pkg.workspace_deps in
+      Action.Full.add_env (Install.Roots.extend_env_concat_path_vars a.env ws_env) a)
+;;
+
 let rule ?loc { Action_builder.With_targets.build; targets } =
   (* TODO this ignores the workspace file *)
   Rule.make ~info:(Rule.Info.of_loc_opt loc) ~targets build |> Rules.Produce.rule
@@ -2362,6 +2414,7 @@ let build_rule context_name ~source_deps (pkg : Pkg.t) =
    Action_builder.deps deps |> Action_builder.with_no_targets)
   (* TODO should we add env deps on these? *)
   >>> add_env (Pkg.exported_env pkg) build_action
+  |> add_workspace_env context_name pkg
   |> Action_builder.With_targets.add_directories
        ~directory_targets:[ pkg.write_paths.target_dir ]
 ;;

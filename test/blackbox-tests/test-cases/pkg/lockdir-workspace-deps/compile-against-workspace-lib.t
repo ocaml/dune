@@ -4,9 +4,8 @@ action inspects [OCAMLPATH].
   $ make_workspace_lib_package
 
 The lock dir contains one package "consumer" whose build action
-writes [OCAMLPATH] to a file and installs it. The intent is that the
-file should later be inspectable to confirm the workspace install
-layout was prepended.
+writes [OCAMLPATH] to a file and installs it so the test can later
+inspect what consumer saw.
 
   $ make_lockdir
   $ make_lockpkg consumer <<EOF
@@ -22,17 +21,11 @@ A rule depends on the lock-dir package:
 
   $ write_lockdir_consumer_rule
 
-Lock-dir validation does not currently recognise workspace packages as
-valid dependency targets, so the consumer's build action never runs:
+The build succeeds. Consumer's build action sees the workspace install
+layout prepended to OCAMLPATH. Print just the first OCAMLPATH entry:
 
-  $ dune build out 2>&1
-  File "_build/_private/default/.lock/dune.lock/consumer.pkg", line 2,
-  characters 9-22:
-  The package "consumer" depends on the package "workspace-lib", but
-  "workspace-lib" does not appear in the lockdir
-  _build/_private/default/.lock/dune.lock.
-  Error: At least one package dependency is itself not present as a package in
-  the lockdir _build/_private/default/.lock/dune.lock.
-  Hint: This could indicate that the lockdir is corrupted. Delete it and then
-  regenerate it by running: 'dune pkg lock'
-  [1]
+  $ dune build out
+
+  $ find _build -name 'ocamlpath.txt' -exec cat {} \; \
+  >   | awk -F: '{print $1}' | censor
+  $PWD/_build/install/default/.packages/$DIGEST/lib

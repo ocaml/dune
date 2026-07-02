@@ -1148,11 +1148,14 @@ type missing_dependency =
   ; loc : Loc.t
   }
 
-(* [validate_packages packages] returns
+(* [validate_packages packages ~external_packages] returns
    [Error (`Missing_dependencies missing_dependencies)] where
    [missing_dependencies] is a non-empty list with an element for each package
-   dependency which doesn't have a corresponding entry in [packages]. *)
-let validate_packages packages =
+   dependency which doesn't have a corresponding entry in [packages] and is
+   not in [external_packages]. The [external_packages] set names dependency
+   targets that callers vouch for outside the lockdir (e.g. workspace
+   packages whose install entries are materialised by the build path). *)
+let validate_packages packages ~external_packages =
   let missing_dependencies =
     Packages.to_pkg_list packages
     |> List.concat_map ~f:(fun (dependant_package : Pkg.t) ->
@@ -1163,6 +1166,7 @@ let validate_packages packages =
           if
             Package_name.Map.mem packages depend.name
             || Package_name.equal depend.name Dune_dep.name
+            || Package_name.Set.mem external_packages depend.name
           then None
           else Some { dependant_package; dependency = depend.name; loc = depend.loc })))
   in
@@ -1184,7 +1188,11 @@ let create_latest_version
     Package_name.Map.map packages ~f:(fun (pkg : Pkg.t) ->
       Package_version.Map.singleton pkg.info.version pkg)
   in
-  (match validate_packages packages with
+  (* The solver rejects workspace dependencies, so a well-formed solver
+     output should never contain references to packages outside the
+     lockdir. We pass [external_packages:empty] here so this assert catches
+     any solver bug that lets such a reference slip through. *)
+  (match validate_packages packages ~external_packages:Package_name.Set.empty with
    | Ok () -> ()
    | Error (`Missing_dependencies missing_dependencies) ->
      List.map missing_dependencies ~f:(fun { dependant_package; dependency; loc = _ } ->
@@ -1658,40 +1666,6 @@ struct
       package_name
   ;;
 
-  let check_packages packages ~lock_dir_path =
-    match validate_packages packages with
-    | Ok () -> Ok ()
-    | Error (`Missing_dependencies missing_dependencies) ->
-      List.iter missing_dependencies ~f:(fun { dependant_package; dependency; loc } ->
-        User_message.prerr
-          (User_message.make
-             ~loc
-             [ Pp.textf
-                 "The package %S depends on the package %S, but %S does not appear in \
-                  the lockdir %s."
-                 (Package_name.to_string dependant_package.info.name)
-                 (Package_name.to_string dependency)
-                 (Package_name.to_string dependency)
-                 (Path.to_string_maybe_quoted lock_dir_path)
-             ]));
-      Error
-        (User_error.make
-           ~hints:
-             [ Pp.concat
-                 ~sep:Pp.space
-                 [ Pp.text
-                     "This could indicate that the lockdir is corrupted. Delete it and \
-                      then regenerate it by running:"
-                 ; User_message.command "dune pkg lock"
-                 ]
-             ]
-           [ Pp.textf
-               "At least one package dependency is itself not present as a package in \
-                the lockdir %s."
-               (Path.to_string_maybe_quoted lock_dir_path)
-           ])
-  ;;
-
   let load lock_dir_path =
     let event =
       Dune_trace.(
@@ -1735,25 +1709,15 @@ struct
         pkg)
       >>| Packages.of_pkg_list
     in
-    let result =
-      check_packages packages ~lock_dir_path
-      |> Result.map ~f:(fun () ->
-        { version
-        ; dependency_hash
-        ; packages
-        ; ocaml
-        ; repos
-        ; expanded_solver_variable_bindings
-        ; solved_for_platforms
-        })
-    in
     Option.iter (Dune_trace.global ()) ~f:(fun trace -> Dune_trace.Out.finish trace event);
-    result
-  ;;
-
-  let load_exn lock_dir_path =
-    let open Io.O in
-    load lock_dir_path >>| User_error.ok_exn
+    { version
+    ; dependency_hash
+    ; packages
+    ; ocaml
+    ; repos
+    ; expanded_solver_variable_bindings
+    ; solved_for_platforms
+    }
   ;;
 end
 
@@ -1771,8 +1735,53 @@ module Load_immediate = Make_load (struct
     let with_lexbuf_from_file = Io.with_lexbuf_from_file
   end)
 
-let read_disk = Load_immediate.load
-let read_disk_exn = Load_immediate.load_exn
+(* Verify every dependency edge in [packages] resolves to a known target:
+   either another package in the lockdir, dune itself, or a name in
+   [external_packages] (typically workspace packages whose install entries
+   are materialised outside the lockdir). *)
+let check_packages packages ~lock_dir_path ~external_packages =
+  match validate_packages packages ~external_packages with
+  | Ok () -> Ok ()
+  | Error (`Missing_dependencies missing_dependencies) ->
+    List.iter missing_dependencies ~f:(fun { dependant_package; dependency; loc } ->
+      User_message.prerr
+        (User_message.make
+           ~loc
+           [ Pp.textf
+               "The package %S depends on the package %S, but %S does not appear in the \
+                lockdir %s."
+               (Package_name.to_string dependant_package.info.name)
+               (Package_name.to_string dependency)
+               (Package_name.to_string dependency)
+               (Path.to_string_maybe_quoted lock_dir_path)
+           ]));
+    Error
+      (User_error.make
+         ~hints:
+           [ Pp.concat
+               ~sep:Pp.space
+               [ Pp.text
+                   "This could indicate that the lockdir is corrupted. Delete it and \
+                    then regenerate it by running:"
+               ; User_message.command "dune pkg lock"
+               ]
+           ]
+         [ Pp.textf
+             "At least one package dependency is itself not present as a package in the \
+              lockdir %s."
+             (Path.to_string_maybe_quoted lock_dir_path)
+         ])
+;;
+
+let read_disk lock_dir_path ~external_packages =
+  let t = Load_immediate.load lock_dir_path in
+  check_packages t.packages ~lock_dir_path ~external_packages
+  |> Result.map ~f:(fun () -> t)
+;;
+
+let read_disk_exn lock_dir_path ~external_packages =
+  read_disk lock_dir_path ~external_packages |> User_error.ok_exn
+;;
 
 let transitive_dependency_closure t ~platform start =
   let missing_packages =

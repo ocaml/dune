@@ -57,7 +57,12 @@ val hash : t -> int
 val to_dyn : t -> Dyn.t
 val to_dyn_concise : t -> Dyn.t
 val name : t -> Context_name.t
-val which : t -> Filename.t -> Path.t option Memo.t
+
+val which
+  :  t
+  -> ?narrow_to_deps:Package.Name.Set.t option
+  -> Filename.t
+  -> Path.t option Memo.t
 
 (** [Some path/to/foo.exe] if this contexts is for feedback-directed
     optimization of target path/to/foo.exe *)

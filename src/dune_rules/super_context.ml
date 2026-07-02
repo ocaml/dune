@@ -148,7 +148,15 @@ let extend_action_env t ~dir action =
   and+ env =
     Action_builder.of_memo
       (let open Memo.O in
-       t.get_node dir >>= Env_node.external_env)
+       let* env = t.get_node dir >>= Env_node.external_env in
+       (* Add the lock-directory bin layouts onto PATH, narrowed to the
+          declared dependencies of the package owning dir. *)
+       let* expander = expander_for_artifacts t ~dir in
+       let* packages = Expander.package_depends_by_src_dir expander in
+       let+ bin_env =
+         Pkg_rules.bin_env_for_packages ~packages (Expander.context expander)
+       in
+       Env_path.extend_env_concat_path env bin_env)
   in
   (* Cons path-like vars from action.env (bin-layout PATH, package-layout
      OCAMLPATH/etc.) onto the directory env so that both layout and system

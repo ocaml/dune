@@ -60,8 +60,26 @@
                       inherit (nixpkgsOcaml.odoc) version src;
                       doCheck = false;
                     });
+                    # Templates the cross-compiled dune binary used by
+                    # `windows-static`. Lives at the top-level scope so
+                    # `nix-overlays`' cross-overlay sees it during scope
+                    # construction and `fixOCamlPackage` can pair the cross
+                    # derivation with this native template via
+                    # `findNativePackage`.
+                    dune_target = oself.callPackage ./nix/dune-target.nix { };
                   }
                 );
+                # Keep `ocaml-ng.ocamlPackages_5_4` in sync with the override
+                # above. nix-overlays' `cross/ocaml.nix:46` looks up the native
+                # OCaml via `buildPackages.ocaml-ng."ocamlPackages_5_4"`, so
+                # without this the cross-target side uses our overridden ocaml
+                # while the native side (used to build findlib's `nativeBuild-
+                # Inputs` etc.) uses the unoverridden ocaml+flambda — the
+                # mismatch shows up as cross `ocamlopt` rejecting native
+                # `topdirs.cmx` ("not a compilation unit description").
+                ocaml-ng = super.ocaml-ng // {
+                  ocamlPackages_5_4 = self.ocamlPackages;
+                };
               })
               melange.overlays.default
             ];
@@ -106,9 +124,14 @@
             src = ./.;
           };
         in
-        {
-          inherit (dune-package) default dune-static;
-          dune = self.packages.${pkgs.stdenv.hostPlatform.system}.default;
+        rec {
+          inherit (dune-package)
+            default
+            musl-static
+            windows-static
+            ;
+          dune = default;
+          dune-static = musl-static;
         }
       );
 

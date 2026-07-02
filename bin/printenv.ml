@@ -93,7 +93,10 @@ let term =
     Build.build_memo_exn (fun () ->
       let open Memo.O in
       let* setup = Util.setup () in
-      let dir = Path.of_string dir in
+      let dir = 
+        Path.of_string dir 
+        |> Path.Expert.try_localize_external
+      in
       let checked = Util.check_path setup.contexts dir in
       let request =
         Action_builder.all

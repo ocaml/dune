@@ -76,10 +76,8 @@ repeat the library's `--mel-cross-module-opt` compile flag.
 
   $ dune describe rules --display=quiet --profile=release dist-default-flags/node_modules/foo/char.js > char-default-rules.sexp
   $ grep -c 'stdlib/.stdlib.objs/melange/stdlib.cmi' char-default-rules.sexp
-  0
-  [1]
+  1
   $ grep -c 'stdlib/.stdlib.objs/melange/stdlib.cmj' char-default-rules.sexp
-  0
-  [1]
+  1
 
   $ dune build dist-default-flags/node_modules/foo/char.js

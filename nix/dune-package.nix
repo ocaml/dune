@@ -78,5 +78,9 @@ in
         "LIBDIR=$(OCAMLFIND_DESTDIR)"
       ];
     };
-  dune-static = pkgs-static.pkgsCross.musl64.ocamlPackages.dune;
+  dune-static =
+    if pkgs.stdenv.hostPlatform.isAarch64 then
+      pkgs-static.pkgsCross.aarch64-multiplatform-musl.ocamlPackages.dune
+    else
+      pkgs-static.pkgsCross.musl64.ocamlPackages.dune;
 }

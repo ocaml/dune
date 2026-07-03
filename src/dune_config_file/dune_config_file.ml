@@ -208,7 +208,7 @@ module Dune_config = struct
       let repr =
         Repr.variant
           "cache-toggle"
-          [ Repr.case0 "Disabed" ~test:(function
+          [ Repr.case0 "Disabled" ~test:(function
               | Disabled -> true
               | Enabled_except_user_rules | Enabled -> false)
           ; Repr.case0 "Enabled_except_user_rules" ~test:(function

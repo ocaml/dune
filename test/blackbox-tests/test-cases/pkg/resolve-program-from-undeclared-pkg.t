@@ -50,44 +50,11 @@ output so we can verify which binary actually ran:
   > )
   > EOF
 
-[(ocamllex foo)] resolves [ocamllex] via [Super_context.resolve_program] in
-[parser_generator_rules.ml]. The full-lockdir lookup picks up the fake ocamllex
-despite no explicity dependency declaration:
-
-  $ make_dune_project 3.24
+[(ocamllex ...)] and [(menhir ...)] resolve their tools via
+[Super_context.resolve_program]:
 
   $ cat >foo.mll <<'EOF'
   > rule scan = parse | _ { () }
-  > EOF
-
-  $ cat >dune <<'EOF'
-  > (ocamllex foo)
-  > (rule
-  >   (with-stdout-to path-output
-  >     (bash "echo $PATH")))
-  > EOF
-
-  $ dune build foo.ml 2>/dev/null
-
-Test that the fake ocamllex from tool_provider is used:
-
-  $ grep -c "fake ocamllex" _build/default/foo.ml
-  1
-
-The rule depends on the ocamllex binary from the tool_provider lockdir package:
-
-  $ dune rules --format=json foo.ml | jq_dune '.[] | ruleDepFilePaths' | censor
-  "_build/_private/default/.pkg/tool_provider.0.0.1-$DIGEST/target/bin/ocamllex"
-  "_build/default/foo.mll"
-
-
-Similarly, [(menhir ...)] resolves [menhir] from the lockdir package:
-
-  $ rm -rf _build
-
-  $ cat >dune-project <<'EOF'
-  > (lang dune 3.21)
-  > (using menhir 2.1)
   > EOF
 
   $ cat >bar.mly <<'EOF'
@@ -98,16 +65,108 @@ Similarly, [(menhir ...)] resolves [menhir] from the lockdir package:
   > EOF
 
   $ cat >dune <<'EOF'
+  > (ocamllex foo)
   > (library (name bar))
   > (menhir (modules bar) (infer false))
+  > (rule
+  >   (with-stdout-to path-output
+  >     (bash "echo $PATH")))
   > EOF
 
-  $ dune build bar.ml
+With the current full-lockdir lookup, the fake ocamllex and fake menhir are
+picked up despite no explicit dependency declaration:
+
+  $ make_dune_project 3.24
+  $ cat >> dune-project << 'EOF'
+  > (using menhir 2.1)
+  > EOF
+  $ dune build foo.ml bar.ml path-output 2>/dev/null
+
+  $ grep -c "fake ocamllex" _build/default/foo.ml
+  1
   $ grep -c "fake menhir" _build/default/bar.ml
   1
 
-The rule depends on the menhir binary from the tool_provider lockdir package:
+The rules depend on the ocamllex and menhir binaries from the tool_provider
+lockdir package:
 
+  $ dune rules --format=json foo.ml | jq_dune '.[] | ruleDepFilePaths' | censor
+  "_build/_private/default/.pkg/tool_provider.0.0.1-$DIGEST/target/bin/ocamllex"
+  "_build/default/foo.mll"
   $ dune rules --format=json bar.ml | jq_dune '.[] | ruleDepFilePaths' | censor
   "_build/_private/default/.pkg/tool_provider.0.0.1-$DIGEST/target/bin/menhir"
   "_build/default/bar.mly"
+
+The tool_provider bin layout is added to $PATH:
+
+  $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
+  $PWD/_build/_private/default/.pkg/tool_provider.0.0.1-$DIGEST/target/bin
+
+With a package defined in the project, *without a dir field*, the behavior is the
+same.
+
+  $ make_dune_project 3.24
+  $ cat >> dune-project << 'EOF'
+  > (using menhir 2.1)
+  > (package
+  >   (allow_empty)
+  >   (name my-pkg))
+  > EOF
+
+  $ dune clean
+  $ dune build foo.ml bar.ml path-output 2>/dev/null
+
+  $ grep -c "fake ocamllex" _build/default/foo.ml
+  1
+  $ grep -c "fake menhir" _build/default/bar.ml
+  1
+
+  $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
+  $PWD/_build/_private/default/.pkg/tool_provider.0.0.1-$DIGEST/target/bin
+
+With a package defined in the project, *with a dir field, but no dependencies*,
+the behavior is still the same.
+
+  $ make_dune_project 3.24
+  $ cat >> dune-project << 'EOF'
+  > (using menhir 2.1)
+  > (package
+  >   (allow_empty)
+  >   (name my-pkg)
+  >   (dir .))
+  > EOF
+
+  $ dune clean
+  $ dune build foo.ml bar.ml path-output 2>/dev/null
+
+  $ grep -c "fake ocamllex" _build/default/foo.ml
+  1
+  $ grep -c "fake menhir" _build/default/bar.ml
+  1
+
+  $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
+  $PWD/_build/_private/default/.pkg/tool_provider.0.0.1-$DIGEST/target/bin
+
+With a package defined in the project, *with a dir field, and explicit depends on
+[tool_provider]*, the behavior remains the same.
+
+  $ make_dune_project 3.24
+  $ cat >> dune-project << 'EOF'
+  > (using menhir 2.1)
+  > (package
+  >   (allow_empty)
+  >   (name my-pkg)
+  >   (dir .)
+  >   (depends tool_provider))
+  > EOF
+
+  $ dune clean
+  $ dune build foo.ml bar.ml path-output 2>/dev/null
+
+  $ grep -c "fake ocamllex" _build/default/foo.ml
+  1
+  $ grep -c "fake menhir" _build/default/bar.ml
+  1
+
+  $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
+  $PWD/_build/_private/default/.pkg/tool_provider.0.0.1-$DIGEST/target/bin

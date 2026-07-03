@@ -1,10 +1,11 @@
 A consumer references a constructor of a leaf library's type
 through an intermediate library where `-open Prelude` is injected
 by an `(env ...)` stanza, not by the intermediate library's own
-`(flags ...)` field. The intermediate's library stanza uses
-`:standard`. Pins that the consumer's compile correctly tracks
-`prelude`'s `.cmi` as a sandbox-required dep when the open enters
-the intermediate's effective flags via the env-stanza path.
+`(flags ...)` field. The intermediate's stanza uses `:standard`.
+Pins that env-stanza-injected `-open` modules extend the BFS
+frontier of [cross_lib_tight_set] identically to stanza-flag
+`-open` modules — the dep lib's `:standard` spec must not
+short-circuit out the env-injected edges.
 
   $ make_dune_project 3.24
 
@@ -18,10 +19,11 @@ the intermediate's effective flags via the env-stanza path.
   > type color = Red | Green | Blue
   > EOF
 
-`middle` is `(wrapped false)`, depends on `prelude`, and uses
-`:standard` flags. The adjacent `(env ...)` stanza injects
-`-open Prelude` into the default profile, so middle's modules see
-`Prelude.color`'s constructors without naming `Prelude`:
+`middle` is `(wrapped false)` so the per-module narrowing walks
+its modules; depends on `prelude`; uses `:standard` flags. The
+adjacent `(env ...)` stanza injects `-open Prelude` into the
+default profile, so middle's modules see `Prelude.color`'s
+constructors without naming `Prelude`:
 
   $ mkdir middle
   $ cat > middle/dune <<EOF

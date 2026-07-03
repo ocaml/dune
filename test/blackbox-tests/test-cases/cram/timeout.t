@@ -70,7 +70,7 @@ Partial output from timed-out commands should still be sanitized.
   +++ test.t.corrected
   @@ -1 +1,3 @@
      $ pwd; command
-  +  $TESTCASE_ROOT/_build/.sandbox/f1fe2b7a6aa40770133ce517493e9ade/default
+  +  $TESTCASE_ROOT
   +  [timed out]
   File "test.t", line 1, characters 0-0:
   Error: Cram test timed out

@@ -41,6 +41,10 @@ let
   dune-static-overlay = self: super: {
     ocamlPackages = super.ocaml-ng.ocamlPackages_5_4.overrideScope (
       oself: osuper: {
+        ocaml = osuper.ocaml.override {
+          flambdaSupport = false;
+          framePointerSupport = true;
+        };
         dune_3 = osuper.dune_3.overrideAttrs (a: {
           src = dune-source;
           preBuild = "ocaml boot/bootstrap.ml --static";

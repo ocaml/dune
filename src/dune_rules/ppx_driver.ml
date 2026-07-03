@@ -226,6 +226,7 @@ let build_ppx_driver =
         ~modules
         ~flags
         ~requires_compile:(Memo.return requires_compile)
+        ~user_written_requires:None
         ~requires_link
         ~opaque
         ~js_of_ocaml:(Js_of_ocaml.Mode.Pair.make None)

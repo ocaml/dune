@@ -2309,6 +2309,10 @@ module Compile = struct
     Compilation_mode.Per_mode.get t.user_written_requires ~for_
   ;;
 
+  let user_written_requires_no_loc t ~for_ =
+    user_written_requires t ~for_ |> Resolve.Memo.map ~f:(List.map ~f:snd)
+  ;;
+
   let requires_link t ~for_ = Compilation_mode.Per_mode.get t.requires_link ~for_
   let resolved_selects t ~for_ = Compilation_mode.Per_mode.get t.resolved_selects ~for_
   let pps t ~for_ = Compilation_mode.Per_mode.get t.pps ~for_

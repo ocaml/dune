@@ -484,6 +484,7 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~mdx_prog =
       ~modules
       ~flags
       ~requires_compile
+      ~user_written_requires:None
       ~requires_link
       ~opaque:(Explicit false)
       ~js_of_ocaml:(Js_of_ocaml.Mode.Pair.make None)

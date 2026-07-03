@@ -24,6 +24,10 @@
   (<> %{ocaml-config:system} win)))
 
 (cram
+ (applies_to batch-mode watch-mode)
+ (setup_scripts cached-failed-actions-helpers.sh))
+
+(cram
  (applies_to rpc-flush-file-watcher rpc-registry)
  (deps
   %{bin:action_plugin_helper}

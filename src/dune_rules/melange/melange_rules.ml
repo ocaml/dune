@@ -463,7 +463,6 @@ let build_js
         in
         Command.run
           ~dir:(Super_context.context sctx |> Context.build_dir |> Path.build)
-          ~sandbox:Sandbox_config.needs_sandboxing
           compiler
           [ Command.Args.S obj_dir
           ; Command.Args.as_any includes
@@ -721,10 +720,6 @@ let setup_runtime_assets_rules
         | Some (Ok false) | Some (Error _) | None ->
           Left dst, Action_builder.copy ~src ~dst
       in
-      let builder =
-        let open Action_builder.With_targets.O in
-        builder >>| Action.Full.add_sandbox Sandbox_config.needs_sandboxing
-      in
       let+ () = add_rule sctx ~loc ~dir ~mode builder in
       dst
     | Some directory_target_ancestor ->
@@ -734,10 +729,6 @@ let setup_runtime_assets_rules
         Path.Build.relative dst rel
       in
       let builder = Action_builder.copy_dir ~src:new_src ~dst in
-      let builder =
-        let open Action_builder.With_targets.O in
-        builder >>| Action.Full.add_sandbox Sandbox_config.needs_sandboxing
-      in
       let+ () = add_rule sctx ~loc ~dir ~mode builder in
       Right dst)
   >>| List.partition_map ~f:Fun.id

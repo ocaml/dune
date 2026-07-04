@@ -542,6 +542,9 @@ let setup_emit_cmj_rules
     let* flags = melange_compile_flags ~sctx ~dir mel in
     let* cctx =
       let direct_requires = Lib.Compile.direct_requires compile_info ~for_ in
+      let user_written_requires =
+        Some (lazy (Lib.Compile.user_written_requires_no_loc compile_info ~for_))
+      in
       Compilation_context.create
         for_
         ~loc:mel.loc
@@ -552,6 +555,7 @@ let setup_emit_cmj_rules
         ~flags
         ~requires_link
         ~requires_compile:direct_requires
+        ~user_written_requires
         ~preprocessing:pp
         ~js_of_ocaml:(Js_of_ocaml.Mode.Pair.make None)
         ~opaque:Inherit_from_settings

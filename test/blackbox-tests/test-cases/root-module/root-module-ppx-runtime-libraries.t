@@ -47,6 +47,5 @@ and should not be re-exported by the generated root module.
   > EOF
   $ dune build
   $ cat _build/default/root.ml-gen
-  module Ppx_runtime = Ppx_runtime
   module Unix = Unix
   module UnixLabels = UnixLabels

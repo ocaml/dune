@@ -204,6 +204,9 @@ let executables_rules
   let programs = programs ~modules ~exes in
   let* cctx =
     let requires_compile = Lib.Compile.direct_requires compile_info ~for_ in
+    let user_written_requires =
+      Some (lazy (Lib.Compile.user_written_requires_no_loc compile_info ~for_))
+    in
     let requires_link = Lib.Compile.requires_link compile_info ~for_ in
     let instances =
       Parameterised_instances.instances
@@ -227,6 +230,7 @@ let executables_rules
       ~flags
       ~requires_link
       ~requires_compile
+      ~user_written_requires
       ~preprocessing:pp
       ~js_of_ocaml
       ~opaque:Inherit_from_settings

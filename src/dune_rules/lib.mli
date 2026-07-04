@@ -97,6 +97,11 @@ module Compile : sig
     -> for_:Compilation_mode.t
     -> (Loc.t * lib) list Resolve.Memo.t
 
+  val user_written_requires_no_loc
+    :  t
+    -> for_:Compilation_mode.t
+    -> lib list Resolve.Memo.t
+
   (** Dependencies listed by the user + runtime dependencies from ppx *)
   val direct_requires : t -> for_:Compilation_mode.t -> lib list Resolve.Memo.t
 

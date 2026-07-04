@@ -26,6 +26,7 @@ val create
   -> modules:Modules.With_vlib.t
   -> flags:Ocaml_flags.t
   -> requires_compile:Lib.t list Resolve.Memo.t
+  -> user_written_requires:Lib.t list Resolve.Memo.t Lazy.t option
   -> requires_link:Lib.t list Resolve.t Memo.Lazy.t
   -> ?preprocessing:Pp_spec.t
   -> opaque:opaque
@@ -60,6 +61,7 @@ val flags : t -> Ocaml_flags.t
 val requires_link : t -> Lib.t list Resolve.Memo.t
 val requires_hidden : t -> Lib.t list Resolve.Memo.t
 val requires_compile : t -> Lib.t list Resolve.Memo.t
+val user_written_requires : t -> Lib.t list Resolve.Memo.t option
 val parameters : t -> Module_name.t list Resolve.Memo.t
 val includes : t -> Command.Args.without_targets Command.Args.t Lib_mode.Cm_kind.Map.t
 val preprocessing : t -> Pp_spec.t

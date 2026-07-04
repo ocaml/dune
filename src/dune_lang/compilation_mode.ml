@@ -57,7 +57,7 @@ let of_lib_mode = function
 
 let default_sandbox = function
   | Ocaml -> Dune_engine.Sandbox_config.no_special_requirements
-  | Melange -> Dune_engine.Sandbox_config.needs_sandboxing
+  | Melange -> Dune_engine.Sandbox_config.no_special_requirements
 ;;
 
 module Per_mode = struct

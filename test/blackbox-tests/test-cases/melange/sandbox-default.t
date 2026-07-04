@@ -1,12 +1,13 @@
-Melange rules should be sandboxed by default
+Melange rules should honor explicit sandboxing
 
   $ make_melange_sandbox_project
 
-Use default sandbox preference. The test suite sets `DUNE_SANDBOX`, so clear it.
+The test suite sets `DUNE_SANDBOX`, so clear it and use the command-line
+option explicitly.
 
   $ unset DUNE_SANDBOX
   $ rm -rf _build
-  $ dune build @mel --display quiet --trace-file trace.csexp
+  $ dune build @mel --sandbox=symlink --display quiet --trace-file trace.csexp
 
   $ cat > melc_dirs.jq <<EOF
   > select(

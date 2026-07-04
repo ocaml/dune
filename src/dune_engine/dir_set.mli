@@ -65,7 +65,6 @@ val is_subset : 'w t -> of_:'w t -> bool
 val union : 'w t -> 'w t -> 'w t
 val union_all : 'w t list -> 'w t
 val inter : 'w t -> 'w t -> 'w t
-val inter_all : 'w t list -> 'w t
 val diff : 'w t -> 'w t -> 'w t
 val negate : 'w t -> 'w t
 val to_dyn : 'w t -> Dyn.t

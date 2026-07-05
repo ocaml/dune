@@ -86,6 +86,7 @@ module For_tests = struct
   module Action_unexpanded = Action_unexpanded
   module Cram_exec = Cram_exec
   module Which = Which
+  module Cc_flags = Cc_flags
 end
 
 module Rocq = struct

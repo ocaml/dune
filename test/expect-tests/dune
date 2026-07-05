@@ -12,6 +12,7 @@
   dune_rules
   fiber
   dune_lang
+  ocaml
   memo
   unix
   threads.posix

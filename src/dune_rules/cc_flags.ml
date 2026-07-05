@@ -3,8 +3,12 @@ open Memo.O
 
 type cc_vendor =
   | Gcc
-  | Msvc
   | Clang
+  | Msvc
+  | Mingw
+  | Intel
+  | Xlc
+  | Sun
   | Other of string
 
 type phase =
@@ -12,41 +16,48 @@ type phase =
   | Link
 
 let base_cxx_compile_flags version = function
-  | Gcc | Clang ->
+  | Gcc | Clang | Mingw | Intel ->
     "-x"
     :: "c++"
     :: (if Ocaml.Version.add_std_cxx_flag version then [ "-std=gnu++11" ] else [])
   | Msvc -> [ "/TP" ]
-  | Other _ -> []
+  | Xlc | Sun | Other _ -> []
 ;;
 
 let base_cxx_link_flags = function
-  | Gcc -> [ "-lstdc++"; "-shared-libgcc" ]
+  | Gcc | Mingw | Intel -> [ "-lstdc++"; "-shared-libgcc" ]
   | Clang -> [ "-lc++" ]
-  | Msvc -> []
-  | Other _ -> []
+  | Msvc | Xlc | Sun | Other _ -> []
 ;;
 
 let fdiagnostics_color = function
-  | Gcc | Clang -> [ "-fdiagnostics-color=always" ]
+  | Gcc | Clang | Mingw | Intel -> [ "-fdiagnostics-color=always" ]
   | _ -> []
 ;;
 
 let warnings = function
-  | Gcc | Clang -> [ "-Wall" ]
+  | Gcc | Clang | Mingw | Intel -> [ "-Wall" ]
   | Msvc -> [ "-W2" ]
   | _ -> []
 ;;
 
 let header_file_content =
-  {|#if defined( _MSC_VER )
+  {|#if defined(_MSC_VER)
 msvc
-#elif defined( __clang__ )
+#elif defined(__INTEL_COMPILER)
+icc
+#elif defined(__MINGW32__)
+mingw
+#elif defined(__clang_major__) && defined(__clang_minor__)
 clang
-#elif defined( __GNUC__ )
+#elif defined(__GNUC__) && defined(__GNUC_MINOR__)
 gcc
+#elif defined(__xlc__) && defined(__xlC__)
+xlc
+#elif defined(__SUNPRO_C)
+sunc
 #else
-other
+unknown
 #endif
 |}
 ;;
@@ -107,9 +118,13 @@ end
 
 let parse_cc_vendor cc_vendor =
   match String.trim cc_vendor with
+  | "msvc" -> Msvc
+  | "icc" -> Intel
+  | "mingw" -> Mingw
   | "clang" -> Clang
   | "gcc" -> Gcc
-  | "msvc" -> Msvc
+  | "xlc" -> Xlc
+  | "sunc" -> Sun
   | s -> Other s
 ;;
 

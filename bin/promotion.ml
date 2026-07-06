@@ -82,9 +82,7 @@ module Apply = struct
     run ~builder ~exact ~files
   ;;
 
-  let term = term_with_builder Common.Builder.term
-
-  let promote_term =
+  let term =
     term_with_builder
       (let+ no_build = Common.No_build.term in
        Common.Builder.set_no_build Common.Builder.default no_build)
@@ -204,9 +202,5 @@ let info =
 let group = Cmd.group info [ Files.command; Apply.command; Diff.command; Show.command ]
 
 let promote =
-  Common.command_alias
-    ~orig_name:"promotion apply"
-    Apply.command
-    Apply.promote_term
-    "promote"
+  Common.command_alias ~orig_name:"promotion apply" Apply.command Apply.term "promote"
 ;;

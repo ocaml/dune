@@ -139,7 +139,7 @@ let signal_processes pids signal =
              ])))
 ;;
 
-let rec await_no_child_processes t ~async_io ~deadline ~signal ~signaled =
+let rec await_no_child_processes t ~deadline ~signal ~signaled =
   match child_process_cleanup_candidates_after_reap t with
   | Error error -> Fiber.return (`Failed [ Proc.Linux.Process_tree.pp_error error ])
   | Ok pids when Pid.Set.is_empty pids -> Fiber.return `Exited
@@ -149,11 +149,11 @@ let rec await_no_child_processes t ~async_io ~deadline ~signal ~signaled =
     (match signal_processes unsignaled signal with
      | Error paragraphs -> Fiber.return (`Failed paragraphs)
      | Ok () ->
-       Async_io.Task.await (Async_io.sleep async_io child_process_poll_interval)
+       Async_io.Task.await (Async_io.sleep t.async_io child_process_poll_interval)
        >>= (function
         | Ok () ->
           let signaled = Pid.Set.union signaled unsignaled in
-          await_no_child_processes t ~async_io ~deadline ~signal ~signaled
+          await_no_child_processes t ~deadline ~signal ~signaled
         | Error (`Exn _) -> assert false
         | Error `Cancelled ->
           (match child_process_cleanup_candidates_after_reap t with
@@ -162,7 +162,7 @@ let rec await_no_child_processes t ~async_io ~deadline ~signal ~signaled =
              Fiber.return (`Failed [ Proc.Linux.Process_tree.pp_error error ]))))
 ;;
 
-let cleanup_subreaper_child_processes_impl t ~async_io =
+let cleanup_subreaper_child_processes_impl t =
   match child_process_cleanup_candidates_after_reap t with
   | Error error ->
     warn_child_process_cleanup_failed
@@ -173,7 +173,7 @@ let cleanup_subreaper_child_processes_impl t ~async_io =
   | Ok pids ->
     trace_child_process_cleanup pids `Started;
     let deadline = Time.add (Time.now ()) sigterm_grace_period in
-    await_no_child_processes t ~async_io ~deadline ~signal:Term ~signaled:Pid.Set.empty
+    await_no_child_processes t ~deadline ~signal:Term ~signaled:Pid.Set.empty
     >>= (function
      | `Failed paragraphs ->
        warn_child_process_cleanup_failed pids paragraphs;
@@ -183,7 +183,7 @@ let cleanup_subreaper_child_processes_impl t ~async_io =
        Fiber.return ()
      | `Timed_out _ ->
        let deadline = Time.add (Time.now ()) sigterm_grace_period in
-       await_no_child_processes t ~async_io ~deadline ~signal:Kill ~signaled:Pid.Set.empty
+       await_no_child_processes t ~deadline ~signal:Kill ~signaled:Pid.Set.empty
        >>| (function
         | `Failed paragraphs -> warn_child_process_cleanup_failed pids paragraphs
         | `Exited -> trace_child_process_cleanup pids `Finished
@@ -203,7 +203,7 @@ let cleanup_subreaper_child_processes () =
   if Lazy.force child_subreaper_enabled
   then (
     let t = t () in
-    cleanup_subreaper_child_processes_impl t ~async_io:t.async_io)
+    cleanup_subreaper_child_processes_impl t)
   else Fiber.return ()
 ;;
 
@@ -310,24 +310,15 @@ let kill_and_wait_for_all_processes t =
     ignore (cleanup_iter t saw_shutdown : Fiber.fill list)
   done;
   if Lazy.force child_subreaper_enabled
-  then (
-    (* Reap escaped subreaper children on an isolated event queue / async-io loop.
-       The main run has finished and cleared [current], so reusing the scheduler's
-       queue here would make this [Fiber.run] resume the finished run's fibers
-       (a different fiber scheduler) and observe stale fills. A fresh queue only
-       ever receives this cleanup's own async-io completions. *)
-    let events = Event.Queue.create () in
-    let async_io = Async_io.create events in
-    Exn.protect
-      ~finally:(fun () -> Async_io.shutdown async_io)
-      ~f:(fun () ->
-        Fiber.run (cleanup_subreaper_child_processes_impl t ~async_io) ~iter:(fun () ->
-          let rec next () =
-            match Event.Queue.next events with
-            | Fiber_fill_ivar fill -> [ fill ]
-            | Job_complete_ready | Shutdown _ -> next ()
-          in
-          next ())));
+  then
+    cleanup_subreaper_child_processes_impl t
+    |> Fiber.run ~iter:(fun () ->
+      let rec next () =
+        match Event.Queue.next t.events with
+        | Fiber_fill_ivar fill -> [ fill ]
+        | Job_complete_ready | Shutdown _ -> next ()
+      in
+      next ());
   (* This silliness is needed because we have tests that run the scheduler
      more than once per process. Such tests require the signal watcher to be
      reset with the correct event queue. *)

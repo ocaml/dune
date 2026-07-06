@@ -413,7 +413,6 @@ module Run_once = struct
   ;;
 
   let run t f : _ result =
-    current := Some t;
     let fiber =
       Fiber.map_reduce_errors
         (module Monoid.Unit)
@@ -422,16 +421,13 @@ module Run_once = struct
           Dune_util.Report_error.report e;
           Fiber.return ())
     in
-    Exn.protect
-      ~finally:(fun () -> current := None)
-      ~f:(fun () ->
-        match Fiber.run fiber ~iter:(fun () -> iter t) with
-        | Ok res ->
-          assert (Process_watcher.running_count t.process_watcher = 0);
-          Result.Ok res
-        | Error () -> Error Already_reported
-        | exception Abort err -> Error err
-        | exception exn -> Error (Exn (Exn_with_backtrace.capture exn)))
+    match Fiber.run fiber ~iter:(fun () -> iter t) with
+    | Ok res ->
+      assert (Process_watcher.running_count t.process_watcher = 0);
+      Result.Ok res
+    | Error () -> Error Already_reported
+    | exception Abort err -> Error err
+    | exception exn -> Error (Exn (Exn_with_backtrace.capture exn))
   ;;
 
   let run_and_cleanup t f =

@@ -116,6 +116,29 @@ let variant name cases = Variant (name, cases)
 let repr_for_to_dyn to_dyn = Abstract { to_dyn }
 let abstract to_dyn = Abstract { to_dyn }
 
+module Enum = struct
+  type 'a t =
+    { name : string
+    ; cases : (string * 'a) list
+    }
+
+  let make name cases = { name; cases }
+
+  let repr { name; cases } =
+    variant name (List.map cases ~f:(fun (name, t) -> case0 name ~test:(Poly.equal t)))
+  ;;
+
+  let to_string t x =
+    match
+      List.find_map t.cases ~f:(fun (s, x') -> if Poly.equal x' x then Some s else None)
+    with
+    | None -> failwith "Enum.to_string"
+    | Some s -> s
+  ;;
+
+  let of_string t s = List.assoc_opt s t.cases
+end
+
 let rec to_dyn : type a. a repr -> a -> Dyn.t =
   fun repr value ->
   match repr with

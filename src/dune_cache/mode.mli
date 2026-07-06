@@ -24,6 +24,7 @@ type t =
   | Hardlink
   | Copy
 
+val repr : t Repr.t
 val equal : t -> t -> bool
 val all : (string * t) list
 val to_string : t -> string

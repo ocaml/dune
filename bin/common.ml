@@ -629,7 +629,6 @@ module Builder = struct
     ; sandbox_actions : bool
     }
 
-  let set_no_build t no_build = { t with no_build }
   let root t = t.root
   let set_root t root = { t with root = Some root }
   let forbid_builds t = { t with allow_builds = false; no_print_directory = true }

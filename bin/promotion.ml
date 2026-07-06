@@ -20,6 +20,12 @@ let on_missing missing =
       ])
 ;;
 
+(* Promotion subcommands don't build anything: they read the [.to-promote] db
+   and copy files between the build dir and source tree. *)
+let init_no_build builder =
+  Common.Builder.forbid_builds builder |> Common.Builder.disable_log_file |> Common.init
+;;
+
 module Apply = struct
   let info =
     let doc = "Promote files from the last run" in
@@ -45,8 +51,18 @@ module Apply = struct
     Cmd.info ~doc ~man "apply"
   ;;
 
-  let run ~(builder : Common.Builder.t) ~exact ~files =
-    let common, config = Common.init builder in
+  let term =
+    let+ builder = Common.Builder.term
+    and+ exact =
+      Arg.(
+        value
+        & flag
+        & info [ "file" ] ~doc:(Some "Require each FILE argument to match exactly."))
+    and+ files =
+      (* CR-someday Alizter: document this option *)
+      Arg.(value & pos_all Arg.path [] & info [] ~docv:"FILE" ~doc:None)
+    in
+    let common, config = init_no_build builder in
     let files_to_promote = List.map files ~f:Arg.Path.arg |> files_to_promote ~common in
     let matching : Dune_rpc.Promote_targets.Matching.t =
       if exact then Exact else Prefix
@@ -66,28 +82,6 @@ module Apply = struct
           Dune_rpc.Procedures.Public.promote_many
           { Dune_rpc.Promote_targets.files = files_to_promote; matching }
         >>| Rpc.Rpc_common.wrap_build_outcome_exn ~print_on_success:true)
-  ;;
-
-  let term_with_builder builder =
-    let+ builder
-    and+ exact =
-      Arg.(
-        value
-        & flag
-        & info [ "file" ] ~doc:(Some "Require each FILE argument to match exactly."))
-    and+ files =
-      (* CR-someday Alizter: document this option *)
-      Arg.(value & pos_all Arg.path [] & info [] ~docv:"FILE" ~doc:None)
-    in
-    run ~builder ~exact ~files
-  ;;
-
-  let term = term_with_builder Common.Builder.term
-
-  let promote_term =
-    term_with_builder
-      (let+ no_build = Common.No_build.term in
-       Common.Builder.set_no_build Common.Builder.default no_build)
   ;;
 
   let command = Cmd.v info term
@@ -116,7 +110,7 @@ module Diff = struct
       (* CR-someday Alizter: document this option *)
       Arg.(value & pos_all Cmdliner.Arg.file [] & info [] ~docv:"FILE" ~doc:None)
     in
-    let common, config = Common.init builder in
+    let common, config = init_no_build builder in
     let files_to_promote = files_to_promote ~common files in
     (* CR-soon rgrinberg: remove pointless args *)
     Scheduler_setup.no_build_no_rpc ~config (fun () ->
@@ -141,7 +135,7 @@ module Files = struct
       (* CR-soon rgrinberg: why do we even need this argument? *)
       Arg.(value & pos_all Cmdliner.Arg.file [] & info [] ~docv:"FILE" ~doc:None)
     in
-    let common, _config = Common.init builder in
+    let common, _config = init_no_build builder in
     let files_to_promote = files_to_promote ~common files in
     (* CR-soon rgrinberg: remove pointless args *)
     let db = Diff_promotion.load_db () in
@@ -184,7 +178,7 @@ module Show = struct
          are users supposed to distinguish the output? *)
       Arg.(value & pos_all Cmdliner.Arg.file [] & info [] ~docv:"FILE" ~doc:None)
     in
-    let common, _config = Common.init builder in
+    let common, _config = init_no_build builder in
     let files_to_promote = files_to_promote ~common files in
     let db = Diff_promotion.load_db () in
     let { Diff_promotion.present = _; missing } =
@@ -204,9 +198,5 @@ let info =
 let group = Cmd.group info [ Files.command; Apply.command; Diff.command; Show.command ]
 
 let promote =
-  Common.command_alias
-    ~orig_name:"promotion apply"
-    Apply.command
-    Apply.promote_term
-    "promote"
+  Common.command_alias ~orig_name:"promotion apply" Apply.command Apply.term "promote"
 ;;

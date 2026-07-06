@@ -578,6 +578,8 @@ let gen_rules_regular_directory (sctx : Super_context.t Memo.t) ~src_dir ~compon
               dir_status
               ~jsoo_enabled:Jsoo_rules.jsoo_enabled
               ~dir
+          and+ jsoo_archive_build_only_sub_dirs =
+            Jsoo_archive_rules.build_only_sub_dirs_for_dir_status sctx dir_status ~dir
           in
           let allowed_subdirs =
             let automatic = Automatic_subdir.subdirs components in
@@ -598,6 +600,13 @@ let gen_rules_regular_directory (sctx : Super_context.t Memo.t) ~src_dir ~compon
                   ]
             in
             Filename.Set.union automatic toplevel
+          in
+          let build_dir_only_sub_dirs =
+            Gen_rules.Build_only_sub_dirs.union
+              (Gen_rules.Build_only_sub_dirs.singleton
+                 ~dir
+                 (Subdir_set.of_set allowed_subdirs))
+              jsoo_archive_build_only_sub_dirs
           in
           fun rules ->
             let rules =
@@ -624,7 +633,7 @@ let gen_rules_regular_directory (sctx : Super_context.t Memo.t) ~src_dir ~compon
                    compile_commands_rules)
                 rules
             in
-            Gen_rules.rules_for ~dir ~directory_targets ~allowed_subdirs rules
+            Gen_rules.Rules.create ~build_dir_only_sub_dirs ~directory_targets rules
         in
         match dir_status with
         | Lock_dir _ -> Gen_rules.rules_here Gen_rules.Rules.empty

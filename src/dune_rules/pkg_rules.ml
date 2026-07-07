@@ -1408,29 +1408,12 @@ module DB = struct
     { id : Id.t
     ; pkg_digest_table : Pkg_table.t
     ; system_provided : Package.Name.Set.t
-    ; is_relocatable_compiler_context : bool
     }
 
   let equal x y = Id.equal x.id y.id
 
-  let create =
-    (* A compiler is relocatable if the solution contains the
-       "relocatable-compiler" meta-package (from dra27's overlay repo) or
-       the "relocatable" virtual package (from upstream opam-repository). *)
-    let is_relocatable_meta_package name =
-      Package.Name.equal name (Package.Name.of_string "relocatable-compiler")
-      || Package.Name.equal name (Package.Name.of_string "relocatable")
-    in
-    fun ~pkg_digest_table ~system_provided ->
-      { id = Id.gen ()
-      ; pkg_digest_table
-      ; system_provided
-      ; is_relocatable_compiler_context =
-          Pkg_digest.Map.existsi
-            pkg_digest_table
-            ~f:(fun _ { Pkg_table.pkg = { info = { name; _ }; _ }; _ } ->
-              is_relocatable_meta_package name)
-      }
+  let create ~pkg_digest_table ~system_provided =
+    { id = Id.gen (); pkg_digest_table; system_provided }
   ;;
 
   let pkg_digest_of_name lock_dir platform pkg_name ~system_provided =
@@ -1559,6 +1542,27 @@ end = struct
     | Action a -> Build_command.Action (relocate a)
   ;;
 
+  let is_relocatable_compiler_marker name =
+    let relocatable_compiler = Package.Name.of_string "relocatable-compiler" in
+    let relocatable = Package.Name.of_string "relocatable" in
+    Package.Name.equal name relocatable_compiler || Package.Name.equal name relocatable
+  ;;
+
+  let has_relocatable_compiler_marker (info : Pkg_info.t) depends =
+    is_relocatable_compiler_marker info.name
+    || Pkg.top_closure depends
+       |> List.exists ~f:(fun (pkg : Pkg.t) ->
+         is_relocatable_compiler_marker pkg.info.name)
+  ;;
+
+  let is_compiler_version_relocatable (info : Pkg_info.t) =
+    Pkg_toolchain.is_compiler_package_with_toolchains_enabled info.name
+    &&
+    match Package_version.compare info.version (Package_version.of_string "5.5.0") with
+    | Lt -> false
+    | Eq | Gt -> true
+  ;;
+
   let resolve_impl { Input.db; pkg_digest; universe = package_universe } =
     match Pkg_digest.Map.find db.pkg_digest_table pkg_digest with
     | None -> Memo.return None
@@ -1616,8 +1620,9 @@ end = struct
       let paths =
         let paths = Paths.map_path write_paths ~f:Path.build in
         if
-          db.is_relocatable_compiler_context
-          || not (Pkg_toolchain.is_compiler_package_with_toolchains_enabled info.name)
+          (not (Pkg_toolchain.is_compiler_package_with_toolchains_enabled info.name))
+          || is_compiler_version_relocatable info
+          || has_relocatable_compiler_marker info depends
         then paths
         else (
           (* Modify the environment as well as build and install commands for

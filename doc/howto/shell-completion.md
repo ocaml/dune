@@ -3,9 +3,9 @@ How to Set Up Shell Command Completion
 
 Shell command completion refers to a common feature in various shells:
 hitting \<TAB\> after a partially-typed command will print matching suggestions.
-This can apply to command names, flags, arguments, filenames...
+This can apply to command names, flags, arguments...
 
-Dune offers completion for commands, subcommands, and flags, for `bash`, `zsh`, and `powershell`.
+Dune offers completion for commands, subcommands, and flags, for Bash, Z shell, and PowerShell.
 The various shells and systems require specific configuration setups,
 and this document aims to help users get completion running.
 
@@ -20,7 +20,7 @@ or `/usr/local/share/bash-completion/completions/dune` for a system-wide install
 If you use `opam` switches and wish to have switch-local completion,
 add the script to `<switch prefix>/share/bash-completion/completions/dune`.
 
-A different path would be to add to your `.bashrc` the following line: `eval "$(dune completion bash)"`.
+A different option would be to add to your `.bashrc` the following line: `eval "$(dune completion bash)"`.
 
 You might need to restart your shell to see the effects.
 
@@ -40,7 +40,7 @@ You might need to restart your shell to see the effects.
 PowerShell
 ----------
 
-Command completion for powershell should work out of the box:
+Command completion for PowerShell should work out of the box:
 simply run `dune completion powershell >> $PROFILE.CurrentUserCurrentHost`.
 Alternatively, add the following to your profile script:
 `dune completion powershell | Out-String | Invoke-Expression`.

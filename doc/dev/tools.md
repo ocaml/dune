@@ -23,16 +23,19 @@ nix shell --impure --expr 'let pkgs = import (builtins.getFlake "github:NixOS/ni
     - [1. Installation](#1-installation)
       - [1.1. Generality](#11-generality)
       - [1.2. Workspace-local](#12-workspace-local)
-      - [1.3. Version pinning](#13-version-pinning)
-      - [1.4. Multi-version support](#14-multi-version-support)
+      - [1.3. System wide](#13-system-wide)
+      - [1.4. Version specification](#14-version-specification)
+        - [1.4.1. Version consistency TODO](#141-version-consistency-todo)
+      - [1.5. Multi-version support](#15-multi-version-support)
       - [1.5. Clean source tree](#15-clean-source-tree)
       - [1.6. Binary selection](#16-binary-selection)
     - [2. Usability](#2-usability)
-      - [2.1. Tool invocation](#21-tool-invocation)
-      - [2.2. Programmatic use](#22-programmatic-use)
-      - [2.3. Dune subcommands](#23-dune-subcommands)
-      - [2.4. System PATH fallback](#24-system-path-fallback)
-      - [2.5. Editor integration](#25-editor-integration)
+      - [2.1. Shells](#21-shells)
+      - [2.2. Version specification TODO](#22-version-specification-todo)
+      - [2.3. Programmatic use](#23-programmatic-use)
+      - [2.4. Dune subcommands](#24-dune-subcommands)
+      - [2.5. System PATH fallback](#25-system-path-fallback)
+      - [2.6. Editor integration](#26-editor-integration)
     - [3. Dependency interactions](#3-dependency-interactions)
       - [3.1. Compiler compatibility](#31-compiler-compatibility)
       - [3.2. Dependency isolation](#32-dependency-isolation)
@@ -55,7 +58,7 @@ nix shell --impure --expr 'let pkgs = import (builtins.getFlake "github:NixOS/ni
       - [6.4. Environment manipulation](#64-environment-manipulation)
       - [6.5. Precompiled binaries](#65-precompiled-binaries)
       - [6.6. Ephemeral runs](#66-ephemeral-runs)
-  - [Specification](#specification)
+  - [Implementation](#implementation)
     - [The `(tool)` stanza](#the-tool-stanza)
       - [Syntax](#syntax)
       - [Fields](#fields)
@@ -130,6 +133,7 @@ nix shell --impure --expr 'let pkgs = import (builtins.getFlake "github:NixOS/ni
     - [What Worked Well](#what-worked-well)
     - [Problems Discovered](#problems-discovered)
     - [Reference Packages for Testing](#reference-packages-for-testing)
+  - [Ideas](#ideas)
 
 <!-- markdown-toc end -->
 
@@ -295,13 +299,12 @@ CR-soon Alizter: Edge cases to specify:
 
 #### 2.3. Programmatic use
 
-Other programs (e.g., editor plugins) must be able to find and run installed
-tools via a single, transparent mechanism (e.g., an equivalent to `opam env` or
-by adding a single directory of executables to the lookup path, or some other
-means).
+Programs (e.g., editor plugins) must be able to find and run installed
+tools via a single, transparent mechanism (e.g., the `dune tools env` equivalent
+to `opam env` or by adding a single directory of executables to the lookup path,
+or some other means).
 
 See [CLI commands](#cli-commands) for the discovery interface.
-
 
 CR-soon Alizter: `dune tools path` behavior is underspecified:
 
@@ -322,10 +325,10 @@ simplifies editor integration (one directory to add to PATH), avoids PATH length
 limits (especially on Windows), and provides a single stable location for
 discovery. Trade-off: need to maintain symlinks as tools are added/removed.
 
-#### 2.4. Dune subcommands
+##### 2.3.1 dune subcommands
 
-Dune subcommands that invoke external tools must be able to use tools managed by
-`dune tools`. See [Dune Integration](#5-dune-integration).
+As a special case, dune subcommands that invoke external tools must be able to
+use tools managed by `dune tools`. See [Dune Integration](#5-dune-integration).
 
 #### 2.5. System PATH fallback
 

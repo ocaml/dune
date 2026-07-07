@@ -1,0 +1,5 @@
+(cram
+ (applies_to bash)
+ (enabled_if
+  (= %{system} linux))
+ (deps %{bin:bash}))

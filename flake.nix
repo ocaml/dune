@@ -162,6 +162,7 @@
               mercurial
               unzip
               coreutils
+              bashInteractive
               curl
               git
               binaryen

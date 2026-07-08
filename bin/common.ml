@@ -627,6 +627,7 @@ module Builder = struct
     ; target_exec : string option
     ; action_runner : bool
     ; sandbox_actions : bool
+    ; sandbox_actions_backends : Action_runner.Backend.t list
     }
 
   let set_no_build t no_build = { t with no_build }
@@ -963,8 +964,23 @@ module Builder = struct
             ~docs
             ~doc:
               (Some
-                 "Run spawned build processes in an external dune action runner wrapped \
-                  with bubblewrap."))
+                 "Run spawned build processes in an external dune action runner under a \
+                  sandbox. The sandbox layering is selected automatically; pass \
+                  --sandbox-actions-backend to override."))
+    and+ sandbox_actions_backends =
+      Arg.(
+        value
+        & opt_all Action_runner.Backend.conv []
+        & info
+            [ "sandbox-actions-backend" ]
+            ~docs
+            ~docv:"BACKEND"
+            ~doc:
+              (Some
+                 "Use this sandbox backend for --sandbox-actions. Repeatable; when \
+                  passed more than once the backends are stacked (currently bwrap \
+                  outermost, landlock inside). If unset, bwrap is selected when \
+                  available, otherwise Landlock is selected when available."))
     and+ action_runner =
       Arg.(
         value
@@ -973,6 +989,15 @@ module Builder = struct
             [ "action-runner" ]
             ~docs
             ~doc:(Some "Run spawned build processes in an external dune action runner."))
+    in
+    let () =
+      if (not sandbox_actions) && not (List.is_empty sandbox_actions_backends)
+      then
+        User_error.raise
+          [ Pp.text
+              "--sandbox-actions-backend requires --sandbox-actions. Either pass \
+               --sandbox-actions or remove --sandbox-actions-backend."
+          ]
     in
     { no_build
     ; debug_dep_path
@@ -1019,6 +1044,7 @@ module Builder = struct
     ; target_exec
     ; action_runner
     ; sandbox_actions
+    ; sandbox_actions_backends
     }
   ;;
 
@@ -1060,6 +1086,7 @@ module Builder = struct
         ; target_exec
         ; action_runner
         ; sandbox_actions
+        ; sandbox_actions_backends
         }
     =
     No_build.equal t.no_build no_build
@@ -1101,6 +1128,10 @@ module Builder = struct
     && Option.equal String.equal t.target_exec target_exec
     && Bool.equal t.action_runner action_runner
     && Bool.equal t.sandbox_actions sandbox_actions
+    && List.equal
+         Action_runner.Backend.equal
+         t.sandbox_actions_backends
+         sandbox_actions_backends
   ;;
 end
 
@@ -1393,7 +1424,8 @@ let init_with_root_and_rpc ~(root : Workspace_root.t) ~rpc_build (builder : Buil
            (Action_runner.create
               ~where:(Lazy.force where)
               ~config
-              ~sandbox_actions:c.builder.sandbox_actions)
+              ~sandbox_actions:c.builder.sandbox_actions
+              ~sandbox_actions_backends:c.builder.sandbox_actions_backends)
        else None)
   in
   let rpc =

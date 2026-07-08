@@ -1,7 +1,12 @@
 (cram
- (applies_to basic shared-cache with-bwrap)
+ (applies_to basic shared-cache with-bwrap backends-bwrap)
  (alias runtest-bwrap)
  (runtest_alias
   (<> %{env:CI=false} true))
  (deps %{bin:bwrap})
  (enabled_if %{bin-available:bwrap}))
+
+(cram
+ (applies_to backends)
+ (enabled_if
+  (= %{system} linux)))

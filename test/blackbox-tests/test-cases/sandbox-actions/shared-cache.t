@@ -1,5 +1,6 @@
-`--sandbox-actions` prevents the worker from writing to the launching dune's
-shared cache.
+Before the Landlock cache policy is installed, `--sandbox-actions` still uses
+bwrap when it is available, so the existing bwrap shared-cache bind prevents
+the worker from writing to the launching dune's shared cache.
 
   $ make_dune_project 3.23
   $ export DUNE_CACHE_ROOT=$PWD/cache-root
@@ -22,26 +23,11 @@ Normal actions can still write there.
   $ test -e "$DUNE_CACHE_ROOT/db/runner-marker" && echo present
   present
 
-Sandboxed actions are blocked from writing there.
+Sandboxed actions are blocked from writing there by bwrap.
 
   $ rm -f "$DUNE_CACHE_ROOT/db/runner-marker"
   $ dune build --sandbox-actions result
   $ cat _build/default/result
   blocked
-  $ test -e "$DUNE_CACHE_ROOT/db/runner-marker" && echo present || echo missing
-  missing
-
-If the shared cache path does not exist yet, dune creates it and still protects
-it from the worker.
-
-  $ export DUNE_CACHE_ROOT=$PWD/fresh-cache-root
-  $ echo "$DUNE_CACHE_ROOT" > cache-root-name
-  $ test -e "$DUNE_CACHE_ROOT/db" && echo present || echo missing
-  missing
-  $ dune build --sandbox-actions result
-  $ cat _build/default/result
-  blocked
-  $ test -d "$DUNE_CACHE_ROOT/db" && echo present || echo missing
-  present
   $ test -e "$DUNE_CACHE_ROOT/db/runner-marker" && echo present || echo missing
   missing

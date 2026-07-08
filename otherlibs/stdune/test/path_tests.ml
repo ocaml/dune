@@ -271,7 +271,15 @@ None
 
 let%expect_test _ =
   reach "/foo/baz" ~from:"/foo/bar";
-  [%expect {| "/foo/baz" |}]
+  [%expect {| "../baz" |}]
+;;
+
+let%expect_test _ =
+  if Sys.win32
+  then (
+    let result = Path.reach (e "C:/foo") ~from:(e "D:/bar") in
+    if not (String.equal result "C:/foo") then print_endline result);
+  [%expect {| |}]
 ;;
 
 let%expect_test _ =
@@ -561,6 +569,14 @@ let%expect_test _ =
 
 let%expect_test _ =
   reach_for_running (e "/fake/path") ~from:(Path.relative build_dir "foo/bar/baz");
+  [%expect
+    {|
+"/fake/path"
+|}]
+;;
+
+let%expect_test _ =
+  reach_for_running (e "/fake/path") ~from:(e "/external/build/foo/bar/baz");
   [%expect
     {|
 "/fake/path"

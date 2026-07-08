@@ -201,23 +201,12 @@ Install with an absolute build directory outside the workspace
   > DUNE_INSTALL_PREFIX="$PWD/../external-prefix" \
   > dune install ext
 
+  $ grep -e external-build-dir ../external-prefix/lib/ext/dune-package
+  [1]
   $ dune_cmd cat ../external-prefix/lib/ext/dune-package \
-  > | awk '
-  >     /^[[:space:]]*\((archives|plugins|native_archives|source)/ { active = 1 }
-  >     active {
-  >       line = $0
-  >       print line
-  >       opens = gsub(/\(/, "(", line)
-  >       closes = gsub(/\)/, ")", line)
-  >       depth += opens - closes
-  >       if (depth <= 0) { active = 0; depth = 0 }
-  >     }' \
-  > | tr ' ()' '\n' \
-  > | grep -Eo '(^|/)ext[.](a|cma|cmxa|cmxs|ml)$' \
-  > | sed 's#^/##'
-  ext.cma
-  ext.cmxa
-  ext.cma
-  ext.cmxs
-  ext.a
-  ext.ml
+  > | grep -e 'archives' -e 'plugins' -e 'native_archives' -e 'impl (path' \
+  > | sed 's/^ *//'
+  (archives (byte ext.cma) (native ext.cmxa))
+  (plugins (byte ext.cma) (native ext.cmxs))
+  (native_archives ext.a)
+  (source (path Ext) (impl (path ext.ml))))))

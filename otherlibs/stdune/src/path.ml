@@ -538,6 +538,7 @@ let external_of_in_source_tree x = external_of_local x ~root:(Lazy.force abs_roo
 
 let reach t ~from =
   match t, from with
+  | External t, External from -> External.reach t ~from
   | External t, _ -> External.to_string t
   | In_source_tree t, In_source_tree from -> Source0.reach t ~from
   | In_build_dir t, In_build_dir from -> Build.reach t ~from
@@ -564,7 +565,11 @@ let reach t ~from =
 ;;
 
 let reach_for_running ?(from = root) t =
-  let fn = reach t ~from in
+  let fn =
+    match t with
+    | External t -> External.to_string t
+    | _ -> reach t ~from
+  in
   match Filename.analyze_program_name fn with
   | In_path when not (String.equal fn ".") -> "./" ^ fn
   | _ -> fn

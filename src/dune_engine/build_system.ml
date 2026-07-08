@@ -1144,6 +1144,21 @@ let handle_final_exns exns =
        List.iter exns ~f:Dune_util.Report_error.report)
 ;;
 
+let auto_promote_enabled () =
+  match !Clflags.promote with
+  | Some Automatically -> true
+  | Some Never | None -> false
+;;
+
+let error_has_promotion error = Option.is_some (Error.promotion error)
+let exn_has_promotion exn = Error.of_exn exn |> List.for_all ~f:error_has_promotion
+
+let all_errors_are_promotions exns =
+  match exns with
+  | [] -> false
+  | _ :: _ -> List.for_all exns ~f:exn_has_promotion
+;;
+
 let run_with_error_collection ?restart_started_at ~build_started_at ~build collect_errors =
   let build =
     match build with
@@ -1190,15 +1205,26 @@ let run_with_error_collection ?restart_started_at ~build_started_at ~build colle
         State.set Build_succeeded__now_waiting_for_changes;
         Fiber.return (Ok res)
       | Error exns ->
+        let auto_promoted_errors =
+          auto_promote_enabled ()
+          && Diff_promotion.has_pending ()
+          && all_errors_are_promotions exns
+        in
         handle_final_exns exns;
         finalize_diff_promotion ();
-        let final_status =
-          if List.exists exns ~f:caused_by_cancellation
-          then State.Restarting_current_build
-          else Build_failed__now_waiting_for_changes
-        in
-        State.set final_status;
-        Fiber.return (Error `Already_reported)
+        if auto_promoted_errors
+        then (
+          let+ () = State.reset_errors () in
+          State.set Build_succeeded__now_waiting_for_changes;
+          Ok ())
+        else (
+          let final_status =
+            if List.exists exns ~f:caused_by_cancellation
+            then State.Restarting_current_build
+            else Build_failed__now_waiting_for_changes
+          in
+          State.set final_status;
+          Fiber.return (Error `Already_reported))
     in
     Metrics.reset ();
     let+ () = Scheduler.flush_file_watcher () in
@@ -1340,7 +1366,9 @@ let run ?restart_started_at ?build f =
   | Ok () ->
     (match !result with
      | Some result -> Ok result
-     | None -> Code_error.raise "build request did not produce a result" [])
+     (* Promotion-only failures can make [run_build_requests] return success
+        even though this result-producing memo did not complete. *)
+     | None -> Error `Already_reported)
 ;;
 
 let run_exn f =

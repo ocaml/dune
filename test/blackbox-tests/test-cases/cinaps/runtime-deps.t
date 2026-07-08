@@ -26,6 +26,5 @@ Runtime dependencies for running cinaps
   -(*)
   +(*$ let f = open_in "foo" in print_endline (input_line f); close_in f *)hello world
   Promoting _build/default/test.ml.cinaps-corrected to test.ml.
-  [1]
   $ cat test.ml
   (*$ let f = open_in "foo" in print_endline (input_line f); close_in f *)hello world

@@ -255,7 +255,7 @@ let prepare ~skip_trailing_cr promotion path1 path2 =
 let print ~skip_trailing_cr ~patch_back promotion path1 path2 =
   let p =
     match patch_back with
-    | None -> prepare ~skip_trailing_cr (Some promotion) path1 path2
+    | None -> prepare ~skip_trailing_cr promotion path1 path2
     | Some dir ->
       let path1 = Path.source (Path.drop_optional_build_context_src_exn path1) in
       let loc = Loc.in_file path1 in
@@ -265,7 +265,7 @@ let print ~skip_trailing_cr ~patch_back promotion path1 path2 =
         ~skip_trailing_cr
         ~dir
         loc
-        (Some promotion)
+        promotion
         (label1, path1)
         (label2, path2)
   in

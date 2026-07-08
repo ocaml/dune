@@ -34,17 +34,33 @@ We distinguish three kinds of tests:
 * Cram tests - expect tests written in Cram_ style.
 
 
+.. _writing-and-running-tests-running-tests:
+
 Running Tests
 =============
 
 Whatever the tests of a project are, the usual way to run tests with Dune is to
-call ``dune runtest`` from the shell (or the command alias ``dune test``). This
-will run all the tests defined in the current directory and any subdirectory
-recursively.
+call ``dune runtest`` from the shell. ``dune test`` is an alias for the same
+command. Without arguments, this runs the tests defined in the current
+directory and any subdirectory recursively.
 
-Note that in any case, ``dune runtest`` is simply shorthand for building the
-``runtest`` alias, so you can always ask Dune to run the tests in conjunction
-with other targets by passing ``@runtest`` to ``dune build``. For instance:
+``dune runtest`` and ``dune test`` are not exactly the same as
+``dune build @runtest``. The ``runtest`` command treats its arguments as test
+paths, defaulting to ``.`` when none are supplied, so it can run all tests in a
+directory, one individual test, or several selected tests.
+
+Most projects use Dune's implicit ``default`` :term:`build context` and do not
+need to think about contexts when running tests. If a workspace defines
+non-default :doc:`workspace contexts </reference/dune-workspace/context>`,
+``dune runtest`` chooses the context named ``default``, or the only available
+context when there is just one. If a workspace defines multiple contexts and
+none of them is named ``default``, pass ``--context`` or a path under a
+:term:`build context root`, such as ``_build/<context>``.
+
+By contrast, ``dune build @runtest`` builds the ``runtest`` alias as a normal
+build target. In a workspace with multiple contexts, an unqualified alias target
+is built in every configured context. This form is useful when you want to run
+tests in conjunction with other targets. For instance:
 
 .. code:: console
 
@@ -507,11 +523,11 @@ The :ref:`tests-stanza` stanza is the multi-test form of ``test``:
 
    (tests (names test1 test2))
 
-More generally, we said in `Running tests`_ that to run tests, Dune simply
-builds the ``runtest`` alias. As a result, you can also add an action to this
-alias in any directory in order to define custom tests. For instance, if you
-have a binary ``tests.exe`` that you want to run as part of running your test
-suite, simply add this to a ``dune`` file:
+More generally, test actions are attached to the ``runtest`` alias. As a
+result, you can also add an action to this alias in any directory in order to
+define custom tests. For instance, if you have a binary ``tests.exe`` that you
+want to run as part of running your test suite, simply add this to a ``dune``
+file:
 
 .. code:: dune
 

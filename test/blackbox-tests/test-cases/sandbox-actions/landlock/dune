@@ -1,0 +1,5 @@
+(cram
+ ; TODO detect the Landlock ABI version and enable these tests only when the
+ ; kernel supports the ABI that dune requires.
+ (enabled_if
+  (= %{system} linux)))

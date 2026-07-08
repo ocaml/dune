@@ -1,5 +1,5 @@
 (cram
- (applies_to :whole_subtree)
+ (applies_to basic shared-cache with-bwrap)
  (alias runtest-bwrap)
  (runtest_alias
   (<> %{env:CI=false} true))

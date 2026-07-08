@@ -1,5 +1,6 @@
 Tests package-scoped library dependencies.
 
+  $ export OCAMLFIND_LDCONF=ignore
   $ make_dune_project 1.0
 
   $ cat >foo.opam

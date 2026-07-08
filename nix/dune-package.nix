@@ -85,20 +85,25 @@ let
               # ocaml itself excludes mingw via `meta.platforms`. Widen it
               # so cross builds against this scope evaluate.
               ocaml = osuper.ocaml.overrideAttrs (o: {
-                meta = (o.meta or { }) // { platforms = lib.platforms.all; };
+                meta = (o.meta or { }) // {
+                  platforms = lib.platforms.all;
+                };
               });
               buildDunePackage =
                 arg:
                 let
-                  widen = a: a // {
-                    meta = (a.meta or { }) // { platforms = lib.platforms.all; };
-                  };
+                  widen =
+                    a:
+                    a
+                    // {
+                      meta = (a.meta or { }) // {
+                        platforms = lib.platforms.all;
+                      };
+                    };
                 in
                 # nix-overlays' `buildDunePackage` accepts either an attrset
                 # or a `final: attrset` function (see `cross/ocaml.nix`).
-                osuper.buildDunePackage (
-                  if builtins.isFunction arg then final: widen (arg final) else widen arg
-                );
+                osuper.buildDunePackage (if builtins.isFunction arg then final: widen (arg final) else widen arg);
             }
           );
         })

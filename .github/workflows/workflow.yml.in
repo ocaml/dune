@@ -22,7 +22,7 @@ jobs:
 #
 
   nix-build:
-    name: Bootstrap with OCaml 5.4
+    name: Bootstrap with OCaml 5.5
     strategy:
       fail-fast: false
       matrix:
@@ -153,28 +153,28 @@ jobs:
             os: ubuntu-latest
           # OCaml 5:
           ## ubuntu (x86)
-          - ocaml-compiler: 5.4.x
-            cache-prefix: 5.4.x
+          - ocaml-compiler: 5.5.x
+            cache-prefix: 5.5.x
             os: ubuntu-latest
             run_tests: true
           ## macos (Apple Silicon)
-          - ocaml-compiler: 5.4.x
-            cache-prefix: 5.4.x
+          - ocaml-compiler: 5.5.x
+            cache-prefix: 5.5.x
             os: macos-latest
             run_tests: true
           ## macos (x86)
-          - ocaml-compiler: 5.4.x
-            cache-prefix: 5.4.x
+          - ocaml-compiler: 5.5.x
+            cache-prefix: 5.5.x
             os: macos-15-intel
           ## MSVC
-          - ocaml-compiler: ocaml-compiler.5.4.0,system-msvc
+          - ocaml-compiler: ocaml-compiler.5.5.0,system-msvc
             os: windows-latest
-            cache-prefix: ocaml-compiler.5.4.0-system-msvc
+            cache-prefix: ocaml-compiler.5.5.0-system-msvc
             run_tests: true
           ## mingw
-          - ocaml-compiler: ocaml-base-compiler.5.4.0,system-mingw
+          - ocaml-compiler: ocaml-base-compiler.5.5.0,system-mingw
             os: windows-latest
-            cache-prefix: ocaml-compiler.5.4.0-system-mingw
+            cache-prefix: ocaml-compiler.5.5.0-system-mingw
             run_tests: true
           # OCaml 4:
           ## ubuntu (x86)

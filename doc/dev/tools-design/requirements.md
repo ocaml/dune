@@ -24,7 +24,7 @@ nix shell --impure --expr 'let pkgs = import (builtins.getFlake "github:NixOS/ni
       - [1.2. Workspace-local](#12-workspace-local)
       - [1.3. System wide](#13-system-wide)
       - [1.4. Version specification](#14-version-specification)
-        - [1.4.1. Version consistency TODO](#141-version-consistency-todo)
+        - [1.4.1. Version consistency](#141-version-consistency)
       - [1.5. Multi-version support](#15-multi-version-support)
       - [1.5. Clean source tree](#15-clean-source-tree)
       - [1.6. Binary selection](#16-binary-selection)
@@ -45,7 +45,7 @@ nix shell --impure --expr 'let pkgs = import (builtins.getFlake "github:NixOS/ni
       - [4.1. CLI](#41-cli)
       - [4.2. Persistent configuration](#42-persistent-configuration)
     - [5. Dune Integration](#5-dune-integration)
-      - [5.1. Format rules (`dune fmt`, `dune build @fmt`)](#51-format-rules-dune-fmt-dune-build-fmt)
+      - [5.1. Format rules](#51-format-rules)
       - [5.2. Documentation rules (`dune build @doc`, `dune ocaml doc`)](#52-documentation-rules-dune-build-doc-dune-ocaml-doc)
       - [5.3. REPL (`dune utop`, `dune ocaml utop`)](#53-repl-dune-utop-dune-ocaml-utop)
       - [5.4. Tool references in actions](#54-tool-references-in-actions)
@@ -205,12 +205,15 @@ Users must be able run a specific version of a tool when multiple versions are i
 
 See [CLI commands](./implementation.md#cli-commands) for invocation syntax.
 
+CR Shon: how does, e.g., uv handle this?
+
 CR-soon Alizter: Edge cases to specify:
 
-- Tool not locked: error with suggestion to run `dune tools add`?
-- Multiple versions locked, none specified: error listing available versions?
-- Specified version not locked: error with suggestion?
-- Build fails: propagate build error?
+- Tool (or specified version of tool) not locked:
+  - error with suggestion to run `dune tools add`?
+- Multiple versions locked, none specified:
+  - error listing available versions?
+  - default to newest version, or to a version marked as default?
 
 #### 2.3. Programmatic use
 
@@ -387,12 +390,12 @@ See [The `(tool)` stanza](./implementation.md#the-tool-stanza) for syntax.
 Tools must integrate with existing dune features that rely on external
 executables.
 
-#### 5.1. Format rules (`dune fmt`, `dune build @fmt`)
+#### 5.1. Format rules
 
-`dune fmt` must use tools managed by `dune tools`. This includes respecting
-version constraints from `.ocamlformat` files, PATH fallback
+`dune fmt` and `dune build @fmt` must use tools managed by `dune tools`. This
+includes respecting version constraints from `.ocamlformat` files, PATH fallback
 ([2.4](#24-system-path-fallback)), and multi-version support
-([1.4](#14-multi-version-support)).
+([1.5](#15-multi-version-support)).
 
 See [Tool resolution](./implementation.md#tool-resolution) for the resolution algorithm.
 
@@ -417,11 +420,9 @@ See [Tool resolution](./implementation.md#tool-resolution) for the resolution al
 #### 5.4. Tool references in actions
 
 Build actions (both user-written rules and dune's internal rules like
-formatting) must be able to reference tool executables via pforms. If the tool
-is not locked, fall back to PATH (consistent with
-[2.4](#24-system-path-fallback)).
-
-See [Tool pforms](./implementation.md#tool-pforms) in the Specification for syntax.
+formatting) must be able to reference the installed tools. E.g., via
+`%{bin:...}` pforms, the base executable name, (or by some new mechanism, if
+there is need for it).
 
 #### 5.5. Legacy migration
 

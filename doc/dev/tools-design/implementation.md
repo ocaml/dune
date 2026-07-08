@@ -95,10 +95,10 @@ nix shell --impure --expr 'let pkgs = import (builtins.getFlake "github:NixOS/ni
 
 ### The `(tool)` stanza
 
-_Implements: [1.3 Version pinning](#13-version-pinning),
-[1.6 Binary selection](#16-binary-selection),
-[3.1 Compiler compatibility](#31-compiler-compatibility),
-[4.2 Persistent configuration](#42-persistent-configuration)_
+_Implements: [1.3 Version specification](./requirements.md#14-version-specification),
+[1.6 Binary selection](./requirements.md#16-binary-selection),
+[3.1 Compiler compatibility](./requirements.md#31-compiler-compatibility),
+[4.2 Persistent configuration](./requirements.md#42-persistent-configuration)_
 
 Tools are declared in `dune-workspace` using the `(tool)` stanza. The stanza
 uses the same dependency syntax as `(depends ...)` for the package field.
@@ -155,7 +155,7 @@ CR-soon Alizter: Missing pins
 
 #### Compiler matching
 
-_Implements: [3.1 Compiler compatibility](#31-compiler-compatibility)_
+_Implements: [3.1 Compiler compatibility](./requirements.md#31-compiler-compatibility)_
 
 Tools that read project build artifacts (e.g., ocamllsp reading `.cmi` files)
 must be built with a compatible compiler to avoid ABI mismatches. By default,
@@ -240,10 +240,9 @@ CR-soon Alizter: Specify exact error messages for these cases.
 
 ### CLI commands
 
-_Implements: [1.3 Version pinning](#13-version-pinning),
-[1.6 Binary selection](#16-binary-selection),
-[2.1 Tool invocation](#21-tool-invocation),
-[2.2 Programmatic use](#22-programmatic-use), [4.1 CLI](#41-cli)_
+_Implements: [1.4 Version specification](./requirements.md##14-version-specification),
+[1.6 Binary selection](./requirements.md#16-binary-selection),
+[2.3 Programmatic use](./requirements.md#23-programmatic-use), [4.1 CLI](./requirements.md#41-cli)_
 
 CR-soon Alizter: The CLI commands are generally underspecified. Each command
 needs detailed behavior documentation: what triggers downloads/builds, how
@@ -252,13 +251,17 @@ output format, etc.
 
 ```
 dune tools                                         List all locked tools (alias for list)
+dune tools list                                    List all locked tools and versions
+
 dune tools add                                     Lock all tools from (tool) stanzas
 dune tools add <pkg>[.<version>] ...               Lock specific tool(s)
+
 dune tools run <pkg>[.<version>] [--bin <name>] [-- <args>]
                                                    Run a tool, passing arguments after --
+
 dune tools path                                    Print path to the managed binary directory (or directories)
 dune tools path <pkg>[.<version>] [--bin <name>]   Print path to tool executable
-dune tools list                                    List all locked tools and versions
+
 dune tools remove <pkg>[.<version>] ...            Remove a tool's lock directory
 ```
 
@@ -407,9 +410,9 @@ Considerations:
 
 ### Tool resolution
 
-_Implements: [1.4 Multi-version support](#14-multi-version-support),
-[2.4 System PATH fallback](#24-system-path-fallback),
-[5.1 Format rules](#51-format-rules-dune-fmt)_
+_Implements: [1.5 Multi-version support](./requirements.md#15-multi-version-support),
+[2.5 System PATH fallback](./requirements.md#25-system-path-fallback),
+[5.1 Format rules](#51-format-rules)_
 
 Tool resolution answers two questions:
 
@@ -469,9 +472,9 @@ the locked version the most recent?
 
 ### Directory structure
 
-_Implements: [1.2 Workspace-local](#12-workspace-local),
-[1.5 Clean source tree](#15-clean-source-tree),
-[3.2 Dependency isolation](#32-dependency-isolation)_
+_Implements: [1.2 Workspace-local](./requirements.md#12-workspace-local),
+[1.5 Clean source tree](./requirements.md#15-clean-source-tree),
+[3.2 Dependency isolation](./requirements.md#32-dependency-isolation)_
 
 Tools use three types of directories:
 
@@ -515,7 +518,15 @@ not inside `_private/`. This allows tools to be locked without going through the
 build system. The build lock directory and install directory are both inside
 `_private/default/` as they are managed by the build system.
 
-### Tool pforms
+### Tool pforms TODO
+
+CR-Shon: I don't understand why this is necessary: why can't actions just  keep
+using the `bin` pform? Introduction of yet another configuration quirk should
+have very good motive, but we already have a way to refer to executables, and
+tools are just a way to manage the installation of executables.
+
+Maybe what we actually want is just way of specifying the scope of tool
+versions? Perhaps via an extension to `env`: this seems like an `env` issue...
 
 _Implements: [5.4 Tool references in actions](#54-tool-references-in-actions)_
 

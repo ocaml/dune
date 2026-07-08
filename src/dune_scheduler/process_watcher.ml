@@ -18,10 +18,7 @@ let kill_process_group pid signal ~is_process_group_leader =
        The downside is that it's more complicated, but also that by sending the
        signal twice we're greatly increasing the existing race condition where
        we call [wait] in parallel with [kill]. *)
-    (try Pid.kill pid `Group signal with
-     (* CR-someday rgrinerg: do we need to catch this error now that we're no
-        longer racing? *)
-     | Unix.Unix_error _ -> ())
+    ignore (Pid.kill pid `Group signal : [ `Delivered | `Dead ])
   | false ->
     (* Process groups are not supported on Windows (or even if they are, [spawn]
        does not know how to use them), so we're only sending the signal to the
@@ -31,8 +28,7 @@ let kill_process_group pid signal ~is_process_group_leader =
       a process group id that we know about. This happens when
       [is_process_group_leader] is [false]. In those cases, it doesn't make
       sense to pretend the pid corresponds to the correct process group. *)
-    (try Pid.kill pid `Pid signal with
-     | Unix.Unix_error _ -> ())
+    ignore (Pid.kill pid `Pid signal : [ `Delivered | `Dead ])
 ;;
 
 (* This mutable table is safe: it does not interact with the state we track in

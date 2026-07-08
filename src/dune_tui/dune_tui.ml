@@ -26,7 +26,7 @@ let term =
                    match Lazy.force old with
                    | Sys.Signal_handle f -> f i
                    | _ ->
-                     Pid.kill (Pid.me ()) `Pid Stop;
+                     Pid.kill_exn (Pid.me ()) `Pid Stop;
                      Dune_trace.emit Process (fun () ->
                        Dune_trace.Event.signal_sent Stop `Ui)))
        in
@@ -270,7 +270,7 @@ let document =
   let keyboard_handler = function
     (* When we encounter q we make sure to quit by signaling termination. *)
     | `ASCII 'q', _ ->
-      Pid.kill (Pid.me ()) `Pid Term;
+      Pid.kill_exn (Pid.me ()) `Pid Term;
       Dune_trace.emit Process (fun () -> Dune_trace.Event.signal_sent Term `Ui);
       `Handled
     (* Toggle help screen *)

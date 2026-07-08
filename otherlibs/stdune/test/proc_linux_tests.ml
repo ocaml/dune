@@ -61,7 +61,7 @@ let fork_child_with_grandchild () =
 ;;
 
 let cleanup_child_tree (child, _grandchild) =
-  Pid.kill child `Pid Kill;
+  Pid.kill_exn child `Pid Kill;
   wait_no_eintr child
 ;;
 

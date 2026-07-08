@@ -127,8 +127,7 @@ let signal_processes pids signal =
       | Error _ -> acc
       | Ok () ->
         (match Pid.kill pid `Pid signal with
-         | () -> Ok ()
-         | exception Unix.Unix_error (Unix.ESRCH, _, _) -> Ok ()
+         | `Delivered | `Dead -> Ok ()
          | exception exn ->
            Error
              [ Pp.textf
@@ -324,7 +323,7 @@ let kill_and_wait_for_all_processes t =
      reset with the correct event queue. *)
   if not Sys.win32
   then (
-    Pid.kill (Pid.me ()) `Pid Thread0.signal_watcher_interrupt;
+    Pid.kill_exn (Pid.me ()) `Pid Thread0.signal_watcher_interrupt;
     Thread.join t.signal_watcher);
   !saw_shutdown
 ;;

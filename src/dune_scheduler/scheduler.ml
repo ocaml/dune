@@ -206,14 +206,91 @@ let cleanup_subreaper_child_processes () =
   else Fiber.return ()
 ;;
 
+let terminate_process_group =
+  let trace_process_group_cleanup pid stage =
+    Dune_trace.emit Process (fun () -> Dune_trace.Event.process_group_cleanup ~pid stage)
+  in
+  let process_group_cleanup_after_exit_enabled =
+    (* Once an action's process exits, its pid can be reused as a pgid. Only
+       use pgid-based cleanup after process exit when pid reuse during the grace
+       period is unlikely. *)
+    let process_group_cleanup_after_exit_min_pid_max = 4_000_000 in
+    lazy
+      (match Platform.OS.value with
+       | Platform.OS.Linux ->
+         (match Proc.Linux.read_pid_max () with
+          | Some pid_max -> pid_max >= process_group_cleanup_after_exit_min_pid_max
+          | None -> false)
+       | _ -> false)
+  in
+  let process_group_poll_interval = Time.Span.of_secs 0.01 in
+  let await_process_group_exit t pid =
+    (* After sending SIGTERM once, poll with signal 0 instead of sending SIGTERM
+       again. A process may use its SIGTERM handler for cleanup, and repeatedly
+       running that handler during the grace period can interfere with that
+       cleanup. *)
+    let deadline = Time.add (Time.now ()) sigterm_grace_period in
+    let rec loop () =
+      match Pid.check pid `Group with
+      | `Dead -> Fiber.return `Exited
+      | `Alive ->
+        if Time.(now () >= deadline)
+        then Fiber.return `Timed_out
+        else
+          Async_io.Task.await (Async_io.sleep t.async_io process_group_poll_interval)
+          >>= (function
+           | Ok () -> loop ()
+           | Error `Cancelled -> Fiber.return `Timed_out
+           | Error (`Exn _) -> assert false)
+    in
+    let+ res = loop () in
+    let () =
+      match res with
+      | `Timed_out -> trace_process_group_cleanup pid (`Timed_out sigterm_grace_period)
+      | `Exited -> trace_process_group_cleanup pid `Finished
+    in
+    res
+  in
+  fun t pid ~is_process_group_leader ->
+    if
+      (not is_process_group_leader)
+      || not (Lazy.force process_group_cleanup_after_exit_enabled)
+    then Fiber.return ()
+    else (
+      match Pid.kill pid `Group Term with
+      | `Dead ->
+        trace_process_group_cleanup pid `Already_exited;
+        Fiber.return ()
+      | `Delivered ->
+        trace_process_group_cleanup pid (`Sent_signal Term);
+        await_process_group_exit t pid
+        >>= (function
+         | `Exited -> Fiber.return ()
+         | `Timed_out ->
+           (match Pid.kill pid `Group Kill with
+            | `Dead -> Fiber.return ()
+            | `Delivered ->
+              trace_process_group_cleanup pid (`Sent_signal Kill);
+              await_process_group_exit t pid
+              >>| (function
+               | `Exited -> ()
+               | `Timed_out ->
+                 User_error.raise
+                   [ Pp.textf "failed to terminate process group %d" (Pid.to_int pid)
+                   ; Pp.text "Processes remained alive after SIGTERM and SIGKILL."
+                   ; Pp.text
+                       "This can happen if an action is repeatedly spawning new \
+                        processes."
+                   ]))))
+;;
+
 (* We use this version privately in this module whenever we can pass the
    scheduler explicitly *)
 let wait_for_build_process t ?cancellation ~is_process_group_leader pid =
   let sigkill_alarm = ref None in
   let wait () =
     let* r = wait_for_process t ~is_process_group_leader pid in
-    if not Sys.win32
-    then Process_watcher.kill_process_group pid Term ~is_process_group_leader;
+    let* () = terminate_process_group t pid ~is_process_group_leader in
     let+ () =
       match !sigkill_alarm with
       | None -> Fiber.return ()

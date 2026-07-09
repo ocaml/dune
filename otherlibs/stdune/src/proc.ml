@@ -69,6 +69,13 @@ module Process_info = struct
 end
 
 module Linux = struct
+  let read_pid_max () =
+    match Io.String_path.read_file "/proc/sys/kernel/pid_max" with
+    | exception Sys_error _ -> None
+    | exception Unix.Unix_error _ -> None
+    | pid_max -> String.trim pid_max |> Int.of_string
+  ;;
+
   module Process_tree = struct
     type error =
       | Cannot_read_directory of

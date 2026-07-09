@@ -124,6 +124,15 @@ module Event : sig
     -> [ `Started | `Sent_signal of Signal.t | `Finished | `Failed ]
     -> t
 
+  val process_group_cleanup
+    :  pid:Pid.t
+    -> [ `Already_exited
+       | `Sent_signal of Signal.t
+       | `Timed_out of Time.Span.t
+       | `Finished
+       ]
+    -> t
+
   val watch_build_start : run_id:int -> restart:bool -> start:Time.t -> t
   val watch_build_restart : run_id:int -> reasons:string list -> at:Time.t -> t
 

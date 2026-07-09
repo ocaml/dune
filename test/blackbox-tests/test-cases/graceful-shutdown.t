@@ -33,7 +33,7 @@ be ready, sends SIGINT to dune, and checks if the cleanup handler ran.
   $ wait $DUNE_PID
   [130]
 
-  $ dune trace cat | jq 'select(.name | startswith("process-")) | { name, args }'
+  $ dune trace cat | jq 'select(.name | startswith("process-cleanup-")) | { name, args }'
   {
     "name": "process-cleanup-start",
     "args": {}

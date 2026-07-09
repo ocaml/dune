@@ -13,5 +13,6 @@ val of_int_exn : int -> t
 
 val kill : t -> [ `Pid | `Group ] -> Signal.t -> [ `Delivered | `Dead ]
 val kill_exn : t -> [ `Pid | `Group ] -> Signal.t -> unit
+val check : t -> [ `Pid | `Group ] -> [ `Dead | `Alive ]
 
 module Set : Set.S with type elt = t

@@ -114,7 +114,8 @@ workspace-local target from the first build.
   $ rm -rf _build dune-cache
   $ export DUNE_CACHE=disabled
   $ build_pkg relocatable-compiler
-  $ build_pkg relocatable-compiler 2>&1 | grep "Building relocatable-compiler" || true
+  $ build_pkg relocatable-compiler 2>&1 | grep "Building relocatable-compiler"
+  [1]
   $ dune trace cat | jq -r '
   >   select(.cat == "cache" and .name == "workspace_local_miss")
   >   | select(.args.head | test("relocatable-compiler.*target$"))

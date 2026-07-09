@@ -24,8 +24,7 @@ pseudo-filesystem of main.bc.js.
 
   $ dune build ./main.bc.js
   $ grep -c EMBEDDED_PAYLOAD _build/default/main.bc.js
-  0
-  [1]
+  1
 
 An executable with default build_runtime_flags still uses the shared
 runtime:

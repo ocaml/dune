@@ -1120,7 +1120,14 @@ let build_standalone_runtime cc ~loc ~in_context ~jsoo_mode:mode =
     assert (Js_of_ocaml.Mode.select ~mode ~js:(wasm_files = []) ~wasm:true);
     let runtime_files = javascript_files @ wasm_files in
     let* eligible =
-      if List.is_empty runtime_files
+      if
+        List.is_empty runtime_files
+        (* The shared runtime is built with the default flags, so an
+           executable customizing [build_runtime_flags] needs its own
+           runtime. *)
+        && Ordered_set_lang.Unexpanded.equal
+             (Js_of_ocaml.Flags.build_runtime flags)
+             Ordered_set_lang.Unexpanded.standard
       then
         Resolve.Memo.peek (Compilation_context.requires_link cc)
         >>| function

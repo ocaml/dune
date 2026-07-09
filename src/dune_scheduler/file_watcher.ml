@@ -438,7 +438,7 @@ let shutdown t =
   close t;
   match t.kind with
   | Inotify _ -> ()
-  | Fswatch { pid; _ } -> Pid.kill pid `Pid Term
+  | Fswatch { pid; _ } -> Pid.kill_exn pid `Pid Term
   | Fswatch_win { t } -> Fswatch_win.shutdown t
   | Fsevents fsevents ->
     Fsevents.stop fsevents.source;

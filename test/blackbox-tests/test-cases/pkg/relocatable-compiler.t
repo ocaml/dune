@@ -1,7 +1,6 @@
 Test that relocatable compilers bypass toolchain cache. A compiler is
-considered relocatable if the solution contains either:
-- The "relocatable-compiler" meta-package (from dra27's overlay repo)
-- The "relocatable" virtual package (from upstream opam-repository)
+considered relocatable if it's OCaml 5.5.0 or newer, or if the compiler
+package's dependency closure contains an older relocatable compiler marker.
 
   $ mkrepo
   $ mkdir -p relocatable-repo/packages
@@ -109,37 +108,41 @@ package):
   $ dune_cmd stat hardlinks $(get_build_pkg_dir ocaml-base-compiler)/target/bin/ocamlc.opt
   3
 
-Test the upstream opam-repository approach: the "relocatable" virtual package.
-Non-relocatable compilers conflict with it, so if it's in the solution the
-compiler must be relocatable. See https://github.com/ocaml/opam-repository/pull/29451
+With the shared cache disabled, building the compiler twice should reuse the
+workspace-local target from the first build.
+
+  $ rm -rf _build dune-cache
+  $ export DUNE_CACHE=disabled
+  $ build_pkg relocatable-compiler
+  $ build_pkg relocatable-compiler 2>&1 | grep "Building relocatable-compiler"
+  [1]
+  $ dune trace cat | jq -r '
+  >   select(.cat == "cache" and .name == "workspace_local_miss")
+  >   | select(.args.head | test("relocatable-compiler.*target$"))
+  >   | .args.reason
+  > '
+
+Test that OCaml 5.5 and newer compilers are treated as relocatable based on
+their version.
 
 We clean up the previous build state first:
 
   $ rm -rf _build dune.lock dune-cache mock-opam-repository
+  $ export DUNE_CACHE=enabled
   $ mkrepo
 
-  $ mkpkg relocatable packages << 'EOF'
-  > EOF
-
-The non-relocatable compiler in the mock repo conflicts with relocatable:
-
-  $ mkpkg ocaml-base-compiler 5.3.0 << 'EOF'
-  > conflicts: [ "relocatable" ]
+  $ mkpkg ocaml-compiler 5.5.0 << 'EOF'
   > EOF
   $ append_fake_compiler_commands \
-  >   "$mock_packages/ocaml-base-compiler/ocaml-base-compiler.5.3.0/opam" \
-  >   "ocamlc binary"
-
-A relocatable compiler does not conflict with relocatable:
-
-  $ mkpkg ocaml-base-compiler 5.3.0+relocatable << 'EOF'
-  > EOF
-  $ append_fake_compiler_commands \
-  >   "$mock_packages/ocaml-base-compiler/ocaml-base-compiler.5.3.0+relocatable/opam" \
+  >   "$mock_packages/ocaml-compiler/ocaml-compiler.5.5.0/opam" \
   >   "relocatable ocamlc"
 
-  $ mkpkg ocaml 5.3.0 << 'EOF'
-  > depends: [ "ocaml-base-compiler" {>= "5.3.0"} ]
+  $ mkpkg ocaml-base-compiler 5.5.0 << 'EOF'
+  > depends: [ "ocaml-compiler" {= "5.5.0"} ]
+  > EOF
+
+  $ mkpkg ocaml 5.5.0 << 'EOF'
+  > depends: [ "ocaml-base-compiler" {= "5.5.0"} ]
   > EOF
 
   $ cat > dune-project << 'EOF'
@@ -147,7 +150,7 @@ A relocatable compiler does not conflict with relocatable:
   > (package
   >  (name test)
   >  (allow_empty)
-  >  (depends ocaml relocatable))
+  >  (depends ocaml))
   > EOF
 
   $ cat > dune-workspace << EOF
@@ -159,15 +162,15 @@ A relocatable compiler does not conflict with relocatable:
   >  (url "file://$PWD/mock-opam-repository"))
   > EOF
 
-Requiring relocatable should exclude the non-relocatable compiler:
+Solving for OCaml 5.5 should pick the split compiler packages:
 
   $ dune_pkg_lock_normalized
   Solution for dune.lock:
-  - ocaml.5.3.0
-  - ocaml-base-compiler.5.3.0+relocatable
-  - relocatable.packages
+  - ocaml.5.5.0
+  - ocaml-base-compiler.5.5.0
+  - ocaml-compiler.5.5.0
 
-  $ build_pkg ocaml-base-compiler
+  $ build_pkg ocaml-compiler
 
 Toolchain cache should be empty:
 
@@ -177,6 +180,5 @@ Toolchain cache should be empty:
 Check the installed files from the compiler are hardlinked (cached as regular
 package):
 
-  $ dune_cmd stat hardlinks $(get_build_pkg_dir ocaml-base-compiler)/target/bin/ocamlc.opt
+  $ dune_cmd stat hardlinks $(get_build_pkg_dir ocaml-compiler)/target/bin/ocamlc.opt
   3
-

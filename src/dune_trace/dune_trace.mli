@@ -303,7 +303,7 @@ end
 module Out : sig
   type t
 
-  val create : Path.t -> t
+  val create : [ `Path of Path.t | `Fd of Fd.t ] -> t
   val emit : ?buffered:bool -> t -> Event.t -> unit
   val start : t option -> (unit -> Event.Async.data) -> Event.Async.t option
   val finish : t -> Event.Async.t option -> unit

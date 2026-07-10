@@ -73,7 +73,7 @@ let set_global t ~path = set_global_impl ~ownership:(Owned path) t
 
 let set_global_inherited_fd ?(common_args = []) fd =
   Fd.set_close_on_exec fd;
-  let out = Out.of_fd fd in
+  let out = Out.create (`Fd fd) in
   set_global_impl ~ownership:Borrowed out;
   Event.Event.set_common_args common_args
 ;;

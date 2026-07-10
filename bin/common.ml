@@ -1278,7 +1278,7 @@ let init_with_root_and_rpc ~(root : Workspace_root.t) ~rpc_build (builder : Buil
              | () -> ()
              | exception Unix.Unix_error _ -> ())
           | `User_specified _ -> ());
-         let stats = Dune_trace.Out.create trace in
+         let stats = Dune_trace.Out.create (`Path trace) in
          Dune_trace.set_global stats ~path:trace;
          Dune_trace.Event.init
            ~version:

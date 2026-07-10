@@ -5,6 +5,7 @@ module Promote = struct
     | Automatically
     | Never
 
+  (* CR-soon rgrinberg: remove this *)
   let equal a b =
     match a, b with
     | Automatically, Automatically | Never, Never -> true

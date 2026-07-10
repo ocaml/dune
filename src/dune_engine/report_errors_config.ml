@@ -17,6 +17,7 @@ type t =
      scheduling. *)
   | Twice
 
+(* CR-soon rgrinberg: rmeove this *)
 let equal a b =
   match a, b with
   | Early, Early | Deterministic, Deterministic | Twice, Twice -> true

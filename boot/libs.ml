@@ -46,12 +46,6 @@ let local_libraries =
               ]
           }
     }
-  ; { path = "src/dune_graph"
-    ; main_module_name = Some "Dune_graph"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
   ; { path = "vendor/incremental-cycles/src"
     ; main_module_name = Some "Incremental_cycles"
     ; include_subdirs = No
@@ -461,7 +455,6 @@ let main =
             ; "Dune_digest"
             ; "Dune_engine"
             ; "Dune_findlib"
-            ; "Dune_graph"
             ; "Dune_lang"
             ; "Dune_pkg"
             ; "Dune_rpc"

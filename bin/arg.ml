@@ -150,10 +150,6 @@ let bytes =
   conv (decode, pp_print_int64)
 ;;
 
-let graph_format : Dune_graph.Graph.File_format.t conv =
-  conv Dune_graph.Graph.File_format.conv
-;;
-
 let context_name : Context_name.t conv = conv Context_name.conv
 let lib_name = conv Lib_name.conv
 let version = pair ~sep:'.' int int

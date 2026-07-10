@@ -199,6 +199,19 @@ executables. As a result, it becomes necessary to only install a preferred
 subset of the provided tools. E.g., `js_of_ocaml-compiler` provides
 `js_of_ocaml`, `jsoo_minify`, and `jsoo_listunits`.
 
+#### 1.7 By tool name
+
+Users should be able to install tools based on the name of the tool without
+considering the package that provides it.
+
+##### 1.7.1 Disambiguation
+
+If multiple packages provide the tools with the same name, and a user requests installation, dune should offer disambiguation.
+
+CR Shon: what do we do in dune package management if two packages provide the
+same executable? E.g., perhaps you want to use package a for tool a' and b for
+b', but they both also provide executables named `c`?
+
 ### 2. Usability
 
 Users must be able to run tools installed by Dune.

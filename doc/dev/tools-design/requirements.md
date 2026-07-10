@@ -226,7 +226,7 @@ Users must be able to run tools by invoking them directly in any shell (e.g., ba
 
 See [CLI commands](./implementation.md#cli-commands) for invocation syntax.
 
-#### 2.3. Programmatic use
+#### 2.2. Programmatic use
 
 Programs (e.g., editor plugins) must be able to find and run installed
 tools via a single, transparent mechanism (e.g., the `dune tools env` equivalent
@@ -235,12 +235,12 @@ printing the path locations, or some other means).
 
 See [CLI commands](./implementation.md#cli-commands) for the discovery interface.
 
-##### 2.3.1 dune subcommands
+##### 2.2.1 dune subcommands
 
 As a special case, dune subcommands that invoke external tools must be able to
 use tools managed by `dune tools`. See [Dune Integration](#5-dune-integration).
 
-#### 2.5. System PATH fallback
+###### 2.2.1.1 System PATH fallback
 
 When a tool is not locked and no version is specified (e.g., `.ocamlformat`
 without a version), dune subcommands should fall back to the system PATH.
@@ -255,7 +255,7 @@ CR-Alizter soon: Fixup wording above.
 CR-Alizter soon: How would this even work if we don't know the binary from the
 package?
 
-#### 2.6. Editor integration
+#### 2.3. Editor integration
 
 Editors and IDEs must be able to:
 

@@ -1,6 +1,7 @@
 # Tools Requirements
 
-Authors: Ali Caglayan (Tarides), Shon Feder (Tarides)
+Authors: Ali Caglayan (Tarides), Shon Feder (Tarides), Sudha Parimala (Tarides),
+Ambre Suhamy (Tarides)
 
 ## Summary
 

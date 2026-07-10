@@ -1,22 +1,5 @@
 open Stdune
 
-module Mutex = struct
-  open Mutex
-
-  let[@warning "-32"] [@inline never] protect m f =
-    lock m;
-    match f () with
-    | x ->
-      unlock m;
-      x
-    | exception e ->
-      unlock m;
-      reraise e
-  ;;
-
-  include Mutex
-end
-
 type t =
   { fd : Fd.t
   ; buf : Buffer.t

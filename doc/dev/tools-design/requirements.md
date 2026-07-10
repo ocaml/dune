@@ -253,7 +253,10 @@ a single point of truth for running tools, and for dune to handle it. This would
 mean opam users can continue to use dune in which ever way they please and the
 editors will not have to care.
  
+#### 2.4 Orthogonal execution
 
+Running dune tools (by any means) should not interfere with other concurrent dune
+operations (e.g., `dune build -w`).
 
 ### 3. Dependency interactions
 

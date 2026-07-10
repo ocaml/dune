@@ -824,7 +824,7 @@ let targets_of_purpose (purpose : Process_metadata.purpose) =
   | Build_job (Some { dirs; files; root }) -> Some { Dune_trace.Event.root; dirs; files }
 ;;
 
-let emit_process_finished
+let report_process_finished
       ?(extra_args = [])
       ~metadata
       ~dir
@@ -838,6 +838,8 @@ let emit_process_finished
       (times : Proc.Times.t)
   =
   Dune_trace.emit Process (fun () ->
+    let stdout = Result.Out.get stdout in
+    let stderr = Result.Out.get stderr in
     Dune_trace.Event.process
       ~extra_args
       ~name:metadata.Process_metadata.name
@@ -852,35 +854,6 @@ let emit_process_finished
       ~stdout
       ~stderr
       ~(times : Proc.Times.t))
-;;
-
-let report_process_finished
-      ?(extra_args = [])
-      ~metadata
-      ~dir
-      ~prog
-      ~pid
-      ~args
-      ~started_at
-      ~exit_status
-      ~stdout
-      ~stderr
-      (times : Proc.Times.t)
-  =
-  let stdout = Result.Out.get stdout in
-  let stderr = Result.Out.get stderr in
-  emit_process_finished
-    ~extra_args
-    ~metadata
-    ~dir
-    ~prog
-    ~pid
-    ~args
-    ~started_at
-    ~exit_status
-    ~stdout
-    ~stderr
-    times
 ;;
 
 type prepared_outputs =

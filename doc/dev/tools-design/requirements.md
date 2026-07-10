@@ -265,6 +265,9 @@ dependencies of the environment they are installed in.
 
 #### 3.1. Compiler compatibility
 
+TODO: need to handle tools that are compiler integrations, and want to have an "optimal" dependency environment.
+E.g., installing the latest version of a tool, with whatever compiler version it may need, or installing a tool that is not compatible with your env compiler.
+
 By default, tools are built with a compiler matching the environment. This
 ensures tools like ocamllsp can read project build artifacts correctly.
 
@@ -333,11 +336,15 @@ Users must be able to manage tools using CLI commands:
 - Remove tools
 - Discover paths to tool executables
 
+TODO: we may want a req. that `dune clean` does not wipe out tools
+
 CLI-added tools persist until `dune clean` or `dune tools remove`, but are not
 reproducible across clean builds. See [Batch
 operations](./implementation.md#batch-operations) for batch commands.
 
 #### 4.2. Persistent configuration
+
+TODO: is "reproducible" too strong a word here? If no lock is checked in...
 
 Users must be able to declare tools in workspace configuration. Unlike CLI-added
 tools, declared tools are reproducible:
@@ -352,6 +359,8 @@ See [The `(tool)` stanza](./implementation.md#the-tool-stanza) for syntax.
 
 Tools must integrate with existing dune features that rely on external
 executables.
+
+TODO: de duplicate following with usage notes on dune subcommands?
 
 #### 5.1. Format rules
 
@@ -382,6 +391,9 @@ See [Tool resolution](./implementation.md#tool-resolution) for the resolution al
 
 #### 5.4. Tool references in actions
 
+CR Shon: anything referenced by an action is U2 or greater on the "integration
+requirement spectrum".
+
 Build actions (both user-written rules and dune's internal rules like
 formatting) must be able to reference the installed tools. E.g., via
 `%{bin:...}` pforms, the base executable name, (or by some new mechanism, if
@@ -399,3 +411,80 @@ interventions, as necessary.
 <!-- - Which CLI commands are removed? -->
 <!-- - What happens to existing `.dev-tools.locks/` directories? -->
 <!-- - User-facing migration guide (re-add tools via `dune tools add`) -->
+
+# TODO (Shon, Ambre, Sudha): Analyze out the axes of use and integration
+
+This is about "the tool-dependency spectrum": most tools do not fit into the
+binary between:
+
+- an adhoc binary a person wants to run a few times or
+- a library dependency required for a project
+
+Most tools actually have fall on a spectrum with varying levels of integration
+requirements, and various kinds of usage within the SDLC.
+
+Three ways of invoking a tool:
+
+- shell environment: (dune tools env)
+- sub commands: dune fmt / dune build @doc
+- dedicated dune runner subcommands: dune tools run/exec
+
+How do tools that are required for development currently interact with the
+ current deps? E.g., from opam, `(deps (odoc (and 2.1.1 :with-dev-setup)))`
+
+## There are at least 2 axes
+
+Each a spectrum, but we can sketch its shape using the two extremes and the
+mixed case.
+
+### Usage categories spectrum:
+
+- U1. tools we want to install and run on an adhoc basis: dune tools install og;
+ og foo `dune build @tools` `dune build @editors-tools` :tools `dune pkg lock`.
+- U2. tools we want to use as part of a build alias, but not as part of the
+ package dependencies (for tests, for build docs, fmt, could be geneneralized to
+ any build alias): with-doc, with-test, with-dev-setup
+- U3. tools that are required for a build (e.g., menhir or atd), and just need
+ to be a package dependency unconditionally (but which users will also want to
+ be able to execute)!
+
+### Integration requirements spectrum:
+
+- I1. tools that must integrate with all other packages in a solution (e.g.,
+ because of shared libraries)
+- I2. tools that must integrate just with the compiler (aka "compiler
+ integrations" or "toolchain utilities")
+- I3. tools that do not need to integrate with anything, and can be installed in
+ completely isolated environments. 
+
+## Some example
+
+pkg foo
+ deps A.1
+
+cmdliner   --with-test
+ deps A.1
+ 
+ocamllsp # exectable, but it hast to have library like integration (with compiler)
+ 
+ocamlformat
+ deps A.2
+
+atd -> foo_j.ml (* as a fixuter json serde *)
+  deps A.3
+  
+## Some ideas
+
+Could consider a qualifier on executable packages
+
+- like "disjoint" or "sandboxed": but would have to be only for executables 
+- :exec-only, in which case (so long as not compiler integration!) can always be sandboxed
+
+Libs vs. executables.
+
+TODO: Consider use cases in many different forms and classify.
+
+- Menhir
+- Ocsigen
+- Coq/Fstar
+- grep tools

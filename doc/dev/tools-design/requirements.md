@@ -401,6 +401,8 @@ there is need for it).
 
 #### 5.5. Legacy migration
 
+TODO: is this just a task for our project, or is it actually a requirement? Is the requirement about backward compat.
+
 The legacy `.dev-tools.locks/` system must be removed and replaced by this
 design. Entailing updating all documentation and communicating needed users
 interventions, as necessary.

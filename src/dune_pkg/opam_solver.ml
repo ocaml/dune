@@ -1675,7 +1675,7 @@ let resolve_url (file_url : OpamFile.URL.t) =
            [ "url", OpamUrl.to_dyn url; "path", Path.to_dyn path ]
        | Git at_rev ->
          let resolved_hash = at_rev |> Rev_store.At_rev.rev |> Rev_store.Object.to_hex in
-         (match !Dune_engine.Clflags.display, url.hash with
+         (match !Clflags.display, url.hash with
           | Short, Some old_hash ->
             (match String.equal resolved_hash old_hash with
              | true -> ()

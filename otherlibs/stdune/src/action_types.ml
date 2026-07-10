@@ -106,3 +106,31 @@ module File_perm = struct
     | Executable -> Permissions.Mode.executable_file
   ;;
 end
+
+module Action_output_on_success = struct
+  type t =
+    | Print
+    | Swallow
+    | Must_be_empty
+
+  let for_digest = function
+    | Print -> 0
+    | Swallow -> 1
+    | Must_be_empty -> 2
+  ;;
+
+  let all = [ "print", Print; "swallow", Swallow; "must-be-empty", Must_be_empty ]
+  let equal = Poly.equal
+  let hash = Poly.hash
+
+  let repr =
+    Repr.variant
+      "action-output-on-success"
+      [ Repr.case0 "Print" ~test:(equal Print)
+      ; Repr.case0 "Swallow" ~test:(equal Swallow)
+      ; Repr.case0 "Must_be_empty" ~test:(equal Must_be_empty)
+      ]
+  ;;
+
+  let to_dyn = Repr.to_dyn repr
+end

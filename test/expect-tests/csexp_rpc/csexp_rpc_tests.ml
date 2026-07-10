@@ -60,7 +60,7 @@ let scheduler_config =
 ;;
 
 let run_scheduler ?timeout f =
-  Dune_engine.Clflags.display := Quiet;
+  Clflags.display := Quiet;
   Scheduler.Run.go scheduler_config ?timeout f
 ;;
 

@@ -94,9 +94,7 @@ and t =
   }
 
 let default_target_exec ~target_exec toolchain =
-  match
-    target_exec, !Dune_engine.Clflags.target_exec, Context_name.to_string toolchain
-  with
+  match target_exec, !Clflags.target_exec, Context_name.to_string toolchain with
   | _, Some (name, prog, args), toolchain when name = toolchain -> Some (prog, args)
   | Some target_exec, _, _ -> Some target_exec
   | _ -> None

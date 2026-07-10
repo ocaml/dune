@@ -49,7 +49,7 @@ module Builder : sig
   val default_root_is_cwd : t -> bool
   val set_default_root_is_cwd : t -> bool -> t
   val disable_log_file : t -> t
-  val set_promote : t -> Dune_engine.Clflags.Promote.t -> t
+  val set_promote : t -> Stdune.Clflags.Promote.t -> t
   val default_target : t -> Arg.Dep.t
   val term : t Cmdliner.Term.t
   val term_no_trace_no_pkg : t Cmdliner.Term.t

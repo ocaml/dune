@@ -1,5 +1,3 @@
-open Import
-
 type some =
   | Symlink
   | Copy

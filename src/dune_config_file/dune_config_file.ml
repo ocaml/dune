@@ -1,10 +1,14 @@
+open Stdune.Action_types
+
+let decode_action_stdout_on_success = Dune_sexp.Decoder.enum Action_output_on_success.all
+
 module Dune_config = struct
   open Dune_lang.Decoder
   module Display = Display
-  module Sandbox_mode = Dune_engine.Sandbox_mode
 
   include struct
     open Stdune
+    module Sandbox_mode = Sandbox_mode
     module Console = Console
     module Repr = Repr
     module Loc = Loc
@@ -27,6 +31,7 @@ module Dune_config = struct
     module Env_path = Env_path
     module Fd = Fd
     module Dev_null = Dev_null
+    include Action_types
   end
 
   module Stanza = Dune_lang.Stanza
@@ -302,12 +307,6 @@ module Dune_config = struct
 
       let to_dyn = Dyn.option Dune_cache.Mode.to_dyn
     end
-  end
-
-  module Action_output_on_success = struct
-    include Dune_engine.Execution_parameters.Action_output_on_success
-
-    let decode = enum all
   end
 
   module type S = sig
@@ -608,9 +607,9 @@ module Dune_config = struct
            ~extra_info:"To trim the cache, use the 'dune cache trim' command."
          >>> Dune_lang.Decoder.bytes_unit)
     and+ action_stdout_on_success =
-      field_o "action_stdout_on_success" (3, 0) Action_output_on_success.decode
+      field_o "action_stdout_on_success" (3, 0) decode_action_stdout_on_success
     and+ action_stderr_on_success =
-      field_o "action_stderr_on_success" (3, 0) Action_output_on_success.decode
+      field_o "action_stderr_on_success" (3, 0) decode_action_stdout_on_success
     and+ project_defaults = field_o "project_defaults" (3, 17) Project_defaults.decode
     and+ pkg_enabled = field_o "pkg" (3, 20) Pkg_enabled.decode
     and+ experimental =
@@ -762,7 +761,7 @@ module Dune_config = struct
         Log.info "Auto-detected concurrency" [ "concurrency", Dyn.int n ];
         n
     in
-    (Dune_engine.Clflags.display
+    (Stdune.Clflags.display
      := match t.display with
         | Tui -> Stdune.Display.Quiet
         | Simple { verbosity; _ } -> verbosity);

@@ -126,7 +126,7 @@ let run kind script =
   Path.rm_rf temp_dir;
   Path.mkdir_p temp_dir;
   let vcs = { Vcs.kind; root = temp_dir } in
-  Dune_engine.Clflags.display := Short;
+  Clflags.display := Short;
   let config =
     { Scheduler.Config.concurrency = 1
     ; print_ctrl_c_warning = false

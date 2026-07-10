@@ -8,6 +8,8 @@ module Dune_config : sig
   module Config := Stdune.Config
   module Terminal_persistence := Stdune.Terminal_persistence
   module Path := Stdune.Path
+  module Sandbox_mode := Stdune.Sandbox_mode
+  module Action_output_on_success := Stdune.Action_types.Action_output_on_success
 
   module Project_defaults : sig
     type t =
@@ -31,7 +33,7 @@ module Dune_config : sig
   end
 
   module Sandboxing_preference : sig
-    type t = Dune_engine.Sandbox_mode.t list
+    type t = Sandbox_mode.t list
   end
 
   module Cache : sig
@@ -84,12 +86,6 @@ module Dune_config : sig
     val all : where -> (string * t) list
     val to_dyn : t -> Dyn.t
     val equal : t -> t -> bool
-  end
-
-  module Action_output_on_success : sig
-    include module type of struct
-      include Dune_engine.Execution_parameters.Action_output_on_success
-    end
   end
 
   module type S = sig

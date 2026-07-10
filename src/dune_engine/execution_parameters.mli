@@ -1,6 +1,7 @@
 (** Parameters that influence rule execution *)
 
 open Import
+open Action_types
 
 (** Such as:
 
@@ -24,23 +25,6 @@ val hash : t -> int
 val repr : t Repr.t
 val digest : t -> Digest.t
 val to_dyn : t -> Dyn.t
-
-module Action_output_on_success : sig
-  (** How to deal with the output (stdout/stderr) of actions when they succeed. *)
-  type t =
-    | Print (** Print it to the terminal. *)
-    | Swallow
-    (** Completely ignore it. There is no way for the user to access it but
-        the output of Dune is clean. *)
-    | Must_be_empty
-    (** Require it to be empty. Treat the action as failed if it is not. *)
-
-  val all : (string * t) list
-  val equal : t -> t -> bool
-  val hash : t -> int
-  val repr : t Repr.t
-  val to_dyn : t -> Dyn.t
-end
 
 module Action_output_limit : sig
   (** Maximum size for output (stdout/stderr) of actions, above which the output is

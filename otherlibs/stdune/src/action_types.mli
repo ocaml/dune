@@ -48,3 +48,21 @@ module File_perm : sig
   val suffix : t -> string
   val to_unix_perm : t -> Permissions.Mode.t
 end
+
+module Action_output_on_success : sig
+  (** How to deal with the output (stdout/stderr) of actions when they succeed. *)
+  type t =
+    | Print (** Print it to the terminal. *)
+    | Swallow
+    (** Completely ignore it. There is no way for the user to access it but
+        the output of Dune is clean. *)
+    | Must_be_empty
+    (** Require it to be empty. Treat the action as failed if it is not. *)
+
+  val all : (string * t) list
+  val equal : t -> t -> bool
+  val hash : t -> int
+  val repr : t Repr.t
+  val to_dyn : t -> Dyn.t
+  val for_digest : t -> int
+end

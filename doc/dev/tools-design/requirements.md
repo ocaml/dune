@@ -172,15 +172,9 @@ CLI input being used to update the config file, or simply by raising an error.
 But it must not allow for a version to be installed that leads to inconsistent
 version specifications.
 
-#### 1.5. Multi-version support
 
-Multiple versions of the same tool can coexist within a workspace. This enables
-per-project tool resolution - for example, different projects within a workspace
-can have different `.ocamlformat` files specifying different versions, and the
-formatting rules will use the correct version for each project.
 
-See [Tool pforms](./implementation.md#tool-pforms) for how build rules can
-reference versioned tool executables.
+
 
 #### 1.5. Clean source tree
 

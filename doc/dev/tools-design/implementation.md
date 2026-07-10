@@ -1525,3 +1525,35 @@ versions across 50 sub-projects, users could accumulate many versions. Consider:
 (1) warning when version count exceeds threshold, (2) `dune tools gc` to remove
 unused versions, (3) documenting expected steady-state (few versions, not many).
 
+###  Editor integration
+
+Editors and IDEs must be able to:
+
+- Discover which tools are available in a workspace
+- Find the path to tool executables for spawning
+- Invoke tools with dune managing the process (alternative pattern)
+
+See [CLI commands](./implementation.md#cli-commands) for the discovery and invocation interfaces.
+
+**Open issues** (require consultation with editors team):
+
+- How editors discover which tools are available
+- LSP server invocation pattern: path discovery (editor spawns process) vs
+  managed invocation (dune manages process). LSP servers need editor control of
+  stdin/stdout for JSON-RPC and process lifecycle (restart on crash).
+- Single-file formatting: `dune fmt <file>` for editor integration ([#3244]
+  discusses this)
+
+[#3244]: https://github.com/ocaml/dune/issues/3244
+
+- `dune fmt` over RPC for watch mode integration
+- Integration with `.ocamlformat` version detection
+- Recommended editor configuration patterns
+
+CR-someday Alizter: Path staleness problem. If an editor caches the result of
+`dune tools path ocamllsp` and the user later updates their OCaml version, the
+cached path may point to an ABI-incompatible binary. There's no mechanism to
+notify editors that cached paths are invalid. Options: (1) editors always call
+`dune tools path` fresh, (2) dune provides a staleness check, (3) watch mode
+integration notifies editors of tool rebuilds.
+

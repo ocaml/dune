@@ -270,9 +270,15 @@ There are two ways to run tests:
 -  ``dune build @runtest``
 -  ``dune test`` (or its alias ``dune runtest``)
 
-The two commands are equivalent, and they will run all the tests defined in the
-current directory and its children directories recursively. You can also run the tests in a
-specific sub-directory and its children by using:
+For projects with only the default build context, both commands run all the
+tests defined in the current directory and its children directories
+recursively. They differ when a workspace defines multiple build contexts:
+``dune build @runtest`` builds the alias as a normal build target, while
+``dune test`` selects one context for source paths. See
+:ref:`writing-and-running-tests-running-tests` for details.
+
+You can also run the tests in a specific sub-directory and its children by
+using:
 
 -  ``dune build @foo/bar/runtest``
 -  ``dune test foo/bar`` (or ``dune runtest foo/bar``)

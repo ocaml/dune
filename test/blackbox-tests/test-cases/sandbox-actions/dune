@@ -1,5 +1,10 @@
 (cram
- (applies_to basic shared-cache with-bwrap backends-bwrap)
+ (applies_to
+  basic
+  shared-cache
+  with-bwrap
+  backends-bwrap
+  cache-hardlink-integrity-bwrap)
  (alias runtest-bwrap)
  (runtest_alias
   (<> %{env:CI=false} true))
@@ -7,6 +12,6 @@
  (enabled_if %{bin-available:bwrap}))
 
 (cram
- (applies_to backends)
+ (applies_to backends cache-hardlink-integrity)
  (enabled_if
   (= %{system} linux)))

@@ -226,22 +226,6 @@ Users must be able to run tools by invoking them directly in any shell (e.g., ba
 
 See [CLI commands](./implementation.md#cli-commands) for invocation syntax.
 
-#### 2.2. Version specification TODO
-
-Users must be able run a specific version of a tool when multiple versions are installed.
-
-See [CLI commands](./implementation.md#cli-commands) for invocation syntax.
-
-CR Shon: how does, e.g., uv handle this?
-
-CR-soon Alizter: Edge cases to specify:
-
-- Tool (or specified version of tool) not locked:
-  - error with suggestion to run `dune tools add`?
-- Multiple versions locked, none specified:
-  - error listing available versions?
-  - default to newest version, or to a version marked as default?
-
 #### 2.3. Programmatic use
 
 Programs (e.g., editor plugins) must be able to find and run installed

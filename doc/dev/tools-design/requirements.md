@@ -65,21 +65,23 @@ informing the design.
 
 [Requirements](#requirements) defines _what_ capabilities the system must
 provide and _why_.  Organized by category. Requirements describe user-facing
-behavior without specifying implementation details. Cross-references point to
+behaviour without specifying implementation details. Cross-references point to
 the relevant Implementation sections.
 
-[Implementation](#implementation) details _how_ the system implements the requirements:
+<!-- TODO Should these three sections be moved into implementation doc? -->
+
+[Implementation](./implementation.md) details _how_ the system implements the requirements:
 stanza syntax, CLI commands, version resolution algorithm, and directory
-structure.  Each section notes which requirements it implements. Open questions
+structure. Each section notes which requirements it implements. Open questions
 are marked where decisions are pending.
 
-[Relationship to Package Management](#relationship-to-package-management)
+[Relationship to Package Management](./implementation.md#relationship-to-package-management)
 explains the orthogonality principle and how tools differ from project
 dependencies.
 
-[Comparison with Other Tools](comparison-with-other-tools) analyzes how uv,
-cargo, cargo-run-bin, and npm handle tool management, informing our design
-decisions.
+[Comparison with Other Tools](./implementation.md#comparison-with-other-tools)
+analyzes how `uv`,`cargo`, `cargo-run-bin`, and `npm` handle tool management,
+informing our design decisions.
 
 ## Terminology
 

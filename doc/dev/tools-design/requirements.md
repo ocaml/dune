@@ -146,27 +146,27 @@ system-wide environment (e.g., outside of any particular sandbox).
 *NOTE:* This does not dictate that dune must maintain the equivalent of
 default switches, or predetermine any other implementation choice. But the
 support for tool management must be designed in way that makes it simple and
-reliable for users to use installed tools outside of a project sandbox (e.g., by
+reliable to use installed tools outside of a project sandbox (e.g., by
 adding the location of a directory of binaries to their `PATH` or some other
 means).
 
 #### 1.4. Version specification
 
-Users must be able to install specific versions of tools via:
+Users must be able to specify the version of tools to be installed via:
 
 - CLI arguments
-- Declarative configuration
+- Declarative configuration (i.e. dune stanzas)
 - Tool-specific configuration files (e.g., `.ocamlformat`)
 
 See [Version syntax](./implementation.md#version-syntax) for CLI syntax and
-[The `(tool)` stanza](#the-tool-stanza) for declarative configuration.
+[The `(tool)` stanza](./implementation.md#the-tool-stanza) for declarative configuration.
 
 ##### 1.4.1. Version consistency
 
 The versions of installed tools must remain consistent, accounting for all
 configuration sources. E.g., consider an apparent conflict, such as a stanza
-specifying `(= 0.26.2)` but a CLI input specifying `0.27.0`, `.ocamlformat` says
-`version=0.26.2` but the stanza says `(= 0.27.0)`: in any such cases, a
+specifying `(= 0.26.2)` but a CLI input specifying `0.27.0`, or `.ocamlformat` says
+`version=0.26.2` but the stanza says `(= 0.27.0)`: in such cases, a
 consistent outcome must be derived. E.g., this could be achieved by having the
 CLI input being used to update the config file, or simply by raising an error.
 But it must not allow for a version to be installed that leads to inconsistent

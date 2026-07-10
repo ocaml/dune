@@ -116,14 +116,29 @@ Users must be able to install tools via Dune.
 
 Any installable tool must be supported.
 
-#### 1.2. Workspace-local
+##### 1.2. Scope
 
-Tools are installed per-workspace, not globally. Each workspace has its own
-isolated tool installations that don't affect other workspaces or the system.
+The environments within which a tool are available must be scoped.
+
+#### 1.2.1. Workspace-local scope
+
+It must be possible to install tools per-workspace, such that workspaces define
+a sub-environment. I.e., each workspace has its own isolated tool installations
+that don't affect other workspaces or interfere the system.
 
 See [Directory structure](./implementation.md#directory-structure) for storage locations.
 
-#### 1.3. System wide
+#### 1.2.2. Dune context scope
+
+CR Shon: Is this actually a good idea? How do tools interact with contexts?
+
+It must be possible to install the versions of a tool per-dune context within a
+workspace, such that different contexts can use different versions of tools.
+
+This follows the example of `dune pkg`'s `lock_dir` in the context stanza, and
+allows developers to set up different tooling configurations (What for?).
+
+#### 1.2.3. System wide scope
 
 Users should be able to install tools in a way that allows them to be used in the
 system-wide environment (e.g., outside of any particular sandbox).

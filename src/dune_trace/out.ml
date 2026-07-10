@@ -74,7 +74,8 @@ let close t =
       Fd.close t.fd))
 ;;
 
-let create cats path =
+let create path =
+  let cats = Category.enabled () in
   let fd =
     Unix.openfile
       (Path.to_string path)
@@ -82,15 +83,14 @@ let create cats path =
       0o644
     |> Fd.unsafe_of_unix_file_descr
   in
-  let cats = Category.Set.of_list cats in
   let buf = Buffer.create (1 lsl 16) in
   let alloc = if Category.Set.mem cats Alloc then Some (Alloc.start ()) else None in
   { fd; cats; buf; mutex = Mutex.create (); alloc }
 ;;
 
-let of_fd cats fd =
-  let cats = Category.Set.of_list cats in
+let of_fd fd =
   let buf = Buffer.create (1 lsl 16) in
+  let cats = Category.enabled () in
   { fd
   ; cats
   ; buf

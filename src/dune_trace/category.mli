@@ -36,4 +36,4 @@ module Set : sig
   val of_list : cat list -> t
 end
 
-val default : t list
+val enabled : unit -> Set.t

@@ -48,37 +48,36 @@ Requesting an installed but unusable backend reports the probe failure.
   (exit code 42). User namespaces may be disabled.
   [1]
 
-When bwrap is unavailable, automatic backend selection falls back to Landlock.
-The cache protection policy is added later, so cache writes still succeed.
+When bwrap is unavailable, automatic backend selection uses Landlock.
+The cache protection policy blocks writes to the shared cache.
 
   $ rm -f "$DUNE_CACHE_ROOT/db/runner-marker"
   $ bwrap_dir=$(dirname "$(command -v bwrap 2>/dev/null || echo /nonexistent/bwrap)")
   $ without_bwrap_path=$(printf '%s' "$PATH" | tr ':' '\n' | grep -vx "$bwrap_dir" | paste -sd: -)
   $ PATH=$without_bwrap_path dune build --sandbox-actions result \
   >   && cat _build/default/result
-  wrote
+  blocked
   $ test -e "$DUNE_CACHE_ROOT/db/runner-marker" && echo present || echo missing
-  present
+  missing
 
-Automatic backend selection also falls back to Landlock when bwrap is on PATH
-but cannot create a sandbox.
+Automatic backend selection also uses Landlock when bwrap is on PATH but cannot
+create a sandbox.
 
   $ rm -f "$DUNE_CACHE_ROOT/db/runner-marker"
   $ rm -rf _build
   $ PATH=$PWD/fake-bwrap-bin:$PATH dune build --sandbox-actions result \
   >   && cat _build/default/result
-  wrote
+  blocked
   $ test -e "$DUNE_CACHE_ROOT/db/runner-marker" && echo present || echo missing
-  present
+  missing
 
 Explicit `--sandbox-actions-backend=landlock` runs the action through
-Landlock. The cache protection policy is added later, so cache writes still
-succeed.
+Landlock. The cache protection policy blocks writes to the shared cache.
 
   $ rm -f "$DUNE_CACHE_ROOT/db/runner-marker"
   $ rm -rf _build
   $ dune build --sandbox-actions --sandbox-actions-backend=landlock result \
   >   && cat _build/default/result
-  wrote
+  blocked
   $ test -e "$DUNE_CACHE_ROOT/db/runner-marker" && echo present || echo missing
-  present
+  missing

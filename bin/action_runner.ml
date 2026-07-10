@@ -84,14 +84,13 @@ module Backends = struct
                @ Backend.unavailable_reason b));
         canonicalise bs
       | [] ->
-        (* With the current cache-only policy, bwrap is the least surprising
-           default when it works: it preserves the incumbent namespace isolation
-           without Landlock's ancestor-directory write denial. If a later
-           per-action policy needs Landlock's stronger semantics, revisit this
-           ordering. *)
+        (* The cache policy is implemented by both backends, but Landlock is
+           the backend that will support the per-action policy later in this
+           stack. Prefer it when available so the default moves toward the
+           policy backend; bwrap remains the fallback and an explicit option. *)
         (match Backend.available Landlock, Backend.available Bwrap with
-         | _, true -> [ Bwrap ]
-         | true, false -> [ Landlock ]
+         | true, _ -> [ Landlock ]
+         | false, true -> [ Bwrap ]
          | false, false ->
            User_error.raise
              [ Pp.text
@@ -101,9 +100,18 @@ module Backends = struct
              ]))
   ;;
 
-  let landlock_wrap ~dune_prog argv =
+  let landlock_wrap ~dune_prog ~cache_dir argv =
+    Path.mkdir_p cache_dir;
     let dune = Path.to_string dune_prog in
-    let argv = dune :: "internal" :: "with-landlock" :: "--" :: argv in
+    let argv =
+      dune
+      :: "internal"
+      :: "with-landlock"
+      :: "--deny-write"
+      :: Path.to_absolute_filename cache_dir
+      :: "--"
+      :: argv
+    in
     dune, argv
   ;;
 
@@ -115,6 +123,7 @@ module Backends = struct
   ;;
 
   let compose t ~dune_prog ~worker_argv =
+    let cache_dir = lazy (Lazy.force Dune_cache.Layout.build_cache_dir) in
     (* Fold from innermost to outermost: reverse the chain, then wrap step by
        step so the first element of [t] ends up as the outermost. Each wrapper
        must preserve [argv.(0)] as the program that it execs. *)
@@ -123,7 +132,8 @@ module Backends = struct
       ~init:(Path.to_string dune_prog, worker_argv)
       ~f:(fun b (_, argv) ->
         match b with
-        | Backend.Landlock -> landlock_wrap ~dune_prog argv
+        | Backend.Landlock ->
+          landlock_wrap ~dune_prog ~cache_dir:(Lazy.force cache_dir) argv
         | Backend.Bwrap -> bwrap_wrap argv)
   ;;
 end

@@ -14,9 +14,8 @@ outside Landlock.
   >    "if touch \"$DUNE_CACHE_ROOT/db/runner-marker\" 2>/dev/null; then echo wrote > %{target}; else echo blocked > %{target}; fi")))
   > EOF
 
-By default, bwrap remains in the stack when it is available. At this point
-bwrap still provides the existing shared-cache read-only bind, so cache writes
-are blocked.
+By default, Landlock is selected when available, even if bwrap is also
+available. The cache protection policy blocks writes to the shared cache.
 
   $ rm -f "$DUNE_CACHE_ROOT/db/runner-marker"
   $ rm -rf _build
@@ -27,8 +26,7 @@ are blocked.
   missing
 
 Explicit `--sandbox-actions-backend=bwrap` runs the action through bwrap.
-At this point bwrap still provides the existing shared-cache read-only bind,
-so cache writes are blocked.
+The cache protection policy blocks writes to the shared cache.
 
   $ rm -f "$DUNE_CACHE_ROOT/db/runner-marker"
   $ rm -rf _build
@@ -38,7 +36,7 @@ so cache writes are blocked.
   $ test -e "$DUNE_CACHE_ROOT/db/runner-marker" && echo present || echo missing
   missing
 
-Both backends stacked also include bwrap's shared-cache read-only bind.
+Both backends stacked also block cache writes.
 
   $ rm -f "$DUNE_CACHE_ROOT/db/runner-marker"
   $ rm -rf _build

@@ -966,7 +966,11 @@ module Builder = struct
               (Some
                  "Run spawned build processes in an external dune action runner under a \
                   sandbox. The sandbox layering is selected automatically; pass \
-                  --sandbox-actions-backend to override."))
+                  --sandbox-actions-backend to override. Shared-cache protection is \
+                  path-based and does not cover writes through hardlinks or other \
+                  aliases outside the protected cache subtree. When enforced by \
+                  Landlock, it also denies creating or removing entries directly in \
+                  ancestor directories of the protected cache path."))
     and+ sandbox_actions_backends =
       Arg.(
         value
@@ -979,8 +983,8 @@ module Builder = struct
               (Some
                  "Use this sandbox backend for --sandbox-actions. Repeatable; when \
                   passed more than once the backends are stacked (currently bwrap \
-                  outermost, landlock inside). If unset, bwrap is selected when \
-                  available, otherwise Landlock is selected when available."))
+                  outermost, landlock inside). If unset, Landlock is selected when \
+                  available, otherwise bwrap is selected when available."))
     and+ action_runner =
       Arg.(
         value

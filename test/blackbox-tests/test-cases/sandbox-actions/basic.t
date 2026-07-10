@@ -25,11 +25,11 @@ processes.
   $ dune build --sandbox-actions pure probe
   $ dune trace cat | jq -s 'include "dune"; writeFileCountBySuffix("/pure")'
   0
-With the automatic backend, bwrap remains in the stack when it is available, so
-the action runs in a new mount namespace.
+With the automatic backend, Landlock is selected when it is available. Landlock
+does not create a new mount namespace.
 
   $ cmp -s host-ns _build/default/probe && echo same || echo different
-  different
+  same
   $ cat _build/default/pure
   pure
 

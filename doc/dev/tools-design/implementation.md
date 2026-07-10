@@ -281,6 +281,24 @@ CR-soon Alizter: Edge cases for `dune tools add`:
 CR-soon Alizter: The prototype has `--allow-not-installed` flag for
 `dune tools path`. Document this flag and its use case (editor integration).
 
+CR-soon Alizter: `dune tools path` behavior is underspecified:
+
+- Should `path` trigger download and build if not yet built? Or only return path
+  if already built, erroring otherwise?
+- If `--bin` is specified, can we compute the path without building (since path
+  is deterministic from package/version/binary name)?
+- If package has multiple binaries and no `--bin`: error immediately, or
+  download and build first to discover available binaries?
+- Tool not locked: error, or fall back to `which`?
+- How does `path` interact with `(tool)` stanzas vs CLI-added tools? Same
+  resolution as `run`?
+
+CR-someday Alizter: Consider a single bin directory with symlinks to all tool
+executables (like npm's `node_modules/.bin/`). Instead of per-tool paths, have
+`_build/.tools/bin/` containing symlinks to all installed tool binaries. This
+simplifies editor integration (one directory to add to PATH), avoids PATH length
+limits (especially on Windows), and provides a single stable location for
+discovery. Trade-off: need to maintain symlinks as tools are added/removed.
 #### Version syntax
 
 The CLI uses dot-separated version syntax: `<package>.<version>`

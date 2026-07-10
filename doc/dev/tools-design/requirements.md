@@ -235,25 +235,6 @@ printing the path locations, or some other means).
 
 See [CLI commands](./implementation.md#cli-commands) for the discovery interface.
 
-CR-soon Alizter: `dune tools path` behavior is underspecified:
-
-- Should `path` trigger download and build if not yet built? Or only return path
-  if already built, erroring otherwise?
-- If `--bin` is specified, can we compute the path without building (since path
-  is deterministic from package/version/binary name)?
-- If package has multiple binaries and no `--bin`: error immediately, or
-  download and build first to discover available binaries?
-- Tool not locked: error, or fall back to `which`?
-- How does `path` interact with `(tool)` stanzas vs CLI-added tools? Same
-  resolution as `run`?
-
-CR-someday Alizter: Consider a single bin directory with symlinks to all tool
-executables (like npm's `node_modules/.bin/`). Instead of per-tool paths, have
-`_build/.tools/bin/` containing symlinks to all installed tool binaries. This
-simplifies editor integration (one directory to add to PATH), avoids PATH length
-limits (especially on Windows), and provides a single stable location for
-discovery. Trade-off: need to maintain symlinks as tools are added/removed.
-
 ##### 2.3.1 dune subcommands
 
 As a special case, dune subcommands that invoke external tools must be able to

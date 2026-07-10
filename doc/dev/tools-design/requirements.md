@@ -172,23 +172,14 @@ CLI input being used to update the config file, or simply by raising an error.
 But it must not allow for a version to be installed that leads to inconsistent
 version specifications.
 
-
-
-
-
 #### 1.5. Clean source tree
 
-Tool lock directories and built artifacts must not pollute the source tree. They
-should be stored in build output directories that are:
-
-- Excluded from version control
-- Cleaned by standard build cleanup
-- Invisible to users during normal development
-
-See [Directory structure](./implementation.md#directory-structure) for exact paths.
+Tool lock directories and built artifacts must not pollute the source tree, to
+ensure that they do not inadvertently picked up in version control or otherwise
+create needless noise for users.
 
 **Motivation**: This is a common complaint from users and is one such way to
-solve the issue. Tools like uv handle this differently by having a global place.
+solve the issue. Tools like `uv` handle this differently by having a global place.
 Due to our compiler matching semantics it makes more sense for workspace level
 and becomes fast with full caching.
 

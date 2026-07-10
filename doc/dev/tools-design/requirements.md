@@ -188,10 +188,16 @@ and becomes fast with full caching.
 When a package provides multiple tools, users must be able to specify a subset
 for installation. When a package providing tools is installed without
 qualification, all provided tools must be installed. As a special case, when a
-package provides a single binary, it will be installed without need to qualify.
+package provides a single binary, it will be installed without needing to qualify.
 
 See [The `(tool)` stanza](./implementation.md#the-tool-stanza) and [CLI
 commands](./implementation.md#cli-commands) for syntax.
+
+**Motivation**: This is necessitated by the fact that the relation between opam
+packages and tools is one-to-many: a single package can provide multiple
+executables. As a result, it becomes necessary to only install a preferred
+subset of the provided tools. E.g., `js_of_ocaml-compiler` provides
+`js_of_ocaml`, `jsoo_minify`, and `jsoo_listunits`.
 
 ### 2. Usability
 

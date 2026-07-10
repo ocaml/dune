@@ -1,4 +1,3 @@
-module Display = Display
 module Context_name = Context_name
 module Corrections = Corrections
 module Action_builder = Action_builder

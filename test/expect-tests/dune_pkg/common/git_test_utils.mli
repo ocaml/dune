@@ -4,7 +4,7 @@ module Process = Dune_engine.Process
 (** Run a fiber thunk using the scheduler. *)
 val run : (unit -> 'a Fiber.t) -> 'a
 
-val display : Dune_engine.Display.t
+val display : Display.t
 val output_limit : int
 val make_stdout : unit -> Process.Io.output Process.Io.t
 val make_stderr : unit -> Process.Io.output Process.Io.t

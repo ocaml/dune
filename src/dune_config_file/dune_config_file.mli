@@ -3,8 +3,11 @@ open Import
 module Dune_config : sig
   (** Dune configuration (visible to the user) *)
 
-  open Stdune
   module Display : module type of Display
+  module Loc := Stdune.Loc
+  module Config := Stdune.Config
+  module Terminal_persistence := Stdune.Terminal_persistence
+  module Path := Stdune.Path
 
   module Project_defaults : sig
     type t =

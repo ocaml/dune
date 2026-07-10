@@ -1,5 +1,4 @@
 open Import
-module Display = Dune_engine.Display
 
 let depexts_hint = function
   | [] -> None

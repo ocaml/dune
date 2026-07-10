@@ -204,6 +204,10 @@ subset of the provided tools. E.g., `js_of_ocaml-compiler` provides
 Users should be able to install tools based on the name of the tool without
 considering the package that provides it.
 
+CR Shon: because this will require changes to the opam repo to be effective,
+this is a *should* rather than a *must* at the moment, and may not be achievable
+in the first iteration of the redisign.
+
 ##### 1.7.1 Disambiguation
 
 If multiple packages provide the tools with the same name, and a user requests installation, dune should offer disambiguation.

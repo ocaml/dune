@@ -228,22 +228,25 @@ See [CLI commands](./implementation.md#cli-commands) for invocation syntax.
 
 #### 2.2. Programmatic use
 
-Programs (e.g., editor plugins) must be able to find and run installed
-tools via a single, transparent mechanism (e.g., the `dune tools env` equivalent
-to `opam env` or by adding a single directory of executables to the lookup path,
-printing the path locations, or some other means).
+Programs (e.g., editor plugins) must be able to find and run installed tools via
+a single, transparent mechanism. (E.g., this could be implemented by any of the
+following; the `dune tools env` equivalent to `opam env` or, `dune tools path`
+that prints the paths to the binaries,  by adding a single directory of
+executables to the lookup path, printing the path locations, or some other
+means).
 
 See [CLI commands](./implementation.md#cli-commands) for the discovery interface.
 
 ##### 2.2.1 dune subcommands
 
-As a special case, dune subcommands that invoke external tools must be able to
+As a special case, dune subcommands (e.g., `dune fmt` or `dune utop`) that invoke external tools must be able to
 use tools managed by `dune tools`. See [Dune Integration](#5-dune-integration).
 
 ###### 2.2.1.1 System PATH fallback
 
-When a tool is not locked and no version is specified (e.g., `.ocamlformat`
-without a version), dune subcommands should fall back to the system PATH.
+When a tool is not installed (e.g., `.ocamlformat`), dune subcommands (such as
+`dune fmt`, `dune build @doc`, or `dune utop`) should fall back to the system
+PATH.
 
 **Note** This is motivated by integration with editor developers who would like
 a single point of truth for running tools, and for dune to handle it. This would

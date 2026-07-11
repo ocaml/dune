@@ -413,6 +413,11 @@ module Crawl = struct
     | None -> Module.source m ~ml_kind:Intf
   ;;
 
+  (* The dune file a location points into. This is where the stanza is actually
+     written, which is not necessarily [<dir>/dune] (e.g. a stanza declared
+     under a [(subdir ...)] lives in the parent directory's dune file). *)
+  let dune_file_of_loc loc = Path.of_string (Loc.start loc).Lexing.pos_fname
+
   (* Determines how a module's source files were produced, from its [kind], the
      [parser_gen_origins] map, or the rule that produces the source file. *)
   let origin_of_module ~dune_file ~parser_gen_origins (m : Module.t)
@@ -453,20 +458,19 @@ module Crawl = struct
              | Some rule ->
                (* [rule.info] gives the dune file the rule is written in; a rule
                   with no user-facing location (internal, or an empty loc) is
-                  attributed to the stanza's own dune file. *)
+                  attributed to the stanza's own dune file. A source-file copy is
+                  not really generated, so is reported as a plain source. *)
+               let mk_dune_origin dune_file =
+                 let+ { Reflection.Rule.expanded_deps; _ } =
+                   Reflection.evaluate_rule rule
+                 in
+                 Dune { dune_file; deps = Path.Set.to_list expanded_deps }
+               in
                (match rule.info with
-                | Source_file_copy _ -> Memo.return Source
-                | From_dune_file _ | Internal ->
-                  let dune_file =
-                    match rule.info with
-                    | From_dune_file loc when not (Loc.is_none loc) ->
-                      Path.of_string (Loc.start loc).Lexing.pos_fname
-                    | From_dune_file _ | Internal | Source_file_copy _ -> dune_file
-                  in
-                  let+ { Reflection.Rule.expanded_deps; _ } =
-                    Reflection.evaluate_rule rule
-                  in
-                  Dune { dune_file; deps = Path.Set.to_list expanded_deps }))))
+                | From_dune_file loc when not (Loc.is_none loc) ->
+                  mk_dune_origin (dune_file_of_loc loc)
+                | From_dune_file _ | Internal -> mk_dune_origin dune_file
+                | Source_file_copy _ -> Memo.return Source))))
   ;;
 
   (* Builds the description of a module from a module and its object directory *)
@@ -553,9 +557,7 @@ module Crawl = struct
         immediate_deps_of_module ~sctx ~options ~obj_dir ~modules:modules_ module_ ~for_
       in
       let obj_dir = Obj_dir.of_local obj_dir in
-      let dune_file =
-        Path.relative (Path.drop_optional_build_context (Path.build dir)) "dune"
-      in
+      let dune_file = dune_file_of_loc exes.buildable.loc in
       let* modules = modules ~obj_dir ~dune_file ~parser_gen_origins ~deps_of modules_ in
       let+ requires =
         let* compile_info = Exe_rules.compile_info ~scope exes in
@@ -633,9 +635,7 @@ module Crawl = struct
               (pp_map module_)
               ~for_
           in
-          let dune_file =
-            Path.relative (Path.drop_optional_build_context src_dir) "dune"
-          in
+          let dune_file = dune_file_of_loc (Lib_info.loc info) in
           modules ~obj_dir ~dune_file ~parser_gen_origins ~deps_of modules_
       in
       let include_dirs = Obj_dir.all_cmis obj_dir in

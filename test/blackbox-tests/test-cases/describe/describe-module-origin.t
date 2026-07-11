@@ -40,6 +40,21 @@ A wrapped library with all four kinds of source, plus its alias module.
   > main: EOF { () }
   > EOF
 
+A library declared under `(subdir ...)`: the generated origins must point at the
+dune file the stanza is actually written in (the parent `dune`), not at the
+non-existent `sub/dune`.
+
+  $ mkdir -p sub
+  $ cat >>dune <<EOF
+  > (subdir sub
+  >  (library
+  >   (name sublib)))
+  > EOF
+
+  $ cat >sub/s.ml <<EOF
+  > let x = 0
+  > EOF
+
 An unwrapped library: no alias module is synthesised.
 
   $ mkdir -p unwrapped
@@ -181,4 +196,25 @@ An executable, exercising the separate executables code path.
         (cmt (_build/default/unwrapped/.mylib_unwrapped.objs/byte/u.cmt))
         (cmti ())
         (origin source))))
-     (include_dirs (_build/default/unwrapped/.mylib_unwrapped.objs/byte)))))
+     (include_dirs (_build/default/unwrapped/.mylib_unwrapped.objs/byte))))
+   (library
+    ((name sublib)
+     (uid $DIGEST3)
+     (local true)
+     (requires ())
+     (source_dir _build/default/sub)
+     (modules
+      (((name S)
+        (impl (_build/default/sub/s.ml))
+        (intf ())
+        (cmt (_build/default/sub/.sublib.objs/byte/sublib__S.cmt))
+        (cmti ())
+        (origin source))
+       ((name Sublib)
+        (impl (_build/default/sub/sublib.ml-gen))
+        (intf ())
+        (cmt (_build/default/sub/.sublib.objs/byte/sublib.cmt))
+        (cmti ())
+        (origin
+         (wrapper dune)))))
+     (include_dirs (_build/default/sub/.sublib.objs/byte)))))

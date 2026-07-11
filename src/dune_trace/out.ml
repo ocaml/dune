@@ -57,23 +57,19 @@ let close t =
       Fd.close t.fd))
 ;;
 
-let create path =
+let create how =
+  let buf = Buffer.create (1 lsl 16) in
   let cats = Category.enabled () in
   let fd =
-    Unix.openfile
-      (Path.to_string path)
-      [ O_TRUNC; O_APPEND; O_CLOEXEC; O_WRONLY; O_CREAT ]
-      0o644
-    |> Fd.unsafe_of_unix_file_descr
+    match how with
+    | `Fd fd -> fd
+    | `Path path ->
+      Unix.openfile
+        (Path.to_string path)
+        [ O_TRUNC; O_APPEND; O_CLOEXEC; O_WRONLY; O_CREAT ]
+        0o644
+      |> Fd.unsafe_of_unix_file_descr
   in
-  let buf = Buffer.create (1 lsl 16) in
-  let alloc = if Category.Set.mem cats Alloc then Some (Alloc.start ()) else None in
-  { fd; cats; buf; mutex = Mutex.create (); alloc }
-;;
-
-let of_fd fd =
-  let buf = Buffer.create (1 lsl 16) in
-  let cats = Category.enabled () in
   { fd
   ; cats
   ; buf

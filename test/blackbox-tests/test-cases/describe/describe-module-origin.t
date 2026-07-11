@@ -17,12 +17,15 @@ A wrapped library with all four kinds of source, plus its alias module.
   > (ocamlyacc gram)
   > (rule
   >  (target generated.ml)
+  >  (deps dep.txt)
   >  (action (write-file generated.ml "let x = 0")))
   > EOF
 
   $ cat >plain.ml <<EOF
   > let x = 0
   > EOF
+
+  $ touch dep.txt
 
   $ cat >lexer.mll <<EOF
   > rule read = parse
@@ -103,7 +106,9 @@ An executable, exercising the separate executables code path.
         (cmt (_build/default/exe/.main.eobjs/byte/dune__exe__Egen.cmt))
         (cmti ())
         (origin
-         (dune exe/dune)))
+         (dune
+          ((dune_file exe/dune)
+           (deps ())))))
        ((name Dune__exe)
         (impl (_build/default/exe/.main.eobjs/dune__exe.ml-gen))
         (intf ())
@@ -145,7 +150,9 @@ An executable, exercising the separate executables code path.
         (cmt (_build/default/.mylib.objs/byte/mylib__Generated.cmt))
         (cmti ())
         (origin
-         (dune dune)))
+         (dune
+          ((dune_file dune)
+           (deps (_build/default/dep.txt))))))
        ((name Mylib)
         (impl (_build/default/mylib.ml-gen))
         (intf ())

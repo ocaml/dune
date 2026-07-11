@@ -11,7 +11,6 @@ end
 
 module Spec = Spec
 open Fiber.O
-module Graph = Dune_graph.Graph
 module Console = Console
 module Debug = Memo_debug
 module Event = Spec.Event
@@ -193,45 +192,6 @@ let create_rec
             f (exec table) input))
   in
   Stdlib.Lazy.force table
-;;
-
-let dump_cached_graph ?(on_not_cached = `Raise) ?(time_nodes = false) node =
-  let rec collect_graph (Dep_node.T dep_node) graph : Graph.t Fiber.t =
-    let src_id = Id.to_int dep_node.id in
-    match get_cached_deps_in_current_run dep_node with
-    | Some deps ->
-      let* attributes =
-        if time_nodes
-        then (
-          let start = Time.now () in
-          (* CR-someday cmoseley: We could record errors here and include them
-             as part of the graph. *)
-          let+ (_ : (_, Collect_errors_monoid.t) result) =
-            Exec.report_and_collect_errors (fun () -> dep_node.spec.f dep_node.input)
-          in
-          let runtime = Time.Span.to_secs (Time.diff (Time.now ()) start) in
-          String.Map.of_list_exn [ "runtime", Graph.Attribute.Float runtime ])
-        else Fiber.return String.Map.empty
-      in
-      let graph = Graph.add_node graph ~id:src_id ?label:dep_node.spec.name ~attributes in
-      List.fold_left
-        (Deps.For_debugging.to_list deps)
-        ~init:(Fiber.return graph)
-        ~f:(fun graph (Dep_node.T dst_node as packed) ->
-          let* graph = graph in
-          let dst_id = Id.to_int dst_node.id in
-          let graph = Graph.add_edge graph ~src_id ~dst_id in
-          if Graph.has_node graph ~id:dst_id
-          then Fiber.return graph
-          else collect_graph packed graph)
-    | None ->
-      (match on_not_cached with
-       | `Raise -> failwith "Memo graph contains uncached nodes"
-       | `Ignore -> Fiber.return graph)
-  in
-  Error_handler.with_error_handler
-    (fun (_ : Exn_with_backtrace.t) -> Fiber.return ())
-    (fun () -> collect_graph (Dep_node.T node) Graph.empty)
 ;;
 
 let get_call_stack = Call_stack.get_call_stack_without_state

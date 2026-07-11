@@ -2,7 +2,6 @@ open Stdune
 open Dune_config_file
 open Dune_scheduler
 module Console = Console
-module Graph = Dune_graph.Graph
 module Profile = Dune_lang.Profile
 
 open struct

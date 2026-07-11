@@ -43,6 +43,7 @@ module Workspace_root_for_build_prefix_map = struct
     | Unset
     | Set of string
 
+  (* CR-soon rgrinberg: remove this *)
   let equal x y =
     match x, y with
     | Unset, Unset -> true

@@ -96,7 +96,7 @@ An executable, exercising the separate executables code path.
         (cmt (_build/default/exe/.main.eobjs/byte/dune__exe__Elexer.cmt))
         (cmti ())
         (origin
-         (lexer exe/elexer.mll)))
+         (ocamllex exe/elexer.mll)))
        ((name Egen)
         (impl (_build/default/exe/egen.ml))
         (intf ())
@@ -131,14 +131,14 @@ An executable, exercising the separate executables code path.
         (cmt (_build/default/.mylib.objs/byte/mylib__Lexer.cmt))
         (cmti ())
         (origin
-         (lexer lexer.mll)))
+         (ocamllex lexer.mll)))
        ((name Gram)
         (impl (_build/default/gram.ml))
         (intf (_build/default/gram.mli))
         (cmt (_build/default/.mylib.objs/byte/mylib__Gram.cmt))
         (cmti (_build/default/.mylib.objs/byte/mylib__Gram.cmti))
         (origin
-         (parser gram.mly)))
+         (ocamlyacc gram.mly)))
        ((name Generated)
         (impl (_build/default/generated.ml))
         (intf ())
@@ -167,7 +167,7 @@ An executable, exercising the separate executables code path.
         (cmt (_build/default/unwrapped/.mylib_unwrapped.objs/byte/ulexer.cmt))
         (cmti ())
         (origin
-         (lexer unwrapped/ulexer.mll)))
+         (ocamllex unwrapped/ulexer.mll)))
        ((name U)
         (impl (_build/default/unwrapped/u.ml))
         (intf ())

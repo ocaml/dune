@@ -1,11 +1,34 @@
-open Import
-
 module Dune_config = struct
-  open Stdune
   open Dune_lang.Decoder
   module Display = Display
   module Sandbox_mode = Dune_engine.Sandbox_mode
-  module Console = Console
+
+  include struct
+    open Stdune
+    module Console = Console
+    module Repr = Repr
+    module Loc = Loc
+    module Config = Config
+    module Int = Int
+    module User_error = User_error
+    module List = List
+    module Terminal_persistence = Terminal_persistence
+    module Tuple = Tuple
+    module Poly = Poly
+    module Execution_env = Execution_env
+    module Option = Option
+    module Code_error = Code_error
+    module Path = Path
+    module Fpath = Fpath
+    module String = String
+    module Log = Log
+    module Env = Env
+    module Bin = Bin
+    module Env_path = Env_path
+    module Fd = Fd
+    module Dev_null = Dev_null
+  end
+
   module Stanza = Dune_lang.Stanza
   module String_with_vars = Dune_lang.String_with_vars
   module Pform = Dune_lang.Pform
@@ -741,8 +764,11 @@ module Dune_config = struct
     in
     (Dune_engine.Clflags.display
      := match t.display with
-        | Tui -> Dune_engine.Display.Quiet
+        | Tui -> Stdune.Display.Quiet
         | Simple { verbosity; _ } -> verbosity);
-    { Scheduler.Config.concurrency; print_ctrl_c_warning; watch_exclusions }
+    { Dune_scheduler.Scheduler.Config.concurrency
+    ; print_ctrl_c_warning
+    ; watch_exclusions
+    }
   ;;
 end

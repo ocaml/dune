@@ -16,7 +16,7 @@ let synopsis =
   ]
 ;;
 
-let print_line ~(verbosity : Dune_engine.Display.t) fmt =
+let print_line ~(verbosity : Display.t) fmt =
   Printf.ksprintf
     (fun s ->
        match verbosity with
@@ -168,7 +168,7 @@ module type File_operations = sig
 end
 
 module File_ops_dry_run (Verbosity : sig
-    val verbosity : Dune_engine.Display.t
+    val verbosity : Display.t
   end) : File_operations = struct
   open Verbosity
 
@@ -200,7 +200,7 @@ module File_ops_dry_run (Verbosity : sig
 end
 
 module File_ops_real (W : sig
-    val verbosity : Dune_engine.Display.t
+    val verbosity : Display.t
     val workspace : Workspace.t
   end) : File_operations = struct
   open W

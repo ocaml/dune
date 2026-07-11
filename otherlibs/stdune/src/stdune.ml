@@ -92,6 +92,7 @@ module Marshal = Marshal
 module Fd = Fd
 module Mutex = Mutex0
 module Action_types = Action_types
+module Display = Display
 
 module type Top_closure = Top_closure.Top_closure
 

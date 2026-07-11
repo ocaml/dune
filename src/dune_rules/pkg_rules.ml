@@ -8,7 +8,6 @@ include struct
   module Checksum = Checksum
   module Source = Source
   module Build_command = Lock_dir.Build_command
-  module Display = Dune_engine.Display
   module Pkg_info = Lock_dir.Pkg_info
   module Depexts = Lock_dir.Depexts
   module Digest_feed = Dune_digest.Feed

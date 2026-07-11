@@ -1,4 +1,5 @@
 (** Command line flags *)
+open Stdune
 
 (** Wrapper for target executables in cross-compilation: (toolchain, prog, args) *)
 val target_exec : (string * string * string list) option ref

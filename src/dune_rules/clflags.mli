@@ -1,3 +1,5 @@
+open Import
+
 (** Store original source directory in dune-package metadata *)
 val store_orig_src_dir : bool ref
 
@@ -8,7 +10,7 @@ val ignore_promoted_rules : bool ref
 val promote_install_files : bool ref
 
 (** Re-exported form [Dune_engine] *)
-val display : Dune_engine.Display.t ref
+val display : Display.t ref
 
 (** Re-exported form [Dune_engine] *)
 val capture_outputs : bool ref

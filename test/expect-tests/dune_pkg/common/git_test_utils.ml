@@ -2,7 +2,7 @@ open Stdune
 open Dune_scheduler
 open Fiber.O
 module Process = Dune_engine.Process
-module Display = Dune_engine.Display
+module Display = Stdune.Display
 module Vcs = Dune_vcs.Vcs
 
 let run thunk =

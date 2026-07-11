@@ -1,3 +1,5 @@
+open Stdune
+
 (** Type of display modes.
 
     - [status_line] indictates if a status line is shown.
@@ -5,7 +7,7 @@
 type t =
   | Simple of
       { status_line : bool
-      ; verbosity : Dune_engine.Display.t
+      ; verbosity : Display.t
       }
   | Tui
 

@@ -1,5 +1,4 @@
 open Stdune
-module Display = Dune_engine.Display
 
 type t =
   | Simple of

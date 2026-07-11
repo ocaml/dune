@@ -1,5 +1,3 @@
-open Stdune
-
 module T = struct
   type t =
     | Quiet

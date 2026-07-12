@@ -38,7 +38,7 @@ Only actual digest mismatches are reported, classified as invalid or stale.
 
   $ dune internal digest-db check invalid.txt stale.txt 2>&1 \
   > | sed -n 's/.*status = /status = /p;s/.*path = /path = /p'
-  status = "invalid"
+  status = "stale"
   path = In_source_tree "invalid.txt"
   status = "stale"
   path = In_source_tree "stale.txt"

@@ -39,6 +39,7 @@ end
 
 type t =
   { names : (Loc.t * string) Nonempty_list.t
+  ; public_names : (Loc.t * string option) Nonempty_list.t option
   ; link_flags : Dune_lang.Link_flags.Spec.t
   ; link_deps : Dep_conf.t list
   ; modes : Loc.t Link_mode.Map.t
@@ -65,3 +66,6 @@ val has_foreign_cxx : t -> bool
 val obj_dir : t -> dir:Path.Build.t -> Path.Build.t Obj_dir.t
 val single : t Dune_lang.Decoder.t
 val multi : t Dune_lang.Decoder.t
+
+(** Gets [names], with each replaced by its public name if available *)
+val best_names : t -> string list

@@ -6,6 +6,7 @@ module Names : sig
   type t
 
   val names : t -> (Loc.t * string) Nonempty_list.t
+  val public_names : t -> (Loc.t * string option) Nonempty_list.t option
   val package : t -> Package.t option
   val has_public_name : t -> bool
 
@@ -33,6 +34,11 @@ end = struct
     }
 
   let names t = t.names
+
+  let public_names t =
+    Option.map t.public ~f:(fun p -> Nonempty_list.of_list_exn p.public_names)
+  ;;
+
   let package t = Option.map t.public ~f:(fun p -> p.package)
   let has_public_name t = Option.is_some t.public
 
@@ -411,6 +417,7 @@ end
 
 type t =
   { names : (Loc.t * string) Nonempty_list.t
+  ; public_names : (Loc.t * string option) Nonempty_list.t option
   ; link_flags : Link_flags.Spec.t
   ; link_deps : Dep_conf.t list
   ; modes : Loc.t Link_mode.Map.t
@@ -504,6 +511,7 @@ let common =
   in
   fun names ~multi ->
     let has_public_name = Names.has_public_name names in
+    let public_names = Names.public_names names in
     let private_names = Names.names names in
     let install_conf =
       match Link_mode.Map.best_install_mode ~dune_version modes with
@@ -546,6 +554,7 @@ let common =
           [ Pp.textf "This field can only be used when linking a plugin." ]
     in
     { names = private_names
+    ; public_names
     ; link_flags
     ; link_deps
     ; modes
@@ -578,4 +587,14 @@ let has_foreign_cxx t = Buildable.has_foreign_cxx t.buildable
 let obj_dir t ~dir =
   let name = snd (Nonempty_list.hd t.names) in
   Obj_dir.make_exe ~dir ~name
+;;
+
+let best_names t =
+  let names = Nonempty_list.to_list_map t.names ~f:snd in
+  match t.public_names with
+  | None -> names
+  | Some public_names ->
+    let public_names = Nonempty_list.to_list_map public_names ~f:snd in
+    List.map2 names public_names ~f:(fun name public_name ->
+      Option.value public_name ~default:name)
 ;;

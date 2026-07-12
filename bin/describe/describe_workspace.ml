@@ -465,7 +465,7 @@ module Crawl = struct
        | Ok libs ->
          let include_dirs = Obj_dir.all_cmis obj_dir in
          let exe_descr =
-           { Descr.Exe.names = Nonempty_list.to_list_map exes.names ~f:snd
+           { Descr.Exe.names = Executables.best_names exes
            ; requires = List.map ~f:uid_of_library libs
            ; modules
            ; include_dirs

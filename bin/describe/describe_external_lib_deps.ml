@@ -152,7 +152,7 @@ let libs db (context : Context.t) =
           dir
           exes.buildable.libraries
           exes.buildable.preprocess.config
-          (Nonempty_list.to_list_map exes.names ~f:snd)
+          (Dune_rules.Executables.best_names exes)
           exes.package
           Item.Kind.Executables
           (exes_extensions ocaml.lib_config exes.modes)
@@ -175,7 +175,7 @@ let libs db (context : Context.t) =
           dir
           tests.exes.buildable.libraries
           tests.exes.buildable.preprocess.config
-          (Nonempty_list.to_list_map tests.exes.names ~f:snd)
+          (Executables.best_names tests.exes)
           (if Option.is_none tests.package then tests.exes.package else tests.package)
           Item.Kind.Tests
           (exes_extensions ocaml.lib_config tests.exes.modes)

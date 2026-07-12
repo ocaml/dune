@@ -167,6 +167,19 @@ module type File_operations = sig
   val remove_dir_if_exists : if_non_empty:rmdir_mode -> Path.t -> unit
 end
 
+let raise_file_should_be_deleted p =
+  User_error.raise
+    [ Pp.textf "Please delete file %s manually." (Path.to_string_maybe_quoted p) ]
+;;
+
+let rec validate_dir_can_be_created dir =
+  match Unix.stat (Path.to_string dir) with
+  | { st_kind = S_DIR; _ } -> ()
+  | _ -> raise_file_should_be_deleted dir
+  | exception Unix.Unix_error ((ENOENT | ENOTDIR), _, _) ->
+    Option.iter (Path.parent dir) ~f:validate_dir_can_be_created
+;;
+
 module File_ops_dry_run (Verbosity : sig
     val verbosity : Display.t
   end) : File_operations = struct
@@ -183,7 +196,10 @@ module File_ops_dry_run (Verbosity : sig
     Fiber.return ()
   ;;
 
-  let mkdir_p path = print_line "Creating directory %s" (Path.to_string_maybe_quoted path)
+  let mkdir_p path =
+    validate_dir_can_be_created path;
+    print_line "Creating directory %s" (Path.to_string_maybe_quoted path)
+  ;;
 
   let remove_file_if_exists path =
     print_line "Removing (if it exists) %s" (Path.to_string_maybe_quoted path)
@@ -374,9 +390,7 @@ module File_ops_real (W : sig
   let mkdir_p p =
     match Fpath.mkdir_p_strict (Path.to_string p) with
     | `Created | `Already_exists -> ()
-    | `Not_a_dir ->
-      User_error.raise
-        [ Pp.textf "Please delete file %s manually." (Path.to_string_maybe_quoted p) ]
+    | `Not_a_dir -> raise_file_should_be_deleted p
   ;;
 end
 
@@ -467,6 +481,7 @@ let install_entry
   | false -> Fiber.return entry
   | true ->
     let+ () =
+      Ops.mkdir_p dir;
       (match Fpath.is_directory (Path.to_string dst) with
        | true -> Ops.remove_dir_if_exists ~if_non_empty:Fail dst
        | false -> Ops.remove_file_if_exists dst);
@@ -475,7 +490,6 @@ let install_entry
         "%s %s"
         (if create_install_files then "Copying to" else "Installing")
         (Path.to_string_maybe_quoted dst);
-      Ops.mkdir_p dir;
       let executable = Section.should_set_executable_bit entry.section in
       let kind =
         match special_file with

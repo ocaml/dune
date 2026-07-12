@@ -102,6 +102,22 @@ external spawn_unix
   -> int
   = "spawn_unix_byte" "spawn_unix"
 
+let spawn_unix
+      ~env
+      ~cwd
+      ~prog
+      ~argv
+      ~stdin
+      ~stdout
+      ~stderr
+      ~use_vfork
+      ~setpgid
+      ~sigprocmask
+  =
+  spawn_unix ~env ~cwd ~prog ~argv ~stdin ~stdout ~stderr ~use_vfork ~setpgid ~sigprocmask
+  |> Pid.of_int_exn
+;;
+
 external spawn_windows
   :  env:Env.t option
   -> cwd:string option
@@ -143,7 +159,7 @@ let spawn_windows
     | true, Some p -> Filename.concat p prog
     | _ -> prog
   in
-  spawn_windows ~env ~cwd ~prog ~cmdline ~stdin ~stdout ~stderr
+  spawn_windows ~env ~cwd ~prog ~cmdline ~stdin ~stdout ~stderr |> Pid.of_int_exn
 ;;
 
 let no_null s =

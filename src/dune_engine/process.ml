@@ -1003,7 +1003,6 @@ let spawn
         (match dir with
          | None -> Inherit
          | Some dir -> Path (Path.to_string dir))
-    |> Pid.of_int_exn
   in
   if emit_trace
   then

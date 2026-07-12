@@ -23,7 +23,7 @@ let lsof =
         let argv =
           [ prog; "-l"; "-O"; "-P"; "-n"; "-w"; "-p"; string_of_int (Unix.getpid ()) ]
         in
-        Spawn.spawn ~prog ~argv ~stdout:lsof_w () |> Pid.of_int_exn
+        Spawn.spawn ~prog ~argv ~stdout:lsof_w ()
       in
       Unix.close lsof_w;
       (match

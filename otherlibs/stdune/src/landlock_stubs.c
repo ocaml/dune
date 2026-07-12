@@ -73,6 +73,25 @@ static uint64_t landlock_write_access_rights(int abi) {
 }
 #endif
 
+int dune_landlock_no_new_privs(void) {
+#if DUNE_HAS_LANDLOCK
+  return prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0);
+#else
+  errno = ENOSYS;
+  return -1;
+#endif
+}
+
+int dune_landlock_restrict_self_fd(int ruleset_fd) {
+#if DUNE_HAS_LANDLOCK
+  return syscall(SYS_landlock_restrict_self, ruleset_fd, 0);
+#else
+  (void)ruleset_fd;
+  errno = ENOSYS;
+  return -1;
+#endif
+}
+
 CAMLprim value dune_landlock_abi_version(value unit) {
   (void)unit;
 #if DUNE_HAS_LANDLOCK

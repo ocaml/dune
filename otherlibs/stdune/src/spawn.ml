@@ -101,7 +101,7 @@ external spawn_unix
   -> stderr:Unix.file_descr
   -> use_vfork:bool
   -> setpgid:int option
-  -> sigprocmask:(Unix.sigprocmask_command * int list) option
+  -> child_setup:(Unix.sigprocmask_command * int list) option * Unix.file_descr option
   -> int
   = "dune_spawn_unix_byte" "dune_spawn_unix"
 
@@ -116,9 +116,20 @@ let spawn_unix
       ~use_vfork
       ~setpgid
       ~sigprocmask
+      ~landlock_ruleset
   =
   let setpgid = Option.map ~f:Pgid.to_int setpgid in
-  spawn_unix ~env ~cwd ~prog ~argv ~stdin ~stdout ~stderr ~use_vfork ~setpgid ~sigprocmask
+  spawn_unix
+    ~env
+    ~cwd
+    ~prog
+    ~argv
+    ~stdin
+    ~stdout
+    ~stderr
+    ~use_vfork
+    ~setpgid
+    ~child_setup:(sigprocmask, landlock_ruleset)
   |> Pid.of_int_exn
 ;;
 
@@ -150,7 +161,10 @@ let spawn_windows
       ~use_vfork:_
       ~setpgid:_
       ~sigprocmask:_
+      ~landlock_ruleset
   =
+  Option.iter landlock_ruleset ~f:(fun _ ->
+    invalid_arg "Spawn.spawn: Landlock is not supported on Windows");
   let cwd =
     match (cwd : Working_dir.t) with
     | Path p -> Some p
@@ -183,6 +197,7 @@ let spawn
       ?(stdin = Unix.stdin)
       ?(stdout = Unix.stdout)
       ?(stderr = Unix.stderr)
+      ?landlock
       ?(unix_backend = Unix_backend.default)
       ?setpgid
       ?sigprocmask
@@ -199,7 +214,27 @@ let spawn
     | Vfork -> true
     | Fork -> false
   in
-  backend ~env ~cwd ~prog ~argv ~stdin ~stdout ~stderr ~use_vfork ~setpgid ~sigprocmask
+  let spawn landlock_ruleset =
+    backend
+      ~env
+      ~cwd
+      ~prog
+      ~argv
+      ~stdin
+      ~stdout
+      ~stderr
+      ~use_vfork
+      ~setpgid
+      ~sigprocmask
+      ~landlock_ruleset
+  in
+  match landlock with
+  | None -> spawn None
+  | Some policy ->
+    let ruleset = Landlock.Ruleset.create policy in
+    Exn.protect
+      ~f:(fun () -> spawn (Some (Landlock.Ruleset.file_descr ruleset)))
+      ~finally:(fun () -> Landlock.Ruleset.close ruleset)
 ;;
 
 external safe_pipe : unit -> Unix.file_descr * Unix.file_descr = "dune_spawn_pipe"

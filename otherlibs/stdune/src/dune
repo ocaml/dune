@@ -18,7 +18,7 @@
   (:include ../flags/sexp))
  (foreign_stubs
   (language c)
-  (names spawn_stubs)
+  (names landlock_stubs spawn_stubs)
   (flags
    (:standard
     (:include spawn_flags.sexp))))

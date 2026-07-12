@@ -104,6 +104,12 @@ end
     already blocked, or to block a signal that cannot be blocked (e.g., SIGSTOP,
     SIGKILL) are allowed and will be silently ignored.
 
+    {b Landlock}
+
+    On Linux, [landlock] restricts the child with the supplied filesystem policy
+    immediately before executing [prog]. Only the spawned child is restricted;
+    the calling process and any other children are unaffected.
+
     {b Implementation}
 
     [unix_backend] describes what backend to use on Unix. If set to [Default],
@@ -117,6 +123,7 @@ val spawn
   -> ?stdin:Unix.file_descr
   -> ?stdout:Unix.file_descr
   -> ?stderr:Unix.file_descr
+  -> ?landlock:Landlock.Policy.t
   -> ?unix_backend:Unix_backend.t (* default: [Unix_backend.default] *)
   -> ?setpgid:Pgid.t
   -> ?sigprocmask:Unix.sigprocmask_command * int list

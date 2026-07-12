@@ -7,9 +7,6 @@
  (enabled_if
   (<> %{profile} dune-bootstrap))
  (root_module root)
- (foreign_stubs
-  (language c)
-  (names landlock_stubs))
  (libraries
   memo
   ocaml

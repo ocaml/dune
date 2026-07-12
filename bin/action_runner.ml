@@ -23,15 +23,17 @@ let bwrap_command worker_argv =
 ;;
 
 let landlock_command ~dune_prog worker_argv =
-  let { Landlock.prog; argv } = Landlock.wrap_exn ~dune_prog worker_argv in
+  let { Landlock_command.prog; argv } =
+    Landlock_command.wrap_exn ~dune_prog worker_argv
+  in
   prog, argv
 ;;
 
 let sandbox_actions_command ~backend ~dune_prog worker_argv =
   match (backend : Sandbox_actions_backend.t) with
   | Auto ->
-    (match Landlock.wrap ~dune_prog worker_argv with
-     | Some { Landlock.prog; argv } -> prog, argv
+    (match Landlock_command.wrap ~dune_prog worker_argv with
+     | Some { Landlock_command.prog; argv } -> prog, argv
      | None -> bwrap_command worker_argv)
   | Bwrap -> bwrap_command worker_argv
   | Landlock -> landlock_command ~dune_prog worker_argv

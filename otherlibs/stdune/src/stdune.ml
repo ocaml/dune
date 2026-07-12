@@ -120,6 +120,7 @@ module Unix_error = Unix_error
 module File_kind = File_kind
 module Alias_name = Alias_name
 module Action_runner_name = Action_runner_name
+module Landlock = Landlock
 module Spawn = Spawn
 
 module type Per_item = Per_item_intf.S

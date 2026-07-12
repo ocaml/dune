@@ -26,6 +26,9 @@
 
 #include <errno.h>
 
+int dune_landlock_no_new_privs(void);
+int dune_landlock_restrict_self_fd(int ruleset_fd);
+
 #if defined(__APPLE__)
 
 # if defined(__MAC_OS_X_VERSION_MAX_ALLOWED)
@@ -291,6 +294,7 @@ struct spawn_info {
   int set_pgid;
   pid_t pgid;
   sigset_t child_sigmask;
+  int landlock_ruleset_fd;
 };
 
 static void subprocess(int failure_fd, struct spawn_info *info)
@@ -344,6 +348,14 @@ static void subprocess(int failure_fd, struct spawn_info *info)
   }
 
   pthread_sigmask(SIG_SETMASK, &info->child_sigmask, NULL);
+
+  if (info->landlock_ruleset_fd >= 0) {
+    if (dune_landlock_no_new_privs() != 0)
+      subprocess_failure(failure_fd, "prctl", NOTHING);
+    if (dune_landlock_restrict_self_fd(info->landlock_ruleset_fd) != 0)
+      subprocess_failure(failure_fd, "landlock_restrict_self", NOTHING);
+    close(info->landlock_ruleset_fd);
+  }
 
   execve(info->prog, info->argv, info->env);
   subprocess_failure(failure_fd, "execve", PROG);
@@ -462,9 +474,11 @@ static void init_spawn_info(struct spawn_info *info,
                             value v_stdout,
                             value v_stderr,
                             value v_setpgid,
-                            value v_sigprocmask)
+                            value v_child_setup)
 {
   extern char ** environ;
+  value v_sigprocmask = Field(v_child_setup, 0);
+  value v_landlock_ruleset = Field(v_child_setup, 1);
 
   info->std_fds[0] = Int_val(v_stdin);
   info->std_fds[1] = Int_val(v_stdout);
@@ -501,6 +515,8 @@ static void init_spawn_info(struct spawn_info *info,
   info->pgid =
     Is_block(v_setpgid) ?
     Long_val(Field(v_setpgid, 0)) : 0;
+  info->landlock_ruleset_fd =
+    Is_block(v_landlock_ruleset) ? Int_val(Field(v_landlock_ruleset, 0)) : -1;
 
   if (v_sigprocmask == Val_long(0)) {
     sigemptyset(&info->child_sigmask);
@@ -555,7 +571,7 @@ CAMLprim value dune_spawn_unix(value v_env,
                                value v_stderr,
                                value v_use_vfork,
                                value v_setpgid,
-                               value v_sigprocmask)
+                               value v_child_setup)
 {
   CAMLparam4(v_env, v_cwd, v_prog, v_argv);
   CAMLlocal1(e_arg);
@@ -581,7 +597,13 @@ CAMLprim value dune_spawn_unix(value v_env,
 
   struct spawn_info info;
   init_spawn_info(&info, v_env, v_cwd, v_prog, v_argv,
-                  v_stdin, v_stdout, v_stderr, v_setpgid, v_sigprocmask);
+                  v_stdin, v_stdout, v_stderr, v_setpgid, v_child_setup);
+
+  if (info.landlock_ruleset_fd >= 0) {
+    e_error = ENOSYS;
+    e_function = "landlock_restrict_self";
+    goto cleanup;
+  }
 
   short attr_flags = POSIX_SPAWN_SETSIGMASK;
   if (info.set_pgid) attr_flags |= POSIX_SPAWN_SETPGROUP;
@@ -684,7 +706,7 @@ CAMLprim value dune_spawn_unix(value v_env,
                                value v_stderr,
                                value v_use_vfork,
                                value v_setpgid,
-                               value v_sigprocmask)
+                               value v_child_setup)
 {
   CAMLparam4(v_env, v_cwd, v_prog, v_argv);
   pid_t ret;
@@ -699,7 +721,7 @@ CAMLprim value dune_spawn_unix(value v_env,
   int status;
 
   init_spawn_info(&info, v_env, v_cwd, v_prog, v_argv,
-                  v_stdin, v_stdout, v_stderr, v_setpgid, v_sigprocmask);
+                  v_stdin, v_stdout, v_stderr, v_setpgid, v_child_setup);
 
   caml_enter_blocking_section();
   enter_safe_pipe_section();
@@ -823,7 +845,7 @@ CAMLprim value dune_spawn_unix(value v_env,
                                value v_stderr,
                                value v_use_vfork,
                                value v_setpgid,
-                               value v_sigprocmask)
+                               value v_child_setup)
 {
   (void)v_env;
   (void)v_cwd;
@@ -834,7 +856,7 @@ CAMLprim value dune_spawn_unix(value v_env,
   (void)v_stderr;
   (void)v_use_vfork;
   (void)v_setpgid;
-  (void)v_sigprocmask;
+  (void)v_child_setup;
   unix_error(ENOSYS, "spawn_unix", Nothing);
 }
 

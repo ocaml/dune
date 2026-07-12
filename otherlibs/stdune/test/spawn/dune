@@ -1,11 +1,34 @@
 (library
  (name stdune_spawn_tests)
+ (modules :standard \ landlock_tests)
  (inline_tests
   (deps
    exe/hello.exe
    exe/list_files.exe
    exe/print_env.exe
    pgid_test/checkpgid.exe
+   (sandbox always)))
+ (libraries
+  stdune
+  unix
+  ;; This is because of the (implicit_transitive_deps false)
+  ;; in dune-project
+  ppx_expect.config
+  ppx_expect.config_types
+  base
+  ppx_inline_test.config)
+ (preprocess
+  (pps ppx_expect)))
+
+(library
+ (name stdune_spawn_landlock_tests)
+ (modules landlock_tests)
+ ;; Landlock requires ABI version 3, which this Linux-only enabled_if cannot
+ ;; detect. The test asserts availability at startup.
+ (enabled_if
+  (= %{system} linux))
+ (inline_tests
+  (deps
    (sandbox always)))
  (libraries
   stdune

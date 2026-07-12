@@ -16,11 +16,11 @@ Honors `--bindir` and `--sbindir` during installation.
   $ dune build @install
   $ mkdir install bindir sbindir
   $ dune install --dry-run --prefix ./install --bindir $PWD/bindir --sbindir $PWD/sbindir --display short 2>&1 | grep bindir
+  Creating directory $TESTCASE_ROOT/bindir
   Removing (if it exists) $TESTCASE_ROOT/bindir/user
   Installing $TESTCASE_ROOT/bindir/user
-  Creating directory $TESTCASE_ROOT/bindir
   Copying _build/install/default/bin/user to $TESTCASE_ROOT/bindir/user (executable: true)
+  Creating directory $TESTCASE_ROOT/sbindir
   Removing (if it exists) $TESTCASE_ROOT/sbindir/admin.exe
   Installing $TESTCASE_ROOT/sbindir/admin.exe
-  Creating directory $TESTCASE_ROOT/sbindir
   Copying _build/install/default/sbin/admin.exe to $TESTCASE_ROOT/sbindir/admin.exe (executable: true)

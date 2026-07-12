@@ -64,6 +64,11 @@ Test the error message if a destination is a file instead of a directory.
   $ rm -rf prefix
   $ mkdir -p prefix/lib; touch prefix/lib/foo
   $ dune install --prefix prefix --display short
-  Installing prefix/lib/foo/META
+  Error: Please delete file prefix/lib/foo manually.
+  [1]
+
+Dry runs should validate the same existing directory blockers.
+
+  $ dune install --prefix prefix --display short --dry-run
   Error: Please delete file prefix/lib/foo manually.
   [1]

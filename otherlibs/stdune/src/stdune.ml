@@ -93,6 +93,9 @@ module Fd = Fd
 module Mutex = Mutex0
 module Action_types = Action_types
 module Display = Display
+module Sandbox_mode = Sandbox_mode
+module Clflags = Clflags
+module Report_errors_config = Report_errors_config
 
 module type Top_closure = Top_closure.Top_closure
 

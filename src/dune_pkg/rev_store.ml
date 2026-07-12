@@ -803,7 +803,7 @@ let fetch_allow_failure ~env repo ~url obj =
         ~env
         ~allow_codes:(Int.equal 0)
         repo
-        ~display:!Dune_engine.Clflags.display
+        ~display:!Clflags.display
         [ "fetch"
         ; "--no-write-fetch-head"
         ; sprintf "--negotiation-tip=%s/*" negotiation_ref_prefix
@@ -1162,7 +1162,7 @@ let remote =
       let refs =
         Fiber.Lazy.create (fun () ->
           let+ hits =
-            run_capture_lines t ~display:!Dune_engine.Clflags.display command
+            run_capture_lines t ~display:!Clflags.display command
             >>| function
             | Ok lines -> lines
             | Error git_error ->

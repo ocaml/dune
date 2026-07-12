@@ -1,7 +1,7 @@
 (** Running external programs *)
 
 open Import
-module Action_output_on_success := Execution_parameters.Action_output_on_success
+open Action_types
 module Action_output_limit := Execution_parameters.Action_output_limit
 
 module Failure_mode : sig

@@ -1,5 +1,4 @@
 (** Command line flags *)
-open Stdune
 
 (** Wrapper for target executables in cross-compilation: (toolchain, prog, args) *)
 val target_exec : (string * string * string list) option ref
@@ -11,9 +10,6 @@ val stop_on_first_error : bool ref
 
 (** Capture the output of sub-commands *)
 val capture_outputs : bool ref
-
-(** Always print backtraces, to help debugging dune itself *)
-val debug_backtraces : bool -> unit
 
 module Promote : sig
   type t =
@@ -45,3 +41,25 @@ val diff_command : string option ref
 (** Wait for the filesystem clock to advance rather than dropping cached digest
     entries *)
 val wait_for_filesystem_clock : bool ref
+
+(** Store original source directory in dune-package metadata *)
+val store_orig_src_dir : bool ref
+
+(** Whether we are ignoring rules with [(mode promote)] *)
+val ignore_promoted_rules : bool ref
+
+(** Promote the generated [<package>.install] files to the source tree *)
+val promote_install_files : bool ref
+
+(** Print package output when building with package management *)
+val debug_package_logs : bool ref
+
+val concurrency : int ref
+
+type on_missing_dune_project_file =
+  | Error
+  | Warn
+  | Ignore
+
+(** Desired behavior when dune project file is absent *)
+val on_missing_dune_project_file : on_missing_dune_project_file ref

@@ -90,7 +90,7 @@ module Curl = struct
       Process.run_capture_line
         Return
         ~stderr_to
-        ~display:!Dune_engine.Clflags.display
+        ~display:!Clflags.display
         (Lazy.force bin)
         args
     in

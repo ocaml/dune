@@ -36,7 +36,7 @@ module Message = struct
   ;;
 
   let display t =
-    match !Dune_engine.Clflags.display with
+    match !Stdune.Clflags.display with
     | Quiet -> ()
     | Short | Verbose -> Console.print_user_message (user_message t)
   ;;

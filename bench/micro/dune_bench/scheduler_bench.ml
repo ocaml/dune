@@ -6,7 +6,7 @@ open Dune_scheduler
 module Caml = Stdlib
 
 let config =
-  Dune_engine.Clflags.display := Short;
+  Clflags.display := Short;
   { Scheduler.Config.concurrency = 1
   ; print_ctrl_c_warning = false
   ; watch_exclusions = []

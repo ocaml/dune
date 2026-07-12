@@ -42,8 +42,7 @@ module Pgid : sig
       [setpgid(0, 0)]. *)
   val new_process_group : t
 
-  (** Raises [Invalid_arg] if the value is not strictly positive. *)
-  val of_pid : int -> t
+  val of_pid : Pid.t -> t
 end
 
 (** Spawn a sub-command and return its PID. This function is low-level and

@@ -78,13 +78,16 @@ end
 module Env : Env = (val if Sys.win32 then (module Env_win32) else (module Env_unix) : Env)
 
 module Pgid = struct
-  type t = int
+  type t =
+    | New
+    | Pid of Pid.t
 
-  let new_process_group = 0
+  let new_process_group = New
+  let of_pid p = Pid p
 
-  let of_pid = function
-    | 0 -> raise (Invalid_argument "bad pid: 0 (hint: use [Pgid.new_process_group])")
-    | t -> if t < 0 then raise (Invalid_argument ("bad pid: " ^ string_of_int t)) else t
+  let to_int = function
+    | New -> 0
+    | Pid p -> Pid.to_int p
   ;;
 end
 
@@ -114,6 +117,7 @@ let spawn_unix
       ~setpgid
       ~sigprocmask
   =
+  let setpgid = Option.map ~f:Pgid.to_int setpgid in
   spawn_unix ~env ~cwd ~prog ~argv ~stdin ~stdout ~stderr ~use_vfork ~setpgid ~sigprocmask
   |> Pid.of_int_exn
 ;;

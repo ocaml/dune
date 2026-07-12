@@ -60,7 +60,8 @@ let spawn_and_capture ?env ~prog ~argv ~cwd () =
               ?env
               ())
       in
-      let waited_pid, status = Unix.waitpid [] pid in
+      let waited_pid, status = Unix.waitpid [] (Pid.to_int pid) in
+      let waited_pid = Pid.of_int_exn waited_pid in
       if waited_pid <> pid then Code_error.raise "waitpid returned another process" [];
       { status; stdout = Io.read_file stdout_path; stderr = Io.read_file stderr_path }))
 ;;

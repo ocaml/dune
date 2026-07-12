@@ -37,7 +37,6 @@ let with_git_daemon ~parent_dir ~port ~repo_dir ~unrelated_repo_dir ~f =
       ~stdout:(Fd.unsafe_to_unix_file_descr (Lazy.force Dev_null.out))
       ~stderr:(Fd.unsafe_to_unix_file_descr (Lazy.force Dev_null.out))
       ()
-    |> Pid.of_int_exn
   in
   let stop_daemon () =
     (* The scheduler's process watcher can reap an unregistered child that exits

@@ -745,7 +745,7 @@ module Dune_config = struct
                      | exception End_of_file -> None
                    in
                    close_in ic;
-                   (match n, snd (Unix.waitpid [] pid) with
+                   (match n, snd (Unix.waitpid [] (Stdune.Pid.to_int pid)) with
                     | Some n, WEXITED 0 -> n
                     | _ -> loop rest)))
          in

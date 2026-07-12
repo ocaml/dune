@@ -57,7 +57,7 @@ let%expect_test "run process with timeout" =
         let path = Env.get Env.initial "PATH" |> Option.value_exn |> Bin.parse_path in
         Bin.which ~path "sleep" |> Option.value_exn |> Path.to_string
       in
-      Spawn.spawn ~prog ~argv:[ prog; "100000" ] () |> Pid.of_int_exn
+      Spawn.spawn ~prog ~argv:[ prog; "100000" ] ()
     in
     let+ (_ : Proc.Process_info.t) =
       Scheduler.wait_for_process

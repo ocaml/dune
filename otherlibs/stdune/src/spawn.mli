@@ -123,7 +123,7 @@ val spawn
   -> ?sigprocmask:Unix.sigprocmask_command * int list
        (** default: unblock all signals in child *)
   -> unit
-  -> int
+  -> Pid.t
 
 (**/**)
 

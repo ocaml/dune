@@ -66,7 +66,6 @@ let create ~where ~config ~sandbox_actions =
     Exn.protect
       ~f:(fun () -> Spawn.spawn ~env ~prog ~argv ())
       ~finally:(fun () -> Option.iter trace_fd ~f:Fd.close)
-    |> Pid.of_int_exn
   in
   Dune_engine.Action_runner.create name pid
 ;;

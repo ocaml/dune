@@ -103,7 +103,6 @@ let run ?env ~prog ~argv () =
       ~stdin:(Fd.unsafe_to_unix_file_descr (Lazy.force Dev_null.in_))
       ?env
       ()
-    |> Pid.of_int_exn
   in
   Unix.close stdout_w;
   Unix.close stderr_w;

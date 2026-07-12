@@ -724,7 +724,7 @@ module Dune_config = struct
                 let prog = Path.to_string prog in
                 let fdr, fdw = Unix.pipe () ~cloexec:true in
                 (match
-                   Spawn.spawn
+                   Stdune.Spawn.spawn
                      ~prog
                      ~argv:(prog :: args)
                      ~stdin:(Fd.unsafe_to_unix_file_descr (Lazy.force Dev_null.in_))

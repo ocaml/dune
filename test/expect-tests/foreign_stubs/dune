@@ -15,7 +15,6 @@
  (libraries
   stdune
   dune_tests_common
-  spawn
   unix
   ;; This is because of the (implicit_transitive_deps false)
   ;; in dune-project

@@ -22,7 +22,6 @@
   fiber
   opam_core
   re
-  spawn
   unix
   xdg
   ppx_expect.config

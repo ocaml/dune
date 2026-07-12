@@ -8,8 +8,10 @@ crash while probing the default user config file.
   $ touch .config/dune
   $ (
   >   unset INSIDE_DUNE
+  >   setup_xdg_runtime_dir
   >   output=dune.out
-  >   XDG_CONFIG_HOME=$(dune_cmd native-path "$PWD/.config") dune build > "$output" 2>&1
+  >   XDG_CONFIG_HOME=$(dune_cmd native-path "$PWD/.config") \
+  >     dune build --root . > "$output" 2>&1
   >   status=$?
   >   if [ $status -ne 0 ]; then
   >     if grep -q 'Unix.Unix_error(Unix.ENOTDIR' "$output"; then
@@ -21,5 +23,3 @@ crash while probing the default user config file.
   >   fi
   >   cat "$output"
   > )
-  dune crashed with ENOTDIR
-  [2]

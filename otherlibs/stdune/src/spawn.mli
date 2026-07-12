@@ -104,6 +104,11 @@ end
     already blocked, or to block a signal that cannot be blocked (e.g., SIGSTOP,
     SIGKILL) are allowed and will be silently ignored.
 
+    On Linux, the sub-process will ask the kernel to send it [pdeathsig] when
+    its parent dies. This defaults to [Signal.Kill]. On other platforms,
+    [pdeathsig] is ignored. The parent is the thread that created the
+    sub-process, not necessarily the whole parent process.
+
     {b Implementation}
 
     [unix_backend] describes what backend to use on Unix. If set to [Default],
@@ -119,6 +124,7 @@ val spawn
   -> ?stderr:Unix.file_descr
   -> ?unix_backend:Unix_backend.t (* default: [Unix_backend.default] *)
   -> ?setpgid:Pgid.t
+  -> ?pdeathsig:Signal.t
   -> ?sigprocmask:Unix.sigprocmask_command * int list
        (** default: unblock all signals in child *)
   -> unit

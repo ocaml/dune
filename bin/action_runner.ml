@@ -64,7 +64,10 @@ let create ~where ~config ~sandbox_actions =
       | None -> []
     in
     Exn.protect
-      ~f:(fun () -> Spawn.spawn ~env ~prog ~argv ())
+      ~f:(fun () ->
+        (* Use SIGTERM because the action runner knows how to clean up
+           its children. *)
+        Spawn.spawn ~env ~prog ~argv ~pdeathsig:Term ())
       ~finally:(fun () -> Option.iter trace_fd ~f:Fd.close)
   in
   Dune_engine.Action_runner.create name pid

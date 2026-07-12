@@ -29,7 +29,6 @@
  (libraries
   ocaml_inotify
   lev
-  spawn
   re
   unix
   csexp

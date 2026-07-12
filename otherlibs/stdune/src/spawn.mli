@@ -8,7 +8,7 @@ module Working_dir : sig
   type t =
     | Path of string (** Path in the filesystem *)
     | Fd of Unix.file_descr
-        (** File descriptor pointing to a directory. Not supported on Windows. *)
+    (** File descriptor pointing to a directory. Not supported on Windows. *)
     | Inherit (** Inherit the working directory of the current process *)
 end
 

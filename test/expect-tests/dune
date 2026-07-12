@@ -2,7 +2,6 @@
  (name dune_unit_tests)
  (libraries
   ocaml_config
-  spawn
   dune_tests_common
   stdune
   dune_util

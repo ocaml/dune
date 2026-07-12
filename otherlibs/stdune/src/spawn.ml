@@ -120,16 +120,16 @@ let maybe_quote f =
 ;;
 
 let spawn_windows
-  ~env
-  ~cwd
-  ~prog
-  ~argv
-  ~stdin
-  ~stdout
-  ~stderr
-  ~use_vfork:_
-  ~setpgid:_
-  ~sigprocmask:_
+      ~env
+      ~cwd
+      ~prog
+      ~argv
+      ~stdin
+      ~stdout
+      ~stderr
+      ~use_vfork:_
+      ~setpgid:_
+      ~sigprocmask:_
   =
   let cwd =
     match (cwd : Working_dir.t) with
@@ -156,17 +156,17 @@ let no_null s =
 ;;
 
 let spawn
-  ?env
-  ?(cwd = Working_dir.Inherit)
-  ~prog
-  ~argv
-  ?(stdin = Unix.stdin)
-  ?(stdout = Unix.stdout)
-  ?(stderr = Unix.stderr)
-  ?(unix_backend = Unix_backend.default)
-  ?setpgid
-  ?sigprocmask
-  ()
+      ?env
+      ?(cwd = Working_dir.Inherit)
+      ~prog
+      ~argv
+      ?(stdin = Unix.stdin)
+      ?(stdout = Unix.stdout)
+      ?(stderr = Unix.stderr)
+      ?(unix_backend = Unix_backend.default)
+      ?setpgid
+      ?sigprocmask
+      ()
   =
   (match cwd with
    | Path s -> no_null s

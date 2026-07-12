@@ -1,6 +1,6 @@
 open StdLabels
 
-external is_osx : unit -> bool = "spawn_is_osx" [@@noalloc]
+external is_osx : unit -> bool = "dune_spawn_is_osx" [@@noalloc]
 
 let is_osx = is_osx ()
 
@@ -103,7 +103,7 @@ external spawn_unix
   -> setpgid:int option
   -> sigprocmask:(Unix.sigprocmask_command * int list) option
   -> int
-  = "spawn_unix_byte" "spawn_unix"
+  = "dune_spawn_unix_byte" "dune_spawn_unix"
 
 let spawn_unix
       ~env
@@ -131,7 +131,7 @@ external spawn_windows
   -> stdout:Unix.file_descr
   -> stderr:Unix.file_descr
   -> int
-  = "spawn_windows_byte" "spawn_windows"
+  = "dune_spawn_windows_byte" "dune_spawn_windows"
 
 let maybe_quote f =
   if String.contains f ' ' || String.contains f '\"' || String.contains f '\t' || f = ""
@@ -202,6 +202,6 @@ let spawn
   backend ~env ~cwd ~prog ~argv ~stdin ~stdout ~stderr ~use_vfork ~setpgid ~sigprocmask
 ;;
 
-external safe_pipe : unit -> Unix.file_descr * Unix.file_descr = "spawn_pipe"
+external safe_pipe : unit -> Unix.file_descr * Unix.file_descr = "dune_spawn_pipe"
 
 let safe_pipe = if Sys.win32 then fun () -> Unix.pipe ~cloexec:true () else safe_pipe

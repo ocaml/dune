@@ -61,14 +61,14 @@ static int __pthread_fchdir(int fd) {
 }
 
 
-CAMLprim value spawn_is_osx()
+CAMLprim value dune_spawn_is_osx()
 {
   return Val_true;
 }
 
 #else
 
-CAMLprim value spawn_is_osx()
+CAMLprim value dune_spawn_is_osx()
 {
   return Val_false;
 }
@@ -135,7 +135,7 @@ static pthread_mutex_t safe_pipe_mutex = PTHREAD_MUTEX_INITIALIZER;
 #define enter_safe_pipe_section() pthread_mutex_lock(&safe_pipe_mutex)
 #define leave_safe_pipe_section() pthread_mutex_unlock(&safe_pipe_mutex)
 
-CAMLprim value spawn_pipe()
+CAMLprim value dune_spawn_pipe()
 {
   int fd[2];
   int ret;
@@ -163,7 +163,7 @@ static int safe_pipe(int fd[2])
   return pipe2(fd, O_CLOEXEC);
 }
 
-CAMLprim value spawn_pipe()
+CAMLprim value dune_spawn_pipe()
 {
   int fd[2];
   value res;
@@ -355,9 +355,9 @@ static void subprocess(int failure_fd, struct spawn_info *info)
 
 /* Raise a Unix error based on the contents of a [subprocess_failure] structure
    (and some context arguments). */
-void raise_subprocess_failure(struct subprocess_failure* failure,
-                              value v_cwd,
-                              value v_prog)
+static void raise_subprocess_failure(struct subprocess_failure* failure,
+                                      value v_cwd,
+                                      value v_prog)
 {
   value arg = Nothing;
   switch (failure->arg) {
@@ -546,16 +546,16 @@ static void init_spawn_info(struct spawn_info *info,
 
 #if defined(USE_POSIX_SPAWN)
 
-CAMLprim value spawn_unix(value v_env,
-                          value v_cwd,
-                          value v_prog,
-                          value v_argv,
-                          value v_stdin,
-                          value v_stdout,
-                          value v_stderr,
-                          value v_use_vfork,
-                          value v_setpgid,
-                          value v_sigprocmask)
+CAMLprim value dune_spawn_unix(value v_env,
+                               value v_cwd,
+                               value v_prog,
+                               value v_argv,
+                               value v_stdin,
+                               value v_stdout,
+                               value v_stderr,
+                               value v_use_vfork,
+                               value v_setpgid,
+                               value v_sigprocmask)
 {
   CAMLparam4(v_env, v_cwd, v_prog, v_argv);
   CAMLlocal1(e_arg);
@@ -675,16 +675,16 @@ CAMLprim value spawn_unix(value v_env,
 
 #else
 
-CAMLprim value spawn_unix(value v_env,
-                          value v_cwd,
-                          value v_prog,
-                          value v_argv,
-                          value v_stdin,
-                          value v_stdout,
-                          value v_stderr,
-                          value v_use_vfork,
-                          value v_setpgid,
-                          value v_sigprocmask)
+CAMLprim value dune_spawn_unix(value v_env,
+                               value v_cwd,
+                               value v_prog,
+                               value v_argv,
+                               value v_stdin,
+                               value v_stdout,
+                               value v_stderr,
+                               value v_use_vfork,
+                               value v_setpgid,
+                               value v_sigprocmask)
 {
   CAMLparam4(v_env, v_cwd, v_prog, v_argv);
   pid_t ret;
@@ -794,13 +794,13 @@ CAMLprim value spawn_unix(value v_env,
 
 #endif
 
-CAMLprim value spawn_windows(value v_env,
-                             value v_cwd,
-                             value v_prog,
-                             value v_cmdline,
-                             value v_stdin,
-                             value v_stdout,
-                             value v_stderr)
+CAMLprim value dune_spawn_windows(value v_env,
+                                  value v_cwd,
+                                  value v_prog,
+                                  value v_cmdline,
+                                  value v_stdin,
+                                  value v_stdout,
+                                  value v_stderr)
 {
   (void)v_env;
   (void)v_cwd;
@@ -814,16 +814,16 @@ CAMLprim value spawn_windows(value v_env,
 
 #else
 
-CAMLprim value spawn_unix(value v_env,
-                          value v_cwd,
-                          value v_prog,
-                          value v_argv,
-                          value v_stdin,
-                          value v_stdout,
-                          value v_stderr,
-                          value v_use_vfork,
-                          value v_setpgid,
-                          value v_sigprocmask)
+CAMLprim value dune_spawn_unix(value v_env,
+                               value v_cwd,
+                               value v_prog,
+                               value v_argv,
+                               value v_stdin,
+                               value v_stdout,
+                               value v_stderr,
+                               value v_use_vfork,
+                               value v_setpgid,
+                               value v_sigprocmask)
 {
   (void)v_env;
   (void)v_cwd;
@@ -854,13 +854,13 @@ static void close_std_handles(STARTUPINFO *si)
   if (si->hStdError  != NULL) CloseHandle(si->hStdError );
 }
 
-CAMLprim value spawn_windows(value v_env,
-                             value v_cwd,
-                             value v_prog,
-                             value v_cmdline,
-                             value v_stdin,
-                             value v_stdout,
-                             value v_stderr)
+CAMLprim value dune_spawn_windows(value v_env,
+                                  value v_cwd,
+                                  value v_prog,
+                                  value v_cmdline,
+                                  value v_stdin,
+                                  value v_stdout,
+                                  value v_stderr)
 {
   STARTUPINFO si;
   PROCESS_INFORMATION pi;
@@ -919,16 +919,16 @@ CAMLprim value spawn_windows(value v_env,
   return Val_long(pi.hProcess);
 }
 
-CAMLprim value spawn_pipe()
+CAMLprim value dune_spawn_pipe()
 {
   unix_error(ENOSYS, "spawn_pipe", Nothing);
 }
 
 #endif
 
-CAMLprim value spawn_unix_byte(value * argv)
+CAMLprim value dune_spawn_unix_byte(value * argv)
 {
-  return spawn_unix(argv[0],
+  return dune_spawn_unix(argv[0],
                     argv[1],
                     argv[2],
                     argv[3],
@@ -940,9 +940,9 @@ CAMLprim value spawn_unix_byte(value * argv)
                     argv[9]);
 }
 
-CAMLprim value spawn_windows_byte(value * argv)
+CAMLprim value dune_spawn_windows_byte(value * argv)
 {
-  return spawn_windows(argv[0],
+  return dune_spawn_windows(argv[0],
                        argv[1],
                        argv[2],
                        argv[3],

@@ -59,6 +59,50 @@ Test the error message if a destination is a non-empty directory instead of a fi
   Error: Please delete non-empty directory prefix/lib/foo/foo.a manually.
   [1]
 
+Dry runs should validate the same blocker.
+
+  $ dune install --prefix prefix --display short --dry-run
+  Creating directory prefix/lib/foo
+  Removing (if it exists) prefix/lib/foo/META
+  Installing prefix/lib/foo/META
+  Copying _build/install/default/lib/foo/META to prefix/lib/foo/META (executable: false)
+  Creating directory prefix/lib/foo
+  Removing (if it exists) prefix/lib/foo/dune-package
+  Installing prefix/lib/foo/dune-package
+  Copying _build/install/default/lib/foo/dune-package to prefix/lib/foo/dune-package (executable: false)
+  Creating directory prefix/lib/foo
+  Removing directory (fail if not empty) prefix/lib/foo/foo.a
+  Installing prefix/lib/foo/foo.a
+  Copying _build/install/default/lib/foo/foo.a to prefix/lib/foo/foo.a (executable: false)
+  Creating directory prefix/lib/foo
+  Removing (if it exists) prefix/lib/foo/foo.cma
+  Installing prefix/lib/foo/foo.cma
+  Copying _build/install/default/lib/foo/foo.cma to prefix/lib/foo/foo.cma (executable: false)
+  Creating directory prefix/lib/foo
+  Removing (if it exists) prefix/lib/foo/foo.cmi
+  Installing prefix/lib/foo/foo.cmi
+  Copying _build/install/default/lib/foo/foo.cmi to prefix/lib/foo/foo.cmi (executable: false)
+  Creating directory prefix/lib/foo
+  Removing (if it exists) prefix/lib/foo/foo.cmt
+  Installing prefix/lib/foo/foo.cmt
+  Copying _build/install/default/lib/foo/foo.cmt to prefix/lib/foo/foo.cmt (executable: false)
+  Creating directory prefix/lib/foo
+  Removing (if it exists) prefix/lib/foo/foo.cmx
+  Installing prefix/lib/foo/foo.cmx
+  Copying _build/install/default/lib/foo/foo.cmx to prefix/lib/foo/foo.cmx (executable: false)
+  Creating directory prefix/lib/foo
+  Removing (if it exists) prefix/lib/foo/foo.cmxa
+  Installing prefix/lib/foo/foo.cmxa
+  Copying _build/install/default/lib/foo/foo.cmxa to prefix/lib/foo/foo.cmxa (executable: false)
+  Creating directory prefix/lib/foo
+  Removing (if it exists) prefix/lib/foo/foo.ml
+  Installing prefix/lib/foo/foo.ml
+  Copying _build/install/default/lib/foo/foo.ml to prefix/lib/foo/foo.ml (executable: false)
+  Creating directory prefix/lib/foo
+  Removing (if it exists) prefix/lib/foo/foo.cmxs
+  Installing prefix/lib/foo/foo.cmxs
+  Copying _build/install/default/lib/foo/foo.cmxs to prefix/lib/foo/foo.cmxs (executable: true)
+
 Test the error message if a destination is a file instead of a directory.
 
   $ rm -rf prefix

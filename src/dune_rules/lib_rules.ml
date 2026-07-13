@@ -650,14 +650,18 @@ let library_rules
     let+ requires_hidden = Compilation_context.requires_hidden cctx
     and+ parameters = Compilation_context.parameters cctx in
     let flags = Compilation_context.flags cctx in
+    let preprocess =
+      match for_ with
+      | Ocaml -> lib.buildable.preprocess.config
+      | Melange -> lib.buildable.melange_preprocess.config
+    in
     Merlin.make
       ~requires_compile
       ~requires_hidden
       ~stdlib_dir:lib_config.stdlib_dir
       ~flags
       ~modules
-      ~preprocess:
-        (Preprocess.Per_module.without_instrumentation lib.buildable.preprocess.config)
+      ~preprocess:(Preprocess.Per_module.without_instrumentation preprocess)
       ~libname:(Some (snd lib.name))
       ~obj_dir
       ~dialects:(Dune_project.dialects (Scope.project scope))

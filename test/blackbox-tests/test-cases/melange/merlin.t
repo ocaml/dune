@@ -529,7 +529,7 @@ Melange-only Merlin configurations use Melange preprocessing.
   > | select(.[0] == "FLG" and .[1][0] == "-pp")
   > | .[1][1]
   > | if contains("pp_melange") then "melange" else "ocaml" end' | sort -u
-  ocaml
+  melange
 
 Mixed OCaml/Melange libraries generate separate Merlin configuration files.
 

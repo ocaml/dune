@@ -494,6 +494,43 @@ User ppx flags should appear in merlin config
     ]
   }
 
+Melange-only Merlin configurations use Melange preprocessing.
+
+  $ mkdir mode-preprocess
+  $ cat > mode-preprocess/dune-project <<EOF
+  > (lang dune 3.24)
+  > (using melange 0.1)
+  > EOF
+  $ cat > mode-preprocess/pp_ocaml.sh <<'EOF'
+  > #!/bin/sh
+  > cat "$1"
+  > EOF
+  $ cat > mode-preprocess/pp_melange.sh <<'EOF'
+  > #!/bin/sh
+  > cat "$1"
+  > EOF
+  $ cat > mode-preprocess/dune <<'EOF'
+  > (library
+  >  (name foo)
+  >  (modes melange)
+  >  (preprocess
+  >   (action
+  >    (run sh %{dep:pp_ocaml.sh} %{input-file})))
+  >  (melange.preprocess
+  >   (action
+  >    (run sh %{dep:pp_melange.sh} %{input-file}))))
+  > EOF
+  $ touch mode-preprocess/foo.ml
+
+  $ dune build --root mode-preprocess @check
+  $ dune ocaml merlin dump-config --root mode-preprocess --format=json "$PWD/mode-preprocess" | jq_dune -r '
+  > .[]
+  > | .config[]
+  > | select(.[0] == "FLG" and .[1][0] == "-pp")
+  > | .[1][1]
+  > | if contains("pp_melange") then "melange" else "ocaml" end' | sort -u
+  ocaml
+
 Mixed OCaml/Melange libraries generate separate Merlin configuration files.
 
   $ mkdir mixed

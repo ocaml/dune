@@ -37,6 +37,8 @@ let
       ];
 
       skipPackages = [
+        "angstrom"
+        "faraday"
         "mdx"
         "odoc"
         "odoc-parser"

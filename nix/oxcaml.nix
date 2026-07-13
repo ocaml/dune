@@ -24,14 +24,26 @@ let
     type = "github";
     owner = "oxcaml";
     repo = "opam-repository";
-    rev = "231c88c2e564fdca40e15e750aacad5fb0887435";
-    narHash = "sha256-+9ZQF2VH0O0G8RtN0hTf4k+w6yL63g6tblq3uzTKzG8=";
+    rev = "c2662be9bcad3875554acccff7bd1e3fe8cb57bc";
+    narHash = "sha256-2zn4PKRw7vsSh7tp+/nBZFjGE6fWrYm9lgrIWmvfVS8=";
   };
 
   # Parsed for documentation / sanity-check; not used in the getFlake
   # URL (pure mode needs rev, not tag).
   compilerPkgDir = "${oxcaml-opam-repository}/packages/oxcaml-compiler";
-  compilerVersion = lib.last (lib.naturalSort (builtins.attrNames (builtins.readDir compilerPkgDir)));
+  compilerVersions = builtins.attrNames (builtins.readDir compilerPkgDir);
+  preferredCompilerVersions =
+    builtins.filter
+      (version:
+        !lib.hasInfix "flags: avoid-version"
+          (builtins.readFile "${compilerPkgDir}/${version}/opam"))
+      compilerVersions;
+  selectableCompilerVersions =
+    if preferredCompilerVersions == [ ] then
+      compilerVersions
+    else
+      preferredCompilerVersions;
+  compilerVersion = lib.last (lib.naturalSort selectableCompilerVersions);
   compilerOpamFile = builtins.readFile "${compilerPkgDir}/${compilerVersion}/opam";
   oxcamlTag =
     let
@@ -44,13 +56,13 @@ let
 
   # The upstream OxCaml flake at the commit corresponding to oxcamlTag.
   # See the file header for how to resolve rev+narHash.
-  oxcaml = builtins.getFlake "github:oxcaml/oxcaml/7d714cfb3f1c79c9b1e2a9c40ac60ba0c44cafd7?narHash=sha256-JwVNRca8q1WfmuFLPOK3hL1DxmaKRYd%2BgJgV9xTDUhI%3D";
+  oxcaml = builtins.getFlake "github:oxcaml/oxcaml/dd4e8507373d22fb295422eb6dd3d997c76c47cb?narHash=sha256-IXgxNbNS5JlZeR3loZt2SRKrOI7hrOfC%2F%2FmQHGafhxY%3D";
 
   # Sanity: the tag in the opam-repo matches the tag this rev was
   # resolved from. Documentation more than enforcement — the assert
   # fires if a reader bumps one of the three pins above without the
   # others.
-  expectedTag = "5.2.0minus-31";
+  expectedTag = "5.2.0minus-39";
   _tagOk =
     if oxcamlTag == expectedTag then
       null

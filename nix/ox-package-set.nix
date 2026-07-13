@@ -33,6 +33,7 @@ let
         "ocamlbuild"
         "ocamlfind"
         "topkg"
+        "uutf"
         "zarith"
       ];
 
@@ -42,7 +43,6 @@ let
         "mdx"
         "odoc"
         "odoc-parser"
-        "uutf"
       ];
 
       nameMap = {

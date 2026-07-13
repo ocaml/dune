@@ -252,6 +252,15 @@
  (files   dune-runtest.1))
 
 (rule
+ (with-stdout-to dune-shell.1
+  (run dune shell --help=groff)))
+
+(install
+ (section man)
+ (package dune)
+ (files   dune-shell.1))
+
+(rule
  (with-stdout-to dune-show.1
   (run dune show --help=groff)))
 

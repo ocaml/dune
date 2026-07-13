@@ -73,22 +73,50 @@ end
 
 open Fiber.O
 
+exception Shell_replay_failed of Process.Failure_mode.raw_status
+
 let exec_run ~(ectx : context) ~(eenv : env) ~can_run_in_action_runner prog args =
-  let metadata = { ectx.metadata with can_run_in_action_runner } in
-  let+ (_ : (unit, int) result) =
-    Process.run
-      ~display:!Clflags.display
-      (Accept eenv.exit_codes)
-      ~dir:eenv.working_dir
-      ~env:eenv.env
-      ~stdout_to:eenv.stdout_to
-      ~stderr_to:eenv.stderr_to
-      ~stdin_from:eenv.stdin_from
-      ~metadata
-      prog
-      args
+  let can_run_in_action_runner =
+    match ectx.mode with
+    | Build -> can_run_in_action_runner
+    | Shell_replay -> false
   in
-  ()
+  let metadata = { ectx.metadata with can_run_in_action_runner } in
+  match ectx.mode with
+  | Build ->
+    let+ (_ : (unit, int) result) =
+      Process.run
+        ~display:!Clflags.display
+        (Accept eenv.exit_codes)
+        ~dir:eenv.working_dir
+        ~env:eenv.env
+        ~stdout_to:eenv.stdout_to
+        ~stderr_to:eenv.stderr_to
+        ~stdin_from:eenv.stdin_from
+        ~metadata
+        prog
+        args
+    in
+    ()
+  | Shell_replay ->
+    let+ (), status =
+      Process.run
+        ~display:Quiet
+        Return_raw
+        ~dir:eenv.working_dir
+        ~env:eenv.env
+        ~stdout_to:eenv.stdout_to
+        ~stderr_to:eenv.stderr_to
+        ~stdin_from:eenv.stdin_from
+        ~metadata
+        prog
+        args
+    in
+    (match status with
+     | Process.Failure_mode.Exited exit_code ->
+       if not (Predicate.test eenv.exit_codes exit_code)
+       then raise (Shell_replay_failed status)
+     | Process.Failure_mode.Signaled _ -> raise (Shell_replay_failed status))
 ;;
 
 let bash_exn =
@@ -228,7 +256,11 @@ let rec exec t ~ectx ~eenv : Done_or_more_deps.t Fiber.t =
     Done
   | Pipe (outputs, l) -> exec_pipe ~ectx ~eenv outputs l
   | Diff diff ->
-    let+ () = Diff_action.exec ~patch_back:None ectx.rule_loc diff in
+    let+ () =
+      match ectx.mode with
+      | Build -> Diff_action.exec ~patch_back:None ectx.rule_loc diff
+      | Shell_replay -> Diff_action.exec_without_promotion ectx.rule_loc diff
+    in
     Done
   | Extension (module A) ->
     let metadata =
@@ -357,6 +389,36 @@ type input =
   ; action : Action.t
   }
 
+let prepare_env ~root ~env execution_parameters =
+  let env =
+    match
+      Execution_parameters.workspace_root_to_build_path_prefix_map execution_parameters
+    with
+    | Unset -> env
+    | Set target ->
+      Dune_util.Build_path_prefix_map.extend_build_path_prefix_map
+        env
+        `New_rules_have_precedence
+        (* TODO generify *)
+        [ Some { source = Path.to_absolute_filename root; target } ]
+  in
+  let var = "DUNE_PROJECT_ROOT" in
+  match Execution_parameters.action_project_root execution_parameters with
+  | None -> Env.remove env ~var
+  | Some project_root ->
+    (match Path.as_in_build_dir root with
+     | None -> env
+     | Some root ->
+       let project_root = Path.Build.append_source root project_root in
+       Env.add env ~var ~value:(Path.to_absolute_filename (Path.build project_root)))
+;;
+
+let prepare_chdirs action =
+  Action.chdirs action
+  |> Path.Build.Set.iter ~f:(fun path -> Path.mkdir_p (Path.build path));
+  Fiber.return ()
+;;
+
 let exec
       { targets; root; context; env; rule_loc; execution_parameters; action = t }
       ~build_deps
@@ -365,31 +427,9 @@ let exec
     let metadata =
       Process_metadata.create ~purpose:(Process_metadata.Build_job targets) ()
     in
-    { targets; metadata; context; rule_loc; build_deps }
+    { targets; metadata; context; rule_loc; build_deps; mode = Build }
   and eenv =
-    let env =
-      match
-        Execution_parameters.workspace_root_to_build_path_prefix_map execution_parameters
-      with
-      | Unset -> env
-      | Set target ->
-        Dune_util.Build_path_prefix_map.extend_build_path_prefix_map
-          env
-          `New_rules_have_precedence
-          (* TODO generify *)
-          [ Some { source = Path.to_absolute_filename root; target } ]
-    in
-    let env =
-      let var = "DUNE_PROJECT_ROOT" in
-      match Execution_parameters.action_project_root execution_parameters with
-      | None -> Env.remove env ~var
-      | Some project_root ->
-        (match Path.as_in_build_dir root with
-         | None -> env
-         | Some root ->
-           let project_root = Path.Build.append_source root project_root in
-           Env.add env ~var ~value:(Path.to_absolute_filename (Path.build project_root)))
-    in
+    let env = prepare_env ~root ~env execution_parameters in
     { working_dir = Path.root
     ; env
     ; stdout_to =
@@ -414,4 +454,64 @@ let exec
   | Error exns ->
     Error
       (List.map exns ~f:(fun (e : Exn_with_backtrace.t) -> Exec_result.Error.of_exn e.exn))
+;;
+
+type replay_input =
+  { targets : Targets.Validated.t
+  ; dir : Path.t
+  ; env : Env.t
+  ; rule_loc : Loc.t
+  ; action : Action.t
+  ; temp_dir : Path.t
+  }
+
+let replay { targets; dir; env; rule_loc; action; temp_dir } =
+  let () =
+    match Action.find_extension_name action with
+    | None -> ()
+    | Some name ->
+      Code_error.raise
+        "action extension passed to dune shell replay"
+        [ "extension", Dyn.string name ]
+  in
+  Dtemp.with_temp_dir_for_shell temp_dir ~f:(fun () ->
+    let build_deps (_ : Dep.Set.t) =
+      Code_error.raise "dynamic dependencies in a static dune shell replay" []
+    in
+    let ectx =
+      let metadata =
+        Process_metadata.create ~purpose:(Process_metadata.Build_job (Some targets)) ()
+      in
+      { targets = Some targets
+      ; metadata
+      ; context = None
+      ; rule_loc
+      ; build_deps
+      ; mode = Shell_replay
+      }
+    in
+    let eenv =
+      { working_dir = dir
+      ; env
+      ; stdout_to = Process.Io.inherit_stdout
+      ; stderr_to = Process.Io.inherit_stderr
+      ; stdin_from = Process.Io.null In
+      ; prepared_dependencies = Dependency.Set.empty
+      ; exit_codes = Predicate.create (Int.equal 0)
+      }
+    in
+    let open Fiber.O in
+    let* () = prepare_chdirs action in
+    Fiber.collect_errors (fun () -> exec_until_all_deps_ready action ~ectx ~eenv)
+    >>= function
+    | Ok _ -> Fiber.return 0
+    | Error errors ->
+      (match
+         List.find_map errors ~f:(fun { Exn_with_backtrace.exn; _ } ->
+           match exn with
+           | Shell_replay_failed status -> Some status
+           | _ -> None)
+       with
+       | Some status -> Fiber.return (Process.Failure_mode.exit_code_of_raw_status status)
+       | None -> Fiber.reraise_all errors))
 ;;

@@ -236,5 +236,6 @@ let group =
     ; Sexp_pp.command
     ; Sexp_to_csexp.command
     ; Cache_metadata.command
+    ; Shell.Internal_replay.command
     ]
 ;;

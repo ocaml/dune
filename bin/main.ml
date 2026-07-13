@@ -11,6 +11,7 @@ let all : _ Cmdliner.Cmd.t list =
       ; Install_uninstall.install
       ; Install_uninstall.uninstall
       ; Exec.command
+      ; Shell.command
       ; Subst.command
       ; Print_rules.command
       ; Ocaml.Utop.command

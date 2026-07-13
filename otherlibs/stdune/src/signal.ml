@@ -122,6 +122,10 @@ let to_int =
   | t -> Map.find_exn table t
 ;;
 
+external system_signal_number : int -> int = "stdune_system_signal_number" [@@noalloc]
+
+let to_system_int signal = to_int signal |> system_signal_number
+
 let of_int i =
   let table = Int.Map.of_list_exn (List.map all ~f:(fun (t, i) -> i, t)) in
   match Int.Map.find table i with

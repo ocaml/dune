@@ -24,10 +24,20 @@ let limit_output output ~n =
 ;;
 
 module Failure_mode = struct
+  type raw_status =
+    | Exited of int
+    | Signaled of Signal.t
+
+  let exit_code_of_raw_status = function
+    | Exited code -> code
+    | Signaled signal -> 128 + Signal.to_system_int signal
+  ;;
+
   type ('a, 'b) t =
     | Strict : ('a, 'a) t
     | Accept : int Predicate.t -> ('a, ('a, int) result) t
     | Return : ('a, 'a * int) t
+    | Return_raw : ('a, 'a * raw_status) t
     | Timeout :
         { timeout : Time.Span.t option
         ; failure_mode : ('a, 'b) t
@@ -37,22 +47,27 @@ module Failure_mode = struct
   let rec accepted_codes : type a b. (a, b) t -> int -> bool = function
     | Strict -> Int.equal 0
     | Accept exit_codes -> fun i -> Predicate.test exit_codes i
-    | Return -> fun _ -> true
+    | Return | Return_raw -> fun _ -> true
     | Timeout { failure_mode; _ } -> accepted_codes failure_mode
   ;;
 
   let exit_code_of_result = function
     | `Finished n -> n
     | `Timeout -> Code_error.raise "should not return `Timeout" []
+    | `Signaled _ -> Code_error.raise "should not return `Signaled" []
   ;;
 
   let timeout : type a b. (a, b) t -> Time.Span.t option = function
     | Timeout { timeout; _ } -> timeout
-    | Strict | Accept _ | Return -> None
+    | Strict | Accept _ | Return | Return_raw -> None
   ;;
 
   let rec map_result
-    : type a b. (a, b) t -> [ `Timeout | `Finished of int ] -> f:(unit -> a) -> b
+    : type a b.
+      (a, b) t
+      -> [ `Timeout | `Finished of int | `Signaled of Signal.t ]
+      -> f:(unit -> a)
+      -> b
     =
     fun mode result ~f ->
     match mode with
@@ -62,10 +77,21 @@ module Failure_mode = struct
        | 0 -> Ok (f ())
        | n -> Error n)
     | Return -> f (), exit_code_of_result result
+    | Return_raw ->
+      (match result with
+       | `Finished code -> f (), Exited code
+       | `Signaled signal -> f (), Signaled signal
+       | `Timeout -> Code_error.raise "should not return `Timeout" [])
     | Timeout { failure_mode; _ } ->
       (match result with
        | `Timeout -> Error `Timed_out
-       | `Finished _ -> Ok (map_result failure_mode result ~f))
+       | `Finished _ | `Signaled _ -> Ok (map_result failure_mode result ~f))
+  ;;
+
+  let rec returns_signals : type a b. (a, b) t -> bool = function
+    | Return_raw -> true
+    | Timeout { failure_mode; _ } -> returns_signals failure_mode
+    | Strict | Accept _ | Return -> false
   ;;
 end
 
@@ -145,6 +171,15 @@ module Io = struct
   let stderr =
     make_stderr ~output_on_success:Print ~output_limit:Action_output_limit.default
   ;;
+
+  let external_io ch =
+    let fd = descr_of_channel ch in
+    { kind = External; fd = lazy fd; channel = lazy ch; status = Keep_open }
+  ;;
+
+  let inherit_stdout = external_io (Out_chan Stdlib.stdout)
+  let inherit_stderr = external_io (Out_chan Stdlib.stderr)
+  let inherit_stdin = external_io (In_chan Stdlib.stdin)
 
   let stdin =
     terminal
@@ -1406,31 +1441,36 @@ let run_internal
        | Normal ->
          let output = Result.Out.get result.stdout ^ Result.Out.get result.stderr in
          Log.command ~command_line ~output ~exit_status:process_info.status;
-         let res =
-           match display, result.exit_status, output with
-           | Quiet, Ok n, "" -> n (* Optimisation for the common case *)
-           | Verbose, _, _ ->
-             Handle_exit_status.verbose
-               result.exit_status
-               ~id
-               ~metadata
-               ~dir
-               ~command_line:fancy_command_line
-               ~output
+         let status =
+           match result.exit_status with
+           | Error (Signaled signal) when Failure_mode.returns_signals fail_mode ->
+             `Signaled signal
            | _ ->
-             Handle_exit_status.non_verbose
-               result.exit_status
-               ~prog:prog_str
-               ~dir
-               ~command_line
-               ~output
-               ~metadata
-               ~verbosity:display
-               ~has_unexpected_stdout:result.stdout.unexpected_output
-               ~has_unexpected_stderr:result.stderr.unexpected_output
+             `Finished
+               (match display, result.exit_status, output with
+                | Quiet, Ok n, "" -> n (* Optimisation for the common case *)
+                | Verbose, _, _ ->
+                  Handle_exit_status.verbose
+                    result.exit_status
+                    ~id
+                    ~metadata
+                    ~dir
+                    ~command_line:fancy_command_line
+                    ~output
+                | _ ->
+                  Handle_exit_status.non_verbose
+                    result.exit_status
+                    ~prog:prog_str
+                    ~dir
+                    ~command_line
+                    ~output
+                    ~metadata
+                    ~verbosity:display
+                    ~has_unexpected_stdout:result.stdout.unexpected_output
+                    ~has_unexpected_stderr:result.stderr.unexpected_output)
          in
          Result.close result;
-         `Finished res, times))
+         status, times))
 ;;
 
 let run
@@ -1586,22 +1626,37 @@ let run_capture_line
 ;;
 
 let run_inherit_std_in_out =
-  let external_ ch =
-    let fd = Io.descr_of_channel ch in
-    { Io.kind = External; fd = lazy fd; channel = lazy ch; status = Keep_open }
-  in
   fun ?dir ?env prog args ->
+  run_internal
+    ?dir
+    ?env
+    ~display:Display.Quiet
+    ~stdout_to:Io.inherit_stdout
+    ~stderr_to:Io.inherit_stderr
+    ~stdin_from:Io.inherit_stdin
+    ~setpgid:None
+    Return
+    prog
+    args
+  >>| fst
+  >>| Failure_mode.exit_code_of_result
+;;
+
+let run_inherit_std_in_out_raw =
+  fun ?dir ?env prog args ->
+  let+ status, _ =
     run_internal
       ?dir
       ?env
       ~display:Display.Quiet
-      ~stdout_to:(external_ (Out_chan stdout))
-      ~stderr_to:(external_ (Out_chan stderr))
-      ~stdin_from:(external_ (In_chan stdin))
+      ~stdout_to:Io.inherit_stdout
+      ~stderr_to:Io.inherit_stderr
+      ~stdin_from:Io.inherit_stdin
       ~setpgid:None
-      Return
+      Return_raw
       prog
       args
-    >>| fst
-    >>| Failure_mode.exit_code_of_result
+  in
+  let (), status = Failure_mode.map_result Return_raw status ~f:ignore in
+  status
 ;;

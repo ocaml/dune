@@ -1,10 +1,12 @@
 open Import
 
-(** Diff two files that are expected not to match. *)
+(** Diff two files that are expected not to match. The optional
+    source-promotion annotation is attached to the rendered diff output and
+    errors. *)
 val print
-  :  skip_trailing_cr:bool
+  :  ?promotion:User_message.Diff_annot.t
+  -> skip_trailing_cr:bool
   -> patch_back:Path.t option
-  -> User_message.Diff_annot.t
   -> Path.t
   -> Path.t
   -> _ Fiber.t

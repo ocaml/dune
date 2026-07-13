@@ -49,6 +49,63 @@ type rule_execution_result =
 val execute_rule : Rule.t -> rule_execution_result Memo.t
 val dep_on_alias_definition : Rules.Dir_rules.Alias_spec.item -> unit Action_builder.t
 
+(** {2 Sharing the rule execution pipeline}
+
+    These functions are part of the ordinary rule execution pipeline and are
+    exposed so that [dune shell] can prepare a rule action without executing
+    it. *)
+
+type prepared_rule_action =
+  { sandbox : Sandbox.t
+  ; action : Action.t
+  ; root : Path.t
+  ; context : Build_context.t option
+  ; env : Env.t
+  ; targets : Targets.Validated.t
+  ; rule_loc : Loc.t
+  ; execution_parameters : Execution_parameters.t
+  }
+
+(** Evaluate the rule's action and build the facts of its dependencies. *)
+val evaluate_rule_action
+  :  Rule.t
+  -> (Action.Full.t * Dep.Facts.t * Execution_parameters.t) Memo.t
+
+(** Remove the rule's declared targets both from the digest table and from
+    the build directory. *)
+val remove_rule_targets : Targets.Validated.t -> unit Fiber.t
+
+(** Prepare the rule's action in its normally selected sandbox and run [f]
+    while the sandbox and the rule's action locks are held. *)
+val with_prepared_action_for_rule
+  :  rule_digest:Digest.t
+  -> action:Action.Full.t
+  -> facts:Dep.Facts.t
+  -> loc:Loc.t
+  -> execution_parameters:Execution_parameters.t
+  -> sandbox_mode:Sandbox_mode.some option
+  -> targets:Targets.Validated.t
+  -> f:(prepared_rule_action -> 'a Fiber.t)
+  -> 'a Fiber.t
+
+(** Select the sandbox mode for a rule given its sandboxing configuration and
+    the sandboxing preference. *)
+val select_sandbox_mode
+  :  Sandbox_config.t
+  -> loc:Loc.t
+  -> sandboxing_preference:Sandbox_mode.t list
+  -> Sandbox_mode.t
+
+(** Compute the digest of a rule. This determines the shared-cache key and the
+    name of the rule's sandbox directory. *)
+val compute_rule_digest
+  :  Rule.t
+  -> facts:Dep.Facts.t
+  -> action:Action.Full.t
+  -> sandbox_mode:Sandbox_mode.t
+  -> execution_parameters:Execution_parameters.t
+  -> Digest.t
+
 (** {2 Running the build system} *)
 
 val run

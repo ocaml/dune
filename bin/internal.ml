@@ -230,6 +230,7 @@ let group =
     ; Internal_digest_db.command
     ; Internal_action_runner.group
     ; Bwrap.With_bwrap.command
+    ; Bwrap.With_sandbox_exec.command
     ; latest_lang_version
     ; bootstrap_info
     ; Sexp_pp.command

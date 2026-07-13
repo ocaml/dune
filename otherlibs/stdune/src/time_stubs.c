@@ -37,20 +37,35 @@ typedef struct _stati64 dune_time_stat_buf;
 typedef struct stat dune_time_stat_buf;
 #endif
 
-static int64_t dune_time_stat_mtime_ns(const dune_time_stat_buf *stat)
+static int64_t dune_time_stat_timestamp_ns(int64_t sec, int64_t nsec)
 {
-#ifdef _WIN32
-  return ((int64_t) stat->st_mtime) * 1000000000LL;
+  return (sec * 1000000000LL) + nsec;
+}
+
+#if defined(_WIN32) || defined(__HAIKU__)
+#define DUNE_TIME_STAT_TIMESTAMP_NS(stat, prefix) \
+  dune_time_stat_timestamp_ns((int64_t) (stat)->st_##prefix##time, 0)
 #elif defined(__APPLE__) || defined(__FreeBSD__) || defined(__NetBSD__) \
    || defined(__OpenBSD__) || defined(__DragonFly__)
-  return ((int64_t) stat->st_mtimespec.tv_sec * 1000000000LL)
-         + (int64_t) stat->st_mtimespec.tv_nsec;
-#elif defined(__HAIKU__)
-  return ((int64_t) stat->st_mtime) * 1000000000LL;
+#define DUNE_TIME_STAT_TIMESTAMP_NS(stat, prefix) \
+  dune_time_stat_timestamp_ns( \
+    (int64_t) (stat)->st_##prefix##timespec.tv_sec, \
+    (int64_t) (stat)->st_##prefix##timespec.tv_nsec)
 #else
-  return ((int64_t) stat->st_mtim.tv_sec * 1000000000LL)
-         + (int64_t) stat->st_mtim.tv_nsec;
+#define DUNE_TIME_STAT_TIMESTAMP_NS(stat, prefix) \
+  dune_time_stat_timestamp_ns( \
+    (int64_t) (stat)->st_##prefix##tim.tv_sec, \
+    (int64_t) (stat)->st_##prefix##tim.tv_nsec)
 #endif
+
+static int64_t dune_time_stat_mtime_ns(const dune_time_stat_buf *stat)
+{
+  return DUNE_TIME_STAT_TIMESTAMP_NS(stat, m);
+}
+
+static int64_t dune_time_stat_ctime_ns(const dune_time_stat_buf *stat)
+{
+  return DUNE_TIME_STAT_TIMESTAMP_NS(stat, c);
 }
 
 static value dune_time_stat_file_kind(int mode)
@@ -81,13 +96,14 @@ static value dune_time_alloc_stat(const dune_time_stat_buf *stat)
 {
   CAMLparam0();
   CAMLlocal1(v_stat);
-  v_stat = caml_alloc_small(6, 0);
+  v_stat = caml_alloc_small(7, 0);
   Field(v_stat, 0) = Val_long(dune_time_stat_mtime_ns(stat));
-  Field(v_stat, 1) = Val_long(stat->st_size);
-  Field(v_stat, 2) = Val_long(stat->st_mode & 07777);
-  Field(v_stat, 3) = dune_time_stat_file_kind(stat->st_mode);
-  Field(v_stat, 4) = Val_long(stat->st_dev);
-  Field(v_stat, 5) = Val_long(stat->st_ino);
+  Field(v_stat, 1) = Val_long(dune_time_stat_ctime_ns(stat));
+  Field(v_stat, 2) = Val_long(stat->st_size);
+  Field(v_stat, 3) = Val_long(stat->st_mode & 07777);
+  Field(v_stat, 4) = dune_time_stat_file_kind(stat->st_mode);
+  Field(v_stat, 5) = Val_long(stat->st_dev);
+  Field(v_stat, 6) = Val_long(stat->st_ino);
   CAMLreturn(v_stat);
 }
 

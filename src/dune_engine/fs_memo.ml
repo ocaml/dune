@@ -26,6 +26,7 @@ module Cached_digest = struct
   module Stats = struct
     type t =
       { mtime : Time.t
+      ; ctime : Time.t
       ; size : int
       ; perm : Unix.file_perm
       ; dev : int
@@ -36,6 +37,7 @@ module Cached_digest = struct
       Repr.record
         "fs-memo-cached-digest-reduced-stats"
         [ Repr.field "mtime" Time.repr ~get:(fun t -> t.mtime)
+        ; Repr.field "ctime" Time.repr ~get:(fun t -> t.ctime)
         ; Repr.field "size" Repr.int ~get:(fun t -> t.size)
         ; Repr.field "perm" Repr.int ~get:(fun t -> t.perm)
         ; Repr.field "dev" Repr.int ~get:(fun t -> t.dev)
@@ -47,6 +49,7 @@ module Cached_digest = struct
 
     let of_stat (stat : Stat.t) =
       { mtime = stat.mtime
+      ; ctime = stat.ctime
       ; size = stat.size
       ; perm = stat.perm
       ; dev = stat.dev
@@ -103,7 +106,7 @@ module Cached_digest = struct
       type nonrec t = t
 
       let name = "DIGEST-DB"
-      let version = 11
+      let version = 12
       let sharing = true
       let repr = repr
     end)

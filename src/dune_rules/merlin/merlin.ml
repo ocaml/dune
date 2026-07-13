@@ -119,11 +119,13 @@ module Processed = struct
   ;;
 
   (* ...but modules can have different preprocessing specifications*)
-  type t =
+  type configuration =
     { config : config
     ; per_file_config : module_config Path.Build.Map.t
     ; pp_config : pp_flag option Module_name.Per_item.t
     }
+
+  type t = configuration Nonempty_list.t
 
   type output_format =
     [ `Text
@@ -156,7 +158,7 @@ module Processed = struct
     ;;
   end
 
-  let repr =
+  let configuration_repr =
     Repr.record
       "merlin-processed"
       [ Repr.field "config" config_repr ~get:(fun t -> t.config)
@@ -171,6 +173,7 @@ module Processed = struct
       ]
   ;;
 
+  let repr = Repr.view (Repr.list configuration_repr) ~to_:Nonempty_list.to_list
   let to_dyn = Repr.to_dyn repr
 
   module D = struct
@@ -178,7 +181,7 @@ module Processed = struct
 
     let name = "merlin-conf"
     let sharing = false
-    let version = 9
+    let version = 10
 
     let repr =
       Repr.view Repr.string ~to_:(fun _ -> "Use [dune ocaml dump-dot-merlin] instead")
@@ -383,7 +386,7 @@ module Processed = struct
     Buffer.contents b
   ;;
 
-  let get { per_file_config; pp_config; config } ~file =
+  let get_configuration { per_file_config; pp_config; config } ~file =
     let open Option.O in
     let+ { module_; opens; reader } =
       let find file = Path.Build.Map.find per_file_config file in
@@ -406,6 +409,10 @@ module Processed = struct
     let pp = Module_name.Per_item.get pp_config (Module.name module_) in
     let unit_name = Module_name.Unique.to_string (Module.obj_name module_) in
     to_sexp ~unit_name ~opens ~pp ~reader config
+  ;;
+
+  let get configurations ~file =
+    Nonempty_list.to_list configurations |> List.find_map ~f:(get_configuration ~file)
   ;;
 
   let dump_entries { per_file_config; pp_config; config } : Dump_entry.t list =
@@ -435,7 +442,8 @@ module Processed = struct
   let print_file path =
     match load_file path with
     | Error msg -> Printf.eprintf "%s\n" msg
-    | Ok t -> dump_entries t |> List.iter ~f:print_entry
+    | Ok configurations ->
+      Nonempty_list.hd configurations |> dump_entries |> List.iter ~f:print_entry
   ;;
 
   let print_files format paths =
@@ -446,7 +454,7 @@ module Processed = struct
          Result.List.map paths ~f:(fun path ->
            match load_file path with
            | Error msg -> Error msg
-           | Ok t -> Ok (dump_entries t))
+           | Ok configurations -> Ok (dump_entries (Nonempty_list.hd configurations)))
        with
        | Error msg -> Printf.eprintf "%s\n" msg
        | Ok entries ->
@@ -457,7 +465,10 @@ module Processed = struct
   ;;
 
   let print_generic_dot_merlin paths =
-    match Result.List.map paths ~f:load_file with
+    match
+      Result.List.map paths ~f:(fun path ->
+        Result.map (load_file path) ~f:Nonempty_list.hd)
+    with
     | Error msg -> Printf.eprintf "%s\n" msg
     | Ok [] -> Printf.eprintf "No merlin configuration found.\n"
     | Ok (init :: tl) ->
@@ -864,15 +875,29 @@ module Unprocessed = struct
   ;;
 end
 
-let dot_merlin sctx ~dir ~more_src_dirs ~expander (t : Unprocessed.t) =
-  let merlin_file = Merlin_ident.merlin_file_path dir t.ident in
+type group = Unprocessed.t Nonempty_list.t
+
+let group ~default ~alternatives = (default :: alternatives : group)
+
+let dot_merlin sctx ~dir ~more_src_dirs ~expander (default :: alternatives : group) =
+  let { Unprocessed.ident; _ } = default in
+  let merlin_file = Merlin_ident.merlin_file_path dir ident in
   let* () =
     Rules.Produce.Alias.add_deps
       (Alias.make Alias0.check ~dir)
       (Action_builder.path (Path.build merlin_file))
   in
+  let configurations =
+    let open Action_builder.O in
+    let process configuration =
+      Unprocessed.process configuration sctx ~dir ~more_src_dirs ~expander
+    in
+    let+ default = process default
+    and+ alternatives = List.map alternatives ~f:process |> Action_builder.all in
+    (default :: alternatives : Processed.t)
+  in
   let action =
-    Unprocessed.process t sctx ~dir ~more_src_dirs ~expander
+    configurations
     |> Action_builder.map ~f:Processed.Persist.to_string
     |> Action_builder.with_no_targets
     |> Action_builder.With_targets.write_file_dyn merlin_file
@@ -880,10 +905,10 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander (t : Unprocessed.t) =
   Super_context.add_rule sctx ~dir action
 ;;
 
-let add_rules sctx ~dir ~more_src_dirs ~expander merlin =
+let add_rules sctx ~dir ~more_src_dirs ~expander group =
   Memo.when_
     (Context.merlin (Super_context.context sctx))
-    (fun () -> dot_merlin sctx ~more_src_dirs ~expander ~dir merlin)
+    (fun () -> dot_merlin sctx ~more_src_dirs ~expander ~dir group)
 ;;
 
 let more_src_dirs dir_contents ~source_dirs =

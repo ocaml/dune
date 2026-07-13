@@ -34,6 +34,11 @@ Check that trimming does not crash when the cache directory does not exist.
   $ dune cache trim --size 0B
   Freed 0B (0 files removed)
 
+Check that the unit can be omitted for zero
+
+  $ dune cache trim --size 0
+  Freed 0B (0 files removed)
+
 Check that the digest scheme for executable and non-executable digests hasn't
 changed. If it has, make sure to increment the version of the cache. Note that
 the current digests for both files match those computed by Jenga.

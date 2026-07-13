@@ -554,6 +554,7 @@ let poll t ~action_runner ~sticky_goal =
     (* Work we're allowed to do between successive polling iterations. this work
    should be fast and never fail (within reason) *)
     Dune_trace.emit ~buffered:true Scheduler Dune_trace.Event.scheduler_idle;
+    Dune_trace.emit_runtime ();
     Dune_trace.flush ();
     let sticky_built_at = Option.first_some built sticky_built_at in
     let* () = wait_for_wakeup_after t wakeup_generation in

@@ -41,11 +41,13 @@ let at_exit =
     match !global with
     | None -> ()
     | Some { out; ownership = Borrowed } ->
+      Out.emit_runtime out;
       let alloc_summary = capture_alloc_profile `Exit in
       Option.iter (Out.alloc out) ~f:Alloc.stop;
       Option.iter alloc_summary ~f:(Out.emit out);
       Out.close out
     | Some { out; ownership = Owned path } ->
+      Out.emit_runtime out;
       let alloc_summary = capture_alloc_profile `Exit in
       Option.iter (Out.alloc out) ~f:Alloc.stop;
       Option.iter alloc_summary ~f:(Out.emit out);
@@ -109,6 +111,8 @@ let flush () =
   | None -> ()
   | Some out -> Out.flush out
 ;;
+
+let emit_runtime () = Option.iter (global ()) ~f:Out.emit_runtime
 
 let emit_all ?buffered cat f =
   match global () with

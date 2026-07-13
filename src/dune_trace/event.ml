@@ -152,7 +152,7 @@ let init ~version =
     let args =
       [ "build_dir", Arg.build_path Path.Build.root
       ; "argv", Arg.list (Array.to_list Sys.argv |> List.map ~f:Arg.string)
-      ; "env", Arg.list (Unix.environment () |> Array.to_list |> List.map ~f:Arg.string)
+      ; "env", Arg.list (Env.initial |> Env.to_unix |> List.map ~f:Arg.string)
       ; "root", Arg.string Path.(to_absolute_filename root)
       ; "pid", Arg.int (Unix.getpid ())
       ; "initial_cwd", Arg.string Fpath.initial_cwd
@@ -981,4 +981,24 @@ let sandbox name ~start ~stop ~queued loc ~dir =
     | `Corrected -> "corrected"
   in
   Event.complete ~args ~name ~start ~dur Sandbox
+;;
+
+let runtime time what phase =
+  let args =
+    [ "phase", Arg.string (Runtime.runtime_phase_name phase)
+    ; ( "what"
+      , Arg.string
+          (match what with
+           | `Begin -> "begin"
+           | `End -> "end") )
+    ]
+  in
+  Event.instant ~args ~name:"event" time Runtime
+;;
+
+let runtime_counter time name value =
+  let args =
+    [ "name", Arg.string (Runtime.runtime_counter_name name); "value", Arg.int value ]
+  in
+  Event.instant ~args ~name:"counter" time Runtime
 ;;

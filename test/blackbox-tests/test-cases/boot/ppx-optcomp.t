@@ -146,6 +146,36 @@ and drops false branches with no [%%else].
   $ sed '/^$/d' expected-all-operators.ml > expected.normalized
   $ diff -u expected.normalized actual.normalized
 
+It also accepts the [not_defined_permissive(oxcaml)] guard used to select
+runtime event support during bootstrap.
+
+  $ cat > oxcaml-condition.ml <<EOF
+  > [%%if ocaml_version >= (0, 0, 0) && not_defined_permissive oxcaml]
+  > let runtime_events = "available"
+  > [%%else]
+  > let runtime_events = "disabled"
+  > [%%endif]
+  > EOF
+  $ cat > expected-oxcaml-condition.ml <<'EOF'
+  > let is_oxcaml =
+  >   let version = Sys.ocaml_version in
+  >   let ends_with suffix =
+  >     let version_len = String.length version in
+  >     let suffix_len = String.length suffix in
+  >     version_len >= suffix_len
+  >     && String.sub version (version_len - suffix_len) suffix_len = suffix
+  >   in
+  >   ends_with "+ox" || ends_with "+jst"
+  > ;;
+  > let selected = if is_oxcaml then "disabled" else "available"
+  > let () = Printf.printf "let runtime_events = %S\n" selected
+  > EOF
+  $ ./dump_pps.exe oxcaml-condition.ml > actual
+  $ ocaml expected-oxcaml-condition.ml > expected
+  $ sed '/^$/d' actual > actual.normalized
+  $ sed '/^$/d' expected > expected.normalized
+  $ diff -u expected.normalized actual.normalized
+
 Literal marker text inside strings and comments is preserved.
 
   $ cat > literal-markers.ml <<EOF

@@ -952,7 +952,17 @@ module Process = Fiber.Process
 (** {2 OCaml tools} *)
 
 module Libs = struct
-  let external_libraries = [ "unix"; "threads" ]
+  let ocaml_version = Scanf.sscanf Sys.ocaml_version "%d.%d" (fun a b -> a, b)
+
+  let is_oxcaml =
+    let check suffix = String.ends_with Sys.ocaml_version ~suffix in
+    check "+ox" || check "+jst"
+  ;;
+
+  let external_libraries =
+    let base = [ "unix"; "threads" ] in
+    if ocaml_version >= (5, 0) && not is_oxcaml then base @ [ "runtime_events" ] else base
+  ;;
 
   let make_lib lib =
     let root_module =
@@ -2000,6 +2010,8 @@ let resolve_externals external_libraries =
     let convert = function
       | "threads" -> Some ("threads" ^ Config.ocaml_archive_ext, [ "-I"; "+threads" ])
       | "unix" -> Some ("unix" ^ Config.ocaml_archive_ext, Config.unix_library_flags)
+      | "runtime_events" ->
+        Some ("runtime_events" ^ Config.ocaml_archive_ext, [ "-I"; "+runtime_events" ])
       | "csexp" | "pp" | "re" | "seq" -> None
       | s -> fatal "unhandled external library %s" s
     in

@@ -7,3 +7,8 @@
  (applies_to file-watcher-events)
  (enabled_if
   (<> %{system} macosx)))
+
+(cram
+ (applies_to runtime-events)
+ (enabled_if
+  (>= %{ocaml_version} 5.0.0)))

@@ -1,4 +1,4 @@
-# Tools Requirements
+# Tools Requirements like
 
 Authors: Ali Caglayan (Tarides), Shon Feder (Tarides), Sudha Parimala (Tarides),
 Ambre Suhamy (Tarides)
@@ -85,8 +85,21 @@ informing our design decisions.
 
 ## Terminology
 
-- A **tool** is just an executable provided by some opam package. One opam package can provide multiple tools.
-- To **install** a tool is to make the executable available within an environment.
+- A **tool** is just an executable provided by some opam package. One opam
+  package can provide multiple tools.
+- A **project dependency** is a component (such as a library or executable)
+  required for developing and/or distributing a project. In the context of dune,
+  we know a component is a dependency if *any* of a project's build targets
+  depend upon it.
+- A dependency is **qualified** when it is only required for a certain category
+  of build targets. Common qualification include *test* dependencies (e.g.,
+  `alcotest`, `jq`, or `qcheck`) and *generation* dependencies (e.g., `atd`,
+  `menhir`, or `ocamlformat`).
+- A tool is **discretionary**, relative to a particular project, if it is used
+  by some developers of the project, but it is not a *project dependency*.
+  Common examples include tools like `ocamllsp`, `utop`.
+- To **install** a tool is to install the opam package providing it and making
+  the tool's executable available within an environment.
 - A **well-formed opam package** specifies all data necessary to install and
   build its provided targets.
 - A tool is **installable** if it is part of a well-formed opam package obtainable
@@ -216,6 +229,27 @@ CR Shon: what do we do in dune package management if two packages provide the
 same executable? E.g., perhaps you want to use package a for tool a' and b for
 b', but they both also provide executables named `c`?
 
+#### 1.8 Project dependency tools
+
+Tools that are *project dependencies* specified as appropriately qualified
+dependencies in the `dune-project` file, must be installable via installation
+targets reflecting the qualification. 
+
+To illustrate, this could be thru some sort of qualification like `dune tools
+install :with-test :with-dev-setup`.
+
+CR Shon: The need is legit here, but this requirement doesn't feel right, as is.
+We need a general theory of how to think about qualified deps in dune managed
+packages...
+
+##### 1.9 Discretionary tools
+
+It must be possible to install discretionary tools without incorrectly
+specifying them as if they were project dependencies.
+
+#### 1.9 Discretionary tools
+
+
 ### 2. Usability
 
 Users must be able to run tools installed by Dune.
@@ -255,8 +289,13 @@ editors will not have to care.
  
 #### 2.4 Orthogonal execution
 
-Running dune tools (by any means) should not interfere with other concurrent dune
-operations (e.g., `dune build -w`).
+Running dune tools outside of a build (by any means) should not interfere with
+other concurrent dune operations (e.g., `dune build -w`).
+
+#### 2.5 Project dependency tools
+
+When a tool is a *project dependency* (under any qualification), users must
+be able to execute the tool.
 
 ### 3. Dependency interactions
 

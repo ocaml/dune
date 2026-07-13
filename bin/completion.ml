@@ -30,7 +30,7 @@ module Bash : Shell = struct
 if ! declare -F %s > /dev/null; then
   _completion_loader %s
 fi
-complete -F %s %s
+complete -o bashdefault -o default -F %s %s
 |}
       fun_def
       fun_name
@@ -57,14 +57,26 @@ module Zsh : Shell = struct
   ;;
 
   let completion_script ~fun_name =
-    let fun_def = Cmdliner_data.zsh_generic_completion fun_name in
+    let inner_fun_name = fun_name ^ "_cmdliner" in
+    let fun_def = Cmdliner_data.zsh_generic_completion inner_fun_name in
     sprintf
       {|#compdef %s
 %s
+function %s {
+  local nmatches="${compstate[nmatches]:-0}"
+  %s
+  local ret=$?
+  if [[ "${compstate[nmatches]:-0}" == "$nmatches" ]]; then
+    _default
+  fi
+  return $ret
+}
 %s
 |}
       "dune"
       fun_def
+      fun_name
+      inner_fun_name
       fun_name
   ;;
 end
@@ -86,14 +98,35 @@ module Powershell : Shell = struct
   ;;
 
   let completion_script ~fun_name =
-    let fun_def = Cmdliner_data.pwsh_generic_completion fun_name in
+    let inner_fun_name = fun_name ^ "_cmdliner" in
+    let fun_def = Cmdliner_data.pwsh_generic_completion inner_fun_name in
     sprintf
       {|
 %s
 
+$Global:%s = {
+  param(
+    $wordToComplete,
+    $commandAst,
+    $cursorPosition
+  )
+
+  $CompletionResults = & $%s $wordToComplete $commandAst $cursorPosition
+  if ($null -ne $CompletionResults -and @($CompletionResults).Count -gt 0) {
+    return $CompletionResults
+  }
+  else {
+    return [Management.Automation.CompletionCompleters]::CompleteFilename(
+      $wordToComplete
+    )
+  }
+}
+
 Register-ArgumentCompleter -Native -CommandName %s -ScriptBlock $%s
 |}
       fun_def
+      fun_name
+      inner_fun_name
       "dune"
       fun_name
   ;;

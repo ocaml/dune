@@ -73,12 +73,13 @@ let promotion source_file =
   }
 ;;
 
-let run_change loc ~patch_back (mode : Diff.Mode.t) = function
+let run_change loc ~patch_back ~sandbox (mode : Diff.Mode.t) = function
   | Message messages -> User_error.raise ~loc messages
   | File_diff { source_file; file1; file2 } ->
     (match mode with
      | Text ->
        Print_diff.print
+         ~sandbox
          ~patch_back
          (promotion source_file)
          file1
@@ -295,6 +296,7 @@ let plan_diff loc { Diff.optional; file1; file2; mode; directory_diffs } =
 let exec_plan
       loc
       ~patch_back
+      ~sandbox
       { Diff.optional; mode; file1; file2; _ }
       ({ changes; promotions } : plan)
   =
@@ -308,7 +310,8 @@ let exec_plan
       is_copied_from_source_tree (Path.build file2)
     in
     Fiber.finalize
-      (fun () -> Fiber.parallel_iter changes ~f:(run_change loc ~patch_back mode))
+      (fun () ->
+         Fiber.parallel_iter changes ~f:(run_change loc ~patch_back ~sandbox mode))
       ~finally:(fun () ->
         (match optional with
          | false ->
@@ -321,4 +324,6 @@ let exec_plan
         Fiber.return ())
 ;;
 
-let exec loc ~patch_back diff = exec_plan loc ~patch_back diff (plan_diff loc diff)
+let exec ~sandbox loc ~patch_back diff =
+  exec_plan loc ~patch_back ~sandbox diff (plan_diff loc diff)
+;;

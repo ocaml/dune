@@ -5,6 +5,8 @@ correction. The source change invalidates the just-finished build, so the RPC
 request must not complete with the initial failure; it should wait for the
 watch loop to rebuild the alias successfully.
 
+  $ # Needed when upgrading this test to Dune language 3.25:
+  $ # export DUNE_CONFIG__LANDLOCK=disabled
   $ make_dune_project 3.23
   $ cat > source <<EOF
   > old

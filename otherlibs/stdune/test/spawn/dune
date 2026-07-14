@@ -3,6 +3,7 @@
  (inline_tests
   (deps
    exe/hello.exe
+   exe/landlock_probe.exe
    exe/list_files.exe
    exe/print_env.exe
    pgid_test/checkpgid.exe

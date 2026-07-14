@@ -1,5 +1,7 @@
 Minimal RPC watch shutdown after an RPC build.
 
+  $ # Needed when upgrading this test to Dune language 3.25:
+  $ # export DUNE_CONFIG__LANDLOCK=disabled
   $ export DUNE_TRACE=rpc
 
   $ make_simple_rpc_watch_project

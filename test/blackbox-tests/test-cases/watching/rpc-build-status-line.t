@@ -1,6 +1,8 @@
 Forwarded watch builds display a rich status line with the current run once
 connected over RPC.
 
+  $ # Needed when upgrading this test to Dune language 3.25:
+  $ # export DUNE_CONFIG__LANDLOCK=disabled
   $ setup_xdg_runtime_dir
 
   $ make_simple_rpc_watch_project

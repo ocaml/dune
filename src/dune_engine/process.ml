@@ -3,6 +3,66 @@ open Fiber.O
 open Action_types
 module Action_output_limit = Execution_parameters.Action_output_limit
 
+module Sandbox = struct
+  type base = { landlock : Spawn.Landlock.t option Lazy.t }
+  type t = { landlock : (Fd.t * Spawn.Landlock.t) option Lazy.t }
+
+  let landlock_config = Config.make_toggle ~name:"landlock" ~default:`Enabled
+
+  let landlock_enabled () =
+    match Config.get landlock_config with
+    | `Enabled -> Spawn.Landlock.available ()
+    | `Disabled -> false
+  ;;
+
+  let open_directory path =
+    Unix.openfile (Path.to_string path) [ O_RDONLY; O_CLOEXEC ] 0
+    |> Fd.unsafe_of_unix_file_descr
+  ;;
+
+  let action_temp_dir = lazy (open_directory (Dtemp.action_temp_dir ()))
+  let dev = lazy (open_directory (Path.of_string "/dev"))
+
+  let create_base ~action_trace_root : base =
+    let action_trace_root = lazy (open_directory action_trace_root) in
+    let writable_directories = [ action_trace_root; action_temp_dir; dev ] in
+    let landlock =
+      lazy
+        (if landlock_enabled ()
+         then
+           List.map writable_directories ~f:Lazy.force
+           |> Spawn.Landlock.allow_writes_to_directories
+           |> Option.some
+         else None)
+    in
+    { landlock }
+  ;;
+
+  let for_action ({ landlock } : base) ~root : t =
+    let landlock =
+      lazy
+        (match Lazy.force landlock with
+         | None -> None
+         | Some landlock ->
+           let fd = open_directory root in
+           (match Spawn.Landlock.add_writable_directories [ fd ] landlock with
+            | landlock -> Some (fd, landlock)
+            | exception exn ->
+              let backtrace = Printexc.get_raw_backtrace () in
+              Fd.close fd;
+              Exn.raise_with_backtrace exn backtrace))
+    in
+    { landlock }
+  ;;
+
+  let to_landlock { landlock } = Option.map (Lazy.force landlock) ~f:snd
+
+  let destroy { landlock } =
+    if Lazy.is_val landlock
+    then Option.iter (Lazy.force landlock) ~f:(fun (fd, _) -> Fd.close fd)
+  ;;
+end
+
 let limit_output output ~n =
   let message = "TRUNCATED BY DUNE" in
   let noutput = String.length output in
@@ -939,6 +999,7 @@ let spawn
       ~args
       ~metadata
       ~timeout
+      ~sandbox
       ()
   =
   let { stdout_on_success
@@ -990,6 +1051,7 @@ let spawn
       | None -> Spawn.Working_dir.inherit_
       | Some dir -> Spawn.Working_dir.path (Path.to_string dir)
     in
+    let landlock = Option.bind sandbox ~f:Sandbox.to_landlock in
     Spawn.spawn
       ()
       ~prog:prog_str
@@ -1000,6 +1062,7 @@ let spawn
       ~stderr
       ~stdin
       ?setpgid
+      ?landlock
       ~cwd
   in
   if emit_trace
@@ -1160,6 +1223,7 @@ let exec_locally
            ~args
            ~metadata
            ~timeout
+           ~sandbox:None
            ()
        in
        let { Build.cancellation; _ } = build in
@@ -1190,6 +1254,7 @@ let run_internal
       ?(metadata = Process_metadata.default)
       ?(setpgid = Some Spawn.Pgid.new_process_group)
       ?build
+      ?sandbox
       fail_mode
       prog
       args
@@ -1265,6 +1330,7 @@ let run_internal
           ~args
           ~metadata
           ~timeout
+          ~sandbox
           ()
       in
       let* () =
@@ -1448,6 +1514,7 @@ let run
       ?env
       ?metadata
       ?build
+      ?sandbox
       fail_mode
       prog
       args
@@ -1462,6 +1529,7 @@ let run
       ?env
       ?metadata
       ?build
+      ?sandbox
       fail_mode
       prog
       (Array.Immutable.of_list args)
@@ -1478,6 +1546,7 @@ let run_with_array_args
       ?env
       ?metadata
       ?build
+      ?sandbox
       fail_mode
       prog
       args
@@ -1492,6 +1561,7 @@ let run_with_array_args
       ?env
       ?metadata
       ?build
+      ?sandbox
       fail_mode
       prog
       args
@@ -1537,6 +1607,7 @@ let run_capture_gen
       ?env
       ?metadata
       ?build
+      ?sandbox
       fail_mode
       prog
       args
@@ -1553,6 +1624,7 @@ let run_capture_gen
       ?env
       ?metadata
       ?build
+      ?sandbox
       fail_mode
       prog
       (Array.Immutable.of_list args)
@@ -1564,8 +1636,11 @@ let run_capture_gen
 ;;
 
 let run_capture = run_capture_gen ~f:Stdune.Io.read_file
-let run_capture_lines = run_capture_gen ~f:Stdune.Io.lines_of_file
-let run_capture_zero_separated = run_capture_gen ~f:Stdune.Io.zero_strings_of_file
+let run_capture_lines = run_capture_gen ?sandbox:None ~f:Stdune.Io.lines_of_file
+
+let run_capture_zero_separated =
+  run_capture_gen ?sandbox:None ~f:Stdune.Io.zero_strings_of_file
+;;
 
 let run_capture_line
       ?dir
@@ -1587,6 +1662,7 @@ let run_capture_line
     ?env
     ?metadata
     ?build
+    ?sandbox:None
     fail_mode
     prog
     args

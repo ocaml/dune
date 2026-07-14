@@ -80,7 +80,7 @@ Set 'cache-check-probability' to 1.0, which should trigger the check
   > EOF
   $ rm -rf _build
   $ dune_build_sorted_actions --config-file config reproducible non-reproducible
-  Warning: cache store error [542059eb7b9f78e6cebedf4dd1de4e91]: ((in_cache
+  Warning: cache store error [1ce77805b0b209e689d1ddac29fa75b5]: ((in_cache
   ((non-reproducible 7378fb2d7d80dc4468d6558d864f0897))) (computed
   ((non-reproducible 074ebdc1c3853f27c68566d8d183032c)))) after executing
   action at dune:6
@@ -136,7 +136,7 @@ Test that the environment variable and the command line flag work too
 
   $ rm -rf _build
   $ DUNE_CACHE_CHECK_PROBABILITY=1.0 dune_build_sorted_actions --cache=enabled reproducible non-reproducible
-  Warning: cache store error [542059eb7b9f78e6cebedf4dd1de4e91]: ((in_cache
+  Warning: cache store error [1ce77805b0b209e689d1ddac29fa75b5]: ((in_cache
   ((non-reproducible 7378fb2d7d80dc4468d6558d864f0897))) (computed
   ((non-reproducible 074ebdc1c3853f27c68566d8d183032c)))) after executing
   action at dune:6
@@ -148,7 +148,7 @@ Test that the environment variable and the command line flag work too
 
   $ rm -rf _build
   $ dune_build_sorted_actions --cache=enabled --cache-check-probability=1.0 reproducible non-reproducible
-  Warning: cache store error [542059eb7b9f78e6cebedf4dd1de4e91]: ((in_cache
+  Warning: cache store error [1ce77805b0b209e689d1ddac29fa75b5]: ((in_cache
   ((non-reproducible 7378fb2d7d80dc4468d6558d864f0897))) (computed
   ((non-reproducible 074ebdc1c3853f27c68566d8d183032c)))) after executing
   action at dune:6

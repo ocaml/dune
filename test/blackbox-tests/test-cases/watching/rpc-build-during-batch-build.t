@@ -6,6 +6,7 @@ error instead.
 Use marker files to ensure that the first build is blocked in its action before
 starting the second build.
 
+  $ export DUNE_CONFIG__LANDLOCK=disabled
   $ make_dune_project 3.25
   $ STARTED="$PWD/started"
   $ RELEASE="$PWD/release"

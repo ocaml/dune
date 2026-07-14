@@ -1,5 +1,8 @@
 Test source-backed artifacts produced by promotion in file-watching mode.
 
+  $ # Needed when upgrading this test to Dune language 3.25:
+  $ # export DUNE_CONFIG__LANDLOCK=disabled
+
 A promoted file should be available through the corresponding source-copy target
 in _build.
 

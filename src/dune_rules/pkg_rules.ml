@@ -2372,6 +2372,7 @@ let build_rule context_name ~source_deps (pkg : Pkg.t) =
    Action_builder.deps deps |> Action_builder.with_no_targets)
   (* TODO should we add env deps on these? *)
   >>> add_env (Pkg.exported_env pkg) build_action
+  |> Action_builder.With_targets.map ~f:Action.Full.disable_sandbox_policy
   |> Action_builder.With_targets.add_directories
        ~directory_targets:[ pkg.write_paths.target_dir ]
 ;;

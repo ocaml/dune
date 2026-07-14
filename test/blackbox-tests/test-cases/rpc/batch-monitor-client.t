@@ -7,6 +7,8 @@ the real CLI paths: the temporary RPC server started by a batch build, an
 external dune monitor client, and the monitor's long-poll subscriptions. The
 point is to catch the user-visible hang, not just the protocol-level behavior.
 
+  $ # Needed when upgrading this test to Dune language 3.25:
+  $ # export DUNE_CONFIG__LANDLOCK=disabled
   $ cat > dune-project <<EOF
   > (lang dune 3.23)
   > EOF

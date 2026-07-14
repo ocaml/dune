@@ -606,7 +606,7 @@ let make_temp_dir ~script =
       in
       "." ^ Filename.to_string suffix
     in
-    Dune_engine.Dtemp.action_dir ~prefix:"dune_cram" ~suffix
+    Dune_engine.Dtemp.action Dir ~prefix:"dune_cram" ~suffix
   in
   Path.mkdir_p temp_dir;
   temp_dir
@@ -642,7 +642,13 @@ let combine_with_current_stanzas =
   fun current_stanzas expected -> loop [] current_stanzas expected |> List.rev
 ;;
 
-let print_timeout_correction_and_fail ~src ~conflict_markers ~timeout command_outputs =
+let print_timeout_correction_and_fail
+      ~src
+      ~conflict_markers
+      ~timeout
+      ~sandbox
+      command_outputs
+  =
   let open Fiber.O in
   let* () =
     let source_contents = Io.read_file ~binary:false src in
@@ -661,7 +667,7 @@ let print_timeout_correction_and_fail ~src ~conflict_markers ~timeout command_ou
       Fiber.return ())
     else (
       Io.write_file ~binary:false corrected_file expected;
-      let+ diff = Dune_engine.Print_diff.get src corrected_file in
+      let+ diff = Dune_engine.Print_diff.get ~sandbox src corrected_file in
       let () =
         let source_file = Path.drop_optional_build_context_src_exn src in
         let correction_file = Path.as_in_build_dir_exn corrected_file in
@@ -690,6 +696,7 @@ let run_cram_test
       ~cwd
       ~timeout
       ~setup_scripts
+      ~sandbox
       (shell : Cram_stanza.Shell.t)
   =
   let open Fiber.O in
@@ -732,6 +739,7 @@ let run_cram_test
     ~metadata
     ~dir:cwd
     ~env
+    ?sandbox
     (Timeout { timeout = Option.map ~f:snd timeout; failure_mode = Strict })
     sh
     ((match shell with
@@ -767,6 +775,7 @@ let run_produce_correction
       ~script
       ~timeout
       ~setup_scripts
+      ~sandbox
       shell
       lexbuf
   =
@@ -784,6 +793,7 @@ let run_produce_correction
     ~cwd
     ~timeout
     ~setup_scripts
+    ~sandbox
     shell
   >>| compose_cram_output
 ;;
@@ -806,6 +816,7 @@ let run_and_produce_output
       ~dst
       ~timeout
       ~setup_scripts
+      ~sandbox
       shell
   =
   let open Fiber.O in
@@ -830,6 +841,7 @@ let run_and_produce_output
         ~cwd
         ~timeout
         ~setup_scripts
+        ~sandbox
         shell
     in
     List.filter_map cram_to_output ~f:(function
@@ -840,7 +852,7 @@ let run_and_produce_output
     List.exists commands ~f:(function
       | { metadata = Timed_out _; _ } -> true
       | _ -> false)
-  then print_timeout_correction_and_fail ~src ~conflict_markers ~timeout commands
+  then print_timeout_correction_and_fail ~src ~conflict_markers ~timeout ~sandbox commands
   else (
     let dst = Path.build dst in
     Path.mkdir_p (Path.parent_exn dst);
@@ -898,7 +910,7 @@ module Run = struct
 
     let action
           { src; dir; script; output; timeout; setup_scripts; shell }
-          ~ectx:_
+          ~(ectx : Action.context)
           ~(eenv : Action.env)
       =
       run_and_produce_output
@@ -910,6 +922,7 @@ module Run = struct
         ~dst:output
         ~timeout
         ~setup_scripts
+        ~sandbox:ectx.sandbox
         shell
     ;;
   end
@@ -1028,7 +1041,7 @@ module Action = struct
     let is_useful_to ~memoize:_ = true
     let encode script path _ : Sexp.t = List [ path script ]
 
-    let action script ~ectx:_ ~(eenv : Action.env) =
+    let action script ~(ectx : Action.context) ~(eenv : Action.env) =
       run_expect_test
         script
         ~f:
@@ -1039,6 +1052,7 @@ module Action = struct
              ~script
              ~timeout:None
              ~setup_scripts:[]
+             ~sandbox:ectx.sandbox
              Sh)
     ;;
   end

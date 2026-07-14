@@ -1,6 +1,8 @@
 ----------------------------------------------------------------------------------
 Test that rule digest doesn't depend on irrelevant details of the dune file
 
+  $ # Needed when upgrading this test to Dune language 3.25:
+  $ # export DUNE_CONFIG__LANDLOCK=disabled
   $ export DUNE_PWD_STORE="$(mktemp)"
 
   $ make_dune_project 3.0

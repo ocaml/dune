@@ -25,10 +25,151 @@
 #include <caml/signals.h>
 
 #include <errno.h>
+#include <stdint.h>
+
+#ifndef ENOSYS
+#define ENOSYS EINVAL
+#endif
 
 #if defined(__linux__)
+#include <fcntl.h>
+#include <unistd.h>
 #include <sys/prctl.h>
+#include <sys/syscall.h>
+#if defined(__has_include)
+#if __has_include(<linux/landlock.h>)
+#define DUNE_SPAWN_HAS_LINUX_LANDLOCK_H 1
+#include <linux/landlock.h>
 #endif
+#endif
+#endif
+
+#if defined(__linux__) && defined(DUNE_SPAWN_HAS_LINUX_LANDLOCK_H) &&           \
+    defined(SYS_landlock_create_ruleset) && defined(SYS_landlock_add_rule) &&  \
+    defined(SYS_landlock_restrict_self) &&                                     \
+    defined(LANDLOCK_CREATE_RULESET_VERSION) &&                                \
+    defined(LANDLOCK_ACCESS_FS_WRITE_FILE) &&                                  \
+    defined(LANDLOCK_ACCESS_FS_REMOVE_DIR) &&                                  \
+    defined(LANDLOCK_ACCESS_FS_REMOVE_FILE) &&                                 \
+    defined(LANDLOCK_ACCESS_FS_MAKE_CHAR) &&                                   \
+    defined(LANDLOCK_ACCESS_FS_MAKE_DIR) &&                                    \
+    defined(LANDLOCK_ACCESS_FS_MAKE_REG) &&                                    \
+    defined(LANDLOCK_ACCESS_FS_MAKE_SOCK) &&                                   \
+    defined(LANDLOCK_ACCESS_FS_MAKE_FIFO) &&                                   \
+    defined(LANDLOCK_ACCESS_FS_MAKE_BLOCK) &&                                  \
+    defined(LANDLOCK_ACCESS_FS_MAKE_SYM) &&                                    \
+    defined(LANDLOCK_ACCESS_FS_REFER) &&                                       \
+    defined(LANDLOCK_ACCESS_FS_TRUNCATE)
+#define DUNE_SPAWN_HAS_LANDLOCK 1
+#else
+#define DUNE_SPAWN_HAS_LANDLOCK 0
+#endif
+
+#if DUNE_SPAWN_HAS_LANDLOCK
+static uint64_t landlock_write_access_rights(int abi)
+{
+  uint64_t access = LANDLOCK_ACCESS_FS_WRITE_FILE |
+                    LANDLOCK_ACCESS_FS_REMOVE_DIR |
+                    LANDLOCK_ACCESS_FS_REMOVE_FILE |
+                    LANDLOCK_ACCESS_FS_MAKE_CHAR |
+                    LANDLOCK_ACCESS_FS_MAKE_DIR |
+                    LANDLOCK_ACCESS_FS_MAKE_REG |
+                    LANDLOCK_ACCESS_FS_MAKE_SOCK |
+                    LANDLOCK_ACCESS_FS_MAKE_FIFO |
+                    LANDLOCK_ACCESS_FS_MAKE_BLOCK |
+                    LANDLOCK_ACCESS_FS_MAKE_SYM;
+  if (abi >= 2) access |= LANDLOCK_ACCESS_FS_REFER;
+  if (abi >= 3) access |= LANDLOCK_ACCESS_FS_TRUNCATE;
+  return access;
+}
+#endif
+
+CAMLprim value dune_spawn_landlock_abi_version(value unit)
+{
+  (void)unit;
+#if DUNE_SPAWN_HAS_LANDLOCK
+  int abi = syscall(SYS_landlock_create_ruleset, NULL, 0,
+                    LANDLOCK_CREATE_RULESET_VERSION);
+  if (abi < 0) {
+    switch (errno) {
+      case ENOSYS:
+      case EOPNOTSUPP:
+      case EINVAL:
+        return Val_int(0);
+      default:
+        uerror("landlock_create_ruleset", Nothing);
+    }
+  }
+  return Val_int(abi);
+#else
+  return Val_int(0);
+#endif
+}
+
+CAMLprim value dune_spawn_landlock_write_access_rights(value v_abi)
+{
+  CAMLparam1(v_abi);
+#if DUNE_SPAWN_HAS_LANDLOCK
+  CAMLreturn(caml_copy_int64(landlock_write_access_rights(Int_val(v_abi))));
+#else
+  CAMLreturn(caml_copy_int64(0));
+#endif
+}
+
+CAMLprim value dune_spawn_landlock_create_ruleset(value v_handled_access)
+{
+#if DUNE_SPAWN_HAS_LANDLOCK
+  struct landlock_ruleset_attr ruleset_attr = {
+    .handled_access_fs = Int64_val(v_handled_access),
+  };
+  int ruleset_fd = syscall(SYS_landlock_create_ruleset, &ruleset_attr,
+                           sizeof(ruleset_attr), 0);
+  if (ruleset_fd < 0) uerror("landlock_create_ruleset", Nothing);
+  return Val_int(ruleset_fd);
+#else
+  (void)v_handled_access;
+  errno = ENOSYS;
+  uerror("landlock_create_ruleset", Nothing);
+#endif
+}
+
+CAMLprim value dune_spawn_landlock_add_rule(value v_ruleset_fd,
+                                            value v_parent_fd,
+                                            value v_allowed_access)
+{
+  CAMLparam3(v_ruleset_fd, v_parent_fd, v_allowed_access);
+#if DUNE_SPAWN_HAS_LANDLOCK
+  struct landlock_path_beneath_attr path_beneath = {
+    .allowed_access = Int64_val(v_allowed_access),
+    .parent_fd = Int_val(v_parent_fd),
+  };
+  if (syscall(SYS_landlock_add_rule, Int_val(v_ruleset_fd),
+              LANDLOCK_RULE_PATH_BENEATH, &path_beneath, 0) < 0)
+    uerror("landlock_add_rule", Nothing);
+#else
+  (void)v_ruleset_fd;
+  (void)v_parent_fd;
+  (void)v_allowed_access;
+  errno = ENOSYS;
+  uerror("landlock_add_rule", Nothing);
+#endif
+  CAMLreturn(Val_unit);
+}
+
+CAMLprim value dune_spawn_landlock_restrict_self(value v_ruleset_fd)
+{
+#if DUNE_SPAWN_HAS_LANDLOCK
+  if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) != 0)
+    uerror("prctl", Nothing);
+  if (syscall(SYS_landlock_restrict_self, Int_val(v_ruleset_fd), 0) != 0)
+    uerror("landlock_restrict_self", Nothing);
+  return Val_unit;
+#else
+  (void)v_ruleset_fd;
+  errno = ENOSYS;
+  uerror("landlock_restrict_self", Nothing);
+#endif
+}
 
 #if defined(__APPLE__)
 
@@ -282,6 +423,7 @@ struct spawn_info {
   int std_fds[3];
   int set_pgid;
   pid_t pgid;
+  int landlock_fd;
   int pdeathsig;
   pid_t parent_pid;
   sigset_t child_sigmask;
@@ -316,6 +458,21 @@ static void set_parent_death_signal(int failure_fd, struct spawn_info *info)
 #else
   (void)failure_fd;
   (void)info;
+#endif
+}
+
+static void apply_landlock(int failure_fd, struct spawn_info *info)
+{
+  if (info->landlock_fd == -1) return;
+#if DUNE_SPAWN_HAS_LANDLOCK
+  if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) != 0)
+    subprocess_failure(failure_fd, "prctl", NOTHING);
+  if (syscall(SYS_landlock_restrict_self, info->landlock_fd, 0) != 0)
+    subprocess_failure(failure_fd, "landlock_restrict_self", NOTHING);
+  close(info->landlock_fd);
+#else
+  errno = ENOSYS;
+  subprocess_failure(failure_fd, "landlock_restrict_self", NOTHING);
 #endif
 }
 
@@ -366,6 +523,7 @@ static void subprocess(int failure_fd, struct spawn_info *info)
     close(tmp_fds[fd]);
   }
 
+  apply_landlock(failure_fd, info);
   pthread_sigmask(SIG_SETMASK, &info->child_sigmask, NULL);
 
   execve(info->prog, info->argv, info->env);
@@ -526,6 +684,7 @@ static void init_spawn_info(struct spawn_info *info,
                             value v_stderr,
                             value v_setpgid,
                             value v_sigprocmask,
+                            value v_landlock_fd,
                             value v_pdeathsig)
 {
   extern char ** environ;
@@ -565,6 +724,8 @@ static void init_spawn_info(struct spawn_info *info,
   info->pgid =
     Is_block(v_setpgid) ?
     Long_val(Field(v_setpgid, 0)) : 0;
+  info->landlock_fd =
+    Is_block(v_landlock_fd) ? Int_val(Field(v_landlock_fd, 0)) : -1;
 #if defined(__linux__)
   int pdeathsig = Int_val(v_pdeathsig);
   info->pdeathsig =
@@ -631,6 +792,7 @@ CAMLprim value dune_spawn_unix(value v_env,
                                value v_use_vfork,
                                value v_setpgid,
                                value v_sigprocmask,
+                               value v_landlock_fd,
                                value v_pdeathsig)
 {
   CAMLparam5(v_env, v_cwd, v_prog, v_argv0, v_args);
@@ -658,7 +820,7 @@ CAMLprim value dune_spawn_unix(value v_env,
   struct spawn_info info;
   init_spawn_info(&info, v_env, v_cwd, v_prog, v_argv0, v_args,
                   v_stdin, v_stdout, v_stderr, v_setpgid, v_sigprocmask,
-                  v_pdeathsig);
+                  v_landlock_fd, v_pdeathsig);
 
   short attr_flags = POSIX_SPAWN_SETSIGMASK;
   if (info.set_pgid) attr_flags |= POSIX_SPAWN_SETPGROUP;
@@ -764,6 +926,7 @@ CAMLprim value dune_spawn_unix(value v_env,
                                value v_use_vfork,
                                value v_setpgid,
                                value v_sigprocmask,
+                               value v_landlock_fd,
                                value v_pdeathsig)
 {
   CAMLparam5(v_env, v_cwd, v_prog, v_argv0, v_args);
@@ -780,7 +943,7 @@ CAMLprim value dune_spawn_unix(value v_env,
 
   init_spawn_info(&info, v_env, v_cwd, v_prog, v_argv0, v_args,
                   v_stdin, v_stdout, v_stderr, v_setpgid, v_sigprocmask,
-                  v_pdeathsig);
+                  v_landlock_fd, v_pdeathsig);
 
   caml_enter_blocking_section();
   enter_safe_pipe_section();
@@ -906,6 +1069,7 @@ CAMLprim value dune_spawn_unix(value v_env,
                                value v_use_vfork,
                                value v_setpgid,
                                value v_sigprocmask,
+                               value v_landlock_fd,
                                value v_pdeathsig)
 {
   (void)v_env;
@@ -919,6 +1083,7 @@ CAMLprim value dune_spawn_unix(value v_env,
   (void)v_use_vfork;
   (void)v_setpgid;
   (void)v_sigprocmask;
+  (void)v_landlock_fd;
   (void)v_pdeathsig;
   unix_error(ENOSYS, "spawn_unix", Nothing);
 }
@@ -1024,7 +1189,8 @@ CAMLprim value dune_spawn_unix_byte(value * argv)
                     argv[8],
                     argv[9],
                     argv[10],
-                    argv[11]);
+                    argv[11],
+                    argv[12]);
 }
 
 CAMLprim value dune_spawn_windows_byte(value * argv)

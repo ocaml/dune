@@ -4,6 +4,18 @@ open Import
 open Action_types
 module Action_output_limit := Execution_parameters.Action_output_limit
 
+module Sandbox : sig
+  (** Platform-independent sandbox requirements for a process. The concrete
+      enforcement mechanism is selected when the process is spawned. *)
+  type base
+
+  type t
+
+  val create_base : action_trace_root:Path.t -> base
+  val for_action : base -> root:Path.t -> t
+  val destroy : t -> unit
+end
+
 module Failure_mode : sig
   (** How to handle sub-process failures. This type controls the way in which
       the process we are running can fail. *)
@@ -101,6 +113,7 @@ val run
   -> ?env:Env.t
   -> ?metadata:Process_metadata.t
   -> ?build:Build.t
+  -> ?sandbox:Sandbox.t
   -> (unit, 'a) Failure_mode.t
   -> Path.t
   -> string list
@@ -115,6 +128,7 @@ val run_with_array_args
   -> ?env:Env.t
   -> ?metadata:Process_metadata.t
   -> ?build:Build.t
+  -> ?sandbox:Sandbox.t
   -> (unit, 'a) Failure_mode.t
   -> Path.t
   -> string Array.Immutable.t
@@ -143,6 +157,7 @@ val run_capture
   -> ?env:Env.t
   -> ?metadata:Process_metadata.t
   -> ?build:Build.t
+  -> ?sandbox:Sandbox.t
   -> (string, 'a) Failure_mode.t
   -> Path.t
   -> string list

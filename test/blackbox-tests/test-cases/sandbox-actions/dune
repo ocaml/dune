@@ -1,3 +1,16 @@
+(env
+ (_
+  (binaries ../../utils/action_plugin_helper.exe)))
+
+(cram
+ (applies_to landlock-policy)
+ (deps %{bin:action_plugin_helper})
+ (enabled_if
+  (= %{system} linux)))
+
+(cram
+ (applies_to shared-cache))
+
 (cram
  (applies_to basic with-bwrap)
  (alias runtest-bwrap)

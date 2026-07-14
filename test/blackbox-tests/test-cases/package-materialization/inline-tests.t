@@ -1,6 +1,8 @@
 Test that (inline_tests (deps (package ...))) sets up layout env vars
 for the test runner.
 
+  $ # Needed when upgrading this test to Dune language 3.25:
+  $ # export DUNE_CONFIG__LANDLOCK=disabled
   $ make_mypkg_lib_project
 
 Custom backend that writes OCAMLPATH to a file outside the sandbox:

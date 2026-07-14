@@ -1,6 +1,8 @@
 Dune is a Linux subreaper, so a process that leaves the action's process group
 is adopted by Dune and cleaned up after the build.
 
+  $ # Needed when upgrading this test to Dune language 3.25:
+  $ # export DUNE_CONFIG__LANDLOCK=disabled
   $ make_dune_project 3.23
 
   $ wait_for_child_process_cleanup_finished () {

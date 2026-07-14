@@ -263,7 +263,7 @@ module Internal = struct
 
   (* The current version of the rule digest scheme. We should increment it when
      making any changes to the scheme, to avoid collisions. *)
-  let rule_digest_version = 31
+  let rule_digest_version = 33
 
   let compute_rule_digest
         (rule : Rule.t)
@@ -276,6 +276,7 @@ module Internal = struct
         ; env
         ; locks
         ; can_go_in_shared_cache
+        ; can_use_sandbox_policy
         ; sandbox = _ (* already taken into account in [sandbox_mode] *)
         ; corrections
         }
@@ -285,7 +286,10 @@ module Internal = struct
     let execution_parameters =
       if Action.runs_process action
       then execution_parameters
-      else Execution_parameters.set_sandbox_actions false execution_parameters
+      else
+        execution_parameters
+        |> Execution_parameters.set_sandbox_actions false
+        |> Execution_parameters.set_use_sandbox_policy false
     in
     let digest =
       let d = Digest.Manual.create () in
@@ -296,6 +300,7 @@ module Internal = struct
       digest_target_paths d rule;
       Action.digest d action;
       Digest.Manual.bool d can_go_in_shared_cache;
+      Digest.Manual.bool d can_use_sandbox_policy;
       digest_locks d locks;
       Digest.Manual.repr d Repr.(option Corrections.repr) corrections;
       Digest.Manual.digest d (Execution_parameters.digest execution_parameters);
@@ -364,6 +369,10 @@ module Internal = struct
     | File_target, Dir_target _ | Dir_target _, File_target -> false
   ;;
 
+  let process_sandbox_base =
+    lazy (Process.Sandbox.create_base ~action_trace_root:(Action_trace.root ()))
+  ;;
+
   let rec build_alias alias = Memo.exec (Lazy.force build_alias_memo) alias
   and build_file path = Memo.exec (Lazy.force build_file_memo) path >>| fst
 
@@ -423,6 +432,7 @@ module Internal = struct
         ; env
         ; locks
         ; can_go_in_shared_cache = _
+        ; can_use_sandbox_policy
         ; sandbox = _
         ; corrections
         }
@@ -430,7 +440,20 @@ module Internal = struct
       action
     in
     let execute_action sandbox =
-      let is_sandboxed = Sandbox.is_sandboxed sandbox in
+      let action_trace = Action_trace.create rule_digest in
+      let sandbox_root = Sandbox.root sandbox in
+      let is_sandboxed = Option.is_some sandbox_root in
+      let process_sandbox =
+        match sandbox_root with
+        | None -> None
+        | Some root ->
+          if
+            can_use_sandbox_policy
+            && Action.runs_process action
+            && Execution_parameters.use_sandbox_policy execution_parameters
+          then Some (Process.Sandbox.for_action (Lazy.force process_sandbox_base) ~root)
+          else None
+      in
       let action = if is_sandboxed then Action.sandbox action sandbox else action in
       let action =
         (* We must add the creation of the stamp file after sandboxing it, as
@@ -455,41 +478,49 @@ module Internal = struct
         | Some context -> context.build_dir
       in
       let root = Path.build (Sandbox.map_path sandbox root) in
-      let action_trace = Action_trace.create rule_digest in
-      with_locks locks ~f:(fun () ->
-        let* action_exec_result =
-          let input =
-            let env = Action_trace.add_to_env action_trace env in
-            { Action_exec.root
-            ; context (* can be derived from the root *)
-            ; env
-            ; targets = Some targets
-            ; rule_loc = loc
-            ; execution_parameters
-            ; action
-            }
-          in
-          let build_deps deps = Memo.run (build_deps deps) in
-          Action_exec.exec input ~build_deps
-        in
-        let* action_exec_result = Action_exec.Exec_result.ok_exn action_exec_result in
-        let* () = Action_trace.collect action_trace in
-        let+ () =
-          if not is_sandboxed
-          then Fiber.return ()
-          else (
-            (* The stamp file for anonymous actions is always created outside
-               the sandbox, so we can't move it. *)
-            let should_be_skipped =
-              match rule_kind with
-              | Normal_rule -> fun (_ : Path.Build.t) -> false
-              | Anonymous_action { stamp_file; _ } -> Path.Build.equal stamp_file
+      let execute () =
+        with_locks locks ~f:(fun () ->
+          let* action_exec_result =
+            let input =
+              let env = Action_trace.add_to_env action_trace env in
+              { Action_exec.root
+              ; context (* can be derived from the root *)
+              ; env
+              ; targets = Some targets
+              ; rule_loc = loc
+              ; execution_parameters
+              ; sandbox = process_sandbox
+              ; action
+              }
             in
-            Sandbox.move_targets_to_build_dir sandbox ~should_be_skipped ~targets)
-        in
-        match Targets.Produced.of_validated targets with
-        | Ok produced_targets -> { Exec_result.produced_targets; action_exec_result }
-        | Error error -> User_error.raise ~loc (Targets.Produced.Error.message error))
+            let build_deps deps = Memo.run (build_deps deps) in
+            Action_exec.exec input ~build_deps
+          in
+          let* action_exec_result = Action_exec.Exec_result.ok_exn action_exec_result in
+          let* () = Action_trace.collect action_trace in
+          let+ () =
+            if not is_sandboxed
+            then Fiber.return ()
+            else (
+              (* The stamp file for anonymous actions is always created outside
+               the sandbox, so we can't move it. *)
+              let should_be_skipped =
+                match rule_kind with
+                | Normal_rule -> fun (_ : Path.Build.t) -> false
+                | Anonymous_action { stamp_file; _ } -> Path.Build.equal stamp_file
+              in
+              Sandbox.move_targets_to_build_dir sandbox ~should_be_skipped ~targets)
+          in
+          match Targets.Produced.of_validated targets with
+          | Ok produced_targets -> { Exec_result.produced_targets; action_exec_result }
+          | Error error -> User_error.raise ~loc (Targets.Produced.Error.message error))
+      in
+      match process_sandbox with
+      | None -> execute ()
+      | Some process_sandbox ->
+        Fiber.finalize execute ~finally:(fun () ->
+          Process.Sandbox.destroy process_sandbox;
+          Fiber.return ())
     in
     let deps, sandbox_dirs =
       match sandbox_mode with
@@ -766,7 +797,14 @@ module Internal = struct
     ignore observing_facts;
     let digest =
       let { Rule.Anonymous_action.action =
-              { action; env; locks; can_go_in_shared_cache; sandbox; corrections }
+              { action
+              ; env
+              ; locks
+              ; can_go_in_shared_cache
+              ; can_use_sandbox_policy
+              ; sandbox
+              ; corrections
+              }
           ; loc = _
           ; dir
           }
@@ -791,6 +829,7 @@ module Internal = struct
         Digest.Manual.string d (Path.Build.to_string dir);
         Digest.Manual.bool d capture_stdout;
         Digest.Manual.bool d can_go_in_shared_cache;
+        Digest.Manual.bool d can_use_sandbox_policy;
         digest_sandbox_config d sandbox;
         Digest.Manual.repr d Repr.(option Corrections.repr) corrections;
         Digest.Manual.get d

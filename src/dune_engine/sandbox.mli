@@ -4,6 +4,8 @@ open Import
 
 type t
 
+val root : t -> Path.t option
+
 (** [is_sandboxed t] is [true] when [t] represents a real sandbox. *)
 val is_sandboxed : t -> bool
 

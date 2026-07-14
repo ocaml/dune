@@ -13,6 +13,23 @@ module Working_dir : sig
   val inherit_ : t
 end
 
+module Landlock : sig
+  type t
+
+  val available : unit -> bool
+
+  (** Handle filesystem writes and allow them only under the directories
+      referenced by the given file descriptors. The descriptors must remain open
+      while the policy is used. *)
+  val allow_writes_to_directories : Fd.t list -> t
+
+  (** Extend a policy with additional writable directories. The descriptors must
+      remain open while the policy is used. *)
+  val add_writable_directories : Fd.t list -> t -> t
+
+  val restrict : t -> unit
+end
+
 (** Process group IDs *)
 module Pgid : sig
   (** Representation of the second parameter to [setpgid]. If a value of this
@@ -88,7 +105,13 @@ end
     On Linux, the sub-process will ask the kernel to send it [pdeathsig] when
     its parent dies. This defaults to [Signal.Kill]. On other platforms,
     [pdeathsig] is ignored. The parent is the thread that created the
-    sub-process, not necessarily the whole parent process. *)
+    sub-process, not necessarily the whole parent process.
+
+    {b Landlock}
+
+    If [landlock] is provided, its restrictions are applied to the child before
+    executing [prog]. This parameter is only supported on systems where
+    [Landlock.available ()] is true. *)
 val spawn
   :  ?env:Env.t
   -> ?cwd:Working_dir.t (* default: [Inherit] *)
@@ -102,6 +125,7 @@ val spawn
   -> ?pdeathsig:Signal.t
   -> ?sigprocmask:Unix.sigprocmask_command * Signal.t list
        (** default: unblock all signals in child *)
+  -> ?landlock:Landlock.t
   -> unit
   -> Pid.t
 

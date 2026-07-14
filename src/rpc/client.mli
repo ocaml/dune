@@ -7,6 +7,7 @@ module Connection : sig
   type t
 
   val connect : Dune_rpc.Where.t -> (t, User_message.t) result Fiber.t
+  val of_fd : Fd.t -> t
 
   (** like [connect] but fails with a nice error message for the user *)
   val connect_exn : Dune_rpc.Where.t -> t Fiber.t

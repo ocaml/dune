@@ -20,6 +20,13 @@ module Connection = struct
 
   let connect_sock sock = Csexp_rpc.Client.create sock |> Csexp_rpc.Client.connect
 
+  let of_fd fd =
+    match Csexp_rpc.Session.of_fd fd with
+    | fd -> fd
+    | exception exn ->
+      User_error.raise [ Pp.text "failed to use RPC file descriptor"; Exn.pp exn ]
+  ;;
+
   let connect where =
     match Where.to_socket where with
     | exception exn ->

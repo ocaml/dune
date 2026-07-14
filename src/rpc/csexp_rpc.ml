@@ -151,6 +151,14 @@ module Session = struct
     { id; state }
   ;;
 
+  let of_fd fd =
+    Socket.prepare_fd fd
+    |> Result.map ~f:(fun () ->
+      Fd.set_close_on_exec fd;
+      create fd)
+    |> Result.ok_exn
+  ;;
+
   let close_fd t =
     let* () = Fiber.return () in
     match t.state with

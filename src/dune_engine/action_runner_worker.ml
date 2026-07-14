@@ -104,15 +104,11 @@ let finish_build t ({ Request.Finish_build.run_id } : Request.Finish_build.t) =
   Scheduler.cleanup_subreaper_child_processes ()
 ;;
 
-let connect_retry_delay = Time.Span.of_secs 0.1
-
-let start ~name ~where =
+let start ~name ~rpc_fd =
   let t = create () in
   Dune_trace.emit Action (fun () ->
     Dune_trace.Event.Action.Runner.runner_event ~name Connection_start);
-  let* connection =
-    Client.Connection.connect_retrying_exn where ~retry_delay:connect_retry_delay
-  in
+  let connection = Client.Connection.of_fd rpc_fd in
   Dune_trace.emit Action (fun () ->
     Dune_trace.Event.Action.Runner.runner_event ~name Connection_established);
   let private_menu : Client.proc list =
@@ -138,9 +134,8 @@ let start ~name ~where =
         ; Pp.text (Dune_rpc.Version_error.message version_error)
         ]
     | Ok request ->
-      let payload = { Request.Ready.name } in
-      let* response = Client.request client request payload in
-      (match response with
+      Client.request client request { Request.Ready.name }
+      >>= (function
        | Ok () -> Client.disconnected client
        | Error error ->
          User_error.raise

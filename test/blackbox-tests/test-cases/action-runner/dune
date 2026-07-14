@@ -2,6 +2,12 @@
  (alias runtest-action-runner)
  (applies_to basic cancel-disconnect disconnect failure pool runtest trace))
 
+(cram
+ (alias runtest-action-runner)
+ (applies_to fd-leak)
+ (enabled_if
+  (= %{system} linux)))
+
 ;; Disabled until stop-on-first-error cancellation through action runners exits
 ;; promptly instead of relying on the test harness timeout.
 

@@ -18,15 +18,17 @@ module Encoded : sig
 
   val template : Template.t -> t
   val atom : Loc.t -> Atom.t -> t
-  val quoted_string : Loc.t -> string -> t
+  val quoted_string : Loc.t -> Quoted_string.t -> t
   val comment : Loc.t -> string list -> t
   val list : Loc.t -> t list -> t
   val to_csts : t list -> Cst.t list
   val to_asts : t list -> Ast.t list
 end = struct
-  open Ast
-
-  type t = Ast.t
+  type t =
+    | Atom of Loc.t * Atom.t
+    | Quoted_string of Loc.t * Quoted_string.t
+    | Template of Template.t
+    | List of Loc.t * t list
 
   let comment_marker : Template.t =
     (* In this value, both the location and template values are non-sensical:
@@ -48,28 +50,41 @@ end = struct
   ;;
 
   let atom loc a = Atom (loc, a)
-  let quoted_string loc s = Quoted_string (loc, s)
+  let quoted_string loc qs = Quoted_string (loc, qs)
 
   let comment loc lines =
     List
       ( loc
       , Template comment_marker
-        :: List.map lines ~f:(fun line -> Quoted_string (Loc.none, line)) )
+        :: List.map lines ~f:(fun line ->
+          Quoted_string (Loc.none, Quoted_string.Single line)) )
   ;;
 
   let list loc l = List (loc, l)
-  let to_asts l = l
 
-  let rec to_cst (x : Ast.t) : Cst.t =
+  let rec to_ast (x : t) : Ast.t =
+    match x with
+    | Atom (loc, a) -> Ast.Atom (loc, a)
+    | Quoted_string (loc, qs) ->
+      (match Quoted_string.flatten qs with
+       | String s -> Ast.Quoted_string (loc, s)
+       | Parts parts -> Ast.Template { quoted = true; parts; loc })
+    | Template t -> Ast.Template t
+    | List (loc, l) -> Ast.List (loc, List.map l ~f:to_ast)
+  ;;
+
+  let to_asts l = List.map l ~f:to_ast
+
+  let rec to_cst (x : t) : Cst.t =
     match x with
     | Template t -> Template t
-    | Quoted_string (loc, s) -> Quoted_string (loc, s)
+    | Quoted_string (loc, qs) -> Quoted_string (loc, qs)
     | Atom (loc, a) -> Atom (loc, a)
     | List (loc, Template x :: l) when x = comment_marker ->
       Comment
         ( loc
         , List.map l ~f:(function
-            | Quoted_string (_, s) -> s
+            | Quoted_string (_, qs) -> Quoted_string.to_string qs
             | _ -> assert false) )
     | List (loc, l) -> List (loc, to_csts l)
 

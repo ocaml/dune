@@ -1,8 +1,8 @@
 Test that external (absolute path) setup scripts work and are NOT deleted
 
-First, create an external script in /tmp:
+First, create an external script in the test's temporary directory:
 
-  $ EXTERNAL_SCRIPT="/tmp/dune_test_external_helper_$$.sh"
+  $ EXTERNAL_SCRIPT="$TMPDIR/dune_test_external_helper_$$.sh"
   $ cat > "$EXTERNAL_SCRIPT" << 'EOF'
   > #!/bin/sh
   > external_helper() {

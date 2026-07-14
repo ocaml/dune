@@ -47,6 +47,9 @@ is_linked() {
 }
 
 export XDG_CACHE_HOME="$PWD/.cache"
+export XDG_CONFIG_HOME="$PWD/.config"
+export XDG_DATA_HOME="$PWD/.local/share"
+export XDG_STATE_HOME="$PWD/.local/state"
 
 setup_xdg_runtime_dir () {
     export XDG_RUNTIME_DIR="${TMPDIR:-$PWD}/.xdg-runtime"

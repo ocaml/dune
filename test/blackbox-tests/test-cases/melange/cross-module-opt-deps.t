@@ -76,7 +76,8 @@ default compile flags.
 
   $ dune describe rules --display=quiet --profile=release dist-default-flags/node_modules/foo/char.js > char-default-rules.sexp
   $ grep -c 'stdlib/.stdlib.objs/melange/stdlib.cmi' char-default-rules.sexp
-  1
+  0
+  [1]
   $ grep -c 'stdlib/.stdlib.objs/melange/stdlib.cmj' char-default-rules.sexp
   1
 
@@ -89,7 +90,5 @@ standard library.
   > dist-default-flags/node_modules/foo/stdlib.js \
   > dist-default-flags/node_modules/foo/char.js
   $ cd _build/default/dist-default-flags/node_modules/foo
-  $ grep -F 'require("melange/stdlib.js")' char.js
-  const Stdlib = require("melange/stdlib.js");
-  $ node -e 'console.log(require("./char.js").code("x"))' >/dev/null 2>&1
-  [1]
+  $ node -e 'console.log(require("./char.js").code("x"))'
+  0

@@ -15,7 +15,6 @@ transitive implementation closure, even across `.mli` boundaries.
 
   $ dune rules --root . --format=json --deps app/dist/node_modules/repro.foo/foo_map.js |
   > jq_dune -r '.[] | depsFilePaths | select(test("lib/\\.foo\\.objs/melange/.*\\.cmj$")) | sub("^_build/default/"; "")'
-  lib/.foo.objs/melange/foo.cmj
   lib/.foo.objs/melange/foo__Foo_internalAVLtree.cmj
   lib/.foo.objs/melange/foo__Foo_internalMapInt.cmj
   lib/.foo.objs/melange/foo__Foo_map.cmj

@@ -246,14 +246,6 @@ let make_same_lib_emission_deps =
       |> Action_builder.map ~f:melange_cross_module_opt_enabled
     in
     let dep_graph = impl_dep_graph ~sctx ~obj_dir ~modules in
-    let lib_interface_deps =
-      (* The Melange emitter loads the library interface/root artifact when
-         emitting wrapped units such as [Stdlib__Char], even if the source
-         dependency graph does not mention [Stdlib] explicitly. *)
-      Modules.With_vlib.lib_interface modules
-      |> Option.map ~f:(fun m -> deps_of_xopt_closure ~obj_dir [ m ])
-      |> Option.value ~default:Dep.Set.empty
-    in
     fun module_ ->
       let open Action_builder.O in
       xopt_enabled
@@ -273,19 +265,23 @@ let make_same_lib_emission_deps =
         in
         (* Cross-module optimization follows implementation artifacts, but the
            initial reachability also comes from the emitted module's interface
-           dependencies. *)
+           dependencies. Seed the implementation graph with that interface
+           closure so wrappers such as [Stdlib] stay visible to the emitter. *)
         Dep_graph.top_closed_implementations dep_graph (module_ :: intf_deps)
-        |> Action_builder.map ~f:(fun deps ->
-          Dep.Set.union lib_interface_deps (deps_of_xopt_closure ~obj_dir deps))
+        |> Action_builder.map ~f:(deps_of_xopt_closure ~obj_dir)
       | false ->
         (* Emission reads same-library implementation artifacts recursively.
            Compilation dependencies collapse transitive edges through interfaces
            when a dependency has an [.mli], which is insufficient for JS
            emission. Follow the implementation dependency graph directly
            instead. *)
+        let stdlib_aliases =
+          Modules.With_vlib.alias_for modules module_
+          |> List.filter ~f:(Modules.With_vlib.is_stdlib_alias modules)
+        in
         Dep_graph.top_closed_implementations dep_graph [ module_ ]
         |> Action_builder.map ~f:(fun deps ->
-          Dep.Set.union lib_interface_deps (deps_of_closure ~obj_dir ~kind:Cmj deps))
+          deps_of_closure ~obj_dir ~kind:Cmj (stdlib_aliases @ deps))
 ;;
 
 let make_external_lib_emission_deps =

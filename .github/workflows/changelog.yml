@@ -1,4 +1,4 @@
-name: Check Changelog
+name: Changelog
 on:
   pull_request:
     types: [opened, synchronize, reopened, labeled, unlabeled]
@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   check-changelog:
-    name: Check changelog entry
+    name: Entry Check
     runs-on: ubuntu-latest
     steps:
       - name: Check for a changelog entry

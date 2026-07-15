@@ -82,4 +82,7 @@ repeat the library's `--mel-cross-module-opt` compile flag.
   0
   [1]
 
-  $ dune build dist-default-flags/node_modules/foo/char.js
+Build explicitly in a sandbox so the regression does not depend on the test
+suite's sandboxing preference.
+
+  $ dune build --sandbox=symlink dist-default-flags/node_modules/foo/char.js

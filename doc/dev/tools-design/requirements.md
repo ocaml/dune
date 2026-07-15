@@ -233,22 +233,18 @@ b', but they both also provide executables named `c`?
 
 Tools that are *project dependencies* specified as appropriately qualified
 dependencies in the `dune-project` file, must be installable via installation
-targets reflecting the qualification. 
+targets reflecting the qualification, as well as thru the build targets that
+require them.
 
-To illustrate, this could be thru some sort of qualification like `dune tools
-install :with-test :with-dev-setup`.
-
-CR Shon: The need is legit here, but this requirement doesn't feel right, as is.
-We need a general theory of how to think about qualified deps in dune managed
-packages...
+To illustrate, this could be thru some sort of qualification to the tools
+command like `dune tools install :with-test :with-dev-setup`.
 
 ##### 1.9 Discretionary tools
 
 It must be possible to install discretionary tools without incorrectly
-specifying them as if they were project dependencies.
-
-#### 1.9 Discretionary tools
-
+specifying them as if they were project dependencies. (E.g., thru a new `tool`
+stanza or a CLI that updates some data stored in the workspace or `_build`
+directory).
 
 ### 2. Usability
 
@@ -273,8 +269,9 @@ See [CLI commands](./implementation.md#cli-commands) for the discovery interface
 
 ##### 2.2.1 dune subcommands
 
-As a special case, dune subcommands (e.g., `dune fmt` or `dune utop`) that invoke external tools must be able to
-use tools managed by `dune tools`. See [Dune Integration](#5-dune-integration).
+As a special case, dune subcommands (e.g., `dune fmt` or `dune utop`) that
+invoke external tools must be able to use tools managed by `dune tools`, with
+fallback to executables available on the system path.
 
 ###### 2.2.1.1 System PATH fallback
 
@@ -297,10 +294,22 @@ other concurrent dune operations (e.g., `dune build -w`).
 When a tool is a *project dependency* (under any qualification), users must
 be able to execute the tool.
 
-### 3. Dependency interactions
+### 3. Integration spectrum
 
-Tools installed by dune should have the minimal necessary interaction with other
-dependencies of the environment they are installed in.
+Tools lie along a spectrum of integration requirements with other dependencies
+in the project, which we can indicate with these tree points:
+
+- I1: At the minimum extreme, some tools can be solved and built in complete
+  isolation from the rest of the project they are used in. E.g., ocamlformat.
+- I2: In the midpoint, some tools must integrate with a subset of a project's
+  dependencies. E.g., ocamllsp must use the same compiler version.
+- I3: At the maximum extreme, some tools must be built within the entire
+  dependency context of the project. E.g., menhir when used together with its
+  runtime libraries, to ensure that the generated parser code is compatible with
+  the runtime library.
+
+Tools lying along the entire spectrum must be supported elegant solutions where
+coupling is required, and the most possible orthogonality in features when it is not.
 
 #### 3.1. Compiler compatibility
 
@@ -327,45 +336,56 @@ departure from the orthogonality principle.
 
 #### 3.2. Dependency isolation
 
-Each tool is solved independently with its own lock directory. Tool dependencies
-do not affect the project's `dune.lock`, and vice versa.
+The dependencies of each tool should be solved independently with its own lock
+directory. Tool dependencies do not affect the project's `dune.lock`, and vice
+versa.
 
 See [Directory structure](./implementation.md#directory-structure) for lock
 directory locations.
 
-#### 3.3. No build triggers
 
-Locking or adding tools must not trigger project builds.
+### 4. Dependency spectrum
 
-Build rules that _use_ tools (e.g., formatting) are a separate concern; see
-[Dune Integration](#5-dune-integration).
+Tools lie along a spectrum of dependency status (i.e., to what extent they are
+dependencies for the project) which we can indicate with these tree points:
 
-#### 3.4. Watch mode integration
+- D1. At the minimum extreme, *discretionary tools* are not project dependencies
+  at all. Rather, they are tools we want to install and run on an ad hoc basis,
+  for use as developers. E.g., `ocamllsp` or `ocamlgrep`.
+- D2. In the midpoint, *qualified project dependency* tools are used in rules associated
+  with a build alias, but not as part of the required package dependencies to
+  install any packages. Example include any tools that are qualified in
+  opam packages with the `with-test`, or `with-doc` filters.
+- D3. At the maximum extreme, unqualified *project dependency* tools are
+ required for an installation build of packages in the project, and need to be
+ specified as package dependencies unconditionally.E.g., `menhir` or `atd` when
+ used as part of the project build (by contrast, if these are used only for code
+ generation, they could be qualified project dependencies behind a hypothetical
+ `with-gen` filter).
 
-Tool operations (`dune tools add`, `run`, etc.) must work correctly when a watch
-server is running (`dune build -w`). Rather than directly manipulating lock
-directories, tool commands should coordinate with the watch server via RPC to
-avoid races and ensure the server picks up newly added tools.
+#### 4.1. Discretionary tools (D1)
 
-CR-soon Alizter: Specify the RPC protocol for tool operations. What messages are
-needed? How does the watch server respond to tool additions?
+##### 4.1.1.  Not build triggers
 
-CR-soon Alizter: Document concurrent access behavior. What happens if two
-terminals run `dune tools add` simultaneously? Or `add` while `run` is building?
+Locking or adding tools in at D1 level tools must not trigger project builds.
 
-#### 3.5. Dog fooding
+##### 4.1.2. Cannot be referenced in build rules TODO
 
-Tools must work in the dune repository itself. Dune developers should be able to
-run `dune tools add ocamlformat` and `dune tools add ocaml-lsp-server` when
-working on dune.
+#### 4.2. Qualified dependency tools (D2) TODO
 
-This is enabled by the orthogonality design (3.2): tools are solved and built
-independently from project dependencies, so they don't require a working project
-lock directory.
+##### 4.2.1. Must be usable as tools
 
-### 4. UI
+##### 4.2.1. Must be installable via qualification
 
-#### 4.1. CLI
+#### 4.3. Unqualified dependency tools (D3) TODO
+
+##### 4.3.1. Must be usable as tools TODO
+
+##### 4.2.1. Must always be installed TODO
+
+### 5. UI
+
+#### 5.1. CLI
 
 Users must be able to manage tools using CLI commands:
 
@@ -381,7 +401,7 @@ CLI-added tools persist until `dune clean` or `dune tools remove`, but are not
 reproducible across clean builds. See [Batch
 operations](./implementation.md#batch-operations) for batch commands.
 
-#### 4.2. Persistent configuration
+#### 5.2. Persistent configuration
 
 TODO: is "reproducible" too strong a word here? If no lock is checked in...
 
@@ -393,40 +413,6 @@ tools, declared tools are reproducible:
 - CI and fresh checkouts get the same tools
 
 See [The `(tool)` stanza](./implementation.md#the-tool-stanza) for syntax.
-
-### 5. Dune Integration
-
-Tools must integrate with existing dune features that rely on external
-executables.
-
-TODO: de duplicate following with usage notes on dune subcommands?
-
-#### 5.1. Format rules
-
-`dune fmt` and `dune build @fmt` must use tools managed by `dune tools`. This
-includes respecting version constraints from `.ocamlformat` files, PATH fallback
-([2.4](#24-system-path-fallback)), and multi-version support
-([1.5](#15-multi-version-support)).
-
-See [Tool resolution](./implementation.md#tool-resolution) for the resolution algorithm.
-
-#### 5.2. Documentation rules (`dune build @doc`, `dune ocaml doc`)
-
-`dune build @doc` must use tools managed by `dune tools`. When odoc is
-configured as a tool, use the locked version; otherwise fall back to PATH
-([2.4](#24-system-path-fallback)).
-
-See [Tool resolution](./implementation.md#tool-resolution) for the resolution algorithm.
-
-CR-soon Alizter: OCaml platform considerations
-
-#### 5.3. REPL (`dune utop`, `dune ocaml utop`)
-
-`dune utop` must use tools managed by `dune tools`. When utop is configured as
-a tool, use the locked version; otherwise fall back to PATH
-([2.4](#24-system-path-fallback)).
-
-See [Tool resolution](./implementation.md#tool-resolution) for the resolution algorithm.
 
 #### 5.4. Tool references in actions
 
@@ -452,6 +438,34 @@ interventions, as necessary.
 <!-- - Which CLI commands are removed? -->
 <!-- - What happens to existing `.dev-tools.locks/` directories? -->
 <!-- - User-facing migration guide (re-add tools via `dune tools add`) -->
+
+
+# TODO Orphans to put in proper section
+
+
+#### N. Watch mode integration
+
+Tool operations (e.g., `dune tools add`, `run`, etc.) must work correctly when a
+watch server is running (`dune build -w`). Rather than directly manipulating
+lock directories, tool commands should coordinate with the watch server via RPC
+to avoid races and ensure the server picks up newly added tools.
+
+CR-soon Alizter: Specify the RPC protocol for tool operations. What messages are
+needed? How does the watch server respond to tool additions?
+
+CR-soon Alizter: Document concurrent access behavior. What happens if two
+terminals run `dune tools add` simultaneously? Or `add` while `run` is building?
+
+#### 4. Dog fooding
+
+Tools must work in the dune repository itself. Dune developers should be able to
+run `dune tools add ocamlformat` and `dune tools add ocaml-lsp-server` when
+working on dune.
+
+This is enabled by the orthogonality design (3.2): tools are solved and built
+independently from project dependencies, so they don't require a working project
+lock directory.
+
 
 # TODO (Shon, Ambre, Sudha): Analyze out the axes of use and integration
 

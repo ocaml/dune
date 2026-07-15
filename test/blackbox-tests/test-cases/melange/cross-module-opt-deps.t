@@ -34,18 +34,18 @@ loads implicitly.
   >  (stdlib
   >   (modules_before_stdlib CamlinternalFormatBasics)
   >   (internal_modules Camlinternal*))
-  >  (melange.compile_flags -mel-cross-module-opt))
+  >  (melange.compile_flags --mel-no-cross-module-opt))
   > EOF
 
   $ cat > stdlib/stdlib.ml <<'EOF'
-  > module Char = Stdlib__Char
+  > let char_code (_ : char) = 0
   > EOF
   $ cat > stdlib/stdlib.mli <<'EOF'
-  > module Char = Stdlib__Char
+  > val char_code : char -> int
   > EOF
 
   $ cat > stdlib/char.ml <<'EOF'
-  > let code (_ : char) = 0
+  > let code c = char_code c
   > EOF
   $ cat > stdlib/char.mli <<'EOF'
   > val code : char -> int
@@ -71,8 +71,8 @@ though `Stdlib__Char` does not reach it through implementation-only deps.
   $ grep -c 'stdlib/.stdlib.objs/melange/stdlib__Char.cmi' char-rules.sexp
   1
 
-The wrapped `Stdlib` module must also be visible when the emit stanza does not
-repeat the library's `--mel-cross-module-opt` compile flag.
+The wrapped `Stdlib` module must also be visible when the emit stanza uses its
+default compile flags.
 
   $ dune describe rules --display=quiet --profile=release dist-default-flags/node_modules/foo/char.js > char-default-rules.sexp
   $ grep -c 'stdlib/.stdlib.objs/melange/stdlib.cmi' char-default-rules.sexp
@@ -82,7 +82,16 @@ repeat the library's `--mel-cross-module-opt` compile flag.
   0
   [1]
 
-Build explicitly in a sandbox so the regression does not depend on the test
-suite's sandboxing preference.
+Build the default output explicitly in a sandbox so the regression does not
+depend on the test suite's sandboxing preference. Without the wrapped root's
+CMJ, Melange resolves `Stdlib` to its own runtime package instead of this custom
+standard library.
 
-  $ dune build --sandbox=symlink dist-default-flags/node_modules/foo/char.js
+  $ dune build --sandbox=symlink \
+  > dist-default-flags/node_modules/foo/stdlib.js \
+  > dist-default-flags/node_modules/foo/char.js
+  $ cd _build/default/dist-default-flags/node_modules/foo
+  $ grep -F 'require("melange/stdlib.js")' char.js
+  const Stdlib = require("melange/stdlib.js");
+  $ node -e 'console.log(require("./char.js").code("x"))' >/dev/null 2>&1
+  [1]

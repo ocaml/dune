@@ -794,31 +794,34 @@ let triple a b c = enter (a >>= fun a -> b >>= fun b -> c >>= fun c -> return (a
 
 let unit_number_generic ~of_string ~mul name suffixes =
   let unit_number_of_string ~loc s =
-    let possible_suffixes () =
-      (* We take the first suffix in the list to be the suggestion *)
-      String.concat ~sep:", " (List.map ~f:(fun x -> List.hd @@ fst x) suffixes)
-    in
-    let n, suffix =
-      let f c = not (Char.is_digit c) in
-      match String.findi s ~f with
-      | None ->
-        User_error.raise
-          ~loc
-          [ Pp.textf "missing suffix, use one of %s" (possible_suffixes ()) ]
-      | Some i -> String.split_n s i
-    in
-    let suffixes =
-      List.concat_map suffixes ~f:(fun (xs, y) -> List.map ~f:(fun x -> x, y) xs)
-    in
-    let factor =
-      match List.assoc suffixes suffix with
-      | Some f -> f
-      | None ->
-        User_error.raise
-          ~loc
-          [ Pp.textf "invalid suffix, use one of %s" (possible_suffixes ()) ]
-    in
-    Option.map ~f:(mul factor) (of_string n)
+    match s with
+    | "0" -> of_string s
+    | _ ->
+      let possible_suffixes () =
+        (* We take the first suffix in the list to be the suggestion *)
+        String.concat ~sep:", " (List.map ~f:(fun x -> List.hd @@ fst x) suffixes)
+      in
+      let n, suffix =
+        let f c = not (Char.is_digit c) in
+        match String.findi s ~f with
+        | None ->
+          User_error.raise
+            ~loc
+            [ Pp.textf "missing suffix, use one of %s" (possible_suffixes ()) ]
+        | Some i -> String.split_n s i
+      in
+      let suffixes =
+        List.concat_map suffixes ~f:(fun (xs, y) -> List.map ~f:(fun x -> x, y) xs)
+      in
+      let factor =
+        match List.assoc suffixes suffix with
+        | Some f -> f
+        | None ->
+          User_error.raise
+            ~loc
+            [ Pp.textf "invalid suffix, use one of %s" (possible_suffixes ()) ]
+      in
+      Option.map ~f:(mul factor) (of_string n)
   in
   basic_loc name unit_number_of_string
 ;;

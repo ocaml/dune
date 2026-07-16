@@ -168,11 +168,16 @@ means).
 
 <details>
 <summary>
-Related issue: [dune#12107](https://github.com/ocaml/dune/issues/12107)
+Motivation and context
 </summary>
-#12107: pkg: installation of packages that can be used system-wide
+
+Related issues:
+
+- [dune#12107 pkg: installation of packages that can be used
+  system-wide](https://github.com/ocaml/dune/issues/12107)
   - Even if we don't support this in the first version, the design should not
   prevent this.
+
 </details>
 
 #### 1.4. Version specification
@@ -253,10 +258,15 @@ command like `dune tools install :with-test :with-dev-setup`.
 
 <details>
 <summary>
-Related issue: [dune#12135](https://github.com/ocaml/dune/issues/12135)
+Motivation and context
 </summary>
-#12135: dune tools setup to install :with-dev-setup deps
+
+Related issues:
+
+- [dune#12135 dune tools setup to install :with-dev-setup
+  deps](https://github.com/ocaml/dune/issues/12135)
   - Should the :with-dev-setup qualifier be used by dev-tools to install?
+
 </details>
 
 ##### 1.9 Discretionary tools
@@ -268,10 +278,15 @@ directory).
 
 <details>
 <summary>
-Related issue: [dune#12913](https://github.com/ocaml/dune/issues/12913)
+Motivation and context
 </summary>
-#12913: pkg: general support for installing tools
+
+Related issues:
+
+- [dune#12913 pkg: general support for installing
+  tools](https://github.com/ocaml/dune/issues/12913)
   - A tool can be any package with a binary.
+
 </details>
 
 ### 2. Usability
@@ -286,16 +301,20 @@ See [CLI commands](./implementation.md#cli-commands) for invocation syntax.
 
 <details>
 <summary>
-Related issue: [dune#12975](https://github.com/ocaml/dune/issues/12975)
+Motivation and context
 </summary>
-#12975: running dune tools exec <p> when p is not already installed as a dev
-tool should suggest users run dune tools install <p>
+
+Related issues:
+
+- [dune#12975 running dune tools exec <p> when p is not already installed as a dev
+  tool should suggest users run dune tools install <p>](https://github.com/ocaml/dune/issues/12975)
   - The error can be something like
 ```
 dune tools exec merlin
   Error: The tool merlin is not installed
   Hint: Try 'dune tools install merlin'
 ```
+
 </details>
 
 #### 2.2. Programmatic use
@@ -332,14 +351,19 @@ confusing to users if aliases just pickup binaries from stale OPAM switches.
 
 <details>
 <summary>
-Related issue: [dune#10688](https://github.com/ocaml/dune/issues/10688)
+Motivation and context
 </summary>
-#10688: pkg: avoid dune fmt capturing ocamlformat from the PATH
+
+Related issues:
+
+- [dune#10688 pkg: avoid dune fmt capturing ocamlformat from the
+  PATH](https://github.com/ocaml/dune/issues/10688)
   - Install tools automatically?
   - How would having two different package managers side by side work? (In this
   case, Dune package and OPAM)
   - Good to maintain compatibility with OPAM - but the tradeoff is the amount of
   work needed to achieve it.
+
 </details>
 
 #### 2.4 Orthogonal execution

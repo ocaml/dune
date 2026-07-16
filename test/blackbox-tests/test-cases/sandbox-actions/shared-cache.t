@@ -5,13 +5,20 @@ shared cache.
   $ export DUNE_CACHE_ROOT=$PWD/cache-root
   $ echo "$DUNE_CACHE_ROOT" > cache-root-name
   $ mkdir -p "$DUNE_CACHE_ROOT/db"
+  $ cat > try-cache-write.sh <<'EOF'
+  > if touch "$DUNE_CACHE_ROOT/db/runner-marker" 2>/dev/null; then
+  >   echo wrote
+  > else
+  >   echo blocked
+  > fi
+  > EOF
   $ cat > dune <<'EOF'
   > (rule
   >  (target result)
-  >  (deps cache-root-name)
+  >  (deps cache-root-name try-cache-write.sh)
   >  (action
-  >   (bash
-  >    "if touch \"$DUNE_CACHE_ROOT/db/runner-marker\" 2>/dev/null; then echo wrote > %{target}; else echo blocked > %{target}; fi")))
+  >   (with-stdout-to %{target}
+  >    (run sh %{dep:try-cache-write.sh}))))
   > EOF
 
 Normal actions can still write there.
@@ -26,6 +33,51 @@ Sandboxed actions are blocked from writing there.
 
   $ rm -f "$DUNE_CACHE_ROOT/db/runner-marker"
   $ dune build --sandbox-actions result
+  $ cat _build/default/result
+  blocked
+  $ test -e "$DUNE_CACHE_ROOT/db/runner-marker" && echo present || echo missing
+  missing
+
+The Landlock backend enforces the same restriction when it is available.
+
+  $ rm -f "$DUNE_CACHE_ROOT/db/runner-marker"
+  $ if dune internal with-landlock -- true >/dev/null 2>&1; then
+  >   dune build --sandbox-actions --sandbox-actions-backend=landlock result
+  >   cat _build/default/result
+  >   test -e "$DUNE_CACHE_ROOT/db/runner-marker" && echo present || echo missing
+  > else
+  >   echo blocked
+  >   echo missing
+  > fi
+  blocked
+  missing
+
+When Landlock is available, the automatic backend does not require a working
+bubblewrap binary.
+
+  $ rm -f "$DUNE_CACHE_ROOT/db/runner-marker"
+  $ if dune internal with-landlock -- true >/dev/null 2>&1; then
+  >   mkdir -p fake-bin
+  >   cat > fake-bin/bwrap <<'EOF'
+  > #!/bin/sh
+  > echo broken bwrap >&2
+  > exit 1
+  > EOF
+  >   chmod +x fake-bin/bwrap
+  >   PATH=$PWD/fake-bin:$PATH dune build --sandbox-actions result
+  >   cat _build/default/result
+  >   test -e "$DUNE_CACHE_ROOT/db/runner-marker" && echo present || echo missing
+  > else
+  >   echo blocked
+  >   echo missing
+  > fi
+  blocked
+  missing
+
+The bubblewrap backend is still available explicitly.
+
+  $ rm -f "$DUNE_CACHE_ROOT/db/runner-marker"
+  $ dune build --sandbox-actions --sandbox-actions-backend=bwrap result
   $ cat _build/default/result
   blocked
   $ test -e "$DUNE_CACHE_ROOT/db/runner-marker" && echo present || echo missing

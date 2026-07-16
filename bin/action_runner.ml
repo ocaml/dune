@@ -2,26 +2,42 @@ open Import
 
 let name = Action_runner_name.of_string "action-runner"
 
-let find_in_path_exn prog =
-  match Bin.which ~path:(Env_path.path Env.initial) prog with
-  | Some path -> path
-  | None -> User_error.raise [ Pp.textf "unable to find %s in PATH" prog ]
+module Sandbox_actions_backend = struct
+  type t =
+    | Auto
+    | Bwrap
+    | Landlock
+
+  let all = [ "auto", Auto; "bwrap", Bwrap; "landlock", Landlock ]
+  let equal = Poly.equal
+  let default = Auto
+end
+
+let dune_prog () = Util.resolve_program_path Sys.executable_name
+
+let bwrap_command worker_argv =
+  let { Bwrap.prog; argv } =
+    Bwrap.wrap ~cwd:(Path.to_absolute_filename Path.root) worker_argv
+  in
+  prog, argv
 ;;
 
-let has_directory_component prog =
-  String.exists prog ~f:(function
-    | '/' | '\\' -> true
-    | _ -> false)
+let landlock_command ~dune_prog worker_argv =
+  let { Landlock.prog; argv } = Landlock.wrap_exn ~dune_prog worker_argv in
+  prog, argv
 ;;
 
-let dune_prog () =
-  let prog = Sys.executable_name in
-  if Filename.is_relative prog && not (has_directory_component prog)
-  then find_in_path_exn prog
-  else Path.of_filename_relative_to_initial_cwd prog
+let sandbox_actions_command ~backend ~dune_prog worker_argv =
+  match (backend : Sandbox_actions_backend.t) with
+  | Auto ->
+    (match Landlock.wrap ~dune_prog worker_argv with
+     | Some { Landlock.prog; argv } -> prog, argv
+     | None -> bwrap_command worker_argv)
+  | Bwrap -> bwrap_command worker_argv
+  | Landlock -> landlock_command ~dune_prog worker_argv
 ;;
 
-let create ~where ~config ~sandbox_actions =
+let create ~where ~config ~sandbox_actions ~sandbox_actions_backend =
   let pid =
     let env =
       let jobs =
@@ -47,11 +63,7 @@ let create ~where ~config ~sandbox_actions =
         ]
       in
       if sandbox_actions
-      then (
-        let { Bwrap.prog; argv } =
-          Bwrap.wrap ~cwd:(Path.to_absolute_filename Path.root) worker_argv
-        in
-        prog, argv)
+      then sandbox_actions_command ~backend:sandbox_actions_backend ~dune_prog worker_argv
       else Path.to_string dune_prog, worker_argv
     in
     let argv =

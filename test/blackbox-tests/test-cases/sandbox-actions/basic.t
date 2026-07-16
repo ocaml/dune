@@ -25,8 +25,12 @@ processes.
   $ dune build --sandbox-actions pure probe
   $ dune trace cat | jq -s 'include "dune"; writeFileCountBySuffix("/pure")'
   0
-  $ cmp -s host-ns _build/default/probe && echo same || echo different
-  different
+  $ if dune internal with-landlock -- true >/dev/null 2>&1; then
+  >   cmp -s host-ns _build/default/probe && echo expected || echo unexpected
+  > else
+  >   cmp -s host-ns _build/default/probe && echo unexpected || echo expected
+  > fi
+  expected
   $ cat _build/default/pure
   pure
 

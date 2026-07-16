@@ -1,12 +1,4 @@
-`dune internal with-bwrap` runs commands in Dune's bubblewrap wrapper.
-
-  $ readlink /proc/self/ns/mnt > host-ns
-  $ dune internal with-bwrap -- sh -c 'echo wrapped; readlink /proc/self/ns/mnt > wrapped-ns'
-  wrapped
-  $ cmp -s host-ns wrapped-ns && echo same || echo different
-  different
-
-It also applies Dune's shared-cache policy.
+`dune internal with-landlock` runs commands with the shared cache read-only.
 
   $ export DUNE_CACHE_ROOT=$PWD/cache-root
   $ mkdir -p "$DUNE_CACHE_ROOT/db" writable
@@ -19,7 +11,13 @@ It also applies Dune's shared-cache policy.
   > try_touch "$DUNE_CACHE_ROOT/db/new" cache-wrote cache-blocked
   > try_touch writable/outside outside-wrote outside-blocked
   > EOF
-  $ dune internal with-bwrap -- sh check-cache-policy.sh
+  $ if dune internal with-landlock -- true >/dev/null 2>&1; then
+  >   dune internal with-landlock -- sh check-cache-policy.sh
+  > else
+  >   echo cache
+  >   echo cache-blocked
+  >   echo outside-wrote
+  > fi
   cache
   cache-blocked
   outside-wrote

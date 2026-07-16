@@ -1,5 +1,27 @@
 open Import
 
+let find_in_path_exn prog =
+  match Bin.which ~path:(Env_path.path Env.initial) prog with
+  | Some path -> path
+  | None -> User_error.raise [ Pp.textf "unable to find %s in PATH" prog ]
+;;
+
+let has_directory_component prog =
+  String.exists prog ~f:(function
+    | '/' | '\\' -> true
+    | _ -> false)
+;;
+
+let resolve_prog prog =
+  if has_directory_component prog then prog else Path.to_string (find_in_path_exn prog)
+;;
+
+let resolve_program_path prog =
+  if Filename.is_relative prog && not (has_directory_component prog)
+  then find_in_path_exn prog
+  else Path.of_filename_relative_to_initial_cwd prog
+;;
+
 type checked =
   | In_build_dir of (Context.t * Path.Source.t)
   | In_private_context of Path.Build.t

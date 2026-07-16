@@ -1,4 +1,4 @@
-# Tools Requirements like
+# Dune Tools Requirements
 
 Authors: Ali Caglayan (Tarides), Shon Feder (Tarides), Sudha Parimala (Tarides),
 Ambre Suhamy (Tarides)

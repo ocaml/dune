@@ -1,0 +1,123 @@
+Currently, no narrowing of lockdir %{bin:X} and %{bin-available:X} lookups is
+present, and all the binaries provided by all of the lockdir packages resolve.
+
+  $ make_lockdir
+
+A lockdir package [transitive] that installs [transitive-bin]:
+
+  $ make_lockpkg transitive <<'EOF'
+  > (version 0.0.1)
+  > (build
+  >  (progn
+  >   (system "\| cat > transitive-bin <<'EOI'
+  >           "\| #!/usr/bin/env bash
+  >           "\| echo from transitive
+  >           "\| EOI
+  >   )
+  >   (system "chmod +x transitive-bin")
+  >   (system "echo 'bin: [ \"transitive-bin\" ]' > transitive.install")
+  >  ))
+  > EOF
+
+A lockdir package [direct] that depends on [transitive] and installs [direct-bin]:
+
+  $ make_lockpkg direct <<'EOF'
+  > (version 0.0.1)
+  > (depends transitive)
+  > (build
+  >  (progn
+  >   (system "\| cat > direct-bin <<'EOI'
+  >           "\| #!/usr/bin/env bash
+  >           "\| echo from direct
+  >           "\| EOI
+  >   )
+  >   (system "chmod +x direct-bin")
+  >   (system "echo 'bin: [ \"direct-bin\" ]' > direct.install")
+  >  ))
+  > EOF
+
+A sibling lockdir package [other] that installs [other-bin], not depended on
+by [direct]:
+
+  $ make_lockpkg other <<'EOF'
+  > (version 0.0.1)
+  > (build
+  >  (progn
+  >   (system "\| cat > other-bin <<'EOI'
+  >           "\| #!/usr/bin/env bash
+  >           "\| echo from other
+  >           "\| EOI
+  >   )
+  >   (system "chmod +x other-bin")
+  >   (system "echo 'bin: [ \"other-bin\" ]' > other.install")
+  >  ))
+  > EOF
+
+The project's package depends only on [direct] (with a [dir] field so
+narrowing kicks in):
+
+  $ make_dune_project 3.25
+  $ cat >> dune-project << 'EOF'
+  > (package
+  >   (allow_empty)
+  >   (name my-pkg)
+  >   (dir .)
+  >   (depends direct))
+  > EOF
+
+  $ cat >dune <<'EOF'
+  > (rule
+  >  (action
+  >    (with-stdout-to path-output (bash "echo $PATH"))))
+  > (rule
+  >  (with-stdout-to direct-out (echo %{bin-available:direct-bin})))
+  > (rule
+  >  (with-stdout-to transitive-out (echo %{bin-available:transitive-bin})))
+  > (rule
+  >  (with-stdout-to other-out (echo %{bin-available:other-bin})))
+  > EOF
+
+  $ dune build @all
+
+[direct-bin] (direct dep) is available:
+
+  $ cat _build/default/direct-out
+  true
+
+[transitive-bin] is available:
+
+  $ cat _build/default/transitive-out
+  true
+
+[other-bin] (package not in the closure) is also available:
+
+  $ cat _build/default/other-out
+  true
+
+All the lockdir packages' bin layout is added to $PATH:
+
+  $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
+  $PWD/_build/_private/default/.pkg/other.0.0.1-$DIGEST1/target/bin
+  $PWD/_build/_private/default/.pkg/direct.0.0.1-$DIGEST2/target/bin
+  $PWD/_build/_private/default/.pkg/transitive.0.0.1-$DIGEST3/target/bin
+
+In the current code, expanding a %{bin:X}/%{bin-available:X} pform forces the
+install [cookie] of every lockdir package through [Artifacts_and_deps.of_closure]
+(pkg_rules.ml). So even a build of a single pform-expanding target pulls in
+[other], a package entirely outside [direct]'s closure:
+
+  $ dune clean
+  $ dune build direct-out
+  $ if test -f "$(get_build_pkg_dir other)/target/cookie"
+  >  then echo "other *was* built"; else echo "other was not built"; fi
+  other *was* built
+
+[transitive] (in [direct]'s closure) is built too, as it must be:
+
+  $ if test -f "$(get_build_pkg_dir transitive)/target/cookie"
+  >  then echo "transitive *was* built"; else echo "transitive was not built"; fi
+  transitive *was* built
+
+The spurious [other] build dependency (not merely the visibility above) is what
+causes the in-out cycles that the narrowing removes; once it lands, [other] is
+no longer built here, while [direct] and [transitive] still are.

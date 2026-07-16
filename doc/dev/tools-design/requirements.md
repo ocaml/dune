@@ -94,9 +94,14 @@ the relevant Implementation sections.
 ## Design principles
 
 - **Generality**: Any executable defined in an opam packages can be a tool.
-- **Orthogonality**: Tool management should not interfere with other systems,
-  including the management of other tools.
-
+- **Orthogonality**: Dune's tool management functionality should compose with
+  other dune functionality with maximum flexibility and consistency, and without
+  introducing functional redundancies.
+- **Complementarity**: Reciprocal to orthogonality, dune's tool management
+  functionality should integrate with and augment its core build functionality
+  and nascent package management functionality, and avoid introducing a bolted-on
+  subsystem.
+  
 ## Requirements
 
 NOTE: The requirements here should be compatible with the functional

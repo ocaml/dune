@@ -134,6 +134,38 @@ let set_action t action =
   { t with action }
 ;;
 
+module Anonymous_action_rule = struct
+  module T = struct
+    type t =
+      { id : Id.t
+      ; action : Action.Full.t Action_builder.t
+      ; loc : Loc.t
+      ; dir : Path.Build.t
+      ; alias : Alias.Name.t option
+      }
+
+    let compare a b = Id.compare a.id b.id
+    let equal a b = Id.equal a.id b.id
+    let hash t = Id.hash t.id
+    let loc t = t.loc
+
+    let repr =
+      Repr.record
+        "rule"
+        [ Repr.field "id" (Repr.abstract Id.to_dyn) ~get:(fun t -> t.id)
+        ; Repr.field "alias" (Repr.option Alias_name.repr) ~get:(fun t -> t.alias)
+        ]
+    ;;
+
+    let to_dyn = Repr.to_dyn repr
+  end
+
+  include T
+  include Comparable.Make (T)
+
+  let make ~loc ~dir ~alias action = { id = Id.gen (); action; loc; alias; dir }
+end
+
 module Anonymous_action = struct
   type t =
     { action : Action.Full.t

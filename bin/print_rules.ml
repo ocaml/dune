@@ -222,7 +222,10 @@ let targets_repr =
 ;;
 
 let rule_context (rule : Dune_engine.Reflection.Rule.t) =
-  match Path.Build.extract_build_context rule.targets.Targets.Validated.root with
+  match
+    Option.bind rule.targets ~f:(fun ts ->
+      Path.Build.extract_build_context ts.Targets.Validated.root)
+  with
   | None -> None
   | Some (context, _) -> Some (Filename.to_string context)
 ;;
@@ -231,11 +234,14 @@ let rule_repr =
   Repr.record
     "rule"
     [ Repr.field "deps" deps_repr ~get:(fun rule -> rule.Dune_engine.Reflection.Rule.deps)
-    ; Repr.field "targets" targets_repr ~get:(fun rule ->
+    ; Repr.field "targets" (Repr.option targets_repr) ~get:(fun rule ->
         rule.Dune_engine.Reflection.Rule.targets)
     ; Repr.field "context" (Repr.option Repr.string) ~get:rule_context
     ; Repr.field "action" action_repr ~get:(fun rule ->
         rule.Dune_engine.Reflection.Rule.action)
+    ; Repr.field "alias" (Repr.option Alias_name.repr) ~get:(fun rule ->
+        rule.Dune_engine.Reflection.Rule.alias)
+    ; Repr.field "loc" Loc.repr ~get:(fun rule -> rule.Dune_engine.Reflection.Rule.loc)
     ]
 ;;
 

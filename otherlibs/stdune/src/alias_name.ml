@@ -18,4 +18,5 @@ let of_string s =
 ;;
 
 let to_string s = s
+let repr = Repr.string
 let to_dyn = String.to_dyn

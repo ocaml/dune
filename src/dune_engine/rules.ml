@@ -5,7 +5,7 @@ module Dir_rules = struct
   module Alias_spec = struct
     type item =
       | Deps of unit Action_builder.t
-      | Action of Rule.Anonymous_action.t Action_builder.t
+      | Action of Rule.Anonymous_action_rule.t
 
     type t = { expansions : (Loc.t * item) Appendable_list.t } [@@unboxed]
 
@@ -152,13 +152,11 @@ module Produce = struct
 
     let add_action t ~loc action =
       let action =
-        let open Action_builder.O in
-        let+ action = action in
-        { Rule.Anonymous_action.action
-        ; loc
-        ; dir = Alias.dir t
-        ; alias = Some (Alias.name t)
-        }
+        Rule.Anonymous_action_rule.make
+          ~loc
+          ~dir:(Alias.dir t)
+          ~alias:(Some (Alias.name t))
+          action
       in
       alias
         t

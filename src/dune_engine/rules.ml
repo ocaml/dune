@@ -150,18 +150,23 @@ module Produce = struct
         }
     ;;
 
-    let add_action t ~loc action =
-      let action =
-        Rule.Anonymous_action_rule.make
-          ~loc
-          ~dir:(Alias.dir t)
-          ~alias:(Some (Alias.name t))
-          action
-      in
-      alias
-        t
-        { expansions = Appendable_list.singleton (loc, Dir_rules.Alias_spec.Action action)
-        }
+    let add_action ts ~loc action =
+      match ts with
+      | [] -> Code_error.raise "Rules.Produce.Alias.add_shared_action: empty list" []
+      | representative :: _ ->
+        let action =
+          Rule.Anonymous_action_rule.make
+            ~loc
+            ~dir:(Alias.dir representative)
+            ~aliases:(List.map ts ~f:Alias.name)
+            action
+        in
+        Memo.parallel_iter ts ~f:(fun t ->
+          alias
+            t
+            { expansions =
+                Appendable_list.singleton (loc, Dir_rules.Alias_spec.Action action)
+            })
     ;;
   end
 end

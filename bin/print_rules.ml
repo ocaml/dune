@@ -243,9 +243,11 @@ let rule_repr ~with_locs =
     ; Repr.field "context" (Repr.option Repr.string) ~get:rule_context
     ; Repr.field "action" action_repr ~get:(fun rule ->
         rule.Dune_engine.Reflection.Rule.action)
-    ; Repr.field "alias" (Repr.option Alias_name.repr) ~get:(fun rule ->
-        rule.Dune_engine.Reflection.Rule.alias)
     ; Repr.field "loc" (Repr.option Loc.repr) ~get:(rule_loc ~with_locs)
+    ; Repr.field
+        "aliases"
+        (Repr.option (Repr.list Alias_name.repr))
+        ~get:(fun rule -> rule.Dune_engine.Reflection.Rule.aliases)
     ]
 ;;
 
@@ -354,6 +356,11 @@ let term =
     Arg.(value & flag & info [ "with_locs" ] ~doc:(Some "Include locations of rules"))
   (* CR-someday Alizter: document this option *)
   and+ targets = Arg.(value & pos_all dep [] & Arg.info [] ~docv:"TARGET" ~doc:None) in
+  let targets =
+    match targets with
+    | [] -> [ Common.Builder.default_target builder ]
+    | _ :: _ -> targets
+  in
   let common, config = Common.init builder in
   let out = Option.map ~f:Path.of_string out in
   Scheduler_setup.go_with_rpc_server ~common ~config (fun () ->

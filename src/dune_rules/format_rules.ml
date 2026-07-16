@@ -19,7 +19,7 @@ let formatter_diff_action =
       Rule.Anonymous_action_rule.make
         ~loc
         ~dir:(Alias.dir alias)
-        ~alias:(Some (Alias.name alias))
+        ~aliases:[ Alias.name alias ]
         action
     in
     Build_system.dep_on_alias_definition (Rules.Dir_rules.Alias_spec.Action action)

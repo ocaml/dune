@@ -53,7 +53,7 @@ val add_rules
 
 val add_alias_action
   :  t
-  -> Alias.t
+  -> Alias.t list
   -> dir:Path.Build.t
   -> loc:Loc.t
   -> Action.Full.t Action_builder.t

@@ -121,68 +121,25 @@ A similar test with a rule that produces a target
   $ dune build @b @c
   I have run
 
-Rules with no targets can have surprising behavior.
-
-A when a target-less rule is attached to several aliases, the first listed
-alias is always built.
-
-Here, building [b] pulls in [a].
+A rule attached to several aliases must not make one alias pull in unrelated
+contributions to another alias. Here alias [a] also receives an unrelated
+action; building [b] must run only the shared action.
   $ cat > dune << EOF
   > (rule
   >  (aliases a b)
-  >  (action (echo "a and b\n")))
+  >  (action (echo "I have run\n")))
   > (rule
   >  (alias a)
-  >  (action (echo "just a\n")))
-  > (rule
-  >  (alias b)
-  >  (action (echo "just b\n")))
+  >  (action (echo "unrelated\n")))
   > EOF
 
   $ dune clean
   $ dune build @b
-  a and b
-  just a
-  just b
+  I have run
 
-Building [a] does not pull in [b].
-  $ dune clean
-  $ dune build @a
-  a and b
-  just a
-
-Duplicating an alias causes a dependency cycle.
-  $ cat > dune << EOF
-  > (rule
-  >  (aliases a)
-  >  (action (echo "I have run\n")))
-  > EOF
+Building [a] still runs both the shared action and the action attached only
+to [a].
   $ dune clean
   $ dune build @a
   I have run
-  $ cat > dune << EOF
-  > (rule
-  >  (aliases a a)
-  >  (action (echo "I have run\n")))
-  > EOF
-  $ dune build @a
-  Error: Dependency cycle between:
-     alias a in dune:1
-  [1]
-
-Reordering the aliases causes the action to re-run.
-  $ cat > dune << EOF
-  > (rule
-  >  (aliases a b)
-  >  (action (echo "I have run\n")))
-  > EOF
-  $ dune clean
-  $ dune build @a @b
-  I have run
-  $ cat > dune << EOF
-  > (rule
-  >  (aliases b a)
-  >  (action (echo "I have run\n")))
-  > EOF
-  $ dune build @a @b
-  I have run
+  unrelated

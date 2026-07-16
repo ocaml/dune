@@ -1,5 +1,6 @@
 open Import
 module Non_evaluated_rule = Rule
+module Anon_rule = Rule.Anonymous_action_rule
 open Memo.O
 
 module Rule = struct
@@ -9,7 +10,7 @@ module Rule = struct
     ; expanded_deps : Path.Set.t
     ; targets : Targets.Validated.t option
     ; action : Action.t
-    ; alias : Alias_name.t option
+    ; aliases : Alias_name.t list option
     ; loc : Loc.t
     }
 end
@@ -17,7 +18,7 @@ end
 module Rule_top_closure = Top_closure.Make (Non_evaluated_rule.Id.Set) (Memo)
 
 module rec Expand : sig
-  type expanded := Path.Set.t * Non_evaluated_rule.Anonymous_action_rule.t list
+  type expanded := Path.Set.t * Anon_rule.Set.t
 
   val alias : Alias.t -> expanded Memo.t
   val deps : Dep.Set.t -> expanded Memo.t
@@ -30,23 +31,24 @@ end = struct
         "expand-alias"
         ~input:(module Alias)
         (fun alias ->
-           let* deps, anon_actions =
+           let* deps, anons =
              Load_rules.get_alias_definition alias
              >>= Memo.map_reduce
-                   ~empty:(Dep.Set.empty, [])
-                   ~combine:(combine_both Dep.Set.union ( @ ))
+                   ~empty:(Dep.Set.empty, Anon_rule.Set.empty)
+                   ~combine:(combine_both Dep.Set.union Anon_rule.Set.union)
                    ~f:(fun (loc, definition) ->
                      Memo.push_stack_frame
                        (fun () ->
                           match (definition : Rules.Dir_rules.Alias_spec.item) with
                           | Deps x ->
                             let+ (), deps = Action_builder.evaluate_and_collect_deps x in
-                            deps, []
-                          | Action x -> Memo.return (Dep.Set.empty, [ x ]))
+                            deps, Anon_rule.Set.empty
+                          | Action x ->
+                            Memo.return (Dep.Set.empty, Anon_rule.Set.singleton x))
                        ~human_readable_description:(fun () -> Alias.describe alias ~loc))
            in
-           let+ expanded_deps, anon_actions' = Expand.deps deps in
-           expanded_deps, anon_actions @ anon_actions')
+           let+ expanded_deps, anons' = Expand.deps deps in
+           expanded_deps, Anon_rule.Set.union anons anons')
     in
     Memo.exec memo
   ;;
@@ -54,18 +56,18 @@ end = struct
   let deps deps =
     Memo.map_reduce
       (Dep.Set.to_list deps)
-      ~empty:(Path.Set.empty, [])
-      ~combine:(combine_both Path.Set.union ( @ ))
+      ~empty:(Path.Set.empty, Anon_rule.Set.empty)
+      ~combine:(combine_both Path.Set.union Anon_rule.Set.union)
       ~f:(fun (dep : Dep.t) ->
         match dep with
-        | File p -> Memo.return (Path.Set.singleton p, [])
+        | File p -> Memo.return (Path.Set.singleton p, Anon_rule.Set.empty)
         | File_selector g ->
           let+ filenames = Build_system.eval_pred g in
           (* Alas, we can't use filename sets here because we end up putting paths coming
            from different directories together. *)
-          Path.Set.of_list (Filename_set.to_list filenames), []
+          Path.Set.of_list (Filename_set.to_list filenames), Anon_rule.Set.empty
         | Alias a -> Expand.alias a
-        | Env _ | Universe -> Memo.return (Path.Set.empty, []))
+        | Env _ | Universe -> Memo.return (Path.Set.empty, Anon_rule.Set.empty))
   ;;
 end
 
@@ -83,7 +85,7 @@ let evaluate_rule =
            ; expanded_deps
            ; targets = Some rule.targets
            ; action = action.action
-           ; alias = None
+           ; aliases = None
            ; loc = rule.loc
            })
   in
@@ -106,7 +108,10 @@ let evaluate_anonymous_action =
            ; expanded_deps
            ; targets = None
            ; action = action.action
-           ; alias = anon_action.alias
+           ; aliases =
+               (match anon_action.aliases with
+                | [] -> None
+                | aliases -> Some aliases)
            ; loc = anon_action.loc
            })
   in
@@ -123,18 +128,18 @@ let rules_of_dep_paths paths =
   >>| List.filter_opt
 ;;
 
-let rules_of_anon_actions anon_actions =
-  Memo.parallel_map anon_actions ~f:evaluate_anonymous_action
+let rules_of_anon_actions anons =
+  Anon_rule.Set.to_list anons |> Memo.parallel_map ~f:evaluate_anonymous_action
 ;;
 
 let rules_of_deps deps =
-  let* dep_paths, anon_actions = Expand.deps deps in
-  let+ dep_rules, anon_action_rules =
+  let* dep_paths, anons = Expand.deps deps in
+  let+ dep_rules, anon_rules =
     Memo.fork_and_join
       (fun () -> rules_of_dep_paths dep_paths)
-      (fun () -> rules_of_anon_actions anon_actions)
+      (fun () -> rules_of_anon_actions anons)
   in
-  dep_rules @ anon_action_rules
+  dep_rules @ anon_rules
 ;;
 
 let eval ~recursive ~request =

@@ -15,6 +15,7 @@ nix shell --impure --expr 'let pkgs = import (builtins.getFlake "github:NixOS/ni
 
 - [Tools Implementation](#tools-implementation)
 - [Summary](#summary)
+- [Design](#design)
   - [The `(tool)` stanza](#the-tool-stanza)
     - [Syntax](#syntax)
     - [Fields](#fields)
@@ -32,7 +33,7 @@ nix shell --impure --expr 'let pkgs = import (builtins.getFlake "github:NixOS/ni
     - [Version selection](#version-selection)
     - [Example scenarios](#example-scenarios)
   - [Directory structure](#directory-structure)
-  - [Tool pforms](#tool-pforms)
+  - [Tool pforms TODO](#tool-pforms-todo)
     - [Syntax](#syntax-1)
     - [Resolution](#resolution)
     - [Examples](#examples-1)
@@ -90,8 +91,26 @@ nix shell --impure --expr 'let pkgs = import (builtins.getFlake "github:NixOS/ni
   - [Problems Discovered](#problems-discovered)
   - [Reference Packages for Testing](#reference-packages-for-testing)
 - [Ideas](#ideas)
+  - [Editor integration](#editor-integration)
 
 <!-- markdown-toc end -->
+
+## How to Read This Document
+
+[Design](#design) details _how_ the system implements the requirements:
+stanza syntax, CLI commands, version resolution algorithm, and directory
+structure. Each section notes which requirements it implements. Open questions
+are marked where decisions are pending.
+
+[Relationship to Package Management](#relationship-to-package-management)
+explains the orthogonality principle and how tools differ from project
+dependencies.
+
+[Comparison with Other Tools](#comparison-with-other-tools) analyzes how
+`uv`,`cargo`, `cargo-run-bin`, and `npm` handle tool management, informing our
+design decisions.
+
+## Design
 
 ### The `(tool)` stanza
 

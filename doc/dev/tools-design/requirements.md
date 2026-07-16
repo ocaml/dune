@@ -68,21 +68,6 @@ provide and _why_.  Organized by category. Requirements describe user-facing
 behaviour without specifying implementation details. Cross-references point to
 the relevant Implementation sections.
 
-<!-- TODO Should these three sections be moved into implementation doc? -->
-
-[Implementation](./implementation.md) details _how_ the system implements the requirements:
-stanza syntax, CLI commands, version resolution algorithm, and directory
-structure. Each section notes which requirements it implements. Open questions
-are marked where decisions are pending.
-
-[Relationship to Package Management](./implementation.md#relationship-to-package-management)
-explains the orthogonality principle and how tools differ from project
-dependencies.
-
-[Comparison with Other Tools](./implementation.md#comparison-with-other-tools)
-analyzes how `uv`,`cargo`, `cargo-run-bin`, and `npm` handle tool management,
-informing our design decisions.
-
 ## Terminology
 
 - A **tool** is just an executable provided by some opam package. One opam

@@ -141,19 +141,6 @@ workspace, such that different contexts can use different versions of tools.
 This follows the example of `dune pkg`'s `lock_dir` in the context stanza, and
 allows developers to set up different tooling configurations (CR. What for?).
 
-<details>
-<summary>
-Motivation and context
-</summary>
-
-Related issues:
-
-- [dune#12557 dune tools install should take multiple package
-  arguments](https://github.com/ocaml/dune/issues/12557)
-  - Discussed in the implementation spec. See [./implementation.md#batch-operations](./implementation.md#batch-operations)
-
-</details>
-
 #### 1.2.3. System wide scope
 
 Users should be able to install tools in a way that allows them to be used in the
@@ -483,18 +470,50 @@ CLI-added tools persist until `dune clean` or `dune tools remove`, but are not
 reproducible across clean builds. See [Batch
 operations](./implementation.md#batch-operations) for batch commands.
 
-#### 5.2. Persistent configuration
+##### 5.1.1. Managing multiple tools
 
-TODO: is "reproducible" too strong a word here? If no lock is checked in...
+It must be possible to change (e.g., update, install, remove) the installation
+of all configured tools by issuing a single command.
 
-Users must be able to declare tools in workspace configuration. Unlike CLI-added
-tools, declared tools are reproducible:
+<details>
+<summary>
+Motivation and context
+</summary>
 
-- Declaration survives `dune clean` (re-locked automatically from config)
+We must not require users to do the tedious work of running the same command
+over and over to install a set of tools. How this is addressed is left as an
+implementation detail. E.g., it could mean supporting `dune tools install a b c`
+or just having a command that installs all configured tools (see 5.2) in one
+command.
+
+Related issues:
+
+- [dune#12557 dune tools install should take multiple package
+  arguments](https://github.com/ocaml/dune/issues/12557)
+  - Discussed in the implementation spec. See [./implementation.md#batch-operations](./implementation.md#batch-operations)
+
+</details>
+
+
+#### 5.2. Persistent configuration for discretionary tools
+
+Users must be able to declare discretionary tools in the workspace
+configuration. 
+
+<details>
+<summary>
+Motivation and context
+</summary>
+
+This allows users to share tooling configurations between users and across fresh
+project setups as part of a reusable ad hoc dev tool setup.
+
 - Declaration is version-controlled and shared with collaborators
 - CI and fresh checkouts get the same tools
 
-See [The `(tool)` stanza](./implementation.md#the-tool-stanza) for syntax.
+See [The `(tool)` stanza](./implementation.md#the-tool-stanza) for proposed syntax.
+
+<details>
 
 #### 5.4. Tool references in actions
 

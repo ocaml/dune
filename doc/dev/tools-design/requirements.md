@@ -151,6 +151,14 @@ workspace, such that different contexts can use different versions of tools.
 This follows the example of `dune pkg`'s `lock_dir` in the context stanza, and
 allows developers to set up different tooling configurations (What for?).
 
+<details>
+<summary>
+Related issue: [dune#12557](https://github.com/ocaml/dune/issues/12557)
+</summary>
+#12557: dune tools install should take multiple package arguments
+  - Covered in the implentation spec. See (./implementation.md#batch-operations)
+</details>
+
 #### 1.2.3. System wide scope
 
 Users should be able to install tools in a way that allows them to be used in the
@@ -162,6 +170,15 @@ support for tool management must be designed in way that makes it simple and
 reliable to use installed tools outside of a project sandbox (e.g., by
 adding the location of a directory of binaries to their `PATH` or some other
 means).
+
+<details>
+<summary>
+Related issue: [dune#12107](https://github.com/ocaml/dune/issues/12107)
+</summary>
+#12107: pkg: installation of packages that can be used system-wide
+  - Even if we don't support this in the first version, the design should not
+  prevent this.
+</details>
 
 #### 1.4. Version specification
 
@@ -239,12 +256,28 @@ require them.
 To illustrate, this could be thru some sort of qualification to the tools
 command like `dune tools install :with-test :with-dev-setup`.
 
+<details>
+<summary>
+Related issue: [dune#12135](https://github.com/ocaml/dune/issues/12135)
+</summary>
+#12135: dune tools setup to install :with-dev-setup deps
+  - Should the :with-dev-setup qualifier be used by dev-tools to install?
+</details>
+
 ##### 1.9 Discretionary tools
 
 It must be possible to install discretionary tools without incorrectly
 specifying them as if they were project dependencies. (E.g., thru a new `tool`
 stanza or a CLI that updates some data stored in the workspace or `_build`
 directory).
+
+<details>
+<summary>
+Related issue: [dune#12913](https://github.com/ocaml/dune/issues/12913)
+</summary>
+#12913: pkg: general support for installing tools
+  - A tool can be any package with a binary.
+</details>
 
 ### 2. Usability
 
@@ -255,6 +288,20 @@ Users must be able to run tools installed by Dune.
 Users must be able to run tools by invoking them directly in any shell (e.g., bash).
 
 See [CLI commands](./implementation.md#cli-commands) for invocation syntax.
+
+<details>
+<summary>
+Related issue: [dune#12975](https://github.com/ocaml/dune/issues/12975)
+</summary>
+#12975: running dune tools exec <p> when p is not already installed as a dev
+tool should suggest users run dune tools install <p>
+  - The error can be something like
+```
+dune tools exec merlin
+  Error: The tool merlin is not installed
+  Hint: Try 'dune tools install merlin'
+```
+</details>
 
 #### 2.2. Programmatic use
 
@@ -283,7 +330,23 @@ PATH.
 a single point of truth for running tools, and for dune to handle it. This would
 mean opam users can continue to use dune in which ever way they please and the
 editors will not have to care.
- 
+
+CR Sudha247: do we need to split this into cases for when pkg is enabled and
+disabled? If pkg is enabled, we don't provide system fallback as it could be
+confusing to users if aliases just pickup binaries from stale OPAM switches.
+
+<details>
+<summary>
+Related issue: [dune#10688](https://github.com/ocaml/dune/issues/10688)
+</summary>
+#10688: pkg: avoid dune fmt capturing ocamlformat from the PATH
+  - Install tools automatically?
+  - How would having two different package managers side by side work? (In this
+  case, Dune package and OPAM)
+  - Good to maintain compatibility with OPAM - but the tradeoff is the amount of
+  work needed to achieve it.
+</details>
+
 #### 2.4 Orthogonal execution
 
 Running dune tools outside of a build (by any means) should not interfere with

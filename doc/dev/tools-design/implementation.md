@@ -126,6 +126,9 @@ CR-soon Alizter: Edge cases for stanza parsing:
 - Stanza references non-existent repository: when to error (parse time vs solve
   time)?
 
+CR-soon Sudha247: Capture constraints here? Related issue:
+[dune#12777](https://github.com/ocaml/dune/issues/12777)
+
 #### Fields
 
 - **`(package <dep>)`** (required): The opam package providing the tool. Accepts

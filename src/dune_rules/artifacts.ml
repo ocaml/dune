@@ -36,6 +36,15 @@ type t =
     local_bins : local_bins Memo.Lazy.t
   ; (* Package names of dependencies of the dir's owning package. *)
     owning_package_deps : Package.Name.Set.t option
+  ; (* Workspace packages whose installed binaries [local_bins] are visible from
+       the dir: the owning package and its transitive workspace dependency
+       closure. [None] means no narrowing.
+
+       CR-soon punchagan: once the in-out work lands, this and
+       [owning_package_deps] can be derived from a single
+       [Package_universe.build_dependency_closure] spanning both workspace and
+       lock-directory dependency edges. *)
+    local_bins_scope : Package.Name.Set.t option
   }
 
 let force { local_bins; _ } =
@@ -77,6 +86,15 @@ let analyze_binary t ~dir name =
      | Some (Resolved p) -> Memo.return (`Resolved (Path.build p.path))
      | None -> which ()
      | Some (Origin origins) ->
+       let origins =
+         match t.local_bins_scope with
+         | None -> origins
+         | Some scope ->
+           List.filter origins ~f:(fun { package; _ } ->
+             match package with
+             | None -> true
+             | Some package -> Package.Name.Set.mem scope package)
+       in
        Memo.parallel_map origins ~f:(fun origin ->
          origin.enabled_if
          >>| function
@@ -165,6 +183,7 @@ let add_binaries t ~dir l =
 ;;
 
 let set_owning_package_deps t ~owning_package_deps = { t with owning_package_deps }
+let set_local_bins_scope t ~local_bins_scope = { t with local_bins_scope }
 
 let create =
   fun (context : Context.t)
@@ -177,5 +196,5 @@ let create =
         , Origin (Appendable_list.to_list sources) ))
       |> Filename.Map.of_list_exn)
   in
-  { context; local_bins; owning_package_deps = None }
+  { context; local_bins; owning_package_deps = None; local_bins_scope = None }
 ;;

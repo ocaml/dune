@@ -56,3 +56,4 @@ val create
   -> t
 
 val set_owning_package_deps : t -> owning_package_deps:Package.Name.Set.t option -> t
+val set_local_bins_scope : t -> local_bins_scope:Package.Name.Set.t option -> t

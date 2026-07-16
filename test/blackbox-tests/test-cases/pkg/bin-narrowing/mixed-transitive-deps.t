@@ -6,7 +6,8 @@ lockdir edges (the in-out work).
 [p] (workspace) -> [q] (workspace) -> [r] (lockdir). The [q] -> [r] edge is
 allowed, so this builds; but the dependency closures currently don't cross the
 workspace/lockdir boundary, so [r]'s binary is narrowed out unless [r] is
-declared directly on [p].
+declared directly on [p]. A unified dependency closure from the in-and-out work
+will fix this.
 
   $ make_lockdir
 
@@ -26,6 +27,9 @@ A lockdir package [r] that installs [r-tool]:
   $ cat >p/dune <<'EOF'
   > (rule (with-stdout-to r-avail (echo %{bin-available:r-tool})))
   > EOF
+
+[p] depends only on the workspace sibling [q]; [q] depends on the lockdir
+package [r]:
 
   $ make_dune_project 3.25
   $ cat >> dune-project <<'EOF'

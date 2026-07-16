@@ -1,5 +1,6 @@
 Two workspace packages installing a binary of the SAME name produce a "more
-than one definition" error.
+than one definition" error. But, when only one of them is depended upon the
+resolution works correctly.
 
   $ make_lockdir
 
@@ -37,14 +38,9 @@ A consumer that only depends on [pkg-a]:
   > (package (name pkg-c) (allow_empty) (dir c) (depends pkg-a))
   > EOF
 
-Today the lookup errors with "more than one definition". Once narrowing lands,
-it would instead select [pkg-a]'s [dup], the only declared dep:
+The lookup selects [pkg-a]'s [dup] because it is the only declared dep:
 
   $ dune build c/dup-out 2>&1
-  File "b/dune", line 1, characters 47-53:
-  1 | (install (package pkg-b) (section bin) (files (dup.sh as dup)))
-                                                     ^^^^^^
-  Error: binary "dup" is available from more than one definition. It is also
-  available in:
-  - a/dune:1
-  [1]
+
+  $ cat _build/default/c/dup-out
+  from a

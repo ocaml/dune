@@ -1,11 +1,7 @@
-Currently there is no narrowing of workspace-installed binaries: a package's
-stanzas resolve a sibling package's binary even without declaring a dependency
-on it.
-
-Once narrowing lands, this will be restricted to the owning package's declared
-(transitive) dependency closure matching what the package would see built in
-isolation (opam-repo-ci), where an undeclared sibling isn't installed. See
-[lockdir-deps.t] for the lockdir side.
+Workspace-installed binaries are narrowed: a package's stanzas resolve a
+sibling package's binary only when it is declared as a dependency. This would
+match what the package would see built in isolation (opam-repo-ci), where an
+undeclared sibling isn't installed. See [lockdir-deps.t] for the lockdir side.
 
   $ make_lockdir
 
@@ -39,8 +35,38 @@ binary [producer-bin]; [consumer] uses it WITHOUT declaring a dependency on
   > EOF
 
   $ dune build @all
-Even though [consumer] does not depend on [producer], the workspace binary is
-available (workspace binaries are not narrowed):
+  File "consumer/dune", line 4, characters 35-54:
+  4 |  (with-stdout-to producer-run (run %{bin:producer-bin})))
+                                         ^^^^^^^^^^^^^^^^^^^
+  Error: Program producer-bin not found in the tree or in PATH
+   (context: default)
+  Hint: "producer-bin" is not provided by any dependency of this directory's
+  package. Add a dependency on the package that provides it.
+  [1]
+
+The workspace binary is not available since [consumer] does not depend on
+[producer]:
+
+  $ cat _build/default/consumer/producer-available
+  false
+
+And the run fails:
+
+  $ cat _build/default/consumer/producer-run
+  cat: _build/default/consumer/producer-run: No such file or directory
+  [1]
+
+Adding it as a dependency should fix the resolution and the build.
+
+  $ make_dune_project 3.25
+  $ cat >> dune-project << 'EOF'
+  > (package (name producer) (allow_empty) (dir producer))
+  > (package (name consumer) (allow_empty) (dir consumer) (depends producer))
+  > EOF
+
+  $ dune build @all
+
+The workspace binary is now available since [consumer] depends on [producer]:
 
   $ cat _build/default/consumer/producer-available
   true

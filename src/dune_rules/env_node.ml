@@ -30,6 +30,7 @@ let make
       ~default_env
       ~default_artifacts
       ~owning_package_deps
+      ~local_bins_scope
       ~lockdir_bin_env
   =
   let open Memo.O in
@@ -63,11 +64,13 @@ let make
   let artifacts =
     inherited ~field:artifacts ~root:default_artifacts (fun binaries ->
       let* owning_package_deps = owning_package_deps in
+      let* local_bins_scope = local_bins_scope in
       Memo.parallel_map
         config_binaries
         ~f:(File_binding_expand.expand ~dir ~f:(expand_str_lazy expander))
       >>| Artifacts.add_binaries binaries ~dir
-      >>| Artifacts.set_owning_package_deps ~owning_package_deps)
+      >>| Artifacts.set_owning_package_deps ~owning_package_deps
+      >>| Artifacts.set_local_bins_scope ~local_bins_scope)
   in
   let local_binaries =
     Memo.lazy_ (fun () -> Memo.Lazy.force artifacts >>= Artifacts.local_binaries)

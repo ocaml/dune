@@ -90,6 +90,7 @@ let get_impl t dir =
   in
   let profile = Context.profile t.context in
   let owning_package_deps = expander >>= Expander.package_depends_by_src_dir in
+  let local_bins_scope = expander >>= Expander.local_bins_scope_by_src_dir in
   let lockdir_bin_env =
     let* packages = owning_package_deps in
     Pkg_rules.bin_env_for_packages ~packages (Context.name t.context)
@@ -103,6 +104,7 @@ let get_impl t dir =
     ~default_env:t.context_env
     ~default_artifacts:t.artifacts
     ~owning_package_deps
+    ~local_bins_scope
     ~lockdir_bin_env
 ;;
 
@@ -248,6 +250,7 @@ let make_default_env_node
       ~default_env:root_env
       ~default_artifacts:artifacts
       ~owning_package_deps:(Memo.return None)
+      ~local_bins_scope:(Memo.return None)
       ~lockdir_bin_env
   in
   make

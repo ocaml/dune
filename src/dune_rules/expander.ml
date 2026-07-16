@@ -789,6 +789,41 @@ let package_depends_by_src_dir t =
       Memo.return package_deps)
 ;;
 
+let workspace_closure project ~start =
+  let packages = Dune_project.packages project in
+  let rec loop acc name =
+    if Package.Name.Set.mem acc name
+    then acc
+    else (
+      match Package.Name.Map.find packages name with
+      | None -> acc
+      | Some pkg ->
+        let acc = Package.Name.Set.add acc name in
+        List.fold_left
+          (Package.depends pkg)
+          ~init:acc
+          ~f:(fun acc (pd : Package_dependency.t) -> loop acc pd.name))
+  in
+  loop Package.Name.Set.empty start
+;;
+
+let local_bins_scope_by_src_dir t =
+  let open Memo.O in
+  let context_name = Context.name t.context in
+  let* lock_active = Pkg_rules.lock_dir_active context_name in
+  if not lock_active
+  then Memo.return None
+  else (
+    let src_dir = Path.Build.drop_build_context_exn t.dir in
+    match Dune_project.exclusive_package t.project ~dir:src_dir with
+    | None -> Memo.return None
+    | Some pkg_id ->
+      let name = Package.Id.name pkg_id in
+      if Package.Name.Map.mem (Dune_project.packages t.project) name
+      then Memo.return (Some (workspace_closure t.project ~start:name))
+      else Memo.return None)
+;;
+
 let expand_pform_macro
       (context : Context.t)
       ~dir

@@ -139,16 +139,19 @@ It must be possible to install the versions of a tool per-dune context within a
 workspace, such that different contexts can use different versions of tools.
 
 This follows the example of `dune pkg`'s `lock_dir` in the context stanza, and
-allows developers to set up different tooling configurations (What for?).
+allows developers to set up different tooling configurations (CR. What for?).
 
 <details>
 <summary>
-
-Related issue: [dune#12557](https://github.com/ocaml/dune/issues/12557)
-
+Motivation and context
 </summary>
-#12557: dune tools install should take multiple package arguments
-  - Covered in the implentation spec. See (./implementation.md#batch-operations)
+
+Related issues:
+
+- [dune#12557 dune tools install should take multiple package
+  arguments](https://github.com/ocaml/dune/issues/12557)
+  - Discussed in the implementation spec. See [./implementation.md#batch-operations](./implementation.md#batch-operations)
+
 </details>
 
 #### 1.2.3. System wide scope

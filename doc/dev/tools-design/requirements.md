@@ -99,8 +99,8 @@ the relevant Implementation sections.
   introducing functional redundancies.
 - **Complementarity**: Reciprocal to orthogonality, dune's tool management
   functionality should integrate with and augment its core build functionality
-  and nascent package management functionality, and avoid introducing a bolted-on
-  subsystem.
+  and nascent package management functionality, and avoid introducing a
+  bolted-on subsystem.
   
 ## Requirements
 
@@ -143,7 +143,9 @@ allows developers to set up different tooling configurations (What for?).
 
 <details>
 <summary>
+
 Related issue: [dune#12557](https://github.com/ocaml/dune/issues/12557)
+
 </summary>
 #12557: dune tools install should take multiple package arguments
   - Covered in the implentation spec. See (./implementation.md#batch-operations)

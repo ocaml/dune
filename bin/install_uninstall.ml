@@ -172,6 +172,14 @@ let raise_file_should_be_deleted p =
     [ Pp.textf "Please delete file %s manually." (Path.to_string_maybe_quoted p) ]
 ;;
 
+let raise_non_empty_dir_should_be_deleted dir =
+  User_error.raise
+    [ Pp.textf
+        "Please delete non-empty directory %s manually."
+        (Path.to_string_maybe_quoted dir)
+    ]
+;;
+
 let rec validate_dir_can_be_created dir =
   match Unix.stat (Path.to_string dir) with
   | { st_kind = S_DIR; _ } -> ()
@@ -206,6 +214,9 @@ module File_ops_dry_run (Verbosity : sig
   ;;
 
   let remove_dir_if_exists ~if_non_empty path =
+    (match if_non_empty, Path.readdir_unsorted path with
+     | Fail, Ok (_ :: _) -> raise_non_empty_dir_should_be_deleted path
+     | _, _ -> ());
     print_line
       "Removing directory (%s if not empty) %s"
       (match if_non_empty with
@@ -376,15 +387,13 @@ module File_ops_real (W : sig
     | Error (e, _, _) ->
       User_message.prerr (User_error.make [ Pp.text (Unix.error_message e) ])
     | _ ->
-      let dir = Path.to_string_maybe_quoted dir in
       (match if_non_empty with
+       | Fail -> raise_non_empty_dir_should_be_deleted dir
        | Warn ->
+         let dir = Path.to_string_maybe_quoted dir in
          User_message.prerr
            (User_error.make
-              [ Pp.textf "Directory %s is not empty, cannot delete (ignoring)." dir ])
-       | Fail ->
-         User_error.raise
-           [ Pp.textf "Please delete non-empty directory %s manually." dir ])
+              [ Pp.textf "Directory %s is not empty, cannot delete (ignoring)." dir ]))
   ;;
 
   let mkdir_p p =

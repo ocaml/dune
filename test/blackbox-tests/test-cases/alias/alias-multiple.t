@@ -120,3 +120,26 @@ A similar test with a rule that produces a target
   $ dune clean
   $ dune build @b @c
   I have run
+
+A rule attached to several aliases must not make one alias pull in unrelated
+contributions to another alias. Here alias [a] also receives an unrelated
+action; building [b] must run only the shared action.
+  $ cat > dune << EOF
+  > (rule
+  >  (aliases a b)
+  >  (action (echo "I have run\n")))
+  > (rule
+  >  (alias a)
+  >  (action (echo "unrelated\n")))
+  > EOF
+
+  $ dune clean
+  $ dune build @b
+  I have run
+
+Building [a] still runs both the shared action and the action attached only
+to [a].
+  $ dune clean
+  $ dune build @a
+  I have run
+  unrelated

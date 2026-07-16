@@ -89,7 +89,7 @@ let test_rule
     (* We error out on invalid tests even if they are disabled. *)
     let* () = add_extra_aliases_deps () in
     Action_builder.fail { fail = (fun () -> missing_run_t test) }
-    |> Alias_rules.add sctx ~alias ~loc
+    |> Alias_rules.add sctx ~aliases:[ alias ] ~loc
   | Ok test ->
     (* enabled_if controls whether this test is included in @runtest (and other aliases),
        but the test can always be run explicitly via its own alias. *)
@@ -160,7 +160,7 @@ let test_rule
       |> Action_builder.with_file_targets ~file_targets:[ output ]
       |> Super_context.add_rule sctx ~dir ~loc
     in
-    Alias_rules.add sctx ~alias ~loc
+    Alias_rules.add sctx ~aliases:[ alias ] ~loc
     @@
     let open Action_builder.O in
     let+ () = List.map ~f:Path.build [ script; output ] |> Action_builder.paths in

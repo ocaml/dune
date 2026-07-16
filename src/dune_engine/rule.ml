@@ -141,7 +141,7 @@ module Anonymous_action_rule = struct
       ; action : Action.Full.t Action_builder.t
       ; loc : Loc.t
       ; dir : Path.Build.t
-      ; alias : Alias.Name.t option
+      ; aliases : Alias.Name.t list
       }
 
     let compare a b = Id.compare a.id b.id
@@ -153,7 +153,7 @@ module Anonymous_action_rule = struct
       Repr.record
         "rule"
         [ Repr.field "id" (Repr.abstract Id.to_dyn) ~get:(fun t -> t.id)
-        ; Repr.field "alias" (Repr.option Alias_name.repr) ~get:(fun t -> t.alias)
+        ; Repr.field "aliases" (Repr.list Alias_name.repr) ~get:(fun t -> t.aliases)
         ]
     ;;
 
@@ -163,7 +163,10 @@ module Anonymous_action_rule = struct
   include T
   include Comparable.Make (T)
 
-  let make ~loc ~dir ~alias action = { id = Id.gen (); action; loc; alias; dir }
+  let make ~loc ~dir ~aliases action = { id = Id.gen (); action; loc; aliases; dir }
+
+  module Map = Import.Map.Make (T)
+  module Set = Import.Set.Make (T) (Map)
 end
 
 module Anonymous_action = struct
@@ -171,6 +174,6 @@ module Anonymous_action = struct
     { action : Action.Full.t
     ; loc : Loc.t
     ; dir : Path.Build.t
-    ; alias : Alias.Name.t option
+    ; aliases : Alias.Name.t list
     }
 end

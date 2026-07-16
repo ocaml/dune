@@ -10,7 +10,7 @@ module Rule : sig
       expanded_deps : Path.Set.t
     ; targets : Targets.Validated.t option
     ; action : Action.t
-    ; alias : Alias_name.t option
+    ; aliases : Alias_name.t list option
     ; loc : Loc.t
     }
 end

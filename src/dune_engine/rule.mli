@@ -85,7 +85,8 @@ module Anonymous_action_rule : sig
     ; action : Action.Full.t Action_builder.t
     ; loc : Loc.t
     ; dir : Path.Build.t
-    ; alias : Alias.Name.t option (** For better error messages *)
+    ; aliases : Alias.Name.t list
+      (** The aliases this action is attached to. For better error messages. *)
     }
 
   include Comparable_intf.S with type key := t
@@ -98,9 +99,11 @@ module Anonymous_action_rule : sig
   val make
     :  loc:Loc.t
     -> dir:Path.Build.t
-    -> alias:Alias.Name.t option
+    -> aliases:Alias.Name.t list
     -> Action.Full.t Action_builder.t
     -> t
+
+  module Set : Import.Set.S with type elt = t
 end
 
 module Anonymous_action : sig
@@ -112,6 +115,7 @@ module Anonymous_action : sig
     ; dir : Path.Build.t
       (** Directory the action is attached to. This is the directory where
         the outcome of the action will be cached. *)
-    ; alias : Alias.Name.t option (** For better error messages *)
+    ; aliases : Alias.Name.t list
+      (** The aliases this action is attached to. For better error messages. *)
     }
 end

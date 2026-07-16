@@ -5,12 +5,16 @@ open Import
 module Alias_rules : sig
   val add
     :  Super_context.t
-    -> alias:Alias.t
+    -> aliases:Alias.t list
     -> loc:Loc.t
     -> Action.Full.t Action_builder.t
     -> unit Memo.t
 
-  val add_empty : Super_context.t -> loc:Stdune.Loc.t -> alias:Alias.t -> unit Memo.t
+  val add_empty
+    :  Super_context.t
+    -> loc:Stdune.Loc.t
+    -> aliases:Alias.t list
+    -> unit Memo.t
 end
 
 (** Interpret a [(rule ...)] stanza and return the targets it produces, if any. *)

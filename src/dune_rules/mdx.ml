@@ -401,7 +401,7 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog ~mdx_prog_ge
   in
   Super_context.add_alias_action
     sctx
-    (Alias.make Alias0.runtest ~dir)
+    [ Alias.make Alias0.runtest ~dir ]
     mdx_action
     ~loc
     ~dir

@@ -10,44 +10,26 @@ module Dir_contents = struct
       ; rest : File_kind.t Filename.Array.Map.t
       }
     ]}*)
-  type t = File_kind.t Filename.Array.Map.t
+  type t = Workspace_cache.Dir_contents.t
 
   let iter t ~f = Filename.Array.Map.iteri t ~f
   let to_list = Filename.Array.Map.to_list
 
   (* The names must be unique, so we don't care about comparing file kinds. *)
   let of_list = Filename.Array.Map.of_list_exn
+  let repr = Workspace_cache.Dir_contents.repr
   let equal = Filename.Array.Map.equal ~equal:File_kind.equal
-  let repr = Repr.view (Repr.list (Repr.pair Filename.repr File_kind.repr)) ~to_:to_list
   let to_dyn = Repr.to_dyn repr
 end
 
 module Cached_digest = struct
   module Stats = struct
-    type t =
-      { mtime : Time.t
-      ; ctime : Time.t
-      ; size : int
-      ; perm : Unix.file_perm
-      ; dev : int
-      ; ino : int
-      }
+    type t = Workspace_cache.Fs_memo.Stats.t
 
-    let repr =
-      Repr.record
-        "fs-memo-cached-digest-reduced-stats"
-        [ Repr.field "mtime" Time.repr ~get:(fun t -> t.mtime)
-        ; Repr.field "ctime" Time.repr ~get:(fun t -> t.ctime)
-        ; Repr.field "size" Repr.int ~get:(fun t -> t.size)
-        ; Repr.field "perm" Repr.int ~get:(fun t -> t.perm)
-        ; Repr.field "dev" Repr.int ~get:(fun t -> t.dev)
-        ; Repr.field "ino" Repr.int ~get:(fun t -> t.ino)
-        ]
-    ;;
-
+    let repr = Workspace_cache.Fs_memo.Stats.repr
     let to_dyn = Repr.to_dyn repr
 
-    let of_stat (stat : Stat.t) =
+    let of_stat (stat : Stat.t) : t =
       { mtime = stat.mtime
       ; ctime = stat.ctime
       ; size = stat.size
@@ -64,52 +46,8 @@ module Cached_digest = struct
       end)
   end
 
-  type 'a file =
-    { mutable contents : 'a
-    ; mutable stats : Stats.t
-    ; mutable stats_checked : int
-    }
-
-  type t =
-    { mutable checked_key : int
-    ; mutable max_timestamp : Time.t
-    ; table : Digest.t file Path.Table.t
-    ; dir_contents : Dir_contents.t file Path.Table.t
-    }
-
-  let db_file = Path.relative Path.build_dir ".digest-db"
-  let digest_repr = Repr.view Repr.string ~to_:Digest.to_string
-
-  let file_repr contents_repr =
-    Repr.record
-      "fs-memo-cached-digest-file"
-      [ Repr.field "contents" contents_repr ~get:(fun t -> t.contents)
-      ; Repr.field "stats" Stats.repr ~get:(fun t -> t.stats)
-      ; Repr.field "stats_checked" Repr.int ~get:(fun t -> t.stats_checked)
-      ]
-  ;;
-
-  let repr =
-    let table contents_repr =
-      Repr.abstract (Path.Table.to_dyn (Repr.to_dyn (file_repr contents_repr)))
-    in
-    Repr.record
-      "fs-memo-cached-digest"
-      [ Repr.field "checked_key" Repr.int ~get:(fun t -> t.checked_key)
-      ; Repr.field "max_timestamp" Time.repr ~get:(fun t -> t.max_timestamp)
-      ; Repr.field "table" (table digest_repr) ~get:(fun t -> t.table)
-      ; Repr.field "dir_contents" (table Dir_contents.repr) ~get:(fun t -> t.dir_contents)
-      ]
-  ;;
-
-  module P = Persistent.Make (struct
-      type nonrec t = t
-
-      let name = "DIGEST-DB"
-      let version = 12
-      let sharing = true
-      let repr = repr
-    end)
+  type 'a file = 'a Workspace_cache.Fs_memo.file
+  type t = Workspace_cache.Fs_memo.t
 
   let needs_dumping = ref false
 
@@ -120,16 +58,10 @@ module Cached_digest = struct
      subscribing for file-watching updates. *)
   let cache =
     lazy
-      (match P.load db_file with
-       | None ->
-         { checked_key = 0
-         ; table = Path.Table.create ()
-         ; max_timestamp = Time.of_ns 0
-         ; dir_contents = Path.Table.create ()
-         }
-       | Some cache ->
-         cache.checked_key <- cache.checked_key + 1;
-         cache)
+      (let cache = Workspace_cache.fs_memo () in
+       if Workspace_cache.loaded_from_disk ()
+       then cache.checked_key <- cache.checked_key + 1;
+       cache)
   ;;
 
   let get_current_filesystem_time () =
@@ -142,7 +74,7 @@ module Cached_digest = struct
     let t = get_current_filesystem_time () in
     while get_current_filesystem_time () <= t do
       (* This is a blocking wait but we don't care too much. This code is only
-       used in the test suite. *)
+         used in the test suite. *)
       Unix.sleepf 0.01
     done
   ;;
@@ -187,18 +119,10 @@ module Cached_digest = struct
       cache.max_timestamp <- !max_timestamp
   ;;
 
-  let dump () =
-    if !needs_dumping && Path.build_dir_exists ()
-    then (
-      needs_dumping := false;
-      Console.Status_line.with_overlay
-        (Live (fun () -> Pp.hbox (Pp.text "Saving digest db...")))
-        ~f:(fun () ->
-          delete_very_recent_entries ();
-          P.dump db_file (Lazy.force cache)))
+  let () =
+    At_exit.at_exit_ignore Workspace_cache.at_exit (fun () ->
+      if !needs_dumping && Path.build_dir_exists () then delete_very_recent_entries ())
   ;;
-
-  let () = At_exit.at_exit_ignore Dune_trace.at_exit dump
 
   let invalidate_cached_timestamps () =
     if Lazy.is_val cache
@@ -208,18 +132,20 @@ module Cached_digest = struct
     delete_very_recent_entries ()
   ;;
 
-  let set_max_timestamp cache (stat : Stat.t) =
+  let set_max_timestamp (cache : t) (stat : Stat.t) =
     cache.max_timestamp <- Time.max cache.max_timestamp stat.mtime
   ;;
 
   let set_with_stat ~table path contents stat =
     let cache = Lazy.force cache in
     needs_dumping := true;
+    Workspace_cache.mark_dirty ();
     set_max_timestamp cache stat;
     Path.Table.set
       (table cache)
       path
-      { contents; stats = Stats.of_stat stat; stats_checked = cache.checked_key }
+      ({ contents; stats = Stats.of_stat stat; stats_checked = cache.checked_key }
+       : _ file)
   ;;
 
   let digest_path_with_stats path stats =
@@ -253,7 +179,7 @@ module Cached_digest = struct
     let cache = Lazy.force cache in
     match Path.Table.find (table cache) path with
     | None -> None
-    | Some x ->
+    | Some (x : _ file) ->
       Some
         (if x.stats_checked = cache.checked_key
          then Ok x.contents
@@ -289,6 +215,7 @@ module Cached_digest = struct
                    ~old_stats:x.stats
                    ~new_stats:reduced_stats;
                  needs_dumping := true;
+                 Workspace_cache.mark_dirty ();
                  set_max_timestamp cache stats;
                  x.contents <- contents;
                  x.stats <- reduced_stats;
@@ -322,7 +249,7 @@ module Cached_digest = struct
       let cache = Lazy.force cache in
       match Path.Table.find (table cache) path with
       | None -> ()
-      | Some entry ->
+      | Some (entry : _ file) ->
         (* Make [stats_checked] unequal to [cache.checked_key] so that [peek]
          is forced to re-[stat] the [path]. *)
         entry.stats_checked <- cache.checked_key - 1
@@ -385,9 +312,9 @@ module Cached_digest = struct
     ;;
   end
 
-  let load () = P.load db_file
+  let load () = Workspace_cache.load_fs_memo ()
 
-  let entries { table; _ } =
+  let entries ({ table; _ } : t) =
     let entries = ref [] in
     Path.Table.iteri table ~f:(fun ~key ~data -> entries := (key, data) :: !entries);
     List.sort !entries ~compare:(fun (path_a, _) (path_b, _) ->
@@ -435,15 +362,15 @@ module Debug = struct
       ; Repr.field
           "contents"
           (Repr.abstract Digest.to_dyn)
-          ~get:(fun (_, { Cached_digest.contents; _ }) -> contents)
+          ~get:(fun (_, ({ contents; _ } : _ Cached_digest.file)) -> contents)
       ; Repr.field
           "stats"
           Cached_digest.Stats.repr
-          ~get:(fun (_, { Cached_digest.stats; _ }) -> stats)
+          ~get:(fun (_, ({ stats; _ } : _ Cached_digest.file)) -> stats)
       ; Repr.field
           "stats_checked"
           Repr.int
-          ~get:(fun (_, { Cached_digest.stats_checked; _ }) -> stats_checked)
+          ~get:(fun (_, ({ stats_checked; _ } : _ Cached_digest.file)) -> stats_checked)
       ]
   ;;
 
@@ -456,13 +383,12 @@ module Debug = struct
       User_error.raise
         [ Pp.textf
             "No digest database found at %s"
-            (Path.to_string_maybe_quoted Cached_digest.db_file)
+            (Path.to_string_maybe_quoted Workspace_cache.file)
         ]
   ;;
 
   let dump_digest_db paths =
-    let db = load_exn () in
-    let { Cached_digest.checked_key; max_timestamp; _ } = db in
+    let (({ checked_key; max_timestamp; _ } : Cached_digest.t) as db) = load_exn () in
     let entries =
       selected_entries db paths
       |> List.map ~f:(fun (path, file) -> entry_to_dyn (path, file))
@@ -516,20 +442,25 @@ module Debug = struct
   let check_digest_db paths =
     let db = load_exn () in
     selected_entries db paths
-    |> List.filter_map ~f:(fun (path, file) ->
-      let { Cached_digest.contents = cached_digest; stats; stats_checked = _ } = file in
-      let current_stats, actual = current_digest path in
-      if Digest_result.equal actual (Ok cached_digest)
-      then None
-      else (
-        let status =
-          match current_stats with
-          | Some current_stats when Cached_digest.Stats.equal stats current_stats ->
-            "invalid"
-          | Some _ | None -> "stale"
-        in
-        Some (finding_to_dyn { status; path; cached_digest; actual })))
-    |> fun findings -> Dyn.List findings
+    |> List.filter_map
+         ~f:
+           (fun
+             ( path
+             , ({ contents = cached_digest; stats; stats_checked = _ } :
+                 _ Cached_digest.file) )
+           ->
+           let current_stats, actual = current_digest path in
+           if Digest_result.equal actual (Ok cached_digest)
+           then None
+           else (
+             let status =
+               match current_stats with
+               | Some current_stats when Cached_digest.Stats.equal stats current_stats ->
+                 "invalid"
+               | Some _ | None -> "stale"
+             in
+             Some (finding_to_dyn { status; path; cached_digest; actual })))
+    |> Dyn.list Fun.id
   ;;
 end
 

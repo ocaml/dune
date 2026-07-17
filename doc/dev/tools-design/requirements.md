@@ -73,9 +73,10 @@ the relevant Implementation sections.
 - A **tool** is just an executable provided by some opam package. One opam
   package can provide multiple tools.
 - A **project dependency** is a component (such as a library or executable)
-  required for developing and/or distributing a project. In the context of dune,
-  we know a component is a dependency if *any* of a project's build targets
-  depend upon it.
+  required for developing and/or distributing a project. For dune, this
+  generally means the component must be provided by a package dependency of some
+  package in the project. A component is a dependency if *any* of a project's
+  build targets depend upon it, whether or not it is correctly declared as such.
 - A dependency is **qualified** when it is only required for a certain category
   of build targets. Common qualification include *test* dependencies (e.g.,
   `alcotest`, `jq`, or `qcheck`) and *generation* dependencies (e.g., `atd`,
@@ -84,11 +85,13 @@ the relevant Implementation sections.
   by some developers of the project, but it is not a *project dependency*.
   Common examples include tools like `ocamllsp`, `utop`.
 - To **install** a tool is to install the opam package providing it and making
-  the tool's executable available within an environment.
+  the tool's executable available within an environment. The system responsible
+  for installing and uninstalling a tool is said to **manage** the tool.
 - A **well-formed opam package** specifies all data necessary to install and
   build its provided targets.
-- A tool is **installable** if it is part of a well-formed opam package obtainable
- from any source: opam repository, pinning from a source, or defined locally.
+- A tool is **installable** if it is part of a well-formed opam package
+  obtainable from any source: opam repository, pinning from a source, or defined
+  locally.
 - **Workspace** means a [dune workspace](https://dune.readthedocs.io/en/latest/explanation/scopes.html)
 
 ## Design principles
@@ -280,7 +283,32 @@ Related issues:
 
 Users must be able to run tools installed by Dune.
 
-#### 2.1. Shells
+#### 2.1 Extent of tool management 
+
+The extent to which dune enforces management of tools within a workspace should
+depend on whether or not package management is enabled in the workspace.
+
+##### 2.1.1 when package management is enabled in a workspace
+
+When users enable dune package management in a workspace, all *tools* used in the
+workspace (in the precise sense defined in the [terminology](#terminology))
+should be managed dune, to the extent that dune can reasonably enforce this.
+Enforcing this assumption allows dune to offer users improved guarantees about
+the cohesiveness and interoperability of the provided tools.
+
+This does *not* entail that dune should mask or redact data from the `PATH` or
+otherwise attempt to filter out a users ambient environment. But it should
+provide pragmatic measures to support users by enforcing this behavior where
+feasible.
+
+##### 2.1.2 when package management is not enabled in a workspace
+
+When users have not enabled dune package management in a workspace, they must be
+able to use *tools* managed dune, but they should still be able to use tools
+installed by opam (or other possible package managers) in all operations of
+dune.
+
+#### 2.2. Shells
 
 Users must be able to run tools by invoking them directly in any shell (e.g., bash).
 
@@ -304,7 +332,7 @@ dune tools exec merlin
 
 </details>
 
-#### 2.2. Programmatic use
+#### 2.3. Programmatic use
 
 Programs (e.g., editor plugins) must be able to find and run installed tools via
 a single, transparent mechanism. (E.g., this could be implemented by any of the
@@ -315,26 +343,36 @@ means).
 
 See [CLI commands](./implementation.md#cli-commands) for the discovery interface.
 
-##### 2.2.1 dune subcommands
+##### 2.3.1. dune subcommands
 
 As a special case, dune subcommands (e.g., `dune fmt` or `dune utop`) that
-invoke external tools must be able to use tools managed by `dune tools`, with
-fallback to executables available on the system path.
+invoke external tools must be able to use tools managed by `dune tools`, when
+they are available.
 
-###### 2.2.1.1 System PATH fallback
+###### 2.3.1.1. System PATH fallback
 
-When a tool is not installed (e.g., `.ocamlformat`), dune subcommands (such as
-`dune fmt`, `dune build @doc`, or `dune utop`) should fall back to the system
-PATH.
+The extent to which dune should allow its subcommands to fallback to the system
+`PATH` when looking up required binaries depends on whether or not the workspace
+has enabled package management, as dictated by
+[2.1](#2-1-extent-of-tool-management).
+
+###### 2.3.1.1.1. When package management is enabled in a workspace
+
+When package management is enabled in a workspace but a required tool is not
+installed, dune subcommands must produce a clear user error explaining to
+users that the tool is not available and directing them to install it as a dune
+managed tool.
+
+###### 2.3.1.1.2. When package management is NOT enabled in a workspace 
+
+When package management is enabled in a workspace and a tool is not installed
+(e.g., `.ocamlformat`), dune subcommands (such as `dune fmt`, `dune build @doc`,
+or `dune utop`) should fall back to the system PATH.
 
 **Note** This is motivated by integration with editor developers who would like
 a single point of truth for running tools, and for dune to handle it. This would
 mean opam users can continue to use dune in which ever way they please and the
 editors will not have to care.
-
-CR Sudha247: do we need to split this into cases for when pkg is enabled and
-disabled? If pkg is enabled, we don't provide system fallback as it could be
-confusing to users if aliases just pickup binaries from stale OPAM switches.
 
 <details>
 <summary>
@@ -353,17 +391,23 @@ Related issues:
 
 </details>
 
-#### 2.4 Orthogonal execution
+#### 2.4. Project dependency tools
 
-Running dune tools outside of a build (by any means) should not interfere with
-other concurrent dune operations (e.g., `dune build -w`).
+When a tool is installed as a *project dependency* (under any qualification),
+users must be able to execute the tool thru all the same mechanism that are
+provided for executing discretionary tools. E.g., a mechanism like `dune env`
+that would make the path to dune-managed binaries available must include both
+discretionary tools and project dependency tools in the path.
 
-#### 2.5 Project dependency tools
+### 3. Dependency and Integration
 
-When a tool is a *project dependency* (under any qualification), users must
-be able to execute the tool.
+Tools are used in numerous ways and require different levels of integration and
+interdependence with the other components (tools, libraries, or other artifacts)
+of a workspace. We can position these varieties of difference on a coordinate
+system with two axes:
 
-### 3. Integration spectrum
+
+#### 3.1 Integration spectrum
 
 Tools lie along a spectrum of integration requirements with other dependencies
 in the project, which we can indicate with these tree points:
@@ -380,7 +424,7 @@ in the project, which we can indicate with these tree points:
 Tools lying along the entire spectrum must be supported elegant solutions where
 coupling is required, and the most possible orthogonality in features when it is not.
 
-#### 3.1. Compiler compatibility
+##### 3.1. Compiler compatibility
 
 TODO: need to handle tools that are compiler integrations, and want to have an "optimal" dependency environment.
 E.g., installing the latest version of a tool, with whatever compiler version it may need, or installing a tool that is not compatible with your env compiler.
@@ -403,7 +447,7 @@ requirements to influence which compiler version they use. Currently tools are
 fully isolated and don't affect project solving. This would be a significant
 departure from the orthogonality principle.
 
-#### 3.2. Dependency isolation
+##### 3.2. Dependency isolation
 
 The dependencies of each tool should be solved independently with its own lock
 directory. Tool dependencies do not affect the project's `dune.lock`, and vice
@@ -413,7 +457,7 @@ See [Directory structure](./implementation.md#directory-structure) for lock
 directory locations.
 
 
-### 4. Dependency spectrum
+#### 4.2 Dependency spectrum
 
 Tools lie along a spectrum of dependency status (i.e., to what extent they are
 dependencies for the project) which we can indicate with these tree points:
@@ -432,27 +476,27 @@ dependencies for the project) which we can indicate with these tree points:
  generation, they could be qualified project dependencies behind a hypothetical
  `with-gen` filter).
 
-#### 4.1. Discretionary tools (D1)
+##### 4.1. Discretionary tools (D1)
 
-##### 4.1.1.  Not build triggers
+###### 4.1.1. Not build triggers
 
 Locking or adding tools in at D1 level tools must not trigger project builds.
 
-##### 4.1.2. Cannot be referenced in build rules TODO
+###### 4.1.2. Cannot be referenced in build rules TODO
 
-#### 4.2. Qualified dependency tools (D2) TODO
+##### 4.2. Qualified dependency tools (D2) TODO
 
-##### 4.2.1. Must be usable as tools
+###### 4.2.1. Must be usable as tools
 
-##### 4.2.1. Must be installable via qualification
+###### 4.2.1. Must be installable via qualification
 
-#### 4.3. Unqualified dependency tools (D3) TODO
+##### 4.3. Unqualified dependency tools (D3) TODO
 
-##### 4.3.1. Must be usable as tools TODO
+###### 4.3.1. Must be usable as tools TODO
 
-##### 4.2.1. Must always be installed TODO
+###### 4.2.1. Must always be installed TODO
 
-### 5. UI
+#### 5. UI
 
 #### 5.1. CLI
 

@@ -129,20 +129,10 @@ let make_bin_env expander bin_names =
         (let open Memo.O in
          Expander.host_context expander >>| Context.name)
     in
-    let* origin_bin_names =
-      Action_builder.of_memo
-        (let open Memo.O in
-         let* artifacts =
-           let* sctx = Super_context.find_exn context in
-           Artifacts_db.get (Super_context.context sctx)
-         in
-         Memo.List.filter bin_names ~f:(fun name ->
-           Artifacts.binary_package artifacts ~dir name >>| Option.is_some))
-    in
-    (match origin_bin_names with
-     | [] -> Action_builder.return Env.empty
-     | _ ->
-       let layout_dir, files = Bin_layout.create context origin_bin_names in
+    let* layout = Action_builder.of_memo (Bin_layout.create context ~dir bin_names) in
+    (match layout with
+     | None -> Action_builder.return Env.empty
+     | Some (layout_dir, files) ->
        let+ () = Action_builder.paths files in
        (* The layout dir on PATH is an absolute build-tree path; dune's
           sandbox does not relocate PATH. See [bin-pform/sandbox.t]. *)

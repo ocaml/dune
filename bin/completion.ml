@@ -153,7 +153,9 @@ module Fish : Shell = struct
   let completion_script ~fun_name =
     sprintf
       {|function %s
-  set -l tokens (commandline -opc)
+  # fish 4.0 deprecated -o (--tokenize) in favor of -x (--tokens-expanded)
+  set -l tokens (commandline -xpc 2>/dev/null)
+  or set tokens (commandline -opc)
   set -l current (commandline -ct)
   type -q $tokens[1]; or return
   set -l response ($tokens[1] --__complete $tokens[2..-1] --__complete=$current 2>/dev/null)

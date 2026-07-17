@@ -1,5 +1,8 @@
+module Int = Stdune.Int
 module Exn = Stdune.Exn
 module Pid = Stdune.Pid
+module Platform = Stdune.Platform
+module Signal = Stdune.Signal
 module Spawn = Stdune.Spawn
 
 let show_raise f =
@@ -45,6 +48,7 @@ let wait pid =
 ;;
 
 let list_files = Filename.concat (Sys.getcwd ()) "exe/list_files.exe"
+let print_env = Filename.concat (Sys.getcwd ()) "exe/print_env.exe"
 
 let () =
   Unix.mkdir "sub" 0o777;
@@ -189,6 +193,105 @@ let%expect_test "pgid tests" =
        ()
        ~prog:"pgid_test/checkpgid.exe"
        ~argv:[]);
+  [%expect {||}]
+;;
+
+let wait_for_file ?(timeout = 5.0) fn =
+  let deadline = Unix.gettimeofday () +. timeout in
+  let rec loop () =
+    if Sys.file_exists fn
+    then ()
+    else if Unix.gettimeofday () >= deadline
+    then Printf.ksprintf failwith "timed out waiting for %s" fn
+    else (
+      ignore (Unix.select [] [] [] 0.05);
+      loop ())
+  in
+  loop ()
+;;
+
+let wait_for_no_file ?(timeout = 1.0) fn =
+  let deadline = Unix.gettimeofday () +. timeout in
+  let rec loop () =
+    if Sys.file_exists fn
+    then Printf.ksprintf failwith "%s unexpectedly exists" fn
+    else if Unix.gettimeofday () >= deadline
+    then ()
+    else (
+      ignore (Unix.select [] [] [] 0.05);
+      loop ())
+  in
+  loop ()
+;;
+
+let kill_child pid_file =
+  if Sys.file_exists pid_file
+  then (
+    let pid_file_contents = Stdune.Io.String_path.read_file pid_file in
+    match Int.of_string (String.trim pid_file_contents) with
+    | None -> ()
+    | Some pid ->
+      let pid = Pid.of_int_exn pid in
+      (match Pid.kill pid `Pid Kill with
+       | `Delivered | `Dead -> ()))
+;;
+
+let with_pdeathsig_child mode ~spawn ~f =
+  let temp_name suffix =
+    Filename.concat
+      (Sys.getcwd ())
+      (Printf.sprintf "stdune-spawn-%d-%s-%s" (Unix.getpid ()) mode suffix)
+  in
+  let ready_file = temp_name "ready" in
+  let marker_file = temp_name "marker" in
+  let pid_file = temp_name "pid" in
+  let cleanup () =
+    kill_child pid_file;
+    List.iter
+      (fun fn -> if Sys.file_exists fn then Unix.unlink fn)
+      [ ready_file; marker_file; pid_file ]
+  in
+  Exn.protect ~finally:cleanup ~f:(fun () ->
+    cleanup ();
+    match Unix.fork () with
+    | 0 ->
+      let exit_code =
+        try
+          let argv = "print_env" :: mode :: [ ready_file; marker_file ] in
+          let child = spawn argv in
+          Stdune.Io.String_path.write_file
+            pid_file
+            (Printf.sprintf "%d\n" (Pid.to_int child));
+          wait_for_file ready_file;
+          0
+        with
+        | _ -> 1
+      in
+      Unix._exit exit_code
+    | intermediate ->
+      wait (Pid.of_int_exn intermediate);
+      f ~marker_file)
+;;
+
+let%expect_test "pdeathsig defaults to kill" =
+  (match Platform.OS.value with
+   | Linux ->
+     with_pdeathsig_child
+       "pdeathsig-default-child"
+       ~f:(fun ~marker_file -> wait_for_no_file marker_file)
+       ~spawn:(fun argv -> Spawn.spawn () ~prog:print_env ~argv)
+   | _ -> ());
+  [%expect {||}]
+;;
+
+let%expect_test "pdeathsig explicit signal" =
+  (match Platform.OS.value with
+   | Linux ->
+     with_pdeathsig_child
+       "pdeathsig-child"
+       ~f:(fun ~marker_file -> wait_for_file marker_file)
+       ~spawn:(fun argv -> Spawn.spawn ~pdeathsig:Usr1 () ~prog:print_env ~argv)
+   | _ -> ());
   [%expect {||}]
 ;;
 

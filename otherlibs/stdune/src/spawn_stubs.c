@@ -26,6 +26,10 @@
 
 #include <errno.h>
 
+#if defined(__linux__)
+#include <sys/prctl.h>
+#endif
+
 #if defined(__APPLE__)
 
 # if defined(__MAC_OS_X_VERSION_MAX_ALLOWED)
@@ -290,13 +294,48 @@ struct spawn_info {
   int std_fds[3];
   int set_pgid;
   pid_t pgid;
+  int pdeathsig;
+  pid_t parent_pid;
   sigset_t child_sigmask;
 };
+
+static void reset_signal_to_default(int signal)
+{
+  struct sigaction sa;
+  sa.sa_handler = SIG_DFL;
+  sigemptyset(&sa.sa_mask);
+  sa.sa_flags = 0;
+  /* Ignore errors as there is no interesting way it can fail. */
+  sigaction(signal, &sa, NULL);
+}
+
+static void set_parent_death_signal(int failure_fd, struct spawn_info *info)
+{
+#if defined(__linux__)
+  if (info->pdeathsig == 0) return;
+
+  reset_signal_to_default(info->pdeathsig);
+
+  if (prctl(PR_SET_PDEATHSIG, (long)info->pdeathsig, 0L, 0L, 0L) == -1) {
+    subprocess_failure(failure_fd, "prctl", NOTHING);
+    return;
+  }
+
+  if (getppid() != info->parent_pid) {
+    if (kill(getpid(), info->pdeathsig) == -1)
+      subprocess_failure(failure_fd, "kill", NOTHING);
+  }
+#else
+  (void)failure_fd;
+  (void)info;
+#endif
+}
 
 static void subprocess(int failure_fd, struct spawn_info *info)
 {
   int i, fd, tmp_fds[3];
-  struct sigaction sa;
+
+  set_parent_death_signal(failure_fd, info);
 
   if (info->set_pgid) {
     if (setpgid(0, info->pgid) == -1) {
@@ -308,11 +347,7 @@ static void subprocess(int failure_fd, struct spawn_info *info)
   /* Restore all signals to their default behavior before setting the
      desired signal mask for the subprocess to avoid invoking handlers
      from the parent */
-  sa.sa_handler = SIG_DFL;
-  sigemptyset(&sa.sa_mask);
-  sa.sa_flags = 0;
-  /* Ignore errors as there is no interesting way it can fail. */
-  for (i = 1; i < NSIG; i++) sigaction(i, &sa, NULL);
+  for (i = 1; i < NSIG; i++) reset_signal_to_default(i);
 
   switch (info->cwd_kind) {
     case INHERIT: break;
@@ -451,8 +486,6 @@ enum caml_unix_sigprocmask_command {
   CAML_SIG_UNBLOCK,
 };
 
-/* Initializes all fields of `*info` except for `info->child_sigmask`,
-   which must be initalized by `init_spawn_info_sigmask` (below). */
 static void init_spawn_info(struct spawn_info *info,
                             value v_env,
                             value v_cwd,
@@ -462,7 +495,8 @@ static void init_spawn_info(struct spawn_info *info,
                             value v_stdout,
                             value v_stderr,
                             value v_setpgid,
-                            value v_sigprocmask)
+                            value v_sigprocmask,
+                            value v_pdeathsig)
 {
   extern char ** environ;
 
@@ -501,6 +535,16 @@ static void init_spawn_info(struct spawn_info *info,
   info->pgid =
     Is_block(v_setpgid) ?
     Long_val(Field(v_setpgid, 0)) : 0;
+#if defined(__linux__)
+  int pdeathsig = Int_val(v_pdeathsig);
+  info->pdeathsig =
+    pdeathsig == 0 ? 0 : caml_convert_signal_number(pdeathsig);
+  info->parent_pid = getpid();
+#else
+  (void)v_pdeathsig;
+  info->pdeathsig = 0;
+  info->parent_pid = 0;
+#endif
 
   if (v_sigprocmask == Val_long(0)) {
     sigemptyset(&info->child_sigmask);
@@ -555,7 +599,8 @@ CAMLprim value dune_spawn_unix(value v_env,
                                value v_stderr,
                                value v_use_vfork,
                                value v_setpgid,
-                               value v_sigprocmask)
+                               value v_sigprocmask,
+                               value v_pdeathsig)
 {
   CAMLparam4(v_env, v_cwd, v_prog, v_argv);
   CAMLlocal1(e_arg);
@@ -581,7 +626,8 @@ CAMLprim value dune_spawn_unix(value v_env,
 
   struct spawn_info info;
   init_spawn_info(&info, v_env, v_cwd, v_prog, v_argv,
-                  v_stdin, v_stdout, v_stderr, v_setpgid, v_sigprocmask);
+                  v_stdin, v_stdout, v_stderr, v_setpgid, v_sigprocmask,
+                  v_pdeathsig);
 
   short attr_flags = POSIX_SPAWN_SETSIGMASK;
   if (info.set_pgid) attr_flags |= POSIX_SPAWN_SETPGROUP;
@@ -684,7 +730,8 @@ CAMLprim value dune_spawn_unix(value v_env,
                                value v_stderr,
                                value v_use_vfork,
                                value v_setpgid,
-                               value v_sigprocmask)
+                               value v_sigprocmask,
+                               value v_pdeathsig)
 {
   CAMLparam4(v_env, v_cwd, v_prog, v_argv);
   pid_t ret;
@@ -699,7 +746,8 @@ CAMLprim value dune_spawn_unix(value v_env,
   int status;
 
   init_spawn_info(&info, v_env, v_cwd, v_prog, v_argv,
-                  v_stdin, v_stdout, v_stderr, v_setpgid, v_sigprocmask);
+                  v_stdin, v_stdout, v_stderr, v_setpgid, v_sigprocmask,
+                  v_pdeathsig);
 
   caml_enter_blocking_section();
   enter_safe_pipe_section();
@@ -823,7 +871,8 @@ CAMLprim value dune_spawn_unix(value v_env,
                                value v_stderr,
                                value v_use_vfork,
                                value v_setpgid,
-                               value v_sigprocmask)
+                               value v_sigprocmask,
+                               value v_pdeathsig)
 {
   (void)v_env;
   (void)v_cwd;
@@ -835,6 +884,7 @@ CAMLprim value dune_spawn_unix(value v_env,
   (void)v_use_vfork;
   (void)v_setpgid;
   (void)v_sigprocmask;
+  (void)v_pdeathsig;
   unix_error(ENOSYS, "spawn_unix", Nothing);
 }
 
@@ -937,7 +987,8 @@ CAMLprim value dune_spawn_unix_byte(value * argv)
                     argv[6],
                     argv[7],
                     argv[8],
-                    argv[9]);
+                    argv[9],
+                    argv[10]);
 }
 
 CAMLprim value dune_spawn_windows_byte(value * argv)

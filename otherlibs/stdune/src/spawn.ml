@@ -102,6 +102,7 @@ external spawn_unix
   -> use_vfork:bool
   -> setpgid:int option
   -> sigprocmask:(Unix.sigprocmask_command * int list) option
+  -> pdeathsig:int
   -> int
   = "dune_spawn_unix_byte" "dune_spawn_unix"
 
@@ -116,9 +117,22 @@ let spawn_unix
       ~use_vfork
       ~setpgid
       ~sigprocmask
+      ~pdeathsig
   =
   let setpgid = Option.map ~f:Pgid.to_int setpgid in
-  spawn_unix ~env ~cwd ~prog ~argv ~stdin ~stdout ~stderr ~use_vfork ~setpgid ~sigprocmask
+  let pdeathsig = Signal.to_int pdeathsig in
+  spawn_unix
+    ~env
+    ~cwd
+    ~prog
+    ~argv
+    ~stdin
+    ~stdout
+    ~stderr
+    ~use_vfork
+    ~setpgid
+    ~sigprocmask
+    ~pdeathsig
   |> Pid.of_int_exn
 ;;
 
@@ -150,6 +164,7 @@ let spawn_windows
       ~use_vfork:_
       ~setpgid:_
       ~sigprocmask:_
+      ~pdeathsig:_
   =
   let cwd =
     match (cwd : Working_dir.t) with
@@ -185,6 +200,7 @@ let spawn
       ?(stderr = Unix.stderr)
       ?(unix_backend = Unix_backend.default)
       ?setpgid
+      ?(pdeathsig = Signal.Kill)
       ?sigprocmask
       ()
   =
@@ -199,7 +215,18 @@ let spawn
     | Vfork -> true
     | Fork -> false
   in
-  backend ~env ~cwd ~prog ~argv ~stdin ~stdout ~stderr ~use_vfork ~setpgid ~sigprocmask
+  backend
+    ~env
+    ~cwd
+    ~prog
+    ~argv
+    ~stdin
+    ~stdout
+    ~stderr
+    ~use_vfork
+    ~setpgid
+    ~sigprocmask
+    ~pdeathsig
 ;;
 
 external safe_pipe : unit -> Unix.file_descr * Unix.file_descr = "dune_spawn_pipe"

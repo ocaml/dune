@@ -231,7 +231,11 @@ let rule_context (rule : Dune_engine.Reflection.Rule.t) =
 ;;
 
 let rule_loc ~with_locs (rule : Dune_engine.Reflection.Rule.t) =
-  if (not with_locs) || Loc.is_none rule.loc then None else Some rule.loc
+  if (not with_locs) || Loc.is_none rule.loc
+  then None
+  else (
+    let start = Loc.start rule.loc in
+    Some (sprintf "%s:%d" start.pos_fname start.pos_lnum))
 ;;
 
 let rule_repr ~with_locs =
@@ -243,11 +247,11 @@ let rule_repr ~with_locs =
     ; Repr.field "context" (Repr.option Repr.string) ~get:rule_context
     ; Repr.field "action" action_repr ~get:(fun rule ->
         rule.Dune_engine.Reflection.Rule.action)
-    ; Repr.field "loc" (Repr.option Loc.repr) ~get:(rule_loc ~with_locs)
     ; Repr.field
         "aliases"
         (Repr.option (Repr.list Alias_name.repr))
         ~get:(fun rule -> rule.Dune_engine.Reflection.Rule.aliases)
+    ; Repr.field "loc" (Repr.option Repr.string) ~get:(rule_loc ~with_locs)
     ]
 ;;
 

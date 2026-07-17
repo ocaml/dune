@@ -1,0 +1,5 @@
+(cram
+ (applies_to windows-install-names)
+ (enabled_if
+  (= %{os_type} Win32))
+ (alias runtest-windows))

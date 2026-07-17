@@ -38,18 +38,29 @@ Passing `--with_locs` includes the location of each rule.
    (targets ((files (_build/default/t)) (directories ())))
    (context default)
    (action (chdir _build/default (with-stdout-to t (echo x))))
-   (loc
-    ((start ((pos_fname dune) (pos_lnum 4) (pos_bol 42) (pos_cnum 42)))
-     (stop ((pos_fname dune) (pos_lnum 6) (pos_bol 60) (pos_cnum 100))))))
+   (loc dune:4))
 
 Anonymous actions carry a location too.
   $ dune rules --with_locs @a
   ((deps ())
    (action (chdir _build/default (echo "hi\n")))
    (aliases (a))
-   (loc
-    ((start ((pos_fname dune) (pos_lnum 1) (pos_bol 0) (pos_cnum 0)))
-     (stop ((pos_fname dune) (pos_lnum 3) (pos_bol 17) (pos_cnum 41))))))
+   (loc dune:1))
+
+For a rule in a subdirectory, the location includes the full path to the dune
+file, not just its basename.
+  $ mkdir sub
+  $ cat > sub/dune << EOF
+  > (rule
+  >  (alias b)
+  >  (action (echo "sub\n")))
+  > EOF
+
+  $ dune rules --with_locs @sub/b
+  ((deps ())
+   (action (chdir _build/default/sub (echo "sub\n")))
+   (aliases (b))
+   (loc sub/dune:1))
 
 With no target given, `dune rules` defaults to the `@default` alias. Here that
 alias only depends on `@a`, so only the anonymous action is printed - notably

@@ -14,7 +14,7 @@ nix shell --impure --expr 'let pkgs = import (builtins.getFlake "github:NixOS/ni
 <!-- markdown-toc start - Don't edit this section. Run M-x markdown-toc-refresh-toc -->
 **Table of Contents**
 
-- [Tools Requirements](#tools-requirements)
+- [Tools Requirements like](#tools-requirements-like)
   - [Summary](#summary)
   - [How to Read This Document](#how-to-read-this-document)
   - [Terminology](#terminology)
@@ -22,35 +22,57 @@ nix shell --impure --expr 'let pkgs = import (builtins.getFlake "github:NixOS/ni
   - [Requirements](#requirements)
     - [1. Installation](#1-installation)
       - [1.1. Generality](#11-generality)
-      - [1.2. Workspace-local](#12-workspace-local)
-      - [1.3. System wide](#13-system-wide)
+        - [1.2. Scope](#12-scope)
+      - [1.2.1. Workspace-local scope](#121-workspace-local-scope)
+      - [1.2.2. Dune context scope](#122-dune-context-scope)
+      - [1.2.3. System wide scope](#123-system-wide-scope)
       - [1.4. Version specification](#14-version-specification)
         - [1.4.1. Version consistency](#141-version-consistency)
-      - [1.5. Multi-version support](#15-multi-version-support)
       - [1.5. Clean source tree](#15-clean-source-tree)
       - [1.6. Binary selection](#16-binary-selection)
+      - [1.7 By tool name](#17-by-tool-name)
+        - [1.7.1 Disambiguation](#171-disambiguation)
+      - [1.8 Project dependency tools](#18-project-dependency-tools)
+        - [1.9 Discretionary tools](#19-discretionary-tools)
     - [2. Usability](#2-usability)
-      - [2.1. Shells](#21-shells)
-      - [2.2. Version specification TODO](#22-version-specification-todo)
+      - [2.1 Extent of tool management ](#21-extent-of-tool-management)
+        - [2.1.1 when package management is enabled in a workspace](#211-when-package-management-is-enabled-in-a-workspace)
+        - [2.1.2 when package management is not enabled in a workspace](#212-when-package-management-is-not-enabled-in-a-workspace)
+      - [2.2. Shells](#22-shells)
       - [2.3. Programmatic use](#23-programmatic-use)
-        - [2.3.1 dune subcommands](#231-dune-subcommands)
-      - [2.5. System PATH fallback](#25-system-path-fallback)
-      - [2.6. Editor integration](#26-editor-integration)
-    - [3. Dependency interactions](#3-dependency-interactions)
-      - [3.1. Compiler compatibility](#31-compiler-compatibility)
-      - [3.2. Dependency isolation](#32-dependency-isolation)
-      - [3.3. No build triggers](#33-no-build-triggers)
-      - [3.4. Watch mode integration](#34-watch-mode-integration)
-      - [3.5. Dog fooding](#35-dog-fooding)
-    - [4. UI](#4-ui)
-      - [4.1. CLI](#41-cli)
-      - [4.2. Persistent configuration](#42-persistent-configuration)
-    - [5. Dune Integration](#5-dune-integration)
-      - [5.1. Format rules](#51-format-rules)
-      - [5.2. Documentation rules (`dune build @doc`, `dune ocaml doc`)](#52-documentation-rules-dune-build-doc-dune-ocaml-doc)
-      - [5.3. REPL (`dune utop`, `dune ocaml utop`)](#53-repl-dune-utop-dune-ocaml-utop)
+        - [2.3.1. dune subcommands](#231-dune-subcommands)
+          - [2.3.1.1. System PATH fallback](#2311-system-path-fallback)
+          - [2.3.1.1.1. When package management is enabled in a workspace](#23111-when-package-management-is-enabled-in-a-workspace)
+          - [2.3.1.1.2. When package management is NOT enabled in a workspace ](#23112-when-package-management-is-not-enabled-in-a-workspace)
+      - [2.4. Project dependency tools](#24-project-dependency-tools)
+    - [3. Dependency and Integration](#3-dependency-and-integration)
+      - [3.1 Integration spectrum](#31-integration-spectrum)
+        - [3.1. Compiler compatibility](#31-compiler-compatibility)
+        - [3.2. Dependency isolation](#32-dependency-isolation)
+      - [4.2 Dependency spectrum](#42-dependency-spectrum)
+        - [4.1. Discretionary tools (D1)](#41-discretionary-tools-d1)
+          - [4.1.1. Not build triggers](#411-not-build-triggers)
+          - [4.1.2. Cannot be referenced in build rules TODO](#412-cannot-be-referenced-in-build-rules-todo)
+        - [4.2. Qualified dependency tools (D2) TODO](#42-qualified-dependency-tools-d2-todo)
+          - [4.2.1. Must be usable as tools](#421-must-be-usable-as-tools)
+          - [4.2.1. Must be installable via qualification](#421-must-be-installable-via-qualification)
+        - [4.3. Unqualified dependency tools (D3) TODO](#43-unqualified-dependency-tools-d3-todo)
+          - [4.3.1. Must be usable as tools TODO](#431-must-be-usable-as-tools-todo)
+          - [4.2.1. Must always be installed TODO](#421-must-always-be-installed-todo)
+      - [5. UI](#5-ui)
+      - [5.1. CLI](#51-cli)
+      - [5.2. Persistent configuration](#52-persistent-configuration)
       - [5.4. Tool references in actions](#54-tool-references-in-actions)
       - [5.5. Legacy migration](#55-legacy-migration)
+- [TODO Orphans to put in proper section](#todo-orphans-to-put-in-proper-section)
+  - [-](#-)
+  - [4. Dog fooding](#4-dog-fooding)
+- [TODO (Shon, Ambre, Sudha): Analyze out the axes of use and integration](#todo-shon-ambre-sudha-analyze-out-the-axes-of-use-and-integration)
+  - [There are at least 2 axes](#there-are-at-least-2-axes)
+    - [Usage categories spectrum:](#usage-categories-spectrum)
+    - [Integration requirements spectrum:](#integration-requirements-spectrum)
+  - [Some example](#some-example)
+  - [Some ideas](#some-ideas)
 
 <!-- markdown-toc end -->
 
@@ -401,11 +423,10 @@ discretionary tools and project dependency tools in the path.
 
 ### 3. Dependency and Integration
 
-Tools are used in numerous ways and require different levels of integration and
-interdependence with the other components (tools, libraries, or other artifacts)
-of a workspace. We can position these varieties of difference on a coordinate
-system with two axes:
-
+Tools are used in numerous ways in projects and for ad hoc developer needs, and
+they require different levels of integration and interdependence with the other
+components (tools, libraries, or other artifacts) of a workspace. We can
+position these varieties of difference on a coordinate system with two axes:
 
 #### 3.1 Integration spectrum
 

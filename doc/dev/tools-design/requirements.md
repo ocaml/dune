@@ -484,7 +484,7 @@ not.
 
 ##### 3.1.1. Tool isolation (I1)
 
-Unnecessary coupling between tools and other dependencies of a project should
+Unnecessary coupling between tools and other dependencies of a project _should_
 not be introduced. When an *installable* tool sits at I1 on the integration
 axis, dune should be able to install it in a workspace, without regard to any
 possible conflicts with *project dependencies*. By definition, tools at I1 have
@@ -493,15 +493,45 @@ grounds for such conflict. This property *should* hold rather than *must*,
 because it may be infeasible and unnecessary to implement this requirement for
 tools that are project dependencies.
 
-However, for discretionary tools at I1 this property *must* be guaranteed.
+However, for *discretionary tools* at I1 this property *must* be guaranteed:
+dune must support installation of any installable, discretionary tool at I1,
+without regard to possible dependency conflicts with project dependencies.
 
 <details>
 <summary>
 Motivation and context
 </summary>
 
-See [Directory structure](./implementation.md#directory-structure) for lock
-directory locations.
+To indicate just one dimension of the motivations here, consider this small set
+of arbitrarily chosen packages providing I1 tools, which are all currently
+published to opam and all currently incompatible with ocaml 5.5 (due to direct
+or transitive constraints):
+
+- [cca](https://ocaml.org/p/cca/latest): "A framework for differential source
+  code analyses" 
+- [comby](https://ocaml.org/p/comby/latest): "A tool for structural code search
+  and replace that supports ~every language" 
+- [crs](https://ocaml.org/p/crs/latest): "A tool for managing inline review
+  comments embedded in source code"
+- [depgraph](https://ocaml.org/p/depgraph/latest): "dot graphs out of ocamldep
+  output"
+- [electrod](https://ocaml.org/p/electrod/latest): "Formal analysis for the
+  Electrod formal pivot language"
+- [facteur](https://ocaml.org/p/facteur/latest): "Tool to send an email"
+- [pfff](https://ocaml.org/p/pfff/latest): "Tools and APIs for program analysis,
+  code visualization, refactoring"
+- [pgn_to_tex](https://ocaml.org/p/pgn_to_tex/latest): "A chess PGN to TeX conversion tool"
+- [rdr](https://ocaml.org/p/rdr/latest): "Rdr is a cross-platform binary
+  analysis and reverse engineering tool, utilizing a unique symbol map for
+  global analysis."
+
+Without support for dependency isolation, users would be forced to chose between
+avoiding recent compiler versions or making use of these (and many other)
+available tools. This would violate the design principles of orthogonality and
+generality, and yield and necessarily limited usability.
+
+See  [Directory structure](./implementation.md#directory-structure) for proposed
+lock directory locations.
 
 </details>
 

@@ -675,15 +675,16 @@ CAMLprim value dune_spawn_unix(value v_env,
   switch (info.cwd_kind) {
     case INHERIT: break;
     case PATH:
-      e_error = __pthread_chdir(info.cwd.path);
-      if (e_error) {
+      if (__pthread_chdir(info.cwd.path) == -1) {
+        e_error = errno;
         e_function = "__pthread_chdir";
+        e_arg = Field(v_cwd, 0);
         goto cleanup;
       }
       break;
     case FD:
-      e_error = __pthread_fchdir(info.cwd.fd);
-      if (e_error) {
+      if (__pthread_fchdir(info.cwd.fd) == -1) {
+        e_error = errno;
         e_function = "__pthread_fchdir";
         goto cleanup;
       }

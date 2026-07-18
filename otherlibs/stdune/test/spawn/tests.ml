@@ -1,6 +1,7 @@
 module Int = Stdune.Int
 module Exn = Stdune.Exn
 module Pid = Stdune.Pid
+module Proc = Stdune.Proc
 module Platform = Stdune.Platform
 module Signal = Stdune.Signal
 module Spawn = Stdune.Spawn
@@ -304,8 +305,8 @@ let%expect_test "sigprocmask" =
       let pid_int = Pid.to_int pid in
       Unix.kill pid_int Sys.sigusr1;
       Unix.kill pid_int Sys.sigkill;
-      match Unix.waitpid [] pid_int with
-      | _, WSIGNALED signal when signal = expected_signal -> ()
+      match Proc.wait (Pid pid) [] with
+      | Some { status = WSIGNALED signal; _ } when signal = expected_signal -> ()
       | _ -> failwith "unexpected"
     in
     run Sys.sigusr1;

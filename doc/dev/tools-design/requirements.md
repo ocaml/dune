@@ -538,10 +538,10 @@ lock directory locations.
 ###### 3.1.1.1 Optimal builds
 
 Dune should not needless compile or rebuild dependencies that can be shared
-without conflict. E.g., if the needed version of a discretionary tool
-can be installed by reusing the compiler version already installed for a
-workspace, or by pulling it from the cache, this should be preferred over
-rebuilding the tool or its dependencies from scratch.
+without conflict. E.g., if the needed version of an I1 discretionary tool can be
+installed by reusing the compiler version already used in the workspace, or by
+pulling it from the shared cache, this should be preferred over rebuilding the
+tool or its dependencies from scratch.
 
 ##### 3.1.2 Compiler integrations (I2)
 

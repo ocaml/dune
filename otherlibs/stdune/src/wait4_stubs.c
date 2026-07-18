@@ -85,7 +85,7 @@ static int wait_flag_table[] = {WNOHANG, WUNTRACED};
 // any child process
 value dune_wait4(value v_pid, value flags) {
   CAMLparam2(v_pid, flags);
-  CAMLlocal2(times, res);
+  CAMLlocal3(times, v_status, res);
 
   int status, cv_flags;
   int64_t time_ns;
@@ -118,10 +118,11 @@ value dune_wait4(value v_pid, value flags) {
   }
 
   times = alloc_resource_usage(&ru);
+  v_status = alloc_process_status(status);
 
   res = caml_alloc_tuple(4);
   Store_field(res, 0, Val_int(pid));
-  Store_field(res, 1, alloc_process_status(status));
+  Store_field(res, 1, v_status);
   Store_field(res, 2, Val_long(time_ns));
   Store_field(res, 3, times);
   CAMLreturn(caml_alloc_some_compat(res));

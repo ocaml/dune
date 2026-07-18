@@ -86,8 +86,8 @@ let%expect_test "invalid feed ranges" =
     Blake3_mini.feed_bigstring_release_lock hasher bigstring ~pos:2 ~len:0);
   [%expect
     {|
-    string: accepted
-    bytes: accepted
-    bigstring: accepted
+    string: rejected
+    bytes: rejected
+    bigstring: rejected
     |}]
 ;;

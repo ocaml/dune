@@ -5,6 +5,13 @@
    behaviour of [Unix.execve] on Unix. *)
 external sys_exit : int -> 'a = "caml_sys_exit"
 
+let waitpid pid flags =
+  match Unix.waitpid flags (Pid.to_int pid) with
+  | 0, _ -> None
+  | pid, status -> Some (Pid.of_int_exn pid, status)
+  | exception Unix.Unix_error (ECHILD, _, _) -> None
+;;
+
 let restore_cwd_and_execve prog argv ~env =
   let env = Env.to_unix env |> Array.of_list in
   let argv = Array.of_list (prog :: argv) in
@@ -13,11 +20,15 @@ let restore_cwd_and_execve prog argv ~env =
   Sys.chdir (Path.External.to_string Path.External.initial_cwd);
   if Sys.win32 || Platform.OS.value = Platform.OS.Haiku
   then (
-    let pid = Unix.create_process_env prog argv env Unix.stdin Unix.stdout Unix.stderr in
-    match snd (Unix.waitpid [] pid) with
-    | WEXITED n -> sys_exit n
-    | WSIGNALED _ -> sys_exit 255
-    | WSTOPPED _ -> assert false)
+    let pid =
+      Unix.create_process_env prog argv env Unix.stdin Unix.stdout Unix.stderr
+      |> Pid.of_int_exn
+    in
+    match waitpid pid [] with
+    | Some (_, WEXITED n) -> sys_exit n
+    | Some (_, WSIGNALED _) -> sys_exit 255
+    | Some (_, WSTOPPED _) -> assert false
+    | None -> Code_error.raise "child process disappeared" [])
   else (
     ignore (Unix.sigprocmask SIG_SETMASK [] : int list);
     Unix.execve prog argv env)
@@ -158,20 +169,29 @@ type wait =
   | Any
   | Pid of Pid.t
 
-let wait wait flags =
-  if Sys.win32
-  then Code_error.raise "wait4 not available on windows" []
-  else (
-    let pid =
-      match wait with
-      | Any -> -1
-      | Pid pid -> Pid.to_int pid
-    in
-    stub_wait4 pid flags
-    |> Option.map ~f:(fun (pid, status, end_time, resource_usage) ->
-      { Process_info.pid = Pid.of_int_exn pid
-      ; status
-      ; end_time = Time.of_ns end_time
-      ; resource_usage = Some resource_usage
-      }))
+let wait_win32 wait flags =
+  match wait with
+  | Any -> Code_error.raise "waiting for any process is not available on Windows" []
+  | Pid pid ->
+    (match waitpid pid flags with
+     | None -> None
+     | Some (pid, status) ->
+       Some { Process_info.pid; status; end_time = Time.now (); resource_usage = None })
 ;;
+
+let wait_unix wait flags =
+  let pid =
+    match wait with
+    | Any -> -1
+    | Pid pid -> Pid.to_int pid
+  in
+  stub_wait4 pid flags
+  |> Option.map ~f:(fun (pid, status, end_time, resource_usage) ->
+    { Process_info.pid = Pid.of_int_exn pid
+    ; status
+    ; end_time = Time.of_ns end_time
+    ; resource_usage = Some resource_usage
+    })
+;;
+
+let wait = if Sys.win32 then wait_win32 else wait_unix

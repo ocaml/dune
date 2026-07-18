@@ -10,10 +10,10 @@ let sleep_forever () =
 ;;
 
 let wait_no_eintr pid =
-  let pid = Pid.to_int pid in
   let rec loop () =
-    match Unix.waitpid [] pid with
-    | _ -> ()
+    match Proc.wait (Pid pid) [] with
+    | Some _ -> ()
+    | None -> Code_error.raise "child process disappeared" []
     | exception Unix.Unix_error (Unix.EINTR, _, _) -> loop ()
   in
   loop ()

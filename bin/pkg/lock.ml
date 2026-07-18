@@ -54,35 +54,6 @@ module Progress_indicator = struct
   let add_overlay (t : t) = Console.Status_line.add_overlay (Live (fun () -> pp t))
 end
 
-let project_and_package_pins project =
-  let dir = Dune_project.root project in
-  let pins = Dune_project.pins project in
-  let packages = Dune_project.packages project in
-  Pin.DB.add_opam_pins (Pin.DB.of_stanza ~dir pins) packages
-;;
-
-(* For recursive pins, we must traverse the pinned sources. The [project_pins]
-   are the initial pins that we have in our project. *)
-let resolve_project_pins project_pins =
-  let scan_project ~read ~(files : Filename.Array.Set.t) =
-    let read file = Memo.of_reproducible_fiber (read file) in
-    let open Memo.O in
-    (* Opam files may never contain recursive pins, so don't both reading them *)
-    Dune_project.gen_load
-      ~read
-      ~files
-      ~dir:Path.Source.root
-      ~infer_from_opam_files:false
-      ~load_opam_file_with_contents:Dune_pkg.Opam_file.load_opam_file_with_contents
-    >>| Option.map ~f:(fun project ->
-      let packages = Dune_project.packages project in
-      let pins = project_and_package_pins project in
-      pins, packages)
-    |> Memo.run
-  in
-  Pin.resolve project_pins ~scan_project
-;;
-
 module Platforms_by_message = struct
   module Message = struct
     type t =
@@ -358,7 +329,7 @@ let solve_lock_dir
       ~available_repos:repo_map
       ~repositories:(repositories_of_lock_dir workspace ~lock_dir_path)
   in
-  let* pins = resolve_project_pins project_pins in
+  let* pins = Pin.Project.resolve project_pins in
   let time_solve_start = Time.now () in
   progress_state := Some Progress_indicator.Per_lockdir.State.Solving;
   let* result =
@@ -523,10 +494,7 @@ let solve
 
 let project_pins =
   let open Memo.O in
-  Dune_rules.Dune_load.projects ()
-  >>| List.fold_left ~init:Pin.DB.empty ~f:(fun acc project ->
-    let pins = project_and_package_pins project in
-    Pin.DB.combine_exn acc pins)
+  Dune_rules.Dune_load.projects () >>| Pin.Project.collect_all
 ;;
 
 let lock ~version_preference ~lock_dirs_arg ~print_perf_stats ~portable_lock_dir =

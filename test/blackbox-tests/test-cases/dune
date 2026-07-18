@@ -115,6 +115,13 @@
  (deps %{bin:truncate}))
 
 (cram
+ (applies_to repository-lint)
+ (enabled_if %{bin-available:rg})
+ (deps
+  %{bin:rg}
+  (source_tree %{project_root})))
+
+(cram
  (applies_to sendfile-fallback-copy-gh8041)
  (enabled_if
   (= %{system} linux))

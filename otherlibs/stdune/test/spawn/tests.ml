@@ -41,11 +41,12 @@ let%expect_test "non-existing dir" =
 ;;
 
 let wait pid =
-  match snd (Unix.waitpid [] (Pid.to_int pid)) with
-  | WEXITED 0 -> ()
-  | WEXITED n -> Printf.ksprintf failwith "exited with code %d" n
-  | WSIGNALED n -> Printf.ksprintf failwith "got signal %d" n
-  | WSTOPPED n -> Printf.ksprintf failwith "stopped with signal %d" n
+  match Proc.wait (Pid pid) [] with
+  | Some { status = WEXITED 0; _ } -> ()
+  | Some { status = WEXITED n; _ } -> Printf.ksprintf failwith "exited with code %d" n
+  | Some { status = WSIGNALED n; _ } -> Printf.ksprintf failwith "got signal %d" n
+  | Some { status = WSTOPPED n; _ } -> Printf.ksprintf failwith "stopped with signal %d" n
+  | None -> failwith "process disappeared"
 ;;
 
 let list_files = Filename.concat (Sys.getcwd ()) "exe/list_files.exe"

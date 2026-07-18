@@ -65,10 +65,10 @@ type wait =
   | Any
   | Pid of Pid.t
 
-(** This function is not implemented on Windows.
+(** On Windows, [Any] is not supported and successful results have no resource usage.
 
    Returns [None] if there are no children. If [WNOHANG] is passed, also
-   returns [None] if none of the proceseses are finished yet.
+   returns [None] if none of the processes are finished yet.
    When successful, returns information about the reaped process.
  *)
 val wait : wait -> Unix.wait_flag list -> Process_info.t option

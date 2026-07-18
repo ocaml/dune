@@ -358,7 +358,7 @@ let kill_and_wait_for_all_processes t =
   if Sys.win32
   then
     (* SIGTERM is not meaningful on Windows, and [Process_watcher.wait_unix]
-       would raise because [Proc.wait] has no implementation there. Send
+       would raise because [Proc.wait Any] is not supported there. Send
        SIGKILL directly; the main drain loop below observes exits via
        [jobs_completed] events pushed by the Win32 polling thread. *)
     Process_watcher.killall t.process_watcher Kill

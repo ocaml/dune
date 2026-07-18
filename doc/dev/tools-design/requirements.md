@@ -543,36 +543,50 @@ installed by reusing the compiler version already used in the workspace, or by
 pulling it from the shared cache, this should be preferred over rebuilding the
 tool or its dependencies from scratch.
 
-##### 3.1.2 Compiler integrations (I2)
+##### 3.1.2 Tool integration (I2)
 
-TODO: `integrates_with compiler|minhirLib` ?
-TODO: Need to spec more general integration requirements, with compiler as
-special case.
+When a tool requires integration with other components in the workspace at their
+specific version, it must be possible to specify this requirement and have the
+solution, build, and install enable that needed integration.
 
-Tools that integrate with the compiler hold a special status among tools, as a
-result of their ubiquitous use and the special position of the compiler itself.
-The most widely used tools of this sort are ocamllsp and odoc. Dune must provide
-robust, intuitive, and flexible support for managing these tools.
-
+Tools that integrate with the compiler are a very special case of I2 tools
+requiring this need, and they have an important status among other tools because
+some are used ubiquitous and because he compiler itself has a special position
+in the dependency tree of any OCaml project. The most widely used tools of this
+sort are ocamllsp and odoc. Dune must provide robust, intuitive, and flexible
+support for managing these tools.
 
 <details>
 <summary>
 Motivation and context
 </summary>
 
+One way to address this may be thru the an equivalent of the `constraints` field
+in the `lock_dir` stanza, where an absent dep-specification indicated the need
+to use the same version in the context's active `lock_dir`. E.g., as
+
+``` lisp
+(tools
+  ((ocamllsp (from ocaml-lsp-server))
+    utop)
+  (constraints ocaml))
+```
+
+Which would require that the named tools be constrained on the version of ocaml
+used in the workspace.
+
+A special purpose field could also be introduced for this purpose.
+
+We can also consider data added to opam files that allows this requirement to be
+specified for provided tools at the package data level, instead of forcing this
+upon consuming users.
+
 See [Compiler matching](./implementation.md#compiler-matching) for the detection
 algorithm.
 
 </details>
 
-###### 3.1.2.1 Identifying compiler integrations
-
-It must be possible to identify tools that require integration with the compiler
-version in a workspace and install them appropriately (e.g., via an explicit
-designation provided by the user, a list of known tools, some data available in
-the package definition, or any other means).
-
-###### 3.1.2.2 Handling compiler integration constraints
+###### 3.1.2.1. Respecting integration constraints
 
 When a user has specified the intent to install a compiler integration that is
 incompatible with the compiler version installed in the workspace, dune must

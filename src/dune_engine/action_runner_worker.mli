@@ -1,5 +1,5 @@
 open Import
 
-(** [start ~name ~where] starts a runner named [name] connected to the main dune
-    RPC server listening at [where]. *)
-val start : name:Action_runner_name.t -> where:Dune_rpc.Where.t -> unit Fiber.t
+(** [start ~name ~rpc_fd] starts a runner named [name] connected to the main
+    dune process through [rpc_fd]. *)
+val start : name:Action_runner_name.t -> rpc_fd:Fd.t -> unit Fiber.t

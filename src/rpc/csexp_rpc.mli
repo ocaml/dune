@@ -21,6 +21,7 @@ module Session : sig
   type t
 
   val close : t -> unit Fiber.t
+  val of_fd : Fd.t -> t
 
   (** [write t xs] writes the s-expressions [xs]. *)
   val write : t -> Sexp.t list -> (unit, [ `Closed ]) result Fiber.t

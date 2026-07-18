@@ -1386,12 +1386,7 @@ let init_with_root_and_rpc ~(root : Workspace_root.t) ~rpc_build (builder : Buil
   let action_runner =
     lazy
       (if action_runner_requested c
-       then
-         Some
-           (Action_runner.create
-              ~where:(Lazy.force where)
-              ~config
-              ~sandbox_actions:c.builder.sandbox_actions)
+       then Some (Action_runner.create ~config ~sandbox_actions:c.builder.sandbox_actions)
        else None)
   in
   let rpc =

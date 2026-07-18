@@ -18,6 +18,7 @@ type t =
   ; mutable status : status
   ; pid : Pid.t
   ; pool : Fiber.Pool.t
+  ; connection : Root.Rpc.Csexp_rpc.Session.t
   }
 
 let disconnected t =
@@ -37,6 +38,7 @@ let disconnect t =
     t.status <- Closed;
     Dune_trace.emit Action (fun () ->
       Dune_trace.Event.Action.Runner.runner_event ~name:t.name Disconnected);
+    let* () = Fiber.Pool.close t.pool in
     (match ready with
      | None -> Fiber.return ()
      | Some ready -> Fiber.Ivar.fill ready ())
@@ -55,7 +57,7 @@ let await_initialized t =
          [ Pp.textf
              "Action runner %S failed to initialize."
              (Action_runner_name.to_string t.name)
-         ; Pp.text "It exited before connecting back to Dune."
+         ; Pp.text "It exited before connecting to Dune."
          ]
      | Starting _ ->
        Code_error.raise
@@ -137,25 +139,6 @@ let exec_process t ~run_id ~cancellation process =
   | Not_cancelled, Error exns -> Fiber.reraise_all exns
 ;;
 
-let run t =
-  Fiber.fork_and_join_unit
-    (fun () -> Fiber.Pool.run t.pool)
-    (fun () ->
-       let* (_status : Proc.Process_info.t) =
-         Scheduler.wait_for_process t.pid ~is_process_group_leader:false
-       in
-       disconnect t)
-;;
-
-let stop t =
-  let* () =
-    match t.status with
-    | Starting _ | Closed -> Fiber.return ()
-    | Initialized (Session session) -> Server.Session.close session
-  in
-  Fiber.Pool.close t.pool
-;;
-
 let invalid_request message =
   let error = Dune_rpc.Response.Error.create ~kind:Invalid_request ~message () in
   raise (Dune_rpc.Response.Error.E error)
@@ -192,13 +175,43 @@ let implement_handler t (handler : _ Root.Rpc.Server.Handler.t) =
   Server.Handler.implement_request handler Decl.ready (ready t)
 ;;
 
-let create name pid =
+let run t =
+  let serve_session () =
+    let handler =
+      let on_init _ (_ : Dune_rpc.Initialize.Request.t) = Fiber.return () in
+      let rpc = Server.Handler.create ~on_init ~version:Dune_rpc.Version.latest () in
+      implement_handler (Some t) rpc;
+      Server.make rpc
+    in
+    Server.serve (Fiber.Stream.In.of_list [ t.connection ]) handler
+  in
+  Fiber.fork_and_join_unit
+    (fun () -> Fiber.fork_and_join_unit (fun () -> Fiber.Pool.run t.pool) serve_session)
+    (fun () ->
+       let* (_status : Proc.Process_info.t) =
+         Scheduler.wait_for_process t.pid ~is_process_group_leader:false
+       in
+       disconnect t)
+;;
+
+let stop t =
+  let* () =
+    match t.status with
+    | Starting _ | Closed -> Root.Rpc.Csexp_rpc.Session.close t.connection
+    | Initialized (Session session) -> Server.Session.close session
+  in
+  Fiber.Pool.close t.pool
+;;
+
+let create name pid ~connection_fd =
   Dune_trace.emit Action (fun () ->
     Dune_trace.Event.Action.Runner.runner_event ~name (Spawn pid));
   Scheduler.preserve_child_process pid;
+  let connection = Root.Rpc.Csexp_rpc.Session.of_fd connection_fd in
   { name
   ; status = Starting { ready = Fiber.Ivar.create () }
   ; pid
   ; pool = Fiber.Pool.create ()
+  ; connection
   }
 ;;

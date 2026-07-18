@@ -10,17 +10,13 @@ open Import
 
 type t
 
-(** [implement_handler t handler] wires the action runner requests into an
-      existing RPC handler. *)
-val implement_handler : t option -> 'a Root.Rpc.Server.Handler.t -> unit
-
 (** [run t] is to be run by the RPC server. *)
 val run : t -> unit Fiber.t
 
 (** [stop t] is to be run by the RPC server. *)
 val stop : t -> unit Fiber.t
 
-val create : Action_runner_name.t -> Pid.t -> t
+val create : Action_runner_name.t -> Pid.t -> connection_fd:Fd.t -> t
 val ensure_ready : t -> unit Fiber.t
 
 (** [exec_process t ~run_id ~cancellation process] dispatches [process] to [t]

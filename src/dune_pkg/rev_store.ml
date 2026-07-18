@@ -234,26 +234,7 @@ module Cache = struct
   ;;
 
   module Files_and_submodules = struct
-    module Key = struct
-      module T = struct
-        type t = Object.t
-
-        let compare = Object.compare
-        let to_dyn = Object.to_dyn
-      end
-
-      include T
-      module C = Comparable.Make (T)
-
-      let conv =
-        Lmdb.Conv.make
-          ~serialise:(fun alloc obj ->
-            Object.to_hex obj |> Lmdb.Conv.(serialise string alloc))
-          ~deserialise:(fun bs ->
-            Lmdb.Conv.(deserialise string bs) |> Object.of_sha1_unsafe)
-          ()
-      ;;
-    end
+    module Key = Key
 
     let map =
       lazy

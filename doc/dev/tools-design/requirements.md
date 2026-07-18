@@ -535,7 +535,7 @@ lock directory locations.
 
 </details>
 
-###### 3.1.1.1 Optimal builds
+###### 3.1.1.1. Optimal builds
 
 Dune should not needless compile or rebuild dependencies that can be shared
 without conflict. E.g., if the needed version of an I1 discretionary tool can be
@@ -543,7 +543,7 @@ installed by reusing the compiler version already used in the workspace, or by
 pulling it from the shared cache, this should be preferred over rebuilding the
 tool or its dependencies from scratch.
 
-##### 3.1.2 Tool integration (I2)
+##### 3.1.2. Tool integration (I2)
 
 When a tool requires integration with other components in the workspace at their
 specific version, it must be possible to specify this requirement and have the
@@ -565,7 +565,7 @@ One way to address this may be thru the an equivalent of the `constraints` field
 in the `lock_dir` stanza, where an absent dep-specification indicated the need
 to use the same version in the context's active `lock_dir`. E.g., as
 
-``` lisp
+```
 (tools
   ((ocamllsp (from ocaml-lsp-server))
     utop)
@@ -588,9 +588,13 @@ algorithm.
 
 ###### 3.1.2.1. Respecting integration constraints
 
-When a user has specified the intent to install a compiler integration that is
-incompatible with the compiler version installed in the workspace, dune must
-handle the conflict gracefully and with clear guidance to the user. 
+When a user has specified the intent to install an I2 tool that is incompatible
+with the required packages already installed in the workspace, dune must handle
+the conflict gracefully an with clear guidance to the user.
+
+E.g., if a user tries to install the compiler integration `ocamllsp` and not
+version is compatible with the compiler version already installed in the
+workspace, dune must report and/or solve the conflict cleanly.
 
 This could mean automatically downgrading the compiler (if permitted by
 the constraints), but a user error with clear instructions is probably just as

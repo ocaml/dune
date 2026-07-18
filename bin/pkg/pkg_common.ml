@@ -9,14 +9,10 @@ let solver_env
       ~solver_env_from_context
       ~unset_solver_vars_from_context
   =
-  let solver_env =
-    [ solver_env_from_current_system; solver_env_from_context ]
-    |> List.filter_opt
-    |> List.fold_left ~init:Solver_env.with_defaults ~f:Solver_env.extend
-  in
-  match unset_solver_vars_from_context with
-  | None -> solver_env
-  | Some unset_solver_vars -> Solver_env.unset_multi solver_env unset_solver_vars
+  Solver_env.combine
+    ~current_system:solver_env_from_current_system
+    ~context:solver_env_from_context
+    ~unset:unset_solver_vars_from_context
 ;;
 
 let poll_solver_env_from_current_system () =

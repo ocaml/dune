@@ -74,13 +74,7 @@ module NativePath = struct
         | None -> User_error.raise [ Pp.text "Unable to find cygpath in PATH" ]
         | Some cygpath ->
           let cygpath = Path.to_string cygpath in
-          ignore
-            (Unix.create_process
-               cygpath
-               [| cygpath; "-wl"; fn |]
-               Unix.stdin
-               Unix.stdout
-               Unix.stderr)
+          ignore (Spawn.spawn ~prog:cygpath ~argv:[ cygpath; "-wl"; fn ] ())
   ;;
 
   let of_args = function

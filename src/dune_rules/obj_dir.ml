@@ -292,8 +292,7 @@ module Local = struct
       ~private_lib
   ;;
 
-  let make_exe ~dir ~name =
-    let obj_dir = Paths.executable_object_directory ~dir name in
+  let make_non_library ~dir ~obj_dir =
     make
       ~dir
       ~obj_dir
@@ -306,18 +305,14 @@ module Local = struct
       ~private_lib:false
   ;;
 
+  let make_exe ~dir ~name =
+    let obj_dir = Paths.executable_object_directory ~dir name in
+    make_non_library ~dir ~obj_dir
+  ;;
+
   let make_melange_emit ~dir ~name =
     let obj_dir = Paths.melange_object_directory ~dir name in
-    make
-      ~dir
-      ~obj_dir
-      ~native_dir:(Paths.library_native_dir ~obj_dir)
-      ~byte_dir:(Paths.library_byte_dir ~obj_dir)
-      ~jsoo_dir:(Paths.library_jsoo_dir ~obj_dir)
-      ~melange_dir:(Paths.library_melange_dir ~obj_dir)
-      ~public_cmi_ocaml_dir:None
-      ~public_cmi_melange_dir:None
-      ~private_lib:false
+    make_non_library ~dir ~obj_dir
   ;;
 
   let cm_dir t (cm_kind : Lib_mode.Cm_kind.t) _ =

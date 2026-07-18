@@ -102,12 +102,10 @@ let inherit_trace_fd ~name trace_fd =
     if Sys.win32 then Code_error.raise "trace fd handoff is not supported on Windows" [];
     Dune_trace.set_global_inherited_fd
       ~common_args:[ "action_runner", Sexp.Atom (Action_runner_name.to_string name) ]
-      (Fd.unsafe_of_int (Int.of_string_exn fd)))
+      fd)
 ;;
 
 let start_worker ~name ~rpc_fd ~trace_fd =
-  let name = Action_runner_name.parse_string_exn (Loc.none, name) in
   inherit_trace_fd ~name trace_fd;
-  let rpc_fd = Fd.unsafe_of_int (Int.of_string_exn rpc_fd) in
   Dune_engine.Action_runner_worker.start ~name ~rpc_fd
 ;;

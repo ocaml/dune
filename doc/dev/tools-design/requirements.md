@@ -171,11 +171,11 @@ allows developers to set up different tooling configurations (CR. What for?).
 Users should be able to install tools in a way that allows them to be used in the
 system-wide environment (e.g., outside of any particular sandbox).
 
-*NOTE:* This does not dictate that dune must maintain the equivalent of
-default switches, or predetermine any other implementation choice. But the
-support for tool management must be designed in way that makes it simple and
-reliable to use installed tools outside of a project sandbox (e.g., by
-adding the location of a directory of binaries to their `PATH` or some other
+*NOTE:* This does not dictate that dune must maintain the equivalent of default
+switches, or predetermine any other implementation choice. But the support for
+tool management must be designed in way that makes it simple and reliable to use
+installed tools outside of a project sandbox (e.g., by adding the location of a
+directory of binaries in a workspace to their system `PATH`, or some other
 means).
 
 <details>
@@ -385,17 +385,6 @@ installed, dune subcommands must produce a clear user error explaining to
 users that the tool is not available and directing them to install it as a dune
 managed tool.
 
-###### 2.3.1.1.2. When package management is NOT enabled in a workspace 
-
-When package management is enabled in a workspace and a tool is not installed
-(e.g., `.ocamlformat`), dune subcommands (such as `dune fmt`, `dune build @doc`,
-or `dune utop`) should fall back to the system PATH.
-
-**Note** This is motivated by integration with editor developers who would like
-a single point of truth for running tools, and for dune to handle it. This would
-mean opam users can continue to use dune in which ever way they please and the
-editors will not have to care.
-
 <details>
 <summary>
 Motivation and context
@@ -412,6 +401,17 @@ Related issues:
   work needed to achieve it.
 
 </details>
+
+###### 2.3.1.1.2. When package management is NOT enabled in a workspace 
+
+When package management is enabled in a workspace and a tool is not installed
+(e.g., `.ocamlformat`), dune subcommands (such as `dune fmt`, `dune build @doc`,
+or `dune utop`) should fall back to the system PATH.
+
+**Note** This is motivated by integration with editor developers who would like
+a single point of truth for running tools, and for dune to handle it. This would
+mean opam users can continue to use dune in which ever way they please and the
+editors will not have to care.
 
 #### 2.4. Project dependency tools
 

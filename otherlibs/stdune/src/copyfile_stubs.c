@@ -22,8 +22,14 @@ CAMLprim value stdune_copyfile(value v_from, value v_to) {
   char from[PATH_MAX];
   char to[PATH_MAX];
   char real_from[PATH_MAX];
-  int from_len = caml_string_length(v_from);
-  int to_len = caml_string_length(v_to);
+  mlsize_t from_len = caml_string_length(v_from);
+  mlsize_t to_len = caml_string_length(v_to);
+  if (from_len >= sizeof(from)) {
+    unix_error(ENAMETOOLONG, "copyfile", v_from);
+  }
+  if (to_len >= sizeof(to)) {
+    unix_error(ENAMETOOLONG, "copyfile", v_to);
+  }
   memcpy(from, String_val(v_from), from_len);
   memcpy(to, String_val(v_to), to_len);
   from[from_len] = '\0';

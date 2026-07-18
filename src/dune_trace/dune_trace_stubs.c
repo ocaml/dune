@@ -53,11 +53,12 @@ CAMLprim value dune_trace_open_fds(value v_pid) {
   int size = PROC_PIDLISTFD_SIZE * MAX_FDS;
   struct proc_fdinfo fdinfo[size];
   size = proc_pidinfo(pid, PROC_PIDLISTFDS, 0, fdinfo, size);
-  if (size == ENOMEM) {
-    // If we ever end up eating this many fd's, correct metrics would be the
-    // least of our problems
-    return MAX_FDS;
-  } else if (size < 0) {
+  if (size < 0) {
+    if (errno == ENOMEM) {
+      // If we ever end up eating this many fd's, correct metrics would be the
+      // least of our problems
+      CAMLreturn(Val_int(MAX_FDS));
+    }
     caml_failwith("proc_pidinfo failed");
   }
   int fds = size / PROC_PIDLISTFD_SIZE;

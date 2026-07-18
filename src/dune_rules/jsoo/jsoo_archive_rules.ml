@@ -1,5 +1,6 @@
 open Import
 open Memo.O
+module Gen_rules = Build_config.Gen_rules
 
 module Library_key = struct
   type t = Path.Build.t * string
@@ -27,6 +28,61 @@ let find_library ~expander ~dir ~lib_name =
          | true -> Some lib
          | false -> None)
       | _ -> Memo.return None)
+;;
+
+let archive_dir_for_library (lib : Library.t) ~sctx ~dir =
+  let+ ocaml = Context.ocaml (Super_context.context sctx) in
+  let modes = Mode_conf.Lib.Set.eval lib.modes ~has_native:ocaml.lib_config.has_native in
+  let has_byte_archive =
+    modes.ocaml.byte
+    &&
+    match lib.kind with
+    | Lib_kind.Virtual | Lib_kind.Parameter -> false
+    | Lib_kind.Dune_file _ -> true
+  in
+  Option.some_if has_byte_archive (Obj_dir.jsoo_dir (Library.obj_dir ~dir lib))
+;;
+
+let archive_dir_to_build_only_sub_dirs = function
+  | None -> Gen_rules.Build_only_sub_dirs.empty
+  | Some dir ->
+    Gen_rules.Build_only_sub_dirs.singleton
+      ~dir:(Path.Build.parent_exn dir)
+      (Subdir_set.of_list [ Path.Build.basename dir ])
+;;
+
+let build_only_sub_dirs_for_stanzas sctx ~dir stanzas =
+  let* sctx = sctx in
+  Memo.List.fold_left
+    stanzas
+    ~init:Gen_rules.Build_only_sub_dirs.empty
+    ~f:(fun build_dir_only_sub_dirs stanza ->
+      match Stanza.repr stanza with
+      | Library.T lib ->
+        let+ archive_dir = archive_dir_for_library lib ~sctx ~dir in
+        Gen_rules.Build_only_sub_dirs.union
+          build_dir_only_sub_dirs
+          (archive_dir_to_build_only_sub_dirs archive_dir)
+      | _ -> Memo.return build_dir_only_sub_dirs)
+;;
+
+let build_only_sub_dirs_for_dir_status sctx (dir_status : Dir_status.t) ~dir =
+  match dir_status with
+  | Lock_dir _ | Generated | Source_only _ | Is_component_of_a_group_but_not_the_root _ ->
+    Memo.return Gen_rules.Build_only_sub_dirs.empty
+  | Standalone (_, dune_file) ->
+    Dune_file.stanzas dune_file >>= build_only_sub_dirs_for_stanzas sctx ~dir
+  | Group_root { components; dune_file; _ } ->
+    let* stanzas = Dune_file.stanzas dune_file in
+    let* init = build_only_sub_dirs_for_stanzas sctx ~dir stanzas in
+    components
+    >>= Memo.List.fold_left
+          ~init
+          ~f:(fun acc { Dir_status.Group_component.dir; stanzas; _ } ->
+            let+ build_dir_only_sub_dirs =
+              build_only_sub_dirs_for_stanzas sctx ~dir stanzas
+            in
+            Gen_rules.Build_only_sub_dirs.union acc build_dir_only_sub_dirs)
 ;;
 
 let library_cctx_memo =

@@ -264,9 +264,9 @@ let make_same_lib_emission_deps =
             module_
         in
         (* Cross-module optimization follows implementation artifacts, but the
-         initial reachability also comes from the emitted module's interface
-         dependencies. Seed the implementation graph with that interface
-         closure so wrappers such as [Stdlib] stay visible to the emitter. *)
+           initial reachability also comes from the emitted module's interface
+           dependencies. Seed the implementation graph with that interface
+           closure so wrappers such as [Stdlib] stay visible to the emitter. *)
         Dep_graph.top_closed_implementations dep_graph (module_ :: intf_deps)
         |> Action_builder.map ~f:(deps_of_xopt_closure ~obj_dir)
       | false ->
@@ -275,8 +275,13 @@ let make_same_lib_emission_deps =
            when a dependency has an [.mli], which is insufficient for JS
            emission. Follow the implementation dependency graph directly
            instead. *)
+        let stdlib_aliases =
+          Modules.With_vlib.alias_for modules module_
+          |> List.filter ~f:(Modules.With_vlib.is_stdlib_alias modules)
+        in
         Dep_graph.top_closed_implementations dep_graph [ module_ ]
-        |> Action_builder.map ~f:(deps_of_closure ~obj_dir ~kind:Cmj)
+        |> Action_builder.map ~f:(fun deps ->
+          deps_of_closure ~obj_dir ~kind:Cmj (stdlib_aliases @ deps))
 ;;
 
 let make_external_lib_emission_deps =

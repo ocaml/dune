@@ -79,8 +79,7 @@ default compile flags.
   0
   [1]
   $ grep -c 'stdlib/.stdlib.objs/melange/stdlib.cmj' char-default-rules.sexp
-  0
-  [1]
+  1
 
 Build the default output explicitly in a sandbox so the regression does not
 depend on the test suite's sandboxing preference. Without the wrapped root's
@@ -91,7 +90,5 @@ standard library.
   > dist-default-flags/node_modules/foo/stdlib.js \
   > dist-default-flags/node_modules/foo/char.js
   $ cd _build/default/dist-default-flags/node_modules/foo
-  $ grep -F 'require("melange/stdlib.js")' char.js
-  const Stdlib = require("melange/stdlib.js");
-  $ node -e 'console.log(require("./char.js").code("x"))' >/dev/null 2>&1
-  [1]
+  $ node -e 'console.log(require("./char.js").code("x"))'
+  0

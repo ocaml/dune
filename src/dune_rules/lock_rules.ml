@@ -296,32 +296,28 @@ let setup_lock_rules ~dir ~lock_dir : Gen_rules.result =
               Opam_repo.resolve_repositories ~available_repos ~repositories
               |> Memo.of_non_reproducible_fiber))
        and+ pins =
-         (* CR-soon Alizter: This pin logic (extracting workspace pins,
-            combining with project pins) is duplicated in bin/pkg/lock.ml. The
-            pattern of Pin.DB.Workspace.extract and Pin.DB.combine_exn could be
-            factored into a shared helper. *)
          Action_builder.of_memo
            (Memo.of_thunk (fun () ->
               let open Memo.O in
               let* project_pins_db = project_pins in
-              let workspace_pins_db =
-                let workspace_pins = Pin.DB.Workspace.of_stanza workspace.pins in
-                let pin_map = Dune_lang.Pin_stanza.Workspace.map workspace.pins in
-                let all_pin_names =
-                  pin_map
-                  |> String.Map.to_list
-                  |> List.fold_left ~init:[] ~f:(fun acc (_repo_name, pkg_map) ->
-                    pkg_map
-                    |> Dune_lang.Package_name.Map.to_list
-                    |> List.fold_left
-                         ~init:acc
-                         ~f:(fun acc (pkg_name, ((loc, _url), _pkg)) ->
-                           (loc, Dune_lang.Package_name.to_string pkg_name) :: acc))
-                in
-                Pin.DB.Workspace.extract workspace_pins ~names:all_pin_names
+              let workspace_pins = Pin.DB.Workspace.of_stanza workspace.pins in
+              let pin_map = Dune_lang.Pin_stanza.Workspace.map workspace.pins in
+              let all_pin_names =
+                pin_map
+                |> String.Map.to_list
+                |> List.fold_left ~init:[] ~f:(fun acc (_repo_name, pkg_map) ->
+                  pkg_map
+                  |> Dune_lang.Package_name.Map.to_list
+                  |> List.fold_left
+                       ~init:acc
+                       ~f:(fun acc (pkg_name, ((loc, _url), _pkg)) ->
+                         (loc, Dune_lang.Package_name.to_string pkg_name) :: acc))
               in
-              let combined_pins = Pin.DB.combine_exn workspace_pins_db project_pins_db in
-              Memo.return combined_pins
+              Pin.DB.Workspace.extract_and_combine
+                workspace_pins
+                ~names:all_pin_names
+                ~project_pins:project_pins_db
+              |> Memo.return
               >>| Pin.Project.resolve
               >>= Memo.of_reproducible_fiber))
        in

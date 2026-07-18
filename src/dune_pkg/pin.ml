@@ -135,6 +135,10 @@ module DB = struct
       { all = []; map; context = Workspace }
     ;;
 
+    let extract_and_combine t ~names ~project_pins =
+      combine_exn (extract t ~names) project_pins
+    ;;
+
     let equal = String.Map.equal ~equal:Poly.equal
     let to_dyn = Dyn.opaque
     let hash = Poly.hash

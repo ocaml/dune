@@ -24,6 +24,7 @@ module DB : sig
     val of_stanza : Pin_stanza.Workspace.t -> t
     val empty : t
     val extract : t -> names:(Loc.t * string) list -> db
+    val extract_and_combine : t -> names:(Loc.t * string) list -> project_pins:db -> db
     val equal : t -> t -> bool
     val to_dyn : t -> Dyn.t
     val hash : t -> int

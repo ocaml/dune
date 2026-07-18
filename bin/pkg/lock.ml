@@ -290,11 +290,11 @@ let solve_lock_dir
     match lock_dir with
     | None -> project_pins, Solver_env.popular_platform_envs
     | Some lock_dir ->
-      let workspace =
+      let pins =
         Pin.DB.Workspace.of_stanza workspace.pins
-        |> Pin.DB.Workspace.extract ~names:lock_dir.pins
+        |> Pin.DB.Workspace.extract_and_combine ~names:lock_dir.pins ~project_pins
       in
-      Pin.DB.combine_exn workspace project_pins, lock_dir.solve_for_platforms
+      pins, lock_dir.solve_for_platforms
   in
   let solver_env_from_context =
     Option.bind lock_dir ~f:(fun lock_dir -> lock_dir.solver_env)

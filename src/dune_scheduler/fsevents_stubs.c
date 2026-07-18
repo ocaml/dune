@@ -178,9 +178,9 @@ static void dune_fsevents_callback(const FSEventStreamRef streamRef,
                            0, 0, (UInt8 *)p, byte_len, NULL);
     assert(res == len);
 
-    v_event = caml_alloc(3, 0);
     v_id = caml_copy_int64(eventIds[i]);
     v_flags = caml_copy_int32(flags);
+    v_event = caml_alloc(3, 0);
     Store_field(v_event, 0, v_path);
     Store_field(v_event, 1, v_id);
     Store_field(v_event, 2, v_flags);

@@ -14,7 +14,7 @@ nix shell --impure --expr 'let pkgs = import (builtins.getFlake "github:NixOS/ni
 <!-- markdown-toc start - Don't edit this section. Run M-x markdown-toc-refresh-toc -->
 **Table of Contents**
 
-- [Tools Requirements like](#tools-requirements-like)
+- [Dune Tools Requirements](#dune-tools-requirements)
   - [Summary](#summary)
   - [How to Read This Document](#how-to-read-this-document)
   - [Terminology](#terminology)
@@ -46,10 +46,12 @@ nix shell --impure --expr 'let pkgs = import (builtins.getFlake "github:NixOS/ni
           - [2.3.1.1.2. When package management is NOT enabled in a workspace ](#23112-when-package-management-is-not-enabled-in-a-workspace)
       - [2.4. Project dependency tools](#24-project-dependency-tools)
     - [3. Dependency and Integration](#3-dependency-and-integration)
-      - [3.1 Integration spectrum](#31-integration-spectrum)
-        - [3.1. Compiler compatibility](#31-compiler-compatibility)
-        - [3.2. Dependency isolation](#32-dependency-isolation)
-      - [4.2 Dependency spectrum](#42-dependency-spectrum)
+      - [3.1 Integration axis](#31-integration-axis)
+        - [3.1.2. Tool isolation (I1)](#312-tool-isolation-i1)
+        - [3.1.2 Compiler integrations (I2)](#312-compiler-integrations-i2)
+          - [3.1.2.1 Identifying compiler integrations](#3121-identifying-compiler-integrations)
+          - [3.1.2.2 Handling compiler integration constraints](#3122-handling-compiler-integration-constraints)
+      - [4.2 Dependency axis](#42-dependency-axis)
         - [4.1. Discretionary tools (D1)](#41-discretionary-tools-d1)
           - [4.1.1. Not build triggers](#411-not-build-triggers)
           - [4.1.2. Cannot be referenced in build rules TODO](#412-cannot-be-referenced-in-build-rules-todo)
@@ -61,7 +63,8 @@ nix shell --impure --expr 'let pkgs = import (builtins.getFlake "github:NixOS/ni
           - [4.2.1. Must always be installed TODO](#421-must-always-be-installed-todo)
       - [5. UI](#5-ui)
       - [5.1. CLI](#51-cli)
-      - [5.2. Persistent configuration](#52-persistent-configuration)
+        - [5.1.1. Managing multiple tools](#511-managing-multiple-tools)
+      - [5.2. Persistent configuration for discretionary tools](#52-persistent-configuration-for-discretionary-tools)
       - [5.4. Tool references in actions](#54-tool-references-in-actions)
       - [5.5. Legacy migration](#55-legacy-migration)
 - [TODO Orphans to put in proper section](#todo-orphans-to-put-in-proper-section)
@@ -152,19 +155,32 @@ The environments within which a tool are available must be scoped.
 
 It must be possible to install tools per-workspace, such that workspaces define
 a sub-environment. I.e., each workspace has its own isolated tool installations
-that don't affect other workspaces or interfere the system.
+that don't affect other workspaces or interfere with software on the host system.
 
 See [Directory structure](./implementation.md#directory-structure) for storage locations.
 
 #### 1.2.2. Dune context scope
 
-CR Shon: Is this actually a good idea? How do tools interact with contexts?
-
 It must be possible to install the versions of a tool per-dune context within a
 workspace, such that different contexts can use different versions of tools.
 
+TODO: tools as lock dirs to impl doc. In particular, specifying multiple tools
+in field in one stanza, to avoid lots of duplication, but mapping this to
+separate lock dirs.
+
+<details>
+<summary>
+Motivation and context
+</summary>
+
 This follows the example of `dune pkg`'s `lock_dir` in the context stanza, and
-allows developers to set up different tooling configurations (CR. What for?).
+allows developers to set up different tooling configurations.
+
+We have sketched a preliminary design that considers `tools` stanzas as
+specialized form of `lock_dir` stanza that inherits the fields of the active
+`lock_dir` in a context if no overriding fields are specified.
+
+</details>
 
 #### 1.2.3. System wide scope
 
@@ -423,62 +439,129 @@ discretionary tools and project dependency tools in the path.
 
 ### 3. Dependency and Integration
 
-Tools are used in numerous ways in projects and for ad hoc developer needs, and
-they require different levels of integration and interdependence with the other
-components (tools, libraries, or other artifacts) of a workspace. We can
-position these varieties of difference on a coordinate system with two axes:
+Tools are depended on in numerous ways to build and develop projects and they
+require different levels of integration and interdependence with the other
+components (tools, libraries, or other artifacts) of a workspace. Dune must be
+able to manage all installable tools across this variety, otherwise the user
+experience of tool management will feel inconsistent and irregular, and users
+will inevitably find certain subsets of tools unavailable or requiring
+unexpected workarounds creating a fragmented and awkward user experience.
 
-#### 3.1 Integration spectrum
+We can further refine this requirement along two axes.
+
+#### 3.1 Integration axis
 
 Tools lie along a spectrum of integration requirements with other dependencies
-in the project, which we can indicate with these tree points:
+in the project, which we can indicate with tree points:
 
 - I1: At the minimum extreme, some tools can be solved and built in complete
-  isolation from the rest of the project they are used in. E.g., ocamlformat.
+  isolation from the rest of the project they are used in. Tools of this sort
+  include ocamlformat, ocp-indent, dune-release, and opam-publish.
+
 - I2: In the midpoint, some tools must integrate with a subset of a project's
-  dependencies. E.g., ocamllsp must use the same compiler version.
-- I3: At the maximum extreme, some tools must be built within the entire
-  dependency context of the project. E.g., menhir when used together with its
-  runtime libraries, to ensure that the generated parser code is compatible with
-  the runtime library.
+  dependencies. The most common examples in this space are tools that must
+  integrate with the compiler, such as ocamllsp, odoc, or merlin, but don't need
+  to integrate with other libraries in the workspace. Some tools also integrate
+  only with select components other than the compiler, such as menhir and atd.
+  These tools require integration with the particular version of their runtime
+  libraries in certain modes of use, but don't require integrations otherwise,
+  and since the tools themselves have a wired dependency cone than the runtime
+  libraries, it could sometimes be helpful to bud the executables in a separate
+  dependency context, pinned only to the needed runtime library version (e.g.,
+  to avoid conflicts over a CLI parser library).
 
-Tools lying along the entire spectrum must be supported elegant solutions where
-coupling is required, and the most possible orthogonality in features when it is not.
+- I3: At the maximum extreme, some tools could require be built within the
+  entire dependency context of the project. We are not aware of any tools that
+  require this currently, but we can consider utop is an illustrative example,
+  since its own dependencies (such as `lwt`, `xdg`, and `logs`) need to
+  integrate with the versions in the environment it is installed in, and it
+  cannot load code into the top level that would require differing on these
+  versions.
 
-##### 3.1. Compiler compatibility
+Tools lying along I1 and I2 must be supported with elegant solutions where
+coupling is required, and the most possible orthogonality in features when it is
+not.
 
-TODO: need to handle tools that are compiler integrations, and want to have an "optimal" dependency environment.
-E.g., installing the latest version of a tool, with whatever compiler version it may need, or installing a tool that is not compatible with your env compiler.
+##### 3.1.1. Tool isolation (I1)
 
-By default, tools are built with a compiler matching the environment. This
-ensures tools like ocamllsp can read project build artifacts correctly.
+Unnecessary coupling between tools and other dependencies of a project should
+not be introduced. When an *installable* tool sits at I1 on the integration
+axis, dune should be able to install it in a workspace, without regard to any
+possible conflicts with *project dependencies*. By definition, tools at I1 have
+no integration requirements with other components in a project, so there are no
+grounds for such conflict. This property *should* hold rather than *must*,
+because it may be infeasible and unnecessary to implement this requirement for
+tools that are project dependencies.
 
-Users should be able to opt out of compiler matching per-tool for tools that
-don't need it (e.g., formatters that only parse source text).
+However, for discretionary tools at I1 this property *must* be guaranteed.
 
-CR-soon Alizter: The utility of opting out seems debatable, but is part of the
-package-tool continuum approach.
-
-See [Compiler matching](./implementation.md#compiler-matching) for the detection
-algorithm.
-
-CR-someday Alizter: Reverse influence - could tools constrain the project? E.g.,
-if ocamllsp isn't available for OCaml 5.3 yet, a user might want their tool
-requirements to influence which compiler version they use. Currently tools are
-fully isolated and don't affect project solving. This would be a significant
-departure from the orthogonality principle.
-
-##### 3.2. Dependency isolation
-
-The dependencies of each tool should be solved independently with its own lock
-directory. Tool dependencies do not affect the project's `dune.lock`, and vice
-versa.
+<details>
+<summary>
+Motivation and context
+</summary>
 
 See [Directory structure](./implementation.md#directory-structure) for lock
 directory locations.
 
+</details>
 
-#### 4.2 Dependency spectrum
+###### 3.1.1.1 Optimal builds
+
+Dune should not needless compile or rebuild dependencies that can be shared
+without conflict. E.g., if the needed version of a discretionary tool
+can be installed by reusing the compiler version already installed for a
+workspace, or by pulling it from the cache, this should be preferred over
+rebuilding the tool or its dependencies from scratch.
+
+##### 3.1.2 Compiler integrations (I2)
+
+TODO: `integrates_with compiler|minhirLib` ?
+TODO: Need to spec more general integration requirements, with compiler as
+special case.
+
+Tools that integrate with the compiler hold a special status among tools, as a
+result of their ubiquitous use and the special position of the compiler itself.
+The most widely used tools of this sort are ocamllsp and odoc. Dune must provide
+robust, intuitive, and flexible support for managing these tools.
+
+
+<details>
+<summary>
+Motivation and context
+</summary>
+
+See [Compiler matching](./implementation.md#compiler-matching) for the detection
+algorithm.
+
+</details>
+
+###### 3.1.2.1 Identifying compiler integrations
+
+It must be possible to identify tools that require integration with the compiler
+version in a workspace and install them appropriately (e.g., via an explicit
+designation provided by the user, a list of known tools, some data available in
+the package definition, or any other means).
+
+###### 3.1.2.2 Handling compiler integration constraints
+
+When a user has specified the intent to install a compiler integration that is
+incompatible with the compiler version installed in the workspace, dune must
+handle the conflict gracefully and with clear guidance to the user. 
+
+This could mean automatically downgrading the compiler (if permitted by
+the constraints), but a user error with clear instructions is probably just as
+effectively, less surprising, and much easier to implement. E.g., "tool t cannot
+be installed at version v because it requires compiler <= n, but compiler m is
+currently installed. Add the following qualified constraint to your project
+dependencies: `(ocaml (and (>= 5.1 (or (not :with-dev-setup) (< 5.5))))`" etc.
+
+Regardless of the implementation approach taken, it must be possible to
+constrain the compiler versions to work with the desired integrations during
+development without those constraints polluting the constraints of packages in
+the workspace when they are installed.
+
+
+#### 4.2 Dependency axis
 
 Tools lie along a spectrum of dependency status (i.e., to what extent they are
 dependencies for the project) which we can indicate with these tree points:

@@ -51,7 +51,8 @@ stateDiagram-v2
     - (for N=0) create `x.y` branch
   - Prepare alpha release:
     - cherry-pick extra commits from `main` (if any)
-    - prepare changelog (ensure version is `x.y.0~alphaN`)
+    - prepare changelog: regenerate the `x.y.0~alphaN` section from the change
+      fragments in `doc/changes`, keeping the fragments until the final release
     - `make opam-release`
     - mark opam-repo PR as draft
   - Wait for `opam-repo-ci`
@@ -65,7 +66,8 @@ stateDiagram-v2
 
 - Release time:
   - check versioned behaviors are relative to x.y
-  - On release branch, prepare changelog (merge alpha entries, set header with version)
+  - On release branch, prepare changelog: regenerate the section from the change
+    fragments, which are consumed (removed) by this final release
   - Open a PR `prepare-x.y.0`
   - Self-merge
   - `make opam-release` from updated main

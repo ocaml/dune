@@ -6,13 +6,18 @@
 # Author(s): The Dune team
 # Date: 2025-09-29
 #
-# Usage: $ ./build_changelog.sh <X.Y.Z>
-# where X.Y.Z is the version of Dune
+# Usage: $ [KEEP_FRAGMENTS=true] ./build_changelog.sh <X.Y.Z>
+# where
+# - X.Y.Z is the version of Dune (an optional ~alphaN suffix is allowed)
+# - KEEP_FRAGMENTS, when 'true', regenerates the changelog section without
+#   deleting the change fragments, so successive prereleases of the same
+#   version can be regenerated in place. Defaults to deleting them.
 
 set -euo pipefail
 
 # Variables
 version="$1"
+keep_fragments="${KEEP_FRAGMENTS:-false}"
 output=".changelog.new"
 doc_dir="./doc/changes"
 
@@ -70,7 +75,10 @@ append_files_in_dir_if_not_empty() {
       # Remove any empty lines from each change entry and add them to the output
       grep -v '^$' "$file" >> "$output"
       add_newline
-      rm "$file"
+      # Consume the fragment unless we are keeping it for a later release
+      if [ "$keep_fragments" != "true" ]; then
+        rm "$file"
+      fi
   done
 }
 

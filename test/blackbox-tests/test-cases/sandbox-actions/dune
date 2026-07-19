@@ -1,7 +1,31 @@
 (cram
- (applies_to :whole_subtree)
+ (applies_to basic with-bwrap)
  (alias runtest-bwrap)
  (runtest_alias
   (<> %{env:CI=false} true))
  (deps %{bin:bwrap})
  (enabled_if %{bin-available:bwrap}))
+
+(cram
+ (applies_to shared-cache)
+ (runtest_alias
+  (or
+   (= %{system} macosx)
+   (<> %{env:CI=false} true)))
+ (enabled_if
+  (or
+   (and
+    (= %{system} linux)
+    %{bin-available:bwrap})
+   (and
+    (= %{system} macosx)
+    %{bin-available:sandbox-exec}))))
+
+(cram
+ (applies_to with-sandbox-exec)
+ (alias runtest-sandbox-exec)
+ (deps %{bin:sandbox-exec})
+ (enabled_if
+  (and
+   (= %{system} macosx)
+   %{bin-available:sandbox-exec})))

@@ -962,7 +962,7 @@ module Builder = struct
             ~doc:
               (Some
                  "Run spawned build processes in an external dune action runner wrapped \
-                  with bubblewrap."))
+                  with bubblewrap on Linux or sandbox-exec on macOS."))
     and+ action_runner =
       Arg.(
         value

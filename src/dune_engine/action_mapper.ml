@@ -29,6 +29,7 @@ module Make (Src : Action_intf.Ast) (Dst : Action_intf.Ast) = struct
       Redirect_out (outputs, f_target ~dir fn, perm, f t ~dir)
     | Redirect_in (inputs, fn, t) -> Redirect_in (inputs, f_path ~dir fn, f t ~dir)
     | Ignore (outputs, t) -> Ignore (outputs, f t ~dir)
+    | If_file_exists (path, t) -> If_file_exists (f_path ~dir path, f t ~dir)
     | Progn l -> Progn (List.map l ~f:(fun t -> f t ~dir))
     | Concurrent l -> Concurrent (List.map l ~f:(fun t -> f t ~dir))
     | Echo xs -> Echo (List.map xs ~f:(f_string ~dir))

@@ -47,6 +47,7 @@ struct
   let ignore_stdout t = Ignore (Stdout, t)
   let ignore_stderr t = Ignore (Stderr, t)
   let ignore_outputs t = Ignore (Outputs, t)
+  let if_file_exists path t = If_file_exists (path, t)
   let progn ts = Progn ts
   let concurrent ts = Concurrent ts
   let echo s = Echo s
@@ -309,6 +310,10 @@ let digest =
     | System command ->
       int d 22;
       string d command
+    | If_file_exists (path, t) ->
+      int d 23;
+      digest_path d ~dir path;
+      loop d t ~dir
   in
   fun d t -> loop d t ~dir:Path.root
 ;;
@@ -320,6 +325,7 @@ let fold_one_step t ~init:acc ~f =
   | Redirect_out (_, _, _, t)
   | Redirect_in (_, _, t)
   | Ignore (_, t)
+  | If_file_exists (_, t)
   | With_accepted_exit_codes (_, t) -> f acc t
   | Progn l | Pipe (_, l) | Concurrent l -> List.fold_left l ~init:acc ~f
   | Run _
@@ -367,6 +373,7 @@ let exists t ~leaf ~extension =
     | Redirect_out (_, _, _, t)
     | Redirect_in (_, _, t)
     | Ignore (_, t)
+    | If_file_exists (_, t)
     | With_accepted_exit_codes (_, t) -> loop t
     | Progn l | Pipe (_, l) | Concurrent l -> List.exists l ~f:loop
     | Extension extension_ -> extension extension_
@@ -423,7 +430,7 @@ let is_useful_to memoize =
     | Setenv (_, _, t) -> loop t
     | Redirect_out (_, _, _, t) -> memoize || loop t
     | Redirect_in (_, _, t) -> loop t
-    | Ignore (_, t) | With_accepted_exit_codes (_, t) -> loop t
+    | Ignore (_, t) | If_file_exists (_, t) | With_accepted_exit_codes (_, t) -> loop t
     | Progn l | Pipe (_, l) | Concurrent l -> List.exists l ~f:loop
     | Echo _ -> false
     | Cat _ -> memoize

@@ -126,14 +126,9 @@ exception Finished of Proc.Process_info.t
 let wait_nonblocking_win32 t =
   try
     Process_table.iter t ~f:(fun job ->
-      let pid, status = Unix.waitpid [ WNOHANG ] (Pid.to_int job.pid) in
-      if pid <> 0
-      then (
-        let now = Time.now () in
-        let info : Proc.Process_info.t =
-          { pid = Pid.of_int_exn pid; status; end_time = now; resource_usage = None }
-        in
-        raise_notrace (Finished info)));
+      match Proc.wait (Pid job.pid) [ WNOHANG ] with
+      | None -> ()
+      | Some proc_info -> raise_notrace (Finished proc_info));
     false
   with
   | Finished proc_info ->

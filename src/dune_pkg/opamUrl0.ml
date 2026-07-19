@@ -1,23 +1,6 @@
 include OpamUrl
 open Stdune
-
-module T = struct
-  type nonrec t = t
-
-  let to_dyn t = Dyn.string (OpamUrl.to_string t)
-  let compare x y = Ordering.of_int (OpamUrl.compare x y)
-end
-
-include T
-
-let decode_loc =
-  let open Dune_sexp.Decoder in
-  map_validate (located string) ~f:(fun (loc, s) ->
-    match OpamUrl.of_string s with
-    | url -> Ok (loc, url)
-    | exception OpamUrl.Parse_error m ->
-      Error (User_message.make [ Pp.text "invalid url "; Pp.text m ]))
-;;
+include Dune_lang.Url
 
 let rev t = t.hash
 let hash = Poly.hash
@@ -44,7 +27,7 @@ let classify url loc =
       ]
 ;;
 
-include Comparable.Make (T)
+include Comparable.Make (Dune_lang.Url)
 
 let remote t ~loc rev_store = Rev_store.remote rev_store ~loc ~url:(OpamUrl.base_url t)
 

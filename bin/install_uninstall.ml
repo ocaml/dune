@@ -16,14 +16,32 @@ let synopsis =
   ]
 ;;
 
-let print_line ~(verbosity : Display.t) fmt =
-  Printf.ksprintf
-    (fun s ->
-       match verbosity with
-       | Quiet -> ()
-       | _ -> Console.print [ Pp.verbatim s ])
-    fmt
-;;
+module Output = struct
+  type t =
+    | Console of User_message.Style.t Pp.t
+    | User_message of User_message.t
+    | Warning of
+        { loc : Loc.t
+        ; paragraphs : User_message.Style.t Pp.t list
+        }
+
+  let line ~(verbosity : Display.t) fmt =
+    Printf.ksprintf
+      (fun s ->
+         match verbosity with
+         | Quiet -> []
+         | _ -> [ Console (Pp.verbatim s) ])
+      fmt
+  ;;
+
+  let emit = function
+    | Console message -> Console.print [ message ]
+    | User_message message -> User_message.prerr message
+    | Warning { loc; paragraphs } -> User_warning.emit ~loc paragraphs
+  ;;
+
+  let emit_all = List.iter ~f:emit
+end
 
 let interpret_destdir ~destdir path =
   match destdir with
@@ -118,11 +136,14 @@ let resolve_package_install workspace ~findlib_toolchain pkg =
               |> List.map ~f:Package.Name.to_string))
 ;;
 
-let print_unix_error f =
-  try f () with
+let run_unix_operation f =
+  try
+    f ();
+    []
+  with
   | Unix.Unix_error (error, syscall, arg) ->
     let error = Unix_error.Detailed.create error ~syscall ~arg in
-    User_message.prerr (User_error.make [ Unix_error.Detailed.pp error ])
+    [ Output.User_message (User_error.make [ Unix_error.Detailed.pp error ]) ]
 ;;
 
 module Special_file = struct
@@ -160,11 +181,11 @@ module type File_operations = sig
     -> kind:copy_kind
     -> package:Package.Name.t
     -> conf:Artifact_substitution.Conf.t
-    -> unit Fiber.t
+    -> Output.t list Fiber.t
 
-  val mkdir_p : Path.t -> unit
-  val remove_file_if_exists : Path.t -> unit
-  val remove_dir_if_exists : if_non_empty:rmdir_mode -> Path.t -> unit
+  val mkdir_p : Path.t -> Output.t list
+  val remove_file_if_exists : Path.t -> Output.t list
+  val remove_dir_if_exists : if_non_empty:rmdir_mode -> Path.t -> Output.t list
 end
 
 let raise_file_should_be_deleted p =
@@ -188,36 +209,43 @@ let rec validate_dir_can_be_created dir =
     Option.iter (Path.parent dir) ~f:validate_dir_can_be_created
 ;;
 
+let validate_install_destination ~dir ~dst =
+  validate_dir_can_be_created dir;
+  match Path.readdir_unsorted dst with
+  | Ok (_ :: _) -> raise_non_empty_dir_should_be_deleted dst
+  | Ok [] | Error _ -> ()
+;;
+
 module File_ops_dry_run (Verbosity : sig
     val verbosity : Display.t
   end) : File_operations = struct
   open Verbosity
 
-  let print_line fmt = print_line ~verbosity fmt
+  let line fmt = Output.line ~verbosity fmt
 
   let copy_file ~src ~dst ~executable ~kind:_ ~package:_ ~conf:_ =
-    print_line
-      "Copying %s to %s (executable: %b)"
-      (Path.to_string_maybe_quoted src)
-      (Path.to_string_maybe_quoted dst)
-      executable;
-    Fiber.return ()
+    Fiber.return
+      (line
+         "Copying %s to %s (executable: %b)"
+         (Path.to_string_maybe_quoted src)
+         (Path.to_string_maybe_quoted dst)
+         executable)
   ;;
 
   let mkdir_p path =
     validate_dir_can_be_created path;
-    print_line "Creating directory %s" (Path.to_string_maybe_quoted path)
+    line "Creating directory %s" (Path.to_string_maybe_quoted path)
   ;;
 
   let remove_file_if_exists path =
-    print_line "Removing (if it exists) %s" (Path.to_string_maybe_quoted path)
+    line "Removing (if it exists) %s" (Path.to_string_maybe_quoted path)
   ;;
 
   let remove_dir_if_exists ~if_non_empty path =
     (match if_non_empty, Path.readdir_unsorted path with
      | Fail, Ok (_ :: _) -> raise_non_empty_dir_should_be_deleted path
      | _, _ -> ());
-    print_line
+    line
       "Removing directory (%s if not empty) %s"
       (match if_non_empty with
        | Fail -> "fail"
@@ -232,7 +260,7 @@ module File_ops_real (W : sig
   end) : File_operations = struct
   open W
 
-  let print_line = print_line ~verbosity
+  let line fmt = Output.line ~verbosity fmt
   let get_vcs p = Source_tree.nearest_vcs p
 
   type copy_special_file_status =
@@ -261,12 +289,23 @@ module File_ops_real (W : sig
              vcs
              ~needed_for:"to infer package versions while installing files")
     in
-    try f ~get_version ic ~src oc with
+    try
+      let open Fiber.O in
+      let+ status = f ~get_version ic ~src oc in
+      status, []
+    with
     | _ (* XXX should we really be catching everything here? *) ->
-      User_warning.emit
-        ~loc:(Loc.in_file src)
-        [ Pp.text "Failed to parse file, not adding version and locations information." ];
-      Fiber.return Use_plain_copy
+      Fiber.return
+        ( Use_plain_copy
+        , [ Output.Warning
+              { loc = Loc.in_file src
+              ; paragraphs =
+                  [ Pp.text
+                      "Failed to parse file, not adding version and locations \
+                       information."
+                  ]
+              }
+          ] )
   ;;
 
   let process_meta ~get_version ic ~src:_ oc =
@@ -347,15 +386,16 @@ module File_ops_real (W : sig
     let chmod _ = mode in
     let plain_copy () = Io.copy_file ~chmod ~src ~dst () in
     match kind with
-    | Substitute -> Artifact_substitution.copy_file ~conf ~src ~dst ~chmod ()
+    | Substitute ->
+      let open Fiber.O in
+      let+ () = Artifact_substitution.copy_file ~conf ~src ~dst ~chmod () in
+      []
     | Special sf ->
       let open Fiber.O in
-      let ic, oc = Io.setup_copy ~chmod ~src ~dst () in
-      let+ status =
+      let* ic, oc = Scheduler.async_exn (fun () -> Io.setup_copy ~chmod ~src ~dst ()) in
+      let* status, output =
         Fiber.finalize
-          ~finally:(fun () ->
-            Io.close_both (ic, oc);
-            Fiber.return ())
+          ~finally:(fun () -> Scheduler.async_exn (fun () -> Io.close_both (ic, oc)))
           (fun () ->
              let f =
                match sf with
@@ -366,39 +406,44 @@ module File_ops_real (W : sig
              in
              copy_special_file ~src ~package ~ic ~oc ~f)
       in
-      (match status with
-       | Done -> ()
-       | Use_plain_copy -> plain_copy ())
+      let+ () =
+        match status with
+        | Done -> Fiber.return ()
+        | Use_plain_copy -> Scheduler.async_exn plain_copy
+      in
+      output
   ;;
 
   let remove_file_if_exists dst =
     if Fpath.exists (Path.to_string dst)
-    then (
-      print_line "Deleting %s" (Path.to_string_maybe_quoted dst);
-      print_unix_error (fun () -> Fpath.unlink_exn (Path.to_string dst)))
+    then
+      line "Deleting %s" (Path.to_string_maybe_quoted dst)
+      @ run_unix_operation (fun () -> Fpath.unlink_exn (Path.to_string dst))
+    else []
   ;;
 
   let remove_dir_if_exists ~if_non_empty dir =
     match Path.readdir_unsorted dir with
-    | Error (Unix.ENOENT, _, _) -> ()
+    | Error (Unix.ENOENT, _, _) -> []
     | Ok [] ->
-      print_line "Deleting empty directory %s" (Path.to_string_maybe_quoted dir);
-      print_unix_error (fun () -> Unix.rmdir (Path.to_string dir))
+      line "Deleting empty directory %s" (Path.to_string_maybe_quoted dir)
+      @ run_unix_operation (fun () -> Unix.rmdir (Path.to_string dir))
     | Error (e, _, _) ->
-      User_message.prerr (User_error.make [ Pp.text (Unix.error_message e) ])
+      [ Output.User_message (User_error.make [ Pp.text (Unix.error_message e) ]) ]
     | _ ->
       (match if_non_empty with
        | Fail -> raise_non_empty_dir_should_be_deleted dir
        | Warn ->
          let dir = Path.to_string_maybe_quoted dir in
-         User_message.prerr
-           (User_error.make
-              [ Pp.textf "Directory %s is not empty, cannot delete (ignoring)." dir ]))
+         [ Output.User_message
+             (User_error.make
+                [ Pp.textf "Directory %s is not empty, cannot delete (ignoring)." dir ])
+         ])
   ;;
 
   let mkdir_p p =
     match Fpath.mkdir_p_strict (Path.to_string p) with
-    | `Created | `Already_exists -> ()
+    | `Created | `Already_exists -> []
     | `Not_a_dir -> raise_file_should_be_deleted p
   ;;
 end
@@ -465,12 +510,23 @@ let cmd_what = function
   | Uninstall -> "uninstall"
 ;;
 
+type output_mode =
+  | Immediate
+  | Buffered of Output.t list ref
+
+let handle_output mode output =
+  match mode with
+  | Immediate -> Output.emit_all output
+  | Buffered buffered -> buffered := List.rev_append output !buffered
+;;
+
 let install_entry
       ~ops
       ~conf
       ~package
       ~dir
       ~create_install_files
+      ~output_mode
       (entry : Path.t Install.Entry.Expanded.t)
       ~dst
       ~verbosity
@@ -489,29 +545,30 @@ let install_entry
   >>= function
   | false -> Fiber.return entry
   | true ->
-    let+ () =
-      Ops.mkdir_p dir;
-      (match Fpath.is_directory (Path.to_string dst) with
-       | true -> Ops.remove_dir_if_exists ~if_non_empty:Fail dst
-       | false -> Ops.remove_file_if_exists dst);
-      print_line
-        ~verbosity
-        "%s %s"
-        (if create_install_files then "Copying to" else "Installing")
-        (Path.to_string_maybe_quoted dst);
-      let executable = Section.should_set_executable_bit entry.section in
-      let kind =
-        match special_file with
-        | Some special -> Special special
-        | None ->
-          (* CR-emillon: for most cases we could use a fast copy here, but some
-             kinds of files do need artifact substitution(at least
-             executable files and artifacts built from generated sites
-             modules), but it's too late to know without reading the file. *)
-          Substitute
-      in
-      Ops.copy_file ~src:entry.src ~dst ~executable ~kind ~package ~conf
+    Ops.mkdir_p dir |> handle_output output_mode;
+    (match Fpath.is_directory (Path.to_string dst) with
+     | true -> Ops.remove_dir_if_exists ~if_non_empty:Fail dst
+     | false -> Ops.remove_file_if_exists dst)
+    |> handle_output output_mode;
+    Output.line
+      ~verbosity
+      "%s %s"
+      (if create_install_files then "Copying to" else "Installing")
+      (Path.to_string_maybe_quoted dst)
+    |> handle_output output_mode;
+    let executable = Section.should_set_executable_bit entry.section in
+    let kind =
+      match special_file with
+      | Some special -> Special special
+      | None ->
+        (* CR-emillon: for most cases we could use a fast copy here, but some
+           kinds of files do need artifact substitution(at least
+           executable files and artifacts built from generated sites
+           modules), but it's too late to know without reading the file. *)
+        Substitute
     in
+    let+ output = Ops.copy_file ~src:entry.src ~dst ~executable ~kind ~package ~conf in
+    handle_output output_mode output;
     Install.Entry.Expanded.set_src entry dst
 ;;
 
@@ -685,50 +742,97 @@ let run
   let (module Ops) = file_operations ~verbosity ~dry_run ~workspace in
   let files_deleted_in = ref Path.Set.empty in
   let+ () =
-    Fiber.parallel_iter install_files_by_context ~f:(fun (context, entries_per_package) ->
-      let* roots = get_dirs context ~prefix_from_command_line ~from_command_line in
-      let conf = Artifact_substitution.Conf.of_install ~relocatable ~roots ~context in
-      Fiber.parallel_iter entries_per_package ~f:(fun (package, entries) ->
-        let+ entries =
-          Fiber.parallel_map entries ~f:(fun entry ->
-            let dst =
+    Fiber.sequential_iter
+      install_files_by_context
+      ~f:(fun (context, entries_per_package) ->
+        let* roots = get_dirs context ~prefix_from_command_line ~from_command_line in
+        let conf = Artifact_substitution.Conf.of_install ~relocatable ~roots ~context in
+        Fiber.sequential_iter entries_per_package ~f:(fun (package, entries) ->
+          let entries =
+            List.map entries ~f:(fun entry ->
               let paths = Install.Paths.make ~relative:Path.relative ~package ~roots in
-              Install.Entry.relative_installed_path entry ~paths
-              |> interpret_destdir ~destdir
-            in
-            let dir = Path.parent_exn dst in
+              let dst =
+                Install.Entry.relative_installed_path entry ~paths
+                |> interpret_destdir ~destdir
+              in
+              entry, dst, Path.parent_exn dst)
+          in
+          let install_entry output_mode (entry, dst, dir) =
+            install_entry
+              ~ops:(module Ops)
+              ~conf
+              ~package
+              ~dir
+              ~create_install_files
+              ~output_mode
+              ~dst
+              ~verbosity
+              entry
+          in
+          let install_destinations_are_valid () =
+            match
+              Exn_with_backtrace.try_with (fun () ->
+                List.iter entries ~f:(fun (_, dst, dir) ->
+                  validate_install_destination ~dir ~dst))
+            with
+            | Ok () -> true
+            | Error _ -> false
+          in
+          let* entries =
             match what with
             | Uninstall ->
-              Ops.remove_file_if_exists dst;
-              files_deleted_in := Path.Set.add !files_deleted_in dir;
-              Fiber.return entry
+              Fiber.sequential_map entries ~f:(fun (entry, dst, dir) ->
+                Ops.remove_file_if_exists dst |> Output.emit_all;
+                files_deleted_in := Path.Set.add !files_deleted_in dir;
+                Fiber.return entry)
+            | Install
+              when dry_run
+                   || create_install_files
+                   || not (install_destinations_are_valid ()) ->
+              Fiber.sequential_map entries ~f:(fun entry -> install_entry Immediate entry)
             | Install ->
-              install_entry
-                ~ops:(module Ops)
-                ~conf
-                ~package
-                ~dir
-                ~create_install_files
-                ~dst
-                ~verbosity
-                entry)
-        in
-        if create_install_files
-        then (
-          let fn =
-            resolve_package_install
-              workspace
-              ~findlib_toolchain:(Context.findlib_toolchain context)
-              package
+              let* results =
+                Fiber.parallel_map entries ~f:(fun entry ->
+                  let output = ref [] in
+                  let+ result =
+                    Fiber.collect_errors (fun () -> install_entry (Buffered output) entry)
+                  in
+                  result, List.rev !output)
+              in
+              let entries, errors =
+                List.fold_left results ~init:([], []) ~f:(fun acc (result, output) ->
+                  Output.emit_all output;
+                  let entries, errors = acc in
+                  match result with
+                  | Ok entry -> entry :: entries, errors
+                  | Error exns -> entries, List.rev_append exns errors)
+              in
+              let errors = List.rev errors in
+              let* () =
+                match errors with
+                | [] -> Fiber.return ()
+                | _ -> Fiber.reraise_all errors
+              in
+              Fiber.return (List.rev entries)
           in
-          Install.Entry.Expanded.gen_install_file entries
-          |> Io.write_file (Path.source fn))))
+          if create_install_files
+          then (
+            let fn =
+              resolve_package_install
+                workspace
+                ~findlib_toolchain:(Context.findlib_toolchain context)
+                package
+            in
+            Install.Entry.Expanded.gen_install_file entries
+            |> Io.write_file (Path.source fn));
+          Fiber.return ()))
   in
   Path.Set.to_list !files_deleted_in
   (* This [List.rev] is to ensure we process children directories before
      their parents *)
   |> List.rev
-  |> List.iter ~f:(Ops.remove_dir_if_exists ~if_non_empty:Warn)
+  |> List.concat_map ~f:(Ops.remove_dir_if_exists ~if_non_empty:Warn)
+  |> Output.emit_all
 ;;
 
 let make ~what =

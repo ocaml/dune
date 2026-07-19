@@ -96,6 +96,7 @@ module Display = Display
 module Sandbox_mode = Sandbox_mode
 module Clflags = Clflags
 module Report_errors_config = Report_errors_config
+module Toggle = Toggle
 
 module type Top_closure = Top_closure.Top_closure
 

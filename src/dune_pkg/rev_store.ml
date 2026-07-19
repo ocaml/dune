@@ -170,7 +170,7 @@ module Cache = struct
       (let base = Path.relative (Lazy.force Dune_util.cache_root_dir) "rev_store" in
        let path = Path.relative base version in
        let rev_store_cache = Config.get rev_store_cache in
-       Log.info "Revision store cache" [ "status", Config.Toggle.to_dyn rev_store_cache ];
+       Log.info "Revision store cache" [ "status", Toggle.to_dyn rev_store_cache ];
        match rev_store_cache with
        | `Disabled -> None
        | `Enabled ->

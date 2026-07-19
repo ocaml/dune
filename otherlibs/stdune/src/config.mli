@@ -8,19 +8,6 @@
     is the configuration option's name in uppercase *)
 type 'a t
 
-module Toggle : sig
-  type t =
-    [ `Enabled
-    | `Disabled
-    ]
-
-  val all : (string * t) list
-  val equal : t -> t -> bool
-  val of_string : string -> (t, string) result
-  val to_string : t -> string
-  val to_dyn : t -> Dyn.t
-end
-
 (** [make ~name ~of_string ~default] registers a config value called [name],
     parsed using [of_string], defaulting to [default]. *)
 val make : name:string -> of_string:(string -> ('a, string) result) -> default:'a -> 'a t

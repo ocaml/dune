@@ -1,15 +1,5 @@
 open Import
-include Config.Toggle
-
-let enabled : t -> bool = function
-  | `Enabled -> true
-  | `Disabled -> false
-;;
-
-let of_bool = function
-  | true -> `Enabled
-  | false -> `Disabled
-;;
+include Stdune.Toggle
 
 let all = [ "enable", `Enabled; "disable", `Disabled ]
 

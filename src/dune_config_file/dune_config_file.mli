@@ -1,4 +1,5 @@
 open Import
+module Toggle := Stdune.Toggle
 
 module Dune_config : sig
   (** Dune configuration (visible to the user) *)
@@ -80,7 +81,7 @@ module Dune_config : sig
       | Loc of Loc.t
 
     type t =
-      | Set of where * Config.Toggle.t
+      | Set of where * Toggle.t
       | Unset
 
     val all : where -> (string * t) list

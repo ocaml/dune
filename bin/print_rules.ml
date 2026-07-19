@@ -78,6 +78,7 @@ let rec encode_action : Action.For_shell.t -> Dune_lang.t =
   | Copy (x, y) -> List [ atom "copy"; path x; target y ]
   | Symlink (x, y) -> List [ atom "symlink"; path x; target y ]
   | Hardlink (x, y) -> List [ atom "hardlink"; path x; target y ]
+  | System x -> List [ atom "system"; string x ]
   | Bash { script; can_run_in_action_runner = _ } -> List [ atom "bash"; string script ]
   | Write_file (x, perm, y) ->
     List [ atom ("write-file" ^ File_perm.suffix perm); target x; string y ]

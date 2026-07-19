@@ -187,6 +187,12 @@ let rec exec t ~ectx ~eenv : Done_or_more_deps.t Fiber.t =
   | Hardlink (src, dst) ->
     let+ () = maybe_async (fun () -> Io.portable_hardlink ~src ~dst:(Path.build dst)) in
     Done
+  | System command ->
+    let prog, arg =
+      Env_path.system_shell_exn ~needed_to:"interpret (system ...) actions"
+    in
+    let+ () = exec_run ~ectx ~eenv ~can_run_in_action_runner:true prog [ arg; command ] in
+    Done
   | Bash { script; can_run_in_action_runner } ->
     let+ () =
       exec_run

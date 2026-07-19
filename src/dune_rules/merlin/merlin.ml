@@ -448,7 +448,9 @@ module Processed = struct
     match load_file path with
     | Error msg -> Printf.eprintf "%s\n" msg
     | Ok configurations ->
-      Nonempty_list.hd configurations |> dump_entries |> List.iter ~f:print_entry
+      Nonempty_list.to_list_map configurations ~f:dump_entries
+      |> List.concat
+      |> List.iter ~f:print_entry
   ;;
 
   let print_files format paths =
@@ -459,7 +461,8 @@ module Processed = struct
          Result.List.map paths ~f:(fun path ->
            match load_file path with
            | Error msg -> Error msg
-           | Ok configurations -> Ok (dump_entries (Nonempty_list.hd configurations)))
+           | Ok configurations ->
+             Ok (Nonempty_list.to_list_map configurations ~f:dump_entries |> List.concat))
        with
        | Error msg -> Printf.eprintf "%s\n" msg
        | Ok entries ->

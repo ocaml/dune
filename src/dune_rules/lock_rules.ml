@@ -143,19 +143,14 @@ module Spec = struct
       | `Disabled -> false
     in
     let* solver_env =
-      (* CR-soon Alizter: This solver environment construction pattern (combining
-       solver_env_from_current_system with solver_env_from_context, then
-       unsetting vars) is similar to logic in bin/pkg/pkg_common.ml:solver_env
-       and bin/pkg/lock.ml. Consider sharing this pattern. *)
       let open Fiber.O in
       let+ solver_env_from_current_system =
         Sys_poll.make ~path:(Env_path.path env) |> Sys_poll.solver_env_from_current_system
       in
-      let solver_env =
-        [ solver_env_from_current_system; solver_env_from_context ]
-        |> List.fold_left ~init:Solver_env.with_defaults ~f:Solver_env.extend
-      in
-      Solver_env.unset_multi solver_env unset_solver_vars
+      Solver_env.combine
+        ~current_system:(Some solver_env_from_current_system)
+        ~context:(Some solver_env_from_context)
+        ~unset:(Some unset_solver_vars)
     in
     let* solver_result =
       if portable_lock_dir

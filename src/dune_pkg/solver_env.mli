@@ -33,6 +33,12 @@ val pp : t -> 'a Pp.t
 val pp_oneline : t -> 'a Pp.t
 val unset_multi : t -> Package_variable_name.Set.t -> t
 
+val combine
+  :  current_system:t option
+  -> context:t option
+  -> unset:Package_variable_name.Set.t option
+  -> t
+
 (** [remove_all_except t names] returns an environment with the same bindings
     as those in [t] whose names also appear in [names]. *)
 val remove_all_except : t -> Package_variable_name.Set.t -> t

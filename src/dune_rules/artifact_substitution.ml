@@ -173,11 +173,13 @@ module Conf = struct
     match has_subst with
     | No_substitution -> Fiber.return ()
     | Some_substitution ->
-      let executable =
-        match Path.Untracked.stat file with
-        | Error _ -> false
-        | Ok { st_perm; _ } ->
-          Permissions.test_any Permissions.execute (Permissions.Mode.of_int st_perm)
+      let open Fiber.O in
+      let* executable =
+        Scheduler.async_exn (fun () ->
+          match Path.Untracked.stat file with
+          | Error _ -> false
+          | Ok { st_perm; _ } ->
+            Permissions.test_any Permissions.execute (Permissions.Mode.of_int st_perm))
       in
       if executable
       then
@@ -497,7 +499,7 @@ type mode =
   | Test
   | Copy of
       { input_file : Path.t
-      ; output : bytes -> int -> int -> unit
+      ; output : bytes -> int -> int -> unit Fiber.t
       ; conf : Conf.t
       }
 
@@ -556,11 +558,14 @@ let parse ~input ~mode =
     (* All the data before [placeholder_start] can be sent to the output
        immediately since we know for sure that they are not part of a
        placeholder *)
-    (match mode with
-     | Test -> ()
-     | Copy { output; _ } ->
-       if placeholder_start > beginning_of_data
-       then output buf beginning_of_data (placeholder_start - beginning_of_data));
+    let* () =
+      match mode with
+      | Test -> Fiber.return ()
+      | Copy { output; _ } ->
+        if placeholder_start > beginning_of_data
+        then output buf beginning_of_data (placeholder_start - beginning_of_data)
+        else Fiber.return ()
+    in
     let leftover = end_of_data - placeholder_start in
     match scanner_state with
     | Scan_placeholder (placeholder_start, len) when len <= leftover ->
@@ -577,7 +582,7 @@ let parse ~input ~mode =
                 ~placeholder:(to_dyn t)
                 ~value:s);
             let s = encode_replacement ~len ~repl:s in
-            output (Bytes.unsafe_of_string s) 0 len;
+            let* () = output (Bytes.unsafe_of_string s) 0 len in
             let pos = placeholder_start + len in
             loop Scan0 ~beginning_of_data:pos ~pos ~end_of_data ~status:Some_substitution)
        | None ->
@@ -604,7 +609,8 @@ let parse ~input ~mode =
         | Scan_length (_, acc) -> Scan_length (0, acc)
         | Scan_placeholder (_, len) -> Scan_placeholder (0, len)
       in
-      (match input buf leftover (buf_len - leftover) with
+      let* read = input buf leftover (buf_len - leftover) in
+      (match read with
        | 0 ->
          (match scanner_state with
           | Scan_placeholder _ ->
@@ -617,8 +623,8 @@ let parse ~input ~mode =
              | Copy { output; _ } ->
                (* Nothing more to read; [leftover] is definitely not the beginning
                   of a placeholder, send it and end the copy *)
-               output buf 0 leftover;
-               Fiber.return status))
+               let+ () = output buf 0 leftover in
+               status))
        | n ->
          loop
            scanner_state
@@ -627,25 +633,41 @@ let parse ~input ~mode =
            ~end_of_data:(leftover + n)
            ~status)
   in
-  match input buf 0 buf_len with
+  let* read = input buf 0 buf_len in
+  match read with
   | 0 -> Fiber.return No_substitution
   | n -> loop Scan0 ~beginning_of_data:0 ~pos:0 ~end_of_data:n ~status:No_substitution
 ;;
 
 let copy ~conf ~input_file ~input ~output =
-  parse ~input ~mode:(Copy { conf; input_file; output })
+  parse
+    ~input:(fun buf pos len -> Fiber.return (input buf pos len))
+    ~mode:
+      (Copy
+         { conf
+         ; input_file
+         ; output = (fun buf pos len -> Fiber.return (output buf pos len))
+         })
 ;;
 
 let copy_file_non_atomic ~conf ?chmod ~src ~dst () =
   (* CR-someday rgrinberg: our copying here is slow. If we scan the file and detect no
      substitutions, we should go directly to [Io.copy_file] *)
   let open Fiber.O in
-  let* ic, oc = Fiber.return (Io.setup_copy ?chmod ~src ~dst ()) in
+  let* ic, oc = Scheduler.async_exn (fun () -> Io.setup_copy ?chmod ~src ~dst ()) in
   Fiber.finalize
-    ~finally:(fun () ->
-      Io.close_both (ic, oc);
-      Fiber.return ())
-    (fun () -> copy ~conf ~input_file:src ~input:(input ic) ~output:(output oc))
+    ~finally:(fun () -> Scheduler.async_exn (fun () -> Io.close_both (ic, oc)))
+    (fun () ->
+       parse
+         ~input:(fun buf pos len -> Scheduler.async_exn (fun () -> input ic buf pos len))
+         ~mode:
+           (Copy
+              { conf
+              ; input_file = src
+              ; output =
+                  (fun buf pos len ->
+                    Scheduler.async_exn (fun () -> output oc buf pos len))
+              }))
 ;;
 
 (** This is just an optimisation: skip the renaming if the destination exists
@@ -701,21 +723,24 @@ let copy_file ~conf ?chmod ?(delete_dst_if_it_is_a_directory = false) ~src ~dst 
   Fiber.finalize
     (fun () ->
        let open Fiber.O in
-       Path.parent dst |> Option.iter ~f:Path.mkdir_p;
+       let* () =
+         Scheduler.async_exn (fun () -> Path.parent dst |> Option.iter ~f:Path.mkdir_p)
+       in
        let* has_subst = copy_file_non_atomic ~conf ?chmod ~src ~dst:temp_file () in
-       let+ () = Conf.run_sign_hook conf ~has_subst temp_file in
-       replace_if_different ~delete_dst_if_it_is_a_directory ~src:temp_file ~dst)
+       let* () = Conf.run_sign_hook conf ~has_subst temp_file in
+       Scheduler.async_exn (fun () ->
+         replace_if_different ~delete_dst_if_it_is_a_directory ~src:temp_file ~dst))
     ~finally:(fun () ->
-      Fpath.unlink_no_err (Path.to_string temp_file);
-      Fiber.return ())
+      Scheduler.async_exn (fun () -> Fpath.unlink_no_err (Path.to_string temp_file)))
 ;;
 
 let test_file ~src () =
   let open Fiber.O in
-  let* ic = Fiber.return (Io.open_in src) in
+  let* ic = Scheduler.async_exn (fun () -> Io.open_in src) in
   Fiber.finalize
-    ~finally:(fun () ->
-      Io.close_in ic;
-      Fiber.return ())
-    (fun () -> parse ~input:(input ic) ~mode:Test)
+    ~finally:(fun () -> Scheduler.async_exn (fun () -> Io.close_in ic))
+    (fun () ->
+       parse
+         ~input:(fun buf pos len -> Scheduler.async_exn (fun () -> input ic buf pos len))
+         ~mode:Test)
 ;;

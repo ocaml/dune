@@ -1175,51 +1175,64 @@ let run_with_error_collection ?restart_started_at ~build_started_at ~build colle
        worth the effort. *)
     Fs_memo.invalidate_cached_timestamps ();
     State.reset_progress ();
-    let* () = State.reset_errors () in
-    let* outcome = collect_errors () in
-    Dtemp.clear ();
-    Sandbox.cleanup_pending_targets ();
-    Target_promotion.save ();
-    let* outcome =
-      let finalize_diff_promotion () =
-        protect ~f:Diff_promotion.finalize ~finally:Diff_promotion.clear_cache
-      in
-      match outcome with
-      | Ok res ->
-        finalize_diff_promotion ();
-        State.set Build_succeeded__now_waiting_for_changes;
-        Fiber.return (Ok res)
-      | Error exns ->
-        handle_final_exns exns;
-        finalize_diff_promotion ();
-        let final_status =
-          if List.exists exns ~f:caused_by_cancellation
-          then State.Restarting_current_build
-          else Build_failed__now_waiting_for_changes
-        in
-        State.set final_status;
-        Fiber.return (Error `Already_reported)
+    let timing_section =
+      match run_id with
+      | Batch ->
+        Some
+          (Console.Status_line.add_section
+             (Live (fun () -> Pp.text (Build_timing.format_now build_started_at))))
+      | Watch _ -> None
     in
-    Metrics.reset ();
-    let+ () = Scheduler.flush_file_watcher () in
-    Dune_trace.emit Build (fun () ->
-      let stop = Time.now () in
-      let restart_duration =
-        Option.map restart_started_at ~f:(fun restart_started_at ->
-          Time.diff stop restart_started_at)
-      in
-      Dune_trace.Event.watch_build_finish
-        ~run_id:(Run_id.to_int run_id)
-        ~outcome:
-          (match outcome with
-           | Ok _ -> `Success
-           | Error `Already_reported -> `Failure)
-        ~start:build_started_at
-        ~stop
-        ~restart_duration);
-    Dune_trace.capture_alloc_profile (`Build (Run_id.to_int run_id))
-    |> Option.iter ~f:Dune_trace.always_emit;
-    outcome
+    Fiber.finalize
+      (fun () ->
+         let* () = State.reset_errors () in
+         let* outcome = collect_errors () in
+         Dtemp.clear ();
+         Sandbox.cleanup_pending_targets ();
+         Target_promotion.save ();
+         let* outcome =
+           let finalize_diff_promotion () =
+             protect ~f:Diff_promotion.finalize ~finally:Diff_promotion.clear_cache
+           in
+           match outcome with
+           | Ok res ->
+             finalize_diff_promotion ();
+             State.set Build_succeeded__now_waiting_for_changes;
+             Fiber.return (Ok res)
+           | Error exns ->
+             handle_final_exns exns;
+             finalize_diff_promotion ();
+             let final_status =
+               if List.exists exns ~f:caused_by_cancellation
+               then State.Restarting_current_build
+               else Build_failed__now_waiting_for_changes
+             in
+             State.set final_status;
+             Fiber.return (Error `Already_reported)
+         in
+         Metrics.reset ();
+         let+ () = Scheduler.flush_file_watcher () in
+         Dune_trace.emit Build (fun () ->
+           let stop = Time.now () in
+           let restart_duration =
+             Option.map restart_started_at ~f:(fun restart_started_at ->
+               Time.diff stop restart_started_at)
+           in
+           Dune_trace.Event.watch_build_finish
+             ~run_id:(Run_id.to_int run_id)
+             ~outcome:
+               (match outcome with
+                | Ok _ -> `Success
+                | Error `Already_reported -> `Failure)
+             ~start:build_started_at
+             ~stop
+             ~restart_duration);
+         Dune_trace.capture_alloc_profile (`Build (Run_id.to_int run_id))
+         |> Option.iter ~f:Dune_trace.always_emit;
+         outcome)
+      ~finally:(fun () ->
+        Option.iter timing_section ~f:Console.Status_line.remove_section;
+        Fiber.return ())
   in
   Fiber.Mutex.with_lock State.build_mutex ~f:(fun () -> Process.Build.with_ build f)
 ;;

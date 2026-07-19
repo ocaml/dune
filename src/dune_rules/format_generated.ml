@@ -60,3 +60,75 @@ let dialect_formatter config ~dialects source =
   in
   kind, format
 ;;
+
+let source_path path =
+  match Path.as_in_source_tree path with
+  | Some path -> Some path
+  | None -> Path.as_in_build_dir path |> Option.bind ~f:Path.Build.drop_build_context
+;;
+
+let for_source ~dir source =
+  let* project = Dune_load.find_project ~dir in
+  match source_path source with
+  | None -> Memo.return None
+  | Some source_path ->
+    Fs_memo.file_exists (Path.Outside_build_dir.In_source_dir source_path)
+    >>= (function
+     | false -> Memo.return None
+     | true ->
+       let+ config = format_config ~dir in
+       dialect_formatter config ~dialects:(Dune_project.dialects project) source
+       |> Option.bind ~f:(function
+         | kind, Dialect.Format.Ocamlformat -> Some kind
+         | _, Action _ -> None))
+;;
+
+let ocamlformat_action ~expander ~dir ~source ~target kind =
+  let open Action_builder.O in
+  let cwd = Path.Build.parent_exn target in
+  let args =
+    [ ocamlformat_flag kind
+    ; "--inplace"
+    ; "--name"
+    ; Path.reach source ~from:(Path.build cwd)
+    ; Filename.to_string (Path.Build.basename target)
+    ]
+  in
+  let action program =
+    Action.chdir (Path.build cwd) (Action.run program args)
+    |> Action.Full.make ~sandbox:Sandbox_config.needs_sandboxing
+  in
+  let* ocamlformat_is_locked =
+    Action_builder.of_memo (ocamlformat_dev_tool_lock_dir_exists ())
+  and* () = ocamlformat_config_deps ~dir in
+  if ocamlformat_is_locked
+  then (
+    let path = Path.build (Pkg_dev_tool.exe_path Ocamlformat) in
+    let+ () = Action_builder.path path
+    and+ env = Action_builder.of_memo (Pkg_rules.dev_tool_env Ocamlformat) in
+    action (Ok path) |> Action.Full.add_env env)
+  else
+    (let open Memo.O in
+     let* artifacts = Expander.artifacts expander in
+     Artifacts.binary
+       artifacts
+       ~hint:"opam install ocamlformat"
+       ~where:Original_path
+       ~dir
+       ~loc:None
+       (Pkg_dev_tool.exe_name Ocamlformat))
+    |> Action_builder.of_memo
+    >>| action
+;;
+
+let format_diff sctx ~dir ~source ~target ~diff =
+  let open Action_builder.O in
+  Action_builder.of_memo (for_source ~dir source)
+  >>= function
+  | None -> Action_builder.return (Action.Full.make diff)
+  | Some kind ->
+    let* expander = Action_builder.of_memo (Super_context.expander sctx ~dir) in
+    let+ formatter = ocamlformat_action ~expander ~dir ~source ~target kind in
+    Action.Full.map formatter ~f:(fun formatter ->
+      Action.progn [ Action.if_file_exists (Path.build target) formatter; diff ])
+;;

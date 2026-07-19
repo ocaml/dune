@@ -566,7 +566,7 @@ let rec expand (t : Dune_lang.Action.t) : Action.t Action_expander.t =
         Copy_line_directive.action context ~src:x ~dst:y))
   | System x ->
     let+ x = E.string x in
-    System.action x
+    O.System x
   | Bash x ->
     let+ script = E.string x in
     O.Bash { script; can_run_in_action_runner = true }

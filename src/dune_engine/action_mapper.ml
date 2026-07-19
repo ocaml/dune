@@ -36,6 +36,7 @@ module Make (Src : Action_intf.Ast) (Dst : Action_intf.Ast) = struct
     | Copy (x, y) -> Copy (f_path ~dir x, f_target ~dir y)
     | Symlink (x, y) -> Symlink (f_path ~dir x, f_target ~dir y)
     | Hardlink (x, y) -> Hardlink (f_path ~dir x, f_target ~dir y)
+    | System x -> System (f_string ~dir x)
     | Bash { script; can_run_in_action_runner } ->
       Bash { script = f_string ~dir script; can_run_in_action_runner }
     | Write_file (x, perm, y) -> Write_file (f_target ~dir x, perm, f_string ~dir y)

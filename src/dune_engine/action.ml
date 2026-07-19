@@ -53,6 +53,7 @@ struct
   let cat ps = Cat ps
   let copy a b = Copy (a, b)
   let symlink a b = Symlink (a, b)
+  let system s = System s
   let bash script = Bash { script; can_run_in_action_runner = true }
   let write_file ?(perm = File_perm.Normal) p s = Write_file (p, perm, s)
   let rename a b = Rename (a, b)
@@ -304,6 +305,9 @@ let digest =
     | Extension ext ->
       int d 21;
       digest_ext d ~dir ext
+    | System command ->
+      int d 22;
+      string d command
   in
   fun d t -> loop d t ~dir:Path.root
 ;;
@@ -323,6 +327,7 @@ let fold_one_step t ~init:acc ~f =
   | Copy _
   | Symlink _
   | Hardlink _
+  | System _
   | Bash _
   | Write_file _
   | Rename _
@@ -363,6 +368,7 @@ let rec is_dynamic = function
   | With_accepted_exit_codes (_, t) -> is_dynamic t
   | Progn l | Pipe (_, l) | Concurrent l -> List.exists l ~f:is_dynamic
   | Run _
+  | System _
   | Bash _
   | Echo _
   | Cat _
@@ -385,7 +391,7 @@ let rec runs_process = function
   | Ignore (_, t)
   | With_accepted_exit_codes (_, t) -> runs_process t
   | Progn l | Pipe (_, l) | Concurrent l -> List.exists l ~f:runs_process
-  | Run _ | Bash _ | Diff _ -> true
+  | Run _ | System _ | Bash _ | Diff _ -> true
   | Echo _
   | Cat _
   | Copy _
@@ -446,6 +452,7 @@ let is_useful_to memoize =
     | Diff _ -> false
     | Mkdir _ -> false
     | Run _ -> true
+    | System _ -> true
     | Bash _ -> true
     | Extension (module A) -> A.Spec.is_useful_to ~memoize
   in

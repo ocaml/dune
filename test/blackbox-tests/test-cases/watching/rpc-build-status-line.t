@@ -23,8 +23,8 @@ Forwarded builds display a rich status line once connected over RPC.
 
   $ stop_dune_quiet
 
-Batch builds also display the client count while their temporary RPC server is
-running.
+Batch builds display the build duration and parallelism alongside the client
+count while their temporary RPC server is running.
 
   $ STARTED="$PWD/batch-started"
   $ RELEASE="$PWD/batch-release"
@@ -54,6 +54,10 @@ running.
   > done
   $ tr '\r' '\n' < batch-output | grep -a -m 1 -o "\[rpc 1\]"
   [rpc 1]
+  $ tr '\r' '\n' < batch-output \
+  > | grep -a -E -m 1 -o "\[[0-9]+\.[0-9]s\] \[[0-9]+\.[0-9]x\]" \
+  > | sed -E 's/\[[0-9]+\.[0-9]s\]/[BUILD DURATION]/; s/\[[0-9]+\.[0-9]x\]/[PARALLELISM]/'
+  [BUILD DURATION] [PARALLELISM]
 
   $ touch "$RELEASE"
   $ if wait_for_pid_to_exit_with_timeout "$BATCH_PID" 200; then

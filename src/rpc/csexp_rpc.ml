@@ -16,7 +16,7 @@ module Socket = struct
   end
 
   module Mac = struct
-    external pthread_chdir : string -> unit = "dune_pthread_chdir" [@@noalloc]
+    external pthread_chdir : string -> unit = "dune_pthread_chdir"
     external set_nosigpipe : Unix.file_descr -> unit = "dune_set_nosigpipe"
 
     let with_chdir fd ~socket ~f =

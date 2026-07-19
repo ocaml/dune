@@ -619,7 +619,6 @@ let setup_emit_cmj_rules
         ~ident:merlin_ident
         ~dialects:(Dune_project.dialects (Scope.project scope))
         ~for_
-        ~is_default:true
         ~parameters:(Resolve.return []) )
   in
   let* () = Buildable_rules.gen_select_rules sctx compile_info ~dir ~for_ in

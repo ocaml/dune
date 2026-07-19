@@ -59,7 +59,6 @@ val make
   -> dialects:Dialect.DB.t
   -> ident:Merlin_ident.t
   -> for_:Compilation_mode.t
-  -> is_default:bool
   -> parameters:Module_name.t list Resolve.t
        (** The `parameters` argument takes the list of parameters from the
        compilation context and stores it in the form of `["-parameter"; "P1";
@@ -68,7 +67,7 @@ val make
 
 type group
 
-val group : t Nonempty_list.t -> group
+val group : default:t -> alternatives:t list -> group
 val more_src_dirs : Dir_contents.t -> source_dirs:Path.Source.t list -> Path.Source.t list
 
 (** Add rules for generating the merlin configuration of a specific stanza

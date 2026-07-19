@@ -381,15 +381,19 @@ module Processed = struct
     Buffer.contents b
   ;;
 
+  type match_kind =
+    | Exact_or_copy
+    | Extensionless
+
   let get_configuration { per_file_config; pp_config; config; is_default = _ } ~file =
     let open Option.O in
-    let+ { module_; opens; reader } =
+    let+ match_kind, { module_; opens; reader } =
       let find file = Path.Build.Map.find per_file_config file in
       match find file with
-      | Some _ as s -> s
+      | Some config -> Some (Exact_or_copy, config)
       | None ->
         (match Copy_line_directive.DB.follow_while file ~f:find with
-         | Some _ as s -> s
+         | Some config -> Some (Exact_or_copy, config)
          | None ->
            (* Fallback to handle preprocessed files (where the preprocessor has
               the file extensison changed).
@@ -399,25 +403,38 @@ module Processed = struct
               This is too rough but, really, preprocessors should emit copy
               line directives instead and then Dune should have the database
               similar to Copy_line_directive to handle this. *)
-           Path.Build.Map.find per_file_config (remove_extension file))
+           Path.Build.Map.find per_file_config (remove_extension file)
+           |> Option.map ~f:(fun config -> Extensionless, config))
     in
     let pp = Module_name.Per_item.get pp_config (Module.name module_) in
     let unit_name = Module_name.Unique.to_string (Module.obj_name module_) in
-    to_sexp ~unit_name ~opens ~pp ~reader config
+    match_kind, to_sexp ~unit_name ~opens ~pp ~reader config
   ;;
 
   let get configurations ~file =
-    let rec loop fallback = function
-      | [] -> fallback
-      | configuration :: configurations ->
-        (match get_configuration configuration ~file with
-         | None -> loop fallback configurations
-         | Some directives ->
-           if configuration.is_default
-           then Some directives
-           else loop (Option.first_some fallback (Some directives)) configurations)
+    let exact, extensionless =
+      Nonempty_list.to_list configurations
+      |> List.fold_left ~init:([], []) ~f:(fun (exact, extensionless) configuration ->
+        match get_configuration configuration ~file with
+        | None -> exact, extensionless
+        | Some (Exact_or_copy, directives) ->
+          (configuration, directives) :: exact, extensionless
+        | Some (Extensionless, directives) ->
+          exact, (configuration, directives) :: extensionless)
     in
-    loop None (Nonempty_list.to_list configurations)
+    let configurations =
+      match exact with
+      | _ :: _ -> List.rev exact
+      | [] -> List.rev extensionless
+    in
+    let rec choose fallback = function
+      | [] -> fallback
+      | (configuration, directives) :: configurations ->
+        if configuration.is_default
+        then Some directives
+        else choose (Option.first_some fallback (Some directives)) configurations
+    in
+    choose None configurations
   ;;
 
   let dump_entries { per_file_config; pp_config; config; is_default = _ }
@@ -592,7 +609,6 @@ module Unprocessed = struct
 
   type t =
     { ident : Merlin_ident.t
-    ; is_default : bool
     ; config : config
     ; modules : Modules.With_vlib.t
     }
@@ -609,7 +625,6 @@ module Unprocessed = struct
         ~dialects
         ~ident
         ~for_
-        ~is_default
         ~parameters
     =
     (* Merlin shouldn't cause the build to fail, so we just ignore errors *)
@@ -638,7 +653,7 @@ module Unprocessed = struct
       ; parameters
       }
     in
-    { ident; is_default; config; modules }
+    { ident; config; modules }
   ;;
 
   let encode_command =
@@ -756,7 +771,6 @@ module Unprocessed = struct
   let process
         ({ modules
          ; ident = _
-         ; is_default
          ; config =
              { stdlib_dir
              ; extensions
@@ -775,6 +789,7 @@ module Unprocessed = struct
         ~dir
         ~more_src_dirs
         ~expander
+        ~is_default
     =
     let open Action_builder.O in
     let context = Super_context.context sctx in
@@ -874,12 +889,21 @@ module Unprocessed = struct
   ;;
 end
 
-type group = Unprocessed.t Nonempty_list.t
+type group =
+  { ident : Merlin_ident.t
+  ; default : Unprocessed.t
+  ; alternatives : Unprocessed.t list
+  }
 
-let group configurations = configurations
+let group ~(default : Unprocessed.t) ~(alternatives : Unprocessed.t list) =
+  List.iter alternatives ~f:(fun (alternative : Unprocessed.t) ->
+    if not (Merlin_ident.equal default.ident alternative.ident)
+    then Code_error.raise "Merlin.group: configurations have different identifiers" []);
+  { ident = default.ident; default; alternatives }
+;;
 
-let dot_merlin sctx ~dir ~more_src_dirs ~expander (first :: rest : group) =
-  let merlin_file = Merlin_ident.merlin_file_path dir first.ident in
+let dot_merlin sctx ~dir ~more_src_dirs ~expander { ident; default; alternatives } =
+  let merlin_file = Merlin_ident.merlin_file_path dir ident in
   let* () =
     Rules.Produce.Alias.add_deps
       (Alias.make Alias0.check ~dir)
@@ -887,13 +911,16 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander (first :: rest : group) =
   in
   let configurations =
     let open Action_builder.O in
-    let+ first = Unprocessed.process first sctx ~dir ~more_src_dirs ~expander
-    and+ rest =
-      List.map rest ~f:(fun configuration ->
-        Unprocessed.process configuration sctx ~dir ~more_src_dirs ~expander)
+    let process configuration ~is_default =
+      Unprocessed.process configuration sctx ~dir ~more_src_dirs ~expander ~is_default
+    in
+    let+ default = process default ~is_default:true
+    and+ alternatives =
+      List.map alternatives ~f:(fun configuration ->
+        process configuration ~is_default:false)
       |> Action_builder.all
     in
-    (first :: rest : Processed.t)
+    (default :: alternatives : Processed.t)
   in
   let action =
     configurations

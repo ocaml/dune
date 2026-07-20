@@ -27,8 +27,9 @@ type local_bins = path Filename.Map.t
 
 type t =
   { context : Context.t
-  ; (* Mapping from executable names to their actual path in the workspace.
-       The keys are the executable names without the .exe, even on Windows.
+  ; (* Mapping from binary lookup names to their definitions. On Windows, a
+       trailing [.exe] is removed from lookup names, while [Origin.dst] retains
+       the actual install filename.
        Enumerating binaries from install stanzas may involve expanding globs,
        but the artifacts database is depended on by the logic which expands
        globs. The computation of this field is deferred to break the cycle. *)
@@ -120,11 +121,11 @@ let binary t ?hint ?(where = Original_path) ~dir ~loc name =
        Ok (Path.build src))
 ;;
 
-let binary_package t ~dir name =
+let local_binary_install_name t ~dir name =
   analyze_binary t ~dir name
   >>| function
-  | `Origin { package; _ } -> package
-  | `Resolved _ | `None -> None
+  | `Origin { package = Some _; dst; _ } -> Some (Path.Local.basename dst)
+  | `Origin { package = None; _ } | `Resolved _ | `None -> None
 ;;
 
 let binary_available t ~dir name =

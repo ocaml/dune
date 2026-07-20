@@ -29,6 +29,16 @@ make_dune_project() {
 	EOF
 }
 
+make_dune_project_with_package() {
+  local version="$1"
+  local package="$2"
+
+  make_dune_project "$version"
+  cat >> dune-project <<- EOF
+	(package (name ${package}))
+	EOF
+}
+
 make_dir_with_dune() {
   path="$1"
   mkdir -p "$path"

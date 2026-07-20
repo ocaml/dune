@@ -34,8 +34,8 @@ let of_mode_set (modes : Lib_mode.Map.Set.t) =
 ;;
 
 let default_sandbox = function
-  | Ocaml -> Sandbox_config.no_special_requirements
-  | Melange -> Sandbox_config.needs_sandboxing
+  | Ocaml -> Dune_engine.Sandbox_config.no_special_requirements
+  | Melange -> Dune_engine.Sandbox_config.no_special_requirements
 ;;
 
 module By_mode = struct

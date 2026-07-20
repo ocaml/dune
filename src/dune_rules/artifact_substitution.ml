@@ -673,7 +673,12 @@ let copy_file_non_atomic ~conf ?chmod ~src ~dst () =
 (** This is just an optimisation: skip the renaming if the destination exists
     and has the right contents and executable bit. The optimisation is useful to
     avoid unnecessary retriggering of Dune and other file-watching systems. *)
-let replace_if_different ~delete_dst_if_it_is_a_directory ~src ~dst =
+type replacement =
+  | Up_to_date
+  | Rename
+  | Remove_directory_and_rename
+
+let replacement_action ~delete_dst_if_it_is_a_directory ~src ~dst =
   let files_are_up_to_date src_stats dst_stats =
     let executable stats =
       Permissions.test_any
@@ -686,28 +691,23 @@ let replace_if_different ~delete_dst_if_it_is_a_directory ~src ~dst =
     let dst_digest = Digest.file dst in
     Digest.equal temp_file_digest dst_digest
   in
-  let up_to_date =
-    match Path.Untracked.stat dst with
-    | Ok { st_kind = S_DIR; _ } ->
-      (match delete_dst_if_it_is_a_directory with
-       | true ->
-         Path.rm_rf dst;
-         false
-       | false ->
-         User_error.raise
-           [ Pp.textf
-               "Cannot copy artifact to %S because it is a directory"
-               (Path.to_string dst)
-           ])
-    | Error (_ : Unix_error.Detailed.t) -> false
-    | Ok ({ st_kind = S_REG; _ } as dst_stats) ->
-      (match Path.Untracked.stat src with
-       | Ok ({ st_kind = S_REG; _ } as src_stats) ->
-         files_are_up_to_date src_stats dst_stats
-       | Ok _ | Error _ -> false)
-    | Ok _ -> false
-  in
-  if not up_to_date then Unix.rename (Path.to_string src) (Path.to_string dst)
+  match Path.Untracked.stat dst with
+  | Ok { st_kind = S_DIR; _ } ->
+    (match delete_dst_if_it_is_a_directory with
+     | true -> Remove_directory_and_rename
+     | false ->
+       User_error.raise
+         [ Pp.textf
+             "Cannot copy artifact to %S because it is a directory"
+             (Path.to_string dst)
+         ])
+  | Error (_ : Unix_error.Detailed.t) -> Rename
+  | Ok ({ st_kind = S_REG; _ } as dst_stats) ->
+    (match Path.Untracked.stat src with
+     | Ok ({ st_kind = S_REG; _ } as src_stats) ->
+       if files_are_up_to_date src_stats dst_stats then Up_to_date else Rename
+     | Ok _ | Error _ -> Rename)
+  | Ok _ -> Rename
 ;;
 
 let copy_file ~conf ?chmod ?(delete_dst_if_it_is_a_directory = false) ~src ~dst () =
@@ -720,6 +720,7 @@ let copy_file ~conf ?chmod ?(delete_dst_if_it_is_a_directory = false) ~src ~dst 
     let dst_name = Path.basename dst |> Filename.to_string in
     Path.relative dst_dir (sprintf ".#%s.dune-temp" dst_name)
   in
+  let temp_file_was_renamed = ref false in
   Fiber.finalize
     (fun () ->
        let open Fiber.O in
@@ -728,10 +729,24 @@ let copy_file ~conf ?chmod ?(delete_dst_if_it_is_a_directory = false) ~src ~dst 
        in
        let* has_subst = copy_file_non_atomic ~conf ?chmod ~src ~dst:temp_file () in
        let* () = Conf.run_sign_hook conf ~has_subst temp_file in
-       Scheduler.async_exn (fun () ->
-         replace_if_different ~delete_dst_if_it_is_a_directory ~src:temp_file ~dst))
+       let* replacement =
+         Scheduler.async_exn (fun () ->
+           replacement_action ~delete_dst_if_it_is_a_directory ~src:temp_file ~dst)
+       in
+       (match replacement with
+        | Up_to_date -> ()
+        | Rename ->
+          Unix.rename (Path.to_string temp_file) (Path.to_string dst);
+          temp_file_was_renamed := true
+        | Remove_directory_and_rename ->
+          Path.rm_rf dst;
+          Unix.rename (Path.to_string temp_file) (Path.to_string dst);
+          temp_file_was_renamed := true);
+       Fiber.return ())
     ~finally:(fun () ->
-      Scheduler.async_exn (fun () -> Fpath.unlink_no_err (Path.to_string temp_file)))
+      if !temp_file_was_renamed
+      then Fiber.return ()
+      else Scheduler.async_exn (fun () -> Fpath.unlink_no_err (Path.to_string temp_file)))
 ;;
 
 let test_file ~src () =

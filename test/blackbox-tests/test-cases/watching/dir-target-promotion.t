@@ -142,15 +142,20 @@ Dune correctly notices that the contents of . changed because [d1] was created.
 
 Here [path_stat] of [d1] changed, because it didn't exist before the build. Dune
 later recomputed [path_stat] once again, when [d1/b] was modified, and the
-result remained unchanged (because fields like [mtime] are ignored). The result
-of [dir_contents] also remained unchanged because Dune fixed the listing of [d1]
-by re-promoting the directory target.
+result remained unchanged (because fields like [mtime] are ignored). The
+[dir_contents] cache may be unchanged, or skipped while a force-update has
+evicted its entry. In either case, it must not report a change.
 
-  $ dune trace cat | jq_dune 'cacheEvent("d1")'
+  $ dune trace cat | jq_dune '
+  > cacheEvent("d1")
+  > | if .cache_type == "dir_contents"
+  >   then { cache_type, path, changed: (.result == "changed") }
+  >   else .
+  >   end'
   {
     "cache_type": "dir_contents",
     "path": "d1",
-    "result": "unchanged"
+    "changed": false
   }
   {
     "cache_type": "file_digest",
@@ -165,7 +170,7 @@ by re-promoting the directory target.
   {
     "cache_type": "dir_contents",
     "path": "d1",
-    "result": "unchanged"
+    "changed": false
   }
   {
     "cache_type": "file_digest",

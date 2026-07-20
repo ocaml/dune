@@ -2,6 +2,8 @@
 #include <caml/memory.h>
 #include <caml/mlvalues.h>
 
+#include <errno.h>
+
 #if defined(__APPLE__)
 #define _DARWIN_C_SOURCE
 
@@ -10,7 +12,6 @@
 #include <caml/unixsupport.h>
 
 #include <copyfile.h>
-#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/syslimits.h>
@@ -89,6 +90,10 @@ static ssize_t dune_sendfile(int in, int out, size_t length) {
     if (ret < 0) {
       return ret;
     }
+    if (ret == 0) {
+      errno = EIO;
+      return -1;
+    }
     length = length - ret;
   }
   return length;
@@ -106,6 +111,10 @@ static ssize_t dune_copy_file_range(int in, int out, size_t length) {
     ret = copy_file_range_fn(in, NULL, out, NULL, length, 0);
     if (ret < 0) {
       return dune_sendfile(in, out, length);
+    }
+    if (ret == 0) {
+      errno = EIO;
+      return -1;
     }
     length = length - ret;
   }

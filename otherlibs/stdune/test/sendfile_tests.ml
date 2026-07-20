@@ -7,7 +7,7 @@ external sendfile
   -> unit
   = "stdune_sendfile"
 
-let sendfile_hangs_on_premature_eof () =
+let sendfile_rejects_premature_eof () =
   let dir = Temp.create Dir ~prefix:"sendfile" ~suffix:"test" in
   let src = Path.relative dir "src" in
   let dst = Path.relative dir "dst" in
@@ -26,16 +26,17 @@ let sendfile_hangs_on_premature_eof () =
       | None when attempts = 0 ->
         Pid.kill_exn child `Pid Kill;
         ignore (Proc.wait (Pid child) [] : Proc.Process_info.t option);
-        true
+        false
       | None ->
         Unix.sleepf 0.01;
         wait (attempts - 1)
+      | Some { status = WEXITED 0; _ } -> true
       | Some _ -> false
     in
     wait 100
 ;;
 
-let%expect_test "sendfile hangs if source ends before requested size" =
-  assert (sendfile_hangs_on_premature_eof ());
+let%expect_test "sendfile rejects a source ending before the requested size" =
+  assert (sendfile_rejects_premature_eof ());
   [%expect {||}]
 ;;

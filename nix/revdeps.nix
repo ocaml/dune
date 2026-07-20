@@ -49,6 +49,13 @@ let
           };
         });
 
+        mdx = osuper.mdx.overrideAttrs (old: {
+          doCheck = false;
+          postInstall = (old.postInstall or "") + ''
+            mkdir -p $bin $lib
+          '';
+        });
+
         dune_3 = osuper.dune_3.overrideAttrs (old: {
           src = revdeps-dune;
           nativeBuildInputs = old.nativeBuildInputs ++ [ pkgs.git ];

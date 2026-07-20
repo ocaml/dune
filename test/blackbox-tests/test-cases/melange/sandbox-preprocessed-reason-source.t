@@ -15,10 +15,25 @@ compiler diagnostic should still print the original Reason source line.
   >  (kind ppx_rewriter)
   >  (modules ppx_noop)
   >  (libraries ppxlib))
+  > 
+  > (library
+  >  (name ppx_read_input)
+  >  (kind ppx_rewriter)
+  >  (modules ppx_read_input)
+  >  (libraries ppxlib))
   > EOF
 
   $ cat > cases/ppx/ppx_noop.ml <<'EOF'
   > let () = Ppxlib.Driver.register_transformation "ppx_noop"
+  > EOF
+
+  $ cat > cases/ppx/ppx_read_input.ml <<'EOF'
+  > let impl ast =
+  >   let ic = open_in !Ocaml_common.Location.input_name in
+  >   close_in ic;
+  >   ast
+  > ;;
+  > let () = Ppxlib.Driver.register_transformation "ppx_read_input" ~impl
   > EOF
 
   $ cat > cases/src/dune <<'EOF'
@@ -44,3 +59,23 @@ compiler diagnostic should still print the original Reason source line.
            int
   Leaving directory 'cases'
   [1]
+
+PPX rewriters may read the logical input filename passed with [-loc-filename].
+The original Reason source must be available in the PPX sandbox.
+
+  $ mkdir -p cases/read-loc/src
+
+  $ cat > cases/read-loc/src/dune <<'EOF'
+  > (library
+  >  (name read_loc_filename)
+  >  (modes melange)
+  >  (modules x)
+  >  (preprocess
+  >   (pps ppx_read_input)))
+  > EOF
+
+  $ cat > cases/read-loc/src/x.re <<'EOF'
+  > let x = "reason"
+  > EOF
+
+  $ dune build --root cases --sandbox=symlink @read-loc/src/all

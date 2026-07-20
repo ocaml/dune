@@ -21,5 +21,9 @@ diff
 
       For text diffs, regular correction files are formatted before comparison
       or promotion, according to the formatting configuration for ``<file1>``.
-      This supports OCamlFormat and Dune's built-in formatter for ``dune`` and
-      ``dune-project``. See :doc:`../dune-project/formatting`.
+      This supports OCamlFormat, Dune's built-in formatter for ``dune`` and
+      ``dune-project``, and formatter actions configured for the source's
+      :term:`dialect`. See :doc:`../dune-project/formatting`.
+
+      Dune builds the formatter's dependencies before checking whether
+      ``<file2>`` exists.

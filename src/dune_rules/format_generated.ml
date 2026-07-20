@@ -3,7 +3,7 @@ open Memo.O
 
 type t =
   | Dune of Dune_lang.Syntax.Version.t
-  | Ocamlformat of Ml_kind.t
+  | Dialect of Ml_kind.t * Dialect.Format.t
 
 let rec subdirs_until_root dir =
   match Path.parent dir with
@@ -89,9 +89,7 @@ let for_source ~dir source =
            (Dune (Dune_project.dune_version project))
        else
          dialect_formatter config ~dialects:(Dune_project.dialects project) source
-         |> Option.bind ~f:(function
-           | kind, Dialect.Format.Ocamlformat -> Some (Ocamlformat kind)
-           | _, Action _ -> None))
+         |> Option.map ~f:(fun (kind, format) -> Dialect (kind, format)))
 ;;
 
 let ocamlformat_action ~expander ~dir ~source ~target kind =

@@ -53,6 +53,10 @@ module Action_expander : sig
   val with_expander : (Expander.t -> 'a t Memo.t) -> 'a t
   val bind_action_builder : 'a t -> f:('a -> 'b Action_builder.t) -> 'b t
 
+  (** Replace an intermediate file atomically with stdout, without inferring a
+      rule dependency on that file from the wrapped action. *)
+  val with_stdout_to_intermediate : Path.Build.t -> Action.Full.t t -> Action.Full.t t
+
   (* String with vars expansion *)
   module E : sig
     val string : String_with_vars.t -> string t
@@ -235,6 +239,27 @@ end = struct
   let no_infer t env acc =
     let+! x, _acc = t { env with infer = false } acc in
     x, acc
+  ;;
+
+  let with_stdout_to_intermediate target t env acc =
+    let+! action, inferred =
+      let empty = Action_builder.return Path.Set.empty in
+      t env { acc with deps = empty; deps_if_exist = empty }
+    in
+    let merge_deps =
+      let path = Path.build target in
+      fun outer inner ->
+        let+ outer
+        and+ inner in
+        Path.Set.union outer (Path.Set.remove inner path)
+    in
+    ( Action_builder.map
+        action
+        ~f:(Action.Full.map ~f:(Action.with_stdout_to_atomic target))
+    , { inferred with
+        deps = merge_deps acc.deps inferred.deps
+      ; deps_if_exist = merge_deps acc.deps_if_exist inferred.deps_if_exist
+      } )
   ;;
 
   module O = struct
@@ -504,7 +529,7 @@ type format_generated_diffs =
   | Do_not_format
   | Format of Super_context.t
 
-let format_generated_diff_action sctx ~dir ~source ~target diff =
+let rec format_generated_diff_action sctx ~dir ~source ~target diff =
   let open Action_builder.O in
   Format_generated.for_source ~dir source
   |> Action_builder.of_memo
@@ -518,15 +543,35 @@ let format_generated_diff_action sctx ~dir ~source ~target diff =
         |> Action.with_stdout_to_atomic target
         |> Action.Full.make
         |> Action_builder.return
-      | Ocamlformat kind ->
+      | Dialect (kind, Ocamlformat) ->
         let* expander = Action_builder.of_memo (Super_context.expander sctx ~dir) in
         Format_generated.ocamlformat_action ~expander ~dir ~source ~target kind
+      | Dialect (_, Action (loc, formatter)) ->
+        let* expander =
+          let bindings =
+            Pform.Map.singleton (Var Input_file) [ Value.Path (Path.build target) ]
+          in
+          Super_context.expander sctx ~dir
+          |> Action_builder.of_memo
+          >>| Expander.add_bindings ~bindings
+        in
+        let formatter =
+          expand_action ~format_generated_diffs:Do_not_format formatter
+          |> Action_expander.with_stdout_to_intermediate target
+        in
+        expand_no_targets_internal
+          formatter
+          Sandbox_config.needs_sandboxing
+          ~chdir:(Expander.context expander |> Context_name.build_dir)
+          ~loc
+          ~expander
+          ~deps:[]
+          ~what:"formatting actions"
     in
     Action.Full.map formatter ~f:(fun formatter ->
       Action.progn [ Action.if_file_exists (Path.build target) formatter; diff ])
-;;
 
-let rec expand_action ~format_generated_diffs (t : Dune_lang.Action.t)
+and expand_action ~format_generated_diffs (t : Dune_lang.Action.t)
   : Action.Full.t Action_expander.t
   =
   let module A = Action_expander in

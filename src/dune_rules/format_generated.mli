@@ -4,7 +4,7 @@ open Import
 
 type t =
   | Dune of Dune_lang.Syntax.Version.t
-  | Ocamlformat of Ml_kind.t
+  | Dialect of Ml_kind.t * Dialect.Format.t
 
 val for_source : dir:Path.Build.t -> Path.t -> t option Memo.t
 val format_config : dir:Path.Build.t -> Format_config.t Memo.t

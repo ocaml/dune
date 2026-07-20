@@ -16,7 +16,7 @@ let depend_on_files ~named dir =
 let formatter_diff_action =
   let dep_on_alias_action alias ~loc action =
     let action =
-      Rule.Anonymous_action_rule.make
+      Rule.Anonymous_action.Rule.make
         ~loc
         ~dir:(Alias.dir alias)
         ~aliases:[ Alias.name alias ]

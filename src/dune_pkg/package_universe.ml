@@ -4,6 +4,7 @@ type t =
   { local_packages : Local_package.t Package_name.Map.t
   ; lock_dir : Lock_dir.t
   ; platform : Solver_env.t
+  ; lock_packages : Lock_dir.Pkg.t Package_name.Map.t
   ; version_by_package_name : Package_version.t Package_name.Map.t
   }
 
@@ -18,22 +19,30 @@ let lockdir_regenerate_hints =
   ]
 ;;
 
-let version_by_package_name ~platform local_packages (lock_dir : Lock_dir.t) =
+let version_by_package_name local_packages lock_packages =
   let from_local_packages =
     Package_name.Map.map local_packages ~f:(fun (local_package : Local_package.t) ->
       local_package.version)
   in
   let from_lock_dir =
-    Lock_dir.Packages.pkgs_on_platform_by_name ~platform lock_dir.packages
-    |> Package_name.Map.map ~f:(fun (pkg : Lock_dir.Pkg.t) -> pkg.info.version)
+    Package_name.Map.map lock_packages ~f:(fun (pkg : Lock_dir.Pkg.t) -> pkg.info.version)
   in
   let exception Duplicate_package of Package_name.t in
   try
-    Package_name.Map.union
-      from_local_packages
-      from_lock_dir
-      ~f:(fun duplicate_package_name _ _ ->
-        raise (Duplicate_package duplicate_package_name))
+    let versions =
+      Package_name.Map.union
+        from_local_packages
+        from_lock_dir
+        ~f:(fun duplicate_package_name _ _ ->
+          raise (Duplicate_package duplicate_package_name))
+    in
+    if Package_name.Map.mem versions Dune_dep.name
+    then versions
+    else
+      Package_name.Map.set
+        versions
+        Dune_dep.name
+        (Package_version.of_opam_package_version Dune_dep.version)
   with
   | Duplicate_package duplicate_package_name ->
     let local_package = Package_name.Map.find_exn local_packages duplicate_package_name in
@@ -54,8 +63,10 @@ let concrete_dependencies_of_local_package t local_package_name ~with_test =
     |> Resolve_opam_formula.filtered_formula_to_package_names
          ~with_test
          ~env:
-           (Solver_stats.Expanded_variable_bindings.to_solver_env
-              t.lock_dir.expanded_solver_variable_bindings
+           (Solver_env.extend
+              (Solver_stats.Expanded_variable_bindings.to_solver_env
+                 t.lock_dir.expanded_solver_variable_bindings)
+              t.platform
             |> Solver_env.to_env)
          ~packages:t.version_by_package_name
   with
@@ -232,79 +243,55 @@ let validate t =
   |> check_for_unnecessary_packges_in_lock_dir ~platform:t.platform t.lock_dir
 ;;
 
+let create_for_build ~platform local_packages lock_dir =
+  let lock_packages = Lock_dir.packages_on_platform lock_dir ~platform in
+  let version_by_package_name = version_by_package_name local_packages lock_packages in
+  { local_packages; lock_dir; platform; lock_packages; version_by_package_name }
+;;
+
 let create ~platform local_packages lock_dir =
   try
-    let version_by_package_name =
-      version_by_package_name ~platform local_packages lock_dir
-    in
-    let t = { local_packages; lock_dir; platform; version_by_package_name } in
+    let t = create_for_build ~platform local_packages lock_dir in
     validate t;
     Ok t
   with
   | User_error.E e -> Error e
 ;;
 
-let local_transitive_dependency_closure_without_test =
+let immediate_build_dependencies t package_name =
+  match Package_name.Map.find t.local_packages package_name with
+  | Some _ -> concrete_dependencies_of_local_package t package_name ~with_test:false
+  | None ->
+    (match Package_name.Map.find t.lock_packages package_name with
+     | None -> []
+     | Some package ->
+       Lock_dir.Conditional_choice.choose_for_platform
+         package.depends
+         ~platform:t.platform
+       |> Option.value ~default:[]
+       |> List.map ~f:(fun (dependency : Lock_dir.Dependency.t) -> dependency.name))
+;;
+
+let transitive_dependency_closure_without_test =
   let module Top_closure = Top_closure.Make (Package_name.Set) (Monad.Id) in
   fun t start ->
     match
       Top_closure.top_closure
-        ~deps:(fun a ->
-          concrete_dependencies_of_local_package t a ~with_test:false
-          |> List.filter ~f:(Package_name.Map.mem t.local_packages))
+        ~deps:(immediate_build_dependencies t)
         ~key:Fun.id
-        start
+        (Package_name.Set.to_list start)
     with
-    | Ok s -> Package_name.Set.of_list s
-    | Error _ -> Code_error.raise "cycles aren't allowed because we forbid post deps" []
-;;
-
-let transitive_dependency_closure_without_test t start =
-  let local_package_names = Package_name.Set.of_keys t.local_packages in
-  let local_transitive_dependency_closure =
-    local_transitive_dependency_closure_without_test
-      t
-      (Package_name.Set.inter local_package_names start |> Package_name.Set.to_list)
-  in
-  let non_local_transitive_dependency_closure =
-    let non_local_immediate_dependencies_of_local_transitive_dependency_closure =
-      local_transitive_dependency_closure
-      |> Package_name.Set.to_list
-      |> Package_name.Set.union_map ~f:(fun name ->
-        let all_deps =
-          concrete_dependencies_of_local_package t name ~with_test:false
-          |> Package_name.Set.of_list
-        in
-        Package_name.Set.diff all_deps local_package_names)
-    in
-    match
-      Lock_dir.transitive_dependency_closure
-        t.lock_dir
-        ~platform:t.platform
-        Package_name.Set.(
-          union
-            non_local_immediate_dependencies_of_local_transitive_dependency_closure
-            (diff start local_package_names))
-    with
-    | Ok x -> x
-    | Error (`Missing_packages missing_packages) ->
-      Code_error.raise
-        "Attempted to find non-existent packages in lockdir after validation which \
-         should not be possible"
-        (Package_name.Set.to_list missing_packages
-         |> List.map ~f:(fun p -> "missing package", Package_name.to_dyn p))
-  in
-  Package_name.Set.union
-    local_transitive_dependency_closure
-    non_local_transitive_dependency_closure
+    | Ok closure -> Package_name.Set.of_list closure
+    | Error cycle ->
+      User_error.raise
+        [ Pp.text "Dependency cycle between packages:"
+        ; Pp.chain cycle ~f:(fun package -> Pp.text (Package_name.to_string package))
+        ]
 ;;
 
 let contains_package t package_name =
   let in_local_packages = Package_name.Map.mem t.local_packages package_name in
-  let lock_dir_packages =
-    Lock_dir.Packages.pkgs_on_platform_by_name ~platform:t.platform t.lock_dir.packages
-  in
-  let in_lock_dir = Package_name.Map.mem lock_dir_packages package_name in
+  let in_lock_dir = Package_name.Map.mem t.lock_packages package_name in
   in_local_packages || in_lock_dir
 ;;
 
@@ -316,6 +303,14 @@ let check_contains_package t package_name =
           "Package %S is neither a local package nor present in the lockdir."
           (Package_name.to_string package_name)
       ]
+;;
+
+let build_dependency_closure t package =
+  check_contains_package t package;
+  let closure =
+    transitive_dependency_closure_without_test t (Package_name.Set.singleton package)
+  in
+  Package_name.Set.remove closure package
 ;;
 
 let all_dependencies t package ~traverse =
@@ -341,11 +336,7 @@ let non_test_dependencies t package ~traverse =
   | `Immediate ->
     concrete_dependencies_of_local_package t package ~with_test:false
     |> Package_name.Set.of_list
-  | `Transitive ->
-    let closure =
-      transitive_dependency_closure_without_test t (Package_name.Set.singleton package)
-    in
-    Package_name.Set.remove closure package
+  | `Transitive -> build_dependency_closure t package
 ;;
 
 let test_only_dependencies t package ~traverse =

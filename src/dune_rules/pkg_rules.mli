@@ -20,6 +20,11 @@ val setup_rules
 
 val lock_dir_path : Context_name.t -> Path.t option Memo.t
 val lock_dir_active : Context_name.t -> bool Memo.t
+
+val set_project_package_universe
+  :  (Context_name.t -> Dune_pkg.Package_universe.t Memo.t)
+  -> unit
+
 val ocaml_toolchain : Context_name.t -> Ocaml_toolchain.t Action_builder.t option Memo.t
 val which : Context_name.t -> (Filename.t -> Path.t option Memo.t) Staged.t
 val exported_env : Context_name.t -> Env.t Memo.t

@@ -39,20 +39,30 @@ A rule depends on the lock-dir package:
 
   $ write_lockdir_consumer_rule
 
-Lock-dir validation does not currently recognise workspace packages as
-valid dependency targets. Both missing workspace deps are reported:
+The build succeeds. Both workspace libraries appear in the same layout
+digest under .packages:
 
-  $ dune build out 2>&1
-  File "_build/_private/default/.lock/dune.lock/consumer.pkg", line 2,
-  characters 9-17:
-  The package "consumer" depends on the package "ws-lib-a", but "ws-lib-a" does
-  not appear in the lockdir _build/_private/default/.lock/dune.lock.
-  File "_build/_private/default/.lock/dune.lock/consumer.pkg", line 2,
-  characters 18-26:
-  The package "consumer" depends on the package "ws-lib-b", but "ws-lib-b" does
-  not appear in the lockdir _build/_private/default/.lock/dune.lock.
-  Error: At least one package dependency is itself not present as a package in
-  the lockdir _build/_private/default/.lock/dune.lock.
-  Hint: This could indicate that the lockdir is corrupted. Delete it and then
-  regenerate it by running: 'dune pkg lock'
-  [1]
+  $ dune build out
+  building consumer
+
+  $ find _build/install/default/.packages -type f -o -type l | censor | sort
+  _build/install/default/.packages/$DIGEST/lib/ws-lib-a/META
+  _build/install/default/.packages/$DIGEST/lib/ws-lib-a/dune-package
+  _build/install/default/.packages/$DIGEST/lib/ws-lib-a/ws_lib_a.a
+  _build/install/default/.packages/$DIGEST/lib/ws-lib-a/ws_lib_a.cma
+  _build/install/default/.packages/$DIGEST/lib/ws-lib-a/ws_lib_a.cmi
+  _build/install/default/.packages/$DIGEST/lib/ws-lib-a/ws_lib_a.cmt
+  _build/install/default/.packages/$DIGEST/lib/ws-lib-a/ws_lib_a.cmx
+  _build/install/default/.packages/$DIGEST/lib/ws-lib-a/ws_lib_a.cmxa
+  _build/install/default/.packages/$DIGEST/lib/ws-lib-a/ws_lib_a.cmxs
+  _build/install/default/.packages/$DIGEST/lib/ws-lib-a/ws_lib_a.ml
+  _build/install/default/.packages/$DIGEST/lib/ws-lib-b/META
+  _build/install/default/.packages/$DIGEST/lib/ws-lib-b/dune-package
+  _build/install/default/.packages/$DIGEST/lib/ws-lib-b/ws_lib_b.a
+  _build/install/default/.packages/$DIGEST/lib/ws-lib-b/ws_lib_b.cma
+  _build/install/default/.packages/$DIGEST/lib/ws-lib-b/ws_lib_b.cmi
+  _build/install/default/.packages/$DIGEST/lib/ws-lib-b/ws_lib_b.cmt
+  _build/install/default/.packages/$DIGEST/lib/ws-lib-b/ws_lib_b.cmx
+  _build/install/default/.packages/$DIGEST/lib/ws-lib-b/ws_lib_b.cmxa
+  _build/install/default/.packages/$DIGEST/lib/ws-lib-b/ws_lib_b.cmxs
+  _build/install/default/.packages/$DIGEST/lib/ws-lib-b/ws_lib_b.ml

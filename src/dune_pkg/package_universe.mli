@@ -14,6 +14,19 @@ val create
   -> Lock_dir.t
   -> (t, User_message.t) result
 
+(** Create the package graph used to construct build rules. Unlike {!create},
+    this does not validate dependency hashes or reject unreachable packages in
+    hand-written lock directories. *)
+val create_for_build
+  :  platform:Solver_env.t
+  -> Local_package.t Package_name.Map.t
+  -> Lock_dir.t
+  -> t
+
+(** The packages needed to build the given package, across both workspace and
+    lock-directory dependency edges. *)
+val build_dependency_closure : t -> Package_name.t -> Package_name.Set.t
+
 val dependency_digest
   :  Local_package.t Package_name.Map.t
   -> Local_package.Dependency_hash.t option

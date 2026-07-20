@@ -4,6 +4,27 @@ val set_entry_resolver
   :  (Context_name.t -> Package.Name.t -> Install.Entry.Sourced.Unexpanded.t list Memo.t)
   -> unit
 
+val set_package_variable_resolver
+  :  (Context_name.t
+      -> Package.Name.t
+      -> OpamVariable.variable_contents Package_variable_name.Map.t Memo.t)
+  -> unit
+
+(* Resolved install-layout entries, keyed by their materialised destination
+   under {!root}. *)
+val entries
+  :  Context_name.t
+  -> Package.Name.Set.t
+  -> Path.t Install.Entry.Expanded.t Path.Build.Map.t Memo.t
+
+val package_variables
+  :  Context_name.t
+  -> Package.Name.t
+  -> OpamVariable.variable_contents Package_variable_name.Map.t Memo.t
+
+(** The materialised root for the install layout of the package set. *)
+val root : Context_name.t -> Package.Name.Set.t -> Path.Build.t
+
 (** Env extension for an action depending on a package set. Returns an env
     with PATH, OCAMLPATH, etc. prepended for the layout root, and registers
     the action's dependency on every install entry the layout produces for

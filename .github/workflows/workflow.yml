@@ -437,7 +437,7 @@ jobs:
           node-version: latest
 
       - name: Install deps
-        run: opam install csexp pp re spawn uutf ppx_expect ppx_inline_test wasm_of_ocaml-compiler
+        run: opam install csexp pp re spawn uutf ppx_expect ppx_inline_test wasm_of_ocaml-compiler.6.0.1+ox1
 
       - name: Build dune
         run: opam exec -- make bootstrap

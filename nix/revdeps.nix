@@ -40,6 +40,15 @@ let
           flambdaSupport = false;
         };
 
+        cppo = osuper.cppo.overrideAttrs (_: {
+          src = final.fetchFromGitHub {
+            owner = "ocaml-community";
+            repo = "cppo";
+            rev = "fe1e27112d34fd9a7f68f268508663d436d41ac6";
+            hash = "sha256-BMYjsAKshiRGPHERF0/kP0heb8ZHlq5eCpMDQQJ+F4U=";
+          };
+        });
+
         dune_3 = osuper.dune_3.overrideAttrs (old: {
           src = revdeps-dune;
           nativeBuildInputs = old.nativeBuildInputs ++ [ pkgs.git ];

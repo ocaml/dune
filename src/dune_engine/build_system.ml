@@ -913,10 +913,20 @@ module Internal = struct
                target
            ])
 
-  and execute_anonymous_action (action_rule : Rule.Anonymous_action.Rule.t) =
+  and execute_anonymous_action_impl (action_rule : Rule.Anonymous_action.Rule.t) =
     let* action, facts = Action_builder.evaluate_and_collect_facts action_rule.action in
     let action = Rule.Anonymous_action.of_rule action_rule action in
     execute_action action ~observing_facts:facts
+
+  and execute_anonymous_action_memo =
+    lazy
+      (Memo.create
+         "execute-anonymous-action"
+         ~input:(module Rule.Anonymous_action.Rule)
+         execute_anonymous_action_impl)
+
+  and execute_anonymous_action (action_rule : Rule.Anonymous_action.Rule.t) : unit Memo.t =
+    Memo.exec (Lazy.force execute_anonymous_action_memo) action_rule
 
   and dep_on_anonymous_action (action_rule : Rule.Anonymous_action.Rule.t)
     : unit Action_builder.t

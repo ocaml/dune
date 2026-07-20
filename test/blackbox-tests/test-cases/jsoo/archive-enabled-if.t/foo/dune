@@ -1,0 +1,7 @@
+(library
+ (name foo)
+ (enabled_if false))
+
+(library
+ (name foo)
+ (enabled_if true))

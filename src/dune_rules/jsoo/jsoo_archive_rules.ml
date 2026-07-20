@@ -12,18 +12,21 @@ module Library_key = struct
   let to_dyn (dir, name) = Dyn.Tuple [ Path.Build.to_dyn dir; Dyn.string name ]
 end
 
-let find_library ~dir ~lib_name =
+let find_library ~expander ~dir ~lib_name =
   Dune_load.stanzas_in_dir dir
   >>= function
   | None -> Memo.return None
   | Some dune_file ->
-    let+ stanzas = Dune_file.stanzas dune_file in
-    List.find_map stanzas ~f:(fun stanza ->
+    let* stanzas = Dune_file.stanzas dune_file in
+    Memo.List.find_map stanzas ~f:(fun stanza ->
       match Stanza.repr stanza with
-      | Library.T lib ->
-        let name = Lib_name.Local.to_string (snd lib.name) in
-        Option.some_if (String.equal name lib_name) lib
-      | _ -> None)
+      | Library.T lib when String.equal (Lib_name.Local.to_string (snd lib.name)) lib_name
+        ->
+        Expander.eval_blang expander lib.enabled_if
+        >>| (function
+         | true -> Some lib
+         | false -> None)
+      | _ -> Memo.return None)
 ;;
 
 let library_cctx_memo =
@@ -34,13 +37,13 @@ let library_cctx_memo =
        let* sctx =
          Context.DB.by_dir lib_dir >>| Context.name >>= Super_context.find_exn
        in
-       find_library ~dir:lib_dir ~lib_name
+       let* expander = Super_context.expander sctx ~dir:lib_dir in
+       find_library ~expander ~dir:lib_dir ~lib_name
        >>= function
        | None -> Memo.return None
        | Some lib ->
          let* dir_contents = Dir_contents.get sctx ~dir:lib_dir in
          let* scope = Scope.DB.find_by_dir lib_dir in
-         let* expander = Super_context.expander sctx ~dir:lib_dir in
          (* [compile_context] may produce rules (via [modules_rules]) as implicit
             output. We collect and discard them here; they will be replayed by memo
             when the library directory is loaded through [Lib_rules.rules]. *)

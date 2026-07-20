@@ -21,9 +21,11 @@ jobs:
       with:
         ocaml-compiler: 4.14.x
         opam-depext: false
+        opam-pin: false
         opam-repositories: |
           default: git+https://github.com/ocaml/opam-repository#38b8d4531633db2f927868caf84e5a9b8992229e
     - run: sed -i s/1.3/2.7/ dune-project
+    - run: opam pin add -n caldav.dev git+https://github.com/roburio/caldav#88077909aede711da1a0417f27fc8223c141f0fe
     - run: opam pin add -n dune.dev git+https://github.com/ocaml/dune#$GITHUB_SHA
     - run: sudo apt install libseccomp-dev
     - run: opam install mirage.4.10.5 opam-monorepo.0.4.3

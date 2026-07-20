@@ -913,13 +913,12 @@ module Internal = struct
                target
            ])
 
-  and execute_anonymous_action action_rule =
-    let { Rule.Anonymous_action_rule.id = _; action; loc; dir; aliases } = action_rule in
-    let* action, facts = Action_builder.evaluate_and_collect_facts action in
-    let action = { Rule.Anonymous_action.action; loc; dir; aliases } in
+  and execute_anonymous_action (action_rule : Rule.Anonymous_action.Rule.t) =
+    let* action, facts = Action_builder.evaluate_and_collect_facts action_rule.action in
+    let action = Rule.Anonymous_action.of_rule action_rule action in
     execute_action action ~observing_facts:facts
 
-  and dep_on_anonymous_action (action_rule : Rule.Anonymous_action_rule.t)
+  and dep_on_anonymous_action (action_rule : Rule.Anonymous_action.Rule.t)
     : unit Action_builder.t
     =
     Action_builder.record_success

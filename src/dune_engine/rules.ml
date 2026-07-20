@@ -5,7 +5,7 @@ module Dir_rules = struct
   module Alias_spec = struct
     type item =
       | Deps of unit Action_builder.t
-      | Action of Rule.Anonymous_action_rule.t
+      | Action of Rule.Anonymous_action.Rule.t
 
     type t = { expansions : (Loc.t * item) Appendable_list.t } [@@unboxed]
 
@@ -155,7 +155,7 @@ module Produce = struct
       | [] -> Code_error.raise "Rules.Produce.Alias.add_shared_action: empty list" []
       | representative :: _ ->
         let action =
-          Rule.Anonymous_action_rule.make
+          Rule.Anonymous_action.Rule.make
             ~loc
             ~dir:(Alias.dir representative)
             ~aliases:(List.map ts ~f:Alias.name)

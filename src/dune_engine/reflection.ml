@@ -1,6 +1,6 @@
 open Import
 module Non_evaluated_rule = Rule
-module Anon_rule = Rule.Anonymous_action_rule
+module Anon_rule = Rule.Anonymous_action.Rule
 open Memo.O
 
 module Rule = struct
@@ -96,7 +96,7 @@ let evaluate_anonymous_action =
   let memo =
     Memo.create
       "evaluate-anonymous-action"
-      ~input:(module Non_evaluated_rule.Anonymous_action_rule)
+      ~input:(module Anon_rule)
       (fun anon_action ->
          let* action, deps =
            Action_builder.evaluate_and_collect_deps anon_action.action

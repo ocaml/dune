@@ -66,6 +66,27 @@ Projects older than Dune 3.26 retain the unformatted correction:
   $ cat source.ml
   let   generated = 1
 
+Inline-test corrections are formatted before being offered for promotion:
+
+  $ cd ..
+  $ mkdir inline-tests
+  $ cd inline-tests
+  $ make_dune_project 3.26
+  $ cat > dune <<'EOF'
+  > (library
+  >  (name test)
+  >  (inline_tests)
+  >  (preprocess (pps ppx_expect)))
+  > EOF
+  $ cat > test.ml <<'EOF'
+  > let%expect_test _ = print_endline "generated"; [%expect {| |}]
+  > EOF
+  $ dune build @runtest --auto-promote 2>&1 | grep 'fake ocamlformat is running'
+  fake ocamlformat is running: "--impl" "--inplace" "--name" "test.ml" "test.ml.corrected"
+  [1]
+  $ cat test.ml
+  (* fake ocamlformat output *)
+
 Generated dune files use Dune's built-in formatter. The correction is consumed
 by [diff?] rather than exposed as an intermediate build target:
 

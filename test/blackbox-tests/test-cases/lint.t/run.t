@@ -19,3 +19,19 @@ a sandbox.
   Promoting _build/default/correct/add.ml.lint-corrected to correct/add.ml.
   $ cat correct/add.ml
   let () = Printf.printf "%d\n" @@ 42
+
+Starting with Dune 3.26, PPX lint corrections are formatted before promotion:
+
+  $ rm dune-project
+  $ make_dune_project 3.26
+  $ mkdir bin
+  $ cp ../../utils/ocamlformat.exe bin/ocamlformat
+  $ cp ../../utils/ocamlformat.exe bin/ocamlformat.exe
+  $ export PATH="$PWD/bin:$PATH"
+  $ printf '%s\n' 'let () = Printf.printf "%d\n" @@ 1 + 2' > correct/add.ml
+  $ dune build @correct/lint --auto-promote > lint.log 2>&1
+  [1]
+  $ grep 'fake ocamlformat is running' lint.log
+  fake ocamlformat is running: "--impl" "--inplace" "--name" "add.ml" "add.ml.lint-corrected"
+  $ cat correct/add.ml
+  (* fake ocamlformat output *)

@@ -41,6 +41,7 @@
 (cram
  (applies_to lint.t)
  (deps
+  ../utils/ocamlformat.exe
   (package ppxlib)))
 
 (cram

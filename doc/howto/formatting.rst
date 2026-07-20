@@ -69,6 +69,13 @@ As usual with promotion, it's possible to combine these two steps by running
 ``dune build @fmt --auto-promote``. This command can also be shortened to
 ``dune fmt``. See :doc:`../concepts/promotion` for more details.
 
+Formatting Generated Corrections
+--------------------------------
+
+Starting with Dune language 3.26, Dune uses OCamlFormat on corrections from
+inline tests and PPX preprocessing or linting before showing a diff or
+promoting the correction, when formatting is enabled for the source.
+
 Setting Up Your CI
 ------------------
 

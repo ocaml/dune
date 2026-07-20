@@ -69,24 +69,29 @@ let gen_rules sctx components =
   | _ -> Memo.return ()
 ;;
 
-let correction_diff ~source ~target =
-  Action.diff ~optional:true source target |> Action.Full.make |> Action_builder.return
+let correction_diff sctx ~dir ~source ~target =
+  let open Action_builder.O in
+  let* project = Action_builder.of_memo (Dune_load.find_project ~dir) in
+  let diff = Action.diff ~optional:true source target in
+  if Dune_project.dune_version project < (3, 26)
+  then Action_builder.return (Action.Full.make diff)
+  else Format_generated.format_diff sctx ~dir ~source ~target ~diff
 ;;
 
-let promote_correction (m : Module.t) build ~suffix ~ml_kind =
+let promote_correction sctx ~dir (m : Module.t) build ~suffix ~ml_kind =
   let open Action_builder.O in
   let source = pp_input_path m ~ml_kind in
   let target = pp_corrected_path m ~ml_kind ~suffix in
   let+ action = build
-  and+ diff = correction_diff ~source ~target in
+  and+ diff = correction_diff sctx ~dir ~source ~target in
   Action.Full.reduce [ action; diff ]
 ;;
 
-let promote_correction_with_target source build ~suffix =
+let promote_correction_with_target sctx ~dir source build ~suffix =
   let target = Path.Build.extend_basename source ~suffix in
   Action_builder.progn
     [ build
-    ; correction_diff ~source:(Path.build source) ~target
+    ; correction_diff sctx ~dir ~source:(Path.build source) ~target
       |> Action_builder.with_no_targets
     ]
 ;;
@@ -210,6 +215,8 @@ let lint_module sctx ~for_ ~sandbox ~pps_sandbox ~dir ~expander ~lint ~lib_name 
             add_alias
               ~loc
               (promote_correction
+                 sctx
+                 ~dir
                  ~suffix:(Filename.of_string_exn corrected_suffix)
                  ~ml_kind
                  source
@@ -347,6 +354,8 @@ let pp_one_module
             ~loc
             ~dir
             (promote_correction_with_target
+               sctx
+               ~dir
                ~suffix:(Filename.of_string_exn corrected_suffix)
                (loc_filename |> Path.as_in_build_dir_exn)
                (Action_builder.with_file_targets

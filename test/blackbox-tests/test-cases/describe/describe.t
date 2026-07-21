@@ -292,7 +292,7 @@ not stable across different setups.
         (cmt (_build/default/.main2.eobjs/byte/dune__exe.cmt))
         (cmti ())
         (origin
-         (wrapper _build/default/dune)))))
+         (wrapper dune)))))
      (include_dirs (_build/default/.main2.eobjs/byte))))
    (executables
     ((names (main3))
@@ -334,7 +334,7 @@ not stable across different setups.
         (cmt (_build/default/.per_module_pp_exe.eobjs/byte/dune__exe.cmt))
         (cmti ())
         (origin
-         (wrapper _build/default/dune)))))
+         (wrapper dune)))))
      (include_dirs (_build/default/.per_module_pp_exe.eobjs/byte))))
    (executables
     ((names (re_exe))
@@ -364,7 +364,7 @@ not stable across different setups.
         (cmt (_build/default/.re_exe.eobjs/byte/dune__exe.cmt))
         (cmti ())
         (origin
-         (wrapper _build/default/dune)))))
+         (wrapper dune)))))
      (include_dirs (_build/default/.re_exe.eobjs/byte))))
    (library
     ((name bar)
@@ -391,7 +391,7 @@ not stable across different setups.
         (cmt (_build/default/.bar.objs/byte/bar__.cmt))
         (cmti ())
         (origin
-         (wrapper _build/default/dune)))))
+         (wrapper dune)))))
      (include_dirs (_build/default/.bar.objs/byte))))
    (library
     ((name cmdliner)
@@ -511,7 +511,7 @@ not stable across different setups.
          (_build/default/.per_module_action_exe.objs/byte/per_module_action_exe__.cmt))
         (cmti ())
         (origin
-         (wrapper _build/default/dune)))))
+         (wrapper dune)))))
      (include_dirs (_build/default/.per_module_action_exe.objs/byte))))
    (library
     ((name per_module_action_lib)
@@ -541,7 +541,7 @@ not stable across different setups.
          (_build/default/.per_module_action_lib.objs/byte/per_module_action_lib.cmt))
         (cmti ())
         (origin
-         (wrapper _build/default/dune)))))
+         (wrapper dune)))))
      (include_dirs (_build/default/.per_module_action_lib.objs/byte))))
    (library
     ((name per_module_pp_lib)
@@ -571,7 +571,7 @@ not stable across different setups.
          (_build/default/.per_module_pp_lib.objs/byte/per_module_pp_lib.cmt))
         (cmti ())
         (origin
-         (wrapper _build/default/dune)))))
+         (wrapper dune)))))
      (include_dirs (_build/default/.per_module_pp_lib.objs/byte))))
    (library
     ((name ppx_derivers)
@@ -667,7 +667,7 @@ not stable across different setups.
         (cmt (_build/default/.re_lib.objs/byte/re_lib.cmt))
         (cmti ())
         (origin
-         (wrapper _build/default/dune)))))
+         (wrapper dune)))))
      (include_dirs (_build/default/.re_lib.objs/byte))))
    (library
     ((name sexplib0)
@@ -735,7 +735,7 @@ not stable across different setups.
          (_build/default/virtual_impl1/.virtual_impl1.objs/byte/virtual__virtual_impl1__.cmt))
         (cmti ())
         (origin
-         (wrapper _build/default/virtual_impl1/dune)))))
+         (wrapper virtual_impl1/dune)))))
      (include_dirs (_build/default/virtual_impl1/.virtual_impl1.objs/byte))))
    (library
     ((name virtual_impl2)
@@ -758,7 +758,7 @@ not stable across different setups.
          (_build/default/virtual_impl2/.virtual_impl2.objs/byte/virtual__virtual_impl2__.cmt))
         (cmti ())
         (origin
-         (wrapper _build/default/virtual_impl2/dune)))))
+         (wrapper virtual_impl2/dune)))))
      (include_dirs (_build/default/virtual_impl2/.virtual_impl2.objs/byte)))))
 
   $ dune describe workspace --lang 0.1 --with-deps --sanitize-for-tests | censor
@@ -847,7 +847,7 @@ not stable across different setups.
         (cmt (_build/default/.main2.eobjs/byte/dune__exe.cmt))
         (cmti ())
         (origin
-         (wrapper _build/default/dune))
+         (wrapper dune))
         (module_deps
          ((for_intf ())
           (for_impl ()))))))
@@ -903,7 +903,7 @@ not stable across different setups.
         (cmt (_build/default/.per_module_pp_exe.eobjs/byte/dune__exe.cmt))
         (cmti ())
         (origin
-         (wrapper _build/default/dune))
+         (wrapper dune))
         (module_deps
          ((for_intf ())
           (for_impl ()))))))
@@ -945,7 +945,7 @@ not stable across different setups.
         (cmt (_build/default/.re_exe.eobjs/byte/dune__exe.cmt))
         (cmti ())
         (origin
-         (wrapper _build/default/dune))
+         (wrapper dune))
         (module_deps
          ((for_intf ())
           (for_impl ()))))))
@@ -981,7 +981,7 @@ not stable across different setups.
         (cmt (_build/default/.bar.objs/byte/bar__.cmt))
         (cmti ())
         (origin
-         (wrapper _build/default/dune))
+         (wrapper dune))
         (module_deps
          ((for_intf ())
           (for_impl ()))))))
@@ -1117,7 +1117,7 @@ not stable across different setups.
          (_build/default/.per_module_action_exe.objs/byte/per_module_action_exe__.cmt))
         (cmti ())
         (origin
-         (wrapper _build/default/dune))
+         (wrapper dune))
         (module_deps
          ((for_intf ())
           (for_impl ()))))))
@@ -1156,7 +1156,7 @@ not stable across different setups.
          (_build/default/.per_module_action_lib.objs/byte/per_module_action_lib.cmt))
         (cmti ())
         (origin
-         (wrapper _build/default/dune))
+         (wrapper dune))
         (module_deps
          ((for_intf ())
           (for_impl ()))))))
@@ -1195,7 +1195,7 @@ not stable across different setups.
          (_build/default/.per_module_pp_lib.objs/byte/per_module_pp_lib.cmt))
         (cmti ())
         (origin
-         (wrapper _build/default/dune))
+         (wrapper dune))
         (module_deps
          ((for_intf ())
           (for_impl ()))))))
@@ -1300,7 +1300,7 @@ not stable across different setups.
         (cmt (_build/default/.re_lib.objs/byte/re_lib.cmt))
         (cmti ())
         (origin
-         (wrapper _build/default/dune))
+         (wrapper dune))
         (module_deps
          ((for_intf ())
           (for_impl ()))))))
@@ -1376,7 +1376,7 @@ not stable across different setups.
          (_build/default/virtual_impl1/.virtual_impl1.objs/byte/virtual__virtual_impl1__.cmt))
         (cmti ())
         (origin
-         (wrapper _build/default/virtual_impl1/dune))
+         (wrapper virtual_impl1/dune))
         (module_deps
          ((for_intf ())
           (for_impl ()))))))
@@ -1405,7 +1405,7 @@ not stable across different setups.
          (_build/default/virtual_impl2/.virtual_impl2.objs/byte/virtual__virtual_impl2__.cmt))
         (cmti ())
         (origin
-         (wrapper _build/default/virtual_impl2/dune))
+         (wrapper virtual_impl2/dune))
         (module_deps
          ((for_intf ())
           (for_impl ()))))))

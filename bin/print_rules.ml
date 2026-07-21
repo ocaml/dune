@@ -357,7 +357,7 @@ let term =
       & opt (enum Output_format.all) Output_format.Sexp
       & info [ "format" ] ~docv:"FORMAT" ~doc:(Some doc))
   and+ with_locs =
-    Arg.(value & flag & info [ "with_locs" ] ~doc:(Some "Include locations of rules"))
+    Arg.(value & flag & info [ "with-locs" ] ~doc:(Some "Include locations of rules"))
   (* CR-someday Alizter: document this option *)
   and+ targets = Arg.(value & pos_all dep [] & Arg.info [] ~docv:"TARGET" ~doc:None) in
   let targets =

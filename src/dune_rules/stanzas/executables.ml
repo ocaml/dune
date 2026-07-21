@@ -588,13 +588,3 @@ let obj_dir t ~dir =
   let name = snd (Nonempty_list.hd t.names) in
   Obj_dir.make_exe ~dir ~name
 ;;
-
-let best_names t =
-  let names = Nonempty_list.to_list_map t.names ~f:snd in
-  match t.public_names with
-  | None -> names
-  | Some public_names ->
-    let public_names = Nonempty_list.to_list_map public_names ~f:snd in
-    List.map2 names public_names ~f:(fun name public_name ->
-      Option.value public_name ~default:name)
-;;

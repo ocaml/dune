@@ -63,7 +63,18 @@ module Crawl = struct
     match Stanza.repr stanza with
     | Tests.T (tests : Tests.t) ->
       let* enabled = Expander.eval_blang expander tests.enabled_if in
-      let names = Executables.best_names tests.exes in
+      (* the private names of the tests, each replaced by its public name when
+         there is one *)
+      let names =
+        let private_names = Nonempty_list.to_list_map tests.exes.names ~f:snd in
+        match tests.exes.public_names with
+        | None -> private_names
+        | Some public_names ->
+          List.map2
+            private_names
+            (Nonempty_list.to_list_map public_names ~f:snd)
+            ~f:(fun name public_name -> Option.value public_name ~default:name)
+      in
       let package =
         Option.map tests.package ~f:(fun p ->
           Dune_lang.Package.name p |> Dune_lang.Package_name.to_string)

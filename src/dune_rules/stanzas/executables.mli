@@ -66,6 +66,3 @@ val has_foreign_cxx : t -> bool
 val obj_dir : t -> dir:Path.Build.t -> Path.Build.t Obj_dir.t
 val single : t Dune_lang.Decoder.t
 val multi : t Dune_lang.Decoder.t
-
-(** Gets [names], with each replaced by its public name if available *)
-val best_names : t -> string list

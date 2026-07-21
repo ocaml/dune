@@ -67,3 +67,15 @@ alias only depends on `@a`, so only the anonymous action is printed - notably
 the `t` rule, which is not reachable from `@default`, is absent.
   $ dune rules
   ((deps ()) (action (chdir _build/default (echo "hi\n"))) (aliases (a)))
+
+A dependency cycle that runs through anonymous actions reports their locations.
+  $ cat > dune << EOF
+  > (rule (alias x) (deps (alias y)) (action (echo "x\n")))
+  > (rule (alias y) (deps (alias x)) (action (echo "y\n")))
+  > EOF
+  $ dune rules -r @x
+  Error: Dependency cycle detected:
+     <anonymous action at dune:1>
+  -> <anonymous action at dune:2>
+  -> <anonymous action at dune:1>
+  [1]

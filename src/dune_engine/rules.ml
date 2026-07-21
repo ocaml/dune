@@ -150,9 +150,11 @@ module Produce = struct
         }
     ;;
 
+    (* All aliases in [ts] are expected to share a directory: the shared
+       anonymous action is created in the representative's directory. *)
     let add_action ts ~loc action =
       match ts with
-      | [] -> Code_error.raise "Rules.Produce.Alias.add_shared_action: empty list" []
+      | [] -> Code_error.raise "Rules.Produce.Alias.add_action: empty list" []
       | representative :: _ ->
         let action =
           Rule.Anonymous_action.Rule.make

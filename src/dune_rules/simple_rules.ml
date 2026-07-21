@@ -17,7 +17,7 @@ module Alias_rules = struct
 
   let add sctx ~aliases ~loc build =
     match aliases with
-    | [] -> Code_error.raise "Alias_rules.add_shared: empty list of aliases" []
+    | [] -> Code_error.raise "Alias_rules.add: empty list of aliases" []
     | representative :: _ ->
       let dir = Alias.dir representative in
       Memo.parallel_iter aliases ~f:(fun alias ->

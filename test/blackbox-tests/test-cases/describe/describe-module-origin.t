@@ -257,8 +257,7 @@ glob):
          (dune
           ((dune_file dune)
            (expanded_deps
-            ((In_build_dir default/dep.txt)
-             (In_build_dir default/extra.txt)))))))
+            (_build/default/dep.txt _build/default/extra.txt))))))
 
 Both flags together report the dependencies in both forms:
 
@@ -277,5 +276,4 @@ Both flags together report the dependencies in both forms:
                (predicate (Element (Glob *.txt)))
                (only_generated_files false)))))
            (expanded_deps
-            ((In_build_dir default/dep.txt)
-             (In_build_dir default/extra.txt)))))))
+            (_build/default/dep.txt _build/default/extra.txt))))))

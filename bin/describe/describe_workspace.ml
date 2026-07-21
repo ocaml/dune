@@ -158,7 +158,7 @@ module Descr = struct
             [ Some ("dune_file", dyn_path dune_file)
             ; Option.map deps ~f:(fun deps -> "deps", list (Repr.to_dyn Dep.repr) deps)
             ; Option.map expanded_deps ~f:(fun expanded_deps ->
-                "expanded_deps", list Path.to_dyn expanded_deps)
+                "expanded_deps", list dyn_path expanded_deps)
             ]
           in
           variant "dune" [ record (List.filter_map ~f:Fun.id fields) ]

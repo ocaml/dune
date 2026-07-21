@@ -1,6 +1,6 @@
 Tests for the output of `dune rules`, covering:
 - anonymous actions (actions attached to an alias) showing up as rules;
-- rule locations being omitted unless `--with_locs` is passed;
+- rule locations being omitted unless `--with-locs` is passed;
 - defaulting to the `@default` alias when no target is given.
 
   $ cat > dune-project << EOF
@@ -32,8 +32,8 @@ By default, rule locations are omitted from the output.
    (context default)
    (action (chdir _build/default (with-stdout-to t (echo x)))))
 
-Passing `--with_locs` includes the location of each rule.
-  $ dune rules --with_locs t
+Passing `--with-locs` includes the location of each rule.
+  $ dune rules --with-locs t
   ((deps ())
    (targets ((files (_build/default/t)) (directories ())))
    (context default)
@@ -41,7 +41,7 @@ Passing `--with_locs` includes the location of each rule.
    (loc dune:4))
 
 Anonymous actions carry a location too.
-  $ dune rules --with_locs @a
+  $ dune rules --with-locs @a
   ((deps ())
    (action (chdir _build/default (echo "hi\n")))
    (aliases (a))
@@ -56,7 +56,7 @@ file, not just its basename.
   >  (action (echo "sub\n")))
   > EOF
 
-  $ dune rules --with_locs @sub/b
+  $ dune rules --with-locs @sub/b
   ((deps ())
    (action (chdir _build/default/sub (echo "sub\n")))
    (aliases (b))

@@ -154,10 +154,18 @@ let eval ~recursive ~request =
   | Error cycle ->
     User_error.raise
       [ Pp.text "Dependency cycle detected:"
-      ; Pp.chain cycle ~f:(function
-          | { targets = Some targets; _ } ->
+      ; Pp.chain cycle ~f:(fun { Rule.targets; loc; _ } ->
+          match targets with
+          | Some targets ->
             Pp.verbatim
               (Path.to_string_maybe_quoted (Path.build (Targets.Validated.head targets)))
-          | _ -> assert false)
+          | None ->
+            (* Anonymous actions have no targets; describe them by their location instead. *)
+            if Loc.is_none loc
+            then Pp.verbatim "<anonymous action>"
+            else (
+              let start = Loc.start loc in
+              Pp.verbatim
+                (sprintf "<anonymous action at %s:%d>" start.pos_fname start.pos_lnum)))
       ]
 ;;

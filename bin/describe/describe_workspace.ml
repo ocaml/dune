@@ -9,6 +9,10 @@ module Options = struct
        used at compile time) *)
     ; no_recursive : bool
       (* whether to only consider the provided directories and not descendants *)
+    ; split_public_names : bool
+      (* whether to report private names in the [name(s)] fields and public
+         names in a separate [public_name(s)] field, rather than reporting the
+         public name (falling back to the private name) in [name(s)] *)
     }
 
   (* whether to sanitize absolute paths of workspace items, and their UIDs, to
@@ -60,13 +64,27 @@ module Options = struct
               the workspace root when none are given.")
   ;;
 
+  let arg_split_public_names =
+    let open Arg in
+    value
+    & flag
+    & info
+        [ "split-public-names" ]
+        ~doc:
+          (Some
+             "Report private names in the 'name'/'names' fields and public names in a \
+              separate 'public_name'/'public_names' field, rather than reporting the \
+              public name (falling back to the private name) in 'name'/'names'.")
+  ;;
+
   let arg : t Term.t =
     let+ with_deps = arg_with_deps
     and+ with_pps = arg_with_pps
     and+ sanitize_for_tests_value = arg_sanitize_for_tests
-    and+ no_recursive = arg_no_recursive in
+    and+ no_recursive = arg_no_recursive
+    and+ split_public_names = arg_split_public_names in
     sanitize_for_tests := sanitize_for_tests_value;
-    { with_deps; with_pps; no_recursive }
+    { with_deps; with_pps; no_recursive; split_public_names }
   ;;
 end
 
@@ -144,7 +162,10 @@ module Descr = struct
   (* Description of executables *)
   module Exe = struct
     type t =
-      { names : string list (* names of the executable *)
+      { names : string list (* private names of the executables *)
+      ; public_names : string option list option
+        (* public names of the executables, if the stanza declares any (one
+           entry per executable, [None] for those without a public name) *)
       ; requires : Digest.t list
         (* list of direct dependencies to libraries, identified by their
              digests *)
@@ -154,12 +175,36 @@ module Descr = struct
 
     let map_path t ~f = { t with include_dirs = List.map ~f t.include_dirs }
 
+    (* [best_names] replaces each private name by its public name when there is one *)
+    let best_names { names; public_names; _ } =
+      match public_names with
+      | None -> names
+      | Some public_names ->
+        List.map2 names public_names ~f:(fun name public_name ->
+          Option.value public_name ~default:name)
+    ;;
+
     (* Conversion to the [Dyn.t] type *)
-    let to_dyn options { names; requires; modules; include_dirs } : Dyn.t =
+    let to_dyn options ({ names; public_names; requires; modules; include_dirs } as t)
+      : Dyn.t
+      =
       let open Dyn in
+      let name_fields =
+        if options.Options.split_public_names
+        then (
+          let public_names =
+            match public_names with
+            | Some public_names -> public_names
+            | None -> List.map names ~f:(fun _ -> None)
+          in
+          [ "names", (list string) names
+          ; "public_names", (list (option string)) public_names
+          ])
+        else [ "names", (list string) (best_names t) ]
+      in
       record
-        [ "names", List (List.map ~f:(fun name -> String name) names)
-        ; "requires", Dyn.(list string) (List.map ~f:Digest.to_string requires)
+      @@ name_fields
+      @ [ "requires", Dyn.(list string) (List.map ~f:Digest.to_string requires)
         ; "modules", list (Mod.to_dyn options) modules
         ; "include_dirs", list dyn_path include_dirs
         ]
@@ -170,7 +215,8 @@ module Descr = struct
 
   module Lib = struct
     type t =
-      { name : Lib_name.t (* name of the library *)
+      { name : Lib_name.t (* private name of the library *)
+      ; public_name : Lib_name.t option (* public name of the library, if any *)
       ; uid : Digest.t (* digest of the library *)
       ; local : bool (* whether this library is local *)
       ; requires : Digest.t list
@@ -186,14 +232,29 @@ module Descr = struct
       { t with source_dir = f t.source_dir; include_dirs = List.map ~f t.include_dirs }
     ;;
 
+    (* [best_name] is the public name when there is one, and the private name
+       otherwise *)
+    let best_name { name; public_name; _ } = Option.value public_name ~default:name
+
     (* Conversion to the [Dyn.t] type *)
-    let to_dyn options { name; uid; local; requires; source_dir; modules; include_dirs }
+    let to_dyn
+          options
+          ({ name; public_name; uid; local; requires; source_dir; modules; include_dirs }
+           as t)
       : Dyn.t
       =
       let open Dyn in
+      let name_fields =
+        if options.Options.split_public_names
+        then
+          [ "name", Lib_name.to_dyn name
+          ; "public_name", option Lib_name.to_dyn public_name
+          ]
+        else [ "name", Lib_name.to_dyn (best_name t) ]
+      in
       record
-        [ "name", Lib_name.to_dyn name
-        ; "uid", String (Digest.to_string uid)
+      @@ name_fields
+      @ [ "uid", String (Digest.to_string uid)
         ; "local", Bool local
         ; "requires", (list string) (List.map ~f:Digest.to_string requires)
         ; "source_dir", dyn_path source_dir
@@ -465,7 +526,9 @@ module Crawl = struct
        | Ok libs ->
          let include_dirs = Obj_dir.all_cmis obj_dir in
          let exe_descr =
-           { Descr.Exe.names = Executables.best_names exes
+           { Descr.Exe.names = Nonempty_list.to_list_map exes.names ~f:snd
+           ; public_names =
+               Option.map exes.public_names ~f:(Nonempty_list.to_list_map ~f:snd)
            ; requires = List.map ~f:uid_of_library libs
            ; modules
            ; include_dirs
@@ -480,8 +543,13 @@ module Crawl = struct
     match Resolve.peek requires with
     | Error () -> Memo.return None
     | Ok requires ->
-      let name = Lib.name lib in
       let info = Lib.info lib in
+      let name = Lib_id.name (Lib_info.lib_id info) in
+      let public_name =
+        match Lib_info.status info with
+        | Public _ | Installed -> Some (Lib.name lib)
+        | Private _ | Installed_private -> None
+      in
       let src_dir = Lib_info.src_dir info in
       let obj_dir = Lib_info.obj_dir info in
       let+ modules_ =
@@ -527,6 +595,7 @@ module Crawl = struct
       let include_dirs = Obj_dir.all_cmis obj_dir in
       let lib_descr =
         { Descr.Lib.name
+        ; public_name
         ; uid = uid_of_library lib
         ; local = Lib.is_local lib
         ; requires = List.map requires ~f:uid_of_library

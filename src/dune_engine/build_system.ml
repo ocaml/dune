@@ -737,7 +737,14 @@ module Internal = struct
       let basename =
         match act.aliases with
         | [] -> d
-        | a :: _ -> Alias.Name.to_string a ^ "-" ^ d
+        | aliases ->
+          let a =
+            aliases
+            |> List.map ~f:Alias.Name.to_string
+            |> List.min ~f:String.compare
+            |> Option.value_exn
+          in
+          a ^ "-" ^ d
       in
       Path.Build.relative dir basename
     in
@@ -818,7 +825,9 @@ module Internal = struct
         digest_locks d locks;
         Digest.Manual.string d (Path.Build.to_string dir);
         let alias_names =
-          aliases |> List.map ~f:Alias.Name.to_string |> List.sort ~compare:String.compare
+          aliases
+          |> List.map ~f:Alias.Name.to_string
+          |> List.sort_uniq ~compare:String.compare
         in
         Digest.Manual.list d ~f:Digest.Manual.string alias_names;
         Digest.Manual.bool d capture_stdout;

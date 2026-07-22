@@ -754,7 +754,7 @@ module Internal = struct
         rule
         ~rule_kind:
           (Anonymous_action
-             { attached_to_alias = not (List.is_empty act.aliases)
+             { attached_to_alias = List.is_non_empty act.aliases
              ; capture_stdout
              ; stamp_file = target
              })
@@ -817,10 +817,10 @@ module Internal = struct
         Action.digest d action;
         digest_locks d locks;
         Digest.Manual.string d (Path.Build.to_string dir);
-        Digest.Manual.list
-          d
-          ~f:(fun d alias -> Digest.Manual.string d (Alias.Name.to_string alias))
-          aliases;
+        let alias_names =
+          aliases |> List.map ~f:Alias.Name.to_string |> List.sort ~compare:String.compare
+        in
+        Digest.Manual.list d ~f:Digest.Manual.string alias_names;
         Digest.Manual.bool d capture_stdout;
         Digest.Manual.bool d can_go_in_shared_cache;
         digest_sandbox_config d sandbox;

@@ -3,7 +3,6 @@ Reproducer for https://github.com/ocaml/dune/issues/13234
 
   $ mkrepo
   $ add_mock_repo_if_needed
-  $ enable_pkg
   $ mkpkg b 0.1
   $ mkpkg c 0.2
 
@@ -25,22 +24,20 @@ Make dune-project file with dependency on b:
   >  (public_name a))
   > EOF
 
-Package management is enabled and its status can be queried normally:
+Package management is disabled when there is no lockdir or explicit setting:
 
   $ dune pkg enabled
-
-Start dune (in passive watch mode)
-
-  $ start_dune
-
-The same status cannot be queried while the watch server is running. Reproducer
-for https://github.com/ocaml/dune/issues/15587
-
-  $ dune pkg enabled > .#pkg-enabled-output 2>&1
   [1]
-  $ sed 's/(pid: [0-9]*)/(pid: PID)/' .#pkg-enabled-output
-  Error: A running dune (pid: PID) instance has locked the build directory.
-  If this is not the case, please delete "_build/.lock".
+
+Start dune in passive watch mode with package management enabled on the command
+line:
+
+  $ start_dune --pkg enabled
+
+The status reported by the running server includes its command-line
+configuration. Fix for https://github.com/ocaml/dune/issues/15587
+
+  $ dune pkg enabled
 
   $ build a.exe
   Success

@@ -146,6 +146,11 @@ type t = private
 val equal : t -> t -> bool
 val to_dyn : t -> Dyn.t
 val hash : t -> int
+
+(** Whether package management is enabled by the workspace configuration or by
+    the presence of a lock directory. *)
+val pkg_enabled : t -> bool
+
 val find_lock_dir : t -> Path.t -> Lock_dir.t option
 val add_repo : t -> Dune_pkg.Pkg_workspace.Repository.t -> t
 val default_repositories : Dune_pkg.Pkg_workspace.Repository.t list

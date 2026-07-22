@@ -45,6 +45,10 @@ module Glob : sig
   val compare : t -> t -> Ordering.t
   val equal : t -> t -> bool
   val hash : t -> int
+  val decode_validated
+    :  f:(loc:Loc.t -> string -> unit)
+    -> t Dune_sexp.Decoder.t
+
   val decode : t Dune_sexp.Decoder.t
   val encode : t -> Dune_sexp.t
   val digest : t -> Dune_digest.t

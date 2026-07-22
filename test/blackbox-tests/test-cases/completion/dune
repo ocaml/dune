@@ -3,3 +3,8 @@
  (enabled_if
   (= %{system} linux))
  (deps %{bin:bash}))
+
+(cram
+ (applies_to fish)
+ (enabled_if %{bin-available:fish})
+ (deps %{bin:fish}))

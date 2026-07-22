@@ -143,3 +143,38 @@ to [a].
   $ dune build @a
   I have run
   unrelated
+
+The set of aliases determines the action's identity: neither duplicating an
+alias nor reordering the aliases should re-run the action.
+
+Duplicating an alias does not re-run the action:
+  $ cat > dune << EOF
+  > (rule
+  >  (aliases a)
+  >  (action (echo "I have run\n")))
+  > EOF
+  $ dune clean
+  $ dune build @a
+  I have run
+  $ cat > dune << EOF
+  > (rule
+  >  (aliases a a)
+  >  (action (echo "I have run\n")))
+  > EOF
+  $ dune build @a
+
+Reordering the aliases does not re-run the action:
+  $ cat > dune << EOF
+  > (rule
+  >  (aliases a b)
+  >  (action (echo "I have run\n")))
+  > EOF
+  $ dune clean
+  $ dune build @a @b
+  I have run
+  $ cat > dune << EOF
+  > (rule
+  >  (aliases b a)
+  >  (action (echo "I have run\n")))
+  > EOF
+  $ dune build @a @b

@@ -25,9 +25,23 @@ Make dune-project file with dependency on b:
   >  (public_name a))
   > EOF
 
+Package management is enabled and its status can be queried normally:
+
+  $ dune pkg enabled
+
 Start dune (in passive watch mode)
 
   $ start_dune
+
+The same status cannot be queried while the watch server is running. Reproducer
+for https://github.com/ocaml/dune/issues/15587
+
+  $ dune pkg enabled > .#pkg-enabled-output 2>&1
+  [1]
+  $ sed 's/(pid: [0-9]*)/(pid: PID)/' .#pkg-enabled-output
+  Error: A running dune (pid: PID) instance has locked the build directory.
+  If this is not the case, please delete "_build/.lock".
+
   $ build a.exe
   Success
   $ wait_for_line_with_timeout .#dune-output "Success, waiting for filesystem changes..." 200

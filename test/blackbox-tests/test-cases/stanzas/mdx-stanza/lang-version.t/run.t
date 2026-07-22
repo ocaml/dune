@@ -11,6 +11,10 @@ The MDX stanza requires dune lang 2.4 or higher
   There are no supported versions of this extension in version 2.3 of the dune
   language.
   
+  Supported versions in newer versions of the dune language:
+  - 0.1 to 0.5
+  Hint: The first version of this extension is 0.1 and is available since (lang
+  dune 2.4).
   File "dune", line 1, characters 0-5:
   1 | (mdx)
       ^^^^^

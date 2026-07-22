@@ -222,24 +222,40 @@ let targets_repr =
 ;;
 
 let rule_context (rule : Dune_engine.Reflection.Rule.t) =
-  match Path.Build.extract_build_context rule.targets.Targets.Validated.root with
+  match
+    Option.bind rule.targets ~f:(fun ts ->
+      Path.Build.extract_build_context ts.Targets.Validated.root)
+  with
   | None -> None
   | Some (context, _) -> Some (Filename.to_string context)
 ;;
 
-let rule_repr =
+let rule_loc ~with_locs (rule : Dune_engine.Reflection.Rule.t) =
+  if (not with_locs) || Loc.is_none rule.loc
+  then None
+  else (
+    let start = Loc.start rule.loc in
+    Some (sprintf "%s:%d" start.pos_fname start.pos_lnum))
+;;
+
+let rule_repr ~with_locs =
   Repr.record
     "rule"
     [ Repr.field "deps" deps_repr ~get:(fun rule -> rule.Dune_engine.Reflection.Rule.deps)
-    ; Repr.field "targets" targets_repr ~get:(fun rule ->
+    ; Repr.field "targets" (Repr.option targets_repr) ~get:(fun rule ->
         rule.Dune_engine.Reflection.Rule.targets)
     ; Repr.field "context" (Repr.option Repr.string) ~get:rule_context
     ; Repr.field "action" action_repr ~get:(fun rule ->
         rule.Dune_engine.Reflection.Rule.action)
+    ; Repr.field
+        "aliases"
+        (Repr.option (Repr.list Alias_name.repr))
+        ~get:(fun rule -> rule.Dune_engine.Reflection.Rule.aliases)
+    ; Repr.field "loc" (Repr.option Repr.string) ~get:(rule_loc ~with_locs)
     ]
 ;;
 
-let rules_repr = Repr.list rule_repr
+let rules_repr ~with_locs = Repr.list (rule_repr ~with_locs)
 let deps_only_repr = Repr.list deps_repr
 
 let dep_sets_of_rules rules =
@@ -292,10 +308,13 @@ let print_json oc json =
   output_char oc '\n'
 ;;
 
-let print_rules_sexp ppf rules =
+let print_rules_sexp ~with_locs ppf rules =
   Syntax.prepare_formatter ppf;
   Format.pp_open_vbox ppf 0;
-  Format.pp_print_list (fun ppf rule -> print_sexp_repr ppf rule_repr rule) ppf rules;
+  Format.pp_print_list
+    (fun ppf rule -> print_sexp_repr ppf (rule_repr ~with_locs) rule)
+    ppf
+    rules;
   Format.pp_print_flush ppf ()
 ;;
 
@@ -337,8 +356,15 @@ let term =
       value
       & opt (enum Output_format.all) Output_format.Sexp
       & info [ "format" ] ~docv:"FORMAT" ~doc:(Some doc))
+  and+ with_locs =
+    Arg.(value & flag & info [ "with-locs" ] ~doc:(Some "Include locations of rules"))
   (* CR-someday Alizter: document this option *)
   and+ targets = Arg.(value & pos_all dep [] & Arg.info [] ~docv:"TARGET" ~doc:None) in
+  let targets =
+    match targets with
+    | [] -> [ Common.Builder.default_target builder ]
+    | _ :: _ -> targets
+  in
   let common, config = Common.init builder in
   let out = Option.map ~f:Path.of_string out in
   Scheduler_setup.go_with_rpc_server ~common ~config (fun () ->
@@ -357,9 +383,10 @@ let term =
       let print oc =
         let ppf = Format.formatter_of_out_channel oc in
         match format, deps_only with
-        | Output_format.Sexp, false -> print_rules_sexp ppf rules
+        | Output_format.Sexp, false -> print_rules_sexp ~with_locs ppf rules
         | Output_format.Sexp, true -> print_rule_deps_only_sexp ppf rules
-        | Json, false -> print_json oc (Json.of_dyn (dyn_of_repr rules_repr rules))
+        | Json, false ->
+          print_json oc (Json.of_dyn (dyn_of_repr (rules_repr ~with_locs) rules))
         | Json, true ->
           print_json
             oc

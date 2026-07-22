@@ -135,6 +135,17 @@ let is_standard t =
   | _ -> false
 ;;
 
+let has_standard t =
+  let rec loop ast =
+    match (ast : ast_expanded) with
+    | Standard -> true
+    | Element _ -> false
+    | Union l -> List.exists ~f:loop l
+    | Diff (l, r) -> loop l || loop r
+  in
+  loop t.ast
+;;
+
 module Eval = struct
   let of_ast ~diff ~singleton ~union t ~parse ~standard =
     let rec loop (t : ast_expanded) =

@@ -5,7 +5,7 @@ module Dir_rules = struct
   module Alias_spec = struct
     type item =
       | Deps of unit Action_builder.t
-      | Action of Rule.Anonymous_action.Rule.t
+      | Action of Rule.Anonymous_action.t Action_builder.t
 
     type t = { expansions : (Loc.t * item) Appendable_list.t } [@@unboxed]
 
@@ -153,22 +153,26 @@ module Produce = struct
     (* All aliases in [ts] are expected to share a directory: the shared
        anonymous action is created in the representative's directory. *)
     let add_action ts ~loc action =
-      match ts with
-      | [] -> Code_error.raise "Rules.Produce.Alias.add_action: empty list" []
-      | representative :: _ ->
-        let action =
-          Rule.Anonymous_action.Rule.make
-            ~loc
-            ~dir:(Alias.dir representative)
-            ~aliases:(List.map ts ~f:Alias.name)
-            action
-        in
-        Memo.parallel_iter ts ~f:(fun t ->
-          alias
-            t
-            { expansions =
-                Appendable_list.singleton (loc, Dir_rules.Alias_spec.Action action)
-            })
+      let representative =
+        match ts with
+        | [] -> Code_error.raise "Rules.Produce.Alias.add_action: empty list" []
+        | r :: _ -> r
+      in
+      let action =
+        let open Action_builder.O in
+        let+ action in
+        { Rule.Anonymous_action.action
+        ; loc
+        ; dir = Alias.dir representative
+        ; aliases = List.map ts ~f:Alias.name
+        }
+      in
+      Memo.parallel_iter ts ~f:(fun t ->
+        alias
+          t
+          { expansions =
+              Appendable_list.singleton (loc, Dir_rules.Alias_spec.Action action)
+          })
     ;;
   end
 end

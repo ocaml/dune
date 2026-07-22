@@ -16,11 +16,13 @@ let depend_on_files ~named dir =
 let formatter_diff_action =
   let dep_on_alias_action alias ~loc action =
     let action =
-      Rule.Anonymous_action.Rule.make
-        ~loc
-        ~dir:(Alias.dir alias)
-        ~aliases:[ Alias.name alias ]
-        action
+      let open Action_builder.O in
+      let+ action = action in
+      { Rule.Anonymous_action.action
+      ; loc
+      ; dir = Alias.dir alias
+      ; aliases = [ Alias.name alias ]
+      }
     in
     Build_system.dep_on_alias_definition (Rules.Dir_rules.Alias_spec.Action action)
   in

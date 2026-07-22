@@ -913,16 +913,14 @@ module Internal = struct
                target
            ])
 
-  and execute_anonymous_action (action_rule : Rule.Anonymous_action.Rule.t) =
-    let* action, facts = Action_builder.evaluate_and_collect_facts action_rule.action in
-    let action = Rule.Anonymous_action.of_rule action_rule action in
+  and execute_anonymous_action action =
+    let* action, facts = Action_builder.evaluate_and_collect_facts action in
     execute_action action ~observing_facts:facts
 
-  and dep_on_anonymous_action (action_rule : Rule.Anonymous_action.Rule.t)
+  and dep_on_anonymous_action (action : Rule.Anonymous_action.t Action_builder.t)
     : unit Action_builder.t
     =
-    Action_builder.record_success
-      (Memo.of_thunk_apply execute_anonymous_action action_rule)
+    Action_builder.record_success (Memo.of_thunk_apply execute_anonymous_action action)
 
   and dep_on_alias_definition (definition : Rules.Dir_rules.Alias_spec.item) =
     match definition with

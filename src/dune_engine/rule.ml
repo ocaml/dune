@@ -141,43 +141,4 @@ module Anonymous_action = struct
     ; dir : Path.Build.t
     ; aliases : Alias.Name.t list
     }
-
-  module Rule = struct
-    module T = struct
-      type t =
-        { id : Id.t
-        ; action : Action.Full.t Action_builder.t
-        ; loc : Loc.t
-        ; dir : Path.Build.t
-        ; aliases : Alias.Name.t list
-        }
-
-      let compare a b = Id.compare a.id b.id
-      let equal a b = Id.equal a.id b.id
-      let hash t = Id.hash t.id
-      let loc t = t.loc
-
-      let repr =
-        Repr.record
-          "rule"
-          [ Repr.field "id" (Repr.abstract Id.to_dyn) ~get:(fun t -> t.id)
-          ; Repr.field "aliases" (Repr.list Alias_name.repr) ~get:(fun t -> t.aliases)
-          ]
-      ;;
-
-      let to_dyn = Repr.to_dyn repr
-    end
-
-    include T
-    include Comparable.Make (T)
-
-    let make ~loc ~dir ~aliases action = { id = Id.gen (); action; loc; aliases; dir }
-
-    module Map = Import.Map.Make (T)
-    module Set = Import.Set.Make (T) (Map)
-  end
-
-  let of_rule ({ id = _; action = _; loc; dir; aliases } : Rule.t) action =
-    { action; loc; dir; aliases }
-  ;;
 end

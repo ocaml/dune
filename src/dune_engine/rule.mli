@@ -91,33 +91,4 @@ module Anonymous_action : sig
     ; aliases : Alias.Name.t list
       (** The aliases this action is attached to. For better error messages. *)
     }
-
-  module Rule : sig
-    type t =
-      { id : Id.t
-      ; action : Action.Full.t Action_builder.t
-      ; loc : Loc.t
-      ; dir : Path.Build.t
-      ; aliases : Alias.Name.t list
-        (** The aliases this action is attached to. For better error messages. *)
-      }
-
-    include Comparable_intf.S with type key := t
-
-    val equal : t -> t -> bool
-    val hash : t -> int
-    val to_dyn : t -> Dyn.t
-    val loc : t -> Loc.t
-
-    val make
-      :  loc:Loc.t
-      -> dir:Path.Build.t
-      -> aliases:Alias.Name.t list
-      -> Action.Full.t Action_builder.t
-      -> t
-
-    module Set : Import.Set.S with type elt = t
-  end
-
-  val of_rule : Rule.t -> Action.Full.t -> t
 end

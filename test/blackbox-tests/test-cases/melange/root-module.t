@@ -1,9 +1,6 @@
 A library can be shadowed by an internal module name:
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.8)
-  > (using melange 0.1)
-  > EOF
+  $ make_melange_project 3.8 0.1
 
   $ mkdir lib1 lib2
 
@@ -33,6 +30,8 @@ Now we shadow lib1:
 
   $ dune build lib2/.lib2.objs/melange/lib2.cmj
   File "lib2/lib2.ml", line 1, characters 14-27:
+  1 | print_endline Lib1.greeting
+                    ^^^^^^^^^^^^^
   Error: The value Lib1.greeting has type unit
          but an expression was expected of type string
   [1]
@@ -69,6 +68,8 @@ The same for melange.emit:
   > EOF
   $ dune build output/foo.js
   File "foo.ml", line 1, characters 14-27:
+  1 | print_endline Lib1.greeting
+                    ^^^^^^^^^^^^^
   Error: The value Lib1.greeting has type unit
          but an expression was expected of type string
   [1]

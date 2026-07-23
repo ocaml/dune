@@ -1,9 +1,7 @@
 Test `(include_subdirs qualified)` in the presence of invalid module names in
 the source tree
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.22)
-  > EOF
+  $ make_dune_project 3.22
   $ cat > dune <<EOF
   > (library (name foo) (modules foo))
   > EOF
@@ -49,9 +47,7 @@ Invalid module may be used in executables
 
 Prior to Dune 3.0, executable names aren't validated as valid module names
 
-  $ cat > dune-project <<EOF
-  > (lang dune 2.9)
-  > EOF
+  $ make_dune_project 2.9
 
   $ dune exec ./invalid-module.exe
   hello from invalid-module.ml

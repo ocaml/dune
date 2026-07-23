@@ -2,7 +2,7 @@
 
   - [prog] is the program being run. It should be a filename in the current working
     directory.
-  
+
   - [args] is a list of arguments to the program. Unlike in the system call [execve], the
     first argument is not the program name. The first argument is the first argument
     to the program. The program name is set to [prog] without the caller needing to.
@@ -45,6 +45,20 @@ module Process_info : sig
     ; end_time : Time.t (** Time at which the process finished. *)
     ; resource_usage : Resource_usage.t option
     }
+end
+
+module Linux : sig
+  val read_pid_max : unit -> int option
+
+  module Process_tree : sig
+    type error
+
+    val pp_error : error -> _ Pp.t
+
+    (** [children_of pid] returns the direct children of [pid] by reading
+        /proc/<pid>/task/<tid>/children. *)
+    val children_of : Pid.t -> (Pid.Set.t, error) Result.t
+  end
 end
 
 type wait =

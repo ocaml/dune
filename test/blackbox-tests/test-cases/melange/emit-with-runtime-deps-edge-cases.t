@@ -33,7 +33,7 @@ Test simple interactions between melange.emit and copy_files
 Rules created for the assets in the output directory
 
   $ dune rules --root . --format=json @mel |
-  > jq -r 'include "dune"; rulesMatchingTarget("a/output/a/assets/file.txt") | select(ruleHasCopy("a/assets/file.txt"; "a/output/a/assets/file.txt")) | ruleDepFilePaths'
+  > jq_dune -r 'rulesMatchingTarget("a/output/a/assets/file.txt") | select(ruleHasCopy("a/assets/file.txt"; "a/output/a/assets/file.txt")) | ruleDepFilePaths'
   _build/default/a/assets/file.txt
 
   $ dune build @mel
@@ -119,7 +119,7 @@ Test depending on paths that "escape" the melange.emit directory
 Rules are created for the runtime deps
 
   $ dune rules --root . --format=json @mel |
-  > jq -r 'include "dune"; .[] | if ruleHasCopy("a/assets/file.txt"; "a/output/a/assets/file.txt") then "a/output/a/assets/file.txt <- \([ruleDepFilePaths] | join(" "))" elif ruleHasCopy("a/assets/file.txt"; "another/another-output/a/assets/file.txt") then "another/another-output/a/assets/file.txt <- \([ruleDepFilePaths] | join(" "))" else empty end'
+  > jq_dune -r '.[] | if ruleHasCopy("a/assets/file.txt"; "a/output/a/assets/file.txt") then "a/output/a/assets/file.txt <- \([ruleDepFilePaths] | join(" "))" elif ruleHasCopy("a/assets/file.txt"; "another/another-output/a/assets/file.txt") then "another/another-output/a/assets/file.txt <- \([ruleDepFilePaths] | join(" "))" else empty end'
   a/output/a/assets/file.txt <- _build/default/a/assets/file.txt
   another/another-output/a/assets/file.txt <- _build/default/a/assets/file.txt
 
@@ -153,7 +153,7 @@ Test depending on external paths
 
   $ dune build @mel
 
-  $ dune trace cat | jq 'include "dune"; targetsMatchingFilter(test("[Mm]ain"))'
+  $ dune trace cat | jq_dune 'targetsMatchingFilter(test("[Mm]ain"))'
   {
     "target_files": [
       "_build/default/external/.melange_src/main.pp.ml"
@@ -204,10 +204,15 @@ Test depending on runtime assets inside `(include_subdirs ..)`
   > let () = Js.log file_content
   > EOF
 
-  $ dune build @mel --display=short 2>&1 | grep -i main
-           ppx incl/.melange_src/sub/main.pp.ml
-          melc incl/.incl-output.mobjs/melange/melange__Main.{cmi,cmj,cmt}
-          melc incl/incl-output/incl/sub/main.js
+  $ dune build @mel
+  $ find _build/default/incl -type f -iname '*main*' | sort
+  _build/default/incl/.incl-output.mobjs/melange/melange__Main.cmi
+  _build/default/incl/.incl-output.mobjs/melange/melange__Main.cmj
+  _build/default/incl/.incl-output.mobjs/melange/melange__Main.cmt
+  _build/default/incl/.melange_src/sub/main.ml
+  _build/default/incl/.melange_src/sub/main.pp.ml
+  _build/default/incl/incl-output/incl/sub/main.js
+  _build/default/incl/sub/main.ml
 
   $ node _build/default/incl/incl-output/incl/sub/main.js
   hello from sub file

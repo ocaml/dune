@@ -1,8 +1,6 @@
 We test the (select) field of the (libraries) field of the test stanza.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.11)
-  > EOF
+  $ make_dune_project 3.11
 
   $ cat > dune <<EOF
   > (test

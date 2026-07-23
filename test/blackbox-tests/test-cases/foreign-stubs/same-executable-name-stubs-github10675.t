@@ -13,9 +13,7 @@ stubs, dune should not crash. See #10675.
   >   (names startup)))
   > EOF
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.0)
-  > EOF
+  $ make_dune_project 3.0
 
   $ touch startup.c main.ml
 

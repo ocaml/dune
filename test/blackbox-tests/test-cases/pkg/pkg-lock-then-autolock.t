@@ -6,22 +6,7 @@ and does not trigger unnecessary rebuilds.
 
 Make a library package:
 
-  $ mkdir foo
-  $ cd foo
-  $ cat > dune-project <<EOF
-  > (lang dune 3.13)
-  > (package (name foo))
-  > EOF
-  $ cat > foo.ml <<EOF
-  > let message = "Hello from foo 0.0.1!"
-  > EOF
-  $ cat > dune <<EOF
-  > (library
-  >  (public_name foo))
-  > EOF
-  $ cd ..
-  $ tar cf foo.tar foo
-  $ rm -rf foo
+  $ make_foo_tarball 'let message = "Hello from foo 0.0.1!"'
 
 Make a package for the library using a local file source:
 

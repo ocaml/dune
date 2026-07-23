@@ -1,9 +1,6 @@
 Multiple cinaps stanzas in the same dune file
 
-  $ cat > dune-project <<EOF
-  > (lang dune 2.8)
-  > (using cinaps 1.0)
-  > EOF
+  $ make_cinaps_project 2.8 1.0
 
   $ cat > dune <<EOF
   > (cinaps (files *.ml))

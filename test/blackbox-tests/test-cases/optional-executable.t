@@ -12,10 +12,7 @@ Test optional executable
   >  (action (run %{exe:x.exe})))
   > EOF
 
-  $ cat >dune-project <<EOF
-  > (lang dune 2.0)
-  > (package (name x))
-  > EOF
+  $ make_dune_project_with_package 2.0 x
 
   $ touch x.ml
 
@@ -70,10 +67,7 @@ of its dependencies were optional.
 
   $ mkdir optional-binary
   $ cd optional-binary
-  $ cat >dune-project <<EOF
-  > (lang dune 3.0)
-  > (package (name myfoo))
-  > EOF
+  $ make_dune_project_with_package 3.0 myfoo
 
   $ mkdir exe
   $ cat >exe/bar.ml <<EOF
@@ -115,10 +109,7 @@ present even if the binary is not optional.
 
   $ mkdir optional-binary-absent
   $ cd optional-binary-absent
-  $ cat >dune-project <<EOF
-  > (lang dune 3.0)
-  > (package (name myfoo))
-  > EOF
+  $ make_dune_project_with_package 3.0 myfoo
 
   $ mkdir exe
   $ cat >exe/bar.ml <<EOF

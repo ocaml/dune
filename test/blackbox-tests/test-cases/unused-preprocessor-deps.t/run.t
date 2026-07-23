@@ -3,7 +3,7 @@ Should warn.
 
   $ touch a.ml b.ml
 
-  $ echo "(lang dune 1.11)" > dune-project
+  $ make_dune_project 1.11
   $ dune build
   File "dune", line 5, characters 1-39:
   5 |  (preprocessor_deps does-not-exist.txt))
@@ -16,7 +16,7 @@ Should warn.
   Warning: This preprocessor_deps field will be ignored because no preprocessor
   that might use them is configured.
 
-  $ echo "(lang dune 2.0)" > dune-project
+  $ make_dune_project 2.0
   $ dune build
   File "dune", line 5, characters 1-39:
   5 |  (preprocessor_deps does-not-exist.txt))

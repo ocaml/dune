@@ -77,13 +77,4 @@ val create
   -> t
 
 val original_opam_file : t -> original_opam_file option
-
-module Duplicate_dep_warning : sig
-  type t =
-    { loc : Loc.t
-    ; dep_string : string
-    ; field_name : string
-    }
-end
-
-val duplicate_dep_warnings : t -> Duplicate_dep_warning.t list
+val duplicate_dep_warnings : t -> User_message.t list

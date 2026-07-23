@@ -11,6 +11,11 @@ let melc sctx ~loc ~dir =
     "melc"
 ;;
 
+let available sctx ~dir =
+  let+ melc = melc sctx ~loc:None ~dir in
+  Result.is_ok melc
+;;
+
 let where =
   let impl bin =
     let* _ = Build_system.build_file bin in

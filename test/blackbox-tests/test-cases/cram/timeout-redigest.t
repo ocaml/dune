@@ -1,15 +1,13 @@
 Testing how timeout affects the digest:
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.20)
-  > EOF
+  $ make_dune_project 3.20
 
   $ cat > mytest.t
 
 This test counts the occurances of the cram script in the log.
   $ check() {
   > dune test mytest.t
-  > dune trace cat | jq -s 'include "dune"; [ .[] | processes | select(.args.categories == ["cram"]) ] | length'
+  > dune trace cat | jq_dune -s '[ .[] | processes | select(.args.categories == ["cram"]) ] | length'
   > }
 
 We can observe the test is run the first time:

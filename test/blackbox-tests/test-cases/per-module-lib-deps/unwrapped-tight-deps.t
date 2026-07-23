@@ -18,9 +18,7 @@ list becomes empty.
 
 See: https://github.com/ocaml/dune/issues/4572
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.23)
-  > EOF
+  $ make_dune_project 3.23
 
 [dep_lib] is an unwrapped library with three entry modules, each
 with an explicit interface so signature changes propagate through
@@ -83,7 +81,7 @@ reference — and record the rebuild targets for [consumer]:
   > let extra () = 7
   > EOF
   $ dune build @check
-  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("consumer_lib/\\.consumer_lib\\.objs/byte/consumer\\."))]'
+  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("consumer_lib/\\.consumer_lib\\.objs/byte/consumer\\."))]'
   [
     {
       "target_files": [
@@ -105,7 +103,7 @@ Same for [Unread_dep_b]:
   > let other = "hi"
   > EOF
   $ dune build @check
-  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("consumer_lib/\\.consumer_lib\\.objs/byte/consumer\\."))]'
+  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("consumer_lib/\\.consumer_lib\\.objs/byte/consumer\\."))]'
   [
     {
       "target_files": [
@@ -129,7 +127,7 @@ rebuild):
   > let new_fn x = x + 1
   > EOF
   $ dune build @check
-  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("consumer_lib/\\.consumer_lib\\.objs/byte/consumer\\."))]'
+  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("consumer_lib/\\.consumer_lib\\.objs/byte/consumer\\."))]'
   [
     {
       "target_files": [

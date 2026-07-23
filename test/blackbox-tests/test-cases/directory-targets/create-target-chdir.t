@@ -1,9 +1,6 @@
 Attempt to create a directory with chdir + with-stdout-to:
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.1)
-  > (using directory-targets 0.1)
-  > EOF
+  $ make_directory_targets_project 3.1
 
   $ cat > dune <<EOF
   > (rule

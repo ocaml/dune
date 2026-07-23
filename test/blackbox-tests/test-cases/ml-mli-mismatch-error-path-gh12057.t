@@ -4,9 +4,7 @@ A mismatch between an ml file and its mli file usually gives an error message
 mentioning both files. However in dune, it appears that we trigger the mention
 of the .ml twice.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.20)
-  > EOF
+  $ make_dune_project 3.20
 
   $ cat > dune <<EOF
   > (executable

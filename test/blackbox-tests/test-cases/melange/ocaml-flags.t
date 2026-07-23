@@ -1,9 +1,6 @@
 Test melange.compile_flags, ocamlc_flags and ocamlopt_flags fields on melange.emit stanza
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.8)
-  > (using melange 0.1)
-  > EOF
+  $ make_melange_project 3.8 0.1
 
 Create dune file that uses melange.compile_flags
 

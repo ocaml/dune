@@ -8,7 +8,7 @@ This test makes sure that the utop subcommand does not load optional libraries.
   >  (libraries does_not_exist))
   > EOF
   $ echo 'let run () = print_endline "this will never run"' > testutop/testutop.ml
-  $ echo "(lang dune 2.0)" > dune-project
+  $ make_dune_project 2.0
   $ echo 'let () = print_endline "No Error"' > init_test.ml
 
   $ dune utop testutop -- init_test.ml

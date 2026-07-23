@@ -1,6 +1,6 @@
 A default implementation of a library must belong to the same package
 
-  $ echo "(lang dune 2.6)" > dune-project
+  $ make_dune_project 2.6
   $ touch dummyfoo2.opam
   $ mkdir -p vlib impl
   $ touch vlib/vlib.mli impl/vlib.ml
@@ -22,5 +22,6 @@ A default implementation of a library must belong to the same package
   4 |  (implements vlib))
                    ^^^^
   Error: Library "vlib" is private, it cannot be a dependency of a public
-  library. You need to give "vlib" a public name.
+  library. You need to give "vlib" a public name or add a (package ...) field
+  to its stanza.
   [1]

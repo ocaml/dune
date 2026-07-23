@@ -2,10 +2,7 @@ We create two libraries `l.one` and `l.two` with a conflicting module.
 They build fine, are not co-linkable, but documentation should be able to be
 built. See #1645.
 
-  $ cat > dune-project << EOF
-  > (lang dune 1.0)
-  > (package (name l))
-  > EOF
+  $ make_dune_project_with_package 1.0 l
 
   $ mkdir one
   $ cat > one/dune << EOF
@@ -27,18 +24,8 @@ built. See #1645.
 
   $ dune build @install
   $ dune build @doc
-  Error: Multiple rules generated for
-  _build/default/_doc/_html/l/Module/index.html:
+  Error: Multiple rules generated for _build/default/_doc/_html/l/Module:
   - <internal location>
   - <internal location>
-  -> required by alias _doc/_html/l/doc
-  -> required by alias doc
-  Error: Multiple rules generated for
-  _build/default/_doc/_odocls/l/module.odocl:
-  - <internal location>
-  - <internal location>
-  -> required by _build/default/_doc/_html/l/db.js
-  -> required by _build/default/_doc/_html/l/index.html
-  -> required by alias _doc/_html/l/doc
   -> required by alias doc
   [1]

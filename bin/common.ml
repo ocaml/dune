@@ -2,7 +2,6 @@ open Stdune
 open Dune_config_file
 open Dune_scheduler
 module Console = Console
-module Graph = Dune_graph.Graph
 module Profile = Dune_lang.Profile
 
 open struct
@@ -141,7 +140,7 @@ module No_build = struct
   let debug_backtraces = debug_backtraces_term
 
   let set_debug_backtraces debug_backtraces =
-    Dune_engine.Clflags.debug_backtraces debug_backtraces
+    Report_error.debug_backtraces debug_backtraces
   ;;
 
   let set { debug_backtraces } = set_debug_backtraces debug_backtraces
@@ -455,8 +454,7 @@ let shared_with_config_file ~allow_pkg_flag =
           ~doc:(Some doc))
   and+ sandboxing_preference =
     let all =
-      List.map Dune_engine.Sandbox_mode.cli_options ~f:(fun s ->
-        Dune_engine.Sandbox_mode.to_string s, s)
+      List.map Sandbox_mode.cli_options ~f:(fun s -> Sandbox_mode.to_string s, s)
     in
     Arg.(
       value
@@ -475,8 +473,8 @@ let shared_with_config_file ~allow_pkg_flag =
                   (String.concat
                      ~sep:", "
                      (List.map
-                        Dune_engine.Sandbox_mode.all_except_patch_back_source_tree
-                        ~f:Dune_engine.Sandbox_mode.to_string)))))
+                        Sandbox_mode.all_except_patch_back_source_tree
+                        ~f:Sandbox_mode.to_string)))))
   and+ terminal_persistence =
     let modes = Terminal_persistence.all in
     let doc =
@@ -536,7 +534,7 @@ let shared_with_config_file ~allow_pkg_flag =
   and+ action_stdout_on_success =
     Arg.(
       value
-      & opt (some (enum Dune_config.Action_output_on_success.all)) None
+      & opt (some (enum Action_types.Action_output_on_success.all)) None
       & info
           [ "action-stdout-on-success" ]
           ~doc:
@@ -550,7 +548,7 @@ let shared_with_config_file ~allow_pkg_flag =
   and+ action_stderr_on_success =
     Arg.(
       value
-      & opt (some (enum Dune_config.Action_output_on_success.all)) None
+      & opt (some (enum Action_types.Action_output_on_success.all)) None
       & info
           [ "action-stderr-on-success" ]
           ~doc:
@@ -602,7 +600,7 @@ module Builder = struct
     ; only_packages : Only_packages.Clflags.t
     ; capture_outputs : bool
     ; diff_command : string option
-    ; promote : Dune_engine.Clflags.Promote.t option
+    ; promote : Clflags.Promote.t option
     ; ignore_promoted_rules : bool
     ; force : bool
     ; no_print_directory : bool
@@ -614,7 +612,7 @@ module Builder = struct
     ; promote_install_files : bool
     ; file_watcher : Scheduler.Run.file_watcher
     ; workspace_config : Workspace.Clflags.t
-    ; report_errors_config : Dune_engine.Report_errors_config.t
+    ; report_errors_config : Report_errors_config.t
     ; separate_error_messages : bool
     ; stop_on_first_error : bool
     ; require_dune_project_file : bool
@@ -625,9 +623,10 @@ module Builder = struct
     ; allow_builds : bool
     ; default_root_is_cwd : bool
     ; target_exec : string option
+    ; action_runner : bool
+    ; sandbox_actions : bool
     }
 
-  let set_no_build t no_build = { t with no_build }
   let root t = t.root
   let set_root t root = { t with root = Some root }
   let forbid_builds t = { t with allow_builds = false; no_print_directory = true }
@@ -714,13 +713,13 @@ module Builder = struct
                       "Automatically promote files. This is similar to running $(b,dune \
                        promote) after the build."))
          in
-         Option.some_if auto Dune_engine.Clflags.Promote.Automatically)
+         Option.some_if auto Clflags.Promote.Automatically)
         (let+ disable =
            let doc = "Disable all promotion rules" in
            let env = Cmd.Env.info ~doc "DUNE_DISABLE_PROMOTION" in
            Arg.(value & flag & info [ "disable-promotion" ] ~docs ~env ~doc:(Some doc))
          in
-         Option.some_if disable Dune_engine.Clflags.Promote.Never)
+         Option.some_if disable Clflags.Promote.Never)
     and+ force =
       Arg.(
         value
@@ -924,11 +923,11 @@ module Builder = struct
         value
         & opt
             (enum
-               [ "early", Dune_engine.Report_errors_config.Early
+               [ "early", Report_errors_config.Early
                ; "deterministic", Deterministic
                ; "twice", Twice
                ])
-            Dune_engine.Report_errors_config.default
+            Report_errors_config.default
         & info
             [ "error-reporting" ]
             ~doc:
@@ -952,6 +951,25 @@ module Builder = struct
         & info
             [ "stop-on-first-error" ]
             ~doc:(Some "Stop the build as soon as an error is encountered."))
+    and+ sandbox_actions =
+      Arg.(
+        value
+        & flag
+        & info
+            [ "sandbox-actions" ]
+            ~docs
+            ~doc:
+              (Some
+                 "Run spawned build processes in an external dune action runner wrapped \
+                  with bubblewrap on Linux or sandbox-exec on macOS."))
+    and+ action_runner =
+      Arg.(
+        value
+        & flag
+        & info
+            [ "action-runner" ]
+            ~docs
+            ~doc:(Some "Run spawned build processes in an external dune action runner."))
     in
     { no_build
     ; debug_dep_path
@@ -996,6 +1014,8 @@ module Builder = struct
     ; allow_builds = true
     ; default_root_is_cwd = false
     ; target_exec
+    ; action_runner
+    ; sandbox_actions
     }
   ;;
 
@@ -1035,6 +1055,8 @@ module Builder = struct
         ; allow_builds
         ; default_root_is_cwd
         ; target_exec
+        ; action_runner
+        ; sandbox_actions
         }
     =
     No_build.equal t.no_build no_build
@@ -1044,7 +1066,7 @@ module Builder = struct
     && Only_packages.Clflags.equal t.only_packages only_packages
     && Bool.equal t.capture_outputs capture_outputs
     && Option.equal String.equal t.diff_command diff_command
-    && Option.equal Dune_engine.Clflags.Promote.equal t.promote promote
+    && Option.equal Clflags.Promote.equal t.promote promote
     && Bool.equal t.ignore_promoted_rules ignore_promoted_rules
     && Bool.equal t.force force
     && Bool.equal t.no_print_directory no_print_directory
@@ -1056,7 +1078,7 @@ module Builder = struct
     && Bool.equal t.promote_install_files promote_install_files
     && Scheduler.Run.file_watcher_equal t.file_watcher file_watcher
     && Source.Workspace.Clflags.equal t.workspace_config workspace_config
-    && Dune_engine.Report_errors_config.equal t.report_errors_config report_errors_config
+    && Report_errors_config.equal t.report_errors_config report_errors_config
     && Bool.equal t.separate_error_messages separate_error_messages
     && Bool.equal t.stop_on_first_error stop_on_first_error
     && Bool.equal t.require_dune_project_file require_dune_project_file
@@ -1074,21 +1096,26 @@ module Builder = struct
     && Bool.equal t.allow_builds allow_builds
     && Bool.equal t.default_root_is_cwd default_root_is_cwd
     && Option.equal String.equal t.target_exec target_exec
+    && Bool.equal t.action_runner action_runner
+    && Bool.equal t.sandbox_actions sandbox_actions
   ;;
 end
 
 type t =
   { builder : Builder.t
   ; root : Workspace_root.t
-  ; rpc :
-      [ `Allow of Dune_lang.Dep_conf.t Dune_rpc_impl.Server.t Lazy.t | `Forbid_builds ]
+  ; build_loop : Dune_engine.Build_loop.t
+  ; rpc : [ `Allow of Dune_rpc_impl.Server.t Lazy.t | `Forbid_builds ]
+  ; action_runner : Dune_engine.Action_runner.t option Lazy.t
   }
 
 let capture_outputs t = t.builder.capture_outputs
 let root t = t.root
+let build_loop t = t.build_loop
 let watch t = t.builder.watch
 let x t = t.builder.workspace_config.x
 let file_watcher t = t.builder.file_watcher
+let sandbox_actions t = t.builder.sandbox_actions
 let prefix_target t s = t.root.reach_from_root_prefix ^ s
 
 let rpc t =
@@ -1160,28 +1187,27 @@ let print_entering_message c =
     Console.set_directory dir)
 ;;
 
+let action_builder_of_rpc_request request =
+  let open Dune_engine.Action_builder.O in
+  Dune_engine.Action_builder.of_memo (Memo.of_thunk Util.setup) >>= request
+;;
+
+let rpc_request_action ~root (kind : Dune_rpc_impl.Server.build_request) =
+  action_builder_of_rpc_request (fun setup ->
+    match kind with
+    | Build targets -> Target.interpret_targets root setup targets
+    | Runtest test_paths ->
+      Runtest_common.make_request
+        ~scontexts:setup.scontexts
+        ~to_cwd:root.to_cwd
+        ~test_paths)
+;;
+
 (* CR-someday rleshchinskiy: The split between `build` and `init` seems quite arbitrary,
    we should probably refactor that at some point. *)
 let build (root : Workspace_root.t) (builder : Builder.t) =
-  let rpc =
-    if builder.allow_builds
-    then
-      `Allow
-        (lazy
-          (let registry =
-             match builder.watch with
-             | Yes _ -> `Add
-             | No -> `Skip
-           in
-           let lock_timeout =
-             match builder.watch with
-             | Yes Passive -> Some (Time.Span.of_secs 1.0)
-             | _ -> None
-           in
-           Dune_rpc_impl.Server.create ~lock_timeout ~registry ~root:root.dir))
-    else `Forbid_builds
-  in
-  { builder; root; rpc }
+  let build_loop = Dune_engine.Build_loop.create () in
+  { builder; root; build_loop; rpc = `Forbid_builds; action_runner = lazy None }
 ;;
 
 let maybe_init_cache (cache_config : Dune_cache.Config.t) =
@@ -1201,7 +1227,20 @@ let maybe_init_cache (cache_config : Dune_cache.Config.t) =
        Disabled)
 ;;
 
-let init_with_root ~(root : Workspace_root.t) (builder : Builder.t) =
+let action_runner_requested t =
+  t.builder.allow_builds && (t.builder.action_runner || t.builder.sandbox_actions)
+;;
+
+let action_runner t =
+  if action_runner_requested t
+  then (
+    match t.rpc with
+    | `Allow rpc -> ignore (Lazy.force rpc : Dune_rpc_impl.Server.t)
+    | `Forbid_builds -> Code_error.raise "action runners require the dune RPC server" []);
+  Lazy.force t.action_runner
+;;
+
+let init_with_root_and_rpc ~(root : Workspace_root.t) ~rpc_build (builder : Builder.t) =
   let c = build root builder in
   No_build.set c.builder.no_build;
   if c.root.dir <> Filename.current_dir_name then Sys.chdir c.root.dir;
@@ -1216,7 +1255,7 @@ let init_with_root ~(root : Workspace_root.t) (builder : Builder.t) =
            an existing trace from another dune process *)
          match trace_config with
          | `Default ->
-           (match Global_lock.lock ~timeout:None with
+           (match Global_lock.lock () with
             | Ok () -> `Create
             | Error _ -> `Skip)
          | `User_specified _ -> `Create
@@ -1236,8 +1275,8 @@ let init_with_root ~(root : Workspace_root.t) (builder : Builder.t) =
              | () -> ()
              | exception Unix.Unix_error _ -> ())
           | `User_specified _ -> ());
-         let stats = Dune_trace.Out.create trace in
-         Dune_trace.set_global stats;
+         let stats = Dune_trace.Out.create (`Path trace) in
+         Dune_trace.set_global stats ~path:trace;
          Dune_trace.Event.init
            ~version:
              (Build_info.V1.version () |> Option.map ~f:Build_info.V1.Version.to_string)
@@ -1288,29 +1327,32 @@ let init_with_root ~(root : Workspace_root.t) (builder : Builder.t) =
       , Dyn.string (Path.to_string (Lazy.force Dune_cache.Layout.build_cache_dir)) )
     ];
   Dune_cache.Shared.config := maybe_init_cache cache_config;
-  Dune_rules.Main.init ~sandboxing_preference:config.sandboxing_preference ();
+  Dune_rules.Main.init
+    ~sandbox_actions:c.builder.sandbox_actions
+    ~sandboxing_preference:config.sandboxing_preference
+    ();
   Only_packages.Clflags.set c.builder.only_packages;
   Report_error.print_memo_stacks := c.builder.debug_dep_path;
-  Dune_engine.Clflags.report_errors_config := c.builder.report_errors_config;
-  Dune_rules.Clflags.debug_package_logs := c.builder.debug_package_logs;
-  Dune_engine.Clflags.wait_for_filesystem_clock := c.builder.wait_for_filesystem_clock;
-  Dune_engine.Clflags.capture_outputs := c.builder.capture_outputs;
-  Dune_engine.Clflags.diff_command := c.builder.diff_command;
-  Dune_engine.Clflags.promote := c.builder.promote;
-  Dune_engine.Clflags.force := c.builder.force;
-  Dune_engine.Clflags.stop_on_first_error := c.builder.stop_on_first_error;
-  Dune_rules.Clflags.store_orig_src_dir := c.builder.store_orig_src_dir;
-  Dune_rules.Clflags.promote_install_files := c.builder.promote_install_files;
-  Dune_engine.Clflags.always_show_command_line := c.builder.always_show_command_line;
-  Dune_rules.Clflags.ignore_promoted_rules := c.builder.ignore_promoted_rules;
-  Source.Clflags.on_missing_dune_project_file
+  Clflags.report_errors_config := c.builder.report_errors_config;
+  Clflags.debug_package_logs := c.builder.debug_package_logs;
+  Clflags.wait_for_filesystem_clock := c.builder.wait_for_filesystem_clock;
+  Clflags.capture_outputs := c.builder.capture_outputs;
+  Clflags.diff_command := c.builder.diff_command;
+  Clflags.promote := c.builder.promote;
+  Clflags.force := c.builder.force;
+  Clflags.stop_on_first_error := c.builder.stop_on_first_error;
+  Clflags.store_orig_src_dir := c.builder.store_orig_src_dir;
+  Clflags.promote_install_files := c.builder.promote_install_files;
+  Clflags.always_show_command_line := c.builder.always_show_command_line;
+  Clflags.ignore_promoted_rules := c.builder.ignore_promoted_rules;
+  Clflags.on_missing_dune_project_file
   := if c.builder.require_dune_project_file then Error else Warn;
-  (Dune_engine.Clflags.can_go_in_shared_cache_default
+  (Clflags.can_go_in_shared_cache_default
    := match config.cache_enabled with
       | Disabled | Enabled_except_user_rules -> false
       | Enabled -> true);
   (match c.builder.target_exec with
-   | None -> Dune_engine.Clflags.target_exec := None
+   | None -> Clflags.target_exec := None
    | Some spec ->
      let toolchain, wrapper_cmd =
        match String.lsplit2 spec ~on:'=' with
@@ -1324,7 +1366,7 @@ let init_with_root ~(root : Workspace_root.t) (builder : Builder.t) =
      (match parts with
       | [] ->
         User_error.raise [ Pp.textf "--target-exec: wrapper command cannot be empty" ]
-      | prog :: args -> Dune_engine.Clflags.target_exec := Some (toolchain, prog, args)));
+      | prog :: args -> Clflags.target_exec := Some (toolchain, prog, args)));
   Log.info
     "Workspace root"
     [ "root", Dyn.string (Path.to_absolute_filename Path.root |> String.maybe_quoted) ];
@@ -1339,18 +1381,60 @@ let init_with_root ~(root : Workspace_root.t) (builder : Builder.t) =
       let stat = Gc.stat () in
       let path = Path.external_ file in
       Dune_util.Gc.serialize ~path stat);
+  let where = lazy (Dune_rpc_impl.Where.default ()) in
+  let action_runner =
+    lazy
+      (if action_runner_requested c
+       then Some (Action_runner.create ~config ~sandbox_actions:c.builder.sandbox_actions)
+       else None)
+  in
+  let rpc =
+    if c.builder.allow_builds
+    then
+      `Allow
+        (lazy
+          (let rpc_build =
+             lazy
+               (match rpc_build with
+                | `Disabled -> Dune_rpc_impl.Server.Disabled
+                | `Enabled ->
+                  Dune_rpc_impl.Server.Enabled
+                    { build_loop = c.build_loop; build_action = rpc_request_action ~root })
+           in
+           let registry, build =
+             match c.builder.watch with
+             | Yes _ -> `Add, Lazy.force rpc_build
+             | No -> `Skip, Dune_rpc_impl.Server.Disabled
+           in
+           Dune_rpc_impl.Server.create
+             ~registry
+             ~root:root.dir
+             ~build
+             ~where:(Lazy.force where)
+             ~action_runner:(Lazy.force action_runner)
+             c.builder.watch))
+    else `Forbid_builds
+  in
+  let c = { c with rpc; action_runner } in
   c, config
 ;;
 
-let init (builder : Builder.t) =
-  let root =
-    Workspace_root.create_exn
-      ~from:Filename.current_dir_name
-      ~default_is_cwd:builder.default_root_is_cwd
-      ~specified_by_user:builder.root
-      ()
-  in
-  init_with_root ~root builder
+let init_with_root ~root (builder : Builder.t) =
+  init_with_root_and_rpc ~root ~rpc_build:`Disabled builder
+;;
+
+let create_root (builder : Builder.t) =
+  Workspace_root.create_exn
+    ~from:Filename.current_dir_name
+    ~default_is_cwd:builder.default_root_is_cwd
+    ~specified_by_user:builder.root
+    ()
+;;
+
+let init (builder : Builder.t) = init_with_root ~root:(create_root builder) builder
+
+let init_build (builder : Builder.t) =
+  init_with_root_and_rpc ~root:(create_root builder) ~rpc_build:`Enabled builder
 ;;
 
 let footer =
@@ -1389,6 +1473,25 @@ let help_secs =
   ; `P "Use `$(mname) $(i,COMMAND) --help' for help on a single command."
   ; footer
   ]
+;;
+
+(* Adapted from
+   https://github.com/ocaml/opam/blob/fbbe93c3f67034da62d28c8666ec6b05e0a9b17c/src/client/opamArg.ml#L759 *)
+let command_alias ?orig_name cmd term name =
+  let orig =
+    match orig_name with
+    | Some s -> s
+    | None -> Cmd.name cmd
+  in
+  let doc = Printf.sprintf "An alias for $(b,%s)." orig in
+  let man =
+    [ `S "DESCRIPTION"
+    ; `P (Printf.sprintf "$(mname)$(b, %s) is an alias for $(mname)$(b, %s)." name orig)
+    ; `P (Printf.sprintf "See $(mname)$(b, %s --help) for details." orig)
+    ; `Blocks help_secs
+    ]
+  in
+  Cmd.v (Cmd.info name ~docs:"COMMAND ALIASES" ~doc ~man) term
 ;;
 
 let envs =

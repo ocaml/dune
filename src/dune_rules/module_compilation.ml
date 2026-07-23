@@ -402,6 +402,7 @@ let build_cm
       >>> Command.run
             ~dir:(Path.build (Context.build_dir ctx))
             ~sandbox
+            ~forbid_action_runner:true
             compiler
             [ flags
             ; pp_flags
@@ -539,6 +540,7 @@ let ocamlc_i ~deps cctx (m : Module.t) ~output =
               ~dir:(Path.build (Context.build_dir ctx))
               ~stdout_to:output
               ~sandbox
+              ~forbid_action_runner:true
               [ Command.Args.dyn ocaml_flags
               ; A "-I"
               ; Path (Path.build (Obj_dir.byte_dir obj_dir))
@@ -662,10 +664,9 @@ let build_root_module cctx root_module =
   let for_ = Compilation_context.for_ cctx in
   let sctx = Compilation_context.super_context cctx in
   let entries =
-    Root_module.entries
-      sctx
-      ~requires_compile:(Compilation_context.requires_compile cctx)
-      ~for_
+    match Compilation_context.user_written_requires cctx with
+    | Some requires_compile -> Root_module.entries sctx ~requires_compile ~for_
+    | None -> Code_error.raise "root module without user-written dependencies" []
   in
   let cctx = Compilation_context.for_root_module cctx root_module in
   let file = Option.value_exn (Module.file root_module ~ml_kind:Impl) in

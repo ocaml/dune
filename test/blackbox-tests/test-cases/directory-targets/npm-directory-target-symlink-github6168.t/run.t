@@ -1,10 +1,7 @@
 Testing a bug with npm creating a directory target with a symlink inside but
 Dune not recognizing it
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.5)
-  > (using directory-targets 0.1)
-  > EOF
+  $ make_directory_targets_project 3.5
 
   $ cat > dune << EOF
   > (rule
@@ -12,7 +9,7 @@ Dune not recognizing it
   >  (targets
   >   (dir fakenode_modules))
   >  (action
-  >   (run ./fakenpm.exe)))
+  >   (run dune_cmd make-fakenode-modules)))
   > EOF
   dune: Permission denied
   [1]

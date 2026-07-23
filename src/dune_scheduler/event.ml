@@ -14,87 +14,66 @@ let dyn_of_job { pid; is_process_group_leader; ivar } =
     ]
 ;;
 
-type build_input_change =
-  | Fs_event of File_watcher.Fs_memo_event.t
-  | Invalidation of Memo.Invalidation.t
+module Fs_memo_event = struct
+  type t =
+    { path : Path.t
+    ; kind : Dune_trace.File_watcher_event.kind
+    }
+
+  let to_dyn { path; kind } =
+    let open Dyn in
+    record
+      [ "path", Path.to_dyn path
+      ; "kind", Repr.to_dyn Dune_trace.File_watcher_event.kind_repr kind
+      ]
+  ;;
+
+  let create ~kind ~path = { path; kind }
+end
+
+module File_watcher_event = struct
+  type t =
+    | Fs_memo_event of Fs_memo_event.t
+    | Queue_overflow
+end
 
 type t =
-  | File_watcher_task of (unit -> File_watcher.Event.t list)
-  | Build_inputs_changed of build_input_change Nonempty_list.t
-  | File_system_sync of File_watcher.Sync_id.t
-  | File_system_watcher_terminated
   | Shutdown of Shutdown.Reason.t
   | Fiber_fill_ivar of Fiber.fill
   | Job_complete_ready
-
-module Invalidation_event = struct
-  type t =
-    | Invalidation of Memo.Invalidation.t
-    | Filesystem_event of File_watcher.Event.t
-end
 
 module Queue = struct
   type event = t
 
   type t =
     { jobs_completed : (job * Proc.Process_info.t) Queue.t
-    ; file_watcher_tasks : (unit -> File_watcher.Event.t list) Queue.t
-    ; mutable invalidation_events : Invalidation_event.t list
     ; mutable shutdown_reasons : Shutdown.Reason.Set.t
     ; mutex : Mutex.t
     ; cond : Condition.t
-    ; mutable pending_jobs : int
-    ; mutable pending_worker_tasks : int
     ; mutable job_complete_ready : bool
     ; worker_tasks_completed : Fiber.fill Queue.t
     ; mutable got_event : bool
     ; mutable yield : unit Fiber.Ivar.t option
     }
 
-  let to_dyn { pending_jobs; pending_worker_tasks; _ } =
-    Dyn.record
-      [ "pending_jobs", Dyn.int pending_jobs
-      ; "pending_worker_tasks", Dyn.int pending_worker_tasks
-      ]
-  ;;
+  let to_dyn _ = Dyn.record []
 
   let create () =
     let jobs_completed = Queue.create () in
-    let file_watcher_tasks = Queue.create () in
     let worker_tasks_completed = Queue.create () in
-    let invalidation_events = [] in
     let shutdown_reasons = Shutdown.Reason.Set.empty in
     let mutex = Mutex.create () in
     let cond = Condition.create () in
-    let pending_jobs = 0 in
-    let pending_worker_tasks = 0 in
     { jobs_completed
-    ; file_watcher_tasks
-    ; invalidation_events
     ; shutdown_reasons
     ; mutex
     ; cond
-    ; pending_jobs
     ; worker_tasks_completed
-    ; pending_worker_tasks
     ; got_event = false
     ; yield = None
     ; job_complete_ready = false
     }
   ;;
-
-  let register_job_started q = q.pending_jobs <- q.pending_jobs + 1
-
-  let finish_job q =
-    assert (q.pending_jobs > 0);
-    q.pending_jobs <- q.pending_jobs - 1
-  ;;
-
-  let register_worker_task_started q =
-    q.pending_worker_tasks <- q.pending_worker_tasks + 1
-  ;;
-
-  let cancel_work_task_started q = q.pending_worker_tasks <- q.pending_worker_tasks - 1
 
   let add_event q f =
     Mutex.lock q.mutex;
@@ -140,57 +119,13 @@ module Queue = struct
         Some Job_complete_ready
     ;;
 
-    let file_watcher_task q =
-      Option.map (Queue.pop q.file_watcher_tasks) ~f:(fun job -> File_watcher_task job)
-    ;;
-
-    let invalidation q =
-      match q.invalidation_events with
-      | [] -> None
-      | events ->
-        let rec process_events acc = function
-          | [] ->
-            q.invalidation_events <- [];
-            Option.map
-              (Nonempty_list.of_list (List.rev acc))
-              ~f:(fun build_input_changes -> Build_inputs_changed build_input_changes)
-          | event :: events ->
-            (match (event : Invalidation_event.t) with
-             | Filesystem_event Watcher_terminated ->
-               q.invalidation_events <- [];
-               Some File_system_watcher_terminated
-             | Filesystem_event (Sync id) ->
-               (match Nonempty_list.of_list (List.rev acc) with
-                | None ->
-                  q.invalidation_events <- events;
-                  Some (File_system_sync id)
-                | Some build_input_changes ->
-                  q.invalidation_events <- event :: events;
-                  Some (Build_inputs_changed build_input_changes))
-             | Filesystem_event (Fs_memo_event event) ->
-               process_events (Fs_event event :: acc) events
-             | Filesystem_event Queue_overflow ->
-               process_events
-                 (Invalidation
-                    (Memo.Invalidation.clear_caches ~reason:Event_queue_overflow)
-                  :: acc)
-                 events
-             | Invalidation invalidation ->
-               process_events (Invalidation invalidation :: acc) events)
-        in
-        process_events [] events
-    ;;
-
     let jobs_completed q =
       Option.map (Queue.pop q.jobs_completed) ~f:(fun (job, proc_info) ->
-        q.pending_jobs <- q.pending_jobs - 1;
-        assert (q.pending_jobs >= 0);
         Fiber_fill_ivar (Fill (job.ivar, proc_info)))
     ;;
 
     let worker_tasks_completed q =
       Option.map (Queue.pop q.worker_tasks_completed) ~f:(fun fill ->
-        q.pending_worker_tasks <- q.pending_worker_tasks - 1;
         Fiber_fill_ivar fill)
     ;;
 
@@ -206,14 +141,12 @@ module Queue = struct
   let events_in_order =
     (* Event sources are listed in priority order. Signals are the
        highest priority to maximize responsiveness to Ctrl+C.
-       [file_watcher_task], [worker_tasks_completed] and [invalidation] are
-       used for reacting to user input, so their latency is also important.
-       [jobs_completed] and [yield] are where the bulk of the work is done, so
-       they are the lowest priority to avoid starving other things. *)
+       [worker_tasks_completed] is used for reacting to user input, so its
+       latency is also important. [jobs_completed] and [yield] are where the
+       bulk of the work is done, so they are the lowest priority to avoid
+       starving other things. *)
     Event_source.
       [ shutdown
-      ; file_watcher_task
-      ; invalidation
       ; worker_tasks_completed
       ; (if Sys.win32 then jobs_completed else job_complete_ready)
       ; yield
@@ -241,29 +174,11 @@ module Queue = struct
     ev
   ;;
 
-  let send_worker_task_completed q event =
-    add_event q (fun q -> Queue.push q.worker_tasks_completed event)
-  ;;
-
   let send_worker_tasks_completed q events =
     match events with
     | [] -> ()
     | _ :: _ ->
       add_event q (fun q -> List.iter events ~f:(Queue.push q.worker_tasks_completed))
-  ;;
-
-  let send_invalidation_events q events =
-    add_event q (fun q -> q.invalidation_events <- q.invalidation_events @ events)
-  ;;
-
-  let send_file_watcher_events q files =
-    send_invalidation_events
-      q
-      (List.map files ~f:(fun file : Invalidation_event.t -> Filesystem_event file))
-  ;;
-
-  let send_invalidation_event q invalidation =
-    send_invalidation_events q [ Invalidation invalidation ]
   ;;
 
   let send_job_completed q job proc_info =
@@ -276,11 +191,4 @@ module Queue = struct
     add_event q (fun q ->
       q.shutdown_reasons <- Shutdown.Reason.Set.add q.shutdown_reasons signal)
   ;;
-
-  let send_file_watcher_task q job =
-    add_event q (fun q -> Queue.push q.file_watcher_tasks job)
-  ;;
-
-  let pending_jobs q = q.pending_jobs
-  let pending_worker_tasks q = q.pending_worker_tasks
 end

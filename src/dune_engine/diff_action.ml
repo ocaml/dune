@@ -1,5 +1,5 @@
 open Import
-module Diff = Dune_util.Action.Diff
+module Diff = Stdune.Action_types.Diff
 
 let compare_file_paths = function
   | Diff.Mode.Binary -> Io.compare_files

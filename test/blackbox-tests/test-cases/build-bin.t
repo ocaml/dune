@@ -1,9 +1,6 @@
 Pform expansion should work in `exec` but also in `build`:
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.10)
-  > (package (name public))
-  > EOF
+  $ make_dune_project_with_package 3.10 public
   $ cat > dune << EOF
   > (executable (public_name public) (modules Public))
   > (executable (name private) (modules Private))

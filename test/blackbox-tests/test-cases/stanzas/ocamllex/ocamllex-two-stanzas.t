@@ -1,29 +1,15 @@
 Test building 2 ocamllex stanzas in the same group, by 2 different stanzas 
 (library + executable)
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.21)
-  > EOF
+  $ make_dune_project 3.21
   $ cat > dune <<EOF
   > (library (name foo) (modules foo foo_lex))
   > (executable (name bar) (modules bar bar_lex))
   > (ocamllex (modules bar_lex foo_lex))
   > EOF
-  $ cat > bar_lex.mll <<EOF
-  > {
-  > }
-  > rule lex = parse
-  >   | _   { true  }
-  >   | eof { false }
-  > EOF
+  $ make_trivial_ocamllex bar_lex.mll
 
-  $ cat > foo_lex.mll <<EOF
-  > {
-  > }
-  > rule lex = parse
-  >   | _   { true  }
-  >   | eof { false }
-  > EOF
+  $ make_trivial_ocamllex foo_lex.mll
 
   $ cat > foo.ml<<EOF
   > let x = Foo_lex.lex

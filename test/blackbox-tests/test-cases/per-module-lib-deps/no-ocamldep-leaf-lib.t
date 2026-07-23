@@ -1,9 +1,7 @@
 A multi-module consumer of a single-module leaf library builds
 without error.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.23)
-  > EOF
+  $ make_dune_project 3.23
 
 [leaf]: unwrapped, single-module, no library dependencies. This is
 exactly the shape that triggers the no-ocamldep fast path:

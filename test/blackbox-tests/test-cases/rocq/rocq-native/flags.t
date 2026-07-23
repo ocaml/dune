@@ -1,19 +1,11 @@
 Test cases to check Coq's flag setting is correct:
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.21)
-  > (using rocq 0.11)
-  > EOF
+  $ make_rocq_project 3.21 0.11
 
   $ cat > foo.v <<EOF
   > Definition t := 3.
   > EOF
 
-  $ runFlags() {
-  > dune clean
-  > dune build foo.vo
-  > dune trace cat | jq -c 'include "dune"; rocqFlags'
-  > }
 
 Test case: default flags
 
@@ -22,7 +14,7 @@ Test case: default flags
   >  (name foo))
   > EOF
 
-  $ runFlags
+  $ trace_rocq_flags foo.vo
   {"name":"rocq","args":["c","--config"]}
   {"name":"rocq","args":["dep","-boot","-R","coq/theories","Corelib","-R",".","foo","-dyndep","opt","-vos","foo.v"]}
   {"name":"rocq","args":["compile","-q","-w","-deprecated-native-compiler-option","-native-output-dir",".","-native-compiler","on","-nI","rocq-runtime/kernel","-nI",".","-boot","-R","coq/theories","Corelib","-R",".","foo","foo.v"]}
@@ -35,7 +27,7 @@ TC: :standard
   >  (flags :standard))
   > EOF
 
-  $ runFlags
+  $ trace_rocq_flags foo.vo
   {"name":"rocq","args":["c","--config"]}
   {"name":"rocq","args":["dep","-boot","-R","coq/theories","Corelib","-R",".","foo","-dyndep","opt","-vos","foo.v"]}
   {"name":"rocq","args":["compile","-q","-w","-deprecated-native-compiler-option","-native-output-dir",".","-native-compiler","on","-nI","rocq-runtime/kernel","-nI",".","-boot","-R","coq/theories","Corelib","-R",".","foo","foo.v"]}
@@ -48,7 +40,7 @@ TC: override :standard
   >  (flags ))
   > EOF
 
-  $ runFlags
+  $ trace_rocq_flags foo.vo
   {"name":"rocq","args":["c","--config"]}
   {"name":"rocq","args":["dep","-boot","-R","coq/theories","Corelib","-R",".","foo","-dyndep","opt","-vos","foo.v"]}
   {"name":"rocq","args":["compile","-w","-deprecated-native-compiler-option","-native-output-dir",".","-native-compiler","on","-nI","rocq-runtime/kernel","-nI",".","-boot","-R","coq/theories","Corelib","-R",".","foo","foo.v"]}
@@ -61,7 +53,7 @@ TC: add to :standard
   >  (flags :standard -type-in-type))
   > EOF
 
-  $ runFlags
+  $ trace_rocq_flags foo.vo
   {"name":"rocq","args":["c","--config"]}
   {"name":"rocq","args":["dep","-boot","-R","coq/theories","Corelib","-R",".","foo","-dyndep","opt","-vos","foo.v"]}
   {"name":"rocq","args":["compile","-q","-type-in-type","-w","-deprecated-native-compiler-option","-native-output-dir",".","-native-compiler","on","-nI","rocq-runtime/kernel","-nI",".","-boot","-R","coq/theories","Corelib","-R",".","foo","foo.v"]}
@@ -79,7 +71,7 @@ TC: extend in workspace + override standard
   > (env (dev (rocq (flags -type-in-type))))
   > EOF
 
-  $ runFlags
+  $ trace_rocq_flags foo.vo
   {"name":"rocq","args":["c","--config"]}
   {"name":"rocq","args":["dep","-boot","-R","coq/theories","Corelib","-R",".","foo","-dyndep","opt","-vos","foo.v"]}
   {"name":"rocq","args":["compile","-type-in-type","-w","-deprecated-native-compiler-option","-native-output-dir",".","-native-compiler","on","-nI","rocq-runtime/kernel","-nI",".","-boot","-R","coq/theories","Corelib","-R",".","foo","foo.v"]}
@@ -91,7 +83,7 @@ TC: extend in workspace + override standard
   > (env (dev (rocq (flags :standard -type-in-type))))
   > EOF
 
-  $ runFlags
+  $ trace_rocq_flags foo.vo
   {"name":"rocq","args":["c","--config"]}
   {"name":"rocq","args":["dep","-boot","-R","coq/theories","Corelib","-R",".","foo","-dyndep","opt","-vos","foo.v"]}
   {"name":"rocq","args":["compile","-q","-type-in-type","-w","-deprecated-native-compiler-option","-native-output-dir",".","-native-compiler","on","-nI","rocq-runtime/kernel","-nI",".","-boot","-R","coq/theories","Corelib","-R",".","foo","foo.v"]}
@@ -104,7 +96,7 @@ TC: extend in dune (env) + override standard
   > (env (dev (rocq (flags -type-in-type))))
   > EOF
 
-  $ runFlags
+  $ trace_rocq_flags foo.vo
   {"name":"rocq","args":["c","--config"]}
   {"name":"rocq","args":["dep","-boot","-R","coq/theories","Corelib","-R",".","foo","-dyndep","opt","-vos","foo.v"]}
   {"name":"rocq","args":["compile","-type-in-type","-w","-deprecated-native-compiler-option","-native-output-dir",".","-native-compiler","on","-nI","rocq-runtime/kernel","-nI",".","-boot","-R","coq/theories","Corelib","-R",".","foo","foo.v"]}
@@ -117,7 +109,7 @@ TC: extend in dune (env) + standard
   > (env (dev (rocq (flags :standard -type-in-type))))
   > EOF
 
-  $ runFlags
+  $ trace_rocq_flags foo.vo
   {"name":"rocq","args":["c","--config"]}
   {"name":"rocq","args":["dep","-boot","-R","coq/theories","Corelib","-R",".","foo","-dyndep","opt","-vos","foo.v"]}
   {"name":"rocq","args":["compile","-q","-type-in-type","-type-in-type","-w","-deprecated-native-compiler-option","-native-output-dir",".","-native-compiler","on","-nI","rocq-runtime/kernel","-nI",".","-boot","-R","coq/theories","Corelib","-R",".","foo","foo.v"]}
@@ -135,7 +127,7 @@ TC: extend in dune (env) + workspace + standard
   > (env (dev (rocq (flags :standard -type-in-type))))
   > EOF
 
-  $ runFlags
+  $ trace_rocq_flags foo.vo
   {"name":"rocq","args":["c","--config"]}
   {"name":"rocq","args":["dep","-boot","-R","coq/theories","Corelib","-R",".","foo","-dyndep","opt","-vos","foo.v"]}
   {"name":"rocq","args":["compile","-q","-type-in-type","-bt","-w","-deprecated-native-compiler-option","-native-output-dir",".","-native-compiler","on","-nI","rocq-runtime/kernel","-nI",".","-boot","-R","coq/theories","Corelib","-R",".","foo","foo.v"]}

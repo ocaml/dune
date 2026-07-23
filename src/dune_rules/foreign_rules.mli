@@ -39,6 +39,7 @@ val c_compile_args
   :  sctx:Super_context.t
   -> dir:Path.Build.t
   -> expander:Expander.t
+  -> loc:Loc.t
   -> src:Foreign.Source.t
   -> include_flags:Command.Args.without_targets Command.Args.t
   -> Command.Args.without_targets Command.Args.t

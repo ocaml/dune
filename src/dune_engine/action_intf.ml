@@ -1,5 +1,5 @@
 open Import
-open Dune_util.Action
+open Stdune.Action_types
 
 module Simplified = struct
   type destination =
@@ -18,6 +18,17 @@ module Simplified = struct
     | Sh of string
 end
 
+type ('program, 'string) run =
+  { prog : 'program
+  ; args : 'string Appendable_list.t
+  ; can_run_in_action_runner : bool
+  }
+
+type 'string bash =
+  { script : 'string
+  ; can_run_in_action_runner : bool
+  }
+
 module type Ast = sig
   type program
   type path
@@ -26,7 +37,7 @@ module type Ast = sig
   type ext
 
   type t =
-    | Run of program * string Appendable_list.t
+    | Run of (program, string) run
     | With_accepted_exit_codes of int Predicate_lang.t * t
     | Chdir of path * t
     | Setenv of string * string * t
@@ -43,7 +54,8 @@ module type Ast = sig
     | Copy of path * target
     | Symlink of path * target
     | Hardlink of path * target
-    | Bash of string
+    | System of string
+    | Bash of string bash
     | Write_file of target * File_perm.t * string
     | Rename of target * target
     | Remove_tree of target
@@ -76,6 +88,7 @@ module type Helpers = sig
   val cat : path list -> t
   val copy : path -> target -> t
   val symlink : path -> target -> t
+  val system : string -> t
   val bash : string -> t
   val write_file : ?perm:File_perm.t -> target -> string -> t
   val rename : target -> target -> t
@@ -95,7 +108,7 @@ module Exec = struct
   type context =
     { targets : Targets.Validated.t option
     ; context : Build_context.t option
-    ; metadata : Process.metadata
+    ; metadata : Process_metadata.t
     ; rule_loc : Loc.t
     ; build_deps : Dep.Set.t -> Dep.Facts.t Fiber.t
     }
@@ -121,6 +134,8 @@ module Ext = struct
     val version : int
     val is_useful_to : memoize:bool -> bool
     val is_dynamic : bool
+    val runs_process : bool
+    val can_run_in_action_runner : bool
     val encode : ('p, 't) t -> ('p -> Sexp.t) -> ('t -> Sexp.t) -> Sexp.t
     val bimap : ('a, 'b) t -> ('a -> 'x) -> ('b -> 'y) -> ('x, 'y) t
 

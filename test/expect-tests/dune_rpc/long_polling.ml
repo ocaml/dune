@@ -46,7 +46,7 @@ let server_long_poll svar =
     Rpc.Server.Handler.implement_long_poll
       rpc
       sub_proc
-      svar
+      (Rpc.Long_poll.Source.Svar svar)
       ~equal:Int.equal
       ~diff:(fun ~last ~now ->
         match last with
@@ -107,6 +107,45 @@ let%expect_test "long polling - client side termination" =
     client: received 1
     client: received 2
     server: polling cancelled
+    server: finished. |}]
+;;
+
+(* A long poll backed by a [Computed] source reads its state from a plain [ref] and polls
+   it for changes. Here we mutate the ref before asking for the next value, so the poll's
+   predicate is already satisfied and the source returns immediately without sleeping. *)
+let server_long_poll_computed r =
+  let rpc = rpc () in
+  let () =
+    Rpc.Server.Handler.implement_long_poll
+      rpc
+      sub_proc
+      (Rpc.Long_poll.Source.Computed
+         { get = (fun () -> !r); poll_every = Time.Span.of_secs 0.01 })
+      ~equal:Int.equal
+      ~diff:(fun ~last ~now ->
+        match last with
+        | None -> now
+        | Some last -> now - last)
+  in
+  rpc
+;;
+
+let%expect_test "long polling - computed (poll/ref) source" =
+  let r = ref 0 in
+  let handler = server_long_poll_computed r in
+  let client client =
+    let* poller = poll_exn client in
+    r := 1;
+    let* () = print_next "first" poller in
+    r := 5;
+    let* () = print_next "second" poller in
+    Client.Stream.cancel poller
+  in
+  test ~init ~client ~handler ~private_menu:[ Poll sub_proc ] ();
+  [%expect
+    {|
+    client: first received 1
+    client: second received 4
     server: finished. |}]
 ;;
 
@@ -176,17 +215,15 @@ let%expect_test "long polling - client cancels while request is in-flight" =
          printfn "client: finishing session")
   in
   test ~init ~client ~handler ~private_menu:[ Poll sub_proc ] ();
-  [%expect.unreachable]
-[@@expect.uncaught_exn
-  {|
-      (Test_scheduler.Never)
-      Trailing output
-      ---------------
-      client: received 1
-      client: waiting for second value (that will never come)
-      client: cancelling
-      client: no more values
-      client: finishing session |}]
+  [%expect
+    {|
+    client: received 1
+    client: waiting for second value (that will never come)
+    client: cancelling
+    client: no more values
+    client: finishing session
+    server: finished.
+    |}]
 ;;
 
 let%expect_test "long polling - connection remains usable after in-flight cancel" =
@@ -222,19 +259,16 @@ let%expect_test "long polling - connection remains usable after in-flight cancel
     | Error error -> printfn "%s" (Dyn.to_string (Response.Error.to_dyn error))
   in
   test ~init ~client ~handler ~private_menu:[ Poll sub_proc; Request ping_decl ] ();
-  [%expect.unreachable]
-[@@expect.uncaught_exn
-  {|
-  (Test_scheduler.Never)
-  Trailing output
-  ---------------
-  client: poll received 1
-  client: waiting for second value
-  client: cancelling
-  client: poll no more values
-  client: cancelled poll returned
-  client: ping 42
-  |}]
+  [%expect
+    {|
+    client: poll received 1
+    client: waiting for second value
+    client: cancelling
+    client: poll no more values
+    client: cancelled poll returned
+    client: ping 42
+    server: finished.
+    |}]
 ;;
 
 let%expect_test "long polling - cancelled explicit poll id can be reused" =
@@ -351,16 +385,69 @@ let%expect_test "long polling - session close cancels in-flight poll" =
     Fiber.parallel_iter [ client; server ] ~f:(fun f -> f ())
   in
   Scheduler.run (Scheduler.create ()) run;
-  [%expect.unreachable]
-[@@expect.uncaught_exn
-  {|
-  (Test_scheduler.Never)
-  Trailing output
-  ---------------
-  client: poll received 1
-  client: closing channel
-  client: poll no more values
-  |}]
+  [%expect
+    {|
+    client: poll received 1
+    client: closing channel
+    server: finished.
+    client: poll no more values
+    |}]
+;;
+
+let%expect_test "long polling - session close retains idle poller state" =
+  let current = ref None in
+  let weak = Weak.create 1 in
+  let set_initial_state () =
+    let state = ref 0 in
+    Weak.set weak 0 (Some state);
+    current := Some state
+  in
+  let set_next_state () = current := Some (ref 1) in
+  let read_current () =
+    match !current with
+    | Some state -> state
+    | None -> Code_error.raise "missing state" []
+  in
+  let handler =
+    let rpc = rpc () in
+    Rpc.Server.Handler.implement_long_poll
+      rpc
+      sub_proc
+      (Rpc.Long_poll.Source.Computed
+         { get = read_current; poll_every = Time.Span.of_secs 0.01 })
+      ~equal:( == )
+      ~diff:(fun ~last:_ ~now:_ -> 0);
+    rpc
+  in
+  let run =
+    let client_chan, sessions = setup_direct_client_server () in
+    let client () =
+      Client.connect_with_menu
+        client_chan
+        init
+        ~private_menu:[ Poll sub_proc ]
+        ~f:(fun client ->
+          set_initial_state ();
+          let* poller = poll_exn client in
+          let* (_ : int option) = Client.Stream.next poller in
+          set_next_state ();
+          Chan.close client_chan)
+    in
+    let server () = Server.serve sessions (Rpc.Server.make handler) in
+    Fiber.parallel_iter [ client; server ] ~f:(fun f -> f ())
+  in
+  Scheduler.run (Scheduler.create ()) run;
+  let rec collect = function
+    | 0 -> printfn "state retained"
+    | n ->
+      Gc.full_major ();
+      (match Weak.get weak 0 with
+       | None -> printfn "state collected"
+       | Some _ -> collect (n - 1))
+  in
+  collect 10;
+  ignore (Sys.opaque_identity handler);
+  [%expect {| state retained |}]
 ;;
 
 let%expect_test "long polling - cancelling one poller does not stop another" =
@@ -393,40 +480,4 @@ let%expect_test "long polling - cancelling one poller does not stop another" =
     client: second poll received 1
     server: finished.
     |}]
-;;
-
-let%expect_test "long polling - server side termination" =
-  let client client =
-    printfn "client: long polling";
-    let* poller = Client.poll client sub_decl in
-    let poller =
-      match poller with
-      | Ok p -> p
-      | Error e -> raise (Version_error.E e)
-    in
-    let+ () =
-      Fiber.repeat_while ~init:() ~f:(fun () ->
-        let+ res = Client.Stream.next poller in
-        match res with
-        | None -> None
-        | Some a ->
-          printfn "client: received %d" a;
-          Some ())
-    in
-    printfn "client: subscription terminated"
-  in
-  let handler =
-    let state = ref 0 in
-    server (fun _poller ->
-      incr state;
-      Fiber.return (if !state = 3 then None else Some !state))
-  in
-  test ~init ~client ~handler ~private_menu:[ Poll sub_proc ] ();
-  [%expect
-    {|
-    client: long polling
-    client: received 1
-    client: received 2
-    client: subscription terminated
-    server: finished. |}]
 ;;

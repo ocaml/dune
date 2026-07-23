@@ -8,19 +8,6 @@
     is the configuration option's name in uppercase *)
 type 'a t
 
-module Toggle : sig
-  type t =
-    [ `Enabled
-    | `Disabled
-    ]
-
-  val all : (string * t) list
-  val equal : t -> t -> bool
-  val of_string : string -> (t, string) result
-  val to_string : t -> string
-  val to_dyn : t -> Dyn.t
-end
-
 (** [make ~name ~of_string ~default] registers a config value called [name],
     parsed using [of_string], defaulting to [default]. *)
 val make : name:string -> of_string:(string -> ('a, string) result) -> default:'a -> 'a t
@@ -36,10 +23,6 @@ val get : 'a t -> 'a
 
 (** should dune acquire the global lock before building *)
 val global_lock : Toggle.t t
-
-(** whether dune should add cutoff to various memoized functions where it
-    reduces concurrency *)
-val cutoffs_that_reduce_concurrency_in_watch_mode : Toggle.t t
 
 (** whether dune should optimize file copying on Linux/MacOS *)
 val copy_file : [ `Portable | `Best ] t

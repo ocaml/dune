@@ -1,37 +1,66 @@
 name: Binaries
 
 on:
+  push:
+    branches:
+      - main
+  pull_request:
+  merge_group:
   workflow_dispatch:
+    inputs:
+      upload:
+        description: Upload built binaries as artifacts
+        type: boolean
+        default: false
+
+concurrency:
+  group: "${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}"
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   binary:
-    name: Create
+    name: ${{ matrix.name }}
     strategy:
       fail-fast: false
       matrix:
+        # `name` follows the LLVM/Rust target-triple convention
+        # (`<arch>-<vendor>-<sys>-<abi>`). For Windows, `-gnu` denotes the
+        # MinGW (GNU) ABI, as opposed to `-msvc`.
         include:
           - os: macos-15-intel
             name: x86_64-apple-darwin
-            installable: .#
-          - os: macos-14
+            installable: .#dune
+          - os: macos-15
             name: aarch64-apple-darwin
-            installable: .#
-          - os: ubuntu-22.04
+            installable: .#dune
+          - os: ubuntu-24.04
             name: x86_64-unknown-linux-musl
             installable: .#dune-static
+          - os: ubuntu-24.04
+            name: x86_64-pc-windows-gnu
+            installable: .#windows-static
+            binary: dune.exe
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # for git describe
       - uses: cachix/install-nix-action@v31
+      - uses: nix-community/cache-nix-action@v7
+        with:
+          primary-key: |
+            nix-${{ runner.os }}-${{ github.job }}-${{ matrix.name }}--${{ hashFiles('**/*.nix', '**/flake.lock') }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-${{ github.job }}-${{ matrix.name }}--
+          gc-max-store-size-linux: 2G
       - run: echo "(version $(git describe --always --dirty --abbrev=7))" >> dune-project
       - run: nix build ${{ matrix.installable }}
-      - uses: actions/upload-artifact@v7
+      - if: ${{ inputs.upload }}
+        uses: actions/upload-artifact@v7
         with:
-          path: result/bin/dune
+          path: result/bin/${{ matrix.binary || 'dune' }}
           name: dune-${{ matrix.name }}
   combine:
+    if: ${{ inputs.upload }}
     runs-on: ubuntu-latest
     needs: binary
     steps:

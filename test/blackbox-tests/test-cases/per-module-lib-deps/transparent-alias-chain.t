@@ -5,9 +5,7 @@ direct library reference, but the compiler follows alias chains and reads
 
 Any per-module inter-library dependency optimization must account for this.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.23)
-  > EOF
+  $ make_dune_project 3.23
 
 Set up a chain: libA -> libB -> libC -> libD, where each intermediate
 library creates a transparent alias to the next.
@@ -59,7 +57,7 @@ Verify that the compilation rule depends on .cmi files from all libraries
 in the chain, not just the directly referenced one:
 
   $ dune rules --root . --format=json liba/.liba.objs/byte/liba__Consumer.cmo |
-  > jq -r 'include "dune"; .[] | (ruleDepFilePathsOfKind("In_build_dir"), (ruleDepGlobEntries | .dir)) | split("/")[2]' | sort -u
+  > jq_dune -r '.[] | (ruleDepFilePathsOfKind("In_build_dir"), (ruleDepGlobEntries | .dir)) | split("/")[2]' | sort -u
   liba
   libb
   libc

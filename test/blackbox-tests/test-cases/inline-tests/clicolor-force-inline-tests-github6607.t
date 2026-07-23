@@ -2,9 +2,7 @@ This shows that the test suite is impacted by CLICOLOR_FORCE=1 (#6607).
 This environment variable should only impact the output of dune, not behavior
 visible from within the test suite.
 
-  $ cat > dune-project << EOF
-  > (lang dune 1.0)
-  > EOF
+  $ make_dune_project 1.0
 
   $ cat > dune << EOF
   > (library

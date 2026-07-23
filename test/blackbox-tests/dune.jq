@@ -1,6 +1,9 @@
 def logs($m):
   select(.cat == "log" and (.args.message | contains($m))) | .args;
 
+def inlineTestPartitions:
+  logs("inline-test partitions") | {library, mode, partitions};
+
 def redactCommandTimes:
   walk(if type == "object" then
     with_entries(
@@ -10,6 +13,15 @@ def redactCommandTimes:
     else . end);
 
 def targets: (.target_files // []) + (.target_dirs // []);
+
+def actionNames:
+  select(.cat == "action") | .args.name? // empty;
+
+def redactAnonymousActionPath:
+  sub("^_build/.actions/default/[0-9a-f]+"; "_build/.actions/default/<action>");
+
+def traceTargetFilesRedacted:
+  (.args.target_files | values) | map(redactAnonymousActionPath);
 
 def processes: select(.cat == "process" and .name == "finish");
 
@@ -213,6 +225,15 @@ def merlinUnitNameSummary:
 def merlinConfigSummary($names):
   merlinPathSummary + { config: [merlinConfigItemsNamed($names)] };
 
+def cacheMetadataForPath($path):
+  select(.files[].path == $path);
+
+def cacheMetadataWithPathPrefix($prefix):
+  select(.files[].path | startswith($prefix));
+
+def sortCacheMetadataByFirstPath:
+  sort_by(.files[0].path);
+
 def redactedActionTraces:
   [ .[]
   | select(.cat != "config" and .args.digest != null)
@@ -228,6 +249,10 @@ def buildEvents:
   | { args, name }
   | if .args.restart_duration? != null
     then .args.restart_duration |= type
+    else .
+    end
+  | if .args.process_times? != null
+    then .args.process_times |= keys
     else .
     end
   | if .args.rusage? != null
@@ -275,6 +300,112 @@ def normalizeBuildRestartEvents:
   | flush
   | .[];
 
+def runnerEvent:
+  { cat
+  , name
+  , args:
+      ({ name: .args.name }
+       + (if .args.action_runner? then { action_runner: .args.action_runner } else {} end)
+       + (if .args.pid? then { pid: (.args.pid | type) } else {} end))
+  };
+
+def runnerEventRank:
+  if .name == "runner-spawn" then 0
+  elif .name == "runner-connection-start" then 1
+  elif .name == "runner-connection-established" then 2
+  elif .name == "runner-connected" then 3
+  elif .name == "runner-request-sent" then 4
+  elif .name == "runner-cancel-request-sent" then 5
+  elif .name == "runner-cancel-start" then 6
+  elif .name == "runner-disconnected" then 7
+  else 9
+  end;
+
+def runnerEvents:
+  [ .[]
+  | select(.cat == "action" and (.name | startswith("runner-")))
+  | runnerEvent
+  ] | sort_by(runnerEventRank, .name, .args.name, (.args.action_runner // ""));
+
+def runnerRequestEvents:
+  [ runnerEvents[]
+  | select(.name == "runner-request-sent")
+  ];
+
+def processStartEvents:
+  .[] | select(.cat == "process" and .name == "start");
+
+def processHasArg($arg):
+  (.args.process_args // []) | index($arg);
+
+def processUsesPreprocessor:
+  processHasArg("-pp") or processHasArg("-ppx");
+
+def ocamldepActionRunnerStartCount:
+  [ processStartEvents
+  | select((.args.prog | contains("ocamldep")) and .args.action_runner?)
+  ] | length;
+
+def ocamldepPreprocessorUsesActionRunner($runner_name):
+  [ processStartEvents
+  | select(
+      (.args.prog | contains("ocamldep"))
+      and processUsesPreprocessor
+      and .args.action_runner == $runner_name)
+  ] | length > 0;
+
+def runnerSpawnEvents:
+  [ runnerEvents[]
+  | select(.name == "runner-spawn")
+  ];
+
+def runnerEventCount($name):
+  [ .[]
+  | select(.cat == "action" and .name == $name)
+  ] | length;
+
+def actionRunnerTraceEventRank:
+  if .cat == "action" then runnerEventRank
+  elif .cat == "process" and .name == "start" then 10
+  elif .cat == "process" and .name == "finish" then 11
+  else 12
+  end;
+
+def actionRunnerTraceEvents($runner_name):
+  [ .[]
+  | select(.args.action_runner? == $runner_name)
+  | select(
+      (.cat == "action" and (.name | startswith("runner-")))
+      or (.cat == "process" and (.name == "start" or .name == "finish")))
+  | if .cat == "action" then
+      runnerEvent
+    else
+      { cat
+      , name
+      , args:
+          ({ action_runner: .args.action_runner
+           , action_runner_pid: (.args.action_runner_pid | type)
+           , prog: (.args.prog | basename)
+           }
+           + (if .name == "finish" then { exit: .args.exit } else {} end))
+      }
+    end
+  ] | sort_by(actionRunnerTraceEventRank, .cat, .name, (.args.prog // ""));
+
+def lastRunnerSpawnPid:
+  [ .[]
+  | select(.cat == "action" and .name == "runner-spawn")
+  | .args.pid
+  ] | last;
+
+def writeFileCountBySuffix($suffix):
+  [ .[]
+  | select(
+      .cat == "action"
+      and .name == "write-file"
+      and (.args.file | endswith($suffix)))
+  ] | length;
+
 def cacheEvent($path):
   select(.cat == "cache") | .args | select(.path == $path);
 
@@ -283,9 +414,18 @@ def cacheMisses:
 
 def cacheMissesMatching($path):
     [ .[] | cacheMisses ]
-  | map(select((.args.target // .args.head) | test("source|target1")))
+  | map(select((.args.target // .args.head) | test($path)))
   | sort_by(.args.target // .args.head)
   | .[] | {name, target: (.args.target // .args.head), reason: .args.reason};
+
+def cacheHits:
+  select(.cat == "cache" and .name == "hit");
+
+def cacheHitsMatching($path):
+    [ .[] | cacheHits ]
+  | map(select((.args.target // .args.head) | test($path)))
+  | sort_by(.args.target // .args.head)
+  | .[] | {name, target: (.args.target // .args.head)};
 
 def fsUpdateWithPath($path):
     select(.name == "fs_update")

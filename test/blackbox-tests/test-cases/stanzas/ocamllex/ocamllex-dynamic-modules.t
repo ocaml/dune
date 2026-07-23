@@ -15,13 +15,7 @@ We define a rule that creates a file (in sexp syntax, to be passed to
 
 The unit `mod.mll` is present in the working tree, `lib.ml` uses it:
 
-  $ cat > mod.mll <<EOF
-  > {
-  > }
-  > rule lex = parse
-  >   | _   { true  }
-  >   | eof { false }
-  > EOF
+  $ make_trivial_ocamllex mod.mll
 
   $ cat >foo.ml <<EOF
   > let x = Mod.lex

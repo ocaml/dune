@@ -22,7 +22,7 @@ let try_ ~times ~delay_seconds ~f =
 
 let run =
   let cwd = Sys.getcwd () in
-  Dune_engine.Clflags.display := Quiet;
+  Clflags.display := Quiet;
   let config =
     { Scheduler.Config.concurrency = 1
     ; print_ctrl_c_warning = false
@@ -41,8 +41,7 @@ let run =
       ~finally:(fun () -> Sys.chdir cwd)
       ~f:(fun () ->
         Sys.chdir (Path.to_string dir);
-        Scheduler.Run.go config run ~timeout:(Time.Span.of_secs 5.0) ~on_event:(fun _ ->
-          ()))
+        Scheduler.Run.go config run ~timeout:(Time.Span.of_secs 5.0))
 ;;
 
 let%expect_test "turn on dune watch and wait until the connection is listed" =

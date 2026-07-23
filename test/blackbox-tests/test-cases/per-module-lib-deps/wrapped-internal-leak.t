@@ -26,9 +26,7 @@ The flip is acceptable because the leak was never supported;
 downstream consumers depending on the mangled form should migrate
 to the wrapper API.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.0)
-  > EOF
+  $ make_dune_project 3.0
 
   $ mkdir mylib
   $ cat > mylib/dune <<EOF

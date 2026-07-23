@@ -51,7 +51,7 @@ Set up fake PATH with only our OpenBSD-style tar:
 Helper to show tar extract args from trace (filters to -x calls only):
 
   $ tar_extract_args() {
-  >   dune trace cat | jq -c 'include "dune"; processes
+  >   dune trace cat | jq_dune -c 'processes
   >     | select(.args.prog | contains("tar"))
   >     | select(.args.process_args | index("-x"))
   >     | .args.process_args

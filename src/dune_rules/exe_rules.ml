@@ -100,16 +100,27 @@ let o_files
   if not (Executables.has_foreign exes)
   then Memo.return @@ Mode.Map.empty
   else (
-    let what =
-      if List.is_empty exes.buildable.foreign_stubs then "archives" else "stubs"
+    let has_foreign_stubs = not (List.is_empty exes.buildable.foreign_stubs) in
+    let what = if has_foreign_stubs then "stubs" else "archives" in
+    let native_only_hint =
+      Pp.text "If you only need to build a native executable use \"(modes exe)\"."
+    in
+    let hints =
+      if has_foreign_stubs
+      then
+        [ native_only_hint
+        ; Pp.text
+            "To build a bytecode executable with foreign stubs, put the stubs in a \
+             library and depend on that library."
+        ]
+      else [ native_only_hint ]
     in
     if List.exists linkages ~f:Exe.Linkage.is_byte
     then
       User_error.raise
         ~loc:exes.buildable.loc
         [ Pp.textf "Pure bytecode executables cannot contain foreign %s." what ]
-        ~hints:
-          [ Pp.text "If you only need to build a native executable use \"(modes exe)\"." ];
+        ~hints;
     let* foreign_sources =
       let+ foreign_sources = Dir_contents.foreign_sources dir_contents in
       let first_exe = first_exe exes in
@@ -176,7 +187,7 @@ let executables_rules
       ~jsoo_enabled_modes
       ~jsoo_is_whole_program
   in
-  let* flags = Buildable_rules.ocaml_flags sctx ~dir exes.buildable.flags in
+  let* flags = Ocaml_flags_db.ocaml_flags sctx ~dir exes.buildable.flags in
   let* modules, pp =
     let+ modules, pp =
       Buildable_rules.modules_rules
@@ -193,6 +204,9 @@ let executables_rules
   let programs = programs ~modules ~exes in
   let* cctx =
     let requires_compile = Lib.Compile.direct_requires compile_info ~for_ in
+    let user_written_requires =
+      Some (lazy (Lib.Compile.user_written_requires_no_loc compile_info ~for_))
+    in
     let requires_link = Lib.Compile.requires_link compile_info ~for_ in
     let instances =
       Parameterised_instances.instances
@@ -216,6 +230,7 @@ let executables_rules
       ~flags
       ~requires_link
       ~requires_compile
+      ~user_written_requires
       ~preprocessing:pp
       ~js_of_ocaml
       ~opaque:Inherit_from_settings

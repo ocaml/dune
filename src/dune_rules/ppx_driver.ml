@@ -1,99 +1,6 @@
 open Import
 open Memo.O
 
-(* Encoded representation of a set of library names + scope *)
-module Key : sig
-  (* This module implements a bi-directional function between [encoded] and
-     [decoded] *)
-  type encoded = Digest.t
-
-  module Decoded : sig
-    type t = private
-      { pps : Lib_name.t list
-      ; project_root : Path.Source.t option
-      }
-
-    val of_libs : Lib.t list -> t
-  end
-
-  (* [decode y] fails if there hasn't been a previous call to [encode] such that
-     [encode x = y]. *)
-  val encode : Decoded.t -> encoded
-  val decode : encoded -> Decoded.t
-end = struct
-  type encoded = Digest.t
-
-  module Decoded = struct
-    (* Values of type type are preserved in a global table between builds, so
-       they must not embed values that are not safe to keep between builds, such
-       as [Dune_project.t] values *)
-    type t =
-      { pps : Lib_name.t list
-      ; project_root : Path.Source.t option
-      }
-
-    let equal x y =
-      List.equal Lib_name.equal x.pps y.pps
-      && Option.equal Path.Source.equal x.project_root y.project_root
-    ;;
-
-    let to_string { pps; project_root } =
-      let s = String.enumerate_and (List.map pps ~f:Lib_name.to_string) in
-      match project_root with
-      | None -> s
-      | Some dir ->
-        sprintf "%s (in project: %s)" s (Path.Source.to_string_maybe_quoted dir)
-    ;;
-
-    let of_libs libs =
-      let pps =
-        (let compare a b = Lib_name.compare (Lib.name a) (Lib.name b) in
-         List.sort libs ~compare)
-        |> List.map ~f:Lib.name
-      in
-      let project_root = Lib.L.project_root libs in
-      { pps; project_root }
-    ;;
-  end
-
-  (* This mutable table is safe. Even though it can have stale entries remaining
-     from previous runs, the entries themselves are correct, so this seems
-     harmless apart from the lack of error in [decode] in this situation. *)
-  let reverse_table : (Digest.t, Decoded.t) Table.t = Table.create (module Digest) 128
-
-  let encode ({ Decoded.pps; project_root } as x) =
-    let y =
-      Digest.repr
-        Repr.(pair (list Lib_name.repr) (option Path.Source.repr))
-        (pps, project_root)
-    in
-    match Table.find reverse_table y with
-    | None ->
-      Table.set reverse_table y x;
-      y
-    | Some x' ->
-      if Decoded.equal x x'
-      then y
-      else
-        User_error.raise
-          [ Pp.textf "Hash collision between set of ppx drivers:"
-          ; Pp.textf "- cache : %s" (Decoded.to_string x')
-          ; Pp.textf "- fetch : %s" (Decoded.to_string x)
-          ]
-  ;;
-
-  let decode y =
-    match Table.find reverse_table y with
-    | Some x -> x
-    | None ->
-      User_error.raise
-        [ Pp.textf
-            "I don't know what ppx rewriters set %s correspond to."
-            (Digest.to_string y)
-        ]
-  ;;
-end
-
 module Driver = struct
   module M = struct
     module Info = struct
@@ -319,6 +226,7 @@ let build_ppx_driver =
         ~modules
         ~flags
         ~requires_compile:(Memo.return requires_compile)
+        ~user_written_requires:None
         ~requires_link
         ~opaque
         ~js_of_ocaml:(Js_of_ocaml.Mode.Pair.make None)
@@ -343,17 +251,6 @@ let build_ppx_driver =
         ~env:(Action_builder.return Env.empty)
     in
     ()
-;;
-
-let ppx_exe_path (ctx : Build_context.t) ~key =
-  Path.Build.relative ctx.build_dir (".ppx/" ^ key ^ "/ppx.exe")
-;;
-
-let ppx_driver_exe (ctx : Context.t) libs =
-  let key = Digest.to_string (Key.Decoded.of_libs libs |> Key.encode) in
-  (* Make sure to compile ppx.exe for the compiling host. See: #2252, #2286 and
-     #3698 *)
-  Context.host ctx >>| Context.build_context >>| ppx_exe_path ~key
 ;;
 
 let get_cookies ~loc ~expander ~lib_name libs =
@@ -427,7 +324,7 @@ let ppx_driver_and_flags_internal
   and+ cookies =
     let* libs = Resolve.Memo.read (Lib.closure libs ~linking:true ~for_) in
     Action_builder.of_memo (get_cookies ~loc ~lib_name ~expander libs)
-  and+ ppx_driver_exe = Action_builder.of_memo @@ ppx_driver_exe context libs in
+  and+ ppx_driver_exe = Action_builder.of_memo @@ Ppx_exe.ppx_driver_exe context libs in
   ppx_driver_exe, flags @ cookies
 ;;
 
@@ -452,8 +349,4 @@ let get_ppx_driver ctx ~loc ~expander ~scope ~lib_name ~flags pps =
   ppx_driver_and_flags_internal ctx ~loc ~expander ~dune_version ~lib_name ~flags libs
 ;;
 
-let ppx_exe ctx ~scope pp =
-  let open Resolve.Memo.O in
-  let* libs = Lib.DB.resolve_pps (Scope.libs scope) [ Loc.none, pp ] in
-  ppx_driver_exe ctx libs |> Resolve.Memo.lift_memo
-;;
+let ppx_exe ctx ~scope pp = Ppx_exe.get_ppx_exe ctx ~scope [ Loc.none, pp ]

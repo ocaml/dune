@@ -2,10 +2,7 @@ Test Melange dependent recompilation
 
 Set up and build a Melange library and `melange.emit`
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.13)
-  > (using melange 0.1)
-  > EOF
+  $ make_melange_project 3.13 0.1
 
   $ mkdir lib
   $ cat > lib/dune <<EOF
@@ -41,8 +38,12 @@ Now change `foo.ml`, but keep `foo.mli` intact
   > let x () = "hi"
   > EOF
 
-Build again, noting that x.ml could have been skipped?
+Build again. Even though `foo.mli` did not change, `x.ml` is recompiled
+because Melange compilation depends on the dependency library's `.cmj` files
+for implementation information such as cross-module optimization.
 
   $ dune build
+  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("melange__X"))] | length'
+  1
   $ node ./_build/default/out/x.js
   hi

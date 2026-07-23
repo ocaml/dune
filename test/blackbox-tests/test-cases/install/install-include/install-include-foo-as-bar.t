@@ -1,22 +1,6 @@
 Include a file which contains the (foo as bar) syntax for renaming a file
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.5)
-  > (package (name hello))
-  > EOF
-
-  $ cat >dune <<EOF
-  > (executable
-  >  (public_name hello))
-  > 
-  > (install
-  >  (files (include foo.sexp))
-  >  (section share))
-  > EOF
-
-  $ cat >hello.ml <<EOF
-  > let () = print_endline "Hello, World!"
-  > EOF
+  $ make_install_include_project
 
   $ cat >foo.sexp <<EOF
   > ((a.txt as b/c.txt))

@@ -68,3 +68,26 @@ let%expect_test "digest with hasher bigstring" =
   printf "%s\n" (Blake3_mini.Digest.to_hex digest);
   [%expect {| 7a7d692dfca02a756fea9a8a77903807 |}]
 ;;
+
+let report_invalid_range name f =
+  match f () with
+  | () -> printf "%s: accepted\n" name
+  | exception Invalid_argument _ -> printf "%s: rejected\n" name
+;;
+
+let%expect_test "invalid feed ranges" =
+  let hasher = Blake3_mini.create () in
+  report_invalid_range "string" (fun () ->
+    Blake3_mini.feed_string hasher "x" ~pos:1 ~len:1);
+  report_invalid_range "bytes" (fun () ->
+    Blake3_mini.feed_bytes hasher (Bytes.of_string "x") ~pos:1 ~len:1);
+  let bigstring = Bigarray.Array1.create Char C_layout 1 in
+  report_invalid_range "bigstring" (fun () ->
+    Blake3_mini.feed_bigstring_release_lock hasher bigstring ~pos:2 ~len:0);
+  [%expect
+    {|
+    string: rejected
+    bytes: rejected
+    bigstring: rejected
+    |}]
+;;

@@ -1,10 +1,16 @@
 open Import
+module Toggle := Stdune.Toggle
 
 module Dune_config : sig
   (** Dune configuration (visible to the user) *)
 
-  open Stdune
   module Display : module type of Display
+  module Loc := Stdune.Loc
+  module Config := Stdune.Config
+  module Terminal_persistence := Stdune.Terminal_persistence
+  module Path := Stdune.Path
+  module Sandbox_mode := Stdune.Sandbox_mode
+  module Action_output_on_success := Stdune.Action_types.Action_output_on_success
 
   module Project_defaults : sig
     type t =
@@ -28,7 +34,7 @@ module Dune_config : sig
   end
 
   module Sandboxing_preference : sig
-    type t = Dune_engine.Sandbox_mode.t list
+    type t = Sandbox_mode.t list
   end
 
   module Cache : sig
@@ -75,18 +81,12 @@ module Dune_config : sig
       | Loc of Loc.t
 
     type t =
-      | Set of where * Config.Toggle.t
+      | Set of where * Toggle.t
       | Unset
 
     val all : where -> (string * t) list
     val to_dyn : t -> Dyn.t
     val equal : t -> t -> bool
-  end
-
-  module Action_output_on_success : sig
-    include module type of struct
-      include Dune_engine.Execution_parameters.Action_output_on_success
-    end
   end
 
   module type S = sig

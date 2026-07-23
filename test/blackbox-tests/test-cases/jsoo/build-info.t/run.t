@@ -1,10 +1,13 @@
 Jsoo and build-info
 
-  $ echo "(lang dune 3.0)" > dune-project
-  $ dune build
+  $ make_dune_project 3.0
+  $ js=src/main.bc.js
+  $ built_js=_build/default/$js
+  $ installed_js=_install/bin/main.bc.js
+  $ dune build "$js" @install
   Warning [missing-debug-event]: '--source-map' is enabled but the bytecode program was compiled with no debugging information.
   Consider passing '-g' option to ocamlc.
-  $ node _build/default/src/main.bc.js
+  $ node "$built_js"
   unknown
   $ dune install --prefix _install
   $ find _install -type f | sort
@@ -13,7 +16,7 @@ Jsoo and build-info
   _install/lib/main/META
   _install/lib/main/dune-package
   _install/lib/main/opam
-  $ node _install/bin/main.bc.js
+  $ node "$installed_js"
   unknown
   $ git init -q
   $ touch README
@@ -22,10 +25,10 @@ Jsoo and build-info
   $ git tag v1 -am "V1"
   $ git commit -m "empty2" --allow-empty -q
   $ echo "HELLO" > README
-  $ dune build
+  $ dune build "$js" @install
   Warning [missing-debug-event]: '--source-map' is enabled but the bytecode program was compiled with no debugging information.
   Consider passing '-g' option to ocamlc.
-  $ node _build/default/src/main.bc.js
+  $ node "$built_js"
   unknown
   $ dune install --prefix _install
   $ find _install -type f | sort
@@ -35,14 +38,14 @@ Jsoo and build-info
   _install/lib/main/META
   _install/lib/main/dune-package
   _install/lib/main/opam
-  $ node _install/bin/main.bc.js
+  $ node "$installed_js"
   v1-1-xxxxx-dirty
   $ echo "(name main)" >> dune-project
   $ echo "(version 0.2.0)" >> dune-project
-  $ dune build
+  $ dune build "$js" @install
   Warning [missing-debug-event]: '--source-map' is enabled but the bytecode program was compiled with no debugging information.
   Consider passing '-g' option to ocamlc.
-  $ node _build/default/src/main.bc.js
+  $ node "$built_js"
   0.2.0
   $ dune install --prefix _install
   $ find _install -type f | sort
@@ -52,5 +55,5 @@ Jsoo and build-info
   _install/lib/main/META
   _install/lib/main/dune-package
   _install/lib/main/opam
-  $ node _build/default/src/main.bc.js
+  $ node "$built_js"
   0.2.0

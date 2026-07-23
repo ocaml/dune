@@ -110,7 +110,6 @@ val extend : t -> suffix:t -> t
 val actions_dir_basename : t
 val bin_dir_basename : t
 val cinaps_corrected : t
-val cc_vendor : t
 val checksum : t
 val coqc : t
 val corrected : t

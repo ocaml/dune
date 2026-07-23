@@ -1,0 +1,5 @@
+(cram
+ (applies_to :whole_subtree)
+ (deps
+  (package dune-site)
+  (package dune-private-libs)))

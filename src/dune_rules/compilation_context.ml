@@ -85,6 +85,7 @@ type t =
   ; modules : modules
   ; flags : Ocaml_flags.t
   ; requires_compile : Lib.t list Resolve.Memo.t
+  ; user_written_requires : Lib.t list Resolve.Memo.t Lazy.t option
   ; requires_hidden : Lib.t list Resolve.Memo.t
   ; requires_link : Lib.t list Resolve.t Memo.Lazy.t
   ; implements : Virtual_rules.t
@@ -114,6 +115,7 @@ let obj_dir t = t.obj_dir
 let modules t = t.modules.modules
 let flags t = t.flags
 let requires_compile t = t.requires_compile
+let user_written_requires t = Option.map t.user_written_requires ~f:Lazy.force
 let requires_hidden t = t.requires_hidden
 let requires_link t = Memo.Lazy.force t.requires_link
 let parameters t = t.parameters
@@ -154,6 +156,7 @@ let create
       ~modules
       ~flags
       ~requires_compile
+      ~user_written_requires
       ~requires_link
       ?(preprocessing = Pp_spec.dummy)
       ~opaque
@@ -240,6 +243,7 @@ let create
   ; modules = { modules; dep_graphs }
   ; flags
   ; requires_compile = direct_requires
+  ; user_written_requires
   ; requires_hidden = hidden_requires
   ; requires_link
   ; implements
@@ -347,6 +351,7 @@ let for_module_generated_at_link_time cctx ~requires ~module_ =
   ; flags = Ocaml_flags.empty
   ; requires_link = Memo.lazy_ (fun () -> requires)
   ; requires_compile = requires
+  ; user_written_requires = None
   ; includes
   ; modules
   }

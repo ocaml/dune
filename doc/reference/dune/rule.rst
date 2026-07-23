@@ -2,7 +2,8 @@ rule
 ----
 
 The ``rule`` stanza is used to create custom user rules. It tells Dune how to
-generate a specific set of files from a specific set of dependencies.
+generate files from dependencies, or how to run an action when an alias is
+requested.
 
 The syntax is as follows:
 
@@ -12,16 +13,23 @@ The syntax is as follows:
      (action <action>)
      <optional-fields>)
 
-``<action>`` is what you run to produce the targets from the dependencies. See
-:doc:`/reference/actions/index` for more details.
+``<action>`` is what you run to produce the targets from the dependencies, or
+to build the attached aliases. See :doc:`/reference/actions/index` for more
+details.
+
+A rule must either have at least one target or be attached to at least one
+alias. Targets may be listed explicitly with ``target`` or ``targets``, or
+inferred from the action. Alias-only rules are useful for commands that don't
+produce files, such as benchmarks.
 
 ``<optional-fields>`` are:
 
 - ``(target <filename>)`` or ``(targets <filenames>)`` is a list of filenames
   (if defined with ``targets``) or exactly one filename (if defined with
-  ``target``). Dune needs to statically know targets of each rule.
+  ``target``). Dune needs to statically know file targets of each rule.
   ``(targets)`` can be omitted if it can be inferred from the action. See
-  `inferred rules`_.
+  `inferred rules`_. It can also be omitted when the rule is only attached to
+  an alias.
 
 - ``(deps <deps-conf list>)`` specifies the dependencies of the rule. See
   :doc:`/concepts/dependency-spec` for more details.
@@ -34,8 +42,9 @@ The syntax is as follows:
 - ``(locks (<lock-names>))`` specifies that the action must be run while holding
   the following locks. See :doc:`/concepts/locks` for more details.
 
-- ``(alias <alias-name>)`` specifies this rule's alias. Building this alias
-  means building the targets of this rule.
+- ``(alias <alias-name>)`` specifies this rule's alias. If the rule has file
+  targets, building this alias builds those targets. If the rule has no file
+  targets, building this alias runs the rule's action.
 
 - ``(aliases <alias-name list>)`` specifies many aliases for this rule.
 
@@ -47,9 +56,19 @@ The syntax is as follows:
   :doc:`/reference/boolean-language`, and the field allows for
   :doc:`/concepts/variables` to appear in the expressions.
 
+- ``(corrections <setting>)`` controls whether the rule's action may produce
+  correction files that Dune reports as promotions. See `Corrections`_ for
+  details. This field has been available since Dune 3.23.
+
 Please note: contrary to makefiles or other build systems, user rules currently
 don't support patterns, such as a rule to produce ``%.y`` from ``%.x`` for any
 given ``%``. This might be supported in the future.
+
+After a rule's action exits, Dune records the produced targets. It must be able
+to read every target, including files inside directory targets. Dune also
+removes write permissions from generated files in the build directory before
+recording them. Actions may write their targets while they run, but generated
+targets should be treated as immutable once the rule finishes.
 
 .. _modes:
 
@@ -90,6 +109,44 @@ promote)`` will be ignored, and the source files will be used instead. The
 ``-p/--for-release-of-packages`` flag implies ``--ignore-promote-rules``.
 However, rules that promote only a subset of their targets via ``(only ...)``
 are never ignored.
+
+Corrections
+~~~~~~~~~~~
+
+Rules can opt in to correction discovery with the ``corrections`` field. This
+is useful for custom tools that rewrite, format, lint, or otherwise suggest
+updates to source files without using an explicit ``(diff? ...)`` action.
+
+The field accepts the following settings:
+
+- ``ignore`` is the default. Dune does not look for correction files produced by
+  the rule.
+- ``produce`` makes Dune run the action in a sandbox and, when the action
+  finishes, scan the sandbox for files ending in ``.corrected``. A file named
+  ``foo.corrected`` is treated as the corrected version of ``foo``. If the files
+  differ, Dune prints a diff, fails the rule, and records a promotion from
+  ``foo.corrected`` to ``foo``. The correction can then be applied with
+  ``dune promote`` or ``dune runtest --auto-promote``. If the corrected file is
+  identical to the source file, no promotion is recorded and the rule succeeds.
+
+For example:
+
+.. code:: dune
+
+   (rule
+    (alias runtest)
+    (deps expected-output)
+    (corrections produce)
+    (action
+     (run ./check-and-rewrite.exe expected-output expected-output.corrected)))
+
+The same naming convention applies in subdirectories: ``subdir/foo.corrected``
+is a correction for ``subdir/foo``. Correction files that are themselves
+dependencies of the rule are ignored, so copied dependencies are not promoted by
+accident.
+
+``(corrections produce)`` cannot be combined with ``patch_back_source_tree``
+sandboxing.
 
 Inferred Rules
 ~~~~~~~~~~~~~~

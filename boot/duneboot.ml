@@ -849,18 +849,35 @@ end = struct
       let stderr_fn, stderr_fd =
         if split then open_temp_file () else stdout_fn, stdout_fd
       in
-      Option.iter cwd ~f:Sys.chdir;
       let pid =
-        Unix.create_process
-          prog
-          (Array.of_list (prog :: args))
-          Unix.stdin
-          stdout_fd
-          stderr_fd
+        let res =
+          let max_retries = 5 in
+          let initial_delay = 0.01 in
+          let argv = Array.of_list (prog :: args) in
+          let rec loop retries_left delay =
+            Option.iter cwd ~f:Sys.chdir;
+            let res =
+              match Unix.create_process prog argv Unix.stdin stdout_fd stderr_fd with
+              | pid -> Ok pid
+              | exception exn -> Error exn
+            in
+            Option.iter cwd ~f:(fun (_ : string) -> Sys.chdir initial_cwd);
+            match res with
+            | Ok pid -> pid
+            | Error (Unix.Unix_error (Unix.EAGAIN, _, _)) when retries_left > 0 ->
+              Unix.sleepf delay;
+              loop (retries_left - 1) (delay *. 2.0)
+            | Error exn -> raise exn
+          in
+          try Ok (loop max_retries initial_delay) with
+          | exn -> Error exn
+        in
+        Unix.close stdout_fd;
+        if split then Unix.close stderr_fd;
+        match res with
+        | Ok pid -> pid
+        | Error exn -> raise exn
       in
-      Option.iter cwd ~f:(fun _ -> Sys.chdir initial_cwd);
-      Unix.close stdout_fd;
-      if split then Unix.close stderr_fd;
       let ivar = Ivar.create () in
       Hashtbl.add running ~key:pid ~data:ivar;
       let* (status : Unix.process_status) = Ivar.read ivar in
@@ -935,7 +952,17 @@ module Process = Fiber.Process
 (** {2 OCaml tools} *)
 
 module Libs = struct
-  let external_libraries = [ "unix"; "threads" ]
+  let ocaml_version = Scanf.sscanf Sys.ocaml_version "%d.%d" (fun a b -> a, b)
+
+  let is_oxcaml =
+    let check suffix = String.ends_with Sys.ocaml_version ~suffix in
+    check "+ox" || check "+jst"
+  ;;
+
+  let external_libraries =
+    let base = [ "unix"; "threads" ] in
+    if ocaml_version >= (5, 0) && not is_oxcaml then base @ [ "runtime_events" ] else base
+  ;;
 
   let make_lib lib =
     let root_module =
@@ -966,18 +993,6 @@ module Libs = struct
       }
     ; { path = "vendor/re/src"
       ; main_module_name = Some "Re"
-      ; include_subdirs = No
-      ; special_builtin_support = None
-      ; root_module = None
-      }
-    ; { path = "vendor/spawn/src"
-      ; main_module_name = Some "Spawn"
-      ; include_subdirs = No
-      ; special_builtin_support = None
-      ; root_module = None
-      }
-    ; { path = "vendor/uutf"
-      ; main_module_name = Some "Uutf"
       ; include_subdirs = No
       ; special_builtin_support = None
       ; root_module = None
@@ -1139,6 +1154,12 @@ let copy_parser ~header src dst =
 
 (** {2 Preparation of library files} *)
 module Build_info = struct
+  let has_git_dir () =
+    match Unix.stat ".git" with
+    | { st_kind = S_DIR; _ } -> true
+    | _ | (exception Unix.Unix_error (_, _, _)) -> false
+  ;;
+
   let get_version () =
     match
       match Io.read_lines "dune-project" with
@@ -1151,7 +1172,7 @@ module Build_info = struct
     with
     | Some _ as s -> Fiber.return s
     | None ->
-      if not (Sys.file_exists ".git")
+      if not (has_git_dir ())
       then Fiber.return None
       else (
         match
@@ -1260,7 +1281,7 @@ module File_kind = struct
         let fn = Filename.remove_extension fn in
         let check suffix = String.ends_with fn ~suffix in
         let x86 gnu _msvc =
-          (* CR rgrinberg: select msvc flags on windows *)
+          (* CR-someday rgrinberg: select msvc flags on windows *)
           Some `amd64, gnu
         in
         if check "_sse2"
@@ -1650,7 +1671,7 @@ module Library = struct
       Fiber.return [ mangled ]
     | Ml { kind = `Mll; _ } -> copy_lexer fn dst ~header >>> Fiber.return [ mangled ]
     | Ml { kind = `Mly; _ } ->
-      (* CR rgrinberg: what if the parser already has an mli? *)
+      (* CR-someday rgrinberg: what if the parser already has an mli? *)
       copy_parser fn dst ~header >>> Fiber.return [ mangled; mangled ^ "i" ]
   ;;
 
@@ -1989,7 +2010,9 @@ let resolve_externals external_libraries =
     let convert = function
       | "threads" -> Some ("threads" ^ Config.ocaml_archive_ext, [ "-I"; "+threads" ])
       | "unix" -> Some ("unix" ^ Config.ocaml_archive_ext, Config.unix_library_flags)
-      | "csexp" | "pp" | "re" | "seq" | "spawn" | "uutf" -> None
+      | "runtime_events" ->
+        Some ("runtime_events" ^ Config.ocaml_archive_ext, [ "-I"; "+runtime_events" ])
+      | "csexp" | "pp" | "re" | "seq" -> None
       | s -> fatal "unhandled external library %s" s
     in
     List.filter_map ~f:convert external_libraries |> List.split

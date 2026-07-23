@@ -20,6 +20,7 @@ module Exn_with_backtrace = Exn_with_backtrace
 module Filename = Filename
 module Filename_set = Filename_set
 module Format = Format
+module Hash = Hash
 module Hashtbl = Hashtbl
 module Table = Table
 module Int = Int
@@ -90,6 +91,12 @@ module Repr = Repr
 module Marshal = Marshal
 module Fd = Fd
 module Mutex = Mutex0
+module Action_types = Action_types
+module Display = Display
+module Sandbox_mode = Sandbox_mode
+module Clflags = Clflags
+module Report_errors_config = Report_errors_config
+module Toggle = Toggle
 
 module type Top_closure = Top_closure.Top_closure
 
@@ -113,6 +120,8 @@ module Bit_set = Bit_set
 module Unix_error = Unix_error
 module File_kind = File_kind
 module Alias_name = Alias_name
+module Action_runner_name = Action_runner_name
+module Spawn = Spawn
 
 module type Per_item = Per_item_intf.S
 module type Applicative = Applicative_intf.S

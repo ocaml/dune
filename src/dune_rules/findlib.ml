@@ -141,10 +141,10 @@ let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib ~external_loc
           in
           lib_dep (add_loc name))
       in
-      { Compilation_mode.By_mode.ocaml; melange = [] }
+      { Compilation_mode.Per_mode.ocaml; melange = [] }
     in
     let ppx_runtime_deps =
-      { Compilation_mode.By_mode.ocaml =
+      { Compilation_mode.Per_mode.ocaml =
           List.map (Findlib.Package.ppx_runtime_deps t) ~f:add_loc
       ; melange = []
       }
@@ -163,7 +163,7 @@ let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib ~external_loc
     let wasmoo_runtime = Findlib.Package.wasmoo_runtime t in
     let melange_runtime_deps = Lib_info.File_deps.External [] in
     let preprocess =
-      Compilation_mode.By_mode.both (Preprocess.Per_module.no_preprocessing ())
+      Compilation_mode.Per_mode.both (Preprocess.Per_module.no_preprocessing ())
     in
     let default_implementation = None in
     let wrapped = None in
@@ -206,7 +206,7 @@ let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib ~external_loc
         (match Vars.get_words t.vars "main_modules" Ps.empty with
          | _ :: _ as modules ->
            Ok
-             (Compilation_mode.By_mode.just
+             (Compilation_mode.Per_mode.just
                 ~for_:Ocaml
                 (List.map ~f:Module_name.of_checked_string modules))
          | [] ->
@@ -239,9 +239,9 @@ let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib ~external_loc
                     with
                     | Ok s -> Ok (Some s)
                     | Error e -> Error e))
-              |> Result.map ~f:(Compilation_mode.By_mode.just ~for_:Ocaml)))
+              |> Result.map ~f:(Compilation_mode.Per_mode.just ~for_:Ocaml)))
     in
-    let modules = Lib_info.Source.External (Compilation_mode.By_mode.both None) in
+    let modules = Lib_info.Source.External (Compilation_mode.Per_mode.both None) in
     let name = t.name in
     let lib_id = Lib_id.External (loc, name) in
     Lib_info.create

@@ -1,0 +1,224 @@
+In Lock-kind contexts, [%{bin:X}] and [%{bin-available:X}] resolution falls
+through to [Pkg_rules.which] via [Context.which]. [Pkg_rules.which] currently
+scans every lockdir package's binary index, so any binary installed by any
+locked package is discoverable from any stanza.
+
+  $ make_lockdir
+
+A lockdir package [provider] that installs a binary [mybin]:
+
+  $ make_lockpkg provider <<'EOF'
+  > (version 0.0.1)
+  > (build
+  >  (progn
+  >   (system "\| cat > mybin <<'EOI'
+  >           "\| #!/usr/bin/env bash
+  >           "\| echo from provider
+  >           "\| EOI
+  >   )
+  >  (system "chmod +x mybin")
+  >  (system "echo 'bin: [ \"mybin\" ]' > provider.install")
+  >  ))
+  > EOF
+
+Another lockdir package [check-env] that installs a binary [check-env]:
+
+  $ make_lockpkg check-env <<'EOF'
+  > (version 0.0.1)
+  > (build
+  >  (progn
+  >   (system "\| cat > check-env <<'EOI'
+  >           "\| #!/usr/bin/env bash
+  >           "\| echo from check-env
+  >           "\| EOI
+  >   )
+  >  (system "chmod +x check-env")
+  >  (system "echo 'bin: [ \"check-env\" ]' > check-env.install")
+  >  ))
+  > EOF
+
+With the current full-lockdir lookup, [check-env] is found and the rule is
+enabled & [mybin] is found and executed, without the need for explicitly
+declaring any package dependencies:
+
+  $ make_dune_project 3.24
+
+  $ cat >dune <<'EOF'
+  > (rule
+  >  (alias checkenv)
+  >  (enabled_if %{bin-available:check-env})
+  >  (action
+  >    (with-stdout-to path-output (bash "echo $PATH"))))
+  > (rule
+  >  (alias test)
+  >  (enabled_if %{bin-available:check-env})
+  >  (action
+  >    (with-stdout-to mybin-output (run %{bin:mybin}))))
+  > (rule
+  >  (alias test-sys)
+  >  (enabled_if %{bin-available:check-env})
+  >  (deps (package provider))
+  >  ; Check that the binary can be found on PATH
+  >  (action
+  >    (with-stdout-to system-mybin-output (system mybin))))
+  > EOF
+
+  $ dune build @all
+
+  $ cat _build/default/mybin-output
+  from provider
+
+The rule depends on the binary from the provider lockdir package:
+
+  $ dune rules --format=json @test | jq_dune '.[] | ruleDepFilePaths' | censor
+  "_build/_private/default/.pkg/provider.0.0.1-$DIGEST/target/bin/mybin"
+
+All the packages' bin layouts are added to $PATH:
+
+  $ cat _build/default/system-mybin-output
+  from provider
+
+  $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
+  $PWD/_build/_private/default/.pkg/provider.0.0.1-$DIGEST1/target/bin
+  $PWD/_build/_private/default/.pkg/check-env.0.0.1-$DIGEST2/target/bin
+
+
+With a package defined in the project, *without a dir field*, the behavior is
+the same.
+
+  $ make_dune_project 3.24
+  $ cat >> dune-project << 'EOF'
+  > (package
+  >   (allow_empty)
+  >   (name my-bin-pkg))
+  > EOF
+
+  $ dune clean
+  $ dune build @all
+
+  $ cat _build/default/mybin-output
+  from provider
+
+All the packages' bin layouts are added to $PATH:
+
+  $ cat _build/default/system-mybin-output
+  from provider
+
+  $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
+  $PWD/_build/_private/default/.pkg/provider.0.0.1-$DIGEST1/target/bin
+  $PWD/_build/_private/default/.pkg/check-env.0.0.1-$DIGEST2/target/bin
+
+
+With a package defined in the project, *with a dir field, but no dependencies*,
+the behavior is still the same.
+
+  $ make_dune_project 3.24
+  $ cat >> dune-project << 'EOF'
+  > (package
+  >   (allow_empty)
+  >   (name my-bin-pkg)
+  >   (dir .))
+  > EOF
+
+  $ dune clean
+  $ dune build @all
+
+  $ cat _build/default/mybin-output
+  from provider
+
+All the packages' bin layouts are added to $PATH:
+
+  $ cat _build/default/system-mybin-output
+  from provider
+
+  $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
+  $PWD/_build/_private/default/.pkg/provider.0.0.1-$DIGEST1/target/bin
+  $PWD/_build/_private/default/.pkg/check-env.0.0.1-$DIGEST2/target/bin
+
+
+
+
+With a package defined in the project, *with a dir field, and explicit depends
+on only [check-env]*, the behavior remains the same.
+
+  $ make_dune_project 3.24
+  $ cat >> dune-project << 'EOF'
+  > (package
+  >   (allow_empty)
+  >   (name my-bin-pkg)
+  >   (dir .)
+  >   (depends check-env))
+  > EOF
+
+  $ dune clean
+  $ dune build @all
+
+  $ cat _build/default/mybin-output
+  from provider
+
+All the packages' bin layouts are added to $PATH:
+
+  $ cat _build/default/system-mybin-output
+  from provider
+
+  $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
+  $PWD/_build/_private/default/.pkg/provider.0.0.1-$DIGEST1/target/bin
+  $PWD/_build/_private/default/.pkg/check-env.0.0.1-$DIGEST2/target/bin
+
+
+With a package defined in the project, *with a dir field, and explicit depends
+on only [provider]*, the behavior remains the same.
+
+  $ make_dune_project 3.24
+  $ cat >> dune-project << 'EOF'
+  > (package
+  >   (allow_empty)
+  >   (name my-bin-pkg)
+  >   (dir .)
+  >   (depends provider))
+  > EOF
+
+  $ dune clean
+  $ dune build @all
+
+  $ cat _build/default/mybin-output
+  from provider
+
+All the packages' bin layouts are added to $PATH:
+
+  $ cat _build/default/system-mybin-output
+  from provider
+
+  $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
+  $PWD/_build/_private/default/.pkg/provider.0.0.1-$DIGEST1/target/bin
+  $PWD/_build/_private/default/.pkg/check-env.0.0.1-$DIGEST2/target/bin
+
+
+
+
+With a package defined in the project, *with a dir field, and explicit depends
+on both [check-env] and [provider]*, the behavior remains the same.
+
+  $ make_dune_project 3.24
+  $ cat >> dune-project << 'EOF'
+  > (package
+  >   (allow_empty)
+  >   (name my-bin-pkg)
+  >   (dir .)
+  >   (depends check-env provider))
+  > EOF
+
+  $ dune clean
+  $ dune build @all
+
+  $ cat _build/default/mybin-output
+  from provider
+
+All the packages' bin layouts are added to $PATH:
+
+  $ cat _build/default/system-mybin-output
+  from provider
+
+  $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
+  $PWD/_build/_private/default/.pkg/provider.0.0.1-$DIGEST1/target/bin
+  $PWD/_build/_private/default/.pkg/check-env.0.0.1-$DIGEST2/target/bin

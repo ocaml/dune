@@ -1,7 +1,6 @@
 open Stdune
 open Dune_vcs
 module Process = Dune_engine.Process
-module Display = Dune_engine.Display
 open Dune_scheduler
 module Console = Console
 open Fiber.O
@@ -171,7 +170,7 @@ module Cache = struct
       (let base = Path.relative (Lazy.force Dune_util.cache_root_dir) "rev_store" in
        let path = Path.relative base version in
        let rev_store_cache = Config.get rev_store_cache in
-       Log.info "Revision store cache" [ "status", Config.Toggle.to_dyn rev_store_cache ];
+       Log.info "Revision store cache" [ "status", Toggle.to_dyn rev_store_cache ];
        match rev_store_cache with
        | `Disabled -> None
        | `Enabled ->
@@ -235,26 +234,7 @@ module Cache = struct
   ;;
 
   module Files_and_submodules = struct
-    module Key = struct
-      module T = struct
-        type t = Object.t
-
-        let compare = Object.compare
-        let to_dyn = Object.to_dyn
-      end
-
-      include T
-      module C = Comparable.Make (T)
-
-      let conv =
-        Lmdb.Conv.make
-          ~serialise:(fun alloc obj ->
-            Object.to_hex obj |> Lmdb.Conv.(serialise string alloc))
-          ~deserialise:(fun bs ->
-            Lmdb.Conv.(deserialise string bs) |> Object.of_sha1_unsafe)
-          ()
-      ;;
-    end
+    module Key = Key
 
     let map =
       lazy
@@ -449,6 +429,8 @@ let env =
   |> Env.add ~var:"GIT_TERMINAL_PROMPT" ~value:"0"
 ;;
 
+let git () = Vcs.git_for ~needed_for:"by dune package management to fetch git sources"
+
 let with_specified_git_dir ~dir env =
   (* prevent Git from walking up the file system to find a potentially
      unrelated git directory, so we disable the walk up by setting
@@ -465,7 +447,7 @@ module Git_error = struct
     }
 
   let raise_code_error { dir; args; exit_code; output } =
-    let git = Lazy.force Vcs.git in
+    let git = git () in
     Code_error.raise
       "git returned non-zero exit code"
       [ "exit code", Dyn.int exit_code
@@ -484,7 +466,7 @@ end
 
 let run_with_exit_code ~env { dir; _ } ~allow_codes ~display args =
   let stdout_to = make_stdout () in
-  let git = Lazy.force Vcs.git in
+  let git = git () in
   let+ stderr, exit_code =
     Fiber.Temp.with_temp_file
       ~prefix:"dune"
@@ -522,7 +504,7 @@ let run t ~display args =
 ;;
 
 let run_capture_lines { dir; _ } ~display args =
-  let git = Lazy.force Vcs.git in
+  let git = git () in
   let+ output, exit_code =
     Process.run_capture_lines ~dir ~display ~env failure_mode git args
   in
@@ -530,7 +512,7 @@ let run_capture_lines { dir; _ } ~display args =
 ;;
 
 let run_capture_zero_separated_lines { dir; _ } args =
-  let git = Lazy.force Vcs.git in
+  let git = git () in
   let+ output, exit_code =
     Process.run_capture_zero_separated ~dir ~display:Quiet ~env failure_mode git args
   in
@@ -538,7 +520,7 @@ let run_capture_zero_separated_lines { dir; _ } args =
 ;;
 
 let cat_file { dir; _ } command =
-  let git = Lazy.force Vcs.git in
+  let git = git () in
   let failure_mode = Vcs.git_accept () in
   let stderr_to = make_stderr () in
   let stdout_to = make_stdout () in
@@ -548,7 +530,7 @@ let cat_file { dir; _ } command =
 ;;
 
 let rev_parse { dir; _ } rev =
-  let git = Lazy.force Vcs.git in
+  let git = git () in
   let+ lines, code =
     Process.run_capture_lines
       ~dir
@@ -574,7 +556,7 @@ let escape_url_for_ref url = Re.replace_string url_escape_re ~by:"_" url
    refs relevant to the remote being fetched from. *)
 let add_object_ref { dir; _ } ~negotiation_ref_prefix obj =
   let hex = Object.to_hex obj in
-  let git = Lazy.force Vcs.git in
+  let git = git () in
   let env = with_specified_git_dir ~dir env in
   Process.run
     ~dir
@@ -592,7 +574,7 @@ let add_object_ref { dir; _ } ~negotiation_ref_prefix obj =
 ;;
 
 let object_exists_no_lock { dir; _ } obj =
-  let git = Lazy.force Vcs.git in
+  let git = git () in
   let+ (), code =
     Process.run
       ~dir
@@ -628,7 +610,7 @@ let mem_path repo obj path =
 
 let show =
   let show { dir; _ } revs_and_paths =
-    let git = Lazy.force Vcs.git in
+    let git = git () in
     let failure_mode = Vcs.git_accept () in
     let command =
       "show"
@@ -644,7 +626,7 @@ let show =
       (if Sys.win32 then 8191 else 2097152)
       - String.length "show"
       - 1 (* space *)
-      - String.length (Path.to_string (Lazy.force Vcs.git))
+      - String.length (Path.to_string (git ()))
       - 100 (* some extra safety *)
     in
     let rec loop acc batch cmd_len_remaining = function
@@ -802,7 +784,7 @@ let fetch_allow_failure ~env repo ~url obj =
         ~env
         ~allow_codes:(Int.equal 0)
         repo
-        ~display:!Dune_engine.Clflags.display
+        ~display:!Clflags.display
         [ "fetch"
         ; "--no-write-fetch-head"
         ; sprintf "--negotiation-tip=%s/*" negotiation_ref_prefix
@@ -1109,7 +1091,7 @@ module At_rev = struct
         }
         ~target
     =
-    let git = Lazy.force Vcs.git in
+    let git = git () in
     let temp_dir =
       Temp_dir.dir_for_target ~target ~prefix:"rev-store" ~suffix:(Object.to_hex revision)
     in
@@ -1161,7 +1143,7 @@ let remote =
       let refs =
         Fiber.Lazy.create (fun () ->
           let+ hits =
-            run_capture_lines t ~display:!Dune_engine.Clflags.display command
+            run_capture_lines t ~display:!Clflags.display command
             >>| function
             | Ok lines -> lines
             | Error git_error ->

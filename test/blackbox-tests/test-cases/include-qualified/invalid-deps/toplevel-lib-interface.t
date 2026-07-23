@@ -1,8 +1,6 @@
 We should forbid lib interfaces modules from depending on themselves:
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.7)
-  > EOF
+  $ make_dune_project 3.7
 
   $ cat > dune << EOF
   > (include_subdirs qualified)

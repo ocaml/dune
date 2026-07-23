@@ -85,7 +85,7 @@ static int wait_flag_table[] = {WNOHANG, WUNTRACED};
 // any child process
 value dune_wait4(value v_pid, value flags) {
   CAMLparam2(v_pid, flags);
-  CAMLlocal2(times, res);
+  CAMLlocal3(times, v_status, res);
 
   int status, cv_flags;
   int64_t time_ns;
@@ -95,8 +95,14 @@ value dune_wait4(value v_pid, value flags) {
   struct rusage ru;
 
   caml_enter_blocking_section();
+  // On Solaris/illumos, wait4(-1, ...) semantics are different, so in
+  // that case use 0 and effectively act the same as wait3().
+#if defined(__sun)
+  pid = wait4(pid == -1 ? 0 : pid, &status, cv_flags, &ru);
+#else
   // returns the pid of the terminated process, or -1 on error
   pid = wait4(pid, &status, cv_flags, &ru);
+#endif
   int wait_errno = errno;
   time_ns = dune_clock_gettime_ns();
   caml_leave_blocking_section();
@@ -112,10 +118,11 @@ value dune_wait4(value v_pid, value flags) {
   }
 
   times = alloc_resource_usage(&ru);
+  v_status = alloc_process_status(status);
 
   res = caml_alloc_tuple(4);
   Store_field(res, 0, Val_int(pid));
-  Store_field(res, 1, alloc_process_status(status));
+  Store_field(res, 1, v_status);
   Store_field(res, 2, Val_long(time_ns));
   Store_field(res, 3, times);
   CAMLreturn(caml_alloc_some_compat(res));

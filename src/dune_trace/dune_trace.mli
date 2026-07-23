@@ -25,6 +25,7 @@ module Category : sig
     | Digest
     | Artifact_substitution
     | Thread
+    | Runtime
 end
 
 module Event : sig
@@ -38,18 +39,6 @@ module Event : sig
   end
 
   type t
-
-  type alloc_entry =
-    { trace : string list
-    ; estimated_words : int
-    ; samples : int
-    }
-
-  type alloc_heap =
-    { total_words : int
-    ; total_samples : int
-    ; top : alloc_entry list
-    }
 
   val sandbox
     :  [ `Create | `Snapshot | `Destroy | `Extract | `Corrected ]
@@ -77,7 +66,8 @@ module Event : sig
     }
 
   val process_start
-    :  pid:Pid.t
+    :  extra_args:(string * Sexp.t) list
+    -> pid:Pid.t
     -> dir:Path.t option
     -> prog:string
     -> args:string list
@@ -90,7 +80,8 @@ module Event : sig
     -> t
 
   val process
-    :  name:string option
+    :  extra_args:(string * Sexp.t) list
+    -> name:string option
     -> started_at:Time.t
     -> targets:targets option
     -> categories:string list
@@ -129,13 +120,21 @@ module Event : sig
   val process_cleanup_sigkill : unit -> t
   val process_cleanup_finish : unit -> t
 
-  val watch_build_start
-    :  run_id:int
-    -> restart:bool
-    -> files:Path.t list option
-    -> start:Time.t
+  val child_process_cleanup
+    :  pids:Pid.t list
+    -> [ `Started | `Sent_signal of Signal.t | `Finished | `Failed ]
     -> t
 
+  val process_group_cleanup
+    :  pid:Pid.t
+    -> [ `Already_exited
+       | `Sent_signal of Signal.t
+       | `Timed_out of Time.Span.t
+       | `Finished
+       ]
+    -> t
+
+  val watch_build_start : run_id:int -> restart:bool -> start:Time.t -> t
   val watch_build_restart : run_id:int -> reasons:string list -> at:Time.t -> t
 
   val watch_build_finish
@@ -144,14 +143,6 @@ module Event : sig
     -> start:Time.t
     -> stop:Time.t
     -> restart_duration:Time.Span.t option
-    -> t
-
-  val alloc_summary
-    :  phase:[ `Build | `Exit ]
-    -> run_id:int option
-    -> minor:alloc_heap
-    -> major:alloc_heap
-    -> promoted:alloc_heap
     -> t
 
   val init : version:string option -> t
@@ -174,14 +165,6 @@ module Event : sig
   val resolve_targets : Path.t list -> alias list -> t
   val load_dir : Path.t -> t
   val log : Log.Message.t -> t
-
-  val file_watcher
-    :  [ `File of Path.t * [ `Created | `Deleted | `File_changed | `Unknown ]
-       | `Queue_overflow
-       | `Sync of int
-       | `Watcher_terminated
-       ]
-    -> t
 
   val error
     :  Loc.t option
@@ -240,6 +223,21 @@ module Event : sig
   module Action : sig
     val start : name:string -> start:Time.t -> t
     val finish : name:string -> start:Time.t -> t
+
+    module Runner : sig
+      type kind =
+        | Spawn of Pid.t
+        | Connection_start
+        | Connection_established
+        | Connected
+        | Request_sent
+        | Cancel_request_sent
+        | Cancel_start
+        | Disconnected
+
+      val runner_event : name:Action_runner_name.t -> kind -> t
+    end
+
     val write_file : start:Time.t -> finish:Time.t -> file:Path.t -> size:int -> t
     val trace : digest:string -> Csexp.t -> t
   end
@@ -284,21 +282,43 @@ module Event : sig
   val artifact_substitution : file:Path.t -> placeholder:Dyn.t -> value:string -> t
 end
 
+module File_watcher_event : sig
+  type kind =
+    | Created
+    | Deleted
+    | File_changed
+    | Unknown
+
+  type t =
+    [ `File of Path.t * kind
+    | `Queue_overflow
+    | `Sync of int
+    | `Watcher_terminated
+    ]
+
+  val kind_repr : kind Repr.t
+  val to_event : t -> Event.t
+  val debounce_extend : files:(Path.t * kind) list -> invalidation_empty:bool -> Event.t
+end
+
 module Out : sig
   type t
 
-  val create : Path.t -> t
+  val create : [ `Path of Path.t | `Fd of Fd.t ] -> t
   val emit : ?buffered:bool -> t -> Event.t -> unit
   val start : t option -> (unit -> Event.Async.data) -> Event.Async.t option
   val finish : t -> Event.Async.t option -> unit
 end
 
 val global : unit -> Out.t option
-val set_global : Out.t -> unit
+val set_global : Out.t -> path:Path.t -> unit
+val set_global_inherited_fd : ?common_args:(string * Sexp.t) list -> Fd.t -> unit
+val duplicate_global_fd : unit -> Fd.t option
 val always_emit : Event.t -> unit
 val enabled : Category.t -> bool
 val emit : ?buffered:bool -> Category.t -> (unit -> Event.t) -> unit
 val emit_all : ?buffered:bool -> Category.t -> (unit -> Event.t list) -> unit
+val emit_runtime : unit -> unit
 val flush : unit -> unit
 val reset_alloc_profile : unit -> unit
 val capture_alloc_profile : [ `Build of int | `Exit ] -> Event.t option

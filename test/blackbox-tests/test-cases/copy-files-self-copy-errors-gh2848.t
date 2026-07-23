@@ -3,16 +3,12 @@ Testsuite for https://github.com/ocaml/dune/issues/2848
 (copy_files ...) cannot copy files onto themselves. The format for the argument
 is <dir>/<glob> where <dir> is not the current directory.
 
-  $ cat >sdune <<'EOF'
-  > #!/usr/bin/env bash
-  > DUNE_SANDBOX=symlink dune "$@"
-  > EOF
-  $ chmod +x sdune
+  $ make_sandboxed_dune
 
 ----------------------------------------------------------------------------------
 * Good error message when <dir> is the current directory
 
-  $ echo "(lang dune 2.2)" > dune-project
+  $ make_dune_project 2.2
 
   $ cat >dune <<EOF
   > (executable (name foo))
@@ -40,7 +36,7 @@ is <dir>/<glob> where <dir> is not the current directory.
 ----------------------------------------------------------------------------------
 * Good error message when <dir> is missing
 
-  $ echo "(lang dune 2.2)" > dune-project
+  $ make_dune_project 2.2
 
   $ cat >dune <<EOF
   > (executable (name foo))

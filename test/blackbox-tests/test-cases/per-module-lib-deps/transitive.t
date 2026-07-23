@@ -5,9 +5,7 @@ modules in the consuming stanza, even those that don't use A.
 
 See: https://github.com/ocaml/dune/issues/4572
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.0)
-  > EOF
+  $ make_dune_project 3.0
 
   $ mkdir libB
   $ cat > libB/dune <<EOF
@@ -76,5 +74,5 @@ Change libB's interface:
 Independent is recompiled even though it doesn't reference libA or libB:
 
   $ dune build ./main.exe
-  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("Independent"))] | length'
+  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("Independent"))] | length'
   2

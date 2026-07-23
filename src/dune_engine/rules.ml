@@ -193,7 +193,9 @@ let directory_targets (rules : t) =
         | Rule rule ->
           Filename.Set.fold ~init:acc rule.targets.dirs ~f:(fun target acc ->
             let target = Path.Build.relative_fname rule.targets.root target in
-            Path.Build.Map.add_exn acc target rule.loc)))
+            Path.Build.Map.update acc target ~f:(function
+              | None -> Some rule.loc
+              | Some loc -> Some loc))))
 ;;
 
 let collect f =

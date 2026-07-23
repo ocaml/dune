@@ -1,8 +1,6 @@
 Specifying a virtual module that isn't inside the (modules ..) field:
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.7)
-  > EOF
+  $ make_dune_project 3.7
 
   $ mkdir src
   $ cat > src/dune << EOF
@@ -44,9 +42,7 @@ X is warned about:
 
 In 3.11 onwards this warning becomes an error
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.11)
-  > EOF
+  $ make_dune_project 3.11
 
   $ dune build ./bar.exe
   File "src/dune", line 4, characters 18-19:

@@ -5,47 +5,6 @@
     the user in [Dune_lang.Action.t] *)
 
 open Import
-open Dune_util.Action
-
-module Inputs : sig
-  type t = Inputs.t = Stdin
-end
-
-module File_perm : sig
-  type t = File_perm.t =
-    | Normal
-    | Executable
-
-  val to_unix_perm : t -> int
-end
-
-module Outputs : sig
-  type t = Outputs.t =
-    | Stdout
-    | Stderr
-    | Outputs
-
-  val to_string : t -> string
-end
-
-module Diff : sig
-  open Diff
-
-  module Mode : sig
-    type t = Mode.t =
-      | Binary
-      | Text
-  end
-
-  type nonrec ('path, 'target) t = ('path, 'target) t =
-    { optional : bool
-    ; mode : Mode.t
-    ; directory_diffs : bool
-    ; file1 : 'path
-    ; file2 : 'target
-    }
-end
-
 module Ext : module type of Action_intf.Ext
 include module type of Action_intf.Exec
 
@@ -55,7 +14,7 @@ module Prog : sig
   module Not_found : sig
     type t = private
       { context : Context_name.t
-      ; program : string
+      ; program : Filename.t
       ; hint : string option
       ; loc : Loc.t option
       }
@@ -63,7 +22,7 @@ module Prog : sig
     val create
       :  ?hint:string
       -> context:Context_name.t
-      -> program:string
+      -> program:Filename.t
       -> loc:Loc.t option
       -> unit
       -> t
@@ -119,6 +78,9 @@ val empty : t
 
 (** Checks, if action contains a [Dynamic_run]. *)
 val is_dynamic : t -> bool
+
+(** Checks if executing the action may spawn a process. *)
+val runs_process : t -> bool
 
 (** Re-root all the paths in the action to their sandbox version *)
 val sandbox : t -> Sandbox.t -> t

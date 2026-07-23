@@ -5,7 +5,7 @@ Compile a library with `(stdlib ..)` and wrapped settings
   > (using experimental_building_ocaml_compiler_with_dune 0.1)
   > EOF
 
-  $ mkdir stdlib
+  $ write_stdlib_mystdlib_sources
   $ runtest() {
   > cat >stdlib/dune <<EOF
   > (library
@@ -18,17 +18,6 @@ Compile a library with `(stdlib ..)` and wrapped settings
   > find _build/default/stdlib -iname '*.cmi' | sort;
   > }
 
-  $ cat > stdlib/other.ml <<EOF
-  > let other () = Mystdlib.defined_in_stdlib
-  > EOF
-  $ cat > stdlib/one_module.ml <<EOF
-  > let foo = "foo"
-  > EOF
-  $ cat > stdlib/mystdlib.ml <<EOF
-  > let defined_in_stdlib = "defined"
-  > module One_module = One_module
-  > module Other = Other
-  > EOF
 
 First we test wrapped:
 

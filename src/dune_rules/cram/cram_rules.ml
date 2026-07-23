@@ -8,7 +8,7 @@ module Spec = struct
     ; extra_aliases : Alias.Name.Set.t
     ; deps : unit Action_builder.t list
     ; sandbox : Sandbox_config.t Action_builder.t
-    ; bin_env : Env.t Action_builder.t
+    ; env : Env.t Action_builder.t
     ; enabled_if : (Expander.t * Blang.t) list
     ; locks : Path.Set.t Action_builder.t
     ; packages : Package.Name.Set.t
@@ -26,7 +26,7 @@ module Spec = struct
     ; locks = Action_builder.return Path.Set.empty
     ; deps = []
     ; sandbox = Action_builder.return Sandbox_config.needs_sandboxing
-    ; bin_env = Action_builder.return Env.empty
+    ; env = Action_builder.return Env.empty
     ; packages = Package.Name.Set.empty
     ; timeout = None
     ; conflict_markers = Ignore
@@ -64,7 +64,7 @@ let test_rule
        ; deps
        ; locks
        ; sandbox
-       ; bin_env
+       ; env
        ; packages = _
        ; timeout
        ; conflict_markers
@@ -140,8 +140,8 @@ let test_rule
            let+ (_ : Path.Set.t) = Action_builder.dyn_memo_deps deps in
            ()
        and+ () = Action_builder.paths setup_scripts
-       and+ sandbox = sandbox
-       and+ bin_env = bin_env
+       and+ sandbox
+       and+ env
        and+ locks = locks >>| Path.Set.to_list in
        Cram_exec.run
          ~src:(Path.build script)
@@ -156,7 +156,7 @@ let test_rule
          ~setup_scripts
          shell
        |> Action.Full.make ~locks ~sandbox
-       |> Action.Full.add_env bin_env)
+       |> Action.Full.add_env env)
       |> Action_builder.with_file_targets ~file_targets:[ output ]
       |> Super_context.add_rule sctx ~dir ~loc
     in
@@ -261,11 +261,11 @@ let rules ~sctx ~dir tests project =
             | false -> Memo.return (runtest_alias, acc)
             | true ->
               let+ expander = Super_context.expander sctx ~dir in
-              let deps, sandbox, bin_env =
+              let deps, sandbox, env =
                 match stanza.deps with
-                | None -> acc.deps, acc.sandbox, acc.bin_env
+                | None -> acc.deps, acc.sandbox, acc.env
                 | Some deps ->
-                  let action_env, _, sandbox =
+                  let env, _, sandbox =
                     Dep_conf_eval.named
                       ~expander
                       Sandbox_config.no_special_requirements
@@ -277,16 +277,13 @@ let rules ~sctx ~dir tests project =
                     and+ sandbox = sandbox in
                     Sandbox_config.inter acc sandbox
                   in
-                  let bin_env =
+                  let env =
                     let open Action_builder.O in
-                    let+ acc = acc.bin_env
-                    and+ env = action_env in
-                    Env_path.extend_env_concat_path acc env
+                    let+ acc = acc.env
+                    and+ env in
+                    Install.Roots.extend_env_concat_path_vars acc env
                   in
-                  (* [action_env]'s deps are registered when [bin_env] is
-                     consumed at the rule site (it folds the env's
-                     action_builder evaluation into [bin_env]). *)
-                  acc.deps, sandbox, bin_env
+                  acc.deps, sandbox, env
               in
               let locks =
                 let open Action_builder.O in
@@ -369,7 +366,7 @@ let rules ~sctx ~dir tests project =
                 ; extra_aliases
                 ; packages
                 ; sandbox
-                ; bin_env
+                ; env
                 ; timeout
                 ; conflict_markers
                 ; setup_scripts

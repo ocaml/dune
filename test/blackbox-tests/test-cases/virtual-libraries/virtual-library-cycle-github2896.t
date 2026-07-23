@@ -4,7 +4,7 @@ We have a dependency cycle of the form impl <- lib <- vlib
 
 where vlib is a virtual library, and impl implements this library.
 
-  $ echo "(lang dune 2.3)" > dune-project
+  $ make_dune_project 2.3
   $ mkdir vlib impl lib
   $ touch impl/vlib.ml
   $ echo "val run : unit -> unit" > vlib/vlib.mli

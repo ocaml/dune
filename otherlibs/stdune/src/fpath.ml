@@ -14,9 +14,9 @@ type mkdir_result =
   | `Missing_parent_directory
   ]
 
-let mkdir ?(perms = 0o777) t_s =
+let mkdir ?(perms = Permissions.Mode.default_dir) t_s =
   try
-    Unix.mkdir t_s perms;
+    Unix.mkdir t_s (Permissions.Mode.to_int perms);
     `Created
   with
   | Unix.Unix_error (EEXIST, _, _) -> `Already_exists
@@ -374,7 +374,7 @@ let is_broken_symlink path =
 
 let is_directory x =
   try (Unix.stat x).st_kind = S_DIR with
-  | Unix.Unix_error (ENOENT, _, _) -> false
+  | Unix.Unix_error ((ENOENT | ENOTDIR), _, _) -> false
 ;;
 
 let exists x =
@@ -382,5 +382,5 @@ let exists x =
     ignore (Unix.stat x);
     true
   with
-  | Unix.Unix_error (ENOENT, _, _) -> false
+  | Unix.Unix_error ((ENOENT | ENOTDIR), _, _) -> false
 ;;

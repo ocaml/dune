@@ -20,3 +20,36 @@ one in its `:standard` set:
 
 The ``%{cc}`` :doc:`variable <../concepts/variables>` will contain the flags
 from the first three levels only.
+
+For example, to add a flag to all C stubs in the ``dev`` profile, write:
+
+.. code:: dune
+
+   (env
+    (dev
+     (c_flags (:standard -DMY_DEBUG_STUBS))))
+
+To add flags only to one ``foreign_stubs`` field, write:
+
+.. code:: dune
+
+   (library
+    (name mylib)
+    (foreign_stubs
+     (language c)
+     (names mystubs)
+     (flags (:standard -DMYLIB_STUBS))))
+
+If the flags come from a generated file, for example from a
+``dune-configurator`` script that queried ``pkg-config``, include them with
+``(:include ...)``:
+
+.. code:: dune
+
+   (library
+    (name mylib)
+    (foreign_stubs
+     (language c)
+     (names mystubs)
+     (flags (:standard (:include c_flags.sexp))))
+    (c_library_flags (:standard (:include c_library_flags.sexp))))

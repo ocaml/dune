@@ -1,4 +1,5 @@
 (library
  (name public_lib2)
+ (modes byte)
  (public_name pkg2.public-lib2)
  (modules public_lib2))

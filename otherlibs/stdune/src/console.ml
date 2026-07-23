@@ -199,6 +199,9 @@ module Status_line = struct
   let add_overlay t =
     let id = Id.gen () in
     stack := (id, t) :: !stack;
+    (match t with
+     | Live _ -> ()
+     | Constant pp -> print_if_no_status_line pp);
     refresh ();
     id
   ;;

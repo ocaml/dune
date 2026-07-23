@@ -1,21 +1,41 @@
 open Import
 
-(** A build request run by the watch-mode build loop. *)
-type step = (unit, [ `Already_reported ]) Result.t Fiber.t
+(** State shared by watch-mode build loops. *)
+type t
 
-(** [poll step] runs [step] in a loop.
+val create : unit -> t
 
-    If any source files change in the middle of iteration, it gets canceled.
+(** [run t f] initializes watch-mode file-watcher state and runs [f]. *)
+val run : t -> (unit -> 'a Fiber.t) -> 'a Fiber.t
 
-    If [Scheduler.shutdown] is called, the current build will be canceled and
-    new builds will not start. *)
-val poll : step -> unit Fiber.t
+(** [submit_rpc_request t ~session_id ~request_id ~build] adds a one-shot RPC
+    build request. If a build is already running, it is cancelled and restarted
+    with [build] included in the combined build request. *)
+val submit_rpc_request
+  :  t
+  -> session_id:Rpc.Server.Session.Id.t
+  -> request_id:Dune_rpc.Id.t
+  -> build:unit Action_builder.t
+  -> Build_outcome.t Fiber.t
 
-(** [poll_passive] is similar to [poll], but it can be used to drive the
-    polling loop explicitly instead of starting new iterations automatically.
+val cancel_rpc_requests_by_session
+  :  t
+  -> session_id:Rpc.Server.Session.Id.t
+  -> unit Fiber.t
 
-    The fiber [get_build_request] is run at the beginning of every iteration to
-    wait for the build signal. *)
-val poll_passive
-  :  get_build_request:(step * Build_outcome.t Fiber.Ivar.t) Fiber.t
+val cancel_all_rpc_requests : t -> unit Fiber.t
+
+(** [flush_file_watcher t] waits until file-watcher notifications that precede
+    the flush have been applied to [t], including any active debounce quiet
+    period. *)
+val flush_file_watcher : t -> unit Fiber.t
+
+(** [poll t ~action_runner ~sticky_goal] runs the watch loop managed by [t].
+    [action_runner] is used for each build started by the loop. [sticky_goal] is
+    rebuilt after file changes and is also included in builds started for
+    one-shot RPC requests. *)
+val poll
+  :  t
+  -> action_runner:Action_runner.t option
+  -> sticky_goal:unit Action_builder.t option
   -> unit Fiber.t

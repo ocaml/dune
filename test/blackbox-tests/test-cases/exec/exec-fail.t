@@ -1,8 +1,6 @@
 Testing how dune exec handles errors in the program being run.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.18)
-  > EOF
+  $ make_dune_project 3.18
 
   $ cat > dune <<EOF
   > (executable

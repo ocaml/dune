@@ -47,7 +47,7 @@ let find_module sctx src =
          | Tests tests -> Exe_rules.rules ~sctx ~dir_contents ~scope ~expander tests.exes
          | Library lib ->
            Lib_rules.rules lib ~sctx ~dir_contents ~expander ~scope
-           >>| Compilation_mode.By_mode.get ~for_
+           >>| Compilation_mode.Per_mode.get ~for_
            >>| Option.value_exn
          | Melange mel ->
            Melange_rules.setup_emit_cmj_rules ~sctx ~dir_contents ~expander ~scope mel

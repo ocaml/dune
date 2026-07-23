@@ -368,14 +368,18 @@ module Build = struct
     let p = local p in
     match Fdecl.get build_dir with
     | In_source_dir b -> Local.to_string (Local.append (Source0.to_local b) p)
-    | External b ->
-      if Local.is_root p
-      then External.to_string b
-      else Filename.concat (External.to_string b) (Local.to_string p)
+    | External b -> External.to_string (External.append_local b p)
   ;;
 
   let to_string_maybe_quoted p = String.maybe_quoted (to_string p)
   let to_dyn s = Dyn.variant "In_build_dir" [ Path0.Local_gen.to_dyn s ]
+
+  module Array = Array.Sorted.Make (struct
+      type nonrec t = t
+
+      let compare = compare
+      let to_dyn = to_dyn
+    end)
 end
 
 module T : sig
@@ -534,6 +538,7 @@ let external_of_in_source_tree x = external_of_local x ~root:(Lazy.force abs_roo
 
 let reach t ~from =
   match t, from with
+  | External t, External from -> External.reach t ~from
   | External t, _ -> External.to_string t
   | In_source_tree t, In_source_tree from -> Source0.reach t ~from
   | In_build_dir t, In_build_dir from -> Build.reach t ~from
@@ -560,7 +565,11 @@ let reach t ~from =
 ;;
 
 let reach_for_running ?(from = root) t =
-  let fn = reach t ~from in
+  let fn =
+    match t with
+    | External t -> External.to_string t
+    | _ -> reach t ~from
+  in
   match Filename.analyze_program_name fn with
   | In_path when not (String.equal fn ".") -> "./" ^ fn
   | _ -> fn
@@ -809,7 +818,7 @@ let readdir_unsorted_with_kinds t =
 let build_dir_exists () = Fpath.is_directory (to_string build_dir)
 
 let ensure_build_dir_exists () =
-  let perms = 0o777 in
+  let perms = Permissions.Mode.default_dir in
   match local_or_external build_dir with
   | In_source_dir p -> Relative_to_source_root.mkdir_p (Source0.to_local p) ~perms
   | External p ->
@@ -946,10 +955,27 @@ module Table = struct
     External.Table.iter external_ ~f
   ;;
 
+  let iteri { source; build; external_ } ~f =
+    Source0.Table.foldi source ~init:() ~f:(fun key data () ->
+      f ~key:(In_source_tree key) ~data);
+    Build.Table.foldi build ~init:() ~f:(fun key data () ->
+      f ~key:(In_build_dir key) ~data);
+    External.Table.foldi external_ ~init:() ~f:(fun key data () ->
+      f ~key:(External key) ~data)
+  ;;
+
   let[@inline] find { source; build; external_ } = function
     | In_source_tree p -> Source0.Table.find source p
     | In_build_dir p -> Build.Table.find build p
     | External p -> External.Table.find external_ p
+  ;;
+
+  let[@inline] find_or_add { source; build; external_ } k ~f =
+    match k with
+    | In_source_tree p ->
+      Source0.Table.find_or_add source p ~f:(fun p -> f (In_source_tree p))
+    | In_build_dir p -> Build.Table.find_or_add build p ~f:(fun p -> f (In_build_dir p))
+    | External p -> External.Table.find_or_add external_ p ~f:(fun p -> f (External p))
   ;;
 
   let filteri_inplace { source; build; external_ } ~f =

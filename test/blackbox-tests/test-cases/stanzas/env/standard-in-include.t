@@ -3,9 +3,7 @@
 When :standard is used inside an :include'd file, environment flags are not
 applied.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.18)
-  > EOF
+  $ make_dune_project 3.18
 
 Set a custom flag in the environment:
 
@@ -35,7 +33,7 @@ Set a custom flag in the environment:
 
   $ show_flags() {
   >   dune trace cat \
-  >     | jq -r --arg f "$1" 'include "dune"; processes | select(.args.process_args | last == $f) | .args.process_args | join(" ")'
+  >     | jq_dune -r --arg f "$1" 'processes | select(.args.process_args | last == $f) | .args.process_args | join(" ")'
   > }
 
 Direct :standard correctly picks up the environment flag:

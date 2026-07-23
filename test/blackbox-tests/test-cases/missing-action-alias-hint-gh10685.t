@@ -1,10 +1,9 @@
 Suggests the `(alias ...)` stanza when a dependency-only rule is missing an action.
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.0)
-  > EOF
+  $ make_dune_project 3.0
 
-  $ cat > dune << EOF
+  $ write_child_alias_rules() {
+  > cat > dune <<'EOF'
   > (rule
   >  (alias child_one)
   >  (action (echo "Child one")))
@@ -13,6 +12,11 @@ Suggests the `(alias ...)` stanza when a dependency-only rule is missing an acti
   >  (alias child_two)
   >  (action (echo "Child two")))
   > 
+  > EOF
+  > }
+
+  $ write_child_alias_rules
+  $ cat >> dune << EOF
   > (rule
   >  (alias parent)
   >  (deps
@@ -31,15 +35,8 @@ Suggests the `(alias ...)` stanza when a dependency-only rule is missing an acti
   Hint: You can use the (alias) stanza to add dependencies to an alias.
   [1]
 
-  $ cat > dune << EOF
-  > (rule
-  >  (alias child_one)
-  >  (action (echo "Child one")))
-  > 
-  > (rule
-  >  (alias child_two)
-  >  (action (echo "Child two")))
-  > 
+  $ write_child_alias_rules
+  $ cat >> dune << EOF
   > (rule
   >  (deps
   >   (alias child_one)

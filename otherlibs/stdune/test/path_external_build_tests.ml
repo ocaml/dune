@@ -4,21 +4,7 @@ open Stdune
    path. The existing stdune_unit_tests set build dir to "_build" (In_source_dir),
    so the [External b] branch of [Build.to_string] and cross-tree [reach] are
    never exercised there. This library has its own init because [set_root] and
-   [Build.set_build_dir] can only be called once per process.
-
-   CR-someday Alizter: After the fix to use [External.append_local] instead of
-   [Filename.concat], the conditional Windows expectations can be consolidated
-   with the Unix ones. *)
-
-let check_on_win_or_unix output ~wind ~unix =
-  let expected = String.trim (if Sys.win32 then wind else unix) in
-  let output = String.trim output in
-  if not (String.equal output expected)
-  then
-    Code_error.raise
-      "output mismatch"
-      [ "expected", String expected; "got", String output ]
-;;
+   [Build.set_build_dir] can only be called once per process. *)
 
 let () =
   Printexc.record_backtrace false;
@@ -33,10 +19,7 @@ let%expect_test "Build.to_string root" =
 
 let%expect_test "Build.to_string relative" =
   Path.Build.to_string (Path.Build.relative Path.Build.root "foo/bar") |> print_endline;
-  check_on_win_or_unix
-    [%expect.output]
-    ~wind:{| /external-build\foo/bar |}
-    ~unix:{| /external-build/foo/bar |}
+  [%expect {| /external-build/foo/bar |}]
 ;;
 
 let%expect_test "to_absolute_filename source path" =

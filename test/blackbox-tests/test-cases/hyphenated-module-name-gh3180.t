@@ -1,6 +1,6 @@
 Tests hyphenated module name.
 
-  $ echo "(lang dune 2.3)" > dune-project
+  $ make_dune_project 2.3
   $ cat >dune <<EOF
   > (executable (name foo) (modules foo foo-bar))
   > EOF

@@ -8,7 +8,6 @@ include struct
   module Checksum = Checksum
   module Source = Source
   module Build_command = Lock_dir.Build_command
-  module Display = Dune_engine.Display
   module Pkg_info = Lock_dir.Pkg_info
   module Depexts = Lock_dir.Depexts
   module Digest_feed = Dune_digest.Feed
@@ -663,6 +662,8 @@ module Substitute = struct
 
     let name = "substitute"
     let version = 4
+    let runs_process = false
+    let can_run_in_action_runner = false
     let bimap t f g = { t with src = f t.src; dst = g t.dst }
     let is_useful_to ~memoize = memoize
 
@@ -998,7 +999,7 @@ module Action_expander = struct
                       Error
                         (Action.Prog.Not_found.create
                            ?hint
-                           ~program:(Filename.to_string program)
+                           ~program
                            ~context:t.context
                            ~loc:(Some loc)
                            ())))))
@@ -1058,9 +1059,10 @@ module Action_expander = struct
       let+ args = Memo.parallel_map t ~f:(expand ~expander) in
       Action.Progn args
     | System arg ->
-      Expander.expand_pform_gen ~mode:Single expander arg
-      >>| Value.to_string ~dir
-      >>| System.action
+      let+ arg =
+        Expander.expand_pform_gen ~mode:Single expander arg >>| Value.to_string ~dir
+      in
+      Action.System arg
     | Patch p ->
       let+ patch =
         Expander.expand_pform_gen ~mode:Single expander p >>| Value.to_path ~dir
@@ -1225,7 +1227,8 @@ module Action_expander = struct
     Which.which ~path:(Env_path.path Env.initial) Filename.dune
     >>| function
     | Some s -> Ok s
-    | None -> Error (Action.Prog.Not_found.create ~loc:None ~context ~program:"dune" ())
+    | None ->
+      Error (Action.Prog.Not_found.create ~loc:None ~context ~program:Filename.dune ())
   ;;
 
   let build_command context (pkg : Pkg.t) =
@@ -1722,6 +1725,8 @@ module Install_action = struct
 
     let name = "install-file-run"
     let version = 1
+    let runs_process = false
+    let can_run_in_action_runner = false
 
     let bimap
           ({ install_file
@@ -1848,7 +1853,9 @@ module Install_action = struct
             with
             | None -> section
             | Some section' ->
-              let perm = (Unix.stat (Path.to_string file)).st_perm in
+              let perm =
+                (Unix.stat (Path.to_string file)).st_perm |> Permissions.Mode.of_int
+              in
               if Permissions.(test execute perm) then section' else section
           in
           section, maybe_drop_sandbox_dir file))
@@ -1861,8 +1868,8 @@ module Install_action = struct
       | true ->
         let dst = Path.to_string dst in
         let permission =
-          let perm = (Unix.stat dst).st_perm in
-          Permissions.(add execute) perm
+          let perm = (Unix.stat dst).st_perm |> Permissions.Mode.of_int in
+          Permissions.(add execute) perm |> Permissions.Mode.to_int
         in
         Unix.chmod dst permission
     ;;

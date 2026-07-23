@@ -2,7 +2,7 @@ Test that parse errors in the run error produce the expected error message.
 
 See #9529.
 
-  $ echo "(lang dune 3.11)" > dune-project
+  $ make_dune_project 3.11
   $ cat > dune <<EOF
   > (rule
   >  (target foo.txt)

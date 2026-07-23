@@ -21,13 +21,24 @@ or, for more complex forms that take an argument:
 In order to write a plain ``%{``, you need to write ``\%{`` in a
 string.
 
+Unless otherwise noted, path variables in actions refer to paths in the current
+build context and are rendered relative to the action's current working
+directory. By default, an action in ``src/foo/dune`` runs from
+``_build/default/src/foo``, so ``%{workspace_root}`` may be rendered as
+``../..``. These variables do not point directly to your source checkout. If an
+action needs to read a source file, declare the file as a dependency and refer
+to it with a dependency variable such as ``%{dep:path/to/file}``. This lets
+Dune track the dependency and make it available to sandboxed actions.
+
 Dune supports the following variables:
 
-- ``project_root`` is the root of the current project. It is typically the root
-  of your project, and as long as you have a ``dune-project`` file there,
-  ``project_root`` is independent of the workspace configuration.
-- ``workspace_root`` is the root of the current workspace. Note that
-  the value of ``workspace_root`` isn't constant and depends on
+- ``project_root`` is the root of the current project in the current build
+  context. It is typically the root of your project under ``_build/<context>``,
+  and as long as you have a ``dune-project`` file there, ``project_root`` is
+  independent of the workspace configuration.
+- ``workspace_root`` is the root of the current workspace in the current build
+  context. For the default build context this is typically ``_build/default``.
+  Note that the value of ``workspace_root`` isn't constant and depends on
   whether your project is vendored or not.
 -  ``cc`` is the C compiler command line (list made of the compiler
    name followed by its flags) that will be used to compile foreign code. For
@@ -66,6 +77,22 @@ Dune supports the following variables:
   the same as ``ocaml-config:model``.
 - ``system`` is the name of the OS the build is targeting. This is the same as
   ``ocaml-config:system``.
+
+The target values of ``os_type``, ``architecture``, ``model``, and ``system``
+come from the OCaml compiler configuration used by the build context. For
+example, to inspect the values for the current context, run:
+
+.. code:: console
+
+   $ dune exec -- ocamlc -config-var os_type
+   $ dune exec -- ocamlc -config-var architecture
+   $ dune exec -- ocamlc -config-var model
+   $ dune exec -- ocamlc -config-var system
+
+On a typical Linux switch these may print ``Unix``, ``x86_64`` or ``arm64``,
+``default``, and ``linux`` respectively. When writing Dune files, the
+corresponding ``%{ocaml-config:...}`` variables expand to the same values.
+
 - ``ignoring_promoted_rules`` is ``true`` if
   ``--ignore-promoted-rules`` was passed on the command line and
   ``false`` otherwise.
@@ -78,6 +105,9 @@ Dune supports the following variables:
   stricter warning set. The old behaviour of Dune can be recovered by using the
   following stanza in a top-level ``dune`` file: ``(env (dev (flags :standard
   %{dune-warnings})))``.
+- ``git-sha`` expands to the short git SHA of the HEAD commit of the workspace's
+  git repository (equivalent to ``git rev-parse --short HEAD``). Expands to the
+  empty string when no commit sha was found. Available since Dune 3.24.
 - ``<ext>:<path>`` where ``<ext>`` is one of ``cmo``, ``cmi``, ``cma``,
   ``cmx``, or ``cmxa``. See :ref:`variables-for-artifacts`.
 - ``env:<var>=<default`` expands to the value of the environment
@@ -94,8 +124,12 @@ In addition, ``(action ...)`` fields support the following special variables:
 - ``^`` expands to the list of dependencies, separated by spaces.
 - ``dep:<path>`` expands to ``<path>`` (and adds ``<path>`` as a dependency of
   the action).
-- ``exe:<path>`` is the same as ``<path>``, except when cross-compiling, in
-  which case it will expand to ``<path>`` from the host build context.
+- ``exe:<path>`` expands to an executable target in the source tree and adds it
+  as a dependency of the action. Use this form to run an in-tree executable by
+  path, for example ``%{exe:./tool.exe}`` or ``%{exe:../bin/tool.exe}``. The
+  executable does not need a ``public_name`` and does not need to be installed.
+  This is similar to ``dep:<path>``, except that Dune will map the executable to
+  a version that can run on the build machine when cross-compiling.
 - ``bin:<program>`` expands to a runnable path for ``program`` and adds
   it as a dependency of the action. If ``<program>`` is the public name
   of an executable in the workspace, the expansion is the build-artifact
@@ -113,7 +147,7 @@ In addition, ``(action ...)`` fields support the following special variables:
   be invoked by its bare name from ``(bash ...)`` or ``(system ...)``.
 
   ``%{bin:...}`` is not required with ``(run ...)``: ``(run %{bin:foo}
-  ...)`` and ``(run foo ...)`` behave the same. conflict 1 of 1 ends
+  ...)`` and ``(run foo ...)`` behave the same.
 - ``bin-available:<program>`` expands to ``true`` or ``false``, depending
   on whether ``<program>`` is available or not.
 - ``file-available:<path>`` expands to ``true`` or ``false``, depending on

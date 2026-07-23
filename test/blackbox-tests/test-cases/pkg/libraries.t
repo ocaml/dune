@@ -3,19 +3,7 @@ use it inside dune.
 
 We set up a library that will be installed as part of the package:
 
-  $ mkdir external_sources
-  $ cat >external_sources/dune-project <<EOF
-  > (lang dune 3.11)
-  > (package (name mypkg))
-  > EOF
-  $ cat >external_sources/dune <<EOF
-  > (library
-  >  (public_name mypkg.lib)
-  >  (name test_lib))
-  > EOF
-  $ cat >external_sources/test_lib.ml <<EOF
-  > let x = ()
-  > EOF
+  $ make_external_mypkg_lib_source 'let x = ()'
 
 Now we set up a lock file with this package and then attempt to use it:
 

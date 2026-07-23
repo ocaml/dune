@@ -485,7 +485,7 @@ let rec expand (t : Dune_lang.Action.t) : Action.t Action_expander.t =
     match string_args with
     | prog :: args ->
       let+ prog, args = expand_run ~force_host prog args in
-      O.Run (prog, Appendable_list.of_list args)
+      O.Run { prog; args = Appendable_list.of_list args; can_run_in_action_runner = true }
     | [] ->
       User_error.raise
         [ Pp.textf "\"%s\" action must have at least one argument" action_name ]
@@ -566,10 +566,10 @@ let rec expand (t : Dune_lang.Action.t) : Action.t Action_expander.t =
         Copy_line_directive.action context ~src:x ~dst:y))
   | System x ->
     let+ x = E.string x in
-    System.action x
+    O.System x
   | Bash x ->
-    let+ x = E.string x in
-    O.Bash x
+    let+ script = E.string x in
+    O.Bash { script; can_run_in_action_runner = true }
   | Write_file (fn, perm, s) ->
     let+ fn = E.target fn
     and+ s = E.string s in
@@ -714,7 +714,8 @@ let expand
     let+ sandbox
     and+ env
     and+ action in
-    Action.Full.make (Action.Chdir (Path.build chdir, action)) ~sandbox
+    Action.Chdir (Path.build chdir, action)
+    |> Action.Full.make ~sandbox
     |> Action.Full.add_env env
   in
   Action_builder.with_targets ~targets build

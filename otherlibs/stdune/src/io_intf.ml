@@ -2,12 +2,18 @@ module type S = sig
   type path
 
   val open_in : ?binary:bool (* default true *) -> path -> in_channel
-  val open_out : ?binary:bool (* default true *) -> ?perm:int -> path -> out_channel
+
+  val open_out
+    :  ?binary:bool (* default true *)
+    -> ?perm:Permissions.Mode.t
+    -> path
+    -> out_channel
+
   val with_file_in : ?binary:bool (* default true *) -> path -> f:(in_channel -> 'a) -> 'a
 
   val with_file_out
     :  ?binary:bool (* default true *)
-    -> ?perm:int
+    -> ?perm:Permissions.Mode.t
     -> path
     -> f:(out_channel -> 'a)
     -> 'a
@@ -19,14 +25,26 @@ module type S = sig
   val zero_strings_of_file : path -> string list
 
   val read_file : ?binary:bool -> path -> string
-  val write_file : ?binary:bool -> ?perm:int -> path -> string -> unit
+  val write_file : ?binary:bool -> ?perm:Permissions.Mode.t -> path -> string -> unit
   val compare_files : path -> path -> Ordering.t
   val compare_text_files : path -> path -> Ordering.t
-  val write_lines : ?binary:bool -> ?perm:int -> path -> string list -> unit
-  val copy_file : ?chmod:(int -> int) -> src:path -> dst:path -> unit -> unit
+
+  val write_lines
+    :  ?binary:bool
+    -> ?perm:Permissions.Mode.t
+    -> path
+    -> string list
+    -> unit
+
+  val copy_file
+    :  ?chmod:(Permissions.Mode.t -> Permissions.Mode.t)
+    -> src:path
+    -> dst:path
+    -> unit
+    -> unit
 
   val setup_copy
-    :  ?chmod:(int -> int)
+    :  ?chmod:(Permissions.Mode.t -> Permissions.Mode.t)
     -> src:path
     -> dst:path
     -> unit

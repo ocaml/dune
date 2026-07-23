@@ -24,3 +24,6 @@ val print_memo_stacks : bool ref
 
 (** Format a list of Memo stack frames into a user-friendly presentation *)
 val format_memo_stack : 'a Pp.t list -> 'a Pp.t option
+
+(** Always print backtraces, to help debugging dune itself *)
+val debug_backtraces : bool -> unit

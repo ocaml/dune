@@ -18,7 +18,6 @@ open Memo.O
    elsewhere; don't mix with the rest of the code. *)
 module Util : sig
   val include_flags : Lib.t list -> _ Command.Args.t
-  val meta_info : loc:Loc.t option -> context:Context_name.t -> Lib.t -> Path.t option
 
   (** Given a list of library names, we try to resolve them in order, returning
       the first one that exists. *)
@@ -32,23 +31,7 @@ end = struct
 
   let include_flags ts = include_paths ts |> Lib_flags.L.to_iflags
 
-  let meta_info ~loc ~context (lib : Lib.t) =
-    let name = Lib.name lib |> Lib_name.to_string in
-    match Lib_info.status (Lib.info lib) with
-    | Public (_, pkg) ->
-      let package = Package.name pkg in
-      let meta_i =
-        Path.Build.relative (Install.Context.lib_dir ~context ~package) "META"
-      in
-      Some (Path.build meta_i)
-    | Installed -> None
-    | Installed_private | Private _ ->
-      User_error.raise
-        ?loc
-        [ Pp.textf "Using private library %s as a Rocq plugin is not supported" name ]
-  ;;
-
-  (* CR alizter: move this to Lib.DB *)
+  (* CR-someday alizter: move this to Lib.DB *)
 
   (** Given a list of library names, we try to resolve them in order, returning
       the first one that exists. *)
@@ -419,18 +402,7 @@ let libs_of_theory ~lib_db ~theories_deps plugins : (Lib.t list * _) Resolve.Mem
   findlib_libs, legacy_theories
 ;;
 
-(* compute include flags and mlpack rules *)
-let ml_pack_and_meta_rule ~context ~all_libs (buildable : Rocq_stanza.Buildable.t)
-  : unit Action_builder.t
-  =
-  (* rocqdep expects an mlpack file next to the sources otherwise it will
-     omit the cmxs deps *)
-  let plugin_loc = List.hd_opt buildable.plugins |> Option.map ~f:fst in
-  let meta_info = Util.meta_info ~loc:plugin_loc ~context in
-  Action_builder.paths (List.filter_map ~f:meta_info all_libs)
-;;
-
-let ml_flags_and_ml_pack_rule
+let ml_flags_and_plugin_ocamlpath
       ~context
       ~lib_db
       ~theories_deps
@@ -441,16 +413,29 @@ let ml_flags_and_ml_pack_rule
     let+ all_libs, _legacy_theories =
       libs_of_theory ~lib_db ~theories_deps buildable.plugins
     in
+    let plugin_loc = List.hd_opt buildable.plugins |> Option.map ~f:fst in
+    List.iter all_libs ~f:(fun lib ->
+      match Lib_info.status (Lib.info lib) with
+      | Public _ | Installed -> ()
+      | Installed_private | Private _ ->
+        let name = Lib.name lib |> Lib_name.to_string in
+        User_error.raise
+          ?loc:plugin_loc
+          [ Pp.textf "Using private library %s as a Rocq plugin is not supported" name ]);
     let findlib_plugin_flags = Util.include_flags all_libs in
     let ml_flags = Command.Args.S [ findlib_plugin_flags ] in
-    ml_flags, ml_pack_and_meta_rule ~context ~all_libs buildable
+    let plugin_packages =
+      List.filter_map all_libs ~f:(fun lib -> Lib.info lib |> Lib_info.package)
+      |> Package.Name.Set.of_list
+    in
+    ml_flags, plugin_packages
   in
-  let mlpack_rule =
+  let plugin_ocamlpath =
     let open Action_builder.O in
-    let* _, mlpack_rule = Resolve.Memo.read res in
-    mlpack_rule
+    let* _, plugin_packages = Resolve.Memo.read res in
+    Install_layout.For_rocq_only.lib_root context plugin_packages
   in
-  Resolve.Memo.map ~f:fst res, mlpack_rule
+  Resolve.Memo.map ~f:fst res, plugin_ocamlpath
 ;;
 
 let dep_theory_file ~dir ~wrapper_name =
@@ -580,6 +565,21 @@ let setup_rocqproject_for_theory_rule
     sctx
     ~dir
     (Action_builder.write_file_dyn rocqproject contents.build)
+  >>> Rules.Produce.Alias.add_deps
+        (Alias.make Alias0.rocqproject ~dir)
+        ~loc
+        (Action_builder.path (Path.build rocqproject))
+;;
+
+(* Cons the plugin layout's lib root onto whatever OCAMLPATH [action.env]
+   already carries (e.g. layout entries from [(deps (package ...))]) rather
+   than overwriting it. *)
+let add_plugin_ocamlpath ~lib_root (action : Action.Full.t) =
+  let { Action.Full.env = action_env; _ } = action in
+  let env =
+    Install.Roots.cons_path action_env ~var:Findlib_config.ocamlpath_var lib_root
+  in
+  Action.Full.add_env env action
 ;;
 
 let setup_rocqdep_for_theory_rule
@@ -590,9 +590,9 @@ let setup_rocqdep_for_theory_rule
       ~wrapper_name
       ~source_rule
       ~ml_flags
-      ~mlpack_rule
       ~boot_flags
       ~stanza_rocqdep_flags
+      ~plugin_ocamlpath
       rocq_modules
   =
   (* rocqdep needs the full source + plugin's mlpack to be present :( *)
@@ -623,9 +623,13 @@ let setup_rocqdep_for_theory_rule
     sctx
     ~dir
     (let open Action_builder.With_targets.O in
-     Action_builder.with_no_targets mlpack_rule
-     >>> Action_builder.(with_no_targets (goal source_rule))
-     >>> Command.run ~dir:(Path.build dir) ~stdout_to rocq rocqdep_flags)
+     Action_builder.(with_no_targets (goal source_rule))
+     >>> Command.run ~dir:(Path.build dir) ~stdout_to rocq rocqdep_flags
+     |> Action_builder.With_targets.map_build ~f:(fun build ->
+       let open Action_builder.O in
+       let+ action = build
+       and+ lib_root = plugin_ocamlpath in
+       add_plugin_ocamlpath ~lib_root action))
 ;;
 
 module Dep_map = Stdune.Map.Make (Path)
@@ -809,7 +813,7 @@ let setup_output_diff_rule ~loc ~dir ~sctx ~rocq_lang_version ~rocq_sources rocq
   | Some expected ->
     let output = Rocq_module.output_file ~obj_dir:dir rocq_module in
     let diff =
-      { Diff.file1 = Path.build expected
+      { Action_types.Diff.file1 = Path.build expected
       ; file2 = output
       ; optional = false
       ; mode = Text
@@ -843,6 +847,7 @@ let setup_rocqc_rule
       ~ml_flags
       ~theory_dirs
       ~rocq_sources
+      ~plugin_ocamlpath
       rocq_module
   =
   (* Process rocqdep and generate rules *)
@@ -900,7 +905,12 @@ let setup_rocqc_rule
               ?stdout_to:output_file
               ~sandbox:Sandbox_config.no_sandboxing
               rocq
-              (cflag :: targets :: args))
+              (cflag :: targets :: args)
+     |> Action_builder.With_targets.map_build ~f:(fun build ->
+       let open Action_builder.O in
+       let+ action = build
+       and+ lib_root = plugin_ocamlpath in
+       add_plugin_ocamlpath ~lib_root action))
 ;;
 
 let rocq_modules_of_theory ~sctx lib =
@@ -1054,11 +1064,11 @@ let theory_context ~context ~scope ~name buildable =
       Resolve.Memo.lift @@ Rocq_lib.theories_closure theory)
   in
   (* ML-level flags for depending libraries *)
-  let ml_flags, mlpack_rule =
+  let ml_flags, plugin_ocamlpath =
     let lib_db = Scope.libs scope in
-    ml_flags_and_ml_pack_rule ~context ~theories_deps ~lib_db buildable
+    ml_flags_and_plugin_ocamlpath ~context ~theories_deps ~lib_db buildable
   in
-  theory, theories_deps, ml_flags, mlpack_rule
+  theory, theories_deps, ml_flags, plugin_ocamlpath
 ;;
 
 (* Common context for extraction, almost the same than above *)
@@ -1083,18 +1093,18 @@ let extraction_context ~context ~scope (buildable : Rocq_stanza.Buildable.t) =
     | None -> theories_deps
     | Some (_, boot) -> boot :: theories_deps
   in
-  let ml_flags, mlpack_rule =
+  let ml_flags, plugin_ocamlpath =
     let lib_db = Scope.libs scope in
-    ml_flags_and_ml_pack_rule ~context ~theories_deps ~lib_db buildable
+    ml_flags_and_plugin_ocamlpath ~context ~theories_deps ~lib_db buildable
   in
-  theories_deps, ml_flags, mlpack_rule
+  theories_deps, ml_flags, plugin_ocamlpath
 ;;
 
 let setup_theory_rules ~sctx ~dir ~dir_contents (s : Rocq_stanza.Theory.t) =
   let* scope = Scope.DB.find_by_dir dir in
   let name = s.name in
   let rocq_lang_version = s.buildable.rocq_lang_version in
-  let theory, theories_deps, ml_flags, mlpack_rule =
+  let theory, theories_deps, ml_flags, plugin_ocamlpath =
     let context = Super_context.context sctx |> Context.name in
     theory_context ~context ~scope ~name s.buildable
   in
@@ -1155,9 +1165,9 @@ let setup_theory_rules ~sctx ~dir ~dir_contents (s : Rocq_stanza.Theory.t) =
         ~wrapper_name
         ~source_rule
         ~ml_flags
-        ~mlpack_rule
         ~boot_flags
         ~stanza_rocqdep_flags:s.rocqdep_flags
+        ~plugin_ocamlpath
         rocq_modules
   >>> Memo.parallel_iter rocq_modules ~f:(fun rocq_module ->
     setup_rocqc_rule
@@ -1177,6 +1187,7 @@ let setup_theory_rules ~sctx ~dir ~dir_contents (s : Rocq_stanza.Theory.t) =
       ~ml_flags
       ~theory_dirs
       ~rocq_sources:rocq_dir_contents
+      ~plugin_ocamlpath
       rocq_module
     >>> setup_output_diff_rule
           ~loc
@@ -1192,7 +1203,7 @@ let setup_theory_rules ~sctx ~dir ~dir_contents (s : Rocq_stanza.Theory.t) =
 let rocqtop_args_theory ~sctx ~dir ~dir_contents (s : Rocq_stanza.Theory.t) rocq_module =
   let* scope = Scope.DB.find_by_dir dir in
   let name = s.name in
-  let _theory, theories_deps, ml_flags, _mlpack_rule =
+  let _theory, theories_deps, ml_flags, _plugin_ocamlpath =
     let context = Super_context.context sctx |> Context.name in
     theory_context ~context ~scope ~name s.buildable
   in
@@ -1311,7 +1322,7 @@ let setup_extraction_rules ~sctx ~dir ~dir_contents (s : Rocq_stanza.Extraction.
   let use_corelib = s.buildable.use_corelib in
   let rocq_lang_version = s.buildable.rocq_lang_version in
   let* scope = Scope.DB.find_by_dir dir in
-  let theories_deps, ml_flags, mlpack_rule =
+  let theories_deps, ml_flags, plugin_ocamlpath =
     let context = Super_context.context sctx |> Context.name in
     extraction_context ~context ~scope s.buildable
   in
@@ -1340,9 +1351,9 @@ let setup_extraction_rules ~sctx ~dir ~dir_contents (s : Rocq_stanza.Extraction.
     ~wrapper_name
     ~source_rule
     ~ml_flags
-    ~mlpack_rule
     ~boot_flags
     ~stanza_rocqdep_flags:Ordered_set_lang.Unexpanded.standard
+    ~plugin_ocamlpath
     [ rocq_module ]
   >>> setup_rocqc_rule
         ~scope
@@ -1353,6 +1364,7 @@ let setup_extraction_rules ~sctx ~dir ~dir_contents (s : Rocq_stanza.Extraction.
         ~sctx
         ~loc
         ~rocqc_dir:dir
+        ~plugin_ocamlpath
         rocq_module
         ~dir
         ~theories_deps
@@ -1368,7 +1380,7 @@ let setup_extraction_rules ~sctx ~dir ~dir_contents (s : Rocq_stanza.Extraction.
 let rocqtop_args_extraction ~sctx ~dir (s : Rocq_stanza.Extraction.t) rocq_module =
   let use_corelib = s.buildable.use_corelib in
   let* scope = Scope.DB.find_by_dir dir in
-  let theories_deps, ml_flags, _mlpack_rule =
+  let theories_deps, ml_flags, _plugin_ocamlpath =
     let context = Super_context.context sctx |> Context.name in
     extraction_context ~context ~scope s.buildable
   in

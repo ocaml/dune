@@ -16,15 +16,16 @@ module Socket = struct
   end
 
   module Mac = struct
-    external pthread_chdir : string -> unit = "dune_pthread_chdir" [@@noalloc]
+    external pthread_chdir : string -> unit = "dune_pthread_chdir"
+    external reset_pthread_cwd : unit -> unit = "dune_reset_pthread_cwd"
     external set_nosigpipe : Unix.file_descr -> unit = "dune_set_nosigpipe"
 
     let with_chdir fd ~socket ~f =
-      let old = Sys.getcwd () in
       let dir = Filename.dirname socket in
       let sock = Filename.basename socket in
       pthread_chdir dir;
-      Exn.protectx (Unix.ADDR_UNIX sock) ~f:(f fd) ~finally:(fun _ -> pthread_chdir old)
+      Exn.protectx (Unix.ADDR_UNIX sock) ~f:(f fd) ~finally:(fun _ ->
+        reset_pthread_cwd ())
     ;;
 
     let connect fd ~socket : unit =
@@ -39,18 +40,18 @@ module Socket = struct
   end
 
   module Unix : Unix_socket = struct
-    let addr socket =
-      Unix.ADDR_UNIX
-        (match
-           let cwd = Sys.getcwd () in
-           String.drop_prefix socket ~prefix:(cwd ^ "/")
-         with
-         | Some s -> "./" ^ s
-         | None -> socket)
+    let with_chdir fd ~socket ~f =
+      let old = Sys.getcwd () in
+      let dir = Filename.dirname socket in
+      let sock = Filename.basename socket in
+      Sys.chdir dir;
+      Exn.protect
+        ~finally:(fun () -> Sys.chdir old)
+        ~f:(fun () -> f fd (Unix.ADDR_UNIX sock))
     ;;
 
-    let connect fd ~socket = U.connect fd (addr socket)
-    let bind fd ~socket = U.bind fd (addr socket)
+    let connect fd ~socket = with_chdir fd ~socket ~f:U.connect
+    let bind fd ~socket = with_chdir fd ~socket ~f:U.bind
   end
 
   module Fail : Unix_socket = struct
@@ -149,6 +150,14 @@ module Session = struct
         }
     in
     { id; state }
+  ;;
+
+  let of_fd fd =
+    Socket.prepare_fd fd
+    |> Result.map ~f:(fun () ->
+      Fd.set_close_on_exec fd;
+      create fd)
+    |> Result.ok_exn
   ;;
 
   let close_fd t =
@@ -441,10 +450,7 @@ module Server = struct
 
   type t =
     { id : Id.t
-    ; mutable state : [ `Init of Fd.t list | `Running of Transport.t | `Closed ]
-    ; backlog : int
-    ; sockaddrs : Unix.sockaddr list
-    ; ready : unit Fiber.Ivar.t
+    ; mutable state : [ `Listening of Transport.t | `Serving of Transport.t | `Closed ]
     }
 
   let create sockaddrs ~backlog =
@@ -475,62 +481,51 @@ module Server = struct
     try
       Exn.protect ~finally:cleanup ~f:(fun () ->
         let fds = List.map sockaddrs ~f:bind_socket in
+        let transport = Transport.create (List.combine sockaddrs fds) ~backlog in
         bound := [];
-        Ok
-          { id = Id.gen ()
-          ; sockaddrs
-          ; backlog
-          ; state = `Init fds
-          ; ready = Fiber.Ivar.create ()
-          })
+        Ok { id = Id.gen (); state = `Listening transport })
     with
     | Unix.Unix_error (EADDRINUSE, _, _) -> Error `Already_in_use
   ;;
 
-  let ready t = Fiber.Ivar.read t.ready
-
   let serve (t : t) =
-    match t.state with
-    | `Closed -> Code_error.raise "already closed" []
-    | `Running _ -> Code_error.raise "already running" []
-    | `Init fds ->
-      let transport =
-        Transport.create (List.combine t.sockaddrs fds) ~backlog:t.backlog
-      in
-      t.state <- `Running transport;
-      let+ () = Fiber.Ivar.fill t.ready () in
-      let loop () =
-        Dune_trace.emit Rpc (fun () ->
-          Dune_trace.Event.Rpc.accept ~id:(Id.to_int t.id) `Start None);
-        let+ accept = Transport.accept transport in
-        Dune_trace.emit Rpc (fun () ->
-          let res =
-            match accept with
-            | Error exn -> `Error exn
-            | Ok None -> `Close
-            | Ok (Some _) -> `Accept
-          in
-          Dune_trace.Event.Rpc.accept ~id:(Id.to_int t.id) `Stop (Some res));
-        match accept with
-        | Error _ | Ok None -> None
-        | Ok (Some fd) -> Some (Session.create fd)
-      in
-      Fiber.Stream.In.create loop
+    let transport =
+      match t.state with
+      | `Closed -> Code_error.raise "already closed" []
+      | `Serving _ -> Code_error.raise "already running" []
+      | `Listening transport -> transport
+    in
+    t.state <- `Serving transport;
+    let loop () =
+      Dune_trace.emit Rpc (fun () ->
+        Dune_trace.Event.Rpc.accept ~id:(Id.to_int t.id) `Start None);
+      let+ accept = Transport.accept transport in
+      Dune_trace.emit Rpc (fun () ->
+        let res =
+          match accept with
+          | Error exn -> `Error exn
+          | Ok None -> `Close
+          | Ok (Some _) -> `Accept
+        in
+        Dune_trace.Event.Rpc.accept ~id:(Id.to_int t.id) `Stop (Some res));
+      match accept with
+      | Error _ | Ok None -> None
+      | Ok (Some fd) -> Some (Session.create fd)
+    in
+    Fiber.return (Fiber.Stream.In.create loop)
   ;;
 
   let stop t =
     let* () = Fiber.return () in
     match t.state with
     | `Closed -> Fiber.return ()
-    | `Running _ | `Init _ ->
+    | `Listening _ | `Serving _ ->
       Dune_trace.emit Rpc (fun () ->
         Dune_trace.Event.Rpc.shutdown ~id:(Id.to_int t.id) `Start);
       let* () =
         match t.state with
         | `Closed -> Fiber.return ()
-        | `Running transport -> Transport.stop transport
-        | `Init fds ->
-          Fiber.parallel_iter (List.combine t.sockaddrs fds) ~f:close_bound_socket
+        | `Listening transport | `Serving transport -> Transport.stop transport
       in
       let+ () = Fiber.return () in
       t.state <- `Closed;
@@ -546,8 +541,8 @@ module Server = struct
 
   let listening_address t =
     match t.state with
-    | `Init fds -> List.map ~f:socket_name (List.combine t.sockaddrs fds)
-    | `Running { Transport.sockets; _ } -> List.map ~f:socket_name sockets
+    | `Listening { Transport.sockets; _ } | `Serving { Transport.sockets; _ } ->
+      List.map ~f:socket_name sockets
     | `Closed -> Code_error.raise "server is already closed" []
   ;;
 end

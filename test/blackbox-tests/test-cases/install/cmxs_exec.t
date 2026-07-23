@@ -1,9 +1,6 @@
 # Test that .cmxs are installed with the executable bit set
 
-  $ cat >dune-project <<EOF
-  > (lang dune 2.8)
-  > (package (name foo))
-  > EOF
+  $ make_dune_project_with_package 2.8 foo
   $ cat >dune <<EOF
   > (library
   >  (public_name foo))
@@ -62,10 +59,31 @@ Test the error message if a destination is a non-empty directory instead of a fi
   Error: Please delete non-empty directory prefix/lib/foo/foo.a manually.
   [1]
 
+Dry runs should validate the same blocker.
+
+  $ dune install --prefix prefix --display short --dry-run
+  Creating directory prefix/lib/foo
+  Removing (if it exists) prefix/lib/foo/META
+  Installing prefix/lib/foo/META
+  Copying _build/install/default/lib/foo/META to prefix/lib/foo/META (executable: false)
+  Creating directory prefix/lib/foo
+  Removing (if it exists) prefix/lib/foo/dune-package
+  Installing prefix/lib/foo/dune-package
+  Copying _build/install/default/lib/foo/dune-package to prefix/lib/foo/dune-package (executable: false)
+  Creating directory prefix/lib/foo
+  Error: Please delete non-empty directory prefix/lib/foo/foo.a manually.
+  [1]
+
 Test the error message if a destination is a file instead of a directory.
 
   $ rm -rf prefix
   $ mkdir -p prefix/lib; touch prefix/lib/foo
   $ dune install --prefix prefix --display short
-  Error: stat(prefix/lib/foo/META): Not a directory
+  Error: Please delete file prefix/lib/foo manually.
+  [1]
+
+Dry runs should validate the same existing directory blockers.
+
+  $ dune install --prefix prefix --display short --dry-run
+  Error: Please delete file prefix/lib/foo manually.
   [1]

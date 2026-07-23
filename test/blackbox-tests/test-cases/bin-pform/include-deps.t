@@ -2,17 +2,7 @@
 .binaries dir gets added to the action's PATH and the binary is a
 tracked dep of the rule.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.24)
-  > (package (name mypkg))
-  > EOF
-  $ mkdir src
-  $ cat >src/dune <<'EOF'
-  > (executable (public_name mybin) (package mypkg))
-  > EOF
-  $ cat >src/mybin.ml <<'EOF'
-  > let () = print_endline "hello from mybin"
-  > EOF
+  $ make_mypkg_bin_project
 
   $ cat >deps.sexp <<'EOF'
   > (%{bin:mybin})
@@ -27,17 +17,15 @@ tracked dep of the rule.
 
   $ dune build path-output
 
-The action's PATH includes the .binaries dir and the install bin
-dir:
+The action's PATH includes the .binaries dir:
 
   $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
   $PWD/_build/install/default/.binaries/$DIGEST
-  $PWD/_build/install/default/bin
 
 The rule depends on the build artifact and the .binaries symlink:
 
   $ dune rules --format=json _build/default/path-output \
-  >   | jq 'include "dune"; .[] | ruleDepFilePaths' \
+  >   | jq_dune '.[] | ruleDepFilePaths' \
   >   | grep mybin | censor
-  "_build/default/src/mybin.exe"
+  "_build/default/src/mybin.bc"
   "_build/install/default/.binaries/$DIGEST/mybin"

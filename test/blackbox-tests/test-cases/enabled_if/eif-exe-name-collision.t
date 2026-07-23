@@ -1,19 +1,9 @@
 Using same executable name in two contexts
 
   $ mkdir -p a b
-  $ cat > dune-project << EOF
-  > (lang dune 3.13)
-  > EOF
+  $ make_dune_project 3.13
 
-  $ cat > dune-workspace << EOF
-  > (lang dune 3.13)
-  > 
-  > (context default)
-  > 
-  > (context
-  >  (default
-  >   (name alt-context)))
-  > EOF
+  $ make_two_context_workspace
   $ cat > a/dune << EOF
   > (executable
   >  (name foo)

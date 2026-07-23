@@ -452,8 +452,8 @@
 
 - `$ dune promotion list` writes output to stdout rather than stderr (#13462)
 
-- Improve handling of empty files in the `diff` action. These are now correctly
-  distinguished from *empty* files. (#13696, @rgrinberg)
+- Improve handling of empty files in the `diff` action. Missing files are now
+  correctly distinguished from empty files. (#13696, fixes #8073, @rgrinberg)
 - Pass `/dev/null` to `--diff-command` instead of non-existent files (#13696,
   @rgrinberg)
 

@@ -231,17 +231,13 @@ let make_same_lib_emission_deps =
     in
     Dep_graph.make ~dir:(Obj_dir.dir obj_dir) ~per_module
   in
-  let deps_of_impl_closure ~obj_dir modules =
-    let modules = Obj_dir.Module.L.cm_files obj_dir modules ~kind:(Melange Cmj) in
+  let deps_of_closure ~obj_dir ~kind modules =
+    let modules = Obj_dir.Module.L.cm_files obj_dir modules ~kind:(Melange kind) in
     Dep.Set.of_files modules
   in
   let deps_of_xopt_closure ~obj_dir modules =
-    let cmj =
-      Obj_dir.Module.L.cm_files obj_dir modules ~kind:(Melange Cmj) |> Dep.Set.of_files
-    in
-    let cmi =
-      Obj_dir.Module.L.cm_files obj_dir modules ~kind:(Melange Cmi) |> Dep.Set.of_files
-    in
+    let cmj = deps_of_closure ~obj_dir ~kind:Cmj modules in
+    let cmi = deps_of_closure ~obj_dir ~kind:Cmi modules in
     Dep.Set.union cmi cmj
   in
   fun ~sctx ~obj_dir ~modules ~(compile_flags : Ocaml_flags.t) ->
@@ -268,9 +264,9 @@ let make_same_lib_emission_deps =
             module_
         in
         (* Cross-module optimization follows implementation artifacts, but the
-         initial reachability also comes from the emitted module's interface
-         dependencies. Seed the implementation graph with that interface
-         closure so wrappers such as [Stdlib] stay visible to the emitter. *)
+           initial reachability also comes from the emitted module's interface
+           dependencies. Seed the implementation graph with that interface
+           closure so wrappers such as [Stdlib] stay visible to the emitter. *)
         Dep_graph.top_closed_implementations dep_graph (module_ :: intf_deps)
         |> Action_builder.map ~f:(deps_of_xopt_closure ~obj_dir)
       | false ->
@@ -279,8 +275,13 @@ let make_same_lib_emission_deps =
            when a dependency has an [.mli], which is insufficient for JS
            emission. Follow the implementation dependency graph directly
            instead. *)
+        let stdlib_aliases =
+          Modules.With_vlib.alias_for modules module_
+          |> List.filter ~f:(Modules.With_vlib.is_stdlib_alias modules)
+        in
         Dep_graph.top_closed_implementations dep_graph [ module_ ]
-        |> Action_builder.map ~f:(deps_of_impl_closure ~obj_dir)
+        |> Action_builder.map ~f:(fun deps ->
+          deps_of_closure ~obj_dir ~kind:Cmj (stdlib_aliases @ deps))
 ;;
 
 let make_external_lib_emission_deps =
@@ -463,6 +464,7 @@ let build_js
         in
         Command.run
           ~dir:(Super_context.context sctx |> Context.build_dir |> Path.build)
+          ~forbid_action_runner:true
           compiler
           [ Command.Args.S obj_dir
           ; Command.Args.as_any includes
@@ -544,6 +546,9 @@ let setup_emit_cmj_rules
     let* flags = melange_compile_flags ~sctx ~dir mel in
     let* cctx =
       let direct_requires = Lib.Compile.direct_requires compile_info ~for_ in
+      let user_written_requires =
+        Some (lazy (Lib.Compile.user_written_requires_no_loc compile_info ~for_))
+      in
       Compilation_context.create
         for_
         ~loc:mel.loc
@@ -554,6 +559,7 @@ let setup_emit_cmj_rules
         ~flags
         ~requires_link
         ~requires_compile:direct_requires
+        ~user_written_requires
         ~preprocessing:pp
         ~js_of_ocaml:(Js_of_ocaml.Mode.Pair.make None)
         ~opaque:Inherit_from_settings

@@ -225,7 +225,7 @@ let () =
   Path.as_external dir |> Option.value_exn |> Path.set_root;
   Path.Build.set_build_dir (Path.Outside_build_dir.of_string "_build");
   let config =
-    Dune_engine.Clflags.display := Quiet;
+    Clflags.display := Quiet;
     { Scheduler.Config.concurrency = 10
     ; print_ctrl_c_warning = false
     ; watch_exclusions = []
@@ -236,7 +236,7 @@ let () =
     stat.st_size
   in
   let results =
-    Scheduler.Run.go config ~on_event:(fun _ -> ())
+    Scheduler.Run.go config
     @@ fun () ->
     let open Fiber.O in
     (* Prepare the workspace *)

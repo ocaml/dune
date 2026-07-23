@@ -1,8 +1,6 @@
 We create a large file and check that it is copied completely.
 
-  $ cat > dune-project << EOF
-  > (lang dune 1.0)
-  > EOF
+  $ make_dune_project 1.0
 
   $ cat > create.ml << EOF
   > let () = Unix.truncate "file.dat" 0x1_00_00_00_03

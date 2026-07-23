@@ -1,7 +1,7 @@
 Modify an input file during the build so that dune interrupts the
 build
 
-  $ echo "(lang dune 2.0)" > dune-project
+  $ make_dune_project 2.0
 
   $ cat > x <<EOF
   > original-contents
@@ -40,6 +40,4 @@ before we're able to cancel the build.
   $ cat _build/default/y
   new-contents
 
-  $ stop_dune
-  Success, waiting for filesystem changes...
-  Success, waiting for filesystem changes...
+  $ stop_dune_quiet

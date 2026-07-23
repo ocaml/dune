@@ -1,9 +1,6 @@
 Headers of libraries are accidentally visible
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.8)
-  > (package (name mypkg))
-  > EOF
+  $ make_dune_project_with_package 3.8 mypkg
 
   $ cat >dune <<EOF
   > (library
@@ -30,20 +27,9 @@ foo.h should only be visible when we use mypkg.sub
   $ mkdir subdir
   $ cd subdir
 
-  $ make_dune_project 3.8
-
 We depend on mypkg, but we can see the header of mypkg.sub
 
-  $ cat >dune <<EOF
-  > (executable
-  >  (name bar)
-  >  (foreign_stubs
-  >   (language c)
-  >   (include_dirs (lib mypkg))
-  >   (names foo)))
-  > EOF
-  $ touch bar.ml
-  $ cat >foo.c <<EOF
+  $ make_foreign_header_consumer <<EOF
   > // This header shouldn't be visible
   > #include <sub/foo.h>
   > EOF

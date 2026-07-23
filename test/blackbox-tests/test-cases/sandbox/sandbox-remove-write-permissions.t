@@ -1,9 +1,6 @@
 Remove write permissions from a sandbox directory and observe the error we get
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.11)
-  > (using directory-targets 0.1)
-  > EOF
+  $ make_directory_targets_project 3.11
 
   $ cat >dune <<EOF
   > (rule

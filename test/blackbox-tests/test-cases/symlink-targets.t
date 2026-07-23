@@ -1,6 +1,6 @@
 Test demonstrating the handling of actions that produce symlinks.
 
-  $ echo "(lang dune 2.8)" > dune-project
+  $ make_dune_project 2.8
   $ cat >dune <<EOF
   > (rule (targets b) (deps a) (action (run ln -s a b)))
   > EOF
@@ -8,8 +8,7 @@ Test demonstrating the handling of actions that produce symlinks.
   $ dune build ./b
 
   $ function print_trace() {
-  > dune trace cat | jq '
-  > include "dune";
+  > dune trace cat | jq_dune '
   >   processes
   > | .args
   > | .prog |= basename

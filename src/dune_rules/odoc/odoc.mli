@@ -8,6 +8,7 @@ end
 
 val lib_unique_name : Lib.t -> string
 val odoc_program : Super_context.t -> Path.Build.t -> Action.Prog.t Action_builder.t
+val odoc_files_in_dirs : Path.t list -> _ Command.Args.t
 val libs_of_pkg : Context_name.t -> pkg:Package.Name.t -> Lib.Local.t list Memo.t
 
 val mlds
@@ -16,6 +17,12 @@ val mlds
   -> ((Path.Build.t * string) list * Doc_sources.mld list) Memo.t
 
 val report_warnings : Doc_sources.mld list -> unit
+
+val check_mlds_no_dupes
+  :  pkg:Package.Name.t
+  -> mlds:('path * string) list
+  -> path_to_string:('path -> string)
+  -> ('path * string) String.Map.t
 
 val run_odoc
   :  Super_context.t

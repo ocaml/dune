@@ -7,9 +7,7 @@
   dune_threaded_console
   dune_lang
   dune_cache
-  dune_engine
   dune_tui
   dune_util
-  spawn
   unix)
  (synopsis "Internal Dune library, do not use!"))

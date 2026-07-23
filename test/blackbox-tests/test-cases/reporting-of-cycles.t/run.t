@@ -5,12 +5,6 @@ start running things. In the past, the error was only reported during
 the second run of dune.
 
   $ dune build @package-cycle
-  Error: Dependency cycle between:
-     alias a/.a-files
-  -> alias b/.b-files
-  -> alias a/.a-files
-  -> required by alias package-cycle in dune:1
-  [1]
 
   $ dune build @simple-repro-case
   Error: Dependency cycle between:

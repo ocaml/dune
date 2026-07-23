@@ -20,11 +20,11 @@ Cmj rules `--bs-package-output` should be `.` like public libraries (relative
 to the dune file dir)
 
   $ dune rules --root . --format=json lib/.a.objs/melange/a.cmj |
-  > jq -r 'include "dune"; .[] | ruleActionFlagValues("--bs-package-output")'
+  > jq_dune -r '.[] | ruleActionFlagValues("--bs-package-output")'
   .melange_src
 
 Cmj rules should include `--bs-package-name` with the private mangled name
 
   $ dune rules --root . --format=json lib/.a.objs/melange/a.cmj |
-  > jq -r 'include "dune"; .[] | ruleActionFlagValues("--bs-package-name")'
+  > jq_dune -r '.[] | ruleActionFlagValues("--bs-package-name")'
   foo.__private__.a

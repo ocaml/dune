@@ -16,7 +16,7 @@ let synopsis =
   ]
 ;;
 
-let print_line ~(verbosity : Dune_engine.Display.t) fmt =
+let print_line ~(verbosity : Display.t) fmt =
   Printf.ksprintf
     (fun s ->
        match verbosity with
@@ -167,8 +167,29 @@ module type File_operations = sig
   val remove_dir_if_exists : if_non_empty:rmdir_mode -> Path.t -> unit
 end
 
+let raise_file_should_be_deleted p =
+  User_error.raise
+    [ Pp.textf "Please delete file %s manually." (Path.to_string_maybe_quoted p) ]
+;;
+
+let raise_non_empty_dir_should_be_deleted dir =
+  User_error.raise
+    [ Pp.textf
+        "Please delete non-empty directory %s manually."
+        (Path.to_string_maybe_quoted dir)
+    ]
+;;
+
+let rec validate_dir_can_be_created dir =
+  match Unix.stat (Path.to_string dir) with
+  | { st_kind = S_DIR; _ } -> ()
+  | _ -> raise_file_should_be_deleted dir
+  | exception Unix.Unix_error ((ENOENT | ENOTDIR), _, _) ->
+    Option.iter (Path.parent dir) ~f:validate_dir_can_be_created
+;;
+
 module File_ops_dry_run (Verbosity : sig
-    val verbosity : Dune_engine.Display.t
+    val verbosity : Display.t
   end) : File_operations = struct
   open Verbosity
 
@@ -183,13 +204,19 @@ module File_ops_dry_run (Verbosity : sig
     Fiber.return ()
   ;;
 
-  let mkdir_p path = print_line "Creating directory %s" (Path.to_string_maybe_quoted path)
+  let mkdir_p path =
+    validate_dir_can_be_created path;
+    print_line "Creating directory %s" (Path.to_string_maybe_quoted path)
+  ;;
 
   let remove_file_if_exists path =
     print_line "Removing (if it exists) %s" (Path.to_string_maybe_quoted path)
   ;;
 
   let remove_dir_if_exists ~if_non_empty path =
+    (match if_non_empty, Path.readdir_unsorted path with
+     | Fail, Ok (_ :: _) -> raise_non_empty_dir_should_be_deleted path
+     | _, _ -> ());
     print_line
       "Removing directory (%s if not empty) %s"
       (match if_non_empty with
@@ -200,7 +227,7 @@ module File_ops_dry_run (Verbosity : sig
 end
 
 module File_ops_real (W : sig
-    val verbosity : Dune_engine.Display.t
+    val verbosity : Display.t
     val workspace : Workspace.t
   end) : File_operations = struct
   open W
@@ -228,7 +255,11 @@ module File_ops_real (W : sig
       in
       match packages with
       | None -> Fiber.return None
-      | Some vcs -> Memo.run (Vcs.describe vcs)
+      | Some vcs ->
+        Memo.run
+          (Vcs.describe
+             vcs
+             ~needed_for:"to infer package versions while installing files")
     in
     try f ~get_version ic ~src oc with
     | _ (* XXX should we really be catching everything here? *) ->
@@ -302,7 +333,18 @@ module File_ops_real (W : sig
         ~package
         ~(conf : Artifact_substitution.Conf.t)
     =
-    let chmod = if executable then fun _ -> 0o755 else fun _ -> 0o644 in
+    let mode =
+      let open Permissions in
+      if executable
+      then
+        Mode.create
+          ~user:(read + write + execute)
+          ~group:(read + execute)
+          ~other:(read + execute)
+          ()
+      else Mode.create ~user:(read + write) ~group:read ~other:read ()
+    in
+    let chmod _ = mode in
     let plain_copy () = Io.copy_file ~chmod ~src ~dst () in
     match kind with
     | Substitute -> Artifact_substitution.copy_file ~conf ~src ~dst ~chmod ()
@@ -345,23 +387,19 @@ module File_ops_real (W : sig
     | Error (e, _, _) ->
       User_message.prerr (User_error.make [ Pp.text (Unix.error_message e) ])
     | _ ->
-      let dir = Path.to_string_maybe_quoted dir in
       (match if_non_empty with
+       | Fail -> raise_non_empty_dir_should_be_deleted dir
        | Warn ->
+         let dir = Path.to_string_maybe_quoted dir in
          User_message.prerr
            (User_error.make
-              [ Pp.textf "Directory %s is not empty, cannot delete (ignoring)." dir ])
-       | Fail ->
-         User_error.raise
-           [ Pp.textf "Please delete non-empty directory %s manually." dir ])
+              [ Pp.textf "Directory %s is not empty, cannot delete (ignoring)." dir ]))
   ;;
 
   let mkdir_p p =
     match Fpath.mkdir_p_strict (Path.to_string p) with
     | `Created | `Already_exists -> ()
-    | `Not_a_dir ->
-      User_error.raise
-        [ Pp.textf "Please delete file %s manually." (Path.to_string_maybe_quoted p) ]
+    | `Not_a_dir -> raise_file_should_be_deleted p
   ;;
 end
 
@@ -452,6 +490,7 @@ let install_entry
   | false -> Fiber.return entry
   | true ->
     let+ () =
+      Ops.mkdir_p dir;
       (match Fpath.is_directory (Path.to_string dst) with
        | true -> Ops.remove_dir_if_exists ~if_non_empty:Fail dst
        | false -> Ops.remove_file_if_exists dst);
@@ -460,7 +499,6 @@ let install_entry
         "%s %s"
         (if create_install_files then "Copying to" else "Installing")
         (Path.to_string_maybe_quoted dst);
-      Ops.mkdir_p dir;
       let executable = Section.should_set_executable_bit entry.section in
       let kind =
         match special_file with
@@ -594,7 +632,7 @@ let run
           in
           match
             List.filter_map entries ~f:(fun entry ->
-              (* CR rgrinberg: this is ignoring optional entries *)
+              (* CR-someday rgrinberg: this is ignoring optional entries *)
               Option.some_if (not (Fpath.exists (Path.to_string entry.src))) entry.src)
           with
           | [] -> package, entries
@@ -654,7 +692,7 @@ let run
         let conf = Artifact_substitution.Conf.of_install ~relocatable ~roots ~context in
         Fiber.sequential_iter entries_per_package ~f:(fun (package, entries) ->
           let+ entries =
-            (* CR rgrinberg: why don't we install things concurrently? *)
+            (* CR-someday rgrinberg: why don't we install things concurrently? *)
             Fiber.sequential_map entries ~f:(fun entry ->
               let dst =
                 let paths = Install.Paths.make ~relative:Path.relative ~package ~roots in

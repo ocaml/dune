@@ -23,9 +23,10 @@ module Dir_contents = struct
 end
 
 module Cached_digest = struct
-  module Reduced_stats = struct
+  module Stats = struct
     type t =
       { mtime : Time.t
+      ; ctime : Time.t
       ; size : int
       ; perm : Unix.file_perm
       ; dev : int
@@ -36,6 +37,7 @@ module Cached_digest = struct
       Repr.record
         "fs-memo-cached-digest-reduced-stats"
         [ Repr.field "mtime" Time.repr ~get:(fun t -> t.mtime)
+        ; Repr.field "ctime" Time.repr ~get:(fun t -> t.ctime)
         ; Repr.field "size" Repr.int ~get:(fun t -> t.size)
         ; Repr.field "perm" Repr.int ~get:(fun t -> t.perm)
         ; Repr.field "dev" Repr.int ~get:(fun t -> t.dev)
@@ -47,6 +49,7 @@ module Cached_digest = struct
 
     let of_stat (stat : Stat.t) =
       { mtime = stat.mtime
+      ; ctime = stat.ctime
       ; size = stat.size
       ; perm = stat.perm
       ; dev = stat.dev
@@ -63,7 +66,7 @@ module Cached_digest = struct
 
   type 'a file =
     { mutable contents : 'a
-    ; mutable stats : Reduced_stats.t
+    ; mutable stats : Stats.t
     ; mutable stats_checked : int
     }
 
@@ -81,7 +84,7 @@ module Cached_digest = struct
     Repr.record
       "fs-memo-cached-digest-file"
       [ Repr.field "contents" contents_repr ~get:(fun t -> t.contents)
-      ; Repr.field "stats" Reduced_stats.repr ~get:(fun t -> t.stats)
+      ; Repr.field "stats" Stats.repr ~get:(fun t -> t.stats)
       ; Repr.field "stats_checked" Repr.int ~get:(fun t -> t.stats_checked)
       ]
   ;;
@@ -103,7 +106,7 @@ module Cached_digest = struct
       type nonrec t = t
 
       let name = "DIGEST-DB"
-      let version = 11
+      let version = 12
       let sharing = true
       let repr = repr
     end)
@@ -154,9 +157,12 @@ module Cached_digest = struct
     match Time.compare cache.max_timestamp now with
     | Lt -> ()
     | Eq | Gt ->
+      let max_timestamp = ref (Time.of_ns 0) in
       let filter (data : _ file) =
         match Time.compare data.stats.mtime now with
-        | Lt -> true
+        | Lt ->
+          max_timestamp := Time.max !max_timestamp data.stats.mtime;
+          true
         | Gt | Eq -> false
       in
       (match Dune_trace.enabled Digest with
@@ -177,7 +183,8 @@ module Cached_digest = struct
           | [] -> ()
           | _ :: _ ->
             Dune_trace.emit ~buffered:true Digest (fun () ->
-              Dune_trace.Event.Digest.dropped_stale_mtimes !dropped ~fs_now:now)))
+              Dune_trace.Event.Digest.dropped_stale_mtimes !dropped ~fs_now:now)));
+      cache.max_timestamp <- !max_timestamp
   ;;
 
   let dump () =
@@ -212,7 +219,7 @@ module Cached_digest = struct
     Path.Table.set
       (table cache)
       path
-      { contents; stats = Reduced_stats.of_stat stat; stats_checked = cache.checked_key }
+      { contents; stats = Stats.of_stat stat; stats_checked = cache.checked_key }
   ;;
 
   let digest_path_with_stats path stats =
@@ -261,32 +268,32 @@ module Cached_digest = struct
            with
            | Error e -> Error e
            | Ok stats ->
-             let reduced_stats = Reduced_stats.of_stat stats in
-             (match Reduced_stats.compare x.stats reduced_stats with
-              | Eq ->
-                (* Even though we're modifying the [stats_checked] field, we don't
-                   need to set [needs_dumping := true] here. This is because
-                   [checked_key] is incremented every time we load from disk, which
-                   makes it so that [stats_checked < checked_key] for all entries
-                   after loading, regardless of whether we save the new value here
-                   or not. *)
-                x.stats_checked <- cache.checked_key;
-                Ok x.contents
-              | Gt | Lt ->
-                let contents = f path stats in
-                Result.iter contents ~f:(fun contents ->
-                  emit
-                    path
-                    ~old_contents:x.contents
-                    ~new_contents:contents
-                    ~old_stats:x.stats
-                    ~new_stats:reduced_stats;
-                  needs_dumping := true;
-                  set_max_timestamp cache stats;
-                  x.contents <- contents;
-                  x.stats <- reduced_stats;
-                  x.stats_checked <- cache.checked_key);
-                contents)))
+             let reduced_stats = Stats.of_stat stats in
+             if Stats.equal x.stats reduced_stats
+             then (
+               (* Even though we're modifying the [stats_checked] field, we don't
+                  need to set [needs_dumping := true] here. This is because
+                  [checked_key] is incremented every time we load from disk, which
+                  makes it so that [stats_checked < checked_key] for all entries
+                  after loading, regardless of whether we save the new value here
+                  or not. *)
+               x.stats_checked <- cache.checked_key;
+               Ok x.contents)
+             else (
+               let contents = f path stats in
+               Result.iter contents ~f:(fun contents ->
+                 emit
+                   path
+                   ~old_contents:x.contents
+                   ~new_contents:contents
+                   ~old_stats:x.stats
+                   ~new_stats:reduced_stats;
+                 needs_dumping := true;
+                 set_max_timestamp cache stats;
+                 x.contents <- contents;
+                 x.stats <- reduced_stats;
+                 x.stats_checked <- cache.checked_key);
+               contents)))
   ;;
 
   module Untracked = struct
@@ -303,8 +310,8 @@ module Cached_digest = struct
                 ~path
                 ~old_digest:(Digest.to_string old_contents)
                 ~new_digest:(Digest.to_string new_contents)
-                ~old_stats:(Reduced_stats.to_dyn old_stats)
-                ~new_stats:(Reduced_stats.to_dyn new_stats)))
+                ~old_stats:(Stats.to_dyn old_stats)
+                ~new_stats:(Stats.to_dyn new_stats)))
       with
       | Some digest_result -> digest_result
       | None -> refresh path
@@ -318,8 +325,7 @@ module Cached_digest = struct
       | Some entry ->
         (* Make [stats_checked] unequal to [cache.checked_key] so that [peek]
          is forced to re-[stat] the [path]. *)
-        let entry = { entry with stats_checked = cache.checked_key - 1 } in
-        Path.Table.set (table cache) path entry
+        entry.stats_checked <- cache.checked_key - 1
     ;;
 
     let invalidate_cached_timestamp_file path =
@@ -360,8 +366,8 @@ module Cached_digest = struct
                     ~path
                     ~old_contents:(Dir_contents.to_dyn old_contents)
                     ~new_contents:(Dir_contents.to_dyn new_contents)
-                    ~old_stats:(Reduced_stats.to_dyn old_stats)
-                    ~new_stats:(Reduced_stats.to_dyn new_stats)))
+                    ~old_stats:(Stats.to_dyn old_stats)
+                    ~new_stats:(Stats.to_dyn new_stats)))
           with
           | Some contents -> contents
           | None ->
@@ -383,9 +389,7 @@ module Cached_digest = struct
 
   let entries { table; _ } =
     let entries = ref [] in
-    Path.Table.filteri_inplace table ~f:(fun ~key ~data ->
-      entries := (key, data) :: !entries;
-      true);
+    Path.Table.iteri table ~f:(fun ~key ~data -> entries := (key, data) :: !entries);
     List.sort !entries ~compare:(fun (path_a, _) (path_b, _) ->
       Path.compare path_a path_b)
   ;;
@@ -434,7 +438,7 @@ module Debug = struct
           ~get:(fun (_, { Cached_digest.contents; _ }) -> contents)
       ; Repr.field
           "stats"
-          Cached_digest.Reduced_stats.repr
+          Cached_digest.Stats.repr
           ~get:(fun (_, { Cached_digest.stats; _ }) -> stats)
       ; Repr.field
           "stats_checked"
@@ -484,7 +488,7 @@ module Debug = struct
         match Stat.stat path_string with
         | stats ->
           Ok
-            ( Some (Cached_digest.Reduced_stats.of_stat stats)
+            ( Some (Cached_digest.Stats.of_stat stats)
             , Cached_digest.digest_path_with_stats path stats )
         | exception Unix.Unix_error (ENOENT, _, _) ->
           (match Unix.lstat path_string with
@@ -520,8 +524,8 @@ module Debug = struct
       else (
         let status =
           match current_stats with
-          | Some current_stats
-            when Cached_digest.Reduced_stats.compare stats current_stats = Eq -> "invalid"
+          | Some current_stats when Cached_digest.Stats.equal stats current_stats ->
+            "invalid"
           | Some _ | None -> "stale"
         in
         Some (finding_to_dyn { status; path; cached_digest; actual })))
@@ -771,9 +775,12 @@ end = struct
   ;;
 
   let watch ~try_to_watch_via_parent path =
-    match try_to_watch_via_parent with
-    | false -> Memo.exec memo_for_watching_directly path
-    | true -> Memo.exec memo_for_watching_via_parent path
+    match !state with
+    | No_file_watcher -> Memo.return ()
+    | Waiting_for_file_watcher _ | File_watcher _ ->
+      (match try_to_watch_via_parent with
+       | false -> Memo.exec memo_for_watching_directly path
+       | true -> Memo.exec memo_for_watching_via_parent path)
   ;;
 
   let update_all p =
@@ -802,8 +809,8 @@ end = struct
         Path_changed (Path.outside_build_dir path)
       in
       Memo.Invalidation.combine
-        (Memo.Cell.invalidate (Memo.cell memo_for_watching_directly path) ~reason)
-        (Memo.Cell.invalidate (Memo.cell memo_for_watching_via_parent path) ~reason)
+        (Memo.Node.invalidate (Memo.node memo_for_watching_directly path) ~reason)
+        (Memo.Node.invalidate (Memo.node memo_for_watching_via_parent path) ~reason)
   ;;
 
   let init ~dune_file_watcher =
@@ -1002,7 +1009,7 @@ let invalidate_path_and_its_parent path =
    - Finally, the result of [dir_contents] queries can be updated without
      calling [Path.Untracked.readdir_unsorted_with_kinds]: we know which file or
      directory should be added to or removed from the result. *)
-let handle_fs_event ({ kind; path } : Dune_scheduler.File_watcher.Fs_memo_event.t)
+let handle_fs_event ({ kind; path } : Dune_scheduler.Event.Fs_memo_event.t)
   : Memo.Invalidation.t
   =
   match Path.destruct_build_dir path with
@@ -1017,9 +1024,6 @@ let handle_fs_event ({ kind; path } : Dune_scheduler.File_watcher.Fs_memo_event.
 ;;
 
 let init = Watcher.init
-
-(* Register the Fs_memo implementation with the scheduler *)
-let () = Dune_scheduler.Scheduler.set_fs_memo_impl ~handle_fs_event ~init
 
 module Untracked = struct
   let file_digest = Fs_cache.read Fs_cache.Untracked.file_digest

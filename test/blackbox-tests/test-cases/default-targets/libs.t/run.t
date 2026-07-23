@@ -2,8 +2,8 @@ Generate targets when modes are set for libraries
 
   $ dune build @all
 
-  $ dune trace cat | jq -c '
-  > include "dune"; targetsMatchingFilter(test("\\.cm(a|xa|xs)$"))
+  $ dune trace cat | jq_dune -c '
+  > targetsMatchingFilter(test("\\.cm(a|xa|xs)$"))
   > ' | sort
   {"target_files":["_build/default/byteandnative.a","_build/default/byteandnative.cmxa"]}
   {"target_files":["_build/default/byteandnative.cma"]}

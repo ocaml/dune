@@ -1,8 +1,6 @@
 Dune should execute inline tests whose only mode is `byte`.
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.22)
-  > EOF
+  $ make_dune_project 3.22
 
   $ cat > dune <<EOF
   > (library

@@ -101,8 +101,10 @@ The meaning of these :term:`aliases <alias>` is the following:
   executables with a public name and files that are manually installed through
   ``(install)`` stanzas).
 - :doc:`/reference/aliases/runtest` is the alias to which all tests are
-  attached, including ``(test)`` stanzas. ``dune build @runtest`` is equivalent
-  to ``dune runtest``.
+  attached, including ``(test)`` stanzas. Building ``@runtest`` directly uses
+  normal alias target semantics. See
+  :ref:`writing-and-running-tests-running-tests` for the command-line behavior
+  of ``dune runtest``.
 - :doc:`/reference/aliases/doc` executes ``odoc`` to create HTML docs under
   ``_build``.
 

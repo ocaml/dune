@@ -21,8 +21,4 @@ include Repr.Poly (struct
     let repr = repr
   end)
 
-let hash { root; switch } =
-  Tuple.T2.hash (Option.hash String.hash) String.hash (root, switch)
-;;
-
 let opam_switch_prefix_var_name = "OPAM_SWITCH_PREFIX"

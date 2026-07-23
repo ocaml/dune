@@ -11,6 +11,7 @@ type t =
   ; melange_modules : Ordered_set_lang.Unexpanded.t option
   ; empty_module_interface_if_absent : bool
   ; libraries : Lib_dep.t list
+  ; melange_libraries : Lib_dep.t list option
   ; foreign_archives : (Loc.t * Foreign.Archive.t) list
   ; extra_objects : Foreign.Objects.t
   ; foreign_stubs : Foreign.Stubs.t list
@@ -36,10 +37,6 @@ val has_foreign_stubs : t -> bool
 
 (** Parser for the libraries fields *)
 val decode_libraries : allow_re_export:bool -> Lib_dep.L.t Dune_lang.Decoder.fields_parser
-
-(** Parser for the preprocesss *)
-val decode_preprocess
-  : (Preprocess.preprocess, Dune_lang.Decoder.fields) Dune_lang.Decoder.parser
 
 (** Parser for the ocaml flags *)
 val decode_ocaml_flags : Ocaml_flags.Spec.t Dune_lang.Decoder.fields_parser

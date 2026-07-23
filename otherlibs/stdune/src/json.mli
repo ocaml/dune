@@ -15,3 +15,5 @@ val list : t list -> t
 val int : int -> t
 val float : float -> t
 val bool : bool -> t
+val of_dyn : Dyn.t -> t
+val of_repr : 'a Repr.t -> 'a -> t

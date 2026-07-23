@@ -21,7 +21,6 @@
   dune_findlib
   dune_digest
   dune_cache
-  dune_graph
   dune_rules
   dune_vcs
   dune_engine
@@ -39,7 +38,6 @@
   dune_rpc_impl
   dune_rpc
   rpc
-  spawn
   opam_format
   source
   xdg

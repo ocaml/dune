@@ -64,12 +64,16 @@ module Target = struct
     let path = Path.Build.to_string path in
     match Unix.lstat path with
     | { Unix.st_kind = Unix.S_REG; st_perm; _ } ->
-      Unix.chmod path (Permissions.remove Permissions.write st_perm);
-      let executable = Permissions.test Permissions.execute st_perm in
+      let mode = Permissions.Mode.of_int st_perm in
+      Unix.chmod
+        path
+        (Permissions.remove Permissions.write mode |> Permissions.Mode.to_int);
+      let executable = Permissions.test Permissions.execute mode in
       Some (File { executable })
     | { Unix.st_kind = Unix.S_DIR; st_perm; _ } ->
+      let mode = Permissions.Mode.of_int st_perm in
       (* Adding "executable" permissions to directories mean we can traverse them. *)
-      Unix.chmod path (Permissions.add Permissions.execute st_perm);
+      Unix.chmod path (Permissions.add Permissions.execute mode |> Permissions.Mode.to_int);
       Some Directory
     | (exception Unix.Unix_error _) | _ -> None
   ;;
@@ -284,8 +288,14 @@ module File_restore = struct
   ;;
 
   let copy ~src ~dst =
-    try Io.copy_file ~src ~dst () with
-    | Sys_error _ -> raise_notrace (E Not_found_in_cache)
+    (try Io.copy_file ~src ~dst () with
+     | Sys_error _ -> raise_notrace (E Not_found_in_cache));
+    let src = Path.to_string src in
+    match Unix.stat src with
+    | exception Unix.Unix_error _ -> ()
+    | stats ->
+      (try Unix.chmod src stats.st_perm with
+       | Unix.Unix_error _ -> ())
   ;;
 
   let create_all_or_none (mode : Mode.t) (artifacts : _ Targets.Produced.t) =
@@ -504,7 +514,12 @@ module File_digest = struct
             Fiber.return (Error Broken_symlink)
           | exception exn -> Fiber.return (Error (Digest_result.Error.of_exn exn)))
        | S_REG ->
-         let perm = Permissions.remove Permissions.write stats.st_perm in
+         let perm =
+           stats.st_perm
+           |> Permissions.Mode.of_int
+           |> Permissions.remove Permissions.write
+           |> Permissions.Mode.to_int
+         in
          (match Unix.chmod (Path.Build.to_string path) perm with
           | () -> refresh_async ~allow_dirs:false { stats with st_perm = perm } path
           | exception exn -> Fiber.return (Error (Digest_result.Error.of_exn exn)))

@@ -111,7 +111,10 @@ let build_lib
            ~ext_obj:ocaml.lib_config.ext_obj
            ~dir)
     ]
-    |> Command.run (Ok compiler) ~dir:(Path.build (Context.build_dir ctx))
+    |> Command.run
+         (Ok compiler)
+         ~dir:(Path.build (Context.build_dir ctx))
+         ~forbid_action_runner:true
     |> Super_context.add_rule ~dir sctx ~loc:lib.buildable.loc)
 ;;
 
@@ -325,7 +328,7 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents ~vlib_stubs_o_f
         in
         let+ c_lib = Expander.expand_and_eval_set expander lib.c_library_flags ~standard
         and+ ctypes_lib =
-          (* CR rgrinberg: Should we add these flags to :standard? to make
+          (* CR-someday rgrinberg: Should we add these flags to :standard? to make
            it possible for users to remove these *)
           Ctypes_rules.ctypes_cclib_flags sctx ~expander ~buildable:lib.buildable
         in
@@ -391,7 +394,10 @@ let build_shared (lib : Library.t) ~native_archives ~sctx ~dir ~flags =
         (let ext = Mode.compiled_lib_ext Native in
          Path.build (Library.archive lib ~dir ~ext))
     ]
-    |> Command.run ~dir:(Path.build (Context.build_dir ctx)) (Ok ocamlopt)
+    |> Command.run
+         ~dir:(Path.build (Context.build_dir ctx))
+         ~forbid_action_runner:true
+         (Ok ocamlopt)
     |> Super_context.add_rule sctx ~dir ~loc:lib.buildable.loc)
 ;;
 
@@ -482,7 +488,7 @@ let cctx
       ~for_
   =
   let* flags =
-    let+ base = Buildable_rules.ocaml_flags sctx ~dir lib.buildable.flags in
+    let+ base = Ocaml_flags_db.ocaml_flags sctx ~dir lib.buildable.flags in
     match lib.stdlib with
     | None -> base
     | Some _ -> Ocaml_flags.append_nostdlib base
@@ -500,6 +506,9 @@ let cctx
   in
   let modules = Virtual_rules.impl_modules implements modules in
   let requires_compile = Lib.Compile.direct_requires compile_info ~for_ in
+  let user_written_requires =
+    Some (lazy (Lib.Compile.user_written_requires_no_loc compile_info ~for_))
+  in
   let requires_link = Lib.Compile.requires_link compile_info ~for_ in
   let instances =
     Parameterised_instances.instances ~sctx ~db:(Scope.libs scope) lib.buildable.libraries
@@ -530,6 +539,7 @@ let cctx
     ~modules
     ~flags
     ~requires_compile
+    ~user_written_requires
     ~requires_link
     ~implements
     ~parameters
@@ -560,7 +570,6 @@ let library_rules
   let scope = Compilation_context.scope cctx in
   let* requires_compile = Compilation_context.requires_compile cctx in
   let lib_config = (Compilation_context.ocaml cctx).lib_config in
-  let for_ = Compilation_context.for_ cctx in
   let top_sorted_modules =
     let impl_only = Modules.With_vlib.impl_only modules in
     Dep_graph.top_closed_implementations
@@ -568,13 +577,7 @@ let library_rules
       impl_only
   in
   let* expander = Super_context.expander sctx ~dir in
-  let lib_info =
-    Library.to_lib_info
-      lib
-      ~expander:(Memo.return (Expander.to_expander0 expander))
-      ~dir
-      ~lib_config
-  in
+  let for_ = Compilation_context.for_ cctx in
   let* () = Virtual_rules.setup_copy_rules_for_impl ~sctx ~dir implements in
   let* () = Check_rules.add_cycle_check sctx ~dir top_sorted_modules in
   let* () = gen_wrapped_compat_modules lib cctx
@@ -590,6 +593,13 @@ let library_rules
   and* () =
     Memo.when_ (Compilation_context.bin_annot cctx) (fun () ->
       Ocaml_index.cctx_rules cctx)
+  in
+  let lib_info =
+    Library.to_lib_info
+      lib
+      ~expander:(Memo.return (Expander.to_expander0 expander))
+      ~dir
+      ~lib_config
   in
   let+ () =
     Memo.when_
@@ -640,14 +650,18 @@ let library_rules
     let+ requires_hidden = Compilation_context.requires_hidden cctx
     and+ parameters = Compilation_context.parameters cctx in
     let flags = Compilation_context.flags cctx in
+    let preprocess =
+      match for_ with
+      | Ocaml -> lib.buildable.preprocess.config
+      | Melange -> lib.buildable.melange_preprocess.config
+    in
     Merlin.make
       ~requires_compile
       ~requires_hidden
       ~stdlib_dir:lib_config.stdlib_dir
       ~flags
       ~modules
-      ~preprocess:
-        (Preprocess.Per_module.without_instrumentation lib.buildable.preprocess.config)
+      ~preprocess:(Preprocess.Per_module.without_instrumentation preprocess)
       ~libname:(Some (snd lib.name))
       ~obj_dir
       ~dialects:(Dune_project.dialects (Scope.project scope))
@@ -752,10 +766,16 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~expander ~scope =
         ~lib_config
     in
     let merlin_ident = Merlin_ident.for_lib (Library.best_name lib) in
-    let { Compilation_mode.for_merlin; modes } =
-      Compilation_mode.of_mode_set (Lib_info.modes lib_info)
+    let* modes =
+      let+ effective_modes =
+        Lib_info.effective_modes
+          lib_info
+          ~melange_available:(Melange_binary.available sctx ~dir)
+      in
+      Compilation_mode.Set.of_lib_mode_set effective_modes
     in
-    Memo.parallel_map modes ~f:(fun for_ ->
+    let for_merlin = Compilation_mode.Set.for_merlin modes in
+    Memo.parallel_map (Compilation_mode.Set.to_list modes) ~f:(fun for_ ->
       let buildable = lib.buildable in
       let libs = Scope.libs scope in
       let lib_id =
@@ -780,5 +800,5 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~expander ~scope =
       in
       for_, Some r)
   in
-  Compilation_mode.By_mode.of_list cctxs ~init:None
+  Compilation_mode.Per_mode.of_list cctxs ~init:None
 ;;

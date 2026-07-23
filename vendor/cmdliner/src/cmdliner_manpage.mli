@@ -1,14 +1,16 @@
 (*---------------------------------------------------------------------------
    Copyright (c) 2011 The cmdliner programmers. All rights reserved.
-   Distributed under the ISC license, see terms at the end of the file.
+   SPDX-License-Identifier: ISC
   ---------------------------------------------------------------------------*)
 
 (** Manpages.
 
     See {!Cmdliner.Manpage}. *)
 
+type section_name = string
+
 type block =
-  [ `S of string | `P of string | `Pre of string | `I of string * string
+  [ `S of section_name | `P of string | `Pre of string | `I of string * string
   | `Noblank | `Blocks of block list ]
 
 val escape : string -> string
@@ -23,21 +25,21 @@ type xref =
 
 (** {1 Standard section names} *)
 
-val s_name : string
-val s_synopsis : string
-val s_description : string
-val s_commands : string
-val s_arguments : string
-val s_options : string
-val s_common_options : string
-val s_exit_status : string
-val s_environment : string
-val s_files : string
-val s_bugs : string
-val s_examples : string
-val s_authors : string
-val s_see_also : string
-val s_none : string
+val s_name : section_name
+val s_synopsis : section_name
+val s_description : section_name
+val s_commands : section_name
+val s_arguments : section_name
+val s_options : section_name
+val s_common_options : section_name
+val s_exit_status : section_name
+val s_environment : section_name
+val s_files : section_name
+val s_bugs : section_name
+val s_examples : section_name
+val s_authors : section_name
+val s_see_also : section_name
+val s_none : section_name
 
 (** {1 Section maps}
 
@@ -46,8 +48,8 @@ val s_none : string
 type smap
 val smap_of_blocks : block list -> smap
 val smap_to_blocks : smap -> block list
-val smap_has_section : smap -> sec:string -> bool
-val smap_append_block : smap -> sec:string -> block -> smap
+val smap_has_section : smap -> sec:section_name -> bool
+val smap_append_block : smap -> sec:section_name -> block -> smap
 (** [smap_append_block smap sec b] appends [b] at the end of section
     [sec] creating it at the right place if needed. *)
 
@@ -58,16 +60,19 @@ val s_environment_intro : block
 
 (** {1 Output} *)
 
+type subst = string -> string option
+(** The type for variable substitution functions. *)
+
 type format = [ `Auto | `Pager | `Plain | `Groff ]
 val print :
-  ?errs:Format.formatter -> ?subst:(string -> string option) -> format ->
+  ?env:(string -> string option) ->
+  ?errs:Format.formatter -> ?subst:subst -> format ->
   Format.formatter -> t -> unit
 
 (** {1 Printers and escapes used by Cmdliner module} *)
 
 val subst_vars :
-  errs:Format.formatter -> subst:(string -> string option) -> Buffer.t ->
-  string -> string
+  errs:Format.formatter -> subst:subst -> Buffer.t -> string -> string
 (** [subst b ~subst s], using [b], substitutes in [s] variables of the form
     "$(doc)" by their [subst] definition. This leaves escapes and markup
     directives $(markup,…) intact.
@@ -75,26 +80,13 @@ val subst_vars :
     @raise Invalid_argument in case of illegal syntax. *)
 
 val doc_to_plain :
-  errs:Format.formatter -> subst:(string -> string option) -> Buffer.t ->
-  string -> string
+  errs:Format.formatter -> subst:subst -> Buffer.t -> string -> string
 (** [doc_to_plain b ~subst s] using [b], substitutes in [s] variables by
     their [subst] definition and renders cmdliner directives to plain
     text.
 
-    @raise Invalid_argument in case of illegal syntax. *)
+    Raises Invalid_argument in case of illegal syntax. *)
 
-(*---------------------------------------------------------------------------
-   Copyright (c) 2011 The cmdliner programmers
-
-   Permission to use, copy, modify, and/or distribute this software for any
-   purpose with or without fee is hereby granted, provided that the above
-   copyright notice and this permission notice appear in all copies.
-
-   THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
-   WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
-   MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
-   ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
-   WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
-   ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
-   OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-  ---------------------------------------------------------------------------*)
+val doc_to_styled :
+  ?buffer:Buffer.t -> errs:Format.formatter -> subst:subst -> string -> string
+(** [doc_to_styled] is like {!doc_to_plain} but uses ANSI escapes. *)

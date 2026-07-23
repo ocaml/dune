@@ -1,9 +1,6 @@
 Demonstrate unused-libs issues with `(modes melange)`
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.21)
-  > (using melange 1.0)
-  > EOF
+  $ make_melange_project 3.21 1.0
 
   $ cat > dune <<EOF
   > (library

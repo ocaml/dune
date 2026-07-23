@@ -9,9 +9,7 @@ unnecessary recompilation of the consumer module's .cmo/.cmx.
 
 See: https://github.com/ocaml/dune/issues/4572
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.23)
-  > EOF
+  $ make_dune_project 3.23
 
   $ mkdir base_lib
   $ cat > base_lib/dune <<EOF
@@ -68,7 +66,7 @@ of base_lib's .cmi files. The trace shows compilation targets for
 uses_alpha being rebuilt:
 
   $ dune build ./main.exe
-  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("uses_alpha"))]'
+  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("uses_alpha"))]'
   [
     {
       "target_files": [

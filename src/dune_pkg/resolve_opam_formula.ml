@@ -30,9 +30,7 @@ module Version_constraint = struct
     Package_dependency.Constraint.Op.of_opam relop, package_version
   ;;
 
-  let to_dyn (op, package_version) =
-    Dyn.Tuple [ Relop.to_dyn op; Package_version.to_dyn package_version ]
-  ;;
+  let repr = Repr.(pair (abstract Relop.to_dyn) Package_version.repr)
 
   let to_string (op, package_version) =
     sprintf "%s %s" (Relop.to_string op) (Package_version.to_string package_version)
@@ -48,20 +46,34 @@ module Unsatisfied_formula_hint = struct
         ; version_constraint : Version_constraint.t
         }
 
-  let to_dyn = function
-    | Missing_package package_name ->
-      Dyn.variant "Missing_package" [ Package_name.to_dyn package_name ]
-    | Unsatisfied_version_constraint { package_name; found_version; version_constraint }
-      ->
-      Dyn.variant
-        "Unsatisfied_version_constraint"
-        [ Dyn.record
-            [ "package_name", Package_name.to_dyn package_name
-            ; "found_version", Package_version.to_dyn found_version
-            ; "version_constraint", Version_constraint.to_dyn version_constraint
-            ]
-        ]
+  let unsatisfied_version_constraint_repr =
+    Repr.record
+      "unsatisfied-version-constraint"
+      [ Repr.field "package_name" Package_name.repr ~get:(fun (name, _, _) -> name)
+      ; Repr.field "found_version" Package_version.repr ~get:(fun (_, version, _) ->
+          version)
+      ; Repr.field "version_constraint" Version_constraint.repr ~get:(fun (_, _, c) -> c)
+      ]
   ;;
+
+  let repr =
+    Repr.variant
+      "unsatisfied-formula-hint"
+      [ Repr.case "Missing_package" Package_name.repr ~proj:(function
+          | Missing_package package_name -> Some package_name
+          | Unsatisfied_version_constraint _ -> None)
+      ; Repr.case
+          "Unsatisfied_version_constraint"
+          unsatisfied_version_constraint_repr
+          ~proj:(function
+          | Unsatisfied_version_constraint
+              { package_name; found_version; version_constraint } ->
+            Some (package_name, found_version, version_constraint)
+          | Missing_package _ -> None)
+      ]
+  ;;
+
+  let to_dyn = Repr.to_dyn repr
 
   let pp = function
     | Missing_package missing_package ->
@@ -113,7 +125,7 @@ let formula_to_package_names version_by_package_name opam_formula =
            if OpamFormula.check_version_formula version_formula opam_version
            then Ok ()
            else
-             (* CR rgrinberg: shouldn't we accumulate all these errors? *)
+             (* CR-someday rgrinberg: shouldn't we accumulate all these errors? *)
              Error
                (Unsatisfied_formula_hint.Unsatisfied_version_constraint
                   { package_name

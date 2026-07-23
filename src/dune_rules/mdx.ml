@@ -13,7 +13,6 @@ let color_always : _ Command.Args.t Lazy.t =
 module Files = struct
   type t =
     { src : Path.Build.t
-    ; deps : Path.Build.t
     ; corrected : Path.Build.t
     }
 
@@ -21,26 +20,13 @@ module Files = struct
     Path.Build.extend_basename ~suffix:Filename.corrected build_path
   ;;
 
-  let deps_file build_path =
-    Path.Build.extend_basename ~suffix:Filename.mdx_deps build_path
-  ;;
-
   let from_source_file ~mdx_dir src =
     let dot_mdx_path =
       let basename = Path.Build.basename src |> Filename.to_string in
       Path.Build.relative mdx_dir basename
     in
-    let deps = deps_file dot_mdx_path in
     let corrected = corrected_file dot_mdx_path in
-    { src; deps; corrected }
-  ;;
-
-  let diff_action { src; corrected; deps = _ } =
-    let src = Path.build src in
-    let open Action_builder.O in
-    let+ () = Action_builder.path src
-    and+ () = Action_builder.path (Path.build corrected) in
-    Action.Full.make (Action.diff ~optional:false src corrected)
+    { src; corrected }
   ;;
 end
 
@@ -63,13 +49,17 @@ module Deps = struct
     | Error (_, msg) -> Error msg
   ;;
 
-  let read (files : Files.t) =
+  let read ~sctx ~dir ~loc ~mdx_prog (files : Files.t) =
     let open Action_builder.O in
-    let+ content =
-      let path = Path.build files.deps in
-      Action_builder.contents path
-    in
-    match parse content with
+    (let* prog = mdx_prog in
+     Command.run'
+       ~dir:(Path.build dir)
+       prog
+       [ Command.Args.A "deps"; Lazy.force color_always; Dep (Path.build files.src) ])
+    |> Super_context.execute_action_stdout sctx ~loc ~dir
+    |> Action_builder.of_memo
+    >>| parse
+    >>| function
     | Ok deps -> deps
     | Error msg ->
       User_error.raise
@@ -79,14 +69,6 @@ module Deps = struct
         ; Pp.text msg
         ; Pp.textf "Please make sure you are using mdx.%s or higher" mdx_version_required
         ]
-  ;;
-
-  let rule ~dir ~mdx_prog (files : Files.t) =
-    Command.run_dyn_prog
-      ~dir:(Path.build dir)
-      mdx_prog
-      ~stdout_to:files.deps
-      [ Command.Args.A "deps"; Lazy.force color_always; Dep (Path.build files.Files.src) ]
   ;;
 
   let path_escapes_dir str =
@@ -314,109 +296,115 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog ~mdx_prog_ge
     let mdx_dir = Path.Build.relative dir ".mdx" in
     Files.from_source_file ~mdx_dir src
   in
-  (* Add the rule for generating the .mdx.deps file with ocaml-mdx deps *)
-  let* () = Super_context.add_rule sctx ~loc ~dir (Deps.rule ~dir ~mdx_prog files)
-  and* () =
-    (* Add the rule for generating the .corrected file using ocaml-mdx test *)
-    let mdx_action =
-      let open Action_builder.With_targets.O in
-      let mdx_input_dependencies =
-        let open Action_builder.O in
-        let* dep_set = Deps.read files in
-        Action_builder.of_memo
-          (let open Memo.O in
-           let src_path_msg =
-             Pp.seq (Pp.text "Source path: ") (Path.pp (Path.build src))
-           in
-           Deps.to_dep_set dep_set ~version ~dir
-           >>| function
-           | Result.Ok r -> r
-           | Error (`Absolute str) ->
-             User_error.raise
-               ~loc
-               [ Pp.text
-                   "Paths referenced in mdx files must be relative. This stanza refers \
-                    to the following absolute path:"
-               ; src_path_msg
-               ; Pp.seq (Pp.text "Included path: ") (Pp.text str)
-               ]
-           | Error (`Escapes_workspace str) ->
-             User_error.raise
-               ~loc
-               [ Pp.text
-                   "Paths referenced in mdx files must stay within the workspace. This \
-                    stanza refers to the following path which escapes:"
-               ; src_path_msg
-               ; Pp.seq (Pp.text "Included path: ") (Pp.text str)
-               ]
-           | Error (`Escapes_dir str) ->
-             User_error.raise
-               ~loc
-               [ Pp.text
-                   "Paths referenced in mdx files cannot escape the directory. This \
-                    stanza refers to the following path which escapes:"
-               ; src_path_msg
-               ; Pp.seq (Pp.text "Included path: ") (Pp.text str)
-               ])
-      in
-      let executable, command_line =
-        (* The old mdx stanza calls the [ocaml-mdx] executable, new ones the
-           generated executable *)
-        let open Command.Args in
-        match mdx_prog_gen with
-        | Some prog ->
-          ( Action_builder.return @@ Ok (Path.build prog)
-          , [ Dep (Path.build files.src)
-            ; S (List.map ~f:(Prelude.runtime_deps ~dir) stanza.preludes)
-            ] )
-        | None ->
-          let prelude_args = List.concat_map stanza.preludes ~f:(Prelude.to_args ~dir) in
-          ( mdx_prog
-          , [ A "test"
-            ; S prelude_args
-            ; Lazy.force color_always
-            ; A "-o"
-            ; Target files.corrected
-            ; Dep (Path.build files.src)
-            ] )
-      in
-      let env, sandbox =
-        let mdx_generic_deps = Bindings.to_list stanza.deps in
-        let mdx_package_deps =
-          stanza.packages
-          |> List.map ~f:(fun (loc, pkg) ->
-            Dep_conf.Package (Package.Name.to_string pkg |> String_with_vars.make_text loc))
-        in
-        Dep_conf_eval.unnamed
-          (if version < (0, 5)
-           then Sandbox_config.no_special_requirements
-           else Sandbox_config.needs_sandboxing)
-          ~expander
-          (mdx_package_deps @ mdx_generic_deps)
-      in
-      let+ action =
-        Action_builder.with_no_targets
-          (Action_builder.env_var "MDX_RUN_NON_DETERMINISTIC")
-        >>> Action_builder.with_no_targets
-              (Action_builder.map mdx_input_dependencies ~f:(fun d -> (), d)
-               |> Action_builder.dyn_deps)
-        >>> Command.run_dyn_prog
-              ~dir:(Path.build dir)
-              ~stdout_to:files.corrected
-              ~env
-              ~sandbox
-              executable
-              command_line
-      and+ locks =
-        Expander.expand_locks expander stanza.locks |> Action_builder.with_no_targets
-      in
-      Action.Full.add_locks locks action
+  (* Attach the mdx correction action to the @runtest alias. *)
+  let mdx_action =
+    let mdx_input_dependencies =
+      let open Action_builder.O in
+      let* dep_set = Deps.read ~sctx ~dir ~loc ~mdx_prog files in
+      Action_builder.of_memo
+        (let open Memo.O in
+         let src_path_msg = Pp.seq (Pp.text "Source path: ") (Path.pp (Path.build src)) in
+         Deps.to_dep_set dep_set ~version ~dir
+         >>| function
+         | Result.Ok r -> r
+         | Error (`Absolute str) ->
+           User_error.raise
+             ~loc
+             [ Pp.text
+                 "Paths referenced in mdx files must be relative. This stanza refers to \
+                  the following absolute path:"
+             ; src_path_msg
+             ; Pp.seq (Pp.text "Included path: ") (Pp.text str)
+             ]
+         | Error (`Escapes_workspace str) ->
+           User_error.raise
+             ~loc
+             [ Pp.text
+                 "Paths referenced in mdx files must stay within the workspace. This \
+                  stanza refers to the following path which escapes:"
+             ; src_path_msg
+             ; Pp.seq (Pp.text "Included path: ") (Pp.text str)
+             ]
+         | Error (`Escapes_dir str) ->
+           User_error.raise
+             ~loc
+             [ Pp.text
+                 "Paths referenced in mdx files cannot escape the directory. This stanza \
+                  refers to the following path which escapes:"
+             ; src_path_msg
+             ; Pp.seq (Pp.text "Included path: ") (Pp.text str)
+             ])
     in
-    Super_context.add_rule sctx ~loc ~dir mdx_action
+    let executable, command_line, redirect_stdout =
+      (* The old mdx stanza calls the [ocaml-mdx] executable, new ones the
+         generated executable *)
+      let open Command.Args in
+      match mdx_prog_gen with
+      | Some prog ->
+        ( Action_builder.return @@ Ok (Path.build prog)
+        , [ Dep (Path.build files.src)
+          ; S (List.map ~f:(Prelude.runtime_deps ~dir) stanza.preludes)
+          ]
+        , true )
+      | None ->
+        let prelude_args = List.concat_map stanza.preludes ~f:(Prelude.to_args ~dir) in
+        ( mdx_prog
+        , [ A "test"
+          ; S prelude_args
+          ; Lazy.force color_always
+          ; A "-o"
+          ; Path (Path.build files.corrected)
+          ; Dep (Path.build files.src)
+          ]
+        , false )
+    in
+    let env, sandbox =
+      let mdx_generic_deps = Bindings.to_list stanza.deps in
+      let mdx_package_deps =
+        stanza.packages
+        |> List.map ~f:(fun (loc, pkg) ->
+          Dep_conf.Package (Package.Name.to_string pkg |> String_with_vars.make_text loc))
+      in
+      Dep_conf_eval.unnamed
+        (if version < (0, 5)
+         then Sandbox_config.no_special_requirements
+         else Sandbox_config.needs_sandboxing)
+        ~expander
+        (mdx_package_deps @ mdx_generic_deps)
+    in
+    let open Action_builder.O in
+    let action =
+      Action_builder.env_var "MDX_RUN_NON_DETERMINISTIC"
+      >>> (Action_builder.map mdx_input_dependencies ~f:(fun d -> (), d)
+           |> Action_builder.dyn_deps)
+      >>> let* executable = executable in
+          Command.run' ~dir:(Path.build dir) ~env ~sandbox executable command_line
+    in
+    let action =
+      if redirect_stdout
+      then
+        Action_builder.map
+          action
+          ~f:(Action.Full.map ~f:(Action.with_stdout_to files.corrected))
+      else action
+    in
+    let+ action
+    and+ locks = Expander.expand_locks expander stanza.locks in
+    let mkdir_corrected_dir =
+      Action.mkdir (Path.Build.parent_exn files.corrected) |> Action.Full.make
+    in
+    let diff =
+      Action.diff ~optional:false (Path.build files.src) files.corrected
+      |> Action.Full.make
+    in
+    Action.Full.reduce [ mkdir_corrected_dir; Action.Full.add_locks locks action; diff ]
   in
-  (* Attach the diff action to the @runtest for the src and corrected files *)
-  Files.diff_action files
-  |> Super_context.add_alias_action sctx (Alias.make Alias0.runtest ~dir) ~loc ~dir
+  Super_context.add_alias_action
+    sctx
+    (Alias.make Alias0.runtest ~dir)
+    mdx_action
+    ~loc
+    ~dir
 ;;
 
 let name = "mdx_gen"
@@ -496,6 +484,7 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~mdx_prog =
       ~modules
       ~flags
       ~requires_compile
+      ~user_written_requires:None
       ~requires_link
       ~opaque:(Explicit false)
       ~js_of_ocaml:(Js_of_ocaml.Mode.Pair.make None)

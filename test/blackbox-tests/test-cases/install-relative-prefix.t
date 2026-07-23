@@ -1,10 +1,7 @@
 Test that dune install accepts relative paths for --prefix that are outside the workspace.
 This is a regression test for issue #12241.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.6)
-  > (package (name foo))
-  > EOF
+  $ make_dune_project_with_package 3.6 foo
 
   $ cat > dune <<EOF
   > (library

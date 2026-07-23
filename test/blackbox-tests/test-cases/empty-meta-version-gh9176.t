@@ -7,9 +7,7 @@ We check that `version = ""` in META files are correctly handled.
   > version=""
   > EOF
 
-  $ cat > dune-project << EOF
-  > (lang dune 1.0)
-  > EOF
+  $ make_dune_project 1.0
 
   $ cat > dune << EOF
   > (executable

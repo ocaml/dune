@@ -88,6 +88,27 @@ let cwd () = Sys.getcwd ()
 let initial_cwd = Fpath.initial_cwd
 let as_local t = "." ^ t
 
+(* Only relativize POSIX-style absolute paths on non-Windows systems. Other
+   absolute syntaxes, such as Windows drive-letter and UNC paths, keep their
+   absolute spelling. *)
+let local_part t =
+  match String.drop_prefix t ~prefix:"/" with
+  | None -> None
+  | Some t when String.starts_with ~prefix:"/" t -> None
+  | Some "" -> Some Local.root
+  | Some t -> Some (Local.of_string t)
+;;
+
+let reach t ~from =
+  (* CR-someday rgrinberg: I couldn't get this to work on Windows. *)
+  if Sys.win32
+  then to_string t
+  else (
+    match local_part t, local_part from with
+    | Some t, Some from -> Local.reach t ~from
+    | _ -> to_string t)
+;;
+
 let of_filename_relative_to_initial_cwd fn =
   if Filename.is_relative fn then relative initial_cwd fn else of_string fn
 ;;

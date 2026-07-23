@@ -1,0 +1,6 @@
+(executable
+ (name checkpgid)
+ (libraries unix)
+ (foreign_stubs
+  (language c)
+  (names stubs)))

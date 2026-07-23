@@ -1,7 +1,7 @@
 ----------------------------------------------------------------------------------
 Test that duplicate foreign objects results in an error
 
-  $ echo "(lang dune 3.5)" > dune-project
+  $ make_dune_project 3.5
 
   $ cat >dune <<EOF
   > (executable

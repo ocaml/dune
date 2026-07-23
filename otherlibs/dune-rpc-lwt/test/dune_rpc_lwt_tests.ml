@@ -135,6 +135,52 @@ let%expect_test "run and connect" =
     success |}]
 ;;
 
+let with_unix_socket_server f =
+  let* dir = Lwt_io.create_temp_dir () in
+  let server = Lwt_unix.socket Unix.PF_UNIX Unix.SOCK_STREAM 0 in
+  Lwt.finalize
+    (fun () ->
+       let socket_path = Filename.concat dir "socket" in
+       let* () = Lwt_unix.bind server (Unix.ADDR_UNIX socket_path) in
+       Lwt_unix.listen server 1;
+       f ~socket_path ~server)
+    (fun () -> Lwt_unix.close server)
+;;
+
+let%expect_test "closing output channel leaves input usable" =
+  Sys.chdir initial_cwd;
+  Lwt_main.run
+    (with_unix_socket_server (fun ~socket_path ~server ->
+       let server_conn =
+         let buffer = Bytes.create 1 in
+         let* client, _ = Lwt_unix.accept server in
+         let* (_ : int) = Lwt_unix.read client buffer 0 1 in
+         Lwt_unix.close client
+       in
+       let* input, output = connect_chan (`Unix socket_path) in
+       let* () = Lwt_io.close output in
+       let* () = server_conn in
+       let* res = Lwt_io.read_char_opt input in
+       printfn "input eof: %b" (Option.is_none res);
+       Lwt_io.close input));
+  [%expect {| input eof: true |}]
+;;
+
+let%expect_test "closing input channel closes output channel" =
+  Sys.chdir initial_cwd;
+  Lwt_main.run
+    (with_unix_socket_server (fun ~socket_path ~server ->
+       let server_conn =
+         let* client, (_ : Unix.sockaddr) = Lwt_unix.accept server in
+         Lwt_unix.close client
+       in
+       let* input, output = connect_chan (`Unix socket_path) in
+       let* () = Lwt_io.close input in
+       printfn "output closed: %b" (Lwt_io.is_closed output);
+       server_conn));
+  [%expect {| output closed: true |}]
+;;
+
 module Logger = struct
   (* A little helper to make the output from the client and server
      deterministic. Log messages are batched and outputted at the end. *)

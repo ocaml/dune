@@ -1,8 +1,6 @@
 Tests for dynamic dependencies computed from the `%{read:...}` family of macros
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.0)
-  > EOF
+  $ make_dune_project 3.0
 
 Define rules have dynamic file dependencies
 

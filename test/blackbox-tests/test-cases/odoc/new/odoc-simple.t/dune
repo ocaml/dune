@@ -1,5 +1,6 @@
 (library
  (name foo)
+ (modes byte)
  (modules foo foo2 foo3)
  (wrapped false)
  (private_modules foo3)
@@ -7,6 +8,7 @@
 
 (library
  (name bar)
+ (modes byte)
  (public_name bar)
  (modules bar))
 

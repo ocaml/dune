@@ -55,24 +55,22 @@ let watch, collect_events =
   let cond = Condition.create () in
   let inotify =
     Inotify.create
+      ~mutex
       ~modify_event_selector:`Closed_writable_fd
-      ~send_emit_events_job_to_scheduler:(fun f ->
+      ~emit_events:(fun file_events ->
         Mutex.protect mutex (fun () ->
-          Queue.push events f;
+          Queue.push events file_events;
           Condition.signal cond))
   in
   let watch fn = Inotify.add inotify fn in
   watch beginning_of_test_file;
   watch end_of_test_file;
   let next_events () =
-    let f =
-      Mutex.protect mutex (fun () ->
-        while Queue.is_empty events do
-          Condition.wait cond mutex
-        done;
-        Queue.pop_exn events)
-    in
-    f ()
+    Mutex.protect mutex (fun () ->
+      while Queue.is_empty events do
+        Condition.wait cond mutex
+      done;
+      Queue.pop_exn events)
   in
   let rec collect_events acc = function
     | [] ->
@@ -353,18 +351,14 @@ let%expect_test "Check that FS events are reported chronologically 2" =
 ;;
 
 let run cmd =
-  match
-    snd
-      (Unix.waitpid
-         []
-         (Unix.create_process
-            (List.hd cmd)
-            (Array.of_list cmd)
-            Unix.stdin
-            Unix.stdout
-            Unix.stderr))
-  with
-  | WEXITED 0 -> ()
+  let prog =
+    Bin.which ~path:(Env_path.path Env.initial) (List.hd cmd)
+    |> Option.value_exn
+    |> Path.to_string
+  in
+  let pid = Spawn.spawn ~prog ~argv:cmd () in
+  match Proc.wait (Pid pid) [] with
+  | Some { status = WEXITED 0; _ } -> ()
   | _ -> assert false
 ;;
 

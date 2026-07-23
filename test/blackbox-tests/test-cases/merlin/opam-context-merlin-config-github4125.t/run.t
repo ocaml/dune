@@ -21,8 +21,7 @@ We call `$(opam switch show)` so that this test always uses an existing switch
   ..
   lib-foo
 
-  $ dune ocaml merlin dump-config --format=json "$PWD" | jq -r '
-  >   include "dune";
+  $ dune ocaml merlin dump-config --format=json "$PWD" | jq_dune -r '
   >   merlinEntry("Foo")
   >   | merlinJsonEntryWithConfigNames(["STDLIB", "UNIT_NAME"])
   > '

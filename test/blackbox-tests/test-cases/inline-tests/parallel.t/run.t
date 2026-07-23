@@ -14,17 +14,16 @@ See that `test2/runtest`, which uses `fake_backend_2`, runs one inline test runn
   inline-test-runner alias test2/runtest-test_lib2
   inline-test-runner alias test2/runtest-test_lib2
 
-See that we indeed have 3 partitions
+See that the trace reports 3 partitions
 
-  $ cat _build/default/test2/.test_lib2.inline-tests/partitions-best
-  p1
-  p2
-  p3
+  $ dune trace cat | jq_dune -c 'inlineTestPartitions'
+  {"library":"test_lib2","mode":"byte","partitions":["p1","p2","p3"]}
 
 
   $ dune build --display short @test3/runtest 2>&1 | grep alias
   [1]
 
-See that we have no partition.
+See that the trace reports no partition.
 
-  $ cat _build/default/test3/.test_lib3.inline-tests/partitions-best
+  $ dune trace cat | jq_dune -c 'inlineTestPartitions'
+  {"library":"test_lib3","mode":"byte","partitions":[]}

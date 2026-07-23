@@ -24,7 +24,11 @@ alias
 
       In previous versions of the dune language, it was also possible to specify
       an action to run to construct the alias. Please use a :doc:`rule` stanza
-      with the ``alias`` field instead.
+      with the ``alias`` field instead::
+
+         (rule
+          (alias benchmarks)
+          (action (run %{exe:bench.exe})))
 
    This stanza supports the following fields:
 

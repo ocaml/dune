@@ -1,9 +1,6 @@
 Test dune rules
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.8)
-  > (using melange 0.1)
-  > EOF
+  $ make_melange_project 3.8 0.1
 
   $ cat > dune <<EOF
   > (melange.emit
@@ -19,7 +16,7 @@ Test dune rules
 Calling dune rules with the 'all' alias works fine
 
   $ dune rules --root . --format=json @all |
-  > jq -r 'include "dune"; .[] | ruleDepFilePaths | select(test("main\\.ml$|melange__Main\\.cmj$"))'
+  > jq_dune -r '.[] | ruleDepFilePaths | select(test("main\\.ml$|melange__Main\\.cmj$"))'
   _build/default/.melange_src/main.ml
   _build/default/main.ml
   _build/default/.output.mobjs/melange/melange__Main.cmj
@@ -27,7 +24,7 @@ Calling dune rules with the 'all' alias works fine
 Calling dune rules with the alias works fine
 
   $ dune rules --root . --format=json @melange |
-  > jq -r 'include "dune"; .[] | ruleDepFilePaths | select(test("melange__Main\\.cmj$"))'
+  > jq_dune -r '.[] | ruleDepFilePaths | select(test("melange__Main\\.cmj$"))'
   _build/default/.output.mobjs/melange/melange__Main.cmj
 
 Using output folder fails
@@ -41,5 +38,5 @@ Creating dir fixes the problem
   $ mkdir output
 
   $ dune rules --root . --format=json output |
-  > jq -r 'include "dune"; rulesMatchingTarget("output/main.js") | ruleDepFilePaths | select(test("\\.cmj$"))'
+  > jq_dune -r 'rulesMatchingTarget("output/main.js") | ruleDepFilePaths | select(test("\\.cmj$"))'
   _build/default/.output.mobjs/melange/melange__Main.cmj

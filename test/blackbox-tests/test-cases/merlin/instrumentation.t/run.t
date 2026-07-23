@@ -8,8 +8,7 @@ up a project with instrumentation and testing checking the merlin config.
 
   $ dune build --instrument-with hello ./lib/.merlin-conf/lib-foo ./lib/.merlin-conf/lib-bar --profile release
   $ dune ocaml merlin dump-config --format=json $PWD/lib \
-  >   | jq -r '
-  >     include "dune";
+  >   | jq_dune -r '
   >     .[]
   >     | select(
   >         .module_name == "Bar"

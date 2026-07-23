@@ -2,4 +2,8 @@
     events. *)
 val signals : Signal.t list
 
+type mask
+
+val block : unit -> mask
+val restore : mask -> unit
 val unblock : unit -> unit

@@ -1,6 +1,6 @@
 (env
  (_
-  (binaries ../../utils/ocamlformat.exe)))
+  (binaries ../../utils/action_plugin_helper.exe ../../utils/ocamlformat.exe)))
 
 (cram
  (applies_to fmt-test)
@@ -24,11 +24,35 @@
   (<> %{ocaml-config:system} win)))
 
 (cram
+ (applies_to batch-mode watch-mode)
+ (setup_scripts cached-failed-actions-helpers.sh))
+
+(cram
+ (applies_to rpc-flush-file-watcher rpc-registry)
+ (deps
+  %{bin:action_plugin_helper}
+  (package dune-action-plugin)
+  (package dune-rpc)
+  (package stdune)
+  (package dune-glob)
+  (package top-closure)
+  (package ordering)
+  (package dyn)
+  (package fs-io)
+  (package ocamlc-loc)
+  (package xdg)))
+
+(cram
  (applies_to
   promotion-event-suppression
   promotion-executable-bit
   source-backed-promotion)
  (setup_scripts promotion-helpers.sh))
+
+(cram
+ (applies_to action-runner-forwarding action-runner-shutdown)
+ (enabled_if
+  (<> %{ocaml-config:system} win)))
 
 ;; Disabled due to timeouts
 

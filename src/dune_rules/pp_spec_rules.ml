@@ -45,14 +45,14 @@ let pp_corrected_path m ~ml_kind ~suffix =
 let get_rules sctx key =
   let ctx = Super_context.context sctx in
   let build_context = Context.build_context ctx in
-  let exe = Ppx_driver.ppx_exe_path build_context ~key in
+  let exe = Ppx_exe.ppx_exe_path build_context ~key in
   let* pp_names, scope =
     match Digest.from_hex key with
     | None ->
       User_error.raise
         [ Pp.textf "invalid ppx key for %s" (Path.Build.to_string_maybe_quoted exe) ]
     | Some key ->
-      let { Ppx_driver.Key.Decoded.pps; project_root } = Ppx_driver.Key.decode key in
+      let { Ppx_exe.Key.Decoded.pps; project_root } = Ppx_exe.Key.decode key in
       let+ scope =
         let dir =
           match project_root with
@@ -368,24 +368,25 @@ let pp_one_module
                (Action_builder.with_file_targets
                   ~file_targets:[ dst ]
                   (let open Action_builder.O in
-                   let* exe, flags, args = driver_and_flags in
-                   let dir =
-                     Super_context.context sctx |> Context.build_dir |> Path.build
-                   in
-                   Command.run'
-                     ~dir
-                     ~sandbox
-                     ~env
-                     (Ok (Path.build exe))
-                     [ As args
-                     ; A "-o"
-                     ; Path (Path.build dst)
-                     ; loc_filename_arg
-                     ; Command.Ml_kind.ppx_driver_flag ml_kind
-                     ; Dep (Path.build src)
-                     ; Hidden_deps hidden_deps
-                     ; As flags
-                     ])))))
+                   preprocessor_deps
+                   >>> let* exe, flags, args = driver_and_flags in
+                       let dir =
+                         Super_context.context sctx |> Context.build_dir |> Path.build
+                       in
+                       Command.run'
+                         ~dir
+                         ~sandbox
+                         ~env
+                         (Ok (Path.build exe))
+                         [ As args
+                         ; A "-o"
+                         ; Path (Path.build dst)
+                         ; loc_filename_arg
+                         ; Command.Ml_kind.ppx_driver_flag ml_kind
+                         ; Dep (Path.build src)
+                         ; Hidden_deps hidden_deps
+                         ; As flags
+                         ])))))
 ;;
 
 let make

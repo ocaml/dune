@@ -257,17 +257,12 @@ let _ =
 ;;
 
 let run cmd =
-  match
-    snd
-      (Unix.waitpid
-         []
-         (Unix.create_process
-            (List.hd cmd)
-            (Array.of_list cmd)
-            Unix.stdin
-            Unix.stdout
-            Unix.stderr))
-  with
+  let prog =
+    Bin.which ~path:(Env_path.path Env.initial) (List.hd cmd)
+    |> Option.value_exn
+    |> Path.to_string
+  in
+  match snd (Unix.waitpid [] (Spawn.spawn ~prog ~argv:cmd () |> Pid.to_int)) with
   | WEXITED 0 -> ()
   | _ -> assert false
 ;;

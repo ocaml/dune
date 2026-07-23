@@ -4,10 +4,7 @@ Test for the `dune describe tests` command
 Setup with various test configurations
 --------------------------------------
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.21)
-  > (package (name test-pkg))
-  > EOF
+  $ make_dune_project_with_package 3.21 test-pkg
 
 Simple test
 -----------
@@ -131,8 +128,49 @@ Test sexp format for unit tests only:
 
 Test csexp format for unit tests:
 
-  $ dune describe tests --format csexp
-  (((4:name9:deps_test)(10:source_dir9:with_deps)(7:package())(7:enabled4:true)(8:location16:with_deps/dune:1)(6:target38:_build/default/with_deps/deps_test.exe))((4:name12:complex_test)(10:source_dir6:subdir)(7:package(8:test-pkg))(7:enabled4:true)(8:location13:subdir/dune:1)(6:target38:_build/default/subdir/complex_test.exe))((4:name6:test_a)(10:source_dir11:multi_tests)(7:package(8:test-pkg))(7:enabled4:true)(8:location18:multi_tests/dune:1)(6:target37:_build/default/multi_tests/test_a.exe))((4:name6:test_b)(10:source_dir11:multi_tests)(7:package(8:test-pkg))(7:enabled4:true)(8:location18:multi_tests/dune:1)(6:target37:_build/default/multi_tests/test_b.exe))((4:name6:test_c)(10:source_dir11:multi_tests)(7:package(8:test-pkg))(7:enabled4:true)(8:location18:multi_tests/dune:1)(6:target37:_build/default/multi_tests/test_c.exe))((4:name13:disabled_test)(10:source_dir8:disabled)(7:package())(7:enabled5:false)(8:location15:disabled/dune:1)(6:target41:_build/default/disabled/disabled_test.exe))((4:name11:simple_test)(10:source_dir1:.)(7:package())(7:enabled4:true)(8:location6:dune:1)(6:target30:_build/default/simple_test.exe)))
+  $ dune describe tests --format csexp | dune internal sexp-pp --format csexp
+  (((name deps_test)
+    (source_dir with_deps)
+    (package ())
+    (enabled true)
+    (location with_deps/dune:1)
+    (target _build/default/with_deps/deps_test.exe))
+   ((name complex_test)
+    (source_dir subdir)
+    (package (test-pkg))
+    (enabled true)
+    (location subdir/dune:1)
+    (target _build/default/subdir/complex_test.exe))
+   ((name test_a)
+    (source_dir multi_tests)
+    (package (test-pkg))
+    (enabled true)
+    (location multi_tests/dune:1)
+    (target _build/default/multi_tests/test_a.exe))
+   ((name test_b)
+    (source_dir multi_tests)
+    (package (test-pkg))
+    (enabled true)
+    (location multi_tests/dune:1)
+    (target _build/default/multi_tests/test_b.exe))
+   ((name test_c)
+    (source_dir multi_tests)
+    (package (test-pkg))
+    (enabled true)
+    (location multi_tests/dune:1)
+    (target _build/default/multi_tests/test_c.exe))
+   ((name disabled_test)
+    (source_dir disabled)
+    (package ())
+    (enabled false)
+    (location disabled/dune:1)
+    (target _build/default/disabled/disabled_test.exe))
+   ((name simple_test)
+    (source_dir .)
+    (package ())
+    (enabled true)
+    (location dune:1)
+    (target _build/default/simple_test.exe)))
 
 Verify that disabled tests are still shown:
 
@@ -228,8 +266,25 @@ Test sexp format for CRAM tests:
 
 Test csexp format for CRAM tests:
 
-  $ dune describe tests --format csexp
-  (((4:name4:cram)(10:source_dir13:cram_with_pkg)(7:package(8:test-pkg))(7:enabled4:true)(8:location20:cram_with_pkg/dune:1)(6:target22:@cram_with_pkg/runtest))((4:name4:cram)(10:source_dir10:cram_tests)(7:package())(7:enabled4:true)(8:location17:cram_tests/dune:1)(6:target19:@cram_tests/runtest))((4:name4:cram)(10:source_dir13:cram_disabled)(7:package())(7:enabled5:false)(8:location20:cram_disabled/dune:1)(6:target22:@cram_disabled/runtest)))
+  $ dune describe tests --format csexp | dune internal sexp-pp --format csexp
+  (((name cram)
+    (source_dir cram_with_pkg)
+    (package (test-pkg))
+    (enabled true)
+    (location cram_with_pkg/dune:1)
+    (target @cram_with_pkg/runtest))
+   ((name cram)
+    (source_dir cram_tests)
+    (package ())
+    (enabled true)
+    (location cram_tests/dune:1)
+    (target @cram_tests/runtest))
+   ((name cram)
+    (source_dir cram_disabled)
+    (package ())
+    (enabled false)
+    (location cram_disabled/dune:1)
+    (target @cram_disabled/runtest)))
 
 Verify that disabled CRAM tests are still shown:
 

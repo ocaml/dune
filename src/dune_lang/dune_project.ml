@@ -1,4 +1,6 @@
+module Toggle0 = Toggle
 open Import
+module Toggle = Toggle0
 module Versioned_file = Dune_sexp.Versioned_file
 module Execution_parameters = Dune_engine.Execution_parameters
 module Compound_user_error = Dune_rpc.Private.Compound_user_error
@@ -382,7 +384,7 @@ module Extension = struct
 end
 
 module Melange_syntax = struct
-  let name = Syntax.Name.parse "melange"
+  let name = Syntax.name Melange.syntax
 end
 
 let make_parsing_context ~(lang : Lang.Instance.t) extensions =
@@ -526,7 +528,7 @@ let subst_config t =
 
 let default_name ~dir ~(packages : Package.t Package.Name.Map.t) =
   match
-    (* CR rgrinberg: why do we pick a name randomly? How about just making it
+    (* CR-someday rgrinberg: why do we pick a name randomly? How about just making it
        anonymous here *)
     Package.Name.Map.min_binding packages
   with
@@ -1074,8 +1076,9 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
     let dialects =
       let dialects =
         match Syntax.Name.Map.find explicit_extensions_map Melange_syntax.name with
-        | Some extension -> (extension.loc, Dialect.rescript) :: dialects
-        | None -> dialects
+        | Some extension when extension.version < (1, 0) ->
+          (extension.loc, Dialect.rescript) :: dialects
+        | Some _ | None -> dialects
       in
       List.fold_left dialects ~init:Dialect.DB.builtin ~f:(fun dialects (loc, dialect) ->
         Dialect.DB.add dialects ~loc dialect)
@@ -1146,7 +1149,7 @@ let gen_load ~read ~dir ~files ~infer_from_opam_files ~load_opam_file_with_conte
   else if infer_from_opam_files && not (Package.Name.Map.is_empty opam_packages)
   then
     let+ opam_packages =
-      let module Memo_package_name = Memo.Make_parallel_map (Package.Name.Map) in
+      let module Memo_package_name = Memo.Map (Package.Name.Map) in
       Memo_package_name.parallel_map opam_packages ~f:(fun _ (_loc, pkg) -> pkg)
     in
     Some (infer Package_info.empty ~dir opam_packages)

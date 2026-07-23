@@ -15,11 +15,28 @@ type original_opam_file =
   }
 
 module Duplicate_dep_warning = struct
-  type t =
-    { loc : Loc.t
-    ; dep_string : string
-    ; field_name : string
-    }
+  type field =
+    | Depends
+    | Conflicts
+    | Depopts
+
+  let make ~loc ~dep_string field =
+    let field_name, combine_op =
+      match field with
+      | Depends -> "depends", "(and ...)"
+      | Conflicts -> "conflicts", "(or ...)"
+      | Depopts -> "depopts", "(and ...)"
+    in
+    User_message.make
+      ~loc
+      [ Pp.textf
+          "Duplicate dependency on package %s in '%s' field. If you want to specify \
+           multiple constraints, combine them using %s."
+          dep_string
+          field_name
+          combine_op
+      ]
+  ;;
 end
 
 type t =
@@ -41,7 +58,7 @@ type t =
   ; allow_empty : bool
   ; original_opam_file : original_opam_file option
   ; exclusive_dir : (Loc.t * Path.Source.t) option
-  ; duplicate_dep_warnings : Duplicate_dep_warning.t list
+  ; duplicate_dep_warnings : User_message.t list
   }
 
 (* Package name are globally unique, so we can reasonably expect that there will
@@ -145,7 +162,7 @@ let decode =
         ; Pp.textf "- %s" (print_value loc2)
         ]
   in
-  let collect_duplicate_deps deps field_name =
+  let collect_duplicate_deps deps field =
     let warnings, _ =
       List.fold_left deps ~init:([], []) ~f:(fun (warnings, seen) (loc, dep) ->
         let is_duplicate =
@@ -156,9 +173,8 @@ let decode =
         in
         if is_duplicate
         then (
-          let dep_sexp = Package_dependency.encode dep in
-          let dep_string = Dune_sexp.to_string dep_sexp in
-          let warning = { Duplicate_dep_warning.loc; dep_string; field_name } in
+          let dep_string = Package_dependency.encode dep |> Dune_sexp.to_string in
+          let warning = Duplicate_dep_warning.make ~loc ~dep_string field in
           warning :: warnings, (loc, dep) :: seen)
         else warnings, (loc, dep) :: seen)
     in
@@ -210,9 +226,9 @@ let decode =
        let allow_empty = lang_version < (3, 0) || allow_empty in
        let duplicate_dep_warnings =
          List.concat
-           [ collect_duplicate_deps depends_with_locs "depends"
-           ; collect_duplicate_deps conflicts_with_locs "conflicts"
-           ; collect_duplicate_deps depopts_with_locs "depopts"
+           [ collect_duplicate_deps depends_with_locs Depends
+           ; collect_duplicate_deps conflicts_with_locs Conflicts
+           ; collect_duplicate_deps depopts_with_locs Depopts
            ]
        in
        let depends = List.map ~f:snd depends_with_locs in

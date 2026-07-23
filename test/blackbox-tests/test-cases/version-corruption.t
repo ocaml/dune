@@ -28,7 +28,7 @@ shared buffer):
   $ git init --quiet
   $ git commit -m init --allow-empty --quiet
   $ git tag -a v0.0.1 -m v0.0.1
-  $ echo "(lang dune 2.0)" > dune-project
+  $ make_dune_project 2.0
   $ touch xapi-datamodel.opam
   $ cat >dune <<EOF
   > (executable

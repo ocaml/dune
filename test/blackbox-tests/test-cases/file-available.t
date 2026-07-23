@@ -7,9 +7,7 @@ Populate the current workspace with some files and test if they are available.
   $ touch bin/foo.ml
   $ touch bar.ml
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.0)
-  > EOF
+  $ make_dune_project 3.0
 
   $ cat > dune <<EOF
   > (rule

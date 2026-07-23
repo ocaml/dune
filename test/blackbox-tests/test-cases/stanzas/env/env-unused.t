@@ -1,6 +1,4 @@
-  $ cat > dune-project << EOF
-  > (lang dune 3.3)
-  > EOF
+  $ make_dune_project 3.3
 
 (env) is evaluated sequentially:
 
@@ -27,9 +25,7 @@ A warning is displayed when there are unreachable cases.
 
 In 3.4, this warning becomes fatal.
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.4)
-  > EOF
+  $ make_dune_project 3.4
 
   $ dune runtest
   File "dune", lines 5-7, characters 0-71:

@@ -1,6 +1,7 @@
 (library
  (name valid_option_test)
  (inline_tests
+  (modes byte)
   (backend backend_foo)
   (executable
    (flags -nolabels))))

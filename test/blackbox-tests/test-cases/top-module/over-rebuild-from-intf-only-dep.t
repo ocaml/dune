@@ -75,7 +75,7 @@ on `dep_for_impl.cmi`. Rebuild expected. The trace contains the
   > val extra : string
   > EOF
   $ dune ocaml top-module mylib/m.ml --trace-file=_build/trace-impl.csexp > /dev/null 2>&1
-  $ dune trace cat --trace-file=_build/trace-impl.csexp | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("\\.topmod/mylib/m\\.ml/mylib__M\\.cmo$"))]'
+  $ dune trace cat --trace-file=_build/trace-impl.csexp | jq_dune -s '[.[] | targetsMatchingFilter(test("\\.topmod/mylib/m\\.ml/mylib__M\\.cmo$"))]'
   [
     {
       "target_files": [
@@ -94,7 +94,7 @@ the over-invalidation.
   > val zero : t
   > EOF
   $ dune ocaml top-module mylib/m.ml --trace-file=_build/trace-intf.csexp > /dev/null 2>&1
-  $ dune trace cat --trace-file=_build/trace-intf.csexp | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("\\.topmod/mylib/m\\.ml/mylib__M\\.cmo$"))]'
+  $ dune trace cat --trace-file=_build/trace-intf.csexp | jq_dune -s '[.[] | targetsMatchingFilter(test("\\.topmod/mylib/m\\.ml/mylib__M\\.cmo$"))]'
   [
     {
       "target_files": [

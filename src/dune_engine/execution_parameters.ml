@@ -1,32 +1,5 @@
 open Import
-
-module Action_output_on_success = struct
-  type t =
-    | Print
-    | Swallow
-    | Must_be_empty
-
-  let for_digest = function
-    | Print -> 0
-    | Swallow -> 1
-    | Must_be_empty -> 2
-  ;;
-
-  let all = [ "print", Print; "swallow", Swallow; "must-be-empty", Must_be_empty ]
-  let equal = Poly.equal
-  let hash = Poly.hash
-
-  let repr =
-    Repr.variant
-      "action-output-on-success"
-      [ Repr.case0 "Print" ~test:(equal Print)
-      ; Repr.case0 "Swallow" ~test:(equal Swallow)
-      ; Repr.case0 "Must_be_empty" ~test:(equal Must_be_empty)
-      ]
-  ;;
-
-  let to_dyn = Repr.to_dyn repr
-end
+open Action_types
 
 module Action_output_limit = struct
   type t = int
@@ -43,6 +16,7 @@ module Workspace_root_for_build_prefix_map = struct
     | Unset
     | Set of string
 
+  (* CR-soon rgrinberg: remove this *)
   let equal x y =
     match x, y with
     | Unset, Unset -> true
@@ -77,6 +51,7 @@ type t =
   ; workspace_root_to_build_path_prefix_map : Workspace_root_for_build_prefix_map.t
   ; action_project_root : Path.Source.t option
   ; should_remove_write_permissions_on_generated_files : bool
+  ; sandbox_actions : bool
   }
 
 let equal
@@ -88,6 +63,7 @@ let equal
       ; workspace_root_to_build_path_prefix_map
       ; action_project_root
       ; should_remove_write_permissions_on_generated_files
+      ; sandbox_actions
       }
       t
   =
@@ -103,6 +79,7 @@ let equal
   && Bool.equal
        should_remove_write_permissions_on_generated_files
        t.should_remove_write_permissions_on_generated_files
+  && Bool.equal sandbox_actions t.sandbox_actions
 ;;
 
 let hash
@@ -114,6 +91,7 @@ let hash
       ; workspace_root_to_build_path_prefix_map
       ; action_project_root
       ; should_remove_write_permissions_on_generated_files
+      ; sandbox_actions
       }
   =
   Poly.hash
@@ -124,7 +102,8 @@ let hash
     , expand_aliases_in_sandbox
     , workspace_root_to_build_path_prefix_map
     , action_project_root
-    , should_remove_write_permissions_on_generated_files )
+    , should_remove_write_permissions_on_generated_files
+    , sandbox_actions )
 ;;
 
 let bool_to_int b = if b then 1 else 0
@@ -138,6 +117,7 @@ let digest_fields
       ~workspace_root_to_build_path_prefix_map
       ~action_project_root
       ~should_remove_write_permissions_on_generated_files
+      ~sandbox_actions
   =
   let d = Digest.Manual.create () in
   let root =
@@ -149,6 +129,7 @@ let digest_fields
     lor (bool_to_int expand_aliases_in_sandbox lsl 4)
     lor (bool_to_int (Option.is_some root) lsl 5)
     lor (bool_to_int should_remove_write_permissions_on_generated_files lsl 6)
+    lor (bool_to_int sandbox_actions lsl 7)
   in
   Digest.Manual.int d flags;
   Digest.Manual.int d action_stdout_limit;
@@ -170,6 +151,7 @@ let make
       ~workspace_root_to_build_path_prefix_map
       ~action_project_root
       ~should_remove_write_permissions_on_generated_files
+      ~sandbox_actions
   =
   { action_stdout_on_success
   ; action_stderr_on_success
@@ -179,6 +161,7 @@ let make
   ; workspace_root_to_build_path_prefix_map
   ; action_project_root
   ; should_remove_write_permissions_on_generated_files
+  ; sandbox_actions
   }
 ;;
 
@@ -207,6 +190,7 @@ let repr =
         "should_remove_write_permissions_on_generated_files"
         Repr.bool
         ~get:(fun t -> t.should_remove_write_permissions_on_generated_files)
+    ; Repr.field "sandbox_actions" Repr.bool ~get:(fun t -> t.sandbox_actions)
     ]
 ;;
 
@@ -219,6 +203,7 @@ let digest
       ; workspace_root_to_build_path_prefix_map
       ; action_project_root
       ; should_remove_write_permissions_on_generated_files
+      ; sandbox_actions
       }
   =
   digest_fields
@@ -230,6 +215,7 @@ let digest
     ~workspace_root_to_build_path_prefix_map
     ~action_project_root
     ~should_remove_write_permissions_on_generated_files
+    ~sandbox_actions
 ;;
 
 let to_dyn = Repr.to_dyn repr
@@ -245,6 +231,7 @@ let builtin_default =
       (Workspace_root_for_build_prefix_map.Set "/workspace_root")
     ~action_project_root:None
     ~should_remove_write_permissions_on_generated_files:true
+    ~sandbox_actions:false
 ;;
 
 let set_action_stdout_on_success x t = { t with action_stdout_on_success = x }
@@ -258,6 +245,7 @@ let set_workspace_root_to_build_path_prefix_map x t =
 ;;
 
 let set_action_project_root x t = { t with action_project_root = x }
+let set_sandbox_actions x t = { t with sandbox_actions = x }
 
 let set_should_remove_write_permissions_on_generated_files x t =
   { t with should_remove_write_permissions_on_generated_files = x }

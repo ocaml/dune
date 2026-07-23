@@ -32,10 +32,7 @@ Then we create a workspace with some_package2
 
   $ mkdir proj1
   $ cd proj1
-  $ cat >dune-project <<EOF
-  > (lang dune 2.8)
-  > (package (name some_package2))
-  > EOF
+  $ make_dune_project_with_package 2.8 some_package2
   $ cat >dune <<EOF
   > (library
   >  (name lib1)

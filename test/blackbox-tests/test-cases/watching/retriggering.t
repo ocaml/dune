@@ -30,5 +30,4 @@ i.e. the empty file.
   I'm seeing: ./old-source.txt
   I'm seeing: ./new-source.txt ./old-source.txt
 
-  $ stop_dune
-  Success, waiting for filesystem changes...
+  $ stop_dune_quiet

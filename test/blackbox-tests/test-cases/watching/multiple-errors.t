@@ -1,6 +1,6 @@
 We test the behavior of watch mode when we have multiple errors
 
-  $ echo "(lang dune 3.11)" > dune-project
+  $ make_dune_project 3.11
 
   $ start_dune
 
@@ -27,6 +27,7 @@ We test the behavior of watch mode when we have multiple errors
 
   $ build w
   Failure
+  [1]
 
   $ stop_dune
   File "x", line 1, characters 0-0:

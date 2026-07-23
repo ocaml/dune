@@ -45,10 +45,12 @@ Make a fake ocamlformat
   Solution for dev-tools.locks/ocamlformat:
   - ocamlformat.0.0.1
 
-  $ dune tools exec ocamllsp
+  $ dune tools install ocamllsp
   Solution for dev-tools.locks/ocaml-lsp-server:
   - ocaml.5.2.0
   - ocaml-lsp-server.0.0.1
+
+  $ dune tools exec ocamllsp
        Running 'ocamllsp'
   fake ocamllsp will now run fake ocamlformat:
   hello from fake ocamlformat

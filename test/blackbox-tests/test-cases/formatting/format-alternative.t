@@ -21,7 +21,6 @@ Dune files names dune-file should be formatted
   +  foo
   +  (echo bar)))
   Promoting _build/default/dune-file.corrected to dune-file.
-  [1]
 
   $ cat dune-file
   (rule

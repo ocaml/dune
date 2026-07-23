@@ -33,7 +33,6 @@ run time. This test makes sure that this is recorded as a dependency.
   +- : int = 2
    ```
   Promoting _build/default/.mdx/README.md.corrected to README.md.
-  [1]
 
   $ cat README.md
   ```ocaml

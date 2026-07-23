@@ -375,7 +375,6 @@ let%expect_test "optional promotion" =
     {|
     Building (alias foo)
     Build (alias foo) failed
-    FAILURE: promotion file $CWD/_build/.promotion-staging/output.expected does not exist
     [ "Add"
     ; [ [ "directory"; "$CWD" ]
       ; [ "id"; "0" ]
@@ -408,12 +407,7 @@ let%expect_test "optional promotion" =
              "
           ]
         ]
-      ; [ "promotion"
-        ; [ [ [ "in_build"; "$CWD/_build/.promotion-staging/output.expected" ]
-            ; [ "in_source"; "$CWD/output.expected" ]
-            ]
-          ]
-        ]
+      ; [ "promotion"; [] ]
       ; [ "related"; [] ]
       ; [ "severity"; "error" ]
       ; [ "targets"; [] ]

@@ -7,9 +7,8 @@ completion options.
   $ dune completion bash | grep '^complete '
   complete -o bashdefault -o default -F _dune_cmdliner dune
 
-CR-someday Alizter: test the zsh and PowerShell scripts by running their
-completion functions too. For now, check that they contain the fallback
-wrappers.
+Check that the zsh and PowerShell scripts contain the fallback wrappers. The
+shell-specific tests also exercise these wrappers in their respective shells.
 
   $ dune completion zsh | grep '^function _dune_cmdliner'
   function _dune_cmdliner_cmdliner {

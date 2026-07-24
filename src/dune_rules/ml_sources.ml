@@ -442,6 +442,25 @@ let find_origin (t : t) ~libs path =
      | origins -> raise_module_conflict_error origins ~module_path:path)
 ;;
 
+module Parser_gen_origin = struct
+  type t =
+    | Ocamllex
+    | Ocamlyacc
+    | Menhir
+end
+
+let parser_gen_origins (t : t) =
+  let add kind map dep_infos =
+    Loc.Map.fold dep_infos ~init:map ~f:(fun dep_info map ->
+      Module_trie.fold dep_info.targets ~init:map ~f:(fun (_loc, m) map ->
+        Module_name.Path.Map.set map (Module.Source.path m) kind))
+  in
+  add Parser_gen_origin.Ocamllex Module_name.Path.Map.empty t.modules.ocamllexes
+  |> fun map ->
+  add Parser_gen_origin.Ocamlyacc map t.modules.ocamlyaccs
+  |> fun map -> add Parser_gen_origin.Menhir map t.modules.menhirs
+;;
+
 let modules_and_obj_dir t ~libs ~for_ =
   match
     match for_ with

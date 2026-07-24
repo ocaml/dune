@@ -1006,7 +1006,8 @@ module Internal = struct
     lazy
       (Memo.create
          "eval-pred"
-         ~human_readable_description:file_selector_stack_frame_description
+         ~human_readable_description:(fun fs ->
+           Some (file_selector_stack_frame_description fs))
          ~input:(module File_selector)
          ~cutoff:Filename_set.equal
          eval_pred_impl)

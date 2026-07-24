@@ -208,6 +208,9 @@ let evaluate_and_collect_deps t = eval t Lazy
 let evaluate_and_collect_facts t = eval t Eager
 
 let create_memo name ~input ?cutoff ?human_readable_description f =
+  let human_readable_description =
+    Option.map human_readable_description ~f:(fun f x -> Some (f x))
+  in
   let lazy_ =
     lazy
       (let cutoff =

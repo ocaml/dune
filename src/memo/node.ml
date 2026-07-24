@@ -164,7 +164,7 @@ module Dep_node = struct
     ;;
 
     let human_readable_description (T t) =
-      Option.map t.spec.human_readable_description ~f:(fun f -> f t.input)
+      Option.bind t.spec.human_readable_description ~f:(fun f -> f t.input)
     ;;
   end
 end

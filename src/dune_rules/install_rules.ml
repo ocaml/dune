@@ -998,8 +998,63 @@ end = struct
       Super_context.add_rule sctx ~dir:ctx.build_dir action
   ;;
 
+  let rocq_meta_theories sctx (pkg : Package.t) =
+    let ctx = Super_context.context sctx |> Context.build_context in
+    let pkg_name = Package.name pkg in
+    let* stanzas = Dune_load.dune_files ctx.name in
+    let public_theories =
+      Dune_file.fold_static_stanzas stanzas ~init:[] ~f:(fun _dune_file stanza acc ->
+        match Stanza.repr stanza with
+        | Rocq_stanza.Theory.T { public_name = Some public_name; name; _ } ->
+          (snd name, Public_lib.name public_name) :: acc
+        | _ -> acc)
+    in
+    let public_names = List.map public_theories ~f:snd |> Lib_name.Set.of_list in
+    let logical_to_public = Rocq_lib_name.Map.of_list_multi public_theories in
+    let theory_dep package =
+      if Lib_name.Set.mem public_names package
+      then package
+      else (
+        let logical = Rocq_lib_name.of_string (Lib_name.to_string package) in
+        match Rocq_lib_name.Map.find logical_to_public logical with
+        | Some [ public_name ] -> public_name
+        | None | Some ([] | _ :: _ :: _) -> package)
+    in
+    Dune_file.fold_static_stanzas stanzas ~init:[] ~f:(fun _dune_file stanza acc ->
+      match Stanza.repr stanza with
+      | Rocq_stanza.Theory.T
+          ({ public_name = Some public_name; package = Some package; buildable; _ } as
+           theory)
+        when Package.Name.equal (Package.name package) pkg_name ->
+        let public_name = Public_lib.name public_name in
+        let plugin_deps = List.map buildable.plugins ~f:snd in
+        let theory_deps =
+          List.filter_map buildable.theories ~f:(function
+            | Rocq_stanza.Buildable.Theory_dep.Package (_, package) ->
+              Some (theory_dep package)
+            | Rocq_stanza.Buildable.Theory_dep.Logical _ -> None)
+        in
+        let deps =
+          plugin_deps @ theory_deps
+          |> Lib_name.Set.of_list
+          |> fun deps ->
+          if buildable.use_corelib && not theory.boot
+          then Lib_name.Set.add deps (Lib_name.of_string "rocq-core")
+          else deps
+        in
+        { Gen_meta.public_name
+        ; rocqpath = Rocq_lib_name.to_string (snd theory.name)
+        ; deps
+        ; synopsis = theory.synopsis
+        }
+        :: acc
+      | _ -> acc)
+    |> Memo.return
+  ;;
+
   let gen_meta_file sctx (pkg : Package.t) entries =
     let ctx = Super_context.context sctx |> Context.build_context in
+    let* rocq_theories = rocq_meta_theories sctx pkg in
     let* () =
       let template =
         let meta_template = Path.build (Package_paths.meta_template ctx pkg) in
@@ -1053,7 +1108,7 @@ end = struct
          (let+ template = template
           and+ (meta : Meta.t) =
             Action_builder.of_memo meta_entries
-            >>= Gen_meta.gen ~package:pkg ~add_directory_entry:true
+            >>= Gen_meta.gen ~rocq_theories ~package:pkg ~add_directory_entry:true
           in
           let pp =
             Pp.concat_map template ~sep:Pp.newline ~f:(fun s ->

@@ -14,13 +14,21 @@
 open Import
 
 module Buildable : sig
+  module Theory_dep : sig
+    type t =
+      | Logical of (Loc.t * Rocq_lib_name.t)
+      | Package of (Loc.t * Lib_name.t)
+
+    val loc : t -> Loc.t
+  end
+
   type t =
     { flags : Ordered_set_lang.Unexpanded.t
     ; rocq_lang_version : Dune_sexp.Syntax.Version.t
     ; mode : Rocq_mode.t option
     ; use_corelib : bool
     ; plugins : (Loc.t * Lib_name.t) list (** ocaml plugins *)
-    ; theories : (Loc.t * Rocq_lib_name.t) list (** rocq libraries *)
+    ; theories : Theory_dep.t list (** rocq libraries *)
     ; loc : Loc.t
     }
 end
@@ -40,12 +48,14 @@ end
 module Theory : sig
   type t =
     { name : Loc.t * Rocq_lib_name.t
+    ; public_name : Public_lib.t option
     ; package : Package.t option
     ; project : Dune_project.t
     ; synopsis : string option
     ; modules : Ordered_set_lang.t
     ; modules_flags : (Rocq_module.Name.t * Ordered_set_lang.Unexpanded.t) list option
     ; boot : bool
+    ; legacy_install : bool
     ; generate_project_file : Loc.t * bool
     ; enabled_if : Blang.t
     ; buildable : Buildable.t

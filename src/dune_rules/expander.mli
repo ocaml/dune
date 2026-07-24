@@ -8,6 +8,17 @@ val dir : t -> Path.Build.t
 val context : t -> Context_name.t
 val project : t -> Dune_project.t
 
+(** The declared package dependencies of the package owning this expander's
+    directory (via its [(dir ...)] field), used to narrow lock-directory binary
+    lookup. [None] when there is no lock directory or no owning package, meaning
+    no narrowing. *)
+val package_depends_by_src_dir : t -> Package.Name.Set.t option Memo.t
+
+(** The workspace packages whose installed binaries are visible from the
+    expander's directory: the dir's owning package and its transitive workspace
+    dependency closure. [None] means no narrowing (no owning package). *)
+val local_bins_scope_by_src_dir : t -> Package.Name.Set.t option Memo.t
+
 val make_root
   :  project:Dune_project.t
   -> scope:Scope.t Memo.t

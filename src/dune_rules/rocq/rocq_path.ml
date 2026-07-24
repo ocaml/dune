@@ -188,7 +188,7 @@ let of_rocq_install rocq =
 
 let of_rocq_install context =
   let open Memo.O in
-  let* rocq = Context.which context Filename.rocq in
+  let* rocq = Context.which ~narrow_to_packages:None context Filename.rocq in
   match rocq with
   | None -> Memo.return []
   | Some rocq -> of_rocq_install rocq

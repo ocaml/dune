@@ -46,7 +46,7 @@ module For_stanza : sig
     -> scope:Scope.t
     -> dir_contents:Dir_contents.t
     -> expander:Expander.t
-    -> ( Merlin.t list
+    -> ( Merlin.group list
          , Compilation_context.t option Compilation_mode.Per_mode.t Loc.Map.t
          , Path.Build.t list
          , Path.Source.t list )
@@ -107,7 +107,7 @@ end = struct
   ;;
 
   let with_cctx_merlin ~loc (cctx, merlin) =
-    { empty_none with merlin = Some merlin; cctx = Some (loc, cctx) }
+    { empty_none with merlin = Some (Merlin.group [ merlin ]); cctx = Some (loc, cctx) }
   ;;
 
   let if_available_buildable ~loc f = function

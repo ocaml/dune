@@ -115,56 +115,39 @@ let solve_multiple_platforms
       ~portable_lock_dir
   =
   let open Fiber.O in
-  let solve_for_env env =
-    Dune_pkg.Opam_solver.solve_lock_dir
-      env
+  let+ { Dune_pkg.Opam_solver.result; errors } =
+    Dune_pkg.Opam_solver.solve_lock_dir_for_platforms
+      base_solver_env
       version_preference
       repos
       ~pins
       ~local_packages
       ~constraints
       ~selected_depopts
+      ~platforms:solve_for_platforms
       ~portable_lock_dir
   in
-  let portable_solver_env =
-    Solver_env.unset_multi
-      base_solver_env
-      Dune_lang.Package_variable_name.platform_specific
+  let errors =
+    List.map errors ~f:(fun (platform, message) ->
+      let message : Platforms_by_message.Message.t =
+        match message with
+        | `Solve_error message -> Solve_error message
+        | `Manifest_error message -> Manifest_error message
+      in
+      Platforms_by_message.singleton message platform)
   in
-  let+ results =
-    Fiber.parallel_map solve_for_platforms ~f:(fun platform_env ->
-      let solver_env = Solver_env.extend portable_solver_env platform_env in
-      let+ solver_result = solve_for_env solver_env in
-      Result.map_error solver_result ~f:(fun message ->
-        let message : Platforms_by_message.Message.t =
-          match message with
-          | `Solve_error m -> Solve_error m
-          | `Manifest_error m -> Manifest_error m
-        in
-        Platforms_by_message.singleton message platform_env))
-  in
-  let solver_results, errors =
-    List.partition_map results ~f:(function
-      | Ok result -> Left result
-      | Error e -> Right e)
-  in
-  match solver_results, errors with
-  | [], [] -> Code_error.raise "Solver did not run for any platforms." []
-  | [], errors ->
+  match result, errors with
+  | None, [] -> Code_error.raise "Solver did not run for any platforms." []
+  | None, errors ->
     `All_error
       (Platforms_by_message.union_all errors
        |> Platforms_by_message.all_solver_errors_raising_if_any_manifest_errors)
-  | x :: xs, errors ->
-    let merged_solver_result =
-      List.fold_left xs ~init:x ~f:Dune_pkg.Opam_solver.Solver_result.merge
-    in
-    if List.is_empty errors
-    then `All_ok merged_solver_result
-    else
-      `Partial
-        ( merged_solver_result
-        , Platforms_by_message.union_all errors
-          |> Platforms_by_message.all_solver_errors_raising_if_any_manifest_errors )
+  | Some result, [] -> `All_ok result
+  | Some result, errors ->
+    `Partial
+      ( result
+      , Platforms_by_message.union_all errors
+        |> Platforms_by_message.all_solver_errors_raising_if_any_manifest_errors )
 ;;
 
 let user_lock_dir_path path =

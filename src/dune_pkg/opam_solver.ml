@@ -1507,6 +1507,11 @@ module Solver_result = struct
   ;;
 end
 
+type error =
+  [ `Solve_error of User_message.Style.t Pp.t
+  | `Manifest_error of User_message.t
+  ]
+
 let reject_unreachable_packages =
   let reachable deps_of_package ~roots =
     let seen = ref Package_name.Set.empty in
@@ -1934,4 +1939,49 @@ let solve_lock_dir
             ; pinned_packages = pinned_package_names
             ; num_expanded_packages = Context.count_expanded_packages context
             }))
+;;
+
+type multi_platform_result =
+  { result : Solver_result.t option
+  ; errors : (Solver_env.t * error) list
+  }
+
+let solve_lock_dir_for_platforms
+      base_solver_env
+      version_preference
+      repos
+      ~pins
+      ~local_packages
+      ~constraints
+      ~selected_depopts
+      ~platforms
+      ~portable_lock_dir
+  =
+  let open Fiber.O in
+  let+ results =
+    let base_solver_env =
+      Solver_env.unset_multi
+        base_solver_env
+        Dune_lang.Package_variable_name.platform_specific
+    in
+    Fiber.parallel_map platforms ~f:(fun platform ->
+      let solver_env = Solver_env.extend base_solver_env platform in
+      solve_lock_dir
+        solver_env
+        version_preference
+        repos
+        ~pins
+        ~local_packages
+        ~constraints
+        ~selected_depopts
+        ~portable_lock_dir
+      >>| Result.map_error ~f:(fun error -> platform, error))
+  in
+  let errors, results = List.partition_map results ~f:Result.to_either in
+  let result =
+    match results with
+    | [] -> None
+    | result :: rest -> Some (List.fold_left rest ~init:result ~f:Solver_result.merge)
+  in
+  { result; errors }
 ;;

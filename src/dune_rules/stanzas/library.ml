@@ -410,6 +410,12 @@ let best_name t =
   | Public p -> snd p.name
 ;;
 
+let public_name t =
+  match t.visibility with
+  | Private _ -> None
+  | Public p -> Some (snd p.name)
+;;
+
 let is_virtual t = t.kind = Virtual
 let is_impl t = Option.is_some t.implements
 

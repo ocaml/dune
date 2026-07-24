@@ -41,22 +41,58 @@ module Item = struct
     ; dir : Path.Source.t
     ; external_deps : lib_dep list
     ; internal_deps : lib_dep list
-    ; names : string list
+    ; names : string list (* private names *)
+    ; public_names : string option list option
+      (* public names, if any are declared (one entry per private name, [None]
+         for those without a public name) *)
     ; package : Package.t option
     ; extensions : Filename.Extension.t list
     }
 
-  let to_dyn { kind; dir; external_deps; internal_deps; names; package; extensions } =
+  let to_dyn
+        ~split_public_names
+        { kind
+        ; dir
+        ; external_deps
+        ; internal_deps
+        ; names
+        ; public_names
+        ; package
+        ; extensions
+        }
+    =
     let open Dyn in
+    let name_fields =
+      if split_public_names
+      then (
+        let public_names =
+          match public_names with
+          | Some public_names -> public_names
+          | None -> List.map names ~f:(fun _ -> None)
+        in
+        [ "names", (list string) names
+        ; "public_names", (list (option string)) public_names
+        ])
+      else (
+        (* replace each private name by its public name when there is one *)
+        let best_names =
+          match public_names with
+          | None -> names
+          | Some public_names ->
+            List.map2 names public_names ~f:(fun name public_name ->
+              Option.value public_name ~default:name)
+        in
+        [ "names", (list string) best_names ])
+    in
     let record =
       record
-        [ "names", (list string) names
-        ; "extensions", (list Filename.Extension.to_dyn) extensions
-        ; "package", option Package.Name.to_dyn (Option.map ~f:Package.name package)
-        ; "source_dir", String (Path.Source.to_string dir)
-        ; "external_deps", list lib_dep_to_dyn external_deps
-        ; "internal_deps", list lib_dep_to_dyn internal_deps
-        ]
+        (name_fields
+         @ [ "extensions", (list Filename.Extension.to_dyn) extensions
+           ; "package", option Package.Name.to_dyn (Option.map ~f:Package.name package)
+           ; "source_dir", String (Path.Source.to_string dir)
+           ; "external_deps", list lib_dep_to_dyn external_deps
+           ; "internal_deps", list lib_dep_to_dyn internal_deps
+           ])
     in
     Variant (Kind.to_string kind, [ record ])
   ;;
@@ -112,7 +148,7 @@ let resolve_lib_deps db lib_deps =
   >>| List.concat
 ;;
 
-let resolve_libs db dir libraries preprocess names package kind extensions =
+let resolve_libs db dir libraries preprocess names public_names package kind extensions =
   let open Memo.O in
   let open Item in
   let* lib_deps = resolve_lib_deps db libraries in
@@ -124,7 +160,7 @@ let resolve_libs db dir libraries preprocess names package kind extensions =
       | Local lib -> Either.Left lib
       | External lib -> Either.Right lib)
   in
-  { external_deps; internal_deps; kind; names; package; dir; extensions }
+  { external_deps; internal_deps; kind; names; public_names; package; dir; extensions }
 ;;
 
 let exes_extensions (lib_config : Dune_rules.Lib_config.t) modes =
@@ -137,6 +173,13 @@ let exes_extensions (lib_config : Dune_rules.Lib_config.t) modes =
       ~ext_dll:lib_config.ext_dll)
 ;;
 
+(* Splits the executables' names into their private names and, when declared,
+   their public names *)
+let exe_names (exes : Dune_rules.Executables.t) =
+  ( Nonempty_list.to_list_map exes.names ~f:snd
+  , Option.map exes.public_names ~f:(Nonempty_list.to_list_map ~f:snd) )
+;;
+
 let libs db (context : Context.t) =
   let open Memo.O in
   let* dune_files = Context.name context |> Dune_rules.Dune_load.dune_files in
@@ -147,35 +190,45 @@ let libs db (context : Context.t) =
       match Stanza.repr stanza with
       | Dune_rules.Executables.T exes ->
         let* ocaml = Context.ocaml context in
+        let names, public_names = exe_names exes in
         resolve_libs
           db
           dir
           exes.buildable.libraries
           exes.buildable.preprocess.config
-          (Nonempty_list.to_list_map exes.names ~f:snd)
+          names
+          public_names
           exes.package
           Item.Kind.Executables
           (exes_extensions ocaml.lib_config exes.modes)
         >>| List.singleton
       | Dune_rules.Library.T lib ->
+        let names = [ Lib_name.of_local lib.name |> Lib_name.to_string ] in
+        let public_names =
+          Option.map (Dune_rules.Library.public_name lib) ~f:(fun public_name ->
+            [ Some (Lib_name.to_string public_name) ])
+        in
         resolve_libs
           db
           dir
           lib.buildable.libraries
           lib.buildable.preprocess.config
-          [ Dune_rules.Library.best_name lib |> Lib_name.to_string ]
+          names
+          public_names
           (Dune_rules.Library.package lib)
           Item.Kind.Library
           []
         >>| List.singleton
       | Dune_rules.Tests.T tests ->
         let* ocaml = Context.ocaml context in
+        let names, public_names = exe_names tests.exes in
         resolve_libs
           db
           dir
           tests.exes.buildable.libraries
           tests.exes.buildable.preprocess.config
-          (Nonempty_list.to_list_map tests.exes.names ~f:snd)
+          names
+          public_names
           (if Option.is_none tests.package then tests.exes.package else tests.package)
           Item.Kind.Tests
           (exes_extensions ocaml.lib_config tests.exes.modes)
@@ -194,15 +247,30 @@ let external_resolved_libs (context : Context.t) =
     not (List.is_empty x.external_deps && List.is_empty x.internal_deps))
 ;;
 
-let to_dyn context_name external_resolved_libs =
+let to_dyn ~split_public_names context_name external_resolved_libs =
   let open Dyn in
-  Tuple [ String context_name; list Item.to_dyn external_resolved_libs ]
+  Tuple
+    [ String context_name; list (Item.to_dyn ~split_public_names) external_resolved_libs ]
+;;
+
+let arg_split_public_names =
+  let open Arg in
+  value
+  & flag
+  & info
+      [ "split-public-names" ]
+      ~doc:
+        (Some
+           "Report private names in the 'names' field and public names in a separate \
+            'public_names' field, rather than reporting the public name (falling back to \
+            the private name) in 'names'.")
 ;;
 
 let term =
   let+ builder = Common.Builder.term
   and+ context_name = Common.context_arg ~doc:(Some "Build context to use.")
   and+ _ = Describe_lang_compat.arg
+  and+ split_public_names = arg_split_public_names
   and+ format = Describe_format.arg in
   let common, config = Common.init builder in
   Scheduler_setup.go_with_rpc_server ~common ~config
@@ -218,7 +286,7 @@ let term =
     |> Dune_engine.Context_name.to_string
   in
   external_resolved_libs (Super_context.context super_context)
-  >>| to_dyn context_name
+  >>| to_dyn ~split_public_names context_name
   >>| Describe_format.print_dyn format
 ;;
 

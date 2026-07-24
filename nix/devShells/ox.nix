@@ -5,11 +5,31 @@
 {
   pkgs,
   makeDuneDevShell,
+  sourceDune,
   INSIDE_NIX,
 }:
 
 let
   oxcaml-setup = import ../oxcaml.nix { inherit pkgs; };
+  duneVersion =
+    let
+      versionLine =
+        pkgs.lib.findFirst (line: pkgs.lib.strings.hasPrefix "  let latest = " line)
+          (throw "could not determine the Dune version")
+          (pkgs.lib.strings.splitString "\n" (builtins.readFile ../../otherlibs/dune-rpc/types.ml));
+      match = builtins.match "  let latest = ([0-9]+), ([0-9]+)" versionLine;
+    in
+    if match == null then
+      throw "could not parse the Dune version from '${versionLine}'"
+    else
+      "${builtins.elemAt match 0}.${builtins.elemAt match 1}.0";
+  sourceDuneForOx = sourceDune.overrideAttrs (old: {
+    __intentionallyOverridingVersion = true;
+    version = duneVersion;
+    postPatch = (old.postPatch or "") + ''
+      sed -i '/^(name dune)$/i(version ${duneVersion})' dune-project
+    '';
+  });
 in
 {
   bootstrap-ox = pkgs.mkShell {
@@ -51,12 +71,23 @@ in
       oself: osuper:
       (oxcaml-setup.packageSet oself osuper)
       // {
-        ocaml = oxcaml-setup.compiler.overrideAttrs (old: {
-          src = builtins.fetchGit {
-            url = "https://github.com/oxcaml/oxcaml.git";
-            ref = "main";
-          };
-        });
+        ocaml =
+          let
+            oxcamlFlake = builtins.getFlake "github:oxcaml/oxcaml/main";
+            oxcaml = oxcamlFlake.packages.${pkgs.stdenv.hostPlatform.system}.default;
+          in
+          oxcaml.overrideAttrs (old: {
+            NIX_CFLAGS_COMPILE = "-std=gnu17";
+            passthru = (old.passthru or { }) // pkgs.ocamlPackages.ocaml.passthru;
+            meta = (old.meta or { }) // pkgs.ocamlPackages.ocaml.meta;
+            nativeBuildInputs = [
+              sourceDuneForOx
+            ]
+            ++ builtins.filter (input: pkgs.lib.getName input != "dune") old.nativeBuildInputs;
+            postFixup = ''
+              remove-references-to -t ${sourceDuneForOx} $out/lib/ocaml/Makefile.config
+            '';
+          });
       };
     meta.description = ''
       Like ox-minimal but with the OxCaml trunk compiler.

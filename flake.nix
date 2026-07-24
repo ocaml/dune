@@ -210,6 +210,7 @@
             sphinx-design
             myst-parser
           ];
+          sourceDune = self.packages.${pkgs.stdenv.hostPlatform.system}.default;
           makeDuneDevShell = import ./nix/dev-shell.nix {
             inherit
               pkgs
@@ -217,8 +218,8 @@
               testBuildInputs
               testNativeBuildInputs
               docInputs
+              sourceDune
               ;
-            sourceDune = self.packages.${pkgs.stdenv.hostPlatform.system}.default;
           };
 
         in
@@ -320,7 +321,15 @@
             '';
           };
 
-          inherit (import ./nix/devShells/ox.nix { inherit pkgs makeDuneDevShell INSIDE_NIX; })
+          inherit
+            (import ./nix/devShells/ox.nix {
+              inherit
+                pkgs
+                makeDuneDevShell
+                sourceDune
+                INSIDE_NIX
+                ;
+            })
             bootstrap-ox
             ox-minimal
             ox-minimal-trunk

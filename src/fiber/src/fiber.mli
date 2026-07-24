@@ -522,6 +522,15 @@ module Cancel : sig
 
   val create : unit -> t
 
+  (** [make_child t] returns a new cancellation that is fired whenever [t] is
+      fired (but not vice versa).
+
+      Note that the order in which the handlers of a parent and its children run
+      is left unspecified. Note also that a child is not reclaimed until either
+      it or its parent is fired (or the parent is collected), so repeatedly
+      attaching children to a long-lived parent may leak memory. *)
+  val make_child : t -> t
+
   (** Activate a cancellation request.
 
       [fire] is idempotent, so calling [fire t] more than once has no effect. *)

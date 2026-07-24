@@ -28,3 +28,13 @@ wrappers.
       return [Management.Automation.CompletionCompleters]::CompleteFilename(
         $wordToComplete
       )
+
+Fish registers the completion function without file completion and falls back
+to it explicitly when there are no semantic completions:
+
+  $ dune completion fish | grep '^complete '
+  complete -c dune -f -k -a "(_dune_cmdliner)"
+
+  $ dune completion fish | grep -A1 'if test $found -eq 0'
+    if test $found -eq 0
+      __fish_complete_path $current

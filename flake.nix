@@ -116,24 +116,46 @@
         }
       );
 
-      packages = forAllSystems (
-        pkgs:
+      packages =
         let
-          dune-package = import ./nix/dune-package.nix {
-            inherit nixpkgs ocaml-overlays pkgs;
-            src = ./.;
-          };
+          # Nixpkgs 26.11 dropped x86_64-darwin. Keep the Intel macOS binary
+          # on the last supported release.
+          nixpkgsDarwin = builtins.getFlake (
+            "github:NixOS/nixpkgs/fca2dbd4c00c3063235e56bb91758e24fc67b7b8"
+            + "?narHash=sha256-uH9LkreZXkpZXD0QOXBkQWnAHhlVuT0wUABFw7AN9BU%3D"
+          );
+          dune =
+            (import ./nix/dune-package.nix {
+              nixpkgs = nixpkgsDarwin;
+              inherit ocaml-overlays;
+              pkgs = nixpkgsDarwin.legacyPackages.x86_64-darwin;
+              src = ./.;
+            }).default;
         in
-        rec {
-          inherit (dune-package)
-            default
-            musl-static
-            windows-static
-            ;
-          dune = default;
-          dune-static = musl-static;
-        }
-      );
+        forAllSystems (
+          pkgs:
+          let
+            dune-package = import ./nix/dune-package.nix {
+              inherit nixpkgs ocaml-overlays pkgs;
+              src = ./.;
+            };
+          in
+          rec {
+            inherit (dune-package)
+              default
+              musl-static
+              windows-static
+              ;
+            dune = default;
+            dune-static = musl-static;
+          }
+        )
+        // {
+          x86_64-darwin = {
+            inherit dune;
+            default = dune;
+          };
+        };
 
       devShells = forAllSystems (
         pkgs:
@@ -188,6 +210,7 @@
             sphinx-design
             myst-parser
           ];
+          sourceDune = self.packages.${pkgs.stdenv.hostPlatform.system}.default;
           makeDuneDevShell = import ./nix/dev-shell.nix {
             inherit
               pkgs
@@ -195,8 +218,8 @@
               testBuildInputs
               testNativeBuildInputs
               docInputs
+              sourceDune
               ;
-            sourceDune = self.packages.${pkgs.stdenv.hostPlatform.system}.default;
           };
 
         in
@@ -298,7 +321,15 @@
             '';
           };
 
-          inherit (import ./nix/devShells/ox.nix { inherit pkgs makeDuneDevShell INSIDE_NIX; })
+          inherit
+            (import ./nix/devShells/ox.nix {
+              inherit
+                pkgs
+                makeDuneDevShell
+                sourceDune
+                INSIDE_NIX
+                ;
+            })
             bootstrap-ox
             ox-minimal
             ox-minimal-trunk

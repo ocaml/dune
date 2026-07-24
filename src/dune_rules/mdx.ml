@@ -464,7 +464,7 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~mdx_prog =
         (`Exe Nonempty_list.[ t.loc, name ])
         ~allow_overlaps:false
         ~forbidden_libraries:[]
-        (lib "mdx.test" :: lib "mdx.top" :: t.libraries)
+        (lib "mdx.test" :: lib "mdx.top" :: lib "unix" :: t.libraries)
         ~allow_unused_libraries:[]
         ~pps:[]
         ~dune_version

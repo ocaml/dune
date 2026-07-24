@@ -42,7 +42,6 @@ module Builder : sig
   type t
 
   val equal : t -> t -> bool
-  val set_no_build : t -> No_build.t -> t
   val root : t -> string option
   val set_root : t -> string -> t
   val forbid_builds : t -> t

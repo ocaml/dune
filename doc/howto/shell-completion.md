@@ -5,7 +5,7 @@ Shell command completion refers to a common feature in various shells:
 hitting \<TAB\> after a partially-typed command will print matching suggestions.
 This can apply to command names, flags, arguments...
 
-Dune offers completion for commands, subcommands, and flags, for Bash, Z shell, and PowerShell.
+Dune offers completion for commands, subcommands, and flags, for Bash, Z shell, fish, and PowerShell.
 The various shells and systems require specific configuration setups,
 and this document aims to help users get completion running.
 
@@ -34,6 +34,17 @@ in your `$fpath` (by default it should be `~/.local/share/zsh/site-functions`).
 If you wish to create a dedicated completion directory and add it to your `$fpath`,
 be sure to add the following in your `.zshrc` but **before** any call to `compinit`:
 `fpath+=<your dir>`.
+
+You might need to restart your shell to see the effects.
+
+Fish
+----
+
+Command completion for fish should work out of the box:
+create the fish completion script (by running `dune completion fish`)
+and write it to a directory that fish autoloads completions from,
+for example `~/.config/fish/completions`:
+`dune completion fish > ~/.config/fish/completions/dune.fish`.
 
 You might need to restart your shell to see the effects.
 

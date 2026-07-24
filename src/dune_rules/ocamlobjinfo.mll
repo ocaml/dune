@@ -78,7 +78,7 @@ let rules (ocaml : Ocaml_toolchain.t) ~dir ~sandbox ~units =
     { Rule.Anonymous_action.action
     ; loc = Loc.none
     ; dir
-    ; alias = None
+    ; aliases = []
     }
   in
   Dune_engine.Build_system.execute_action_stdout action
@@ -97,7 +97,7 @@ let archive_rules (ocaml : Ocaml_toolchain.t) ~dir ~sandbox ~archive =
     { Rule.Anonymous_action.action
     ; loc = Loc.none
     ; dir
-    ; alias = None
+    ; aliases = []
     }
   in
   Dune_engine.Build_system.execute_action_stdout action

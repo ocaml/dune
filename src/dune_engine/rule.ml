@@ -139,6 +139,6 @@ module Anonymous_action = struct
     { action : Action.Full.t
     ; loc : Loc.t
     ; dir : Path.Build.t
-    ; alias : Alias.Name.t option
+    ; aliases : Alias.Name.t list
     }
 end

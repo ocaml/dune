@@ -15,15 +15,19 @@ module Alias_rules = struct
       else Memo.return ()
   ;;
 
-  let add sctx ~alias ~loc build =
-    let dir = Alias.dir alias in
-    check_empty ~loc ~dir alias
-    >>> Super_context.add_alias_action sctx alias ~dir ~loc build
+  let add sctx ~aliases ~loc build =
+    match aliases with
+    | [] -> Code_error.raise "Alias_rules.add: empty list of aliases" []
+    | representative :: _ ->
+      let dir = Alias.dir representative in
+      Memo.parallel_iter aliases ~f:(fun alias ->
+        check_empty ~loc ~dir:(Alias.dir alias) alias)
+      >>> Super_context.add_alias_action sctx aliases ~dir ~loc build
   ;;
 
-  let add_empty sctx ~loc ~alias =
+  let add_empty sctx ~loc ~aliases =
     let action = Action_builder.return (Action.Full.make Action.empty) in
-    add sctx ~loc ~alias action
+    add sctx ~loc ~aliases action
   ;;
 end
 
@@ -138,7 +142,7 @@ let user_rule sctx ~dir ~expander (rule : Rule_conf.t) =
     let+ () =
       Memo.parallel_iter rule.aliases ~f:(fun alias ->
         let alias = Alias.make ~dir alias in
-        Alias_rules.add_empty sctx ~loc:rule.loc ~alias)
+        Alias_rules.add_empty sctx ~loc:rule.loc ~aliases:[ alias ])
     in
     None
   | true ->
@@ -203,14 +207,9 @@ let user_rule sctx ~dir ~expander (rule : Rule_conf.t) =
        let+ () =
          match List.map ~f:(Alias.make ~dir) aliases with
          | [] -> Code_error.raise "empty list of aliases" []
-         | alias :: extra_aliases ->
-           let loc = rule.loc in
+         | aliases ->
            interpret_and_add_locks ~expander rule.locks action.build
-           |> Alias_rules.add sctx ~alias ~loc
-           >>> Memo.parallel_iter extra_aliases ~f:(fun extra_alias ->
-             Dep.alias alias
-             |> Action_builder.dep
-             |> Rules.Produce.Alias.add_deps ~loc extra_alias)
+           |> Alias_rules.add sctx ~aliases ~loc:rule.loc
        in
        None)
 ;;
@@ -341,7 +340,7 @@ let alias sctx ~dir ~expander (alias_conf : Alias_conf.t) =
   Alias_rules.check_empty ~loc ~dir alias
   >>> Expander.eval_blang expander alias_conf.enabled_if
   >>= function
-  | false -> Alias_rules.add_empty sctx ~loc ~alias
+  | false -> Alias_rules.add_empty sctx ~loc ~aliases:[ alias ]
   | true ->
     (match alias_conf.action with
      | None ->
@@ -369,5 +368,5 @@ let alias sctx ~dir ~expander (alias_conf : Alias_conf.t) =
            ~what:"aliases"
        in
        interpret_and_add_locks ~expander alias_conf.locks action
-       |> Alias_rules.add sctx ~loc ~alias)
+       |> Alias_rules.add sctx ~loc ~aliases:[ alias ])
 ;;

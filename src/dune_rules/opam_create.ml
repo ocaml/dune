@@ -454,7 +454,7 @@ let add_alias_rule (ctx : Build_context.t) ~profile ~project ~pkg =
     match Package.has_opam_file pkg with
     | Generated_with_diff when not use_source_opam ->
       Rules.Produce.Alias.add_action
-        opam_alias
+        [ opam_alias ]
         ~loc:(Loc.in_file source_opam_path)
         (let open Action_builder.O in
          let+ () = Action_builder.path (Path.build generated_opam_path)

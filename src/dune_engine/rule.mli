@@ -88,6 +88,7 @@ module Anonymous_action : sig
     ; dir : Path.Build.t
       (** Directory the action is attached to. This is the directory where
         the outcome of the action will be cached. *)
-    ; alias : Alias.Name.t option (** For better error messages *)
+    ; aliases : Alias.Name.t list
+      (** The aliases this action is attached to. For better error messages. *)
     }
 end

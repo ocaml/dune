@@ -256,7 +256,7 @@ module Internal = struct
 
   (* The current version of the rule digest scheme. We should increment it when
      making any changes to the scheme, to avoid collisions. *)
-  let rule_digest_version = 29
+  let rule_digest_version = 30
 
   let compute_rule_digest
         (rule : Rule.t)
@@ -735,14 +735,21 @@ module Internal = struct
       in
       let d = Digest.to_string digest in
       let basename =
-        match act.alias with
-        | None -> d
-        | Some a -> Alias.Name.to_string a ^ "-" ^ d
+        match act.aliases with
+        | [] -> d
+        | aliases ->
+          let a =
+            aliases
+            |> List.map ~f:Alias.Name.to_string
+            |> List.min ~f:String.compare
+            |> Option.value_exn
+          in
+          a ^ "-" ^ d
       in
       Path.Build.relative dir basename
     in
     let rule =
-      let { Rule.Anonymous_action.action = _; loc; dir = _; alias = _ } = act in
+      let { Rule.Anonymous_action.action = _; loc; dir = _; aliases = _ } = act in
       Rule.make
         ~info:(if Loc.is_none loc then Internal else From_dune_file loc)
         ~targets:(Targets.File.create target)
@@ -754,7 +761,7 @@ module Internal = struct
         rule
         ~rule_kind:
           (Anonymous_action
-             { attached_to_alias = Option.is_some act.alias
+             { attached_to_alias = List.is_non_empty act.aliases
              ; capture_stdout
              ; stamp_file = target
              })
@@ -796,7 +803,7 @@ module Internal = struct
               { action; env; locks; can_go_in_shared_cache; sandbox; corrections }
           ; loc = _
           ; dir
-          ; alias
+          ; aliases
           }
         =
         act
@@ -817,10 +824,12 @@ module Internal = struct
         Action.digest d action;
         digest_locks d locks;
         Digest.Manual.string d (Path.Build.to_string dir);
-        Digest.Manual.option
-          d
-          ~f:(fun d alias -> Digest.Manual.string d (Alias.Name.to_string alias))
-          alias;
+        let alias_names =
+          aliases
+          |> List.map ~f:Alias.Name.to_string
+          |> List.sort_uniq ~compare:String.compare
+        in
+        Digest.Manual.list d ~f:Digest.Manual.string alias_names;
         Digest.Manual.bool d capture_stdout;
         Digest.Manual.bool d can_go_in_shared_cache;
         digest_sandbox_config d sandbox;

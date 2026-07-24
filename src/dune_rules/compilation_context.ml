@@ -202,7 +202,7 @@ let create
     | None -> Resolve.Memo.return []
     | Some parameters -> parameters_main_modules parameters
   in
-  let sandbox = Compilation_mode.default_sandbox for_ in
+  let sandbox = Compilation_mode.default_sandbox in
   let modes =
     match for_, modes with
     | Compilation_mode.Melange, _ -> None

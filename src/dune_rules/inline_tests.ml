@@ -431,7 +431,7 @@ include Sub_system.Register_end_point (struct
           sctx
           ~dir
           ~loc:info.loc
-          alias
+          [ alias ]
           (let open Action_builder.O in
            let promotion_targets =
              List.concat_map source_modules ~f:Module.sources_without_pp
@@ -479,7 +479,7 @@ include Sub_system.Register_end_point (struct
       | true -> gen_rules c ~expander ~info ~backends
       | false ->
         let alias = Alias.make Alias0.runtest ~dir in
-        Simple_rules.Alias_rules.add_empty sctx ~alias ~loc:info.loc
+        Simple_rules.Alias_rules.add_empty sctx ~aliases:[ alias ] ~loc:info.loc
     ;;
   end)
 

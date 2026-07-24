@@ -160,7 +160,7 @@ let extend_action_env t ~dir action =
 let execute_action_stdout t ?alias ~loc ~dir action =
   let open Action_builder.O in
   (let+ action = extend_action_env t ~dir action in
-   { Rule.Anonymous_action.action; loc; dir; alias })
+   { Rule.Anonymous_action.action; loc; dir; aliases = Option.to_list alias })
   |> Build_system.execute_action_stdout
 ;;
 
@@ -190,9 +190,9 @@ let add_rule_get_targets t ?mode ?loc ~dir build =
 
 let add_rules t ?loc ~dir builds = Memo.parallel_iter builds ~f:(add_rule ?loc t ~dir)
 
-let add_alias_action t alias ~dir ~loc action =
+let add_alias_action t aliases ~dir ~loc action =
   let build = extend_action t action ~dir in
-  Rules.Produce.Alias.add_action alias ~loc build
+  Rules.Produce.Alias.add_action aliases ~loc build
 ;;
 
 let resolve_program_memo t ~dir ?where ?hint ~loc bin =

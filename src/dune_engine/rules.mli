@@ -25,7 +25,7 @@ module Dir_rules : sig
 
            When passing [--force] to Dune, these are exactly the actions that
            will be re-executed. *)
-        Action of Rule.Anonymous_action.t Action_builder.t
+        Action of Rule.Anonymous_action.Rule.t
 
     type t = { expansions : (Loc.t * item) Appendable_list.t } [@@unboxed]
   end
@@ -72,9 +72,9 @@ module Produce : sig
         [alias]. *)
     val add_deps : t -> ?loc:Stdune.Loc.t -> unit Action_builder.t -> unit Memo.t
 
-    (** [add_action alias ~loc action] arrange things so that [action]
-        is executed as part of the build of alias [alias]. *)
-    val add_action : t -> loc:Loc.t -> Action.Full.t Action_builder.t -> unit Memo.t
+    (** [add_action aliases ~loc action] arrange things so that [action]
+        is executed as part of the build of aliases [aliases]. *)
+    val add_action : t list -> loc:Loc.t -> Action.Full.t Action_builder.t -> unit Memo.t
   end
 end
 

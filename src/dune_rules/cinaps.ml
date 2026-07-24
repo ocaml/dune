@@ -276,7 +276,7 @@ let gen_rules sctx t ~dir ~scope =
               ])
       |> Action.Full.add_env env
     in
-    Super_context.add_alias_action sctx ~dir ~loc cinaps_alias action
+    Super_context.add_alias_action sctx ~dir ~loc [ cinaps_alias ] action
   in
   match t.alias with
   | Some _ -> Memo.return ()

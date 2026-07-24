@@ -1,20 +1,31 @@
 open Import
 
+let get_local_state () =
+  let open Memo.O in
+  let+ workspace = Workspace.workspace () in
+  Workspace.pkg_enabled workspace
+;;
+
 let term =
   let+ builder = Common.Builder.term in
-  let common, config = Common.init builder in
-  Scheduler_setup.go_with_rpc_server ~common ~config (fun () ->
-    Memo.run
-    (* CR-ElectreAAS: we should be using lock_dir_active *)
-    @@
-    let open Memo.O in
-    let+ workspace = Workspace.workspace () in
-    let lock_dir_paths =
-      Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace
-        Pkg_common.Lock_dirs_arg.all
-        workspace
+  let client_builder =
+    builder |> Common.Builder.forbid_builds |> Common.Builder.disable_log_file
+  in
+  let _, config = Common.init client_builder in
+  Scheduler_setup.no_build_no_rpc ~config (fun () ->
+    let open Fiber.O in
+    let+ enabled =
+      match Global_lock.lock () with
+      | Ok () -> Memo.run (get_local_state ())
+      | Error lock_held_by ->
+        Rpc.Rpc_common.fire_request
+          ~name:"pkg-enabled"
+          ~wait:false
+          ~lock_held_by
+          builder
+          Dune_rpc_impl.Decl.pkg_enabled
+          ()
     in
-    let enabled = Pkg_common.pkg_enabled ~workspace ~lock_dir_paths in
     match enabled with
     | true -> ()
     | false -> exit 1)
@@ -22,8 +33,9 @@ let term =
 
 let info =
   let doc =
-    "Check if the project indicates that dune's package management features should be \
-     enabled. Exits with 0 if package management is enabled and 1 otherwise."
+    "Check if dune's package management features are enabled. If an RPC server is \
+     running, use its configuration. Otherwise, use the project configuration and lock \
+     directories. Exits with 0 if package management is enabled and 1 otherwise."
   in
   Cmd.info "enabled" ~doc
 ;;

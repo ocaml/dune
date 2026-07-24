@@ -27,6 +27,36 @@ let%expect_test "non-existing program" =
   |}]
 ;;
 
+let%expect_test "exec failure returns if standard descriptors are closed" =
+  if Platform.OS.value = Linux
+  then
+    assert (
+      match Unix.fork () with
+      | 0 ->
+        let dev_null = Unix.openfile "/dev/null" [ O_RDWR ] 0 in
+        Unix.close Unix.stdin;
+        Unix.close Unix.stdout;
+        (match
+           Spawn.spawn
+             ()
+             ~prog:"/doesnt-exist"
+             ~argv:[ "blah" ]
+             ~stdin:dev_null
+             ~stdout:dev_null
+             ~stderr:dev_null
+         with
+         | pid ->
+           (match Proc.wait (Pid pid) [] with
+            | Some _ -> Unix._exit 0
+            | None -> Unix._exit 2)
+         | exception Unix.Unix_error _ -> Unix._exit 1)
+      | child ->
+        (match Proc.wait (Pid (Pid.of_int_exn child)) [] with
+         | Some { status = WEXITED 0; _ } -> true
+         | Some _ | None -> false));
+  [%expect {||}]
+;;
+
 let%expect_test "non-existing dir" =
   show_raise (fun () ->
     Spawn.spawn

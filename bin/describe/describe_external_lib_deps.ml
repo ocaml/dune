@@ -185,13 +185,21 @@ let libs db (context : Context.t) =
   >>| List.concat
 ;;
 
-let external_resolved_libs (context : Context.t) =
+let filter_empty ~include_empty items =
+  if include_empty
+  then items
+  else
+    List.filter
+      ~f:(fun (x : Item.t) ->
+        not (List.is_empty x.external_deps && List.is_empty x.internal_deps))
+      items
+;;
+
+let external_resolved_libs ~include_empty (context : Context.t) =
   let open Memo.O in
   let* scope = Dune_rules.Scope.DB.find_by_dir (Context.build_dir context) in
   let db = Dune_rules.Scope.libs scope in
-  libs db context
-  >>| List.filter ~f:(fun (x : Item.t) ->
-    not (List.is_empty x.external_deps && List.is_empty x.internal_deps))
+  libs db context >>| filter_empty ~include_empty
 ;;
 
 let to_dyn context_name external_resolved_libs =
@@ -199,11 +207,22 @@ let to_dyn context_name external_resolved_libs =
   Tuple [ String context_name; list Item.to_dyn external_resolved_libs ]
 ;;
 
+let arg_include_empty =
+  let open Arg in
+  value
+  & flag
+  & info
+      [ "include-empty" ]
+      ~doc:
+        (Some "Whether to include items that have no internal or external dependencies")
+;;
+
 let term =
   let+ builder = Common.Builder.term
   and+ context_name = Common.context_arg ~doc:(Some "Build context to use.")
   and+ _ = Describe_lang_compat.arg
-  and+ format = Describe_format.arg in
+  and+ format = Describe_format.arg
+  and+ include_empty = arg_include_empty in
   let common, config = Common.init builder in
   Scheduler_setup.go_with_rpc_server ~common ~config
   @@ fun () ->
@@ -217,7 +236,7 @@ let term =
     |> Context.name
     |> Dune_engine.Context_name.to_string
   in
-  external_resolved_libs (Super_context.context super_context)
+  external_resolved_libs ~include_empty (Super_context.context super_context)
   >>| to_dyn context_name
   >>| Describe_format.print_dyn format
 ;;

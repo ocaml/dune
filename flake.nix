@@ -2,7 +2,7 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
     melange = {
-      url = "github:melange-re/melange/v7-54";
+      url = "github:melange-re/melange/v7-55";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     ocaml-overlays = {
@@ -37,13 +37,10 @@
         nixpkgs.lib.genAttrs nixpkgs.lib.systems.flakeExposed (
           system:
           let
-            # Vanilla nixpkgs scope used to source packages we want to take
-            # ahead of what `ocaml-overlays` ships (e.g. odoc 3.2.1).
-            nixpkgsOcaml = nixpkgs.legacyPackages.${system}.ocaml-ng.ocamlPackages_5_4;
             pkgs = nixpkgs.legacyPackages.${system}.appendOverlays [
               ocaml-overlays.overlays.default
               (self: super: {
-                ocamlPackages = super.ocaml-ng.ocamlPackages_5_4.overrideScope (
+                ocamlPackages = super.ocaml-ng.ocamlPackages_5_5.overrideScope (
                   oself: osuper: {
                     ocaml = osuper.ocaml.override {
                       flambdaSupport = false;
@@ -53,11 +50,9 @@
                       dontGzipMan = true;
                     };
                     odoc-parser = osuper.odoc-parser.overrideAttrs (old: {
-                      inherit (nixpkgsOcaml.odoc-parser) version src;
                       doCheck = false;
                     });
                     odoc = osuper.odoc.overrideAttrs (old: {
-                      inherit (nixpkgsOcaml.odoc) version src;
                       doCheck = false;
                     });
                     # Templates the cross-compiled dune binary used by
@@ -69,16 +64,16 @@
                     dune_target = oself.callPackage ./nix/dune-target.nix { };
                   }
                 );
-                # Keep `ocaml-ng.ocamlPackages_5_4` in sync with the override
+                # Keep `ocaml-ng.ocamlPackages_5_5` in sync with the override
                 # above. nix-overlays' `cross/ocaml.nix:46` looks up the native
-                # OCaml via `buildPackages.ocaml-ng."ocamlPackages_5_4"`, so
+                # OCaml via `buildPackages.ocaml-ng."ocamlPackages_5_5"`, so
                 # without this the cross-target side uses our overridden ocaml
                 # while the native side (used to build findlib's `nativeBuild-
                 # Inputs` etc.) uses the unoverridden ocaml+flambda — the
                 # mismatch shows up as cross `ocamlopt` rejecting native
                 # `topdirs.cmx` ("not a compilation unit description").
                 ocaml-ng = super.ocaml-ng // {
-                  ocamlPackages_5_4 = self.ocamlPackages;
+                  ocamlPackages_5_5 = self.ocamlPackages;
                 };
               })
               melange.overlays.default

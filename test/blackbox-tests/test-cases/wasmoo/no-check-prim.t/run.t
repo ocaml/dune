@@ -4,18 +4,20 @@ Compilation using WasmOO
   $ dune trace cat | jq_dune -r '
   >   processes
   > | select(.args.prog | test("wasm_of_ocaml$"))
-  > | .args | targets | .[] | sub("^_build/[^/]+/"; "")' | sort
-  .js/default/js_of_ocaml-compiler.runtime/jsoo_runtime.wasma
-  .js/default/js_of_ocaml/js_of_ocaml.wasma
-  .js/default/stdlib/std_exit.wasmo
-  .js/default/stdlib/stdlib.wasma
+  > | .args | targets | .[] | sub("^_build/[^/]+/"; "")' \
+  > | sort \
+  > | censor
+  .js/$DIGEST/js_of_ocaml-compiler.runtime/jsoo_runtime.wasma
+  .js/$DIGEST/js_of_ocaml/js_of_ocaml.wasma
+  .js/$DIGEST/stdlib/std_exit.wasmo
+  .js/$DIGEST/stdlib/stdlib.wasma
   bin/.technologic.eobjs/jsoo/dune__exe.wasmo
   bin/.technologic.eobjs/jsoo/dune__exe__Technologic.wasmo
   bin/.technologic.eobjs/jsoo/dune__exe__Z.wasmo
   bin/.technologic.eobjs/jsoo/runtime.bc.runtime.wasma
   bin/technologic.bc.wasm.assets
   bin/technologic.bc.wasm.js
-  lib/.x.objs/jsoo/default/x.wasma
+  lib/.x.objs/jsoo/$DIGEST/x.wasma
   $ node ./_build/default/bin/technologic.bc.wasm.js
   buy it
   use it

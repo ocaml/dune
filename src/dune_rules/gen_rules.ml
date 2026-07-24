@@ -654,8 +654,8 @@ let gen_rules ctx sctx ~dir components : Gen_rules.result Memo.t =
     has_rules
       ~dir
       (match rest with
-       | [] | [ _ ] -> Subdir_set.all
-       | [ _; ".runtime" ] -> Subdir_set.all
+       | [] -> Subdir_set.all
+       | [ s ] when Jsoo_rules.Config.is_known_path_digest s -> Subdir_set.all
        | _ -> Subdir_set.empty)
       (fun () ->
          (* XXX the use of the super context is dubious here. We're using it to

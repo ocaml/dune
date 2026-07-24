@@ -42,9 +42,9 @@ JSOO archive rules for interface-only libraries are not spuriously invalidated
 
 main.bc.js should not rebuild
 
-  $ dune build --display=short main.bc.js
-   js_of_ocaml .interface.objs/jsoo/effects=disabled/interface.cma.js
+  $ dune build --display=short main.bc.js 2>&1 | censor
+   js_of_ocaml .interface.objs/jsoo/$DIGEST/interface.cma.js
 
-  $ dune build --display=short main.bc.js
-   js_of_ocaml .interface.objs/jsoo/effects=disabled/interface.cma.js
+  $ dune build --display=short main.bc.js 2>&1 | censor
+   js_of_ocaml .interface.objs/jsoo/$DIGEST/interface.cma.js
 

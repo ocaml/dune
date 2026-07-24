@@ -65,6 +65,9 @@ val make
        "-parameter"; "P2"]` where P1 and P2 are the parameters. *)
   -> t
 
+type group
+
+val group : default:t -> alternatives:t list -> group
 val more_src_dirs : Dir_contents.t -> source_dirs:Path.Source.t list -> Path.Source.t list
 
 (** Add rules for generating the merlin configuration of a specific stanza
@@ -74,7 +77,7 @@ val add_rules
   -> dir:Path.Build.t
   -> more_src_dirs:Path.Source.t list
   -> expander:Expander.t
-  -> t
+  -> group
   -> unit Memo.t
 
 val pp_config

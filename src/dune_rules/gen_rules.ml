@@ -46,7 +46,7 @@ module For_stanza : sig
     -> scope:Scope.t
     -> dir_contents:Dir_contents.t
     -> expander:Expander.t
-    -> ( Merlin.t list
+    -> ( Merlin.group list
          , Compilation_context.t option Compilation_mode.Per_mode.t Loc.Map.t
          , Path.Build.t list
          , Path.Source.t list )
@@ -60,12 +60,11 @@ end = struct
     ; source_dirs : 'source_dirs
     }
 
-  let empty_none = { merlin = None; cctx = None; js = None; source_dirs = None }
+  let empty_none = { merlin = []; cctx = []; js = None; source_dirs = None }
   let empty_list = { merlin = []; cctx = Loc.Map.empty; js = []; source_dirs = [] }
 
-  let add_map_maybe hd_o tl =
-    match hd_o with
-    | Some (loc, hd) ->
+  let add_map hds tl =
+    List.fold_left hds ~init:tl ~f:(fun tl (loc, hd) ->
       Loc.Map.update tl loc ~f:(function
         | None ->
           Some
@@ -78,20 +77,16 @@ end = struct
             (Compilation_mode.Per_mode.of_list
                ~init:None
                ((Compilation_context.for_ hd, Some hd)
-                :: List.map current ~f:(fun (k, v) -> k, Some v))))
-    | None -> tl
-  ;;
-
-  let cons_maybe hd_o tl =
-    match hd_o with
-    | Some hd -> hd :: tl
-    | None -> tl
+                :: List.map current ~f:(fun (k, v) -> k, Some v)))))
   ;;
 
   let cons acc x =
-    { merlin = cons_maybe x.merlin acc.merlin
-    ; cctx = add_map_maybe x.cctx acc.cctx
-    ; source_dirs = cons_maybe x.source_dirs acc.source_dirs
+    { merlin = List.rev_append x.merlin acc.merlin
+    ; cctx = add_map x.cctx acc.cctx
+    ; source_dirs =
+        (match x.source_dirs with
+         | None -> acc.source_dirs
+         | Some source_dir -> source_dir :: acc.source_dirs)
     ; js =
         (match x.js with
          | None -> acc.js
@@ -107,7 +102,10 @@ end = struct
   ;;
 
   let with_cctx_merlin ~loc (cctx, merlin) =
-    { empty_none with merlin = Some merlin; cctx = Some (loc, cctx) }
+    { empty_none with
+      merlin = [ Merlin.group ~default:merlin ~alternatives:[] ]
+    ; cctx = [ loc, cctx ]
+    }
   ;;
 
   let if_available_buildable ~loc f = function
@@ -129,12 +127,19 @@ end = struct
           (Scope.libs scope)
           (Local (Library.to_lib_id ~src_dir lib))
       in
-      if_available_buildable
-        ~loc:lib.buildable.loc
+      if_available
         (fun () ->
-           Lib_rules.rules lib ~sctx ~scope ~dir_contents ~expander
-           >>| Compilation_mode.Per_mode.choose
-           >>| Option.value_exn)
+           let+ cctx_merlins = Lib_rules.rules lib ~sctx ~scope ~dir_contents ~expander in
+           match cctx_merlins.ocaml, cctx_merlins.melange with
+           | None, None -> empty_none
+           | Some cctx_merlin, None | None, Some cctx_merlin ->
+             with_cctx_merlin ~loc:lib.buildable.loc cctx_merlin
+           | Some (ocaml_cctx, ocaml_merlin), Some (melange_cctx, melange_merlin) ->
+             { empty_none with
+               merlin =
+                 [ Merlin.group ~default:ocaml_merlin ~alternatives:[ melange_merlin ] ]
+             ; cctx = [ lib.buildable.loc, ocaml_cctx; lib.buildable.loc, melange_cctx ]
+             })
         enabled_if
     | Foreign_library.T lib ->
       Expander.eval_blang expander lib.enabled_if

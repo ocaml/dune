@@ -331,6 +331,108 @@ end = struct
     }
   ;;
 
+  module Dir_renames : sig
+    type t
+
+    val empty : t
+
+    val expand
+      :  Super_context.t
+      -> dir:Path.Build.t
+      -> File_binding.Unexpanded.t list
+      -> t Memo.t
+
+    val translate : t -> Filename.t list -> Filename.t list
+  end = struct
+    type binding =
+      { src : Filename.t list
+      ; src_len : int
+      ; dst : Filename.t list
+      }
+
+    type t = binding list
+
+    let empty : t = []
+
+    let descendant_segments ~loc ~what path ~of_ =
+      match Path.Local.descendant path ~of_ with
+      | None ->
+        User_error.raise
+          ~loc
+          [ Pp.textf
+              "%s must be a descendant of the directory containing the (include_subdirs \
+               ...) stanza."
+              what
+          ]
+      | Some path ->
+        (match Path.Local.explode path with
+         | [] ->
+           User_error.raise
+             ~loc
+             [ Pp.textf
+                 "%s must not be the directory containing the (include_subdirs ...) \
+                  stanza."
+                 what
+             ]
+         | segments -> segments)
+    ;;
+
+    let expand_binding ~dir binding =
+      match File_binding.Expanded.dst_with_loc binding with
+      | None -> None
+      | Some (dst_loc, dst) ->
+        let root = Path.Build.local dir in
+        let src =
+          descendant_segments
+            ~loc:(File_binding.Expanded.src_loc binding)
+            ~what:"The source directory"
+            (File_binding.Expanded.src binding |> Path.Build.local)
+            ~of_:root
+        in
+        let dst =
+          descendant_segments
+            ~loc:dst_loc
+            ~what:"The destination directory"
+            (Path.Local.relative root dst)
+            ~of_:root
+        in
+        Some { src; src_len = List.length src; dst }
+    ;;
+
+    let expand sctx ~dir dirs =
+      let* expand =
+        let+ expander = Super_context.expander sctx ~dir in
+        Expander.expand_str expander
+      in
+      Memo.parallel_map dirs ~f:(fun binding ->
+        File_binding_expand.expand binding ~dir ~f:(fun sw ->
+          Action_builder.evaluate_and_collect_facts (expand sw) >>| fst))
+      >>| List.filter_map ~f:(expand_binding ~dir)
+    ;;
+
+    let rec drop_prefix path prefix =
+      match path, prefix with
+      | path, [] -> Some path
+      | p :: path, prefix :: prefixes when Filename.equal p prefix ->
+        drop_prefix path prefixes
+      | [], _ :: _ | _ :: _, _ :: _ -> None
+    ;;
+
+    let translate (t : t) path =
+      List.fold_left t ~init:None ~f:(fun best { src; src_len; dst } ->
+        match drop_prefix path src with
+        | None -> best
+        | Some rest ->
+          (match best with
+           | None -> Some (src_len, dst, rest)
+           | Some (best_len, _, _) when src_len > best_len -> Some (src_len, dst, rest)
+           | Some _ -> best))
+      |> function
+      | None -> path
+      | Some (_, dst, rest) -> dst @ rest
+    ;;
+  end
+
   let make_group_root
         sctx
         ~dir
@@ -340,8 +442,12 @@ end = struct
       let loc, qualif_mode = qualification in
       loc, Include_subdirs.Include qualif_mode
     in
+    let+ dir_renames =
+      match snd qualification with
+      | Unqualified | Qualified { dirs = [] } -> Memo.return Dir_renames.empty
+      | Qualified { dirs } -> Dir_renames.expand sctx ~dir dirs
+    in
     let loc = loc_of_dune_file source_dir in
-    let+ components = components in
     let contents =
       Memo.lazy_
         ~human_readable_description:(fun () -> human_readable_description dir)
@@ -360,9 +466,13 @@ end = struct
                           ~src_dir:(Dune_file.dir dune_file)
                           ~dir)
                  (fun () ->
+                    let* components = components in
                     Memo.parallel_map
                       components
                       ~f:(fun { dir; path_to_group_root; source_dir; stanzas } ->
+                        let path_to_root =
+                          Dir_renames.translate dir_renames path_to_group_root
+                        in
                         let+ files =
                           load_text_files
                             sctx
@@ -372,7 +482,7 @@ end = struct
                             ~dir
                         in
                         { Source_file_dir.dir
-                        ; path_to_root = path_to_group_root
+                        ; path_to_root
                         ; files
                         ; source_dir = Some source_dir
                         ; stanzas

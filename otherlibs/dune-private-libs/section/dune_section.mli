@@ -13,6 +13,8 @@ type t =
   | Stublibs
   | Man
   | Misc
+  | Root
+  | Rootexec
 
 val all : (t * string) list
 val of_string : string -> t option

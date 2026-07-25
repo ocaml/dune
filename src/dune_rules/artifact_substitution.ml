@@ -641,12 +641,13 @@ let parse ~input ~mode =
 
 let copy ~conf ~input_file ~input ~output =
   parse
-    ~input:(fun buf pos len -> Fiber.return (input buf pos len))
+    ~input:(fun buf pos len -> Scheduler.async_exn (fun () -> input buf pos len))
     ~mode:
       (Copy
          { conf
          ; input_file
-         ; output = (fun buf pos len -> Fiber.return (output buf pos len))
+         ; output =
+             (fun buf pos len -> Scheduler.async_exn (fun () -> output buf pos len))
          })
 ;;
 

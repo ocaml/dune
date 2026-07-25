@@ -134,7 +134,6 @@ let add_rule sctx ?mode ?loc ~dir build =
 ;;
 
 let for_ = Compilation_mode.Melange
-let sandbox = Compilation_mode.default_sandbox for_
 
 let impl_only_modules_defined_in_this_lib ~sctx ~scope lib =
   match Lib_info.modules (Lib.info lib) ~for_ with
@@ -222,7 +221,7 @@ let make_same_lib_emission_deps =
       |> Module_name.Unique.Map.mapi ~f:(fun _ sourced_module ->
         let module_ = Modules.Sourced_module.to_module sourced_module in
         Dep_rules.read_immediate_deps_of
-          ~sandbox
+          ~sandbox:Compilation_mode.default_sandbox
           ~sctx
           ~obj_dir
           ~modules
@@ -253,7 +252,7 @@ let make_same_lib_emission_deps =
       | true ->
         let* intf_deps =
           Dep_rules.read_deps_of
-            ~sandbox
+            ~sandbox:Compilation_mode.default_sandbox
             ~sctx
             ~obj_dir
             ~modules

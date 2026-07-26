@@ -116,7 +116,11 @@ which corresponds to `~min_len` in Link_time_code_gen.
 
   $ dune build
 
-  $ dune trace cat | jq 'select(.cat == "artifact_subtitution") | .args'
+  $ dune trace cat | jq_dune -s '
+  >   map(select(.cat == "artifact_subtitution") | .args)
+  > | sort_by(.file)
+  > | reverse[]
+  > '
   {
     "file": "_build/default/gen_lifecycle.exe",
     "placeholder": [

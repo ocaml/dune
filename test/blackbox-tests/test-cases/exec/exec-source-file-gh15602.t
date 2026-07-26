@@ -21,6 +21,6 @@ The executable runs normally:
 Trying to execute the source file exits with an error. The timeout guards
 against the command hanging:
 
-  $ $timeout 2 dune exec ./bin/main.ml
+  $ $timeout --signal=KILL 5 dune exec ./bin/main.ml
   Error: execve(./_build/default/bin/main.ml): Permission denied
   [1]

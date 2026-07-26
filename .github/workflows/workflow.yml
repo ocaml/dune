@@ -49,6 +49,14 @@ jobs:
       - uses: nixbuild/nix-quick-install-action@v35
       - run: nix develop -i -s CI true -c make test
 
+  nix-build-trunk:
+    name: Bootstrap with OCaml trunk (Nix)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: nixbuild/nix-quick-install-action@v35
+      - run: nix build .#dune-trunk
+
   fmt:
     name: Format
     runs-on: ubuntu-latest

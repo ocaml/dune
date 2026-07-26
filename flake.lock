@@ -80,6 +80,23 @@
         "type": "github"
       }
     },
+    "ocaml-trunk": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1784993091,
+        "narHash": "sha256-qROyQDSY87UiOyg80CCLWApoZlOn91Kp5g9y3AawanM=",
+        "owner": "ocaml",
+        "repo": "ocaml",
+        "rev": "63b0c81c38e8affcda002e125fad805efbb709a1",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ocaml",
+        "ref": "trunk",
+        "repo": "ocaml",
+        "type": "github"
+      }
+    },
     "revdeps-dune": {
       "inputs": {
         "melange": [
@@ -114,6 +131,7 @@
         "melange": "melange",
         "nixpkgs": "nixpkgs",
         "ocaml-overlays": "ocaml-overlays",
+        "ocaml-trunk": "ocaml-trunk",
         "revdeps-dune": "revdeps-dune"
       }
     }

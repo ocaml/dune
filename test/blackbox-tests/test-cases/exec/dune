@@ -1,0 +1,4 @@
+(cram
+ (applies_to exec-source-file-gh15602)
+ (enabled_if
+  (= %{system} linux)))

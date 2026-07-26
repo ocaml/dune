@@ -9,6 +9,10 @@
       url = "github:nix-ocaml/nix-overlays";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    ocaml-trunk = {
+      url = "github:ocaml/ocaml/trunk";
+      flake = false;
+    };
     revdeps-dune = {
       url = "github:ocaml/dune";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -29,6 +33,7 @@
       nixpkgs,
       melange,
       ocaml-overlays,
+      ocaml-trunk,
       revdeps-dune,
     }:
     let
@@ -135,8 +140,27 @@
         forAllSystems (
           pkgs:
           let
+            ocamlTrunkPackages = pkgs.ocaml-ng.ocamlPackages_trunk.overrideScope (
+              _oself: osuper: {
+                ocaml =
+                  (osuper.ocaml.override {
+                    flambdaSupport = false;
+                  }).overrideAttrs
+                    (_: {
+                      src = ocaml-trunk;
+                    });
+              }
+            );
+            trunkPkgs = pkgs // {
+              ocamlPackages = ocamlTrunkPackages;
+            };
             dune-package = import ./nix/dune-package.nix {
               inherit nixpkgs ocaml-overlays pkgs;
+              src = ./.;
+            };
+            dune-trunk-package = import ./nix/dune-package.nix {
+              inherit nixpkgs ocaml-overlays;
+              pkgs = trunkPkgs;
               src = ./.;
             };
           in
@@ -147,6 +171,7 @@
               windows-static
               ;
             dune = default;
+            dune-trunk = dune-trunk-package.default;
             dune-static = musl-static;
           }
         )

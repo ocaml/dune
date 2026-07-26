@@ -66,11 +66,16 @@ fast entry to be installed, so a sequential install would time out.
   $ slow_writer=$!
   $ (printf 'fast\n' >fast) &
   $ fast_writer=$!
-  $ if $timeout 2 dune install --prefix prefix --display short; then
+  $ if output=$(
+  >   $timeout --signal=KILL 2 dune install --prefix prefix \
+  >     --display short 2>&1
+  > ); then
+  >   printf '%s\n' "$output"
   >   wait "$slow_writer" "$fast_writer"
   >   grep -qx slow prefix/lib/foo/slow
   >   grep -qx fast prefix/lib/foo/fast
   > else
+  >   printf '%s\n' "$output"
   >   # Sequential installation blocks on slow and never starts fast.
   >   kill "$slow_writer" "$fast_writer" 2>/dev/null || true
   >   wait "$slow_writer" "$fast_writer" 2>/dev/null || true

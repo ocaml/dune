@@ -22,10 +22,20 @@ solver resolves it by binding the self variables:
   - foo.1.2.3
 
 Swap the locked dependency for a different version, violating the
-constraint. Validation evaluates the formula without the self bindings,
-which drops the version constraint instead of binding the package's own
-version, and the broken lockdir is accepted:
+constraint. Validation binds the self variables the same way the solver
+does and rejects the lockdir:
 
   $ sed -i.bak 's/1\.2\.3/9.9.9/' dune.lock/foo.1.2.3.pkg
   $ mv dune.lock/foo.1.2.3.pkg dune.lock/foo.9.9.9.pkg
   $ dune pkg validate-lockdir
+  Lockdir dune.lock does not contain a solution for local packages:
+  File "dune-project", lines 3-6, characters 0-67:
+  Error: The dependencies of local package "self" could not be satisfied from
+  the lockdir:
+  Found version "9.9.9" of package "foo" which doesn't satisfy the required
+  version constraint "= 1.2.3"
+  Hint: The lockdir no longer contains a solution for the local packages in
+  this project. Regenerate the lockdir by running: 'dune pkg lock'
+  Error: Some lockdirs do not contain solutions for local packages:
+  - dune.lock
+  [1]

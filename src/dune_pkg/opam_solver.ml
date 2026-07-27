@@ -1558,27 +1558,14 @@ let reject_unreachable_packages =
         | None, Some (pkg : Local_package.For_solver.t) ->
           let deps =
             match
-              let env =
-                let opam_package =
-                  OpamPackage.create
-                    (Package_name.to_opam_package_name pkg.name)
-                    (Package_version.to_opam_package_version pkg.version)
-                in
-                Solver_env.to_env solver_env
-                |> Lock_pkg.add_self_to_filter_env opam_package
-              in
-              let with_test = with_test solver_env in
-              Dependency_formula.to_filtered_formula pkg.dependencies
-              |> Resolve_opam_formula.filtered_formula_to_package_names
-                   ~env
-                   ~with_test
-                   ~packages:
-                     (Package_name.Map.set pkgs_by_version Dune_dep.name dune_version)
+              Lock_pkg.local_package_dependencies
+                pkg
+                ~env:(Solver_env.to_env solver_env)
+                ~with_test:(with_test solver_env)
+                ~packages:pkgs_by_version
+                ~dune_version
             with
-            | Ok { regular; post = _ (* discard post deps *) } ->
-              (* remove Dune from the formula as we remove it from solutions *)
-              List.filter regular ~f:(fun pkg ->
-                not (Package_name.equal Dune_dep.name pkg))
+            | Ok regular -> regular
             | Error (`Formula_could_not_be_satisfied hints) ->
               (match hints with
                | [ (Unsatisfied_version_constraint { package_name; _ } as hint) ]

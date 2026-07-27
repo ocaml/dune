@@ -396,7 +396,16 @@ end = struct
             (Path.Local.relative root dst)
             ~of_:root
         in
-        Some { src; src_len = List.length src; dst }
+        let src_len = List.length src in
+        if src_len <> List.length dst
+        then
+          User_error.raise
+            ~loc:dst_loc
+            [ Pp.text
+                "The source and destination directories must have the same number of \
+                 path components."
+            ]
+        else Some { src; src_len; dst }
     ;;
 
     let expand sctx ~dir dirs =

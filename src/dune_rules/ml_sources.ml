@@ -241,7 +241,21 @@ let raise_duplicate_module ?loc ~dir name f1 f2 =
     ]
 ;;
 
-let module_files ~root_dir ~dialects ~dir ~files ~for_ =
+type group_interface_rename =
+  { source_name : string
+  ; public_name : string
+  }
+
+let module_name_of_file ~loc ~group_interface_rename name =
+  let name =
+    match group_interface_rename with
+    | Some { source_name; public_name } when String.equal name source_name -> public_name
+    | None | Some _ -> name
+  in
+  Module_name.of_string_allow_invalid (loc, name)
+;;
+
+let module_files ~root_dir ~dialects ~dir ~files ~for_ ~group_interface_rename =
   let loc = Loc.in_dir (Path.build dir) in
   let impl_files, intf_files =
     let make_module dialect name ~original_filename ~fn =
@@ -279,7 +293,7 @@ let module_files ~root_dir ~dialects ~dir ~files ~for_ =
            (match Dialect.DB.find_by_extension dialects ext with
             | None -> Skip
             | Some (dialect, ml_kind) ->
-              let name = Module_name.of_string_allow_invalid (loc, s) in
+              let name = module_name_of_file ~loc ~group_interface_rename s in
               let module_ =
                 let name, module_ =
                   make_module
@@ -324,8 +338,10 @@ let module_files ~root_dir ~dialects ~dir ~files ~for_ =
   parse_one_set impl_files, parse_one_set intf_files
 ;;
 
-let modules_of_files ~root_dir ~path ~dialects ~dir ~files ~for_ =
-  let impls, intfs = module_files ~root_dir ~dialects ~dir ~files ~for_ in
+let modules_of_files ~root_dir ~path ~dialects ~dir ~files ~for_ ~group_interface_rename =
+  let impls, intfs =
+    module_files ~root_dir ~dialects ~dir ~files ~for_ ~group_interface_rename
+  in
   Module_name.Unchecked.Map.merge impls intfs ~f:(fun name impl intf ->
     let path =
       Nonempty_list.(map (path @ [ name ]) ~f:Module_name.Unchecked.allow_invalid)
@@ -834,6 +850,17 @@ let module_path ~loc ~include_subdirs ~dir path_to_root =
       | None -> Path.build dir |> Path.drop_optional_build_context |> Loc.in_dir
     in
     List.map path_to_root ~f:(fun m -> Module_name.of_string_allow_invalid (loc, m))
+;;
+
+let group_interface_rename ~dir path_to_root =
+  match List.last path_to_root with
+  | None -> None
+  | Some public_name ->
+    let source_name = Path.Build.basename dir |> Filename.to_string in
+    let public_name = Filename.to_string public_name in
+    Option.some_if
+      (not (String.equal source_name public_name))
+      { source_name; public_name }
 ;;
 
 module Generated_modules = struct
@@ -1366,7 +1393,14 @@ let make
                   (Filename.L.to_string path_to_root)
               in
               let modules =
-                modules_of_files ~root_dir ~dialects ~dir ~files ~path ~for_
+                modules_of_files
+                  ~root_dir
+                  ~dialects
+                  ~dir
+                  ~files
+                  ~path
+                  ~for_
+                  ~group_interface_rename:(group_interface_rename ~dir path_to_root)
               in
               Module_trie.Unchecked.set_map acc path modules
             with
@@ -1408,7 +1442,14 @@ let make
             ~f:(fun acc { Source_file_dir.dir; files; path_to_root = _; _ } ->
               let modules =
                 let path = [] in
-                modules_of_files ~root_dir ~dialects ~dir ~files ~path ~for_
+                modules_of_files
+                  ~root_dir
+                  ~dialects
+                  ~dir
+                  ~files
+                  ~path
+                  ~for_
+                  ~group_interface_rename:None
               in
               Module_name.Unchecked.Map.union acc modules ~f:(fun name x y ->
                 User_error.raise

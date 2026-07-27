@@ -25,6 +25,7 @@ end
 
 module Session = Rpc.Server.Session
 module Handler = Rpc.Server.Handler
+module Workspace = Source.Workspace
 module Source = Rpc.Long_poll.Source
 module Csexp_rpc = Rpc.Csexp_rpc
 
@@ -345,6 +346,13 @@ let handler (t : t Fdecl.t) : unit Handler.t =
       Fiber.return { Status.clients }
     in
     Handler.implement_request rpc Decl.status f
+  in
+  let () =
+    let f _ () =
+      let+ workspace = Memo.run (Workspace.workspace ()) in
+      Workspace.pkg_enabled workspace
+    in
+    Handler.implement_request rpc Decl.pkg_enabled f
   in
   let () =
     let f _ () =

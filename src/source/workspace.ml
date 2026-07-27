@@ -878,6 +878,20 @@ let hash { merlin_context; contexts; env; config; repos; lock_dirs; dir; pins } 
     , Pin_stanza.Workspace.hash pins )
 ;;
 
+let pkg_enabled { config; lock_dirs; _ } =
+  match config.pkg_enabled with
+  | Set (_, `Enabled) -> true
+  | Set (_, `Disabled) -> false
+  | Unset ->
+    (* CR-someday Alizter: Use the active lock directory instead of detecting lock
+       directories in the source tree. *)
+    let lock_dir_paths =
+      Path.Source.(relative root "dune.lock")
+      :: List.map lock_dirs ~f:(fun (lock_dir : Lock_dir.t) -> lock_dir.path)
+    in
+    List.exists lock_dir_paths ~f:(fun path -> Fpath.exists (Path.Source.to_string path))
+;;
+
 let source_path_of_lock_dir_path path =
   match (path : Path.t) with
   | In_source_tree s -> s

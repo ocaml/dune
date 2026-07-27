@@ -54,5 +54,19 @@ module Build = struct
   ;;
 end
 
+module Pkg_enabled = struct
+  let v1 =
+    Decl.Request.make_current_gen
+      ~req:Conv.unit
+      ~resp:(Conv.enum [ "enabled", true; "disabled", false ])
+      ~version:1
+  ;;
+
+  let decl =
+    Decl.Request.make ~method_:(Method.Name.of_string "pkg-enabled") ~generations:[ v1 ]
+  ;;
+end
+
 let build = Build.decl
 let status = Status.decl
+let pkg_enabled = Pkg_enabled.decl

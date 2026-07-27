@@ -88,3 +88,19 @@ higher precedence so it should be enabled:
   > EOF
   $ dune pkg enabled --config-file=config && echo "Workspace config overrides user config"
   Workspace config overrides user config
+
+The status reported by a running watch server also includes its command-line
+configuration. The command-line setting overrides the enabled workspace:
+
+  $ dune build --pkg disabled --passive-watch-mode > .#dune-output 2>&1 &
+  $ disown
+  $ wait_for_rpc_server
+  $ dune pkg enabled
+  [1]
+
+If the server exits without removing its RPC socket, the local state is used:
+
+  $ server_pid=$(cat _build/.lock)
+  $ kill -9 "$server_pid"
+  $ wait_for_pid_to_exit_with_timeout "$server_pid" 200
+  $ dune pkg enabled

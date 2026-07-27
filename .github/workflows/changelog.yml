@@ -1,0 +1,20 @@
+name: Changelog
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+    branches:
+      - main
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  check-changelog:
+    name: Entry Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for a changelog entry
+        uses: tarides/changelog-check-action@v3
+        with:
+          changelog: doc/changes

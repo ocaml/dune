@@ -706,7 +706,7 @@ module Internal = struct
 
   (* Returns the action's stdout or the empty string if [capture_stdout = false]. *)
   and execute_action_generic_stage2_impl
-        { Anonymous_action.action = { dir; aliases; loc; action }
+        { Anonymous_action.action = { dir; attached_to_alias; loc; action }
         ; deps
         ; capture_stdout
         ; digest
@@ -716,20 +716,7 @@ module Internal = struct
       let dir =
         Path.Build.append_local Dpath.Build.anonymous_actions_dir (Path.Build.local dir)
       in
-      let d = Digest.to_string digest in
-      let basename =
-        match aliases with
-        | [] -> d
-        | aliases ->
-          let a =
-            aliases
-            |> List.map ~f:Alias.Name.to_string
-            |> List.min ~f:String.compare
-            |> Option.value_exn
-          in
-          a ^ "-" ^ d
-      in
-      Path.Build.relative dir basename
+      Path.Build.relative dir (Digest.to_string digest)
     in
     let rule =
       Rule.make
@@ -742,11 +729,7 @@ module Internal = struct
       execute_rule_impl
         rule
         ~rule_kind:
-          (Anonymous_action
-             { attached_to_alias = List.is_non_empty aliases
-             ; capture_stdout
-             ; stamp_file = target
-             })
+          (Anonymous_action { capture_stdout; stamp_file = target; attached_to_alias })
     in
     if capture_stdout then Io.read_file (Path.build target) else ""
 
@@ -785,7 +768,7 @@ module Internal = struct
               { action; env; locks; can_go_in_shared_cache; sandbox; corrections }
           ; loc = _
           ; dir
-          ; aliases
+          ; attached_to_alias = _
           }
         =
         act
@@ -806,12 +789,6 @@ module Internal = struct
         Action.digest d action;
         digest_locks d locks;
         Digest.Manual.string d (Path.Build.to_string dir);
-        let alias_names =
-          aliases
-          |> List.map ~f:Alias.Name.to_string
-          |> List.sort_uniq ~compare:String.compare
-        in
-        Digest.Manual.list d ~f:Digest.Manual.string alias_names;
         Digest.Manual.bool d capture_stdout;
         Digest.Manual.bool d can_go_in_shared_cache;
         digest_sandbox_config d sandbox;

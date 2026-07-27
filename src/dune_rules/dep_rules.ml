@@ -98,7 +98,7 @@ let merge_deps ~dir ~transitive ~immediate =
         |> Action.Full.make ~sandbox:Sandbox_config.no_sandboxing
     ; loc = Loc.none
     ; dir
-    ; aliases = []
+    ; attached_to_alias = false
     }
   in
   Build_system.execute_action_stdout action |> Action_builder.of_memo

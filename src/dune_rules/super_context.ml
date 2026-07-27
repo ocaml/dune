@@ -157,10 +157,10 @@ let extend_action_env t ~dir action =
   Action.Full.add_env env action
 ;;
 
-let execute_action_stdout t ?alias ~loc ~dir action =
+let execute_action_stdout t ?(attached_to_alias = false) ~loc ~dir action =
   let open Action_builder.O in
   (let+ action = extend_action_env t ~dir action in
-   { Rule.Anonymous_action.action; loc; dir; aliases = Option.to_list alias })
+   { Rule.Anonymous_action.action; loc; dir; attached_to_alias })
   |> Build_system.execute_action_stdout
 ;;
 

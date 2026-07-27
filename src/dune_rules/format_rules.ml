@@ -21,18 +21,13 @@ let formatter_diff_action =
       { Rule.Anonymous_action.action
       ; loc
       ; dir = Alias.dir alias
-      ; aliases = [ Alias.name alias ]
+      ; attached_to_alias = true
       }
     in
     Build_system.dep_on_alias_definition (Rules.Dir_rules.Alias_spec.Action action)
   in
   let formatter_stdout sctx ~loc alias action =
-    Super_context.execute_action_stdout
-      sctx
-      ~alias:(Alias.name alias)
-      ~loc
-      ~dir:(Alias.dir alias)
-      action
+    Super_context.execute_action_stdout sctx ~loc ~dir:(Alias.dir alias) action
     |> Action_builder.of_memo
   in
   fun sctx ~loc alias ~input formatter ->

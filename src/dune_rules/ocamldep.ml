@@ -78,7 +78,7 @@ let ocamldep_action ~sandbox ~sctx ~dir ~ml_kind unit =
       ; Dep (Module.File.path source)
       ]
   in
-  { Rule.Anonymous_action.action; loc = Loc.none; dir; aliases = [] }
+  { Rule.Anonymous_action.action; loc = Loc.none; dir; attached_to_alias = false }
 ;;
 
 (* Top-level cache per (source path, ml_kind). Without it, each caller's

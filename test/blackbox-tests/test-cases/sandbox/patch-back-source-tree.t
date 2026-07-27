@@ -314,13 +314,19 @@ produced in the sandbox and copied back:
   >  (action (bash "echo 'Hello, world!'")))
   > EOF
 
+  $ rm -rf _build
   $ dune build @blah
   Hello, world!
 
-This is the internal stamp file:
+The stamp file is kept internal to the build directory: it must not be patched
+back into the source tree, so there is nothing to promote.
 
-  $ ls _build/.actions/default/blah* | dune_cmd subst '/blah-.+' '/blah-REDACTED'
-  _build/.actions/default/blah-REDACTED
+  $ dune promotion list
+
+The stamp itself lives under the build directory, named after its digest:
+
+  $ ls _build/.actions/default/ | dune_cmd subst '[0-9a-f]{32}' 'REDACTED'
+  REDACTED
 
 Patch-back sandboxing with directory targets
 --------------------------------------------

@@ -164,7 +164,7 @@ module Produce = struct
         { Rule.Anonymous_action.action
         ; loc
         ; dir = Alias.dir representative
-        ; aliases = List.map ts ~f:Alias.name
+        ; attached_to_alias = true
         }
       in
       Memo.parallel_iter ts ~f:(fun t ->

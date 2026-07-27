@@ -58,7 +58,7 @@ libraries that use `(include_subdirs qualified)` with renamed directories.
   $ cat >renamed-lib/dune-project <<EOF
   > (lang dune 3.25)
   > (package (name renamed))
-  > (using melange 0.1)
+  > (using melange 1.0)
   > EOF
   $ cat >renamed-lib/dune <<EOF
   > (include_subdirs
@@ -81,7 +81,7 @@ libraries that use `(include_subdirs qualified)` with renamed directories.
 
   $ cat >renamed-app/dune-project <<EOF
   > (lang dune 3.25)
-  > (using melange 0.1)
+  > (using melange 1.0)
   > EOF
   $ cat >renamed-app/dune <<EOF
   > (melange.emit

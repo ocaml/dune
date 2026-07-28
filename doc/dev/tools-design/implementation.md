@@ -7,7 +7,7 @@ Authors: Ali Caglayan (Tarides), Shon Feder (Tarides)
 This document specifies the implementatino of dune's tool management system.
 
 <!-- To regenerate TOC:
-nix shell --impure --expr 'let pkgs = import (builtins.getFlake "github:NixOS/nixpkgs") {}; in (pkgs.emacs.pkgs.withPackages (ps: [ps.markdown-toc]))' -c emacs --batch --eval "(progn (require 'markdown-toc) (find-file \"doc/dev/tools.md\") (markdown-toc-refresh-toc) (save-buffer))"
+nix shell --impure --expr 'let pkgs = import (builtins.getFlake "github:NixOS/nixpkgs") {}; in (pkgs.emacs.pkgs.withPackages (ps: [ps.markdown-toc]))' -c emacs --batch --eval "(progn (require 'markdown-toc) (find-file \"doc/dev/tools-design/implementation.md\") (markdown-toc-refresh-toc) (save-buffer))"
 -->
 
 <!-- markdown-toc start - Don't edit this section. Run M-x markdown-toc-refresh-toc -->
@@ -15,6 +15,7 @@ nix shell --impure --expr 'let pkgs = import (builtins.getFlake "github:NixOS/ni
 
 - [Tools Implementation](#tools-implementation)
 - [Summary](#summary)
+- [How to Read This Document](#how-to-read-this-document)
 - [Design](#design)
   - [The `(tool)` stanza](#the-tool-stanza)
     - [Syntax](#syntax)

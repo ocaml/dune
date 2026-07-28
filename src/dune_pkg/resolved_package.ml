@@ -10,6 +10,7 @@ type rest =
   ; extra_files : extra_files
   ; loc : Loc.t
   ; dune_build : bool
+  ; archive_mirrors : OpamUrl.t list
   }
 
 type nonrec t =
@@ -51,7 +52,12 @@ let extra_files = function
   | Rest t -> Some t.extra_files
 ;;
 
-let git_repo package (loc, opam_file) rev ~files_dir ~url =
+let archive_mirrors = function
+  | Dune -> []
+  | Rest t -> t.archive_mirrors
+;;
+
+let git_repo package (loc, opam_file) rev ~files_dir ~url ~archive_mirrors =
   let opam_file = Opam_file.opam_file_with ~package ~url opam_file in
   Rest
     { dune_build = false
@@ -59,10 +65,11 @@ let git_repo package (loc, opam_file) rev ~files_dir ~url =
     ; package
     ; opam_file
     ; extra_files = Git_files (files_dir, rev)
+    ; archive_mirrors
     }
 ;;
 
-let local_fs package (loc, opam_file) ~dir ~files_dir ~url =
+let local_fs package (loc, opam_file) ~dir ~files_dir ~url ~archive_mirrors =
   let files_dir = Option.map files_dir ~f:(Path.append_local dir) in
   let opam_file = Opam_file.opam_file_with ~package ~url opam_file in
   Rest
@@ -71,6 +78,7 @@ let local_fs package (loc, opam_file) ~dir ~files_dir ~url =
     ; package
     ; extra_files = Inside_files_dir files_dir
     ; opam_file
+    ; archive_mirrors
     }
 ;;
 
@@ -109,7 +117,14 @@ let local_package ~command_source (loc, opam_file) opam_package =
   in
   let opam_file = Opam_file.opam_file_with ~package:opam_package ~url:None opam_file in
   let package = OpamFile.OPAM.package opam_file in
-  Rest { dune_build; opam_file; package; loc; extra_files = Inside_files_dir None }
+  Rest
+    { dune_build
+    ; opam_file
+    ; package
+    ; loc
+    ; extra_files = Inside_files_dir None
+    ; archive_mirrors = []
+    }
 ;;
 
 open Fiber.O
@@ -216,6 +231,10 @@ let digest res_pkg =
           ; "version", Atom (OpamPackage.version opam_pkg |> OpamPackage.Version.to_string)
           ] )
     ; "dune_build", Atom (dune_build res_pkg |> Bool.to_string)
+    ; ( "archive_mirrors"
+      , List
+          (archive_mirrors res_pkg
+           |> List.map ~f:(fun url -> Sexp.Atom (OpamUrl.to_string url))) )
     ; ( "extra_files"
       , Atom
           (extra_files res_pkg

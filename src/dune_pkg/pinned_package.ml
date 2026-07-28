@@ -97,7 +97,13 @@ let resolve_package { Local_package.loc; url = loc_url, url; name; version; orig
       let loc = Loc.in_file path in
       loc, Opam_file.opam_file_of_path path
     in
-    Resolved_package.local_fs package opam_file ~dir ~files_dir ~url:(Some url)
+    Resolved_package.local_fs
+      package
+      opam_file
+      ~dir
+      ~files_dir
+      ~url:(Some url)
+      ~archive_mirrors:[]
     |> Fiber.return
   | Git rev ->
     let+ contents =
@@ -125,5 +131,11 @@ let resolve_package { Local_package.loc; url = loc_url, url; name; version; orig
       let loc = Loc.in_file path in
       loc, Opam_file.opam_file_of_string_exn ~contents path
     in
-    Resolved_package.git_repo package opam_file rev ~files_dir ~url:(Some url)
+    Resolved_package.git_repo
+      package
+      opam_file
+      rev
+      ~files_dir
+      ~url:(Some url)
+      ~archive_mirrors:[]
 ;;

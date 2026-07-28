@@ -3,17 +3,22 @@ open Import
 type t =
   { url : Loc.t * OpamUrl.t
   ; checksum : (Loc.t * Checksum.t) option
+  ; archive_mirrors : OpamUrl.t list
   }
 
-let remove_locs { url = _loc, url; checksum } =
+let remove_locs { url = _loc, url; checksum; archive_mirrors } =
   { url = Loc.none, url
   ; checksum = Option.map checksum ~f:(fun (_loc, checksum) -> Loc.none, checksum)
+  ; archive_mirrors
   }
 ;;
 
 let equal
-      { url = loc, url; checksum }
-      { url = other_loc, other_url; checksum = other_checksum }
+      { url = loc, url; checksum; archive_mirrors }
+      { url = other_loc, other_url
+      ; checksum = other_checksum
+      ; archive_mirrors = other_archive_mirrors
+      }
   =
   Loc.equal loc other_loc
   && OpamUrl.equal url other_url
@@ -22,13 +27,15 @@ let equal
           Loc.equal loc other_loc && Checksum.equal checksum other_checksum)
        checksum
        other_checksum
+  && List.equal OpamUrl.equal archive_mirrors other_archive_mirrors
 ;;
 
-let hash { url; checksum } =
-  Tuple.T2.hash
+let hash { url; checksum; archive_mirrors } =
+  Tuple.T3.hash
     (Tuple.T2.hash Loc.hash OpamUrl.hash)
     (Option.hash (Tuple.T2.hash Loc.hash Checksum.hash))
-    (url, checksum)
+    (List.hash OpamUrl.hash)
+    (url, checksum, archive_mirrors)
 ;;
 
 let fetch_archive_cached =
@@ -66,7 +73,7 @@ let fetch_and_hash_archive_cached (url_loc, url) =
 ;;
 
 let compute_missing_checksum
-      ({ url = url_loc, url; checksum } as fetch)
+      ({ url = url_loc, url; checksum; archive_mirrors = _ } as fetch)
       package_name
       ~pinned
   =
@@ -92,7 +99,7 @@ let compute_missing_checksum
            ]);
     fetch_and_hash_archive_cached (url_loc, url)
     >>| Option.map ~f:(fun checksum ->
-      { url = url_loc, url; checksum = Some (Loc.none, checksum) })
+      { fetch with checksum = Some (Loc.none, checksum) })
     >>| Option.value ~default:fetch
 ;;
 
@@ -101,12 +108,16 @@ module Fields = struct
   let fetch = "fetch"
   let url = "url"
   let checksum = "checksum"
+  let archive_mirrors = "archive_mirrors"
 end
 
 let decode_fetch =
   let open Decoder in
   let+ url_loc, url = field Fields.url OpamUrl.decode_loc
-  and+ checksum = field_o Fields.checksum (located string) in
+  and+ checksum = field_o Fields.checksum (located string)
+  and+ archive_mirrors =
+    field Fields.archive_mirrors ~default:[] (repeat (OpamUrl.decode_loc >>| snd))
+  in
   let checksum =
     match checksum with
     | None -> None
@@ -114,13 +125,13 @@ let decode_fetch =
       let checksum = Checksum.of_string_user_error checksum |> User_error.ok_exn in
       Some (loc, checksum)
   in
-  { url = url_loc, url; checksum }
+  { url = url_loc, url; checksum; archive_mirrors }
 ;;
 
 let external_copy (loc, path) =
   let path = Path.External.to_string path in
   let url : OpamUrl.t = { transport = "file"; path; hash = None; backend = `rsync } in
-  { url = loc, url; checksum = None }
+  { url = loc, url; checksum = None; archive_mirrors = [] }
 ;;
 
 let decode =
@@ -141,10 +152,11 @@ let decode =
     ]
 ;;
 
-let encode_fetch_field { url = _loc, url; checksum } =
+let encode_fetch_field { url = _loc, url; checksum; archive_mirrors } =
   let open Encoder in
   [ field Fields.url string (OpamUrl.to_string url)
   ; field_o Fields.checksum Checksum.encode (Option.map checksum ~f:snd)
+  ; field_l Fields.archive_mirrors string (List.map archive_mirrors ~f:OpamUrl.to_string)
   ]
 ;;
 
@@ -160,6 +172,7 @@ let repr =
     [ Repr.field "url" url_repr ~get:(fun t -> snd t.url)
     ; Repr.field "checksum" (Repr.option Checksum.repr) ~get:(fun t ->
         Option.map t.checksum ~f:snd)
+    ; Repr.field "archive_mirrors" (Repr.list url_repr) ~get:(fun t -> t.archive_mirrors)
     ]
 ;;
 

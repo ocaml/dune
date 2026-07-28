@@ -23,24 +23,35 @@ module Repository = struct
   type t =
     { name : Name.t
     ; url : Loc.t * OpamUrl.t
+    ; archive_mirrors : OpamUrl.t list
     }
 
   let name { name; _ } = name
 
-  let to_dyn { name; url = _, url } =
+  let to_dyn { name; url = _, url; archive_mirrors } =
     let open Dyn in
-    variant "repository" [ Name.to_dyn name; string (OpamUrl.to_string url) ]
+    variant
+      "repository"
+      [ Name.to_dyn name
+      ; string (OpamUrl.to_string url)
+      ; list (fun url -> string (OpamUrl.to_string url)) archive_mirrors
+      ]
   ;;
 
-  let equal { name; url } t =
-    Name.equal name t.name && Tuple.T2.equal Loc.equal OpamUrl.equal url t.url
+  let equal { name; url; archive_mirrors } t =
+    Name.equal name t.name
+    && Tuple.T2.equal Loc.equal OpamUrl.equal url t.url
+    && List.equal OpamUrl.equal archive_mirrors t.archive_mirrors
   ;;
 
-  let hash { name; url } = Tuple.T2.hash Name.hash Poly.hash (name, url)
+  let hash { name; url; archive_mirrors } =
+    Tuple.T3.hash Name.hash Poly.hash (List.hash OpamUrl.hash) (name, url, archive_mirrors)
+  ;;
 
   let upstream =
     { name = "upstream"
     ; url = Loc.none, OpamUrl.of_string "git+https://github.com/ocaml/opam-repository.git"
+    ; archive_mirrors = [ OpamUrl.of_string "https://opam.ocaml.org/cache" ]
     }
   ;;
 
@@ -48,6 +59,7 @@ module Repository = struct
     { name = "overlay"
     ; url =
         Loc.none, OpamUrl.of_string "git+https://github.com/ocaml-dune/opam-overlays.git"
+    ; archive_mirrors = []
     }
   ;;
 
@@ -58,6 +70,7 @@ module Repository = struct
         , OpamUrl.of_string
             "git+https://github.com/ocaml-dune/opam-repository-relocatable.git#relocatable"
         )
+    ; archive_mirrors = []
     }
   ;;
 
@@ -67,6 +80,7 @@ module Repository = struct
         ( Loc.none
         , OpamUrl.of_string "git+https://github.com/ocaml-dune/ocaml-binary-packages.git"
         )
+    ; archive_mirrors = []
     }
   ;;
 
@@ -75,10 +89,11 @@ module Repository = struct
     fields
       (let+ name = field "name" Name.decode
        and+ url = field "url" OpamUrl.decode_loc in
-       { name; url })
+       { name; url; archive_mirrors = [] })
   ;;
 
-  let opam_url { name = _; url } = url
+  let opam_url { url; _ } = url
+  let archive_mirrors { archive_mirrors; _ } = archive_mirrors
 end
 
 let dev_tool_path_to_source_dir path =

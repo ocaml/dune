@@ -18,11 +18,7 @@ let formatter_diff_action =
     let action =
       let open Action_builder.O in
       let+ action = action in
-      { Rule.Anonymous_action.action
-      ; loc
-      ; dir = Alias.dir alias
-      ; attached_to_alias = true
-      }
+      { Rule.Anonymous_action.action; loc; dir = Alias.dir alias }
     in
     Build_system.dep_on_alias_definition (Rules.Dir_rules.Alias_spec.Action action)
   in

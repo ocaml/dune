@@ -63,7 +63,6 @@ val add_alias_action
     environment, as [add_rule] and [add_alias_action] do for regular rules. *)
 val execute_action_stdout
   :  t
-  -> ?attached_to_alias:bool
   -> loc:Loc.t
   -> dir:Path.Build.t
   -> Action.Full.t Action_builder.t

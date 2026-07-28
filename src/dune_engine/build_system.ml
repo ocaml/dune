@@ -319,7 +319,6 @@ module Internal = struct
     | Anonymous_action of
         { stamp_file : Path.Build.t
         ; capture_stdout : bool
-        ; attached_to_alias : bool
         }
 
   module Anonymous_action = struct
@@ -575,7 +574,7 @@ module Internal = struct
              So it seems to me that such rules should be re-executed. TBC *)
           match rule_kind with
           | Normal_rule -> false
-          | Anonymous_action a -> a.attached_to_alias
+          | Anonymous_action _ -> true
         in
         let force_rerun = !Clflags.force && is_test in
         force_rerun || Dep.Map.has_universe facts
@@ -706,7 +705,7 @@ module Internal = struct
 
   (* Returns the action's stdout or the empty string if [capture_stdout = false]. *)
   and execute_action_generic_stage2_impl
-        { Anonymous_action.action = { dir; attached_to_alias; loc; action }
+        { Anonymous_action.action = { dir; loc; action }
         ; deps
         ; capture_stdout
         ; digest
@@ -728,8 +727,7 @@ module Internal = struct
     let+ { facts = _; targets = _ } =
       execute_rule_impl
         rule
-        ~rule_kind:
-          (Anonymous_action { capture_stdout; stamp_file = target; attached_to_alias })
+        ~rule_kind:(Anonymous_action { capture_stdout; stamp_file = target })
     in
     if capture_stdout then Io.read_file (Path.build target) else ""
 
@@ -768,7 +766,6 @@ module Internal = struct
               { action; env; locks; can_go_in_shared_cache; sandbox; corrections }
           ; loc = _
           ; dir
-          ; attached_to_alias = _
           }
         =
         act

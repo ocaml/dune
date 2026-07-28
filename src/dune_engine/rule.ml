@@ -139,6 +139,5 @@ module Anonymous_action = struct
     { action : Action.Full.t
     ; loc : Loc.t
     ; dir : Path.Build.t
-    ; attached_to_alias : bool
     }
 end

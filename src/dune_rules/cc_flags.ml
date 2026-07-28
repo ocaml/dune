@@ -169,11 +169,7 @@ let cc_vendor_action (ctx : Build_context.t) =
       |> Action.Full.make
       |> Action.Full.add_env env
     in
-    { Rule.Anonymous_action.action
-    ; loc = Loc.none
-    ; dir = ctx.build_dir
-    ; attached_to_alias = false
-    }
+    { Rule.Anonymous_action.action; loc = Loc.none; dir = ctx.build_dir }
 ;;
 
 let check_warn = function

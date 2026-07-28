@@ -88,7 +88,5 @@ module Anonymous_action : sig
     ; dir : Path.Build.t
       (** Directory the action is attached to. This is the directory where
         the outcome of the action will be cached. *)
-    ; attached_to_alias : bool
-      (** This action is attached to an alias. Used for [--force] logic. *)
     }
 end

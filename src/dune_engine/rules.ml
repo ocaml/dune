@@ -161,11 +161,7 @@ module Produce = struct
       let action =
         let open Action_builder.O in
         let+ action in
-        { Rule.Anonymous_action.action
-        ; loc
-        ; dir = Alias.dir representative
-        ; attached_to_alias = true
-        }
+        { Rule.Anonymous_action.action; loc; dir = Alias.dir representative }
       in
       Memo.parallel_iter ts ~f:(fun t ->
         alias

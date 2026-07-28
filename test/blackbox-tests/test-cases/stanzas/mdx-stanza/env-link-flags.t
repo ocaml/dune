@@ -21,7 +21,7 @@ mdx_gen linker invocation.
 
   $ dune build
 
-Show that the env link_flags (-cclib -lm) are missing from the mdx_gen linker
+Check that the env link_flags (-cclib -lm) are passed to the mdx_gen linker
 invocation.
 
   $ dune trace cat | jq_dune -r '
@@ -30,3 +30,5 @@ invocation.
   >   | .args.process_args[]
   >   | select(. == "-cclib" or . == "-lm")
   > '
+  -cclib
+  -lm

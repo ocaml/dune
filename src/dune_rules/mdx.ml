@@ -493,11 +493,20 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~mdx_prog =
       for_
   in
   let ext = Filename.Extension.bc_exe in
+  let link_args =
+    let open Action_builder.O in
+    let+ env_link_args =
+      Ocaml_flags_db.link_env ~dir
+      |> Action_builder.of_memo
+      >>= Link_flags.get ~use_standard_cxx_flags:false
+    in
+    Command.Args.S [ Command.Args.A "-linkall"; Command.Args.As env_link_args ]
+  in
   let+ (_ : Exe.dep_graphs) =
     Exe.build_and_link
       cctx
       ~program:{ name; main_module_name; loc }
-      ~link_args:(Action_builder.return (Command.Args.A "-linkall"))
+      ~link_args
       ~linkages:[ Exe.Linkage.custom_with_ext ~ext ocaml_toolchain.version ]
       ~promote:None
       ~env:(Action_builder.return Env.empty)

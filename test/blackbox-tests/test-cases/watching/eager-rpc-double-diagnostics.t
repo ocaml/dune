@@ -1,6 +1,6 @@
 An eager watcher evaluates both its sticky goal and an incoming RPC goal. When
 both observe the same cached failure, the forwarded build prints the diagnostic
-twice.
+only once.
 
   $ make_dune_project 3.25
 
@@ -33,9 +33,4 @@ Show the diagnostics returned to the forwarded build.
   2 |  (alias fail)
   3 |  (action (bash "echo failed action >&2; exit 1")))
   failed action
-  File "dune", lines 1-3, characters 0-70:
-  1 | (rule
-  2 |  (alias fail)
-  3 |  (action (bash "echo failed action >&2; exit 1")))
-  failed action
-  Error: Build failed with 2 errors.
+  Error: Build failed with 1 error.

@@ -37,6 +37,7 @@ exception Non_reproducible = Exec.Non_reproducible
 
 open Node
 module Error = Node.Error
+module Exn_set = Node.Exn_set
 module Cycle_error = Node.Cycle_error
 
 let () =
@@ -221,13 +222,23 @@ let is_top_level =
   not is_set
 ;;
 
+let with_error_handler ~handle_error_no_raise f =
+  Error_handler.with_error_handler handle_error_no_raise f
+;;
+
+let run_and_collect_errors t =
+  let+ res = Exec.report_and_collect_errors t in
+  match res with
+  | Ok ok -> Ok ok
+  | Error ({ exns; reproducible = _ } : Collect_errors_monoid.t) -> Error exns
+;;
+
 let run_with_error_handler t ~handle_error_no_raise =
-  Error_handler.with_error_handler handle_error_no_raise (fun () ->
-    let* res = Exec.report_and_collect_errors t in
-    match res with
+  with_error_handler ~handle_error_no_raise (fun () ->
+    run_and_collect_errors t
+    >>= function
     | Ok ok -> Fiber.return ok
-    | Error ({ exns; reproducible = _ } : Collect_errors_monoid.t) ->
-      Fiber.reraise_all (Exn_set.to_list exns))
+    | Error exns -> Fiber.reraise_all (Exn_set.to_list exns))
 ;;
 
 let run t =

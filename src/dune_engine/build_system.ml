@@ -1216,7 +1216,9 @@ let run_with_error_collection ?restart_started_at ~build_started_at ~build colle
     Fiber.finalize
       (fun () ->
          let* () = State.reset_errors () in
-         let* outcome = collect_errors () in
+         let* outcome =
+           Memo.with_error_handler ~handle_error_no_raise:report_early_exn collect_errors
+         in
          let progress =
            match !State.t with
            | Building progress -> progress
@@ -1371,18 +1373,17 @@ let run_build_requests ?restart_started_at ~build_started_at ?build (request : R
     | Complete_goals, _ -> Request.Goal.complete goal outcome
   in
   let run_request goal =
-    Fiber.collect_errors (fun () ->
-      Memo.run_with_error_handler ~handle_error_no_raise:report_early_exn (fun () ->
-        Request.Goal.build goal |> evaluate_action_builder))
+    Memo.run_and_collect_errors (fun () ->
+      Request.Goal.build goal |> evaluate_action_builder)
     >>= function
     | Ok () ->
       let+ () = finish_request goal Success in
-      Ok ()
-    | Error exns when List.for_all exns ~f:caused_by_cancellation ->
-      Fiber.return (Error exns)
+      Memo.Exn_set.empty
+    | Error exns when Memo.Exn_set.for_all exns ~f:caused_by_cancellation ->
+      Fiber.return exns
     | Error exns ->
       let+ () = finish_request goal Failure in
-      Error exns
+      exns
   in
   Fiber.finalize
     ~finally:(fun () -> complete_action_runner_build build)
@@ -1390,12 +1391,11 @@ let run_build_requests ?restart_started_at ~build_started_at ?build (request : R
        run_with_error_collection ?restart_started_at ~build_started_at ~build (fun () ->
          Request.goals request
          |> Fiber.parallel_map ~f:run_request
-         >>| List.concat_map ~f:(function
-           | Ok () -> []
-           | Error exns -> exns)
-         >>| function
-         | [] -> Ok ()
-         | exns -> Error exns))
+         (* Several goals may fail on a shared dependency; taking the union
+            reports such an error once. *)
+         >>| Memo.Exn_set.union_all
+         >>| fun exns ->
+         if Memo.Exn_set.is_empty exns then Ok () else Error (Memo.Exn_set.to_list exns)))
 ;;
 
 let run ?restart_started_at ?build f =

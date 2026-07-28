@@ -28,6 +28,7 @@ isn't reflected on a per action basis.
   $ DUNE_ENV_VAR=true dune build @enabled
   $ DUNE_ENV_VAR=false dune build @enabled
 
+  $ dune clean
   $ dune build @disabled
   $ DUNE_ENV_VAR=true dune build @disabled
   enabled!

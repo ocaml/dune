@@ -705,11 +705,7 @@ module Internal = struct
 
   (* Returns the action's stdout or the empty string if [capture_stdout = false]. *)
   and execute_action_generic_stage2_impl
-        { Anonymous_action.action = { dir; loc; action }
-        ; deps
-        ; capture_stdout
-        ; digest
-        }
+        { Anonymous_action.action = { dir; loc; action }; deps; capture_stdout; digest }
     =
     let target =
       let dir =

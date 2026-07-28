@@ -23,12 +23,12 @@ Errors with location embed in their output
   [1]
 
   $ dune clean; dune build --display short
-            sh alias default (exit 42)
+            sh (anonymous) (exit 42)
   File "foo", line 1: blah
   [1]
 
   $ dune clean; dune build --display short --always-show-command-line
-            sh alias default (exit 42)
+            sh (anonymous) (exit 42)
   (cd _build/default && SH -c 'echo '\''File "foo", line 1: blah'\''; exit 42')
   File "foo", line 1: blah
   [1]
@@ -64,7 +64,7 @@ Errors without location embed in their output
   1 | (rule
   2 |  (alias default)
   3 |  (action (system "echo failure; exit 42")))
-            sh alias default (exit 42)
+            sh (anonymous) (exit 42)
   failure
   [1]
 
@@ -73,7 +73,7 @@ Errors without location embed in their output
   1 | (rule
   2 |  (alias default)
   3 |  (action (system "echo failure; exit 42")))
-            sh alias default (exit 42)
+            sh (anonymous) (exit 42)
   (cd _build/default && SH -c 'echo failure; exit 42')
   failure
   [1]
@@ -109,7 +109,7 @@ Errors with no output
   1 | (rule
   2 |  (alias default)
   3 |  (action (system "exit 42")))
-            sh alias default (exit 42)
+            sh (anonymous) (exit 42)
   [1]
 
   $ dune clean; dune build --display short --always-show-command-line
@@ -117,7 +117,7 @@ Errors with no output
   1 | (rule
   2 |  (alias default)
   3 |  (action (system "exit 42")))
-            sh alias default (exit 42)
+            sh (anonymous) (exit 42)
   (cd _build/default && SH -c 'exit 42')
   [1]
 
@@ -138,11 +138,11 @@ Successful commands with output
   Hello, world!
 
   $ dune clean; dune build --display short
-            sh alias default
+            sh (anonymous)
   Hello, world!
 
   $ dune clean; dune build --display short --always-show-command-line
-            sh alias default
+            sh (anonymous)
   (cd _build/default && SH -c 'echo '\''Hello, world!'\''')
   Hello, world!
 

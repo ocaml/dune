@@ -16,7 +16,7 @@ Checks `with-accepted-exit-codes` against matching and failing commands.
   1 | (rule
   2 |  (alias a)
   3 |  (action (with-accepted-exit-codes 0 (run dune_cmd exit-code 1))))
-      dune_cmd alias a (exit 1)
+      dune_cmd (anonymous) (exit 1)
   [1]
 
   $ cat >> dune <<EOF
@@ -26,7 +26,7 @@ Checks `with-accepted-exit-codes` against matching and failing commands.
   > EOF
 
   $ dune build --display=short --root . @b
-      dune_cmd alias b
+      dune_cmd (anonymous)
 
   $ cat >> dune <<EOF
   > (rule
@@ -38,14 +38,14 @@ Checks `with-accepted-exit-codes` against matching and failing commands.
   > EOF
 
   $ dune build --display=short --root . @c
-      dune_cmd alias c
+      dune_cmd (anonymous)
 
   $ dune build --display=short --root . @d
   File "dune", lines 10-12, characters 0-92:
   10 | (rule
   11 |  (alias d)
   12 |  (action (with-accepted-exit-codes (or 4 5 6) (run dune_cmd exit-code 7))))
-      dune_cmd alias d (exit 7)
+      dune_cmd (anonymous) (exit 7)
   [1]
 
   $ cat >> dune <<EOF

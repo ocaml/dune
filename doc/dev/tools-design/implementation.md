@@ -127,16 +127,22 @@ uses the same dependency syntax as `(depends ...)` for the package field.
 
 ```lisp
 (tool
- (package <package-dependency>)   ; Required: package name with optional constraint
- (executable <string>)            ; Optional: binary name, defaults to package name
- (skip_compiler_match)            ; Optional: flag to disable compiler matching
- (repositories <repo-name> ...))  ; Optional: restrict to specific repositories
+  (package <dep>)                       ; required: the tool package
+  (executables <name> ...)                 ; optional: binaries to expose
+  (inherit_lock_dir [<path>])           ; optional: inherit solve env from a lock_dir stanza
+  (repositories <repo-name>|:inherit ...)   ; optional: repositories to solve from
+  (solver_env <settings>)               ; optional: solver variable assignments
+  (unset_solver_vars <name>|:inherit ...)   ; optional: solver variables to leave  undefined
+  (version_preference <newest|oldest>)  ; optional
+  (solve_for_platforms <env>|:inherit ...)  ; optional: platforms to solve for
+  (constraints <dep>|:inherit ...)      ; optional: constraints on each solve
+  (pins <pin-name>|:inherit ...)        ; optional: pins (names of (pin ...) stanzas)
+  (skip_compiler_match))                ; optional: disable compiler matching
 ```
 
-CR-soon Alizter: missing pin
+CR-soon Sudha247: Can we express skip_compiler_match within the constraints field somehow?
 
-CR-soon Alizter: Should share some of lock_dir stanza fields. Need to do a
-comparison and explain why it is or is not a good idea.
+CR-soon Sudha247: do we need a `depopts` field?
 
 CR-soon Alizter: Edge cases for stanza parsing:
 
@@ -149,6 +155,21 @@ CR-soon Alizter: Edge cases for stanza parsing:
 CR-soon Sudha247: Capture constraints here? Related issue:
 [dune#12777](https://github.com/ocaml/dune/issues/12777)
 
+#### Semantics of `:inherit`
+
+  - Valid only in list-valued fields (repositories, unset_solver_vars,
+  solve_for_platforms, constraints, pins), and expands in place to the
+  corresponding field's value from the stanza named by `inherit_lock_dir`, e.g.
+  (repositories :inherit my-repo) means the inherited repositories followed by
+  my-repo.
+  - Omitting a field entirely means fully inherit it (when inherit_lock_dir is
+  present); writing the field without :inherit means fully override it.
+  - Using :inherit without inherit_lock_dir is an error.
+  - solver_env and version_preference are scalar-ish, so they follow the
+  omit-to-inherit / write-to-override rule with no :inherit keyword.
+  - Having an empty field with an existing (inherit_lock_dir) means omit that
+    particular field
+
 #### Fields
 
 - **`(package <dep>)`** (required): The opam package providing the tool. Accepts
@@ -158,23 +179,70 @@ CR-soon Sudha247: Capture constraints here? Related issue:
   - Version operators: `=`, `<>`, `<`, `>`, `<=`, `>=`
   - Conjunctions: `(and (>= 0.25.0) (< 0.27.0))`
 
-- **`(executable <name>)`** (optional): The binary to run. Defaults to the
-  package name. Required when the package provides multiple binaries.
+- **`(executables <name>)`** (optional): The binary to run. Defaults to the
+  package name. If the package installs multiple binaries and no binary matches
+  the package name, omitting this field is an error.
+
+- **`(inherit_lock_dir [<path>])`** (optional): Inherit the solve
+    environment from the `(lock_dir)` stanza whose path is `<path>`
+    (defaulting to `dune.lock`, the default lock directory). The inheritable
+    fields are `repositories`, `solver_env`, `unset_solver_vars`,
+    `version_preference`, `solve_for_platforms`, `constraints`, and `pins`.
+
+    When this field is present, each inheritable field follows one rule:
+
+    | You write                | Meaning                                      |
+    |--------------------------|----------------------------------------------|
+    | *(field omitted)*        | fully inherit the lock_dir's value           |
+    | `(field <values>)`       | fully override; inheritance suppressed       |
+    | `(field :inherit ...)`   | splice the lock_dir's value in at that position |
+    | `(field :standard ...)`  | splice dune's built-in default in            |
+
+    `:inherit` is only valid in list-valued fields, and only when
+    `inherit_lock_dir` is present; using it without is an error. Without
+    `inherit_lock_dir`, omitted fields take Dune's ordinary defaults.
+
+- **`(repositories <repo-name>|:inherit|:standard ...)`** (optional):
+    Repositories to solve from, as an ordered set. `:standard` is the default
+    repository set; `:inherit` is the lock_dir's repositories. Defaults to
+    `:inherit` when `inherit_lock_dir` is present, `:standard` otherwise.
+
+- **`(solver_env <settings>)`** (optional): Solver variable assignments for
+    this tool's solve. Scalar semantics: omitted = inherited (when
+    `inherit_lock_dir` is present), written = taken exactly as written,
+    `(solver_env)` = empty. To inherit the environment *minus* a variable,
+    inherit it and list the variable in `unset_solver_vars`.
+
+- **`(version_preference <newest|oldest>)`** (optional): Whether the solver
+    prefers the newest or oldest satisfying versions. Omitted = inherited
+    (when `inherit_lock_dir` is present), otherwise `newest`. To suppress
+    inheritance, spell the default: `(version_preference newest)`.
+
+- **`(solve_for_platforms <env>|:inherit|:standard ...)`** (optional):
+    Platforms to solve this tool for. `:standard` is the default platform set;
+    `:inherit` is the lock_dir's platforms. Writing the field so that it
+    evaluates to an empty set is an error. To get the default platforms
+    explicitly, write `(solve_for_platforms :standard)`.
+
+- **`(constraints <dep>|:inherit ...)`** (optional): Additional constraints
+    on the solve, in `(depends ...)` syntax. A constraint only binds when the
+    named package actually appears in the tool's solution, so inheriting the
+    project's constraints is safe: irrelevant ones are no-ops, and shared
+    transitive dependencies stay consistent with the project.
+
+- **`(pins <pin-name>|:inherit ...)`** (optional): Names of `(pin ...)`
+    stanzas to apply to this tool's solve.
 
 - **`(skip_compiler_match)`** (optional): When present, disables the default
   compiler matching behavior. Use this for tools that don't need compiler
   compatibility (e.g., formatters that only parse source text).
 
-CR-soon Alizter: The prototype uses `compiler_compatible` (opt-in) but this doc
-says `skip_compiler_match` (opt-out). Reconcile naming and semantics.
-
-- **`(repositories <names>)`** (optional): Restrict package resolution to the
-  named repositories. Useful for binary package repositories.
-
 CR-soon Alizter: The `(repositories)` field is parsed but verify that the
 restriction is actually applied during solving in the prototype.
 
-CR-soon Alizter: Missing pins
+CR-soon Alizter: The prototype uses `compiler_compatible` (opt-in) but this doc
+says `skip_compiler_match` (opt-out). Reconcile naming and semantics.
+
 
 #### Compiler matching
 
@@ -223,17 +291,43 @@ CR-soon Alizter: Edge cases for compiler matching:
 ;; Specifying the binary for multi-binary packages
 (tool
  (package menhir)
- (executable menhirSdk))
+ (executables menhirSdk))
 
 ;; Tool that doesn't need compiler matching
 (tool
  (package ocamlformat)
  (skip_compiler_match))
 
-;; Using a binary package repository
+;; Tool pinned to a fork
+(pin
+  (name ocamlformat)
+  (url "git+https://github.com/me/ocamlformat#my-fork"))
+
 (tool
- (package ocaml-lsp-server)
- (repositories binary-packages))
+  (package ocamlformat)
+  (pins ocamlformat))
+
+;; Inherit from lock_dir
+(tool
+   (package ocamlformat)
+   (inherit_lock_dir))
+
+;; More involved menhir
+
+(tool
+   (package (menhir (>= 20220210)))
+   (executables menhir menhirSdk)
+   (inherit_lock_dir dev.lock)
+   (repositories :inherit overlay-repo)     ; dev.lock's repos, then overlay-repo
+   (constraints :inherit (dune-build-info (>= 3.0)))  ; project constraints plus one
+   (solver_env
+    (with-test false))                      ; full override: dev.lock's solver_env 
+  ignored
+   (version_preference oldest)
+   (solve_for_platforms :standard)          ; opt out of dev.lock's platforms, use dune's
+  defaults
+   (skip_compiler_match))
+
 ```
 
 #### Invalid tool selections

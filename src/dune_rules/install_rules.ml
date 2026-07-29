@@ -746,11 +746,10 @@ end
 module Meta_and_dune_package : sig
   val meta_and_dune_package_rules : Super_context.t -> Dune_project.t -> unit Memo.t
 end = struct
-  let sections ctx_name files pkg =
-    let pkg_name = Package.name pkg in
+  let sections ctx_name files pkg_name sites =
     let sections =
       (* the one from sites *)
-      Package.sites pkg |> Site.Map.values |> Section.Set.of_list
+      sites |> Site.Map.values |> Section.Set.of_list
     in
     let sections =
       (* the one from install stanza *)
@@ -760,7 +759,7 @@ end = struct
       Install.Paths.get_local_location ctx_name section pkg_name)
   ;;
 
-  let make_dune_package sctx lib_entries (pkg : Package.t) =
+  let make_dune_package sctx lib_entries install_entries sites (pkg : Package.t) =
     Action_builder.of_memo
     @@
     let pkg_name = Package.name pkg in
@@ -869,8 +868,8 @@ end = struct
         Lib_name.Map.add_exn acc name x)
     in
     let+ files =
-      let+ map = Stanzas_to_entries.stanzas_to_entries sctx in
-      Package.Name.Map.Multi.find map pkg_name
+      let+ entries = install_entries in
+      entries
       |> List.map ~f:(fun (e : Install.Entry.Sourced.Unexpanded.t) ->
         let kind =
           match e.entry.kind with
@@ -881,14 +880,14 @@ end = struct
       |> Section.Map.of_list_multi
       |> Section.Map.to_list
     in
-    let sections = sections (Context.name ctx) files pkg in
+    let sections = sections (Context.name ctx) files pkg_name sites in
     Dune_package.Or_meta.Dune_package
       { Dune_package.version = Package.version pkg
       ; name = pkg_name
       ; entries
       ; dir = Path.build pkg_root
       ; sections
-      ; sites = Package.sites pkg
+      ; sites
       ; files
       }
   ;;
@@ -896,6 +895,10 @@ end = struct
   let gen_dune_package sctx (pkg : Package.t) lib_entries =
     let ctx = Super_context.context sctx |> Context.build_context in
     let dune_version = Dune_lang.Syntax.greatest_supported_version_exn Stanza.syntax in
+    let install_entries =
+      let+ map = Stanzas_to_entries.stanzas_to_entries sctx in
+      Package.Name.Map.Multi.find map (Package.name pkg)
+    in
     let action =
       let dune_package_file = Package_paths.dune_package_file ctx pkg in
       Action_builder.write_file_dyn
@@ -905,7 +908,13 @@ end = struct
          |> Path.build
          |> Action_builder.if_file_exists
               ~then_:(Action_builder.return Dune_package.Or_meta.Use_meta)
-              ~else_:(make_dune_package sctx lib_entries pkg)
+              ~else_:
+                (make_dune_package
+                   sctx
+                   lib_entries
+                   install_entries
+                   (Package.sites pkg)
+                   pkg)
          >>| Format.asprintf
                "%a"
                (Dune_package.Or_meta.pp ~dune_version ~encoding:Relative))
@@ -955,7 +964,7 @@ end = struct
                       (Dune_package.Entry.Deprecated_library_name
                          { loc; old_public_name; new_public_name }))
             in
-            let sections = sections ctx.name [] pkg in
+            let sections = sections ctx.name [] (Package.name pkg) (Package.sites pkg) in
             { Dune_package.version = Package.version pkg
             ; name
             ; entries
@@ -998,54 +1007,68 @@ end = struct
       Super_context.add_rule sctx ~dir:ctx.build_dir action
   ;;
 
+  let meta_entries_for_main_package entries =
+    Scope.DB.Lib_entry.Set.partition_map entries ~f:(function
+      | Scope.DB.Lib_entry.Deprecated_library_name
+          { old_name = public, Deprecated { deprecated_package }; _ } as entry ->
+        (match Public_lib.sub_dir public with
+         | None -> Left (deprecated_package, entry)
+         | Some _ -> Right entry)
+      | entry -> Right entry)
+    |> snd
+  ;;
+
+  let meta_template_lines ctx (pkg : Package.t) entries =
+    let meta_template = Path.build (Package_paths.meta_template ctx pkg) in
+    let meta_template_lines_or_fail =
+      let open Action_builder.O in
+      let* () = Action_builder.return () in
+      let* { Scope.DB.Lib_entry.Set.libraries; _ } = Action_builder.of_memo entries in
+      match
+        List.find_map libraries ~f:(fun lib ->
+          match Lib_info.kind (Lib.Local.info lib) with
+          | Parameter | Virtual -> Some lib
+          | Dune_file _ -> None)
+      with
+      | None -> Action_builder.lines_of meta_template
+      | Some vlib ->
+        Action_builder.fail
+          { fail =
+              (fun () ->
+                let name = Lib.name (Lib.Local.to_lib vlib) in
+                User_error.raise
+                  ~loc:(Loc.in_file meta_template)
+                  [ Pp.textf
+                      "Package %s defines virtual library %s and has a META template. \
+                       This is not allowed."
+                      (Package.Name.to_string (Package.name pkg))
+                      (Lib_name.to_string name)
+                  ])
+          }
+    in
+    Action_builder.if_file_exists
+      meta_template
+      ~then_:meta_template_lines_or_fail
+      ~else_:(Action_builder.return [ "# DUNE_GEN" ])
+  ;;
+
+  let render_meta_template template (meta : Meta.t) =
+    Pp.concat_map template ~sep:Pp.newline ~f:(fun line ->
+      if String.starts_with ~prefix:"#" line
+      then (
+        match String.extract_blank_separated_words (String.drop line 1) with
+        | [ ("JBUILDER_GEN" | "DUNE_GEN") ] -> Meta.pp meta.entries
+        | _ -> Pp.verbatim line)
+      else Pp.verbatim line)
+    |> Pp.vbox
+    |> Format.asprintf "%a" Pp.to_fmt
+  ;;
+
   let gen_meta_file sctx (pkg : Package.t) entries =
     let ctx = Super_context.context sctx |> Context.build_context in
     let* () =
-      let template =
-        let meta_template = Path.build (Package_paths.meta_template ctx pkg) in
-        let meta_template_lines_or_fail =
-          let open Action_builder.O in
-          let* () = Action_builder.return () in
-          let* { Scope.DB.Lib_entry.Set.libraries; _ } = Action_builder.of_memo entries in
-          match
-            List.find_map libraries ~f:(fun lib ->
-              match Lib_info.kind (Lib.Local.info lib) with
-              | Parameter | Virtual -> Some lib
-              | Dune_file _ -> None)
-          with
-          | None -> Action_builder.lines_of meta_template
-          | Some vlib ->
-            Action_builder.fail
-              { fail =
-                  (fun () ->
-                    let name = Lib.name (Lib.Local.to_lib vlib) in
-                    let pkg_name = Package.name pkg in
-                    User_error.raise
-                      ~loc:(Loc.in_file meta_template)
-                      [ Pp.textf
-                          "Package %s defines virtual library %s and has a META \
-                           template. This is not allowed."
-                          (Package.Name.to_string pkg_name)
-                          (Lib_name.to_string name)
-                      ])
-              }
-        in
-        Action_builder.if_file_exists
-          meta_template
-          ~then_:meta_template_lines_or_fail
-          ~else_:(Action_builder.return [ "# DUNE_GEN" ])
-      in
-      let meta_entries =
-        entries
-        >>| Scope.DB.Lib_entry.Set.partition_map ~f:(function
-          | Scope.DB.Lib_entry.Deprecated_library_name
-              { old_name = public, Deprecated { deprecated_package }; _ } as entry ->
-            (match Public_lib.sub_dir public with
-             | None -> Left (deprecated_package, entry)
-             | Some _ -> Right entry)
-          | entry -> Right entry)
-        >>| snd
-      in
+      let template = meta_template_lines ctx pkg entries in
+      let meta_entries = entries >>| meta_entries_for_main_package in
       Super_context.add_rule
         sctx
         ~dir:ctx.build_dir
@@ -1055,17 +1078,7 @@ end = struct
             Action_builder.of_memo meta_entries
             >>= Gen_meta.gen ~package:pkg ~add_directory_entry:true
           in
-          let pp =
-            Pp.concat_map template ~sep:Pp.newline ~f:(fun s ->
-              if String.starts_with ~prefix:"#" s
-              then (
-                match String.extract_blank_separated_words (String.drop s 1) with
-                | [ ("JBUILDER_GEN" | "DUNE_GEN") ] -> Meta.pp meta.entries
-                | _ -> Pp.verbatim s)
-              else Pp.verbatim s)
-            |> Pp.vbox
-          in
-          Format.asprintf "%a" Pp.to_fmt pp)
+          render_meta_template template meta)
          |> Action_builder.write_file_dyn (Package_paths.meta_file ctx pkg))
     in
     let deprecated_packages =

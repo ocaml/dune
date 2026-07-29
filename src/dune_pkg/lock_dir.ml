@@ -1025,17 +1025,6 @@ module Packages = struct
     |> Package_name.Map.map ~f:Package_version.Map.of_list_exn
   ;;
 
-  (* [choose_pkg_for_platform t name ~platform] returns the package whose name
-     is [name] which is enabled on [platform], and returns [None] if either no
-     package exists whose name is [name] or if there is no version of the
-     package that is enabled on [platform]. *)
-  let choose_pkg_for_platform t name ~platform =
-    let open Option.O in
-    Package_name.Map.find t name
-    >>| Package_version.Map.values
-    >>= List.find ~f:(Pkg.is_enabled_on_platform ~platform)
-  ;;
-
   let pkgs_on_platform_by_name t ~platform =
     Package_name.Map.filter_map t ~f:(fun version_map ->
       Package_version.Map.values version_map
@@ -1773,45 +1762,6 @@ module Load_immediate = Make_load (struct
 
 let read_disk = Load_immediate.load
 let read_disk_exn = Load_immediate.load_exn
-
-let transitive_dependency_closure t ~platform start =
-  let missing_packages =
-    let all_packages_in_lock_dir = Package_name.Set.of_keys t.packages in
-    Package_name.Set.diff start all_packages_in_lock_dir
-  in
-  match Package_name.Set.is_empty missing_packages with
-  | false -> Error (`Missing_packages missing_packages)
-  | true ->
-    let to_visit = Queue.create () in
-    let push_set = Package_name.Set.iter ~f:(Queue.push to_visit) in
-    push_set start;
-    let rec loop seen =
-      match Queue.pop to_visit with
-      | None -> seen
-      | Some node ->
-        let unseen_deps =
-          (* Note that the call to [Packages.choose_pkg_for_platform] won't
-             in general return [None] because [t] guarantees that its map of
-             dependencies is closed under "depends on". Sometimes a package
-             (such as dune) is explicitly removed from the closure in which
-             case we will have a [None] and ignore it. *)
-          Package_name.Set.(
-            diff
-              (of_list_map
-                 ~f:(fun depend -> depend.name)
-                 ((let open Option.O in
-                   let* pkg =
-                     Packages.choose_pkg_for_platform t.packages node ~platform
-                   in
-                   Conditional_choice.choose_for_platform pkg.depends ~platform)
-                  |> Option.value ~default:[]))
-              seen)
-        in
-        push_set unseen_deps;
-        loop (Package_name.Set.union seen unseen_deps)
-    in
-    Ok (loop start)
-;;
 
 let compute_missing_checksums t ~pinned_packages =
   let open Fiber.O in

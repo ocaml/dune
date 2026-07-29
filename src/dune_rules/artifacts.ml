@@ -34,8 +34,10 @@ type t =
        but the artifacts database is depended on by the logic which expands
        globs. The computation of this field is deferred to break the cycle. *)
     local_bins : local_bins Memo.Lazy.t
-  ; (* The packages whose lock directory binaries are visible from the dir: its
-       owning package and that package's dependency closure. *)
+  ; (* The packages whose binaries are visible from the dir: its owning package
+       and the packages it directly depends on (or depopts on). Dependencies of
+       those packages are not included unless they are listed too. Applies to
+       both [local_bins] and the lock directory. *)
     visible_packages : Package.Name.Selection.t
   }
 
@@ -49,6 +51,15 @@ let local_binaries { local_bins; _ } =
   List.filter_map (Filename.Map.to_list local_bins) ~f:(function
     | _, Resolved p -> Some p.binding
     | _, Origin _origins -> None)
+;;
+
+let origin_is_visible t (origin : origin) =
+  match t.visible_packages, origin.package with
+  | Package.Name.Selection.Only visible, Some package ->
+    Package.Name.Set.mem visible package
+  (* An origin with no owning package is always visible, similar to the rule
+     visibility with dune build -p. *)
+  | (Only _ | All), _ -> true
 ;;
 
 let analyze_binary t ~dir name =
@@ -81,7 +92,8 @@ let analyze_binary t ~dir name =
      | Some (Resolved p) -> Memo.return (`Resolved (Path.build p.path))
      | None -> which ()
      | Some (Origin origins) ->
-       Memo.parallel_map origins ~f:(fun origin ->
+       List.filter origins ~f:(origin_is_visible t)
+       |> Memo.parallel_map ~f:(fun origin ->
          origin.enabled_if
          >>| function
          | true -> Some origin

@@ -828,19 +828,20 @@ let expand_pkg_macro ~loc { context; _ } macro_invocation =
   [ Value.Path path ]
 ;;
 
-(* Dependency filters such as [{with-test}] are not interpreted here, so a
-   dependency is visible whatever its filter says. *)
+(* CR-someday punchagan: Dependency filters such as [{with-test}] are not
+   interpreted here, so a dependency is visible whatever its filter says. *)
 let visible_packages t =
   let open Memo.O in
-  let+ lock_dir_active = Pkg_rules.lock_dir_active (Context.name t.context) in
+  let context = Context.name t.context in
+  let* lock_dir_active = Pkg_rules.lock_dir_active context in
   if not lock_dir_active
-  then Package.Name.Selection.All
+  then Memo.return Package.Name.Selection.All
   else (
     let src_dir = Path.Build.drop_build_context_exn t.dir in
     match Dune_project.exclusive_package t.project ~dir:src_dir with
-    | None -> Package.Name.Selection.All
+    | None -> Memo.return Package.Name.Selection.All
     | Some pkg_id ->
-      let packages = Dune_project.packages t.project in
+      let+ packages = Dune_load.packages () in
       (* A name that is not a workspace package is a lock directory package. It
          is a leaf of this walk; its own dependencies are added by
          [Pkg.top_closure] over the lock directory's graph. *)
@@ -857,7 +858,7 @@ let visible_packages t =
               ~init:acc
               ~f:(fun acc (dep : Package_dependency.t) -> loop acc dep.name))
       in
-      Only (loop Package.Name.Set.empty (Package.Id.name pkg_id)))
+      Package.Name.Selection.Only (loop Package.Name.Set.empty (Package.Id.name pkg_id)))
 ;;
 
 let expand_pform_macro

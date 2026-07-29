@@ -1,14 +1,14 @@
-Workspace-installed binaries (the local_bins in [Artifacts]) are currently not
-narrowed: a package's stanzas resolve any workspace package's binary, including
-packages not in its dependency closure.
+Workspace-installed binaries (the local_bins in [Artifacts]) are narrowed when
+dune package management is enabled: a package's stanzas resolve any workspace
+package's binary present in its closure. The narrowing is only enabled when
+dune pkg management is enabled.
 
-Once narrowing lands, this will be restricted to the owning package's TRANSITIVE
-workspace dependency closure -- like [transitive-deps.t] for the lockdir side. In
-particular a transitively-depended package's binary must still resolve (which is
-what distinguishes narrowing to the transitive closure from narrowing to only the
-direct dependencies).
+Enable dune package management in the workspace file. We configure a mock opam
+repository to avoid trying to connect to the upstream repository:
 
-  $ make_lockdir
+  $ mkrepo
+  $ add_mock_repo_if_needed
+  $ enable_pkg
 
 Three workspace packages forming a chain [p] -> [q] -> [r]. [q] installs
 [q-tool] and [r] installs [r-tool]. A sibling [s] installs [s-tool] and is not
@@ -62,9 +62,16 @@ in [p]'s dependency closure.
   $ cat _build/default/p/r-avail
   true
 
-[s-tool] (sibling not in p's closure) is available too, since workspace binaries
-are not narrowed yet:
+[s-tool] (sibling not in p's closure) is NOT available:
 
+  $ cat _build/default/p/s-avail
+  false
+
+The [s-tool] becomes available when pkg management is not enabled:
+
+  $ rm dune-workspace
+
+  $ dune build @all
   $ cat _build/default/p/s-avail
   true
 

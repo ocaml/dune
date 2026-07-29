@@ -89,7 +89,7 @@ let get_impl t dir =
     Memo.lazy_ (fun () -> expander_for_artifacts t ~dir) |> Memo.Lazy.force
   in
   let profile = Context.profile t.context in
-  let visible_packages = expander >>= Expander.visible_packages in
+  let visible_packages = expander >>| Expander.visible_packages in
   let lockdir_bin_env =
     let* packages = visible_packages in
     Pkg_rules.bin_path_env ~packages (Context.name t.context)

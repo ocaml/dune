@@ -103,12 +103,9 @@ sibling [sibling]:
   $ dune build consumer/via-pform consumer/via-path
 
 [sibling] is not in [consumer]'s dependency closure, so its [dup] is narrowed
-out of [local_bins] and the pform falls through to the declared lockdir copy.
-
-BUG: the copy staged onto $PATH is still the sibling's. [Bin_layout.create]
-resolves the names it stages through the context-wide artifacts, which are not
-narrowed, so [(system dup)] and [%{bin:dup}] name different files inside a
-single action.
+out of [local_bins] and the lookup falls through to the declared lockdir copy.
+The staged copy on $PATH agrees with the pform, so [(system dup)] and
+[%{bin:dup}] name the same file.
 
 In [workspace-shadows-lockdir.t] the workspace binary does shadow the lockdir
 one: there it belongs to the directory's own owning package, which is always in
@@ -117,7 +114,7 @@ its own closure.
   $ cat _build/default/consumer/via-pform
   from lockdir
   $ cat _build/default/consumer/via-path
-  from workspace
+  from lockdir
 
 A name installed by two workspace packages
 -------------------------------------------
@@ -155,9 +152,13 @@ A name installed by two workspace packages
   > (package (name pkg-c) (allow_empty) (dir c) (depends pkg-a))
   > EOF
 
-[pkg-c] depends on [pkg-a] only, but that does not pick [pkg-a]'s [dup]:
-[Bin_layout.create] resolves through the context-wide artifacts, so both
-definitions are in scope and the lookup is ambiguous.
+[pkg-c] depends on [pkg-a], so resolving [dup] in [c/] is unambiguous and
+[Bin_layout.create] stages [pkg-a]'s copy. But the staged binary is symlinked
+from a [.binaries] directory keyed only by the names being staged, and shared
+between every directory staging the same names, so
+[Bin_layout.symlink_rules_for_key] resolves [dup] again there -- in a directory
+with no owning package, and through the context-wide artifacts -- where both
+definitions are in scope:
 
   $ dune build c/via-path
   File "b/dune", line 1, characters 47-53:

@@ -235,18 +235,15 @@ let get_with_path =
             "No lock dir path for context available"
             [ "context", Context_name.to_dyn ctx ]
       in
-      read_lockdir path
-      >>= function
-      | Error e -> Memo.return (Error e)
-      | Ok lock_dir ->
-        let+ workspace_lock_dir = get_workspace_lock_dir ctx in
-        (match workspace_lock_dir with
-         | None -> ()
-         | Some workspace_lock_dir ->
-           Solver_stats.Expanded_variable_bindings.validate_against_solver_env
-             lock_dir.expanded_solver_variable_bindings
-             (workspace_lock_dir.solver_env |> Option.value ~default:Solver_env.empty));
-        Ok (path, lock_dir))
+      let* lock_dir = read_lockdir path in
+      let+ workspace_lock_dir = get_workspace_lock_dir ctx in
+      (match workspace_lock_dir with
+       | None -> ()
+       | Some workspace_lock_dir ->
+         Solver_stats.Expanded_variable_bindings.validate_against_solver_env
+           lock_dir.expanded_solver_variable_bindings
+           (workspace_lock_dir.solver_env |> Option.value ~default:Solver_env.empty));
+      Ok (path, lock_dir))
     |> Memo.Lazy.force)
   |> Staged.unstage
 ;;
@@ -254,11 +251,24 @@ let get_with_path =
 let get ctx = get_with_path ctx >>| Result.map ~f:snd
 let get_exn ctx = get ctx >>| User_error.ok_exn
 
+(* Dev-tool lockdirs are produced by the solver running over a
+   single-package universe (the tool itself), so they never reference
+   workspace packages. Validate strictly. *)
+let check_dev_tool_lock_dir ~path lock_dir =
+  Dune_pkg.Lock_dir.check_packages
+    lock_dir.packages
+    ~lock_dir_path:path
+    ~external_packages:Package.Name.Set.empty
+  |> User_error.ok_exn
+;;
+
 let of_dev_tool dev_tool =
   let path = dev_tool |> dev_tool_external_lock_dir |> Path.external_ in
   (* Ensure the internal lock dir is built so copy rules run *)
   let* () = Build_system.build_dir (dev_tool_lock_dir dev_tool) in
-  Load.load_exn path
+  let+ lock_dir = Load.load path in
+  check_dev_tool_lock_dir ~path lock_dir;
+  lock_dir
 ;;
 
 let of_dev_tool_if_lock_dir_exists dev_tool =
@@ -269,9 +279,10 @@ let of_dev_tool_if_lock_dir_exists dev_tool =
     Fpath.exists (Path.to_string path)
   in
   if exists
-  then
-    let+ t = Load.load_exn path in
-    Some t
+  then (
+    let+ t = Load.load path in
+    check_dev_tool_lock_dir ~path t;
+    Some t)
   else Memo.return None
 ;;
 

@@ -169,7 +169,11 @@ let lockdir_status dev_tool =
   | false -> Memo.return `No_lockdir
   | true ->
     let dev_tool_lock_dir = Path.external_ dev_tool_lock_dir in
-    (match Lock_dir.read_disk dev_tool_lock_dir with
+    (* Dev tool lockdirs are produced by the solver running over a single
+       package and never reference workspace packages, so validate strictly. *)
+    (match
+       Lock_dir.read_disk dev_tool_lock_dir ~external_packages:Package_name.Set.empty
+     with
      | Error _ -> Memo.return `No_lockdir
      | Ok { packages; _ } ->
        let* platform =

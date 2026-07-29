@@ -40,6 +40,21 @@ let entry_resolver_fdecl
 
 let set_entry_resolver f = Fdecl.set entry_resolver_fdecl f
 
+let package_variable_resolver_fdecl
+  : (Context_name.t
+     -> Package.Name.t
+     -> OpamVariable.variable_contents Package_variable_name.Map.t Memo.t)
+      Fdecl.t
+  =
+  Fdecl.create Dyn.opaque
+;;
+
+let set_package_variable_resolver f = Fdecl.set package_variable_resolver_fdecl f
+
+let package_variables context package =
+  Fdecl.get package_variable_resolver_fdecl context package
+;;
+
 let dir ~context ~key =
   Path.Build.L.relative (Install.Context.dir ~context) [ ".packages"; key ]
 ;;

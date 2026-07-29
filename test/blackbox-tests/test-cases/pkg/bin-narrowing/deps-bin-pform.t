@@ -102,12 +102,9 @@ sibling [sibling]:
   $ dune build consumer/via-pform consumer/via-path
 
 [sibling] is not in [consumer]'s dependency closure, so its [dup] is narrowed
-out of [local_bins] and the pform falls through to the declared lockdir copy.
-
-BUG: the copy staged onto $PATH is still the sibling's. [Bin_layout.create]
-resolves the names it stages through the context-wide artifacts, which are not
-narrowed, so [(system dup)] and [%{bin:dup}] name different files inside a
-single action.
+out of [local_bins] and the lookup falls through to the declared lockdir copy.
+Nothing is staged, since only workspace binaries are, and [(system dup)] finds
+that same copy through [provider]'s bin directory on $PATH.
 
 In [workspace-shadows-lockdir.t] the workspace binary does shadow the lockdir
 one: there it belongs to the directory's own owning package, which is always in
@@ -116,7 +113,7 @@ its own closure.
   $ cat _build/default/consumer/via-pform
   from lockdir
   $ cat _build/default/consumer/via-path
-  from workspace
+  from lockdir
 
 A name installed by two workspace packages
 -------------------------------------------
@@ -143,6 +140,8 @@ A name installed by two workspace packages
   > EOF
   $ cat >c/dune <<'EOF'
   > (rule
+  >  (action (with-stdout-to via-pform (run %{bin:dup}))))
+  > (rule
   >  (deps %{bin:dup})
   >  (action (with-stdout-to via-path (system dup))))
   > EOF
@@ -154,9 +153,17 @@ A name installed by two workspace packages
   > (package (name pkg-c) (allow_empty) (dir c) (depends pkg-a))
   > EOF
 
-[pkg-c] depends on [pkg-a] only, but that does not pick [pkg-a]'s [dup]:
-[Bin_layout.create] resolves through the context-wide artifacts, so both
-definitions are in scope and the lookup is ambiguous.
+The ordinary narrowed pform lookup selects [pkg-a], the only provider in
+[pkg-c]'s dependency closure:
+
+  $ dune build c/via-pform
+  $ cat _build/default/c/via-pform
+  from a
+
+Staging the same pform through [(deps ...)] should select the same provider.
+[Bin_layout.create] resolves it correctly in [c/], but records only the lookup
+and install names. The rule producing the staged copy then resolves [dup] again
+from the unowned [.binaries] directory, where both definitions are visible:
 
   $ dune build c/via-path
   File "b/dune", line 1, characters 47-53:
@@ -166,3 +173,6 @@ definitions are in scope and the lookup is ambiguous.
   available in:
   - a/dune:1
   [1]
+
+The layout key needs to retain the source or provider selected by the first
+lookup so that [via-path] also runs [pkg-a]'s [dup].

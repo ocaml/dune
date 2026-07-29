@@ -71,12 +71,8 @@ let layout_dir ~context key =
   Path.Build.L.relative (Install.Context.dir ~context) [ ".binaries"; key ]
 ;;
 
-let create context ~dir bin_names =
+let create context ~artifacts ~dir bin_names =
   let open Memo.O in
-  let* artifacts =
-    let* sctx = Super_context.find_exn context in
-    Artifacts_db.get (Super_context.context sctx)
-  in
   let+ entries =
     Memo.List.filter_map bin_names ~f:(fun lookup_name ->
       Artifacts.local_binary_install_name artifacts ~dir lookup_name

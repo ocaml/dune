@@ -1,15 +1,18 @@
 open Import
 
-(** [create context ~dir bin_names] creates a .binaries directory for the
-    [%{bin:...}] names resolved from [dir], covering the names that resolve to
-    local package binaries. [context] must be the host context in which the
-    binaries run. Returns [None] when no name does. Otherwise returns the
-    directory and the list of symlink paths for dependency tracking; depend on
-    the paths before putting the directory on [PATH]. The symlinks are created
-    as build rules keyed by a digest of the sorted (lookup name, installed
-    filename) pairs. *)
+(** [create context ~artifacts ~dir bin_names] creates a .binaries directory for
+    the [%{bin:...}] names resolved from [dir], covering the names that resolve
+    to local package binaries. [context] must be the host context in which the
+    binaries run, and [artifacts] the artifacts of [dir] in that same context
+    (see [Super_context.artifacts_host]) so that the staged binaries agree with
+    the ones [%{bin:...}] resolves. Returns [None] when no name does. Otherwise
+    returns the directory and the list of symlink paths for dependency
+    tracking; depend on the paths before putting the directory on [PATH]. The
+    symlinks are created as build rules keyed by a digest of the sorted (lookup
+    name, installed filename) pairs. *)
 val create
   :  Context_name.t
+  -> artifacts:Artifacts.t
   -> dir:Path.Build.t
   -> string list
   -> (Path.Build.t * Path.t list) option Memo.t

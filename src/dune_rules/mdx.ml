@@ -495,12 +495,12 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~mdx_prog =
   let ext = Filename.Extension.bc_exe in
   let link_args =
     let open Action_builder.O in
-    let+ env_link_args =
-      Ocaml_flags_db.link_env ~dir
+    let+ link_flags =
+      Ocaml_flags_db.link_flags sctx ~dir Dune_lang.Link_flags.Spec.standard
       |> Action_builder.of_memo
       >>= Link_flags.get ~use_standard_cxx_flags:false
     in
-    Command.Args.S [ Command.Args.A "-linkall"; Command.Args.As env_link_args ]
+    Command.Args.S [ Command.Args.A "-linkall"; Command.Args.As link_flags ]
   in
   let+ (_ : Exe.dep_graphs) =
     Exe.build_and_link

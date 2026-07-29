@@ -410,12 +410,20 @@ CR-soon Alizter: `dune tools path` behavior is underspecified:
 - How does `path` interact with `(tool)` stanzas vs CLI-added tools? Same
   resolution as `run`?
 
+CR-soon Sudha247: We now have two sources for the current state of what tools
+exist - one in the declarative config within dune-workspace, and one in the
+state of tools installed and their lockdirs. Ideally we should just have a
+single source of truth for what tools should be installed. We can do this by
+making the CLI edit dune-workspace rather than operating on its own. A
+pre-requisite for this is: https://github.com/ocaml/dune/pull/13758.
+
 CR-someday Alizter: Consider a single bin directory with symlinks to all tool
 executables (like npm's `node_modules/.bin/`). Instead of per-tool paths, have
 `_build/.tools/bin/` containing symlinks to all installed tool binaries. This
 simplifies editor integration (one directory to add to PATH), avoids PATH length
 limits (especially on Windows), and provides a single stable location for
 discovery. Trade-off: need to maintain symlinks as tools are added/removed.
+
 #### Version syntax
 
 The CLI uses dot-separated version syntax: `<package>.<version>`

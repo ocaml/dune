@@ -129,7 +129,16 @@ let make_bin_env expander bin_names =
         (let open Memo.O in
          Expander.host_context expander >>| Context.name)
     in
-    let* layout = Action_builder.of_memo (Bin_layout.create context ~dir bin_names) in
+    (* Resolve through the artifacts of [dir] not the context-wide database. *)
+    let* artifacts =
+      Action_builder.of_memo
+        (let open Memo.O in
+         let* sctx = Super_context.find_exn (Expander.context expander) in
+         Super_context.artifacts_host sctx ~dir)
+    in
+    let* layout =
+      Action_builder.of_memo (Bin_layout.create context ~artifacts ~dir bin_names)
+    in
     (match layout with
      | None -> Action_builder.return Env.empty
      | Some (layout_dir, files) ->

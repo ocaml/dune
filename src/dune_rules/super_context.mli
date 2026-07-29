@@ -29,6 +29,8 @@ val env_node : t -> dir:Path.Build.t -> Env_node.t Memo.t
     are on PATH. *)
 val context_env_by_dir : t -> dir:Path.Build.t -> Env.t Memo.t
 
+val artifacts_host : t -> dir:Path.Build.t -> Artifacts.t Memo.t
+
 val add_rule
   :  t
   -> ?mode:Rule.Mode.t

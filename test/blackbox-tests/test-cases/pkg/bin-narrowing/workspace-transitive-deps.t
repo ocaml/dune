@@ -1,14 +1,5 @@
-Workspace-installed binaries (the local_bins in [Artifacts]) are currently not
-narrowed: a package's stanzas resolve any workspace package's binary, including
-packages not in its dependency closure.
-
-Once narrowing lands, this will be restricted to the owning package's TRANSITIVE
-workspace dependency closure -- like [transitive-deps.t] for the lockdir side. In
-particular a transitively-depended package's binary must still resolve (which is
-what distinguishes narrowing to the transitive closure from narrowing to only the
-direct dependencies).
-
-  $ make_lockdir
+Workspace-installed binaries (the local_bins in [Artifacts]) are narrowed: a
+package's stanzas resolve any workspace package's binary present in its closure.
 
 Three workspace packages forming a chain [p] -> [q] -> [r]. [q] installs
 [q-tool] and [r] installs [r-tool]. A sibling [s] installs [s-tool] and is not
@@ -62,11 +53,10 @@ in [p]'s dependency closure.
   $ cat _build/default/p/r-avail
   true
 
-[s-tool] (sibling not in p's closure) is available too, since workspace binaries
-are not narrowed yet:
+[s-tool] (sibling not in p's closure) is NOT available:
 
   $ cat _build/default/p/s-avail
-  true
+  false
 
 Transitive closure across Dune projects
 ---------------------------------------

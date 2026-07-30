@@ -59,19 +59,24 @@ At the moment, it isn't possible to instrument code that's preprocessed via an
 action preprocessors. As these preprocessors are quite rare nowadays, there is
 no plan to add support for them in the future.
 
-``<optional-fields>`` are:
+.. describe:: <optional-fields>
 
-- ``(deps <deps-conf list>)`` specifies extra instrumentation dependencies, for
-  instance, if it reads a generated file. The dependencies are only applied
-  when the instrumentation is actually enabled. The specification of
-  dependencies is described in :doc:`concepts/dependency-spec`.
+   .. describe:: (deps <dep-conf list>)
 
-- ``(libraries <library-dependencies>)`` specifies extra libraries to add to
-  the enclosing library or executable stanza when the instrumentation backend is
-  actually enabled. When the backend is not enabled, these libraries are ignored.
-  The specification of library dependencies is described in
-  :doc:`reference/library-dependencies`. This field is available since Dune
-  3.25.
+      Specifies extra instrumentation dependencies, for instance, if it reads a
+      generated file. The dependencies are only applied when the instrumentation
+      is actually enabled. The specification of dependencies is described in
+      :doc:`concepts/dependency-spec`.
+
+   .. describe:: (libraries <library-dependencies>)
+
+      .. versionadded:: 3.25
+
+      Specifies extra libraries to add to the enclosing library or executable
+      stanza when the instrumentation backend is actually enabled. When the
+      backend is not enabled, these libraries are ignored. The specification of
+      library dependencies is described in
+      :doc:`reference/library-dependencies`.
 
 Enabling/Disabling Instrumentation
 ==================================

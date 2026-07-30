@@ -190,3 +190,33 @@ EOF
 let () = print_endline Helper.message
 EOF
 }
+
+make_select_instrumentation_project() {
+  cat >dune-project <<'EOF'
+(lang dune 3.25)
+EOF
+  cat >dune <<'EOF'
+(library
+ (name choice)
+ (modules choice))
+
+(executable
+ (name main)
+ (modes byte)
+ (modules :standard \ choice)
+ (instrumentation
+  (backend hello)
+  (libraries
+   (select selected.ml from
+    (choice -> selected.choice.ml)))))
+EOF
+  cat >choice.ml <<'EOF'
+let message = "select instrumentation library"
+EOF
+  cat >selected.choice.ml <<'EOF'
+let message = Choice.message
+EOF
+  cat >main.ml <<'EOF'
+let () = print_endline Selected.message
+EOF
+}

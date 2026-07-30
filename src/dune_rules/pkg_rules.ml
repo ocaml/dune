@@ -2256,7 +2256,7 @@ let dune_dep =
   lazy (Sys.executable_name |> Path.External.of_string |> Path.external_ |> Dep.file)
 ;;
 
-let build_rule context_name ~source_deps (pkg : Pkg.t) =
+let build_rule_memo context_name ~source_deps (pkg : Pkg.t) =
   let+ build_action =
     let+ copy_action, build_action, install_action =
       let+ copy_action =
@@ -2371,21 +2371,35 @@ let build_rule context_name ~source_deps (pkg : Pkg.t) =
        ~directory_targets:[ pkg.write_paths.target_dir ]
 ;;
 
+let build_rule context_name ~source_deps (pkg : Pkg.t) =
+  let build =
+    Action_builder.of_memo_join
+      (let+ build_rule = build_rule_memo context_name ~source_deps pkg in
+       let { Action_builder.With_targets.build; _ } = build_rule in
+       build)
+  in
+  Action_builder.with_no_targets build
+  |> Action_builder.With_targets.add_directories
+       ~directory_targets:[ pkg.write_paths.target_dir ]
+;;
+
 let gen_rules context_name (pkg : Pkg.t) =
   let* source_deps, copy_rules = source_rules pkg in
-  let* () = copy_rules
-  and* build_rule = build_rule context_name pkg ~source_deps in
-  rule ~loc:Loc.none (* TODO *) build_rule
+  let* () = copy_rules in
+  rule ~loc:Loc.none (* TODO *) (build_rule context_name pkg ~source_deps)
 ;;
 
 module Gen_rules = Build_config.Gen_rules
 
-let pkg_alias_disabled =
+let pkg_alias_disabled alias =
   Action_builder.fail
     { fail =
         (fun () ->
           let error =
-            [ Pp.text "The @pkg-install alias cannot be used without a lock dir" ]
+            [ Pp.textf
+                "The @%s alias cannot be used without a lock dir"
+                (Alias.Name.to_string alias)
+            ]
           in
           let hints =
             [ Pp.concat
@@ -2399,7 +2413,7 @@ let pkg_alias_disabled =
     }
 ;;
 
-let setup_pkg_install_alias =
+let setup_pkg_aliases =
   let build_packages_of_context ctx_name =
     (* Fetching the package target implies that we will also fetch the extra
        sources. *)
@@ -2417,6 +2431,31 @@ let setup_pkg_install_alias =
       |> Path.build)
     |> Action_builder.paths
   in
+  let fetch_sources_of_context ctx_name =
+    let open Action_builder.O in
+    let* source_paths =
+      Action_builder.of_memo
+        (let open Memo.O in
+         let* db = DB.of_ctx ctx_name ~allow_sharing:true in
+         Pkg_digest.Map.values db.pkg_digest_table
+         |> Memo.List.concat_map ~f:(fun { DB.Pkg_table.pkg; pkg_digest; _ } ->
+           let paths =
+             Paths.make ~relative:Path.Build.relative pkg_digest (Dependencies ctx_name)
+           in
+           let extra_sources =
+             List.map pkg.info.extra_sources ~f:(fun (local, _) ->
+               Paths.extra_source_build paths local |> Path.build)
+           in
+           match pkg.info.source with
+           | None -> Memo.return extra_sources
+           | Some source ->
+             Lock_dir.source_kind source
+             >>| (function
+              | `Local (`Directory, _) -> extra_sources
+              | `Local (`File, _) | `Fetch -> Path.build paths.source_dir :: extra_sources)))
+    in
+    Action_builder.paths source_paths
+  in
   fun ~dir ctx_name ->
     let rule =
       (* We only need to build when the build_dir is the root of the context *)
@@ -2427,14 +2466,18 @@ let setup_pkg_install_alias =
       | false -> Memo.return Rules.empty
       | true ->
         let* active = Lock_dir.lock_dir_active ctx_name in
-        let alias = Alias.make ~dir Alias0.pkg_install in
+        let install_alias = Alias.make ~dir Alias0.pkg_install in
+        let source_alias = Alias.make ~dir Alias0.pkg_source in
         Rules.collect_unit (fun () ->
-          let deps =
+          let install_deps, source_deps =
             match active with
-            | true -> build_packages_of_context ctx_name
-            | false -> pkg_alias_disabled
+            | true ->
+              build_packages_of_context ctx_name, fetch_sources_of_context ctx_name
+            | false ->
+              pkg_alias_disabled Alias0.pkg_install, pkg_alias_disabled Alias0.pkg_source
           in
-          Rules.Produce.Alias.add_deps alias deps)
+          let* () = Rules.Produce.Alias.add_deps install_alias install_deps in
+          Rules.Produce.Alias.add_deps source_alias source_deps)
     in
     Gen_rules.rules_for ~dir ~allowed_subdirs:Filename.Set.empty rule
     |> Gen_rules.rules_here

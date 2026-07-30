@@ -66,6 +66,13 @@ no plan to add support for them in the future.
   when the instrumentation is actually enabled. The specification of
   dependencies is described in :doc:`concepts/dependency-spec`.
 
+- ``(libraries <library-dependencies>)`` specifies extra libraries to add to
+  the enclosing library or executable stanza when the instrumentation backend is
+  actually enabled. When the backend is not enabled, these libraries are ignored.
+  The specification of library dependencies is described in
+  :doc:`reference/library-dependencies`. This field is available since Dune
+  3.25.
+
 Enabling/Disabling Instrumentation
 ==================================
 

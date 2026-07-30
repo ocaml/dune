@@ -168,8 +168,7 @@ EOF
 
 make_library_instrumentation_project() {
   cat >dune-project <<'EOF'
-(lang dune 3.24)
-(using unreleased 0.1)
+(lang dune 3.25)
 EOF
   cat >dune <<'EOF'
 (library

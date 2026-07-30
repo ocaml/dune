@@ -319,7 +319,8 @@ module Instrumentation = struct
              field
                "libraries"
                ~default:[]
-               (Unreleased.since () >>> Lib_dep.L.decode ~allow_re_export:false)
+               (Syntax.since Stanza.syntax (3, 25)
+                >>> Lib_dep.L.decode ~allow_re_export:false)
            and+ loc = Decoder.loc in
            { backend; deps; flags; libraries; loc })
   ;;

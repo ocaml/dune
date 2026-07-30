@@ -153,6 +153,7 @@ module With_instrumentation = struct
         { libname : Loc.t * Lib_name.t
         ; deps : Dep_conf.t list
         ; flags : String_with_vars.t list
+        ; libraries : Lib_dep.t list
         }
 
   let repr =
@@ -164,13 +165,15 @@ module With_instrumentation = struct
       ; Repr.case
           "Instrumentation_backend"
           Repr.(
-            triple
-              Without_instrumentation.repr
-              (list Dep_conf.repr)
-              (list String_with_vars.repr))
+            pair
+              (triple
+                 Without_instrumentation.repr
+                 (list Dep_conf.repr)
+                 (list String_with_vars.repr))
+              (list Lib_dep.repr))
           ~proj:(function
-            | Instrumentation_backend { libname; deps; flags } ->
-              Some (libname, deps, flags)
+            | Instrumentation_backend { libname; deps; flags; libraries } ->
+              Some ((libname, deps, flags), libraries)
             | _ -> None)
       ]
   ;;
@@ -275,6 +278,7 @@ module Instrumentation = struct
     { backend : Loc.t * Lib_name.t
     ; flags : String_with_vars.t list
     ; deps : Dep_conf.t list
+    ; libraries : Lib_dep.t list
     ; loc : Loc.t
     }
 
@@ -311,8 +315,13 @@ module Instrumentation = struct
                "deps"
                ~default:[]
                (Syntax.since Stanza.syntax (2, 9) >>> repeat Dep_conf.decode)
+           and+ libraries =
+             field
+               "libraries"
+               ~default:[]
+               (Unreleased.since () >>> Lib_dep.L.decode ~allow_re_export:false)
            and+ loc = Decoder.loc in
-           { backend; deps; flags; loc })
+           { backend; deps; flags; libraries; loc })
   ;;
 end
 
@@ -336,19 +345,25 @@ module Per_module = struct
     |> Lib_name.Map.foldi ~init:[] ~f:(fun pp loc acc -> (loc, pp) :: acc)
   ;;
 
-  let add_instrumentation t { Instrumentation.flags; loc; deps; backend = libname } =
+  let add_instrumentation
+        t
+        { Instrumentation.flags; loc; deps; libraries; backend = libname }
+    =
     Per_module.map t ~f:(fun pp ->
       match pp with
       | No_preprocessing ->
         let pps =
-          [ With_instrumentation.Instrumentation_backend { libname; deps; flags } ]
+          [ With_instrumentation.Instrumentation_backend
+              { libname; deps; flags; libraries }
+          ]
         in
         Pps { loc; pps; flags = []; staged = false }
       | Pps ({ pps; _ } as t) ->
         (* CR-rgrinberg: Maybe we shouldn't drop the loc of the instrumentation
            stanza? *)
         let pps =
-          With_instrumentation.Instrumentation_backend { libname; deps; flags } :: pps
+          With_instrumentation.Instrumentation_backend { libname; deps; flags; libraries }
+          :: pps
         in
         Pps { t with pps }
       | Action (loc, _) | Future_syntax loc ->

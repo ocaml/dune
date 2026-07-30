@@ -165,3 +165,29 @@ EOF
   cat >main.ml <<'EOF'
 EOF
 }
+
+make_library_instrumentation_project() {
+  cat >dune-project <<'EOF'
+(lang dune 3.24)
+(using unreleased 0.1)
+EOF
+  cat >dune <<'EOF'
+(library
+ (name helper)
+ (modules helper))
+
+(executable
+ (name main)
+ (modes byte)
+ (modules main)
+ (instrumentation
+  (backend hello)
+  (libraries helper)))
+EOF
+  cat >helper.ml <<'EOF'
+let message = "instrumentation library"
+EOF
+  cat >main.ml <<'EOF'
+let () = print_endline Helper.message
+EOF
+}

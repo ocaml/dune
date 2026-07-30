@@ -38,17 +38,5 @@ nix develop -c make dev                   # Full build (bootstraps if necessary)
 
 ## Reviewing PRs
 
-See [doc/dev/code-review/general.md](../doc/dev/code-review/general.md) and
-follow the instructions there.
-
-For high-stakes reviews (public API changes, security-sensitive code, large
-PRs), prefer a two-pass workflow:
-
-1. A first agent drafts the review against `general.md`'s guidance.
-2. A second, fresh-context agent (no prior conversation with the drafter)
-   reads the draft and applies the "Validation pass" criteria from
-   `general.md`.
-
-The validator must not be the drafter — the value comes from independent
-judgement. Use whichever multi-agent primitive your harness provides
-(subagents, separate sessions, parallel runs).
+Follow the repository review checklist in
+[doc/dev/prompts/review-check.md](../doc/dev/prompts/review-check.md).

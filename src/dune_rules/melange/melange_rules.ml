@@ -302,19 +302,22 @@ let make_external_lib_emission_deps =
 
 let compile_info ~scope (mel : Melange_stanzas.Emit.t) =
   let dune_version = Scope.project scope |> Dune_project.dune_version in
+  let instrumentation_backend = Lib.DB.instrumentation_backend (Scope.libs scope) in
   let+ pps =
-    Instrumentation.with_instrumentation
-      mel.preprocess.config
-      ~instrumentation_backend:(Lib.DB.instrumentation_backend (Scope.libs scope))
+    Instrumentation.with_instrumentation mel.preprocess.config ~instrumentation_backend
     |> Resolve.Memo.read_memo
     >>| Preprocess.Per_module.pps
+  and+ instrumentation_libraries =
+    Instrumentation.active_libraries mel.preprocess.config ~instrumentation_backend
+    |> Resolve.Memo.read_memo
   in
   let libraries =
+    let libraries = mel.libraries @ instrumentation_libraries in
     match mel.emit_stdlib with
-    | false -> mel.libraries
+    | false -> libraries
     | true ->
       let builtin_melange_dep = Lib_dep.Direct (mel.loc, Lib_name.of_string "melange") in
-      builtin_melange_dep :: mel.libraries
+      builtin_melange_dep :: libraries
   in
   Lib.DB.resolve_user_written_deps
     (Scope.libs scope)

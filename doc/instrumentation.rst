@@ -20,11 +20,8 @@ the precise instrumentation backend in your project.
 Specifying What to Instrument
 =============================
 
-When an instrumentation backend is activated, Dune will only instrument
-libraries and executables for which the user has requested instrumentation.
-
-To request instrumentation, one must add the following field to a library or
-executable stanza:
+To request instrumentation, one must add the following field to a library,
+executable, or ``melange.emit`` stanza:
 
 .. code:: dune
 
@@ -61,7 +58,7 @@ no plan to add support for them in the future.
 
 .. describe:: (instrumentation ...)
 
-   Specifies that the library or executable should be instrumented when the
+   Specifies that the enclosing stanza should be instrumented when the
    corresponding instrumentation backend is activated. This field can be
    repeated multiple times in order to support various backends.
 
@@ -82,10 +79,10 @@ no plan to add support for them in the future.
 
       .. versionadded:: 3.25
 
-      Specifies extra libraries to add to the enclosing library or executable
-      stanza when the instrumentation backend is actually enabled. When the
-      backend is not enabled, these libraries are ignored. The specification of
-      library dependencies is described in
+      Specifies extra libraries to add to the enclosing stanza when the
+      instrumentation backend is actually enabled. When the backend is not
+      enabled, these libraries are ignored. The specification of library
+      dependencies is described in
       :doc:`reference/library-dependencies`.
 
 Enabling/Disabling Instrumentation

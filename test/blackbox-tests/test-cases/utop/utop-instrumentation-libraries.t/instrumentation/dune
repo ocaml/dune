@@ -1,0 +1,11 @@
+(library
+ (name instr_ppx)
+ (kind ppx_rewriter)
+ (modules instr_ppx)
+ (libraries ppxlib))
+
+(library
+ (name instr)
+ (modules instr)
+ (instrumentation.backend
+  (ppx instr_ppx)))

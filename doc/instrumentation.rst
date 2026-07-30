@@ -59,7 +59,17 @@ At the moment, it isn't possible to instrument code that's preprocessed via an
 action preprocessors. As these preprocessors are quite rare nowadays, there is
 no plan to add support for them in the future.
 
-.. describe:: <optional-fields>
+.. describe:: (instrumentation ...)
+
+   Specifies that the library or executable should be instrumented when the
+   corresponding instrumentation backend is activated. This field can be
+   repeated multiple times in order to support various backends.
+
+   .. describe:: (backend <name> <args>)
+
+      Specifies the instrumentation backend to use and its arguments. The
+      backend name must match the name of a library that has the
+      ``(instrumentation.backend)`` field.
 
    .. describe:: (deps <dep-conf list>)
 

@@ -33,17 +33,7 @@ absent from the solver's lockdir:
   Solution for dune.lock:
   (no dependencies to lock)
 
-The solver evaluates the dependency formula with the running version of dune
-injected, but validation resolves the same formula without it and fails:
+Validation evaluates the dependency formula the same way the solver does, with
+the running version of dune injected, so the empty lockdir is accepted:
 
   $ dune pkg validate-lockdir
-  Lockdir dune.lock does not contain a solution for local packages:
-  File "dune-project", lines 2-5, characters 0-55:
-  Error: The dependencies of local package "direct" could not be satisfied from
-  the lockdir:
-  Package "dune" is missing
-  Hint: The lockdir no longer contains a solution for the local packages in
-  this project. Regenerate the lockdir by running: 'dune pkg lock'
-  Error: Some lockdirs do not contain solutions for local packages:
-  - dune.lock
-  [1]

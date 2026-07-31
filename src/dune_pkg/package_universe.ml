@@ -48,18 +48,20 @@ let version_by_package_name ~platform local_packages (lock_dir : Lock_dir.t) =
 
 let concrete_dependencies_of_local_package t local_package_name ~with_test =
   let local_package = Package_name.Map.find_exn t.local_packages local_package_name in
+  let env =
+    Solver_stats.Expanded_variable_bindings.to_solver_env
+      t.lock_dir.expanded_solver_variable_bindings
+    |> Solver_env.to_env
+  in
   match
-    (Local_package.for_solver local_package).dependencies
-    |> Dependency_formula.to_filtered_formula
-    |> Resolve_opam_formula.filtered_formula_to_package_names
-         ~with_test
-         ~env:
-           (Solver_stats.Expanded_variable_bindings.to_solver_env
-              t.lock_dir.expanded_solver_variable_bindings
-            |> Solver_env.to_env)
-         ~packages:t.version_by_package_name
+    Lock_pkg.local_package_dependencies
+      (Local_package.for_solver local_package)
+      ~env
+      ~with_test
+      ~packages:t.version_by_package_name
+      ~dune_version:(Package_version.of_opam_package_version Dune_dep.version)
   with
-  | Ok { regular; post = _ } -> regular
+  | Ok regular -> regular
   | Error (`Formula_could_not_be_satisfied unsatisfied_formula_hints) ->
     User_error.raise
       ?hints:(Option.some_if with_test lockdir_regenerate_hints)

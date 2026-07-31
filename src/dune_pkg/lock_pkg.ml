@@ -12,6 +12,29 @@ let add_self_to_filter_env package env variable =
     else env variable
 ;;
 
+let local_package_dependencies
+      (local_package : Local_package.For_solver.t)
+      ~env
+      ~with_test
+      ~packages
+      ~dune_version
+  =
+  let opam_package =
+    OpamPackage.create
+      (Package_name.to_opam_package_name local_package.name)
+      (Package_version.to_opam_package_version local_package.version)
+  in
+  let env = add_self_to_filter_env opam_package env in
+  let packages = Package_name.Map.set packages Dune_dep.name dune_version in
+  Resolve_opam_formula.filtered_formula_to_package_names
+    ~env
+    ~with_test
+    ~packages
+    (Dependency_formula.to_filtered_formula local_package.dependencies)
+  |> Result.map ~f:(fun { Resolve_opam_formula.regular; post = _ } ->
+    List.filter regular ~f:(Fun.negate (Package_name.equal Dune_dep.name)))
+;;
+
 let simplify_filter get_solver_var =
   OpamFilter.partial_eval (fun var ->
     match OpamVariable.Full.scope var with

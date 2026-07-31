@@ -130,9 +130,22 @@ module Part = struct
       ]
   ;;
 
+  let to_dyn = function
+    | Text s -> Dyn.variant "Text" [ Dyn.string s ]
+    | Pform v -> Dyn.variant "Pform" [ Pform.to_dyn v ]
+  ;;
+
   let remove_locs = function
     | Text s -> Text s
     | Pform v -> Pform { v with loc = Loc.none }
+  ;;
+
+  let list_to_string parts =
+    String.concat
+      ~sep:""
+      (List.map parts ~f:(function
+         | Text s -> s
+         | Pform pf -> Pform.to_string pf))
   ;;
 end
 

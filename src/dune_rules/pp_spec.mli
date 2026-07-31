@@ -6,19 +6,19 @@ open Import
 type t
 
 val dummy : t
-val make : (Module.t -> lint:bool -> Module.t Memo.t) Module_name.Per_item.t -> t
+val make : (Module.t -> lint:bool -> Module.t Memo.t) Module_reference.Per_item.t -> t
 
 (** Setup the preprocessing rules for the following modules and returns the
     translated modules *)
 val pp_module : t -> ?lint:bool -> Module.t -> Module.t Memo.t
 
 val pped_modules_map
-  :  Preprocess.Without_instrumentation.t Preprocess.t Module_name.Per_item.t
+  :  Preprocess.Without_instrumentation.t Preprocess.t Module_reference.Per_item.t
   -> Ocaml.Version.t
   -> (Module.t -> Module.t) Staged.t
 
 val pped_modules
-  :  Preprocess.Without_instrumentation.t Preprocess.t Module_name.Per_item.t
+  :  Preprocess.Without_instrumentation.t Preprocess.t Module_reference.Per_item.t
   -> Ocaml.Version.t
   -> Modules.t
   -> Modules.t Memo.t

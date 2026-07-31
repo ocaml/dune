@@ -232,7 +232,7 @@ type t =
   }
 
 let name t = Source.name t.source
-let path t = t.source.path
+let path t = Source.path t.source
 let kind t = t.kind
 let pp_flags t = t.pp
 let install_as t = t.install_as

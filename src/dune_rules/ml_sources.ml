@@ -477,7 +477,7 @@ let modules_and_obj_dir t ~libs ~for_ =
 
 let modules t ~libs ~for_ = modules_and_obj_dir t ~libs ~for_ >>| fst
 
-let virtual_modules ~lookup_vlib ~libs ~for_ vlib =
+let virtual_modules ~lookup_vlib ~libs ~for_ ~version vlib =
   let+ modules =
     match Lib_info.modules vlib ~for_ with
     | External modules ->
@@ -487,7 +487,7 @@ let virtual_modules ~lookup_vlib ~libs ~for_ vlib =
       lookup_vlib ~dir:src_dir
       >>= modules ~libs ~for_:(Library (Lib_info.lib_id vlib |> Lib_id.to_local_exn))
   in
-  let existing_virtual_modules = Modules.virtual_module_names modules in
+  let existing_virtual_modules = Modules.virtual_module_names ~version modules in
   let allow_new_public_modules = Modules.wrapped modules |> Wrapped.to_bool |> not in
   { Modules_field_evaluator.Implementation.existing_virtual_modules
   ; allow_new_public_modules
@@ -678,6 +678,35 @@ let has_instances (lib : Buildable.t) =
     | Direct _ | Re_export _ | Select _ -> false)
 ;;
 
+let validate_qualified_module_references ~include_subdirs per_module =
+  Module_reference.Per_item.explicit_references per_module
+  |> List.iter ~f:(fun reference ->
+    if
+      Module_reference.is_qualified reference
+      &&
+      match include_subdirs with
+      | Include_subdirs.Include Qualified -> false
+      | No | Include Unqualified -> true
+    then
+      User_error.raise
+        ~loc:(Module_reference.loc reference)
+        [ Pp.textf
+            "Qualified module reference %S may only be used with (include_subdirs \
+             qualified)."
+            (Module_reference.to_string reference)
+        ])
+;;
+
+let validate_buildable_preprocessing ~include_subdirs ~for_ buildable =
+  let preprocess =
+    match (for_ : Compilation_mode.t) with
+    | Ocaml -> buildable.Buildable.preprocess
+    | Melange -> buildable.melange_preprocess
+  in
+  validate_qualified_module_references ~include_subdirs preprocess.config;
+  validate_qualified_module_references ~include_subdirs buildable.lint
+;;
+
 let make_lib_modules
       ~expander
       ~dir
@@ -734,7 +763,7 @@ let make_lib_modules
       let+ kind =
         let+ impl =
           let* vlib = Lib.implements resolved |> Option.value_exn >>| Lib.info in
-          virtual_modules ~lookup_vlib ~libs ~for_ vlib |> Resolve.Memo.lift_memo
+          virtual_modules ~lookup_vlib ~libs ~for_ ~version vlib |> Resolve.Memo.lift_memo
         in
         Modules_field_evaluator.Implementation impl
       in
@@ -760,10 +789,12 @@ let make_lib_modules
       ~private_modules:
         (Option.value ~default:Ordered_set_lang.Unexpanded.standard lib.private_modules)
       ~src_dir:dir
+      ~include_subdirs
       modules_settings
       ~version
       ~for_
   in
+  let () = validate_buildable_preprocessing ~include_subdirs ~for_ lib.buildable in
   let () =
     match lib.stdlib, include_subdirs with
     | Some stdlib, Include Qualified ->
@@ -1095,6 +1126,7 @@ let modules_of_stanzas =
   let make_executables
         ~dir
         ~expander
+        ~include_subdirs
         ~(modules : Module.Source.t Module_trie.Unchecked.t)
         ~project
         exes
@@ -1111,9 +1143,13 @@ let modules_of_stanzas =
         ~src_dir:dir
         ~kind:Modules_field_evaluator.Exe_or_normal_lib
         ~private_modules:Ordered_set_lang.Unexpanded.standard
+        ~include_subdirs
         ~version:exes.dune_version
         modules_settings
         ~for_:Ocaml
+    in
+    let () =
+      validate_buildable_preprocessing ~include_subdirs ~for_:Ocaml exes.buildable
     in
     let has_instances = has_instances exes.buildable in
     let modules =
@@ -1124,8 +1160,10 @@ let modules_of_stanzas =
     in
     `Executables { Per_stanza.stanza = exes; sources; modules; obj_dir; dir }
   in
-  let make_tests ~dir ~expander ~modules ~project tests =
-    let+ result = make_executables ~dir ~expander ~modules ~project tests.Tests.exes in
+  let make_tests ~dir ~expander ~include_subdirs ~modules ~project tests =
+    let+ result =
+      make_executables ~dir ~expander ~include_subdirs ~modules ~project tests.Tests.exes
+    in
     match result with
     | `Executables group_part -> `Tests { group_part with stanza = tests }
   in
@@ -1203,7 +1241,7 @@ let modules_of_stanzas =
                    ~for_
                    exes.buildable.libraries
                in
-               make_executables ~dir ~expander ~modules ~project exes
+               make_executables ~dir ~expander ~include_subdirs ~modules ~project exes
              | Tests.T tests ->
                let modules =
                  Generated_modules.with_lib_select_deps
@@ -1214,7 +1252,7 @@ let modules_of_stanzas =
                    ~for_
                    tests.exes.buildable.libraries
                in
-               make_tests ~dir ~expander ~modules ~project tests
+               make_tests ~dir ~expander ~include_subdirs ~modules ~project tests
              | Melange_stanzas.Emit.T mel ->
                let obj_dir =
                  Obj_dir.make_for_exe_target ~dir (Melange_stanzas.Emit.exe_target mel)
@@ -1238,8 +1276,15 @@ let modules_of_stanzas =
                    ~version
                    ~private_modules:Ordered_set_lang.Unexpanded.standard
                    ~src_dir:dir
+                   ~include_subdirs
                    ~for_:Melange
                    mel.modules
+               in
+               let () =
+                 validate_qualified_module_references
+                   ~include_subdirs
+                   mel.preprocess.config;
+                 validate_qualified_module_references ~include_subdirs mel.lint
                in
                let modules =
                  Modules.make_wrapped

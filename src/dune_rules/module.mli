@@ -37,7 +37,15 @@ module Source : sig
   val has : t -> ml_kind:Ml_kind.t -> bool
   val files : t -> File.t list
   val files_by_ml_kind : t -> File.t option Ml_kind.Dict.t
+
+  (** The path used to place the source in the module trie. Group interfaces
+      duplicate their last component, so [foo/foo.ml] has path [Foo.Foo]. *)
   val path : t -> Module_name.Path.t
+
+  (** The user-facing module path. Unlike [path], this is [Foo] for
+      [foo/foo.ml]. *)
+  val logical_path : t -> Module_name.Path.t
+
   val to_dyn : t -> Dyn.t
   val src_dir : t -> Path.t
 end
@@ -53,7 +61,10 @@ val to_dyn : t -> Dyn.t
 val of_source : visibility:Visibility.t -> kind:Kind.t -> Source.t -> t
 
 val name : t -> Module_name.t
+
+(** The user-facing qualified module path. *)
 val path : t -> Module_name.Path.t
+
 val source : t -> ml_kind:Ml_kind.t -> File.t option
 val source_without_pp : t -> ml_kind:Ml_kind.t -> Path.t option
 val pp_flags : t -> (string list Action_builder.t * Sandbox_config.t) option
@@ -63,7 +74,6 @@ val obj_name : t -> Module_name.Unique.t
 val iter : t -> f:(Ml_kind.t -> File.t -> unit Memo.t) -> unit Memo.t
 val has : t -> ml_kind:Ml_kind.t -> bool
 val set_obj_name : t -> Module_name.Unique.t -> t
-val set_path : t -> Module_name.Path.t -> t
 val add_file : t -> Ml_kind.t -> File.t -> t
 val set_source : t -> ml_kind:Ml_kind.t -> File.t option -> t
 

@@ -54,7 +54,10 @@ end
 val obj_map : t -> Sourced_module.t Module_name.Unique.Map.t
 
 (** Returns only the virtual module names in the library *)
-val virtual_module_names : t -> Module_name.Path.Set.t
+val virtual_module_names
+  :  version:Dune_lang.Syntax.Version.t
+  -> t
+  -> Module_name.Path.Set.t
 
 val wrapped : t -> Wrapped.t
 val source_dirs : t -> Path.Set.t
@@ -94,7 +97,7 @@ module With_vlib : sig
       executables. *)
   val singleton : Module.t -> t
 
-  val canonical_path : t -> Group.t -> Module.t -> Module_name.Path.t
+  val canonical_path : t -> Module.t -> Module_name.Path.t
 
   val fold_no_vlib_with_aliases
     :  t

@@ -104,9 +104,8 @@ module Stdlib = struct
           if Module.name m = main_module_name || special_compiler_module stdlib m
           then m
           else (
-            let path = Nonempty_list.[ main_module_name; Module.name m ] in
-            let m = Module.set_path m path in
-            Module.set_obj_name m (Module_name.Path.wrap path)))
+            let mangle_path = Nonempty_list.[ main_module_name; Module.name m ] in
+            Module.set_obj_name m (Module_name.Path.wrap mangle_path)))
     in
     let unwrapped = stdlib.modules_before_stdlib in
     let exit_module = stdlib.exit_module in
@@ -251,29 +250,28 @@ module Mangle = struct
     Module.generated ?install_as path ~obj_name ~kind ~for_ ~src_dir:obj_dir
   ;;
 
-  let wrap_module t m ~interface =
+  let wrap_module t m ~interface ~(mangle_path : Module_name.Path.t) =
     let is_lib_interface =
       match interface with
       | None -> false
       | Some interface -> Module_name.equal interface (Module.name m)
     in
     let path_for_mangle =
-      let path = Module.path m in
       let prefix = prefix t in
       match t with
       | Exe | Melange ->
         let prefix = Option.value_exn prefix in
-        let (x :: xs) = path in
+        let (x :: xs) = mangle_path in
         Nonempty_list.(prefix.public :: x :: xs)
       | Unwrapped ->
         if is_lib_interface
         then (
-          let path = Nonempty_list.to_list path in
+          let path = Nonempty_list.to_list mangle_path in
           List.remove_last_exn path |> Nonempty_list.of_list_exn)
-        else path
+        else mangle_path
       | Lib _ ->
         let path =
-          let path = Nonempty_list.to_list path in
+          let path = Nonempty_list.to_list mangle_path in
           if is_lib_interface then List.remove_last_exn path else path
         in
         Nonempty_list.(
@@ -318,8 +316,12 @@ module Group = struct
               match m with
               | Map m -> Group (loop name (Nonempty_list.to_list rev_path) m)
               | Leaf m ->
-                let m = Module.set_path m (Nonempty_list.rev rev_path) in
-                Module (Mangle.wrap_module mangle m ~interface:(Some interface)))
+                Module
+                  (Mangle.wrap_module
+                     mangle
+                     m
+                     ~interface:(Some interface)
+                     ~mangle_path:(Nonempty_list.rev rev_path)))
         }
       in
       loop interface rev_path trie
@@ -581,9 +583,7 @@ module Unwrapped = struct
           Group.Of_trie.of_trie trie ~mangle ~obj_dir ~interface:name ~rev_path:[ name ]
         in
         Group.Group group
-      | Leaf m ->
-        let m = Module.set_path m [ name ] in
-        Module m)
+      | Leaf m -> Module m)
   ;;
 
   let find (t : t) name =
@@ -847,8 +847,7 @@ let make_singleton m mangle =
   let modules =
     Singleton
       (let name = Module.name m in
-       let m = Module.set_path m [ name ] in
-       Mangle.wrap_module mangle m ~interface:None)
+       Mangle.wrap_module mangle m ~interface:None ~mangle_path:[ name ])
   in
   with_obj_map modules
 ;;
@@ -936,10 +935,14 @@ let fold_user_written t ~f ~init =
   | Wrapped { group; _ } -> Group.fold group ~init ~f
 ;;
 
-let virtual_module_names =
+let virtual_module_names ~version =
   fold ~init:Module_name.Path.Set.empty ~f:(fun m acc ->
     match Module.kind m with
-    | Virtual -> Module_name.Path.Set.add acc [ Module.name m ]
+    | Virtual ->
+      let path =
+        if version < (3, 25) then Nonempty_list.[ Module.name m ] else Module.path m
+      in
+      Module_name.Path.Set.add acc path
     | _ -> acc)
 ;;
 
@@ -1431,23 +1434,13 @@ module With_vlib = struct
     | _ -> None
   ;;
 
-  let canonical_path t (group : Group.t) m =
-    let path =
-      let path = Module.path m in
-      match Module_name.Map.find group.modules (Module.name m) with
-      | None | Some (Group.Module _) -> path
-      | Some (Group _) ->
-        (* The path for group interfaces always duplicates
-           the last component.
-
-           For example: foo/foo.ml would has the path [ "Foo"; "Foo" ] *)
-        List.remove_last_exn (Nonempty_list.to_list path) |> Nonempty_list.of_list_exn
-    in
+  let canonical_path t m =
+    let path = Module.path m in
     match t with
     | Impl { impl = { modules = Wrapped w; _ }; _ } | Modules { modules = Wrapped w; _ }
       ->
       let (x :: xs) = path in
       Nonempty_list.(w.group.name :: x :: xs)
-    | _ -> Module.path m
+    | _ -> path
   ;;
 end

@@ -47,6 +47,7 @@ module Dialect = Dialect
 module Lib_mode = Lib_mode
 module Melange = Melange
 module Module_name = Module_name
+module Module_reference = Module_reference
 module Pin_stanza = Pin_stanza
 module Preprocess = Preprocess
 module Link_flags = Link_flags

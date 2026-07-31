@@ -33,6 +33,7 @@ val eval
   -> kind:kind
   -> for_:Compilation_mode.t
   -> src_dir:Path.Build.t
+  -> include_subdirs:Include_subdirs.t
   -> version:Dune_lang.Syntax.Version.t
   -> Modules_settings.t
   -> ((Loc.t * Module.Source.t) Module_trie.t * Module.t Module_trie.t) Memo.t

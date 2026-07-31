@@ -120,7 +120,7 @@ module Processed = struct
   type t =
     { config : config
     ; per_file_config : module_config Path.Build.Map.t
-    ; pp_config : pp_flag option Module_name.Per_item.t
+    ; pp_config : pp_flag option Module_reference.Per_item.t
     }
 
   type output_format =
@@ -164,7 +164,7 @@ module Processed = struct
           ~get:(fun t -> t.per_file_config)
       ; Repr.field
           "pp_config"
-          (Module_name.Per_item.repr (Repr.option pp_flag_repr))
+          (Module_reference.Per_item.repr (Repr.option pp_flag_repr))
           ~get:(fun t -> t.pp_config)
       ]
   ;;
@@ -176,7 +176,7 @@ module Processed = struct
 
     let name = "merlin-conf"
     let sharing = false
-    let version = 8
+    let version = 9
 
     let repr =
       Repr.view Repr.string ~to_:(fun _ -> "Use [dune ocaml dump-dot-merlin] instead")
@@ -355,7 +355,7 @@ module Processed = struct
     List.iter
       pp_configs
       ~f:
-        (Module_name.Per_item.fold ~init:() ~f:(fun pp () ->
+        (Module_reference.Per_item.fold ~init:() ~f:(fun pp () ->
            Option.iter pp ~f:(fun { flag; args } ->
              printf "# FLG %s\n" (Pp_kind.to_flag flag ^ " " ^ quote_for_dot_merlin args))));
     List.iter flags ~f:(fun flags ->
@@ -396,7 +396,12 @@ module Processed = struct
               similar to Copy_line_directive to handle this. *)
            Path.Build.Map.find per_file_config (remove_extension file))
     in
-    let pp = Module_name.Per_item.get pp_config (Module.name module_) in
+    let pp =
+      Module_reference.Per_item.find
+        pp_config
+        ~path:(Module.logical_path module_)
+        ~name:(Module.name module_)
+    in
     let unit_name = Module_name.Unique.to_string (Module.obj_name module_) in
     to_sexp ~unit_name ~opens ~pp ~reader config
   ;;
@@ -406,7 +411,12 @@ module Processed = struct
     |> List.map ~f:(fun (source_path, { module_; opens; reader }) ->
       let module_name = Module.name module_ in
       let unit_name = Module_name.Unique.to_string (Module.obj_name module_) in
-      let pp = Module_name.Per_item.get pp_config module_name in
+      let pp =
+        Module_reference.Per_item.find
+          pp_config
+          ~path:(Module.logical_path module_)
+          ~name:module_name
+      in
       let config = to_sexp ~unit_name ~reader ~opens ~pp config in
       Dump_entry.{ module_name; source_path; config })
   ;;
@@ -547,7 +557,7 @@ module Unprocessed = struct
     ; requires_hidden : Lib.t list Resolve.t
     ; flags : string list Action_builder.t
     ; preprocess :
-        Preprocess.Without_instrumentation.t Preprocess.t Module_name.Per_item.t
+        Preprocess.Without_instrumentation.t Preprocess.t Module_reference.Per_item.t
     ; libname : Lib_name.Local.t option
     ; objs_dirs : Path.Set.t
     ; extensions : string option Ml_kind.Dict.t list
@@ -693,7 +703,7 @@ module Unprocessed = struct
   ;;
 
   module Per_item_action_builder =
-    Module_name.Per_item.Make_monad_traversals (Action_builder)
+    Module_reference.Per_item.Make_monad_traversals (Action_builder)
 
   let pp_config t ctx ~expander =
     Per_item_action_builder.map

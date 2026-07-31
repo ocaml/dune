@@ -12,7 +12,7 @@ let filter_map_resolve (t : _ Preprocess.t) ~f =
   | (No_preprocessing | Action _ | Future_syntax _) as t -> Resolve.Memo.return t
 ;;
 
-module Resolve_traversals = Module_name.Per_item.Make_monad_traversals (Resolve.Memo)
+module Resolve_traversals = Module_reference.Per_item.Make_monad_traversals (Resolve.Memo)
 
 let fold = Resolve_traversals.fold
 

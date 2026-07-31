@@ -38,6 +38,7 @@ module Source : sig
   val files : t -> File.t list
   val files_by_ml_kind : t -> File.t option Ml_kind.Dict.t
   val path : t -> Module_name.Path.t
+  val logical_path : t -> Module_name.Path.t
   val to_dyn : t -> Dyn.t
   val src_dir : t -> Path.t
 end
@@ -54,6 +55,7 @@ val of_source : visibility:Visibility.t -> kind:Kind.t -> Source.t -> t
 
 val name : t -> Module_name.t
 val path : t -> Module_name.Path.t
+val logical_path : t -> Module_name.Path.t
 val source : t -> ml_kind:Ml_kind.t -> File.t option
 val source_without_pp : t -> ml_kind:Ml_kind.t -> Path.t option
 val pp_flags : t -> (string list Action_builder.t * Sandbox_config.t) option

@@ -973,10 +973,16 @@ let fold_user_written t ~f ~init =
   | Wrapped { group; _ } -> Group.fold group ~init ~f
 ;;
 
-let virtual_module_names =
+let virtual_module_names ~version =
   fold ~init:Module_name.Path.Set.empty ~f:(fun m acc ->
     match Module.kind m with
-    | Virtual -> Module_name.Path.Set.add acc [ Module.name m ]
+    | Virtual ->
+      let path =
+        if version < (3, 25)
+        then Nonempty_list.[ Module.name m ]
+        else Module.logical_path m
+      in
+      Module_name.Path.Set.add acc path
     | _ -> acc)
 ;;
 

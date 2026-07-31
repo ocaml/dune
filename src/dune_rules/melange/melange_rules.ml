@@ -41,7 +41,12 @@ let setup_melange_sources_copy_rules ~sctx ~dir ~preprocess modules =
       | true -> Memo.return ()
       | false ->
         let builder =
-          match Preprocess.Per_module.find (Module.name m) preprocess with
+          match
+            Preprocess.Per_module.find
+              ~path:(Module.logical_path m)
+              ~name:(Module.name m)
+              preprocess
+          with
           | Pps { staged = false; _ } ->
             (* Non-staged PPX preprocessing receives [-loc-filename] separately,
                so adding a line directive here would shift diagnostics twice. *)

@@ -154,7 +154,7 @@ let lint_module sctx ~sandbox ~dir ~expander ~lint ~lib_name ~scope =
     Super_context.add_alias_action sctx (Alias.make Alias0.lint ~dir) build ~dir
   in
   let lint =
-    Module_name.Per_item.map lint ~f:(function
+    Module_reference.Per_item.map lint ~f:(function
       | Preprocess.No_preprocessing -> fun ~source:_ ~ast:_ -> Memo.return ()
       | Future_syntax loc ->
         User_error.raise ~loc [ Pp.text "'compat' cannot be used as a linter" ]
@@ -220,7 +220,12 @@ let lint_module sctx ~sandbox ~dir ~expander ~lint ~lib_name ~scope =
   in
   Staged.stage
   @@ fun ~(source : Module.t) ~ast ->
-  Module_name.Per_item.get lint (Module.name source) ~source ~ast
+  Module_reference.Per_item.find
+    lint
+    ~path:(Module.logical_path source)
+    ~name:(Module.name source)
+    ~source
+    ~ast
 ;;
 
 let pp_one_module
@@ -403,7 +408,7 @@ let make
   let preprocessor_deps = preprocessor_deps @ instrumentation_deps in
   let+ ocaml = Context.ocaml (Super_context.context sctx) in
   let preprocess =
-    Module_name.Per_item.map preprocess ~f:(fun pp ->
+    Module_reference.Per_item.map preprocess ~f:(fun pp ->
       Preprocess.remove_future_syntax ~for_:Compiler pp ocaml.version)
   in
   let env, sandbox =
@@ -429,7 +434,7 @@ let make
     let sandbox = sandbox_of_setting sandbox in
     Staged.unstage (lint_module sctx ~sandbox ~dir ~expander ~lint ~lib_name ~scope)
   in
-  Module_name.Per_item.map preprocess ~f:(fun spec ->
+  Module_reference.Per_item.map preprocess ~f:(fun spec ->
     Staged.unstage
     @@ pp_one_module
          sctx

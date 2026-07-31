@@ -80,7 +80,7 @@ end
 
 module Per_module : sig
   type 'a preprocess := 'a t
-  type 'a t = 'a preprocess Module_name.Per_item.t
+  type 'a t = 'a preprocess Module_reference.Per_item.t
 
   val repr : 'a Repr.t -> 'a t Repr.t
   val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
@@ -88,8 +88,8 @@ module Per_module : sig
   val no_preprocessing : unit -> 'a t
   val default : unit -> 'a t
 
-  (** [find module_name] find the preprocessing specification for a given module *)
-  val find : Module_name.t -> 'a t -> 'a preprocess
+  (** Find the preprocessing specification for a module. *)
+  val find : path:Module_name.Path.t -> name:Module_name.t -> 'a t -> 'a preprocess
 
   val pps : Without_instrumentation.t t -> Without_instrumentation.t list
 
@@ -111,7 +111,7 @@ type preprocess =
   }
 
 val preprocess_config
-  :  preprocess:Without_instrumentation.t t Module_name.Per_item.t
+  :  preprocess:Without_instrumentation.t t Module_reference.Per_item.t
   -> instrumentation:Instrumentation.t list
   -> preprocessor_deps:Dep_conf.t list
   -> preprocess

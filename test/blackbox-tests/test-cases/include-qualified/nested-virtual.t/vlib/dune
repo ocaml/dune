@@ -2,4 +2,5 @@
 
 (library
  (name vlib)
- (virtual_modules bar/virt))
+ (public_name vlib)
+ (virtual_modules Bar.Virt))

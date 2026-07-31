@@ -66,3 +66,25 @@ Reason dialect preprocessor to the PPX driver.
   > EOF
 
   $ dune build @reason-pps/mel
+
+Qualified module references work in a `melange.emit` stanza too:
+
+  $ mkdir qualified
+  $ cd qualified
+  $ make_melange_project 3.25 1.0
+  $ mkdir foo
+  $ echo 'This is not OCaml.' >foo/bar.ml
+  $ cat >dune <<'EOF'
+  > (include_subdirs qualified)
+  > (melange.emit
+  >  (target output)
+  >  (modules Foo.Bar)
+  >  (alias mel)
+  >  (emit_stdlib false)
+  >  (preprocess
+  >   (per_module
+  >    ((action
+  >      (run echo "let marker = \"qualified\"")) Foo.Bar))))
+  > EOF
+  $ dune build @mel
+  $ cd ..

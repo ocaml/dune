@@ -5,4 +5,4 @@
  (preprocess
   (per_module
    ((action
-     (run cat %{input-file})) bar/ppme))))
+     (run cat %{input-file})) Bar.Ppme))))

@@ -317,7 +317,7 @@ module Instrumentation = struct
 end
 
 module Per_module = struct
-  module Per_module = Module_name.Per_item
+  module Per_module = Module_reference.Per_item
 
   type 'a preprocess = 'a t
   type 'a t = 'a preprocess Per_module.t
@@ -326,7 +326,7 @@ module Per_module = struct
   let equal f x y = Per_module.equal (equal f) x y
   let decode = Per_module.decode decode ~default:No_preprocessing
   let no_preprocessing () = Per_module.for_all No_preprocessing
-  let find module_name t = Per_module.get t module_name
+  let find ~path ~name t = Per_module.find t ~path ~name
   let default () = Per_module.for_all No_preprocessing
 
   let pps t =
@@ -394,7 +394,7 @@ let preprocess_fields_with_prefix ~prefix:field_prefix =
     | Some _, None | None, _ -> []
     | Some (loc, deps), Some preprocess ->
       let deps_might_be_used =
-        Module_name.Per_item.exists preprocess ~f:(fun p ->
+        Module_reference.Per_item.exists preprocess ~f:(fun p ->
           match p with
           | Action _ | Pps _ -> true
           | No_preprocessing | Future_syntax _ -> false)
@@ -429,7 +429,7 @@ let preprocess_config ~preprocess ~instrumentation ~preprocessor_deps =
   let config =
     let init =
       let f libname = With_instrumentation.Ordinary libname in
-      Module_name.Per_item.map preprocess ~f:(map ~f)
+      Module_reference.Per_item.map preprocess ~f:(map ~f)
     in
     List.fold_left instrumentation ~init ~f:Per_module.add_instrumentation
   in

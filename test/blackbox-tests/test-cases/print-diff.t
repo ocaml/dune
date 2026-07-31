@@ -76,6 +76,7 @@ addition to unsetting INSIDE_DUNE, we also need to pass
   > false
   > EOF
   $ chmod +x _tools/fail
+  $ export OCAMLLIB=$(ocamlc -where)
   $ mkdir _path
   $ ln -s $(command -v dune) _path/
   $ ln -s $(command -v ocamlc) _path/

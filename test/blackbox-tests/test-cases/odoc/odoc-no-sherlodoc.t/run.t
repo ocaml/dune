@@ -3,6 +3,7 @@ sherlodoc installation to test what happens when sherlodoc is not installed.
 
 Set up some fake environment without sherlodoc
 
+  $ export OCAMLLIB=$(ocamlc -where)
   $ mkdir _path
   $ ln -s $(command -v dune) _path/
   $ ln -s $(command -v ocamlc) _path/
@@ -61,4 +62,3 @@ This test if `.odocl` files are generated
   {1 Library bar}
   The entry point of this library is the module:
   {!module-Bar}.
-

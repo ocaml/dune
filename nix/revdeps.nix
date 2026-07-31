@@ -15,7 +15,7 @@ let
     });
     dune = final.dune_3;
 
-    ocamlPackages = prev.ocaml-ng.ocamlPackages_5_4.overrideScope (
+    ocamlPackages = prev.ocaml-ng.ocamlPackages_5_5.overrideScope (
       oself: osuper:
       let
         # Helper to build dune subpackages from revdeps-dune source
@@ -159,7 +159,7 @@ let
   # Get filtered candidates using nix-overlays' logic
   candidates = filter.ocamlCandidates {
     pkgs = pkgsPermissive;
-    ocamlVersion = "5_4";
+    ocamlVersion = "5_5";
   };
 
   # Filter to only packages available on current platform

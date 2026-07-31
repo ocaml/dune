@@ -9,8 +9,9 @@ Test cases when melc is not available
 
 Set up some fake environment without melc
 
+  $ export OCAMLLIB=$(ocamlc -where)
   $ mkdir _path
-  $ for bin in dune ocamlc ocamldep ocamlopt ocamlobjinfo; do
+  $ for bin in dune ocamlc ocamldep ocamlopt ocamlobjinfo sh; do
   >   if command -v "$bin" > /dev/null; then
   >     ln -s "$(command -v "$bin")" _path/
   >   fi
@@ -26,7 +27,7 @@ For melange.emit stanzas, an error is shown
   >  (alias mel))
   > EOF
 
-  $ (unset INSIDE_DUNE; PATH=_path dune build --always-show-command-line --root . @mel 2>&1 | grep Program)
+  $ (unset INSIDE_DUNE; PATH=$PWD/_path dune build --always-show-command-line --root . @mel 2>&1 | grep Program)
   Error: Program melc not found in the tree or in PATH
   [1]
 
@@ -53,7 +54,7 @@ For libraries, if no melange.emit stanza is found, build does not fail
   > let t = "hello from native"
   > EOF
 
-  $ (unset INSIDE_DUNE; PATH=_path dune build --display progress --always-show-command-line --root . main_native.bc)
+  $ (unset INSIDE_DUNE; PATH=$PWD/_path dune build --display progress --always-show-command-line --root . main_native.bc)
   $ dune exec ./main_native.bc
   hello from native
 
@@ -76,13 +77,13 @@ If melange.emit stanza is found, but no rules are executed, build does not fail
   >  (libraries lib1))
   > EOF
 
-  $ (unset INSIDE_DUNE; PATH=_path dune build --display progress --always-show-command-line --root . main_native.bc)
+  $ (unset INSIDE_DUNE; PATH=$PWD/_path dune build --display progress --always-show-command-line --root . main_native.bc)
   $ dune exec ./main_native.bc
   hello from native
 
 But trying to build any melange artifacts will fail
 
-  $ (unset INSIDE_DUNE; PATH=_path dune build --display progress  --always-show-command-line --root . output/main_melange.js)
+  $ (unset INSIDE_DUNE; PATH=$PWD/_path dune build --display progress  --always-show-command-line --root . output/main_melange.js)
   File "dune", lines 10-14, characters 0-94:
   10 | (melange.emit
   11 |  (target output)

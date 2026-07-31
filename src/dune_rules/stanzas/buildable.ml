@@ -61,7 +61,7 @@ let decode_melange_preprocess =
     | Some _, None | None, _ -> []
     | Some (loc, deps), Some preprocess ->
       let deps_might_be_used =
-        Module_name.Per_item.exists preprocess ~f:(fun p ->
+        Module_reference.Per_item.exists preprocess ~f:(fun p ->
           match p with
           | Preprocess.Action _ | Preprocess.Pps _ -> true
           | Preprocess.No_preprocessing | Preprocess.Future_syntax _ -> false)

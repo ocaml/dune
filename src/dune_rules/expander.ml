@@ -1081,11 +1081,10 @@ let expand_ordered_set_lang =
 ;;
 
 let expand_and_eval_set t set ~standard =
+  let* set = expand_ordered_set_lang t set in
   let+ standard =
-    if Ordered_set_lang.Unexpanded.has_standard set
-    then standard
-    else Action_builder.return []
-  and+ set = expand_ordered_set_lang t set in
+    if Ordered_set_lang.has_standard set then standard else Action_builder.return []
+  in
   Ordered_set_lang.eval set ~standard ~eq:String.equal ~parse:(fun ~loc:_ s -> s)
 ;;
 

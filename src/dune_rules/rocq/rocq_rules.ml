@@ -820,7 +820,8 @@ let setup_output_diff_rule ~loc ~dir ~sctx ~rocq_lang_version ~rocq_sources rocq
       ; directory_diffs = true
       }
     in
-    let alias = Alias.make ~dir Alias0.runtest in
+    let alias_dir = Path.Build.parent_exn expected in
+    let alias = Alias.make ~dir:alias_dir Alias0.runtest in
     Simple_rules.Alias_rules.add
       sctx
       ~loc

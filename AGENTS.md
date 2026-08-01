@@ -33,6 +33,16 @@ the Dune codebase.
   explain why not. Propose ways to re-arrange the code so that things can be done
   without indirection.
 
+## Submitting Pull Requests
+
+- Keep regression tests in a separate commit or change from the corresponding
+  fix, with the test change preceding the fix.
+- When a changelog entry is needed, add a fragment by following
+  `doc/changes/AGENTS.md`.
+- Before submitting, confirm that every applicable step in
+  `.github/pull_request_template.md` has been followed. Then remove the template
+  boilerplate, including its checklist, from the final pull request description.
+
 ## Quick Reference
 
 **Most Common Commands:**

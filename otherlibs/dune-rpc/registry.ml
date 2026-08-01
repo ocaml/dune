@@ -169,11 +169,10 @@ struct
     let** (`Mtime mtime) = IO.stat dir in
     let skip =
       match t.last_mtime with
-      | Some last_mtime -> last_mtime <> mtime
-      | None ->
-        t.last_mtime <- Some mtime;
-        false
+      | Some last_mtime -> last_mtime = mtime
+      | None -> false
     in
+    t.last_mtime <- Some mtime;
     if skip
     then Fiber.return (Ok Refresh.empty)
     else

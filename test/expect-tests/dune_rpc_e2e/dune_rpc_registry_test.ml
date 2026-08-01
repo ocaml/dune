@@ -104,8 +104,8 @@ let%expect_test "poll skips scans after the registry mtime changes" =
   [%expect
     {|
     initial: scans=1 added=0 current=0
-    after change: scans=1 added=0 current=0
-    subsequent poll: scans=1 added=0 current=0 |}]
+    after change: scans=2 added=1 current=1
+    subsequent poll: scans=2 added=0 current=1 |}]
 ;;
 
 let%expect_test "turn on dune watch and wait until the connection is listed" =

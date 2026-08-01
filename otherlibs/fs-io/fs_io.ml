@@ -111,12 +111,16 @@ let with_file_in_fd fn ~f =
 ;;
 
 let read_file fn =
-  with_file_in_fd fn ~f:(fun fd ->
-    match read_all_fd fd with
-    | Ok s -> Ok s
-    | Error `Retry -> read_file_chan fn
-    | Error `Too_big -> Error too_big
-    | Error (`Unix (e, s, x)) -> Error (Unix.Unix_error (e, s, x)))
+  match
+    with_file_in_fd fn ~f:(fun fd ->
+      match read_all_fd fd with
+      | Ok s -> Ok s
+      | Error `Retry -> read_file_chan fn
+      | Error `Too_big -> Error too_big
+      | Error (`Unix (e, s, x)) -> Error (Unix.Unix_error (e, s, x)))
+  with
+  | result -> result
+  | exception (Unix.Unix_error _ as exn) -> Error exn
 ;;
 
 let write_file =

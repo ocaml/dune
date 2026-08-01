@@ -1,0 +1,14 @@
+(library
+ (name fs_io_tests)
+ (inline_tests)
+ (libraries
+  fs_io
+  unix
+  ;; This is because of the (implicit_transitive_deps false)
+  ;; in dune-project
+  ppx_expect.config
+  ppx_expect.config_types
+  base
+  ppx_inline_test.config)
+ (preprocess
+  (pps ppx_expect)))

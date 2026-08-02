@@ -57,16 +57,17 @@ module Cached_digest = struct
     type t = Workspace_cache.Fs_memo.Stats.t
 
     let repr = Workspace_cache.Fs_memo.Stats.repr
+    let mtime = Workspace_cache.Fs_memo.Stats.mtime
     let to_dyn = Repr.to_dyn repr
 
     let of_stat (stat : Stat.t) : t =
-      { mtime = stat.mtime
-      ; ctime = stat.ctime
-      ; size = stat.size
-      ; perm = stat.perm
-      ; dev = stat.dev
-      ; ino = stat.ino
-      }
+      Workspace_cache.Fs_memo.Stats.create
+        ~mtime:stat.mtime
+        ~ctime:stat.ctime
+        ~size:stat.size
+        ~perm:stat.perm
+        ~dev:stat.dev
+        ~ino:stat.ino
     ;;
 
     include Repr.Poly (struct
@@ -121,9 +122,10 @@ module Cached_digest = struct
     | Eq | Gt ->
       let max_timestamp = ref (Time.of_ns 0) in
       let filter (data : _ file) =
-        match Time.compare data.stats.mtime now with
+        let mtime = Stats.mtime data.stats in
+        match Time.compare mtime now with
         | Lt ->
-          max_timestamp := Time.max !max_timestamp data.stats.mtime;
+          max_timestamp := Time.max !max_timestamp mtime;
           true
         | Gt | Eq -> false
       in

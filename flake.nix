@@ -7,10 +7,7 @@
     };
     revdeps-dune = {
       url = "github:ocaml/dune";
-      inputs.nixpkgs.follows = "nixpkgs";
-      inputs.ocaml-overlays.follows = "nixpkgs";
-      inputs.revdeps-dune.follows = "revdeps-dune";
-      inputs.ocaml-trunk.follows = "ocaml-trunk";
+      flake = false;
     };
   };
 

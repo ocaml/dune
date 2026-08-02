@@ -573,9 +573,9 @@ module Alias_module = struct
 
   module Alias = struct
     type t =
-      { canonical_path : string
-      ; local_name : Module_name.t
-      ; obj_name : Module_name.t
+      { local_name : Module_name.t
+      ; canonical_path : Module_name.Path.t
+      ; obj_name : Module_name.Unique.t
       }
 
     let canonical_prefix = "\n(** @canonical "
@@ -590,16 +590,31 @@ module Alias_module = struct
       + String.length alias_suffix
     ;;
 
+    let module_name_length name = String.length (Module_name.to_string name)
+
+    let canonical_path_length (name :: names : Module_name.Path.t) =
+      List.fold_left names ~init:(module_name_length name) ~f:(fun length name ->
+        length + 1 + module_name_length name)
+    ;;
+
+    let add_canonical_path builder (name :: names : Module_name.Path.t) =
+      String_builder.add_string builder (Module_name.to_string name);
+      List.iter names ~f:(fun name ->
+        String_builder.add_char builder '.';
+        String_builder.add_string builder (Module_name.to_string name))
+    ;;
+
     let length { canonical_path; local_name; obj_name } =
       static_length
-      + String.length canonical_path
-      + String.length (Module_name.to_string local_name)
-      + String.length (Module_name.to_string obj_name)
+      + canonical_path_length canonical_path
+      + module_name_length local_name
+      + String.length (Module_name.Unique.to_string obj_name)
     ;;
 
     let add builder { canonical_path; local_name; obj_name } =
+      let obj_name = Module_name.Unique.to_name ~loc:Loc.none obj_name in
       String_builder.add_string builder canonical_prefix;
-      String_builder.add_string builder canonical_path;
+      add_canonical_path builder canonical_path;
       String_builder.add_string builder canonical_suffix;
       String_builder.add_string builder (Module_name.to_string local_name);
       String_builder.add_string builder alias_separator;
@@ -658,11 +673,9 @@ module Alias_module = struct
     let aliases =
       Modules.Group.for_alias group
       |> List.map ~f:(fun (local_name, m) ->
-        let canonical_path =
-          Modules.With_vlib.canonical_path modules group m |> Module_name.Path.to_string
-        in
-        let obj_name = Module.obj_name m |> Module_name.Unique.to_name ~loc:Loc.none in
-        { Alias.canonical_path; local_name; obj_name })
+        let canonical_path = Modules.With_vlib.canonical_path modules group m in
+        let obj_name = Module.obj_name m in
+        { Alias.local_name; canonical_path; obj_name })
     in
     let shadowed =
       if Dune_project.dune_version project < (3, 5)

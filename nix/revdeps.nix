@@ -1,6 +1,5 @@
 {
   nixpkgs,
-  ocaml-overlays,
   revdeps-dune,
   pkgs,
 }:
@@ -137,21 +136,20 @@ let
     );
   };
 
-  # Import nixpkgs with allowBroken so deps of broken pkgs can be evaluated
-  pkgsPermissive = import nixpkgs {
+  # Instantiate nix-overlays with allowBroken so deps of broken pkgs can be
+  # evaluated.
+  pkgsPermissive = nixpkgs.makePkgs {
     inherit (pkgs.stdenv.hostPlatform) system;
     config = {
       allowBroken = true;
       allowUnfree = true;
+      allowUnsupportedSystem = true;
     };
-    overlays = [
-      ocaml-overlays.overlays.default
-      duneOverlay
-    ];
+    extraOverlays = [ duneOverlay ];
   };
 
   # Use the filter from nix-overlays
-  filter = import "${ocaml-overlays}/ci/filter.nix" {
+  filter = import "${nixpkgs}/ci/filter.nix" {
     inherit lib;
     inherit (pkgsPermissive) stdenv;
   };

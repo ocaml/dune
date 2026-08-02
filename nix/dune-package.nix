@@ -9,7 +9,6 @@
 #   - `dune-static`: alias for `musl-static`
 {
   nixpkgs,
-  ocaml-overlays,
   pkgs,
   src,
 }:
@@ -64,7 +63,6 @@ let
   };
 
   pkgs-static = nixpkgs.legacyPackages.${pkgs.stdenv.hostPlatform.system}.appendOverlays [
-    ocaml-overlays.overlays.default
     dune-static-overlay
   ];
 

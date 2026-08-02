@@ -75,8 +75,6 @@ waits for that destination to be installed, so a sequential install times out.
   $ second_entry_must_not_start staging-source \
   >   prefix/lib/foo/.#target.dune-temp
   Installing prefix/lib/foo/target
-  Installing prefix/lib/foo/.#target.dune-temp
-  [1]
 
 Destinations that resolve through symlinks can also refer to the same file.
 The writer waits for the second alias, so preserving sequential behavior makes
@@ -95,8 +93,6 @@ the install time out before it can start the second entry.
   > EOF
   $ second_entry_must_not_start alias-source prefix/lib/foo/shared/target
   Installing prefix/lib/foo/first-alias/target
-  Installing prefix/lib/foo/second-alias/target
-  [1]
 
 A dangling symlink may start resolving when another entry creates its target
 directory. These destinations must also remain sequential.
@@ -113,8 +109,6 @@ directory. These destinations must also remain sequential.
   > EOF
   $ second_entry_must_not_start future-source prefix/lib/foo/future-dir/target
   Installing prefix/lib/foo/future-dir/target
-  Installing prefix/lib/foo/future-alias/target
-  [1]
 
 Case variants are conservatively processed sequentially so that they cannot
 race on case-insensitive filesystems.
@@ -129,8 +123,6 @@ race on case-insensitive filesystems.
   > EOF
   $ second_entry_must_not_start case-source prefix/lib/foo/CASE-TARGET
   Installing prefix/lib/foo/case-target
-  Installing prefix/lib/foo/CASE-TARGET
-  [1]
 
 Ancestor/descendant destinations are also processed sequentially. The first
 entry installs `node` as a file, so the second cannot create `node/child` and

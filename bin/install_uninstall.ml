@@ -773,23 +773,100 @@ let run
             | Error _ -> false
           in
           let install_destinations_are_independent () =
-            let rec collect destinations = function
-              | [] -> Some destinations
-              | (_, dst, _) :: entries ->
-                if Path.Set.mem destinations dst
-                then None
-                else collect (Path.Set.add destinations dst) entries
+            let canonicalize path =
+              let rec loop path suffix =
+                match Unix.realpath (Path.to_string path) with
+                | path ->
+                  Some
+                    (List.fold_left suffix ~init:(Path.of_string path) ~f:Path.relative)
+                | exception Unix.Unix_error ((ENOENT | ENOTDIR), _, _) ->
+                  (match Unix.lstat (Path.to_string path) with
+                   | { st_kind = S_LNK; _ } -> None
+                   | _ | (exception Unix.Unix_error ((ENOENT | ENOTDIR), _, _)) ->
+                     (match Path.parent path with
+                      | None -> Some path
+                      | Some parent ->
+                        let basename = Path.basename path |> Filename.to_string in
+                        loop parent (basename :: suffix)))
+              in
+              (* Case-folding is conservative on case-sensitive filesystems and
+                 prevents aliases from racing on case-insensitive ones. *)
+              match loop path [] with
+              | None -> None
+              | Some path ->
+                let path = Path.to_string path in
+                Option.some_if
+                  (String.for_all path ~f:(fun c -> Char.code c < 0x80))
+                  (String.lowercase_ascii path |> Path.of_string)
             in
-            match collect Path.Set.empty entries with
-            | None -> false
-            | Some destinations ->
-              List.for_all entries ~f:(fun (_, dst, _) ->
-                let rec loop = function
-                  | None -> true
-                  | Some parent ->
-                    (not (Path.Set.mem destinations parent)) && loop (Path.parent parent)
-                in
-                loop (Path.parent dst))
+            let check () =
+              (* The normalization below only models ASCII case-folding.
+                 Other Windows and Unicode aliases are kept sequential. *)
+              if Sys.win32
+              then false
+              else (
+                match
+                  ( List.map entries ~f:(fun (_, dst, _) -> canonicalize dst)
+                    |> Option.List.all
+                  , List.map
+                      entries
+                      ~f:(fun ((entry : Path.t Install.Entry.Expanded.t), _, _) ->
+                        canonicalize entry.src)
+                    |> Option.List.all )
+                with
+                | None, _ | _, None -> false
+                | Some paths, Some sources ->
+                  (* Artifact substitution stages copies in the [.#] namespace. *)
+                  let rec uses_reserved_temp_path path =
+                    match Path.parent path with
+                    | None -> false
+                    | Some parent ->
+                      let basename = Path.basename path |> Filename.to_string in
+                      String.starts_with basename ~prefix:".#"
+                      || uses_reserved_temp_path parent
+                  in
+                  let rec add_with_ancestors paths path =
+                    let paths = Path.Set.add paths path in
+                    match Path.parent path with
+                    | None -> paths
+                    | Some parent -> add_with_ancestors paths parent
+                  in
+                  let rec path_or_ancestor_is_in paths path =
+                    Path.Set.mem paths path
+                    ||
+                    match Path.parent path with
+                    | None -> false
+                    | Some parent -> path_or_ancestor_is_in paths parent
+                  in
+                  let rec collect destinations = function
+                    | [] -> Some destinations
+                    | path :: paths ->
+                      if Path.Set.mem destinations path
+                      then None
+                      else collect (Path.Set.add destinations path) paths
+                  in
+                  let source_paths = Path.Set.of_list sources in
+                  let source_ancestors =
+                    List.fold_left sources ~init:Path.Set.empty ~f:add_with_ancestors
+                  in
+                  if
+                    List.exists (paths @ sources) ~f:uses_reserved_temp_path
+                    || List.exists paths ~f:(fun dst ->
+                      Path.Set.mem source_ancestors dst
+                      || path_or_ancestor_is_in source_paths dst)
+                  then false
+                  else (
+                    match collect Path.Set.empty paths with
+                    | None -> false
+                    | Some destinations ->
+                      List.for_all paths ~f:(fun path ->
+                        match Path.parent path with
+                        | None -> true
+                        | Some parent -> not (path_or_ancestor_is_in destinations parent))))
+            in
+            match Exn_with_backtrace.try_with check with
+            | Ok independent -> independent
+            | Error _ -> false
           in
           let* entries =
             match what with

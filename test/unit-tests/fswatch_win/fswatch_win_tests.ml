@@ -262,8 +262,9 @@ let run cmd =
     |> Option.value_exn
     |> Path.to_string
   in
-  match snd (Unix.waitpid [] (Spawn.spawn ~prog ~argv:cmd () |> Pid.to_int)) with
-  | WEXITED 0 -> ()
+  let pid = Spawn.spawn ~prog ~argv:cmd () in
+  match Proc.wait (Pid pid) [] with
+  | Some { status = WEXITED 0; _ } -> ()
   | _ -> assert false
 ;;
 

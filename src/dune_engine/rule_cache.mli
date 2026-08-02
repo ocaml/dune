@@ -6,9 +6,10 @@ open Import
 
     - Build artifacts currently available in the build directory.
 
-    - A database [_build/.db] that maps rule digests to their target digests.
+    - The rule records in the workspace cache [_build/.db], which map rule
+      digests to their target digests.
 
-    The database makes it possible to decide if the build directory contains up
+    These records make it possible to decide if the build directory contains up
     to date results for a given rule. *)
 module Workspace_local : sig
   (** Check if the workspace-local cache contains up-to-date results for a rule

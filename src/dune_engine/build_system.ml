@@ -322,15 +322,6 @@ module Internal = struct
         ; attached_to_alias : bool
         }
 
-  let maybe_async_rule_file_op f =
-    (* It would be nice to do this check only once and return a function, but the
-       type of this function would need to be polymorphic which is forbidden by
-       the relaxed value restriction. *)
-    match Config.(get background_file_system_operations_in_rule_execution) with
-    | `Enabled -> Scheduler.async_exn f
-    | `Disabled -> Fiber.return (f ())
-  ;;
-
   module Anonymous_action = struct
     type t =
       { action : Rule.Anonymous_action.t
@@ -447,10 +438,9 @@ module Internal = struct
           then Action.with_stdout_to stamp_file action
           else Action.progn [ action; Action.write_file stamp_file "" ]
       in
-      let* () =
-        maybe_async_rule_file_op (fun () ->
-          Action.chdirs action
-          |> Path.Build.Set.iter ~f:(fun p -> Path.mkdir_p (Path.build p)))
+      let () =
+        Action.chdirs action
+        |> Path.Build.Set.iter ~f:(fun p -> Path.mkdir_p (Path.build p))
       in
       let context = Build_context.of_build_path targets.root in
       let root =
@@ -478,7 +468,7 @@ module Internal = struct
         in
         let* action_exec_result = Action_exec.Exec_result.ok_exn action_exec_result in
         let* () = Action_trace.collect action_trace in
-        let* () =
+        let+ () =
           if not is_sandboxed
           then Fiber.return ()
           else (
@@ -491,10 +481,7 @@ module Internal = struct
             in
             Sandbox.move_targets_to_build_dir sandbox ~should_be_skipped ~targets)
         in
-        let+ produced_targets =
-          maybe_async_rule_file_op (fun () -> Targets.Produced.of_validated targets)
-        in
-        match produced_targets with
+        match Targets.Produced.of_validated targets with
         | Ok produced_targets -> { Exec_result.produced_targets; action_exec_result }
         | Error error -> User_error.raise ~loc (Targets.Produced.Error.message error))
     in
@@ -561,9 +548,7 @@ module Internal = struct
     wrap_fiber (fun () ->
       let open Fiber.O in
       report_evaluated_rule_exn ();
-      let* () =
-        maybe_async_rule_file_op (fun () -> Path.mkdir_p (Path.build targets.root))
-      in
+      Path.mkdir_p (Path.build targets.root);
       let is_action_dynamic = Action.is_dynamic action.action in
       let sandbox_mode =
         select_sandbox_mode
@@ -625,31 +610,27 @@ module Internal = struct
           (* Step II. Remove stale targets both from the digest table and from
              the build directory. *)
           Rule_cache.Workspace_local.remove targets;
-          let* () =
-            maybe_async_rule_file_op (fun () ->
-              let remove_target_dir dir =
-                let () = Rule_cache.Workspace_local.remove_subtree dir in
-                Path.rm_rf (Path.build dir)
-              in
-              let remove_target_file path =
-                match Fpath.unlink (Path.Build.to_string path) with
-                | Success -> ()
-                | Does_not_exist -> ()
-                | Is_a_directory ->
-                  (* If target changed from a directory to a file, delete
+          let () =
+            let remove_target_dir dir =
+              let () = Rule_cache.Workspace_local.remove_subtree dir in
+              Path.rm_rf (Path.build dir)
+            in
+            let remove_target_file path =
+              match Fpath.unlink (Path.Build.to_string path) with
+              | Success -> ()
+              | Does_not_exist -> ()
+              | Is_a_directory ->
+                (* If target changed from a directory to a file, delete
                      in anyway. *)
-                  remove_target_dir path
-                | Error exn ->
-                  Log.warn
-                    "Error while removing target"
-                    [ "path", Dyn.string (Path.Build.to_string path)
-                    ; "error", Dyn.string (Printexc.to_string exn)
-                    ]
-              in
-              Targets.Validated.iter
-                targets
-                ~file:remove_target_file
-                ~dir:remove_target_dir)
+                remove_target_dir path
+              | Error exn ->
+                Log.warn
+                  "Error while removing target"
+                  [ "path", Dyn.string (Path.Build.to_string path)
+                  ; "error", Dyn.string (Printexc.to_string exn)
+                  ]
+            in
+            Targets.Validated.iter targets ~file:remove_target_file ~dir:remove_target_dir
           in
           let* produced_targets, dynamic_deps_stages =
             (* Step III. Try to restore artifacts from the shared cache. *)

@@ -92,10 +92,6 @@ let background_default =
   | _ -> `Disabled
 ;;
 
-let background_actions =
-  make ~name:"background_actions" ~of_string:Toggle.of_string ~default:`Disabled
-;;
-
 let background_digests =
   make ~name:"background_digests" ~of_string:Toggle.of_string ~default:background_default
 ;;

@@ -2,7 +2,8 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
     melange = {
-      url = "github:melange-re/melange/v7-55";
+      url =
+        "git+https://github.com/melange-re/melange?ref=refs/heads/v7-55&shallow=1";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     ocaml-overlays = {

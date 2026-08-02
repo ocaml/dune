@@ -10,16 +10,17 @@
       "locked": {
         "lastModified": 1783843147,
         "narHash": "sha256-lT+PtjJ6l6eQGhd/2szsj9alpV5tn/0uouC3OkeTeX0=",
-        "owner": "melange-re",
-        "repo": "melange",
+        "ref": "refs/heads/v7-55",
         "rev": "08cd3ca8fcc9ec2a75ebacb5f86f336467cd2e6c",
-        "type": "github"
+        "shallow": true,
+        "type": "git",
+        "url": "https://github.com/melange-re/melange"
       },
       "original": {
-        "owner": "melange-re",
-        "ref": "v7-55",
-        "repo": "melange",
-        "type": "github"
+        "ref": "refs/heads/v7-55",
+        "shallow": true,
+        "type": "git",
+        "url": "https://github.com/melange-re/melange"
       }
     },
     "melange-compiler-libs": {

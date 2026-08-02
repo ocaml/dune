@@ -314,6 +314,17 @@ module Internal = struct
       }
   end
 
+  type prepared_rule_action =
+    { sandbox : Sandbox.t
+    ; action : Action.t
+    ; root : Path.t
+    ; context : Build_context.t option
+    ; env : Env.t
+    ; targets : Targets.Validated.t
+    ; rule_loc : Loc.t
+    ; execution_parameters : Execution_parameters.t
+    }
+
   type rule_kind =
     | Normal_rule
     | Anonymous_action of
@@ -410,17 +421,51 @@ module Internal = struct
 
   and build_deps deps = Dep.Map.parallel_map deps ~f:(fun dep () -> build_dep dep)
 
-  and execute_action_for_rule
-        ~rule_kind
-        ~rule_digest
-        ~action
-        ~facts
-        ~loc
-        ~execution_parameters
-        ~sandbox_mode
-        ~(targets : Targets.Validated.t)
-    : Exec_result.t Fiber.t
+  and remove_rule_targets (targets : Targets.Validated.t) =
+    Rule_cache.Workspace_local.remove targets;
+    maybe_async_rule_file_op (fun () ->
+      let remove_target_dir dir =
+        let () = Rule_cache.Workspace_local.remove_subtree dir in
+        Path.rm_rf (Path.build dir)
+      in
+      let remove_target_file path =
+        match Fpath.unlink (Path.Build.to_string path) with
+        | Success -> ()
+        | Does_not_exist -> ()
+        | Is_a_directory ->
+          (* If target changed from a directory to a file, delete it anyway. *)
+          remove_target_dir path
+        | Error exn ->
+          Log.warn
+            "Error while removing target"
+            [ "path", Dyn.string (Path.Build.to_string path)
+            ; "error", Dyn.string (Printexc.to_string exn)
+            ]
+      in
+      Targets.Validated.iter targets ~file:remove_target_file ~dir:remove_target_dir)
+
+  and with_prepared_action_for_rule
+    :  'a.
+       rule_kind:rule_kind
+    -> rule_digest:Digest.t
+    -> action:Action.Full.t
+    -> facts:Dep.Facts.t
+    -> loc:Loc.t
+    -> execution_parameters:Execution_parameters.t
+    -> sandbox_mode:Sandbox_mode.some option
+    -> targets:Targets.Validated.t
+    -> f:(prepared_rule_action -> 'a Fiber.t)
+    -> 'a Fiber.t
     =
+    fun ~rule_kind
+      ~rule_digest
+      ~action
+      ~facts
+      ~loc
+      ~execution_parameters
+      ~sandbox_mode
+      ~targets
+      ~f ->
     let open Fiber.O in
     let { Action.Full.action
         ; env
@@ -432,7 +477,7 @@ module Internal = struct
       =
       action
     in
-    let execute_action sandbox =
+    let prepare_action sandbox =
       let is_sandboxed = Sandbox.is_sandboxed sandbox in
       let action = if is_sandboxed then Action.sandbox action sandbox else action in
       let action =
@@ -459,44 +504,17 @@ module Internal = struct
         | Some context -> context.build_dir
       in
       let root = Path.build (Sandbox.map_path sandbox root) in
-      let action_trace = Action_trace.create rule_digest in
       with_locks locks ~f:(fun () ->
-        let* action_exec_result =
-          let input =
-            let env = Action_trace.add_to_env action_trace env in
-            { Action_exec.root
-            ; context (* can be derived from the root *)
-            ; env
-            ; targets = Some targets
-            ; rule_loc = loc
-            ; execution_parameters
-            ; action
-            }
-          in
-          let build_deps deps = Memo.run (build_deps deps) in
-          Action_exec.exec input ~build_deps
-        in
-        let* action_exec_result = Action_exec.Exec_result.ok_exn action_exec_result in
-        let* () = Action_trace.collect action_trace in
-        let* () =
-          if not is_sandboxed
-          then Fiber.return ()
-          else (
-            (* The stamp file for anonymous actions is always created outside
-               the sandbox, so we can't move it. *)
-            let should_be_skipped =
-              match rule_kind with
-              | Normal_rule -> fun (_ : Path.Build.t) -> false
-              | Anonymous_action { stamp_file; _ } -> Path.Build.equal stamp_file
-            in
-            Sandbox.move_targets_to_build_dir sandbox ~should_be_skipped ~targets)
-        in
-        let+ produced_targets =
-          maybe_async_rule_file_op (fun () -> Targets.Produced.of_validated targets)
-        in
-        match produced_targets with
-        | Ok produced_targets -> { Exec_result.produced_targets; action_exec_result }
-        | Error error -> User_error.raise ~loc (Targets.Produced.Error.message error))
+        f
+          { sandbox
+          ; action
+          ; root
+          ; context
+          ; env
+          ; targets
+          ; rule_loc = loc
+          ; execution_parameters
+          })
     in
     let deps, sandbox_dirs =
       match sandbox_mode with
@@ -517,7 +535,71 @@ module Internal = struct
       ~rule_dir:targets.root
       ~rule_digest
       ~targets
-      ~f:execute_action
+      ~f:prepare_action
+
+  and execute_action_for_rule
+        ~rule_kind
+        ~rule_digest
+        ~action
+        ~facts
+        ~loc
+        ~execution_parameters
+        ~sandbox_mode
+        ~(targets : Targets.Validated.t)
+    : Exec_result.t Fiber.t
+    =
+    with_prepared_action_for_rule
+      ~rule_kind
+      ~rule_digest
+      ~action
+      ~facts
+      ~loc
+      ~execution_parameters
+      ~sandbox_mode
+      ~targets
+      ~f:
+        (fun
+          { sandbox; action; root; context; env; targets; rule_loc; execution_parameters }
+        ->
+        let action_trace = Action_trace.create rule_digest in
+        let open Fiber.O in
+        let* action_exec_result =
+          let input =
+            let env = Action_trace.add_to_env action_trace env in
+            { Action_exec.root
+            ; context (* can be derived from the root *)
+            ; env
+            ; targets = Some targets
+            ; rule_loc
+            ; execution_parameters
+            ; action
+            }
+          in
+          let build_deps deps = Memo.run (build_deps deps) in
+          Action_exec.exec input ~build_deps
+        in
+        let* action_exec_result = Action_exec.Exec_result.ok_exn action_exec_result in
+        let* () = Action_trace.collect action_trace in
+        let* () =
+          if not (Sandbox.is_sandboxed sandbox)
+          then Fiber.return ()
+          else (
+            (* The stamp file for anonymous actions is always created outside
+               the sandbox, so we can't move it. *)
+            let should_be_skipped =
+              match rule_kind with
+              | Normal_rule -> fun (_ : Path.Build.t) -> false
+              | Anonymous_action { stamp_file; _ } -> Path.Build.equal stamp_file
+            in
+            Sandbox.move_targets_to_build_dir sandbox ~should_be_skipped ~targets)
+        in
+        let+ produced_targets =
+          maybe_async_rule_file_op (fun () -> Targets.Produced.of_validated targets)
+        in
+        match produced_targets with
+        | Ok produced_targets -> { Exec_result.produced_targets; action_exec_result }
+        | Error error ->
+          User_error.raise ~loc:rule_loc (Targets.Produced.Error.message error))
 
   and promote_targets ~rule_mode ~targets ~promote_source =
     match rule_mode, !Clflags.promote with
@@ -526,9 +608,8 @@ module Internal = struct
     | Promote promote, (Some Automatically | None) ->
       Target_promotion.promote ~targets ~promote ~promote_source
 
-  and execute_rule_impl ~rule_kind rule =
-    let { Rule.id = _; targets; mode; action; info = _; loc } = rule in
-    let head_target = Targets.Validated.head targets in
+  and evaluate_rule_action (rule : Rule.t) =
+    let { Rule.targets; action; _ } = rule in
     let* execution_parameters =
       match Dpath.Target_dir.of_target targets.root with
       | Regular (With_context (context, _)) | Anonymous_action (With_context (context, _))
@@ -538,13 +619,15 @@ module Internal = struct
           "invalid dir for rule execution"
           [ "dir", Path.Build.to_dyn targets.root ]
     in
-    (* Note: we do not run the below in parallel with the above: if we fail to
-       compute action execution parameters, we have no use for the action and
-       might as well fail early, skipping unnecessary dependencies. The
-       function [(Build_config.get ()).execution_parameters] is likely
-       memoized, and the result is not expected to change often, so we do not
-       sacrifice too much performance here by executing it sequentially. *)
-    let* action, facts = Action_builder.evaluate_and_collect_facts action in
+    (* If execution parameters cannot be computed, avoid evaluating the action
+       and building dependencies that cannot subsequently be used. *)
+    let+ action, facts = Action_builder.evaluate_and_collect_facts action in
+    action, facts, execution_parameters
+
+  and execute_rule_impl ~rule_kind rule =
+    let { Rule.id = _; targets; mode; action = _; info = _; loc } = rule in
+    let head_target = Targets.Validated.head targets in
+    let* action, facts, execution_parameters = evaluate_rule_action rule in
     let wrap_fiber f =
       Memo.of_reproducible_fiber
         (if Loc.is_none loc
@@ -624,33 +707,7 @@ module Internal = struct
         | None ->
           (* Step II. Remove stale targets both from the digest table and from
              the build directory. *)
-          Rule_cache.Workspace_local.remove targets;
-          let* () =
-            maybe_async_rule_file_op (fun () ->
-              let remove_target_dir dir =
-                let () = Rule_cache.Workspace_local.remove_subtree dir in
-                Path.rm_rf (Path.build dir)
-              in
-              let remove_target_file path =
-                match Fpath.unlink (Path.Build.to_string path) with
-                | Success -> ()
-                | Does_not_exist -> ()
-                | Is_a_directory ->
-                  (* If target changed from a directory to a file, delete
-                     in anyway. *)
-                  remove_target_dir path
-                | Error exn ->
-                  Log.warn
-                    "Error while removing target"
-                    [ "path", Dyn.string (Path.Build.to_string path)
-                    ; "error", Dyn.string (Printexc.to_string exn)
-                    ]
-              in
-              Targets.Validated.iter
-                targets
-                ~file:remove_target_file
-                ~dir:remove_target_dir)
-          in
+          let* () = remove_rule_targets targets in
           let* produced_targets, dynamic_deps_stages =
             (* Step III. Try to restore artifacts from the shared cache. *)
             Dune_cache.Shared.lookup ~can_go_in_shared_cache ~rule_digest ~targets
@@ -1058,6 +1115,188 @@ module Internal = struct
 end
 
 include Internal
+
+module Rule_shell = struct
+  type t =
+    { dir : Path.t
+    ; shell_env : Env.t
+    ; replay_env : Env.t
+    ; sandbox_dir : Path.Build.t option
+    ; sandbox_mode : Sandbox_mode.some option
+    ; info : Rule.Info.t
+    ; action : Action.t
+    ; targets : Targets.Validated.t
+    ; rule_digest : Digest.t
+    }
+
+  let map_targets sandbox (targets : Targets.Validated.t) =
+    let files, dirs =
+      Targets.Validated.fold
+        targets
+        ~init:(Path.Build.Set.empty, Path.Build.Set.empty)
+        ~file:(fun path (files, dirs) ->
+          Path.Build.Set.add files (Sandbox.map_path sandbox path), dirs)
+        ~dir:(fun path (files, dirs) ->
+          files, Path.Build.Set.add dirs (Sandbox.map_path sandbox path))
+    in
+    match Targets.create ~files ~dirs |> Targets.validate with
+    | Valid targets -> targets
+    | No_targets
+    | Inconsistent_parent_dir
+    | File_and_directory_target_with_the_same_name _ ->
+      Code_error.raise "mapping dune shell targets produced invalid targets" []
+  ;;
+
+  let rec action_execution_context action ~dir ~env =
+    match action with
+    | Action.Chdir (dir, action) -> action_execution_context action ~dir ~env
+    | Setenv (var, value, action) ->
+      action_execution_context action ~dir ~env:(Env.add env ~var ~value)
+    | With_accepted_exit_codes (_, action)
+    | Redirect_out (_, _, _, action)
+    | Redirect_in (_, _, action)
+    | Ignore (_, action) -> action_execution_context action ~dir ~env
+    | Progn _
+    | Concurrent _
+    | Run _
+    | Echo _
+    | Cat _
+    | Copy _
+    | Symlink _
+    | Hardlink _
+    | System _
+    | Bash _
+    | Write_file _
+    | Rename _
+    | Remove_tree _
+    | Mkdir _
+    | Pipe _
+    | Diff _
+    | Extension _ -> dir, env
+  ;;
+
+  let validate_action ~loc (action : Action.Full.t) facts =
+    if Dep.Map.has_universe facts
+    then
+      User_error.raise
+        ~loc
+        [ Pp.text "dune shell does not support rules with a universe dependency."
+        ; Pp.text
+            "A universe dependency denotes arbitrary workspace changes and cannot be \
+             represented by a prepared action environment."
+        ];
+    if Action.is_dynamic action.action
+    then
+      User_error.raise
+        ~loc
+        [ Pp.text "dune shell does not support dynamic actions."
+        ; Pp.text
+            "The action can discover dependencies while it runs, after the shell \
+             environment has already been prepared."
+        ];
+    if Action.contains_concurrent action.action
+    then
+      User_error.raise
+        ~loc
+        [ Pp.text "dune shell does not support concurrent actions."
+        ; Pp.text
+            "Replay needs a deterministic policy for combining concurrent exit statuses."
+        ];
+    match Action.find_extension_name action.action with
+    | None -> ()
+    | Some name ->
+      User_error.raise
+        ~loc
+        [ Pp.textf "dune shell does not support the action extension %S." name
+        ; Pp.text "Use an ordinary build, or rewrite the rule with standard actions."
+        ]
+  ;;
+
+  let with_ (rule : Rule.t) ~f =
+    let { Rule.targets = original_targets; loc; info; _ } = rule in
+    let open Memo.O in
+    let* full_action, facts, execution_parameters = evaluate_rule_action rule in
+    validate_action ~loc full_action facts;
+    let sandbox_mode =
+      select_sandbox_mode
+        ~loc
+        full_action.sandbox
+        ~sandboxing_preference:(Build_config.get ()).sandboxing_preference
+    in
+    (match sandbox_mode with
+     | Some Patch_back_source_tree ->
+       User_error.raise
+         ~loc
+         [ Pp.text "dune shell does not support patch-back-source-tree rules."
+         ; Pp.text
+             "That mode performs implicit source-tree updates, whose shell semantics are \
+              not defined."
+         ]
+     | None | Some (Copy | Symlink | Hardlink) -> ());
+    let rule_digest =
+      compute_rule_digest
+        rule
+        ~facts
+        ~action:full_action
+        ~sandbox_mode
+        ~execution_parameters
+    in
+    Memo.of_non_reproducible_fiber
+      (let open Fiber.O in
+       let* () =
+         maybe_async_rule_file_op (fun () ->
+           Path.mkdir_p (Path.build original_targets.root))
+       in
+       let* () = remove_rule_targets original_targets in
+       with_prepared_action_for_rule
+         ~rule_kind:Normal_rule
+         ~rule_digest
+         ~action:full_action
+         ~facts
+         ~loc
+         ~execution_parameters
+         ~sandbox_mode
+         ~targets:original_targets
+         ~f:
+           (fun
+             { sandbox
+             ; action
+             ; root
+             ; context = _
+             ; env
+             ; targets = _
+             ; rule_loc = _
+             ; execution_parameters
+             }
+           ->
+           let targets = map_targets sandbox original_targets in
+           let base_env = Action_exec.prepare_env ~root ~env execution_parameters in
+           let replay_env = Dtemp.add_to_env base_env in
+           let sandbox_dir =
+             Option.some_if
+               (Sandbox.is_sandboxed sandbox)
+               (Sandbox.map_path sandbox Path.Build.root)
+           in
+           let dir, shell_env =
+             action_execution_context
+               action
+               ~dir:(Path.build (Sandbox.map_path sandbox original_targets.root))
+               ~env:base_env
+           in
+           let shell_env = Dtemp.add_to_env shell_env in
+           f
+             { dir
+             ; shell_env
+             ; replay_env
+             ; sandbox_dir
+             ; sandbox_mode
+             ; info
+             ; action
+             ; targets
+             ; rule_digest
+             }))
+  ;;
+end
 
 (* Here we are doing a O(log |S|) lookup in a set S of files in the build
    directory [dir]. We could memoize these lookups, but it doesn't seem to be

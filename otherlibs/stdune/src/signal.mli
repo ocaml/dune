@@ -36,6 +36,10 @@ type t =
 val name : t -> string
 
 val to_int : t -> int
+
+(* Unlike [to_int], this is suitable for constructing a shell-compatible exit
+   status. *)
+val to_system_int : t -> int
 val to_dyn : t -> Dyn.t
 val compare : t -> t -> Ordering.t
 val equal : t -> t -> bool

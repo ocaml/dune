@@ -272,6 +272,10 @@ let print ~skip_trailing_cr ~patch_back promotion path1 path2 =
   With_fallback.exec p
 ;;
 
+let print_without_promotion ~skip_trailing_cr path1 path2 =
+  prepare ~skip_trailing_cr None path1 path2 |> With_fallback.exec
+;;
+
 let get path1 path2 =
   let p = prepare ~skip_trailing_cr:Sys.win32 None path1 path2 in
   With_fallback.capture p

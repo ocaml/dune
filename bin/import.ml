@@ -14,6 +14,7 @@ include struct
   module Build_config = Build_config
   module Build_system = Build_system
   module Build_system_error = Build_system_error
+  module Rule = Rule
   module Load_rules = Load_rules
   module Action_builder = Dune_rules.Action_builder
   module Action = Action

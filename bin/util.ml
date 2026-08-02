@@ -59,6 +59,21 @@ let restore_cwd_and_execve (root : Workspace_root.t) prog args env =
   Proc.restore_cwd_and_execve prog args ~env
 ;;
 
+let dune_executable () =
+  match Filename.analyze_program_name Sys.executable_name with
+  | Absolute | Relative_to_current_dir ->
+    Path.of_filename_relative_to_initial_cwd Sys.executable_name
+  | In_path ->
+    (match Bin.which ~path:(Env_path.path Env.initial) Sys.executable_name with
+     | Some path -> path
+     | None ->
+       User_error.raise
+         [ Pp.textf
+             "Unable to find the current executable %S in PATH."
+             Sys.executable_name
+         ])
+;;
+
 let setup () =
   let scheduler = Scheduler.t () in
   Console.Status_line.set

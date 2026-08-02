@@ -1,5 +1,11 @@
 open Import
 
+module Request : sig
+  type t =
+    | File of Path.t
+    | Alias of Alias.t
+end
+
 type target_type =
   | File
   | Directory
@@ -16,6 +22,12 @@ val interpret_targets
   -> Dune_rules.Main.build_system
   -> Arg.Dep.t list
   -> unit Dune_engine.Action_builder.t
+
+val resolve_targets_exn
+  :  Workspace_root.t
+  -> Dune_rules.Main.build_system
+  -> Arg.Dep.t list
+  -> Request.t list Dune_engine.Action_builder.t
 
 val expand_path_from_root
   :  Workspace_root.t

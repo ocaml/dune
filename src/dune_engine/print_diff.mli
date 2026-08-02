@@ -9,6 +9,9 @@ val print
   -> Path.t
   -> _ Fiber.t
 
+(** Diff two files without attaching a source-promotion annotation. *)
+val print_without_promotion : skip_trailing_cr:bool -> Path.t -> Path.t -> _ Fiber.t
+
 module Diff : sig
   type t
 

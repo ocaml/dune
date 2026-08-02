@@ -978,6 +978,8 @@ module Action_expander = struct
            | In_path ->
              (match program with
               | "dune" ->
+                (* CR-someday alizter: Move [Util.dune_executable] below
+                   [dune_rules] and use it here. *)
                 let dune = Path.of_string Sys.executable_name in
                 Memo.return @@ Ok dune
               | program ->
@@ -1223,6 +1225,8 @@ module Action_expander = struct
     |> Action_builder.with_no_targets
   ;;
 
+  (* CR-someday alizter: Share the executable lookup in [Util.dune_executable]
+     with this function. *)
   let dune_exe context =
     Which.which ~path:(Env_path.path Env.initial) Filename.dune
     >>| function
@@ -2252,6 +2256,8 @@ let files path =
   Dep.Set.of_source_files ~files ~empty_directories, files
 ;;
 
+(* CR-someday alizter: Move [Util.dune_executable] below [dune_rules]
+   and use it here. *)
 let dune_dep =
   lazy (Sys.executable_name |> Path.External.of_string |> Path.external_ |> Dep.file)
 ;;

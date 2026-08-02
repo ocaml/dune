@@ -73,20 +73,24 @@ let promotion source_file =
   }
 ;;
 
-let run_change loc ~patch_back (mode : Diff.Mode.t) = function
+let run_change loc ~patch_back ~promote (mode : Diff.Mode.t) = function
   | Message messages -> User_error.raise ~loc messages
   | File_diff { source_file; file1; file2 } ->
     (match mode with
      | Text ->
-       Print_diff.print
-         ~patch_back
-         (promotion source_file)
-         file1
-         file2
-         ~skip_trailing_cr:Sys.win32
+       if promote
+       then
+         Print_diff.print
+           ~patch_back
+           (promotion source_file)
+           file1
+           file2
+           ~skip_trailing_cr:Sys.win32
+       else Print_diff.print_without_promotion file1 file2 ~skip_trailing_cr:Sys.win32
      | Binary ->
+       let promotion = Option.some_if promote (promotion source_file) in
        User_error.raise
-         ~promotion:(promotion source_file)
+         ?promotion
          ~loc
          [ Pp.textf
              "Files %s and %s differ."
@@ -295,6 +299,7 @@ let plan_diff loc { Diff.optional; file1; file2; mode; directory_diffs } =
 let exec_plan
       loc
       ~patch_back
+      ~promote
       { Diff.optional; mode; file1; file2; _ }
       ({ changes; promotions } : plan)
   =
@@ -308,17 +313,25 @@ let exec_plan
       is_copied_from_source_tree (Path.build file2)
     in
     Fiber.finalize
-      (fun () -> Fiber.parallel_iter changes ~f:(run_change loc ~patch_back mode))
+      (fun () ->
+         Fiber.parallel_iter changes ~f:(run_change loc ~patch_back ~promote mode))
       ~finally:(fun () ->
         (match optional with
          | false ->
-           if in_source_or_target && not target_is_copied_from_source_tree
+           if promote && in_source_or_target && not target_is_copied_from_source_tree
            then register_promotions `Copy promotions
          | true ->
            if in_source_or_target
-           then register_promotions `Move promotions
+           then (if promote then register_promotions `Move promotions)
            else remove_intermediate_target file2);
         Fiber.return ())
 ;;
 
-let exec loc ~patch_back diff = exec_plan loc ~patch_back diff (plan_diff loc diff)
+let exec loc ~patch_back diff =
+  exec_plan loc ~patch_back ~promote:true diff (plan_diff loc diff)
+;;
+
+let exec_without_promotion loc diff =
+  let plan = plan_diff loc diff in
+  exec_plan loc ~patch_back:None ~promote:false diff plan
+;;

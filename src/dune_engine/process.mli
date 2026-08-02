@@ -5,6 +5,12 @@ open Action_types
 module Action_output_limit := Execution_parameters.Action_output_limit
 
 module Failure_mode : sig
+  type raw_status =
+    | Exited of int
+    | Signaled of Signal.t
+
+  val exit_code_of_raw_status : raw_status -> int
+
   (** How to handle sub-process failures. This type controls the way in which
       the process we are running can fail. *)
   type ('a, 'b) t =
@@ -13,6 +19,8 @@ module Failure_mode : sig
     (** Accept the following non-zero exit codes, and return [Error code] if
         the process exits with one of these codes. *)
     | Return : ('a, 'a * int) t (** Accept any error code and return it. *)
+    | Return_raw : ('a, 'a * raw_status) t
+    (** Return any exit status without rendering a Dune process error. *)
     | Timeout :
         { timeout : Time.Span.t option
         ; failure_mode : ('a, 'b) t
@@ -46,6 +54,11 @@ module Io : sig
     -> output_limit:Action_output_limit.t
     -> output t
 
+  (** Inherited output descriptors that bypass Dune's output capture. *)
+  val inherit_stdout : output t
+
+  val inherit_stderr : output t
+  val inherit_stdin : input t
   val stdin : input t
   val null : 'a mode -> 'a t
 
@@ -189,3 +202,12 @@ val run_inherit_std_in_out
   -> Path.t
   -> string list
   -> int Fiber.t
+
+(** Like [run_inherit_std_in_out], but preserves whether the process exited or
+    was terminated by a signal. *)
+val run_inherit_std_in_out_raw
+  :  ?dir:Path.t
+  -> ?env:Env.t
+  -> Path.t
+  -> string list
+  -> Failure_mode.raw_status Fiber.t

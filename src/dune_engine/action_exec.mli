@@ -37,7 +37,23 @@ type input =
   ; action : Action.t
   }
 
+val prepare_env : root:Path.t -> env:Env.t -> Execution_parameters.t -> Env.t
+
 val exec
   :  input
   -> build_deps:(Dep.Set.t -> Dep.Fact.t Dep.Map.t Fiber.t)
   -> Exec_result.t Fiber.t
+
+type replay_input =
+  { targets : Targets.Validated.t
+  ; dir : Path.t
+  ; env : Env.t
+  ; rule_loc : Loc.t
+  ; action : Action.t
+  ; temp_dir : Path.t
+  }
+
+(** Replay a static sequential standard action with inherited standard streams.
+    A rejected process exit code is returned directly instead of being reported
+    as a Dune error. *)
+val replay : replay_input -> int Fiber.t

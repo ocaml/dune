@@ -56,9 +56,19 @@ include
 include Monoid with type t := t
 
 module For_shell : sig
+  module Program : sig
+    type t =
+      | Resolved of string
+      | Unresolved of
+          { context : Context_name.t
+          ; program : Filename.t
+          ; hint : string option
+          }
+  end
+
   include
     Action_intf.Ast
-    with type program := string
+    with type program := Program.t
     with type path := string
     with type target := string
     with type string := string
@@ -67,6 +77,11 @@ end
 
 (** Convert the action to a format suitable for printing *)
 val for_shell : t -> For_shell.t
+
+(** Convert an action to the editable replay form. Relative paths are
+    interpreted from [dir], and resolved local programs retain an explicit path
+    instead of becoming PATH lookups. *)
+val for_shell_replay : t -> dir:Path.t -> For_shell.t
 
 val digest : Dune_digest.Manual.t -> t -> unit
 
@@ -78,6 +93,12 @@ val empty : t
 
 (** Checks, if action contains a [Dynamic_run]. *)
 val is_dynamic : t -> bool
+
+(** Checks if the action contains a concurrent group. *)
+val contains_concurrent : t -> bool
+
+(** Return the name of the first action extension, if any. *)
+val find_extension_name : t -> string option
 
 (** Checks if executing the action may spawn a process. *)
 val runs_process : t -> bool

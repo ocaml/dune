@@ -140,21 +140,37 @@ include Monoid.Make (struct
 type string = String.t
 
 module For_shell = struct
+  module Program = struct
+    type t =
+      | Resolved of string
+      | Unresolved of
+          { context : Context_name.t
+          ; program : Filename.t
+          ; hint : string option
+          }
+  end
+
   module type Ast =
     Action_intf.Ast
-    with type program = string
+    with type program = Program.t
     with type path = string
     with type target = string
     with type string = string
     with type ext = Sexp.t
 
   module rec Ast : Ast = Ast
-  include Make (String) (String) (String) (String) (Sexp) (Ast)
+  include Make (Program) (String) (String) (String) (Sexp) (Ast)
 end
 
 module Relativise = Action_mapper.Make (Ast) (For_shell.Ast)
 
-let for_shell t =
+module For_shell_path_mode = struct
+  type t =
+    | Display
+    | Replay
+end
+
+let for_shell_with_path_mode t ~dir ~path_mode =
   let rec loop t ~dir ~f_program ~f_string ~f_path ~f_target ~f_ext =
     match t with
     | Symlink (src, dst) ->
@@ -172,7 +188,7 @@ let for_shell t =
   let f_target ~dir x = Path.reach (Path.build x) ~from:dir in
   loop
     t
-    ~dir:Path.root
+    ~dir
     ~f_string:(fun ~dir:_ x -> x)
     ~f_path
     ~f_target
@@ -183,8 +199,23 @@ let for_shell t =
         (fun p -> Sexp.Atom (f_target p ~dir)))
     ~f_program:(fun ~dir x ->
       match x with
-      | Ok p -> Path.reach p ~from:dir
-      | Error e -> Filename.to_string e.program)
+      | Ok p ->
+        let program =
+          match path_mode with
+          | For_shell_path_mode.Display -> Path.reach p ~from:dir
+          | Replay -> Path.reach_for_running p ~from:dir
+        in
+        For_shell.Program.Resolved program
+      | Error { context; program; hint; loc = _ } ->
+        For_shell.Program.Unresolved { context; program; hint })
+;;
+
+let for_shell t =
+  for_shell_with_path_mode t ~dir:Path.root ~path_mode:For_shell_path_mode.Display
+;;
+
+let for_shell_replay t ~dir =
+  for_shell_with_path_mode t ~dir ~path_mode:For_shell_path_mode.Replay
 ;;
 
 let digest =
@@ -381,6 +412,26 @@ let rec is_dynamic = function
   | Diff _
   | Mkdir _ -> false
   | Extension (module A) -> A.Spec.is_dynamic
+;;
+
+let contains_concurrent =
+  let rec loop = function
+    | Concurrent _ -> true
+    | t -> fold_one_step t ~init:false ~f:(fun found child -> found || loop child)
+  in
+  loop
+;;
+
+let find_extension_name =
+  let rec loop = function
+    | Extension (module A) -> Some A.Spec.name
+    | t ->
+      fold_one_step t ~init:None ~f:(fun found child ->
+        match found with
+        | Some _ -> found
+        | None -> loop child)
+  in
+  loop
 ;;
 
 let rec runs_process = function

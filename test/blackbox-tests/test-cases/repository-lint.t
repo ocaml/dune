@@ -50,7 +50,6 @@ display itself is under test.
   test/blackbox-tests/test-cases/actions/with-nested-exit-codes.t:  $ dune build --display=short --root . @g
   test/blackbox-tests/test-cases/alias/all-alias/install-alias.t/run.t:  $ dune build --display short @all
   test/blackbox-tests/test-cases/alias/all-alias/private-lib.t/run.t:  $ dune build --display short @all 2>&1 | grep bar.cma
-  test/blackbox-tests/test-cases/cinaps/custom-alias.t:  $ dune build @foo --display short 2>&1 | grep alias
   test/blackbox-tests/test-cases/cram/git-diff-fail.t:  $ bash -c 'set -o pipefail; dune build --always-show-command-line --root=. --diff-command="exit 1; echo" --display=short @runtest 2>&1 | grep -v "(cd"' 
   test/blackbox-tests/test-cases/display.t:  $ dune clean; dune build --display short
   test/blackbox-tests/test-cases/display.t:  $ dune clean; dune build --display short
@@ -66,9 +65,6 @@ display itself is under test.
   test/blackbox-tests/test-cases/display.t:  $ dune clean; dune build --display short --always-show-command-line
   test/blackbox-tests/test-cases/display.t:  $ dune clean; dune build --display short --always-show-command-line
   test/blackbox-tests/test-cases/display.t:  $ dune clean; dune build --display short --always-show-command-line
-  test/blackbox-tests/test-cases/inline-tests/parallel.t/run.t:  $ dune build --display short @test1/runtest 2>&1 | grep alias
-  test/blackbox-tests/test-cases/inline-tests/parallel.t/run.t:  $ dune build --display short @test2/runtest 2>&1 | grep alias
-  test/blackbox-tests/test-cases/inline-tests/parallel.t/run.t:  $ dune build --display short @test3/runtest 2>&1 | grep alias
   test/blackbox-tests/test-cases/jsoo/without_implem.t/run.t:  $ dune build --display=short main.bc.js
   test/blackbox-tests/test-cases/jsoo/without_implem.t/run.t:  $ dune build --display=short main.bc.js
   test/blackbox-tests/test-cases/lib-available.t/run.t:  $ dune build @runtest --display short --debug-dependency-path 2>&1 | sed "s/ cmd /  sh /"

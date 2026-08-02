@@ -820,11 +820,10 @@ let setup_output_diff_rule ~loc ~dir ~sctx ~rocq_lang_version ~rocq_sources rocq
       ; directory_diffs = true
       }
     in
-    let alias = Alias.make ~dir Alias0.runtest in
     Simple_rules.Alias_rules.add
       sctx
       ~loc
-      ~alias
+      ~aliases:[ Alias.make ~dir Alias0.runtest ]
       (let open Action_builder.O in
        let+ () = Action_builder.paths [ diff.file1; Path.build diff.file2 ] in
        Action.Full.make (Action.Diff diff))

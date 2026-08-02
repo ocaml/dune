@@ -418,7 +418,7 @@ module Short_display = struct
                (add_ctx ctx ctxs_acc)
                rest
            | Anonymous_action ctx ->
-             split_paths ("(internal)" :: targets_acc) (add_ctx ctx ctxs_acc) rest)
+             split_paths ("(anonymous)" :: targets_acc) (add_ctx ctx ctxs_acc) rest)
       in
       let target_names, contexts =
         let targets =

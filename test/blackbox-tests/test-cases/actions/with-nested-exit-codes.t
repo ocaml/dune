@@ -8,9 +8,9 @@ Allows nested action modifiers under `with-accepted-exit-codes` in Dune 2.2.
   $ cat >> dune <<EOF
   > (rule
   >  (alias f)
-  >  (action (with-accepted-exit-codes 
+  >  (action (with-accepted-exit-codes
   >           1
-  >           (with-stdout-to out.txt 
+  >           (with-stdout-to out.txt
   >            (run dune_cmd exit-code 1)))))
   > EOF
 
@@ -29,7 +29,7 @@ Allows nested action modifiers under `with-accepted-exit-codes` in Dune 2.2.
 
   $ echo "Hello, Dune!" > input
   $ dune build --display=short --root . @f2
-      dune_cmd alias f2
+      dune_cmd (anonymous)
 
   $ cat >> dune <<EOF
   > (rule
@@ -42,7 +42,7 @@ Allows nested action modifiers under `with-accepted-exit-codes` in Dune 2.2.
   > EOF
 
   $ dune build --display=short --root . @f3
-            sh alias f3
+            sh (anonymous)
   myvar
 
   $ cat >> dune <<EOF
@@ -56,7 +56,7 @@ Allows nested action modifiers under `with-accepted-exit-codes` in Dune 2.2.
   > EOF
 
   $ dune build --display=short --root . @f4
-          bash alias f4
+          bash (anonymous)
 
   $ cat >> dune <<EOF
   > (rule

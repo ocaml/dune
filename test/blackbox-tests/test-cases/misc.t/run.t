@@ -1,6 +1,4 @@
-  $ dune runtest --display short
-          diff alias runtest
-          diff alias runtest
+  $ dune runtest
 
 Test that incompatible options are properly reported
 ----------------------------------------------------

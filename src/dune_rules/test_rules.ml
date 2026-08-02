@@ -75,7 +75,7 @@ let rules (t : Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
       let loc = Nonempty_list.hd t.exes.names |> fst in
       Memo.parallel_iter runtest_modes ~f:(fun mode ->
         let* alias = runtest_alias mode ~dir in
-        Simple_rules.Alias_rules.add_empty sctx ~loc ~alias)
+        Simple_rules.Alias_rules.add_empty sctx ~loc ~aliases:[ alias ])
     | true ->
       Nonempty_list.to_list t.exes.names
       |> Memo.parallel_iter ~f:(fun (loc, s) ->
@@ -123,18 +123,11 @@ let rules (t : Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
                  :: t.deps
                | `js JS | `exe | `bc -> t.deps)
           in
-          let add_alias =
-            let alias =
-              [ Alias.Name.to_string (Alias.name runtest_alias); s ]
-              |> String.concat ~sep:"-"
-              |> Alias.Name.of_string
-              |> Alias.make ~dir
-            in
-            fun ~loc action ->
-              Simple_rules.Alias_rules.add sctx ~loc ~alias action
-              >>> (Dep.alias alias
-                   |> Action_builder.dep
-                   |> Rules.Produce.Alias.add_deps runtest_alias)
+          let alias =
+            [ Alias.Name.to_string (Alias.name runtest_alias); s ]
+            |> String.concat ~sep:"-"
+            |> Alias.Name.of_string
+            |> Alias.make ~dir
           in
           let expander = Expander.add_bindings expander ~bindings:extra_bindings in
           let sandbox =
@@ -142,50 +135,59 @@ let rules (t : Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
             then Sandbox_config.needs_sandboxing
             else Sandbox_config.no_special_requirements
           in
-          match test_kind ~dir:(Expander.dir expander) dir_contents s ext with
-          | `Regular ->
-            let action =
-              let chdir = Expander.dir expander in
-              Action_unexpanded.expand_no_targets
-                run_action
-                sandbox
-                ~loc
-                ~expander
-                ~chdir
-                ~deps
-                ~what:"aliases"
-            in
-            Simple_rules.interpret_and_add_locks ~expander t.locks action
-            |> add_alias ~loc
-          | `Expect diff ->
-            let* (_ignored_targets : Targets.Validated.t) =
-              let* mode =
-                Rule_mode_expand.expand_path ~expander ~dir Rule_mode.Standard
+          let* action =
+            match test_kind ~dir:(Expander.dir expander) dir_contents s ext with
+            | `Regular ->
+              let action =
+                let chdir = Expander.dir expander in
+                Action_unexpanded.expand_no_targets
+                  run_action
+                  sandbox
+                  ~loc
+                  ~expander
+                  ~chdir
+                  ~deps
+                  ~what:"aliases"
               in
-              (let+ action =
-                 Action_unexpanded.expand
-                   ~chdir:(Expander.dir expander)
-                   ~loc
-                   ~expander
-                   ~deps
-                   ~targets:Infer
-                   ~targets_dir:dir
-                   run_action
-                   sandbox
-               in
-               Action_builder.With_targets.add action ~file_targets:[ diff.file2 ]
-               |> Action_builder.With_targets.map_build ~f:(fun action ->
-                 Action_builder.map
-                   action
-                   ~f:(Action.Full.map ~f:(Action.with_stdout_to diff.file2))
-                 |> Simple_rules.interpret_and_add_locks ~expander t.locks))
-              >>= Super_context.add_rule_get_targets sctx ~dir ~mode ~loc
-            in
-            add_alias
-              ~loc
-              (let open Action_builder.O in
-               let+ () = Action_builder.paths [ diff.file1; Path.build diff.file2 ] in
-               Action.Full.make (Action.Diff diff))))
+              let action =
+                Simple_rules.interpret_and_add_locks ~expander t.locks action
+              in
+              Memo.return action
+            | `Expect diff ->
+              let* (_ignored_targets : Targets.Validated.t) =
+                let* mode =
+                  Rule_mode_expand.expand_path ~expander ~dir Rule_mode.Standard
+                in
+                (let+ action =
+                   Action_unexpanded.expand
+                     ~chdir:(Expander.dir expander)
+                     ~loc
+                     ~expander
+                     ~deps
+                     ~targets:Infer
+                     ~targets_dir:dir
+                     run_action
+                     sandbox
+                 in
+                 Action_builder.With_targets.add action ~file_targets:[ diff.file2 ]
+                 |> Action_builder.With_targets.map_build ~f:(fun action ->
+                   Action_builder.map
+                     action
+                     ~f:(Action.Full.map ~f:(Action.with_stdout_to diff.file2))
+                   |> Simple_rules.interpret_and_add_locks ~expander t.locks))
+                >>= Super_context.add_rule_get_targets sctx ~dir ~mode ~loc
+              in
+              let action =
+                let open Action_builder.O in
+                let+ () = Action_builder.paths [ diff.file1; Path.build diff.file2 ] in
+                Action.Full.make (Action.Diff diff)
+              in
+              Memo.return action
+          in
+          Simple_rules.Alias_rules.add sctx ~loc ~aliases:[ alias ] action
+          >>> (Dep.alias alias
+               |> Action_builder.dep
+               |> Rules.Produce.Alias.add_deps runtest_alias)))
   in
   Exe_rules.rules t.exes ~sctx ~scope ~expander ~dir_contents
 ;;

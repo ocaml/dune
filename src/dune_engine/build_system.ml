@@ -256,7 +256,7 @@ module Internal = struct
 
   (* The current version of the rule digest scheme. We should increment it when
      making any changes to the scheme, to avoid collisions. *)
-  let rule_digest_version = 29
+  let rule_digest_version = 30
 
   let compute_rule_digest
         (rule : Rule.t)
@@ -319,7 +319,6 @@ module Internal = struct
     | Anonymous_action of
         { stamp_file : Path.Build.t
         ; capture_stdout : bool
-        ; attached_to_alias : bool
         }
 
   module Anonymous_action = struct
@@ -575,7 +574,7 @@ module Internal = struct
              So it seems to me that such rules should be re-executed. TBC *)
           match rule_kind with
           | Normal_rule -> false
-          | Anonymous_action a -> a.attached_to_alias
+          | Anonymous_action _ -> true
         in
         let force_rerun = !Clflags.force && is_test in
         force_rerun || Dep.Map.has_universe facts
@@ -706,23 +705,13 @@ module Internal = struct
 
   (* Returns the action's stdout or the empty string if [capture_stdout = false]. *)
   and execute_action_generic_stage2_impl
-        { Anonymous_action.action = { dir; alias; loc; action }
-        ; deps
-        ; capture_stdout
-        ; digest
-        }
+        { Anonymous_action.action = { dir; loc; action }; deps; capture_stdout; digest }
     =
     let target =
       let dir =
         Path.Build.append_local Dpath.Build.anonymous_actions_dir (Path.Build.local dir)
       in
-      let d = Digest.to_string digest in
-      let basename =
-        match alias with
-        | None -> d
-        | Some a -> Alias.Name.to_string a ^ "-" ^ d
-      in
-      Path.Build.relative dir basename
+      Path.Build.relative dir (Digest.to_string digest)
     in
     let rule =
       Rule.make
@@ -734,12 +723,7 @@ module Internal = struct
     let+ { facts = _; targets = _ } =
       execute_rule_impl
         rule
-        ~rule_kind:
-          (Anonymous_action
-             { attached_to_alias = Option.is_some alias
-             ; capture_stdout
-             ; stamp_file = target
-             })
+        ~rule_kind:(Anonymous_action { capture_stdout; stamp_file = target })
     in
     if capture_stdout then Io.read_file (Path.build target) else ""
 
@@ -778,7 +762,6 @@ module Internal = struct
               { action; env; locks; can_go_in_shared_cache; sandbox; corrections }
           ; loc = _
           ; dir
-          ; alias
           }
         =
         act
@@ -799,10 +782,6 @@ module Internal = struct
         Action.digest d action;
         digest_locks d locks;
         Digest.Manual.string d (Path.Build.to_string dir);
-        Digest.Manual.option
-          d
-          ~f:(fun d alias -> Digest.Manual.string d (Alias.Name.to_string alias))
-          alias;
         Digest.Manual.bool d capture_stdout;
         Digest.Manual.bool d can_go_in_shared_cache;
         digest_sandbox_config d sandbox;

@@ -112,7 +112,7 @@ let gen_rules
     in
     let unused_libs_alias = Alias.make Alias0.unused_libs ~dir in
     Rules.Produce.Alias.add_action
-      unused_libs_alias
+      [ unused_libs_alias ]
       ~loc
       (action |> Action_builder.map ~f:Action.Full.make)
 ;;

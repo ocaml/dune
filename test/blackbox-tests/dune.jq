@@ -25,6 +25,15 @@ def traceTargetFilesRedacted:
 
 def processes: select(.cat == "process" and .name == "finish");
 
+def processesBrief:
+    processes
+  | .args
+  | { prog: (.prog | sub(".*/"; "")), args: .process_args, exit };
+
+def inlineTestProcesses:
+    processesBrief
+  | select(.prog == "inline-test-runner.bc");
+
 def targetsMatchingFilter(f):
     processes
   | select(.args | targets | any(f))

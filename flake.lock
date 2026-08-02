@@ -1,52 +1,5 @@
 {
   "nodes": {
-    "melange": {
-      "inputs": {
-        "melange-compiler-libs": "melange-compiler-libs",
-        "nixpkgs": [
-          "revdeps-dune",
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1783843147,
-        "narHash": "sha256-lT+PtjJ6l6eQGhd/2szsj9alpV5tn/0uouC3OkeTeX0=",
-        "ref": "refs/heads/v7-55",
-        "rev": "08cd3ca8fcc9ec2a75ebacb5f86f336467cd2e6c",
-        "shallow": true,
-        "type": "git",
-        "url": "https://github.com/melange-re/melange"
-      },
-      "original": {
-        "ref": "refs/heads/v7-55",
-        "shallow": true,
-        "type": "git",
-        "url": "https://github.com/melange-re/melange"
-      }
-    },
-    "melange-compiler-libs": {
-      "inputs": {
-        "nixpkgs": [
-          "revdeps-dune",
-          "melange",
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1783838866,
-        "narHash": "sha256-6WDLbI7JSXTCFCj3oVqREtU8/c0D+92ULZUR0OrjLxE=",
-        "owner": "melange-re",
-        "repo": "melange-compiler-libs",
-        "rev": "1a75cd25bb0816c047941be084bf5f9527cbbf05",
-        "type": "github"
-      },
-      "original": {
-        "owner": "melange-re",
-        "ref": "5.5",
-        "repo": "melange-compiler-libs",
-        "type": "github"
-      }
-    },
     "nixpkgs": {
       "inputs": {
         "nixpkgs": "nixpkgs_2"
@@ -99,27 +52,13 @@
       }
     },
     "revdeps-dune": {
-      "inputs": {
-        "melange": "melange",
-        "nixpkgs": [
-          "nixpkgs"
-        ],
-        "ocaml-overlays": [
-          "nixpkgs"
-        ],
-        "ocaml-trunk": [
-          "ocaml-trunk"
-        ],
-        "revdeps-dune": [
-          "revdeps-dune"
-        ]
-      },
+      "flake": false,
       "locked": {
-        "lastModified": 1785639008,
-        "narHash": "sha256-xRUvXhiMDFdzw0pYtS3Cw8Em1NCILOHl44ogH81qCtc=",
+        "lastModified": 1785649023,
+        "narHash": "sha256-+F2p2Y5QbLojRsts2PL9aicjRJ+uy0NwNZseeOp0h7M=",
         "owner": "ocaml",
         "repo": "dune",
-        "rev": "f6751823011027da4bacfdc7476a1b3ad662d8bf",
+        "rev": "ea607e4cec7283e079673aa13235db0e61d52c7d",
         "type": "github"
       },
       "original": {

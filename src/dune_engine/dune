@@ -1,6 +1,9 @@
 (library
  (name dune_engine)
  (root_module root)
+ (inline_tests)
+ (preprocess
+  (pps ppx_expect))
  (libraries
   unix
   csexp

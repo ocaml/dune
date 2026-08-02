@@ -30,25 +30,36 @@ let digest_repr = Repr.view Repr.string ~to_:Digest.to_string
 
 module Fs_memo = struct
   module Stats = struct
-    type t =
-      { mtime : Time.t
-      ; ctime : Time.t
-      ; size : int
-      ; perm : Unix.file_perm
-      ; dev : int
-      ; ino : int
-      }
+    type t = string
+
+    let int64_size = 8
+    let mtime_offset = 0
+    let ctime_offset = mtime_offset + int64_size
+    let size_offset = ctime_offset + int64_size
+    let perm_offset = size_offset + int64_size
+    let dev_offset = perm_offset + int64_size
+    let ino_offset = dev_offset + int64_size
+    let length = ino_offset + int64_size
+    let get t offset = String.get_int64_ne t offset |> Int64.to_int
+    let set t offset value = Bytes.set_int64_ne t offset (Int64.of_int value)
 
     let create ~mtime ~ctime ~size ~perm ~dev ~ino =
-      { mtime; ctime; size; perm; dev; ino }
+      let t = Bytes.create length in
+      set t mtime_offset (Time.to_ns mtime);
+      set t ctime_offset (Time.to_ns ctime);
+      set t size_offset size;
+      set t perm_offset perm;
+      set t dev_offset dev;
+      set t ino_offset ino;
+      Bytes.unsafe_to_string t
     ;;
 
-    let mtime t = t.mtime
-    let ctime t = t.ctime
-    let size t = t.size
-    let perm t = t.perm
-    let dev t = t.dev
-    let ino t = t.ino
+    let mtime t = Time.of_ns (get t mtime_offset)
+    let ctime t = Time.of_ns (get t ctime_offset)
+    let size t = get t size_offset
+    let perm t = get t perm_offset
+    let dev t = get t dev_offset
+    let ino t = get t ino_offset
 
     let repr =
       Repr.record
@@ -60,6 +71,46 @@ module Fs_memo = struct
         ; Repr.field "dev" Repr.int ~get:dev
         ; Repr.field "ino" Repr.int ~get:ino
         ]
+    ;;
+
+    let%expect_test "time accessors" =
+      let t =
+        create
+          ~mtime:(Time.of_ns 123_456_789)
+          ~ctime:(Time.of_ns 987_654_321)
+          ~size:0
+          ~perm:0
+          ~dev:0
+          ~ino:0
+      in
+      Printf.printf "mtime: %d\n" (mtime t |> Time.to_ns);
+      Printf.printf "ctime: %d\n" (ctime t |> Time.to_ns);
+      [%expect
+        {|
+        mtime: 123456789
+        ctime: 987654321 |}]
+    ;;
+
+    let%expect_test "integer accessors" =
+      let t =
+        create
+          ~mtime:(Time.of_ns 0)
+          ~ctime:(Time.of_ns 0)
+          ~size:42
+          ~perm:0o755
+          ~dev:17
+          ~ino:29
+      in
+      Printf.printf "size: %d\n" (size t);
+      Printf.printf "perm: %o\n" (perm t);
+      Printf.printf "dev: %d\n" (dev t);
+      Printf.printf "ino: %d\n" (ino t);
+      [%expect
+        {|
+        size: 42
+        perm: 755
+        dev: 17
+        ino: 29 |}]
     ;;
   end
 
@@ -199,7 +250,7 @@ module P = Persistent.Make (struct
     type nonrec t = t
 
     let name = "WORKSPACE-CACHE"
-    let version = 2
+    let version = 3
     let sharing = true
     let repr = repr
   end)

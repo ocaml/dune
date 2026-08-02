@@ -69,10 +69,8 @@ JSOO archive rules for interface-only libraries are not spuriously invalidated
 main.bc.js should not rebuild
 
   $ dune build --display=short main.bc.js
-   js_of_ocaml .interface.objs/jsoo/effects=disabled/interface.cma.js
 
   $ dune build --display=short main.bc.js
-   js_of_ocaml .interface.objs/jsoo/effects=disabled/interface.cma.js
 
 JSOO archive rules for libraries without modules are not spuriously invalidated
 
@@ -98,7 +96,6 @@ main.bc.js should not rebuild
   > | .target_files[]?
   > | select(endswith(".cma.js"))
   > '
-  _build/default/.empty.objs/jsoo/effects=disabled/empty.cma.js
 
   $ dune build main.bc.js
   $ dune trace cat | jq_dune -r '
@@ -106,7 +103,6 @@ main.bc.js should not rebuild
   > | .target_files[]?
   > | select(endswith(".cma.js"))
   > '
-  _build/default/.empty.objs/jsoo/effects=disabled/empty.cma.js
 
 JSOO archives in directory groups are not spuriously invalidated
 
@@ -134,7 +130,6 @@ main.bc.js should not rebuild
   > | .target_files[]?
   > | select(endswith(".cma.js"))
   > '
-  _build/default/.grouped.objs/jsoo/effects=disabled/grouped.cma.js
 
   $ dune build main.bc.js
   $ dune trace cat | jq_dune -r '
@@ -142,4 +137,3 @@ main.bc.js should not rebuild
   > | .target_files[]?
   > | select(endswith(".cma.js"))
   > '
-  _build/default/.grouped.objs/jsoo/effects=disabled/grouped.cma.js

@@ -734,6 +734,21 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~expander ~scope =
         ~for_
     in
     let* () =
+      let { Mode.Dict.byte; _ } = Lib_info.archives lib_info in
+      let has_impl = Compilation_context.modules cctx |> Modules.With_vlib.has_impl in
+      match for_, byte, has_impl with
+      | Ocaml, _ :: _, false ->
+        let dir = Compilation_context.obj_dir cctx |> Obj_dir.jsoo_dir in
+        (* JSOO archive rules are generated lazily below [dir]. Without
+           implementation modules, no eagerly generated rule mentions it. The
+           standard alias records [dir] in the rule map so stale-artifact cleanup
+           keeps it. *)
+        Rules.Produce.Alias.add_deps
+          (Alias.make Alias0.all ~dir)
+          (Action_builder.return ())
+      | _ -> Memo.return ()
+    in
+    let* () =
       match buildable.ctypes with
       | None -> Memo.return ()
       | Some _ ->

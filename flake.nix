@@ -1,13 +1,8 @@
 {
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
+    nixpkgs.url = "github:nix-ocaml/nix-overlays";
     melange = {
-      url =
-        "git+https://github.com/melange-re/melange?ref=refs/heads/v7-55&shallow=1";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-    ocaml-overlays = {
-      url = "github:nix-ocaml/nix-overlays";
+      url = "git+https://github.com/melange-re/melange?ref=refs/heads/v7-55&shallow=1";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     ocaml-trunk = {
@@ -17,7 +12,7 @@
     revdeps-dune = {
       url = "github:ocaml/dune";
       inputs.nixpkgs.follows = "nixpkgs";
-      inputs.ocaml-overlays.follows = "ocaml-overlays";
+      inputs.ocaml-overlays.follows = "nixpkgs";
       inputs.melange.follows = "melange";
       inputs.revdeps-dune.follows = "revdeps-dune";
       inputs.ocaml-trunk.follows = "ocaml-trunk";
@@ -34,7 +29,6 @@
       self,
       nixpkgs,
       melange,
-      ocaml-overlays,
       ocaml-trunk,
       revdeps-dune,
     }:
@@ -45,7 +39,6 @@
           system:
           let
             pkgs = nixpkgs.legacyPackages.${system}.appendOverlays [
-              ocaml-overlays.overlays.default
               (self: super: {
                 ocamlPackages = super.ocaml-ng.ocamlPackages_5_5.overrideScope (
                   oself: osuper: {
@@ -109,12 +102,7 @@
       revdeps = forAllSystems (
         pkgs:
         import ./nix/revdeps.nix {
-          inherit
-            nixpkgs
-            ocaml-overlays
-            revdeps-dune
-            pkgs
-            ;
+          inherit nixpkgs revdeps-dune pkgs;
         }
       );
 
@@ -128,8 +116,7 @@
           );
           dune =
             (import ./nix/dune-package.nix {
-              nixpkgs = nixpkgsDarwin;
-              inherit ocaml-overlays;
+              inherit nixpkgs;
               pkgs = nixpkgsDarwin.legacyPackages.x86_64-darwin;
               src = ./.;
             }).default;
@@ -152,11 +139,11 @@
               ocamlPackages = ocamlTrunkPackages;
             };
             dune-package = import ./nix/dune-package.nix {
-              inherit nixpkgs ocaml-overlays pkgs;
+              inherit nixpkgs pkgs;
               src = ./.;
             };
             dune-trunk-package = import ./nix/dune-package.nix {
-              inherit nixpkgs ocaml-overlays;
+              inherit nixpkgs;
               pkgs = trunkPkgs;
               src = ./.;
             };

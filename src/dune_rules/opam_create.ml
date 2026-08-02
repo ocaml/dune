@@ -2,148 +2,19 @@ open Import
 open Memo.O
 module Opam_file = Dune_pkg.Opam_file
 
-let default_build_command =
-  let before_1_11 =
-    lazy
-      (Opam_file.parse_value
-         (Lexbuf.from_string
-            ~fname:"<internal>"
-            {|
-[
-  [ "dune" "subst" ] {pinned}
-  [ "dune" "build" "-p" name "-j" jobs]
-  [ "dune" "runtest" "-p" name "-j" jobs] {with-test}
-  [ "dune" "build" "-p" name "@doc"] {with-doc}
-]
-|}))
-  and from_1_11_before_2_7 =
-    lazy
-      (Opam_file.parse_value
-         (Lexbuf.from_string
-            ~fname:"<internal>"
-            {|
-[
-  [ "dune" "subst" ] {pinned}
-  [ "dune" "build" "-p" name "-j" jobs
-      "@install"
-      "@runtest" {with-test}
-      "@doc" {with-doc}
-  ]
-]
-|}))
-  and from_2_7 =
-    lazy
-      (Opam_file.parse_value
-         (Lexbuf.from_string
-            ~fname:"<internal>"
-            {|
-[
-  [ "dune" "subst" ] {dev}
-  [ "dune" "build" "-p" name "-j" jobs
-      "@install"
-      "@runtest" {with-test}
-      "@doc" {with-doc}
-  ]
-]
-|}))
-  and from_2_9 =
-    lazy
-      (Opam_file.parse_value
-         (Lexbuf.from_string
-            ~fname:"<internal>"
-            {|
-[
-  [ "dune" "subst" ] {dev}
-  [ "dune" "build" "-p" name "-j" jobs "--promote-install-files=false"
-      "@install"
-      "@runtest" {with-test}
-      "@doc" {with-doc}
-  ]
-  [ "dune" "install" "-p" name "--create-install-files" name ]
-]
-|}))
-  and from_3_0 ~with_subst ~with_sites =
-    let subst = if with_subst then {|  [ "dune" "subst" ] {dev} |} else "" in
-    let promote_install_files =
-      if with_sites then {|  "--promote-install-files=false" |} else ""
-    in
-    let install =
-      if with_sites
-      then {| [ "dune" "install" "-p" name "--create-install-files" name ] |}
-      else ""
-    in
-    lazy
-      (Opam_file.parse_value
-         (Lexbuf.from_string
-            ~fname:"<internal>"
-            (Printf.sprintf
-               {|
-[
-  %s
-  [ "dune" "build" "-p" name "-j" jobs %s
-      "@install"
-      "@runtest" {with-test}
-      "@doc" {with-doc}
-  ]
-  %s
-]
-|}
-               subst
-               promote_install_files
-               install)))
-  and from_3_23 ~with_subst ~with_sites ~runtest =
-    let subst = if with_subst then {|  [ "dune" "subst" ] {dev} |} else "" in
-    let promote_install_files =
-      if with_sites then {|  "--promote-install-files=false" |} else ""
-    in
-    let install =
-      if with_sites
-      then {| [ "dune" "install" "-p" name "--create-install-files" name ] |}
-      else ""
-    in
-    lazy
-      (Opam_file.parse_value
-         (Lexbuf.from_string
-            ~fname:"<internal>"
-            (Printf.sprintf
-               {|
-[
-  %s
-  [ "dune" "build" "-p" name "-j" jobs %s
-      "%s" {with-test}
-      "@doc" {with-doc}
-  ]
-  %s
-]
-|}
-               subst
-               promote_install_files
-               runtest
-               install)))
+let default_build_command project package =
+  let dune_version = Dune_project.dune_version project in
+  let with_subst = Toggle.enabled (snd (Dune_project.subst_config project)) in
+  let with_sites = Dune_project.(is_extension_set project dune_site_extension) in
+  let exclusive_dir =
+    Option.map (Package.exclusive_dir package) ~f:(fun (_loc, dir) ->
+      Path.Source.to_string dir)
   in
-  fun project package ->
-    let version = Dune_project.dune_version project in
-    let with_subst = Toggle.enabled (snd (Dune_project.subst_config project)) in
-    let with_sites = Dune_project.(is_extension_set project dune_site_extension) in
-    Lazy.force
-      (if version < (1, 11)
-       then before_1_11
-       else if version < (2, 7)
-       then from_1_11_before_2_7
-       else if version < (2, 9)
-       then from_2_7
-       else if version < (3, 0)
-       then from_2_9
-       else if version < (3, 23)
-       then from_3_0 ~with_subst ~with_sites
-       else (
-         match Package.exclusive_dir package with
-         | None -> from_3_0 ~with_subst ~with_sites
-         | Some (_loc, dir) ->
-           from_3_23
-             ~with_subst
-             ~with_sites
-             ~runtest:("@runtest/" ^ Path.Source.to_string dir)))
+  Dune_pkg.Dune_default_build_commands.default_build_command_value
+    ~dune_version
+    ~with_subst
+    ~with_sites
+    ~exclusive_dir
 ;;
 
 let var_of_sw sw : Package_constraint.Value.t =

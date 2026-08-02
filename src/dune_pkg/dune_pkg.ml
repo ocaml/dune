@@ -21,6 +21,7 @@ module Local_package = Local_package
 module Package_universe = Package_universe
 module Variable_value = Variable_value
 module Resolved_package = Resolved_package
+module Dune_default_build_commands = Dune_default_build_commands
 module Pin = Pin
 module Package_name = Package_name
 module Ocamlformat = Ocamlformat

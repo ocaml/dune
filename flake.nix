@@ -20,6 +20,7 @@
       inputs.ocaml-overlays.follows = "ocaml-overlays";
       inputs.melange.follows = "melange";
       inputs.revdeps-dune.follows = "revdeps-dune";
+      inputs.ocaml-trunk.follows = "ocaml-trunk";
     };
   };
 

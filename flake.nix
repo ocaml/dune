@@ -1,10 +1,6 @@
 {
   inputs = {
     nixpkgs.url = "github:nix-ocaml/nix-overlays";
-    melange = {
-      url = "git+https://github.com/melange-re/melange?ref=refs/heads/v7-55&shallow=1";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
     ocaml-trunk = {
       url = "github:ocaml/ocaml/trunk";
       flake = false;
@@ -13,7 +9,6 @@
       url = "github:ocaml/dune";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.ocaml-overlays.follows = "nixpkgs";
-      inputs.melange.follows = "melange";
       inputs.revdeps-dune.follows = "revdeps-dune";
       inputs.ocaml-trunk.follows = "ocaml-trunk";
     };
@@ -28,7 +23,6 @@
     {
       self,
       nixpkgs,
-      melange,
       ocaml-trunk,
       revdeps-dune,
     }:
@@ -76,7 +70,6 @@
                   ocamlPackages_5_5 = self.ocamlPackages;
                 };
               })
-              melange.overlays.default
             ];
           in
           f pkgs

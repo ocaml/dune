@@ -4,6 +4,7 @@
       "inputs": {
         "melange-compiler-libs": "melange-compiler-libs",
         "nixpkgs": [
+          "revdeps-dune",
           "nixpkgs"
         ]
       },
@@ -26,6 +27,7 @@
     "melange-compiler-libs": {
       "inputs": {
         "nixpkgs": [
+          "revdeps-dune",
           "melange",
           "nixpkgs"
         ]
@@ -98,9 +100,7 @@
     },
     "revdeps-dune": {
       "inputs": {
-        "melange": [
-          "melange"
-        ],
+        "melange": "melange",
         "nixpkgs": [
           "nixpkgs"
         ],
@@ -130,7 +130,6 @@
     },
     "root": {
       "inputs": {
-        "melange": "melange",
         "nixpkgs": "nixpkgs",
         "ocaml-trunk": "ocaml-trunk",
         "revdeps-dune": "revdeps-dune"

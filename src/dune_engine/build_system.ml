@@ -725,36 +725,37 @@ module Internal = struct
 
   (* Returns the action's stdout or the empty string if [capture_stdout = false]. *)
   and execute_action_generic_stage2_impl
-        { Anonymous_action.action = act; deps; capture_stdout; digest }
+        { Anonymous_action.action = { dir; alias; loc; action }
+        ; deps
+        ; capture_stdout
+        ; digest
+        }
     =
     let target =
       let dir =
-        Path.Build.append_local
-          Dpath.Build.anonymous_actions_dir
-          (Path.Build.local act.dir)
+        Path.Build.append_local Dpath.Build.anonymous_actions_dir (Path.Build.local dir)
       in
       let d = Digest.to_string digest in
       let basename =
-        match act.alias with
+        match alias with
         | None -> d
         | Some a -> Alias.Name.to_string a ^ "-" ^ d
       in
       Path.Build.relative dir basename
     in
     let rule =
-      let { Rule.Anonymous_action.action = _; loc; dir = _; alias = _ } = act in
       Rule.make
         ~info:(if Loc.is_none loc then Internal else From_dune_file loc)
         ~targets:(Targets.File.create target)
         ~mode:Standard
-        (Action_builder.record act.action deps ~f:build_dep)
+        (Action_builder.record action deps ~f:build_dep)
     in
     let+ { facts = _; targets = _ } =
       execute_rule_impl
         rule
         ~rule_kind:
           (Anonymous_action
-             { attached_to_alias = Option.is_some act.alias
+             { attached_to_alias = Option.is_some alias
              ; capture_stdout
              ; stamp_file = target
              })

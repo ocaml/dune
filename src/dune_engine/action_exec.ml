@@ -4,16 +4,6 @@ open Action_intf.Exec
 open Done_or_more_deps
 module Dependency = Dune_action_plugin.Private.Protocol.Dependency
 
-let maybe_async =
-  let maybe_async =
-    lazy
-      (match Config.(get background_actions) with
-       | `Enabled -> Scheduler.async_exn
-       | `Disabled -> fun f -> Fiber.return (f ()))
-  in
-  fun f -> (Lazy.force maybe_async) f
-;;
-
 module Exec_result = struct
   module Error = struct
     type t =
@@ -126,11 +116,8 @@ let rec exec t ~ectx ~eenv : Done_or_more_deps.t Fiber.t =
     exec t ~ectx ~eenv:{ eenv with env = Env.add eenv.env ~var ~value }
   | Redirect_out (Stdout, fn, perm, Echo s) ->
     let perm = File_perm.to_unix_perm perm in
-    let+ () =
-      maybe_async (fun () ->
-        Io.write_file (Path.build fn) (String.concat s ~sep:" ") ~perm)
-    in
-    Done
+    Io.write_file ~perm (Path.build fn) (String.concat s ~sep:" ");
+    Fiber.return Done
   | Redirect_out (outputs, fn, perm, t) ->
     let fn = Path.build fn in
     redirect_out t ~ectx ~eenv outputs ~perm fn
@@ -146,13 +133,10 @@ let rec exec t ~ectx ~eenv : Done_or_more_deps.t Fiber.t =
     in
     Fiber.return Done
   | Cat xs ->
-    let+ () =
-      maybe_async (fun () ->
-        List.iter xs ~f:(fun fn ->
-          Io.with_file_in fn ~f:(fun ic ->
-            Io.copy_channels ic (Process.Io.out_channel eenv.stdout_to))))
-    in
-    Done
+    List.iter xs ~f:(fun fn ->
+      Io.with_file_in fn ~f:(fun ic ->
+        Io.copy_channels ic (Process.Io.out_channel eenv.stdout_to)));
+    Fiber.return Done
   | Copy (src, dst) ->
     let dst = Path.build dst in
     let copy_file ~src ~dst =
@@ -168,25 +152,24 @@ let rec exec t ~ectx ~eenv : Done_or_more_deps.t Fiber.t =
             (File_kind.to_string_hum kind)
         ]
     in
-    let+ () =
-      maybe_async (fun () ->
-        (* NOTE(anmonteiro): we may reconsider relaxing the directory target
+    let () =
+      (* NOTE(anmonteiro): we may reconsider relaxing the directory target
            constraint (see [test/blackbox-tests/test-cases/pkg/source-with-directory-symlink.t]).
 
            [Copy] stays file-oriented by default. We only use recursive copying
            when [dst] is a directory target. *)
-        match ectx.targets with
-        | Some { dirs; _ } when Filename.Set.mem dirs (Path.basename dst) ->
-          Tree_copy.copy ~src ~dst ~copy_file ~mkdir ~on_unsupported ()
-        | _ -> copy_file ~src ~dst)
+      match ectx.targets with
+      | Some { dirs; _ } when Filename.Set.mem dirs (Path.basename dst) ->
+        Tree_copy.copy ~src ~dst ~copy_file ~mkdir ~on_unsupported ()
+      | _ -> copy_file ~src ~dst
     in
-    Done
+    Fiber.return Done
   | Symlink (src, dst) ->
-    let+ () = maybe_async (fun () -> Io.portable_symlink ~src ~dst:(Path.build dst)) in
-    Done
+    Io.portable_symlink ~src ~dst:(Path.build dst);
+    Fiber.return Done
   | Hardlink (src, dst) ->
-    let+ () = maybe_async (fun () -> Io.portable_hardlink ~src ~dst:(Path.build dst)) in
-    Done
+    Io.portable_hardlink ~src ~dst:(Path.build dst);
+    Fiber.return Done
   | System command ->
     let prog, arg =
       Env_path.system_shell_exn ~needed_to:"interpret (system ...) actions"
@@ -206,10 +189,9 @@ let rec exec t ~ectx ~eenv : Done_or_more_deps.t Fiber.t =
   | Write_file (fn, perm, s) ->
     let start = Time.now () in
     let fn = Path.build fn in
-    let* () =
-      maybe_async (fun () ->
-        let perm = File_perm.to_unix_perm perm in
-        Io.write_file fn s ~perm)
+    let () =
+      let perm = File_perm.to_unix_perm perm in
+      Io.write_file fn s ~perm
     in
     let finish = Time.now () in
     Dune_trace.emit ~buffered:true Action (fun () ->
@@ -218,14 +200,14 @@ let rec exec t ~ectx ~eenv : Done_or_more_deps.t Fiber.t =
   | Rename (src, dst) ->
     let src = Path.Build.to_string src in
     let dst = Path.Build.to_string dst in
-    let+ () = maybe_async (fun () -> Unix.rename src dst) in
-    Done
+    Unix.rename src dst;
+    Fiber.return Done
   | Remove_tree path ->
-    let+ () = maybe_async (fun () -> Path.rm_rf (Path.build path)) in
-    Done
+    Path.rm_rf (Path.build path);
+    Fiber.return Done
   | Mkdir path ->
-    let+ () = maybe_async (fun () -> Path.mkdir_p (Path.build path)) in
-    Done
+    Path.mkdir_p (Path.build path);
+    Fiber.return Done
   | Pipe (outputs, l) -> exec_pipe ~ectx ~eenv outputs l
   | Diff diff ->
     let+ () = Diff_action.exec ~patch_back:None ectx.rule_loc diff in

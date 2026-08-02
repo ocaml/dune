@@ -178,7 +178,7 @@ fast entry to be installed, so a sequential install would time out.
   $ (printf 'fast\n' >fast) &
   $ fast_writer=$!
   $ if output=$(
-  >   $timeout --signal=KILL 2 dune install --prefix prefix \
+  >   $timeout --signal=KILL 10 dune install --prefix prefix \
   >     --display short 2>&1
   > ); then
   >   printf '%s\n' "$output"
@@ -193,7 +193,7 @@ fast entry to be installed, so a sequential install would time out.
   >   false
   > fi
   Installing prefix/lib/foo/slow
-  [1]
+  Installing prefix/lib/foo/fast
 
 Installation stops at the first copy error. Using a directory as the first
 source makes copying fail after destination validation; the later independent

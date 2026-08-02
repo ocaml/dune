@@ -95,6 +95,11 @@
   (<> %{ocaml-config:system} win)))
 
 (cram
+ (applies_to concurrent-install)
+ (enabled_if
+  (<> %{ocaml-config:system} win)))
+
+(cram
  (applies_to output-obj)
  (enabled_if
   (and

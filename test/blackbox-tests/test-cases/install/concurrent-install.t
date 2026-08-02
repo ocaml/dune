@@ -13,6 +13,34 @@ their sequential behavior and console output prints in deterministic order.
   $ dune build @install
   $ chmod u+w _build/default/foo.install
 
+The following helper checks that the second entry does not start while the
+first is blocked reading its source.
+
+  $ second_entry_must_not_start() {
+  >   source=$1
+  >   second_destination=$2
+  >   mkfifo "$source"
+  >   (
+  >     while ! grep -qx second "$second_destination" 2>/dev/null; do
+  >       sleep 0.01
+  >     done
+  >     printf 'first\n' >"$source"
+  >   ) &
+  >   writer=$!
+  >   if output=$(
+  >     $timeout --signal=KILL 2 dune install --prefix prefix \
+  >       --display short 2>&1
+  >   ); then
+  >     printf '%s\n' "$output"
+  >     wait "$writer"
+  >     return 1
+  >   else
+  >     printf '%s\n' "$output"
+  >     kill "$writer" 2>/dev/null || true
+  >     wait "$writer" 2>/dev/null || true
+  >   fi
+  > }
+
 Conflicting destinations retain their sequential behavior.
 
 Exact duplicates are installed in order:
@@ -31,6 +59,78 @@ Exact duplicates are installed in order:
   Installing prefix/lib/foo/race
   $ cat prefix/lib/foo/race
   second
+
+Artifact-substitution staging paths also conflict with declared destinations.
+The copy to `target` stages its contents at `.#target.dune-temp`. The writer
+waits for that destination to be installed, so a sequential install times out.
+
+  $ rm -rf prefix
+  $ printf 'second\n' >second
+  $ cat >_build/default/foo.install <<EOF
+  > lib: [
+  >   "staging-source" {"target"}
+  >   "second" {".#target.dune-temp"}
+  > ]
+  > EOF
+  $ second_entry_must_not_start staging-source \
+  >   prefix/lib/foo/.#target.dune-temp
+  Installing prefix/lib/foo/target
+  Installing prefix/lib/foo/.#target.dune-temp
+  [1]
+
+Destinations that resolve through symlinks can also refer to the same file.
+The writer waits for the second alias, so preserving sequential behavior makes
+the install time out before it can start the second entry.
+
+  $ rm -rf prefix
+  $ mkdir -p prefix/lib/foo/shared
+  $ ln -s shared prefix/lib/foo/first-alias
+  $ ln -s shared prefix/lib/foo/second-alias
+  $ printf 'second\n' >second
+  $ cat >_build/default/foo.install <<EOF
+  > lib: [
+  >   "alias-source" {"first-alias/target"}
+  >   "second" {"second-alias/target"}
+  > ]
+  > EOF
+  $ second_entry_must_not_start alias-source prefix/lib/foo/shared/target
+  Installing prefix/lib/foo/first-alias/target
+  Installing prefix/lib/foo/second-alias/target
+  [1]
+
+A dangling symlink may start resolving when another entry creates its target
+directory. These destinations must also remain sequential.
+
+  $ rm -rf prefix
+  $ mkdir -p prefix/lib/foo
+  $ ln -s future-dir prefix/lib/foo/future-alias
+  $ printf 'second\n' >second
+  $ cat >_build/default/foo.install <<EOF
+  > lib: [
+  >   "future-source" {"future-dir/target"}
+  >   "second" {"future-alias/target"}
+  > ]
+  > EOF
+  $ second_entry_must_not_start future-source prefix/lib/foo/future-dir/target
+  Installing prefix/lib/foo/future-dir/target
+  Installing prefix/lib/foo/future-alias/target
+  [1]
+
+Case variants are conservatively processed sequentially so that they cannot
+race on case-insensitive filesystems.
+
+  $ rm -rf prefix
+  $ printf 'second\n' >second
+  $ cat >_build/default/foo.install <<EOF
+  > lib: [
+  >   "case-source" {"case-target"}
+  >   "second" {"CASE-TARGET"}
+  > ]
+  > EOF
+  $ second_entry_must_not_start case-source prefix/lib/foo/CASE-TARGET
+  Installing prefix/lib/foo/case-target
+  Installing prefix/lib/foo/CASE-TARGET
+  [1]
 
 Ancestor/descendant destinations are also processed sequentially. The first
 entry installs `node` as a file, so the second cannot create `node/child` and

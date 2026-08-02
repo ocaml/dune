@@ -27,16 +27,16 @@ jobs:
         # (`<arch>-<vendor>-<sys>-<abi>`). For Windows, `-gnu` denotes the
         # MinGW (GNU) ABI, as opposed to `-msvc`.
         include:
-          - os: macos-15-intel
+          - os: macos-26-intel
             name: x86_64-apple-darwin
             installable: .#dune
-          - os: macos-15
+          - os: macos-26
             name: aarch64-apple-darwin
             installable: .#dune
-          - os: ubuntu-24.04
+          - os: ubuntu-26.04
             name: x86_64-unknown-linux-musl
             installable: .#dune-static
-          - os: ubuntu-24.04
+          - os: ubuntu-26.04
             name: x86_64-pc-windows-gnu
             installable: .#windows-static
             binary: dune.exe

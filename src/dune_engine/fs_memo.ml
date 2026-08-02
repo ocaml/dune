@@ -3,22 +3,52 @@ open Memo.O
 module Digest_result = Dune_digest.Digest_result
 
 module Dir_contents = struct
-  (* CR-soon rgrinberg: turn this into this record:
-    {[
-      { files : Filename.Array.Set.t
-      ; dirs : Filename.Array.Set.t
-      ; rest : File_kind.t Filename.Array.Map.t
-      }
-    ]}*)
-  type t = Workspace_cache.Dir_contents.t
+  type t = Workspace_cache.Dir_contents.t =
+    { files : Filename.Array.Set.t
+    ; dirs : Filename.Array.Set.t
+    ; rest : File_kind.t Filename.Array.Map.t
+    }
 
-  let iter t ~f = Filename.Array.Map.iteri t ~f
-  let to_list = Filename.Array.Map.to_list
+  let to_list { files; dirs; rest } =
+    Filename.Array.Set.to_list_map files ~f:(fun filename -> filename, File_kind.S_REG)
+    @ Filename.Array.Set.to_list_map dirs ~f:(fun filename -> filename, File_kind.S_DIR)
+    @ Filename.Array.Map.to_list rest
+  ;;
 
-  (* The names must be unique, so we don't care about comparing file kinds. *)
-  let of_list = Filename.Array.Map.of_list_exn
-  let repr = Workspace_cache.Dir_contents.repr
-  let equal = Filename.Array.Map.equal ~equal:File_kind.equal
+  let iter { files; dirs; rest } ~f =
+    Filename.Array.Set.iter files ~f:(fun filename -> f filename File_kind.S_REG);
+    Filename.Array.Set.iter dirs ~f:(fun filename -> f filename File_kind.S_DIR);
+    Filename.Array.Map.iteri rest ~f
+  ;;
+
+  let of_list entries =
+    let files, dirs, rest =
+      List.fold_left
+        entries
+        ~init:([], [], [])
+        ~f:(fun (files, dirs, rest) (filename, (kind : File_kind.t)) ->
+          match kind with
+          | S_REG -> filename :: files, dirs, rest
+          | S_DIR -> files, filename :: dirs, rest
+          | _ -> files, dirs, (filename, kind) :: rest)
+    in
+    { Workspace_cache.Dir_contents.files = Filename.Array.Set.of_list files
+    ; dirs = Filename.Array.Set.of_list dirs
+    ; rest = Filename.Array.Map.of_list_exn rest
+    }
+  ;;
+
+  let repr = Repr.view (Repr.list (Repr.pair Filename.repr File_kind.repr)) ~to_:to_list
+
+  let equal
+        { files = files_a; dirs = dirs_a; rest = rest_a }
+        { files = files_b; dirs = dirs_b; rest = rest_b }
+    =
+    Filename.Array.Set.equal files_a files_b
+    && Filename.Array.Set.equal dirs_a dirs_b
+    && Filename.Array.Map.equal rest_a rest_b ~equal:File_kind.equal
+  ;;
+
   let to_dyn = Repr.to_dyn repr
 end
 

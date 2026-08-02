@@ -590,14 +590,6 @@ module Alias_module = struct
       ; obj_name : Module_name.Unique.t
       }
 
-    let static_length =
-      let open Literals in
-      String.length canonical_prefix
-      + String.length canonical_suffix
-      + String.length alias_separator
-      + String.length alias_suffix
-    ;;
-
     let module_name_length name = String.length (Module_name.to_string name)
 
     let canonical_path_length (name :: names : Module_name.Path.t) =
@@ -615,11 +607,19 @@ module Alias_module = struct
         String_builder.add_string builder (Module_name.to_string name))
     ;;
 
-    let length { canonical_path; local_name; obj_name } =
-      static_length
-      + canonical_path_length canonical_path
-      + module_name_length local_name
-      + String.length (Module_name.Unique.to_string obj_name)
+    let length =
+      let static_length =
+        let open Literals in
+        String.length canonical_prefix
+        + String.length canonical_suffix
+        + String.length alias_separator
+        + String.length alias_suffix
+      in
+      fun { canonical_path; local_name; obj_name } ->
+        static_length
+        + canonical_path_length canonical_path
+        + module_name_length local_name
+        + String.length (Module_name.Unique.to_string obj_name)
     ;;
 
     let add builder { canonical_path; local_name; obj_name } =
@@ -641,15 +641,16 @@ module Alias_module = struct
     ; instances : Parameterised_instances.t
     }
 
-  let shadowed_static_length =
-    let open Literals in
-    String.length shadowed_prefix
-    + String.length shadowed_definition_suffix
-    + String.length shadowed_deprecation
-  ;;
-
-  let shadowed_length shadowed =
-    shadowed_static_length + String.length (Module_name.to_string shadowed)
+  let shadowed_length =
+    let static_length =
+      let open Literals in
+      String.length shadowed_prefix
+      + String.length shadowed_definition_suffix
+      + String.length shadowed_deprecation
+    in
+    fun shadowed ->
+      let name_length = String.length (Module_name.to_string shadowed) in
+      static_length + name_length
   ;;
 
   let add_shadowed builder shadowed =
@@ -660,26 +661,26 @@ module Alias_module = struct
     String_builder.add_string builder shadowed_deprecation
   ;;
 
-  let total_length { aliases; shadowed; instances } =
-    let length = String.length Literals.header in
-    let length =
-      List.fold_left aliases ~init:length ~f:(fun length alias ->
-        length + Alias.length alias)
+  let to_ml =
+    let total_length { aliases; shadowed; instances } =
+      let length = String.length Literals.header in
+      let length =
+        List.fold_left aliases ~init:length ~f:(fun length alias ->
+          length + Alias.length alias)
+      in
+      let length =
+        List.fold_left shadowed ~init:length ~f:(fun length shadowed ->
+          length + shadowed_length shadowed)
+      in
+      length + Parameterised_instances.ml_source_length instances
     in
-    let length =
-      List.fold_left shadowed ~init:length ~f:(fun length shadowed ->
-        length + shadowed_length shadowed)
-    in
-    length + Parameterised_instances.ml_source_length instances
-  ;;
-
-  let to_ml ({ aliases; shadowed; instances } as t) =
-    let builder = String_builder.create (total_length t) in
-    String_builder.add_string builder Literals.header;
-    List.iter aliases ~f:(Alias.add builder);
-    List.iter shadowed ~f:(add_shadowed builder);
-    Parameterised_instances.add_ml_source builder instances;
-    String_builder.build_exact_exn builder
+    fun ({ aliases; shadowed; instances } as t) ->
+      let builder = String_builder.create (total_length t) in
+      String_builder.add_string builder Literals.header;
+      List.iter aliases ~f:(Alias.add builder);
+      List.iter shadowed ~f:(add_shadowed builder);
+      Parameterised_instances.add_ml_source builder instances;
+      String_builder.build_exact_exn builder
   ;;
 
   let of_modules project modules group instances =

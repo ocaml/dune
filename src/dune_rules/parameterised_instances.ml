@@ -197,17 +197,17 @@ end
 
 let module_name_length name = String.length (Module_name.to_string name)
 
-let argument_static_length =
-  let open Literals in
-  String.length argument_prefix
-  + String.length argument_separator
-  + String.length argument_suffix
-;;
-
-let argument_length (_loc, param_name, arg_name) =
-  let param_name_length = module_name_length param_name in
-  let arg_name_length = module_name_length arg_name in
-  argument_static_length + param_name_length + arg_name_length
+let argument_length =
+  let static_length =
+    let open Literals in
+    String.length argument_prefix
+    + String.length argument_separator
+    + String.length argument_suffix
+  in
+  fun (_loc, param_name, arg_name) ->
+    let param_name_length = module_name_length param_name in
+    let arg_name_length = module_name_length arg_name in
+    static_length + param_name_length + arg_name_length
 ;;
 
 let instance_length prefix { new_name; lib_name; args; _ } =

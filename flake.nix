@@ -44,7 +44,6 @@
         nixpkgs.lib.genAttrs nixpkgs.lib.systems.flakeExposed (
           system:
           let
-            nixpkgsOcaml = nixpkgs.legacyPackages.${system}.ocaml-ng.ocamlPackages_5_5;
             pkgs = nixpkgs.legacyPackages.${system}.appendOverlays [
               ocaml-overlays.overlays.default
               (self: super: {
@@ -63,13 +62,6 @@
                     odoc = osuper.odoc.overrideAttrs (old: {
                       doCheck = false;
                     });
-                    # nix-overlays uses a post-0.38.0 ppxlib commit that no
-                    # longer depends on stdlib-shims. Use nixpkgs' 0.38.0
-                    # release source to match opam and keep `dune describe`
-                    # output independent of the package manager.
-                    ppxlib = osuper.ppxlib.overrideAttrs {
-                      inherit (nixpkgsOcaml.ppxlib) version src;
-                    };
                     # Templates the cross-compiled dune binary used by
                     # `windows-static`. Lives at the top-level scope so
                     # `nix-overlays`' cross-overlay sees it during scope

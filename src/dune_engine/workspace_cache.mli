@@ -16,15 +16,23 @@ end
 
 module Fs_memo : sig
   module Stats : sig
-    type t =
-      { mtime : Time.t
-      ; ctime : Time.t
-      ; size : int
-      ; perm : Unix.file_perm
-      ; dev : int
-      ; ino : int
-      }
+    type t
 
+    val create
+      :  mtime:Time.t
+      -> ctime:Time.t
+      -> size:int
+      -> perm:Unix.file_perm
+      -> dev:int
+      -> ino:int
+      -> t
+
+    val mtime : t -> Time.t
+    val ctime : t -> Time.t
+    val size : t -> int
+    val perm : t -> Unix.file_perm
+    val dev : t -> int
+    val ino : t -> int
     val repr : t Repr.t
   end
 

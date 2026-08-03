@@ -39,15 +39,26 @@ module Fs_memo = struct
       ; ino : int
       }
 
+    let create ~mtime ~ctime ~size ~perm ~dev ~ino =
+      { mtime; ctime; size; perm; dev; ino }
+    ;;
+
+    let mtime t = t.mtime
+    let ctime t = t.ctime
+    let size t = t.size
+    let perm t = t.perm
+    let dev t = t.dev
+    let ino t = t.ino
+
     let repr =
       Repr.record
         "fs-memo-cached-digest-reduced-stats"
-        [ Repr.field "mtime" Time.repr ~get:(fun t -> t.mtime)
-        ; Repr.field "ctime" Time.repr ~get:(fun t -> t.ctime)
-        ; Repr.field "size" Repr.int ~get:(fun t -> t.size)
-        ; Repr.field "perm" Repr.int ~get:(fun t -> t.perm)
-        ; Repr.field "dev" Repr.int ~get:(fun t -> t.dev)
-        ; Repr.field "ino" Repr.int ~get:(fun t -> t.ino)
+        [ Repr.field "mtime" Time.repr ~get:mtime
+        ; Repr.field "ctime" Time.repr ~get:ctime
+        ; Repr.field "size" Repr.int ~get:size
+        ; Repr.field "perm" Repr.int ~get:perm
+        ; Repr.field "dev" Repr.int ~get:dev
+        ; Repr.field "ino" Repr.int ~get:ino
         ]
     ;;
   end

@@ -81,3 +81,39 @@ main.bc.js should not rebuild
   > | select(endswith(".cma.js"))
   > '
   _build/default/.empty.objs/jsoo/effects=disabled/empty.cma.js
+
+JSOO archives in directory groups are not spuriously invalidated
+
+  $ mkdir nested
+  $ cat > dune <<EOF
+  > (include_subdirs unqualified)
+  > (library
+  >  (name grouped)
+  >  (wrapped false)
+  >  (modules))
+  > (executable
+  >  (name main)
+  >  (modes js)
+  >  (modules main)
+  >  (libraries grouped))
+  > EOF
+
+  $ dune build main.bc.js
+
+main.bc.js should not rebuild
+
+  $ dune build main.bc.js
+  $ dune trace cat | jq_dune -r '
+  > progMatching("js_of_ocaml")
+  > | .target_files[]?
+  > | select(endswith(".cma.js"))
+  > '
+  _build/default/.grouped.objs/jsoo/effects=disabled/grouped.cma.js
+
+  $ dune build main.bc.js
+  $ dune trace cat | jq_dune -r '
+  > progMatching("js_of_ocaml")
+  > | .target_files[]?
+  > | select(endswith(".cma.js"))
+  > '
+  _build/default/.grouped.objs/jsoo/effects=disabled/grouped.cma.js

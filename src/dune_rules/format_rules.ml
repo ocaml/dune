@@ -15,12 +15,8 @@ let depend_on_files ~named dir =
 
 let formatter_diff_action =
   let dep_on_alias_action alias ~loc action =
-    let action =
-      let open Action_builder.O in
-      let+ action = action in
-      { Rule.Anonymous_action.action; loc; dir = Alias.dir alias }
-    in
-    Build_system.dep_on_alias_definition (Rules.Dir_rules.Alias_spec.Action action)
+    let anon = Rule.Anonymous_action.make ~loc ~dir:(Alias.dir alias) action in
+    Build_system.dep_on_alias_definition (Rules.Dir_rules.Alias_spec.Action anon)
   in
   let formatter_stdout sctx ~loc alias action =
     Super_context.execute_action_stdout sctx ~loc ~dir:(Alias.dir alias) action

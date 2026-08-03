@@ -147,29 +147,27 @@ let resolve_c_compiler context ~dir program =
 ;;
 
 let cc_vendor_action (ctx : Build_context.t) =
-  let open Action_builder.O in
-  let* context = Action_builder.of_memo (Context.DB.get ctx.name) in
+  let open Memo.O in
+  let* context = Context.DB.get ctx.name in
   let* ocaml_config =
-    Action_builder.of_memo
-      (let open Memo.O in
-       let+ ocaml = Context.ocaml context in
-       ocaml.ocaml_config)
+    let+ ocaml = Context.ocaml context in
+    ocaml.ocaml_config
   in
-  Ocaml_config.c_compiler ocaml_config
-  |> resolve_c_compiler context ~dir:ctx.build_dir
-  |> Action_builder.of_memo
-  >>= function
-  | Error e -> Action_builder.fail { fail = (fun () -> Action.Prog.Not_found.raise e) }
-  | Ok c_compiler ->
-    let+ action =
+  let+ action =
+    Ocaml_config.c_compiler ocaml_config
+    |> resolve_c_compiler context ~dir:ctx.build_dir
+    >>| function
+    | Error e -> Action.Prog.Not_found.raise e
+    | Ok c_compiler ->
+      let open Action_builder.O in
       let+ () = Action_builder.path c_compiler
       and+ env = Action_builder.of_memo (Context.installed_env context) in
       Detect.action { c_compiler; ccomp_type = Ocaml_config.ccomp_type ocaml_config }
       |> Action.chdir (Path.build ctx.build_dir)
       |> Action.Full.make
       |> Action.Full.add_env env
-    in
-    { Rule.Anonymous_action.action; loc = Loc.none; dir = ctx.build_dir }
+  in
+  Rule.Anonymous_action.make ~dir:ctx.build_dir action
 ;;
 
 let check_warn = function
@@ -186,9 +184,10 @@ let check_warn = function
 let cc_vendor (ctx : Build_context.t) =
   let open Action_builder.O in
   let+ cc_vendor =
+    let open Memo.O in
     cc_vendor_action ctx
-    |> Build_system.execute_action_stdout
-    |> Memo.map ~f:parse_cc_vendor
+    >>= Build_system.execute_action_stdout
+    >>| parse_cc_vendor
     |> Action_builder.of_memo
   in
   check_warn cc_vendor;

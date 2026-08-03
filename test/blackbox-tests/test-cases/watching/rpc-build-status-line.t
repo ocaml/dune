@@ -1,4 +1,5 @@
-Forwarded builds display a rich status line once connected over RPC.
+Forwarded watch builds display a rich status line with the current run once
+connected over RPC.
 
   $ setup_xdg_runtime_dir
 
@@ -20,6 +21,22 @@ Forwarded builds display a rich status line once connected over RPC.
   Connected to RPC server
   $ tr '\r' '\n' < .#dune-output | grep -a -m 1 "\[rpc 1\]"
   [rpc 1]
+  $ tr '\r' '\n' < .#dune-output \
+  > | grep -a -E -m 1 -o "\[[0-9]+\.[0-9]s\] \[[0-9]+\.[0-9]x\] \[1\]" \
+  > | sed -E 's/\[[0-9]+\.[0-9]s\]/[BUILD DURATION]/; s/\[[0-9]+\.[0-9]x\]/[PARALLELISM]/'
+  [BUILD DURATION] [PARALLELISM] [1]
+
+The run number increments with the next watch build.
+
+  $ : > .#dune-output
+  $ INSIDE_EMACS=1 DUNE_CONFIG__THREADED_CONSOLE=disabled \
+  >   with_timeout dune build --display progress x > output 2>&1
+  $ tr '\r' '\n' < output | grep -m 1 "Connected to RPC server"
+  Connected to RPC server
+  $ tr '\r' '\n' < .#dune-output \
+  > | grep -a -E -m 1 -o "\[[0-9]+\.[0-9]s\] \[[0-9]+\.[0-9]x\] \[2\]" \
+  > | sed -E 's/\[[0-9]+\.[0-9]s\]/[BUILD DURATION]/; s/\[[0-9]+\.[0-9]x\]/[PARALLELISM]/'
+  [BUILD DURATION] [PARALLELISM] [2]
 
   $ stop_dune_quiet
 
@@ -58,6 +75,13 @@ count while their temporary RPC server is running.
   > | grep -a -E -m 1 -o "\[[0-9]+\.[0-9]s\] \[[0-9]+\.[0-9]x\]" \
   > | sed -E 's/\[[0-9]+\.[0-9]s\]/[BUILD DURATION]/; s/\[[0-9]+\.[0-9]x\]/[PARALLELISM]/'
   [BUILD DURATION] [PARALLELISM]
+  $ if tr '\r' '\n' < batch-output \
+  > | grep -a -E -q "\[[0-9]+\.[0-9]s\] \[[0-9]+\.[0-9]x\] \[[0-9]+\]"; then
+  >   echo "batch timing unexpectedly included a watch run"
+  > else
+  >   echo "batch timing has no watch run"
+  > fi
+  batch timing has no watch run
 
   $ touch "$RELEASE"
   $ if wait_for_pid_to_exit_with_timeout "$BATCH_PID" 200; then

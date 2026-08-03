@@ -51,9 +51,7 @@ module Make (D : Desc) = struct
       end : Desc_with_data)
   ;;
 
-  let to_string (v : D.t) =
-    Printf.sprintf "%s%s" magic (Marshal.to_string v ~sharing:D.sharing)
-  ;;
+  let to_string (v : D.t) = magic ^ Marshal.to_string v ~sharing:D.sharing
 
   let with_record what ~file ~f =
     let start = Time.now () in

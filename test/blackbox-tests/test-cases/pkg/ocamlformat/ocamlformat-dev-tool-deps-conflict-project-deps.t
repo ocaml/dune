@@ -11,10 +11,7 @@ into the user build environment.
 Make a fake OCamlFormat which depends on printer lib:
   $ mkdir ocamlformat
   $ cd ocamlformat
-  $ cat > dune-project <<EOF
-  > (lang dune 3.13)
-  > (package (name ocamlformat))
-  > EOF
+  $ make_dune_project_with_package 3.13 ocamlformat
   $ cat > ocamlformat.ml <<EOF
   > let () = Printer.print ()
   > EOF

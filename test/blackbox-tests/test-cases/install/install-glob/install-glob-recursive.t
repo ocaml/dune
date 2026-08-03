@@ -1,9 +1,6 @@
 Test that `glob_files_rec` can recursively find files
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.5)
-  > (package (name foo))
-  > EOF
+  $ make_dune_project_with_package 3.5 foo
 
   $ cat >dune <<EOF
   > (install
@@ -29,7 +26,7 @@ Add some files which don't match the glob.
   $ mkdir b/d
   $ touch b/d/d
 
-  $ dune build
+  $ dune build @install
   File "dune", line 2, characters 8-32:
   2 |  (files (glob_files_rec b/*.txt))
               ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -37,12 +34,9 @@ Add some files which don't match the glob.
   language. Please update your dune-project file to have (lang dune 3.6).
   [1]
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.6)
-  > (package (name foo))
-  > EOF
+  $ make_dune_project_with_package 3.6 foo
 
-  $ dune build
+  $ dune build @install
 
   $ cat _build/default/foo.install
   lib: [

@@ -3,9 +3,7 @@ Test for (sandbox patch_back_source_tree)
 This sandbox allows to safely "modify" source files by turning modifications
 into promotions.
 
-  $ cat >dune-project<<EOF
-  > (lang dune 3.23)
-  > EOF
+  $ make_dune_project 3.23
 
 Targest are not promoted
 ------------------------
@@ -42,8 +40,7 @@ All modified dependencies are promoted
   +Hello, world!
   [1]
 
-  $ dune trace cat | jq '
-  > include "dune";
+  $ dune trace cat | jq_dune '
   >   select(.cat == "sandbox" and .name == "snapshot")
   > | censorDigestDir
   > | .args
@@ -317,10 +314,45 @@ produced in the sandbox and copied back:
   >  (action (bash "echo 'Hello, world!'")))
   > EOF
 
+  $ rm -rf _build
   $ dune build @blah
   Hello, world!
 
-This is the internal stamp file:
+The stamp file is kept internal to the build directory: it must not be patched
+back into the source tree, so there is nothing to promote.
 
-  $ ls _build/.actions/default/blah* | dune_cmd subst '/blah-.+' '/blah-REDACTED'
-  _build/.actions/default/blah-REDACTED
+  $ dune promotion list
+
+The stamp itself lives under the build directory, named after its digest:
+
+  $ ls _build/.actions/default/ | dune_cmd subst '[0-9a-f]{32}' 'REDACTED'
+  REDACTED
+
+Patch-back sandboxing with directory targets
+--------------------------------------------
+
+Generated files inside directory targets remain build targets and are omitted
+from promotion output. Unrelated source-tree changes made by the same action are
+still reported.
+
+  $ rm -rf out sub dune
+  $ make_dune_project 3.24
+  $ cat >dune<<EOF
+  > (rule
+  >  (deps (sandbox patch_back_source_tree))
+  >  (targets (dir out))
+  >  (action (bash "mkdir -p out sub; echo target > out/file; echo surprise > sub/out")))
+  > EOF
+
+  $ dune build out
+  File "out/file", line 1, characters 0-0:
+  --- out/file
+  +++ _build/default/out/file
+  @@ -0,0 +1 @@
+  +target
+  File "sub/out", line 1, characters 0-0:
+  --- sub/out
+  +++ _build/default/sub/out
+  @@ -0,0 +1 @@
+  +surprise
+  [1]

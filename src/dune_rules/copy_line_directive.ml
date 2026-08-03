@@ -71,6 +71,8 @@ module Spec = struct
 
   let name = "copy-line-directive"
   let version = 2
+  let runs_process = false
+  let can_run_in_action_runner = false
   let bimap (src, dst, merlin) f g = f src, g dst, merlin
   let is_useful_to ~memoize = memoize
 

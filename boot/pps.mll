@@ -34,6 +34,17 @@
     Scanf.sscanf Sys.ocaml_version "%d.%d.%d" (fun a b c -> a, b, c)
   ;;
 
+  let is_oxcaml =
+    let version = Sys.ocaml_version in
+    let ends_with suffix =
+      let version_len = String.length version in
+      let suffix_len = String.length suffix in
+      version_len >= suffix_len
+      && String.sub version (version_len - suffix_len) suffix_len = suffix
+    in
+    ends_with "+ox" || ends_with "+jst"
+  ;;
+
   let eval_relop relop rhs =
     match relop with
     | "<" -> ocaml_version < rhs
@@ -73,6 +84,9 @@ let char_escape =
   | 'o' ['0'-'3'] octal_digit octal_digit)
 let char_literal = '\'' (char_simple | char_escape) '\''
 let lower_ident = ['a'-'z' '_']['A'-'Z' 'a'-'z' '_' '0'-'9' '\'']*
+let oxcaml_guard =
+  "&&" blank "not_defined_permissive" blank
+  ("oxcaml" | '(' blank "oxcaml" blank ')')
 
 rule copy dst mode = parse
  | "let%expect_test" { skip_expect_test (copy dst mode) 0 lexbuf }
@@ -180,6 +194,29 @@ and skip_test_module k depth = parse
  | eof { failwith "unterminated let%test_module" }
 
 and copy_conditional dst mode = parse
+ | blank "ocaml_version" blank
+   (("<=" | ">=" | "<>" | "<" | ">" | "=") as relop)
+   blank '(' blank
+   (integer as major)
+   blank ',' blank
+   (integer as minor)
+   blank ',' blank
+   (integer as patch)
+   blank ')' blank
+   oxcaml_guard blank ']'
+   {
+     let keep_then =
+       eval_relop
+         relop
+         (int_of_string major, int_of_string minor, int_of_string patch)
+       && not is_oxcaml
+     in
+     copy
+       (branch_dst dst keep_then false)
+       (Conditional { root_dst = dst; keep_then; seen_else = false })
+       lexbuf;
+     copy dst mode lexbuf
+   }
  | blank "ocaml_version" blank
    (("<=" | ">=" | "<>" | "<" | ">" | "=") as relop)
    blank '(' blank

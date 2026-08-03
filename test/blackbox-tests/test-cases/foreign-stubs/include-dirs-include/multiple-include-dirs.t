@@ -1,16 +1,9 @@
 ----------------------------------------------------------------------------------
 Test where a multiple include directories are added via a `(include ...)` statement
 
-  $ echo "(lang dune 3.5)" > dune-project
+  $ make_dune_project 3.5
 
-  $ cat >dune <<EOF
-  > (library
-  >  (name foo)
-  >  (foreign_stubs
-  >   (language c)
-  >   (names bar)
-  >   (include_dirs (include foo))))
-  > EOF
+  $ make_foreign_stubs_include_dirs_project
 
   $ cat >bar.c <<EOF
   > #include <caml/mlvalues.h>

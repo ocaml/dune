@@ -1,9 +1,6 @@
 Test that `(include ...)` composes with `(glob_files ...)`
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.6)
-  > (package (name foo))
-  > EOF
+  $ make_dune_project_with_package 3.6 foo
 
   $ cat >dune <<EOF
   > (install

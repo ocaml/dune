@@ -3,7 +3,13 @@ module T2 = struct
 
   let to_dyn = Dyn.pair
   let equal f g (x1, y1) (x2, y2) = f x1 x2 && g y1 y2
-  let hash f g (a, b) = Poly.hash (f a, g b)
+
+  let hash f g (a, b) =
+    let acc = Hash.create () in
+    let acc = Hash.feed acc (f a) in
+    let acc = Hash.feed acc (g b) in
+    Hash.hash acc
+  ;;
 
   let compare f g (a1, b1) (a2, b2) =
     match f a1 a2 with
@@ -18,7 +24,15 @@ module T3 = struct
   type ('a, 'b, 'c) t = 'a * 'b * 'c
 
   let to_dyn = Dyn.triple
-  let hash f g h (a, b, c) = Poly.hash (f a, g b, h c)
+
+  let hash f g h (a, b, c) =
+    let acc = Hash.create () in
+    let acc = Hash.feed acc (f a) in
+    let acc = Hash.feed acc (g b) in
+    let acc = Hash.feed acc (h c) in
+    Hash.hash acc
+  ;;
+
   let equal f g h (a1, b1, c1) (a2, b2, c2) = f a1 a2 && g b1 b2 && h c1 c2
 
   let compare f g h (a1, b1, c1) (a2, b2, c2) =

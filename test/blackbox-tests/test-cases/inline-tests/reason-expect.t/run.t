@@ -16,9 +16,7 @@ Testing the interaction of reason syntax and ppx expect
 In https://github.com/ocaml/dune/issues/7930 there is an issue where reason
 syntax and ppx_expect break at dune lang 3.3 due to the sandboxing of ppx.
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.9)
-  > EOF
+  $ make_dune_project 3.9
   $ dune test 2>&1 | head -n 6
   File "test.re", line 1, characters 0-0:
   --- test.re

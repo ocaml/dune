@@ -9,9 +9,12 @@ module File = struct
     ; preds : Ps.t
     }
 
-  let to_dyn { vars; preds } =
-    let open Dyn in
-    record [ "vars", Vars.to_dyn vars; "preds", Ps.to_dyn preds ]
+  let repr =
+    Repr.record
+      "findlib-config-file"
+      [ Repr.field "vars" (Repr.abstract Vars.to_dyn) ~get:(fun t -> t.vars)
+      ; Repr.field "preds" (Repr.abstract Ps.to_dyn) ~get:(fun t -> t.preds)
+      ]
   ;;
 
   let load config_file =
@@ -65,10 +68,15 @@ type t =
   ; toolchain : string option
   }
 
-let to_dyn { config; ocamlpath = _; toolchain; which = _ } =
-  let open Dyn in
-  record [ "config", File.to_dyn config; "toolchain", option string toolchain ]
+let repr =
+  Repr.record
+    "findlib-config"
+    [ Repr.field "config" File.repr ~get:(fun t -> t.config)
+    ; Repr.field "toolchain" Repr.(option string) ~get:(fun t -> t.toolchain)
+    ]
 ;;
+
+let to_dyn = Repr.to_dyn repr
 
 let ocamlpath_sep =
   if Sys.cygwin

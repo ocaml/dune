@@ -1331,16 +1331,18 @@ not stable across different setups.
 Test other formats
 ------------------
 
-  $ dune describe workspace --format csexp --lang 0.1 --sanitize-for-tests | cut -c 1-85
-  ((4:root15:/WORKSPACE_ROOT)(13:build_context14:_build/default)(11:executables((5:name
+  $ dune describe workspace --format csexp --lang 0.1 --sanitize-for-tests > workspace.csexp
+  $ dune internal sexp-pp --format csexp workspace.csexp | head -3
+  ((root /WORKSPACE_ROOT)
+   (build_context _build/default)
+   (executables
 
 Test errors
 -----------
 
   $ dune describe workspacw --lang 0.1 
-  dune: unknown command 'workspacw', did you mean 'workspace'?
-  Usage: dune describe [COMMAND] …
-  Try 'dune describe --help' or 'dune --help' for more information.
+  Usage: dune describe [--help] [COMMAND] …
+  dune: unknown command 'workspacw'. Did you mean 'workspace'?
   [1]
 
   $ dune describe workspace --lang 0.1 xxx
@@ -1353,12 +1355,11 @@ Test errors
   [1]
 
   $ dune describe workspace --lang 1.0
+  Usage: dune describe workspace [--help] [OPTION]… [DIRS]…
   dune: Only --lang 0.1 is available at the moment as this command is not yet
-        stabilised. If you would like to release a software that relies on the output
-        of 'dune describe', please open a ticket on
+        stabilised. If you would like to release a software that relies on the
+        output of 'dune describe', please open a ticket on
         https://github.com/ocaml/dune.
-  Usage: dune describe workspace [OPTION]… [DIRS]…
-  Try 'dune describe workspace --help' or 'dune --help' for more information.
   [1]
 
 opam file listing

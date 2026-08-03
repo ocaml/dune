@@ -71,14 +71,7 @@ module Dep = struct
       Some (if recursive then Dep_conf.Alias_rec s else Dep_conf.Alias s))
   ;;
 
-  let dep_parser =
-    Dune_lang.Syntax.set
-      Stanza.syntax
-      (Active Stanza.latest_version)
-      (String_with_vars.set_decoding_env
-         (Pform.Env.initial ~stanza:Stanza.latest_version ~extensions:[])
-         Dep_conf.decode)
-  ;;
+  let dep_parser = Dep_conf.command_line_parser ~stanza_version:Stanza.latest_version
 
   let parser s =
     match parse_alias s with
@@ -148,10 +141,6 @@ let bytes =
   in
   let pp_print_int64 state i = Format.pp_print_string state (Int64.to_string i) in
   conv (decode, pp_print_int64)
-;;
-
-let graph_format : Dune_graph.Graph.File_format.t conv =
-  conv Dune_graph.Graph.File_format.conv
 ;;
 
 let context_name : Context_name.t conv = conv Context_name.conv

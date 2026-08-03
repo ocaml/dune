@@ -1,9 +1,7 @@
 We test the `(select)` field of the `(libraries)` field in the presence of
 `(include_subdirs unqualified)`
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.22)
-  > EOF
+  $ make_dune_project 3.22
 
   $ cat > dune <<EOF
   > (include_subdirs unqualified)

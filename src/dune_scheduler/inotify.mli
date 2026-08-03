@@ -5,11 +5,9 @@
 
     See [man 7 inotify] for the raw inotify documentation.
 
-    The state maintained by [t] is not thread-safe and can only be interacted
-    with in the context of a "scheduler" (async scheduler or fiber scheduler in
-    dune). We assume that [add] is called in the context of the scheduler and
-    that [send_emit_events_job_to_scheduler f] runs [f] in the context of the
-    scheduler.
+    Event processing runs on a background thread. [emit_events] is called from
+    that thread and is responsible for transferring events to the scheduler if
+    needed.
 
     Be aware that the interface of inotify makes it easy to write code with race
     conditions or other subtle pitfalls. For instance, stat'ing a file then
@@ -51,16 +49,17 @@ type modify_event_selector =
         events (for large files), but they come later. *)
   ]
 
-(** [create path] creates an inotify watching path. Returns the inotify type t
-    itself and the list of files currently being watched. By default,
-    recursively watches all subdirectories of the given path. See [add_all] for
-    caveats.
+(** [create] creates an inotify watcher.
 
-    [send_emit_events_job_to_scheduler f] is expected to run the job [f] in the
-    scheduler, and then process the events returned by that job. *)
+    [mutex] is used for the inotify bookkeeping. This is useful when
+    [emit_events] needs to synchronize its own bookkeeping with inotify event
+    processing.
+
+    [emit_events] is called with events emitted by the watcher. *)
 val create
-  :  modify_event_selector:modify_event_selector
-  -> send_emit_events_job_to_scheduler:((unit -> Event.t list) -> unit)
+  :  mutex:Mutex.t
+  -> modify_event_selector:modify_event_selector
+  -> emit_events:(Event.t list -> unit)
   -> t
 
 (** [add t path] add the path to t to be watched. The operation is synchronous,

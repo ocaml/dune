@@ -1,8 +1,6 @@
 Here we specify the behaviour of dune install when no install prefix is given.
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.9)
-  > EOF
+  $ make_dune_project 3.9
 
   $ cat > dune << EOF
   > (executable

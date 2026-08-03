@@ -19,9 +19,7 @@ depends on defaultlib which is only enabled in the default context.
 tries to index the alt context too — and fails because defaultlib
 is hidden there.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.23)
-  > EOF
+  $ make_dune_project 3.23
 
   $ cat > dune-workspace <<EOF
   > (lang dune 3.23)
@@ -79,9 +77,7 @@ Test 2: @ocaml-index correctly skips disabled stanzas (not a bug)
 Verify that (enabled_if false) libraries are already correctly
 excluded from indexing.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.23)
-  > EOF
+  $ make_dune_project 3.23
 
   $ cat > dune <<EOF
   > (executable

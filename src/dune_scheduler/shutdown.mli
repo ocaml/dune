@@ -2,6 +2,7 @@ open Stdune
 
 module Reason : sig
   type t =
+    | Failure
     | Requested
     | Timeout
     | Signal of Signal.t

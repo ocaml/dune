@@ -44,15 +44,32 @@ if not match:
 major, minor = match.groups()
 LATEST = f"{major}.{minor}"
 
+from sphinx import addnodes
 from sphinx.application import Sphinx
+from sphinx.util.nodes import make_id
+
 
 def replace_substitutions(app, docname, source):
     src = source[0]
     source[0] = src.replace("{{latest}}", app.config.latest)
 
+
+def add_describe_anchors(app: Sphinx, doctree):
+    for desc in doctree.findall(addnodes.desc):
+        if desc.get("desctype") != "describe":
+            continue
+        for signode in desc.findall(addnodes.desc_signature):
+            if signode["ids"]:
+                continue
+            node_id = make_id(app.env, doctree, "describe", signode.astext())
+            signode["ids"].append(node_id)
+            doctree.note_explicit_target(signode)
+
+
 def setup(app: Sphinx):
     app.add_config_value("latest", LATEST, "env")
     app.connect("source-read", replace_substitutions)
+    app.connect("doctree-read", add_describe_anchors)
 
 # -- General configuration ------------------------------------------------
 

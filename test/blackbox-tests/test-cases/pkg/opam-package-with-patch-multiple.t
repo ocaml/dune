@@ -15,34 +15,10 @@ file and the second patches two, one of the files is in a subdirectory.:w
 
   $ mkdir -p $opam_dir/files/dir
 
-  $ cat >$opam_dir/files/foo.patch <<EOF
-  > diff --git a/foo.ml b/foo.ml
-  > index b69a69a5a..ea988f6bd 100644
-  > --- a/foo.ml
-  > +++ b/foo.ml
-  > @@ -1,1 +1,1 @@
-  > -This is wrong
-  > +This is right
-  > EOF
+  $ write_wrong_to_right_patch $opam_dir/files/foo.patch
 
-  $ cat >$opam_dir/files/dir/bar.patch <<EOF
-  > diff --git a/bar.ml b/bar.ml
-  > index b69a69a5a..ea988f6bd 100644
-  > --- a/bar.ml
-  > +++ b/bar.ml
-  > @@ -1,1 +1,1 @@
-  > -This is wrong
-  > +This is right
-  > 
-  > diff --git a/dir/baz.ml b/dir/baz.ml
-  > new file mode 100644
-  > index b69a69a5a..ea988f6bd 100644
-  > --- a/dir/baz.ml
-  > +++ b/dir/baz.ml
-  > @@ -1,1 +1,1 @@
-  > -This is wrong
-  > +This is right
-  > EOF
+  $ write_wrong_to_right_patch $opam_dir/files/dir/bar.patch bar.ml
+  $ append_wrong_to_right_patch $opam_dir/files/dir/bar.patch dir/baz.ml
 
   $ solve with-patch
   Solution for dune.lock:

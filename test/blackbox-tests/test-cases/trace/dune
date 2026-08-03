@@ -1,4 +1,14 @@
 (cram
- (applies_to watch-build-events debug-event)
+ (applies_to watch-build-events debug-event interrupted-watch-build-events)
  (enabled_if
   (= %{system} linux)))
+
+(cram
+ (applies_to file-watcher-events)
+ (enabled_if
+  (<> %{system} macosx)))
+
+(cram
+ (applies_to runtime-events)
+ (enabled_if
+  (>= %{ocaml_version} 5.0.0)))

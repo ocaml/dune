@@ -569,7 +569,7 @@ module Solver = struct
       let compare_version a b =
         match a, b with
         | RealImpl a, RealImpl b ->
-          (* CR rgrinberg: shouldn't we take our version preference into account here? *)
+          (* CR-someday rgrinberg: shouldn't we take our version preference into account here? *)
           Ordering.of_int (OpamPackage.compare a.pkg b.pkg)
         | RealImpl _, _ -> Gt
         | _, RealImpl _ -> Lt
@@ -1083,7 +1083,7 @@ module Solver = struct
          If [t] selected a better version anyway then we don't need to report this rejection. *)
       let affected_selection t impl =
         match t.selected_impl with
-        (* CR rgrinberg: take account version preference here? *)
+        (* CR-someday rgrinberg: take account version preference here? *)
         | Some selected when Input.Impl.compare_version selected impl = Gt -> false
         | _ -> true
       ;;
@@ -1351,7 +1351,7 @@ module Solver = struct
         let get_selected role (sel : Solver.selection) =
           let diagnostics = lazy (explain role) in
           let impl = if sel.impl = Input.Dummy then None else Some sel.impl in
-          (* CR rgrinberg: Are we recomputing things here? *)
+          (* CR-someday rgrinberg: Are we recomputing things here? *)
           let* impl_candidates = Input.implementations role context in
           let+ rejects, feed_problems = Input.Role.rejects role context in
           Component.create
@@ -1558,27 +1558,14 @@ let reject_unreachable_packages =
         | None, Some (pkg : Local_package.For_solver.t) ->
           let deps =
             match
-              let env =
-                let opam_package =
-                  OpamPackage.create
-                    (Package_name.to_opam_package_name pkg.name)
-                    (Package_version.to_opam_package_version pkg.version)
-                in
-                Solver_env.to_env solver_env
-                |> Lock_pkg.add_self_to_filter_env opam_package
-              in
-              let with_test = with_test solver_env in
-              Dependency_formula.to_filtered_formula pkg.dependencies
-              |> Resolve_opam_formula.filtered_formula_to_package_names
-                   ~env
-                   ~with_test
-                   ~packages:
-                     (Package_name.Map.set pkgs_by_version Dune_dep.name dune_version)
+              Lock_pkg.local_package_dependencies
+                pkg
+                ~env:(Solver_env.to_env solver_env)
+                ~with_test:(with_test solver_env)
+                ~packages:pkgs_by_version
+                ~dune_version
             with
-            | Ok { regular; post = _ (* discard post deps *) } ->
-              (* remove Dune from the formula as we remove it from solutions *)
-              List.filter regular ~f:(fun pkg ->
-                not (Package_name.equal Dune_dep.name pkg))
+            | Ok regular -> regular
             | Error (`Formula_could_not_be_satisfied hints) ->
               (match hints with
                | [ (Unsatisfied_version_constraint { package_name; _ } as hint) ]
@@ -1675,7 +1662,7 @@ let resolve_url (file_url : OpamFile.URL.t) =
            [ "url", OpamUrl.to_dyn url; "path", Path.to_dyn path ]
        | Git at_rev ->
          let resolved_hash = at_rev |> Rev_store.At_rev.rev |> Rev_store.Object.to_hex in
-         (match !Dune_engine.Clflags.display, url.hash with
+         (match !Clflags.display, url.hash with
           | Short, Some old_hash ->
             (match String.equal resolved_hash old_hash with
              | true -> ()
@@ -1855,7 +1842,7 @@ let solve_lock_dir
          | _ ->
            Error
              (User_error.make
-                (* CR rgrinberg: needs to include locations *)
+                (* CR-someday rgrinberg: needs to include locations *)
                 [ Pp.text "multiple compilers selected" ]
                 ~hints:[ Pp.text "add a conflict" ])
        in

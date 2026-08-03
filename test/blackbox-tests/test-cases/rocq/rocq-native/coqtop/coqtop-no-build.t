@@ -12,10 +12,7 @@ Testing the -no-build option of dune rocq top:
   > (rocq.theory
   >  (name basic))
   > EOF
-  $ cat >dune-project <<EOF
-  > (lang dune 3.21)
-  > (using rocq 0.11)
-  > EOF
+  $ make_rocq_project 3.21 0.11
 
 On a fresh build, this should do nothing but should pass the correct flags:
 

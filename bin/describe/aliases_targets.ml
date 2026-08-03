@@ -54,26 +54,44 @@ let ls_term (fetch_results : Path.Build.t -> string list Action_builder.t) =
           Action_builder.of_memo
           @@
           let open Memo.O in
-          Source_tree.find_dir src_dir
+          (* First check if it's a directory target *)
+          Load_rules.load_dir ~dir:(Path.build build_dir)
           >>= function
-          | Some _ -> Memo.return ()
-          | None ->
-            (* The directory didn't exist. We therefore check if it was a
-               directory target and error for the user accordingly. *)
-            let+ is_dir_target =
-              Load_rules.is_under_directory_target (Path.build build_dir)
-            in
-            if is_dir_target
-            then
-              User_error.raise
-                [ Pp.textf
-                    "Directory %s is a directory target. This command does not support \
-                     the inspection of directory targets."
-                    (Path.to_string dir)
-                ]
-            else
-              User_error.raise
-                [ Pp.textf "Directory %s does not exist." (Path.to_string dir) ]
+          | Load_rules.Loaded.Build_under_directory_target _ ->
+            User_error.raise
+              [ Pp.textf
+                  "Directory %s is a directory target. This command does not support the \
+                   inspection of directory targets."
+                  (Path.to_string dir)
+              ]
+          | External _ | Build _ | Source _ ->
+            (* Check if directory exists in source tree or is a valid build-only directory *)
+            Source_tree.find_dir src_dir
+            >>= (function
+             | Some _ -> Memo.return () (* Exists in source tree *)
+             | None ->
+               (* Not in source tree, check if it's a valid build-only subdirectory *)
+               (match Path.Build.parent build_dir with
+                | None ->
+                  (* Build context root always exists *)
+                  Memo.return ()
+                | Some parent_dir ->
+                  Load_rules.load_dir ~dir:(Path.build parent_dir)
+                  >>| (function
+                   | Load_rules.Loaded.Build { allowed_subdirs; _ } ->
+                     let subdir_set =
+                       Dune_engine.Dir_set.descend
+                         allowed_subdirs
+                         (Path.Build.basename build_dir)
+                     in
+                     if Dune_engine.Dir_set.here subdir_set
+                     then ()
+                     else
+                       User_error.raise
+                         [ Pp.textf "Directory %s does not exist." (Path.to_string dir) ]
+                   | _ ->
+                     User_error.raise
+                       [ Pp.textf "Directory %s does not exist." (Path.to_string dir) ])))
         in
         let+ targets = fetch_results build_dir in
         (* If we are printing multiple directories, we print the directory
@@ -88,7 +106,11 @@ let ls_term (fetch_results : Path.Build.t -> string list Action_builder.t) =
   Scheduler_setup.go_with_rpc_server ~common ~config
   @@ fun () ->
   let open Fiber.O in
-  Build.run_build_system ~request >>| fun (_ : (unit, [ `Already_reported ]) result) -> ()
+  Build.run_build_system
+    ~action_runner:(Common.action_runner common)
+    ~run_id:Dune_engine.Run_id.Batch
+    ~request
+  >>| fun (_ : (unit, [ `Already_reported ]) result) -> ()
 ;;
 
 module Aliases_cmd = struct
@@ -116,23 +138,25 @@ end
 module Targets_cmd = struct
   let fetch_results (dir : Path.Build.t) =
     let open Action_builder.O in
-    let+ targets =
-      let open Memo.O in
-      Target.all_direct_targets (Some (Path.Build.drop_build_context_exn dir))
-      >>| Path.Build.Map.to_list
-      |> Action_builder.of_memo
-    in
-    List.filter_map targets ~f:(fun (path, kind) ->
-      match Path.Build.equal (Path.Build.parent_exn path) dir with
-      | false -> None
-      | true ->
-        (* directory targets can be distinguied by the trailing path separator
-        *)
-        Some
-          (match kind with
-           | Target.File -> Path.Build.basename path |> Filename.to_string
-           | Directory ->
-             (Path.Build.basename path |> Filename.to_string) ^ Filename.dir_sep))
+    let+ load_dir = Action_builder.of_memo (Load_rules.load_dir ~dir:(Path.build dir)) in
+    match load_dir with
+    | Load_rules.Loaded.Build { rules_here; _ } ->
+      let file_targets =
+        Path.Build.Map.keys rules_here.by_file_targets
+        |> List.filter_map ~f:(fun path ->
+          if Path.Build.equal (Path.Build.parent_exn path) dir
+          then Some (Path.Build.basename path |> Filename.to_string)
+          else None)
+      in
+      let dir_targets =
+        Path.Build.Map.keys rules_here.by_directory_targets
+        |> List.filter_map ~f:(fun path ->
+          if Path.Build.equal (Path.Build.parent_exn path) dir
+          then Some ((Path.Build.basename path |> Filename.to_string) ^ Filename.dir_sep)
+          else None)
+      in
+      List.sort ~compare:String.compare (file_targets @ dir_targets)
+    | _ -> []
   ;;
 
   let term = ls_term fetch_results

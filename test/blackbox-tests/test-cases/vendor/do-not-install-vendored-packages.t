@@ -7,10 +7,7 @@ vendored package that shouldn't be installed.
   $ touch file
   $ touch vendor/bar/file
 
-  $ cat >dune-project <<EOF
-  > (lang dune 2.1)
-  > (package (name foo))
-  > EOF
+  $ make_dune_project_with_package 2.1 foo
 
   $ cat >dune <<EOF
   > (install (section lib) (files file))

@@ -3,7 +3,7 @@
 * Error when a C source file is missing.
 
   $ ./sandboxed.sh
-  $ echo "(lang dune 2.0)" > dune-project
+  $ make_dune_project 2.0
 
   $ cat >dune <<EOF
   > (library

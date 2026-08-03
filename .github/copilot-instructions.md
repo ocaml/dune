@@ -35,3 +35,8 @@ nix develop -c dune fmt                   # Auto-format code (run before committ
 nix develop -c dune promote               # Accept test output changes (ask user first)
 nix develop -c make dev                   # Full build (bootstraps if necessary)
 ```
+
+## Reviewing PRs
+
+Follow the repository review checklist in
+[doc/dev/prompts/review-check.md](../doc/dev/prompts/review-check.md).

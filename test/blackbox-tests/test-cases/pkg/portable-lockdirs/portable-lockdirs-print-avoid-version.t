@@ -9,12 +9,7 @@ avoid-version, include a message to that extent in the output.
   > flags: [avoid-version]
   > EOF
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.18)
-  > (package
-  >  (name x)
-  >  (depends foo))
-  > EOF
+  $ write_portable_lockdirs_project
 
   $ DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled dune pkg lock
   Solution for dune.lock

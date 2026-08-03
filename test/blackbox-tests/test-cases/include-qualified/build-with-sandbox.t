@@ -1,9 +1,7 @@
 Test `(include_subdirs qualified)` with sandboxing
 
   $ mkdir lib
-  $ cat > dune-project <<EOF
-  > (lang dune 3.20)
-  > EOF
+  $ make_dune_project 3.20
 
   $ mkdir lib/sub
   $ cat > lib/dune <<EOF

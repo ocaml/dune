@@ -4,7 +4,7 @@ being ran and channels not being flushed.
 
 Setup fixtures:
 
-  $ echo "(lang dune 2.6)" > dune-project
+  $ make_dune_project 2.6
   $ echo 'let () = print_string "bla"' > main.ml
   $ cat >dune <<EOF
   > (executable

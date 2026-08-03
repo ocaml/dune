@@ -99,7 +99,7 @@ But when lang dune is 3.3 or higher the warning becomes an error:
 
   $ dune build --root=outer
 
-  $ dune trace cat --trace-file outer/_build/trace.csexp | jq 'include "dune";
+  $ dune trace cat --trace-file outer/_build/trace.csexp | jq_dune '
   >   processes
   > | .args
   > | select(.target_files and (.target_files | any(contains(".cmx"))))

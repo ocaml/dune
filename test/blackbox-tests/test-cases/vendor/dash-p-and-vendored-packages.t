@@ -5,10 +5,7 @@ In the following test the package "bar" is vendored. We make sure that
 
   $ mkdir -p vendor/bar
 
-  $ cat >dune-project <<EOF
-  > (lang dune 2.1)
-  > (package (name foo))
-  > EOF
+  $ make_dune_project_with_package 2.1 foo
 
   $ cat >dune <<EOF
   > (executable

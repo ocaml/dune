@@ -8,10 +8,7 @@ This test installs a binary whose name contains a ':' character and then checks
 that we can look up the binary with the `bin` macro which does not split its
 arguments on ':'.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.0)
-  > (package (name foo))
-  > EOF
+  $ make_dune_project_with_package 3.0 foo
 
   $ cat > foo.sh <<EOF
   > #!/usr/bin/env sh

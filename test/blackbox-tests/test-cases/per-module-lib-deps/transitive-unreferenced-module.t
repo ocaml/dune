@@ -8,9 +8,7 @@ unreferenced ones.
 stanza is single-module — single-module stanzas take a fast path that would
 mask the behaviour being baselined here.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.23)
-  > EOF
+  $ make_dune_project 3.23
 
   $ cat > dune <<EOF
   > (library (name dep_lib) (wrapped false) (modules reached_module unreached_module))
@@ -57,7 +55,7 @@ test references — and record the rebuild list for [main]:
   > let extra = 99
   > EOF
   $ dune build ./main.exe
-  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("dune__exe__Main\\."))]'
+  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("dune__exe__Main\\."))]'
   [
     {
       "target_files": [

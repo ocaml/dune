@@ -1,9 +1,7 @@
 Tests for (glob_files_rec <dir>/<glob>). This feature is not meat to
 be release as it. We plan to replace it by recursive globs for 3.0.0.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 2.9)
-  > EOF
+  $ make_dune_project 2.9
 
   $ cat > dune <<EOF
   > (rule
@@ -32,9 +30,7 @@ Leave a/b2/c empty to make sure we don't choke on empty dirs.
   language. Please update your dune-project file to have (lang dune 3.0).
   [1]
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.0)
-  > EOF
+  $ make_dune_project 3.0
 
   $ dune build @x
   foo/a/b1/c/x.txt

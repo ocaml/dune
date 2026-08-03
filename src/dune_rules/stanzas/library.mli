@@ -11,6 +11,7 @@ type t =
   ; install_c_headers : (Loc.t * string) list
   ; public_headers : Loc.t * Dep_conf.t list
   ; ppx_runtime_libraries : (Loc.t * Lib_name.t) list
+  ; melange_ppx_runtime_libraries : (Loc.t * Lib_name.t) list option
   ; modes : Mode_conf.Lib.Set.t
   ; kind : Lib_kind.t
     (* TODO: It may be worth remaming [c_library_flags] to

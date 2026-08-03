@@ -27,7 +27,20 @@ let choose byte native = function
 
 let to_string = choose "byte" "native"
 let encode t = Dune_sexp.Encoder.string (to_string t)
-let to_dyn t = Dyn.variant (to_string t) []
+
+let repr =
+  Repr.variant
+    "mode"
+    [ Repr.case0 "byte" ~test:(function
+        | Byte -> true
+        | Native -> false)
+    ; Repr.case0 "native" ~test:(function
+        | Native -> true
+        | Byte -> false)
+    ]
+;;
+
+let to_dyn = Repr.to_dyn repr
 let compiled_unit_ext = choose (Cm_kind.ext Cmo) (Cm_kind.ext Cmx)
 let compiled_lib_ext = choose Filename.Extension.cma Filename.Extension.cmxa
 let plugin_ext = choose Filename.Extension.cma Filename.Extension.cmxs
@@ -149,12 +162,21 @@ module Select = struct
     | _, _ -> false
   ;;
 
-  let to_dyn t =
-    let open Dyn in
-    match t with
-    | All -> Variant ("All", [])
-    | Only m -> Variant ("Only", [ to_dyn m ])
+  let mode_repr = repr
+
+  let repr =
+    Repr.variant
+      "mode-select"
+      [ Repr.case0 "All" ~test:(function
+          | All -> true
+          | Only _ -> false)
+      ; Repr.case "Only" mode_repr ~proj:(function
+          | Only mode -> Some mode
+          | All -> None)
+      ]
   ;;
+
+  let to_dyn = Repr.to_dyn repr
 
   let encode t =
     let open Dune_sexp.Encoder in

@@ -16,13 +16,6 @@ Default: use_standard_c_and_cxx_flags = false
   $ Clang_LF_LIB=" -cclib -lc++"
   $ Msvc_LF_LIB=""
 
-> Check that compiler detection is done
-  $ dune build .dune/cc_vendor/cc_vendor
-
-  $ cat _build/default/.dune/cc_vendor/cc_vendor |
-  > grep -ce "clang\|gcc\|msvc"
-  1
-
 > No specific flags added for compilation...
   $ dune rules baz.o | tr -s '\n' ' ' |
   > grep -ce "$GCC_CF\|$Clang_CF|$Msvc_CF"
@@ -79,13 +72,6 @@ With use_standard_c_and_cxx_flags = true
   > (use_standard_c_and_cxx_flags true)
   > EOF
 
-> Check that compiler detection is done
-  $ dune build .dune/cc_vendor/cc_vendor
-
-  $ cat _build/default/.dune/cc_vendor/cc_vendor |
-  > grep -ce "clang\|gcc\|msvc"
-  1
-
 > Specific flags added for compilation...
   $ dune rules baz.o  | tr -s '\n' ' ' |
   > grep -ce "$GCC_CF\|$Clang_CF\|$Msvc_CF"
@@ -112,7 +98,12 @@ With use_standard_c_and_cxx_flags = true
   Hello World Baz!
   Hello World Bazexe!
 
+  $ dune trace cat | jq -r 'include "dune"; actionNames' | sort -u |
+  > grep -ce '^detect-cc-vendor$'
+  1
+
   $ [ -f _build/default/.dune/cc_vendor/cc_vendor ]
+  [1]
 
 (this also works with sandbox=symlink, #6415)
 
@@ -129,7 +120,9 @@ cc_vendor is not computed if not required
   $ dune exec ./sub/main_no_stubs.exe
   OK
 
-  $ [ -f _build/default/.dune/cc_vendor/cc_vendor ]
+  $ dune trace cat | jq -r 'include "dune"; actionNames' | sort -u |
+  > grep -ce '^detect-cc-vendor$'
+  0
   [1]
 
 

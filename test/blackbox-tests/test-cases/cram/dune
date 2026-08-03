@@ -1,5 +1,7 @@
 (cram
  (applies_to subprocess)
+ (enabled_if
+  (= %{system} linux))
  (deps %{bin:ps}))
 
 (cram

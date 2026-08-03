@@ -267,12 +267,10 @@ Comments in `dune` files are preserved
 Will not create components with invalid names
 
   $ dune init lib invalid-component-name ./_test_lib
-  dune: NAME argument: invalid component name `invalid-component-name'
-        Library names must be non-empty and composed only of the
-        following
-        characters: 'A'..'Z', 'a'..'z', '_' or '0'..'9'.
-  Usage: dune init library [OPTION]… NAME [PATH]
-  Try 'dune init library --help' or 'dune --help' for more information.
+  Usage: dune init library [--help] [OPTION]… NAME [PATH]
+  dune: NAME argument: invalid component name `invalid-component-name' Library
+        names must be non-empty and composed only of the following characters:
+        'A'..'Z', 'a'..'z', '_' or '0'..'9'.
   [1]
   $ test -f ./_test_lib
   [1]

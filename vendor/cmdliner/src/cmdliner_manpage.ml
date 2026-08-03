@@ -1,12 +1,14 @@
 (*---------------------------------------------------------------------------
    Copyright (c) 2011 The cmdliner programmers. All rights reserved.
-   Distributed under the ISC license, see terms at the end of the file.
+   SPDX-License-Identifier: ISC
   ---------------------------------------------------------------------------*)
 
 (* Manpages *)
 
+type section_name = string
+
 type block =
-  [ `S of string | `P of string | `Pre of string | `I of string * string
+  [ `S of section_name | `P of string | `Pre of string | `I of string * string
   | `Noblank | `Blocks of block list ]
 
 type title = string * int * string * string * string
@@ -22,16 +24,15 @@ let s_name = "NAME"
 let s_synopsis = "SYNOPSIS"
 let s_description = "DESCRIPTION"
 let s_commands = "COMMANDS"
-let s_command_aliases = "COMMAND ALIASES"
 let s_arguments = "ARGUMENTS"
 let s_options = "OPTIONS"
 let s_common_options = "COMMON OPTIONS"
 let s_exit_status = "EXIT STATUS"
-let s_exit_status_intro = `P "$(iname) exits with:"
+let s_exit_status_intro = `P "$(cmd) exits with:"
 
 let s_environment = "ENVIRONMENT"
 let s_environment_intro =
-  `P "These environment variables affect the execution of $(tname):"
+  `P "These environment variables affect the execution of $(cmd):"
 
 let s_files = "FILES"
 let s_examples = "EXAMPLES"
@@ -136,16 +137,11 @@ let smap_append_block smap ~sec b =
 (* Formatting tools *)
 
 let strf = Printf.sprintf
-let pf = Format.fprintf
-let pp_str = Format.pp_print_string
-let pp_char = Format.pp_print_char
-let pp_indent ppf c = for i = 1 to c do pp_char ppf ' ' done
-let pp_lines = Cmdliner_base.pp_lines
-let pp_tokens = Cmdliner_base.pp_tokens
+module Fmt = Cmdliner_base.Fmt
 
 (* Cmdliner markup handling *)
 
-let err e fmt = pf e ("cmdliner error: " ^^ fmt ^^ "@.")
+let err e fmt = Fmt.pf e ("cmdliner error: " ^^ fmt ^^ "@.")
 let err_unescaped ~errs c s = err errs "unescaped %C in %S" c s
 let err_malformed ~errs s = err errs "Malformed $(…) in %S" s
 let err_unclosed ~errs s = err errs "Unclosed $(…) in %S" s
@@ -264,7 +260,7 @@ let add_markup_text ~errs k b s start target_need_escape target_escape =
 
 (* Plain text output *)
 
-let markup_to_plain ~errs b s =
+let markup_to_plain ~styled ~errs b s =
   let max_i = String.length s - 1 in
   let flush start stop = match start > max_i with
   | true -> ()
@@ -272,7 +268,8 @@ let markup_to_plain ~errs b s =
   in
   let need_escape _ = false in
   let escape _ _ = assert false in
-  let rec loop start i =
+  let rec end_text start i = Buffer.add_string b "\x1B[m"; loop start i
+  and loop start i =
     if i > max_i then flush start max_i else
     let next = i + 1 in
     match s.[i] with
@@ -288,11 +285,23 @@ let markup_to_plain ~errs b s =
             begin match s.[min] with
             | ',' ->
                 let markup = s.[min - 1] in
-                if not (is_markup_dir markup)
-                then (err_markup ~errs markup s; loop start next) else
                 let start_data = min + 1 in
-                (flush start (i - 1);
-                 add_markup_text ~errs loop b s start_data need_escape escape)
+                if not (is_markup_dir markup)
+                then (err_markup ~errs markup s; loop start next) else begin
+                  flush start (i - 1);
+                  if not styled then
+                    add_markup_text ~errs loop b s start_data need_escape escape
+                  else
+                  begin
+                    begin match markup with
+                    | 'i' -> Buffer.add_string b "\x1B[04m";
+                    | 'b' -> Buffer.add_string b "\x1B[01m"
+                    | _ -> assert false
+                    end;
+                    add_markup_text ~errs end_text b s start_data
+                      need_escape escape
+                  end
+                end
             | _ ->
                 err_malformed ~errs s; loop start next
             end
@@ -305,7 +314,13 @@ let markup_to_plain ~errs b s =
   (Buffer.clear b; loop 0 0; Buffer.contents b)
 
 let doc_to_plain ~errs ~subst b s =
-  markup_to_plain ~errs b (subst_vars ~errs ~subst b s)
+  markup_to_plain ~styled:false ~errs b (subst_vars ~errs ~subst b s)
+
+let doc_to_styled ?buffer:(b = Buffer.create 255) ~errs ~subst s =
+  let styled = Cmdliner_base.Fmt.styler () = Cmdliner_base.Fmt.Ansi in
+  markup_to_plain ~styled ~errs b (subst_vars ~errs ~subst b s)
+
+
 
 let p_indent = 7                                  (* paragraph indentation. *)
 let l_indent = 4                                      (* label indentation. *)
@@ -313,7 +328,7 @@ let l_indent = 4                                      (* label indentation. *)
 let pp_plain_blocks ~errs subst ppf ts =
   let b = Buffer.create 1024 in
   let markup t = doc_to_plain ~errs b ~subst t in
-  let pp_tokens ppf t = pp_tokens ~spaces:true ppf t in
+  let pp_tokens ppf t = Fmt.tokens ~spaces:true ppf t in
   let rec blank_line = function
   | `Noblank :: ts -> loop ts
   | ts -> Format.pp_print_cut ppf (); loop ts
@@ -324,30 +339,31 @@ let pp_plain_blocks ~errs subst ppf ts =
       | `Noblank -> loop ts
       | `Blocks bs -> loop (bs @ ts)
       | `P s ->
-          pf ppf "%a@[%a@]@," pp_indent p_indent pp_tokens (markup s);
+          Fmt.pf ppf "%a@[%a@]@," Fmt.indent p_indent pp_tokens (markup s);
           blank_line ts
-      | `S s -> pf ppf "@[%a@]@," pp_tokens (markup s); loop ts
+      | `S s -> Fmt.pf ppf "@[%a@]@," pp_tokens (markup s); loop ts
       | `Pre s ->
-          pf ppf "%a@[%a@]@," pp_indent p_indent pp_lines (markup s);
+          Fmt.pf ppf "%a@[%a@]@," Fmt.indent p_indent Fmt.lines (markup s);
           blank_line ts
       | `I (label, s) ->
           let label = markup label and s = markup s in
-          pf ppf "@[%a@[%a@]" pp_indent p_indent pp_tokens label;
+          Fmt.pf ppf "@[%a@[%a@]" Fmt.indent p_indent pp_tokens label;
           begin match s with
-          | "" -> pf ppf "@]@,"
+          | "" -> Fmt.pf ppf "@]@,"
           | s ->
               let ll = String.length label in
               if ll < l_indent
-              then (pf ppf "%a@[%a@]@]@," pp_indent (l_indent - ll) pp_tokens s)
-              else (pf ppf "@\n%a@[%a@]@]@,"
-                      pp_indent (p_indent + l_indent) pp_tokens s)
+              then (Fmt.pf ppf "%a@[%a@]@]@,"
+                      Fmt.indent (l_indent - ll) pp_tokens s)
+              else (Fmt.pf ppf "@\n%a@[%a@]@]@,"
+                      Fmt.indent (p_indent + l_indent) pp_tokens s)
           end;
           blank_line ts
   in
   loop ts
 
 let pp_plain_page ~errs subst ppf (_, text) =
-  pf ppf "@[<v>%a@]" (pp_plain_blocks ~errs subst) text
+  Fmt.pf ppf "@[<v>%a@]" (pp_plain_blocks ~errs subst) text
 
 (* Groff output *)
 
@@ -358,7 +374,10 @@ let markup_to_groff ~errs b s =
   | false -> Buffer.add_substring b s start (stop - start + 1)
   in
   let need_escape = function '.' | '\'' | '-' | '\\' -> true | _ -> false in
-  let escape b c = Printf.bprintf b "\\N'%d'" (Char.code c) in
+  let escape b = function
+  | '-' -> Printf.bprintf b "\\-" (* Make man-db and debian tools happy *)
+  | c -> Printf.bprintf b "\\N'%d'" (Char.code c)
+  in
   let rec end_text start i = Buffer.add_string b "\\fR"; loop start i
   and loop start i =
     if i > max_i then flush start max_i else
@@ -401,20 +420,21 @@ let doc_to_groff ~errs ~subst b s =
 let pp_groff_blocks ~errs subst ppf text =
   let buf = Buffer.create 1024 in
   let markup t = doc_to_groff ~errs ~subst buf t in
-  let pp_tokens ppf t = pp_tokens ~spaces:false ppf t in
+  let pp_tokens ppf t = Fmt.tokens ~spaces:false ppf t in
   let rec pp_block = function
   | `Blocks bs -> List.iter pp_block bs (* not T.R. *)
-  | `P s -> pf ppf "@\n.P@\n%a" pp_tokens (markup s)
-  | `Pre s -> pf ppf "@\n.P@\n.nf@\n%a@\n.fi" pp_lines (markup s)
-  | `S s -> pf ppf "@\n.SH %a" pp_tokens (markup s)
-  | `Noblank -> pf ppf "@\n.sp -1"
+  | `P s -> Fmt.pf ppf "@\n.P@\n%a" pp_tokens (markup s)
+  | `Pre s -> Fmt.pf ppf "@\n.P@\n.nf@\n%a@\n.fi" Fmt.lines (markup s)
+  | `S s -> Fmt.pf ppf "@\n.SH %a" pp_tokens (markup s)
+  | `Noblank -> Fmt.pf ppf "@\n.sp -1"
   | `I (l, s) ->
-      pf ppf "@\n.TP 4@\n%a@\n%a" pp_tokens (markup l) pp_tokens (markup s)
+      Fmt.pf ppf "@\n.TP 4@\n%a@\n%a" pp_tokens (markup l) pp_tokens (markup s)
   in
   List.iter pp_block text
 
 let pp_groff_page ~errs subst ppf ((n, s, a1, a2, a3), t) =
-  pf ppf ".\\\" Pipe this output to groff -m man -K utf8 -T utf8 | less -R@\n\
+  Fmt.pf ppf
+         ".\\\" Pipe this output to groff -m man -K utf8 -T utf8 | less -R@\n\
           .\\\"@\n\
           .mso an.tmac@\n\
           .TH \"%s\" %d \"%s\" \"%s\" \"%s\"@\n\
@@ -445,90 +465,96 @@ let tmp_file_for_pager () =
   with Sys_error _ -> None
 
 let find_cmd cmds =
-  let test, null = match Sys.os_type with
-  | "Win32" -> "where", " NUL"
-  | _ -> "command -v", "/dev/null"
+  let find_win32 (cmd, _args) =
+    (* `where` does not support full path lookups *)
+    if String.equal (Filename.basename cmd) cmd
+    then (Sys.command (strf "where %s 1> NUL 2> NUL" cmd) = 0)
+    else Sys.file_exists cmd
   in
-  let cmd (c, _) = Sys.command (strf "%s %s 1>%s 2>%s" test c null null) = 0 in
-  try Some (List.find cmd cmds) with Not_found -> None
+  let find_posix (cmd, _args) =
+    Sys.command (strf "command -v %s 1>/dev/null 2>/dev/null" cmd) = 0
+  in
+  let find = if Sys.win32 then find_win32 else find_posix in
+  try Some (List.find find cmds) with Not_found -> None
 
-let pp_to_pager print ppf v =
-  let pager =
-    let cmds = ["less", ""; "more", ""] in
-    let cmds = try (Sys.getenv "PAGER", "") :: cmds with Not_found -> cmds in
-    let cmds = try (Sys.getenv "MANPAGER", "") :: cmds with Not_found -> cmds in
-    find_cmd cmds
+let getenv_empty_is_none env var = match env var with
+| None | Some "" -> None | Some _ as v -> v
+
+let find_pager env =
+  let cmds = ["less", ""; "more", ""] in
+  let cmds = match getenv_empty_is_none env "PAGER" with
+  | Some pager -> (pager, "") :: cmds | None -> cmds
   in
-  match pager with
+  let cmds = match getenv_empty_is_none env "MANPAGER" with
+  | Some manpager -> (manpager, "") :: cmds | None -> cmds
+  in
+  find_cmd cmds
+
+let pp_to_pager env print ppf v =
+  let run cmd = Sys.command cmd = 0 in
+  let plain_pager pager = match pp_to_temp_file (print `Plain) v with
+  | None -> false
+  | Some f -> run (strf "%s < %s" pager f)
+  in
+  let groffed_pager pager =
+    let groffer =
+      let cmds =
+        ["mandoc", " -m man -K utf-8 -T utf8";
+         "groff", " -m man -K utf8 -T utf8";
+         "nroff", ""]
+      in
+      find_cmd cmds
+    in
+    match groffer with
+    | None -> false
+    | Some (groffer, opts) ->
+        let groffer = groffer ^ opts in
+        match pp_to_temp_file (print `Groff) v with
+        | None -> false
+        | Some f ->
+            (* This used to go through a pipe on non-Windows
+               platforms, but this would hide errors with the groffer
+               and inhibit the graceful degradation to plain text
+               since POSIX shells do not "pipefail" *)
+            match tmp_file_for_pager () with
+            | None -> false
+            | Some tmp ->
+                run (strf "%s <%s >%s && %s <%s" groffer f tmp pager tmp)
+  in
+  match find_pager env with
   | None -> print `Plain ppf v
   | Some (pager, opts) ->
-      let pager = match Sys.win32 with
-      | false -> "LESS=FRX " ^ pager ^ opts
-      | true -> "set LESS=FRX && " ^ pager ^ opts
-      in
-      let groffer =
-        let cmds =
-          ["mandoc", " -m man -K utf-8 -T utf8";
-           "groff", " -m man -K utf8 -T utf8";
-           "nroff", ""]
+      let pager =
+        let set_less_env = match env "LESS" with
+        | None -> if Sys.win32 then "set LESS=FRX && " else "LESS=FRX "
+        | Some _ -> "" (* Sys.command will pass it *)
         in
-        find_cmd cmds
+        set_less_env ^ pager ^ opts
       in
-      let cmd = match groffer with
-      | None ->
-          begin match pp_to_temp_file (print `Plain) v with
-          | None -> None
-          | Some f -> Some (strf "%s < %s" pager f)
-          end
-      | Some (groffer, opts) ->
-          let groffer = groffer ^ opts in
-          begin match pp_to_temp_file (print `Groff) v with
-          | None -> None
-          | Some f when Sys.win32 ->
-              (* For some obscure reason the pipe below does not
-                 work. We need to use a temporary file.
-                 https://github.com/dbuenzli/cmdliner/issues/166 *)
-              begin match tmp_file_for_pager () with
-              | None -> None
-              | Some tmp ->
-                  Some (strf "%s <%s >%s && %s <%s" groffer f tmp pager tmp)
-              end
-          | Some f ->
-              Some (strf "%s < %s | %s" groffer f pager)
-          end
-      in
-      match cmd with
-      | None -> print `Plain ppf v
-      | Some cmd -> if (Sys.command cmd) <> 0 then print `Plain ppf v
+      if groffed_pager pager then () else
+      if plain_pager pager then () else
+      print `Plain ppf v
 
 (* Output *)
+
+type subst = string -> string option
 
 type format = [ `Auto | `Pager | `Plain | `Groff ]
 
 let rec print
-    ?(errs = Format.err_formatter)
-    ?(subst = fun x -> None) fmt ppf page =
+    ?(env = Sys.getenv_opt)  ?(errs = Format.err_formatter)
+    ?(subst = fun x -> None) fmt ppf page
+  =
   match fmt with
-  | `Pager -> pp_to_pager (print ~errs ~subst) ppf page
+  | `Pager -> pp_to_pager env (print ~env ~errs ~subst) ppf page
   | `Plain -> pp_plain_page ~errs subst ppf page
   | `Groff -> pp_groff_page ~errs subst ppf page
   | `Auto ->
-      match try (Some (Sys.getenv "TERM")) with Not_found -> None with
-      | None | Some "dumb" -> print ~errs ~subst `Plain ppf page
-      | Some _ -> print ~errs ~subst `Pager ppf page
-
-(*---------------------------------------------------------------------------
-   Copyright (c) 2011 The cmdliner programmers
-
-   Permission to use, copy, modify, and/or distribute this software for any
-   purpose with or without fee is hereby granted, provided that the above
-   copyright notice and this permission notice appear in all copies.
-
-   THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
-   WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
-   MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
-   ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
-   WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
-   ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
-   OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-  ---------------------------------------------------------------------------*)
+      let fmt =
+        match env "TERM" with
+        | None when Sys.win32 -> `Pager
+        | None -> `Plain
+        | Some "dumb" -> `Plain
+        | _ -> `Pager
+      in
+      print ~env ~errs ~subst fmt ppf page

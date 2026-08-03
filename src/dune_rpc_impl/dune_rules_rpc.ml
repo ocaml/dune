@@ -37,27 +37,13 @@ let register rpc =
   ()
 ;;
 
-include struct
-  open Dune_lang
-  module Stanza = Stanza
-  module String_with_vars = String_with_vars
-  module Pform = Pform
-end
-
-(* TODO un-copy-paste from dune/bin/arg.ml *)
-let dep_parser =
-  Dune_lang.Syntax.set Stanza.syntax (Active Stanza.latest_version) Dep_conf.decode
-;;
+(* Hardcoding the version is sufficient because this command is unstable and is
+   currently only used by tests. *)
+let dep_parser = Dep_conf.command_line_parser ~stanza_version:(3, 0)
 
 let parse_build_arg s =
   Dune_lang.Decoder.parse
     dep_parser
-    (Univ_map.set
-       Univ_map.empty
-       String_with_vars.decoding_env_key
-       (* CR-someday aalekseyev: hardcoding the version here is not
-          ideal, but it will do for now since this command is not
-          stable and we're only using it in tests. *)
-       (Pform.Env.initial ~stanza:(3, 0) ~extensions:[]))
+    Univ_map.empty
     (Dune_lang.Parser.parse_string ~fname:"dune rpc" ~mode:Dune_lang.Parser.Mode.Single s)
 ;;

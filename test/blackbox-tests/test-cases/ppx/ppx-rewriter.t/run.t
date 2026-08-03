@@ -1,3 +1,4 @@
+  $ export OCAMLFIND_LDCONF=ignore
   $ dune build ./w_omp_driver.exe
   -arg: omp
 

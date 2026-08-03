@@ -1,10 +1,7 @@
 Make sure that dune can handle rules with directory targets that are disabled
 with enabled_if.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.14)
-  > (using directory-targets 0.1)
-  > EOF
+  $ make_directory_targets_project 3.14
 
   $ cat > dune <<EOF
   > (rule

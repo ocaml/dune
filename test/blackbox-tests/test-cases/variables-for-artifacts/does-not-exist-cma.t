@@ -1,6 +1,6 @@
 This test tries to build a non-existent .cma.
 
-  $ echo "(lang dune 2.1)" > dune-project
+  $ make_dune_project 2.1
   $ cat > dune << EOF
   > (alias
   >  (name t)

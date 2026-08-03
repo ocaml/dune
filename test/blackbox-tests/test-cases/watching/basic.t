@@ -3,7 +3,7 @@ Basic tests for the file-watching mode.
 ----------------------------------------------------------------------------------
 * Compile a simple rule
 
-  $ echo "(lang dune 2.0)" > dune-project
+  $ make_dune_project 2.0
 
   $ cat > x <<EOF
   > original-contents
@@ -43,11 +43,13 @@ Basic tests for the file-watching mode.
   $ mv x z
   $ build y
   Failure
+  [1]
 
   $ echo new-contents3 > z
 
   $ build y
   Failure
+  [1]
 
   $ mv z x
   $ build y

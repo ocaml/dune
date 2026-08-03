@@ -31,31 +31,35 @@ module Event : sig
   (** [path t] returns the file path this event applies to *)
   val path : t -> string
 
-  type kind =
-    | Dir (** directory *)
-    | File (** file event *)
-    | Dir_and_descendants
-    (** non-specific directory event. all descendants of this directory are
-        invalidated *)
+  module Kind : sig
+    type t =
+      | Dir (** directory *)
+      | File (** file event *)
+      | Dir_and_descendants
+      (** non-specific directory event. all descendants of this directory are
+          invalidated *)
 
-  val dyn_of_kind : kind -> Dyn.t
+    val to_dyn : t -> Dyn.t
+  end
 
   (** [kind t] describes the [kind] of [path t] *)
-  val kind : t -> kind
+  val kind : t -> Kind.t
 
-  type action =
-    | Create (* [path t] guaranteed to exist *)
-    | Remove (* [path t] guaranteed to be absent *)
-    | Modify (* [path t] guaranteed to exist *)
-    | Rename
-    | Unknown
-    (** multiple actions merged into one by debouncing or an uninformative
-        "rename". inspect the FS to see what happened *)
+  module Action : sig
+    type t =
+      | Create (* [path t] guaranteed to exist *)
+      | Remove (* [path t] guaranteed to be absent *)
+      | Modify (* [path t] guaranteed to exist *)
+      | Rename
+      | Unknown
+      (** multiple actions merged into one by debouncing or an uninformative
+          "rename". inspect the FS to see what happened *)
 
-  val dyn_of_action : action -> Dyn.t
+    val to_dyn : t -> Dyn.t
+  end
 
   (** [action t] describes the action occurred to [path t] *)
-  val action : t -> action
+  val action : t -> Action.t
 end
 
 (** the type of fsevents watcher *)

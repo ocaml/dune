@@ -26,6 +26,16 @@
   > let greeting = "hello"
   > EOF
 
+  $ write_sub_hello_and_foo() {
+  > cat > lib/sub/hello.ml <<EOF
+  > let hello = "hello from sub"
+  > EOF
+  > cat > lib/foo.ml <<EOF
+  > module Bar = Bar
+  > let x = "foo"
+  > EOF
+  > }
+
   $ dune build @melange
 
 No `.js` file present for the library alias `foo.js`
@@ -76,13 +86,7 @@ Now write a foo.ml file
   $ cat > lib/bar.ml <<EOF
   > let hello = Sub.Hello.hello
   > EOF
-  $ cat > lib/sub/hello.ml <<EOF
-  > let hello = "hello from sub"
-  > EOF
-  $ cat > lib/foo.ml <<EOF
-  > module Bar = Bar
-  > let x = "foo"
-  > EOF
+  $ write_sub_hello_and_foo
 
   $ dune build @melange
 
@@ -107,13 +111,7 @@ file, and it's not present
   > module Hello = Hello
   > let world = "world"
   > EOF
-  $ cat > lib/sub/hello.ml <<EOF
-  > let hello = "hello from sub"
-  > EOF
-  $ cat > lib/foo.ml <<EOF
-  > module Bar = Bar
-  > let x = "foo"
-  > EOF
+  $ write_sub_hello_and_foo
 
   $ dune build @melange
 

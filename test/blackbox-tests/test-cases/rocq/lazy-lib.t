@@ -15,10 +15,7 @@ We add this to path:
 
 Next we create an empty coq project:
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.21)
-  > (using rocq 0.11)
-  > EOF
+  $ make_rocq_project 3.21 0.11
 
 Finally we run dune build:
 

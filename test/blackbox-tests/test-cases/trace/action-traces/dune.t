@@ -1,8 +1,6 @@
 Dune itself produces action traces
 
-  $ cat >dune-project<<EOF
-  > (lang dune 3.22)
-  > EOF
+  $ make_dune_project 3.22
 
   $ cat >dune <<EOF
   > (rule (with-stdout-to foo (echo bar)))
@@ -14,7 +12,7 @@ Dune itself produces action traces
 
   $ dune build @foo
 
-  $ dune trace cat | jq 'include "dune";
+  $ dune trace cat | jq_dune '
   >   select(.name == "init")
   > | { args: .args | keys, keys: keys, argv: .args.argv | .[1:] }
   > '

@@ -125,6 +125,7 @@ type db = op list
 
 let db : db ref = ref []
 let clear_cache () = db := []
+let has_pending () = not (List.is_empty !db)
 
 let register_intermediate how ~source_file ~correction_file =
   let src = snd (Path.Build.split_sandbox_root correction_file) in
@@ -370,9 +371,10 @@ let finalize () =
 (* Returns the list of files that were in [files_to_promote]
    but not present in the promotion database. *)
 let promote_files_registered_in_last_run ~matching files_to_promote =
-  let db = load_db () in
-  let remaining, missing = do_promote ~matching db files_to_promote in
-  dump_db remaining;
+  let using_current_run_db = has_pending () in
+  let db_to_promote = if using_current_run_db then !db else load_db () in
+  let remaining, missing = do_promote ~matching db_to_promote files_to_promote in
+  if using_current_run_db then db := remaining else dump_db remaining;
   missing
 ;;
 

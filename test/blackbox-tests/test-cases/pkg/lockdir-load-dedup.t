@@ -15,9 +15,7 @@ the same lock dir.
   > (lang package 0.1)
   > EOF
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.23)
-  > EOF
+  $ make_dune_project 3.23
 
   $ dune build @check
 

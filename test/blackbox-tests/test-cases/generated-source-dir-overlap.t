@@ -8,9 +8,7 @@ If a generated directory is "overlaid" by a source dir, then things break.
   >  (action (echo foobar)))
   > EOF
 
-  $ cat > dune-project <<EOF
-  > (lang dune 2.2)
-  > EOF
+  $ make_dune_project 2.2
 
   $ cat > dune <<EOF
   > (dirs .dune)

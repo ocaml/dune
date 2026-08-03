@@ -21,9 +21,14 @@
   > }
 
   $ dune build @doc-json
+
+Module HTML and JSON are emitted by the same directory-target rule.
+
   $ list_docs
   _build/default/_doc/_html/index.html.json
+  _build/default/_doc/_html/l/L/M/index.html
   _build/default/_doc/_html/l/L/M/index.html.json
+  _build/default/_doc/_html/l/L/index.html
   _build/default/_doc/_html/l/L/index.html.json
   _build/default/_doc/_html/l/index.html.json
 

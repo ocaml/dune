@@ -1,27 +1,6 @@
 Tests dune promotion list output.
 
-  $ cat > dune-project << EOF
-  > (lang dune 2.0)
-  > EOF
-
-  $ cat > dune << EOF
-  > (rule
-  >  (alias runtest)
-  >  (action
-  >   (diff a.expected a.actual)))
-  > 
-  > (rule
-  >  (with-stdout-to a.actual
-  >   (echo "A actual\n")))
-  > 
-  > (rule
-  >  (alias runtest)
-  >  (action
-  >   (progn
-  >    (with-stdout-to b.actual
-  >     (echo "B actual\n"))
-  >   (diff? b.expected b.actual))))
-  > EOF
+  $ make_promotion_test_project
 
   $ echo 'A expected' > a.expected
   $ echo 'B expected' > b.expected

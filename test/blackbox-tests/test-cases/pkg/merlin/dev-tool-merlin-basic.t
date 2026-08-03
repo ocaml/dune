@@ -8,15 +8,7 @@ a lockdir containing an "ocaml" lockfile.
 
   $ setup_merlin_workspace
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.16)
-  > 
-  > (package
-  >  (name foo)
-  >  (allow_empty)
-  >  (depends
-  >    (ocaml (= 5.2.0))))
-  > EOF
+  $ make_named_package_project foo 3.16 "(ocaml (= 5.2.0))"
 
   $ dune build
 

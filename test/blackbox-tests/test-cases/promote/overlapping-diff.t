@@ -1,8 +1,6 @@
 Test how overlapping diff actions are handled
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.21)
-  > EOF
+  $ make_dune_project 3.21
 
   $ touch foo
 

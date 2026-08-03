@@ -10,18 +10,7 @@ Check that old cache configuration format works fine with an old language
   > (cache-trim-period 1h)
   > (cache-trim-size 1GB)
   > EOF
-  $ cat > dune-project <<EOF
-  > (lang dune 2.1)
-  > EOF
-  $ cat > dune <<EOF
-  > (rule
-  >   (deps source)
-  >   (targets target)
-  >   (action (copy source target)))
-  > EOF
-  $ cat > source <<EOF
-  > \_o< COIN
-  > EOF
+  $ make_dune_cache_copy_project
 
 Test that DUNE_CACHE_ROOT can be used to control the cache location
 

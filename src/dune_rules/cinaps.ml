@@ -216,6 +216,7 @@ let gen_rules sctx t ~dir ~scope =
         ~modules
         ~opaque:(Explicit false)
         ~requires_compile
+        ~user_written_requires:None
         ~requires_link
         ~flags
         ~js_of_ocaml:(Js_of_ocaml.Mode.Pair.make None)
@@ -275,7 +276,7 @@ let gen_rules sctx t ~dir ~scope =
               ])
       |> Action.Full.add_env env
     in
-    Super_context.add_alias_action sctx ~dir ~loc cinaps_alias action
+    Super_context.add_alias_action sctx ~dir ~loc [ cinaps_alias ] action
   in
   match t.alias with
   | Some _ -> Memo.return ()

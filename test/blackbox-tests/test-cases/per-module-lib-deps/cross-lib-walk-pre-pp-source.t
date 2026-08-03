@@ -91,5 +91,5 @@ regression that switched to a per-file dep on the wrong basename
 surface here as a different recorded dep:
 
   $ dune rules --root . --format=json --deps _build/default/consumer/.consumer.objs/byte/c.cmi |
-  > jq -r 'include "dune"; .[] | depsGlobPredicates'
+  > jq_dune -r '.[] | depsGlobPredicates'
   *.cmi

@@ -1,9 +1,7 @@
 Show that failing to resolve an optional library via `(select ..)` falls back
 to the default select branch.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.22)
-  > EOF
+  $ make_dune_project 3.22
 
   $ mkdir -p mylib_opt
   $ cat > mylib_opt/dune <<EOF

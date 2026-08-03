@@ -58,12 +58,20 @@ you need to add ``(using oxcaml 0.1)`` :doc:`extension
 
     See :doc:`/reference/library-dependencies` for more details.
 
-  .. describe:: (preprocesss <preprocess-spec>)
+  .. describe:: (preprocess <preprocess-spec>)
 
     Specifies how to preprocess files when needed.
 
     The default is ``no_preprocessing``, and other options are described
     in :doc:`/reference/preprocessing-spec`.
+
+  .. describe:: (lint <preprocess-spec>)
+
+    Specifies how to lint source files when building the
+    :doc:`/reference/aliases/lint` alias.
+
+    The default is ``no_preprocessing``. The syntax is described in
+    :ref:`lint-field`.
 
   .. describe:: (preprocessor_deps (<deps-conf list>))
 

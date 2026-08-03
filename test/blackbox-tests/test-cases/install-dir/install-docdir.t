@@ -1,6 +1,6 @@
 Honors `--docdir` for installed documentation files.
 
-  $ echo "(lang dune 2.0)" > dune-project
+  $ make_dune_project 2.0
   $ touch foo.opam docfile
   $ cat >dune <<EOF
   > (install
@@ -10,7 +10,7 @@ Honors `--docdir` for installed documentation files.
   $ dune build @install
   $ mkdir install docdir
   $ dune install --dry-run --prefix ./install --docdir $PWD/docdir --display short 2>&1 | grep docdir
+  Creating directory $TESTCASE_ROOT/docdir/foo
   Removing (if it exists) $TESTCASE_ROOT/docdir/foo/docfile
   Installing $TESTCASE_ROOT/docdir/foo/docfile
-  Creating directory $TESTCASE_ROOT/docdir/foo
   Copying _build/install/default/doc/foo/docfile to $TESTCASE_ROOT/docdir/foo/docfile (executable: false)

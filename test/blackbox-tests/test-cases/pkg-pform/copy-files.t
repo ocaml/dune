@@ -1,10 +1,7 @@
 %{pkg:...} is not allowed inside (copy_files) stanzas since they use no-deps
 pform expansion.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.24)
-  > (package (name foo))
-  > EOF
+  $ make_dune_project_with_package 3.24 foo
 
   $ mkdir foo
 

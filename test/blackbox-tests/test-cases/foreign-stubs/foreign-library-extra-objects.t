@@ -1,8 +1,6 @@
 Testing extra_objects in foreign libraries
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.19)
-  > EOF
+  $ make_dune_project 3.19
 
 First we create a foreign library that uses an extra object file containing our message.
 

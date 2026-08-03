@@ -1,9 +1,7 @@
 Test module path validation for `(select ..)` targets when using
 `(include_subdirs qualified)`
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.22)
-  > EOF
+  $ make_dune_project 3.22
 
   $ cat > dune <<EOF
   > (include_subdirs qualified)

@@ -60,14 +60,43 @@ let scheduler_config =
 ;;
 
 let run_scheduler ?timeout f =
-  Dune_engine.Clflags.display := Quiet;
-  Scheduler.Run.go scheduler_config ?timeout f ~on_event:(fun _ -> ())
+  Clflags.display := Quiet;
+  Scheduler.Run.go scheduler_config ?timeout f
 ;;
 
 let stop_server server = run_scheduler (fun () -> Server.stop server)
 
 let temp_rpc_dir () =
   Temp.temp_dir ~parent_dir:(Path.of_string ".") ~prefix:"test" ~suffix:"dune_rpc"
+;;
+
+let%expect_test "long unix socket bind restores thread cwd inheritance" =
+  let cwd_inherits_process_cwd =
+    if Platform.OS.value <> Darwin
+    then true
+    else (
+      let old_cwd = Sys.getcwd () in
+      let server =
+        let socket =
+          let tmp_dir = temp_rpc_dir () in
+          let socket_dir = Path.relative tmp_dir (String.make 104 'a') in
+          Path.relative socket_dir "dunerpc.sock" |> Path.to_absolute_filename
+        in
+        server (Unix.ADDR_UNIX socket)
+      in
+      let new_cwd = temp_rpc_dir () |> Path.to_absolute_filename in
+      let chdir_from_another_thread dir =
+        let thread = Thread.create Sys.chdir dir in
+        Thread.join thread
+      in
+      chdir_from_another_thread new_cwd;
+      let inherited = String.equal (Sys.getcwd ()) new_cwd in
+      chdir_from_another_thread old_cwd;
+      stop_server server;
+      inherited)
+  in
+  printfn "%b" cwd_inherits_process_cwd;
+  [%expect {| true |}]
 ;;
 
 let%expect_test "csexp server create on unix sockets" =

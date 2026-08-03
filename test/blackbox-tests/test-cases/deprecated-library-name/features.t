@@ -288,7 +288,8 @@ Qualified, deprecated old_public_name:
   > (package (name p) (deprecated_package_names q))
   > EOF
 
-  $ cat >d/dune <<EOF
+  $ write_deprecated_q_foo_dune() {
+  > cat >d/dune <<'EOF'
   > (rule (with-stdout-to bar.ml (progn)))
   > (library
   >  (name p)
@@ -298,6 +299,9 @@ Qualified, deprecated old_public_name:
   >  (old_public_name q.foo)
   >  (new_public_name p))
   > EOF
+  > }
+
+  $ write_deprecated_q_foo_dune
 
   $ (cd d && dune build --root . @all)
 
@@ -327,15 +331,8 @@ Two libraries redirecting to the same library:
   > (package (name p) (deprecated_package_names q))
   > EOF
 
-  $ cat >d/dune <<EOF
-  > (rule (with-stdout-to bar.ml (progn)))
-  > (library
-  >  (name p)
-  >  (public_name p)
-  >  (modules bar))
-  > (deprecated_library_name
-  >  (old_public_name q.foo)
-  >  (new_public_name p))
+  $ write_deprecated_q_foo_dune
+  $ cat >>d/dune <<EOF
   > (deprecated_library_name
   >  (old_public_name q.bar)
   >  (new_public_name p))

@@ -54,20 +54,20 @@ module Memo = struct
   let all l = Memo.all_concurrently l
 
   module Glass = struct
-    type t = (unit, unit) Memo.Cell.t
+    type t = (unit, unit) Memo.Node.t
 
-    let create () = Memo.lazy_cell ~cutoff:(fun _ _ -> false) (fun () -> Memo.return ())
+    let create () = Memo.lazy_node ~cutoff:(fun _ _ -> false) (fun () -> Memo.return ())
 
     let break (t : t) =
       invalidation_acc
       := Memo.Invalidation.combine
-           (Memo.Cell.invalidate ~reason:Memo.Invalidation.Reason.Test t)
+           (Memo.Node.invalidate ~reason:Memo.Invalidation.Reason.Test t)
            !invalidation_acc
     ;;
   end
 
   let of_glass (g : Glass.t) v =
-    Memo.of_thunk (fun () -> Memo.map (Memo.Cell.read g) ~f:(fun () -> v))
+    Memo.of_thunk (fun () -> Memo.map (Memo.Node.read g) ~f:(fun () -> v))
   ;;
 
   let of_thunk f = Memo.of_reproducible_fiber (Fiber.of_thunk (fun () -> Memo.run (f ())))
@@ -88,7 +88,7 @@ let make_counter () =
   let glass = Glass.create () in
   let break () = Glass.break glass in
   ( Memo.map
-      (Memo.of_thunk (fun () -> Memo.Cell.read glass))
+      (Memo.of_thunk (fun () -> Memo.Node.read glass))
       ~f:(fun () ->
         incr r;
         !r)
@@ -98,13 +98,13 @@ let make_counter () =
 module Var = struct
   type 'a t =
     { value : 'a ref
-    ; cell : (unit, 'a) Memo.Cell.t
+    ; cell : (unit, 'a) Memo.Node.t
     }
 
   let create value =
     let value = ref value in
     { value
-    ; cell = Memo.lazy_cell ~cutoff:(fun _ _ -> false) (fun () -> Memo.return !value)
+    ; cell = Memo.lazy_node ~cutoff:(fun _ _ -> false) (fun () -> Memo.return !value)
     }
   ;;
 
@@ -113,9 +113,9 @@ module Var = struct
     invalidation_acc
     := Memo.Invalidation.combine
          !invalidation_acc
-         (Memo.Cell.invalidate ~reason:Memo.Invalidation.Reason.Test t.cell)
+         (Memo.Node.invalidate ~reason:Memo.Invalidation.Reason.Test t.cell)
   ;;
 
-  let read t = Memo.of_thunk (fun () -> Memo.Cell.read t.cell)
+  let read t = Memo.of_thunk (fun () -> Memo.Node.read t.cell)
   let peek t = !(t.value)
 end

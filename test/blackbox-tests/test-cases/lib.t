@@ -1,16 +1,12 @@
 ----------------------------------------------------------------------------------
 Testsuite for the %{lib...} and %{lib-private...} variable.
 
-  $ cat >sdune <<'EOF'
-  > #!/usr/bin/env bash
-  > DUNE_SANDBOX=symlink dune "$@"
-  > EOF
-  $ chmod +x sdune
+  $ make_sandboxed_dune
 
 ----------------------------------------------------------------------------------
 * Find a public library using the %{lib:...} variable
 
-  $ echo "(lang dune 2.0)" > dune-project
+  $ make_dune_project 2.0
   $ mkdir -p src
   $ cat >src/dune <<EOF
   > (library
@@ -89,7 +85,7 @@ Testsuite for the %{lib...} and %{lib-private...} variable.
 * Find a public library by its private name using the %{lib-private:...} variable
 * Success when using Dune language 2.1
 
-  $ echo "(lang dune 2.1)" > dune-project
+  $ make_dune_project 2.1
 
   $ ./sdune build @find-a
   src/a.ml
@@ -221,28 +217,7 @@ Testsuite for the %{lib...} and %{lib-private...} variable.
 In this test, two packages are defined in the same project, but we may not
 access the artifacts through %{lib-private}
 
-  $ mkdir lib-private-only-packages
-  $ cd lib-private-only-packages
-  $ mkdir lib1 lib2
-  $ cat >dune-project <<EOF
-  > (lang dune 2.8)
-  > (name lib-private-test)
-  > (package (name public_lib1))
-  > (package (name public_lib2))
-  > EOF
-  $ cat >lib1/dune <<EOF
-  > (library
-  >  (name lib1)
-  >  (public_name public_lib1))
-  > EOF
-  $ touch lib1/lib1.ml
-  $ cat >lib2/dune <<EOF
-  > (library
-  >  (name lib2)
-  >  (public_name public_lib2))
-  > (rule
-  >  (with-stdout-to lib2.ml (echo "let _ = {|%{lib-private:lib1:lib1.ml}|}")))
-  > EOF
+  $ make_and_enter_private_only_packages_project lib-private
 
 The build works in development:
   $ dune build @install

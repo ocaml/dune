@@ -30,9 +30,7 @@ Test demonstrating private modules in wrapped library
   >  (libraries mylib))
   > EOF
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.0)
-  > EOF
+  $ make_dune_project 3.0
 
 Build should fail because Secret is private:
   $ dune build

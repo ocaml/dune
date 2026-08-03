@@ -4,17 +4,7 @@ dune-workspace.
   $ mkrepo
   $ add_mock_repo_if_needed
 
-  $ cat > dune-workspace <<EOF
-  > (lang dune 3.20)
-  > (pkg enabled)
-  > (lock_dir
-  >  (repositories mock)
-  >  (solver_env
-  >   (with-doc true)))
-  > (repository
-  >  (name mock)
-  >  (url "$PWD/mock-opam-repository"))
-  > EOF
+  $ create_mock_repo_with_doc_workspace
 
   $ cat > dune-project <<EOF
   > (lang dune 3.18)

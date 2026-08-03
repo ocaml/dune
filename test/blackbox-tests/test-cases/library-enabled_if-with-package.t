@@ -27,10 +27,7 @@ Public library:
 
   $ rm -rf optional_lib
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.21)
-  > (package (name repro))
-  > EOF
+  $ make_dune_project_with_package 3.21 repro
 
   $ mkdir -p mylib/configure
 

@@ -1,9 +1,7 @@
 Test that cram tests with unreachable commands can still partially promote
 output from commands that executed successfully.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.21)
-  > EOF
+  $ make_dune_project 3.21
 
 Create a test with some successful commands, then an exit, then unreachable
 commands:

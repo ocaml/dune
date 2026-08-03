@@ -1,9 +1,6 @@
 Test simple interactions between melange.emit and copy_files
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.8)
-  > (using melange 0.1)
-  > EOF
+  $ make_melange_project 3.8 0.1
 
   $ cat > dune <<EOF
   > (melange.emit
@@ -33,7 +30,7 @@ Test simple interactions between melange.emit and copy_files
 
 Rules created for the assets in the output directory
 
-  $ dune build output/assets/file.txt --display=short
+  $ dune build output/assets/file.txt
   $ find _build/default/output
   _build/default/output
   _build/default/output/assets
@@ -43,7 +40,7 @@ Rules created for the assets in the output directory
 Alias is found even if source dir "output" isn't present
 
   $ dune rules --root . --format=json @mel |
-  > jq -r 'include "dune"; rulesMatchingTarget("output/assets/file.txt") | select(ruleHasCopy("assets/file.txt"; "output/assets/file.txt")) | ruleDepFilePaths'
+  > jq_dune -r 'rulesMatchingTarget("output/assets/file.txt") | select(ruleHasCopy("assets/file.txt"; "output/assets/file.txt")) | ruleDepFilePaths'
   _build/default/assets/file.txt
 
   $ dune build @mel
@@ -60,7 +57,7 @@ The runtime_dep index.txt was copied to the build folder
   globbed
   main.js
 
-  $ dune build output/assets/file.txt --display=short
+  $ dune build output/assets/file.txt
   $ ls _build/default/output
   assets
   globbed

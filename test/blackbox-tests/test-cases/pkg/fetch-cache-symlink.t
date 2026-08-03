@@ -16,42 +16,25 @@ the package being downloaded has a symlink.
   $ echo "Contents" > tar-contents
   $ CONTENT_CHECKSUM=$(md5sum tar-contents | cut -f1 -d' ')
   $ ln -s tar-contents tar-symlink
-  $ tar cf test.tar tar-contents tar-symlink
-  $ echo test.tar > fake-curls
-  $ SRC_PORT=1
-  $ SRC_CHECKSUM=$(md5sum test.tar | cut -f1 -d' ')
-  $ make_lockpkg test <<EOF
-  > (version 0.0.1)
-  > (source
-  >  (fetch
-  >   (url http://localhost:$SRC_PORT)
-  >   (checksum md5=$SRC_CHECKSUM)))
-  > EOF
-  $ cat > dune-project <<EOF
-  > (lang dune 3.17)
-  > (package (name my) (depends test) (allow_empty))
-  > EOF
+  $ make_fetch_cache_project tar-contents tar-symlink
 
 The first build should succeed, fetching the source, populating the cache and
 disabling the download of the source a second time.
 
   $ build_pkg test
 
-We see cache store events for our targets in the trace:
+We see no cache store errors and the cache store events for the fetched dir,
+pkg-$DIGEST/source and pkg-$DIGEST/target in the trace:
 
   $ dune trace cat | jq -s '[.[] | select(.args.message == "cache store target creation errors") ] | length'
-  1
+  0
+  $ dune trace cat | jq -s '[.[] | select(.args.message == "cache store success") ] | length'
+  3
 
-Cleaning the project to force rebuilding. This triggers an attempt to
-re-download the source, since it contains a symlink and wasn't cached:
+Cleaning the project to force rebuilding. This no longer triggers an attempt to
+re-download the source after the change to turn symlinks in the fetched source
+into hardlinks:
 
   $ dune clean
   $ export DUNE_CACHE=enabled
   $ build_pkg test
-  File "dune.lock/test.pkg", line 4, characters 7-25:
-  4 |   (url http://localhost:1)
-             ^^^^^^^^^^^^^^^^^^
-  Error: Download failed with code 404
-         
-  [1]
-

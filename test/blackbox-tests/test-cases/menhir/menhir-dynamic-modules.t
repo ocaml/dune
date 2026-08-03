@@ -1,9 +1,6 @@
 Show an edge case of `(include_subdirs ..)` and ocamllex / menhir
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.22)
-  > (using menhir 3.0)
-  > EOF
+  $ make_menhir_project 3.22 3.0
 
   $ mkdir -p gen
 
@@ -28,13 +25,7 @@ We add a `(menhir ..)` stanza in the group root dune file
   >  (flags --dump))
   > EOF
 
-  $ cat >src/lexer.mll  <<EOF
-  > {
-  > }
-  > rule lex = parse
-  >   | _   { true  }
-  >   | eof { false }
-  > EOF
+  $ make_trivial_ocamllex src/lexer.mll
   $ cat >src/a/my_parser.mly <<'EOF'
   > %token EOF
   > %start main

@@ -1,8 +1,6 @@
 Test if setup scripts are visible in test directory
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.22)
-  > EOF
+  $ make_dune_project 3.22
 
   $ cat > secret.sh << 'EOF'
   > MY_SECRET="should_not_be_visible"

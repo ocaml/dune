@@ -13,6 +13,8 @@ Test the tracing of digest events
   > | .args
   > | .old_stats.mtime |= type
   > | .new_stats.mtime |= type
+  > | .old_stats.ctime |= type
+  > | .new_stats.ctime |= type
   > | .new_stats.dev |= type
   > | .new_stats.ino |= type
   > | .old_stats.dev |= type
@@ -24,6 +26,7 @@ Test the tracing of digest events
     "new_digest": "f31e1f1c33564e07cd02ad2c52f4df85",
     "old_stats": {
       "mtime": "number",
+      "ctime": "number",
       "size": 0,
       "perm": 420,
       "dev": "number",
@@ -31,6 +34,7 @@ Test the tracing of digest events
     },
     "new_stats": {
       "mtime": "number",
+      "ctime": "number",
       "size": 2,
       "perm": 420,
       "dev": "number",
@@ -70,6 +74,7 @@ Test the tracing of digest events
     ],
     "old_stats": {
       "mtime": "number",
+      "ctime": "number",
       "size": "number",
       "perm": "number",
       "dev": "number",
@@ -77,6 +82,7 @@ Test the tracing of digest events
     },
     "new_stats": {
       "mtime": "number",
+      "ctime": "number",
       "size": "number",
       "perm": "number",
       "dev": "number",

@@ -4,15 +4,8 @@ Test where a single include directory is added via a `(include ...)` statement
 ----------------------------------------------------------------------------------
 * Versions of dune before 3.5 do not support this feature
 
-  $ echo "(lang dune 3.4)" > dune-project
-  $ cat >dune <<EOF
-  > (library
-  >  (name foo)
-  >  (foreign_stubs
-  >   (language c)
-  >   (names bar)
-  >   (include_dirs (include foo))))
-  > EOF
+  $ make_dune_project 3.4
+  $ make_foreign_stubs_include_dirs_project
   $ dune build
   File "dune", line 6, characters 16-29:
   6 |   (include_dirs (include foo))))
@@ -24,7 +17,7 @@ Test where a single include directory is added via a `(include ...)` statement
 ----------------------------------------------------------------------------------
 * Error if include file is missing
 
-  $ echo "(lang dune 3.5)" > dune-project
+  $ make_dune_project 3.5
 
   $ cat >bar.c <<EOF
   > #include <caml/mlvalues.h>

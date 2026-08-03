@@ -233,6 +233,10 @@ The resulting layout in ``_build/default/output`` will be as follows:
   needed. The default is ``no_preprocessing``. Additional options are described
   in the :doc:`reference/preprocessing-spec` section.
 
+- ``(lint <preprocess-spec>)`` specifies how to lint source files when building
+  the :doc:`reference/aliases/lint` alias. The default is
+  ``no_preprocessing``. The syntax is described in :ref:`lint-field`.
+
 - ``(preprocessor_deps (<deps-conf list>))`` specifies extra preprocessor
   dependencies, e.g., if the preprocessor reads a generated file.
   The dependency specification is described in the :doc:`concepts/dependency-spec`

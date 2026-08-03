@@ -27,6 +27,7 @@
   stdune
   lmdb
   fiber
+  memo
   dune_scheduler
   dune_engine
   dune_util

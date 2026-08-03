@@ -7,16 +7,8 @@ turn depends on the inline-test-name alias of the inline tests of the library.
   > (*TEST: assert (1 = 2) *)
   > EOF
 
-  $ cat >dune <<EOF
-  > (library
-  >  (name backend_simple)
-  >  (modules ())
-  >  (inline_tests.backend
-  >   (generate_runner (run sed "s/(\\\\*TEST:\\\\(.*\\\\)\\\\*)/let () = if \\"%{inline_tests}\\" = \\"enabled\\" then \\\\1;;/" %{impl-files}))))
-  > 
-  > (library
-  >  (name foo_simple)
-  >  (inline_tests (backend backend_simple)))
+  $ write_simple_inline_tests_backend
+  $ cat >>dune <<EOF
   > 
   > (rule
   >  (deps
@@ -29,15 +21,15 @@ turn depends on the inline-test-name alias of the inline tests of the library.
 This kind of cycle has a difficult to understand error message.
   $ dune build 2>&1 | grep -vwE "sed"
   Error: Dependency cycle between:
-     transitive deps of foo_simple__Bar.impl in _build/default
+     _build/default/bar.ml
+  -> transitive deps of foo_simple__Bar.impl in _build/default
   -> _build/default/.foo_simple.objs/byte/foo_simple__Bar.cmi
-  -> _build/default/.foo_simple.inline-tests/.t.eobjs/native/dune__exe__Main.cmx
-  -> _build/default/.foo_simple.inline-tests/inline-test-runner.exe
+  -> _build/default/.foo_simple.inline-tests/.t.eobjs/byte/dune__exe__Main.cmo
+  -> _build/default/.foo_simple.inline-tests/inline-test-runner.bc
   -> alias runtest-foo_simple in dune:9
   -> _build/default/bar.ml
-  -> transitive deps of foo_simple__Bar.impl in _build/default
-  -> required by _build/default/.foo_simple.objs/byte/foo_simple__Bar.cmo
-  -> required by _build/default/foo_simple.cma
+  -> required by _build/default/.foo_simple.objs/native/foo_simple.cmx
+  -> required by _build/default/foo_simple.a
   -> required by alias all
   -> required by alias default
   [1]

@@ -29,7 +29,7 @@ But is supported with Dune >= 3.0.0:
   > (display short)
   > EOF
   $ dune build -f
-          echo alias default
+          echo (anonymous)
   Hello, world!
 
   $ cat >dune-workspace<<EOF

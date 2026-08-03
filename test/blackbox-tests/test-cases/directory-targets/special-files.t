@@ -3,10 +3,7 @@ in its output.
 
 FIFO:
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.22)
-  > (using directory-targets 0.1)
-  > EOF
+  $ make_directory_targets_project 3.22
 
   $ cat > dune <<EOF
   > (rule

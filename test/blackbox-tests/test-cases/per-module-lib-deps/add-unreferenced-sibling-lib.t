@@ -16,11 +16,11 @@ the stanza's [(libraries ...)] list. Neither [consumes_dep] nor
 rebuild. Records the rebuild counts on each so a future change
 can flip them to 0.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.23)
-  > EOF
+  $ make_dune_project 3.23
 
-  $ cat > dune <<EOF
+  $ write_consumer_lib_dune() {
+  >   local libraries="$*"
+  >   cat > dune <<EOF
   > (library
   >  (name existing_dep)
   >  (wrapped false)
@@ -30,8 +30,11 @@ can flip them to 0.
   >  (name consumer_lib)
   >  (wrapped false)
   >  (modules consumes_dep unrelated_module)
-  >  (libraries existing_dep))
+  >  (libraries ${libraries}))
   > EOF
+  > }
+
+  $ write_consumer_lib_dune existing_dep
 
   $ cat > existing_dep_module.ml <<EOF
   > let x = 42
@@ -57,21 +60,10 @@ can flip them to 0.
 Add [added_lib] to [consumer_lib]'s [(libraries ...)]. Neither
 [consumes_dep] nor [unrelated_module] references [added_lib]:
 
-  $ cat > dune <<EOF
-  > (library
-  >  (name existing_dep)
-  >  (wrapped false)
-  >  (modules existing_dep_module))
-  > (library (name added_lib) (wrapped false) (modules added_lib_module))
-  > (library
-  >  (name consumer_lib)
-  >  (wrapped false)
-  >  (modules consumes_dep unrelated_module)
-  >  (libraries existing_dep added_lib))
-  > EOF
+  $ write_consumer_lib_dune existing_dep added_lib
 
   $ dune build @check
-  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("consumes_dep"))]'
+  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("consumes_dep"))]'
   [
     {
       "target_files": [
@@ -81,7 +73,7 @@ Add [added_lib] to [consumer_lib]'s [(libraries ...)]. Neither
       ]
     }
   ]
-  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("unrelated_module"))]'
+  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("unrelated_module"))]'
   [
     {
       "target_files": [

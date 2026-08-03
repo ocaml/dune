@@ -27,22 +27,7 @@ Create a custom dune-workspace to solve for openbsd.
   > (pkg enabled)
   > EOF
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.18)
-  > (package
-  >  (name x)
-  >  (depends foo))
-  > EOF
-
-  $ cat > x.ml <<EOF
-  > let () = print_endline "Hello, World!"
-  > EOF
-
-  $ cat > dune <<EOF
-  > (executable
-  >  (public_name x)
-  >  (libraries foo))
-  > EOF
+  $ make_portable_lockdirs_project
 
   $ dune pkg lock
   Solution for dune.lock

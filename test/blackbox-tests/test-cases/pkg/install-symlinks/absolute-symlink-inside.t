@@ -17,13 +17,7 @@ Since we use realpath, these resolve correctly and work with caching.
   >    && touch %{lib}/%{pkg-self:name}/META"))
   > EOF
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.22)
-  > (package
-  >  (name x)
-  >  (allow_empty)
-  >  (depends foo))
-  > EOF
+  $ make_package_project 3.22 foo
 
   $ build_pkg foo
 

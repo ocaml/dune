@@ -1,6 +1,6 @@
 (env
  (_
-  (env-vars
+  (env_vars
    (DUNE_FOO PASS))))
 
 (alias

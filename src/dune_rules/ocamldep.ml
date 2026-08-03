@@ -48,8 +48,10 @@ let parse_deps_exn ~file lines =
 
 let ocamldep_action ~sandbox ~sctx ~dir ~ml_kind unit =
   let context = Super_context.context sctx in
-  let flags, sandbox =
-    Module.pp_flags unit |> Option.value ~default:(Action_builder.return [], sandbox)
+  let flags, sandbox, forbid_action_runner =
+    match Module.pp_flags unit with
+    | None -> Action_builder.return [], sandbox, true
+    | Some (flags, sandbox) -> flags, sandbox, false
   in
   let open Action_builder.O in
   let* ocamldep =
@@ -68,6 +70,7 @@ let ocamldep_action ~sandbox ~sctx ~dir ~ml_kind unit =
       ~dir:(Path.build (Context.build_dir context))
       ~sandbox
       ~env
+      ~forbid_action_runner
       ocamldep
       [ A "-modules"
       ; Command.Args.dyn flags
@@ -75,7 +78,7 @@ let ocamldep_action ~sandbox ~sctx ~dir ~ml_kind unit =
       ; Dep (Module.File.path source)
       ]
   in
-  { Rule.Anonymous_action.action; loc = Loc.none; dir; alias = None }
+  { Rule.Anonymous_action.action; loc = Loc.none; dir }
 ;;
 
 (* Top-level cache per (source path, ml_kind). Without it, each caller's

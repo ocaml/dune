@@ -1,9 +1,6 @@
 Version 0.2 of the mdx stanza does not support (locks):
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.2)
-  > (using mdx 0.2)
-  > EOF
+  $ make_mdx_project 3.2 0.2
 
   $ cat > dune << EOF
   > (mdx
@@ -21,9 +18,6 @@ Version 0.2 of the mdx stanza does not support (locks):
 
 In version 0.3, it is accepted:
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.2)
-  > (using mdx 0.3)
-  > EOF
+  $ make_mdx_project 3.2 0.3
 
   $ dune build

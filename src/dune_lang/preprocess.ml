@@ -369,20 +369,30 @@ module Per_module = struct
   ;;
 end
 
-let preprocess_fields =
+let preprocess_fields_with_prefix ~prefix:field_prefix =
   let open Decoder in
-  let+ preprocess = field "preprocess" Per_module.decode ~default:(Per_module.default ())
+  let prefix =
+    let prefix x = x ^ "." in
+    Option.map field_prefix ~f:prefix |> Option.value ~default:""
+  in
+  let+ preprocess =
+    match field_prefix with
+    | None ->
+      let+ v = field "preprocess" Per_module.decode ~default:(Per_module.default ()) in
+      Some v
+    | Some _ -> field_o (prefix ^ "preprocess") Per_module.decode
   and+ preprocessor_deps =
-    field_o
-      "preprocessor_deps"
-      (let+ loc = loc
-       and+ l = repeat Dep_conf.decode in
-       loc, l)
+    let decode =
+      let+ loc = loc
+      and+ l = repeat Dep_conf.decode in
+      loc, l
+    in
+    field_o (prefix ^ "preprocessor_deps") decode
   and+ syntax = Syntax.get_exn Stanza.syntax in
   let preprocessor_deps =
-    match preprocessor_deps with
-    | None -> []
-    | Some (loc, deps) ->
+    match preprocessor_deps, preprocess with
+    | Some _, None | None, _ -> []
+    | Some (loc, deps), Some preprocess ->
       let deps_might_be_used =
         Module_name.Per_item.exists preprocess ~f:(fun p ->
           match p with
@@ -394,13 +404,20 @@ let preprocess_fields =
         User_warning.emit
           ~loc
           ~is_error:(syntax >= (2, 0))
-          [ Pp.text
-              "This preprocessor_deps field will be ignored because no preprocessor that \
-               might use them is configured."
+          [ Pp.textf
+              "This %spreprocessor_deps field will be ignored because no preprocessor \
+               that might use them is configured."
+              prefix
           ];
       deps
   in
   preprocess, preprocessor_deps
+;;
+
+let preprocess_fields =
+  let open Decoder in
+  let+ preprocess, deps = preprocess_fields_with_prefix ~prefix:None in
+  Option.value_exn preprocess, deps
 ;;
 
 type preprocess =

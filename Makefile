@@ -12,7 +12,7 @@ DEV_DEPS := \
 core_bench \
 patdiff
 
-TEST_OCAMLVERSION := 5.4.0
+TEST_OCAMLVERSION := 5.5.0
 # When updating this version, don't forget to also bump the number in the docs.
 
 -include Makefile.dev
@@ -127,12 +127,16 @@ check: $(BIN)
 
 .PHONY: start
 start: $(BIN)
-	@$(BIN) init start-file
+	@[ -e start/dune ] || $(BIN) init start-file
 	@$(BIN) build @start/build -w
 
 .PHONY: fmt
 fmt: $(BIN)
 	@$(BIN) fmt
+
+.PHONY: fmt-preview
+fmt-preview: $(BIN)
+	@$(BIN) fmt --preview
 
 .PHONY: promote
 promote: $(BIN)

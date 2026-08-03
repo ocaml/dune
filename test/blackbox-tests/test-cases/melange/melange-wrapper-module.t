@@ -1,10 +1,7 @@
 Show that Dune shouldn't emit a JS file for the `melange.emit` module group
 wrapper
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.18)
-  > (using melange 0.1)
-  > EOF
+  $ make_melange_project 3.18 0.1
 
   $ cat > dune <<EOF
   > (melange.emit
@@ -23,11 +20,8 @@ If there's more than 1 module, we currently emit the module group wrapper,
   > let () = print_endline "y"
   > EOF
 
-  $ dune build @dist --display=short 2>&1 | grep 'melange\.js'
-  [1]
-  $ ls -a _build/default/dist
-  .
-  ..
-  x.js
-  y.js
+  $ dune build @dist
+  $ find _build/default/dist -type f | sort
+  _build/default/dist/x.js
+  _build/default/dist/y.js
 

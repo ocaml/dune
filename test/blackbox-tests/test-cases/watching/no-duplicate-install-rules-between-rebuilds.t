@@ -18,6 +18,4 @@ Regression test for #9213: .install rules are not duplicated between rebuilds.
   $ build .
   Success
 
-  $ stop_dune
-  Success, waiting for filesystem changes...
-  Success, waiting for filesystem changes...
+  $ stop_dune_quiet

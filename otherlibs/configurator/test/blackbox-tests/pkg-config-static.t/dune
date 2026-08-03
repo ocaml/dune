@@ -1,0 +1,19 @@
+(executable
+ (name pkgconf)
+ (modules pkgconf))
+
+(env
+ (_
+  (binaries
+   (./pkgconf.exe as pkgconf))))
+
+(executable
+ (name config_test)
+ (libraries dune.configurator)
+ (modules config_test))
+
+(rule
+ (alias default)
+ (deps %{bin:pkgconf})
+ (action
+  (run ./config_test.exe -verbose)))

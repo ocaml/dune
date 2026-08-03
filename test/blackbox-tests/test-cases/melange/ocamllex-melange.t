@@ -1,30 +1,20 @@
 Test `(include_subdirs qualified)` in the presence of invalid module name
 directories that don't contain source files
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.22)
-  > (using melange 1.0)
-  > EOF
+  $ make_melange_project 3.22 1.0
 
   $ cat > dune <<EOF
   > (library (name foo) (modes melange))
   > (ocamllex lexer)
   > EOF
-  $ cat > lexer.mll <<EOF
-  > {
-  > }
-  > rule lex = parse
-  >   | _   { true  }
-  >   | eof { false }
-  > EOF
+  $ make_trivial_ocamllex lexer.mll
   $ dune build
 
 Lexer ends up in the melange src
 
-  $ find _build/default | sort | grep lexer
+  $ find _build/default/.melange_src -type f | sort
+  _build/default/.melange_src/foo.ml-gen
   _build/default/.melange_src/lexer.ml
-  _build/default/lexer.ml
-  _build/default/lexer.mll
 
 Test the qualified case
 
@@ -39,7 +29,7 @@ Test the qualified case
   $ mv lexer.mll sub/
   $ dune build
 
-  $ find _build/default | sort | grep lexer
+  $ find _build/default/.melange_src -type f | sort
+  _build/default/.melange_src/foo.ml-gen
+  _build/default/.melange_src/foo__Sub.ml-gen
   _build/default/.melange_src/sub/lexer.ml
-  _build/default/sub/lexer.ml
-  _build/default/sub/lexer.mll

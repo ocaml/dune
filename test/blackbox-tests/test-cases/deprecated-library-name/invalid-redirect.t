@@ -1,9 +1,6 @@
 Creating an invalid (deprecated_library_name ..) is an error
 
-  $ cat >dune-project <<EOF
-  > (lang dune 2.0)
-  > (package (name a))
-  > EOF
+  $ make_dune_project_with_package 2.0 a
 
   $ cat >dune <<EOF
   > (deprecated_library_name (old_public_name a) (new_public_name a))

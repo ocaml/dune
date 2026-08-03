@@ -1,11 +1,40 @@
-open Import
+open Stdune.Action_types
+module Toggle = Stdune.Toggle
+
+let decode_action_stdout_on_success = Dune_sexp.Decoder.enum Action_output_on_success.all
 
 module Dune_config = struct
-  open Stdune
   open Dune_lang.Decoder
   module Display = Display
-  module Sandbox_mode = Dune_engine.Sandbox_mode
-  module Console = Console
+
+  include struct
+    open Stdune
+    module Sandbox_mode = Sandbox_mode
+    module Console = Console
+    module Repr = Repr
+    module Loc = Loc
+    module Config = Config
+    module Int = Int
+    module User_error = User_error
+    module List = List
+    module Terminal_persistence = Terminal_persistence
+    module Tuple = Tuple
+    module Poly = Poly
+    module Execution_env = Execution_env
+    module Option = Option
+    module Code_error = Code_error
+    module Path = Path
+    module Fpath = Fpath
+    module String = String
+    module Log = Log
+    module Env = Env
+    module Bin = Bin
+    module Env_path = Env_path
+    module Fd = Fd
+    module Dev_null = Dev_null
+    include Action_types
+  end
+
   module Stanza = Dune_lang.Stanza
   module String_with_vars = Dune_lang.String_with_vars
   module Pform = Dune_lang.Pform
@@ -87,7 +116,7 @@ module Dune_config = struct
       | Loc of Loc.t
 
     type t =
-      | Set of where * Config.Toggle.t
+      | Set of where * Toggle.t
       | Unset
 
     let repr =
@@ -115,7 +144,7 @@ module Dune_config = struct
 
     let decode =
       let open Dune_lang.Decoder in
-      let+ loc, value = located (enum Config.Toggle.all) in
+      let+ loc, value = located (enum Toggle.all) in
       Set (Loc loc, value)
     ;;
 
@@ -208,7 +237,7 @@ module Dune_config = struct
       let repr =
         Repr.variant
           "cache-toggle"
-          [ Repr.case0 "Disabed" ~test:(function
+          [ Repr.case0 "Disabled" ~test:(function
               | Disabled -> true
               | Enabled_except_user_rules | Enabled -> false)
           ; Repr.case0 "Enabled_except_user_rules" ~test:(function
@@ -279,12 +308,6 @@ module Dune_config = struct
 
       let to_dyn = Dyn.option Dune_cache.Mode.to_dyn
     end
-  end
-
-  module Action_output_on_success = struct
-    include Dune_engine.Execution_parameters.Action_output_on_success
-
-    let decode = enum all
   end
 
   module type S = sig
@@ -503,24 +526,7 @@ module Dune_config = struct
         let field f = f
       end)
 
-  let standard_watch_exclusions =
-    [ {|^_opam|}
-    ; {|/_opam|}
-    ; {|^_esy|}
-    ; {|/_esy|}
-    ; {|^\.#.*|} (* Such files can be created by Emacs and also Dune itself. *)
-    ; {|/\.#.*|}
-    ; {|~$|}
-    ; {|^#[^#]*#$|}
-    ; {|/#[^#]*#$|}
-    ; {|^4913$|} (* https://github.com/neovim/neovim/issues/3460 *)
-    ; {|/4913$|}
-    ; {|/.git|}
-    ; {|/.hg|}
-    ; {|:/windows|}
-    ]
-  ;;
-
+  let standard_watch_exclusions = Dune_scheduler.File_watcher.standard_watch_exclusions
   let hash = Poly.hash
 
   let default =
@@ -602,9 +608,9 @@ module Dune_config = struct
            ~extra_info:"To trim the cache, use the 'dune cache trim' command."
          >>> Dune_lang.Decoder.bytes_unit)
     and+ action_stdout_on_success =
-      field_o "action_stdout_on_success" (3, 0) Action_output_on_success.decode
+      field_o "action_stdout_on_success" (3, 0) decode_action_stdout_on_success
     and+ action_stderr_on_success =
-      field_o "action_stderr_on_success" (3, 0) Action_output_on_success.decode
+      field_o "action_stderr_on_success" (3, 0) decode_action_stdout_on_success
     and+ project_defaults = field_o "project_defaults" (3, 17) Project_defaults.decode
     and+ pkg_enabled = field_o "pkg" (3, 20) Pkg_enabled.decode
     and+ experimental =
@@ -719,7 +725,7 @@ module Dune_config = struct
                 let prog = Path.to_string prog in
                 let fdr, fdw = Unix.pipe () ~cloexec:true in
                 (match
-                   Spawn.spawn
+                   Stdune.Spawn.spawn
                      ~prog
                      ~argv:(prog :: args)
                      ~stdin:(Fd.unsafe_to_unix_file_descr (Lazy.force Dev_null.in_))
@@ -740,8 +746,8 @@ module Dune_config = struct
                      | exception End_of_file -> None
                    in
                    close_in ic;
-                   (match n, snd (Unix.waitpid [] pid) with
-                    | Some n, WEXITED 0 -> n
+                   (match n, Stdune.Proc.wait (Pid pid) [] with
+                    | Some n, Some { status = WEXITED 0; _ } -> n
                     | _ -> loop rest)))
          in
          loop commands))
@@ -756,10 +762,13 @@ module Dune_config = struct
         Log.info "Auto-detected concurrency" [ "concurrency", Dyn.int n ];
         n
     in
-    (Dune_engine.Clflags.display
+    (Stdune.Clflags.display
      := match t.display with
-        | Tui -> Dune_engine.Display.Quiet
+        | Tui -> Stdune.Display.Quiet
         | Simple { verbosity; _ } -> verbosity);
-    { Scheduler.Config.concurrency; print_ctrl_c_warning; watch_exclusions }
+    { Dune_scheduler.Scheduler.Config.concurrency
+    ; print_ctrl_c_warning
+    ; watch_exclusions
+    }
   ;;
 end

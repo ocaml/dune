@@ -1,9 +1,6 @@
 Test error when extracted_files is not provided in rocq 0.13:
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.23)
-  > (using rocq 0.13)
-  > EOF
+  $ make_rocq_project 3.23 0.13
 
   $ cat >extr.v <<EOF
   > Definition nb := true.
@@ -26,10 +23,7 @@ Test error when extracted_files is not provided in rocq 0.13:
 
 Test version gating: extracted_files requires (rocq 0.13 -> lang dune 3.23):
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.22)
-  > (using rocq 0.13)
-  > EOF
+  $ make_rocq_project 3.22 0.13
 
   $ cat >dune <<EOF
   > (rocq.extraction
@@ -49,10 +43,7 @@ Test version gating: extracted_files requires (rocq 0.13 -> lang dune 3.23):
 
 Test version gating: extracted_files requires (rocq 0.13):
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.23)
-  > (using rocq 0.12)
-  > EOF
+  $ make_rocq_project 3.23 0.12
 
   $ cat >dune <<EOF
   > (rocq.extraction
@@ -71,10 +62,7 @@ Test version gating: extracted_files requires (rocq 0.13):
 
 Test that extracted_modules is deleted in rocq 0.13 with a helpful error message:
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.23)
-  > (using rocq 0.13)
-  > EOF
+  $ make_rocq_project 3.23 0.13
 
   $ cat >dune <<EOF
   > (rocq.extraction
@@ -94,10 +82,7 @@ Test that extracted_modules is deleted in rocq 0.13 with a helpful error message
 
 Test using extracted_files with explicit filenames:
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.23)
-  > (using rocq 0.13)
-  > EOF
+  $ make_rocq_project 3.23 0.13
 
   $ cat >extr.v <<EOF
   > Definition nb (b : bool) : bool :=
@@ -124,10 +109,7 @@ Test using extracted_files with explicit filenames:
 
 Test that extracted_modules in 0.13 gives deleted_in error for Haskell extraction:
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.23)
-  > (using rocq 0.13)
-  > EOF
+  $ make_rocq_project 3.23 0.13
 
   $ cat >extr.v <<EOF
   > Definition nb (b : bool) : bool :=
@@ -159,10 +141,7 @@ Test that extracted_modules in 0.13 gives deleted_in error for Haskell extractio
 
 Test using extracted_files with Haskell outputs (expected success):
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.23)
-  > (using rocq 0.13)
-  > EOF
+  $ make_rocq_project 3.23 0.13
 
   $ cat >extr.v <<EOF
   > Definition nb (b : bool) : bool :=
@@ -203,10 +182,7 @@ Test rebuild does not clean extracted files:
 
 Test that extracted_modules in 0.13 gives deleted_in error for Scheme extraction:
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.23)
-  > (using rocq 0.13)
-  > EOF
+  $ make_rocq_project 3.23 0.13
 
   $ cat >extr.v <<EOF
   > Definition nb (b : bool) : bool :=
@@ -238,10 +214,7 @@ Test that extracted_modules in 0.13 gives deleted_in error for Scheme extraction
 
 Test using extracted_files with Scheme outputs (expected success):
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.23)
-  > (using rocq 0.13)
-  > EOF
+  $ make_rocq_project 3.23 0.13
 
   $ cat >extr.v <<EOF
   > Definition nb (b : bool) : bool :=

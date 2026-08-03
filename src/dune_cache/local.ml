@@ -79,6 +79,16 @@ module Artifacts = struct
       Path.Local.equal x.path y.path && Option.equal Digest.equal x.digest y.digest
     ;;
 
+    let digest_repr = Repr.view Repr.string ~to_:Digest.to_string
+
+    let repr =
+      Repr.record
+        "cache-metadata-entry"
+        [ Repr.field "path" Path.Local.repr ~get:(fun t -> t.path)
+        ; Repr.field "digest" (Repr.option digest_repr) ~get:(fun t -> t.digest)
+        ]
+    ;;
+
     let digest_to_sexp = function
       | None -> Sexp.Atom "<dir>"
       | Some digest -> Sexp.Atom (Digest.to_string digest)
@@ -115,6 +125,12 @@ module Artifacts = struct
            even though sorting the entres is tempting. *)
         entries : Metadata_entry.t list
       }
+
+    let repr =
+      Repr.record
+        "cache-metadata"
+        [ Repr.field "files" (Repr.list Metadata_entry.repr) ~get:(fun t -> t.entries) ]
+    ;;
 
     let to_sexp { entries } =
       Sexp.List
@@ -156,6 +172,8 @@ module Artifacts = struct
                    ; "computed", Sexp.List (List.map ~f:Metadata_entry.to_sexp t.entries)
                    ])))
     ;;
+
+    let load path = restore_metadata_file path ~of_sexp
 
     let store entries ~mode ~rule_digest : Store_result.t =
       let metadata = { entries } in

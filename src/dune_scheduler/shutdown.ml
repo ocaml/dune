@@ -3,12 +3,14 @@ open Stdune
 module Reason = struct
   module T = struct
     type t =
+      | Failure
       | Requested
       | Timeout
       | Signal of Signal.t
 
     let to_dyn t =
       match t with
+      | Failure -> Dyn.Variant ("Failure", [])
       | Requested -> Dyn.Variant ("Requested", [])
       | Timeout -> Dyn.Variant ("Timeout", [])
       | Signal signal -> Dyn.Variant ("Signal", [ Signal.to_dyn signal ])
@@ -16,6 +18,9 @@ module Reason = struct
 
     let compare a b =
       match a, b with
+      | Failure, Failure -> Eq
+      | Failure, _ -> Lt
+      | _, Failure -> Gt
       | Requested, Requested -> Eq
       | Requested, _ -> Lt
       | _, Requested -> Gt
@@ -34,6 +39,7 @@ exception E of Reason.t
 
 let () =
   Printexc.register_printer (function
+    | E Failure -> Some "shutdown: failure"
     | E Requested -> Some "shutdown: requested"
     | E Timeout -> Some "shutdown: timeout"
     | E (Signal s) -> Some (sprintf "shutdown: signal %s received" (Signal.name s))

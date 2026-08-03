@@ -2,8 +2,7 @@ This test check that we can preprocess source code with actions
 
   $ dune runtest
 
-  $ dune trace cat | jq '
-  > include "dune";
+  $ dune trace cat | jq_dune '
   >   processes
   > | .args
   > | select(.prog | contains("pp.exe"))

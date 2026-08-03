@@ -34,13 +34,19 @@ described in :ref:`foreign-sandboxing`, or ask Dune to build it via the
      (enabled_if true)
      (names src4 src5)
      (extra_objects obj1)
-     (include_dir headers))
+     (include_dirs headers))
 
 This asks Dune to compile C source files ``src4`` and ``src5`` with
 headers tracked in the ``headers`` directory and put the resulting
 object files into an archive ``arch1``, whose full name is typically
 ``libarch1.a`` for static linking and ``dllarch1.so`` for dynamic
 linking.
+
+By default, Dune builds and installs both the static (``lib*.a``) and dynamic
+(``dll*.so``) versions of a foreign archive. To statically link all foreign
+archives into the runtime system instead (so no ``dll*.so`` is produced), set
+``(disable_dynamically_linked_foreign_archives true)`` in your
+:doc:`/reference/dune-workspace/context`.
 
 The ``foreign_library`` stanza supports all :doc:`foreign-stubs` fields.
 The ``archive_name`` field specifies the archive's name. You can refer

@@ -1,8 +1,6 @@
 Legacy `cxx_names` should keep working with non-OCaml `(select ..)` targets.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 1.0)
-  > EOF
+  $ make_dune_project 1.0
 
   $ cat >dune <<EOF
   > (library

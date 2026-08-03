@@ -6,10 +6,7 @@ Test installation when multiple contexts are defined
   > (context (default (name b)))
   > EOF
 
-  $ cat > dune-project <<EOF
-  > (lang dune 1.11)
-  > (package (name a))
-  > EOF
+  $ make_dune_project_with_package 1.11 a
 
   $ cat > dune <<EOF
   > (rule (with-stdout-to hello (echo "Hello, world!")))

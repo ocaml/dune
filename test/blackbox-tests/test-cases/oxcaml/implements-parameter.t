@@ -185,7 +185,8 @@ But it's an error for a public library to implement a private parameter:
   3 |  (implements bar))
                    ^^^
   Error: Library "bar" is private, it cannot be a dependency of a public
-  library. You need to give "bar" a public name.
+  library. You need to give "bar" a public name or add a (package ...) field to
+  its stanza.
   [1]
 
 It's impossible for a library to implement two parameters:

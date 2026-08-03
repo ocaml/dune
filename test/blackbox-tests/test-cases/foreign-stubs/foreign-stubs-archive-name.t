@@ -1,6 +1,6 @@
 Error when specifying an (archive_name ...) in (foreign_stubs ...) stanza.
 
-  $ echo "(lang dune 2.0)" > dune-project
+  $ make_dune_project 2.0
   $ ./sandboxed.sh
 
   $ cat >dune <<EOF

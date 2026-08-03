@@ -5,21 +5,9 @@ not need recompilation when the library changes.
 
 See: https://github.com/ocaml/dune/issues/4572
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.0)
-  > EOF
+  $ make_dune_project 3.0
 
-  $ mkdir lib
-  $ cat > lib/dune <<EOF
-  > (library
-  >  (name mylib))
-  > EOF
-  $ cat > lib/mylib.ml <<EOF
-  > let value = 42
-  > EOF
-  $ cat > lib/mylib.mli <<EOF
-  > val value : int
-  > EOF
+  $ make_value_library lib mylib 42
 
   $ cat > dune <<EOF
   > (executable
@@ -46,17 +34,10 @@ See: https://github.com/ocaml/dune/issues/4572
 
   $ dune build ./main.exe
 
-  $ cat > lib/mylib.mli <<EOF
-  > val value : int
-  > val new_function : unit -> string
-  > EOF
-  $ cat > lib/mylib.ml <<EOF
-  > let value = 42
-  > let new_function () = "hello"
-  > EOF
+  $ write_mylib_with_new_function
 
 Uses_stdlib is recompiled even though it only uses Printf, not Mylib:
 
   $ dune build ./main.exe
-  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("Uses_stdlib"))] | length'
+  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("Uses_stdlib"))] | length'
   2

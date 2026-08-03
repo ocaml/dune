@@ -7,9 +7,7 @@ Setup environment:
 
 Create a simple executable that prints a message:
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.22)
-  > EOF
+  $ make_dune_project 3.22
 
   $ cat > hello.ml <<EOF
   > let () =

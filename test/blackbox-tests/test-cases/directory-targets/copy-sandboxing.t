@@ -3,10 +3,7 @@ mode:
 
   $ umask 022
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.8)
-  > (using directory-targets 0.1)
-  > EOF
+  $ make_directory_targets_project 3.8
 
   $ cat >print-permissions.sh <<EOF
   > /usr/bin/env sh

@@ -1,10 +1,7 @@
 Show PPX snippet preview is shown in Dune
 
   $ mkdir -p lib
-  $ cat > dune-project <<EOF
-  > (lang dune 3.13)
-  > (using melange 0.1)
-  > EOF
+  $ make_melange_project 3.13 0.1
   $ cat > lib/dune <<EOF
   > (library
   >  (name the_lib)

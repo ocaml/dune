@@ -2,20 +2,11 @@ Test that paths in `node_modules` are correct for sub-libraries of the
 form `foo.bar.baz`
 
   $ mkdir a app
-  $ cat > a/dune-project <<EOF
-  > (lang dune 3.8)
-  > (package (name a))
-  > (using melange 0.1)
-  > EOF
-  $ cat > a/dune <<EOF
+  $ make_melange_foo_library_project a a <<EOF
   > (library
   >  (modes melange)
   >  (name a)
   >  (public_name a.sub))
-  > EOF
-
-  $ cat > a/foo.ml <<EOF
-  > let x = "foo"
   > EOF
 
   $ dune build --root a

@@ -1,8 +1,6 @@
 Tests stanzas produce aliases with the executable names
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.17)
-  > EOF
+  $ make_dune_project 3.17
 
   $ cat > dune << EOF
   > (tests

@@ -1,10 +1,7 @@
 %{bin:NAME} for a binary installed via an (install) stanza, where
 the install name differs from the source name.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.24)
-  > (package (name mypkg))
-  > EOF
+  $ make_dune_project_with_package 3.24 mypkg
 
   $ cat >script.sh <<'EOF'
   > #!/bin/sh
@@ -32,6 +29,6 @@ The action invokes the install-renamed binary via PATH:
 The .binaries symlink uses the install name:
 
   $ dune rules --format=json _build/default/out \
-  >   | jq 'include "dune"; .[] | ruleDepFilePaths' | censor
+  >   | jq_dune '.[] | ruleDepFilePaths' | censor
   "_build/default/script.sh"
   "_build/install/default/.binaries/$DIGEST/renamed"

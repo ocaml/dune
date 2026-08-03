@@ -27,13 +27,22 @@ let choose cmi cmo cmx = function
 let ext = Filename.Extension.(choose cmi cmo cmx)
 let source = choose Ml_kind.Intf Impl Impl
 
-let to_dyn =
-  let open Dyn in
-  function
-  | Cmi -> variant "cmi" []
-  | Cmo -> variant "cmo" []
-  | Cmx -> variant "cmx" []
+let repr =
+  Repr.variant
+    "cm-kind"
+    [ Repr.case0 "cmi" ~test:(function
+        | Cmi -> true
+        | Cmo | Cmx -> false)
+    ; Repr.case0 "cmo" ~test:(function
+        | Cmo -> true
+        | Cmi | Cmx -> false)
+    ; Repr.case0 "cmx" ~test:(function
+        | Cmx -> true
+        | Cmi | Cmo -> false)
+    ]
 ;;
+
+let to_dyn = Repr.to_dyn repr
 
 module Dict = struct
   type 'a t =

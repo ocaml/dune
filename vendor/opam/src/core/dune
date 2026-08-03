@@ -4,5 +4,5 @@
  (foreign_stubs
   (language c)
   (names custom_opamStubs))
- (libraries re unix sha uutf)
+ (libraries re unix sha)
  (wrapped false))

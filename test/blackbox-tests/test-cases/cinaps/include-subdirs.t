@@ -1,9 +1,6 @@
 cinaps doesn't work with (include_subdirs unqualified)
 
-  $ cat > dune-project <<EOF
-  > (lang dune 2.3)
-  > (using cinaps 1.0)
-  > EOF
+  $ make_cinaps_project 2.3 1.0
 
   $ cat >dune <<EOF
   > (include_subdirs unqualified)

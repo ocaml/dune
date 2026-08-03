@@ -8,6 +8,11 @@
  (modules action_trace)
  (libraries stdune unix csexp dune_action_trace))
 
+(executable
+ (name action_plugin_helper)
+ (modules action_plugin_helper)
+ (libraries dune-action-plugin unix))
+
 (ocamllex dunepp)
 
 (executable

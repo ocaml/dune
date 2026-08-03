@@ -4,7 +4,7 @@ hooks didn't run and the channels weren't flushed.
 
 Setup fixtures:
 
-  $ echo "(lang dune 3.17)" > dune-project
+  $ make_dune_project 3.17
   $ echo 'let () = print_string "bla"' > main.ml
   $ cat >dune <<EOF
   > (executable

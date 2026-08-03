@@ -2,7 +2,8 @@
  (applies_to :whole_subtree)
  (deps
   (package dune)
-  (package dune-site)))
+  (package dune-site)
+  (package dune-private-libs)))
 
 ; The test being broken on CI, we deactivate it when
 ; we detect that the CI environment variable is not

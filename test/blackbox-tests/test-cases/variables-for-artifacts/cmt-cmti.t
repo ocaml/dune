@@ -1,8 +1,6 @@
 Test that %{cmt:...} and %{cmti:...} variables work correctly.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.20)
-  > EOF
+  $ make_dune_project 3.20
 
 Create a library with both .ml and .mli files:
 
@@ -41,9 +39,7 @@ This feature is guarded behind dune lang 3.21:
   Please update your dune-project file to have (lang dune 3.21).
   [1]
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.21)
-  > EOF
+  $ make_dune_project 3.21
 
 Build and check that cmt and cmti files are found:
 

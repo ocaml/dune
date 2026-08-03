@@ -1,9 +1,6 @@
 using `(select ...)` in `(library (modes melange) ..)`
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.22)
-  > (using melange 1.0)
-  > EOF
+  $ make_melange_project 3.22 1.0
 
   $ cat >bar.melange.ml <<EOF
   > let message = "hello from melange"

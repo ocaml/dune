@@ -4,9 +4,7 @@ When using (include_subdirs qualified), valid module names should be checked for
 directories too.
 
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.8)
-  > EOF
+  $ make_dune_project 3.8
 
   $ mkdir src
 

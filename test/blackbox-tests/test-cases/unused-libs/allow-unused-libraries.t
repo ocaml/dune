@@ -8,9 +8,9 @@ trigger unused library errors even when they are not used.
   > (using unreleased 0.1)
   > EOF
 
-Create three libraries - one will be used, two won't be used:
-
-  $ cat > dune <<EOF
+  $ write_allow_unused_dune() {
+  >   local allowed="$*"
+  >   cat > dune <<EOF
   > (library
   >  (name used_lib)
   >  (modules used_lib))
@@ -27,8 +27,13 @@ Create three libraries - one will be used, two won't be used:
   >  (name main)
   >  (modules main)
   >  (libraries used_lib unused_allowed unused_not_allowed)
-  >  (allow_unused_libraries unused_allowed))
+  >  (allow_unused_libraries ${allowed}))
   > EOF
+  > }
+
+Create three libraries - one will be used, two won't be used:
+
+  $ write_allow_unused_dune unused_allowed
 
   $ cat > used_lib.ml <<EOF
   > let helper x = x + 1
@@ -59,25 +64,7 @@ Build the unused-libs alias - should only error on unused_not_allowed:
 
 Now allow both unused libraries:
 
-  $ cat > dune <<EOF
-  > (library
-  >  (name used_lib)
-  >  (modules used_lib))
-  > 
-  > (library
-  >  (name unused_allowed)
-  >  (modules unused_allowed))
-  > 
-  > (library
-  >  (name unused_not_allowed)
-  >  (modules unused_not_allowed))
-  > 
-  > (executable
-  >  (name main)
-  >  (modules main)
-  >  (libraries used_lib unused_allowed unused_not_allowed)
-  >  (allow_unused_libraries unused_allowed unused_not_allowed))
-  > EOF
+  $ write_allow_unused_dune unused_allowed unused_not_allowed
 
 Build should succeed now:
 

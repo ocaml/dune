@@ -8,20 +8,30 @@ module T = struct
     | Best
 
   let all = [ Byte; Native; Best ]
-
-  let compare x y =
-    match x, y with
-    | Byte, Byte -> Eq
-    | Byte, _ -> Lt
-    | _, Byte -> Gt
-    | Native, Native -> Eq
-    | Native, _ -> Lt
-    | _, Native -> Gt
-    | Best, Best -> Eq
-  ;;
 end
 
 include T
+
+let repr =
+  Repr.variant
+    "mode-conf"
+    [ Repr.case0 "byte" ~test:(function
+        | Byte -> true
+        | Native | Best -> false)
+    ; Repr.case0 "native" ~test:(function
+        | Native -> true
+        | Byte | Best -> false)
+    ; Repr.case0 "best" ~test:(function
+        | Best -> true
+        | Byte | Native -> false)
+    ]
+;;
+
+include Repr.Poly (struct
+    type nonrec t = t
+
+    let repr = repr
+  end)
 
 let decode = enum [ "byte", Byte; "native", Native; "best", Best ]
 
@@ -31,7 +41,7 @@ let to_string = function
   | Best -> "best"
 ;;
 
-let to_dyn t = Dyn.variant (to_string t) []
+let to_dyn = Repr.to_dyn repr
 let encode t = Dune_sexp.atom (to_string t)
 
 module Kind = struct
@@ -126,6 +136,30 @@ module Lib = struct
     | Ocaml of mode_conf
     | Melange
 
+  let repr =
+    Repr.variant
+      "mode-conf-lib"
+      [ Repr.case0 "byte" ~test:(function
+          | Ocaml Byte -> true
+          | Ocaml (Native | Best) | Melange -> false)
+      ; Repr.case0 "native" ~test:(function
+          | Ocaml Native -> true
+          | Ocaml (Byte | Best) | Melange -> false)
+      ; Repr.case0 "best" ~test:(function
+          | Ocaml Best -> true
+          | Ocaml (Byte | Native) | Melange -> false)
+      ; Repr.case0 "melange" ~test:(function
+          | Melange -> true
+          | Ocaml _ -> false)
+      ]
+  ;;
+
+  include Repr.Poly (struct
+      type nonrec t = t
+
+      let repr = repr
+    end)
+
   let decode =
     enum'
       [ "byte", return @@ Ocaml Byte
@@ -135,24 +169,7 @@ module Lib = struct
       ]
   ;;
 
-  let to_string = function
-    | Ocaml Byte -> "byte"
-    | Ocaml Native -> "native"
-    | Ocaml Best -> "best"
-    | Melange -> "melange"
-  ;;
-
-  let to_dyn t = Dyn.variant (to_string t) []
-
-  let equal x y =
-    match x, y with
-    | Ocaml o1, Ocaml o2 ->
-      (match compare o1 o2 with
-       | Eq -> true
-       | _ -> false)
-    | Ocaml _, _ | _, Ocaml _ -> false
-    | Melange, Melange -> true
-  ;;
+  let to_dyn = Repr.to_dyn repr
 
   module Map = struct
     type nonrec 'a t =

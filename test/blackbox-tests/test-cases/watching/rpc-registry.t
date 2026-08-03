@@ -8,17 +8,7 @@ Batch builds do not write to the RPC registry.
   > (using action-plugin 0.1)
   > EOF
 
-  $ cat > plugin.ml <<EOF
-  > open Dune_action_plugin.V1
-  > 
-  > let () = run (return ())
-  > EOF
-
   $ cat > dune <<EOF
-  > (executable
-  >  (name plugin)
-  >  (libraries dune-action-plugin))
-  > 
   > (rule
   >  (target x)
   >  (action (write-file %{target} ok)))
@@ -27,7 +17,7 @@ Batch builds do not write to the RPC registry.
   >  (target dynamic-target)
   >  (action
   >   (progn
-  >    (dynamic-run ./plugin.exe)
+  >    (dynamic-run action_plugin_helper noop)
   >    (write-file %{target} ok))))
   > EOF
 

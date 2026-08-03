@@ -160,7 +160,8 @@ It's an error for a public library to depend on a private parameter:
   1 | (library (public_name project.lib) (name lib) (parameters project.a b))
                                                                           ^
   Error: Library "b" is private, it cannot be a dependency of a public library.
-  You need to give "b" a public name.
+  You need to give "b" a public name or add a (package ...) field to its
+  stanza.
   [1]
 
 Giving a public name to `b` fixes the error:

@@ -4,8 +4,7 @@ Ignores user `.merlin` files when generating Merlin configuration.
   $ export BUILD_PATH_PREFIX_MAP="/OCAMLC_WHERE=$ocamlc_where:$BUILD_PATH_PREFIX_MAP"
 
   $ dune build foo.cma --profile release
-  $ dune ocaml merlin dump-config --format=json $PWD | jq '
-  >   include "dune";
+  $ dune ocaml merlin dump-config --format=json $PWD | jq_dune '
   >   merlinEntry("Foo")
   >   | merlinUnitNameSummary'
   {
@@ -21,8 +20,7 @@ Ignores user `.merlin` files when generating Merlin configuration.
 
   $ rm -f .merlin
   $ dune build foo.cma --profile release
-  $ dune ocaml merlin dump-config --format=json $PWD | jq '
-  >   include "dune";
+  $ dune ocaml merlin dump-config --format=json $PWD | jq_dune '
   >   merlinEntry("Foo")
   >   | merlinUnitNameSummary'
   {
@@ -38,8 +36,7 @@ Ignores user `.merlin` files when generating Merlin configuration.
 
   $ echo toto > .merlin
   $ dune build foo.cma --profile release
-  $ dune ocaml merlin dump-config --format=json $PWD | jq '
-  >   include "dune";
+  $ dune ocaml merlin dump-config --format=json $PWD | jq_dune '
   >   merlinEntry("Foo")
   >   | merlinUnitNameSummary'
   {

@@ -12,10 +12,10 @@ syntax in lang Dune < 3.0.
   > (library (name other))
   > (rule
   >  (alias a)
-  >  (action (run echo %{lib-private:ctypes:})))
+  >  (action (run echo "ctypes:" %{lib-private:ctypes:})))
   > (rule
   >  (alias b)
-  >  (action (run echo %{lib-private:other:.})))
+  >  (action (run echo "other:" %{lib-private:other:.})))
   > EOF
 
 We still support it with older version of the language, for backward
@@ -23,26 +23,26 @@ compatibility purposes:
 
   $ echo '(lang dune 2.9)' > dune-project
   $ dune build @a
-  .
+  ctypes: .
   $ dune build @b
-  .
+  other: .
 
 But we are more strict since 3.0:
 
   $ echo '(lang dune 3.0)' > dune-project
   $ dune build @a
-  File "dune", line 5, characters 19-41:
-  5 |  (action (run echo %{lib-private:ctypes:})))
-                         ^^^^^^^^^^^^^^^^^^^^^^
+  File "dune", line 5, characters 29-51:
+  5 |  (action (run echo "ctypes:" %{lib-private:ctypes:})))
+                                   ^^^^^^^^^^^^^^^^^^^^^^
   Error: The form %{lib-private:<libname>:} is no longer supported since
   version 3.0 of the Dune language.
   Hint: Did you know that Dune 3.0 supports ctypes natively? See the manual for
   more details.
   [1]
   $ dune build @b
-  File "dune", line 8, characters 19-41:
-  8 |  (action (run echo %{lib-private:other:.})))
-                         ^^^^^^^^^^^^^^^^^^^^^^
+  File "dune", line 8, characters 28-50:
+  8 |  (action (run echo "other:" %{lib-private:other:.})))
+                                  ^^^^^^^^^^^^^^^^^^^^^^
   Error: The form %{lib-private:<libname>:.} is no longer supported since
   version 3.0 of the Dune language.
   Hint: If you are trying to use this form to include a directory, you should

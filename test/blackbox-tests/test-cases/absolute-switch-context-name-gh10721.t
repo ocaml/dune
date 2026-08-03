@@ -1,8 +1,6 @@
 Rejects switch-derived context names that come from absolute paths.
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.0)
-  > EOF
+  $ make_dune_project 3.0
 
   $ cat > dune-workspace << EOF
   > (lang dune 3.0)

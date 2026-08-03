@@ -5,7 +5,7 @@ to be discovered dynamically as we were trying to evaluate the dependencies,
 the new code simply doesn't detect it. We should add a proper version check for
 this feature.
 
-  $ echo "(lang dune 1.6)" > dune-project
+  $ make_dune_project 1.6
   $ cat >dune <<EOF
   > (rule (with-stdout-to foo (echo bar)))
   > (alias

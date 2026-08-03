@@ -1,9 +1,6 @@
 Test for %{bin-available:...}
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.0)
-  > (package (name foo))
-  > EOF
+  $ make_dune_project_with_package 3.0 foo
   $ cat >dune<<"EOF"
   > (install
   >  (section bin)

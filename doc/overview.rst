@@ -130,11 +130,10 @@ Terminology
    build profile
      A global setting that influences various defaults. It can be set from the
      command line using ``--profile <profile>`` or from ``dune-workspace``
-     files. The following profiles are standard:
-
-     -  ``release`` which is the profile used for opam releases
-     -  ``dev`` which is the default profile when none is set explicitly, and
-        which has warnings-as-errors turned on.
+     files. The standard profiles are ``dev`` and ``release``. ``dev`` is the
+     default profile when none is set explicitly, and ``release`` is the profile
+     used for opam releases. See :doc:`reference/dune-workspace/profile` for the
+     exact defaults associated with these profiles.
 
    dialect
      An alternative frontend to OCaml (such as ReasonML). It is described

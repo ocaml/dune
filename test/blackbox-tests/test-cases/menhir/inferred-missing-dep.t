@@ -2,10 +2,7 @@ The compilation of a menhir parser involves the use of `ocamlc -i` to infer
 types which are required by menhir. This can cause issues as the inferred types
 may refer to hidden modules.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.13)
-  > (using menhir 3.0)
-  > EOF
+  $ make_menhir_project 3.13 3.0
 
   $ cat > dune <<EOF
   > (menhir (modules parser))
@@ -104,7 +101,7 @@ references to hidden module names can normally not be used in hand-written
 code. The dependency is missing:
 
   $ dune describe rules --format=json %{cmi:parser} \
-  > | jq 'include "dune"; [ .[] | ruleDepFilePathsOfKind("In_build_dir") ]'
+  > | jq_dune '[ .[] | ruleDepFilePathsOfKind("In_build_dir") ]'
   [
     "_build/default/.mylib.objs/byte/mylib.cmi",
     "_build/default/parser.mli",

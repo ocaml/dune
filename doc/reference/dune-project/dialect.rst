@@ -89,5 +89,5 @@ Dune ships with two dialects pre-configured and enabled:
 * ``reason`` for the Reason syntax and enabled in `.re`/`.rei` files. ``refmt``
   is used for formatting.
 
-A third dialect, ``rescript``, is added when Melange support (see :doc:`/melange`)
-is enabled in the project.
+A third dialect, ``rescript``, is added when version 0.1 of Melange support
+(see :doc:`/melange`) is enabled in the project.

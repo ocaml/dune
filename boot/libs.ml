@@ -46,12 +46,6 @@ let local_libraries =
               ]
           }
     }
-  ; { path = "src/dune_graph"
-    ; main_module_name = Some "Dune_graph"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
   ; { path = "vendor/incremental-cycles/src"
     ; main_module_name = Some "Incremental_cycles"
     ; include_subdirs = No
@@ -226,11 +220,44 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
+  ; { path = "src/rpc"
+    ; main_module_name = Some "Rpc"
+    ; include_subdirs = No
+    ; special_builtin_support = None
+    ; root_module = None
+    }
   ; { path = "src/dune_engine"
     ; main_module_name = Some "Dune_engine"
     ; include_subdirs = No
     ; special_builtin_support = None
-    ; root_module = None
+    ; root_module =
+        Some
+          { name = "Root"
+          ; entries =
+              [ "Build_path_prefix_map"
+              ; "Csexp"
+              ; "Dune_action_plugin"
+              ; "Dune_action_trace"
+              ; "Dune_cache"
+              ; "Dune_digest"
+              ; "Dune_glob"
+              ; "Dune_rpc"
+              ; "Dune_scheduler"
+              ; "Dune_targets"
+              ; "Dune_trace"
+              ; "Dune_util"
+              ; "Dyn"
+              ; "Event"
+              ; "Fiber"
+              ; "Memo"
+              ; "Predicate_lang"
+              ; "Rpc"
+              ; "Stdune"
+              ; "Thread"
+              ; "Unix"
+              ; "UnixLabels"
+              ]
+          }
     }
   ; { path = "otherlibs/dune-private-libs/section"
     ; main_module_name = Some "Dune_section"
@@ -288,24 +315,6 @@ let local_libraries =
     }
   ; { path = "src/install"
     ; main_module_name = Some "Install"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-  ; { path = "src/action_ext"
-    ; main_module_name = Some "Action_ext"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-  ; { path = "src/rpc"
-    ; main_module_name = Some "Rpc"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-  ; { path = "src/action_plugin"
-    ; main_module_name = Some "Action_plugin"
     ; include_subdirs = No
     ; special_builtin_support = None
     ; root_module = None
@@ -396,7 +405,7 @@ let local_libraries =
     }
   ; { path = "vendor/cmdliner/src"
     ; main_module_name = None
-    ; include_subdirs = No
+    ; include_subdirs = Unqualified
     ; special_builtin_support = None
     ; root_module = None
     }
@@ -430,13 +439,14 @@ let main =
             ; "Cmdliner_base"
             ; "Cmdliner_cline"
             ; "Cmdliner_cmd"
+            ; "Cmdliner_completion"
+            ; "Cmdliner_data"
+            ; "Cmdliner_def"
             ; "Cmdliner_docgen"
             ; "Cmdliner_eval"
-            ; "Cmdliner_info"
             ; "Cmdliner_manpage"
             ; "Cmdliner_msg"
             ; "Cmdliner_term"
-            ; "Cmdliner_term_deprecated"
             ; "Cmdliner_trie"
             ; "Csexp"
             ; "Dune_cache"
@@ -444,73 +454,43 @@ let main =
             ; "Dune_digest"
             ; "Dune_engine"
             ; "Dune_findlib"
-            ; "Dune_graph"
             ; "Dune_lang"
             ; "Dune_pkg"
             ; "Dune_rpc"
             ; "Dune_rpc_impl"
             ; "Dune_rules"
             ; "Dune_scheduler"
-            ; "Dune_sexp"
             ; "Dune_targets"
             ; "Dune_trace"
             ; "Dune_upgrader"
             ; "Dune_util"
             ; "Dune_vcs"
-            ; "Dyn"
             ; "Fiber"
             ; "Fs_io"
             ; "Install"
             ; "Memo"
             ; "Ocaml"
             ; "Ocaml_config"
-            ; "OpamBaseParser"
-            ; "OpamCompat"
-            ; "OpamConsole"
-            ; "OpamCoreConfig"
-            ; "OpamCoreConfigDeveloper"
-            ; "OpamDirTrack"
             ; "OpamFile"
-            ; "OpamFilename"
             ; "OpamFilter"
             ; "OpamFormat"
             ; "OpamFormatConfig"
             ; "OpamFormula"
-            ; "OpamHash"
             ; "OpamInterpLexer"
-            ; "OpamJson"
-            ; "OpamLexer"
             ; "OpamLineLexer"
             ; "OpamPackage"
-            ; "OpamParser"
-            ; "OpamParserTypes"
             ; "OpamPp"
-            ; "OpamPrinter"
             ; "OpamRepositoryName"
-            ; "OpamSHA"
-            ; "OpamSWHID"
-            ; "OpamStd"
-            ; "OpamStubs"
-            ; "OpamStubsTypes"
             ; "OpamSwitch"
             ; "OpamSysPkg"
-            ; "OpamSystem"
             ; "OpamTypes"
             ; "OpamTypesBase"
-            ; "OpamUrl"
             ; "OpamVariable"
-            ; "OpamVersion"
-            ; "OpamVersionCompare"
-            ; "OpamVersionInfo"
-            ; "Ordering"
-            ; "Pp"
             ; "Predicate_lang"
             ; "Re"
             ; "Rpc"
             ; "Source"
-            ; "Spawn"
             ; "Stdune"
-            ; "Top_closure"
             ; "Unix"
             ; "UnixLabels"
             ; "Xdg"

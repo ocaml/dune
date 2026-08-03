@@ -5,9 +5,7 @@ implementation changes. This locks in the incremental-rebuild
 property for [Root]-aliased dependencies that any future change
 to dune's inter-library-dependency tracking must preserve.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.23)
-  > EOF
+  $ make_dune_project 3.23
 
   $ mkdir dep_lib consumer_lib
   $ cat > dep_lib/dune <<EOF
@@ -41,7 +39,7 @@ Editing only [dep_lib.mli] (the [.ml] is unchanged) changes
   > val extra : int
   > EOF
   $ dune build @check
-  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("\\.consumer_lib\\.objs/"))]'
+  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("\\.consumer_lib\\.objs/"))]'
   [
     {
       "target_files": [
@@ -67,5 +65,5 @@ untouched, so [consumer_lib] is not rebuilt:
   > let greeting = "hello-" ^ string_of_int extra
   > EOF
   $ dune build @check
-  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("\\.consumer_lib\\.objs/"))]'
+  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("\\.consumer_lib\\.objs/"))]'
   []

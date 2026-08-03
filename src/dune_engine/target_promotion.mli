@@ -10,7 +10,7 @@ val promote
   :  targets:Digest.t Targets.Produced.t
   -> promote:Rule.Promote.t
   -> promote_source:
-       (chmod:(int -> int)
+       (chmod:(Permissions.Mode.t -> Permissions.Mode.t)
         -> delete_dst_if_it_is_a_directory:bool
         -> src:Path.Build.t
         -> dst:Path.Source.t

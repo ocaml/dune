@@ -22,7 +22,7 @@ jobs:
 #
 
   nix-build:
-    name: Bootstrap with OCaml 5.4
+    name: Bootstrap with OCaml 5.5
     strategy:
       fail-fast: false
       matrix:
@@ -31,8 +31,8 @@ jobs:
           - ubuntu-latest
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v6
-      - uses: nixbuild/nix-quick-install-action@v34
+      - uses: actions/checkout@v7
+      - uses: nixbuild/nix-quick-install-action@v35
       - run: nix build
 
   nix-test:
@@ -44,31 +44,39 @@ jobs:
           - ubuntu-latest
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v6
-      - uses: nixbuild/nix-quick-install-action@v34
-      - run: nix develop -i -c make test
+      - uses: actions/checkout@v7
+      - uses: nixbuild/nix-quick-install-action@v35
+      - run: nix develop -i -s CI true -c make test
+
+  nix-build-trunk:
+    name: Bootstrap with OCaml trunk (Nix)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: nixbuild/nix-quick-install-action@v35
+      - run: nix build .#dune-trunk
 
   fmt:
     name: Format
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: nixbuild/nix-quick-install-action@v34
-      - run: nix develop .#fmt -c make fmt
+      - uses: actions/checkout@v7
+      - uses: nixbuild/nix-quick-install-action@v35
+      - run: nix develop .#fmt -c make fmt-preview
 
   diff-on-checkout:
     name: Ensure no files with CRLF line endings are committed to the repo
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - run: git diff --exit-code
 
   doc:
     name: Documentation
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: nixbuild/nix-quick-install-action@v34
+      - uses: actions/checkout@v7
+      - uses: nixbuild/nix-quick-install-action@v35
       - run: nix develop .#doc -c make doc
         env:
           LC_ALL: C
@@ -82,8 +90,8 @@ jobs:
           - ubuntu-latest
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v6
-      - uses: nixbuild/nix-quick-install-action@v34
+      - uses: actions/checkout@v7
+      - uses: nixbuild/nix-quick-install-action@v35
       - run: nix develop -i .#bootstrap-check -c make test-bootstrap-script
 
   nix-build-4-14:
@@ -95,8 +103,8 @@ jobs:
           - ubuntu-latest
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v6
-      - uses: nixbuild/nix-quick-install-action@v34
+      - uses: actions/checkout@v7
+      - uses: nixbuild/nix-quick-install-action@v35
       - uses: nix-community/cache-nix-action@v7
         with:
           primary-key: |
@@ -116,8 +124,8 @@ jobs:
           - ubuntu-latest
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v6
-      - uses: nixbuild/nix-quick-install-action@v34
+      - uses: actions/checkout@v7
+      - uses: nixbuild/nix-quick-install-action@v35
       - uses: nix-community/cache-nix-action@v7
         with:
           primary-key: |
@@ -153,28 +161,28 @@ jobs:
             os: ubuntu-latest
           # OCaml 5:
           ## ubuntu (x86)
-          - ocaml-compiler: 5.4.x
-            cache-prefix: 5.4.x
+          - ocaml-compiler: 5.5.x
+            cache-prefix: 5.5.x
             os: ubuntu-latest
             run_tests: true
           ## macos (Apple Silicon)
-          - ocaml-compiler: 5.4.x
-            cache-prefix: 5.4.x
+          - ocaml-compiler: 5.5.x
+            cache-prefix: 5.5.x
             os: macos-latest
             run_tests: true
           ## macos (x86)
-          - ocaml-compiler: 5.4.x
-            cache-prefix: 5.4.x
-            os: macos-15-intel
+          - ocaml-compiler: 5.5.x
+            cache-prefix: 5.5.x
+            os: macos-26-intel
           ## MSVC
-          - ocaml-compiler: ocaml-compiler.5.4.0,system-msvc
+          - ocaml-compiler: ocaml-compiler.5.5.0,system-msvc
             os: windows-latest
-            cache-prefix: ocaml-compiler.5.4.0-system-msvc
+            cache-prefix: ocaml-compiler.5.5.0-system-msvc
             run_tests: true
           ## mingw
-          - ocaml-compiler: ocaml-base-compiler.5.4.0,system-mingw
+          - ocaml-compiler: ocaml-base-compiler.5.5.0,system-mingw
             os: windows-latest
-            cache-prefix: ocaml-compiler.5.4.0-system-mingw
+            cache-prefix: ocaml-compiler.5.5.0-system-mingw
             run_tests: true
           # OCaml 4:
           ## ubuntu (x86)
@@ -207,7 +215,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       # The 32 bit gcc/g++ packages are by default out-of-date so we need to
       # manually update our package listing.
@@ -223,22 +231,22 @@ jobs:
       - name: Load opam cache when not Windows
         if: runner.os != 'Windows'
         id: opam-cache
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: |
             ~/.opam
             ~/work/dune/dune/_opam
-          key: opam-${{ matrix.os }}-${{ matrix.cache-prefix }}-${{ hashFiles('**.opam') }}
+          key: opam-${{ matrix.os }}-${{ matrix.cache-prefix }}-${{ hashFiles('**/*.opam') }}
 
       - name: Load opam cache when Windows
         if: runner.os == 'Windows'
         id: opam-cache-windows
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: |
             ~/.opam
             ~/work/dune/dune/_opam
-          key: opam-${{ matrix.os }}-${{ matrix.cache-prefix }}-${{ hashFiles('**.opam') }}
+          key: opam-${{ matrix.os }}-${{ matrix.cache-prefix }}-${{ hashFiles('**/*.opam') }}
 
       # Install ocamlfind-secondary and ocaml-secondary-compiler, if needed
       - run: |
@@ -283,30 +291,30 @@ jobs:
         if: ${{ matrix.configurator == true }}
 
       - name: Save cache when not Windows
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         if: steps.opam-cache.outputs.cache-hit != 'true' && runner.os != 'Windows'
         with:
           path: |
             ~/.opam
             ~/work/dune/dune/_opam
-          key: opam-${{ matrix.os }}-${{ matrix.cache-prefix }}-${{ hashFiles('**.opam') }}
+          key: opam-${{ matrix.os }}-${{ matrix.cache-prefix }}-${{ hashFiles('**/*.opam') }}
 
       - name: Save cache when Windows
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         if: steps.opam-cache-windows.outputs.cache-hit != 'true' && runner.os == 'Windows'
         with:
           path: |
             ~/.opam
             ~/work/dune/dune/_opam
-          key: opam-${{ matrix.os }}-${{ matrix.cache-prefix }}-${{ hashFiles('**.opam') }}
+          key: opam-${{ matrix.os }}-${{ matrix.cache-prefix }}-${{ hashFiles('**/*.opam') }}
 
   rocq:
     name: Rocq Tests
     needs: nix-build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: nixbuild/nix-quick-install-action@v34
+      - uses: actions/checkout@v7
+      - uses: nixbuild/nix-quick-install-action@v35
       - uses: nix-community/cache-nix-action@v7
         with:
           primary-key: |
@@ -320,8 +328,8 @@ jobs:
     needs: nix-build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: nixbuild/nix-quick-install-action@v34
+      - uses: actions/checkout@v7
+      - uses: nixbuild/nix-quick-install-action@v35
       - uses: nix-community/cache-nix-action@v7
         with:
           primary-key: |
@@ -336,7 +344,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Install Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: latest
 
@@ -346,7 +354,7 @@ jobs:
           token: ${{ github.token }}
 
       - name: Checkout Code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Use OCaml 5.2.x
         uses: ocaml/setup-ocaml@v3
@@ -355,12 +363,12 @@ jobs:
       - name: Load opam cache when not Windows
         if: runner.os != 'Windows'
         id: opam-cache
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: |
             ~/.opam
             ~/work/dune/dune/_opam
-          key: opam-wasm-${{ hashFiles('**.opam') }}
+          key: opam-wasm-${{ hashFiles('**/*.opam') }}
 
       - name: Install faked binaryen-bin package
         # The binaries have already been downloaded
@@ -378,38 +386,32 @@ jobs:
         run: opam exec -- make test-wasm
 
       - name: Save cache when not Windows
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         if: steps.opam-cache.outputs.cache-hit != 'true' && runner.os != 'Windows'
         with:
           path: |
             ~/.opam
             ~/work/dune/dune/_opam
-          key: opam-wasm-${{ hashFiles('**.opam') }}
+          key: opam-wasm-${{ hashFiles('**/*.opam') }}
 
   cygwin:
     name: Bootstrap on Cygwin
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Setup Cygwin
         uses: cygwin/cygwin-install-action@v6
         with:
           packages: ocaml gcc-core make
-      - name: Bootstrap Dune
-        run: make bootstrap
-      ## In order to build dune locally we need to have the re library
-      ## available. Even if we do, it is likely that our vendored blake3 rules
-      ## will miss cygwin support. So for now, we don't enable the rest.
-
-      # - name: Build Dune
-      # run: _boot/dune build dune.install
+      - name: Build Dune
+        run: make release
 
   oxcaml:
     name: OxCaml Tests (opam)
     needs: nix-build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Install OCaml
         uses: ocaml/setup-ocaml@v3
@@ -423,7 +425,7 @@ jobs:
       - name: Load opam cache when not Windows
         if: runner.os != 'Windows'
         id: opam-cache
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: |
             ~/.opam
@@ -431,12 +433,12 @@ jobs:
           key: opam-ox-${{ hashFiles('**.opam') }}
 
       - name: Install Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: latest
 
       - name: Install deps
-        run: opam install csexp pp re spawn uutf ppx_expect ppx_inline_test wasm_of_ocaml-compiler.6.0.1+ox1
+        run: opam install csexp pp re spawn uutf ppx_expect ppx_inline_test wasm_of_ocaml-compiler
 
       - name: Build dune
         run: opam exec -- make bootstrap
@@ -445,7 +447,7 @@ jobs:
         run: opam exec -- ./dune.exe test ./test/blackbox-tests/test-cases/oxcaml
 
       - name: Save cache when not Windows
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         if: steps.opam-cache.outputs.cache-hit != 'true' && runner.os != 'Windows'
         with:
           path: |
@@ -458,8 +460,8 @@ jobs:
     needs: nix-build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: nixbuild/nix-quick-install-action@v34
+      - uses: actions/checkout@v7
+      - uses: nixbuild/nix-quick-install-action@v35
         with:
           nix_conf: ${{ env.EXTRA_NIX_CONFIG }}
       - uses: nix-community/cache-nix-action@v7
@@ -489,7 +491,7 @@ jobs:
         uses: ocaml/setup-ocaml@v3
         with:
           ocaml-compiler: ${{ matrix.ocaml-compiler }}
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Create an empty switch
         run: opam switch create . --empty
       - name: Pin local packages to local dependencies
@@ -504,16 +506,16 @@ jobs:
     needs: nix-build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: nixbuild/nix-quick-install-action@v34
+      - uses: actions/checkout@v7
+      - uses: nixbuild/nix-quick-install-action@v35
       - run: nix develop .#microbench -c make dune build bench/micro
 
   utop-dev-tool-test:
     name: Test that the utop dev tool can be built and run
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: nixbuild/nix-quick-install-action@v34
+      - uses: actions/checkout@v7
+      - uses: nixbuild/nix-quick-install-action@v35
       - uses: nix-community/cache-nix-action@v7
         with:
           primary-key: |

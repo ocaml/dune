@@ -16,8 +16,12 @@ module Make (Src : Action_intf.Ast) (Dst : Action_intf.Ast) = struct
     =
     let f t ~dir = f t ~dir ~f_program ~f_string ~f_path ~f_target ~f_ext in
     match t with
-    | Run (prog, args) ->
-      Run (f_program ~dir prog, Appendable_list.map args ~f:(f_string ~dir))
+    | Run { prog; args; can_run_in_action_runner } ->
+      Run
+        { prog = f_program ~dir prog
+        ; args = Appendable_list.map args ~f:(f_string ~dir)
+        ; can_run_in_action_runner
+        }
     | With_accepted_exit_codes (pred, t) -> With_accepted_exit_codes (pred, f t ~dir)
     | Chdir (fn, t) -> Chdir (f_path ~dir fn, f t ~dir:fn)
     | Setenv (var, value, t) -> Setenv (f_string ~dir var, f_string ~dir value, f t ~dir)
@@ -32,7 +36,9 @@ module Make (Src : Action_intf.Ast) (Dst : Action_intf.Ast) = struct
     | Copy (x, y) -> Copy (f_path ~dir x, f_target ~dir y)
     | Symlink (x, y) -> Symlink (f_path ~dir x, f_target ~dir y)
     | Hardlink (x, y) -> Hardlink (f_path ~dir x, f_target ~dir y)
-    | Bash x -> Bash (f_string ~dir x)
+    | System x -> System (f_string ~dir x)
+    | Bash { script; can_run_in_action_runner } ->
+      Bash { script = f_string ~dir script; can_run_in_action_runner }
     | Write_file (x, perm, y) -> Write_file (f_target ~dir x, perm, f_string ~dir y)
     | Rename (x, y) -> Rename (f_target ~dir x, f_target ~dir y)
     | Remove_tree x -> Remove_tree (f_target ~dir x)

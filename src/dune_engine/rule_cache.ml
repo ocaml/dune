@@ -4,47 +4,11 @@ open Dune_cache.Hit_or_miss
 module Workspace_local = struct
   (* Stores information for deciding if a rule needs to be re-executed. *)
   module Database = struct
-    let digest_repr = Repr.view Repr.string ~to_:Digest.to_string
-
-    module Entry = struct
-      type t =
-        { rule_digest : Digest.t
-        ; dynamic_deps_stages : (Dep.Set.t * Digest.t) list
-        ; targets_digest : Digest.t
-        }
-
-      let repr =
-        Repr.record
-          "rule-cache-workspace-local-entry"
-          [ Repr.field "rule_digest" digest_repr ~get:(fun t -> t.rule_digest)
-          ; Repr.field
-              "dynamic_deps_stages"
-              (Repr.list (Repr.pair (Repr.abstract Dep.Set.to_dyn) digest_repr))
-              ~get:(fun t -> t.dynamic_deps_stages)
-          ; Repr.field "targets_digest" digest_repr ~get:(fun t -> t.targets_digest)
-          ]
-      ;;
-    end
-
-    type digest =
-      { digest : Digest.t
-      ; siblings : Digest.t Targets.Produced.t
-      ; generation : int
-      }
-
-    let digest_repr =
-      Repr.record
-        "rule-cache-workspace-local-digest"
-        [ Repr.field "digest" digest_repr ~get:(fun t -> t.digest)
-        ; Repr.field "siblings" (Repr.abstract Targets.Produced.to_dyn) ~get:(fun t ->
-            t.siblings)
-        ; Repr.field "generation" Repr.int ~get:(fun t -> t.generation)
-        ]
-    ;;
+    type digest = Workspace_cache.Rule_cache.digest
 
     (* Keyed by the first target of the rule. *)
-    type t =
-      { rules : Entry.t Path.Table.t
+    type t = Workspace_cache.Rule_cache.t =
+      { rules : Workspace_cache.Rule_cache.Entry.t Path.Table.t
       ; digests : digest Path.Build.Table.t
       ; invalidated_subtrees : int Path.Build.Table.t
         (* A digest is only valid if its generation is greater or equal to the
@@ -52,68 +16,7 @@ module Workspace_local = struct
       ; mutable generation : int (* The current generation *)
       }
 
-    let file = Path.relative Path.build_dir ".db"
-
-    let repr =
-      Repr.record
-        "rule-cache-workspace-local-database"
-        [ Repr.field
-            "rules"
-            (Repr.abstract (Path.Table.to_dyn (Repr.to_dyn Entry.repr)))
-            ~get:(fun t -> t.rules)
-        ; Repr.field
-            "digests"
-            (Repr.abstract (Path.Build.Table.to_dyn (Repr.to_dyn digest_repr)))
-            ~get:(fun t -> t.digests)
-        ; Repr.field
-            "invalidated_subtrees"
-            (Repr.abstract (Path.Build.Table.to_dyn Dyn.int))
-            ~get:(fun t -> t.invalidated_subtrees)
-        ; Repr.field "generation" Repr.int ~get:(fun t -> t.generation)
-        ]
-    ;;
-
-    module P = Dune_util.Persistent.Make (struct
-        type nonrec t = t
-
-        let name = "INCREMENTAL-DB"
-        let version = 8
-        let sharing = true
-        let repr = repr
-      end)
-
-    let needs_dumping = ref false
-
-    let t =
-      lazy
-        (match P.load file with
-         | Some t -> t
-         (* This mutable table is safe: it's only used by [execute_rule_impl] to
-            decide whether to rebuild a rule or not; [execute_rule_impl] ensures
-            that the targets are produced deterministically. *)
-         | None ->
-           { rules = Path.Table.create ()
-           ; digests = Path.Build.Table.create 128
-           ; invalidated_subtrees = Path.Build.Table.create 16
-           ; generation = 0
-           })
-    ;;
-
-    let dump () =
-      if !needs_dumping && Path.build_dir_exists ()
-      then (
-        needs_dumping := false;
-        Console.Status_line.with_overlay
-          (Live (fun () -> Pp.hbox (Pp.text "Saving build trace db...")))
-          ~f:(fun () -> P.dump file (Lazy.force t)))
-    ;;
-
-    (* CR-someday amokhov: If this happens to be executed after we've cleared
-       the status line and printed some text afterwards, [dump] would overwrite
-       that text by the "Saving..." message. If this hypothetical scenario turns
-       out to be a real problem, we will need to add some synchronisation
-       mechanism to prevent clearing the status line too early. *)
-    let () = At_exit.at_exit_ignore Dune_trace.at_exit dump
+    let t = lazy (Workspace_cache.rule_cache ())
 
     let get path =
       let t = Lazy.force t in
@@ -122,10 +25,10 @@ module Workspace_local = struct
 
     let set path e (targets : _ Targets.Produced.t) =
       let t = Lazy.force t in
-      needs_dumping := true;
+      Workspace_cache.mark_dirty ();
       Path.Table.set t.rules path e;
       let set_digest p digest =
-        let digest = { digest; siblings = targets; generation = t.generation } in
+        let digest : digest = { digest; siblings = targets; generation = t.generation } in
         Path.Build.Table.set t.digests (Path.Build.append_local targets.root p) digest
       in
       Targets.Produced.iteri targets ~f:set_digest ~d:(fun _ -> ())
@@ -133,14 +36,14 @@ module Workspace_local = struct
 
     let remove (targets : Targets.Validated.t) =
       let t = Lazy.force t in
-      needs_dumping := true;
+      Workspace_cache.mark_dirty ();
       let remove = Path.Build.Table.remove t.digests in
       Targets.Validated.iter targets ~file:remove ~dir:remove
     ;;
 
     let remove_target path =
       let t = Lazy.force t in
-      needs_dumping := true;
+      Workspace_cache.mark_dirty ();
       match Path.Build.Table.find t.digests path with
       | None -> ()
       | Some { digest = _; siblings; _ } ->
@@ -181,7 +84,7 @@ module Workspace_local = struct
 
     let remove_subtree root =
       let t = Lazy.force t in
-      needs_dumping := true;
+      Workspace_cache.mark_dirty ();
       t.generation <- t.generation + 1;
       Path.Build.Table.set t.invalidated_subtrees root t.generation
     ;;

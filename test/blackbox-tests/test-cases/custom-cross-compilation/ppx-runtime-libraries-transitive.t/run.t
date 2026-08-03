@@ -6,10 +6,7 @@ ppx_runtime_libraries
   $ touch etc/findlib.conf etc/findlib.conf.d/foo.conf
 
   $ mkdir lib
-  $ cat > dune-project <<EOF
-  > (lang dune 3.8)
-  > (package (name ppx-cross))
-  > EOF
+  $ make_dune_project_with_package 3.8 ppx-cross
 
   $ cat > lib/dune <<EOF
   > (library

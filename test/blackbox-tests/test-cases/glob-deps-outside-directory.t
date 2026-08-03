@@ -1,8 +1,6 @@
 Glob deps in a subdirectory that refer to a path outside that subdirectory
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.6)
-  > EOF
+  $ make_dune_project 3.6
 
   $ mkdir -p foo bar
 

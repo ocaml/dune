@@ -3,10 +3,7 @@ We create 2 directory targets which share a whole subdirectory.
   $ export DUNE_CACHE_ROOT=$PWD/.cache
   $ export DUNE_CACHE=enabled
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.11)
-  > (using directory-targets 0.1)
-  > EOF
+  $ make_directory_targets_project 3.11
 
   $ cat > dune << EOF
   > (rule

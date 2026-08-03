@@ -12,9 +12,7 @@ libs might escape the per-module dep filter (the intra-stanza
 rule without a dep on the aliased lib's [.cmi] — which surfaces
 as a hard build error on rebuild.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.23)
-  > EOF
+  $ make_dune_project 3.23
 
   $ cat > dune <<EOF
   > (library (name dep_lib) (wrapped false) (modules original_name))
@@ -55,14 +53,7 @@ Edit [dep_lib]'s interface. [consumer] reaches [Original_name]
 through [Foo.Re], so it must rebuild — and must rebuild cleanly,
 not error out with "inconsistent assumptions over interface":
 
-  $ cat > original_name.mli <<EOF
-  > val x : string
-  > val y : int
-  > EOF
-  $ cat > original_name.ml <<EOF
-  > let x = "hello"
-  > let y = 42
-  > EOF
+  $ write_original_name_xy
   $ dune build @check
-  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("consumer"))] | length'
+  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("consumer"))] | length'
   1

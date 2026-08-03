@@ -144,7 +144,6 @@ end
 
 let actions_dir_basename = ".actions"
 let bin_dir_basename = ".bin"
-let cc_vendor = "cc_vendor"
 let cinaps_corrected = ".cinaps-corrected"
 let checksum = "checksum"
 let coqc = "coqc"

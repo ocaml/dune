@@ -1,8 +1,6 @@
 Testing that vendoring a parameterised library works as expected:
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.20)
-  > EOF
+  $ make_dune_project 3.20
 
 Note that this root `dune-project` does not enables `(using oxcaml 0.1)`, but
 will depend on a vendored project that does.
@@ -34,35 +32,49 @@ The parameter definition must reside in a separate folder from its implementatio
   > (library_parameter (public_name vendored.param) (name param) (modules param))
   > EOF
 
+  $ write_vendored_dune() {
+  >   local param_impl_public_name="${1:-}"
+  >   local lib_param_public_name="${2:-}"
+  >   local vendored_lib_public_name="${3:-}"
+  > 
+  >   {
+  >     echo "(library"
+  >     if [ -n "$param_impl_public_name" ]; then
+  >       echo "   (public_name ${param_impl_public_name})"
+  >     fi
+  >     echo "   (name param_impl)"
+  >     echo "   (modules param_impl)"
+  >     echo "   (implements param))"
+  >     echo ""
+  >     echo "(library"
+  >     if [ -n "$lib_param_public_name" ]; then
+  >       echo "  (public_name ${lib_param_public_name})"
+  >     fi
+  >     echo "  (name lib_param)"
+  >     echo "  (modules lib_param)"
+  >     echo "  (parameters param))"
+  >     echo ""
+  >     echo "(library"
+  >     if [ -n "$vendored_lib_public_name" ]; then
+  >       echo "  (public_name ${vendored_lib_public_name})"
+  >     fi
+  >     echo "  (name vendored_lib)"
+  >     echo "  (modules vendored_lib)"
+  >     echo "  (libraries"
+  >     echo "    (instantiate lib_param param_impl)))"
+  >     echo ""
+  >     echo "(executable"
+  >     echo "  (name vendored_bin)"
+  >     echo "  (modules vendored_bin)"
+  >     echo "  (libraries vendored_lib))"
+  >   } > vendored/dune
+  > }
+
 Then three vendored libraries, one for the implementation of the parameter, one
 parameterised library, one library which depends on its instantation, and a
 non-public executable:
 
-  $ cat > vendored/dune <<EOF
-  > (library
-  >    (public_name vendored.param_impl)
-  >    (name param_impl)
-  >    (modules param_impl)
-  >    (implements param))
-  > 
-  > (library
-  >   (public_name vendored.lib_param)
-  >   (name lib_param)
-  >   (modules lib_param)
-  >   (parameters param))
-  > 
-  > (library
-  >   (public_name vendored.vendored_lib)
-  >   (name vendored_lib)
-  >   (modules vendored_lib)
-  >   (libraries
-  >     (instantiate lib_param param_impl)))
-  > 
-  > (executable
-  >   (name vendored_bin)
-  >   (modules vendored_bin)
-  >   (libraries vendored_lib))
-  > EOF
+  $ write_vendored_dune vendored.param_impl vendored.lib_param vendored.vendored_lib
 
 A simple implementation for each:
 
@@ -107,28 +119,7 @@ scope:
 
 But the vendored binary could use private libraries:
 
-  $ cat > vendored/dune <<EOF
-  > (library
-  >    (name param_impl)
-  >    (modules param_impl)
-  >    (implements param))
-  > 
-  > (library
-  >   (name lib_param)
-  >   (modules lib_param)
-  >   (parameters param))
-  > 
-  > (library
-  >   (name vendored_lib)
-  >   (modules vendored_lib)
-  >   (libraries
-  >     (instantiate lib_param param_impl)))
-  > 
-  > (executable
-  >   (name vendored_bin)
-  >   (modules vendored_bin)
-  >   (libraries vendored_lib))
-  > EOF
+  $ write_vendored_dune
 
   $ dune clean
   $ dune exec ./vendored/vendored_bin.exe
@@ -147,29 +138,7 @@ param_impl)`:
 We can also have a mix of public/private, with e.g. the parameterised library
 being public:
 
-  $ cat > vendored/dune <<EOF
-  > (library
-  >    (name param_impl)
-  >    (modules param_impl)
-  >    (implements param))
-  > 
-  > (library
-  >   (public_name vendored.lib_param)
-  >   (name lib_param)
-  >   (modules lib_param)
-  >   (parameters param))
-  > 
-  > (library
-  >   (name vendored_lib)
-  >   (modules vendored_lib)
-  >   (libraries
-  >     (instantiate lib_param param_impl)))
-  > 
-  > (executable
-  >   (name vendored_bin)
-  >   (modules vendored_bin)
-  >   (libraries vendored_lib))
-  > EOF
+  $ write_vendored_dune "" vendored.lib_param
 
   $ dune clean
   $ dune exec ./vendored/vendored_bin.exe
@@ -190,29 +159,7 @@ being public:
 
 Or only the parameter being public:
 
-  $ cat > vendored/dune <<EOF
-  > (library
-  >    (public_name vendored.param_impl)
-  >    (name param_impl)
-  >    (modules param_impl)
-  >    (implements param))
-  > 
-  > (library
-  >   (name lib_param)
-  >   (modules lib_param)
-  >   (parameters param))
-  > 
-  > (library
-  >   (name vendored_lib)
-  >   (modules vendored_lib)
-  >   (libraries
-  >     (instantiate lib_param param_impl)))
-  > 
-  > (executable
-  >   (name vendored_bin)
-  >   (modules vendored_bin)
-  >   (libraries vendored_lib))
-  > EOF
+  $ write_vendored_dune vendored.param_impl
 
   $ dune clean
   $ dune exec ./vendored/vendored_bin.exe
@@ -239,33 +186,13 @@ The parameter itself could be private too,
   5 |    (implements param))
                      ^^^^^
   Error: Library "param" is private, it cannot be a dependency of a public
-  library. You need to give "param" a public name.
+  library. You need to give "param" a public name or add a (package ...) field
+  to its stanza.
   [1]
 
 But only if there are no public stanza depending on it:
 
-  $ cat > vendored/dune <<EOF
-  > (library
-  >    (name param_impl)
-  >    (modules param_impl)
-  >    (implements param))
-  > 
-  > (library
-  >   (name lib_param)
-  >   (modules lib_param)
-  >   (parameters param))
-  > 
-  > (library
-  >   (name vendored_lib)
-  >   (modules vendored_lib)
-  >   (libraries
-  >     (instantiate lib_param param_impl)))
-  > 
-  > (executable
-  >   (name vendored_bin)
-  >   (modules vendored_bin)
-  >   (libraries vendored_lib))
-  > EOF
+  $ write_vendored_dune
 
   $ dune exec ./vendored/vendored_bin.exe
   vendored_bin:vendored:lib_param:impl

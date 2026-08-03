@@ -1,34 +1,50 @@
-(** Dependencies of a Memo node. *)
+(** A series-parallel graph representing the dependencies of a Memo node.
+
+    Dependencies discovered sequentially (via [let*]/[>>=]) form a sequence; dependencies
+    discovered through a parallel combinator (e.g. [fork_and_join]) form a parallel
+    section. This lets [changed_or_not] check independent dependencies concurrently while
+    still checking sequential ones in order. *)
+
+open! Stdune
 
 type 'node t
 
 val empty : 'node t
 
-(* CR-soon amokhov: Push accumulation of dependencies inside this module to avoid dealing
-   with reversed lists in [memo.ml]. *)
-val create : deps_rev:'node list -> 'node t
-val length : 'node t -> int
-val to_list : 'node t -> 'node list
+(** Like [t] but supports cheap appending of new dependencies. *)
+module Dynamic : sig
+  type 'node static := 'node t
+  type 'node t
 
-(** Checking dependencies of a node can lead to one of these outcomes:
+  val empty : 'node t
 
-    - [Unchanged]: All dependencies of the node are up to date. We can therefore skip
-      recomputing the node and can reuse the value computed in the previous run.
+  (** Append a dependency discovered after the existing ones. *)
+  val append_seq : 'node t -> node:'node -> 'node t
 
-    - [Changed]: One of the dependencies has changed since the previous run and the node
-      should therefore be recomputed.
+  (** Append a parallel section of [num_threads] threads, where thread [i]'s dependencies
+      are [f i], each captured independently. Builds the section directly from [f], avoiding
+      an intermediate list of the threads' dependencies. *)
+  val append_par_init : 'node t -> num_threads:int -> f:(int -> 'node static) -> 'node t
 
-    - [Cancelled _]: One of the dependencies leads to a dependency cycle. In this case,
-      there is no point in recomputing the current node: it's impossible to bring its
-      dependencies up to date! *)
-module Changed_or_not : sig
-  type 'cycle t =
-    | Unchanged
-    | Changed
-    | Cancelled of { dependency_cycle : 'cycle }
+  val to_static : 'node t -> 'node static
 end
 
+(** [changed_or_not t ~f] checks each dependency with [f]. Sequential sections are checked
+    in order and the check stops early at the first [Changed]/[Cancelled]; parallel
+    sections are checked concurrently and their results combined.
+
+    [ok_to_recompute_eagerly] is [true] when the dependency is a direct child of a parallel
+    section, telling [f] that it may eagerly recompute a dependency without a cutoff in
+    parallel with its siblings (instead of deferring the recomputation). *)
 val changed_or_not
   :  'node t
-  -> f:('node -> 'cycle Changed_or_not.t Fiber.t)
+  -> f:(ok_to_recompute_eagerly:bool -> 'node -> 'cycle Changed_or_not.t Fiber.t)
   -> 'cycle Changed_or_not.t Fiber.t
+
+module For_debugging : sig
+  val to_list : 'node t -> 'node list
+
+  (** A structural rendering that preserves the [Seq]/[Par]/[Singleton]/[Empty]
+      nesting (and intra-[Seq] order), unlike [to_list] which flattens. *)
+  val to_dyn : ('node -> Dyn.t) -> 'node t -> Dyn.t
+end

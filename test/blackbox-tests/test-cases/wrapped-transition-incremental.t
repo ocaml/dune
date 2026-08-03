@@ -5,9 +5,7 @@ A library migrating from unwrapped to wrapped exposes compat shims so that
 downstream code can keep using the bare module name (Foo) instead of the
 new qualified name (Mylib.Foo). 
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.23)
-  > EOF
+  $ make_dune_project 3.23
 
   $ mkdir mylib
   $ cat > mylib/dune <<EOF
@@ -50,7 +48,7 @@ The compat shim foo.cmi now depends on both the wrapper mylib.cmi and the
 inner module mylib__Foo.cmi that it re-exports:
 
   $ dune rules --root . --format=json --deps mylib/.mylib.objs/byte/foo.cmi |
-  > jq -r 'include "dune"; .[] | depsFilePathsOfKind("In_build_dir")'
+  > jq_dune -r '.[] | depsFilePathsOfKind("In_build_dir")'
   _build/default/mylib/.mylib.objs/byte/mylib.cmi
   _build/default/mylib/.mylib.objs/byte/mylib__Foo.cmi
   _build/default/mylib/.wrapped_compat/Foo.ml-gen

@@ -1,9 +1,6 @@
 Test error message for modules belonging to melange.emit and another stanza
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.8)
-  > (using melange 0.1)
-  > EOF
+  $ make_melange_project 3.8 0.1
 
   $ cat > dune <<EOF
   > (library
@@ -24,8 +21,8 @@ Test error message for modules belonging to melange.emit and another stanza
   Error: Module "Main" is used in several stanzas:
   - dune:1
   - dune:4
-  To fix this error, you must specify an explicit "modules" field in every
-  library, executable, and executables stanzas in this dune file. Note that
-  each module cannot appear in more than one "modules" field - it must belong
-  to a single library or executable.
+  To fix this error, you must specify explicit "modules" fields so that each
+  module belongs to only one stanza. Stanzas without an explicit "modules"
+  field use all modules in the directory by default. This applies to library,
+  executable, executables, test, tests, and melange.emit stanzas.
   [1]

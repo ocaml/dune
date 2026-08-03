@@ -1,6 +1,12 @@
 This test generates documentation using odoc for a library:
 
-  $ dune build @doc-new
+  $ docs=_build/default/_doc_new/html/docs
+  $ dune build \
+  >   "$docs/db.js" \
+  >   "$docs/odoc.support/highlight.pack.js" \
+  >   "$docs/odoc.support/katex.min.js" \
+  >   "$docs/odoc.support/odoc_search.js" \
+  >   "$docs/sherlodoc.js"
 
 We index the compiler directory (+ocaml), in which num is optionally present.
 To make the test not depend on whether it is installed, we filter the output.
@@ -42,7 +48,7 @@ This test if the sherlodoc js files are generated
   ./_build/default/_doc_new/html/docs/odoc.support/odoc_search.js
   ./_build/default/_doc_new/html/docs/sherlodoc.js
 
-  $ cat ./_build/default/_doc_new/html/docs/db.js | scrub_num
+  $ cat "$docs/db.js" | scrub_num
   /* Sherlodoc DB for: */
   /*   - ../../odoc/stdlib/camlinternalFormat.odocl */
   /*   - ../../odoc/stdlib/camlinternalFormatBasics.odocl */

@@ -2,8 +2,7 @@ Builds installable packages with duplicate private library names.
 
   $ dune build @install
 
-  $ dune trace cat | jq -c '
-  > include "dune";
+  $ dune trace cat | jq_dune -c '
   >   select(.cat == "process" and .name == "start")
   > | .args
   > | targets

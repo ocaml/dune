@@ -37,9 +37,7 @@ over [lib_re_export]'s objdir does not capture [Original_name.mli]
 changes either. The cctx-wide compile-rule deps still cover
 [dep_lib] on trunk, so [consumer] rebuilds.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.23)
-  > EOF
+  $ make_dune_project 3.23
 
   $ cat > dune <<EOF
   > (library (name dep_lib) (wrapped false) (modules original_name))
@@ -80,16 +78,9 @@ Edit [dep_lib]'s interface. [consumer] reaches [dep_lib]'s
 [Lib_re_export]). The cctx-wide compile-rule deps include
 [dep_lib], so [consumer] rebuilds:
 
-  $ cat > original_name.mli <<EOF
-  > val x : string
-  > val y : int
-  > EOF
-  $ cat > original_name.ml <<EOF
-  > let x = "hello"
-  > let y = 42
-  > EOF
+  $ write_original_name_xy
   $ dune build @check
-  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("consumer"))]'
+  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("consumer"))]'
   [
     {
       "target_files": [

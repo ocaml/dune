@@ -135,6 +135,17 @@ let unset_multi t variable_names =
     unset t variable_name)
 ;;
 
+let combine ~current_system ~context ~unset =
+  let t =
+    [ current_system; context ]
+    |> List.filter_opt
+    |> List.fold_left ~init:with_defaults ~f:extend
+  in
+  match unset with
+  | None -> t
+  | Some variables -> unset_multi t variables
+;;
+
 let remove_all_except t variable_names =
   Package_variable_name.Map.foldi t ~init:t ~f:(fun variable_name _value acc ->
     if Package_variable_name.Set.mem variable_names variable_name

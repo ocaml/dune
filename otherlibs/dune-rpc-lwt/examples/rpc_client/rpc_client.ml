@@ -25,7 +25,14 @@ let () =
          Dune_rpc_lwt.V1.Client.poll client Dune_rpc.V1.Sub.progress >|= Result.get_ok
        in
        print_endline "Waiting for next progress event...";
-       let* progress_event = Dune_rpc_lwt.V1.Client.Stream.next progress_stream in
+       let rec wait_for_terminal_progress_event () =
+         let* progress_event = Dune_rpc_lwt.V1.Client.Stream.next progress_stream in
+         match progress_event with
+         | Some (In_progress _ | Interrupted | Waiting) ->
+           wait_for_terminal_progress_event ()
+         | Some (Success | Failed) | None -> Lwt.return progress_event
+       in
+       let* progress_event = wait_for_terminal_progress_event () in
        let message =
          match progress_event with
          | None -> "(none)"

@@ -1,9 +1,7 @@
 For a test based on an .expected file, the deps field is ignored.
 This is visible when trying to build the `@all` alias. See #5950.
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.3)
-  > EOF
+  $ make_dune_project 3.3
 
   $ cat > dune << EOF
   > (test

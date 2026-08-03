@@ -1,0 +1,9 @@
+(executable
+ (name main)
+ ;; The config file is in a subdirectory to avoid the spurious cycles in
+ ;; enabled_if. See the enabled_if/eif-library-cycle.t test for instance.
+ (enabled_if (= %{read:./config/enable_executable} "true")))
+
+(executable
+ (name disabled)
+ (enabled_if (= %{read:./config/disabled} "true")))

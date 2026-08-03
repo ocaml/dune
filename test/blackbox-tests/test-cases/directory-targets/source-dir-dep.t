@@ -3,10 +3,7 @@ Depend on a source directory.
 Currently, this feature isn't working. It's only possible to depend on
 directories that are a target of a rule.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.0)
-  > (using directory-targets 0.1)
-  > EOF
+  $ make_directory_targets_project 3.0
 
   $ mkdir foo
   $ touch foo/{x,y,z}

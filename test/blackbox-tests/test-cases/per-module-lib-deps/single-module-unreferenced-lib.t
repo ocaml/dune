@@ -25,9 +25,7 @@ single-module-consumer skip-ocamldep limitation.
 See: https://github.com/ocaml/dune/issues/4572
 See: https://github.com/ocaml/dune/pull/14116#issuecomment-4286949811
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.23)
-  > EOF
+  $ make_dune_project 3.23
 
   $ cat > dune <<EOF
   > (library (name dep_lib) (wrapped false) (modules dep_module))
@@ -63,5 +61,5 @@ rebuild targets observed in the trace:
   > let y = "hello"
   > EOF
   $ dune build @check
-  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("spurious_rebuild"))] | length'
+  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("spurious_rebuild"))] | length'
   1

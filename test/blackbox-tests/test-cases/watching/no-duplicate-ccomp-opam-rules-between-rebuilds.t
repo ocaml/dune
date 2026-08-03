@@ -30,6 +30,4 @@ between rebuilds.
   $ build .
   Success
 
-  $ stop_dune
-  Success, waiting for filesystem changes...
-  Success, waiting for filesystem changes...
+  $ stop_dune_quiet

@@ -27,13 +27,12 @@ not be directly used and thus usually not built by @check:
   ./_build/default/vendor/otherproject/.vendored_lib.objs/cctx.ocaml-index
 
 
-  $ FILE=$PWD/main.ml
-  $ printf "(4:File%d:%s)" ${#FILE} $FILE | dune ocaml-merlin |
-  > sed -E "s/[[:digit:]]+:/\?:/g" | tr '(' '\n' | grep ":INDEX?"
-  ?:INDEX?:$TESTCASE_ROOT/_build/default/.main.eobjs/cctx.ocaml-index)
-  ?:INDEX?:$TESTCASE_ROOT/_build/default/implicit-lib/.imp_lib.objs/cctx.ocaml-index)
-  ?:INDEX?:$TESTCASE_ROOT/_build/default/lib/.otherlib.objs/cctx.ocaml-index)
-  ?:INDEX?:$TESTCASE_ROOT/_build/default/private-module/.pmodlib.objs/cctx.ocaml-index)
-  ?:INDEX?:$TESTCASE_ROOT/_build/default/sub-project/.subprojectlib.objs/cctx.ocaml-index)
-  ?:INDEX?:$TESTCASE_ROOT/_build/default/vendor/otherproject/.private_lib.objs/cctx.ocaml-index)
-  ?:INDEX?:$TESTCASE_ROOT/_build/default/vendor/otherproject/.vendored_lib.objs/cctx.ocaml-index)
+  $ dune ocaml merlin dump-config --format=json . |
+  > jq -r '.[0].config[] | select(.[0] == "INDEX") | "INDEX \(.[1])"'
+  INDEX $TESTCASE_ROOT/_build/default/.main.eobjs/cctx.ocaml-index
+  INDEX $TESTCASE_ROOT/_build/default/implicit-lib/.imp_lib.objs/cctx.ocaml-index
+  INDEX $TESTCASE_ROOT/_build/default/lib/.otherlib.objs/cctx.ocaml-index
+  INDEX $TESTCASE_ROOT/_build/default/private-module/.pmodlib.objs/cctx.ocaml-index
+  INDEX $TESTCASE_ROOT/_build/default/sub-project/.subprojectlib.objs/cctx.ocaml-index
+  INDEX $TESTCASE_ROOT/_build/default/vendor/otherproject/.private_lib.objs/cctx.ocaml-index
+  INDEX $TESTCASE_ROOT/_build/default/vendor/otherproject/.vendored_lib.objs/cctx.ocaml-index

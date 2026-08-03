@@ -1,7 +1,28 @@
+(rule
+ (write-file runtime_events_support.enabled ""))
+
+(rule
+ (write-file runtime_events_support.disabled ""))
+
+;; ppx_optcomp doesn't know about OxCaml, but Dune does.
+
+(rule
+ (enabled_if %{ocaml-config:ox})
+ (action
+  (write-file
+   ppx-optcomp-flags
+   "-cookie\nppx_optcomp.env=env ~ocaml_version:(Defined(4,14,0)) ~oxcaml:(Defined())")))
+
+(rule
+ (enabled_if
+  (not %{ocaml-config:ox}))
+ (action
+  (write-file ppx-optcomp-flags "")))
+
 (library
  (name dune_trace)
  (preprocess
-  (pps ppx_optcomp))
+  (pps ppx_optcomp -- %{read-lines:ppx-optcomp-flags}))
  (foreign_stubs
   (language c)
   (names dune_trace_stubs))
@@ -11,6 +32,11 @@
   re
   csexp
   bigstringaf
+  (select
+   runtime_events_support
+   from
+   ;; CR-someday rgrinberg: remove once ox gains support for this
+   (runtime_events -> runtime_events_support.enabled)
+   (!runtime_events -> runtime_events_support.disabled))
   threads.posix
-  spawn
   unix))

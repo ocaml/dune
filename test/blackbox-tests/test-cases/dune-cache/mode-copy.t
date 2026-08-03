@@ -6,30 +6,7 @@ variable, and via the [DUNE_CACHE_ROOT] variable. Here we test the former.
   $ export XDG_CACHE_HOME=$PWD/.xdg-cache
   $ setup_xdg_runtime_dir
 
-  $ cat > config <<EOF
-  > (lang dune 3.0)
-  > (cache enabled)
-  > (cache-storage-mode copy)
-  > EOF
-  $ cat > dune-project <<EOF
-  > (lang dune 3.5)
-  > EOF
-  $ cat > dune <<EOF
-  > (rule
-  >  (deps source)
-  >  (targets target1 target2)
-  >  (action
-  >   (progn
-  >    (no-infer (with-stdout-to beacon (echo "")))
-  >    (with-stdout-to target1 (cat source))
-  >    (with-stdout-to target2 (cat source source)))))
-  > EOF
-
-It's a duck. It quacks. (Yes, the author of this comment didn't get it.)
-
-  $ cat > source <<EOF
-  > \_o< COIN
-  > EOF
+  $ setup_basic_shared_cache_project copy
 
 Test that after the build, the files in the build directory have the hard link
 count of 1, because they are not shared with the corresponding cache entries.
@@ -42,7 +19,7 @@ and shared cache misses, because we've never built target1 before.
 
 Verify we see cache miss events for our targets in the trace:
 
-  $ dune trace cat | jq -s 'include "dune"; cacheMissesMatching("source|target1")'
+  $ dune trace cat | jq_dune -s 'cacheMissesMatching("source|target1")'
   {
     "name": "workspace_local_miss",
     "target": "_build/default/source",
@@ -81,7 +58,7 @@ misses, because we've cleaned _build/default but not the shared cache.
 
 Verify we see only workspace-local miss events for our targets (shared cache hits should not appear as misses):
 
-  $ dune trace cat | jq -s 'include "dune"; cacheMissesMatching("source|target1")'
+  $ dune trace cat | jq_dune -s 'cacheMissesMatching("source|target1")'
   {
     "name": "workspace_local_miss",
     "target": "_build/default/source",
@@ -91,6 +68,15 @@ Verify we see only workspace-local miss events for our targets (shared cache hit
     "name": "workspace_local_miss",
     "target": "_build/default/target1",
     "reason": "never seen this target before"
+  }
+  $ dune trace cat | jq_dune -s 'cacheHitsMatching("source|target1")'
+  {
+    "name": "hit",
+    "target": "_build/default/source"
+  }
+  {
+    "name": "hit",
+    "target": "_build/default/target1"
   }
 
   $ dune_cmd stat hardlinks _build/default/source
@@ -114,14 +100,12 @@ No cache misses should appear in the trace.
 
   $ dune build --config-file=config target1
 
-  $ dune trace cat | jq -s 'include "dune"; [ .[] | cacheMisses ] | length'
+  $ dune trace cat | jq_dune -s '[ .[] | cacheMisses ] | length'
   0
 
 Test that the cache stores all historical build results.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 2.1)
-  > EOF
+  $ make_dune_project 2.1
   $ cat > dune-v1 <<EOF
   > (rule
   >  (targets t1)
@@ -161,3 +145,37 @@ Test that the cache stores all historical build results.
   $ cat _build/default/t2
   v1
   v1
+
+Test that executable permissions are restored from the shared cache.
+
+  $ rm -rf .xdg-cache executable
+  $ mkdir executable
+  $ cat > executable/dune-project <<EOF
+  > (lang dune 3.5)
+  > EOF
+  $ cat > executable/dune <<EOF
+  > (rule
+  >  (target tool)
+  >  (action
+  >   (progn
+  >    (no-infer (with-stdout-to marker (echo ran)))
+  >    (bash "echo '#!/bin/sh' > tool; chmod +x tool"))))
+  > EOF
+
+  $ (cd executable && dune build --cache=enabled --cache-storage-mode=copy tool)
+  $ dune_cmd exists executable/_build/default/marker
+  true
+  $ dune_cmd stat permissions executable/_build/default/tool
+  555
+
+  $ rm -rf executable/_build
+  $ (cd executable && dune build --cache=enabled --cache-storage-mode=copy tool)
+  $ (cd executable && dune trace cat | jq_dune -s 'cacheHitsMatching("^_build/default/tool$")')
+  {
+    "name": "hit",
+    "target": "_build/default/tool"
+  }
+  $ dune_cmd exists executable/_build/default/marker
+  false
+  $ dune_cmd stat permissions executable/_build/default/tool
+  555

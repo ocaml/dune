@@ -1,8 +1,6 @@
 Strips terminal control sequences from `dune runtest` output.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 1.0)
-  > EOF
+  $ make_dune_project 1.0
 
   $ cat > dune <<EOF
   > (test

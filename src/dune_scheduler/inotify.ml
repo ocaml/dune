@@ -1,13 +1,15 @@
 open Stdune
 
-(** We don't make calls to [Inotify] functions ([add_watch], [rm_watch]) in a
-    separate thread because:
+(** Calls to [add] are made by client threads, while raw events are processed on
+    the watcher thread. [t.mutex] protects [watch_table], and [add] holds it
+    across [Inotify.add_watch] and the following [watch_table] update so the
+    watcher thread cannot process an event for the new watch before the table is
+    populated.
 
-    - we don't think they can block for a while
-    - Inotify doesn't release the OCaml lock anyway
-    - it avoids racing with the select loop below, by preventing adding a watch
-      and seeing an event about it before having filled the hashtable (not that
-      we have observed this particular race). *)
+    We still call [Inotify.add_watch] synchronously because:
+
+    - we don't think it can block for a while
+    - Inotify doesn't release the OCaml lock anyway *)
 
 module Inotify = Ocaml_inotify.Inotify
 
@@ -56,8 +58,9 @@ end
 
 type t =
   { fd : Fd.t
+  ; mutex : Mutex.t
   ; watch_table : (Inotify_watch.t, string) Table.t
-  ; send_emit_events_job_to_scheduler : (unit -> Event.t list) -> unit
+  ; emit_events : Event.t list -> unit
   ; select_events : Inotify.selector list
   }
 
@@ -67,44 +70,45 @@ type modify_event_selector =
   ]
 
 let add t path =
-  let watch =
-    Inotify.add_watch (Fd.unsafe_to_unix_file_descr t.fd) path t.select_events
-  in
-  (* XXX why are we just overwriting existing watches? *)
-  Table.set t.watch_table watch path
+  Mutex.protect t.mutex (fun () ->
+    let watch =
+      Inotify.add_watch (Fd.unsafe_to_unix_file_descr t.fd) path t.select_events
+    in
+    (* XXX why are we just overwriting existing watches? *)
+    Table.set t.watch_table watch path)
 ;;
 
 let process_raw_events t events =
-  let watch_table = t.watch_table in
   let ev_kinds =
-    List.concat_map events ~f:(fun (watch, ev_kinds, trans_id, fn) ->
-      if
-        Inotify.int_of_watch watch = -1
-        (* queue overflow event is always reported on watch -1 *)
-      then
-        List.filter_map ev_kinds ~f:(fun ev ->
-          match ev with
-          | Inotify.Q_overflow -> Some (ev, trans_id, "<overflow>")
-          | _ -> None)
-      else (
-        match Table.find watch_table watch with
-        | None ->
-          Console.print
-            [ Pp.verbatimf
-                "Events for an unknown watch (%d) [%s]\n"
-                (Inotify.int_of_watch watch)
-                (String.concat
-                   ~sep:", "
-                   (List.map ev_kinds ~f:Inotify.string_of_event_kind))
-            ];
-          []
-        | Some path ->
-          let fn =
-            match fn with
-            | None -> path
-            | Some fn -> Filename.concat path fn
-          in
-          List.map ev_kinds ~f:(fun ev -> ev, trans_id, fn)))
+    Mutex.protect t.mutex (fun () ->
+      List.concat_map events ~f:(fun (watch, ev_kinds, trans_id, fn) ->
+        if
+          Inotify.int_of_watch watch = -1
+          (* queue overflow event is always reported on watch -1 *)
+        then
+          List.filter_map ev_kinds ~f:(fun ev ->
+            match ev with
+            | Inotify.Q_overflow -> Some (ev, trans_id, "<overflow>")
+            | _ -> None)
+        else (
+          match Table.find t.watch_table watch with
+          | None ->
+            Console.print
+              [ Pp.verbatimf
+                  "Events for an unknown watch (%d) [%s]\n"
+                  (Inotify.int_of_watch watch)
+                  (String.concat
+                     ~sep:", "
+                     (List.map ev_kinds ~f:Inotify.string_of_event_kind))
+              ];
+            []
+          | Some path ->
+            let fn =
+              match fn with
+              | None -> path
+              | Some fn -> Filename.concat path fn
+            in
+            List.map ev_kinds ~f:(fun ev -> ev, trans_id, fn))))
   in
   let pending_mv, actions =
     List.fold_left
@@ -146,16 +150,14 @@ let pump_events t =
     Thread0.spawn ~name:"file-watcher" (fun () ->
       while true do
         match UnixLabels.select ~read:[ fd ] ~write:[] ~except:[] ~timeout:(-1.) with
-        | _, _, _ ->
-          let events = Inotify.read fd in
-          t.send_emit_events_job_to_scheduler (fun () -> process_raw_events t events)
         | exception Unix.Unix_error (EINTR, _, _) -> ()
+        | _, _, _ -> Inotify.read fd |> process_raw_events t |> t.emit_events
       done)
   in
   ()
 ;;
 
-let create ~modify_event_selector ~send_emit_events_job_to_scheduler =
+let create ~mutex ~modify_event_selector ~emit_events =
   let fd = Inotify.create () |> Fd.unsafe_of_unix_file_descr in
   let watch_table = Table.create (module Inotify_watch) 10 in
   let modify_selector : Inotify.selector =
@@ -165,10 +167,11 @@ let create ~modify_event_selector ~send_emit_events_job_to_scheduler =
   in
   let t =
     { fd
+    ; mutex
     ; watch_table
     ; select_events =
         [ S_Create; S_Delete; modify_selector; S_Move_self; S_Moved_from; S_Moved_to ]
-    ; send_emit_events_job_to_scheduler
+    ; emit_events
     }
   in
   pump_events t;

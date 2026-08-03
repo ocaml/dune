@@ -16,7 +16,7 @@ Select with no solution
 
   $ mkdir select
   $ cd select
-  $ echo "(lang dune 3.0)" > dune-project
+  $ make_dune_project 3.0
   $ cat <<EOF > dune
   > (executable
   >  (name select_error)

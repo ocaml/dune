@@ -1,10 +1,7 @@
 The rules that call odoc know that it is going to read the ODOC_SYNTAX
 variable, and can rebuild as needed.
 
-  $ cat > dune-project << EOF
-  > (lang dune 1.1)
-  > (package (name l))
-  > EOF
+  $ make_dune_project_with_package 1.1 l
 
   $ cat > dune << EOF
   > (library
@@ -15,20 +12,12 @@ variable, and can rebuild as needed.
   > module type X = sig end
   > EOF
 
-  $ detect () {
-  > if grep -q '>sig<' $1 ; then
-  >   echo it is ocaml
-  > elif grep -q '{ ... }' $1 ; then
-  >   echo it is reason
-  > else
-  >   echo it is unknown
-  > fi
-  > }
 
-  $ dune build @doc-new
-  $ detect _build/default/_doc_new/html/docs/local/l/L/index.html
+  $ html=_build/default/_doc_new/html/docs/local/l/L/index.html
+  $ dune build "$html"
+  $ odoc_detect_syntax "$html"
   it is ocaml
 
-  $ ODOC_SYNTAX=re dune build @doc-new
-  $ detect _build/default/_doc_new/html/docs/local/l/L/index.html
+  $ ODOC_SYNTAX=re dune build "$html"
+  $ odoc_detect_syntax "$html"
   it is reason

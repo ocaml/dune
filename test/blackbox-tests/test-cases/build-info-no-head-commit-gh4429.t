@@ -6,7 +6,7 @@ Create a repository with no HEAD commit:
 
 ... and an executable that links `dune-build-info':
 
-  $ echo "(lang dune 2.0)" > dune-project
+  $ make_dune_project 2.0
   $ touch main.ml
   $ cat >dune <<EOF
   > (executable

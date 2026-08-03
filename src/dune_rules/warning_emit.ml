@@ -68,7 +68,7 @@ let emit_project warning project message =
 
 module Bag = struct
   type decode =
-    { active : Config.Toggle.t
+    { active : Toggle.t
     ; warning : Warning.t
     ; project_root : Path.Source.t option
     ; produce : unit -> User_message.t Memo.t

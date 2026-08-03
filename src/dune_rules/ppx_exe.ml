@@ -15,6 +15,7 @@ module Key : sig
   end
 
   val encode : Decoded.t -> encoded
+  val decode : encoded -> Decoded.t
 end = struct
   type encoded = Digest.t
 
@@ -82,6 +83,17 @@ end = struct
           ; Pp.textf "- fetch : %s" (Decoded.to_string x)
           ]
   ;;
+
+  let decode y =
+    match Table.find reverse_table y with
+    | Some x -> x
+    | None ->
+      User_error.raise
+        [ Pp.textf
+            "I don't know what ppx rewriters set %s correspond to."
+            (Digest.to_string y)
+        ]
+  ;;
 end
 
 let ppx_exe_path (ctx : Build_context.t) ~key =
@@ -90,6 +102,8 @@ let ppx_exe_path (ctx : Build_context.t) ~key =
 
 let ppx_driver_exe (ctx : Context.t) libs =
   let key = Digest.to_string (Key.Decoded.of_libs libs |> Key.encode) in
+  (* Make sure to compile ppx.exe for the compiling host. See: #2252, #2286 and
+     #3698 *)
   Context.host ctx >>| Context.build_context >>| ppx_exe_path ~key
 ;;
 

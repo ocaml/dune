@@ -2,15 +2,14 @@ open Stdune
 open Dune_scheduler
 open Fiber.O
 module Process = Dune_engine.Process
-module Display = Dune_engine.Display
+module Display = Stdune.Display
 module Vcs = Dune_vcs.Vcs
 
 let run thunk =
-  let on_event _event = () in
   let config : Scheduler.Config.t =
     { concurrency = 1; print_ctrl_c_warning = false; watch_exclusions = [] }
   in
-  Scheduler.Run.go config ~on_event thunk
+  Scheduler.Run.go config thunk
 ;;
 
 let display = Display.Quiet

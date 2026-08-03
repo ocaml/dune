@@ -1,19 +1,9 @@
 Show target promotion in-source for `melange.emit`
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.20)
-  > (using melange 1.0)
-  > EOF
+  $ make_melange_project 3.20 1.0
 
   $ mkdir -p app
-  $ cat > app/dune <<EOF
-  > (include_subdirs unqualified)
-  > (melange.emit
-  >  (alias dist)
-  >  (emit_stdlib false)
-  >  (promote (until-clean))
-  >  (target dist))
-  > EOF
+  $ write_melange_promote_app_dune "(until-clean)"
   $ cat > app/x.ml <<EOF
   > let () = print_endline "hello"
   > EOF
@@ -47,14 +37,7 @@ Dune clean gets rid of them
 
 `(into .)` is the same
 
-  $ cat > app/dune <<EOF
-  > (include_subdirs unqualified)
-  > (melange.emit
-  >  (alias dist)
-  >  (emit_stdlib false)
-  >  (promote (into .) (until-clean))
-  >  (target dist))
-  > EOF
+  $ write_melange_promote_app_dune "(into .) (until-clean)"
   $ dune build @dist
 
 Targets get emitted in source
@@ -81,14 +64,7 @@ Dune clean gets rid of them
 
 emit into a different dest dir
 
-  $ cat > app/dune <<EOF
-  > (include_subdirs unqualified)
-  > (melange.emit
-  >  (alias dist)
-  >  (emit_stdlib false)
-  >  (promote (into ../toplevel-dist) (until-clean))
-  >  (target dist))
-  > EOF
+  $ write_melange_promote_app_dune "(into ../toplevel-dist) (until-clean)"
 
   $ dune build @dist
   $ ls toplevel-dist
@@ -106,14 +82,7 @@ Cleaning also works
 
 Promote dir can't be outside the workspace
 
-  $ cat > app/dune <<EOF
-  > (include_subdirs unqualified)
-  > (melange.emit
-  >  (alias dist)
-  >  (emit_stdlib false)
-  >  (promote (into ../../foo))
-  >  (target dist))
-  > EOF
+  $ write_melange_promote_app_dune "(into ../../foo)"
   $ dune build @dist
   File "app/dune", line 5, characters 16-25:
   5 |  (promote (into ../../foo))
@@ -126,14 +95,7 @@ Promote dir can't be outside the workspace
 It's possible to recover the behavior of emitting in the dist folder with
 `(promote (into ..))`
 
-  $ cat > app/dune <<EOF
-  > (include_subdirs unqualified)
-  > (melange.emit
-  >  (alias dist)
-  >  (emit_stdlib false)
-  >  (promote (into ./dist) (until-clean))
-  >  (target dist))
-  > EOF
+  $ write_melange_promote_app_dune "(into ./dist) (until-clean)"
   $ dune build @dist
   $ ls app/dist
   other

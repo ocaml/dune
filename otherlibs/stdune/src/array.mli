@@ -11,6 +11,11 @@ module Immutable : sig
   type 'a t
 
   val of_array_unsafe : 'a array -> 'a t
+
+  (** [to_array_unsafe t] returns [t]'s underlying array without copying; the
+      caller must not mutate it, as it is shared with [t]. *)
+  val to_array_unsafe : 'a t -> 'a array
+
   val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
   val get : 'a t -> int -> 'a
   val of_array : 'a array -> 'a t

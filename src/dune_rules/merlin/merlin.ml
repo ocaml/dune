@@ -350,7 +350,7 @@ module Processed = struct
     List.iter indexes ~f:(fun p -> printf "INDEX %s\n" (serialize_path p));
     List.iter extensions ~f:(fun x ->
       Option.iter (get_ext x) ~f:(fun (impl, intf) ->
-        printf "SUFFIX %s" (Printf.sprintf "%s %s" impl intf)));
+        printf "SUFFIX %s\n" (Printf.sprintf "%s %s" impl intf)));
     (* We print all FLG directives as comments *)
     List.iter
       pp_configs
@@ -587,7 +587,7 @@ module Unprocessed = struct
          | Melange -> Melange
          | Ocaml -> Ocaml Byte)
     in
-    let { Dialect.DB.extensions; readers } = Dialect.DB.for_merlin dialects in
+    let { Dialect.DB.extensions; readers } = Dialect.DB.for_merlin dialects ~for_ in
     let config =
       { stdlib_dir
       ; for_
@@ -653,9 +653,11 @@ module Unprocessed = struct
              Some { Processed.flag = Processed.Pp_kind.Pp; args }
          in
          (match action.action with
-          | Run (exe, args) -> pp_of_action exe args
-          | Chdir (_, Run (exe, args)) -> pp_of_action exe args
-          | Chdir (_, Chdir (_, Run (exe, args))) -> pp_of_action exe args
+          | Run { prog; args; can_run_in_action_runner = _ } -> pp_of_action prog args
+          | Chdir (_, Run { prog; args; can_run_in_action_runner = _ }) ->
+            pp_of_action prog args
+          | Chdir (_, Chdir (_, Run { prog; args; can_run_in_action_runner = _ })) ->
+            pp_of_action prog args
           | _ -> None))
     | _ -> Action_builder.return None
   ;;

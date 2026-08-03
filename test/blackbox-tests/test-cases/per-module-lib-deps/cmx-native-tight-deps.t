@@ -48,15 +48,15 @@ objdirs). The presence of the `.cmx` glob pins that the
 `want_cmx = true` branch fires under release profile.
 
   $ dune rules --root . --format=json --profile release --deps '%{cmx:consumer/c}' > deps.json
-  $ jq -r 'include "dune"; .[] | depsGlobs
+  $ jq_dune -r '.[] | depsGlobs
   >   | select(.dir | endswith("dep_lib/.dep_lib.objs/byte"))
   >   | .dir + " " + .predicate' < deps.json
   _build/default/dep_lib/.dep_lib.objs/byte *.cmi
-  $ jq -r 'include "dune"; .[] | depsGlobs
+  $ jq_dune -r '.[] | depsGlobs
   >   | select(.dir | endswith("dep_lib/.dep_lib.objs/native"))
   >   | .dir + " " + .predicate' < deps.json
   _build/default/dep_lib/.dep_lib.objs/native *.cmx
-  $ jq -r 'include "dune"; .[] | depsFilePaths
+  $ jq_dune -r '.[] | depsFilePaths
   >   | select(endswith("dep_lib/.dep_lib.objs/byte/m.cmi"))' < deps.json
-  $ jq -r 'include "dune"; .[] | depsFilePaths
+  $ jq_dune -r '.[] | depsFilePaths
   >   | select(endswith("dep_lib/.dep_lib.objs/native/m.cmx"))' < deps.json

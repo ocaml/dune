@@ -2,20 +2,7 @@ Check the cache restores empty directories
 
   $ export DUNE_CACHE=enabled
   $ export DUNE_CACHE_ROOT=$PWD/dune-cache
-  $ cat >dune-project <<EOF
-  > (lang dune 3.10)
-  > (using directory-targets 0.1)
-  > EOF
-
-  $ cat >dune <<EOF
-  > (rule
-  >  (target (dir output))
-  >  (action
-  >   (progn
-  >    (run mkdir output)
-  >    (run mkdir output/child)
-  >    (run touch output/file))))
-  > EOF
+  $ make_empty_child_directory_target_project
 
 Build an empty directory.
 

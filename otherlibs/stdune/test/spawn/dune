@@ -1,0 +1,20 @@
+(library
+ (name stdune_spawn_tests)
+ (inline_tests
+  (deps
+   exe/hello.exe
+   exe/list_files.exe
+   exe/print_env.exe
+   pgid_test/checkpgid.exe
+   (sandbox always)))
+ (libraries
+  stdune
+  unix
+  ;; This is because of the (implicit_transitive_deps false)
+  ;; in dune-project
+  ppx_expect.config
+  ppx_expect.config_types
+  base
+  ppx_inline_test.config)
+ (preprocess
+  (pps ppx_expect)))

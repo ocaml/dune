@@ -97,6 +97,11 @@ module Compile : sig
     -> for_:Compilation_mode.t
     -> (Loc.t * lib) list Resolve.Memo.t
 
+  val user_written_requires_no_loc
+    :  t
+    -> for_:Compilation_mode.t
+    -> lib list Resolve.Memo.t
+
   (** Dependencies listed by the user + runtime dependencies from ppx *)
   val direct_requires : t -> for_:Compilation_mode.t -> lib list Resolve.Memo.t
 
@@ -264,7 +269,8 @@ end
 
 val to_dune_lib
   :  t
-  -> modules:Modules.With_vlib.t option Compilation_mode.By_mode.t
+  -> modes:Lib_mode.Map.Set.t
+  -> modules:Modules.With_vlib.t option Compilation_mode.Per_mode.t
   -> foreign_objects:Path.t list
   -> melange_runtime_deps:Path.t list
   -> public_headers:Path.t list

@@ -21,9 +21,7 @@ resolves through, and must conservatively depend on both.
 
 See: https://github.com/ocaml/dune/issues/4572
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.23)
-  > EOF
+  $ make_dune_project 3.23
 
   $ mkdir active_lib
   $ cat > active_lib/dune <<EOF
@@ -71,5 +69,5 @@ directory is a glob:
   > let also_from_shadowed = 42
   > EOF
   $ dune build @check
-  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("consumer_lib/\\.consumer_lib\\.objs/byte/consumer\\."))] | length > 0'
+  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("consumer_lib/\\.consumer_lib\\.objs/byte/consumer\\."))] | length > 0'
   true

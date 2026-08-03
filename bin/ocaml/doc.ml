@@ -20,7 +20,7 @@ let lock_odoc_if_dev_tool_enabled () =
 
 let term =
   let+ builder = Common.Builder.term in
-  let common, config = Common.init builder in
+  let common, config = Common.init_build builder in
   let request (setup : Dune_rules.Main.build_system) =
     let dir = Path.(relative root) (Common.prefix_target common ".") in
     let open Action_builder.O in
@@ -44,7 +44,8 @@ let term =
       let* cmd_name, args =
         match Platform.OS.value with
         | Darwin -> Some ("open", [])
-        | Other | FreeBSD | NetBSD | OpenBSD | Haiku | Linux -> Some ("xdg-open", [])
+        | Other | FreeBSD | NetBSD | OpenBSD | DragonFly | Haiku | Linux ->
+          Some ("xdg-open", [])
         | Windows -> None
       in
       let+ open_command =

@@ -111,7 +111,7 @@ issue_body=
 rc_branch=
 
 function patch_release () {
-    local last_version=$(git tag --list '*.*.*' --sort=-version:refname | head -n 1 )
+    local last_version=$(git -c versionsort.suffix="_alpha" tag --list '*.*.*' --sort=-version:refname | head -n 1 )
     next_version=$(echo "${last_version}" | awk -F. -v OFS=. '{print $1, $2, $3+1 }')
     rc_branch="${next_version}-rc"
 
@@ -145,7 +145,7 @@ ${POST_RELEASE_STEPS}
 }
 
 function minor_release () {
-    next_version=$(git tag --list '*.*.0' --sort=-version:refname | \
+    next_version=$(git -c versionsort.suffix="_alpha" tag --list '*.*.0' --sort=-version:refname | \
         head -n 1 | \
         awk -F. -v OFS=. '{print $1, $2+1, 0 }')
     rc_branch="${next_version}-rc"
@@ -158,7 +158,7 @@ function minor_release () {
 }
 
 function major_release () {
-    next_version=$(git tag --list '*.0.0' --sort=-version:refname | \
+    next_version=$(git -c versionsort.suffix="_alpha" tag --list '*.0.0' --sort=-version:refname | \
         head -n 1 | \
         awk -F. -v OFS=. '{print $1+1, 0, 0 }')
     rc_branch="${next_version}-rc"

@@ -16,9 +16,7 @@ implementation of [vmod] references [Dep_module] from
 [dep_lib]. Editing [Dep_module]'s interface should rebuild
 [vlib_impl]'s [vmod].
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.23)
-  > EOF
+  $ make_dune_project 3.23
 
   $ cat > dune <<EOF
   > (library (name dep_lib) (wrapped false) (modules dep_module))
@@ -65,5 +63,5 @@ Edit [dep_lib]'s interface. [vlib_impl]'s implementation of
   > let extra = 42
   > EOF
   $ dune build @check
-  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("vlib_impl") and test("Vmod"))] | length'
+  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("vlib_impl") and test("Vmod"))] | length'
   1

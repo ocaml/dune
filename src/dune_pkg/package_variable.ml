@@ -13,9 +13,16 @@ module Scope = struct
     | Package x, Package y -> Package_name.compare x y
   ;;
 
-  let to_dyn = function
-    | Self -> Dyn.variant "Self" []
-    | Package name -> Dyn.variant "Package" [ Package_name.to_dyn name ]
+  let repr =
+    Repr.variant
+      "package-variable-scope"
+      [ Repr.case0 "Self" ~test:(function
+          | Self -> true
+          | Package _ -> false)
+      ; Repr.case "Package" Package_name.repr ~proj:(function
+          | Package name -> Some name
+          | Self -> None)
+      ]
   ;;
 end
 
@@ -31,10 +38,15 @@ module T = struct
     | x -> x
   ;;
 
-  let to_dyn { name; scope } =
-    let open Dyn in
-    record [ "name", Package_variable_name.to_dyn name; "scope", Scope.to_dyn scope ]
+  let repr =
+    Repr.record
+      "package-variable"
+      [ Repr.field "name" Package_variable_name.repr ~get:(fun t -> t.name)
+      ; Repr.field "scope" Scope.repr ~get:(fun t -> t.scope)
+      ]
   ;;
+
+  let to_dyn = Repr.to_dyn repr
 end
 
 include T

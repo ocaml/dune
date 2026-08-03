@@ -196,17 +196,21 @@ let inline_tests_field =
   field_o "inline_tests" (Syntax.since Stanza.syntax (1, 11) >>> Inline_tests.decode)
 ;;
 
+let env_vars_decode =
+  located (repeat (pair string string))
+  >>| fun (loc, pairs) ->
+  match Env.Map.of_list pairs with
+  | Ok vars -> Env.extend Env.empty ~vars
+  | Error (k, _, _) ->
+    User_error.raise ~loc [ Pp.textf "Variable %s is specified several times" k ]
+;;
+
 let env_vars_field =
-  field
-    "env-vars"
+  fields_mutually_exclusive
     ~default:Env.empty
-    (Syntax.since Stanza.syntax (1, 5)
-     >>> located (repeat (pair string string))
-     >>| fun (loc, pairs) ->
-     match Env.Map.of_list pairs with
-     | Ok vars -> Env.extend Env.empty ~vars
-     | Error (k, _, _) ->
-       User_error.raise ~loc [ Pp.textf "Variable %s is specified several times" k ])
+    [ "env-vars", Syntax.since Stanza.syntax (1, 5) >>> env_vars_decode
+    ; "env_vars", Syntax.since Stanza.syntax (3, 24) >>> env_vars_decode
+    ]
 ;;
 
 let odoc_field =

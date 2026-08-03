@@ -58,5 +58,5 @@ module DB : sig
     ; readers : string list String.Map.t
     }
 
-  val for_merlin : t -> for_merlin
+  val for_merlin : t -> for_:Compilation_mode.t -> for_merlin
 end

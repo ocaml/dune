@@ -4,9 +4,7 @@ Reproduction case for https://github.com/ocaml/dune/issues/12250
   > (lang dune 3.19)
   > EOF
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.19)
-  > EOF
+  $ make_dune_project 3.19
 
   $ mkdir -p somelib/my/path
   $ cat > somelib/my/path/test.t <<EOF

@@ -1,8 +1,6 @@
 Test the error cases for dune's Predicate Language DSL.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.14)
-  > EOF
+  $ make_dune_project 3.14
 
   $ cat > foo.ml <<EOF
   > let () = print_endline "foo"

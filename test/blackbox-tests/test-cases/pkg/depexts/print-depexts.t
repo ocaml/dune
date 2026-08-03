@@ -4,9 +4,7 @@ Show that the depexts that a project has can be printed.
 
 Make a project:
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.13)
-  > EOF
+  $ make_dune_project 3.13
 
 Create a lockdir with a package that features some depexts.
 

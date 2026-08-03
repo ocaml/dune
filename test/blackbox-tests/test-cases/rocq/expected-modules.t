@@ -1,9 +1,6 @@
 Test that expected files work with explicit (modules ...):
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.22)
-  > (using rocq 0.12)
-  > EOF
+  $ make_rocq_project 3.22 0.12
 
   $ cat > dune <<EOF
   > (rocq.theory

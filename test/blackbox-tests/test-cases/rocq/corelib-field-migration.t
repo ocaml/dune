@@ -1,10 +1,7 @@
 The `(no_corelib)` field makes explicit that this switch controls automatic
 Corelib inclusion, not the Rocq Stdlib theory.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.24)
-  > (using rocq 0.14)
-  > EOF
+  $ make_rocq_project 3.24 0.14
   $ cat > dune <<EOF
   > (rocq.theory
   >  (name Foo)
@@ -87,10 +84,7 @@ When both fields are present, the deleted `(stdlib ...)` field is reported.
 
 The new field is only available from Rocq language 0.14.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.23)
-  > (using rocq 0.13)
-  > EOF
+  $ make_rocq_project 3.23 0.13
   $ cat > dune <<EOF
   > (rocq.theory
   >  (name Foo)

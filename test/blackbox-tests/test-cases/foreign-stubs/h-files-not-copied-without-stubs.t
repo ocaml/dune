@@ -4,9 +4,7 @@ source tree should not appear as dependencies of any build rule.
 
 See https://github.com/ocaml/dune/issues/2370
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.23)
-  > EOF
+  $ make_dune_project 3.23
 
 A library with no C stubs — .h files should not be a dependency of any rule:
 
@@ -23,7 +21,7 @@ A library with no C stubs — .h files should not be a dependency of any rule:
 
   $ dune build no-stubs/.mylib.objs/byte/mylib.cmo
   $ dune rules --root . --format=json --deps no-stubs/ |
-  > jq -e 'include "dune"; [ .[] | depsFilePaths | select(endswith("vendored.h")) ] | length == 0'
+  > jq_dune -e '[ .[] | depsFilePaths | select(endswith("vendored.h")) ] | length == 0'
   true
 
 A library with foreign_stubs — .h files should be a dependency.
@@ -49,5 +47,5 @@ Build the stub object with sandboxing to ensure dependencies are accurate:
 
   $ dune build --sandbox copy with-stubs/stub.o
   $ dune rules --root . --format=json --deps with-stubs/stub.o |
-  > jq -r 'include "dune"; .[] | depsFilePaths | select(endswith("needed.h"))'
+  > jq_dune -r '.[] | depsFilePaths | select(endswith("needed.h"))'
   _build/default/with-stubs/needed.h

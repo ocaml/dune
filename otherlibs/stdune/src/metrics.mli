@@ -3,6 +3,20 @@
 (** Reset all metrics to zero. *)
 val reset : unit -> unit
 
+module Build : sig
+  val add_process_times
+    :  elapsed_time:Time.Span.t
+    -> user_cpu_time:Time.Span.t option
+    -> system_cpu_time:Time.Span.t option
+    -> unit
+
+  val process_count : unit -> int
+  val process_time : unit -> Time.Span.t
+  val process_user_cpu_time : unit -> Time.Span.t
+  val process_system_cpu_time : unit -> Time.Span.t
+  val reset : unit -> unit
+end
+
 module type Stat = sig
   val count : Counter.t
   val bytes : Counter.t

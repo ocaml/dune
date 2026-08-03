@@ -1,7 +1,5 @@
 
-  $ cat > dune-project <<EOF
-  > (lang dune 1.11)
-  > EOF
+  $ make_dune_project 1.11
 
   $ cat > dune <<EOF
   > (rule

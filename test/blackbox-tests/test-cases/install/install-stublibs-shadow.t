@@ -8,10 +8,7 @@ See https://github.com/ocaml/dune/issues/9979.
 
 Begin by installing libraries `libA` and `libB` with C stubs.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.13)
-  > (package (name pkgA))
-  > EOF
+  $ make_dune_project_with_package 3.13 pkgA
   $ cat >libA.ml <<EOF
   > EOF
   $ cat >libB.ml <<EOF

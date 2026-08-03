@@ -36,7 +36,7 @@ module Message = struct
   ;;
 
   let display t =
-    match !Dune_engine.Clflags.display with
+    match !Stdune.Clflags.display with
     | Quiet -> ()
     | Short | Verbose -> Console.print_user_message (user_message t)
   ;;
@@ -55,6 +55,8 @@ module Spec = struct
 
   let name = "progress-action"
   let version = 1
+  let runs_process = false
+  let can_run_in_action_runner = false
   let is_useful_to ~memoize:_ = true
   let bimap t _f _g = t
   let encode t _ _ = Message.encode t

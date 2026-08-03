@@ -1,5 +1,6 @@
 open Import
 module Pin_stanza = Dune_lang.Pin_stanza
+module Dune_project = Dune_lang.Dune_project
 module Package = Pin_stanza.Package
 
 let local_package_of_pin (t : Pin_stanza.Package.t) ~url ~origin =
@@ -344,3 +345,36 @@ let resolve (t : DB.t) ~(scan_project : Scan_project.t)
   let+ () = loop Stack.empty t in
   !resolved
 ;;
+
+module Project = struct
+  let collect project =
+    let dir = Dune_project.root project in
+    let pins = Dune_project.pins project in
+    let packages = Dune_project.packages project in
+    DB.add_opam_pins (DB.of_stanza ~dir pins) packages
+  ;;
+
+  let collect_all projects =
+    List.fold_left projects ~init:DB.empty ~f:(fun acc project ->
+      DB.combine_exn acc (collect project))
+  ;;
+
+  let resolve project_pins =
+    let scan_project ~read ~files =
+      let open Memo.O in
+      let read file = Memo.of_reproducible_fiber (read file) in
+      Dune_project.gen_load
+        ~read
+        ~files
+        ~dir:Path.Source.root
+        ~infer_from_opam_files:false
+        ~load_opam_file_with_contents:Opam_file.load_opam_file_with_contents
+      >>| Option.map ~f:(fun project ->
+        let packages = Dune_project.packages project in
+        let pins = collect project in
+        pins, packages)
+      |> Memo.run
+    in
+    resolve project_pins ~scan_project
+  ;;
+end

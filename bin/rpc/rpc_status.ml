@@ -64,7 +64,7 @@ type status =
 (** Fetch the status of a single Dune instance *)
 let get_status (dune : Dune_rpc.Registry.Dune.t) =
   let root = Dune_rpc.Registry.Dune.root dune in
-  let pid = Dune_rpc.Registry.Dune.pid dune |> Pid.of_int in
+  let pid = Dune_rpc.Registry.Dune.pid dune |> Pid.of_int_exn in
   let where = Dune_rpc.Registry.Dune.where dune in
   let open Fiber.O in
   let+ result = server_response_map ~where ~f:List.length in

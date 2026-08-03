@@ -2,9 +2,7 @@ Private libraries using the same library name, in the same context, defined in
 the same folder. One of them is unavailable because it's `(optional)` and a
 dependency is missing.
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.13)
-  > EOF
+  $ make_dune_project 3.13
 
   $ cat > dune << EOF
   > (library

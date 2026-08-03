@@ -16,13 +16,7 @@ symlink before hardlinking will fail with EACCES.
   >    && chmod -w %{lib}/%{pkg-self:name}"))
   > EOF
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.22)
-  > (package
-  >  (name x)
-  >  (allow_empty)
-  >  (depends foo))
-  > EOF
+  $ make_package_project 3.22 foo
 
 Build fails with a symlink resolution error:
 

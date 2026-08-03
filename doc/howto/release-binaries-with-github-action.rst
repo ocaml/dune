@@ -40,10 +40,10 @@ binary distribution of a package named ``my_app``.
                 name: x86_64-linux
         steps:
 
-          - uses: actions/checkout@v5
+          - uses: actions/checkout@v7
 
           - name: Install Dune
-            uses: ocaml-dune/setup-dune@v0
+            uses: ocaml-dune/setup-dune@v2
 
           - name: Build the project
             run: dune build @install --release --only-packages my_app

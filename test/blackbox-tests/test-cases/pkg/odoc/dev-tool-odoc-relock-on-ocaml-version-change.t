@@ -11,15 +11,7 @@ same version of the ocaml compiler as the code that it's analyzing.
 
   $ setup_odoc_workspace
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.16)
-  > 
-  > (package
-  >  (name foo)
-  >  (allow_empty)
-  >  (depends
-  >  (ocaml (= 5.2.0))))
-  > EOF
+  $ make_named_package_project foo 3.16 "(ocaml (= 5.2.0))"
 
   $ dune build
 
@@ -60,15 +52,7 @@ We can re-run "dune ocaml doc" without relocking or rebuilding.
   [1]
 
 Change the version of ocaml that the project depends on.
-  $ cat > dune-project <<EOF
-  > (lang dune 3.16)
-  > 
-  > (package
-  >  (name foo)
-  >  (allow_empty)
-  >  (depends
-  >  (ocaml (= 5.1.0))))
-  > EOF
+  $ make_named_package_project foo 3.16 "(ocaml (= 5.1.0))"
 
   $ dune build
 

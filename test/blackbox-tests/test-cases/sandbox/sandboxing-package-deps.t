@@ -1,15 +1,10 @@
 Test sandboxing when depending on things from the install context using
-(package ..).
+(package ...).
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.11)
-  > (package (name foo))
-  > EOF
-
-  $ mkdir foo/
+  $ make_dune_project_with_package 3.16 foo
+  $ mkdir foo
   $ cat >foo/dune <<EOF
   > (executable
-  >  (package foo)
   >  (public_name mybin))
   > EOF
   $ cat >foo/mybin.ml <<EOF
@@ -23,8 +18,8 @@ Test sandboxing when depending on things from the install context using
   >  (action (bash "pwd; command -v mybin; echo %{bin:mybin}; mybin")))
   > EOF
 
-  $ dune build --sandbox symlink @foo 2>&1 | sed -E 's#.*.sandbox/[^/]+/#.sandbox/$SANDBOX/#g'
-  .sandbox/$SANDBOX/default
-  .sandbox/$SANDBOX/install/default/bin/mybin
+  $ dune build --sandbox symlink @foo 2>&1 | censor
+  $PWD/_build/.sandbox/$DIGEST1/default
+  $PWD/_build/install/default/.packages/$DIGEST2/bin/mybin
   foo/mybin.exe
   hello from package foo

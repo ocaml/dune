@@ -24,6 +24,7 @@ type t =
   | Digest
   | Artifact_substitution
   | Thread
+  | Runtime
 
 let all =
   [ Rpc
@@ -49,6 +50,7 @@ let all =
   ; Digest
   ; Artifact_substitution
   ; Thread
+  ; Runtime
   ]
 ;;
 
@@ -76,6 +78,7 @@ let to_string = function
   | Digest -> "digest"
   | Artifact_substitution -> "artifact_subtitution"
   | Thread -> "thread"
+  | Runtime -> "runtime"
 ;;
 
 let of_string =
@@ -115,6 +118,7 @@ module Set = Bit_set.Make (struct
       | Digest -> 20
       | Artifact_substitution -> 21
       | Thread -> 22
+      | Runtime -> 23
     ;;
   end)
 
@@ -135,4 +139,56 @@ let default =
   ; Artifact_substitution
   ; Thread
   ]
+;;
+
+let enabled () =
+  let of_string_exn x =
+    match of_string x with
+    | Some x -> x
+    | None -> User_error.raise [ Pp.textf "unrecognized trace category %S" x ]
+  in
+  let res =
+    match Sys.getenv_opt "DUNE_TRACE" with
+    | None -> default
+    | Some s ->
+      let tokens =
+        let dune_trace_re = Re.compile (Re.set ",+-") in
+        Re.split_full dune_trace_re s
+        |> List.map ~f:(function
+          | `Text s -> `Category (of_string_exn s)
+          | `Delim g ->
+            (match Re.Group.get g 0 with
+             | "," -> `Comma
+             | "+" -> `Add
+             | "-" -> `Remove
+             | _ -> assert false))
+      in
+      if
+        List.for_all tokens ~f:(function
+          | `Category _ | `Comma -> true
+          | _ -> false)
+      then
+        (* We can do better validation here *)
+        List.filter_map tokens ~f:(function
+          | `Category x -> Some x
+          | _ -> None)
+      else (
+        let rec loop acc = function
+          | `Add :: `Category cat :: xs ->
+            let acc = cat :: acc in
+            loop acc xs
+          | `Remove :: `Category cat :: xs ->
+            let acc = List.filter acc ~f:(fun x -> x <> cat) in
+            loop acc xs
+          | [] -> acc
+          | _ :: _ ->
+            User_error.raise
+              [ Pp.text
+                  "invalid DUNE_TRACE. Either specify categories by only ',' or a mix of \
+                   '+', and '-' "
+              ]
+        in
+        loop default tokens)
+  in
+  Set.of_list res
 ;;

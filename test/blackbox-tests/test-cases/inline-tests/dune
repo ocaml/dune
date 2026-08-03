@@ -13,4 +13,10 @@
 (cram
  (applies_to clicolor-force-inline-tests-github6607)
  (deps
-  (package stdune)))
+  (package stdune)
+  (package dyn)
+  (package ordering)
+  (package pp)
+  (package top-closure)
+  (package csexp)
+  (package fs-io)))

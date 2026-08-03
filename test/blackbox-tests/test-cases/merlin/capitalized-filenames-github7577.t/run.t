@@ -10,5 +10,5 @@ We check that the Merlin helper can handle filenames with capital letters in the
 
   $ dune build
 
-  $ printf '(4:File10:mainFOO.ml)4:Halt' | dune ocaml merlin start-session | grep ERROR
+  $ query_ocaml_merlin_pp mainFOO.ml | grep ERROR
   [1]

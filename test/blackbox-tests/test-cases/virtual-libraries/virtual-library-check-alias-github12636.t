@@ -1,8 +1,6 @@
 Test for issue https://github.com/ocaml/dune/issues/12636
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.21)
-  > EOF
+  $ make_dune_project 3.21
 
   $ cat > dune <<EOF
   > (library

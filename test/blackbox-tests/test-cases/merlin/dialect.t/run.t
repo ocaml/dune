@@ -7,8 +7,7 @@
 
 CRAM sanitization
   $ dune build exe/.merlin-conf/exe-x --profile release
-  $ dune ocaml merlin dump-config --format=json exe | jq -r '
-  >   include "dune";
+  $ dune ocaml merlin dump-config --format=json exe | jq_dune -r '
   >   .[]
   >   | select(.module_name == "X" and (.source_path | startswith("default/exe/")))
   >   | merlinJsonEntryWithConfigNames(["SUFFIX", "READER"])'
@@ -22,8 +21,7 @@ CRAM sanitization
 
 CRAM sanitization
   $ dune build lib/.merlin-conf/lib-x --profile release
-  $ dune ocaml merlin dump-config --format=json lib | jq -r '
-  >   include "dune";
+  $ dune ocaml merlin dump-config --format=json lib | jq_dune -r '
   >   .[]
   >   | select(.module_name == "X" and (.source_path | startswith("default/lib/")))
   >   | merlinJsonEntryWithConfigNames(["SUFFIX", "READER"])'
@@ -36,14 +34,21 @@ CRAM sanitization
 
 CRAM sanitization
   $ dune build melange/.merlin-conf/lib-x_mel --profile release
-  $ dune ocaml merlin dump-config --format=json melange | jq -r '
-  >   include "dune";
+  $ dune ocaml merlin dump-config --format=json melange | jq_dune -r '
   >   .[]
   >   | select(.module_name == "X_mel" and (.source_path | startswith("default/melange/")))
   >   | merlinJsonEntryWithConfigNames(["SUFFIX", "READER"])'
   X_mel: _build/default/melange/x_mel
+  ["SUFFIX",".melange.ml .melange.mli"]
+  ["SUFFIX",".melange.mlx .melange.mlx"]
+  ["SUFFIX",".melange.re .melange.rei"]
+  ["SUFFIX",".melange.res .melange.resi"]
   ["SUFFIX",".mlx .mlx"]
   ["READER",["mlx"]]
   X_mel: _build/default/melange/x_mel.mlx
+  ["SUFFIX",".melange.ml .melange.mli"]
+  ["SUFFIX",".melange.mlx .melange.mlx"]
+  ["SUFFIX",".melange.re .melange.rei"]
+  ["SUFFIX",".melange.res .melange.resi"]
   ["SUFFIX",".mlx .mlx"]
   ["READER",["mlx"]]

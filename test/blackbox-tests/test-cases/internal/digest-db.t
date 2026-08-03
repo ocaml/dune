@@ -38,7 +38,17 @@ Only actual digest mismatches are reported, classified as invalid or stale.
 
   $ dune internal digest-db check invalid.txt stale.txt 2>&1 \
   > | sed -n 's/.*status = /status = /p;s/.*path = /path = /p'
-  status = "invalid"
+  status = "stale"
   path = In_source_tree "invalid.txt"
   status = "stale"
   path = In_source_tree "stale.txt"
+
+Future-dated entries are dropped before the digest database is saved. When this
+happens, the saved [max_timestamp] must be recomputed and not retain the dropped
+future timestamp.
+
+  $ printf future > future.txt
+  $ TZ=UTC touch -t 203001010000 future.txt
+  $ dune build future.txt
+  $ dune internal digest-db dump 2>&1 | grep 1893456000000000000
+  [1]

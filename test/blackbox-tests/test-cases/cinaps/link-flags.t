@@ -1,9 +1,6 @@
 Link-time flags for running cinaps
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.8)
-  > (using cinaps 1.3)
-  > EOF
+  $ make_cinaps_project 3.8 1.3
 
   $ cat > dune <<EOF
   > (cinaps
@@ -29,10 +26,7 @@ Link-time flags for running cinaps
 
 Check that the version guard is correct.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.7)
-  > (using cinaps 1.3)
-  > EOF
+  $ make_cinaps_project 3.7 1.3
 
   $ dune build @cinaps
   File "dune-project", line 2, characters 14-17:
@@ -44,10 +38,7 @@ Check that the version guard is correct.
   - 1.0 to 1.2
   [1]
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.8)
-  > (using cinaps 1.2)
-  > EOF
+  $ make_cinaps_project 3.8 1.2
 
   $ dune build @cinaps
   File "dune", line 3, characters 1-22:

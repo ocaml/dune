@@ -24,6 +24,19 @@ let%expect_test "is_root" =
     Fpath.is_root "/foo" = false |}]
 ;;
 
+let%expect_test "path with non-directory parent does not exist" =
+  let dir = Temp.create Dir ~prefix:"fpath" ~suffix:"test" in
+  let file = Path.relative dir "file" in
+  let child = Path.relative file "child" in
+  Io.write_file file "";
+  printfn "exists: %b" (Fpath.exists (Path.to_string child));
+  printfn "is_directory: %b" (Fpath.is_directory (Path.to_string child));
+  [%expect
+    {|
+    exists: false
+    is_directory: false |}]
+;;
+
 let%expect_test "mkdir_p" =
   let test path =
     match Fpath.mkdir_p path with

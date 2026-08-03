@@ -15,15 +15,7 @@ Test that adding constraints to ocamllsp via `lock_dir` works.
   $ mkpkg ocamlbuild 0.0.2
   $ mkpkg ocamlbuild 0.0.3
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.21)
-  > 
-  > (package
-  >  (name foo)
-  >  (allow_empty)
-  >  (depends
-  >    (ocaml (= 5.2.0))))
-  > EOF
+  $ make_named_package_project foo 3.21 "(ocaml (= 5.2.0))"
 
 Add ocamlbuild 0.0.2 as a constraint to make sure the constraint field makes the solver pick the correct version
 

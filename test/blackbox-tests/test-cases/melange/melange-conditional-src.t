@@ -32,5 +32,7 @@ Show Melange-specific sources are conditionally compiled by Dune
 
   $ dune build _build/default/a/.a.objs/melange/a__Foo.cmi
   File "a/foo.melange.ml", line 2, characters 18-29:
+  2 | let compare a b = compare a b
+                        ^^^^^^^^^^^
   Warning 102 [polymorphic-comparison-introduced]: Polymorphic comparison introduced (maybe unsafe)
 

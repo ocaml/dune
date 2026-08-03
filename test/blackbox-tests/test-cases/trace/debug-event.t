@@ -47,14 +47,11 @@ The debug event can be triggered with Sigusr1
   > | .args
   > | { scheduler: .scheduler }
   > | .scheduler.process_watcher |= keys
-  > | .scheduler.events.pending_jobs |= type
+  > | .scheduler.events |= keys
   > '
   {
     "scheduler": {
-      "events": {
-        "pending_jobs": "number",
-        "pending_worker_tasks": 0
-      },
+      "events": [],
       "process_watcher": [
         "running_count",
         "table"

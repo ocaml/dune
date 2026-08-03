@@ -4,9 +4,7 @@ An implementation and a virtual library both define the same (non virtual
 ) module. However, the module is private in the public library hence it should
 just quietly shadow the module in the virtual library.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 2.0)
-  > EOF
+  $ make_dune_project 2.0
 
   $ mkdir vlib impl
   $ touch impl/dom.ml vlib/dom.mli vlib/overlap.ml impl/overlap.ml

@@ -1,17 +1,7 @@
 Show that `(melange.modules ...)` is gated on Dune 3.24 and applies only to
 Melange compilation.
 
-  $ mkdir old
-  $ cat > old/dune-project <<EOF
-  > (lang dune 3.23)
-  > (using melange 0.1)
-  > EOF
-  $ cat > old/dune <<EOF
-  > (library
-  >  (name old)
-  >  (modes melange)
-  >  (melange.modules foo))
-  > EOF
+  $ make_old_melange_field_project melange.modules foo
   $ dune build --root old
   Entering directory 'old'
   File "dune", line 4, characters 1-22:
@@ -23,10 +13,7 @@ Melange compilation.
   [1]
   $ rm -rf old
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.24)
-  > (using melange 0.1)
-  > EOF
+  $ make_melange_project 3.24 0.1
   $ mkdir app
   $ cat > app/dune <<EOF
   > (library

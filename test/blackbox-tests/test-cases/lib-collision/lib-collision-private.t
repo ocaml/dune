@@ -3,9 +3,7 @@ different folders.
 
   $ mkdir -p a b
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.13)
-  > EOF
+  $ make_dune_project 3.13
 
   $ cat > a/dune << EOF
   > (library

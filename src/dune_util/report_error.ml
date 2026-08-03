@@ -227,3 +227,8 @@ let gen_report exn backtrace =
 
 let report { Exn_with_backtrace.exn; backtrace } = gen_report exn (Some backtrace)
 let report_exception exn = gen_report exn None
+
+let debug_backtraces b =
+  report_backtraces b;
+  Memo.Debug.track_locations_of_lazy_values := b
+;;

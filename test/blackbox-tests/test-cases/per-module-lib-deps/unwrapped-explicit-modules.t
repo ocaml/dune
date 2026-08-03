@@ -61,17 +61,17 @@ below.
 
   $ dune rules --root . --format=json --deps '%{cmo:consumer/uses_a}' > deps_a.json
   $ dune rules --root . --format=json --deps '%{cmo:consumer/uses_b}' > deps_b.json
-  $ jq -r 'include "dune"; .[] | depsGlobs
+  $ jq_dune -r '.[] | depsGlobs
   >   | select(.dir | endswith("foo/.foo.objs/byte"))
   >   | .dir + " " + .predicate' < deps_a.json
   _build/default/foo/.foo.objs/byte *.cmi
-  $ jq -r 'include "dune"; .[] | depsGlobs
+  $ jq_dune -r '.[] | depsGlobs
   >   | select(.dir | endswith("foo/.foo.objs/byte"))
   >   | .dir + " " + .predicate' < deps_b.json
   _build/default/foo/.foo.objs/byte *.cmi
-  $ jq -r 'include "dune"; .[] | depsFilePaths
+  $ jq_dune -r '.[] | depsFilePaths
   >   | select(endswith("foo/.foo.objs/byte/a.cmi"))' < deps_a.json
-  $ jq -r 'include "dune"; .[] | depsFilePaths
+  $ jq_dune -r '.[] | depsFilePaths
   >   | select(endswith("foo/.foo.objs/byte/b.cmi"))' < deps_b.json
 
 Case 1: edit `A`'s interface to expose `extra`. `uses_b` references
@@ -83,7 +83,7 @@ only `B`, but the cctx-wide `.cmi` glob over `foo`'s objdir includes
   > val extra : string
   > EOF
   $ dune build @check
-  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatching("uses_b.cm")]'
+  $ dune trace cat | jq_dune -s '[.[] | targetsMatching("uses_b.cm")]'
   [
     {
       "target_files": [
@@ -102,7 +102,7 @@ Case 2: edit `B`'s interface to expose `extra`. Symmetric — today
   > val extra : string
   > EOF
   $ dune build @check
-  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatching("uses_a.cm")]'
+  $ dune trace cat | jq_dune -s '[.[] | targetsMatching("uses_a.cm")]'
   [
     {
       "target_files": [

@@ -21,8 +21,7 @@ If Merlin field is absent, default context is chosen
   ..
   lib-foo
 
-  $ dune ocaml merlin dump-config --format=json "$PWD" | jq -r '
-  >   include "dune";
+  $ dune ocaml merlin dump-config --format=json "$PWD" | jq_dune -r '
   >   merlinEntry("Foo")
   >   | merlinJsonEntryWithConfigNames(["STDLIB", "UNIT_NAME"])'
   Foo: _build/default/foo
@@ -53,8 +52,7 @@ If Merlin field is present, this context is chosen
   $ [ ! -d _build/default/.merlin-conf ] && echo "No config in default"
   No config in default
 
-  $ dune ocaml merlin dump-config --format=json "$PWD" | jq -r '
-  >   include "dune";
+  $ dune ocaml merlin dump-config --format=json "$PWD" | jq_dune -r '
   >   merlinEntry("Foo")
   >   | merlinJsonEntryWithConfigNames(["STDLIB", "UNIT_NAME"])'
   Foo: _build/cross/foo
@@ -88,8 +86,7 @@ is disabled in that context
   ..
   lib-foo
 
-  $ dune ocaml merlin dump-config --format=json "$PWD" | jq -r '
-  >   include "dune";
+  $ dune ocaml merlin dump-config --format=json "$PWD" | jq_dune -r '
   >   merlinEntry("Foo")
   >   | merlinJsonEntryWithConfigNames(["STDLIB", "UNIT_NAME"])'
   Foo: _build/default/foo

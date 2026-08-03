@@ -14,9 +14,9 @@ jobs:
     name: Update OxCaml release
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
-      - uses: nixbuild/nix-quick-install-action@v34
+      - uses: nixbuild/nix-quick-install-action@v35
 
       - name: Find latest OxCaml release
         id: check

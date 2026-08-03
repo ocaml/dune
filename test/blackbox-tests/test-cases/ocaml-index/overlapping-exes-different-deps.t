@@ -6,9 +6,7 @@ dependencies but share modules due to missing (modules) field.
   $ ln -s $(which ocaml_index) bin/ocaml-index
   $ export PATH=bin:$PATH
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.22)
-  > EOF
+  $ make_dune_project 3.22
 
 Create two local libraries with different modules:
   $ mkdir lib_a lib_b

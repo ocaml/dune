@@ -1,7 +1,7 @@
 ----------------------------------------------------------------------------------
 Tests for the (c_library_flags ...) field in foreign code stanzas.
 
-  $ echo "(lang dune 3.23)" > dune-project
+  $ make_dune_project 3.23
 
 ----------------------------------------------------------------------------------
 * Build a library with (foreign_stubs ...) that uses (c_library_flags ...).

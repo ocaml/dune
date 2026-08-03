@@ -33,14 +33,16 @@ let
         "ocamlbuild"
         "ocamlfind"
         "topkg"
+        "uutf"
         "zarith"
       ];
 
       skipPackages = [
+        "angstrom"
+        "faraday"
         "mdx"
         "odoc"
         "odoc-parser"
-        "uutf"
       ];
 
       nameMap = {

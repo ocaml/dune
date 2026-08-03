@@ -2,7 +2,7 @@ Test that [promote-foo] syntax is deleted in Dune 3.0 with good error messages.
 
 First, check that the syntax still works with Dune 2.9.
 
-  $ echo "(lang dune 2.9)" > dune-project
+  $ make_dune_project 2.9
   $ cat >dune <<EOF
   > (rule
   >  (targets promoted)
@@ -29,7 +29,7 @@ First, check that the syntax still works with Dune 2.9.
 
 Now switch to Dune 3.0.
 
-  $ echo "(lang dune 3.0)" > dune-project
+  $ make_dune_project 3.0
   $ dune build promoted
   File "dune", line 4, characters 7-28:
   4 |  (mode (promote-into subdir)))

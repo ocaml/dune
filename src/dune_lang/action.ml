@@ -1,5 +1,5 @@
 open Import
-open Dune_util.Action
+open Stdune.Action_types
 open Dune_sexp
 
 module Action_plugin = struct
@@ -70,8 +70,8 @@ module File_perm = struct
   ;;
 
   let to_unix_perm = function
-    | Normal -> 0o666
-    | Executable -> 0o777
+    | Normal -> Permissions.Mode.default_file
+    | Executable -> Permissions.Mode.executable_file
   ;;
 end
 
@@ -85,16 +85,35 @@ module Env_update = struct
       | EqColon
       | EqPlusEq
 
-    let equal a b =
-      match a, b with
-      | Eq, Eq
-      | PlusEq, PlusEq
-      | EqPlus, EqPlus
-      | ColonEq, ColonEq
-      | EqColon, EqColon
-      | EqPlusEq, EqPlusEq -> true
-      | _ -> false
+    let repr =
+      Repr.variant
+        "env-update-op"
+        [ Repr.case0 "=" ~test:(function
+            | Eq -> true
+            | PlusEq | EqPlus | ColonEq | EqColon | EqPlusEq -> false)
+        ; Repr.case0 "+=" ~test:(function
+            | PlusEq -> true
+            | Eq | EqPlus | ColonEq | EqColon | EqPlusEq -> false)
+        ; Repr.case0 "=+" ~test:(function
+            | EqPlus -> true
+            | Eq | PlusEq | ColonEq | EqColon | EqPlusEq -> false)
+        ; Repr.case0 ":=" ~test:(function
+            | ColonEq -> true
+            | Eq | PlusEq | EqPlus | EqColon | EqPlusEq -> false)
+        ; Repr.case0 "=:" ~test:(function
+            | EqColon -> true
+            | Eq | PlusEq | EqPlus | ColonEq | EqPlusEq -> false)
+        ; Repr.case0 "=+=" ~test:(function
+            | EqPlusEq -> true
+            | Eq | PlusEq | EqPlus | ColonEq | EqColon -> false)
+        ]
     ;;
+
+    include Repr.Poly (struct
+        type nonrec t = t
+
+        let repr = repr
+      end)
 
     let all =
       [ "=", Eq
@@ -105,13 +124,6 @@ module Env_update = struct
       ; "=+=", EqPlusEq
       ]
     ;;
-
-    let to_string t =
-      List.find_map all ~f:(fun (k, t') -> if equal t t' then Some k else None)
-      |> Option.value_exn
-    ;;
-
-    let repr = Repr.view Repr.string ~to_:to_string
   end
 
   type 'a t =

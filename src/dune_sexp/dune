@@ -4,6 +4,6 @@
  (inline_tests)
  (preprocess
   (pps ppx_expect))
- (libraries stdune uutf))
+ (libraries stdune))
 
 (ocamllex lexer versioned_file_first_line)

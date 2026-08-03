@@ -3,7 +3,8 @@ open Import
 module T = struct
   type t = OpamVariable.t
 
-  let to_dyn s = Dyn.string (OpamVariable.to_string s)
+  let repr = Repr.view Repr.string ~to_:OpamVariable.to_string
+  let to_dyn = Repr.to_dyn repr
   let compare x y = Ordering.of_int (OpamVariable.compare x y)
 end
 
@@ -87,7 +88,7 @@ let all_known =
 ;;
 
 let encode t = Encoder.string (to_string t)
-let repr = Repr.view Repr.string ~to_:to_string
+let repr = T.repr
 
 let check_typo_underscore_instead_of_dash =
   let possible_typos =
@@ -130,9 +131,12 @@ module Project = struct
   let encode name = Encoder.string (":" ^ to_string name)
 
   let decode =
-    Decoder.atom_matching ~desc:"variable" (fun s ->
-      if String.starts_with ~prefix:":" s
-      then Some (of_string (String.drop s 1))
-      else None)
+    let open Decoder in
+    peek_exn
+    >>= function
+    | Atom (loc, A s) when String.starts_with ~prefix:":" s ->
+      let+ () = junk in
+      parse_string_exn (loc, String.drop s 1)
+    | sexp -> User_error.raise ~loc:(Ast.loc sexp) [ Pp.text "variable expected" ]
   ;;
 end

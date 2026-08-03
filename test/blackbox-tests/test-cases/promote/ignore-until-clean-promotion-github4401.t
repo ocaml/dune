@@ -1,9 +1,7 @@
 When --ignore-promoted-rules is passed, rules marked `(promote (until-clean))`
 are ignored. See #4401.
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.4)
-  > EOF
+  $ make_dune_project 3.4
 
   $ echo foobar > reference
 
@@ -24,9 +22,7 @@ are ignored. See #4401.
 
 This is correctly ignored if `dune-lang` is bumped to 3.5.
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.5)
-  > EOF
+  $ make_dune_project 3.5
 
   $ dune clean
   $ dune runtest --ignore-promoted-rules

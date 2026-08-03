@@ -1,16 +1,5 @@
 Demonstrate how dependencies are filtered in opam files:
 
-  $ build_single_package() {
-  > solve_project <<EOF
-  > (lang dune 3.11)
-  > (package
-  >  (name x)
-  >  (depends
-  >   $1))
-  > EOF
-  > build_pkg $1
-  > }
-
   $ mkrepo
 
   $ mkpkg "foo"

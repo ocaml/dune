@@ -14,10 +14,7 @@ Now we create a theory that depends on both
 
   $ mkdir mytheory && cd mytheory
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.21)
-  > (using rocq 0.11)
-  > EOF
+  $ make_rocq_project 3.21 0.11
 
   $ cat > dune << EOF
   > (rocq.theory

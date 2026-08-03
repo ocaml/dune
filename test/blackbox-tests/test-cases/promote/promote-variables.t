@@ -1,6 +1,6 @@
 Test expanding variables in `(promote (into ..))`
 
-  $ echo "(lang dune 3.21)" > dune-project
+  $ make_dune_project 3.21
   $ mkdir -p a/b another
   $ cat > a/b/dune <<EOF
   > (rule

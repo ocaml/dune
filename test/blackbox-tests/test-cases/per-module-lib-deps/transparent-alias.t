@@ -5,9 +5,7 @@ consumers that use the alias must be recompiled when the library changes.
 
 See: https://github.com/ocaml/dune/issues/4572
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.23)
-  > EOF
+  $ make_dune_project 3.23
 
   $ mkdir lib
   $ cat > lib/dune <<EOF

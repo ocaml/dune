@@ -188,7 +188,7 @@ Reproduction case for #3069
 ---------------------------
 
   $ mkdir 3069 && cd 3069
-  $ echo "(lang dune 2.0)" > dune-project
+  $ make_dune_project 2.0
   $ cat >dune <<EOF
   > (rule
   >  (action (with-stdout-to x (echo bar)))

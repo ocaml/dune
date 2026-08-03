@@ -4,27 +4,10 @@ Exercise the `dune pkg validate-lockdir` command on portable lockdirs.
   $ add_mock_repo_if_needed
 
 Define some interdependent opam packages:
-  $ mkpkg a 0.0.1 <<EOF
-  > depends: [ "c" "d" ]
-  > EOF
-  $ mkpkg b 0.0.1 <<EOF
-  > EOF
-  $ mkpkg b 0.0.2 <<EOF
-  > EOF
-  $ mkpkg c <<EOF
-  > depends: [ "e" ]
-  > EOF
-  $ mkpkg d <<EOF
-  > EOF
-  $ mkpkg e <<EOF
-  > EOF
+  $ make_lockdir_validation_packages
 
 Define some local packages.
-  $ cat >dune-project <<EOF
-  > (lang dune 3.20)
-  > (package (name foo) (depends a (b (>= 0.0.2))))
-  > (package (name bar) (depends foo c))
-  > EOF
+  $ make_lockdir_validation_project 3.20
 
 Solve dependencies:
   $ dune pkg lock

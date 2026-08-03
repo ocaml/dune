@@ -1,9 +1,17 @@
 open Stdune
 open Dune_rules
+open Dune_scheduler
 
 let () =
   Path.set_root (Path.External.cwd ());
   Path.Build.set_build_dir (Path.Outside_build_dir.of_string "_build")
+;;
+
+let scheduler_config =
+  { Scheduler.Config.concurrency = 1
+  ; print_ctrl_c_warning = false
+  ; watch_exclusions = []
+  }
 ;;
 
 let fail fmt =
@@ -134,25 +142,24 @@ let compress_string s =
 let test input =
   let expected = simple_subst input in
   let buf = Buffer.create (String.length expected) in
-  Fiber.run
-    ~iter:(fun () -> assert false)
-    (let ofs = ref 0 in
-     let open Fiber.O in
-     let input buf pos len =
-       let to_copy = min len (String.length input - !ofs) in
-       Bytes.blit_string ~src:input ~dst:buf ~src_pos:!ofs ~dst_pos:pos ~len:to_copy;
-       ofs := !ofs + to_copy;
-       to_copy
-     in
-     let output = Buffer.add_subbytes buf in
-     let+ (_ : Artifact_substitution.status) =
-       Artifact_substitution.copy
-         ~conf:Artifact_substitution.Conf.dummy
-         ~input_file:(Path.of_string "<memory>")
-         ~input
-         ~output
-     in
-     ());
+  Scheduler.Run.go scheduler_config ~file_watcher:No_watcher (fun () ->
+    let ofs = ref 0 in
+    let open Fiber.O in
+    let input buf pos len =
+      let to_copy = min len (String.length input - !ofs) in
+      Bytes.blit_string ~src:input ~dst:buf ~src_pos:!ofs ~dst_pos:pos ~len:to_copy;
+      ofs := !ofs + to_copy;
+      to_copy
+    in
+    let output = Buffer.add_subbytes buf in
+    let+ (_ : Artifact_substitution.status) =
+      Artifact_substitution.copy
+        ~conf:Artifact_substitution.Conf.dummy
+        ~input_file:(Path.of_string "<memory>")
+        ~input
+        ~output
+    in
+    ());
   let result = Buffer.contents buf in
   if result <> expected
   then

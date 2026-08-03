@@ -3,9 +3,7 @@ Test unused library detection in executables
 The unused-libs alias should detect unused libraries in executables just like
 it does for libraries.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.21)
-  > EOF
+  $ make_dune_project 3.21
 
 Create two libraries - one that will be used and one that won't:
 

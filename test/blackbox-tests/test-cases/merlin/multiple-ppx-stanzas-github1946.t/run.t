@@ -5,8 +5,7 @@ in the same dune file, but require different ppx specifications
   $ export BUILD_PATH_PREFIX_MAP="/OCAMLC_WHERE=$ocamlc_where:$BUILD_PATH_PREFIX_MAP"
 
   $ dune build @all --profile release
-  $ dune ocaml merlin dump-config --format=json $PWD | jq -r '
-  >   include "dune";
+  $ dune ocaml merlin dump-config --format=json $PWD | jq_dune -r '
   >   .[]
   >   | select(.module_name | test("^Usesppx"))
   >   | merlinJsonEntryWithConfigNames(["FLG", "UNIT_NAME"])

@@ -1,8 +1,6 @@
 The test ensures we are able to run OxCaml tests for Dune.
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.20)
-  > EOF
+  $ make_dune_project 3.20
 
   $ cat > main.ml << EOF
   > let fst_local ((x, _) @ local) = x

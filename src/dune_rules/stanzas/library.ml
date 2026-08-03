@@ -62,6 +62,7 @@ type t =
   ; install_c_headers : (Loc.t * string) list
   ; public_headers : Loc.t * Dep_conf.t list
   ; ppx_runtime_libraries : (Loc.t * Lib_name.t) list
+  ; melange_ppx_runtime_libraries : (Loc.t * Lib_name.t) list option
   ; modes : Mode_conf.Lib.Set.t
   ; kind : Lib_kind.t
   ; library_flags : Ordered_set_lang.Unexpanded.t
@@ -110,6 +111,11 @@ let decode =
          ~default:(stanza_loc, [])
      and+ ppx_runtime_libraries =
        field "ppx_runtime_libraries" (repeat (located Lib_name.decode)) ~default:[]
+     and+ melange_ppx_runtime_libraries =
+       field_o
+         "melange.ppx_runtime_libraries"
+         (Dune_lang.Syntax.since Stanza.syntax (3, 24)
+          >>> repeat (located Lib_name.decode))
      and+ library_flags = Ordered_set_lang.Unexpanded.field "library_flags"
      and+ c_library_flags = Ordered_set_lang.Unexpanded.field "c_library_flags"
      and+ virtual_deps =
@@ -289,6 +295,7 @@ let decode =
      ; install_c_headers
      ; public_headers
      ; ppx_runtime_libraries
+     ; melange_ppx_runtime_libraries
      ; modes
      ; kind
      ; library_flags
@@ -453,6 +460,25 @@ let to_lib_id ~src_dir t =
   Lib_id.Local.make ~loc ~src_dir (Lib_name.of_local t.name)
 ;;
 
+let library_deps ~modes (buildable : Buildable.t) =
+  let ocaml, melange =
+    let { Lib_mode.Map.ocaml = { byte; native }; melange } = modes in
+    let ocaml_libraries = if byte || native then buildable.libraries else [] in
+    let melange_libraries =
+      match melange, buildable.melange_libraries with
+      | true, Some melange_libraries -> melange_libraries
+      | true, None -> buildable.libraries
+      | false, None -> []
+      | false, Some _ ->
+        User_error.raise
+          ~loc:buildable.loc
+          [ Pp.text "Cannot specify `melange.libraries' without `melange' mode" ]
+    in
+    ocaml_libraries, melange_libraries
+  in
+  { Compilation_mode.Per_mode.ocaml; melange }
+;;
+
 let to_lib_info
       conf
       ~expander
@@ -576,26 +602,23 @@ let to_lib_info
     | Public (_, pkg) -> Package.version pkg
     | Installed_private | Installed | Private _ -> None
   in
-  let requires =
-    { Compilation_mode.By_mode.ocaml = conf.buildable.libraries
-    ; melange = conf.buildable.libraries
-    }
-  in
+  let loc = conf.buildable.loc in
+  let requires = library_deps ~modes conf.buildable in
   let parameters = conf.parameters in
   let allow_unused_libraries = conf.buildable.allow_unused_libraries in
-  let loc = conf.buildable.loc in
   let kind = conf.kind in
   let src_dir = dir in
   let orig_src_dir = None in
   let synopsis = conf.synopsis in
   let sub_systems = conf.sub_systems in
   let ppx_runtime_deps =
-    { Compilation_mode.By_mode.ocaml = conf.ppx_runtime_libraries
-    ; melange = conf.ppx_runtime_libraries
-    }
+    let melange =
+      Option.value conf.melange_ppx_runtime_libraries ~default:conf.ppx_runtime_libraries
+    in
+    { Compilation_mode.Per_mode.ocaml = conf.ppx_runtime_libraries; melange }
   in
   let preprocess =
-    { Compilation_mode.By_mode.ocaml = conf.buildable.preprocess.config
+    { Compilation_mode.Per_mode.ocaml = conf.buildable.preprocess.config
     ; melange = conf.buildable.melange_preprocess.config
     }
   in

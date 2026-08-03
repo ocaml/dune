@@ -4,47 +4,15 @@ behavior of a top-level %{bin:NAME} dep (see inline-tests.t).
 Dep_conf_eval.unnamed mirrors named_paths_builder's include_envs
 collection to drain the env contribution from Include_result.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.24)
-  > (package (name mypkg))
-  > EOF
-  $ mkdir src
-  $ cat >src/dune <<'EOF'
-  > (executable (public_name mybin) (package mypkg))
-  > EOF
-  $ cat >src/mybin.ml <<'EOF'
-  > let () = print_endline "hello from mybin"
-  > EOF
-
-  $ cat >dump_path.ml <<EOF
-  > let () =
-  >   let oc = open_out "$PWD/path.out" in
-  >   output_string oc (Sys.getenv "PATH");
-  >   close_out oc
-  > EOF
+  $ make_mypkg_bin_project
 
   $ cat >deps.sexp <<'EOF'
   > (%{bin:mybin})
   > EOF
 
-  $ cat >dune <<'EOF'
-  > (library
-  >  (name check_backend)
-  >  (modules ())
-  >  (inline_tests.backend
-  >   (generate_runner (cat dump_path.ml))))
-  > (library
-  >  (name testlib)
-  >  (inline_tests
-  >   (backend check_backend)
-  >   (deps (include deps.sexp))))
-  > EOF
-
-  $ cat >testlib.ml <<EOF
-  > EOF
+  $ write_bin_pform_inline_tests_fixture '(include deps.sexp)'
 
   $ dune runtest 2>&1
 
   $ env_added "$(cat path.out)" "$PATH" | censor
   $PWD/_build/install/default/.binaries/$DIGEST
-  $PWD/_build/install/default/bin

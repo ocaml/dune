@@ -4,3 +4,4 @@ module Trimmer = Trimmer
 module Mode = Mode
 module Shared = Shared
 module Layout = Layout
+module Local = Local

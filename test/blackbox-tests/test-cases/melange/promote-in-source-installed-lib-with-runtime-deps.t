@@ -6,25 +6,7 @@ Show target promotion in-source for `melange.emit`
   > (package (name foo))
   > (using melange 1.0)
   > EOF
-  $ mkdir -p lib/nested
-  $ echo "Some text" > lib/index.txt
-  $ echo "Some nested text" > lib/nested/hello.txt
-
-  $ cat > lib/dune <<EOF
-  > (library
-  >  (public_name foo)
-  >  (modes melange)
-  >  (preprocess (pps melange.ppx))
-  >  (melange.runtime_deps index.txt nested/hello.txt))
-  > EOF
-  $ cat > lib/foo.ml <<EOF
-  > external readFileSync : string -> encoding:string -> string = "readFileSync"
-  > [@@mel.module "fs"]
-  > let dirname = [%mel.raw "__dirname"]
-  > let () = Js.log2 "dirname:" dirname
-  > let file_path = "./index.txt"
-  > let read_asset () = readFileSync (dirname ^ "/" ^ file_path) ~encoding:"utf8"
-  > EOF
+  $ make_melange_runtime_deps_lib
 
   $ dune build --root lib
 

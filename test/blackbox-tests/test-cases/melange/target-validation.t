@@ -1,9 +1,6 @@
 Validation of target field in melange.emit stanzas
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.8)
-  > (using melange 0.1)
-  > EOF
+  $ make_melange_project 3.8 0.1
 
 Target should not be empty
 

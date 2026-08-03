@@ -270,9 +270,15 @@ There are two ways to run tests:
 -  ``dune build @runtest``
 -  ``dune test`` (or its alias ``dune runtest``)
 
-The two commands are equivalent, and they will run all the tests defined in the
-current directory and its children directories recursively. You can also run the tests in a
-specific sub-directory and its children by using:
+For projects with only the default build context, both commands run all the
+tests defined in the current directory and its children directories
+recursively. They differ when a workspace defines multiple build contexts:
+``dune build @runtest`` builds the alias as a normal build target, while
+``dune test`` selects one context for source paths. See
+:ref:`writing-and-running-tests-running-tests` for details.
+
+You can also run the tests in a specific sub-directory and its children by
+using:
 
 -  ``dune build @foo/bar/runtest``
 -  ``dune test foo/bar`` (or ``dune runtest foo/bar``)
@@ -500,12 +506,32 @@ For a given build context, the installation directories are determined with a
 single scheme for all installation sections. Taking the ``lib`` installation
 section as an example, the priorities of this scheme are as follows:
 
-#. if an explicit ``--lib <path>`` argument is passed, use this path
+#. if an explicit ``--libdir <path>`` argument is passed, use this path
 #. if an explicit ``--prefix <path>`` argument is passed, use ``<path>/lib``
-#. if ``--lib <path>`` argument is passed before during dune compilation to
-   ``./configure``, use this paths
-#. if ``OPAM_SWITCH_PREFIX`` is present in the environment use ``$OPAM_SWITCH_PREFIX/lib``
+#. if a ``--libdir <path>`` argument was passed during Dune's compilation to
+   ``./configure``, use this path
+#. if ``OPAM_SWITCH_PREFIX`` is present in the environment, use
+   ``$OPAM_SWITCH_PREFIX/lib``
 #. otherwise, fail
+
+The same scheme applies to every section, each with its own flag: ``--bindir``,
+``--sbindir``, ``--libexecdir``, ``--datadir`` (the ``share`` section),
+``--docdir``, ``--etcdir``, and ``--mandir``. The directories derived from
+``--prefix`` follow the opam layout: in particular ``man`` becomes
+``<prefix>/man`` and ``doc`` becomes ``<prefix>/doc`` -- they are *not* placed
+under ``<prefix>/share``.
+
+Note that ``--prefix`` (priority 2 above) takes precedence over a directory
+configured at build time via ``./configure`` (priority 3). Passing ``--prefix``
+therefore overrides a ``--mandir`` (or ``--docdir``, etc.) that was set at
+configure time. A system installation following the `Filesystem Hierarchy
+Standard <https://refspecs.linuxfoundation.org/FHS_3.0/fhs/index.html>`_, which
+expects ``<prefix>/share/man`` and ``<prefix>/share/doc``, should pass the
+per-section flags explicitly:
+
+.. code:: console
+
+    $ dune install --prefix /usr --mandir /usr/share/man --docdir /usr/share/doc PACKAGE
 
 Relocation Mode
 ---------------

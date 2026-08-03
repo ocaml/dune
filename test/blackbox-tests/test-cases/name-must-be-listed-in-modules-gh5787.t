@@ -1,9 +1,7 @@
 When (name) points to a module that is not part of (modules), a specific error
 message is printed.
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.0)
-  > EOF
+  $ make_dune_project 3.0
 
   $ touch a.ml b.ml
 

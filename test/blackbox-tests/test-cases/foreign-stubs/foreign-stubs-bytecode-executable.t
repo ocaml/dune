@@ -1,7 +1,7 @@
 ----------------------------------------------------------------------------------
 Testing the building of bytecode executables with foreign archives.
 
-  $ echo "(lang dune 2.0)" > dune-project
+  $ make_dune_project 2.0
   $ ./sandboxed.sh
 
 ----------------------------------------------------------------------------------

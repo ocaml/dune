@@ -12,9 +12,15 @@ module T = struct
     | e -> e
   ;;
 
-  let to_dyn { dir; name } =
-    Dyn.record [ "name", Package_name.to_dyn name; "dir", Path.Source.to_dyn dir ]
+  let repr =
+    Repr.record
+      "package-id"
+      [ Repr.field "name" Package_name.repr ~get:(fun t -> t.name)
+      ; Repr.field "dir" Path.Source.repr ~get:(fun t -> t.dir)
+      ]
   ;;
+
+  let to_dyn = Repr.to_dyn repr
 end
 
 include T

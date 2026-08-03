@@ -56,11 +56,15 @@ let hash { dir; name } = Tuple.T2.hash Path.Build.hash Name.hash (dir, name)
 let name t = t.name
 let dir t = t.dir
 
-let to_dyn { dir; name } =
-  let open Dyn in
-  Record [ "dir", Path.Build.to_dyn dir; "name", Name.to_dyn name ]
+let repr =
+  Repr.record
+    "alias"
+    [ Repr.field "dir" Path.Build.repr ~get:(fun t -> t.dir)
+    ; Repr.field "name" (Repr.abstract Name.to_dyn) ~get:(fun t -> t.name)
+    ]
 ;;
 
+let to_dyn = Repr.to_dyn repr
 let fully_qualified_name t = Path.Build.relative t.dir (Name.to_string t.name)
 
 let get_ctx (path : Path.Build.t) =

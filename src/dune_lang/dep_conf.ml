@@ -151,6 +151,15 @@ let decode files =
 let decode_no_files = decode `Forbid
 let decode = decode `Allow
 
+let command_line_parser ~stanza_version =
+  Syntax.set
+    Stanza.syntax
+    (Active Stanza.latest_version)
+    (String_with_vars.set_decoding_env
+       (Pform.Env.initial ~stanza:stanza_version ~extensions:[])
+       decode)
+;;
+
 open Dune_sexp
 
 let encode = function

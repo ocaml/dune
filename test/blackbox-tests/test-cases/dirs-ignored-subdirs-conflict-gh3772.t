@@ -2,9 +2,7 @@ Reproduction of https://github.com/ocaml/dune/issues/3773
 
 Mixing incompatible features should fail earlier with a proper message.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 2.0)
-  > EOF
+  $ make_dune_project 2.0
 
   $ cat > dune <<EOF
   > (ignored_subdirs (node_modules))

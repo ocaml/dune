@@ -1,9 +1,6 @@
 Test error handling for %{pkg:...} pforms.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.24)
-  > (package (name foo))
-  > EOF
+  $ make_dune_project_with_package 3.24 foo
 
   $ mkdir -p foo
   $ cat >foo/dune <<EOF
@@ -143,10 +140,7 @@ Wrong number of arguments (too many):
 
 Path escaping the workspace is rejected:
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.24)
-  > (package (name foo))
-  > EOF
+  $ make_dune_project_with_package 3.24 foo
 
   $ cat >dune <<EOF
   > (rule
@@ -164,10 +158,7 @@ Path escaping the workspace is rejected:
 
 The %{pkg:...} macro requires (lang dune 3.24) or later:
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.23)
-  > (package (name foo))
-  > EOF
+  $ make_dune_project_with_package 3.23 foo
 
   $ cat >dune <<EOF
   > (rule

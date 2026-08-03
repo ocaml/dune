@@ -28,7 +28,7 @@ shared buffer):
   $ git init --quiet
   $ git commit -m init --allow-empty --quiet
   $ git tag -a v0.0.1 -m v0.0.1
-  $ echo "(lang dune 2.0)" > dune-project
+  $ make_dune_project 2.0
   $ touch xapi-datamodel.opam
   $ cat >dune <<EOF
   > (executable
@@ -116,7 +116,11 @@ which corresponds to `~min_len` in Link_time_code_gen.
 
   $ dune build
 
-  $ dune trace cat | jq 'select(.cat == "artifact_subtitution") | .args'
+  $ dune trace cat | jq_dune -s '
+  >   map(select(.cat == "artifact_subtitution") | .args)
+  > | sort_by(.file)
+  > | reverse[]
+  > '
   {
     "file": "_build/default/gen_lifecycle.exe",
     "placeholder": [

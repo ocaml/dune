@@ -2,7 +2,7 @@
 
   - [prog] is the program being run. It should be a filename in the current working
     directory.
-  
+
   - [args] is a list of arguments to the program. Unlike in the system call [execve], the
     first argument is not the program name. The first argument is the first argument
     to the program. The program name is set to [prog] without the caller needing to.
@@ -47,14 +47,28 @@ module Process_info : sig
     }
 end
 
+module Linux : sig
+  val read_pid_max : unit -> int option
+
+  module Process_tree : sig
+    type error
+
+    val pp_error : error -> _ Pp.t
+
+    (** [children_of pid] returns the direct children of [pid] by reading
+        /proc/<pid>/task/<tid>/children. *)
+    val children_of : Pid.t -> (Pid.Set.t, error) Result.t
+  end
+end
+
 type wait =
   | Any
   | Pid of Pid.t
 
-(** This function is not implemented on Windows.
+(** On Windows, [Any] is not supported and successful results have no resource usage.
 
    Returns [None] if there are no children. If [WNOHANG] is passed, also
-   returns [None] if none of the proceseses are finished yet.
+   returns [None] if none of the processes are finished yet.
    When successful, returns information about the reaped process.
  *)
 val wait : wait -> Unix.wait_flag list -> Process_info.t option

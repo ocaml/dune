@@ -88,3 +88,11 @@ let run t k =
     in
     read t
 ;;
+
+let with_ f =
+  of_thunk (fun () ->
+    let pool = create () in
+    fork_and_join_unit
+      (fun () -> run pool)
+      (fun () -> finalize (fun () -> f pool) ~finally:(fun () -> close pool)))
+;;

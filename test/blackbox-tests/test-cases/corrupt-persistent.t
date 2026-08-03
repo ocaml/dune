@@ -1,6 +1,4 @@
-  $ cat > dune-project <<EOF
-  > (lang dune 2.0)
-  > EOF
+  $ make_dune_project 2.0
 
   $ cat > dune << EOF
   > (rule (target a) (deps) (action (bash "echo a > a")))
@@ -15,7 +13,7 @@ Delete last 10 chars of the .db file to corrupt it
 Dune log the corrupted file and recover
 
   $ dune build a
-  $ dune trace cat | jq 'include "dune"; logs("corrupt")'
+  $ dune trace cat | jq_dune 'logs("corrupt")'
   {
     "message": "Warning: Failed to load corrupted file",
     "file": "_build/.db",

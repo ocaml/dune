@@ -33,37 +33,7 @@ We create different promotion scenarios to test various behaviors:
 - b.expected: uses 'diff?' in progn (creates promotion when files differ)
 - c.expected: uses 'diff?' in separate action (may not create promotion)
 
-  $ cat > dune-project << EOF
-  > (lang dune 2.0)
-  > EOF
-
-  $ cat > dune << EOF
-  > (rule
-  >  (alias runtest)
-  >  (action
-  >   (diff a.expected a.actual)))
-  > 
-  > (rule
-  >  (with-stdout-to a.actual
-  >   (echo "A actual\n")))
-  > 
-  > (rule
-  >  (alias runtest)
-  >  (action
-  >   (progn
-  >    (with-stdout-to b.actual
-  >     (echo "B actual\n"))
-  >    (diff? b.expected b.actual))))
-  > 
-  > (rule
-  >  (with-stdout-to c.actual
-  >   (echo "C actual\n")))
-  > 
-  > (rule
-  >  (alias runtest)
-  >  (action
-  >   (diff? c.expected c.actual)))
-  > EOF
+  $ make_promotion_test_project with-c
 
   $ echo 'A expected' > a.expected
   $ echo 'B expected' > b.expected
@@ -148,9 +118,8 @@ This is different from "nothing to promote" - the file must exist
 in the filesystem to be checked for promotions.
 
   $ dune promotion show does-not-exist.ml 2>&1
+  Usage: dune promotion show [--help] [OPTION]… [FILE]…
   dune: FILE… arguments: no 'does-not-exist.ml' file or directory
-  Usage: dune promotion show [OPTION]… [FILE]…
-  Try 'dune promotion show --help' or 'dune --help' for more information.
   [1]
 
 === TEST: Show all corrected files (no arguments) ===

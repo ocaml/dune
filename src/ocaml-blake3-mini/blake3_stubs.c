@@ -184,14 +184,22 @@ CAMLprim value blake3_mini_digest(value v_t) {
   CAMLreturn(v_ret);
 }
 
+static void blake3_mini_check_range(intnat pos, intnat len, uintnat size) {
+  if (pos < 0 || len < 0 || (uintnat)pos > size ||
+      (uintnat)len > size - (uintnat)pos) {
+    caml_invalid_argument("Blake3_mini.feed: invalid range");
+  }
+}
+
 CAMLprim value blake3_mini_feed_string(value v_t, value v_s, value v_pos,
                                        value v_len) {
   CAMLparam4(v_t, v_s, v_pos, v_len);
 
   blake3_hasher *hasher = Blake3_val(v_t);
   const char *s = String_val(v_s);
-  size_t pos = Long_val(v_pos);
-  size_t len = Long_val(v_len);
+  intnat pos = Long_val(v_pos);
+  intnat len = Long_val(v_len);
+  blake3_mini_check_range(pos, len, caml_string_length(v_s));
   blake3_hasher_update(hasher, s + pos, len);
 
   CAMLreturn(Val_unit);
@@ -202,8 +210,9 @@ CAMLprim value blake3_mini_feed_bigstring_unlock(value v_t, value v_s,
   CAMLparam4(v_t, v_s, v_pos, v_len);
 
   blake3_hasher *hasher = Blake3_val(v_t);
-  size_t pos = Long_val(v_pos);
-  size_t len = Long_val(v_len);
+  intnat pos = Long_val(v_pos);
+  intnat len = Long_val(v_len);
+  blake3_mini_check_range(pos, len, Caml_ba_array_val(v_s)->dim[0]);
   char *s = Caml_ba_data_val(v_s);
   caml_register_global_root(&v_s);
   caml_release_runtime_system();

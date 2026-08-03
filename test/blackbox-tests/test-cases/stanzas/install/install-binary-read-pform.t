@@ -1,9 +1,6 @@
 Allow binary name to vary using pforms
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.14)
-  > (package (name foo))
-  > EOF
+  $ make_dune_project_with_package 3.14 foo
 
   $ cat >dune <<EOF
   > (install

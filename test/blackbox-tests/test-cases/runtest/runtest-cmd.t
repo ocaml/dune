@@ -1,8 +1,6 @@
 Here we test the features of the `dune runtest` command. 
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.16)
-  > EOF
+  $ make_dune_project 3.16
 
   $ cat > mytest.t <<EOF
   >   $ echo "Hello, world!"

@@ -12,22 +12,7 @@ Make a package that is only available on macos.
   > ]
   > EOF
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.18)
-  > (package
-  >  (name x)
-  >  (depends foo))
-  > EOF
-
-  $ cat > x.ml <<EOF
-  > let () = print_endline "Hello, World!"
-  > EOF
-
-  $ cat > dune <<EOF
-  > (executable
-  >  (public_name x)
-  >  (libraries foo))
-  > EOF
+  $ make_portable_lockdirs_project
 
 Solving will still succeed, but there'll be a warning because dune will attempt
 to solve for macos, linux, and windows by default.

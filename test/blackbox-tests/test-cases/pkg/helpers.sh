@@ -85,6 +85,258 @@ mkpkg() {
   cat >> "$mock_packages/$name/$name.$version/opam"
 }
 
+make_committed_mock_repo_package() {
+  local package="$1"
+  local version="$2"
+
+  mkrepo
+  mkpkg "$package" "$version" <<-'EOF'
+	EOF
+  (
+    cd mock-opam-repository || exit 1
+    git init --quiet
+    git add -A
+    git commit --quiet -m "Initial commit"
+  )
+}
+
+make_foo_tarball() {
+  local implementation="$1"
+
+  mkdir foo
+  cat > foo/dune-project <<-'EOF'
+	(lang dune 3.13)
+	(package (name foo))
+	EOF
+  printf '%s\n' "$implementation" > foo/foo.ml
+  cat > foo/dune <<-'EOF'
+	(library
+	 (public_name foo))
+	EOF
+  tar cf foo.tar foo
+  rm -rf foo
+}
+
+make_foo_tarball_package() {
+  : "${PORT:?}"
+
+  mkpkg foo <<- EOF
+	build: [
+	  ["dune" "subst"] {dev}
+	  [
+	    "dune"
+	    "build"
+	    "-p"
+	    name
+	    "-j"
+	    jobs
+	    "@install"
+	    "@runtest" {with-test}
+	    "@doc" {with-doc}
+	  ]
+	]
+	url {
+	 src: "http://0.0.0.0:${PORT}"
+	 checksum: [
+	  "md5=$(md5sum foo.tar | cut -f1 -d' ')"
+	 ]
+	}
+	EOF
+}
+
+make_bar_executable_depends_foo_project() {
+  cat > dune-project <<-'EOF'
+	(lang dune 3.13)
+	(package
+	 (name bar)
+	 (depends foo))
+	EOF
+  cat > bar.ml <<-'EOF'
+	let () = print_endline Foo.foo
+	EOF
+  cat > dune <<-'EOF'
+	(executable
+	 (public_name bar)
+	 (libraries foo))
+	EOF
+}
+
+make_project_pinned_to_foo() {
+  cat >dune-project <<- EOF
+	(lang dune 3.13)
+	(pin
+	 (url "file://$PWD/_foo")
+	 (package (name foo)))
+	(package
+	 (name main)
+	 (depends foo))
+	EOF
+}
+
+make_platform_dependent_bar_package() {
+  mkpkg bar <<-'EOF'
+	build: [
+	  ["mkdir" "-p" share "%{lib}%/%{name}%"]
+	  ["touch" "%{lib}%/%{name}%/META"] # needed for dune to recognize this as a library
+	]
+	depends: [
+	  "foo" {= "1" & os = "linux"}
+	  "foo" {= "2" & os = "macos"}
+	]
+	EOF
+}
+
+make_x_depends_bar_project() {
+  cat > dune-project <<-'EOF'
+	(lang dune 3.18)
+	(package
+	 (name x)
+	 (depends bar))
+	EOF
+  cat > x.ml <<-'EOF'
+	let () = print_endline "Hello, World!"
+	EOF
+  cat > dune <<-'EOF'
+	(executable
+	 (public_name x)
+	 (libraries foo))
+	EOF
+}
+
+make_lockdir_validation_packages() {
+  mkpkg a 0.0.1 <<-'EOF'
+	depends: [ "c" "d" ]
+	EOF
+  mkpkg b 0.0.1 <<-'EOF'
+	EOF
+  mkpkg b 0.0.2 <<-'EOF'
+	EOF
+  mkpkg c <<-'EOF'
+	depends: [ "e" ]
+	EOF
+  mkpkg d <<-'EOF'
+	EOF
+  mkpkg e <<-'EOF'
+	EOF
+}
+
+make_lockdir_validation_project() {
+  local version="${1:?}"
+
+  cat >dune-project <<- EOF
+	(lang dune ${version})
+	(package (name foo) (depends a (b (>= 0.0.2))))
+	(package (name bar) (depends foo c))
+	EOF
+}
+
+make_bar_depends_foo_project() {
+  cat > dune-project <<-'EOF'
+	(lang dune 3.10)
+	
+	(package
+	 (name bar)
+	 (depends foo))
+	EOF
+  cat > dune <<-'EOF'
+	EOF
+}
+
+make_external_mypkg_lib_source() {
+  local implementation="$1"
+
+  mkdir external_sources
+  cat >external_sources/dune-project <<-'EOF'
+	(lang dune 3.11)
+	(package (name mypkg))
+	EOF
+  cat >external_sources/dune <<-'EOF'
+	(library
+	 (public_name mypkg.lib)
+	 (name test_lib))
+	EOF
+  printf '%s\n' "$implementation" > external_sources/test_lib.ml
+}
+
+make_executable_script_pkg() {
+  local pkg="$1"
+  local script="$2"
+
+  make_lockpkg "$pkg" <<- EOF
+	(build (run ${script}))
+	(version dev)
+	EOF
+  local files="${source_lock_dir}/${pkg}.files"
+  local exec_path="${files}/${script}"
+  mkdir -p "${files}"
+  touch "${exec_path}"
+  chmod a+x "${exec_path}"
+  cat > "${exec_path}"
+}
+
+make_fetch_cache_project() {
+  tar cf test.tar "$@"
+  echo test.tar > fake-curls
+  local src_checksum
+  src_checksum=$(md5sum test.tar | cut -f1 -d' ')
+  make_lockpkg test <<- EOF
+	(version 0.0.1)
+	(source
+	 (fetch
+	  (url http://localhost:1)
+	  (checksum md5=${src_checksum})))
+	EOF
+  cat > dune-project <<-'EOF'
+	(lang dune 3.17)
+	(package (name my) (depends test) (allow_empty))
+	EOF
+}
+
+make_with_patch_package() {
+  mkpkg with-patch <<- EOF
+	EOF
+
+  fname1="foo.patch"
+  fname2="dir/bar.patch"
+  opam_repo="$mock_packages/with-patch/with-patch.0.0.1"
+  mkdir -p "$opam_repo/files/dir"
+  cat >"$opam_repo/files/$fname1" <<-'EOF'
+	foo
+	EOF
+  cat >"$opam_repo/files/$fname2" <<-'EOF'
+	bar
+	EOF
+}
+
+append_wrong_to_right_patch() {
+  local patch="$1"
+  local target="${2:-foo.ml}"
+
+  mkdir -p "$(dirname "$patch")"
+  if [ -s "$patch" ]; then
+    printf '
+' >> "$patch"
+  fi
+  cat >> "$patch" <<- EOF
+	diff --git a/${target} b/${target}
+	index b69a69a5a..ea988f6bd 100644
+	--- a/${target}
+	+++ b/${target}
+	@@ -1,1 +1,1 @@
+	-This is wrong
+	+This is right
+	EOF
+}
+
+write_wrong_to_right_patch() {
+  local patch="$1"
+  local target="${2:-foo.ml}"
+
+  mkdir -p "$(dirname "$patch")"
+  : > "$patch"
+  append_wrong_to_right_patch "$patch" "$target"
+}
+
 mk_ocaml() {
   local version="$1"
   local major
@@ -203,6 +455,50 @@ create_mock_repo() {
 	EOF
 }
 
+create_mock_repo_with_doc_workspace() {
+  cat >dune-workspace <<- EOF
+	(lang dune 3.20)
+	(pkg enabled)
+	(lock_dir
+	 (repositories mock)
+	 (solver_env
+	  (with-doc true)))
+	(repository
+	 (name mock)
+	 (url "$PWD/mock-opam-repository"))
+	EOF
+}
+
+setup_dev_tool_workspace() {
+  : "${dev_tool_lock_dir:?}"
+  cat > dune-workspace <<- EOF
+	(lang dune 3.20)
+	(lock_dir
+	 (path "${dev_tool_lock_dir}")
+	 (repositories mock))
+	(lock_dir
+	 (repositories mock))
+	(repository
+	 (name mock)
+	 (url "file://$(pwd)/mock-opam-repository"))
+	(pkg enabled)
+	EOF
+}
+
+make_mock_dev_tool_package() {
+  local pkg="$1"
+  local exe="$2"
+  local message="$3"
+
+  mkpkg "${pkg}" <<- EOF
+	install: [
+	  [ "sh" "-c" "echo '#!/bin/sh' > %{bin}%/${exe}" ]
+	  [ "sh" "-c" "echo 'echo ${message}' >> %{bin}%/${exe}" ]
+	  [ "sh" "-c" "chmod a+x %{bin}%/${exe}" ]
+	]
+	EOF
+}
+
 make_lockpkg() {
   local pkg="$1"
   mkdir -p "${source_lock_dir}"
@@ -256,12 +552,44 @@ solve_project() {
   dune_pkg_lock_normalized "$@"
 }
 
+build_single_package() {
+  local pkg="${1}"
+
+  solve_project <<EOF
+(lang dune 3.11)
+(package
+ (name x)
+ (depends
+  ${pkg}))
+EOF
+  build_pkg "${pkg}"
+}
+
 make_lockdir() {
   mkdir -p "${source_lock_dir}"
   cat > "${source_lock_dir}"/lock.dune <<- EOF
 	(lang package 0.1)
 	(repositories (complete true))
 	EOF
+}
+
+make_named_package_project() {
+  local name="$1"
+  local version="$2"
+  shift 2
+  cat > dune-project <<- EOF
+	(lang dune ${version})
+	(package
+	 (name ${name})
+	 (allow_empty)
+	 (depends $@))
+	EOF
+}
+
+make_package_project() {
+  local version="$1"
+  shift
+  make_named_package_project x "${version}" "$@"
 }
 
 make_project() {

@@ -9,25 +9,22 @@ the dune-workspace file, and the (env ...) stanza of a dune file.
 A '*' is not a valid profile name.
 
   $ dune build --profile "*"
+  Usage: dune build [--help] [OPTION]… [TARGET]…
   dune: option '--profile': "*" is an invalid profile.
-  Usage: dune build [OPTION]… [TARGET]…
-  Try 'dune build --help' or 'dune --help' for more information.
   [1]
 
 The empty string is not a valid profile name either.
 
   $ dune build --profile ""
+  Usage: dune build [--help] [OPTION]… [TARGET]…
   dune: option '--profile': "" is an invalid profile.
-  Usage: dune build [OPTION]… [TARGET]…
-  Try 'dune build --help' or 'dune --help' for more information.
   [1]
 
 A profile name containing a space is rejected when set via DUNE_PROFILE.
 
   $ DUNE_PROFILE="foo bar" dune build
+  Usage: dune build [--help] [OPTION]… [TARGET]…
   dune: environment variable 'DUNE_PROFILE': "foo bar" is an invalid profile.
-  Usage: dune build [OPTION]… [TARGET]…
-  Try 'dune build --help' or 'dune --help' for more information.
   [1]
 
 An invalid profile set in dune-workspace is rejected with a precise location.
@@ -100,9 +97,8 @@ The wildcard '_' is reserved in (env ...) stanzas and cannot be used as a
 profile name on the command line.
 
   $ dune build --profile _
+  Usage: dune build [--help] [OPTION]… [TARGET]…
   dune: option '--profile': "_" is an invalid profile.
-  Usage: dune build [OPTION]… [TARGET]…
-  Try 'dune build --help' or 'dune --help' for more information.
   [1]
 
 Inside an (env ...) stanza, '_' continues to work as a wildcard pattern that

@@ -1,6 +1,8 @@
 @doc
 ====
 
-This alias builds documentation for public libraries as HTML pages.
+This alias builds HTML documentation for public libraries and package ``.mld``
+pages. It does not document executable stanzas as API pages. Use
+:doc:`doc-private` to build documentation for private libraries.
 
 .. seealso:: :doc:`/documentation`

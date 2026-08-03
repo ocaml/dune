@@ -1,7 +1,5 @@
 For dune < 2.7 context_name is not allowed
-  $ cat > dune-project <<EOF
-  > (lang dune 2.6)
-  > EOF
+  $ make_dune_project 2.6
   $ dune exec ./foo.exe
   File "dune", line 3, characters 16-31:
   3 |  (enabled_if (= %{context_name} "default")))
@@ -11,8 +9,6 @@ For dune < 2.7 context_name is not allowed
   [1]
 
 For dune >= 2.7 context_name allowed
-  $ cat > dune-project <<EOF
-  > (lang dune 2.7)
-  > EOF
+  $ make_dune_project 2.7
   $ dune exec ./foo.exe
   bar

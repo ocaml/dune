@@ -3,9 +3,7 @@ https://github.com/ocaml/dune/issues/13299
 Select with unavailable library should fallback, but optional vlib
 implementation is incorrectly marked as having unavailable dependencies.
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.22)
-  > EOF
+  $ make_dune_project 3.22
 
   $ mkdir -p mylib_opt
   $ cat > mylib_opt/dune << EOF

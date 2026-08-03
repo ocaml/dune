@@ -1,6 +1,5 @@
 {
   nixpkgs,
-  ocaml-overlays,
   revdeps-dune,
   pkgs,
 }:
@@ -15,7 +14,7 @@ let
     });
     dune = final.dune_3;
 
-    ocamlPackages = prev.ocaml-ng.ocamlPackages_5_4.overrideScope (
+    ocamlPackages = prev.ocaml-ng.ocamlPackages_5_5.overrideScope (
       oself: osuper:
       let
         # Helper to build dune subpackages from revdeps-dune source
@@ -39,22 +38,6 @@ let
         ocaml = osuper.ocaml.override {
           flambdaSupport = false;
         };
-
-        cppo = osuper.cppo.overrideAttrs (_: {
-          src = final.fetchFromGitHub {
-            owner = "ocaml-community";
-            repo = "cppo";
-            rev = "fe1e27112d34fd9a7f68f268508663d436d41ac6";
-            hash = "sha256-BMYjsAKshiRGPHERF0/kP0heb8ZHlq5eCpMDQQJ+F4U=";
-          };
-        });
-
-        mdx = osuper.mdx.overrideAttrs (old: {
-          doCheck = false;
-          postInstall = (old.postInstall or "") + ''
-            mkdir -p $bin $lib
-          '';
-        });
 
         dune_3 = osuper.dune_3.overrideAttrs (old: {
           src = revdeps-dune;
@@ -153,21 +136,20 @@ let
     );
   };
 
-  # Import nixpkgs with allowBroken so deps of broken pkgs can be evaluated
-  pkgsPermissive = import nixpkgs {
+  # Instantiate nix-overlays with allowBroken so deps of broken pkgs can be
+  # evaluated.
+  pkgsPermissive = nixpkgs.makePkgs {
     inherit (pkgs.stdenv.hostPlatform) system;
     config = {
       allowBroken = true;
       allowUnfree = true;
+      allowUnsupportedSystem = true;
     };
-    overlays = [
-      ocaml-overlays.overlays.default
-      duneOverlay
-    ];
+    extraOverlays = [ duneOverlay ];
   };
 
   # Use the filter from nix-overlays
-  filter = import "${ocaml-overlays}/ci/filter.nix" {
+  filter = import "${nixpkgs}/ci/filter.nix" {
     inherit lib;
     inherit (pkgsPermissive) stdenv;
   };
@@ -175,7 +157,7 @@ let
   # Get filtered candidates using nix-overlays' logic
   candidates = filter.ocamlCandidates {
     pkgs = pkgsPermissive;
-    ocamlVersion = "5_4";
+    ocamlVersion = "5_5";
   };
 
   # Filter to only packages available on current platform

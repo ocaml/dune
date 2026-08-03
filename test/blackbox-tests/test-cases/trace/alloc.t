@@ -24,12 +24,18 @@ The alloc sampler is only enabled when the alloc trace category is requested:
   >         , major: (.args.major | keys)
   >         , promoted: (.args.promoted | keys)
   >         }
-  >     , top_entries_are_traces:
+  >     , entries_have_sources_and_traces:
   >         (all((.args.minor.top + .args.major.top + .args.promoted.top)[]?;
-  >           ((keys | sort) == ["estimated_words", "samples", "trace"]
+  >           ((keys | sort) == ["estimated_words", "samples", "source", "trace"]
+  >            and (.source | type == "string")
   >            and (.trace | type == "array")
   >            and (.trace | length <= 10)
-  >            and all(.trace[]; type == "string"))))
+  >            and all(.trace[]; type == "string")))
+  >          and all((.args.minor.by_source
+  >                   + .args.major.by_source
+  >                   + .args.promoted.by_source)[]?;
+  >            ((keys | sort) == ["estimated_words", "samples", "source"]
+  >             and (.source | type == "string"))))
   >     }
   >   ]'
   [
@@ -39,22 +45,25 @@ The alloc sampler is only enabled when the alloc trace category is requested:
       "has_run_id": true,
       "heaps": {
         "minor": [
+          "by_source",
           "top",
           "total_samples",
           "total_words"
         ],
         "major": [
+          "by_source",
           "top",
           "total_samples",
           "total_words"
         ],
         "promoted": [
+          "by_source",
           "top",
           "total_samples",
           "total_words"
         ]
       },
-      "top_entries_are_traces": true
+      "entries_have_sources_and_traces": true
     },
     {
       "name": "summary",
@@ -62,21 +71,24 @@ The alloc sampler is only enabled when the alloc trace category is requested:
       "has_run_id": false,
       "heaps": {
         "minor": [
+          "by_source",
           "top",
           "total_samples",
           "total_words"
         ],
         "major": [
+          "by_source",
           "top",
           "total_samples",
           "total_words"
         ],
         "promoted": [
+          "by_source",
           "top",
           "total_samples",
           "total_words"
         ]
       },
-      "top_entries_are_traces": true
+      "entries_have_sources_and_traces": true
     }
   ]

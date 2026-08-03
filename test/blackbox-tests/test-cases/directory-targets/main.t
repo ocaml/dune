@@ -1,8 +1,6 @@
 Tests for directory targets.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.0)
-  > EOF
+  $ make_dune_project 3.0
 
 Directory targets require an extension.
 
@@ -21,9 +19,7 @@ Directory targets require an extension.
 
 Starting from Dune 3.24, directory targets no longer require an extension.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.24)
-  > EOF
+  $ make_dune_project 3.24
 
   $ cat > dune <<EOF
   > (rule
@@ -35,10 +31,7 @@ Starting from Dune 3.24, directory targets no longer require an extension.
 
 Using the directory-targets extension is rejected starting from Dune 3.24.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.24)
-  > (using directory-targets 0.1)
-  > EOF
+  $ make_directory_targets_project 3.24
 
   $ dune build builtin-output/x
   File "dune-project", line 2, characters 25-28:
@@ -48,10 +41,7 @@ Using the directory-targets extension is rejected starting from Dune 3.24.
   Dune 3.24.
   [1]
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.0)
-  > (using directory-targets 0.1)
-  > EOF
+  $ make_directory_targets_project 3.0
 
 Ensure directory targets are produced.
 
@@ -128,7 +118,7 @@ Test that workspace-local cache works for directory targets.
 
   $ export DUNE_TRACE=cache
   $ dune build output/x
-  $ dune trace cat | jq 'include "dune"; cacheMisses'
+  $ dune trace cat | jq_dune 'cacheMisses'
 
 Requesting the directory target directly works too.
 
@@ -146,6 +136,10 @@ Requesting the directory target directly works too.
   x
   $ cat _build/default/output/y
   y
+
+Requesting the directory target with a trailing slash works too.
+
+  $ dune build output/
 
 Rebuilding works correctly.
 
@@ -174,6 +168,19 @@ Print rules:
 
   $ dune rules --deps output
   ((File (In_build_dir _build/default/src_x)))
+
+File targets currently accept trailing slashes.
+
+  $ touch source-file
+  $ dune build source-file/
+  $ cat > dune <<EOF
+  > (rule
+  >   (target generated-file)
+  >   (action (with-stdout-to generated-file (echo generated))))
+  > EOF
+  $ dune build generated-file/
+  $ cat _build/default/generated-file
+  generated
 
 Error when requesting a missing subdirectory of a directory target.
 
@@ -296,6 +303,34 @@ Depending on a glob in a subdirectory of a directory target works too.
   d.txt
   e
 
+Depending on a glob in a missing subdirectory of a directory target is an error.
+
+  $ cat > dune <<EOF
+  > (rule
+  >   (deps (sandbox always))
+  >   (targets (dir output))
+  >   (action (bash "mkdir output; echo x > output/x")))
+  > (rule
+  >   (deps (glob_files output/missing/*))
+  >   (target missing-glob)
+  >   (action (echo %{deps})))
+  > EOF
+
+  $ dune build missing-glob
+  File "dune", lines 1-4, characters 0-109:
+  1 | (rule
+  2 |   (deps (sandbox always))
+  3 |   (targets (dir output))
+  4 |   (action (bash "mkdir output; echo x > output/x")))
+  Error: This rule defines a directory target "output" that matches the
+  requested path "output/missing" but the rule's action didn't produce it
+  -> required by { dir = In_build_dir "default/output/missing"
+     ; predicate = Element (Glob "*")
+     ; only_generated_files = false
+     }
+  -> required by _build/default/missing-glob
+  [1]
+
 Depending on a directory target directly (rather than on individual files) works
 too. Note that this can be achieved in two ways:
 
@@ -370,20 +405,7 @@ since the produced directory has the same contents.
 
 Check that Dune clears stale files from directory targets.
 
-  $ cat > dune <<EOF
-  > (rule
-  >   (deps src_a src_b src_c (sandbox always))
-  >   (targets (dir output))
-  >   (action (bash "\| echo running;
-  >                 "\| mkdir -p output/subdir;
-  >                 "\| cat src_a > output/new-a;
-  >                 "\| cat src_b > output/subdir/b
-  > )))
-  > (rule
-  >   (deps output)
-  >   (target contents)
-  >   (action (bash "echo running; echo 'new-a:' > contents; cat output/new-a >> contents; echo 'b:' >> contents; cat output/subdir/b >> contents")))
-  > EOF
+  $ write_directory_target_contents_rules "src_a src_b src_c (sandbox always)"
 
   $ dune build contents
   running

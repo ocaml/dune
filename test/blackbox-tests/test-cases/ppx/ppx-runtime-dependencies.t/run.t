@@ -1,11 +1,7 @@
 ----------------------------------------------------------------------------------
 Handling ppx_runtime_libraries dependencies correctly
 
-  $ cat >sdune <<'EOF'
-  > #!/usr/bin/env bash
-  > DUNE_SANDBOX=symlink dune "$@"
-  > EOF
-  $ chmod +x sdune
+  $ make_sandboxed_dune
 
 ----------------------------------------------------------------------------------
 * Incorrect cycle detection due to ppx_runtime_libraries (TODO: fix this bug!)

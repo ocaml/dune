@@ -1,9 +1,6 @@
 Cinaps should offer all promotions at once
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.8)
-  > (using cinaps 1.3)
-  > EOF
+  $ make_cinaps_project 3.8 1.3
 
   $ cat > t1.ml <<"EOF"
   > (*$ print_endline "\nhello" *)

@@ -1,9 +1,6 @@
 Simple example of using a glob to specify files to install
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.5)
-  > (package (name foo))
-  > EOF
+  $ make_dune_project_with_package 3.5 foo
 
   $ cat >dune <<EOF
   > (install
@@ -21,10 +18,7 @@ Simple example of using a glob to specify files to install
   Please update your dune-project file to have (lang dune 3.6).
   [1]
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.6)
-  > (package (name foo))
-  > EOF
+  $ make_dune_project_with_package 3.6 foo
 
   $ dune build @install
 

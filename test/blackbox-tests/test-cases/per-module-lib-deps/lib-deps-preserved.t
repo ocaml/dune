@@ -3,9 +3,7 @@ Verify that library file deps are declared for module compilation rules.
 Every non-alias module should declare glob deps on its library
 dependencies' .cmi files.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.23)
-  > EOF
+  $ make_dune_project 3.23
 
   $ mkdir lib
   $ cat > lib/dune <<EOF
@@ -36,9 +34,9 @@ dependencies' .cmi files.
 Both modules declare glob deps on mylib's .cmi files:
 
   $ dune rules --root . --format=json --deps _build/default/.main.eobjs/native/dune__exe__Uses_lib.cmx |
-  > jq -r 'include "dune"; .[] | depsGlobPredicates'
+  > jq_dune -r '.[] | depsGlobPredicates'
   *.cmi
 
   $ dune rules --root . --format=json --deps _build/default/.main.eobjs/native/dune__exe__Main.cmx |
-  > jq -r 'include "dune"; .[] | depsGlobPredicates'
+  > jq_dune -r '.[] | depsGlobPredicates'
   *.cmi

@@ -1,7 +1,4 @@
-  $ cat >dune-project <<EOF
-  > (lang dune 3.21)
-  > (using rocq 0.11)
-  > EOF
+  $ make_rocq_project 3.21 0.11
 
   $ cat >Extr1.v <<EOF
   > Require Import Corelib.extraction.Extraction.

@@ -150,20 +150,25 @@ module Produce = struct
         }
     ;;
 
-    let add_action t ~loc action =
+    (* All aliases in [ts] are expected to share a directory: the shared
+       anonymous action is created in the representative's directory. *)
+    let add_action ts ~loc action =
+      let representative =
+        match ts with
+        | [] -> Code_error.raise "Rules.Produce.Alias.add_action: empty list" []
+        | r :: _ -> r
+      in
       let action =
         let open Action_builder.O in
-        let+ action = action in
-        { Rule.Anonymous_action.action
-        ; loc
-        ; dir = Alias.dir t
-        ; alias = Some (Alias.name t)
-        }
+        let+ action in
+        { Rule.Anonymous_action.action; loc; dir = Alias.dir representative }
       in
-      alias
-        t
-        { expansions = Appendable_list.singleton (loc, Dir_rules.Alias_spec.Action action)
-        }
+      Memo.parallel_iter ts ~f:(fun t ->
+        alias
+          t
+          { expansions =
+              Appendable_list.singleton (loc, Dir_rules.Alias_spec.Action action)
+          })
     ;;
   end
 end
@@ -193,7 +198,9 @@ let directory_targets (rules : t) =
         | Rule rule ->
           Filename.Set.fold ~init:acc rule.targets.dirs ~f:(fun target acc ->
             let target = Path.Build.relative_fname rule.targets.root target in
-            Path.Build.Map.add_exn acc target rule.loc)))
+            Path.Build.Map.update acc target ~f:(function
+              | None -> Some rule.loc
+              | Some loc -> Some loc))))
 ;;
 
 let collect f =

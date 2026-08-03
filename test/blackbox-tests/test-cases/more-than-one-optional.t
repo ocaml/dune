@@ -1,9 +1,6 @@
 Demonstrate an optional executable available from more than one definition
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.13)
-  > (package (name foo))
-  > EOF
+  $ make_dune_project_with_package 3.13 foo
 
   $ mkdir a b
   $ touch a/foo.ml b/foo.ml

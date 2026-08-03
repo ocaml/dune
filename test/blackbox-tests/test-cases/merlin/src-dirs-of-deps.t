@@ -1,7 +1,7 @@
 We create two libraries where one depends on the other. The dependency library
 also has more than one src dir.
 
-  $ echo "(lang dune 2.0)" > dune-project
+  $ make_dune_project 2.0
   $ mkdir -p lib1/sub
   $ cat >lib1/dune <<EOF
   > (include_subdirs unqualified)
@@ -21,8 +21,7 @@ also has more than one src dir.
   $ export BUILD_PATH_PREFIX_MAP="/OPAM_PREFIX=$opam_prefix:$BUILD_PATH_PREFIX_MAP"
 
   $ dune build lib2/.merlin-conf/lib-lib2
-  $ dune ocaml merlin dump-config --format=json $PWD/lib2 | jq -r '
-  >   include "dune";
+  $ dune ocaml merlin dump-config --format=json $PWD/lib2 | jq_dune -r '
   >   merlinEntry("Lib2")
   >   | merlinJsonEntryWithConfigNames(["STDLIB", "S", "UNIT_NAME"])'
   Lib2: _build/default/lib2/lib2

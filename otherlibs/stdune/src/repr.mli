@@ -111,6 +111,19 @@ val case0 : string -> test:('a -> bool) -> 'a case
 val variant : string -> 'a case list -> 'a t
 val abstract : ('a -> Dyn.t) -> 'a t
 
+module Enum : sig
+    type 'a repr
+    type 'a t
+
+    (** The type [a] must admit polymorphic equality *)
+    val make : string -> (string * 'a) list -> 'a t
+
+    val repr : 'a t -> 'a repr
+    val of_string : 'a t -> string -> 'a option
+    val to_string : 'a t -> 'a -> string
+  end
+  with type 'a repr := 'a t
+
 module Poly (T : S) : Poly with type t := T.t
 
 module Make (T : S) : sig

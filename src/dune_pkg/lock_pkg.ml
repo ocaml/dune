@@ -12,6 +12,29 @@ let add_self_to_filter_env package env variable =
     else env variable
 ;;
 
+let local_package_dependencies
+      (local_package : Local_package.For_solver.t)
+      ~env
+      ~with_test
+      ~packages
+      ~dune_version
+  =
+  let opam_package =
+    OpamPackage.create
+      (Package_name.to_opam_package_name local_package.name)
+      (Package_version.to_opam_package_version local_package.version)
+  in
+  let env = add_self_to_filter_env opam_package env in
+  let packages = Package_name.Map.set packages Dune_dep.name dune_version in
+  Resolve_opam_formula.filtered_formula_to_package_names
+    ~env
+    ~with_test
+    ~packages
+    (Dependency_formula.to_filtered_formula local_package.dependencies)
+  |> Result.map ~f:(fun { Resolve_opam_formula.regular; post = _ } ->
+    List.filter regular ~f:(Fun.negate (Package_name.equal Dune_dep.name)))
+;;
+
 let simplify_filter get_solver_var =
   OpamFilter.partial_eval (fun var ->
     match OpamVariable.Full.scope var with
@@ -323,29 +346,37 @@ let opam_commands_to_actions
               in
               Slang.simplify slang
             in
-            Some
-              (let slang =
-                 match filter with
-                 | None -> slang
-                 | Some filter ->
-                   let filter_blang =
-                     filter_to_blang ~packages_in_solution ~package ~loc filter
-                     |> Slang.simplify_blang
-                   in
-                   let filter_blang_handling_undefined =
-                     (* Wrap the blang filter so that if any undefined
-                         variables are expanded while evaluating the filter,
-                         the filter will return false. *)
-                     let slang =
-                       Slang.catch_undefined_var
-                         (Slang.blang filter_blang)
-                         ~fallback:(Slang.bool false)
-                     in
-                     Blang.Expr slang
-                   in
-                   Slang.when_ filter_blang_handling_undefined slang
-               in
-               Slang.simplify slang))
+            let slang =
+              let slang =
+                match filter with
+                | None -> slang
+                | Some filter ->
+                  let filter_blang =
+                    filter_to_blang ~packages_in_solution ~package ~loc filter
+                    |> Slang.simplify_blang
+                  in
+                  let filter_blang_handling_undefined =
+                    (* Wrap the blang filter so that if any undefined
+                        variables are expanded while evaluating the filter,
+                        the filter will return false. *)
+                    let slang =
+                      Slang.catch_undefined_var
+                        (Slang.blang filter_blang)
+                        ~fallback:(Slang.bool false)
+                    in
+                    Blang.Expr slang
+                  in
+                  Slang.when_ filter_blang_handling_undefined slang
+              in
+              Slang.simplify slang
+            in
+            (* Drop arguments that simplify to [Nil] (e.g. an argument whose
+               filter is always false) rather than keeping them, which would
+               otherwise be re-encoded as [(when false "")] in the lock
+               directory. *)
+            (match slang with
+             | Slang.Nil -> None
+             | slang -> Some slang))
       in
       if List.is_empty terms
       then None

@@ -341,9 +341,10 @@ let subst vcs =
   let open Memo.O in
   (match vcs with
    | Some vcs ->
-     let+ version = Vcs.describe vcs
-     and+ commit_id = Vcs.commit_id vcs
-     and+ files = Vcs.files vcs in
+     let needed_for = "by 'dune subst' to infer version information and list files" in
+     let+ version = Vcs.describe ~needed_for vcs
+     and+ commit_id = Vcs.commit_id ~needed_for vcs
+     and+ files = Vcs.files ~needed_for vcs in
      Some (version, commit_id, files)
    | None ->
      let* root = Source_tree.root () in

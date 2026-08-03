@@ -37,6 +37,7 @@ start/
 
 .claude/
 .codex
+.scratch/
 
 perf.data
 perf.data.old

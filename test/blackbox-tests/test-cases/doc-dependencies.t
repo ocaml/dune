@@ -17,6 +17,7 @@ https://ocaml.github.io/odoc/odoc/odoc_for_authors.html#config-file
 
 Now, let's check that it would install the correct `odoc-config.sexp` file:
 
-  $ dune build @install
-  $ cat _build/install/default/doc/foo/odoc-config.sexp
+  $ odoc_config=_build/install/default/doc/foo/odoc-config.sexp
+  $ dune build "$odoc_config"
+  $ cat "$odoc_config"
   (packages ppx_derivers brr)

@@ -1,16 +1,9 @@
 ----------------------------------------------------------------------------------
 Test use of `(lib ...)` statements inside a file included with `(include ...)`
 
-  $ echo "(lang dune 3.5)" > dune-project
+  $ make_dune_project 3.5
 
-  $ cat >dune <<EOF
-  > (library
-  >  (name foo)
-  >  (foreign_stubs
-  >   (language c)
-  >   (names bar)
-  >   (include_dirs (include foo))))
-  > EOF
+  $ make_foreign_stubs_include_dirs_project
 
   $ echo "(inc_a inc_b (lib lib_a))" > foo
 

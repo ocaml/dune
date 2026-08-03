@@ -13,12 +13,7 @@ Demonstrate various cases representing depexts in lockfiles.
   > ]
   > EOF
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.18)
-  > (package
-  >  (name x)
-  >  (depends foo))
-  > EOF
+  $ write_portable_lockdirs_project
 
   $ dune pkg lock
   Solution for dune.lock

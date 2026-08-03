@@ -1,10 +1,7 @@
 The project has an `.mld` file that needs to be fixed. At first, we determine
 that that file is not being picked up:
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.7)
-  > (using mdx 0.3)
-  > EOF
+  $ make_mdx_project 3.7 0.3
   $ cat > dune <<EOF
   > (mdx)
   > EOF
@@ -18,7 +15,8 @@ that that file is not being picked up:
   > 
   > A run of MDX should output a fixed version.
   > EOF
-  $ cat > needs-fixes.mld <<EOF
+  $ write_needs_fixes_mld() {
+  > cat > needs-fixes.mld <<'EOF'
   > This is a sample mld file. It has some code that is invalid.
   >  
   > {[
@@ -28,6 +26,8 @@ that that file is not being picked up:
   > 
   > A run of MDX should output a fixed version.
   > EOF
+  > }
+  $ write_needs_fixes_mld
   $ dune runtest
   File "needs-fixes.md", line 1, characters 0-0:
   --- needs-fixes.md
@@ -84,23 +84,11 @@ the test should succeed this time.
 The 0.4 version of the stanza adds support for `.mld` files by default, so bump
 the stanza version.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.7)
-  > (using mdx 0.4)
-  > EOF
+  $ make_mdx_project 3.7 0.4
   $ cat > dune <<EOF
   > (mdx)
   > EOF
-  $ cat > needs-fixes.mld <<EOF
-  > This is a sample mld file. It has some code that is invalid.
-  >  
-  > {[
-  >   # List.map (fun x -> x * x) [(1 + 9); 2; 3; 4];;
-  >   - : int list = [1; 2; 3; 8]
-  > ]}
-  > 
-  > A run of MDX should output a fixed version.
-  > EOF
+  $ write_needs_fixes_mld
 
 0.4 is only supported since dune-lang 3.8, so attempting to use it should fail:
 
@@ -116,10 +104,7 @@ the stanza version.
 
 Updating the dune-lang should make the test run.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.8)
-  > (using mdx 0.4)
-  > EOF
+  $ make_mdx_project 3.8 0.4
   $ dune runtest
   File "needs-fixes.mld", line 1, characters 0-0:
   --- needs-fixes.mld
@@ -144,16 +129,7 @@ We also make sure that `:standard` resolves properly:
   > (mdx
   >   (files :standard))
   > EOF
-  $ cat > needs-fixes.mld <<EOF
-  > This is a sample mld file. It has some code that is invalid.
-  >  
-  > {[
-  >   # List.map (fun x -> x * x) [(1 + 9); 2; 3; 4];;
-  >   - : int list = [1; 2; 3; 8]
-  > ]}
-  > 
-  > A run of MDX should output a fixed version.
-  > EOF
+  $ write_needs_fixes_mld
   $ dune runtest
   File "needs-fixes.mld", line 1, characters 0-0:
   --- needs-fixes.mld

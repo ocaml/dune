@@ -100,8 +100,9 @@ by Dune. As such, the dependency on ``dune-site`` must be specified explicitly.
 
 .. warning::
 
-   An executable that depends (even transitively) on `dune-site` will be compiled with
-   `linkall`, regardless of other options.
+   An executable that depends, even transitively, on ``dune-site`` or
+   ``dune-site.plugins`` will be compiled with ``-linkall``, regardless of
+   other options.
 
 .. note::
 

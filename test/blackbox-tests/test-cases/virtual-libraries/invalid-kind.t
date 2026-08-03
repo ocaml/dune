@@ -1,7 +1,7 @@
 Test that trying to use virtual_modules with an incompatible kind reports a user
 error
 
-  $ echo "(lang dune 3.20)" > dune-project
+  $ make_dune_project 3.20
 
   $ touch empty.mli
   $ cat >dune <<EOF

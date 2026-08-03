@@ -1,10 +1,7 @@
 Test Melange compilation for a `(include_subdirs qualified)` stanza appearing
 in a nested subdirectory.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.22)
-  > (using melange 1.0)
-  > EOF
+  $ make_melange_project 3.22 1.0
 
   $ mkdir -p a/b/c
 
@@ -16,13 +13,7 @@ in a nested subdirectory.
   $ cat > a/b/c/dune <<EOF
   > (ocamllex lexer)
   > EOF
-  $ cat > a/b/c/lexer.mll <<EOF
-  > {
-  > }
-  > rule lex = parse
-  >   | _   { true  }
-  >   | eof { false }
-  > EOF
+  $ make_trivial_ocamllex a/b/c/lexer.mll
 
   $ cat > a/foo.ml <<EOF
   > module L = B.C.Lexer

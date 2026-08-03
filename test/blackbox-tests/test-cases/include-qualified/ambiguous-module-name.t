@@ -2,7 +2,7 @@ There is ambiguity between the two different foo modules.
 The behaviour is now correct both in the bootstrap process, and in dune.
 It picks up the closest one.
 
-  $ echo "(lang dune 3.21)" > dune-project
+  $ make_dune_project 3.21
   $ cat > dune << EOF
   > (include_subdirs qualified)
   > (executable

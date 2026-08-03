@@ -11,9 +11,7 @@ lock-file package.
   >   (system "echo lock-data > %{pkg-self:share}/data.txt")))
   > EOF
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.24)
-  > EOF
+  $ make_dune_project 3.24
 
 The rule depends on the lock-file package cookie and the resolved file:
 

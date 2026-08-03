@@ -4,9 +4,7 @@ process keeps its file descriptor.
 
 Regression test for https://github.com/ocaml/dune/issues/3484
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.23)
-  > EOF
+  $ make_dune_project 3.23
 
   $ cat > dune <<EOF
   > (executable

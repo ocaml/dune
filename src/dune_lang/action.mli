@@ -5,36 +5,23 @@
     executed by the build system. *)
 
 open Import
-open Dune_util.Action
+open Stdune.Action_types
 
 module Action_plugin : sig
   val syntax : Syntax.t
 end
 
 module Diff : sig
-  open Diff
-
-  module Mode : sig
-    type t = Mode.t =
-      | Binary
-      | Text
-  end
-
-  type nonrec ('path, 'target) t = ('path, 'target) t =
-    { optional : bool
-    ; mode : Mode.t
-    ; directory_diffs : bool
-    ; file1 : 'path
-    ; file2 : 'target
-    }
-
   val decode
     :  'path Decoder.t
     -> 'target Decoder.t
     -> optional:bool
-    -> ('path, 'target) t Decoder.t
+    -> ('path, 'target) Action_types.Diff.t Decoder.t
 
-  val decode_binary : 'path Decoder.t -> 'target Decoder.t -> ('path, 'target) t Decoder.t
+  val decode_binary
+    :  'path Decoder.t
+    -> 'target Decoder.t
+    -> ('path, 'target) Action_types.Diff.t Decoder.t
 end
 
 module Outputs : sig
@@ -61,7 +48,7 @@ module File_perm : sig
     | Executable
 
   val suffix : t -> string
-  val to_unix_perm : t -> int
+  val to_unix_perm : t -> Permissions.Mode.t
 end
 
 module Env_update : sig
@@ -113,7 +100,7 @@ type t =
   | Bash of String_with_vars.t
   | Write_file of String_with_vars.t * File_perm.t * String_with_vars.t
   | Mkdir of String_with_vars.t
-  | Diff of (String_with_vars.t, String_with_vars.t) Diff.t
+  | Diff of (String_with_vars.t, String_with_vars.t) Action_types.Diff.t
   | No_infer of t
   | Pipe of Outputs.t * t list
   | Cram of String_with_vars.t

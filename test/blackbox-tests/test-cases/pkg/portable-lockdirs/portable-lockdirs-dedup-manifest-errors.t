@@ -5,18 +5,9 @@ even when they are encountered by multiple concurrent runs of the opam solver.
   $ add_mock_repo_if_needed
 
 Project depending on a package "foo":
-  $ cat > dune-project <<EOF
-  > (lang dune 3.18)
-  > (package
-  >  (name x)
-  >  (depends foo))
-  > EOF
+  $ write_portable_lockdirs_project
 
-  $ cat > dune <<EOF
-  > (executable
-  >  (public_name x)
-  >  (libraries foo))
-  > EOF
+  $ write_portable_lockdirs_executable
 
 Create the package "foo" with an invalid opam file:
   $ mkpkg foo <<EOF
@@ -82,12 +73,7 @@ Update dune-package to pin the dune package:
   [1]
 
 Revert dune-project to be valid:
-  $ cat > dune-project <<EOF
-  > (lang dune 3.18)
-  > (package
-  >  (name x)
-  >  (depends foo))
-  > EOF
+  $ write_portable_lockdirs_project
 
 Add a file to the package but change its permission to not be readable:
   $ pkg_dir=$mock_packages/foo/foo.0.0.1

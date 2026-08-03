@@ -134,11 +134,17 @@ module List = struct
   ;;
 end
 
-let hash h1 h2 t =
-  Stdlib.Hashtbl.hash
-    (match t with
-     | Ok s -> h1 s
-     | Error e -> h2 e)
+let hash h1 h2 = function
+  | Ok s ->
+    let acc = Hash.create () in
+    let acc = Hash.feed acc 0 in
+    let acc = Hash.feed acc (h1 s) in
+    Hash.hash acc
+  | Error e ->
+    let acc = Hash.create () in
+    let acc = Hash.feed acc 1 in
+    let acc = Hash.feed acc (h2 e) in
+    Hash.hash acc
 ;;
 
 let equal e1 e2 x y =

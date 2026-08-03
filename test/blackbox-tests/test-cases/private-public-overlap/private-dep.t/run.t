@@ -5,5 +5,6 @@ public libraries may not have private dependencies
   8 |  (libraries privatelib)
                   ^^^^^^^^^^
   Error: Library "privatelib" is private, it cannot be a dependency of a public
-  library. You need to give "privatelib" a public name.
+  library. You need to give "privatelib" a public name or add a (package ...)
+  field to its stanza.
   [1]

@@ -9,12 +9,12 @@ let man =
   ; `P
       {|$(b,dune describe location NAME) prints the path to the executable NAME using the same logic as:
           |}
-  ; `Pre "$ dune exec NAME"
+  ; `Pre "\\$ dune exec NAME"
   ; `P
       "Dune will first try to resolve the executable within the public executables in \
        the current project, then inside the \"bin\" directory of each package among the \
        project's  dependencies (when using dune package management), and finally within \
-       the  directories listed in the $PATH environment variable."
+       the  directories listed in the \\$PATH environment variable."
   ]
 ;;
 

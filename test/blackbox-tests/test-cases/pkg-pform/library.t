@@ -1,9 +1,6 @@
 %{pkg:...} resolves files installed by public libraries.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.24)
-  > (package (name foo))
-  > EOF
+  $ make_dune_project_with_package 3.24 foo
 
   $ cat >dune <<EOF
   > (library
@@ -47,5 +44,5 @@ The library archive appears as a build dependency:
   >  (action (with-stdout-to %{target} (echo "%{pkg:foo:lib:foo.cma}"))))
   > EOF
 
-  $ dune rules --format=json _build/default/test/out 2>&1 | jq 'include "dune"; .[] | ruleDepFilePaths' | sort
+  $ dune rules --format=json _build/default/test/out 2>&1 | jq_dune '.[] | ruleDepFilePaths' | sort
   "_build/default/foo.cma"

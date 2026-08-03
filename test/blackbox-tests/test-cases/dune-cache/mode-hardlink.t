@@ -6,25 +6,7 @@ variable, and via the [DUNE_CACHE_ROOT] variable. Here we test the former.
   $ export XDG_CACHE_HOME=$(dune_cmd native-path $PWD/.xdg-cache)
   $ setup_xdg_runtime_dir
 
-  $ cat > config <<EOF
-  > (lang dune 2.1)
-  > (cache enabled)
-  > EOF
-  $ cat > dune-project <<EOF
-  > (lang dune 2.1)
-  > EOF
-  $ cat > dune <<EOF
-  > (rule
-  >   (deps source)
-  >   (targets target1 target2)
-  >   (action (bash "touch beacon; cat source > target1; cat source source > target2")))
-  > EOF
-
-It's a duck. It quacks. (Yes, the author of this comment didn't get it.)
-
-  $ cat > source <<EOF
-  > \_o< COIN
-  > EOF
+  $ setup_basic_shared_cache_project default
 
 Test that after the build, the files in the build directory have the hard link
 counts greater than 1, because they are shared with the corresponding cache entries.
@@ -37,7 +19,7 @@ and shared cache misses, because we've never built target1 before.
 
 Verify we see cache miss events for our targets in the trace:
 
-  $ dune trace cat | jq -s 'include "dune"; cacheMissesMatching("source|target1")'
+  $ dune trace cat | jq_dune -s 'cacheMissesMatching("source|target1")'
   {
     "name": "workspace_local_miss",
     "target": "_build/default/source",
@@ -76,7 +58,7 @@ misses, because we've cleaned _build/default but not the shared cache.
 
 Verify we see only workspace-local miss events for our targets (shared cache hits should not appear as misses):
 
-  $ dune trace cat | jq -s 'include "dune"; cacheMissesMatching("source|target1")'
+  $ dune trace cat | jq_dune -s 'cacheMissesMatching("source|target1")'
   {
     "name": "workspace_local_miss",
     "target": "_build/default/source",
@@ -86,6 +68,15 @@ Verify we see only workspace-local miss events for our targets (shared cache hit
     "name": "workspace_local_miss",
     "target": "_build/default/target1",
     "reason": "never seen this target before"
+  }
+  $ dune trace cat | jq_dune -s 'cacheHitsMatching("source|target1")'
+  {
+    "name": "hit",
+    "target": "_build/default/source"
+  }
+  {
+    "name": "hit",
+    "target": "_build/default/target1"
   }
 
   $ dune_cmd stat hardlinks _build/default/source
@@ -109,14 +100,12 @@ No cache misses should appear in the trace.
 
   $ dune build --config-file=config target1
 
-  $ dune trace cat | jq -s 'include "dune"; [ .[] | cacheMisses ] | length'
+  $ dune trace cat | jq_dune -s '[ .[] | cacheMisses ] | length'
   0
 
 Test that the cache stores all historical build results.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 2.1)
-  > EOF
+  $ make_dune_project 2.1
   $ cat > dune-v1 <<EOF
   > (rule
   >   (targets t1)

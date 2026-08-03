@@ -1,9 +1,6 @@
 Runtime dependencies for running cinaps
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.5)
-  > (using cinaps 1.1)
-  > EOF
+  $ make_cinaps_project 3.5 1.1
 
   $ cat > foo <<EOF
   > hello world

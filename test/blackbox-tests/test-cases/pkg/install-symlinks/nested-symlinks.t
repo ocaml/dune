@@ -19,13 +19,7 @@ Create a package with nested symlinks: link2 -> link1 -> real.txt
   >    && touch %{lib}/%{pkg-self:name}/META"))
   > EOF
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.22)
-  > (package
-  >  (name x)
-  >  (allow_empty)
-  >  (depends foo))
-  > EOF
+  $ make_package_project 3.22 foo
 
 Build the package:
 

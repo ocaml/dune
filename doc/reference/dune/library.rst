@@ -104,6 +104,14 @@ order to declare a multi-directory library, you need to use the
    The default is ``no_preprocessing``, and other options are described
    in :doc:`/reference/preprocessing-spec`.
 
+.. describe:: (lint <preprocess-spec>)
+
+   Specifies how to lint source files when building the
+   :doc:`/reference/aliases/lint` alias.
+
+   The default is ``no_preprocessing``. The syntax is described in
+   :ref:`lint-field`.
+
 .. describe:: (preprocessor_deps (<deps-conf list>))
 
    Specifies extra preprocessor dependencies preprocessor, i.e., if the

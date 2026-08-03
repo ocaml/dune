@@ -6,10 +6,7 @@ Package sources can be set to git and be nested:
   $ mkdir _repo
   $ cd _repo
   $ git init --quiet
-  $ cat >dune-project <<EOF
-  > (lang dune 3.13)
-  > (package (name foo))
-  > EOF
+  $ make_dune_project_with_package 3.13 foo
   $ mkdir bar
   $ cat >bar/dune-project <<EOF
   > (lang dune 3.13)

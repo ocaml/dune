@@ -246,6 +246,7 @@ module Stanza = struct
           ~modules
           ~opaque:(Explicit false)
           ~requires_compile
+          ~user_written_requires:None
           ~requires_link
           ~flags
           ~js_of_ocaml:(Js_of_ocaml.Mode.Pair.make None)

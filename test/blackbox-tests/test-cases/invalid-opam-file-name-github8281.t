@@ -26,16 +26,9 @@ Whenever an invalid package name is used, dune crashes when building @doc
   providing the file _build/trace.csexp, if possible. This includes build
   commands, message logs, and file paths.
   Description:
-    ("[gen_rules] returned rules in a directory that is not a descendant of the directory it was called for",
+    ("[gen_rules] returned directory target in a directory that is not a descendant of the directory it was called for",
      { dir = In_build_dir "default/_doc/_html/x.y"
-     ; example =
-         Rule
-           { targets =
-               { root = In_build_dir "default/_doc/_html/x"
-               ; files = set { "db.js" }
-               ; dirs = set {}
-               }
-           }
+     ; example = In_build_dir "default/_doc/_html/x/X"
      })
   Raised at Stdune__Code_error.raise in file
   [1]

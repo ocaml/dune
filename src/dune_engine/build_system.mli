@@ -51,13 +51,39 @@ val dep_on_alias_definition : Rules.Dir_rules.Alias_spec.item -> unit Action_bui
 
 (** {2 Running the build system} *)
 
-val run : (unit -> 'a Memo.t) -> ('a, [ `Already_reported ]) Result.t Fiber.t
+val run
+  :  ?restart_started_at:Time.t
+  -> ?build:Process.Build.t
+  -> (unit -> 'a Memo.t)
+  -> ('a, [ `Already_reported ]) Result.t Fiber.t
 
 (** A variant of [run] that raises an [Already_reported] exception on error. *)
 val run_exn : (unit -> 'a Memo.t) -> 'a Fiber.t
 
-val run_action_builder
-  :  unit Action_builder.t
+module Request : sig
+  module Goal : sig
+    type t
+
+    val create : unit Action_builder.t -> t
+    val await : t -> Build_outcome.t Fiber.t
+    val is_finished : t -> bool
+    val complete : t -> Build_outcome.t -> unit Fiber.t
+  end
+
+  type t
+
+  val create : Goal.t list -> t
+
+  (** Prevent this request from completing goals that have not already
+      completed. *)
+  val cancel_completion : t -> unit
+end
+
+val run_build_requests
+  :  ?restart_started_at:Time.t
+  -> build_started_at:Time.t
+  -> ?build:Process.Build.t
+  -> Request.t
   -> (unit, [ `Already_reported ]) result Fiber.t
 
 (** {2 Misc} *)
@@ -67,12 +93,16 @@ module Progress : sig
 
   type t =
     { number_of_rules_discovered : int
-    ; number_of_rules_executed : int
+    ; number_of_rules_validated : int
     ; number_of_rules_failed : int
     }
 
   (** Initialize with zeros on all measures. *)
   val init : t
+
+  (** Rules that have become live but are not yet validated this run
+      ([number_of_rules_discovered - number_of_rules_validated]). *)
+  val number_of_rules_in_progress : t -> int
 end
 
 module State : sig
@@ -86,7 +116,7 @@ module State : sig
   val equal : t -> t -> bool
 end
 
-val state : State.t Fiber.Svar.t
+val state : State.t ref
 
 (** The current set of active errors. *)
 val errors : Build_system_error.Set.t Fiber.Svar.t

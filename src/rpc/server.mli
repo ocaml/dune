@@ -52,6 +52,7 @@ module Session : sig
   val compare : 'a t -> 'a t -> Ordering.t
   val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
   val closed : _ t -> unit Fiber.t
+  val close : _ t -> unit Fiber.t
 
   (** A ['a Session.Stage1.t] represents a session prior to version negotiation.
 
@@ -102,6 +103,12 @@ module Handler : sig
     -> ('s Session.t -> 'a -> 'b Fiber.t)
     -> unit
 
+  val implement_request_with_id
+    :  's t
+    -> ('a, 'b) Decl.request
+    -> ('s Session.t -> Dune_rpc.Private.Id.t -> 'a -> 'b Fiber.t)
+    -> unit
+
   (** [implement_notification handler decl callback] Add a notification to
       [handler] using [callback] as the implementation and [decl] as the
       metadata *)
@@ -119,14 +126,14 @@ module Handler : sig
       according to the metadata [decl]. *)
   val declare_request : 's t -> ('a, 'b) Decl.request -> unit
 
-  (** [implement_long_poll t proc_diff svar ~equal ~diff] will implement long
-      polling routines to sync the state variable [svar]. [equal] is used to
+  (** [implement_long_poll t proc_diff source ~equal ~diff] will implement long
+      polling routines to sync the state observed through [source]. [equal] is used to
       prevent updates that do not modify the state. [diff] is used to generate
       efficient operations to bring the state up to date. *)
   val implement_long_poll
     :  _ t
     -> 'diff Procedures.Poll.t
-    -> 'state Fiber.Svar.t
+    -> 'state Long_poll.Source.t
     -> equal:('state -> 'state -> bool)
     -> diff:(last:'state option -> now:'state -> 'diff)
     -> unit
@@ -147,6 +154,23 @@ type t
 
 val make : 'a Handler.t -> t
 val serve : Csexp_rpc.Session.t Fiber.Stream.In.t -> t -> unit Fiber.t
+
+module Lifecycle : sig
+    type handler
+    type t
+
+    val create
+      :  handler:handler
+      -> root:string
+      -> where:Where.t
+      -> registry:[ `Add | `Skip ]
+      -> server:Csexp_rpc.Server.t
+      -> t
+
+    val run : t -> unit Fiber.t
+    val stop : t -> unit Fiber.t
+  end
+  with type handler := t
 
 (** Test only things below *)
 

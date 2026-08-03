@@ -1,4 +1,5 @@
 (executable
  (name public_bin)
+ (modes byte)
  (public_name public-bin)
  (modules public_bin))

@@ -1,3 +1,4 @@
 (executable
  (name foo)
+ (modes byte)
  (public_name foo))

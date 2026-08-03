@@ -2,8 +2,7 @@
 
   $ dune build @all
 
-  $ dune trace cat | jq -c '
-  > include "dune";
+  $ dune trace cat | jq_dune -c '
   > progMatching("echo")
   > '
   {"prog":"echo","process_args":["foobar"],"target_files":["_build/default/foo"]}

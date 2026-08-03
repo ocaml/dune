@@ -1,8 +1,6 @@
 Applying the same setup script twice:
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.21)
-  > EOF
+  $ make_dune_project 3.21
 
   $ cat >helpers.sh <<EOF
   > if [ -n "${x:-}" ]; then

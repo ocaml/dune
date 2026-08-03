@@ -1,9 +1,6 @@
 Test flags and compile_flags fields on melange.emit stanza
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.8)
-  > (using melange 0.1)
-  > EOF
+  $ make_melange_project 3.8 0.1
 
 Using flags field in melange.emit stanzas is not supported
 
@@ -41,11 +38,15 @@ Trying to build triggers both warnings
 
   $ dune build @mel
   File "main.ml", line 1, characters 9-11:
+  1 | let t = "\e\n" in
+               ^^
   Error (warning 14 [illegal-backslash]): illegal backslash escape in string.
     Hint: Single backslashes \ are reserved for escape sequences (\n, \r, ...).
     Did you check the list of OCaml escape sequences?
     To get a backslash character, escape it with a second backslash: \\.
   File "main.ml", line 1, characters 4-5:
+  1 | let t = "\e\n" in
+          ^
   Error (warning 26 [unused-var]): unused variable t.
   [1]
 
@@ -76,11 +77,15 @@ Can also pass flags from the env stanza. Let's go back to failing state:
 
   $ dune build @mel
   File "main.ml", line 1, characters 9-11:
+  1 | let t = "\e\n" in
+               ^^
   Error (warning 14 [illegal-backslash]): illegal backslash escape in string.
     Hint: Single backslashes \ are reserved for escape sequences (\n, \r, ...).
     Did you check the list of OCaml escape sequences?
     To get a backslash character, escape it with a second backslash: \\.
   File "main.ml", line 1, characters 4-5:
+  1 | let t = "\e\n" in
+          ^
   Error (warning 26 [unused-var]): unused variable t.
   [1]
 
@@ -117,6 +122,8 @@ Warning 102 (Melange only) is available if explicitly set
 
   $ dune build output/main.js
   File "main.ml", line 1, characters 18-29:
+  1 | let compare a b = compare a b
+                        ^^^^^^^^^^^
   Warning 102 [polymorphic-comparison-introduced]: Polymorphic comparison introduced (maybe unsafe)
 
 But it is disabled by default

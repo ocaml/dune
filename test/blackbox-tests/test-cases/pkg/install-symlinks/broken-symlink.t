@@ -11,13 +11,7 @@ Test that broken symlinks are detected during symlink resolution.
   >    && touch %{lib}/%{pkg-self:name}/META"))
   > EOF
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.22)
-  > (package
-  >  (name x)
-  >  (allow_empty)
-  >  (depends foo))
-  > EOF
+  $ make_package_project 3.22 foo
 
 The broken symlink is detected:
 

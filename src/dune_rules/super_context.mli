@@ -53,11 +53,20 @@ val add_rules
 
 val add_alias_action
   :  t
-  -> Alias.t
+  -> Alias.t list
   -> dir:Path.Build.t
   -> loc:Loc.t
   -> Action.Full.t Action_builder.t
   -> unit Memo.t
+
+(** Execute an anonymous action after adding the directory's external
+    environment, as [add_rule] and [add_alias_action] do for regular rules. *)
+val execute_action_stdout
+  :  t
+  -> loc:Loc.t
+  -> dir:Path.Build.t
+  -> Action.Full.t Action_builder.t
+  -> string Memo.t
 
 (** [resolve_program t ?hint name] resolves a program. [name] is looked up in
     the workspace, if it is not found in the tree is is looked up in the PATH.

@@ -18,6 +18,12 @@
   (:include ../flags/sexp))
  (foreign_stubs
   (language c)
+  (names spawn_stubs)
+  (flags
+   (:standard
+    (:include spawn_flags.sexp))))
+ (foreign_stubs
+  (language c)
   (names
    dune_flock
    readdir
@@ -26,3 +32,21 @@
    copyfile_stubs
    signal_stubs
    time_stubs)))
+
+(rule
+ (target spawn_flags.sexp)
+ (enabled_if
+  (= %{os_type} "Win32"))
+ (action
+  (with-stdout-to
+   %{target}
+   (echo "(-DUNICODE -D_UNICODE)"))))
+
+(rule
+ (target spawn_flags.sexp)
+ (enabled_if
+  (<> %{os_type} "Win32"))
+ (action
+  (with-stdout-to
+   %{target}
+   (echo "()"))))

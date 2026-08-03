@@ -21,9 +21,7 @@ through [pp_dep]'s interface. The consumer's include flags
 must therefore conservatively retain [other_dep]'s [-I]/[-H]
 even though dune sees no direct link.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.0)
-  > EOF
+  $ make_dune_project 3.0
 
 [other_dep]:
 

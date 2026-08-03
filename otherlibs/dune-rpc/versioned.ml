@@ -67,7 +67,7 @@ struct
        at runtime. *)
     type 's r_handler =
       | R :
-          ('s -> 'req -> 'resp Fiber.t) * ('req, 'resp) Decl.Generation.t
+          ('s -> Id.t -> 'req -> 'resp Fiber.t) * ('req, 'resp) Decl.Generation.t
           -> 's r_handler
 
     type 's n_handler =
@@ -303,7 +303,7 @@ struct
         ~pack:Fun.id
     ;;
 
-    let implement_request t (proc : _ request) f =
+    let implement_request_with_id t (proc : _ request) f =
       register_generic
         t
         ~method_:proc.decl.method_
@@ -313,6 +313,10 @@ struct
         ~registry_key:proc.decl.method_
         ~other_key:(proc.decl.method_, proc.decl.key)
         ~pack:(fun r -> R (f, r))
+    ;;
+
+    let implement_request t proc f =
+      implement_request_with_id t proc (fun state _id req -> f state req)
     ;;
 
     let implement_notification t (proc : _ notification) f =
@@ -343,7 +347,7 @@ struct
     ;;
 
     let to_handler t ~session_version =
-      let handle_request menu state (_id, (n : Call.t)) =
+      let handle_request menu state (id, (n : Call.t)) =
         lookup_method_generic
           t
           ~menu
@@ -376,7 +380,7 @@ struct
                              ~payload
                              ()))
                    | req ->
-                     let+ resp = f state req in
+                     let+ resp = f state id req in
                      (match gen.downgrade_resp resp with
                       | resp -> Ok (Conv.to_sexp gen.resp resp)
                       | exception e ->

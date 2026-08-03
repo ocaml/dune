@@ -1,9 +1,6 @@
 Globs with absolute paths result in an error
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.6)
-  > (package (name foo))
-  > EOF
+  $ make_dune_project_with_package 3.6 foo
 
 Put $PWD in a file that can be read with the %{read:...} pform, so that the underline
 in the error message is of consisntent length on different systems.

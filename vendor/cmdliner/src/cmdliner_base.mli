@@ -1,6 +1,6 @@
 (*---------------------------------------------------------------------------
    Copyright (c) 2011 The cmdliner programmers. All rights reserved.
-   Distributed under the ISC license, see terms at the end of the file.
+   SPDX-License-Identifier: ISC
   ---------------------------------------------------------------------------*)
 
 (** A few helpful base definitions. *)
@@ -12,65 +12,49 @@ val suggest : string -> string list -> string list
 (** [suggest near candidates]  suggest values from [candidates]
     not too far from [near]. *)
 
-(** {1:fmt Formatting helpers} *)
+val is_space : char -> bool
+val string_starts_with : prefix:string -> string -> bool
+val string_drop_first : int -> string -> string
 
-val pp_text : Format.formatter -> string -> unit
-val pp_lines : Format.formatter -> string -> unit
-val pp_tokens : spaces:bool -> Format.formatter -> string -> unit
+(* Formatters *)
 
-(** {1:err Error message helpers} *)
+module Fmt : sig
+  type 'a t = Format.formatter -> 'a -> unit
+  val str : ('a, Format.formatter, unit, string) format4 -> 'a
+  val pf : Format.formatter -> ('a, Format.formatter, unit) format -> 'a
+  val nop : 'a t
+  val sp : unit t
+  val comma : unit t
+  val cut : unit t
+  val char : char t
+  val string : string t
+  val indent : int t
+  val list : ?sep:unit t -> 'a t -> 'a list t
+  val styled_text : string t
+  val lines : string t
+  val tokens : spaces:bool -> string t
+  val text : string t
+  val code : string t
+  val code_var : string t
+  val code_or_quote : string t
+  val ereason : string t
+  val missing : unit t
+  val invalid : unit t
+  val deprecated : unit t
+  val puterr : unit t
+
+  type styler = Ansi | Plain
+  val styler : unit -> styler
+end
+
+(* Error message helpers *)
 
 val quote : string -> string
+val pp_alts : string list Fmt.t
 val alts_str : ?quoted:bool -> string list -> string
+val err_empty_list : string
 val err_ambiguous : kind:string -> string -> ambs:string list -> string
 val err_unknown :
   ?dom:string list -> ?hints:string list -> kind:string -> string -> string
 val err_multi_def :
   kind:string -> string -> ('b -> string) -> 'b -> 'b -> string
-
-(** {1:conv Textual OCaml value converters} *)
-
-type 'a parser = string -> [ `Ok of 'a | `Error of string ]
-type 'a printer = Format.formatter -> 'a -> unit
-type 'a conv = 'a parser * 'a printer
-
-val some : ?none:string -> 'a conv -> 'a option conv
-val some' : ?none:'a -> 'a conv -> 'a option conv
-val bool : bool conv
-val char : char conv
-val int : int conv
-val nativeint : nativeint conv
-val int32 : int32 conv
-val int64 : int64 conv
-val float : float conv
-val string : string conv
-val enum : (string * 'a) list -> 'a conv
-val file : string conv
-val dir : string conv
-val non_dir_file : string conv
-val list : ?sep:char -> 'a conv -> 'a list conv
-val array : ?sep:char -> 'a conv -> 'a array conv
-val pair : ?sep:char -> 'a conv -> 'b conv -> ('a * 'b) conv
-val t2 : ?sep:char -> 'a conv -> 'b conv -> ('a * 'b) conv
-val t3 : ?sep:char -> 'a conv ->'b conv -> 'c conv -> ('a * 'b * 'c) conv
-val t4 :
-  ?sep:char -> 'a conv -> 'b conv -> 'c conv -> 'd conv ->
-  ('a * 'b * 'c * 'd) conv
-
-val env_bool_parse : bool parser
-
-(*---------------------------------------------------------------------------
-   Copyright (c) 2011 The cmdliner programmers
-
-   Permission to use, copy, modify, and/or distribute this software for any
-   purpose with or without fee is hereby granted, provided that the above
-   copyright notice and this permission notice appear in all copies.
-
-   THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
-   WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
-   MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
-   ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
-   WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
-   ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
-   OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-  ---------------------------------------------------------------------------*)

@@ -28,7 +28,10 @@ let error_equal { message; stack_frames } b =
 let equal f = Result.equal f error_equal
 
 let error_hash { message; stack_frames } =
-  Poly.hash (Poly.hash message, Stdune.List.map stack_frames ~f:Lazy.force)
+  let acc = Hash.create () in
+  let acc = Hash.feed acc (Poly.hash message) in
+  let acc = Hash.feed acc (List.hash (fun f -> Poly.hash (Lazy.force f)) stack_frames) in
+  Hash.hash acc
 ;;
 
 let to_dyn f t =

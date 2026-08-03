@@ -1,8 +1,6 @@
 Test cycles in enabled_if field of libraries
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.15)
-  > EOF
+  $ make_dune_project 3.15
 
   $ cat > dune << EOF
   > (library

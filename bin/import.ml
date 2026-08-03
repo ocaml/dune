@@ -76,6 +76,7 @@ include struct
   module Section = Section
   module Dune_project_name = Dune_project_name
   module Dune_project = Dune_project
+  module Compilation_mode = Compilation_mode
 end
 
 include struct
@@ -87,5 +88,4 @@ include struct
 end
 
 module Dune_rpc = Dune_rpc.Private
-module Graph = Dune_graph.Graph
 include Let_syntax

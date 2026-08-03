@@ -4,9 +4,7 @@ This caused Dune to get confused and stuck.
 
 Create a cram test:
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.8)
-  > EOF
+  $ make_dune_project 3.8
 
   $ cat > my_cram.t << EOF
   >   $ echo hello

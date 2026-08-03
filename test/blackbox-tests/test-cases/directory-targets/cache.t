@@ -8,10 +8,7 @@ the target displays a message.
 
   $ mkdir a
   $ cd a
-  $ cat > dune-project << EOF
-  > (lang dune 3.0)
-  > (using directory-targets 0.1)
-  > EOF
+  $ make_directory_targets_project 3.0
   $ cat > create.sh << EOF
   > #!/usr/bin/env sh
   > echo "Running create.sh"

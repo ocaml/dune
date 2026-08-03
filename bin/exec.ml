@@ -20,11 +20,22 @@ let man =
           path is interpreted as relative to the build context + current
           working directory (or the value of $(b,--root) when ran outside of
           the project root)|}
+  ; `S "PASSING ARGUMENTS"
+  ; `P
+      {|Options accepted by $(b,dune exec) and options accepted by the
+          executed program share the same command line. If an argument to the
+          program starts with $(b,-), separate it from Dune's options with
+          $(b,--):|}
+  ; `Pre "  \\$ dune exec PROG -- --program-option"
+  ; `P {|Equivalently, put the separator before the whole command:|}
+  ; `Pre "  \\$ dune exec -- PROG --program-option"
   ; `Blocks Common.help_secs
   ; Common.examples
       [ "Run the executable named `my_exec'", "dune exec my_exec"
       ; ( "Run the executable defined in `foo.ml' with the argument `arg'"
         , "dune exec -- ./foo.exe arg" )
+      ; ( "Pass an option to the executed program"
+        , "dune exec ./foo.exe -- --program-option" )
       ]
   ]
 ;;
@@ -108,6 +119,20 @@ let program_not_built_yet prog =
     ]
 ;;
 
+(* Cons the workspace's install staging dir ([_build/install/<ctx>/]) onto
+   the env's path-like vars (OCAMLPATH, PATH, etc.) for [dune exec]. This
+   does NOT trigger any build; if the staging dir isn't populated (no
+   [@install] was run), the entries on the path simply don't resolve. The
+   point is to preserve the old [dune exec] contract that workspace
+   libraries are visible via OCAMLPATH to anything the binary delegates to
+   (findlib, ocamlfind, dune-site's plugin lookup, etc.). Per-action rule
+   envs are unaffected — only [dune exec]'s own env extension. *)
+let extend_with_staging_env context base =
+  let staging = Install.Context.dir ~context in
+  let roots = Install.Roots.opam_from_prefix staging ~relative:Path.Build.relative in
+  Install.Roots.add_to_env roots base
+;;
+
 let build_prog ~no_rebuild ~prog p =
   if no_rebuild
   then
@@ -176,6 +201,7 @@ let step ~prog ~args ~common ~no_rebuild ~context ~on_exit () =
     Memo.parallel_map args ~f:(Cmd_arg.expand ~root:(Common.root common) ~sctx)
   in
   let* env = Super_context.context_env sctx in
+  let env = extend_with_staging_env context env in
   Memo.of_non_reproducible_fiber
   @@ Dune_engine.Process.run_inherit_std_in_out
        ~dir:(Path.of_string Fpath.initial_cwd)
@@ -253,7 +279,17 @@ let build_prog_via_rpc_if_necessary ~dir ~no_rebuild builder lock_held_by prog =
     else not_found ~hints:[] ~prog
 ;;
 
-let exec_building_via_rpc_server ~common ~prog ~args ~no_rebuild builder lock_held_by =
+type prepared_exec =
+  { prog : string
+  ; args : string list
+  ; env : Env.t
+  }
+
+let run_prepared_exec { prog; args; env } ~(root : Workspace_root.t) =
+  Util.restore_cwd_and_execve root prog args env
+;;
+
+let prepare_exec_via_rpc_server ~common ~prog ~args ~no_rebuild builder lock_held_by =
   let open Fiber.O in
   let ensure_terminal v =
     match (v : Cmd_arg.t) with
@@ -274,7 +310,8 @@ let exec_building_via_rpc_server ~common ~prog ~args ~no_rebuild builder lock_he
   let+ prog =
     build_prog_via_rpc_if_necessary ~dir ~no_rebuild builder lock_held_by prog
   in
-  Util.restore_cwd_and_execve (Common.root common) prog args Env.initial
+  let env = extend_with_staging_env context Env.initial in
+  { prog; args; env }
 ;;
 
 let exec_building_directly ~common ~config ~context ~prog ~args ~no_rebuild =
@@ -282,30 +319,41 @@ let exec_building_directly ~common ~config ~context ~prog ~args ~no_rebuild =
   | Yes Passive ->
     User_error.raise [ Pp.textf "passive watch mode is unsupported by exec" ]
   | Yes Eager ->
-    Scheduler_setup.go_with_rpc_server_and_console_status_reporting ~common ~config
+    Scheduler_setup.go_with_rpc_server_and_file_watcher ~common ~config
     @@ fun () ->
-    let open Fiber.O in
     let on_exit = Console.printf "Program exited with code [%d]" in
-    Dune_engine.Build_loop.poll
-    @@
-    let* () = Fiber.return () in
-    Console.maybe_clear_screen ~details_hum:[];
-    Build.build_memo @@ step ~prog ~args ~common ~no_rebuild ~context ~on_exit
+    let sticky_goal =
+      Some
+        (Action_builder.of_memo
+           (Memo.of_thunk (fun () ->
+              Console.maybe_clear_screen ~details_hum:[];
+              step ~prog ~args ~common ~no_rebuild ~context ~on_exit ())))
+    in
+    let build_loop = Common.build_loop common in
+    Dune_engine.Build_loop.run build_loop (fun () ->
+      Dune_engine.Build_loop.poll
+        build_loop
+        ~action_runner:(Common.action_runner common)
+        ~sticky_goal)
   | No ->
-    Scheduler_setup.go_with_rpc_server ~common ~config
-    @@ fun () ->
-    Build.build_memo_exn (fun () ->
-      let open Memo.O in
-      let* setup = Util.setup () in
-      let sctx = Dune_rules.Main.find_scontext_exn setup ~name:context in
-      let* env = Super_context.context_env sctx
-      and* prog =
-        let* prog = Cmd_arg.expand ~root:(Common.root common) ~sctx prog in
-        get_path_and_build_if_necessary common sctx ~no_rebuild ~prog >>| Path.to_string
-      and* args =
-        Memo.parallel_map ~f:(Cmd_arg.expand ~root:(Common.root common) ~sctx) args
-      in
-      Util.restore_cwd_and_execve (Common.root common) prog args env)
+    let prepared_exec =
+      Scheduler_setup.go_with_rpc_server ~common ~config
+      @@ fun () ->
+      Build.build_memo_exn (fun () ->
+        let open Memo.O in
+        let* setup = Util.setup () in
+        let sctx = Dune_rules.Main.find_scontext_exn setup ~name:context in
+        let* env = Super_context.context_env sctx
+        and* prog =
+          let* prog = Cmd_arg.expand ~root:(Common.root common) ~sctx prog in
+          get_path_and_build_if_necessary common sctx ~no_rebuild ~prog >>| Path.to_string
+        and* args =
+          Memo.parallel_map ~f:(Cmd_arg.expand ~root:(Common.root common) ~sctx) args
+        in
+        let env = extend_with_staging_env context env in
+        Memo.return { prog; args; env })
+    in
+    run_prepared_exec prepared_exec ~root:(Common.root common)
 ;;
 
 let term : unit Term.t =
@@ -326,8 +374,8 @@ let term : unit Term.t =
   (* TODO we should make sure to finalize the current backend before exiting dune.
      For watch mode, we should finalize the backend and then restart it in between
      runs. *)
-  let common, config = Common.init builder in
-  match Global_lock.lock ~timeout:None with
+  let common, config = Common.init_build builder in
+  match Global_lock.lock () with
   | Error lock_held_by ->
     (match Common.watch common with
      | Yes _ ->
@@ -340,9 +388,12 @@ let term : unit Term.t =
               | Pid_from_lockfile pid -> sprintf " (pid: %d)" pid)
          ]
      | No ->
-       Scheduler_setup.go_without_rpc_server ~common ~config
-       @@ fun () ->
-       exec_building_via_rpc_server ~common ~prog ~args ~no_rebuild builder lock_held_by)
+       let prepared_exec =
+         Scheduler_setup.go_without_rpc_server ~common ~config
+         @@ fun () ->
+         prepare_exec_via_rpc_server ~common ~prog ~args ~no_rebuild builder lock_held_by
+       in
+       run_prepared_exec prepared_exec ~root:(Common.root common))
   | Ok () -> exec_building_directly ~common ~config ~context ~prog ~args ~no_rebuild
 ;;
 

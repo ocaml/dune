@@ -1,8 +1,6 @@
 %{bin:...} for a binary added via (env (binaries ...)).
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.24)
-  > EOF
+  $ make_dune_project 3.24
   $ cat >dune <<'EOF'
   > (executable (name mybin))
   > (env (_ (binaries (mybin.exe as myothername))))
@@ -29,12 +27,10 @@ The pform resolves to the .bin/ symlink:
 The rule depends on the .bin/ symlink:
 
   $ dune rules --format=json _build/default/bin-path \
-  >   | jq 'include "dune"; .[] | ruleDepFilePaths'
+  >   | jq_dune '.[] | ruleDepFilePaths'
   "_build/default/.bin/myothername"
 
-The action's PATH gets the .bin/ symlink directory and the workspace
-install bin dir:
+The action's PATH gets the .bin/ symlink directory:
 
   $ env_added "$(cat _build/default/path-output)" "$PATH"
   $TESTCASE_ROOT/_build/default/.bin
-  $TESTCASE_ROOT/_build/install/default/bin

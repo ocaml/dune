@@ -18,7 +18,8 @@ include Stanza.Make (struct
 let decode =
   let open Dune_lang.Decoder in
   fields
-    (let+ loc = loc
+    (let* dune_version = Dune_lang.Syntax.get_exn Stanza.syntax in
+     let+ loc = loc
      and+ section = field "section" (located Section_with_site.decode)
      and+ files = field_o "files" (repeat Install_entry.File.decode)
      and+ dirs =
@@ -31,7 +32,11 @@ let decode =
          (Dune_lang.Syntax.since Stanza.syntax (3, 11) >>> repeat Install_entry.Dir.decode)
      and+ package = Stanza_pkg.field ~stanza:"install"
      and+ enabled_if =
-       let allowed_vars = Enabled_if.common_vars ~since:(2, 6) in
+       let allowed_vars =
+         if Dune_lang.Syntax.Version.Infix.(dune_version >= (3, 25))
+         then Enabled_if.Any
+         else Enabled_if.common_vars ~since:(2, 6)
+       in
        Enabled_if.decode ~allowed_vars ~since:(Some (2, 6)) ()
      in
      let files, dirs, source_trees =
@@ -43,5 +48,11 @@ let decode =
          , Option.value dirs ~default:[]
          , Option.value source_trees ~default:[] )
      in
+     (match section with
+      | loc, Section Misc ->
+        User_error.raise
+          ~loc
+          [ Pp.text "The misc section is not supported by install stanzas." ]
+      | _ -> ());
      { section; dirs; files; source_trees; package; enabled_if })
 ;;

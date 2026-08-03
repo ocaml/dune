@@ -2,23 +2,7 @@ dune trace cat can be used to view the trace:
 
   $ make_dune_project 3.21
   $ dune build
-  $ dune trace cat | jq -c 'keys'
-  ["args","cat","name","ts"]
-  ["args","cat","name","ts"]
-  ["args","cat","name","ts"]
-  ["args","cat","name","ts"]
-  ["args","cat","name","ts"]
-  ["args","cat","name","ts"]
-  ["args","cat","name","ts"]
-  ["args","cat","name","ts"]
-  ["args","cat","dur","name","ts"]
-  ["args","cat","name","ts"]
-  ["args","cat","name","ts"]
-  ["args","cat","name","ts"]
-  ["args","cat","dur","name","ts"]
-  ["args","cat","dur","name","ts"]
-  ["args","cat","dur","name","ts"]
-  ["args","cat","name","ts"]
+  $ dune trace cat | jq -c -s 'map(keys) | unique[]'
   ["args","cat","dur","name","ts"]
   ["args","cat","name","ts"]
 

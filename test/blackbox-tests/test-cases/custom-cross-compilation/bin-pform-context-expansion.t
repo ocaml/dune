@@ -2,10 +2,7 @@
 host context's artifacts, and the action's PATH gets the .binaries
 dir and the install bin dir, both under the host context.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.24)
-  > (package (name mypkg))
-  > EOF
+  $ make_dune_project_with_package 3.24 mypkg
 
   $ cat >dune-workspace <<EOF
   > (lang dune 3.24)
@@ -31,4 +28,3 @@ dir and the install bin dir, both under the host context.
 
   $ env_added "$(cat _build/target/path-output)" "$PATH" | censor
   $PWD/_build/install/host/.binaries/$DIGEST
-  $PWD/_build/install/host/bin

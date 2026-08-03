@@ -92,7 +92,12 @@ let setup_copy ?(chmod = Fun.id) ~src ~dst () =
   let ic = Stdlib.open_in_bin src in
   let oc =
     try
-      let perm = (Unix.fstat (Unix.descr_of_in_channel ic)).st_perm |> chmod in
+      let perm =
+        (Unix.fstat (Unix.descr_of_in_channel ic)).st_perm
+        |> Permissions.Mode.of_int
+        |> chmod
+        |> Permissions.Mode.to_int
+      in
       Stdlib.open_out_gen [ Open_wronly; Open_creat; Open_trunc; Open_binary ] perm dst
     with
     | exn ->
@@ -141,7 +146,12 @@ module Copyfile = struct
               let open Result.O in
               let+ fd_dst, src_size =
                 match
-                  let dst_perm = chmod src_stat.st_perm in
+                  let dst_perm =
+                    src_stat.st_perm
+                    |> Permissions.Mode.of_int
+                    |> chmod
+                    |> Permissions.Mode.to_int
+                  in
                   Unix.openfile dst [ O_WRONLY; O_CREAT; O_TRUNC; O_CLOEXEC ] dst_perm
                 with
                 | fd_dst -> Ok (Fd.unsafe_of_unix_file_descr fd_dst, src_stat.st_size)
@@ -212,7 +222,12 @@ module Copyfile = struct
        raise (Sys_error message));
     match chmod with
     | None -> ()
-    | Some chmod -> src_stats.st_perm |> chmod |> Unix.chmod dst
+    | Some chmod ->
+      src_stats.st_perm
+      |> Permissions.Mode.of_int
+      |> chmod
+      |> Permissions.Mode.to_int
+      |> Unix.chmod dst
   ;;
 
   let copy_file_portable ?chmod ~src ~dst () =
@@ -251,14 +266,14 @@ struct
     if binary then Stdlib.open_in_bin fn else Stdlib.open_in fn
   ;;
 
-  let default_out_perm = 0o666
+  let default_out_perm = Permissions.Mode.default_file
 
   let open_out ?(binary = true) ?(perm = default_out_perm) p =
     let fn = Path.to_string p in
     let flags : Stdlib.open_flag list =
       [ Open_wronly; Open_creat; Open_trunc; (if binary then Open_binary else Open_text) ]
     in
-    Stdlib.open_out_gen flags perm fn
+    Stdlib.open_out_gen flags (Permissions.Mode.to_int perm) fn
   ;;
 
   let with_file_in ?binary fn ~f = Exn.protectx (open_in ?binary fn) ~finally:close_in ~f
@@ -305,7 +320,7 @@ struct
       if binary
       then
         Fs_io.write_file
-          ~perm:(Option.value ~default:default_out_perm perm)
+          ~perm:(Option.value ~default:default_out_perm perm |> Permissions.Mode.to_int)
           ~data
           ~path:(Path.to_string fn)
         |> Result.ok_exn
@@ -441,7 +456,15 @@ let portable_symlink ~src ~dst =
     let src =
       match Path.parent dst with
       | None -> Path.to_string src
-      | Some from -> Path.reach ~from src
+      | Some from ->
+        (* A relative symlink target is resolved from the real directory that
+           contains [dst], not necessarily from the lexical spelling of [from].
+           External paths may contain symlinked prefixes (for example
+           /var -> /private/var on macOS), so keep external-to-external symlink
+           targets absolute. *)
+        (match Path.as_external src, Path.as_external from with
+         | Some _, Some _ -> Path.to_string src
+         | _ -> Path.reach ~from src)
     in
     let dst = Path.to_string dst in
     match Unix.readlink dst with

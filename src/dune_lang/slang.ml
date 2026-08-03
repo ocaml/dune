@@ -284,48 +284,53 @@ let rec simplify = function
   | Literal sw -> Literal sw
   | Form (loc, form) ->
     (match form with
-     (* CR-someday Alizter: This does multiple passes: exists, filter, then
-        simplify recursively. Simplify and filter out Nil in a single pass
-        instead. *)
-     | Concat with_nil when List.exists with_nil ~f:is_nil ->
-       simplify (Form (loc, Concat (List.filter with_nil ~f:(Fun.negate is_nil))))
-     | Concat [] -> Literal (String_with_vars.make_text ~quoted:true loc "")
-     | Concat [ x ] -> simplify x
      | Concat xs ->
-       let simple_terms =
-         List.map xs ~f:(function
-           | Literal sw ->
-             (match String_with_vars.text_only sw with
-              | Some text -> Some (`Text text)
-              | None ->
-                (match String_with_vars.pform_only sw with
-                 | Some pform -> Some (`Pform pform)
-                 | None -> None))
-           | _ -> None)
+       (* Simplify each element and drop any that simplify to [Nil] in a single
+          pass, then combine the remaining terms. *)
+       let xs =
+         List.filter_map xs ~f:(fun x ->
+           let x = simplify x in
+           if is_nil x then None else Some x)
        in
-       if List.for_all simple_terms ~f:Option.is_some
-       then (
-         (* Each element of the concatenated list is either a string or pform
-            so it's trivial to combine them into a single [String_with_vars.t].
-         *)
-         let parts = List.filter_opt simple_terms in
-         let quoted =
-           (* only quote strings when not quoting them would be an error *)
-           not
-             (List.for_all parts ~f:(function
-                | `Pform _ -> true
-                | `Text s -> Atom.is_valid s))
-         in
-         let combined_sw = String_with_vars.make ~quoted loc parts in
-         Literal combined_sw)
-       else Form (loc, Concat (List.map xs ~f:simplify))
-     | When (_, Nil) -> Nil
+       (match xs with
+        | [] -> Literal (String_with_vars.make_text ~quoted:true loc "")
+        | [ x ] -> x
+        | xs ->
+          let simple_terms =
+            List.map xs ~f:(function
+              | Literal sw ->
+                (match String_with_vars.text_only sw with
+                 | Some text -> Some (`Text text)
+                 | None ->
+                   (match String_with_vars.pform_only sw with
+                    | Some pform -> Some (`Pform pform)
+                    | None -> None))
+              | _ -> None)
+          in
+          if List.for_all simple_terms ~f:Option.is_some
+          then (
+            (* Each element of the concatenated list is either a string or pform
+               so it's trivial to combine them into a single [String_with_vars.t].
+            *)
+            let parts = List.filter_opt simple_terms in
+            let quoted =
+              (* only quote strings when not quoting them would be an error *)
+              not
+                (List.for_all parts ~f:(function
+                   | `Pform _ -> true
+                   | `Text s -> Atom.is_valid s))
+            in
+            let combined_sw = String_with_vars.make ~quoted loc parts in
+            Literal combined_sw)
+          else Form (loc, Concat xs))
      | When (condition, t) ->
-       let simplified_condition = simplify_blang condition in
-       (match (simplified_condition : blang) with
-        | Const true -> t
+       (match (simplify_blang condition : blang) with
+        | Const true -> simplify t
         | Const false -> Nil
-        | _ -> Form (loc, When (simplified_condition, simplify t)))
+        | simplified_condition ->
+          (match simplify t with
+           | Nil -> Nil
+           | t -> Form (loc, When (simplified_condition, t))))
      | If { condition; then_; else_ } ->
        (match simplify_blang condition with
         | Const true -> simplify then_

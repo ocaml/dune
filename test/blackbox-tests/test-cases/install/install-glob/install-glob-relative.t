@@ -4,10 +4,7 @@ Test that dune detects an error when we use a pattern such as ../foo/* in the
 install stanza. The problem with this pattern is its destination refers to a
 path outside the package's install directory.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.11)
-  > (package (name foo))
-  > EOF
+  $ make_dune_project_with_package 3.11 foo
 
   $ mkdir -p stanza stuff/xy
   $ touch stuff/foo.txt stuff/xy/bar.txt

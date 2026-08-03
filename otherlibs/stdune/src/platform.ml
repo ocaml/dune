@@ -7,6 +7,7 @@ module OS = struct
     | FreeBSD
     | NetBSD
     | OpenBSD
+    | DragonFly
     | Haiku
     | Other
 
@@ -31,6 +32,9 @@ module OS = struct
       ; Repr.case0 "OpenBSD" ~test:(function
           | OpenBSD -> true
           | _ -> false)
+      ; Repr.case0 "DragonFly" ~test:(function
+          | DragonFly -> true
+          | _ -> false)
       ; Repr.case0 "Haiku" ~test:(function
           | Haiku -> true
           | _ -> false)
@@ -50,6 +54,7 @@ module OS = struct
   external is_freebsd : unit -> bool = "stdune_is_freebsd"
   external is_netbsd : unit -> bool = "stdune_is_netbsd"
   external is_openbsd : unit -> bool = "stdune_is_openbsd"
+  external is_dragonfly : unit -> bool = "stdune_is_dragonfly"
   external is_haiku : unit -> bool = "stdune_is_haiku"
 
   let to_dyn = Repr.to_dyn repr
@@ -80,6 +85,8 @@ module OS = struct
     then NetBSD
     else if is_openbsd ()
     then OpenBSD
+    else if is_dragonfly ()
+    then DragonFly
     else if is_haiku ()
     then Haiku
     else Other

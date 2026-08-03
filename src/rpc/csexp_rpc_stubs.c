@@ -23,6 +23,9 @@ CAMLprim value dune_pthread_chdir_is_osx(value unit) {
 #ifndef SYS___pthread_chdir
 #define SYS___pthread_chdir 348
 #endif
+#ifndef SYS___pthread_fchdir
+#define SYS___pthread_fchdir 349
+#endif
 
 static int __pthread_chdir(const char *path) {
 #pragma clang diagnostic push
@@ -31,10 +34,25 @@ static int __pthread_chdir(const char *path) {
 #pragma clang diagnostic pop
 }
 
+static int __pthread_fchdir(int fd) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated"
+  return syscall(SYS___pthread_fchdir, fd);
+#pragma clang diagnostic pop
+}
+
 CAMLprim value dune_pthread_chdir(value dir) {
   CAMLparam1(dir);
   if (__pthread_chdir(String_val(dir))) {
     uerror("__pthread_chdir", dir);
+  }
+  CAMLreturn(Val_unit);
+}
+
+CAMLprim value dune_reset_pthread_cwd(value unit) {
+  CAMLparam1(unit);
+  if (__pthread_fchdir(-1)) {
+    uerror("__pthread_fchdir", Nothing);
   }
   CAMLreturn(Val_unit);
 }
@@ -64,6 +82,12 @@ CAMLprim value dune_pthread_chdir_is_osx(value unit) {
 CAMLprim value dune_pthread_chdir(value unit) {
   CAMLparam1(unit);
   caml_invalid_argument("__pthread_chdir not implemented");
+  CAMLreturn(Val_unit);
+}
+
+CAMLprim value dune_reset_pthread_cwd(value unit) {
+  CAMLparam1(unit);
+  caml_invalid_argument("__pthread_fchdir not implemented");
   CAMLreturn(Val_unit);
 }
 

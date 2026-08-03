@@ -1,3 +1,4 @@
 (library
  (name private_lib)
+ (modes byte)
  (modules private_lib))

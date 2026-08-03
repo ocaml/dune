@@ -1,4 +1,5 @@
 open Import
+open Stdune.Action_types
 
 let sandbox_dir = Path.Build.relative Path.Build.root ".sandbox"
 let max_live_sandboxes = 250
@@ -126,7 +127,9 @@ let copy_recursively =
   in
   let copy_file ~src ~dst = Io.copy_file ~chmod:chmod_file ~src ~dst () in
   let mkdir_with_perms ~src ~dst =
-    let perms = (Unix.stat (Path.to_string src)).st_perm |> chmod_dir in
+    let perms =
+      (Unix.stat (Path.to_string src)).st_perm |> Permissions.Mode.of_int |> chmod_dir
+    in
     Path.mkdir_p ~perms dst
   in
   fun ~src ~dst ->
@@ -272,12 +275,7 @@ let register_corrected_file_promotions t ~deps =
     Diff_action.exec
       ~patch_back:(Some (Path.build t.dir))
       t.loc
-      { Dune_util.Action.Diff.file1
-      ; file2
-      ; optional = false
-      ; mode = Text
-      ; directory_diffs = false
-      })
+      { Diff.file1; file2; optional = false; mode = Text; directory_diffs = false })
 ;;
 
 let create_real
@@ -386,7 +384,7 @@ let register_snapshot_promotion t (targets : Targets.Validated.t) ~old_snapshot 
          Diff_action.exec
            ~patch_back:(Some (Path.build t.dir))
            t.loc
-           { Dune_util.Action.Diff.file1 = source
+           { Diff.file1 = source
            ; file2 = Path.as_in_build_dir_exn path
            ; optional = true
            ; mode = Text

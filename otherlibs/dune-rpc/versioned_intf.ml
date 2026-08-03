@@ -74,5 +74,11 @@ module type S = sig
       -> ('req, 'resp) Decl.request
       -> ('state -> 'req -> 'resp fiber)
       -> unit
+
+    val implement_request_with_id
+      :  'state t
+      -> ('req, 'resp) Decl.request
+      -> ('state -> Id.t -> 'req -> 'resp fiber)
+      -> unit
   end
 end

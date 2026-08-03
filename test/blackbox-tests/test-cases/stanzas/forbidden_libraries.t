@@ -1,8 +1,6 @@
 Test the `forbidden_libraries` feature
 
-  $ cat > dune-project <<EOF
-  > (lang dune 2.0)
-  > EOF
+  $ make_dune_project 2.0
 
   $ cat > dune <<EOF
   > (library (name a) (modules))

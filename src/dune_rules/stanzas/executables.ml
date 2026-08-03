@@ -494,8 +494,12 @@ let common =
        fname)
   and+ project_root = Dune_project.get_exn () >>| Dune_project.root
   and+ enabled_if =
-    let allowed_vars = Enabled_if.common_vars ~since:(2, 3) in
     let is_error = Dune_lang.Syntax.Version.Infix.(dune_version >= (2, 6)) in
+    let allowed_vars =
+      if Dune_lang.Syntax.Version.Infix.(dune_version >= (3, 25))
+      then Enabled_if.Any
+      else Enabled_if.common_vars ~since:(2, 3)
+    in
     Enabled_if.decode ~allowed_vars ~is_error ~since:(Some (2, 3)) ()
   in
   fun names ~multi ->

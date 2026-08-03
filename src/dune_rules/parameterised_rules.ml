@@ -29,7 +29,6 @@ type t =
   }
 
 let for_ = Compilation_mode.Ocaml
-let sandbox = Compilation_mode.default_sandbox for_
 
 let build_instance
       ~sctx
@@ -61,8 +60,8 @@ let build_instance
            (Obj_dir.all_obj_dirs ~mode:(Lib_mode.Ocaml mode) obj_dir))
     ; A "-w"
     ; A "-55"
-      (* CR art-w: ignore [inlining-impossible] warning, it's unclear
-         why it happens *)
+      (* CR-someday art-w: ignore [inlining-impossible] warning,
+         it's unclear why it happens *)
     ; A "-instantiate"
     ; Dep module_
     ; Dyn
@@ -79,6 +78,7 @@ let build_instance
     ]
     |> Command.run
          ~sandbox:Sandbox_config.needs_sandboxing
+         ~forbid_action_runner:true
          (Ok compiler)
          ~dir:(Path.build dir)
     |> Super_context.add_rule ~dir sctx)
@@ -162,6 +162,7 @@ let build_archive ~sctx ~mode ~obj_dir ~lib ~top_sorted_modules ~modules =
     ]
     |> Command.run
          ~sandbox:Sandbox_config.needs_sandboxing
+         ~forbid_action_runner:true
          (Ok compiler)
          ~dir:(Path.build dir)
     |> Super_context.add_rule ~dir sctx)
@@ -293,7 +294,7 @@ let dep_graph ~sctx ~ocaml_version ~preprocess ~obj_dir ~modules impl_only =
         let module_ = pp_map module_ in
         let+ deps =
           Dep_rules.read_immediate_deps_of
-            ~sandbox
+            ~sandbox:Compilation_mode.default_sandbox
             ~sctx
             ~modules
             ~obj_dir
@@ -410,7 +411,7 @@ let external_dep_rules ~sctx ~dir ~scope lib_name =
     let+ (_ : Dep_graph.Ml_kind.t) =
       Dep_rules.rules
         ~sctx
-        ~sandbox
+        ~sandbox:Compilation_mode.default_sandbox
         ~dir
         ~obj_dir:(obj_dir_for_dep_rules dir)
         ~impl:Virtual_rules.no_implements

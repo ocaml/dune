@@ -1,35 +1,27 @@
 open Import
 
-(** An RPC handler which is abstract over the handling of the "Build" request
-    type. The type argument allows instances to choose different
-    representations of build targets. *)
-type 'build_arg t
+(** An RPC handler. *)
+type t
 
-val create
-  :  lock_timeout:Time.Span.t option
-  -> registry:[ `Add | `Skip ]
-  -> root:string
-  -> Dune_lang.Dep_conf.t t
-
-type 'build_arg pending_action_kind =
-  | Build of 'build_arg list
+type build_request =
+  | Build of Dune_lang.Dep_conf.t list
   | Runtest of string list
 
-(** This type allows the build request handler to be defined externally to the
-    RPC server. The [outcome] ivar is expected to be filled with the outcome of
-    the build by the build request handler when the build completes
-    (successfully or not) and triggers the RPC server to reply to the client
-    with the outcome of their request. *)
-type 'build_arg pending_action =
-  { kind : 'build_arg pending_action_kind
-  ; outcome : Build_outcome.t Fiber.Ivar.t
-  }
+type build =
+  | Disabled
+  | Enabled of
+      { build_loop : Dune_engine.Build_loop.t
+      ; build_action : build_request -> unit Dune_engine.Action_builder.t
+      }
 
-val pending_action : 'build_arg t -> 'build_arg pending_action Fiber.t
+val create
+  :  registry:[ `Add | `Skip ]
+  -> root:string
+  -> build:build
+  -> where:Dune_rpc.Where.t
+  -> action_runner:Dune_engine.Action_runner.t option
+  -> Watch_mode_config.t
+  -> t
 
-(** Stop accepting new rpc connections. Fiber returns when all existing
-    connections terminate *)
-val stop : _ t -> unit Fiber.t
-
-val ready : _ t -> unit Fiber.t
-val run : _ t -> unit Fiber.t
+val run : t -> unit Fiber.t
+val stop : t -> unit Fiber.t

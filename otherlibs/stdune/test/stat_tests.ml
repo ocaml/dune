@@ -16,12 +16,14 @@ let%expect_test "Stat.stat matches Unix.stat on stable fields" =
   print_bool "perm_matches" (Int.equal stat.perm unix.st_perm);
   print_bool "kind_matches" (File_kind.equal stat.kind unix.st_kind);
   print_bool "mtime_is_positive" (Time.compare stat.mtime (Time.of_ns 0) = Gt);
+  print_bool "ctime_is_positive" (Time.compare stat.ctime (Time.of_ns 0) = Gt);
   [%expect
     {|
     size_matches: true
     perm_matches: true
     kind_matches: true
     mtime_is_positive: true
+    ctime_is_positive: true
   |}]
 ;;
 

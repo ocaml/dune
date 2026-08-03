@@ -10,10 +10,7 @@ Since 0.2 you can use the `libraries` field to have them linked into the test ex
 
 MDX stanza 0.1 does not support linking libraries
 
-  $ cat >dune-project <<EOF
-  > (lang dune 2.8)
-  > (using mdx 0.1)
-  > EOF
+  $ make_mdx_project 2.8 0.1
 
   $ dune runtest
   File "dune", line 3, characters 1-24:

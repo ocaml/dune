@@ -312,6 +312,24 @@ module Var = struct
     fun k -> Update_var (key, f, fun () -> fiber () (fun x -> Unwind (k, x)))
   ;;
 
+  let get_apply (key : 'a Var_map.Key.t) (f : 'a -> 'b -> 'c t) (x : 'b) : 'c t =
+    fun k -> Get_var (key, fun value -> f value x k)
+  ;;
+
+  let get_apply_map (key : 'a Var_map.Key.t) (f : 'a -> 'b -> 'c) (x : 'b) : 'c t =
+    fun k -> Get_var (key, fun value -> k (f value x))
+  ;;
+
+  let set_apply (key : 'a Var_map.Key.t) (value : 'a) (f : 'b -> 'c t) (x : 'b) : 'c t =
+    fun k -> Set_var (key, value, fun () -> f x (fun y -> Unwind (k, y)))
+  ;;
+
+  let update_apply (key : 'a Var_map.Key.t) ~(f : 'a -> 'a) (g : 'b -> 'c t) (x : 'b)
+    : 'c t
+    =
+    fun k -> Update_var (key, f, fun () -> g x (fun y -> Unwind (k, y)))
+  ;;
+
   include Var_map.Key
 end
 

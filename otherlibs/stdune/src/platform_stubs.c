@@ -37,6 +37,15 @@ CAMLprim value stdune_is_netbsd(value v_unit) {
 #endif
 }
 
+CAMLprim value stdune_is_dragonfly(value v_unit) {
+  CAMLparam1(v_unit);
+#if defined(__DragonFly__)
+  CAMLreturn(Val_true);
+#else
+  CAMLreturn(Val_false);
+#endif
+}
+
 CAMLprim value stdune_is_haiku(value v_unit) {
   CAMLparam1(v_unit);
 #if defined(__HAIKU__)

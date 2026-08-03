@@ -12,8 +12,8 @@ let rec eval (t : Blang.t) ~dir ~f =
      | _ ->
        let loc = String_with_vars.loc sw in
        User_error.raise ~loc [ Pp.text "This value must be either true or false" ])
-  | And xs -> Memo.List.map xs ~f:(eval ~f ~dir) >>| List.for_all ~f:Fun.id
-  | Or xs -> Memo.List.map xs ~f:(eval ~f ~dir) >>| List.exists ~f:Fun.id
+  | And xs -> Memo.List.for_all xs ~f:(fun x -> eval ~f ~dir x)
+  | Or xs -> Memo.List.exists xs ~f:(fun x -> eval ~f ~dir x)
   | Not t -> eval t ~f ~dir >>| not
   | Compare (op, x, y) ->
     let+ x = String_expander.Memo.expand x ~mode:Many ~dir ~f

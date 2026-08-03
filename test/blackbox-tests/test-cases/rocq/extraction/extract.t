@@ -1,7 +1,4 @@
-  $ cat >dune-project <<EOF
-  > (lang dune 3.22)
-  > (using rocq 0.12)
-  > EOF
+  $ make_rocq_project 3.22 0.12
 
   $ cat >extract.v <<EOF
   > Definition nb (b : bool) : bool :=
@@ -74,10 +71,7 @@
   $ dune runtest
 
 Make sure that the error message is helpful if a module is both covered by a theory and an extraction stanza.
-  $ cat >dune-project <<EOF
-  > (lang dune 3.22)
-  > (using rocq 0.12)
-  > EOF
+  $ make_rocq_project 3.22 0.12
 
   $ cat >extract.v <<EOF
   > Definition nb (b : bool) : bool :=
@@ -108,10 +102,7 @@ Make sure that the error message is helpful if a module is both covered by a the
   [1]
 
 Make sure that the error message is helpful if a module is both covered by an extraction and a theory stanza.
-  $ cat >dune-project <<EOF
-  > (lang dune 3.22)
-  > (using rocq 0.12)
-  > EOF
+  $ make_rocq_project 3.22 0.12
 
   $ cat >extract.v <<EOF
   > Definition nb (b : bool) : bool :=

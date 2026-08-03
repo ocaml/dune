@@ -6,22 +6,7 @@ Test that auto-locking correctly detects when to rebuild based on repository cha
 
 Make a library package:
 
-  $ mkdir foo
-  $ cd foo
-  $ cat > dune-project <<EOF
-  > (lang dune 3.13)
-  > (package (name foo))
-  > EOF
-  $ cat > foo.ml <<EOF
-  > let message = "Hello from foo version 0.0.1!"
-  > EOF
-  $ cat > dune <<EOF
-  > (library
-  >  (public_name foo))
-  > EOF
-  $ cd ..
-  $ tar cf foo.tar foo
-  $ rm -rf foo
+  $ make_foo_tarball 'let message = "Hello from foo version 0.0.1!"'
 
 Make a package for the library using a local file source:
 
@@ -76,10 +61,7 @@ Now add a newer version of foo to the repository:
 
   $ mkdir foo
   $ cd foo
-  $ cat > dune-project <<EOF
-  > (lang dune 3.13)
-  > (package (name foo))
-  > EOF
+  $ make_dune_project_with_package 3.13 foo
   $ cat > foo.ml <<EOF
   > let message = "Hello from foo 0.0.2!"
   > EOF

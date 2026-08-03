@@ -146,5 +146,5 @@ Use a fresh package to ensure extraction actually runs (not cached from earlier)
 
 Check which tool was used for extraction:
 
-  $ dune trace cat | jq -c 'include "dune"; processes | .args.prog | split("/") | .[-1]'
+  $ dune trace cat | jq_dune -c 'processes | .args.prog | split("/") | .[-1]'
   "unzip"

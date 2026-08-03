@@ -2,10 +2,7 @@ A source-backed file can replace a build-directory target directory. When that
 happens, stale workspace-local cache entries for the old directory's descendants
 must be invalidated.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.0)
-  > (using directory-targets 0.1)
-  > EOF
+  $ make_directory_targets_project 3.0
   $ cat > dune <<EOF
   > (rule
   >  (targets (dir foo))

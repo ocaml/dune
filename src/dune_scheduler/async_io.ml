@@ -262,7 +262,6 @@ module Task = struct
               else Table.set table fd new_q));
           wakeup_loop t.select;
           t.status <- `Filled;
-          Event.Queue.cancel_work_task_started t.select.scheduler_queue;
           Fiber.Ivar.fill t.ivar (Error `Cancelled))
     in
     let cancel_timer_task (t : timer) =
@@ -273,7 +272,6 @@ module Task = struct
           retire_timer t.select t.id t;
           wakeup_loop t.select;
           t.status <- `Filled;
-          Event.Queue.cancel_work_task_started t.select.scheduler_queue;
           Fiber.Ivar.fill t.ivar (Error `Cancelled))
     in
     function
@@ -348,7 +346,6 @@ let sleep t after =
   let timer =
     Mutex.protect t.mutex (fun () ->
       ensure_running_locked t;
-      Event.Queue.register_worker_task_started t.scheduler_queue;
       let deadline = Time.add (Time.now ()) after in
       let timer =
         { ivar = Fiber.Ivar.create ()
@@ -411,7 +408,6 @@ let close fd =
       match Table.find t.to_close fd with
       | Some ivar -> `Wait ivar
       | None ->
-        Event.Queue.register_worker_task_started t.scheduler_queue;
         let ivar = Fiber.Ivar.create () in
         Table.add_exn t.to_close fd ivar;
         let to_cancel = maybe_cancel t.readers fd [] in
@@ -425,7 +421,6 @@ let close fd =
   | `Cancel (ivar, to_cancel) ->
     let* () =
       Fiber.parallel_iter to_cancel ~f:(fun (Fiber.Fill (ivar, v)) ->
-        Event.Queue.cancel_work_task_started t.scheduler_queue;
         Fiber.Ivar.fill ivar v)
     in
     Fiber.Ivar.read ivar
@@ -434,7 +429,6 @@ let close fd =
 let ready_one (type a label) (fds : (label * Fd.t) list) what ~f:job : a Task.t =
   with_
   @@ fun t ->
-  Event.Queue.register_worker_task_started t.scheduler_queue;
   let ivar = Fiber.Ivar.create () in
   let table =
     match what with

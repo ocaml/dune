@@ -1,7 +1,9 @@
 open Import
 
 val run_build_system
-  :  request:(Dune_rules.Main.build_system -> unit Action_builder.t)
+  :  action_runner:Dune_engine.Action_runner.t option
+  -> run_id:Dune_engine.Run_id.t
+  -> request:(Dune_rules.Main.build_system -> unit Action_builder.t)
   -> (unit, [ `Already_reported ]) result Fiber.t
 
 val build : unit Cmd.t

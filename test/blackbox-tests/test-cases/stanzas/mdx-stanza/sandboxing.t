@@ -1,9 +1,6 @@
 Mdx tests run in a sandbox, so undeclared files are not visible.
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.22)
-  > (using mdx 0.5)
-  > EOF
+  $ make_mdx_project 3.22 0.5
 
   $ cat > dune << EOF
   > (rule
@@ -34,10 +31,7 @@ Mdx tests run in a sandbox, so undeclared files are not visible.
    ```
   [1]
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.22)
-  > (using mdx 0.4)
-  > EOF
+  $ make_mdx_project 3.22 0.4
 
   $ dune runtest
   File "README.md", line 1, characters 0-0:

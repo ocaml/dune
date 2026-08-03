@@ -3,7 +3,6 @@ Reproducer for https://github.com/ocaml/dune/issues/13234
 
   $ mkrepo
   $ add_mock_repo_if_needed
-  $ enable_pkg
   $ mkpkg b 0.1
   $ mkpkg c 0.2
 
@@ -25,11 +24,24 @@ Make dune-project file with dependency on b:
   >  (public_name a))
   > EOF
 
-Start dune (in passive watch mode)
+Package management is disabled when there is no lockdir or explicit setting:
 
-  $ start_dune
+  $ dune pkg enabled
+  [1]
+
+Start dune in passive watch mode with package management enabled on the command
+line:
+
+  $ start_dune --pkg enabled
+
+The status reported by the running server includes its command-line
+configuration. Fix for https://github.com/ocaml/dune/issues/15587
+
+  $ dune pkg enabled
+
   $ build a.exe
   Success
+  $ wait_for_line_with_timeout .#dune-output "Success, waiting for filesystem changes..." 200
   $ cat .#dune-output
   Success, waiting for filesystem changes...
 
@@ -50,6 +62,4 @@ Run build:
 
 Stop the watch server
 
-  $ stop_dune
-  Success, waiting for filesystem changes...
-  Success, waiting for filesystem changes...
+  $ stop_dune_quiet

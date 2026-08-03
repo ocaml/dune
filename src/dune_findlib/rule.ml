@@ -9,14 +9,18 @@ type t =
   ; value : string
   }
 
-let to_dyn { preds_required; preds_forbidden; value } =
-  let open Dyn in
-  record
-    [ "preds_required", Ps.to_dyn preds_required
-    ; "preds_forbidden", Ps.to_dyn preds_forbidden
-    ; "value", string value
+let repr =
+  Repr.record
+    "findlib-rule"
+    [ Repr.field "preds_required" (Repr.abstract Ps.to_dyn) ~get:(fun t ->
+        t.preds_required)
+    ; Repr.field "preds_forbidden" (Repr.abstract Ps.to_dyn) ~get:(fun t ->
+        t.preds_forbidden)
+    ; Repr.field "value" Repr.string ~get:(fun t -> t.value)
     ]
 ;;
+
+let to_dyn = Repr.to_dyn repr
 
 let formal_predicates_count t =
   Ps.cardinal t.preds_required + Ps.cardinal t.preds_forbidden

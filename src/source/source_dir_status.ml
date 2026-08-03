@@ -41,13 +41,22 @@ module Map = struct
   let init ~f = { data_only = f Data_only; vendored = f Vendored; normal = f Normal }
 end
 
-let to_dyn t =
-  let open Dyn in
-  match t with
-  | Data_only -> Variant ("Data_only", [])
-  | Vendored -> Variant ("Vendored", [])
-  | Normal -> Variant ("Normal", [])
+let repr =
+  Repr.variant
+    "source-dir-status"
+    [ Repr.case0 "Data_only" ~test:(function
+        | Data_only -> true
+        | Normal | Vendored -> false)
+    ; Repr.case0 "Vendored" ~test:(function
+        | Vendored -> true
+        | Data_only | Normal -> false)
+    ; Repr.case0 "Normal" ~test:(function
+        | Normal -> true
+        | Data_only | Vendored -> false)
+    ]
 ;;
+
+let to_dyn = Repr.to_dyn repr
 
 let to_string = function
   | Data_only -> "data_only"

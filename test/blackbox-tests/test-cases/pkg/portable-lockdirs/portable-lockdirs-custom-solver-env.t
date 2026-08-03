@@ -29,22 +29,7 @@ Create a package that creates a file only if "sys-ocaml-version" has a particula
   > EOF
 
 Set up a project that depends on the package:
-  $ cat > dune-project <<EOF
-  > (lang dune 3.18)
-  > (package
-  >  (name x)
-  >  (depends foo))
-  > EOF
-
-  $ cat > x.ml <<EOF
-  > let () = print_endline "Hello, World!"
-  > EOF
-
-  $ cat > dune <<EOF
-  > (executable
-  >  (public_name x)
-  >  (libraries foo))
-  > EOF
+  $ make_portable_lockdirs_project
 
 Solve the project:
   $ dune pkg lock

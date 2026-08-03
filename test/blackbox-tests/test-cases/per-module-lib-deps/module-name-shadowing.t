@@ -5,9 +5,7 @@ internal) correctly reflects the compiler's resolution order.
 
 See: https://github.com/ocaml/dune/issues/4572
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.0)
-  > EOF
+  $ make_dune_project 3.0
 
 --- Unwrapped library: internal module shadows library module ---
 
@@ -52,7 +50,7 @@ The dependencies of main.ml's native compilation show dune__exe__Helper
 (the internal module), not unwrapped_lib's helper:
 
   $ dune rules --root . --format=json --deps _build/default/.main.eobjs/native/dune__exe__Main.cmx |
-  > jq -r 'include "dune"; .[] | depsFilePaths | select(test("dune__exe__Helper"))'
+  > jq_dune -r '.[] | depsFilePaths | select(test("dune__exe__Helper"))'
   _build/default/.main.eobjs/byte/dune__exe__Helper.cmi
 
 The library's Helper.lib_value is not accessible:

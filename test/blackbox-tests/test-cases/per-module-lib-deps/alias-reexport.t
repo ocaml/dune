@@ -8,9 +8,7 @@ must always trigger it.
 
 See: https://github.com/ocaml/dune/issues/4572
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.23)
-  > EOF
+  $ make_dune_project 3.23
 
 A library where we'll perform the changes:
 
@@ -63,12 +61,12 @@ main.ml doesn't depend on impl's implementation, only its interface:
 main.cmx is NOT rebuilt (correct — only impl changed, and -opaque
 means we don't track impl's implementation):
 
-  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("Main"))]'
+  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("Main"))]'
   []
 
 unused.cmx is also NOT rebuilt (correct — it references nothing):
 
-  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("Unused"))]'
+  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("Unused"))]'
   []
 
 Hard update — impl.cmi IS modified (new value added). main.ml must
@@ -85,10 +83,10 @@ be recompiled because Alias re-exports Impl and the interface changed:
 Main is rebuilt (necessary — impl.cmi changed and main.ml uses
 Impl through the Alias re-export):
 
-  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("Main"))] | length | . > 0'
+  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("Main"))] | length | . > 0'
   true
 
 Unused is NOT rebuilt (correct — it doesn't reference impl):
 
-  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("Unused"))] | length'
+  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("Unused"))] | length'
   0

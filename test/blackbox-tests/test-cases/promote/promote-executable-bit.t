@@ -1,9 +1,7 @@
 Promotion repairs executable permissions even when the promoted file already has
 the right contents.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.0)
-  > EOF
+  $ make_dune_project 3.0
 
   $ cat > dune <<'EOF'
   > (rule

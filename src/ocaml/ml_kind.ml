@@ -13,7 +13,8 @@ let choose t ~impl ~intf =
 ;;
 
 let to_string = choose ~impl:"impl" ~intf:"intf"
-let to_dyn t = Dyn.String (to_string t)
+let repr = Repr.view Repr.string ~to_:to_string
+let to_dyn = Repr.to_dyn repr
 
 let cmt_ext = function
   | Impl -> Filename.Extension.cmt

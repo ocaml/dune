@@ -1,8 +1,6 @@
 Tests env stanzas in JSOO contexts.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.0)
-  > EOF
+  $ make_dune_project 3.0
   $ cat >dune <<EOF
   > (env (_ (js_of_ocaml (flags :standard "--no-inline"))))
   > (library (name test))

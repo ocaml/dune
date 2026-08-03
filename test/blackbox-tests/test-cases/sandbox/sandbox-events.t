@@ -11,8 +11,7 @@ Demonstrate sandbox events:
 
   $ dune build @foo
 
-  $ dune trace cat | jq '
-  >  include "dune";
+  $ dune trace cat | jq_dune '
   >   select(.cat == "sandbox")
   > | del(.ts,.dur, .args.queued)
   > | censorDigestDir

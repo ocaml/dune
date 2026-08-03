@@ -64,17 +64,6 @@ Generate a mock opam repository
   > ]
   > EOF
 
-  $ build_single_package() {
-  > solve_project <<EOF
-  > (lang dune 3.11)
-  > (package
-  >  (name x)
-  >  (depends
-  >   $1))
-  > EOF
-  > build_pkg $1
-  > }
-
   $ build_single_package foo
   Solution for dune.lock:
   - foo.0.0.1

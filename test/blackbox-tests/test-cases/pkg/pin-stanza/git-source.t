@@ -8,10 +8,7 @@ We create a repo with a fixed name for the default branch.
   $ mkdir _repo
   $ cd _repo
   $ git init --initial-branch=duplicated --quiet
-  $ cat >dune-project <<EOF
-  > (lang dune 3.13)
-  > (package (name foo))
-  > EOF
+  $ make_dune_project_with_package 3.13 foo
   $ git add -A
   $ git commit -qm "initial commit"
   $ cd ..

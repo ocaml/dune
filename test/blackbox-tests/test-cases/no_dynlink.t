@@ -31,10 +31,7 @@ Now with `(no_dynlink)`.
 
 Next, we check that the .cmxs is installed without `(no_dynlink)`:
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.17)
-  > (package (name mylib))
-  > EOF
+  $ make_dune_project_with_package 3.17 mylib
 
   $ cat >dune <<EOF
   > (library

@@ -3,44 +3,11 @@ Tests for [Fs_memo] symlink handling.
   $ export DUNE_TRACE=cache
   $ setup_xdg_runtime_dir
 
-  $ test () {
-  >   echo "------------------------------------------"
-  >   before=$(cat _build/default/result 2>/dev/null)
-  >   start_dune
-  >   build . | grep -v Success
-  >   between=$(cat _build/default/result)
-  >   eval "$@"
-  >   build . | grep -v Success
-  >   stop_dune >> .#tmp
-  >   after=$(cat _build/default/result)
-  >   cat .#tmp
-  >   echo "------------------------------------------"
-  >   echo "result = '$before' -> '$between' -> '$after'"
-  >   echo "------------------------------------------"
-  >   dune trace cat | jq -c 'select(.name == "fs_update") | .args' | sort
-  >   rm .#tmp
-  > }
 
 The action ignores the dependency [dep]. We use it to force rerunning the action
 when necessary.
 
-  $ echo "(lang dune 2.0)" > dune-project
-  $ cat >dune <<EOF
-  > (rule
-  >  (alias default)
-  >  (deps dep
-  >   (glob_files file-?)
-  >   (glob_files dir/file-?)
-  >   (glob_files dir/subdir/file-?))
-  >  (target result)
-  >  (action (system "\| echo Executing rule...
-  >                "\| echo %{deps}       |
-  >                "\|   tr ' ' '\n'      |
-  >                "\|   xargs -n 1       |
-  >                "\|   grep -v dep      |
-  >                "\|   xargs cat > result
-  > )))
-  > EOF
+  $ make_fs_memo_project
 
   $ echo -n 3 > file-3
   $ echo -n 5 > file-5
@@ -51,7 +18,7 @@ Tests for watching symbolic links.
 
 First, create a symbolic link. Dune correctly updates the [result].
 
-  $ test "ln -s ../file-3 dir/file-6"
+  $ fs_memo_test "ln -s ../file-3 dir/file-6"
   ------------------------------------------
   Executing rule...
   Success, waiting for filesystem changes...
@@ -73,7 +40,7 @@ First, create a symbolic link. Dune correctly updates the [result].
 Now, delete the symbolic link. Dune receives the corresponding events and
 reruns the affected action.
 
-  $ test "rm dir/file-6"
+  $ fs_memo_test "rm dir/file-6"
   ------------------------------------------
   Success, waiting for filesystem changes...
   Executing rule...
@@ -100,7 +67,7 @@ Now test symbolic links to directories.
 At first, things appear to be working well: we correctly discover [dir/file-7]
 and re-execute the rule.
 
-  $ test "echo -n 7 > another-dir/file-7"
+  $ fs_memo_test "echo -n 7 > another-dir/file-7"
   ------------------------------------------
   Success, waiting for filesystem changes...
   Executing rule...
@@ -123,7 +90,7 @@ and re-execute the rule.
 
 Deleting [dir] triggers a rebuild.
 
-  $ test "rm dir"
+  $ fs_memo_test "rm dir"
   ------------------------------------------
   Success, waiting for filesystem changes...
   Executing rule...
@@ -143,7 +110,7 @@ Deleting [dir] triggers a rebuild.
 
 Restoring the symlink is correctly noticed.
 
-  $ test "ln -s another-dir dir"
+  $ fs_memo_test "ln -s another-dir dir"
   ------------------------------------------
   Success, waiting for filesystem changes...
   Executing rule...
@@ -165,7 +132,7 @@ However, deleting [another-dir] isn't handled correctly.
 
 # CR-someday amokhov: Fix this.
 
-  $ test "rm another-dir/file-7; sleep 0.001; rmdir another-dir"
+  $ fs_memo_test "rm another-dir/file-7; sleep 0.001; rmdir another-dir"
   ------------------------------------------
   Success, waiting for filesystem changes...
   Executing rule...
@@ -193,7 +160,7 @@ If we force a rebuild, Dune belatedly notices that [another-dir/file-7] is now
 unreachable but doesn't complain about the symlink [dir] now being broken. We
 should fix this too.
 
-  $ test "echo force > dep"
+  $ fs_memo_test "echo force > dep"
   ------------------------------------------
   Success, waiting for filesystem changes...
   Executing rule...

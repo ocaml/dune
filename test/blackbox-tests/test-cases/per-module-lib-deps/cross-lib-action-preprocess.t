@@ -9,9 +9,7 @@ outside the producing rule must tolerate this mismatch with the raw
 [Module.t]'s [.ml] source path; this test guards against breaking
 consumers of action-preprocessed libs.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.23)
-  > EOF
+  $ make_dune_project 3.23
 
 A trivial preprocessor that passes its input through unchanged. The
 critical property is that dune's pp pipeline writes a [.pp.ml] file

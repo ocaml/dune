@@ -1,6 +1,6 @@
 Tests that actions do not inherit stdin by default.
 
-  $ echo "(lang dune 2.7)" > dune-project
+  $ make_dune_project 2.7
   $ cat >dune <<EOF
   > (rule (with-stdout-to file.txt (run cat)))
   > EOF

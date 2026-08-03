@@ -1,9 +1,6 @@
 Show target promotion in-source for `melange.emit`
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.20)
-  > (using melange 1.0)
-  > EOF
+  $ make_melange_project 3.20 1.0
 
   $ mkdir -p app
   $ cat > app/dune <<EOF

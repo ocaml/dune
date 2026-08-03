@@ -1,10 +1,7 @@
 Dune should not crash when `menhir_flags` are passed in a workspace file.
 See #9024.
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.0)
-  > (using menhir 2.0)
-  > EOF
+  $ make_menhir_project 3.0 2.0
 
   $ cat > dune-workspace << EOF
   > (lang dune 3.0)

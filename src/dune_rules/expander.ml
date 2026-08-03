@@ -191,13 +191,12 @@ let expand_artifact ~source t artifact arg =
   in
   match artifact with
   | Pform.Artifact.Mod kind ->
-    let name =
-      Module_name.of_string_allow_invalid
-        (Dune_lang.Template.Pform.loc source, Filename.to_string name)
-      |> Module_name.Unchecked.allow_invalid
-    in
-    (match Artifacts_obj.lookup_module artifacts name with
-     | None -> does_not_exist ~what:"Module" (Module_name.to_string name)
+    (match Artifacts_obj.lookup_module artifacts path with
+     | None ->
+       Module_name.of_string_allow_invalid (loc, Filename.to_string name)
+       |> Module_name.Unchecked.allow_invalid
+       |> Module_name.to_string
+       |> does_not_exist ~what:"Module"
      | Some (t, m) ->
        (match
           match kind with
@@ -278,7 +277,8 @@ let[@inline never] invalid_use_of_target_variable
        User_error.raise
          ~loc:source.loc
          [ Pp.textf
-             "You cannot use %s with inferred rules."
+             "You cannot use %s unless the rule has a (target ...) or (targets ...) \
+              field."
              (Dune_lang.Template.Pform.describe source)
          ]
      | Static { targets = _; multiplicity } ->
@@ -599,6 +599,16 @@ let expand_pform_var (context : Context.t) ~dir ~source (var : Pform.Var.t) =
            let+ scope = scope in
            let dune_version = Dune_project.dune_version (Scope.project scope) in
            Value.L.strings (Ocaml_flags.dune_warnings ~dune_version ~profile:Dev)))
+  | Git_sha ->
+    (let open Memo.O in
+     let+ sha =
+       Source_tree.nearest_vcs Path.Source.root
+       >>= function
+       | None -> Memo.return None
+       | Some vcs -> Vcs.git_sha_short vcs
+     in
+     string (Option.value sha ~default:""))
+    |> static
 ;;
 
 let ocaml_config_macro source macro_invocation context =

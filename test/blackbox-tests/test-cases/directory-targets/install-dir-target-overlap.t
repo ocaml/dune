@@ -1,5 +1,7 @@
-Installing multiple directories into share_root currently crashes dune
-Originally reported as https://github.com/ocaml/dune/issues/13307
+Installing multiple directories to the same share_root destination reports a
+conflict instead of crashing dune.
+Originally reported as https://github.com/ocaml/dune/issues/13307 and
+https://github.com/ocaml/dune/issues/14422
 
   $ cat >dune-project <<EOF
   > (lang dune 3.20)
@@ -18,7 +20,6 @@ tries place the contents of both at the same location
   >   (progn
   >    (run mkdir -p a/share)
   >    (run touch a/share/readme_a.txt))))
-  > 
   > (rule
   >  (target
   >   (dir b))
@@ -26,7 +27,6 @@ tries place the contents of both at the same location
   >   (progn
   >    (run mkdir -p b/share)
   >    (run touch b/share/readme_b.txt))))
-  > 
   > (install
   >  (section share_root)
   >  (dirs
@@ -34,8 +34,44 @@ tries place the contents of both at the same location
   >   (a/share as .)))
   > EOF
 
-This would ideally produce a _build/install/default/share/ with both .txt files,
-or perhaps an error about two rules targetting the same thing, but crashes instead.
-  $ dune build @install 2>&1 | grep "must not crash"
-  I must not crash.  Uncertainty is the mind-killer. Exceptions are the
+This reports the same duplicate-target error as overlapping file install entries.
+  $ dune build @install
+  Error: Multiple rules generated for _build/install/default/share:
+  - dune:18
+  - dune:19
+  -> required by _build/default/shared_files.install
+  -> required by alias install
+  [1]
+
+The same applies when both directories are installed under the same explicit
+share_root subdirectory, as reported in #14422.
+
+  $ cat >dune <<EOF
+  > (rule
+  >  (target
+  >   (dir a))
+  >  (action
+  >   (progn
+  >    (run mkdir -p a/share)
+  >    (run touch a/share/readme_a.txt))))
+  > (rule
+  >  (target
+  >   (dir b))
+  >  (action
+  >   (progn
+  >    (run mkdir -p b/share)
+  >    (run touch b/share/readme_b.txt))))
+  > (install
+  >  (section share_root)
+  >  (dirs
+  >   (b/share as man)
+  >   (a/share as man)))
+  > EOF
+
+  $ dune build @install
+  Error: Multiple rules generated for _build/install/default/share/man:
+  - dune:18
+  - dune:19
+  -> required by _build/default/shared_files.install
+  -> required by alias install
   [1]

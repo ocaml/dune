@@ -12,7 +12,7 @@ But if there is a dependency, the alias gets rebuilt:
   X is not set
   Y is not set
   $ X=x dune build @with_dep
-  X = "x"
+  X=x
   Y is not set
 
 This only happens for tracked variables:

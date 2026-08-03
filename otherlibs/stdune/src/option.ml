@@ -45,6 +45,12 @@ let value_exn = function
   | None -> Code_error.raise "Option.value_exn" []
 ;;
 
+let value_exn' t ~message =
+  match t with
+  | Some x -> x
+  | None -> Code_error.raise "Option.value_exn'" [ "message", Dyn.string message ]
+;;
+
 let some x = Some x
 let some_if cond x = if cond then Some x else None
 

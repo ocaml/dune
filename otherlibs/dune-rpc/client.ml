@@ -2,14 +2,24 @@ open Import
 open Types
 open Exported_types
 
-module type S = sig
+module type Public = sig
   type t
   type 'a fiber
   type chan
 
+  module Handler : sig
+    type t
+
+    val create
+      :  ?log:(Message.t -> unit fiber)
+      -> ?abort:(Message.t -> unit fiber)
+      -> unit
+      -> t
+  end
+
   module Versioned : sig
-    type ('a, 'b) request = ('a, 'b) Versioned_intf.Staged.request
-    type 'a notification = 'a Versioned_intf.Staged.notification
+    type ('a, 'b) request
+    type 'a notification
 
     val prepare_request
       :  t
@@ -58,15 +68,19 @@ module type S = sig
     val submit : t -> unit fiber
   end
 
-  module Handler : sig
-    type t
+  val connect
+    :  ?handler:Handler.t
+    -> chan
+    -> Initialize.Request.t
+    -> f:(t -> 'a fiber)
+    -> 'a fiber
+end
 
-    val create
-      :  ?log:(Message.t -> unit fiber)
-      -> ?abort:(Message.t -> unit fiber)
-      -> unit
-      -> t
-  end
+module type S = sig
+  include
+    Public
+    with type ('a, 'b) Versioned.request = ('a, 'b) Versioned_intf.Staged.request
+     and type 'a Versioned.notification = 'a Versioned_intf.Staged.notification
 
   type proc =
     | Request : ('a, 'b) Decl.request -> proc
@@ -77,13 +91,6 @@ module type S = sig
   val connect_with_menu
     :  ?handler:Handler.t
     -> private_menu:proc list
-    -> chan
-    -> Initialize.Request.t
-    -> f:(t -> 'a fiber)
-    -> 'a fiber
-
-  val connect
-    :  ?handler:Handler.t
     -> chan
     -> Initialize.Request.t
     -> f:(t -> 'a fiber)

@@ -1,20 +1,6 @@
 let sprintf = Printf.sprintf
 let lock_file = Path.Build.(relative root ".lock")
 
-let with_timeout ~timeout f =
-  let now () = Time.now () in
-  let deadline = Time.add (now ()) timeout in
-  let rec loop () =
-    if Time.(now () >= deadline)
-    then `Timed_out
-    else (
-      match f () with
-      | `Continue -> loop ()
-      | `Stop -> `Success)
-  in
-  loop ()
-;;
-
 let write_pid fd =
   let pid = Int.to_string (Unix.getpid ()) in
   let len = String.length pid in
@@ -89,7 +75,7 @@ module Lock_held_by = struct
   ;;
 end
 
-let lock ~timeout =
+let lock () =
   match
     (* If Config hasn't been initialized yet, default to `Enabled behavior.
        This allows the lock to be acquired early (e.g., before creating trace
@@ -101,30 +87,15 @@ let lock ~timeout =
     if !locked
     then Ok ()
     else (
-      let res =
-        match timeout with
-        | None -> Lock.lock ()
-        | Some timeout ->
-          (match
-             with_timeout ~timeout (fun () ->
-               match Lock.lock () with
-               | `Success -> `Stop
-               | `Failure -> `Continue)
-           with
-           | `Timed_out -> `Failure
-           | `Success -> `Success)
-      in
-      match res with
+      match Lock.lock () with
       | `Success ->
         locked := true;
         Ok ()
-      | `Failure ->
-        let lock_held_by = Lock_held_by.read_lock_file () in
-        Error lock_held_by)
+      | `Failure -> Error (Lock_held_by.read_lock_file ()))
 ;;
 
-let lock_exn ~timeout =
-  match lock ~timeout with
+let lock_exn () =
+  match lock () with
   | Ok () -> ()
   | Error lock_held_by ->
     User_error.raise

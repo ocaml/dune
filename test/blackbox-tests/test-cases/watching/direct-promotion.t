@@ -8,6 +8,7 @@ Demonstrate running "dune promote" concurrently with a passive rpc server
 The test expectedly fails (see errors at the end of this file)
   $ build "(alias my_test)"
   Failure
+  [1]
 
 Promotion happens on the running RPC server.
   $ dune promote

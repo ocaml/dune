@@ -13,11 +13,21 @@ type t =
   ; add_rules : Rule.t list
   }
 
-let to_dyn { set_rules; add_rules } =
-  let open Dyn in
-  record
-    [ "set_rules", list Rule.to_dyn set_rules; "add_rules", list Rule.to_dyn add_rules ]
+let repr =
+  Repr.record
+    "findlib-rules"
+    [ Repr.field
+        "set_rules"
+        Repr.(list (abstract Rule.to_dyn))
+        ~get:(fun t -> t.set_rules)
+    ; Repr.field
+        "add_rules"
+        Repr.(list (abstract Rule.to_dyn))
+        ~get:(fun t -> t.add_rules)
+    ]
 ;;
+
+let to_dyn = Repr.to_dyn repr
 
 let interpret t ~preds =
   let rec find_set_rule = function

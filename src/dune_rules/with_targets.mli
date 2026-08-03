@@ -15,7 +15,7 @@ val add_directories : 'a t -> directory_targets:Path.Build.t list -> 'a t
 val map : 'a t -> f:('a -> 'b) -> 'b t
 
 val write_file_dyn
-  :  ?perm:Action.File_perm.t
+  :  ?perm:Action_types.File_perm.t
   -> Path.Build.t
   -> string t
   -> Action.Full.t t

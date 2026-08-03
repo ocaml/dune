@@ -34,8 +34,8 @@ jobs:
     name: OCaml Reverse Dependencies
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: nixbuild/nix-quick-install-action@v34
+      - uses: actions/checkout@v7
+      - uses: nixbuild/nix-quick-install-action@v35
       - name: Build OCaml reverse dependencies
         run: |
           prefix=".#revdeps.x86_64-linux"

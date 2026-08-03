@@ -33,5 +33,5 @@ can race with the native stubs archive build.
 The .cmxs rule depends on the native stubs archive, not the byte one.
 
   $ dune rules --format=json foo.cmxs | \
-  >   jq -r 'include "dune"; .[] | ruleDepFilePaths | select(test("stubs"))'
+  >   jq_dune -r '.[] | ruleDepFilePaths | select(test("stubs"))'
   _build/default/libfoo_stubs_native.a

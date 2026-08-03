@@ -82,7 +82,8 @@ non-fatal:
 - You can pass ``--profile release`` to ``dune``. It will set up different
   compilation options that usually make sense for release builds, including
   making warnings non-fatal. This is done by default when installing packages
-  from opam.
+  from opam. See :doc:`/reference/dune-workspace/profile` for the exact
+  defaults associated with each standard profile.
 - You can change the flags used by the ``dev`` profile by adding the following
   stanza to a ``dune`` file:
 
@@ -113,12 +114,15 @@ When Dune runs external commands, it redirects and saves their output, then
 displays it when complete. This ensures that there's no interleaving when
 writing to the console.
 
-But this might not be what the you want. For example, when you debug a hanging
-build.
+But this might not be what you want. For example, when you debug a hanging
+build or need to inspect a large command output without truncation.
 
 In that case, one can pass ``-j1 --no-buffer`` so the commands are directly
 printed on the console (and the parallelism is disabled so the output stays
-readable).
+readable). This also avoids Dune's buffering of command output, so redirecting
+Dune's output to a file can be used to capture the full, untruncated output.
+If the captured output contains terminal colour escape sequences, set
+``CLICOLOR=0`` in the environment to disable colours.
 
 How can I generate an ``mli`` file from an ``ml`` file?
 =======================================================
@@ -170,6 +174,8 @@ Note that the path (``src/foo`` in the example above) is relative to the current
 directory - not the project root. If the library defines a ``name`` distinct from
 its ``public_name`` then that can be used interchangeably with the ``public_name``
 in this command.
+
+.. _source-tree-hidden-files:
 
 Why does ``source_tree`` ignore files and directories when they begin with a "." (period)?
 ==========================================================================================

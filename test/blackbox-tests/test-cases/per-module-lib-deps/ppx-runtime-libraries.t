@@ -81,7 +81,7 @@ build succeeds. But the flag does not cause rebuilds; only the
 recorded deps do.
 
   $ dune rules --root . --format=json --deps _build/default/user/.user.objs/byte/user.cmi |
-  > jq -r 'include "dune"; .[] | depsGlobs
+  > jq_dune -r '.[] | depsGlobs
   >   | select(.dir | endswith("runtime_dep/.runtime_dep.objs/byte"))
   >   | .dir + " " + .predicate'
   _build/default/runtime_dep/.runtime_dep.objs/byte *.cmi

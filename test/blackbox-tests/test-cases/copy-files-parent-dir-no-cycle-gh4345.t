@@ -5,7 +5,7 @@ bug is now fixed, so this project should build without error.
 
   $ DIR="gh4345"
   $ mkdir $DIR && cd $DIR
-  $ echo "(lang dune 2.8)" > dune-project
+  $ make_dune_project 2.8
   $ mkdir lib
   $ touch lib.opam file lib/lib.ml
   $ cat >lib/dune <<EOF

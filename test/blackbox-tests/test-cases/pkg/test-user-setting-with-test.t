@@ -15,7 +15,8 @@ Add a workspace that sets the "with-test" variable to "true":
   $ mkpkg foo
   $ mkpkg bar
 
-  $ cat > dune-project <<EOF
+  $ write_foo_pack_project() {
+  > cat > dune-project <<'EOF'
   > (lang dune 3.21)
   > 
   > (package
@@ -25,6 +26,9 @@ Add a workspace that sets the "with-test" variable to "true":
   >   foo
   >   (bar :with-test)))
   > EOF
+  > }
+
+  $ write_foo_pack_project
 
 Both packages will be added to the solution because the dune-workspace setting
 explicitly tells to install test dependencies.
@@ -51,16 +55,7 @@ Setting the "with-test" variable to false.
   > EOF
 
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.21)
-  > 
-  > (package
-  >  (name foo-pack)
-  >  (allow_empty)
-  >  (depends
-  >   foo 
-  >   (bar :with-test)))
-  > EOF
+  $ write_foo_pack_project
 
   $ dune pkg print-solver-env 2>&1 | grep with-test
   - with-test = false

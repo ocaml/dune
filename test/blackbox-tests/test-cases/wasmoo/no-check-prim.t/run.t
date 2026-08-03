@@ -1,7 +1,7 @@
 Compilation using WasmOO
 
   $ dune build bin/technologic.bc.wasm.js @install
-  $ dune trace cat | jq -r 'include "dune";
+  $ dune trace cat | jq_dune -r '
   >   processes
   > | select(.args.prog | test("wasm_of_ocaml$"))
   > | .args | targets | .[] | sub("^_build/[^/]+/"; "")' | sort

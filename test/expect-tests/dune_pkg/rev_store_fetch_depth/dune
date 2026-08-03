@@ -1,4 +1,5 @@
 (rule
+ (deps %{bin:git})
  (action
   (with-stdout-to
    git-daemon-location

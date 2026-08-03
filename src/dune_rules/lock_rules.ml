@@ -14,7 +14,6 @@ include struct
   module Package_dependency = Package_dependency
   module Opam_solver = Opam_solver
   module Pin = Pin
-  module Opam_file = Opam_file
   module Sys_poll = Sys_poll
   module Pkg_workspace = Pkg_workspace
   module OpamUrl = OpamUrl
@@ -37,6 +36,8 @@ module Spec = struct
 
   let name = "lock"
   let version = 1
+  let runs_process = false
+  let can_run_in_action_runner = false
   let bimap t f g = { t with lock_dir = f t.lock_dir; target = g t.target }
   let is_useful_to ~memoize = memoize
 
@@ -141,19 +142,14 @@ module Spec = struct
       | `Disabled -> false
     in
     let* solver_env =
-      (* CR-soon Alizter: This solver environment construction pattern (combining
-       solver_env_from_current_system with solver_env_from_context, then
-       unsetting vars) is similar to logic in bin/pkg/pkg_common.ml:solver_env
-       and bin/pkg/lock.ml. Consider sharing this pattern. *)
       let open Fiber.O in
       let+ solver_env_from_current_system =
         Sys_poll.make ~path:(Env_path.path env) |> Sys_poll.solver_env_from_current_system
       in
-      let solver_env =
-        [ solver_env_from_current_system; solver_env_from_context ]
-        |> List.fold_left ~init:Solver_env.with_defaults ~f:Solver_env.extend
-      in
-      Solver_env.unset_multi solver_env unset_solver_vars
+      Solver_env.combine
+        ~current_system:(Some solver_env_from_current_system)
+        ~context:(Some solver_env_from_context)
+        ~unset:(Some unset_solver_vars)
     in
     let* solver_result =
       if portable_lock_dir
@@ -251,41 +247,7 @@ let lock_action
     }
 ;;
 
-let project_and_package_pins project =
-  let dir = Dune_project.root project in
-  let pins = Dune_project.pins project in
-  let packages = Dune_project.packages project in
-  Pin.DB.add_opam_pins (Pin.DB.of_stanza ~dir pins) packages
-;;
-
-(* CR-soon Alizter: This function is duplicated in bin/pkg/lock.ml. We should
-   factor out pin handling logic into a shared module in dune_pkg. *)
-let resolve_project_pins project_pins =
-  let scan_project ~read ~files =
-    let read file = Memo.of_reproducible_fiber (read file) in
-    Dune_project.gen_load
-      ~read
-      ~files
-      ~dir:Path.Source.root
-      ~infer_from_opam_files:false
-      ~load_opam_file_with_contents:Opam_file.load_opam_file_with_contents
-    >>| Option.map ~f:(fun project ->
-      let packages = Dune_project.packages project in
-      let pins = project_and_package_pins project in
-      pins, packages)
-    |> Memo.run
-  in
-  Pin.resolve project_pins ~scan_project
-;;
-
-(* CR-soon Alizter: This function is duplicated in bin/pkg/lock.ml. We should
-   factor out pin handling logic into a shared module in dune_pkg. *)
-let project_pins =
-  Dune_load.projects ()
-  >>| List.fold_left ~init:Pin.DB.empty ~f:(fun acc project ->
-    let pins = project_and_package_pins project in
-    Pin.DB.combine_exn acc pins)
-;;
+let project_pins = Dune_load.projects () >>| Pin.Project.collect_all
 
 let setup_lock_rules ~dir ~lock_dir : Gen_rules.result =
   let target = Path.Build.append_local dir lock_dir in
@@ -360,7 +322,7 @@ let setup_lock_rules ~dir ~lock_dir : Gen_rules.result =
               in
               let combined_pins = Pin.DB.combine_exn workspace_pins_db project_pins_db in
               Memo.return combined_pins
-              >>| resolve_project_pins
+              >>| Pin.Project.resolve
               >>= Memo.of_reproducible_fiber))
        in
        let version_preference =

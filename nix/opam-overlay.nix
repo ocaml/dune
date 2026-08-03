@@ -126,8 +126,19 @@ let
   discovered = builtins.listToAttrs (
     map (name:
       let
-        versions = builtins.attrNames (builtins.readDir "${packagesDir}/${name}");
-        sorted = builtins.sort builtins.lessThan versions;
+        versions = builtins.filter
+          (version: lib.hasPrefix "${name}." version)
+          (builtins.attrNames (builtins.readDir "${packagesDir}/${name}"));
+        preferredVersions = builtins.filter
+          (version:
+            !lib.hasInfix "flags: avoid-version"
+              (builtins.readFile "${packagesDir}/${name}/${version}/opam"))
+          versions;
+        selectableVersions =
+          if preferredVersions == [ ] then versions else preferredVersions;
+        sorted = builtins.sort
+          (a: b: builtins.compareVersions a b < 0)
+          selectableVersions;
       in
       { inherit name; value = lib.last sorted; }
     ) (builtins.attrNames (builtins.readDir packagesDir))

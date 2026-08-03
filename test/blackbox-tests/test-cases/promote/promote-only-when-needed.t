@@ -1,6 +1,6 @@
 Test that targets aren't re-promoted if they are up to date.
 
-  $ echo "(lang dune 3.0)" > dune-project
+  $ make_dune_project 3.0
   $ cat >dune <<EOF
   > (rule
   >  (targets promoted)

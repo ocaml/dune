@@ -34,7 +34,7 @@ events preceding the request have reached the scheduler.
 
   $ stop_dune_quiet
 
-  $ dune trace cat | jq -s 'include "dune";
+  $ dune trace cat | jq_dune -s '
   > [ .[] | fsUpdateWithPath("x")
   >        | select(.cache_type == "file_digest" and .result == "changed")
   >        | {cache_type, path, result}
@@ -54,40 +54,12 @@ the test can query the server without racing its startup.
   $ RELEASE="$PWD/release"
   $ rm -f "$STARTED" "$RELEASE"
 
-  $ cat > hold.ml <<EOF
-  > open Dune_action_plugin.V1
-  > 
-  > let touch path =
-  >   let oc = open_out path in
-  >   close_out oc
-  > ;;
-  > 
-  > let rec wait_for_file path =
-  >   if not (Sys.file_exists path)
-  >   then (
-  >     ignore (Unix.select [] [] [] 0.01);
-  >     wait_for_file path)
-  > ;;
-  > 
-  > let () =
-  >   let started = Sys.argv.(1) in
-  >   let release = Sys.argv.(2) in
-  >   touch started;
-  >   wait_for_file release;
-  >   run (return ())
-  > ;;
-  > EOF
-
   $ cat > dune <<EOF
-  > (executable
-  >  (name hold)
-  >  (libraries dune-action-plugin unix))
-  > 
   > (rule
   >  (target hold-target)
   >  (action
   >   (progn
-  >    (dynamic-run ./hold.exe "$STARTED" "$RELEASE")
+  >    (dynamic-run action_plugin_helper hold "$STARTED" "$RELEASE")
   >    (write-file %{target} ok))))
   > EOF
 

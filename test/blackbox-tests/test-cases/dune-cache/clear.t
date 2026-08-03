@@ -3,6 +3,10 @@ Test for the "dune cache clear" command.
   $ export DUNE_CACHE=enabled
   $ export DUNE_CACHE_ROOT=$PWD/dune-cache
 
+Clearing an absent cache directory is a no-op.
+
+  $ dune cache clear
+
   $ make_dune_project 3.10
 
   $ cat >dune <<EOF

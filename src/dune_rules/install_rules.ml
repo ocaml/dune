@@ -9,6 +9,15 @@ let install_file ~(package : Package.Name.t) ~findlib_toolchain =
   |> Filename.of_string_exn
 ;;
 
+(** Alias for all the files in [_build/install] that belong to a package. *)
+let package_install ~(context : Build_context.t) ~(pkg : Package.t) =
+  let dir = Path.Build.append_source context.build_dir (Package.dir pkg) in
+  let name = Package.name pkg in
+  sprintf ".%s-files" (Package.Name.to_string name)
+  |> Alias.Name.of_string
+  |> Alias.make ~dir
+;;
+
 let with_doc = Package_variable_name.with_doc
 
 let need_odoc_config (pkg : Package.t) =
@@ -228,15 +237,18 @@ end = struct
         ~dir
         ~lib_config
     in
-    let ({ Lib_mode.Map.ocaml = { Mode.Dict.byte; native } as ocaml; melange } as
-         lib_modes)
-      =
-      Lib_info.modes info
+    let* lib_modes =
+      Lib_info.effective_modes
+        info
+        ~melange_available:(Melange_binary.available sctx ~dir)
+    in
+    let { Lib_mode.Map.ocaml = { Mode.Dict.byte; native } as ocaml; melange } =
+      lib_modes
     in
     let lib_name = Library.best_name lib in
     let* installable_modules =
-      let lib_modes = Compilation_mode.of_mode_set lib_modes in
-      Memo.parallel_map lib_modes.modes ~f:(fun for_ ->
+      let lib_modes = Compilation_mode.Set.of_lib_mode_set lib_modes in
+      Memo.parallel_map (Compilation_mode.Set.to_list lib_modes) ~f:(fun for_ ->
         let+ modules =
           Dir_contents.ml dir_contents ~for_
           >>= Ml_sources.modules
@@ -322,7 +334,8 @@ end = struct
         in
         make_entry ~kind ?sub_dir Lib path)
     in
-    let+ melange_runtime_entries = additional_deps lib.melange_runtime_deps
+    let+ melange_runtime_entries =
+      if melange then additional_deps lib.melange_runtime_deps else Memo.return []
     and+ public_headers = additional_deps lib.public_headers
     and+ module_files =
       let obj_dir = Lib_info.obj_dir info in
@@ -620,7 +633,7 @@ end = struct
       Some (name, entries)
   ;;
 
-  module Package_map_traversals = Memo.Make_parallel_map (Package.Name.Map)
+  module Package_map_traversals = Memo.Map (Package.Name.Map)
 
   let stanzas_to_entries sctx =
     let context = Super_context.context sctx in
@@ -788,6 +801,11 @@ end = struct
           let obj_dir = Lib.Local.obj_dir lib in
           let lib = Lib.Local.to_lib lib in
           let name = Lib.name lib in
+          let* lib_modes =
+            Lib_info.effective_modes
+              info
+              ~melange_available:(Melange_binary.available sctx ~dir)
+          in
           let* expander = Super_context.expander sctx ~dir in
           let file_deps (deps : _ Lib_info.File_deps.t) =
             match deps with
@@ -815,8 +833,8 @@ end = struct
           and* modules =
             let* libs = Scope.DB.find_by_dir dir >>| Scope.libs in
             let+ modules =
-              let lib_modes = Compilation_mode.of_mode_set (Lib_info.modes info) in
-              Memo.parallel_map lib_modes.modes ~f:(fun for_ ->
+              let lib_modes = Compilation_mode.Set.of_lib_mode_set lib_modes in
+              Memo.parallel_map (Compilation_mode.Set.to_list lib_modes) ~f:(fun for_ ->
                 let+ modules =
                   Dir_contents.ml dir_contents ~for_
                   >>= Ml_sources.modules
@@ -826,12 +844,16 @@ end = struct
                 in
                 for_, Some modules)
             in
-            Compilation_mode.By_mode.of_list modules ~init:None
-          and* melange_runtime_deps = file_deps (Lib_info.melange_runtime_deps info)
+            Compilation_mode.Per_mode.of_list modules ~init:None
+          and* melange_runtime_deps =
+            if lib_modes.melange
+            then file_deps (Lib_info.melange_runtime_deps info)
+            else Memo.return []
           and* public_headers = file_deps (Lib_info.public_headers info) in
           let+ dune_lib =
             Lib.to_dune_lib
               lib
+              ~modes:lib_modes
               ~dir:(Path.build (lib_root lib))
               ~modules
               ~foreign_objects
@@ -1179,6 +1201,13 @@ let install_entries sctx package =
   Package.Name.Map.Multi.find packages package
 ;;
 
+let () =
+  Install_layout.set_entry_resolver (fun context_name package ->
+    let open Memo.O in
+    let* sctx = Super_context.find_exn context_name in
+    install_entries sctx package)
+;;
+
 let packages =
   let f sctx =
     let* packages = Dune_load.packages () in
@@ -1286,6 +1315,8 @@ struct
 
     let name = "gen-install-file"
     let version = 2
+    let runs_process = false
+    let can_run_in_action_runner = false
     let bimap (entries, dst) _ g = entries, g dst
     let is_useful_to ~memoize = memoize
     let encode (_entries, dst) _path target : Sexp.t = List [ target dst ]
@@ -1398,9 +1429,7 @@ let gen_package_install_file_rules sctx (package : Package.t) =
   in
   let* () =
     let* all_packages = Dune_load.packages () in
-    let target_alias =
-      Dep_conf_eval.package_install ~context:build_context ~pkg:package
-    in
+    let target_alias = package_install ~context:build_context ~pkg:package in
     let open Action_builder.O in
     Rules.Produce.Alias.add_deps
       target_alias
@@ -1414,7 +1443,7 @@ let gen_package_install_file_rules sctx (package : Package.t) =
                 let name = Package.Id.name pkg in
                 Package.Name.Map.find_exn all_packages name
               in
-              Dep_conf_eval.package_install ~context:build_context ~pkg |> Dep.alias) )))
+              package_install ~context:build_context ~pkg |> Dep.alias) )))
   in
   let action =
     let findlib_toolchain = Context.findlib_toolchain context in

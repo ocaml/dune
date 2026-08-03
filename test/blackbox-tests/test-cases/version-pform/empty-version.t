@@ -1,9 +1,6 @@
 When the version is absent, we print the empty string
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.13)
-  > (package (name foo))
-  > EOF
+  $ make_dune_project_with_package 3.13 foo
 
   $ cat >dune <<EOF
   > (rule

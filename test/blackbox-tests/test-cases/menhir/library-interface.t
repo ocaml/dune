@@ -1,9 +1,6 @@
 We should be able to use menhir as a library interface:
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.11)
-  > (using menhir 2.1)
-  > EOF
+  $ make_menhir_project 3.11 2.1
 
   $ cat >dune <<EOF
   > (include_subdirs qualified)

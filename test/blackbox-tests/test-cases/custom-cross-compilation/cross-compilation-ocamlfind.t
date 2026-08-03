@@ -38,31 +38,7 @@ in the default findlib.conf
 
   $ dune install --root lib --prefix $PWD/prefix
 
-  $ mkdir app
-  $ cat > app/dune-project <<EOF
-  > (lang dune 3.7)
-  > (package (name repro))
-  > EOF
-  $ cat > app/dune <<EOF
-  > (executable
-  >  (name gen)
-  >  (modules gen)
-  >  (enabled_if
-  >   (= %{context_name} "default"))
-  >  (libraries libdep))
-  > (rule
-  >  (with-stdout-to
-  >   gen.ml
-  >   (echo "let () = Format.printf \"let x = 1\"")))
-  > (library
-  >  (name repro)
-  >  (public_name repro)
-  >  (modules foo))
-  > (rule
-  >  (with-stdout-to
-  >   foo.ml
-  >   (run ./gen.exe)))
-  > EOF
+  $ write_cross_compilation_repro_project app foo
 
 ocamlfind can find it
 
@@ -73,8 +49,7 @@ Dune should be able to find it too
 
   $ dune build --root=app @install -x foo # grep notocamldep-foo
 
-  $ dune trace cat --trace-file app/_build/trace.csexp | jq '
-  > include "dune";
+  $ dune trace cat --trace-file app/_build/trace.csexp | jq_dune '
   >    processes
   > | .args
   > | select(.prog | contains("notocamldep-foo"))

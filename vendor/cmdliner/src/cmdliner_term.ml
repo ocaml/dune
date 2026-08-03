@@ -1,27 +1,33 @@
 (*---------------------------------------------------------------------------
    Copyright (c) 2011 The cmdliner programmers. All rights reserved.
-   Distributed under the ISC license, see terms at the end of the file.
+   SPDX-License-Identifier: ISC
   ---------------------------------------------------------------------------*)
 
-type term_escape =
-  [ `Error of bool * string
-  | `Help of Cmdliner_manpage.format * string option ]
+type term_escape = Cmdliner_def.Term.escape
+type 'a parser = 'a Cmdliner_def.Term.parser
+type +'a t = 'a Cmdliner_def.Term.t
 
-type 'a parser =
-  Cmdliner_info.Eval.t -> Cmdliner_cline.t ->
-  ('a, [ `Parse of string | term_escape ]) result
+let make args p = (args, p)
+let argset (args, _) = args
+let parser (_, parser) = parser
 
-type 'a t = Cmdliner_info.Arg.Set.t * 'a parser
-
-let const v = Cmdliner_info.Arg.Set.empty, (fun _ _ -> Ok v)
+let const v = Cmdliner_def.Arg_info.Set.empty, (fun _ _ -> Ok v)
 let app (args_f, f) (args_v, v) =
-  Cmdliner_info.Arg.Set.union args_f args_v,
+  Cmdliner_def.Arg_info.Set.union args_f args_v,
   fun ei cl -> match (f ei cl) with
   | Error _ as e -> e
   | Ok f ->
       match v ei cl with
       | Error _ as e -> e
       | Ok v -> Ok (f v)
+
+let map f v = app (const f) v
+let product v0 v1 = app (app (const (fun x y -> (x, y))) v0) v1
+
+module Syntax = struct
+  let ( let+ ) v f = map f v
+  let ( and+ ) = product
+end
 
 (* Terms *)
 
@@ -57,42 +63,35 @@ let cli_parse_result' t =
   cli_parse_result wrap
 
 let main_name =
-  Cmdliner_info.Arg.Set.empty,
-  (fun ei _ -> Ok (Cmdliner_info.Cmd.name @@ Cmdliner_info.Eval.main ei))
+  Cmdliner_def.Arg_info.Set.empty,
+  (fun ei _ -> Ok (Cmdliner_def.Cmd_info.name @@ Cmdliner_def.Eval.main ei))
 
 let choice_names =
-  Cmdliner_info.Arg.Set.empty,
+  Cmdliner_def.Arg_info.Set.empty,
   (fun ei _ ->
      (* N.B. this keeps everything backward compatible. We return the command
         names of main's children *)
-     let name t = Cmdliner_info.Cmd.name t in
-     let choices = Cmdliner_info.Cmd.children (Cmdliner_info.Eval.main ei) in
+     let name t = Cmdliner_def.Cmd_info.name t in
+     let choices =
+       Cmdliner_def.Cmd_info.children (Cmdliner_def.Eval.main ei)
+     in
      Ok (List.rev_map name choices))
 
 let with_used_args (al, v) : (_ * string list) t =
   al, fun ei cl ->
     match v ei cl with
     | Ok x ->
-        let actual_args arg_info acc =
-          let args = Cmdliner_cline.actual_args cl arg_info in
+        let actual_args arg_info _ acc =
+          let args = Cmdliner_def.Cline.actual_args cl arg_info in
           List.rev_append args acc
         in
-        let used = List.rev (Cmdliner_info.Arg.Set.fold actual_args al []) in
+        let used =
+          List.rev (Cmdliner_def.Arg_info.Set.fold actual_args al [])
+        in
         Ok (x, used)
     | Error _ as e -> e
 
-(*---------------------------------------------------------------------------
-   Copyright (c) 2011 The cmdliner programmers
 
-   Permission to use, copy, modify, and/or distribute this software for any
-   purpose with or without fee is hereby granted, provided that the above
-   copyright notice and this permission notice appear in all copies.
-
-   THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
-   WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
-   MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
-   ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
-   WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
-   ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
-   OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-  ---------------------------------------------------------------------------*)
+let env =
+  Cmdliner_def.Arg_info.Set.empty,
+  (fun ei _ -> Ok (Cmdliner_def.Eval.env_var ei))

@@ -2,10 +2,7 @@ Dune should know about the fact that mdx reads the MDX_RUN_NON_DETERMINISTIC
 variable. When using the stanza 0.2, it is the mdx driver that reads that
 variable. This is only the case since mdx 2.1.0.
 
-  $ cat > dune-project << EOF
-  > (lang dune 3.0)
-  > (using mdx 0.2)
-  > EOF
+  $ make_mdx_project 3.0 0.2
 
   $ cat > dune << EOF
   > (mdx (files README.md))

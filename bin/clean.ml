@@ -19,7 +19,7 @@ let command =
        https://github.com/ocaml/dune/issues/2964). *)
     let builder = Common.Builder.disable_log_file builder in
     let common, _config = Common.init builder in
-    Global_lock.lock_exn ~timeout:None;
+    Global_lock.lock_exn ();
     match paths with
     | [] ->
       Dune_engine.Target_promotion.files_in_source_tree_to_delete ()

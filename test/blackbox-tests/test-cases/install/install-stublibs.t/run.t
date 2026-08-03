@@ -1,9 +1,6 @@
 Begin by installing a library with C stubs.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.7)
-  > (package (name libA))
-  > EOF
+  $ make_dune_project_with_package 3.7 libA
   $ cat >dune <<EOF
   > (library
   >  (name libA)

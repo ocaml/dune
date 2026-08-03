@@ -7,15 +7,7 @@ in the same dune file
   > (package (name baz) (allow_empty))
   > EOF
 
-  $ cat > dune-workspace << EOF
-  > (lang dune 3.13)
-  > 
-  > (context default)
-  > 
-  > (context
-  >  (default
-  >   (name alt-context)))
-  > EOF
+  $ make_two_context_workspace
   $ cat > dune << EOF
   > (library
   >  (name foo)

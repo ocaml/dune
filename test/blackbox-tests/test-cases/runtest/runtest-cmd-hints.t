@@ -1,8 +1,6 @@
 Test the "did you mean" hints for dune runtest command.
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.21)
-  > EOF
+  $ make_dune_project 3.21
 
   $ mkdir dir.t other_dir
   $ cat > dir.t/run.t <<EOF

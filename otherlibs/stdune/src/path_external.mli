@@ -11,6 +11,7 @@ val relative_fname : t -> Filename.t -> t
 val initial_cwd : t
 val cwd : unit -> t
 val as_local : t -> string
+val reach : t -> from:t -> string
 val append_local : t -> Local.t -> t
 val of_filename_relative_to_initial_cwd : string -> t
 val to_dyn : t -> Dyn.t

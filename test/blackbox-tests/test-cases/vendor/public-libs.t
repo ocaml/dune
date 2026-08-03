@@ -3,10 +3,7 @@ A public library shouldn't be allowed to depend on a vendored library.
 A public library that depends on a vendored library is impossible to install,
 since we cannot install the vendored artifacts.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.7)
-  > (package (name foo))
-  > EOF
+  $ make_dune_project_with_package 3.7 foo
 
   $ mkdir -p vendor/mypkg
   $ cat >vendor/mypkg/dune-project <<EOF

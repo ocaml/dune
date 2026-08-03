@@ -1,8 +1,6 @@
 %{bin:...} for a system binary found via PATH.
 
-  $ cat >dune-project <<EOF
-  > (lang dune 3.24)
-  > EOF
+  $ make_dune_project 3.24
   $ cat >dune <<'EOF'
   > (rule
   >  (with-stdout-to bin-path
@@ -18,6 +16,6 @@ The pform resolves to the same path as which:
 The rule depends on the system binary as an external path:
 
   $ dune rules --format=json _build/default/bin-path \
-  >   | jq 'include "dune"; .[] | ruleDepFilePaths' \
+  >   | jq_dune '.[] | ruleDepFilePaths' \
   >   | dune_cmd subst "$(which sh)" '$WHICH_SH'
   "$WHICH_SH"

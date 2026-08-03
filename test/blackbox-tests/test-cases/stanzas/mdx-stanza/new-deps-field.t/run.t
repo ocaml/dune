@@ -16,10 +16,7 @@ A deprecation warning is raised if using the olf `packages` field.
 
 But using the new field with the old stanza would fail
 
-  $ cat >dune-project <<EOF
-  > (lang dune 2.8)
-  > (using mdx 0.1)
-  > EOF
+  $ make_mdx_project 2.8 0.1
 
   $ dune runtest
   File "dune", line 3, characters 1-22:

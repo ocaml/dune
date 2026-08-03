@@ -4,7 +4,7 @@ Build an library which indirectly depends on foreign object files.
 ----------------------------------------------------------------------------------
 * Building library with indirect dependency on object file
 
-  $ echo "(lang dune 3.5)" > dune-project
+  $ make_dune_project 3.5
 
   $ mkdir -p lib
 

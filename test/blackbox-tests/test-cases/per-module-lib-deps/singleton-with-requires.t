@@ -62,27 +62,27 @@ rule must surface `Mod_leaf.cmi` — reached transitively through
 `Mod_bridge.cmi`'s interface, never named in consumer source.
 
   $ dune rules --root . --format=json --deps '%{cmo:consumer/uses_bridge}' > deps_uses.json
-  $ jq -r 'include "dune"; .[] | depsGlobs
+  $ jq_dune -r '.[] | depsGlobs
   >   | select(.dir | endswith("bridge/.bridge.objs/byte"))
   >   | .dir + " " + .predicate' < deps_uses.json
   _build/default/bridge/.bridge.objs/byte *.cmi
-  $ jq -r 'include "dune"; .[] | depsGlobs
+  $ jq_dune -r '.[] | depsGlobs
   >   | select(.dir | endswith("leaf/.leaf.objs/byte"))
   >   | .dir + " " + .predicate' < deps_uses.json
   _build/default/leaf/.leaf.objs/byte *.cmi
-  $ jq -r 'include "dune"; .[] | depsFilePaths
+  $ jq_dune -r '.[] | depsFilePaths
   >   | select(endswith("bridge/.bridge.objs/byte/mod_bridge.cmi"))' < deps_uses.json
-  $ jq -r 'include "dune"; .[] | depsFilePaths
+  $ jq_dune -r '.[] | depsFilePaths
   >   | select(endswith("leaf/.leaf.objs/byte/mod_leaf.cmi"))' < deps_uses.json
 
 Case 2: `sibling` references neither lib in source.
 
   $ dune rules --root . --format=json --deps '%{cmo:consumer/sibling}' > deps_sib.json
-  $ jq -r 'include "dune"; .[] | depsGlobs
+  $ jq_dune -r '.[] | depsGlobs
   >   | select(.dir | endswith("bridge/.bridge.objs/byte"))
   >   | .dir + " " + .predicate' < deps_sib.json
   _build/default/bridge/.bridge.objs/byte *.cmi
-  $ jq -r 'include "dune"; .[] | depsGlobs
+  $ jq_dune -r '.[] | depsGlobs
   >   | select(.dir | endswith("leaf/.leaf.objs/byte"))
   >   | .dir + " " + .predicate' < deps_sib.json
   _build/default/leaf/.leaf.objs/byte *.cmi

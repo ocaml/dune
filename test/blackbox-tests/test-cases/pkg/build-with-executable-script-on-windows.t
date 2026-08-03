@@ -12,21 +12,10 @@ Setup dune-project, dune-workspace, etc.
 
   $ mkdir scripts/
 
-  $ cat > dune-project <<EOF
-  > (lang dune 3.22)
-  > EOF
+  $ make_dune_project 3.22
 
   $ pkg() {
-  > make_lockpkg $1 <<EOF
-  > (build (run $2))
-  > (version dev)
-  > EOF
-  > local files="${source_lock_dir}/$1.files"
-  > local exec_path="${source_lock_dir}/$1.files/$2"
-  > mkdir -p "${files}"
-  > touch "${exec_path}"
-  > chmod a+x "${exec_path}"
-  > cat > "${exec_path}"
+  > make_executable_script_pkg "$@"
   > }
 
 Running script with CRLF characters

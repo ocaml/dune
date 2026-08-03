@@ -93,14 +93,12 @@ let merge_deps ~dir ~transitive ~immediate =
   let open Action_builder.O in
   let action =
     let+ transitive = Action_builder.all transitive in
-    { Rule.Anonymous_action.action =
-        Merge_dep_output.action ~transitive ~immediate
-        |> Action.Full.make ~sandbox:Sandbox_config.no_sandboxing
-    ; loc = Loc.none
-    ; dir
-    }
+    Merge_dep_output.action ~transitive ~immediate
+    |> Action.Full.make ~sandbox:Sandbox_config.no_sandboxing
   in
-  Build_system.execute_action_stdout action |> Action_builder.of_memo
+  Rule.Anonymous_action.make ~dir action
+  |> Build_system.execute_action_stdout
+  |> Action_builder.of_memo
 ;;
 
 let transitive_dep m =

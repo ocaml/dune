@@ -42,7 +42,6 @@ file.
   -  [%expect]
   +  [%expect {| Error: |}]
   Promoting _build/default/l.ml.corrected to l.ml.
-  [1]
   $ < l.ml tr '\033' '?'
   open[@ocaml.alert "-unstable"] Stdune
   
@@ -61,7 +60,6 @@ file.
   -  [%expect {| Error: |}]
   +  [%expect {| Error: |}]
   Promoting _build/default/l.ml.corrected to l.ml.
-  [1]
   $ < l.ml tr '\033' '?'
   open[@ocaml.alert "-unstable"] Stdune
   

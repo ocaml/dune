@@ -1,9 +1,7 @@
 Regression test for https://github.com/ocaml/dune/issues/785.
 
-`dune build --auto-promote` applies the promotion but currently still exits
-with a non-zero code, forcing callers to wrap the command in `|| true`. This
-test captures that behaviour; once #785 is fixed the build should exit 0 once
-the promotion has been applied (a fixpoint is reached).
+`dune build --auto-promote` applies the promotion and exits with code 0,
+instead of forcing callers to wrap the command in `|| true`.
 
   $ make_dune_project 3.25
 
@@ -17,8 +15,7 @@ the promotion has been applied (a fixpoint is reached).
 
   $ printf titi > x
 
-The diff is shown and the file is promoted, but the build still exits with
-code 1 -- this is the bug tracked by #785:
+The diff is shown and the file is promoted, and the build exits 0:
 
   $ dune build @blah --auto-promote
   File "x", line 1, characters 0-0:
@@ -30,7 +27,6 @@ code 1 -- this is the bug tracked by #785:
   +toto
   \ No newline at end of file
   Promoting _build/default/x.gen to x.
-  [1]
   $ cat x
   toto
 
@@ -64,3 +60,38 @@ mask:
   +bbb
   \ No newline at end of file
   [1]
+
+Result-producing commands must not treat an auto-promoted diff as success for
+the current run. The executable is not linked until the command is re-run after
+promotion reaches a fixpoint.
+
+  $ cat > dune <<EOF
+  > (executable
+  >  (name foo)
+  >  (link_deps (alias blah)))
+  > (rule
+  >  (with-stdout-to x.gen (echo "toto")))
+  > (rule
+  >  (alias blah)
+  >  (action (diff x x.gen)))
+  > EOF
+
+  $ printf titi > x
+  $ cat > foo.ml <<EOF
+  > let () = print_endline "foo"
+  > EOF
+
+  $ dune exec --auto-promote ./foo.exe
+  File "x", line 1, characters 0-0:
+  --- x
+  +++ x.gen
+  @@ -1 +1 @@
+  -titi
+  \ No newline at end of file
+  +toto
+  \ No newline at end of file
+  Promoting _build/default/x.gen to x.
+  [1]
+
+  $ dune exec --auto-promote ./foo.exe
+  foo

@@ -15,7 +15,6 @@ Case 0: package does not declare menhir. Dune does not add it.
   > EOF
 
   $ dune build @opam --auto-promote > /dev/null 2>&1
-  [1]
   $ grep menhir foo.opam
   [1]
 
@@ -32,7 +31,6 @@ Case 1: bare [(depends menhir)]. Dune fills in the lower bound.
   > EOF
 
   $ dune build @opam --auto-promote > /dev/null 2>&1
-  [1]
   $ grep menhir foo.opam
     "menhir" {>= "20180523"}
 
@@ -49,7 +47,6 @@ Case 2: user-written version bound is preserved verbatim.
   > EOF
 
   $ dune build @opam --auto-promote > /dev/null 2>&1
-  [1]
   $ grep menhir foo.opam
     "menhir" {>= "20211128"}
 
@@ -68,7 +65,6 @@ for an unrelated reason (e.g. runtime).
   > EOF
 
   $ dune build @opam --auto-promote > /dev/null 2>&1
-  [1]
   $ grep menhir foo.opam
     "menhir"
 
@@ -89,7 +85,6 @@ bound; [bar.opam] has no [menhir] line at all.
   > EOF
 
   $ dune build @opam --auto-promote > /dev/null 2>&1
-  [1]
   $ grep menhir foo.opam
     "menhir" {>= "20180523"}
   $ test -f bar.opam && grep -c '^opam-version' bar.opam
@@ -117,6 +112,5 @@ stanza for the existing opam file.
   > EOF
 
   $ dune build @opam --auto-promote > /dev/null 2>&1
-  [1]
   $ grep menhir foo.opam
     "menhir" {with-test}

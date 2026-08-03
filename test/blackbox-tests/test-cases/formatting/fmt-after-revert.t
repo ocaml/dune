@@ -23,7 +23,6 @@ formatted version.
   +(rule
   + (write-file a b))
   Promoting _build/default/dune.corrected to dune.
-  [1]
 
   $ cat dune
   (rule
@@ -37,8 +36,6 @@ reported and the file is reformatted.
   > (rule (write-file a b))
   > EOF
 
-CR-soon Alizter: dune fmt is not re-running and this is a bug.
-
   $ dune fmt
   File "dune", line 1, characters 0-0:
   --- dune
@@ -48,7 +45,6 @@ CR-soon Alizter: dune fmt is not re-running and this is a bug.
   +(rule
   + (write-file a b))
   Promoting _build/default/dune.corrected to dune.
-  [1]
   $ cat dune
   (rule
    (write-file a b))

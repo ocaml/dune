@@ -37,7 +37,6 @@ This should choose the 0.24+foo version:
    let () = print_endline "Hello, world"
   +(* formatted with fake ocamlformat 0.24+foo *)
   Promoting _build/default/foo.ml.corrected to foo.ml.
-  [1]
   $ cat foo.ml
   let () = print_endline "Hello, world"
   (* formatted with fake ocamlformat 0.24+foo *)
@@ -56,7 +55,6 @@ This should choose the 0.24+bar version:
    (* formatted with fake ocamlformat 0.24+foo *)
   +(* formatted with fake ocamlformat 0.25+bar *)
   Promoting _build/default/foo.ml.corrected to foo.ml.
-  [1]
   $ cat foo.ml
   let () = print_endline "Hello, world"
   (* formatted with fake ocamlformat 0.24+foo *)

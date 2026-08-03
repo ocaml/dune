@@ -48,7 +48,6 @@ attempt to build the package "foo".
    let () = print_endline "Hello, world"
   +(* formatted with fake ocamlformat *)
   Promoting _build/default/foo.ml.corrected to foo.ml.
-  [1]
   $ cat foo.ml
   let () = print_endline "Hello, world"
   (* formatted with fake ocamlformat *)

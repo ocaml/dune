@@ -17,9 +17,14 @@ type file_diff =
   ; file2 : Path.t
   }
 
+type message =
+  { source_file : Path.Source.t
+  ; messages : User_message.Style.t Pp.t list
+  }
+
 type change =
   | File_diff of file_diff
-  | Message of User_message.Style.t Pp.t list
+  | Message of message
 
 type promotion =
   | Promote_file of
@@ -73,20 +78,20 @@ let promotion source_file =
   }
 ;;
 
-let run_change loc ~patch_back (mode : Diff.Mode.t) = function
-  | Message messages -> User_error.raise ~loc messages
+let run_change loc ~patch_back ~will_promote (mode : Diff.Mode.t) = function
+  | Message { source_file; messages } ->
+    User_error.raise
+      ?promotion:(Option.some_if will_promote (promotion source_file))
+      ~loc
+      messages
   | File_diff { source_file; file1; file2 } ->
+    let promotion = Option.some_if will_promote (promotion source_file) in
     (match mode with
      | Text ->
-       Print_diff.print
-         ~patch_back
-         (promotion source_file)
-         file1
-         file2
-         ~skip_trailing_cr:Sys.win32
+       Print_diff.print ~patch_back promotion file1 file2 ~skip_trailing_cr:Sys.win32
      | Binary ->
        User_error.raise
-         ~promotion:(promotion source_file)
+         ?promotion
          ~loc
          [ Pp.textf
              "Files %s and %s differ."
@@ -153,7 +158,9 @@ let plan_tree_diff ({ mode; source_root; _ } as t) =
   let kind_of_target rel = kind_of_path ~loc:t.loc (target_path rel) in
   let list_target_directory rel = list_directory ~loc:t.loc (target_path rel) in
   let path_name rel = Path.Source.to_string_maybe_quoted (source_file rel) in
-  let add_message plan message = add_change plan (Message [ message ]) in
+  let add_message plan rel message =
+    add_change plan (Message { source_file = source_file rel; messages = [ message ] })
+  in
   let add_promote_file plan rel =
     add_promotion
       plan
@@ -177,12 +184,12 @@ let plan_tree_diff ({ mode; source_root; _ } as t) =
       | `File -> "File"
       | `Directory -> "Directory"
     in
-    add_message plan (Pp.textf "%s %s should be deleted" what_text (path_name rel))
+    add_message plan rel (Pp.textf "%s %s should be deleted" what_text (path_name rel))
   in
   let add_create_directory ~announce plan rel =
     let plan = add_promotion plan (Create_directory (source_file rel)) in
     if announce
-    then add_message plan (Pp.textf "Directory %s should be created" (path_name rel))
+    then add_message plan rel (Pp.textf "Directory %s should be created" (path_name rel))
     else plan
   in
   let rec collect_target_only rel target_kind plan =
@@ -208,6 +215,7 @@ let plan_tree_diff ({ mode; source_root; _ } as t) =
       let plan = add_promote_file plan rel in
       add_message
         plan
+        rel
         (Pp.textf "Directory %s should be replaced with a file" (path_name rel))
     | File, Missing -> add_delete plan `File rel
     | Directory, Missing -> add_delete plan `Directory rel
@@ -227,6 +235,7 @@ let plan_tree_diff ({ mode; source_root; _ } as t) =
              (let plan = add_create_directory ~announce:false plan rel in
               add_message
                 plan
+                rel
                 (Pp.textf "File %s should be replaced with a directory" (path_name rel)))
            ~f:(fun plan name ->
              let rel = Path.Local.relative_fname rel name in
@@ -307,15 +316,19 @@ let exec_plan
     let target_is_copied_from_source_tree =
       is_copied_from_source_tree (Path.build file2)
     in
+    let will_promote =
+      match optional with
+      | false -> in_source_or_target && not target_is_copied_from_source_tree
+      | true -> in_source_or_target
+    in
     Fiber.finalize
-      (fun () -> Fiber.parallel_iter changes ~f:(run_change loc ~patch_back mode))
+      (fun () ->
+         Fiber.parallel_iter changes ~f:(run_change loc ~patch_back ~will_promote mode))
       ~finally:(fun () ->
         (match optional with
-         | false ->
-           if in_source_or_target && not target_is_copied_from_source_tree
-           then register_promotions `Copy promotions
+         | false -> if will_promote then register_promotions `Copy promotions
          | true ->
-           if in_source_or_target
+           if will_promote
            then register_promotions `Move promotions
            else remove_intermediate_target file2);
         Fiber.return ())

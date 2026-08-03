@@ -195,48 +195,46 @@ module Literals = struct
   let argument_suffix = ")"
 end
 
-let module_name_length name = String.length (Module_name.to_string name)
-
-let argument_length =
-  let static_length =
+let ml_source_length =
+  let module_name_length name = String.length (Module_name.to_string name) in
+  let argument_length =
+    let static_length =
+      let open Literals in
+      String.length argument_prefix
+      + String.length argument_separator
+      + String.length argument_suffix
+    in
+    fun (_loc, param_name, arg_name) ->
+      let param_name_length = module_name_length param_name in
+      let arg_name_length = module_name_length arg_name in
+      static_length + param_name_length + arg_name_length
+  in
+  let instance_length prefix { new_name; lib_name; args; _ } =
     let open Literals in
-    String.length argument_prefix
-    + String.length argument_separator
-    + String.length argument_suffix
+    let args_length =
+      List.fold_left args ~init:0 ~f:(fun length arg ->
+        let arg_length = argument_length arg in
+        length + arg_length)
+    in
+    String.length prefix
+    + module_name_length new_name
+    + String.length module_separator
+    + module_name_length lib_name
+    + args_length
+    + String.length instance_suffix
   in
-  fun (_loc, param_name, arg_name) ->
-    let param_name_length = module_name_length param_name in
-    let arg_name_length = module_name_length arg_name in
-    static_length + param_name_length + arg_name_length
-;;
-
-let instance_length prefix { new_name; lib_name; args; _ } =
-  let open Literals in
-  let args_length =
-    List.fold_left args ~init:0 ~f:(fun length arg ->
-      let arg_length = argument_length arg in
-      length + arg_length)
-  in
-  String.length prefix
-  + module_name_length new_name
-  + String.length module_separator
-  + module_name_length lib_name
-  + args_length
-  + String.length instance_suffix
-;;
-
-let ml_source_length instances =
-  let open Literals in
-  List.fold_left instances ~init:0 ~f:(fun length -> function
-    | Simple instance -> length + instance_length module_prefix instance
-    | Wrapped (_loc, new_name, instances) ->
-      length
-      + String.length module_prefix
-      + module_name_length new_name
-      + String.length wrapped_module_suffix
-      + List.fold_left instances ~init:0 ~f:(fun length instance ->
-        length + instance_length nested_module_prefix instance)
-      + String.length wrapped_module_end)
+  fun instances ->
+    let open Literals in
+    List.fold_left instances ~init:0 ~f:(fun length -> function
+      | Simple instance -> length + instance_length module_prefix instance
+      | Wrapped (_loc, new_name, instances) ->
+        length
+        + String.length module_prefix
+        + module_name_length new_name
+        + String.length wrapped_module_suffix
+        + List.fold_left instances ~init:0 ~f:(fun length instance ->
+          length + instance_length nested_module_prefix instance)
+        + String.length wrapped_module_end)
 ;;
 
 let add_instance builder prefix { new_name; lib_name; args; _ } =

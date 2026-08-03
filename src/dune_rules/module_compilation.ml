@@ -590,36 +590,12 @@ module Alias_module = struct
       ; obj_name : Module_name.Unique.t
       }
 
-    let module_name_length name = String.length (Module_name.to_string name)
-
-    let canonical_path_length (name :: names : Module_name.Path.t) =
-      let init = module_name_length name in
-      List.fold_left names ~init ~f:(fun length name ->
-        (* The [+ 1] accounts for the ['.'] between path components. *)
-        length + 1 + module_name_length name)
-    ;;
-
     let add_canonical_path builder (name :: names : Module_name.Path.t) =
       let open Literals in
       String_builder.add_string builder (Module_name.to_string name);
       List.iter names ~f:(fun name ->
         String_builder.add_char builder canonical_path_separator;
         String_builder.add_string builder (Module_name.to_string name))
-    ;;
-
-    let length =
-      let static_length =
-        let open Literals in
-        String.length canonical_prefix
-        + String.length canonical_suffix
-        + String.length alias_separator
-        + String.length alias_suffix
-      in
-      fun { canonical_path; local_name; obj_name } ->
-        static_length
-        + canonical_path_length canonical_path
-        + module_name_length local_name
-        + String.length (Module_name.Unique.to_string obj_name)
     ;;
 
     let add builder { canonical_path; local_name; obj_name } =
@@ -641,18 +617,6 @@ module Alias_module = struct
     ; instances : Parameterised_instances.t
     }
 
-  let shadowed_length =
-    let static_length =
-      let open Literals in
-      String.length shadowed_prefix
-      + String.length shadowed_definition_suffix
-      + String.length shadowed_deprecation
-    in
-    fun shadowed ->
-      let name_length = String.length (Module_name.to_string shadowed) in
-      static_length + name_length
-  ;;
-
   let add_shadowed builder shadowed =
     let open Literals in
     String_builder.add_string builder shadowed_prefix;
@@ -662,11 +626,43 @@ module Alias_module = struct
   ;;
 
   let to_ml =
+    let module_name_length name = String.length (Module_name.to_string name) in
+    let canonical_path_length (name :: names : Module_name.Path.t) =
+      let init = module_name_length name in
+      List.fold_left names ~init ~f:(fun length name ->
+        (* The [+ 1] accounts for the ['.'] between path components. *)
+        length + 1 + module_name_length name)
+    in
+    let alias_length =
+      let static_length =
+        let open Literals in
+        String.length canonical_prefix
+        + String.length canonical_suffix
+        + String.length alias_separator
+        + String.length alias_suffix
+      in
+      fun { Alias.canonical_path; local_name; obj_name } ->
+        static_length
+        + canonical_path_length canonical_path
+        + module_name_length local_name
+        + String.length (Module_name.Unique.to_string obj_name)
+    in
+    let shadowed_length =
+      let static_length =
+        let open Literals in
+        String.length shadowed_prefix
+        + String.length shadowed_definition_suffix
+        + String.length shadowed_deprecation
+      in
+      fun shadowed ->
+        let name_length = module_name_length shadowed in
+        static_length + name_length
+    in
     let total_length { aliases; shadowed; instances } =
       let length = String.length Literals.header in
       let length =
         List.fold_left aliases ~init:length ~f:(fun length alias ->
-          length + Alias.length alias)
+          length + alias_length alias)
       in
       let length =
         List.fold_left shadowed ~init:length ~f:(fun length shadowed ->

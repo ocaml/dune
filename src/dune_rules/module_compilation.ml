@@ -651,16 +651,15 @@ module Alias_module = struct
   ;;
 
   let to_ml =
-    let shadowed_length =
-      let static_length =
-        let open Literals in
-        String.length shadowed_prefix
-        + String.length shadowed_definition_suffix
-        + String.length shadowed_deprecation
-      in
-      fun shadowed ->
-        let name_length = String.length (Module_name.to_string shadowed) in
-        static_length + name_length
+    let static_length =
+      let open Literals in
+      String.length shadowed_prefix
+      + String.length shadowed_definition_suffix
+      + String.length shadowed_deprecation
+    in
+    let shadowed_length shadowed =
+      let name_length = String.length (Module_name.to_string shadowed) in
+      static_length + name_length
     in
     let total_length { aliases; shadowed; instances } =
       let length = String.length Literals.header in

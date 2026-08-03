@@ -346,7 +346,7 @@ let run_current_build
   in
   let+ () = Scheduler.cleanup_subreaper_child_processes () in
   let build_duration = Time.diff (Time.now ()) build_started_at in
-  let process_time = Metrics.Build.process_time () in
+  let action_duration = Metrics.Build.action_duration () in
   let next =
     match t.status with
     | Restarting_build _
@@ -366,7 +366,9 @@ let run_current_build
      set_build_duration_section
        t
        (Constant
-          (build_timing_status run_id (Build_timing.format ~build_duration ~process_time))));
+          (build_timing_status
+             run_id
+             (Build_timing.format ~build_duration ~action_duration))));
   outcome, next, build_start_input_change_generation, build_start_wakeup_generation
 ;;
 

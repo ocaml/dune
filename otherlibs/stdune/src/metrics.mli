@@ -14,6 +14,12 @@ module Build : sig
   val process_time : unit -> Time.Span.t
   val process_user_cpu_time : unit -> Time.Span.t
   val process_system_cpu_time : unit -> Time.Span.t
+
+  (** Total action duration used to calculate build parallelism. This is user
+      plus system CPU time when resource usage is available, and wall-clock time
+      otherwise. *)
+  val action_duration : unit -> Time.Span.t
+
   val reset : unit -> unit
 end
 

@@ -1,11 +1,13 @@
 open Import
 
-let parallelism ~build_duration ~process_time =
+let parallelism ~build_duration ~action_duration =
   match
     match Time.Span.compare build_duration Time.Span.zero with
     | Eq | Lt -> None
     | Gt ->
-      (try Some (Time.Span.to_secs process_time /. Time.Span.to_secs build_duration) with
+      (try
+         Some (Time.Span.to_secs action_duration /. Time.Span.to_secs build_duration)
+       with
        | _ -> None)
   with
   | None -> ""
@@ -17,8 +19,8 @@ let format =
     | "" -> ""
     | s -> "[" ^ s ^ "]"
   in
-  fun ~build_duration ~process_time ->
-    let parallelism = parallelism ~build_duration ~process_time in
+  fun ~build_duration ~action_duration ->
+    let parallelism = parallelism ~build_duration ~action_duration in
     let duration = sprintf "%.1fs" (Time.Span.to_secs build_duration) in
     [ section duration; section parallelism ]
     |> List.filter ~f:(function
@@ -30,5 +32,5 @@ let format =
 let format_now started_at =
   format
     ~build_duration:(Time.diff (Time.now ()) started_at)
-    ~process_time:(Metrics.Build.process_time ())
+    ~action_duration:(Metrics.Build.action_duration ())
 ;;

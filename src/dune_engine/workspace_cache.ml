@@ -4,12 +4,25 @@ let needs_dumping = ref false
 let mark_dirty () = needs_dumping := true
 
 module Dir_contents = struct
-  type t = File_kind.t Filename.Array.Map.t
+  type t =
+    { files : Filename.Array.Set.t
+    ; dirs : Filename.Array.Set.t
+    ; rest : File_kind.t Filename.Array.Map.t
+    }
 
   let repr =
-    Repr.view
-      (Repr.list (Repr.pair Filename.repr File_kind.repr))
-      ~to_:Filename.Array.Map.to_list
+    let set = Repr.view (Repr.list Filename.repr) ~to_:Filename.Array.Set.to_list in
+    let rest =
+      Repr.view
+        (Repr.list (Repr.pair Filename.repr File_kind.repr))
+        ~to_:Filename.Array.Map.to_list
+    in
+    Repr.record
+      "fs-memo-dir-contents"
+      [ Repr.field "files" set ~get:(fun t -> t.files)
+      ; Repr.field "dirs" set ~get:(fun t -> t.dirs)
+      ; Repr.field "rest" rest ~get:(fun t -> t.rest)
+      ]
   ;;
 end
 
@@ -175,7 +188,7 @@ module P = Persistent.Make (struct
     type nonrec t = t
 
     let name = "WORKSPACE-CACHE"
-    let version = 1
+    let version = 2
     let sharing = true
     let repr = repr
   end)

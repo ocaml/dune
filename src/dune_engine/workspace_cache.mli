@@ -7,9 +7,11 @@ open Import
 val mark_dirty : unit -> unit
 
 module Dir_contents : sig
-  type t = File_kind.t Filename.Array.Map.t
-
-  val repr : t Repr.t
+  type t =
+    { files : Filename.Array.Set.t
+    ; dirs : Filename.Array.Set.t
+    ; rest : File_kind.t Filename.Array.Map.t
+    }
 end
 
 module Fs_memo : sig

@@ -122,8 +122,8 @@ let of_source_path_impl path =
           if is_directory then List.Right (fn, file) else Left fn)
       >>| List.filter_partition_map ~f:Fun.id
     in
-    let dirs = Filename.Array.Map.of_sorted_list_exn dirs in
-    { files = Filename.Array.Set.of_sorted_list files; dirs } |> Result.ok
+    let dirs = Filename.Array.Map.of_list_exn dirs in
+    { files = Filename.Array.Set.of_list files; dirs } |> Result.ok
 ;;
 
 (* Having a cutoff here speeds up incremental rebuilds quite a bit when a

@@ -101,7 +101,7 @@ let get_dir_triage ~dir =
           match kind with
           | Unix.S_DIR -> None
           | _ -> Some filename)
-        |> Filename.Array.Set.of_sorted_list
+        |> Filename.Array.Set.of_list
     in
     Dir_triage.Known (External { filenames })
   | Build (Regular Root) ->

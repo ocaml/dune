@@ -19,6 +19,32 @@ Tests JSOO rules for modules without implementations.
 
   $ dune build
 
+JSOO rules for executables are not spuriously invalidated
+
+  $ dune build
+  $ dune trace cat | jq_dune -r '
+  > progMatching("js_of_ocaml")
+  > | .target_files[]?
+  > | select(endswith("main.bc.js"))
+  > '
+
+Source directories that resemble library object directories are not reserved
+for JSOO rules.
+
+  $ mkdir .foo.objs
+  $ cat > dune <<EOF
+  > (dirs :standard .foo.objs)
+  > EOF
+  $ cat > .foo.objs/dune <<EOF
+  > (rule
+  >  (target jsoo)
+  >  (action (with-stdout-to %{target} (echo source))))
+  > EOF
+
+  $ dune build .foo.objs/jsoo
+  $ cat _build/default/.foo.objs/jsoo
+  source
+
 JSOO archive rules for interface-only libraries are not spuriously invalidated
 
   $ cat > dune <<EOF

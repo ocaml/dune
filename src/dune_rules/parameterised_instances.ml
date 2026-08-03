@@ -183,27 +183,84 @@ let instances ~sctx ~db deps =
   instances
 ;;
 
-let print_instance b indent instance =
-  Printf.bprintf
-    b
-    "\n%smodule %s = %s%s [@jane.non_erasable.instances]"
-    indent
-    (Module_name.to_string instance.new_name)
-    (Module_name.to_string instance.lib_name)
-    (String.concat ~sep:""
-     @@ List.map instance.args ~f:(fun (_loc, param_name, arg_name) ->
-       Printf.sprintf
-         "(%s)(%s)"
-         (Module_name.to_string param_name)
-         (Module_name.to_string arg_name)))
+module Literals = struct
+  let module_prefix = "\nmodule "
+  let nested_module_prefix = "\n  module "
+  let module_separator = " = "
+  let instance_suffix = " [@jane.non_erasable.instances]"
+  let wrapped_module_suffix = " = struct"
+  let wrapped_module_end = "\nend\n"
+  let argument_prefix = "("
+  let argument_separator = ")("
+  let argument_suffix = ")"
+end
+
+let ml_source_length =
+  let module_name_length name = String.length (Module_name.to_string name) in
+  let argument_length =
+    let static_length =
+      let open Literals in
+      String.length argument_prefix
+      + String.length argument_separator
+      + String.length argument_suffix
+    in
+    fun (_loc, param_name, arg_name) ->
+      let param_name_length = module_name_length param_name in
+      let arg_name_length = module_name_length arg_name in
+      static_length + param_name_length + arg_name_length
+  in
+  let instance_length prefix { new_name; lib_name; args; _ } =
+    let open Literals in
+    let args_length =
+      List.fold_left args ~init:0 ~f:(fun length arg ->
+        let arg_length = argument_length arg in
+        length + arg_length)
+    in
+    String.length prefix
+    + module_name_length new_name
+    + String.length module_separator
+    + module_name_length lib_name
+    + args_length
+    + String.length instance_suffix
+  in
+  fun instances ->
+    let open Literals in
+    List.fold_left instances ~init:0 ~f:(fun length -> function
+      | Simple instance -> length + instance_length module_prefix instance
+      | Wrapped (_loc, new_name, instances) ->
+        length
+        + String.length module_prefix
+        + module_name_length new_name
+        + String.length wrapped_module_suffix
+        + List.fold_left instances ~init:0 ~f:(fun length instance ->
+          length + instance_length nested_module_prefix instance)
+        + String.length wrapped_module_end)
 ;;
 
-let print_instances b instances =
-  List.iter instances ~f:(fun instances ->
-    match instances with
-    | Simple instance -> print_instance b "" instance
+let add_instance builder prefix { new_name; lib_name; args; _ } =
+  let open Literals in
+  String_builder.add_string builder prefix;
+  String_builder.add_string builder (Module_name.to_string new_name);
+  String_builder.add_string builder module_separator;
+  String_builder.add_string builder (Module_name.to_string lib_name);
+  List.iter args ~f:(fun (_loc, param_name, arg_name) ->
+    String_builder.add_string builder argument_prefix;
+    String_builder.add_string builder (Module_name.to_string param_name);
+    String_builder.add_string builder argument_separator;
+    String_builder.add_string builder (Module_name.to_string arg_name);
+    String_builder.add_string builder argument_suffix);
+  String_builder.add_string builder instance_suffix
+;;
+
+let add_ml_source builder instances =
+  let open Literals in
+  List.iter instances ~f:(function
+    | Simple instance -> add_instance builder module_prefix instance
     | Wrapped (_loc, new_name, instances) ->
-      Printf.bprintf b "\nmodule %s = struct" (Module_name.to_string new_name);
-      List.iter instances ~f:(print_instance b "  ");
-      Printf.bprintf b "\nend\n")
+      String_builder.add_string builder module_prefix;
+      String_builder.add_string builder (Module_name.to_string new_name);
+      String_builder.add_string builder wrapped_module_suffix;
+      List.iter instances ~f:(fun instance ->
+        add_instance builder nested_module_prefix instance);
+      String_builder.add_string builder wrapped_module_end)
 ;;

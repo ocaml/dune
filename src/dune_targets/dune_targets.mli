@@ -80,8 +80,8 @@ val all : t -> Path.Build.t list
 module Produced : sig
   (** All file and directory names are relative to the root (['a t]). *)
   type 'a dir_contents = private
-    { files : 'a Filename.Map.t (* mapping file name -> 'a *)
-    ; subdirs : 'a dir_contents Filename.Map.t
+    { files : 'a Filename.Array.Map.t (* mapping file name -> 'a *)
+    ; subdirs : 'a dir_contents Filename.Array.Map.t
       (* mapping directory name -> 'a dir_contents *)
     }
 
@@ -131,7 +131,7 @@ module Produced : sig
   val find : 'a t -> Path.Build.t -> 'a option
 
   (** Find all files in a directory target or a subdirectory. *)
-  val find_dir : 'a t -> Path.Build.t -> 'a Filename.Map.t option
+  val find_dir : 'a t -> Path.Build.t -> 'a Filename.Array.Map.t option
 
   val exists : 'a t -> f:('a -> bool) -> bool
 

@@ -171,13 +171,13 @@ let validate { files; dirs } =
 module Produced = struct
   (** All file and directory names are relative to the root (['a t]). *)
   type 'a dir_contents =
-    { files : 'a Filename.Map.t (* mapping file name -> 'a *)
-    ; subdirs : 'a dir_contents Filename.Map.t
+    { files : 'a Filename.Array.Map.t (* mapping file name -> 'a *)
+    ; subdirs : 'a dir_contents Filename.Array.Map.t
       (* mapping directory name -> 'a dir_contents *)
     }
 
   let is_empty_dir_conts { files; subdirs } =
-    Filename.Map.is_empty files && Filename.Map.is_empty subdirs
+    Filename.Array.Map.is_empty files && Filename.Array.Map.is_empty subdirs
   ;;
 
   type 'a t =
@@ -187,9 +187,9 @@ module Produced = struct
 
   let head { root; contents = { files; subdirs } } =
     let basename =
-      match Filename.Map.choose files with
-      | Some (x, _) -> x
-      | None -> Filename.Map.choose subdirs |> Option.value_exn |> fst
+      match Filename.Array.Map.choose_key files with
+      | Some x -> x
+      | None -> Filename.Array.Map.choose subdirs |> Option.value_exn |> fst
     in
     Path.Build.relative_fname root basename
   ;;
@@ -201,8 +201,8 @@ module Produced = struct
     =
     let rec eq_aux { files = files1; subdirs = dirs1 } { files = files2; subdirs = dirs2 }
       =
-      Filename.Map.equal files1 files2 ~equal
-      && Filename.Map.equal dirs1 dirs2 ~equal:eq_aux
+      Filename.Array.Map.equal files1 files2 ~equal
+      && Filename.Array.Map.equal dirs1 dirs2 ~equal:eq_aux
     in
     Path.Build.equal root1 root2 && eq_aux contents1 contents2
   ;;
@@ -252,7 +252,23 @@ module Produced = struct
     ;;
   end
 
-  let empty = { files = Filename.Map.empty; subdirs = Filename.Map.empty }
+  type 'a dir_contents_builder =
+    { builder_files : 'a Filename.Map.t
+    ; builder_subdirs : 'a dir_contents_builder Filename.Map.t
+    }
+
+  let empty_builder =
+    { builder_files = Filename.Map.empty; builder_subdirs = Filename.Map.empty }
+  ;;
+
+  let rec dir_contents_of_builder { builder_files; builder_subdirs } =
+    { files = Filename.Map.to_list builder_files |> Filename.Array.Map.of_sorted_list_exn
+    ; subdirs =
+        Filename.Map.to_list_map builder_subdirs ~f:(fun name contents ->
+          name, dir_contents_of_builder contents)
+        |> Filename.Array.Map.of_sorted_list_exn
+    }
+  ;;
 
   let of_files root (files : 'a option Path.Local.Map.t) : 'a t =
     let rec aux mb_payload contents path =
@@ -262,31 +278,40 @@ module Produced = struct
           "Targets.Produced.of_files: path explosion failed on root"
           [ "files", Path.Local.Map.to_dyn Dyn.opaque files ]
       | [ final ], Some payload ->
-        { contents with files = Filename.Map.add_exn contents.files final payload }
+        { contents with
+          builder_files = Filename.Map.add_exn contents.builder_files final payload
+        }
       | [ final ], None ->
-        { contents with subdirs = Filename.Map.add_exn contents.subdirs final empty }
+        { contents with
+          builder_subdirs =
+            Filename.Map.add_exn contents.builder_subdirs final empty_builder
+        }
       | parent :: rest, _ ->
-        let subdirs =
-          Filename.Map.update contents.subdirs parent ~f:(fun contents_opt ->
-            Some (aux mb_payload (Option.value contents_opt ~default:empty) rest))
+        let builder_subdirs =
+          Filename.Map.update contents.builder_subdirs parent ~f:(fun contents_opt ->
+            Some (aux mb_payload (Option.value contents_opt ~default:empty_builder) rest))
         in
-        { contents with subdirs }
+        { contents with builder_subdirs }
     in
-    let init = empty in
     let contents =
-      Path.Local.Map.foldi files ~init ~f:(fun file mb_payload contents ->
+      Path.Local.Map.foldi files ~init:empty_builder ~f:(fun file mb_payload contents ->
         let parent = Path.Local.parent_exn file in
         if Path.Local.is_root parent
         then (
           let file = Path.Local.basename file in
           match mb_payload with
           | Some payload ->
-            { contents with files = Filename.Map.add_exn contents.files file payload }
+            { contents with
+              builder_files = Filename.Map.add_exn contents.builder_files file payload
+            }
           | None ->
-            { contents with subdirs = Filename.Map.add_exn contents.subdirs file empty })
+            { contents with
+              builder_subdirs =
+                Filename.Map.add_exn contents.builder_subdirs file empty_builder
+            })
         else aux mb_payload contents (Path.Local.explode file))
     in
-    { root; contents }
+    { root; contents = dir_contents_of_builder contents }
   ;;
 
   (** The call sites ensure that [dir = Path.Build.append_local validated.root local].
@@ -340,28 +365,23 @@ module Produced = struct
 
   let of_validated (validated : Validated.t) =
     let open Result.O in
-    (* We assume here that [dir_name] is either a child of [root], or that we're ok with having [root/a/b] but not [root/a]. *)
-    let aggregate_dir { root; contents } dir_name =
-      let dir = Path.Build.relative_fname root dir_name in
-      let* new_contents = contents_of_dir ~file_f:(fun _ -> Some ()) dir in
-      if is_empty_dir_conts new_contents
-      then Error (Empty_dir dir)
-      else (
-        let contents =
-          { contents with
-            subdirs = Filename.Map.add_exn contents.subdirs dir_name new_contents
-          }
-        in
-        Ok { root; contents })
+    let files =
+      Filename.Set.to_list validated.files
+      |> Filename.Array.Set.of_sorted_list
+      |> Filename.Array.Map.of_set ~f:(fun (_ : Filename.t) -> ())
     in
-    let rooted_files = Filename.Set.to_map validated.files ~f:(Fun.const ()) in
-    Filename.Set.to_list validated.dirs
-    |> Result.List.fold_left
-         ~init:
-           { root = validated.root
-           ; contents = { files = rooted_files; subdirs = Filename.Map.empty }
-           }
-         ~f:aggregate_dir
+    let+ subdirs =
+      Filename.Set.to_list validated.dirs
+      |> Result.List.map ~f:(fun dir_name ->
+        let dir = Path.Build.relative_fname validated.root dir_name in
+        let* contents = contents_of_dir ~file_f:(fun _ -> Some ()) dir in
+        if is_empty_dir_conts contents
+        then Error (Empty_dir dir)
+        else Ok (dir_name, contents))
+    in
+    { root = validated.root
+    ; contents = { files; subdirs = Filename.Array.Map.of_sorted_list_exn subdirs }
+    }
   ;;
 
   let find_any { root; contents } name =
@@ -372,16 +392,16 @@ module Produced = struct
           "Targets.Produced.find_any: path explosion failed on root"
           [ "name", Path.Build.to_dyn name ]
       | [ final ] ->
-        (match Filename.Map.find files final with
+        (match Filename.Array.Map.find files final with
          | Some payload -> Some (Left payload)
          | None ->
            (* The order shouldn't matter, it's not possible to have both a file
               and a directory with the exact same path and name. *)
-           let+ contents = Filename.Map.find subdirs final in
+           let+ contents = Filename.Array.Map.find subdirs final in
            Right contents)
       | parent :: rest ->
         let path = Path.Local.relative_fname path parent in
-        let* subdir = Filename.Map.find subdirs parent in
+        let* subdir = Filename.Array.Map.find subdirs parent in
         aux path subdir rest
     in
     let root = Path.Build.local root in
@@ -409,7 +429,7 @@ module Produced = struct
 
   let exists { contents; root = _ } ~f =
     let rec aux { files; subdirs } =
-      Filename.Map.exists files ~f || Filename.Map.exists subdirs ~f:aux
+      Filename.Array.Map.exists files ~f || Filename.Array.Map.exists subdirs ~f:aux
     in
     aux contents
   ;;
@@ -417,11 +437,11 @@ module Produced = struct
   let all_files_seq { contents; root = _ } =
     let rec aux path { files; subdirs } =
       Seq.append
-        (Filename.Map.to_seq files
+        (Filename.Array.Map.to_seq files
          |> Seq.map ~f:(fun (file_name, payload) ->
            Path.Local.relative_fname path file_name, payload))
         (Seq.concat
-           (Filename.Map.to_seq subdirs
+           (Filename.Array.Map.to_seq subdirs
             |> Seq.map ~f:(fun (dir_name, subdir_contents) ->
               aux (Path.Local.relative_fname path dir_name) subdir_contents)))
     in
@@ -431,7 +451,7 @@ module Produced = struct
   let all_dirs_seq { contents; root = _ } =
     let rec aux path { subdirs; files = _ } =
       Seq.concat
-        (Filename.Map.to_seq subdirs
+        (Filename.Array.Map.to_seq subdirs
          |> Seq.map ~f:(fun (dir_name, dir_contents) ->
            let dir = Path.Local.relative_fname path dir_name in
            Seq.cons dir (aux dir dir_contents)))
@@ -451,11 +471,11 @@ module Produced = struct
   let foldi { contents; root = _ } ~init ~f =
     let rec aux path { files; subdirs } acc =
       let acc' =
-        Filename.Map.foldi files ~init:acc ~f:(fun file_name payload acc ->
+        Filename.Array.Map.foldi files ~init:acc ~f:(fun file_name payload acc ->
           let file = Path.Local.relative_fname path file_name in
           f file (Some payload) acc)
       in
-      Filename.Map.foldi subdirs ~init:acc' ~f:(fun dir_name dir_contents acc ->
+      Filename.Array.Map.foldi subdirs ~init:acc' ~f:(fun dir_name dir_contents acc ->
         let dir = Path.Local.relative_fname path dir_name in
         let acc' = f dir None acc in
         aux dir dir_contents acc')
@@ -465,10 +485,10 @@ module Produced = struct
 
   let iteri_dir_contents contents ~f ~d =
     let rec aux path { files; subdirs } =
-      Filename.Map.iteri files ~f:(fun file_name payload ->
+      Filename.Array.Map.iteri files ~f:(fun file_name payload ->
         let file = Path.Local.relative_fname path file_name in
         f file payload);
-      Filename.Map.iteri subdirs ~f:(fun dir_name dir_contents ->
+      Filename.Array.Map.iteri subdirs ~f:(fun dir_name dir_contents ->
         let dir = Path.Local.relative_fname path dir_name in
         d dir;
         aux dir dir_contents)
@@ -481,11 +501,11 @@ module Produced = struct
   let to_list_map { contents; root = _ } ~f =
     let rec aux path { files; subdirs } =
       let file_list =
-        Filename.Map.to_list_map files ~f:(fun file_name payload ->
+        Filename.Array.Map.to_list_map files ~f:(fun file_name payload ->
           f (Path.Local.relative_fname path file_name) (Some payload))
       in
       let dir_list =
-        Filename.Map.to_list_map subdirs ~f:(fun dir_name dir_contents ->
+        Filename.Array.Map.to_list_map subdirs ~f:(fun dir_name dir_contents ->
           let dir = Path.Local.relative_fname path dir_name in
           let d = f dir None in
           d :: aux dir dir_contents)
@@ -501,7 +521,7 @@ module Produced = struct
   (* Slightly more efficient to not even look at the files. *)
   let iter_dirs { contents; root = _ } ~f =
     let rec aux path { subdirs; files = _ } =
-      Filename.Map.iteri subdirs ~f:(fun dir_name dir_contents ->
+      Filename.Array.Map.iteri subdirs ~f:(fun dir_name dir_contents ->
         let dir = Path.Local.relative_fname path dir_name in
         f dir;
         aux dir dir_contents)
@@ -509,8 +529,7 @@ module Produced = struct
     aux Path.Local.root contents
   ;;
 
-  module Path_traversal = Fiber.Make_parallel_map (Path.Local.Map)
-  module Filename_traversal = Fiber.Make_parallel_map (Filename.Map)
+  module Filename_traversal = Fiber.Make_parallel_map (Filename.Array.Map)
 
   let parallel_map { root; contents } ~f =
     let open Fiber.O in
@@ -534,9 +553,10 @@ module Produced = struct
 
   let digest { contents; root = _ } =
     let rec all_digests { files; subdirs } =
-      let ffiles = Filename.Map.values files in
+      let ffiles = Filename.Array.Map.values files in
       List.concat
-        (ffiles :: Filename.Map.to_list_map subdirs ~f:(fun _ dir -> all_digests dir))
+        (ffiles
+         :: Filename.Array.Map.to_list_map subdirs ~f:(fun _ dir -> all_digests dir))
     in
     let d = Digest.Manual.create () in
     Digest.Manual.list d (all_digests contents) ~f:Digest.Manual.digest;
@@ -561,26 +581,32 @@ module Produced = struct
         None
     in
     let map_files path files =
-      Filename.Map.foldi
-        files
-        ~init:(Fiber.return Filename.Map.empty)
-        ~f:(fun file_name _payload acc ->
-          let* acc = acc in
-          let path = Path.Build.relative_fname path file_name in
-          let* result = f path in
-          match result with
-          | None -> Fiber.return acc
-          | Some value -> Fiber.return (Filename.Map.set acc file_name value))
+      let+ files =
+        Filename.Array.Map.foldi
+          files
+          ~init:(Fiber.return [])
+          ~f:(fun file_name _payload acc ->
+            let* acc = acc in
+            let path = Path.Build.relative_fname path file_name in
+            let* result = f path in
+            match result with
+            | None -> Fiber.return acc
+            | Some value -> Fiber.return ((file_name, value) :: acc))
+      in
+      Filename.Array.Map.of_sorted_list_exn (List.rev files)
     in
     let rec map_subdirs path subdirs =
-      Filename.Map.foldi
-        subdirs
-        ~init:(Fiber.return Filename.Map.empty)
-        ~f:(fun dir_name dir_contents acc ->
-          let* acc = acc in
-          let dir = Path.Build.relative_fname path dir_name in
-          let* mapped = aux dir dir_contents in
-          Fiber.return (Filename.Map.set acc dir_name mapped))
+      let+ subdirs =
+        Filename.Array.Map.foldi
+          subdirs
+          ~init:(Fiber.return [])
+          ~f:(fun dir_name dir_contents acc ->
+            let* acc = acc in
+            let dir = Path.Build.relative_fname path dir_name in
+            let* mapped = aux dir dir_contents in
+            Fiber.return ((dir_name, mapped) :: acc))
+      in
+      Filename.Array.Map.of_sorted_list_exn (List.rev subdirs)
     and aux path { files; subdirs } =
       let* files = map_files path files in
       let* subdirs = map_subdirs path subdirs in
@@ -618,11 +644,11 @@ module Produced = struct
     in
     let rec aux path { files; subdirs } =
       let files =
-        Filename.Map.filter_mapi files ~f:(fun file _ ->
+        Filename.Array.Map.filter_mapi files ~f:(fun file _ ->
           f (Path.Build.relative_fname path file))
       in
       let subdirs =
-        Filename.Map.mapi subdirs ~f:(fun dir subdirs_contents ->
+        Filename.Array.Map.mapi subdirs ~f:(fun dir subdirs_contents ->
           let dir = Path.Build.relative_fname path dir in
           aux dir subdirs_contents)
       in
@@ -643,8 +669,8 @@ module Produced = struct
   let to_dyn { root; contents } =
     let rec aux { files; subdirs } =
       Dyn.record
-        [ "files", Filename.Map.to_dyn Dyn.opaque files
-        ; "dirs", Filename.Map.to_dyn aux subdirs
+        [ "files", Filename.Array.Map.to_dyn Dyn.opaque files
+        ; "dirs", Filename.Array.Map.to_dyn aux subdirs
         ]
     in
     Dyn.record [ "root", Path.Build.to_dyn root; "contents", aux contents ]

@@ -250,6 +250,8 @@ module Sorted = struct
 
       let empty = { keys = [||]; values = [||] }
       let is_empty t = Stdlib.Array.length t.keys = 0
+      let choose t = if is_empty t then None else Some (t.keys.(0), t.values.(0))
+      let choose_key t = if is_empty t then None else Some t.keys.(0)
 
       let mem t key =
         match binary_search t.keys key with
@@ -333,6 +335,30 @@ module Sorted = struct
 
       let keys t = t.keys
 
+      let of_set set ~f =
+        { keys = set
+        ; values = Array.init (Array.length set) (fun i -> f (Array.get set i))
+        }
+      ;;
+
+      let values t = Stdlib.Array.to_list t.values
+
+      let exists t ~f =
+        let rec loop i =
+          i < Stdlib.Array.length t.values && (f t.values.(i) || loop (i + 1))
+        in
+        loop 0
+      ;;
+
+      let foldi t ~init ~f =
+        let rec loop i acc =
+          if i = Stdlib.Array.length t.keys
+          then acc
+          else loop (i + 1) (f t.keys.(i) t.values.(i) acc)
+        in
+        loop 0 init
+      ;;
+
       let filter_mapi t ~f =
         let rec loop i acc =
           if i < 0
@@ -345,6 +371,19 @@ module Sorted = struct
         loop (Stdlib.Array.length t.keys - 1) []
       ;;
 
+      let mapi t ~f =
+        { t with values = Stdlib.Array.mapi (fun i value -> f t.keys.(i) value) t.values }
+      ;;
+
+      let to_seq t =
+        let rec loop i () =
+          if i = Stdlib.Array.length t.keys
+          then Seq.Nil
+          else Seq.Cons ((t.keys.(i), t.values.(i)), loop (i + 1))
+        in
+        loop 0
+      ;;
+
       let to_list_map t ~f =
         let rec loop i acc =
           if i < 0 then acc else loop (i - 1) (f t.keys.(i) t.values.(i) :: acc)
@@ -353,6 +392,10 @@ module Sorted = struct
       ;;
 
       let to_list t = to_list_map t ~f:(fun key value -> key, value)
+
+      let to_dyn value_to_dyn t =
+        Dyn.Map (to_list_map t ~f:(fun k v -> Key.to_dyn k, value_to_dyn v))
+      ;;
 
       let equal a b ~equal =
         a == b

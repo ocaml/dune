@@ -29,10 +29,12 @@ exact event counts or counter values.
   >   , valid_shape:
   >       all(.[];
   >         if .name == "event" then
-  >           ((.args.phase | type) == "string"
+  >           ((.args.ring_id | type) == "number"
+  >            and (.args.phase | type) == "string"
   >            and (.args.what == "begin" or .args.what == "end"))
   >         elif .name == "counter" then
-  >           ((.args.name | type) == "string"
+  >           ((.args.ring_id | type) == "number"
+  >            and (.args.name | type) == "string"
   >            and (.args.value | type) == "number")
   >         else
   >           false

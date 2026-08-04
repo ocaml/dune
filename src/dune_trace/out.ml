@@ -170,12 +170,12 @@ let runtime_callbacks =
     let emit event = emit (Lazy.force t) ~buffered:true event in
     let time timestamp = time_of_runtime_timestamp clock timestamp in
     Runtime.Callbacks.create
-      ~runtime_begin:(fun _ timestamp phase ->
-        emit (Event.runtime (time timestamp) `Begin phase))
-      ~runtime_end:(fun _ timestamp phase ->
-        emit (Event.runtime (time timestamp) `End phase))
-      ~runtime_counter:(fun _ timestamp name value ->
-        emit (Event.runtime_counter (time timestamp) name value))
+      ~runtime_begin:(fun ring_id timestamp phase ->
+        emit (Event.runtime ring_id (time timestamp) `Begin phase))
+      ~runtime_end:(fun ring_id timestamp phase ->
+        emit (Event.runtime ring_id (time timestamp) `End phase))
+      ~runtime_counter:(fun ring_id timestamp name value ->
+        emit (Event.runtime_counter ring_id (time timestamp) name value))
       ()
 ;;
 

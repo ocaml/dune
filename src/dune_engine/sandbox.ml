@@ -11,17 +11,32 @@ module Pending_targets = struct
      being executed. On exit, we need to delete them as they might contain
      garbage. *)
 
-  let t = ref Targets.empty
-  let remove targets = t := Targets.diff !t (Targets.Validated.unvalidate targets)
-  let add targets = t := Targets.combine !t (Targets.Validated.unvalidate targets)
+  let files = Path.Build.Table.create 128
+  let dirs = Path.Build.Table.create 128
+
+  let remove targets =
+    Targets.Validated.iter
+      targets
+      ~file:(Path.Build.Table.remove files)
+      ~dir:(Path.Build.Table.remove dirs)
+  ;;
+
+  let add targets =
+    Targets.Validated.iter
+      targets
+      ~file:(fun path -> Path.Build.Table.set files path ())
+      ~dir:(fun path -> Path.Build.Table.set dirs path ())
+  ;;
 
   let cleanup () =
-    let targets = !t in
-    t := Targets.empty;
-    Targets.iter
-      targets
-      ~file:(fun p -> p |> Path.Build.to_string |> Fpath.unlink_no_err)
-      ~dir:(fun p -> Path.rm_rf (Path.build p))
+    Exn.protect
+      ~f:(fun () ->
+        Path.Build.Table.iteri files ~f:(fun path () ->
+          Path.Build.to_string path |> Fpath.unlink_no_err);
+        Path.Build.Table.iteri dirs ~f:(fun path () -> Path.rm_rf (Path.build path)))
+      ~finally:(fun () ->
+        Path.Build.Table.clear files;
+        Path.Build.Table.clear dirs)
   ;;
 end
 

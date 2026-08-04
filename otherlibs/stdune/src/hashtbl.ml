@@ -84,5 +84,6 @@ struct
       | false -> None)
   ;;
 
-  let iter t ~f = iter t ~f:(fun ~key:_ ~data -> f data)
+  let iteri t ~f = iter t ~f:(fun ~key ~data -> f key data)
+  let iter t ~f = iteri t ~f:(fun _ data -> f data)
 end

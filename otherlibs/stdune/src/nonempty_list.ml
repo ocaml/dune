@@ -38,10 +38,10 @@ let to_list (x :: xs) = List.cons x xs
 let to_list_map (x :: xs) ~f = List.map (x :: xs) ~f
 let map (x :: xs) ~f = f x :: List.map xs ~f
 
-let compare xs ys ~compare =
-  let (x :: xs) = xs
-  and (y :: ys) = ys in
-  List.compare ~compare (x :: xs) (y :: ys)
+let compare (x :: xs) (y :: ys) ~compare =
+  match compare x y with
+  | Ordering.Eq -> List.compare xs ys ~compare
+  | ordering -> ordering
 ;;
 
 let concat xs (t :: ts : _ t) =

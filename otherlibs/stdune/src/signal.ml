@@ -122,9 +122,10 @@ let to_int =
   | t -> Map.find_exn table t
 ;;
 
-let of_int i =
+let of_int =
   let table = Int.Map.of_list_exn (List.map all ~f:(fun (t, i) -> i, t)) in
-  match Int.Map.find table i with
-  | None -> Unknown i
-  | Some s -> s
+  fun i ->
+    match Int.Map.find table i with
+    | None -> Unknown i
+    | Some s -> s
 ;;

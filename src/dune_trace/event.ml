@@ -983,9 +983,10 @@ let sandbox name ~start ~stop ~queued loc ~dir =
   Event.complete ~args ~name ~start ~dur Sandbox
 ;;
 
-let runtime time what phase =
+let runtime ring_id time what phase =
   let args =
-    [ "phase", Arg.string (Runtime.runtime_phase_name phase)
+    [ "ring_id", Arg.int ring_id
+    ; "phase", Arg.string (Runtime.runtime_phase_name phase)
     ; ( "what"
       , Arg.string
           (match what with
@@ -996,9 +997,12 @@ let runtime time what phase =
   Event.instant ~args ~name:"event" time Runtime
 ;;
 
-let runtime_counter time name value =
+let runtime_counter ring_id time name value =
   let args =
-    [ "name", Arg.string (Runtime.runtime_counter_name name); "value", Arg.int value ]
+    [ "ring_id", Arg.int ring_id
+    ; "name", Arg.string (Runtime.runtime_counter_name name)
+    ; "value", Arg.int value
+    ]
   in
   Event.instant ~args ~name:"counter" time Runtime
 ;;

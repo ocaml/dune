@@ -43,16 +43,68 @@ module Output = struct
   ;;
 end
 
-let git =
-  lazy
-    (let path = Env.get Env.initial "PATH" |> Option.value_exn |> Bin.parse_path in
-     Bin.which ~path "git" |> Option.value_exn)
+let bin_path = lazy (Env.get Env.initial "PATH" |> Option.value_exn |> Bin.parse_path)
+let git = lazy (Bin.which ~path:(Lazy.force bin_path) "git" |> Option.value_exn)
+let true_program = lazy (Bin.which ~path:(Lazy.force bin_path) "true" |> Option.value_exn)
+
+let path_of_argument argument =
+  if Filename.is_relative argument
+  then Path.of_string (Filename.concat Fpath.initial_cwd argument)
+  else Path.of_string argument
 ;;
 
-let dune = Path.of_string (Filename.concat Fpath.initial_cwd Sys.argv.(1))
+let executable_of_argument argument =
+  if Filename.is_relative argument && String.equal (Filename.dirname argument) "."
+  then Bin.which ~path:(Lazy.force bin_path) argument |> Option.value_exn
+  else path_of_argument argument
+;;
+
+let dune = path_of_argument Sys.argv.(1)
+
+let perf =
+  if Array.length Sys.argv >= 3 then Some (executable_of_argument Sys.argv.(2)) else None
+;;
+
 let output_limit = Dune_engine.Execution_parameters.Action_output_limit.default
 let make_stdout () = Process.Io.make_stdout ~output_on_success:Swallow ~output_limit
 let make_stderr () = Process.Io.make_stderr ~output_on_success:Swallow ~output_limit
+
+let perf_arguments ~output ~program args =
+  [ "stat"
+  ; "--no-big-num"
+  ; "--field-separator"
+  ; ";"
+  ; "--event"
+  ; "instructions:u"
+  ; "--output"
+  ; Path.to_absolute_filename output
+  ; "--"
+  ; Path.to_absolute_filename program
+  ]
+  @ args
+;;
+
+let check_perf () =
+  match perf with
+  | None -> Fiber.return ()
+  | Some perf ->
+    let output = Temp.create File ~prefix:"perf" ~suffix:"check" in
+    let stdout_to = make_stdout () in
+    let stderr_to = make_stderr () in
+    let stdin_from = Process.Io.(null In) in
+    let open Fiber.O in
+    let+ () =
+      Process.run
+        Strict
+        perf
+        ~display:Quiet
+        ~stdin_from
+        ~stdout_to
+        ~stderr_to
+        (perf_arguments ~output ~program:(Lazy.force true_program) [])
+    in
+    ignore (Perf_counter.read_instructions output : int)
+;;
 
 module Package = struct
   type t =
@@ -89,41 +141,58 @@ let prepare_workspace () =
         Fiber.return @@ Console.printf "finished cloning %s/%s" pkg.org pkg.name))
 ;;
 
+type run =
+  { metrics : (float, int) Metrics.t
+  ; instructions : int option
+  }
+
 let dune_build ~name ~sandbox =
   let stdin_from = Process.(Io.null In) in
   let stdout_to = make_stdout () in
   let stderr_to = make_stderr () in
   let gc_dump = Temp.create File ~prefix:"gc_stat" ~suffix:name in
+  let dune_args =
+    [ "build"
+    ; "@install"
+    ; "--release"
+    ; "--cache" (* explicitly disable cache *)
+    ; "disabled"
+    ; "--dump-gc-stats"
+    ; Path.to_string gc_dump
+    ]
+    @
+    match sandbox with
+    | `Yes -> [ "--sandbox"; "hardlink" ]
+    | `No -> []
+  in
+  let program, args, perf_output =
+    match perf with
+    | None -> dune, dune_args, None
+    | Some perf ->
+      let output = Temp.create File ~prefix:"perf" ~suffix:name in
+      perf, perf_arguments ~output ~program:dune dune_args, Some output
+  in
   let open Fiber.O in
-  (* Build with timings and gc stats *)
   let+ times =
     Process.run_with_times
       Strict
-      dune
+      program
       ~display:Quiet
       ~stdin_from
       ~stdout_to
       ~stderr_to
-      ([ "build"
-       ; "@install"
-       ; "--release"
-       ; "--cache" (* explicitly disable cache *)
-       ; "disabled"
-       ; "--dump-gc-stats"
-       ; Path.to_string gc_dump
-       ]
-       @
-       match sandbox with
-       | `Yes -> [ "--sandbox"; "hardlink" ]
-       | `No -> [])
+      args
   in
-  (* Read the gc stats from the dump file *)
-  Dune_lang.Parser.parse_string
-    ~mode:Single
-    ~fname:(Path.to_string gc_dump)
-    (Io.read_file gc_dump)
-  |> Dune_lang.Decoder.parse Dune_util.Gc.decode Univ_map.empty
-  |> Metrics.make times
+  let gc =
+    Dune_lang.Parser.parse_string
+      ~mode:Single
+      ~fname:(Path.to_string gc_dump)
+      (Io.read_file gc_dump)
+    |> Dune_lang.Decoder.parse Dune_util.Gc.decode Univ_map.empty
+  in
+  { metrics = Metrics.make times gc
+  ; instructions = Option.map perf_output ~f:Perf_counter.read_instructions
+  }
 ;;
 
 let run_bench ~sandbox =
@@ -142,10 +211,10 @@ let run_bench ~sandbox =
   clean, zero
 ;;
 
-type ('float, 'int) bench_results =
+type bench_results =
   { size : int
-  ; clean : ('float, 'int) Metrics.t
-  ; zero : ('float, 'int) Metrics.t list
+  ; clean : run
+  ; zero : run list
   }
 
 let tag_results { size; clean; zero } =
@@ -153,7 +222,7 @@ let tag_results { size; clean; zero } =
   let list_tag data =
     List.map data ~f:tag |> Metrics.unzip |> Metrics.map ~f:Json.list ~g:Json.list
   in
-  Json.int size, tag clean, list_tag zero
+  Json.int size, tag clean.metrics, list_tag (List.map zero ~f:(fun run -> run.metrics))
 ;;
 
 (** Display all clean and null builds with a few exceptions:
@@ -210,12 +279,25 @@ let display_clean_and_zero_with_sandboxing
   ]
 ;;
 
+let instruction_results ({ clean; zero; _ } : bench_results) =
+  match clean.instructions with
+  | None -> []
+  | Some clean ->
+    let zero = List.map zero ~f:(fun run -> Option.value_exn run.instructions) in
+    [ { Output.name = "Instructions"
+      ; metrics =
+          [ "[Clean] Instructions", Json.int clean, "Instructions"
+          ; "[Null] Instructions", Json.list (List.map zero ~f:Json.int), "Instructions"
+          ]
+      }
+    ]
+;;
+
 let format_results bench_results =
-  (* tagging data for json conversion *)
   let size, clean, zero = tag_results bench_results in
-  (* bench results *)
   [ { Output.name = "Misc"; metrics = [ "Size of _boot/dune.exe", size, "Bytes" ] } ]
   @ display_clean_and_zero_with_sandboxing clean zero
+  @ instruction_results bench_results
 ;;
 
 let () =
@@ -239,6 +321,7 @@ let () =
     Scheduler.Run.go config
     @@ fun () ->
     let open Fiber.O in
+    let* () = check_perf () in
     (* Prepare the workspace *)
     let* () = prepare_workspace () in
     (* Build the clean and null builds *)
@@ -249,7 +332,12 @@ let () =
     format_results { size; clean; zero }
   in
   let version = 4 in
-  let output = { Output.config = []; version; results } in
+  let config =
+    match perf with
+    | None -> []
+    | Some perf -> [ "perf", Json.string (Path.to_string perf) ]
+  in
+  let output = { Output.config; version; results } in
   print_string (Json.to_string (Output.to_json output));
   flush stdout
 ;;

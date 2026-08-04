@@ -1,7 +1,14 @@
+(library
+ (name build_bench_perf)
+ (wrapped false)
+ (modules perf_counter)
+ (libraries stdune))
+
 (executable
  (name bench)
  (modules bench metrics)
  (libraries
+  build_bench_perf
   dune_trace
   dune_scheduler
   stdune
@@ -10,6 +17,11 @@
   dune_engine
   dune_util
   unix))
+
+(test
+ (name perf_counter_tests)
+ (modules perf_counter_tests)
+ (libraries build_bench_perf stdune))
 
 (rule
  (alias bench)

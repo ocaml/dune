@@ -95,3 +95,30 @@ let%expect_test "Proc.Resource_usage.get_self returns sane data" =
     values_do_not_go_backwards: true
   |}]
 ;;
+
+let%expect_test "Metrics.Build.action_duration selects CPU time" =
+  let equals duration expected =
+    Time.Span.compare duration (Time.Span.of_secs expected) = Eq
+  in
+  Metrics.Build.reset ();
+  Metrics.Build.add_process_times
+    ~elapsed_time:(Time.Span.of_secs 10.)
+    ~user_cpu_time:(Some (Time.Span.of_secs 2.))
+    ~system_cpu_time:(Some (Time.Span.of_secs 3.));
+  print_bool "uses_cpu_time" (equals (Metrics.Build.action_duration ()) 5.);
+  print_bool "retains_wall_clock" (equals (Metrics.Build.process_time ()) 10.);
+  Metrics.Build.reset ();
+  Metrics.Build.add_process_times
+    ~elapsed_time:(Time.Span.of_secs 10.)
+    ~user_cpu_time:None
+    ~system_cpu_time:None;
+  let action_duration = Metrics.Build.action_duration () in
+  print_bool "falls_back_to_wall_clock" (equals action_duration 10.);
+  Metrics.Build.reset ();
+  [%expect
+    {|
+    uses_cpu_time: true
+    retains_wall_clock: true
+    falls_back_to_wall_clock: true
+  |}]
+;;

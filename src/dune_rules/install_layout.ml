@@ -44,12 +44,22 @@ let dir ~context ~key =
   Path.Build.L.relative (Install.Context.dir ~context) [ ".packages"; key ]
 ;;
 
+let rocq_dir ~context ~key =
+  Path.Build.L.relative (Install.Context.dir ~context) [ ".packages-rocq"; key ]
+;;
+
 (* Resolve the package set's install entries against the layout root: filter
    out [Source_tree] entries, expand the rest, and key each entry by its
    materialised path under the layout. Collisions (two packages installing
    to the same destination, which can only happen in _root sections) are
    reported as user errors naming the conflicting packages and entry. *)
-let compute_entries context_name root packages =
+let hidden_from_rocq_plugin_layout (entry : Install.Entry.Unexpanded.t) =
+  let dst = Install.Entry.Dst.to_string entry.dst in
+  let components = String.split dst ~on:'/' in
+  Section.equal entry.section Lib_root || List.mem components "rocq.d" ~equal:String.equal
+;;
+
+let compute_entries ?(filter_entry = Fun.const true) context_name root packages =
   let open Memo.O in
   let get_entries = Fdecl.get entry_resolver_fdecl in
   Package.Name.Set.to_list packages
@@ -64,17 +74,20 @@ let compute_entries context_name root packages =
       match entry.kind with
       | Install.Entry.Unexpanded.Source_tree -> None
       | File | Directory ->
-        let relative =
-          Install.Entry.relative_installed_path entry ~paths:install_paths
-          |> Path.as_in_source_tree_exn
-        in
-        let dst = Path.Build.append_source root relative in
-        let expanded =
-          Install.Entry.Expanded.set_src
-            (Install.Entry.Unexpanded.expand entry)
-            (Path.build entry.src)
-        in
-        Some (dst, (pkg, expanded))))
+        if not (filter_entry entry)
+        then None
+        else (
+          let relative =
+            Install.Entry.relative_installed_path entry ~paths:install_paths
+            |> Path.as_in_source_tree_exn
+          in
+          let dst = Path.Build.append_source root relative in
+          let expanded =
+            Install.Entry.Expanded.set_src
+              (Install.Entry.Unexpanded.expand entry)
+              (Path.build entry.src)
+          in
+          Some (dst, (pkg, expanded)))))
   >>| List.concat
   >>| Path.Build.Map.of_list
   >>| function
@@ -122,6 +135,28 @@ let files context_name packages =
   Path.Build.Map.keys entries |> List.map ~f:Path.build
 ;;
 
+let rocq_entries =
+  let set_hash s = List.hash Package.Name.hash (Package.Name.Set.to_list s) in
+  let memo =
+    Memo.create
+      "install-layout-rocq-entries"
+      ~input:
+        (module struct
+          type t = Context_name.t * Package.Name.Set.t
+
+          let equal = Tuple.T2.equal Context_name.equal Package.Name.Set.equal
+          let hash = Tuple.T2.hash Context_name.hash set_hash
+          let to_dyn = Tuple.T2.to_dyn Context_name.to_dyn Package.Name.Set.to_dyn
+        end)
+      (fun (context, packages) ->
+         let key = Key.encode packages in
+         let root = rocq_dir ~context ~key in
+         let filter_entry entry = not (hidden_from_rocq_plugin_layout entry) in
+         compute_entries ~filter_entry context root packages)
+  in
+  fun context packages -> Memo.exec memo (context, packages)
+;;
+
 let deps context_name packages =
   let open Action_builder.O in
   let* files = Action_builder.of_memo (files context_name packages) in
@@ -147,7 +182,7 @@ let make_dispatch ~dir ~directory_targets subdirs f =
     rules
 ;;
 
-let gen_rules context_name ~dir rest =
+let gen_rules_for_entries context_name ~dir rest ~entries:entries_of =
   let open Memo.O in
   match rest with
   | [] ->
@@ -161,12 +196,14 @@ let gen_rules context_name ~dir rest =
     (match Key.decode key with
      | None -> Memo.return Build_config.Gen_rules.no_rules
      | Some packages ->
-       let+ entries = entries context_name packages in
+       let+ entries = entries_of context_name packages in
        let directory_targets =
-         Path.Build.Map.filter_map entries ~f:(fun entry ->
+         let f (entry : Path.t Install.Entry.Expanded.t) =
            match (entry.kind : Install.Entry.Expanded.kind) with
            | File -> None
-           | Directory -> Some Loc.none)
+           | Directory -> Some Loc.none
+         in
+         Path.Build.Map.filter_map entries ~f
        in
        make_dispatch ~dir ~directory_targets Subdir_set.empty (fun () ->
          Path.Build.Map.to_seq entries
@@ -182,29 +219,33 @@ let gen_rules context_name ~dir rest =
     @@ Build_config.Gen_rules.redirect_to_parent Build_config.Gen_rules.Rules.empty
 ;;
 
+let gen_rules context_name ~dir rest =
+  gen_rules_for_entries context_name ~dir rest ~entries
+;;
+
 module For_rocq_only = struct
-  (* Rocq puts the layout's [lib] dir on [OCAMLPATH], where findlib walks
-     eagerly. For a race-free, deterministic walk, every entry findlib could
-     see must be a declared dep. Bulk {!env} doesn't work: it also pulls in
-     {!Section.Lib_root} entries, which include Rocq theory [.vo] files under
-     [lib/coq/user-contrib/...]; in the same-package theory-plus-plugin case,
-     that creates a build cycle (the theory rule depending on its own output
-     via the layout symlink). Filtering to {!Section.Lib} excludes Lib_root
-     content (theory output) while keeping METAs, .cmxs, .cmi etc. — all
-     upstream of theory compilation. *)
+  (* Rocq puts this layout's [lib] dir on [OCAMLPATH], where findlib may walk
+     package directories eagerly. The normal package layout can also contain
+     Rocq theory outputs under [lib/<package>/rocq.d] or
+     [lib/coq/user-contrib/...]. If those theory outputs are visible while
+     compiling the same theory, rocqdep can report a dependency cycle through
+     the theory's own installed [.glob] symlink. Use a Rocq-specific filtered
+     layout: METAs and OCaml plugin files are visible, but [lib_root] entries
+     and [rocq.d] theory outputs are not. *)
   let lib_root context_name packages =
     let open Action_builder.O in
     let* lib_paths =
-      Action_builder.of_memo (entries context_name packages)
-      >>| Path.Build.Map.foldi
-            ~init:[]
-            ~f:(fun dst (entry : Path.t Install.Entry.Expanded.t) acc ->
-              match (entry.section : Section.t) with
-              | Lib -> Path.build dst :: acc
-              | _ -> acc)
+      Action_builder.of_memo (rocq_entries context_name packages)
+      >>| Path.Build.Map.keys
+      >>| List.map ~f:Path.build
     in
     let+ () = Action_builder.paths lib_paths in
-    let layout_root = root context_name packages in
+    let key = Key.encode packages in
+    let layout_root = rocq_dir ~context:context_name ~key in
     (Install.Roots.opam_from_prefix layout_root ~relative:Path.Build.relative).lib_root
+  ;;
+
+  let gen_rules context_name ~dir rest =
+    gen_rules_for_entries context_name ~dir rest ~entries:rocq_entries
   ;;
 end

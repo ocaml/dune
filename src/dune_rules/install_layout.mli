@@ -29,7 +29,16 @@ module For_rocq_only : sig
   (** DO NOT USE!!
 
       Returns the layout's [lib] root (suitable for prepending to
-      [OCAMLPATH]) and registers the action's dependency on every
-      {!Section.Lib} entry the layout produces for the set. *)
+      [OCAMLPATH]) and registers the action's dependency on every entry the
+      filtered layout produces for the set. The filtered layout exposes OCaml
+      plugin files and META files, but not [lib_root] entries or Rocq theory
+      outputs. *)
   val lib_root : Context_name.t -> Package.Name.Set.t -> Path.Build.t Action_builder.t
+
+  (** Engine dispatch for [_build/install/<context>/.packages-rocq/<rest>]. *)
+  val gen_rules
+    :  Context_name.t
+    -> dir:Path.Build.t
+    -> string list
+    -> Build_config.Gen_rules.result Memo.t
 end

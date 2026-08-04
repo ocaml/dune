@@ -798,6 +798,8 @@ let gen_rules ctx ~dir components =
       Bin_layout.gen_rules (Context_name.of_string ctx) ~dir rest |> Memo.return
     | ctx :: ".packages" :: rest ->
       Install_layout.gen_rules (Context_name.of_string ctx) ~dir rest
+    | ctx :: ".packages-rocq" :: rest ->
+      Install_layout.For_rocq_only.gen_rules (Context_name.of_string ctx) ~dir rest
     | ctx :: _ ->
       let ctx = Context_name.of_string ctx in
       with_context ctx ~f:(fun sctx ->

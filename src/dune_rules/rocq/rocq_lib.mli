@@ -49,14 +49,23 @@ module Legacy : sig
   val vo : t -> Path.t list
 end
 
+module Findlib : sig
+  type t
+
+  val corelib : t
+  val public_name : t -> Lib_name.t
+end
+
 type t =
   | Dune of Dune.t
   | Legacy of Legacy.t
+  | Package of Findlib.t
 
 val to_dyn : t -> Dyn.t
 val name : t -> Rocq_lib_name.t
 val obj_root : t -> Path.t
 val implicit : t -> bool
+val package_name : t -> Lib_name.t option
 
 (** Return the list of dependencies needed for compiling this library *)
 val theories_closure : t -> t list Resolve.t
@@ -86,7 +95,9 @@ module DB : sig
       libraries are installed, we would infer the right amount of information. *)
   val create_from_rocqpaths : Rocq_path.t list -> t
 
-  val find_many : t -> (Loc.t * Rocq_lib_name.t) list -> lib list Resolve.Memo.t
+  val find_many : t -> Rocq_stanza.Buildable.Theory_dep.t list -> lib list Resolve.Memo.t
   val resolve_boot : t -> (Loc.t * lib) option Resolve.Memo.t
   val resolve : t -> Loc.t * Rocq_lib_name.t -> lib Resolve.Memo.t
+  val resolve_package : t -> Loc.t * Lib_name.t -> lib Resolve.Memo.t
+  val resolve_dep : t -> Rocq_stanza.Buildable.Theory_dep.t -> lib Resolve.Memo.t
 end

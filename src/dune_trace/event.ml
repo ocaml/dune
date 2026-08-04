@@ -114,6 +114,12 @@ end
 
 type t = Event.t
 
+type alloc_config =
+  { sampling_rate : float
+  ; callstack_size : int
+  ; top_entry_count : int
+  }
+
 type alloc_source =
   { source : string
   ; estimated_words : int
@@ -399,8 +405,16 @@ let watch_build_finish
   Event.complete ~name:"build-finish" ~args ~start ~dur Build
 ;;
 
-let alloc_summary ~phase ~run_id ~minor ~major ~promoted =
+let alloc_summary ~phase ~run_id ~config ~minor ~major ~promoted =
   let now = Time.now () in
+  let encode_config { sampling_rate; callstack_size; top_entry_count } =
+    Arg.record
+      [ "sampling_rate", Arg.float sampling_rate
+      ; "callstack_size", Arg.int callstack_size
+      ; "top_entry_count", Arg.int top_entry_count
+      ]
+    |> Arg.list
+  in
   let source ({ source; estimated_words; samples } : alloc_source) =
     Arg.record
       [ "source", Arg.string source
@@ -433,6 +447,7 @@ let alloc_summary ~phase ~run_id ~minor ~major ~promoted =
           (match phase with
            | `Build -> "build"
            | `Exit -> "exit") )
+    ; "config", encode_config config
     ; "minor", heap minor
     ; "major", heap major
     ; "promoted", heap promoted

@@ -88,4 +88,5 @@
 (alias
  (name runtest-windows)
  (deps
-  (alias runtest-stdune_external_build_tests)))
+  (alias runtest-stdune_external_build_tests)
+  (alias spawn/runtest-stdune_spawn_tests)))

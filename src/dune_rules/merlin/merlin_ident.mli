@@ -4,6 +4,7 @@ open Import
     to a specific [library] or [executable] stanza. *)
 type t
 
+val equal : t -> t -> bool
 val for_lib : Lib_name.t -> t
 val for_exes : names:string Nonempty_list.t -> t
 val for_melange : target:string -> t

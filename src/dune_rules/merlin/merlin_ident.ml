@@ -5,6 +5,24 @@ type t =
   | Exes of string Nonempty_list.t
   | Melange_entries of string
 
+let equal left right =
+  match left, right with
+  | Lib left, Lib right -> Lib_name.equal left right
+  | Exes (left :: lefts), Exes (right :: rights) ->
+    let rec equal_names left right =
+      match left, right with
+      | [], [] -> true
+      | left :: lefts, right :: rights ->
+        String.equal left right && equal_names lefts rights
+      | [], _ :: _ | _ :: _, [] -> false
+    in
+    String.equal left right && equal_names lefts rights
+  | Melange_entries left, Melange_entries right -> String.equal left right
+  | Lib _, (Exes _ | Melange_entries _)
+  | Exes _, (Lib _ | Melange_entries _)
+  | Melange_entries _, (Lib _ | Exes _) -> false
+;;
+
 let for_lib l = Lib l
 let for_exes ~names = Exes names
 let for_melange ~target = Melange_entries target

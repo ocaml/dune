@@ -81,6 +81,12 @@ let set_build_duration_section t message =
   t.build_duration_section <- Some (Console.Status_line.add_section message)
 ;;
 
+let build_timing_status (run_id : Run_id.t) timing =
+  match run_id with
+  | Batch -> Pp.text timing
+  | Watch run -> Pp.textf "%s [%d]" timing run
+;;
+
 let build_finish t (build_result : Build_outcome.t) =
   let message =
     match build_result with
@@ -317,7 +323,8 @@ let run_current_build
   clear_status_overlay t;
   set_build_duration_section
     t
-    (Live (fun () -> Pp.text (Build_timing.format_now build_started_at)));
+    (Live
+       (fun () -> build_timing_status run_id (Build_timing.format_now build_started_at)));
   t.current_request <- Some request;
   let* outcome =
     Fiber.finalize
@@ -358,7 +365,8 @@ let run_current_build
    | `Done ->
      set_build_duration_section
        t
-       (Constant (Pp.text (Build_timing.format ~build_duration ~process_time))));
+       (Constant
+          (build_timing_status run_id (Build_timing.format ~build_duration ~process_time))));
   outcome, next, build_start_input_change_generation, build_start_wakeup_generation
 ;;
 

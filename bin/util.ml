@@ -61,6 +61,7 @@ let restore_cwd_and_execve (root : Workspace_root.t) prog args env =
 
 let setup () =
   let scheduler = Scheduler.t () in
+  let previous_status = ref None in
   Console.Status_line.set
     (Live
        (fun () ->
@@ -74,14 +75,26 @@ let setup () =
              ; number_of_rules_discovered = total
              ; number_of_rules_failed = failed
              } ->
-           Pp.verbatim
-             (sprintf
-                "Done: %u%% (%u/%u, %u left%s) (jobs: %u)"
-                (if total = 0 then 0 else done_ * 100 / total)
-                done_
-                total
-                (total - done_)
-                (if failed = 0 then "" else sprintf ", %u failed" failed)
-                (Scheduler.running_jobs_count scheduler))));
+           let running = Scheduler.running_jobs_count scheduler in
+           (match !previous_status with
+            | Some (done_0, total0, failed0, running0, status)
+              when done_ = done_0
+                   && total = total0
+                   && failed = failed0
+                   && running = running0 -> status
+            | None | Some _ ->
+              let status =
+                Pp.verbatim
+                  (sprintf
+                     "Done: %u%% (%u/%u, %u left%s) (jobs: %u)"
+                     (if total = 0 then 0 else done_ * 100 / total)
+                     done_
+                     total
+                     (total - done_)
+                     (if failed = 0 then "" else sprintf ", %u failed" failed)
+                     running)
+              in
+              previous_status := Some (done_, total, failed, running, status);
+              status)));
   Dune_rules.Main.get ()
 ;;

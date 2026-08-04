@@ -17,6 +17,7 @@ The alloc sampler is only enabled when the alloc trace category is requested:
   $ dune trace cat | jq -s '
   >   [ .[]
   >   | select(.cat == "alloc")
+  >   | [ .args.minor, .args.major, .args.promoted ] as $heaps
   >   | { name
   >     , phase: .args.phase
   >     , has_run_id: (.args.run_id != null)
@@ -27,20 +28,27 @@ The alloc sampler is only enabled when the alloc trace category is requested:
   >         , promoted: (.args.promoted | keys)
   >         }
   >     , entries_have_sources_and_traces:
-  >         ((.args.minor.top | length) <= 2
-  >          and (.args.major.top | length) <= 2
-  >          and (.args.promoted.top | length) <= 2
-  >          and all((.args.minor.top + .args.major.top + .args.promoted.top)[]?;
-  >           ((keys | sort) == ["estimated_words", "samples", "source", "trace"]
-  >            and (.source | type == "string")
-  >            and (.trace | type == "array")
-  >            and (.trace | length <= 3)
-  >            and all(.trace[]; type == "string")))
-  >          and all((.args.minor.by_source
-  >                   + .args.major.by_source
-  >                   + .args.promoted.by_source)[]?;
-  >            ((keys | sort) == ["estimated_words", "samples", "source"]
-  >             and (.source | type == "string"))))
+  >         all($heaps[];
+  >           (.top | length) <= 2
+  >           and all(.top[]?;
+  >             ((keys | sort) == ["estimated_words", "samples", "source", "trace"]
+  >              and (.source | type == "string")
+  >              and (.trace | type == "array")
+  >              and (.trace | length <= 3)
+  >              and all(.trace[]; type == "string")))
+  >           and all(.by_source[]?;
+  >             ((keys | sort) == ["estimated_words", "samples", "source"]
+  >              and (.source | type == "string"))))
+  >     , frame_entries_have_sources_and_locations:
+  >         all($heaps[];
+  >           (.by_site | type) == "array"
+  >           and (.by_frame | type) == "array"
+  >           and (.by_site | length) <= 2
+  >           and (.by_frame | length) <= 2
+  >           and all((.by_site + .by_frame)[]?;
+  >             ((keys | sort) == ["estimated_words", "frame", "samples", "source"]
+  >              and (.source | type == "string")
+  >              and (.frame | type == "string"))))
   >     }
   >   ]'
   [
@@ -55,25 +63,32 @@ The alloc sampler is only enabled when the alloc trace category is requested:
       },
       "heaps": {
         "minor": [
+          "by_frame",
+          "by_site",
           "by_source",
           "top",
           "total_samples",
           "total_words"
         ],
         "major": [
+          "by_frame",
+          "by_site",
           "by_source",
           "top",
           "total_samples",
           "total_words"
         ],
         "promoted": [
+          "by_frame",
+          "by_site",
           "by_source",
           "top",
           "total_samples",
           "total_words"
         ]
       },
-      "entries_have_sources_and_traces": true
+      "entries_have_sources_and_traces": true,
+      "frame_entries_have_sources_and_locations": true
     },
     {
       "name": "summary",
@@ -86,25 +101,32 @@ The alloc sampler is only enabled when the alloc trace category is requested:
       },
       "heaps": {
         "minor": [
+          "by_frame",
+          "by_site",
           "by_source",
           "top",
           "total_samples",
           "total_words"
         ],
         "major": [
+          "by_frame",
+          "by_site",
           "by_source",
           "top",
           "total_samples",
           "total_words"
         ],
         "promoted": [
+          "by_frame",
+          "by_site",
           "by_source",
           "top",
           "total_samples",
           "total_words"
         ]
       },
-      "entries_have_sources_and_traces": true
+      "entries_have_sources_and_traces": true,
+      "frame_entries_have_sources_and_locations": true
     }
   ]
 

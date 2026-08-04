@@ -26,9 +26,16 @@ of profiler settings:
      dune build
 
 ``rate`` is the number of samples per allocated word, ``stack`` is the maximum
-recorded call-stack depth, and ``top`` is the number of exact call stacks kept
-in each summary. Their defaults are ``0.0001``, ``10``, and ``10``. This
+recorded call-stack depth, and ``top`` is the maximum number of entries kept in
+each ranking. Their defaults are ``0.0001``, ``10``, and ``10``. This
 configuration is experimental and may change without notice.
+
+Each sampled heap is ranked by exact call stack, immediate allocation site, and
+inclusive stack frame. The allocation-site view combines allocations at the
+same source location that have different callers. The inclusive-frame view
+identifies subsystems responsible for allocations below them in the call
+stack. Summing the samples in a truncated exact-stack or allocation-site
+ranking and dividing by ``total_samples`` gives its displayed coverage.
 
 Viewing Timeline Traces
 -----------------------

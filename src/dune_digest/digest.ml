@@ -132,6 +132,19 @@ let feed_bytes_raw hasher bytes ~len =
   Blake3_mini.feed_string hasher (Bytes.unsafe_to_string bytes) ~pos:0 ~len
 ;;
 
+let set_int_bytes scratch i =
+  let word_bytes = Sys.word_size / 8 in
+  for byte = 0 to word_bytes - 2 do
+    Bytes.set scratch byte (Char.chr ((i lsr (8 * byte)) land 0xff))
+  done;
+  let top_byte = word_bytes - 1 in
+  let top = (i lsr (8 * top_byte)) lor if i < 0 then 0x80 else 0 in
+  Bytes.set scratch top_byte (Char.chr top);
+  for byte = word_bytes to 7 do
+    Bytes.set scratch byte (if i < 0 then '\255' else '\000')
+  done
+;;
+
 let feed_int64 hasher scratch i =
   for byte = 0 to 7 do
     let shift = 8 * byte in
@@ -146,7 +159,10 @@ let feed_bool hasher scratch b =
   feed_bytes_raw hasher scratch ~len:1
 ;;
 
-let feed_int hasher scratch i = feed_int64 hasher scratch (Int64.of_int i)
+let feed_int hasher scratch i =
+  set_int_bytes scratch i;
+  feed_bytes_raw hasher scratch ~len:8
+;;
 
 let feed_string hasher scratch s =
   feed_int hasher scratch (String.length s);
@@ -313,15 +329,6 @@ module Manual = struct
     Blake3_mini.feed_string ~pos:0 ~len:(String.length s) (Lazy.force Hasher.singleton) s
   ;;
 
-  let feed_int64 i =
-    for byte = 0 to 7 do
-      let shift = 8 * byte in
-      let value = Int64.(to_int (logand (shift_right_logical i shift) 0xffL)) in
-      Bytes.set scratch byte (Char.chr value)
-    done;
-    feed_string_raw (Bytes.unsafe_to_string scratch)
-  ;;
-
   let bool () b =
     Bytes.set scratch 0 (if b then '\001' else '\000');
     Blake3_mini.feed_string
@@ -331,7 +338,10 @@ module Manual = struct
       (Bytes.unsafe_to_string scratch)
   ;;
 
-  let int () i = feed_int64 (Int64.of_int i)
+  let int () i =
+    set_int_bytes scratch i;
+    feed_string_raw (Bytes.unsafe_to_string scratch)
+  ;;
 
   let string () s =
     int () (String.length s);

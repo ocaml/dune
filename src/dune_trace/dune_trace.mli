@@ -137,12 +137,24 @@ module Event : sig
   val watch_build_start : run_id:int -> restart:bool -> start:Time.t -> t
   val watch_build_restart : run_id:int -> reasons:string list -> at:Time.t -> t
 
+  type memo_metrics =
+    { restore_nodes : int
+    ; restore_edges : int
+    ; restore_blocked : int
+    ; compute_nodes : int
+    ; compute_edges : int
+    ; compute_blocked : int
+    ; cycle_detection_nodes : int
+    ; cycle_detection_edges : int
+    }
+
   val watch_build_finish
     :  run_id:int
     -> outcome:[ `Success | `Failure ]
     -> start:Time.t
     -> stop:Time.t
     -> restart_duration:Time.Span.t option
+    -> memo:memo_metrics
     -> t
 
   val init : version:string option -> t

@@ -480,7 +480,7 @@ let rpc_poll_iter t ~action_runner ~sticky_goal ~sticky_built_at =
         let run_id = next_watch_run_id t in
         let () =
           match t.pending_reset with
-          | None -> Memo.Metrics.reset ()
+          | None -> ()
           | Some invalidation ->
             t.pending_reset <- None;
             if not (Memo.Invalidation.is_empty invalidation)

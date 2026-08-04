@@ -264,6 +264,10 @@ def buildEvents:
     then .args.process_times |= keys
     else .
     end
+  | if .args.memo? != null
+    then .args.memo |= with_entries(.value |= keys)
+    else .
+    end
   | if .args.rusage? != null
     then .args.rusage |= keys
     else .

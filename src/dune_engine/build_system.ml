@@ -1126,6 +1126,7 @@ let run_with_error_collection ?restart_started_at ~build_started_at ~build colle
         ~run_id:(Run_id.to_int run_id)
         ~restart:(Option.is_some restart_started_at)
         ~start:build_started_at);
+    Memo.Metrics.reset ();
     Dune_trace.reset_alloc_profile ();
     (* CR-someday amokhov: Currently we invalidate cached timestamps on every
        incremental rebuild. This conservative approach helps us to work around
@@ -1179,6 +1180,17 @@ let run_with_error_collection ?restart_started_at ~build_started_at ~build colle
              Option.map restart_started_at ~f:(fun restart_started_at ->
                Time.diff stop restart_started_at)
            in
+           let memo : Dune_trace.Event.memo_metrics =
+             { Dune_trace.Event.restore_nodes = Counter.read Memo.Metrics.Restore.nodes
+             ; restore_edges = Counter.read Memo.Metrics.Restore.edges
+             ; restore_blocked = Counter.read Memo.Metrics.Restore.blocked
+             ; compute_nodes = Counter.read Memo.Metrics.Compute.nodes
+             ; compute_edges = Counter.read Memo.Metrics.Compute.edges
+             ; compute_blocked = Counter.read Memo.Metrics.Compute.blocked
+             ; cycle_detection_nodes = Counter.read Memo.Metrics.Cycle_detection.nodes
+             ; cycle_detection_edges = Counter.read Memo.Metrics.Cycle_detection.edges
+             }
+           in
            Dune_trace.Event.watch_build_finish
              ~run_id:(Run_id.to_int run_id)
              ~outcome:
@@ -1187,7 +1199,8 @@ let run_with_error_collection ?restart_started_at ~build_started_at ~build colle
                 | Error `Already_reported -> `Failure)
              ~start:build_started_at
              ~stop
-             ~restart_duration);
+             ~restart_duration
+             ~memo);
          Dune_trace.capture_alloc_profile (`Build (Run_id.to_int run_id))
          |> Option.iter ~f:Dune_trace.always_emit;
          outcome)

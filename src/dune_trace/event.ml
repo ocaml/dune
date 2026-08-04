@@ -315,6 +315,12 @@ let watch_build_restart ~run_id ~reasons ~at =
   Event.instant ~name:"build-restart" ~args at Build
 ;;
 
+type build_rules =
+  { discovered : int
+  ; validated : int
+  ; failed : int
+  }
+
 type memo_metrics =
   { restore_nodes : int
   ; restore_edges : int
@@ -332,6 +338,7 @@ let watch_build_finish
       ~start
       ~stop
       ~restart_duration
+      ~rules:{ discovered; validated; failed }
       ~memo:
         { restore_nodes
         ; restore_edges
@@ -355,7 +362,14 @@ let watch_build_finish
        | None -> []
        | Some restart_duration -> [ "restart_duration", Arg.span restart_duration ])
     @ make_process_times_args ()
-    @ [ ( "memo"
+    @ [ ( "rules"
+        , Arg.record
+            [ "discovered", Arg.int discovered
+            ; "validated", Arg.int validated
+            ; "failed", Arg.int failed
+            ]
+          |> Arg.list )
+      ; ( "memo"
         , Arg.record
             [ ( "restore"
               , Arg.record

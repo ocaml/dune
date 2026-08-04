@@ -49,6 +49,11 @@ rusage snapshots on build trace events.
         "system_cpu_time",
         "user_cpu_time"
       ],
+      "rules": [
+        "discovered",
+        "failed",
+        "validated"
+      ],
       "memo": {
         "restore": [
           "blocked",
@@ -127,6 +132,11 @@ active build is interrupted.
         "system_cpu_time",
         "user_cpu_time"
       ],
+      "rules": [
+        "discovered",
+        "failed",
+        "validated"
+      ],
       "memo": {
         "restore": [
           "blocked",
@@ -185,6 +195,11 @@ active build is interrupted.
         "elapsed_time",
         "system_cpu_time",
         "user_cpu_time"
+      ],
+      "rules": [
+        "discovered",
+        "failed",
+        "validated"
       ],
       "memo": {
         "restore": [

@@ -137,6 +137,12 @@ module Event : sig
   val watch_build_start : run_id:int -> restart:bool -> start:Time.t -> t
   val watch_build_restart : run_id:int -> reasons:string list -> at:Time.t -> t
 
+  type build_rules =
+    { discovered : int
+    ; validated : int
+    ; failed : int
+    }
+
   type memo_metrics =
     { restore_nodes : int
     ; restore_edges : int
@@ -154,6 +160,7 @@ module Event : sig
     -> start:Time.t
     -> stop:Time.t
     -> restart_duration:Time.Span.t option
+    -> rules:build_rules
     -> memo:memo_metrics
     -> t
 

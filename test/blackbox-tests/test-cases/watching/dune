@@ -19,7 +19,7 @@
  (applies_to path-pwd))
 
 (cram
- (applies_to rpc-bind-failure)
+ (applies_to rpc-bind-failure rpc-connect-after-server-killed)
  (enabled_if
   (<> %{ocaml-config:system} win)))
 

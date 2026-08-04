@@ -37,11 +37,16 @@ let get (type a) (t : t) key : a =
 ;;
 
 let set (type a) (t : t) (key : a Key.t) (x : a) : t =
-  let copy =
-    if key < Array.length t then Array.copy t else Array.init (key + 1) (fun i -> get t i)
-  in
-  copy.(key) <- Obj.repr x;
-  copy
+  if Obj.repr (get t key) == Obj.repr x
+  then t
+  else (
+    let copy =
+      if key < Array.length t
+      then Array.copy t
+      else Array.init (key + 1) (fun i -> get t i)
+    in
+    copy.(key) <- Obj.repr x;
+    copy)
 ;;
 
 let update (type a) (t : t) (key : a Key.t) ~(f : a -> a) : t =

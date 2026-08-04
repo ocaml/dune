@@ -53,17 +53,26 @@ let readdir_with_kind_if_available_win32 : Unix.dir_handle -> Readdir_result.t =
   | entry -> Entry (entry, File_kind.Option.UNKNOWN)
 ;;
 
-let readdir_with_kind_if_available : Unix.dir_handle -> Readdir_result.t =
-  Counter.incr Metrics.Directory_read.count;
+let readdir_with_kind_if_available =
   if Stdlib.Sys.win32
   then readdir_with_kind_if_available_win32
   else readdir_with_kind_if_available_unix
 ;;
 
 let read_directory_with_kinds_exn dir_path =
-  let dir = Unix.opendir dir_path in
+  let start = Counter.Timer.start () in
+  Counter.incr Metrics.Directory_read.count;
+  let dir =
+    match Unix.opendir dir_path with
+    | dir -> dir
+    | exception exn ->
+      Counter.Timer.stop Metrics.Directory_read.time start;
+      raise exn
+  in
   Fun.protect
-    ~finally:(fun () -> Unix.closedir dir)
+    ~finally:(fun () ->
+      Unix.closedir dir;
+      Counter.Timer.stop Metrics.Directory_read.time start)
     (fun () ->
        let rec loop acc =
          match readdir_with_kind_if_available dir with
@@ -91,9 +100,19 @@ let read_directory_with_kinds dir_path =
 ;;
 
 let read_directory_exn dir_path =
-  let dir = Unix.opendir dir_path in
+  let start = Counter.Timer.start () in
+  Counter.incr Metrics.Directory_read.count;
+  let dir =
+    match Unix.opendir dir_path with
+    | dir -> dir
+    | exception exn ->
+      Counter.Timer.stop Metrics.Directory_read.time start;
+      raise exn
+  in
   Fun.protect
-    ~finally:(fun () -> Unix.closedir dir)
+    ~finally:(fun () ->
+      Unix.closedir dir;
+      Counter.Timer.stop Metrics.Directory_read.time start)
     (fun () ->
        let rec loop acc =
          match readdir_with_kind_if_available dir with

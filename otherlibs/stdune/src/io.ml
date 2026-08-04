@@ -326,7 +326,7 @@ struct
         |> Result.ok_exn
       else with_file_out ~binary ?perm fn ~f:(fun oc -> output_string oc data)
     in
-    Counter.Timer.stop Metrics.File_read.time start;
+    Counter.Timer.stop Metrics.File_write.time start;
     res
   ;;
 
@@ -342,7 +342,7 @@ struct
             output_string oc "\n")
           lines)
     in
-    Counter.Timer.stop Metrics.Directory_read.time start;
+    Counter.Timer.stop Metrics.File_write.time start;
     res
   ;;
 

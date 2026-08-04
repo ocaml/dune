@@ -62,7 +62,7 @@ nix shell --impure --expr 'let pkgs = import (builtins.getFlake "github:NixOS/ni
           - [4.2.1. Usable as tools](#421-usable-as-tools)
           - [4.2.2. Installable via qualification](#422-installable-via-qualification)
           - [4.2.3. Builtin D2 tools](#423-builtin-d2-tools)
-        - [4.3. Unqualified dependency tools (D3) TODO](#43-unqualified-dependency-tools-d3-todo)
+        - [4.3. Unqualified dependency tools (D3)](#43-unqualified-dependency-tools-d3)
           - [4.3.1. Usable as tools](#431-usable-as-tools)
           - [4.2.1. Installed on build](#421-installed-on-build)
       - [5. UI](#5-ui)
@@ -158,10 +158,6 @@ See [Directory structure](./implementation.md#directory-structure) for storage l
 
 It must be possible to install the versions of a tool per-dune context within a
 workspace, such that different contexts can use different versions of tools.
-
-TODO: tools as lock dirs to impl doc. In particular, specifying multiple tools
-in field in one stanza, to avoid lots of duplication, but mapping this to
-separate lock dirs.
 
 <details>
 <summary>
@@ -710,12 +706,14 @@ used. These should be treated as if they have qualified dependencies built in,
 with further constraint or specification of how to install them available as a
 user override on top of the default configuration.
 
-##### 4.3. Unqualified dependency tools (D3) TODO
+##### 4.3. Unqualified dependency tools (D3)
 
 ###### 4.3.1. Usable as tools
 
 As with 4.2.1, unqualified project dependency tools must be usable in exactly
 the same ways as D1 and D2 tools.
+
+(Not currently satisfied by the current implementation of package managemet.)
 
 ###### 4.2.1. Installed on build
 
@@ -735,16 +733,10 @@ Users must be able to manage tools using CLI commands:
 - Remove tools
 - Discover paths to tool executables
 
-TODO: we may want a req. that `dune clean` does not wipe out tools
-
-CLI-added tools persist until `dune clean` or `dune tools remove`, but are not
-reproducible across clean builds. See [Batch
-operations](./implementation.md#batch-operations) for batch commands.
-
 ##### 5.1.1. Managing multiple tools
 
-It must be possible to change (e.g., update, install, or remove) the
-installation of a set of configured tools by issuing a single command.
+It must be possible to change (e.g., update, install, or remove) the a set of
+configured tools by issuing a single command.
 
 <details>
 <summary>

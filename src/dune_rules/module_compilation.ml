@@ -542,6 +542,7 @@ let ocamlc_i ~deps cctx (m : Module.t) ~output =
               ~sandbox
               ~forbid_action_runner:true
               [ Command.Args.dyn ocaml_flags
+              ; Hidden_deps (Dep.Set.of_files [ ocaml.lib_config.stdlib_dir ])
               ; A "-I"
               ; Path (Path.build (Obj_dir.byte_dir obj_dir))
               ; Command.Args.as_any

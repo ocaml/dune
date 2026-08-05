@@ -44,7 +44,7 @@ let relative x y =
          let len = String.length x in
          if len > 0 && is_dir_sep x.[len - 1] then String.take x (len - 1) else x
        in
-       String.concat ~sep:"/" [ x; y ])
+       append_with_slash x y)
 ;;
 
 let relative_fname t fn = relative t (Filename.to_string fn)

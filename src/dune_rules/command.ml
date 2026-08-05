@@ -102,11 +102,10 @@ and expand_list
   fun ~dir ts ->
   match ts with
   | [] -> Appendable_list.empty |> Action_builder.With_targets.return
-  | t :: ts ->
-    let open Action_builder.With_targets.O in
-    let+ t = expand ~dir t
-    and+ ts = expand_list ~dir ts in
-    Appendable_list.(t @ ts)
+  | ts ->
+    List.map ts ~f:(expand ~dir)
+    |> Action_builder.With_targets.all
+    |> Action_builder.With_targets.map ~f:Appendable_list.concat
 
 and expand_no_targets ~dir (t : without_targets t) =
   let { Action_builder.With_targets.build; targets } = expand ~dir t in

@@ -254,10 +254,11 @@ module Glob = struct
       | Glob g -> Glob.test (unproxy g) s
     ;;
 
-    let decode =
+    let decode_validated ~f =
       let open Dune_sexp.Decoder in
       let+ glob =
         Decoder.plain_string (fun ~loc x ->
+          f ~loc x;
           let proxy = Proxy.of_string x in
           let (_ : Glob.t) =
             try unproxy proxy with
@@ -269,6 +270,8 @@ module Glob = struct
       in
       Glob glob
     ;;
+
+    let decode = decode_validated ~f:(fun ~loc:_ _ -> ())
   end
 
   type nonrec t = Element.t t
@@ -294,6 +297,7 @@ module Glob = struct
   let compare x y = compare Element.compare x y
   let equal x y = Ordering.is_eq (compare x y)
   let hash t = Poly.hash t
+  let decode_validated ~f = decode (Element.decode_validated ~f)
   let decode = decode Element.decode
   let encode t = encode Element.encode t
   let digest t = Dune_digest.repr repr t

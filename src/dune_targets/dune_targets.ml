@@ -83,6 +83,8 @@ module Validated = struct
     ; dirs : Filename.Set.t
     }
 
+  let empty ~root = { root; files = Filename.Set.empty; dirs = Filename.Set.empty }
+
   let iter { root; files; dirs } ~file ~dir =
     Filename.Set.iter files ~f:(fun fn -> file (Path.Build.relative_fname root fn));
     Filename.Set.iter dirs ~f:(fun dn -> dir (Path.Build.relative_fname root dn))

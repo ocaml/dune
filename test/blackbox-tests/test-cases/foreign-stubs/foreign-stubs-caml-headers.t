@@ -24,12 +24,6 @@ We compile a first time...
   $ dune build _build/default/cstub.o
   $ dune trace cat | jq 'include "dune"; traceTargetFilesRedacted'
   [
-    "_build/.actions/default/<action>"
-  ]
-  [
-    "_build/.actions/default/<action>"
-  ]
-  [
     "_build/default/cstub.o"
   ]
   [

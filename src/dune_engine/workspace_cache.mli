@@ -14,6 +14,21 @@ module Dir_contents : sig
     }
 end
 
+module Anonymous : sig
+  module Entry : sig
+    type t =
+      { rule_digest : Digest.t
+      ; dynamic_deps_stages : (Dep.Set.t * Digest.t) list
+      }
+  end
+
+  val find_entry : Digest.t -> Entry.t option
+  val set_entry : Digest.t -> Entry.t -> unit
+  val has_result : Digest.t -> bool
+  val write : Digest.t -> string -> unit
+  val read : Digest.t -> string
+end
+
 module Fs_memo : sig
   module Stats : sig
     type t

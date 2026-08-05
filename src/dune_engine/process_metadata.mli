@@ -3,6 +3,7 @@ open Import
 type purpose =
   | Internal_job
   | Build_job of Targets.Validated.t option
+  | Anonymous_job of Context_name.t
 
 type t =
   { loc : Loc.t option

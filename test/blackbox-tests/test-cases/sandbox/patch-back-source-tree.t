@@ -301,11 +301,10 @@ inside the source tree:
   $ if test -w x; then echo writable; else echo non-writable; fi
   writable
 
-Reproduction case for copying the action stamp file
----------------------------------------------------
+Anonymous actions with patch-back sandboxing
+--------------------------------------------
 
-There used to be a bug causing the internal action stamp file to be
-produced in the sandbox and copied back:
+Anonymous actions must not add an internal cache target to the source tree:
 
   $ cat >dune<<EOF
   > (rule
@@ -318,15 +317,10 @@ produced in the sandbox and copied back:
   $ dune build @blah
   Hello, world!
 
-The stamp file is kept internal to the build directory: it must not be patched
-back into the source tree, so there is nothing to promote.
+There is nothing to promote, and the anonymous action has no target file.
 
   $ dune promotion list
-
-The stamp itself lives under the build directory, named after its digest:
-
-  $ ls _build/.actions/default/ | dune_cmd subst '[0-9a-f]{32}' 'REDACTED'
-  REDACTED
+  $ if [ -d _build/.actions ]; then find _build/.actions -type f; fi
 
 Patch-back sandboxing with directory targets
 --------------------------------------------

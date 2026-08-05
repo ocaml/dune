@@ -59,6 +59,7 @@ struct
   let rename a b = Rename (a, b)
   let remove_tree path = Remove_tree path
   let mkdir path = Mkdir path
+  let anonymous action digest ~capture_stdout = Anonymous (action, digest, capture_stdout)
 
   let diff
         ?(optional = false)
@@ -308,12 +309,18 @@ let digest =
     | System command ->
       int d 22;
       string d command
+    | Anonymous (t, digest, capture_stdout) ->
+      int d 23;
+      string d (Digest.to_string_raw digest);
+      bool d capture_stdout;
+      loop d t ~dir
   in
   fun d t -> loop d t ~dir:Path.root
 ;;
 
 let fold_one_step t ~init:acc ~f =
   match t with
+  | Anonymous (t, _, _)
   | Chdir (_, t)
   | Setenv (_, _, t)
   | Redirect_out (_, _, _, t)
@@ -360,6 +367,7 @@ let chdirs =
 let empty = Progn []
 
 let rec is_dynamic = function
+  | Anonymous (t, _, _)
   | Chdir (_, t)
   | Setenv (_, _, t)
   | Redirect_out (_, _, _, t)
@@ -384,6 +392,7 @@ let rec is_dynamic = function
 ;;
 
 let rec runs_process = function
+  | Anonymous (t, _, _)
   | Chdir (_, t)
   | Setenv (_, _, t)
   | Redirect_out (_, _, _, t)
@@ -435,7 +444,7 @@ type is_useful =
 let is_useful_to memoize =
   let rec loop t =
     match t with
-    | Chdir (_, t) -> loop t
+    | Anonymous (t, _, _) | Chdir (_, t) -> loop t
     | Setenv (_, _, t) -> loop t
     | Redirect_out (_, _, _, t) -> memoize || loop t
     | Redirect_in (_, _, t) -> loop t

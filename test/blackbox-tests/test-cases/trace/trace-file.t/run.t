@@ -40,9 +40,6 @@ This captures the commands that are being run:
     "prog": "ocamldep.opt",
     "dir": "_build/default",
     "exit": 0,
-    "target_files": [
-      "_build/.actions/default/$DIGEST"
-    ],
     "rusage": [
       "inblock",
       "majflt",

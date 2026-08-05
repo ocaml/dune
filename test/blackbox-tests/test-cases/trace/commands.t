@@ -31,7 +31,7 @@ Now test the basic trace commands output - it should show commands in shell form
 
 Verify the format is executable by checking it contains cd && pattern:
 
-  $ dune trace commands | grep "cd.*&&.*sh" | dune_cmd subst '[^ ]*/bin/' '' | head -1
+  $ dune trace commands | grep -E 'cd.*&& ([^ ]*/)?sh ' | dune_cmd subst '[^ ]*/bin/' '' | head -1
   (cd _build/default && sh -c "echo 'Hello World' > success.txt")
 
 Test with a failing command to verify stderr output:

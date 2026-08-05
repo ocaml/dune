@@ -35,3 +35,19 @@ module Workspace_local : sig
   val remove_target : Path.Build.t -> unit
   val remove_subtree : Path.Build.t -> unit
 end
+
+module Anonymous : sig
+  val lookup
+    :  always_rerun:bool
+    -> digest:Digest.t
+    -> rule_digest:Digest.t
+    -> env:Env.t
+    -> build_deps:(Dep.Set.t -> Dep.Facts.t Memo.t)
+    -> bool Fiber.t
+
+  val store
+    :  digest:Digest.t
+    -> rule_digest:Digest.t
+    -> dynamic_deps_stages:(Dep.Set.t * Digest.t) list
+    -> unit
+end

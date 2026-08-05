@@ -317,7 +317,7 @@ module Internal = struct
   type rule_kind =
     | Normal_rule
     | Anonymous_action of
-        { stamp_file : Path.Build.t
+        { digest : Digest.t
         ; capture_stdout : bool
         }
 
@@ -426,16 +426,12 @@ module Internal = struct
       let is_sandboxed = Sandbox.is_sandboxed sandbox in
       let action = if is_sandboxed then Action.sandbox action sandbox else action in
       let action =
-        (* We must add the creation of the stamp file after sandboxing it, as
-           otherwise the stamp file would end up inside the sandbox. This is
-           especially a problem for the [Patch_back_source_tree] sandboxing
-           mode. *)
+        (* The wrapper records the anonymous action's result in the workspace cache,
+           rather than producing a target in the sandbox. *)
         match rule_kind with
         | Normal_rule -> action
-        | Anonymous_action { stamp_file; capture_stdout; _ } ->
-          if capture_stdout
-          then Action.with_stdout_to stamp_file action
-          else Action.progn [ action; Action.write_file stamp_file "" ]
+        | Anonymous_action { digest; capture_stdout } ->
+          Action.anonymous action digest ~capture_stdout
       in
       let () =
         Action.chdirs action
@@ -448,6 +444,11 @@ module Internal = struct
         | Some context -> context.build_dir
       in
       let root = Path.build (Sandbox.map_path sandbox root) in
+      let exec_targets =
+        match rule_kind with
+        | Normal_rule -> Some targets
+        | Anonymous_action _ -> None
+      in
       let action_trace = Action_trace.create rule_digest in
       with_locks locks ~f:(fun () ->
         let* action_exec_result =
@@ -456,7 +457,7 @@ module Internal = struct
             { Action_exec.root
             ; context (* can be derived from the root *)
             ; env
-            ; targets = Some targets
+            ; targets = exec_targets
             ; rule_loc = loc
             ; execution_parameters
             ; action
@@ -468,17 +469,9 @@ module Internal = struct
         let* action_exec_result = Action_exec.Exec_result.ok_exn action_exec_result in
         let* () = Action_trace.collect action_trace in
         let+ () =
-          if not is_sandboxed
-          then Fiber.return ()
-          else (
-            (* The stamp file for anonymous actions is always created outside
-               the sandbox, so we can't move it. *)
-            let should_be_skipped =
-              match rule_kind with
-              | Normal_rule -> fun (_ : Path.Build.t) -> false
-              | Anonymous_action { stamp_file; _ } -> Path.Build.equal stamp_file
-            in
-            Sandbox.move_targets_to_build_dir sandbox ~should_be_skipped ~targets)
+          if is_sandboxed
+          then Sandbox.move_targets_to_build_dir sandbox ~targets
+          else Fiber.return ()
         in
         match Targets.Produced.of_validated targets with
         | Ok produced_targets -> { Exec_result.produced_targets; action_exec_result }
@@ -514,7 +507,6 @@ module Internal = struct
 
   and execute_rule_impl ~rule_kind rule =
     let { Rule.id = _; targets; mode; action; info } = rule in
-    let head_target = Targets.Validated.head targets in
     let* execution_parameters =
       match Dpath.Target_dir.of_target targets.root with
       | Regular (With_context (context, _)) | Anonymous_action (With_context (context, _))
@@ -582,115 +574,141 @@ module Internal = struct
       let rule_digest =
         compute_rule_digest rule ~facts ~action ~sandbox_mode ~execution_parameters
       in
-      let can_go_in_shared_cache =
-        action.can_go_in_shared_cache
-        && (not
-              (always_rerun
-               || is_action_dynamic
-               || Action.is_useful_to_memoize action.action = Clearly_not))
-        &&
-        match sandbox_mode with
-        | Some Patch_back_source_tree ->
-          (* Action in this mode cannot go in the shared cache *)
-          false
-        | _ -> true
-      in
-      let* (produced_targets : Digest.t Targets.Produced.t) =
-        (* Step I. Check if the workspace-local cache is up to date. *)
-        Rule_cache.Workspace_local.lookup
-          ~always_rerun
+      let execute_action ~loc =
+        execute_action_for_rule
+          ~rule_kind
           ~rule_digest
+          ~action
+          ~facts
+          ~loc
+          ~execution_parameters
+          ~sandbox_mode
           ~targets
-          ~env:action.env
-          ~build_deps
-        >>= function
-        | Some produced_targets -> Fiber.return produced_targets
-        | None ->
-          (* Step II. Remove stale targets both from the digest table and from
-             the build directory. *)
-          Rule_cache.Workspace_local.remove targets;
-          let () =
-            let remove_target_dir dir =
-              let () = Rule_cache.Workspace_local.remove_subtree dir in
-              Path.rm_rf (Path.build dir)
-            in
-            let remove_target_file path =
-              match Fpath.unlink (Path.Build.to_string path) with
-              | Success -> ()
-              | Does_not_exist -> ()
-              | Is_a_directory ->
-                (* If target changed from a directory to a file, delete
-                     in anyway. *)
-                remove_target_dir path
-              | Error exn ->
-                Log.warn
-                  "Error while removing target"
-                  [ "path", Dyn.string (Path.Build.to_string path)
-                  ; "error", Dyn.string (Printexc.to_string exn)
-                  ]
-            in
-            Targets.Validated.iter targets ~file:remove_target_file ~dir:remove_target_dir
+      in
+      let dynamic_deps_stages (exec_result : Exec_result.t) =
+        List.map
+          exec_result.action_exec_result.dynamic_deps_stages
+          ~f:(fun (deps, fact_map) ->
+            ( deps
+            , let digest = Digest.Manual.create () in
+              Dep.Facts.digest fact_map digest ~env:action.env;
+              Digest.Manual.get digest ))
+      in
+      let empty_targets () : Digest.t Targets.Produced.t =
+        Targets.Produced.of_files targets.root Path.Local.Map.empty
+      in
+      let* produced_targets =
+        match rule_kind with
+        | Anonymous_action { digest; capture_stdout = _ } ->
+          let* hit =
+            Rule_cache.Anonymous.lookup
+              ~always_rerun
+              ~digest
+              ~rule_digest
+              ~env:action.env
+              ~build_deps
           in
-          let* produced_targets, dynamic_deps_stages =
-            (* Step III. Try to restore artifacts from the shared cache. *)
-            Dune_cache.Shared.lookup ~can_go_in_shared_cache ~rule_digest ~targets
-            >>= function
-            | Some produced_targets ->
-              (* Rules with dynamic deps can't be stored to the shared cache
-                 (see the [is_action_dynamic] check above), so we know this is
-                 not a dynamic action, so returning an empty list is correct.
-                 The lack of information to fill in [dynamic_deps_stages] here
-                 is precisely the reason why we don't store dynamic actions in
-                 the shared cache. *)
-              let dynamic_deps_stages = [] in
-              Fiber.return (produced_targets, dynamic_deps_stages)
-            | None ->
-              (* Step IV. Execute the build action. *)
-              let loc = Rule.loc rule in
-              let* exec_result =
-                execute_action_for_rule
-                  ~rule_kind
-                  ~rule_digest
-                  ~action
-                  ~facts
-                  ~loc
-                  ~execution_parameters
-                  ~sandbox_mode
-                  ~targets
-              in
-              (* Step V. Examine produced targets and store them to the shared
-                 cache if needed. *)
-              let* produced_targets =
-                Dune_cache.Shared.examine_targets_and_store
-                  ~can_go_in_shared_cache
-                  ~loc
-                  ~rule_digest
-                  ~should_remove_write_permissions_on_generated_files:
-                    (Execution_parameters
-                     .should_remove_write_permissions_on_generated_files
-                       execution_parameters)
-                  ~produced_targets:exec_result.produced_targets
-              in
-              let dynamic_deps_stages =
-                List.map
-                  exec_result.action_exec_result.dynamic_deps_stages
-                  ~f:(fun (deps, fact_map) ->
-                    ( deps
-                    , let d = Digest.Manual.create () in
-                      Dep.Facts.digest fact_map d ~env:action.env;
-                      Digest.Manual.get d ))
-              in
-              Fiber.return (produced_targets, dynamic_deps_stages)
+          if hit
+          then Fiber.return (empty_targets ())
+          else (
+            let loc = Rule.loc rule in
+            let* exec_result = execute_action ~loc in
+            let dynamic_deps_stages = dynamic_deps_stages exec_result in
+            Rule_cache.Anonymous.store ~digest ~rule_digest ~dynamic_deps_stages;
+            Fiber.return (empty_targets ()))
+        | Normal_rule ->
+          let head_target = Targets.Validated.head targets in
+          let can_go_in_shared_cache =
+            action.can_go_in_shared_cache
+            && (not
+                  (always_rerun
+                   || is_action_dynamic
+                   || Action.is_useful_to_memoize action.action = Clearly_not))
+            &&
+            match sandbox_mode with
+            | Some Patch_back_source_tree ->
+              (* Action in this mode cannot go in the shared cache *)
+              false
+            | _ -> true
           in
-          (* We do not include target names into [targets_digest] because they
-             are already included into the rule digest. *)
-          Rule_cache.Workspace_local.store
-            ~targets:produced_targets
-            ~head_target
+          (* Step I. Check if the workspace-local cache is up to date. *)
+          Rule_cache.Workspace_local.lookup
+            ~always_rerun
             ~rule_digest
-            ~dynamic_deps_stages
-            ~targets_digest:(Targets.Produced.digest produced_targets);
-          Fiber.return produced_targets
+            ~targets
+            ~env:action.env
+            ~build_deps
+          >>= (function
+           | Some produced_targets -> Fiber.return produced_targets
+           | None ->
+             (* Step II. Remove stale targets both from the digest table and from
+                the build directory. *)
+             Rule_cache.Workspace_local.remove targets;
+             let () =
+               let remove_target_dir dir =
+                 let () = Rule_cache.Workspace_local.remove_subtree dir in
+                 Path.rm_rf (Path.build dir)
+               in
+               let remove_target_file path =
+                 match Fpath.unlink (Path.Build.to_string path) with
+                 | Success -> ()
+                 | Does_not_exist -> ()
+                 | Is_a_directory ->
+                   (* If target changed from a directory to a file, delete
+                        in anyway. *)
+                   remove_target_dir path
+                 | Error exn ->
+                   Log.warn
+                     "Error while removing target"
+                     [ "path", Dyn.string (Path.Build.to_string path)
+                     ; "error", Dyn.string (Printexc.to_string exn)
+                     ]
+               in
+               Targets.Validated.iter
+                 targets
+                 ~file:remove_target_file
+                 ~dir:remove_target_dir
+             in
+             let* produced_targets, dynamic_deps_stages =
+               (* Step III. Try to restore artifacts from the shared cache. *)
+               Dune_cache.Shared.lookup ~can_go_in_shared_cache ~rule_digest ~targets
+               >>= function
+               | Some produced_targets ->
+                 (* Rules with dynamic deps can't be stored to the shared cache
+                    (see the [is_action_dynamic] check above), so we know this is
+                    not a dynamic action, so returning an empty list is correct.
+                    The lack of information to fill in [dynamic_deps_stages] here
+                    is precisely the reason why we don't store dynamic actions in
+                    the shared cache. *)
+                 Fiber.return (produced_targets, [])
+               | None ->
+                 (* Step IV. Execute the build action. *)
+                 let loc = Rule.loc rule in
+                 let* exec_result = execute_action ~loc in
+                 (* Step V. Examine produced targets and store them to the shared
+                    cache if needed. *)
+                 let* produced_targets =
+                   Dune_cache.Shared.examine_targets_and_store
+                     ~can_go_in_shared_cache
+                     ~loc
+                     ~rule_digest
+                     ~should_remove_write_permissions_on_generated_files:
+                       (Execution_parameters
+                        .should_remove_write_permissions_on_generated_files
+                          execution_parameters)
+                     ~produced_targets:exec_result.produced_targets
+                 in
+                 Fiber.return (produced_targets, dynamic_deps_stages exec_result)
+             in
+             (* We do not include target names into [targets_digest] because they
+                are already included into the rule digest. *)
+             Rule_cache.Workspace_local.store
+               ~targets:produced_targets
+               ~head_target
+               ~rule_digest
+               ~dynamic_deps_stages
+               ~targets_digest:(Targets.Produced.digest produced_targets);
+             Fiber.return produced_targets)
       in
       let+ () =
         promote_targets
@@ -708,25 +726,16 @@ module Internal = struct
   and execute_action_generic_stage2_impl
         { Anonymous_action.action = { dir; loc; action }; deps; capture_stdout; digest }
     =
-    let target =
-      let dir =
-        Path.Build.append_local Dpath.Build.anonymous_actions_dir (Path.Build.local dir)
-      in
-      Path.Build.relative dir (Digest.to_string digest)
-    in
     let rule =
-      Rule.make
+      Rule.anonymous
         ~info:(if Loc.is_none loc then Internal else From_dune_file loc)
-        ~targets:(Targets.File.create target)
-        ~mode:Standard
+        ~dir
         (Action_builder.record action deps ~f:build_dep)
     in
     let+ { facts = _; targets = _ } =
-      execute_rule_impl
-        rule
-        ~rule_kind:(Anonymous_action { capture_stdout; stamp_file = target })
+      execute_rule_impl rule ~rule_kind:(Anonymous_action { capture_stdout; digest })
     in
-    if capture_stdout then Io.read_file (Path.build target) else ""
+    Workspace_cache.Anonymous.read digest
 
   and execute_action_generic
         ~observing_facts
@@ -735,19 +744,17 @@ module Internal = struct
     =
     (* We memoize the execution of anonymous actions, both via the persistent
        mechanism for not re-running build rules between invocations of [dune
-       build] and via [Memo]. The former is done by producing a normal build
-       rule on the fly for the anonymous action.
+       build] and via [Memo]. The former stores the action result directly in
+       the workspace cache.
 
        Memoizing such actions via [Memo] doesn't feel super useful given that we
        expect a given anonymous action to be executed only once in a given
-       build. And so persistent mechanism should be enough.
+       build. And so the persistent mechanism should be enough.
 
        However, if it does happen that two code paths try to execute the same
-       anonymous action, then we need to be sure it is not executed twice. This
-       is because the build rule we produce on the fly creates a file whose name
-       only depend on the action. If the two execution could run concurrently,
-       then they would both try to create the same file. So in this regard, we
-       use [Memo] mostly for synchronisation purposes. *)
+       anonymous action, then we need to be sure it is not executed twice and
+       that they share the same cache entry. In this regard, we use [Memo]
+       mostly for synchronisation purposes. *)
     (* Here we "forget" the facts about the world. We do that to make the input
        of the memoized function smaller. If we passed the whole [original_facts]
        as input, then we would end up memoizing one entry per set of facts. This
@@ -794,9 +801,9 @@ module Internal = struct
     (* It might seem superfluous to memoize the execution here, given that a
        given anonymous action will typically only appear once during a given
        build. However, it is possible that two code paths try to execute the
-       exact same anonymous action, and so would end up trying to create the
-       same file. Using [Memo.create] serves as a synchronisation point to share
-       the execution and avoid such a race condition. *)
+       exact same anonymous action. Using [Memo.create] serves as a
+       synchronisation point to share the execution and avoid such a race
+       condition. *)
     Memo.exec
       (Lazy.force execute_action_generic_stage2_memo)
       { Anonymous_action.action = act; deps; capture_stdout; digest }

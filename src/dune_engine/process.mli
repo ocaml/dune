@@ -58,6 +58,10 @@ module Io : sig
       [clone]. *)
   val file : Path.t -> ?perm:Permissions.Mode.t -> 'a mode -> 'a t
 
+  (** Capture output in memory. The reader must run concurrently with any writer to avoid
+      filling the underlying pipe. *)
+  val capture : unit -> output t * (unit -> string Fiber.t)
+
   (** Call this when you no longer need this redirection *)
   val release : 'a t -> unit
 

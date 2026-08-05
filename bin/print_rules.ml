@@ -47,6 +47,7 @@ let rec encode_action : Action.For_shell.t -> Dune_lang.t =
   let path = Encoder.string in
   let target = Encoder.string in
   function
+  | Anonymous _ -> Code_error.raise "cannot print an internal anonymous action" []
   | Run { prog; args; can_run_in_action_runner = _ } ->
     List (atom "run" :: program prog :: List.map (Appendable_list.to_list args) ~f:string)
   | With_accepted_exit_codes (pred, t) ->

@@ -75,6 +75,9 @@ val make
   -> Action.Full.t Action_builder.t
   -> t
 
+(** Construct a targetless rule for an anonymous action. *)
+val anonymous : ?info:Info.t -> dir:Path.Build.t -> Action.Full.t Action_builder.t -> t
+
 val set_action : t -> Action.Full.t Action_builder.t -> t
 val loc : t -> Loc.t
 

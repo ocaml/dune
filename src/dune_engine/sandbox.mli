@@ -30,12 +30,7 @@ val with_
   -> f:(t -> 'a Fiber.t)
   -> 'a Fiber.t
 
-(** Move all targets created by the action from the sandbox to the build
-    directory, skipping the files for which [should_be_skipped] returns [true].
+(** Move all targets created by the action from the sandbox to the build directory.
 
     Expands [targets] with the set of files discovered in directory targets. *)
-val move_targets_to_build_dir
-  :  t
-  -> should_be_skipped:(Path.Build.t -> bool)
-  -> targets:Targets.Validated.t
-  -> unit Fiber.t
+val move_targets_to_build_dir : t -> targets:Targets.Validated.t -> unit Fiber.t

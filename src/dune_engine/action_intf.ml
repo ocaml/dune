@@ -62,6 +62,7 @@ module type Ast = sig
     | Mkdir of target
     | Pipe of Outputs.t * t list
     | Diff of (path, target) Diff.t
+    | Anonymous of t * Digest.t * bool
     | Extension of ext
 end
 
@@ -94,6 +95,7 @@ module type Helpers = sig
   val rename : target -> target -> t
   val remove_tree : target -> t
   val mkdir : target -> t
+  val anonymous : t -> Digest.t -> capture_stdout:bool -> t
 
   val diff
     :  ?optional:bool

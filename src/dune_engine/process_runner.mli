@@ -11,6 +11,7 @@ module Output : sig
   type t =
     | Null
     | Terminal
+    | Capture
     | File of
         { path : Path.t
         ; perm : Permissions.Mode.t
@@ -45,6 +46,8 @@ type response =
   ; process_info : Proc.Process_info.t
   ; termination_reason : Scheduler.termination_reason
   ; times : Proc.Times.t
+  ; stdout : string option
+  ; stderr : string option
   ; trace_args : (string * Sexp.t) list
     (** Extra fields to append to the parent-owned process trace events. *)
   }

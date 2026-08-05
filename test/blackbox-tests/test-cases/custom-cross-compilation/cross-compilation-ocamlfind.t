@@ -67,9 +67,6 @@ Dune should be able to find it too
     "prog": "$TESTCASE_ROOT/notocamldep-foo",
     "dir": "_build/default.foo",
     "exit": 0,
-    "target_files": [
-      "_build/.actions/default.foo/$ACTION"
-    ],
     "rusage": [
       "inblock",
       "majflt",
@@ -82,6 +79,10 @@ Dune should be able to find it too
       "user_cpu_time"
     ]
   }
+
+The anonymous action has no target in the trace or on disk.
+
+  $ if [ -d app/_build/.actions ]; then find app/_build/.actions -type f; fi
 
 Library is built in the target context
 

@@ -37,13 +37,26 @@ let is_empty t = Map.is_empty t.vars
 let vars t = Var.Set.of_keys t.vars
 let get t k = Map.find t.vars k
 
+let binding var value =
+  let var_length = String.length var in
+  let value_length = String.length value in
+  let result = Bytes.create (var_length + 1 + value_length) in
+  Bytes.blit_string ~src:var ~src_pos:0 ~dst:result ~dst_pos:0 ~len:var_length;
+  Bytes.set result var_length '=';
+  Bytes.blit_string
+    ~src:value
+    ~src_pos:0
+    ~dst:result
+    ~dst_pos:(var_length + 1)
+    ~len:value_length;
+  Bytes.unsafe_to_string result
+;;
+
 let to_unix t =
   match t.unix with
   | Some v -> v
   | None ->
-    let res =
-      Map.foldi ~init:[] ~f:(fun k v acc -> Printf.sprintf "%s=%s" k v :: acc) t.vars
-    in
+    let res = Map.foldi ~init:[] ~f:(fun k v acc -> binding k v :: acc) t.vars in
     t.unix <- Some res;
     res
 ;;

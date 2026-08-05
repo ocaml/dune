@@ -511,7 +511,8 @@ end = struct
       ~human_readable_description:(fun (_, dir) ->
         Pp.textf
           "Computing directory contents of %s"
-          (Path.to_string_maybe_quoted (Path.build dir)))
+          (Path.to_string_maybe_quoted (Path.build dir))
+        |> Option.some)
   ;;
 
   let get sctx ~dir =

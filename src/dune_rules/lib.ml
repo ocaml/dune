@@ -1705,7 +1705,7 @@ end = struct
         ~input:(module Input)
         (instantiate_impl db)
         ~human_readable_description:(fun (name, info, _hidden) ->
-          Dep_path.Entry.Lib.pp { name; path = Lib_info.src_dir info })
+          Dep_path.Entry.Lib.pp { name; path = Lib_info.src_dir info } |> Option.some)
     in
     Staged.stage (fun name info ~hidden -> Memo.exec memo (name, info, hidden))
 

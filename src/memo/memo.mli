@@ -304,7 +304,7 @@ val create
   -> input:(module Input with type t = 'i)
   -> ?initial_store_size:int
   -> ?cutoff:('o -> 'o -> bool)
-  -> ?human_readable_description:('i -> User_message.Style.t Pp.t)
+  -> ?human_readable_description:('i -> User_message.Style.t Pp.t option)
   -> ?on_event:('i -> Event.t -> unit)
   -> ('i -> 'o t)
   -> ('i, 'o) Table.t
@@ -327,7 +327,7 @@ val create_with_store
   -> store:(module Store.S with type key = 'i)
   -> input:(module Store.Input with type t = 'i)
   -> ?cutoff:('o -> 'o -> bool)
-  -> ?human_readable_description:('i -> User_message.Style.t Pp.t)
+  -> ?human_readable_description:('i -> User_message.Style.t Pp.t option)
   -> ?on_event:('i -> Event.t -> unit)
   -> ('i -> 'o t)
   -> ('i, 'o) Table.t
@@ -350,7 +350,7 @@ val create_rec
   -> input:(module Input with type t = 'i)
   -> ?initial_store_size:int
   -> ?cutoff:('o -> 'o -> bool)
-  -> ?human_readable_description:('i -> User_message.Style.t Pp.t)
+  -> ?human_readable_description:('i -> User_message.Style.t Pp.t option)
   -> ?on_event:('i -> Event.t -> unit)
   -> (('i -> 'o t) -> 'i -> 'o t)
   -> ('i, 'o) Table.t

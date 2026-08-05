@@ -76,7 +76,7 @@ type ('i, 'o) t =
   ; input : (module Store_intf.Input with type t = 'i)
   ; node_kind : ('i, 'o) Node_kind.t
   ; f : 'i -> 'o Fiber.t
-  ; human_readable_description : ('i -> User_message.Style.t Pp.t) option
+  ; human_readable_description : ('i -> User_message.Style.t Pp.t option) option
   }
 
 let create ~name ~input ~human_readable_description ~cutoff ?(witness = false) ?on_event f

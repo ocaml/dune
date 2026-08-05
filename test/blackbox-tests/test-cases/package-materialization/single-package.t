@@ -42,6 +42,24 @@ install layout under _build/install/<context>/.packages/<digest>/.
 
   $ dune build out1 out2 out_rev out3
 
+Building the same target again pointlessly invalidates and rebuilds its
+.packages layout:
+
+  $ DUNE_TRACE=cache dune build out1
+  $ dune trace cat \
+  >   | jq_dune -s 'cacheMissesMatching("\\.packages/.*/dune-package")' \
+  >   | censor
+  {
+    "name": "workspace_local_miss",
+    "target": "_build/install/default/.packages/$DIGEST/lib/foo/dune-package",
+    "reason": "target missing from build dir"
+  }
+  {
+    "name": "miss",
+    "target": "_build/install/default/.packages/$DIGEST/lib/foo/dune-package",
+    "reason": "can't go in shared cache"
+  }
+
 Single package dep only includes that package:
 
   $ dune rules --format=json _build/default/out1 | jq_dune '.[] | ruleDepFilePaths' | censor | grep dune-package | sort

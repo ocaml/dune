@@ -22,4 +22,6 @@ directories that are a target of a rule.
   3 |  (target bar)
   4 |  (action (bash "ls -f %{deps} > %{target}")))
   Error: No rule found for foo
+  Hint: If this is a source file or directory, make sure it exists in the
+  source tree. If it is generated, add or fix the rule that produces foo.
   [1]

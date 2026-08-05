@@ -11,6 +11,18 @@ aspects to this:
 - a softer "decision" section that explains what should inform the decisions to
   take when there is a manual call to make.
 
+## Prerequisites
+
+- The latest [dune-release](https://github.com/tarides/dune-release) installed in your dev switch
+- A recent version of [github-cli](https://github.com/cli/cli) installed on your system
+
+## Prepare
+
+Open a [release tracking issue][release-issue] and work thru its checklist,
+including listing and updating known blockers that are preventing release
+
+[release-issue]: https://github.com/ocaml/dune/issues/new?template=release.md
+
 ## Major / Minor Releases (`x.y.0`)
 
 ```mermaid
@@ -39,56 +51,62 @@ stateDiagram-v2
     PostRelease --> [*]
 ```
 
-- Prepare:
-  - Open tracking issue with expected branching date
-  - List (and update) known blockers. These prevent releasing `x.y.0`
-  - Add "All x.y.z changelogs merged" as blocker
-  - Add "Mirage test" as blocker (manual workflow should be triggered on a
-    alpha release)
+### Pre-release phase
 
-- Alpha time:
-  - Branch setup:
-    - (for N=0) create `x.y` branch
-  - Prepare alpha release:
-    - cherry-pick extra commits from `main` (if any)
-    - prepare changelog (ensure version is `x.y.0~alphaN`)
-    - `make opam-release`
-    - mark opam-repo PR as draft
-  - Wait for `opam-repo-ci`
-  - Triage phase:
-    - consider new failures comparing from latest "known good" release
-    - ignore transient errors (disk full, switch disconnected, cancelled, etc)
-    - file issues about regressions, add them to known blockers
-    - compare the new CI revdeps errors with the errors from [previous releases](https://github.com/ocaml/dune/wiki/Reverse-dependencies-CI-logs).
-  - Release Go/No Go (go to Release, or need another alpha)
-  - Mark opam alpha PR as closed
+During the pre-release phase, we produce alpha releases, which we use to run the
+opam-ci to check for integration with the wider ocaml ecosystem.
 
-- Release time:
-  - check versioned behaviors are relative to x.y
-  - On release branch, prepare changelog (merge alpha entries, set header with version)
-  - Open a PR `prepare-x.y.0`
-  - Self-merge
-  - `make opam-release` from updated main
-  - Triage
-  - In case of regression:
-    - mitigate (for example if this happens on a single OS, set `available`
-      appropriately)
-    - prepare point release
-    - in the worst case, the release can be cancelled completely and only come
-      in a point release.
+1. Create and checkout the release candidate branch `X.Y.Z-rc` from the head of
+   `main`
+2. Let `N=0`
+3. Prepare alpha release
+    - If `N>0`
+        - Get all regressions fixed in `main`
+        - Either cherry-pick the fixes from `main` into the rc branch, or create a
+          new branch off `main`. (This is a judgment call, based on weighing risk of
+          picking up new regressions vs. the benefits of simpler process and picking
+          up additional improvements from main.)
+        - Run pre-release CI jobs on `X.Y.Z-rc` branch
+            - [mirage](https://github.com/ocaml/dune/actions/workflows/mirage.yml)
+            - [packaging](https://github.com/ocaml/dune/actions/workflows/isolated-package-build.yml)
+        - If the pre-release CI detects regreessions, goto (3).
+    - Build the changelog via `doc/changes/scripts/build_changelog.sh x.y.0~alphaN`
+    - Review the resulting changelog for intelligibility.
+    - Commit the changelog update to the release branch with the commit message `[X.Y.Z] prepare alphaN release`
+    - Run `make opam-release`
+        - [edit the release][edit-release] to mark it with `Set as a pre-release`
+        - mark resulting opam-repo PR as a draft
+    - Wait for the `opam-ci` results
+    - Review the results:
+        - Any build or test failures in dune's own packages require fixes
+        - compare the new CI revdeps errors with the [errors from previous
+          releases][prev-releases].
+            - ignore transient errors (disk full, switch disconnected, cancelled, etc)
+        - If defects are discovered:
+            - File issues about all regressions, add them to known blockers
+            - Mark opam alpha PR as closed
+            - Let `N=N+1` and goto (3)
 
-- Post-release:
-  - Categorize changelog entries into Added / Fixed / Changed / Removed / Deprecated
-  - Open PR on `ocaml/ocaml.org` to add a file in under `data/changelog/dune`
-  - Post to discuss
-  - Merge changelog
-  - Increase the version of Dune to the new latest in the [GitHub CI](https://github.com/ocaml/dune/blob/9a274be98cb9c2786dd76184c19c44b89e061ea8/.github/workflows/workflow.yml#L350), [dune-project](https://github.com/ocaml/dune/blob/main/dune-project#L1) and in the [dune-rpc](https://github.com/ocaml/dune/blob/main/otherlibs/dune-rpc/private/types.ml#L30). E.g, if you released `X.Y.Z`, the new version become `X.(Y+1).Z`.
-  - Update the Dune target in the [nix-ocaml/nix-overlays](https://github.com/nix-ocaml/nix-overlays) (the hash is computed using `nix-prefetch-url --type sha256 <URL>`)
-  - Close release milestone
-  - Add the copy of the revdeps file to the [previous releases](https://github.com/ocaml/dune/wiki/Reverse-dependencies-CI-logs) page
-  - Close tracking issue
+[edit-release]: https://docs.github.com/en/rest/releases/releases?apiVersion=2026-03-10#update-a-release
+[prev-releases]: https://github.com/ocaml/dune/wiki/Reverse-dependencies-CI-logs
 
-## Point Releases / Patch Releases (`x.y.z`, `z >= 0`)
+### Release phase
+
+- On release branch, prepare changelog
+    - combine all entries from different alpha release
+    - set the version header to `X.Y.Z (<date>)`
+- commit onto `X.Y.Z-rc` branch with message `[X.Y.Z] release` and push to remote
+- Push release branch to remote
+- Run `make opam-release` from updated `X.Y.Z-rc` branch
+- Add a comment on the opam repo PR linking back to the release tracker issues
+ and explaining that all triage is completed, and ask the opam repo maintainers
+ to bypass the opam-ci.
+- In case of regression:
+    - Cancel the minor release publication by closing the opam repo PR
+    - Mark the GitHub release as a pre-release
+    - Proceed to a patch release
+
+## Point Releases / Patch Releases (`X.Y.Z`, `Z >= 0`)
 
 ```mermaid
 gitGraph
@@ -120,35 +138,21 @@ stateDiagram-v2
     PostRelease --> [*]
 ```
 
-- Prepare:
-  - Create release tracking issue
-  - List fixes present in main to backport
-  - Blockers for this release include:
-    - all backports of listed fixes
-    - changelogs of previous point releases are merged
-
-- Backport:
-  - Branch setup
-    - (z>0) Position on branch `x.y`
-  - `git cherry-pick` commits as merged in `main`
-  - Open PR
-    - Set `x.y` as target branch, e.g. `gh pr create -B x.y`
-    - Title must be `[x.y] backport #<PR id>`
-    - List PR in blockers
-
-- Release:
-  - Position on `x.y`
-  - Prepare changelog
-  - Open a PR `prepare-x.y.z`
-  - `make opam-release`
-  - Triage
-
-- Post-release:
-  - Open PR on `ocaml/ocaml.org` to add a file in under `data/changelog/dune`
-  - Post changelog on Discuss in the same thread as `x.y.0`
-  - Merge changelog
-  - Update the Dune target in the [nix-ocaml/nix-overlays](https://github.com/nix-ocaml/nix-overlays) (the hash is computed using `nix-prefetch-url --type sha256 <URL>`)
-  - Close release tracking issue
+- Build the changelog via `doc/changes/scripts/build_changelog.sh X.Y.Z`
+- Review the resulting changelog for intelligibility.
+- Commit the changelog update to the release branch with the commit message `[X.Y.Z] release`
+- Push release branch to remote
+- Run `make opam-release`.
+- Wait for the `opam-ci` results
+- Review the results:
+    - Any build or test failures in dune's own packages require fixes
+    - compare the new CI revdeps errors with the [errors from previous releases][prev-releases].
+        - ignore transient errors (disk full, switch disconnected, cancelled, etc)
+    - If defects are discovered:
+        - Close the opam repo PR.
+        - File issues about all regressions.
+        - Mark GitHub release as a pre-release.
+        - Cut a new patch release.
 
 ## Decisions
 
@@ -180,4 +184,3 @@ stateDiagram-v2
     `opam-repo-ci` but there is no good way to skip them.
   - Sending metadata fixes in `opam-repository` (e.g. OCaml 5 failures) is nice
     to do but not required.
-

@@ -2,17 +2,15 @@
 
 module Unspecified = Path_intf.Unspecified
 
-open struct
-  let append_with_slash x y =
-    let len_x = String.length x in
-    let len_y = String.length y in
-    let dst = Bytes.create (len_x + 1 + len_y) in
-    Bytes.blit_string ~src:x ~src_pos:0 ~dst ~dst_pos:0 ~len:len_x;
-    Bytes.set dst len_x '/';
-    Bytes.blit_string ~src:y ~src_pos:0 ~dst ~dst_pos:(len_x + 1) ~len:len_y;
-    Bytes.unsafe_to_string dst
-  ;;
-end
+let append_with_slash x y =
+  let len_x = String.length x in
+  let len_y = String.length y in
+  let dst = Bytes.create (len_x + 1 + len_y) in
+  Bytes.blit_string ~src:x ~src_pos:0 ~dst ~dst_pos:0 ~len:len_x;
+  Bytes.set dst len_x '/';
+  Bytes.blit_string ~src:y ~src_pos:0 ~dst ~dst_pos:(len_x + 1) ~len:len_y;
+  Bytes.unsafe_to_string dst
+;;
 
 let is_dir_sep =
   if Sys.win32 || Sys.cygwin

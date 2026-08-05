@@ -45,6 +45,7 @@ These documents specify the various features and languages present in Dune.
        ../concepts/promotion
        ../concepts/package-spec
        aliases
+       syntax-symbols
 
   .. grid-item::
 

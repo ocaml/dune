@@ -30,20 +30,11 @@ symlink:
   "_build/default/mybin.exe"
   "_build/install/default/.binaries/$DIGEST/mybin"
 
-Building the same target again pointlessly invalidates and rebuilds the
-.binaries symlink:
+Building the same target again does not invalidate or rebuild the .binaries
+symlink:
 
   $ DUNE_TRACE=cache dune build path-output
   $ dune trace cat \
   >   | jq_dune -s 'cacheMissesMatching("\\.binaries")' \
   >   | censor
-  {
-    "name": "workspace_local_miss",
-    "target": "_build/install/default/.binaries/$DIGEST/mybin",
-    "reason": "target missing from build dir"
-  }
-  {
-    "name": "miss",
-    "target": "_build/install/default/.binaries/$DIGEST/mybin",
-    "reason": "can't go in shared cache"
-  }
+  

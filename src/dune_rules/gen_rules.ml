@@ -798,10 +798,30 @@ let gen_rules ctx ~dir components =
       Bin_layout.gen_rules (Context_name.of_string ctx) ~dir rest |> Memo.return
     | ctx :: ".packages" :: rest ->
       Install_layout.gen_rules (Context_name.of_string ctx) ~dir rest
-    | ctx :: _ ->
+    | ctx :: rest ->
       let ctx = Context_name.of_string ctx in
       with_context ctx ~f:(fun sctx ->
         let+ subdirs, rules = Install_rules.symlink_rules sctx ~dir in
+        let subdirs =
+          match rest with
+          | [] ->
+            (* Here we retain the extra subdirectories that we dispatched
+               above. *)
+            Subdir_set.union
+              subdirs
+              (* CR-someday Alizter: Sharing these directory names with the
+                 dispatch cases above would avoid duplicate strings, but
+                 dispatch and retention could still get out of sync.
+
+                 It would be better to have a structured [Gen_rules] API where
+                 registering a generated child dispatcher automatically retains
+                 that child. *)
+              (Subdir_set.of_list
+                 [ Filename.of_string_exn ".binaries"
+                 ; Filename.of_string_exn ".packages"
+                 ])
+          | _ :: _ -> subdirs
+        in
         let directory_targets = Rules.directory_targets rules in
         Gen_rules.make
           ~build_dir_only_sub_dirs:(Gen_rules.Build_only_sub_dirs.singleton ~dir subdirs)

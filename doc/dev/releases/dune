@@ -1,0 +1,18 @@
+; bash -n takes a single script per invocation, so the scripts are named
+; individually here instead of being passed as %{deps}.
+
+(rule
+ (alias runtest)
+ (deps backport.sh release-cut.sh release-init.sh)
+ (action
+  (progn
+   (run %{bin:bash} -n backport.sh)
+   (run %{bin:bash} -n release-cut.sh)
+   (run %{bin:bash} -n release-init.sh))))
+
+(rule
+ (alias runtest)
+ (enabled_if %{bin-available:shellcheck})
+ (deps backport.sh release-cut.sh release-init.sh)
+ (action
+  (run %{bin:shellcheck} -s bash %{deps})))

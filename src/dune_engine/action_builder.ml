@@ -46,6 +46,8 @@ module T = struct
     | Bind : 'a t * ('a -> 'b t) -> 'b t
     | Bind2 : 'a t * ('a -> 'b t) * ('b -> 'c t) -> 'c t
     | Bind3 : 'a t * ('a -> 'b t) * ('b -> 'c t) * ('c -> 'd t) -> 'd t
+    | Map_bind : 'a t * ('a -> 'b) * ('b -> 'c t) -> 'c t
+    | Bind_map : 'a t * ('a -> 'b t) * ('b -> 'c) -> 'c t
     | Both : 'a t * 'b t -> ('a * 'b) t
     | All : 'a t list -> 'a list t
     | All_unit : unit t list -> unit t
@@ -71,6 +73,7 @@ module T = struct
     match t with
     | Map (t, f1) -> Map2 (t, f1, f)
     | Map2 (t, f1, f2) -> Map3 (t, f1, f2, f)
+    | Bind (t, f1) -> Bind_map (t, f1, f)
     | t -> Map (t, f)
   ;;
 
@@ -79,6 +82,7 @@ module T = struct
     match t with
     | Bind (t, f1) -> Bind2 (t, f1, f)
     | Bind2 (t, f1, f2) -> Bind3 (t, f1, f2, f)
+    | Map (t, f1) -> Map_bind (t, f1, f)
     | t -> Bind (t, f)
   ;;
 
@@ -148,6 +152,16 @@ let rec eval : type a m. a t -> m eval_mode -> (a * m) Memo.t =
     let deps = Deps_or_facts.union mode deps1 deps2 in
     let deps = Deps_or_facts.union mode deps deps3 in
     res, Deps_or_facts.union mode deps deps4
+  | Map_bind (t, f1, f2) ->
+    let open Memo.O in
+    let* x, deps1 = eval t mode in
+    let+ y, deps2 = eval (f2 (f1 x)) mode in
+    y, Deps_or_facts.union mode deps1 deps2
+  | Bind_map (t, f1, f2) ->
+    let open Memo.O in
+    let* x, deps1 = eval t mode in
+    let+ y, deps2 = eval (f1 x) mode in
+    f2 y, Deps_or_facts.union mode deps1 deps2
   | Both (a, b) ->
     let open Memo.O in
     let+ (a, deps_a), (b, deps_b) =

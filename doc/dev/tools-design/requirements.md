@@ -8,7 +8,7 @@ Ambre Suhamy (Tarides)
 This document specifies the requirements for dune's tool management system.
 
 <!-- To regenerate TOC:
-nix shell --impure --expr 'let pkgs = import (builtins.getFlake "github:NixOS/nixpkgs") {}; in (pkgs.emacs.pkgs.withPackages (ps: [ps.markdown-toc]))' -c emacs --batch --eval "(progn (require 'markdown-toc) (find-file \"doc/dev/tools.md\") (markdown-toc-refresh-toc) (save-buffer))"
+nix shell --impure --expr 'let pkgs = import (builtins.getFlake "github:NixOS/nixpkgs") {}; in (pkgs.emacs.pkgs.withPackages (ps: [ps.markdown-toc]))' -c emacs --batch --eval "(progn (require 'markdown-toc) (find-file \"doc/dev/tools-design/requirements.md\") (markdown-toc-refresh-toc) (save-buffer))"
 -->
 
 <!-- markdown-toc start - Don't edit this section. Run M-x markdown-toc-refresh-toc -->
@@ -22,55 +22,55 @@ nix shell --impure --expr 'let pkgs = import (builtins.getFlake "github:NixOS/ni
   - [Requirements](#requirements)
     - [1. Installation](#1-installation)
       - [1.1. Generality](#11-generality)
-        - [1.2. Scope](#12-scope)
-      - [1.2.1. Workspace-local scope](#121-workspace-local-scope)
-      - [1.2.2. Dune context scope](#122-dune-context-scope)
-      - [1.2.3. System wide scope](#123-system-wide-scope)
-      - [1.4. Version specification](#14-version-specification)
-        - [1.4.1. Version consistency](#141-version-consistency)
-      - [1.5. Clean source tree](#15-clean-source-tree)
-      - [1.6. Binary selection](#16-binary-selection)
-      - [1.7 By tool name](#17-by-tool-name)
-        - [1.7.1 Disambiguation](#171-disambiguation)
-      - [1.8 Project dependency tools](#18-project-dependency-tools)
-        - [1.9 Discretionary tools](#19-discretionary-tools)
+      - [1.2. Scope](#12-scope)
+        - [1.2.1. Workspace-local scope](#121-workspace-local-scope)
+        - [1.2.2. Dune context scope](#122-dune-context-scope)
+        - [1.2.3. System-wide scope](#123-system-wide-scope)
+      - [1.3. Version specification](#13-version-specification)
+        - [1.3.1. Version consistency](#131-version-consistency)
+      - [1.4. Clean source tree](#14-clean-source-tree)
+      - [1.5. Binary selection](#15-binary-selection)
+      - [1.6. By tool name](#16-by-tool-name)
+        - [1.6.1. Disambiguation](#161-disambiguation)
+      - [1.7. Project dependency tools](#17-project-dependency-tools)
+      - [1.8. Discretionary tools](#18-discretionary-tools)
     - [2. Usability](#2-usability)
-      - [2.1 Extent of tool management ](#21-extent-of-tool-management)
-        - [2.1.1 when package management is enabled in a workspace](#211-when-package-management-is-enabled-in-a-workspace)
-        - [2.1.2 when package management is not enabled in a workspace](#212-when-package-management-is-not-enabled-in-a-workspace)
+      - [2.1. Extent of tool management](#21-extent-of-tool-management)
+        - [2.1.1. When package management is enabled in a workspace](#211-when-package-management-is-enabled-in-a-workspace)
+        - [2.1.2. When package management is not enabled in a workspace](#212-when-package-management-is-not-enabled-in-a-workspace)
       - [2.2. Shells](#22-shells)
       - [2.3. Programmatic use](#23-programmatic-use)
         - [2.3.1. dune subcommands](#231-dune-subcommands)
           - [2.3.1.1. System PATH fallback](#2311-system-path-fallback)
           - [2.3.1.1.1. When package management is enabled in a workspace](#23111-when-package-management-is-enabled-in-a-workspace)
-          - [2.3.1.1.2. When package management is NOT enabled in a workspace ](#23112-when-package-management-is-not-enabled-in-a-workspace)
+          - [2.3.1.1.2. When package management is not enabled in a workspace](#23112-when-package-management-is-not-enabled-in-a-workspace)
       - [2.4. Project dependency tools](#24-project-dependency-tools)
-      - [2.4. Dog fooding](#24-dog-fooding)
+      - [2.5. Dog fooding](#25-dog-fooding)
     - [3. Dependency and Integration](#3-dependency-and-integration)
-      - [3.1 Integration axis](#31-integration-axis)
+      - [3.1. Integration axis](#31-integration-axis)
         - [3.1.1. Tool isolation (I1)](#311-tool-isolation-i1)
           - [3.1.1.1. Optimal builds](#3111-optimal-builds)
         - [3.1.2. Tool integration (I2)](#312-tool-integration-i2)
           - [3.1.2.1. Respecting integration constraints](#3121-respecting-integration-constraints)
-      - [4.2 Dependency axis](#42-dependency-axis)
-        - [4.1. Discretionary tools (D1)](#41-discretionary-tools-d1)
-          - [4.1.1. Not build triggers](#411-not-build-triggers)
-          - [4.1.2. Cannot be referenced in build rules](#412-cannot-be-referenced-in-build-rules)
-          - [4.1.2.1. Useful guidance on invalid reference in rules](#4121-useful-guidance-on-invalid-reference-in-rules)
-          - [4.1.3. Subset of D2 and D3 tools functionality](#413-subset-of-d2-and-d3-tools-functionality)
-        - [4.2. Qualified project dependency tools (D2)](#42-qualified-project-dependency-tools-d2)
-          - [4.2.1. Usable as tools](#421-usable-as-tools)
-          - [4.2.2. Installable via qualification](#422-installable-via-qualification)
-          - [4.2.3. Builtin D2 tools](#423-builtin-d2-tools)
-        - [4.3. Unqualified dependency tools (D3)](#43-unqualified-dependency-tools-d3)
-          - [4.3.1. Usable as tools](#431-usable-as-tools)
-          - [4.2.1. Installed on build](#421-installed-on-build)
-      - [5. UI](#5-ui)
-      - [5.1. CLI](#51-cli)
-        - [5.1.1. Managing multiple tools](#511-managing-multiple-tools)
-        - [5.1.2. Watch mode integration](#512-watch-mode-integration)
-        - [5.1.3 Avoid invocation collisions](#513-avoid-invocation-collisions)
-      - [5.2. Persistent configuration for discretionary tools](#52-persistent-configuration-for-discretionary-tools)
+      - [3.2. Dependency axis](#32-dependency-axis)
+        - [3.2.1. Discretionary tools (D1)](#321-discretionary-tools-d1)
+          - [3.2.1.1. Not build triggers](#3211-not-build-triggers)
+          - [3.2.1.2. Cannot be referenced in build rules](#3212-cannot-be-referenced-in-build-rules)
+          - [3.2.1.2.1. Useful guidance on invalid reference in rules](#32121-useful-guidance-on-invalid-reference-in-rules)
+          - [3.2.1.3. Subset of D2 and D3 tools functionality](#3213-subset-of-d2-and-d3-tools-functionality)
+        - [3.2.2. Qualified project dependency tools (D2)](#322-qualified-project-dependency-tools-d2)
+          - [3.2.2.1. Usable as tools](#3221-usable-as-tools)
+          - [3.2.2.2. Installable via qualification](#3222-installable-via-qualification)
+          - [3.2.2.3. Builtin D2 tools](#3223-builtin-d2-tools)
+        - [3.2.3. Unqualified dependency tools (D3)](#323-unqualified-dependency-tools-d3)
+          - [3.2.3.1. Usable as tools](#3231-usable-as-tools)
+          - [3.2.3.2. Installed on build](#3232-installed-on-build)
+    - [4. UI](#4-ui)
+      - [4.1. CLI](#41-cli)
+        - [4.1.1. Managing multiple tools](#411-managing-multiple-tools)
+        - [4.1.2. Watch mode integration](#412-watch-mode-integration)
+        - [4.1.3. Avoid invocation collisions](#413-avoid-invocation-collisions)
+      - [4.2. Persistent configuration for discretionary tools](#42-persistent-configuration-for-discretionary-tools)
 
 <!-- markdown-toc end -->
 
@@ -142,11 +142,11 @@ Users must be able to install tools via Dune.
 
 Any installable tool must be supported.
 
-##### 1.2. Scope
+#### 1.2. Scope
 
 The environments within which a tool are available must be scoped.
 
-#### 1.2.1. Workspace-local scope
+##### 1.2.1. Workspace-local scope
 
 It must be possible to install tools per-workspace, such that workspaces define
 a sub-environment. I.e., each workspace has its own isolated tool installations
@@ -154,7 +154,7 @@ that don't affect other workspaces or interfere with software on the host system
 
 See [Directory structure](./implementation.md#directory-structure) for storage locations.
 
-#### 1.2.2. Dune context scope
+##### 1.2.2. Dune context scope
 
 It must be possible to install the versions of a tool per-dune context within a
 workspace, such that different contexts can use different versions of tools.
@@ -173,7 +173,7 @@ specialized form of `lock_dir` stanza that inherits the fields of the active
 
 </details>
 
-#### 1.2.3. System wide scope
+##### 1.2.3. System-wide scope
 
 Users should be able to install tools in a way that allows them to be used in the
 system-wide environment (e.g., outside of any particular sandbox).
@@ -199,7 +199,7 @@ Related issues:
 
 </details>
 
-#### 1.4. Version specification
+#### 1.3. Version specification
 
 Users must be able to specify the version of tools to be installed via:
 
@@ -210,7 +210,7 @@ Users must be able to specify the version of tools to be installed via:
 See [Version syntax](./implementation.md#version-syntax) for CLI syntax and
 [The `(tool)` stanza](./implementation.md#the-tool-stanza) for declarative configuration.
 
-##### 1.4.1. Version consistency
+##### 1.3.1. Version consistency
 
 The versions of installed tools must remain consistent, accounting for all
 configuration sources. E.g., consider an apparent conflict, such as a stanza
@@ -221,10 +221,10 @@ CLI input being used to update the config file, or simply by raising an error.
 But it must not allow for a version to be installed that leads to inconsistent
 version specifications.
 
-#### 1.5. Clean source tree
+#### 1.4. Clean source tree
 
 Tool lock directories and built artifacts must not pollute the source tree, to
-ensure that they do not inadvertently picked up in version control or otherwise
+ensure that they are not inadvertently picked up in version control or otherwise
 create needless noise for users.
 
 **Motivation**: This is a common complaint from users and is one such way to
@@ -232,7 +232,7 @@ solve the issue. Tools like `uv` handle this differently by having a global plac
 Due to our compiler matching semantics it makes more sense for workspace level
 and becomes fast with full caching.
 
-#### 1.6. Binary selection
+#### 1.5. Binary selection
 
 When a package provides multiple tools, users must be able to specify a subset
 for installation. When a package providing tools is installed without
@@ -248,31 +248,31 @@ executables. As a result, it becomes necessary to only install a preferred
 subset of the provided tools. E.g., `js_of_ocaml-compiler` provides
 `js_of_ocaml`, `jsoo_minify`, and `jsoo_listunits`.
 
-#### 1.7 By tool name
+#### 1.6. By tool name
 
 Users should be able to install tools based on the name of the tool without
 considering the package that provides it.
 
 CR Shon: because this will require changes to the opam repo to be effective,
 this is a *should* rather than a *must* at the moment, and may not be achievable
-in the first iteration of the redisign.
+in the first iteration of the redesign.
 
-##### 1.7.1 Disambiguation
+##### 1.6.1. Disambiguation
 
-If multiple packages provide the tools with the same name, and a user requests installation, dune should offer disambiguation.
+If multiple packages provide tools with the same name, and a user requests installation, dune should offer disambiguation.
 
 CR Shon: what do we do in dune package management if two packages provide the
 same executable? E.g., perhaps you want to use package a for tool a' and b for
 b', but they both also provide executables named `c`?
 
-#### 1.8 Project dependency tools
+#### 1.7. Project dependency tools
 
 Tools that are *project dependencies* specified as appropriately qualified
 dependencies in the `dune-project` file, must be installable via installation
-targets reflecting the qualification, as well as thru the build targets that
+targets reflecting the qualification, as well as through the build targets that
 require them.
 
-To illustrate, this could be thru some sort of qualification to the tools
+To illustrate, this could be through some sort of qualification to the tools
 command like `dune tools install :with-test :with-dev-setup`.
 
 <details>
@@ -288,10 +288,10 @@ Related issues:
 
 </details>
 
-##### 1.9 Discretionary tools
+#### 1.8. Discretionary tools
 
 It must be possible to install discretionary tools without incorrectly
-specifying them as if they were project dependencies. (E.g., thru a new `tool`
+specifying them as if they were project dependencies. (E.g., through a new `tool`
 stanza or a CLI that updates some data stored in the workspace or `_build`
 directory).
 
@@ -312,28 +312,28 @@ Related issues:
 
 Users must be able to run tools installed by Dune.
 
-#### 2.1 Extent of tool management 
+#### 2.1. Extent of tool management
 
 The extent to which dune enforces management of tools within a workspace should
 depend on whether or not package management is enabled in the workspace.
 
-##### 2.1.1 when package management is enabled in a workspace
+##### 2.1.1. When package management is enabled in a workspace
 
 When users enable dune package management in a workspace, all *tools* used in the
 workspace (in the precise sense defined in the [terminology](#terminology))
-should be managed dune, to the extent that dune can reasonably enforce this.
+should be managed by dune, to the extent that dune can reasonably enforce this.
 Enforcing this assumption allows dune to offer users improved guarantees about
 the cohesiveness and interoperability of the provided tools.
 
 This does *not* entail that dune should mask or redact data from the `PATH` or
-otherwise attempt to filter out a users ambient environment. But it should
+otherwise attempt to filter out a user's ambient environment. But it should
 provide pragmatic measures to support users by enforcing this behavior where
 feasible.
 
-##### 2.1.2 when package management is not enabled in a workspace
+##### 2.1.2. When package management is not enabled in a workspace
 
 When users have not enabled dune package management in a workspace, they must be
-able to use *tools* managed dune, but they should still be able to use tools
+able to use *tools* managed by dune, but they should still be able to use tools
 installed by opam (or other possible package managers) in all operations of
 dune.
 
@@ -383,7 +383,7 @@ they are available.
 The extent to which dune should allow its subcommands to fallback to the system
 `PATH` when looking up required binaries depends on whether or not the workspace
 has enabled package management, as dictated by
-[2.1](#2-1-extent-of-tool-management).
+[2.1](#21-extent-of-tool-management).
 
 ###### 2.3.1.1.1. When package management is enabled in a workspace
 
@@ -409,10 +409,10 @@ Related issues:
 
 </details>
 
-###### 2.3.1.1.2. When package management is NOT enabled in a workspace 
+###### 2.3.1.1.2. When package management is not enabled in a workspace
 
-When package management is enabled in a workspace and a tool is not installed
-(e.g., `.ocamlformat`), dune subcommands (such as `dune fmt`, `dune build @doc`,
+When package management is not enabled in a workspace and a tool is not
+installed (e.g., `.ocamlformat`), dune subcommands (such as `dune fmt`, `dune build @doc`,
 or `dune utop`) should fall back to the system PATH.
 
 **Note** This is motivated by integration with editor developers who would like
@@ -423,18 +423,18 @@ editors will not have to care.
 #### 2.4. Project dependency tools
 
 When a tool is installed as a *project dependency* (under any qualification),
-users must be able to execute the tool thru all the same mechanism that are
+users must be able to execute the tool through all the same mechanisms that are
 provided for executing discretionary tools. E.g., a mechanism like `dune env`
 that would make the path to dune-managed binaries available must include both
 discretionary tools and project dependency tools in the path.
 
-#### 2.4. Dog fooding
+#### 2.5. Dog fooding
 
 Tools must work in the dune repository itself. Dune developers should be able to
 run `dune tools add ocamlformat` and `dune tools add ocaml-lsp-server` when
 working on dune.
 
-This is enabled by the orthogonality design (3.2): tools are solved and built
+This is enabled by the orthogonality principle (see [Design principles](#design-principles)): tools are solved and built
 independently from project dependencies, so they don't require a working project
 lock directory.
 
@@ -450,10 +450,10 @@ unexpected workarounds creating a fragmented and awkward user experience.
 
 We can further refine this requirement along two axes.
 
-#### 3.1 Integration axis
+#### 3.1. Integration axis
 
 Tools lie along a spectrum of integration requirements with other dependencies
-in the project, which we can indicate with tree points:
+in the project, which we can indicate with three points:
 
 - I1: At the minimum extreme, some tools can be solved and built in complete
   isolation from the rest of the project they are used in. Tools of this sort
@@ -466,12 +466,12 @@ in the project, which we can indicate with tree points:
   only with select components other than the compiler, such as menhir and atd.
   These tools require integration with the particular version of their runtime
   libraries in certain modes of use, but don't require integrations otherwise,
-  and since the tools themselves have a wired dependency cone than the runtime
-  libraries, it could sometimes be helpful to bud the executables in a separate
+  and since the tools themselves have a wider dependency cone than the runtime
+  libraries, it could sometimes be helpful to build the executables in a separate
   dependency context, pinned only to the needed runtime library version (e.g.,
   to avoid conflicts over a CLI parser library).
 
-- I3: At the maximum extreme, some tools could require be built within the
+- I3: At the maximum extreme, some tools could require being built within the
   entire dependency context of the project. We are not aware of any tools that
   require this currently, but we can consider utop is an illustrative example,
   since its own dependencies (such as `lwt`, `xdg`, and `logs`) need to
@@ -526,10 +526,10 @@ or transitive constraints):
   analysis and reverse engineering tool, utilizing a unique symbol map for
   global analysis."
 
-Without support for dependency isolation, users would be forced to chose between
+Without support for dependency isolation, users would be forced to choose between
 avoiding recent compiler versions or making use of these (and many other)
 available tools. This would violate the design principles of orthogonality and
-generality, and yield and necessarily limited usability.
+generality, and yield a necessarily limited usability.
 
 See  [Directory structure](./implementation.md#directory-structure) for proposed
 lock directory locations.
@@ -538,7 +538,7 @@ lock directory locations.
 
 ###### 3.1.1.1. Optimal builds
 
-Dune should not needless compile or rebuild dependencies that can be shared
+Dune should not needlessly compile or rebuild dependencies that can be shared
 without conflict. E.g., if the needed version of an I1 discretionary tool can be
 installed by reusing the compiler version already used in the workspace, or by
 pulling it from the shared cache, this should be preferred over rebuilding the
@@ -552,7 +552,7 @@ solution, build, and install enable that needed integration.
 
 Tools that integrate with the compiler are a very special case of I2 tools
 requiring this need, and they have an important status among other tools because
-some are used ubiquitous and because he compiler itself has a special position
+some are used ubiquitously and because the compiler itself has a special position
 in the dependency tree of any OCaml project. The most widely used tools of this
 sort are ocamllsp and odoc. Dune must provide robust, intuitive, and flexible
 support for managing these tools.
@@ -562,7 +562,7 @@ support for managing these tools.
 Motivation and context
 </summary>
 
-One way to address this may be thru the an equivalent of the `constraints` field
+One way to address this may be through an equivalent of the `constraints` field
 in the `lock_dir` stanza, where an absent dep-specification indicated the need
 to use the same version in the context's active `lock_dir`. E.g., as
 
@@ -591,18 +591,18 @@ algorithm.
 
 When a user has specified the intent to install an I2 tool that is incompatible
 with the required packages already installed in the workspace, dune must handle
-the conflict gracefully an with clear guidance to the user.
+the conflict gracefully and with clear guidance to the user.
 
-E.g., if a user tries to install the compiler integration `ocamllsp` and not
+E.g., if a user tries to install the compiler-integrated `ocamllsp` and no
 version is compatible with the compiler version already installed in the
 workspace, dune must report and/or solve the conflict cleanly.
 
 This could mean automatically downgrading the compiler (if permitted by
 the constraints), but a user error with clear instructions is probably just as
-effectively, less surprising, and much easier to implement. E.g., "tool t cannot
+effective, less surprising, and much easier to implement. E.g., "tool t cannot
 be installed at version v because it requires compiler <= n, but compiler m is
 currently installed. Add the following qualified constraint to your project
-dependencies: `(ocaml (and (>= 5.1 (or (not :with-dev-setup) (< 5.5))))`" etc.
+dependencies: `(ocaml (and (>= 5.1) (or (not :with-dev-setup) (< 5.5))))`" etc.
 
 Regardless of the implementation approach taken, it must be possible to
 constrain the compiler versions to work with the desired integrations during
@@ -610,10 +610,10 @@ development without those constraints polluting the constraints of packages in
 the workspace when they are installed.
 
 
-#### 4.2 Dependency axis
+#### 3.2. Dependency axis
 
 Tools lie along a spectrum of dependency status (i.e., to what extent they are
-dependencies for the project) which we can indicate with these tree points:
+dependencies for the project) which we can indicate with these three points:
 
 - D1. At the minimum extreme, *discretionary tools* are not project dependencies
   at all. Rather, they are tools we want to install and run on an ad hoc basis,
@@ -624,7 +624,7 @@ dependencies for the project) which we can indicate with these tree points:
   opam packages with the `with-test`, or `with-doc` filters.
 - D3. At the maximum extreme, unqualified *project dependency* tools are
  required for an installation build of packages in the project, and need to be
- specified as package dependencies unconditionally.E.g., `menhir` or `atd` when
+ specified as package dependencies unconditionally. E.g., `menhir` or `atd` when
  used as part of the project build (by contrast, if these are used only for code
  generation, they could be qualified project dependencies behind a hypothetical
  `with-gen` filter).
@@ -632,15 +632,15 @@ dependencies for the project) which we can indicate with these tree points:
 Note that, since tools like `utop`, `odoc`, and `ocamlformat` have dedicated
 builtin rules from dune, they are technically not D1.
 
-##### 4.1. Discretionary tools (D1)
+##### 3.2.1. Discretionary tools (D1)
 
 Dune must be able to manage discretionary tools.
 
-###### 4.1.1. Not build triggers
+###### 3.2.1.1. Not build triggers
 
 Locking or adding discretionary tools must not trigger project builds.
 
-###### 4.1.2. Cannot be referenced in build rules
+###### 3.2.1.2. Cannot be referenced in build rules
 
 Discretionary tools managed by dune must not be referenced in user build rules: dune
 must not add these binaries to its path when running rules, and must not
@@ -648,19 +648,20 @@ resolve `%{bin:...}` forms that attempt to reference them.
 
 By definition, tools referenced in rules are at least D2.
 
-###### 4.1.2.1. Useful guidance on invalid reference in rules
+###### 3.2.1.2.1. Useful guidance on invalid reference in rules
 
 When a discretionary tool is configured and an invalid reference to it is found
 in a build rule, dune should report an error with clear guidance to users,
 advising them to move the tool configuration into the appropriate package
 dependency.
 
-###### 4.1.3. Subset of D2 and D3 tools functionality
+###### 3.2.1.3. Subset of D2 and D3 tools functionality
 
-The functionality of discretionary, D1 tools must a strict subset of the functionality over
-D2 and D3 project dependency tools: anything you can do with 
+The functionality of discretionary, D1 tools must be a strict subset of the
+functionality of D2 and D3 project dependency tools: anything you can do with a
+D1 tool, you must also be able to do with a D2 or D3 tool.
 
-##### 4.2. Qualified project dependency tools (D2)
+##### 3.2.2. Qualified project dependency tools (D2)
 
 Qualified project dependency tools must be installable based on the existing
 package dependency configuration mechanism. This configuration may be extended
@@ -678,27 +679,27 @@ have an existing mechanism for declaring dependencies for installation, and so
 based on our principles of orthogonality and complementarity, we must not
 introduce redundant ways of solving the same problem that is already accounted
 for. Doing so would not only be inelegant, but lead to user confusion and
-package specification fragmentation, since the existing systems is also
+package specification fragmentation, since the existing system is also
 supported by opam.
 
 </details>
 
-###### 4.2.1. Usable as tools
+###### 3.2.2.1. Usable as tools
 
 Qualified project dependency tools must be usable in exactly the same ways as
 discretionary, D1 tools. E.g., if D1 tools can be run via a command like `dune
-tools exec ...`  then so too must be D2 tools. However, the implementation is
+tools exec ...`  then so too must D2 tools be. However, the implementation is
 not prescribed by the requirement, and we could instead permit D1 tools to be
 run via the existing `dune exec ...` subcommand, providing a simpler and more
-intuitive interface to users than requiring to separate subcommands.
+intuitive interface to users than requiring two separate subcommands.
 
-###### 4.2.2. Installable via qualification
+###### 3.2.2.2. Installable via qualification
 
 If a set of tools are qualified with a filter such as `:with-test` or
 `:with-doc`, it must be possible to install just that set together (in addition
 to the unqualified dependencies).
 
-###### 4.2.3. Builtin D2 tools
+###### 3.2.2.3. Builtin D2 tools
 
 A select subset of keystone tools are treated by dune as builtin qualified
 dependencies, including `odoc`, `utop`, and `ocamlformat` as the most widely
@@ -706,24 +707,24 @@ used. These should be treated as if they have qualified dependencies built in,
 with further constraint or specification of how to install them available as a
 user override on top of the default configuration.
 
-##### 4.3. Unqualified dependency tools (D3)
+##### 3.2.3. Unqualified dependency tools (D3)
 
-###### 4.3.1. Usable as tools
+###### 3.2.3.1. Usable as tools
 
-As with 4.2.1, unqualified project dependency tools must be usable in exactly
+As with 3.2.2.1, unqualified project dependency tools must be usable in exactly
 the same ways as D1 and D2 tools.
 
-(Not currently satisfied by the current implementation of package managemet.)
+(Not currently satisfied by the current implementation of package management.)
 
-###### 4.2.1. Installed on build
+###### 3.2.3.2. Installed on build
 
 Unqualified tools must be installed when a project is built.
 
-(Already satisfied by the current implementation of package managemet.)
+(Already satisfied by the current implementation of package management.)
 
-#### 5. UI
+### 4. UI
 
-#### 5.1. CLI
+#### 4.1. CLI
 
 Users must be able to manage tools using CLI commands:
 
@@ -733,9 +734,9 @@ Users must be able to manage tools using CLI commands:
 - Remove tools
 - Discover paths to tool executables
 
-##### 5.1.1. Managing multiple tools
+##### 4.1.1. Managing multiple tools
 
-It must be possible to change (e.g., update, install, or remove) the a set of
+It must be possible to change (e.g., update, install, or remove) a set of
 configured tools by issuing a single command.
 
 <details>
@@ -746,7 +747,7 @@ Motivation and context
 We must not require users to do the tedious work of running the same command
 over and over to install a set of tools. How this is addressed is left as an
 implementation detail. E.g., it could mean supporting `dune tools install a b c`
-or just having a command that installs all configured tools (see 5.2) in one
+or just having a command that installs all configured tools (see 4.2) in one
 command.
 
 Related issues:
@@ -757,21 +758,21 @@ Related issues:
 
 </details>
 
-##### 5.1.2. Watch mode integration
+##### 4.1.2. Watch mode integration
 
 Tool operations (e.g., `dune tools add`, `run`, etc.) must work correctly when a
 watch server is running (`dune build -w`). Rather than directly manipulating
 lock directories, tool commands should coordinate with the watch server via RPC
 to avoid races and ensure the server picks up newly added tools.
 
-##### 5.1.3 Avoid invocation collisions
+##### 4.1.3. Avoid invocation collisions
 
 When a `dune tools` command is run that depends on the state of the workspace,
 it should not interfere with concurrent running dune commands or lead to invalid
 results or states. This may just mean refusing to run if the build directory is
 locked, cooperating to sequence requests, or something else.
 
-#### 5.2. Persistent configuration for discretionary tools
+#### 4.2. Persistent configuration for discretionary tools
 
 Users must be able to declare discretionary tools in the workspace
 configuration. 
@@ -789,5 +790,5 @@ project setups as part of a reusable ad hoc dev tool setup.
 
 See [The `(tool)` stanza](./implementation.md#the-tool-stanza) for proposed syntax.
 
-<details>
+</details>
 

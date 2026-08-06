@@ -315,7 +315,34 @@ let watch_build_restart ~run_id ~reasons ~at =
   Event.instant ~name:"build-restart" ~args at Build
 ;;
 
-let watch_build_finish ~run_id ~outcome ~start ~stop ~restart_duration =
+type memo_metrics =
+  { restore_nodes : int
+  ; restore_edges : int
+  ; restore_blocked : int
+  ; compute_nodes : int
+  ; compute_edges : int
+  ; compute_blocked : int
+  ; cycle_detection_nodes : int
+  ; cycle_detection_edges : int
+  }
+
+let watch_build_finish
+      ~run_id
+      ~outcome
+      ~start
+      ~stop
+      ~restart_duration
+      ~memo:
+        { restore_nodes
+        ; restore_edges
+        ; restore_blocked
+        ; compute_nodes
+        ; compute_edges
+        ; compute_blocked
+        ; cycle_detection_nodes
+        ; cycle_detection_edges
+        }
+  =
   let dur = Time.diff stop start in
   let outcome =
     match outcome with
@@ -328,6 +355,31 @@ let watch_build_finish ~run_id ~outcome ~start ~stop ~restart_duration =
        | None -> []
        | Some restart_duration -> [ "restart_duration", Arg.span restart_duration ])
     @ make_process_times_args ()
+    @ [ ( "memo"
+        , Arg.record
+            [ ( "restore"
+              , Arg.record
+                  [ "nodes", Arg.int restore_nodes
+                  ; "edges", Arg.int restore_edges
+                  ; "blocked", Arg.int restore_blocked
+                  ]
+                |> Arg.list )
+            ; ( "compute"
+              , Arg.record
+                  [ "nodes", Arg.int compute_nodes
+                  ; "edges", Arg.int compute_edges
+                  ; "blocked", Arg.int compute_blocked
+                  ]
+                |> Arg.list )
+            ; ( "cycle_detection"
+              , Arg.record
+                  [ "nodes", Arg.int cycle_detection_nodes
+                  ; "edges", Arg.int cycle_detection_edges
+                  ]
+                |> Arg.list )
+            ]
+          |> Arg.list )
+      ]
     @ make_rusage_args (Proc.Resource_usage.get_self ())
   in
   Event.complete ~name:"build-finish" ~args ~start ~dur Build

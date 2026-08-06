@@ -49,6 +49,22 @@ rusage snapshots on build trace events.
         "system_cpu_time",
         "user_cpu_time"
       ],
+      "memo": {
+        "restore": [
+          "blocked",
+          "edges",
+          "nodes"
+        ],
+        "compute": [
+          "blocked",
+          "edges",
+          "nodes"
+        ],
+        "cycle_detection": [
+          "edges",
+          "nodes"
+        ]
+      },
       "rusage": [
         "inblock",
         "majflt",
@@ -111,6 +127,22 @@ active build is interrupted.
         "system_cpu_time",
         "user_cpu_time"
       ],
+      "memo": {
+        "restore": [
+          "blocked",
+          "edges",
+          "nodes"
+        ],
+        "compute": [
+          "blocked",
+          "edges",
+          "nodes"
+        ],
+        "cycle_detection": [
+          "edges",
+          "nodes"
+        ]
+      },
       "rusage": [
         "inblock",
         "majflt",
@@ -154,6 +186,22 @@ active build is interrupted.
         "system_cpu_time",
         "user_cpu_time"
       ],
+      "memo": {
+        "restore": [
+          "blocked",
+          "edges",
+          "nodes"
+        ],
+        "compute": [
+          "blocked",
+          "edges",
+          "nodes"
+        ],
+        "cycle_detection": [
+          "edges",
+          "nodes"
+        ]
+      },
       "rusage": [
         "inblock",
         "majflt",

@@ -4,6 +4,7 @@ on:
     types: [opened, synchronize, reopened, labeled, unlabeled]
     branches:
       - main
+      - '*-rc'
 permissions:
   contents: read
 concurrency:

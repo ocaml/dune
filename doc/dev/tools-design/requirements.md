@@ -686,7 +686,7 @@ supported by opam.
 
 ###### 3.2.2.1. Usable as tools
 
-Qualified project dependency tools must be usable in exactly the same ways as
+Qualified project dependency tools must be usable in at least the same ways as
 discretionary, D1 tools. E.g., if D1 tools can be run via a command like `dune
 tools exec ...`  then so too must D2 tools be. However, the implementation is
 not prescribed by the requirement, and we could instead permit D1 tools to be
@@ -732,6 +732,7 @@ Users must be able to manage tools using CLI commands:
 - Run tools (building if needed)
 - List locked tools and versions
 - Remove tools
+- Update/upgrade tools
 - Discover paths to tool executables
 
 ##### 4.1.1. Managing multiple tools

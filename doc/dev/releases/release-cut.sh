@@ -67,7 +67,7 @@ function run_cmd () {
 function confirm () {
     local release_version="$1"
     read \
-        -p "About to cut ${RELEASE_KIND} ${release_version} on branch '${branch}', push to '${DUNE_REMOTE}', and publish via dune-release. Continue? (y/Y) " \
+        -p "Review the changelog preview above. About to cut ${RELEASE_KIND} ${release_version} on branch '${branch}', push to '${DUNE_REMOTE}', and publish via dune-release. Continue? (y/Y) " \
         -n 1 -r
     echo # Print a newline since -n 1 suppresses the newline after input
     if [[ $REPLY =~ ^[Yy]$ ]]; then
@@ -177,20 +177,52 @@ function strip_in_progress_section () {
     fi
 }
 
-# Regenerate the in-progress changelog section from the change fragments in
-# doc/changes. Those fragments are the single source of truth: they are consumed
+# Rewrite the in-progress changelog section from the change fragments in
+# doc/changes, replacing any section already there for that version.
+function render_changelog () {
+    local keep_fragments="$1" release_version="$2"
+    strip_in_progress_section
+    env "KEEP_FRAGMENTS=${keep_fragments}" \
+        "${ROOT_DIR}/doc/changes/scripts/build_changelog.sh" "${release_version}"
+}
+
+# Render the changelog exactly as the release would and print the resulting
+# diff, then restore the working tree. Fragments are always kept: a preview
+# must not consume them, not even when previewing a full release.
+function preview_changelog () {
+    local release_version="$1"
+    local changes="${ROOT_DIR}/CHANGES.md"
+    (
+        backup=$(mktemp "${changes}.XXXXXX") \
+            || err "could not create a temporary file"
+        cp "${changes}" "${backup}"
+        trap 'mv -f "${backup}" "${changes}"' EXIT
+        render_changelog true "${release_version}"
+        echo
+        # diff exits 1 when the files differ, which is the expected case here,
+        # and 2 or more when it actually failed.
+        status=0
+        diff -u \
+            --label "CHANGES.md (current)" \
+            --label "CHANGES.md (after cutting ${release_version})" \
+            "${backup}" "${changes}" || status=$?
+        if (( status > 1 )); then
+            err "could not diff the generated changelog"
+        fi
+        echo
+    )
+}
+
+# The change fragments are the single source of truth: they are consumed
 # (deleted) only for a full release, so successive prereleases regenerate the
-# section in place from the accumulating fragments. Any existing section for the
-# in-progress version is stripped first so the regenerated one replaces it.
+# section in place from the accumulating fragments.
 function update_changelog () {
     local release_version="$1"
     local keep_fragments=true
     if [[ "${RELEASE_KIND}" == "release" ]]; then
         keep_fragments=false
     fi
-    run_cmd strip_in_progress_section
-    run_cmd env "KEEP_FRAGMENTS=${keep_fragments}" \
-        "${ROOT_DIR}/doc/changes/scripts/build_changelog.sh" "${release_version}"
+    run_cmd render_changelog "${keep_fragments}" "${release_version}"
 }
 
 function pre_release_version () {
@@ -207,10 +239,11 @@ function pre_release_version () {
 
 function release () {
     local release_version="$1"
+    run_cmd git pull --ff-only "${DUNE_REMOTE}" "${branch}"
+    preview_changelog "${release_version}"
     if [[ "${DRY_RUN:-false}" != "true" ]]; then
         confirm "${release_version}"
     fi
-    run_cmd git pull --ff-only "${DUNE_REMOTE}" "${branch}"
     update_changelog "${release_version}"
     run_cmd git add "${ROOT_DIR}/doc/changes" "${ROOT_DIR}/CHANGES.md"
     run_cmd git commit -s -m "[${release_version}] prepare release"

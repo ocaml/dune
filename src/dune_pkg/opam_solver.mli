@@ -11,6 +11,11 @@ module Solver_result : sig
   val merge : t -> t -> t
 end
 
+type error =
+  [ `Solve_error of User_message.Style.t Pp.t
+  | `Manifest_error of User_message.t
+  ]
+
 val solve_lock_dir
   :  Solver_env.t
   -> Version_preference.t
@@ -28,8 +33,21 @@ val solve_lock_dir
            handling both portable and non-portable lockdirs with the same code.
            Once portable lockdirs are enabled unconditionally, remove this
            argument. *)
-  -> ( Solver_result.t
-       , [ `Solve_error of User_message.Style.t Pp.t | `Manifest_error of User_message.t ]
-       )
-       result
-       Fiber.t
+  -> (Solver_result.t, error) result Fiber.t
+
+type multi_platform_result =
+  { result : Solver_result.t option
+  ; errors : (Solver_env.t * error) list
+  }
+
+val solve_lock_dir_for_platforms
+  :  Solver_env.t
+  -> Version_preference.t
+  -> Opam_repo.t list
+  -> pins:Resolved_package.t Package_name.Map.t
+  -> local_packages:Local_package.For_solver.t Package_name.Map.t
+  -> constraints:Dune_lang.Package_dependency.t list
+  -> selected_depopts:Package_name.t list
+  -> platforms:Solver_env.t list
+  -> portable_lock_dir:bool
+  -> multi_platform_result Fiber.t

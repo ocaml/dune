@@ -153,44 +153,23 @@ module Spec = struct
     in
     let* solver_result =
       if portable_lock_dir
-      then (
-        (* CR-someday Alizter: This multi-platform solving logic is duplicated
-           from bin/pkg/lock.ml:solve_multiple_platforms. The logic for
-           removing platform-specific variables, solving for multiple platforms
-           in parallel, merging results, and error handling should be shared
-           between autolocking and manual locking. Consider extracting this
-           into a shared function in Dune_pkg.Opam_solver. *)
-        let portable_solver_env =
-          Solver_env.unset_multi
+      then
+        let+ { Opam_solver.result; errors } =
+          Opam_solver.solve_lock_dir_for_platforms
             solver_env
-            Dune_lang.Package_variable_name.platform_specific
+            version_preference
+            repos
+            ~pins
+            ~local_packages
+            ~constraints
+            ~selected_depopts
+            ~platforms:Solver_env.popular_platform_envs
+            ~portable_lock_dir
         in
-        let solve_for_platforms = Solver_env.popular_platform_envs in
-        let+ results =
-          Fiber.parallel_map solve_for_platforms ~f:(fun platform_env ->
-            let solver_env_for_platform =
-              Solver_env.extend portable_solver_env platform_env
-            in
-            Opam_solver.solve_lock_dir
-              solver_env_for_platform
-              version_preference
-              repos
-              ~pins
-              ~local_packages
-              ~constraints
-              ~selected_depopts
-              ~portable_lock_dir)
-        in
-        let solver_results, errors =
-          List.partition_map results ~f:(function
-            | Ok result -> Left result
-            | Error e -> Right e)
-        in
-        match solver_results, errors with
-        | [], [] -> Code_error.raise "Solver did not run for any platforms." []
-        | [], `Manifest_error diagnostic :: _ -> Error (`Manifest_error diagnostic)
-        | [], `Solve_error diagnostic :: _ -> Error (`Solve_error diagnostic)
-        | x :: xs, _ -> Ok (List.fold_left xs ~init:x ~f:Opam_solver.Solver_result.merge))
+        match result, errors with
+        | None, [] -> Code_error.raise "Solver did not run for any platforms." []
+        | None, (_, error) :: _ -> Error error
+        | Some result, _ -> Ok result
       else
         Opam_solver.solve_lock_dir
           solver_env

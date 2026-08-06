@@ -16,12 +16,21 @@ aspects to this:
 - The latest [dune-release](https://github.com/tarides/dune-release) installed in your dev switch
 - A recent version of [github-cli](https://github.com/cli/cli) installed on your system
 
+The mechanical steps below are automated by the scripts in this directory. See
+[./README.md](./README.md) for what each one does.
+
 ## Prepare
 
-Open a [release tracking issue][release-issue] and work thru its checklist,
-including listing and updating known blockers that are preventing release
+Run
 
-[release-issue]: https://github.com/ocaml/dune/issues/new?template=release.md
+```
+$ INCREMENT=(patch|minor|major) ./doc/dev/releases/release-init.sh
+```
+
+This opens the release tracking issue, creates the release candidate branch
+`X.Y.Z-rc`, and opens the draft release pull request. Then work thru the
+checklist on the tracking issue, including listing and updating the known
+blockers that are preventing release.
 
 ## Major / Minor Releases (`x.y.0`)
 
@@ -31,12 +40,12 @@ gitGraph
   commit id: "feat(2)"
   commit id: "feat(3)"
   branch "x.y"
-  commit tag: "x.y.0~alpha1"
+  commit tag: "x.y.0~alpha0"
   checkout main
   commit id: "fix(1)"
   checkout "x.y"
   cherry-pick id: "fix(1)"
-  commit tag: "x.y.0~alpha2"
+  commit tag: "x.y.0~alpha1"
   commit tag: "x.y.0"
 ```
 
@@ -57,7 +66,7 @@ During the pre-release phase, we produce alpha releases, which we use to run the
 opam-ci to check for integration with the wider ocaml ecosystem.
 
 1. Create and checkout the release candidate branch `X.Y.Z-rc` from the head of
-   `main`
+   `main` (done by `release-init.sh`)
 2. Let `N=0`
 3. Prepare alpha release
     - If `N>0`
@@ -66,16 +75,27 @@ opam-ci to check for integration with the wider ocaml ecosystem.
           new branch off `main`. (This is a judgment call, based on weighing risk of
           picking up new regressions vs. the benefits of simpler process and picking
           up additional improvements from main.)
-        - Run pre-release CI jobs on `X.Y.Z-rc` branch
-            - [mirage](https://github.com/ocaml/dune/actions/workflows/mirage.yml)
-            - [packaging](https://github.com/ocaml/dune/actions/workflows/isolated-package-build.yml)
-        - If the pre-release CI detects regreessions, goto (3).
-    - Build the changelog via `doc/changes/scripts/build_changelog.sh x.y.0~alphaN`
-    - Review the resulting changelog for intelligibility.
-    - Commit the changelog update to the release branch with the commit message `[X.Y.Z] prepare alphaN release`
-    - Run `make opam-release`
-        - [edit the release][edit-release] to mark it with `Set as a pre-release`
-        - mark resulting opam-repo PR as a draft
+        - Pushing to the `X.Y.Z-rc` branch runs the pre-release CI jobs
+          automatically: [mirage](https://github.com/ocaml/dune/actions/workflows/mirage.yml),
+          [packaging](https://github.com/ocaml/dune/actions/workflows/isolated-package-build-pre-release.yml),
+          [revdep packages](https://github.com/ocaml/dune/actions/workflows/revdeps-release-coverage.yml)
+          and [revdep devtools](https://github.com/ocaml/dune/actions/workflows/revdeps-release-devtools.yml).
+        - If the pre-release CI detects regressions, goto (3).
+    - Cut the alpha from the release candidate branch:
+
+      ```
+      $ RELEASE_KIND=prerelease ./doc/dev/releases/release-cut.sh
+      ```
+
+      The alpha number is derived from the existing tags, starting at
+      `X.Y.Z~alpha0`. The script verifies that the branch is fit to release,
+      prints the changelog it is about to commit for review, and then commits
+      it, pushes, and publishes. Passing `DRY_RUN=true` stops short of every
+      mutating step, so the same checks and the same changelog preview can be
+      seen without cutting anything.
+
+      The GitHub release is marked as a pre-release and the opam repository
+      pull request is opened as a draft, both automatically.
     - Wait for the `opam-ci` results
     - Review the results:
         - Any build or test failures in dune's own packages require fixes
@@ -87,17 +107,20 @@ opam-ci to check for integration with the wider ocaml ecosystem.
             - Mark opam alpha PR as closed
             - Let `N=N+1` and goto (3)
 
-[edit-release]: https://docs.github.com/en/rest/releases/releases?apiVersion=2026-03-10#update-a-release
 [prev-releases]: https://github.com/ocaml/dune/wiki/Reverse-dependencies-CI-logs
 
 ### Release phase
 
-- On release branch, prepare changelog
-    - combine all entries from different alpha release
-    - set the version header to `X.Y.Z (<date>)`
-- commit onto `X.Y.Z-rc` branch with message `[X.Y.Z] release` and push to remote
-- Push release branch to remote
-- Run `make opam-release` from updated `X.Y.Z-rc` branch
+- Cut the release from the `X.Y.Z-rc` branch:
+
+  ```
+  $ RELEASE_KIND=release ./doc/dev/releases/release-cut.sh
+  ```
+
+  The changelog section for `X.Y.Z` is regenerated from the change fragments,
+  which have been accumulating across the alphas rather than being consumed by
+  them, so the entries from every alpha are combined into one section dated the
+  day of the release. The fragments are consumed only now.
 - Add a comment on the opam repo PR linking back to the release tracker issues
  and explaining that all triage is completed, and ask the opam repo maintainers
  to bypass the opam-ci.
@@ -138,11 +161,15 @@ stateDiagram-v2
     PostRelease --> [*]
 ```
 
-- Build the changelog via `doc/changes/scripts/build_changelog.sh X.Y.Z`
-- Review the resulting changelog for intelligibility.
-- Commit the changelog update to the release branch with the commit message `[X.Y.Z] release`
-- Push release branch to remote
-- Run `make opam-release`.
+- Backport each fix from `main` with
+  `VERSION=X.Y.Z PR=<pr-number> ./doc/dev/releases/backport.sh`, and merge the
+  resulting pull request once its CI passes.
+- Cut the release from the `X.Y.Z-rc` branch:
+
+  ```
+  $ RELEASE_KIND=release ./doc/dev/releases/release-cut.sh
+  ```
+
 - Wait for the `opam-ci` results
 - Review the results:
     - Any build or test failures in dune's own packages require fixes
@@ -153,6 +180,47 @@ stateDiagram-v2
         - File issues about all regressions.
         - Mark GitHub release as a pre-release.
         - Cut a new patch release.
+
+## Cutting a release
+
+`release-cut.sh` refuses to cut a release unless
+
+- the working tree is clean,
+- `dune-project` declares the language version of the release series, and the
+  `dune` lower bounds in `opam/*.opam` agree with it,
+- the tag the release would create does not already exist, locally or on the
+  remote, and
+- every check run on the head of the release candidate branch has completed and
+  passed. Checks that have not reported yet count as a failure, not a pass, so
+  cutting immediately after a push is refused rather than waved through.
+
+It then prints the changelog it is about to commit and asks for confirmation.
+Reviewing that diff is the review of the changelog: nothing has been committed,
+pushed, or published at that point.
+
+### Resuming an interrupted release
+
+Publication is a sequence of steps that is not transactional, so a failure part
+way through leaves the earlier steps done — a failure at `opam submit` leaves a
+pushed tag and a published GitHub release behind. Rerunning `release-cut.sh` in
+that state is refused, because the tag now exists.
+
+Resume from the step that failed instead, using the individual targets:
+
+```
+$ make opam-release-tag
+$ make opam-release-distrib
+$ make opam-release-publish
+$ make opam-release-opam-pkg
+$ make opam-release-opam-submit
+```
+
+Use the `opam-release-` targets rather than the `dune-release-` ones they wrap:
+like `opam-release`, they run the step under the dune being released, instead of
+whichever dune happens to be on `PATH`.
+
+Pass the same `RELEASE_KIND` that the release was started with, so that an alpha
+is still published as a pre-release and still submitted to opam as a draft.
 
 ## Decisions
 

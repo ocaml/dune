@@ -117,11 +117,14 @@ module Processed = struct
   ;;
 
   (* ...but modules can have different preprocessing specifications*)
-  type t =
+  type configuration =
     { config : config
     ; per_file_config : module_config Path.Build.Map.t
     ; pp_config : pp_flag option Module_name.Per_item.t
+    ; is_default : bool
     }
+
+  type t = configuration Nonempty_list.t
 
   type output_format =
     [ `Text
@@ -154,9 +157,9 @@ module Processed = struct
     ;;
   end
 
-  let repr =
+  let configuration_repr =
     Repr.record
-      "merlin-processed"
+      "merlin-processed-configuration"
       [ Repr.field "config" config_repr ~get:(fun t -> t.config)
       ; Repr.field
           "per_file_config"
@@ -166,9 +169,11 @@ module Processed = struct
           "pp_config"
           (Module_name.Per_item.repr (Repr.option pp_flag_repr))
           ~get:(fun t -> t.pp_config)
+      ; Repr.field "is_default" Repr.bool ~get:(fun t -> t.is_default)
       ]
   ;;
 
+  let repr = Repr.view (Repr.list configuration_repr) ~to_:Nonempty_list.to_list
   let to_dyn = Repr.to_dyn repr
 
   module D = struct
@@ -176,7 +181,7 @@ module Processed = struct
 
     let name = "merlin-conf"
     let sharing = false
-    let version = 8
+    let version = 9
 
     let repr =
       Repr.view Repr.string ~to_:(fun _ -> "Use [dune ocaml dump-dot-merlin] instead")
@@ -376,7 +381,7 @@ module Processed = struct
     Buffer.contents b
   ;;
 
-  let get { per_file_config; pp_config; config } ~file =
+  let get_configuration { per_file_config; pp_config; config; is_default = _ } ~file =
     let open Option.O in
     let+ { module_; opens; reader } =
       let find file = Path.Build.Map.find per_file_config file in
@@ -401,7 +406,23 @@ module Processed = struct
     to_sexp ~unit_name ~opens ~pp ~reader config
   ;;
 
-  let dump_entries { per_file_config; pp_config; config } : Dump_entry.t list =
+  let get configurations ~file =
+    let rec loop fallback = function
+      | [] -> fallback
+      | configuration :: configurations ->
+        (match get_configuration configuration ~file with
+         | None -> loop fallback configurations
+         | Some directives ->
+           if configuration.is_default
+           then Some directives
+           else loop (Option.first_some fallback (Some directives)) configurations)
+    in
+    loop None (Nonempty_list.to_list configurations)
+  ;;
+
+  let dump_entries { per_file_config; pp_config; config; is_default = _ }
+    : Dump_entry.t list
+    =
     Path.Build.Map.to_list per_file_config
     |> List.map ~f:(fun (source_path, { module_; opens; reader }) ->
       let module_name = Module.name module_ in
@@ -428,7 +449,10 @@ module Processed = struct
   let print_file path =
     match load_file path with
     | Error msg -> Printf.eprintf "%s\n" msg
-    | Ok t -> dump_entries t |> List.iter ~f:print_entry
+    | Ok configurations ->
+      Nonempty_list.to_list_map configurations ~f:dump_entries
+      |> List.concat
+      |> List.iter ~f:print_entry
   ;;
 
   let print_files format paths =
@@ -439,7 +463,8 @@ module Processed = struct
          Result.List.map paths ~f:(fun path ->
            match load_file path with
            | Error msg -> Error msg
-           | Ok t -> Ok (dump_entries t))
+           | Ok configurations ->
+             Ok (Nonempty_list.to_list_map configurations ~f:dump_entries |> List.concat))
        with
        | Error msg -> Printf.eprintf "%s\n" msg
        | Ok entries ->
@@ -452,78 +477,87 @@ module Processed = struct
   let print_generic_dot_merlin paths =
     match Result.List.map paths ~f:load_file with
     | Error msg -> Printf.eprintf "%s\n" msg
-    | Ok [] -> Printf.eprintf "No merlin configuration found.\n"
-    | Ok (init :: tl) ->
-      let ( pp_configs
-          , obj_dirs
-          , src_dirs
-          , hidden_obj_dirs
-          , hidden_src_dirs
-          , flags
-          , extensions
-          , indexes )
-        =
-        (* We merge what is easy to merge and ignore the rest *)
-        List.fold_left
-          tl
-          ~init:
-            ( [ init.pp_config ]
-            , init.config.obj_dirs
-            , init.config.src_dirs
-            , init.config.hidden_obj_dirs
-            , init.config.hidden_src_dirs
-            , [ init.config.flags ]
-            , init.config.extensions
-            , init.config.indexes )
-          ~f:
-            (fun
-              ( acc_pp
-              , acc_obj
-              , acc_src
-              , acc_hidden_obj
-              , acc_hidden_src
-              , acc_flags
-              , acc_ext
-              , acc_indexes )
-              { per_file_config = _
-              ; pp_config
-              ; config =
-                  { stdlib_dir = _
-                  ; source_root = _
-                  ; obj_dirs
-                  ; src_dirs
-                  ; hidden_obj_dirs
-                  ; hidden_src_dirs
-                  ; flags
-                  ; extensions
-                  ; indexes
-                  ; parameters = _
-                  }
-              }
-            ->
-            ( pp_config :: acc_pp
-            , Path.Set.union acc_obj obj_dirs
-            , Path.Set.union acc_src src_dirs
-            , Path.Set.union acc_hidden_obj hidden_obj_dirs
-            , Path.Set.union acc_hidden_src hidden_src_dirs
-            , flags :: acc_flags
-            , extensions @ acc_ext
-            , indexes @ acc_indexes ))
+    | Ok containers ->
+      let configurations =
+        List.map containers ~f:(fun configurations ->
+          List.find (Nonempty_list.to_list configurations) ~f:(fun configuration ->
+            configuration.is_default)
+          |> Option.value ~default:(Nonempty_list.hd configurations))
       in
-      Printf.printf
-        "%s\n"
-        (to_dot_merlin
-           init.config.stdlib_dir
-           init.config.source_root
-           pp_configs
-           flags
-           obj_dirs
-           src_dirs
-           hidden_obj_dirs
-           hidden_src_dirs
-           extensions
-           indexes
-           init.config.parameters)
+      (match configurations with
+       | [] -> Printf.eprintf "No merlin configuration found.\n"
+       | init :: tl ->
+         let ( pp_configs
+             , obj_dirs
+             , src_dirs
+             , hidden_obj_dirs
+             , hidden_src_dirs
+             , flags
+             , extensions
+             , indexes )
+           =
+           (* We merge what is easy to merge and ignore the rest *)
+           List.fold_left
+             tl
+             ~init:
+               ( [ init.pp_config ]
+               , init.config.obj_dirs
+               , init.config.src_dirs
+               , init.config.hidden_obj_dirs
+               , init.config.hidden_src_dirs
+               , [ init.config.flags ]
+               , init.config.extensions
+               , init.config.indexes )
+             ~f:
+               (fun
+                 ( acc_pp
+                 , acc_obj
+                 , acc_src
+                 , acc_hidden_obj
+                 , acc_hidden_src
+                 , acc_flags
+                 , acc_ext
+                 , acc_indexes )
+                 { per_file_config = _
+                 ; pp_config
+                 ; is_default = _
+                 ; config =
+                     { stdlib_dir = _
+                     ; source_root = _
+                     ; obj_dirs
+                     ; src_dirs
+                     ; hidden_obj_dirs
+                     ; hidden_src_dirs
+                     ; flags
+                     ; extensions
+                     ; indexes
+                     ; parameters = _
+                     }
+                 }
+               ->
+               ( pp_config :: acc_pp
+               , Path.Set.union acc_obj obj_dirs
+               , Path.Set.union acc_src src_dirs
+               , Path.Set.union acc_hidden_obj hidden_obj_dirs
+               , Path.Set.union acc_hidden_src hidden_src_dirs
+               , flags :: acc_flags
+               , extensions @ acc_ext
+               , indexes @ acc_indexes ))
+         in
+         Printf.printf
+           "%s\n"
+           (to_dot_merlin
+              init.config.stdlib_dir
+              init.config.source_root
+              pp_configs
+              flags
+              obj_dirs
+              src_dirs
+              hidden_obj_dirs
+              hidden_src_dirs
+              extensions
+              indexes
+              init.config.parameters))
   ;;
 end
 
@@ -558,6 +592,7 @@ module Unprocessed = struct
 
   type t =
     { ident : Merlin_ident.t
+    ; is_default : bool
     ; config : config
     ; modules : Modules.With_vlib.t
     }
@@ -574,6 +609,7 @@ module Unprocessed = struct
         ~dialects
         ~ident
         ~for_
+        ~is_default
         ~parameters
     =
     (* Merlin shouldn't cause the build to fail, so we just ignore errors *)
@@ -602,7 +638,7 @@ module Unprocessed = struct
       ; parameters
       }
     in
-    { ident; config; modules }
+    { ident; is_default; config; modules }
   ;;
 
   let encode_command =
@@ -720,6 +756,7 @@ module Unprocessed = struct
   let process
         ({ modules
          ; ident = _
+         ; is_default
          ; config =
              { stdlib_dir
              ; extensions
@@ -833,19 +870,33 @@ module Unprocessed = struct
           (src, config) :: (src_without_extension, config) :: acc))
       |> Path.Build.Map.of_list_reduce ~f:(fun existing _ -> existing)
     in
-    { Processed.pp_config; config; per_file_config }
+    { Processed.pp_config; config; per_file_config; is_default }
   ;;
 end
 
-let dot_merlin sctx ~dir ~more_src_dirs ~expander (t : Unprocessed.t) =
-  let merlin_file = Merlin_ident.merlin_file_path dir t.ident in
+type group = Unprocessed.t Nonempty_list.t
+
+let group configurations = configurations
+
+let dot_merlin sctx ~dir ~more_src_dirs ~expander (first :: rest : group) =
+  let merlin_file = Merlin_ident.merlin_file_path dir first.ident in
   let* () =
     Rules.Produce.Alias.add_deps
       (Alias.make Alias0.check ~dir)
       (Action_builder.path (Path.build merlin_file))
   in
+  let configurations =
+    let open Action_builder.O in
+    let+ first = Unprocessed.process first sctx ~dir ~more_src_dirs ~expander
+    and+ rest =
+      List.map rest ~f:(fun configuration ->
+        Unprocessed.process configuration sctx ~dir ~more_src_dirs ~expander)
+      |> Action_builder.all
+    in
+    (first :: rest : Processed.t)
+  in
   let action =
-    Unprocessed.process t sctx ~dir ~more_src_dirs ~expander
+    configurations
     |> Action_builder.map ~f:Processed.Persist.to_string
     |> Action_builder.with_no_targets
     |> Action_builder.With_targets.write_file_dyn merlin_file
@@ -853,10 +904,10 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander (t : Unprocessed.t) =
   Super_context.add_rule sctx ~dir action
 ;;
 
-let add_rules sctx ~dir ~more_src_dirs ~expander merlin =
+let add_rules sctx ~dir ~more_src_dirs ~expander group =
   Memo.when_
     (Context.merlin (Super_context.context sctx))
-    (fun () -> dot_merlin sctx ~more_src_dirs ~expander ~dir merlin)
+    (fun () -> dot_merlin sctx ~more_src_dirs ~expander ~dir group)
 ;;
 
 let more_src_dirs dir_contents ~source_dirs =

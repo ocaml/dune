@@ -667,6 +667,7 @@ let library_rules
       ~dialects:(Dune_project.dialects (Scope.project scope))
       ~ident:(Merlin_ident.for_lib (Library.best_name lib))
       ~for_
+      ~is_default:for_merlin
       ~parameters
   in
   merlin

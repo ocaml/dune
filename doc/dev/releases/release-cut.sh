@@ -18,6 +18,9 @@
 # - The optional DUNE_REMOTE can be used to set the name of the git remote to
 #   fetch tags from and push the release branch to. It defaults to 'git config
 #   remote.pushdefault' if set or finally to 'origin' if not.
+# - The optional DUNE_REPO is the repository whose CI results gate the release,
+#   in owner/repo form. It defaults to 'ocaml/dune'. Set it to your fork when
+#   staging a release, since it is resolved independently of DUNE_REMOTE.
 # - NB. To stage a release against forks, dune-release reads the following from
 #   the environment; they pass through 'make opam-release' unchanged:
 #   - DUNE_RELEASE_DEV_REPO    the dune fork the release/tag/tarball goes to
@@ -38,6 +41,7 @@
 #
 #  $ RELEASE_KIND=prerelease \
 #      DUNE_REMOTE=my-fork \
+#      DUNE_REPO=me/dune \
 #      DUNE_RELEASE_DEV_REPO=https://github.com/me/dune.git \
 #      DUNE_RELEASE_OPAM_REPO=me/opam-repository \
 #      ./release-cut.sh
@@ -80,6 +84,7 @@ function confirm () {
 
 # Validate and prepare input variables
 [ ! -z "${RELEASE_KIND}" ] || err "variable RELEASE_KIND is not set"
+DUNE_REPO=${DUNE_REPO:-"ocaml/dune"}
 # Get the remote configured by envvar, or via the git config remote.pushDefault,
 DUNE_REMOTE=${DUNE_REMOTE:-$(git config remote.pushdefault || echo "")}
 # Finally fallback to 'origin' if the remote isn't configured
@@ -91,6 +96,7 @@ ROOT_DIR=$(realpath "${SCRIPT_DIR}/../../..")
 # Check for required utilities
 command -v git >/dev/null 2>&1 || err "script requires git"
 command -v dune-release >/dev/null 2>&1 || err "script requires dune-release"
+command -v gh >/dev/null 2>&1 || err "script requires gh"
 
 # All variables should be set from this point on
 set -u
@@ -186,6 +192,101 @@ function render_changelog () {
         "${ROOT_DIR}/doc/changes/scripts/build_changelog.sh" "${release_version}"
 }
 
+# Run a precondition. Under DRY_RUN a failure is reported but does not stop the
+# run, so that the changelog preview is still produced and every unmet
+# precondition is reported rather than only the first.
+function run_check () {
+    if [[ "${DRY_RUN:-false}" == "true" ]]; then
+        ( "$@" ) \
+            || echo >&2 "DRY RUN: continuing despite the failure above"
+    else
+        "$@"
+    fi
+}
+
+# Refuse to release from a tree with uncommitted changes: the tarball is built
+# from the tag, so local edits would be published silently or not at all.
+function check_clean_worktree () {
+    if [[ -n "$(git status --porcelain)" ]]; then
+        err "the working tree has uncommitted changes"
+    fi
+}
+
+# The packages declare their dune dependency from the language version in
+# dune-project, so cutting X.Y.Z from a branch that still declares an older
+# language version publishes packages with the wrong lower bound.
+function check_version_consistency () {
+    local series lang_version
+    local bounds=()
+    series=$(cut -d. -f1,2 <<< "${version}")
+    lang_version=$(sed -n 's/^(lang dune \([0-9]*\.[0-9]*\))$/\1/p' \
+        "${ROOT_DIR}/dune-project")
+    if [[ -z "${lang_version}" ]]; then
+        err "could not read the dune language version from dune-project"
+    fi
+    if [[ "${lang_version}" != "${series}" ]]; then
+        err "dune-project declares (lang dune ${lang_version}) but ${version} is a ${series} release"
+    fi
+    mapfile -t bounds < <(sed -n 's/.*"dune" {>= "\([0-9.]*\)".*/\1/p' \
+        "${ROOT_DIR}"/opam/*.opam | sort -u)
+    if [[ "${#bounds[@]}" -ne 1 || "${bounds[0]}" != "${series}" ]]; then
+        err "opam files declare dune lower bounds '${bounds[*]}' but ${version} is a ${series} release"
+    fi
+}
+
+# dune-release escapes '~' as '_' when it creates the tag. An existing tag means
+# this version was already cut, so publishing again would either fail or move a
+# published tag.
+function check_tag_unused () {
+    local release_version="$1"
+    local tag="${release_version//\~/_}"
+    if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
+        err "tag ${tag} already exists locally; if a previous attempt failed part
+way through, resume it with the individual make opam-release-<step> targets
+rather than rerunning this script"
+    fi
+    if [[ -n "$(git ls-remote --tags "${DUNE_REMOTE}" "refs/tags/${tag}")" ]]; then
+        err "tag ${tag} already exists on ${DUNE_REMOTE}"
+    fi
+}
+
+# Publishing is not reversible, so the branch must be green first. Checks that
+# have not reported are treated as a failure rather than as success: dispatching
+# straight after a push would otherwise sail through an empty check list.
+function check_ci_passed () {
+    local sha endpoint total runs pending failed
+    sha=$(git rev-parse HEAD)
+    endpoint="repos/${DUNE_REPO}/commits/${sha}/check-runs"
+    total=$(gh api "${endpoint}" --jq '.total_count') \
+        || err "could not query the check runs for ${sha}"
+    # The endpoint pages at 30 results, so without --paginate a pending or
+    # failed check beyond the first page would read as success.
+    runs=$(gh api --paginate "${endpoint}" \
+        --jq '.check_runs[] | "\(.status)\t\(.conclusion)\t\(.name)"') \
+        || err "could not query the check runs for ${sha}"
+    if [[ -z "${runs}" ]]; then
+        err "no checks have reported for ${sha}"
+    fi
+    # Guard against silently narrowing coverage if the pagination behaviour or
+    # the response shape ever changes.
+    if [[ "$(wc -l <<< "${runs}")" -ne "${total}" ]]; then
+        err "expected ${total} check runs for ${sha} but read $(wc -l <<< "${runs}")"
+    fi
+    pending=$(awk -F'\t' '$1 != "completed" { print "  " $3 }' <<< "${runs}")
+    if [[ -n "${pending}" ]]; then
+        err "checks are still running for ${sha}:
+${pending}"
+    fi
+    failed=$(awk -F'\t' \
+        '$2 != "success" && $2 != "neutral" && $2 != "skipped" { print "  " $3 }' \
+        <<< "${runs}")
+    if [[ -n "${failed}" ]]; then
+        err "checks did not pass for ${sha}:
+${failed}"
+    fi
+}
+
+
 # Render the changelog exactly as the release would and print the resulting
 # diff, then restore the working tree. Fragments are always kept: a preview
 # must not consume them, not even when previewing a full release.
@@ -239,7 +340,11 @@ function pre_release_version () {
 
 function release () {
     local release_version="$1"
+    run_check check_clean_worktree
     run_cmd git pull --ff-only "${DUNE_REMOTE}" "${branch}"
+    run_check check_version_consistency
+    run_check check_tag_unused "${release_version}"
+    run_check check_ci_passed
     preview_changelog "${release_version}"
     if [[ "${DRY_RUN:-false}" != "true" ]]; then
         confirm "${release_version}"

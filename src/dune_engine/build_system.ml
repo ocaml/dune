@@ -1149,6 +1149,14 @@ let run_with_error_collection ?restart_started_at ~build_started_at ~build colle
       (fun () ->
          let* () = State.reset_errors () in
          let* outcome = collect_errors () in
+         let progress =
+           match !State.t with
+           | Building progress -> progress
+           | state ->
+             Code_error.raise
+               "Build progress is unavailable at the end of a build"
+               [ "state", State.to_dyn state ]
+         in
          Dtemp.clear ();
          Sandbox.cleanup_pending_targets ();
          Target_promotion.save ();
@@ -1180,6 +1188,16 @@ let run_with_error_collection ?restart_started_at ~build_started_at ~build colle
              Option.map restart_started_at ~f:(fun restart_started_at ->
                Time.diff stop restart_started_at)
            in
+           let { Progress.number_of_rules_discovered = discovered
+               ; number_of_rules_validated = validated
+               ; number_of_rules_failed = failed
+               }
+             =
+             progress
+           in
+           let rules : Dune_trace.Event.build_rules =
+             { Dune_trace.Event.discovered; validated; failed }
+           in
            let memo : Dune_trace.Event.memo_metrics =
              { Dune_trace.Event.restore_nodes = Counter.read Memo.Metrics.Restore.nodes
              ; restore_edges = Counter.read Memo.Metrics.Restore.edges
@@ -1200,6 +1218,7 @@ let run_with_error_collection ?restart_started_at ~build_started_at ~build colle
              ~start:build_started_at
              ~stop
              ~restart_duration
+             ~rules
              ~memo);
          Dune_trace.capture_alloc_profile (`Build (Run_id.to_int run_id))
          |> Option.iter ~f:Dune_trace.always_emit;

@@ -268,6 +268,10 @@ def buildEvents:
     then .args.memo |= with_entries(.value |= keys)
     else .
     end
+  | if .args.rules? != null
+    then .args.rules |= keys
+    else .
+    end
   | if .args.rusage? != null
     then .args.rusage |= keys
     else .

@@ -223,6 +223,22 @@ module Expanded = struct
     { t with dst = Dst.explicit dst }
   ;;
 
+  let install_in_sysroot t ~paths ~prefix =
+    let i_want_to_install_the_file_as =
+      relative_installed_path t ~paths
+      |> Path.as_in_source_tree_exn
+      |> Path.append_source prefix
+    in
+    let dst = Path.to_string i_want_to_install_the_file_as in
+    { t with
+      dst = Dst.explicit dst
+    ; section =
+        (if Section.should_set_executable_bit t.section
+         then Section.Rootexec
+         else Section.Root)
+    }
+  ;;
+
   let of_install_file ~optional ~src ~dst ~section =
     { src
     ; section

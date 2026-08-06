@@ -194,6 +194,11 @@ opam-release-%: dev
 # Avoiding the need for interaction
 DUNE_RELEASE_YES_FLAG := $(if $(filter true,$(DUNE_RELEASE_YES)),--yes)
 
+# An alpha is submitted to opam as a draft pull request, so that it cannot be
+# merged while its reverse dependency CI is still being triaged. Marking it was
+# a manual step after every alpha.
+DUNE_RELEASE_DRAFT_FLAG := $(if $(filter prerelease,$(RELEASE_KIND)),--draft)
+
 # Publishing is a sequence of steps that is not transactional: a failure part
 # way through leaves the earlier steps done. Each step is therefore also a
 # target of its own, so that an interrupted release can be resumed from the
@@ -225,7 +230,7 @@ dune-release-opam-pkg:
 
 .PHONY: dune-release-opam-submit
 dune-release-opam-submit:
-	dune-release opam submit $(DUNE_RELEASE_YES_FLAG)
+	dune-release opam submit $(DUNE_RELEASE_DRAFT_FLAG) $(DUNE_RELEASE_YES_FLAG)
 
 .PHONY: docker-build-image
 docker-build-image:

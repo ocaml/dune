@@ -185,15 +185,46 @@ dune: $(BIN)
 opam-release: dev
 	$(BIN) exec -- $(MAKE) dune-release
 
+# Resume an interrupted publication from a single step, e.g. with
+# 'make opam-release-opam-submit', still under the in source dune.
+opam-release-%: dev
+	$(BIN) exec -- $(MAKE) dune-release-$*
+
 # Set DUNE_RELEASE_YES_FLAG=true to force dune-release to run with the --yes flag
 # Avoiding the need for interaction
 DUNE_RELEASE_YES_FLAG := $(if $(filter true,$(DUNE_RELEASE_YES)),--yes)
+
+# Publishing is a sequence of steps that is not transactional: a failure part
+# way through leaves the earlier steps done. Each step is therefore also a
+# target of its own, so that an interrupted release can be resumed from the
+# step that failed rather than restarted.
+.PHONY: dune-release
 dune-release:
+	$(MAKE) dune-release-tag
+	$(MAKE) dune-release-distrib
+	$(MAKE) dune-release-publish
+	$(MAKE) dune-release-opam-pkg
+	$(MAKE) dune-release-opam-submit
+
+.PHONY: dune-release-tag
+dune-release-tag:
 	dune-release tag $(DUNE_RELEASE_YES_FLAG)
+
+.PHONY: dune-release-distrib
+dune-release-distrib:
 	dune-release distrib --skip-build --skip-lint --skip-tests
+
+.PHONY: dune-release-publish
+dune-release-publish:
 # See https://github.com/ocamllabs/dune-release/issues/206
 	DUNE_RELEASE_DELEGATE=github-dune-release-delegate dune-release publish --verbose $(if $(filter prerelease,$(RELEASE_KIND)),--prerelease) $(DUNE_RELEASE_YES_FLAG)
+
+.PHONY: dune-release-opam-pkg
+dune-release-opam-pkg:
 	dune-release opam pkg $(DUNE_RELEASE_YES_FLAG)
+
+.PHONY: dune-release-opam-submit
+dune-release-opam-submit:
 	dune-release opam submit $(DUNE_RELEASE_YES_FLAG)
 
 .PHONY: docker-build-image

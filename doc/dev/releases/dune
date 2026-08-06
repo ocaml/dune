@@ -1,0 +1,6 @@
+(rule
+ (alias lint-release-scripts)
+ (enabled_if %{bin-available:shellcheck})
+ (deps backport.sh release-cut.sh release-init.sh)
+ (action
+  (run %{bin:shellcheck} -s bash %{deps})))

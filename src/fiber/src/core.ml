@@ -77,11 +77,21 @@ and eff =
   | Never of unit
   (* Add a dummy unit argument to [End_of_fiber] and [Never] so that all
      constructors are boxed, which removes a branch in the pattern match. *)
-  | Fork : eff * (unit -> eff) -> eff
+  | Fork : eff * work -> eff
   | Reraise : Exn_with_backtrace.t -> eff
   | Reraise_all : Exn_with_backtrace.t list -> eff
   | Toplevel_exception : Exn_with_backtrace.t -> eff
   | Done of value
+
+and work =
+  | Function_work of (unit -> eff)
+  | Nfork_work : 'a * 'a list * ('a -> eff) -> work
+  | Nforki_work : int * 'a * 'a list * (int -> 'a -> eff) -> work
+  | Nfork_seq_work : int ref * 'a * 'a Seq.t * ('a -> eff) -> work
+  | Nfork_array_work : 'a array * int * ('a -> eff) -> work
+  | Apply_thunk_work : (unit -> 'a t) * 'a continuation -> work
+  | Eval_work : 'a t * 'a continuation -> work
+  | Continue_work : unit continuation -> work
 
 and 'a ivar = { mutable state : ('a, [ `Full | `Empty ]) ivar_state }
 
@@ -219,12 +229,6 @@ let apply_t2 f x y k =
   | exn -> Reraise (Exn_with_backtrace.capture exn)
 ;;
 
-let[@inline always] fork a b =
-  match apply a () with
-  | End_of_fiber () -> b ()
-  | eff -> Fork (eff, b)
-;;
-
 let rec nfork x l f =
   match l with
   | [] -> f x
@@ -233,19 +237,19 @@ let rec nfork x l f =
        not getting rid of the closures. *)
     (match apply f x with
      | End_of_fiber () -> nfork y l f
-     | eff -> Fork (eff, fun () -> nfork y l f))
+     | eff -> Fork (eff, Nfork_work (y, l, f)))
 ;;
 
-let rec nforki i x l f =
+let rec nforki_from i x l f =
   match l with
   | [] -> f i x
   | y :: l ->
     (match apply2 f i x with
-     | End_of_fiber () -> nforki (i + 1) y l f
-     | eff -> Fork (eff, fun () -> nforki (i + 1) y l f))
+     | End_of_fiber () -> nforki_from (i + 1) y l f
+     | eff -> Fork (eff, Nforki_work (i + 1, y, l, f)))
 ;;
 
-let nforki x l f = nforki 0 x l f
+let nforki x l f = nforki_from 0 x l f
 
 let rec nfork_seq left_over x (seq : _ Seq.t) f =
   match seq () with
@@ -254,7 +258,7 @@ let rec nfork_seq left_over x (seq : _ Seq.t) f =
     incr left_over;
     (match apply f x with
      | End_of_fiber () -> nfork_seq left_over y seq f
-     | eff -> Fork (eff, fun () -> nfork_seq left_over y seq f))
+     | eff -> Fork (eff, Nfork_seq_work (left_over, y, seq, f)))
 ;;
 
 let rec nfork_array a i f =
@@ -263,7 +267,18 @@ let rec nfork_array a i f =
   else (
     match apply f a.(i) with
     | End_of_fiber () -> nfork_array a (i + 1) f
-    | eff -> Fork (eff, fun () -> nfork_array a (i + 1) f))
+    | eff -> Fork (eff, Nfork_array_work (a, i + 1, f)))
+;;
+
+let run_work = function
+  | Function_work f -> f ()
+  | Nfork_work (x, l, f) -> nfork x l f
+  | Nforki_work (i, x, l, f) -> nforki_from i x l f
+  | Nfork_seq_work (left_over, x, seq, f) -> nfork_seq left_over x seq f
+  | Nfork_array_work (a, i, f) -> nfork_array a i f
+  | Apply_thunk_work (f, k) -> apply_t f () k
+  | Eval_work (t, k) -> eval t k
+  | Continue_work k -> continue k ()
 ;;
 
 let run_parallel_iter_seq (seq : _ Seq.t) f k =
@@ -378,7 +393,7 @@ let run_fork_and_join fa fb k =
   let kb = Function kb in
   match apply_t fa () ka with
   | End_of_fiber () -> apply_t fb () kb
-  | eff -> Fork (eff, fun () -> apply_t fb () kb)
+  | eff -> Fork (eff, Apply_thunk_work (fb, kb))
 ;;
 
 let fork_and_join fa fb = primitive2 run_fork_and_join fa fb
@@ -402,18 +417,16 @@ let run_fork_and_join_unit fa fb k =
   | eff ->
     Fork
       ( eff
-      , fun () ->
-          apply_t
-            fb
-            ()
-            (Function
-               (fun b ->
-                 match !state with
-                 | Nothing_yet ->
-                   state := Got_b b;
-                   end_of_fiber
-                 | Got_a () -> continue k b
-                 | Got_b _ -> assert false)) )
+      , Apply_thunk_work
+          ( fb
+          , Function
+              (fun b ->
+                match !state with
+                | Nothing_yet ->
+                  state := Got_b b;
+                  end_of_fiber
+                | Got_a () -> continue k b
+                | Got_b _ -> assert false) ) )
 ;;
 
 let fork_and_join_unit fa fb = primitive2 run_fork_and_join_unit fa fb

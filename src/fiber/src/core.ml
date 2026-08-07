@@ -9,6 +9,10 @@ and 'a continuation =
   | Effect : eff continuation
   | Map : ('a -> 'b) * 'b continuation -> 'a continuation
   | Bind : ('a -> 'b t) * 'b continuation -> 'a continuation
+  | Apply : ('a -> 'b -> 'c t) * 'b * 'c continuation -> 'a continuation
+  | Apply_map : ('a -> 'b -> 'c) * 'b * 'c continuation -> 'a continuation
+  | Unwind_to : 'a continuation -> 'a continuation
+  | Unwind_map_reduce_to : ('a, 'b) result continuation -> 'a continuation
 
 and eff =
   | Read_ivar : 'a ivar * 'a continuation -> eff
@@ -78,6 +82,10 @@ let rec continue : type a. a continuation -> a -> eff =
   | Effect -> x
   | Map (f, k) -> continue k (f x)
   | Bind (f, k) -> f x k
+  | Apply (f, y, k) -> f x y k
+  | Apply_map (f, y, k) -> continue k (f x y)
+  | Unwind_to k -> Unwind (k, x)
+  | Unwind_map_reduce_to k -> Unwind_map_reduce (k, Ok x)
 ;;
 
 let return x k = continue k x
@@ -85,13 +93,11 @@ let bind t ~f k = t (Bind (f, k))
 let map t ~f k = t (Map (f, k))
 
 let with_error_handler f ~on_error k =
-  With_error_handler
-    (on_error, Function (fun () -> f () (Function (fun x -> Unwind (k, x)))))
+  With_error_handler (on_error, Function (fun () -> f () (Unwind_to k)))
 ;;
 
 let map_reduce_errors m ~on_error f k =
-  Map_reduce_errors
-    (m, on_error, (fun () -> f () (Function (fun x -> Unwind_map_reduce (k, Ok x)))), k)
+  Map_reduce_errors (m, on_error, (fun () -> f () (Unwind_map_reduce_to k)), k)
 ;;
 
 let suspend f k = Suspend (f, k)
@@ -338,8 +344,7 @@ module Var = struct
   let get (key : 'a Var_map.Key.t) : 'a t = fun k -> Get_var (key, k)
 
   let set (key : 'a Var_map.Key.t) (value : 'a) (fiber : unit -> 'b t) : 'b t =
-    fun k ->
-    Set_var (key, value, Function (fun () -> fiber () (Function (fun x -> Unwind (k, x)))))
+    fun k -> Set_var (key, value, Function (fun () -> fiber () (Unwind_to k)))
   ;;
 
   let get_exn (key : 'a option Var_map.Key.t) : 'a t =
@@ -349,28 +354,25 @@ module Var = struct
   ;;
 
   let update (key : 'a Var_map.Key.t) ~(f : 'a -> 'a) (fiber : unit -> 'b t) : 'b t =
-    fun k ->
-    Update_var (key, f, Function (fun () -> fiber () (Function (fun x -> Unwind (k, x)))))
+    fun k -> Update_var (key, f, Function (fun () -> fiber () (Unwind_to k)))
   ;;
 
   let get_apply (key : 'a Var_map.Key.t) (f : 'a -> 'b -> 'c t) (x : 'b) : 'c t =
-    fun k -> Get_var (key, Function (fun value -> f value x k))
+    fun k -> Get_var (key, Apply (f, x, k))
   ;;
 
   let get_apply_map (key : 'a Var_map.Key.t) (f : 'a -> 'b -> 'c) (x : 'b) : 'c t =
-    fun k -> Get_var (key, Function (fun value -> continue k (f value x)))
+    fun k -> Get_var (key, Apply_map (f, x, k))
   ;;
 
   let set_apply (key : 'a Var_map.Key.t) (value : 'a) (f : 'b -> 'c t) (x : 'b) : 'c t =
-    fun k ->
-    Set_var (key, value, Function (fun () -> f x (Function (fun y -> Unwind (k, y)))))
+    fun k -> Set_var (key, value, Function (fun () -> f x (Unwind_to k)))
   ;;
 
   let update_apply (key : 'a Var_map.Key.t) ~(f : 'a -> 'a) (g : 'b -> 'c t) (x : 'b)
     : 'c t
     =
-    fun k ->
-    Update_var (key, f, Function (fun () -> g x (Function (fun y -> Unwind (k, y)))))
+    fun k -> Update_var (key, f, Function (fun () -> g x (Unwind_to k)))
   ;;
 
   include Var_map.Key

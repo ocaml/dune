@@ -727,7 +727,8 @@ module Dune_config = struct
                 (match
                    Stdune.Spawn.spawn
                      ~prog
-                     ~argv:(prog :: args)
+                     ~argv0:prog
+                     ~args:(Stdune.Array.Immutable.of_list args)
                      ~stdin:(Fd.unsafe_to_unix_file_descr (Lazy.force Dev_null.in_))
                      ~stdout:fdw
                      ~stderr:(Fd.unsafe_to_unix_file_descr (Lazy.force Dev_null.out))

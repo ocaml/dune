@@ -28,7 +28,7 @@ type request =
   ; env : Env.t
   ; metadata : Process_metadata.t
   ; prog : Path.t
-  ; args : string list
+  ; args : string Array.Immutable.t
   ; stdin_from : Input.t
   ; stdout_to : Output.t
   ; stderr_to : Stderr.t

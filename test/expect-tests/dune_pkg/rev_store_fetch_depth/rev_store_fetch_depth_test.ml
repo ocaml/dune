@@ -22,17 +22,18 @@ let with_git_daemon ~parent_dir ~port ~repo_dir ~unrelated_repo_dir ~f =
   let daemon_pid =
     Spawn.spawn
       ~prog:git_prog_str
-      ~argv:
-        [ git_prog_str
-        ; "daemon"
-        ; "--export-all"
-        ; sprintf "--base-path=%s" (Path.to_string parent_dir)
-        ; "--listen=127.0.0.1"
-        ; sprintf "--port=%d" port
-        ; "--reuseaddr"
-        ; Path.to_string repo_dir
-        ; Path.to_string unrelated_repo_dir
-        ]
+      ~argv0:git_prog_str
+      ~args:
+        (Array.Immutable.of_list
+           [ "daemon"
+           ; "--export-all"
+           ; sprintf "--base-path=%s" (Path.to_string parent_dir)
+           ; "--listen=127.0.0.1"
+           ; sprintf "--port=%d" port
+           ; "--reuseaddr"
+           ; Path.to_string repo_dir
+           ; Path.to_string unrelated_repo_dir
+           ])
       ~stdin:(Fd.unsafe_to_unix_file_descr (Lazy.force Dev_null.in_))
       ~stdout:(Fd.unsafe_to_unix_file_descr (Lazy.force Dev_null.out))
       ~stderr:(Fd.unsafe_to_unix_file_descr (Lazy.force Dev_null.out))

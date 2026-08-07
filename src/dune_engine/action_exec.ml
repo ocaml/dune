@@ -66,7 +66,7 @@ open Fiber.O
 let exec_run ~(ectx : context) ~(eenv : env) ~can_run_in_action_runner prog args =
   let metadata = { ectx.metadata with can_run_in_action_runner } in
   let+ (_ : (unit, int) result) =
-    Process.run
+    Process.run_with_array_args
       ~display:!Clflags.display
       (Accept eenv.exit_codes)
       ~dir:eenv.working_dir
@@ -100,7 +100,8 @@ let rec exec t ~ectx ~eenv : Done_or_more_deps.t Fiber.t =
     Action.Prog.Not_found.raise e
   | Run { prog = Ok prog; args; can_run_in_action_runner } ->
     let+ () =
-      exec_run ~ectx ~eenv ~can_run_in_action_runner prog (Appendable_list.to_list args)
+      let args = Appendable_list.to_immutable_array args in
+      exec_run ~ectx ~eenv ~can_run_in_action_runner prog args
     in
     Done
   | With_accepted_exit_codes (exit_codes, t) ->
@@ -171,10 +172,17 @@ let rec exec t ~ectx ~eenv : Done_or_more_deps.t Fiber.t =
     Io.portable_hardlink ~src ~dst:(Path.build dst);
     Fiber.return Done
   | System command ->
-    let prog, arg =
-      Env_path.system_shell_exn ~needed_to:"interpret (system ...) actions"
+    let+ () =
+      let prog, arg =
+        Env_path.system_shell_exn ~needed_to:"interpret (system ...) actions"
+      in
+      exec_run
+        ~ectx
+        ~eenv
+        ~can_run_in_action_runner:true
+        prog
+        (Array.Immutable.of_list [ arg; command ])
     in
-    let+ () = exec_run ~ectx ~eenv ~can_run_in_action_runner:true prog [ arg; command ] in
     Done
   | Bash { script; can_run_in_action_runner } ->
     let+ () =
@@ -183,7 +191,7 @@ let rec exec t ~ectx ~eenv : Done_or_more_deps.t Fiber.t =
         ~eenv
         ~can_run_in_action_runner
         (bash_exn ~loc:ectx.rule_loc ~needed_to:"interpret (bash ...) actions")
-        [ "-e"; "-u"; "-o"; "pipefail"; "-c"; script ]
+        (Array.Immutable.of_list [ "-e"; "-u"; "-o"; "pipefail"; "-c"; script ])
     in
     Done
   | Write_file (fn, perm, s) ->

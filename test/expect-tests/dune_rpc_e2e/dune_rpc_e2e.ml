@@ -93,11 +93,12 @@ let run ?env ~prog ~argv () =
   let stdout_i, stdout_w = Unix.pipe ~cloexec:true () in
   let stderr_i, stderr_w = Unix.pipe ~cloexec:true () in
   let pid =
-    let argv = prog :: argv in
+    let args = Array.Immutable.of_list argv in
     let env = Option.map ~f:Spawn.Env.of_list env in
     Spawn.spawn
       ~prog
-      ~argv
+      ~argv0:prog
+      ~args
       ~stdout:stdout_w
       ~stderr:stderr_w
       ~stdin:(Fd.unsafe_to_unix_file_descr (Lazy.force Dev_null.in_))

@@ -11,6 +11,7 @@ module Arg = struct
   let build_path p = string (Path.Build.to_string p)
   let float x = string (string_of_float x)
   let list xs = Sexp.List xs
+  let array xs ~f = Sexp.List (Array.Immutable.to_list_map xs ~f)
   let int x = Sexp.Atom (string_of_int x)
   let bool x = Sexp.Atom (string_of_bool x)
   let record xs = List.map xs ~f:(fun (k, v) -> list [ string k; v ])
@@ -550,7 +551,7 @@ let process_start
   =
   let args =
     let always =
-      [ "process_args", Arg.list (List.map args ~f:Arg.string)
+      [ "process_args", Arg.array args ~f:Arg.string
       ; "pid", Arg.int (Pid.to_int pid)
       ; "categories", Arg.list (List.map categories ~f:Arg.string)
       ; "queued", Arg.span queued
@@ -594,7 +595,7 @@ let process
   =
   let args =
     let always =
-      [ "process_args", Arg.list (List.map process_args ~f:Arg.string)
+      [ "process_args", Arg.array process_args ~f:Arg.string
       ; "pid", Arg.int (Pid.to_int pid)
       ; "categories", Arg.list (List.map categories ~f:Arg.string)
       ]

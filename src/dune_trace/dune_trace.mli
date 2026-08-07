@@ -70,7 +70,7 @@ module Event : sig
     -> pid:Pid.t
     -> dir:Path.t option
     -> prog:string
-    -> args:string list
+    -> args:string Array.Immutable.t
     -> timeout:Time.Span.t option
     -> started_at:Time.t
     -> name:string option
@@ -88,7 +88,7 @@ module Event : sig
     -> pid:Pid.t
     -> exit:Exit_status.t
     -> prog:string
-    -> process_args:string list
+    -> process_args:string Array.Immutable.t
     -> dir:Path.t option
     -> stdout:string
     -> stderr:string

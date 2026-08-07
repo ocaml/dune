@@ -442,6 +442,41 @@ static char **alloc_string_vect(value v)
   return result;
 }
 
+/* Convert an [argv0] and a [string array] into a NULL terminated array of C
+   strings. */
+static char **alloc_string_array(value v_argv0, value v_args)
+{
+  mlsize_t count = Wosize_val(v_args);
+  mlsize_t full_size =
+    (sizeof(char*) * (count + 2)) + caml_string_length(v_argv0) + 1;
+  mlsize_t i;
+  mlsize_t len;
+  char **result;
+  char *ptr;
+
+  for (i = 0; i < count; i++)
+    full_size += caml_string_length(Field(v_args, i)) + 1;
+
+  result = (char**)malloc(full_size);
+  if (result == NULL) caml_raise_out_of_memory();
+
+  ptr = ((char*)result) + (sizeof(char*) * (count + 2));
+  len = caml_string_length(v_argv0) + 1;
+  memcpy(ptr, String_val(v_argv0), len);
+  result[0] = ptr;
+  ptr += len;
+  for (i = 0; i < count; i++) {
+    value v_str = Field(v_args, i);
+    len = caml_string_length(v_str) + 1;
+    memcpy(ptr, String_val(v_str), len);
+    result[i + 1] = ptr;
+    ptr += len;
+  }
+  result[count + 1] = NULL;
+
+  return result;
+}
+
 static char **copy_c_string_array(char ** strings)
 {
   char **result;
@@ -490,7 +525,8 @@ static void init_spawn_info(struct spawn_info *info,
                             value v_env,
                             value v_cwd,
                             value v_prog,
-                            value v_argv,
+                            value v_argv0,
+                            value v_args,
                             value v_stdin,
                             value v_stdout,
                             value v_stderr,
@@ -527,7 +563,7 @@ static void init_spawn_info(struct spawn_info *info,
 
   info->prog = strdup(String_val(v_prog));
   if (info->prog == NULL) caml_raise_out_of_memory();
-  info->argv = alloc_string_vect(v_argv);
+  info->argv = alloc_string_array(v_argv0, v_args);
   info->env =
     Is_block(v_env) ?
     alloc_string_vect(Field(v_env, 0)) : copy_c_string_array(environ);
@@ -593,7 +629,8 @@ static void init_spawn_info(struct spawn_info *info,
 CAMLprim value dune_spawn_unix(value v_env,
                                value v_cwd,
                                value v_prog,
-                               value v_argv,
+                               value v_argv0,
+                               value v_args,
                                value v_stdin,
                                value v_stdout,
                                value v_stderr,
@@ -602,7 +639,7 @@ CAMLprim value dune_spawn_unix(value v_env,
                                value v_sigprocmask,
                                value v_pdeathsig)
 {
-  CAMLparam4(v_env, v_cwd, v_prog, v_argv);
+  CAMLparam5(v_env, v_cwd, v_prog, v_argv0, v_args);
   CAMLlocal1(e_arg);
   e_arg = Nothing;
 
@@ -625,7 +662,7 @@ CAMLprim value dune_spawn_unix(value v_env,
   }
 
   struct spawn_info info;
-  init_spawn_info(&info, v_env, v_cwd, v_prog, v_argv,
+  init_spawn_info(&info, v_env, v_cwd, v_prog, v_argv0, v_args,
                   v_stdin, v_stdout, v_stderr, v_setpgid, v_sigprocmask,
                   v_pdeathsig);
 
@@ -725,7 +762,8 @@ CAMLprim value dune_spawn_unix(value v_env,
 CAMLprim value dune_spawn_unix(value v_env,
                                value v_cwd,
                                value v_prog,
-                               value v_argv,
+                               value v_argv0,
+                               value v_args,
                                value v_stdin,
                                value v_stdout,
                                value v_stderr,
@@ -734,7 +772,7 @@ CAMLprim value dune_spawn_unix(value v_env,
                                value v_sigprocmask,
                                value v_pdeathsig)
 {
-  CAMLparam4(v_env, v_cwd, v_prog, v_argv);
+  CAMLparam5(v_env, v_cwd, v_prog, v_argv0, v_args);
   pid_t ret;
   struct spawn_info info;
   int result_pipe[2];
@@ -746,7 +784,7 @@ CAMLprim value dune_spawn_unix(value v_env,
   int errno_after_forking = 0;
   int status;
 
-  init_spawn_info(&info, v_env, v_cwd, v_prog, v_argv,
+  init_spawn_info(&info, v_env, v_cwd, v_prog, v_argv0, v_args,
                   v_stdin, v_stdout, v_stderr, v_setpgid, v_sigprocmask,
                   v_pdeathsig);
 
@@ -866,7 +904,8 @@ CAMLprim value dune_spawn_windows(value v_env,
 CAMLprim value dune_spawn_unix(value v_env,
                                value v_cwd,
                                value v_prog,
-                               value v_argv,
+                               value v_argv0,
+                               value v_args,
                                value v_stdin,
                                value v_stdout,
                                value v_stderr,
@@ -878,7 +917,8 @@ CAMLprim value dune_spawn_unix(value v_env,
   (void)v_env;
   (void)v_cwd;
   (void)v_prog;
-  (void)v_argv;
+  (void)v_argv0;
+  (void)v_args;
   (void)v_stdin;
   (void)v_stdout;
   (void)v_stderr;
@@ -989,7 +1029,8 @@ CAMLprim value dune_spawn_unix_byte(value * argv)
                     argv[7],
                     argv[8],
                     argv[9],
-                    argv[10]);
+                    argv[10],
+                    argv[11]);
 }
 
 CAMLprim value dune_spawn_windows_byte(value * argv)

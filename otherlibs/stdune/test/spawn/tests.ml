@@ -1,10 +1,6 @@
-module Int = Stdune.Int
-module Exn = Stdune.Exn
-module Pid = Stdune.Pid
-module Proc = Stdune.Proc
-module Platform = Stdune.Platform
-module Signal = Stdune.Signal
-module Spawn = Stdune.Spawn
+open Stdune
+
+let no_args = Array.Immutable.of_list []
 
 let show_raise f =
   try ignore (f ()) with
@@ -20,7 +16,7 @@ let show_raise f =
 ;;
 
 let%expect_test "non-existing program" =
-  show_raise (fun () -> Spawn.spawn () ~prog:"/doesnt-exist" ~argv:[ "blah" ]);
+  show_raise (fun () -> Spawn.spawn () ~prog:"/doesnt-exist" ~argv0:"blah" ~args:no_args);
   [%expect
     {|
     raised Unix.Unix_error _
@@ -32,7 +28,8 @@ let%expect_test "non-existing dir" =
     Spawn.spawn
       ()
       ~prog:"/bin/true"
-      ~argv:[ "true" ]
+      ~argv0:"true"
+      ~args:no_args
       ~cwd:(Spawn.Working_dir.Path "/doesnt-exist"));
   [%expect
     {|
@@ -58,12 +55,24 @@ let () =
   close_out (open_out "sub/bar")
 ;;
 
+let%expect_test "array arguments" =
+  let args = Array.Immutable.of_list [ "print-args"; "one"; "two" ] in
+  wait (Spawn.spawn () ~prog:print_env ~argv0:"custom-argv0" ~args);
+  [%expect
+    {|
+    custom-argv0
+    one
+    two
+  |}]
+;;
+
 let%expect_test "cwd:Path" =
   wait
     (Spawn.spawn
        ()
        ~prog:list_files
-       ~argv:[ "list_files.exe" ]
+       ~argv0:"list_files.exe"
+       ~args:no_args
        ~cwd:(Spawn.Working_dir.Path "sub"));
   [%expect
     {|
@@ -81,7 +90,8 @@ let%expect_test "cwd:Fd" =
       (Spawn.spawn
          ()
          ~prog:list_files
-         ~argv:[ "list_files.exe" ]
+         ~argv0:"list_files.exe"
+         ~args:no_args
          ~cwd:(Spawn.Working_dir.Fd fd));
     Unix.close fd);
   [%expect
@@ -99,7 +109,8 @@ let%expect_test "cwd:Fd (invalid)" =
       Spawn.spawn
         ()
         ~prog:"/bin/pwd"
-        ~argv:[ "pwd" ]
+        ~argv0:"pwd"
+        ~args:no_args
         ~cwd:(Spawn.Working_dir.Fd Unix.stdin));
   [%expect
     {|
@@ -114,9 +125,9 @@ module Program_lookup = struct
   let split_path s =
     let rec loop i j =
       if j = String.length s
-      then [ String.sub s i (j - i) ]
+      then [ String.sub s ~pos:i ~len:(j - i) ]
       else if s.[j] = path_sep
-      then String.sub s i (j - i) :: loop (j + 1) (j + 1)
+      then String.sub s ~pos:i ~len:(j - i) :: loop (j + 1) (j + 1)
       else loop i (j + 1)
     in
     loop 0 0
@@ -148,7 +159,8 @@ let%expect_test "inheriting stdout with close-on-exec set" =
     Unix.set_close_on_exec Unix.stdout;
     let shell, arg = if Sys.win32 then "cmd", "/c" else "sh", "-c" in
     let prog = Program_lookup.find_prog shell in
-    wait (Spawn.spawn () ~prog ~argv:[ shell; arg; {|echo "hello world"|} ]));
+    let args = Array.Immutable.of_list [ arg; {|echo "hello world"|} ] in
+    wait (Spawn.spawn () ~prog ~argv0:shell ~args));
   [%expect {| hello world |}]
 ;;
 
@@ -160,7 +172,8 @@ let%expect_test "prog relative to cwd" =
       (Spawn.spawn
          ()
          ~prog:"./hello.exe"
-         ~argv:[ "hello" ]
+         ~argv0:"hello"
+         ~args:no_args
          ~cwd:(Spawn.Working_dir.Path "exe"));
   [%expect {| Hello, world! |}]
 ;;
@@ -177,7 +190,8 @@ let%expect_test "env" =
          ()
          ~env
          ~prog:"./print_env.exe"
-         ~argv:[ "print_env" ]
+         ~argv0:"print_env"
+         ~args:no_args
          ~cwd:(Spawn.Working_dir.Path "exe"))
   in
   tst (Some "foo");
@@ -194,7 +208,8 @@ let%expect_test "pgid tests" =
        ~setpgid:Spawn.Pgid.new_process_group
        ()
        ~prog:"pgid_test/checkpgid.exe"
-       ~argv:[]);
+       ~argv0:"checkpgid.exe"
+       ~args:no_args);
   [%expect {||}]
 ;;
 
@@ -249,9 +264,8 @@ let with_pdeathsig_child mode ~spawn ~f =
   let pid_file = temp_name "pid" in
   let cleanup () =
     kill_child pid_file;
-    List.iter
-      (fun fn -> if Sys.file_exists fn then Unix.unlink fn)
-      [ ready_file; marker_file; pid_file ]
+    List.iter [ ready_file; marker_file; pid_file ] ~f:(fun fn ->
+      if Sys.file_exists fn then Unix.unlink fn)
   in
   Exn.protect ~finally:cleanup ~f:(fun () ->
     cleanup ();
@@ -259,8 +273,8 @@ let with_pdeathsig_child mode ~spawn ~f =
     | 0 ->
       let exit_code =
         try
-          let argv = "print_env" :: mode :: [ ready_file; marker_file ] in
-          let child = spawn argv in
+          let args = mode :: [ ready_file; marker_file ] in
+          let child = spawn args in
           Stdune.Io.String_path.write_file
             pid_file
             (Printf.sprintf "%d\n" (Pid.to_int child));
@@ -281,7 +295,12 @@ let%expect_test "pdeathsig defaults to kill" =
      with_pdeathsig_child
        "pdeathsig-default-child"
        ~f:(fun ~marker_file -> wait_for_no_file marker_file)
-       ~spawn:(fun argv -> Spawn.spawn () ~prog:print_env ~argv)
+       ~spawn:(fun args ->
+         Spawn.spawn
+           ()
+           ~prog:print_env
+           ~argv0:"print_env"
+           ~args:(Array.Immutable.of_list args))
    | _ -> ());
   [%expect {||}]
 ;;
@@ -292,7 +311,13 @@ let%expect_test "pdeathsig explicit signal" =
      with_pdeathsig_child
        "pdeathsig-child"
        ~f:(fun ~marker_file -> wait_for_file marker_file)
-       ~spawn:(fun argv -> Spawn.spawn ~pdeathsig:Usr1 () ~prog:print_env ~argv)
+       ~spawn:(fun args ->
+         Spawn.spawn
+           ~pdeathsig:Usr1
+           ()
+           ~prog:print_env
+           ~argv0:"print_env"
+           ~args:(Array.Immutable.of_list args))
    | _ -> ());
   [%expect {||}]
 ;;
@@ -302,7 +327,8 @@ let%expect_test "sigprocmask" =
   then (
     let run ?sigprocmask expected_signal =
       let prog = Program_lookup.find_prog "sleep" in
-      let pid = Spawn.spawn ?sigprocmask ~prog ~argv:[ "sleep"; "60" ] () in
+      let args = Array.Immutable.of_list [ "60" ] in
+      let pid = Spawn.spawn ?sigprocmask ~prog ~argv0:"sleep" ~args () in
       let pid_int = Pid.to_int pid in
       Unix.kill pid_int Sys.sigusr1;
       Unix.kill pid_int Sys.sigkill;

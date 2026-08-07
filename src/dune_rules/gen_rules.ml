@@ -385,7 +385,7 @@ let missing_project_name =
 
 (* Warn about duplicate dependencies in package definitions *)
 let duplicate_deps =
-  Warning.make ~default:(fun _ -> `Enabled) ~name:"duplicate_deps" ~since:(3, 18)
+  Warning.make ~default:(fun _ -> `Enabled) ~name:"duplicate_deps" ~since:(3, 22)
 ;;
 
 (* To be called once per project, when we are generating the rules for the root

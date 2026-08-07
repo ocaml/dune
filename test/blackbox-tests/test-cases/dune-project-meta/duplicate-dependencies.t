@@ -229,7 +229,7 @@ Disabling the warning
 The warning can be disabled using the (warnings ...) field in dune-project.
 
   $ cat >dune-project <<EOF
-  > (lang dune 3.18)
+  > (lang dune 3.22)
   > (name test-pkg)
   > (warnings (duplicate_deps disabled))
   > (package

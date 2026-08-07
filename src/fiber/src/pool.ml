@@ -80,7 +80,9 @@ let run_pool t k =
       | None -> finish_or_suspend t
       | Some v ->
         incr n;
-        fork (fun () -> apply_t v () (Function done_fiber)) read_delayed
+        (match apply_t v () (Function done_fiber) with
+         | End_of_fiber () -> read_delayed ()
+         | eff -> Fork (eff, Function_work read_delayed))
     and read_delayed () = read t
     and suspend_k k =
       (* we are suspending because we have no tasks *)

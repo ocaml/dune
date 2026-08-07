@@ -63,7 +63,9 @@ let is_value t =
 let stop = Function (fun () -> end_of_fiber)
 
 let run_force t v f k =
-  fork (fun () -> eval (execute t v f) stop) (fun () -> continue k ())
+  match eval (execute t v f) stop with
+  | End_of_fiber () -> continue k ()
+  | eff -> Fork (eff, Continue_work k)
 ;;
 
 let force_all_unit =

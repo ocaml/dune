@@ -118,7 +118,9 @@ module In = struct
              | None -> done_ ()
              | Some x ->
                incr n;
-               fork (fun () -> apply_t f x (Function done_)) (fun () -> loop t)))
+               (match apply_t f x (Function done_) with
+                | End_of_fiber () -> loop t
+                | eff -> Fork (eff, Function_work (fun () -> loop t)))))
     in
     lock t;
     loop t

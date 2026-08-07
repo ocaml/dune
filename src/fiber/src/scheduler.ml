@@ -7,6 +7,7 @@ module Jobs = struct
   type t =
     | Empty
     | Job : context * 'a continuation * 'a * t -> t
+    | Work of context * work * t
     | Concat : t * t -> t
 
   let concat a b =
@@ -71,12 +72,14 @@ let update_var ctx key f =
 let rec loop : Jobs.t -> step' = function
   | Empty -> Stalled
   | Job (ctx, run, x, jobs) -> exec ctx run x jobs
+  | Work (ctx, work, jobs) -> exec_work ctx work jobs
   | Concat (a, b) -> loop2 a b
 
 and loop2 a b =
   match a with
   | Empty -> loop b
   | Job (ctx, run, x, a) -> exec ctx run x (Jobs.concat a b)
+  | Work (ctx, work, a) -> exec_work ctx work (Jobs.concat a b)
   | Concat (a1, a2) -> loop2 a1 (Jobs.concat a2 b)
 
 and exec : type a. context -> a continuation -> a -> Jobs.t -> step' =
@@ -214,11 +217,16 @@ and exec_effect ctx eff jobs =
   | Fork (a, b) ->
     let (Map_reduce_context r) = ctx.map_reduce_context in
     r.ref_count <- r.ref_count + 1;
-    exec_effect ctx a (Job (ctx, Function b, (), jobs))
+    exec_effect ctx a (Work (ctx, b, jobs))
   | Reraise exn ->
     let { ctx; run } = ctx.on_error in
     exec ctx run exn jobs
   | Reraise_all exns -> reraise_all ctx exns jobs
+
+and exec_work ctx work jobs =
+  match run_work work with
+  | exception exn -> handle_exception ctx exn jobs
+  | eff -> exec_effect ctx eff jobs
 
 and with_error_handler
   :  'a.

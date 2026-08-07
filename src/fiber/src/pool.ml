@@ -27,8 +27,8 @@ type nonrec t =
 
 let running t k =
   match t.status with
-  | Open -> k true
-  | Closed -> k false
+  | Open -> continue k true
+  | Closed -> continue k false
 ;;
 
 let create () = { tasks = Queue.create (); runner = Awaiting_run; status = Open }
@@ -39,7 +39,7 @@ let task t ~f k =
   | Open ->
     Queue.push t.tasks f;
     (match t.runner with
-     | Running | Awaiting_run -> k ()
+     | Running | Awaiting_run -> continue k ()
      | Awaiting_resume r ->
        t.runner <- Running;
        resume r () k)
@@ -47,11 +47,11 @@ let task t ~f k =
 
 let close t k =
   match t.status with
-  | Closed -> k ()
+  | Closed -> continue k ()
   | Open ->
     t.status <- Closed;
     (match t.runner with
-     | Running | Awaiting_run -> k ()
+     | Running | Awaiting_run -> continue k ()
      | Awaiting_resume r ->
        t.runner <- Running;
        resume r () k)
@@ -68,14 +68,14 @@ let run t k =
     let n = ref 1 in
     let done_fiber () =
       decr n;
-      if !n = 0 then k () else end_of_fiber
+      if !n = 0 then continue k () else end_of_fiber
     in
     let rec read t =
       match Queue.pop t.tasks with
       | None -> finish_or_suspend t
       | Some v ->
         incr n;
-        fork (fun () -> v () done_fiber) read_delayed
+        fork (fun () -> v () (Function done_fiber)) read_delayed
     and read_delayed () = read t
     and suspend_k k =
       (* we are suspending because we have no tasks *)
@@ -84,7 +84,7 @@ let run t k =
     and finish_or_suspend t =
       match t.status with
       | Closed -> done_fiber ()
-      | Open -> suspend suspend_k read_delayed
+      | Open -> suspend suspend_k (Function read_delayed)
     in
     read t
 ;;

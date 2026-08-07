@@ -28,10 +28,10 @@ let read t k =
     (match Queue.pop t.writers with
      | None ->
        t.value <- None;
-       k v
+       continue k v
      | Some (v', w) ->
        t.value <- Some v';
-       resume w () (fun () -> k v))
+       resume w () (Map ((fun () -> v), k)))
 ;;
 
 let write t x k =
@@ -41,6 +41,6 @@ let write t x k =
     (match Queue.pop t.readers with
      | None ->
        t.value <- Some x;
-       k ()
-     | Some r -> resume r x (fun () -> k ()))
+       continue k ()
+     | Some r -> resume r x (Map ((fun () -> ()), k)))
 ;;

@@ -25,8 +25,8 @@ let create current = { current; waiters = [] }
 
 let write =
   let rec run_awakers final = function
-    | [] -> final ()
-    | k :: ks -> resume k () (fun () -> run_awakers final ks)
+    | [] -> continue final ()
+    | k :: ks -> resume k () (Function (fun () -> run_awakers final ks))
   in
   fun t a k ->
     t.current <- a;
@@ -35,7 +35,7 @@ let write =
         if f t.current then Right k else Left (k, f))
     in
     match awake with
-    | [] -> k ()
+    | [] -> continue k ()
     | awake ->
       t.waiters <- List.rev sleep;
       run_awakers k awake

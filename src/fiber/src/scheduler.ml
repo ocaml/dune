@@ -6,7 +6,7 @@ type fill = Fill : 'a ivar * 'a -> fill
 module Jobs = struct
   type t =
     | Empty
-    | Job : context * ('a -> eff) * 'a * t -> t
+    | Job : context * 'a continuation * 'a * t -> t
     | Concat : t * t -> t
 
   let concat a b =
@@ -71,9 +71,9 @@ and loop2 a b =
   | Job (ctx, run, x, a) -> exec ctx run x (Jobs.concat a b)
   | Concat (a1, a2) -> loop2 a1 (Jobs.concat a2 b)
 
-and exec : 'a. context -> ('a -> eff) -> 'a -> Jobs.t -> step' =
+and exec : 'a. context -> 'a continuation -> 'a -> Jobs.t -> step' =
   fun ctx k x jobs ->
-  match k x with
+  match continue k x with
   | exception exn ->
     let exn = Exn_with_backtrace.capture exn in
     exec ctx.on_error.ctx ctx.on_error.run exn jobs
@@ -109,7 +109,11 @@ and exec : 'a. context -> ('a -> eff) -> 'a -> Jobs.t -> step' =
     in
     exec ctx k () jobs
   | With_error_handler (on_error, k) ->
-    let on_error = { ctx; run = (fun exn -> on_error exn Nothing.unreachable_code) } in
+    let on_error =
+      { ctx
+      ; run = Function (fun exn -> on_error exn (Function Nothing.unreachable_code))
+      }
+    in
     let ctx = { ctx with parent = ctx; on_error } in
     exec ctx k () jobs
   | Map_reduce_errors (m, on_error, f, k) -> map_reduce_errors ctx m on_error f k jobs
@@ -127,7 +131,7 @@ and exec : 'a. context -> ('a -> eff) -> 'a -> Jobs.t -> step' =
   | Fork (a, b) ->
     let (Map_reduce_context r) = ctx.map_reduce_context in
     r.ref_count <- r.ref_count + 1;
-    exec ctx Fun.id a (Job (ctx, b, (), jobs))
+    exec ctx Effect a (Job (ctx, Function b, (), jobs))
   | Reraise exn ->
     let { ctx; run } = ctx.on_error in
     exec ctx run exn jobs
@@ -160,7 +164,7 @@ and map_reduce_errors
     -> (module Monoid with type t = errors)
     -> (Exn_with_backtrace.t -> errors t)
     -> (unit -> eff)
-    -> ((b, errors) result -> eff)
+    -> (b, errors) result continuation
     -> Jobs.t
     -> step'
   =
@@ -169,10 +173,14 @@ and map_reduce_errors
   let on_error =
     { ctx
     ; run =
-        (fun exn ->
-          on_error exn (fun m ->
-            map_reduce_context.errors <- M.combine map_reduce_context.errors m;
-            End_of_map_reduce_error_handler map_reduce_context))
+        Function
+          (fun exn ->
+            on_error
+              exn
+              (Function
+                 (fun m ->
+                   map_reduce_context.errors <- M.combine map_reduce_context.errors m;
+                   End_of_map_reduce_error_handler map_reduce_context)))
     }
   in
   let ctx =
@@ -182,7 +190,7 @@ and map_reduce_errors
     ; map_reduce_context = Map_reduce_context map_reduce_context
     }
   in
-  exec ctx f () jobs
+  exec ctx (Function f) () jobs
 ;;
 
 let repack_step (type a) (module W : Witness with type t = a) (step' : step') =
@@ -208,12 +216,15 @@ let start (type a) (t : a t) =
   in
   let rec ctx =
     { parent = ctx
-    ; on_error = { ctx; run = (fun exn -> Toplevel_exception exn) }
+    ; on_error = { ctx; run = Function (fun exn -> Toplevel_exception exn) }
     ; vars = Var_map.empty
     ; map_reduce_context =
         Map_reduce_context
-          { k = { ctx; run = (fun _ -> assert false) }; ref_count = 1; errors = () }
+          { k = { ctx; run = Function (fun _ -> assert false) }
+          ; ref_count = 1
+          ; errors = ()
+          }
     }
   in
-  exec ctx t (fun x -> Done (W.X x)) Empty |> repack_step (module W)
+  exec ctx (Function t) (Function (fun x -> Done (W.X x))) Empty |> repack_step (module W)
 ;;

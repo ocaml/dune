@@ -67,6 +67,20 @@ and 'a continuation =
       ('a, 'b) fork_and_join_state ref * ('a * 'b) continuation
       -> 'b continuation
   | Resume_many : unit k list * unit continuation -> unit continuation
+  | Top_level_error : Exn_with_backtrace.t continuation
+  | Unreachable : Nothing.t continuation
+  | Never_called : 'a continuation
+  | Handle_error :
+      (Exn_with_backtrace.t -> Nothing.t t)
+      -> Exn_with_backtrace.t continuation
+  | Map_reduce_error :
+      (Exn_with_backtrace.t -> 'errors t)
+      * ('result, 'errors) map_reduce_context'
+      * ('errors -> 'errors -> 'errors)
+      -> Exn_with_backtrace.t continuation
+  | Accumulate_error :
+      ('result, 'errors) map_reduce_context' * ('errors -> 'errors -> 'errors)
+      -> 'errors continuation
 
 and eff =
   | Run : 'a t * 'a continuation -> eff
@@ -197,6 +211,15 @@ let rec continue : type a. a continuation -> a -> eff =
     (match suspended with
      | [] -> continue k ()
      | suspended :: rest -> Resume (suspended, (), Resume_many (rest, k)))
+  | Top_level_error -> Toplevel_exception x
+  | Unreachable -> Nothing.unreachable_code x
+  | Never_called -> assert false
+  | Handle_error f -> Run (f x, Unreachable)
+  | Map_reduce_error (f, map_reduce_context, combine) ->
+    Run (f x, Accumulate_error (map_reduce_context, combine))
+  | Accumulate_error (map_reduce_context, combine) ->
+    map_reduce_context.errors <- combine map_reduce_context.errors x;
+    End_of_map_reduce_error_handler map_reduce_context
 ;;
 
 let return x = Return_t x

@@ -58,20 +58,41 @@ function err () {
     exit 1
 }
 
+# Set try run to true to skip running mutating commands
+DRY_RUN=${DRY_RUN:-"false"}
+
 # run command if DRY_RUN is false or not set, else just print the command
 function run_cmd () {
-    if [[ "${DRY_RUN:-false}" == "true" ]]; then
+    if [[ "${DRY_RUN}" == "true" ]]; then
         echo "DRY RUN: $*"
     else
         "$@"
     fi
 }
 
+# run a precondition check, and if DRY_RUN is true, don't stop
+# allowing every every unmet precondition to be reported in DRY_RUNS
+function run_check () {
+    if [[ "${DRY_RUN}" == "true" ]]; then
+        ( "$@" ) || echo >&2 "DRY RUN: continuing despite the failure above"
+    else
+        "$@"
+    fi
+}
+
+
 # Prompt for confirmation before running the irreversible release steps
 function confirm () {
     local release_version="$1"
     read \
-        -p "Review the changelog preview above. About to cut ${RELEASE_KIND} ${release_version} on branch '${branch}', push to '${DUNE_REMOTE}', and publish via dune-release. Continue? (y/Y) " \
+        -p "About to
+
+  - cut ${RELEASE_KIND} ${release_version} on branch '${branch}'
+  - push to '${DUNE_REMOTE}'
+  - and publish via dune-release
+  - with the changelog above.
+
+Confirm? (y/Y) " \
         -n 1 -r
     echo # Print a newline since -n 1 suppresses the newline after input
     if [[ $REPLY =~ ^[Yy]$ ]]; then
@@ -190,18 +211,6 @@ function render_changelog () {
     strip_in_progress_section
     env "KEEP_FRAGMENTS=${keep_fragments}" \
         "${ROOT_DIR}/doc/changes/scripts/build_changelog.sh" "${release_version}"
-}
-
-# Run a precondition. Under DRY_RUN a failure is reported but does not stop the
-# run, so that the changelog preview is still produced and every unmet
-# precondition is reported rather than only the first.
-function run_check () {
-    if [[ "${DRY_RUN:-false}" == "true" ]]; then
-        ( "$@" ) \
-            || echo >&2 "DRY RUN: continuing despite the failure above"
-    else
-        "$@"
-    fi
 }
 
 # Refuse to release from a tree with uncommitted changes: the tarball is built

@@ -20,11 +20,8 @@ the precise instrumentation backend in your project.
 Specifying What to Instrument
 =============================
 
-When an instrumentation backend is activated, Dune will only instrument
-libraries and executables for which the user has requested instrumentation.
-
-To request instrumentation, one must add the following field to a library or
-executable stanza:
+To request instrumentation, one must add the following field to a library,
+executable, or ``melange.emit`` stanza:
 
 .. code:: dune
 
@@ -59,12 +56,34 @@ At the moment, it isn't possible to instrument code that's preprocessed via an
 action preprocessors. As these preprocessors are quite rare nowadays, there is
 no plan to add support for them in the future.
 
-``<optional-fields>`` are:
+.. describe:: (instrumentation ...)
 
-- ``(deps <deps-conf list>)`` specifies extra instrumentation dependencies, for
-  instance, if it reads a generated file. The dependencies are only applied
-  when the instrumentation is actually enabled. The specification of
-  dependencies is described in :doc:`concepts/dependency-spec`.
+   Specifies that the enclosing stanza should be instrumented when the
+   corresponding instrumentation backend is activated. This field can be
+   repeated multiple times in order to support various backends.
+
+   .. describe:: (backend <name> <args>)
+
+      Specifies the instrumentation backend to use and its arguments. The
+      backend name must match the name of a library that has the
+      ``(instrumentation.backend)`` field.
+
+   .. describe:: (deps <dep-conf list>)
+
+      Specifies extra instrumentation dependencies, for instance, if it reads a
+      generated file. The dependencies are only applied when the instrumentation
+      is actually enabled. The specification of dependencies is described in
+      :doc:`concepts/dependency-spec`.
+
+   .. describe:: (libraries <library-dependencies>)
+
+      .. versionadded:: 3.25
+
+      Specifies extra libraries to add to the enclosing stanza when the
+      instrumentation backend is actually enabled. When the backend is not
+      enabled, these libraries are ignored. The specification of library
+      dependencies is described in
+      :doc:`reference/library-dependencies`.
 
 Enabling/Disabling Instrumentation
 ==================================

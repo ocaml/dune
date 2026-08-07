@@ -1150,6 +1150,14 @@ let modules_of_stanzas =
     ~for_
     ~include_subdirs:(loc_include_subdirs, include_subdirs) ->
     let dialects = Dune_project.dialects project in
+    let instrumentation_libraries preprocess =
+      let open Memo.O in
+      let* lib_db = libs in
+      Instrumentation.active_libraries
+        preprocess
+        ~instrumentation_backend:(Lib.DB.instrumentation_backend lib_db)
+      |> Resolve.Memo.read_memo
+    in
     let* ({ ocamllexes; ocamlyaccs; menhirs; _ } as modules) =
       Generated_modules.add_generated_modules
         ~expander
@@ -1182,6 +1190,12 @@ let modules_of_stanzas =
                 [Or_exn.t] a bit longer. *)
                let+ sources, modules =
                  let lookup_vlib = lookup_vlib ~loc:lib.buildable.loc in
+                 let preprocess =
+                   match for_ with
+                   | Ocaml -> lib.buildable.preprocess.config
+                   | Melange -> lib.buildable.melange_preprocess.config
+                 in
+                 let* instrumentation_libraries = instrumentation_libraries preprocess in
                  let modules =
                    Generated_modules.with_lib_select_deps
                      modules
@@ -1189,7 +1203,7 @@ let modules_of_stanzas =
                      ~dialects
                      ~include_subdirs
                      ~for_
-                     lib.buildable.libraries
+                     (lib.buildable.libraries @ instrumentation_libraries)
                  in
                  make_lib_modules
                    ~expander
@@ -1206,6 +1220,9 @@ let modules_of_stanzas =
                let obj_dir = Library.obj_dir lib ~dir in
                `Library { Per_stanza.stanza = lib; sources; modules; dir; obj_dir }
              | Executables.T exes ->
+               let* instrumentation_libraries =
+                 instrumentation_libraries exes.buildable.preprocess.config
+               in
                let modules =
                  Generated_modules.with_lib_select_deps
                    modules
@@ -1213,10 +1230,13 @@ let modules_of_stanzas =
                    ~dialects
                    ~include_subdirs
                    ~for_
-                   exes.buildable.libraries
+                   (exes.buildable.libraries @ instrumentation_libraries)
                in
                make_executables ~dir ~expander ~modules ~project exes
              | Tests.T tests ->
+               let* instrumentation_libraries =
+                 instrumentation_libraries tests.exes.buildable.preprocess.config
+               in
                let modules =
                  Generated_modules.with_lib_select_deps
                    modules
@@ -1224,12 +1244,15 @@ let modules_of_stanzas =
                    ~dialects
                    ~include_subdirs
                    ~for_
-                   tests.exes.buildable.libraries
+                   (tests.exes.buildable.libraries @ instrumentation_libraries)
                in
                make_tests ~dir ~expander ~modules ~project tests
              | Melange_stanzas.Emit.T mel ->
                let obj_dir = Obj_dir.make_melange_emit ~dir ~name:mel.target in
                let+ sources, modules =
+                 let* instrumentation_libraries =
+                   instrumentation_libraries mel.preprocess.config
+                 in
                  let modules =
                    Generated_modules.with_lib_select_deps
                      modules
@@ -1237,7 +1260,7 @@ let modules_of_stanzas =
                      ~dialects
                      ~include_subdirs
                      ~for_:Melange
-                     mel.libraries
+                     (mel.libraries @ instrumentation_libraries)
                  in
                  let version = Dune_project.dune_version project in
                  Modules_field_evaluator.eval

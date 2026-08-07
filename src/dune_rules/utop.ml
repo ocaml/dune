@@ -82,11 +82,16 @@ let add_stanza db ~dir (acc, pps) stanza =
             ~instrumentation_backend:(Lib.DB.instrumentation_backend (Scope.libs scope))
           |> Resolve.Memo.read_memo
           >>| Preprocess.Per_module.pps
+        and+ instrumentation_libraries =
+          Instrumentation.active_libraries
+            exes.buildable.preprocess.config
+            ~instrumentation_backend:(Lib.DB.instrumentation_backend (Scope.libs scope))
+          |> Resolve.Memo.read_memo
         in
         Lib.DB.resolve_user_written_deps
           db
           (`Exe exes.names)
-          exes.buildable.libraries
+          (exes.buildable.libraries @ instrumentation_libraries)
           ~allow_unused_libraries:exes.buildable.allow_unused_libraries
           ~pps
           ~dune_version

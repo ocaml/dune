@@ -103,7 +103,16 @@ and expand_list
   match ts with
   | [] -> Appendable_list.empty |> Action_builder.With_targets.return
   | ts ->
-    List.map ts ~f:(expand ~dir)
+    let rec flatten ts stack =
+      match ts with
+      | [] ->
+        (match stack with
+         | [] -> []
+         | ts :: stack -> flatten ts stack)
+      | S nested :: ts -> flatten nested (ts :: stack)
+      | t :: ts -> t :: flatten ts stack
+    in
+    List.map (flatten ts []) ~f:(expand ~dir)
     |> Action_builder.With_targets.all
     |> Action_builder.With_targets.map ~f:Appendable_list.concat
 

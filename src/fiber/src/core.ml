@@ -1,12 +1,44 @@
 open Stdune
 
-type 'a t = 'a continuation -> eff
+(* Fiber computations are explicit nodes. Callbacks supplied by callers remain functions,
+   while the Fiber-created computation spine is interpreted by the scheduler. *)
+type _ t =
+  | Return_t : 'a -> 'a t
+  | Never_t : 'a t
+  | Map_t : 'a t * ('a -> 'b) -> 'b t
+  | Map2_t : 'a t * ('a -> 'b) * ('b -> 'c) -> 'c t
+  | Map3_t : 'a t * ('a -> 'b) * ('b -> 'c) * ('c -> 'd) -> 'd t
+  | Bind_t : 'a t * ('a -> 'b t) -> 'b t
+  | Thunk_t : (unit -> 'a t) -> 'a t
+  | Thunk_apply_t : ('a -> 'b t) * 'a -> 'b t
+  | With_error_handler_t : (unit -> 'a t) * (Exn_with_backtrace.t -> Nothing.t t) -> 'a t
+  | Map_reduce_errors_t :
+      (module Monoid with type t = 'a) * (Exn_with_backtrace.t -> 'a t) * (unit -> 'b t)
+      -> ('b, 'a) result t
+  | Suspend_t : ('a k -> unit) -> 'a t
+  | Resume_t : 'a k * 'a -> unit t
+  | Reraise_all_t : Exn_with_backtrace.t list -> 'a t
+  | Ivar_read_t : 'a ivar -> 'a t
+  | Ivar_fill_t : 'a ivar * 'a -> unit t
+  | Get_var_t : 'a Var_map.Key.t -> 'a t
+  | Set_var_t : 'a Var_map.Key.t * 'a * (unit -> 'b t) -> 'b t
+  | Update_var_t : 'a Var_map.Key.t * ('a -> 'a) * (unit -> 'b t) -> 'b t
+  | Get_apply_t : 'a Var_map.Key.t * ('a -> 'b -> 'c t) * 'b -> 'c t
+  | Get_apply_map_t : 'a Var_map.Key.t * ('a -> 'b -> 'c) * 'b -> 'c t
+  | Set_apply_t : 'a Var_map.Key.t * 'a * ('b -> 'c t) * 'b -> 'c t
+  | Update_apply_t : 'a Var_map.Key.t * ('a -> 'a) * ('b -> 'c t) * 'b -> 'c t
+  (* Pair internal operations with their state without allocating a closure. *)
+  | Primitive_t : ('a -> 'b continuation -> eff) * 'a -> 'b t
+  | Primitive2_t : ('a -> 'b -> 'c continuation -> eff) * 'a * 'b -> 'c t
+  | Primitive3_t : ('a -> 'b -> 'c -> 'd continuation -> eff) * 'a * 'b * 'c -> 'd t
+  | Primitive4_t :
+      ('a -> 'b -> 'c -> 'd -> 'e continuation -> eff) * 'a * 'b * 'c * 'd
+      -> 'e t
 
 (* Keep arbitrary callbacks as functions, but represent the frames introduced by common
    fiber combinators directly. *)
 and 'a continuation =
   | Function : ('a -> eff) -> 'a continuation
-  | Effect : eff continuation
   | Map : ('a -> 'b) * 'b continuation -> 'a continuation
   | Map2 : ('a -> 'b) * ('b -> 'c) * 'c continuation -> 'a continuation
   | Map3 : ('a -> 'b) * ('b -> 'c) * ('c -> 'd) * 'd continuation -> 'a continuation
@@ -17,19 +49,26 @@ and 'a continuation =
   | Unwind_map_reduce_to : ('a, 'b) result continuation -> 'a continuation
 
 and eff =
+  | Run : 'a t * 'a continuation -> eff
   | Read_ivar : 'a ivar * 'a continuation -> eff
   | Fill_ivar : 'a ivar * 'a * unit continuation -> eff
   | Suspend : ('a k -> unit) * 'a continuation -> eff
   | Resume : 'a k * 'a * unit continuation -> eff
   | Get_var : 'a Var_map.Key.t * 'a continuation -> eff
-  | Set_var : 'a Var_map.Key.t * 'a * unit continuation -> eff
-  | Update_var : 'a Var_map.Key.t * ('a -> 'a) * unit continuation -> eff
-  | With_error_handler : (Exn_with_backtrace.t -> Nothing.t t) * unit continuation -> eff
+  | Set_var : 'a Var_map.Key.t * 'a * (unit -> 'b t) * 'b continuation -> eff
+  | Update_var : 'a Var_map.Key.t * ('a -> 'a) * (unit -> 'b t) * 'b continuation -> eff
+  | Set_var_apply : 'a Var_map.Key.t * 'a * ('b -> 'c t) * 'b * 'c continuation -> eff
+  | Update_var_apply :
+      'a Var_map.Key.t * ('a -> 'a) * ('b -> 'c t) * 'b * 'c continuation
+      -> eff
+  | With_error_handler :
+      (Exn_with_backtrace.t -> Nothing.t t) * (unit -> 'a t) * 'a continuation
+      -> eff
   | Unwind : 'a continuation * 'a -> eff
   | Map_reduce_errors :
       (module Monoid with type t = 'a)
       * (Exn_with_backtrace.t -> 'a t)
-      * (unit -> eff)
+      * (unit -> 'b t)
       * ('b, 'a) result continuation
       -> eff
   | Unwind_map_reduce : 'a continuation * 'a -> eff
@@ -81,39 +120,32 @@ let rec continue : type a. a continuation -> a -> eff =
   fun k x ->
   match k with
   | Function f -> f x
-  | Effect -> x
   | Map (f, k) -> continue k (f x)
   | Map2 (f, g, k) -> continue k (g (f x))
   | Map3 (f, g, h, k) -> continue k (h (g (f x)))
-  | Bind (f, k) -> f x k
-  | Apply (f, y, k) -> f x y k
+  | Bind (f, k) -> Run (f x, k)
+  | Apply (f, y, k) -> Run (f x y, k)
   | Apply_map (f, y, k) -> continue k (f x y)
   | Unwind_to k -> Unwind (k, x)
   | Unwind_map_reduce_to k -> Unwind_map_reduce (k, Ok x)
 ;;
 
-let return x k = continue k x
-let bind t ~f k = t (Bind (f, k))
+let return x = Return_t x
+let bind t ~f = Bind_t (t, f)
 
-let map t ~f k =
-  match k with
-  | Map (g, k) -> t (Map2 (f, g, k))
-  | Map2 (g, h, k) -> t (Map3 (f, g, h, k))
-  | k -> t (Map (f, k))
+let map t ~f =
+  match t with
+  | Map_t (t, g) -> Map2_t (t, g, f)
+  | Map2_t (t, g, h) -> Map3_t (t, g, h, f)
+  | t -> Map_t (t, f)
 ;;
 
-let with_error_handler f ~on_error k =
-  With_error_handler (on_error, Function (fun () -> f () (Unwind_to k)))
-;;
-
-let map_reduce_errors m ~on_error f k =
-  Map_reduce_errors (m, on_error, (fun () -> f () (Unwind_map_reduce_to k)), k)
-;;
-
-let suspend f k = Suspend (f, k)
-let resume suspended x k = Resume (suspended, x, k)
+let with_error_handler f ~on_error = With_error_handler_t (f, on_error)
+let map_reduce_errors m ~on_error f = Map_reduce_errors_t (m, on_error, f)
+let suspend f = Suspend_t f
+let resume suspended x = Resume_t (suspended, x)
 let end_of_fiber = End_of_fiber ()
-let never _k = Never ()
+let never = Never_t
 
 let apply f x =
   try f x with
@@ -127,6 +159,64 @@ let apply2 f x y =
   | exn ->
     let exn = Exn_with_backtrace.capture exn in
     Reraise exn
+;;
+
+let rec eval : type a. a t -> a continuation -> eff =
+  fun t k ->
+  match t with
+  | Return_t x -> continue k x
+  | Never_t -> Never ()
+  | Map_t (t, f) -> eval t (Map (f, k))
+  | Map2_t (t, f, g) -> eval t (Map2 (f, g, k))
+  | Map3_t (t, f, g, h) -> eval t (Map3 (f, g, h, k))
+  | Bind_t (t, f) -> eval t (Bind (f, k))
+  | Thunk_t f -> eval (f ()) k
+  | Thunk_apply_t (f, x) -> eval (f x) k
+  | With_error_handler_t (f, on_error) -> With_error_handler (on_error, f, k)
+  | Map_reduce_errors_t (m, on_error, f) -> Map_reduce_errors (m, on_error, f, k)
+  | Suspend_t f -> Suspend (f, k)
+  | Resume_t (suspended, x) -> Resume (suspended, x, k)
+  | Reraise_all_t exns ->
+    (match exns with
+     | [] -> Never ()
+     | [ exn ] -> Exn_with_backtrace.reraise exn
+     | _ -> Reraise_all exns)
+  | Ivar_read_t ivar ->
+    (match ivar.state with
+     | Full x -> continue k x
+     | Empty_with_readers _ | Empty -> Read_ivar (ivar, k))
+  | Ivar_fill_t (ivar, x) ->
+    (match ivar.state with
+     | Empty ->
+       ivar.state <- Full x;
+       continue k ()
+     | Full _ | Empty_with_readers _ -> Fill_ivar (ivar, x, k))
+  | Get_var_t key -> Get_var (key, k)
+  | Set_var_t (key, value, f) -> Set_var (key, value, f, k)
+  | Update_var_t (key, f, body) -> Update_var (key, f, body, k)
+  | Get_apply_t (key, f, x) -> Get_var (key, Apply (f, x, k))
+  | Get_apply_map_t (key, f, x) -> Get_var (key, Apply_map (f, x, k))
+  | Set_apply_t (key, value, f, x) -> Set_var_apply (key, value, f, x, k)
+  | Update_apply_t (key, f, body, x) -> Update_var_apply (key, f, body, x, k)
+  | Primitive_t (f, x) -> f x k
+  | Primitive2_t (f, x, y) -> f x y k
+  | Primitive3_t (f, x, y, z) -> f x y z k
+  | Primitive4_t (f, w, x, y, z) -> f w x y z k
+;;
+
+let primitive f x = Primitive_t (f, x)
+let primitive2 f x y = Primitive2_t (f, x, y)
+let primitive3 f x y z = Primitive3_t (f, x, y, z)
+let primitive4 f w x y z = Primitive4_t (f, w, x, y, z)
+
+let apply_t f x k =
+  try eval (f x) k with
+  | exn -> Reraise (Exn_with_backtrace.capture exn)
+;;
+
+let apply_t2 f x y k =
+  try eval (f x y) k with
+  | exn -> Reraise (Exn_with_backtrace.capture exn)
 ;;
 
 let[@inline always] fork a b =
@@ -176,30 +266,34 @@ let rec nfork_array a i f =
     | eff -> Fork (eff, fun () -> nfork_array a (i + 1) f))
 ;;
 
-let parallel_iter_seq (seq : _ Seq.t) ~f k =
+let run_parallel_iter_seq (seq : _ Seq.t) f k =
   match seq () with
   | Nil -> continue k ()
   | Cons (x, seq) ->
     let left_over = ref 1 in
-    let f x =
-      f
+    let f' x =
+      apply_t
+        f
         x
         (Function
            (fun () ->
              decr left_over;
              if !left_over = 0 then continue k () else end_of_fiber))
     in
-    nfork_seq left_over x seq f
+    nfork_seq left_over x seq f'
 ;;
 
-let map_reduce_seq (seq : _ Seq.t) ~f ~empty ~combine k =
+let parallel_iter_seq seq ~f = primitive2 run_parallel_iter_seq seq f
+
+let run_map_reduce_seq (seq : _ Seq.t) f empty combine k =
   match seq () with
   | Nil -> continue k empty
   | Cons (x, seq) ->
     let current = ref empty in
     let running = ref 1 in
-    let f x =
-      f
+    let f' x =
+      apply_t
+        f
         x
         (Function
            (fun y ->
@@ -207,17 +301,22 @@ let map_reduce_seq (seq : _ Seq.t) ~f ~empty ~combine k =
              decr running;
              if !running = 0 then continue k !current else end_of_fiber))
     in
-    nfork_seq running x seq f
+    nfork_seq running x seq f'
 ;;
 
-let map_reduce_array a ~f ~empty ~combine k =
+let map_reduce_seq seq ~f ~empty ~combine =
+  primitive4 run_map_reduce_seq seq f empty combine
+;;
+
+let run_map_reduce_array a f empty combine k =
   match Array.length a with
   | 0 -> continue k empty
   | len ->
     let current = ref empty in
     let running = ref len in
-    let f x =
-      f
+    let f' x =
+      apply_t
+        f
         x
         (Function
            (fun y ->
@@ -225,17 +324,22 @@ let map_reduce_array a ~f ~empty ~combine k =
              decr running;
              if !running = 0 then continue k !current else end_of_fiber))
     in
-    nfork_array a 0 f
+    nfork_array a 0 f'
 ;;
 
-let map_reduce l ~f ~empty ~combine k =
+let map_reduce_array a ~f ~empty ~combine =
+  primitive4 run_map_reduce_array a f empty combine
+;;
+
+let run_map_reduce l f empty combine k =
   match l with
   | [] -> continue k empty
   | x :: l ->
     let current = ref empty in
     let running = ref (List.length l + 1) in
-    let f x =
-      f
+    let f' x =
+      apply_t
+        f
         x
         (Function
            (fun y ->
@@ -243,15 +347,17 @@ let map_reduce l ~f ~empty ~combine k =
              decr running;
              if !running = 0 then continue k !current else end_of_fiber))
     in
-    nfork x l f
+    nfork x l f'
 ;;
+
+let map_reduce l ~f ~empty ~combine = primitive4 run_map_reduce l f empty combine
 
 type ('a, 'b) fork_and_join_state =
   | Nothing_yet
   | Got_a of 'a
   | Got_b of 'b
 
-let fork_and_join fa fb k =
+let run_fork_and_join fa fb k =
   let state = ref Nothing_yet in
   let ka a =
     match !state with
@@ -270,15 +376,17 @@ let fork_and_join fa fb k =
   in
   let ka = Function ka in
   let kb = Function kb in
-  match apply2 fa () ka with
-  | End_of_fiber () -> fb () kb
-  | eff -> Fork (eff, fun () -> fb () kb)
+  match apply_t fa () ka with
+  | End_of_fiber () -> apply_t fb () kb
+  | eff -> Fork (eff, fun () -> apply_t fb () kb)
 ;;
 
-let fork_and_join_unit fa fb k =
+let fork_and_join fa fb = primitive2 run_fork_and_join fa fb
+
+let run_fork_and_join_unit fa fb k =
   let state = ref Nothing_yet in
   match
-    apply2
+    apply_t
       fa
       ()
       (Function
@@ -290,12 +398,13 @@ let fork_and_join_unit fa fb k =
            | Got_a _ -> assert false
            | Got_b b -> continue k b))
   with
-  | End_of_fiber () -> fb () k
+  | End_of_fiber () -> apply_t fb () k
   | eff ->
     Fork
       ( eff
       , fun () ->
-          fb
+          apply_t
+            fb
             ()
             (Function
                (fun b ->
@@ -307,6 +416,8 @@ let fork_and_join_unit fa fb k =
                  | Got_b _ -> assert false)) )
 ;;
 
+let fork_and_join_unit fa fb = primitive2 run_fork_and_join_unit fa fb
+
 let rec length_and_rev l len acc =
   match l with
   | [] -> len, acc
@@ -314,33 +425,14 @@ let rec length_and_rev l len acc =
 ;;
 
 let length_and_rev l = length_and_rev l 0 []
-
-let reraise_all l _k =
-  match l with
-  | [] -> Never ()
-  | [ exn ] -> Exn_with_backtrace.reraise exn
-  | _ -> Reraise_all l
-;;
+let reraise_all l = Reraise_all_t l
 
 module Ivar = struct
   type 'a t = 'a ivar
 
   let create () = { state = Empty }
-
-  let read t k =
-    match t.state with
-    | Full x -> continue k x
-    | Empty_with_readers _ | Empty -> Read_ivar (t, k)
-  ;;
-
-  let fill t x k =
-    match t.state with
-    | Empty ->
-      t.state <- Full x;
-      continue k ()
-    | Full _ | Empty_with_readers _ -> Fill_ivar (t, x, k)
-  ;;
-
+  let read t = Ivar_read_t t
+  let fill t x = Ivar_fill_t (t, x)
   let create_full a = { state = Full a }
 
   let peek t =
@@ -351,10 +443,10 @@ module Ivar = struct
 end
 
 module Var = struct
-  let get (key : 'a Var_map.Key.t) : 'a t = fun k -> Get_var (key, k)
+  let get (key : 'a Var_map.Key.t) : 'a t = Get_var_t key
 
   let set (key : 'a Var_map.Key.t) (value : 'a) (fiber : unit -> 'b t) : 'b t =
-    fun k -> Set_var (key, value, Function (fun () -> fiber () (Unwind_to k)))
+    Set_var_t (key, value, fiber)
   ;;
 
   let get_exn (key : 'a option Var_map.Key.t) : 'a t =
@@ -364,32 +456,32 @@ module Var = struct
   ;;
 
   let update (key : 'a Var_map.Key.t) ~(f : 'a -> 'a) (fiber : unit -> 'b t) : 'b t =
-    fun k -> Update_var (key, f, Function (fun () -> fiber () (Unwind_to k)))
+    Update_var_t (key, f, fiber)
   ;;
 
   let get_apply (key : 'a Var_map.Key.t) (f : 'a -> 'b -> 'c t) (x : 'b) : 'c t =
-    fun k -> Get_var (key, Apply (f, x, k))
+    Get_apply_t (key, f, x)
   ;;
 
   let get_apply_map (key : 'a Var_map.Key.t) (f : 'a -> 'b -> 'c) (x : 'b) : 'c t =
-    fun k -> Get_var (key, Apply_map (f, x, k))
+    Get_apply_map_t (key, f, x)
   ;;
 
   let set_apply (key : 'a Var_map.Key.t) (value : 'a) (f : 'b -> 'c t) (x : 'b) : 'c t =
-    fun k -> Set_var (key, value, Function (fun () -> f x (Unwind_to k)))
+    Set_apply_t (key, value, f, x)
   ;;
 
   let update_apply (key : 'a Var_map.Key.t) ~(f : 'a -> 'a) (g : 'b -> 'c t) (x : 'b)
     : 'c t
     =
-    fun k -> Update_var (key, f, Function (fun () -> g x (Unwind_to k)))
+    Update_apply_t (key, f, g, x)
   ;;
 
   include Var_map.Key
 end
 
-let of_thunk f k = f () k
-let of_thunk_apply f x k = f x k
+let of_thunk f = Thunk_t f
+let of_thunk_apply f x = Thunk_apply_t (f, x)
 
 module O = struct
   let ( >>> ) a b = bind a ~f:(fun () -> b)
@@ -431,30 +523,34 @@ let sequential_iter l ~f =
   loop l
 ;;
 
-let parallel_iter l ~f k =
+let run_parallel_iter l f k =
   match l with
   | [] -> continue k ()
-  | [ x ] -> f x k
+  | [ x ] -> apply_t f x k
   | x :: l ->
     let len = List.length l + 1 in
     let left_over = ref len in
-    let f x =
-      f
+    let f' x =
+      apply_t
+        f
         x
         (Function
            (fun () ->
              decr left_over;
              if !left_over = 0 then continue k () else end_of_fiber))
     in
-    nfork x l f
+    nfork x l f'
 ;;
 
-let parallel_array_of_list_map' x l ~f k =
+let parallel_iter l ~f = primitive2 run_parallel_iter l f
+
+let run_parallel_array_of_list_map' x l f k =
   let len = List.length l + 1 in
   let left_over = ref len in
   let results = ref [||] in
-  let f i x =
-    f
+  let f' i x =
+    apply_t
+      f
       x
       (Function
          (fun y ->
@@ -471,23 +567,26 @@ let parallel_array_of_list_map' x l ~f k =
            decr left_over;
            if !left_over = 0 then continue k a else end_of_fiber))
   in
-  nforki x l f
+  nforki x l f'
 ;;
 
-let parallel_array_of_list_map l ~f k =
+let run_parallel_array_of_list_map l f k =
   match l with
   | [] -> continue k [||]
-  | [ x ] -> f x (Map ((fun x -> [| x |]), k))
-  | x :: l -> parallel_array_of_list_map' x l ~f k
+  | [ x ] -> apply_t f x (Map ((fun x -> [| x |]), k))
+  | x :: l -> run_parallel_array_of_list_map' x l f k
 ;;
 
-let parallel_map l ~f k =
+let parallel_array_of_list_map l ~f = primitive2 run_parallel_array_of_list_map l f
+
+let run_parallel_map l f k =
   match l with
   | [] -> continue k []
-  | [ x ] -> f x (Map ((fun x -> [ x ]), k))
-  | x :: l -> parallel_array_of_list_map' x l ~f (Map (Array.to_list, k))
+  | [ x ] -> apply_t f x (Map ((fun x -> [ x ]), k))
+  | x :: l -> run_parallel_array_of_list_map' x l f (Map (Array.to_list, k))
 ;;
 
+let parallel_map l ~f = primitive2 run_parallel_map l f
 let all = sequential_map ~f:Fun.id
 let all_concurrently = parallel_map ~f:Fun.id
 let all_concurrently_unit l = parallel_iter l ~f:Fun.id

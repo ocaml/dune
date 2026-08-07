@@ -25,15 +25,16 @@ type nonrec t =
   ; mutable status : status
   }
 
-let running t k =
+let run_running t k =
   match t.status with
   | Open -> continue k true
   | Closed -> continue k false
 ;;
 
+let running t = primitive run_running t
 let create () = { tasks = Queue.create (); runner = Awaiting_run; status = Open }
 
-let task t ~f k =
+let run_task t f k =
   match t.status with
   | Closed -> Code_error.raise "pool is closed. new tasks may not be submitted" []
   | Open ->
@@ -42,10 +43,12 @@ let task t ~f k =
      | Running | Awaiting_run -> continue k ()
      | Awaiting_resume r ->
        t.runner <- Running;
-       resume r () k)
+       Resume (r, (), k))
 ;;
 
-let close t k =
+let task t ~f = primitive2 run_task t f
+
+let run_close t k =
   match t.status with
   | Closed -> continue k ()
   | Open ->
@@ -54,10 +57,12 @@ let close t k =
      | Running | Awaiting_run -> continue k ()
      | Awaiting_resume r ->
        t.runner <- Running;
-       resume r () k)
+       Resume (r, (), k))
 ;;
 
-let run t k =
+let close t = primitive run_close t
+
+let run_pool t k =
   match t.runner with
   | Awaiting_resume _ | Running ->
     Code_error.raise "Fiber.Pool.run: concurent calls to run aren't allowed" []
@@ -75,7 +80,7 @@ let run t k =
       | None -> finish_or_suspend t
       | Some v ->
         incr n;
-        fork (fun () -> v () (Function done_fiber)) read_delayed
+        fork (fun () -> apply_t v () (Function done_fiber)) read_delayed
     and read_delayed () = read t
     and suspend_k k =
       (* we are suspending because we have no tasks *)
@@ -84,10 +89,12 @@ let run t k =
     and finish_or_suspend t =
       match t.status with
       | Closed -> done_fiber ()
-      | Open -> suspend suspend_k (Function read_delayed)
+      | Open -> Suspend (suspend_k, Function read_delayed)
     in
     read t
 ;;
+
+let run t = primitive run_pool t
 
 let with_ f =
   of_thunk (fun () ->

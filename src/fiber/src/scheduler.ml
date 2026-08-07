@@ -60,6 +60,14 @@ type 'a step =
   | Done of 'a
   | Stalled of 'a stalled
 
+let update_var ctx key f =
+  (* CR-someday rgrinberg: If [vars = ctx.vars], we could elide the re-allocation of
+     [ctx] here. This doesn't seem important for us at the moment though because all
+     existing call sites do change the value of the variable. *)
+  let vars = Var_map.update ctx.vars ~f key in
+  { ctx with parent = ctx; vars }
+;;
+
 let rec loop : Jobs.t -> step' = function
   | Empty -> Stalled
   | Job (ctx, run, x, jobs) -> exec ctx run x jobs
@@ -71,12 +79,94 @@ and loop2 a b =
   | Job (ctx, run, x, a) -> exec ctx run x (Jobs.concat a b)
   | Concat (a1, a2) -> loop2 a1 (Jobs.concat a2 b)
 
-and exec : 'a. context -> 'a continuation -> 'a -> Jobs.t -> step' =
+and exec : type a. context -> a continuation -> a -> Jobs.t -> step' =
   fun ctx k x jobs ->
-  match continue k x with
-  | exception exn ->
-    let exn = Exn_with_backtrace.capture exn in
-    exec ctx.on_error.ctx ctx.on_error.run exn jobs
+  match k with
+  | Function f -> exec_function ctx f x jobs
+  | Map (f, k) -> exec_map ctx f x k jobs
+  | Map2 (f, g, k) -> exec_map2 ctx f g x k jobs
+  | Map3 (f, g, h, k) -> exec_map3 ctx f g h x k jobs
+  | Bind (f, k) -> exec_fiber_apply ctx f x k jobs
+  | Apply (f, y, k) -> exec_fiber_apply2 ctx f x y k jobs
+  | Apply_map (f, y, k) -> exec_apply_map ctx f x y k jobs
+  | Unwind_to k -> exec ctx.parent k x jobs
+  | Unwind_map_reduce_to k -> unwind_map_reduce ctx k (Ok x) jobs
+
+and exec_function : 'a. context -> ('a -> eff) -> 'a -> Jobs.t -> step' =
+  fun ctx f x jobs ->
+  match f x with
+  | exception exn -> handle_exception ctx exn jobs
+  | eff -> exec_effect ctx eff jobs
+
+and exec_map : 'a 'b. context -> ('a -> 'b) -> 'a -> 'b continuation -> Jobs.t -> step' =
+  fun ctx f x k jobs ->
+  match f x with
+  | exception exn -> handle_exception ctx exn jobs
+  | y -> exec ctx k y jobs
+
+and exec_map2
+  :  'a 'b 'c.
+     context
+  -> ('a -> 'b)
+  -> ('b -> 'c)
+  -> 'a
+  -> 'c continuation
+  -> Jobs.t
+  -> step'
+  =
+  fun ctx f g x k jobs ->
+  match g (f x) with
+  | exception exn -> handle_exception ctx exn jobs
+  | y -> exec ctx k y jobs
+
+and exec_map3
+  :  'a 'b 'c 'd.
+     context
+  -> ('a -> 'b)
+  -> ('b -> 'c)
+  -> ('c -> 'd)
+  -> 'a
+  -> 'd continuation
+  -> Jobs.t
+  -> step'
+  =
+  fun ctx f g h x k jobs ->
+  match h (g (f x)) with
+  | exception exn -> handle_exception ctx exn jobs
+  | y -> exec ctx k y jobs
+
+and exec_apply_map
+  :  'a 'b 'c.
+     context
+  -> ('a -> 'b -> 'c)
+  -> 'a
+  -> 'b
+  -> 'c continuation
+  -> Jobs.t
+  -> step'
+  =
+  fun ctx f x y k jobs ->
+  match f x y with
+  | exception exn -> handle_exception ctx exn jobs
+  | z -> exec ctx k z jobs
+
+and handle_exception ctx exn jobs =
+  let exn = Exn_with_backtrace.capture exn in
+  exec ctx.on_error.ctx ctx.on_error.run exn jobs
+
+and unwind_map_reduce
+  : 'a 'b. context -> ('a, 'b) result continuation -> ('a, 'b) result -> Jobs.t -> step'
+  =
+  fun ctx k x jobs ->
+  let (Map_reduce_context r) = ctx.map_reduce_context in
+  let ref_count = r.ref_count - 1 in
+  r.ref_count <- ref_count;
+  assert (ref_count = 0);
+  exec ctx.parent k x jobs
+
+and exec_effect ctx eff jobs =
+  match eff with
+  | Run (t, k) -> exec_fiber ctx t k jobs
   | Done v -> Done v
   | Toplevel_exception exn -> Exn_with_backtrace.reraise exn
   | Unwind (k, x) -> exec ctx.parent k x jobs
@@ -96,26 +186,19 @@ and exec : 'a. context -> 'a continuation -> 'a -> Jobs.t -> step' =
   | Resume (suspended, x, k) ->
     exec ctx k () (Jobs.concat jobs (Job (suspended.ctx, suspended.run, x, Empty)))
   | Get_var (key, k) -> exec ctx k (Var_map.get ctx.vars key) jobs
-  | Set_var (key, x, k) ->
+  | Set_var (key, x, f, k) ->
     let ctx = { ctx with parent = ctx; vars = Var_map.set ctx.vars key x } in
-    exec ctx k () jobs
-  | Update_var (key, f, k) ->
-    let ctx =
-      (* CR-someday rgrinberg: If [vars = ctx.vars], we could elide the re-allocation of
-         [ctx] here. This doesn't seem important for us at the moment though because all
-         existing call sites do change the value of the variable. *)
-      let vars = Var_map.update ctx.vars ~f key in
-      { ctx with parent = ctx; vars }
-    in
-    exec ctx k () jobs
-  | With_error_handler (on_error, k) ->
-    let on_error =
-      { ctx
-      ; run = Function (fun exn -> on_error exn (Function Nothing.unreachable_code))
-      }
-    in
-    let ctx = { ctx with parent = ctx; on_error } in
-    exec ctx k () jobs
+    exec_fiber_thunk ctx f (Unwind_to k) jobs
+  | Update_var (key, f, body, k) ->
+    let ctx = update_var ctx key f in
+    exec_fiber_thunk ctx body (Unwind_to k) jobs
+  | Set_var_apply (key, x, f, y, k) ->
+    let ctx = { ctx with parent = ctx; vars = Var_map.set ctx.vars key x } in
+    exec_fiber_apply ctx f y (Unwind_to k) jobs
+  | Update_var_apply (key, f, body, x, k) ->
+    let ctx = update_var ctx key f in
+    exec_fiber_apply ctx body x (Unwind_to k) jobs
+  | With_error_handler (on_error, f, k) -> with_error_handler ctx on_error f k jobs
   | Map_reduce_errors (m, on_error, f, k) -> map_reduce_errors ctx m on_error f k jobs
   | End_of_fiber () ->
     let (Map_reduce_context r) = ctx.map_reduce_context in
@@ -131,22 +214,195 @@ and exec : 'a. context -> 'a continuation -> 'a -> Jobs.t -> step' =
   | Fork (a, b) ->
     let (Map_reduce_context r) = ctx.map_reduce_context in
     r.ref_count <- r.ref_count + 1;
-    exec ctx Effect a (Job (ctx, Function b, (), jobs))
+    exec_effect ctx a (Job (ctx, Function b, (), jobs))
   | Reraise exn ->
     let { ctx; run } = ctx.on_error in
     exec ctx run exn jobs
-  | Reraise_all exns ->
-    (match length_and_rev exns with
-     | 0, _ -> loop jobs
-     | n, exns ->
-       let (Map_reduce_context r) = ctx.map_reduce_context in
-       r.ref_count <- r.ref_count + (n - 1);
-       let { ctx; run } = ctx.on_error in
-       let jobs =
-         List.fold_left exns ~init:jobs ~f:(fun jobs exn ->
-           Jobs.Job (ctx, run, exn, jobs))
-       in
-       loop jobs)
+  | Reraise_all exns -> reraise_all ctx exns jobs
+
+and with_error_handler
+  :  'a.
+     context
+  -> (Exn_with_backtrace.t -> Nothing.t t)
+  -> (unit -> 'a t)
+  -> 'a continuation
+  -> Jobs.t
+  -> step'
+  =
+  fun ctx on_error f k jobs ->
+  let on_error =
+    { ctx
+    ; run = Function (fun exn -> Run (on_error exn, Function Nothing.unreachable_code))
+    }
+  in
+  let ctx = { ctx with parent = ctx; on_error } in
+  exec_fiber_thunk ctx f (Unwind_to k) jobs
+
+and reraise_all ctx exns jobs =
+  match length_and_rev exns with
+  | 0, _ -> loop jobs
+  | n, exns ->
+    let (Map_reduce_context r) = ctx.map_reduce_context in
+    r.ref_count <- r.ref_count + (n - 1);
+    let { ctx; run } = ctx.on_error in
+    let jobs =
+      List.fold_left exns ~init:jobs ~f:(fun jobs exn -> Jobs.Job (ctx, run, exn, jobs))
+    in
+    loop jobs
+
+and exec_fiber : type a. context -> a t -> a continuation -> Jobs.t -> step' =
+  fun ctx t k jobs ->
+  match t with
+  | Return_t x -> exec ctx k x jobs
+  | Never_t -> loop jobs
+  | Map_t (t, f) -> exec_fiber ctx t (Map (f, k)) jobs
+  | Map2_t (t, f, g) -> exec_fiber ctx t (Map2 (f, g, k)) jobs
+  | Map3_t (t, f, g, h) -> exec_fiber ctx t (Map3 (f, g, h, k)) jobs
+  | Bind_t (t, f) -> exec_fiber ctx t (Bind (f, k)) jobs
+  | Thunk_t f -> exec_fiber_thunk ctx f k jobs
+  | Thunk_apply_t (f, x) -> exec_fiber_apply ctx f x k jobs
+  | With_error_handler_t (f, on_error) -> with_error_handler ctx on_error f k jobs
+  | Map_reduce_errors_t (m, on_error, f) -> map_reduce_errors ctx m on_error f k jobs
+  | Suspend_t f ->
+    let k = { ctx; run = k } in
+    f k;
+    loop jobs
+  | Resume_t (suspended, x) ->
+    exec ctx k () (Jobs.concat jobs (Job (suspended.ctx, suspended.run, x, Empty)))
+  | Reraise_all_t exns -> reraise_all ctx exns jobs
+  | Ivar_read_t ivar ->
+    (match ivar.state with
+     | (Empty | Empty_with_readers _) as readers ->
+       ivar.state <- Empty_with_readers (ctx, k, readers);
+       loop jobs
+     | Full x -> exec ctx k x jobs)
+  | Ivar_fill_t (ivar, x) ->
+    let jobs = Jobs.concat jobs (Jobs.fill_ivar ivar x Empty) in
+    exec ctx k () jobs
+  | Get_var_t key -> exec ctx k (Var_map.get ctx.vars key) jobs
+  | Set_var_t (key, x, f) ->
+    let ctx = { ctx with parent = ctx; vars = Var_map.set ctx.vars key x } in
+    exec_fiber_thunk ctx f (Unwind_to k) jobs
+  | Update_var_t (key, f, body) ->
+    let ctx = update_var ctx key f in
+    exec_fiber_thunk ctx body (Unwind_to k) jobs
+  | Get_apply_t (key, f, x) -> exec ctx (Apply (f, x, k)) (Var_map.get ctx.vars key) jobs
+  | Get_apply_map_t (key, f, x) ->
+    exec ctx (Apply_map (f, x, k)) (Var_map.get ctx.vars key) jobs
+  | Set_apply_t (key, value, f, x) ->
+    let ctx = { ctx with parent = ctx; vars = Var_map.set ctx.vars key value } in
+    exec_fiber_apply ctx f x (Unwind_to k) jobs
+  | Update_apply_t (key, f, body, x) ->
+    let ctx = update_var ctx key f in
+    exec_fiber_apply ctx body x (Unwind_to k) jobs
+  | Primitive_t (f, x) -> exec_primitive1 ctx f x k jobs
+  | Primitive2_t (f, x, y) -> exec_primitive2 ctx f x y k jobs
+  | Primitive3_t (f, x, y, z) -> exec_primitive3 ctx f x y z k jobs
+  | Primitive4_t (f, w, x, y, z) -> exec_primitive4 ctx f w x y z k jobs
+
+and exec_primitive1
+  :  'a 'b.
+     context
+  -> ('a -> 'b continuation -> eff)
+  -> 'a
+  -> 'b continuation
+  -> Jobs.t
+  -> step'
+  =
+  fun ctx f x k jobs ->
+  match f x k with
+  | exception exn ->
+    let exn = Exn_with_backtrace.capture exn in
+    exec ctx.on_error.ctx ctx.on_error.run exn jobs
+  | eff -> exec_effect ctx eff jobs
+
+and exec_primitive2
+  :  'a 'b 'c.
+     context
+  -> ('a -> 'b -> 'c continuation -> eff)
+  -> 'a
+  -> 'b
+  -> 'c continuation
+  -> Jobs.t
+  -> step'
+  =
+  fun ctx f x y k jobs ->
+  match f x y k with
+  | exception exn ->
+    let exn = Exn_with_backtrace.capture exn in
+    exec ctx.on_error.ctx ctx.on_error.run exn jobs
+  | eff -> exec_effect ctx eff jobs
+
+and exec_primitive3
+  :  'a 'b 'c 'd.
+     context
+  -> ('a -> 'b -> 'c -> 'd continuation -> eff)
+  -> 'a
+  -> 'b
+  -> 'c
+  -> 'd continuation
+  -> Jobs.t
+  -> step'
+  =
+  fun ctx f x y z k jobs ->
+  match f x y z k with
+  | exception exn ->
+    let exn = Exn_with_backtrace.capture exn in
+    exec ctx.on_error.ctx ctx.on_error.run exn jobs
+  | eff -> exec_effect ctx eff jobs
+
+and exec_primitive4
+  :  'a 'b 'c 'd 'e.
+     context
+  -> ('a -> 'b -> 'c -> 'd -> 'e continuation -> eff)
+  -> 'a
+  -> 'b
+  -> 'c
+  -> 'd
+  -> 'e continuation
+  -> Jobs.t
+  -> step'
+  =
+  fun ctx f w x y z k jobs ->
+  match f w x y z k with
+  | exception exn ->
+    let exn = Exn_with_backtrace.capture exn in
+    exec ctx.on_error.ctx ctx.on_error.run exn jobs
+  | eff -> exec_effect ctx eff jobs
+
+and exec_fiber_thunk : 'a. context -> (unit -> 'a t) -> 'a continuation -> Jobs.t -> step'
+  =
+  fun ctx f k jobs ->
+  match f () with
+  | exception exn ->
+    let exn = Exn_with_backtrace.capture exn in
+    exec ctx.on_error.ctx ctx.on_error.run exn jobs
+  | t -> exec_fiber ctx t k jobs
+
+and exec_fiber_apply
+  : 'a 'b. context -> ('a -> 'b t) -> 'a -> 'b continuation -> Jobs.t -> step'
+  =
+  fun ctx f x k jobs ->
+  match f x with
+  | exception exn ->
+    let exn = Exn_with_backtrace.capture exn in
+    exec ctx.on_error.ctx ctx.on_error.run exn jobs
+  | t -> exec_fiber ctx t k jobs
+
+and exec_fiber_apply2
+  :  'a 'b 'c.
+     context
+  -> ('a -> 'b -> 'c t)
+  -> 'a
+  -> 'b
+  -> 'c continuation
+  -> Jobs.t
+  -> step'
+  =
+  fun ctx f x y k jobs ->
+  match f x y with
+  | exception exn -> handle_exception ctx exn jobs
+  | t -> exec_fiber ctx t k jobs
 
 and deref : 'a 'b. ('a, 'b) map_reduce_context' -> Jobs.t -> step' =
   fun r jobs ->
@@ -163,7 +419,7 @@ and map_reduce_errors
     context
     -> (module Monoid with type t = errors)
     -> (Exn_with_backtrace.t -> errors t)
-    -> (unit -> eff)
+    -> (unit -> b t)
     -> (b, errors) result continuation
     -> Jobs.t
     -> step'
@@ -175,12 +431,12 @@ and map_reduce_errors
     ; run =
         Function
           (fun exn ->
-            on_error
-              exn
-              (Function
-                 (fun m ->
-                   map_reduce_context.errors <- M.combine map_reduce_context.errors m;
-                   End_of_map_reduce_error_handler map_reduce_context)))
+            Run
+              ( on_error exn
+              , Function
+                  (fun m ->
+                    map_reduce_context.errors <- M.combine map_reduce_context.errors m;
+                    End_of_map_reduce_error_handler map_reduce_context) ))
     }
   in
   let ctx =
@@ -190,7 +446,7 @@ and map_reduce_errors
     ; map_reduce_context = Map_reduce_context map_reduce_context
     }
   in
-  exec ctx (Function f) () jobs
+  exec_fiber_thunk ctx f (Unwind_map_reduce_to k) jobs
 ;;
 
 let repack_step (type a) (module W : Witness with type t = a) (step' : step') =
@@ -226,5 +482,5 @@ let start (type a) (t : a t) =
           }
     }
   in
-  exec ctx (Function t) (Function (fun x -> Done (W.X x))) Empty |> repack_step (module W)
+  exec_fiber ctx t (Function (fun x -> Done (W.X x))) Empty |> repack_step (module W)
 ;;

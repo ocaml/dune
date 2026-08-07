@@ -37,11 +37,15 @@ let
         "zarith"
       ];
 
+      sourceHashes = {
+        odoc = "sha256-frnTw0yGFfN/Hh89z70jWTa4VXDzNDeuH0Miblrx2m0=";
+        sherlodoc = "sha256-frnTw0yGFfN/Hh89z70jWTa4VXDzNDeuH0Miblrx2m0=";
+      };
+
       skipPackages = [
         "angstrom"
         "faraday"
         "mdx"
-        "odoc"
         "odoc-parser"
       ];
 

@@ -121,7 +121,6 @@ let
           merlin
           ocaml-index
           ocaml-lsp
-          odoc
           patdiff
           pp
           ppx_expect

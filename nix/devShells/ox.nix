@@ -101,7 +101,6 @@ in
       "merlin"
       "ocaml-index"
       "ocaml-lsp-server"
-      "odoc"
     ];
     extraBuildInputs =
       pkgs:

@@ -153,115 +153,113 @@ let feed_string hasher scratch s =
   feed_string_raw hasher s
 ;;
 
-let feed_repr hasher =
-  let scratch = Bytes.create 8 in
-  let rec loop : type a. a Repr.t -> a -> unit =
-    fun repr value ->
-    match repr with
-    | Unit ->
-      feed_int hasher scratch 1;
-      feed_bool hasher scratch false
-    | Bool ->
-      feed_int hasher scratch 2;
-      feed_bool hasher scratch value
-    | Int ->
-      feed_int hasher scratch 3;
-      feed_int hasher scratch value
-    | String ->
-      feed_int hasher scratch 4;
-      feed_string hasher scratch value
-    | Int32 ->
-      feed_int hasher scratch 12;
-      feed_int64 hasher scratch (Int64.of_int32 value)
-    | Int64 ->
-      feed_int hasher scratch 13;
-      feed_int64 hasher scratch value
-    | Nativeint ->
-      feed_int hasher scratch 14;
-      feed_int64 hasher scratch (Int64.of_nativeint value)
-    | Bytes ->
-      feed_int hasher scratch 15;
-      feed_int hasher scratch (Bytes.length value);
-      feed_bytes_raw hasher value ~len:(Bytes.length value)
-    | Char ->
-      feed_int hasher scratch 16;
-      feed_int hasher scratch (Char.code value)
-    | Float ->
-      feed_int hasher scratch 17;
-      feed_int64 hasher scratch (Int64.bits_of_float value)
-    | Option repr ->
-      feed_int hasher scratch 5;
-      (match value with
-       | None -> feed_bool hasher scratch false
-       | Some x ->
-         feed_bool hasher scratch true;
-         loop repr x)
-    | List repr ->
-      feed_int hasher scratch 6;
-      feed_int hasher scratch (List.length value);
-      List.iter value ~f:(loop repr)
-    | Array repr ->
-      feed_int hasher scratch 7;
-      feed_int hasher scratch (Array.length value);
-      Array.iter value ~f:(loop repr)
-    | Pair (left, right) ->
-      feed_int hasher scratch 8;
-      let left_value, right_value = value in
-      loop left left_value;
-      loop right right_value
-    | Triple (first, second, third) ->
-      feed_int hasher scratch 9;
-      let first_value, second_value, third_value = value in
-      loop first first_value;
-      loop second second_value;
-      loop third third_value
-    | Quadruple (first, second, third, fourth) ->
-      feed_int hasher scratch 18;
-      let first_value, second_value, third_value, fourth_value = value in
-      loop first first_value;
-      loop second second_value;
-      loop third third_value;
-      loop fourth fourth_value
-    | Fix repr -> loop (Lazy.force repr) value
-    | Record (_, fields) ->
-      feed_int hasher scratch 10;
-      loop_fields fields value
-    | Variant (_, cases) ->
-      feed_int hasher scratch 11;
-      loop_cases cases value
-    | View { repr; to_ } -> loop repr (to_ value)
-    | Abstract _ ->
-      Code_error.raise
-        "Digest.repr does not support Repr.abstract"
-        [ "repr", Dyn.string "<abstract>" ]
-  and loop_fields : type a. a Repr.field list -> a -> unit =
-    fun fields value ->
-    feed_int hasher scratch (List.length fields);
-    List.iter fields ~f:(fun (Repr.Field { name; repr; get }) ->
-      feed_string hasher scratch name;
-      loop repr (get value))
-  and loop_cases : type a. a Repr.case list -> a -> unit =
-    fun cases value ->
-    match cases with
-    | [] ->
-      Code_error.raise
-        "Repr.variant: value did not match any case"
-        [ "value", Dyn.string "<opaque>" ]
-    | Repr.Case0 { tag; test } :: rest ->
-      if test value
-      then (
-        feed_string hasher scratch tag;
-        feed_bool hasher scratch false)
-      else loop_cases rest value
-    | Repr.Case1 { tag; repr; proj } :: rest ->
-      (match proj value with
-       | Some argument ->
-         feed_string hasher scratch tag;
-         feed_bool hasher scratch true;
-         loop repr argument
-       | None -> loop_cases rest value)
-  in
-  loop
+let rec feed_repr : type a. Hasher.t -> Bytes.t -> a Repr.t -> a -> unit =
+  fun hasher scratch repr value ->
+  match repr with
+  | Unit ->
+    feed_int hasher scratch 1;
+    feed_bool hasher scratch false
+  | Bool ->
+    feed_int hasher scratch 2;
+    feed_bool hasher scratch value
+  | Int ->
+    feed_int hasher scratch 3;
+    feed_int hasher scratch value
+  | String ->
+    feed_int hasher scratch 4;
+    feed_string hasher scratch value
+  | Int32 ->
+    feed_int hasher scratch 12;
+    feed_int64 hasher scratch (Int64.of_int32 value)
+  | Int64 ->
+    feed_int hasher scratch 13;
+    feed_int64 hasher scratch value
+  | Nativeint ->
+    feed_int hasher scratch 14;
+    feed_int64 hasher scratch (Int64.of_nativeint value)
+  | Bytes ->
+    feed_int hasher scratch 15;
+    feed_int hasher scratch (Bytes.length value);
+    feed_bytes_raw hasher value ~len:(Bytes.length value)
+  | Char ->
+    feed_int hasher scratch 16;
+    feed_int hasher scratch (Char.code value)
+  | Float ->
+    feed_int hasher scratch 17;
+    feed_int64 hasher scratch (Int64.bits_of_float value)
+  | Option repr ->
+    feed_int hasher scratch 5;
+    (match value with
+     | None -> feed_bool hasher scratch false
+     | Some x ->
+       feed_bool hasher scratch true;
+       feed_repr hasher scratch repr x)
+  | List repr ->
+    feed_int hasher scratch 6;
+    feed_int hasher scratch (List.length value);
+    List.iter value ~f:(feed_repr hasher scratch repr)
+  | Array repr ->
+    feed_int hasher scratch 7;
+    feed_int hasher scratch (Array.length value);
+    Array.iter value ~f:(feed_repr hasher scratch repr)
+  | Pair (left, right) ->
+    feed_int hasher scratch 8;
+    let left_value, right_value = value in
+    feed_repr hasher scratch left left_value;
+    feed_repr hasher scratch right right_value
+  | Triple (first, second, third) ->
+    feed_int hasher scratch 9;
+    let first_value, second_value, third_value = value in
+    feed_repr hasher scratch first first_value;
+    feed_repr hasher scratch second second_value;
+    feed_repr hasher scratch third third_value
+  | Quadruple (first, second, third, fourth) ->
+    feed_int hasher scratch 18;
+    let first_value, second_value, third_value, fourth_value = value in
+    feed_repr hasher scratch first first_value;
+    feed_repr hasher scratch second second_value;
+    feed_repr hasher scratch third third_value;
+    feed_repr hasher scratch fourth fourth_value
+  | Fix repr -> feed_repr hasher scratch (Lazy.force repr) value
+  | Record (_, fields) ->
+    feed_int hasher scratch 10;
+    feed_repr_fields hasher scratch fields value
+  | Variant (_, cases) ->
+    feed_int hasher scratch 11;
+    feed_repr_cases hasher scratch cases value
+  | View { repr; to_ } -> feed_repr hasher scratch repr (to_ value)
+  | Abstract _ ->
+    Code_error.raise
+      "Digest.repr does not support Repr.abstract"
+      [ "repr", Dyn.string "<abstract>" ]
+
+and feed_repr_fields : type a. Hasher.t -> Bytes.t -> a Repr.field list -> a -> unit =
+  fun hasher scratch fields value ->
+  feed_int hasher scratch (List.length fields);
+  List.iter fields ~f:(fun (Repr.Field { name; repr; get }) ->
+    feed_string hasher scratch name;
+    feed_repr hasher scratch repr (get value))
+
+and feed_repr_cases : type a. Hasher.t -> Bytes.t -> a Repr.case list -> a -> unit =
+  fun hasher scratch cases value ->
+  match cases with
+  | [] ->
+    Code_error.raise
+      "Repr.variant: value did not match any case"
+      [ "value", Dyn.string "<opaque>" ]
+  | Repr.Case0 { tag; test } :: rest ->
+    if test value
+    then (
+      feed_string hasher scratch tag;
+      feed_bool hasher scratch false)
+    else feed_repr_cases hasher scratch rest value
+  | Repr.Case1 { tag; repr; proj } :: rest ->
+    (match proj value with
+     | Some argument ->
+       feed_string hasher scratch tag;
+       feed_bool hasher scratch true;
+       feed_repr hasher scratch repr argument
+     | None -> feed_repr_cases hasher scratch rest value)
 ;;
 
 module Feed = struct
@@ -277,7 +275,7 @@ module Feed = struct
 
   let bool = contramap string ~f:Bool.to_string
   let int = contramap string ~f:Int.to_string
-  let repr repr hasher value = feed_repr hasher repr value
+  let repr repr hasher value = feed_repr hasher (Bytes.create 8) repr value
 
   let list feed_x hasher xs =
     int hasher (List.length xs);
@@ -350,7 +348,7 @@ module Manual = struct
     List.iter xs ~f:(f t)
   ;;
 
-  let repr () repr value = Feed.repr repr (Lazy.force Hasher.singleton) value
+  let repr () repr value = feed_repr (Lazy.force Hasher.singleton) scratch repr value
 
   let digest () s =
     let s = Blake3_mini.Digest.to_binary s in

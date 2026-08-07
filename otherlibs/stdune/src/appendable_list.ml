@@ -6,6 +6,14 @@ type 'a t =
   | Append of 'a t * 'a t
   | Concat of 'a t list
 
+type 'a stack =
+  | End
+  | One of 'a t * 'a stack
+  | Many of
+      { mutable trees : 'a t list
+      ; stack : 'a stack
+      }
+
 let empty = Empty
 let singleton x = Singleton x
 
@@ -30,15 +38,21 @@ let to_list_rev =
     | Singleton x -> loop0 (x :: acc) stack
     | Cons (x, xs) -> loop1 (x :: acc) xs stack
     | List xs -> loop0 (List.rev_append xs acc) stack
-    | Append (xs, ys) -> loop1 acc xs (ys :: stack)
+    | Append (xs, ys) -> loop1 acc xs (One (ys, stack))
     | Concat [] -> loop0 acc stack
-    | Concat (x :: xs) -> loop1 acc x (Concat xs :: stack)
+    | Concat (x :: xs) -> loop1 acc x (Many { trees = xs; stack })
   and loop0 acc stack =
     match stack with
-    | [] -> acc
-    | t :: stack -> loop1 acc t stack
+    | End -> acc
+    | One (t, stack) -> loop1 acc t stack
+    | Many frame ->
+      (match frame.trees with
+       | [] -> loop0 acc frame.stack
+       | t :: trees ->
+         frame.trees <- trees;
+         loop1 acc t stack)
   in
-  fun t -> loop1 [] t []
+  fun t -> loop1 [] t End
 ;;
 
 let to_list xs = List.rev (to_list_rev xs)
@@ -50,15 +64,21 @@ let length =
     | Singleton _ -> loop0 (len + 1) stack
     | Cons (_, xs) -> loop1 (len + 1) xs stack
     | List xs -> loop0 (len + List.length xs) stack
-    | Append (xs, ys) -> loop1 len xs (ys :: stack)
+    | Append (xs, ys) -> loop1 len xs (One (ys, stack))
     | Concat [] -> loop0 len stack
-    | Concat (x :: xs) -> loop1 len x (Concat xs :: stack)
+    | Concat (x :: xs) -> loop1 len x (Many { trees = xs; stack })
   and loop0 len stack =
     match stack with
-    | [] -> len
-    | t :: stack -> loop1 len t stack
+    | End -> len
+    | One (t, stack) -> loop1 len t stack
+    | Many frame ->
+      (match frame.trees with
+       | [] -> loop0 len frame.stack
+       | t :: trees ->
+         frame.trees <- trees;
+         loop1 len t stack)
   in
-  fun t -> loop1 0 t []
+  fun t -> loop1 0 t End
 ;;
 
 let iter =
@@ -74,15 +94,21 @@ let iter =
     | List xs ->
       List.iter xs ~f;
       loop0 f stack
-    | Append (xs, ys) -> loop1 f xs (ys :: stack)
+    | Append (xs, ys) -> loop1 f xs (One (ys, stack))
     | Concat [] -> loop0 f stack
-    | Concat (x :: xs) -> loop1 f x (Concat xs :: stack)
+    | Concat (x :: xs) -> loop1 f x (Many { trees = xs; stack })
   and loop0 f stack =
     match stack with
-    | [] -> ()
-    | t :: stack -> loop1 f t stack
+    | End -> ()
+    | One (t, stack) -> loop1 f t stack
+    | Many frame ->
+      (match frame.trees with
+       | [] -> loop0 f frame.stack
+       | t :: trees ->
+         frame.trees <- trees;
+         loop1 f t stack)
   in
-  fun t ~f -> loop1 f t []
+  fun t ~f -> loop1 f t End
 ;;
 
 let to_immutable_array (type a) (t : a t) =

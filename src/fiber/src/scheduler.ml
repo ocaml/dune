@@ -101,6 +101,18 @@ and exec : type a. context -> a continuation -> a -> Jobs.t -> step' =
   | Fork_join_left _ as k -> exec_core_continuation ctx k x jobs
   | Fork_join_right _ as k -> exec_core_continuation ctx k x jobs
   | Resume_many _ as k -> exec_core_continuation ctx k x jobs
+  | Top_level_error -> Exn_with_backtrace.reraise x
+  | Unreachable -> Nothing.unreachable_code x
+  | Never_called -> assert false
+  | Handle_error f -> exec_fiber_apply ctx f x Unreachable jobs
+  | Map_reduce_error (f, map_reduce_context, combine) ->
+    exec_fiber_apply ctx f x (Accumulate_error (map_reduce_context, combine)) jobs
+  | Accumulate_error (map_reduce_context, combine) ->
+    (match combine map_reduce_context.errors x with
+     | exception exn -> handle_exception ctx exn jobs
+     | errors ->
+       map_reduce_context.errors <- errors;
+       deref map_reduce_context jobs)
 
 and exec_core_continuation : 'a. context -> 'a continuation -> 'a -> Jobs.t -> step' =
   fun ctx k x jobs ->
@@ -251,11 +263,7 @@ and with_error_handler
   -> step'
   =
   fun ctx on_error f k jobs ->
-  let on_error =
-    { ctx
-    ; run = Function (fun exn -> Run (on_error exn, Function Nothing.unreachable_code))
-    }
-  in
+  let on_error = { ctx; run = Handle_error on_error } in
   let ctx = { ctx with parent = ctx; on_error } in
   exec_fiber_thunk ctx f (Unwind_to k) jobs
 
@@ -448,17 +456,7 @@ and map_reduce_errors
   fun ctx (module M : Monoid with type t = errors) on_error f k jobs ->
   let map_reduce_context = { k = { ctx; run = k }; ref_count = 1; errors = M.empty } in
   let on_error =
-    { ctx
-    ; run =
-        Function
-          (fun exn ->
-            Run
-              ( on_error exn
-              , Function
-                  (fun m ->
-                    map_reduce_context.errors <- M.combine map_reduce_context.errors m;
-                    End_of_map_reduce_error_handler map_reduce_context) ))
-    }
+    { ctx; run = Map_reduce_error (on_error, map_reduce_context, M.combine) }
   in
   let ctx =
     { ctx with
@@ -493,14 +491,10 @@ let start (type a) (t : a t) =
   in
   let rec ctx =
     { parent = ctx
-    ; on_error = { ctx; run = Function (fun exn -> Toplevel_exception exn) }
+    ; on_error = { ctx; run = Top_level_error }
     ; vars = Var_map.empty
     ; map_reduce_context =
-        Map_reduce_context
-          { k = { ctx; run = Function (fun _ -> assert false) }
-          ; ref_count = 1
-          ; errors = ()
-          }
+        Map_reduce_context { k = { ctx; run = Never_called }; ref_count = 1; errors = () }
     }
   in
   exec_fiber ctx t (Function (fun x -> Done (W.X x))) Empty |> repack_step (module W)

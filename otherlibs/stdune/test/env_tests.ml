@@ -15,5 +15,13 @@ let%expect_test "unchanged assignments are shared between environments" =
   let updated = Env.add env ~var:"B" ~value:"three" in
   let updated_assignment = find_assignment updated "A" in
   print_endline (Bool.to_string (assignment == updated_assignment));
-  [%expect {| false |}]
+  [%expect {| true |}]
+;;
+
+let%expect_test "rendering preserves the environment hash" =
+  let env = Env.empty |> Env.add ~var:"A" ~value:"one" in
+  let before = Env.hash env in
+  ignore (Env.to_unix env);
+  print_endline (Bool.to_string (Int.equal before (Env.hash env)));
+  [%expect {| true |}]
 ;;

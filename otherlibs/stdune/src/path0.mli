@@ -1,6 +1,5 @@
 module Unspecified = Path_intf.Unspecified
 
-val append_with_slash : string -> string -> string
 val basename_opt : is_root:('a -> bool) -> basename:('a -> 'b) -> 'a -> 'b option
 val explode_path : string -> string list
 val is_dir_sep : char -> bool

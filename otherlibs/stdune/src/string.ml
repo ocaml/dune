@@ -102,6 +102,16 @@ let rindex_from s i c = rindex_from_opt s i c
 let break s ~pos = sub s ~pos:0 ~len:pos, sub s ~pos ~len:(length s - pos)
 let is_empty s = length s = 0
 
+let append_with_char x ~sep y =
+  let len_x = length x in
+  let len_y = length y in
+  let result = Bytes.create (len_x + 1 + len_y) in
+  Bytes.unsafe_blit_string ~src:x ~src_pos:0 ~dst:result ~dst_pos:0 ~len:len_x;
+  Bytes.unsafe_set result len_x sep;
+  Bytes.unsafe_blit_string ~src:y ~src_pos:0 ~dst:result ~dst_pos:(len_x + 1) ~len:len_y;
+  Bytes.unsafe_to_string result
+;;
+
 let extract_words s ~is_word_char =
   let rec skip_blanks i =
     if i = length s

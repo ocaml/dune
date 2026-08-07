@@ -21,7 +21,25 @@ val setup_rules
 val lock_dir_path : Context_name.t -> Path.t option Memo.t
 val lock_dir_active : Context_name.t -> bool Memo.t
 val ocaml_toolchain : Context_name.t -> Ocaml_toolchain.t Action_builder.t option Memo.t
-val which : Context_name.t -> (Filename.t -> Path.t option Memo.t) Staged.t
+
+(** [which ~packages context program] looks [program] up among the binaries
+    installed by the dependency closure of [packages] in the lock directory.
+    [None] means the whole lock directory. *)
+val which
+  :  packages:Package.Name.Set.t option
+  -> Context_name.t
+  -> Filename.t
+  -> Path.t option Memo.t
+
+(** [bin_path_env ~packages context] is an env holding only the PATH
+    (bin-layout) entries of the dependency closure of [packages] in the lock
+    directory. [None] means the whole lock directory. Empty when the context
+    has no lock directory. *)
+val bin_path_env
+  :  packages:Package.Name.Set.t option
+  -> Context_name.t
+  -> Env.t Memo.t
+
 val exported_env : Context_name.t -> Env.t Memo.t
 val project_ocamlpath : Context_name.t -> Path.t list Memo.t
 val dev_tool_ocamlpath : Dune_pkg.Dev_tool.t -> Path.t list Memo.t

@@ -23,11 +23,6 @@ let wait =
 
 let create current = { current; waiters = [] }
 
-let rec run_awakers final = function
-  | [] -> continue final ()
-  | k :: ks -> Resume (k, (), Function (fun () -> run_awakers final ks))
-;;
-
 let run_write t a k =
   t.current <- a;
   let sleep, awake =
@@ -38,7 +33,7 @@ let run_write t a k =
   | [] -> continue k ()
   | awake ->
     t.waiters <- List.rev sleep;
-    run_awakers k awake
+    continue (Resume_many (awake, k)) ()
 ;;
 
 let write t a = primitive2 run_write t a

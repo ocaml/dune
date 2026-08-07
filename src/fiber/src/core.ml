@@ -1,5 +1,10 @@
 open Stdune
 
+type ('a, 'b) fork_and_join_state =
+  | Nothing_yet
+  | Got_a of 'a
+  | Got_b of 'b
+
 (* Fiber computations are explicit nodes. Callbacks supplied by callers remain functions,
    while the Fiber-created computation spine is interpreted by the scheduler. *)
 type _ t =
@@ -47,6 +52,21 @@ and 'a continuation =
   | Apply_map : ('a -> 'b -> 'c) * 'b * 'c continuation -> 'a continuation
   | Unwind_to : 'a continuation -> 'a continuation
   | Unwind_map_reduce_to : ('a, 'b) result continuation -> 'a continuation
+  | End : unit continuation
+  | Parallel_unit_complete : int ref * unit continuation -> unit continuation
+  | Map_reduce_complete :
+      'a ref * int ref * ('a -> 'a -> 'a) * 'a continuation
+      -> 'a continuation
+  | Array_map_complete :
+      'a array ref * int * int * int ref * 'a array continuation
+      -> 'a continuation
+  | Fork_join_left :
+      ('a, 'b) fork_and_join_state ref * ('a * 'b) continuation
+      -> 'a continuation
+  | Fork_join_right :
+      ('a, 'b) fork_and_join_state ref * ('a * 'b) continuation
+      -> 'b continuation
+  | Resume_many : unit k list * unit continuation -> unit continuation
 
 and eff =
   | Run : 'a t * 'a continuation -> eff
@@ -138,6 +158,45 @@ let rec continue : type a. a continuation -> a -> eff =
   | Apply_map (f, y, k) -> continue k (f x y)
   | Unwind_to k -> Unwind (k, x)
   | Unwind_map_reduce_to k -> Unwind_map_reduce (k, Ok x)
+  | End -> End_of_fiber ()
+  | Parallel_unit_complete (running, k) ->
+    decr running;
+    if !running = 0 then continue k () else End_of_fiber ()
+  | Map_reduce_complete (current, running, combine, k) ->
+    current := combine !current x;
+    decr running;
+    if !running = 0 then continue k !current else End_of_fiber ()
+  | Array_map_complete (results, len, i, running, k) ->
+    let a =
+      match !results with
+      | [||] ->
+        let a = Array.make len x in
+        results := a;
+        a
+      | a ->
+        a.(i) <- x;
+        a
+    in
+    decr running;
+    if !running = 0 then continue k a else End_of_fiber ()
+  | Fork_join_left (state, k) ->
+    (match !state with
+     | Nothing_yet ->
+       state := Got_a x;
+       End_of_fiber ()
+     | Got_a _ -> assert false
+     | Got_b b -> continue k (x, b))
+  | Fork_join_right (state, k) ->
+    (match !state with
+     | Nothing_yet ->
+       state := Got_b x;
+       End_of_fiber ()
+     | Got_a a -> continue k (a, x)
+     | Got_b _ -> assert false)
+  | Resume_many (suspended, k) ->
+    (match suspended with
+     | [] -> continue k ()
+     | suspended :: rest -> Resume (suspended, (), Resume_many (rest, k)))
 ;;
 
 let return x = Return_t x
@@ -286,15 +345,8 @@ let run_parallel_iter_seq (seq : _ Seq.t) f k =
   | Nil -> continue k ()
   | Cons (x, seq) ->
     let left_over = ref 1 in
-    let f' x =
-      apply_t
-        f
-        x
-        (Function
-           (fun () ->
-             decr left_over;
-             if !left_over = 0 then continue k () else end_of_fiber))
-    in
+    let complete = Parallel_unit_complete (left_over, k) in
+    let f' x = apply_t f x complete in
     nfork_seq left_over x seq f'
 ;;
 
@@ -306,16 +358,8 @@ let run_map_reduce_seq (seq : _ Seq.t) f empty combine k =
   | Cons (x, seq) ->
     let current = ref empty in
     let running = ref 1 in
-    let f' x =
-      apply_t
-        f
-        x
-        (Function
-           (fun y ->
-             current := combine !current y;
-             decr running;
-             if !running = 0 then continue k !current else end_of_fiber))
-    in
+    let complete = Map_reduce_complete (current, running, combine, k) in
+    let f' x = apply_t f x complete in
     nfork_seq running x seq f'
 ;;
 
@@ -329,16 +373,8 @@ let run_map_reduce_array a f empty combine k =
   | len ->
     let current = ref empty in
     let running = ref len in
-    let f' x =
-      apply_t
-        f
-        x
-        (Function
-           (fun y ->
-             current := combine !current y;
-             decr running;
-             if !running = 0 then continue k !current else end_of_fiber))
-    in
+    let complete = Map_reduce_complete (current, running, combine, k) in
+    let f' x = apply_t f x complete in
     nfork_array a 0 f'
 ;;
 
@@ -352,45 +388,17 @@ let run_map_reduce l f empty combine k =
   | x :: l ->
     let current = ref empty in
     let running = ref (List.length l + 1) in
-    let f' x =
-      apply_t
-        f
-        x
-        (Function
-           (fun y ->
-             current := combine !current y;
-             decr running;
-             if !running = 0 then continue k !current else end_of_fiber))
-    in
+    let complete = Map_reduce_complete (current, running, combine, k) in
+    let f' x = apply_t f x complete in
     nfork x l f'
 ;;
 
 let map_reduce l ~f ~empty ~combine = primitive4 run_map_reduce l f empty combine
 
-type ('a, 'b) fork_and_join_state =
-  | Nothing_yet
-  | Got_a of 'a
-  | Got_b of 'b
-
 let run_fork_and_join fa fb k =
   let state = ref Nothing_yet in
-  let ka a =
-    match !state with
-    | Nothing_yet ->
-      state := Got_a a;
-      end_of_fiber
-    | Got_a _ -> assert false
-    | Got_b b -> continue k (a, b)
-  and kb b =
-    match !state with
-    | Nothing_yet ->
-      state := Got_b b;
-      end_of_fiber
-    | Got_a a -> continue k (a, b)
-    | Got_b _ -> assert false
-  in
-  let ka = Function ka in
-  let kb = Function kb in
+  let ka = Fork_join_left (state, k) in
+  let kb = Fork_join_right (state, k) in
   match apply_t fa () ka with
   | End_of_fiber () -> apply_t fb () kb
   | eff -> Fork (eff, Apply_thunk_work (fb, kb))
@@ -400,33 +408,12 @@ let fork_and_join fa fb = primitive2 run_fork_and_join fa fb
 
 let run_fork_and_join_unit fa fb k =
   let state = ref Nothing_yet in
-  match
-    apply_t
-      fa
-      ()
-      (Function
-         (fun () ->
-           match !state with
-           | Nothing_yet ->
-             state := Got_a ();
-             end_of_fiber
-           | Got_a _ -> assert false
-           | Got_b b -> continue k b))
-  with
-  | End_of_fiber () -> apply_t fb () k
-  | eff ->
-    Fork
-      ( eff
-      , Apply_thunk_work
-          ( fb
-          , Function
-              (fun b ->
-                match !state with
-                | Nothing_yet ->
-                  state := Got_b b;
-                  end_of_fiber
-                | Got_a () -> continue k b
-                | Got_b _ -> assert false) ) )
+  let pair = Map (snd, k) in
+  let ka = Fork_join_left (state, pair) in
+  let kb = Fork_join_right (state, pair) in
+  match apply_t fa () ka with
+  | End_of_fiber () -> apply_t fb () kb
+  | eff -> Fork (eff, Apply_thunk_work (fb, kb))
 ;;
 
 let fork_and_join_unit fa fb = primitive2 run_fork_and_join_unit fa fb
@@ -543,15 +530,8 @@ let run_parallel_iter l f k =
   | x :: l ->
     let len = List.length l + 1 in
     let left_over = ref len in
-    let f' x =
-      apply_t
-        f
-        x
-        (Function
-           (fun () ->
-             decr left_over;
-             if !left_over = 0 then continue k () else end_of_fiber))
-    in
+    let complete = Parallel_unit_complete (left_over, k) in
+    let f' x = apply_t f x complete in
     nfork x l f'
 ;;
 
@@ -561,25 +541,7 @@ let run_parallel_array_of_list_map' x l f k =
   let len = List.length l + 1 in
   let left_over = ref len in
   let results = ref [||] in
-  let f' i x =
-    apply_t
-      f
-      x
-      (Function
-         (fun y ->
-           let a =
-             match !results with
-             | [||] ->
-               let a = Array.make len y in
-               results := a;
-               a
-             | a ->
-               a.(i) <- y;
-               a
-           in
-           decr left_over;
-           if !left_over = 0 then continue k a else end_of_fiber))
-  in
+  let f' i x = apply_t f x (Array_map_complete (results, len, i, left_over, k)) in
   nforki x l f'
 ;;
 

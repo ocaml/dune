@@ -23,20 +23,22 @@ let wait =
 
 let create current = { current; waiters = [] }
 
-let write =
-  let rec run_awakers final = function
-    | [] -> continue final ()
-    | k :: ks -> resume k () (Function (fun () -> run_awakers final ks))
-  in
-  fun t a k ->
-    t.current <- a;
-    let sleep, awake =
-      List.rev_partition_map t.waiters ~f:(fun (k, f) ->
-        if f t.current then Right k else Left (k, f))
-    in
-    match awake with
-    | [] -> continue k ()
-    | awake ->
-      t.waiters <- List.rev sleep;
-      run_awakers k awake
+let rec run_awakers final = function
+  | [] -> continue final ()
+  | k :: ks -> Resume (k, (), Function (fun () -> run_awakers final ks))
 ;;
+
+let run_write t a k =
+  t.current <- a;
+  let sleep, awake =
+    List.rev_partition_map t.waiters ~f:(fun (k, f) ->
+      if f t.current then Right k else Left (k, f))
+  in
+  match awake with
+  | [] -> continue k ()
+  | awake ->
+    t.waiters <- List.rev sleep;
+    run_awakers k awake
+;;
+
+let write t a = primitive2 run_write t a

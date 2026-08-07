@@ -7,18 +7,26 @@ open Fiber.O
      can each collect into their own sub-collector. *)
 type t = Dep_node.packed Deps.Dynamic.t ref
 
+let enabled = ref true
+let set_enabled value = enabled := value
+let disabled = ref Deps.Dynamic.empty
+let is_disabled t = Stdlib.( == ) t disabled
 let var : t option Fiber.Var.t = Fiber.Var.create None
-let create () : t = ref Deps.Dynamic.empty
-let run_apply (t : t) ~f x = Fiber.Var.set_apply var (Some t) f x
-let get (t : t) : Dep_node.packed Deps.t = Deps.Dynamic.to_static !t
-let add (t : t) dep_node = t := Deps.Dynamic.append_seq !t ~node:(Dep_node.T dep_node)
+let create () : t = if !enabled then ref Deps.Dynamic.empty else disabled
+let run_apply t ~f x = Fiber.Var.set_apply var (Some t) f x
+
+let get t : Dep_node.packed Deps.t =
+  if is_disabled t then Deps.empty else Deps.Dynamic.to_static !t
+;;
+
+let add t dep_node = t := Deps.Dynamic.append_seq !t ~node:(Dep_node.T dep_node)
 
 (* Add a dependency on [dep_node] to [collector], if there is an active one. Defined at
    the top level so it is hoisted (closure-free) when passed to [get_apply_map]. *)
 let add_dep_to_collector collector dep_node =
   match collector with
   | None -> ()
-  | Some t -> add t dep_node
+  | Some t -> if is_disabled t then Counter.incr Metrics.Compute.edges else add t dep_node
 ;;
 
 (* Add a dependency on [dep_node] to the currently running computation, if there is one. *)
@@ -124,12 +132,13 @@ end
 
 (* Run [num_threads] parallel threads, collecting each thread's dependencies into its own
      sub-collector (via fiber-local storage) and recording them as a single parallel section
-     in the caller's collector. [k] is called with [None] when [num_threads < 2] or when
-     there is no active collector, in which case dependencies are collected sequentially as
-     usual.
+     in the caller's collector. [k] is called with [None] when dependency collection is
+     disabled, [num_threads < 2], or there is no active collector.
 
-     Dependencies are recorded even when a thread raises, because some errors are cached; we
-     reraise after recording. *)
+     The error-collection boundary is preserved when dependency collection is disabled.
+     Otherwise errors raised by parallel branches can bypass Memo continuations that add
+     stack frames. When dependency collection is enabled, the boundary also lets us record
+     dependencies before reraising errors, since some errors are cached. *)
 let run_parallel ~num_threads k =
   if num_threads < 2
   then k None
@@ -137,6 +146,11 @@ let run_parallel ~num_threads k =
     Fiber.Var.get var
     >>= function
     | None -> k None
+    | Some t when is_disabled t ->
+      Fiber.collect_errors (fun () -> k None)
+      >>= (function
+       | Ok result -> Fiber.return result
+       | Error exns -> Fiber.reraise_all exns)
     | Some t ->
       let threads = Pool.acquire num_threads in
       let thread_index = ref 0 in

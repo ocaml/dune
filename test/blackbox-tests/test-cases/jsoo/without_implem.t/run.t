@@ -19,6 +19,32 @@ Tests JSOO rules for modules without implementations.
 
   $ dune build
 
+JSOO rules for executables are not spuriously invalidated
+
+  $ dune build
+  $ dune trace cat | jq_dune -r '
+  > progMatching("js_of_ocaml")
+  > | .target_files[]?
+  > | select(endswith("main.bc.js"))
+  > '
+
+Source directories that resemble library object directories are not reserved
+for JSOO rules.
+
+  $ mkdir .foo.objs
+  $ cat > dune <<EOF
+  > (dirs :standard .foo.objs)
+  > EOF
+  $ cat > .foo.objs/dune <<EOF
+  > (rule
+  >  (target jsoo)
+  >  (action (with-stdout-to %{target} (echo source))))
+  > EOF
+
+  $ dune build .foo.objs/jsoo
+  $ cat _build/default/.foo.objs/jsoo
+  source
+
 JSOO archive rules for interface-only libraries are not spuriously invalidated
 
   $ cat > dune <<EOF
@@ -43,10 +69,8 @@ JSOO archive rules for interface-only libraries are not spuriously invalidated
 main.bc.js should not rebuild
 
   $ dune build --display=short main.bc.js
-   js_of_ocaml .interface.objs/jsoo/effects=disabled/interface.cma.js
 
   $ dune build --display=short main.bc.js
-   js_of_ocaml .interface.objs/jsoo/effects=disabled/interface.cma.js
 
 JSOO archive rules for libraries without modules are not spuriously invalidated
 
@@ -72,7 +96,6 @@ main.bc.js should not rebuild
   > | .target_files[]?
   > | select(endswith(".cma.js"))
   > '
-  _build/default/.empty.objs/jsoo/effects=disabled/empty.cma.js
 
   $ dune build main.bc.js
   $ dune trace cat | jq_dune -r '
@@ -80,7 +103,6 @@ main.bc.js should not rebuild
   > | .target_files[]?
   > | select(endswith(".cma.js"))
   > '
-  _build/default/.empty.objs/jsoo/effects=disabled/empty.cma.js
 
 JSOO archives in directory groups are not spuriously invalidated
 
@@ -108,7 +130,6 @@ main.bc.js should not rebuild
   > | .target_files[]?
   > | select(endswith(".cma.js"))
   > '
-  _build/default/.grouped.objs/jsoo/effects=disabled/grouped.cma.js
 
   $ dune build main.bc.js
   $ dune trace cat | jq_dune -r '
@@ -116,4 +137,3 @@ main.bc.js should not rebuild
   > | .target_files[]?
   > | select(endswith(".cma.js"))
   > '
-  _build/default/.grouped.objs/jsoo/effects=disabled/grouped.cma.js

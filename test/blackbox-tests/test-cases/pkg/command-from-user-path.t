@@ -7,7 +7,7 @@ Create a directory containing a shell script and add the directory to PATH.
   > echo "Hello, World!"
   > EOF
   $ chmod a+x bin/hello
-  $ export PATH=$PATH:$PWD/bin
+  $ export PATH=$PWD/bin:$PATH
 
 Create a lockdir with a lockfile that runs the shell script in a build command.
   $ make_lockdir

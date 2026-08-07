@@ -30,6 +30,10 @@ recorded call-stack depth, and ``top`` is the maximum number of entries kept in
 each ranking. Their defaults are ``0.0001``, ``10``, and ``10``. This
 configuration is experimental and may change without notice.
 
+Each summary records exact GC counter deltas for minor allocation, direct major
+allocation, and promotion. The sampled heaps attribute those totals
+approximately to code locations and include their sample counts.
+
 Each sampled heap is ranked by exact call stack, allocation site, and inclusive
 stack frame. The allocation-site view combines allocations at the same source
 location that have different callers. If the youngest sampled frame has no

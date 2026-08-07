@@ -287,12 +287,27 @@ type heap =
   ; mutable by_key : heap_table
   }
 
+type gc_counters =
+  { minor_words : float
+  ; major_words : float
+  ; promoted_words : float
+  }
+
+let gc_counters () =
+  let stat = Gc.quick_stat () in
+  { minor_words = stat.minor_words
+  ; major_words = stat.major_words
+  ; promoted_words = stat.promoted_words
+  }
+;;
+
 type t =
   { config : Config.t
   ; mutex : Mutex.t
   ; minor : heap
   ; major : heap
   ; promoted : heap
+  ; mutable gc_baseline : gc_counters
   ; mutable profile : Memprof.t option
   }
 
@@ -304,6 +319,7 @@ let create config =
   ; minor = create_heap ()
   ; major = create_heap ()
   ; promoted = create_heap ()
+  ; gc_baseline = gc_counters ()
   ; profile = None
   }
 ;;
@@ -351,6 +367,7 @@ let start () =
   let { Config.sampling_rate; callstack_size; _ } = config in
   let profile = Memprof.start ~sampling_rate ~callstack_size (tracker t) in
   t.profile <- Some profile;
+  t.gc_baseline <- gc_counters ();
   t
 ;;
 
@@ -458,6 +475,17 @@ let summary_of_heap total_samples by_key (config : Config.t) ~frame_cache =
   }
 ;;
 
+type swap_result =
+  { previous_gc : gc_counters
+  ; current_gc : gc_counters
+  ; minor_total_samples : int
+  ; minor_by_key : heap_table
+  ; major_total_samples : int
+  ; major_by_key : heap_table
+  ; promoted_total_samples : int
+  ; promoted_by_key : heap_table
+  }
+
 let swap t =
   let fresh_minor = Table.create (module Key) 64 in
   let fresh_major = Table.create (module Key) 64 in
@@ -468,46 +496,75 @@ let swap t =
   let major_by_key = ref fresh_major in
   let promoted_total_samples = ref 0 in
   let promoted_by_key = ref fresh_promoted in
-  Mutex.protect t.mutex (fun () ->
+  let previous_gc = ref t.gc_baseline in
+  let current_gc = ref t.gc_baseline in
+  let swap_under_mutex () =
+    previous_gc := t.gc_baseline;
     minor_total_samples := t.minor.total_samples;
     minor_by_key := t.minor.by_key;
     major_total_samples := t.major.total_samples;
     major_by_key := t.major.by_key;
     promoted_total_samples := t.promoted.total_samples;
     promoted_by_key := t.promoted.by_key;
+    t.gc_baseline <- !current_gc;
     t.minor.total_samples <- 0;
     t.minor.by_key <- fresh_minor;
     t.major.total_samples <- 0;
     t.major.by_key <- fresh_major;
     t.promoted.total_samples <- 0;
-    t.promoted.by_key <- fresh_promoted);
-  (* Constructing this tuple can allocate and trigger a Memprof callback, which
+    t.promoted.by_key <- fresh_promoted
+  in
+  (* [gc_counters] allocates and can trigger a Memprof callback, so it must run
+     before taking [t.mutex]. *)
+  current_gc := gc_counters ();
+  Mutex.protect t.mutex swap_under_mutex;
+  (* Constructing this record can allocate and trigger a Memprof callback, which
      attempts to acquire [t.mutex], so it must happen after releasing the mutex. *)
-  ( !minor_total_samples
-  , !minor_by_key
-  , !major_total_samples
-  , !major_by_key
-  , !promoted_total_samples
-  , !promoted_by_key )
+  { previous_gc = !previous_gc
+  ; current_gc = !current_gc
+  ; minor_total_samples = !minor_total_samples
+  ; minor_by_key = !minor_by_key
+  ; major_total_samples = !major_total_samples
+  ; major_by_key = !major_by_key
+  ; promoted_total_samples = !promoted_total_samples
+  ; promoted_by_key = !promoted_by_key
+  }
 ;;
 
 type snapshot =
   { config : Event.alloc_config
+  ; exact : Event.alloc_exact
   ; minor : Event.alloc_heap
   ; major : Event.alloc_heap
   ; promoted : Event.alloc_heap
   }
 
+let exact_gc_delta ~previous ~current =
+  let promoted_words = current.promoted_words -. previous.promoted_words in
+  let major_words =
+    current.major_words -. previous.major_words -. promoted_words |> Stdlib.max 0.0
+  in
+  let round words = int_of_float (words +. 0.5) in
+  { Event.minor_words = round (current.minor_words -. previous.minor_words)
+  ; major_words = round major_words
+  ; promoted_words = round promoted_words
+  }
+;;
+
 let snapshot t =
-  let ( minor_total_samples
-      , minor_by_key
-      , major_total_samples
-      , major_by_key
-      , promoted_total_samples
-      , promoted_by_key )
+  let { previous_gc
+      ; current_gc
+      ; minor_total_samples
+      ; minor_by_key
+      ; major_total_samples
+      ; major_by_key
+      ; promoted_total_samples
+      ; promoted_by_key
+      }
     =
     swap t
   in
+  let exact = exact_gc_delta ~previous:previous_gc ~current:current_gc in
   let { Config.sampling_rate; callstack_size; top_entry_count } = t.config in
   let config = { Event.sampling_rate; callstack_size; top_entry_count } in
   let frame_cache = Table.create (module Raw_backtrace_slot) 64 in
@@ -516,9 +573,7 @@ let snapshot t =
   let promoted =
     summary_of_heap promoted_total_samples promoted_by_key t.config ~frame_cache
   in
-  { config; minor; major; promoted }
+  { config; exact; minor; major; promoted }
 ;;
-
-type swap_result = int * heap_table * int * heap_table * int * heap_table
 
 let reset t = ignore (swap t : swap_result)

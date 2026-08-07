@@ -35,5 +35,6 @@
         (impl (_build/default/alive.ml))
         (intf ())
         (cmt (_build/default/.alive.objs/byte/alive.cmt))
-        (cmti ()))))
+        (cmti ())
+        (origin source))))
      (include_dirs (_build/default/.alive.objs/byte)))))

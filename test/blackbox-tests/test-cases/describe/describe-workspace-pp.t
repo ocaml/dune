@@ -76,7 +76,8 @@ not stable across different setups.
         (impl (_build/default/exe/exe.ml))
         (intf ())
         (cmt (_build/default/exe/.exe.eobjs/byte/dune__exe__Exe.cmt))
-        (cmti ()))))
+        (cmti ())
+        (origin source))))
      (include_dirs (_build/default/exe/.exe.eobjs/byte)))))
 
   $ dune describe workspace --lang 0.1 --sanitize-for-tests lib | censor
@@ -93,7 +94,8 @@ not stable across different setups.
         (impl (_build/default/lib/lib.ml))
         (intf ())
         (cmt (_build/default/lib/.lib.objs/byte/lib.cmt))
-        (cmti ()))))
+        (cmti ())
+        (origin source))))
      (include_dirs (_build/default/lib/.lib.objs/byte)))))
 
   $ dune describe workspace --lang 0.1 --sanitize-for-tests --with-pps exe | censor
@@ -122,7 +124,8 @@ not stable across different setups.
         (impl (_build/default/exe/exe.ml))
         (intf ())
         (cmt (_build/default/exe/.exe.eobjs/byte/dune__exe__Exe.cmt))
-        (cmti ()))))
+        (cmti ())
+        (origin source))))
      (include_dirs (_build/default/exe/.exe.eobjs/byte))))
    (library
     ((name compiler-libs)
@@ -154,7 +157,8 @@ not stable across different setups.
         (impl (_build/default/dummy_ppx/dummy_ppx.ml))
         (intf ())
         (cmt (_build/default/dummy_ppx/.dummy_ppx.objs/byte/dummy_ppx.cmt))
-        (cmti ()))))
+        (cmti ())
+        (origin source))))
      (include_dirs (_build/default/dummy_ppx/.dummy_ppx.objs/byte))))
    (library
     ((name ocaml-compiler-libs.common)
@@ -260,7 +264,8 @@ not stable across different setups.
         (impl (_build/default/static_lib/static_lib.ml))
         (intf ())
         (cmt (_build/default/static_lib/.static_lib.objs/byte/static_lib.cmt))
-        (cmti ()))))
+        (cmti ())
+        (origin source))))
      (include_dirs (_build/default/static_lib/.static_lib.objs/byte))))
    (library
     ((name stdlib-shims)
@@ -304,7 +309,8 @@ not stable across different setups.
         (impl (_build/default/dummy_ppx/dummy_ppx.ml))
         (intf ())
         (cmt (_build/default/dummy_ppx/.dummy_ppx.objs/byte/dummy_ppx.cmt))
-        (cmti ()))))
+        (cmti ())
+        (origin source))))
      (include_dirs (_build/default/dummy_ppx/.dummy_ppx.objs/byte))))
    (library
     ((name lib)
@@ -317,7 +323,8 @@ not stable across different setups.
         (impl (_build/default/lib/lib.ml))
         (intf ())
         (cmt (_build/default/lib/.lib.objs/byte/lib.cmt))
-        (cmti ()))))
+        (cmti ())
+        (origin source))))
      (include_dirs (_build/default/lib/.lib.objs/byte))))
    (library
     ((name ocaml-compiler-libs.common)
@@ -423,7 +430,8 @@ not stable across different setups.
         (impl (_build/default/static_lib/static_lib.ml))
         (intf ())
         (cmt (_build/default/static_lib/.static_lib.objs/byte/static_lib.cmt))
-        (cmti ()))))
+        (cmti ())
+        (origin source))))
      (include_dirs (_build/default/static_lib/.static_lib.objs/byte))))
    (library
     ((name stdlib-shims)

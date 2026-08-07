@@ -8,6 +8,8 @@ and 'a continuation =
   | Function : ('a -> eff) -> 'a continuation
   | Effect : eff continuation
   | Map : ('a -> 'b) * 'b continuation -> 'a continuation
+  | Map2 : ('a -> 'b) * ('b -> 'c) * 'c continuation -> 'a continuation
+  | Map3 : ('a -> 'b) * ('b -> 'c) * ('c -> 'd) * 'd continuation -> 'a continuation
   | Bind : ('a -> 'b t) * 'b continuation -> 'a continuation
   | Apply : ('a -> 'b -> 'c t) * 'b * 'c continuation -> 'a continuation
   | Apply_map : ('a -> 'b -> 'c) * 'b * 'c continuation -> 'a continuation
@@ -81,6 +83,8 @@ let rec continue : type a. a continuation -> a -> eff =
   | Function f -> f x
   | Effect -> x
   | Map (f, k) -> continue k (f x)
+  | Map2 (f, g, k) -> continue k (g (f x))
+  | Map3 (f, g, h, k) -> continue k (h (g (f x)))
   | Bind (f, k) -> f x k
   | Apply (f, y, k) -> f x y k
   | Apply_map (f, y, k) -> continue k (f x y)
@@ -90,7 +94,13 @@ let rec continue : type a. a continuation -> a -> eff =
 
 let return x k = continue k x
 let bind t ~f k = t (Bind (f, k))
-let map t ~f k = t (Map (f, k))
+
+let map t ~f k =
+  match k with
+  | Map (g, k) -> t (Map2 (f, g, k))
+  | Map2 (g, h, k) -> t (Map3 (f, g, h, k))
+  | k -> t (Map (f, k))
+;;
 
 let with_error_handler f ~on_error k =
   With_error_handler (on_error, Function (fun () -> f () (Unwind_to k)))

@@ -41,7 +41,11 @@ module T = struct
   type _ t =
     | Return : 'a -> 'a t
     | Map : 'a t * ('a -> 'b) -> 'b t
+    | Map2 : 'a t * ('a -> 'b) * ('b -> 'c) -> 'c t
+    | Map3 : 'a t * ('a -> 'b) * ('b -> 'c) * ('c -> 'd) -> 'd t
     | Bind : 'a t * ('a -> 'b t) -> 'b t
+    | Bind2 : 'a t * ('a -> 'b t) * ('b -> 'c t) -> 'c t
+    | Bind3 : 'a t * ('a -> 'b t) * ('b -> 'c t) * ('c -> 'd t) -> 'd t
     | Both : 'a t * 'b t -> ('a * 'b) t
     | All : 'a t list -> 'a list t
     | All_unit : unit t list -> unit t
@@ -61,8 +65,23 @@ module T = struct
     | List_concat_map : 'a list * ('a -> 'b list t) -> 'b list t
 
   let return x = Return x
-  let map t ~f = Map (t, f)
-  let bind t ~f = Bind (t, f)
+
+  let map : type a b. a t -> f:(a -> b) -> b t =
+    fun t ~f ->
+    match t with
+    | Map (t, f1) -> Map2 (t, f1, f)
+    | Map2 (t, f1, f2) -> Map3 (t, f1, f2, f)
+    | t -> Map (t, f)
+  ;;
+
+  let bind : type a b. a t -> f:(a -> b t) -> b t =
+    fun t ~f ->
+    match t with
+    | Bind (t, f1) -> Bind2 (t, f1, f)
+    | Bind2 (t, f1, f2) -> Bind3 (t, f1, f2, f)
+    | t -> Bind (t, f)
+  ;;
+
   let both x y = Both (x, y)
   let all xs = All xs
   let all_unit xs = All_unit xs
@@ -100,11 +119,35 @@ let rec eval : type a m. a t -> m eval_mode -> (a * m) Memo.t =
     let open Memo.O in
     let+ x, deps = eval t mode in
     f x, deps
+  | Map2 (t, f1, f2) ->
+    let open Memo.O in
+    let+ x, deps = eval t mode in
+    f2 (f1 x), deps
+  | Map3 (t, f1, f2, f3) ->
+    let open Memo.O in
+    let+ x, deps = eval t mode in
+    f3 (f2 (f1 x)), deps
   | Bind (t, f) ->
     let open Memo.O in
     let* x, deps1 = eval t mode in
     let+ y, deps2 = eval (f x) mode in
     y, Deps_or_facts.union mode deps1 deps2
+  | Bind2 (t, f1, f2) ->
+    let open Memo.O in
+    let* x, deps1 = eval t mode in
+    let* y, deps2 = eval (f1 x) mode in
+    let+ z, deps3 = eval (f2 y) mode in
+    let deps = Deps_or_facts.union mode deps1 deps2 in
+    z, Deps_or_facts.union mode deps deps3
+  | Bind3 (t, f1, f2, f3) ->
+    let open Memo.O in
+    let* x, deps1 = eval t mode in
+    let* y, deps2 = eval (f1 x) mode in
+    let* z, deps3 = eval (f2 y) mode in
+    let+ res, deps4 = eval (f3 z) mode in
+    let deps = Deps_or_facts.union mode deps1 deps2 in
+    let deps = Deps_or_facts.union mode deps deps3 in
+    res, Deps_or_facts.union mode deps deps4
   | Both (a, b) ->
     let open Memo.O in
     let+ (a, deps_a), (b, deps_b) =

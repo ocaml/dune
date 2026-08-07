@@ -265,6 +265,12 @@ module Invalidation : sig
   val changed_paths : t -> Path.t list
 end
 
+(** Configure whether Memo will reuse cached nodes in future build runs. When disabled,
+    Memo does not record dependencies between nodes, but still preserves error propagation
+    and Memo stack construction. This must be called before evaluating any Memo
+    computations. *)
+val set_incremental : bool -> unit
+
 (** Notify the memoization system that the build system has restarted. This
     removes the values specified by [Invalidation.t] from the memoization cache,
     and advances the current run. *)

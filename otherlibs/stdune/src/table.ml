@@ -89,6 +89,7 @@ let find_or_add (type input output) ((module T) : (input, output) t) (k : input)
 ;;
 
 let remove (type input output) ((module T) : (input, output) t) k = T.H.remove T.value k
+let iteri (type input output) ((module T) : (input, output) t) ~f = T.H.iteri T.value ~f
 let iter (type input output) ((module T) : (input, output) t) ~f = T.H.iter T.value ~f
 
 let filteri_inplace (type input output) ((module T) : (input, output) t) ~f =

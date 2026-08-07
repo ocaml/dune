@@ -93,29 +93,174 @@ module Config = struct
   ;;
 end
 
-module Trace = struct
-  type t =
-    | Unknown
-    | Trace of Printexc.raw_backtrace_slot array
+module Raw_backtrace_slot = struct
+  module T = struct
+    type t = Printexc.raw_backtrace_slot
 
-  let to_dyn = function
-    | Unknown -> Dyn.string "<unknown>"
-    | Trace _ -> Dyn.opaque ()
+    let repr = Repr.abstract (fun _ -> Dyn.opaque ())
+  end
+
+  include T
+  include Repr.Make (T)
+
+  (* Raw backtrace slots are documented as admitting polymorphic equality and
+     hashing, but their representation is abstract. *)
+  let equal = Poly.equal
+  let hash = Poly.hash
+end
+
+module Frame = struct
+  module T = struct
+    type t =
+      | Unknown
+      | Known of string
+
+    let repr =
+      Repr.variant
+        "allocation-frame"
+        [ Repr.case0 "Unknown" ~test:(function
+            | Unknown -> true
+            | Known _ -> false)
+        ; Repr.case "Known" Repr.string ~proj:(function
+            | Known frame -> Some frame
+            | Unknown -> None)
+        ]
+    ;;
+  end
+
+  include T
+  include Repr.Make (T)
+  include Repr.Poly (T)
+
+  let to_string = function
+    | Unknown -> "<unknown>"
+    | Known frame -> frame
+  ;;
+
+  let of_slot slot =
+    let name = Printexc.Slot.name slot in
+    match Printexc.Slot.location slot with
+    | None ->
+      (match name with
+       | None -> Unknown
+       | Some name -> Known name)
+    | Some { filename; line_number; start_char; _ } ->
+      let frame =
+        match name with
+        | None -> sprintf "%s:%d:%d" filename line_number start_char
+        | Some name -> sprintf "%s:%d:%d %s" filename line_number start_char name
+      in
+      Known frame
+  ;;
+
+  let of_slot cache slot =
+    Table.find_or_add cache slot ~f:(fun slot ->
+      Printexc.convert_raw_backtrace_slot slot |> of_slot)
+  ;;
+end
+
+module Trace = struct
+  module T = struct
+    type t =
+      | Unknown
+      | Trace of Raw_backtrace_slot.t array
+
+    let repr =
+      Repr.variant
+        "allocation-trace"
+        [ Repr.case0 "Unknown" ~test:(function
+            | Unknown -> true
+            | Trace _ -> false)
+        ; Repr.case "Trace" (Repr.array Raw_backtrace_slot.repr) ~proj:(function
+            | Unknown -> None
+            | Trace slots -> Some slots)
+        ]
+    ;;
+  end
+
+  include T
+  include Repr.Make (T)
+
+  let to_strings trace ~frame_cache =
+    match trace with
+    | Unknown -> [ Frame.to_string Frame.Unknown ]
+    | Trace slots ->
+      Array.to_list slots
+      |> List.map ~f:(fun slot -> Frame.of_slot frame_cache slot |> Frame.to_string)
+  ;;
+
+  let of_callstack callstack ~callstack_size =
+    let length = Printexc.raw_backtrace_length callstack in
+    let rec add_inlined slot remaining acc =
+      if remaining = 0
+      then acc, remaining
+      else (
+        let acc, remaining = slot :: acc, remaining - 1 in
+        if remaining = 0
+        then acc, remaining
+        else (
+          match Printexc.get_raw_backtrace_next_slot slot with
+          | None -> acc, remaining
+          | Some slot -> add_inlined slot remaining acc))
+    in
+    let rec loop i remaining acc =
+      if i = length || remaining = 0
+      then (
+        match List.rev acc with
+        | [] -> Unknown
+        | slots -> Trace (Array.of_list slots))
+      else (
+        let acc, remaining =
+          add_inlined (Printexc.get_raw_backtrace_slot callstack i) remaining acc
+        in
+        loop (i + 1) remaining acc)
+    in
+    loop 0 callstack_size []
   ;;
 end
 
 module Key = struct
-  type t =
-    { source : string
-    ; trace : Trace.t
-    }
+  module T = struct
+    type t =
+      { source : string
+      ; trace : Trace.t
+      }
+
+    let repr =
+      Repr.record
+        "allocation-key"
+        [ Repr.field "source" Repr.string ~get:(fun { source; _ } -> source)
+        ; Repr.field "trace" Trace.repr ~get:(fun { trace; _ } -> trace)
+        ]
+    ;;
+  end
+
+  include T
+  include Repr.Make (T)
 
   let equal = Poly.equal
   let hash = Poly.hash
+end
 
-  let to_dyn { source; trace } =
-    Dyn.record [ "source", Dyn.string source; "trace", Trace.to_dyn trace ]
-  ;;
+module Frame_key = struct
+  module T = struct
+    type t =
+      { source : string
+      ; frame : Frame.t
+      }
+
+    let repr =
+      Repr.record
+        "allocation-frame-key"
+        [ Repr.field "source" Repr.string ~get:(fun { source; _ } -> source)
+        ; Repr.field "frame" Frame.repr ~get:(fun { frame; _ } -> frame)
+        ]
+    ;;
+  end
+
+  include T
+  include Repr.Make (T)
+  include Repr.Poly (T)
 end
 
 type tracked_minor =
@@ -151,63 +296,20 @@ let create config =
   }
 ;;
 
-let place_of_slot slot =
-  let name = Printexc.Slot.name slot in
-  match Printexc.Slot.location slot with
-  | None -> Option.value name ~default:"<unknown>"
-  | Some { filename; line_number; start_char; _ } ->
-    (match name with
-     | None -> sprintf "%s:%d:%d" filename line_number start_char
-     | Some name -> sprintf "%s:%d:%d %s" filename line_number start_char name)
-;;
-
-let trace_to_strings = function
-  | Trace.Unknown -> [ "<unknown>" ]
-  | Trace slots ->
-    Array.to_list slots
-    |> List.map ~f:(fun slot -> Printexc.convert_raw_backtrace_slot slot |> place_of_slot)
-;;
-
-let trace_of_callstack callstack ~callstack_size =
-  let length = Printexc.raw_backtrace_length callstack in
-  let rec add_inlined slot remaining acc =
-    if remaining = 0
-    then acc, remaining
-    else (
-      let acc, remaining = slot :: acc, remaining - 1 in
-      if remaining = 0
-      then acc, remaining
-      else (
-        match Printexc.get_raw_backtrace_next_slot slot with
-        | None -> acc, remaining
-        | Some slot -> add_inlined slot remaining acc))
-  in
-  let rec loop i remaining acc =
-    if i = length || remaining = 0
-    then (
-      match List.rev acc with
-      | [] -> Trace.Unknown
-      | slots -> Trace (Array.of_list slots))
-    else (
-      let acc, remaining =
-        add_inlined (Printexc.get_raw_backtrace_slot callstack i) remaining acc
-      in
-      loop (i + 1) remaining acc)
-  in
-  loop 0 callstack_size []
+let add_samples table key samples =
+  let previous = Option.value (Table.find table key) ~default:0 in
+  Table.set table key (previous + samples)
 ;;
 
 let record_sample t heap ~key ~n_samples =
   Mutex.protect t.mutex (fun () ->
     heap.total_samples <- heap.total_samples + n_samples;
-    match Table.find heap.by_key key with
-    | None -> Table.set heap.by_key key n_samples
-    | Some samples -> Table.set heap.by_key key (samples + n_samples))
+    add_samples heap.by_key key n_samples)
 ;;
 
 let key_of_allocation { Memprof.source; callstack; _ } ~callstack_size =
   let source = Memprof.string_of_allocation_source source in
-  let trace = trace_of_callstack callstack ~callstack_size in
+  let trace = Trace.of_callstack callstack ~callstack_size in
   { Key.source; trace }
 ;;
 
@@ -278,20 +380,59 @@ let insert_top_entry entry entries ~top_entry_count =
   insert entries |> take_top_entries ~top_entry_count
 ;;
 
-let top_entries by_key ~sampling_rate ~top_entry_count =
-  Table.foldi by_key ~init:[] ~f:(fun key samples entries ->
+let ranked_entries table ~top_entry_count =
+  Table.foldi table ~init:[] ~f:(fun key samples entries ->
     insert_top_entry (key, samples) entries ~top_entry_count)
+;;
+
+let top_entries by_key ~frame_cache ~sampling_rate ~top_entry_count =
+  ranked_entries by_key ~top_entry_count
   |> List.map ~f:(fun ({ Key.source; trace }, samples) ->
     let estimated_words = estimated_words_of_samples samples ~sampling_rate in
-    { Event.source; trace = trace_to_strings trace; estimated_words; samples })
+    let trace = Trace.to_strings trace ~frame_cache in
+    { Event.source; trace; estimated_words; samples })
+;;
+
+let ranked_frames table ~sampling_rate ~top_entry_count =
+  ranked_entries table ~top_entry_count
+  |> List.map ~f:(fun ({ Frame_key.source; frame }, samples) ->
+    let estimated_words = estimated_words_of_samples samples ~sampling_rate in
+    { Event.source; frame = Frame.to_string frame; estimated_words; samples })
+;;
+
+let site_entries by_key ~frame_cache ~sampling_rate ~top_entry_count =
+  let by_site = Table.create (module Frame_key) 64 in
+  Table.iteri by_key ~f:(fun { Key.source; trace } samples ->
+    let frame =
+      match trace with
+      | Trace.Unknown -> Frame.Unknown
+      | Trace slots -> Frame.of_slot frame_cache (Array.get slots 0)
+    in
+    add_samples by_site { Frame_key.source; frame } samples);
+  ranked_frames by_site ~sampling_rate ~top_entry_count
+;;
+
+let frame_entries by_key ~frame_cache ~sampling_rate ~top_entry_count =
+  let by_frame = Table.create (module Frame_key) 64 in
+  Table.iteri by_key ~f:(fun { Key.source; trace } samples ->
+    match trace with
+    | Trace.Unknown ->
+      add_samples by_frame { Frame_key.source; frame = Frame.Unknown } samples
+    | Trace slots ->
+      let seen = ref [] in
+      Array.iter slots ~f:(fun slot ->
+        let frame = Frame.of_slot frame_cache slot in
+        if not (List.mem !seen frame ~equal:Frame.equal)
+        then (
+          seen := frame :: !seen;
+          add_samples by_frame { Frame_key.source; frame } samples)));
+  ranked_frames by_frame ~sampling_rate ~top_entry_count
 ;;
 
 let source_entries by_key ~sampling_rate =
   let by_source = Table.create (module String) 4 in
-  Table.foldi by_key ~init:() ~f:(fun { Key.source; _ } samples () ->
-    match Table.find by_source source with
-    | None -> Table.set by_source source samples
-    | Some previous -> Table.set by_source source (previous + samples));
+  Table.iteri by_key ~f:(fun { Key.source; _ } samples ->
+    add_samples by_source source samples);
   Table.to_list by_source
   |> List.sort ~compare:(fun (source, samples) (source', samples') ->
     match Int.compare samples' samples with
@@ -302,13 +443,15 @@ let source_entries by_key ~sampling_rate =
     ({ source; estimated_words; samples } : Event.alloc_source))
 ;;
 
-let summary_of_heap total_samples by_key (config : Config.t) =
+let summary_of_heap total_samples by_key (config : Config.t) ~frame_cache =
   let { Config.sampling_rate; top_entry_count; _ } = config in
   let total_words = estimated_words_of_samples total_samples ~sampling_rate in
   { Event.total_words
   ; total_samples
   ; by_source = source_entries by_key ~sampling_rate
-  ; top = top_entries by_key ~sampling_rate ~top_entry_count
+  ; by_site = site_entries by_key ~frame_cache ~sampling_rate ~top_entry_count
+  ; by_frame = frame_entries by_key ~frame_cache ~sampling_rate ~top_entry_count
+  ; top = top_entries by_key ~frame_cache ~sampling_rate ~top_entry_count
   }
 ;;
 
@@ -356,9 +499,12 @@ let snapshot t =
   in
   let { Config.sampling_rate; callstack_size; top_entry_count } = t.config in
   let config = { Event.sampling_rate; callstack_size; top_entry_count } in
-  let minor = summary_of_heap minor_total_samples minor_by_key t.config in
-  let major = summary_of_heap major_total_samples major_by_key t.config in
-  let promoted = summary_of_heap promoted_total_samples promoted_by_key t.config in
+  let frame_cache = Table.create (module Raw_backtrace_slot) 64 in
+  let minor = summary_of_heap minor_total_samples minor_by_key t.config ~frame_cache in
+  let major = summary_of_heap major_total_samples major_by_key t.config ~frame_cache in
+  let promoted =
+    summary_of_heap promoted_total_samples promoted_by_key t.config ~frame_cache
+  in
   { config; minor; major; promoted }
 ;;
 

@@ -20,6 +20,7 @@ type _ t =
   | Map_reduce_errors_t :
       (module Monoid with type t = 'a) * (Exn_with_backtrace.t -> 'a t) * (unit -> 'b t)
       -> ('b, 'a) result t
+  | Collect_errors_t : (unit -> 'a t) -> ('a, Exn_with_backtrace.t list) result t
   | Suspend_t : ('a k -> unit) -> 'a t
   | Resume_t : 'a k * 'a -> unit t
   | Reraise_all_t : Exn_with_backtrace.t list -> 'a t
@@ -68,6 +69,9 @@ and 'a continuation =
   | Unreachable : Nothing.t continuation
   | Never_called : 'a continuation
   | Accumulate_error : ('result, 'errors) map_reduce_context' -> 'errors continuation
+  | Collect_errors_complete :
+      ('a, Exn_with_backtrace.t list) result continuation
+      -> ('a, Exn_with_backtrace.t Appendable_list.t) result continuation
 
 and 'a array_map_state =
   { results : 'a array ref
@@ -98,6 +102,9 @@ and eff =
       * (Exn_with_backtrace.t -> 'a t)
       * (unit -> 'b t)
       * ('b, 'a) result continuation
+      -> eff
+  | Run_collect_errors :
+      (unit -> 'a t) * ('a, Exn_with_backtrace.t list) result continuation
       -> eff
   | Unwind_map_reduce : 'a continuation * 'a -> eff
   | End_of_map_reduce_error_handler : (_, _) map_reduce_context' -> eff
@@ -219,6 +226,12 @@ let rec continue : type a. a continuation -> a -> eff =
   | Accumulate_error map_reduce_context ->
     map_reduce_context.errors <- map_reduce_context.combine map_reduce_context.errors x;
     End_of_map_reduce_error_handler map_reduce_context
+  | Collect_errors_complete k ->
+    continue
+      k
+      (match x with
+       | Ok x -> Ok x
+       | Error errors -> Error (Appendable_list.to_list errors))
 ;;
 
 let return x = Return_t x
@@ -265,6 +278,7 @@ let rec eval : type a. a t -> a continuation -> eff =
   | Thunk_apply_t (f, x) -> eval (f x) k
   | With_error_handler_t (f, on_error) -> With_error_handler (on_error, f, k)
   | Map_reduce_errors_t (m, on_error, f) -> Map_reduce_errors (m, on_error, f, k)
+  | Collect_errors_t f -> Run_collect_errors (f, k)
   | Suspend_t f -> Suspend (f, k)
   | Resume_t (suspended, x) -> Resume (suspended, x, k)
   | Reraise_all_t exns ->
@@ -638,17 +652,8 @@ let rec repeat_while : 'a. f:('a -> 'a option t) -> init:'a -> unit t =
 
 module Exns = Monoid.Appendable_list (Exn_with_backtrace)
 
-let collect_errors f =
-  let+ res =
-    map_reduce_errors
-      (module Exns)
-      f
-      ~on_error:(fun e -> return (Appendable_list.singleton e))
-  in
-  match res with
-  | Ok x -> Ok x
-  | Error l -> Error (Appendable_list.to_list l)
-;;
+let collect_error e = return (Appendable_list.singleton e)
+let collect_errors f = Collect_errors_t f
 
 let finalize f ~finally =
   let* res1 = collect_errors f in

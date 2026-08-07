@@ -103,9 +103,19 @@ and expand_list
   match ts with
   | [] -> Appendable_list.empty |> Action_builder.With_targets.return
   | ts ->
-    List.map ts ~f:(expand ~dir)
-    |> Action_builder.With_targets.all
-    |> Action_builder.With_targets.map ~f:Appendable_list.concat
+    let targets = ref Targets.empty in
+    let rec expand_all = function
+      | [] -> []
+      | t :: ts ->
+        let { Action_builder.With_targets.build; targets = t_targets } = expand ~dir t in
+        targets := Targets.combine t_targets !targets;
+        build :: expand_all ts
+    in
+    let build = Action_builder.all (expand_all ts) in
+    { Action_builder.With_targets.build =
+        Action_builder.map build ~f:Appendable_list.concat
+    ; targets = !targets
+    }
 
 and expand_no_targets ~dir (t : without_targets t) =
   let { Action_builder.With_targets.build; targets } = expand ~dir t in

@@ -157,6 +157,18 @@ module Frame = struct
     Table.find_or_add cache slot ~f:(fun slot ->
       Printexc.convert_raw_backtrace_slot slot |> of_slot)
   ;;
+
+  let nearest_known cache slots =
+    let rec loop index =
+      if index = Array.length slots
+      then Unknown
+      else (
+        match of_slot cache (Array.get slots index) with
+        | Unknown -> loop (index + 1)
+        | Known _ as frame -> frame)
+    in
+    loop 0
+  ;;
 end
 
 module Trace = struct
@@ -406,7 +418,7 @@ let site_entries by_key ~frame_cache ~sampling_rate ~top_entry_count =
     let frame =
       match trace with
       | Trace.Unknown -> Frame.Unknown
-      | Trace slots -> Frame.of_slot frame_cache (Array.get slots 0)
+      | Trace slots -> Frame.nearest_known frame_cache slots
     in
     add_samples by_site { Frame_key.source; frame } samples);
   ranked_frames by_site ~sampling_rate ~top_entry_count

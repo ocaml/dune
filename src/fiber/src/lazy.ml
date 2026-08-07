@@ -60,7 +60,7 @@ let is_value t =
   | Running _ | Init _ -> false
 ;;
 
-let stop = Function (fun () -> end_of_fiber)
+let stop = End
 
 let run_force t v f k =
   match eval (execute t v f) stop with

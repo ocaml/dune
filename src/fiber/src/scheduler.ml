@@ -94,6 +94,19 @@ and exec : type a. context -> a continuation -> a -> Jobs.t -> step' =
   | Apply_map (f, y, k) -> exec_apply_map ctx f x y k jobs
   | Unwind_to k -> exec ctx.parent k x jobs
   | Unwind_map_reduce_to k -> unwind_map_reduce ctx k (Ok x) jobs
+  | End as k -> exec_core_continuation ctx k x jobs
+  | Parallel_unit_complete _ as k -> exec_core_continuation ctx k x jobs
+  | Map_reduce_complete _ as k -> exec_core_continuation ctx k x jobs
+  | Array_map_complete _ as k -> exec_core_continuation ctx k x jobs
+  | Fork_join_left _ as k -> exec_core_continuation ctx k x jobs
+  | Fork_join_right _ as k -> exec_core_continuation ctx k x jobs
+  | Resume_many _ as k -> exec_core_continuation ctx k x jobs
+
+and exec_core_continuation : 'a. context -> 'a continuation -> 'a -> Jobs.t -> step' =
+  fun ctx k x jobs ->
+  match continue k x with
+  | exception exn -> handle_exception ctx exn jobs
+  | eff -> exec_effect ctx eff jobs
 
 and exec_function : 'a. context -> ('a -> eff) -> 'a -> Jobs.t -> step' =
   fun ctx f x jobs ->

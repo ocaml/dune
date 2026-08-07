@@ -7,6 +7,7 @@ module Jobs = struct
   type t =
     | Empty
     | Job : context * 'a continuation * 'a * t -> t
+    | Error of context * Exn_with_backtrace.t * t
     | Work of context * work * t
     | Concat : t * t -> t
 
@@ -72,6 +73,7 @@ let update_var ctx key f =
 let rec loop : Jobs.t -> step' = function
   | Empty -> Stalled
   | Job (ctx, run, x, jobs) -> exec ctx run x jobs
+  | Error (ctx, exn, jobs) -> handle_captured_exception ctx exn jobs
   | Work (ctx, work, jobs) -> exec_work ctx work jobs
   | Concat (a, b) -> loop2 a b
 
@@ -79,6 +81,7 @@ and loop2 a b =
   match a with
   | Empty -> loop b
   | Job (ctx, run, x, a) -> exec ctx run x (Jobs.concat a b)
+  | Error (ctx, exn, a) -> handle_captured_exception ctx exn (Jobs.concat a b)
   | Work (ctx, work, a) -> exec_work ctx work (Jobs.concat a b)
   | Concat (a1, a2) -> loop2 a1 (Jobs.concat a2 b)
 
@@ -101,14 +104,10 @@ and exec : type a. context -> a continuation -> a -> Jobs.t -> step' =
   | Fork_join_left _ as k -> exec_core_continuation ctx k x jobs
   | Fork_join_right _ as k -> exec_core_continuation ctx k x jobs
   | Resume_many _ as k -> exec_core_continuation ctx k x jobs
-  | Top_level_error -> Exn_with_backtrace.reraise x
   | Unreachable -> Nothing.unreachable_code x
   | Never_called -> assert false
-  | Handle_error f -> exec_fiber_apply ctx f x Unreachable jobs
-  | Map_reduce_error (f, map_reduce_context, combine) ->
-    exec_fiber_apply ctx f x (Accumulate_error (map_reduce_context, combine)) jobs
-  | Accumulate_error (map_reduce_context, combine) ->
-    (match combine map_reduce_context.errors x with
+  | Accumulate_error map_reduce_context ->
+    (match map_reduce_context.combine map_reduce_context.errors x with
      | exception exn -> handle_exception ctx exn jobs
      | errors ->
        map_reduce_context.errors <- errors;
@@ -180,7 +179,20 @@ and exec_apply_map
 
 and handle_exception ctx exn jobs =
   let exn = Exn_with_backtrace.capture exn in
-  exec ctx.on_error.ctx ctx.on_error.run exn jobs
+  handle_captured_exception ctx exn jobs
+
+and handle_captured_exception ctx exn jobs =
+  match ctx.on_error with
+  | Top_level_error -> Exn_with_backtrace.reraise exn
+  | Handle_error (handler_ctx, f) -> exec_fiber_apply handler_ctx f exn Unreachable jobs
+  | Collect_errors ->
+    let (Map_reduce_context map_reduce_context) = ctx.map_reduce_context in
+    exec_fiber_apply
+      map_reduce_context.ctx
+      map_reduce_context.on_error
+      exn
+      (Accumulate_error map_reduce_context)
+      jobs
 
 and unwind_map_reduce
   : 'a 'b. context -> ('a, 'b) result continuation -> ('a, 'b) result -> Jobs.t -> step'
@@ -243,9 +255,7 @@ and exec_effect ctx eff jobs =
     let (Map_reduce_context r) = ctx.map_reduce_context in
     r.ref_count <- r.ref_count + 1;
     exec_effect ctx a (Work (ctx, b, jobs))
-  | Reraise exn ->
-    let { ctx; run } = ctx.on_error in
-    exec ctx run exn jobs
+  | Reraise exn -> handle_captured_exception ctx exn jobs
   | Reraise_all exns -> reraise_all ctx exns jobs
 
 and exec_work ctx work jobs =
@@ -263,7 +273,7 @@ and with_error_handler
   -> step'
   =
   fun ctx on_error f k jobs ->
-  let on_error = { ctx; run = Handle_error on_error } in
+  let on_error = Handle_error (ctx, on_error) in
   let ctx = { ctx with parent = ctx; on_error } in
   exec_fiber_thunk ctx f (Unwind_to k) jobs
 
@@ -273,9 +283,8 @@ and reraise_all ctx exns jobs =
   | n, exns ->
     let (Map_reduce_context r) = ctx.map_reduce_context in
     r.ref_count <- r.ref_count + (n - 1);
-    let { ctx; run } = ctx.on_error in
     let jobs =
-      List.fold_left exns ~init:jobs ~f:(fun jobs exn -> Jobs.Job (ctx, run, exn, jobs))
+      List.fold_left exns ~init:jobs ~f:(fun jobs exn -> Jobs.Error (ctx, exn, jobs))
     in
     loop jobs
 
@@ -340,9 +349,7 @@ and exec_primitive1
   =
   fun ctx f x k jobs ->
   match f x k with
-  | exception exn ->
-    let exn = Exn_with_backtrace.capture exn in
-    exec ctx.on_error.ctx ctx.on_error.run exn jobs
+  | exception exn -> handle_exception ctx exn jobs
   | eff -> exec_effect ctx eff jobs
 
 and exec_primitive2
@@ -357,9 +364,7 @@ and exec_primitive2
   =
   fun ctx f x y k jobs ->
   match f x y k with
-  | exception exn ->
-    let exn = Exn_with_backtrace.capture exn in
-    exec ctx.on_error.ctx ctx.on_error.run exn jobs
+  | exception exn -> handle_exception ctx exn jobs
   | eff -> exec_effect ctx eff jobs
 
 and exec_primitive3
@@ -375,9 +380,7 @@ and exec_primitive3
   =
   fun ctx f x y z k jobs ->
   match f x y z k with
-  | exception exn ->
-    let exn = Exn_with_backtrace.capture exn in
-    exec ctx.on_error.ctx ctx.on_error.run exn jobs
+  | exception exn -> handle_exception ctx exn jobs
   | eff -> exec_effect ctx eff jobs
 
 and exec_primitive4
@@ -394,18 +397,14 @@ and exec_primitive4
   =
   fun ctx f w x y z k jobs ->
   match f w x y z k with
-  | exception exn ->
-    let exn = Exn_with_backtrace.capture exn in
-    exec ctx.on_error.ctx ctx.on_error.run exn jobs
+  | exception exn -> handle_exception ctx exn jobs
   | eff -> exec_effect ctx eff jobs
 
 and exec_fiber_thunk : 'a. context -> (unit -> 'a t) -> 'a continuation -> Jobs.t -> step'
   =
   fun ctx f k jobs ->
   match f () with
-  | exception exn ->
-    let exn = Exn_with_backtrace.capture exn in
-    exec ctx.on_error.ctx ctx.on_error.run exn jobs
+  | exception exn -> handle_exception ctx exn jobs
   | t -> exec_fiber ctx t k jobs
 
 and exec_fiber_apply
@@ -413,9 +412,7 @@ and exec_fiber_apply
   =
   fun ctx f x k jobs ->
   match f x with
-  | exception exn ->
-    let exn = Exn_with_backtrace.capture exn in
-    exec ctx.on_error.ctx ctx.on_error.run exn jobs
+  | exception exn -> handle_exception ctx exn jobs
   | t -> exec_fiber ctx t k jobs
 
 and exec_fiber_apply2
@@ -438,7 +435,7 @@ and deref : 'a 'b. ('a, 'b) map_reduce_context' -> Jobs.t -> step' =
   let ref_count = r.ref_count - 1 in
   r.ref_count <- ref_count;
   match ref_count with
-  | 0 -> exec r.k.ctx r.k.run (Error r.errors) jobs
+  | 0 -> exec r.ctx r.k (Error r.errors) jobs
   | _ ->
     assert (ref_count > 0);
     loop jobs
@@ -454,14 +451,13 @@ and map_reduce_errors
     -> step'
   =
   fun ctx (module M : Monoid with type t = errors) on_error f k jobs ->
-  let map_reduce_context = { k = { ctx; run = k }; ref_count = 1; errors = M.empty } in
-  let on_error =
-    { ctx; run = Map_reduce_error (on_error, map_reduce_context, M.combine) }
+  let map_reduce_context =
+    { ctx; k; on_error; combine = M.combine; ref_count = 1; errors = M.empty }
   in
   let ctx =
     { ctx with
       parent = ctx
-    ; on_error
+    ; on_error = Collect_errors
     ; map_reduce_context = Map_reduce_context map_reduce_context
     }
   in
@@ -483,6 +479,12 @@ let advance (type a) (module W : Witness with type t = a) fill : a step =
   fill |> Jobs.exec_fills |> loop |> repack_step (module W)
 ;;
 
+let never_handle_error _ =
+  Code_error.raise "Fiber scheduler dummy error handler called" []
+;;
+
+let combine_unit () () = ()
+
 let start (type a) (t : a t) =
   let module W = struct
     type t = a
@@ -491,10 +493,17 @@ let start (type a) (t : a t) =
   in
   let rec ctx =
     { parent = ctx
-    ; on_error = { ctx; run = Top_level_error }
+    ; on_error = Top_level_error
     ; vars = Var_map.empty
     ; map_reduce_context =
-        Map_reduce_context { k = { ctx; run = Never_called }; ref_count = 1; errors = () }
+        Map_reduce_context
+          { ctx
+          ; k = Never_called
+          ; on_error = never_handle_error
+          ; combine = combine_unit
+          ; ref_count = 1
+          ; errors = ()
+          }
     }
   in
   exec_fiber ctx t (Function (fun x -> Done (W.X x))) Empty |> repack_step (module W)

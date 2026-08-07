@@ -12,7 +12,7 @@ let lock t k =
   then suspend (fun k -> Queue.push t.waiters k) k
   else (
     t.locked <- true;
-    k ())
+    continue k ())
 ;;
 
 let unlock t k =
@@ -20,7 +20,7 @@ let unlock t k =
   match Queue.pop t.waiters with
   | None ->
     t.locked <- false;
-    k ()
+    continue k ()
   | Some next -> resume next () k
 ;;
 

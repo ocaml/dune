@@ -101,20 +101,23 @@ module In = struct
 
   let parallel_iter t ~f k =
     let n = ref 1 in
-    let k () =
+    let done_ () =
       decr n;
       if !n = 0
       then (
         unlock t;
-        k ())
+        continue k ())
       else end_of_fiber
     in
     let rec loop t =
-      t.read () (function
-        | None -> k ()
-        | Some x ->
-          incr n;
-          fork (fun () -> f x k) (fun () -> loop t))
+      t.read
+        ()
+        (Function
+           (function
+             | None -> done_ ()
+             | Some x ->
+               incr n;
+               fork (fun () -> f x (Function done_)) (fun () -> loop t)))
     in
     lock t;
     loop t

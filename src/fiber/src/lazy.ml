@@ -61,7 +61,7 @@ let is_value t =
 ;;
 
 let force_all_unit =
-  let stop () = end_of_fiber in
+  let stop = Function (fun () -> end_of_fiber) in
   (* Fork all computations that haven't been forced yet. Note that this should be
      substantially more efficient that [parallel_map ~f:force] since we ignore
      computations which have already been forced. *)
@@ -71,7 +71,7 @@ let force_all_unit =
       | Done _ | Running _ -> return ()
       | Init f ->
         let v = prep t in
-        fun k -> fork (fun () -> (execute t v f) stop) k)
+        fun k -> fork (fun () -> (execute t v f) stop) (fun () -> continue k ()))
   in
   (* Wait for all computations, collecting all exceptions.  *)
   (* CR-someday rgrinberg: use [Appendable.t] for [acc] rather than [Appendable.t option]. *)

@@ -46,9 +46,52 @@ open Gc
 
 [%%endif]
 
-let sampling_rate = 1e-4
-let callstack_size = 10
-let top_entry_count = 10
+module Config = struct
+  type t =
+    { sampling_rate : float
+    ; callstack_size : int
+    ; top_entry_count : int
+    }
+
+  let default = { sampling_rate = 1e-4; callstack_size = 10; top_entry_count = 10 }
+
+  let invalid input message =
+    User_error.raise [ Pp.textf "invalid DUNE_TRACE_ALLOC value %S: %s" input message ]
+  ;;
+
+  let positive_int input name value =
+    match Int.of_string value with
+    | Some value when value > 0 -> value
+    | None | Some _ -> invalid input (sprintf "%s must be a positive integer" name)
+  ;;
+
+  let sampling_rate input value =
+    match Float.of_string value with
+    | Some value when value > 0.0 && value <= 1.0 -> value
+    | None | Some _ -> invalid input "rate must be greater than 0 and at most 1"
+  ;;
+
+  let parse input =
+    String.split_on_char input ~sep:','
+    |> List.fold_left ~init:default ~f:(fun config field ->
+      match String.lsplit2 (String.trim field) ~on:'=' with
+      | None -> invalid input "expected a comma-separated list of NAME=VALUE fields"
+      | Some (name, value) ->
+        let name = String.trim name in
+        let value = String.trim value in
+        (match name with
+         | "rate" -> { config with sampling_rate = sampling_rate input value }
+         | "stack" -> { config with callstack_size = positive_int input "stack" value }
+         | "top" -> { config with top_entry_count = positive_int input "top" value }
+         | _ -> invalid input (sprintf "unknown field %S" name)))
+  ;;
+
+  let get () =
+    match Sys.getenv_opt "DUNE_TRACE_ALLOC" with
+    | None -> default
+    | Some input -> parse input
+  ;;
+end
 
 module Trace = struct
   type t =
@@ -88,7 +131,8 @@ type heap =
   }
 
 type t =
-  { mutex : Mutex.t
+  { config : Config.t
+  ; mutex : Mutex.t
   ; minor : heap
   ; major : heap
   ; promoted : heap
@@ -97,8 +141,9 @@ type t =
 
 let create_heap () = { total_samples = 0; by_key = Table.create (module Key) 64 }
 
-let create () =
-  { mutex = Mutex.create ()
+let create config =
+  { config
+  ; mutex = Mutex.create ()
   ; minor = create_heap ()
   ; major = create_heap ()
   ; promoted = create_heap ()
@@ -123,7 +168,7 @@ let trace_to_strings = function
     |> List.map ~f:(fun slot -> Printexc.convert_raw_backtrace_slot slot |> place_of_slot)
 ;;
 
-let trace_of_callstack callstack =
+let trace_of_callstack callstack ~callstack_size =
   let length = Printexc.raw_backtrace_length callstack in
   let rec add_inlined slot remaining acc =
     if remaining = 0
@@ -160,22 +205,23 @@ let record_sample t heap ~key ~n_samples =
     | Some samples -> Table.set heap.by_key key (samples + n_samples))
 ;;
 
-let key_of_allocation { Memprof.source; callstack; _ } =
+let key_of_allocation { Memprof.source; callstack; _ } ~callstack_size =
   let source = Memprof.string_of_allocation_source source in
-  let trace = trace_of_callstack callstack in
+  let trace = trace_of_callstack callstack ~callstack_size in
   { Key.source; trace }
 ;;
 
 let tracker t =
+  let { Config.callstack_size; _ } = t.config in
   { Memprof.null_tracker with
     alloc_minor =
       (fun ({ Memprof.n_samples; _ } as allocation) ->
-        let key = key_of_allocation allocation in
+        let key = key_of_allocation allocation ~callstack_size in
         record_sample t t.minor ~key ~n_samples;
         Some { key; n_samples })
   ; alloc_major =
       (fun ({ Memprof.n_samples; _ } as allocation) ->
-        let key = key_of_allocation allocation in
+        let key = key_of_allocation allocation ~callstack_size in
         record_sample t t.major ~key ~n_samples;
         None)
   ; promote =
@@ -186,7 +232,9 @@ let tracker t =
 ;;
 
 let start () =
-  let t = create () in
+  let config = Config.get () in
+  let t = create config in
+  let { Config.sampling_rate; callstack_size; _ } = config in
   let profile = Memprof.start ~sampling_rate ~callstack_size (tracker t) in
   t.profile <- Some profile;
   t
@@ -207,11 +255,11 @@ let stop t = t.profile <- None
 
 [%%endif]
 
-let estimated_words_of_samples samples =
+let estimated_words_of_samples samples ~sampling_rate =
   int_of_float ((float_of_int samples /. sampling_rate) +. 0.5)
 ;;
 
-let take_top_entries entries =
+let take_top_entries entries ~top_entry_count =
   let rec take acc n = function
     | _ when n <= 0 -> List.rev acc
     | [] -> List.rev acc
@@ -220,25 +268,25 @@ let take_top_entries entries =
   take [] top_entry_count entries
 ;;
 
-let insert_top_entry entry entries =
+let insert_top_entry entry entries ~top_entry_count =
   let _, samples = entry in
   let rec insert = function
     | [] -> [ entry ]
     | ((_, samples') as entry') :: entries ->
       if samples > samples' then entry :: entry' :: entries else entry' :: insert entries
   in
-  insert entries |> take_top_entries
+  insert entries |> take_top_entries ~top_entry_count
 ;;
 
-let top_entries by_key =
+let top_entries by_key ~sampling_rate ~top_entry_count =
   Table.foldi by_key ~init:[] ~f:(fun key samples entries ->
-    insert_top_entry (key, samples) entries)
+    insert_top_entry (key, samples) entries ~top_entry_count)
   |> List.map ~f:(fun ({ Key.source; trace }, samples) ->
-    let estimated_words = estimated_words_of_samples samples in
+    let estimated_words = estimated_words_of_samples samples ~sampling_rate in
     { Event.source; trace = trace_to_strings trace; estimated_words; samples })
 ;;
 
-let source_entries by_key =
+let source_entries by_key ~sampling_rate =
   let by_source = Table.create (module String) 4 in
   Table.foldi by_key ~init:() ~f:(fun { Key.source; _ } samples () ->
     match Table.find by_source source with
@@ -250,16 +298,17 @@ let source_entries by_key =
     | Eq -> String.compare source source'
     | ordering -> ordering)
   |> List.map ~f:(fun (source, samples) ->
-    let estimated_words = estimated_words_of_samples samples in
+    let estimated_words = estimated_words_of_samples samples ~sampling_rate in
     ({ source; estimated_words; samples } : Event.alloc_source))
 ;;
 
-let summary_of_heap total_samples by_key =
-  let total_words = estimated_words_of_samples total_samples in
+let summary_of_heap total_samples by_key (config : Config.t) =
+  let { Config.sampling_rate; top_entry_count; _ } = config in
+  let total_words = estimated_words_of_samples total_samples ~sampling_rate in
   { Event.total_words
   ; total_samples
-  ; by_source = source_entries by_key
-  ; top = top_entries by_key
+  ; by_source = source_entries by_key ~sampling_rate
+  ; top = top_entries by_key ~sampling_rate ~top_entry_count
   }
 ;;
 
@@ -289,7 +338,8 @@ let swap t =
 ;;
 
 type snapshot =
-  { minor : Event.alloc_heap
+  { config : Event.alloc_config
+  ; minor : Event.alloc_heap
   ; major : Event.alloc_heap
   ; promoted : Event.alloc_heap
   }
@@ -304,10 +354,12 @@ let snapshot t =
     =
     swap t
   in
-  let minor = summary_of_heap minor_total_samples minor_by_key in
-  let major = summary_of_heap major_total_samples major_by_key in
-  let promoted = summary_of_heap promoted_total_samples promoted_by_key in
-  { minor; major; promoted }
+  let { Config.sampling_rate; callstack_size; top_entry_count } = t.config in
+  let config = { Event.sampling_rate; callstack_size; top_entry_count } in
+  let minor = summary_of_heap minor_total_samples minor_by_key t.config in
+  let major = summary_of_heap major_total_samples major_by_key t.config in
+  let promoted = summary_of_heap promoted_total_samples promoted_by_key t.config in
+  { config; minor; major; promoted }
 ;;
 
 type swap_result = int * heap_table * int * heap_table * int * heap_table

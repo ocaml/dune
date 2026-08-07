@@ -27,13 +27,13 @@ let capture_alloc_profile kind =
   with
   | None -> None
   | Some alloc ->
-    let { Alloc.minor; major; promoted } = Alloc.snapshot alloc in
+    let { Alloc.config; minor; major; promoted } = Alloc.snapshot alloc in
     let phase, run_id =
       match kind with
       | `Build run_id -> `Build, Some run_id
       | `Exit -> `Exit, None
     in
-    Some (Event.alloc_summary ~phase ~run_id ~minor ~major ~promoted)
+    Some (Event.alloc_summary ~phase ~run_id ~config ~minor ~major ~promoted)
 ;;
 
 let at_exit =

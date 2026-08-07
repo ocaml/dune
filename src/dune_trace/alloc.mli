@@ -1,7 +1,8 @@
 type t
 
 type snapshot =
-  { minor : Event.alloc_heap
+  { config : Event.alloc_config
+  ; minor : Event.alloc_heap
   ; major : Event.alloc_heap
   ; promoted : Event.alloc_heap
   }

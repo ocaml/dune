@@ -33,6 +33,7 @@ let () =
     pdeathsig_child ready_file marker_file
   | _ :: "pdeathsig-default-child" :: ready_file :: marker_file :: _ ->
     pdeathsig_default_child ready_file marker_file
+  | _ :: "print-args" :: args -> List.iter print_endline args
   | _ ->
     (match Sys.getenv "FOO" with
      | exception _ -> print_endline "None"

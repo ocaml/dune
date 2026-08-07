@@ -91,11 +91,15 @@ module Pgid = struct
   ;;
 end
 
+type argv =
+  | List_args of string list
+  | Array_args of string * string array
+
 external spawn_unix
   :  env:Env.t option
   -> cwd:Working_dir.t
   -> prog:string
-  -> argv:string list
+  -> argv:argv
   -> stdin:Unix.file_descr
   -> stdout:Unix.file_descr
   -> stderr:Unix.file_descr
@@ -190,7 +194,7 @@ let no_null s =
       s
 ;;
 
-let spawn
+let spawn_gen
       ?env
       ?(cwd = Working_dir.Inherit)
       ~prog
@@ -208,25 +212,107 @@ let spawn
    | Path s -> no_null s
    | Fd _ | Inherit -> ());
   no_null prog;
-  List.iter argv ~f:no_null;
-  let backend = if Sys.win32 then spawn_windows else spawn_unix in
+  (match argv with
+   | List_args args -> List.iter args ~f:no_null
+   | Array_args (argv0, args) ->
+     no_null argv0;
+     Array.iter args ~f:no_null);
   let use_vfork =
     match unix_backend with
     | Vfork -> true
     | Fork -> false
   in
-  backend
-    ~env
-    ~cwd
+  if Sys.win32
+  then (
+    let argv =
+      match argv with
+      | List_args args -> args
+      | Array_args (argv0, args) -> argv0 :: Array.to_list args
+    in
+    spawn_windows
+      ~env
+      ~cwd
+      ~prog
+      ~argv
+      ~stdin
+      ~stdout
+      ~stderr
+      ~use_vfork
+      ~setpgid
+      ~sigprocmask
+      ~pdeathsig)
+  else
+    spawn_unix
+      ~env
+      ~cwd
+      ~prog
+      ~argv
+      ~stdin
+      ~stdout
+      ~stderr
+      ~use_vfork
+      ~setpgid
+      ~sigprocmask
+      ~pdeathsig
+;;
+
+let spawn
+      ?env
+      ?cwd
+      ~prog
+      ~argv
+      ?stdin
+      ?stdout
+      ?stderr
+      ?unix_backend
+      ?setpgid
+      ?pdeathsig
+      ?sigprocmask
+      ()
+  =
+  spawn_gen
+    ?env
+    ?cwd
     ~prog
-    ~argv
-    ~stdin
-    ~stdout
-    ~stderr
-    ~use_vfork
-    ~setpgid
-    ~sigprocmask
-    ~pdeathsig
+    ~argv:(List_args argv)
+    ?stdin
+    ?stdout
+    ?stderr
+    ?unix_backend
+    ?setpgid
+    ?pdeathsig
+    ?sigprocmask
+    ()
+;;
+
+let spawn_array
+      ?env
+      ?cwd
+      ~prog
+      ~argv0
+      ~args
+      ?stdin
+      ?stdout
+      ?stderr
+      ?unix_backend
+      ?setpgid
+      ?pdeathsig
+      ?sigprocmask
+      ()
+  =
+  spawn_gen
+    ?env
+    ?cwd
+    ~prog
+    ~argv:(Array_args (argv0, args))
+    ?stdin
+    ?stdout
+    ?stderr
+    ?unix_backend
+    ?setpgid
+    ?pdeathsig
+    ?sigprocmask
+    ()
 ;;
 
 external safe_pipe : unit -> Unix.file_descr * Unix.file_descr = "dune_spawn_pipe"

@@ -500,8 +500,26 @@ module Short_display = struct
   ;;
 end
 
+module Args = struct
+  type t = Dune_trace.Event.process_args
+
+  let list args : t = `List args
+  let array args : t = `Array args
+
+  let to_list : t -> string list = function
+    | `List args -> args
+    | `Array args -> Array.Immutable.to_list args
+  ;;
+
+  let fold_left t ~init ~f =
+    match t with
+    | `List args -> List.fold_left args ~init ~f
+    | `Array args -> Array.fold_left (Array.Immutable.to_array_unsafe args) ~init ~f
+  ;;
+end
+
 let cmdline_approximate_length prog args =
-  List.fold_left args ~init:(String.length prog) ~f:(fun acc arg ->
+  Args.fold_left args ~init:(String.length prog) ~f:(fun acc arg ->
     acc + String.length arg)
 ;;
 
@@ -970,10 +988,10 @@ let spawn
       | Zero_terminated_strings arg ->
         let fn = Temp.create File ~prefix:"responsefile" ~suffix:"data" in
         Stdune.Io.with_file_out fn ~f:(fun oc ->
-          List.iter args ~f:(fun arg ->
+          Args.fold_left args ~init:() ~f:(fun () arg ->
             output_string oc arg;
             output_char oc '\000'));
-        [ arg; Path.to_string fn ], Some fn)
+        Args.list [ arg; Path.to_string fn ], Some fn)
     else args, None
   in
   let started_at =
@@ -989,20 +1007,35 @@ let spawn
     let stdout = Io.fd stdout |> Fd.unsafe_to_unix_file_descr in
     let stderr = Io.fd stderr |> Fd.unsafe_to_unix_file_descr in
     let stdin = Io.fd stdin |> Fd.unsafe_to_unix_file_descr in
-    let argv = prog_str :: args in
-    Spawn.spawn
-      ()
-      ~prog:prog_str
-      ~argv
-      ~env
-      ~stdout
-      ~stderr
-      ~stdin
-      ?setpgid
-      ~cwd:
-        (match dir with
-         | None -> Inherit
-         | Some dir -> Path (Path.to_string dir))
+    let cwd =
+      match dir with
+      | None -> Spawn.Working_dir.Inherit
+      | Some dir -> Spawn.Working_dir.Path (Path.to_string dir)
+    in
+    match args with
+    | `List args ->
+      Spawn.spawn
+        ()
+        ~prog:prog_str
+        ~argv:(prog_str :: args)
+        ~env
+        ~stdout
+        ~stderr
+        ~stdin
+        ?setpgid
+        ~cwd
+    | `Array args ->
+      Spawn.spawn_array
+        ()
+        ~prog:prog_str
+        ~argv0:prog_str
+        ~args:(Array.Immutable.to_array_unsafe args)
+        ~env
+        ~stdout
+        ~stderr
+        ~stdin
+        ?setpgid
+        ~cwd
   in
   if emit_trace
   then
@@ -1168,7 +1201,7 @@ let exec_locally
            ~setpgid:
              (if create_process_group then Some Spawn.Pgid.new_process_group else None)
            ~prog
-           ~args
+           ~args:(Args.list args)
            ~metadata
            ~timeout
            ()
@@ -1224,14 +1257,27 @@ let run_internal
     let id = Running_jobs.Id.gen () in
     let prog_str = Path.reach_for_running ?from:dir prog in
     let command_line =
-      lazy (command_line ~prog:prog_str ~args ~dir ~stdout_to ~stderr_to ~stdin_from)
+      lazy
+        (command_line
+           ~prog:prog_str
+           ~args:(Args.to_list args)
+           ~dir
+           ~stdout_to
+           ~stderr_to
+           ~stdin_from)
     in
     let fancy_command_line =
       match display with
       | Verbose ->
         let open Pp.O in
         let cmdline =
-          Fancy.command_line ~prog:prog_str ~args ~dir ~stdout_to ~stderr_to ~stdin_from
+          Fancy.command_line
+            ~prog:prog_str
+            ~args:(Args.to_list args)
+            ~dir
+            ~stdout_to
+            ~stderr_to
+            ~stdin_from
         in
         Console.print_user_message
           (User_message.make
@@ -1283,26 +1329,28 @@ let run_internal
       t, process_info, termination_reason, times, None, []
     in
     let* t, process_info, termination_reason, times, remote_started_at, trace_args =
-      match
-        runner_request
-          ~dir
-          ~env
-          ~metadata
-          ~prog
-          ~args
-          ~stdin_from
-          ~stdout_to:prepared_outputs.stdout
-          ~stderr_to:prepared_outputs.stderr
-          ~setpgid
-          ~timeout
-          ~queued
-      with
-      | Some request ->
-        (match build with
-         | Some build ->
-           (match Build.action_runner build with
+      match build with
+      | None -> local ()
+      | Some build ->
+        (match Build.action_runner build with
+         | None -> local ()
+         | Some action_runner ->
+           (match
+              runner_request
+                ~dir
+                ~env
+                ~metadata
+                ~prog
+                ~args:(Args.to_list args)
+                ~stdin_from
+                ~stdout_to:prepared_outputs.stdout
+                ~stderr_to:prepared_outputs.stderr
+                ~setpgid
+                ~timeout
+                ~queued
+            with
             | None -> local ()
-            | Some action_runner ->
+            | Some request ->
               Io.release prepared_outputs.stdout;
               Io.release prepared_outputs.stderr;
               let+ { Process_runner.started_at
@@ -1336,9 +1384,7 @@ let run_internal
               , termination_reason
               , times
               , Some started_at
-              , trace_args ))
-         | None -> local ())
-      | None -> local ()
+              , trace_args )))
     in
     Option.iter build ~f:(fun (_ : Build.t) ->
       let user_cpu_time, system_cpu_time =
@@ -1458,7 +1504,37 @@ let run
       ?build
       fail_mode
       prog
+      (Args.list args)
+  in
+  Failure_mode.map_result fail_mode run ~f:ignore
+;;
+
+let run_with_array_args
+      ?dir
+      ~display
+      ?stdout_to
+      ?stderr_to
+      ?stdin_from
+      ?env
+      ?metadata
+      ?build
+      fail_mode
+      prog
       args
+  =
+  let+ run, _ =
+    run_internal
+      ?dir
+      ~display
+      ?stdout_to
+      ?stderr_to
+      ?stdin_from
+      ?env
+      ?metadata
+      ?build
+      fail_mode
+      prog
+      (Args.array args)
   in
   Failure_mode.map_result fail_mode run ~f:ignore
 ;;
@@ -1488,7 +1564,7 @@ let run_with_times
       ?build
       fail_mode
       prog
-      args
+      (Args.list args)
   in
   Failure_mode.map_result fail_mode code ~f:(fun () -> times)
 ;;
@@ -1519,7 +1595,7 @@ let run_capture_gen
       ?build
       fail_mode
       prog
-      args
+      (Args.list args)
   in
   Failure_mode.map_result fail_mode run ~f:(fun () ->
     let x = f fn in
@@ -1601,7 +1677,7 @@ let run_inherit_std_in_out =
       ~setpgid:None
       Return
       prog
-      args
+      (Args.list args)
     >>| fst
     >>| Failure_mode.exit_code_of_result
 ;;

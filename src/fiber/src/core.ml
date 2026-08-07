@@ -57,9 +57,7 @@ and 'a continuation =
   | Map_reduce_complete :
       'a ref * int ref * ('a -> 'a -> 'a) * 'a continuation
       -> 'a continuation
-  | Array_map_complete :
-      'a array ref * int * int * int ref * 'a array continuation
-      -> 'a continuation
+  | Array_map_complete : 'a array_map_state * int -> 'a continuation
   | Fork_join_left :
       ('a, 'b) fork_and_join_state ref * ('a * 'b) continuation
       -> 'a continuation
@@ -70,6 +68,13 @@ and 'a continuation =
   | Unreachable : Nothing.t continuation
   | Never_called : 'a continuation
   | Accumulate_error : ('result, 'errors) map_reduce_context' -> 'errors continuation
+
+and 'a array_map_state =
+  { results : 'a array ref
+  ; len : int
+  ; running : int ref
+  ; k : 'a array continuation
+  }
 
 and eff =
   | Run : 'a t * 'a continuation -> eff
@@ -177,7 +182,8 @@ let rec continue : type a. a continuation -> a -> eff =
     current := combine !current x;
     decr running;
     if !running = 0 then continue k !current else End_of_fiber ()
-  | Array_map_complete (results, len, i, running, k) ->
+  | Array_map_complete (state, i) ->
+    let { results; len; running; k } = state in
     let a =
       match !results with
       | [||] ->
@@ -555,9 +561,8 @@ let parallel_iter l ~f = primitive2 run_parallel_iter l f
 
 let run_parallel_array_of_list_map' x l f k =
   let len = List.length l + 1 in
-  let left_over = ref len in
-  let results = ref [||] in
-  let f' i x = apply_t f x (Array_map_complete (results, len, i, left_over, k)) in
+  let state = { results = ref [||]; len; running = ref len; k } in
+  let f' i x = apply_t f x (Array_map_complete (state, i)) in
   nforki x l f'
 ;;
 

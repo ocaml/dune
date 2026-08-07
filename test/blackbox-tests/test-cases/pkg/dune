@@ -66,6 +66,7 @@
   e2e
   ocamlformat-dev-tool
   source-caching
+  archive-mirrors
   tarball
   pin-depends
   extra-sources
@@ -76,6 +77,7 @@
  (deps %{bin:md5sum})
  (applies_to
   source-caching
+  archive-mirrors
   extra-sources
   ocamlformat-dev-tool
   dev-tool-conflict-test
@@ -85,6 +87,7 @@
  (deps %{bin:tar})
  (applies_to
   source-caching
+  archive-mirrors
   tarball
   pin-depends
   extra-sources

@@ -2,6 +2,8 @@ open Stdune
 
 type t = OpamUrl.t
 
+exception Parse_error of string
+
 val equal : t -> t -> bool
 val hash : t -> int
 val to_string : t -> string
@@ -10,6 +12,15 @@ val of_string : string -> t
 val decode_loc : (Stdune.Loc.t * t) Dune_sexp.Decoder.t
 val rev : t -> string option
 val base_url : t -> string
+val append : t -> string -> t
+
+(** Removes duplicate URLs, keeping the first occurrence of each. *)
+val dedup_preserving_order : t list -> t list
+
+(** Whether dune can download archives from this URL: http, or a local
+    file path. *)
+val is_supported_archive_mirror : t -> bool
+
 val is_version_control : t -> bool
 
 (** [is_file t] is true iff [t] is a url beginning with "file://" *)

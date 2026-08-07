@@ -3,6 +3,7 @@ open Import
 type t =
   { url : Loc.t * OpamUrl.t
   ; checksum : (Loc.t * Checksum.t) option
+  ; archive_mirrors : OpamUrl.t list
   }
 
 val equal : t -> t -> bool

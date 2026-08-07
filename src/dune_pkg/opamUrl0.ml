@@ -13,6 +13,16 @@ let is_version_control t =
 
 let is_local t = String.equal t.transport "file"
 let is_supported_archive t = Option.is_some (Archive_driver.choose_for_filename t.path)
+let append t component = OpamUrl.Op.(t / component)
+
+(* Archive mirrors are checksum-addressed directories that dune reads
+   directly, so only URLs it can download bytes from qualify. *)
+let is_supported_archive_mirror t =
+  match t.backend with
+  | `http -> true
+  | `rsync -> is_local t
+  | `git | `hg | `darcs -> false
+;;
 
 let classify url loc =
   match (url : t).backend with
@@ -28,6 +38,14 @@ let classify url loc =
 ;;
 
 include Comparable.Make (Dune_lang.Url)
+
+let dedup_preserving_order urls =
+  let _, result =
+    List.fold_left urls ~init:(Set.empty, []) ~f:(fun (seen, result) url ->
+      if Set.mem seen url then seen, result else Set.add seen url, url :: result)
+  in
+  List.rev result
+;;
 
 let remote t ~loc rev_store = Rev_store.remote rev_store ~loc ~url:(OpamUrl.base_url t)
 

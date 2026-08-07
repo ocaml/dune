@@ -70,6 +70,7 @@ module Spec = struct
     { target : 'target
     ; url : Loc.t * OpamUrl.t
     ; checksum : (Loc.t * Checksum.t) option
+    ; archive_mirrors : OpamUrl.t list
     ; kind : kind
     }
 
@@ -80,7 +81,12 @@ module Spec = struct
   let bimap t _ g = { t with target = g t.target }
   let is_useful_to ~memoize = memoize
 
-  let encode { target; url = _, url; checksum; kind } _ encode_target : Sexp.t =
+  (* [archive_mirrors] is deliberately not part of the digest: mirrors
+     never change the produced content. With a checksum the output is
+     content-addressed, and without one mirrors are not consulted. *)
+  let encode { target; url = _, url; checksum; archive_mirrors = _; kind } _ encode_target
+    : Sexp.t
+    =
     List
       ([ encode_target target
        ; Sexp.Atom (OpamUrl.to_string url)
@@ -98,7 +104,11 @@ module Spec = struct
        | Some (_, checksum) -> [ Atom (Checksum.to_string checksum) ])
   ;;
 
-  let action { target; url = loc_url, url; checksum; kind } ~ectx:_ ~eenv:_ =
+  let action
+        { target; url = loc_url, url; checksum; archive_mirrors; kind }
+        ~ectx:_
+        ~eenv:_
+    =
     let open Fiber.O in
     let* () = Fiber.return () in
     let target = Path.build target in
@@ -109,6 +119,7 @@ module Spec = struct
           | `File -> false
           | `Directory -> true)
        ~checksum
+       ~archive_mirrors
        ~target
        ~url:(loc_url, url))
     >>= function
@@ -134,7 +145,22 @@ end
 
 module A = Action_ext.Make (Spec)
 
-let action ~url ~checksum ~target ~kind = A.action { Spec.target; checksum; url; kind }
+let action ~url ~checksum ~archive_mirrors ~target ~kind =
+  A.action { Spec.target; checksum; archive_mirrors; url; kind }
+;;
+
+type checksum_source =
+  { url : Loc.t * OpamUrl.t
+  ; checksum : Loc.t * Checksum.t
+  ; archive_mirrors : OpamUrl.t list
+  }
+
+let merge_checksum_sources a b =
+  { a with
+    archive_mirrors =
+      OpamUrl.dedup_preserving_order (a.archive_mirrors @ b.archive_mirrors)
+  }
+;;
 
 let extract_checksums_and_urls (lockdir : Dune_pkg.Lock_dir.t) =
   Dune_pkg.Lock_dir.Packages.to_pkg_list lockdir.packages
@@ -154,14 +180,29 @@ let extract_checksums_and_urls (lockdir : Dune_pkg.Lock_dir.t) =
              let url = source.url in
              (match source.checksum with
               | Some ((_, checksum) as checksum_with_loc) ->
-                Checksum.Map.set checksums checksum (url, checksum_with_loc), urls
+                let checksum_source =
+                  { url
+                  ; checksum = checksum_with_loc
+                  ; archive_mirrors = source.archive_mirrors
+                  }
+                in
+                ( Checksum.Map.update checksums checksum ~f:(function
+                    | None -> Some checksum_source
+                    | Some previous ->
+                      Some (merge_checksum_sources previous checksum_source))
+                , urls )
               | None -> checksums, Digest.Map.set urls (digest_of_url (snd url)) url)))
 ;;
 
 let find_checksum, find_url =
   let add_checksums_and_urls (checksums, urls) lockdir =
     let checksums', urls' = extract_checksums_and_urls lockdir in
-    Checksum.Map.superpose checksums checksums', Digest.Map.superpose urls urls'
+    ( Checksum.Map.merge checksums checksums' ~f:(fun _ a b ->
+        match a, b with
+        | None, None -> None
+        | Some source, None | None, Some source -> Some source
+        | Some a, Some b -> Some (merge_checksum_sources a b))
+    , Digest.Map.superpose urls urls' )
   in
   let all =
     Memo.lazy_ (fun () ->
@@ -212,7 +253,7 @@ let find_checksum, find_url =
   find_checksum, find_url
 ;;
 
-let gen_rules_for_checksum_or_url (loc_url, (url : OpamUrl.t)) checksum =
+let gen_rules_for_checksum_or_url (loc_url, (url : OpamUrl.t)) checksum archive_mirrors =
   let loc_url = Dune_pkg.Lock_dir.loc_in_source_tree loc_url in
   let checksum_or_url =
     match checksum with
@@ -245,7 +286,7 @@ let gen_rules_for_checksum_or_url (loc_url, (url : OpamUrl.t)) checksum =
         Action_builder.with_no_targets
           (let open Action_builder.O in
            let+ url = url in
-           action ~url:(loc_url, url) ~checksum ~target ~kind
+           action ~url:(loc_url, url) ~checksum ~archive_mirrors ~target ~kind
            |> Action.Full.make ~can_go_in_shared_cache:true)
     in
     let dir_rule =
@@ -284,15 +325,15 @@ let gen_rules ~dir ~components =
     |> Memo.return
   | [ "checksum"; checksum ] ->
     let checksum = Dune_pkg.Checksum.parse_string_exn (Loc.none, checksum) in
-    let+ url, checksum = find_checksum checksum in
-    gen_rules_for_checksum_or_url url (Some checksum)
+    let+ { url; checksum; archive_mirrors } = find_checksum checksum in
+    gen_rules_for_checksum_or_url url (Some checksum) archive_mirrors
   | [ "url"; digest ] ->
     let+ url =
       match Digest.from_hex digest with
       | Some s -> find_url s
       | None -> User_error.raise [ Pp.textf "invalid digest %s" digest ]
     in
-    gen_rules_for_checksum_or_url url None
+    gen_rules_for_checksum_or_url url None []
   | _ -> Memo.return Gen_rules.no_rules
 ;;
 
@@ -367,7 +408,12 @@ let fetch ~target kind (source : Source.t) =
       | `Directory_or_archive _ ->
         (* For local sources, we don't need an intermediate step copying to the
            .fetch context. This would just add pointless additional overhead. *)
-        action ~url:source.url ~checksum:source.checksum ~target ~kind
+        action
+          ~url:source.url
+          ~checksum:source.checksum
+          ~archive_mirrors:source.archive_mirrors
+          ~target
+          ~kind
     in
     Action.Full.make ~can_go_in_shared_cache:true action
     |> Action_builder.With_targets.return

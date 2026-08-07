@@ -10,6 +10,13 @@ module Rev_store = Dune_pkg.Rev_store
 module Package_version = Dune_pkg.Package_version
 module Source = Dune_pkg.Source
 module Package_name = Dune_lang.Package_name
+module Repository = Dune_pkg.Pkg_workspace.Repository
+
+let%expect_test "upstream repository archive mirror" =
+  Repository.archive_mirrors Repository.upstream
+  |> List.iter ~f:(fun url -> print_endline (OpamUrl.to_string url));
+  [%expect {| https://opam.ocaml.org/cache |}]
+;;
 
 module Update = struct
   open Dyn
@@ -261,6 +268,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
                 ; ( Path.Local.of_string "two"
                   , { url = Loc.none, OpamUrl.of_string "file://randomurl"
                     ; checksum = None
+                    ; archive_mirrors = []
                     } )
                 ]
             }
@@ -291,6 +299,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
                         , Checksum.of_string
                             "sha256=adfc38f14c0188a2ad80d61451d011d27ab8839b717492d7ad42f7cb911c54c3"
                         )
+                  ; archive_mirrors = []
                   }
             }
         } )
@@ -312,6 +321,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
                 Some
                   { url = Loc.none, OpamUrl.of_string "https://github.com/foo/c"
                   ; checksum = None
+                  ; archive_mirrors = []
                   }
             }
         } )
@@ -358,11 +368,22 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
                         ; dev = false
                         ; avoid = false
                         ; source =
-                            Some { url = "file:///tmp/a"; checksum = None }
+                            Some
+                              { url = "file:///tmp/a"
+                              ; checksum = None
+                              ; archive_mirrors = []
+                              }
                         ; extra_sources =
-                            [ ("one", { url = "file:///tmp/a"; checksum = None })
+                            [ ("one",
+                               { url = "file:///tmp/a"
+                               ; checksum = None
+                               ; archive_mirrors = []
+                               })
                             ; ("two",
-                               { url = "file://randomurl"; checksum = None })
+                               { url = "file://randomurl"
+                               ; checksum = None
+                               ; archive_mirrors = []
+                               })
                             ]
                         }
                     ; exported_env = [ { op = =; var = "foo"; value = "bar" } ]
@@ -393,6 +414,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
                               ; checksum =
                                   Some
                                     "sha256=adfc38f14c0188a2ad80d61451d011d27ab8839b717492d7ad42f7cb911c54c3"
+                              ; archive_mirrors = []
                               }
                         ; extra_sources = []
                         }
@@ -423,6 +445,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
                             Some
                               { url = "https://github.com/foo/c"
                               ; checksum = None
+                              ; archive_mirrors = []
                               }
                         ; extra_sources = []
                         }

@@ -4,6 +4,7 @@ module Repository : sig
   type t
 
   val opam_url : t -> Loc.t * OpamUrl.t
+  val archive_mirrors : t -> OpamUrl.t list
   val hash : t -> int
   val to_dyn : t -> Dyn.t
   val equal : t -> t -> bool

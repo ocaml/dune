@@ -2,8 +2,6 @@ include ListLabels
 
 type 'a t = 'a list
 
-let map ~f t = rev (rev_map ~f t)
-
 let is_empty = function
   | [] -> true
   | _ -> false
@@ -25,7 +23,7 @@ let rev_filter_map l ~f =
   loop [] l
 ;;
 
-let filter_map l ~f = rev (rev_filter_map l ~f)
+let filter_map l ~f = ListLabels.filter_map ~f l
 let filter_opt l = filter_map ~f:Fun.id l
 
 let filteri l ~f =

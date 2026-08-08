@@ -13,9 +13,12 @@ a client.
   >   $ echo 'took too long'
   > EOF
 
-  $ dune build -w &
-  Success, waiting for filesystem changes...
+  $ dune build -w > .#dune-output 2>&1 &
   $ DUNE_PID=$!
+  $ wait_for_line_with_timeout .#dune-output \
+  >   "Success, waiting for filesystem changes..." 200
+  $ cat .#dune-output
+  Success, waiting for filesystem changes...
 
   $ dune rpc ping --wait
   Server appears to be responding normally

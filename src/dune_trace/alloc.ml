@@ -471,25 +471,31 @@ let swap t =
   let fresh_minor = Table.create (module Key) 64 in
   let fresh_major = Table.create (module Key) 64 in
   let fresh_promoted = Table.create (module Key) 64 in
+  let minor_total_samples = ref 0 in
+  let minor_by_key = ref fresh_minor in
+  let major_total_samples = ref 0 in
+  let major_by_key = ref fresh_major in
+  let promoted_total_samples = ref 0 in
+  let promoted_by_key = ref fresh_promoted in
   Mutex.protect t.mutex (fun () ->
-    let minor_total_samples = t.minor.total_samples in
-    let minor_by_key = t.minor.by_key in
-    let major_total_samples = t.major.total_samples in
-    let major_by_key = t.major.by_key in
-    let promoted_total_samples = t.promoted.total_samples in
-    let promoted_by_key = t.promoted.by_key in
+    minor_total_samples := t.minor.total_samples;
+    minor_by_key := t.minor.by_key;
+    major_total_samples := t.major.total_samples;
+    major_by_key := t.major.by_key;
+    promoted_total_samples := t.promoted.total_samples;
+    promoted_by_key := t.promoted.by_key;
     t.minor.total_samples <- 0;
     t.minor.by_key <- fresh_minor;
     t.major.total_samples <- 0;
     t.major.by_key <- fresh_major;
     t.promoted.total_samples <- 0;
-    t.promoted.by_key <- fresh_promoted;
-    ( minor_total_samples
-    , minor_by_key
-    , major_total_samples
-    , major_by_key
-    , promoted_total_samples
-    , promoted_by_key ))
+    t.promoted.by_key <- fresh_promoted);
+  ( !minor_total_samples
+  , !minor_by_key
+  , !major_total_samples
+  , !major_by_key
+  , !promoted_total_samples
+  , !promoted_by_key )
 ;;
 
 type snapshot =

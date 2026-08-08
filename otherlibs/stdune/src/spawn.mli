@@ -130,6 +130,25 @@ val spawn
   -> unit
   -> Pid.t
 
+(** Like [spawn]. On Unix, passes [argv0] and [args] without first constructing
+    an argument list. *)
+val spawn_array
+  :  ?env:Env.t
+  -> ?cwd:Working_dir.t (* default: [Inherit] *)
+  -> prog:string
+  -> argv0:string
+  -> args:string array
+  -> ?stdin:Unix.file_descr
+  -> ?stdout:Unix.file_descr
+  -> ?stderr:Unix.file_descr
+  -> ?unix_backend:Unix_backend.t (* default: [Unix_backend.default] *)
+  -> ?setpgid:Pgid.t
+  -> ?pdeathsig:Signal.t
+  -> ?sigprocmask:Unix.sigprocmask_command * int list
+       (** default: unblock all signals in child *)
+  -> unit
+  -> Pid.t
+
 (**/**)
 
 (* Create a pipe with [O_CLOEXEC] sets for both fds. This is the same as

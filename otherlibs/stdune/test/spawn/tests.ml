@@ -58,6 +58,20 @@ let () =
   close_out (open_out "sub/bar")
 ;;
 
+let%expect_test "array arguments" =
+  wait
+    (Spawn.spawn_array
+       ()
+       ~prog:print_env
+       ~argv0:"print_env"
+       ~args:[| "print-args"; "one"; "two" |]);
+  [%expect
+    {|
+    one
+    two
+  |}]
+;;
+
 let%expect_test "cwd:Path" =
   wait
     (Spawn.spawn

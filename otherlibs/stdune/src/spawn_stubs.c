@@ -442,6 +442,53 @@ static char **alloc_string_vect(value v)
   return result;
 }
 
+/* Convert an [argv0 * string array] into a NULL terminated array of C
+   strings. */
+static char **alloc_string_array(value v_argv0, value v_args)
+{
+  mlsize_t count = Wosize_val(v_args);
+  mlsize_t full_size =
+    (sizeof(char*) * (count + 2)) + caml_string_length(v_argv0) + 1;
+  mlsize_t i;
+  mlsize_t len;
+  char **result;
+  char *ptr;
+
+  for (i = 0; i < count; i++)
+    full_size += caml_string_length(Field(v_args, i)) + 1;
+
+  result = (char**)malloc(full_size);
+  if (result == NULL) caml_raise_out_of_memory();
+
+  ptr = ((char*)result) + (sizeof(char*) * (count + 2));
+  len = caml_string_length(v_argv0) + 1;
+  memcpy(ptr, String_val(v_argv0), len);
+  result[0] = ptr;
+  ptr += len;
+  for (i = 0; i < count; i++) {
+    value v_str = Field(v_args, i);
+    len = caml_string_length(v_str) + 1;
+    memcpy(ptr, String_val(v_str), len);
+    result[i + 1] = ptr;
+    ptr += len;
+  }
+  result[count + 1] = NULL;
+
+  return result;
+}
+
+static char **alloc_argv(value v)
+{
+  switch (Tag_val(v)) {
+    case 0: /* List_args of string list */
+      return alloc_string_vect(Field(v, 0));
+    case 1: /* Array_args of string * string array */
+      return alloc_string_array(Field(v, 0), Field(v, 1));
+    default:
+      assert(0);
+  }
+}
+
 static char **copy_c_string_array(char ** strings)
 {
   char **result;
@@ -527,7 +574,7 @@ static void init_spawn_info(struct spawn_info *info,
 
   info->prog = strdup(String_val(v_prog));
   if (info->prog == NULL) caml_raise_out_of_memory();
-  info->argv = alloc_string_vect(v_argv);
+  info->argv = alloc_argv(v_argv);
   info->env =
     Is_block(v_env) ?
     alloc_string_vect(Field(v_env, 0)) : copy_c_string_array(environ);

@@ -520,6 +520,16 @@ let make_exit exit =
     ]
 ;;
 
+type process_args =
+  [ `List of string list
+  | `Array of string Array.Immutable.t
+  ]
+
+let encode_process_args : process_args -> Arg.t = function
+  | `List args -> Arg.list (List.map args ~f:Arg.string)
+  | `Array args -> Arg.list (Array.Immutable.to_list_map args ~f:Arg.string)
+;;
+
 let process_start
       ~extra_args
       ~pid
@@ -535,7 +545,7 @@ let process_start
   =
   let args =
     let always =
-      [ "process_args", Arg.list (List.map args ~f:Arg.string)
+      [ "process_args", encode_process_args args
       ; "pid", Arg.int (Pid.to_int pid)
       ; "categories", Arg.list (List.map categories ~f:Arg.string)
       ; "queued", Arg.span queued
@@ -579,7 +589,7 @@ let process
   =
   let args =
     let always =
-      [ "process_args", Arg.list (List.map process_args ~f:Arg.string)
+      [ "process_args", encode_process_args process_args
       ; "pid", Arg.int (Pid.to_int pid)
       ; "categories", Arg.list (List.map categories ~f:Arg.string)
       ]

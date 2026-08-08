@@ -43,6 +43,12 @@
  (deps %{bin:strace}))
 
 (cram
+ (applies_to relocatable-compiler-sandbox-macos)
+ (enabled_if
+  (= %{system} macosx))
+ (deps %{bin:menhir} %{bin:ocamlopt}))
+
+(cram
  (deps %{bin:awk} %{bin:cmp})
  (applies_to git-repo))
 

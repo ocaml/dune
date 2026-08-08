@@ -1,5 +1,14 @@
 open Import
 
+let () =
+  if
+    Option.is_none (Sys.getenv_opt "OCAMLRUNPARAM")
+    && Option.is_none (Sys.getenv_opt "CAMLRUNPARAM")
+  then (
+    let control = Gc.get () in
+    Gc.set { control with space_overhead = 500 })
+;;
+
 let all : _ Cmdliner.Cmd.t list =
   let terms =
     Runtest.commands

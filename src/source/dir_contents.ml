@@ -95,35 +95,47 @@ let of_source_path_impl path =
       ];
     Memo.return (Error unix_error)
   | Ok dir_contents ->
-    let+ files, dirs =
+    let files, dirs_to_scan =
       Fs_memo.Dir_contents.to_list dir_contents
-      |> Memo.parallel_map ~f:(fun (fn, (kind : File_kind.t)) ->
+      |> List.filter_partition_map ~f:(fun (fn, (kind : File_kind.t)) ->
         let path = Path.Source.relative_fname path fn in
         if is_special kind || Path.Source.is_in_build_dir path || is_temp_file fn
-        then Memo.return List.Skip
-        else
-          let+ is_directory, file =
-            match kind with
-            | S_DIR ->
-              let+ file =
-                File.of_source_path path
-                >>| function
-                | Ok file -> file
-                | Error _ -> File.dummy
-              in
-              true, file
-            | S_LNK ->
-              Fs_memo.path_stat (In_source_dir path)
-              >>| (function
-               | Ok ({ st_kind = S_DIR; _ } as st) -> true, File.of_stats st
-               | Ok _ | Error _ -> false, File.dummy)
-            | _ -> Memo.return (false, File.dummy)
-          in
-          if is_directory then List.Right (fn, file) else Left fn)
-      >>| List.filter_partition_map ~f:Fun.id
+        then List.Skip
+        else (
+          match kind with
+          | S_DIR -> List.Right (`Directory (fn, path))
+          | S_LNK -> List.Right (`Symlink (fn, path))
+          | _ -> List.Left fn))
+    in
+    let+ symlink_files, dirs =
+      match dirs_to_scan with
+      | [] -> Memo.return ([], [])
+      | dirs_to_scan ->
+        Memo.parallel_map dirs_to_scan ~f:(function
+          | `Directory (fn, path) ->
+            let+ file =
+              File.of_source_path path
+              >>| function
+              | Ok file -> file
+              | Error _ -> File.dummy
+            in
+            List.Right (fn, file)
+          | `Symlink (fn, path) ->
+            Fs_memo.path_stat (In_source_dir path)
+            >>| (function
+             | Ok ({ st_kind = S_DIR; _ } as st) -> List.Right (fn, File.of_stats st)
+             | Ok _ | Error _ -> List.Left fn))
+        >>| List.filter_partition_map ~f:Fun.id
+    in
+    let files = Filename.Array.Set.of_sorted_list files in
+    let files =
+      match symlink_files with
+      | [] -> files
+      | symlink_files ->
+        Filename.Array.Set.union files (Filename.Array.Set.of_sorted_list symlink_files)
     in
     let dirs = Filename.Array.Map.of_list_exn dirs in
-    { files = Filename.Array.Set.of_list files; dirs } |> Result.ok
+    { files; dirs } |> Result.ok
 ;;
 
 (* Having a cutoff here speeds up incremental rebuilds quite a bit when a

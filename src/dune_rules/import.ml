@@ -119,6 +119,7 @@ include struct
   module Dialect = Dialect
   module Lib_mode = Lib_mode
   module Module_name = Module_name
+  module Module_reference = Module_reference
   module Preprocess = Preprocess
   module Dune_project = Dune_project
   module File_binding = File_binding

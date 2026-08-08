@@ -160,6 +160,13 @@ module Source = struct
   let name t = Nonempty_list.last t.path
   let path t = t.path
 
+  let logical_path t =
+    match List.rev (Nonempty_list.to_list t.path) with
+    | name :: parent :: rest when Module_name.equal name parent ->
+      Nonempty_list.of_list_exn (List.rev (parent :: rest))
+    | _ -> t.path
+  ;;
+
   let choose_file { files = { impl; intf }; path = _ } =
     match intf, impl with
     | None, None -> assert false
@@ -203,6 +210,7 @@ end
 
 type t =
   { source : Source.t
+  ; logical_path : Module_name.Path.t
   ; obj_name : Module_name.Unique.t
   ; pp : (string list Action_builder.t * Sandbox_config.t) option
   ; visibility : Visibility.t
@@ -212,6 +220,7 @@ type t =
 
 let name t = Source.name t.source
 let path t = t.source.path
+let logical_path t = t.logical_path
 let kind t = t.kind
 let pp_flags t = t.pp
 let install_as t = t.install_as
@@ -251,7 +260,14 @@ let of_source ~install_as ~obj_name ~visibility ~(kind : Kind.t) (source : Sourc
          indication by the caller. *)
       Module_name.Unique.of_path_assuming_needs_no_mangling_allow_invalid file.path
   in
-  { install_as; source; obj_name; pp = None; visibility; kind }
+  { install_as
+  ; source
+  ; logical_path = Source.logical_path source
+  ; obj_name
+  ; pp = None
+  ; visibility
+  ; kind
+  }
 ;;
 
 let has t ~ml_kind =
@@ -294,9 +310,10 @@ let map_files t ~f =
 let src_dir t = Source.src_dir t.source
 let set_pp t pp = { t with pp }
 
-let to_dyn { source; obj_name; pp; visibility; kind; install_as } =
+let to_dyn { source; logical_path; obj_name; pp; visibility; kind; install_as } =
   Dyn.record
     [ "source", Source.to_dyn source
+    ; "logical_path", Module_name.Path.to_dyn logical_path
     ; "obj_name", Module_name.Unique.to_dyn obj_name
     ; "pp", Dyn.(option string) (Option.map ~f:(fun _ -> "has pp") pp)
     ; "visibility", Visibility.to_dyn visibility
@@ -361,7 +378,10 @@ module Obj_map = struct
     end)
 end
 
-let encode ({ source; obj_name; pp = _; visibility; kind; install_as = _ } as t) ~src_dir =
+let encode
+      ({ source; logical_path; obj_name; pp = _; visibility; kind; install_as = _ } as t)
+      ~src_dir
+  =
   let open Dune_lang.Encoder in
   let has_impl = has t ~ml_kind:Impl in
   let kind =
@@ -377,10 +397,16 @@ let encode ({ source; obj_name; pp = _; visibility; kind; install_as = _ } as t)
     | Intf_only
     | Parameter -> Some kind
   in
+  let logical_path =
+    if Module_name.Path.equal logical_path (Source.logical_path source)
+    then []
+    else Module_name.Path.encode logical_path
+  in
   record_fields
     [ field "obj_name" Module_name.Unique.encode obj_name
     ; field "visibility" Visibility.encode visibility
     ; field_o "kind" Kind.encode kind
+    ; field_l "logical_path" Fun.id logical_path
     ; field_l "source" Fun.id (Source.encode ~dir:src_dir source)
     ]
 ;;
@@ -392,6 +418,7 @@ let decode ~src_dir =
     (let+ obj_name = field "obj_name" Module_name.Unique.decode
      and+ visibility = field "visibility" Visibility.decode
      and+ kind = field_o "kind" K.decode
+     and+ logical_path = field_o "logical_path" Module_name.Path.decode
      and+ source = field "source" (Source.decode ~dir:src_dir) in
      let kind =
        match kind with
@@ -399,7 +426,8 @@ let decode ~src_dir =
        | None when Option.is_some source.files.impl -> Impl
        | None -> Intf_only
      in
-     { install_as = None; source; obj_name; pp = None; kind; visibility })
+     let logical_path = Option.value logical_path ~default:(Source.logical_path source) in
+     { install_as = None; source; logical_path; obj_name; pp = None; kind; visibility })
 ;;
 
 let pped =

@@ -213,7 +213,7 @@ let setup sctx ~dir =
     else Preprocess.Pps { loc = Loc.none; pps; flags = []; staged = false }
   in
   let* preprocessing =
-    let preprocess = Module_name.Per_item.for_all pps in
+    let preprocess = Module_reference.Per_item.for_all pps in
     Pp_spec_rules.make
       sctx
       ~dir

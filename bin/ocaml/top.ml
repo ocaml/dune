@@ -196,7 +196,12 @@ module Module = struct
         let module Merlin = Dune_rules.Merlin in
         let pps = Merlin.pp_config merlin ctx ~expander in
         let+ pps, _ = Action_builder.evaluate_and_collect_facts pps in
-        let pp = Dune_lang.Module_name.Per_item.get pps module_name in
+        let pp =
+          Dune_lang.Module_reference.Per_item.find
+            pps
+            ~path:(Dune_rules.Module.logical_path module_)
+            ~name:module_name
+        in
         match pp with
         | None -> None, None
         | Some pp_flags ->

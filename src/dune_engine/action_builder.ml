@@ -49,6 +49,7 @@ module T = struct
     | Map_bind : 'a t * ('a -> 'b) * ('b -> 'c t) -> 'c t
     | Bind_map : 'a t * ('a -> 'b t) * ('b -> 'c) -> 'c t
     | Both : 'a t * 'b t -> ('a * 'b) t
+    | Seq : unit t * 'a t -> 'a t
     | All : 'a t list -> 'a list t
     | All_unit : unit t list -> unit t
     | Of_memo : 'a Memo.t -> 'a t
@@ -110,7 +111,7 @@ module T = struct
   let goal t = Goal t
 
   module O = struct
-    let ( >>> ) a b = map (both a b) ~f:snd
+    let ( >>> ) a b = Seq (a, b)
     let ( >>= ) t f = bind t ~f
     let ( >>| ) t f = map t ~f
     let ( and+ ) = both
@@ -182,6 +183,12 @@ let rec eval : type a m. a t -> m eval_mode -> (a * m) Memo.t =
       Memo.fork_and_join (fun () -> eval a mode) (fun () -> eval b mode)
     in
     (a, b), Deps_or_facts.union mode deps_a deps_b
+  | Seq (a, b) ->
+    let open Memo.O in
+    let+ ((), deps_a), (b, deps_b) =
+      Memo.fork_and_join (fun () -> eval a mode) (fun () -> eval b mode)
+    in
+    b, Deps_or_facts.union mode deps_a deps_b
   | All ts ->
     let open Memo.O in
     let+ res = Memo.parallel_map ts ~f:(fun t -> eval t mode) in

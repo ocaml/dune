@@ -382,19 +382,10 @@ let take_top_entries entries ~top_entry_count =
   take [] top_entry_count entries
 ;;
 
-let insert_top_entry entry entries ~top_entry_count =
-  let _, samples = entry in
-  let rec insert = function
-    | [] -> [ entry ]
-    | ((_, samples') as entry') :: entries ->
-      if samples > samples' then entry :: entry' :: entries else entry' :: insert entries
-  in
-  insert entries |> take_top_entries ~top_entry_count
-;;
-
 let ranked_entries table ~top_entry_count =
-  Table.foldi table ~init:[] ~f:(fun key samples entries ->
-    insert_top_entry (key, samples) entries ~top_entry_count)
+  Table.to_list table
+  |> List.sort ~compare:(fun (_, samples) (_, samples') -> Int.compare samples' samples)
+  |> take_top_entries ~top_entry_count
 ;;
 
 let top_entries by_key ~frame_cache ~sampling_rate ~top_entry_count =

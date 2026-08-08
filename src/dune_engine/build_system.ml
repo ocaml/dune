@@ -173,7 +173,7 @@ module Internal = struct
     Pp.concat [ Pp.text (File_selector.to_dyn file_selector |> Dyn.to_string) ]
   ;;
 
-  let select_sandbox_mode (config : Sandbox_config.t) ~loc ~sandboxing_preference =
+  let select_sandbox_mode (config : Sandbox_config.t) ~rule ~sandboxing_preference =
     (* Rules with (mode patch-back-source-tree) are special and are not affected
        by sandboxing preferences. *)
     match Sandbox_mode.Set.is_patch_back_source_tree_only config with
@@ -186,7 +186,7 @@ module Internal = struct
           if Sys.win32 && preference = Some Sandbox_mode.Symlink
           then
             User_error.raise
-              ~loc
+              ~loc:(Rule.loc rule)
               [ Pp.text
                   "Sandboxing mode symlink is not supported on Windows. Use copy or \
                    hardlink instead."
@@ -201,7 +201,7 @@ module Internal = struct
             modes. However, it can still be reached if multiple sandbox config
             specs are combined into an unsatisfiable one. *)
          User_error.raise
-           ~loc
+           ~loc:(Rule.loc rule)
            [ Pp.text
                "This rule forbids all sandboxing modes (but it also requires sandboxing)"
            ])
@@ -513,7 +513,7 @@ module Internal = struct
       Target_promotion.promote ~targets ~promote ~promote_source
 
   and execute_rule_impl ~rule_kind rule =
-    let { Rule.id = _; targets; mode; action; info = _; loc } = rule in
+    let { Rule.id = _; targets; mode; action; info } = rule in
     let head_target = Targets.Validated.head targets in
     let* execution_parameters =
       match Dpath.Target_dir.of_target targets.root with
@@ -533,13 +533,13 @@ module Internal = struct
     let* action, facts = Action_builder.evaluate_and_collect_facts action in
     let wrap_fiber f =
       Memo.of_reproducible_fiber
-        (if Loc.is_none loc
-         then f ()
-         else
+        (match info with
+         | From_dune_file loc when Loc.is_none loc -> f ()
+         | From_dune_file _ | Internal | Source_file_copy _ ->
            Fiber.with_error_handler f ~on_error:(fun exn ->
              match exn.exn with
              | User_error.E msg when not (User_message.has_location msg) ->
-               let msg = { msg with loc = Some loc } in
+               let msg = { msg with loc = Some (Rule.loc rule) } in
                Exn_with_backtrace.reraise { exn with exn = User_error.E msg }
              | _ -> Exn_with_backtrace.reraise exn))
     in
@@ -551,7 +551,7 @@ module Internal = struct
       let is_action_dynamic = Action.is_dynamic action.action in
       let sandbox_mode =
         select_sandbox_mode
-          ~loc
+          ~rule
           action.sandbox
           ~sandboxing_preference:config.sandboxing_preference
       in
@@ -646,6 +646,7 @@ module Internal = struct
               Fiber.return (produced_targets, dynamic_deps_stages)
             | None ->
               (* Step IV. Execute the build action. *)
+              let loc = Rule.loc rule in
               let* exec_result =
                 execute_action_for_rule
                   ~rule_kind
@@ -865,7 +866,7 @@ module Internal = struct
                [ "targets", Targets.Validated.to_dyn rule.targets ]
          in
          User_error.raise
-           ~loc:rule.loc
+           ~loc:(Rule.loc rule)
            ~needs_stack_trace:true
            [ Pp.textf
                "This rule defines a directory target %S that matches the requested path \

@@ -657,7 +657,8 @@ end = struct
       match rules with
       | [] ->
         { filenames = of_filename_set filenames; dirnames = of_filename_set dirnames }
-      | { Rule.targets; mode; loc; _ } :: rules when Path.Build.equal dir targets.root ->
+      | ({ Rule.targets; mode; _ } as rule) :: rules
+        when Path.Build.equal dir targets.root ->
         let target_filenames = targets.files in
         let target_dirnames = targets.dirs in
         (* Check if this rule defines any file targets that conflict with internal Dune
@@ -667,7 +668,8 @@ end = struct
            Filename.Set.find target_filenames ~f:(Subdir_set.mem build_dir_only_sub_dirs)
          with
          | None -> ()
-         | Some target_name -> report_rule_internal_dir_conflict target_name loc);
+         | Some target_name ->
+           report_rule_internal_dir_conflict target_name (Rule.loc rule));
         (match mode with
          | Standard | Fallback -> iter ~filenames ~dirnames rules
          | Ignore_source_files ->

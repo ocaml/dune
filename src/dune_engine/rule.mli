@@ -58,7 +58,6 @@ type t = private
   ; action : Action.Full.t Action_builder.t
   ; mode : Mode.t
   ; info : Info.t
-  ; loc : Loc.t
   }
 
 include Comparable_intf.S with type key := t

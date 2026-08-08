@@ -199,7 +199,7 @@ let directory_targets (rules : t) =
           Filename.Set.fold ~init:acc rule.targets.dirs ~f:(fun target acc ->
             let target = Path.Build.relative_fname rule.targets.root target in
             Path.Build.Map.update acc target ~f:(function
-              | None -> Some rule.loc
+              | None -> Some (Rule.loc rule)
               | Some loc -> Some loc))))
 ;;
 

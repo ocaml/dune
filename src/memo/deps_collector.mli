@@ -5,6 +5,10 @@ open Node
     storage so that parallel branches can each collect into their own sub-collector. *)
 type t
 
+(** Enable or disable dependency collection globally. Disabling collection preserves the
+    error boundaries around parallel evaluation. *)
+val set_enabled : bool -> unit
+
 val create : unit -> t
 
 (** Run [f x] with [t] as the active collector. *)

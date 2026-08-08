@@ -1241,6 +1241,10 @@ let action_runner t =
 ;;
 
 let init_with_root_and_rpc ~(root : Workspace_root.t) ~rpc_build (builder : Builder.t) =
+  Memo.set_incremental
+    (match builder.watch with
+     | No -> false
+     | Yes _ -> true);
   let c = build root builder in
   No_build.set c.builder.no_build;
   if c.root.dir <> Filename.current_dir_name then Sys.chdir c.root.dir;

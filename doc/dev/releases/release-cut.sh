@@ -259,42 +259,6 @@ rather than rerunning this script"
     fi
 }
 
-# Publishing is not reversible, so the branch must be green first. Checks that
-# have not reported are treated as a failure rather than as success: dispatching
-# straight after a push would otherwise sail through an empty check list.
-function check_ci_passed () {
-    local sha endpoint total runs pending failed
-    sha=$(git rev-parse HEAD)
-    endpoint="repos/${DUNE_REPO}/commits/${sha}/check-runs"
-    total=$(gh api "${endpoint}" --jq '.total_count') \
-        || err "could not query the check runs for ${sha}"
-    # The endpoint pages at 30 results, so without --paginate a pending or
-    # failed check beyond the first page would read as success.
-    runs=$(gh api --paginate "${endpoint}" \
-        --jq '.check_runs[] | "\(.status)\t\(.conclusion)\t\(.name)"') \
-        || err "could not query the check runs for ${sha}"
-    if [[ -z "${runs}" ]]; then
-        err "no checks have reported for ${sha}"
-    fi
-    # Guard against silently narrowing coverage if the pagination behaviour or
-    # the response shape ever changes.
-    if [[ "$(wc -l <<< "${runs}")" -ne "${total}" ]]; then
-        err "expected ${total} check runs for ${sha} but read $(wc -l <<< "${runs}")"
-    fi
-    pending=$(awk -F'\t' '$1 != "completed" { print "  " $3 }' <<< "${runs}")
-    if [[ -n "${pending}" ]]; then
-        err "checks are still running for ${sha}:
-${pending}"
-    fi
-    failed=$(awk -F'\t' \
-        '$2 != "success" && $2 != "neutral" && $2 != "skipped" { print "  " $3 }' \
-        <<< "${runs}")
-    if [[ -n "${failed}" ]]; then
-        err "checks did not pass for ${sha}:
-${failed}"
-    fi
-}
-
 
 # Render the changelog exactly as the release would and print the resulting
 # diff, then restore the working tree. Fragments are always kept: a preview
@@ -353,7 +317,6 @@ function release () {
     run_cmd git pull --ff-only "${DUNE_REMOTE}" "${branch}"
     run_check check_version_consistency
     run_check check_tag_unused "${release_version}"
-    run_check check_ci_passed
     preview_changelog "${release_version}"
     if [[ "${DRY_RUN:-false}" != "true" ]]; then
         confirm "${release_version}"

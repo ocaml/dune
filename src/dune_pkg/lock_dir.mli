@@ -171,18 +171,6 @@ module Make_load (Io : sig
   val load_exn : Path.t -> t Io.t
 end
 
-(** [transitive_dependency_closure t ~platform names] returns the set of package names
-    making up the transitive closure of dependencies of the set [names], or
-    [Error (`Missing_packages missing_packages)] if if any element of [names]
-    is not found in the lockdir. [missing_packages] is a subset of [names]
-    not present in the lockdir. As a package's dependencies may vary between
-    platforms, a description of the current platform must also be provided. *)
-val transitive_dependency_closure
-  :  t
-  -> platform:Solver_env.t
-  -> Package_name.Set.t
-  -> (Package_name.Set.t, [ `Missing_packages of Package_name.Set.t ]) result
-
 (** Attempt to download and compute checksums for packages that have source
     archive urls but no checksum. *)
 val compute_missing_checksums : t -> pinned_packages:Package_name.Set.t -> t Fiber.t

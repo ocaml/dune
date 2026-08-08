@@ -171,9 +171,10 @@ ifeq (dune,$(firstword $(MAKECMDGOALS)))
   $(eval $(RUN_ARGS):;@:)
 endif
 
+# Set PERF to collect user-space instruction counts with perf stat.
 .PHONY: bench
 bench: $(BIN)
-	@$(BIN) exec -- ./bench/bench.exe $(BIN)
+	@$(BIN) exec -- ./bench/bench.exe $(BIN) $(PERF)
 
 .PHONY: dune
 dune: $(BIN)

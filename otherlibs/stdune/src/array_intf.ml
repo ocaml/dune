@@ -29,15 +29,24 @@ module type S = sig
 
     val empty : 'a t
     val is_empty : 'a t -> bool
+    val choose : 'a t -> (key * 'a) option
+    val choose_key : 'a t -> key option
     val mem : 'a t -> key -> bool
     val find : 'a t -> key -> 'a option
     val of_list_exn : (key * 'a) list -> 'a t
     val of_sorted_list_exn : (key * 'a) list -> 'a t
     val union_left_biased : 'a t -> 'a t -> 'a t
     val keys : _ t -> Set.t
+    val of_set : Set.t -> f:(key -> 'a) -> 'a t
+    val values : 'a t -> 'a list
+    val exists : 'a t -> f:('a -> bool) -> bool
+    val foldi : 'a t -> init:'acc -> f:(key -> 'a -> 'acc -> 'acc) -> 'acc
     val filter_mapi : 'a t -> f:(key -> 'a -> 'b option) -> 'b t
+    val mapi : 'a t -> f:(key -> 'a -> 'b) -> 'b t
+    val to_seq : 'a t -> (key * 'a) Seq.t
     val to_list : 'a t -> (key * 'a) list
     val to_list_map : 'a t -> f:(key -> 'a -> 'b) -> 'b list
+    val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
     val equal : 'a t -> 'a t -> equal:('a -> 'a -> bool) -> bool
     val iteri : 'a t -> f:(key -> 'a -> unit) -> unit
   end

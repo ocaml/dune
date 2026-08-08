@@ -936,7 +936,7 @@ module Internal = struct
          Filename_set.create
            ~dir
            ~filter:(File_selector.test_basename g)
-           (Filename.Map.keys files_and_digests |> Filename.Array.Set.of_sorted_list)
+           (Filename.Array.Map.keys files_and_digests)
        | None ->
          (* CR-soon amokhov: I think this case should be an error. If the directory target
             doesn't contain the requested dir, we will currently create an empty directory
@@ -1058,7 +1058,7 @@ let files_of ~dir =
     let filenames =
       let dir = Path.as_in_build_dir_exn dir in
       match Targets.Produced.find_dir path_map dir with
-      | Some files -> Filename.Map.keys files |> Filename.Array.Set.of_sorted_list
+      | Some files -> Filename.Array.Map.keys files
       | None -> Filename.Array.Set.empty
     in
     Filename_set.create ~dir filenames

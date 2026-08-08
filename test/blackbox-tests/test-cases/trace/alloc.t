@@ -49,6 +49,11 @@ The alloc sampler is only enabled when the alloc trace category is requested:
   >             ((keys | sort) == ["estimated_words", "frame", "samples", "source"]
   >              and (.source | type == "string")
   >              and (.frame | type == "string"))))
+  >     , rankings_are_sorted:
+  >         all($heaps[];
+  >           all([.top, .by_site, .by_frame][];
+  >             [.[].samples] as $samples
+  >             | $samples == ($samples | sort | reverse)))
   >     }
   >   ]'
   [
@@ -88,7 +93,8 @@ The alloc sampler is only enabled when the alloc trace category is requested:
         ]
       },
       "entries_have_sources_and_traces": true,
-      "frame_entries_have_sources_and_locations": true
+      "frame_entries_have_sources_and_locations": true,
+      "rankings_are_sorted": true
     },
     {
       "name": "summary",
@@ -126,7 +132,8 @@ The alloc sampler is only enabled when the alloc trace category is requested:
         ]
       },
       "entries_have_sources_and_traces": true,
-      "frame_entries_have_sources_and_locations": true
+      "frame_entries_have_sources_and_locations": true,
+      "rankings_are_sorted": true
     }
   ]
 

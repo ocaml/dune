@@ -40,11 +40,17 @@ module Connection = struct
       connect_sock sock
       >>| (function
        | Ok s -> Ok s
-       | Error exn ->
+       | Error ({ Exn_with_backtrace.exn; _ } as exn_with_backtrace) ->
+         let details =
+           match exn with
+           | Unix.Unix_error (error, syscall, arg) ->
+             Unix_error.Detailed.pp_reason (error, syscall, arg)
+           | _ -> Exn_with_backtrace.pp exn_with_backtrace
+         in
          Error
            (User_error.make
               [ Pp.textf "failed to connect to RPC server %s" (Where.to_string where)
-              ; Exn_with_backtrace.pp exn
+              ; details
               ]))
   ;;
 

@@ -259,6 +259,8 @@ module Sorted = struct
         | _ -> true
       ;;
 
+      let iter { values; _ } ~f = Stdlib.Array.iter f values
+
       let iteri { keys; values } ~f =
         for i = 0 to Array.length keys - 1 do
           f keys.(i) values.(i)
@@ -334,14 +336,13 @@ module Sorted = struct
       ;;
 
       let keys t = t.keys
+      let values t = Stdlib.Array.to_list t.values
 
       let of_set set ~f =
         { keys = set
         ; values = Array.init (Array.length set) (fun i -> f (Array.get set i))
         }
       ;;
-
-      let values t = Stdlib.Array.to_list t.values
 
       let exists t ~f =
         let rec loop i =

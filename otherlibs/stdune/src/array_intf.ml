@@ -37,8 +37,8 @@ module type S = sig
     val of_sorted_list_exn : (key * 'a) list -> 'a t
     val union_left_biased : 'a t -> 'a t -> 'a t
     val keys : _ t -> Set.t
-    val of_set : Set.t -> f:(key -> 'a) -> 'a t
     val values : 'a t -> 'a list
+    val of_set : Set.t -> f:(key -> 'a) -> 'a t
     val exists : 'a t -> f:('a -> bool) -> bool
     val foldi : 'a t -> init:'acc -> f:(key -> 'a -> 'acc -> 'acc) -> 'acc
     val filter_mapi : 'a t -> f:(key -> 'a -> 'b option) -> 'b t
@@ -48,6 +48,7 @@ module type S = sig
     val to_list_map : 'a t -> f:(key -> 'a -> 'b) -> 'b list
     val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
     val equal : 'a t -> 'a t -> equal:('a -> 'a -> bool) -> bool
+    val iter : 'a t -> f:('a -> unit) -> unit
     val iteri : 'a t -> f:(key -> 'a -> unit) -> unit
   end
 end

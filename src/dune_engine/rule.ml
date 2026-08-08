@@ -67,13 +67,21 @@ module T = struct
     ; action : Action.Full.t Action_builder.t
     ; mode : Mode.t
     ; info : Info.t
-    ; loc : Loc.t
     }
 
   let compare a b = Id.compare a.id b.id
   let equal a b = Id.equal a.id b.id
   let hash t = Id.hash t.id
-  let loc t = t.loc
+
+  let loc { info; targets; _ } =
+    match info with
+    | From_dune_file loc -> loc
+    | Internal ->
+      Loc.in_file
+        (Path.drop_optional_build_context
+           (Path.build (Path.Build.relative targets.root "_unknown_")))
+    | Source_file_copy p -> Loc.in_file (Path.source p)
+  ;;
 
   let repr =
     Repr.record
@@ -117,16 +125,7 @@ let make ?(mode = Mode.Standard) ?(info = Info.Internal) ~targets action =
            "%S is declared as both a file and a directory target."
            (Dpath.describe_target path))
   in
-  let loc =
-    match info with
-    | From_dune_file loc -> loc
-    | Internal ->
-      Loc.in_file
-        (Path.drop_optional_build_context
-           (Path.build (Path.Build.relative targets.root "_unknown_")))
-    | Source_file_copy p -> Loc.in_file (Path.source p)
-  in
-  { id = Id.gen (); targets; action; mode; info; loc }
+  { id = Id.gen (); targets; action; mode; info }
 ;;
 
 let set_action t action =

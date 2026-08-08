@@ -63,6 +63,7 @@ let%expect_test "array-backed map" =
   print_map (Map.filter_mapi map ~f:(fun _ _ -> None));
   print_set (Map.keys map);
   Map.to_list_map map ~f:(fun key value -> sprintf "%s:%d" key value) |> print_string_list;
+  Map.values map |> list int |> print_dyn;
   let bindings = ref [] in
   Map.iteri map ~f:(fun key value -> bindings := sprintf "%s=%d" key value :: !bindings);
   List.rev !bindings |> print_string_list;
@@ -93,6 +94,7 @@ true
 []
 [ "a"; "b" ]
 [ "a:1"; "b:2" ]
+[ 1; 2 ]
 [ "a=1"; "b=2" ]
 true
 false

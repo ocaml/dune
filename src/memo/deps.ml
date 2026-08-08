@@ -15,19 +15,49 @@ module Static = struct
     | Seq of 'node t Array.Immutable.t
     | Par of 'node t Array.Immutable.t
 
-  (* Flatten a chronological list of sections into a sequence, flattening nested [Seq]s:
-     (x ; (y ; z)) = (x ; y ; z). *)
-  let flatten_seqs (sections : 'node t list) : 'node t =
-    let flat =
-      List.concat_map sections ~f:(function
-        | Empty -> []
-        | Seq arr -> Array.Immutable.to_list arr
-        | (Singleton _ | Par _) as t -> [ t ])
+  let seq_section_length = function
+    | Empty -> 0
+    | Seq arr -> Array.Immutable.length arr
+    | Singleton _ | Par _ -> 1
+  ;;
+
+  let rec first_seq_element = function
+    | [] -> Code_error.raise "Deps.Static.flatten_seqs: nonempty section expected" []
+    | Empty :: sections -> first_seq_element sections
+    | Seq arr :: _ -> Array.Immutable.get arr 0
+    | ((Singleton _ | Par _) as section) :: _ -> section
+  ;;
+
+  let copy_seq_section section ~dst ~pos =
+    match section with
+    | Empty -> ()
+    | Seq arr ->
+      Stdlib.Array.blit
+        (Array.Immutable.to_array_unsafe arr)
+        0
+        dst
+        pos
+        (Array.Immutable.length arr)
+    | (Singleton _ | Par _) as section -> dst.(pos) <- section
+  ;;
+
+  (* Dynamic sections are most-recent-first, so flatten them directly into their final array
+     by filling it from the end. *)
+  let flatten_seqs_rev (sections : 'node t list) : 'node t =
+    let length =
+      List.fold_left sections ~init:0 ~f:(fun length section ->
+        length + seq_section_length section)
     in
-    match flat with
-    | [] -> Empty
-    | [ t ] -> t
-    | _ :: _ :: _ -> Seq (Array.Immutable.of_list flat)
+    match length with
+    | 0 -> Empty
+    | 1 -> first_seq_element sections
+    | length ->
+      let flat = Array.make length (first_seq_element sections) in
+      let pos = ref length in
+      List.iter sections ~f:(fun section ->
+        pos := !pos - seq_section_length section;
+        copy_seq_section section ~dst:flat ~pos:!pos);
+      Seq (Array.Immutable.of_array_unsafe flat)
   ;;
 
   (* Flatten a parallel section of [num_threads] threads, where thread [i]'s section is
@@ -74,9 +104,8 @@ module Dynamic = struct
     | section -> section :: t
   ;;
 
-  (* The list is most-recent-first, so reverse it to chronological order before flattening
-     the sequence. *)
-  let to_static (t : 'node t) : 'node Static.t = Static.flatten_seqs (List.rev t)
+  (* The list is most-recent-first, so flatten it into the array from the end. *)
+  let to_static (t : 'node t) : 'node Static.t = Static.flatten_seqs_rev t
 end
 
 (* Note that dependencies should be checked in the order in which they were depended on to

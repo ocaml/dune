@@ -64,41 +64,29 @@ let rules (ocaml : Ocaml_toolchain.t) ~dir ~sandbox ~units =
     else
       []
   in
-  let open Action_builder.O in
-  let action =
-    let+ action =
-      Command.run' ?sandbox
-        ~dir:(Path.build dir) ocaml.ocamlobjinfo
-        (List.concat
-           [ no_approx
-           ; no_code
-           ; [ Deps units ]
-           ])
-    in
-    { Rule.Anonymous_action.action
-    ; loc = Loc.none
-    ; dir
-    }
+  let anon =
+    Command.run' ?sandbox
+      ~dir:(Path.build dir) ocaml.ocamlobjinfo
+      (List.concat
+         [ no_approx
+         ; no_code
+         ; [ Deps units ]
+         ])
+    |> Rule.Anonymous_action.make ~dir
   in
-  Dune_engine.Build_system.execute_action_stdout action
+  Dune_engine.Build_system.execute_action_stdout anon
   |> Memo.map ~f:parse
   |> Action_builder.of_memo
 ;;
 
 let archive_rules (ocaml : Ocaml_toolchain.t) ~dir ~sandbox ~archive =
-  let action =
-    let open Action_builder.O in
-    let+ action =
-      Command.run' ?sandbox
-        ~dir:(Path.build dir) ocaml.ocamlobjinfo
-        [ Dep archive ]
-    in
-    { Rule.Anonymous_action.action
-    ; loc = Loc.none
-    ; dir
-    }
+  let anon =
+    Command.run' ?sandbox
+      ~dir:(Path.build dir) ocaml.ocamlobjinfo
+      [ Dep archive ]
+    |> Rule.Anonymous_action.make ~dir
   in
-  Dune_engine.Build_system.execute_action_stdout action
+  Dune_engine.Build_system.execute_action_stdout anon
   |> Memo.map ~f:parse_archive
   |> Action_builder.of_memo
 }

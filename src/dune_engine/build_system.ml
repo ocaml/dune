@@ -323,7 +323,7 @@ module Internal = struct
 
   module Anonymous_action = struct
     type t =
-      { action : Rule.Anonymous_action.t
+      { action : Rule.Anonymous_action.Evaluated.t
       ; deps : Dep.Set.t
       ; capture_stdout : bool
       ; digest : Digest.t
@@ -333,7 +333,7 @@ module Internal = struct
     let hash t = Digest.hash t.digest
 
     let to_dyn t : Dyn.t =
-      Record [ "digest", Digest.to_dyn t.digest; "loc", Loc.to_dyn t.action.loc ]
+      Record [ "digest", Digest.to_dyn t.digest; "loc", Loc.to_dyn t.action.anon.loc ]
     ;;
   end
 
@@ -705,20 +705,22 @@ module Internal = struct
 
   (* Returns the action's stdout or the empty string if [capture_stdout = false]. *)
   and execute_action_generic_stage2_impl
-        { Anonymous_action.action = { dir; loc; action }; deps; capture_stdout; digest }
+        { Anonymous_action.action = { anon; action; _ }; deps; capture_stdout; digest }
     =
     let target =
       let dir =
-        Path.Build.append_local Dpath.Build.anonymous_actions_dir (Path.Build.local dir)
+        Path.Build.append_local
+          Dpath.Build.anonymous_actions_dir
+          (Path.Build.local anon.dir)
       in
       Path.Build.relative dir (Digest.to_string digest)
     in
     let rule =
-      Rule.make
-        ~info:(if Loc.is_none loc then Internal else From_dune_file loc)
+      Rule.Anonymous_action.to_rule
         ~targets:(Targets.File.create target)
         ~mode:Standard
-        (Action_builder.record action deps ~f:build_dep)
+        anon
+      |> Fun.flip Rule.set_action (Action_builder.record action deps ~f:build_dep)
     in
     let+ { facts = _; targets = _ } =
       execute_rule_impl
@@ -727,11 +729,7 @@ module Internal = struct
     in
     if capture_stdout then Io.read_file (Path.build target) else ""
 
-  and execute_action_generic
-        ~observing_facts
-        (act : Rule.Anonymous_action.t)
-        ~capture_stdout
-    =
+  and execute_action_generic (anon : Rule.Anonymous_action.Evaluated.t) ~capture_stdout =
     (* We memoize the execution of anonymous actions, both via the persistent
        mechanism for not re-running build rules between invocations of [dune
        build] and via [Memo]. The former is done by producing a normal build
@@ -747,6 +745,13 @@ module Internal = struct
        only depend on the action. If the two execution could run concurrently,
        then they would both try to create the same file. So in this regard, we
        use [Memo] mostly for synchronisation purposes. *)
+    let { Rule.Anonymous_action.Evaluated.anon = { dir; _ }
+        ; facts = observing_facts
+        ; action = { action; env; locks; can_go_in_shared_cache; sandbox; corrections }
+        }
+      =
+      anon
+    in
     (* Here we "forget" the facts about the world. We do that to make the input
        of the memoized function smaller. If we passed the whole [original_facts]
        as input, then we would end up memoizing one entry per set of facts. This
@@ -758,14 +763,6 @@ module Internal = struct
     let observing_facts = () in
     ignore observing_facts;
     let digest =
-      let { Rule.Anonymous_action.action =
-              { action; env; locks; can_go_in_shared_cache; sandbox; corrections }
-          ; loc = _
-          ; dir
-          }
-        =
-        act
-      in
       let digest =
         let d = Digest.Manual.create () in
         Digest.Manual.int d rule_digest_version;
@@ -798,17 +795,16 @@ module Internal = struct
        the execution and avoid such a race condition. *)
     Memo.exec
       (Lazy.force execute_action_generic_stage2_memo)
-      { Anonymous_action.action = act; deps; capture_stdout; digest }
+      { Anonymous_action.action = anon; deps; capture_stdout; digest }
 
-  and execute_action ~observing_facts act =
-    let+ (_empty_string : string) =
-      execute_action_generic ~observing_facts act ~capture_stdout:false
-    in
+  and execute_action anon =
+    let+ (_empty_string : string) = execute_action_generic anon ~capture_stdout:false in
     ()
 
-  and execute_action_stdout action =
-    let* action, observing_facts = Action_builder.evaluate_and_collect_facts action in
-    execute_action_generic ~observing_facts action ~capture_stdout:true
+  and execute_action_stdout (anon : Rule.Anonymous_action.t) =
+    let* action, facts = Action_builder.evaluate_and_collect_facts anon.action in
+    let anon = Rule.Anonymous_action.Evaluated.make ~action ~facts anon in
+    execute_action_generic anon ~capture_stdout:true
 
   (* A rule can have multiple targets but calls to [execute_rule] are memoized,
      so the rule will be executed only once. *)
@@ -874,14 +870,13 @@ module Internal = struct
                target
            ])
 
-  and execute_anonymous_action action =
-    let* action, facts = Action_builder.evaluate_and_collect_facts action in
-    execute_action action ~observing_facts:facts
+  and execute_anonymous_action (anon : Rule.Anonymous_action.t) =
+    let* action, facts = Action_builder.evaluate_and_collect_facts anon.action in
+    let anon = Rule.Anonymous_action.Evaluated.make ~action ~facts anon in
+    execute_action anon
 
-  and dep_on_anonymous_action (action : Rule.Anonymous_action.t Action_builder.t)
-    : unit Action_builder.t
-    =
-    Action_builder.record_success (Memo.of_thunk_apply execute_anonymous_action action)
+  and dep_on_anonymous_action (anon : Rule.Anonymous_action.t) : unit Action_builder.t =
+    Action_builder.record_success (Memo.of_thunk_apply execute_anonymous_action anon)
 
   and dep_on_alias_definition (definition : Rules.Dir_rules.Alias_spec.item) =
     match definition with
@@ -1014,7 +1009,8 @@ module Internal = struct
                frame
                ~of_:(Memo.Table.spec (Lazy.force execute_action_generic_stage2_memo)))
             ~f:(fun (x : Anonymous_action.t) ->
-              Option.some_if (not @@ Loc.is_none x.action.loc) x.action.loc)))
+              let loc = x.action.anon.loc in
+              Option.some_if (not @@ Loc.is_none loc) loc)))
   ;;
 end
 

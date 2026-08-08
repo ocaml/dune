@@ -89,8 +89,7 @@ end
 include T
 include Comparable.Make (T)
 
-let make ?(mode = Mode.Standard) ?(info = Info.Internal) ~targets action =
-  let action = Action_builder.memoize "Rule.make" action in
+let validate_targets ~(info : Info.t) targets =
   let report_error ?(extra_pp = []) message =
     match info with
     | From_dune_file loc ->
@@ -101,22 +100,24 @@ let make ?(mode = Mode.Standard) ?(info = Info.Internal) ~targets action =
         message
         [ "info", Info.to_dyn info; "targets", Targets.to_dyn targets ]
   in
-  let targets =
-    match Targets.validate targets with
-    | Valid targets -> targets
-    | No_targets -> report_error "Rule has no targets specified"
-    | Inconsistent_parent_dir ->
-      (* user written actions have their own validation step that also works
+  match Targets.validate targets with
+  | Valid targets -> targets
+  | No_targets -> report_error "Rule has no targets specified"
+  | Inconsistent_parent_dir ->
+    (* user written actions have their own validation step that also works
          with the target inference mechanism *)
-      Code_error.raise
-        "Rule has targets in different directories."
-        [ "targets", Targets.to_dyn targets ]
-    | File_and_directory_target_with_the_same_name path ->
-      report_error
-        (sprintf
-           "%S is declared as both a file and a directory target."
-           (Dpath.describe_target path))
-  in
+    Code_error.raise
+      "Rule has targets in different directories."
+      [ "targets", Targets.to_dyn targets ]
+  | File_and_directory_target_with_the_same_name path ->
+    report_error
+      (sprintf
+         "%S is declared as both a file and a directory target."
+         (Dpath.describe_target path))
+;;
+
+let make ?(mode = Mode.Standard) ?(info = Info.Internal) ~targets action =
+  let targets = validate_targets ~info targets in
   let loc =
     match info with
     | From_dune_file loc -> loc
@@ -135,9 +136,58 @@ let set_action t action =
 ;;
 
 module Anonymous_action = struct
-  type t =
-    { action : Action.Full.t
-    ; loc : Loc.t
-    ; dir : Path.Build.t
+  module Rule = T
+
+  module T = struct
+    type t =
+      { id : Id.t
+      ; action : Action.Full.t Action_builder.t
+      ; info : Info.t
+      ; loc : Loc.t
+      ; dir : Path.Build.t
+      }
+
+    let compare a b = Id.compare a.id b.id
+    let equal a b = Id.equal a.id b.id
+    let hash t = Id.hash t.id
+    let loc t = t.loc
+
+    let repr =
+      Repr.record
+        "anonymous_action"
+        [ Repr.field "id" (Repr.abstract Id.to_dyn) ~get:(fun t -> t.id) ]
+    ;;
+
+    let to_dyn = Repr.to_dyn repr
+  end
+
+  include T
+  include Comparable.Make (T)
+
+  let make ?(loc = Loc.none) ~dir action =
+    { id = Id.gen ()
+    ; action
+    ; info = (if Loc.is_none loc then Internal else From_dune_file loc)
+    ; loc
+    ; dir
     }
+  ;;
+
+  let to_rule ~targets ?(mode = Mode.Standard) { id; action; info; loc; dir = _ } =
+    let targets = validate_targets ~info targets in
+    { Rule.id; targets; action; mode; info; loc }
+  ;;
+
+  module Map = Import.Map.Make (T)
+  module Set = Import.Set.Make (T) (Map)
+
+  module Evaluated = struct
+    type t =
+      { anon : T.t
+      ; action : Action.Full.t
+      ; facts : Dep.Facts.t
+      }
+
+    let make ~action ~facts anon = { anon; action; facts }
+  end
 end

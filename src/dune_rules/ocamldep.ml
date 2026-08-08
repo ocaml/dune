@@ -53,12 +53,12 @@ let ocamldep_action ~sandbox ~sctx ~dir ~ml_kind unit =
     | None -> Action_builder.return [], sandbox, true
     | Some (flags, sandbox) -> flags, sandbox, false
   in
-  let open Action_builder.O in
-  let* ocamldep =
-    let+ ocaml = Action_builder.of_memo (Context.ocaml context) in
-    ocaml.ocamldep
-  in
-  let+ action =
+  let action =
+    let open Action_builder.O in
+    let* ocamldep =
+      let+ ocaml = Action_builder.of_memo (Context.ocaml context) in
+      ocaml.ocamldep
+    in
     let source = Option.value_exn (Module.source unit ~ml_kind) in
     let env =
       (* CR-someday rgrinberg: consider getting rid of this *)
@@ -78,7 +78,7 @@ let ocamldep_action ~sandbox ~sctx ~dir ~ml_kind unit =
       ; Dep (Module.File.path source)
       ]
   in
-  { Rule.Anonymous_action.action; loc = Loc.none; dir }
+  Rule.Anonymous_action.make ~loc:Loc.none ~dir action
 ;;
 
 (* Top-level cache per (source path, ml_kind). Without it, each caller's

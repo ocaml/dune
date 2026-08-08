@@ -52,6 +52,13 @@ module T = struct
     | All : 'a t list -> 'a list t
     | All_unit : unit t list -> unit t
     | Of_memo : 'a Memo.t -> 'a t
+    | Map_memo : 'a Memo.t * ('a -> 'b) -> 'b t
+    | Map_memo2 : 'a Memo.t * ('a -> 'b) * ('b -> 'c) -> 'c t
+    | Map_memo3 : 'a Memo.t * ('a -> 'b) * ('b -> 'c) * ('c -> 'd) -> 'd t
+    | Bind_memo : 'a Memo.t * ('a -> 'b t) -> 'b t
+    | Bind_memo2 : 'a Memo.t * ('a -> 'b t) * ('b -> 'c t) -> 'c t
+    | Bind_memo3 : 'a Memo.t * ('a -> 'b t) * ('b -> 'c t) * ('c -> 'd t) -> 'd t
+    | Bind_memo_map : 'a Memo.t * ('a -> 'b t) * ('b -> 'c) -> 'c t
     | Record :
         { res : 'a
         ; deps : Dep.Set.t
@@ -71,6 +78,10 @@ module T = struct
   let map : type a b. a t -> f:(a -> b) -> b t =
     fun t ~f ->
     match t with
+    | Of_memo memo -> Map_memo (memo, f)
+    | Map_memo (memo, f1) -> Map_memo2 (memo, f1, f)
+    | Map_memo2 (memo, f1, f2) -> Map_memo3 (memo, f1, f2, f)
+    | Bind_memo (memo, f1) -> Bind_memo_map (memo, f1, f)
     | Map (t, f1) -> Map2 (t, f1, f)
     | Map2 (t, f1, f2) -> Map3 (t, f1, f2, f)
     | Bind (t, f1) -> Bind_map (t, f1, f)
@@ -80,6 +91,9 @@ module T = struct
   let bind : type a b. a t -> f:(a -> b t) -> b t =
     fun t ~f ->
     match t with
+    | Of_memo memo -> Bind_memo (memo, f)
+    | Bind_memo (memo, f1) -> Bind_memo2 (memo, f1, f)
+    | Bind_memo2 (memo, f1, f2) -> Bind_memo3 (memo, f1, f2, f)
     | Bind (t, f1) -> Bind2 (t, f1, f)
     | Bind2 (t, f1, f2) -> Bind3 (t, f1, f2, f)
     | Map (t, f1) -> Map_bind (t, f1, f)
@@ -189,6 +203,41 @@ let rec eval : type a m. a t -> m eval_mode -> (a * m) Memo.t =
     let open Memo.O in
     let+ x = memo in
     x, Deps_or_facts.empty mode
+  | Map_memo (memo, f) ->
+    let open Memo.O in
+    let+ x = memo in
+    Deps_or_facts.return (f x) mode
+  | Map_memo2 (memo, f1, f2) ->
+    let open Memo.O in
+    let+ x = memo in
+    Deps_or_facts.return (f2 (f1 x)) mode
+  | Map_memo3 (memo, f1, f2, f3) ->
+    let open Memo.O in
+    let+ x = memo in
+    Deps_or_facts.return (f3 (f2 (f1 x))) mode
+  | Bind_memo (memo, f) ->
+    let open Memo.O in
+    let* x = memo in
+    eval (f x) mode
+  | Bind_memo2 (memo, f1, f2) ->
+    let open Memo.O in
+    let* x = memo in
+    let* y, deps1 = eval (f1 x) mode in
+    let+ z, deps2 = eval (f2 y) mode in
+    z, Deps_or_facts.union mode deps1 deps2
+  | Bind_memo3 (memo, f1, f2, f3) ->
+    let open Memo.O in
+    let* x = memo in
+    let* y, deps1 = eval (f1 x) mode in
+    let* z, deps2 = eval (f2 y) mode in
+    let+ result, deps3 = eval (f3 z) mode in
+    let deps = Deps_or_facts.union mode deps1 deps2 in
+    result, Deps_or_facts.union mode deps deps3
+  | Bind_memo_map (memo, f1, f2) ->
+    let open Memo.O in
+    let* x = memo in
+    let+ y, deps = eval (f1 x) mode in
+    f2 y, deps
   | Record { res; deps; f } ->
     (match mode with
      | Lazy -> Memo.return (res, deps)

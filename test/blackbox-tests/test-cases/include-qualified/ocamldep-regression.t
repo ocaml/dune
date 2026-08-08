@@ -47,8 +47,12 @@ We also forbid submodules from depending on their interface modules:
 Or their parent interface modules:
 
   $ rm -rf baz
+  $ cat >a.ml <<EOF
+  > let f = ()
+  > EOF
   $ mkdir -p baz/foo/
   $ cat >baz/foo/z.ml <<EOF
+  > let () = A.f
   > let () = Baz.f
   > EOF
   $ dune build

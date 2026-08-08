@@ -552,14 +552,12 @@ module Produced = struct
   ;;
 
   let digest { contents; root = _ } =
-    let rec all_digests { files; subdirs } =
-      let ffiles = Filename.Array.Map.values files in
-      List.concat
-        (ffiles
-         :: Filename.Array.Map.to_list_map subdirs ~f:(fun _ dir -> all_digests dir))
-    in
     let d = Digest.Manual.create () in
-    Digest.Manual.list d (all_digests contents) ~f:Digest.Manual.digest;
+    let rec loop { files; subdirs } =
+      Filename.Array.Map.iter files ~f:(Digest.Manual.digest d);
+      Filename.Array.Map.iter subdirs ~f:loop
+    in
+    loop contents;
     Digest.Manual.get d
   ;;
 

@@ -18,6 +18,23 @@ let%expect_test "basics" =
   [%expect {| () |}]
 ;;
 
+let%expect_test "fibers are reusable and thunks run during execution" =
+  let runs = ref 0 in
+  let fiber =
+    Fiber.of_thunk (fun () ->
+      incr runs;
+      Fiber.return !runs)
+  in
+  printfn "before: %d" !runs;
+  test int fiber;
+  test int fiber;
+  [%expect
+    {|
+    before: 0
+    1
+    2 |}]
+;;
+
 let%expect_test "collect_errors" =
   test (backtrace_result unit) (Fiber.collect_errors (fun () -> raise Exit));
   [%expect {| Error [ { exn = "Stdlib.Exit"; backtrace = "" } ] |}]

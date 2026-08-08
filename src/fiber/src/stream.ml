@@ -99,26 +99,34 @@ module In = struct
     loop t ~f
   ;;
 
-  let parallel_iter t ~f k =
+  let run_parallel_iter t f k =
     let n = ref 1 in
-    let k () =
+    let done_ () =
       decr n;
       if !n = 0
       then (
         unlock t;
-        k ())
+        continue k ())
       else end_of_fiber
     in
     let rec loop t =
-      t.read () (function
-        | None -> k ()
-        | Some x ->
-          incr n;
-          fork (fun () -> f x k) (fun () -> loop t))
+      apply_t
+        t.read
+        ()
+        (Function
+           (function
+             | None -> done_ ()
+             | Some x ->
+               incr n;
+               (match apply_t f x (Function done_) with
+                | End_of_fiber () -> loop t
+                | eff -> Fork (eff, Function_work (fun () -> loop t)))))
     in
     lock t;
     loop t
   ;;
+
+  let parallel_iter t ~f = primitive2 run_parallel_iter t f
 end
 
 module Out = struct

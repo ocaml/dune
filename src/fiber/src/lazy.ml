@@ -60,8 +60,15 @@ let is_value t =
   | Running _ | Init _ -> false
 ;;
 
+let stop = End
+
+let run_force t v f k =
+  match eval (execute t v f) stop with
+  | End_of_fiber () -> continue k ()
+  | eff -> Fork (eff, Continue_work k)
+;;
+
 let force_all_unit =
-  let stop () = end_of_fiber in
   (* Fork all computations that haven't been forced yet. Note that this should be
      substantially more efficient that [parallel_map ~f:force] since we ignore
      computations which have already been forced. *)
@@ -71,7 +78,7 @@ let force_all_unit =
       | Done _ | Running _ -> return ()
       | Init f ->
         let v = prep t in
-        fun k -> fork (fun () -> (execute t v f) stop) k)
+        primitive3 run_force t v f)
   in
   (* Wait for all computations, collecting all exceptions.  *)
   (* CR-someday rgrinberg: use [Appendable.t] for [acc] rather than [Appendable.t option]. *)

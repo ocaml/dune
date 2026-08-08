@@ -25,8 +25,8 @@ type fill = Scheduler.fill = Fill : 'a ivar * 'a -> fill
 module Expert = struct
   type nonrec 'a k = 'a k
 
-  let suspend f k = suspend f k
-  let resume a x k = resume a x k
+  let suspend = suspend
+  let resume = resume
 end
 
 module Temp = Stdune.Temp.Monad (struct

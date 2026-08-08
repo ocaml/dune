@@ -21,26 +21,30 @@ let create_full x =
   { value = Some x; writers = Queue.create (); readers = Queue.create () }
 ;;
 
-let read t k =
+let run_read t k =
   match t.value with
-  | None -> suspend (fun k -> Queue.push t.readers k) k
+  | None -> Suspend ((fun k -> Queue.push t.readers k), k)
   | Some v ->
     (match Queue.pop t.writers with
      | None ->
        t.value <- None;
-       k v
+       continue k v
      | Some (v', w) ->
        t.value <- Some v';
-       resume w () (fun () -> k v))
+       Resume (w, (), Map ((fun () -> v), k)))
 ;;
 
-let write t x k =
+let read t = primitive run_read t
+
+let run_write t x k =
   match t.value with
-  | Some _ -> suspend (fun k -> Queue.push t.writers (x, k)) k
+  | Some _ -> Suspend ((fun k -> Queue.push t.writers (x, k)), k)
   | None ->
     (match Queue.pop t.readers with
      | None ->
        t.value <- Some x;
-       k ()
-     | Some r -> resume r x (fun () -> k ()))
+       continue k ()
+     | Some r -> Resume (r, x, Map ((fun () -> ()), k)))
 ;;
+
+let write t x = primitive2 run_write t x

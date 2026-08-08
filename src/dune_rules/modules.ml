@@ -1166,6 +1166,17 @@ module With_vlib = struct
       | Parent_cycle -> Error `Parent_cycle
   ;;
 
+  let find_deps t ~of_ names =
+    let rec loop acc = function
+      | [] -> Ok (List.rev acc)
+      | name :: names ->
+        (match find_dep t ~of_ name with
+         | Ok modules -> loop (List.rev_append modules acc) names
+         | Error `Parent_cycle -> Error (`Parent_cycle name))
+    in
+    loop [] names
+  ;;
+
   let implicit_deps t ~of_ =
     match t with
     | Impl _ -> []

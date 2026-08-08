@@ -230,9 +230,51 @@ module Rule_cache = struct
   ;;
 end
 
+module Anonymous_cache = struct
+  module Entry = struct
+    type t =
+      { rule_digest : Digest.t
+      ; dynamic_deps_stages : (Dep.Set.t * Digest.t) list
+      }
+
+    let repr =
+      Repr.record
+        "anonymous-action-cache-entry"
+        [ Repr.field "rule_digest" digest_repr ~get:(fun t -> t.rule_digest)
+        ; Repr.field
+            "dynamic_deps_stages"
+            (Repr.list (Repr.pair (Repr.abstract Dep.Set.to_dyn) digest_repr))
+            ~get:(fun t -> t.dynamic_deps_stages)
+        ]
+    ;;
+  end
+
+  type t =
+    { entries : Entry.t Digest.Table.t
+    ; results : string Digest.Table.t
+    }
+
+  let repr =
+    Repr.record
+      "anonymous-action-cache"
+      [ Repr.field
+          "entries"
+          (Repr.abstract (Digest.Table.to_dyn (Repr.to_dyn Entry.repr)))
+          ~get:(fun t -> t.entries)
+      ; Repr.field
+          "results"
+          (Repr.abstract (Digest.Table.to_dyn Dyn.string))
+          ~get:(fun t -> t.results)
+      ]
+  ;;
+
+  let create () = { entries = Digest.Table.create 128; results = Digest.Table.create 128 }
+end
+
 type t =
   { fs_memo : Fs_memo.t
   ; rule_cache : Rule_cache.t
+  ; anonymous : Anonymous_cache.t
   }
 
 let file = Path.relative Path.build_dir ".db"
@@ -243,6 +285,7 @@ let repr =
     "workspace-cache"
     [ Repr.field "fs_memo" Fs_memo.repr ~get:(fun t -> t.fs_memo)
     ; Repr.field "rule_cache" Rule_cache.repr ~get:(fun t -> t.rule_cache)
+    ; Repr.field "anonymous" Anonymous_cache.repr ~get:(fun t -> t.anonymous)
     ]
 ;;
 
@@ -250,7 +293,7 @@ module P = Persistent.Make (struct
     type nonrec t = t
 
     let name = "WORKSPACE-CACHE"
-    let version = 3
+    let version = 4
     let sharing = true
     let repr = repr
   end)
@@ -258,7 +301,12 @@ module P = Persistent.Make (struct
 let cache =
   lazy
     (match P.load file with
-     | None -> { fs_memo = Fs_memo.create (); rule_cache = Rule_cache.create () }, false
+     | None ->
+       ( { fs_memo = Fs_memo.create ()
+         ; rule_cache = Rule_cache.create ()
+         ; anonymous = Anonymous_cache.create ()
+         }
+       , false )
      | Some t -> t, true)
 ;;
 
@@ -277,6 +325,25 @@ let dump () =
         P.dump file (get ());
         Fpath.unlink_no_err (Path.to_string old_digest_file)))
 ;;
+
+module Anonymous = struct
+  module Entry = Anonymous_cache.Entry
+
+  let find_entry digest = Digest.Table.find (get ()).anonymous.entries digest
+
+  let set_entry digest entry =
+    mark_dirty ();
+    Digest.Table.set (get ()).anonymous.entries digest entry
+  ;;
+
+  let read digest = Digest.Table.find_exn (get ()).anonymous.results digest
+  let has_result digest = Digest.Table.mem (get ()).anonymous.results digest
+
+  let write digest result =
+    mark_dirty ();
+    Digest.Table.set (get ()).anonymous.results digest result
+  ;;
+end
 
 let at_exit = At_exit.at_exit Dune_trace.at_exit dump
 let load_fs_memo () = Option.map (P.load file) ~f:(fun t -> t.fs_memo)

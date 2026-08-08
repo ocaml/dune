@@ -96,6 +96,26 @@ let zero = Predicate_lang.element 0
 
 let rec exec t ~ectx ~eenv : Done_or_more_deps.t Fiber.t =
   match (t : Action.t) with
+  | Anonymous (t, digest, capture_stdout) ->
+    let* result, contents =
+      if capture_stdout
+      then (
+        let stdout_to, read = Process.Io.capture () in
+        let execute () =
+          Fiber.finalize
+            (fun () -> exec t ~ectx ~eenv:{ eenv with stdout_to })
+            ~finally:(fun () ->
+              Process.Io.release stdout_to;
+              Fiber.return ())
+        in
+        let+ contents, result = Fiber.fork_and_join read execute in
+        result, contents)
+      else
+        let+ result = exec t ~ectx ~eenv in
+        result, ""
+    in
+    Workspace_cache.Anonymous.write digest contents;
+    Fiber.return result
   | Run { prog = Error e; args = _; can_run_in_action_runner = _ } ->
     Action.Prog.Not_found.raise e
   | Run { prog = Ok prog; args; can_run_in_action_runner } ->
@@ -344,9 +364,14 @@ let exec
       ~build_deps
   =
   let ectx =
-    let metadata =
-      Process_metadata.create ~purpose:(Process_metadata.Build_job targets) ()
+    let purpose =
+      match t with
+      | Anonymous _ ->
+        let context = Option.value_exn context in
+        Process_metadata.Anonymous_job context.name
+      | _ -> Process_metadata.Build_job targets
     in
+    let metadata = Process_metadata.create ~purpose () in
     { targets; metadata; context; rule_loc; build_deps }
   and eenv =
     let env =

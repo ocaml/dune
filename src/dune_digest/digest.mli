@@ -74,6 +74,8 @@ module Stats_for_digest : sig
   val of_time_stat : Stat.t -> t
 end
 
+module Table : Hashtbl.S with type key = t
+
 module Path_digest_error : sig
   type nonrec t =
     | Unexpected_kind

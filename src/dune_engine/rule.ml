@@ -89,6 +89,16 @@ end
 include T
 include Comparable.Make (T)
 
+let make_loc ~(info : Info.t) ~root =
+  match info with
+  | From_dune_file loc -> loc
+  | Internal ->
+    Loc.in_file
+      (Path.drop_optional_build_context
+         (Path.build (Path.Build.relative root "_unknown_")))
+  | Source_file_copy path -> Loc.in_file (Path.source path)
+;;
+
 let make ?(mode = Mode.Standard) ?(info = Info.Internal) ~targets action =
   let action = Action_builder.memoize "Rule.make" action in
   let report_error ?(extra_pp = []) message =
@@ -117,16 +127,15 @@ let make ?(mode = Mode.Standard) ?(info = Info.Internal) ~targets action =
            "%S is declared as both a file and a directory target."
            (Dpath.describe_target path))
   in
-  let loc =
-    match info with
-    | From_dune_file loc -> loc
-    | Internal ->
-      Loc.in_file
-        (Path.drop_optional_build_context
-           (Path.build (Path.Build.relative targets.root "_unknown_")))
-    | Source_file_copy p -> Loc.in_file (Path.source p)
-  in
+  let loc = make_loc ~info ~root:targets.root in
   { id = Id.gen (); targets; action; mode; info; loc }
+;;
+
+let anonymous ?(info = Info.Internal) ~dir action =
+  let action = Action_builder.memoize "Rule.anonymous" action in
+  let targets = Targets.Validated.empty ~root:dir in
+  let loc = make_loc ~info ~root:dir in
+  { id = Id.gen (); targets; action; mode = Mode.Standard; info; loc }
 ;;
 
 let set_action t action =

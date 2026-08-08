@@ -3,9 +3,9 @@ open Import
 (** A non-validated set of targets of a build rule. *)
 type t
 
-(** The empty set of targets. Note that rules are not allowed to have the empty
-    set of targets, but it is convenient to construct [t] by aggregating several
-    sources of information, for some of which it's OK to be empty. *)
+(** The empty set of targets. Ordinary build rules are not allowed to have an
+    empty target set, but internal anonymous rules are targetless. It is also
+    convenient to construct [t] by aggregating sources that may be empty. *)
 val empty : t
 
 val is_empty : t -> bool
@@ -39,6 +39,9 @@ module Validated : sig
     ; files : Filename.Set.t
     ; dirs : Filename.Set.t
     }
+
+  (** An empty target set for internal actions. *)
+  val empty : root:Path.Build.t -> t
 
   val iter : t -> file:(Path.Build.t -> unit) -> dir:(Path.Build.t -> unit) -> unit
 

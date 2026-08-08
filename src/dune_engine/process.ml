@@ -82,6 +82,7 @@ module Io = struct
         { path : Path.t
         ; perm : Permissions.Mode.t
         }
+    | Capture
     | Null
       (* This argument make no sense for inputs, but it seems annoying to
          change, especially as this code is meant to change again in #4435. *)
@@ -183,6 +184,26 @@ module Io = struct
     { kind = File { path = fn; perm }; fd; channel; status = Close_after_exec }
   ;;
 
+  let capture () =
+    let input_fd, output_fd = Unix.pipe ~cloexec:true () in
+    let output_fd = Fd.unsafe_of_unix_file_descr output_fd in
+    let output =
+      { kind = Capture
+      ; fd = lazy output_fd
+      ; channel = lazy (channel_of_descr output_fd Out)
+      ; status = Close_after_exec
+      }
+    in
+    let read () =
+      Scheduler.async_exn (fun () ->
+        let input_channel = Unix.in_channel_of_descr input_fd in
+        Exn.protect
+          ~f:(fun () -> In_channel.input_all input_channel)
+          ~finally:(fun () -> close_in input_channel))
+    in
+    output, read
+  ;;
+
   let flush : type a. a t -> unit =
     fun t ->
     if Lazy.is_val t.channel
@@ -264,7 +285,7 @@ let io_to_redirection_path (kind : Io.kind) =
   | Terminal _ -> None
   | Null -> Some (Path.to_string Dev_null.path)
   | File { path; _ } -> Some (Path.to_string path)
-  | External -> None
+  | Capture | External -> None
 ;;
 
 let command_line_enclosers
@@ -281,7 +302,7 @@ let command_line_enclosers
   in
   let suffix =
     match stdin_from.kind with
-    | Null | Terminal _ | External -> suffix
+    | Null | Terminal _ | Capture | External -> suffix
     | File { path; _ } -> suffix ^ " < " ^ quote path
   in
   let suffix =
@@ -397,6 +418,17 @@ module Exit_status = Dune_trace.Event.Exit_status
 module Short_display = struct
   let pp_purpose = function
     | Process_metadata.Internal_job -> Pp.verbatim "(internal)"
+    | Process_metadata.Anonymous_job context ->
+      let pp = Pp.verbatim "(anonymous)" in
+      if Context_name.is_default context
+      then pp
+      else
+        let open Pp.O in
+        pp
+        ++ Pp.char ' '
+        ++ Pp.tag
+             User_message.Style.Details
+             (Pp.char '[' ++ Pp.verbatim (Context_name.to_string context) ++ Pp.char ']')
     | Process_metadata.Build_job targets ->
       let rec split_paths targets_acc ctxs_acc = function
         | [] -> List.rev targets_acc, Context_name.Set.to_list ctxs_acc
@@ -653,7 +685,7 @@ module Handle_exit_status = struct
       in
       let paragraphs =
         match verbosity, purpose, output with
-        | Short, Process_metadata.Build_job _, _
+        | Short, (Process_metadata.Build_job _ | Anonymous_job _), _
         | Short, Process_metadata.Internal_job, Has_output _ ->
           Short_display.pp_ok ~prog ~purpose :: paragraphs
         | _ -> paragraphs
@@ -819,8 +851,7 @@ end
 
 let targets_of_purpose (purpose : Process_metadata.purpose) =
   match purpose with
-  | Process_metadata.Internal_job -> None
-  | Build_job None -> None
+  | Process_metadata.Internal_job | Anonymous_job _ | Build_job None -> None
   | Build_job (Some { dirs; files; root }) -> Some { Dune_trace.Event.root; dirs; files }
 ;;
 
@@ -1039,13 +1070,14 @@ let runner_input_of_io (io : Io.input Io.t) =
   | Null -> Some Process_runner.Input.Null
   | Terminal _ -> Some Process_runner.Input.Terminal
   | File { path; _ } -> Some (Process_runner.Input.File path)
-  | External -> None
+  | Capture | External -> None
 ;;
 
 let runner_output_of_io (io : Io.output Io.t) =
   match io.kind with
   | Null -> Some Process_runner.Output.Null
   | Terminal _ -> Some Process_runner.Output.Terminal
+  | Capture -> Some Process_runner.Output.Capture
   | File { path; perm } -> Some (Process_runner.Output.File { path; perm })
   | External -> None
 ;;
@@ -1127,22 +1159,22 @@ let exec_locally
     | Terminal -> Io.stdin
     | File path -> Io.file path Io.In
   in
-  let stdout =
-    match stdout_to with
-    | Null -> Io.null Io.Out
-    | Terminal -> Io.stdout
-    | File { path; perm } -> Io.file path Io.Out ~perm
+  let make_output (output : Process_runner.Output.t) ~terminal =
+    match output with
+    | Null -> Io.null Io.Out, None
+    | Terminal -> terminal, None
+    | Capture ->
+      let output, read = Io.capture () in
+      output, Some read
+    | File { path; perm } -> Io.file path Io.Out ~perm, None
   in
-  let stderr =
+  let stdout, read_stdout = make_output stdout_to ~terminal:Io.stdout in
+  let stderr, read_stderr =
     let stderr_to : Process_runner.Stderr.t = stderr_to in
     let open Process_runner.Stderr in
     match stderr_to with
-    | Same_as_stdout -> stdout
-    | Output (out : Process_runner.Output.t) ->
-      (match out with
-       | Null -> Io.null Io.Out
-       | Terminal -> Io.stderr
-       | File { path; perm } -> Io.file path Io.Out ~perm)
+    | Same_as_stdout -> stdout, None
+    | Output output -> make_output output ~terminal:Io.stderr
   in
   let prepared_outputs =
     { stdout_on_success = Io.output_on_success stdout
@@ -1155,40 +1187,60 @@ let exec_locally
     ; stderr
     }
   in
-  Fiber.finalize
-    (fun () ->
-       let t =
-         spawn
-           ?dir
-           ~env
-           ~emit_trace:false
-           ~prepared_outputs
-           ~stdin
-           ~queued
-           ~setpgid:
-             (if create_process_group then Some Spawn.Pgid.new_process_group else None)
-           ~prog
-           ~args
-           ~metadata
-           ~timeout
-           ()
-       in
-       let { Build.cancellation; _ } = build in
-       let+ process_info, termination_reason = await ~cancellation ~timeout t in
-       let times =
-         { Proc.Times.elapsed_time = Time.diff process_info.end_time t.started_at
-         ; resource_usage = process_info.resource_usage
-         }
-       in
-       { Process_runner.started_at = t.started_at
-       ; process_info
-       ; termination_reason
-       ; times
-       ; trace_args = []
-       })
-    ~finally:(fun () ->
-      Io.release stdin;
-      Fiber.return ())
+  let execute () =
+    Fiber.finalize
+      (fun () ->
+         let t =
+           spawn
+             ?dir
+             ~env
+             ~emit_trace:false
+             ~prepared_outputs
+             ~stdin
+             ~queued
+             ~setpgid:
+               (if create_process_group then Some Spawn.Pgid.new_process_group else None)
+             ~prog
+             ~args
+             ~metadata
+             ~timeout
+             ()
+         in
+         let { Build.cancellation; _ } = build in
+         let+ process_info, termination_reason = await ~cancellation ~timeout t in
+         let times =
+           { Proc.Times.elapsed_time = Time.diff process_info.end_time t.started_at
+           ; resource_usage = process_info.resource_usage
+           }
+         in
+         t.started_at, process_info, termination_reason, times)
+      ~finally:(fun () ->
+        Io.release stdin;
+        Io.release stdout;
+        Io.release stderr;
+        Fiber.return ())
+  in
+  let read = function
+    | None -> Fiber.return None
+    | Some read ->
+      let+ output = read () in
+      Some output
+  in
+  let* (stdout, stderr), (started_at, process_info, termination_reason, times) =
+    Fiber.fork_and_join
+      (fun () ->
+         Fiber.fork_and_join (fun () -> read read_stdout) (fun () -> read read_stderr))
+      execute
+  in
+  Fiber.return
+    { Process_runner.started_at
+    ; process_info
+    ; termination_reason
+    ; times
+    ; stdout
+    ; stderr
+    ; trace_args = []
+    }
 ;;
 
 let run_internal
@@ -1265,6 +1317,7 @@ let run_internal
         let description =
           match metadata.Process_metadata.purpose with
           | Process_metadata.Internal_job -> Pp.text "(internal)"
+          | Process_metadata.Anonymous_job _ -> Pp.text "(anonymous)"
           | Process_metadata.Build_job None -> Pp.text "(no targets)"
           | Process_metadata.Build_job (Some target) ->
             Targets.Validated.head target
@@ -1303,20 +1356,42 @@ let run_internal
            (match Build.action_runner build with
             | None -> local ()
             | Some action_runner ->
-              Io.release prepared_outputs.stdout;
-              Io.release prepared_outputs.stderr;
-              let+ { Process_runner.started_at
+              let release_before_runner (output : Io.output Io.t) =
+                match output.kind with
+                | Capture -> ()
+                | File _ | Null | Terminal _ | External -> Io.release output
+              in
+              release_before_runner prepared_outputs.stdout;
+              release_before_runner prepared_outputs.stderr;
+              let execute () =
+                let+ response =
+                  Action_runner.exec_process
+                    action_runner
+                    ~run_id:(Build.run_id build)
+                    ~cancellation:(Build.cancellation build)
+                    request
+                in
+                let write output = function
+                  | None -> ()
+                  | Some contents -> output_string (Io.out_channel output) contents
+                in
+                write prepared_outputs.stdout response.stdout;
+                write prepared_outputs.stderr response.stderr;
+                response
+              in
+              let* { Process_runner.started_at
                    ; process_info
                    ; termination_reason
                    ; times
+                   ; stdout = _
+                   ; stderr = _
                    ; trace_args
                    }
                 =
-                Action_runner.exec_process
-                  action_runner
-                  ~run_id:(Build.run_id build)
-                  ~cancellation:(Build.cancellation build)
-                  request
+                Fiber.finalize execute ~finally:(fun () ->
+                  Io.release prepared_outputs.stdout;
+                  Io.release prepared_outputs.stderr;
+                  Fiber.return ())
               in
               let dummy_process =
                 { started_at
@@ -1331,12 +1406,13 @@ let run_internal
                 ; stderr_limit = prepared_outputs.stderr_limit
                 }
               in
-              ( dummy_process
-              , process_info
-              , termination_reason
-              , times
-              , Some started_at
-              , trace_args ))
+              Fiber.return
+                ( dummy_process
+                , process_info
+                , termination_reason
+                , times
+                , Some started_at
+                , trace_args ))
          | None -> local ())
       | None -> local ()
     in

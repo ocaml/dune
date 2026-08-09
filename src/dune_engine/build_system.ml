@@ -547,7 +547,6 @@ module Internal = struct
     wrap_fiber (fun () ->
       let open Fiber.O in
       report_evaluated_rule_exn ();
-      Path.mkdir_p (Path.build targets.root);
       let is_action_dynamic = Action.is_dynamic action.action in
       let sandbox_mode =
         select_sandbox_mode
@@ -606,6 +605,7 @@ module Internal = struct
         >>= function
         | Some produced_targets -> Fiber.return produced_targets
         | None ->
+          Path.mkdir_p (Path.build targets.root);
           (* Step II. Remove stale targets both from the digest table and from
              the build directory. *)
           Rule_cache.Workspace_local.remove targets;

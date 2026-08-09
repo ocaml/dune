@@ -66,6 +66,14 @@ val both : 'a t -> 'b t -> ('a * 'b) t
 val all : 'a t list -> 'a list t
 
 val sequential_map : 'a list -> f:('a -> 'b t) -> 'b list t
+val sequential_fold_left : 'a list -> f:('acc -> 'a -> 'acc t) -> init:'acc -> 'acc t
+
+val sequential_fold_left_result
+  :  'a list
+  -> f:('acc -> 'a -> ('acc, 'error) result t)
+  -> init:'acc
+  -> ('acc, 'error) result t
+
 val sequential_iter : 'a list -> f:('a -> unit t) -> unit t
 
 (** {1 Forking + joining} *)

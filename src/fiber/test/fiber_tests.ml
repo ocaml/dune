@@ -469,6 +469,46 @@ let%expect_test "context switch and raise inside finalize" =
     [PASS] got Exit |}]
 ;;
 
+let%expect_test "sequential fold callback errors are collected" =
+  let check name fiber =
+    match Scheduler.run (Fiber.collect_errors (fun () -> fiber)) with
+    | Error [ { exn = Exit; _ } ] -> printfn "%s: caught" name
+    | Ok _ | Error _ -> printfn "%s: unexpected result" name
+  in
+  let fold () =
+    Fiber.sequential_fold_left [ 1; 2 ] ~init:0 ~f:(fun acc x ->
+      if x = 2 then raise Exit;
+      let+ () = Scheduler.yield () in
+      acc + x)
+  in
+  let fold_result () =
+    Fiber.sequential_fold_left_result [ 1; 2 ] ~init:0 ~f:(fun acc x ->
+      if x = 2 then raise Exit;
+      let+ () = Scheduler.yield () in
+      Ok (acc + x))
+  in
+  check "fold after suspension" (fold ());
+  check "result fold after suspension" (fold_result ());
+  check
+    "fold under parallel_map"
+    (Fiber.parallel_map [ () ] ~f:(fun () ->
+       Fiber.sequential_fold_left [ 1; 2 ] ~init:0 ~f:(fun acc x ->
+         if x = 2 then raise Exit;
+         Fiber.return (acc + x))));
+  check
+    "result fold under parallel_map"
+    (Fiber.parallel_map [ () ] ~f:(fun () ->
+       Fiber.sequential_fold_left_result [ 1; 2 ] ~init:0 ~f:(fun acc x ->
+         if x = 2 then raise Exit;
+         Fiber.return (Ok (acc + x)))));
+  [%expect
+    {|
+    fold after suspension: caught
+    result fold after suspension: caught
+    fold under parallel_map: caught
+    result fold under parallel_map: caught |}]
+;;
+
 let%expect_test "sequential_iter error handling" =
   let fiber =
     Fiber.finalize
@@ -507,6 +547,100 @@ let%expect_test "sequential_iter" =
     count: 3
     finally
     () |}]
+;;
+
+let%expect_test "sequential_fold_left is reusable across suspension" =
+  let fiber =
+    Fiber.sequential_fold_left [ 1; 2; 3 ] ~init:0 ~f:(fun acc x ->
+      let+ () = Scheduler.yield () in
+      acc + x)
+  in
+  Scheduler.run fiber |> printfn "%d";
+  Scheduler.run fiber |> printfn "%d";
+  [%expect
+    {|
+    6
+    6 |}]
+;;
+
+let%expect_test "sequential_iter is reusable across suspension" =
+  let fiber =
+    Fiber.sequential_iter [ 1; 2; 3 ] ~f:(fun x ->
+      let+ () = Scheduler.yield () in
+      printfn "%d" x)
+  in
+  Scheduler.run fiber;
+  Scheduler.run fiber;
+  [%expect
+    {|
+    1
+    2
+    3
+    1
+    2
+    3 |}]
+;;
+
+let%expect_test "sequential_fold_left_result is reusable across suspension" =
+  let fiber =
+    Fiber.sequential_fold_left_result [ 1; 2; 3 ] ~init:0 ~f:(fun acc x ->
+      let+ () = Scheduler.yield () in
+      Ok (acc + x))
+  in
+  let run () =
+    match Scheduler.run fiber with
+    | Ok x -> printfn "%d" x
+    | Error message -> printfn "error: %s" message
+  in
+  run ();
+  run ();
+  [%expect
+    {|
+    6
+    6 |}]
+;;
+
+let%expect_test "sequential_fold_left_result stops after an error" =
+  let fiber =
+    Fiber.sequential_fold_left_result [ 1; 2; 3 ] ~init:0 ~f:(fun acc x ->
+      printfn "visit %d" x;
+      let+ () = Scheduler.yield () in
+      if x = 2 then Error "failure" else Ok (acc + x))
+  in
+  (match Scheduler.run fiber with
+   | Ok x -> printfn "ok %d" x
+   | Error message -> print_endline message);
+  [%expect
+    {|
+    visit 1
+    visit 2
+    failure |}]
+;;
+
+let%expect_test "sequential traversal nodes work under parallel_map" =
+  let run fiber ~f =
+    match Scheduler.run (Fiber.parallel_map [ () ] ~f:(fun () -> fiber)) with
+    | [ x ] -> f x
+    | xs -> printfn "unexpected result count: %d" (List.length xs)
+  in
+  run
+    (Fiber.sequential_fold_left [ 1; 2; 3 ] ~init:0 ~f:(fun acc x ->
+       Fiber.return (acc + x)))
+    ~f:(printfn "fold: %d");
+  run
+    (Fiber.sequential_fold_left_result [ 1; 2; 3 ] ~init:0 ~f:(fun acc x ->
+       Fiber.return (Ok (acc + x))))
+    ~f:(function
+      | Ok x -> printfn "result: %d" x
+      | Error message -> printfn "error: %s" message);
+  run
+    (Fiber.sequential_iter [ 1; 2; 3 ] ~f:(fun _ -> Fiber.return ()))
+    ~f:(fun () -> print_endline "iter: done");
+  [%expect
+    {|
+    fold: 6
+    result: 6
+    iter: done |}]
 ;;
 
 let%expect_test _ =

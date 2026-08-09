@@ -104,6 +104,24 @@ and exec : type a. context -> a continuation -> a -> Jobs.t -> step' =
   | Fork_join_left _ as k -> exec_core_continuation ctx k x jobs
   | Fork_join_right _ as k -> exec_core_continuation ctx k x jobs
   | Resume_many _ as k -> exec_core_continuation ctx k x jobs
+  | Sequential_fold_left_complete state as complete ->
+    (match state.rest with
+     | [] -> exec ctx state.k x jobs
+     | y :: rest ->
+       state.rest <- rest;
+       exec_fiber_apply2 ctx state.f x y complete jobs)
+  | Sequential_fold_left_result_complete state as complete ->
+    (match x, state.rest with
+     | Error _, _ | Ok _, [] -> exec ctx state.k x jobs
+     | Ok acc, y :: rest ->
+       state.rest <- rest;
+       exec_fiber_apply2 ctx state.f acc y complete jobs)
+  | Sequential_iter_complete state as complete ->
+    (match state.rest with
+     | [] -> exec ctx state.k () jobs
+     | x :: rest ->
+       state.rest <- rest;
+       exec_fiber_apply ctx state.f x complete jobs)
   | Unreachable -> Nothing.unreachable_code x
   | Never_called -> assert false
   | Accumulate_error map_reduce_context ->
@@ -336,6 +354,12 @@ and exec_fiber : type a. context -> a t -> a continuation -> Jobs.t -> step' =
   | Bind_t (t, f) -> exec_fiber ctx t (Bind (f, k)) jobs
   | Thunk_t f -> exec_fiber_thunk ctx f k jobs
   | Thunk_apply_t (f, x) -> exec_fiber_apply ctx f x k jobs
+  | Sequential_fold_left_t (first, rest, f) ->
+    exec_fiber ctx first (Sequential_fold_left_complete { rest; f; k }) jobs
+  | Sequential_fold_left_result_t (first, rest, f) ->
+    exec_fiber ctx first (Sequential_fold_left_result_complete { rest; f; k }) jobs
+  | Sequential_iter_t (first, rest, f) ->
+    exec_fiber ctx first (Sequential_iter_complete { rest; f; k }) jobs
   | With_error_handler_t (f, on_error) -> with_error_handler ctx on_error f k jobs
   | Map_reduce_errors_t (m, on_error, f) -> map_reduce_errors ctx m on_error f k jobs
   | Collect_errors_t f ->

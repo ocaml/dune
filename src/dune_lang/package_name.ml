@@ -12,7 +12,7 @@ include (
     let description = "package name"
     let description_of_valid_string = None
     let hint_valid = None
-    let of_string_opt s = if s = "" then None else Some s
+    let of_string_opt s = if String.is_empty s then None else Some s
   end) :
     Dune_util.Stringlike with type t := t)
 
@@ -44,9 +44,17 @@ module Opam_compatible = struct
     let is_valid_char c = is_letter c || is_other_valid_char c
 
     let is_valid_string s =
-      let all_chars_valid = String.for_all s ~f:is_valid_char in
-      let has_one_letter = String.exists s ~f:is_letter in
-      all_chars_valid && has_one_letter
+      let len = String.length s in
+      let rec loop i has_one_letter =
+        if i = len
+        then has_one_letter
+        else (
+          match String.unsafe_get s i with
+          | 'a' .. 'z' | 'A' .. 'Z' -> loop (i + 1) true
+          | '0' .. '9' | '-' | '+' | '_' -> loop (i + 1) has_one_letter
+          | _ -> false)
+      in
+      loop 0 false
     ;;
 
     let of_string_opt s = Option.some_if (is_valid_string s) s

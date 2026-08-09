@@ -72,7 +72,7 @@ module Sorted = struct
         then -1
         else (
           let mid = (low + high) / 2 in
-          match Key.compare key keys.(mid) with
+          match Key.compare key (Stdlib.Array.unsafe_get keys mid) with
           | Eq -> mid
           | Lt -> loop low (mid - 1)
           | Gt -> loop (mid + 1) high)

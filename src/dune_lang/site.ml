@@ -20,7 +20,7 @@ module Modulelike (S : sig
 Stringlike.Make (struct
     include S
 
-    let valid_char = function
+    let[@inline always] valid_char = function
       | 'A' .. 'Z' | 'a' .. 'z' | '0' .. '9' | '\'' | '_' -> true
       | _ -> false
     ;;
@@ -49,8 +49,16 @@ Stringlike.Make (struct
           if has_valid_first_char name then name else "M" ^ name)
     ;;
 
+    let rec has_only_valid_chars name len i =
+      i = len
+      || (valid_char (String.unsafe_get name i) && has_only_valid_chars name len (i + 1))
+    ;;
+
     let is_valid_module_name name =
-      name <> "" && has_valid_first_char name && String.for_all name ~f:valid_char
+      let len = String.length name in
+      len > 0
+      && is_valid_first_char (String.unsafe_get name 0)
+      && has_only_valid_chars name len 1
     ;;
 
     let of_string_opt s = if is_valid_module_name s then Some (S.make s) else None

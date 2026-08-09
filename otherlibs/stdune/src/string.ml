@@ -10,12 +10,14 @@ struct
 
   let rec check_prefix s ~prefix len i =
     i = len
-    || (X.normalize s.[i] = X.normalize prefix.[i] && check_prefix s ~prefix len (i + 1))
+    || (X.normalize (String.unsafe_get s i) = X.normalize (String.unsafe_get prefix i)
+        && check_prefix s ~prefix len (i + 1))
   ;;
 
   let rec check_suffix s ~suffix suffix_len offset i =
     i = suffix_len
-    || (X.normalize s.[offset + i] = X.normalize suffix.[i]
+    || (X.normalize (String.unsafe_get s (offset + i))
+        = X.normalize (String.unsafe_get suffix i)
         && check_suffix s ~suffix suffix_len offset (i + 1))
   ;;
 
@@ -179,7 +181,9 @@ let longest_prefix = function
   | [ x ] -> x
   | x :: xs ->
     let rec loop len i =
-      if i < len && List.for_all xs ~f:(fun s -> s.[i] = x.[i])
+      if
+        i < len
+        && List.for_all xs ~f:(fun s -> String.unsafe_get s i = String.unsafe_get x i)
       then loop len (i + 1)
       else i
     in
@@ -218,16 +222,20 @@ let enumerate_one_of = function
   | s -> "One of " ^ enumerate_or s
 ;;
 
-let take s len = sub s ~pos:0 ~len:(min (length s) len)
+let take s len =
+  let length = length s in
+  sub s ~pos:0 ~len:(if len < length then len else length)
+;;
 
 let drop s n =
   let len = length s in
-  sub s ~pos:(min n len) ~len:(max (len - n) 0)
+  let pos = if n < len then n else len in
+  sub s ~pos ~len:(len - pos)
 ;;
 
 let split_n s n =
   let len = length s in
-  let n = min n len in
+  let n = if n < len then n else len in
   sub s ~pos:0 ~len:n, sub s ~pos:n ~len:(len - n)
 ;;
 
@@ -257,7 +265,7 @@ let need_quoting s =
     if i = len
     then false
     else (
-      match s.[i] with
+      match String.unsafe_get s i with
       | ' ' | '\"' | '(' | ')' | '{' | '}' | ';' | '#' -> true
       | _ -> loop (i + 1))
   in
@@ -307,14 +315,17 @@ let contains_double_underscore =
   let rec aux s len i =
     if i > len - 2
     then false
-    else if s.[i] = '_' && s.[i + 1] = '_'
+    else if String.unsafe_get s i = '_' && String.unsafe_get s (i + 1) = '_'
     then true
     else aux s len (i + 1)
   in
   fun s -> aux s (String.length s) 0
 ;;
 
-let last s = if length s > 0 then Some s.[length s - 1] else None
+let last s =
+  let len = length s in
+  if len > 0 then Some (String.unsafe_get s (len - 1)) else None
+;;
 
 let replace_char s ~from ~to_ =
   String.map (fun c -> if Char.equal c from then to_ else c) s

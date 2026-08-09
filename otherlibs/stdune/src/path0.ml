@@ -6,9 +6,9 @@ let append_with_slash x y =
   let len_x = String.length x in
   let len_y = String.length y in
   let dst = Bytes.create (len_x + 1 + len_y) in
-  Bytes.blit_string ~src:x ~src_pos:0 ~dst ~dst_pos:0 ~len:len_x;
-  Bytes.set dst len_x '/';
-  Bytes.blit_string ~src:y ~src_pos:0 ~dst ~dst_pos:(len_x + 1) ~len:len_y;
+  Bytes.unsafe_blit_string ~src:x ~src_pos:0 ~dst ~dst_pos:0 ~len:len_x;
+  Bytes.unsafe_set dst len_x '/';
+  Bytes.unsafe_blit_string ~src:y ~src_pos:0 ~dst ~dst_pos:(len_x + 1) ~len:len_y;
   Bytes.unsafe_to_string dst
 ;;
 
@@ -263,7 +263,9 @@ module Local_gen = struct
     ;;
 
     (* the size of the "../.." string we need to generate *)
-    let go_up_components_buffer_size times = (times * 2) + max 0 (times - 1)
+    let go_up_components_buffer_size times =
+      (times * 2) + if times > 0 then times - 1 else 0
+    ;;
 
     let reach_root ~from pos =
       let go_up_this_many_times = parent_remaining_components pos from in

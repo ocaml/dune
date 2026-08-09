@@ -57,7 +57,7 @@ end = struct
     | With_cutoff _ | With_cutoff_and_event_tracker _ -> true
   ;;
 
-  let notify t input event =
+  let[@inline always] notify t input event =
     match t with
     | Vanilla | With_cutoff _ -> ()
     | With_event_tracker { on_event }
@@ -102,4 +102,4 @@ let output_changed t ~old_value ~new_value =
 ;;
 
 let has_cutoff t = Node_kind.has_cutoff t.node_kind
-let notify t input event = Node_kind.notify t.node_kind input event
+let[@inline always] notify t input event = Node_kind.notify t.node_kind input event

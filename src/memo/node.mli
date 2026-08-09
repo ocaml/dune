@@ -235,7 +235,7 @@ module Stack_frame_with_state : sig
   val to_dyn : t -> Dyn.t
 
   (** Create a new stack frame related to restoring or computing a [dep_node]. *)
-  val create : dag_node:Lazy_dag_node.t -> phase -> dep_node:('a, 'b) Dep_node.t -> t
+  val create : dag_node:Lazy_dag_node.t -> dep_node:('a, 'b) Dep_node.t -> t
 
   val dep_node : t -> Dep_node.packed
   val dag_node : t -> Dag.node
@@ -246,7 +246,7 @@ end
 module Call_stack : sig
   type t = Stack_frame_with_state.t list
 
-  val call_stack_var : t option Fiber.Var.t
+  val call_stack_var : t Fiber.Var.t
   val get_call_stack : unit -> t Fiber.t
   val get_call_stack_without_state : unit -> Dep_node.packed list Fiber.t
   val push_frame : Stack_frame_with_state.t -> (unit -> 'a Fiber.t) -> 'a Fiber.t
@@ -271,7 +271,6 @@ module Computation : sig
       leads to a deadlock. *)
   val force
     :  'a t
-    -> phase:Stack_frame_with_state.phase
     -> dep_node:('b, 'c) Dep_node.t
     -> (Stack_frame_with_state.t -> 'a Fiber.t)
     -> 'a Fiber.t

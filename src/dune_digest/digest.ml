@@ -18,6 +18,49 @@ module Hasher = struct
 
   let singleton = lazy (Blake3_mini.create ())
 
+  module Scratch = struct
+    let buf = Bytes.create 4096
+    let len = Bytes.length buf
+    let pos = ref 0
+
+    let flush () =
+      if !pos > 0
+      then (
+        Blake3_mini.feed_bytes ~pos:0 ~len:!pos (Lazy.force singleton) buf;
+        pos := 0)
+    ;;
+  end
+
+  let feed_manual_string s =
+    let length = String.length s in
+    if length > Scratch.len
+    then (
+      Scratch.flush ();
+      Blake3_mini.feed_string ~pos:0 ~len:length (Lazy.force singleton) s)
+    else (
+      if !Scratch.pos + length > Scratch.len then Scratch.flush ();
+      let pos = !Scratch.pos in
+      Bytes.blit_string ~src:s ~src_pos:0 ~dst:Scratch.buf ~dst_pos:pos ~len:length;
+      Scratch.pos := pos + length)
+  ;;
+
+  let feed_manual_int64 i =
+    if !Scratch.pos + 8 > Scratch.len then Scratch.flush ();
+    let pos = !Scratch.pos in
+    for byte = 0 to 7 do
+      let shift = 8 * byte in
+      let value = Int64.(to_int (logand (shift_right_logical i shift) 0xffL)) in
+      Bytes.set Scratch.buf (pos + byte) (Char.chr value)
+    done;
+    Scratch.pos := pos + 8
+  ;;
+
+  let feed_manual_bool b =
+    if !Scratch.pos = Scratch.len then Scratch.flush ();
+    Bytes.set Scratch.buf !Scratch.pos (if b then '\001' else '\000');
+    Scratch.pos := !Scratch.pos + 1
+  ;;
+
   let with_singleton =
     let in_use = ref false in
     fun f ->
@@ -28,6 +71,9 @@ module Hasher = struct
            [Hasher.with_singleton], which is not allowed."
           []
       else (
+        (* [Manual] shares this hasher, so preserve the ordering of pending input
+           before using it for a nested digest computation. *)
+        Scratch.flush ();
         in_use := true;
         let hasher = Lazy.force singleton in
         f hasher;
@@ -304,36 +350,13 @@ end
 module Manual = struct
   type t = unit
 
-  let scratch = Bytes.create 8
   let create () = ()
-
-  let feed_string_raw s =
-    Blake3_mini.feed_string ~pos:0 ~len:(String.length s) (Lazy.force Hasher.singleton) s
-  ;;
-
-  let feed_int64 i =
-    for byte = 0 to 7 do
-      let shift = 8 * byte in
-      let value = Int64.(to_int (logand (shift_right_logical i shift) 0xffL)) in
-      Bytes.set scratch byte (Char.chr value)
-    done;
-    feed_string_raw (Bytes.unsafe_to_string scratch)
-  ;;
-
-  let bool () b =
-    Bytes.set scratch 0 (if b then '\001' else '\000');
-    Blake3_mini.feed_string
-      ~pos:0
-      ~len:1
-      (Lazy.force Hasher.singleton)
-      (Bytes.unsafe_to_string scratch)
-  ;;
-
-  let int () i = feed_int64 (Int64.of_int i)
+  let bool () = Hasher.feed_manual_bool
+  let int () i = Hasher.feed_manual_int64 (Int64.of_int i)
 
   let string () s =
     int () (String.length s);
-    feed_string_raw s
+    Hasher.feed_manual_string s
   ;;
 
   let option t ~f = function
@@ -348,14 +371,18 @@ module Manual = struct
     List.iter xs ~f:(f t)
   ;;
 
-  let repr () repr value = feed_repr (Lazy.force Hasher.singleton) scratch repr value
+  let repr () repr value =
+    Hasher.Scratch.flush ();
+    feed_repr (Lazy.force Hasher.singleton) Hasher.Scratch.buf repr value
+  ;;
 
   let digest () s =
     let s = Blake3_mini.Digest.to_binary s in
-    feed_string_raw s
+    Hasher.feed_manual_string s
   ;;
 
   let get () =
+    Hasher.Scratch.flush ();
     let hasher = Lazy.force Hasher.singleton in
     let res = Blake3_mini.digest hasher in
     Blake3_mini.reset hasher;

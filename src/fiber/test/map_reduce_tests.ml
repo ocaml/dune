@@ -4,6 +4,7 @@ open Fiber.O
 module Scheduler = struct
   let t = Test_scheduler.create ()
   let run f = Test_scheduler.run t f
+  let yield () = Test_scheduler.yield t
 end
 
 let map_reduce_variants () =
@@ -15,6 +16,15 @@ let map_reduce_variants () =
         Fiber.map_reduce_array (Array.of_list input) ~f ~empty ~combine )
   ; ("list", fun input ~f ~empty ~combine -> Fiber.map_reduce input ~f ~empty ~combine)
   ]
+;;
+
+let failure_messages errors =
+  List.map errors ~f:(fun { Exn_with_backtrace.exn; _ } ->
+    match exn with
+    | Failure message -> message
+    | exn -> Printexc.to_string exn)
+  |> List.sort ~compare:String.compare
+  |> String.concat ~sep:","
 ;;
 
 let%expect_test "map_reduce" =
@@ -150,4 +160,61 @@ let%expect_test "map_reduce may combine in completion order" =
     completed: 2
     completed: 1
     result: [3; 2; 1] |}]
+;;
+
+let%expect_test "map_reduce collects worker and combiner exceptions" =
+  let test =
+    Fiber.sequential_iter (map_reduce_variants ()) ~f:(fun (name, map_reduce) ->
+      let workers_run = ref 0 in
+      let* worker_result =
+        Fiber.collect_errors (fun () ->
+          map_reduce
+            [ 1; 2; 3 ]
+            ~f:(fun x ->
+              let* () = Scheduler.yield () in
+              incr workers_run;
+              if x mod 2 = 1
+              then failwith (Printf.sprintf "worker %d" x)
+              else Fiber.return x)
+            ~empty:0
+            ~combine:( + ))
+      in
+      (match worker_result with
+       | Error errors ->
+         printfn
+           "%s worker errors: %s (ran=%d)"
+           name
+           (failure_messages errors)
+           !workers_run
+       | Ok _ -> printfn "%s worker errors: unexpected success" name);
+      workers_run := 0;
+      let+ combine_result =
+        Fiber.collect_errors (fun () ->
+          map_reduce
+            [ 1; 2; 3 ]
+            ~f:(fun x ->
+              let+ () = Scheduler.yield () in
+              incr workers_run;
+              x)
+            ~empty:0
+            ~combine:(fun acc x -> if x = 2 then failwith "combine" else acc + x))
+      in
+      match combine_result with
+      | Error errors ->
+        printfn
+          "%s combine errors: %s (ran=%d)"
+          name
+          (failure_messages errors)
+          !workers_run
+      | Ok _ -> printfn "%s combine errors: unexpected success" name)
+  in
+  Scheduler.run test;
+  [%expect
+    {|
+    seq worker errors: worker 1,worker 3 (ran=3)
+    seq combine errors: combine (ran=3)
+    array worker errors: worker 1,worker 3 (ran=3)
+    array combine errors: combine (ran=3)
+    list worker errors: worker 1,worker 3 (ran=3)
+    list combine errors: combine (ran=3) |}]
 ;;

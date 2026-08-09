@@ -3,7 +3,7 @@ type t =
   | Eq
   | Gt
 
-let[@inline always] of_int n = if n < 0 then Lt else if n = 0 then Eq else Gt
+let of_int n = if n < 0 then Lt else if n = 0 then Eq else Gt
 
 let to_int = function
   | Lt -> -1

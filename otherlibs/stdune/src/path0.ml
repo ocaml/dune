@@ -2,16 +2,6 @@
 
 module Unspecified = Path_intf.Unspecified
 
-let append_with_slash x y =
-  let len_x = String.length x in
-  let len_y = String.length y in
-  let dst = Bytes.create (len_x + 1 + len_y) in
-  Bytes.unsafe_blit_string ~src:x ~src_pos:0 ~dst ~dst_pos:0 ~len:len_x;
-  Bytes.unsafe_set dst len_x '/';
-  Bytes.unsafe_blit_string ~src:y ~src_pos:0 ~dst ~dst_pos:(len_x + 1) ~len:len_y;
-  Bytes.unsafe_to_string dst
-;;
-
 let is_dir_sep =
   if Sys.win32 || Sys.cygwin
   then fun c -> c = '/' || c = '\\' || c = ':'
@@ -93,7 +83,9 @@ module Local_gen = struct
            | None -> Result.Error `Outside_the_workspace
            | Some parent -> loop parent rest)
         | fn :: rest ->
-          if is_root t then loop fn rest else loop (append_with_slash t fn) rest
+          if is_root t
+          then loop fn rest
+          else loop (String.append_with_char t ~sep:'/' fn) rest
       in
       loop t components
     ;;
@@ -195,7 +187,7 @@ module Local_gen = struct
     match is_root a, is_root b with
     | true, _ -> b
     | _, true -> a
-    | _, _ -> append_with_slash a b
+    | _, _ -> String.append_with_char a ~sep:'/' b
   ;;
 
   let descendant t ~of_ =

@@ -13,6 +13,10 @@ val to_dyn : t -> Dyn.t
 val break : t -> pos:int -> t * t
 val to_string : t -> t
 val is_empty : t -> bool
+
+(** [append_with_char x ~sep y] concatenates [x], [sep], and [y]. *)
+val append_with_char : t -> sep:char -> t -> t
+
 val of_list : char list -> t
 val starts_with : prefix:t -> t -> bool
 val ends_with : suffix:t -> t -> bool

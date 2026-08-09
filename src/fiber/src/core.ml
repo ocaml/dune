@@ -21,6 +21,7 @@ type _ t =
       (module Monoid with type t = 'a) * (Exn_with_backtrace.t -> 'a t) * (unit -> 'b t)
       -> ('b, 'a) result t
   | Collect_errors_t : (unit -> 'a t) -> ('a, Exn_with_backtrace.t list) result t
+  | Finalize_t : (unit -> 'a t) * (unit -> unit t) -> 'a t
   | Suspend_t : ('a k -> unit) -> 'a t
   | Resume_t : 'a k * 'a -> unit t
   | Reraise_all_t : Exn_with_backtrace.t list -> 'a t
@@ -72,6 +73,12 @@ and 'a continuation =
   | Collect_errors_complete :
       ('a, Exn_with_backtrace.t list) result continuation
       -> ('a, Exn_with_backtrace.t Appendable_list.t) result continuation
+  | Finalize_body_complete :
+      (unit -> unit t) * 'a continuation
+      -> ('a, Exn_with_backtrace.t Appendable_list.t) result continuation
+  | Finalize_finally_complete :
+      ('a, Exn_with_backtrace.t Appendable_list.t) result * 'a continuation
+      -> (unit, Exn_with_backtrace.t Appendable_list.t) result continuation
 
 and 'a array_map_state =
   { results : 'a array ref
@@ -105,6 +112,12 @@ and eff =
       -> eff
   | Run_collect_errors :
       (unit -> 'a t) * ('a, Exn_with_backtrace.t list) result continuation
+      -> eff
+  | Run_finalize : (unit -> 'a t) * (unit -> unit t) * 'a continuation -> eff
+  | Run_finally :
+      (unit -> unit t)
+      * ('a, Exn_with_backtrace.t Appendable_list.t) result
+      * 'a continuation
       -> eff
   | Unwind_map_reduce : 'a continuation * 'a -> eff
   | End_of_map_reduce_error_handler : (_, _) map_reduce_context' -> eff
@@ -167,6 +180,14 @@ and 'a k =
   { run : 'a continuation
   ; ctx : context
   }
+
+let finalize_result body_result finally_result =
+  match body_result, finally_result with
+  | Ok x, Ok () -> Ok x
+  | Error errors, Ok () | Ok _, Error errors -> Error errors
+  | Error body_errors, Error finally_errors ->
+    Error Appendable_list.(body_errors @ finally_errors)
+;;
 
 let rec continue : type a. a continuation -> a -> eff =
   fun k x ->
@@ -231,6 +252,11 @@ let rec continue : type a. a continuation -> a -> eff =
       (match x with
        | Ok x -> Ok x
        | Error errors -> Error (Appendable_list.to_list errors))
+  | Finalize_body_complete (finally, k) -> Run_finally (finally, x, k)
+  | Finalize_finally_complete (body_result, k) ->
+    (match finalize_result body_result x with
+     | Ok x -> continue k x
+     | Error errors -> Reraise_all (Appendable_list.to_list errors))
 ;;
 
 let return x = Return_t x
@@ -278,6 +304,7 @@ let rec eval : type a. a t -> a continuation -> eff =
   | With_error_handler_t (f, on_error) -> With_error_handler (on_error, f, k)
   | Map_reduce_errors_t (m, on_error, f) -> Map_reduce_errors (m, on_error, f, k)
   | Collect_errors_t f -> Run_collect_errors (f, k)
+  | Finalize_t (f, finally) -> Run_finalize (f, finally, k)
   | Suspend_t f -> Suspend (f, k)
   | Resume_t (suspended, x) -> Resume (suspended, x, k)
   | Reraise_all_t exns ->
@@ -647,17 +674,4 @@ module Exns = Monoid.Appendable_list (Exn_with_backtrace)
 
 let collect_error e = return (Appendable_list.singleton e)
 let collect_errors f = Collect_errors_t f
-
-let finalize f ~finally =
-  let* res1 = collect_errors f in
-  let* res2 = collect_errors finally in
-  let res =
-    match res1, res2 with
-    | Ok x, Ok () -> Ok x
-    | Error l, Ok _ | Ok _, Error l -> Error l
-    | Error l1, Error l2 -> Error (l1 @ l2)
-  in
-  match res with
-  | Ok x -> return x
-  | Error l -> reraise_all l
-;;
+let finalize f ~finally = Finalize_t (f, finally)

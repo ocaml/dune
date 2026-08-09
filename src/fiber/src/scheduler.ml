@@ -119,6 +119,18 @@ and exec : type a. context -> a continuation -> a -> Jobs.t -> step' =
       | Error errors -> Error (Appendable_list.to_list errors)
     in
     exec ctx k x jobs
+  | Finalize_body_complete (finally, k) ->
+    map_reduce_errors
+      ctx
+      (module Exns)
+      collect_error
+      finally
+      (Finalize_finally_complete (x, k))
+      jobs
+  | Finalize_finally_complete (body_result, k) ->
+    (match finalize_result body_result x with
+     | Ok x -> exec ctx k x jobs
+     | Error errors -> reraise_all ctx (Appendable_list.to_list errors) jobs)
 
 and exec_core_continuation : 'a. context -> 'a continuation -> 'a -> Jobs.t -> step' =
   fun ctx k x jobs ->
@@ -249,6 +261,22 @@ and exec_effect ctx eff jobs =
   | Map_reduce_errors (m, on_error, f, k) -> map_reduce_errors ctx m on_error f k jobs
   | Run_collect_errors (f, k) ->
     map_reduce_errors ctx (module Exns) collect_error f (Collect_errors_complete k) jobs
+  | Run_finalize (f, finally, k) ->
+    map_reduce_errors
+      ctx
+      (module Exns)
+      collect_error
+      f
+      (Finalize_body_complete (finally, k))
+      jobs
+  | Run_finally (finally, body_result, k) ->
+    map_reduce_errors
+      ctx
+      (module Exns)
+      collect_error
+      finally
+      (Finalize_finally_complete (body_result, k))
+      jobs
   | End_of_fiber () ->
     let (Map_reduce_context r) = ctx.map_reduce_context in
     deref r jobs
@@ -312,6 +340,14 @@ and exec_fiber : type a. context -> a t -> a continuation -> Jobs.t -> step' =
   | Map_reduce_errors_t (m, on_error, f) -> map_reduce_errors ctx m on_error f k jobs
   | Collect_errors_t f ->
     map_reduce_errors ctx (module Exns) collect_error f (Collect_errors_complete k) jobs
+  | Finalize_t (f, finally) ->
+    map_reduce_errors
+      ctx
+      (module Exns)
+      collect_error
+      f
+      (Finalize_body_complete (finally, k))
+      jobs
   | Suspend_t f ->
     let k = { ctx; run = k } in
     f k;

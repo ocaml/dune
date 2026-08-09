@@ -180,7 +180,7 @@ module Path = struct
     type nonrec t = t Nonempty_list.t
 
     let to_dyn t = Dyn.list to_dyn (Nonempty_list.to_list t)
-    let compare = Nonempty_list.compare ~compare
+    let compare x y = Nonempty_list.compare x y ~compare:String.compare
     let to_string t = Nonempty_list.to_list_map ~f:to_string t |> String.concat ~sep:"."
   end
 

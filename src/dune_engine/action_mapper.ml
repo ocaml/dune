@@ -28,6 +28,7 @@ module Make (Src : Action_intf.Ast) (Dst : Action_intf.Ast) = struct
     | Redirect_out (outputs, fn, perm, t) ->
       Redirect_out (outputs, f_target ~dir fn, perm, f t ~dir)
     | Redirect_in (inputs, fn, t) -> Redirect_in (inputs, f_path ~dir fn, f t ~dir)
+    | Anonymous (t, digest, capture_stdout) -> Anonymous (f t ~dir, digest, capture_stdout)
     | Ignore (outputs, t) -> Ignore (outputs, f t ~dir)
     | Progn l -> Progn (List.map l ~f:(fun t -> f t ~dir))
     | Concurrent l -> Concurrent (List.map l ~f:(fun t -> f t ~dir))

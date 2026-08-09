@@ -428,9 +428,7 @@ let hint_delete_dir =
   ]
 ;;
 
-let move_real_targets_to_build_dir t ~should_be_skipped ~(targets : Targets.Validated.t)
-  : unit Fiber.t
-  =
+let move_real_targets_to_build_dir t ~(targets : Targets.Validated.t) : unit Fiber.t =
   let open Fiber.O in
   let start = Time.now () in
   let* () =
@@ -448,9 +446,7 @@ let move_real_targets_to_build_dir t ~should_be_skipped ~(targets : Targets.Vali
   let () =
     Targets.Validated.iter
       targets
-      ~file:(fun target ->
-        if not (should_be_skipped target)
-        then rename_optional_file ~src:(map_real_path t target) ~dst:target)
+      ~file:(fun target -> rename_optional_file ~src:(map_real_path t target) ~dst:target)
       ~dir:(fun target ->
         let src_dir = map_real_path t target in
         (match Path.Untracked.stat (Path.build target) with
@@ -481,10 +477,10 @@ let move_real_targets_to_build_dir t ~should_be_skipped ~(targets : Targets.Vali
     Dune_trace.Event.sandbox `Extract ~start ~stop ~queued:None t.loc ~dir:t.dir)
 ;;
 
-let move_targets_to_build_dir t ~should_be_skipped ~(targets : Targets.Validated.t) =
+let move_targets_to_build_dir t ~(targets : Targets.Validated.t) =
   match t with
   | No_sandbox _ -> Fiber.return ()
-  | Sandboxed t -> move_real_targets_to_build_dir t ~should_be_skipped ~targets
+  | Sandboxed t -> move_real_targets_to_build_dir t ~targets
 ;;
 
 let failed_to_delete_sandbox dir reason =

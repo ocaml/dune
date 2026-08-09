@@ -1,6 +1,22 @@
 open Import
 open Dune_cache.Hit_or_miss
 
+let rec dynamic_deps_unchanged stages ~env ~build_deps =
+  match stages with
+  | [] -> Fiber.return true
+  | (deps, old_digest) :: rest ->
+    let open Fiber.O in
+    let* deps = Memo.run (build_deps deps) in
+    let new_digest =
+      let digest = Digest.Manual.create () in
+      Dep.Facts.digest deps digest ~env;
+      Digest.Manual.get digest
+    in
+    if Digest.equal old_digest new_digest
+    then dynamic_deps_unchanged rest ~env ~build_deps
+    else Fiber.return false
+;;
+
 module Workspace_local = struct
   (* Stores information for deciding if a rule needs to be re-executed. *)
   module Database = struct
@@ -173,22 +189,11 @@ module Workspace_local = struct
          we still re-run all the previous stages, which is a bit of a waste. We
          could remember what stage needs re-running and only re-run that (and
          later stages). *)
-      let rec loop stages =
-        match stages with
-        | [] -> Fiber.return (Hit produced_targets)
-        | (deps, old_digest) :: rest ->
-          let open Fiber.O in
-          let* deps = Memo.run (build_deps deps) in
-          let new_digest =
-            let d = Digest.Manual.create () in
-            Dep.Facts.digest deps d ~env;
-            Digest.Manual.get d
-          in
-          if Digest.equal old_digest new_digest
-          then loop rest
-          else Fiber.return (Miss Miss_reason.Dynamic_deps_changed)
+      let open Fiber.O in
+      let+ unchanged =
+        dynamic_deps_unchanged prev_trace.dynamic_deps_stages ~env ~build_deps
       in
-      loop prev_trace.dynamic_deps_stages
+      if unchanged then Hit produced_targets else Miss Miss_reason.Dynamic_deps_changed
   ;;
 
   let lookup ~always_rerun ~rule_digest ~targets ~env ~build_deps
@@ -220,4 +225,26 @@ module Workspace_local = struct
   let remove targets = Database.remove targets
   let remove_target = Database.remove_target
   let remove_subtree = Database.remove_subtree
+end
+
+module Anonymous = struct
+  let lookup ~always_rerun ~digest ~rule_digest ~env ~build_deps =
+    if always_rerun
+    then Fiber.return false
+    else (
+      match Workspace_cache.Anonymous.find_entry digest with
+      | None -> Fiber.return false
+      | Some entry ->
+        if
+          (not (Digest.equal entry.rule_digest rule_digest))
+          || not (Workspace_cache.Anonymous.has_result digest)
+        then Fiber.return false
+        else dynamic_deps_unchanged entry.dynamic_deps_stages ~env ~build_deps)
+  ;;
+
+  let store ~digest ~rule_digest ~dynamic_deps_stages =
+    Workspace_cache.Anonymous.set_entry
+      digest
+      { Workspace_cache.Anonymous.Entry.rule_digest; dynamic_deps_stages }
+  ;;
 end

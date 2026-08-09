@@ -128,6 +128,12 @@ let make ?(mode = Mode.Standard) ?(info = Info.Internal) ~targets action =
   { id = Id.gen (); targets; action; mode; info }
 ;;
 
+let anonymous ?(info = Info.Internal) ~dir action =
+  let action = Action_builder.memoize "Rule.anonymous" action in
+  let targets = Targets.Validated.empty ~root:dir in
+  { id = Id.gen (); targets; action; mode = Mode.Standard; info }
+;;
+
 let set_action t action =
   let action = Action_builder.memoize "Rule.set_action" action in
   { t with action }

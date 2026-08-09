@@ -6,6 +6,8 @@ module T = struct
   let to_string = Blake3_mini.Digest.to_hex
   let to_dyn s = Dyn.variant "digest" [ String (to_string s) ]
   let compare x y = Ordering.of_int (Blake3_mini.Digest.compare x y)
+  let equal = Blake3_mini.Digest.equal
+  let hash = Blake3_mini.Digest.hash
 end
 
 include T
@@ -116,8 +118,6 @@ let file_async =
       digest)
 ;;
 
-let equal = Blake3_mini.Digest.equal
-let hash = Blake3_mini.Digest.hash
 let file p = file (Path.to_string p)
 let file_async p = file_async (Path.to_string p)
 let from_hex s = Blake3_mini.Digest.of_hex s
@@ -523,3 +523,5 @@ let file_with_executable_bit ~executable path =
   let+ content_digest = file_async path in
   path_with_executable_bit ~content_digest ~executable
 ;;
+
+module Table = Hashtbl.Make (T)

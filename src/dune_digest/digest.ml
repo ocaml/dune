@@ -40,7 +40,7 @@ module Hasher = struct
     else (
       if !Scratch.pos + length > Scratch.len then Scratch.flush ();
       let pos = !Scratch.pos in
-      Bytes.blit_string ~src:s ~src_pos:0 ~dst:Scratch.buf ~dst_pos:pos ~len:length;
+      Bytes.unsafe_blit_string ~src:s ~src_pos:0 ~dst:Scratch.buf ~dst_pos:pos ~len:length;
       Scratch.pos := pos + length)
   ;;
 

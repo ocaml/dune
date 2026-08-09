@@ -125,7 +125,6 @@ and work =
   | Nfork_seq_work : int ref * 'a * 'a Seq.t * ('a -> eff) -> work
   | Nfork_array_work : 'a array * int * ('a -> eff) -> work
   | Apply_thunk_work : (unit -> 'a t) * 'a continuation -> work
-  | Eval_work : 'a t * 'a continuation -> work
   | Continue_work : unit continuation -> work
 
 and 'a ivar = { mutable state : ('a, [ `Full | `Empty ]) ivar_state }
@@ -319,11 +318,6 @@ let apply_t f x k =
   | exn -> Reraise (Exn_with_backtrace.capture exn)
 ;;
 
-let apply_t2 f x y k =
-  try eval (f x y) k with
-  | exn -> Reraise (Exn_with_backtrace.capture exn)
-;;
-
 let rec nfork x l f =
   match l with
   | [] -> f x
@@ -372,7 +366,6 @@ let run_work = function
   | Nfork_seq_work (left_over, x, seq, f) -> nfork_seq left_over x seq f
   | Nfork_array_work (a, i, f) -> nfork_array a i f
   | Apply_thunk_work (f, k) -> apply_t f () k
-  | Eval_work (t, k) -> eval t k
   | Continue_work k -> continue k ()
 ;;
 

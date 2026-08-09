@@ -41,13 +41,13 @@ Same for the other directory.
   [1]
   $ dune build A/C/c
 
-If we wish to exclude a subdirectory of A/, the following should error and Dune
-should suggest the correct course of action.
+In older dune language versions, nested paths in (dirs ...) are ignored.
   $ cat > dune << EOF
   > (dirs :standard \ A/C)
   > EOF
 
   $ dune build A/a
+  $ dune build A/C/c
 
 This should now only fail for the excluded directory.
   $ cat > dune << EOF
@@ -60,4 +60,23 @@ This should now only fail for the excluded directory.
   Error: Don't know how to build A/C/c
   Hint: directory A/C exists on disk but is excluded by a (dirs ...) stanza at
   dune:1
+  [1]
+
+Starting from dune 3.25, a nested path in (dirs ...) is rejected and Dune should
+suggest the correct course of action.
+  $ mkdir -p v325/A/C
+  $ touch v325/A/a v325/A/C/c
+  $ cat > v325/dune-project << EOF
+  > (lang dune 3.25)
+  > EOF
+  $ cat > v325/dune << EOF
+  > (dirs :standard \ A/C)
+  > EOF
+
+  $ (cd v325 && dune build A/a)
+  File "dune", line 1, characters 18-21:
+  1 | (dirs :standard \ A/C)
+                        ^^^
+  Error: only immediate sub-directories may be specified.
+  Hint: to ignore A/C, write "(dirs C)" in A/dune
   [1]

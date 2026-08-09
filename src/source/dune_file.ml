@@ -154,32 +154,36 @@ module Ast = struct
 
   open Dune_lang.Decoder
 
+  let validate_strict_subdir field_name ~loc dn =
+    let msg = [ Pp.textf "invalid sub-directory name %S" dn ] in
+    if Filename.dirname dn <> Filename.current_dir_name
+    then (
+      let msg = [ Pp.textf "only immediate sub-directories may be specified." ] in
+      let hints =
+        [ Pp.textf
+            "to ignore %s, write \"(%s %s)\" in %s/dune"
+            dn
+            field_name
+            (Filename.basename dn)
+            (Filename.dirname dn)
+        ]
+      in
+      User_error.raise ~loc ~hints msg)
+    else if
+      match dn with
+      | "" | "." ->
+        let hints = [ Pp.textf "did you mean (%s *)?" field_name ] in
+        User_error.raise ~loc ~hints msg
+      | ".." -> true
+      | _ -> false
+    then User_error.raise ~loc msg
+  ;;
+
   let strict_subdir field_name =
     let open Dune_lang.Decoder in
     plain_string (fun ~loc dn ->
-      let msg = [ Pp.textf "invalid sub-directory name %S" dn ] in
-      if Filename.dirname dn <> Filename.current_dir_name
-      then (
-        let msg = [ Pp.textf "only immediate sub-directories may be specified." ] in
-        let hints =
-          [ Pp.textf
-              "to ignore %s, write \"(%s %s)\" in %s/dune"
-              dn
-              field_name
-              (Filename.basename dn)
-              (Filename.dirname dn)
-          ]
-        in
-        User_error.raise ~loc ~hints msg)
-      else if
-        match dn with
-        | "" | "." ->
-          let hints = [ Pp.textf "did you mean (%s *)?" field_name ] in
-          User_error.raise ~loc ~hints msg
-        | ".." -> true
-        | _ -> false
-      then User_error.raise ~loc msg
-      else loc, dn)
+      validate_strict_subdir field_name ~loc dn;
+      loc, dn)
   ;;
 
   let ignored_sub_dirs =
@@ -230,9 +234,15 @@ module Ast = struct
   ;;
 
   let dirs =
+    let* dune_version = Dune_lang.Syntax.get_exn Stanza.syntax in
+    let decode =
+      if dune_version >= (3, 25)
+      then Predicate_lang.Glob.decode_validated ~f:(validate_strict_subdir "dirs")
+      else Predicate_lang.Glob.decode
+    in
     let+ loc, dirs =
       Dune_lang.Syntax.since Stanza.syntax (1, 6)
-      >>> Predicate_lang.Glob.decode
+      >>> decode
       |> located
     in
     Dirs (loc, dirs)

@@ -137,7 +137,7 @@ module Local_gen = struct
       if i < 0
       then false
       else (
-        match s.[i] with
+        match String.unsafe_get s i with
         | '/' -> false
         | '.' -> before_dot_slash s (i - 1)
         | '\\' when Sys.win32 -> false
@@ -146,7 +146,7 @@ module Local_gen = struct
       if i < 0
       then false
       else (
-        match s.[i] with
+        match String.unsafe_get s i with
         | '/' -> false
         | '.' -> before_dot_dot_slash s (i - 1)
         | '\\' when Sys.win32 -> false
@@ -155,7 +155,7 @@ module Local_gen = struct
       if i < 0
       then false
       else (
-        match s.[i] with
+        match String.unsafe_get s i with
         | '/' -> false
         | '\\' when Sys.win32 -> false
         | _ -> in_component s (i - 1))
@@ -163,7 +163,7 @@ module Local_gen = struct
       if i < 0
       then true
       else (
-        match s.[i] with
+        match String.unsafe_get s i with
         | '/' -> before_slash s (i - 1)
         | '\\' when Sys.win32 -> false
         | _ -> in_component s (i - 1))

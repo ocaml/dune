@@ -56,7 +56,7 @@ module Local_gen = struct
   let compare = String.compare
   let equal = String.equal
   let root = "."
-  let is_root t = Ordering.is_eq (compare t root)
+  let is_root t = equal t root
 
   let parent t =
     if is_root t

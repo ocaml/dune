@@ -381,6 +381,49 @@ let%expect_test "finalize" =
     [PASS] got Exit |}]
 ;;
 
+let%expect_test "finalize combines body and finalizer errors" =
+  let run ~body_fails ~finalizer_fails =
+    printfn "body=%b finalizer=%b" body_fails finalizer_fails;
+    test
+      (backtrace_result int)
+      (Fiber.collect_errors (fun () ->
+         Fiber.finalize
+           (fun () ->
+              let* () = Scheduler.yield () in
+              if body_fails then failwith "body" else Fiber.return 42)
+           ~finally:(fun () ->
+             let* () = Scheduler.yield () in
+             if finalizer_fails then failwith "finalizer" else Fiber.return ())))
+  in
+  run ~body_fails:false ~finalizer_fails:false;
+  run ~body_fails:true ~finalizer_fails:false;
+  run ~body_fails:false ~finalizer_fails:true;
+  run ~body_fails:true ~finalizer_fails:true;
+  [%expect
+    {|
+    body=false finalizer=false
+    Ok 42
+    body=true finalizer=false
+    Error [ { exn = "Failure(\"body\")"; backtrace = "" } ]
+    body=false finalizer=true
+    Error [ { exn = "Failure(\"finalizer\")"; backtrace = "" } ]
+    body=true finalizer=true
+    Error
+      [ { exn = "Failure(\"body\")"; backtrace = "" }
+      ; { exn = "Failure(\"finalizer\")"; backtrace = "" }
+      ] |}]
+;;
+
+let%expect_test "finalize does not run the finalizer while the body is stalled" =
+  test
+    ~expect_never:true
+    unit
+    (Fiber.finalize never_fiber ~finally:(fun () ->
+       print_endline "unexpected finalizer";
+       Fiber.return ()));
+  [%expect {| [PASS] Never raised as expected |}]
+;;
+
 let%expect_test "nested finalize" =
   let fiber =
     Fiber.finalize

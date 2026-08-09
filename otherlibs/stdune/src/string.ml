@@ -73,7 +73,11 @@ module Caseless = Cased_functions (struct
 include Stdlib.StringLabels
 
 let repr = Repr.string
-let compare a b = Ordering.of_int (String.compare a b)
+
+let compare a b =
+  let result = String.compare a b in
+  if result < 0 then Ordering.Lt else if result = 0 then Eq else Gt
+;;
 
 module T = struct
   type t = StringLabels.t

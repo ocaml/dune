@@ -397,7 +397,7 @@ module Stack_frame_with_state : sig
   val to_dyn : t -> Dyn.t
 
   (* Create a new stack frame related to restoring or computing a [dep_node]. *)
-  val create : dag_node:Lazy_dag_node.t -> phase -> dep_node:_ Dep_node.t -> t
+  val create : dag_node:Lazy_dag_node.t -> dep_node:_ Dep_node.t -> t
   val dep_node : t -> Dep_node.packed
   val dag_node : t -> Dag.node
   val children_added_to_dag : t -> Dag.Id.Set.t
@@ -431,7 +431,7 @@ end = struct
 
   let to_dyn t = Dep_node.Packed.to_dyn_without_state t.dep_node
 
-  let create ~dag_node (_ : phase) ~dep_node =
+  let create ~dag_node ~dep_node =
     { dep_node = Dep_node.T dep_node; dag_node; children_added_to_dag = Dag.Id.Set.empty }
   ;;
 
@@ -596,8 +596,8 @@ module Computation = struct
 
   (* Each computation should be forced exactly once. Not forcing it will lead to
      a deadlock. Forcing it twice will lead to [Fiber.Ivar.fill] raising. *)
-  let force { ivar; dag_node } ~phase ~dep_node fiber =
-    let frame = Stack_frame_with_state.create phase ~dag_node ~dep_node in
+  let force { ivar; dag_node } ~dep_node fiber =
+    let frame = Stack_frame_with_state.create ~dag_node ~dep_node in
     let* result =
       (* The only reason we make the stack [frame] available to the [fiber] is
          to let the latter get the discovered dependencies [deps_rev]. *)

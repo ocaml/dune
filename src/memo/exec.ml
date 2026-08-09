@@ -149,25 +149,21 @@ and start_restoring : 'i 'o. ('i, 'o) Dep_node.t -> Cycle_error.t Changed_or_not
   fun node ->
   let computation = Computation.create () in
   node.state <- Restoring { restore_from_cache = computation };
-  Computation.force
-    computation
-    ~phase:Restore_from_cache
-    ~dep_node:node
-    (fun _stack_frame ->
-       let* restore_result = restore_from_cache node in
-       let+ () =
-         match restore_result with
-         | Unchanged ->
-           validate_value node;
-           Fiber.return ()
-         | Cancelled { dependency_cycle } ->
-           update_value node (Error (cancelled ~dependency_cycle)) ~deps:Deps.empty;
-           Fiber.return ()
-         | Changed ->
-           node.state <- Out_of_date;
-           Fiber.return ()
-       in
-       restore_result)
+  Computation.force computation ~dep_node:node (fun _stack_frame ->
+    let* restore_result = restore_from_cache node in
+    let+ () =
+      match restore_result with
+      | Unchanged ->
+        validate_value node;
+        Fiber.return ()
+      | Cancelled { dependency_cycle } ->
+        update_value node (Error (cancelled ~dependency_cycle)) ~deps:Deps.empty;
+        Fiber.return ()
+      | Changed ->
+        node.state <- Out_of_date;
+        Fiber.return ()
+    in
+    restore_result)
 
 (* Recompute a node. The node has a [Computing] state during the computation. Once
    finished, the node's state is [Cached] with an up to date [last_validated_at]. *)
@@ -175,8 +171,7 @@ and start_computing : 'i 'o. ('i, 'o) Dep_node.t -> unit Fiber.t =
   fun node ->
   let computation = Computation.create () in
   node.state <- Computing { compute = computation };
-  Computation.force computation ~phase:Compute ~dep_node:node (fun _stack_frame ->
-    compute node)
+  Computation.force computation ~dep_node:node (fun _stack_frame -> compute node)
 
 (* Try to validate a [Cached] node without recomputing it. Once done, the node's state is
    either [Cached] with an up to date [last_validated_at] or [Out_of_date]. *)

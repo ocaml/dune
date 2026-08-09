@@ -3,9 +3,13 @@ include Stdlib.Filename
 type t = string
 
 let is_valid s =
-  (not (String.is_empty s))
-  && (not (String.equal s current_dir_name))
-  && (not (String.equal s parent_dir_name))
+  let len = String.length s in
+  len > 0
+  && (len <> 1 || not (Char.equal (String.unsafe_get s 0) '.'))
+  && (len <> 2
+      || not
+           (Char.equal (String.unsafe_get s 0) '.'
+            && Char.equal (String.unsafe_get s 1) '.'))
   && not (String.contains s '/')
 ;;
 

@@ -167,6 +167,7 @@ let dep_node (t : (_, _) Table.t) input =
 ;;
 
 let check_point = Exec.check_point
+let set_incremental = Deps_collector.set_enabled
 let exec (type i o) (t : (i, o) Table.t) i = Exec.exec_dep_node (dep_node t i)
 
 let create_rec

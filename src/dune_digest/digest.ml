@@ -44,14 +44,10 @@ module Hasher = struct
       Scratch.pos := pos + length)
   ;;
 
-  let feed_manual_int64 i =
+  let feed_manual_int i =
     if !Scratch.pos + 8 > Scratch.len then Scratch.flush ();
     let pos = !Scratch.pos in
-    for byte = 0 to 7 do
-      let shift = 8 * byte in
-      let value = Int64.(to_int (logand (shift_right_logical i shift) 0xffL)) in
-      Bytes.set Scratch.buf (pos + byte) (Char.chr value)
-    done;
+    Bytes.set_int64_le Scratch.buf pos (Int64.of_int i);
     Scratch.pos := pos + 8
   ;;
 
@@ -179,11 +175,7 @@ let feed_bytes_raw hasher bytes ~len =
 ;;
 
 let feed_int64 hasher scratch i =
-  for byte = 0 to 7 do
-    let shift = 8 * byte in
-    let value = Int64.(to_int (logand (shift_right_logical i shift) 0xffL)) in
-    Bytes.set scratch byte (Char.chr value)
-  done;
+  Bytes.set_int64_le scratch 0 i;
   feed_bytes_raw hasher scratch ~len:8
 ;;
 
@@ -192,7 +184,10 @@ let feed_bool hasher scratch b =
   feed_bytes_raw hasher scratch ~len:1
 ;;
 
-let feed_int hasher scratch i = feed_int64 hasher scratch (Int64.of_int i)
+let feed_int hasher scratch i =
+  Bytes.set_int64_le scratch 0 (Int64.of_int i);
+  feed_bytes_raw hasher scratch ~len:8
+;;
 
 let feed_string hasher scratch s =
   feed_int hasher scratch (String.length s);
@@ -352,7 +347,7 @@ module Manual = struct
 
   let create () = ()
   let bool () = Hasher.feed_manual_bool
-  let int () i = Hasher.feed_manual_int64 (Int64.of_int i)
+  let int () = Hasher.feed_manual_int
 
   let string () s =
     int () (String.length s);

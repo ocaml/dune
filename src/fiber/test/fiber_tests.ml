@@ -18,9 +18,144 @@ let%expect_test "basics" =
   [%expect {| () |}]
 ;;
 
+let%expect_test "fibers are reusable and thunks run during execution" =
+  let runs = ref 0 in
+  let fiber =
+    Fiber.of_thunk (fun () ->
+      incr runs;
+      Fiber.return !runs)
+  in
+  printfn "before: %d" !runs;
+  test int fiber;
+  test int fiber;
+  [%expect
+    {|
+    before: 0
+    1
+    2 |}]
+;;
+
+let%expect_test "of_thunk_apply fibers are lazy and reusable" =
+  let runs = ref 0 in
+  let fiber =
+    Fiber.of_thunk_apply
+      (fun x ->
+         incr runs;
+         Fiber.return (x + !runs))
+      10
+  in
+  printfn "before: %d" !runs;
+  test int fiber;
+  test int fiber;
+  [%expect
+    {|
+    before: 0
+    11
+    12 |}]
+;;
+
+let%expect_test "map chains preserve callback order and exceptions" =
+  let chain ~length ~raise_at =
+    List.init length ~f:(fun i -> i + 1)
+    |> List.fold_left ~init:(Fiber.return 0) ~f:(fun fiber i ->
+      Fiber.map fiber ~f:(fun x ->
+        printfn "map %d: %d" i x;
+        if raise_at = Some i then failwith (Int.to_string i);
+        x + 1))
+  in
+  List.iter [ 1; 2; 3; 4 ] ~f:(fun length ->
+    printfn "length %d" length;
+    test int (chain ~length ~raise_at:None));
+  List.iter [ 1; 2; 3; 4 ] ~f:(fun raise_at ->
+    printfn "raise at %d" raise_at;
+    let result =
+      Scheduler.run
+        (Fiber.collect_errors (fun () -> chain ~length:4 ~raise_at:(Some raise_at)))
+    in
+    match result with
+    | Error [ { exn = Failure message; _ } ] -> printfn "caught %s" message
+    | Ok _ | Error _ -> print_endline "unexpected result");
+  [%expect
+    {|
+    length 1
+    map 1: 0
+    1
+    length 2
+    map 1: 0
+    map 2: 1
+    2
+    length 3
+    map 1: 0
+    map 2: 1
+    map 3: 2
+    3
+    length 4
+    map 1: 0
+    map 2: 1
+    map 3: 2
+    map 4: 3
+    4
+    raise at 1
+    map 1: 0
+    caught 1
+    raise at 2
+    map 1: 0
+    map 2: 1
+    caught 2
+    raise at 3
+    map 1: 0
+    map 2: 1
+    map 3: 2
+    caught 3
+    raise at 4
+    map 1: 0
+    map 2: 1
+    map 3: 2
+    map 4: 3
+    caught 4 |}]
+;;
+
 let%expect_test "collect_errors" =
   test (backtrace_result unit) (Fiber.collect_errors (fun () -> raise Exit));
   [%expect {| Error [ { exn = "Stdlib.Exit"; backtrace = "" } ] |}]
+;;
+
+let[@inline never] raise_for_backtrace_test _ = raise Exit
+
+let%expect_test "scheduler exceptions preserve user backtraces" =
+  let previously_recording = Printexc.backtrace_status () in
+  let result =
+    Exn.protect
+      ~f:(fun () ->
+        Printexc.record_backtrace true;
+        Scheduler.run
+          (Fiber.collect_errors (fun () ->
+             Fiber.map (Fiber.return ()) ~f:raise_for_backtrace_test)))
+      ~finally:(fun () -> Printexc.record_backtrace previously_recording)
+  in
+  let backtrace =
+    match result with
+    | Error [ { exn = Exit; backtrace } ] -> backtrace
+    | result ->
+      Code_error.raise
+        "Unexpected result in Fiber backtrace test"
+        [ "result", backtrace_result unit result ]
+  in
+  let contains_test_frame =
+    match Printexc.backtrace_slots backtrace with
+    | None -> false
+    | Some slots ->
+      Array.exists slots ~f:(fun slot ->
+        match Printexc.Slot.location slot with
+        | None -> false
+        | Some { filename; _ } -> Filename.basename filename = "fiber_tests.ml")
+  in
+  printfn "nonempty: %b" (Printexc.raw_backtrace_length backtrace > 0);
+  printfn "contains user frame: %b" contains_test_frame;
+  [%expect
+    {|
+    nonempty: true
+    contains user frame: true |}]
 ;;
 
 let%expect_test "reraise_all" =
@@ -417,6 +552,30 @@ let%expect_test "sequential_iter - stop after first exception" =
     Error [ { exn = "Failure(\"1\")"; backtrace = "" } ] |}]
 ;;
 
+let%expect_test "parallel_map preserves input order" =
+  let iv1 = Fiber.Ivar.create () in
+  let iv2 = Fiber.Ivar.create () in
+  let iv3 = Fiber.Ivar.create () in
+  let map () =
+    let+ result =
+      Fiber.parallel_map
+        [ 1, iv1; 2, iv2; 3, iv3 ]
+        ~f:(fun (i, ivar) ->
+          let+ () = Fiber.Ivar.read ivar in
+          i)
+    in
+    printfn "%s" (String.concat ~sep:"," (List.map result ~f:Int.to_string))
+  in
+  let fill () =
+    let* () = Scheduler.yield () in
+    let* () = Fiber.Ivar.fill iv3 () in
+    let* () = Fiber.Ivar.fill iv1 () in
+    Fiber.Ivar.fill iv2 ()
+  in
+  Scheduler.run (Fiber.fork_and_join_unit map fill);
+  [%expect {| 1,2,3 |}]
+;;
+
 let%expect_test "all_concurrently_unit" =
   Scheduler.run
     (let+ () = Fiber.all_concurrently_unit [] in
@@ -461,4 +620,130 @@ let%expect_test "all_concurrently_unit" =
     print: 1
     successfully caught error
     multi element list |}]
+;;
+
+let%expect_test "Lazy.force_all_unit handles empty and completed inputs" =
+  Common.test unit (Fiber.Lazy.force_all_unit []);
+  Common.test unit (Fiber.Lazy.force_all_unit [ Fiber.Lazy.unit; Fiber.Lazy.of_value () ]);
+  [%expect
+    {|
+    ()
+    () |}]
+;;
+
+let%expect_test "Lazy.force_all_unit starts every pending computation" =
+  let gate = Fiber.Ivar.create () in
+  let started = ref 0 in
+  let make () =
+    Fiber.Lazy.create (fun () ->
+      incr started;
+      Fiber.Ivar.read gate)
+  in
+  let a = make () in
+  let b = make () in
+  let force () =
+    let+ () = Fiber.Lazy.force_all_unit [ a; b ] in
+    print_endline "all forced"
+  in
+  let release () =
+    let* () = Scheduler.yield () in
+    printfn "started before release: %d" !started;
+    Fiber.Ivar.fill gate ()
+  in
+  Scheduler.run (Fiber.fork_and_join_unit force release);
+  printfn "values: %b %b" (Fiber.Lazy.is_value a) (Fiber.Lazy.is_value b);
+  [%expect
+    {|
+    started before release: 2
+    all forced
+    values: true true |}]
+;;
+
+let%expect_test "Lazy.force_all_unit joins a computation already being forced" =
+  let runs = ref 0 in
+  let lazy_fiber =
+    Fiber.Lazy.create (fun () ->
+      incr runs;
+      Scheduler.yield ())
+  in
+  Scheduler.run
+    (Fiber.fork_and_join_unit
+       (fun () -> Fiber.Lazy.force lazy_fiber)
+       (fun () -> Fiber.Lazy.force_all_unit [ lazy_fiber ]));
+  printfn "runs: %d" !runs;
+  printfn "is value: %b" (Fiber.Lazy.is_value lazy_fiber);
+  [%expect
+    {|
+    runs: 1
+    is value: true |}]
+;;
+
+let%expect_test "Lazy.force_all_unit collects all failures" =
+  let make name =
+    Fiber.Lazy.create (fun () ->
+      let* () = Scheduler.yield () in
+      failwith name)
+  in
+  let a = make "a" in
+  let b = make "b" in
+  let run () =
+    match
+      Scheduler.run (Fiber.collect_errors (fun () -> Fiber.Lazy.force_all_unit [ a; b ]))
+    with
+    | Ok () -> print_endline "unexpected success"
+    | Error errors ->
+      let errors =
+        List.map errors ~f:(fun { Exn_with_backtrace.exn; _ } ->
+          match exn with
+          | Failure message -> message
+          | exn -> Printexc.to_string exn)
+        |> List.sort ~compare:String.compare
+      in
+      printfn "errors: %s" (String.concat ~sep:"," errors)
+  in
+  run ();
+  run ();
+  printfn "values: %b %b" (Fiber.Lazy.is_value a) (Fiber.Lazy.is_value b);
+  [%expect
+    {|
+    errors: a,b
+    errors: a,b
+    values: false false |}]
+;;
+
+let%expect_test "Mutex serializes fibers and releases after errors" =
+  let mutex = Fiber.Mutex.create () in
+  let inside = ref false in
+  let max_inside = ref 0 in
+  let inside_count = ref 0 in
+  let critical_section () =
+    Fiber.Mutex.with_lock mutex ~f:(fun () ->
+      if !inside then print_endline "overlap";
+      inside := true;
+      incr inside_count;
+      max_inside := max !max_inside !inside_count;
+      let* () = Scheduler.yield () in
+      decr inside_count;
+      inside := false;
+      Fiber.return ())
+  in
+  Scheduler.run (Fiber.parallel_iter [ (); (); () ] ~f:critical_section);
+  printfn "max inside: %d" !max_inside;
+  let result =
+    Scheduler.run
+      (Fiber.collect_errors (fun () ->
+         Fiber.Mutex.with_lock mutex ~f:(fun () -> raise Exit)))
+  in
+  (match result with
+   | Error [ { exn = Exit; _ } ] -> print_endline "caught Exit"
+   | Ok () | Error _ -> print_endline "unexpected result");
+  Scheduler.run
+    (Fiber.Mutex.with_lock mutex ~f:(fun () ->
+       print_endline "reacquired";
+       Fiber.return ()));
+  [%expect
+    {|
+    max inside: 1
+    caught Exit
+    reacquired |}]
 ;;

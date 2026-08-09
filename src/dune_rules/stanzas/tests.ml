@@ -59,6 +59,7 @@ let gen_parse names =
             ; optional = false
             ; buildable
             ; names = Nonempty_list.of_list_exn names
+            ; public_names = None
             ; package = None
             ; promote = None
             ; install_conf = None

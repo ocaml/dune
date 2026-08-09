@@ -22,6 +22,15 @@ The alloc sampler is only enabled when the alloc trace category is requested:
   >     , phase: .args.phase
   >     , has_run_id: (.args.run_id != null)
   >     , config: .args.config
+  >     , exact_allocation_counters:
+  >         ((.args.exact | type) == "object"
+  >          and ((.args.exact | keys | sort)
+  >               == ["major_words", "minor_words", "promoted_words"])
+  >          and all(.args.exact[]; type == "number" and . >= 0)
+  >          and (if .args.phase == "build"
+  >               then .args.exact.minor_words > 0
+  >               else true
+  >               end))
   >     , heaps:
   >         { minor: (.args.minor | keys)
   >         , major: (.args.major | keys)
@@ -66,6 +75,7 @@ The alloc sampler is only enabled when the alloc trace category is requested:
         "callstack_size": 3,
         "top_entry_count": 2
       },
+      "exact_allocation_counters": true,
       "heaps": {
         "minor": [
           "by_frame",
@@ -105,6 +115,7 @@ The alloc sampler is only enabled when the alloc trace category is requested:
         "callstack_size": 3,
         "top_entry_count": 2
       },
+      "exact_allocation_counters": true,
       "heaps": {
         "minor": [
           "by_frame",

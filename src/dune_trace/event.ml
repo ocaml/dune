@@ -149,6 +149,12 @@ type alloc_heap =
   ; top : alloc_entry list
   }
 
+type alloc_exact =
+  { minor_words : int
+  ; major_words : int
+  ; promoted_words : int
+  }
+
 let scan_source ~name ~start ~stop ~dir =
   let dur = Time.diff stop start in
   let args = [ "dir", Arg.source_path dir ] in
@@ -414,7 +420,7 @@ let watch_build_finish
   Event.complete ~name:"build-finish" ~args ~start ~dur Build
 ;;
 
-let alloc_summary ~phase ~run_id ~config ~minor ~major ~promoted =
+let alloc_summary ~phase ~run_id ~config ~exact ~minor ~major ~promoted =
   let now = Time.now () in
   let encode_config { sampling_rate; callstack_size; top_entry_count } =
     Arg.record
@@ -461,6 +467,14 @@ let alloc_summary ~phase ~run_id ~config ~minor ~major ~promoted =
       ]
     |> Arg.list
   in
+  let encode_exact { minor_words; major_words; promoted_words } =
+    Arg.record
+      [ "minor_words", Arg.int minor_words
+      ; "major_words", Arg.int major_words
+      ; "promoted_words", Arg.int promoted_words
+      ]
+    |> Arg.list
+  in
   let args =
     [ ( "phase"
       , Arg.string
@@ -468,6 +482,7 @@ let alloc_summary ~phase ~run_id ~config ~minor ~major ~promoted =
            | `Build -> "build"
            | `Exit -> "exit") )
     ; "config", encode_config config
+    ; "exact", encode_exact exact
     ; "minor", heap minor
     ; "major", heap major
     ; "promoted", heap promoted

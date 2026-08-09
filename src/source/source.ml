@@ -1,4 +1,5 @@
 module Source_dir_status = Source_dir_status
+module Dir_contents = Dir_contents
 module Dune_file = Dune_file
 module Include_stanza = Include_stanza
 module Source_tree = Source_tree

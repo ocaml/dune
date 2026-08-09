@@ -9,6 +9,7 @@
   dune_scheduler
   dune_threaded_console
   dune_rules
+  source
   fiber
   dune_lang
   ocaml

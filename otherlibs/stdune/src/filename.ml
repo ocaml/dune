@@ -2,6 +2,10 @@ include Stdlib.Filename
 
 type t = string
 
+let rec contains_slash s i =
+  i >= 0 && (Char.equal (String.unsafe_get s i) '/' || contains_slash s (i - 1))
+;;
+
 let is_valid s =
   let len = String.length s in
   len > 0
@@ -10,7 +14,7 @@ let is_valid s =
       || not
            (Char.equal (String.unsafe_get s 0) '.'
             && Char.equal (String.unsafe_get s 1) '.'))
-  && not (String.contains s '/')
+  && not (contains_slash s (len - 1))
 ;;
 
 let of_string s = Option.some_if (is_valid s) s
@@ -78,7 +82,8 @@ module Extension = struct
   let json = ".json"
 
   let is_valid s =
-    (not (String.is_empty s)) && Char.equal s.[0] '.' && not (String.contains s '/')
+    let len = String.length s in
+    len > 0 && Char.equal (String.unsafe_get s 0) '.' && not (contains_slash s (len - 1))
   ;;
 
   let of_string s = Option.some_if (is_valid s) s
@@ -214,7 +219,9 @@ type program_name_kind =
 let analyze_program_name fn =
   if not (is_relative fn)
   then Absolute
-  else if String.contains fn '/' || (Stdlib.Sys.win32 && String.contains fn '\\')
+  else if
+    contains_slash fn (String.length fn - 1)
+    || (Stdlib.Sys.win32 && String.contains fn '\\')
   then Relative_to_current_dir
   else In_path
 ;;

@@ -38,8 +38,14 @@ module Hasher = struct
       Scratch.flush ();
       Blake3_mini.feed_string ~pos:0 ~len:length (Lazy.force singleton) s)
     else (
-      if !Scratch.pos + length > Scratch.len then Scratch.flush ();
       let pos = !Scratch.pos in
+      let pos =
+        if pos + length > Scratch.len
+        then (
+          Scratch.flush ();
+          0)
+        else pos
+      in
       Bytes.unsafe_blit_string ~src:s ~src_pos:0 ~dst:Scratch.buf ~dst_pos:pos ~len:length;
       Scratch.pos := pos + length)
   ;;
@@ -53,7 +59,7 @@ module Hasher = struct
 
   let feed_manual_bool b =
     if !Scratch.pos = Scratch.len then Scratch.flush ();
-    Bytes.set Scratch.buf !Scratch.pos (if b then '\001' else '\000');
+    Bytes.unsafe_set Scratch.buf !Scratch.pos (if b then '\001' else '\000');
     Scratch.pos := !Scratch.pos + 1
   ;;
 

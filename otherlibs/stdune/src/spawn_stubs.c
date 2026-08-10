@@ -613,21 +613,30 @@ CAMLprim value dune_spawn_unix(value v_env,
   char *e_function = NULL;
 
   posix_spawn_file_actions_t actions;
-  if (posix_spawn_file_actions_init(&actions)) {
+  int actions_initialized = 0;
+  posix_spawnattr_t attr;
+  int attr_initialized = 0;
+  struct spawn_info info;
+  int info_initialized = 0;
+
+  e_error = posix_spawn_file_actions_init(&actions);
+  if (e_error) {
     e_function = "posix_spawn_file_actions_init";
     goto cleanup;
   }
+  actions_initialized = 1;
 
-  posix_spawnattr_t attr;
-  if (posix_spawnattr_init(&attr)) {
+  e_error = posix_spawnattr_init(&attr);
+  if (e_error) {
     e_function = "posix_spawnattr_init";
     goto cleanup;
   }
+  attr_initialized = 1;
 
-  struct spawn_info info;
   init_spawn_info(&info, v_env, v_cwd, v_prog, v_argv,
                   v_stdin, v_stdout, v_stderr, v_setpgid, v_sigprocmask,
                   v_pdeathsig);
+  info_initialized = 1;
 
   short attr_flags = POSIX_SPAWN_SETSIGMASK;
   if (info.set_pgid) attr_flags |= POSIX_SPAWN_SETPGROUP;
@@ -709,9 +718,12 @@ CAMLprim value dune_spawn_unix(value v_env,
     if (tmp_fds[fd] > 2)
       close(tmp_fds[fd]);
 
-  free_spawn_info(&info);
-  posix_spawnattr_destroy(&attr);
-  posix_spawn_file_actions_destroy(&actions);
+  if (info_initialized)
+    free_spawn_info(&info);
+  if (attr_initialized)
+    posix_spawnattr_destroy(&attr);
+  if (actions_initialized)
+    posix_spawn_file_actions_destroy(&actions);
 
   if (e_function) {
     unix_error(e_error, e_function, e_arg);

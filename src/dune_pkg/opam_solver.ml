@@ -444,7 +444,7 @@ module Solver = struct
     end
 
     type role =
-      | Real of OpamPackage.Name.t
+      | Real of OpamPackage.Name.t * Solver_env.t
       | Virtual of Virtual_id.t * impl list
 
     and real_impl =
@@ -481,7 +481,9 @@ module Solver = struct
       | Dummy -> Pp.text "(no solution found)"
 
     and pp_role = function
-      | Real name -> Pp.text (OpamPackage.Name.to_string name)
+      | Real (name, _platform) ->
+        (* Don't show platform in user-facing output for now *)
+        Pp.text (OpamPackage.Name.to_string name)
       | Virtual (_, impls) -> Pp.concat_map ~sep:(Pp.char '|') impls ~f:pp_impl
     ;;
 
@@ -493,7 +495,10 @@ module Solver = struct
 
         let compare a b =
           match a, b with
-          | Real a, Real b -> Ordering.of_int (OpamPackage.Name.compare a b)
+          | Real (a_name, a_platform), Real (b_name, b_platform) ->
+            (match Ordering.of_int (OpamPackage.Name.compare a_name b_name) with
+             | Eq -> Solver_env.compare a_platform b_platform
+             | x -> x)
           | Virtual (a, _), Virtual (b, _) -> Virtual_id.compare a b
           | Real _, Virtual _ -> Lt
           | Virtual _, Real _ -> Gt
@@ -510,8 +515,8 @@ module Solver = struct
       let user_restrictions t context =
         match t with
         | Virtual _ -> None
-        | Real role ->
-          Context.user_restrictions context role
+        | Real (name, _platform) ->
+          Context.user_restrictions context name
           |> Option.map ~f:(fun f ->
             { Restriction.kind = Ensure; expr = OpamFormula.Atom f })
       ;;
@@ -521,13 +526,13 @@ module Solver = struct
       let rejects role context =
         match role with
         | Virtual _ -> Fiber.return ([], [])
-        | Real role ->
+        | Real (name, _platform) ->
           let+ rejects =
-            Context.candidates context role
+            Context.candidates context name
             >>| List.filter_map ~f:(function
               | _, Ok _ -> None
               | { Priority.version; _ }, Error reason ->
-                let pkg = OpamPackage.create role version in
+                let pkg = OpamPackage.create name version in
                 Some (Reject pkg, reason))
           in
           let notes = [] in
@@ -619,11 +624,12 @@ module Solver = struct
     ;;
 
     (* Turn an opam dependency formula into a 0install list of dependencies. *)
-    let list_deps ~importance ~rank deps =
+    let list_deps ~importance ~rank ~platform deps =
       let rec aux (formula : _ OpamTypes.generic_formula) =
         match formula with
         | Empty -> []
-        | Atom (name, restrictions) -> [ { drole = Real name; restrictions; importance } ]
+        | Atom (name, restrictions) ->
+          [ { drole = Real (name, platform); restrictions; importance } ]
         | Block x -> aux x
         | And (x, y) -> aux x @ aux y
         | Or _ as o ->
@@ -643,12 +649,12 @@ module Solver = struct
     let implementations role context =
       match role with
       | Virtual (_, impls) -> Fiber.return impls
-      | Real role ->
-        Context.candidates context role
+      | Real (name, platform) ->
+        Context.candidates context name
         >>| List.filter_map ~f:(function
           | _, Error _rejection -> None
           | { Priority.version; avoid }, Ok opam ->
-            let pkg = OpamPackage.create role version in
+            let pkg = OpamPackage.create name version in
             (* Note: we ignore depopts here: see opam/doc/design/depopts-and-features *)
             let requires =
               lazy
@@ -656,7 +662,7 @@ module Solver = struct
                  let make_deps importance xform deps =
                    Context.filter_deps context pkg deps
                    |> xform
-                   |> list_deps ~importance ~rank
+                   |> list_deps ~importance ~rank ~platform
                  in
                  (OpamFile.OPAM.depends opam |> make_deps Ensure ensure)
                  @ (OpamFile.OPAM.conflicts opam |> make_deps Prevent prevent))
@@ -1386,15 +1392,18 @@ module Solver = struct
     ;;
   end
 
-  let solve context pkgs =
+  let solve context pkgs ~platform =
     let req =
       match pkgs with
-      | [ pkg ] -> Input.Real pkg
+      | [ pkg ] -> Input.Real (pkg, platform)
       | pkgs ->
         let impl : Input.Impl.t =
           let depends =
             List.map pkgs ~f:(fun name ->
-              { Input.drole = Real name; importance = Ensure; restrictions = [] })
+              { Input.drole = Real (name, platform)
+              ; importance = Ensure
+              ; restrictions = []
+              })
           in
           VirtualImpl (Input.Rank.bottom, depends)
         in
@@ -1452,7 +1461,7 @@ module Solver = struct
   ;;
 end
 
-let solve_package_list packages ~context =
+let solve_package_list packages ~context ~platform =
   Fiber.collect_errors (fun () ->
     (* [Solver.solve] returns [Error] when it's unable to find a solution to
        the dependencies, but can also raise exceptions, for example if opam
@@ -1460,7 +1469,7 @@ let solve_package_list packages ~context =
        an unexpected opam exception from crashing dune, we catch all
        exceptions raised by the solver and report them as [User_error]s
        instead. *)
-    Solver.solve context packages)
+    Solver.solve context packages ~platform)
   >>| (function
    | Ok (Ok res) -> Ok res
    | Ok (Error e) -> Error (`Diagnostics e)
@@ -1774,9 +1783,11 @@ let solve_lock_dir
       in
       Lazy.force context
     in
+    (* For now, use platform 0. Multi-platform solving will pass multiple platforms. *)
+    let platform = Solver_env.empty in
     Package_name.Map.keys local_packages @ selected_depopts
     |> List.map ~f:Package_name.to_opam_package_name
-    |> solve_package_list ~context
+    |> solve_package_list ~context ~platform
     >>= (function
      | Error _ as e -> Fiber.return e
      | Ok solution ->

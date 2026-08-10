@@ -42,41 +42,43 @@ Define a package bar which conditionally depends on different versions of foo:
 Define a project with a package depending on bar:
   $ make_x_depends_bar_project
 
-Solve the project. The solution will contain extra files for both versions of foo:
+The cross-platform version constraint rejects the disagreement on foo. No lock
+directory, including package extra files, may be written:
+
   $ dune pkg lock
-  Solution for dune.lock
+  Error:
+  Unable to solve dependencies while generating lock directory: dune.lock
   
-  Dependencies common to all supported platforms:
-  - bar.0.0.1
-  
-  Additionally, some packages will only be built on specific platforms.
-  
-  arch = arm64; os = linux:
-  - foo.1
-  
-  arch = arm64; os = macos:
-  - foo.2
-  
-  arch = x86_64; os = linux:
-  - foo.1
-  
-  arch = x86_64; os = macos:
-  - foo.2
+  The dependency solver failed to find a solution for the requested platforms:
+  - arch = x86_64; os = linux
+  - arch = arm64; os = linux
+  - arch = x86_64; os = macos
+  - arch = arm64; os = macos
+  ...with this error:
+  Couldn't solve the package dependency formula.
+  Selected candidates: bar.0.0.1 x.dev
+  - foo -> foo.1 on arch = arm64; os = linux
+      bar 0.0.1 requires = 1
+  - foo -> (problem) on arch = arm64; os = macos
+      bar 0.0.1 requires = 2
+      Rejected candidates:
+        foo.2:
+          Reason for rejection unknown:
+          bar.0.0.1=true && foo.2=false => (no solution found)=true
+        foo.1: Incompatible with restriction: = 2
+  - foo -> foo.1 on arch = x86_64; os = linux
+      bar 0.0.1 requires = 1
+  - foo -> (problem) on arch = x86_64; os = macos
+      bar 0.0.1 requires = 2
+      Rejected candidates:
+        foo.2:
+          Reason for rejection unknown:
+          bar.0.0.1=true && foo.2=false => (no solution found)=true
+        foo.1: Incompatible with restriction: = 2
+  Hint: If you don't need support for every requested platform, change
+  Hint: (solve_for_platforms ...) in dune-workspace to only include the
+  Hint: platforms you need, then rerun 'dune pkg lock'
+  [1]
 
-Verify the contents of the extra files for each version of foo:
-  $ cat ${default_lock_dir}/foo.1.files/version.txt
-  version_1
-  $ cat ${default_lock_dir}/foo.2.files/version.txt
-  version_2
-
-Build as if we're on linux and verify that the appropriate extra file was copied into _build:
-  $ DUNE_CONFIG__OS=linux DUNE_CONFIG__ARCH=arm64 DUNE_CONFIG__OS_FAMILY=debian DUNE_CONFIG__OS_DISTRIBUTION=ubuntu DUNE_CONFIG__OS_VERSION=24.11 dune build
-  $ cat ${default_lock_dir}/foo.1.files/version.txt
-  version_1
-
-  $ dune clean
-
-Build as if we're on macos and verify that the appropriate extra file was copied into _build:
-  $ DUNE_CONFIG__OS=macos DUNE_CONFIG__ARCH=x86_64 DUNE_CONFIG__OS_FAMILY=homebrew DUNE_CONFIG__OS_DISTRIBUTION=homebrew DUNE_CONFIG__OS_VERSION=15.3.1 dune build
-  $ cat ${default_lock_dir}/foo.2.files/version.txt
-  version_2
+No partial lock directory is written:
+  $ test ! -e dune.lock

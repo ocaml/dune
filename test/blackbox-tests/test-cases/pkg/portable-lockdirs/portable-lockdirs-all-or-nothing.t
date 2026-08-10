@@ -1,12 +1,6 @@
 Demonstrate that locking fails entirely when the requested platform set has no
 joint solution: no partial lock directory is written.
 
-The all-or-nothing behavior has landed: the lock now fails because the package
-is unavailable on the linux platforms, and no lock directory is written. The
-failure is still the product of per-platform solving and is reported per
-platform; the single-solve change replaces it with one joint failure for the
-requested platform set.
-
   $ mkrepo
   $ add_mock_repo_if_needed
 
@@ -28,17 +22,46 @@ failure is reported once for the requested platform set:
   Error:
   Unable to solve dependencies while generating lock directory: dune.lock
   
-  The dependency solver failed to find a solution for the following platforms:
+  The dependency solver failed to find a solution for the requested platforms:
   - arch = x86_64; os = linux
   - arch = arm64; os = linux
+  - arch = x86_64; os = macos
+  - arch = arm64; os = macos
   ...with this error:
   Couldn't solve the package dependency formula.
-  Selected candidates: x.dev
-  - foo -> (problem)
+  Selected candidates: foo.0.0.1 x.dev
+  - foo -> (problem) on arch = arm64; os = linux
       No usable implementations:
         foo.0.0.1: Availability condition not satisfied
+  - foo -> (problem) on arch = x86_64; os = linux
+      No usable implementations:
+        foo.0.0.1: Availability condition not satisfied
+  Hint: If you don't need support for every requested platform, change
+  Hint: (solve_for_platforms ...) in dune-workspace to only include the
+  Hint: platforms you need, then rerun 'dune pkg lock'
   [1]
 
 No partial lock directory is written:
 
   $ test ! -e dune.lock
+
+When the platform set only contains platforms where the package is available,
+locking succeeds:
+
+  $ cat > dune-workspace <<EOF
+  > (lang dune 3.11)
+  > (repository
+  >  (name mock)
+  >  (url "file://$(pwd)/mock-opam-repository"))
+  > (lock_dir
+  >  (repositories mock)
+  >  (solve_for_platforms
+  >   ((arch arm64)
+  >    (os macos))))
+  > EOF
+
+  $ dune pkg lock
+  Solution for dune.lock
+  
+  Dependencies common to all supported platforms:
+  - foo.0.0.1

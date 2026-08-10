@@ -31,7 +31,7 @@ Solver error when solving fails with the same error on all platforms:
   Error:
   Unable to solve dependencies while generating lock directory: dune.lock
   
-  The dependency solver failed to find a solution for the following platforms:
+  The dependency solver failed to find a solution for the requested platforms:
   - arch = x86_64; os = linux
   - arch = arm64; os = linux
   - arch = x86_64; os = macos
@@ -43,13 +43,16 @@ Solver error when solving fails with the same error on all platforms:
       a 0.0.1 requires = 0.1
       Rejected candidates:
         c.0.2: Incompatible with restriction: = 0.1
+  Hint: If you don't need support for every requested platform, change
+  Hint: (solve_for_platforms ...) in dune-workspace to only include the
+  Hint: platforms you need, then rerun 'dune pkg lock'
   [1]
 
-Each of the four platform solves retries twice before reporting the failure.
+The single platform-set solve retries twice before reporting the failure.
 
   $ dune trace cat \
   > | jq -s 'include "dune"; [ .[] | satSolveEvents ] | length'
-  12
+  3
 
 No partial lock directory is written:
   $ test ! -e dune.lock
@@ -68,25 +71,31 @@ with the platforms where they are relevant:
   Error:
   Unable to solve dependencies while generating lock directory: dune.lock
   
-  The dependency solver failed to find a solution for the following platforms:
+  The dependency solver failed to find a solution for the requested platforms:
   - arch = x86_64; os = linux
   - arch = arm64; os = linux
-  ...with this error:
-  Couldn't solve the package dependency formula.
-  Selected candidates: a.0.0.1 b.0.0.1 foo.dev
-  - c -> (problem)
-      a 0.0.1 requires = 0.1
-      Rejected candidates:
-        c.0.2: Incompatible with restriction: = 0.1
-  
-  The dependency solver failed to find a solution for the following platforms:
   - arch = x86_64; os = macos
   - arch = arm64; os = macos
   ...with this error:
   Couldn't solve the package dependency formula.
   Selected candidates: a.0.0.1 b.0.0.1 foo.dev
-  - c -> (problem)
+  - c -> (problem) on arch = arm64; os = linux
+      a 0.0.1 requires = 0.1
+      Rejected candidates:
+        c.0.2: Incompatible with restriction: = 0.1
+  - c -> (problem) on arch = arm64; os = macos
       a 0.0.1 requires = 0.3
       Rejected candidates:
         c.0.2: Incompatible with restriction: = 0.3
+  - c -> (problem) on arch = x86_64; os = linux
+      a 0.0.1 requires = 0.1
+      Rejected candidates:
+        c.0.2: Incompatible with restriction: = 0.1
+  - c -> (problem) on arch = x86_64; os = macos
+      a 0.0.1 requires = 0.3
+      Rejected candidates:
+        c.0.2: Incompatible with restriction: = 0.3
+  Hint: If you don't need support for every requested platform, change
+  Hint: (solve_for_platforms ...) in dune-workspace to only include the
+  Hint: platforms you need, then rerun 'dune pkg lock'
   [1]

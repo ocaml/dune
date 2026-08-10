@@ -128,6 +128,14 @@ variable in its `available` filter. The undefined-var.0.0.2 package has a valid
 Warnings will be printed and no solution will be found as the availability
 filter resolves to a string instead of to a boolean.
   $ solve availability-string
+  Warning: Ignoring package availability-string.0.0.2 as its "available" filter
+  can't be resolved to a boolean value.
+  available: os
+  value_bool: "linux"
+  Warning: Ignoring package availability-string.0.0.1 as its "available" filter
+  can't be resolved to a boolean value.
+  available: "foo"
+  value_bool: "foo"
   Error: Unable to solve dependencies for the following lock directories:
   Lock directory dune.lock:
   Couldn't solve the package dependency formula.
@@ -136,6 +144,14 @@ filter resolves to a string instead of to a boolean.
       No usable implementations:
         availability-string.0.0.2: Availability condition not satisfied
         availability-string.0.0.1: Availability condition not satisfied
+  Warning: Ignoring package availability-string.0.0.2 as its "available" filter
+  can't be resolved to a boolean value.
+  available: os
+  value_bool: "macos"
+  Warning: Ignoring package availability-string.0.0.1 as its "available" filter
+  can't be resolved to a boolean value.
+  available: "foo"
+  value_bool: "foo"
   Error: Unable to solve dependencies for the following lock directories:
   Lock directory dune.macos.lock:
   Couldn't solve the package dependency formula.

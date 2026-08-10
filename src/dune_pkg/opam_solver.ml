@@ -1463,11 +1463,19 @@ module Solver = struct
         | None -> Pp.text "(problem)"
       ;;
 
-      (* Format a textual description of this component's report. *)
-      let pp ~verbose t =
+      (* Format a textual description of this component's report. If the
+         component's package is also selected on other platforms, [platform]
+         is set to the platform this problem applies to. *)
+      let pp ?(verbose = false) ?platform t =
+        let platform_suffix =
+          match platform with
+          | None -> Pp.nop
+          | Some platform -> Pp.text " on " ++ Solver_env.pp_oneline platform
+        in
         Pp.vbox
           ~indent:2
-          (Pp.hovbox (Input.pp_role t.role ++ Pp.text " -> " ++ pp_outcome t)
+          (Pp.hovbox
+             (Input.pp_role t.role ++ Pp.text " -> " ++ pp_outcome t ++ platform_suffix)
            ++ pp_notes t
            ++ pp_candidates ~verbose t)
       ;;
@@ -1653,10 +1661,6 @@ module Solver = struct
 
   let deduplicate_roles_by_name = filter_dedup_by_name ~key:role_name
 
-  let deduplicate_components_by_name =
-    filter_dedup_by_name ~key:(fun (c : Diagnostics.Component.t) -> role_name c.role)
-  ;;
-
   (* Deduplicate impls by package name, keeping one representative per package.
      For VirtualImpls, skip them if all their deps point to packages we've already seen. *)
   let deduplicate_impls_by_name impls =
@@ -1703,9 +1707,8 @@ module Solver = struct
            | _, `No_candidates -> `Right role
            | _, _ -> `Middle component))
     in
-    (* Deduplicate to avoid showing the same package multiple times for different platforms.
-       Also exclude packages from 'bad' if they appear in 'good' (a package that's
-       selected on one platform shouldn't be shown as a problem due to another platform). *)
+    (* Deduplicate to avoid showing the same package multiple times for
+       different platforms. *)
     let good = deduplicate_impls_by_name good in
     let good_names =
       List.filter_map good ~f:(fun impl ->
@@ -1714,15 +1717,47 @@ module Solver = struct
         | None -> None)
       |> OpamPackage.Name.Set.of_list
     in
-    let bad =
-      List.filter bad ~f:(fun (component : Diagnostics.Component.t) ->
-        match component.role with
+    (* For packages selected on some platforms, the platform attribution
+       matters: show the problem for each failing platform separately. For
+       packages that fail everywhere, keep a single representative. A single
+       pass preserves the solver's component order in the diagnostics. *)
+    let deduplicate_components bad =
+      let seen = ref OpamPackage.Name.Map.empty in
+      List.filter bad ~f:(fun (c : Diagnostics.Component.t) ->
+        match c.role with
         | Input.Virtual _ -> true
-        | Input.Real (name, _) -> not (OpamPackage.Name.Set.mem name good_names))
+        | Input.Real (name, platform) ->
+          let platforms =
+            Option.value
+              (OpamPackage.Name.Map.find_opt name !seen)
+              ~default:Solver_env.Set.empty
+          in
+          let is_dup =
+            if OpamPackage.Name.Set.mem name good_names
+            then Solver_env.Set.mem platforms platform
+            else not (Solver_env.Set.is_empty platforms)
+          in
+          if is_dup
+          then false
+          else (
+            seen
+            := OpamPackage.Name.Map.add name (Solver_env.Set.add platforms platform) !seen;
+            true))
     in
-    let bad = deduplicate_components_by_name bad in
+    let bad = deduplicate_components bad in
     let unknown = deduplicate_roles_by_name unknown in
-    let pp_bad = Diagnostics.Component.pp ~verbose in
+    let pp_bad (component : Diagnostics.Component.t) =
+      (* A package that is selected on some platforms can still have no
+         solution on others. Attribute such problems to the platform they
+         apply to instead of hiding them. *)
+      let platform =
+        match component.role with
+        | Input.Real (name, platform) when OpamPackage.Name.Set.mem name good_names ->
+          Some platform
+        | _ -> None
+      in
+      Diagnostics.Component.pp ~verbose ?platform component
+    in
     let pp_unknown role = Pp.box (Input.Role.pp role) in
     match unknown with
     | [] ->

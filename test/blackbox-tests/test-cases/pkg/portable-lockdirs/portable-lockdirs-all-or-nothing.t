@@ -30,7 +30,12 @@ failure is reported once for the requested platform set:
   ...with this error:
   Couldn't solve the package dependency formula.
   Selected candidates: foo.0.0.1 x.dev
-  
+  - foo -> (problem) on arch = arm64; os = linux
+      No usable implementations:
+        foo.0.0.1: Availability condition not satisfied
+  - foo -> (problem) on arch = x86_64; os = linux
+      No usable implementations:
+        foo.0.0.1: Availability condition not satisfied
   Hint: If you don't need support for every requested platform, change
   Hint: (solve_for_platforms ...) in dune-workspace to only include the
   Hint: platforms you need, then rerun 'dune pkg lock'

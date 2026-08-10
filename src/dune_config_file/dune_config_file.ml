@@ -724,22 +724,23 @@ module Dune_config = struct
               | Some prog ->
                 let prog = Path.to_string prog in
                 let fdr, fdw = Unix.pipe () ~cloexec:true in
+                let fdw = Fd.unsafe_of_unix_file_descr fdw in
                 (match
                    Stdune.Spawn.spawn
                      ~prog
                      ~argv0:prog
                      ~args:(Stdune.Array.Immutable.of_list args)
-                     ~stdin:(Fd.unsafe_to_unix_file_descr (Lazy.force Dev_null.in_))
+                     ~stdin:(Lazy.force Dev_null.in_)
                      ~stdout:fdw
-                     ~stderr:(Fd.unsafe_to_unix_file_descr (Lazy.force Dev_null.out))
+                     ~stderr:(Lazy.force Dev_null.out)
                      ()
                  with
                  | exception Unix.Unix_error _ ->
-                   Unix.close fdw;
+                   Fd.close fdw;
                    Unix.close fdr;
                    loop commands
                  | pid ->
-                   Unix.close fdw;
+                   Fd.close fdw;
                    let ic = Unix.in_channel_of_descr fdr in
                    let n =
                      match input_line ic with

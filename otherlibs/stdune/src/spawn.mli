@@ -5,11 +5,16 @@
     default at runtime by setting the environment variable [SPAWN_USE_FORK]. *)
 
 module Working_dir : sig
-  type t =
-    | Path of string (** Path in the filesystem *)
-    | Fd of Unix.file_descr
-    (** File descriptor pointing to a directory. Not supported on Windows. *)
-    | Inherit (** Inherit the working directory of the current process *)
+  type t
+
+  (** Path in the filesystem *)
+  val path : string -> t
+
+  (** File descriptor pointing to a directory. Not supported on Windows. *)
+  val fd : Fd.t -> t
+
+  (** Inherit the working directory of the current process *)
+  val inherit_ : t
 end
 
 module Unix_backend : sig
@@ -119,9 +124,9 @@ val spawn
   -> prog:string
   -> argv0:string
   -> args:string Array.Immutable.t
-  -> ?stdin:Unix.file_descr
-  -> ?stdout:Unix.file_descr
-  -> ?stderr:Unix.file_descr
+  -> ?stdin:Fd.t
+  -> ?stdout:Fd.t
+  -> ?stderr:Fd.t
   -> ?unix_backend:Unix_backend.t (* default: [Unix_backend.default] *)
   -> ?setpgid:Pgid.t
   -> ?pdeathsig:Signal.t
@@ -145,4 +150,4 @@ val spawn
    It is implemented using the [pipe2] system calls, except on OSX where [pipe2]
    is not available. On OSX, both [safe_pipe] and [spawn] lock the same mutex to
    prevent race conditions. *)
-val safe_pipe : unit -> Unix.file_descr * Unix.file_descr
+val safe_pipe : unit -> Fd.t * Fd.t

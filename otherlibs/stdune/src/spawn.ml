@@ -3,10 +3,22 @@ external is_osx : unit -> bool = "dune_spawn_is_osx" [@@noalloc]
 let is_osx = is_osx ()
 
 module Working_dir = struct
-  type t =
+  type 'a gen =
     | Path of string
-    | Fd of Unix.file_descr
+    | Fd of 'a
     | Inherit
+
+  type t = Fd.t gen
+  type raw = Unix.file_descr gen
+
+  let raw : t -> raw = function
+    | Fd fd -> Fd (Fd.unsafe_to_unix_file_descr fd)
+    | (Path _ | Inherit) as x -> x
+  ;;
+
+  let path s = Path s
+  let fd fd = Fd fd
+  let inherit_ = Inherit
 end
 
 module Unix_backend = struct
@@ -89,9 +101,9 @@ module Pgid = struct
   ;;
 end
 
-external spawn_unix
+external spawn_unix_raw
   :  env:Env.t option
-  -> cwd:Working_dir.t
+  -> cwd:Working_dir.raw
   -> prog:string
   -> argv0:string
   -> args:string Array.Immutable.t
@@ -121,15 +133,15 @@ let spawn_unix
   =
   let setpgid = Option.map ~f:Pgid.to_int setpgid in
   let pdeathsig = Signal.to_int pdeathsig in
-  spawn_unix
+  spawn_unix_raw
     ~env
-    ~cwd
+    ~cwd:(Working_dir.raw cwd)
     ~prog
     ~argv0
     ~args
-    ~stdin
-    ~stdout
-    ~stderr
+    ~stdin:(Fd.unsafe_to_unix_file_descr stdin)
+    ~stdout:(Fd.unsafe_to_unix_file_descr stdout)
+    ~stderr:(Fd.unsafe_to_unix_file_descr stderr)
     ~use_vfork
     ~setpgid
     ~sigprocmask
@@ -137,7 +149,7 @@ let spawn_unix
   |> Pid.of_int_exn
 ;;
 
-external spawn_windows
+external spawn_windows_raw
   :  env:Env.t option
   -> cwd:string option
   -> prog:string
@@ -181,7 +193,15 @@ let spawn_windows
     | true, Some p -> Filename.concat p prog
     | _ -> prog
   in
-  spawn_windows ~env ~cwd ~prog ~cmdline ~stdin ~stdout ~stderr |> Pid.of_int_exn
+  spawn_windows_raw
+    ~env
+    ~cwd
+    ~prog
+    ~cmdline
+    ~stdin:(Fd.unsafe_to_unix_file_descr stdin)
+    ~stdout:(Fd.unsafe_to_unix_file_descr stdout)
+    ~stderr:(Fd.unsafe_to_unix_file_descr stderr)
+  |> Pid.of_int_exn
 ;;
 
 let no_null s =
@@ -193,15 +213,19 @@ let no_null s =
       s
 ;;
 
+let default_stdin = Fd.unsafe_of_unix_file_descr Unix.stdin
+let default_stdout = Fd.unsafe_of_unix_file_descr Unix.stdout
+let default_stderr = Fd.unsafe_of_unix_file_descr Unix.stderr
+
 let spawn
       ?env
-      ?(cwd = Working_dir.Inherit)
+      ?(cwd = Working_dir.inherit_)
       ~prog
       ~argv0
       ~args
-      ?(stdin = Unix.stdin)
-      ?(stdout = Unix.stdout)
-      ?(stderr = Unix.stderr)
+      ?(stdin = default_stdin)
+      ?(stdout = default_stdout)
+      ?(stderr = default_stderr)
       ?(unix_backend = Unix_backend.default)
       ?setpgid
       ?(pdeathsig = Signal.Kill)
@@ -250,6 +274,9 @@ let spawn
       ~pdeathsig
 ;;
 
-external safe_pipe : unit -> Unix.file_descr * Unix.file_descr = "dune_spawn_pipe"
+external safe_pipe_raw : unit -> Unix.file_descr * Unix.file_descr = "dune_spawn_pipe"
 
-let safe_pipe = if Sys.win32 then fun () -> Unix.pipe ~cloexec:true () else safe_pipe
+let safe_pipe () =
+  let read, write = if Sys.win32 then Unix.pipe ~cloexec:true () else safe_pipe_raw () in
+  Fd.unsafe_of_unix_file_descr read, Fd.unsafe_of_unix_file_descr write
+;;

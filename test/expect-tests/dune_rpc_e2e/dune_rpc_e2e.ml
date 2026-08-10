@@ -92,6 +92,8 @@ let read_lines in_ =
 let run ?env ~prog ~argv () =
   let stdout_i, stdout_w = Unix.pipe ~cloexec:true () in
   let stderr_i, stderr_w = Unix.pipe ~cloexec:true () in
+  let stdout_w = Fd.unsafe_of_unix_file_descr stdout_w in
+  let stderr_w = Fd.unsafe_of_unix_file_descr stderr_w in
   let pid =
     let args = Array.Immutable.of_list argv in
     let env = Option.map ~f:Spawn.Env.of_list env in
@@ -101,12 +103,12 @@ let run ?env ~prog ~argv () =
       ~args
       ~stdout:stdout_w
       ~stderr:stderr_w
-      ~stdin:(Fd.unsafe_to_unix_file_descr (Lazy.force Dev_null.in_))
+      ~stdin:(Lazy.force Dev_null.in_)
       ?env
       ()
   in
-  Unix.close stdout_w;
-  Unix.close stderr_w;
+  Fd.close stdout_w;
+  Fd.close stderr_w;
   ( pid
   , (let+ proc =
        Scheduler.wait_for_process

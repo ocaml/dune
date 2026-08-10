@@ -10,6 +10,9 @@ let%expect_test "child" =
   Unix.close stdin_w;
   Unix.close stdout_r;
   Unix.close stderr_r;
+  let stdin = Fd.unsafe_of_unix_file_descr stdin in
+  let stdout = Fd.unsafe_of_unix_file_descr stdout in
+  let stderr = Fd.unsafe_of_unix_file_descr stderr in
   let prog =
     Bin.which ~path:(Env_path.path Env.initial) "sh" |> Option.value_exn |> Path.to_string
   in

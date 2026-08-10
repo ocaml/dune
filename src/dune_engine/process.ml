@@ -986,13 +986,13 @@ let spawn
       let env = Dtemp.add_to_env env in
       Env.to_unix env |> Spawn.Env.of_list
     in
-    let stdout = Io.fd stdout |> Fd.unsafe_to_unix_file_descr in
-    let stderr = Io.fd stderr |> Fd.unsafe_to_unix_file_descr in
-    let stdin = Io.fd stdin |> Fd.unsafe_to_unix_file_descr in
+    let stdout = Io.fd stdout in
+    let stderr = Io.fd stderr in
+    let stdin = Io.fd stdin in
     let cwd =
       match dir with
-      | None -> Spawn.Working_dir.Inherit
-      | Some dir -> Spawn.Working_dir.Path (Path.to_string dir)
+      | None -> Spawn.Working_dir.inherit_
+      | Some dir -> Spawn.Working_dir.path (Path.to_string dir)
     in
     Spawn.spawn
       ()

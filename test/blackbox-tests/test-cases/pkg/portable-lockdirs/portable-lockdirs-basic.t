@@ -23,12 +23,11 @@ Create a package that writes a different value to some files depending on the os
   Dependencies common to all supported platforms:
   - foo.0.0.1
 
-The portable lock directory is solved independently for each of the four
-platforms.
+The SAT engine runs once across all requested platforms.
 
   $ dune trace cat \
   > | jq -s 'include "dune"; [ .[] | satSolveEvents ] | length'
-  4
+  1
 
   $ cat ${default_lock_dir}/lock.dune
   (lang package 0.1)

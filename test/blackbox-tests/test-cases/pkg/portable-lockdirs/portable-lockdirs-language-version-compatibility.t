@@ -18,21 +18,27 @@ versions on different platforms.
   > EOF
 
   $ DUNE_CONFIG__OS=linux DUNE_CONFIG__ARCH=x86_64 dune pkg lock
-  Solution for dune.lock
+  Error:
+  Unable to solve dependencies while generating lock directory: dune.lock
   
-  Dependencies common to all supported platforms:
-  (none)
-  
-  Additionally, some packages will only be built on specific platforms.
-  
-  arch = arm64; os = linux:
-  - foo.1
-  
-  arch = arm64; os = macos:
-  - foo.2
-  
-  arch = x86_64; os = linux:
-  - foo.1
-  
-  arch = x86_64; os = macos:
-  - foo.2
+  The dependency solver failed to find a solution for the requested platforms:
+  - arch = x86_64; os = linux
+  - arch = arm64; os = linux
+  - arch = x86_64; os = macos
+  - arch = arm64; os = macos
+  ...with this error:
+  Couldn't solve the package dependency formula.
+  Selected candidates: foo.1 x.dev
+  - foo -> (problem) on arch = arm64; os = macos
+      Rejected candidates:
+        foo.2:
+          Reason for rejection unknown:
+          x.dev=true && foo.2=false => (no solution found)=true
+        foo.1: Availability condition not satisfied
+  - foo -> (problem) on arch = x86_64; os = macos
+      Rejected candidates:
+        foo.2:
+          Reason for rejection unknown:
+          x.dev=true && foo.2=false => (no solution found)=true
+        foo.1: Availability condition not satisfied
+  [1]

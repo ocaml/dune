@@ -48,11 +48,12 @@ Linux class peer is unrelated to that rejection.
   Error:
   Unable to solve dependencies while generating lock directory: dune.lock
   
-  The dependency solver failed to find a solution for the following platforms:
+  The dependency solver failed to find a solution for the requested platforms:
+  - arch = x86_64; os = linux
   - arch = x86_64; os = macos
   ...with this error:
   Couldn't solve the package dependency formula.
-  Selected candidates: needs-target.0.0.1 x.dev
+  Selected candidates: holder.0.0.1 needs-target.0.0.1 x.dev
   - target -> (problem)
       needs-target 0.0.1 requires >= 2
       Rejected candidates:

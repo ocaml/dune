@@ -17,11 +17,18 @@ Create a package that writes a different value to some files depending on the os
 
   $ make_portable_lockdirs_project
 
-  $ dune pkg lock
+  $ DUNE_TRACE=+sat dune pkg lock
   Solution for dune.lock
   
   Dependencies common to all supported platforms:
   - foo.0.0.1
+
+The portable lock directory is solved independently for each of the four
+platforms.
+
+  $ dune trace cat \
+  > | jq -s 'include "dune"; [ .[] | satSolveEvents ] | length'
+  4
 
   $ cat ${default_lock_dir}/lock.dune
   (lang package 0.1)

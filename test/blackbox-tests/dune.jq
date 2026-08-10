@@ -34,6 +34,8 @@ def inlineTestProcesses:
     processesBrief
   | select(.prog == "inline-test-runner.bc");
 
+def satSolveEvents: select(.cat == "sat" and .name == "solve");
+
 def targetsMatchingFilter(f):
     processes
   | select(.args | targets | any(f))

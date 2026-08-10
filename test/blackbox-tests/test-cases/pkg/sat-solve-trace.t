@@ -27,8 +27,8 @@ Assert the shape of the `sat`/`solve` events. The exact counter values and the
 number of events depend on the solver (it may run more than once, e.g. when
 retrying with different `max_avoids`), so only assert sane ranges:
 
-  $ dune trace cat | jq -s '
-  >   [ .[] | select(.cat == "sat" and .name == "solve") ] as $solves
+  $ dune trace cat | jq -s 'include "dune";
+  >   [ .[] | satSolveEvents ] as $solves
   > | { has_sat_solve_events: ($solves | length > 0)
   >   , valid_shape: all($solves[];
   >       (.args.num_variables | type) == "number"

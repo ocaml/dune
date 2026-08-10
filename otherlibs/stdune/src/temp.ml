@@ -88,8 +88,6 @@ let temp_in_dir ?perms what ~dir ~prefix ~suffix =
   path
 ;;
 
-let contains_path_sep s = String.contains s '/' || String.contains s '\\'
-
 let create ?perms what ~prefix ~suffix =
   let dir =
     (* CR-someday amokhov: There are two issues with this: (i) we run this code
@@ -99,12 +97,12 @@ let create ?perms what ~prefix ~suffix =
        Perhaps, we should use something like [_build/.temp] instead? *)
     Filename.get_temp_dir_name () |> Path.of_filename_relative_to_initial_cwd
   in
-  if contains_path_sep prefix
+  if Fpath.contains_path_sep prefix
   then
     Code_error.raise
       "Temp.create: prefix must not contain path elements"
       [ "prefix", Dyn.string prefix ];
-  if contains_path_sep suffix
+  if Fpath.contains_path_sep suffix
   then
     Code_error.raise
       "Temp.create: suffix must not contain path elements"

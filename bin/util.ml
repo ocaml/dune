@@ -7,6 +7,12 @@ type checked =
   | In_source_dir of Path.Source.t
   | External of Path.External.t
 
+let find_in_path_exn prog =
+  match Bin.which ~path:(Env_path.path Env.initial) prog with
+  | Some path -> path
+  | None -> User_error.raise [ Pp.textf "unable to find %s in PATH" prog ]
+;;
+
 let check_path contexts =
   let contexts =
     Dune_engine.Context_name.Map.of_list_map_exn contexts ~f:(fun c -> Context.name c, c)

@@ -6,6 +6,7 @@ let is_root =
     fun s -> Filename.dirname s = s
 ;;
 
+let contains_path_sep s = String.contains s '/' || String.contains s '\\'
 let initial_cwd = Stdlib.Sys.getcwd ()
 
 type mkdir_result =

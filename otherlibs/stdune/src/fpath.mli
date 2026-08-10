@@ -1,5 +1,8 @@
 (** Functions on paths that are represented as strings *)
 
+(** Whether a string contains either kind of path separator. *)
+val contains_path_sep : string -> bool
+
 (** No parent directory, use [mkdir_p] if you want to create it too. *)
 type mkdir_result =
   [ `Already_exists (** The directory already exists. No action was taken. *)

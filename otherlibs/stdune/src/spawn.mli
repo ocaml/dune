@@ -65,10 +65,9 @@ end
 
     {b Command line arguments}
 
-    [argv] is the full command line. The first element should be the program
-    name and subsequent elements the command line arguments. Note that the head
-    of [argv] doesn't necessarily have to be equal to [prog]. For instance it
-    might be [foo] while [prog] might be [/usr/bin/foo].
+    [argv0] and [args] form the command line. [argv0] is the program name seen
+    by the child and may differ from [prog]. [args] contains the remaining
+    command line arguments.
 
     {b Environment}
 
@@ -118,7 +117,8 @@ val spawn
   :  ?env:Env.t
   -> ?cwd:Working_dir.t (* default: [Inherit] *)
   -> prog:string
-  -> argv:string list
+  -> argv0:string
+  -> args:string Array.Immutable.t
   -> ?stdin:Unix.file_descr
   -> ?stdout:Unix.file_descr
   -> ?stderr:Unix.file_descr

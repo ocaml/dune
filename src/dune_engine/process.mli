@@ -106,6 +106,20 @@ val run
   -> string list
   -> 'a Fiber.t
 
+val run_with_array_args
+  :  ?dir:Path.t
+  -> display:Display.t
+  -> ?stdout_to:Io.output Io.t
+  -> ?stderr_to:Io.output Io.t
+  -> ?stdin_from:Io.input Io.t
+  -> ?env:Env.t
+  -> ?metadata:Process_metadata.t
+  -> ?build:Build.t
+  -> (unit, 'a) Failure_mode.t
+  -> Path.t
+  -> string Array.Immutable.t
+  -> 'a Fiber.t
+
 val run_with_times
   :  ?dir:Path.t
   -> display:Display.t

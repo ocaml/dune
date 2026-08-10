@@ -24,6 +24,8 @@ module Immutable : sig
   val map : 'a t -> f:('a -> 'b) -> 'b t
   val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
   val fold_right : 'a t -> f:('a -> 'acc -> 'acc) -> init:'acc -> 'acc
+  val fold_left : 'a t -> f:('acc -> 'a -> 'acc) -> init:'acc -> 'acc
+  val iter : 'a t -> f:('a -> unit) -> unit
   val exists : 'a t -> f:('a -> bool) -> bool
   val length : _ t -> int
   val to_list_map : 'a t -> f:('a -> 'b) -> 'b list

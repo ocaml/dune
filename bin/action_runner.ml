@@ -75,8 +75,13 @@ let create ~config ~sandbox_actions =
             prog, argv)
           else Path.to_string dune_prog, worker_argv
         in
-        let argv =
-          argv
+        let argv0, args =
+          match argv with
+          | argv0 :: args -> argv0, args
+          | [] -> Code_error.raise "empty action runner command line" []
+        in
+        let args =
+          args
           @ [ "--rpc-fd"; Int.to_string (Fd.unsafe_to_int worker_fd) ]
           @
           match trace_fd with
@@ -88,7 +93,8 @@ let create ~config ~sandbox_actions =
           ~f:(fun () ->
             (* Use SIGTERM because the action runner knows how to clean up
                its children. *)
-            Spawn.spawn ~env ~prog ~argv ~pdeathsig:Term ())
+            let args = Array.Immutable.of_list args in
+            Spawn.spawn ~env ~prog ~argv0 ~args ~pdeathsig:Term ())
       in
       let action_runner =
         Dune_engine.Action_runner.create name pid ~connection_fd:parent_fd

@@ -257,12 +257,18 @@ let _ =
 ;;
 
 let run cmd =
+  let argv0, args =
+    match cmd with
+    | argv0 :: args -> argv0, args
+    | [] -> Code_error.raise "empty command line" []
+  in
   let prog =
-    Bin.which ~path:(Env_path.path Env.initial) (List.hd cmd)
+    Bin.which ~path:(Env_path.path Env.initial) argv0
     |> Option.value_exn
     |> Path.to_string
   in
-  let pid = Spawn.spawn ~prog ~argv:cmd () in
+  let args = Array.Immutable.of_list args in
+  let pid = Spawn.spawn ~prog ~argv0 ~args () in
   match Proc.wait (Pid pid) [] with
   | Some { status = WEXITED 0; _ } -> ()
   | _ -> assert false

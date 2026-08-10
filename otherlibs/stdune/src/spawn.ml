@@ -1,5 +1,3 @@
-open StdLabels
-
 external is_osx : unit -> bool = "dune_spawn_is_osx" [@@noalloc]
 
 let is_osx = is_osx ()
@@ -95,7 +93,8 @@ external spawn_unix
   :  env:Env.t option
   -> cwd:Working_dir.t
   -> prog:string
-  -> argv:string list
+  -> argv0:string
+  -> args:string Array.Immutable.t
   -> stdin:Unix.file_descr
   -> stdout:Unix.file_descr
   -> stderr:Unix.file_descr
@@ -110,7 +109,8 @@ let spawn_unix
       ~env
       ~cwd
       ~prog
-      ~argv
+      ~argv0
+      ~args
       ~stdin
       ~stdout
       ~stderr
@@ -125,7 +125,8 @@ let spawn_unix
     ~env
     ~cwd
     ~prog
-    ~argv
+    ~argv0
+    ~args
     ~stdin
     ~stdout
     ~stderr
@@ -157,7 +158,8 @@ let spawn_windows
       ~env
       ~cwd
       ~prog
-      ~argv
+      ~argv0
+      ~args
       ~stdin
       ~stdout
       ~stderr
@@ -172,7 +174,8 @@ let spawn_windows
     | Fd _ -> invalid_arg "Spawn.spawn: [cwd=Fd _] is not supported on Windows"
     | Inherit -> None
   in
-  let cmdline = String.concat (List.map argv ~f:maybe_quote) ~sep:" " in
+  let argv = maybe_quote argv0 :: Array.Immutable.to_list_map args ~f:maybe_quote in
+  let cmdline = String.concat argv ~sep:" " in
   let prog =
     match Filename.is_relative prog, cwd with
     | true, Some p -> Filename.concat p prog
@@ -194,7 +197,8 @@ let spawn
       ?env
       ?(cwd = Working_dir.Inherit)
       ~prog
-      ~argv
+      ~argv0
+      ~args
       ?(stdin = Unix.stdin)
       ?(stdout = Unix.stdout)
       ?(stderr = Unix.stderr)
@@ -208,25 +212,42 @@ let spawn
    | Path s -> no_null s
    | Fd _ | Inherit -> ());
   no_null prog;
-  List.iter argv ~f:no_null;
-  let backend = if Sys.win32 then spawn_windows else spawn_unix in
+  no_null argv0;
+  Array.Immutable.iter args ~f:no_null;
   let use_vfork =
     match unix_backend with
     | Vfork -> true
     | Fork -> false
   in
-  backend
-    ~env
-    ~cwd
-    ~prog
-    ~argv
-    ~stdin
-    ~stdout
-    ~stderr
-    ~use_vfork
-    ~setpgid
-    ~sigprocmask
-    ~pdeathsig
+  if Sys.win32
+  then
+    spawn_windows
+      ~env
+      ~cwd
+      ~prog
+      ~argv0
+      ~args
+      ~stdin
+      ~stdout
+      ~stderr
+      ~use_vfork
+      ~setpgid
+      ~sigprocmask
+      ~pdeathsig
+  else
+    spawn_unix
+      ~env
+      ~cwd
+      ~prog
+      ~argv0
+      ~args
+      ~stdin
+      ~stdout
+      ~stderr
+      ~use_vfork
+      ~setpgid
+      ~sigprocmask
+      ~pdeathsig
 ;;
 
 external safe_pipe : unit -> Unix.file_descr * Unix.file_descr = "dune_spawn_pipe"

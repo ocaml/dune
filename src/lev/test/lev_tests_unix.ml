@@ -14,8 +14,8 @@ let%expect_test "child" =
     Bin.which ~path:(Env_path.path Env.initial) "sh" |> Option.value_exn |> Path.to_string
   in
   let pid =
-    Spawn.spawn ~prog ~argv:[ "sh"; "-c"; "exit 42" ] ~stdin ~stdout ~stderr ()
-    |> Pid.to_int
+    let args = Array.Immutable.of_list [ "-c"; "exit 42" ] in
+    Spawn.spawn ~prog ~argv0:"sh" ~args ~stdin ~stdout ~stderr () |> Pid.to_int
   in
   let child =
     match Child.create with

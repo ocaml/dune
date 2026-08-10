@@ -54,7 +54,8 @@ let spawn_and_capture ?env ~prog ~argv ~cwd () =
             let env = Option.map env ~f:Spawn.Env.of_list in
             Spawn.spawn
               ~prog
-              ~argv:(prog :: argv)
+              ~argv0:prog
+              ~args:(Array.Immutable.of_list argv)
               ~stdout:stdout_fd
               ~stderr:stderr_fd
               ?env

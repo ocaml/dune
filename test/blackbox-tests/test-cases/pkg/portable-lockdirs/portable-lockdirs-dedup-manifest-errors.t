@@ -33,6 +33,19 @@ Create the package "foo" with an opam file that creates a circular dep with the 
   depends on the package "x" which is in the workspace.
   [1]
 
+Create the package "foo" with a dependency on the workspace package "x" that
+only applies on macos. Platform-conditional dependencies must be validated,
+and the error must be reported only once:
+  $ mkpkg foo <<EOF
+  > depends: [ "x" { os = "macos" } ]
+  > EOF
+
+  $ dune pkg lock
+  Error: Dune does not support packages outside the workspace depending on
+  packages in the workspace. The package "foo" is not in the workspace but it
+  depends on the package "x" which is in the workspace.
+  [1]
+
 Create the package "foo" with an invalid variable interpolation:
   $ mkpkg foo <<EOF
   > build: [ "./configure" "--prefix=%{prefix" ]

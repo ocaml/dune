@@ -27,44 +27,24 @@ Define a package bar which conditionally depends on different versions of foo:
 
   $ make_x_depends_bar_project
 
-  $ DUNE_TRACE=+sat dune pkg lock
-  Solution for dune.lock
-  
-  Dependencies common to all supported platforms:
-  - bar.0.0.1
-  
-  Additionally, some packages will only be built on specific platforms.
-  
-  arch = arm64; os = linux:
-  - foo.1
-  
-  arch = arm64; os = macos:
-  - foo.2
-  
-  arch = x86_64; os = linux:
-  - foo.1
-  
-  arch = x86_64; os = macos:
-  - foo.2
+Linux requires foo.1 while macos requires foo.2. The post-solve invariant
+rejects the inconsistent result before a lock directory is written:
 
-The portable lock directory is solved independently for each of the four
-platforms.
+  $ DUNE_TRACE=+sat dune pkg lock
+  Error: Multi-platform solving selected different versions of the same package
+  on different platforms. This is not supported.
+  The following packages have version conflicts:
+  - foo:version 1 on:- arch = arm64; os = linux
+                     - arch = x86_64; os = linux
+    version 2 on:- arch = arm64; os = macos
+                 - arch = x86_64; os = macos
+  [1]
+
+The SAT engine runs once across all requested platforms.
 
   $ dune trace cat \
   > | jq -s 'include "dune"; [ .[] | satSolveEvents ] | length'
-  4
-
-Build the project as if we were on linux and confirm that version 1 of foo was built:
-  $ export DUNE_CONFIG__OS=linux DUNE_CONFIG__ARCH=arm64 DUNE_CONFIG__OS_FAMILY=debian DUNE_CONFIG__OS_DISTRIBUTION=ubuntu DUNE_CONFIG__OS_VERSION=24.11
-  $ dune build
-  $ cat $pkg_root/$(dune pkg print-digest foo)/target/share/version
   1
 
-  $ dune clean
-
-Build the project as if we were on macos and confirm that version 2 of foo was built:
-  $ export DUNE_CONFIG__OS=macos DUNE_CONFIG__ARCH=x86_64 DUNE_CONFIG__OS_FAMILY=homebrew DUNE_CONFIG__OS_DISTRIBUTION=homebrew DUNE_CONFIG__OS_VERSION=15.3.1
-  $ dune build
-  $ cat $pkg_root/$(dune pkg print-digest foo)/target/share/version
-  2
-
+No partial lock directory is written:
+  $ test ! -e dune.lock

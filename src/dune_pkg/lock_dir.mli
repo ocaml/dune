@@ -193,10 +193,6 @@ val transitive_dependency_closure
     archive urls but no checksum. *)
 val compute_missing_checksums : t -> pinned_packages:Package_name.Set.t -> t Fiber.t
 
-(** Combine the platform-specific parts of a pair of lockdirs, throwing a code
-    error if the lockdirs differ in a non-platform-specific way. *)
-val merge_conditionals : t -> t -> t
-
 (** Returns the packages contained in the solution on the given platform. If
     the lockdir does not contain a solution compatible with the given platform
     then a [User_error] is raised. *)

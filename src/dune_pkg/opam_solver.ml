@@ -2083,6 +2083,13 @@ let solve_lock_dir
       ~selected_depopts
       ~portable_lock_dir
   =
+  (* Identical platform envs would be solved by the same roles and would
+     otherwise produce duplicate entries in the lock file, so drop them. *)
+  let platform_overlays =
+    List.rev
+      (List.fold_left platform_overlays ~init:[] ~f:(fun acc overlay ->
+         if List.exists acc ~f:(Solver_env.equal overlay) then acc else overlay :: acc))
+  in
   match platform_overlays with
   | [] -> Code_error.raise "solve_lock_dir called with empty platform_overlays" []
   | _ ->

@@ -42,18 +42,26 @@ Define a package bar which conditionally depends on different versions of foo:
 Define a project with a package depending on bar:
   $ make_x_depends_bar_project
 
-The platform-dependent version disagreement on foo is rejected by the
-post-solve invariant. No lock directory, including package extra files, may be
-written:
+The cross-platform version constraint rejects the disagreement on foo. No lock
+directory, including package extra files, may be written:
 
   $ dune pkg lock
-  Error: Multi-platform solving selected different versions of the same package
-  on different platforms. This is not supported.
-  The following packages have version conflicts:
-  - foo:version 1 on:- arch = arm64; os = linux
-                     - arch = x86_64; os = linux
-    version 2 on:- arch = arm64; os = macos
-                 - arch = x86_64; os = macos
+  Error:
+  Unable to solve dependencies while generating lock directory: dune.lock
+  
+  The dependency solver failed to find a solution for the requested platforms:
+  - arch = x86_64; os = linux
+  - arch = arm64; os = linux
+  - arch = x86_64; os = macos
+  - arch = arm64; os = macos
+  ...with this error:
+  Couldn't solve the package dependency formula.
+  Selected candidates: bar.0.0.1 x.dev
+  - foo -> foo.1
+      bar 0.0.1 requires = 1
+  Hint: If you don't need support for every requested platform, change
+  Hint: (solve_for_platforms ...) in dune-workspace to only include the
+  Hint: platforms you need, then rerun 'dune pkg lock'
   [1]
 
 No partial lock directory is written:

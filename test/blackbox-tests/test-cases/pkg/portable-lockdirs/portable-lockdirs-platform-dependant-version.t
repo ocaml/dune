@@ -27,24 +27,35 @@ Define a package bar which conditionally depends on different versions of foo:
 
   $ make_x_depends_bar_project
 
-Linux requires foo.1 while macos requires foo.2. The post-solve invariant
-rejects the inconsistent result before a lock directory is written:
+Linux requires foo.1 while macos requires foo.2. The cross-platform version
+constraint makes the requested platform set unsatisfiable:
 
   $ DUNE_TRACE=+sat dune pkg lock
-  Error: Multi-platform solving selected different versions of the same package
-  on different platforms. This is not supported.
-  The following packages have version conflicts:
-  - foo:version 1 on:- arch = arm64; os = linux
-                     - arch = x86_64; os = linux
-    version 2 on:- arch = arm64; os = macos
-                 - arch = x86_64; os = macos
+  Error:
+  Unable to solve dependencies while generating lock directory: dune.lock
+  
+  The dependency solver failed to find a solution for the requested platforms:
+  - arch = x86_64; os = linux
+  - arch = arm64; os = linux
+  - arch = x86_64; os = macos
+  - arch = arm64; os = macos
+  ...with this error:
+  Couldn't solve the package dependency formula.
+  Selected candidates: bar.0.0.1 x.dev
+  - foo -> foo.1
+      bar 0.0.1 requires = 1
+  Hint: If you don't need support for every requested platform, change
+  Hint: (solve_for_platforms ...) in dune-workspace to only include the
+  Hint: platforms you need, then rerun 'dune pkg lock'
   [1]
 
-The SAT engine runs once across all requested platforms.
+The SAT engine itself rejects the conflict; the post-solve version-conflict
+check is no longer reached. The do_solve retry path runs SAT 3 times before
+reporting the failure, and each run records the same cross-platform conflict.
 
   $ dune trace cat \
   > | jq -s 'include "dune"; [ .[] | satSolveEvents ] | length'
-  1
+  3
 
 No partial lock directory is written:
   $ test ! -e dune.lock

@@ -17,7 +17,7 @@ the repository nor in the workspace. The solver should reject this.
   Error:
   Unable to solve dependencies while generating lock directory: dune.lock
   
-  The dependency solver failed to find a solution for the following platforms:
+  The dependency solver failed to find a solution for the requested platforms:
   - arch = x86_64; os = linux
   - arch = arm64; os = linux
   - arch = x86_64; os = macos
@@ -25,5 +25,8 @@ the repository nor in the workspace. The solver should reject this.
   ...with this error:
   Couldn't solve the package dependency formula.
   The following packages couldn't be found: nonexistent-pkg
+  Hint: If you don't need support for every requested platform, change
+  Hint: (solve_for_platforms ...) in dune-workspace to only include the
+  Hint: platforms you need, then rerun 'dune pkg lock'
   [1]
 

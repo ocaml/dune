@@ -30,7 +30,7 @@ Local conflict class defined in a local package:
   Unable to solve dependencies while generating lock directory: dune.lock
   
   Couldn't solve the package dependency formula.
-  Selected candidates: foo.dev x.dev foo&x
+  Selected candidates: foo.dev x.dev
   - bar -> (problem)
       Rejected candidates:
         bar.0.0.1: In same conflict class (ccc) as foo

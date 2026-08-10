@@ -9,6 +9,10 @@ module Solver_result : sig
     }
 end
 
+(** Suggest narrowing the platform set when support for every requested
+    platform is unnecessary. *)
+val solve_for_platforms_hint : User_message.Style.t Pp.t list
+
 val solve_lock_dir
   :  Solver_env.t
   -> platform_overlays:Solver_env.t list

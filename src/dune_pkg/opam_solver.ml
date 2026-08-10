@@ -2105,6 +2105,17 @@ let resolve_opam_packages opam_packages_to_lock candidates_cache =
     name, opam_package, resolved_package)
 ;;
 
+(* Suggest narrowing the platform set when support for every requested
+   platform is unnecessary. *)
+let solve_for_platforms_hint =
+  [ Pp.text "If you don't need support for every requested platform, change"
+  ; Pp.text "(solve_for_platforms ...) in dune-workspace to only include the"
+  ; Pp.concat
+      ~sep:Pp.space
+      [ Pp.text "platforms you need, then rerun"; User_message.command "dune pkg lock" ]
+  ]
+;;
+
 let solve_lock_dir
       solver_env
       ~platform_overlays

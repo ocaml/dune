@@ -7,12 +7,22 @@ module Solver_result : sig
     ; pinned_packages : Package_name.Set.t
     ; num_expanded_packages : int
     }
-
-  val merge : t -> t -> t
 end
+
+(** Derive the solver's base environment and platform overlays. Portable lock
+    directories unset platform-specific variables from the base and solve the
+    requested platforms; non-portable lock directories use one empty overlay. *)
+val base_solver_env_and_platforms
+  :  Solver_env.t
+  -> solve_for_platforms:Solver_env.t list
+  -> portable_lock_dir:bool
+  -> Solver_env.t * Solver_env.t list
 
 val solve_lock_dir
   :  Solver_env.t
+  -> platform_overlays:Solver_env.t list
+       (** [platform_overlays] must be non-empty and contain pairwise-distinct
+           entries. *)
   -> Version_preference.t
   -> Opam_repo.t list
   -> local_packages:Local_package.For_solver.t Package_name.Map.t

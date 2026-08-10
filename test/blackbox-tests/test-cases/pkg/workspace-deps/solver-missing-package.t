@@ -17,7 +17,7 @@ the repository nor in the workspace. The solver should reject this.
   Error:
   Unable to solve dependencies while generating lock directory: dune.lock
   
-  The dependency solver failed to find a solution for the following platforms:
+  The dependency solver failed to find a solution for the requested platforms:
   - arch = x86_64; os = linux
   - arch = arm64; os = linux
   - arch = x86_64; os = macos

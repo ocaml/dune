@@ -534,9 +534,9 @@ dune_pkg_lock_normalized() {
     cat "${processed}"
   else
     processed="$(mktemp)"
-      dune_cmd delete-between \
-	      'The dependency solver failed to find a solution for the following platforms:' \
-	      '\.\.\.with this error:' \
+    dune_cmd delete-between \
+      'The dependency solver failed to find a solution for the requested platforms:' \
+      '\.\.\.with this error:' \
       < "${out}" \
       > "${processed}"
     cat "${processed}"

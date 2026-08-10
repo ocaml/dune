@@ -660,59 +660,38 @@ let opam_package_to_lock_file_pkg_single
   }
 ;;
 
-(* Public entry point: handles both single-platform and multi-platform cases.
-   For portable lockdirs with multiple solver_envs, we evaluate the opam file
-   against each platform separately and merge the results. This allows
-   platform-specific build commands, dependencies, etc. to be captured. *)
-let opam_package_to_lock_file_pkg
+(* Evaluate an opam package separately for each platform. The caller computes
+   reachability from these branches before merging them, so dependencies from
+   an unreachable platform cannot leak into the final package. *)
+let opam_package_to_lock_file_pkg_branches
       solver_envs
       stats_updater
-      version_by_package_name
       opam_package
       ~pinned
       resolved_package
       ~portable_lock_dir
   =
   try
+    let solver_envs =
+      match solver_envs with
+      | [] ->
+        Code_error.raise
+          "opam_package_to_lock_file_pkg_branches called with empty solver_envs"
+          []
+      | first :: _ when not portable_lock_dir -> [ first ]
+      | _ -> solver_envs
+    in
     Ok
-      (match solver_envs with
-       | [] ->
-         Code_error.raise "opam_package_to_lock_file_pkg called with empty solver_envs" []
-       | [ solver_env ] ->
-         (* Single platform: use directly *)
-         opam_package_to_lock_file_pkg_single
-           solver_env
-           stats_updater
-           version_by_package_name
-           opam_package
-           ~pinned
-           resolved_package
-           ~portable_lock_dir
-       | _ when not portable_lock_dir ->
-         (* Non-portable with multiple envs: just use the first *)
-         let solver_env = List.hd solver_envs in
-         opam_package_to_lock_file_pkg_single
-           solver_env
-           stats_updater
-           version_by_package_name
-           opam_package
-           ~pinned
-           resolved_package
-           ~portable_lock_dir
-       | first_env :: rest_envs ->
-         (* Portable with multiple platforms: evaluate per-platform and merge *)
-         let to_pkg solver_env =
-           opam_package_to_lock_file_pkg_single
+      (List.map solver_envs ~f:(fun (solver_env, version_by_package_name) ->
+         ( solver_env
+         , opam_package_to_lock_file_pkg_single
              solver_env
              stats_updater
              version_by_package_name
              opam_package
              ~pinned
              resolved_package
-             ~portable_lock_dir
-         in
-         List.fold_left rest_envs ~init:(to_pkg first_env) ~f:(fun acc env ->
-           Lock_dir.Pkg.merge_conditionals acc (to_pkg env)))
+             ~portable_lock_dir )))
   with
   | User_error.E exn -> Error exn
 ;;

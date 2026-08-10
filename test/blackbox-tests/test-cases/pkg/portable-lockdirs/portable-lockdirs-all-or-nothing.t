@@ -1,12 +1,6 @@
 Demonstrate that locking fails entirely when the requested platform set has no
 joint solution: no partial lock directory is written.
 
-The all-or-nothing behavior has landed: the lock now fails because the package
-is unavailable on the linux platforms, and no lock directory is written. The
-failure is still the product of per-platform solving and is reported per
-platform; the single-solve change replaces it with one joint failure for the
-requested platform set.
-
   $ mkrepo
   $ add_mock_repo_if_needed
 
@@ -28,13 +22,18 @@ failure is reported once for the requested platform set:
   Error:
   Unable to solve dependencies while generating lock directory: dune.lock
   
-  The dependency solver failed to find a solution for the following platforms:
+  The dependency solver failed to find a solution for the requested platforms:
   - arch = x86_64; os = linux
   - arch = arm64; os = linux
+  - arch = x86_64; os = macos
+  - arch = arm64; os = macos
   ...with this error:
   Couldn't solve the package dependency formula.
-  Selected candidates: x.dev
-  - foo -> (problem)
+  Selected candidates: foo.0.0.1 x.dev
+  - foo -> (problem) on arch = arm64; os = linux
+      No usable implementations:
+        foo.0.0.1: Availability condition not satisfied
+  - foo -> (problem) on arch = x86_64; os = linux
       No usable implementations:
         foo.0.0.1: Availability condition not satisfied
   [1]

@@ -1059,24 +1059,6 @@ module Packages = struct
       List.fold_left pkg.enabled_on_platforms ~init:acc ~f:(fun acc platform ->
         Solver_env.Map.add_multi acc platform pkg))
   ;;
-
-  let merge a b =
-    Package_name.Map.merge a b ~f:(fun _ a b ->
-      match a, b with
-      | None, None ->
-        (* unreachable *)
-        None
-      | Some x, None | None, Some x -> Some x
-      | Some a, Some b ->
-        Some
-          (Package_version.Map.merge a b ~f:(fun _ a b ->
-             match a, b with
-             | None, None ->
-               (* unreachable *)
-               None
-             | Some x, None | None, Some x -> Some x
-             | Some a, Some b -> Some (Pkg.merge_conditionals a b))))
-  ;;
 end
 
 type t =
@@ -1833,28 +1815,6 @@ let compute_missing_checksums t ~pinned_packages =
     >>| Packages.of_pkg_list
   in
   { t with packages }
-;;
-
-let merge_conditionals a b =
-  let packages = Packages.merge a.packages b.packages in
-  let solved_for_platforms =
-    let a_loc, a_solved_for_platforms = a.solved_for_platforms in
-    let b_loc, b_solved_for_platforms = b.solved_for_platforms in
-    Loc.span a_loc b_loc, a_solved_for_platforms @ b_solved_for_platforms
-  in
-  let normalize t =
-    { t with
-      packages = Package_name.Map.empty
-    ; expanded_solver_variable_bindings = Solver_stats.Expanded_variable_bindings.empty
-    ; solved_for_platforms = Loc.none, []
-    }
-  in
-  if not (equal (normalize a) (normalize b))
-  then
-    Code_error.raise
-      "Platform-specific lockdirs differ in a non-platform-specific way"
-      [ "lockdir_1", to_dyn a; "lockdir_2", to_dyn b ];
-  { a with packages; solved_for_platforms }
 ;;
 
 let loc_in_source_tree loc =

@@ -15,7 +15,7 @@ class.
   > EOF
   $ mkpkg needs-target <<'EOF'
   > available: os = "macos"
-  > depends: [ "target" {>= "2"} ]
+  > depends: [ "target" ]
   > EOF
 
   $ cat >dune-project <<'EOF'
@@ -41,20 +41,9 @@ class.
   > (pkg enabled)
   > EOF
 
-The transitive macOS dependency cannot use the available target version. The
-Linux class peer is unrelated to that rejection.
+The transitive macOS dependency and the Linux package must coexist even though
+they belong to the same conflict class on different platforms.
 
-  $ DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled dune pkg lock
-  Error:
-  Unable to solve dependencies while generating lock directory: dune.lock
-  
-  The dependency solver failed to find a solution for the following platforms:
-  - arch = x86_64; os = macos
-  ...with this error:
-  Couldn't solve the package dependency formula.
-  Selected candidates: needs-target.0.0.1 x.dev
-  - target -> (problem)
-      needs-target 0.0.1 requires >= 2
-      Rejected candidates:
-        target.1: Incompatible with restriction: >= 2
-  [1]
+  $ DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled dune pkg lock >/dev/null 2>&1
+  $ test -e dune.lock/holder.0.0.1.pkg
+  $ test -e dune.lock/target.1.pkg

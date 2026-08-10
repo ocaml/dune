@@ -1,0 +1,14 @@
+(library
+ (name dune_bpp_unit_tests)
+ (inline_tests)
+ (libraries
+  build_path_prefix_map
+  stdune
+  ;; This is because of the (implicit_transitive_deps false)
+  ;; in dune-project
+  ppx_expect.config
+  ppx_expect.config_types
+  base
+  ppx_inline_test.config)
+ (preprocess
+  (pps ppx_expect)))

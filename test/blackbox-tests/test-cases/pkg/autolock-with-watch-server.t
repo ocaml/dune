@@ -39,7 +39,7 @@ configuration. Fix for https://github.com/ocaml/dune/issues/15587
 
   $ dune pkg enabled
 
-  $ build a.exe
+  $ $timeout 10 dune rpc build --wait a.exe
   Success
   $ wait_for_line_with_timeout .#dune-output "Success, waiting for filesystem changes..." 200
   $ cat .#dune-output
@@ -57,7 +57,7 @@ Add new dependency c:
 
 Run build:
 
-  $ build a.exe
+  $ $timeout 10 dune rpc build --wait a.exe
   Success
 
 Stop the watch server

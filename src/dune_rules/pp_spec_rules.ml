@@ -53,14 +53,7 @@ let get_rules sctx key =
         [ Pp.textf "invalid ppx key for %s" (Path.Build.to_string_maybe_quoted exe) ]
     | Some key ->
       let { Ppx_exe.Key.Decoded.pps; project_root } = Ppx_exe.Key.decode key in
-      let+ scope =
-        let dir =
-          match project_root with
-          | None -> Context.build_dir ctx
-          | Some dir -> Path.Build.append_source build_context.build_dir dir
-        in
-        Scope.DB.find_by_dir dir
-      in
+      let+ scope = Scope.DB.find_by_project_root ctx project_root in
       pps, scope
   in
   let* pps =

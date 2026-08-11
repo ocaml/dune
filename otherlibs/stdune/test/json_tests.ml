@@ -6,14 +6,16 @@ let print_json_string_bytes string =
   print_newline ()
 ;;
 
-let%expect_test "non-finite floats produce invalid JSON tokens" =
+let%expect_test "non-finite floats are rejected" =
   List.iter [ Stdlib.infinity; Stdlib.neg_infinity; Stdlib.nan ] ~f:(fun float ->
-    Json.to_string (`Float float) |> print_endline);
+    match Json.to_string (`Float float) with
+    | _ -> print_endline "accepted non-finite float"
+    | exception Code_error.E _ -> print_endline "rejected non-finite float");
   [%expect
     {|
-    inf
-    -inf
-    nan
+    rejected non-finite float
+    rejected non-finite float
+    rejected non-finite float
     |}]
 ;;
 

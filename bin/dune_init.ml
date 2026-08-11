@@ -564,6 +564,20 @@ module Component = struct
       |> Dune_lang.Atom.of_string
     ;;
 
+    let project_test dir context (common : Options.Common.t) =
+      let test_name = "test_" ^ Dune_lang.Atom.to_string common.name in
+      let libraries =
+        match common.public with
+        | None -> []
+        | Some lib -> [ lib_name_to_atom lib ]
+      in
+      test
+        { context = { context with dir = Path.Source.relative dir "test" }
+        ; options = ()
+        ; common = { common with name = Dune_lang.Atom.of_string test_name; libraries }
+        }
+    ;;
+
     let proj_exec dir ({ context; common; options } : Options.Project.t Options.t) =
       let lib_target =
         src
@@ -572,19 +586,7 @@ module Component = struct
           ; common = { common with public = None }
           }
       in
-      let test_target =
-        let test_name = "test_" ^ Dune_lang.Atom.to_string common.name in
-        let libraries =
-          match common.public with
-          | None -> []
-          | Some lib -> [ lib_name_to_atom lib ]
-        in
-        test
-          { context = { context with dir = Path.Source.relative dir "test" }
-          ; options = ()
-          ; common = { common with name = Dune_lang.Atom.of_string test_name; libraries }
-          }
-      in
+      let test_target = project_test dir context common in
       let bin_target =
         (* Add the lib_target as a library to the executable*)
         let libraries = Stanza_cst.add_to_list_set common.name common.libraries in
@@ -605,19 +607,7 @@ module Component = struct
           ; common
           }
       in
-      let test_target =
-        let test_name = "test_" ^ Dune_lang.Atom.to_string common.name in
-        let libraries =
-          match common.public with
-          | None -> []
-          | Some lib -> [ lib_name_to_atom lib ]
-        in
-        test
-          { context = { context with dir = Path.Source.relative dir "test" }
-          ; options = ()
-          ; common = { common with name = Dune_lang.Atom.of_string test_name; libraries }
-          }
-      in
+      let test_target = project_test dir context common in
       lib_target @ test_target
     ;;
 

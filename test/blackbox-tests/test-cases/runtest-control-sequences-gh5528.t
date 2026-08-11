@@ -33,5 +33,7 @@ Strips terminal control sequences from `dune runtest` output.
   ---------------
   Can you see it?
 
-  $ dune exec ./t.exe
+  $ dune exec ./t.exe | tr -d '\r'
+  Very Secret!
+  ---------------
   Can you see it?

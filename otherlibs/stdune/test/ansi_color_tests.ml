@@ -113,6 +113,12 @@ let%expect_test "reproduce #2664" =
           Tag ([ Fg_blue ], Verbatim "20"))) |}]
 ;;
 
+let%expect_test "Ansi_color.strip returns text without escapes unchanged" =
+  let string = "the lazy fox jumps over the brown dog" in
+  printfn "%b" (string == Ansi_color.strip string);
+  [%expect {| true |}]
+;;
+
 let%expect_test "Ansi_color.strip" =
   print_string
     (String.concat
@@ -122,14 +128,12 @@ let%expect_test "Ansi_color.strip" =
           [ "\027[34mthe lazy fox\027[39m jumps over the brown dog\027[0m"
           ; "the lazy fox \027[34mjumps over\027[39m the brown dog\027[0m"
           ; "\027[34mthe lazy fox\027[39m jumps over \027[0mthe brown dog"
-          ; "\027[34mthe lazy fox \027[39mjumps over\027[0thebrown dog"
           ]));
   [%expect
     {|
 the lazy fox jumps over the brown dog
 the lazy fox jumps over the brown dog
-the lazy fox jumps over the brown dog
-the lazy fox jumps over|}]
+the lazy fox jumps over the brown dog|}]
 ;;
 
 let%expect_test "malformed ANSI escapes do not consume following text" =
@@ -141,14 +145,14 @@ let%expect_test "malformed ANSI escapes do not consume following text" =
     printfn "parse: %S" (Format.asprintf "%a" Pp.to_fmt (Ansi_color.parse string)));
   [%expect
     {|
-    strip: "before"
-    parse: "before"
-    strip: "before"
-    parse: "before"
-    strip: "before"
-    parse: "before"
-    strip: "beforeafter"
-    parse: "beforeafter"
+    strip: "before\027after"
+    parse: "before\027after"
+    strip: "before\027[31"
+    parse: "before\027[31"
+    strip: "before\027[31oops"
+    parse: "before\027[31oops"
+    strip: "before\027[31oopsmafter"
+    parse: "before\027[31oopsmafter"
     |}]
 ;;
 

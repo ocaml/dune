@@ -242,12 +242,7 @@ let link_exe
   and* mode =
     let sctx = Compilation_context.super_context cctx in
     let* expander = Super_context.expander sctx ~dir in
-    let rule_mode =
-      match promote with
-      | None -> Rule_mode.Standard
-      | Some p -> Promote p
-    in
-    Rule_mode_expand.expand_path ~expander ~dir rule_mode
+    Rule_mode_expand.expand_optional_promote ~expander ~dir promote
   in
   Super_context.add_rule sctx ~loc ~dir ~mode action_with_targets
 ;;

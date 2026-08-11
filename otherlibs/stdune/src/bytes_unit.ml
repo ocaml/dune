@@ -24,6 +24,8 @@ let binary_conversion_table =
 let conversion_table = bytes_conversion_table @ decimal_conversion_table
 
 let pp x =
+  if Int64.compare x 0L < 0
+  then Code_error.raise "Bytes_unit.pp: negative byte count" [ "bytes", Dyn.int64 x ];
   (* We go through the list to find the first unit that is greater than the
      number of bytes and take the predecessor as the units for printing. For the
      special base case where no conversion is necessary we don't print as a

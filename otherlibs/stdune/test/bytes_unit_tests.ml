@@ -58,13 +58,14 @@ let%expect_test "Testing significant digit boundaries" =
       1234.57TB |}]
 ;;
 
-(* CR-someday alizter: we should raise an exception here rather than giving a meaningless value. *)
-(* Negative units get truncated but still printed as a negative. *)
-let%expect_test "Negative units" =
-  test [ -1L; -10L ];
+let%expect_test "negative units are rejected" =
+  List.iter [ -1L; -10L ] ~f:(fun bytes ->
+    match Bytes_unit.pp bytes with
+    | _ -> print_endline "accepted negative byte count"
+    | exception Code_error.E _ -> print_endline "negative byte count rejected");
   [%expect
     {|
-    -0.00TB
-    -0.00TB
+    negative byte count rejected
+    negative byte count rejected
     |}]
 ;;

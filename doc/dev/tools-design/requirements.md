@@ -170,8 +170,6 @@ It must be possible to install tools per-workspace, such that workspaces define
 a sub-environment. I.e., each workspace has its own isolated tool installations
 that don't affect other workspaces or interfere with software on the host system.
 
-See [Directory structure](./implementation.md#directory-structure) for storage locations.
-
 <details>
 <summary>
 Motivation and context
@@ -304,9 +302,6 @@ Users must be able to specify the version of tools to be installed via:
 - Declarative configuration (i.e. dune stanzas)
 - Tool-specific configuration files (e.g., `.ocamlformat`)
 
-See [Version syntax](./implementation.md#version-syntax) for CLI syntax and
-[The `(tool)` stanza](./implementation.md#the-tool-stanza) for declarative configuration.
-
 <details>
 <summary>
 Motivation and context
@@ -367,9 +362,6 @@ When a package provides multiple tools, users must be able to specify a subset
 for installation. When a package providing tools is installed without
 qualification, all provided tools must be installed. As a special case, when a
 package provides a single binary, it will be installed without needing to qualify.
-
-See [The `(tool)` stanza](./implementation.md#the-tool-stanza) and [CLI
-commands](./implementation.md#cli-commands) for syntax.
 
 **Motivation**: This is necessitated by the fact that the relation between opam
 packages and tools is one-to-many: a single package can provide multiple
@@ -471,7 +463,6 @@ Related issues:
   - Supported via system-wide `uv tool install`
 
 </details>
-</details>
 
 ### 2. Usability
 
@@ -506,7 +497,6 @@ dune.
 
 Users must be able to run tools by invoking them directly in any shell (e.g., bash).
 
-See [CLI commands](./implementation.md#cli-commands) for invocation syntax.
 
 <details>
 <summary>
@@ -541,7 +531,6 @@ that prints the paths to the binaries,  by adding a single directory of
 executables to the lookup path, printing the path locations, or some other
 means).
 
-See [CLI commands](./implementation.md#cli-commands) for the discovery interface.
 
 ##### 2.3.1. dune subcommands
 
@@ -715,8 +704,6 @@ avoiding recent compiler versions or making use of these (and many other)
 available tools. This would violate the design principles of orthogonality and
 generality, and yield a necessarily limited usability.
 
-See  [Directory structure](./implementation.md#directory-structure) for proposed
-lock directory locations.
 </details>
 
 ###### 3.1.1.1. Optimal builds
@@ -764,9 +751,6 @@ A special purpose field could also be introduced for this purpose.
 We can also consider data added to opam files that allows this requirement to be
 specified for provided tools at the package data level, instead of forcing this
 upon consuming users.
-
-See [Compiler matching](./implementation.md#compiler-matching) for the detection
-algorithm.
 
 </details>
 
@@ -945,7 +929,6 @@ Related issues:
 
 - [dune#12557 dune tools install should take multiple package
   arguments](https://github.com/ocaml/dune/issues/12557)
-  - Discussed in the implementation spec. See [./implementation.md#batch-operations](./implementation.md#batch-operations)
 
 </details>
 
@@ -978,8 +961,6 @@ project setups as part of a reusable ad hoc dev tool setup.
 
 - Declaration is version-controlled and shared with collaborators
 - CI and fresh checkouts get the same tools
-
-See [The `(tool)` stanza](./implementation.md#the-tool-stanza) for proposed syntax.
 
 </details>
 

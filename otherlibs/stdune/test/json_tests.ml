@@ -6,6 +6,17 @@ let print_json_string_bytes string =
   print_newline ()
 ;;
 
+let%expect_test "non-finite floats produce invalid JSON tokens" =
+  List.iter [ Stdlib.infinity; Stdlib.neg_infinity; Stdlib.nan ] ~f:(fun float ->
+    Json.to_string (`Float float) |> print_endline);
+  [%expect
+    {|
+    inf
+    -inf
+    nan
+    |}]
+;;
+
 let%expect_test "invalid UTF-8 is replaced in JSON strings" =
   List.iter
     [ "\xc0\x80" (* overlong two-byte encoding *)

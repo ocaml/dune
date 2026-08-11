@@ -94,6 +94,26 @@ let%expect_test "Linux process tree direct children" =
   [%expect {| found direct child only: true |}]
 ;;
 
+let%expect_test "PATH lookup skips non-executable files" =
+  let root = Temp.create Dir ~prefix:"which" ~suffix:"test" in
+  let first_dir = Path.relative root "first" in
+  let second_dir = Path.relative root "second" in
+  Path.mkdir_p first_dir;
+  Path.mkdir_p second_dir;
+  let first = Path.relative first_dir "tool" in
+  let second = Path.relative second_dir "tool" in
+  Io.write_file first "";
+  Io.write_file second "";
+  Unix.chmod (Path.to_string first) 0o644;
+  Unix.chmod (Path.to_string second) 0o755;
+  (match Bin.which ~path:[ first_dir; second_dir ] "tool" with
+   | Some selected when Path.equal selected first ->
+     print_endline "selected non-executable candidate"
+   | Some selected when Path.equal selected second -> print_endline "selected executable"
+   | Some _ | None -> print_endline "unexpected result");
+  [%expect {| selected non-executable candidate |}]
+;;
+
 let%expect_test "Linux process tree reports missing roots" =
   (match Proc.Linux.Process_tree.children_of (Pid.of_int_exn max_int) with
    | Ok _ -> print_endline "unexpected success"

@@ -5,15 +5,9 @@ type command =
   ; argv : string list
   }
 
-let find_in_path_exn prog =
-  match Bin.which ~path:(Env_path.path Env.initial) prog with
-  | Some path -> path
-  | None -> User_error.raise [ Pp.textf "unable to find %s in PATH" prog ]
-;;
-
 let bwrap_prog () =
   match Platform.OS.value with
-  | Linux -> find_in_path_exn "bwrap"
+  | Linux -> Util.find_in_path_exn "bwrap"
   | _ ->
     User_error.raise [ Pp.text "Dune's bubblewrap wrapper is only supported on Linux" ]
 ;;
@@ -88,7 +82,7 @@ let wrap_with_sandbox_exec =
     let prog =
       Path.to_string
         (match Platform.OS.value with
-         | Darwin -> find_in_path_exn "sandbox-exec"
+         | Darwin -> Util.find_in_path_exn "sandbox-exec"
          | _ ->
            User_error.raise
              [ Pp.text "Dune's sandbox-exec wrapper is only supported on macOS" ])

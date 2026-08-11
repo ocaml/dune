@@ -2,22 +2,10 @@ open Import
 
 let name = Action_runner_name.of_string "action-runner"
 
-let find_in_path_exn prog =
-  match Bin.which ~path:(Env_path.path Env.initial) prog with
-  | Some path -> path
-  | None -> User_error.raise [ Pp.textf "unable to find %s in PATH" prog ]
-;;
-
-let has_directory_component prog =
-  String.exists prog ~f:(function
-    | '/' | '\\' -> true
-    | _ -> false)
-;;
-
 let dune_prog () =
   let prog = Sys.executable_name in
-  if Filename.is_relative prog && not (has_directory_component prog)
-  then find_in_path_exn prog
+  if Filename.is_relative prog && not (Fpath.contains_path_sep prog)
+  then Util.find_in_path_exn prog
   else Path.of_filename_relative_to_initial_cwd prog
 ;;
 

@@ -16,7 +16,9 @@ Test the special compiler version is picked up by ocamllsp.
 
 Here `ocamllsp` will pickup the compiler dependency on 5.2.0+ox
   $ dune tools exec ocamllsp
-  Solution for _build/.dev-tools.locks/ocaml-lsp-server:
+  Solution for _build/.dev-tools.locks/ocaml-lsp-server
+  
+  Dependencies common to all supported platforms:
   - ocaml-lsp-server.0.0.1
   - ocaml-variants.5.2.0+ox
        Running 'ocamllsp'

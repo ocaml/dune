@@ -1,11 +1,7 @@
 Test that dune can dynamically select a lockdir with a cond statement 
 
-Disable portable lockdirs, as there's no need to generate platform-specific
-lockdirs if each lockdir is portable across different platforms. The feature
-for generating platform-specific lockdirs should be removed in favour of making
-all lockdirs portable.
-  $ export DUNE_CONFIG__PORTABLE_LOCK_DIR=disabled
-
+Each lockdir is solved for the platform set from its own [solver_env], so
+the selection is dynamic.
   $ mkrepo
 
   $ mkpkg arm64-only <<EOF
@@ -67,18 +63,71 @@ all lockdirs portable.
 
 Generate all lockdirs:
   $ dune pkg lock dune.macos.arm64.lock
-  Solution for dune.macos.arm64.lock:
+  Solution for dune.macos.arm64.lock
+  
+  Dependencies common to all supported platforms:
+  (none)
+  
+  Additionally, some packages will only be built on specific platforms.
+  
+  arch = arm64; os = linux:
+  - arm64-only.0.0.1
+  - linux-only.0.0.1
+  
+  arch = arm64; os = macos:
   - arm64-only.0.0.1
   - macos-only.0.0.1
+  
+  arch = x86_64; os = linux:
+  - linux-only.0.0.1
+  
+  arch = x86_64; os = macos:
+  - macos-only.0.0.1
   $ dune pkg lock dune.macos.lock
-  Solution for dune.macos.lock:
+  Solution for dune.macos.lock
+  
+  Dependencies common to all supported platforms:
+  (none)
+  
+  Additionally, some packages will only be built on specific platforms.
+  
+  arch = arm64; os = linux:
+  - arm64-only.0.0.1
+  - linux-only.0.0.1
+  
+  arch = arm64; os = macos:
+  - arm64-only.0.0.1
+  - macos-only.0.0.1
+  
+  arch = x86_64; os = linux:
+  - linux-only.0.0.1
+  
+  arch = x86_64; os = macos:
   - macos-only.0.0.1
   $ DUNE_TRACE=+sat dune pkg lock dune.linux.lock
-  Solution for dune.linux.lock:
+  Solution for dune.linux.lock
+  
+  Dependencies common to all supported platforms:
+  (none)
+  
+  Additionally, some packages will only be built on specific platforms.
+  
+  arch = arm64; os = linux:
+  - arm64-only.0.0.1
   - linux-only.0.0.1
+  
+  arch = arm64; os = macos:
+  - arm64-only.0.0.1
+  - macos-only.0.0.1
+  
+  arch = x86_64; os = linux:
+  - linux-only.0.0.1
+  
+  arch = x86_64; os = macos:
+  - macos-only.0.0.1
 
 The trace file is reset per dune invocation, so the assertion below
-covers only the last pkg lock above (one SAT engine run, non-portable).
+covers only the last pkg lock above (one SAT engine run).
 
   $ dune trace cat \
   > | jq -s 'include "dune"; [ .[] | satSolveEvents ] | length'
@@ -95,24 +144,106 @@ Build macos package on macos arm64:
 Build macos package on macos amd64:
   $ dune clean
   $ DUNE_CONFIG__OS=macos DUNE_CONFIG__ARCH=amd64 build_pkg macos-only
-  macos-only
+  File "dune.macos.lock/lock.dune", lines 10-17, characters 1-117:
+  10 |  ((arch x86_64)
+  11 |   (os linux))
+  12 |  ((arch arm64)
+  13 |   (os linux))
+  14 |  ((arch x86_64)
+  15 |   (os macos))
+  16 |  ((arch arm64)
+  17 |   (os macos)))
+  Error: The lockdir does not contain a solution compatible with the current
+  platform.
+  The current platform is:
+  - arch = amd64
+  - os = macos
+  - os-distribution = ubuntu
+  - os-family = debian
+  - os-version = 24.11
+  - sys-ocaml-version = 5.4.0+fake
+  Hint: Try adding the following to dune-workspace:
+  Hint: (lock_dir (solve_for_platforms ((arch amd64) (os macos))))
+  Hint: ...and then rerun 'dune pkg lock'
+  [1]
 
 Build linux package on macos (will fail):
   $ dune clean
   $ DUNE_CONFIG__OS=macos DUNE_CONFIG__ARCH=amd64 build_pkg linux-only
-  Error: The project does not depend on the package "linux-only".
+  File "dune.macos.lock/lock.dune", lines 10-17, characters 1-117:
+  10 |  ((arch x86_64)
+  11 |   (os linux))
+  12 |  ((arch arm64)
+  13 |   (os linux))
+  14 |  ((arch x86_64)
+  15 |   (os macos))
+  16 |  ((arch arm64)
+  17 |   (os macos)))
+  Error: The lockdir does not contain a solution compatible with the current
+  platform.
+  The current platform is:
+  - arch = amd64
+  - os = macos
+  - os-distribution = ubuntu
+  - os-family = debian
+  - os-version = 24.11
+  - sys-ocaml-version = 5.4.0+fake
+  Hint: Try adding the following to dune-workspace:
+  Hint: (lock_dir (solve_for_platforms ((arch amd64) (os macos))))
+  Hint: ...and then rerun 'dune pkg lock'
   [1]
 
 Build macos package on linux (will fail):
   $ dune clean
   $ DUNE_CONFIG__OS=linux DUNE_CONFIG__ARCH=amd64 build_pkg macos-only
-  Error: The project does not depend on the package "macos-only".
+  File "dune.linux.lock/lock.dune", lines 10-17, characters 1-117:
+  10 |  ((arch x86_64)
+  11 |   (os linux))
+  12 |  ((arch arm64)
+  13 |   (os linux))
+  14 |  ((arch x86_64)
+  15 |   (os macos))
+  16 |  ((arch arm64)
+  17 |   (os macos)))
+  Error: The lockdir does not contain a solution compatible with the current
+  platform.
+  The current platform is:
+  - arch = amd64
+  - os = linux
+  - os-distribution = ubuntu
+  - os-family = debian
+  - os-version = 24.11
+  - sys-ocaml-version = 5.4.0+fake
+  Hint: Try adding the following to dune-workspace:
+  Hint: (lock_dir (solve_for_platforms ((arch amd64) (os linux))))
+  Hint: ...and then rerun 'dune pkg lock'
   [1]
 
 Build linux package on linux:
   $ dune clean
   $ DUNE_CONFIG__OS=linux DUNE_CONFIG__ARCH=amd64 build_pkg linux-only
-  linux-only
+  File "dune.linux.lock/lock.dune", lines 10-17, characters 1-117:
+  10 |  ((arch x86_64)
+  11 |   (os linux))
+  12 |  ((arch arm64)
+  13 |   (os linux))
+  14 |  ((arch x86_64)
+  15 |   (os macos))
+  16 |  ((arch arm64)
+  17 |   (os macos)))
+  Error: The lockdir does not contain a solution compatible with the current
+  platform.
+  The current platform is:
+  - arch = amd64
+  - os = linux
+  - os-distribution = ubuntu
+  - os-family = debian
+  - os-version = 24.11
+  - sys-ocaml-version = 5.4.0+fake
+  Hint: Try adding the following to dune-workspace:
+  Hint: (lock_dir (solve_for_platforms ((arch amd64) (os linux))))
+  Hint: ...and then rerun 'dune pkg lock'
+  [1]
 
 Try setting the os to one which doesn't have a corresponding lockdir:
   $ dune clean
@@ -146,8 +277,26 @@ Test that cond statements can have a default value:
   > EOF
 
   $ dune pkg lock dune.lock
-  Solution for dune.lock:
+  Solution for dune.lock
+  
+  Dependencies common to all supported platforms:
+  (none)
+  
+  Additionally, some packages will only be built on specific platforms.
+  
+  arch = arm64; os = linux:
+  - arm64-only.0.0.1
   - linux-only.0.0.1
+  
+  arch = arm64; os = macos:
+  - arm64-only.0.0.1
+  - macos-only.0.0.1
+  
+  arch = x86_64; os = linux:
+  - linux-only.0.0.1
+  
+  arch = x86_64; os = macos:
+  - macos-only.0.0.1
   $ dune clean
   $ build_pkg linux-only
   linux-only

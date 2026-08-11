@@ -95,7 +95,6 @@ let solve ~dev_tool ~local_packages =
        ~version_preference:None
        ~lock_dirs:[ lock_dir ]
        ~print_perf_stats:false
-       ~portable_lock_dir:false
 ;;
 
 (* Some dev tools must be built with the same version of the ocaml compiler as
@@ -203,7 +202,9 @@ let lockdir_status dev_tool =
               | None -> Memo.return `No_compiler_lockfile_in_lockdir
               | Some pkg ->
                 let+ ocaml_compiler = compiler_package () in
-                (match Lock_dir.Pkg.equal pkg ocaml_compiler with
+                (match
+                   Package_version.equal pkg.info.version ocaml_compiler.info.version
+                 with
                  | true -> `Lockdir_ok_with_tool_pkg pkg
                  | false ->
                    `Dev_tool_needs_to_be_relocked_because_project_compiler_version_changed

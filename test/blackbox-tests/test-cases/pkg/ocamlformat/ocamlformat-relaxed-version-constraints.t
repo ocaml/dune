@@ -28,7 +28,9 @@ Initial file:
 This should choose the 0.24+foo version:
   $ echo "version=0.24" > .ocamlformat
   $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune fmt
-  Solution for _build/.dev-tools.locks/ocamlformat:
+  Solution for _build/.dev-tools.locks/ocamlformat
+  
+  Dependencies common to all supported platforms:
   - ocamlformat.0.24+foo
   File "foo.ml", line 1, characters 0-0:
   --- foo.ml
@@ -46,7 +48,9 @@ This should choose the 0.24+bar version:
   $ echo "version=0.25" > .ocamlformat
   $ rm -r "${dev_tool_lock_dir}"
   $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune fmt
-  Solution for _build/.dev-tools.locks/ocamlformat:
+  Solution for _build/.dev-tools.locks/ocamlformat
+  
+  Dependencies common to all supported platforms:
   - ocamlformat.0.25+bar
   File "foo.ml", line 1, characters 0-0:
   --- foo.ml
@@ -66,8 +70,16 @@ This should fail as there is no version matching 0.24.1:
   $ echo "version=0.24.1" > .ocamlformat
   $ rm -r "${dev_tool_lock_dir}"
   $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune fmt
-  Error: Unable to solve dependencies for the following lock directories:
-  Lock directory _build/.dev-tools.locks/ocamlformat:
+  Error:
+  Unable to solve dependencies while generating lock directory:
+  $TESTCASE_ROOT/_build/.dev-tools.locks/ocamlformat
+  
+  The dependency solver failed to find a solution for the requested platforms:
+  - arch = x86_64; os = linux
+  - arch = arm64; os = linux
+  - arch = x86_64; os = macos
+  - arch = arm64; os = macos
+  ...with this error:
   Couldn't solve the package dependency formula.
   Selected candidates: ocamlformat_dev_tool_wrapper.dev
   - ocamlformat -> (problem)

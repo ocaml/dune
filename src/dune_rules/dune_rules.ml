@@ -80,6 +80,7 @@ module Pkg_rules = struct
 end
 
 module For_tests = struct
+  module Module_trie = Module_trie
   module Dynlink_supported = Dynlink_supported
   module Ocamlobjinfo = Ocamlobjinfo
   module Action_unexpanded = Action_unexpanded

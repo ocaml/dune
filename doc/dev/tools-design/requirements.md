@@ -337,14 +337,29 @@ version specifications.
 
 #### 1.4. Clean source tree
 
-Tool lock directories and built artifacts must not pollute the source tree, to
-ensure that they are not inadvertently picked up in version control or otherwise
-create needless noise for users.
+Discretionary tool lock directories and built artifacts must not pollute the
+source tree, to ensure that they are not inadvertently picked up in version
+control or otherwise create needless noise for users. Tools that are part of
+project dependencies should end up in the lock.
 
 **Motivation**: This is a common complaint from users and is one such way to
 solve the issue. Tools like `uv` handle this differently by having a global place.
 Due to our compiler matching semantics it makes more sense for workspace level
 and becomes fast with full caching.
+
+
+<details>
+<summary>
+Motivation and context
+</summary>
+
+**Comparison with other systems**
+
+- *cargo* : Satisfied by tool installations, which go to `$CARGO_HOME`.
+- *go* : Satisfied by tooling executables living in content-adderssable build cache, outside of
+  source tree, tho locking info goes to `go.sum`
+
+</details>
 
 #### 1.5. Binary selection
 
@@ -370,9 +385,12 @@ Motivation and context
 
 **Comparison with other systems**
 
-- *cargo* : https://doc.rust-lang.org/1.95.0/cargo/commands/cargo-install.html#description
-- *go* :
-- *uv* : https://github.com/astral-sh/uv/blob/0.12.2/docs/guides/tools.md#commands-with-different-package-names
+- *cargo* : Satisfied in cargo by the `--bin NAME` flag to install only the
+  specified binary, but which installs all provided binaries by default.
+- *go* : The relationship between packages and executables is 1-1 in go.
+- *uv* : Satisfied in uv by the `--from` flag which allows running/installing
+  "commands" (executables) "from" just the named package, e.g., `$ uvx --from
+  httpie http` to run the http tool from the httpie package.
 
 </details>
 #### 1.6. By tool name
@@ -413,6 +431,14 @@ Related issues:
   deps](https://github.com/ocaml/dune/issues/12135)
   - Should the :with-dev-setup qualifier be used by dev-tools to install?
 
+**Comparison with other systems**
+
+- *cargo* : Unsatisfied, see https://rust-lang.github.io/rfcs/3028-cargo-binary-dependencies.html.
+- *go* : All project-specific tooling is equivalent to project-dependency
+  tooling, and any discretionary tooling goes thru `go install` into the global
+  binary directory.
+- *uv* : Satisfied by [`dependency-groups`](https://github.com/astral-sh/uv/blob/0.12.2/docs/concepts/projects/dependencies.md#dependency-groups)
+
 </details>
 
 #### 1.8. Discretionary tools
@@ -440,7 +466,9 @@ Related issues:
   - https://users.rust-lang.org/t/request-track-dev-cli-tools-in-cargo-toml/138234
   - https://github.com/rust-lang/cargo/issues/2267
 - *go* :
+  - Supported via system-wide `go install`
 - *uv* :
+  - Supported via system-wide `uv tool install`
 
 </details>
 </details>
@@ -495,6 +523,12 @@ dune tools exec merlin
   Error: The tool merlin is not installed
   Hint: Try 'dune tools install merlin'
 ```
+
+**Comparison with other systems**
+
+- *cargo* : Satisfied by installed tools being plain executables in the `PATH`.
+- *go* : Satisfied via `go tool installed`, which installs tools in the `GOBIN`.
+- *uv* : Satisfied by installed tools being plain executables in the `PATH`.
 
 </details>
 
@@ -565,6 +599,19 @@ provided for executing discretionary tools. E.g., a mechanism like `dune env`
 that would make the path to dune-managed binaries available must include both
 discretionary tools and project dependency tools in the path.
 
+<details>
+<summary>
+Motivation and context
+</summary>
+
+**Comparison with other systems**
+
+- *cargo* : Satisfied by `go tool`.
+- *go* : No analogue.
+- *uv* : Satisfied by `uv run` executing tools installed in any group, and
+  activiting a projects virtual environment will bring the tools into your path.
+
+</details>
 #### 2.5. Dog fooding
 
 Tools must work in the dune repository itself. Dune developers should be able to
@@ -670,9 +717,6 @@ generality, and yield a necessarily limited usability.
 
 See  [Directory structure](./implementation.md#directory-structure) for proposed
 lock directory locations.
-
-<!-- TODO -->
-- uv: https://docs.astral.sh/uv/concepts/projects/config/#build-isolation
 </details>
 
 ###### 3.1.1.1. Optimal builds
@@ -955,18 +999,37 @@ developers working in OCaml. Nor is our reference to implementation choices made
 by the other systems intended to be prescriptive: they are only recorded to
 illustrate how the need is meet in those contexts.
 
-<!-- TODO brief note on the selections -->
 ### Cargo
 
-https://doc.rust-lang.org/1.95.0/cargo/commands/cargo-install.html
+cargo (Rust 1.95.0) installs tools from source with `cargo install`, into a
+single user-global binary directory (`$CARGO_HOME/bin`, by default); there is no
+first-party project-scoped tool management, a gap the community fills with
+[cargo-run-bin](https://github.com/dustinblackman/cargo-run-bin) and
+[cargo-binstall](https://github.com/cargo-bins/cargo-binstall), and that [RFC
+3028](https://rust-lang.github.io/rfcs/3028-cargo-binary-dependencies.html) aims
+to address for build-rule use. Keystone tools (rustfmt, clippy) ship as rustup
+components version-locked to the compiler toolchain.
+
+See https://doc.rust-lang.org/1.95.0/cargo/commands/cargo-install.html
 
 ### Go
 
-https://www.bytesizego.com/blog/go-124-tool-directive
-https://go.dev/doc/go1.24#tools
-https://aran.dev/posts/go-124/go-124-new-tool-directive/
+Go (1.24+) declares tool dependencies in `go.mod` files via the `tool`
+directive, resolved in the same solve as project dependencies, executed via `go
+tool <name>` from the build cache, and installable to `GOBIN` with `go install
+tool`. See
+
+- https://go.dev/doc/go1.24#tools
+- https://www.bytesizego.com/blog/go-124-tool-directive
+- https://aran.dev/posts/go-124/go-124-new-tool-directive/
 
 ### uv
 
-https://github.com/astral-sh/uv/blob/0.12.2/docs/concepts/tools.md
-https://github.com/astral-sh/uv/blob/0.12.2/docs/guides/tools.md
+uv (Astral, v0.12.2) is a Python package and project manager whose `uv tool`
+interface installs command-line tools into isolated, per-tool environments
+exposed on the user’s `PATH`, and whose `uvx` alias runs tools ephemerally from
+cached environments. Discretionary tools are user-scoped, not project-scoped,
+and project dependency tools are supported by `dependency-groups`. See
+
+- https://github.com/astral-sh/uv/blob/0.12.2/docs/concepts/tools.md
+- https://github.com/astral-sh/uv/blob/0.12.2/docs/guides/tools.md

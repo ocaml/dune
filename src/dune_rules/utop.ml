@@ -35,6 +35,18 @@ module Source_tree_map_reduce = Source_tree.Dir.Make_map_reduce (Memo) (Libs_and
 
 let for_ = Compilation_mode.Ocaml
 
+let add_lib (acc, pps) lib =
+  let info = Lib.info lib in
+  match (Lib_info.kind info : Lib_kind.t) with
+  | Virtual | Parameter | Dune_file Normal -> Appendable_list.cons lib acc, pps
+  (* CR-someday art-w: the parametrized libraries in utop follows
+      the same schema as Normal library but it needs to be verified once
+      parametrized libraries are fully supported. *)
+  | Dune_file (Ppx_rewriter _ | Ppx_deriver _) ->
+    ( Appendable_list.cons lib acc
+    , Appendable_list.cons (Lib_info.loc info, Lib_info.name info) pps )
+;;
+
 let add_stanza db ~dir (acc, pps) stanza =
   match Stanza.repr stanza with
   | Library.T l ->
@@ -58,15 +70,7 @@ let add_stanza db ~dir (acc, pps) stanza =
           feature. *)
        let not_impl = Option.is_none (Lib_info.implements info) in
        if not_impl && Path.is_descendant ~of_:(Path.build dir) src_dir
-       then (
-         match (Lib_info.kind info : Lib_kind.t) with
-         | Virtual | Parameter | Dune_file Normal -> Appendable_list.cons lib acc, pps
-         (* CR-someday art-w: the parametrized libraries in utop follows
-             the same schema as Normal library but it needs to be verified once
-             parametrized libraries are fully supported. *)
-         | Dune_file (Ppx_rewriter _ | Ppx_deriver _) ->
-           ( Appendable_list.cons lib acc
-           , Appendable_list.cons (Lib_info.loc info, Lib_info.name info) pps ))
+       then add_lib (acc, pps) lib
        else acc, pps)
   | Executables.T exes ->
     let+ libs =
@@ -98,17 +102,7 @@ let add_stanza db ~dir (acc, pps) stanza =
     in
     (match libs with
      | Error () -> acc, pps
-     | Ok libs ->
-       List.fold_left libs ~init:(acc, pps) ~f:(fun (acc, pps) lib ->
-         let info = Lib.info lib in
-         match (Lib_info.kind info : Lib_kind.t) with
-         | Virtual | Parameter | Dune_file Normal -> Appendable_list.cons lib acc, pps
-         (* CR-someday art-w: the parametrized libraries in utop follows
-             the same schema as Normal library but it needs to be verified once
-             parametrized libraries are fully supported. *)
-         | Dune_file (Ppx_rewriter _ | Ppx_deriver _) ->
-           ( Appendable_list.cons lib acc
-           , Appendable_list.cons (Lib_info.loc info, Lib_info.name info) pps )))
+     | Ok libs -> List.fold_left libs ~init:(acc, pps) ~f:add_lib)
   | _ -> Memo.return (acc, pps)
 ;;
 

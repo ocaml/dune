@@ -38,4 +38,10 @@ val fetch_revision
   -> Rev_store.t
   -> (Rev_store.At_rev.t, User_message.t) result Fiber.t
 
+val resolve_and_fetch_revision
+  :  t
+  -> loc:Loc.t
+  -> Rev_store.t
+  -> (Rev_store.At_rev.t, User_message.t) result Fiber.t
+
 val set_rev : t -> Rev_store.Object.t -> t

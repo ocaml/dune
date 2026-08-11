@@ -104,11 +104,7 @@ let of_opam_repo_dir_path loc opam_repo_dir_path =
 let of_git_repo loc url =
   let+ at_rev =
     let* rev_store = Rev_store.get in
-    OpamUrl.resolve url ~loc rev_store
-    >>= (function
-     | Error _ as e -> Fiber.return e
-     | Ok s -> OpamUrl.fetch_revision url ~loc s rev_store)
-    >>| User_error.ok_exn
+    OpamUrl.resolve_and_fetch_revision url ~loc rev_store >>| User_error.ok_exn
   in
   let serializable =
     Some

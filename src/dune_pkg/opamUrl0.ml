@@ -90,4 +90,12 @@ let fetch_revision t ~loc resolve rev_store =
      | Ok rev -> Ok rev)
 ;;
 
+let resolve_and_fetch_revision t ~loc rev_store =
+  let open Fiber.O in
+  resolve t ~loc rev_store
+  >>= function
+  | Error _ as error -> Fiber.return error
+  | Ok resolved -> fetch_revision t ~loc resolved rev_store
+;;
+
 let set_rev (t : t) rev = { t with hash = Some (Rev_store.Object.to_hex rev) }

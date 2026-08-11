@@ -728,6 +728,7 @@ let run_cram_test
       ~can_run_in_action_runner:true
       ~name
       ~categories:[ "cram" ]
+      ~purpose:(Build_job None)
       ()
   in
   Process.run

@@ -982,10 +982,7 @@ let spawn
     Time.now ()
   in
   let pid =
-    let env =
-      let env = Dtemp.add_to_env env in
-      Env.to_unix env |> Spawn.Env.of_list
-    in
+    let env = Env.to_unix env |> Spawn.Env.of_list in
     let stdout = Io.fd stdout in
     let stderr = Io.fd stderr in
     let stdin = Io.fd stdin in
@@ -1252,6 +1249,10 @@ let run_internal
     let timeout = Failure_mode.timeout fail_mode in
     let prepared_outputs = prepare_outputs ~stdout:stdout_to ~stderr:stderr_to in
     let env = Option.value env ~default:Env.initial in
+    let env =
+      let { Process_metadata.purpose; _ } = metadata in
+      Dtemp.add_to_env env ~purpose
+    in
     let local () =
       let t =
         spawn

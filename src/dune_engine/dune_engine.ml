@@ -43,4 +43,5 @@ module Fs = Fs
 
 module For_tests = struct
   module Debouncer = Debouncer
+  module Dtemp = Dtemp
 end

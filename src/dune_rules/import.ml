@@ -64,7 +64,17 @@ include struct
   module Fs = Fs
 end
 
-module Compound_user_error = Dune_rpc.Private.Compound_user_error
+module Compound_user_error = struct
+  include Dune_rpc.Private.Compound_user_error
+
+  let duplicate ~main_loc ~previous_loc main_message =
+    let main = User_message.make ~loc:main_loc [ main_message ] in
+    let related =
+      [ User_message.make ~loc:previous_loc [ Pp.text "Already defined here" ] ]
+    in
+    [ make ~main ~related ]
+  ;;
+end
 
 include struct
   open Ocaml

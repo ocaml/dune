@@ -784,11 +784,10 @@ let make_lib_modules
         Pp.text "a library with (stdlib ...) may not use (include_subdirs qualified)"
       in
       let compound =
-        let main = User_message.make ~loc:loc_include_subdirs [ main_message ] in
-        let related =
-          [ User_message.make ~loc:stdlib.loc [ Pp.text "Already defined here" ] ]
-        in
-        [ Compound_user_error.make ~main ~related ]
+        Compound_user_error.duplicate
+          ~main_loc:loc_include_subdirs
+          ~previous_loc:stdlib.loc
+          main_message
       in
       User_error.raise ~compound ~loc:loc_include_subdirs [ main_message ]
     | _, _ -> ()

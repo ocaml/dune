@@ -75,11 +75,7 @@ module Emit = struct
               (Filename.Extension.to_string ext)
           in
           let compound =
-            let main = User_message.make ~loc:loc2 [ main_message ] in
-            let related =
-              [ User_message.make ~loc:loc1 [ Pp.text "Already defined here" ] ]
-            in
-            [ Compound_user_error.make ~main ~related ]
+            Compound_user_error.duplicate ~main_loc:loc2 ~previous_loc:loc1 main_message
           in
           User_error.raise
             ~compound

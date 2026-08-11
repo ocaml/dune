@@ -1573,6 +1573,9 @@ module Solver = struct
     (** For each selected implementation with a conflict class, reject all candidates
         with the same class. *)
     let check_conflict_classes report =
+      (* Key the conflict classes by platform as well, matching the SAT-side
+         constraint: a class holder selected on one platform must not cause
+         candidates on another platform to be reported as conflicting. *)
       let classes =
         Input.Role.Map.foldi
           report
@@ -1581,18 +1584,44 @@ module Solver = struct
             match Component.selected_impl component with
             | None -> acc
             | Some impl ->
+              let platform =
+                match role with
+                | Input.Real (_, platform) -> Some platform
+                | Input.Virtual _ -> None
+              in
               Input.Impl.conflict_class impl
-              |> List.fold_left ~init:acc ~f:(fun acc x ->
-                OpamPackage.Name.Map.add x role acc))
+              |> List.fold_left ~init:acc ~f:(fun acc cl ->
+                let platforms =
+                  match OpamPackage.Name.Map.find_opt cl acc with
+                  | None -> Solver_env.Map.empty
+                  | Some platforms -> platforms
+                in
+                let platforms =
+                  match platform with
+                  | None -> platforms
+                  | Some platform -> Solver_env.Map.set platforms platform role
+                in
+                OpamPackage.Name.Map.add cl platforms acc))
       in
       Input.Role.Map.iteri report ~f:(fun role component ->
         Component.filter_impls component (fun impl ->
+          let platform =
+            match role with
+            | Input.Real (_, platform) -> Some platform
+            | Input.Virtual _ -> None
+          in
           Input.Impl.conflict_class impl
           |> List.find_map ~f:(fun cl ->
             match OpamPackage.Name.Map.find_opt cl classes with
-            | Some other_role when not (same_package_name role other_role) ->
-              Some (`ClassConflict (other_role, cl))
-            | _ -> None)))
+            | None -> None
+            | Some platforms ->
+              (match platform with
+               | None -> None
+               | Some platform ->
+                 (match Solver_env.Map.find platforms platform with
+                  | Some other_role when not (same_package_name role other_role) ->
+                    Some (`ClassConflict (other_role, cl))
+                  | _ -> None)))))
     ;;
 
     let of_result context impls =

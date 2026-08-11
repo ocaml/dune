@@ -11,7 +11,6 @@ val solve
   -> version_preference:Dune_pkg.Version_preference.t option
   -> lock_dirs:Path.t list
   -> print_perf_stats:bool
-  -> portable_lock_dir:bool
   -> unit Fiber.t
 
 (** Command to create lock directory *)

@@ -77,7 +77,7 @@ Update dune-package to pin the dune package:
   >  (name x)
   >  (depends foo))
   > EOF
-  $ DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled dune pkg lock
+  $ dune pkg lock
   File "dune-project", line 4, characters 1-22:
   4 |  (package (name dune)))
        ^^^^^^^^^^^^^^^^^^^^^

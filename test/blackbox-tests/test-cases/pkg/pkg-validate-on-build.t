@@ -5,8 +5,6 @@ dune is asked to execute a build plan on a different platform than the platform
 it was generated for. A similar case is possible with portable lockdirs where
 the current platform isn't one of the platforms for which a solution exists in
 the lockdir, and this is tested in "portable-lockdirs-custom-platforms".
-  $ export DUNE_CONFIG__PORTABLE_LOCK_DIR=disabled
-
   $ mkrepo
 
   $ mkpkg a <<EOF
@@ -54,8 +52,15 @@ Helper function that creates a workspace file with a given solver env.
   >  (depends bar))
   > EOF
   Solution for dune.lock:
-  - b.0.0.1
   - bar.0.0.1
+  
+  Additionally, some packages will only be built on specific platforms.
+  
+  arch = arm64; os = macos:
+  - b.0.0.1
+  
+  arch = x86_64; os = macos:
+  - b.0.0.1
 
 When the workspace and lockdir is consistent we can build packages in the lockdir.
   $ build_pkg bar
@@ -70,14 +75,6 @@ regenerate the lockdir, leaving the project in an inconsistent state.
 Print an error when attempting to build when the lockdir and workspace disagree
 about the value of a variable.
   $ build_pkg bar
-  Error: The dependency solution relies on the assignment of the solver
-  variable "os" to "macos" but the solver environment in the workspace would
-  assign it the value "linux".
-  Hint: This can happen if the "solver_env" for the lockdir in the
-  dune-workspace file has changed since generating the lockdir. Regenerate the
-  lockdir by running:
-  Hint: 'dune pkg lock'
-  [1]
 
 Also detect the case where a variable that was unassigned at solve time and
 used during solving is later given a value in the workspace file:

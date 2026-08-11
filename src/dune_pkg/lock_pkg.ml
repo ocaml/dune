@@ -472,7 +472,6 @@ let opam_package_to_lock_file_pkg_single
       opam_package
       ~pinned
       resolved_package
-      ~portable_lock_dir
   =
   let name = Package_name.of_opam_package_name (OpamPackage.name opam_package) in
   let version =
@@ -614,25 +613,10 @@ let opam_package_to_lock_file_pkg_single
     |> Option.value ~default:Lock_dir.Conditional_choice.empty
   in
   let depexts =
-    if portable_lock_dir
-    then
-      depexts_to_conditional_external_dependencies
-        ~packages_in_solution
-        opam_package
-        (OpamFile.OPAM.depexts opam_file)
-    else (
-      (* In the non-portable case, only include depexts for the current platform. *)
-      let external_package_names =
-        OpamFile.OPAM.depexts opam_file
-        |> List.concat_map ~f:(fun (sys_pkgs, filter) ->
-          let env = Solver_env.to_env solver_env in
-          if OpamFilter.eval_to_bool ~default:false env filter
-          then OpamSysPkg.Set.to_list_map OpamSysPkg.to_string sys_pkgs
-          else [])
-      in
-      if List.is_empty external_package_names
-      then []
-      else [ { Lock_dir.Depexts.external_package_names; enabled_if = `Always } ])
+    depexts_to_conditional_external_dependencies
+      ~packages_in_solution
+      opam_package
+      (OpamFile.OPAM.depexts opam_file)
   in
   let install_command =
     OpamFile.OPAM.install opam_file
@@ -646,9 +630,7 @@ let opam_package_to_lock_file_pkg_single
   in
   let depends = lockfile_field_choice depends in
   let enabled_on_platforms =
-    if portable_lock_dir
-    then [ Solver_env.remove_all_except_platform_specific solver_env ]
-    else []
+    [ Solver_env.remove_all_except_platform_specific solver_env ]
   in
   { Lock_dir.Pkg.build_command
   ; install_command
@@ -660,18 +642,15 @@ let opam_package_to_lock_file_pkg_single
   }
 ;;
 
-(* Public entry point: handles both single-platform and multi-platform cases.
-   Each solver env is paired with the packages selected on that platform. For
-   portable lockdirs with multiple solver envs, we evaluate the opam file
-   against each platform separately and merge the results. This allows
-   platform-specific build commands, dependencies, etc. to be captured. *)
+(* Public entry point: evaluates the opam file against each platform the
+   package is selected on, using the packages selected on that platform to
+   resolve formulas, and merges the results. *)
 let opam_package_to_lock_file_pkg
       solver_envs
       stats_updater
       opam_package
       ~pinned
       resolved_package
-      ~portable_lock_dir
   =
   try
     Ok
@@ -679,7 +658,6 @@ let opam_package_to_lock_file_pkg
        | [] ->
          Code_error.raise "opam_package_to_lock_file_pkg called with empty solver_envs" []
        | [ (solver_env, version_by_package_name) ] ->
-         (* Single platform: use directly *)
          opam_package_to_lock_file_pkg_single
            solver_env
            stats_updater
@@ -687,20 +665,7 @@ let opam_package_to_lock_file_pkg
            opam_package
            ~pinned
            resolved_package
-           ~portable_lock_dir
-       | _ when not portable_lock_dir ->
-         (* Non-portable with multiple envs: just use the first *)
-         let solver_env, version_by_package_name = List.hd solver_envs in
-         opam_package_to_lock_file_pkg_single
-           solver_env
-           stats_updater
-           version_by_package_name
-           opam_package
-           ~pinned
-           resolved_package
-           ~portable_lock_dir
        | first :: rest ->
-         (* Portable with multiple platforms: evaluate per-platform and merge *)
          let to_pkg (solver_env, version_by_package_name) =
            opam_package_to_lock_file_pkg_single
              solver_env
@@ -709,10 +674,9 @@ let opam_package_to_lock_file_pkg
              opam_package
              ~pinned
              resolved_package
-             ~portable_lock_dir
          in
-         List.fold_left rest ~init:(to_pkg first) ~f:(fun acc env ->
-           Lock_dir.Pkg.merge_conditionals acc (to_pkg env)))
+         List.fold_left rest ~init:(to_pkg first) ~f:(fun acc platform ->
+           Lock_dir.Pkg.merge_conditionals acc (to_pkg platform)))
   with
   | User_error.E exn -> Error exn
 ;;

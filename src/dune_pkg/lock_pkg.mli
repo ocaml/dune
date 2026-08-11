@@ -25,13 +25,11 @@ val local_package_dependencies
 
 (** Convert a selected opam package to a package that dune can save to the lock
     directory. Each solver environment is paired with the packages selected on
-    that platform. For portable lockdirs, all pairs are used to set conditions
-    on conditional fields. *)
+    that platform. All pairs are used to set conditions on conditional fields. *)
 val opam_package_to_lock_file_pkg
   :  (Solver_env.t * Package_version.t Package_name.Map.t) list
   -> Solver_stats.Updater.t
   -> OpamPackage.t
   -> pinned:bool
   -> Resolved_package.t
-  -> portable_lock_dir:bool
   -> (Lock_dir.Pkg.t, User_message.t) result

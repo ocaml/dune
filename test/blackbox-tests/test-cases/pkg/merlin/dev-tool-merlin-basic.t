@@ -13,7 +13,9 @@ a lockdir containing an "ocaml" lockfile.
   $ dune build
 
   $ dune tools exec ocamlmerlin
-  Solution for _build/.dev-tools.locks/merlin:
+  Solution for _build/.dev-tools.locks/merlin
+  
+  Dependencies common to all supported platforms:
   - merlin.0.0.1
   - ocaml-base-compiler.5.2.0
   - ocaml-compiler.5.2.0

@@ -49,6 +49,30 @@ let re =
 
 let git_header_re = Re.compile @@ Re.seq [ Re.bol; Re.str "diff --git " ]
 
+let disambiguate_git_header_filenames patch_string =
+  let add_tab line =
+    if String.contains line '\t'
+    then line
+    else if String.ends_with line ~suffix:"\r"
+    then String.drop_suffix_if_exists line ~suffix:"\r" ^ "\t\r"
+    else line ^ "\t"
+  in
+  let rec loop in_git_header acc = function
+    | [] -> List.rev acc
+    | line :: lines ->
+      if String.starts_with line ~prefix:"diff --git "
+      then loop true (line :: acc) lines
+      else if in_git_header && String.starts_with line ~prefix:"--- "
+      then loop true (add_tab line :: acc) lines
+      else if in_git_header && String.starts_with line ~prefix:"+++ "
+      then loop false (add_tab line :: acc) lines
+      else if in_git_header && String.starts_with line ~prefix:"@@"
+      then loop false (line :: acc) lines
+      else loop in_git_header (line :: acc) lines
+  in
+  String.split patch_string ~on:'\n' |> loop false [] |> String.concat ~sep:"\n"
+;;
+
 let prefix_of_patch ~patch_loc patch_string =
   Re.all re patch_string
   |> List.filter_map ~f:(fun group ->
@@ -110,9 +134,9 @@ let prefix_of_patch ~patch_loc patch_string =
 
 let parse_patches ~loc ~patch_file patch_contents =
   let patch_loc = Loc.in_file patch_file in
-  match
-    Patch.parse ~loc ~p:(prefix_of_patch ~patch_loc patch_contents) patch_contents
-  with
+  let p = prefix_of_patch ~patch_loc patch_contents in
+  let patch_contents = disambiguate_git_header_filenames patch_contents in
+  match Patch.parse ~loc ~p patch_contents with
   | [] ->
     User_error.raise
       ~loc

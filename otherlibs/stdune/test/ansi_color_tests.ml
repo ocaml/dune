@@ -125,6 +125,26 @@ the lazy fox jumps over the brown dog
 the lazy fox jumps over|}]
 ;;
 
+let%expect_test "malformed ANSI escapes do not consume following text" =
+  let examples =
+    [ "before\027after"; "before\027[31"; "before\027[31oops"; "before\027[31oopsmafter" ]
+  in
+  List.iter examples ~f:(fun string ->
+    printfn "strip: %S" (Ansi_color.strip string);
+    printfn "parse: %S" (Format.asprintf "%a" Pp.to_fmt (Ansi_color.parse string)));
+  [%expect
+    {|
+    strip: "before"
+    parse: "before"
+    strip: "before"
+    parse: "before"
+    strip: "before"
+    parse: "before"
+    strip: "beforeafter"
+    parse: "beforeafter"
+    |}]
+;;
+
 let%expect_test "parse fg and bg colors" =
   let example =
     "This is a \027[34mblue\027[39m string with \027[31mred\027[39m and \

@@ -120,20 +120,9 @@ module Dune_config = struct
       | Unset
 
     let repr =
-      let toggle_repr =
-        Repr.variant
-          "config-toggle"
-          [ Repr.case0 "Enabled" ~test:(function
-              | `Enabled -> true
-              | `Disabled -> false)
-          ; Repr.case0 "Disabled" ~test:(function
-              | `Disabled -> true
-              | `Enabled -> false)
-          ]
-      in
       Repr.variant
         "pkg-enabled"
-        [ Repr.case "Set" (Repr.pair Where.repr toggle_repr) ~proj:(function
+        [ Repr.case "Set" (Repr.pair Where.repr Toggle.repr) ~proj:(function
             | Set (where, toggle) -> Some (where, toggle)
             | Unset -> None)
         ; Repr.case0 "Unset" ~test:(function

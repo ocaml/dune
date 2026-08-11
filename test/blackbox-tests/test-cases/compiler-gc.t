@@ -70,28 +70,29 @@ environment, as do user actions and executables.
   $ dune exec --build-dir _build_defaults ./main.exe
   hello: unset unset
 
-Release-profile actions and programs preserve the same environment.
+Release-profile compiler actions use a 2M-word minor heap. Dependency analysis,
+user actions and executed programs are unchanged.
 
   $ build release --profile release
-  ocamlc.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=unset
+  ocamlc.opt OCAMLRUNPARAM=s=2M CAMLRUNPARAM=unset
   ocamldep.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=unset
-  ocamlopt.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=unset
+  ocamlopt.opt OCAMLRUNPARAM=s=2M CAMLRUNPARAM=unset
   $ dune build --profile release --build-dir _build_release @runtest
   action: unset unset
   $ dune exec --profile release --build-dir _build_release ./main.exe
   hello: unset unset
   $ build release_alias --release
-  ocamlc.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=unset
+  ocamlc.opt OCAMLRUNPARAM=s=2M CAMLRUNPARAM=unset
   ocamldep.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=unset
-  ocamlopt.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=unset
+  ocamlopt.opt OCAMLRUNPARAM=s=2M CAMLRUNPARAM=unset
   $ build custom --profile custom
   ocamlc.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=unset
   ocamldep.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=unset
   ocamlopt.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=unset
   $ REPORTED_OCAML_VERSION=5.4.0 build older_release --profile release
-  ocamlc.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=unset
+  ocamlc.opt OCAMLRUNPARAM=s=2M CAMLRUNPARAM=unset
   ocamldep.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=unset
-  ocamlopt.opt OCAMLRUNPARAM=unset CAMLRUNPARAM=unset
+  ocamlopt.opt OCAMLRUNPARAM=s=2M CAMLRUNPARAM=unset
 
 Explicit runtime parameters, including an empty value, are preserved.
 

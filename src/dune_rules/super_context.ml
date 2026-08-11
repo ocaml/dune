@@ -421,3 +421,19 @@ let () =
 let context t = t.context
 let env_node t ~dir = t.get_node dir
 let context_env_by_dir t ~dir = env_node t ~dir >>= Env_node.external_env
+
+let ocaml_env_overrides t ~dir env =
+  if Profile.is_release (Context.profile t.context)
+  then
+    let+ inherited = context_env_by_dir t ~dir in
+    let ocamlrunparam = Env.Var.of_string "OCAMLRUNPARAM" in
+    let camlrunparam = Env.Var.of_string "CAMLRUNPARAM" in
+    if
+      Env.mem env ~var:ocamlrunparam
+      || Env.mem inherited ~var:ocamlrunparam
+      || Env.mem env ~var:camlrunparam
+      || Env.mem inherited ~var:camlrunparam
+    then env
+    else Env.add env ~var:ocamlrunparam ~value:"s=2M"
+  else Memo.return env
+;;

@@ -343,21 +343,29 @@ let build_cm cctx ~force_write_cmi ~precompiled_cmi ~cm_kind (m : Module.t) =
      |> List.concat_map ~f:(fun p -> [ Command.Args.A "-I"; Path (Path.build p) ])
    in
    let can_go_in_shared_cache = cm_kind_can_go_in_shared_cache cm_kind in
+   let rule_dir =
+     let dune_version =
+       Compilation_context.scope cctx |> Scope.project |> Dune_project.dune_version
+     in
+     (* TODO DUNE4 get rid of the old behavior *)
+     if dune_version >= (3, 7) then dir else Context.build_dir ctx
+   in
    add_rule
      ~can_go_in_shared_cache
      sctx
-     ~dir:
-       (let dune_version =
-          Compilation_context.scope cctx |> Scope.project |> Dune_project.dune_version
-        in
-        (* TODO DUNE4 get rid of the old behavior *)
-        if dune_version >= (3, 7) then dir else Context.build_dir ctx)
+     ~dir:rule_dir
      ?loc:(Compilation_context.loc cctx)
      (let open Action_builder.With_targets.O in
       Action_builder.with_no_targets other_cm_files
       >>> Command.run
             ~dir:(Path.build (Context.build_dir ctx))
             ~sandbox
+            ~env:
+              (Action_builder.of_memo
+                 (match mode with
+                  | Melange -> Memo.return Env.empty
+                  | Ocaml _ ->
+                    Super_context.ocaml_env_overrides sctx ~dir:rule_dir Env.empty))
             ~forbid_action_runner:true
             compiler
             [ flags
@@ -491,6 +499,8 @@ let build_inference_alias cctx ~name ~aliases =
   let+ () =
     Command.run
       (Ok ocaml.ocamlc)
+      ~env:
+        (Action_builder.of_memo (Super_context.ocaml_env_overrides sctx ~dir Env.empty))
       ~dir:(Path.build (Context.build_dir (Super_context.context sctx)))
       ~sandbox:Sandbox_config.needs_sandboxing
       ~forbid_action_runner:true
@@ -515,7 +525,8 @@ let build_inference_alias cctx ~name ~aliases =
 
 let ocamlc_i_action ~impl_deps ~alias cctx (m : Module.t) =
   let obj_dir = Compilation_context.obj_dir cctx in
-  let ctx = Compilation_context.super_context cctx |> Super_context.context in
+  let sctx = Compilation_context.super_context cctx in
+  let ctx = Super_context.context sctx in
   let src = Option.value_exn (Module.file m ~ml_kind:Impl) in
   let original = Module.source_without_pp m ~ml_kind:Impl in
   let sandbox =
@@ -555,6 +566,12 @@ let ocamlc_i_action ~impl_deps ~alias cctx (m : Module.t) =
   cm_deps
   >>> Command.run'
         (Ok ocaml.ocamlc)
+        ~env:
+          (Action_builder.of_memo
+             (Super_context.ocaml_env_overrides
+                sctx
+                ~dir:(Compilation_context.dir cctx)
+                Env.empty))
         ~dir:(Path.build (Context.build_dir ctx))
         ~sandbox
         ~forbid_action_runner:true

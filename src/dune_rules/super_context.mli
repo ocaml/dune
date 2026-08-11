@@ -29,6 +29,10 @@ val env_node : t -> dir:Path.Build.t -> Env_node.t Memo.t
     are on PATH. *)
 val context_env_by_dir : t -> dir:Path.Build.t -> Env.t Memo.t
 
+(** Add release-profile compiler runtime defaults to action-specific overrides.
+    Inherited settings are inspected but not copied into the returned environment. *)
+val ocaml_env_overrides : t -> dir:Path.Build.t -> Env.t -> Env.t Memo.t
+
 val artifacts_host : t -> dir:Path.Build.t -> Artifacts.t Memo.t
 
 val add_rule

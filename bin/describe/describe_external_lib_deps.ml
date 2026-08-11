@@ -63,26 +63,7 @@ module Item = struct
     =
     let open Dyn in
     let name_fields =
-      if split_public_names
-      then (
-        let public_names =
-          match public_names with
-          | Some public_names -> public_names
-          | None -> List.map names ~f:(fun _ -> None)
-        in
-        [ "names", (list string) names
-        ; "public_names", (list (option string)) public_names
-        ])
-      else (
-        (* replace each private name by its public name when there is one *)
-        let best_names =
-          match public_names with
-          | None -> names
-          | Some public_names ->
-            List.map2 names public_names ~f:(fun name public_name ->
-              Option.value public_name ~default:name)
-        in
-        [ "names", (list string) best_names ])
+      Describe_format.name_fields ~split_public_names ~names ~public_names
     in
     let record =
       record

@@ -730,46 +730,40 @@ module Entry = struct
   module C = Comparable.Make (T)
   module Set = C.Set
 
-  let parse =
-    let re =
-      let space = Re.(rep1 space) in
-      let perm = Re.(rep1 digit) in
-      let hash = Re.(rep1 alnum) in
-      let type_ = Re.(rep1 alpha) in
-      let size = Re.(alt [ rep1 digit; str "-" ]) in
-      let path = Re.(rep1 any) in
-      [ perm
-      ; space
-      ; Re.group type_
-      ; space
-      ; Re.group hash
-      ; space
-      ; Re.group size
-      ; space
-      ; Re.group path
-      ]
-      |> Re.seq
-      |> Re.compile
-    in
-    fun line ->
-      Re.exec_opt re line
-      |> Option.bind ~f:(fun m ->
-        match Re.Group.get m 1 with
-        | "blob" ->
-          Some
-            (File
-               (Direct
-                  { hash = Re.Group.get m 2 |> Object.of_sha1 |> Option.value_exn
-                  ; size = Re.Group.get m 3 |> Int.of_string_exn
-                  ; path = Re.Group.get m 4 |> Path.Local.of_string
-                  }))
-        | "commit" ->
-          Some
-            (Commit
-               { rev = Re.Group.get m 2 |> Object.of_sha1 |> Option.value_exn
-               ; path = Re.Group.get m 4 |> Path.Local.of_string
-               })
-        | _ -> None)
+  (* An ls-tree -z --long line is "perm type hash size<TAB>path", with a
+     space-padded size. Parse it by index rather than with a regex: this runs
+     once per line of the repository tree listing, which is on the hot path
+     of pkg lock. *)
+  let parse line =
+    match String.index_opt line ' ' with
+    | None -> None
+    | Some space1 ->
+      let space2_opt = String.index_from_opt line (space1 + 1) ' ' in
+      let space3_opt =
+        Option.bind space2_opt ~f:(fun i -> String.index_from_opt line (i + 1) ' ')
+      in
+      let tab_opt =
+        Option.bind space3_opt ~f:(fun i -> String.index_from_opt line (i + 1) '\t')
+      in
+      (match space2_opt, space3_opt, tab_opt with
+       | Some space2, Some space3, Some tab ->
+         let type_ = String.sub line ~pos:(space1 + 1) ~len:(space2 - space1 - 1) in
+         let hash = String.sub line ~pos:(space2 + 1) ~len:(space3 - space2 - 1) in
+         let size =
+           String.sub line ~pos:(space3 + 1) ~len:(tab - space3 - 1) |> String.trim
+         in
+         let path = String.sub line ~pos:(tab + 1) ~len:(String.length line - tab - 1) in
+         let open Option.O in
+         (match type_ with
+          | "blob" ->
+            let* hash = Object.of_sha1 hash in
+            let* size = Int.of_string size in
+            Some (File (Direct { hash; size; path = Path.Local.of_string path }))
+          | "commit" ->
+            let+ rev = Object.of_sha1 hash in
+            Commit { rev; path = Path.Local.of_string path }
+          | _ -> None)
+       | _ -> None)
   ;;
 end
 

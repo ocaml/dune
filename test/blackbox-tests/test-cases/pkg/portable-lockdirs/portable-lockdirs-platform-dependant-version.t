@@ -42,8 +42,24 @@ constraint makes the requested platform set unsatisfiable:
   ...with this error:
   Couldn't solve the package dependency formula.
   Selected candidates: bar.0.0.1 x.dev
-  - foo -> foo.1
+  - foo -> foo.1 on arch = arm64; os = linux
       bar 0.0.1 requires = 1
+  - foo -> (problem) on arch = arm64; os = macos
+      bar 0.0.1 requires = 2
+      Rejected candidates:
+        foo.2:
+          Reason for rejection unknown:
+          bar.0.0.1=true && foo.2=false => (no solution found)=true
+        foo.1: Incompatible with restriction: = 2
+  - foo -> foo.1 on arch = x86_64; os = linux
+      bar 0.0.1 requires = 1
+  - foo -> (problem) on arch = x86_64; os = macos
+      bar 0.0.1 requires = 2
+      Rejected candidates:
+        foo.2:
+          Reason for rejection unknown:
+          bar.0.0.1=true && foo.2=false => (no solution found)=true
+        foo.1: Incompatible with restriction: = 2
   Hint: If you don't need support for every requested platform, change
   Hint: (solve_for_platforms ...) in dune-workspace to only include the
   Hint: platforms you need, then rerun 'dune pkg lock'

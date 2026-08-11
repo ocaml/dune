@@ -1710,12 +1710,22 @@ module Solver = struct
     (* Deduplicate to avoid showing the same package multiple times for
        different platforms. *)
     let good = deduplicate_impls_by_name good in
-    let good_names =
-      List.filter_map good ~f:(fun impl ->
-        match Input.Impl.version impl with
-        | Some pkg -> Some (OpamPackage.name pkg)
-        | None -> None)
-      |> OpamPackage.Name.Set.of_list
+    (* Names with a selected implementation on at least one platform. A
+       package selected on some platforms can still have no solution on
+       others, and a cross-platform version conflict shows up as a note on
+       an otherwise satisfied selection; both must be attributed to the
+       platform they apply to. *)
+    let selected_names =
+      Input.Role.Map.foldi
+        reasons
+        ~init:OpamPackage.Name.Set.empty
+        ~f:(fun _role component acc ->
+          match Diagnostics.Component.selected_impl component with
+          | None -> acc
+          | Some impl ->
+            (match Input.Impl.version impl with
+             | Some pkg -> OpamPackage.Name.Set.add (OpamPackage.name pkg) acc
+             | None -> acc))
     in
     (* For packages selected on some platforms, the platform attribution
        matters: show the problem for each failing platform separately. For
@@ -1733,7 +1743,7 @@ module Solver = struct
               ~default:Solver_env.Set.empty
           in
           let is_dup =
-            if OpamPackage.Name.Set.mem name good_names
+            if OpamPackage.Name.Set.mem name selected_names
             then Solver_env.Set.mem platforms platform
             else not (Solver_env.Set.is_empty platforms)
           in
@@ -1752,7 +1762,7 @@ module Solver = struct
          apply to instead of hiding them. *)
       let platform =
         match component.role with
-        | Input.Real (name, platform) when OpamPackage.Name.Set.mem name good_names ->
+        | Input.Real (name, platform) when OpamPackage.Name.Set.mem name selected_names ->
           Some platform
         | _ -> None
       in

@@ -699,11 +699,7 @@ let gen_rules ctx sctx ~dir components : Gen_rules.result Memo.t =
     >>= (function
      | Jsoo_archive_rules.Not_found ->
        gen_rules_regular_directory sctx ~src_dir ~components ~dir
-     | Jsoo_archive_rules.Root ->
-       let build_dir_only_sub_dirs =
-         Gen_rules.Build_only_sub_dirs.singleton ~dir Subdir_set.all
-       in
-       Gen_rules.make ~build_dir_only_sub_dirs (Memo.return Rules.empty) |> Memo.return
+     | Jsoo_archive_rules.Root -> Gen_rules.make_empty ~dir Subdir_set.all |> Memo.return
      | Jsoo_archive_rules.Rules rules -> Gen_rules.make (Memo.return rules) |> Memo.return)
 ;;
 

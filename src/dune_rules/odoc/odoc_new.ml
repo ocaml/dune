@@ -2042,12 +2042,7 @@ let has_rules m =
 let gen_rules sctx ~dir rest =
   let all = true in
   match rest with
-  | [] ->
-    Memo.return
-      (Build_config.Gen_rules.make
-         ~build_dir_only_sub_dirs:
-           (Build_config.Gen_rules.Build_only_sub_dirs.singleton ~dir Subdir_set.all)
-         (Memo.return Rules.empty))
+  | [] -> Memo.return (Build_config.Gen_rules.make_empty ~dir Subdir_set.all)
   | [ "odoc" ] -> has_rules (setup_odoc_rules sctx ~all)
   | [ "index" ] -> has_rules (setup_all_index_rules sctx ~all)
   | [ "html"; "docs" ] -> has_rules (setup_all_html_rules sctx ~all)

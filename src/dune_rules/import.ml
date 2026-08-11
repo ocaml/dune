@@ -165,6 +165,12 @@ module Build_config = struct
       Gen_rules_result.rules_here rules
     ;;
 
+    let make_empty ~dir subdirs =
+      make
+        ~build_dir_only_sub_dirs:(Build_only_sub_dirs.singleton ~dir subdirs)
+        (Memo.return Dune_engine.Rules.empty)
+    ;;
+
     include Gen_rules_result
 
     type result = Gen_rules_result.t

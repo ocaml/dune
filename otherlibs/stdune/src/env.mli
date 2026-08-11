@@ -27,6 +27,10 @@ val vars : t -> Var.Set.t
 val initial : t
 
 val to_unix : t -> string list
+
+(** Render the environment as a double-NUL-terminated Windows environment block. *)
+val to_windows_block : t -> string
+
 val of_unix : string array -> t
 val get : t -> Var.t -> string option
 

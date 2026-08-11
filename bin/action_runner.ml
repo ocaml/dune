@@ -41,8 +41,6 @@ let create ~config ~sandbox_actions =
           in
           Env.add Env.initial ~var:"DUNE_JOBS" ~value:jobs
           |> Env.add ~var:"DUNE_BUILD_DIR" ~value:(Path.Build.to_string Path.Build.root)
-          |> Env.to_unix
-          |> Spawn.Env.of_list
         in
         let trace_fd = Dune_trace.duplicate_global_fd () in
         let prog, argv =

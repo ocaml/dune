@@ -28,14 +28,6 @@ module Unix_backend : sig
   val default : t
 end
 
-module Env : sig
-  (** Representation of an environment *)
-  type t
-
-  (** Create an environment from a list of strings of the form ["KEY=VALUE"]. *)
-  val of_list : string list -> t
-end
-
 (** Process group IDs *)
 module Pgid : sig
   (** Representation of the second parameter to [setpgid]. If a value of this

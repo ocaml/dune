@@ -71,6 +71,11 @@ nix shell --impure --expr 'let pkgs = import (builtins.getFlake "github:NixOS/ni
         - [4.1.2. Watch mode integration](#412-watch-mode-integration)
         - [4.1.3. Avoid invocation collisions](#413-avoid-invocation-collisions)
       - [4.2. Persistent configuration for discretionary tools](#42-persistent-configuration-for-discretionary-tools)
+- [Appendix](#appendix)
+  - [Tooling comparison](#tooling-comparison)
+    - [Cargo](#cargo)
+    - [Go](#go)
+    - [uv](#uv)
 
 <!-- markdown-toc end -->
 
@@ -85,8 +90,10 @@ informing the design.
 
 [Requirements](#requirements) defines _what_ capabilities the system must
 provide and _why_.  Organized by category. Requirements describe user-facing
-behaviour without specifying implementation details. Cross-references point to
-the relevant Implementation sections.
+behaviour without specifying implementation details.
+
+The [Appendix](#appendix) summarizes how cargo, go, and uv address the same
+needs. Relevant points of comparison are also offered in some requirements.
 
 ## Terminology
 
@@ -98,7 +105,7 @@ the relevant Implementation sections.
   package in the project. A component is a dependency if *any* of a project's
   build targets depend upon it, whether or not it is correctly declared as such.
 - A dependency is **qualified** when it is only required for a certain category
-  of build targets. Common qualification include *test* dependencies (e.g.,
+  of build targets. Common qualifications include *test* dependencies (e.g.,
   `alcotest`, `jq`, or `qcheck`) and *generation* dependencies (e.g., `atd`,
   `menhir`, or `ocamlformat`).
 - A tool is **discretionary**, relative to a particular project, if it is used
@@ -116,7 +123,7 @@ the relevant Implementation sections.
 
 ## Design principles
 
-- **Generality**: Any executable defined in an opam packages can be a tool.
+- **Generality**: Any executable defined in an opam package can be a tool.
 - **Orthogonality**: Dune's tool management functionality should compose with
   other dune functionality with maximum flexibility and consistency, and without
   introducing functional redundancies.
@@ -153,8 +160,8 @@ Motivation and context
   install](https://doc.rust-lang.org/1.95.0/cargo/commands/cargo-install.html#description), which
   manages "Cargo’s local set of installed binary crates" and works on all (and
   only) packages that provide a binary (or executable example).
-- go: Follows the [tool directive](https://go.dev/ref/mod#go-mod-file-tool) can be used
-  to make tools available from any package.
+- go: Follows the [tool directive](https://go.dev/ref/mod#go-mod-file-tool),
+  which can be used to make tools available from any package.
 - uv: Follows the [tool
   subcommand](https://github.com/astral-sh/uv/blob/0.12.2/docs/concepts/tools.md),
   which works with any package that provides command-line interfaces.
@@ -182,8 +189,8 @@ Motivation and context
   [cargo-run-bin](https://github.com/dustinblackman/cargo-run-bin) that scope
   installs to within a project.
 - *go* : Follows go, in which use of the [-tool
-  flag](https://go.dev/doc/go1.24#tools) installations are always scoped within
-  a project's go.mod. Altho,
+  flag](https://go.dev/doc/go1.24#tools) means installations are always scoped
+  within a project's `go.mod`.
 - *uv* : Differs from uv where "each tool environment is linked to a specific
   Python version",
   ([src](https://github.com/astral-sh/uv/blob/0.12.2/docs/concepts/tools.md#python-versions)).
@@ -226,13 +233,13 @@ specialized form of `lock_dir` stanza that inherits the fields of the active
   user's environment. Only a single toolchain can be configured for a given
   project. While, Rust's [editions][rust-editions] obviate much of the need
   addressed by dune's context concept, the [current docs][rustup-docs] do signal
-  a need for something akin to dune's contexts for improved cross compilation
-  cross-compilation, and pending plans to address this:  . 
+  a need for something akin to dune's contexts for improved cross-compilation,
+  along with pending plans to address it.
 - *go* : Go supports [installation of multiple Go versions][go-versions]  and
   installing other go versions just adds a new go binary suffixed with the
   alternate version, such as `go1.10.7`. Environment segregation just follows
   from use of different binaries, a route which is only available to them
-  because the package management, built system, and compiler are fully unified.
+  because the package manager, build system, and compiler are fully unified.
   Use of [the `-modfile` flag](https://go.dev/ref/mod#build-commands) can
   instruct a go binary to use an alternative dependency specification for
   managing a project, but this is more limited in scope than dune's contexts.
@@ -279,11 +286,11 @@ achieving this with a bit of user configuration.
 **Comparison with other systems**
 
 - *cargo* : Follows [`cargo install`][cargo-install], which, by default,
-  satisfies this requirement by installing installs tools to a directory of
-  binaries which is conventionally put on a users `PATH`.
+  satisfies this requirement by installing tools to a directory of binaries
+  which is conventionally put on a user's `PATH`.
 - *go* : Follows [`go install`][go-install], which, by default, satisfies this
-  requirement by installing installs tools to a directory of binaries which is
-  conventionally put on a users `PATH`.
+  requirement by installing tools to a directory of binaries which is
+  conventionally put on a user's `PATH`.
 - *uv* : Follows the native and default behavior of [`uv tool
   install`][uv-tools-install], which installs its executables in a `bin`
   directory on the `PATH`.
@@ -351,8 +358,8 @@ Motivation and context
 **Comparison with other systems**
 
 - *cargo* : Satisfied by tool installations, which go to `$CARGO_HOME`.
-- *go* : Satisfied by tooling executables living in content-adderssable build cache, outside of
-  source tree, tho locking info goes to `go.sum`
+- *go* : Satisfied by tooling executables living in a content-addressable build
+  cache, outside of the source tree, though locking info goes to `go.sum`.
 
 </details>
 
@@ -385,6 +392,7 @@ Motivation and context
   httpie http` to run the http tool from the httpie package.
 
 </details>
+
 #### 1.6. By tool name
 
 Users should be able to install tools based on the name of the tool without
@@ -517,7 +525,9 @@ dune tools exec merlin
 **Comparison with other systems**
 
 - *cargo* : Satisfied by installed tools being plain executables in the `PATH`.
-- *go* : Satisfied via `go tool installed`, which installs tools in the `GOBIN`.
+- *go* : Satisfied via `go install tool`, which installs tools into the
+  `GOBIN`, conventionally on the `PATH`. (`go tool <name>` runs tools from the
+  build cache instead, and does not put them on the `PATH`.)
 - *uv* : Satisfied by installed tools being plain executables in the `PATH`.
 
 </details>
@@ -525,11 +535,13 @@ dune tools exec merlin
 #### 2.3. Programmatic use
 
 Programs (e.g., editor plugins) must be able to find and run installed tools via
-a single, transparent mechanism. (E.g., this could be implemented by any of the
-following; the `dune tools env` equivalent to `opam env` or, `dune tools path`
-that prints the paths to the binaries,  by adding a single directory of
-executables to the lookup path, printing the path locations, or some other
-means).
+a single, transparent mechanism. `dune tools env` (the equivalent of `opam env`)
+and `dune tools which` (which prints the path to a tool's executable) already
+cover this for the currently supported set of discretionary tools; the
+requirement is that the mechanism extend to every tool dune manages, including
+project dependency tools (see [2.4](#24-project-dependency-tools)). The
+implementation is not prescribed: it could equally be achieved by adding a
+single directory of executables to the lookup path, or by some other means.
 
 
 ##### 2.3.1. dune subcommands
@@ -584,9 +596,9 @@ editors will not have to care.
 
 When a tool is installed as a *project dependency* (under any qualification),
 users must be able to execute the tool through all the same mechanisms that are
-provided for executing discretionary tools. E.g., a mechanism like `dune env`
-that would make the path to dune-managed binaries available must include both
-discretionary tools and project dependency tools in the path.
+provided for executing discretionary tools. E.g., `dune tools env`, which makes
+the path to dune-managed binaries available, must include both discretionary
+tools and project dependency tools in the path.
 
 <details>
 <summary>
@@ -595,21 +607,29 @@ Motivation and context
 
 **Comparison with other systems**
 
-- *cargo* : Satisfied by `go tool`.
-- *go* : No analogue.
+- *cargo* : No analogue (see [RFC
+  3028](https://rust-lang.github.io/rfcs/3028-cargo-binary-dependencies.html)).
+- *go* : Satisfied by `go tool <name>`, which runs any tool declared with the
+  `tool` directive in `go.mod`.
 - *uv* : Satisfied by `uv run` executing tools installed in any group, and
-  activiting a projects virtual environment will bring the tools into your path.
+  activating a project's virtual environment will bring the tools into your
+  path.
 
 </details>
+
 #### 2.5. Dog fooding
 
 Tools must work in the dune repository itself. Dune developers should be able to
-run `dune tools add ocamlformat` and `dune tools add ocaml-lsp-server` when
-working on dune.
+run `dune tools install ocamlformat` and `dune tools install ocaml-lsp-server`
+when working on dune.
 
-This is enabled by the orthogonality principle (see [Design principles](#design-principles)): tools are solved and built
-independently from project dependencies, so they don't require a working project
-lock directory.
+This is enabled by the orthogonality principle (see [Design
+principles](#design-principles)): discretionary tools are solved and built
+independently from the project's own dependency solution, so they don't require
+a working project lock directory. Tools at I2 (see [3.1.2. Tool integration
+(I2)](#312-tool-integration-i2)), such as `ocaml-lsp-server`, are constrained by
+the workspace's compiler version, but that constraint alone must not require the
+rest of the project's dependencies to be solved.
 
 ### 3. Dependency and Integration
 
@@ -646,7 +666,7 @@ in the project, which we can indicate with three points:
 
 - I3: At the maximum extreme, some tools could require being built within the
   entire dependency context of the project. We are not aware of any tools that
-  require this currently, but we can consider utop is an illustrative example,
+  require this currently, but we can consider utop as an illustrative example,
   since its own dependencies (such as `lwt`, `xdg`, and `logs`) need to
   integrate with the versions in the environment it is installed in, and it
   cannot load code into the top level that would require differing on these
@@ -851,10 +871,15 @@ supported by opam.
 
 **Comparison with other systems**
 
-- *cargo* :
-- *go* :
-- *uv* :
-  - https://docs.astral.sh/uv/concepts/projects/dependencies/#dependency-groups
+- *cargo* : No analogue: there is no way to declare a tool that is only needed
+  for a subset of build targets (see [RFC
+  3028](https://rust-lang.github.io/rfcs/3028-cargo-binary-dependencies.html)).
+- *go* : No analogue: the [`tool`
+  directive](https://go.dev/ref/mod#go-mod-file-tool) is unqualified, so all
+  declared tools are resolved in the same solve as project dependencies.
+- *uv* : Satisfied by
+  [`dependency-groups`][uv-dep-groups], which are extensible, named sets of
+  qualified dependencies.
 
 </details>
 
@@ -885,8 +910,8 @@ user override on top of the default configuration.
 
 ###### 3.2.3.1. Usable as tools
 
-As with 3.2.2.1, unqualified project dependency tools must be usable in exactly
-the same ways as D1 and D2 tools.
+As with [3.2.2.1](#3221-usable-as-tools), unqualified project dependency tools
+must be usable in at least the same ways as D1 and D2 tools.
 
 (Not currently satisfied by the current implementation of package management.)
 
@@ -934,10 +959,10 @@ Related issues:
 
 ##### 4.1.2. Watch mode integration
 
-Tool operations (e.g., `dune tools add`, `run`, etc.) must work correctly when a
-watch server is running (`dune build -w`). Rather than directly manipulating
-lock directories, tool commands should coordinate with the watch server via RPC
-to avoid races and ensure the server picks up newly added tools.
+Tool operations (e.g., `dune tools install`, `exec`, etc.) must work correctly
+when a watch server is running (`dune build -w`). Rather than directly
+manipulating lock directories, tool commands should coordinate with the watch
+server via RPC to avoid races and ensure the server picks up newly added tools.
 
 ##### 4.1.3. Avoid invocation collisions
 
@@ -973,12 +998,12 @@ ecosystems, we have added context to every relevant requirement indicating how
 that requirement is (or is not) addressed in three other prominent package
 management systems.
 
-Please note that none of the requirements specified here are motivated by the an
+Please note that none of the requirements specified here are motivated by an
 (otherwise unfounded) desire to achieve feature parity with these pre-existing
 systems. Every requirement here voices a genuine and compelling need faced by
 developers working in OCaml. Nor is our reference to implementation choices made
 by the other systems intended to be prescriptive: they are only recorded to
-illustrate how the need is meet in those contexts.
+illustrate how the need is met in those contexts.
 
 ### Cargo
 

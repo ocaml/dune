@@ -2,16 +2,6 @@ open Import
 
 (* CR-someday amokhov: Implement other commands supported by Jenga. *)
 
-let debug_backtraces =
-  Arg.(
-    value
-    & flag
-    & info
-        [ "debug-backtraces" ]
-        ~docs:"COMMON OPTIONS"
-        ~doc:(Some "Always print exception backtraces."))
-;;
-
 let trim =
   let info =
     let doc = "Trim the Dune cache." in
@@ -31,7 +21,7 @@ let trim =
     Cmd.info "trim" ~doc ~man
   in
   Cmd.v info
-  @@ let+ debug_backtraces = debug_backtraces
+  @@ let+ debug_backtraces = Common.No_build.debug_backtraces
      and+ trimmed_size =
        Arg.(
          value
@@ -93,7 +83,7 @@ let size =
     Cmd.info "size" ~doc ~man
   in
   Cmd.v info
-  @@ let+ debug_backtraces = debug_backtraces
+  @@ let+ debug_backtraces = Common.No_build.debug_backtraces
      and+ machine_readable =
        Arg.(
          value
@@ -116,7 +106,7 @@ let clear =
     Cmd.info "clear" ~doc ~man
   in
   Cmd.v info
-  @@ let+ debug_backtraces = debug_backtraces in
+  @@ let+ debug_backtraces = Common.No_build.debug_backtraces in
      Common.No_build.set_debug_backtraces debug_backtraces;
      Dune_cache.Trimmer.clear ()
 ;;

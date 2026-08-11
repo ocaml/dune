@@ -38,10 +38,12 @@ module V1 = struct
       in
       fun path ->
         catch_system_exceptions ~name:"read_directory" (fun () ->
-          let dh = Unix.opendir path in
-          Exn.protect
-            ~f:(fun () -> loop dh [] |> List.sort ~compare:String.compare)
-            ~finally:(fun () -> Unix.closedir dh))
+          match Unix.opendir path with
+          | exception Unix.Unix_error ((ENOENT | ENOTDIR), _, _) -> []
+          | dh ->
+            Exn.protect
+              ~f:(fun () -> loop dh [] |> List.sort ~compare:String.compare)
+              ~finally:(fun () -> Unix.closedir dh))
     ;;
 
     let read_file path =
@@ -117,8 +119,6 @@ module V1 = struct
       { action; dependencies = Dependency.Set.empty; targets = String.Set.singleton path }
   ;;
 
-  (* TODO jstaron: If program tries to read empty directory, dune does not copy
-     it to `_build` so we get a "No such file or directory" error. *)
   let read_directory_with_glob ~path ~glob =
     let path = Path.to_string path in
     let action () =

@@ -96,8 +96,7 @@ module V1 : sig
       filtering, so dune won't re-run the action when the directory changes in
       an unimportant way.
 
-      BUG: [read_directory_with_glob] doesn't work correctly for empty
-      directories.
+      An absent directory is returned as an empty listing.
 
       BUG: the returned listing includes directories even though that dependency
       is not tracked. *)

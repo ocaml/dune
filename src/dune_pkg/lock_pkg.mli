@@ -33,5 +33,4 @@ val opam_package_to_lock_file_pkg_branches
   -> OpamPackage.t
   -> pinned:bool
   -> Resolved_package.t
-  -> portable_lock_dir:bool
   -> ((Solver_env.t * Lock_dir.Pkg.t) list, User_message.t) result

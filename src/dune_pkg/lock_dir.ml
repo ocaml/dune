@@ -110,9 +110,7 @@ module Conditional_choice = struct
     [ { Conditional.condition; value } ]
   ;;
 
-  (* A choice where a given value will be chosen unconditionally. This is only
-     used to help support both portable and non-portable lockdirs with the same
-     codebase and can be removed when portable lockdirs is the only option. *)
+  (* A choice where a given value is chosen unconditionally. *)
   let singleton_all_platforms value = singleton Solver_env.empty value
   let equal value_equal = List.equal (Conditional.equal value_equal)
   let hash t ~f = List.hash (Conditional.hash ~f) t
@@ -163,21 +161,6 @@ module Conditional_choice = struct
      combined to avoid duplication. *)
   let merge_combining_conditions ~value_equal a b =
     List.fold_left b ~init:a ~f:(append_combining_conditions ~value_equal)
-  ;;
-
-  (* To support encoding in the non-portable format, this function extracts the
-     sole value from a conditional choice, raising a code error if there are
-     multiple choices. *)
-  let get_value_ensuring_at_most_one_choice t =
-    if List.length t > 1
-    then
-      Code_error.raise
-        "Expected at most one conditional choice"
-        [ ( "conditions"
-          , List.map t ~f:(fun { Conditional.condition; _ } -> condition)
-            |> Dyn.list Solver_env_disjunction.to_dyn )
-        ];
-    List.hd_opt t |> Option.map ~f:(fun { Conditional.value; _ } -> value)
   ;;
 end
 
@@ -271,19 +254,35 @@ module Conditional_choice_or_all_platforms = struct
 
   let to_conditional_choice ~solved_for_platforms = function
     | Choice choice -> choice
-    | All_platforms value -> [ { Conditional.value; condition = solved_for_platforms } ]
+    | All_platforms value ->
+      (* An empty platform list is how legacy lock dirs without
+         solved_for_platforms metadata are represented; the package is
+         enabled on all platforms. *)
+      let condition =
+        match solved_for_platforms with
+        | [] -> [ Solver_env.empty ]
+        | platforms -> platforms
+      in
+      [ { Conditional.value; condition } ]
   ;;
 
   let decode decode_value =
     let open Decoder in
-    sum
-      [ ( "choice"
-        , let+ choice = repeat (Conditional.decode decode_value) in
-          Choice choice )
-      ; ( "all_platforms"
-        , let+ value = decode_value in
-          All_platforms value )
-      ]
+    try_
+      (sum
+         ~force_parens:true
+         [ ( "choice"
+           , let+ choice = repeat (Conditional.decode decode_value) in
+             Choice choice )
+         ; ( "all_platforms"
+           , let+ value = decode_value in
+             All_platforms value )
+         ])
+      (fun _exn ->
+         (* Legacy lock dirs written before conditional fields may contain a
+           bare value; treat it as the value for all platforms. *)
+         let+ value = decode_value in
+         All_platforms value)
   ;;
 
   let encode encode_value t =
@@ -382,15 +381,7 @@ module Build_command = struct
     let build = "build"
   end
 
-  let encode_non_portable t =
-    let open Encoder in
-    match t with
-    | None -> field_o Fields.build Encoder.unit None
-    | Some Dune -> field_b Fields.dune true
-    | Some (Action a) -> field Fields.build Action.encode a
-  ;;
-
-  let encode_portable t =
+  let encode t =
     let open Encoder in
     Dune_lang.List
       (record_fields
@@ -400,7 +391,7 @@ module Build_command = struct
          ])
   ;;
 
-  let decode_portable =
+  let decode =
     let open Decoder in
     enter
     @@ fields
@@ -414,15 +405,13 @@ module Build_command = struct
          ]
   ;;
 
-  let decode_fields ~portable_lock_dir =
+  let decode_fields =
     let open Decoder in
     let parse_action =
-      if portable_lock_dir
-      then Conditional_choice_or_all_platforms.decode decode_portable
-      else
+      try_ (Conditional_choice_or_all_platforms.decode decode) (fun _exn ->
         let+ action = Action.decode_pkg in
         Conditional_choice_or_all_platforms.Choice
-          (Conditional_choice.singleton_all_platforms (Action action))
+          (Conditional_choice.singleton_all_platforms (Action action)))
     in
     fields_mutually_exclusive
       ~default:None
@@ -718,30 +707,27 @@ module Pkg = struct
     let enabled_on_platforms = "enabled_on_platforms"
   end
 
-  let decode ~portable_lock_dir =
+  let decode =
     let open Decoder in
     let parse_install_command =
-      if portable_lock_dir
-      then Conditional_choice_or_all_platforms.decode Action.decode_pkg
-      else
-        let+ action = Action.decode_pkg in
-        Conditional_choice_or_all_platforms.Choice
-          (Conditional_choice.singleton_all_platforms action)
+      Conditional_choice_or_all_platforms.decode Action.decode_pkg
     in
     let parse_depends =
-      if portable_lock_dir
-      then Conditional_choice_or_all_platforms.decode (enter @@ repeat Dependency.decode)
-      else
-        let+ depends = repeat Dependency.decode in
-        Conditional_choice_or_all_platforms.Choice
-          (Conditional_choice.singleton_all_platforms depends)
+      try_
+        (Conditional_choice_or_all_platforms.decode (enter @@ repeat Dependency.decode))
+        (fun _exn ->
+           (* Legacy lock dirs store dependencies as bare atoms without an
+             enclosing list. *)
+           let+ depends = repeat Dependency.decode in
+           Conditional_choice_or_all_platforms.Choice
+             (Conditional_choice.singleton_all_platforms depends))
     in
     let parse_depexts =
-      if portable_lock_dir
-      then repeat Depexts.decode
-      else
+      try_ (repeat Depexts.decode) (fun _exn ->
+        (* Legacy lock dirs store depexts as a plain list of system package
+             names without conditions. *)
         let+ external_package_names = repeat string in
-        [ { Depexts.external_package_names; enabled_if = `Always } ]
+        [ { Depexts.external_package_names; enabled_if = `Always } ])
     in
     let empty_choice = Conditional_choice_or_all_platforms.Choice [] in
     enter
@@ -749,7 +735,7 @@ module Pkg = struct
     @@ let+ version = field Fields.version Package_version.decode
        and+ install_command =
          field ~default:empty_choice Fields.install parse_install_command
-       and+ build_command = Build_command.decode_fields ~portable_lock_dir
+       and+ build_command = Build_command.decode_fields
        and+ depends = field ~default:empty_choice Fields.depends parse_depends
        and+ depexts = field ~default:[] Fields.depexts parse_depexts
        and+ source = field_o Fields.source Source.decode
@@ -820,7 +806,6 @@ module Pkg = struct
   ;;
 
   let encode
-        ~portable_lock_dir
         ~solved_for_platforms
         { build_command
         ; install_command
@@ -833,59 +818,32 @@ module Pkg = struct
     =
     let open Encoder in
     let install_command, build_command, depends, depexts, enabled_on_platforms =
-      if portable_lock_dir
-      then (
-        let encode_field n v c =
-          Conditional_choice_or_all_platforms.encode_field ~solved_for_platforms n v c
-        in
-        ( encode_field Fields.install Action.encode install_command
-        , encode_field Fields.build Build_command.encode_portable build_command
-        , (let depends =
-             match depends with
-             | [ { Conditional.value = []; _ } ] ->
-               (* Omit the dependencies field to reduce noise in the case
+      let encode_field n v c =
+        Conditional_choice_or_all_platforms.encode_field ~solved_for_platforms n v c
+      in
+      ( encode_field Fields.install Action.encode install_command
+      , encode_field Fields.build Build_command.encode build_command
+      , (let depends =
+           match depends with
+           | [ { Conditional.value = []; _ } ] ->
+             (* Omit the dependencies field to reduce noise in the case
                   where there is explictly an empty list of dependencies. *)
-               []
-             | other -> other
-           in
-           encode_field Fields.depends Dependencies.encode depends)
-        , field_l Fields.depexts Depexts.encode depexts
-        , match
-            Enabled_on_platforms.of_solver_env_disjunction
-              ~solved_for_platforms
-              enabled_on_platforms
-          with
-          | All ->
-            (* Omit the field if it's enabled everywhere to reduce noise. The
+             []
+           | other -> other
+         in
+         encode_field Fields.depends Dependencies.encode depends)
+      , field_l Fields.depexts Depexts.encode depexts
+      , match
+          Enabled_on_platforms.of_solver_env_disjunction
+            ~solved_for_platforms
+            enabled_on_platforms
+        with
+        | All ->
+          (* Omit the field if it's enabled everywhere to reduce noise. The
                parser will assume [All] by default. *)
-            []
-          | other ->
-            [ field Fields.enabled_on_platforms Enabled_on_platforms.encode other ] ))
-      else
-        ( field_o
-            Fields.install
-            Action.encode
-            (Conditional_choice.get_value_ensuring_at_most_one_choice install_command)
-        , Build_command.encode_non_portable
-            (Conditional_choice.get_value_ensuring_at_most_one_choice build_command)
-        , field_l
-            Fields.depends
-            Package_name.encode
-            (Conditional_choice.get_value_ensuring_at_most_one_choice depends
-             |> Option.value ~default:[]
-             |> List.map ~f:(fun { Dependency.name; _ } -> name))
-        , field_l
-            Fields.depexts
-            string
-            (match depexts with
-             | [] -> []
-             | [ { Depexts.external_package_names; _ } ] -> external_package_names
-             | _ ->
-               Code_error.raise
-                 "When using non-portable lockdirs it's expected that at most a single \
-                  set of depexts will be stored in each lockfile."
-                 [ "depexts", Dyn.list Depexts.to_dyn depexts ])
-        , [] )
+          []
+        | other -> [ field Fields.enabled_on_platforms Enabled_on_platforms.encode other ]
+      )
     in
     record_fields
       ([ field Fields.version Package_version.encode version
@@ -904,8 +862,8 @@ module Pkg = struct
 
   (* More general version of [files_dir] which works on generic paths *)
   let files_dir package_name maybe_package_version ~lock_dir =
-    (* TODO(steve): Once portable lockdirs are enabled by default, make the
-       package version non-optional *)
+    (* The version is always present in newly written lockdirs; [None] is
+       only accepted for lockdirs written before versioned package files. *)
     let extension = ".files" in
     match maybe_package_version with
     | None -> Path.relative lock_dir (Package_name.to_string package_name ^ extension)
@@ -966,9 +924,8 @@ module Pkg = struct
   ;;
 
   let is_enabled_on_platform t ~platform =
-    (* XXX: currently treat empty lists of platforms as if the platform is
-       enabled on all platforms to simplify supporting both portable and
-       non-portable lockdirs with the same code. *)
+    (* An empty list of platforms means the package is enabled on all
+       platforms. *)
     List.is_empty t.enabled_on_platforms
     || Solver_env_disjunction.matches_platform t.enabled_on_platforms ~platform
   ;;
@@ -1075,6 +1032,7 @@ let remove_locs t =
   { t with
     packages = Packages.remove_locs t.packages
   ; ocaml = Option.map t.ocaml ~f:(fun (_, ocaml) -> Loc.none, ocaml)
+  ; solved_for_platforms = Loc.none, snd t.solved_for_platforms
   }
 ;;
 
@@ -1131,8 +1089,6 @@ let to_dyn
     ]
 ;;
 
-(* CR-someday Alizter: Remove this when portable lock directories are
-   consolidated with non-portable lock directories. *)
 let uses_versioned_paths t = not (List.is_empty (snd t.solved_for_platforms))
 
 type missing_dependency =
@@ -1171,7 +1127,6 @@ let create_latest_version
       ~repos
       ~expanded_solver_variable_bindings
       ~solved_for_platforms
-      ~portable_lock_dir
   =
   let packages =
     Package_name.Map.map packages ~f:(fun (pkg : Pkg.t) ->
@@ -1205,14 +1160,16 @@ let create_latest_version
   let solved_for_platforms_platform_specific_only =
     List.map solved_for_platforms ~f:Solver_env.remove_all_except_platform_specific
   in
+  let solved_for_platforms_platform_specific_only =
+    match solved_for_platforms_platform_specific_only with
+    | [] -> [ Solver_env.empty ]
+    | platforms -> platforms
+  in
+  (* Only include solver variables which are not platform-specific, so that
+     the lockdir is portable across different platforms. *)
   let expanded_solver_variable_bindings =
-    match portable_lock_dir with
-    | false -> expanded_solver_variable_bindings
-    | true ->
-      (* To make a portable lockdir, only include solver variables which are
-         not platform-specific. *)
-      Solver_stats.Expanded_variable_bindings.remove_platform_specific
-        expanded_solver_variable_bindings
+    Solver_stats.Expanded_variable_bindings.remove_platform_specific
+      expanded_solver_variable_bindings
   in
   { version
   ; dependency_hash
@@ -1231,7 +1188,6 @@ module Metadata = Dune_sexp.Versioned_file.Make (Unit)
 let () = Metadata.Lang.register Dune_lang.Pkg.syntax ()
 
 let encode_metadata
-      ~portable_lock_dir
       { version
       ; dependency_hash
       ; ocaml
@@ -1274,15 +1230,11 @@ let encode_metadata
                  expanded_solver_variable_bindings)
        ])
   @
-  if portable_lock_dir
-  then (
-    let _loc, solved_for_platforms = solved_for_platforms in
-    [ list
-        sexp
-        (string "solved_for_platforms"
-         :: List.map ~f:Solver_env.encode solved_for_platforms)
-    ])
-  else []
+  let _loc, solved_for_platforms = solved_for_platforms in
+  [ list
+      sexp
+      (string "solved_for_platforms" :: List.map ~f:Solver_env.encode solved_for_platforms)
+  ]
 ;;
 
 let decode_metadata =
@@ -1312,10 +1264,8 @@ module Package_filename = struct
   let file_extension_string = Filename.Extension.to_string file_extension
 
   let make package_name maybe_package_version =
-    (* TODO(steve): the [maybe_package_version] argument is an [_ option]
-       because if portable lockdirs is not enabled then we want to fall back to
-       the behaviour where version numbers are not included in lockfile names.
-       Make it non-optional when lockdirs become portable by default. *)
+    (* [maybe_package_version] is [None] for lockdirs written before
+       versioned package files. *)
     (match maybe_package_version with
      | None -> Package_name.to_string package_name ^ file_extension_string
      | Some package_version ->
@@ -1345,18 +1295,15 @@ module Package_filename = struct
   ;;
 end
 
-let file_contents_by_path ~portable_lock_dir t =
-  (Filename.to_string metadata_filename, encode_metadata ~portable_lock_dir t)
+let file_contents_by_path t =
+  (Filename.to_string metadata_filename, encode_metadata t)
   :: (Packages.to_pkg_list t.packages
       |> List.map ~f:(fun (pkg : Pkg.t) ->
         let _loc, solved_for_platforms = t.solved_for_platforms in
         let package_filename =
-          if portable_lock_dir
-          then Package_filename.make pkg.info.name (Some pkg.info.version)
-          else Package_filename.make pkg.info.name None
+          Package_filename.make pkg.info.name (Some pkg.info.version)
         in
-        ( Filename.to_string package_filename
-        , Pkg.encode ~portable_lock_dir ~solved_for_platforms pkg )))
+        Filename.to_string package_filename, Pkg.encode ~solved_for_platforms pkg))
 ;;
 
 module Write_disk = struct
@@ -1483,7 +1430,6 @@ module Write_disk = struct
   type t = unit -> unit
 
   let prepare
-        ~portable_lock_dir
         ~lock_dir_path:lock_dir_path_external
         ~(files : File_entry.t Package_version.Map.Multi.t Package_name.Map.t)
         lock_dir
@@ -1503,7 +1449,7 @@ module Write_disk = struct
     in
     let build lock_dir_path =
       let lock_dir_path = Result.ok_exn lock_dir_path in
-      file_contents_by_path ~portable_lock_dir lock_dir
+      file_contents_by_path lock_dir
       |> List.iter ~f:(fun (path_within_lock_dir, contents) ->
         let path = Path.relative lock_dir_path path_within_lock_dir in
         Option.iter (Path.parent path) ~f:Path.mkdir_p;
@@ -1518,10 +1464,7 @@ module Write_disk = struct
         Package_name.Map.iteri files ~f:(fun package_name files_by_version ->
           Package_version.Map.iteri files_by_version ~f:(fun package_version files ->
             let files_dir =
-              let maybe_package_version =
-                if portable_lock_dir then Some package_version else None
-              in
-              Pkg.files_dir package_name maybe_package_version ~lock_dir:lock_dir_path
+              Pkg.files_dir package_name (Some package_version) ~lock_dir:lock_dir_path
             in
             Path.mkdir_p files_dir;
             List.iter files ~f:(fun { File_entry.original; local_file } ->
@@ -1620,7 +1563,6 @@ struct
   ;;
 
   let load_pkg
-        ~portable_lock_dir
         ~version
         ~lock_dir_path
         ~solved_for_platforms
@@ -1639,7 +1581,7 @@ struct
     let parser =
       let env = Pform.Env.pkg Dune_lang.Pkg.syntax version in
       let decode =
-        Syntax.set Dune_lang.Pkg.syntax (Active version) (Pkg.decode ~portable_lock_dir)
+        Syntax.set Dune_lang.Pkg.syntax (Active version) Pkg.decode
         |> Syntax.set Dune_lang.Stanza.syntax (Active Dune_lang.Stanza.latest_version)
       in
       String_with_vars.set_decoding_env env decode
@@ -1700,10 +1642,8 @@ struct
       =
       load_metadata (Path.relative_fname lock_dir_path metadata_filename)
     in
-    let portable_lock_dir, solved_for_platforms =
-      match solved_for_platforms with
-      | Some x -> true, x
-      | None -> false, (Loc.none, [])
+    let solved_for_platforms =
+      Option.value solved_for_platforms ~default:(Loc.none, [])
     in
     let+ packages =
       Io.readdir_with_kinds lock_dir_path
@@ -1717,7 +1657,6 @@ struct
         let _loc, solved_for_platforms = solved_for_platforms in
         let+ pkg =
           load_pkg
-            ~portable_lock_dir
             ~version
             ~lock_dir_path
             ~solved_for_platforms
@@ -1830,8 +1769,8 @@ let check_if_solved_for_platform { solved_for_platforms; _ } ~platform =
   let loc, solved_for_platforms = solved_for_platforms in
   if List.is_empty solved_for_platforms
   then
-    (* TODO(steve): this case is only necessary while supporting non-portable
-       lockdirs. Once portable lockdirs are always enabled then remove this case. *)
+    (* Lockdirs written before the solved_for_platforms metadata existed have
+       an empty list. *)
     ()
   else (
     match Solver_env_disjunction.matches_platform solved_for_platforms ~platform with

@@ -1,12 +1,9 @@
 Test that we validate lockdirs before using them to build a package.
 
-Disable portable lockdirs. This test exercise dune's ability to detect when
-dune is asked to execute a build plan on a different platform than the platform
-it was generated for. A similar case is possible with portable lockdirs where
-the current platform isn't one of the platforms for which a solution exists in
-the lockdir, and this is tested in "portable-lockdirs-custom-platforms".
-  $ export DUNE_CONFIG__PORTABLE_LOCK_DIR=disabled
-
+This test exercises Dune's ability to detect when it is asked to execute a
+build plan on a platform for which the lock directory has no solution. The
+analogous case for an explicitly configured platform set is tested in
+"portable-lockdirs-custom-platforms".
   $ mkrepo
 
   $ mkpkg a <<EOF
@@ -70,13 +67,23 @@ regenerate the lockdir, leaving the project in an inconsistent state.
 Print an error when attempting to build when the lockdir and workspace disagree
 about the value of a variable.
   $ build_pkg bar
-  Error: The dependency solution relies on the assignment of the solver
-  variable "os" to "macos" but the solver environment in the workspace would
-  assign it the value "linux".
-  Hint: This can happen if the "solver_env" for the lockdir in the
-  dune-workspace file has changed since generating the lockdir. Regenerate the
-  lockdir by running:
-  Hint: 'dune pkg lock'
+  File "dune.lock/lock.dune", lines 13-16, characters 1-58:
+  13 |  ((arch x86_64)
+  14 |   (os macos))
+  15 |  ((arch arm64)
+  16 |   (os macos)))
+  Error: The lockdir does not contain a solution compatible with the current
+  platform.
+  The current platform is:
+  - arch = x86_64
+  - os = linux
+  - os-distribution = ubuntu
+  - os-family = debian
+  - os-version = 24.11
+  - sys-ocaml-version = 5.4.0+fake
+  Hint: Try adding the following to dune-workspace:
+  Hint: (lock_dir (solve_for_platforms ((arch x86_64) (os linux))))
+  Hint: ...and then rerun 'dune pkg lock'
   [1]
 
 Also detect the case where a variable that was unassigned at solve time and
@@ -106,3 +113,14 @@ workspace.
   $ generate_workspace > dune-workspace <<EOF
   > (unset_solver_vars os)
   > EOF
+
+Regenerating with [os] unset must not reintroduce it from the default platform
+set:
+  $ dune pkg lock >/dev/null
+  Solution for dune.lock
+  
+  Dependencies common to all supported platforms:
+  - bar.0.0.1
+  $ ! grep -q '(os ' dune.lock/lock.dune
+  $ grep '(arch ' dune.lock/lock.dune | sort -u
+  (solved_for_platforms ((arch x86_64)) ((arch arm64)))

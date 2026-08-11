@@ -1,11 +1,7 @@
 Test that dune can dynamically select a lockdir with a cond statement 
 
-Disable portable lockdirs, as there's no need to generate platform-specific
-lockdirs if each lockdir is portable across different platforms. The feature
-for generating platform-specific lockdirs should be removed in favour of making
-all lockdirs portable.
-  $ export DUNE_CONFIG__PORTABLE_LOCK_DIR=disabled
-
+Each lockdir is solved for the platform set from its own [solver_env], so
+the selection is dynamic.
   $ mkrepo
 
   $ mkpkg arm64-only <<EOF
@@ -67,18 +63,24 @@ all lockdirs portable.
 
 Generate all lockdirs:
   $ dune pkg lock dune.macos.arm64.lock
-  Solution for dune.macos.arm64.lock:
+  Solution for dune.macos.arm64.lock
+  
+  Dependencies common to all supported platforms:
   - arm64-only.0.0.1
   - macos-only.0.0.1
   $ dune pkg lock dune.macos.lock
-  Solution for dune.macos.lock:
+  Solution for dune.macos.lock
+  
+  Dependencies common to all supported platforms:
   - macos-only.0.0.1
   $ DUNE_TRACE=+sat dune pkg lock dune.linux.lock
-  Solution for dune.linux.lock:
+  Solution for dune.linux.lock
+  
+  Dependencies common to all supported platforms:
   - linux-only.0.0.1
 
 The trace file is reset per dune invocation, so the assertion below
-covers only the last pkg lock above (one SAT engine run, non-portable).
+covers only the last pkg lock above (one SAT engine run).
 
   $ dune trace cat \
   > | jq -s 'include "dune"; [ .[] | satSolveEvents ] | length'
@@ -146,7 +148,9 @@ Test that cond statements can have a default value:
   > EOF
 
   $ dune pkg lock dune.lock
-  Solution for dune.lock:
+  Solution for dune.lock
+  
+  Dependencies common to all supported platforms:
   - linux-only.0.0.1
   $ dune clean
   $ build_pkg linux-only

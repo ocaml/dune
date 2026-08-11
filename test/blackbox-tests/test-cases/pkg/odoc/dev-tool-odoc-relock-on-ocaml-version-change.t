@@ -17,7 +17,9 @@ same version of the ocaml compiler as the code that it's analyzing.
 
 Initially odoc will depend on ocaml-base-compiler.5.2.0 to match the project.
   $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune ocaml doc
-  Solution for _build/.dev-tools.locks/odoc:
+  Solution for _build/.dev-tools.locks/odoc
+  
+  Dependencies common to all supported platforms:
   - ocaml-base-compiler.5.2.0
   - ocaml-compiler.5.2.0
   - odoc.0.0.1
@@ -29,19 +31,11 @@ Initially odoc will depend on ocaml-base-compiler.5.2.0 to match the project.
   Error: Rule failed to generate the following targets:
   - _doc/_odoc/pkg/foo/page-index.odoc
   [1]
-  $ grep "version" "${dev_tool_lock_dir}"/ocaml-base-compiler.pkg
+  $ grep "version" "${dev_tool_lock_dir}"/ocaml-base-compiler.5.2.0.pkg
   (version 5.2.0)
 
 We can re-run "dune ocaml doc" without relocking or rebuilding.
   $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune ocaml doc
-  The version of the compiler package ("ocaml-base-compiler") in this project's
-  lockdir has changed to 5.2.0 (formerly the compiler version was 5.2.0). The
-  dev-tool "odoc" will be re-locked and rebuilt with this version of the
-  compiler.
-  Solution for _build/.dev-tools.locks/odoc:
-  - ocaml-base-compiler.5.2.0
-  - ocaml-compiler.5.2.0
-  - odoc.0.0.1
   hello from fake odoc
   hello from fake odoc
   File "_doc/_html/_unknown_", line 1, characters 0-0:
@@ -63,7 +57,9 @@ before running. Odoc now depends on ocaml.5.1.0.
   lockdir has changed to 5.1.0 (formerly the compiler version was 5.2.0). The
   dev-tool "odoc" will be re-locked and rebuilt with this version of the
   compiler.
-  Solution for _build/.dev-tools.locks/odoc:
+  Solution for _build/.dev-tools.locks/odoc
+  
+  Dependencies common to all supported platforms:
   - ocaml-base-compiler.5.1.0
   - ocaml-compiler.5.1.0
   - odoc.0.0.1
@@ -75,5 +71,5 @@ before running. Odoc now depends on ocaml.5.1.0.
   Error: Rule failed to generate the following targets:
   - _doc/_odoc/pkg/foo/page-index.odoc
   [1]
-  $ grep "version" "${dev_tool_lock_dir}"/ocaml-base-compiler.pkg
+  $ grep "version" "${dev_tool_lock_dir}"/ocaml-base-compiler.5.1.0.pkg
   (version 5.1.0)

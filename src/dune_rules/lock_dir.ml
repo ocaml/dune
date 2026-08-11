@@ -207,6 +207,23 @@ let get_workspace_lock_dir ctx =
   Workspace.find_lock_dir workspace path
 ;;
 
+let solver_env_for_context ctx =
+  let* system = Sys_vars.solver_env
+  and* workspace_lock_dir = get_workspace_lock_dir ctx in
+  Memo.return
+    (match workspace_lock_dir with
+     | None -> system
+     | Some workspace_lock_dir ->
+       let solver_env =
+         match workspace_lock_dir.solver_env with
+         | None -> system
+         | Some solver_env -> Solver_env.extend system solver_env
+       in
+       (match workspace_lock_dir.unset_solver_vars with
+        | None -> solver_env
+        | Some unset_solver_vars -> Solver_env.unset_multi solver_env unset_solver_vars))
+;;
+
 let get_with_path =
   let read_lockdir =
     Memo.exec

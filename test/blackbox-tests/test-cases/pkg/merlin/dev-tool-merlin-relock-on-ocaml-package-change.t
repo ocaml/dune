@@ -13,6 +13,16 @@ Create the initial dev-tool lock directory.
 
   $ dune tools exec ocamlmerlin >/dev/null 2>&1
 
+An unchanged compiler package must keep the existing dev-tool lock directory.
+Use an extra file to distinguish reuse from an identical regenerated lockdir.
+
+  $ touch "${dev_tool_lock_dir}"/relock-sentinel
+  $ dune tools exec ocamlmerlin >/dev/null 2>&1
+  $ test -e "${dev_tool_lock_dir}"/relock-sentinel \
+  > && echo 'unchanged dev-tool lock reused'
+  unchanged dev-tool lock reused
+  $ rm "${dev_tool_lock_dir}"/relock-sentinel
+
 Change the compiler package's build recipe without changing its version, then
 regenerate only the project lock directory.
 

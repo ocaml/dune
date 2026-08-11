@@ -64,8 +64,7 @@ end
 let lock_dir_encode_decode_round_trip_test ?commit ~lock_dir_path ~lock_dir () =
   let lock_dir_path = Path.of_string lock_dir_path in
   Lock_dir.Write_disk.(
-    prepare ~portable_lock_dir:false ~lock_dir_path ~files:Package_name.Map.empty lock_dir
-    |> commit);
+    prepare ~lock_dir_path ~files:Package_name.Map.empty lock_dir |> commit);
   let lock_dir_round_tripped =
     try Lock_dir.read_disk_exn lock_dir_path with
     | User_error.E _ as exn ->
@@ -101,20 +100,20 @@ let run thunk =
 ;;
 
 let%expect_test "encode/decode round trip test for lockdir with no deps" =
-  lock_dir_encode_decode_round_trip_test
-    ~lock_dir_path:"empty_lock_dir"
-    ~lock_dir:
-      (Lock_dir.create_latest_version
-         Package_name.Map.empty
-         ~local_packages:[]
-         ~ocaml:None
-         ~repos:None
-         ~expanded_solver_variable_bindings:Expanded_variable_bindings.empty
-         ~solved_for_platforms:[]
-         ~portable_lock_dir:false)
-    ();
+  let lock_dir =
+    Lock_dir.create_latest_version
+      Package_name.Map.empty
+      ~local_packages:[]
+      ~ocaml:None
+      ~repos:None
+      ~expanded_solver_variable_bindings:Expanded_variable_bindings.empty
+      ~solved_for_platforms:[]
+  in
+  printfn "uses versioned paths: %b" (Lock_dir.uses_versioned_paths lock_dir);
+  lock_dir_encode_decode_round_trip_test ~lock_dir_path:"empty_lock_dir" ~lock_dir ();
   [%expect
     {|
+    uses versioned paths: true
     lockdir matches after roundtrip:
     { version = (0, 1)
     ; dependency_hash = None
@@ -123,7 +122,7 @@ let%expect_test "encode/decode round trip test for lockdir with no deps" =
     ; repos = { complete = true; used = None }
     ; expanded_solver_variable_bindings =
         { variable_values = []; unset_variables = [] }
-    ; solved_for_platforms = ("<none>:1", [])
+    ; solved_for_platforms = ("empty_lock_dir/lock.dune:6", [ map {} ])
     }
     |}]
 ;;
@@ -164,7 +163,6 @@ let%expect_test "encode/decode round trip test for lockdir with simple deps" =
            ; unset_variables = [ Package_variable_name.os_family ]
            }
          ~solved_for_platforms:[]
-         ~portable_lock_dir:false
          (Package_name.Map.of_list_exn
             [ mk_pkg_basic ~name:"foo" ~version:(Package_version.of_string "0.1.0")
             ; mk_pkg_basic ~name:"bar" ~version:(Package_version.of_string "0.2.0")
@@ -219,10 +217,8 @@ let%expect_test "encode/decode round trip test for lockdir with simple deps" =
     ; ocaml = Some ("simple_lock_dir/lock.dune:3", "ocaml")
     ; repos = { complete = true; used = None }
     ; expanded_solver_variable_bindings =
-        { variable_values = [ ("os", "linux") ]
-        ; unset_variables = [ "os-family" ]
-        }
-    ; solved_for_platforms = ("<none>:1", [])
+        { variable_values = []; unset_variables = [] }
+    ; solved_for_platforms = ("simple_lock_dir/lock.dune:8", [ map {} ])
     }
     |}]
 ;;
@@ -326,7 +322,6 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
       ~repos:(Some [ opam_repo ])
       ~expanded_solver_variable_bindings:Expanded_variable_bindings.empty
       ~solved_for_platforms:[]
-      ~portable_lock_dir:false
       (Package_name.Map.of_list_exn [ pkg_a; pkg_b; pkg_c ])
   in
   lock_dir_encode_decode_round_trip_test ~lock_dir_path:"complex_lock_dir" ~lock_dir ();
@@ -377,7 +372,9 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
                     ; depends =
                         [ { condition = [ map {} ]
                           ; value =
-                              [ { loc = "complex_lock_dir/b.pkg:3"; name = "a" }
+                              [ { loc = "complex_lock_dir/b.dev.pkg:4"
+                                ; name = "a"
+                                }
                               ]
                           }
                         ]
@@ -408,8 +405,12 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
                     ; depends =
                         [ { condition = [ map {} ]
                           ; value =
-                              [ { loc = "complex_lock_dir/c.pkg:3"; name = "a" }
-                              ; { loc = "complex_lock_dir/c.pkg:3"; name = "b" }
+                              [ { loc = "complex_lock_dir/c.0.2.pkg:5"
+                                ; name = "a"
+                                }
+                              ; { loc = "complex_lock_dir/c.0.2.pkg:5"
+                                ; name = "b"
+                                }
                               ]
                           }
                         ]
@@ -438,7 +439,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
         }
     ; expanded_solver_variable_bindings =
         { variable_values = []; unset_variables = [] }
-    ; solved_for_platforms = ("<none>:1", [])
+    ; solved_for_platforms = ("complex_lock_dir/lock.dune:9", [ map {} ])
     }
     |}]
 ;;
@@ -474,7 +475,6 @@ let%expect_test "encode/decode round trip test with locked repo revision" =
         ~repos:(Some [ opam_repo ])
         ~expanded_solver_variable_bindings:Expanded_variable_bindings.empty
         ~solved_for_platforms:[]
-        ~portable_lock_dir:false
         (Package_name.Map.of_list_exn [ pkg_a; pkg_b; pkg_c ])
     in
     lock_dir_encode_decode_round_trip_test
@@ -558,7 +558,7 @@ let%expect_test "encode/decode round trip test with locked repo revision" =
         }
     ; expanded_solver_variable_bindings =
         { variable_values = []; unset_variables = [] }
-    ; solved_for_platforms = ("<none>:1", [])
+    ; solved_for_platforms = ("complex_lock_dir/lock.dune:11", [ map {} ])
     }
     |}]
 ;;

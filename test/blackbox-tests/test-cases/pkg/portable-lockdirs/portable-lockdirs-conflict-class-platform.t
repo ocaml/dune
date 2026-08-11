@@ -44,6 +44,6 @@ class.
 The transitive macOS dependency and the Linux package must coexist even though
 they belong to the same conflict class on different platforms.
 
-  $ DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled dune pkg lock >/dev/null 2>&1
+  $ dune pkg lock >/dev/null 2>&1
   $ test -e dune.lock/holder.0.0.1.pkg
   $ test -e dune.lock/target.1.pkg

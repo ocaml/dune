@@ -1,4 +1,4 @@
-Successful portable locking preserves the extra files of the selected common
+Locking for multiple platforms preserves the extra files of the selected common
 package version and omits files belonging only to rejected versions.
 
   $ mkrepo
@@ -28,7 +28,7 @@ package version and omits files belonging only to rejected versions.
   >  (depends (foo (= 1))))
   > EOF
 
-  $ DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled dune pkg lock
+  $ dune pkg lock
   Solution for dune.lock
   
   Dependencies common to all supported platforms:

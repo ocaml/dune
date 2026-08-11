@@ -30,7 +30,7 @@ let%expect_test "non-existing dir" =
       ~prog:"/bin/true"
       ~argv0:"true"
       ~args:no_args
-      ~cwd:(Spawn.Working_dir.Path "/doesnt-exist"));
+      ~cwd:(Spawn.Working_dir.path "/doesnt-exist"));
   [%expect
     {|
     raised Unix.Unix_error _
@@ -73,7 +73,7 @@ let%expect_test "cwd:Path" =
        ~prog:list_files
        ~argv0:"list_files.exe"
        ~args:no_args
-       ~cwd:(Spawn.Working_dir.Path "sub"));
+       ~cwd:(Spawn.Working_dir.path "sub"));
   [%expect
     {|
     bar
@@ -85,15 +85,15 @@ let%expect_test "cwd:Fd" =
   if Sys.win32
   then print_endline "bar\nfoo"
   else (
-    let fd = Unix.openfile "sub" [ O_RDONLY ] 0 in
+    let fd = Unix.openfile "sub" [ O_RDONLY ] 0 |> Fd.unsafe_of_unix_file_descr in
     wait
       (Spawn.spawn
          ()
          ~prog:list_files
          ~argv0:"list_files.exe"
          ~args:no_args
-         ~cwd:(Spawn.Working_dir.Fd fd));
-    Unix.close fd);
+         ~cwd:(Spawn.Working_dir.fd fd));
+    Fd.close fd);
   [%expect
     {|
     bar
@@ -111,7 +111,7 @@ let%expect_test "cwd:Fd (invalid)" =
         ~prog:"/bin/pwd"
         ~argv0:"pwd"
         ~args:no_args
-        ~cwd:(Spawn.Working_dir.Fd Unix.stdin));
+        ~cwd:(Spawn.Working_dir.fd (Fd.unsafe_of_unix_file_descr Unix.stdin)));
   [%expect
     {|
     raised Unix.Unix_error _
@@ -174,7 +174,7 @@ let%expect_test "prog relative to cwd" =
          ~prog:"./hello.exe"
          ~argv0:"hello"
          ~args:no_args
-         ~cwd:(Spawn.Working_dir.Path "exe"));
+         ~cwd:(Spawn.Working_dir.path "exe"));
   [%expect {| Hello, world! |}]
 ;;
 
@@ -192,7 +192,7 @@ let%expect_test "env" =
          ~prog:"./print_env.exe"
          ~argv0:"print_env"
          ~args:no_args
-         ~cwd:(Spawn.Working_dir.Path "exe"))
+         ~cwd:(Spawn.Working_dir.path "exe"))
   in
   tst (Some "foo");
   [%expect {| Some "foo" |}];

@@ -38,18 +38,20 @@ let spawn_and_capture ?env ~prog ~argv ~cwd () =
           (Path.to_absolute_filename stdout_path)
           [ Unix.O_WRONLY; Unix.O_TRUNC ]
           0o666
+        |> Fd.unsafe_of_unix_file_descr
       in
       let stderr_fd =
         Unix.openfile
           (Path.to_absolute_filename stderr_path)
           [ Unix.O_WRONLY; Unix.O_TRUNC ]
           0o666
+        |> Fd.unsafe_of_unix_file_descr
       in
       let pid =
         Exn.protect
           ~finally:(fun () ->
-            Unix.close stdout_fd;
-            Unix.close stderr_fd)
+            Fd.close stdout_fd;
+            Fd.close stderr_fd)
           ~f:(fun () ->
             let env = Option.map env ~f:Spawn.Env.of_list in
             Spawn.spawn

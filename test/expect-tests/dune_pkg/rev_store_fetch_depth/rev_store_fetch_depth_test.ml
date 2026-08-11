@@ -34,9 +34,9 @@ let with_git_daemon ~parent_dir ~port ~repo_dir ~unrelated_repo_dir ~f =
            ; Path.to_string repo_dir
            ; Path.to_string unrelated_repo_dir
            ])
-      ~stdin:(Fd.unsafe_to_unix_file_descr (Lazy.force Dev_null.in_))
-      ~stdout:(Fd.unsafe_to_unix_file_descr (Lazy.force Dev_null.out))
-      ~stderr:(Fd.unsafe_to_unix_file_descr (Lazy.force Dev_null.out))
+      ~stdin:(Lazy.force Dev_null.in_)
+      ~stdout:(Lazy.force Dev_null.out)
+      ~stderr:(Lazy.force Dev_null.out)
       ()
   in
   let stop_daemon () =

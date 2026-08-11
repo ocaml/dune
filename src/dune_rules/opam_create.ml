@@ -62,11 +62,12 @@ let default_build_command =
   [ "dune" "install" "-p" name "--create-install-files" name ]
 ]
 |}))
-  and from_3_0 ~with_subst ~with_sites =
+  and from_3 ~with_subst ~with_sites ~include_install_alias ~runtest =
     let subst = if with_subst then {|  [ "dune" "subst" ] {dev} |} else "" in
     let promote_install_files =
       if with_sites then {|  "--promote-install-files=false" |} else ""
     in
+    let install_alias = if include_install_alias then {|      "@install"|} else "" in
     let install =
       if with_sites
       then {| [ "dune" "install" "-p" name "--create-install-files" name ] |}
@@ -81,35 +82,7 @@ let default_build_command =
 [
   %s
   [ "dune" "build" "-p" name "-j" jobs %s
-      "@install"
-      "@runtest" {with-test}
-      "@doc" {with-doc}
-  ]
-  %s
-]
-|}
-               subst
-               promote_install_files
-               install)))
-  and from_3_23 ~with_subst ~with_sites ~runtest =
-    let subst = if with_subst then {|  [ "dune" "subst" ] {dev} |} else "" in
-    let promote_install_files =
-      if with_sites then {|  "--promote-install-files=false" |} else ""
-    in
-    let install =
-      if with_sites
-      then {| [ "dune" "install" "-p" name "--create-install-files" name ] |}
-      else ""
-    in
-    lazy
-      (Opam_file.parse_value
-         (Lexbuf.from_string
-            ~fname:"<internal>"
-            (Printf.sprintf
-               {|
-[
-  %s
-  [ "dune" "build" "-p" name "-j" jobs %s
+%s
       "%s" {with-test}
       "@doc" {with-doc}
   ]
@@ -118,6 +91,7 @@ let default_build_command =
 |}
                subst
                promote_install_files
+               install_alias
                runtest
                install)))
   in
@@ -135,14 +109,16 @@ let default_build_command =
        else if version < (3, 0)
        then from_2_9
        else if version < (3, 23)
-       then from_3_0 ~with_subst ~with_sites
+       then from_3 ~with_subst ~with_sites ~include_install_alias:true ~runtest:"@runtest"
        else (
          match Package.exclusive_dir package with
-         | None -> from_3_0 ~with_subst ~with_sites
+         | None ->
+           from_3 ~with_subst ~with_sites ~include_install_alias:true ~runtest:"@runtest"
          | Some (_loc, dir) ->
-           from_3_23
+           from_3
              ~with_subst
              ~with_sites
+             ~include_install_alias:false
              ~runtest:("@runtest/" ^ Path.Source.to_string dir)))
 ;;
 

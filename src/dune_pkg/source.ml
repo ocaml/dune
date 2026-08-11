@@ -38,6 +38,13 @@ let fetch_archive_cached =
       Fetch.fetch_without_checksum ~unpack:false ~target ~url:(url_loc, url))
 ;;
 
+let archive_fetch_error url =
+  Option.value
+    ~default:
+      (User_message.make
+         [ Pp.textf "Failed to retrieve source archive from: %s" (OpamUrl.to_string url) ])
+;;
+
 let fetch_and_hash_archive_cached (url_loc, url) =
   let open Fiber.O in
   fetch_archive_cached (url_loc, url)
@@ -51,17 +58,7 @@ let fetch_and_hash_archive_cached (url_loc, url) =
            ~loc:url_loc
            [ Pp.textf "failed to fetch %s" (OpamUrl.to_string url); Exn.pp exn ])
   | Error message_opt ->
-    let message =
-      Option.value
-        ~default:
-          (User_message.make
-             [ Pp.textf
-                 "Failed to retrieve source archive from: %s"
-                 (OpamUrl.to_string url)
-             ])
-        message_opt
-    in
-    User_warning.emit_message message;
+    User_warning.emit_message (archive_fetch_error url message_opt);
     None
 ;;
 

@@ -33,17 +33,7 @@ let of_opam_url loc url =
     Source.fetch_archive_cached (loc, url)
     >>= (function
      | Error message_opt ->
-       let message =
-         Option.value
-           ~default:
-             (User_message.make
-                [ Pp.textf
-                    "Failed to retrieve source archive from: %s"
-                    (OpamUrl.to_string url)
-                ])
-           message_opt
-       in
-       raise (User_error.E message)
+       raise (User_error.E (Source.archive_fetch_error url message_opt))
      | Ok archive ->
        let achive_path_string = Path.to_string archive in
        let target =

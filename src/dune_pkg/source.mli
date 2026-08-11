@@ -21,3 +21,5 @@ val kind : t -> [ `Directory_or_archive of Path.External.t | `Fetch ]
 val fetch_archive_cached
   :  Loc.t * OpamUrl.t
   -> (Path.t, User_message.t option) result Fiber.t
+
+val archive_fetch_error : OpamUrl.t -> User_message.t option -> User_message.t

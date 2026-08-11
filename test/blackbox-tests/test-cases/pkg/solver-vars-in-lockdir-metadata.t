@@ -7,8 +7,6 @@ information is stored in the lockdir in a different way when using portable
 lockdirs. The analogous cases for portable lockdirs is tested in
 "portable-lockdirs-custom-solver-env" (setting non-platform variables in dune-workspace)
 and "portable-lockdirs-custom-platforms" (setting platform variables in dune-workspace).
-  $ export DUNE_CONFIG__PORTABLE_LOCK_DIR=disabled
-
   $ mkrepo
 
   $ mkpkg no-deps-a 1.0 <<EOF
@@ -89,10 +87,34 @@ Solve the packages again, this time with the variables set.
   (repositories
    (complete false)
    (used))
+  
+  (solved_for_platforms
+   ((arch x86_64)
+    (os linux)
+    (os-family dunefamily)
+    (os-version 15))
+   ((arch arm64)
+    (os linux)
+    (os-family dunefamily)
+    (os-version 15))
+   ((arch x86_64)
+    (os macos)
+    (os-family dunefamily)
+    (os-version 15))
+   ((arch arm64)
+    (os macos)
+    (os-family dunefamily)
+    (os-version 15)))
   Solution for dune.lock:
   - dynamic-deps.1.0
+  
+  Additionally, some packages will only be built on specific platforms.
+  
+  arch = arm64; os = linux; os-family = dunefamily; os-version = 15:
   - no-deps-a.1.0
-  - no-deps-b.1.0
+  
+  arch = x86_64; os = linux; os-family = dunefamily; os-version = 15:
+  - no-deps-a.1.0
   (lang package 0.1)
   
   (dependency_hash 2b84dc8b1f93a9cb3c8c060235c014a2)
@@ -101,14 +123,33 @@ Solve the packages again, this time with the variables set.
    (complete false)
    (used))
   
-  (expanded_solver_variable_bindings
-   (variable_values
+  (solved_for_platforms
+   ((arch x86_64)
     (os linux)
-    (arch arm)))
+    (os-family dunefamily)
+    (os-version 15))
+   ((arch arm64)
+    (os linux)
+    (os-family dunefamily)
+    (os-version 15))
+   ((arch x86_64)
+    (os macos)
+    (os-family dunefamily)
+    (os-version 15))
+   ((arch arm64)
+    (os macos)
+    (os-family dunefamily)
+    (os-version 15)))
   Solution for dune.lock:
   - dynamic-deps-lazy.1.0
+  
+  Additionally, some packages will only be built on specific platforms.
+  
+  arch = arm64; os = linux; os-family = dunefamily; os-version = 15:
   - no-deps-a.1.0
-  - no-deps-b.1.0
+  
+  arch = x86_64; os = linux; os-family = dunefamily; os-version = 15:
+  - no-deps-a.1.0
   (lang package 0.1)
   
   (dependency_hash dcccc0b378d9035f0f00a871c2d29359)
@@ -117,12 +158,23 @@ Solve the packages again, this time with the variables set.
    (complete false)
    (used))
   
-  (expanded_solver_variable_bindings
-   (variable_values
-    (os-version 15)
-    (os-family dunefamily)
+  (solved_for_platforms
+   ((arch x86_64)
     (os linux)
-    (arch arm)))
+    (os-family dunefamily)
+    (os-version 15))
+   ((arch arm64)
+    (os linux)
+    (os-family dunefamily)
+    (os-version 15))
+   ((arch x86_64)
+    (os macos)
+    (os-family dunefamily)
+    (os-version 15))
+   ((arch arm64)
+    (os macos)
+    (os-family dunefamily)
+    (os-version 15)))
 
 Test that variables referred to in filters on build and install commands are
 stored in the lockdir metadata:
@@ -147,15 +199,8 @@ stored in the lockdir metadata:
   - filtered-commands.0.0.1
 
   $ cat ${default_lock_dir}/filtered-commands.pkg
-  (version 0.0.1)
-  
-  (install
-   (run echo qux))
-  
-  (build
-   (progn
-    (run echo foo)
-    (run echo baz)))
+  cat: dune.lock/filtered-commands.pkg: No such file or directory
+  [1]
   $ cat ${default_lock_dir}/lock.dune
   (lang package 0.1)
   
@@ -166,7 +211,22 @@ stored in the lockdir metadata:
    (used))
   
   (expanded_solver_variable_bindings
-   (variable_values
-    (os linux)
-    (arch arm))
    (unset_variables x))
+  
+  (solved_for_platforms
+   ((arch x86_64)
+    (os linux)
+    (os-family dunefamily)
+    (os-version 15))
+   ((arch arm64)
+    (os linux)
+    (os-family dunefamily)
+    (os-version 15))
+   ((arch x86_64)
+    (os macos)
+    (os-family dunefamily)
+    (os-version 15))
+   ((arch arm64)
+    (os macos)
+    (os-family dunefamily)
+    (os-version 15)))

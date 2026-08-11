@@ -9,6 +9,13 @@ module Solver_result : sig
     }
 end
 
+(** Split [solver_env] into a portable base env (with platform-specific
+    variables unset) and the platform overlays to solve for. *)
+val base_solver_env_and_platforms
+  :  Solver_env.t
+  -> solve_for_platforms:Solver_env.t list
+  -> Solver_env.t * Solver_env.t list
+
 (** Suggest narrowing the platform set when support for every requested
     platform is unnecessary. *)
 val solve_for_platforms_hint : User_message.Style.t Pp.t list
@@ -22,15 +29,6 @@ val solve_lock_dir
   -> pins:Resolved_package.t Package_name.Map.t
   -> constraints:Dune_lang.Package_dependency.t list
   -> selected_depopts:Package_name.t list
-  -> portable_lock_dir:bool
-       (** XXX(steve): Indicates that the solver should generate portable
-           lockdirs. We try to avoid having the solver behave differently
-           depending on whether we are generating portable lockdirs but
-           allowing minor changes in what information is stored in the lockdir
-           depending on this argument can greatly simplify the logic for
-           handling both portable and non-portable lockdirs with the same code.
-           Once portable lockdirs are enabled unconditionally, remove this
-           argument. *)
   -> ( Solver_result.t
        , [ `Solve_error of User_message.Style.t Pp.t | `Manifest_error of User_message.t ]
        )

@@ -7,8 +7,6 @@ This test is specialized to non-portable lockdirs. For an analogous test of
 portable-lockdirs where different packages or packgae versions are available on
 different platforms, see the tests "portable-lockdirs-partial-solve" and
 "portable-lockdirs-platform-dependant-version".
-  $ export DUNE_CONFIG__PORTABLE_LOCK_DIR=disabled
-
 Set up two build contexts: a default one for linux and another for macos.
   $ cat >dune-workspace <<EOF
   > (lang dune 3.8)
@@ -89,40 +87,112 @@ A package whose oldest and newest version is only available if with-test is fals
 No solution will be available on macos as all versions of this package are only
 available on linux.
   $ solve linux-only
-  Solution for dune.lock:
-  - linux-only.0.0.2
-  Error: Unable to solve dependencies for the following lock directories:
-  Lock directory dune.macos.lock:
+  Error:
+  Unable to solve dependencies while generating lock directory: dune.lock
+  
+  The dependency solver failed to find a solution for the requested platforms:
+  - arch = x86_64; os = linux
+  - arch = arm64; os = linux
+  - arch = x86_64; os = macos
+  - arch = arm64; os = macos
+  ...with this error:
   Couldn't solve the package dependency formula.
-  Selected candidates: x.dev
-  - linux-only -> (problem)
+  Selected candidates: linux-only.0.0.2 x.dev
+  - linux-only -> (problem) on arch = arm64; os = macos
       No usable implementations:
         linux-only.0.0.2: Availability condition not satisfied
         linux-only.0.0.1: Availability condition not satisfied
+  - linux-only -> (problem) on arch = x86_64; os = macos
+      No usable implementations:
+        linux-only.0.0.2: Availability condition not satisfied
+        linux-only.0.0.1: Availability condition not satisfied
+  Hint: If you don't need support for every requested platform, change
+  Hint: (solve_for_platforms ...) in dune-workspace to only include the
+  Hint: platforms you need, then rerun 'dune pkg lock'
+  Error:
+  Unable to solve dependencies while generating lock directory: dune.macos.lock
+  
+  The dependency solver failed to find a solution for the requested platforms:
+  - arch = x86_64; os = linux
+  - arch = arm64; os = linux
+  - arch = x86_64; os = macos
+  - arch = arm64; os = macos
+  ...with this error:
+  Couldn't solve the package dependency formula.
+  Selected candidates: linux-only.0.0.2 x.dev
+  - linux-only -> (problem) on arch = arm64; os = macos
+      No usable implementations:
+        linux-only.0.0.2: Availability condition not satisfied
+        linux-only.0.0.1: Availability condition not satisfied
+  - linux-only -> (problem) on arch = x86_64; os = macos
+      No usable implementations:
+        linux-only.0.0.2: Availability condition not satisfied
+        linux-only.0.0.1: Availability condition not satisfied
+  Hint: If you don't need support for every requested platform, change
+  Hint: (solve_for_platforms ...) in dune-workspace to only include the
+  Hint: platforms you need, then rerun 'dune pkg lock'
   [1]
 
 The latest version of the package will be chosen on linux but the middle
 version will be chosen on macos as that's the only version available on macos.
   $ solve macos-sometimes
-  Solution for dune.lock:
-  - macos-sometimes.0.0.3
-  Solution for dune.macos.lock:
+  Solution for dune.lock
+  
+  Dependencies common to all supported platforms:
+  - macos-sometimes.0.0.2
+  Solution for dune.macos.lock
+  
+  Dependencies common to all supported platforms:
   - macos-sometimes.0.0.2
 
 A warning will be printed as the undefined-var.0.0.1 package has an undefined
 variable in its `available` filter. The undefined-var.0.0.2 package has a valid
 `available` filter but is only available on linux.
   $ solve undefined-var
-  Solution for dune.lock:
-  - undefined-var.0.0.2
-  Error: Unable to solve dependencies for the following lock directories:
-  Lock directory dune.macos.lock:
+  Error:
+  Unable to solve dependencies while generating lock directory: dune.lock
+  
+  The dependency solver failed to find a solution for the requested platforms:
+  - arch = x86_64; os = linux
+  - arch = arm64; os = linux
+  - arch = x86_64; os = macos
+  - arch = arm64; os = macos
+  ...with this error:
   Couldn't solve the package dependency formula.
-  Selected candidates: x.dev
-  - undefined-var -> (problem)
+  Selected candidates: undefined-var.0.0.2 x.dev
+  - undefined-var -> (problem) on arch = arm64; os = macos
       No usable implementations:
         undefined-var.0.0.2: Availability condition not satisfied
         undefined-var.0.0.1: Availability condition not satisfied
+  - undefined-var -> (problem) on arch = x86_64; os = macos
+      No usable implementations:
+        undefined-var.0.0.2: Availability condition not satisfied
+        undefined-var.0.0.1: Availability condition not satisfied
+  Hint: If you don't need support for every requested platform, change
+  Hint: (solve_for_platforms ...) in dune-workspace to only include the
+  Hint: platforms you need, then rerun 'dune pkg lock'
+  Error:
+  Unable to solve dependencies while generating lock directory: dune.macos.lock
+  
+  The dependency solver failed to find a solution for the requested platforms:
+  - arch = x86_64; os = linux
+  - arch = arm64; os = linux
+  - arch = x86_64; os = macos
+  - arch = arm64; os = macos
+  ...with this error:
+  Couldn't solve the package dependency formula.
+  Selected candidates: undefined-var.0.0.2 x.dev
+  - undefined-var -> (problem) on arch = arm64; os = macos
+      No usable implementations:
+        undefined-var.0.0.2: Availability condition not satisfied
+        undefined-var.0.0.1: Availability condition not satisfied
+  - undefined-var -> (problem) on arch = x86_64; os = macos
+      No usable implementations:
+        undefined-var.0.0.2: Availability condition not satisfied
+        undefined-var.0.0.1: Availability condition not satisfied
+  Hint: If you don't need support for every requested platform, change
+  Hint: (solve_for_platforms ...) in dune-workspace to only include the
+  Hint: platforms you need, then rerun 'dune pkg lock'
   [1]
 
 Warnings will be printed and no solution will be found as the availability
@@ -136,37 +206,61 @@ filter resolves to a string instead of to a boolean.
   can't be resolved to a boolean value.
   available: "foo"
   value_bool: "foo"
-  Error: Unable to solve dependencies for the following lock directories:
-  Lock directory dune.lock:
+  Error:
+  Unable to solve dependencies while generating lock directory: dune.lock
+  
+  The dependency solver failed to find a solution for the requested platforms:
+  - arch = x86_64; os = linux
+  - arch = arm64; os = linux
+  - arch = x86_64; os = macos
+  - arch = arm64; os = macos
+  ...with this error:
   Couldn't solve the package dependency formula.
   Selected candidates: x.dev
   - availability-string -> (problem)
       No usable implementations:
         availability-string.0.0.2: Availability condition not satisfied
         availability-string.0.0.1: Availability condition not satisfied
+  Hint: If you don't need support for every requested platform, change
+  Hint: (solve_for_platforms ...) in dune-workspace to only include the
+  Hint: platforms you need, then rerun 'dune pkg lock'
   Warning: Ignoring package availability-string.0.0.2 as its "available" filter
   can't be resolved to a boolean value.
   available: os
-  value_bool: "macos"
+  value_bool: "linux"
   Warning: Ignoring package availability-string.0.0.1 as its "available" filter
   can't be resolved to a boolean value.
   available: "foo"
   value_bool: "foo"
-  Error: Unable to solve dependencies for the following lock directories:
-  Lock directory dune.macos.lock:
+  Error:
+  Unable to solve dependencies while generating lock directory: dune.macos.lock
+  
+  The dependency solver failed to find a solution for the requested platforms:
+  - arch = x86_64; os = linux
+  - arch = arm64; os = linux
+  - arch = x86_64; os = macos
+  - arch = arm64; os = macos
+  ...with this error:
   Couldn't solve the package dependency formula.
   Selected candidates: x.dev
   - availability-string -> (problem)
       No usable implementations:
         availability-string.0.0.2: Availability condition not satisfied
         availability-string.0.0.1: Availability condition not satisfied
+  Hint: If you don't need support for every requested platform, change
+  Hint: (solve_for_platforms ...) in dune-workspace to only include the
+  Hint: platforms you need, then rerun 'dune pkg lock'
   [1]
 
 The middle version will be picked as this is the only one available if
 with-test is set. This exercises that we can handle flags in the available
 filter.
   $ solve with-test-check
-  Solution for dune.lock:
+  Solution for dune.lock
+  
+  Dependencies common to all supported platforms:
   - with-test-check.0.0.2
-  Solution for dune.macos.lock:
+  Solution for dune.macos.lock
+  
+  Dependencies common to all supported platforms:
   - with-test-check.0.0.2

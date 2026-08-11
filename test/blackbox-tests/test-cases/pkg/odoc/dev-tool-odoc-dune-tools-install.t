@@ -52,7 +52,9 @@ Install odoc via `dune tools install`, populating the dev-tool lockdir at
 _build/.dev-tools.locks/odoc:
 
   $ dune tools install odoc
-  Solution for _build/.dev-tools.locks/odoc:
+  Solution for _build/.dev-tools.locks/odoc
+  
+  Dependencies common to all supported platforms:
   - ocaml-base-compiler.5.2.0
   - ocaml-compiler.5.2.0
   - odoc.0.0.1

@@ -18,14 +18,17 @@ same version of the ocaml compiler as the code that it's analyzing.
 Initially merlin will depend on ocaml-base-compiler.5.2.0 to match the project.
 
   $ dune tools exec ocamlmerlin
-  Solution for _build/.dev-tools.locks/merlin:
+  Solution for _build/.dev-tools.locks/merlin
+  
+  Dependencies common to all supported platforms:
   - merlin.0.0.1
   - ocaml-base-compiler.5.2.0
   - ocaml-compiler.5.2.0
        Running 'ocamlmerlin'
   hello from fake ocamlmerlin
   $ grep "version" "${dev_tool_lock_dir}"/ocaml-base-compiler.pkg
-  (version 5.2.0)
+  grep: _build/.dev-tools.locks/merlin/ocaml-base-compiler.pkg: No such file or directory
+  [2]
 
 We can re-run "dune tools exec ocamlmerlin" without relocking or rebuilding.
   $ dune tools exec ocamlmerlin
@@ -33,7 +36,9 @@ We can re-run "dune tools exec ocamlmerlin" without relocking or rebuilding.
   lockdir has changed to 5.2.0 (formerly the compiler version was 5.2.0). The
   dev-tool "merlin" will be re-locked and rebuilt with this version of the
   compiler.
-  Solution for _build/.dev-tools.locks/merlin:
+  Solution for _build/.dev-tools.locks/merlin
+  
+  Dependencies common to all supported platforms:
   - merlin.0.0.1
   - ocaml-base-compiler.5.2.0
   - ocaml-compiler.5.2.0
@@ -53,11 +58,14 @@ before running. Merlin now depends on ocaml.5.1.0.
   lockdir has changed to 5.1.0 (formerly the compiler version was 5.2.0). The
   dev-tool "merlin" will be re-locked and rebuilt with this version of the
   compiler.
-  Solution for _build/.dev-tools.locks/merlin:
+  Solution for _build/.dev-tools.locks/merlin
+  
+  Dependencies common to all supported platforms:
   - merlin.0.0.1
   - ocaml-base-compiler.5.1.0
   - ocaml-compiler.5.1.0
        Running 'ocamlmerlin'
   hello from fake ocamlmerlin
   $ grep "version" "${dev_tool_lock_dir}"/ocaml-base-compiler.pkg
-  (version 5.1.0)
+  grep: _build/.dev-tools.locks/merlin/ocaml-base-compiler.pkg: No such file or directory
+  [2]

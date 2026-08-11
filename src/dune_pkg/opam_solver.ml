@@ -2107,6 +2107,13 @@ let resolve_opam_packages opam_packages_to_lock candidates_cache =
 
 (* Suggest narrowing the platform set when support for every requested
    platform is unnecessary. *)
+(* Split a solver env into a portable base env (with platform-specific
+   variables unset) and the platform overlays to solve for. *)
+let base_solver_env_and_platforms solver_env ~solve_for_platforms =
+  ( Solver_env.unset_multi solver_env Dune_lang.Package_variable_name.platform_specific
+  , solve_for_platforms )
+;;
+
 let solve_for_platforms_hint =
   [ Pp.text "If you don't need support for every requested platform, change"
   ; Pp.text "(solve_for_platforms ...) in dune-workspace to only include the"
@@ -2125,7 +2132,6 @@ let solve_lock_dir
       ~pins:pinned_packages
       ~constraints
       ~selected_depopts
-      ~portable_lock_dir
   =
   (* Identical platform envs would be solved by the same roles and would
      otherwise produce duplicate entries in the lock file, so drop them. *)
@@ -2293,8 +2299,7 @@ let solve_lock_dir
                   stats_updater
                   opam_package
                   ~pinned:(Package_name.Set.mem pinned_package_names name)
-                  resolved_package
-                  ~portable_lock_dir)
+                  resolved_package)
               |> Result.List.all
             in
             Result.map pkgs ~f:(fun pkgs ->
@@ -2414,7 +2419,6 @@ let solve_lock_dir
               ~repos:(Some repos)
               ~expanded_solver_variable_bindings
               ~solved_for_platforms:full_solver_envs
-              ~portable_lock_dir
           in
           let+ files =
             match pkgs_by_name with

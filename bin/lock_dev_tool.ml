@@ -95,7 +95,6 @@ let solve ~dev_tool ~local_packages =
        ~version_preference:None
        ~lock_dirs:[ lock_dir ]
        ~print_perf_stats:false
-       ~portable_lock_dir:false
 ;;
 
 (* Some dev tools must be built with the same version of the ocaml compiler as

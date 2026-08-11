@@ -74,11 +74,13 @@ module With_vlib : sig
   val encode : t -> src_dir:Path.t -> Dune_lang.t
   val impl : modules -> vlib:modules -> t
 
-  val find_dep
+  (** Resolve a batch of dependencies in order. The error carries the dependency
+      name that closes a parent cycle. *)
+  val find_deps
     :  t
     -> of_:Module.t
-    -> Module_name.t
-    -> (Module.t list, [ `Parent_cycle ]) result
+    -> Module_name.t list
+    -> (Module.t list, [ `Parent_cycle of Module_name.t ]) result
 
   (** Additional dependencies that aren't always reported by [ocamldep], such
       as `(modules_before_stdlib ..)` in `(stdlib ..)` libraries. *)

@@ -1,25 +1,24 @@
 open Import
 
 let parse_module_names ~dir ~(unit : Module.t) ~modules words =
-  List.concat_map words ~f:(fun m ->
-    let m = Module_name.of_checked_string m in
-    match Modules.With_vlib.find_dep modules ~of_:unit m with
-    | Ok s -> s
-    | Error `Parent_cycle ->
-      User_error.raise
-        [ Pp.textf
-            "Module %s in directory %s depends on %s."
-            (Module_name.to_string (Module.name unit))
-            (Path.to_string_maybe_quoted (Path.build dir))
-            (Module_name.to_string m)
-        ; Pp.textf "This doesn't make sense to me."
-        ; Pp.nop
-        ; Pp.textf
-            "%s is the main module of the library and is the only module exposed outside \
-             of the library. Consequently, it should be the one depending on all the \
-             other modules in the library."
-            (Module_name.to_string m)
-        ])
+  let names = List.map words ~f:Module_name.of_checked_string in
+  match Modules.With_vlib.find_deps modules ~of_:unit names with
+  | Ok modules -> modules
+  | Error (`Parent_cycle m) ->
+    User_error.raise
+      [ Pp.textf
+          "Module %s in directory %s depends on %s."
+          (Module_name.to_string (Module.name unit))
+          (Path.to_string_maybe_quoted (Path.build dir))
+          (Module_name.to_string m)
+      ; Pp.textf "This doesn't make sense to me."
+      ; Pp.nop
+      ; Pp.textf
+          "%s is the main module of the library and is the only module exposed outside \
+           of the library. Consequently, it should be the one depending on all the other \
+           modules in the library."
+          (Module_name.to_string m)
+      ]
 ;;
 
 let invalid_ocamldep_output file lines =

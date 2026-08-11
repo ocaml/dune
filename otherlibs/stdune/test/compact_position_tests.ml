@@ -27,23 +27,9 @@ let%expect_test "round trip tests" =
   test { base with pos_cnum = (1 lsl 21) - 1; pos_lnum = 2_200; pos_bol = 300 };
   [%expect {| [PASS] |}];
   test { base with pos_cnum = 1 lsl 21; pos_lnum = 2_200; pos_bol = 300 };
-  [%expect
-    {|
-    [FAIL]
-    expected:
-    { pos_lnum = 2200; pos_bol = 300; pos_cnum = 2097152 }
-    received:
-    { pos_lnum = 2200; pos_bol = 300; pos_cnum = 0 }
-    |}];
+  [%expect {| position too large |}];
   test { base with pos_cnum = -1; pos_lnum = 2_200; pos_bol = 300 };
-  [%expect
-    {|
-    [FAIL]
-    expected:
-    { pos_lnum = 2200; pos_bol = 300; pos_cnum = -1 }
-    received:
-    { pos_lnum = 2200; pos_bol = 300; pos_cnum = 2097151 }
-    |}];
+  [%expect {| position too large |}];
   test { base with pos_cnum = 1 lsl 32; pos_lnum = 2_200; pos_bol = 300 };
   [%expect {| position too large |}]
 ;;
@@ -55,5 +41,5 @@ let%expect_test "same-line locations at the field boundary" =
    | Same_line _ -> print_endline "same-line encoding overflowed"
    | Loc _ -> print_endline "used the wider encoding"
    | Loc_does_not_fit -> print_endline "location does not fit");
-  [%expect {| same-line encoding overflowed |}]
+  [%expect {| used the wider encoding |}]
 ;;

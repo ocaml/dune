@@ -207,3 +207,15 @@ let%expect_test _ =
   split ":::" ~on:':';
   [%expect {| [ ""; ""; ""; "" ] |}]
 ;;
+
+let%expect_test "split_lines preserves carriage returns outside CRLF" =
+  List.iter [ "\r"; "first\n\r"; "first\rsecond"; "first\r\nsecond" ] ~f:(fun s ->
+    String.split_lines s |> list string |> print_dyn);
+  [%expect
+    {|
+    []
+    [ "first" ]
+    [ "first\rsecond" ]
+    [ "first"; "second" ]
+    |}]
+;;

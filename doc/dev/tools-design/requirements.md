@@ -142,6 +142,24 @@ Users must be able to install tools via Dune.
 
 Any installable tool must be supported.
 
+<details>
+<summary>
+Motivation and context
+</summary>
+
+*Comparison with other systems*
+
+- cargo: Follows [cargo
+  install](https://doc.rust-lang.org/1.95.0/cargo/commands/cargo-install.html#description), which
+  manages "Cargo’s local set of installed binary crates" and works on all (and
+  only) packages that provide a binary (or executable example).
+- go: Follows the [tool directive](https://go.dev/ref/mod#go-mod-file-tool) can be used
+  to make tools available from any package.
+- uv: Follows the [tool
+  subcommand](https://github.com/astral-sh/uv/blob/0.12.2/docs/concepts/tools.md),
+  which works with any package that provides command-line interfaces.
+</details>
+
 #### 1.2. Scope
 
 The environments within which a tool are available must be scoped.
@@ -153,6 +171,37 @@ a sub-environment. I.e., each workspace has its own isolated tool installations
 that don't affect other workspaces or interfere with software on the host system.
 
 See [Directory structure](./implementation.md#directory-structure) for storage locations.
+
+<details>
+<summary>
+Motivation and context
+</summary>
+
+**Comparison with other systems**
+
+- *cargo* : Differs from cargo install, which installs tool globally within the
+  toolchain, motivating tools such as
+  [cargo-run-bin](https://github.com/dustinblackman/cargo-run-bin) that scope
+  installs to within a project.
+- *go* : Follows go, in which use of the [-tool
+  flag](https://go.dev/doc/go1.24#tools) installations are always scoped within
+  a project's go.mod. Altho,
+- *uv* : Differs from uv where "each tool environment is linked to a specific
+  Python version",
+  ([src](https://github.com/astral-sh/uv/blob/0.12.2/docs/concepts/tools.md#python-versions)).
+  tools are ephemeral and non-installed by default, and an install adds them a
+  `bin` dir on the users path
+  ([src](https://github.com/astral-sh/uv/blob/0.12.2/docs/guides/tools.md#installing-tools)).
+  Ephemerality is more obvious in a context where there is no cost beyond
+  fetching sources (because no build is required). uv also supports the
+  [dependency-groups][uv-dep-groups] (or the legacy
+  [dev-dependencies][uv-dev-deps] an analogue of `:with-dev-setup`) scheme of
+  extensible sets of qualified dependencies (see section 3.2.2).
+  
+</details>
+
+[uv-dev-deps]: https://docs.astral.sh/uv/reference/settings/#dev-dependencies
+[uv-dep-groups]: https://docs.astral.sh/uv/concepts/projects/dependencies/#dependency-groups
 
 ##### 1.2.2. Dune context scope
 
@@ -171,7 +220,39 @@ We have sketched a preliminary design that considers `tools` stanzas as
 specialized form of `lock_dir` stanza that inherits the fields of the active
 `lock_dir` in a context if no overriding fields are specified.
 
+**Comparison with other systems**
+
+- *cargo* : Relates to Rust's
+  [toolchains](https://rust-lang.github.io/rustup/overrides.html#the-toolchain-file),
+  which control the compilation context of a project and the toolchains used in
+  user's environment. Only a single toolchain can be configured for a given
+  project. While, Rust's [editions][rust-editions] obviate much of the need
+  addressed by dune's context concept, the [current docs][rustup-docs] do signal
+  a need for something akin to dune's contexts for improved cross compilation
+  cross-compilation, and pending plans to address this:  . 
+- *go* : Go supports [installation of multiple Go versions][go-versions]  and
+  installing other go versions just adds a new go binary suffixed with the
+  alternate version, such as `go1.10.7`. Environment segregation just follows
+  from use of different binaries, a route which is only available to them
+  because the package management, built system, and compiler are fully unified.
+  Use of [the `-modfile` flag](https://go.dev/ref/mod#build-commands) can
+  instruct a go binary to use an alternative dependency specification for
+  managing a project, but this is more limited in scope than dune's contexts.
+- *uv* : uv supports multiple parallel environments for a project via the
+  [`UV_PROJECT_ENVIRONMENT`][uv-proj-env] environment variable. It does not have
+  a single notion of contexts beyond this, but the [the uv configuration
+  file][uv-config-file] can be set via `--conf-file`|`UV_CONFIG_FILE`, which
+  effectively approximates dune's context management via settings like
+  [sources](https://docs.astral.sh/uv/reference/settings/#sources) and
+  [dev-dependencies](https://docs.astral.sh/uv/reference/settings/#dev-dependencies).
+
 </details>
+
+[rustup-docs]: https://github.com/rust-lang/rustup/blob/0e5a38798a7f5d6d17f46e5ac1fa184ff8031316/doc/user-guide/src/cross-compilation.md
+[rust-editions]: https://doc.rust-lang.org/edition-guide/editions/
+[go-versions]: https://go.dev/doc/manage-install#installing-multiple
+[uv-proj-env]: https://docs.astral.sh/uv/concepts/projects/config/#project-environment-path
+[uv-config-file]: https://docs.astral.sh/uv/reference/cli/#uv-auth-login--config-file
 
 ##### 1.2.3. System-wide scope
 
@@ -190,14 +271,30 @@ means).
 Motivation and context
 </summary>
 
-Related issues:
+See the tracking issue, unpacking the motivation and presenting use cases
+[dune#12107 pkg: installation of packages that can be used
+system-wide](https://github.com/ocaml/dune/issues/12107).
 
-- [dune#12107 pkg: installation of packages that can be used
-  system-wide](https://github.com/ocaml/dune/issues/12107)
-  - Even if we don't support this in the first version, the design should not
-  prevent this.
+Even if we don't support this in the first version, the design must not prevent
+achieving this with a bit of user configuration.
+
+**Comparison with other systems**
+
+- *cargo* : Follows [`cargo install`][cargo-install], which, by default,
+  satisfies this requirement by installing installs tools to a directory of
+  binaries which is conventionally put on a users `PATH`.
+- *go* : Follows [`go install`][go-install], which, by default, satisfies this
+  requirement by installing installs tools to a directory of binaries which is
+  conventionally put on a users `PATH`.
+- *uv* : Follows the native and default behavior of [`uv tool
+  install`][uv-tools-install], which installs its executables in a `bin`
+  directory on the `PATH`.
 
 </details>
+
+[cargo-install]: https://doc.rust-lang.org/1.95.0/cargo/commands/cargo-install.html
+[go-install]: https://pkg.go.dev/cmd/go#hdr-Compile_and_install_packages_and_dependencies
+[uv-tools-install]: https://github.com/astral-sh/uv/blob/0.12.2/docs/guides/tools.md
 
 #### 1.3. Version specification
 
@@ -209,6 +306,23 @@ Users must be able to specify the version of tools to be installed via:
 
 See [Version syntax](./implementation.md#version-syntax) for CLI syntax and
 [The `(tool)` stanza](./implementation.md#the-tool-stanza) for declarative configuration.
+
+<details>
+<summary>
+Motivation and context
+</summary>
+
+**Comparison with other systems**
+
+- *cargo* : Via `cargo install foo@1.2.3` or via the `--version` flag. No
+  support for declarative configuration currently.
+- *go* : Via the version suffix of a module path.
+- *uv* : [Requested][uv-versions] at the command line via `foo@1.2.3` or via
+  version constraints in the `dev-dependencies` or `dependency-groups` of a
+  `pyproject.toml`.
+</details>
+
+[uv-versions]: https://github.com/astral-sh/uv/blob/0.12.2/docs/guides/tools.md#requesting-specific-versions
 
 ##### 1.3.1. Version consistency
 
@@ -248,6 +362,19 @@ executables. As a result, it becomes necessary to only install a preferred
 subset of the provided tools. E.g., `js_of_ocaml-compiler` provides
 `js_of_ocaml`, `jsoo_minify`, and `jsoo_listunits`.
 
+
+<details>
+<summary>
+Motivation and context
+</summary>
+
+**Comparison with other systems**
+
+- *cargo* : https://doc.rust-lang.org/1.95.0/cargo/commands/cargo-install.html#description
+- *go* :
+- *uv* : https://github.com/astral-sh/uv/blob/0.12.2/docs/guides/tools.md#commands-with-different-package-names
+
+</details>
 #### 1.6. By tool name
 
 Users should be able to install tools based on the name of the tool without
@@ -306,6 +433,16 @@ Related issues:
   tools](https://github.com/ocaml/dune/issues/12913)
   - A tool can be any package with a binary.
 
+**Comparison with other systems**
+
+- *cargo* :
+  - not supported, but there is significant demand for it
+  - https://users.rust-lang.org/t/request-track-dev-cli-tools-in-cargo-toml/138234
+  - https://github.com/rust-lang/cargo/issues/2267
+- *go* :
+- *uv* :
+
+</details>
 </details>
 
 ### 2. Usability
@@ -534,6 +671,8 @@ generality, and yield a necessarily limited usability.
 See  [Directory structure](./implementation.md#directory-structure) for proposed
 lock directory locations.
 
+<!-- TODO -->
+- uv: https://docs.astral.sh/uv/concepts/projects/config/#build-isolation
 </details>
 
 ###### 3.1.1.1. Optimal builds
@@ -682,6 +821,13 @@ for. Doing so would not only be inelegant, but lead to user confusion and
 package specification fragmentation, since the existing system is also
 supported by opam.
 
+**Comparison with other systems**
+
+- *cargo* :
+- *go* :
+- *uv* :
+  - https://docs.astral.sh/uv/concepts/projects/dependencies/#dependency-groups
+
 </details>
 
 ###### 3.2.2.1. Usable as tools
@@ -793,3 +939,34 @@ See [The `(tool)` stanza](./implementation.md#the-tool-stanza) for proposed synt
 
 </details>
 
+# Appendix
+
+## Tooling comparison
+
+To ensure we are learning from the good work and addressed needs of other
+ecosystems, we have added context to every relevant requirement indicating how
+that requirement is (or is not) addressed in three other prominent package
+management systems.
+
+Please note that none of the requirements specified here are motivated by the an
+(otherwise unfounded) desire to achieve feature parity with these pre-existing
+systems. Every requirement here voices a genuine and compelling need faced by
+developers working in OCaml. Nor is our reference to implementation choices made
+by the other systems intended to be prescriptive: they are only recorded to
+illustrate how the need is meet in those contexts.
+
+<!-- TODO brief note on the selections -->
+### Cargo
+
+https://doc.rust-lang.org/1.95.0/cargo/commands/cargo-install.html
+
+### Go
+
+https://www.bytesizego.com/blog/go-124-tool-directive
+https://go.dev/doc/go1.24#tools
+https://aran.dev/posts/go-124/go-124-new-tool-directive/
+
+### uv
+
+https://github.com/astral-sh/uv/blob/0.12.2/docs/concepts/tools.md
+https://github.com/astral-sh/uv/blob/0.12.2/docs/guides/tools.md

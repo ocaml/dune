@@ -125,30 +125,21 @@ and eval_blang_rec (t : Slang.blang) ~dir ~f =
   match t with
   | Const x -> Memo.return (Ok x)
   | Expr s -> eval_to_bool s ~dir ~f
-  | And xs ->
-    let rec loop = function
-      | [] -> Memo.return (Ok true)
-      | x :: xs ->
-        let* x = eval_blang_rec x ~dir ~f in
-        (match x with
-         | Error _ as e -> Memo.return e
-         | Ok true -> loop xs
-         | Ok false ->
-           (* stop evaluating when a false case is reached *)
-           Memo.return (Ok false))
+  | And xs | Or xs ->
+    let continue, result =
+      match t with
+      | And _ -> true, false
+      | Or _ -> false, true
+      | Const _ | Expr _ | Not _ | Compare _ -> assert false
     in
-    loop xs
-  | Or xs ->
     let rec loop = function
-      | [] -> Memo.return (Ok false)
+      | [] -> Memo.return (Ok continue)
       | x :: xs ->
         let* x = eval_blang_rec x ~dir ~f in
         (match x with
          | Error _ as e -> Memo.return e
-         | Ok false -> loop xs
-         | Ok true ->
-           (* stop evaluating when a true case is reached *)
-           Memo.return (Ok true))
+         | Ok value ->
+           if Bool.equal value continue then loop xs else Memo.return (Ok result))
     in
     loop xs
   | Not blang ->

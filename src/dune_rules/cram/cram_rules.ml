@@ -113,7 +113,6 @@ let test_rule
          Path.Source.relative dir (".cram." ^ basename))
     in
     let script_sh = Path.Build.relative base_path "cram.sh" in
-    let output = Path.Build.relative base_path "cram.out" in
     let* () =
       (let open Action_builder.O in
        let+ () = Action_builder.path (Path.build script) in
@@ -122,50 +121,52 @@ let test_rule
       |> Action_builder.with_file_targets ~file_targets:[ script_sh ]
       |> Super_context.add_rule sctx ~dir ~loc
     in
-    let* () =
-      (let open Action_builder.O in
-       let+ () = Action_builder.all_unit deps
-       and+ () = Action_builder.path (Path.build script_sh)
-       and+ () =
-         match test with
-         | File _ -> Action_builder.return ()
-         | Dir { dir; file } ->
-           let file = Path.Build.append_source prefix_with file |> Path.build in
-           let deps =
-             Path.Build.append_source prefix_with dir
-             |> Path.build
-             |> Source_deps.files_with_filter ~filter:(fun file' ->
-               not (Path.equal file file'))
-           in
-           let+ (_ : Path.Set.t) = Action_builder.dyn_memo_deps deps in
-           ()
-       and+ () = Action_builder.paths setup_scripts
-       and+ sandbox
-       and+ env
-       and+ locks = locks >>| Path.Set.to_list in
-       Cram_exec.run
-         ~src:(Path.build script)
-         ~dir:
-           (Path.build
-              (match test with
-               | File _ -> Path.Build.parent_exn script
-               | Dir d -> Path.Build.append_source prefix_with d.dir))
-         ~script:(Path.build script_sh)
-         ~output
-         ~timeout
-         ~setup_scripts
-         shell
-       |> Action.Full.make ~locks ~sandbox
-       |> Action.Full.add_env env)
-      |> Action_builder.with_file_targets ~file_targets:[ output ]
-      |> Super_context.add_rule sctx ~dir ~loc
+    let output =
+      let open Action_builder.O in
+      let action =
+        let+ () = Action_builder.all_unit deps
+        and+ () = Action_builder.path (Path.build script_sh)
+        and+ () =
+          match test with
+          | File _ -> Action_builder.return ()
+          | Dir { dir; file } ->
+            let file = Path.Build.append_source prefix_with file |> Path.build in
+            let deps =
+              Path.Build.append_source prefix_with dir
+              |> Path.build
+              |> Source_deps.files_with_filter ~filter:(fun file' ->
+                not (Path.equal file file'))
+            in
+            let+ (_ : Path.Set.t) = Action_builder.dyn_memo_deps deps in
+            ()
+        and+ () = Action_builder.paths setup_scripts
+        and+ sandbox
+        and+ env
+        and+ locks = locks >>| Path.Set.to_list in
+        Cram_exec.run
+          ~src:(Path.build script)
+          ~dir:
+            (Path.build
+               (match test with
+                | File _ -> Path.Build.parent_exn script
+                | Dir d -> Path.Build.append_source prefix_with d.dir))
+          ~script:(Path.build script_sh)
+          ~timeout
+          ~setup_scripts
+          shell
+        |> Action.Full.make ~locks ~sandbox
+        |> Action.Full.add_env env
+      in
+      Super_context.execute_action_stdout_target sctx ~loc ~dir action
+      |> Action_builder.memoize "cram-output"
     in
     Alias_rules.add sctx ~aliases:[ alias ] ~loc
     @@
     let open Action_builder.O in
-    let+ () = List.map ~f:Path.build [ script; output ] |> Action_builder.paths in
+    let+ output
+    and+ () = Action_builder.path (Path.build script) in
     Action.progn
-      [ Cram_exec.diff ~src:(Path.build script) ~output:(Path.build output)
+      [ Cram_exec.diff ~src:(Path.build script) ~output
       ; Action.diff
           ~optional:true
           ~mode:Text

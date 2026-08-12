@@ -813,7 +813,6 @@ let run_and_produce_output
       ~env
       ~dir:cwd
       ~script
-      ~dst
       ~timeout
       ~setup_scripts
       ~sandbox
@@ -853,11 +852,7 @@ let run_and_produce_output
       | { metadata = Timed_out _; _ } -> true
       | _ -> false)
   then print_timeout_correction_and_fail ~src ~conflict_markers ~timeout ~sandbox commands
-  else (
-    let dst = Path.build dst in
-    Path.mkdir_p (Path.parent_exn dst);
-    Script.dump dst commands;
-    Fiber.return ())
+  else Fiber.return commands
 ;;
 
 module Run = struct
@@ -866,26 +861,20 @@ module Run = struct
       { src : Path.t
       ; dir : 'path
       ; script : 'path
-      ; output : 'target
       ; timeout : (Loc.t * Time.Span.t) option
       ; setup_scripts : 'path list
       ; shell : Cram_stanza.Shell.t
       }
 
     let name = "cram-run"
-    let version = 7
+    let version = 8
     let runs_process = true
     let can_run_in_action_runner = true
 
-    let bimap
-          ({ src = _; dir; script; output; timeout; setup_scripts; shell = _ } as t)
-          f
-          g
-      =
+    let bimap ({ src = _; dir; script; timeout; setup_scripts; shell = _ } as t) f _ =
       { t with
         dir = f dir
       ; script = f script
-      ; output = g output
       ; timeout
       ; setup_scripts = List.map ~f setup_scripts
       }
@@ -893,13 +882,10 @@ module Run = struct
 
     let is_useful_to ~memoize:_ = true
 
-    let encode { src = _; dir; script; output; timeout; shell; setup_scripts } path target
-      : Sexp.t
-      =
+    let encode { src = _; dir; script; timeout; shell; setup_scripts } path _ : Sexp.t =
       List
         [ path dir
         ; path script
-        ; target output
         ; Dune_sexp.Encoder.(
             option float (Option.map ~f:(fun (_, time) -> Time.Span.to_secs time) timeout))
           |> Dune_sexp.to_sexp
@@ -909,29 +895,32 @@ module Run = struct
     ;;
 
     let action
-          { src; dir; script; output; timeout; setup_scripts; shell }
+          { src; dir; script; timeout; setup_scripts; shell }
           ~(ectx : Action.context)
           ~(eenv : Action.env)
       =
-      run_and_produce_output
-        ~conflict_markers:Ignore
-        ~src
-        ~env:eenv.env
-        ~dir
-        ~script
-        ~dst:output
-        ~timeout
-        ~setup_scripts
-        ~sandbox:ectx.sandbox
-        shell
+      let open Fiber.O in
+      let+ commands =
+        run_and_produce_output
+          ~conflict_markers:Ignore
+          ~src
+          ~env:eenv.env
+          ~dir
+          ~script
+          ~timeout
+          ~setup_scripts
+          ~sandbox:ectx.sandbox
+          shell
+      in
+      Script.to_string commands |> output_string (Process.Io.out_channel eenv.stdout_to)
     ;;
   end
 
   include Action_ext.Make (Spec)
 end
 
-let run ~src ~dir ~script ~output ~timeout ~setup_scripts shell =
-  Run.action { src; dir; script; output; timeout; setup_scripts; shell }
+let run ~src ~dir ~script ~timeout ~setup_scripts shell =
+  Run.action { src; dir; script; timeout; setup_scripts; shell }
 ;;
 
 module Make_script = struct

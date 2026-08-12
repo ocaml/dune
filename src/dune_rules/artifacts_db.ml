@@ -9,16 +9,10 @@ let available_exes ~dir (exes : Executables.t) =
       Dune_project.dune_version project
     in
     let libs = Scope.libs scope in
-    let+ pps =
-      (* Instead of making the binary unavailable, this will just
-         fail when loading artifacts. This is clearly bad but
-         "optional" executables shouldn't be used. *)
-      Instrumentation.with_instrumentation
-        exes.buildable.preprocess.config
-        ~instrumentation_backend:(Lib.DB.instrumentation_backend libs)
-      |> Resolve.Memo.read_memo
-      >>| Preprocess.Per_module.pps
-    in
+    (* Instead of making the binary unavailable, this will just fail when
+       loading artifacts. This is clearly bad but "optional" executables
+       shouldn't be used. *)
+    let+ pps = Lib.DB.pps_for_preprocessing libs exes.buildable.preprocess.config in
     Lib.DB.resolve_user_written_deps
       libs
       (Executables.exe_target exes)

@@ -358,16 +358,10 @@ let executables_rules
 
 let compile_info ~scope (exes : Executables.t) =
   let dune_version = Scope.project scope |> Dune_project.dune_version in
-  let+ pps =
-    (* TODO resolution should be delayed *)
-    Instrumentation.with_instrumentation
-      exes.buildable.preprocess.config
-      ~instrumentation_backend:(Lib.DB.instrumentation_backend (Scope.libs scope))
-    |> Resolve.Memo.read_memo
-    >>| Preprocess.Per_module.pps
-  in
+  let libs = Scope.libs scope in
+  let+ pps = Lib.DB.pps_for_preprocessing libs exes.buildable.preprocess.config in
   Lib.DB.resolve_user_written_deps
-    (Scope.libs scope)
+    libs
     (Executables.exe_target exes)
     exes.buildable.libraries
     ~allow_unused_libraries:exes.buildable.allow_unused_libraries

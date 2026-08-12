@@ -218,6 +218,11 @@ module DB : sig
     :  t
     -> Loc.t * Lib_name.t
     -> Preprocess.Without_instrumentation.t option Resolve.Memo.t
+
+  val pps_for_preprocessing
+    :  t
+    -> Preprocess.With_instrumentation.t Preprocess.Per_module.t
+    -> (Loc.t * Lib_name.t) list Memo.t
 end
 
 (** {1 Transitive closure} *)

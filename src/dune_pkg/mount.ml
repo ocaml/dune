@@ -16,11 +16,7 @@ let of_opam_url loc url =
   | `Git ->
     let+ rev =
       let* rev_store = Rev_store.get in
-      OpamUrl.resolve url ~loc rev_store
-      >>= (function
-       | Error _ as e -> Fiber.return e
-       | Ok s -> OpamUrl.fetch_revision url ~loc s rev_store)
-      >>| User_error.ok_exn
+      OpamUrl.resolve_and_fetch_revision url ~loc rev_store >>| User_error.ok_exn
     in
     Git rev
   | `Archive ->

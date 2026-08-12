@@ -308,7 +308,6 @@ module Set = struct
 
   let of_files l = of_list_map l ~f:file
   let of_files_set = Path.Set.fold ~init:empty ~f:(fun f acc -> add acc (file f))
-  let add_paths t paths = Path.Set.fold paths ~init:t ~f:(fun p set -> add set (File p))
 
   (* This is to force the rules to be loaded for directories without files when
      depending on [(source_tree x)]. Otherwise, we wouldn't clean up stale

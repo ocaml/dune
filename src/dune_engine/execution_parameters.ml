@@ -236,8 +236,6 @@ let builtin_default =
 
 let set_action_stdout_on_success x t = { t with action_stdout_on_success = x }
 let set_action_stderr_on_success x t = { t with action_stderr_on_success = x }
-let set_action_stdout_limit x t = { t with action_stdout_limit = x }
-let set_action_stderr_limit x t = { t with action_stderr_limit = x }
 let set_expand_aliases_in_sandbox x t = { t with expand_aliases_in_sandbox = x }
 
 let set_workspace_root_to_build_path_prefix_map x t =

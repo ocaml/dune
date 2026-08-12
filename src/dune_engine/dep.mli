@@ -74,7 +74,6 @@ module Set : sig
 
   val of_files : Path.t list -> t
   val of_files_set : Path.Set.t -> t
-  val add_paths : t -> Path.Set.t -> t
   val digest : t -> Digest.Manual.t -> unit
 end
 

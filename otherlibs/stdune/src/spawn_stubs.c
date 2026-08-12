@@ -65,18 +65,6 @@ static int __pthread_fchdir(int fd) {
 }
 
 
-CAMLprim value dune_spawn_is_osx()
-{
-  return Val_true;
-}
-
-#else
-
-CAMLprim value dune_spawn_is_osx()
-{
-  return Val_false;
-}
-
 #endif
 
 #if !defined(_WIN32)

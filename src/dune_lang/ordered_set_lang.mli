@@ -36,6 +36,7 @@ val standard : t
 val replace_standard_with_empty : t -> t
 
 val is_standard : t -> bool
+val has_standard : t -> bool
 val field : ?check:unit Decoder.t -> string -> t Decoder.fields_parser
 val equal : t -> t -> bool
 

@@ -53,7 +53,7 @@ module Hasher = struct
   let feed_manual_int i =
     if !Scratch.pos + 8 > Scratch.len then Scratch.flush ();
     let pos = !Scratch.pos in
-    Bytes.set_int64_le Scratch.buf pos (Int64.of_int i);
+    Stdlib.Bytes.set_int64_le Scratch.buf pos (Int64.of_int i);
     Scratch.pos := pos + 8
   ;;
 
@@ -181,7 +181,7 @@ let feed_bytes_raw hasher bytes ~len =
 ;;
 
 let feed_int64 hasher scratch i =
-  Bytes.set_int64_le scratch 0 i;
+  Stdlib.Bytes.set_int64_le scratch 0 i;
   feed_bytes_raw hasher scratch ~len:8
 ;;
 
@@ -191,7 +191,7 @@ let feed_bool hasher scratch b =
 ;;
 
 let feed_int hasher scratch i =
-  Bytes.set_int64_le scratch 0 (Int64.of_int i);
+  Stdlib.Bytes.set_int64_le scratch 0 (Int64.of_int i);
   feed_bytes_raw hasher scratch ~len:8
 ;;
 

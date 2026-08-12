@@ -35,9 +35,6 @@ val path_set : Path.Set.t -> unit t
     extra value. *)
 val dyn_memo_deps : (Dep.Set.t * 'a) Memo.t -> 'a t
 
-(** Record dynamic dependencies *)
-val dyn_paths : ('a * Path.t list) t -> 'a t
-
 val dyn_paths_unit : Path.t list t -> unit t
 
 (** [lines_of path] returns a description that when run will return the contents

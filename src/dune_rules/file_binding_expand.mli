@@ -12,12 +12,6 @@ val expand
   -> f:(String_with_vars.t -> string Memo.t)
   -> File_binding.Expanded.t Memo.t
 
-val expand_src
-  :  File_binding.Unexpanded.t
-  -> dir:Path.Build.t
-  -> f:(String_with_vars.t -> string Memo.t)
-  -> Path.Build.t Memo.t
-
 val destination_relative_to_install_path
   :  File_binding.Unexpanded.t
   -> section:Section.t

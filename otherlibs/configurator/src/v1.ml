@@ -130,6 +130,17 @@ module Process = struct
     String.concat ~sep:" " (List.map (prog :: args) ~f:quote_if_needed)
   ;;
 
+  let read_and_log_output t ~exit_code ~stdout_fn ~stderr_fn =
+    let stdout = Io.read_file stdout_fn in
+    let stderr = Io.read_file stderr_fn in
+    logf t "-> process exited with code %d" exit_code;
+    logf t "-> stdout:";
+    List.iter (String.split_lines stdout) ~f:(logf t " | %s");
+    logf t "-> stderr:";
+    List.iter (String.split_lines stderr) ~f:(logf t " | %s");
+    { exit_code; stdout; stderr }
+  ;;
+
   let run_process t ?dir ?env prog args =
     let prog_command_line = command_line prog args in
     logf t "run: %s" prog_command_line;
@@ -173,15 +184,7 @@ module Process = struct
     match status with
     | Unix.WSIGNALED signal -> die "signal %d killed process: %s" signal prog_command_line
     | WSTOPPED signal -> die "signal %d stopped process: %s" signal prog_command_line
-    | WEXITED exit_code ->
-      logf t "-> process exited with code %d" exit_code;
-      let stdout = Io.read_file stdout_fn in
-      let stderr = Io.read_file stderr_fn in
-      logf t "-> stdout:";
-      List.iter (String.split_lines stdout) ~f:(logf t " | %s");
-      logf t "-> stderr:";
-      List.iter (String.split_lines stderr) ~f:(logf t " | %s");
-      { exit_code; stdout; stderr }
+    | WEXITED exit_code -> read_and_log_output t ~exit_code ~stdout_fn ~stderr_fn
   ;;
 
   (* [cmd] which cannot be quoted (such as [t.c_compiler] which contains some
@@ -215,14 +218,7 @@ module Process = struct
         (Filename.quote stdout_fn)
         (Filename.quote stderr_fn)
     in
-    let stdout = Io.read_file stdout_fn in
-    let stderr = Io.read_file stderr_fn in
-    logf t "-> process exited with code %d" exit_code;
-    logf t "-> stdout:";
-    List.iter (String.split_lines stdout) ~f:(logf t " | %s");
-    logf t "-> stderr:";
-    List.iter (String.split_lines stderr) ~f:(logf t " | %s");
-    { exit_code; stdout; stderr }
+    read_and_log_output t ~exit_code ~stdout_fn ~stderr_fn
   ;;
 
   let run_command_capture_exn t ?dir ?env cmd =

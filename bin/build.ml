@@ -206,5 +206,4 @@ let build =
   Cmd.v (Cmd.info "build" ~doc ~man ~envs:Common.envs) term
 ;;
 
-let build_memo f = Build_system.run f
 let build_memo_exn f = Build_system.run_exn f

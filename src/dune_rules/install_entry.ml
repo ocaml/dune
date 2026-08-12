@@ -14,6 +14,17 @@ let expand_with_check_for_local_path ~expand sw =
     str)
 ;;
 
+let validate_file_bindings file_bindings ~relative_dst_path_starts_with_parent_error_when =
+  let+ () =
+    Memo.parallel_iter
+      file_bindings
+      ~f:
+        (File_binding_expand.validate_for_install_stanza
+           ~relative_dst_path_starts_with_parent_error_when)
+  in
+  file_bindings
+;;
+
 module Glob_files_with_optional_prefix = struct
   type t =
     { glob_files : Dep_conf.Glob_files.t
@@ -167,18 +178,9 @@ module File = struct
              (Memo.List.concat_map ~f:(fun (entry, dune_syntax) ->
                 Without_include.to_file_bindings_expanded ~expand ~dir ~dune_syntax entry))
     in
-    (* Note that validation is deferred until after file bindings have been
-       expanded as a path may be invalid due to the contents of a variable
-       whose value is unknown until prior to this point. *)
-    let+ () =
-      Memo.parallel_iter
-        file_bindings_expanded
-        ~f:
-          (File_binding_expand.validate_for_install_stanza
-             ~relative_dst_path_starts_with_parent_error_when:
-               `Deprecation_warning_from_3_11)
-    in
-    file_bindings_expanded
+    validate_file_bindings
+      file_bindings_expanded
+      ~relative_dst_path_starts_with_parent_error_when:`Deprecation_warning_from_3_11
   ;;
 end
 
@@ -211,16 +213,8 @@ module Dir = struct
                    (expand_with_check_for_local_path ~expand:(fun s ->
                       expand s >>| Value.to_string ~dir:(Path.build dir))))
     in
-    (* Note that validation is deferred until after file bindings have been
-       expanded as a path may be invalid due to the contents of a variable
-       whose value is unknown until prior to this point. *)
-    let+ () =
-      Memo.parallel_iter
-        file_bindings_expanded
-        ~f:
-          (File_binding_expand.validate_for_install_stanza
-             ~relative_dst_path_starts_with_parent_error_when)
-    in
-    file_bindings_expanded
+    validate_file_bindings
+      file_bindings_expanded
+      ~relative_dst_path_starts_with_parent_error_when
   ;;
 end

@@ -637,9 +637,6 @@ module DB = struct
     in
     { parent; resolve; boot_id }
   ;;
-
-  (* Resolve helpers *)
-  let find_many t theories = Resolve.Memo.List.map theories ~f:(resolve t)
 end
 
 let theories_closure = function

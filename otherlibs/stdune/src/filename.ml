@@ -80,6 +80,7 @@ module Extension = struct
   let h = ".h"
   let mlg = ".mlg"
   let json = ".json"
+  let v = ".v"
 
   let is_valid s =
     let len = String.length s in

@@ -43,14 +43,16 @@ let empty =
   }
 ;;
 
+let v_files (sd : Source_file_dir.t) =
+  Filename.Array.Set.filter sd.files ~f:(fun file ->
+    Filename.Extension.Or_empty.check (Filename.extension file) Filename.Extension.v)
+;;
+
 let rocq_modules_of_files ~dirs =
   let build_mod_dir (sd : Source_file_dir.t) =
     let prefix = sd.path_to_root in
-    let v_files =
-      Filename.Array.Set.filter sd.files ~f:(fun f ->
-        String.ends_with ~suffix:".v" (Filename.to_string f))
-    in
-    Filename.Array.Set.to_list_map v_files ~f:(fun file ->
+    v_files sd
+    |> Filename.Array.Set.to_list_map ~f:(fun file ->
       let name, _ = Filename.split_extension file in
       let name = Rocq_module.Name.make (Filename.to_string name) in
       Rocq_module.make
@@ -63,11 +65,8 @@ let rocq_modules_of_files ~dirs =
 
 let expected_files_of_dirs ~dirs =
   let build_expected (sd : Source_file_dir.t) =
-    let v_files =
-      Filename.Array.Set.filter sd.files ~f:(fun f ->
-        String.ends_with ~suffix:".v" (Filename.to_string f))
-    in
-    Filename.Array.Set.to_list_map v_files ~f:(fun file ->
+    v_files sd
+    |> Filename.Array.Set.to_list_map ~f:(fun file ->
       let name, _ = Filename.split_extension file in
       let expected_name = Filename.add_extension name Filename.Extension.expected in
       let source = Path.Build.relative_fname sd.dir file in

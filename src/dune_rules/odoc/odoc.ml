@@ -639,22 +639,17 @@ let setup_generate_markdown sctx odoc_file =
   setup_generate sctx ~search_db:None odoc_file Markdown
 ;;
 
-let setup_css_rule sctx =
+let setup_support_files_rule sctx ~dir =
   let ctx = Super_context.context sctx in
-  let dir = Paths.odoc_support ctx in
-  let run_odoc =
-    let cmd =
-      run_odoc
-        sctx
-        ~dir:(Path.build (Context.build_dir ctx))
-        "support-files"
-        ~quiet:false
-        ~flags_for:None
-        [ A "-o"; Path (Path.build dir) ]
-    in
-    Action_builder.With_targets.add_directories ~directory_targets:[ dir ] cmd
-  in
-  add_rule sctx run_odoc
+  run_odoc
+    sctx
+    ~dir:(Path.build (Context.build_dir ctx))
+    "support-files"
+    ~quiet:false
+    ~flags_for:None
+    [ A "-o"; Path (Path.build dir) ]
+  |> Action_builder.With_targets.add_directories ~directory_targets:[ dir ]
+  |> add_rule sctx
 ;;
 
 let sp = Printf.sprintf
@@ -1275,7 +1270,7 @@ let gen_rules sctx ~dir rest =
     has_rules
       ~directory_targets
       (Sherlodoc.sherlodoc_dot_js sctx ~dir:(Paths.html_root ctx)
-       >>> setup_css_rule sctx
+       >>> setup_support_files_rule sctx ~dir:(Paths.odoc_support ctx)
        >>> setup_toplevel_index_rule sctx Html
        >>> setup_toplevel_index_rule sctx Json)
   | [ "_markdown" ] ->

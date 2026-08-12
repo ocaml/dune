@@ -1934,24 +1934,6 @@ let setup_odoc_rules sctx ~all =
   []
 ;;
 
-let setup_css_rule sctx ~all =
-  let run_odoc =
-    let ctx = Super_context.context sctx in
-    let dir = Paths.odoc_support ctx ~all in
-    let cmd =
-      Odoc.run_odoc
-        sctx
-        ~quiet:false
-        ~dir:(Path.build (Context.build_dir ctx))
-        "support-files"
-        ~flags_for:None
-        [ Command.Args.A "-o"; Path (Path.build dir) ]
-    in
-    Action_builder.With_targets.add_directories cmd ~directory_targets:[ dir ]
-  in
-  add_rule sctx run_odoc
-;;
-
 let static_html_rule ctx ~all =
   let open Paths in
   [ odoc_support ctx ~all ]
@@ -1998,7 +1980,7 @@ let setup_all_html_rules sctx ~all =
       (Dep.html_alias (Index.html_dir ctx ~all []))
       (Action_builder.deps deps)
   and+ dirs = hierarchical_html_rules sctx all tree ~search_db
-  and+ () = setup_css_rule sctx ~all
+  and+ () = Odoc.setup_support_files_rule sctx ~dir:(Paths.odoc_support ctx ~all)
   and+ () =
     let dir = Index.html_dir ctx ~all [] in
     Sherlodoc.sherlodoc_dot_js sctx ~dir

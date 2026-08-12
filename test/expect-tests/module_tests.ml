@@ -101,17 +101,10 @@ let module_summary module_ =
 ;;
 
 let find_deps_exn modules ~of_ names =
-  let rec loop acc = function
-    | [] -> List.rev acc
-    | name :: names ->
-      (match Modules.With_vlib.find_dep modules ~of_ name with
-       | Ok modules -> loop (List.rev_append modules acc) names
-       | Error `Parent_cycle ->
-         Code_error.raise
-           "unexpected parent cycle"
-           [ "dependency", Module_name.to_dyn name ])
-  in
-  loop [] names
+  match Modules.With_vlib.find_deps modules ~of_ names with
+  | Ok modules -> modules
+  | Error (`Parent_cycle name) ->
+    Code_error.raise "unexpected parent cycle" [ "dependency", Module_name.to_dyn name ]
 ;;
 
 let check_deps label modules ~of_ names ~expected =

@@ -24,6 +24,13 @@ let dyn_of_pp tag pp =
   conv (Pp.to_ast pp)
 ;;
 
+let print_parse example =
+  Ansi_color.parse example
+  |> dyn_of_pp (Dyn.list Ansi_color.Style.to_dyn)
+  |> Dyn.pp
+  |> Format.printf "%a@.%!" Pp.to_fmt
+;;
+
 let%expect_test "reproduce #2664" =
   (* https://github.com/ocaml/dune/issues/2664 *)
   let b = Buffer.create 100 in
@@ -151,10 +158,7 @@ let%expect_test "parse fg and bg colors" =
      \027[32mgreen\027[39m together with strings of a \027[44mblue blackground\027[49m \
      and \027[41mred background\027[49m and \027[42mgreen background\027[49m"
   in
-  Ansi_color.parse example
-  |> dyn_of_pp (Dyn.list Ansi_color.Style.to_dyn)
-  |> Dyn.pp
-  |> Format.printf "%a@.%!" Pp.to_fmt;
+  print_parse example;
   [%expect
     {|
 Vbox
@@ -189,10 +193,7 @@ let%expect_test "parse multiple fg and bg colors" =
     "This text is \027[34;41mblue string with a red background\027[0m and \
      \027[32;44mgreen string with a blue background\027[0m"
   in
-  Ansi_color.parse example
-  |> dyn_of_pp (Dyn.list Ansi_color.Style.to_dyn)
-  |> Dyn.pp
-  |> Format.printf "%a@.%!" Pp.to_fmt;
+  print_parse example;
   [%expect
     {|
 Vbox
@@ -215,10 +216,7 @@ let%expect_test "fg default overrides" =
     "This text has a \027[34mblue foreground\027[39m but here it becomes the default \
      foreground,\027[34;39m even together with another foreground modifier."
   in
-  Ansi_color.parse example
-  |> dyn_of_pp (Dyn.list Ansi_color.Style.to_dyn)
-  |> Dyn.pp
-  |> Format.printf "%a@.%!" Pp.to_fmt;
+  print_parse example;
   [%expect
     {|
   Vbox
@@ -237,10 +235,7 @@ let%expect_test "bg default overrides" =
     "This text has a \027[44mblue background\027[49m but here it becomes the default \
      background,\027[44;49m even together with another background modifier."
   in
-  Ansi_color.parse example
-  |> dyn_of_pp (Dyn.list Ansi_color.Style.to_dyn)
-  |> Dyn.pp
-  |> Format.printf "%a@.%!" Pp.to_fmt;
+  print_parse example;
   [%expect
     {|
 Vbox
@@ -261,10 +256,7 @@ let%expect_test "parse 8-bit colors" =
      blackground\027[49m and \027[48;5;196mred background\027[49m and \027[48;5;46mgreen \
      background\027[49m"
   in
-  Ansi_color.parse example
-  |> dyn_of_pp (Dyn.list Ansi_color.Style.to_dyn)
-  |> Dyn.pp
-  |> Format.printf "%a@.%!" Pp.to_fmt;
+  print_parse example;
   [%expect
     {|
 Vbox
@@ -302,10 +294,7 @@ let%expect_test "parse 24-bit colors" =
      \027[48;2;255;0;0mblue blackground\027[49m and \027[48;2;0;255;0mred \
      background\027[49m and \027[48;2;0;0;255mgreen background\027[49m"
   in
-  Ansi_color.parse example
-  |> dyn_of_pp (Dyn.list Ansi_color.Style.to_dyn)
-  |> Dyn.pp
-  |> Format.printf "%a@.%!" Pp.to_fmt;
+  print_parse example;
   [%expect
     {|
     Vbox

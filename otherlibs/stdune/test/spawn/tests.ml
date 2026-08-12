@@ -182,8 +182,8 @@ let%expect_test "env" =
   let tst v =
     let env =
       match v with
-      | None -> Spawn.Env.of_list []
-      | Some v -> Spawn.Env.of_list [ "FOO=" ^ v ]
+      | None -> Env.empty
+      | Some value -> Env.add Env.empty ~var:"FOO" ~value
     in
     wait
       (Spawn.spawn

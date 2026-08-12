@@ -982,7 +982,6 @@ let spawn
     Time.now ()
   in
   let pid =
-    let env = Env.to_unix env |> Spawn.Env.of_list in
     let stdout = Io.fd stdout in
     let stderr = Io.fd stderr in
     let stdin = Io.fd stdin in

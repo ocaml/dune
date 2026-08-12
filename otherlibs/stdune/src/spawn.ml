@@ -42,51 +42,6 @@ module Unix_backend = struct
   ;;
 end
 
-let no_null s =
-  if String.contains s '\000'
-  then
-    Printf.ksprintf
-      invalid_arg
-      "Spawn.Env.of_list: NUL bytes are not allowed in the environment but found one in \
-       %S"
-      s
-;;
-
-module type Env = sig
-  type t
-
-  val of_list : string list -> t
-end
-
-module Env_win32 : Env = struct
-  type t = string
-
-  let of_list env =
-    if env = []
-    then "\000\000"
-    else (
-      let len = List.fold_left env ~init:1 ~f:(fun acc s -> acc + String.length s + 1) in
-      let buf = Buffer.create len in
-      List.iter env ~f:(fun s ->
-        no_null s;
-        Buffer.add_string buf s;
-        Buffer.add_char buf '\000');
-      Buffer.add_char buf '\000';
-      Buffer.contents buf)
-  ;;
-end
-
-module Env_unix : Env = struct
-  type t = string list
-
-  let of_list l =
-    List.iter l ~f:no_null;
-    l
-  ;;
-end
-
-module Env : Env = (val if Sys.win32 then (module Env_win32) else (module Env_unix) : Env)
-
 module Pgid = struct
   type t =
     | New
@@ -102,7 +57,7 @@ module Pgid = struct
 end
 
 external spawn_unix_raw
-  :  env:Env.t option
+  :  env:string list option
   -> cwd:Working_dir.raw
   -> prog:string
   -> argv0:string
@@ -131,6 +86,7 @@ let spawn_unix
       ~sigprocmask
       ~pdeathsig
   =
+  let env = Option.map env ~f:Env.to_unix in
   let setpgid = Option.map ~f:Pgid.to_int setpgid in
   let pdeathsig = Signal.to_int pdeathsig in
   spawn_unix_raw
@@ -150,7 +106,7 @@ let spawn_unix
 ;;
 
 external spawn_windows_raw
-  :  env:Env.t option
+  :  env:string option
   -> cwd:string option
   -> prog:string
   -> cmdline:string
@@ -180,6 +136,7 @@ let spawn_windows
       ~sigprocmask:_
       ~pdeathsig:_
   =
+  let env = Option.map env ~f:Env.to_windows_block in
   let cwd =
     match (cwd : Working_dir.t) with
     | Path p -> Some p

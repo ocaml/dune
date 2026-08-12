@@ -73,15 +73,37 @@ let vars t = Var.Set.of_keys t.vars
 let get t k = Option.map (Map.find t.vars k) ~f:(fun { Binding.value; _ } -> value)
 
 let to_unix t =
-  match t.unix with
-  | Some v -> v
-  | None ->
-    let res =
-      Map.foldi t.vars ~init:[] ~f:(fun var binding acc ->
-        Binding.render binding ~var :: acc)
-    in
-    t.unix <- Some res;
-    res
+  let bindings =
+    match t.unix with
+    | Some bindings -> bindings
+    | None ->
+      let bindings =
+        Map.foldi t.vars ~init:[] ~f:(fun var binding acc ->
+          Binding.render binding ~var :: acc)
+      in
+      t.unix <- Some bindings;
+      bindings
+  in
+  List.iter bindings ~f:(fun binding ->
+    if String.contains binding '\000'
+    then
+      Code_error.raise
+        "Env.to_unix: NUL byte in environment binding"
+        [ "binding", Dyn.string binding ]);
+  bindings
+;;
+
+let to_windows_block t =
+  match to_unix t with
+  | [] -> "\000\000"
+  | env ->
+    let len = List.fold_left env ~init:1 ~f:(fun acc s -> acc + String.length s + 1) in
+    let block = Buffer.create len in
+    List.iter env ~f:(fun binding ->
+      Buffer.add_string block binding;
+      Buffer.add_char block '\000');
+    Buffer.add_char block '\000';
+    Buffer.contents block
 ;;
 
 let map_of_unix arr =

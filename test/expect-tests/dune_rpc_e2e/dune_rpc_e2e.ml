@@ -96,7 +96,7 @@ let run ?env ~prog ~argv () =
   let stderr_w = Fd.unsafe_of_unix_file_descr stderr_w in
   let pid =
     let args = Array.Immutable.of_list argv in
-    let env = Option.map ~f:Spawn.Env.of_list env in
+    let env = Option.map env ~f:(fun env -> Env.of_unix (Array.of_list env)) in
     Spawn.spawn
       ~prog
       ~argv0:prog

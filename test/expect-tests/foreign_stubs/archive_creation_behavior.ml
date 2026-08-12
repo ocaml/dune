@@ -53,7 +53,7 @@ let spawn_and_capture ?env ~prog ~argv ~cwd () =
             Fd.close stdout_fd;
             Fd.close stderr_fd)
           ~f:(fun () ->
-            let env = Option.map env ~f:Spawn.Env.of_list in
+            let env = Option.map env ~f:(fun env -> Env.of_unix (Array.of_list env)) in
             Spawn.spawn
               ~prog
               ~argv0:prog

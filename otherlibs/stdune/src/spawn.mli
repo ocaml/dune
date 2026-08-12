@@ -1,9 +1,5 @@
 (** Mini spawn library *)
 
-(** Note: on Unix, spawn uses vfork by default. It has been tested, but if you
-    believe this is causing a problem in your application, you can change this
-    default at runtime by setting the environment variable [SPAWN_USE_FORK]. *)
-
 module Working_dir : sig
   type t
 
@@ -15,17 +11,6 @@ module Working_dir : sig
 
   (** Inherit the working directory of the current process *)
   val inherit_ : t
-end
-
-module Unix_backend : sig
-  (** System call to use on Unix. *)
-  type t =
-    | Fork
-    | Vfork
-
-  (** [Fork] if the [SPAWN_USE_FORK] environment variable is set, [Vfork]
-      otherwise. *)
-  val default : t
 end
 
 (** Process group IDs *)
@@ -103,13 +88,7 @@ end
     On Linux, the sub-process will ask the kernel to send it [pdeathsig] when
     its parent dies. This defaults to [Signal.Kill]. On other platforms,
     [pdeathsig] is ignored. The parent is the thread that created the
-    sub-process, not necessarily the whole parent process.
-
-    {b Implementation}
-
-    [unix_backend] describes what backend to use on Unix. If set to [Default],
-    [vfork] is used unless the environment variable [SPAWN_USE_FORK] is set. On
-    Windows, [CreateProcess] is used. *)
+    sub-process, not necessarily the whole parent process. *)
 val spawn
   :  ?env:Env.t
   -> ?cwd:Working_dir.t (* default: [Inherit] *)
@@ -119,7 +98,6 @@ val spawn
   -> ?stdin:Fd.t
   -> ?stdout:Fd.t
   -> ?stderr:Fd.t
-  -> ?unix_backend:Unix_backend.t (* default: [Unix_backend.default] *)
   -> ?setpgid:Pgid.t
   -> ?pdeathsig:Signal.t
   -> ?sigprocmask:Unix.sigprocmask_command * int list

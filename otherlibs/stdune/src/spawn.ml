@@ -1,7 +1,3 @@
-external is_osx : unit -> bool = "dune_spawn_is_osx" [@@noalloc]
-
-let is_osx = is_osx ()
-
 module Working_dir = struct
   type 'a gen =
     | Path of string
@@ -19,27 +15,6 @@ module Working_dir = struct
   let path s = Path s
   let fd fd = Fd fd
   let inherit_ = Inherit
-end
-
-module Unix_backend = struct
-  type t =
-    | Fork
-    | Vfork
-
-  let default =
-    match Sys.getenv "SPAWN_USE_FORK" with
-    | _ -> Fork
-    | exception Not_found ->
-      (* We observed issues in the past when using [vfork] on OSX. More
-         precisely, it seems that [chdir]/[fchdir] is not taken into account
-         after a vfork. We tried working around this by not doing the directory
-         change in the sub-process when using [vfork] on OSX, and instead doing
-         it in the parent via [pthread_chdir]/[pthread_fchdir]. This was
-         unsuccessful.
-
-         In the end we decided not to default to [vfork] on OSX. *)
-      if is_osx then Fork else Vfork
-  ;;
 end
 
 module Pgid = struct
@@ -173,6 +148,7 @@ let no_null s =
 let default_stdin = Fd.unsafe_of_unix_file_descr Unix.stdin
 let default_stdout = Fd.unsafe_of_unix_file_descr Unix.stdout
 let default_stderr = Fd.unsafe_of_unix_file_descr Unix.stderr
+let use_vfork = Poly.equal Platform.OS.value Linux
 
 let spawn
       ?env
@@ -183,7 +159,6 @@ let spawn
       ?(stdin = default_stdin)
       ?(stdout = default_stdout)
       ?(stderr = default_stderr)
-      ?(unix_backend = Unix_backend.default)
       ?setpgid
       ?(pdeathsig = Signal.Kill)
       ?sigprocmask
@@ -195,11 +170,6 @@ let spawn
   no_null prog;
   no_null argv0;
   Array.Immutable.iter args ~f:no_null;
-  let use_vfork =
-    match unix_backend with
-    | Vfork -> true
-    | Fork -> false
-  in
   if Sys.win32
   then
     spawn_windows

@@ -35,52 +35,15 @@ module Decl = struct
     Conv.iso Conv.string to_ from
   ;;
 
-  module Exec = struct
-    let decl =
-      let v1 =
-        Decl.Request.make_current_gen ~req:(marshal ()) ~resp:(marshal ()) ~version:1
-      in
-      Decl.Request.make
-        ~method_:(Dune_rpc.Method.Name.of_string "action/exec")
-        ~generations:[ v1 ]
-    ;;
-  end
+  let make method_ ~resp =
+    let v1 = Decl.Request.make_current_gen ~req:(marshal ()) ~resp ~version:1 in
+    Decl.Request.make
+      ~method_:(Dune_rpc.Method.Name.of_string ("action/" ^ method_))
+      ~generations:[ v1 ]
+  ;;
 
-  module Ready = struct
-    let decl =
-      let v1 =
-        Decl.Request.make_current_gen ~req:(marshal ()) ~resp:Conv.unit ~version:1
-      in
-      Decl.Request.make
-        ~method_:(Dune_rpc.Method.Name.of_string "action/ready")
-        ~generations:[ v1 ]
-    ;;
-  end
-
-  module Cancel_build = struct
-    let decl =
-      let v1 =
-        Decl.Request.make_current_gen ~req:(marshal ()) ~resp:Conv.unit ~version:1
-      in
-      Decl.Request.make
-        ~method_:(Dune_rpc.Method.Name.of_string "action/cancel-build")
-        ~generations:[ v1 ]
-    ;;
-  end
-
-  module Finish_build = struct
-    let decl =
-      let v1 =
-        Decl.Request.make_current_gen ~req:(marshal ()) ~resp:Conv.unit ~version:1
-      in
-      Decl.Request.make
-        ~method_:(Dune_rpc.Method.Name.of_string "action/finish-build")
-        ~generations:[ v1 ]
-    ;;
-  end
-
-  let exec = Exec.decl
-  let ready = Ready.decl
-  let cancel_build = Cancel_build.decl
-  let finish_build = Finish_build.decl
+  let exec = make "exec" ~resp:(marshal ())
+  let ready = make "ready" ~resp:Conv.unit
+  let cancel_build = make "cancel-build" ~resp:Conv.unit
+  let finish_build = make "finish-build" ~resp:Conv.unit
 end

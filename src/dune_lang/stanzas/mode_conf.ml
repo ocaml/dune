@@ -50,6 +50,17 @@ module Kind = struct
     | Requested of Loc.t
 end
 
+let set_of_list ~empty ~update input =
+  List.fold_left ~init:empty input ~f:(fun acc (key, kind) ->
+    update acc key ~f:(function
+      | None -> Some kind
+      | Some (Kind.Requested loc) ->
+        User_error.raise ~loc [ Pp.textf "already configured" ]
+      | Some Inherited ->
+        (* this doesn't happen as inherited can't be manually specified *)
+        assert false))
+;;
+
 module Map = struct
   type nonrec 'a t =
     { byte : 'a
@@ -81,14 +92,7 @@ module Set = struct
   let empty : t = Map.make_one None
 
   let of_list (input : (mode_conf * Kind.t) list) : t =
-    List.fold_left ~init:empty input ~f:(fun acc (key, kind) ->
-      Map.update acc key ~f:(function
-        | None -> Some kind
-        | Some (Kind.Requested loc) ->
-          User_error.raise ~loc [ Pp.textf "already configured" ]
-        | Some Inherited ->
-          (* this doesn't happen as inherited can't be manually specified *)
-          assert false))
+    set_of_list ~empty ~update:Map.update input
   ;;
 
   let to_list (t : t) : (mode_conf * Kind.t) list =
@@ -198,14 +202,7 @@ module Lib = struct
     let empty : t = Map.make_one None
 
     let of_list (input : (mode_conf * Kind.t) list) : t =
-      List.fold_left ~init:empty input ~f:(fun acc (key, kind) ->
-        Map.update acc key ~f:(function
-          | None -> Some kind
-          | Some (Kind.Requested loc) ->
-            User_error.raise ~loc [ Pp.textf "already configured" ]
-          | Some Inherited ->
-            (* this doesn't happen as inherited can't be manually specified *)
-            assert false))
+      set_of_list ~empty ~update:Map.update input
     ;;
 
     let decode_osl ~stanza_loc project =

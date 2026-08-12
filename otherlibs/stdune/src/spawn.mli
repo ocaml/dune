@@ -100,7 +100,7 @@ val spawn
   -> ?stderr:Fd.t
   -> ?setpgid:Pgid.t
   -> ?pdeathsig:Signal.t
-  -> ?sigprocmask:Unix.sigprocmask_command * int list
+  -> ?sigprocmask:Unix.sigprocmask_command * Signal.t list
        (** default: unblock all signals in child *)
   -> unit
   -> Pid.t

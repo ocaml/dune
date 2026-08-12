@@ -337,7 +337,7 @@ let%expect_test "sigprocmask" =
       | _ -> failwith "unexpected"
     in
     run Sys.sigusr1;
-    run ~sigprocmask:(SIG_BLOCK, [ Sys.sigusr1 ]) Sys.sigkill;
+    run ~sigprocmask:(SIG_BLOCK, [ Usr1 ]) Sys.sigkill;
     let old_signals = Unix.sigprocmask SIG_BLOCK [ Sys.sigusr1 ] in
     Exn.protect
       ~finally:(fun () -> ignore (Unix.sigprocmask SIG_SETMASK old_signals : int list))
@@ -348,7 +348,7 @@ let%expect_test "sigprocmask" =
         run ~sigprocmask:(SIG_BLOCK, []) Sys.sigkill;
         run ~sigprocmask:(SIG_UNBLOCK, []) Sys.sigkill;
         (* Unblocking sigusr1 in the child process. *)
-        run ~sigprocmask:(SIG_UNBLOCK, [ Sys.sigusr1 ]) Sys.sigusr1;
+        run ~sigprocmask:(SIG_UNBLOCK, [ Usr1 ]) Sys.sigusr1;
         run ~sigprocmask:(SIG_SETMASK, []) Sys.sigusr1));
   [%expect {||}]
 ;;

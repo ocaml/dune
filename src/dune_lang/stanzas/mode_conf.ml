@@ -61,6 +61,14 @@ let set_of_list ~empty ~update input =
         assert false))
 ;;
 
+let decode_set decode ~of_list =
+  let decode =
+    let+ loc, t = located decode in
+    t, Kind.Requested loc
+  in
+  repeat decode >>| of_list
+;;
+
 module Map = struct
   type nonrec 'a t =
     { byte : 'a
@@ -104,14 +112,7 @@ module Set = struct
     List.filter_map ~f:get all
   ;;
 
-  let decode =
-    let decode =
-      let+ loc, t = located decode in
-      t, Kind.Requested loc
-    in
-    repeat decode >>| of_list
-  ;;
-
+  let decode = decode_set decode ~of_list
   let default loc : t = { empty with byte = Some Inherited; best = Some (Requested loc) }
 
   let eval t ~has_native =
@@ -225,14 +226,7 @@ module Lib = struct
       |> of_list
     ;;
 
-    let decode =
-      let decode =
-        let+ loc, t = located decode in
-        t, Kind.Requested loc
-      in
-      repeat decode >>| of_list
-    ;;
-
+    let decode = decode_set decode ~of_list
     let default loc : t = { empty with ocaml = Set.default loc }
 
     let eval t ~has_native =

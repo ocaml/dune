@@ -223,6 +223,13 @@ end = struct
   ;;
 end
 
+let scheduler_config builder =
+  builder
+  |> Common.Builder.forbid_builds
+  |> Common.Builder.disable_log_file
+  |> Common.init
+;;
+
 module Dump_config = struct
   let info =
     Cmd.info
@@ -243,13 +250,7 @@ module Dump_config = struct
         & opt (enum Output_format.all) `Text
         & info [ "format" ] ~docv:"FORMAT" ~doc:(Some "Output format (text or json)."))
     and+ selected_context = Selected_context.arg in
-    let _common, config =
-      let builder =
-        let builder = Common.Builder.forbid_builds builder in
-        Common.Builder.disable_log_file builder
-      in
-      Common.init builder
-    in
+    let _common, config = scheduler_config builder in
     (* CR-soon rgrinberg: remove pointless args *)
     Scheduler_setup.no_build_no_rpc ~config (fun () ->
       Server.dump ~selected_context ~format dir)
@@ -276,13 +277,7 @@ let start_session_info name = Cmd.info name ~doc ~man
 let start_session_term =
   let+ builder = Common.Builder.term
   and+ selected_context = Selected_context.arg in
-  let _common, config =
-    let builder =
-      let builder = Common.Builder.forbid_builds builder in
-      Common.Builder.disable_log_file builder
-    in
-    Common.init builder
-  in
+  let _common, config = scheduler_config builder in
   (* CR-soon rgrinberg: remove pointless args *)
   Scheduler_setup.no_build_no_rpc ~config (Server.start ~selected_context)
 ;;
@@ -320,13 +315,7 @@ module Dump_dot_merlin = struct
                  "The path to the folder of which the configuration should be printed. \
                   Defaults to the current directory."))
     and+ selected_context = Selected_context.arg in
-    let _common, config =
-      let builder =
-        let builder = Common.Builder.forbid_builds builder in
-        Common.Builder.disable_log_file builder
-      in
-      Common.init builder
-    in
+    let _common, config = scheduler_config builder in
     (* CR-soon rgrinberg: stop taking pointless args *)
     Scheduler_setup.no_build_no_rpc ~config (fun () ->
       match path with

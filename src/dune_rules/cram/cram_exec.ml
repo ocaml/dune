@@ -412,65 +412,61 @@ let sanitize ~parent_script cram_to_output : command_out Cram_lexer.block list =
       Command { command = block.command; metadata; output })
 ;;
 
-(* Compose user written cram stanzas to output *)
-let compose_cram_output (cram_to_output : _ Cram_lexer.block list) =
+let with_output_buffer f =
   let buf = Buffer.create 256 in
   let add_line line =
     Buffer.add_string buf line;
     Buffer.add_char buf '\n'
   in
-  let add_line_prefixed_with_two_space line =
+  let add_indented_line line =
     Buffer.add_string buf "  ";
     add_line line
   in
-  List.iter cram_to_output ~f:(fun block ->
-    match (block : _ Cram_lexer.block) with
-    | Comment lines -> List.iter lines ~f:add_line
-    | Command { command; metadata; output } ->
-      List.iteri command ~f:(fun i line ->
-        let line = sprintf "%c %s" (if i = 0 then '$' else '>') line in
-        add_line_prefixed_with_two_space line);
-      let unreachable = "***** UNREACHABLE *****" in
-      let add_output output =
-        output |> String.split_lines |> List.iter ~f:add_line_prefixed_with_two_space
-      in
-      let add_output_or_unreachable = function
-        | None -> add_line_prefixed_with_two_space unreachable
-        | Some output -> add_output output
-      in
-      (match metadata with
-       | Missing_unreachable ->
-         add_output_or_unreachable output;
-         Option.iter output ~f:(fun (_ : string) ->
-           add_line_prefixed_with_two_space unreachable)
-       | Timed_out _ ->
-         Option.iter output ~f:add_output;
-         add_line_prefixed_with_two_space "[timed out]"
-       | Not_ran -> add_line_prefixed_with_two_space "[not ran]"
-       | Present { exit_code = 0; build_path_prefix_map = _ } ->
-         add_output_or_unreachable output
-       | Present { exit_code; build_path_prefix_map = _ } ->
-         add_output_or_unreachable output;
-         add_line_prefixed_with_two_space (sprintf "[%d]" exit_code)));
+  f ~add_line ~add_indented_line;
   Buffer.contents buf
+;;
+
+let add_command ~add_indented_line command =
+  List.iteri command ~f:(fun i line ->
+    let line = sprintf "%c %s" (if i = 0 then '$' else '>') line in
+    add_indented_line line)
+;;
+
+(* Compose user written cram stanzas to output *)
+let compose_cram_output (cram_to_output : _ Cram_lexer.block list) =
+  with_output_buffer (fun ~add_line ~add_indented_line ->
+    List.iter cram_to_output ~f:(fun block ->
+      match (block : _ Cram_lexer.block) with
+      | Comment lines -> List.iter lines ~f:add_line
+      | Command { command; metadata; output } ->
+        add_command ~add_indented_line command;
+        let unreachable = "***** UNREACHABLE *****" in
+        let add_output output =
+          output |> String.split_lines |> List.iter ~f:add_indented_line
+        in
+        let add_output_or_unreachable = function
+          | None -> add_indented_line unreachable
+          | Some output -> add_output output
+        in
+        (match metadata with
+         | Missing_unreachable ->
+           add_output_or_unreachable output;
+           Option.iter output ~f:(fun (_ : string) -> add_indented_line unreachable)
+         | Timed_out _ ->
+           Option.iter output ~f:add_output;
+           add_indented_line "[timed out]"
+         | Not_ran -> add_indented_line "[not ran]"
+         | Present { exit_code = 0; build_path_prefix_map = _ } ->
+           add_output_or_unreachable output
+         | Present { exit_code; build_path_prefix_map = _ } ->
+           add_output_or_unreachable output;
+           add_indented_line (sprintf "[%d]" exit_code))))
 ;;
 
 (* Compose user written cram stanzas to output *)
 let cram_commmands commands =
-  let buf = Buffer.create 256 in
-  let add_line line =
-    Buffer.add_string buf line;
-    Buffer.add_char buf '\n'
-  in
-  let add_line_prefixed_with_two_space line =
-    Buffer.add_string buf "  ";
-    add_line line
-  in
-  List.iter commands ~f:(fun command ->
-    List.iteri command ~f:(fun i line ->
-      let line = sprintf "%c %s" (if i = 0 then '$' else '>') line in
-      add_line_prefixed_with_two_space line));
-  Buffer.contents buf
+  with_output_buffer (fun ~add_line:_ ~add_indented_line ->
+    List.iter commands ~f:(add_command ~add_indented_line))
 ;;
 
 let timeformat =

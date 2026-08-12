@@ -62,6 +62,8 @@ let rec restore_from_cache
        errors of cancelled computations, whose deps are inaccurate ([Deps.empty]) anyway,
        so we must not use [Deps.changed_or_not] on them. *)
     Fiber.return Changed_or_not.Changed
+  | (Ok _ | Error { reproducible = true; _ }) when Deps.is_empty node.deps ->
+    Fiber.return Changed_or_not.Unchanged
   | Ok _ | Error { reproducible = true; _ } ->
     (* We cache reproducible errors just like normal values. We assume that all [Memo]
        computations are deterministic, which means if we rerun a computation that

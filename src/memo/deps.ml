@@ -57,6 +57,11 @@ type 'node t = 'node Static.t
 
 let empty = Static.Empty
 
+let is_empty = function
+  | Static.Empty -> true
+  | Singleton _ | Seq _ | Par _ -> false
+;;
+
 module Dynamic = struct
   (* The most recently discovered section is at the head of the list. *)
   type 'node t = 'node Static.t list

@@ -15,6 +15,10 @@ let file ~prefix ~suffix =
   Temp.temp_in_dir File ~dir:(Lazy.force dune_temp_dir) ~suffix ~prefix
 ;;
 
+let action_dir ~prefix ~suffix =
+  Temp.temp_in_dir Dir ~dir:(Lazy.force action_temp_dir) ~suffix ~prefix
+;;
+
 let add_to_env env ~purpose =
   let value = Lazy.force (temp_dir_value purpose) in
   Env.add env ~var:Env.Var.temp_dir ~value

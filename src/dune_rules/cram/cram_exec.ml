@@ -606,7 +606,7 @@ let make_temp_dir ~script =
       in
       "." ^ Filename.to_string suffix
     in
-    Temp.create Dir ~prefix:"dune_cram" ~suffix
+    Dune_engine.Dtemp.action_dir ~prefix:"dune_cram" ~suffix
   in
   Path.mkdir_p temp_dir;
   temp_dir

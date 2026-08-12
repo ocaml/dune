@@ -15,6 +15,7 @@ module Process_runner = Process_runner
 module Process = Process
 module Alias = Alias
 module Dpath = Dpath
+module Dtemp = Dtemp
 module Rules = Rules
 module Rule = Rule
 module Target_promotion = Target_promotion

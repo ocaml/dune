@@ -5,6 +5,9 @@ open Import
 (** This returns a build path, but we don't rely on that *)
 val file : prefix:string -> suffix:string -> Path.t
 
+(** Create a temporary directory that build actions may access. *)
+val action_dir : prefix:string -> suffix:string -> Path.t
+
 (** Set the platform's temporary-directory environment variable. Build jobs use
     the action directory and internal jobs use Dune's directory. *)
 val add_to_env : Env.t -> purpose:Process_metadata.purpose -> Env.t

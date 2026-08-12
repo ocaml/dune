@@ -2404,24 +2404,22 @@ module DB = struct
 
   let with_parent t ~parent = { t with parent }
 
-  let of_paths context ~paths =
+  let from_findlib context findlib =
     let open Memo.O in
     let+ ocaml = Context.ocaml context
-    and+ findlib = Findlib.create_with_paths (Context.name context) ~paths in
+    and+ findlib = findlib in
     create_from_findlib
       findlib
       ~has_bigarray_library:(Ocaml.Version.has_bigarray_library ocaml.version)
       ~instrument_with:(Context.instrument_with context)
   ;;
 
+  let of_paths context ~paths =
+    from_findlib context (Findlib.create_with_paths (Context.name context) ~paths)
+  ;;
+
   let installed (context : Context.t) =
-    let open Memo.O in
-    let+ ocaml = Context.ocaml context
-    and+ findlib = Findlib.create (Context.name context) in
-    create_from_findlib
-      findlib
-      ~has_bigarray_library:(Ocaml.Version.has_bigarray_library ocaml.version)
-      ~instrument_with:(Context.instrument_with context)
+    from_findlib context (Findlib.create (Context.name context))
   ;;
 
   let find t name =

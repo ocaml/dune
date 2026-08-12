@@ -32,68 +32,59 @@ let scroll visible offset ~set ~dir =
   set (offset + (dir * max 1 (visible / scrollbar_wheel_step)))
 ;;
 
-let hscrollbar visible total offset ~set =
+let scrollbar visible total offset ~set ~render ~mouse_position ~join =
   let prefix = offset * visible / total in
   let suffix = (total - offset - visible) * visible / total in
   let handle = visible - prefix - suffix in
-  let render size color = Ui.atom Notty.(I.char (A.bg color) ' ' size 1) in
-  let mouse_handler ~x ~y:_ = function
+  let mouse_handler ~x ~y = function
     | `Left ->
-      if x < prefix
+      let position = mouse_position ~x ~y in
+      if position < prefix
       then (
         set (offset - max 1 (visible / scrollbar_click_step));
         `Handled)
-      else if x > prefix + handle
+      else if position > prefix + handle
       then (
         set (offset + max 1 (visible / scrollbar_click_step));
         `Handled)
       else
         `Grab
-          ( (fun ~x:x' ~y:_ -> set (offset + ((x' - x) * total / visible)))
+          ( (fun ~x ~y ->
+              let position' = mouse_position ~x ~y in
+              set (offset + ((position' - position) * total / visible)))
           , fun ~x:_ ~y:_ -> () )
     | `Scroll dir ->
       scroll visible offset ~set ~dir;
       `Handled
     | _ -> `Unhandled
   in
-  let ( ++ ) = Ui.join_x in
   Ui.mouse_area
     mouse_handler
-    (render prefix scrollbar_bg
-     ++ render handle scrollbar_fg
-     ++ render suffix scrollbar_bg)
+    (join
+       (render prefix scrollbar_bg)
+       (join (render handle scrollbar_fg) (render suffix scrollbar_bg)))
+;;
+
+let hscrollbar visible total offset ~set =
+  scrollbar
+    visible
+    total
+    offset
+    ~set
+    ~render:(fun size color -> Ui.atom Notty.(I.char (A.bg color) ' ' size 1))
+    ~mouse_position:(fun ~x ~y:_ -> x)
+    ~join:Ui.join_x
 ;;
 
 let vscrollbar visible total offset ~set =
-  let prefix = offset * visible / total in
-  let suffix = (total - offset - visible) * visible / total in
-  let handle = visible - prefix - suffix in
-  let render size color = Ui.atom Notty.(I.char (A.bg color) ' ' 1 size) in
-  let mouse_handler ~x:_ ~y = function
-    | `Left ->
-      if y < prefix
-      then (
-        set (offset - max 1 (visible / scrollbar_click_step));
-        `Handled)
-      else if y > prefix + handle
-      then (
-        set (offset + max 1 (visible / scrollbar_click_step));
-        `Handled)
-      else
-        `Grab
-          ( (fun ~x:_ ~y:y' -> set (offset + ((y' - y) * total / visible)))
-          , fun ~x:_ ~y:_ -> () )
-    | `Scroll dir ->
-      scroll visible offset ~set ~dir;
-      `Handled
-    | _ -> `Unhandled
-  in
-  let ( ++ ) = Ui.join_y in
-  Ui.mouse_area
-    mouse_handler
-    (render prefix scrollbar_bg
-     ++ render handle scrollbar_fg
-     ++ render suffix scrollbar_bg)
+  scrollbar
+    visible
+    total
+    offset
+    ~set
+    ~render:(fun size color -> Ui.atom Notty.(I.char (A.bg color) ' ' 1 size))
+    ~mouse_position:(fun ~x:_ ~y -> y)
+    ~join:Ui.join_y
 ;;
 
 type t =

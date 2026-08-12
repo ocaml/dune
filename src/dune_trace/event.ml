@@ -1021,30 +1021,41 @@ module Cache = struct
 end
 
 module Digest = struct
-  let redigest ~path ~old_digest ~new_digest ~old_stats ~new_stats =
+  let changed name ~path ~old_name ~old_value ~new_name ~new_value ~old_stats ~new_stats =
     let now = Time.now () in
     let args =
       [ "path", Arg.path path
-      ; "old_digest", Arg.string old_digest
-      ; "new_digest", Arg.string new_digest
+      ; old_name, old_value
+      ; new_name, new_value
       ; "old_stats", Arg.dyn old_stats
       ; "new_stats", Arg.dyn new_stats
       ]
     in
-    Event.instant ~args ~name:"redigest" now Digest
+    Event.instant ~args ~name now Digest
+  ;;
+
+  let redigest ~path ~old_digest ~new_digest ~old_stats ~new_stats =
+    changed
+      "redigest"
+      ~path
+      ~old_name:"old_digest"
+      ~old_value:(Arg.string old_digest)
+      ~new_name:"new_digest"
+      ~new_value:(Arg.string new_digest)
+      ~old_stats
+      ~new_stats
   ;;
 
   let reread_dir ~path ~old_contents ~new_contents ~old_stats ~new_stats =
-    let now = Time.now () in
-    let args =
-      [ "path", Arg.path path
-      ; "old_contents", Arg.dyn old_contents
-      ; "new_contents", Arg.dyn new_contents
-      ; "old_stats", Arg.dyn old_stats
-      ; "new_stats", Arg.dyn new_stats
-      ]
-    in
-    Event.instant ~args ~name:"reread_dir" now Digest
+    changed
+      "reread_dir"
+      ~path
+      ~old_name:"old_contents"
+      ~old_value:(Arg.dyn old_contents)
+      ~new_name:"new_contents"
+      ~new_value:(Arg.dyn new_contents)
+      ~old_stats
+      ~new_stats
   ;;
 
   let dropped_stale_mtimes paths ~fs_now =

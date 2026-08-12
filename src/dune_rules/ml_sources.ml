@@ -228,6 +228,19 @@ let source_in_dir ~dir fn ~for_ =
     Path.Build.append_local melange_src descendant
 ;;
 
+let raise_duplicate_module ?loc ~dir name f1 f2 =
+  let src_dir = Path.Build.drop_build_context_exn dir in
+  User_error.raise
+    ?loc
+    [ Pp.textf
+        "Too many files for module %s in %s:"
+        (Module_name.to_string (Module_name.Unchecked.allow_invalid name))
+        (Path.Source.to_string_maybe_quoted src_dir)
+    ; Pp.textf "- %s" (Path.to_string_maybe_quoted (Module.File.path f1))
+    ; Pp.textf "- %s" (Path.to_string_maybe_quoted (Module.File.path f2))
+    ]
+;;
+
 let modules_of_files ~dialects ~dir ~files =
   let dir = Path.build dir in
   let impl_files, intf_files =
@@ -263,16 +276,12 @@ let modules_of_files ~dialects ~dir ~files =
     match Module_name.Unchecked.Map.of_list files with
     | Ok x -> x
     | Error (name, f1, f2) ->
-      let src_dir = Path.drop_build_context_exn dir in
-      User_error.raise
+      raise_duplicate_module
         ~loc:(Loc.in_dir dir)
-        [ Pp.textf
-            "Too many files for module %s in %s:"
-            (Module_name.to_string (Module_name.Unchecked.allow_invalid name))
-            (Path.Source.to_string_maybe_quoted src_dir)
-        ; Pp.textf "- %s" (Path.to_string_maybe_quoted (Module.File.path f1))
-        ; Pp.textf "- %s" (Path.to_string_maybe_quoted (Module.File.path f2))
-        ]
+        ~dir:(Path.as_in_build_dir_exn dir)
+        name
+        f1
+        f2
   in
   parse_one_set impl_files, parse_one_set intf_files
 ;;
@@ -346,16 +355,7 @@ let melange_modules_of_files ~root_dir ~dialects ~dir ~files =
       in
       match ret with
       | Ok x -> x
-      | Error (name, f1, f2) ->
-        let src_dir = Path.Build.drop_build_context_exn dir in
-        User_error.raise
-          [ Pp.textf
-              "Too many files for module %s in %s:"
-              (Module_name.to_string (name |> Module_name.Unchecked.allow_invalid))
-              (Path.Source.to_string_maybe_quoted src_dir)
-          ; Pp.textf "- %s" (Path.to_string_maybe_quoted (Module.File.path f1))
-          ; Pp.textf "- %s" (Path.to_string_maybe_quoted (Module.File.path f2))
-          ]
+      | Error (name, f1, f2) -> raise_duplicate_module ~dir name f1 f2
   in
   parse_one_set impl_files, parse_one_set intf_files
 ;;

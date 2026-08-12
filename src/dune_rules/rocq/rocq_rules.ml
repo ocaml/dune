@@ -80,46 +80,32 @@ let rocq_env =
         Memo.return
         @@
         let open Action_builder.O in
+        let parent = Action_builder.of_memo_join parent in
+        let expand_flags flags ~get =
+          let standard = Action_builder.map parent ~f:get in
+          Expander.expand_and_eval_set expander flags ~standard
+        in
+        let expand_path path ~get =
+          match path with
+          | None -> Action_builder.map parent ~f:get
+          | Some path ->
+            let+ path = Expander.expand_path expander path in
+            Some path
+        in
         let+ rocq_flags =
-          let standard =
-            let+ x = Action_builder.of_memo_join parent in
-            x.rocq_flags
-          in
-          Expander.expand_and_eval_set expander (Rocq_env.flags config.rocq) ~standard
+          expand_flags (Rocq_env.flags config.rocq) ~get:(fun x -> x.rocq_flags)
         and+ rocqdep_flags =
-          let standard =
-            let+ x = Action_builder.of_memo_join parent in
-            x.rocqdep_flags
-          in
-          Expander.expand_and_eval_set
-            expander
-            (Rocq_env.rocqdep_flags config.rocq)
-            ~standard
+          expand_flags (Rocq_env.rocqdep_flags config.rocq) ~get:(fun x ->
+            x.rocqdep_flags)
         and+ rocqdoc_flags =
-          let standard =
-            let+ x = Action_builder.of_memo_join parent in
-            x.rocqdoc_flags
-          in
-          Expander.expand_and_eval_set
-            expander
-            (Rocq_env.rocqdoc_flags config.rocq)
-            ~standard
+          expand_flags (Rocq_env.rocqdoc_flags config.rocq) ~get:(fun x ->
+            x.rocqdoc_flags)
         and+ rocqdoc_header =
-          match Rocq_env.rocqdoc_header config.rocq with
-          | None ->
-            let+ x = Action_builder.of_memo_join parent in
-            x.rocqdoc_header
-          | Some s ->
-            let+ path = Expander.expand_path expander s in
-            Some path
+          expand_path (Rocq_env.rocqdoc_header config.rocq) ~get:(fun x ->
+            x.rocqdoc_header)
         and+ rocqdoc_footer =
-          match Rocq_env.rocqdoc_footer config.rocq with
-          | None ->
-            let+ x = Action_builder.of_memo_join parent in
-            x.rocqdoc_footer
-          | Some s ->
-            let+ path = Expander.expand_path expander s in
-            Some path
+          expand_path (Rocq_env.rocqdoc_footer config.rocq) ~get:(fun x ->
+            x.rocqdoc_footer)
         in
         { Rocq_flags.rocq_flags
         ; rocqdep_flags

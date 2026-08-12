@@ -59,7 +59,7 @@ let readdir_with_kind_if_available =
   else readdir_with_kind_if_available_unix
 ;;
 
-let read_directory_with_kinds_exn dir_path =
+let with_directory dir_path ~f =
   let start = Counter.Timer.start () in
   Counter.incr Metrics.Directory_read.count;
   let dir =
@@ -73,26 +73,30 @@ let read_directory_with_kinds_exn dir_path =
     ~finally:(fun () ->
       Unix.closedir dir;
       Counter.Timer.stop Metrics.Directory_read.time start)
-    (fun () ->
-       let rec loop acc =
-         match readdir_with_kind_if_available dir with
-         | Entry (("." | ".."), _) -> loop acc
-         | End_of_directory -> acc
-         | Entry (base, kind) ->
-           let k kind = loop ((base, kind) :: acc) in
-           let skip () = loop acc in
-           File_kind.Option.elim
-             kind
-             ~none:(fun () ->
-               match Unix.lstat (Filename.concat dir_path base) with
-               | exception Unix.Unix_error _ ->
-                 (* File disappeared between readdir & lstat system calls. Handle
+    (fun () -> f dir)
+;;
+
+let read_directory_with_kinds_exn dir_path =
+  with_directory dir_path ~f:(fun dir ->
+    let rec loop acc =
+      match readdir_with_kind_if_available dir with
+      | Entry (("." | ".."), _) -> loop acc
+      | End_of_directory -> acc
+      | Entry (base, kind) ->
+        let k kind = loop ((base, kind) :: acc) in
+        let skip () = loop acc in
+        File_kind.Option.elim
+          kind
+          ~none:(fun () ->
+            match Unix.lstat (Filename.concat dir_path base) with
+            | exception Unix.Unix_error _ ->
+              (* File disappeared between readdir & lstat system calls. Handle
                    as if readdir never told us about it *)
-                 skip ()
-               | stat -> k stat.st_kind)
-             ~some:k
-       in
-       loop [])
+              skip ()
+            | stat -> k stat.st_kind)
+          ~some:k
+    in
+    loop [])
 ;;
 
 let read_directory_with_kinds dir_path =
@@ -100,27 +104,14 @@ let read_directory_with_kinds dir_path =
 ;;
 
 let read_directory_exn dir_path =
-  let start = Counter.Timer.start () in
-  Counter.incr Metrics.Directory_read.count;
-  let dir =
-    match Unix.opendir dir_path with
-    | dir -> dir
-    | exception exn ->
-      Counter.Timer.stop Metrics.Directory_read.time start;
-      raise exn
-  in
-  Fun.protect
-    ~finally:(fun () ->
-      Unix.closedir dir;
-      Counter.Timer.stop Metrics.Directory_read.time start)
-    (fun () ->
-       let rec loop acc =
-         match readdir_with_kind_if_available dir with
-         | Entry (("." | ".."), _) -> loop acc
-         | End_of_directory -> acc
-         | Entry (base, _) -> loop (base :: acc)
-       in
-       loop [])
+  with_directory dir_path ~f:(fun dir ->
+    let rec loop acc =
+      match readdir_with_kind_if_available dir with
+      | Entry (("." | ".."), _) -> loop acc
+      | End_of_directory -> acc
+      | Entry (base, _) -> loop (base :: acc)
+    in
+    loop [])
 ;;
 
 let read_directory dir_path = Unix_error.Detailed.catch read_directory_exn dir_path

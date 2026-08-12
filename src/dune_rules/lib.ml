@@ -2422,36 +2422,34 @@ module DB = struct
     from_findlib context (Findlib.create (Context.name context))
   ;;
 
+  let find_result = function
+    | Status.Found t -> Some t
+    | Ignore | Not_found | Invalid _ | Hidden _ -> None
+  ;;
+
   let find t name =
     let open Memo.O in
-    Resolve_names.find_internal t name
-    >>| function
-    | Found t -> Some t
-    | Ignore | Not_found | Invalid _ | Hidden _ -> None
+    Resolve_names.find_internal t name >>| find_result
   ;;
 
   let find_lib_id t lib_id =
     let open Memo.O in
-    Resolve_names.resolve_lib_id t lib_id
-    >>| function
-    | Found t -> Some t
-    | Ignore | Not_found | Invalid _ | Hidden _ -> None
+    Resolve_names.resolve_lib_id t lib_id >>| find_result
+  ;;
+
+  let find_even_when_hidden_result = function
+    | Status.Found t | Hidden { lib = t; reason = _; path = _ } -> Some t
+    | Ignore | Invalid _ | Not_found -> None
   ;;
 
   let find_even_when_hidden t name =
     let open Memo.O in
-    Resolve_names.find_internal t name
-    >>| function
-    | Found t | Hidden { lib = t; reason = _; path = _ } -> Some t
-    | Ignore | Invalid _ | Not_found -> None
+    Resolve_names.find_internal t name >>| find_even_when_hidden_result
   ;;
 
   let find_lib_id_even_when_hidden t lib_id =
     let open Memo.O in
-    Resolve_names.resolve_lib_id t lib_id
-    >>| function
-    | Found t | Hidden { lib = t; reason = _; path = _ } -> Some t
-    | Ignore | Invalid _ | Not_found -> None
+    Resolve_names.resolve_lib_id t lib_id >>| find_even_when_hidden_result
   ;;
 
   let resolve_when_exists t (loc, name) =

@@ -114,11 +114,6 @@ let map_loc t ~f =
   { t with loc }
 ;;
 
-let virt_pform ?quoted pos pform =
-  let loc = Loc.of_pos pos in
-  make_pform ?quoted loc pform
-;;
-
 let virt_text pos s =
   let loc = Loc.of_pos pos in
   { parts = [ Text s ]; loc; quoted = true }
@@ -239,33 +234,12 @@ let known_prefix =
   fun t -> go t.parts []
 ;;
 
-let fold_pforms =
-  let rec loop parts acc f =
-    match parts with
-    | [] -> acc
-    | (Text _ | Error _) :: parts -> loop parts acc f
-    | Pform (p, v) :: parts -> loop parts (f ~source:p v acc) f
-  in
-  fun t ~init ~f -> loop t.parts init f
-;;
-
 type 'a expander = source:Template.Pform.t -> Pform.t -> 'a
 
 type yes_no_unknown =
   | Yes
   | No
   | Unknown of { source_pform : Template.Pform.t }
-
-let is_suffix t ~suffix:want =
-  match known_suffix t with
-  | Full s -> if String.ends_with ~suffix:want s then Yes else No
-  | Partial { suffix = have; source_pform } ->
-    if String.ends_with ~suffix:want have
-    then Yes
-    else if String.ends_with ~suffix:have want
-    then Unknown { source_pform }
-    else No
-;;
 
 let is_prefix t ~prefix:want =
   match known_prefix t with

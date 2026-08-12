@@ -16,7 +16,6 @@ let compare = String.compare
 let repr = Repr.view Repr.string ~to_:to_string
 let add_suffix = ( ^ )
 let uncapitalize = String.uncapitalize
-let pp_quote fmt x = Format.fprintf fmt "%S" x
 
 module Unchecked = struct
   type valid_name = t
@@ -80,8 +79,6 @@ module Infix = Comparator.Operators (String)
 let of_local_lib_name (loc, s) =
   Unchecked.make ~loc (Lib_name.Local.to_string s) |> Unchecked.validate_exn
 ;;
-
-let to_local_lib_name s = Lib_name.Local.of_string s
 
 module Per_item = struct
   include Per_item.Make (String)

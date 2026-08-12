@@ -43,11 +43,6 @@ type ast_expanded = (Loc.t * string, Ast.expanded) Ast.t
    contained in the set, like we do with the predicate language. *)
 type t = ast_expanded generic
 
-let of_atoms ~loc lst =
-  let ast = Ast.Union (List.map lst ~f:(fun s -> Ast.Element (loc, s))) in
-  { ast; loc = Some loc; context = Univ_map.empty }
-;;
-
 let equal = equal_generic (Ast.equal (fun (_, x) (_, y) -> String.equal x y))
 let loc t = t.loc
 
@@ -270,22 +265,6 @@ module Unexpanded = struct
   ;;
 
   let standard = standard
-
-  let of_strings ~pos l =
-    { ast =
-        Ast.Union
-          (List.map l ~f:(fun x -> Ast.Element (String_with_vars.virt_text pos x)))
-    ; loc = Some (Loc.of_pos pos)
-    ; context = Univ_map.empty
-    }
-  ;;
-
-  let include_single ~context ~pos f =
-    { ast = Ast.Include (String_with_vars.virt_text pos f)
-    ; loc = Some (Loc.of_pos pos)
-    ; context
-    }
-  ;;
 
   let is_expanded t =
     let rec loop (t : ast) =

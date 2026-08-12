@@ -418,7 +418,6 @@ module DB = struct
   ;;
 
   let of_list dialects = List.fold_left ~f:(add ~loc:Loc.none) ~init:empty dialects
-  let find_by_name { by_name; _ } name = String.Map.find by_name name
 
   let find_by_extension { by_extension; _ } extension =
     Option.map

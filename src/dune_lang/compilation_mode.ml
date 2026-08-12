@@ -50,11 +50,6 @@ module Set = struct
   ;;
 end
 
-let of_lib_mode = function
-  | Lib_mode.Ocaml _ -> Ocaml
-  | Melange -> Melange
-;;
-
 let default_sandbox = Dune_engine.Sandbox_config.no_special_requirements
 
 module Per_mode = struct

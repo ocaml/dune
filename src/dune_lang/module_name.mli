@@ -42,7 +42,6 @@ val equal : t -> t -> bool
 val compare : t -> t -> Ordering.t
 val repr : t Repr.t
 val uncapitalize : t -> string
-val pp_quote : Format.formatter -> t -> unit
 
 module Per_item : sig
   include Per_item with type key = t
@@ -54,7 +53,6 @@ end
 module Infix : Comparator.OPS with type t = t
 
 val of_local_lib_name : Loc.t * Lib_name.Local.t -> t
-val to_local_lib_name : t -> Lib_name.Local.t
 
 module Unique : sig
   type name := t

@@ -7,7 +7,6 @@ type t =
 val equal : t -> t -> bool
 val repr : t Repr.t
 val to_dyn : t -> Dyn.t
-val of_lib_mode : Lib_mode.t -> t
 val default_sandbox : Dune_engine.Sandbox_config.t
 
 module Set : sig

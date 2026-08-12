@@ -222,8 +222,5 @@ module Env : sig
       deleted. *)
   val lt_renamed_input_file : t -> t
 
-  type stamp
-
-  val to_stamp : t -> stamp
   val to_dyn : t -> Dyn.t
 end

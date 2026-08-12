@@ -1175,12 +1175,7 @@ let build_exe
   let target = Path.Build.set_extension src ~ext:(Js_of_ocaml.Ext.exe ~mode) in
   let* rule_mode : Rule.Mode.t =
     let* expander = Super_context.expander sctx ~dir in
-    let rule_mode =
-      match promote with
-      | None -> Rule_mode.Standard
-      | Some p -> Promote p
-    in
-    Rule_mode_expand.expand_path ~expander ~dir rule_mode
+    Rule_mode_expand.expand_optional_promote ~expander ~dir promote
   in
   let* cmode =
     match compilation_mode with

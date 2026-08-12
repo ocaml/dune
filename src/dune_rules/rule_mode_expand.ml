@@ -24,6 +24,15 @@ let expand_path t ~expander ~dir =
     Path.reach ~from:(Path.build dir) path)
 ;;
 
+let expand_optional_promote promote ~expander ~dir =
+  let rule_mode =
+    match promote with
+    | None -> Rule_mode.Standard
+    | Some promote -> Promote promote
+  in
+  expand_path ~expander ~dir rule_mode
+;;
+
 let expand_str t ~expander =
   expand t ~f:(fun into_dir ->
     let open Memo.O in

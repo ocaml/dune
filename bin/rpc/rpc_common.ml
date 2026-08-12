@@ -139,6 +139,13 @@ let send_request ~f connection name =
     ~f:(fun client -> with_rpc_connected_status_line (fun () -> f client))
 ;;
 
+let fire ~name ~wait ~warn_forwarding ~lock_held_by builder f =
+  let open Fiber.O in
+  let* connection = establish_client_session ~wait ~lock_held_by in
+  if should_warn ~warn_forwarding builder then warn_ignore_arguments lock_held_by;
+  send_request connection name ~f
+;;
+
 let fire_request
       ~name
       ~wait
@@ -148,10 +155,8 @@ let fire_request
       request
       arg
   =
-  let open Fiber.O in
-  let* connection = establish_client_session ~wait ~lock_held_by in
-  if should_warn ~warn_forwarding builder then warn_ignore_arguments lock_held_by;
-  send_request connection name ~f:(fun client -> request_exn client request arg)
+  fire ~name ~wait ~warn_forwarding ~lock_held_by builder (fun client ->
+    request_exn client request arg)
 ;;
 
 let fire_notification
@@ -163,10 +168,8 @@ let fire_notification
       notification
       arg
   =
-  let open Fiber.O in
-  let* connection = establish_client_session ~wait ~lock_held_by in
-  if should_warn ~warn_forwarding builder then warn_ignore_arguments lock_held_by;
-  send_request connection name ~f:(fun client -> notify_exn client notification arg)
+  fire ~name ~wait ~warn_forwarding ~lock_held_by builder (fun client ->
+    notify_exn client notification arg)
 ;;
 
 let print_err_warn (num_errors, num_warnings) =

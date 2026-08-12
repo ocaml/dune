@@ -612,6 +612,11 @@ module Crawl = struct
 
   let for_ = Compilation_mode.Ocaml
 
+  let pp_map sctx preprocess =
+    let+ ocaml = Super_context.context sctx |> Context.ocaml in
+    Staged.unstage (Pp_spec.pped_modules_map preprocess ocaml.version)
+  ;;
+
   (* Builds a workspace item for the provided executables object *)
   let executables sctx ~options ~project ~dir (exes : Executables.t)
     : (Descr.Item.t * Lib.Set.t) option Memo.t
@@ -636,15 +641,10 @@ module Crawl = struct
         Modules.With_vlib.modules modules_, obj_dir
       in
       let* pp_map =
-        let+ version =
-          let+ ocaml = Super_context.context sctx |> Context.ocaml in
-          ocaml.version
-        in
-        Staged.unstage
-        @@ Pp_spec.pped_modules_map
-             (Dune_lang.Preprocess.Per_module.without_instrumentation
-                exes.buildable.preprocess.config)
-             version
+        pp_map
+          sctx
+          (Dune_lang.Preprocess.Per_module.without_instrumentation
+             exes.buildable.preprocess.config)
       in
       let deps_of module_ =
         let module_ = pp_map module_ in
@@ -719,15 +719,10 @@ module Crawl = struct
             Modules.With_vlib.modules modules_, obj_dir_
           in
           let* pp_map =
-            let+ version =
-              let+ ocaml = Super_context.context sctx |> Context.ocaml in
-              ocaml.version
-            in
-            Staged.unstage
-            @@ Pp_spec.pped_modules_map
-                 (Dune_lang.Preprocess.Per_module.without_instrumentation
-                    (Lib_info.preprocess info ~for_))
-                 version
+            pp_map
+              sctx
+              (Dune_lang.Preprocess.Per_module.without_instrumentation
+                 (Lib_info.preprocess info ~for_))
           in
           let deps_of module_ =
             immediate_deps_of_module

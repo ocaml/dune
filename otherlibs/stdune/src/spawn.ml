@@ -75,7 +75,9 @@ let spawn_unix
     ~stderr:(Fd.unsafe_to_unix_file_descr stderr)
     ~use_vfork
     ~setpgid
-    ~sigprocmask
+    ~sigprocmask:
+      (Option.map sigprocmask ~f:(fun (mask, signals) ->
+         mask, List.map signals ~f:Signal.to_int))
     ~pdeathsig
   |> Pid.of_int_exn
 ;;

@@ -41,6 +41,7 @@ module Extension : sig
   val mli : t
   val mllib : t
   val mll : t
+  val v : t
   val vo : t
   val vos : t
   val mly : t

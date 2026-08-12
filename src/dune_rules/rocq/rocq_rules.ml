@@ -159,22 +159,10 @@ let rocqdoc_flags ~dir ~stanza_rocqdoc_flags ~expander =
          (rocq_env ~dir))
 ;;
 
-let rocqdoc_header ~dir ~stanza_rocqdoc_header ~expander =
-  match stanza_rocqdoc_header with
-  | None ->
-    Action_builder.map
-      ~f:(fun { Rocq_flags.rocqdoc_header; _ } -> rocqdoc_header)
-      (rocq_env ~dir)
-  | Some s -> Action_builder.map ~f:Option.some (Expander.expand_path expander s)
-;;
-
-let rocqdoc_footer ~dir ~stanza_rocqdoc_footer ~expander =
-  match stanza_rocqdoc_footer with
-  | None ->
-    Action_builder.map
-      ~f:(fun { Rocq_flags.rocqdoc_footer; _ } -> rocqdoc_footer)
-      (rocq_env ~dir)
-  | Some s -> Action_builder.map ~f:Option.some (Expander.expand_path expander s)
+let rocqdoc_path ~dir ~stanza_path ~expander ~get =
+  match stanza_path with
+  | None -> Action_builder.map ~f:get (rocq_env ~dir)
+  | Some path -> Action_builder.map ~f:Option.some (Expander.expand_path expander path)
 ;;
 
 let theory_rocqc_flag lib =
@@ -976,7 +964,11 @@ let setup_rocqdoc_rules ~sctx ~dir ~theories_deps (s : Rocq_stanza.Theory.t) roc
              let open Action_builder.O in
              let* expander = Action_builder.of_memo @@ Super_context.expander sctx ~dir in
              let+ header =
-               rocqdoc_header ~dir ~stanza_rocqdoc_header:s.rocqdoc_header ~expander
+               rocqdoc_path
+                 ~dir
+                 ~stanza_path:s.rocqdoc_header
+                 ~expander
+                 ~get:(fun { Rocq_flags.rocqdoc_header; _ } -> rocqdoc_header)
              in
              match header with
              | None -> Command.Args.empty
@@ -986,7 +978,11 @@ let setup_rocqdoc_rules ~sctx ~dir ~theories_deps (s : Rocq_stanza.Theory.t) roc
              let open Action_builder.O in
              let* expander = Action_builder.of_memo @@ Super_context.expander sctx ~dir in
              let+ footer =
-               rocqdoc_footer ~dir ~stanza_rocqdoc_footer:s.rocqdoc_footer ~expander
+               rocqdoc_path
+                 ~dir
+                 ~stanza_path:s.rocqdoc_footer
+                 ~expander
+                 ~get:(fun { Rocq_flags.rocqdoc_footer; _ } -> rocqdoc_footer)
              in
              match footer with
              | None -> Command.Args.empty

@@ -952,33 +952,21 @@ let setup_rocqdoc_rules ~sctx ~dir ~theories_deps (s : Rocq_stanza.Theory.t) roc
              in
              Expander.expand_and_eval_set expander s.rocqdoc_flags ~standard
            in
-           let header =
+           let html_file flag stanza_path get =
              let open Action_builder.O in
              let* expander = Action_builder.of_memo @@ Super_context.expander sctx ~dir in
-             let+ header =
-               rocqdoc_path
-                 ~dir
-                 ~stanza_path:s.rocqdoc_header
-                 ~expander
-                 ~get:(fun { Rocq_flags.rocqdoc_header; _ } -> rocqdoc_header)
-             in
-             match header with
+             let+ path = rocqdoc_path ~dir ~stanza_path ~expander ~get in
+             match path with
              | None -> Command.Args.empty
-             | Some path -> Command.Args.S [ A "--with-header"; Dep path ]
+             | Some path -> Command.Args.S [ A flag; Dep path ]
+           in
+           let header =
+             html_file "--with-header" s.rocqdoc_header (fun flags ->
+               flags.Rocq_flags.rocqdoc_header)
            in
            let footer =
-             let open Action_builder.O in
-             let* expander = Action_builder.of_memo @@ Super_context.expander sctx ~dir in
-             let+ footer =
-               rocqdoc_path
-                 ~dir
-                 ~stanza_path:s.rocqdoc_footer
-                 ~expander
-                 ~get:(fun { Rocq_flags.rocqdoc_footer; _ } -> rocqdoc_footer)
-             in
-             match footer with
-             | None -> Command.Args.empty
-             | Some path -> Command.Args.S [ A "--with-footer"; Dep path ]
+             html_file "--with-footer" s.rocqdoc_footer (fun flags ->
+               flags.Rocq_flags.rocqdoc_footer)
            in
            let when_html dyn =
              match mode with

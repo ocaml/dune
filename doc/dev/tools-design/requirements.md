@@ -398,17 +398,22 @@ Motivation and context
 Users should be able to install tools based on the name of the tool without
 considering the package that provides it.
 
-CR Shon: because this will require changes to the opam repo to be effective,
-this is a *should* rather than a *must* at the moment, and may not be achievable
-in the first iteration of the redesign.
+*NOTE:* because this will require changes to the opam repo to be effective, this
+is a *should* rather than a *must* at the moment, and may not be achievable in
+the first iteration of the redesign.
 
 ##### 1.6.1. Disambiguation
 
-If multiple packages provide tools with the same name, and a user requests installation, dune should offer disambiguation.
+If multiple packages provide tools with the same name, and a user requests
+installation, dune should offer disambiguation.
 
-CR Shon: what do we do in dune package management if two packages provide the
-same executable? E.g., perhaps you want to use package a for tool a' and b for
-b', but they both also provide executables named `c`?
+##### 1.6.1.1. Name conflicts
+
+If two packages provide tools with the same name, dune must ensure the user is
+informed of the conflict, to avoid unexpected (and possibly unsafe behavior).
+
+Ideally, dune should also provide a means for renaming executables to be
+installed, if feasible.
 
 #### 1.7. Project dependency tools
 

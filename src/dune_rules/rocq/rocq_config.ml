@@ -96,6 +96,20 @@ let get_output_from_config_or_version ~(rocq : Action.Prog.t) ~what memo =
   | Error e -> Action.Prog.Not_found.raise e
 ;;
 
+let run_capture_lines bin args =
+  let* _ = Build_system.build_file bin in
+  Memo.of_reproducible_fiber
+  @@ Process.run_capture_lines
+       ~display:Quiet
+       ~stderr_to:
+         (Process.Io.make_stderr
+            ~output_on_success:Swallow
+            ~output_limit:Execution_parameters.Action_output_limit.default)
+       Return
+       bin
+       args
+;;
+
 module Version = struct
   module Num = struct
     type t =
@@ -154,18 +168,8 @@ module Version = struct
     }
 
   let impl_version bin =
-    let* _ = Build_system.build_file bin in
-    Memo.of_reproducible_fiber
-    @@ Process.run_capture_lines
-         ~display:Quiet
-         ~stderr_to:
-           (Process.Io.make_stderr
-              ~output_on_success:Swallow
-              ~output_limit:Execution_parameters.Action_output_limit.default)
-         Return
-         bin
-         (* we pass -boot since this means it will work with just coq-core *)
-         [ "--print-version"; "-boot"; "-noinit" ]
+    (* We pass -boot since this means it will work with just coq-core. *)
+    run_capture_lines bin [ "--print-version"; "-boot"; "-noinit" ]
   ;;
 
   let version_memo = Memo.create "coq-and-ocaml-version" ~input:(module Path) impl_version
@@ -211,20 +215,7 @@ type t =
   ; rocq_native_compiler_default : string option
   }
 
-let impl_config bin =
-  let* _ = Build_system.build_file bin in
-  Memo.of_reproducible_fiber
-  @@ Process.run_capture_lines
-       ~display:Quiet
-       ~stderr_to:
-         (Process.Io.make_stderr
-            ~output_on_success:Swallow
-            ~output_limit:Execution_parameters.Action_output_limit.default)
-       Return
-       bin
-       [ "c"; "--config" ]
-;;
-
+let impl_config bin = run_capture_lines bin [ "c"; "--config" ]
 let config_memo = Memo.create "rocq-config" ~input:(module Path) impl_config
 
 let make ~(rocq : Action.Prog.t) =

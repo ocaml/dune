@@ -19,6 +19,8 @@ after they're promted
      $ echo bazy
   +  bazy
   [1]
+  $ test ! -e _build/default/.cram.foo.t/cram.out
+  [1]
   $ cat side-effect
   run
   $ dune promote
@@ -34,7 +36,7 @@ However, if passing --force, we should still be able to re-run cram tests:
 
   $ dune runtest foo.t --force
 
-There should be two "run"s here, however there is only one:
+There should be two "run"s here:
   $ cat side-effect
   run
 

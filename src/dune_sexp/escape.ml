@@ -108,15 +108,13 @@ let quoted s =
   Bytes.unsafe_to_string s'
 ;;
 
+let print_escaped s = Printf.printf "%S -> %S\n" s (escaped s)
+
 let%expect_test "escaped - plain strings pass through unchanged" =
-  let test s =
-    let r = escaped s in
-    Printf.printf "%S -> %S\n" s r
-  in
-  test "hello";
-  test "foo_bar";
-  test "123";
-  test "a/b/c";
+  print_escaped "hello";
+  print_escaped "foo_bar";
+  print_escaped "123";
+  print_escaped "a/b/c";
   [%expect
     {|
     "hello" -> "hello"
@@ -127,16 +125,12 @@ let%expect_test "escaped - plain strings pass through unchanged" =
 ;;
 
 let%expect_test "escaped - special characters are escaped" =
-  let test s =
-    let r = escaped s in
-    Printf.printf "%S -> %S\n" s r
-  in
-  test "has\"quote";
-  test "back\\slash";
-  test "new\nline";
-  test "tab\there";
-  test "car\rret";
-  test "back\bspace";
+  print_escaped "has\"quote";
+  print_escaped "back\\slash";
+  print_escaped "new\nline";
+  print_escaped "tab\there";
+  print_escaped "car\rret";
+  print_escaped "back\bspace";
   [%expect
     {|
     "has\"quote" -> "has\\\"quote"
@@ -149,14 +143,10 @@ let%expect_test "escaped - special characters are escaped" =
 ;;
 
 let%expect_test "escaped - percent brace escaping" =
-  let test s =
-    let r = escaped s in
-    Printf.printf "%S -> %S\n" s r
-  in
-  test "%{var}";
-  test "100%";
-  test "%%";
-  test "%alone";
+  print_escaped "%{var}";
+  print_escaped "100%";
+  print_escaped "%%";
+  print_escaped "%alone";
   [%expect
     {|
     "%{var}" -> "\\%{var}"
@@ -173,14 +163,10 @@ let%expect_test "escaped - empty string" =
 ;;
 
 let%expect_test "escaped - non-ascii bytes are octal-escaped" =
-  let test s =
-    let r = escaped s in
-    Printf.printf "%S -> %S\n" s r
-  in
-  test "\x00";
-  test "\x01";
-  test "\x7f";
-  test "\xff";
+  print_escaped "\x00";
+  print_escaped "\x01";
+  print_escaped "\x7f";
+  print_escaped "\xff";
   [%expect
     {|
     "\000" -> "\000"
@@ -191,16 +177,12 @@ let%expect_test "escaped - non-ascii bytes are octal-escaped" =
 ;;
 
 let%expect_test "escaped - valid utf8 passes through" =
-  let test s =
-    let r = escaped s in
-    Printf.printf "%S -> %S\n" s r
-  in
   (* 2-byte: é *)
-  test "\xc3\xa9";
+  print_escaped "\xc3\xa9";
   (* 3-byte: € *)
-  test "\xe2\x82\xac";
+  print_escaped "\xe2\x82\xac";
   (* 4-byte: 𝄞 *)
-  test "\xf0\x9d\x84\x9e";
+  print_escaped "\xf0\x9d\x84\x9e";
   [%expect
     {|
     "\195\169" -> "\195\169"
@@ -252,13 +234,9 @@ let%expect_test "quote_length - matches actual escaped length" =
 ;;
 
 let%expect_test "escaped - mixed content" =
-  let test s =
-    let r = escaped s in
-    Printf.printf "%S -> %S\n" s r
-  in
-  test "hello\nworld\t!";
-  test "say \"hi\" and \\go";
-  test "%{x} is 100%";
+  print_escaped "hello\nworld\t!";
+  print_escaped "say \"hi\" and \\go";
+  print_escaped "%{x} is 100%";
   [%expect
     {|
     "hello\nworld\t!" -> "hello\\nworld\\t!"

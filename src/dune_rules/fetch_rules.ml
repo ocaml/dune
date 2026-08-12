@@ -269,19 +269,10 @@ let gen_rules ~dir ~components =
   let components = Filename.L.to_string components in
   match components with
   | [] ->
-    Memo.return Rules.empty
-    |> Gen_rules.make
-         ~build_dir_only_sub_dirs:
-           (Gen_rules.Build_only_sub_dirs.singleton
-              ~dir
-              (Subdir_set.of_list [ Filename.checksum; Filename.url ]))
+    Subdir_set.of_list [ Filename.checksum; Filename.url ]
+    |> Gen_rules.make_empty ~dir
     |> Memo.return
-  | [ ("url" | "checksum") ] ->
-    Memo.return Rules.empty
-    |> Gen_rules.make
-         ~build_dir_only_sub_dirs:
-           (Gen_rules.Build_only_sub_dirs.singleton ~dir Subdir_set.all)
-    |> Memo.return
+  | [ ("url" | "checksum") ] -> Gen_rules.make_empty ~dir Subdir_set.all |> Memo.return
   | [ "checksum"; checksum ] ->
     let checksum = Dune_pkg.Checksum.parse_string_exn (Loc.none, checksum) in
     let+ url, checksum = find_checksum checksum in

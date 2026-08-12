@@ -443,12 +443,7 @@ let find_scope ~sctx encoded_scope =
 
 let gen_rules ~sctx ~dir rest =
   match rest with
-  | [] | [ _ ] ->
-    Memo.return
-      (Build_config.Gen_rules.make
-         ~build_dir_only_sub_dirs:
-           (Build_config.Gen_rules.Build_only_sub_dirs.singleton ~dir Subdir_set.all)
-         (Memo.return Rules.empty))
+  | [] | [ _ ] -> Memo.return (Build_config.Gen_rules.make_empty ~dir Subdir_set.all)
   | [ scope; lib_name ] ->
     let* scope = find_scope ~sctx scope in
     has_rules @@ fun () -> external_dep_rules ~sctx ~dir ~scope lib_name

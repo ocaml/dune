@@ -1,6 +1,12 @@
 include Path0
 module External = Path_external
 
+let inside_workspace_exn ?loc ~path ~from = function
+  | Ok t -> t
+  | Error `Outside_the_workspace ->
+    User_error.raise ?loc [ Pp.textf "path outside the workspace: %s from %s" path from ]
+;;
+
 module Local = struct
   include Local
 
@@ -10,45 +16,27 @@ module Local = struct
     include L
 
     let relative ?error_loc t components =
-      match relative_result t components with
-      | Ok t -> t
-      | Error `Outside_the_workspace ->
-        User_error.raise
-          ?loc:error_loc
-          [ Pp.textf
-              "path outside the workspace: %s from %s"
-              (String.concat ~sep:"/" components)
-              (Local_gen.to_string t)
-          ]
+      relative_result t components
+      |> inside_workspace_exn
+           ?loc:error_loc
+           ~path:(String.concat ~sep:"/" components)
+           ~from:(Local_gen.to_string t)
     ;;
   end
 
   let relative ?error_loc t path =
-    match relative_result t path with
-    | Ok t -> t
-    | Error `Outside_the_workspace ->
-      User_error.raise
-        ?loc:error_loc
-        [ Pp.textf "path outside the workspace: %s from %s" path (to_string t) ]
+    relative_result t path
+    |> inside_workspace_exn ?loc:error_loc ~path ~from:(to_string t)
   ;;
 
   let relative_fname ?error_loc t fn = relative ?error_loc t (Filename.to_string fn)
 
   let parse_string_exn ~loc s =
-    match parse_string_result s with
-    | Ok t -> t
-    | Error `Outside_the_workspace ->
-      User_error.raise
-        ~loc
-        [ Pp.textf "path outside the workspace: %s from %s" s (to_string root) ]
+    parse_string_result s |> inside_workspace_exn ~loc ~path:s ~from:(to_string root)
   ;;
 
   let of_string s =
-    match parse_string_result s with
-    | Ok t -> t
-    | Error `Outside_the_workspace ->
-      User_error.raise
-        [ Pp.textf "path outside the workspace: %s from %s" s (to_string root) ]
+    parse_string_result s |> inside_workspace_exn ~path:s ~from:(to_string root)
   ;;
 end
 
@@ -84,31 +72,18 @@ module Source0 = struct
   end
 
   let relative ?error_loc t path =
-    match relative_result t path with
-    | Ok t -> t
-    | Error `Outside_the_workspace ->
-      User_error.raise
-        ?loc:error_loc
-        [ Pp.textf "path outside the workspace: %s from %s" path (to_string t) ]
+    relative_result t path
+    |> inside_workspace_exn ?loc:error_loc ~path ~from:(to_string t)
   ;;
 
   let relative_fname ?error_loc t fn = relative ?error_loc t (Filename.to_string fn)
 
   let parse_string_exn ~loc s =
-    match parse_string_result s with
-    | Ok t -> t
-    | Error `Outside_the_workspace ->
-      User_error.raise
-        ~loc
-        [ Pp.textf "path outside the workspace: %s from %s" s (to_string root) ]
+    parse_string_result s |> inside_workspace_exn ~loc ~path:s ~from:(to_string root)
   ;;
 
   let of_string s =
-    match parse_string_result s with
-    | Ok t -> t
-    | Error `Outside_the_workspace ->
-      User_error.raise
-        [ Pp.textf "path outside the workspace: %s from %s" s (to_string root) ]
+    parse_string_result s |> inside_workspace_exn ~path:s ~from:(to_string root)
   ;;
 end
 
@@ -241,31 +216,18 @@ module Build = struct
   end
 
   let relative ?error_loc t path =
-    match relative_result t path with
-    | Ok t -> t
-    | Error `Outside_the_workspace ->
-      User_error.raise
-        ?loc:error_loc
-        [ Pp.textf "path outside the workspace: %s from %s" path (to_string t) ]
+    relative_result t path
+    |> inside_workspace_exn ?loc:error_loc ~path ~from:(to_string t)
   ;;
 
   let relative_fname ?error_loc t fn = relative ?error_loc t (Filename.to_string fn)
 
   let parse_string_exn ~loc s =
-    match parse_string_result s with
-    | Ok t -> t
-    | Error `Outside_the_workspace ->
-      User_error.raise
-        ~loc
-        [ Pp.textf "path outside the workspace: %s from %s" s (to_string root) ]
+    parse_string_result s |> inside_workspace_exn ~loc ~path:s ~from:(to_string root)
   ;;
 
   let of_string s =
-    match parse_string_result s with
-    | Ok t -> t
-    | Error `Outside_the_workspace ->
-      User_error.raise
-        [ Pp.textf "path outside the workspace: %s from %s" s (to_string root) ]
+    parse_string_result s |> inside_workspace_exn ~path:s ~from:(to_string root)
   ;;
 
   let append a b = of_local (Local.append (local a) (local b))

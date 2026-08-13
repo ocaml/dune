@@ -49,6 +49,17 @@ type 'a t =
   | Uninitialized
   (** [Uninitialized] is the value of a node that has never been computed. *)
 
+let get_exn_error t ~map_exn =
+  match t with
+  | Ok _ -> Code_error.raise "Value.get_exn_error called on a value" []
+  | Error { Collect_errors_monoid.exns; reproducible = _ } ->
+    Fiber.reraise_all
+      (Exn_set.to_list_map exns ~f:(fun (exn : Exn_with_backtrace.t) ->
+         { exn with exn = map_exn exn.exn }))
+  | Uninitialized ->
+    Code_error.raise "Value.get_exn_error called on an uninitialized value" []
+;;
+
 let get_exn t ~map_exn =
   match t with
   | Ok a -> Fiber.return a

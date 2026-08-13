@@ -359,49 +359,32 @@ let chdirs =
 
 let empty = Progn []
 
-let rec is_dynamic = function
-  | Chdir (_, t)
-  | Setenv (_, _, t)
-  | Redirect_out (_, _, _, t)
-  | Redirect_in (_, _, t)
-  | Ignore (_, t)
-  | With_accepted_exit_codes (_, t) -> is_dynamic t
-  | Progn l | Pipe (_, l) | Concurrent l -> List.exists l ~f:is_dynamic
-  | Run _
-  | System _
-  | Bash _
-  | Echo _
-  | Cat _
-  | Copy _
-  | Symlink _
-  | Hardlink _
-  | Write_file _
-  | Rename _
-  | Remove_tree _
-  | Diff _
-  | Mkdir _ -> false
-  | Extension (module A) -> A.Spec.is_dynamic
+let exists t ~leaf ~extension =
+  let rec loop = function
+    | Chdir (_, t)
+    | Setenv (_, _, t)
+    | Redirect_out (_, _, _, t)
+    | Redirect_in (_, _, t)
+    | Ignore (_, t)
+    | With_accepted_exit_codes (_, t) -> loop t
+    | Progn l | Pipe (_, l) | Concurrent l -> List.exists l ~f:loop
+    | Extension extension_ -> extension extension_
+    | t -> leaf t
+  in
+  loop t
 ;;
 
-let rec runs_process = function
-  | Chdir (_, t)
-  | Setenv (_, _, t)
-  | Redirect_out (_, _, _, t)
-  | Redirect_in (_, _, t)
-  | Ignore (_, t)
-  | With_accepted_exit_codes (_, t) -> runs_process t
-  | Progn l | Pipe (_, l) | Concurrent l -> List.exists l ~f:runs_process
-  | Run _ | System _ | Bash _ | Diff _ -> true
-  | Echo _
-  | Cat _
-  | Copy _
-  | Symlink _
-  | Hardlink _
-  | Write_file _
-  | Rename _
-  | Remove_tree _
-  | Mkdir _ -> false
-  | Extension (module A) -> A.Spec.runs_process
+let is_dynamic t =
+  exists t ~leaf:(fun _ -> false) ~extension:(fun (module A) -> A.Spec.is_dynamic)
+;;
+
+let runs_process t =
+  exists
+    t
+    ~leaf:(function
+      | Run _ | System _ | Bash _ | Diff _ -> true
+      | _ -> false)
+    ~extension:(fun (module A) -> A.Spec.runs_process)
 ;;
 
 let maybe_sandbox_path sandbox p =

@@ -4,7 +4,9 @@ no digest hash).
 
   $ make_dune_project 3.22
 
-  $ fifo="$(mktemp -d)/fifo"
+  $ tmpdir="$(mktemp -d)"
+  $ fifo="$tmpdir/fifo"
+  $ trace_file="$tmpdir/trace.csexp"
   $ mkfifo $fifo
 
 Set up a nested dune project:
@@ -25,18 +27,18 @@ Set up a nested dune project:
   > EOF
 
   $ checkStart() {
-  >   dune trace cat \
+  >   dune trace cat --trace-file "$trace_file" \
   >     | jq -e 'select(.name == "init" and .cat == "config")'
   > } 1> /dev/null 2>&1
 
-  $ dune build ./x &
+  $ dune build ./x --trace-file "$trace_file" &
 
   $ while ! checkStart; do sleep 0.1; done
 
 Follow mode should see both init/exit pairs. Inner dune has a digest hash in its
 events, outer dune does not:
 
-  $ ( dune trace cat --follow \
+  $ ( dune trace cat --follow --trace-file "$trace_file" \
   > | jq 'select(.cat == "config" and (.name == "init" or .name == "exit"))
   >       | { name, has_digest_hash: (if .args.digest then (.args.digest | type == "string") else false end) }' ) &
   {

@@ -108,16 +108,17 @@ let hash
 
 let bool_to_int b = if b then 1 else 0
 
-let digest_fields
-      ~action_stdout_on_success
-      ~action_stderr_on_success
-      ~action_stdout_limit
-      ~action_stderr_limit
-      ~expand_aliases_in_sandbox
-      ~workspace_root_to_build_path_prefix_map
-      ~action_project_root
-      ~should_remove_write_permissions_on_generated_files
-      ~sandbox_actions
+let digest
+      { action_stdout_on_success
+      ; action_stderr_on_success
+      ; action_stdout_limit
+      ; action_stderr_limit
+      ; expand_aliases_in_sandbox
+      ; workspace_root_to_build_path_prefix_map
+      ; action_project_root
+      ; should_remove_write_permissions_on_generated_files
+      ; sandbox_actions
+      }
   =
   let d = Digest.Manual.create () in
   let root =
@@ -192,30 +193,6 @@ let repr =
         ~get:(fun t -> t.should_remove_write_permissions_on_generated_files)
     ; Repr.field "sandbox_actions" Repr.bool ~get:(fun t -> t.sandbox_actions)
     ]
-;;
-
-let digest
-      { action_stdout_on_success
-      ; action_stderr_on_success
-      ; action_stdout_limit
-      ; action_stderr_limit
-      ; expand_aliases_in_sandbox
-      ; workspace_root_to_build_path_prefix_map
-      ; action_project_root
-      ; should_remove_write_permissions_on_generated_files
-      ; sandbox_actions
-      }
-  =
-  digest_fields
-    ~action_stdout_on_success
-    ~action_stderr_on_success
-    ~action_stdout_limit
-    ~action_stderr_limit
-    ~expand_aliases_in_sandbox
-    ~workspace_root_to_build_path_prefix_map
-    ~action_project_root
-    ~should_remove_write_permissions_on_generated_files
-    ~sandbox_actions
 ;;
 
 let to_dyn = Repr.to_dyn repr

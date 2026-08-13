@@ -256,6 +256,12 @@ end = struct
         dirs)
   ;;
 
+  let language_sources sctx ~dir ~project ~lib_config ~loc ~include_subdirs ~dirs =
+    ( ml_sources sctx ~dir ~project ~lib_config ~loc ~include_subdirs ~dirs ~for_:Ocaml
+    , ml_sources sctx ~dir ~project ~lib_config ~loc ~include_subdirs ~dirs ~for_:Melange
+    )
+  ;;
+
   let make_standalone sctx st_dir ~dir (d : Dune_file.t) =
     let human_readable_description () = human_readable_description dir in
     { Standalone_or_root.contents =
@@ -286,26 +292,8 @@ end = struct
                 ])
           in
           let loc = loc_of_dune_file st_dir in
-          let ml =
-            ml_sources
-              sctx
-              ~dir
-              ~project
-              ~lib_config
-              ~loc
-              ~include_subdirs
-              ~dirs
-              ~for_:Ocaml
-          and melange =
-            ml_sources
-              sctx
-              ~dir
-              ~project
-              ~lib_config
-              ~loc
-              ~include_subdirs
-              ~dirs
-              ~for_:Melange
+          let ml, melange =
+            language_sources sctx ~dir ~project ~lib_config ~loc ~include_subdirs ~dirs
           in
           let mlds = mlds ~sctx ~dir ~dune_file:d ~files in
           { Standalone_or_root.root =
@@ -397,26 +385,8 @@ end = struct
              let+ ocaml = Context.ocaml ctx in
              ocaml.lib_config
            in
-           let ml =
-             ml_sources
-               sctx
-               ~dir
-               ~project
-               ~lib_config
-               ~loc
-               ~include_subdirs
-               ~dirs
-               ~for_:Ocaml
-           and melange =
-             ml_sources
-               sctx
-               ~dir
-               ~project
-               ~lib_config
-               ~loc
-               ~include_subdirs
-               ~dirs
-               ~for_:Melange
+           let ml, melange =
+             language_sources sctx ~dir ~project ~lib_config ~loc ~include_subdirs ~dirs
            in
            let foreign_sources =
              Memo.lazy_ (fun () ->

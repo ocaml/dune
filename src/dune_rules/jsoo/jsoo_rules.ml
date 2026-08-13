@@ -348,23 +348,14 @@ let wasmoo ~dir sctx =
     "wasm_of_ocaml"
 ;;
 
-let jsoo_has_shapes jsoo_version =
-  match jsoo_version with
-  | Some version ->
-    (match Version.compare version (6, 1) with
-     | Lt -> false
-     | Gt | Eq -> true)
+let jsoo_version_at_least version minimum =
+  match version with
   | None -> false
+  | Some version -> Version.compare version minimum <> Lt
 ;;
 
-let jsoo_has_build_config jsoo_version =
-  match jsoo_version with
-  | Some version ->
-    (match Version.compare version (6, 4) with
-     | Lt -> false
-     | Gt | Eq -> true)
-  | None -> false
-;;
+let jsoo_has_shapes version = jsoo_version_at_least version (6, 1)
+let jsoo_has_build_config version = jsoo_version_at_least version (6, 4)
 
 type sub_command =
   | Compile

@@ -11,14 +11,12 @@ let timer_changed timer before =
   | Eq | Lt -> false
 ;;
 
-let%expect_test "IO metrics are attributed to the operation being measured" =
-  let dir = Temp.create Dir ~prefix:"io-metrics" ~suffix:"test" in
-  let file = Path.relative dir "file" in
+let measure_write f =
   let file_read_before = Counter.Timer.read Metrics.File_read.time in
   let file_write_count_before = Counter.read Metrics.File_write.count in
   let file_write_before = Counter.Timer.read Metrics.File_write.time in
   let directory_read_before = Counter.Timer.read Metrics.Directory_read.time in
-  Io.write_file file "contents";
+  f ();
   Dune_tests_common.print_dyn
     (Dyn.record
        [ ( "file_write_count"
@@ -29,7 +27,13 @@ let%expect_test "IO metrics are attributed to the operation being measured" =
          , Dyn.bool (timer_changed Metrics.File_read.time file_read_before) )
        ; ( "directory_read_time_changed"
          , Dyn.bool (timer_changed Metrics.Directory_read.time directory_read_before) )
-       ]);
+       ])
+;;
+
+let%expect_test "IO metrics are attributed to the operation being measured" =
+  let dir = Temp.create Dir ~prefix:"io-metrics" ~suffix:"test" in
+  let file = Path.relative dir "file" in
+  measure_write (fun () -> Io.write_file file "contents");
   [%expect
     {|
     { file_write_count = 1
@@ -38,22 +42,7 @@ let%expect_test "IO metrics are attributed to the operation being measured" =
     ; directory_read_time_changed = false
     }
     |}];
-  let file_read_before = Counter.Timer.read Metrics.File_read.time in
-  let file_write_count_before = Counter.read Metrics.File_write.count in
-  let file_write_before = Counter.Timer.read Metrics.File_write.time in
-  let directory_read_before = Counter.Timer.read Metrics.Directory_read.time in
-  Io.write_lines file [ "one"; "two" ];
-  Dune_tests_common.print_dyn
-    (Dyn.record
-       [ ( "file_write_count"
-         , Dyn.int (Counter.read Metrics.File_write.count - file_write_count_before) )
-       ; ( "file_write_time_changed"
-         , Dyn.bool (timer_changed Metrics.File_write.time file_write_before) )
-       ; ( "file_read_time_changed"
-         , Dyn.bool (timer_changed Metrics.File_read.time file_read_before) )
-       ; ( "directory_read_time_changed"
-         , Dyn.bool (timer_changed Metrics.Directory_read.time directory_read_before) )
-       ]);
+  measure_write (fun () -> Io.write_lines file [ "one"; "two" ]);
   [%expect
     {|
     { file_write_count = 1

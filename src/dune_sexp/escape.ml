@@ -108,7 +108,7 @@ let quoted s =
   Bytes.unsafe_to_string s'
 ;;
 
-let print_escaped s = Printf.printf "%S -> %S\n" s (escaped s)
+let[@warning "-32"] print_escaped s = Printf.printf "%S -> %S\n" s (escaped s)
 
 let%expect_test "escaped - plain strings pass through unchanged" =
   print_escaped "hello";

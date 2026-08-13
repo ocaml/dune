@@ -9,7 +9,6 @@ val compare : t -> t -> Ordering.t
 val encode : t -> Dune_sexp.t
 val decode : t Dune_sexp.Decoder.t
 val all : t list
-val compiled_unit_ext : t -> Filename.Extension.t
 val compiled_lib_ext : t -> Filename.Extension.t
 val exe_ext : t -> Filename.Extension.t
 val plugin_ext : t -> Filename.Extension.t

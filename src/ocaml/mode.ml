@@ -41,7 +41,6 @@ let repr =
 ;;
 
 let to_dyn = Repr.to_dyn repr
-let compiled_unit_ext = choose (Cm_kind.ext Cmo) (Cm_kind.ext Cmx)
 let compiled_lib_ext = choose Filename.Extension.cma Filename.Extension.cmxa
 let plugin_ext = choose Filename.Extension.cma Filename.Extension.cmxs
 let variant = choose Variant.byte Variant.native

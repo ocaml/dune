@@ -65,8 +65,6 @@ let validate_for_install_stanza t ~relative_dst_path_starts_with_parent_error_wh
       ~dir)
 ;;
 
-let expand_src t ~dir ~f = File_binding.Unexpanded.src t |> f >>| Path.Build.relative dir
-
 let destination_relative_to_install_path t ~section ~expand ~expand_partial =
   let* src = expand_partial (File_binding.Unexpanded.src t)
   and+ dst_loc_opt =

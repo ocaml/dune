@@ -30,8 +30,6 @@ end
 val create : files:Path.Build.Set.t -> dirs:Path.Build.Set.t -> t
 
 module Validated : sig
-  type unvalidated := t
-
   (** A rule can produce a set of files whose names are known upfront, as well
       as a set of "opaque" directories whose contents is initially unknown. *)
   type t = private
@@ -54,7 +52,6 @@ module Validated : sig
   val head : t -> Path.Build.t
 
   val to_dyn : t -> Dyn.t
-  val unvalidate : t -> unvalidated
 end
 
 module Validation_result : sig

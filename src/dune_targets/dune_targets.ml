@@ -72,8 +72,6 @@ let iter { files; dirs } ~file ~dir =
 ;;
 
 module Validated = struct
-  type unvalidated = t
-
   (* CR-soon amokhov: Represent these path sets more efficiently, e.g., by a map from the
      parent directory to the corresponding [Filename.Set.t] so that [target_names_in_dir]
      could be implemented without traversing the whole set. *)
@@ -107,16 +105,6 @@ module Validated = struct
          | None -> assert false)
     in
     Path.Build.relative_fname root name
-  ;;
-
-  let unvalidate t : unvalidated =
-    { files =
-        Path.Build.Set.of_listing ~dir:t.root ~filenames:(Filename.Set.to_list t.files)
-        |> immutable_path_set_of_set
-    ; dirs =
-        Path.Build.Set.of_listing ~dir:t.root ~filenames:(Filename.Set.to_list t.dirs)
-        |> immutable_path_set_of_set
-    }
   ;;
 
   let to_dyn { root; files; dirs } =

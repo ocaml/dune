@@ -54,8 +54,6 @@ end
 val builtin_default : t
 val set_action_stdout_on_success : Action_output_on_success.t -> t -> t
 val set_action_stderr_on_success : Action_output_on_success.t -> t -> t
-val set_action_stdout_limit : Action_output_limit.t -> t -> t
-val set_action_stderr_limit : Action_output_limit.t -> t -> t
 val set_expand_aliases_in_sandbox : bool -> t -> t
 
 val set_workspace_root_to_build_path_prefix_map

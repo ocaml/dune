@@ -462,7 +462,6 @@ let is_useful_to memoize =
     | false -> Clearly_not
 ;;
 
-let is_useful_to_distribute = is_useful_to false
 let is_useful_to_memoize = is_useful_to true
 
 module Full = struct

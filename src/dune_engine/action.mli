@@ -89,12 +89,6 @@ type is_useful =
   | Clearly_not
   | Maybe
 
-(** Whether it makes sense to lookup the target in the distributed cache.
-
-    Eg. there is no point in trying to fetch the result of a local file copy
-    from the distributed cache, as we already have the file locally. *)
-val is_useful_to_distribute : t -> is_useful
-
 (** Whether it is useful to promote the rule to the cache.
 
     Eg. a file copy should be cached so we benefit from hardlink deduplication,

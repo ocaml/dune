@@ -417,6 +417,23 @@ let dep_theory_file ~dir ~wrapper_name =
   |> Path.Build.set_extension ~ext:Filename.Extension.theory_d
 ;;
 
+let rocq_stanza_flags ~sctx ~dir ~stanza_flags ~per_file_flags ~remove_q =
+  let+ expander = Super_context.expander sctx ~dir in
+  let flags = rocq_flags ~expander ~dir ~stanza_flags ~per_file_flags in
+  let flags =
+    if remove_q
+    then (
+      let rec remove_q = function
+        | "-q" :: flags -> remove_q flags
+        | flag :: flags -> flag :: remove_q flags
+        | [] -> []
+      in
+      Action_builder.map flags ~f:remove_q)
+    else flags
+  in
+  Command.Args.dyn flags
+;;
+
 let theory_rocq_args
       ~sctx
       ~dir
@@ -428,22 +445,7 @@ let theory_rocq_args
       ~theory_dirs
   =
   let+ rocq_stanza_flags =
-    let+ expander = Super_context.expander sctx ~dir in
-    let rocq_flags =
-      let rocq_flags = rocq_flags ~expander ~dir ~stanza_flags ~per_file_flags:None in
-      (* By default we have the -q flag. We don't want to pass this to rocqtop to
-         allow users to load their .rocqrc files for interactive development.
-         Therefore we manually scrub the -q setting when passing arguments to
-         rocqtop. *)
-      let rec remove_q = function
-        | "-q" :: l -> remove_q l
-        | x :: l -> x :: remove_q l
-        | [] -> []
-      in
-      let open Action_builder.O in
-      rocq_flags >>| remove_q
-    in
-    Command.Args.dyn rocq_flags (* stanza flags *)
+    rocq_stanza_flags ~sctx ~dir ~stanza_flags ~per_file_flags:None ~remove_q:true
   in
   let rocq_native_flags =
     let mode = Rocq_mode.VoOnly in
@@ -731,25 +733,15 @@ let generic_rocq_args
       rocq_module
   =
   let+ rocq_stanza_flags =
-    let+ expander = Super_context.expander sctx ~dir in
-    let rocq_flags =
-      let rocq_flags = rocq_flags ~expander ~dir ~stanza_flags ~per_file_flags in
-      (* By default we have the -q flag. We don't want to pass this to rocqtop to
-         allow users to load their .rocqrc files for interactive development.
-         Therefore we manually scrub the -q setting when passing arguments to
-         rocqtop. *)
-      match rocq_prog with
-      | `Rocqtop ->
-        let rec remove_q = function
-          | "-q" :: l -> remove_q l
-          | x :: l -> x :: remove_q l
-          | [] -> []
-        in
-        let open Action_builder.O in
-        rocq_flags >>| remove_q
-      | _ -> rocq_flags
-    in
-    Command.Args.dyn rocq_flags (* stanza flags *)
+    rocq_stanza_flags
+      ~sctx
+      ~dir
+      ~stanza_flags
+      ~per_file_flags
+      ~remove_q:
+        (match rocq_prog with
+         | `Rocqtop -> true
+         | `Rocqc -> false)
   in
   let rocq_native_flags =
     let mode =

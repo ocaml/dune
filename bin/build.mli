@@ -15,3 +15,9 @@ val run_build_command
   -> unit
 
 val build_memo_exn : (unit -> 'a Memo.t) -> 'a Fiber.t
+
+val describe
+  :  Common.Builder.t
+  -> context_name:Dune_engine.Context_name.t
+  -> (Common.t -> Dune_rules.Main.build_system -> Super_context.t -> 'a Memo.t)
+  -> 'a

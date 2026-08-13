@@ -68,6 +68,8 @@ Basic tests for the file-watching mode.
   3 |  (deps x)
   4 |  (action (system "cat x > y")))
   Error: No rule found for x
+  Hint: If this is a source file or directory, make sure it exists in the
+  source tree. If it is generated, add or fix the rule that produces x.
   Had 1 error, waiting for filesystem changes...
   File "dune", lines 1-4, characters 0-59:
   1 | (rule
@@ -75,5 +77,7 @@ Basic tests for the file-watching mode.
   3 |  (deps x)
   4 |  (action (system "cat x > y")))
   Error: No rule found for x
+  Hint: If this is a source file or directory, make sure it exists in the
+  source tree. If it is generated, add or fix the rule that produces x.
   Had 1 error, waiting for filesystem changes...
   Success, waiting for filesystem changes...

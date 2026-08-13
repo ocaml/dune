@@ -234,8 +234,32 @@ let remove_old_sub_dirs_in_anonymous_actions_dir ~dir ~(subdirs_to_keep : Subdir
 
 let no_rule_found ~loc fn =
   let+ contexts = Memo.Lazy.force (Build_config.get ()).contexts in
+  let missing_target_hints fn ~loc =
+    match loc, Dpath.analyse_target fn with
+    | Some _, Regular (_, target) ->
+      let target_s = Path.Source.to_string target in
+      let basename = Path.Source.basename target |> Filename.to_string in
+      let has_hidden_component =
+        List.exists (String.split target_s ~on:'/') ~f:(String.starts_with ~prefix:".")
+      in
+      let extension = Stdlib.Filename.extension basename in
+      if
+        has_hidden_component
+        || not (List.mem [ ""; ".ml"; ".mli" ] extension ~equal:String.equal)
+      then []
+      else
+        [ Pp.textf
+            "If this is a source file or directory, make sure it exists in the source \
+             tree. If it is generated, add or fix the rule that produces %s."
+            (Path.Source.to_string_maybe_quoted target)
+        ]
+    | _ -> []
+  in
   let fail fn ~loc =
-    User_error.raise ?loc [ Pp.textf "No rule found for %s" (Dpath.describe_target fn) ]
+    User_error.raise
+      ?loc
+      ~hints:(missing_target_hints fn ~loc)
+      [ Pp.textf "No rule found for %s" (Dpath.describe_target fn) ]
   in
   let hints ctx =
     let candidates =

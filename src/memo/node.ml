@@ -449,8 +449,8 @@ module Call_stack = struct
   type t = Stack_frame_with_state.t list
 
   (* The variable holding the call stack for the current context. *)
-  let call_stack_var : t option Fiber.Var.t = Fiber.Var.create None
-  let get_call_stack () = Fiber.Var.get call_stack_var >>| Option.value ~default:[]
+  let call_stack_var : t Fiber.Var.t = Fiber.Var.create []
+  let get_call_stack () = Fiber.Var.get call_stack_var
 
   let get_call_stack_without_state () =
     get_call_stack () >>| List.map ~f:Stack_frame_with_state.dep_node
@@ -461,7 +461,7 @@ module Call_stack = struct
        single effect, without reading the stack first or allocating a thunk per push. *)
     Fiber.Var.update_apply
       call_stack_var
-      ~f:(fun stack -> Some (frame :: Option.value stack ~default:[]))
+      ~f:(fun stack -> frame :: stack)
       Implicit_output.forbid
       f
   ;;

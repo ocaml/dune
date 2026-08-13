@@ -125,7 +125,6 @@ val dune_project : t
 val dune_workspace : t
 val expected : t
 val fdo_profile : t
-val formatted_dir_basename : t
 val generated : t
 val git_dir_basename : t
 val gmake : t
@@ -137,7 +136,6 @@ val lock_dune : t
 val linker_script : t
 val lock_dir_basename : t
 val make : t
-val mdx_deps : t
 val merlin_conf_dir_basename : t
 val meta : t
 val ocamlfind : t

@@ -307,34 +307,17 @@ module In_context = struct
 end
 
 module Ext = struct
-  let exe ~mode =
+  let select ~mode ~js ~wasm =
     Mode.select
       ~mode
-      ~js:(Filename.Extension.of_string_exn ".bc.js")
-      ~wasm:(Filename.Extension.of_string_exn ".bc.wasm.js")
+      ~js:(Filename.Extension.of_string_exn js)
+      ~wasm:(Filename.Extension.of_string_exn wasm)
   ;;
 
-  let cmo ~mode =
-    Mode.select
-      ~mode
-      ~js:(Filename.Extension.of_string_exn ".cmo.js")
-      ~wasm:(Filename.Extension.of_string_exn ".wasmo")
-  ;;
-
-  let cma ~mode =
-    Mode.select
-      ~mode
-      ~js:(Filename.Extension.of_string_exn ".cma.js")
-      ~wasm:(Filename.Extension.of_string_exn ".wasma")
-  ;;
-
-  let runtime ~mode =
-    Mode.select
-      ~mode
-      ~js:(Filename.Extension.of_string_exn ".bc.runtime.js")
-      ~wasm:(Filename.Extension.of_string_exn ".bc.runtime.wasma")
-  ;;
-
+  let exe ~mode = select ~mode ~js:".bc.js" ~wasm:".bc.wasm.js"
+  let cmo ~mode = select ~mode ~js:".cmo.js" ~wasm:".wasmo"
+  let cma ~mode = select ~mode ~js:".cma.js" ~wasm:".wasma"
+  let runtime ~mode = select ~mode ~js:".bc.runtime.js" ~wasm:".bc.runtime.wasma"
   let wasm_dir = Filename.Extension.of_string_exn ".bc.wasm.assets"
 end
 

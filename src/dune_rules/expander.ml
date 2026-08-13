@@ -916,21 +916,18 @@ let describe_source ~source =
     (Loc.to_file_colon_line source.loc)
 ;;
 
+let expand_pform_gen t ~source pform =
+  match
+    expand_pform_gen ~context:t.context ~bindings:t.bindings ~dir:t.dir ~source pform
+  with
+  | Direct value -> value
+  | Need_full_expander f -> f t
+;;
+
 let expand_pform t ~source pform =
   Action_builder.push_stack_frame
     (fun () ->
-       match
-         match
-           expand_pform_gen
-             ~context:t.context
-             ~bindings:t.bindings
-             ~dir:t.dir
-             ~source
-             pform
-         with
-         | Direct v -> v
-         | Need_full_expander f -> f t
-       with
+       match expand_pform_gen t ~source pform with
        | With x -> x
        | Without x -> Action_builder.of_memo x)
     ~human_readable_description:(fun () -> describe_source ~source)
@@ -999,18 +996,7 @@ module No_deps = struct
   let expand_pform_no_deps t ~source pform =
     Memo.push_stack_frame
       (fun () ->
-         match
-           match
-             expand_pform_gen
-               ~context:t.context
-               ~bindings:t.bindings
-               ~dir:t.dir
-               ~source
-               pform
-           with
-           | Direct v -> v
-           | Need_full_expander f -> f t
-         with
+         match expand_pform_gen t ~source pform with
          | With _ -> isn't_allowed_in_this_position ~source
          | Without x -> x)
       ~human_readable_description:(fun () -> describe_source ~source)
@@ -1037,13 +1023,7 @@ module With_deps_if_necessary = struct
   module E = String_with_vars.Make_expander (Deps)
 
   let expand_pform t ~source pform : _ Deps.t =
-    match
-      match
-        expand_pform_gen ~context:t.context ~bindings:t.bindings ~dir:t.dir ~source pform
-      with
-      | Direct v -> v
-      | Need_full_expander f -> f t
-    with
+    match expand_pform_gen t ~source pform with
     | Without t ->
       Without
         (Memo.push_stack_frame

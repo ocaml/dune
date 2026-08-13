@@ -295,6 +295,14 @@ module Error_msg = struct
   let since_config t ver ~what = fmt_error_msg t ver ~what ~file:"dune config"
 end
 
+let version_message ~extra_info t ver ~what status =
+  Pp.concat
+    [ Pp.textf "%s was %s in version %s of %s." what status (Version.to_string ver) t.desc
+    ; (if extra_info = "" then Pp.nop else Pp.space)
+    ; Pp.text extra_info
+    ]
+;;
+
 module Error = struct
   let since loc t ver ~what =
     User_error.raise ~loc [ Pp.text (Error_msg.since t ver ~what) ]
@@ -313,18 +321,7 @@ module Error = struct
   ;;
 
   let deleted_in ?(extra_info = "") loc t ?(repl = []) ver ~what =
-    User_error.raise
-      ~loc
-      (Pp.concat
-         [ Pp.textf
-             "%s was deleted in version %s of %s."
-             what
-             (Version.to_string ver)
-             t.desc
-         ; (if extra_info = "" then Pp.nop else Pp.space)
-         ; Pp.text extra_info
-         ]
-       :: repl)
+    User_error.raise ~loc (version_message ~extra_info t ver ~what "deleted" :: repl)
   ;;
 
   let inactive loc t ~dune_lang_ver ~what =
@@ -377,18 +374,7 @@ end
 
 module Warning = struct
   let deprecated_in ?(extra_info = "") loc t ?(repl = []) ver ~what =
-    User_warning.emit
-      ~loc
-      (Pp.concat
-         [ Pp.textf
-             "%s was deprecated in version %s of %s."
-             what
-             (Version.to_string ver)
-             t.desc
-         ; (if extra_info = "" then Pp.nop else Pp.space)
-         ; Pp.text extra_info
-         ]
-       :: repl)
+    User_warning.emit ~loc (version_message ~extra_info t ver ~what "deprecated" :: repl)
   ;;
 end
 

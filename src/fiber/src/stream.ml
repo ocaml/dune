@@ -166,29 +166,14 @@ module Out = struct
   let null () = create (fun _ -> return ())
 end
 
-let connect i o =
-  In.lock i;
-  Out.lock o;
-  let rec go () =
-    let* a = i.read () in
-    let* () = o.write a in
-    match a with
-    | None ->
-      In.unlock i;
-      Out.unlock o;
-      return ()
-    | Some _ -> go ()
-  in
-  go ()
-;;
-
-let supply i o =
+let transfer i o ~write_end =
   In.lock i;
   Out.lock o;
   let rec go () =
     let* a = i.read () in
     match a with
     | None ->
+      let* () = if write_end then o.write None else return () in
       In.unlock i;
       Out.unlock o;
       return ()
@@ -198,6 +183,9 @@ let supply i o =
   in
   go ()
 ;;
+
+let connect i o = transfer i o ~write_end:true
+let supply i o = transfer i o ~write_end:false
 
 let pipe () =
   let mvar = Mvar.create () in

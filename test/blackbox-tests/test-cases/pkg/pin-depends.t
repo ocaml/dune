@@ -181,11 +181,11 @@ Pin to an HTTP archive work
   > opam-version: "2.0"
   > EOF
   $ tar cf tarball.tar -C _source bar.opam
-  $ MD5_CHECKSUM=$(md5sum tarball.tar  | cut -f1 -d' ')
+  $ SHA256_CHECKSUM=$(sha256sum tarball.tar  | cut -f1 -d' ')
   $ echo tarball.tar > fake-curls
   $ PORT=1
   $ runtest "http://0.0.0.0:$PORT/tarball.tar" > output
-  $ grep "md5=$MD5_CHECKSUM" output 2>&1 > /dev/null && echo "Checksum matches"
+  $ grep "sha256=$SHA256_CHECKSUM" output 2>&1 > /dev/null && echo "Checksum matches"
   Checksum matches
 
 Pin to an HTTP archive detects wrong hash
@@ -195,11 +195,11 @@ Pin to an HTTP archive detects wrong hash
   >  (name foo)
   >  (libraries bar))
   > EOF
-  $ dune_cmd subst "$MD5_CHECKSUM" '92449184682b45b5f07e811fdd61d35f' ${default_lock_dir}/bar.1.0.0.pkg
+  $ dune_cmd subst "$SHA256_CHECKSUM" '92449184682b45b5f07e811fdd61d35f92449184682b45b5f07e811fdd61d35f' ${default_lock_dir}/bar.1.0.0.pkg
   $ rm -rf already-served
-  $ dune build 2>&1 | grep -v "md5"
-  File "dune.lock/bar.1.0.0.pkg", line 6, characters 12-48:
-                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  $ dune build 2>&1 | grep -v "sha256"
+  File "dune.lock/bar.1.0.0.pkg", line 7, characters 3-74:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: Invalid checksum, got
   [1]
 
@@ -209,9 +209,9 @@ of the target again
   $ rm tarball.tar already-served
   $ echo "update checksum" > _source/random_file
   $ tar cf tarball.tar -C _source bar.opam random_file
-  $ MD5_CHECKSUM=$(md5sum tarball.tar  | cut -f1 -d' ')
+  $ SHA256_CHECKSUM=$(sha256sum tarball.tar  | cut -f1 -d' ')
   $ echo tarball.tar > fake-curls
   $ runtest "http://0.0.0.0:$PORT/tarball.tar" > output
-  $ grep "md5=$MD5_CHECKSUM" output 2>&1 > /dev/null && echo "Checksum matches"
+  $ grep "sha256=$SHA256_CHECKSUM" output 2>&1 > /dev/null && echo "Checksum matches"
   Checksum matches
 

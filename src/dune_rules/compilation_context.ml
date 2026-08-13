@@ -217,19 +217,15 @@ let create
       ~modules
       ~for_
   and+ bin_annot =
-    match bin_annot with
-    | Some b -> Memo.return b
-    | None -> Env_stanza_db.bin_annot ~dir:(Obj_dir.dir obj_dir)
+    Memo.Option.value bin_annot ~default:(fun () ->
+      Env_stanza_db.bin_annot ~dir:(Obj_dir.dir obj_dir))
   and+ bin_annot_cms =
-    match bin_annot_cms with
-    | Some b -> Memo.return b
-    | None -> Env_stanza_db.bin_annot_cms ~dir:(Obj_dir.dir obj_dir)
+    Memo.Option.value bin_annot_cms ~default:(fun () ->
+      Env_stanza_db.bin_annot_cms ~dir:(Obj_dir.dir obj_dir))
   and+ cms_cmt_dependency =
-    match cms_cmt_dependency with
-    | Some v -> Memo.return v
-    | None ->
+    Memo.Option.value cms_cmt_dependency ~default:(fun () ->
       let context = Super_context.context super_context in
-      Memo.return (Context.cms_cmt_dependency context)
+      Memo.return (Context.cms_cmt_dependency context))
   in
   { super_context
   ; scope

@@ -58,17 +58,15 @@ let rocq ~loc ~dir ~sctx =
 ;;
 
 let select_native_mode ~sctx ~dir (buildable : Rocq_stanza.Buildable.t) =
-  match buildable.mode with
-  | Some x -> Memo.return x
-  | None ->
+  Memo.Option.value buildable.mode ~default:(fun () ->
     let* rocq = rocq ~sctx ~dir ~loc:buildable.loc in
     let+ config = Rocq_config.make ~rocq in
-    (match config with
-     | Error _ -> Rocq_mode.VoOnly
-     | Ok config ->
-       (match Rocq_config.by_name config "rocq_native_compiler_default" with
-        | Some (String "yes") | Some (String "ondemand") -> Rocq_mode.Native
-        | _ -> Rocq_mode.VoOnly))
+    match config with
+    | Error _ -> Rocq_mode.VoOnly
+    | Ok config ->
+      (match Rocq_config.by_name config "rocq_native_compiler_default" with
+       | Some (String "yes") | Some (String "ondemand") -> Rocq_mode.Native
+       | _ -> Rocq_mode.VoOnly))
 ;;
 
 let rocq_env =

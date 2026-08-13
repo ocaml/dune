@@ -82,9 +82,8 @@ module Register_backend (M : Backend) = struct
   open Selection_error
 
   let written_by_user_or_scan ~written_by_user ~to_scan =
-    (match written_by_user with
-     | Some l -> Memo.return l
-     | None -> Memo.parallel_map to_scan ~f:get >>| List.filter_opt)
+    Memo.Option.value written_by_user ~default:(fun () ->
+      Memo.parallel_map to_scan ~f:get >>| List.filter_opt)
     >>| function
     | [] -> Error No_backend_found
     | l -> Ok l

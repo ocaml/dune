@@ -1,4 +1,6 @@
-(ocamllex extract_obj)
+(ocamllex
+ (modules extract_obj)
+ (flags -ml))
 
 (library
  (name configurator)

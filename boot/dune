@@ -38,7 +38,9 @@
  (action
   (diff libs.ml libs.ml.gen)))
 
-(ocamllex pps)
+(ocamllex
+ (modules pps)
+ (flags -ml))
 
 (executable
  (name duneboot)

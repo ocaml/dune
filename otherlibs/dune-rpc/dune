@@ -4,4 +4,6 @@
  (synopsis "dune rpc client and protocol")
  (libraries dyn ocamlc_loc unix stdune csexp xdg ordering pp))
 
-(ocamllex dbus_address)
+(ocamllex
+ (modules dbus_address)
+ (flags -ml))

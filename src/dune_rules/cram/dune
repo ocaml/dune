@@ -1,1 +1,3 @@
-(ocamllex cram_lexer)
+(ocamllex
+ (modules cram_lexer)
+ (flags -ml))

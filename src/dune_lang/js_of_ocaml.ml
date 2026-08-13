@@ -294,16 +294,7 @@ module In_context = struct
   ;;
 
   let make ~dir x = Mode.Pair.map ~f:(fun x -> make_one ~dir x) x
-
-  let default =
-    { flags = Flags.standard
-    ; enabled_if = None
-    ; javascript_files = []
-    ; wasm_files = []
-    ; compilation_mode = None
-    ; sourcemap = None
-    }
-  ;;
+  let default = make_one ~dir:Path.Build.root In_buildable.default
 end
 
 module Ext = struct

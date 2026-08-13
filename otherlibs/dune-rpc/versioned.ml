@@ -416,60 +416,60 @@ struct
                   let+ () = f state (gen.upgrade_req req) in
                   Ok ()))
       in
+      let prepare_generic t ~menu ~table ~key ~method_ f =
+        lookup_method_generic
+          t
+          ~menu
+          ~table
+          ~key
+          ~method_
+          (fun e -> Error e)
+          (fun (decls, version) ->
+             match Method.Version.Map.find decls version with
+             | None ->
+               raise_version_bug
+                 ~method_
+                 ~selected:version
+                 ~verb:"undeclared"
+                 ~known:(Method.Version.Map.keys decls)
+             | Some gen -> Ok (f gen))
+      in
       let prepare_request (type a b) menu (decl : (a, b) Decl.Request.witness)
         : ((a, b) Staged.request, Version_error.t) result
         =
         let method_ = decl.method_ in
-        lookup_method_generic
+        prepare_generic
           t
           ~menu
           ~table:Declared_requests
           ~key:(method_, decl.key)
           ~method_
-          (fun e -> Error e)
-          (fun (decls, version) ->
-             match Method.Version.Map.find decls version with
-             | None ->
-               raise_version_bug
-                 ~method_
-                 ~selected:version
-                 ~verb:"undeclared"
-                 ~known:(Method.Version.Map.keys decls)
-             | Some (T gen) ->
-               let encode_req (req : a) =
-                 { Call.method_; params = Conv.to_sexp gen.req (gen.downgrade_req req) }
-               in
-               let decode_resp sexp =
-                 match Conv.of_sexp gen.resp ~version:(3, 0) sexp with
-                 | Ok resp -> Ok (gen.upgrade_resp resp)
-                 | Error e -> Error (Response.Error.of_conv e)
-               in
-               Ok { Staged.encode_req; decode_resp })
+          (fun (T gen) ->
+             let encode_req (req : a) =
+               { Call.method_; params = Conv.to_sexp gen.req (gen.downgrade_req req) }
+             in
+             let decode_resp sexp =
+               match Conv.of_sexp gen.resp ~version:(3, 0) sexp with
+               | Ok resp -> Ok (gen.upgrade_resp resp)
+               | Error e -> Error (Response.Error.of_conv e)
+             in
+             { Staged.encode_req; decode_resp })
       in
       let prepare_notification (type a) menu (decl : a Decl.Notification.witness)
         : (a Staged.notification, Version_error.t) result
         =
         let method_ = decl.method_ in
-        lookup_method_generic
+        prepare_generic
           t
           ~menu
           ~table:Declared_notifs
           ~key:(method_, decl.key)
           ~method_
-          (fun e -> Error e)
-          (fun (decls, version) ->
-             match Method.Version.Map.find decls version with
-             | None ->
-               raise_version_bug
-                 ~method_
-                 ~selected:version
-                 ~verb:"undeclared"
-                 ~known:(Method.Version.Map.keys decls)
-             | Some (T gen) ->
-               let encode (req : a) =
-                 { Call.method_; params = Conv.to_sexp gen.req (gen.downgrade_req req) }
-               in
-               Ok { Staged.encode })
+          (fun (T gen) ->
+             let encode (req : a) =
+               { Call.method_; params = Conv.to_sexp gen.req (gen.downgrade_req req) }
+             in
+             { Staged.encode })
       in
       fun ~menu ->
         { Handler.menu

@@ -184,6 +184,7 @@ and ('a, 'b) map_reduce_context' =
 (* map_reduce_context *)
 and map_reduce_context =
   | Map_reduce_context : (_, _) map_reduce_context' -> map_reduce_context
+[@@unboxed]
 
 and 'a k =
   { run : 'a continuation

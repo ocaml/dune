@@ -312,27 +312,26 @@ end = struct
   ;;
 
   let compile_rules ~dir ~source_dirs rules =
-    let file_targets, directory_targets =
-      let check_for_source_dir_conflict rule target =
-        if Filename.Array.Set.mem source_dirs target
-        then report_rule_src_dir_conflict dir (Filename.to_string target) rule
-      in
-      List.map rules ~f:(fun rule ->
-        assert (Path.Build.( = ) dir rule.Rule.targets.root);
-        ( Filename.Set.to_list_map rule.targets.files ~f:(fun target ->
-            check_for_source_dir_conflict rule target;
-            Path.Build.relative_fname rule.targets.root target, rule)
-        , Filename.Set.to_list_map rule.targets.dirs ~f:(fun target ->
-            check_for_source_dir_conflict rule target;
-            Path.Build.relative_fname rule.targets.root target, rule) ))
-      |> List.unzip
+    let check_for_source_dir_conflict rule target =
+      if Filename.Array.Set.mem source_dirs target
+      then report_rule_src_dir_conflict dir (Filename.to_string target) rule
     in
-    let by_file_targets =
-      List.concat file_targets |> Path.Build.Map.of_list_reducei ~f:report_rule_conflict
+    let add_targets rules ~targets rule =
+      Filename.Set.fold targets ~init:rules ~f:(fun target rules ->
+        check_for_source_dir_conflict rule target;
+        let target = Path.Build.relative_fname rule.targets.root target in
+        Path.Build.Map.update rules target ~f:(function
+          | None -> Some rule
+          | Some other -> Some (report_rule_conflict target other rule)))
     in
-    let by_directory_targets =
-      List.concat directory_targets
-      |> Path.Build.Map.of_list_reducei ~f:report_rule_conflict
+    let by_file_targets, by_directory_targets =
+      List.fold_left
+        rules
+        ~init:(Path.Build.Map.empty, Path.Build.Map.empty)
+        ~f:(fun (by_file_targets, by_directory_targets) rule ->
+          assert (Path.Build.( = ) dir rule.Rule.targets.root);
+          ( add_targets by_file_targets ~targets:rule.targets.files rule
+          , add_targets by_directory_targets ~targets:rule.targets.dirs rule ))
     in
     Path.Build.Map.iter2
       by_file_targets

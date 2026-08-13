@@ -146,6 +146,24 @@ The resulting layout in ``_build/default/output`` will be as follows:
         ├── lib.js
         └── helper.js
 
+.. _melange-emit-artifact-variable:
+
+Artifact Variable
+-----------------
+
+.. versionadded:: 3.25
+
+The ``%{melange.emit:<target-dir>}`` variable expands to the output directory
+of the selected ``melange.emit`` stanza. ``<target-dir>`` is the path to the
+stanza's target directory, relative to the ``dune`` file containing the
+variable. Like other :ref:`artifact variables <variables-for-artifacts>`, it
+adds a dependency on the stanza's outputs.
+
+For example, suppose ``lib/dune`` contains a stanza with ``(target output)``.
+In that file, ``%{melange.emit:output}`` expands to ``output/lib``. In a
+``dune`` file at the workspace root, ``%{melange.emit:lib/output}`` expands to
+``lib/output/lib``.
+
 ``<optional-fields>`` are:
 
 - ``(alias <alias-name>)`` specifies an alias to which to attach the targets of

@@ -36,5 +36,11 @@ interpreted relative to the current directory:
 
   .. versionadded:: 3.21
 
+- ``melange.emit:<path>`` expands to the output directory of the
+  :ref:`melange.emit stanza <melange-emit>` whose target directory is
+  ``<path>``. See :ref:`melange-emit-artifact-variable` for examples.
+
+  .. versionadded:: 3.25
+
 In each case, the expansion of the variable is a path pointing inside the build
 context (i.e., ``_build/<context>``).

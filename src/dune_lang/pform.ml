@@ -901,15 +901,6 @@ module Env = struct
     }
   ;;
 
-  type stamp =
-    Syntax.Version.t Syntax.Map.t
-    * (string * Var.t With_versioning_info.t) list
-    * (string * Macro.t With_versioning_info.t) list
-
-  let to_stamp { extensions; vars; macros; syntax_version = _; syntax_lang = _ } : stamp =
-    extensions, String.Map.to_list vars, String.Map.to_list macros
-  ;;
-
   let all_known { vars; macros; extensions = _; syntax_version = _; syntax_lang = _ } =
     String.Map.union
       (String.Map.map vars ~f:(fun x -> Var (With_versioning_info.get_data x)))

@@ -46,7 +46,6 @@ module DB : sig
 
   val empty : t
   val add : t -> loc:Loc.t -> dialect -> t
-  val find_by_name : t -> string -> dialect option
   val find_by_extension : t -> Filename.Extension.t -> (dialect * Ml_kind.t) option
   val fold : t -> init:'a -> f:(dialect -> 'a -> 'a) -> 'a
   val to_dyn : t -> Dyn.t

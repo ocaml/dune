@@ -207,6 +207,52 @@ let%expect_test "qualified-group dependency lookup" =
     |}]
 ;;
 
+let%expect_test "qualified-group dependency lookup after mapping" =
+  let current = generated ~obj_name:"Current" [ "Current" ] in
+  let child_a = generated ~obj_name:"Group__ChildA" [ "Group"; "ChildA" ] in
+  let child_b = generated ~obj_name:"Group__ChildB" [ "Group"; "ChildB" ] in
+  let modules =
+    make_lib ~lib_name:"groups" [ current; child_a; child_b ] |> Modules.With_vlib.modules
+  in
+  let names = [ module_name "Group" ] in
+  check_deps
+    "before mapping"
+    modules
+    ~of_:current
+    names
+    ~expected:
+      [ "group:Group:alias"; "group__ChildA:ChildA:impl"; "group__ChildB:ChildB:impl" ];
+  let map_module module_ =
+    let obj_name =
+      Printf.sprintf "mapped__%s" (Module.obj_name module_ |> Module_name.Unique.to_string)
+    in
+    Module.set_obj_name module_ (Module_name.Unique.of_string obj_name)
+  in
+  let modules = Modules.With_vlib.map modules ~f:map_module in
+  let current = map_module current in
+  check_deps
+    "after mapping"
+    modules
+    ~of_:current
+    names
+    ~expected:
+      [ "mapped__group:Group:alias"
+      ; "mapped__group__ChildA:ChildA:impl"
+      ; "mapped__group__ChildB:ChildB:impl"
+      ];
+  [%expect
+    {|
+    before mapping: [ "group:Group:alias"
+    ; "group__ChildA:ChildA:impl"
+    ; "group__ChildB:ChildB:impl"
+    ]
+    after mapping: [ "mapped__group:Group:alias"
+    ; "mapped__group__ChildA:ChildA:impl"
+    ; "mapped__group__ChildB:ChildB:impl"
+    ]
+    |}]
+;;
+
 let%expect_test "wrapped compatibility self dependency" =
   let main = generated ~obj_name:"Main" [ "Main" ] in
   let child = generated ~obj_name:"Child" [ "Child" ] in

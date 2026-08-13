@@ -208,7 +208,12 @@ end
 module Pp = struct
   include Stdune.Pp
 
-  let sexp (conv_tag : 'a Conv.value) : 'a Pp.t Conv.value =
+  type 'a tag_encoding =
+    { constr : 'a Ast.t Conv.econstr
+    ; case : 'a -> 'a Ast.t -> Conv.case
+    }
+
+  let sexp_with_tag make_tag =
     let open Conv in
     let open Pp.Ast in
     let nop = constr "Nop" unit (fun () -> Nop) in
@@ -231,7 +236,7 @@ module Pp = struct
             (pair (triple string int string) (triple string int string))
             (fun (x, y) -> Break (x, y))
         in
-        let tag = constr "Tag" (pair conv_tag t) (fun (s, t) -> Tag (s, t)) in
+        let tag = make_tag t in
         sum
           [ econstr nop
           ; econstr verbatim
@@ -246,7 +251,7 @@ module Pp = struct
           ; econstr hvbox
           ; econstr hovbox
           ; econstr break
-          ; econstr tag
+          ; tag.constr
           ]
           (function
             | Nop -> case () nop
@@ -262,9 +267,16 @@ module Pp = struct
             | Break (x, y) -> case (x, y) break
             | Newline -> case () newline
             | Text s -> case s text
-            | Tag (s, t) -> case (s, t) tag))
+            | Tag (s, t) -> tag.case s t))
     in
     iso t Pp.of_ast Pp.to_ast
+  ;;
+
+  let sexp (conv_tag : 'a Conv.value) : 'a Pp.t Conv.value =
+    sexp_with_tag (fun t ->
+      let open Conv in
+      let constr = constr "Tag" (pair conv_tag t) (fun (s, t) -> Ast.Tag (s, t)) in
+      { constr = econstr constr; case = (fun s t -> case (s, t) constr) })
   ;;
 end
 
@@ -426,64 +438,12 @@ module Path = struct
   let relative = Filename.concat
 end
 
-(* This has a subtle difference with [sexp_pp] in how we serialise tags. *)
+(* This has a subtle difference with [Pp.sexp] in how we serialise tags. *)
 let sexp_pp_unit : unit Pp.t Conv.value =
-  let open Conv in
-  let open Pp.Ast in
-  let nop = constr "Nop" unit (fun () -> Nop) in
-  let verbatim = constr "Verbatim" string (fun s -> Verbatim s) in
-  let char = constr "Char" char (fun c -> Char c) in
-  let newline = constr "Newline" unit (fun () -> Newline) in
-  let t =
-    fixpoint (fun t ->
-      let text = constr "Text" string (fun s -> Text s) in
-      let seq = constr "Seq" (pair t t) (fun (x, y) -> Seq (x, y)) in
-      let concat = constr "Concat" (pair t (list t)) (fun (x, y) -> Concat (x, y)) in
-      let box = constr "Box" (pair int t) (fun (x, y) -> Box (x, y)) in
-      let vbox = constr "Vbox" (pair int t) (fun (x, y) -> Vbox (x, y)) in
-      let hbox = constr "Hbox" t (fun t -> Hbox t) in
-      let hvbox = constr "Hvbox" (pair int t) (fun (x, y) -> Hvbox (x, y)) in
-      let hovbox = constr "Hovbox" (pair int t) (fun (x, y) -> Hovbox (x, y)) in
-      let break =
-        constr
-          "Break"
-          (pair (triple string int string) (triple string int string))
-          (fun (x, y) -> Break (x, y))
-      in
-      let tag = constr "Tag" t (fun t -> Tag ((), t)) in
-      sum
-        [ econstr nop
-        ; econstr verbatim
-        ; econstr char
-        ; econstr newline
-        ; econstr text
-        ; econstr seq
-        ; econstr concat
-        ; econstr box
-        ; econstr vbox
-        ; econstr hbox
-        ; econstr hvbox
-        ; econstr hovbox
-        ; econstr break
-        ; econstr tag
-        ]
-        (function
-          | Nop -> case () nop
-          | Seq (x, y) -> case (x, y) seq
-          | Concat (x, y) -> case (x, y) concat
-          | Box (i, t) -> case (i, t) box
-          | Vbox (i, t) -> case (i, t) vbox
-          | Hbox t -> case t hbox
-          | Hvbox (i, t) -> case (i, t) hvbox
-          | Hovbox (i, t) -> case (i, t) hovbox
-          | Verbatim s -> case s verbatim
-          | Char c -> case c char
-          | Break (x, y) -> case (x, y) break
-          | Newline -> case () newline
-          | Text s -> case s text
-          | Tag ((), t) -> case t tag))
-  in
-  iso t Pp.of_ast Pp.to_ast
+  Pp.sexp_with_tag (fun t ->
+    let open Conv in
+    let constr = constr "Tag" t (fun t -> Pp.Ast.Tag ((), t)) in
+    { Pp.constr = econstr constr; case = (fun () t -> case t constr) })
 ;;
 
 module Diagnostic = struct

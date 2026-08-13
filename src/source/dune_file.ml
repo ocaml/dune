@@ -220,40 +220,29 @@ module Ast = struct
     Predicate_lang.or_ globs
   ;;
 
+  let glob_field ~since decode make =
+    let+ loc, glob = located (Dune_lang.Syntax.since Stanza.syntax since >>> decode) in
+    make (loc, glob)
+  ;;
+
   let vendored_dirs =
-    let+ loc, vendored =
-      Dune_lang.Syntax.since Stanza.syntax (1, 11)
-      >>> strict_subdir_glob "vendored_dirs"
-      |> located
-    in
-    Vendored_dirs (loc, vendored)
+    glob_field ~since:(1, 11) (strict_subdir_glob "vendored_dirs") (fun (loc, glob) ->
+      Vendored_dirs (loc, glob))
   ;;
 
   let dirs =
-    let+ loc, dirs =
-      Dune_lang.Syntax.since Stanza.syntax (1, 6)
-      >>> Predicate_lang.Glob.decode
-      |> located
-    in
-    Dirs (loc, dirs)
+    glob_field ~since:(1, 6) Predicate_lang.Glob.decode (fun (loc, glob) ->
+      Dirs (loc, glob))
   ;;
 
   let files =
-    let+ loc, files =
-      Dune_lang.Syntax.since Stanza.syntax (3, 21)
-      >>> Predicate_lang.Glob.decode
-      |> located
-    in
-    Files (loc, files)
+    glob_field ~since:(3, 21) Predicate_lang.Glob.decode (fun (loc, glob) ->
+      Files (loc, glob))
   ;;
 
   let data_only_dirs =
-    let+ loc, glob =
-      located
-        (Dune_lang.Syntax.since Stanza.syntax (1, 6)
-         >>> strict_subdir_glob "data_only_dirs")
-    in
-    Data_only_dirs (loc, glob)
+    glob_field ~since:(1, 6) (strict_subdir_glob "data_only_dirs") (fun (loc, glob) ->
+      Data_only_dirs (loc, glob))
   ;;
 
   let descendant_path =

@@ -19,7 +19,7 @@ module Hasher = struct
   let singleton = lazy (Blake3_mini.create ())
 
   module Scratch = struct
-    let buf = Bytes.create 4096
+    let buf = Bytes.create 32768
     let len = Bytes.length buf
     let pos = ref 0
 

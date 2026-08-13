@@ -215,20 +215,18 @@ let ocaml =
   { name = "ocaml"; file_kinds = Ml_kind.Dict.make ~intf ~impl }
 ;;
 
+let refmt_action executable args =
+  let module S = String_with_vars in
+  Action.run
+    (S.make_text Loc.none executable)
+    (List.map args ~f:(S.make_text Loc.none) @ [ S.make_pform Loc.none (Var Input_file) ])
+;;
+
 let reason =
   let file_kind kind extension =
     let module S = String_with_vars in
-    let preprocess =
-      Action.run
-        (S.make_text Loc.none "refmt")
-        [ S.make_text Loc.none "--print"
-        ; S.make_text Loc.none "binary"
-        ; S.make_pform Loc.none (Var Input_file)
-        ]
-    in
-    let format_action =
-      Action.run (S.make_text Loc.none "refmt") [ S.make_pform Loc.none (Var Input_file) ]
-    in
+    let preprocess = refmt_action "refmt" [ "--print"; "binary" ] in
+    let format_action = refmt_action "refmt" [] in
     let print_ast =
       let flag_of_kind = function
         | Ml_kind.Impl -> "false"
@@ -262,19 +260,8 @@ let rescript =
   let file_kind kind extension =
     let module S = String_with_vars in
     let exe_name = "rescript_syntax" in
-    let preprocess =
-      Action.run
-        (S.make_text Loc.none exe_name)
-        [ S.make_text Loc.none "-print"
-        ; S.make_text Loc.none "binary"
-        ; S.make_pform Loc.none (Var Input_file)
-        ]
-    in
-    let format_action =
-      Action.run
-        (S.make_text Loc.none exe_name)
-        [ S.make_pform Loc.none (Var Input_file) ]
-    in
+    let preprocess = refmt_action exe_name [ "-print"; "binary" ] in
+    let format_action = refmt_action exe_name [] in
     { File_kind.kind
     ; extension = Filename.Extension.of_string_exn extension
     ; preprocess = Some (Loc.none, preprocess)

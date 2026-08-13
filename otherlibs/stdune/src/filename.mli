@@ -17,6 +17,10 @@ val quote : string -> string
 type t
 
 val of_string : string -> t option
+
+(** Convert a string that is already known to be a valid path component. *)
+val of_string_unchecked : string -> t
+
 val of_string_exn : string -> t
 val to_string : t -> string
 

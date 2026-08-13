@@ -959,6 +959,7 @@ module Internal = struct
       (Memo.create
          "execute-action"
          ~input:(module Anonymous_action)
+         ~initial_store_size:2048
          ~cutoff:String.equal
          ~on_event:State.on_rule_event
          execute_action_generic_stage2_impl)
@@ -994,6 +995,7 @@ module Internal = struct
       (Memo.create
          "execute-rule"
          ~input:(module Rule)
+         ~initial_store_size:4096
          ~on_event:State.on_rule_event
          (execute_rule_impl ~rule_kind:Normal_rule))
   ;;

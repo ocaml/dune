@@ -718,6 +718,7 @@ end = struct
     Memo.create
       "fs_memo_for_watching_directly"
       ~input:(module Path.Outside_build_dir)
+      ~initial_store_size:2048
       (fun accessed_path ->
          watch_or_record_path ~accessed_path ~path_to_watch:accessed_path;
          Memo.return ())
@@ -727,6 +728,7 @@ end = struct
     Memo.create
       "fs_memo_for_watching_via_parent"
       ~input:(module Path.Outside_build_dir)
+      ~initial_store_size:4096
       (fun accessed_path ->
          let path_to_watch =
            Option.value

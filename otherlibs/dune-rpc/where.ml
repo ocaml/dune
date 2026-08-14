@@ -58,7 +58,7 @@ let of_string s : (t, exn) result =
 ;;
 
 let rpc_socket_relative_to_build_dir = ".rpc/dune"
-let env_var = "DUNE_RPC"
+let env_var = Env.Var.of_string "DUNE_RPC"
 
 let to_dbus : t -> Dbus_address.t = function
   | `Unix p -> { name = "unix"; args = [ "path", p ] }
@@ -144,7 +144,7 @@ module Make
   let get ~env ~build_dir : (t option, exn) result Fiber.t =
     let open Fiber.O in
     let* () = Fiber.return () in
-    match env env_var with
+    match env (Env.Var.to_string env_var) with
     | Some d ->
       Fiber.return
         (match of_string d with

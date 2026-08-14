@@ -54,7 +54,9 @@ let%expect_test "run process with timeout" =
   Scheduler.Run.go config (fun () ->
     let pid =
       let prog =
-        let path = Env.get Env.initial "PATH" |> Option.value_exn |> Bin.parse_path in
+        let path =
+          Env.get Env.initial Env.Var._PATH |> Option.value_exn |> Bin.parse_path
+        in
         Bin.which ~path "sleep" |> Option.value_exn |> Path.to_string
       in
       Spawn.spawn ~prog ~argv0:prog ~args:(Array.Immutable.of_list [ "100000" ]) ()

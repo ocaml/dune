@@ -16,7 +16,7 @@ type t =
 let add_to_env t env =
   Env.add
     env
-    ~var:Dune_action_trace.Private.trace_dir_env_var
+    ~var:Env.Var._DUNE_ACTION_TRACE_DIR
     ~value:(Path.to_absolute_filename (Path.build t.dir))
 ;;
 

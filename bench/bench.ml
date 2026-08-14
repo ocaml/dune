@@ -45,7 +45,7 @@ end
 
 let git =
   lazy
-    (let path = Env.get Env.initial "PATH" |> Option.value_exn |> Bin.parse_path in
+    (let path = Env.get Env.initial Env.Var._PATH |> Option.value_exn |> Bin.parse_path in
      Bin.which ~path "git" |> Option.value_exn)
 ;;
 

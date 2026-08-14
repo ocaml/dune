@@ -49,7 +49,7 @@ let run (vcs : Vcs.t) args =
           --exec]. *)
        Env.add
          Env.initial
-         ~var:"GIT_DIR"
+         ~var:Env.Var._GIT_DIR
          ~value:(Filename.concat (Path.to_absolute_filename vcs.root) ".git"))
     ~dir:vcs.root
     ~stdout_to:(Process.Io.file Dev_null.path Process.Io.Out)

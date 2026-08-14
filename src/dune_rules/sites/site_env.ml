@@ -1,6 +1,10 @@
 open Import
 open Memo.O
 
+let dune_dir_locations_env_var =
+  Env.Var.of_string Dune_site_private.dune_dir_locations_env_var
+;;
+
 let dune_sites_env ~default_ocamlpath ~stdlib =
   [ Dune_site_private.dune_ocaml_stdlib_env_var, Path.to_absolute_filename stdlib
   ; ( Dune_site_private.dune_ocaml_hardcoded_env_var
@@ -24,7 +28,7 @@ let add_packages_env context ~base stanzas packages =
   in
   let+ env_dune_dir_locations =
     let init =
-      match Stdune.Env.get base Dune_site_private.dune_dir_locations_env_var with
+      match Stdune.Env.get base dune_dir_locations_env_var with
       | None -> []
       | Some var ->
         (match Dune_site_private.decode_dune_dir_locations var with
@@ -102,6 +106,6 @@ let add_packages_env context ~base stanzas packages =
   else
     Stdune.Env.add
       base
-      ~var:Dune_site_private.dune_dir_locations_env_var
+      ~var:dune_dir_locations_env_var
       ~value:(Dune_site_private.encode_dune_dir_locations env_dune_dir_locations)
 ;;

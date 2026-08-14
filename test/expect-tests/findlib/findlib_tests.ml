@@ -181,7 +181,7 @@ let conf () =
       ~env:
         (Env.initial
          |> Env.add
-              ~var:"OCAMLFIND_CONF"
+              ~var:Env.Var._OCAMLFIND_CONF
               ~value:
                 (Path.Outside_build_dir.relative db_path "../toolchain"
                  |> Path.Outside_build_dir.to_string))

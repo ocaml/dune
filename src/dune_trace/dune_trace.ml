@@ -53,7 +53,7 @@ let at_exit =
       Option.iter alloc_summary ~f:(Out.emit out);
       Out.emit out (Event.exit ());
       Out.close out;
-      (match Env.(get initial Dune_action_trace.Private.trace_dir_env_var) with
+      (match Env.(get initial Var._DUNE_ACTION_TRACE_DIR) with
        | None -> ()
        | Some dir ->
          let dir = Path.of_string dir in

@@ -97,7 +97,7 @@ val paths_matching_unit : loc:Loc.t -> File_selector.t -> unit t
 
 (** [env_var v] records [v] as an environment variable that is read by the
     action produced by the action builder. *)
-val env_var : string -> unit t
+val env_var : Env.Var.t -> unit t
 
 (** Add targets to an action builder, turning a target-less [Action_builder.t]
     into [With_targets.t]. *)

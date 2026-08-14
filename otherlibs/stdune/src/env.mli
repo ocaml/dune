@@ -2,13 +2,24 @@
    in a separate module [Env_path]. *)
 
 module Var : sig
-  type t = string
+  type t
 
   val compare : t -> t -> Ordering.t
-  val temp_dir : t
 
   include Comparable_intf.S with type key := t
 
+  val of_string : string -> t
+  val to_string : t -> string
+  val repr : t Repr.t
+  val temp_dir : t
+  val _PATH : t
+  val _OCAMLPARAM : t
+  val _OCAMLFIND_CONF : t
+  val _INSIDE_EMACS : t
+  val _LC_ALL : t
+  val _GIT_DIR : t
+  val _XDG_CACHE_HOME : t
+  val _DUNE_ACTION_TRACE_DIR : t
   val to_dyn : t -> Dyn.t
 end
 
@@ -51,4 +62,4 @@ val to_dyn : t -> Dyn.t
 val of_string_map : string String.Map.t -> t
 val to_map : t -> string Map.t
 val of_map : string Map.t -> t
-val iter : t -> f:(string -> string -> unit) -> unit
+val iter : t -> f:(Var.t -> string -> unit) -> unit

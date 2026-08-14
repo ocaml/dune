@@ -249,7 +249,7 @@ module Internal = struct
     Digest.Manual.int d count;
     Dep.Set.iter deps ~f:(function
       | Env var ->
-        Digest.Manual.string d var;
+        Digest.Manual.string d (Env.Var.to_string var);
         Digest.Manual.option d ~f:Digest.Manual.string (Env.get env var)
       | _ -> ())
   ;;

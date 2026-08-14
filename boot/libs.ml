@@ -124,12 +124,6 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
-  ; { path = "otherlibs/dune-action-trace"
-    ; main_module_name = Some "Dune_action_trace"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
   ; { path = "vendor/bigstringaf"
     ; main_module_name = Some "Bigstringaf"
     ; include_subdirs = No
@@ -222,6 +216,12 @@ let local_libraries =
     }
   ; { path = "src/rpc"
     ; main_module_name = Some "Rpc"
+    ; include_subdirs = No
+    ; special_builtin_support = None
+    ; root_module = None
+    }
+  ; { path = "otherlibs/dune-action-trace"
+    ; main_module_name = Some "Dune_action_trace"
     ; include_subdirs = No
     ; special_builtin_support = None
     ; root_module = None

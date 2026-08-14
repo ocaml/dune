@@ -68,7 +68,7 @@ module T = struct
       [ Repr.case "File_selector" File_selector.repr ~proj:(function
           | File_selector g -> Some g
           | _ -> None)
-      ; Repr.case "Env" Repr.string ~proj:(function
+      ; Repr.case "Env" Env.Var.repr ~proj:(function
           | Env e -> Some e
           | _ -> None)
       ; Repr.case "File" Path.repr ~proj:(function
@@ -325,7 +325,8 @@ module Set = struct
   let digest t digest =
     iter t ~f:(fun dep ->
       match dep with
-      | Env var -> Stable_for_digest.digest digest (Stable_for_digest.Env var)
+      | Env var ->
+        Stable_for_digest.digest digest (Stable_for_digest.Env (Env.Var.to_string var))
       | Universe -> Stable_for_digest.digest digest Stable_for_digest.Universe
       | File p ->
         Stable_for_digest.digest
@@ -406,7 +407,7 @@ module Facts = struct
       | Env var ->
         Fact.Stable_for_digest.digest
           digest
-          (Fact.Stable_for_digest.Env (var, Env.get env var))
+          (Fact.Stable_for_digest.Env (Env.Var.to_string var, Env.get env var))
       | Universe -> ()
       | File _ | File_selector _ | Alias _ ->
         (match (fact : Fact.t) with

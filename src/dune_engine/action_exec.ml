@@ -114,7 +114,10 @@ let rec exec t ~ectx ~eenv : Done_or_more_deps.t Fiber.t =
     exec t ~ectx ~eenv
   | Chdir (dir, t) -> exec t ~ectx ~eenv:{ eenv with working_dir = dir }
   | Setenv (var, value, t) ->
-    exec t ~ectx ~eenv:{ eenv with env = Env.add eenv.env ~var ~value }
+    exec
+      t
+      ~ectx
+      ~eenv:{ eenv with env = Env.add eenv.env ~var:(Env.Var.of_string var) ~value }
   | Redirect_out (Stdout, fn, perm, Echo s) ->
     let perm = File_perm.to_unix_perm perm in
     Io.write_file ~perm (Path.build fn) (String.concat s ~sep:" ");
@@ -370,7 +373,7 @@ let exec
           [ Some { source = Path.to_absolute_filename root; target } ]
     in
     let env =
-      let var = "DUNE_PROJECT_ROOT" in
+      let var = Env.Var.of_string "DUNE_PROJECT_ROOT" in
       match Execution_parameters.action_project_root execution_parameters with
       | None -> Env.remove env ~var
       | Some project_root ->

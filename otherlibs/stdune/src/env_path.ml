@@ -1,4 +1,4 @@
-let var = "PATH"
+let var = Env.Var._PATH
 
 let cons ?(var = var) env ~dir =
   Env.update env ~var ~f:(fun _PATH -> Some (Bin.cons_path dir ~_PATH))

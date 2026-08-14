@@ -28,7 +28,6 @@
   (names dune_trace_stubs))
  (libraries
   stdune
-  dune_action_trace
   re
   csexp
   bigstringaf

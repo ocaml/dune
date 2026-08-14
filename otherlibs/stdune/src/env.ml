@@ -17,10 +17,21 @@ module Var = struct
     let to_dyn = Dyn.string
   end
 
-  let temp_dir = if Sys.win32 then "TEMP" else "TMPDIR"
-
   include Comparable.Make (T)
   include T
+
+  let of_string s = s
+  let to_string t = t
+  let repr = Repr.view Repr.string ~to_:to_string
+  let temp_dir = of_string (if Sys.win32 then "TEMP" else "TMPDIR")
+  let _PATH = of_string "PATH"
+  let _OCAMLPARAM = of_string "OCAMLPARAM"
+  let _OCAMLFIND_CONF = of_string "OCAMLFIND_CONF"
+  let _INSIDE_EMACS = of_string "INSIDE_EMACS"
+  let _LC_ALL = of_string "LC_ALL"
+  let _GIT_DIR = of_string "GIT_DIR"
+  let _XDG_CACHE_HOME = of_string "XDG_CACHE_HOME"
+  let _DUNE_ACTION_TRACE_DIR = of_string "DUNE_ACTION_TRACE_DIR"
 end
 
 module Set = Var.Set
@@ -79,7 +90,7 @@ let to_unix t =
     | None ->
       let bindings =
         Map.foldi t.vars ~init:[] ~f:(fun var binding acc ->
-          Binding.render binding ~var :: acc)
+          Binding.render binding ~var:(Var.to_string var) :: acc)
       in
       t.unix <- Some bindings;
       bindings
@@ -114,7 +125,7 @@ let map_of_unix arr =
       Code_error.raise
         "Env.of_unix: entry without '=' found in the environment"
         [ "var", String s ]
-    | Some (k, v) -> k, v)
+    | Some (k, v) -> Var.of_string k, v)
   |> Map.of_list_multi
   |> Map.map ~f:(function
     | [] -> assert false
@@ -162,7 +173,11 @@ let update t ~var ~f =
 ;;
 
 let of_string_map m =
-  of_map (String.Map.foldi ~init:Map.empty ~f:(fun k v acc -> Map.set acc k v) m)
+  of_map
+    (String.Map.foldi
+       ~init:Map.empty
+       ~f:(fun k v acc -> Map.set acc (Var.of_string k) v)
+       m)
 ;;
 
 let iter t ~f = Map.iteri t.vars ~f:(fun var { Binding.value; _ } -> f var value)

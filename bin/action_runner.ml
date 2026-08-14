@@ -39,8 +39,10 @@ let create ~config ~sandbox_actions =
             in
             Int.to_string scheduler_config.concurrency
           in
-          Env.add Env.initial ~var:"DUNE_JOBS" ~value:jobs
-          |> Env.add ~var:"DUNE_BUILD_DIR" ~value:(Path.Build.to_string Path.Build.root)
+          Env.add Env.initial ~var:(Env.Var.of_string "DUNE_JOBS") ~value:jobs
+          |> Env.add
+               ~var:(Env.Var.of_string "DUNE_BUILD_DIR")
+               ~value:(Path.Build.to_string Path.Build.root)
         in
         let trace_fd = Dune_trace.duplicate_global_fd () in
         let prog, argv =

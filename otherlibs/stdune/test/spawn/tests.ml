@@ -183,7 +183,7 @@ let%expect_test "env" =
     let env =
       match v with
       | None -> Env.empty
-      | Some value -> Env.add Env.empty ~var:"FOO" ~value
+      | Some value -> Env.add Env.empty ~var:(Env.Var.of_string "FOO") ~value
     in
     wait
       (Spawn.spawn

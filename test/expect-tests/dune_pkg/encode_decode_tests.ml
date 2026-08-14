@@ -266,7 +266,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
             }
         ; exported_env =
             [ { Action.Env_update.op = Eq
-              ; var = "foo"
+              ; var = Env.Var.of_string "foo"
               ; value = String_with_vars.make_text Loc.none "bar"
               }
             ]

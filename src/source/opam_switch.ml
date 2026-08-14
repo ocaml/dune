@@ -21,4 +21,4 @@ include Repr.Poly (struct
     let repr = repr
   end)
 
-let opam_switch_prefix_var_name = "OPAM_SWITCH_PREFIX"
+let opam_switch_prefix_var_name = Env.Var.of_string "OPAM_SWITCH_PREFIX"

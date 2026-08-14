@@ -56,7 +56,7 @@ let exec ~(ectx : context) ~(eenv : env) prog args =
           })
       |> Csexp.to_string
     in
-    Env.add eenv.env ~var:DAP.run_by_dune_env_variable ~value
+    Env.add eenv.env ~var:(Env.Var.of_string DAP.run_by_dune_env_variable) ~value
   in
   let+ () =
     Process.run

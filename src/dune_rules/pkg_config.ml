@@ -3,7 +3,7 @@ open Memo.O
 
 let pkg_config_binary sctx ~dir =
   let+ env = Super_context.env_node sctx ~dir >>= Env_node.external_env in
-  match Env.get env "PKG_CONFIG" with
+  match Env.get env (Env.Var.of_string "PKG_CONFIG") with
   | None -> "pkg-config"
   | Some s -> s
 ;;
@@ -15,7 +15,7 @@ module Query = struct
 
   let to_args t ~env : _ Command.Args.t list =
     let env_args : _ Command.Args.t =
-      match Env.get env "PKG_CONFIG_ARGN" with
+      match Env.get env (Env.Var.of_string "PKG_CONFIG_ARGN") with
       | Some s -> As (String.split_on_char ~sep:' ' s)
       | None -> Command.Args.empty
     in

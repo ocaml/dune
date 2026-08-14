@@ -49,12 +49,16 @@ let get_flags var =
     Env.get env var |> Option.value ~default:"" |> String.extract_blank_separated_words
   in
   let memo =
-    Memo.create var ~input:(module Context) ~cutoff:(List.equal String.equal) f
+    Memo.create
+      (Env.Var.to_string var)
+      ~input:(module Context)
+      ~cutoff:(List.equal String.equal)
+      f
   in
   Memo.exec memo
 ;;
 
-let ocamlfdo_flags = get_flags "OCAMLFDO_FLAGS"
+let ocamlfdo_flags = get_flags (Env.Var.of_string "OCAMLFDO_FLAGS")
 
 module Mode = struct
   type t =
@@ -70,7 +74,7 @@ module Mode = struct
 
   let default = If_exists
   let all = [ If_exists; Never; Always ]
-  let var = "OCAMLFDO_USE_PROFILE"
+  let var = Env.Var.of_string "OCAMLFDO_USE_PROFILE"
 
   let of_env (env : Env.t) =
     match Env.get env var with
@@ -84,7 +88,7 @@ module Mode = struct
                "Failed to parse environment variable: %s=%s\n\
                 Permitted values: if-exists always never\n\
                 Default: %s"
-               var
+               (Env.Var.to_string var)
                v
                (to_string default)
            ])
@@ -148,7 +152,9 @@ let opt_rule cctx m =
 module Linker_script = struct
   type t = Path.t Memo.t option
 
-  let ocamlfdo_linker_script_flags = get_flags "OCAMLFDO_LINKER_SCRIPT_FLAGS"
+  let ocamlfdo_linker_script_flags =
+    get_flags (Env.Var.of_string "OCAMLFDO_LINKER_SCRIPT_FLAGS")
+  ;;
 
   let linker_script_rule cctx fdo_target_exe =
     let sctx = Compilation_context.super_context cctx in

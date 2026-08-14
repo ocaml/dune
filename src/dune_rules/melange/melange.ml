@@ -15,6 +15,10 @@ end
 
 module Cm_kind = Dune_lang.Melange.Cm_kind
 
+let output_path ~target_dir source =
+  Path.Build.append_source target_dir (Path.Build.drop_build_context_exn source)
+;;
+
 module Source = struct
   let dir = ".melange_src"
 end

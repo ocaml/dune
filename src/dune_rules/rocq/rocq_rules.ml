@@ -165,6 +165,16 @@ let rocqdoc_path ~dir ~stanza_path ~expander ~get =
   | Some path -> Action_builder.map ~f:Option.some (Expander.expand_path expander path)
 ;;
 
+let rocqdoc_flags_and_paths ~sctx ~dir (s : Rocq_stanza.Theory.t) =
+  let open Action_builder.O in
+  let* expander = Action_builder.of_memo (Super_context.expander sctx ~dir) in
+  let path stanza_path get = rocqdoc_path ~dir ~stanza_path ~expander ~get in
+  let+ flags = rocqdoc_flags ~dir ~stanza_rocqdoc_flags:s.rocqdoc_flags ~expander
+  and+ header = path s.rocqdoc_header (fun t -> t.Rocq_flags.rocqdoc_header)
+  and+ footer = path s.rocqdoc_footer (fun t -> t.Rocq_flags.rocqdoc_footer) in
+  flags, header, footer
+;;
+
 let theory_rocqc_flag lib =
   let name = Rocq_lib_name.wrapper (Rocq_lib.name lib) in
   let dir = Rocq_lib.obj_root lib in
@@ -946,31 +956,18 @@ let setup_rocqdoc_rules ~sctx ~dir ~theories_deps (s : Rocq_stanza.Theory.t) roc
              | `Html -> "--html"
              | `Latex -> "--latex"
            in
+           let rocqdoc = rocqdoc_flags_and_paths ~sctx ~dir s in
            let extra_rocqdoc_flags =
-             (* Standard flags for rocqdoc *)
-             let open Action_builder.O in
-             let* expander = Action_builder.of_memo @@ Super_context.expander sctx ~dir in
-             let standard =
-               rocqdoc_flags ~dir ~stanza_rocqdoc_flags:s.rocqdoc_flags ~expander
-             in
-             Expander.expand_and_eval_set expander s.rocqdoc_flags ~standard
+             Action_builder.map rocqdoc ~f:(fun (flags, _, _) -> flags)
            in
-           let html_file flag stanza_path get =
-             let open Action_builder.O in
-             let* expander = Action_builder.of_memo @@ Super_context.expander sctx ~dir in
-             let+ path = rocqdoc_path ~dir ~stanza_path ~expander ~get in
-             match path with
-             | None -> Command.Args.empty
-             | Some path -> Command.Args.S [ A flag; Dep path ]
+           let path_arg flag get =
+             Action_builder.map rocqdoc ~f:(fun paths ->
+               match get paths with
+               | None -> Command.Args.empty
+               | Some path -> Command.Args.S [ A flag; Dep path ])
            in
-           let header =
-             html_file "--with-header" s.rocqdoc_header (fun flags ->
-               flags.Rocq_flags.rocqdoc_header)
-           in
-           let footer =
-             html_file "--with-footer" s.rocqdoc_footer (fun flags ->
-               flags.Rocq_flags.rocqdoc_footer)
-           in
+           let header = path_arg "--with-header" (fun (_, header, _) -> header) in
+           let footer = path_arg "--with-footer" (fun (_, _, footer) -> footer) in
            let when_html dyn =
              match mode with
              | `Html -> Command.Args.Dyn dyn

@@ -219,3 +219,17 @@ let%expect_test "split_lines preserves carriage returns outside CRLF" =
     [ "first"; "second" ]
     |}]
 ;;
+
+let%expect_test "table dedupe_by preserves first occurrences across calls" =
+  let dedupe = String.Table.dedupe_by ~key:fst |> Staged.unstage in
+  let print values = dedupe values |> list (pair string int) |> print_dyn in
+  print [];
+  print [ "a", 1; "b", 2; "a", 3; "c", 4; "b", 5 ];
+  print [ "c", 6; "a", 7; "c", 8 ];
+  [%expect
+    {|
+    []
+    [ ("a", 1); ("b", 2); ("c", 4) ]
+    [ ("c", 6); ("a", 7) ]
+    |}]
+;;

@@ -28,6 +28,19 @@ struct
       x
   ;;
 
+  let dedupe_by ~key =
+    let seen = create 32 in
+    Staged.stage (fun list ->
+      clear seen;
+      List.filter list ~f:(fun x ->
+        let key = key x in
+        if mem seen key
+        then false
+        else (
+          set seen key ();
+          true)))
+  ;;
+
   let foldi t ~init ~f = fold t ~init ~f:(fun ~key ~data acc -> f key data acc)
   let fold t ~init ~f = foldi t ~init ~f:(fun _ x -> f x)
 

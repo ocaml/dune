@@ -208,6 +208,18 @@ let%expect_test _ =
   [%expect {| [ ""; ""; ""; "" ] |}]
 ;;
 
+let%expect_test "extract blank separated words" =
+  List.iter [ ""; " \t "; "one"; " one\ttwo  three " ] ~f:(fun s ->
+    String.extract_blank_separated_words s |> list string |> print_dyn);
+  [%expect
+    {|
+    []
+    []
+    [ "one" ]
+    [ "one"; "two"; "three" ]
+    |}]
+;;
+
 let%expect_test "split_lines preserves carriage returns outside CRLF" =
   List.iter [ "\r"; "first\n\r"; "first\rsecond"; "first\r\nsecond" ] ~f:(fun s ->
     String.split_lines s |> list string |> print_dyn);

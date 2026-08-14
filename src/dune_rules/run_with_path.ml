@@ -246,7 +246,7 @@ module Spec = struct
       let env =
         eenv.env
         |> Env.add
-             ~var:"OCAMLFIND_DESTDIR"
+             ~var:(Env.Var.of_string "OCAMLFIND_DESTDIR")
              ~value:(Path.to_absolute_filename ocamlfind_destdir)
         |> Env_path.cons ~dir:dune_folder
       in

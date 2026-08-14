@@ -1,6 +1,6 @@
 open Stdune
 
-let _BUILD_PATH_PREFIX_MAP = "BUILD_PATH_PREFIX_MAP"
+let _BUILD_PATH_PREFIX_MAP = Env.Var.of_string "BUILD_PATH_PREFIX_MAP"
 
 let extend_build_path_prefix_map env how map =
   let new_rules = Build_path_prefix_map.encode_map map in

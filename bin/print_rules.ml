@@ -186,7 +186,7 @@ let dep_repr =
         | Dep.File_selector selector -> Some selector
         | Dep.Env _ | Dep.File _ | Dep.Alias _ | Dep.Universe -> None)
     ; Repr.case "Env" Repr.string ~proj:(function
-        | Dep.Env var -> Some var
+        | Dep.Env var -> Some (Env.Var.to_string var)
         | Dep.File_selector _ | Dep.File _ | Dep.Alias _ | Dep.Universe -> None)
     ; Repr.case "File" path_repr ~proj:(function
         | Dep.File path -> Some path

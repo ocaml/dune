@@ -527,7 +527,7 @@ let create_sh_script cram_stanzas ~temp_dir ~setup_scripts (shell : Cram_stanza.
       let user_shell_code_output_file = file ~ext:".output" in
       let+ user_shell_code_output_file_sh_path = sh_path user_shell_code_output_file in
       let build_path_prefix_map_var =
-        Dune_util.Build_path_prefix_map._BUILD_PATH_PREFIX_MAP
+        Dune_util.Build_path_prefix_map._BUILD_PATH_PREFIX_MAP |> Env.Var.to_string
       in
       fprln
         oc
@@ -582,7 +582,7 @@ let create_sh_script cram_stanzas ~temp_dir ~setup_scripts (shell : Cram_stanza.
 let _display_with_bars s = List.iter (String.split_lines s) ~f:(Printf.eprintf "| %s\n")
 
 let make_run_env env ~temp_dir ~cwd =
-  let env = Env.add env ~var:"LC_ALL" ~value:"C" in
+  let env = Env.add env ~var:Env.Var._LC_ALL ~value:"C" in
   let temp_dir = Path.relative temp_dir "tmp" in
   let env =
     Dune_util.Build_path_prefix_map.extend_build_path_prefix_map

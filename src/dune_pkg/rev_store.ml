@@ -424,9 +424,9 @@ let make_stderr () = Process.Io.make_stderr ~output_on_success:Swallow ~output_l
 
 let env =
   (* to avoid Git translating its CLI *)
-  Env.add Env.initial ~var:"LC_ALL" ~value:"C"
+  Env.add Env.initial ~var:Env.Var._LC_ALL ~value:"C"
   (* to avoid prmompting for passwords *)
-  |> Env.add ~var:"GIT_TERMINAL_PROMPT" ~value:"0"
+  |> Env.add ~var:(Env.Var.of_string "GIT_TERMINAL_PROMPT") ~value:"0"
 ;;
 
 let git () = Vcs.git_for ~needed_for:"by dune package management to fetch git sources"
@@ -435,7 +435,7 @@ let with_specified_git_dir ~dir env =
   (* prevent Git from walking up the file system to find a potentially
      unrelated git directory, so we disable the walk up by setting
      the directory explicitely. *)
-  Env.add env ~var:"GIT_DIR" ~value:(Path.to_string dir)
+  Env.add env ~var:Env.Var._GIT_DIR ~value:(Path.to_string dir)
 ;;
 
 module Git_error = struct

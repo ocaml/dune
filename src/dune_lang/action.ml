@@ -148,7 +148,7 @@ module Env_update = struct
     Repr.record
       "env-update"
       [ Repr.field "op" Op.repr ~get:(fun t -> t.op)
-      ; Repr.field "var" Repr.string ~get:(fun t -> t.var)
+      ; Repr.field "var" Env.Var.repr ~get:(fun t -> t.var)
       ; Repr.field "value" value_repr ~get:(fun t -> t.value)
       ]
   ;;
@@ -165,7 +165,7 @@ module Env_update = struct
     let open Decoder in
     let env_update_op = enum Op.all in
     let+ op, var, value = triple env_update_op string String_with_vars.decode in
-    { op; var; value }
+    { op; var = Env.Var.of_string var; value }
   ;;
 
   let encode { op; var; value } =
@@ -173,7 +173,7 @@ module Env_update = struct
       List.find_map Op.all ~f:(fun (k, v) -> if Poly.equal v op then Some k else None)
       |> Option.value_exn
     in
-    List [ atom op; atom var; String_with_vars.encode value ]
+    List [ atom op; atom (Env.Var.to_string var); String_with_vars.encode value ]
   ;;
 end
 

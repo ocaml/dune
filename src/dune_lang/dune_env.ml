@@ -199,10 +199,13 @@ let inline_tests_field =
 let env_vars_decode =
   located (repeat (pair string string))
   >>| fun (loc, pairs) ->
+  let pairs = List.map pairs ~f:(fun (var, value) -> Env.Var.of_string var, value) in
   match Env.Map.of_list pairs with
   | Ok vars -> Env.extend Env.empty ~vars
   | Error (k, _, _) ->
-    User_error.raise ~loc [ Pp.textf "Variable %s is specified several times" k ]
+    User_error.raise
+      ~loc
+      [ Pp.textf "Variable %s is specified several times" (Env.Var.to_string k) ]
 ;;
 
 let env_vars_field =

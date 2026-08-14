@@ -571,13 +571,14 @@ module Pkg = struct
   let base_env t =
     Env.Map.of_list_exn
       [ Opam_switch.opam_switch_prefix_var_name, [ Value.Path t.paths.target_dir ]
-      ; "CDPATH", [ Value.String "" ]
-      ; "MAKELEVEL", [ Value.String "" ]
-      ; "OPAM_PACKAGE_NAME", [ Value.String (Package.Name.to_string t.info.name) ]
-      ; ( "OPAM_PACKAGE_VERSION"
+      ; Env.Var.of_string "CDPATH", [ Value.String "" ]
+      ; Env.Var.of_string "MAKELEVEL", [ Value.String "" ]
+      ; ( Env.Var.of_string "OPAM_PACKAGE_NAME"
+        , [ Value.String (Package.Name.to_string t.info.name) ] )
+      ; ( Env.Var.of_string "OPAM_PACKAGE_VERSION"
         , [ Value.String (Package_version.to_string t.info.version) ] )
-      ; "OPAMCLI", [ Value.String "2.0" ]
-      ; "OPAMSWITCH", [ Value.String "dune" ]
+      ; Env.Var.of_string "OPAMCLI", [ Value.String "2.0" ]
+      ; Env.Var.of_string "OPAMSWITCH", [ Value.String "dune" ]
       ]
   ;;
 
@@ -1132,7 +1133,7 @@ module Action_expander = struct
       expand action ~expander
     in
     List.fold_left updates ~init:action ~f:(fun action (k, v) ->
-      Action.Setenv (k, v, action))
+      Action.Setenv (Env.Var.to_string k, v, action))
   ;;
 
   module Artifacts_and_deps = struct

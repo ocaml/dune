@@ -561,12 +561,18 @@ module Context = struct
         field_o "fdo" (Dune_lang.Syntax.since syntax (2, 0) >>> map string ~f)
       and+ paths =
         let f l =
-          match Env.Map.of_list (List.map ~f:(fun ((loc, s), _) -> s, loc) l) with
+          match
+            Env.Map.of_list
+              (List.map ~f:(fun ((loc, s), _) -> Env.Var.of_string s, loc) l)
+          with
           | Ok _ -> List.map ~f:(fun ((_, s), x) -> s, x) l
           | Error (var, _, loc) ->
             User_error.raise
               ~loc
-              [ Pp.textf "the variable %S can appear at most once in this stanza." var ]
+              [ Pp.textf
+                  "the variable %S can appear at most once in this stanza."
+                  (Env.Var.to_string var)
+              ]
         in
         field
           "paths"

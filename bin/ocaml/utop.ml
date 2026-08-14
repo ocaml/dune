@@ -106,7 +106,10 @@ let term =
                  directory. Setting this environment variable causes the custom
                  findlib.conf file to be used instead of the default
                  findlib.conf. *)
-              Env.add env ~var:"OCAMLFIND_CONF" ~value:(Path.to_string utop_findlib_conf)
+              Env.add
+                env
+                ~var:Env.Var._OCAMLFIND_CONF
+                ~value:(Path.to_string utop_findlib_conf)
             else env
           in
           env, Path.to_string utop_exe))

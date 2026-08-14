@@ -209,7 +209,7 @@ let opam_string_to_slang ~packages_in_solution ~package ~loc opam_string =
 
 let opam_env_update_to_env_update (var, env_op, value_string, _) : _ Action.Env_update.t =
   { Action.Env_update.op = env_op
-  ; var
+  ; var = Env.Var.of_string var
   ; value = String_with_vars.make_text Loc.none value_string
   }
 ;;

@@ -314,7 +314,7 @@ let rec dep expander : Dep_conf.t -> _ = function
   | Env_var var_sw ->
     Other
       (let* var = Expander.expand_str expander var_sw in
-       let+ () = Action_builder.env_var var in
+       let+ () = Action_builder.env_var (Env.Var.of_string var) in
        [])
   | Sandbox_config _ -> Other (Action_builder.return [])
 

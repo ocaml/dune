@@ -126,7 +126,7 @@ module Builder = struct
       let f (var, t) =
         let parse ~loc:_ s = s in
         let standard = Env_path.path env |> List.map ~f:Path.to_string in
-        var, Ordered_set_lang.eval t ~parse ~standard ~eq:String.equal
+        Env.Var.of_string var, Ordered_set_lang.eval t ~parse ~standard ~eq:String.equal
       in
       List.map ~f t
     in
@@ -298,6 +298,7 @@ end = struct
       in
       Dune_sexp.Parser.parse_string ~fname:"<opam output>" ~mode:Single s
       |> Dune_sexp.Decoder.(parse (enter (repeat (pair string string))) Univ_map.empty)
+      |> List.map ~f:(fun (var, value) -> Env.Var.of_string var, value)
       |> Env.Map.of_list_multi
       |> Env.Map.mapi ~f:(fun var values ->
         match List.rev values with
@@ -305,7 +306,9 @@ end = struct
         | [ x ] -> x
         | x :: _ ->
           User_warning.emit
-            [ Pp.textf "variable %S present multiple times in the output of:" var
+            [ Pp.textf
+                "variable %S present multiple times in the output of:"
+                (Env.Var.to_string var)
             ; Pp.tag
                 User_message.Style.Details
                 (Pp.text (String.quote_list_for_shell (Path.to_string opam :: args)))
@@ -625,7 +628,7 @@ module Group = struct
         [ Pp.textf
             "opam doesn't set the environment variable %s. I cannot create an opam build \
              context without opam setting this variable."
-            Opam_switch.opam_switch_prefix_var_name
+            (Env.Var.to_string Opam_switch.opam_switch_prefix_var_name)
         ];
     let path =
       match Env.Map.find vars Env_path.var with
@@ -684,7 +687,7 @@ module Group = struct
           | Some _ -> Memo.return builder
           | None ->
             let+ env = builder.env in
-            (match Env.get env "OCAMLFIND_TOOLCHAIN" with
+            (match Env.get env (Env.Var.of_string "OCAMLFIND_TOOLCHAIN") with
              | None -> builder
              | Some name ->
                { builder with

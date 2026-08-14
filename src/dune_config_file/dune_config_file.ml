@@ -695,7 +695,7 @@ module Dune_config = struct
     lazy
       (if Sys.win32
        then (
-         match Env.get Env.initial "NUMBER_OF_PROCESSORS" with
+         match Env.get Env.initial (Env.Var.of_string "NUMBER_OF_PROCESSORS") with
          | None -> 1
          | Some s -> Int.of_string s |> Option.value ~default:1)
        else (

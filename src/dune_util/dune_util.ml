@@ -16,7 +16,7 @@ let xdg =
      | Some xdg -> xdg
      | None ->
        let env_map =
-         Env.update Env.initial ~var:"HOME" ~f:(function
+         Env.update Env.initial ~var:(Env.Var.of_string "HOME") ~f:(function
            | Some _ as s -> s
            | None ->
              let uid = Unix.getuid () in
@@ -24,7 +24,7 @@ let xdg =
               | exception Not_found -> None
               | s -> Some s.pw_dir))
        in
-       Xdg.create ~env:(Env.get env_map) ())
+       Xdg.create ~env:(fun var -> Env.get env_map (Env.Var.of_string var)) ())
 ;;
 
 let override_xdg : Xdg.t -> unit =

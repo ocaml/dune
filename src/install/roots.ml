@@ -93,13 +93,15 @@ open Dune_findlib
 
 let ocamlpath = Findlib.Config.ocamlpath_var
 let ocamlfind_ignore_dups_in = Findlib.Config.ocamlfind_ignore_dups_in
+let ocamltop_include_path = Env.Var.of_string "OCAMLTOP_INCLUDE_PATH"
+let manpath = Env.Var.of_string "MANPATH"
 
 let to_env_without_path t ~relative =
   [ Ocaml.Env.caml_ld_library_path, relative t.lib_root "stublibs"
   ; ocamlpath, t.lib_root
-  ; "OCAMLTOP_INCLUDE_PATH", relative t.lib_root "toplevel"
+  ; ocamltop_include_path, relative t.lib_root "toplevel"
   ; ocamlfind_ignore_dups_in, t.lib_root
-  ; "MANPATH", t.man
+  ; manpath, t.man
   ]
 ;;
 
@@ -179,7 +181,7 @@ let%test_module "extend_env_concat_path_vars" =
   (module struct
     let env_of_list bindings =
       List.fold_left bindings ~init:Env.empty ~f:(fun env (var, value) ->
-        Env.add env ~var ~value)
+        Env.add env ~var:(Env.Var.of_string var) ~value)
     ;;
 
     let print_env env = Env.to_unix env |> List.iter ~f:print_endline
@@ -193,7 +195,10 @@ let%test_module "extend_env_concat_path_vars" =
         let a = Env.add Env.empty ~var ~value:"/from/a" in
         let b = Env.add Env.empty ~var ~value:"/from/b" in
         let result = extend_env_concat_path_vars a b in
-        Printf.printf "%s=%s\n" var (Option.value (Env.get result var) ~default:"(none)"));
+        Printf.printf
+          "%s=%s\n"
+          (Env.Var.to_string var)
+          (Option.value (Env.get result var) ~default:"(none)"));
       [%expect
         {|
         CAML_LD_LIBRARY_PATH=/from/b:/from/a

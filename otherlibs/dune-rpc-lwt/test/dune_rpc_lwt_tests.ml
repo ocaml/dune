@@ -16,10 +16,10 @@ let connect ~root_dir =
     let env =
       Env.add
         Env.initial
-        ~var:_XDG_DATA_HOME
+        ~var:(Env.Var.of_string _XDG_DATA_HOME)
         ~value:(Stdune.Path.to_absolute_filename xdg_data_dir)
     in
-    Env.get env
+    fun var -> Env.get env (Env.Var.of_string var)
   in
   let* res = Where.get ~env ~build_dir in
   match res with

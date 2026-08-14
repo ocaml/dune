@@ -29,7 +29,7 @@ let where =
   fun sctx ~loc ~dir ->
     let* env = Super_context.env_node sctx ~dir >>= Env_node.external_env in
     let+ melange_dirs =
-      match Env.get env "MELANGELIB" with
+      match Env.get env (Env.Var.of_string "MELANGELIB") with
       | Some p -> Memo.return (Some p)
       | None ->
         let* melc = melc sctx ~loc ~dir in

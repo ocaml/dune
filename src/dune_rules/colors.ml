@@ -9,8 +9,8 @@ let setup_env_for_colors env =
       | None -> Some value
       | Some s -> Some s)
   in
-  let env = set env "OPAMCOLOR" "always" in
-  let env = set env "OCAML_COLOR" "always" in
+  let env = set env (Env.Var.of_string "OPAMCOLOR") "always" in
+  let env = set env (Env.Var.of_string "OCAML_COLOR") "always" in
   env
 ;;
 

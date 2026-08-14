@@ -463,15 +463,15 @@ end
 
 let supports_color isatty =
   let is_smart =
-    match Env.(get initial) "TERM" with
+    match Env.(get initial (Var.of_string "TERM")) with
     | Some "dumb" -> false
     | _ -> true
   and clicolor =
-    match Env.(get initial) "CLICOLOR" with
+    match Env.(get initial (Var.of_string "CLICOLOR")) with
     | Some "0" -> false
     | _ -> true
   and clicolor_force =
-    match Env.(get initial) "CLICOLOR_FORCE" with
+    match Env.(get initial (Var.of_string "CLICOLOR_FORCE")) with
     | None | Some "0" -> false
     | _ -> true
   in

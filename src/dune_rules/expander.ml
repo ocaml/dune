@@ -668,6 +668,7 @@ let env_macro t source macro_invocation =
       ]
       ~hints:[ Pp.text "the syntax is %{env:VAR=DEFAULT-VALUE}" ]
   | Some (var, default) ->
+    let var = Env.Var.of_string var in
     (match Env.Var.Map.find t.local_env var with
      | Some v -> Deps.With (v >>| string)
      | None ->

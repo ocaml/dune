@@ -212,7 +212,10 @@ end = struct
     let*! value, acc = value env acc in
     let value = Action_builder.memoize ~cutoff:String.equal "env var" value in
     let env =
-      { env with expander = Expander.set_local_env_var env.expander ~var ~value }
+      { env with
+        expander =
+          Expander.set_local_env_var env.expander ~var:(Env.Var.of_string var) ~value
+      }
     in
     let+! f, acc = t env acc in
     let b =

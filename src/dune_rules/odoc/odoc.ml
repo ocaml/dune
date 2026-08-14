@@ -349,7 +349,7 @@ let run_odoc sctx ~dir command ~quiet ~flags_for args =
     | None -> Action_builder.return Command.Args.empty
     | Some path -> odoc_base_flags quiet path
   in
-  let deps = Action_builder.env_var "ODOC_SYNTAX" in
+  let deps = Action_builder.env_var (Env.Var.of_string "ODOC_SYNTAX") in
   let open Action_builder.With_targets.O in
   Action_builder.with_no_targets deps
   >>> Command.run_dyn_prog

@@ -8,9 +8,11 @@ module Console = Console
 let () =
   Dune_util.override_xdg
     (let env =
-       Env.update Env.initial ~var:"XDG_CACHE_HOME" ~f:(fun _ ->
-         Some (Path.of_filename_relative_to_initial_cwd ".cache" |> Path.to_string))
-       |> Env.get
+       let env =
+         Env.update Env.initial ~var:Env.Var._XDG_CACHE_HOME ~f:(fun _ ->
+           Some (Path.of_filename_relative_to_initial_cwd ".cache" |> Path.to_string))
+       in
+       fun var -> Env.get env (Env.Var.of_string var)
      in
      Xdg.create ~env ());
   Config.init String.Map.empty;

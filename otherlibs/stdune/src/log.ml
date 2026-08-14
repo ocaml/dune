@@ -25,7 +25,7 @@ module Message = struct
     ; args =
         [ ( "OCAMLPARAM"
           , Dyn.string
-              (match Env.get Env.initial "OCAMLPARAM" with
+              (match Env.get Env.initial Env.Var._OCAMLPARAM with
                | Some s -> Printf.sprintf "%S" s
                | None -> "unset") )
         ]

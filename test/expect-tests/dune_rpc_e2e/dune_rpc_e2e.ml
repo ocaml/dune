@@ -19,7 +19,7 @@ let dune_prog =
 let init_chan ~root_dir =
   let build_dir = Filename.concat root_dir "_build" in
   let once () =
-    let env = Env.get Env.initial in
+    let env var = Env.get Env.initial (Env.Var.of_string var) in
     match Dune_rpc_impl.Where.Where.get ~env ~build_dir with
     | Error exn -> Exn.raise exn
     | Ok None -> Fiber.return None

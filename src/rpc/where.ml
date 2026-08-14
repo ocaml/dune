@@ -37,7 +37,7 @@ let build_dir =
 ;;
 
 let get () =
-  let env = Env.get Env.initial in
+  let env var = Env.get Env.initial (Env.Var.of_string var) in
   match Where.get ~env ~build_dir:(Lazy.force build_dir) with
   | Ok s -> s
   | Error exn ->

@@ -181,7 +181,8 @@ let env_command =
       in
       match new_path with
       | None -> ()
-      | Some new_path -> print_endline (sprintf "export %s=%s" Env_path.var new_path))
+      | Some new_path ->
+        print_endline (sprintf "export %s=%s" (Env.Var.to_string Env_path.var) new_path))
   in
   let info =
     let doc =

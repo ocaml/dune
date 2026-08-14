@@ -25,7 +25,7 @@ val make_root
     binaries the action will execute. *)
 val host_context : t -> Context.t Memo.t
 
-val set_local_env_var : t -> var:string -> value:string Action_builder.t -> t
+val set_local_env_var : t -> var:Env.Var.t -> value:string Action_builder.t -> t
 
 val set_scope
   :  t

@@ -374,7 +374,7 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog ~mdx_prog_ge
     in
     let open Action_builder.O in
     let action =
-      Action_builder.env_var "MDX_RUN_NON_DETERMINISTIC"
+      Action_builder.env_var (Env.Var.of_string "MDX_RUN_NON_DETERMINISTIC")
       >>> (Action_builder.map mdx_input_dependencies ~f:(fun d -> (), d)
            |> Action_builder.dyn_deps)
       >>> let* executable = executable in

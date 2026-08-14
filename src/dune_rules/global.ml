@@ -19,7 +19,7 @@ let init ~capture_outputs =
         behave differently when run inside emacs is Dune itself and we sometimes
         run Dune from inside Dune, for instance in cram tests, so it is
         important to do this. *)
-     Env.remove env ~var:"INSIDE_EMACS")
+     Env.remove env ~var:Env.Var._INSIDE_EMACS)
 ;;
 
 let env () = Fdecl.get env

@@ -7,9 +7,11 @@ module Console = Console
 let () =
   let cache_dir = lazy (Temp.create Dir ~prefix:"isolated-cache-" ~suffix:"") in
   let env =
-    Env.update Env.initial ~var:"XDG_CACHE_HOME" ~f:(fun _ ->
-      Some (Path.to_string (Lazy.force cache_dir)))
-    |> Env.get
+    let env =
+      Env.update Env.initial ~var:Env.Var._XDG_CACHE_HOME ~f:(fun _ ->
+        Some (Path.to_string (Lazy.force cache_dir)))
+    in
+    fun var -> Env.get env (Env.Var.of_string var)
   in
   Dune_util.override_xdg (Xdg.create ~env ());
   Config.init String.Map.empty;
@@ -66,8 +68,11 @@ let%expect_test "second fetch uses refs for efficient negotiation (fix #13323)" 
   let unrelated_repo_dir = Temp.create Dir ~prefix:"git-unrelated-" ~suffix:"" in
   let trace_file = Temp.create File ~prefix:"git-trace-" ~suffix:".log" in
   let env =
-    Env.add Env.initial ~var:"GIT_TRACE_PACKET" ~value:(Path.to_string trace_file)
-    |> Env.add ~var:"GIT_PROTOCOL" ~value:"version=2"
+    Env.add
+      Env.initial
+      ~var:(Env.Var.of_string "GIT_TRACE_PACKET")
+      ~value:(Path.to_string trace_file)
+    |> Env.add ~var:(Env.Var.of_string "GIT_PROTOCOL") ~value:"version=2"
   in
   (Dune_scheduler.Scheduler.Run.go
      { concurrency = 2; print_ctrl_c_warning = false; watch_exclusions = [] }

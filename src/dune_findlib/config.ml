@@ -85,8 +85,8 @@ let ocamlpath_sep =
   else Bin.path_sep
 ;;
 
-let ocamlpath_var = "OCAMLPATH"
-let ocamlfind_ignore_dups_in = "OCAMLFIND_IGNORE_DUPS_IN"
+let ocamlpath_var = Env.Var.of_string "OCAMLPATH"
+let ocamlfind_ignore_dups_in = Env.Var.of_string "OCAMLFIND_IGNORE_DUPS_IN"
 let path_var = Bin.parse_path ~sep:ocamlpath_sep
 let ocamlpath_of_env env = Env.get env ocamlpath_var |> Option.map ~f:path_var
 
@@ -136,7 +136,7 @@ let ocamlfind_config_path ~env ~which ~findlib_toolchain =
        dune attempts to find [ocaml], [ocamlopt], etc. in the findlib
        configuration for the toolchain first to account for cross-compilation
        use cases. It then falls back to searching in [$PATH] *)
-    match Env.get env "OCAMLFIND_CONF" with
+    match Env.get env Env.Var._OCAMLFIND_CONF with
     | Some s -> Memo.return (Some s)
     | None ->
       (match findlib_toolchain with

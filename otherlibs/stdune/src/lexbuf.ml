@@ -4,10 +4,10 @@ module Position = struct
   type t = Lexing.position
 
   let equal
-        { Lexing.pos_fname = f_a; pos_lnum = l_a; pos_bol = b_a; pos_cnum = c_a }
-        { Lexing.pos_fname = f_b; pos_lnum = l_b; pos_bol = b_b; pos_cnum = c_b }
+        ({ Lexing.pos_fname = f_a; pos_lnum = l_a; pos_bol = b_a; pos_cnum = c_a } as a)
+        ({ Lexing.pos_fname = f_b; pos_lnum = l_b; pos_bol = b_b; pos_cnum = c_b } as b)
     =
-    f_a = f_b && l_a = l_b && b_a = b_b && c_a = c_b
+    a == b || (f_a = f_b && l_a = l_b && b_a = b_b && c_a = c_b)
   ;;
 
   let in_file ~fname =
@@ -71,7 +71,11 @@ module Loc = struct
   ;;
 
   let compare = Poly.compare
-  let equal x y = Ordering.is_eq (compare x y)
+
+  let equal x y =
+    x == y || (Position.equal x.start y.start && Position.equal x.stop y.stop)
+  ;;
+
   let none = { start = Position.none; stop = Position.none }
 end
 

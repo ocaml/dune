@@ -22,24 +22,22 @@ work identically to the relative form. Today it errors as if the path were
 outside the project.
 
   $ dune show env $PWD --field flags
-  Error: Environment is not defined for external paths
-  [1]
+  (flags
+   (-short-paths -keep-locs -warn-error +a -w +27))
 
 CR-someday Alizter: the same call from a subdirectory should also resolve.
 (--root is required because INSIDE_DUNE disables workspace auto-detection.)
 
   $ (cd subdir && dune show env --root .. $PWD --field flags)
-  Entering directory '..'
-  Error: Environment is not defined for external paths
-  Leaving directory '..'
-  [1]
+  (flags
+   (-short-paths -keep-locs -warn-error +a -w +27))
 
 CR-someday Alizter: absolute paths to subdirectories of the workspace
 should be accepted.
 
   $ dune show env $PWD/subdir --field flags
-  Error: Environment is not defined for external paths
-  [1]
+  (flags
+   (-short-paths -keep-locs -warn-error +a -w +27))
 
 Absolute paths that are genuinely outside the workspace must continue to
 fail with a clean error. This behaviour must not regress.

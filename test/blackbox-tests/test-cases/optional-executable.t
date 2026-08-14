@@ -39,6 +39,55 @@ Test optional executable
   -> required by alias run-x in dune:6
   [1]
 
+Optional executables also account for instrumentation libraries when deciding
+whether the binary should be installed.
+
+  $ cat >dune-project <<EOF
+  > (lang dune 3.25)
+  > (package
+  >  (name x)
+  >  (allow_empty))
+  > EOF
+
+  $ cat >dune <<EOF
+  > (library
+  >  (name instr_ppx)
+  >  (kind ppx_rewriter)
+  >  (modules instr_ppx)
+  >  (libraries ppxlib))
+  > 
+  > (library
+  >  (name instr)
+  >  (modules instr)
+  >  (instrumentation.backend
+  >   (ppx instr_ppx)))
+  > 
+  > (executable
+  >  (public_name x)
+  >  (name x)
+  >  (modules x)
+  >  (optional)
+  >  (instrumentation
+  >   (backend instr)
+  >   (libraries does-not-exist)))
+  > EOF
+  $ cat >instr_ppx.ml <<EOF
+  > let () = Ppxlib.Driver.register_transformation "instr"
+  > EOF
+  $ cat >instr.ml <<EOF
+  > EOF
+  $ cat >x.ml <<EOF
+  > let () = ()
+  > EOF
+
+  $ dune build @install
+  $ grep "bin/x" _build/default/x.install
+    "_build/install/default/bin/x"
+
+  $ dune build --instrument-with instr @install
+  $ grep "bin/x" _build/default/x.install
+  [1]
+
 Reproduction case for a bug in dune < 2.4 where all executables where
 considered as optional:
 
@@ -172,4 +221,3 @@ In the same way as enabled_if:
   binary path: $TESTCASE_ROOT/optional-binary-absent/bin/dunetestbar
 
   $ cd ..
-

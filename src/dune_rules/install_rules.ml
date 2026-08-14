@@ -514,22 +514,29 @@ end = struct
            else
              let* compile_info =
                let dune_version = Scope.project scope |> Dune_project.dune_version in
+               let instrumentation_backend =
+                 Lib.DB.instrumentation_backend (Scope.libs scope)
+               in
                let+ pps =
                  (* This is wrong. If the preprocessors fail to resolve,
                     we shouldn't install the binary rather than failing outright
                  *)
                  Instrumentation.with_instrumentation
                    exes.buildable.preprocess.config
-                   ~instrumentation_backend:
-                     (Lib.DB.instrumentation_backend (Scope.libs scope))
+                   ~instrumentation_backend
                  |> Resolve.Memo.read_memo
                  >>| Preprocess.Per_module.pps
+               and+ instrumentation_libraries =
+                 Instrumentation.active_libraries
+                   exes.buildable.preprocess.config
+                   ~instrumentation_backend
+                 |> Resolve.Memo.read_memo
                in
                Lib.DB.resolve_user_written_deps
                  (Scope.libs scope)
                  ~forbidden_libraries:[]
                  (`Exe exes.names)
-                 exes.buildable.libraries
+                 (exes.buildable.libraries @ instrumentation_libraries)
                  ~allow_unused_libraries:exes.buildable.allow_unused_libraries
                  ~pps
                  ~dune_version

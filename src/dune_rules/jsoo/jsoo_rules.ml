@@ -610,6 +610,12 @@ let standalone_runtime_rule ~mode cc ~runtime_files ~target ~flags ~sourcemap =
     ~sourcemap
 ;;
 
+let linkall_arg ~version ~linkall =
+  match version, linkall with
+  | Some version, true when Version.compare version (5, 1) <> Lt -> [ "--linkall" ]
+  | Some _, true | None, _ | _, false -> []
+;;
+
 let exe_rule
       ~mode
       cc
@@ -631,13 +637,7 @@ let exe_rule
       let* jsoo = jsoo ~dir sctx in
       Action_builder.of_memo @@ Version.jsoo_version jsoo
     in
-    Command.Args.As
-      (match jsoo_version, linkall with
-       | Some version, true ->
-         (match Version.compare version (5, 1) with
-          | Lt -> []
-          | Gt | Eq -> [ "--linkall" ])
-       | None, _ | _, false -> [])
+    Command.Args.As (linkall_arg ~version:jsoo_version ~linkall)
   in
   let spec =
     Command.Args.S
@@ -770,13 +770,7 @@ let link_rule
       [ Deps
           (List.concat
              [ [ stdlib ]; special_units; all_libs; all_other_modules; [ std_exit ] ])
-      ; As
-          (match jsoo_version, linkall with
-           | Some version, true ->
-             (match Version.compare version (5, 1) with
-              | Lt -> []
-              | Gt | Eq -> [ "--linkall" ])
-           | None, _ | _, false -> [])
+      ; As (linkall_arg ~version:jsoo_version ~linkall)
       ]
   in
   let spec = Command.Args.S [ Dyn runtime_dep; Dyn get_all ] in

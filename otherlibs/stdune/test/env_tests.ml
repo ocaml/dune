@@ -35,3 +35,11 @@ let%expect_test "rendering preserves the environment hash" =
   print_endline (Bool.to_string (Int.equal before (Env.hash env)));
   [%expect {| true |}]
 ;;
+
+let%expect_test "environment values reject NUL bytes when rendered" =
+  let env = Env.add Env.empty ~var:a ~value:"value\000" in
+  (match Env.to_unix env with
+   | exception Code_error.E _ -> print_endline "rejected"
+   | _ -> print_endline "accepted");
+  [%expect {| rejected |}]
+;;

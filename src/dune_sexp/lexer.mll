@@ -67,7 +67,7 @@ module Template = struct
     | [] | [Text ""] ->
       invalid_dune_or_jbuild lexbuf
     | [Text s] ->
-      Token.Atom (Atom.of_string s)
+      Token.Atom (Atom.of_string_unchecked s)
     | _ ->
       Token.Template
         { quoted

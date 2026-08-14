@@ -9,6 +9,10 @@ val non_ascii_error_message : string
 
 val is_valid : string -> bool
 val of_string : string -> t
+
+(** [of_string_unchecked s] requires [is_valid s]. *)
+val of_string_unchecked : string -> t
+
 val to_string : t -> string
 
 (** [parse s] is [Some (a:t)] if [s] can be a valid atom according to [is_valid]

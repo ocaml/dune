@@ -41,6 +41,7 @@ let of_string s =
   else Code_error.raise "Dune_lang.Atom.of_string got invalid atom" [ "atom", String s ]
 ;;
 
+let of_string_unchecked s = A s
 let to_string (A s) = s
 let repr = Repr.view Repr.string ~to_:to_string
 let parse s = if is_valid s then Some (A s) else None

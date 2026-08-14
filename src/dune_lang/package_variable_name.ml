@@ -61,6 +61,16 @@ let absent_package_value ~for_string_interp t =
   else None
 ;;
 
+(* TODO *)
+(* let request_flags =  *)
+(*   Set.of_list [ build; post; with_test; with_doc; with_dev_setup; dev ] *)
+
+let qualified_deps_variables = Set.of_list [ with_test; with_doc; with_dev_setup ]
+
+let depends_variables =
+  Set.of_list [ build; post; with_test; with_doc; with_dev_setup; dev ]
+;;
+
 let platform_specific =
   Set.of_list [ arch; os; os_version; os_distribution; os_family; sys_ocaml_version ]
 ;;

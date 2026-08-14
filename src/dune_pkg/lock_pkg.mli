@@ -18,7 +18,6 @@ val add_self_to_filter_env
 val local_package_dependencies
   :  Local_package.For_solver.t
   -> env:OpamFilter.env
-  -> with_test:bool
   -> packages:Package_version.t Package_name.Map.t
   -> dune_version:Package_version.t
   -> (Package_name.t list, Resolve_opam_formula.unsatisfied_formula) result

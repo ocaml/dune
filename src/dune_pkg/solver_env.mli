@@ -49,6 +49,12 @@ val remove_all_except_platform_specific : t -> t
 
 val to_env : t -> OpamFilter.env
 
+(** TODO [to_env_for_package t ~request_flags] is the filter env for evaluating one
+     package's dependency formula. When [request_flags] is false — the package is
+     not one we were asked to build — "with-test"/"with-doc"/"with-dev-setup" are
+     forced off, matching opam's [package_env_t]. *)
+val to_env_for_package : t -> request_flags:bool -> OpamFilter.env
+
 (** A list of environments comprising the most common platforms. Dune will
     solve dependencies for these platforms unless alternative platforms are
     specified in dune-workspace. *)

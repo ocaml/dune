@@ -15,7 +15,6 @@ let add_self_to_filter_env package env variable =
 let local_package_dependencies
       (local_package : Local_package.For_solver.t)
       ~env
-      ~with_test
       ~packages
       ~dune_version
   =
@@ -28,7 +27,6 @@ let local_package_dependencies
   let packages = Package_name.Map.set packages Dune_dep.name dune_version in
   Resolve_opam_formula.filtered_formula_to_package_names
     ~env
-    ~with_test
     ~packages
     (Dependency_formula.to_filtered_formula local_package.dependencies)
   |> Result.map ~f:(fun { Resolve_opam_formula.regular; post = _ } ->
@@ -516,15 +514,15 @@ let opam_package_to_lock_file_pkg_single
     { Lock_dir.Pkg_info.name; version; dev; avoid; source; extra_sources }
   in
   let depends =
+    (* TODO: test transitive deps are not pulled in *)
     let resolve what =
       Resolve_opam_formula.filtered_formula_to_package_names
-        ~with_test:false
         ~packages:version_by_package_name
         ~env:
           (add_self_to_filter_env
              opam_package
              (Solver_env.add_sentinel_values_for_unset_platform_vars solver_env
-              |> Solver_env.to_env))
+              |> Solver_env.to_env_for_package ~request_flags:false))
         what
     in
     let depends =

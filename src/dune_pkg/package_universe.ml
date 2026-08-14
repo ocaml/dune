@@ -51,13 +51,18 @@ let concrete_dependencies_of_local_package t local_package_name ~with_test =
   let env =
     Solver_stats.Expanded_variable_bindings.to_solver_env
       t.lock_dir.expanded_solver_variable_bindings
-    |> Solver_env.to_env
+    |> (fun e ->
+    (* TODO Clean up? In to_env API? What's good? *)
+    Solver_env.set
+      e
+      Package_variable_name.with_test
+      (if with_test then Variable_value.true_ else Variable_value.false_))
+    |> Solver_env.to_env_for_package ~request_flags:true
   in
   match
     Lock_pkg.local_package_dependencies
       (Local_package.for_solver local_package)
       ~env
-      ~with_test
       ~packages:t.version_by_package_name
       ~dune_version:(Package_version.of_opam_package_version Dune_dep.version)
   with

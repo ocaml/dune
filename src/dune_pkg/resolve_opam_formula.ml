@@ -1,25 +1,38 @@
 open Import
 module Relop = Dune_lang.Relop
 
-let apply_filter env ~with_test ~(formula : OpamTypes.filtered_formula)
-  : OpamTypes.formula
-  =
-  OpamFilter.gen_filter_formula
-    (OpamFormula.partial_eval (fun (form : _ OpamTypes.filter_or_constraint) ->
-       match form with
-       | Filter flt ->
-         `Formula (Atom (OpamTypes.Filter (OpamFilter.partial_eval env flt)))
-       | Constraint (relop, filter) ->
-         let filter = OpamFilter.partial_eval env filter in
-         `Formula (Atom (Constraint (relop, filter)))))
-    formula
-  |> OpamFilter.filter_deps
-       ~build:true
-       ~post:false
-       ~dev:false
-       ~default:false
-       ~test:with_test
-       ~doc:false
+(* type dep_filter = { with_test : bool option } *)
+
+(* (\* [OpamFilter.filter_deps] is assumes that inputs "have been pre-processed to *)
+(*    remove switch and global variables", so perform that filter by masking the *)
+(*    relevant variables. Otherwise, any present variables in the [env] override *)
+(*    the arguments passed via the labeled arguments. For the analogous code in opam, *)
+(*    see https://github.com/ocaml/opam/blob/7a2860da21e6e1e937e2a78935d42c1fa3936d34/src/state/opamPackageVar.ml#L132-L147 *\) *)
+(* let override_env_depends_variables (dep_filter : dep_filter) env variable = *)
+(*   match OpamVariable.Full.scope variable with *)
+(*   | Self | Package _ -> env variable *)
+(*   | Global -> *)
+(*     let name = Package_variable_name.of_opam (OpamVariable.Full.variable variable) in *)
+(*     if Package_variable_name.Set.mem Package_variable_name.depends_variables name *)
+(*     then None *)
+(*     else env variable *)
+(* ;; *)
+
+let apply_filter env ~(formula : OpamTypes.filtered_formula) : OpamTypes.formula =
+  let formula' = OpamFilter.partial_filter_formula env formula in
+  OpamFilter.filter_deps
+    formula'
+    ~build:true
+    ~post:true
+    ~dev:false (* TODO: Shouldn't we allow these? *)
+    ~default:false
+      (* [default] is what to decide for unknown variables *)
+      (* [None] for these labels tells [filter_deps] that these variables must not be found
+          in the formulas it works upon, which we guarantee be ensuring that all the variables are
+          accounted for in the Solver_env and that they are fully resolved before we apply filter_deps. *)
+    ?test:None
+    ?dev_setup:None
+    ?doc:None
 ;;
 
 module Version_constraint = struct
@@ -167,6 +180,7 @@ let formula_to_package_names version_by_package_name opam_formula =
     Ok package_names
 ;;
 
+(* TODO: maybe this should also thru the Solver_env.to_env_for_package ? *)
 (* Override the setting of the "post" variable to a given boolean
    value by passing [Some value], or force it to be unset by passing
    [None]. *)
@@ -218,13 +232,14 @@ type deps =
   ; regular : Package_name.t list
   }
 
-let filtered_formula_to_package_names ~env ~with_test ~packages formula =
+(* TODO: explain rationale for the ~post: values *)
+let filtered_formula_to_package_names ~env ~packages formula =
   let open Result.O in
-  let+ all = apply_filter ~with_test env ~formula |> formula_to_package_names packages in
+  let+ all = apply_filter env ~formula |> formula_to_package_names packages in
   let regular, post =
     let regular_set =
       override_post (Some false) env
-      |> apply_filter ~with_test ~formula
+      |> apply_filter ~formula
       |> formula_to_package_names_allow_missing packages
       |> Package_name.Set.of_list
     in

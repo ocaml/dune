@@ -41,6 +41,12 @@ val one_of : t -> t list -> bool
     occur. *)
 val absent_package_value : for_string_interp:bool -> t -> Slang.t option
 
+(** TODO *)
+val qualified_deps_variables : Set.t
+
+(** TODO *)
+val depends_variables : Set.t
+
 (** The set of variable names whose values are expected to differ depending on
     the current platform. *)
 val platform_specific : Set.t

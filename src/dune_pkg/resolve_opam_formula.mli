@@ -3,7 +3,6 @@ open Import
 (** Evaluate the filters in a filtered formula returning the resulting formula. *)
 val apply_filter
   :  OpamFilter.env
-  -> with_test:bool
   -> formula:OpamTypes.filtered_formula
   -> OpamTypes.formula
 
@@ -55,7 +54,6 @@ type deps =
     dependencies. *)
 val filtered_formula_to_package_names
   :  env:OpamFilter.env
-  -> with_test:bool
   -> packages:Package_version.t Package_name.Map.t
   -> OpamTypes.filtered_formula
   -> (deps, unsatisfied_formula) result

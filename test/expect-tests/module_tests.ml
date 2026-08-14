@@ -167,6 +167,42 @@ let%expect_test "virtual-library dependency lookup" =
     |}]
 ;;
 
+let%expect_test "virtual-library object map after mapping" =
+  let impl =
+    make_lib
+      ~lib_name:"impl"
+      ~implements:true
+      [ generated ~obj_name:"Shared" [ "Shared" ] ]
+  in
+  let vlib = make_lib ~lib_name:"vlib" [ generated ~obj_name:"Shared" [ "Shared" ] ] in
+  let modules = Modules.With_vlib.impl impl ~vlib in
+  ignore (Modules.With_vlib.obj_map modules : _);
+  let modules =
+    Modules.With_vlib.map modules ~f:(fun module_ ->
+      let obj_name =
+        Module.obj_name module_
+        |> Module_name.Unique.to_string
+        |> Printf.sprintf "mapped__%s"
+        |> Module_name.Unique.of_string
+      in
+      Module.set_obj_name module_ obj_name)
+  in
+  Modules.With_vlib.obj_map modules
+  |> Module_name.Unique.Map.to_list_map ~f:(fun obj_name sourced_module ->
+    match sourced_module with
+    | Modules.Sourced_module.Impl_of_virtual_module { intf; impl } ->
+      Printf.sprintf
+        "%s -> intf:%s impl:%s"
+        (Module_name.Unique.to_string obj_name)
+        (Module.obj_name intf |> Module_name.Unique.to_string)
+        (Module.obj_name impl |> Module_name.Unique.to_string)
+    | Normal _ | Imported_from_vlib _ ->
+      Code_error.raise "expected a virtual-library implementation" [])
+  |> Dyn.list Dyn.string
+  |> Dune_tests_common.print_dyn;
+  [%expect {| [ "shared -> intf:shared impl:shared" ] |}]
+;;
+
 let%expect_test "qualified-group dependency lookup" =
   let current = generated ~obj_name:"Current__Unit" [ "Current"; "Nested"; "Unit" ] in
   let child_a = generated ~obj_name:"Group__ChildA" [ "Group"; "ChildA" ] in

@@ -2,65 +2,117 @@ open Import
 open Memo.O
 module Parallel_map = Memo.Map (Module_name.Unique.Map)
 
-module Merge_dep_output = struct
-  module Spec = struct
-    type ('src, 'dst) t =
-      { transitive : string list
-      ; immediate : Module_name.Unique.t list
-      }
+module Transitive_deps_output : sig
+  type t
 
-    let name = "merge_dep_output"
-    let version = 3
-    let runs_process = false
-    let can_run_in_action_runner = false
-    let is_useful_to ~memoize:_ = true
+  val empty : t
+  val equal : t -> t -> bool
+  val of_modules : Module.t list -> t
+  val parse : modules:Modules.With_vlib.t -> t -> Module.t list
 
-    let bimap
-          (type src dst src' dst')
-          ({ transitive; immediate } : (src, dst) t)
-          (_path : src -> src')
-          (_target : dst -> dst')
-      : (src', dst') t
-      =
-      { transitive; immediate }
-    ;;
+  val merge
+    :  dir:Path.Build.t
+    -> transitive:t Action_builder.t list
+    -> immediate:Module_name.Unique.t list
+    -> t Action_builder.t
+end = struct
+  type encoded = string
+  type t = encoded
 
-    let encode
-          (type src dst)
-          ({ transitive; immediate } : (src, dst) t)
-          (_input : src -> Sexp.t)
-          (_output : dst -> Sexp.t)
-      : Sexp.t
-      =
-      List
-        [ List (List.map transitive ~f:(fun s -> Sexp.Atom s))
-        ; List
-            (List.map ~f:(fun s -> Sexp.Atom (Module_name.Unique.to_string s)) immediate)
-        ]
-    ;;
+  module Merge = struct
+    module Spec = struct
+      type ('src, 'dst) t =
+        { transitive : encoded list
+        ; immediate : Module_name.Unique.t list
+        }
 
-    let action { transitive; immediate } ~ectx:_ ~(eenv : Action.env) =
-      Async.async (fun () ->
-        let deps =
-          List.fold_left
-            transitive
-            ~init:(Module_name.Unique.Set.of_list immediate)
-            ~f:(fun set deps ->
-              String.split_lines deps
-              |> Module_name.Unique.Set.of_list_map ~f:Module_name.Unique.of_string
-              |> Module_name.Unique.Set.union set)
-          |> Module_name.Unique.Set.to_list_map ~f:Module_name.Unique.to_string
-        in
-        let stdout = Process.Io.out_channel eenv.stdout_to in
-        List.iter deps ~f:(fun dep ->
-          output_string stdout dep;
-          output_char stdout '\n'))
-    ;;
+      let name = "merge_dep_output"
+      let version = 3
+      let runs_process = false
+      let can_run_in_action_runner = false
+      let is_useful_to ~memoize:_ = true
+
+      let bimap
+            (type src dst src' dst')
+            ({ transitive; immediate } : (src, dst) t)
+            (_path : src -> src')
+            (_target : dst -> dst')
+        : (src', dst') t
+        =
+        { transitive; immediate }
+      ;;
+
+      let encode
+            (type src dst)
+            ({ transitive; immediate } : (src, dst) t)
+            (_input : src -> Sexp.t)
+            (_output : dst -> Sexp.t)
+        : Sexp.t
+        =
+        List
+          [ List (List.map transitive ~f:(fun s -> Sexp.Atom s))
+          ; List
+              (List.map
+                 ~f:(fun s -> Sexp.Atom (Module_name.Unique.to_string s))
+                 immediate)
+          ]
+      ;;
+
+      let action { transitive; immediate } ~ectx:_ ~(eenv : Action.env) =
+        Async.async (fun () ->
+          let deps =
+            List.fold_left
+              transitive
+              ~init:(Module_name.Unique.Set.of_list immediate)
+              ~f:(fun set deps ->
+                String.split_lines deps
+                |> Module_name.Unique.Set.of_list_map
+                     ~f:Module_name.Unique.of_string_unchecked
+                |> Module_name.Unique.Set.union set)
+            |> Module_name.Unique.Set.to_list_map ~f:Module_name.Unique.to_string
+          in
+          let stdout = Process.Io.out_channel eenv.stdout_to in
+          List.iter deps ~f:(fun dep ->
+            output_string stdout dep;
+            output_char stdout '\n'))
+      ;;
+    end
+
+    module Action = Action_ext.Make (Spec)
+
+    let action ~transitive ~immediate = Action.action { transitive; immediate }
   end
 
-  module Action = Action_ext.Make (Spec)
+  let empty = ""
+  let equal = String.equal
 
-  let action ~transitive ~immediate = Action.action { transitive; immediate }
+  let of_modules modules =
+    List.map modules ~f:(fun m -> Module.obj_name m |> Module_name.Unique.to_string)
+    |> String.concat ~sep:"\n"
+  ;;
+
+  let parse ~modules output =
+    let obj_map = Modules.With_vlib.obj_map modules in
+    String.split_lines output
+    |> List.filter_map ~f:(fun m ->
+      let obj_name = Module_name.Unique.of_string_unchecked m in
+      Module_name.Unique.Map.find obj_map obj_name
+      |> Option.map ~f:Modules.Sourced_module.to_module)
+  ;;
+
+  let merge ~dir ~transitive ~immediate =
+    let open Action_builder.O in
+    let action =
+      let+ transitive = Action_builder.all transitive in
+      { Rule.Anonymous_action.action =
+          Merge.action ~transitive ~immediate
+          |> Action.Full.make ~sandbox:Sandbox_config.no_sandboxing
+      ; loc = Loc.none
+      ; dir
+      }
+    in
+    Build_system.execute_action_stdout action |> Action_builder.of_memo
+  ;;
 end
 
 module Dep_key = struct
@@ -89,39 +141,11 @@ module Dep_key = struct
   let to_dyn = Tuple.T2.to_dyn Module_name.Unique.to_dyn Ml_kind.to_dyn
 end
 
-let merge_deps ~dir ~transitive ~immediate =
-  let open Action_builder.O in
-  let action =
-    let+ transitive = Action_builder.all transitive in
-    { Rule.Anonymous_action.action =
-        Merge_dep_output.action ~transitive ~immediate
-        |> Action.Full.make ~sandbox:Sandbox_config.no_sandboxing
-    ; loc = Loc.none
-    ; dir
-    }
-  in
-  Build_system.execute_action_stdout action |> Action_builder.of_memo
-;;
-
 let transitive_dep m =
   match Module.kind m with
   | Root | Alias _ -> None
   | _ ->
     Some (Module.obj_name m, if Module.has m ~ml_kind:Intf then Ml_kind.Intf else Impl)
-;;
-
-let parse_compilation_units ~modules output =
-  let obj_map = Modules.With_vlib.obj_map modules in
-  String.split_lines output
-  |> List.filter_map ~f:(fun m ->
-    let obj_name = Module_name.Unique.of_string m in
-    Module_name.Unique.Map.find obj_map obj_name
-    |> Option.map ~f:Modules.Sourced_module.to_module)
-;;
-
-let transitive_deps_output modules =
-  List.map modules ~f:(fun m -> Module.obj_name m |> Module_name.Unique.to_string)
-  |> String.concat ~sep:"\n"
 ;;
 
 let ooi_deps
@@ -198,6 +222,11 @@ let preprocessed_modules_of_local_lib ~sctx lib ~for_ =
 type imported_vlib_deps =
   Modules.Sourced_module.t -> ml_kind:Ml_kind.t -> Module.t list Action_builder.t Memo.t
 
+type memoized_transitive_deps =
+  { output : Transitive_deps_output.t
+  ; parsed : Module.t list
+  }
+
 type transitive_deps =
   { sandbox : Sandbox_config.t
   ; modules : Modules.With_vlib.t
@@ -206,7 +235,7 @@ type transitive_deps =
   ; obj_dir : Path.Build.t Obj_dir.t
   ; obj_map : Modules.Sourced_module.t Module_name.Unique.Map.t
   ; imported_vlib_deps : imported_vlib_deps option
-  ; memo : (Dep_key.t, string) Action_builder.memo Lazy.t
+  ; memo : (Dep_key.t, memoized_transitive_deps) Action_builder.memo Lazy.t
   }
 
 let rec create_transitive_deps ~sandbox ~modules ~sctx ~dir ~obj_dir ~imported_vlib_deps =
@@ -224,7 +253,7 @@ let rec create_transitive_deps ~sandbox ~modules ~sctx ~dir ~obj_dir ~imported_v
           (Action_builder.create_memo
              "ocamldep transitive deps"
              ~input:(module Dep_key)
-             ~cutoff:String.equal
+             ~cutoff:(fun x y -> Transitive_deps_output.equal x.output y.output)
              ~human_readable_description:(fun (obj_name, ml_kind) ->
                Pp.textf
                  "transitive deps of %s.%s in %s"
@@ -232,9 +261,13 @@ let rec create_transitive_deps ~sandbox ~modules ~sctx ~dir ~obj_dir ~imported_v
                  (Ml_kind.to_string ml_kind)
                  (Path.Build.to_string dir))
              (fun (obj_name, ml_kind) ->
-                match Module_name.Unique.Map.find obj_map obj_name with
-                | None -> Action_builder.return ""
-                | Some m -> transitive_deps_output_of_sourced_module t m ~ml_kind))
+                let output =
+                  match Module_name.Unique.Map.find obj_map obj_name with
+                  | None -> Action_builder.return Transitive_deps_output.empty
+                  | Some m -> transitive_deps_output_of_sourced_module t m ~ml_kind
+                in
+                Action_builder.map output ~f:(fun output ->
+                  { output; parsed = Transitive_deps_output.parse ~modules output })))
     }
   in
   t
@@ -252,10 +285,12 @@ and transitive_deps_output_uncached t unit ~ml_kind =
   in
   let transitive =
     List.filter_map immediate_deps ~f:transitive_dep
-    |> List.map ~f:(Action_builder.exec_memo (Lazy.force t.memo))
+    |> List.map ~f:(fun dep ->
+      Action_builder.exec_memo (Lazy.force t.memo) dep
+      |> Action_builder.map ~f:(fun memoized -> memoized.output))
   in
   let immediate = List.map immediate_deps ~f:Module.obj_name in
-  merge_deps ~dir:t.dir ~transitive ~immediate
+  Transitive_deps_output.merge ~dir:t.dir ~transitive ~immediate
 
 and transitive_deps_output_of_sourced_module
       t
@@ -287,20 +322,23 @@ and transitive_deps_output_of_imported_vlib t m ~ml_kind =
         (imported_vlib_deps (Modules.Sourced_module.Imported_from_vlib m) ~ml_kind)
     in
     let+ deps = deps in
-    transitive_deps_output deps
+    Transitive_deps_output.of_modules deps
 ;;
 
 let transitive_deps_of t ~ml_kind unit =
-  (let obj_name = Module.obj_name unit in
-   match Module_name.Unique.Map.find t.obj_map obj_name with
-   | None -> transitive_deps_output_uncached t unit ~ml_kind
-   | Some _ -> Action_builder.exec_memo (Lazy.force t.memo) (obj_name, ml_kind))
-  |> Action_builder.map ~f:(parse_compilation_units ~modules:t.modules)
-  |> Action_builder.memoize
-       (sprintf
-          "%s.%s.transitive-deps"
-          (Module_name.Unique.to_string (Module.obj_name unit))
-          (Ml_kind.to_string ml_kind))
+  let obj_name = Module.obj_name unit in
+  match Module_name.Unique.Map.find t.obj_map obj_name with
+  | Some _ ->
+    Action_builder.exec_memo (Lazy.force t.memo) (obj_name, ml_kind)
+    |> Action_builder.map ~f:(fun output -> output.parsed)
+  | None ->
+    transitive_deps_output_uncached t unit ~ml_kind
+    |> Action_builder.map ~f:(Transitive_deps_output.parse ~modules:t.modules)
+    |> Action_builder.memoize
+         (sprintf
+            "%s.%s.transitive-deps"
+            (Module_name.Unique.to_string obj_name)
+            (Ml_kind.to_string ml_kind))
 ;;
 
 let make_imported_vlib_deps ~obj_dir ~vimpl ~dir ~sctx ~sandbox ~for_ : imported_vlib_deps

@@ -235,34 +235,27 @@ module Fact = struct
   ;;
 
   module Stable_for_digest = struct
-    type t =
-      | Env of string * string option
-      | File of
-          { path_digest : Digest.t
-          ; file_digest : Digest.t
-          }
-      | File_selector of
-          { file_selector_digest : Digest.t
-          ; facts_digest : Digest.t
-          }
-      | Alias of Digest.t
+    let[@inline always] env d var value =
+      Digest.Manual.int d 0;
+      Digest.Manual.string d var;
+      Digest.Manual.option d ~f:Digest.Manual.string value
+    ;;
 
-    let digest d = function
-      | Env (var, value) ->
-        Digest.Manual.int d 0;
-        Digest.Manual.string d var;
-        Digest.Manual.option d ~f:Digest.Manual.string value
-      | File { path_digest; file_digest } ->
-        Digest.Manual.int d 1;
-        Digest.Manual.digest d path_digest;
-        Digest.Manual.digest d file_digest
-      | File_selector { file_selector_digest; facts_digest } ->
-        Digest.Manual.int d 2;
-        Digest.Manual.digest d file_selector_digest;
-        Digest.Manual.digest d facts_digest
-      | Alias digest ->
-        Digest.Manual.int d 3;
-        Digest.Manual.digest d digest
+    let[@inline always] file d path_digest file_digest =
+      Digest.Manual.int d 1;
+      Digest.Manual.digest d path_digest;
+      Digest.Manual.digest d file_digest
+    ;;
+
+    let[@inline always] file_selector d file_selector_digest facts_digest =
+      Digest.Manual.int d 2;
+      Digest.Manual.digest d file_selector_digest;
+      Digest.Manual.digest d facts_digest
+    ;;
+
+    let[@inline always] alias d digest =
+      Digest.Manual.int d 3;
+      Digest.Manual.digest d digest
     ;;
   end
 
@@ -406,24 +399,15 @@ module Facts = struct
     Map.iteri t ~f:(fun dep fact ->
       match dep with
       | Env var ->
-        Fact.Stable_for_digest.digest
-          digest
-          (Fact.Stable_for_digest.Env (Env.Var.to_string var, Env.get env var))
+        Fact.Stable_for_digest.env digest (Env.Var.to_string var) (Env.get env var)
       | Universe -> ()
       | File _ | File_selector _ | Alias _ ->
         (match (fact : Fact.t) with
          | Nothing -> ()
          | File (p, d) ->
-           Fact.Stable_for_digest.digest
-             digest
-             (Fact.Stable_for_digest.File
-                { path_digest = Digest.string (Path.to_string p); file_digest = d })
+           Fact.Stable_for_digest.file digest (Digest.string (Path.to_string p)) d
          | File_selector { file_selector_digest; facts } ->
-           Fact.Stable_for_digest.digest
-             digest
-             (Fact.Stable_for_digest.File_selector
-                { file_selector_digest; facts_digest = facts.digest })
-         | Alias ps ->
-           Fact.Stable_for_digest.digest digest (Fact.Stable_for_digest.Alias ps.digest)))
+           Fact.Stable_for_digest.file_selector digest file_selector_digest facts.digest
+         | Alias ps -> Fact.Stable_for_digest.alias digest ps.digest))
   ;;
 end

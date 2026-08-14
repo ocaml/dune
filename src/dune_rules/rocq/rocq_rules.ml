@@ -199,8 +199,8 @@ end = struct
     | No_corelib (** The user set no_corelib, or we are compiling Corelib itself. *)
     | Corelib of Rocq_lib.t (** Regular case, where [Corelib] is implicit *)
 
-  (* For empty set of modules, we return Prelude which is kinda
-     conservative. *)
+  (* With no module to inspect, conservatively use the mode for Corelib's Init
+     modules. *)
   let empty = No_corelib
 
   (* Hack to know if a module is a prelude module *)
@@ -455,6 +455,14 @@ let theory_rocq_args
   [ rocq_stanza_flags; rocq_native_flags; Dyn boot_flags; S file_flags ]
 ;;
 
+let bootstrap_flags ~scope ~use_corelib ~wrapper_name modules =
+  (match modules with
+   | [] -> Resolve.Memo.return Bootstrap.empty
+   | m :: _ -> Bootstrap.make ~scope ~use_corelib ~wrapper_name m)
+  |> Resolve.Memo.read
+  |> Action_builder.map ~f:Bootstrap.flags
+;;
+
 let setup_rocqproject_for_theory_rule
       ~scope
       ~sctx
@@ -469,12 +477,7 @@ let setup_rocqproject_for_theory_rule
       rocq_modules
   =
   (* Process rocqdep and generate rules *)
-  let boot_type =
-    match rocq_modules with
-    | [] -> Resolve.Memo.return Bootstrap.empty
-    | m :: _ -> Bootstrap.make ~scope ~use_corelib ~wrapper_name m
-  in
-  let boot_flags = Resolve.Memo.read boot_type |> Action_builder.map ~f:Bootstrap.flags in
+  let boot_flags = bootstrap_flags ~scope ~use_corelib ~wrapper_name rocq_modules in
   let* args =
     theory_rocq_args
       ~sctx
@@ -1094,15 +1097,7 @@ let setup_theory_rules ~sctx ~dir ~dir_contents (s : Rocq_stanza.Theory.t) =
   let rocqc_dir = Super_context.context sctx |> Context.build_dir in
   let* mode = select_native_mode ~sctx ~dir s.buildable in
   (* First we setup the rule calling rocqdep *)
-  let boot_type =
-    (* If rocq_modules are empty it doesn't really matter, so we take
-       the more conservative path and pass -boot, we don't care here
-       about -noinit as rocqdep ignores it *)
-    match rocq_modules with
-    | [] -> Resolve.Memo.return Bootstrap.empty
-    | m :: _ -> Bootstrap.make ~scope ~use_corelib ~wrapper_name m
-  in
-  let boot_flags = Resolve.Memo.read boot_type |> Action_builder.map ~f:Bootstrap.flags in
+  let boot_flags = bootstrap_flags ~scope ~use_corelib ~wrapper_name rocq_modules in
   (if not (snd s.generate_project_file)
    then Memo.return ()
    else
@@ -1294,15 +1289,7 @@ let setup_extraction_rules ~sctx ~dir ~dir_contents (s : Rocq_stanza.Extraction.
     >>> Action_builder.path (Rocq_module.source rocq_module)
   in
   let* mode = select_native_mode ~sctx ~dir s.buildable in
-  let boot_type =
-    (* If rocq_modules are empty it doesn't really matter, so we take
-       the more conservative path and pass -boot, we don't care here
-       about -noinit as rocqdep ignores it *)
-    match [ rocq_module ] with
-    | [] -> Resolve.Memo.return Bootstrap.empty
-    | m :: _ -> Bootstrap.make ~scope ~use_corelib ~wrapper_name m
-  in
-  let boot_flags = Resolve.Memo.read boot_type |> Action_builder.map ~f:Bootstrap.flags in
+  let boot_flags = bootstrap_flags ~scope ~use_corelib ~wrapper_name [ rocq_module ] in
   let modules_flags = None in
   setup_rocqdep_for_theory_rule
     ~sctx

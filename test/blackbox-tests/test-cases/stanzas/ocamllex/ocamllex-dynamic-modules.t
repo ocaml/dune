@@ -49,3 +49,39 @@ Building under dune 3.22 throws an error
   > EOF
 
   $ dune build foo.cma
+
+The `flags` field is available starting in Dune 3.25:
+
+  $ make_dune_project 3.24
+  $ cat >dune <<EOF
+  > (ocamllex
+  >  (modules mod)
+  >  (flags -ml))
+  > (library (name foo))
+  > EOF
+
+  $ dune build foo.cma
+  File "dune", line 3, characters 1-12:
+  3 |  (flags -ml))
+       ^^^^^^^^^^^
+  Error: 'flags' is only available since version 3.25 of the dune language.
+  Please update your dune-project file to have (lang dune 3.25).
+  [1]
+
+Flags support the ordered set language and variable expansion. In particular,
+`-ml` asks `ocamllex` to generate an OCaml-based automaton:
+
+  $ make_dune_project 3.25
+  $ echo '%{read-lines:gen/flag-value}' >gen/flags
+  $ echo -ml >gen/flag-value
+  $ cat >dune <<EOF
+  > (ocamllex
+  >  (modules mod)
+  >  (flags (:include gen/flags)))
+  > (library (name foo))
+  > EOF
+
+  $ dune build foo.cma
+  $ dune trace cat \
+  >   | jq_dune -c 'processesBrief | select(.prog == "ocamllex") | .args'
+  ["-ml","-q","-o","mod.ml","mod.mll"]

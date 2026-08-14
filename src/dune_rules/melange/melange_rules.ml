@@ -980,12 +980,7 @@ let setup_js_rules_libraries =
         in
         directory_targets)
     in
-    List.fold_left dir_targets ~init:Path.Build.Map.empty ~f:(fun acc dir_targets ->
-      Path.Build.Map.merge acc dir_targets ~f:(fun _ l1 l2 ->
-        match l1, l2 with
-        | None, None -> None
-        | Some loc, None | None, Some loc -> Some loc
-        | Some _, Some _ -> assert false))
+    List.fold_left dir_targets ~init:Path.Build.Map.empty ~f:Path.Build.Map.union_exn
 ;;
 
 let setup_js_rules_libraries_and_entries
@@ -1003,14 +998,7 @@ let setup_js_rules_libraries_and_entries
   and+ directory_targets =
     setup_entries_js ~sctx ~dir ~dir_contents ~scope ~requires_link ~target_dir ~mode mel
   in
-  Path.Build.Map.merge
-    dir_targets_libraries
-    directory_targets
-    ~f:(fun _ lib_dir emit_dir ->
-      match lib_dir, emit_dir with
-      | None, None -> None
-      | Some loc, None | None, Some loc -> Some loc
-      | Some _, Some _ -> assert false)
+  Path.Build.Map.union_exn dir_targets_libraries directory_targets
 ;;
 
 let setup_emit_js_rules ~dir_contents ~dir ~scope ~sctx mel =

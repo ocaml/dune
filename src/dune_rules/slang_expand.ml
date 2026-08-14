@@ -53,7 +53,14 @@ let rec eval_rec (t : Slang.t) ~dir ~(f : expander)
        (match value with
         | Ok value -> Memo.return @@ Ok value
         | Error (Undefined_pkg_var _) -> eval_rec fallback ~dir ~f)
-     | And_absorb_undefined_var blangs ->
+     | (And_absorb_undefined_var blangs | Or_absorb_undefined_var blangs) as form ->
+       let identity, absorbing =
+         match form with
+         | And_absorb_undefined_var _ -> true, false
+         | Or_absorb_undefined_var _ -> false, true
+         | _ -> assert false
+       in
+       let value bool = Ok [ Value.Deferred_concat.singleton (Value.of_bool bool) ] in
        let rec loop acc = function
          | [] -> Memo.return acc
          | x :: xs ->
@@ -61,25 +68,11 @@ let rec eval_rec (t : Slang.t) ~dir ~(f : expander)
            (match x with
             | Error _ as e ->
               (* Propagate the first error rather than the last *)
-              if Result.is_ok acc then loop e xs else loop acc xs
-            | Ok true -> loop acc xs
-            | Ok false ->
-              Memo.return (Ok [ Value.Deferred_concat.singleton Value.false_ ]))
+              loop (if Result.is_ok acc then e else acc) xs
+            | Ok result ->
+              if result = absorbing then Memo.return (value result) else loop acc xs)
        in
-       loop (Ok [ Value.Deferred_concat.singleton Value.true_ ]) blangs
-     | Or_absorb_undefined_var blangs ->
-       let rec loop acc = function
-         | [] -> Memo.return acc
-         | x :: xs ->
-           let* x = eval_blang_rec x ~dir ~f in
-           (match x with
-            | Error _ as e ->
-              (* Propagate the first error rather than the last *)
-              if Result.is_ok acc then loop e xs else loop acc xs
-            | Ok false -> loop acc xs
-            | Ok true -> Memo.return (Ok [ Value.Deferred_concat.singleton Value.true_ ]))
-       in
-       loop (Ok [ Value.Deferred_concat.singleton Value.false_ ]) blangs
+       loop (value identity) blangs
      | Blang b ->
        eval_blang_rec b ~dir ~f
        >>| Result.map ~f:(fun bool ->

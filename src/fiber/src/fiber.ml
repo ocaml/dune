@@ -5,6 +5,7 @@ module Stream = Stream
 module Mvar = Mvar
 module Svar = Svar
 module Throttle = Throttle
+module Priority_queue = Priority_queue
 module Mutex = Mutex
 module Scheduler = Scheduler
 module Lazy = Lazy

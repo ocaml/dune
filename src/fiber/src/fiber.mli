@@ -368,6 +368,8 @@ module Throttle : sig
   val running : t -> int
 end
 
+module Priority_queue : module type of Priority_queue
+
 val repeat_while : f:('a -> 'a option t) -> init:'a -> unit t
 
 module Stream : sig

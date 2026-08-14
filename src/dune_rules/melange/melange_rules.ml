@@ -24,6 +24,20 @@ module Output_kind = struct
             ]
         ]
   ;;
+
+  let output_path t src =
+    match t with
+    | Public_library { lib_dir; target_dir; output_dir } ->
+      let output_dir = Path.Build.append_local target_dir output_dir in
+      if Path.equal lib_dir src
+      then output_dir
+      else (
+        let src = Path.drop_prefix_exn src ~prefix:lib_dir in
+        Path.Build.append_local output_dir src)
+    | Private_library_or_emit target_dir ->
+      let src = Path.as_in_build_dir_exn src |> Path.Build.drop_build_context_exn in
+      Path.Build.append_source target_dir src
+  ;;
 end
 
 let setup_melange_sources_copy_rules ~sctx ~dir ~preprocess modules =
@@ -76,14 +90,6 @@ let output_of_lib =
       public_lib ~info ~target_dir (Lib_info.name info)
 ;;
 
-let lib_output_path ~output_dir ~lib_dir src =
-  if Path.equal lib_dir src
-  then output_dir
-  else (
-    let src_dir = Path.drop_prefix_exn src ~prefix:lib_dir in
-    Path.Build.append_local output_dir src_dir)
-;;
-
 let make_js_name ~js_ext ~output m =
   let dst_dir =
     let src_dir =
@@ -92,12 +98,7 @@ let make_js_name ~js_ext ~output m =
       |> Module.File.original_path
       |> Path.parent_exn
     in
-    match output with
-    | Output_kind.Public_library { lib_dir; target_dir; output_dir } ->
-      let output_dir = Path.Build.append_local target_dir output_dir in
-      lib_output_path ~output_dir ~lib_dir src_dir
-    | Private_library_or_emit target_dir ->
-      Melange.output_path ~target_dir (Path.as_in_build_dir_exn src_dir)
+    Output_kind.output_path output src_dir
   in
   let basename =
     Filename.to_string (Module_compilation.melange_js_basename m)
@@ -668,27 +669,22 @@ module Runtime_deps = struct
              eval_local ~sctx ~dir (loc, dep_conf))
       in
       match output with
-      | Output_kind.Public_library { lib_dir; target_dir; output_dir } ->
+      | Output_kind.Public_library { lib_dir; _ } ->
         Path.Set.fold ~init:empty deps ~f:(fun src ({ copy; deps = _ } as acc) ->
-          let copy =
-            match Path.as_external src with
-            | None ->
-              let output_dir = Path.Build.append_local target_dir output_dir in
-              (src, lib_output_path ~output_dir ~lib_dir src) :: copy
-            | Some src_e ->
-              (match Path.as_external lib_dir with
-               | Some lib_dir_e when Path.External.is_descendant src_e ~of_:lib_dir_e ->
-                 let output_dir = Path.Build.append_local target_dir output_dir in
-                 (src, lib_output_path ~output_dir ~lib_dir src) :: copy
-               | Some _ | None -> raise_external_dep_error src ~for_)
-          in
-          { acc with copy })
-      | Private_library_or_emit target_dir ->
+          (match Path.as_external src with
+           | None -> ()
+           | Some src_e ->
+             (match Path.as_external lib_dir with
+              | Some lib_dir_e when Path.External.is_descendant src_e ~of_:lib_dir_e -> ()
+              | Some _ | None -> raise_external_dep_error src ~for_));
+          let dst = Output_kind.output_path output src in
+          { acc with copy = (src, dst) :: copy })
+      | Private_library_or_emit _ ->
         Path.Set.fold ~init:empty deps ~f:(fun src ({ copy; deps } as acc) ->
           match Path.as_in_build_dir src with
           | None -> { acc with deps = src :: deps }
           | Some src_build ->
-            let dst = Melange.output_path ~target_dir src_build in
+            let dst = Output_kind.output_path output (Path.build src_build) in
             { acc with copy = (src, dst) :: copy })
   ;;
 end

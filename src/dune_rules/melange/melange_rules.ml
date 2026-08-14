@@ -108,6 +108,11 @@ let make_js_name ~js_ext ~output m =
   Path.Build.relative dst_dir basename
 ;;
 
+let js_outputs_of_module ~module_systems ~output m =
+  List.map module_systems ~f:(fun (module_system, js_ext) ->
+    module_system, make_js_name ~js_ext ~output m)
+;;
+
 let modules_in_obj_dir ~sctx ~scope ~preprocess modules =
   let* version =
     let+ ocaml = Context.ocaml (Super_context.context sctx) in
@@ -328,36 +333,37 @@ let compile_info ~scope (mel : Melange_stanzas.Emit.t) =
 ;;
 
 let js_targets_of_modules modules ~module_systems ~output =
-  List.map module_systems ~f:(fun (_, js_ext) ->
+  Modules.With_vlib.fold_no_vlib_with_aliases
     modules
-    |> Modules.With_vlib.fold_no_vlib_with_aliases
-         ~init:Path.Set.empty
-         ~alias:(fun _m acc -> acc)
-         ~normal:(fun m acc ->
-           if Module.has m ~ml_kind:Impl
-           then (
-             let target = Path.build @@ make_js_name ~js_ext ~output m in
-             Path.Set.add acc target)
-           else acc))
-  |> Path.Set.union_all
+    ~init:Path.Set.empty
+    ~alias:(fun _m acc -> acc)
+    ~normal:(fun m acc ->
+      if Module.has m ~ml_kind:Impl
+      then
+        List.fold_left
+          (js_outputs_of_module ~module_systems ~output m)
+          ~init:acc
+          ~f:(fun acc (_, target) -> Path.Set.add acc (Path.build target))
+      else acc)
 ;;
 
 let js_targets_of_libs ~sctx ~scope ~module_systems ~target_dir libs =
-  Resolve.Memo.List.concat_map module_systems ~f:(fun (_, js_ext) ->
-    let of_lib lib =
-      let+ _, modules = impl_only_modules_defined_in_this_lib ~sctx ~scope lib in
-      let output = output_of_lib ~target_dir lib in
-      List.rev_map modules ~f:(fun m -> Path.build @@ make_js_name ~output ~js_ext m)
-    in
-    Resolve.Memo.List.concat_map libs ~f:(fun lib ->
-      let* base = of_lib lib in
-      match Lib.implements lib with
-      | None -> Resolve.Memo.return base
-      | Some vlib ->
-        let open Resolve.Memo.O in
-        let* vlib = vlib in
-        let+ for_vlib = Resolve.Memo.lift_memo (of_lib vlib) in
-        List.rev_append for_vlib base))
+  let of_lib lib =
+    let+ _, modules = impl_only_modules_defined_in_this_lib ~sctx ~scope lib in
+    let output = output_of_lib ~target_dir lib in
+    List.concat_map modules ~f:(fun m ->
+      js_outputs_of_module ~module_systems ~output m
+      |> List.map ~f:(fun (_, target) -> Path.build target))
+  in
+  Resolve.Memo.List.concat_map libs ~f:(fun lib ->
+    let* base = of_lib lib in
+    match Lib.implements lib with
+    | None -> Resolve.Memo.return base
+    | Some vlib ->
+      let open Resolve.Memo.O in
+      let* vlib = vlib in
+      let+ for_vlib = Resolve.Memo.lift_memo (of_lib vlib) in
+      List.rev_append for_vlib base)
 ;;
 
 let compute_promote_in_source ~promote_in_source ~project ~dir ~mode ~output ~src ~dst =
@@ -428,8 +434,8 @@ let build_js
     |> Option.value_exn
   in
   let* compiler = Melange_binary.melc sctx ~loc:(Some loc) ~dir in
-  Memo.parallel_iter module_systems ~f:(fun (module_system, js_ext) ->
-    let js_output = make_js_name ~output ~js_ext m in
+  js_outputs_of_module ~module_systems ~output m
+  |> Memo.parallel_iter ~f:(fun (module_system, js_output) ->
     let mode =
       let src = Module.source_without_pp m ~ml_kind:Impl |> Option.value_exn in
       compute_promote_in_source
@@ -1059,8 +1065,9 @@ let setup_emit_js_rules ~dir_contents ~dir ~scope ~sctx mel =
     let loc = mel.loc in
     let+ () =
       Memo.parallel_iter modules_for_js ~f:(fun m ->
-        Memo.parallel_iter module_systems ~f:(fun (_module_system, js_ext) ->
-          let file_targets = [ make_js_name ~output ~js_ext m ] in
+        js_outputs_of_module ~module_systems ~output m
+        |> Memo.parallel_iter ~f:(fun (_module_system, js_output) ->
+          let file_targets = [ js_output ] in
           add_rule
             sctx
             ~dir

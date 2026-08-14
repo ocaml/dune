@@ -233,15 +233,15 @@ are used when running the test suite.
 Running ``nix develop`` can take a while the first time, therefore it is
 advisable to save the state in a profile.
 
-```sh
-nix develop --profile nix/profiles/dune
-```
+.. code:: console
+
+   nix develop --profile nix/profiles/dune
 
 And to load the profile:
 
-```sh
-nix develop nix/profiles/dune
-```
+.. code:: console
+
+   nix develop nix/profiles/dune
 
 This profile might need to be updated from time to time, since the bootstrapped
 version of Dune may become stale. This can be done by running the first command.
@@ -255,6 +255,7 @@ We have the following shells for specific tasks:
 - Building documentation requires ``nix develop .#doc``.
 - For running the Rocq tests, you can use ``nix develop .#rocq``. There are
   two classes of tests:
+
   + ``make test-rocq``: these work well on a regular Dune opam dev switch
   + ``make test-rocq-native``: these require the Rocq native compiler to run, and thus need OCaml 4.x
 
@@ -289,7 +290,7 @@ source:
    $ git bisect bad HEAD
    $ git bisect good 3.16.0
 
-   $ git bisect run sh -c 'nix build .#revdeps.x86_64-linux.lwt --override-input revdeps-dune "github:ocaml/dune/$(git rev-parse BISECT_HEAD)"' 
+   $ git bisect run sh -c 'nix build .#revdeps.x86_64-linux.lwt --override-input revdeps-dune "github:ocaml/dune/$(git rev-parse BISECT_HEAD)"'
 
 The ``--no-checkout`` flag ensures that the working tree stays on the current
 branch (with the working ``revdeps`` output), while ``BISECT_HEAD`` points to
@@ -505,6 +506,7 @@ For links, prefer references that use ``:doc:`` (link to a whole document) or
 ``:term:`` (link to a definition in the glossary) to ``:ref:``.
 
 Use the right lexers:
+
 - ``dune`` for ``dune`` and related files
 - ``opam`` for opam files
 - ``console`` for shell sessions and commands (start with ``$``)
@@ -589,17 +591,17 @@ in particular with the team.
 - Parameter signatures should be self descriptive. Use labels when the types
   alone aren't sufficient to make the signature readable.
 
-Bad:
+  Bad:
 
-.. code:: ocaml
+  .. code:: ocaml
 
-   val display_name : string -> string -> _ Pp.t
+     val display_name : string -> string -> _ Pp.t
 
-Good:
+  Good:
 
-.. code:: ocaml
+  .. code:: ocaml
 
-   val display_name : first_name:string -> last_name:string -> _ Pp.t
+     val display_name : first_name:string -> last_name:string -> _ Pp.t
 
 - Avoid type aliases when possible. Yes, they might make some type signatures
   more readable, but they make the code harder to grep and make Merlin's
@@ -625,57 +627,57 @@ Good:
   annoying violator of this principle is the "logic-less chain of functions"
   helper. For example:
 
-.. code:: ocaml
+  .. code:: ocaml
 
-   let foo t = bar t |> baz
+     let foo t = bar t |> baz
 
-If ``bar`` and ``baz`` are already public, then there's no need to add yet
-another helper to save the caller a line of code.
+  If ``bar`` and ``baz`` are already public, then there's no need to add yet
+  another helper to save the caller a line of code.
 
 - Define bindings as close to their use site as possible. When they're far
   apart, reading code requires scrolling and IDE tools to understand the code.
 
-Bad:
+  Bad:
 
-.. code:: ocaml
+  .. code:: ocaml
 
-   let dir = .. in
-   (* 50 odd lines or so that don't use [dir] *)
-   f dir
+     let dir = .. in
+     (* 50 odd lines or so that don't use [dir] *)
+     f dir
 
-Good:
+  Good:
 
-.. code:: ocaml
+  .. code:: ocaml
 
-  let dir = .. in
-  f dir
+     let dir = .. in
+     f dir
 
 - A corollary to the previous guideline: keep the scope of bindings as small as
   possible.
 
-Bad:
+  Bad:
 
-.. code:: ocaml
+  .. code:: ocaml
 
-   let x1 = f foo in let x2 = f bar in
-   let y1 = g foo in let y2 = g bar in
-   let dx = x2 -. x1 in
-   let dy = y2 -. y1 in
-   dx^2 +. dy^2
-
-Good:
-
-.. code:: ocaml
-
-   let dx =
      let x1 = f foo in let x2 = f bar in
-     x2 -. x1
-   in
-   let dy =
      let y1 = g foo in let y2 = g bar in
-     y2 -. y1
-   in
-   dx^2 +. dy^2
+     let dx = x2 -. x1 in
+     let dy = y2 -. y1 in
+     dx^2 +. dy^2
+
+  Good:
+
+  .. code:: ocaml
+
+     let dx =
+       let x1 = f foo in let x2 = f bar in
+       x2 -. x1
+     in
+     let dy =
+       let y1 = g foo in let y2 = g bar in
+       y2 -. y1
+     in
+     dx^2 +. dy^2
 
 - Prefer ``Code_error.raise`` instead of ``assert false``. The reader often has
   no idea what invariant is broken by the ``assert false``. Kindly describe it
@@ -700,42 +702,42 @@ Good:
   Avoid it altogether if possible, or add a type annotation if
   necessary.
 
-Bad:
+  Bad:
 
-.. code:: ocaml
+  .. code:: ocaml
 
-    let result = A.b () in
-    match result.A.field with
-    | B.Constructor -> ...
+     let result = A.b () in
+     match result.A.field with
+     | B.Constructor -> ...
 
-Good:
+  Good:
 
-.. code:: ocaml
+  .. code:: ocaml
 
-    let result : A.t = A.b () in
-    match (result.field : B.t) with
-    | Constructor -> ...
+     let result : A.t = A.b () in
+     match (result.field : B.t) with
+     | Constructor -> ...
 
 - When constructing records, use the qualified names in in the record. Do not
   open the record. The local open syntax pulls in all kinds of names from the
   opened module and might shadow the values that you're trying to put into the
   record, leading to difficult debugging.
 
-Bad; if ``A.value`` exists, it will pick that over ``value``:
+  Bad; if ``A.value`` exists, it will pick that over ``value``:
 
-.. code:: ocaml
+  .. code:: ocaml
 
-    let value = 42 in
-    let record = A.{ field = value; other } in
-    ...
+     let value = 42 in
+     let record = A.{ field = value; other } in
+     ...
 
-Good:
+  Good:
 
-.. code:: ocaml
+  .. code:: ocaml
 
-    let value = 42 in
-    let record = { A.field = value; other } in
-    ...
+     let value = 42 in
+     let record = { A.field = value; other } in
+     ...
 
 - Stage functions explicitly with the ``Staged`` module.
 
@@ -746,36 +748,36 @@ Good:
   annotations to the ignored value ``let (_ : t) = ...``. We do this convention
   because:
 
- * We need to make sure we never ignore ``Fiber.t`` accidentally. Functions that
-   return ``Fiber.t`` are always free of side effects so we need to bind on the
-   result to force the side effect.
+  * We need to make sure we never ignore ``Fiber.t`` accidentally. Functions that
+    return ``Fiber.t`` are always free of side effects so we need to bind on the
+    result to force the side effect.
 
- * Whenever a function is changed to return an error via its return value, we
-   want the compiler to notify all the callers that need to be updated.
+  * Whenever a function is changed to return an error via its return value, we
+    want the compiler to notify all the callers that need to be updated.
 
 - To write a ``to_dyn`` function on a record type, use the following pattern. It
   ensures that the pattern matching will break when a field is added. To ignore
   a field, add ``; d = _``, not ``; _``.
 
-.. code:: ocaml
+  .. code:: ocaml
 
-    let to_dyn {a; b; c} =
-      Dyn.record
-        [ ("a", A.to_dyn a)
-        ; ("b", B.to_dyn b)
-        ; ("c", C.to_dyn c)
-        ]
+     let to_dyn {a; b; c} =
+       Dyn.record
+         [ ("a", A.to_dyn a)
+         ; ("b", B.to_dyn b)
+         ; ("c", C.to_dyn c)
+         ]
 
 - To write an equality function, use the following pattern (this applies to
   other kinds of binary functions). The same remarks about about pattern
   matching and ignoring fields apply.
 
-.. code:: ocaml
+  .. code:: ocaml
 
-    let equal {a; b; c} t =
-      A.equal a t.a &&
-      B.equal b t.b &&
-      C.equal c t.c
+     let equal {a; b; c} t =
+       A.equal a t.a &&
+       B.equal b t.b &&
+       C.equal c t.c
 
 Subjective Style Points
 -----------------------
@@ -797,18 +799,18 @@ to keep the code consistent.
 
 - Do not write inverted if-else expressions.
 
-Bad:
+  Bad:
 
-.. code:: ocaml
+  .. code:: ocaml
 
-   (* try reading this out loud without short circuiting your brain *)
-   if not x then foo else bar
+     (* try reading this out loud without short circuiting your brain *)
+     if not x then foo else bar
 
-Good:
+  Good:
 
-.. code:: ocaml
+  .. code:: ocaml
 
-   if x then bar else foo
+     if x then bar else foo
 
 - We prefer snake_casing identifiers. This includes the names of modules and
   module types.
@@ -816,17 +818,17 @@ Good:
 - Avoid qualifying constructors and record fields. Instead, add type
   annotations to the type being matched on or being constructed, e.g.,
 
-Bad:
+  Bad:
 
-.. code:: ocaml
+  .. code:: ocaml
 
-   let foo = Command.Args.S []
+     let foo = Command.Args.S []
 
-Good:
+  Good:
 
-.. code:: ocaml
+  .. code:: ocaml
 
-   let (foo : _ Command.Args.t) = S []
+     let (foo : _ Command.Args.t) = S []
 
 Benchmarking
 ============

@@ -8,7 +8,9 @@ module Var : sig
 
   include Comparable_intf.S with type key := t
 
+  (** Raises a code error if the string contains a NUL byte. *)
   val of_string : string -> t
+
   val to_string : t -> string
   val repr : t Repr.t
   val temp_dir : t

@@ -20,7 +20,15 @@ module Var = struct
   include Comparable.Make (T)
   include T
 
-  let of_string s = s
+  let of_string s =
+    if String.contains s '\000'
+    then
+      Code_error.raise
+        "Env.Var.of_string: NUL byte in environment variable name"
+        [ "name", Dyn.string s ];
+    s
+  ;;
+
   let to_string t = t
   let repr = Repr.view Repr.string ~to_:to_string
   let temp_dir = of_string (if Sys.win32 then "TEMP" else "TMPDIR")

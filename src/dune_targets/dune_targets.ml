@@ -486,22 +486,8 @@ module Produced = struct
 
   let iteri t ~f ~d = iteri_dir_contents t.contents ~f ~d
 
-  let to_list_map { contents; root = _ } ~f =
-    let rec aux path { files; subdirs } =
-      let file_list =
-        Filename.Array.Map.to_list_map files ~f:(fun file_name payload ->
-          f (Path.Local.relative_fname path file_name) (Some payload))
-      in
-      let dir_list =
-        Filename.Array.Map.to_list_map subdirs ~f:(fun dir_name dir_contents ->
-          let dir = Path.Local.relative_fname path dir_name in
-          let d = f dir None in
-          d :: aux dir dir_contents)
-        |> List.concat
-      in
-      file_list @ dir_list
-    in
-    aux Path.Local.root contents
+  let to_list_map t ~f =
+    foldi t ~init:[] ~f:(fun path payload acc -> f path payload :: acc) |> List.rev
   ;;
 
   let iter_files t ~f = iteri t ~f ~d:(fun _ -> ())

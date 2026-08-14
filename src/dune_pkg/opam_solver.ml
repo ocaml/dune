@@ -1527,35 +1527,35 @@ let reject_unreachable_packages =
     loop roots;
     !seen
   in
+  let merge_packages pkgs_by_name local_packages ~lock_dir ~local =
+    Package_name.Map.merge pkgs_by_name local_packages ~f:(fun name lhs rhs ->
+      match lhs, rhs with
+      | None, None -> assert false
+      | Some _, Some _ ->
+        Code_error.raise
+          "package is both local and returned by solver"
+          [ "name", Package_name.to_dyn name ]
+      | Some pkg, None -> Some (lock_dir pkg)
+      | None, Some pkg -> Some (local pkg))
+  in
   fun solver_env ~dune_version ~local_packages ~pkgs_by_name ->
     let roots = Package_name.Map.keys local_packages in
     let pkgs_by_version =
-      Package_name.Map.merge pkgs_by_name local_packages ~f:(fun name lhs rhs ->
-        match lhs, rhs with
-        | None, None -> assert false
-        | Some _, Some _ ->
-          Code_error.raise
-            "package is both local and returned by solver"
-            [ "name", Package_name.to_dyn name ]
-        | Some (lock_dir_pkg : Lock_dir.Pkg.t), None -> Some lock_dir_pkg.info.version
-        | None, Some (pkg : Local_package.For_solver.t) -> Some pkg.version)
+      merge_packages
+        pkgs_by_name
+        local_packages
+        ~lock_dir:(fun (pkg : Lock_dir.Pkg.t) -> pkg.info.version)
+        ~local:(fun (pkg : Local_package.For_solver.t) -> pkg.version)
     in
     let pkgs_by_name =
-      Package_name.Map.merge pkgs_by_name local_packages ~f:(fun name lhs rhs ->
-        match lhs, rhs with
-        | None, None -> assert false
-        | Some _, Some _ ->
-          Code_error.raise
-            "package is both local and returned by solver"
-            [ "name", Package_name.to_dyn name ]
-        | Some (pkg : Lock_dir.Pkg.t), None ->
-          Some
-            (Lock_dir.Conditional_choice.choose_for_platform
-               pkg.depends
-               ~platform:solver_env
-             |> Option.value ~default:[]
-             |> List.map ~f:(fun (depend : Lock_dir.Dependency.t) -> depend.name))
-        | None, Some (pkg : Local_package.For_solver.t) ->
+      merge_packages
+        pkgs_by_name
+        local_packages
+        ~lock_dir:(fun (pkg : Lock_dir.Pkg.t) ->
+          Lock_dir.Conditional_choice.choose_for_platform pkg.depends ~platform:solver_env
+          |> Option.value ~default:[]
+          |> List.map ~f:(fun (depend : Lock_dir.Dependency.t) -> depend.name))
+        ~local:(fun (pkg : Local_package.For_solver.t) ->
           let deps =
             match
               Lock_pkg.local_package_dependencies
@@ -1607,7 +1607,7 @@ let reject_unreachable_packages =
                  || Package_name.Map.mem pkgs_by_name d.name)
                 d.name)
           in
-          Some (deps @ depopts))
+          deps @ depopts)
     in
     reachable pkgs_by_name ~roots
 ;;

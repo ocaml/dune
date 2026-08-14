@@ -809,7 +809,6 @@ module Env = struct
     | Some version -> version
     | None ->
       let extension = Syntax.name extension |> Syntax.Name.to_string in
-      let name = Syntax.Name.to_string name in
       User_error.raise
         ~loc
         [ Pp.textf "Can't parse the variable %s without the %s extension" name extension ]
@@ -825,17 +824,18 @@ module Env = struct
         ~loc:pform.loc
         [ Pp.textf "Unknown %s %s" (P.describe_kind pform) (P.describe pform) ]
     | Some v ->
-      let name = Syntax.Name.parse pform.name in
       (match v with
        | No_info v -> v
        | Since (v, what, min_version) ->
-         let syntax_version = find_extension ~loc:pform.loc ~name syntax_version what in
+         let syntax_version =
+           find_extension ~loc:pform.loc ~name:pform.name syntax_version what
+         in
          if syntax_version >= min_version
          then v
          else Syntax.Error.since (P.loc pform) what min_version ~what:(P.describe pform)
        | Renamed_in (v, in_version, new_name) ->
          let syntax_version =
-           find_extension ~loc:pform.loc ~name syntax_version Stanza.syntax
+           find_extension ~loc:pform.loc ~name:pform.name syntax_version Stanza.syntax
          in
          if syntax_version < in_version
          then v
@@ -848,7 +848,7 @@ module Env = struct
              ~to_:(P.describe { pform with name = new_name })
        | Deleted_in (v, in_version, repl) ->
          let syntax_version =
-           find_extension ~loc:pform.loc ~name syntax_version Stanza.syntax
+           find_extension ~loc:pform.loc ~name:pform.name syntax_version Stanza.syntax
          in
          if syntax_version < in_version
          then v

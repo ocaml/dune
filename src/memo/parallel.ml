@@ -24,30 +24,45 @@ let fork_and_join_unit x y =
       Fiber.fork_and_join_unit (fun () -> run ~f:x ()) (fun () -> run ~f:y ()))
 ;;
 
-let all_concurrently l =
-  Deps_collector.run_parallel ~num_threads:(List.length l) (function
-    | None -> Fiber.all_concurrently l
-    | Some { Deps_collector.run } ->
-      Fiber.parallel_map l ~f:(fun fiber -> run ~f:Fun.id fiber))
+let all_concurrently = function
+  | [] -> Fiber.return []
+  | [ fiber ] -> Fiber.map fiber ~f:List.singleton
+  | l ->
+    Deps_collector.run_parallel ~num_threads:(List.length l) (function
+      | None -> Fiber.all_concurrently l
+      | Some { Deps_collector.run } ->
+        Fiber.parallel_map l ~f:(fun fiber -> run ~f:Fun.id fiber))
 ;;
 
-let all_concurrently_unit l =
-  Deps_collector.run_parallel ~num_threads:(List.length l) (function
-    | None -> Fiber.all_concurrently_unit l
-    | Some { Deps_collector.run } ->
-      Fiber.all_concurrently_unit (List.map l ~f:(fun fiber -> run ~f:Fun.id fiber)))
+let all_concurrently_unit = function
+  | [] -> Fiber.return ()
+  | [ fiber ] -> fiber
+  | l ->
+    Deps_collector.run_parallel ~num_threads:(List.length l) (function
+      | None -> Fiber.all_concurrently_unit l
+      | Some { Deps_collector.run } ->
+        Fiber.all_concurrently_unit (List.map l ~f:(fun fiber -> run ~f:Fun.id fiber)))
 ;;
 
 let parallel_map l ~f =
-  Deps_collector.run_parallel ~num_threads:(List.length l) (function
-    | None -> Fiber.parallel_map l ~f
-    | Some { Deps_collector.run } -> Fiber.parallel_map l ~f:(fun value -> run ~f value))
+  match l with
+  | [] -> Fiber.return []
+  | [ value ] -> Fiber.map (f value) ~f:List.singleton
+  | _ :: _ :: _ ->
+    Deps_collector.run_parallel ~num_threads:(List.length l) (function
+      | None -> Fiber.parallel_map l ~f
+      | Some { Deps_collector.run } -> Fiber.parallel_map l ~f:(fun value -> run ~f value))
 ;;
 
 let parallel_iter l ~f =
-  Deps_collector.run_parallel ~num_threads:(List.length l) (function
-    | None -> Fiber.parallel_iter l ~f
-    | Some { Deps_collector.run } -> Fiber.parallel_iter l ~f:(fun value -> run ~f value))
+  match l with
+  | [] -> Fiber.return ()
+  | [ value ] -> f value
+  | _ :: _ :: _ ->
+    Deps_collector.run_parallel ~num_threads:(List.length l) (function
+      | None -> Fiber.parallel_iter l ~f
+      | Some { Deps_collector.run } ->
+        Fiber.parallel_iter l ~f:(fun value -> run ~f value))
 ;;
 
 let parallel_iter_set

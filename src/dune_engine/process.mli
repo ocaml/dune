@@ -89,6 +89,17 @@ module Build : sig
   val run_id : t -> Run_id.t
   val cancellation : t -> Fiber.Cancel.t
   val action_runner : t -> Action_runner.t option
+
+  (** [exited] must be filled after the plugin process has been reaped. *)
+  val register_rule_plugin
+    :  t
+    -> initialized:unit Rpc.Server.Session.t option Fiber.Ivar.t
+    -> exited:unit Fiber.Ivar.t
+    -> unit
+
+  (** Close plugin RPC sessions and wait for their processes to exit. *)
+  val complete_rule_plugins : t -> unit Fiber.t
+
   val get : unit -> t option
   val with_ : t -> (unit -> 'a Fiber.t) -> 'a Fiber.t
   val cancel_current : unit -> unit Fiber.t

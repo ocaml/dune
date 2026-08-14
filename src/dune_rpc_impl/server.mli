@@ -14,6 +14,19 @@ type build =
       ; build_action : build_request -> unit Dune_engine.Action_builder.t
       }
 
+module Rule_plugin : sig
+  type t
+
+  val register
+    :  id:Dune_rpc.Id.t
+    -> build:Dune_engine.Process.Build.t
+    -> exited:unit Fiber.Ivar.t
+    -> t
+
+  val initialized : t -> unit Rpc.Server.Session.t option Fiber.t
+  val close : t -> unit Fiber.t
+end
+
 (** [create ~registry ~root ~build ~where ~action_runner ~required watch_mode]
     is a fresh RPC server.
 

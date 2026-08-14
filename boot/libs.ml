@@ -353,6 +353,18 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
+  ; { path = "src/source"
+    ; main_module_name = Some "Source"
+    ; include_subdirs = No
+    ; special_builtin_support = None
+    ; root_module = None
+    }
+  ; { path = "src/dune_rpc_impl"
+    ; main_module_name = Some "Dune_rpc_impl"
+    ; include_subdirs = No
+    ; special_builtin_support = None
+    ; root_module = None
+    }
   ; { path = "otherlibs/dune-site/src/private"
     ; main_module_name = Some "Dune_site_private"
     ; include_subdirs = No
@@ -361,12 +373,6 @@ let local_libraries =
     }
   ; { path = "src/scheme"
     ; main_module_name = Some "Scheme"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-  ; { path = "src/source"
-    ; main_module_name = Some "Source"
     ; include_subdirs = No
     ; special_builtin_support = None
     ; root_module = None
@@ -391,12 +397,6 @@ let local_libraries =
     }
   ; { path = "otherlibs/chrome-trace/src"
     ; main_module_name = Some "Chrome_trace"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-  ; { path = "src/dune_rpc_impl"
-    ; main_module_name = Some "Dune_rpc_impl"
     ; include_subdirs = No
     ; special_builtin_support = None
     ; root_module = None

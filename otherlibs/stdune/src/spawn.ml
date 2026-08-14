@@ -32,7 +32,7 @@ module Pgid = struct
 end
 
 external spawn_unix_raw
-  :  env:string list option
+  :  env:(Env.Var.t * string) list option
   -> cwd:Working_dir.raw
   -> prog:string
   -> argv0:string
@@ -61,7 +61,7 @@ let spawn_unix
       ~sigprocmask
       ~pdeathsig
   =
-  let env = Option.map env ~f:Env.to_unix in
+  let env = Option.map env ~f:Env.to_list in
   let setpgid = Option.map ~f:Pgid.to_int setpgid in
   let pdeathsig = Signal.to_int pdeathsig in
   spawn_unix_raw

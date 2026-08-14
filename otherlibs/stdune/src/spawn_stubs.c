@@ -392,13 +392,9 @@ static void raise_subprocess_failure(struct subprocess_failure* failure,
   unix_error(failure->error, failure->function, arg);
 }
 
-/* Convert a [string list] into a NULL terminated array of C
-   strings.
-
-   We don't reuse the [cstringvect] function from [unix_support.h] as
-   it doesn't copy the strings in the array.
-*/
-static char **alloc_string_vect(value v)
+/* Convert a list of [(variable, value)] pairs into a NULL terminated array
+   of C strings. */
+static char **alloc_env_list(value v)
 {
   char **result;
   mlsize_t count, i, full_size;
@@ -408,8 +404,11 @@ static char **alloc_string_vect(value v)
   count = 0;
   full_size = sizeof(char*);
   for (x = v; Is_block(x); x = Field(x, 1)) {
+    value binding = Field(x, 0);
     count++;
-    full_size += sizeof(char*) + caml_string_length(Field(x, 0)) + 1;
+    full_size += sizeof(char*) +
+                 caml_string_length(Field(binding, 0)) +
+                 caml_string_length(Field(binding, 1)) + 2;
   }
 
   /* Allocate the array of pointers followed by the space to copy the
@@ -419,11 +418,18 @@ static char **alloc_string_vect(value v)
 
   ptr = ((char*)result) + (sizeof(char*) * (count + 1));
   for (x = v, i = 0; Is_block(x); x = Field(x, 1), i++) {
-    value v_str = Field(x, 0);
-    mlsize_t len = caml_string_length(v_str) + 1;
-    memcpy(ptr, String_val(v_str), len);
+    value binding = Field(x, 0);
+    value variable = Field(binding, 0);
+    value binding_value = Field(binding, 1);
+    mlsize_t variable_len = caml_string_length(variable);
+    mlsize_t value_len = caml_string_length(binding_value);
     result[i] = ptr;
-    ptr += len;
+    memcpy(ptr, String_val(variable), variable_len);
+    ptr += variable_len;
+    *ptr++ = '=';
+    memcpy(ptr, String_val(binding_value), value_len);
+    ptr += value_len;
+    *ptr++ = '\0';
   }
   result[count] = NULL;
 
@@ -554,7 +560,7 @@ static void init_spawn_info(struct spawn_info *info,
   info->argv = alloc_string_array(v_argv0, v_args);
   info->env =
     Is_block(v_env) ?
-    alloc_string_vect(Field(v_env, 0)) : copy_c_string_array(environ);
+    alloc_env_list(Field(v_env, 0)) : copy_c_string_array(environ);
   info->set_pgid = Is_block(v_setpgid);
   info->pgid =
     Is_block(v_setpgid) ?

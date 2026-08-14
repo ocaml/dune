@@ -45,68 +45,51 @@ end
 module Set = Var.Set
 module Map = Var.Map
 
-module Binding = struct
-  type t =
-    { value : string
-    ; mutable rendered : string Option.Unboxed.t
-    }
+module Value : sig
+  type t
 
-  let create value = { value; rendered = Option.Unboxed.none }
+  val of_string : string -> t
+  val to_string : t -> string
+end = struct
+  type t = string
 
-  let render t ~var =
-    if Option.Unboxed.is_some t.rendered
-    then Option.Unboxed.value_exn t.rendered
-    else (
-      if String.contains t.value '\000'
-      then
-        Code_error.raise
-          "Env: NUL byte in environment variable value"
-          [ "value", Dyn.string t.value ];
-      let rendered = String.append_with_char var ~sep:'=' t.value in
-      t.rendered <- Option.Unboxed.some rendered;
-      rendered)
+  let of_string value =
+    if String.contains value '\000'
+    then
+      Code_error.raise
+        "Env: NUL byte in environment variable value"
+        [ "value", Dyn.string value ];
+    value
   ;;
+
+  let to_string t = t
 end
 
-(* The use of [mutable] for these caches is safe, since we never call (back) to
-   the memoization framework when computing [unix]. *)
-type t =
-  { vars : Binding.t Map.t
-  ; mutable unix : string list option
-  }
+type t = Value.t Map.t
 
-let equal t { vars; unix = _ } =
-  Map.equal
-    ~equal:(fun { Binding.value = x; _ } { Binding.value = y; _ } -> String.equal x y)
-    t.vars
-    vars
+let equal =
+  Map.equal ~equal:(fun x y -> String.equal (Value.to_string x) (Value.to_string y))
 ;;
 
-let hash { vars; unix = _ } =
-  Map.foldi vars ~init:(Hash.create ()) ~f:(fun var { Binding.value; _ } acc ->
+let hash t =
+  Map.foldi t ~init:(Hash.create ()) ~f:(fun var value acc ->
     let acc = Hash.feed acc (Var.hash var) in
-    Hash.feed acc (String.hash value))
+    Hash.feed acc (String.hash (Value.to_string value)))
   |> Hash.hash
 ;;
 
-let of_bindings vars = { vars; unix = None }
-let of_map vars = Map.map vars ~f:Binding.create |> of_bindings
-let empty = of_bindings Map.empty
-let is_empty t = Map.is_empty t.vars
-let vars t = Var.Set.of_keys t.vars
-let get t k = Option.map (Map.find t.vars k) ~f:(fun { Binding.value; _ } -> value)
+let of_map vars = Map.map vars ~f:Value.of_string
+let empty = Map.empty
+let is_empty = Map.is_empty
+let vars = Set.of_keys
+let get t var = Option.map (Map.find t var) ~f:Value.to_string
 
-let to_unix t =
-  match t.unix with
-  | Some bindings -> bindings
-  | None ->
-    let bindings =
-      Map.foldi t.vars ~init:[] ~f:(fun var binding acc ->
-        Binding.render binding ~var:(Var.to_string var) :: acc)
-    in
-    t.unix <- Some bindings;
-    bindings
+let to_list t =
+  Map.foldi t ~init:[] ~f:(fun var value acc -> (var, Value.to_string value) :: acc)
 ;;
+
+let render (var, value) = String.append_with_char (Var.to_string var) ~sep:'=' value
+let to_unix t = List.map (to_list t) ~f:render
 
 let to_windows_block t =
   match to_unix t with
@@ -138,51 +121,36 @@ let map_of_unix arr =
 
 let initial = of_map (map_of_unix (Unix.environment ()))
 let of_unix u = of_map (map_of_unix u)
-let add t ~var ~value = of_bindings (Map.set t.vars var (Binding.create value))
-let mem t ~var = Map.mem t.vars var
-let remove t ~var = of_bindings (Map.remove t.vars var)
 
-let extend t ~vars =
-  if Map.is_empty vars
-  then t
-  else of_bindings (Map.superpose (Map.map vars ~f:Binding.create) t.vars)
+let add t ~var ~value =
+  Map.update t var ~f:(function
+    | Some old when String.equal value (Value.to_string old) -> Some old
+    | None | Some _ -> Some (Value.of_string value))
 ;;
 
-let extend_env x y =
-  if is_empty y
-  then x
-  else if is_empty x
-  then y
-  else of_bindings (Map.superpose y.vars x.vars)
-;;
-
-let to_dyn t =
-  let open Dyn in
-  Map.to_dyn (fun { Binding.value; _ } -> string value) t.vars
-;;
+let mem t ~var = Map.mem t var
+let remove t ~var = if Map.mem t var then Map.remove t var else t
+let extend t ~vars = if Map.is_empty vars then t else Map.superpose (of_map vars) t
+let extend_env x y = if is_empty y then x else if is_empty x then y else Map.superpose y x
+let to_dyn t = Map.to_dyn (fun value -> Dyn.string (Value.to_string value)) t
 
 let diff x y =
-  Map.merge x.vars y.vars ~f:(fun _k vx vy ->
+  Map.merge x y ~f:(fun _ vx vy ->
     match vy with
     | Some _ -> None
     | None -> vx)
-  |> of_bindings
 ;;
 
 let update t ~var ~f =
-  let old = Option.map (Map.find t.vars var) ~f:(fun { Binding.value; _ } -> value) in
-  match f old with
+  match f (get t var) with
   | None -> remove t ~var
   | Some value -> add t ~var ~value
 ;;
 
 let of_string_map m =
-  of_map
-    (String.Map.foldi
-       ~init:Map.empty
-       ~f:(fun k v acc -> Map.set acc (Var.of_string k) v)
-       m)
+  String.Map.foldi m ~init:Map.empty ~f:(fun k v acc -> Map.set acc (Var.of_string k) v)
+  |> of_map
 ;;
 
-let iter t ~f = Map.iteri t.vars ~f:(fun var { Binding.value; _ } -> f var value)
-let to_map t = Map.map t.vars ~f:(fun { Binding.value; _ } -> value)
+let iter t ~f = Map.iteri t ~f:(fun var value -> f var (Value.to_string value))
+let to_map t = Map.map t ~f:Value.to_string

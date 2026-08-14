@@ -200,7 +200,7 @@ let%expect_test "virtual-library object map after mapping" =
       Code_error.raise "expected a virtual-library implementation" [])
   |> Dyn.list Dyn.string
   |> Dune_tests_common.print_dyn;
-  [%expect {| [ "shared -> intf:shared impl:shared" ] |}]
+  [%expect {| [ "mapped__shared -> intf:mapped__shared impl:mapped__shared" ] |}]
 ;;
 
 let%expect_test "qualified-group dependency lookup" =

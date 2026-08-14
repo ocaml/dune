@@ -141,22 +141,21 @@ module Make (Key : Key) : S with type key = Key.t = struct
 
   let of_list_reduce l ~f =
     List.fold_left l ~init:empty ~f:(fun acc (key, data) ->
-      match find acc key with
-      | None -> set acc key data
-      | Some x -> set acc key (f x data))
+      update acc key ~f:(function
+        | None -> Some data
+        | Some x -> Some (f x data)))
   ;;
 
   let of_list_fold l ~init ~f =
     List.fold_left l ~init:empty ~f:(fun acc (key, data) ->
-      let x = Option.value (find acc key) ~default:init in
-      set acc key (f x data))
+      update acc key ~f:(fun value -> Some (f (Option.value value ~default:init) data)))
   ;;
 
   let of_list_reducei l ~f =
     List.fold_left l ~init:empty ~f:(fun acc (key, data) ->
-      match find acc key with
-      | None -> set acc key data
-      | Some x -> set acc key (f key x data))
+      update acc key ~f:(function
+        | None -> Some data
+        | Some x -> Some (f key x data)))
   ;;
 
   let of_list_multi l =

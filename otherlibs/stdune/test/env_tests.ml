@@ -3,6 +3,13 @@ open Stdune
 let a = Env.Var.of_string "A"
 let b = Env.Var.of_string "B"
 
+let%expect_test "environment variable names cannot contain NUL bytes" =
+  (match Env.Var.of_string "A\000B" with
+   | _ -> print_endline "accepted"
+   | exception Code_error.E _ -> print_endline "rejected");
+  [%expect {| rejected |}]
+;;
+
 let find_assignment env var =
   Env.to_unix env
   |> List.find_map ~f:(fun assignment ->

@@ -1,0 +1,331 @@
+(rule
+ (target independent-0)
+ (action
+  (progn
+   (run sleep 10)
+   (write-file independent-0 done))))
+
+(rule
+ (target independent-1)
+ (action
+  (progn
+   (run sleep 10)
+   (write-file independent-1 done))))
+
+(rule
+ (target independent-2)
+ (action
+  (progn
+   (run sleep 10)
+   (write-file independent-2 done))))
+
+(rule
+ (target independent-3)
+ (action
+  (progn
+   (run sleep 10)
+   (write-file independent-3 done))))
+
+(rule
+ (target independent-4)
+ (action
+  (progn
+   (run sleep 10)
+   (write-file independent-4 done))))
+
+(rule
+ (target independent-5)
+ (action
+  (progn
+   (run sleep 10)
+   (write-file independent-5 done))))
+
+(rule
+ (target independent-6)
+ (action
+  (progn
+   (run sleep 10)
+   (write-file independent-6 done))))
+
+(rule
+ (target independent-7)
+ (action
+  (progn
+   (run sleep 10)
+   (write-file independent-7 done))))
+
+(rule
+ (target independent-8)
+ (action
+  (progn
+   (run sleep 10)
+   (write-file independent-8 done))))
+
+(rule
+ (target independent-9)
+ (action
+  (progn
+   (run sleep 10)
+   (write-file independent-9 done))))
+
+(rule
+ (target independent-10)
+ (action
+  (progn
+   (run sleep 10)
+   (write-file independent-10 done))))
+
+(rule
+ (target independent-11)
+ (action
+  (progn
+   (run sleep 10)
+   (write-file independent-11 done))))
+
+(rule
+ (target independent-12)
+ (action
+  (progn
+   (run sleep 10)
+   (write-file independent-12 done))))
+
+(rule
+ (target independent-13)
+ (action
+  (progn
+   (run sleep 10)
+   (write-file independent-13 done))))
+
+(rule
+ (target independent-14)
+ (action
+  (progn
+   (run sleep 10)
+   (write-file independent-14 done))))
+
+(rule
+ (target independent-15)
+ (action
+  (progn
+   (run sleep 10)
+   (write-file independent-15 done))))
+
+(rule
+ (target independent-16)
+ (action
+  (progn
+   (run sleep 10)
+   (write-file independent-16 done))))
+
+(rule
+ (target independent-17)
+ (action
+  (progn
+   (run sleep 10)
+   (write-file independent-17 done))))
+
+(rule
+ (target independent-18)
+ (action
+  (progn
+   (run sleep 10)
+   (write-file independent-18 done))))
+
+(rule
+ (target independent-19)
+ (action
+  (progn
+   (run sleep 10)
+   (write-file independent-19 done))))
+
+(rule
+ (target chain-0)
+ (action
+  (progn
+   (run sleep 0.5)
+   (write-file chain-0 done))))
+
+(rule
+ (target chain-1)
+ (deps chain-0)
+ (action
+  (progn
+   (run sleep 0.5)
+   (write-file chain-1 done))))
+
+(rule
+ (target chain-2)
+ (deps chain-1)
+ (action
+  (progn
+   (run sleep 0.5)
+   (write-file chain-2 done))))
+
+(rule
+ (target chain-3)
+ (deps chain-2)
+ (action
+  (progn
+   (run sleep 0.5)
+   (write-file chain-3 done))))
+
+(rule
+ (target chain-4)
+ (deps chain-3)
+ (action
+  (progn
+   (run sleep 0.5)
+   (write-file chain-4 done))))
+
+(rule
+ (target chain-5)
+ (deps chain-4)
+ (action
+  (progn
+   (run sleep 0.5)
+   (write-file chain-5 done))))
+
+(rule
+ (target chain-6)
+ (deps chain-5)
+ (action
+  (progn
+   (run sleep 0.5)
+   (write-file chain-6 done))))
+
+(rule
+ (target chain-7)
+ (deps chain-6)
+ (action
+  (progn
+   (run sleep 0.5)
+   (write-file chain-7 done))))
+
+(rule
+ (target chain-8)
+ (deps chain-7)
+ (action
+  (progn
+   (run sleep 0.5)
+   (write-file chain-8 done))))
+
+(rule
+ (target chain-9)
+ (deps chain-8)
+ (action
+  (progn
+   (run sleep 0.5)
+   (write-file chain-9 done))))
+
+(rule
+ (target chain-10)
+ (deps chain-9)
+ (action
+  (progn
+   (run sleep 0.5)
+   (write-file chain-10 done))))
+
+(rule
+ (target chain-11)
+ (deps chain-10)
+ (action
+  (progn
+   (run sleep 0.5)
+   (write-file chain-11 done))))
+
+(rule
+ (target chain-12)
+ (deps chain-11)
+ (action
+  (progn
+   (run sleep 0.5)
+   (write-file chain-12 done))))
+
+(rule
+ (target chain-13)
+ (deps chain-12)
+ (action
+  (progn
+   (run sleep 0.5)
+   (write-file chain-13 done))))
+
+(rule
+ (target chain-14)
+ (deps chain-13)
+ (action
+  (progn
+   (run sleep 0.5)
+   (write-file chain-14 done))))
+
+(rule
+ (target chain-15)
+ (deps chain-14)
+ (action
+  (progn
+   (run sleep 0.5)
+   (write-file chain-15 done))))
+
+(rule
+ (target chain-16)
+ (deps chain-15)
+ (action
+  (progn
+   (run sleep 0.5)
+   (write-file chain-16 done))))
+
+(rule
+ (target chain-17)
+ (deps chain-16)
+ (action
+  (progn
+   (run sleep 0.5)
+   (write-file chain-17 done))))
+
+(rule
+ (target chain-18)
+ (deps chain-17)
+ (action
+  (progn
+   (run sleep 0.5)
+   (write-file chain-18 done))))
+
+(rule
+ (target chain-19)
+ (deps chain-18)
+ (action
+  (progn
+   (run sleep 0.5)
+   (write-file chain-19 done))))
+
+(rule
+ (target chain-final)
+ (deps chain-19)
+ (action
+  (progn
+   (run sleep 10)
+   (write-file chain-final done))))
+
+(alias
+ (name benchmark)
+ (deps
+  independent-0
+  independent-1
+  independent-2
+  independent-3
+  independent-4
+  independent-5
+  independent-6
+  independent-7
+  independent-8
+  independent-9
+  independent-10
+  independent-11
+  independent-12
+  independent-13
+  independent-14
+  independent-15
+  independent-16
+  independent-17
+  independent-18
+  independent-19
+  chain-final))

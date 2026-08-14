@@ -159,6 +159,8 @@ let make_dep_node ~spec ~input : _ Dep_node.t =
   ; value = Uninitialized
   ; runs = Run.Pair.invalid
   ; deps = Deps.empty
+  ; job_priority = 0
+  ; job_priority_handle = None
   }
 ;;
 
@@ -202,6 +204,7 @@ let create_rec
 
 let get_call_stack = Call_stack.get_call_stack_without_state
 
+module Job_priority = Node.Job_priority
 module Invalidation = Invalidation
 
 module Current_run = struct

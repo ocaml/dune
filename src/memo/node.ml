@@ -8,6 +8,20 @@ include Fiber
 open Fiber.O
 module Id = Id.Make ()
 
+module Job_priority_state = struct
+  type factory =
+    { id : Id.t
+    ; create : priority:int -> Fiber.Throttle.priority
+    }
+
+  type t =
+    { factory_id : Id.t
+    ; priority : Fiber.Throttle.priority
+    }
+
+  let current_factory : factory option Fiber.Var.t = Fiber.Var.create None
+end
+
 module M = struct
   module Import = struct
     module Dag = Dag
@@ -67,6 +81,8 @@ module M = struct
              partial (rather than total) order on dependencies, so [deps] should be
              a linearisation of this partial order. *)
         mutable deps : packed Deps.t
+      ; mutable job_priority : int
+      ; mutable job_priority_handle : Job_priority_state.t option
       }
 
     and packed = T : (_, _) t -> packed [@@unboxed]
@@ -522,6 +538,52 @@ module Call_stack = struct
     match !cycle_error_in_the_current_run with
     | None -> Ok ()
     | Some cycle_error -> Error cycle_error
+  ;;
+end
+
+module Job_priority = struct
+  type t = Fiber.Throttle.priority
+
+  let with_factory create f =
+    let factory = { Job_priority_state.id = Id.gen (); create } in
+    Fiber.Var.set Job_priority_state.current_factory (Some factory) f
+  ;;
+
+  let increase (dep_node : _ Dep_node.t) =
+    let* stack = Call_stack.get_call_stack () in
+    match List.hd_opt stack with
+    | None -> Fiber.return ()
+    | Some caller ->
+      let (Dep_node.T caller) = Stack_frame_with_state.dep_node caller in
+      let old_priority = dep_node.job_priority in
+      let priority = max old_priority caller.job_priority in
+      let priority = if priority = Int.max_int then priority else priority + 1 in
+      let increment = priority - old_priority in
+      dep_node.job_priority <- priority;
+      let+ factory = Fiber.Var.get Job_priority_state.current_factory in
+      (match factory, dep_node.job_priority_handle with
+       | Some factory, Some current when Id.equal current.factory_id factory.id ->
+         Fiber.Throttle.increase_priority_by current.priority increment
+       | _ -> ())
+  ;;
+
+  let current () =
+    let* stack = Call_stack.get_call_stack () in
+    let+ factory = Fiber.Var.get Job_priority_state.current_factory in
+    match List.hd_opt stack, factory with
+    | Some frame, Some factory ->
+      let (Dep_node.T dep_node) = Stack_frame_with_state.dep_node frame in
+      let priority =
+        match dep_node.job_priority_handle with
+        | Some current when Id.equal current.factory_id factory.id -> current.priority
+        | None | Some _ ->
+          let priority = factory.create ~priority:dep_node.job_priority in
+          dep_node.job_priority_handle
+          <- Some { Job_priority_state.factory_id = factory.id; priority };
+          priority
+      in
+      Some priority
+    | None, _ | _, None -> None
   ;;
 end
 

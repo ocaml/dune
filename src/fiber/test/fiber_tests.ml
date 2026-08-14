@@ -18,6 +18,275 @@ let%expect_test "basics" =
   [%expect {| () |}]
 ;;
 
+module Priority_queue_tests = struct
+  module Queue = Fiber.Priority_queue
+
+  let rec print_and_drain queue =
+    match Queue.pop queue with
+    | None -> ()
+    | Some value ->
+      print_endline value;
+      print_and_drain queue
+  ;;
+
+  let%expect_test "priority ordering and FIFO tie-breaking" =
+    let queue = Queue.create () in
+    let first = Queue.create_priority queue in
+    let second = Queue.create_priority queue in
+    Queue.push queue first "first-1";
+    Queue.push queue second "second-1";
+    Queue.push queue first "first-2";
+    Queue.push queue second "second-2";
+    print_and_drain queue;
+    [%expect
+      {|
+      first-1
+      second-1
+      first-2
+      second-2 |}]
+  ;;
+
+  let%expect_test "increasing the priority of queued values" =
+    let queue = Queue.create () in
+    let first = Queue.create_priority queue in
+    let second = Queue.create_priority queue in
+    Queue.push queue first "first";
+    Queue.push queue second "second";
+    Queue.increase_priority second;
+    print_and_drain queue;
+    [%expect
+      {|
+      second
+      first |}]
+  ;;
+
+  let%expect_test "shared and initially elevated priorities" =
+    let queue = Queue.create () in
+    let shared = Queue.create_priority queue in
+    let elevated = Queue.create_priority ~priority:2 queue in
+    let normal = Queue.create_priority queue in
+    Queue.push queue shared "shared-1";
+    Queue.push queue normal "normal";
+    Queue.push queue shared "shared-2";
+    Queue.increase_priority shared;
+    Queue.push queue elevated "elevated";
+    print_and_drain queue;
+    [%expect
+      {|
+      elevated
+      shared-1
+      shared-2
+      normal |}]
+  ;;
+
+  let%expect_test "empty, length, and peek" =
+    let queue = Queue.create () in
+    let priority = Queue.create_priority queue in
+    printf "%b %d\n" (Queue.is_empty queue) (Queue.length queue);
+    Queue.increase_priority priority;
+    Queue.push queue priority "value";
+    printf
+      "%b %d %s %s\n"
+      (Queue.is_empty queue)
+      (Queue.length queue)
+      (Queue.peek queue |> Option.value_exn)
+      (Queue.peek queue |> Option.value_exn);
+    ignore (Queue.pop queue : string option);
+    printf "%b %d\n" (Queue.is_empty queue) (Queue.length queue);
+    let saturated = Queue.create_priority ~priority:Int.max_int queue in
+    Queue.increase_priority_by saturated Int.max_int;
+    printf "%b\n" (Queue.priority saturated = Int.max_int);
+    let raised = Queue.create_priority ~priority:1 queue in
+    Queue.increase_priority_by raised 3;
+    printf "%d\n" (Queue.priority raised);
+    [%expect
+      {|
+      true 0
+      false 1 value value
+      true 0
+      true
+      4 |}]
+  ;;
+end
+
+module Throttle_tests = struct
+  module Throttle = Fiber.Throttle
+
+  let%expect_test "queued jobs use their current priorities" =
+    let throttle = Throttle.create 1 in
+    let first = Throttle.create_priority throttle in
+    let second = Throttle.create_priority throttle in
+    let blocker_started = Fiber.Ivar.create () in
+    let release_blocker = Fiber.Ivar.create () in
+    let run name priority =
+      Throttle.run throttle ~priority (fun () ->
+        print_endline name;
+        Fiber.return ())
+    in
+    test
+      unit
+      (Fiber.fork_and_join_unit
+         (fun () ->
+            Throttle.run throttle (fun () ->
+              let* () = Fiber.Ivar.fill blocker_started () in
+              Fiber.Ivar.read release_blocker))
+         (fun () ->
+            let* () = Fiber.Ivar.read blocker_started in
+            Fiber.parallel_iter
+              [ (fun () -> run "first" first)
+              ; (fun () -> run "second" second)
+              ; (fun () ->
+                  Throttle.increase_priority second;
+                  Fiber.Ivar.fill release_blocker ())
+              ]
+              ~f:Fun.id));
+    [%expect
+      {|
+      second
+      first
+      () |}]
+  ;;
+
+  let%expect_test "a high-priority chain keeps the released slot" =
+    let throttle = Throttle.create 2 in
+    let first = Throttle.create_priority ~priority:2 throttle in
+    let second = Throttle.create_priority ~priority:2 throttle in
+    let low = Throttle.create_priority throttle in
+    let blocker_started = Fiber.Ivar.create () in
+    let release_first = Fiber.Ivar.create () in
+    let release_blocker = Fiber.Ivar.create () in
+    test
+      unit
+      (Fiber.parallel_iter
+         [ (fun () ->
+             let* () =
+               Throttle.run
+                 throttle
+                 ~priority:first
+                 ~schedule_restart:(fun () -> ())
+                 (fun () ->
+                    print_endline "chain-1";
+                    Fiber.Ivar.read release_first)
+             in
+             let* () =
+               Throttle.run
+                 throttle
+                 ~priority:second
+                 ~schedule_restart:(fun () -> ())
+                 (fun () ->
+                    print_endline "chain-2";
+                    Fiber.return ())
+             in
+             Fiber.Ivar.fill release_blocker ())
+         ; (fun () ->
+             Throttle.run throttle (fun () ->
+               let* () = Fiber.Ivar.fill blocker_started () in
+               Fiber.Ivar.read release_blocker))
+         ; (fun () ->
+             let* () = Fiber.Ivar.read blocker_started in
+             Fiber.fork_and_join_unit
+               (fun () ->
+                  Throttle.run throttle ~priority:low (fun () ->
+                    print_endline "low";
+                    Fiber.return ()))
+               (fun () -> Fiber.Ivar.fill release_first ()))
+         ]
+         ~f:Fun.id);
+    [%expect
+      {|
+      chain-1
+      chain-2
+      low
+      () |}]
+  ;;
+
+  let%expect_test "a failed job releases its slot" =
+    let throttle = Throttle.create 1 in
+    test
+      unit
+      (let* (_ : (unit, Exn_with_backtrace.t list) result) =
+         Fiber.collect_errors (fun () -> Throttle.run throttle (fun () -> raise Exit))
+       in
+       Throttle.run throttle (fun () ->
+         print_endline "slot released";
+         Fiber.return ()));
+    [%expect
+      {|
+      slot released
+      () |}]
+  ;;
+
+  let%expect_test "constructing a job does not acquire a slot" =
+    let throttle = Throttle.create 1 in
+    ignore
+      (Throttle.run throttle (fun () ->
+         print_endline "unused";
+         Fiber.return ())
+       : unit Fiber.t);
+    printf "%d\n" (Throttle.running throttle);
+    test
+      unit
+      (Throttle.run throttle (fun () ->
+         print_endline "slot available";
+         Fiber.return ()));
+    [%expect
+      {|
+      0
+      slot available
+      () |}]
+  ;;
+
+  let%expect_test "a priority cannot be used with another throttle" =
+    let owner = Throttle.create 1 in
+    let other = Throttle.create 1 in
+    let priority = Throttle.create_priority owner in
+    test
+      unit
+      (let* result =
+         Fiber.collect_errors (fun () ->
+           Throttle.run other ~priority (fun () -> Fiber.return ()))
+       in
+       (match result with
+        | Ok () -> printf "accepted"
+        | Error _ -> printf "rejected");
+       printf " %d\n" (Throttle.running other);
+       Throttle.run other (fun () ->
+         print_endline "slot available";
+         Fiber.return ()));
+    [%expect
+      {|
+      rejected 0
+      slot available
+      () |}]
+  ;;
+
+  let%expect_test "resizing admits the highest-priority job" =
+    let throttle = Throttle.create 0 in
+    let first = Throttle.create_priority throttle in
+    let second = Throttle.create_priority throttle in
+    let run name priority =
+      Throttle.run throttle ~priority (fun () ->
+        print_endline name;
+        Fiber.return ())
+    in
+    test
+      unit
+      (Fiber.parallel_iter
+         [ (fun () -> run "first" first)
+         ; (fun () -> run "second" second)
+         ; (fun () ->
+             Throttle.increase_priority second;
+             Throttle.resize throttle 1)
+         ]
+         ~f:Fun.id);
+    [%expect
+      {|
+      second
+      first
+      () |}]
+  ;;
+end
+
 let%expect_test "fibers are reusable and thunks run during execution" =
   let runs = ref 0 in
   let fiber =

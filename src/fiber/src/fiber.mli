@@ -351,6 +351,7 @@ module Throttle : sig
   (** Limit the number of jobs *)
 
   type t
+  type priority
 
   (** [create n] creates a throttler that allows to run [n] jobs at once *)
   val create : int -> t
@@ -361,8 +362,30 @@ module Throttle : sig
   (** Change the number of jobs that can run at once *)
   val resize : t -> int -> unit fiber
 
-  (** Execute a fiber, waiting if too many jobs are already running *)
-  val run : t -> f:(unit -> 'a fiber) -> 'a fiber
+  (** Create a priority handle owned by the throttler. *)
+  val create_priority : ?priority:int -> t -> priority
+
+  (** Increase the priority represented by the handle. *)
+  val increase_priority : priority -> unit
+
+  (** Increase the priority represented by the handle by the given amount. *)
+  val increase_priority_by : priority -> int -> unit
+
+  (** Remove as many waiters as there are available slots and return their
+      ivars. This is intended for schedulers that resume waiters from an event
+      loop. *)
+  val restart_waiters : t -> unit Ivar.t list
+
+  (** Execute a fiber, waiting if too many jobs are already running. If the
+      fiber needs to wait, jobs with higher priorities are resumed first.
+      [schedule_restart] may defer admitting lower-priority waiters so the
+      completed fiber's continuation can enqueue newly unblocked work. *)
+  val run
+    :  t
+    -> ?priority:priority
+    -> ?schedule_restart:(unit -> unit)
+    -> (unit -> 'a fiber)
+    -> 'a fiber
 
   (** Return the number of jobs currently running *)
   val running : t -> int

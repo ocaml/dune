@@ -1,6 +1,7 @@
 open Stdune
 include Dune_scheduler
 open Dune_tests_common
+open Fiber.O
 
 let () = init ()
 
@@ -15,6 +16,107 @@ let default =
 let go ?(timeout = Time.Span.of_secs 0.3) ?(config = default) f =
   try Scheduler.Run.go ~timeout config ~file_watcher:No_watcher f with
   | Shutdown.E Requested -> ()
+;;
+
+let%expect_test "Memo dependencies reprioritize queued jobs" =
+  let order = ref [] in
+  let job name =
+    Memo.Lazy.create ~name:("job-" ^ name) (fun () ->
+      Scheduler.with_job_slot (fun () ->
+        order := name :: !order;
+        Fiber.return ()))
+  in
+  let low = job "low" in
+  let high = job "high" in
+  let consumer name job = Memo.Lazy.create ~name (fun () -> Memo.Lazy.force job) in
+  let consumers =
+    [ consumer "low-consumer" low
+    ; consumer "high-consumer-1" high
+    ; consumer "high-consumer-2" high
+    ]
+  in
+  let blocker_started = Fiber.Ivar.create () in
+  let release_blocker = Fiber.Ivar.create () in
+  go (fun () ->
+    Fiber.fork_and_join_unit
+      (fun () ->
+         Scheduler.with_job_slot (fun () ->
+           let* () = Fiber.Ivar.fill blocker_started () in
+           Fiber.Ivar.read release_blocker))
+      (fun () ->
+         let* () = Fiber.Ivar.read blocker_started in
+         Fiber.fork_and_join_unit
+           (fun () ->
+              Memo.parallel_map consumers ~f:Memo.Lazy.force |> Memo.run >>| ignore)
+           (fun () -> Fiber.Ivar.fill release_blocker ())));
+  List.rev !order |> List.iter ~f:print_endline;
+  [%expect
+    {|
+    high
+    low |}]
+;;
+
+let%expect_test "a deferred priority restart cannot strand waiters" =
+  let blocker_started = Fiber.Ivar.create () in
+  let release_high = Fiber.Ivar.create () in
+  let release_blocker = Fiber.Ivar.create () in
+  go ~timeout:(Time.Span.of_secs 1.0) ~config:{ default with concurrency = 2 } (fun () ->
+    let* high = Scheduler.create_job_priority ~priority:2 () in
+    let* low = Scheduler.create_job_priority () in
+    Fiber.parallel_iter
+      [ (fun () ->
+          Scheduler.with_job_slot ~priority:high (fun () -> Fiber.Ivar.read release_high))
+      ; (fun () ->
+          Scheduler.with_job_slot (fun () ->
+            let* () = Fiber.Ivar.fill blocker_started () in
+            Fiber.Ivar.read release_blocker))
+      ; (fun () ->
+          let* () = Fiber.Ivar.read blocker_started in
+          Fiber.fork_and_join_unit
+            (fun () ->
+               Scheduler.with_job_slot ~priority:low (fun () ->
+                 print_endline "low resumed";
+                 Fiber.Ivar.fill release_blocker ()))
+            (fun () -> Fiber.Ivar.fill release_high ()))
+      ]
+      ~f:Fun.id);
+  [%expect {| low resumed |}]
+;;
+
+let%expect_test "Memo priorities propagate through dependency chains" =
+  let order = ref [] in
+  let job name =
+    Memo.Lazy.create ~name:("job-" ^ name) (fun () ->
+      Scheduler.with_job_slot (fun () ->
+        order := name :: !order;
+        Fiber.return ()))
+  in
+  let low = job "low" in
+  let chain =
+    List.init 3 ~f:Fun.id
+    |> List.fold_left ~init:(job "chain") ~f:(fun dependency n ->
+      Memo.Lazy.create ~name:(sprintf "chain-consumer-%d" n) (fun () ->
+        Memo.Lazy.force dependency))
+  in
+  let blocker_started = Fiber.Ivar.create () in
+  let release_blocker = Fiber.Ivar.create () in
+  go (fun () ->
+    Fiber.fork_and_join_unit
+      (fun () ->
+         Scheduler.with_job_slot (fun () ->
+           let* () = Fiber.Ivar.fill blocker_started () in
+           Fiber.Ivar.read release_blocker))
+      (fun () ->
+         let* () = Fiber.Ivar.read blocker_started in
+         Fiber.fork_and_join_unit
+           (fun () ->
+              Memo.parallel_map [ low; chain ] ~f:Memo.Lazy.force |> Memo.run >>| ignore)
+           (fun () -> Fiber.Ivar.fill release_blocker ())));
+  List.rev !order |> List.iter ~f:print_endline;
+  [%expect
+    {|
+    chain
+    low |}]
 ;;
 
 let%expect_test "raise inside Scheduler.Run.go" =

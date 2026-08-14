@@ -30,6 +30,10 @@ module Metrics = Metrics
 open! Import
 module Id : Id.S
 
+module Job_priority_state : sig
+  type t
+end
+
 module M : sig
   module Import : sig
     module Dag = Dag
@@ -54,6 +58,8 @@ module M : sig
       ; mutable value : 'o Value.t
       ; mutable runs : Run.Pair.t
       ; mutable deps : packed Deps.t
+      ; mutable job_priority : int
+      ; mutable job_priority_handle : Job_priority_state.t option
       }
 
     and packed = T : ('a, 'b) t -> packed [@@unboxed]
@@ -105,6 +111,8 @@ module Dep_node : sig
     ; mutable deps : packed Deps.t
       (** The dependencies captured at [last_validated_at], in the order they were depended
         on. *)
+    ; mutable job_priority : int
+    ; mutable job_priority_handle : Job_priority_state.t option
     }
 
   and packed = M.Dep_node.packed = T : ('a, 'b) t -> packed [@@unboxed]
@@ -256,6 +264,14 @@ module Call_stack : sig
   (** Add all edges leading from the root of the call stack to [dag_node] to the cycle
       detection DAG. *)
   val add_path_to : dag_node:Dag.node -> (unit, Cycle_error.t) result Fiber.t
+end
+
+module Job_priority : sig
+  type t = Fiber.Throttle.priority
+
+  val with_factory : (priority:int -> t) -> (unit -> 'a Fiber.t) -> 'a Fiber.t
+  val current : unit -> t option Fiber.t
+  val increase : ('i, 'o) Dep_node.t -> unit Fiber.t
 end
 
 module Computation : sig

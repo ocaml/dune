@@ -76,6 +76,7 @@ let rec restore_from_cache
     Deps.changed_or_not
       node.deps
       ~f:(fun[@inline] ~ok_to_recompute_eagerly (Dep_node.T dep) ->
+        let* () = Job_priority.increase dep in
         (* If the [Run.is_current] check succeeds then the node must have been [Cached] in
            the current run, so there is no need to restore it (which would allocate a
            fiber). We can compare the timestamps directly. *)
@@ -278,4 +279,8 @@ let exec_dep_node_now : type i o. (i, o) Dep_node.t -> o Fiber.t =
       node
 ;;
 
-let exec_dep_node node = Fiber.of_thunk_apply exec_dep_node_now node
+let exec_dep_node node =
+  Fiber.of_thunk (fun () ->
+    let* () = Job_priority.increase node in
+    exec_dep_node_now node)
+;;

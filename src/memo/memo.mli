@@ -378,6 +378,16 @@ val pp_stack : unit -> _ Pp.t Fiber.t
 (** Get the memoized call stack during the execution of a memoized function. *)
 val get_call_stack : unit -> Stack_frame.t list t
 
+module Job_priority : sig
+  type t = Fiber.Throttle.priority
+
+  (** Install a factory for priorities created while running [f]. *)
+  val with_factory : (priority:int -> t) -> (unit -> 'a Fiber.t) -> 'a Fiber.t
+
+  (** Return the priority of the current Memo computation, if it has one. *)
+  val current : unit -> t option Fiber.t
+end
+
 (** Insert a stack frame to make call stacks more precise when showing them to
     the user. *)
 val push_stack_frame

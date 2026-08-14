@@ -41,6 +41,7 @@ type t =
   | Shutdown of Shutdown.Reason.t
   | Fiber_fill_ivar of Fiber.fill
   | Job_complete_ready
+  | Job_throttle_restart of Fiber.Throttle.t
 
 module Queue = struct
   type event = t
@@ -52,6 +53,7 @@ module Queue = struct
     ; cond : Condition.t
     ; mutable job_complete_ready : bool
     ; worker_tasks_completed : Fiber.fill Queue.t
+    ; job_throttle_restarts : Fiber.Throttle.t Queue.t
     ; mutable got_event : bool
     ; mutable yield : unit Fiber.Ivar.t option
     }
@@ -61,6 +63,7 @@ module Queue = struct
   let create () =
     let jobs_completed = Queue.create () in
     let worker_tasks_completed = Queue.create () in
+    let job_throttle_restarts = Queue.create () in
     let shutdown_reasons = Shutdown.Reason.Set.empty in
     let mutex = Mutex.create () in
     let cond = Condition.create () in
@@ -69,6 +72,7 @@ module Queue = struct
     ; mutex
     ; cond
     ; worker_tasks_completed
+    ; job_throttle_restarts
     ; got_event = false
     ; yield = None
     ; job_complete_ready = false
@@ -129,6 +133,11 @@ module Queue = struct
         Fiber_fill_ivar fill)
     ;;
 
+    let job_throttle_restart q =
+      Option.map (Queue.pop q.job_throttle_restarts) ~f:(fun throttle ->
+        Job_throttle_restart throttle)
+    ;;
+
     let yield q =
       Option.map q.yield ~f:(fun ivar ->
         q.yield <- None;
@@ -149,6 +158,7 @@ module Queue = struct
       [ shutdown
       ; worker_tasks_completed
       ; (if Sys.win32 then jobs_completed else job_complete_ready)
+      ; job_throttle_restart
       ; yield
       ]
   ;;
@@ -186,6 +196,10 @@ module Queue = struct
   ;;
 
   let send_job_completed_ready q = add_event q (fun q -> q.job_complete_ready <- true)
+
+  let send_job_throttle_restart q throttle =
+    add_event q (fun q -> Queue.push q.job_throttle_restarts throttle)
+  ;;
 
   let send_shutdown q signal =
     add_event q (fun q ->

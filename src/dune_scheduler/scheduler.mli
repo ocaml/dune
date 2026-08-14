@@ -38,10 +38,22 @@ type t
 (** Get the instance of the scheduler that runs the current fiber. *)
 val t : unit -> t
 
+type job_priority
+
+(** Create a priority handle owned by the current scheduler. *)
+val create_job_priority : ?priority:int -> unit -> job_priority Fiber.t
+
+val increase_job_priority : job_priority -> unit
+
 (** [with_job_slot f] waits for one job slot (as per [-j <jobs] to become
-    available and then calls [f]. If [cancellation] is fired before the job
-    starts, the job is cancelled. *)
-val with_job_slot : ?cancellation:Fiber.Cancel.t -> (unit -> 'a Fiber.t) -> 'a Fiber.t
+    available and then calls [f]. Jobs with higher priorities are admitted
+    first. If [cancellation] is fired before the job starts, the job is
+    cancelled. *)
+val with_job_slot
+  :  ?cancellation:Fiber.Cancel.t
+  -> ?priority:job_priority
+  -> (unit -> 'a Fiber.t)
+  -> 'a Fiber.t
 
 (** Wait for the following process to terminate. If [is_process_group_leader] is
     true, kill the entire process group instead of just the process in case of

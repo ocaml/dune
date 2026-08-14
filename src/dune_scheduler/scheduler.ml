@@ -48,12 +48,32 @@ let check_point =
 
 let () = Memo.check_point := check_point
 
-let with_job_slot ?cancellation f =
+type job_priority = Fiber.Throttle.priority
+
+let create_job_priority ?priority () =
   let* () = Fiber.return () in
   let t = t () in
-  Fiber.Throttle.run t.job_throttle ~f:(fun () ->
-    check_cancelled cancellation;
-    f ())
+  Fiber.return (Fiber.Throttle.create_priority ?priority t.job_throttle)
+;;
+
+let increase_job_priority = Fiber.Throttle.increase_priority
+
+let with_job_slot ?cancellation ?priority f =
+  let* () = Fiber.return () in
+  let t = t () in
+  let* priority =
+    match priority with
+    | Some priority -> Fiber.return (Some priority)
+    | None -> Memo.Job_priority.current ()
+  in
+  Fiber.Throttle.run
+    t.job_throttle
+    ?priority
+    ~schedule_restart:(fun () ->
+      Event.Queue.send_job_throttle_restart t.events t.job_throttle)
+    (fun () ->
+       check_cancelled cancellation;
+       f ())
 ;;
 
 let wait_for_process t ~is_process_group_leader pid =
@@ -347,6 +367,7 @@ let rec cleanup_iter t saw_shutdown =
      | [] -> cleanup_iter t saw_shutdown
      | fills -> fills)
   | Fiber_fill_ivar fill -> [ fill ]
+  | Job_throttle_restart _ -> cleanup_iter t saw_shutdown
   | Shutdown reason ->
     got_shutdown reason;
     saw_shutdown := Got_shutdown;
@@ -392,7 +413,7 @@ let kill_and_wait_for_all_processes t =
       let rec next () =
         match Event.Queue.next t.events with
         | Fiber_fill_ivar fill -> [ fill ]
-        | Job_complete_ready | Shutdown _ -> next ()
+        | Job_complete_ready | Job_throttle_restart _ | Shutdown _ -> next ()
       in
       next ());
   (* This silliness is needed because we have tests that run the scheduler
@@ -474,6 +495,10 @@ module Run_once = struct
        | [] -> iter t
        | fills -> fills)
     | Fiber_fill_ivar fill -> [ fill ]
+    | Job_throttle_restart throttle ->
+      (match Fiber.Throttle.restart_waiters throttle with
+       | [] -> iter t
+       | waiters -> List.map waiters ~f:(fun ivar -> Fiber.Fill (ivar, ())))
     | Shutdown reason ->
       got_shutdown reason;
       raise @@ Abort (Shutdown_requested reason)
@@ -481,12 +506,15 @@ module Run_once = struct
 
   let run t f : _ result =
     let fiber =
-      Fiber.map_reduce_errors
-        (module Monoid.Unit)
-        f
-        ~on_error:(fun e ->
-          Dune_util.Report_error.report e;
-          Fiber.return ())
+      Memo.Job_priority.with_factory
+        (fun ~priority -> Fiber.Throttle.create_priority ~priority t.job_throttle)
+        (fun () ->
+           Fiber.map_reduce_errors
+             (module Monoid.Unit)
+             f
+             ~on_error:(fun e ->
+               Dune_util.Report_error.report e;
+               Fiber.return ()))
     in
     match Fiber.run fiber ~iter:(fun () -> iter t) with
     | Ok res ->

@@ -231,6 +231,7 @@ and consider_and_compute_without_adding_dep
 
 let add_dep_from_caller_and_get_value : type i o. (i, o) Dep_node.t -> o Fiber.t =
   fun node ->
+  let* () = Job_priority.inherit_from_dependency node in
   match node.value with
   | Ok value -> Deps_collector.add_dep_from_caller_and_return node value
   | Error _ | Uninitialized ->

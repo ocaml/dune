@@ -272,6 +272,7 @@ module Job_priority : sig
   val with_factory : (priority:int -> t) -> (unit -> 'a Fiber.t) -> 'a Fiber.t
   val current : unit -> t option Fiber.t
   val increase : ('i, 'o) Dep_node.t -> unit Fiber.t
+  val inherit_from_dependency : ('i, 'o) Dep_node.t -> unit Fiber.t
 end
 
 module Computation : sig

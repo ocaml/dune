@@ -567,6 +567,23 @@ module Job_priority = struct
        | _ -> ())
   ;;
 
+  let inherit_from_dependency (dep_node : _ Dep_node.t) =
+    let* stack = Call_stack.get_call_stack () in
+    match List.hd_opt stack with
+    | None -> Fiber.return ()
+    | Some caller ->
+      let (Dep_node.T caller) = Stack_frame_with_state.dep_node caller in
+      let old_priority = caller.job_priority in
+      let priority = max old_priority dep_node.job_priority in
+      let increment = priority - old_priority in
+      caller.job_priority <- priority;
+      let+ factory = Fiber.Var.get Job_priority_state.current_factory in
+      (match factory, caller.job_priority_handle with
+       | Some factory, Some current when Id.equal current.factory_id factory.id ->
+         Fiber.Throttle.increase_priority_by current.priority increment
+       | _ -> ())
+  ;;
+
   let current () =
     let* stack = Call_stack.get_call_stack () in
     let+ factory = Fiber.Var.get Job_priority_state.current_factory in

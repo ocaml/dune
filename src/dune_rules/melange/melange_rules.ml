@@ -777,6 +777,9 @@ let setup_entries_js
       ~dir_contents
       ~scope
       ~requires_link
+      ~lib_config
+      ~compile_flags
+      ~promote_in_source
       ~target_dir
       ~mode
       (mel : Melange_stanzas.Emit.t)
@@ -787,17 +790,12 @@ let setup_entries_js
   let pkg_name = Option.map mel.package ~f:Package.name in
   let loc = mel.loc in
   let module_systems = mel.module_systems in
-  let* includes =
-    let+ lib_config =
-      let+ ocaml = Super_context.context sctx |> Context.ocaml in
-      ocaml.lib_config
-    in
+  let includes =
     let requires_link = Resolve.return requires_link in
     cmj_includes ~requires_link ~scope lib_config
-  and* compile_flags = melange_compile_flags ~sctx ~dir mel in
+  in
   let output = Output_kind.Private_library_or_emit target_dir in
   let obj_dir = Obj_dir.of_local local_obj_dir in
-  let promote_in_source = should_promote_in_source scope in
   let same_lib_emission_deps =
     let modules = Modules.With_vlib.modules local_modules in
     make_same_lib_emission_deps ~sctx ~compile_flags ~modules ~obj_dir:local_obj_dir
@@ -860,7 +858,16 @@ let setup_js_rules_libraries =
     in
     Memo.parallel_iter source_modules ~f:(build_js ~same_lib_emission_deps)
   in
-  fun ~dir ~scope ~target_dir ~sctx ~requires_link ~mode (mel : Melange_stanzas.Emit.t) ->
+  fun ~dir
+    ~scope
+    ~target_dir
+    ~sctx
+    ~requires_link
+    ~lib_config
+    ~compile_flags
+    ~promote_in_source
+    ~mode
+    (mel : Melange_stanzas.Emit.t) ->
     let build_js = build_js ~sctx ~scope ~mode ~module_systems:mel.module_systems in
     let with_vlib_implementations =
       let vlib_implementations =
@@ -878,10 +885,6 @@ let setup_js_rules_libraries =
           | None -> acc
           | Some sub -> if Lib.equal sub lib then acc else sub :: acc)
     in
-    let* lib_config =
-      let+ ocaml = Super_context.context sctx |> Context.ocaml in
-      ocaml.lib_config
-    in
     let+ dir_targets =
       Memo.parallel_map requires_link ~f:(fun lib ->
         let lib_compile_info =
@@ -891,7 +894,6 @@ let setup_js_rules_libraries =
             lib
         in
         let info = Lib.info lib in
-        let promote_in_source = should_promote_in_source scope in
         let build_js =
           let loc = Lib_info.loc info in
           let obj_dir = Lib_info.obj_dir info in
@@ -905,7 +907,7 @@ let setup_js_rules_libraries =
             |> Resolve.Memo.map ~f:(with_vlib_implementations lib)
           in
           cmj_includes ~requires_link ~scope lib_config
-        and* compile_flags = melange_compile_flags ~sctx ~dir mel in
+        in
         let+ directory_targets =
           setup_runtime_assets_rules
             sctx
@@ -998,10 +1000,36 @@ let setup_js_rules_libraries_and_entries
       ~target_dir
       mel
   =
+  let* lib_config =
+    let+ ocaml = Super_context.context sctx |> Context.ocaml in
+    ocaml.lib_config
+  and* compile_flags = melange_compile_flags ~sctx ~dir mel in
+  let promote_in_source = should_promote_in_source scope in
   let+ dir_targets_libraries =
-    setup_js_rules_libraries ~dir ~scope ~target_dir ~sctx ~requires_link ~mode mel
+    setup_js_rules_libraries
+      ~dir
+      ~scope
+      ~target_dir
+      ~sctx
+      ~requires_link
+      ~lib_config
+      ~compile_flags
+      ~promote_in_source
+      ~mode
+      mel
   and+ directory_targets =
-    setup_entries_js ~sctx ~dir ~dir_contents ~scope ~requires_link ~target_dir ~mode mel
+    setup_entries_js
+      ~sctx
+      ~dir
+      ~dir_contents
+      ~scope
+      ~requires_link
+      ~lib_config
+      ~compile_flags
+      ~promote_in_source
+      ~target_dir
+      ~mode
+      mel
   in
   Path.Build.Map.merge
     dir_targets_libraries

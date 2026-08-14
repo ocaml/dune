@@ -33,20 +33,25 @@ let create ~files ~dirs =
 
 let empty = { files = Path.Build.Array.Set.empty; dirs = Path.Build.Array.Set.empty }
 
+let is_empty { files; dirs } =
+  Path.Build.Array.Set.is_empty files && Path.Build.Array.Set.is_empty dirs
+;;
+
 let combine x y =
-  { files = Path.Build.Array.Set.union x.files y.files
-  ; dirs = Path.Build.Array.Set.union x.dirs y.dirs
-  }
+  if is_empty x
+  then y
+  else if is_empty y
+  then x
+  else
+    { files = Path.Build.Array.Set.union x.files y.files
+    ; dirs = Path.Build.Array.Set.union x.dirs y.dirs
+    }
 ;;
 
 let diff t { files; dirs } =
   { files = Path.Build.Array.Set.diff t.files files
   ; dirs = Path.Build.Array.Set.diff t.dirs dirs
   }
-;;
-
-let is_empty { files; dirs } =
-  Path.Build.Array.Set.is_empty files && Path.Build.Array.Set.is_empty dirs
 ;;
 
 let head { files; dirs } =

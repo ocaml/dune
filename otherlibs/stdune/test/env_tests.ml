@@ -19,13 +19,15 @@ let find_assignment env var =
   |> Option.value_exn
 ;;
 
-let%expect_test "unchanged assignments are shared between environments" =
+let%expect_test "updating a binding preserves the others" =
   let env = Env.empty |> Env.add ~var:a ~value:"one" |> Env.add ~var:b ~value:"two" in
-  let assignment = find_assignment env "A" in
   let updated = Env.add env ~var:b ~value:"three" in
-  let updated_assignment = find_assignment updated "A" in
-  print_endline (Bool.to_string (assignment == updated_assignment));
-  [%expect {| true |}]
+  print_endline (find_assignment updated "A");
+  print_endline (find_assignment updated "B");
+  [%expect
+    {|
+    A=one
+    B=three |}]
 ;;
 
 let%expect_test "rendering preserves the environment hash" =
@@ -36,10 +38,21 @@ let%expect_test "rendering preserves the environment hash" =
   [%expect {| true |}]
 ;;
 
-let%expect_test "environment values reject NUL bytes when rendered" =
-  let env = Env.add Env.empty ~var:a ~value:"value\000" in
-  (match Env.to_unix env with
+let%expect_test "environment values reject NUL bytes when added" =
+  (match Env.add Env.empty ~var:a ~value:"value\000" with
    | exception Code_error.E _ -> print_endline "rejected"
    | _ -> print_endline "accepted");
   [%expect {| rejected |}]
+;;
+
+let%expect_test "setting an unchanged variable reuses the environment" =
+  let env = Env.empty |> Env.add ~var:a ~value:"one" in
+  let unchanged = Env.add env ~var:a ~value:"one" in
+  let changed = Env.add env ~var:a ~value:"two" in
+  print_endline (Bool.to_string (env == unchanged));
+  print_endline (Bool.to_string (env == changed));
+  [%expect
+    {|
+    true
+    false |}]
 ;;

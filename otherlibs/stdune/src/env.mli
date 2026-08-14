@@ -39,6 +39,7 @@ val vars : t -> Var.Set.t
 (** The environment when the process started *)
 val initial : t
 
+val to_list : t -> (Var.t * string) list
 val to_unix : t -> string list
 
 (** Render the environment as a double-NUL-terminated Windows environment block. *)

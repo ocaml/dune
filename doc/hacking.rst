@@ -233,15 +233,15 @@ are used when running the test suite.
 Running ``nix develop`` can take a while the first time, therefore it is
 advisable to save the state in a profile.
 
-```sh
-nix develop --profile nix/profiles/dune
-```
+.. code:: console
+
+   nix develop --profile nix/profiles/dune
 
 And to load the profile:
 
-```sh
-nix develop nix/profiles/dune
-```
+.. code:: console
+
+   nix develop nix/profiles/dune
 
 This profile might need to be updated from time to time, since the bootstrapped
 version of Dune may become stale. This can be done by running the first command.

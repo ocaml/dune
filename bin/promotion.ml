@@ -128,6 +128,16 @@ module Apply = struct
   let command = Cmd.v info term
 end
 
+let promotion_files common files =
+  let files_to_promote = files_to_promote ~common files in
+  let db = Diff_promotion.load_db () in
+  let { Diff_promotion.present; missing } =
+    Diff_promotion.partition_db db files_to_promote
+  in
+  on_missing missing;
+  db, files_to_promote, present
+;;
+
 module Diff = struct
   let info = Cmd.info ~doc:"List promotions to be applied" "diff"
 
@@ -152,14 +162,9 @@ module Diff = struct
       Arg.(value & pos_all Cmdliner.Arg.file [] & info [] ~docv:"FILE" ~doc:None)
     in
     let common, config = init_no_build builder in
-    let files_to_promote = files_to_promote ~common files in
     (* CR-soon rgrinberg: remove pointless args *)
     Scheduler_setup.no_build_no_rpc ~config (fun () ->
-      let db = Diff_promotion.load_db () in
-      let { Diff_promotion.present; missing } =
-        Diff_promotion.partition_db db files_to_promote
-      in
-      on_missing missing;
+      let _, _, present = promotion_files common files in
       display_diffs present)
   ;;
 
@@ -177,13 +182,8 @@ module Files = struct
       Arg.(value & pos_all Cmdliner.Arg.file [] & info [] ~docv:"FILE" ~doc:None)
     in
     let common, _config = init_no_build builder in
-    let files_to_promote = files_to_promote ~common files in
     (* CR-soon rgrinberg: remove pointless args *)
-    let db = Diff_promotion.load_db () in
-    let { Diff_promotion.present; missing } =
-      Diff_promotion.partition_db db files_to_promote
-    in
-    on_missing missing;
+    let _, _, present = promotion_files common files in
     List.sort present ~compare:(fun x y ->
       Path.Source.compare (Diff_promotion.File.source x) (Diff_promotion.File.source y))
     |> List.iter ~f:(fun file ->
@@ -220,12 +220,7 @@ module Show = struct
       Arg.(value & pos_all Cmdliner.Arg.file [] & info [] ~docv:"FILE" ~doc:None)
     in
     let common, _config = init_no_build builder in
-    let files_to_promote = files_to_promote ~common files in
-    let db = Diff_promotion.load_db () in
-    let { Diff_promotion.present = _; missing } =
-      Diff_promotion.partition_db db files_to_promote
-    in
-    on_missing missing;
+    let db, files_to_promote, _ = promotion_files common files in
     display_corrected_contents db files_to_promote
   ;;
 

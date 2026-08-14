@@ -223,21 +223,27 @@ and unwind_map_reduce
   assert (ref_count = 0);
   exec ctx.parent k x jobs
 
+and read_ivar : 'a. context -> 'a ivar -> 'a continuation -> Jobs.t -> step' =
+  fun ctx ivar k jobs ->
+  match ivar.state with
+  | (Empty | Empty_with_readers _) as readers ->
+    ivar.state <- Empty_with_readers (ctx, k, readers);
+    loop jobs
+  | Full x -> exec ctx k x jobs
+
+and fill_ivar : 'a. context -> 'a ivar -> 'a -> unit continuation -> Jobs.t -> step' =
+  fun ctx ivar x k jobs ->
+  let jobs = Jobs.concat jobs (Jobs.fill_ivar ivar x Empty) in
+  exec ctx k () jobs
+
 and exec_effect ctx eff jobs =
   match eff with
   | Run (t, k) -> exec_fiber ctx t k jobs
   | Done v -> Done v
   | Toplevel_exception exn -> Exn_with_backtrace.reraise exn
   | Unwind (k, x) -> exec ctx.parent k x jobs
-  | Read_ivar (ivar, k) ->
-    (match ivar.state with
-     | (Empty | Empty_with_readers _) as readers ->
-       ivar.state <- Empty_with_readers (ctx, k, readers);
-       loop jobs
-     | Full x -> exec ctx k x jobs)
-  | Fill_ivar (ivar, x, k) ->
-    let jobs = Jobs.concat jobs (Jobs.fill_ivar ivar x Empty) in
-    exec ctx k () jobs
+  | Read_ivar (ivar, k) -> read_ivar ctx ivar k jobs
+  | Fill_ivar (ivar, x, k) -> fill_ivar ctx ivar x k jobs
   | Suspend (f, k) ->
     let k = { ctx; run = k } in
     f k;
@@ -355,15 +361,8 @@ and exec_fiber : type a. context -> a t -> a continuation -> Jobs.t -> step' =
   | Resume_t (suspended, x) ->
     exec ctx k () (Jobs.concat jobs (Job (suspended.ctx, suspended.run, x, Empty)))
   | Reraise_all_t exns -> reraise_all ctx exns jobs
-  | Ivar_read_t ivar ->
-    (match ivar.state with
-     | (Empty | Empty_with_readers _) as readers ->
-       ivar.state <- Empty_with_readers (ctx, k, readers);
-       loop jobs
-     | Full x -> exec ctx k x jobs)
-  | Ivar_fill_t (ivar, x) ->
-    let jobs = Jobs.concat jobs (Jobs.fill_ivar ivar x Empty) in
-    exec ctx k () jobs
+  | Ivar_read_t ivar -> read_ivar ctx ivar k jobs
+  | Ivar_fill_t (ivar, x) -> fill_ivar ctx ivar x k jobs
   | Get_var_t key -> exec ctx k (Var_map.get ctx.vars key) jobs
   | Set_var_t (key, x, f) ->
     let ctx = { ctx with parent = ctx; vars = Var_map.set ctx.vars key x } in

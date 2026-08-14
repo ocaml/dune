@@ -15,6 +15,6 @@ jobs:
     runs-on: ubuntu-slim
     steps:
       - name: Check for a changelog entry
-        uses: tarides/changelog-check-action@421f617d0dc83fb30b0a9c0e50c4df508ce33458
+        uses: tarides/changelog-check-action@3a9f4922fcc11321bc08b8643b5d1f89698dfa6e
         with:
           changelog: doc/changes

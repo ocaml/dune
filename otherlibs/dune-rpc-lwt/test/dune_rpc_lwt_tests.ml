@@ -6,9 +6,9 @@ open Lwt.Syntax
 open Dune_rpc.V1
 open Dune_rpc_lwt.V1
 
-let _XDG_STATE_HOME = "XDG_STATE_HOME"
-let xdg_state_dir = Temp.create Dir ~prefix:"lwt" ~suffix:"dune"
-let () = Unix.putenv _XDG_STATE_HOME (Stdune.Path.to_absolute_filename xdg_state_dir)
+let _XDG_DATA_HOME = "XDG_DATA_HOME"
+let xdg_data_dir = Temp.create Dir ~prefix:"lwt" ~suffix:"dune"
+let () = Unix.putenv _XDG_DATA_HOME (Stdune.Path.to_absolute_filename xdg_data_dir)
 
 let connect ~root_dir =
   let build_dir = Filename.concat root_dir "_build" in
@@ -16,8 +16,8 @@ let connect ~root_dir =
     let env =
       Env.add
         Env.initial
-        ~var:_XDG_STATE_HOME
-        ~value:(Stdune.Path.to_absolute_filename xdg_state_dir)
+        ~var:_XDG_DATA_HOME
+        ~value:(Stdune.Path.to_absolute_filename xdg_data_dir)
     in
     Env.get env
   in

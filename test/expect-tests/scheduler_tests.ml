@@ -94,9 +94,13 @@ let%expect_test "Memo priorities propagate through dependency chains" =
   let low = job "low" in
   let chain =
     List.init 3 ~f:Fun.id
-    |> List.fold_left ~init:(job "chain") ~f:(fun dependency n ->
-      Memo.Lazy.create ~name:(sprintf "chain-consumer-%d" n) (fun () ->
-        Memo.Lazy.force dependency))
+    |> List.fold_left ~init:(job "chain-0") ~f:(fun dependency n ->
+      let name = sprintf "chain-%d" (n + 1) in
+      Memo.Lazy.create ~name:(name ^ "-consumer") (fun () ->
+        let* () = Memo.Lazy.force dependency in
+        Scheduler.with_job_slot (fun _ _ ->
+          order := name :: !order;
+          Fiber.return ())))
   in
   let blocker_started = Fiber.Ivar.create () in
   let release_blocker = Fiber.Ivar.create () in
@@ -115,7 +119,10 @@ let%expect_test "Memo priorities propagate through dependency chains" =
   List.rev !order |> List.iter ~f:print_endline;
   [%expect
     {|
-    chain
+    chain-0
+    chain-1
+    chain-2
+    chain-3
     low |}]
 ;;
 

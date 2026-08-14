@@ -40,6 +40,7 @@ let is_subset =
     Variable_value.equal value of_)
 ;;
 
+(* TODO: rm/deprecate *)
 let validate t ~loc =
   match Package_variable_name.Map.find t Package_variable_name.with_test with
   | Some v ->
@@ -85,9 +86,7 @@ let decode =
 ;;
 
 let set t variable_name variable_value =
-  let t = Package_variable_name.Map.set t variable_name variable_value in
-  validate t ~loc:None;
-  t
+  Package_variable_name.Map.set t variable_name variable_value
 ;;
 
 let get = Package_variable_name.Map.find
@@ -98,6 +97,7 @@ let with_defaults =
   [ ( Package_variable_name.opam_version
     , OpamVersion.to_string OpamVersion.current |> Variable_value.string )
   ; Package_variable_name.with_doc, Variable_value.false_
+  ; Package_variable_name.with_test, Variable_value.true_
   ; Package_variable_name.with_dev_setup, Variable_value.false_
   ; Package_variable_name.post, Variable_value.true_
   ]
@@ -165,6 +165,19 @@ let to_env t variable =
       OpamVariable.Full.variable variable |> Package_variable_name.of_opam
     in
     get t variable_name |> Option.map ~f:Variable_value.to_opam_variable_contents
+;;
+
+(* TODO: Docs *)
+let disable_request_flags t : t =
+  Package_variable_name.Set.fold
+    ~init:t
+    ~f:(fun name t' -> set t' name Variable_value.false_)
+    Package_variable_name.qualified_deps_variables
+;;
+
+(* TODO: rename `request_flags` to `local_package` *)
+let to_env_for_package t ~request_flags =
+  to_env (if not request_flags then disable_request_flags t else t)
 ;;
 
 let popular_platform_envs =

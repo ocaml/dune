@@ -81,6 +81,15 @@ let explain_results_to_user results ~transitive ~lock_dir_path =
     packages_in_lockdir_are ~all_of:false number_of_outdated_deps
 ;;
 
+(* TODO: Fix logic -- *)
+
+(*   The specific error: a filtered formula's meaning is relative to whose formula it is. with-test is true for a root package and false for a package reached through one — that's the distinction opam_solver.ml:246 draws with package_is_local. *)
+(*   outdated.ml:97 evaluates a root package's formula under the non-root reading (~test:false). It doesn't merely fail to consult the env; it applies the wrong one for that argument position, and then compares the result against a lockdir produced under *)
+(*   the right one. *)
+
+(*   The general form (conjecture): a filtered formula is not a set of dependencies — it's a function from an environment to a set. Every place in this code that needs "the dependencies" must supply an environment, and the correctness question is always *)
+(*   which environment, never whether to have one. Bugs of this family arise wherever a call site treats the formula as if it already denoted a set and supplies constants to force one out. ~test:false at outdated.ml:97 is that. So is ~test:with_test *)
+(*   threaded as an argument beside an env that already contains the answer. So is reconstructing a build-time env from variable_values alone and letting absence pick the default. *)
 let better_candidate
       ~repos
       ~(local_packages : Local_package.t Package_name.Map.t)
@@ -94,7 +103,7 @@ let better_candidate
         for_solver local_package
         |> (fun x -> x.dependencies)
         |> Dependency_formula.to_filtered_formula)
-      |> OpamFilter.filter_deps
+      |> OpamFilter.filter_deps (* TODO: Why does this not consult the env at all? *)
            ~build:true
            ~post:false
            ~test:false

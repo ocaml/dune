@@ -239,11 +239,10 @@ module Context = struct
       |> Package_name.of_opam_package_name
       |> Package_name.Map.mem (Lazy.force t.local_packages)
     in
-    let with_test = package_is_local in
-    Solver_env.to_env t.solver_env
+    Solver_env.to_env_for_package t.solver_env ~request_flags:package_is_local
     |> Solver_stats.Updater.wrap_env t.stats_updater
     |> Lock_pkg.add_self_to_filter_env package
-    |> Resolve_opam_formula.apply_filter ~with_test ~formula:filtered_formula
+    |> Resolve_opam_formula.apply_filter ~formula:filtered_formula
   ;;
 
   exception Found of Package_name.t
@@ -1566,8 +1565,7 @@ let reject_unreachable_packages =
             match
               Lock_pkg.local_package_dependencies
                 pkg
-                ~env:(Solver_env.to_env solver_env)
-                ~with_test:true
+                ~env:(Solver_env.to_env_for_package ~request_flags:true solver_env)
                 ~packages:pkgs_by_version
                 ~dune_version
             with

@@ -39,57 +39,58 @@ module V1 = struct
     module O = Syntax
   end
 
-  module Client =
-    Client.Make
-      (Fiber)
-      (struct
-        type t = Lwt_io.input_channel * Lwt_io.output_channel
+  module Channel = struct
+    type t = Lwt_io.input_channel * Lwt_io.output_channel
 
-        let read (i, _) =
-          let open Csexp.Parser in
-          let lexer = Lexer.create () in
-          let eoi () =
-            Lexer.feed_eoi lexer;
-            Lwt.return_none
-          in
-          let rec loop depth stack =
-            let open Lwt.Infix in
-            Lwt_io.read_char_opt i
-            >>= function
-            | None -> eoi ()
-            | Some c ->
-              (match Lexer.feed lexer c with
-               | Await -> loop depth stack
-               | Lparen -> loop (depth + 1) (Stack.open_paren stack)
-               | Rparen ->
-                 let stack = Stack.close_paren stack in
-                 let depth = depth - 1 in
-                 if depth = 0
-                 then Stack.to_list stack |> List.hd |> Lwt.return_some
-                 else loop depth stack
-               | Atom count ->
-                 let* atom =
-                   let bytes = Bytes.create count in
-                   let+ () = Lwt_io.read_into_exactly i bytes 0 count in
-                   Bytes.to_string bytes
-                 in
-                 loop depth (Stack.add_atom atom stack))
-          in
-          Lwt.catch
-            (fun () -> loop 0 Stack.Empty)
-            (function
-              | Lwt_io.Channel_closed _ -> eoi ()
-              | exn -> Lwt.fail exn)
-        ;;
+    let read (i, _) =
+      let open Csexp.Parser in
+      let lexer = Lexer.create () in
+      let eoi () =
+        Lexer.feed_eoi lexer;
+        Lwt.return_none
+      in
+      let rec loop depth stack =
+        let open Lwt.Infix in
+        Lwt_io.read_char_opt i
+        >>= function
+        | None -> eoi ()
+        | Some c ->
+          (match Lexer.feed lexer c with
+           | Await -> loop depth stack
+           | Lparen -> loop (depth + 1) (Stack.open_paren stack)
+           | Rparen ->
+             let stack = Stack.close_paren stack in
+             let depth = depth - 1 in
+             if depth = 0
+             then Stack.to_list stack |> List.hd |> Lwt.return_some
+             else loop depth stack
+           | Atom count ->
+             let* atom =
+               let bytes = Bytes.create count in
+               let+ () = Lwt_io.read_into_exactly i bytes 0 count in
+               Bytes.to_string bytes
+             in
+             loop depth (Stack.add_atom atom stack))
+      in
+      Lwt.catch
+        (fun () -> loop 0 Stack.Empty)
+        (function
+          | Lwt_io.Channel_closed _ -> eoi ()
+          | exn -> Lwt.fail exn)
+    ;;
 
-        let close (i, o) =
-          Lwt.finalize (fun () -> Lwt_io.close o) (fun () -> Lwt_io.close i)
-        ;;
+    let close (i, o) = Lwt.finalize (fun () -> Lwt_io.close o) (fun () -> Lwt_io.close i)
 
-        let write (_, o) csexps =
-          Lwt_list.iter_s (fun sexp -> Lwt_io.write o (Csexp.to_string sexp)) csexps
-        ;;
-      end)
+    let write (_, o) csexps =
+      Lwt_list.iter_s (fun sexp -> Lwt_io.write o (Csexp.to_string sexp)) csexps
+    ;;
+  end
+
+  module Client = Client.Make (Fiber) (Channel)
+
+  module Private = struct
+    module Client = Dune_rpc.Private.Client.Make (Fiber) (Channel)
+  end
 
   module Where =
     Where.Make

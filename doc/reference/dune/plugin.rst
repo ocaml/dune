@@ -1,15 +1,71 @@
-plugin
-------
+plugin and dune_site.plugin
+---------------------------
 
-.. versionadded:: 2.8
+Rule plugins
+~~~~~~~~~~~~
 
-Plugins are a way to load OCaml libraries at runtime. The ``plugin`` stanza
-allows you to declare the plugin's name, which :ref:`sites<sites>` should be
-present and which libraries it will load.
+.. versionadded:: 3.26
+
+Rule plugins are experimental. Enable version 0.1 in ``dune-project`` before
+using them:
+
+.. code:: dune
+
+   (using plugin 0.1)
+
+Rule plugins generate stanzas by calling a project-local executable. A plugin
+is defined with:
 
 .. code:: dune
 
    (plugin
+    (name <name>)
+    (executable <relative-path>))
+
+It is invoked by a top-level form in another ``dune`` file:
+
+.. code:: dune
+
+   (plugin.<name> <argument> ...)
+
+``<argument>`` values are passed to the plugin as s-expressions. The returned
+s-expressions are decoded as stanzas in the directory containing the
+invocation. They have the same restrictions as stanzas loaded with
+:ref:`dynamic_include`. They may contain further plugin invocations, including
+invocations of the same plugin.
+
+The executable should link the ``dune-rules-plugin`` library and call
+``Dune_rules_plugin.run``. Dune builds it as a host tool, starts one process per
+plugin and build context, and serializes requests to that process. Invocations
+in one ``dune`` file are processed in source order.
+
+Plugin names are local to a project. The process runs with the plugin
+definition's directory as its working directory.
+
+The executable's rules must be loadable before Dune evaluates an invocation.
+Consequently, a plugin cannot be defined and invoked in the same directory. A
+plugin definition below an invocation directory can cause the same rule-loading
+cycle; placing definitions in a sibling or ancestor directory avoids it.
+
+Dune site plugins
+~~~~~~~~~~~~~~~~~
+
+.. versionadded:: 2.8
+
+Dune site plugins are a way to load OCaml libraries at runtime.
+
+.. versionchanged:: 3.26
+
+   The site plugin stanza was renamed from ``plugin`` to
+   ``dune_site.plugin``. Projects using Dune language 3.25 or earlier continue
+   to use ``plugin``.
+
+The stanza declares the plugin's name, the :ref:`sites<sites>` that should be
+present, and the libraries it will load:
+
+.. code:: dune
+
+   (dune_site.plugin
     (name <name>)
     (libraries <libraries>)
     (site (<package> <site name>))

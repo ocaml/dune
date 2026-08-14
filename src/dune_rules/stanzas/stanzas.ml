@@ -113,7 +113,15 @@ let stanzas : Stanza.Parser.t list =
           (let* () = Dune_lang.Syntax.since Stanza.syntax (3, 14) in
            Include.decode) )
     ; ("generate_sites_module", Generate_sites_module_stanza.(decode_stanza decode))
-    ; ("plugin", Plugin.(decode_stanza Plugin.decode))
+    ; ( "plugin"
+      , let* version = Dune_lang.Syntax.get_exn Stanza.syntax in
+        if Dune_lang.Syntax.Version.Infix.(version >= (3, 26))
+        then Rule_plugin.Definition.(decode_stanza decode)
+        else Plugin.(decode_stanza Plugin.decode) )
+    ; ( "dune_site.plugin"
+      , Plugin.decode_stanza
+          (let* () = Dune_lang.Syntax.since Stanza.syntax (3, 26) in
+           Plugin.decode) )
     ]
   ]
   |> List.concat

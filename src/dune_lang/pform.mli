@@ -140,6 +140,7 @@ module Macro : sig
     | Ocaml_config
     | Rocq_config
     | Env
+    | Melange_emit
     | Artifact of Artifact.t
     | Pkg
     | Pkg_self

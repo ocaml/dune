@@ -301,6 +301,7 @@ module Macro = struct
     | Ocaml_config
     | Rocq_config
     | Env
+    | Melange_emit
     | Artifact of Artifact.t
     | Pkg
     | Pkg_self
@@ -356,6 +357,9 @@ module Macro = struct
     | Env, Env -> Eq
     | Env, _ -> Lt
     | _, Env -> Gt
+    | Melange_emit, Melange_emit -> Eq
+    | Melange_emit, _ -> Lt
+    | _, Melange_emit -> Gt
     | Pkg, Pkg -> Eq
     | Pkg, _ -> Lt
     | _, Pkg -> Gt
@@ -389,6 +393,7 @@ module Macro = struct
     | Ocaml_config -> string "Ocaml_config"
     | Rocq_config -> string "Rocq_config"
     | Env -> string "Env"
+    | Melange_emit -> string "Melange_emit"
     | Artifact ext -> variant "Artifact" [ Artifact.to_dyn ext ]
     | Pkg -> variant "Pkg" []
     | Pkg_self -> variant "Pkg_self" []
@@ -414,6 +419,7 @@ module Macro = struct
     | Ocaml_config -> Ok "ocaml-config"
     | Rocq_config -> Ok "rocq"
     | Env -> Ok "env"
+    | Melange_emit -> Ok "melange.emit"
     | Pkg -> Ok "pkg"
     | Pkg_self -> Ok "pkg-self"
     | Ppx -> Ok "ppx"
@@ -688,6 +694,7 @@ module Env = struct
          ; "path-no-dep", deleted_in ~version:(1, 0) Macro.Path_no_dep
          ; "ocaml-config", macro Ocaml_config
          ; "env", since ~version:(1, 4) Macro.Env
+         ; "melange.emit", since ~version:(3, 25) Macro.Melange_emit
          ; "ppx", since ~version:(3, 21) Macro.Ppx
          ; "pkg", since ~version:(3, 24) Macro.Pkg
          ; "rocq", macro Rocq_config

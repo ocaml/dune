@@ -4,11 +4,19 @@ open Memo.O
 type t =
   { libraries : Lib_info.local Lib_name.Map.t
   ; modules : (Path.Build.t Obj_dir.t * Module.t) Path.Build.Map.t
+  ; melange_emits : Melange.Emit.t Path.Build.Map.t
   }
 
-let empty = { libraries = Lib_name.Map.empty; modules = Path.Build.Map.empty }
+let empty =
+  { libraries = Lib_name.Map.empty
+  ; modules = Path.Build.Map.empty
+  ; melange_emits = Path.Build.Map.empty
+  }
+;;
+
 let lookup_module { modules; _ } = Path.Build.Map.find modules
 let lookup_library { libraries; _ } = Lib_name.Map.find libraries
+let lookup_melange_emit { melange_emits; _ } = Path.Build.Map.find melange_emits
 
 (* The source file build path of a module, with the [.ml]/[.mli] extension
    stripped. This matches the form a user writes in a module artifact pform
@@ -23,7 +31,7 @@ let module_source_path_without_extension m =
   |> Option.map ~f:(fun p -> fst (Path.Build.split_extension p))
 ;;
 
-let make ~dir ~expander ~lib_config ~libs ~exes =
+let make ~dir ~expander ~lib_config ~libs ~exes ~melange_emits =
   let+ libraries =
     Memo.List.map libs ~f:(fun ((lib : Library.t), _, _) ->
       let+ lib_config = lib_config in
@@ -48,5 +56,17 @@ let make ~dir ~expander ~lib_config ~libs ~exes =
     List.fold_left libs ~init ~f:(fun modules (_, m, obj_dir) ->
       by_path modules obj_dir m)
   in
-  { libraries; modules }
+  let melange_emits =
+    match Path.Build.Map.of_list melange_emits with
+    | Ok map -> Path.Build.Map.map map ~f:fst
+    | Error (target_dir, (_, loc1), (_, loc2)) ->
+      User_error.raise
+        ~loc:loc1
+        [ Pp.textf
+            "Melange emit target directory %S appears more than once."
+            (Path.Build.to_string target_dir)
+        ; Pp.textf "Already defined at %s" (Loc.to_file_colon_line loc2)
+        ]
+  in
+  { libraries; modules; melange_emits }
 ;;

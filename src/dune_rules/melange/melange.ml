@@ -19,6 +19,14 @@ let output_path ~target_dir source =
   Path.Build.append_source target_dir (Path.Build.drop_build_context_exn source)
 ;;
 
+module Emit = struct
+  type t =
+    { output_dir : Path.Build.t
+    ; stanza_dir : Path.Build.t
+    ; alias : Alias.Name.t
+    }
+end
+
 module Source = struct
   let dir = ".melange_src"
 end

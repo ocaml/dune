@@ -221,6 +221,29 @@ let expand_artifact ~source t artifact arg =
          Value.Path fn))
 ;;
 
+let expand_melange_emit ~source t arg =
+  let target_dir = Path.Build.relative t.dir arg in
+  let loc = Dune_lang.Template.Pform.loc source in
+  let stanza_dir = Path.Build.parent_exn target_dir in
+  if Path.Build.is_root stanza_dir
+  then User_error.raise ~loc [ Pp.text "cannot escape the workspace root directory" ];
+  let* artifacts =
+    let lookup = Fdecl.get lookup_artifacts in
+    Action_builder.of_memo (lookup ~dir:stanza_dir)
+  in
+  match Artifacts_obj.lookup_melange_emit artifacts target_dir with
+  | None ->
+    User_error.raise ~loc [ Pp.textf "Melange emit target %S does not exist." arg ]
+  | Some { Melange.Emit.output_dir; stanza_dir; alias } ->
+    let stanza_alias = Alias.make alias ~dir:stanza_dir in
+    let target_alias = Alias.make alias ~dir:target_dir in
+    let output_dir = Path.build output_dir in
+    let open Action_builder.O in
+    let+ () = Action_builder.dep (Dep.alias stanza_alias)
+    and+ () = Action_builder.dep (Dep.alias target_alias) in
+    [ Value.Path output_dir ]
+;;
+
 let foreign_flags = Fdecl.create Dyn.opaque
 
 let cc t =
@@ -775,6 +798,8 @@ let expand_pform_macro
   | Env -> Need_full_expander (fun t -> env_macro t source macro_invocation)
   | Version -> Need_full_expander (fun t -> Deps.Without (expand_version t ~source s))
   | Artifact a -> Need_full_expander (fun t -> Deps.With (expand_artifact ~source t a s))
+  | Melange_emit ->
+    Need_full_expander (fun t -> Deps.With (expand_melange_emit ~source t s))
   | Path_no_dep ->
     (* This case is for %{path-no-dep:...} which was only allowed inside
            jbuild files *)

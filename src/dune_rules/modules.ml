@@ -1287,11 +1287,13 @@ module With_vlib = struct
     match t with
     | Modules modules -> Modules (map_user_available ~f modules)
     | Impl impl ->
-      Impl
+      let impl =
         { impl with
           impl = map_user_available ~f impl.impl
         ; vlib = map_user_available ~f impl.vlib
         }
+      in
+      with_obj_map (Impl impl)
   ;;
 
   type split_by_lib =

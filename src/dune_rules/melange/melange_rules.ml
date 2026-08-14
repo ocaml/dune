@@ -97,9 +97,7 @@ let make_js_name ~js_ext ~output m =
       let output_dir = Path.Build.append_local target_dir output_dir in
       lib_output_path ~output_dir ~lib_dir src_dir
     | Private_library_or_emit target_dir ->
-      Path.Build.append_source
-        target_dir
-        (src_dir |> Path.as_in_build_dir_exn |> Path.Build.drop_build_context_exn)
+      Melange.output_path ~target_dir (Path.as_in_build_dir_exn src_dir)
   in
   let basename =
     Filename.to_string (Module_compilation.melange_js_basename m)
@@ -677,13 +675,13 @@ module Runtime_deps = struct
                | Some _ | None -> raise_external_dep_error src ~for_)
           in
           { acc with copy })
-      | Private_library_or_emit output_dir ->
+      | Private_library_or_emit target_dir ->
         Path.Set.fold ~init:empty deps ~f:(fun src ({ copy; deps } as acc) ->
           match Path.as_in_build_dir src with
           | None -> { acc with deps = src :: deps }
           | Some src_build ->
-            let target = Path.Build.drop_build_context_exn src_build in
-            { acc with copy = (src, Path.Build.append_source output_dir target) :: copy })
+            let dst = Melange.output_path ~target_dir src_build in
+            { acc with copy = (src, dst) :: copy })
   ;;
 end
 

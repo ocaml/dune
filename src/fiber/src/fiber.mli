@@ -190,6 +190,9 @@ module Var : sig
   (** Like [get_apply] but [f] returns a plain value rather than a fiber. *)
   val get_apply_map : 'a t -> ('a -> 'b -> 'c) -> 'b -> 'c fiber
 
+  (** Like [get_apply_map] with two separately threaded arguments. *)
+  val get_apply_map2 : 'a t -> ('a -> 'b -> 'c -> 'd) -> 'b -> 'c -> 'd fiber
+
   (** [set_apply var value f x] sets [var] to [value] during the execution of [f x]. *)
   val set_apply : 'a t -> 'a -> ('b -> 'c fiber) -> 'b -> 'c fiber
 

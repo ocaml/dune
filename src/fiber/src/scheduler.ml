@@ -99,6 +99,7 @@ and exec : type a. context -> a continuation -> a -> Jobs.t -> step' =
      | Error _ as error -> exec ctx k error jobs)
   | Apply (f, y, k) -> exec_fiber_apply2 ctx f x y k jobs
   | Apply_map (f, y, k) -> exec_apply_map ctx f x y k jobs
+  | Apply_map2 (f, y, z, k) -> exec_apply_map2 ctx f x y z k jobs
   | Unwind_to k -> exec ctx.parent k x jobs
   | Unwind_map_reduce_to k -> unwind_map_reduce ctx k (Ok x) jobs
   | End as k -> exec_core_continuation ctx k x jobs
@@ -199,6 +200,22 @@ and exec_apply_map
   match f x y with
   | exception exn -> handle_exception ctx exn jobs
   | z -> exec ctx k z jobs
+
+and exec_apply_map2
+  :  'a 'b 'c 'd.
+     context
+  -> ('a -> 'b -> 'c -> 'd)
+  -> 'a
+  -> 'b
+  -> 'c
+  -> 'd continuation
+  -> Jobs.t
+  -> step'
+  =
+  fun ctx f x y z k jobs ->
+  match f x y z with
+  | exception exn -> handle_exception ctx exn jobs
+  | result -> exec ctx k result jobs
 
 and handle_exception ctx exn jobs =
   let exn = Exn_with_backtrace.capture exn in
@@ -378,6 +395,8 @@ and exec_fiber : type a. context -> a t -> a continuation -> Jobs.t -> step' =
   | Get_apply_t (key, f, x) -> exec ctx (Apply (f, x, k)) (Var_map.get ctx.vars key) jobs
   | Get_apply_map_t (key, f, x) ->
     exec ctx (Apply_map (f, x, k)) (Var_map.get ctx.vars key) jobs
+  | Get_apply_map2_t (key, f, x, y) ->
+    exec ctx (Apply_map2 (f, x, y, k)) (Var_map.get ctx.vars key) jobs
   | Set_apply_t (key, value, f, x) ->
     let ctx = { ctx with parent = ctx; vars = Var_map.set ctx.vars key value } in
     exec_fiber_apply ctx f x (Unwind_to k) jobs

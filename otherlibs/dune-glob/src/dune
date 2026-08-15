@@ -6,4 +6,6 @@
   (:standard -w -50))
  (synopsis "The glob language as understood by dune."))
 
-(ocamllex lexer)
+(ocamllex
+ (modules lexer)
+ (flags -ml))

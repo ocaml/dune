@@ -37,7 +37,9 @@
   xdg)
  (synopsis "Internal Dune library, do not use!"))
 
-(ocamllex ocamlobjinfo)
+(ocamllex
+ (modules ocamlobjinfo)
+ (flags -ml))
 
 (rule
  (target assets.ml.gen)

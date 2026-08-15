@@ -21,4 +21,6 @@
   dune_section
   (re_export dune_sexp)))
 
-(ocamllex dune_file_script)
+(ocamllex
+ (modules dune_file_script)
+ (flags -ml))

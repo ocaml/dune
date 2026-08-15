@@ -6,4 +6,6 @@
   (pps ppx_expect))
  (libraries stdune))
 
-(ocamllex lexer versioned_file_first_line)
+(ocamllex
+ (modules lexer versioned_file_first_line)
+ (flags -ml))

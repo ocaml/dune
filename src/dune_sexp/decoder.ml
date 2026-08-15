@@ -151,6 +151,7 @@ type (_, _) parser =
   | Junk_everything : (unit, 'k) parser
   | Keyword : string -> (unit, values) parser
   | Either : ('a, 'b) parser * ('c, 'b) parser -> (('a, 'c) either, 'b) parser
+  | Either_same : ('a, 'b) parser * ('a, 'b) parser -> ('a, 'b) parser
   | Located : ('a, 'b) parser -> (Loc.t * 'a, 'b) parser
   | Sum :
       { force_parens : bool
@@ -446,6 +447,7 @@ and eval : type a k. (a, k) parser -> k context -> k -> a * k =
      | Fields _ -> (), Fields.junk_unparsed state)
   | Keyword kwd -> keyword kwd ctx state
   | Either (a, b) -> eval_either a b ctx state
+  | Either_same (a, b) -> eval_either_same a b ctx state
   | Located t ->
     let x, state2 = eval t ctx state in
     (loc_between_states ctx state state2, x), state2
@@ -617,6 +619,24 @@ and eval_either
            (match compare_input_consumed exn_a exn_b with
             | Gt -> exn_a
             | Eq | Lt -> exn_b))
+
+and eval_either_same : type a k. (a, k) parser -> (a, k) parser -> k context -> k -> a * k
+  =
+  fun a b ctx state ->
+  try eval_rec.f a ctx state with
+  | exn_a ->
+    let exn_a = Exn_with_backtrace.capture exn_a in
+    (try eval_rec.f b ctx state with
+     | exn_b ->
+       let exn_b = Exn_with_backtrace.capture exn_b in
+       Exn_with_backtrace.reraise
+         (match
+            Int.compare
+              (Printexc.raw_backtrace_length exn_a.backtrace)
+              (Printexc.raw_backtrace_length exn_b.backtrace)
+          with
+          | Gt -> exn_a
+          | Eq | Lt -> exn_b))
 
 and find_cstr
   : type a. (string * a t) list -> Loc.t -> string -> values context -> values -> a
@@ -796,14 +816,7 @@ let relative_file =
 
 let enter t = Enter t
 let either l r = Either (l, r)
-
-let ( <|> ) x y =
-  either x y
-  >>| function
-  | Left x -> x
-  | Right x -> x
-;;
-
+let ( <|> ) x y = Either_same (x, y)
 let fix f = Fix f
 let located t = Located t
 

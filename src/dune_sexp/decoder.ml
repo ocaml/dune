@@ -379,15 +379,52 @@ and eval : type a k. (a, k) parser -> k context -> k -> a * k =
   fun desc ctx state ->
   match desc with
   | Return x -> x, state
+  | Bind (Return x, f) -> eval (f x) ctx state
+  | Bind (Next next, f) ->
+    (match state with
+     | [] -> end_of_list ctx
+     | sexp :: state -> eval (f (next sexp)) ctx state)
+  | Bind (Map (p, map), f) ->
+    let x, state = eval p ctx state in
+    eval (f (map x)) ctx state
+  | Bind (Bind (p, bind), f) ->
+    let x, state = eval p ctx state in
+    let y, state = eval (bind x) ctx state in
+    eval (f y) ctx state
   | Bind (p, f) ->
     let x, state = eval p ctx state in
     eval (f x) ctx state
+  | Map (Return x, f) -> f x, state
+  | Map (Next next, f) ->
+    (match state with
+     | [] -> end_of_list ctx
+     | sexp :: state -> f (next sexp), state)
+  | Map (Map (p, inner), outer) ->
+    let x, state = eval p ctx state in
+    outer (inner x), state
   | Map (p, f) ->
     let x, state = eval p ctx state in
     f x, state
+  | Seq (Return (), p2) -> eval p2 ctx state
+  | Seq (Next next, p2) ->
+    (match state with
+     | [] -> end_of_list ctx
+     | sexp :: state ->
+       next sexp;
+       eval p2 ctx state)
+  | Seq (Seq (p1, p2), p3) ->
+    let (), state = eval p1 ctx state in
+    let (), state = eval p2 ctx state in
+    eval p3 ctx state
   | Seq (p1, p2) ->
     let (), state = eval p1 ctx state in
     eval p2 ctx state
+  | And (Return x, p2) ->
+    let y, state = eval p2 ctx state in
+    (x, y), state
+  | And (p1, Return y) ->
+    let x, state = eval p1 ctx state in
+    (x, y), state
   | And (p1, p2) ->
     let x, state = eval p1 ctx state in
     let y, state = eval p2 ctx state in
@@ -423,6 +460,14 @@ and eval : type a k. (a, k) parser -> k context -> k -> a * k =
        | Values _ -> state = []
        | Fields _ -> Name.Map.is_empty state.unparsed)
     , state )
+  | Repeat (Next f) -> List.map state ~f, []
+  | Repeat (Map (Next next, map)) -> List.map state ~f:(fun sexp -> map (next sexp)), []
+  | Repeat (Enter t) ->
+    let (Values (_, _, uc)) = ctx in
+    List.map state ~f:(eval_enter_one t uc), []
+  | Repeat (Map (Enter t, map)) ->
+    let (Values (_, _, uc)) = ctx in
+    List.map state ~f:(fun sexp -> map (eval_enter_one t uc sexp)), []
   | Repeat t -> eval_repeat t [] ctx state
   | Capture ->
     let f t = result ctx (eval t ctx state) in
@@ -522,19 +567,19 @@ and eval : type a k. (a, k) parser -> k context -> k -> a * k =
     and r = Lazy p in
     eval r ctx state
 
+and eval_enter_one : type a. a t -> Univ_map.t -> Ast.t -> a =
+  fun t uc sexp ->
+  match sexp with
+  | List (loc, l) ->
+    let ctx = Values (loc, None, uc) in
+    result ctx (eval t ctx l)
+  | sexp -> User_error.raise ~loc:(Ast.loc sexp) [ Pp.text "List expected" ]
+
 and eval_enter : type a. a t -> values context -> values -> a * values =
   fun t (Values (_, _, uc) as ctx) state ->
   match state with
   | [] -> end_of_list ctx
-  | sexp :: sexps ->
-    let res =
-      match sexp with
-      | List (loc, l) ->
-        let ctx = Values (loc, None, uc) in
-        result ctx (eval t ctx l)
-      | sexp -> User_error.raise ~loc:(Ast.loc sexp) [ Pp.text "List expected" ]
-    in
-    res, sexps
+  | sexp :: sexps -> eval_enter_one t uc sexp, sexps
 
 and leftover_fields
   : type a. string list -> a t -> fields context -> fields -> a list * fields

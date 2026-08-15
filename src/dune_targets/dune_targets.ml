@@ -38,7 +38,11 @@ let is_empty { files; dirs } =
 ;;
 
 let combine x y =
-  if is_empty x
+  if Stdlib.(x == empty)
+  then y
+  else if Stdlib.(y == empty)
+  then x
+  else if is_empty x
   then y
   else if is_empty y
   then x

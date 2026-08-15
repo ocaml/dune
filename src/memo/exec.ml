@@ -228,49 +228,54 @@ and consider_and_compute_without_adding_dep
     Computation.read_but_first_check_for_cycles ~phase:Compute compute ~dep_node:node
 ;;
 
-let exec_dep_node_now : 'i 'o. ('i, 'o) Dep_node.t -> 'o Fiber.t =
+let add_dep_from_caller_and_get_value : type i o. (i, o) Dep_node.t -> o Fiber.t =
+  fun node ->
+  match node.value with
+  | Ok value -> Deps_collector.add_dep_from_caller_and_return node value
+  | Error _ | Uninitialized ->
+    let* () = Deps_collector.add_dep_from_caller node in
+    let stack_frame = Dep_node.T node in
+    Value.get_exn_error node.value ~map_exn:(fun exn ->
+      Error.extend_stack exn ~stack_frame)
+;;
+
+let after_compute
+  : type i o. (unit, Cycle_error.t) result -> (i, o) Dep_node.t -> o Fiber.t
+  =
+  fun result node ->
+  match result with
+  | Ok () -> add_dep_from_caller_and_get_value node
+  | Error dependency_cycle -> raise (Cycle_error.E dependency_cycle)
+;;
+
+let after_restore
+  : type i o. Cycle_error.t Changed_or_not.t -> (i, o) Dep_node.t -> o Fiber.t
+  =
+  fun result node ->
+  match result with
+  | Unchanged -> add_dep_from_caller_and_get_value node
+  | Cancelled { dependency_cycle } ->
+    (* If restoring from cache failed with a cycle error, and the node's function is
+       deterministic (as it should be), then we will hit the same cycle when trying to
+       recompute the result. We therefore reraise the cycle error as is. Note that apart
+       from saving some work, this also helps us work around the limitation of the cycle
+       detection library that can't detect the same cycle twice. *)
+    raise (Cycle_error.E dependency_cycle)
+  | Changed ->
+    Fiber.bind_apply (consider_and_compute_without_adding_dep node) after_compute node
+;;
+
+let exec_dep_node_now : type i o. (i, o) Dep_node.t -> o Fiber.t =
   fun node ->
   (* Doing the check here before creating any fibers, rather than in
      [consider_and_restore_from_cache_without_adding_dep], is a measurable win. *)
   if Run.is_current (Dep_node.last_validated_at node)
-  then (
-    match node.value with
-    | Ok value -> Deps_collector.add_dep_from_caller_and_return node value
-    | Error _ | Uninitialized ->
-      let* () = Deps_collector.add_dep_from_caller node in
-      let stack_frame = Dep_node.T node in
-      Value.get_exn_error node.value ~map_exn:(fun exn ->
-        Error.extend_stack exn ~stack_frame))
+  then add_dep_from_caller_and_get_value node
   else
-    consider_and_restore_from_cache_without_adding_dep node
-    >>= function
-    | Unchanged ->
-      (match node.value with
-       | Ok value -> Deps_collector.add_dep_from_caller_and_return node value
-       | Error _ | Uninitialized ->
-         let* () = Deps_collector.add_dep_from_caller node in
-         let stack_frame = Dep_node.T node in
-         Value.get_exn_error node.value ~map_exn:(fun exn ->
-           Error.extend_stack exn ~stack_frame))
-    | Cancelled { dependency_cycle } ->
-      (* If restoring from cache failed with a cycle error, and the node's function is
-         deterministic (as it should be), then we will hit the same cycle when trying to
-         recompute the result. We therefore reraise the cycle error as is. Note that
-         apart from saving some work, this also helps us work around the limitation of
-         the cycle detection library that can't detect the same cycle twice. *)
-      raise (Cycle_error.E dependency_cycle)
-    | Changed ->
-      consider_and_compute_without_adding_dep node
-      >>= (function
-       | Ok () ->
-         (match node.value with
-          | Ok value -> Deps_collector.add_dep_from_caller_and_return node value
-          | Error _ | Uninitialized ->
-            let* () = Deps_collector.add_dep_from_caller node in
-            let stack_frame = Dep_node.T node in
-            Value.get_exn_error node.value ~map_exn:(fun exn ->
-              Error.extend_stack exn ~stack_frame))
-       | Error dependency_cycle -> raise (Cycle_error.E dependency_cycle))
+    Fiber.bind_apply
+      (consider_and_restore_from_cache_without_adding_dep node)
+      after_restore
+      node
 ;;
 
 let exec_dep_node node = Fiber.of_thunk_apply exec_dep_node_now node

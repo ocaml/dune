@@ -54,6 +54,25 @@ let%expect_test "of_thunk_apply fibers are lazy and reusable" =
     12 |}]
 ;;
 
+let%expect_test "bind_apply threads its argument" =
+  let fiber =
+    Fiber.bind_apply
+      (Fiber.return 10)
+      (fun result argument ->
+         printfn "callback %d %d" result argument;
+         Fiber.return (result + argument))
+      5
+  in
+  test int fiber;
+  test int fiber;
+  [%expect
+    {|
+    callback 10 5
+    15
+    callback 10 5
+    15 |}]
+;;
+
 let%expect_test "map chains preserve callback order and exceptions" =
   let chain ~length ~raise_at =
     List.init length ~f:(fun i -> i + 1)

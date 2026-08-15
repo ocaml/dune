@@ -144,6 +144,7 @@ let of_source_path_memo =
   Memo.create
     "readdir-of-source-path"
     ~input:(module Path.Source)
+    ~initial_store_size:1024
     ~cutoff:(Result.equal equal Unix_error.Detailed.equal)
     of_source_path_impl
 ;;

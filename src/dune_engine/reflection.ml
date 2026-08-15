@@ -65,6 +65,7 @@ let evaluate_rule =
     Memo.create
       "evaluate-rule"
       ~input:(module Non_evaluated_rule)
+      ~initial_store_size:4096
       (fun rule ->
          let* action, deps = Action_builder.evaluate_and_collect_deps rule.action in
          let* expanded_deps = Expand.deps deps in

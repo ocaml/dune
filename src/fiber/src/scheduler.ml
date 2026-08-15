@@ -89,17 +89,32 @@ and exec : type a. context -> a continuation -> a -> Jobs.t -> step' =
   fun ctx k x jobs ->
   match k with
   | Function f -> exec_function ctx f x jobs
-  | Map (f, k) -> exec_map ctx f x k jobs
-  | Map2 (f, g, k) -> exec_map2 ctx f g x k jobs
-  | Map3 (f, g, h, k) -> exec_map3 ctx f g h x k jobs
+  | Map (f, k) ->
+    (match f x with
+     | exception exn -> handle_exception ctx exn jobs
+     | y -> exec ctx k y jobs)
+  | Map2 (f, g, k) ->
+    (match g (f x) with
+     | exception exn -> handle_exception ctx exn jobs
+     | y -> exec ctx k y jobs)
+  | Map3 (f, g, h, k) ->
+    (match h (g (f x)) with
+     | exception exn -> handle_exception ctx exn jobs
+     | y -> exec ctx k y jobs)
   | Bind (f, k) -> exec_fiber_apply ctx f x k jobs
   | Bind_result (f, k) ->
     (match x with
      | Ok x -> exec_fiber_apply ctx f x k jobs
      | Error _ as error -> exec ctx k error jobs)
   | Apply (f, y, k) -> exec_fiber_apply2 ctx f x y k jobs
-  | Apply_map (f, y, k) -> exec_apply_map ctx f x y k jobs
-  | Apply_map2 (f, y, z, k) -> exec_apply_map2 ctx f x y z k jobs
+  | Apply_map (f, y, k) ->
+    (match f x y with
+     | exception exn -> handle_exception ctx exn jobs
+     | z -> exec ctx k z jobs)
+  | Apply_map2 (f, y, z, k) ->
+    (match f x y z with
+     | exception exn -> handle_exception ctx exn jobs
+     | result -> exec ctx k result jobs)
   | Unwind_to k -> exec ctx.parent k x jobs
   | Unwind_map_reduce_to k -> unwind_map_reduce ctx k (Ok x) jobs
   | End as k -> exec_core_continuation ctx k x jobs
@@ -148,74 +163,6 @@ and exec_function : 'a. context -> ('a -> eff) -> 'a -> Jobs.t -> step' =
   match f x with
   | exception exn -> handle_exception ctx exn jobs
   | eff -> exec_effect ctx eff jobs
-
-and exec_map : 'a 'b. context -> ('a -> 'b) -> 'a -> 'b continuation -> Jobs.t -> step' =
-  fun ctx f x k jobs ->
-  match f x with
-  | exception exn -> handle_exception ctx exn jobs
-  | y -> exec ctx k y jobs
-
-and exec_map2
-  :  'a 'b 'c.
-     context
-  -> ('a -> 'b)
-  -> ('b -> 'c)
-  -> 'a
-  -> 'c continuation
-  -> Jobs.t
-  -> step'
-  =
-  fun ctx f g x k jobs ->
-  match g (f x) with
-  | exception exn -> handle_exception ctx exn jobs
-  | y -> exec ctx k y jobs
-
-and exec_map3
-  :  'a 'b 'c 'd.
-     context
-  -> ('a -> 'b)
-  -> ('b -> 'c)
-  -> ('c -> 'd)
-  -> 'a
-  -> 'd continuation
-  -> Jobs.t
-  -> step'
-  =
-  fun ctx f g h x k jobs ->
-  match h (g (f x)) with
-  | exception exn -> handle_exception ctx exn jobs
-  | y -> exec ctx k y jobs
-
-and exec_apply_map
-  :  'a 'b 'c.
-     context
-  -> ('a -> 'b -> 'c)
-  -> 'a
-  -> 'b
-  -> 'c continuation
-  -> Jobs.t
-  -> step'
-  =
-  fun ctx f x y k jobs ->
-  match f x y with
-  | exception exn -> handle_exception ctx exn jobs
-  | z -> exec ctx k z jobs
-
-and exec_apply_map2
-  :  'a 'b 'c 'd.
-     context
-  -> ('a -> 'b -> 'c -> 'd)
-  -> 'a
-  -> 'b
-  -> 'c
-  -> 'd continuation
-  -> Jobs.t
-  -> step'
-  =
-  fun ctx f x y z k jobs ->
-  match f x y z with
-  | exception exn -> handle_exception ctx exn jobs
-  | result -> exec ctx k result jobs
 
 and handle_exception ctx exn jobs =
   let exn = Exn_with_backtrace.capture exn in

@@ -64,9 +64,11 @@ struct
   ;;
 end
 
-include Cased_functions (struct
+module Case_sensitive = Cased_functions (struct
     let normalize c = c
   end)
+
+include Case_sensitive
 
 module Caseless = Cased_functions (struct
     let normalize = Char.lowercase_ascii
@@ -74,6 +76,10 @@ module Caseless = Cased_functions (struct
 
 include Stdlib.StringLabels
 
+(* [StringLabels] shadows these implementations with versions that allocate a
+   local recursive closure on each call. *)
+let starts_with = Case_sensitive.starts_with
+let ends_with = Case_sensitive.ends_with
 let repr = Repr.string
 let compare a b = Ordering.of_int (String.compare a b)
 

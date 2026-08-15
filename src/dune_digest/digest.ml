@@ -395,6 +395,13 @@ module Manual = struct
   let int () = Hasher.feed_manual_int
   let string () s = Hasher.feed_manual_sized_string s
 
+  let string_with_separator () left ~separator right =
+    int () (String.length left + String.length separator + String.length right);
+    Hasher.feed_manual_string left;
+    Hasher.feed_manual_string separator;
+    Hasher.feed_manual_string right
+  ;;
+
   let option t ~f = function
     | None -> bool t false
     | Some x ->

@@ -208,10 +208,17 @@ module Internal = struct
   ;;
 
   let digest_target_paths d (rule : Rule.t) =
-    let digest_target_path name =
-      Path.Build.relative_fname rule.targets.root name
-      |> Path.Build.to_string
-      |> Digest.Manual.string d
+    let root = Path.Build.to_string rule.targets.root in
+    let digest_target_path =
+      if Path.Build.equal rule.targets.root Path.Build.root
+      then fun name -> Digest.Manual.string d (Filename.to_string name)
+      else
+        fun name ->
+          Digest.Manual.string_with_separator
+            d
+            root
+            ~separator:"/"
+            (Filename.to_string name)
     in
     Digest.Manual.int
       d

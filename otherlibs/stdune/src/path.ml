@@ -29,7 +29,7 @@ module Local = struct
     |> inside_workspace_exn ?loc:error_loc ~path ~from:(to_string t)
   ;;
 
-  let relative_fname ?error_loc t fn = relative ?error_loc t (Filename.to_string fn)
+  let relative_fname t fn = Path0.Local.relative_fname t fn
 
   let parse_string_exn ~loc s =
     parse_string_result s |> inside_workspace_exn ~loc ~path:s ~from:(to_string root)
@@ -76,7 +76,7 @@ module Source0 = struct
     |> inside_workspace_exn ?loc:error_loc ~path ~from:(to_string t)
   ;;
 
-  let relative_fname ?error_loc t fn = relative ?error_loc t (Filename.to_string fn)
+  let relative_fname t fn = Path0.Source.relative_fname t fn
 
   let parse_string_exn ~loc s =
     parse_string_result s |> inside_workspace_exn ~loc ~path:s ~from:(to_string root)
@@ -147,7 +147,11 @@ module Outside_build_dir = struct
     | External t -> External (External.relative t s)
   ;;
 
-  let relative_fname t fn = relative t (Filename.to_string fn)
+  let relative_fname t fn =
+    match t with
+    | In_source_dir t -> In_source_dir (Source0.relative_fname t fn)
+    | External t -> External (External.relative_fname t fn)
+  ;;
 
   let extend_basename t ~suffix =
     match t with
@@ -220,7 +224,7 @@ module Build = struct
     |> inside_workspace_exn ?loc:error_loc ~path ~from:(to_string t)
   ;;
 
-  let relative_fname ?error_loc t fn = relative ?error_loc t (Filename.to_string fn)
+  let relative_fname t fn = Path0.Build.relative_fname t fn
 
   let parse_string_exn ~loc s =
     parse_string_result s |> inside_workspace_exn ~loc ~path:s ~from:(to_string root)
@@ -464,7 +468,12 @@ let relative ?error_loc t fn =
      | External s -> external_ (External.relative s fn))
 ;;
 
-let relative_fname ?error_loc t fn = relative ?error_loc t (Filename.to_string fn)
+let relative_fname t fn =
+  match t with
+  | In_source_tree p -> Source0.relative_fname p fn |> Source0.to_local |> make_local_path
+  | In_build_dir p -> in_build_dir (Build.relative_fname p fn)
+  | External p -> external_ (External.relative_fname p fn)
+;;
 
 let parse_string_exn ~loc s =
   match s with

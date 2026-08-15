@@ -51,70 +51,90 @@ module Hasher = struct
   ;;
 
   let feed_manual_int i =
-    if !Scratch.pos + 8 > Scratch.len then Scratch.flush ();
     let pos = !Scratch.pos in
+    let pos =
+      if pos + 8 > Scratch.len
+      then (
+        Scratch.flush ();
+        0)
+      else pos
+    in
     Stdlib.Bytes.set_int64_le Scratch.buf pos (Int64.of_int i);
     Scratch.pos := pos + 8
   ;;
 
   let feed_manual_bool b =
-    if !Scratch.pos = Scratch.len then Scratch.flush ();
-    Bytes.unsafe_set Scratch.buf !Scratch.pos (if b then '\001' else '\000');
-    Scratch.pos := !Scratch.pos + 1
-  ;;
-
-  let with_singleton =
-    let in_use = ref false in
-    fun f ->
-      if !in_use
-      then
-        Code_error.raise
-          "[Hasher.with_singleton] called within argument function to \
-           [Hasher.with_singleton], which is not allowed."
-          []
-      else (
-        (* [Manual] shares this hasher, so preserve the ordering of pending input
-           before using it for a nested digest computation. *)
+    let pos = !Scratch.pos in
+    let pos =
+      if pos = Scratch.len
+      then (
         Scratch.flush ();
-        in_use := true;
-        let hasher = Lazy.force singleton in
-        f hasher;
-        let digest = Blake3_mini.digest hasher in
-        Blake3_mini.reset hasher;
-        in_use := false;
-        digest)
+        0)
+      else pos
+    in
+    Bytes.unsafe_set Scratch.buf pos (if b then '\001' else '\000');
+    Scratch.pos := pos + 1
   ;;
 
-  let with_pooled =
-    let pool = ref [] in
-    let mutex = Mutex.create () in
-    let take () =
-      Mutex.lock mutex;
-      let hasher =
-        match !pool with
-        | hasher :: rest ->
-          pool := rest;
-          hasher
-        | [] -> Blake3_mini.create ()
-      in
-      Mutex.unlock mutex;
-      hasher
-    in
-    let release hasher =
-      Mutex.lock mutex;
-      pool := hasher :: !pool;
-      Mutex.unlock mutex
-    in
-    fun f ->
-      let hasher = take () in
-      Exn.protectx
+  let singleton_in_use = ref false
+
+  let with_singleton f x =
+    if !singleton_in_use
+    then
+      Code_error.raise
+        "[Hasher.with_singleton] called within argument function to \
+         [Hasher.with_singleton], which is not allowed."
+        []
+    else (
+      (* [Manual] shares this hasher, so preserve the ordering of pending input
+         before using it for a nested digest computation. *)
+      Scratch.flush ();
+      singleton_in_use := true;
+      let hasher = Lazy.force singleton in
+      f hasher x;
+      let digest = Blake3_mini.digest hasher in
+      Blake3_mini.reset hasher;
+      singleton_in_use := false;
+      digest)
+  ;;
+
+  let pool = ref []
+  let pool_mutex = Mutex.create ()
+
+  let take_pooled () =
+    Mutex.lock pool_mutex;
+    let hasher =
+      match !pool with
+      | hasher :: rest ->
+        pool := rest;
         hasher
-        ~f:(fun hasher ->
-          f hasher;
-          Blake3_mini.digest hasher)
-        ~finally:(fun hasher ->
-          Blake3_mini.reset hasher;
-          release hasher)
+      | [] -> Blake3_mini.create ()
+    in
+    Mutex.unlock pool_mutex;
+    hasher
+  ;;
+
+  let release_pooled hasher =
+    Mutex.lock pool_mutex;
+    pool := hasher :: !pool;
+    Mutex.unlock pool_mutex
+  ;;
+
+  let with_pooled f x =
+    let hasher = take_pooled () in
+    match
+      f hasher x;
+      Blake3_mini.digest hasher
+    with
+    | digest ->
+      Blake3_mini.reset hasher;
+      release_pooled hasher;
+      digest
+    | exception exn ->
+      let exn = Exn_with_backtrace.capture exn in
+      Blake3_mini.reset hasher;
+      release_pooled hasher;
+      Exn_with_backtrace.reraise exn
   ;;
 end
 
@@ -343,9 +363,8 @@ module Feed = struct
   ;;
 
   let digest hasher digest = contramap string ~f:to_string hasher digest
-  let compute_digest_with t x ~with_hasher = with_hasher (fun hasher -> t hasher x)
-  let compute_digest t x = compute_digest_with t x ~with_hasher:Hasher.with_singleton
-  let compute_digest_pooled t x = compute_digest_with t x ~with_hasher:Hasher.with_pooled
+  let compute_digest t x = Hasher.with_singleton t x
+  let compute_digest_pooled t x = Hasher.with_pooled t x
 end
 
 module Manual = struct

@@ -127,10 +127,7 @@ let make ?(mode = Mode.Standard) ?(info = Info.Internal) ~targets action =
   { id = Id.gen (); targets; action; mode; info }
 ;;
 
-let set_action t action =
-  let action = Action_builder.memoize "Rule.set_action" action in
-  { t with action }
-;;
+let set_action t action = { t with action }
 
 module Anonymous_action = struct
   type t =

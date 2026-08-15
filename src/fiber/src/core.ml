@@ -276,7 +276,7 @@ let return x = Return_t x
 let bind t ~f = Bind_t (t, f)
 let bind_result t ~f = Bind_result_t (t, f)
 
-let map t ~f =
+let[@inline] map t ~f =
   match t with
   | Map_t (t, g) -> Map2_t (t, g, f)
   | Map2_t (t, g, h) -> Map3_t (t, g, h, f)

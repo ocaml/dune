@@ -45,26 +45,25 @@ let encode_int i =
 ;;
 
 let%expect_test "manual digest matches concatenated input" =
-  let short = String.make 4080 'x' in
-  let long = String.make 5000 'y' in
+  let strings =
+    [ String.make 4080 'w'
+    ; String.make 32740 'x'
+    ; String.make 32761 'y'
+    ; String.make 40000 'z'
+    ]
+  in
   let nested_digest = Digest.string "nested" in
   let expected_input =
-    String.concat
-      ~sep:""
-      [ encode_int 42
-      ; "\001"
-      ; encode_int (String.length short)
-      ; short
-      ; encode_int (String.length long)
-      ; long
-      ; Digest.to_string_raw nested_digest
-      ]
+    [ encode_int 42; "\001" ]
+    @ List.concat_map strings ~f:(fun string ->
+      [ encode_int (String.length string); string ])
+    @ [ Digest.to_string_raw nested_digest ]
+    |> String.concat ~sep:""
   in
   let manual = Digest.Manual.create () in
   Digest.Manual.int manual 42;
   Digest.Manual.bool manual true;
-  Digest.Manual.string manual short;
-  Digest.Manual.string manual long;
+  List.iter strings ~f:(Digest.Manual.string manual);
   Digest.Manual.digest manual nested_digest;
   let actual = Digest.Manual.get manual in
   print_endline (Bool.to_string (Digest.equal actual (Digest.string expected_input)));

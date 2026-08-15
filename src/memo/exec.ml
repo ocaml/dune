@@ -147,25 +147,21 @@ and start_restoring : 'i 'o. ('i, 'o) Dep_node.t -> Cycle_error.t Changed_or_not
   fun node ->
   let computation = Computation.create () in
   node.state <- Restoring { restore_from_cache = computation };
-  Computation.force
-    computation
-    ~phase:Restore_from_cache
-    ~dep_node:node
-    (fun _stack_frame ->
-       let* restore_result = restore_from_cache node in
-       let+ () =
-         match restore_result with
-         | Unchanged ->
-           validate_value node;
-           Fiber.return ()
-         | Cancelled { dependency_cycle } ->
-           update_value node (Error (cancelled ~dependency_cycle)) ~deps:Deps.empty;
-           Fiber.return ()
-         | Changed ->
-           node.state <- Out_of_date;
-           Fiber.return ()
-       in
-       restore_result)
+  Computation.force computation ~dep_node:node (fun _stack_frame ->
+    let* restore_result = restore_from_cache node in
+    let+ () =
+      match restore_result with
+      | Unchanged ->
+        validate_value node;
+        Fiber.return ()
+      | Cancelled { dependency_cycle } ->
+        update_value node (Error (cancelled ~dependency_cycle)) ~deps:Deps.empty;
+        Fiber.return ()
+      | Changed ->
+        node.state <- Out_of_date;
+        Fiber.return ()
+    in
+    restore_result)
 
 (* Recompute a node. The node has a [Computing] state during the computation. Once
    finished, the node's state is [Cached] with an up to date [last_validated_at]. *)
@@ -173,8 +169,7 @@ and start_computing : 'i 'o. ('i, 'o) Dep_node.t -> unit Fiber.t =
   fun node ->
   let computation = Computation.create () in
   node.state <- Computing { compute = computation };
-  Computation.force computation ~phase:Compute ~dep_node:node (fun _stack_frame ->
-    compute node)
+  Computation.force computation ~dep_node:node (fun _stack_frame -> compute node)
 
 (* Try to validate a [Cached] node without recomputing it. Once done, the node's state is
    either [Cached] with an up to date [last_validated_at] or [Out_of_date]. *)
@@ -226,6 +221,14 @@ and consider_and_compute_without_adding_dep
     Computation.read_but_first_check_for_cycles ~phase:Compute compute ~dep_node:node
 ;;
 
+let get_value (type i o) (node : (i, o) Dep_node.t) : o Fiber.t =
+  match node.value with
+  | Ok value -> Fiber.return value
+  | Error _ | Uninitialized ->
+    let stack_frame = Dep_node.T node in
+    Value.get_exn node.value ~map_exn:(fun exn -> Error.extend_stack exn ~stack_frame)
+;;
+
 let exec_dep_node : 'i 'o. ('i, 'o) Dep_node.t -> 'o Fiber.t =
   fun node ->
   Fiber.of_thunk (fun () ->
@@ -234,15 +237,13 @@ let exec_dep_node : 'i 'o. ('i, 'o) Dep_node.t -> 'o Fiber.t =
     if Run.is_current (Dep_node.last_validated_at node)
     then
       let* () = Deps_collector.add_dep_from_caller node in
-      let stack_frame = Dep_node.T node in
-      Value.get_exn node.value ~map_exn:(fun exn -> Error.extend_stack exn ~stack_frame)
+      get_value node
     else
       consider_and_restore_from_cache_without_adding_dep node
       >>= function
       | Unchanged ->
         let* () = Deps_collector.add_dep_from_caller node in
-        let stack_frame = Dep_node.T node in
-        Value.get_exn node.value ~map_exn:(fun exn -> Error.extend_stack exn ~stack_frame)
+        get_value node
       | Cancelled { dependency_cycle } ->
         (* If restoring from cache failed with a cycle error, and the node's function is
            deterministic (as it should be), then we will hit the same cycle when trying to
@@ -255,8 +256,6 @@ let exec_dep_node : 'i 'o. ('i, 'o) Dep_node.t -> 'o Fiber.t =
         >>= (function
          | Ok () ->
            let* () = Deps_collector.add_dep_from_caller node in
-           let stack_frame = Dep_node.T node in
-           Value.get_exn node.value ~map_exn:(fun exn ->
-             Error.extend_stack exn ~stack_frame)
+           get_value node
          | Error dependency_cycle -> raise (Cycle_error.E dependency_cycle)))
 ;;

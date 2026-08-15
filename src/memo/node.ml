@@ -254,16 +254,16 @@ module Lazy_dag_node = struct
   let create () = ref Option.Unboxed.none
 
   let force t ~(dep_node : Dep_node.Packed.t) =
-    Option.Unboxed.match_
-      !t
-      ~some:(fun (dag_node : Dag.node) -> dag_node)
-      ~none:(fun () ->
-        let (dag_node : Dag.node) =
-          Counter.incr Metrics.Cycle_detection.nodes;
-          Dag.create_node dep_node
-        in
-        t := Option.Unboxed.some dag_node;
-        dag_node)
+    let dag_node = !t in
+    if Option.Unboxed.is_some dag_node
+    then Option.Unboxed.value_exn dag_node
+    else (
+      let dag_node =
+        Counter.incr Metrics.Cycle_detection.nodes;
+        Dag.create_node dep_node
+      in
+      t := Option.Unboxed.some dag_node;
+      dag_node)
   ;;
 end
 
@@ -397,7 +397,7 @@ module Stack_frame_with_state : sig
   val to_dyn : t -> Dyn.t
 
   (* Create a new stack frame related to restoring or computing a [dep_node]. *)
-  val create : dag_node:Lazy_dag_node.t -> phase -> dep_node:_ Dep_node.t -> t
+  val create : dag_node:Lazy_dag_node.t -> dep_node:_ Dep_node.t -> t
   val dep_node : t -> Dep_node.packed
   val dag_node : t -> Dag.node
   val children_added_to_dag : t -> Dag.Id.Set.t
@@ -431,14 +431,14 @@ end = struct
 
   let to_dyn t = Dep_node.Packed.to_dyn_without_state t.dep_node
 
-  let create ~dag_node (_ : phase) ~dep_node =
+  let[@inline always] create ~dag_node ~dep_node =
     { dep_node = Dep_node.T dep_node; dag_node; children_added_to_dag = Dag.Id.Set.empty }
   ;;
 
   let dep_node t = t.dep_node
   let dag_node t = Lazy_dag_node.force t.dag_node ~dep_node:t.dep_node
 
-  let record_child_added_to_dag t ~dag_node_id =
+  let[@inline always] record_child_added_to_dag t ~dag_node_id =
     t.children_added_to_dag <- Dag.Id.Set.add t.children_added_to_dag dag_node_id
   ;;
 
@@ -449,8 +449,8 @@ module Call_stack = struct
   type t = Stack_frame_with_state.t list
 
   (* The variable holding the call stack for the current context. *)
-  let call_stack_var : t option Fiber.Var.t = Fiber.Var.create None
-  let get_call_stack () = Fiber.Var.get call_stack_var >>| Option.value ~default:[]
+  let call_stack_var : t Fiber.Var.t = Fiber.Var.create []
+  let get_call_stack () = Fiber.Var.get call_stack_var
 
   let get_call_stack_without_state () =
     get_call_stack () >>| List.map ~f:Stack_frame_with_state.dep_node
@@ -461,7 +461,7 @@ module Call_stack = struct
        single effect, without reading the stack first or allocating a thunk per push. *)
     Fiber.Var.update_apply
       call_stack_var
-      ~f:(fun stack -> Some (frame :: Option.value stack ~default:[]))
+      ~f:(fun stack -> frame :: stack)
       Implicit_output.forbid
       f
   ;;
@@ -492,27 +492,29 @@ module Call_stack = struct
            let children_added_to_dag =
              Stack_frame_with_state.children_added_to_dag frame
            in
-           (match Dag.Id.Set.mem children_added_to_dag dag_node_id with
-            | true ->
-              (* Here we know that the current [frame] has already been traversed in a
-                 previous [add_path_to] call. Therefore, the DAG already contains all the
-                 edges that we will discover by continuing the recursive traversal. We
-                 might as well stop here and save time. *)
-              Ok (), edges_added
-            | false ->
-              let caller_dag_node = Stack_frame_with_state.dag_node frame in
-              (match Dag.add_assuming_missing caller_dag_node dag_node with
-               | exception Dag.Cycle cycle ->
-                 Error (List.map cycle ~f:Dag.value), edges_added
-               | () ->
-                 let edges_added = edges_added + 1 in
-                 let not_traversed_before = Dag.Id.Set.is_empty children_added_to_dag in
-                 Stack_frame_with_state.record_child_added_to_dag frame ~dag_node_id;
-                 (match not_traversed_before with
-                  | true -> add_path_impl stack caller_dag_node edges_added
-                  | false ->
-                    (* Same optimisation as above: no need to traverse again. *)
-                    Ok (), edges_added)))
+           let not_traversed_before = Dag.Id.Set.is_empty children_added_to_dag in
+           if
+             (not not_traversed_before)
+             && Dag.Id.Set.mem children_added_to_dag dag_node_id
+           then
+             (* Here we know that the current [frame] has already been traversed in a
+                previous [add_path_to] call. Therefore, the DAG already contains all the
+                edges that we will discover by continuing the recursive traversal. We
+                might as well stop here and save time. *)
+             Ok (), edges_added
+           else (
+             let caller_dag_node = Stack_frame_with_state.dag_node frame in
+             match Dag.add_assuming_missing caller_dag_node dag_node with
+             | exception Dag.Cycle cycle ->
+               Error (List.map cycle ~f:Dag.value), edges_added
+             | () ->
+               let edges_added = edges_added + 1 in
+               Stack_frame_with_state.record_child_added_to_dag frame ~dag_node_id;
+               (match not_traversed_before with
+                | true -> add_path_impl stack caller_dag_node edges_added
+                | false ->
+                  (* Same optimisation as above: no need to traverse again. *)
+                  Ok (), edges_added))
        in
        let result, edges_added = add_path_impl stack dag_node 0 in
        Counter.add Metrics.Cycle_detection.edges edges_added;
@@ -596,8 +598,8 @@ module Computation = struct
 
   (* Each computation should be forced exactly once. Not forcing it will lead to
      a deadlock. Forcing it twice will lead to [Fiber.Ivar.fill] raising. *)
-  let force { ivar; dag_node } ~phase ~dep_node fiber =
-    let frame = Stack_frame_with_state.create phase ~dag_node ~dep_node in
+  let force { ivar; dag_node } ~dep_node fiber =
+    let frame = Stack_frame_with_state.create ~dag_node ~dep_node in
     let* result =
       (* The only reason we make the stack [frame] available to the [fiber] is
          to let the latter get the discovered dependencies [deps_rev]. *)

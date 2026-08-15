@@ -1,0 +1,64 @@
+Emission rules for an installed Melange library must depend on the CMJ and CMI
+files in its Melange object directory.
+
+  $ mkdir -p lib app prefix
+  $ cat > lib/dune-project <<'EOF'
+  > (lang dune 3.24)
+  > (using melange 1.0)
+  > (package (name repro))
+  > EOF
+  $ cat > lib/dune <<'EOF'
+  > (library
+  >  (name foo)
+  >  (public_name repro.foo)
+  >  (private_modules Classify)
+  >  (modes melange))
+  > EOF
+  $ cat > lib/classify.ml <<'EOF'
+  > let classify x = x
+  > EOF
+  $ cat > lib/errors.ml <<'EOF'
+  > let show x = Classify.classify x
+  > EOF
+
+  $ dune build --root lib @install
+  $ dune install --root lib --prefix $PWD/prefix --display=quiet
+  $ ls prefix/lib/repro/foo/melange | grep '\.cmj'
+  foo.cmj
+  foo__Classify.cmj
+  foo__Errors.cmj
+
+  $ cat > app/dune-project <<'EOF'
+  > (lang dune 3.24)
+  > (using melange 1.0)
+  > EOF
+  $ cat > app/dune <<'EOF'
+  > (melange.emit
+  >  (target dist)
+  >  (emit_stdlib false)
+  >  (libraries repro.foo)
+  >  (compile_flags :standard --mel-cross-module-opt))
+  > EOF
+  $ cat > app/main.ml <<'EOF'
+  > let () = ignore (Foo.Errors.show 0)
+  > EOF
+
+  $ OCAMLPATH=$PWD/prefix/lib:$OCAMLPATH \
+  >   dune rules --root app --format=json --deps --display=quiet \
+  >   dist/node_modules/repro.foo/errors.js > deps.json
+
+The selectors must cover the directory where Dune installed the Melange
+objects. Both assertions currently fail.
+
+  $ jq_dune -e '
+  >   [.[] | depsGlobEntriesWithPredicate("*.cmj")
+  >    | select(.dir | endswith("/repro/foo/melange"))]
+  >   | length == 1
+  > ' deps.json > /dev/null
+  [1]
+  $ jq_dune -e '
+  >   [.[] | depsGlobEntriesWithPredicate("*.cmi")
+  >    | select(.dir | endswith("/repro/foo/melange"))]
+  >   | length == 1
+  > ' deps.json > /dev/null
+  [1]

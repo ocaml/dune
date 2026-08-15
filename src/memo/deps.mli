@@ -10,6 +10,7 @@ open! Stdune
 type 'node t
 
 val empty : 'node t
+val is_empty : _ t -> bool
 
 (** Like [t] but supports cheap appending of new dependencies. *)
 module Dynamic : sig

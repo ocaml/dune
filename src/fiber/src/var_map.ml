@@ -30,7 +30,7 @@ module Key = struct
   ;;
 end
 
-let get (type a) (t : t) key : a =
+let[@inline always] get (type a) (t : t) key : a =
   if key < Array.length t
   then (Obj.magic : Obj.t -> a) t.(key)
   else (Obj.magic : Obj.t -> a) !Key.initial_values.(key)

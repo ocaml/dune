@@ -26,7 +26,12 @@ let to_dyn = Repr.to_dyn repr
 let decode = Decoder.string
 let encode = Encoder.string
 let to_opam_filter t = OpamTypes.FString t
-let to_opam_variable_contents t = OpamTypes.S t
+
+let to_opam_variable_contents t =
+  match Bool.of_string t with
+  | Some b -> OpamTypes.B b
+  | None -> OpamTypes.S t
+;;
 
 let sentinel_value_of_variable_name variable_name =
   let uppercase_replacing_dash_with_underscore =

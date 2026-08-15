@@ -199,7 +199,6 @@ This output will appear in cram test diffs, making it easy to observe values.
 **NEVER do these things:**
 - NEVER create files unless absolutely necessary
 - NEVER proactively create documentation files (*.md) or README files
-- NEVER stage or commit changes unless explicitly requested
 - NEVER run `dune clean`
 - NEVER use the `--force` argument
 - NEVER try to build dune manually to run a test

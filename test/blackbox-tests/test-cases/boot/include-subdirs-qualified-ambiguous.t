@@ -31,6 +31,6 @@ it picks up the closest one.
   > module M1 = A.Bar.Baz
   > let () = Printf.printf "Hello from %s\n" M1.exported
   > EOF
-  ocamllex -q -o boot/pps.ml boot/pps.mll
+  ocamllex -ml -q -o boot/pps.ml boot/pps.mll
   ocaml -I +unix unix.cma $DUNEBOOT
   Hello from the correct module!

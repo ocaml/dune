@@ -18,7 +18,7 @@ Testing the bootstrap of singleton wrapped libraries.
   > open A
   > let () = Printf.printf "Hello from bootstrapped binary!"
   > EOF
-  ocamllex -q -o boot/pps.ml boot/pps.mll
+  ocamllex -ml -q -o boot/pps.ml boot/pps.mll
   ocaml -I +unix unix.cma $DUNEBOOT
   Hello from singleton wrapped a/a.ml
   Hello from bootstrapped binary!

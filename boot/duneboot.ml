@@ -1139,7 +1139,7 @@ let insert_header fn ~header =
 
 let copy_lexer ~header src dst =
   let dst = Filename.remove_extension dst ^ ".ml" in
-  let+ () = Process.run Config.ocamllex [ "-q"; "-o"; dst; src ] in
+  let+ () = Process.run Config.ocamllex [ "-ml"; "-q"; "-o"; dst; src ] in
   insert_header dst ~header
 ;;
 

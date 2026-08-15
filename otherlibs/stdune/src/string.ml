@@ -234,7 +234,7 @@ let enumerate_one_of = function
 
 let take s len =
   let length = length s in
-  sub s ~pos:0 ~len:(if len < length then len else length)
+  if len >= length then s else sub s ~pos:0 ~len
 ;;
 
 let drop s n =

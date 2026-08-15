@@ -398,9 +398,12 @@ module T = struct
     }
 
   let rec compare (x : t) (y : t) =
-    match Id.compare x.unique_id y.unique_id with
-    | (Lt | Gt) as cmp -> cmp
-    | Eq -> compare_arguments x y
+    if Stdlib.( == ) x y
+    then Eq
+    else (
+      match Id.compare x.unique_id y.unique_id with
+      | (Lt | Gt) as cmp -> cmp
+      | Eq -> compare_arguments x y)
 
   and compare_arguments a b =
     List.compare a.arguments b.arguments ~compare:(Option.compare compare)

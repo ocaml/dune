@@ -54,6 +54,10 @@ end
 val map : 'a t -> f:('a -> 'b) -> 'b t
 val bind : 'a t -> f:('a -> 'b t) -> 'b t
 
+(** [bind_apply t f x] is equivalent to [bind t ~f:(fun y -> f y x)] without allocating
+    the partial application. *)
+val bind_apply : 'a t -> ('a -> 'b -> 'c t) -> 'b -> 'c t
+
 (** Bind a successful result without allocating an intermediate callback for propagating
     errors. *)
 val bind_result

@@ -14,6 +14,7 @@ type _ t =
   | Map2_t : 'a t * ('a -> 'b) * ('b -> 'c) -> 'c t
   | Map3_t : 'a t * ('a -> 'b) * ('b -> 'c) * ('c -> 'd) -> 'd t
   | Bind_t : 'a t * ('a -> 'b t) -> 'b t
+  | Bind_apply_t : 'a t * ('a -> 'b -> 'c t) * 'b -> 'c t
   | Bind_result_t :
       ('a, 'error) result t * ('a -> ('b, 'error) result t)
       -> ('b, 'error) result t
@@ -274,6 +275,7 @@ let rec continue : type a. a continuation -> a -> eff =
 
 let return x = Return_t x
 let bind t ~f = Bind_t (t, f)
+let bind_apply t f x = Bind_apply_t (t, f, x)
 let bind_result t ~f = Bind_result_t (t, f)
 
 let[@inline] map t ~f =
@@ -313,6 +315,7 @@ let rec eval : type a. a t -> a continuation -> eff =
   | Map2_t (t, f, g) -> eval t (Map2 (f, g, k))
   | Map3_t (t, f, g, h) -> eval t (Map3 (f, g, h, k))
   | Bind_t (t, f) -> eval t (Bind (f, k))
+  | Bind_apply_t (t, f, x) -> eval t (Apply (f, x, k))
   | Bind_result_t (t, f) -> eval t (Bind_result (f, k))
   | Thunk_t f -> eval (f ()) k
   | Thunk_apply_t (f, x) -> eval (f x) k

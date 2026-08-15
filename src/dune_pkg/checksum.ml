@@ -22,7 +22,6 @@ include (
 let repr = Repr.view Repr.string ~to_:to_string
 let to_opam_hash v = v
 let of_opam_hash v = v
-let of_md5 md5 = md5 |> Md5.to_hex |> OpamHash.md5
 
 let pp v =
   let s = to_string v in

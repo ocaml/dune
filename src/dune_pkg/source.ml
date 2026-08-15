@@ -51,8 +51,11 @@ let fetch_and_hash_archive_cached (url_loc, url) =
   >>| function
   | Ok target ->
     Some
-      (match Md5.file target with
-       | Ok digest -> Checksum.of_md5 digest
+      (match
+         Result.try_with (fun () ->
+           OpamHash.compute ~kind:`SHA256 (Path.to_string target))
+       with
+       | Ok checksum -> Checksum.of_opam_hash checksum
        | Error exn ->
          User_error.raise
            ~loc:url_loc

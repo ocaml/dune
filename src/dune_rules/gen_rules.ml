@@ -3,30 +3,35 @@ open Memo.O
 module Gen_rules = Build_config.Gen_rules
 
 let install_stanza_rules ~ctx_dir ~expander (install_conf : Install_conf.t) =
-  let action =
-    (* XXX we're evaluating these stanzas here and [Install_rules]. Seems a bit
-       sad to do that *)
-    let files_and_dirs =
-      let expand = Expander.No_deps.expand expander ~mode:Single in
-      let+ files_expanded =
-        Install_entry.File.to_file_bindings_expanded
-          install_conf.files
-          ~expand
-          ~dir:ctx_dir
-      and+ dirs_expanded =
-        Install_entry.Dir.to_file_bindings_expanded
-          install_conf.dirs
-          ~expand
-          ~dir:ctx_dir
-          ~relative_dst_path_starts_with_parent_error_when:`Deprecation_warning_from_3_11
+  let* enabled = Expander.eval_blang expander install_conf.enabled_if in
+  if not enabled
+  then Memo.return ()
+  else (
+    let action =
+      (* XXX we're evaluating these stanzas here and [Install_rules]. Seems a bit
+         sad to do that *)
+      let files_and_dirs =
+        let expand = Expander.No_deps.expand expander ~mode:Single in
+        let+ files_expanded =
+          Install_entry.File.to_file_bindings_expanded
+            install_conf.files
+            ~expand
+            ~dir:ctx_dir
+        and+ dirs_expanded =
+          Install_entry.Dir.to_file_bindings_expanded
+            install_conf.dirs
+            ~expand
+            ~dir:ctx_dir
+            ~relative_dst_path_starts_with_parent_error_when:
+              `Deprecation_warning_from_3_11
+        in
+        List.map (files_expanded @ dirs_expanded) ~f:(fun fb ->
+          File_binding.Expanded.src fb |> Path.build)
       in
-      List.map (files_expanded @ dirs_expanded) ~f:(fun fb ->
-        File_binding.Expanded.src fb |> Path.build)
+      let open Action_builder.O in
+      Action_builder.of_memo files_and_dirs >>= Action_builder.paths
     in
-    let open Action_builder.O in
-    Action_builder.of_memo files_and_dirs >>= Action_builder.paths
-  in
-  Rules.Produce.Alias.add_deps (Alias.make Alias0.all ~dir:ctx_dir) action
+    Rules.Produce.Alias.add_deps (Alias.make Alias0.all ~dir:ctx_dir) action)
 ;;
 
 module For_stanza : sig

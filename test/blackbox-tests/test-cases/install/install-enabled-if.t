@@ -31,10 +31,6 @@ Test disabled install stanza in multi-context builds (github issue #15825).
   > EOF
 
   $ dune build
-  Error: No rule found for x (context other)
-  -> required by alias all (context other)
-  -> required by alias default (context other)
-  [1]
 
   $ cat _build/default/x
   x

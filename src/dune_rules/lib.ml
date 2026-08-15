@@ -675,11 +675,17 @@ module Parameterised = struct
 
   let remove_arguments lib = { lib with parameters = Resolve.return []; arguments = [] }
 
+  let complement_arguments_all ~parent deps =
+    if List.for_all deps ~f:(fun dep -> List.is_empty dep.arguments)
+    then Resolve.return deps
+    else Resolve.List.map deps ~f:(complement_arguments ~parent)
+  ;;
+
   let requires (lib : lib) ~for_ =
     let open Resolve.O in
     let+ deps =
       Compilation_mode.Per_mode.get lib.requires ~for_
-      >>= Resolve.List.map ~f:(complement_arguments ~parent:lib)
+      >>= complement_arguments_all ~parent:lib
     in
     let deps = List.filter_opt lib.arguments @ deps in
     match lib.arguments with

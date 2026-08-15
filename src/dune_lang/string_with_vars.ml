@@ -24,18 +24,20 @@ let compare_part a b =
 ;;
 
 let compare { quoted; parts; loc } t =
-  let open Ordering.O in
-  let= () = Bool.compare quoted t.quoted in
-  let= () = Loc.compare loc t.loc in
-  List.compare parts t.parts ~compare:compare_part
+  match Bool.compare quoted t.quoted with
+  | (Lt | Gt) as ordering -> ordering
+  | Eq ->
+    (match Loc.compare loc t.loc with
+     | Eq -> List.compare parts t.parts ~compare:compare_part
+     | (Lt | Gt) as ordering -> ordering)
 ;;
 
 let equal x y = Ordering.is_eq (compare x y)
 
 let compare_no_loc { quoted; parts; loc = _ } t =
-  let open Ordering.O in
-  let= () = Bool.compare quoted t.quoted in
-  List.compare parts t.parts ~compare:compare_part
+  match Bool.compare quoted t.quoted with
+  | Eq -> List.compare parts t.parts ~compare:compare_part
+  | (Lt | Gt) as ordering -> ordering
 ;;
 
 let equal_no_loc t1 t2 = Ordering.is_eq (compare_no_loc t1 t2)

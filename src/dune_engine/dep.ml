@@ -267,20 +267,21 @@ module Fact = struct
   end
 
   let compare a b =
-    let open Ordering.O in
     match a, b with
     | Nothing, Nothing -> Eq
     | Nothing, _ -> Lt
     | _, Nothing -> Gt
     | File (f1, d1), File (f2, d2) ->
-      let= () = Path.compare f1 f2 in
-      Digest.compare d1 d2
+      (match Path.compare f1 f2 with
+       | Eq -> Digest.compare d1 d2
+       | (Lt | Gt) as ordering -> ordering)
     | File _, _ -> Lt
     | _, File _ -> Gt
     | ( File_selector { file_selector_digest = d1; facts = f1 }
       , File_selector { file_selector_digest = d2; facts = f2 } ) ->
-      let= () = Digest.compare d1 d2 in
-      Files.compare f1 f2
+      (match Digest.compare d1 d2 with
+       | Eq -> Files.compare f1 f2
+       | (Lt | Gt) as ordering -> ordering)
     | File_selector _, _ -> Lt
     | _, File_selector _ -> Gt
     | Alias f1, Alias f2 -> Files.compare f1 f2

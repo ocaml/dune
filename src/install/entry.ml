@@ -171,12 +171,18 @@ let compare_entry
       { optional; src; dst; section; kind }
       t
   =
-  let open Ordering.O in
-  let= () = Section.compare section t.section in
-  let= () = Dst.compare dst t.dst in
-  let= () = compare_src src t.src in
-  let= () = Bool.compare optional t.optional in
-  compare_kind kind t.kind
+  match Section.compare section t.section with
+  | (Lt | Gt) as ordering -> ordering
+  | Eq ->
+    (match Dst.compare dst t.dst with
+     | (Lt | Gt) as ordering -> ordering
+     | Eq ->
+       (match compare_src src t.src with
+        | (Lt | Gt) as ordering -> ordering
+        | Eq ->
+          (match Bool.compare optional t.optional with
+           | (Lt | Gt) as ordering -> ordering
+           | Eq -> compare_kind kind t.kind)))
 ;;
 
 let relative_installed_path t ~paths = Dst.install_path paths t.section t.dst

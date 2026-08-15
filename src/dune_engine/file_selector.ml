@@ -25,10 +25,12 @@ let repr =
 let digest t = Digest.repr repr t
 
 let compare { dir; predicate; only_generated_files } t =
-  let open Ordering.O in
-  let= () = Path.compare dir t.dir in
-  let= () = Predicate_lang.Glob.compare predicate t.predicate in
-  Bool.compare only_generated_files t.only_generated_files
+  match Path.compare dir t.dir with
+  | (Lt | Gt) as ordering -> ordering
+  | Eq ->
+    (match Predicate_lang.Glob.compare predicate t.predicate with
+     | (Lt | Gt) as ordering -> ordering
+     | Eq -> Bool.compare only_generated_files t.only_generated_files)
 ;;
 
 let of_predicate_lang ~dir ?(only_generated_files = false) predicate =

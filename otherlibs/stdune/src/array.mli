@@ -7,6 +7,9 @@ val exists : 'a t -> f:('a -> bool) -> bool
 val fold_right : 'a t -> f:('a -> 'acc -> 'acc) -> init:'acc -> 'acc
 val swap : 'a t -> int -> int -> unit
 
+(** [of_rev_list l] creates an array containing the elements of [l] in reverse order. *)
+val of_rev_list : 'a list -> 'a t
+
 module Immutable : sig
   type 'a t
 

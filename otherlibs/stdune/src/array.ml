@@ -54,6 +54,19 @@ let of_list_map l ~f =
       f x)
 ;;
 
+let of_rev_list = function
+  | [] -> [||]
+  | last :: rest ->
+    let array = Stdlib.Array.make (Stdlib.List.length rest + 1) last in
+    let rec fill i = function
+      | [] -> array
+      | x :: rest ->
+        array.(i) <- x;
+        fill (i - 1) rest
+    in
+    fill (Stdlib.Array.length array - 2) rest
+;;
+
 module Immutable = struct
   include T
 
@@ -220,7 +233,7 @@ module Sorted = struct
       let of_sorted_list l =
         let rec loop l acc =
           match l with
-          | [] -> Stdlib.Array.of_list (Stdlib.List.rev acc)
+          | [] -> of_rev_list acc
           | x :: rest ->
             (match acc with
              | y :: _ ->

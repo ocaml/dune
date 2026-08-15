@@ -189,7 +189,10 @@ module Unboxed = struct
 
   let to_option t = if is_none t then None else Some (Obj.obj t)
   let iter t ~f = if is_none t then () else f (Obj.obj t)
-  let match_ t ~none ~some = if is_none t then none () else some (Obj.obj t)
+
+  let[@inline always] match_ t ~none ~some =
+    if is_none t then none () else some (Obj.obj t)
+  ;;
 
   let to_dyn f x =
     if is_none x then Dyn.variant "None" [] else Dyn.variant "Some" [ f (Obj.obj x) ]

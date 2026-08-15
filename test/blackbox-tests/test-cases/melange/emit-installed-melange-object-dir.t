@@ -58,5 +58,5 @@ files above.
   >    | "\(.predicate) \(.dir_kind) \(.dir)"]
   >   | sort[]
   > ' deps.json
-  *.cmi External $TESTCASE_ROOT/prefix/lib/repro/foo
-  *.cmj External $TESTCASE_ROOT/prefix/lib/repro/foo
+  *.cmi External $TESTCASE_ROOT/prefix/lib/repro/foo/melange
+  *.cmj External $TESTCASE_ROOT/prefix/lib/repro/foo/melange

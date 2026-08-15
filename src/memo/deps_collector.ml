@@ -9,11 +9,13 @@ type t = Dep_node.packed Deps.Dynamic.t ref
 
 let enabled = ref true
 let set_enabled value = enabled := value
+let inactive = ref Deps.Dynamic.empty
 let disabled = ref Deps.Dynamic.empty
+let is_inactive t = Stdlib.( == ) t inactive
 let is_disabled t = Stdlib.( == ) t disabled
-let var : t option Fiber.Var.t = Fiber.Var.create None
+let var : t Fiber.Var.t = Fiber.Var.create inactive
 let create () : t = if !enabled then ref Deps.Dynamic.empty else disabled
-let run_apply t ~f x = Fiber.Var.set_apply var (Some t) f x
+let run_apply t ~f x = Fiber.Var.set_apply var t f x
 
 let get t : Dep_node.packed Deps.t =
   if is_disabled t then Deps.empty else Deps.Dynamic.to_static !t
@@ -24,9 +26,11 @@ let add t dep_node = t := Deps.Dynamic.append_seq !t ~node:(Dep_node.T dep_node)
 (* Add a dependency on [dep_node] to [collector], if there is an active one. Defined at
    the top level so it is hoisted (closure-free) when passed to [get_apply_map]. *)
 let add_dep_to_collector collector dep_node =
-  match collector with
-  | None -> ()
-  | Some t -> if is_disabled t then Counter.incr Metrics.Compute.edges else add t dep_node
+  if is_inactive collector
+  then ()
+  else if is_disabled collector
+  then Counter.incr Metrics.Compute.edges
+  else add collector dep_node
 ;;
 
 (* Add a dependency on [dep_node] to the currently running computation, if there is one. *)
@@ -153,14 +157,16 @@ let run_parallel ~num_threads k =
   then k None
   else
     Fiber.Var.get var
-    >>= function
-    | None -> k None
-    | Some t when is_disabled t ->
+    >>= fun t ->
+    if is_inactive t
+    then k None
+    else if is_disabled t
+    then
       Fiber.collect_errors (fun () -> k None)
-      >>= (function
-       | Ok result -> Fiber.return result
-       | Error exns -> Fiber.reraise_all exns)
-    | Some t ->
+      >>= function
+      | Ok result -> Fiber.return result
+      | Error exns -> Fiber.reraise_all exns
+    else (
       let threads = Pool.acquire num_threads in
       let thread_index = ref 0 in
       let run_thread =
@@ -170,7 +176,7 @@ let run_parallel ~num_threads k =
                    [thread_index] is atomic and each thread gets a distinct sub-collector. *)
               let i = !thread_index in
               incr thread_index;
-              Fiber.Var.set_apply var (Some (Pool.get threads i)) f x)
+              Fiber.Var.set_apply var (Pool.get threads i) f x)
         }
       in
       let* result = Fiber.collect_errors (fun () -> k (Some run_thread)) in
@@ -178,7 +184,7 @@ let run_parallel ~num_threads k =
       := Deps.Dynamic.append_par_init !t ~num_threads ~f:(fun i ->
            Deps.Dynamic.to_static !(Pool.get threads i));
       Pool.release threads;
-      (match result with
-       | Ok res -> Fiber.return res
-       | Error exns -> Fiber.reraise_all exns)
+      match result with
+      | Ok res -> Fiber.return res
+      | Error exns -> Fiber.reraise_all exns)
 ;;

@@ -118,17 +118,10 @@ let%expect_test "action test - random_prefix" =
   [%expect {| This is right |}]
 ;;
 
-(* CR-soon alizter: the prefix_of_patch regex truncates unquoted
-   filenames at the first space, so "foo bar" becomes "foo". *)
 let%expect_test "action test - spaces" =
-  try
-    test [ "foo bar", "This is wrong\n" ] ("foo.patch", Patch_examples.spaces);
-    check "foo bar";
-    [%expect.unreachable]
-  with
-  | Dune_util.Report_error.Already_reported ->
-    print_endline @@ normalize_error_path [%expect.output];
-    [%expect {| Error: Cannot edit file "foo": file does not exist |}]
+  test [ "foo bar", "This is wrong\n" ] ("foo.patch", Patch_examples.spaces);
+  check "foo bar";
+  [%expect {| This is right |}]
 ;;
 
 let%expect_test "action test - unified_spaces" =

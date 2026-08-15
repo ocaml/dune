@@ -230,11 +230,10 @@ let%expect_test "parse_patches - random_prefix" =
 ;;
 
 let%expect_test "parse_patches - spaces" =
-  (* CR-soon alizter: Should be Edit ("foo bar", "foo bar") but parser truncates at space *)
   test Patch_examples.spaces;
   [%expect
     {|
-    [ { operation = Edit ("foo", "foo")
+    [ { operation = Edit ("foo bar", "foo bar")
       ; hunks =
           [ { mine_start = 1
             ; mine_len = 1

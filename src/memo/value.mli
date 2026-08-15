@@ -28,3 +28,5 @@ type 'a t =
 
 (** Get the value, or reraise the contained errors after remapping each one with [map_exn]. *)
 val get_exn : 'a t -> map_exn:(exn -> exn) -> 'a Fiber.t
+
+val get_exn_error : 'a t -> map_exn:(exn -> exn) -> 'a Fiber.t

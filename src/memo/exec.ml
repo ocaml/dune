@@ -233,17 +233,25 @@ let exec_dep_node_now : 'i 'o. ('i, 'o) Dep_node.t -> 'o Fiber.t =
   (* Doing the check here before creating any fibers, rather than in
      [consider_and_restore_from_cache_without_adding_dep], is a measurable win. *)
   if Run.is_current (Dep_node.last_validated_at node)
-  then
-    let* () = Deps_collector.add_dep_from_caller node in
-    let stack_frame = Dep_node.T node in
-    Value.get_exn node.value ~map_exn:(fun exn -> Error.extend_stack exn ~stack_frame)
+  then (
+    match node.value with
+    | Ok value -> Deps_collector.add_dep_from_caller_and_return node value
+    | Error _ | Uninitialized ->
+      let* () = Deps_collector.add_dep_from_caller node in
+      let stack_frame = Dep_node.T node in
+      Value.get_exn_error node.value ~map_exn:(fun exn ->
+        Error.extend_stack exn ~stack_frame))
   else
     consider_and_restore_from_cache_without_adding_dep node
     >>= function
     | Unchanged ->
-      let* () = Deps_collector.add_dep_from_caller node in
-      let stack_frame = Dep_node.T node in
-      Value.get_exn node.value ~map_exn:(fun exn -> Error.extend_stack exn ~stack_frame)
+      (match node.value with
+       | Ok value -> Deps_collector.add_dep_from_caller_and_return node value
+       | Error _ | Uninitialized ->
+         let* () = Deps_collector.add_dep_from_caller node in
+         let stack_frame = Dep_node.T node in
+         Value.get_exn_error node.value ~map_exn:(fun exn ->
+           Error.extend_stack exn ~stack_frame))
     | Cancelled { dependency_cycle } ->
       (* If restoring from cache failed with a cycle error, and the node's function is
          deterministic (as it should be), then we will hit the same cycle when trying to
@@ -255,10 +263,13 @@ let exec_dep_node_now : 'i 'o. ('i, 'o) Dep_node.t -> 'o Fiber.t =
       consider_and_compute_without_adding_dep node
       >>= (function
        | Ok () ->
-         let* () = Deps_collector.add_dep_from_caller node in
-         let stack_frame = Dep_node.T node in
-         Value.get_exn node.value ~map_exn:(fun exn ->
-           Error.extend_stack exn ~stack_frame)
+         (match node.value with
+          | Ok value -> Deps_collector.add_dep_from_caller_and_return node value
+          | Error _ | Uninitialized ->
+            let* () = Deps_collector.add_dep_from_caller node in
+            let stack_frame = Dep_node.T node in
+            Value.get_exn_error node.value ~map_exn:(fun exn ->
+              Error.extend_stack exn ~stack_frame))
        | Error dependency_cycle -> raise (Cycle_error.E dependency_cycle))
 ;;
 

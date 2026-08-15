@@ -20,6 +20,8 @@ val get : t -> Dep_node.packed Deps.t
 (** Record a dependency on [dep_node] in the active collector, if there is one. *)
 val add_dep_from_caller : ('i, 'o) Dep_node.t -> unit Fiber.t
 
+val add_dep_from_caller_and_return : ('i, 'o) Dep_node.t -> 'a -> 'a Fiber.t
+
 (** A way to run one parallel thread while collecting its dependencies separately. *)
 type run_thread = { run : 'a 'b. f:('b -> 'a Fiber.t) -> 'b -> 'a Fiber.t } [@@unboxed]
 

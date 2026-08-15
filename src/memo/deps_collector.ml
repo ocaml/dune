@@ -34,6 +34,15 @@ let add_dep_from_caller dep_node =
   Fiber.Var.get_apply_map var add_dep_to_collector dep_node
 ;;
 
+let add_dep_and_return collector (dep_node, value) =
+  add_dep_to_collector collector dep_node;
+  value
+;;
+
+let add_dep_from_caller_and_return dep_node value =
+  Fiber.Var.get_apply_map var add_dep_and_return (dep_node, value)
+;;
+
 (* A way to run a parallel thread while collecting its dependencies separately. *)
 type run_thread = { run : 'a 'b. f:('b -> 'a Fiber.t) -> 'b -> 'a Fiber.t } [@@unboxed]
 

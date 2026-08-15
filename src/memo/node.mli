@@ -246,7 +246,7 @@ end
 module Call_stack : sig
   type t = Stack_frame_with_state.t list
 
-  val call_stack_var : t option Fiber.Var.t
+  val call_stack_var : t Fiber.Var.t
   val get_call_stack : unit -> t Fiber.t
   val get_call_stack_without_state : unit -> Dep_node.packed list Fiber.t
   val push_frame : Stack_frame_with_state.t -> (unit -> 'a Fiber.t) -> 'a Fiber.t

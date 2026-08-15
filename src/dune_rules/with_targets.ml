@@ -60,14 +60,15 @@ end
 open O
 
 let all xs =
+  let rec collect builds targets = function
+    | [] -> builds, targets
+    | x :: xs -> collect (x.build :: builds) (Targets.combine x.targets targets) xs
+  in
   match xs with
   | [] -> return []
   | xs ->
-    let build, targets =
-      Stdune.List.fold_left xs ~init:([], Targets.empty) ~f:(fun (builds, targets) x ->
-        x.build :: builds, Targets.combine x.targets targets)
-    in
-    { build = all (Stdune.List.rev build); targets }
+    let builds, targets = collect [] Targets.empty xs in
+    { build = all (Stdune.List.rev builds); targets }
 ;;
 
 let write_file_dyn ?(perm = File_perm.Normal) fn s =

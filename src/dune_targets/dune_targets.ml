@@ -136,42 +136,37 @@ module Validation_result = struct
 end
 
 let validate { files; dirs } =
-  let files_result =
-    Path.Build.Array.Set.fold files ~init:Validation_result.No_targets ~f:(fun path res ->
-      let parent = Path.Build.parent_exn path in
-      let name = Path.Build.basename path in
-      match res with
-      | No_targets ->
-        Valid
-          { Validated.root = parent
-          ; files = Filename.Set.singleton name
-          ; dirs = Filename.Set.empty
-          }
-      | Valid t when Path.Build.equal t.root parent ->
-        Valid { t with files = Filename.Set.add t.files name }
-      | Valid _ -> Inconsistent_parent_dir
-      | (Inconsistent_parent_dir | File_and_directory_target_with_the_same_name _) as res
-        -> res)
+  let first =
+    match Path.Build.Array.Set.choose files with
+    | Some _ as first -> first
+    | None -> Path.Build.Array.Set.choose dirs
   in
-  Path.Build.Array.Set.fold dirs ~init:files_result ~f:(fun path res ->
-    let parent = Path.Build.parent_exn path in
-    let name = Path.Build.basename path in
-    match res with
-    | No_targets ->
-      Valid
-        { Validated.root = parent
-        ; files = Filename.Set.empty
-        ; dirs = Filename.Set.singleton name
-        }
-    | Valid t when Path.Build.equal t.root parent ->
-      if Filename.Set.mem t.files name
-      then
-        File_and_directory_target_with_the_same_name
-          (Path.Build.relative_fname t.root name)
-      else Valid { t with dirs = Filename.Set.add t.dirs name }
-    | Valid _ -> Inconsistent_parent_dir
-    | (Inconsistent_parent_dir | File_and_directory_target_with_the_same_name _) as res ->
-      res)
+  match first with
+  | None -> Validation_result.No_targets
+  | Some first ->
+    let root = Path.Build.parent_exn first in
+    let exception Invalid of Validation_result.t in
+    (try
+       let files =
+         Path.Build.Array.Set.fold files ~init:Filename.Set.empty ~f:(fun path names ->
+           if Path.Build.equal root (Path.Build.parent_exn path)
+           then Filename.Set.add names (Path.Build.basename path)
+           else raise_notrace (Invalid Inconsistent_parent_dir))
+       in
+       let dirs =
+         Path.Build.Array.Set.fold dirs ~init:Filename.Set.empty ~f:(fun path names ->
+           if Path.Build.equal root (Path.Build.parent_exn path)
+           then (
+             let name = Path.Build.basename path in
+             if Filename.Set.mem files name
+             then
+               raise_notrace (Invalid (File_and_directory_target_with_the_same_name path))
+             else Filename.Set.add names name)
+           else raise_notrace (Invalid Inconsistent_parent_dir))
+       in
+       Valid { Validated.root; files; dirs }
+     with
+     | Invalid result -> result)
 ;;
 
 module Produced = struct

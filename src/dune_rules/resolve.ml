@@ -126,13 +126,7 @@ module Memo = struct
     type nonrec 'a t = 'a t Memo.t
 
     let return x = Memo.return (Ok x)
-
-    let bind t ~f =
-      let* t = t in
-      match t with
-      | Ok s -> f s
-      | Error e -> Memo.return (Error e)
-    ;;
+    let bind (t : 'a t) ~(f : 'a -> 'b t) : 'b t = Memo.bind_result t ~f
   end
 
   module M = struct

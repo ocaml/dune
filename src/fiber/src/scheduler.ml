@@ -93,6 +93,10 @@ and exec : type a. context -> a continuation -> a -> Jobs.t -> step' =
   | Map2 (f, g, k) -> exec_map2 ctx f g x k jobs
   | Map3 (f, g, h, k) -> exec_map3 ctx f g h x k jobs
   | Bind (f, k) -> exec_fiber_apply ctx f x k jobs
+  | Bind_result (f, k) ->
+    (match x with
+     | Ok x -> exec_fiber_apply ctx f x k jobs
+     | Error _ as error -> exec ctx k error jobs)
   | Apply (f, y, k) -> exec_fiber_apply2 ctx f x y k jobs
   | Apply_map (f, y, k) -> exec_apply_map ctx f x y k jobs
   | Unwind_to k -> exec ctx.parent k x jobs
@@ -340,6 +344,7 @@ and exec_fiber : type a. context -> a t -> a continuation -> Jobs.t -> step' =
   | Map2_t (t, f, g) -> exec_fiber ctx t (Map2 (f, g, k)) jobs
   | Map3_t (t, f, g, h) -> exec_fiber ctx t (Map3 (f, g, h, k)) jobs
   | Bind_t (t, f) -> exec_fiber ctx t (Bind (f, k)) jobs
+  | Bind_result_t (t, f) -> exec_fiber ctx t (Bind_result (f, k)) jobs
   | Thunk_t f -> exec_fiber_thunk ctx f k jobs
   | Thunk_apply_t (f, x) -> exec_fiber_apply ctx f x k jobs
   | With_error_handler_t (f, on_error) -> with_error_handler ctx on_error f k jobs

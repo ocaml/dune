@@ -25,9 +25,9 @@ module External_location = struct
     match x, y with
     | Relative_to_stdlib x, Relative_to_stdlib y -> Path.Local.compare x y
     | Relative_to_findlib (x1, x2), Relative_to_findlib (y1, y2) ->
-      let open Ordering.O in
-      let= () = Path.compare x1 y1 in
-      Path.Local.compare x2 y2
+      (match Path.compare x1 y1 with
+       | Eq -> Path.Local.compare x2 y2
+       | (Lt | Gt) as ordering -> ordering)
     | Absolute x, Absolute y -> Path.compare x y
     | Relative_to_stdlib _, _ -> Lt
     | _, Relative_to_stdlib _ -> Gt

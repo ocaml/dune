@@ -46,9 +46,9 @@ end
 include T
 
 let compare { dir; name } t =
-  let open Ordering.O in
-  let= () = Name.compare name t.name in
-  Path.Build.compare dir t.dir
+  match Name.compare name t.name with
+  | Eq -> Path.Build.compare dir t.dir
+  | (Lt | Gt) as ordering -> ordering
 ;;
 
 let equal x y = compare x y = Eq

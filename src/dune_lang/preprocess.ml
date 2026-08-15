@@ -79,10 +79,12 @@ module Pps = struct
   ;;
 
   let compare_no_locs compare_pps { pps; flags; staged; loc = _ } t =
-    let open Ordering.O in
-    let= () = Bool.compare staged t.staged in
-    let= () = List.compare flags t.flags ~compare:String_with_vars.compare_no_loc in
-    List.compare pps t.pps ~compare:compare_pps
+    match Bool.compare staged t.staged with
+    | (Lt | Gt) as ordering -> ordering
+    | Eq ->
+      (match List.compare flags t.flags ~compare:String_with_vars.compare_no_loc with
+       | Eq -> List.compare pps t.pps ~compare:compare_pps
+       | (Lt | Gt) as ordering -> ordering)
   ;;
 
   let decode =

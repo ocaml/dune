@@ -12,9 +12,9 @@ module Name = struct
     type t = string
 
     let compare a b =
-      let open Ordering.O in
-      let= () = Int.compare (String.length a) (String.length b) in
-      String.compare a b
+      match Int.compare (String.length a) (String.length b) with
+      | Eq -> String.compare a b
+      | (Lt | Gt) as ordering -> ordering
     ;;
 
     let to_dyn = Dyn.string

@@ -20,9 +20,9 @@ module Entry = struct
        [Repr.Poly] conservatively rejects. Make its representation structural
        so this comparison can be derived. *)
     let compare x y =
-      let open Ordering.O in
-      let= () = String.compare x.lookup_name y.lookup_name in
-      Filename.compare x.install_name y.install_name
+      match String.compare x.lookup_name y.lookup_name with
+      | Eq -> Filename.compare x.install_name y.install_name
+      | (Lt | Gt) as ordering -> ordering
     ;;
   end
 

@@ -19,9 +19,9 @@ module Version = struct
     type t = int * int
 
     let compare (major_a, minor_a) (major_b, minor_b) =
-      let open Ordering.O in
-      let= () = Int.compare major_a major_b in
-      Int.compare minor_a minor_b
+      match Int.compare major_a major_b with
+      | Eq -> Int.compare minor_a minor_b
+      | (Lt | Gt) as ordering -> ordering
     ;;
 
     let to_dyn t =

@@ -514,7 +514,6 @@ module Internal = struct
 
   and execute_rule_impl ~rule_kind rule =
     let { Rule.id = _; targets; mode; action; info } = rule in
-    let head_target = Targets.Validated.head targets in
     let* execution_parameters =
       match Dpath.Target_dir.of_target targets.root with
       | Regular (With_context (context, _)) | Anonymous_action (With_context (context, _))
@@ -686,7 +685,7 @@ module Internal = struct
              are already included into the rule digest. *)
           Rule_cache.Workspace_local.store
             ~targets:produced_targets
-            ~head_target
+            ~head_target:(Targets.Validated.head targets)
             ~rule_digest
             ~dynamic_deps_stages
             ~targets_digest:(Targets.Produced.digest produced_targets);

@@ -63,6 +63,24 @@ module Hasher = struct
     Scratch.pos := pos + 8
   ;;
 
+  let feed_manual_sized_string s =
+    let length = String.length s in
+    let pos = !Scratch.pos in
+    if length <= Scratch.len - pos - 8
+    then (
+      Stdlib.Bytes.set_int64_le Scratch.buf pos (Int64.of_int length);
+      Bytes.unsafe_blit_string
+        ~src:s
+        ~src_pos:0
+        ~dst:Scratch.buf
+        ~dst_pos:(pos + 8)
+        ~len:length;
+      Scratch.pos := pos + 8 + length)
+    else (
+      feed_manual_int length;
+      feed_manual_string s)
+  ;;
+
   let feed_manual_bool b =
     let pos = !Scratch.pos in
     let pos =
@@ -375,11 +393,7 @@ module Manual = struct
   let create () = ()
   let bool () = Hasher.feed_manual_bool
   let int () = Hasher.feed_manual_int
-
-  let string () s =
-    int () (String.length s);
-    Hasher.feed_manual_string s
-  ;;
+  let string () s = Hasher.feed_manual_sized_string s
 
   let option t ~f = function
     | None -> bool t false

@@ -1,3 +1,4 @@
 (cram
  (applies_to :whole_subtree)
+ (timeout 60)
  (deps %{bin:dune} ../rpc_client.exe))

@@ -483,6 +483,7 @@ and exec_fiber_apply
   fun ctx f x k jobs ->
   match f x with
   | exception exn -> handle_exception ctx exn jobs
+  | Return_t y -> exec ctx k y jobs
   | t -> exec_fiber ctx t k jobs
 
 and exec_fiber_apply2

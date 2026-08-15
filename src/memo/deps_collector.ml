@@ -43,7 +43,7 @@ let add_dep_and_return collector dep_node value =
   value
 ;;
 
-let add_dep_from_caller_and_return dep_node value =
+let[@inline] add_dep_from_caller_and_return dep_node value =
   Fiber.Var.get_apply_map2 var add_dep_and_return dep_node value
 ;;
 

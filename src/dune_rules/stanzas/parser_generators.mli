@@ -5,6 +5,7 @@ type t =
   ; modules : Ordered_set_lang.Unexpanded.t
   ; mode : Rule_mode.t
   ; enabled_if : Blang.t
+  ; flags : Ordered_set_lang.Unexpanded.t
   }
 
 type for_ =

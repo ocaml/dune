@@ -91,7 +91,10 @@ module List = struct
   let map t ~f =
     let rec loop acc = function
       | [] -> Ok (List.rev acc)
-      | x :: xs -> f x >>= fun x -> loop (x :: acc) xs
+      | x :: xs ->
+        (match f x with
+         | Error _ as error -> error
+         | Ok x -> loop (x :: acc) xs)
     in
     loop [] t
   ;;
@@ -99,7 +102,8 @@ module List = struct
   let all =
     let rec loop acc = function
       | [] -> Ok (List.rev acc)
-      | t :: l -> t >>= fun x -> loop (x :: acc) l
+      | (Error _ as error) :: _ -> error
+      | Ok x :: l -> loop (x :: acc) l
     in
     fun l -> loop [] l
   ;;
@@ -107,7 +111,10 @@ module List = struct
   let concat_map =
     let rec loop f acc = function
       | [] -> Ok (List.rev acc)
-      | x :: l -> f x >>= fun y -> loop f (List.rev_append y acc) l
+      | x :: l ->
+        (match f x with
+         | Error _ as error -> error
+         | Ok y -> loop f (List.rev_append y acc) l)
     in
     fun l ~f -> loop f [] l
   ;;
@@ -115,22 +122,31 @@ module List = struct
   let rec iter t ~f =
     match t with
     | [] -> Ok ()
-    | x :: xs -> f x >>= fun () -> iter xs ~f
+    | x :: xs ->
+      (match f x with
+       | Error _ as error -> error
+       | Ok () -> iter xs ~f)
   ;;
 
   let rec fold_left t ~f ~init =
     match t with
     | [] -> Ok init
-    | x :: xs -> f init x >>= fun init -> fold_left xs ~f ~init
+    | x :: xs ->
+      (match f init x with
+       | Error _ as error -> error
+       | Ok init -> fold_left xs ~f ~init)
   ;;
 
   let filter_map t ~f =
-    fold_left t ~init:[] ~f:(fun acc x ->
-      f x
-      >>| function
-      | None -> acc
-      | Some y -> y :: acc)
-    >>| List.rev
+    let rec loop acc = function
+      | [] -> Ok (List.rev acc)
+      | x :: xs ->
+        (match f x with
+         | Error _ as error -> error
+         | Ok None -> loop acc xs
+         | Ok (Some y) -> loop (y :: acc) xs)
+    in
+    loop [] t
   ;;
 end
 

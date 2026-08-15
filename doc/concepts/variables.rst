@@ -108,8 +108,8 @@ corresponding ``%{ocaml-config:...}`` variables expand to the same values.
 - ``git-sha`` expands to the short git SHA of the HEAD commit of the workspace's
   git repository (equivalent to ``git rev-parse --short HEAD``). Expands to the
   empty string when no commit sha was found. Available since Dune 3.24.
-- ``<ext>:<path>`` where ``<ext>`` is one of ``cmo``, ``cmi``, ``cma``,
-  ``cmx``, or ``cmxa``. See :ref:`variables-for-artifacts`.
+- Artifact variables such as ``cmi:<path>`` and ``melange.emit:<path>`` expand
+  to paths of build artifacts. See :ref:`variables-for-artifacts`.
 - ``env:<var>=<default`` expands to the value of the environment
   variable ``<var>``, or ``<default>`` if it does not exist.
   For example, ``%{env:BIN=/usr/bin}``.

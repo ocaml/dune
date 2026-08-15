@@ -24,11 +24,6 @@ module Workspace_root_for_build_prefix_map = struct
     | Set x, Set y -> String.equal x y
   ;;
 
-  let to_option = function
-    | Unset -> None
-    | Set root -> Some root
-  ;;
-
   let repr =
     Repr.variant
       "workspace-root-for-build-prefix-map"
@@ -121,21 +116,25 @@ let digest
       }
   =
   let d = Digest.Manual.create () in
-  let root =
-    Workspace_root_for_build_prefix_map.to_option workspace_root_to_build_path_prefix_map
+  let root_is_set =
+    match workspace_root_to_build_path_prefix_map with
+    | Unset -> false
+    | Set _ -> true
   in
   let flags =
     Action_output_on_success.for_digest action_stdout_on_success
     lor (Action_output_on_success.for_digest action_stderr_on_success lsl 2)
     lor (bool_to_int expand_aliases_in_sandbox lsl 4)
-    lor (bool_to_int (Option.is_some root) lsl 5)
+    lor (bool_to_int root_is_set lsl 5)
     lor (bool_to_int should_remove_write_permissions_on_generated_files lsl 6)
     lor (bool_to_int sandbox_actions lsl 7)
   in
   Digest.Manual.int d flags;
   Digest.Manual.int d action_stdout_limit;
   Digest.Manual.int d action_stderr_limit;
-  Option.iter root ~f:(Digest.Manual.string d);
+  (match workspace_root_to_build_path_prefix_map with
+   | Unset -> ()
+   | Set root -> Digest.Manual.string d root);
   Digest.Manual.option
     d
     ~f:(fun d root -> Digest.Manual.string d (Path.Source.to_string root))

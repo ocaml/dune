@@ -163,7 +163,12 @@ let make_dep_node ~spec ~input : _ Dep_node.t =
 ;;
 
 let dep_node (t : (_, _) Table.t) input =
-  Store.find_or_add t.cache input ~f:(fun input -> make_dep_node ~spec:t.spec ~input)
+  match Store.find t.cache input with
+  | Some node -> node
+  | None ->
+    let node = make_dep_node ~spec:t.spec ~input in
+    Store.set t.cache input node;
+    node
 ;;
 
 let check_point = Exec.check_point

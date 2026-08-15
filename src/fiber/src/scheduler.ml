@@ -114,7 +114,10 @@ and exec : type a. context -> a continuation -> a -> Jobs.t -> step' =
         | exception exn -> handle_exception ctx exn jobs
         | Return_t y -> exec ctx k y jobs
         | t -> exec_fiber ctx t k jobs))
-  | Apply (f, y, k) -> exec_fiber_apply2 ctx f x y k jobs
+  | Apply (f, y, k) ->
+    (match f x y with
+     | exception exn -> handle_exception ctx exn jobs
+     | t -> exec_fiber ctx t k jobs)
   | Apply_map (f, y, k) ->
     (match f x y with
      | exception exn -> handle_exception ctx exn jobs
@@ -440,21 +443,6 @@ and exec_fiber_apply
   match f x with
   | exception exn -> handle_exception ctx exn jobs
   | Return_t y -> exec ctx k y jobs
-  | t -> exec_fiber ctx t k jobs
-
-and exec_fiber_apply2
-  :  'a 'b 'c.
-     context
-  -> ('a -> 'b -> 'c t)
-  -> 'a
-  -> 'b
-  -> 'c continuation
-  -> Jobs.t
-  -> step'
-  =
-  fun ctx f x y k jobs ->
-  match f x y with
-  | exception exn -> handle_exception ctx exn jobs
   | t -> exec_fiber ctx t k jobs
 
 and deref : 'a 'b. ('a, 'b) map_reduce_context' -> Jobs.t -> step' =

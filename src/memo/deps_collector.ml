@@ -25,7 +25,7 @@ let add t dep_node = t := Deps.Dynamic.append_seq !t ~node:(Dep_node.T dep_node)
 
 (* Add a dependency on [dep_node] to [collector], if there is an active one. Defined at
    the top level so it is hoisted (closure-free) when passed to [get_apply_map]. *)
-let add_dep_to_collector collector dep_node =
+let[@inline] add_dep_to_collector collector dep_node =
   if is_inactive collector
   then ()
   else if is_disabled collector

@@ -29,6 +29,17 @@ let external_basename s =
   | exception Code_error.E _ -> print_endline "invalid"
 ;;
 
+let local_of_string s =
+  match Path.Local.of_string s with
+  | path ->
+    printfn
+      "%S -> %S%s"
+      s
+      (Path.Local.to_string path)
+      (if Path.Local.is_root path then " (root)" else "")
+  | exception User_error.E _ -> printfn "%S -> outside workspace" s
+;;
+
 let descendant p ~of_ = Dyn.option Path.to_dyn (Path.descendant p ~of_) |> print_dyn
 let is_descendant p ~of_ = Dyn.bool (Path.is_descendant p ~of_) |> print_dyn
 
@@ -50,6 +61,37 @@ let drop_build_context p =
 ;;
 
 let local_part p = Path.local_part p |> Path.Local.to_dyn |> print_dyn
+
+let%expect_test "local path parsing produces canonical representations" =
+  List.iter
+    [ ""
+    ; "."
+    ; "foo"
+    ; "foo/bar"
+    ; "./foo"
+    ; "foo/./bar"
+    ; "foo//bar/"
+    ; "foo/../bar"
+    ; "foo/.."
+    ; ".."
+    ; "../foo"
+    ]
+    ~f:local_of_string;
+  [%expect
+    {|
+    "" -> "." (root)
+    "." -> "." (root)
+    "foo" -> "foo"
+    "foo/bar" -> "foo/bar"
+    "./foo" -> "foo"
+    "foo/./bar" -> "foo/bar"
+    "foo//bar/" -> "foo/bar"
+    "foo/../bar" -> "bar"
+    "foo/.." -> "." (root)
+    ".." -> outside workspace
+    "../foo" -> outside workspace
+    |}]
+;;
 
 let%expect_test _ =
   let p = Path.(relative root) "foo" in

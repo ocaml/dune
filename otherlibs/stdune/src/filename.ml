@@ -20,9 +20,9 @@ let is_valid s =
 let of_string s = Option.some_if (is_valid s) s
 
 let of_string_exn s =
-  match of_string s with
-  | Some t -> t
-  | None ->
+  if is_valid s
+  then s
+  else
     Code_error.raise
       "Filename.of_string_exn: invalid filename"
       [ "filename", Dyn.string s ]
@@ -90,9 +90,9 @@ module Extension = struct
   let of_string s = Option.some_if (is_valid s) s
 
   let of_string_exn s =
-    match of_string s with
-    | Some t -> t
-    | None ->
+    if is_valid s
+    then s
+    else
       Code_error.raise
         "Filename.Extension.of_string_exn: invalid extension"
         [ "extension", Dyn.string s ]

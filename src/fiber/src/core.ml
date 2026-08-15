@@ -14,6 +14,9 @@ type _ t =
   | Map2_t : 'a t * ('a -> 'b) * ('b -> 'c) -> 'c t
   | Map3_t : 'a t * ('a -> 'b) * ('b -> 'c) * ('c -> 'd) -> 'd t
   | Bind_t : 'a t * ('a -> 'b t) -> 'b t
+  | Bind_result_t :
+      ('a, 'error) result t * ('a -> ('b, 'error) result t)
+      -> ('b, 'error) result t
   | Thunk_t : (unit -> 'a t) -> 'a t
   | Thunk_apply_t : ('a -> 'b t) * 'a -> 'b t
   | With_error_handler_t : (unit -> 'a t) * (Exn_with_backtrace.t -> Nothing.t t) -> 'a t
@@ -50,6 +53,9 @@ and 'a continuation =
   | Map2 : ('a -> 'b) * ('b -> 'c) * 'c continuation -> 'a continuation
   | Map3 : ('a -> 'b) * ('b -> 'c) * ('c -> 'd) * 'd continuation -> 'a continuation
   | Bind : ('a -> 'b t) * 'b continuation -> 'a continuation
+  | Bind_result :
+      ('a -> ('b, 'error) result t) * ('b, 'error) result continuation
+      -> ('a, 'error) result continuation
   | Apply : ('a -> 'b -> 'c t) * 'b * 'c continuation -> 'a continuation
   | Apply_map : ('a -> 'b -> 'c) * 'b * 'c continuation -> 'a continuation
   | Unwind_to : 'a continuation -> 'a continuation
@@ -197,6 +203,10 @@ let rec continue : type a. a continuation -> a -> eff =
   | Map2 (f, g, k) -> continue k (g (f x))
   | Map3 (f, g, h, k) -> continue k (h (g (f x)))
   | Bind (f, k) -> Run (f x, k)
+  | Bind_result (f, k) ->
+    (match x with
+     | Ok x -> Run (f x, k)
+     | Error _ as error -> continue k error)
   | Apply (f, y, k) -> Run (f x y, k)
   | Apply_map (f, y, k) -> continue k (f x y)
   | Unwind_to k -> Unwind (k, x)
@@ -261,6 +271,7 @@ let rec continue : type a. a continuation -> a -> eff =
 
 let return x = Return_t x
 let bind t ~f = Bind_t (t, f)
+let bind_result t ~f = Bind_result_t (t, f)
 
 let map t ~f =
   match t with
@@ -299,6 +310,7 @@ let rec eval : type a. a t -> a continuation -> eff =
   | Map2_t (t, f, g) -> eval t (Map2 (f, g, k))
   | Map3_t (t, f, g, h) -> eval t (Map3 (f, g, h, k))
   | Bind_t (t, f) -> eval t (Bind (f, k))
+  | Bind_result_t (t, f) -> eval t (Bind_result (f, k))
   | Thunk_t f -> eval (f ()) k
   | Thunk_apply_t (f, x) -> eval (f x) k
   | With_error_handler_t (f, on_error) -> With_error_handler (on_error, f, k)

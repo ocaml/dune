@@ -20,6 +20,11 @@ include S with type 'a t := 'a t
 module Option : Monad.Option with type 'a t := 'a t
 module Result : Monad.Result with type 'a t := 'a t
 
+val bind_result
+  :  ('a, 'error) result t
+  -> f:('a -> ('b, 'error) result t)
+  -> ('b, 'error) result t
+
 (** Events in the life-cycle of a memoized node, for instrumentation (see the [?on_event]
     arguments of [create] and friends). *)
 module Event : sig

@@ -54,6 +54,13 @@ end
 val map : 'a t -> f:('a -> 'b) -> 'b t
 val bind : 'a t -> f:('a -> 'b t) -> 'b t
 
+(** Bind a successful result without allocating an intermediate callback for propagating
+    errors. *)
+val bind_result
+  :  ('a, 'error) result t
+  -> f:('a -> ('b, 'error) result t)
+  -> ('b, 'error) result t
+
 (** {1 Joining} *)
 
 (** The following combinators are helpers to combine the result of several

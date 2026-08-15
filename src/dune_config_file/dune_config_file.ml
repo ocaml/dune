@@ -699,49 +699,52 @@ module Dune_config = struct
          | None -> 1
          | Some s -> Int.of_string s |> Option.value ~default:1)
        else (
-         let commands =
-           [ "nproc", []
-           ; "getconf", [ "_NPROCESSORS_ONLN" ]
-           ; "getconf", [ "NPROCESSORS_ONLN" ]
-           ]
-         in
-         let rec loop = function
-           | [] -> 1
-           | (prog, args) :: rest ->
-             (match Bin.which ~path:(Env_path.path Env.initial) prog with
-              | None -> loop rest
-              | Some prog ->
-                let prog = Path.to_string prog in
-                let fdr, fdw = Unix.pipe () ~cloexec:true in
-                let fdw = Fd.unsafe_of_unix_file_descr fdw in
-                (match
-                   Stdune.Spawn.spawn
-                     ~prog
-                     ~argv0:prog
-                     ~args:(Stdune.Array.Immutable.of_list args)
-                     ~stdin:(Lazy.force Dev_null.in_)
-                     ~stdout:fdw
-                     ~stderr:(Lazy.force Dev_null.out)
-                     ()
-                 with
-                 | exception Unix.Unix_error _ ->
-                   Fd.close fdw;
-                   Unix.close fdr;
-                   loop commands
-                 | pid ->
-                   Fd.close fdw;
-                   let ic = Unix.in_channel_of_descr fdr in
-                   let n =
-                     match input_line ic with
-                     | line -> String.trim line |> Int.of_string
-                     | exception End_of_file -> None
-                   in
-                   close_in ic;
-                   (match n, Stdune.Proc.wait (Pid pid) [] with
-                    | Some n, Some { status = WEXITED 0; _ } -> n
-                    | _ -> loop rest)))
-         in
-         loop commands))
+         match Stdune.Platform.cpu_count () with
+         | count when count > 0 -> count
+         | _ ->
+           let commands =
+             [ "nproc", []
+             ; "getconf", [ "_NPROCESSORS_ONLN" ]
+             ; "getconf", [ "NPROCESSORS_ONLN" ]
+             ]
+           in
+           let rec loop = function
+             | [] -> 1
+             | (prog, args) :: rest ->
+               (match Bin.which ~path:(Env_path.path Env.initial) prog with
+                | None -> loop rest
+                | Some prog ->
+                  let prog = Path.to_string prog in
+                  let fdr, fdw = Unix.pipe () ~cloexec:true in
+                  let fdw = Fd.unsafe_of_unix_file_descr fdw in
+                  (match
+                     Stdune.Spawn.spawn
+                       ~prog
+                       ~argv0:prog
+                       ~args:(Stdune.Array.Immutable.of_list args)
+                       ~stdin:(Lazy.force Dev_null.in_)
+                       ~stdout:fdw
+                       ~stderr:(Lazy.force Dev_null.out)
+                       ()
+                   with
+                   | exception Unix.Unix_error _ ->
+                     Fd.close fdw;
+                     Unix.close fdr;
+                     loop commands
+                   | pid ->
+                     Fd.close fdw;
+                     let ic = Unix.in_channel_of_descr fdr in
+                     let n =
+                       match input_line ic with
+                       | line -> String.trim line |> Int.of_string
+                       | exception End_of_file -> None
+                     in
+                     close_in ic;
+                     (match n, Stdune.Proc.wait (Pid pid) [] with
+                      | Some n, Some { status = WEXITED 0; _ } -> n
+                      | _ -> loop rest)))
+           in
+           loop commands))
   ;;
 
   let for_scheduler (t : t) ~watch_exclusions ~print_ctrl_c_warning =

@@ -93,6 +93,8 @@ module OS = struct
   ;;
 end
 
+external cpu_count : unit -> int = "stdune_cpu_count" [@@noalloc]
+
 let assert_os what =
   if not (OS.equal OS.value what)
   then Code_error.raise "unexpected os" [ ("os", OS.(to_dyn value)) ]

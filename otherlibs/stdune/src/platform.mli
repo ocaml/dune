@@ -18,5 +18,9 @@ module OS : sig
   val value : t
 end
 
+(** Number of logical processors available to this process, or [0] if it cannot be
+    determined. *)
+val cpu_count : unit -> int
+
 (** [assert_os os] assert that we're running on [os]. *)
 val assert_os : OS.t -> unit

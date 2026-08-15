@@ -8,6 +8,7 @@ module Map = String.Array.Map
 module Set = String.Array.Set
 
 let print_bool b = bool b |> print_dyn
+let print_int_array x = array int x |> print_dyn
 let print_int_option x = option int x |> print_dyn
 let print_map t = Map.to_list t |> list (pair string int) |> print_dyn
 let print_set t = Set.to_list t |> list string |> print_dyn
@@ -36,6 +37,20 @@ let print_unsorted_set_error () =
   match Set.of_sorted_list [ "b"; "a" ] with
   | _ -> print_endline "ok"
   | exception Code_error.E _ -> print_endline "unsorted"
+;;
+
+let%expect_test "array of reversed list" =
+  print_int_array (Array.of_rev_list []);
+  print_int_array (Array.of_rev_list [ 1 ]);
+  print_int_array (Array.of_rev_list [ 1; 2 ]);
+  print_int_array (Array.of_rev_list [ 1; 2; 3 ]);
+  [%expect
+    {|
+    [||]
+    [| 1 |]
+    [| 2;  1 |]
+    [| 3;  2;  1 |]
+    |}]
 ;;
 
 let%expect_test "array-backed map" =

@@ -2,7 +2,7 @@ module T2 = struct
   type ('a, 'b) t = 'a * 'b
 
   let to_dyn = Dyn.pair
-  let equal f g (x1, y1) (x2, y2) = f x1 x2 && g y1 y2
+  let[@inline always] equal f g (x1, y1) (x2, y2) = f x1 x2 && g y1 y2
 
   let[@inline always] hash f g (a, b) =
     let acc = Hash.create () in

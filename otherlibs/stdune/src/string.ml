@@ -238,7 +238,7 @@ let enumerate_one_of = function
   | s -> "One of " ^ enumerate_or s
 ;;
 
-let take s len =
+let[@inline always] take s len =
   let length = length s in
   if len >= length then s else sub s ~pos:0 ~len
 ;;

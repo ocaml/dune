@@ -21,18 +21,19 @@ let%expect_test "fiber vars are preserved across yields" =
     () |}]
 ;;
 
-let%expect_test "Var.get_apply and get_apply_map read the var and thread the argument" =
+let%expect_test "Var get_apply variants read the var and thread arguments" =
   let var = Fiber.Var.create 0 in
   let run =
     Fiber.Var.set var 10 (fun () ->
       let* sum = Fiber.Var.get_apply var (fun value x -> Fiber.return (value + x)) 5 in
-      let+ product = Fiber.Var.get_apply_map var (fun value x -> value * x) 5 in
-      printf "get_apply = %d, get_apply_map = %d\n" sum product)
+      let* product = Fiber.Var.get_apply_map var (fun value x -> value * x) 5 in
+      let+ sum3 = Fiber.Var.get_apply_map2 var (fun value x y -> value + x + y) 5 7 in
+      printf "get_apply = %d, get_apply_map = %d, get_apply_map2 = %d\n" sum product sum3)
   in
   test unit run;
   [%expect
     {|
-    get_apply = 15, get_apply_map = 50
+    get_apply = 15, get_apply_map = 50, get_apply_map2 = 22
     () |}]
 ;;
 

@@ -35,6 +35,7 @@ type _ t =
   | Update_var_t : 'a Var_map.Key.t * ('a -> 'a) * (unit -> 'b t) -> 'b t
   | Get_apply_t : 'a Var_map.Key.t * ('a -> 'b -> 'c t) * 'b -> 'c t
   | Get_apply_map_t : 'a Var_map.Key.t * ('a -> 'b -> 'c) * 'b -> 'c t
+  | Get_apply_map2_t : 'a Var_map.Key.t * ('a -> 'b -> 'c -> 'd) * 'b * 'c -> 'd t
   | Set_apply_t : 'a Var_map.Key.t * 'a * ('b -> 'c t) * 'b -> 'c t
   | Update_apply_t : 'a Var_map.Key.t * ('a -> 'a) * ('b -> 'c t) * 'b -> 'c t
   (* Pair internal operations with their state without allocating a closure. *)
@@ -58,6 +59,7 @@ and 'a continuation =
       -> ('a, 'error) result continuation
   | Apply : ('a -> 'b -> 'c t) * 'b * 'c continuation -> 'a continuation
   | Apply_map : ('a -> 'b -> 'c) * 'b * 'c continuation -> 'a continuation
+  | Apply_map2 : ('a -> 'b -> 'c -> 'd) * 'b * 'c * 'd continuation -> 'a continuation
   | Unwind_to : 'a continuation -> 'a continuation
   | Unwind_map_reduce_to : ('a, 'b) result continuation -> 'a continuation
   | End : unit continuation
@@ -209,6 +211,7 @@ let rec continue : type a. a continuation -> a -> eff =
      | Error _ as error -> continue k error)
   | Apply (f, y, k) -> Run (f x y, k)
   | Apply_map (f, y, k) -> continue k (f x y)
+  | Apply_map2 (f, y, z, k) -> continue k (f x y z)
   | Unwind_to k -> Unwind (k, x)
   | Unwind_map_reduce_to k -> Unwind_map_reduce (k, Ok x)
   | End -> End_of_fiber ()
@@ -339,6 +342,7 @@ let rec eval : type a. a t -> a continuation -> eff =
   | Update_var_t (key, f, body) -> Update_var (key, f, body, k)
   | Get_apply_t (key, f, x) -> Get_var (key, Apply (f, x, k))
   | Get_apply_map_t (key, f, x) -> Get_var (key, Apply_map (f, x, k))
+  | Get_apply_map2_t (key, f, x, y) -> Get_var (key, Apply_map2 (f, x, y, k))
   | Set_apply_t (key, value, f, x) -> Set_var_apply (key, value, f, x, k)
   | Update_apply_t (key, f, body, x) -> Update_var_apply (key, f, body, x, k)
   | Primitive_t (f, x) -> f x k
@@ -533,6 +537,12 @@ module Var = struct
 
   let get_apply_map (key : 'a Var_map.Key.t) (f : 'a -> 'b -> 'c) (x : 'b) : 'c t =
     Get_apply_map_t (key, f, x)
+  ;;
+
+  let get_apply_map2 (key : 'a Var_map.Key.t) (f : 'a -> 'b -> 'c -> 'd) (x : 'b) (y : 'c)
+    : 'd t
+    =
+    Get_apply_map2_t (key, f, x, y)
   ;;
 
   let set_apply (key : 'a Var_map.Key.t) (value : 'a) (f : 'b -> 'c t) (x : 'b) : 'c t =

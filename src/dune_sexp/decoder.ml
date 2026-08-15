@@ -158,16 +158,26 @@ type (_, _) parser =
       }
       -> ('a, values) parser
   | Enum : (string * ('a, values) parser) list -> ('a, values) parser
-  | Field :
+  | Field_required :
+      { name : string
+      ; t : 'a t
+      }
+      -> ('a, fields) parser
+  | Field_with_options :
       { name : string
       ; default : 'a option
       ; on_dup : (Univ_map.t -> string -> Ast.t list -> unit) option
       ; t : 'a t
       }
       -> ('a, fields) parser
-  | Field_opt :
+  | Field_optional :
       { name : string
-      ; on_dup : (Univ_map.t -> string -> Ast.t list -> unit) option
+      ; t : 'a t
+      }
+      -> ('a option, fields) parser
+  | Field_optional_with_on_dup :
+      { name : string
+      ; on_dup : Univ_map.t -> string -> Ast.t list -> unit
       ; t : 'a t
       }
       -> ('a option, fields) parser
@@ -246,7 +256,13 @@ let loc = Loc
 let eos = Eos
 let repeat t = Repeat t
 let capture = Capture
-let field_o name ?on_dup t = Field_opt { name; on_dup; t }
+
+let field_o name ?on_dup t =
+  match on_dup with
+  | None -> Field_optional { name; t }
+  | Some on_dup -> Field_optional_with_on_dup { name; on_dup; t }
+;;
+
 let fields t = Fields_parser t
 let traverse l ~f = Traverse (l, f)
 let raw = Next Fun.id
@@ -435,7 +451,15 @@ and eval : type a k. (a, k) parser -> k context -> k -> a * k =
     (loc_between_states ctx state state2, x), state2
   | Sum { force_parens; cstrs } -> sum ~force_parens cstrs ctx state
   | Enum cstrs -> enum cstrs ctx state
-  | Field { name; default; on_dup; t } ->
+  | Field_required { name; t } ->
+    let (Fields (loc, _, uc)) = ctx in
+    (match find_single uc state name with
+     | None -> field_missing loc name
+     | Some { values; entry; _ } ->
+       let ctx = Values (Ast.loc entry, Some name, uc) in
+       let x = result ctx (eval t ctx values) in
+       x, Fields.consume state name)
+  | Field_with_options { name; default; on_dup; t } ->
     let (Fields (loc, _, uc)) = ctx in
     (match find_single uc state name ?on_dup with
      | Some { values; entry; _ } ->
@@ -446,9 +470,17 @@ and eval : type a k. (a, k) parser -> k context -> k -> a * k =
        (match default with
         | Some v -> v, Fields.add_known state name
         | None -> field_missing loc name))
-  | Field_opt { name; on_dup; t } ->
+  | Field_optional { name; t } ->
     let (Fields (_, _, uc)) = ctx in
-    (match find_single uc state name ?on_dup with
+    (match find_single uc state name with
+     | None -> None, Fields.add_known state name
+     | Some { values; entry; _ } ->
+       let ctx = Values (Ast.loc entry, Some name, uc) in
+       let x = result ctx (eval t ctx values) in
+       Some x, Fields.consume state name)
+  | Field_optional_with_on_dup { name; on_dup; t } ->
+    let (Fields (_, _, uc)) = ctx in
+    (match find_single uc state name ~on_dup with
      | Some { values; entry; _ } ->
        let ctx = Values (Ast.loc entry, Some name, uc) in
        let x = result ctx (eval t ctx values) in
@@ -842,7 +874,12 @@ let enum' cstrs = Enum cstrs
 let enum cstrs = enum' (List.map cstrs ~f:(fun (name, v) -> name, return v))
 let bool = enum [ "true", true; "false", false ]
 let map_validate t ~f = Map_validate (t, f)
-let field name ?default ?on_dup t = Field { name; default; on_dup; t }
+
+let field name ?default ?on_dup t =
+  match default, on_dup with
+  | None, None -> Field_required { name; t }
+  | _ -> Field_with_options { name; default; on_dup; t }
+;;
 
 let field_b_gen field_gen ?check ?on_dup name =
   field_gen

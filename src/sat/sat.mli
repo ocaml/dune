@@ -80,4 +80,23 @@ module Make (User : USER) : sig
 
   val get_user_data_for_lit : lit -> User.t
   val explain_reason : lit -> 'tag Pp.t
+
+  (** {2 Observability} *)
+
+  (** Statistics describing a SAT problem and the work done to solve it.
+      [num_variables] and [num_clauses] are structural (the problem size);
+      [num_decisions] and [num_conflicts] are cumulative counters of work
+      performed by the solver. Note that [num_clauses] counts only
+      "at-least-one" / "implies" / "impossible" clauses; the
+      "at-most-{one,n}" clauses (used for conflict-class / mutual-exclusion
+      groupings) are not counted because they do not carry a problem handle
+      at their construction site. *)
+  type stats =
+    { num_variables : int
+    ; num_clauses : int
+    ; num_decisions : int
+    ; num_conflicts : int
+    }
+
+  val get_stats : t -> stats
 end

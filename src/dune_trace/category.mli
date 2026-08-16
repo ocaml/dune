@@ -23,6 +23,7 @@ type t =
   | Artifact_substitution
   | Thread
   | Runtime
+  | Sat
 
 val to_string : t -> string
 val of_string : string -> t option

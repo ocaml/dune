@@ -72,7 +72,7 @@ let get_env_stanza ~dir =
 
 let get_impl t dir =
   let inherit_from =
-    Memo.lazy_ (fun () ->
+    Memo.lazy_ ~name:"inherited-environment-node" (fun () ->
       let* scope_root = Dune_load.find_project ~dir >>| Dune_project.root in
       if Path.Source.equal (Path.Build.drop_build_context_exn dir) scope_root
       then Memo.Lazy.force t.default_env
@@ -86,7 +86,8 @@ let get_impl t dir =
   in
   let+ config_stanza = get_env_stanza ~dir in
   let expander =
-    Memo.lazy_ (fun () -> expander_for_artifacts t ~dir) |> Memo.Lazy.force
+    Memo.lazy_ ~name:"expander-for-artifacts" (fun () -> expander_for_artifacts t ~dir)
+    |> Memo.Lazy.force
   in
   let profile = Context.profile t.context in
   Env_node.make
@@ -244,14 +245,14 @@ let make_default_env_node
     ~config_stanza:env_nodes.context
     ~inherit_from:
       (Some
-         (Memo.lazy_ (fun () ->
+         (Memo.lazy_ ~name:"workspace-environment-node" (fun () ->
             make ~inherit_from:None ~config_stanza:env_nodes.workspace |> Memo.return)))
 ;;
 
 let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
   let context_name = Context.name context in
   let env =
-    Memo.lazy_ (fun () ->
+    Memo.lazy_ ~name:"super-context-environment" (fun () ->
       let* base =
         let* base = Context.installed_env context in
         match host with

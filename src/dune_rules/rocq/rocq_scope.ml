@@ -68,7 +68,7 @@ let rocq_stanzas_by_project_dir rocq_stanzas =
 
 let make context ~public_libs ~db_by_project_dir ~projects_by_root rocq_stanzas =
   { scopes =
-      Memo.lazy_ (fun () ->
+      Memo.lazy_ ~name:"rocq-scopes" (fun () ->
         let+ public_theories = public_theories context public_libs rocq_stanzas in
         let rocq_stanzas_by_project_dir = rocq_stanzas_by_project_dir rocq_stanzas in
         rocq_scopes_by_dir

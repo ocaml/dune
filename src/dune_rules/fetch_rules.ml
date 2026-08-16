@@ -164,7 +164,7 @@ let find_checksum, find_url =
     Checksum.Map.superpose checksums checksums', Digest.Map.superpose urls urls'
   in
   let all =
-    Memo.lazy_ (fun () ->
+    Memo.lazy_ ~name:"all-fetches" (fun () ->
       let* init =
         Memo.List.fold_left
           Dune_pkg.Dev_tool.all

@@ -50,7 +50,7 @@ let findlib =
     ; ocaml_version = Ocaml.Version.make (4, 14, 1)
     }
   in
-  Memo.lazy_ (fun () ->
+  Memo.lazy_ ~name:"findlib-for-tests" (fun () ->
     Findlib.For_tests.create ~paths:[ Path.outside_build_dir db_path ] ~lib_config)
 ;;
 

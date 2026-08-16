@@ -750,7 +750,7 @@ let private_context ~dir components _ctx =
 
 let raise_on_lock_dir_out_of_sync =
   Per_context.create_by_name ~name:"check-lock-dir" (fun ctx ->
-    Memo.lazy_ (fun () ->
+    Memo.lazy_ ~name:"check-lock-dir" (fun () ->
       let* lock_dir_available = Lock_dir.lock_dir_active ctx in
       if lock_dir_available
       then

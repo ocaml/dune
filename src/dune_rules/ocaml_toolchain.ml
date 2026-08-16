@@ -17,7 +17,7 @@ type t =
   }
 
 let make_builtins ~ocaml_config ~version =
-  Memo.Lazy.create (fun () ->
+  Memo.Lazy.create ~name:"ocaml-toolchain-builtins" (fun () ->
     let stdlib_dir = Path.of_string (Ocaml_config.standard_library ocaml_config) in
     Meta.builtins ~stdlib_dir ~version)
 ;;

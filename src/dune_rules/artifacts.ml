@@ -156,7 +156,7 @@ let create =
   fun (context : Context.t)
     ~(local_bins : origin Appendable_list.t Filename.Map.t Memo.Lazy.t) ->
   let local_bins =
-    Memo.lazy_ (fun () ->
+    Memo.lazy_ ~name:"artifact-local-binaries" (fun () ->
       let+ local_bins = Memo.Lazy.force local_bins in
       Filename.Map.to_list_map local_bins ~f:(fun name sources ->
         ( Filename.of_string_exn (Bin.strip_exe (Filename.to_string name))

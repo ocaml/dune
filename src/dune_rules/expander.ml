@@ -94,7 +94,7 @@ let extend_env t ~env =
   (* [t.local_env] has precedence over [t.env], so we cannot extend [env] if
      there are already local bindings.. *)
   let env =
-    Memo.Lazy.create (fun () ->
+    Memo.Lazy.create ~name:"extended-environment" (fun () ->
       let open Memo.O in
       let+ env = env
       and+ base = t.env in

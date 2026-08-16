@@ -58,7 +58,7 @@ module Standalone_or_root = struct
 
   let empty ~dir ~source_dir =
     { contents =
-        Memo.Lazy.create (fun () ->
+        Memo.Lazy.create ~name:"empty-dir-contents" (fun () ->
           Memo.return
             { root = empty Standalone ~dir ~source_dir
             ; rules = Rules.empty
@@ -233,13 +233,13 @@ end = struct
   ;;
 
   let mlds ~sctx ~dir ~dune_file ~files =
-    Memo.lazy_ (fun () ->
+    Memo.lazy_ ~name:"documentation-sources" (fun () ->
       let* expander = Super_context.expander sctx ~dir in
       Doc_sources.build_mlds_map dune_file ~dir ~files expander)
   ;;
 
   let ml_sources sctx ~dir ~project ~lib_config ~loc ~include_subdirs ~dirs ~for_ =
-    Memo.lazy_ (fun () ->
+    Memo.lazy_ ~name:"ml-sources" (fun () ->
       let lookup_vlib = lookup_vlib sctx ~current_dir:dir ~for_ in
       let libs = Scope.DB.find_by_dir dir >>| Scope.libs in
       let* expander = Super_context.expander sctx ~dir
@@ -265,7 +265,7 @@ end = struct
   let make_standalone sctx st_dir ~dir (d : Dune_file.t) =
     let human_readable_description () = human_readable_description dir in
     { Standalone_or_root.contents =
-        Memo.lazy_ ~human_readable_description (fun () ->
+        Memo.lazy_ ~name:"standalone-dir-contents" ~human_readable_description (fun () ->
           let include_subdirs = Loc.none, Include_subdirs.No in
           let ctx = Super_context.context sctx in
           let lib_config =
@@ -280,7 +280,7 @@ end = struct
               stanzas >>= load_text_files sctx st_dir ~src_dir ~dir)
           in
           let dirs =
-            Memo.lazy_ (fun () ->
+            Memo.lazy_ ~name:"standalone-source-file-dirs" (fun () ->
               let+ stanzas = stanzas in
               Nonempty_list.
                 [ { Source_file_dir.dir
@@ -305,13 +305,13 @@ end = struct
               ; melange
               ; mlds
               ; foreign_sources =
-                  Memo.lazy_ (fun () ->
+                  Memo.lazy_ ~name:"standalone-foreign-sources" (fun () ->
                     let dune_version = Dune_project.dune_version project in
                     let* stanzas = stanzas
                     and* dirs = Memo.Lazy.force dirs in
                     Foreign_sources.make stanzas ~dir ~dune_version ~dirs)
               ; rocq =
-                  Memo.lazy_ (fun () ->
+                  Memo.lazy_ ~name:"standalone-rocq-sources" (fun () ->
                     let+ stanzas = stanzas
                     and+ dirs = Memo.Lazy.force dirs in
                     Rocq_sources.of_dir stanzas ~dir ~include_subdirs ~dirs)
@@ -335,6 +335,7 @@ end = struct
     let+ components = components in
     let contents =
       Memo.lazy_
+        ~name:"group-dir-contents"
         ~human_readable_description:(fun () -> human_readable_description dir)
         (fun () ->
            let ctx = Super_context.context sctx in
@@ -370,7 +371,7 @@ end = struct
                         })))
            in
            let dirs =
-             Memo.lazy_ (fun () ->
+             Memo.lazy_ ~name:"group-source-file-dirs" (fun () ->
                let+ stanzas = stanzas in
                Nonempty_list.(
                  { Source_file_dir.dir
@@ -389,14 +390,14 @@ end = struct
              language_sources sctx ~dir ~project ~lib_config ~loc ~include_subdirs ~dirs
            in
            let foreign_sources =
-             Memo.lazy_ (fun () ->
+             Memo.lazy_ ~name:"group-foreign-sources" (fun () ->
                let dune_version = Dune_project.dune_version project in
                let* stanzas = stanzas
                and* dirs = Memo.Lazy.force dirs in
                Foreign_sources.make stanzas ~dir ~dune_version ~dirs)
            in
            let rocq =
-             Memo.lazy_ (fun () ->
+             Memo.lazy_ ~name:"group-rocq-sources" (fun () ->
                let+ stanzas = stanzas
                and+ dirs = Memo.Lazy.force dirs in
                Rocq_sources.of_dir stanzas ~dir ~dirs ~include_subdirs)

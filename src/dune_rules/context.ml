@@ -419,6 +419,7 @@ let create (builder : Builder.t) ~(kind : Kind.t) =
     | Lock _ ->
       let env =
         Memo.lazy_
+          ~name:"context-base-env"
           ~human_readable_description:(fun () ->
             Pp.textf
               "base environment for context %S"
@@ -452,6 +453,7 @@ let create (builder : Builder.t) ~(kind : Kind.t) =
   in
   let ocamlpath =
     Memo.lazy_
+      ~name:"context-ocamlpath"
       ~human_readable_description:(fun () ->
         Pp.textf "loading OCAMLPATH for context %S" (Context_name.to_string builder.name))
       (fun () ->
@@ -463,6 +465,7 @@ let create (builder : Builder.t) ~(kind : Kind.t) =
   in
   let findlib =
     Memo.lazy_
+      ~name:"context-findlib"
       ~human_readable_description:(fun () ->
         Pp.textf "loading findlib for context %S" (Context_name.to_string builder.name))
       (fun () ->
@@ -529,6 +532,7 @@ let create (builder : Builder.t) ~(kind : Kind.t) =
   let builder =
     let installed_env =
       Memo.lazy_
+        ~name:"context-installed-env"
         ~human_readable_description:(fun () ->
           Pp.textf
             "creating installed environment for %S"

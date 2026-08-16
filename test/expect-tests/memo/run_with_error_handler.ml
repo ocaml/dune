@@ -24,14 +24,18 @@ let rec delay_n_time_units counter n =
 let%expect_test "Memo.run_with_error_handler" =
   let time_counter = ref 0 in
   let error_node =
-    Memo.Lazy.create (fun () ->
+    Memo.Lazy.create ~name:"error-node" (fun () ->
       Memo.of_reproducible_fiber
         (Fiber.fork_and_join_unit
            (fun () -> Fiber.map (Scheduler.yield ()) ~f:(fun () -> failwith "Error_node"))
            (fun () -> delay_n_time_units time_counter 10)))
   in
-  let n1 = Memo.Lazy.create (fun () -> Memo.Lazy.force error_node) in
-  let n2 = Memo.Lazy.create (fun () -> Memo.Lazy.force error_node) in
+  let n1 =
+    Memo.Lazy.create ~name:"error-node-wrapper-1" (fun () -> Memo.Lazy.force error_node)
+  in
+  let n2 =
+    Memo.Lazy.create ~name:"error-node-wrapper-2" (fun () -> Memo.Lazy.force error_node)
+  in
   let run_memo_and_collect_errors m =
     let trace = ref [] in
     let log s = trace := (s, !time_counter) :: !trace in

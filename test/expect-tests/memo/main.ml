@@ -323,7 +323,7 @@ module Memo_lazy = Test_lazy (struct
     include Memo.Lazy
 
     (* Here we hide the optional argument [cutoff] of [Memo.Lazy.create]. *)
-    let create f = create f
+    let create f = create ~name:"test-lazy" f
   end)
 
 let%expect_test _ =
@@ -338,8 +338,8 @@ let%expect_test _ =
   Memo_lazy.deps () |> print_dyn;
   [%expect
     {|
-    (Some [ (Some "lazy_memo", "foo"); (None, ()) ],
-     Some [ (Some "lazy_memo", "foo"); (None, ()) ])
+    (Some [ (Some "lazy_memo", "foo"); (Some "test-lazy", ()) ],
+     Some [ (Some "lazy_memo", "foo"); (Some "test-lazy", ()) ])
   |}]
 ;;
 
@@ -1324,16 +1324,16 @@ let%expect_test "overlapping cycles with waiters can deadlock" =
     |}]
 ;;
 
-let lazy_rec ~name f =
+let lazy_rec f =
   let fdecl = Fdecl.create (fun _ -> Dyn.Opaque) in
-  let node = Memo.Lazy.create ~name (fun () -> f (Fdecl.get fdecl)) in
+  let node = Memo.Lazy.create ~name:"cycle" (fun () -> f (Fdecl.get fdecl)) in
   Fdecl.set fdecl node;
   node
 ;;
 
 let%expect_test "only the first cycle in a run is reported" =
-  let cycle1 = lazy_rec ~name:"cycle" (fun node -> Memo.Lazy.force node) in
-  let cycle2 = lazy_rec ~name:"cycle" (fun node -> Memo.Lazy.force node) in
+  let cycle1 = lazy_rec (fun node -> Memo.Lazy.force node) in
+  let cycle2 = lazy_rec (fun node -> Memo.Lazy.force node) in
   let both =
     Memo.Lazy.create ~name:"both" (fun () ->
       Memo.fork_and_join_unit
@@ -2190,7 +2190,7 @@ let%expect_test "Simple computation chain with a cutoff" =
 
 let%expect_test "loss of concurrency" =
   let cell name =
-    Memo.lazy_node ~cutoff:Unit.equal (fun () ->
+    Memo.lazy_node ~name:"concurrent-cell" ~cutoff:Unit.equal (fun () ->
       (* this hackery needed to observe concurrency *)
       Memo.of_reproducible_fiber
       @@ Fiber.of_thunk (fun () ->
@@ -2202,7 +2202,7 @@ let%expect_test "loss of concurrency" =
   let a = cell "a" in
   let b = cell "b" in
   let c =
-    Memo.lazy_node (fun () ->
+    Memo.lazy_node ~name:"c" (fun () ->
       Memo.fork_and_join (fun () -> Memo.Node.read a) (fun () -> Memo.Node.read b))
   in
   let read x = run @@ Memo.map ~f:ignore @@ Memo.Node.read x in
@@ -2264,7 +2264,7 @@ let%expect_test "fork_and_join: parallel cutoff restore" =
   let a, a_var = yielding_node ~name:"a" () in
   let b, b_var = yielding_node ~name:"b" () in
   let top =
-    Memo.lazy_node (fun () ->
+    Memo.lazy_node ~name:"top" (fun () ->
       printf "top* ";
       Memo.fork_and_join (fun () -> Memo.exec a ()) (fun () -> Memo.exec b ()))
   in
@@ -2293,7 +2293,7 @@ let%expect_test "parallel_map: parallel cutoff restore" =
   let a, a_var = yielding_node ~name:"a" () in
   let b, b_var = yielding_node ~name:"b" () in
   let top =
-    Memo.lazy_node (fun () ->
+    Memo.lazy_node ~name:"top" (fun () ->
       printf "top* ";
       Memo.parallel_map [ a; b ] ~f:(fun node -> Memo.exec node ()))
   in
@@ -2320,7 +2320,7 @@ let%expect_test "fork_and_join: a failing thread still lets its sibling run" =
   let a, _ = yielding_node ~name:"a" ~fail:true () in
   let b, _ = yielding_node ~name:"b" () in
   let top =
-    Memo.lazy_node (fun () ->
+    Memo.lazy_node ~name:"top" (fun () ->
       Memo.fork_and_join (fun () -> Memo.exec a ()) (fun () -> Memo.exec b ()))
   in
   run_and_log_errors (Memo.map ~f:ignore (Memo.Node.read top));
@@ -2329,8 +2329,7 @@ let%expect_test "fork_and_join: a failing thread still lets its sibling run" =
   [%expect
     {|
     a+ b+ a! b- Error: { exn =
-               "Memo.Error.E\n\
-               \  { exn = \"Failure(\\\"a\\\")\"; stack = [ (\"a\", ()); (\"<unnamed>\", ()) ] }"
+               "Memo.Error.E { exn = \"Failure(\\\"a\\\")\"; stack = [ (\"a\", ()); (\"top\", ()) ] }"
            ; backtrace = ""
            }
     |}]
@@ -2468,7 +2467,7 @@ let%expect_test "Invalidation.to_reason_list deduplicates reasons" =
 let%expect_test "reset_if_necessary" =
   let calls = ref 0 in
   let cell =
-    Memo.lazy_node (fun () ->
+    Memo.lazy_node ~name:"cell" (fun () ->
       incr calls;
       Memo.return ())
   in
@@ -2492,7 +2491,7 @@ let%expect_test "reset_if_necessary" =
 let%expect_test "reset_if_necessary retries non-reproducible errors" =
   let calls = ref 0 in
   let cell =
-    Memo.lazy_node (fun () ->
+    Memo.lazy_node ~name:"cell" (fun () ->
       incr calls;
       raise (Memo.Non_reproducible (Failure "boom")))
   in
@@ -2501,7 +2500,7 @@ let%expect_test "reset_if_necessary retries non-reproducible errors" =
   [%expect
     {|
     Error: { exn =
-               "Memo.Error.E { exn = \"Failure(\\\"boom\\\")\"; stack = [ (\"<unnamed>\", ()) ] }"
+               "Memo.Error.E { exn = \"Failure(\\\"boom\\\")\"; stack = [ (\"cell\", ()) ] }"
            ; backtrace = ""
            }
     calls = 1
@@ -2515,7 +2514,7 @@ let%expect_test "reset_if_necessary retries non-reproducible errors" =
   [%expect
     {|
     Error: { exn =
-               "Memo.Error.E { exn = \"Failure(\\\"boom\\\")\"; stack = [ (\"<unnamed>\", ()) ] }"
+               "Memo.Error.E { exn = \"Failure(\\\"boom\\\")\"; stack = [ (\"cell\", ()) ] }"
            ; backtrace = ""
            }
     calls = 2

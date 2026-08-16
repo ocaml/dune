@@ -335,7 +335,7 @@ let make_imported_vlib_deps ~obj_dir ~vimpl ~dir ~sctx ~sandbox ~for_ : imported
       Lib_info.obj_dir info
     in
     let transitive_deps =
-      Memo.lazy_ (fun () ->
+      Memo.lazy_ ~name:"transitive-module-dependencies" (fun () ->
         let+ modules = preprocessed_modules_of_local_lib ~sctx lib ~for_ in
         let modules = Modules.With_vlib.modules modules in
         create_transitive_deps

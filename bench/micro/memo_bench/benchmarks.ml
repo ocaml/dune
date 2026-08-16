@@ -21,7 +21,7 @@ module Memo = struct
   ;;
 
   let memoize t =
-    let l = Memo.lazy_ ~cutoff:(fun _ _ -> false) (fun () -> t) in
+    let l = Memo.lazy_ ~name:"memoize" ~cutoff:(fun _ _ -> false) (fun () -> t) in
     Memo.of_thunk (fun () -> Memo.Lazy.force l)
   ;;
 
@@ -43,7 +43,11 @@ module Var = struct
   let create value =
     let value = ref value in
     { value
-    ; cell = Memo.lazy_node ~cutoff:(fun _ _ -> false) (fun () -> Memo.return !value)
+    ; cell =
+        Memo.lazy_node
+          ~name:"var"
+          ~cutoff:(fun _ _ -> false)
+          (fun () -> Memo.return !value)
     }
   ;;
 

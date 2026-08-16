@@ -145,7 +145,7 @@ let requires ~loc ~db ~libs =
 ;;
 
 let utop_dev_tool_lock_dir_exists =
-  Memo.Lazy.create (fun () ->
+  Memo.Lazy.create ~name:"utop-dev-tool-lock-dir-exists" (fun () ->
     let path = Lock_dir.dev_tool_external_lock_dir Utop in
     Fs_memo.dir_exists (Path.Outside_build_dir.External path))
 ;;
@@ -157,7 +157,9 @@ let utop_findlib_conf =
 (* The lib directory of the utop package and of each of its dependencies within
    the _build directory (or the toolchains directory in the case of the OCaml
    compiler). *)
-let utop_ocamlpath = Memo.Lazy.create (fun () -> Pkg_rules.dev_tool_ocamlpath Utop)
+let utop_ocamlpath =
+  Memo.Lazy.create ~name:"utop-ocamlpath" (fun () -> Pkg_rules.dev_tool_ocamlpath Utop)
+;;
 
 (* Creates a rule that generates a custom findlib.conf containing the path to
    the utop library as well as all of its dependencies in the _build directory
@@ -231,7 +233,7 @@ let setup sctx ~dir =
     Ocaml_flags.append_common (Ocaml_flags.default ~dune_version ~profile) [ "-w"; "-24" ]
   in
   let* cctx =
-    let requires_link = Memo.lazy_ (fun () -> requires) in
+    let requires_link = Memo.lazy_ ~name:"utop-requires-link" (fun () -> requires) in
     Compilation_context.create
       for_
       ~super_context:sctx

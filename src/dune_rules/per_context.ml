@@ -28,10 +28,10 @@ let all =
 
 let list () = Memo.Lazy.force all >>| Context_name.Map.keys
 
-let create_db ?cutoff ~name f =
+let create_db ?cutoff ~name:_name f =
   let cutoff = Option.map cutoff ~f:(fun equal -> Context_name.Map.equal ~equal) in
   let map =
-    Memo.lazy_ ~name ?cutoff (fun () ->
+    Memo.lazy_ ~name:"per-context-map" ?cutoff (fun () ->
       let+ map = Memo.Lazy.force all in
       Context_name.Map.mapi map ~f)
   in

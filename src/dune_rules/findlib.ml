@@ -593,7 +593,7 @@ type t = DB.t
 
 let create_with_paths ~paths =
   Per_context.create_by_name ~name:"findlib" (fun context ->
-    Memo.lazy_ (fun () ->
+    Memo.lazy_ ~name:"findlib" (fun () ->
       let* context = Context.DB.get context in
       let* lib_config =
         let+ ocaml = Context.ocaml context in

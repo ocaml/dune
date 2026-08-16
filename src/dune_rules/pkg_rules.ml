@@ -1180,6 +1180,7 @@ module Action_expander = struct
   let expander context (pkg : Pkg.t) =
     let closure =
       Memo.lazy_
+        ~name:"package-dependency-closure"
         ~human_readable_description:(fun () ->
           Pp.textf
             "Computing closure for package %S"
@@ -1188,11 +1189,14 @@ module Action_expander = struct
     in
     let env = Pkg.exported_value_env pkg in
     let depends =
-      Memo.Lazy.map closure ~f:(fun { Artifacts_and_deps.dep_info; _ } ->
-        Package.Name.Map.add_exn
-          dep_info
-          pkg.info.name
-          (Pkg_info.variables pkg.info, pkg.paths))
+      Memo.Lazy.map
+        ~name:"package-dependency-info"
+        closure
+        ~f:(fun { Artifacts_and_deps.dep_info; _ } ->
+          Package.Name.Map.add_exn
+            dep_info
+            pkg.info.name
+            (Pkg_info.variables pkg.info, pkg.paths))
       |> Memo.Lazy.force
     in
     let artifacts =
@@ -1389,7 +1393,7 @@ module DB = struct
     ;;
 
     let all_existing_dev_tools =
-      Memo.lazy_ (fun () ->
+      Memo.lazy_ ~name:"all-existing-dev-tools" (fun () ->
         let* platform = Lock_dir.Sys_vars.solver_env in
         let+ xs =
           Memo.List.map
@@ -1477,7 +1481,7 @@ module DB = struct
   let of_dev_tool =
     let system_provided = default_system_provided in
     let inactive_lockdir =
-      Memo.lazy_ (fun () ->
+      Memo.lazy_ ~name:"inactive-lockdir-package-db" (fun () ->
         let+ pkg_digest_table = Memo.Lazy.force Pkg_table.all_existing_dev_tools in
         create ~pkg_digest_table ~system_provided)
     in
@@ -2565,6 +2569,7 @@ let all_project_deps context = all_deps (Dependencies context)
 let which context =
   let artifacts_and_deps =
     Memo.lazy_
+      ~name:"lock-directory-binaries"
       ~human_readable_description:(fun () ->
         Pp.textf
           "Loading all binaries in the lock directory for %S"

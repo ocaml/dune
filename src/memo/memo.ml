@@ -288,16 +288,22 @@ let node = dep_node
 
 module Implicit_output = Implicit_output
 
-let lazy_node ?cutoff ?name ?human_readable_description ?on_event f =
+let lazy_node ~name ?cutoff ?human_readable_description ?on_event f =
   let on_event = Option.map on_event ~f:(fun on_event () event -> on_event event) in
   let spec =
-    Spec.create ~name ~input:(module Unit) ~cutoff ~human_readable_description ?on_event f
+    Spec.create
+      ~name:(Some name)
+      ~input:(module Unit)
+      ~cutoff
+      ~human_readable_description
+      ?on_event
+      f
   in
   make_dep_node ~spec ~input:()
 ;;
 
 let push_stack_frame ~human_readable_description f =
-  Node.read (lazy_node ~human_readable_description f)
+  Node.read (lazy_node ~name:"stack-frame" ~human_readable_description f)
 ;;
 
 module Lazy = struct
@@ -306,19 +312,19 @@ module Lazy = struct
   let of_val a () = Fiber.return a
 
   module Expert = struct
-    let create ?cutoff ?name ?human_readable_description ?on_event f =
-      let node = lazy_node ?cutoff ?name ?human_readable_description ?on_event f in
+    let create ~name ?cutoff ?human_readable_description ?on_event f =
+      let node = lazy_node ~name ?cutoff ?human_readable_description ?on_event f in
       node, fun () -> Node.read node
     ;;
   end
 
-  let create ?cutoff ?name ?human_readable_description ?on_event f =
-    let node = lazy_node ?cutoff ?name ?human_readable_description ?on_event f in
+  let create ~name ?cutoff ?human_readable_description ?on_event f =
+    let node = lazy_node ~name ?cutoff ?human_readable_description ?on_event f in
     fun () -> Node.read node
   ;;
 
   let force f = f ()
-  let map t ~f = create (fun () -> Fiber.map ~f (t ()))
+  let map ~name t ~f = create ~name (fun () -> Fiber.map ~f (t ()))
 end
 
 let lazy_ = Lazy.create

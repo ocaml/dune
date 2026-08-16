@@ -187,7 +187,7 @@ module Run (P : PARAMS) = struct
      like to change it in the future. *)
 
   let stanzas : (stanza * Path.Set.t) list Memo.Lazy.t =
-    Memo.lazy_ (fun () ->
+    Memo.lazy_ ~name:"menhir-stanzas" (fun () ->
       let open Memo.O in
       let+ { Ml_sources.Parser_generators.deps; targets = _ } =
         let sctx = Compilation_context.super_context cctx in
@@ -211,7 +211,7 @@ module Run (P : PARAMS) = struct
      using these commands appropriately. Fail if they are present. *)
 
   let check =
-    Memo.lazy_ (fun () ->
+    Memo.lazy_ ~name:"check-menhir-flags" (fun () ->
       let open Memo.O in
       Memo.Lazy.force stanzas
       >>| List.iter ~f:(fun ((stanza, _) : stanza * Path.Set.t) ->

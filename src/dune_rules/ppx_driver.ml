@@ -216,7 +216,7 @@ let build_ppx_driver =
     and+ cctx =
       let obj_dir = Obj_dir.for_pp ~dir in
       let requires_compile = Resolve.map driver_and_libs ~f:snd in
-      let requires_link = Memo.lazy_ (fun () -> Memo.return requires_compile) in
+      let requires_link = Memo.Lazy.of_val requires_compile in
       let opaque = Compilation_context.Explicit false in
       let modules = Modules.With_vlib.singleton_exe module_ in
       Compilation_context.create

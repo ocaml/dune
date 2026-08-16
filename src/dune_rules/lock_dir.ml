@@ -225,7 +225,7 @@ let get_with_path =
             Load.load path))
   in
   Per_context.create_by_name ~name:"lock-dir-get" (fun ctx ->
-    Memo.lazy_ (fun () ->
+    Memo.lazy_ ~name:"lock-dir-get" (fun () ->
       let* path =
         get_path ctx
         >>| function

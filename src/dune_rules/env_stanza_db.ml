@@ -132,7 +132,7 @@ module Inherit = struct
         ~(f : parent:a Memo.t -> dir:Path.Build.t -> Dune_env.config -> a Memo.t)
     =
     let for_context =
-      Memo.Lazy.create (fun () ->
+      Memo.Lazy.create ~name:"environment-stanzas-for-context" (fun () ->
         let+ context = Context.DB.get context in
         let profile = Context.profile context in
         let { Context.Env_nodes.context; workspace } = Context.env_nodes context in

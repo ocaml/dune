@@ -311,7 +311,8 @@ include Sub_system.Register_end_point (struct
           ~opaque:(Explicit false)
           ~requires_compile:runner_libs
           ~user_written_requires:None
-          ~requires_link:(Memo.lazy_ (fun () -> runner_libs))
+          ~requires_link:
+            (Memo.lazy_ ~name:"inline-test-requires-link" (fun () -> runner_libs))
           ~flags
           ~js_of_ocaml:(Js_of_ocaml.Mode.Pair.map ~f:Option.some js_of_ocaml)
           ~melange_package_name:None

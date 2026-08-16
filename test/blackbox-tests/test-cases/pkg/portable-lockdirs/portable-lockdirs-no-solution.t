@@ -27,7 +27,7 @@ Depend on a pair of packages which can't be coinstalled:
   > EOF
 
 Solver error when solving fails with the same error on all platforms:
-  $ dune pkg lock
+  $ DUNE_TRACE=+sat dune pkg lock
   Error:
   Unable to solve dependencies while generating lock directory: dune.lock
   
@@ -44,6 +44,12 @@ Solver error when solving fails with the same error on all platforms:
       Rejected candidates:
         c.0.2: Incompatible with restriction: = 0.1
   [1]
+
+Each of the four platform solves retries twice before reporting the failure.
+
+  $ dune trace cat \
+  > | jq -s 'include "dune"; [ .[] | satSolveEvents ] | length'
+  12
 
 Modify the "a" package so the solver error is different on different platforms:
   $ mkpkg a <<EOF

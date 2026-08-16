@@ -2,11 +2,13 @@ open Import
 
 type t =
   { local_binaries : File_binding.Expanded.t list Memo.Lazy.t
+  ; base_env : Env.t Memo.Lazy.t
   ; external_env : Env.t Memo.Lazy.t
   ; artifacts : Artifacts.t Memo.Lazy.t
   }
 
 let local_binaries t = Memo.Lazy.force t.local_binaries
+let base_env t = Memo.Lazy.force t.base_env
 let external_env t = Memo.Lazy.force t.external_env
 let artifacts t = Memo.Lazy.force t.artifacts
 
@@ -27,6 +29,8 @@ let make
       ~expander
       ~default_env
       ~default_artifacts
+      ~visible_packages
+      ~lockdir_bin_env
   =
   let open Memo.O in
   let config = Dune_env.find config_stanza ~profile in
@@ -38,8 +42,8 @@ let make
       >>= extend)
   in
   let config_binaries = Option.value config.binaries ~default:[] in
-  let external_env =
-    inherited ~field:external_env ~root:default_env (fun env ->
+  let base_env =
+    inherited ~field:base_env ~root:default_env (fun env ->
       let env =
         let env = Env.extend_env env config.env_vars in
         match config_binaries with
@@ -50,15 +54,26 @@ let make
       in
       Memo.return env)
   in
+  (* The lock directory [PATH] is added to each node's own [base_env] rather
+     than inherited: the visible packages differ per directory, so inheriting it
+     would widen a descendant's [PATH] back to its ancestor's. *)
+  let external_env =
+    Memo.lazy_ (fun () ->
+      let* env = Memo.Lazy.force base_env in
+      let+ bin_env = lockdir_bin_env in
+      Env_path.extend_env_concat_path env bin_env)
+  in
   let artifacts =
     inherited ~field:artifacts ~root:default_artifacts (fun binaries ->
+      let* visible_packages = visible_packages in
       Memo.parallel_map
         config_binaries
         ~f:(File_binding_expand.expand ~dir ~f:(expand_str_lazy expander))
-      >>| Artifacts.add_binaries binaries ~dir)
+      >>| Artifacts.add_binaries binaries ~dir
+      >>| Artifacts.set_visible_packages ~visible_packages)
   in
   let local_binaries =
     Memo.lazy_ (fun () -> Memo.Lazy.force artifacts >>= Artifacts.local_binaries)
   in
-  { external_env; artifacts; local_binaries }
+  { base_env; external_env; artifacts; local_binaries }
 ;;

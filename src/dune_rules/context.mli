@@ -57,7 +57,17 @@ val hash : t -> int
 val to_dyn : t -> Dyn.t
 val to_dyn_concise : t -> Dyn.t
 val name : t -> Context_name.t
+
 val which : t -> Filename.t -> Path.t option Memo.t
+
+(** Like [which], but in a context with a lock directory only the binaries
+    installed by the dependency closure of [packages] are considered. The
+    ambient [PATH] is still searched if none of them provide the program. *)
+val which_narrowed_to_packages
+  :  t
+  -> packages:Package.Name.Set.t
+  -> Filename.t
+  -> Path.t option Memo.t
 
 (** [Some path/to/foo.exe] if this contexts is for feedback-directed
     optimization of target path/to/foo.exe *)

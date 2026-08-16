@@ -28,6 +28,11 @@ val context_env : t -> Env.t Memo.t
 
 val env_node : t -> dir:Path.Build.t -> Env_node.t Memo.t
 
+(** The artifacts visible from [dir], resolved in the host context. [dir] is a
+    directory of [t]'s own context; it is mapped into the host context when
+    there is one. *)
+val artifacts_host : t -> dir:Path.Build.t -> Artifacts.t Memo.t
+
 val add_rule
   :  t
   -> ?mode:Rule.Mode.t

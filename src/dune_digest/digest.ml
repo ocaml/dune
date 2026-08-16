@@ -200,11 +200,6 @@ let feed_bytes_raw hasher bytes ~len =
   Blake3_mini.feed_string hasher (Bytes.unsafe_to_string bytes) ~pos:0 ~len
 ;;
 
-let feed_int64 hasher scratch i =
-  Stdlib.Bytes.set_int64_le scratch 0 i;
-  feed_bytes_raw hasher scratch ~len:8
-;;
-
 let feed_bool hasher scratch b =
   Bytes.set scratch 0 (if b then '\001' else '\000');
   feed_bytes_raw hasher scratch ~len:1
@@ -220,54 +215,50 @@ let feed_string hasher scratch s =
   feed_string_raw hasher s
 ;;
 
+let feed_int_and_int64 hasher scratch first second =
+  Stdlib.Bytes.set_int64_le scratch 0 (Int64.of_int first);
+  Stdlib.Bytes.set_int64_le scratch 8 second;
+  feed_bytes_raw hasher scratch ~len:16
+;;
+
+let feed_int_and_int hasher scratch first second =
+  feed_int_and_int64 hasher scratch first (Int64.of_int second)
+;;
+
+let feed_int_and_bool hasher scratch i b =
+  Stdlib.Bytes.set_int64_le scratch 0 (Int64.of_int i);
+  Bytes.set scratch 8 (if b then '\001' else '\000');
+  feed_bytes_raw hasher scratch ~len:9
+;;
+
 let rec feed_repr : type a. Hasher.t -> Bytes.t -> a Repr.t -> a -> unit =
   fun hasher scratch repr value ->
   match repr with
-  | Unit ->
-    feed_int hasher scratch 1;
-    feed_bool hasher scratch false
-  | Bool ->
-    feed_int hasher scratch 2;
-    feed_bool hasher scratch value
-  | Int ->
-    feed_int hasher scratch 3;
-    feed_int hasher scratch value
+  | Unit -> feed_int_and_bool hasher scratch 1 false
+  | Bool -> feed_int_and_bool hasher scratch 2 value
+  | Int -> feed_int_and_int hasher scratch 3 value
   | String ->
-    feed_int hasher scratch 4;
-    feed_string hasher scratch value
-  | Int32 ->
-    feed_int hasher scratch 12;
-    feed_int64 hasher scratch (Int64.of_int32 value)
-  | Int64 ->
-    feed_int hasher scratch 13;
-    feed_int64 hasher scratch value
-  | Nativeint ->
-    feed_int hasher scratch 14;
-    feed_int64 hasher scratch (Int64.of_nativeint value)
+    feed_int_and_int hasher scratch 4 (String.length value);
+    feed_string_raw hasher value
+  | Int32 -> feed_int_and_int64 hasher scratch 12 (Int64.of_int32 value)
+  | Int64 -> feed_int_and_int64 hasher scratch 13 value
+  | Nativeint -> feed_int_and_int64 hasher scratch 14 (Int64.of_nativeint value)
   | Bytes ->
-    feed_int hasher scratch 15;
-    feed_int hasher scratch (Bytes.length value);
+    feed_int_and_int hasher scratch 15 (Bytes.length value);
     feed_bytes_raw hasher value ~len:(Bytes.length value)
-  | Char ->
-    feed_int hasher scratch 16;
-    feed_int hasher scratch (Char.code value)
-  | Float ->
-    feed_int hasher scratch 17;
-    feed_int64 hasher scratch (Int64.bits_of_float value)
+  | Char -> feed_int_and_int hasher scratch 16 (Char.code value)
+  | Float -> feed_int_and_int64 hasher scratch 17 (Int64.bits_of_float value)
   | Option repr ->
-    feed_int hasher scratch 5;
     (match value with
-     | None -> feed_bool hasher scratch false
+     | None -> feed_int_and_bool hasher scratch 5 false
      | Some x ->
-       feed_bool hasher scratch true;
+       feed_int_and_bool hasher scratch 5 true;
        feed_repr hasher scratch repr x)
   | List repr ->
-    feed_int hasher scratch 6;
-    feed_int hasher scratch (List.length value);
+    feed_int_and_int hasher scratch 6 (List.length value);
     List.iter value ~f:(feed_repr hasher scratch repr)
   | Array repr ->
-    feed_int hasher scratch 7;
-    feed_int hasher scratch (Array.length value);
+    feed_int_and_int hasher scratch 7 (Array.length value);
     Array.iter value ~f:(feed_repr hasher scratch repr)
   | Pair (left, right) ->
     feed_int hasher scratch 8;
@@ -342,7 +333,7 @@ module Feed = struct
 
   let bool = contramap string ~f:Bool.to_string
   let int = contramap string ~f:Int.to_string
-  let repr repr hasher value = feed_repr hasher (Bytes.create 8) repr value
+  let repr repr hasher value = feed_repr hasher (Bytes.create 16) repr value
 
   let list feed_x hasher xs =
     int hasher (List.length xs);

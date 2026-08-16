@@ -231,6 +231,18 @@ let feed_int_and_bool hasher scratch i b =
   feed_bytes_raw hasher scratch ~len:9
 ;;
 
+let feed_string_raw_and_bool hasher scratch string bool =
+  let length = String.length string in
+  if length < Bytes.length scratch
+  then (
+    Bytes.unsafe_blit_string ~src:string ~src_pos:0 ~dst:scratch ~dst_pos:0 ~len:length;
+    Bytes.set scratch length (if bool then '\001' else '\000');
+    feed_bytes_raw hasher scratch ~len:(length + 1))
+  else (
+    feed_string_raw hasher string;
+    feed_bool hasher scratch bool)
+;;
+
 let rec feed_repr : type a. Hasher.t -> Bytes.t -> a Repr.t -> a -> unit =
   fun hasher scratch repr value ->
   match repr with
@@ -308,15 +320,13 @@ and feed_repr_cases : type a. Hasher.t -> Bytes.t -> a Repr.case list -> a -> un
     if test value
     then (
       feed_int_and_int hasher scratch 11 (String.length tag);
-      feed_string_raw hasher tag;
-      feed_bool hasher scratch false)
+      feed_string_raw_and_bool hasher scratch tag false)
     else feed_repr_cases hasher scratch rest value
   | Repr.Case1 { tag; repr; proj } :: rest ->
     (match proj value with
      | Some argument ->
        feed_int_and_int hasher scratch 11 (String.length tag);
-       feed_string_raw hasher tag;
-       feed_bool hasher scratch true;
+       feed_string_raw_and_bool hasher scratch tag true;
        feed_repr hasher scratch repr argument
      | None -> feed_repr_cases hasher scratch rest value)
 ;;

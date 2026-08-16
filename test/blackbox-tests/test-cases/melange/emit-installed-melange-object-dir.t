@@ -47,18 +47,16 @@ files in its Melange object directory.
   >   dune rules --root app --format=json --deps --display=quiet \
   >   dist/node_modules/repro.foo/errors.js > deps.json
 
-The selectors must cover the directory where Dune installed the Melange
-objects. Both assertions currently fail.
+Print the selectors so their directories can be compared with the installed
+files above.
 
-  $ jq_dune -e '
-  >   [.[] | depsGlobEntriesWithPredicate("*.cmj")
-  >    | select(.dir | endswith("/repro/foo/melange"))]
-  >   | length == 1
-  > ' deps.json > /dev/null
-  [1]
-  $ jq_dune -e '
-  >   [.[] | depsGlobEntriesWithPredicate("*.cmi")
-  >    | select(.dir | endswith("/repro/foo/melange"))]
-  >   | length == 1
-  > ' deps.json > /dev/null
-  [1]
+  $ jq_dune -r --arg lib_dir "$PWD/prefix/lib/repro/foo" '
+  >   [.[] | depGlobEntries
+  >    | select(.predicate == "*.cmj" or .predicate == "*.cmi")
+  >    | select(.dir_kind == "External")
+  >    | select(.dir == $lib_dir or .dir == ($lib_dir + "/melange"))
+  >    | "\(.predicate) \(.dir_kind) \(.dir)"]
+  >   | sort[]
+  > ' deps.json
+  *.cmi External $TESTCASE_ROOT/prefix/lib/repro/foo
+  *.cmj External $TESTCASE_ROOT/prefix/lib/repro/foo

@@ -4,6 +4,17 @@ empty path list, which is rarely what the user intended.
 
   $ make_mypkg_lib_project
 
+The restriction is currently not checked when the rule is disabled:
+
+  $ cat >dune <<'EOF'
+  > (rule
+  >  (target out)
+  >  (enabled_if false)
+  >  (deps (:pkg (package mypkg)))
+  >  (action (echo unused)))
+  > EOF
+  $ dune build
+
   $ cat >dune <<'EOF'
   > (rule
   >  (deps (:pkg (package mypkg)))

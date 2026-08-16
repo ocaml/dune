@@ -282,9 +282,7 @@ let rec feed_repr : type a. Hasher.t -> Bytes.t -> a Repr.t -> a -> unit =
   | Record (_, fields) ->
     feed_int hasher scratch 10;
     feed_repr_fields hasher scratch fields value
-  | Variant (_, cases) ->
-    feed_int hasher scratch 11;
-    feed_repr_cases hasher scratch cases value
+  | Variant (_, cases) -> feed_repr_cases hasher scratch cases value
   | View { repr; to_ } -> feed_repr hasher scratch repr (to_ value)
   | Abstract _ ->
     Code_error.raise
@@ -302,19 +300,22 @@ and feed_repr_cases : type a. Hasher.t -> Bytes.t -> a Repr.case list -> a -> un
   fun hasher scratch cases value ->
   match cases with
   | [] ->
+    feed_int hasher scratch 11;
     Code_error.raise
       "Repr.variant: value did not match any case"
       [ "value", Dyn.string "<opaque>" ]
   | Repr.Case0 { tag; test } :: rest ->
     if test value
     then (
-      feed_string hasher scratch tag;
+      feed_int_and_int hasher scratch 11 (String.length tag);
+      feed_string_raw hasher tag;
       feed_bool hasher scratch false)
     else feed_repr_cases hasher scratch rest value
   | Repr.Case1 { tag; repr; proj } :: rest ->
     (match proj value with
      | Some argument ->
-       feed_string hasher scratch tag;
+       feed_int_and_int hasher scratch 11 (String.length tag);
+       feed_string_raw hasher tag;
        feed_bool hasher scratch true;
        feed_repr hasher scratch repr argument
      | None -> feed_repr_cases hasher scratch rest value)

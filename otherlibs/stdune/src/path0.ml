@@ -76,11 +76,11 @@ module Local_gen = struct
     let relative_result t components =
       let rec loop t components =
         match components with
-        | [] -> Result.Ok t
+        | [] -> Ok t
         | "." :: rest -> loop t rest
         | ".." :: rest ->
           (match parent t with
-           | None -> Result.Error `Outside_the_workspace
+           | None -> Error `Outside_the_workspace
            | Some parent -> loop parent rest)
         | fn :: rest ->
           if is_root t
@@ -162,23 +162,31 @@ module Local_gen = struct
     in
     fun s ->
       let len = String.length s in
-      len = 0 || before_slash s (len - 1)
+      len > 0 && before_slash s (len - 1)
   ;;
 
+  let is_valid s = is_root s || is_canonicalized s
+
   let parse_string_result s =
-    match s with
-    | "" | "." -> Result.Ok root
-    | _ when is_canonicalized s -> Result.Ok s
-    | _ -> relative_result root s
+    if is_valid s
+    then Ok s
+    else if String.is_empty s
+    then Ok root
+    else relative_result root s
   ;;
 
   let parse_string_exn s =
-    match parse_string_result s with
-    | Ok t -> t
-    | Error `Outside_the_workspace ->
-      Code_error.raise
-        "Local.parse_string_exn: path outside the workspace"
-        [ "s", String s ]
+    if is_valid s
+    then s
+    else if String.is_empty s
+    then root
+    else (
+      match relative_result root s with
+      | Ok t -> t
+      | Error `Outside_the_workspace ->
+        Code_error.raise
+          "Local.parse_string_exn: path outside the workspace"
+          [ "s", String s ])
   ;;
 
   let of_string s = parse_string_exn s

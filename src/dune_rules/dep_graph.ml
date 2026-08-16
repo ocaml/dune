@@ -71,18 +71,10 @@ module Ml_kind = struct
   let dummy m = Ml_kind.Dict.make_both (dummy m)
 
   let for_module_compilation ~modules ({ impl; intf } : t) =
-    let dedupe_modules modules =
-      let _, modules =
-        List.fold_left
-          modules
-          ~init:(Module_name.Unique.Set.empty, [])
-          ~f:(fun (seen, acc) module_ ->
-            let obj_name = Module.obj_name module_ in
-            if Module_name.Unique.Set.mem seen obj_name
-            then seen, acc
-            else Module_name.Unique.Set.add seen obj_name, module_ :: acc)
-      in
-      List.rev modules
+    let dedupe_modules =
+      String.Table.dedupe_by ~key:(fun module_ ->
+        Module.obj_name module_ |> Module_name.Unique.to_string)
+      |> Staged.unstage
     in
     let merge_impl_and_intf_deps obj_name impl_deps =
       let intf_deps = Module_name.Unique.Map.find_exn intf.per_module obj_name in

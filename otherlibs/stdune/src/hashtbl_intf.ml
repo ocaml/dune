@@ -15,6 +15,13 @@ module type S = sig
   val find : 'a t -> key -> 'a option
   val find_exn : 'a t -> key -> 'a
   val find_or_add : 'a t -> key -> f:(key -> 'a) -> 'a
+
+  (** [dedupe_by ~key] returns a staged function that removes elements with
+      duplicate keys from a list while preserving the first occurrence of every
+      key. Unstage the function once and reuse it. It reuses a mutable table and
+      must not be called concurrently or reentrantly. *)
+  val dedupe_by : key:('a -> key) -> ('a list -> 'a list) Staged.t
+
   val fold : 'a t -> init:'b -> f:('a -> 'b -> 'b) -> 'b
   val foldi : 'a t -> init:'b -> f:(key -> 'a -> 'b -> 'b) -> 'b
   val of_list_exn : (key * 'a) list -> 'a t

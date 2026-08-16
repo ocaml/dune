@@ -134,35 +134,42 @@ module Validation_result = struct
 end
 
 let validate { files; dirs } =
-  let add_file (t : Validated.t) name =
-    Validation_result.Valid { t with files = Filename.Set.add t.files name }
-  in
-  let add_dir (t : Validated.t) name =
-    if Filename.Set.mem t.files name
-    then
-      Validation_result.File_and_directory_target_with_the_same_name
-        (Path.Build.relative_fname t.root name)
-    else Valid { t with dirs = Filename.Set.add t.dirs name }
-  in
-  let build (init : Validation_result.t) ~paths ~f =
-    Path.Build.Array.Set.fold paths ~init ~f:(fun path res ->
+  let files_result =
+    Path.Build.Array.Set.fold files ~init:Validation_result.No_targets ~f:(fun path res ->
       let parent = Path.Build.parent_exn path in
       let name = Path.Build.basename path in
       match res with
       | No_targets ->
-        let t =
+        Valid
           { Validated.root = parent
-          ; files = Filename.Set.empty
+          ; files = Filename.Set.singleton name
           ; dirs = Filename.Set.empty
           }
-        in
-        f t name
-      | Valid t when Path.Build.equal t.root parent -> f t name
+      | Valid t when Path.Build.equal t.root parent ->
+        Valid { t with files = Filename.Set.add t.files name }
       | Valid _ -> Inconsistent_parent_dir
       | (Inconsistent_parent_dir | File_and_directory_target_with_the_same_name _) as res
         -> res)
   in
-  build No_targets ~paths:files ~f:add_file |> build ~paths:dirs ~f:add_dir
+  Path.Build.Array.Set.fold dirs ~init:files_result ~f:(fun path res ->
+    let parent = Path.Build.parent_exn path in
+    let name = Path.Build.basename path in
+    match res with
+    | No_targets ->
+      Valid
+        { Validated.root = parent
+        ; files = Filename.Set.empty
+        ; dirs = Filename.Set.singleton name
+        }
+    | Valid t when Path.Build.equal t.root parent ->
+      if Filename.Set.mem t.files name
+      then
+        File_and_directory_target_with_the_same_name
+          (Path.Build.relative_fname t.root name)
+      else Valid { t with dirs = Filename.Set.add t.dirs name }
+    | Valid _ -> Inconsistent_parent_dir
+    | (Inconsistent_parent_dir | File_and_directory_target_with_the_same_name _) as res ->
+      res)
 ;;
 
 module Produced = struct

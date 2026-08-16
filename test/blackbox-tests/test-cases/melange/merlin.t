@@ -558,6 +558,16 @@ Mixed OCaml/Melange libraries store their Merlin data in one stanza file.
   >  (melange.preprocess
   >   (action
   >    (run sh %{dep:pp_melange.sh} %{input-file}))))
+  > (library
+  >  (name melange_only_lib)
+  >  (modules melange_only)
+  >  (modes melange)
+  >  (melange.preprocess
+  >   (action
+  >    (run sh %{dep:pp_melange.sh} %{input-file}))))
+  > (library
+  >  (name aaa)
+  >  (modules aaa))
   > EOF
   $ cat > mixed/foo.ml <<EOF
   > let x = "foo"
@@ -577,9 +587,17 @@ Mixed OCaml/Melange libraries store their Merlin data in one stanza file.
   $ cat > mixed/iface.melange.mli <<EOF
   > val target : string
   > EOF
+  $ cat > mixed/melange_only.ml <<EOF
+  > let target = "melange"
+  > EOF
+  $ cat > mixed/aaa.ml <<EOF
+  > let x = "aaa"
+  > EOF
 
   $ dune build --root mixed @check
   $ find mixed/_build/default/.merlin-conf -type f | sort
+  mixed/_build/default/.merlin-conf/lib-aaa
+  mixed/_build/default/.merlin-conf/lib-melange_only_lib
   mixed/_build/default/.merlin-conf/lib-mixed
 
 The old `File` query still returns the default OCaml Merlin configuration.
@@ -590,27 +608,39 @@ The old `File` query still returns the default OCaml Merlin configuration.
   $ query_ocaml_merlin_pp "$PWD/mixed/foo.ml" --root mixed | grep -E 'MELC_STDLIB|\.objs/melange|pp_melange'
   [1]
 
-An exact conditional source should use the configuration for its mode. The
-Melange configuration is currently missing from a mixed-mode library.
+Exact conditional source matches take precedence over extensionless fallback
+matches from the other configuration.
 
-  $ query_ocaml_merlin_pp "$PWD/mixed/platform.ml" --root mixed | grep -q pp_ocaml
-  $ query_ocaml_merlin_pp "$PWD/mixed/iface.mli" --root mixed | grep -q pp_ocaml
-  $ query_ocaml_merlin_pp "$PWD/mixed/platform.melange.ml" --root mixed | grep -q pp_melange
-  [1]
-  $ query_ocaml_merlin_pp "$PWD/mixed/iface.melange.mli" --root mixed | grep -q pp_melange
-  [1]
+  $ for file in platform.ml iface.mli; do
+  >   printf '%s: ' "$file"
+  >   query_ocaml_merlin_pp "$PWD/mixed/$file" --root mixed \
+  >     | grep -Eo 'pp_(ocaml|melange)' | sort -u
+  > done
+  platform.ml: pp_ocaml
+  iface.mli: pp_ocaml
+  $ for file in platform.melange.ml iface.melange.mli melange_only.ml; do
+  >   printf '%s: ' "$file"
+  >   query_ocaml_merlin_pp "$PWD/mixed/$file" --root mixed \
+  >     | grep -Eo 'pp_(ocaml|melange)' | sort -u
+  > done
+  platform.melange.ml: pp_melange
+  iface.melange.mli: pp_melange
+  melange_only.ml: pp_melange
 
-The extensionless lookup remains a fallback for preprocessed filenames.
+The extensionless lookup remains a last-resort fallback for preprocessed
+filenames.
 
-  $ query_ocaml_merlin_pp "$PWD/mixed/platform.pp.ml" --root mixed | grep -q pp_ocaml
+  $ query_ocaml_merlin_pp "$PWD/mixed/platform.pp.ml" --root mixed \
+  >   | grep -Eo 'pp_(ocaml|melange)' | sort -u
+  pp_ocaml
 
-Dump-dot-merlin should continue to use only the default OCaml configuration.
+Dump-dot-merlin continues to use only the default OCaml configuration.
 
   $ dune ocaml dump-dot-merlin --root mixed "$PWD/mixed" \
   >   | grep -E '^B .*\.mixed\.objs/(byte|melange)'
   B $TESTCASE_ROOT/mixed/_build/default/.mixed.objs/byte
 
-Only the default configuration is currently available to debug tooling.
+Both generated configurations remain available to debug tooling.
 
   $ dune ocaml merlin dump-config --root mixed --format=json "$PWD/mixed" | jq_dune '
   > def config($name): .config[] | select(.[0] == $name) | .[1];
@@ -632,6 +662,11 @@ Only the default configuration is currently available to debug tooling.
       "mode": "ocaml",
       "obj_dir": "_build/default/.mixed.objs/byte",
       "preprocess": "ocaml"
+    },
+    {
+      "mode": "melange",
+      "obj_dir": "_build/default/.mixed.objs/melange",
+      "preprocess": "melange"
     }
   ]
 
@@ -640,4 +675,3 @@ The mixed library should also expose its Melange configuration.
   $ dune ocaml merlin dump-config --root mixed --format=json "$PWD/mixed" | jq_dune -e '
   > [merlinEntry("Foo") | .config[] | select(.[0] == "B") | .[1]]
   > | any(contains(".mixed.objs/melange"))' >/dev/null
-  [1]

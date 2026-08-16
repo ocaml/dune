@@ -39,6 +39,11 @@ module Manual : sig
   val bool : t -> bool -> unit
   val int : t -> int -> unit
   val string : t -> string -> unit
+
+  (** Feed the same representation as [string t (left ^ separator ^ right)]
+      without constructing the concatenated string. *)
+  val string_with_separator : t -> string -> separator:string -> string -> unit
+
   val option : t -> f:(t -> 'a -> unit) -> 'a option -> unit
   val list : t -> f:(t -> 'a -> unit) -> 'a list -> unit
   val repr : t -> 'a Repr.t -> 'a -> unit

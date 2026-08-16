@@ -6,7 +6,6 @@ open Test_helpers.Make ()
    series-parallel Seq/Par/Singleton/Empty structure - by driving each shape through the
    public Memo combinators and reading it back with [Memo.For_tests.get_deps_structured]. *)
 
-let leaf name = Memo.lazy_node ~name (fun () -> Memo.return ())
 let read = Memo.Node.read
 
 let print_deps label m =
@@ -18,9 +17,9 @@ let print_deps label m =
 ;;
 
 let%expect_test "dependency structure of Memo combinators" =
-  let a = leaf "a"
-  and b = leaf "b"
-  and c = leaf "c" in
+  let a = Memo.lazy_node ~name:"a" (fun () -> Memo.return ())
+  and b = Memo.lazy_node ~name:"b" (fun () -> Memo.return ())
+  and c = Memo.lazy_node ~name:"c" (fun () -> Memo.return ()) in
   (* No dependencies. *)
   print_deps "empty" (Memo.return ());
   [%expect {| empty: Empty |}];

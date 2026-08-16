@@ -267,7 +267,9 @@ end = struct
     >>| get_include_subdirs
     >>= function
     | Some (loc, Include mode) ->
-      let components = Memo.Lazy.create (fun () -> collect_group st_dir ~dir) in
+      let components =
+        Memo.Lazy.create ~name:"group-components" (fun () -> collect_group st_dir ~dir)
+      in
       Memo.return
       @@ T.Group_root
            { source_dir = st_dir

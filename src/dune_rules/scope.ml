@@ -108,7 +108,7 @@ module DB = struct
                 let lib_name, redirect =
                   let old_public_name = Lib_name.of_local s.old_name.lib_name in
                   let enabled =
-                    Memo.lazy_ (fun () ->
+                    Memo.lazy_ ~name:"library-redirect-enabled" (fun () ->
                       let* expander = Expander0.get ~dir in
                       Expander0.eval_blang expander s.old_name.enabled >>| Toggle.of_bool)
                     |> Memo.Lazy.force
@@ -247,7 +247,7 @@ module DB = struct
                   Library.to_lib_id ~src_dir conf
                 in
                 let enabled =
-                  Memo.lazy_ (fun () ->
+                  Memo.lazy_ ~name:"library-enabled" (fun () ->
                     let* expander = Expander0.get ~dir in
                     Expander0.eval_blang expander conf.enabled_if >>| Toggle.of_bool)
                   |> Memo.Lazy.force
@@ -397,7 +397,7 @@ module DB = struct
 
   let all =
     Per_context.create_by_name ~name:"scope" (fun context ->
-      Memo.Lazy.create (fun () ->
+      Memo.Lazy.create ~name:"scope" (fun () ->
         let* projects_by_root = Dune_load.projects_by_root ()
         and* stanzas = Dune_load.dune_files context in
         create_from_stanzas ~projects_by_root ~context stanzas)
@@ -546,7 +546,7 @@ module DB = struct
     in
     let per_context =
       Per_context.create_by_name ~name:"scope-db" (fun ctx ->
-        Memo.lazy_ (fun () ->
+        Memo.lazy_ ~name:"scope-db" (fun () ->
           let* public_libs =
             let* ctx = Context.DB.get ctx in
             public_libs (Context.name ctx)

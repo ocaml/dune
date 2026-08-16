@@ -285,19 +285,19 @@ and exec_memo_eval : type i o m. (i, o) memo -> i -> m eval_mode -> (o * m) Memo
   | Eager -> Memo.exec (Lazy.force memo.eager) i
 ;;
 
-let memoize ?cutoff name t =
+let memoize ?cutoff _name t =
   let lazy_ =
     lazy
       (let cutoff =
          Option.map cutoff ~f:(fun equal x y -> Tuple.T2.equal equal Dep.Set.equal x y)
        in
-       Memo.lazy_ ?cutoff ~name:(name ^ "(lazy)") (fun () -> eval t Lazy))
+       Memo.lazy_ ?cutoff ~name:"action-builder-lazy" (fun () -> eval t Lazy))
   in
   let eager =
     let cutoff =
       Option.map cutoff ~f:(fun equal x y -> Tuple.T2.equal equal Dep.Facts.equal x y)
     in
-    Memo.lazy_ ?cutoff ~name (fun () -> eval t Eager)
+    Memo.lazy_ ?cutoff ~name:"action-builder-eager" (fun () -> eval t Eager)
   in
   Memoize { lazy_; eager }
 ;;

@@ -89,7 +89,7 @@ let init ~sandbox_actions ~sandboxing_preference () : unit =
     ~sandboxing_preference
     ~promote_source
     ~contexts:
-      (Memo.lazy_ (fun () ->
+      (Memo.lazy_ ~name:"build-context-types" (fun () ->
          let open Memo.O in
          let+ contexts = Workspace.workspace () >>| Workspace.build_contexts in
          let open Dune_engine.Build_config.Context_type in

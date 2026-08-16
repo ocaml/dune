@@ -31,7 +31,7 @@ let make
   let open Memo.O in
   let config = Dune_env.find config_stanza ~profile in
   let inherited ~field ~root extend =
-    Memo.lazy_ (fun () ->
+    Memo.lazy_ ~name:"inherited-environment-field" (fun () ->
       (match inherit_from with
        | None -> root
        | Some t -> Memo.Lazy.force t >>= field)
@@ -58,7 +58,8 @@ let make
       >>| Artifacts.add_binaries binaries ~dir)
   in
   let local_binaries =
-    Memo.lazy_ (fun () -> Memo.Lazy.force artifacts >>= Artifacts.local_binaries)
+    Memo.lazy_ ~name:"local-binaries" (fun () ->
+      Memo.Lazy.force artifacts >>= Artifacts.local_binaries)
   in
   { external_env; artifacts; local_binaries }
 ;;

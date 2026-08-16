@@ -1204,7 +1204,7 @@ module Resolve_names : sig
          Staged.t
 end = struct
   let projects_by_package =
-    Memo.lazy_ (fun () ->
+    Memo.lazy_ ~name:"projects-by-package" (fun () ->
       let open Memo.O in
       Dune_load.projects ()
       >>| List.concat_map ~f:(fun project ->
@@ -1518,7 +1518,7 @@ end = struct
     let default_implementation =
       Lib_info.default_implementation info
       |> Option.map ~f:(fun l ->
-        Memo.lazy_ (fun () ->
+        Memo.lazy_ ~name:"default-library-implementation" (fun () ->
           let open Resolve.Memo.O in
           let* impl = resolve_impl l in
           match Lib_info.package impl.info with
@@ -1655,7 +1655,7 @@ end = struct
          ; project
          ; sub_systems =
              Sub_system_name.Map.mapi (Lib_info.sub_systems info) ~f:(fun name info ->
-               Memo.Lazy.create (fun () ->
+               Memo.Lazy.create ~name:"library-sub-system" (fun () ->
                  Sub_system.instantiate
                    name
                    info
@@ -2280,7 +2280,7 @@ module Compile = struct
     let requires_link : lib list Resolve.t Memo.Lazy.t Compilation_mode.Per_mode.t =
       let db = Option.some_if (not allow_overlaps) db in
       Compilation_mode.Per_mode.map requires ~f:(fun ~for_ requires ->
-        Memo.lazy_ (fun () ->
+        Memo.lazy_ ~name:"library-requires-link" (fun () ->
           let open Resolve.Memo.O in
           requires
           >>= Resolve_names.compile_closure_with_overlap_checks
@@ -2367,7 +2367,7 @@ module DB = struct
         { parent
         ; resolve
         ; resolve_lib_id
-        ; all = Memo.lazy_ all
+        ; all = Memo.lazy_ ~name:"library-db-all" all
         ; instrument_with
         ; instantiate
         }
@@ -2511,7 +2511,7 @@ module DB = struct
       | `Exe _ -> Ocaml
     in
     let resolved =
-      Memo.lazy_ (fun () ->
+      Memo.lazy_ ~name:"resolved-library-dependencies" (fun () ->
         Resolve_names.resolve_deps_and_add_runtime_deps
           t
           deps
@@ -2523,7 +2523,7 @@ module DB = struct
     in
     let requires_link : lib list Resolve.t Memo.Lazy.t Compilation_mode.Per_mode.t =
       let requires_link =
-        Memo.Lazy.create (fun () ->
+        Memo.Lazy.create ~name:"library-requires-link" (fun () ->
           let* forbidden_libraries =
             Resolve.Memo.List.map forbidden_libraries ~f:(fun (loc, name) ->
               let+ lib = resolve t (loc, name) in
@@ -2562,7 +2562,9 @@ module DB = struct
                      (Nonempty_list.map ~f:snd names |> Nonempty_list.to_list))
                   (Loc.to_file_colon_line loc)))
       in
-      let init = Memo.lazy_ (fun () -> Resolve.Memo.return []) in
+      let init =
+        Memo.lazy_ ~name:"empty-library-requires-link" (fun () -> Resolve.Memo.return [])
+      in
       Compilation_mode.Per_mode.of_list ~init [ for_, requires_link ]
     in
     let pps : lib list Resolve.Memo.t Compilation_mode.Per_mode.t =
@@ -2601,7 +2603,7 @@ module DB = struct
       : (Loc.t * lib) list Resolve.Memo.t Compilation_mode.Per_mode.t
       =
       let resolved_user_written_requires =
-        Memo.lazy_ (fun () ->
+        Memo.lazy_ ~name:"user-written-library-requires" (fun () ->
           Resolve_names.resolve_complex_deps
             t
             ~private_deps:Allow_all

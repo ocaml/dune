@@ -131,7 +131,7 @@ let rec physical
       Some
         { Dir0.sub_dir_status = dir_status
         ; sub_dir_as_t =
-            Memo.lazy_node (fun () ->
+            Memo.lazy_node ~name:"source-tree-sub-dir" (fun () ->
               find_dir_raw
                 ~default_vcs
                 ~path
@@ -164,7 +164,7 @@ and virtual_ ~project ~sub_dirs ~parent_status ~dune_file ~init ~path =
               ( fn
               , { Dir0.sub_dir_status = status
                 ; sub_dir_as_t =
-                    Memo.lazy_node (fun () ->
+                    Memo.lazy_node ~name:"source-tree-virtual-sub-dir" (fun () ->
                       find_dir_raw
                         ~default_vcs:Dir0.Vcs.Ancestor_vcs
                         ~path:(Path.Source.relative_fname path fn)
@@ -264,7 +264,7 @@ and find_dir_raw
 ;;
 
 let root =
-  Memo.lazy_node
+  Memo.lazy_node ~name:"source-tree-root"
   @@ fun () ->
   let path = Path.Source.root in
   let dir_status : Source_dir_status.t = Normal in

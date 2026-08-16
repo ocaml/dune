@@ -427,7 +427,10 @@ and named_paths_builder ~expander l =
              with
              | Some x ->
                let open Memo.O in
-               let x = Memo.lazy_ (fun () -> Memo.all_concurrently x >>| List.concat) in
+               let x =
+                 Memo.lazy_ ~name:"named-dependency-bindings" (fun () ->
+                   Memo.all_concurrently x >>| List.concat)
+               in
                let bindings =
                  Pform.Map.set
                    bindings

@@ -1368,7 +1368,7 @@ let make
   in
   let modules = Per_stanza.make modules_of_stanzas in
   let artifacts =
-    Memo.lazy_ (fun () ->
+    Memo.lazy_ ~name:"module-artifacts" (fun () ->
       let libs =
         List.map modules_of_stanzas.libraries ~f:(fun (part : _ Per_stanza.group_part) ->
           part.stanza, part.modules, part.obj_dir)

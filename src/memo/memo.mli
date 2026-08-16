@@ -435,9 +435,11 @@ end
     memoized function. *)
 val node : ('i, 'o) Table.t -> 'i -> ('i, 'o) Node.t
 
+(** Names passed to lazy-node constructors must be string literals so that creating a
+    node does not allocate its name. *)
 val lazy_node
-  :  ?cutoff:('a -> 'a -> bool)
-  -> ?name:string
+  :  name:string
+  -> ?cutoff:('a -> 'a -> bool)
   -> ?human_readable_description:(unit -> User_message.Style.t Pp.t)
   -> ?on_event:(Event.t -> unit)
   -> (unit -> 'a t)
@@ -449,22 +451,22 @@ module Lazy : sig
   val of_val : 'a -> 'a t
 
   val create
-    :  ?cutoff:('a -> 'a -> bool)
-    -> ?name:string
+    :  name:string
+    -> ?cutoff:('a -> 'a -> bool)
     -> ?human_readable_description:(unit -> User_message.Style.t Pp.t)
     -> ?on_event:(Event.t -> unit)
     -> (unit -> 'a memo)
     -> 'a t
 
   val force : 'a t -> 'a memo
-  val map : 'a t -> f:('a -> 'b) -> 'b t
+  val map : name:string -> 'a t -> f:('a -> 'b) -> 'b t
 
   module Expert : sig
     (** Like [Lazy.create] but returns the underlying Memo [Node], which can be
         useful for testing and debugging. *)
     val create
-      :  ?cutoff:('a -> 'a -> bool)
-      -> ?name:string
+      :  name:string
+      -> ?cutoff:('a -> 'a -> bool)
       -> ?human_readable_description:(unit -> User_message.Style.t Pp.t)
       -> ?on_event:(Event.t -> unit)
       -> (unit -> 'a memo)
@@ -473,8 +475,8 @@ module Lazy : sig
 end
 
 val lazy_
-  :  ?cutoff:('a -> 'a -> bool)
-  -> ?name:string
+  :  name:string
+  -> ?cutoff:('a -> 'a -> bool)
   -> ?human_readable_description:(unit -> User_message.Style.t Pp.t)
   -> ?on_event:(Event.t -> unit)
   -> (unit -> 'a t)

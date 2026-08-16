@@ -429,7 +429,7 @@ module Eval = struct
       match dynamic_includes with
       | [] -> Memo.Lazy.of_val t.static_stanzas
       | _ :: _ ->
-        Memo.lazy_
+        Memo.lazy_ ~name:"dynamic-includes"
         @@ fun () ->
         let+ stanzas =
           let origin =

@@ -43,7 +43,7 @@ module Memo = struct
   let of_io f = Memo.of_reproducible_fiber (Fiber.of_thunk f)
 
   let memoize t =
-    let l = Memo.lazy_ ~cutoff:(fun _ _ -> false) (fun () -> t) in
+    let l = Memo.lazy_ ~name:"memoize" ~cutoff:(fun _ _ -> false) (fun () -> t) in
     Memo.of_thunk (fun () -> Memo.Lazy.force l)
   ;;
 
@@ -56,7 +56,9 @@ module Memo = struct
   module Glass = struct
     type t = (unit, unit) Memo.Node.t
 
-    let create () = Memo.lazy_node ~cutoff:(fun _ _ -> false) (fun () -> Memo.return ())
+    let create () =
+      Memo.lazy_node ~name:"glass" ~cutoff:(fun _ _ -> false) (fun () -> Memo.return ())
+    ;;
 
     let break (t : t) =
       invalidation_acc
@@ -104,7 +106,11 @@ module Var = struct
   let create value =
     let value = ref value in
     { value
-    ; cell = Memo.lazy_node ~cutoff:(fun _ _ -> false) (fun () -> Memo.return !value)
+    ; cell =
+        Memo.lazy_node
+          ~name:"var"
+          ~cutoff:(fun _ _ -> false)
+          (fun () -> Memo.return !value)
     }
   ;;
 

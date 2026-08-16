@@ -494,7 +494,7 @@ end = struct
           Build_only_sub_dirs.union r.build_dir_only_sub_dirs build_dir_only_sub_dirs
       ; directory_targets = Path.Build.Map.union_exn r.directory_targets directory_targets
       ; rules =
-          Memo.lazy_ (fun () ->
+          Memo.lazy_ ~name:"union-rules" (fun () ->
             let open Memo.O in
             let+ r = Memo.Lazy.force r.rules
             and+ r' = Memo.Lazy.force rules in
@@ -561,7 +561,7 @@ end = struct
       check_all_directory_targets_are_descendant ~of_ directory_targets;
       check_all_sub_dirs_rule_dirs_are_descendant ~of_ build_dir_only_sub_dirs;
       let rules =
-        Memo.lazy_ (fun () ->
+        Memo.lazy_ ~name:"check-rules-are-descendant" (fun () ->
           let+ rules = rules in
           check_all_rules_are_descendant ~of_ rules;
           rules)

@@ -11,7 +11,8 @@ module Dune_file_db = struct
 
   let per_context dune_files =
     Per_context.create_by_name ~name:"dune-file-db" (fun ctx ->
-      Memo.lazy_ (fun () -> dune_files ctx >>| make) |> Memo.Lazy.force)
+      Memo.lazy_ ~name:"dune-file-db" (fun () -> dune_files ctx >>| make)
+      |> Memo.Lazy.force)
   ;;
 end
 
@@ -154,7 +155,7 @@ let load () =
         Dune_file.eval dune_files mask)
     in
     Per_context.create_by_name ~name:"dune-files" (fun ctx ->
-      Memo.Lazy.create (fun () ->
+      Memo.Lazy.create ~name:"dune-files-for-context" (fun () ->
         let* f = Memo.Lazy.force without_ctx in
         f ctx)
       |> Memo.Lazy.force)

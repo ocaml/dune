@@ -19,7 +19,7 @@ Testing the bootstrap of a wrapped include subdirs qualified.
   > module M2 = A.B.X
   > let () = Printf.printf "Hello from bootstrapped binary!"
   > EOF
-  ocamllex -q -o boot/pps.ml boot/pps.mll
+  ocamllex -ml -q -o boot/pps.ml boot/pps.mll
   ocaml -I +unix unix.cma $DUNEBOOT
   Hello from wrapped a/b/x.ml
   Hello from bootstrapped binary!

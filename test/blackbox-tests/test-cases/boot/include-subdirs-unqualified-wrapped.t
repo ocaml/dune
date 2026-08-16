@@ -30,7 +30,7 @@ Testing the bootstrap of a wrapped include subdirs unqualified.
   > module M4 = A.C
   > let () = Printf.printf "Hello from bootstrapped binary!"
   > EOF
-  ocamllex -q -o boot/pps.ml boot/pps.mll
+  ocamllex -ml -q -o boot/pps.ml boot/pps.mll
   ocaml -I +unix unix.cma $DUNEBOOT
   Hello from wrapped a/b/b.ml
   Hello from wrapped a/b/c/c.ml

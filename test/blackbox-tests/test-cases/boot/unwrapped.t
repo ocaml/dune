@@ -25,7 +25,7 @@ Testing the bootstrap of unwrapped libraries.
   > open B
   > let () = Printf.printf "Hello from bootstrapped binary!"
   > EOF
-  ocamllex -q -o boot/pps.ml boot/pps.mll
+  ocamllex -ml -q -o boot/pps.ml boot/pps.mll
   ocaml -I +unix unix.cma $DUNEBOOT
   Hello from unwrapped a/a.ml
   Hello from unwrapped a/b.ml

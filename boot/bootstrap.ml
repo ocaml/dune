@@ -127,7 +127,7 @@ let () =
       let ocamllex = Filename.concat bin_dir "ocamllex" in
       compiler, ocamllex, Some "--secondary", Some lib_dir)
   in
-  exit_if_non_zero (runf "%s -q -o %s %s" ocamllex (pps ^ ".ml") (pps ^ ".mll"));
+  exit_if_non_zero (runf "%s -ml -q -o %s %s" ocamllex (pps ^ ".ml") (pps ^ ".mll"));
   let script =
     let fname, out = Filename.open_temp_file duneboot "main" in
     script out;

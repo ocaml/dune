@@ -26,7 +26,7 @@ Testing the bootstrap of wrapped libraries.
   > open B
   > let () = Printf.printf "Hello from bootstrapped binary!"
   > EOF
-  ocamllex -q -o boot/pps.ml boot/pps.mll
+  ocamllex -ml -q -o boot/pps.ml boot/pps.mll
   ocaml -I +unix unix.cma $DUNEBOOT
   Hello from wrapped module a/b.ml
   Hello from wrapped interface module a/a.ml

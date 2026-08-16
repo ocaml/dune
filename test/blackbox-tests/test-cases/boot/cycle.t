@@ -19,7 +19,7 @@ Testing cycle detection in bootstrap.
   $ create_dune a <<EOF
   > open A
   > EOF
-  ocamllex -q -o boot/pps.ml boot/pps.mll
+  ocamllex -ml -q -o boot/pps.ml boot/pps.mll
   ocaml -I +unix unix.cma $DUNEBOOT
   cycle:
   - a__B.ml

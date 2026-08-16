@@ -30,7 +30,7 @@ Testing the bootstrap of an unwrapped include subdirs unqualified.
   > module M3 = C
   > let () = Printf.printf "Hello from bootstrapped binary!"
   > EOF
-  ocamllex -q -o boot/pps.ml boot/pps.mll
+  ocamllex -ml -q -o boot/pps.ml boot/pps.mll
   ocaml -I +unix unix.cma $DUNEBOOT
   Hello from unwrapped a/b/b.ml
   Hello from unwrapped a/b/c/c.ml

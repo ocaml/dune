@@ -42,7 +42,7 @@ Testing that the bootstrap preprocessor strips let%test_module blocks.
   $ create_dune a <<EOF
   > let () = Printf.printf "Hello, x = %d" A.x
   > EOF
-  ocamllex -q -o boot/pps.ml boot/pps.mll
+  ocamllex -ml -q -o boot/pps.ml boot/pps.mll
   ocaml -I +unix unix.cma $DUNEBOOT
   x = 42
   Hello, x = 42

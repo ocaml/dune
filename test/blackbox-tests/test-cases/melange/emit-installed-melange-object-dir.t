@@ -52,11 +52,12 @@ files above.
 
   $ jq_dune -r --arg lib_dir "$PWD/prefix/lib/repro/foo" '
   >   [.[] | depGlobEntries
-  >    | select(.predicate == "*.cmj" or .predicate == "*.cmi")
+  >    | select(.predicate == "*.cmj"
+  >             or .predicate == "*.cmi"
+  >             or .predicate == "*{.cmi,.cmj}")
   >    | select(.dir_kind == "External")
   >    | select(.dir == $lib_dir or .dir == ($lib_dir + "/melange"))
   >    | "\(.predicate) \(.dir_kind) \(.dir)"]
   >   | sort[]
   > ' deps.json
-  *.cmi External $TESTCASE_ROOT/prefix/lib/repro/foo/melange
-  *.cmj External $TESTCASE_ROOT/prefix/lib/repro/foo/melange
+  *{.cmi,.cmj} External $TESTCASE_ROOT/prefix/lib/repro/foo/melange

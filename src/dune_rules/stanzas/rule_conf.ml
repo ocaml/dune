@@ -100,7 +100,7 @@ let directory_targets_extension =
 let long_form ~loc =
   fields
   @@
-  let* deps = field "deps" (Bindings.decode Dep_conf.decode) ~default:Bindings.empty in
+  let* deps = field "deps" Dep_conf.decode_bindings ~default:Bindings.empty in
   let* project = Dune_project.get_exn () in
   let allow_directory_targets =
     Dune_project.dune_version project >= (3, 24)

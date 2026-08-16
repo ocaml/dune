@@ -86,7 +86,7 @@ let expand_include =
       (String_with_vars.set_decoding_env
          (* CR-someday rgrinberg: this environment looks fishy *)
          (Pform.Env.initial ~stanza:Stanza.latest_version ~extensions:[])
-         (Bindings.decode Dep_conf.decode))
+         Dep_conf.decode_bindings)
   in
   fun ~dir ~project s ->
     Path.Build.relative dir s

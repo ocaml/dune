@@ -4,7 +4,7 @@ empty path list, which is rarely what the user intended.
 
   $ make_mypkg_lib_project
 
-The restriction is currently not checked when the rule is disabled:
+The restriction is checked even when the rule is disabled:
 
   $ cat >dune <<'EOF'
   > (rule
@@ -14,6 +14,13 @@ The restriction is currently not checked when the rule is disabled:
   >  (action (echo unused)))
   > EOF
   $ dune build
+  File "dune", line 4, characters 22-27:
+  4 |  (deps (:pkg (package mypkg)))
+                            ^^^^^
+  Error: (package ...) is not supported inside a named dependency binding
+  (:pkg).
+  Hint: Place the (package ...) entry in the deps list directly.
+  [1]
 
   $ cat >dune <<'EOF'
   > (rule

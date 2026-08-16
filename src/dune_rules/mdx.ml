@@ -243,7 +243,7 @@ let decode =
        field
          "deps"
          ~default:Bindings.empty
-         (Dune_lang.Syntax.since syntax (0, 2) >>> Bindings.decode Dep_conf.decode)
+         (Dune_lang.Syntax.since syntax (0, 2) >>> Dep_conf.decode_bindings)
      and+ preludes = field ~default:[] "preludes" (repeat Prelude.decode)
      and+ libraries =
        field

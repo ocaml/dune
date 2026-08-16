@@ -19,7 +19,7 @@ include Stanza.Make (struct
 let decode =
   let open Decoder in
   fields
-    (let* deps = field "deps" (Bindings.decode Dep_conf.decode) ~default:Bindings.empty in
+    (let* deps = field "deps" Dep_conf.decode_bindings ~default:Bindings.empty in
      String_with_vars.add_user_vars_to_decoding_env
        (Bindings.var_names deps)
        (let+ name = field "name" Alias.decode

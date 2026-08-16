@@ -164,17 +164,15 @@ module L = struct
         else acc
       | true ->
         let public_cmi_dirs =
-          List.map
-            ~f:(fun f -> f obj_dir)
-            (match mode with
-             | { lib_mode = Ocaml _; _ } -> [ Obj_dir.public_cmi_ocaml_dir ]
-             | { lib_mode = Melange; melange_emit = false } ->
-               [ Obj_dir.public_cmi_melange_dir ]
-             | { lib_mode = Melange; melange_emit = true } ->
-               (* Add the dir where [.cmj] files exist, even for installed
-                  private libraries. Melange needs to query [.cmj] files for
-                  [import] information *)
-               [ Obj_dir.melange_dir; Obj_dir.public_cmi_melange_dir ])
+          match mode with
+          | { lib_mode = Ocaml _; _ } -> [ Obj_dir.public_cmi_ocaml_dir obj_dir ]
+          | { lib_mode = Melange; melange_emit = false } ->
+            [ Obj_dir.public_cmi_melange_dir obj_dir ]
+          | { lib_mode = Melange; melange_emit = true } ->
+            (* Add the dir where [.cmj] files exist, even for installed
+               private libraries. Melange needs to query [.cmj] files for
+               [import] information *)
+            Obj_dir.all_obj_dirs obj_dir ~mode:Melange
         in
         let acc =
           List.fold_left public_cmi_dirs ~init:acc ~f:(fun acc dir ->

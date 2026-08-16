@@ -9,9 +9,10 @@ lines appear. For example, with a short project name, the line wraps later:
   >  (name short))
   > EOF
   $ dune build
-  Error: The package short does not have any user defined stanzas attached to
-  it. If this is intentional, add (allow_empty) to the package definition in
-  the dune-project file
+  Error: The package short does not define anything to install. If this is
+  intentional, add (allow_empty) to the package definition in the dune-project
+  file. Otherwise, add a public_name or package field to stanzas that should
+  install files as part of this package.
   -> required by _build/default/short.install
   -> required by alias all
   -> required by alias default
@@ -26,9 +27,10 @@ a different position:
   >  (name verylongnamethatcauseslinewrappingincases))
   > EOF
   $ dune build
-  Error: The package verylongnamethatcauseslinewrappingincases does not have
-  any user defined stanzas attached to it. If this is intentional, add
-  (allow_empty) to the package definition in the dune-project file
+  Error: The package verylongnamethatcauseslinewrappingincases does not define
+  anything to install. If this is intentional, add (allow_empty) to the package
+  definition in the dune-project file. Otherwise, add a public_name or package
+  field to stanzas that should install files as part of this package.
   -> required by
      _build/default/verylongnamethatcauseslinewrappingincases.install
   -> required by alias all
@@ -40,7 +42,7 @@ line breaks in the input and not when the line gets too long.
 
   $ export DUNE_CONFIG__SKIP_LINE_BREAK=enabled
   $ dune build
-  Error: The package verylongnamethatcauseslinewrappingincases does not have any user defined stanzas attached to it. If this is intentional, add (allow_empty) to the package definition in the dune-project file
+  Error: The package verylongnamethatcauseslinewrappingincases does not define anything to install. If this is intentional, add (allow_empty) to the package definition in the dune-project file. Otherwise, add a public_name or package field to stanzas that should install files as part of this package.
   -> required by _build/default/verylongnamethatcauseslinewrappingincases.install
   -> required by alias all
   -> required by alias default

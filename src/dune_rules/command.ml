@@ -113,6 +113,12 @@ and expand_list
            ; targets
            })
       | S nested :: ts -> expand_all nested (ts :: stack) builds targets
+      | A string :: ts ->
+        let build = Action_builder.return (Appendable_list.singleton string) in
+        expand_all ts stack (build :: builds) targets
+      | As strings :: ts ->
+        let build = Action_builder.return (Appendable_list.of_list strings) in
+        expand_all ts stack (build :: builds) targets
       | t :: ts ->
         let { Action_builder.With_targets.build; targets = new_targets } =
           expand ~dir t

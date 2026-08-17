@@ -5,3 +5,7 @@
   ocamlfind
   virtual-without-default)
  (deps %{bin:ocamlfind}))
+
+(cram
+ (applies_to melange-closure)
+ (deps %{bin:melc}))

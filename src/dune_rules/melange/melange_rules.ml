@@ -38,6 +38,10 @@ module Output_kind = struct
       let src = Path.as_in_build_dir_exn src |> Path.Build.drop_build_context_exn in
       Path.Build.append_source target_dir src
   ;;
+
+  let target_dir = function
+    | Private_library_or_emit target_dir | Public_library { target_dir; _ } -> target_dir
+  ;;
 end
 
 let setup_melange_sources_copy_rules ~sctx ~dir ~preprocess modules =
@@ -686,16 +690,7 @@ module Runtime_deps = struct
   ;;
 end
 
-let setup_runtime_assets_rules
-      sctx
-      ~scope
-      ~dir
-      ~target_dir
-      ~mode
-      ~promote_in_source
-      ~output
-      ~for_
-      mel
+let setup_runtime_assets_rules sctx ~scope ~dir ~mode ~promote_in_source ~output ~for_ mel
   =
   Runtime_deps.targets sctx ~dir ~output ~for_ mel
   >>= fun { Runtime_deps.copy; deps } ->
@@ -741,7 +736,10 @@ let setup_runtime_assets_rules
     let paths =
       List.concat_map [ file_deps; directory_targets ] ~f:(List.map ~f:Path.build) @ deps
     in
-    add_deps_to_aliases ?alias:mel.alias (Action_builder.paths paths) ~dir:target_dir
+    add_deps_to_aliases
+      ?alias:mel.alias
+      (Action_builder.paths paths)
+      ~dir:(Output_kind.target_dir output)
   in
   Path.Build.Map.of_list_map_exn directory_targets ~f:(fun p -> p, loc)
 ;;
@@ -799,7 +797,6 @@ let setup_entries_js
       sctx
       ~scope
       ~dir
-      ~target_dir
       ~mode
       ~promote_in_source
       ~output
@@ -904,7 +901,6 @@ let setup_js_rules_libraries =
             sctx
             ~scope
             ~dir
-            ~target_dir
             ~mode
             ~promote_in_source
             ~output

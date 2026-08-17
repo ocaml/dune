@@ -52,7 +52,9 @@
                     # construction and `fixOCamlPackage` can pair the cross
                     # derivation with this native template via
                     # `findNativePackage`.
-                    dune_target = oself.callPackage ./nix/dune-target.nix { };
+                    dune_target = oself.callPackage ./nix/dune-target.nix {
+                      duneForBuild = oself.dune_3;
+                    };
                   }
                 );
                 # Keep `ocaml-ng.ocamlPackages_5_5` in sync with the override

@@ -74,7 +74,7 @@ let
   # avoids the `NIXPKGS_ALLOW_UNSUPPORTED_SYSTEM=1` escape hatch at the call
   # site.
   duneFor =
-    crossPkgs:
+    duneForBuild: crossPkgs:
     let
       withDuneTarget = crossPkgs.appendOverlays [
         (self: super: {
@@ -107,7 +107,12 @@ let
         })
       ];
     in
-    withDuneTarget.ocamlPackages.dune_target.overrideAttrs { src = dune-source; };
+    (withDuneTarget.ocamlPackages.dune_target.override {
+      inherit duneForBuild;
+    }).overrideAttrs
+      {
+        src = dune-source;
+      };
 
   overrideOcaml =
     ocamlOverride: crossPkgs:
@@ -121,7 +126,7 @@ let
       })
     ];
 in
-{
+rec {
   default =
     with pkgs;
     stdenv.mkDerivation {
@@ -148,8 +153,10 @@ in
 
   musl-static = pkgs-static.pkgsCross.musl64.ocamlPackages.dune;
 
-  # `framePointerSupport` is forced off because mingw can't build OCaml
-  windows-static = duneFor (
+  # `framePointerSupport` is forced off because mingw can't build OCaml.
+  # Use the bootstrapped Dune from this source tree so unreleased language
+  # versions can be cross-compiled.
+  windows-static = duneFor default (
     overrideOcaml { framePointerSupport = false; } pkgs.pkgsCross.mingwW64Static
   );
 }

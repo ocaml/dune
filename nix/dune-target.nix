@@ -9,6 +9,7 @@
   buildDunePackage,
   ocaml,
   dune_3,
+  duneForBuild,
   csexp,
   pp,
   ppx_expect,
@@ -46,10 +47,14 @@ else
     dontAddPrefix = true;
     dontFixup = true;
     depsBuildBuild = [ buildPackages.stdenv.cc ];
-    nativeBuildInputs = lib.remove buildPackages.stdenv.cc (o.nativeBuildInputs or [ ]);
+    nativeBuildInputs = [
+      duneForBuild
+    ]
+    ++ lib.remove dune_3 (lib.remove buildPackages.stdenv.cc (o.nativeBuildInputs or [ ]));
     buildPhase = ''
       runHook preBuild
-      dune build -x ${crossName} ''${enableParallelBuilding:+-j $NIX_BUILD_CORES} bin/main.exe
+      ${duneForBuild}/bin/dune build -x ${crossName} \
+        ''${enableParallelBuilding:+-j $NIX_BUILD_CORES} bin/main.exe
       runHook postBuild
     '';
     installPhase = ''

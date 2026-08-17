@@ -125,6 +125,13 @@ let modules_in_obj_dir ~sctx ~scope ~preprocess modules =
   Modules.map_user_written modules ~f:(fun m -> Memo.return @@ pped_map m)
 ;;
 
+let emit_modules_and_obj_dir ~dir_contents ~scope (mel : Melange_stanzas.Emit.t) =
+  Dir_contents.ml dir_contents ~for_:Compilation_mode.Melange
+  >>= Ml_sources.modules_and_obj_dir
+        ~libs:(Scope.libs scope)
+        ~for_:(Melange { target = mel.target })
+;;
+
 let add_rule sctx ?mode ?loc ~dir build =
   Super_context.add_rule
     sctx
@@ -514,12 +521,7 @@ let setup_emit_cmj_rules
   let merlin_ident = Merlin_ident.for_melange ~target:mel.target in
   let dir = Dir_contents.dir dir_contents in
   let f () =
-    let* source_modules, obj_dir =
-      Dir_contents.ml dir_contents ~for_
-      >>= Ml_sources.modules_and_obj_dir
-            ~libs:(Scope.libs scope)
-            ~for_:(Melange { target = mel.target })
-    in
+    let* source_modules, obj_dir = emit_modules_and_obj_dir ~dir_contents ~scope mel in
     let* () = Check_rules.add_obj_dir sctx ~obj_dir for_ in
     let* modules, pp =
       let+ modules, pp =
@@ -746,12 +748,7 @@ let setup_runtime_assets_rules
 ;;
 
 let modules_for_js_and_obj_dir ~sctx ~dir_contents ~scope (mel : Melange_stanzas.Emit.t) =
-  let* modules, obj_dir =
-    Dir_contents.ml dir_contents ~for_
-    >>= Ml_sources.modules_and_obj_dir
-          ~libs:(Scope.libs scope)
-          ~for_:(Melange { target = mel.target })
-  in
+  let* modules, obj_dir = emit_modules_and_obj_dir ~dir_contents ~scope mel in
   let+ modules =
     modules_in_obj_dir ~sctx ~scope ~preprocess:mel.preprocess.config modules
   in

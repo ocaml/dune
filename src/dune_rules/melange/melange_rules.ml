@@ -995,6 +995,7 @@ let setup_js_rules_libraries_and_entries
       ~scope
       ~sctx
       ~requires_link
+      ~promote_in_source
       ~mode
       ~target_dir
       mel
@@ -1003,7 +1004,6 @@ let setup_js_rules_libraries_and_entries
     let+ ocaml = Super_context.context sctx |> Context.ocaml in
     ocaml.lib_config
   and* compile_flags = melange_compile_flags ~sctx ~dir mel in
-  let promote_in_source = should_promote_in_source scope in
   let+ dir_targets_libraries =
     setup_js_rules_libraries
       ~dir
@@ -1038,6 +1038,7 @@ let setup_emit_js_rules ~dir_contents ~dir ~scope ~sctx mel =
     let dir = Dir_contents.dir dir_contents in
     Melange_stanzas.Emit.target_dir ~dir mel
   in
+  let promote_in_source = should_promote_in_source scope in
   let* mode =
     let* expander = Super_context.expander sctx ~dir in
     let mode =
@@ -1045,7 +1046,7 @@ let setup_emit_js_rules ~dir_contents ~dir ~scope ~sctx mel =
       | None -> Rule_mode.Standard
       | Some p -> Promote p
     in
-    match should_promote_in_source scope with
+    match promote_in_source with
     | true -> Rule_mode_expand.expand_path ~expander ~dir mode
     | false -> Rule_mode_expand.expand_str ~expander mode
   in
@@ -1061,6 +1062,7 @@ let setup_emit_js_rules ~dir_contents ~dir ~scope ~sctx mel =
       ~scope
       ~sctx
       ~requires_link
+      ~promote_in_source
       ~mode
       ~target_dir
       mel

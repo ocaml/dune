@@ -3,5 +3,6 @@
   installed-package
   no-transitive-through-targets
   ocamlfind
+  template-artifacts
   virtual-without-default)
  (deps %{bin:ocamlfind}))

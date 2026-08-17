@@ -65,9 +65,9 @@ Both consumers use only (package a), not an explicit dependency on b.
   $ dune-consumer/_build/default/main.exe
   2
 
-CR-someday alizter: The required interface, archive and metadata should be
-tracked. Keep both sibling observations false. Accept direct dependencies
-or matching selectors rather than prescribing their representation.
+The required interface, archive and metadata are tracked, but the unrelated
+sibling is not. Accept direct dependencies or matching selectors rather than
+prescribing their representation.
 
   $ dune rules --root dune-consumer --format=json main.exe >dune-rules.json
   $ jq_dune --arg b "$b_lib" --arg metadata dune-package '
@@ -87,9 +87,9 @@ or matching selectors rather than prescribing their representation.
   >   }' dune-rules.json
   {
     "reader": "dune-package",
-    "required_interface": false,
-    "required_archive": false,
-    "required_metadata": false,
+    "required_interface": true,
+    "required_archive": true,
+    "required_metadata": true,
     "unrelated_interface": false,
     "unrelated_archive": false
   }
@@ -106,10 +106,10 @@ its existing executable must be relinked because b changed.
   $ cmp a.cmi.before "$a_lib/a.cmi"
   $ cmp a.cma.before "$a_lib/a.cma"
 
-CR-someday alizter: This should print 11, but the consumer is stale.
+The consumer was relinked against b's updated archive.
 
   $ dune-consumer/_build/default/main.exe
-  2
+  11
 
 Restore b's original archive and remove dune-package files. The second
 consumer must use META, including after its dependency changes.
@@ -137,9 +137,9 @@ consumer must use META, including after its dependency changes.
   >   }' meta-rules.json
   {
     "reader": "META",
-    "required_interface": false,
-    "required_archive": false,
-    "required_metadata": false,
+    "required_interface": true,
+    "required_archive": true,
+    "required_metadata": true,
     "unrelated_interface": false,
     "unrelated_archive": false
   }
@@ -156,7 +156,7 @@ both a's artifacts and the metadata reader unchanged.
   $ test ! -e "$a_lib/dune-package"
   $ test ! -e "$b_lib/dune-package"
 
-CR-someday alizter: The META consumer should also print 11, not its stale result.
+The META consumer was also relinked against b's updated archive.
 
   $ meta-consumer/_build/default/main.exe
-  2
+  11

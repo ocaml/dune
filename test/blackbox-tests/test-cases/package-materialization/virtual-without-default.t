@@ -35,12 +35,3 @@ materialized.
   > EOF
 
   $ dune build result
-  File "dune", lines 1-6, characters 0-137:
-  1 | (rule
-  2 |  (target result)
-  3 |  (deps (package virtual-user))
-  4 |  (action
-  5 |   (with-stdout-to %{target}
-  6 |    (run %{bin:ocamlfind} query virtual-api))))
-  ocamlfind: Package `virtual-api' not found
-  [1]

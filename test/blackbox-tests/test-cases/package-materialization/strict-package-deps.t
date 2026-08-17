@@ -1,6 +1,6 @@
 Test that (strict_package_deps) does not affect the install layout. The
-layout currently uses immediate package dependencies only.
-strict_package_deps controls validation in install_rules, not the layout.
+layout follows library dependencies, not package dependencies.
+strict_package_deps controls validation in install_rules, not layout closure.
 
   $ cat >dune-project <<EOF
   > (lang dune 3.24)
@@ -48,8 +48,9 @@ strict_package_deps controls validation in install_rules, not the layout.
 
   $ dune build out
 
-The missing library closure is unchanged by strict_package_deps, so only foo
-appears:
+The library closure follows bar and baz independently of strict_package_deps:
 
   $ dune rules --format=json _build/default/out | jq_dune '.[] | ruleDepFilePaths' | censor | grep dune-package | sort
+  "_build/install/default/.packages/$DIGEST/lib/bar/dune-package"
+  "_build/install/default/.packages/$DIGEST/lib/baz/dune-package"
   "_build/install/default/.packages/$DIGEST/lib/foo/dune-package"

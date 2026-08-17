@@ -1198,6 +1198,13 @@ module Resolve_names : sig
     -> for_:Compilation_mode.t
     -> lib list Resolve.Memo.t
 
+  val partial_linking_closure_with_overlap_checks
+    :  db option
+    -> lib list
+    -> forbidden_libraries:Loc.t Map.t
+    -> for_:Compilation_mode.t
+    -> lib list Resolve.Memo.t
+
   val make_instantiate
     :  db Lazy.t
     -> (Lib_name.t -> Path.t Lib_info.t -> hidden:string option -> Status.t Memo.t)
@@ -2167,6 +2174,28 @@ end = struct
     Closure.result state `Compile ~for_
 
   and linking_closure_with_overlap_checks db ts ~forbidden_libraries ~for_ =
+    linking_closure_with_overlap_checks_and_result
+      db
+      ts
+      ~forbidden_libraries
+      ~for_
+      ~result:`Link
+
+  and partial_linking_closure_with_overlap_checks db ts ~forbidden_libraries ~for_ =
+    linking_closure_with_overlap_checks_and_result
+      db
+      ts
+      ~forbidden_libraries
+      ~for_
+      ~result:`Partial_link
+
+  and linking_closure_with_overlap_checks_and_result
+        db
+        ts
+        ~forbidden_libraries
+        ~for_
+        ~result
+    =
     let open Resolve.Memo.O in
     let closure, visit = step1_closure db ts ~forbidden_libraries ~for_ in
     let rec impls_via_defaults (state : Closure.state) =
@@ -2186,7 +2215,7 @@ end = struct
     in
     let* state = visit in
     let* state = impls_via_defaults state in
-    Closure.result state `Link ~for_
+    Closure.result state result ~for_
 
   and check_forbidden ts ~forbidden_libraries ~for_ =
     let open Resolve.Memo.O in
@@ -2202,6 +2231,13 @@ let closure l ~linking =
   if linking
   then Resolve_names.linking_closure_with_overlap_checks None l ~forbidden_libraries
   else Resolve_names.compile_closure_with_overlap_checks None l ~forbidden_libraries
+;;
+
+let partial_link_closure l =
+  Resolve_names.partial_linking_closure_with_overlap_checks
+    None
+    l
+    ~forbidden_libraries:Map.empty
 ;;
 
 let descriptive_closure (l : lib list) ~with_pps ~for_ : lib list Memo.t =

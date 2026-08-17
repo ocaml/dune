@@ -10,6 +10,7 @@
 #     virtualPackages = [ "ocaml" "dune" ... ];
 #     nonDunePackages = [ "ocamlfind" ... ];
 #     skipPackages = [ "uutf" ... ];
+#     sourceHashes = { "odoc" = "sha256-..."; };
 #     nameMap = { "ocamlfind" = "findlib"; };
 #   };
 #   # overlay : oself -> osuper -> { ... }
@@ -25,6 +26,7 @@
   virtualPackages,
   nonDunePackages,
   skipPackages,
+  sourceHashes ? { },
   nameMap,
 }:
 
@@ -88,16 +90,35 @@ let
       urlBlock = extractBlock "url {" (readOpamLines pkgName version);
       urlLine = lib.findFirst (l: lib.hasInfix "https://" l || lib.hasInfix "http://" l) null urlBlock;
       url = if urlLine != null then extractQuoted urlLine else null;
+      sourceHash = sourceHashes.${pkgName} or null;
       sha256Line = lib.findFirst (l: lib.hasInfix "sha256=" l) null urlBlock;
       sha512Line = lib.findFirst (l: lib.hasInfix "sha512=" l) null urlBlock;
       sha256raw = if sha256Line != null then extractQuoted sha256Line else null;
       sha512raw = if sha512Line != null then extractQuoted sha512Line else null;
       hash =
-        if sha256raw != null then "sha256:${lib.removePrefix "sha256=" sha256raw}"
+        if sourceHash != null then sourceHash
+        else if sha256raw != null then "sha256:${lib.removePrefix "sha256=" sha256raw}"
         else if sha512raw != null then "sha512:${lib.removePrefix "sha512=" sha512raw}"
         else null;
     in
-    if url != null && hash != null then pkgs.fetchurl { inherit url hash; } else null;
+    if url != null && hash != null then
+      let
+        gitHubMatch =
+          builtins.match ''git\+https://github\.com/([^/]+)/([^/]+)\.git#(.+)'' url;
+      in
+      if gitHubMatch != null then
+        let
+          owner = builtins.elemAt gitHubMatch 0;
+          repo = builtins.elemAt gitHubMatch 1;
+          tag = builtins.elemAt gitHubMatch 2;
+        in
+        pkgs.fetchFromGitHub {
+          inherit owner repo tag hash;
+        }
+      else
+        pkgs.fetchurl { inherit url hash; }
+    else
+      null;
 
   parseDeps =
     pkgName: version:

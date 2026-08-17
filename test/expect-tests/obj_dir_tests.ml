@@ -29,8 +29,8 @@ let%expect_test "external object directories with dedicated public CMI directori
        ]);
   [%expect
     {|
-    { ocaml byte = [ "prefix/lib/foo" ]
-    ; ocaml native = [ "prefix/lib/foo" ]
+    { ocaml byte = [ "prefix/lib/foo"; "prefix/lib/foo/.public_cmi" ]
+    ; ocaml native = [ "prefix/lib/foo"; "prefix/lib/foo/.public_cmi" ]
     ; melange =
         [ "prefix/lib/foo/melange"
         ; "prefix/lib/foo/melange/.public_cmi_melange"

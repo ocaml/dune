@@ -155,12 +155,11 @@ module External = struct
   let odoc_dir t = t.public_dir.ocaml
 
   let all_obj_dirs t ~(mode : Lib_mode.t) =
-    match mode with
-    | Ocaml _ -> [ t.public_dir.ocaml ]
-    | Melange ->
-      [ t.public_dir.melange; public_cmi_melange_dir t ]
-      |> Path.Set.of_list
-      |> Path.Set.to_list
+    (match mode with
+     | Ocaml _ -> [ t.public_dir.ocaml; public_cmi_ocaml_dir t ]
+     | Melange -> [ t.public_dir.melange; public_cmi_melange_dir t ])
+    |> Path.Set.of_list
+    |> Path.Set.to_list
   ;;
 
   let all_cmis { public_dir; private_dir; public_cmi_dir } =

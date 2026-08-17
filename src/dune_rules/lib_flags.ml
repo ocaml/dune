@@ -200,15 +200,12 @@ module L = struct
         List.fold_left ts ~init:Path.Map.empty ~f:(fun acc t ->
           let obj_dir = Lib_info.obj_dir (Lib.info t) in
           let visible_cmi = visible_cmi t in
+          let acc = add_public_dir ocaml ~visible_cmi obj_dir acc mode in
           match mode.lib_mode with
-          | Melange -> add_public_dir ocaml ~visible_cmi obj_dir acc mode
-          | Ocaml ocaml_mode ->
-            let acc = add_public_dir ocaml ~visible_cmi obj_dir acc mode in
-            (match ocaml_mode with
-             | Byte -> acc
-             | Native ->
-               let native_dir = Obj_dir.native_dir obj_dir in
-               add_flag acc native_dir Include))
+          | Melange | Ocaml Byte -> acc
+          | Ocaml Native ->
+            let native_dir = Obj_dir.native_dir obj_dir in
+            add_flag acc native_dir Include)
       in
       Path.Map.remove dirs lib_config.stdlib_dir
   ;;

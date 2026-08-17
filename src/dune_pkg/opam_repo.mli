@@ -35,6 +35,7 @@ val resolve_repositories
 
 val revision : t -> Rev_store.At_rev.t
 val serializable : t -> Serializable.t option
+val archive_mirrors : t -> OpamUrl.t list
 
 (** [content_digest t] digests the contents of an opam repository. For a Git
     repository, this is a digest of the commit SHA. For a directory-based

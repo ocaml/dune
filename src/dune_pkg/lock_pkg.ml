@@ -478,6 +478,7 @@ let opam_package_to_lock_file_pkg
   in
   let opam_file = Resolved_package.opam_file resolved_package in
   let loc = Resolved_package.loc resolved_package in
+  let archive_mirrors = Resolved_package.archive_mirrors resolved_package in
   let extra_sources =
     OpamFile.OPAM.extra_sources opam_file
     |> List.map ~f:(fun (opam_basename, opam_url) ->
@@ -488,7 +489,7 @@ let opam_package_to_lock_file_pkg
           | [] -> None
           | checksum :: _ -> Some (Loc.none, Checksum.of_opam_hash checksum)
         in
-        { Source.url; checksum } ))
+        { Source.url; checksum; archive_mirrors } ))
   in
   let info =
     let url = OpamFile.OPAM.url opam_file in
@@ -501,7 +502,7 @@ let opam_package_to_lock_file_pkg
           |> Option.map ~f:(fun hash -> Loc.none, Checksum.of_opam_hash hash)
         in
         let url = Loc.none, OpamFile.URL.url url in
-        { Source.url; checksum })
+        { Source.url; checksum; archive_mirrors })
     in
     let dev =
       pinned

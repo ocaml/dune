@@ -4,8 +4,11 @@ type failure =
   | Checksum_mismatch of Checksum.t
   | Unavailable of User_message.t option
 
-(** [fetch ~checksum ~target url] will fetch [url] into [target]. It will verify
-    the downloaded file against [checksum], unless it [checksum] is [None].
+(** [fetch ~checksum ~archive_mirrors ~target url] will fetch [url] into
+    [target]. When [checksum] is present, checksum-addressed objects under
+    [archive_mirrors] are tried before [url]. Local (file) URLs are read
+    directly and never consult mirrors. Every downloaded file is verified
+    against [checksum], unless [checksum] is [None].
 
     return [Error (Checksum_mismatch _)] When the downloaded file doesn't match
     the expected [checksum], this will pass the actually computed checksum.
@@ -15,6 +18,7 @@ type failure =
 val fetch
   :  unpack:bool
   -> checksum:Checksum.t option
+  -> archive_mirrors:OpamUrl.t list
   -> target:Path.t
   -> url:Loc.t * OpamUrl.t
   -> (unit, failure) result Fiber.t

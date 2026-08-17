@@ -43,7 +43,9 @@ let serve_once ~filename =
 let download ?(reproducible = true) ~unpack ~port ~filename ~target ?checksum () =
   let open Fiber.O in
   let url = url ~port ~filename in
-  let* res = Fetch.fetch ~unpack ~checksum ~target ~url:(Loc.none, url) in
+  let* res =
+    Fetch.fetch ~unpack ~checksum ~archive_mirrors:[] ~target ~url:(Loc.none, url)
+  in
   match res with
   | Error (Unavailable None) ->
     let errs = [ Pp.text "Failure while downloading" ] in

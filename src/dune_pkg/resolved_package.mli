@@ -6,6 +6,7 @@ val package : t -> OpamPackage.t
 val opam_file : t -> OpamFile.OPAM.t
 val loc : t -> Loc.t
 val with_opam_file : OpamFile.OPAM.t -> t -> t
+val archive_mirrors : t -> OpamUrl.t list
 
 (** Determines whether the package is to be built using Dune or not *)
 val dune_build : t -> bool
@@ -23,6 +24,7 @@ val git_repo
   -> Rev_store.At_rev.t
   -> files_dir:Path.Local.t option
   -> url:OpamUrl.t option
+  -> archive_mirrors:OpamUrl.t list
   -> t
 
 (** Creates a resolved package from a source stored in the local file system. *)
@@ -32,6 +34,7 @@ val local_fs
   -> dir:Path.t
   -> files_dir:Path.Local.t option
   -> url:OpamUrl.t option
+  -> archive_mirrors:OpamUrl.t list
   -> t
 
 (** Creates a resolved package from a source stored in the workspace. *)

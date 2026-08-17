@@ -164,11 +164,55 @@ let check_checksum checksum path =
   | None -> Ok ()
 ;;
 
-let with_download url checksum ~target ~f =
-  let url = OpamUrl.to_string url in
+let archive_mirror_url archive_mirror checksum =
+  OpamHash.to_path (Checksum.to_opam_hash checksum)
+  |> List.fold_left ~init:archive_mirror ~f:(fun url component ->
+    OpamUrl.append url component)
+;;
+
+let%test_module "archive mirror paths" =
+  (module struct
+    let check kind length character =
+      let digest = String.make length character in
+      let checksum = Checksum.of_string (sprintf "%s=%s" kind digest) in
+      let archive_mirror = OpamUrl.of_string "https://example.com/cache" in
+      let actual = archive_mirror_url archive_mirror checksum in
+      let expected =
+        sprintf "https://example.com/cache/%s/%c%c/%s" kind character character digest
+      in
+      String.equal (OpamUrl.to_string actual) expected
+    ;;
+
+    let%test "md5" = check "md5" 32 'a'
+    let%test "sha256" = check "sha256" 64 'b'
+    let%test "sha512" = check "sha512" 128 'c'
+  end)
+;;
+
+let download_to url ~temp_dir ~output =
+  match (url : OpamUrl.t).backend with
+  | `http -> Curl.run ~temp_dir ~url:(OpamUrl.to_string url) ~output
+  | `rsync when OpamUrl.is_local url ->
+    let source = Path.of_string_allow_outside_workspace url.path in
+    Fiber.return
+    @@
+      (match Io.copy_file ~src:source ~dst:output () with
+      | () -> Ok ()
+      | exception exn ->
+        Error
+          (User_message.make
+             [ Pp.textf "Unable to read archive mirror %s." (OpamUrl.to_string url)
+             ; Exn.pp exn
+             ]))
+  | `rsync | `git | `hg | `darcs ->
+    Code_error.raise "download_to: unsupported URL backend" [ "url", OpamUrl.to_dyn url ]
+;;
+
+let with_download primary_url archive_mirrors checksum ~target ~f =
+  let primary_url_string = OpamUrl.to_string primary_url in
   let temp_dir =
     let prefix = "dune" in
-    let suffix = Filename.basename url in
+    let suffix = Filename.basename primary_url_string in
     Temp_dir.dir_for_target ~target ~prefix ~suffix
   in
   let output = Path.relative temp_dir "download" in
@@ -176,17 +220,54 @@ let with_download url checksum ~target ~f =
     Temp.destroy Dir temp_dir;
     Fiber.return ())
   @@ fun () ->
-  Curl.run ~temp_dir ~url ~output
-  >>= function
-  | Error message -> Fiber.return @@ Error (Unavailable (Some message))
-  | Ok () ->
-    (match check_checksum checksum output with
-     | Ok () -> f output
-     | Error _ as e -> Fiber.return e)
+  let archive_mirrors =
+    match checksum with
+    | None -> []
+    | Some checksum ->
+      (* Unsupported mirrors are dropped with a warning when repository
+         metadata is read; this is a silent safety net for hand-edited
+         lock directories. *)
+      List.filter archive_mirrors ~f:OpamUrl.is_supported_archive_mirror
+      |> List.map ~f:(fun archive_mirror -> archive_mirror_url archive_mirror checksum)
+  in
+  let downloads =
+    List.map archive_mirrors ~f:(fun url -> `Mirror, url) @ [ `Primary, primary_url ]
+  in
+  let rec loop = function
+    | [] -> Code_error.raise "with_download: primary URL is missing" []
+    | (kind, download_url) :: downloads ->
+      download_to download_url ~temp_dir ~output
+      >>= (function
+       | Error message ->
+         (match kind with
+          | `Mirror -> loop downloads
+          | `Primary -> Fiber.return @@ Error (Unavailable (Some message)))
+       | Ok () ->
+         (match check_checksum checksum output with
+          | Ok () -> f output
+          | Error (Checksum_mismatch actual_checksum) as error ->
+            (match kind with
+             | `Primary -> Fiber.return error
+             | `Mirror ->
+               User_warning.emit
+                 [ Pp.textf
+                     "Ignoring archive from mirror %s because its checksum does not \
+                      match."
+                     (OpamUrl.to_string download_url)
+                 ; Pp.text "Expected checksum:"
+                 ; Checksum.pp (Option.value_exn checksum)
+                 ; Pp.text "Actual checksum:"
+                 ; Checksum.pp actual_checksum
+                 ];
+               loop downloads)
+          | Error (Unavailable _) ->
+            Code_error.raise "check_checksum returned Unavailable" []))
+  in
+  loop downloads
 ;;
 
-let fetch_curl ~unpack:unpack_flag ~checksum ~target (url : OpamUrl.t) =
-  with_download url checksum ~target ~f:(fun output ->
+let fetch_curl ~unpack:unpack_flag ~checksum ~archive_mirrors ~target (url : OpamUrl.t) =
+  with_download url archive_mirrors checksum ~target ~f:(fun output ->
     match unpack_flag with
     | false ->
       Unix.rename (Path.to_string output) (Path.to_string target);
@@ -359,7 +440,7 @@ let resolve_symlinks_in root =
     ()
 ;;
 
-let fetch ~unpack ~checksum ~target ~url:(url_loc, url) =
+let fetch ~unpack ~checksum ~archive_mirrors ~target ~url:(url_loc, url) =
   let event =
     Dune_trace.(
       Out.start (global ()) (fun () ->
@@ -382,8 +463,10 @@ let fetch ~unpack ~checksum ~target ~url:(url_loc, url) =
          | `git ->
            let* rev_store = Rev_store.get in
            fetch_git rev_store ~target ~url:(url_loc, url)
-         | `http -> fetch_curl ~unpack ~checksum ~target url
+         | `http -> fetch_curl ~unpack ~checksum ~archive_mirrors ~target url
          | `rsync ->
+           (* Local sources are already on disk, so archive mirrors are
+              never worth consulting for them. *)
            if not unpack
            then
              Code_error.raise
@@ -402,7 +485,7 @@ let fetch ~unpack ~checksum ~target ~url:(url_loc, url) =
 ;;
 
 let fetch_without_checksum ~unpack ~target ~url =
-  fetch ~unpack ~checksum:None ~url ~target
+  fetch ~unpack ~checksum:None ~archive_mirrors:[] ~url ~target
   >>| function
   | Ok () -> Ok ()
   | Error (Checksum_mismatch _) -> assert false

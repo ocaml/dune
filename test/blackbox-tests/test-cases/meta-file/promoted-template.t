@@ -1,5 +1,5 @@
-A promoted META file template may have a source counterpart that differs from
-the rule output. The generated contents are currently accepted.
+Promoted META file templates are validated against the generated contents even
+when a stale source counterpart exists.
 
   $ make_dune_project_with_package 2.7 promoted
 
@@ -23,10 +23,9 @@ the rule output. The generated contents are currently accepted.
   > EOF
 
   $ dune build @install --disable-promotion
-
-The source remains valid, while the generated template and final META contain
-the malformed rule output.
-
-  $ printf '# DUNE_GEN\n' | cmp - META.promoted.template
-  $ printf 'package "broken" @' | cmp - _build/default/META.promoted.template
-  $ printf 'package "broken" @' | cmp - _build/default/META.promoted
+  File "_build/default/META.promoted.template", line 1, characters 17-18:
+  1 | package "broken" @
+                       ^
+  Error: Invalid META template for package promoted.
+  invalid character
+  [1]

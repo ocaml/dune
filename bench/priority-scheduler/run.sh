@@ -12,7 +12,7 @@ case ${1-} in
   *[!0-9]*) ;;
   *) jobs=$1; shift ;;
 esac
-if [ "$jobs" -le 2 ] || [ "$#" -gt 1 ]; then
+if [ "$jobs" -lt 2 ] || [ "$#" -gt 1 ]; then
   usage
 fi
 
@@ -46,32 +46,42 @@ rule () {
   } >> "$workload/dune"
 }
 
+# Keep representative runs near one second while retaining enough duration to
+# make process and timer overhead small. Larger values still scale linearly.
+unit_duration=$(awk -v j="$jobs" \
+  'BEGIN { d = 1 / j; if (d < 0.1) d = 0.1; printf "%.9f", d }')
+
 # Fill every slot briefly so both schedulers select from the same ready queue.
 i=0
 while [ "$i" -lt "$jobs" ]; do
-  rule "gate-$i" 0.1
+  rule "gate-$i" 0.05
   i=$((i + 1))
 done
 
-# Two waves of independent 2-second jobs take 4 seconds under FIFO. On JOBS-1
-# slots they take three waves, so a 6-second critical path is just long enough
-# to overlap all of the independent work. The ideal result is 10 seconds under
-# FIFO and 6 seconds with priorities: a 40% improvement for every JOBS > 2.
-independent_jobs=$((2 * jobs))
+# For JOBS=m and time unit=u, m*(m-1) independent jobs take (m-1)*u under
+# FIFO and m*u on the m-1 slots left by priority scheduling. A critical path
+# lasting m*u overlaps all independent work in priority mode. The ideal
+# reduction is (m-1)/(2*m-1), the maximum for this scheduling problem.
+independent_jobs=$((jobs * (jobs - 1)))
 i=0
 while [ "$i" -lt "$independent_jobs" ]; do
-  rule "independent-$i" 2
+  rule "independent-$i" "$unit_duration"
   i=$((i + 1))
 done
 
+# Keep enough dependency edges for the Memo priority signal to dominate the
+# fixed internal graph depth.
+chain_jobs=20
+chain_duration=$(awk -v j="$jobs" -v n="$chain_jobs" -v u="$unit_duration" \
+  'BEGIN { printf "%.9f", j * u / n }')
 previous=
 i=0
-while [ "$i" -lt 10 ]; do
-  rule "chain-$i" 0.2 "$previous"
+while [ "$i" -lt $((chain_jobs - 1)) ]; do
+  rule "chain-$i" "$chain_duration" "$previous"
   previous="chain-$i"
   i=$((i + 1))
 done
-rule chain-final 4 "$previous"
+rule chain-final "$chain_duration" "$previous"
 
 {
   printf '(alias\n (name benchmark)\n (deps\n'
@@ -125,6 +135,7 @@ disabled=$(awk -v a="$disabled_1" -v b="$disabled_2" 'BEGIN { printf "%.2f", (a 
 enabled=$(awk -v a="$enabled_1" -v b="$enabled_2" 'BEGIN { printf "%.2f", (a + b) / 2 }')
 improvement=$(awk -v d="$disabled" -v e="$enabled" \
   'BEGIN { printf "%.1f", 100 * (d - e) / d }')
+maximum=$(awk -v j="$jobs" 'BEGIN { printf "%.1f", 100 * (j - 1) / (2 * j - 1) }')
 printf 'disabled: %ss\n' "$disabled"
 printf 'enabled: %ss\n' "$enabled"
-printf 'improvement: %s%%\n' "$improvement"
+printf 'improvement: %s%% (maximum %s%%)\n' "$improvement" "$maximum"

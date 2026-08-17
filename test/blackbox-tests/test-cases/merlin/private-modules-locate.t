@@ -47,3 +47,4 @@ Show the build and annotation paths Dune gives Merlin for the dependency.
   >    | "\(.[0]) \(.[1])"]
   >   | unique[]'
   B $TESTCASE_ROOT/_build/default/lib/.dep.objs/public_cmi
+  CMT $TESTCASE_ROOT/_build/default/lib/.dep.objs/byte

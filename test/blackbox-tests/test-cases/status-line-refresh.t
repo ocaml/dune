@@ -30,7 +30,7 @@ the action is blocked.
   > | (grep -a -E -o "\[[0-9]+\.[0-9]s\]" || true) \
   > | sort -u \
   > | awk 'END { print NR >= 2 ? "build duration refreshed repeatedly" : "build duration did not refresh repeatedly" }'
-  build duration did not refresh repeatedly
+  build duration refreshed repeatedly
 
   $ touch "$RELEASE"
   $ wait_for_pid_to_exit_with_timeout "$BUILD_PID" 200 || (cat build-output; false)

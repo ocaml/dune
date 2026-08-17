@@ -361,6 +361,7 @@ let executables_rules
       ~dialects:(Dune_project.dialects (Scope.project scope))
       ~ident:(Merlin_ident.for_exes ~names:(Nonempty_list.map ~f:snd exes.names))
       ~for_
+      ~is_default:true
       ~parameters:(Resolve.return [])
   in
   cctx, merlin

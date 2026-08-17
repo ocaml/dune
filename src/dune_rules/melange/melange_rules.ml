@@ -632,6 +632,11 @@ module Runtime_deps = struct
 
   let empty = { copy = []; deps = [] }
 
+  let eval_local ~sctx ~dir (loc, deps) =
+    let* expander = Super_context.expander sctx ~dir in
+    Lib_file_deps.eval ~expander ~loc ~paths:Allow_all deps
+  ;;
+
   let targets =
     let raise_external_dep_error src ~for_ =
       let lib_info =
@@ -649,17 +654,13 @@ module Runtime_deps = struct
     fun sctx ~dir ~output ~for_ (mel : Melange_stanzas.Emit.t) ->
       let+ deps =
         match for_ with
-        | `Emit ->
-          let* expander = Super_context.expander sctx ~dir in
-          let loc, runtime_deps = mel.runtime_deps in
-          Lib_file_deps.eval ~expander ~loc ~paths:Allow_all runtime_deps
+        | `Emit -> eval_local ~sctx ~dir mel.runtime_deps
         | `Library lib_info ->
           (match Lib_info.melange_runtime_deps lib_info with
            | External paths -> Memo.return (Path.Set.of_list paths)
            | Local (loc, dep_conf) ->
              let dir = Lib_info.src_dir (Lib_info.as_local_exn lib_info) in
-             let* expander = Super_context.expander sctx ~dir in
-             Lib_file_deps.eval ~expander ~loc ~paths:Allow_all dep_conf)
+             eval_local ~sctx ~dir (loc, dep_conf))
       in
       match output with
       | Output_kind.Public_library { lib_dir; target_dir; output_dir } ->

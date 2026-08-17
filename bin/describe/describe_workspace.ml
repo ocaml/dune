@@ -87,7 +87,7 @@ module Options = struct
     & flag
     & info
         [ "with-origin-deps" ]
-        ~doc:(Some "Include the dependencies of modules generated from [rule] stanzas ")
+        ~doc:(Some "Include dependencies of generated module sources.")
   ;;
 
   let arg_with_origin_deps_expanded =
@@ -96,9 +96,7 @@ module Options = struct
     & flag
     & info
         [ "with-origin-deps-expanded" ]
-        ~doc:
-          (Some
-             "Include the expanded dependencies of modules generated from [rule] stanzas ")
+        ~doc:(Some "Include expanded dependencies of generated module sources.")
   ;;
 
   let arg : t Term.t =

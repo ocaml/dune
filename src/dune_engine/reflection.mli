@@ -5,8 +5,9 @@ module Rule : sig
   type t = private
     { id : Rule.Id.t
     ; deps : Dep.Set.t
-    ; (* [expanded_deps] skips over non-file dependencies, such as: environment
-         variables, universe, glob listings, sandbox requirements *)
+    ; (* [expanded_deps] resolves [deps] down to concrete files: globs are
+         expanded to the files they match and aliases to their contents.
+         Non-file dependencies (environment variables, universe) are dropped. *)
       expanded_deps : Path.Set.t
     ; targets : Targets.Validated.t
     ; action : Action.t

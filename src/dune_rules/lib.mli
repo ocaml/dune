@@ -224,6 +224,10 @@ end
 
 val closure : t list -> linking:bool -> for_:Compilation_mode.t -> t list Resolve.Memo.t
 
+(** Compute a link closure while permitting virtual libraries without an
+    implementation. Available default implementations are still selected. *)
+val partial_link_closure : t list -> for_:Compilation_mode.t -> t list Resolve.Memo.t
+
 (** [descriptive_closure ~with_pps libs] computes the smallest set of libraries
     that contains the libraries in the list [libs], and that is transitively
     closed. If [with_pps = true], then the dependencies towards ppx-rewriters

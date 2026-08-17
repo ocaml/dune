@@ -1,5 +1,6 @@
 (cram
  (applies_to
+  independent-roots
   installed-package
   no-transitive-through-targets
   ocamlfind

@@ -51,6 +51,9 @@ Each of the four platform solves retries twice before reporting the failure.
   > | jq -s 'include "dune"; [ .[] | satSolveEvents ] | length'
   12
 
+No partial lock directory is written:
+  $ test ! -e dune.lock
+
 Modify the "a" package so the solver error is different on different platforms:
   $ mkpkg a <<EOF
   > depends: [

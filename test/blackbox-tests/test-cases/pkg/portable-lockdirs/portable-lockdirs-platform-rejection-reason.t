@@ -37,4 +37,7 @@ reason must be derived from Linux rather than a platform-less environment.
   - foo -> (problem)
       No usable implementations:
         foo.0.0.1: Availability condition not satisfied
+  Hint: If you don't need support for every requested platform, change
+  Hint: (solve_for_platforms ...) in dune-workspace to only include the
+  Hint: platforms you need, then rerun 'dune pkg lock'
   [1]

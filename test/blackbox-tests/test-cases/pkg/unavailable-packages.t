@@ -106,6 +106,9 @@ available on linux.
       No usable implementations:
         linux-only.0.0.2: Availability condition not satisfied
         linux-only.0.0.1: Availability condition not satisfied
+  Hint: If you don't need support for every requested platform, change
+  Hint: (solve_for_platforms ...) in dune-workspace to only include the
+  Hint: platforms you need, then rerun 'dune pkg lock'
   Error:
   Unable to solve dependencies while generating lock directory: dune.macos.lock
   
@@ -125,6 +128,9 @@ available on linux.
       No usable implementations:
         linux-only.0.0.2: Availability condition not satisfied
         linux-only.0.0.1: Availability condition not satisfied
+  Hint: If you don't need support for every requested platform, change
+  Hint: (solve_for_platforms ...) in dune-workspace to only include the
+  Hint: platforms you need, then rerun 'dune pkg lock'
   [1]
 
 The latest version of the package will be chosen on linux but the middle
@@ -162,6 +168,9 @@ variable in its `available` filter. The undefined-var.0.0.2 package has a valid
       No usable implementations:
         undefined-var.0.0.2: Availability condition not satisfied
         undefined-var.0.0.1: Availability condition not satisfied
+  Hint: If you don't need support for every requested platform, change
+  Hint: (solve_for_platforms ...) in dune-workspace to only include the
+  Hint: platforms you need, then rerun 'dune pkg lock'
   Error:
   Unable to solve dependencies while generating lock directory: dune.macos.lock
   
@@ -181,6 +190,9 @@ variable in its `available` filter. The undefined-var.0.0.2 package has a valid
       No usable implementations:
         undefined-var.0.0.2: Availability condition not satisfied
         undefined-var.0.0.1: Availability condition not satisfied
+  Hint: If you don't need support for every requested platform, change
+  Hint: (solve_for_platforms ...) in dune-workspace to only include the
+  Hint: platforms you need, then rerun 'dune pkg lock'
   [1]
 
 Warnings will be printed and no solution will be found as the availability
@@ -209,6 +221,9 @@ filter resolves to a string instead of to a boolean.
       No usable implementations:
         availability-string.0.0.2: Availability condition not satisfied
         availability-string.0.0.1: Availability condition not satisfied
+  Hint: If you don't need support for every requested platform, change
+  Hint: (solve_for_platforms ...) in dune-workspace to only include the
+  Hint: platforms you need, then rerun 'dune pkg lock'
   Warning: Ignoring package availability-string.0.0.2 as its "available" filter
   can't be resolved to a boolean value.
   available: os
@@ -232,6 +247,9 @@ filter resolves to a string instead of to a boolean.
       No usable implementations:
         availability-string.0.0.2: Availability condition not satisfied
         availability-string.0.0.1: Availability condition not satisfied
+  Hint: If you don't need support for every requested platform, change
+  Hint: (solve_for_platforms ...) in dune-workspace to only include the
+  Hint: platforms you need, then rerun 'dune pkg lock'
   [1]
 
 The middle version will be picked as this is the only one available if

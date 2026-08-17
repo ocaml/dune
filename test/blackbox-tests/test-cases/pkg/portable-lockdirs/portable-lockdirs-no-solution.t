@@ -43,6 +43,9 @@ Solver error when solving fails with the same error on all platforms:
       a 0.0.1 requires = 0.1
       Rejected candidates:
         c.0.2: Incompatible with restriction: = 0.1
+  Hint: If you don't need support for every requested platform, change
+  Hint: (solve_for_platforms ...) in dune-workspace to only include the
+  Hint: platforms you need, then rerun 'dune pkg lock'
   [1]
 
 The single platform-set solve retries twice before reporting the failure.
@@ -92,4 +95,7 @@ with the platforms where they are relevant:
       a 0.0.1 requires = 0.3
       Rejected candidates:
         c.0.2: Incompatible with restriction: = 0.3
+  Hint: If you don't need support for every requested platform, change
+  Hint: (solve_for_platforms ...) in dune-workspace to only include the
+  Hint: platforms you need, then rerun 'dune pkg lock'
   [1]

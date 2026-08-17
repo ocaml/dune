@@ -25,4 +25,7 @@ Format, it shows the solving error.
   ...with this error:
   Couldn't solve the package dependency formula.
   The following packages couldn't be found: ocamlformat
+  Hint: If you don't need support for every requested platform, change
+  Hint: (solve_for_platforms ...) in dune-workspace to only include the
+  Hint: platforms you need, then rerun 'dune pkg lock'
   [1]

@@ -60,6 +60,9 @@ constraint makes the requested platform set unsatisfiable:
           Reason for rejection unknown:
           bar.0.0.1=true && foo.2=false => (no solution found)=true
         foo.1: Incompatible with restriction: = 2
+  Hint: If you don't need support for every requested platform, change
+  Hint: (solve_for_platforms ...) in dune-workspace to only include the
+  Hint: platforms you need, then rerun 'dune pkg lock'
   [1]
 
 The SAT engine itself rejects the conflict; the post-solve version-conflict

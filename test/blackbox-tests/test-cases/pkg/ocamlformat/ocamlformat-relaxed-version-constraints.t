@@ -90,4 +90,7 @@ This should fail as there is no version matching 0.24.1:
         ocamlformat.0.24+foo:
           Package does not satisfy constraints of local package
           ocamlformat_dev_tool_wrapper
+  Hint: If you don't need support for every requested platform, change
+  Hint: (solve_for_platforms ...) in dune-workspace to only include the
+  Hint: platforms you need, then rerun 'dune pkg lock'
   [1]

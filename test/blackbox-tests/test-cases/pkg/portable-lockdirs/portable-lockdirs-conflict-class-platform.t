@@ -58,4 +58,7 @@ Linux class peer is unrelated to that rejection.
       needs-target 0.0.1 requires >= 2
       Rejected candidates:
         target.1: Incompatible with restriction: >= 2
+  Hint: If you don't need support for every requested platform, change
+  Hint: (solve_for_platforms ...) in dune-workspace to only include the
+  Hint: platforms you need, then rerun 'dune pkg lock'
   [1]

@@ -199,6 +199,17 @@ let pp_solve_error (message, platforms) =
   |> Pp.vbox
 ;;
 
+(* Suggest narrowing the platform set when support for every requested
+   platform is unnecessary. *)
+let solve_for_platforms_hint =
+  [ Pp.text "If you don't need support for every requested platform, change"
+  ; Pp.text "(solve_for_platforms ...) in dune-workspace to only include the"
+  ; Pp.concat
+      ~sep:Pp.space
+      [ Pp.text "platforms you need, then rerun"; User_message.command "dune pkg lock" ]
+  ]
+;;
+
 let solve_lock_dir
       workspace
       ~local_packages
@@ -351,6 +362,7 @@ let solve
   >>| function
   | Error errors ->
     User_error.raise
+      ~hints:solve_for_platforms_hint
       (List.concat_map errors ~f:(fun (path, (error, platforms)) ->
          [ Pp.box
            @@ Pp.textf

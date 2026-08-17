@@ -41,4 +41,7 @@ versions on different platforms.
           Reason for rejection unknown:
           x.dev=true && foo.2=false => (no solution found)=true
         foo.1: Availability condition not satisfied
+  Hint: If you don't need support for every requested platform, change
+  Hint: (solve_for_platforms ...) in dune-workspace to only include the
+  Hint: platforms you need, then rerun 'dune pkg lock'
   [1]

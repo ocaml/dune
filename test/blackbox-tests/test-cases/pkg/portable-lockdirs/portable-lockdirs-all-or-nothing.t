@@ -36,6 +36,9 @@ failure is reported once for the requested platform set:
   - foo -> (problem) on arch = x86_64; os = linux
       No usable implementations:
         foo.0.0.1: Availability condition not satisfied
+  Hint: If you don't need support for every requested platform, change
+  Hint: (solve_for_platforms ...) in dune-workspace to only include the
+  Hint: platforms you need, then rerun 'dune pkg lock'
   [1]
 
 No partial lock directory is written:

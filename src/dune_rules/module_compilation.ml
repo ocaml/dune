@@ -92,17 +92,18 @@ let other_cm_files
     cms_cmt_deps @ deps)
 ;;
 
+let cm_kind_can_go_in_shared_cache = function
+  | Lib_mode.Cm_kind.Melange _ -> true
+  | Lib_mode.Cm_kind.Ocaml _ -> false
+;;
+
 let copy_interface ~sctx ~dir ~obj_dir ~cm_kind m =
   (* symlink the .cmi into the public interface directory *)
   Memo.when_
     (Module.visibility m <> Visibility.Private
      && Obj_dir.need_dedicated_public_dir obj_dir)
     (fun () ->
-       let can_go_in_shared_cache =
-         match cm_kind with
-         | Lib_mode.Cm_kind.Melange _ -> true
-         | Lib_mode.Cm_kind.Ocaml _ -> false
-       in
+       let can_go_in_shared_cache = cm_kind_can_go_in_shared_cache cm_kind in
        let cmi_kind = Lib_mode.Cm_kind.cmi cm_kind in
        add_rule
          ~can_go_in_shared_cache
@@ -382,11 +383,7 @@ let build_cm
      Obj_dir.all_obj_dirs obj_dir ~mode
      |> List.concat_map ~f:(fun p -> [ Command.Args.A "-I"; Path (Path.build p) ])
    in
-   let can_go_in_shared_cache =
-     match cm_kind with
-     | Lib_mode.Cm_kind.Melange _ -> true
-     | Lib_mode.Cm_kind.Ocaml _ -> false
-   in
+   let can_go_in_shared_cache = cm_kind_can_go_in_shared_cache cm_kind in
    add_rule
      ~can_go_in_shared_cache
      sctx

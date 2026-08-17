@@ -18,3 +18,10 @@ diagnostic. Snapshot that behavior before adding validation.
   > EOF
 
   $ dune build @install
+
+The malformed source template reaches both generated and installed output.
+
+  $ grep '^package "broken" (' _build/default/META.foobarlib
+  package "broken" (
+  $ grep '^package "broken" (' _build/install/default/lib/foobarlib/META
+  package "broken" (

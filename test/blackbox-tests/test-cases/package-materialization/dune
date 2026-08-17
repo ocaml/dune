@@ -3,5 +3,6 @@
   installed-package
   no-transitive-through-targets
   ocamlfind
+  transitive-closure
   virtual-without-default)
  (deps %{bin:ocamlfind}))

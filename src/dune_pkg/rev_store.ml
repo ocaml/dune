@@ -773,6 +773,11 @@ module Entry = struct
   ;;
 end
 
+let%test "skip blob when git reports BAD for its size" =
+  Entry.parse "100644 blob d95f3ad14dee633a758d2e331151e950dd13e4ed     BAD\tunreadable"
+  |> Option.is_none
+;;
+
 let fetch_allow_failure ~env repo ~url obj =
   with_mutex repo obj ~f:(fun () ->
     object_exists repo obj

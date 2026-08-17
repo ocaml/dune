@@ -1,6 +1,7 @@
 (cram
  (applies_to
   installed-package
+  nested-namespace
   no-transitive-through-targets
   ocamlfind
   virtual-without-default)

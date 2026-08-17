@@ -38,12 +38,14 @@ module External = struct
 
   let equal : t -> t -> bool = Poly.equal
 
+  let make_public_dir ~dir =
+    { Compilation_mode.Per_mode.ocaml = dir
+    ; melange = Path.relative dir Melange.Install.dir
+    }
+  ;;
+
   let make ~dir ~has_private_modules ~private_lib =
-    let public_dir =
-      { Compilation_mode.Per_mode.ocaml = dir
-      ; melange = Path.relative dir Melange.Install.dir
-      }
-    in
+    let public_dir = make_public_dir ~dir in
     let private_dir =
       match has_private_modules with
       | false -> Compilation_mode.Per_mode.both None
@@ -114,11 +116,7 @@ module External = struct
   ;;
 
   let decode ~dir =
-    let public_dir =
-      { Compilation_mode.Per_mode.ocaml = dir
-      ; melange = Path.relative dir Melange.Install.dir
-      }
-    in
+    let public_dir = make_public_dir ~dir in
     let open Dune_lang.Decoder in
     fields
       (let+ private_dir = field_o "private_dir" string

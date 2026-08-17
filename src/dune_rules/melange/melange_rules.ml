@@ -287,18 +287,12 @@ let make_same_lib_emission_deps =
 ;;
 
 let make_external_lib_emission_deps =
-  let cmj_glob = Glob.of_string_exn Loc.none "*.cmj" in
-  let cmi_glob = Glob.of_string_exn Loc.none "*.cmi" in
-  let deps_of_glob ~dirs glob =
-    List.map dirs ~f:(fun dir -> Dep.file_selector (File_selector.of_glob ~dir glob))
-    |> Dep.Set.of_list
-  in
+  let obj_glob = Glob.of_string_exn Loc.none "*{.cmi,.cmj}" in
   fun ~obj_dir ->
-    let melange_obj_dirs = Obj_dir.all_obj_dirs obj_dir ~mode:Melange in
     let deps =
-      Dep.Set.union
-        (deps_of_glob ~dirs:melange_obj_dirs cmj_glob)
-        (deps_of_glob ~dirs:melange_obj_dirs cmi_glob)
+      Obj_dir.all_obj_dirs obj_dir ~mode:Melange
+      |> List.map ~f:(fun dir -> Dep.file_selector (File_selector.of_glob ~dir obj_glob))
+      |> Dep.Set.of_list
     in
     fun _module_ -> Action_builder.return deps
 ;;

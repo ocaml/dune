@@ -5,6 +5,7 @@ open Import
 module Dst : sig
   type t
 
+  val of_string : string -> t
   val to_string : t -> string
   val local : t -> Path.Local.t
   val append_local : t -> Path.Local.t -> t
@@ -25,6 +26,7 @@ module Dst : sig
 end = struct
   type t = string
 
+  let of_string t = t
   let to_string t = t
   let local t = Path.Local.of_string t
   let append_local t l = Filename.concat t (Path.Local.to_string l)

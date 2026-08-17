@@ -125,11 +125,9 @@ environment in which they happen to be visible.
   $ OCAMLPATH=$PWD/prefix/lib dune rules --root consumer --format=json main.exe |
   > jq_dune '.[] | ruleDepFilePaths' |
   > grep "$PWD/prefix/lib/b/b.cmi" >/dev/null
-  [1]
   $ OCAMLPATH=$PWD/prefix/lib dune rules --root consumer --format=json main.exe |
   > jq_dune '.[] | ruleDepFilePaths' |
   > grep "$PWD/prefix/lib/b/dune-package" >/dev/null
-  [1]
   $ ! OCAMLPATH=$PWD/prefix/lib dune rules --root consumer --format=json main.exe |
   > jq_dune '.[] | ruleDepFilePaths' |
   > grep -q "$PWD/prefix/lib/b/b_stubs.o"
@@ -148,11 +146,9 @@ findlib META reader.
   $ OCAMLPATH=$PWD/prefix/lib dune rules --root consumer --format=json main.exe |
   > jq_dune '.[] | ruleDepFilePaths' |
   > grep "$PWD/prefix/lib/b/b.cmi" >/dev/null
-  [1]
   $ OCAMLPATH=$PWD/prefix/lib dune rules --root consumer --format=json main.exe |
   > jq_dune '.[] | ruleDepFilePaths' |
   > grep "$PWD/prefix/lib/b/META" >/dev/null
-  [1]
   $ ! OCAMLPATH=$PWD/prefix/lib dune rules --root consumer --format=json main.exe |
   > jq_dune '.[] | ruleDepFilePaths' |
   > grep -q "$PWD/prefix/lib/b/unrelated/unrelated.cmi"
@@ -209,12 +205,10 @@ be an action dependency rather than merely visible on the inherited
   > --format=json main.exe |
   > jq_dune '.[] | ruleDepFilePaths' |
   > grep "$PWD/prefix/lib/b/b.cmi" >/dev/null
-  [1]
   $ OCAMLPATH=$PWD/prefix/lib dune rules --root masked --only-packages a \
   > --format=json main.exe |
   > jq_dune '.[] | ruleDepFilePaths' |
   > grep "$PWD/prefix/lib/b/META" >/dev/null
-  [1]
   $ ! OCAMLPATH=$PWD/prefix/lib dune rules --root masked --only-packages a \
   > --format=json main.exe |
   > jq_dune '.[] | ruleDepFilePaths' |

@@ -39,9 +39,9 @@ the query against the layout's OCAMLPATH.
 
   $ dune build out
 
-Current-behavior snapshot: myutil is mylib's declared opam dependency but is
-not in the immediate-only layout for (deps (package mylib)), so ocamlfind
-cannot find it.
+Library closure: myutil is both mylib's declared opam dependency and a library
+dependency, so it is included in the layout for (deps (package mylib)) and
+ocamlfind can locate it.
 
   $ cat >dune <<'EOF'
   > (rule
@@ -52,14 +52,6 @@ cannot find it.
   > EOF
 
   $ dune build out2
-  File "dune", lines 1-5, characters 0-96:
-  1 | (rule
-  2 |  (deps (package mylib))
-  3 |  (action
-  4 |   (with-stdout-to out2
-  5 |    (run ocamlfind query myutil))))
-  ocamlfind: Package `myutil' not found
-  [1]
 
 Declaring both packages explicitly makes both visible.
 

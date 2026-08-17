@@ -1,14 +1,45 @@
 open Import
 
-val set_entry_resolver
-  :  (Context_name.t -> Package.Name.t -> Install.Entry.Sourced.Unexpanded.t list Memo.t)
-  -> unit
+module Library : sig
+  type t
 
-(** Env extension for an action depending on a package set. Returns an env
-    with PATH, OCAMLPATH, etc. prepended for the layout root, and registers
-    the action's dependency on every install entry the layout produces for
-    the set. *)
-val env : Context_name.t -> Package.Name.Set.t -> Env.t Action_builder.t
+  val make : package:Package.Name.t -> name:Lib_name.t -> t
+  val package : t -> Package.Name.t
+  val name : t -> Lib_name.t
+  val repr : t Repr.t
+  val to_dyn : t -> Dyn.t
+
+  module Map : Map.S with type key = t
+  module Set : Set.S with type elt = t
+end
+
+type generated_entry =
+  { package : Package.Name.t
+  ; section : Section.t
+  ; dst : Install.Entry.Dst.t
+  ; contents : string Action_builder.t
+  }
+
+type library_entries =
+  { install_entries : (Package.Name.t * Install.Entry.Sourced.Unexpanded.t) list
+  ; generated_entries : generated_entry list
+  }
+
+type resolvers =
+  { package_entries :
+      Context_name.t -> Package.Name.t -> Install.Entry.Sourced.Unexpanded.t list Memo.t
+  ; library_entries : Context_name.t -> Library.Set.t -> library_entries Memo.t
+  }
+
+val set_resolvers : resolvers -> unit
+
+(** Env extension for an action depending on a package set and its workspace
+    library support closure. Returns an env with PATH, OCAMLPATH, etc. prepended
+    for the layout root, and registers the action's dependency on every install
+    entry the layout produces. Only the selected support libraries' install
+    entries and metadata are included; their owning packages' other entries are
+    not. *)
+val env : Context_name.t -> Package.Name.Set.t -> Library.Set.t -> Env.t Action_builder.t
 
 (** Engine dispatch for [_build/install/<context>/.packages/<rest>]. Called
     from [Gen_rules]; the layout dir is owned by this module. Resolves to:

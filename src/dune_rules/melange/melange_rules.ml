@@ -111,16 +111,18 @@ let js_outputs_of_module ~module_systems ~output m =
     module_system, make_js_name ~js_ext ~output m)
 ;;
 
+let instrument_preprocess ~scope preprocess =
+  Instrumentation.with_instrumentation
+    preprocess
+    ~instrumentation_backend:(Lib.DB.instrumentation_backend (Scope.libs scope))
+  |> Resolve.Memo.read_memo
+;;
+
 let modules_in_obj_dir ~sctx ~scope ~preprocess modules =
   let* version =
     let+ ocaml = Context.ocaml (Super_context.context sctx) in
     ocaml.version
-  and* preprocess =
-    Instrumentation.with_instrumentation
-      preprocess
-      ~instrumentation_backend:(Lib.DB.instrumentation_backend (Scope.libs scope))
-    |> Resolve.Memo.read_memo
-  in
+  and* preprocess = instrument_preprocess ~scope preprocess in
   let pped_map = Staged.unstage (Pp_spec.pped_modules_map preprocess version) in
   Modules.map_user_written modules ~f:(fun m -> Memo.return @@ pped_map m)
 ;;
@@ -307,11 +309,7 @@ let make_external_lib_emission_deps =
 let compile_info ~scope (mel : Melange_stanzas.Emit.t) =
   let dune_version = Scope.project scope |> Dune_project.dune_version in
   let+ pps =
-    Instrumentation.with_instrumentation
-      mel.preprocess.config
-      ~instrumentation_backend:(Lib.DB.instrumentation_backend (Scope.libs scope))
-    |> Resolve.Memo.read_memo
-    >>| Preprocess.Per_module.pps
+    instrument_preprocess ~scope mel.preprocess.config >>| Preprocess.Per_module.pps
   in
   let libraries =
     match mel.emit_stdlib with

@@ -98,12 +98,15 @@ rule chain-final "$chain_duration" "$previous"
   printf '  chain-final))\n'
 } >> "$workload/dune"
 
+# Keep target digest scheduling outside the model measured by this benchmark.
 measure () {
   mode=$1
   trial=$2
   timing=$script_dir/_build/time-$mode-$trial
   rm -rf "$workload/_build"
-  if ! (cd "$workload" && { time -p env DUNE_CONFIG__PRIORITY_SCHEDULING=$mode \
+  if ! (cd "$workload" && { time -p env \
+          DUNE_CONFIG__BACKGROUND_DIGESTS=disabled \
+          DUNE_CONFIG__PRIORITY_SCHEDULING=$mode \
           "$dune" build --root . @benchmark -j "$jobs" --display=quiet \
             --cache=disabled; }) 2> "$timing"
   then

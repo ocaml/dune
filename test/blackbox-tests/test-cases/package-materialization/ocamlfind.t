@@ -39,9 +39,9 @@ the query against the layout's OCAMLPATH.
 
   $ dune build out
 
-Immediate-deps-only: myutil is mylib's declared opam dependency but is
-NOT in the layout for (deps (package mylib)). ocamlfind fails to find
-it.
+Current-behavior snapshot: myutil is mylib's declared opam dependency but is
+not in the immediate-only layout for (deps (package mylib)), so ocamlfind
+cannot find it.
 
   $ cat >dune <<'EOF'
   > (rule

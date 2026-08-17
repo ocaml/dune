@@ -26,6 +26,10 @@
  (deps %{bin:dunepp}))
 
 (cram
+ (applies_to package-dep)
+ (deps %{bin:ocamlfind}))
+
+(cram
  (applies_to :whole_subtree)
  (shell bash)
  (deps

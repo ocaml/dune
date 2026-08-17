@@ -36,8 +36,10 @@ jobs:
           - os: ubuntu-26.04
             name: x86_64-unknown-linux-musl
             installable: .#dune-static
-          # Building x86_64-pc-windows-gnu does not work when Dune itself uses
-          # an unreleased version of Dune.
+          - os: ubuntu-26.04
+            name: x86_64-pc-windows-gnu
+            installable: .#windows-static
+            binary: dune.exe
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7

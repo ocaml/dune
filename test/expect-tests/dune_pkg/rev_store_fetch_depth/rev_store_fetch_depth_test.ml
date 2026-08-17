@@ -75,7 +75,11 @@ let%expect_test "second fetch uses refs for efficient negotiation (fix #13323)" 
     |> Env.add ~var:(Env.Var.of_string "GIT_PROTOCOL") ~value:"version=2"
   in
   (Dune_scheduler.Scheduler.Run.go
-     { concurrency = 2; print_ctrl_c_warning = false; watch_exclusions = [] }
+     { concurrency = 2
+     ; priority_scheduling = false
+     ; print_ctrl_c_warning = false
+     ; watch_exclusions = []
+     }
    @@ fun () ->
    let* rev_store = Rev_store.get in
    let git = git ~dir:repo_dir in

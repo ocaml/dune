@@ -27,6 +27,10 @@ val global_lock : Toggle.t t
 (** whether dune should optimize file copying on Linux/MacOS *)
 val copy_file : [ `Portable | `Best ] t
 
+(** Whether external jobs should be scheduled according to Memo dependency
+    priorities. *)
+val priority_scheduling : Toggle.t t
+
 (** Compute digests of files in a background thread *)
 val background_digests : Toggle.t t
 

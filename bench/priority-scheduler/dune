@@ -1,509 +1,874 @@
 ;; Occupy all slots so both schedulers select from the same queue.
+
 (rule
  (target gate-0)
- (action (progn (run sleep 0.1) (write-file gate-0 done))))
+ (action
+  (progn
+   (run sleep 0.1)
+   (write-file gate-0 done))))
 
 (rule
  (target gate-1)
- (action (progn (run sleep 0.1) (write-file gate-1 done))))
+ (action
+  (progn
+   (run sleep 0.1)
+   (write-file gate-1 done))))
 
 (rule
  (target gate-2)
- (action (progn (run sleep 0.1) (write-file gate-2 done))))
+ (action
+  (progn
+   (run sleep 0.1)
+   (write-file gate-2 done))))
 
 (rule
  (target gate-3)
- (action (progn (run sleep 0.1) (write-file gate-3 done))))
+ (action
+  (progn
+   (run sleep 0.1)
+   (write-file gate-3 done))))
 
 (rule
  (target gate-4)
- (action (progn (run sleep 0.1) (write-file gate-4 done))))
+ (action
+  (progn
+   (run sleep 0.1)
+   (write-file gate-4 done))))
 
 (rule
  (target gate-5)
- (action (progn (run sleep 0.1) (write-file gate-5 done))))
+ (action
+  (progn
+   (run sleep 0.1)
+   (write-file gate-5 done))))
 
 (rule
  (target gate-6)
- (action (progn (run sleep 0.1) (write-file gate-6 done))))
+ (action
+  (progn
+   (run sleep 0.1)
+   (write-file gate-6 done))))
 
 (rule
  (target gate-7)
- (action (progn (run sleep 0.1) (write-file gate-7 done))))
+ (action
+  (progn
+   (run sleep 0.1)
+   (write-file gate-7 done))))
 
 (rule
  (target gate-8)
- (action (progn (run sleep 0.1) (write-file gate-8 done))))
+ (action
+  (progn
+   (run sleep 0.1)
+   (write-file gate-8 done))))
 
 (rule
  (target gate-9)
- (action (progn (run sleep 0.1) (write-file gate-9 done))))
+ (action
+  (progn
+   (run sleep 0.1)
+   (write-file gate-9 done))))
 
 ;; This is 180 seconds of independent work: exactly 20 seconds on the nine
 ;; workers that remain while the critical chain occupies one worker.
+
 (rule
  (target independent-0)
- (action (progn (run sleep 2) (write-file independent-0 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-0 done))))
 
 (rule
  (target independent-1)
- (action (progn (run sleep 2) (write-file independent-1 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-1 done))))
 
 (rule
  (target independent-2)
- (action (progn (run sleep 2) (write-file independent-2 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-2 done))))
 
 (rule
  (target independent-3)
- (action (progn (run sleep 2) (write-file independent-3 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-3 done))))
 
 (rule
  (target independent-4)
- (action (progn (run sleep 2) (write-file independent-4 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-4 done))))
 
 (rule
  (target independent-5)
- (action (progn (run sleep 2) (write-file independent-5 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-5 done))))
 
 (rule
  (target independent-6)
- (action (progn (run sleep 2) (write-file independent-6 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-6 done))))
 
 (rule
  (target independent-7)
- (action (progn (run sleep 2) (write-file independent-7 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-7 done))))
 
 (rule
  (target independent-8)
- (action (progn (run sleep 2) (write-file independent-8 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-8 done))))
 
 (rule
  (target independent-9)
- (action (progn (run sleep 2) (write-file independent-9 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-9 done))))
 
 (rule
  (target independent-10)
- (action (progn (run sleep 2) (write-file independent-10 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-10 done))))
 
 (rule
  (target independent-11)
- (action (progn (run sleep 2) (write-file independent-11 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-11 done))))
 
 (rule
  (target independent-12)
- (action (progn (run sleep 2) (write-file independent-12 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-12 done))))
 
 (rule
  (target independent-13)
- (action (progn (run sleep 2) (write-file independent-13 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-13 done))))
 
 (rule
  (target independent-14)
- (action (progn (run sleep 2) (write-file independent-14 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-14 done))))
 
 (rule
  (target independent-15)
- (action (progn (run sleep 2) (write-file independent-15 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-15 done))))
 
 (rule
  (target independent-16)
- (action (progn (run sleep 2) (write-file independent-16 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-16 done))))
 
 (rule
  (target independent-17)
- (action (progn (run sleep 2) (write-file independent-17 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-17 done))))
 
 (rule
  (target independent-18)
- (action (progn (run sleep 2) (write-file independent-18 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-18 done))))
 
 (rule
  (target independent-19)
- (action (progn (run sleep 2) (write-file independent-19 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-19 done))))
 
 (rule
  (target independent-20)
- (action (progn (run sleep 2) (write-file independent-20 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-20 done))))
 
 (rule
  (target independent-21)
- (action (progn (run sleep 2) (write-file independent-21 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-21 done))))
 
 (rule
  (target independent-22)
- (action (progn (run sleep 2) (write-file independent-22 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-22 done))))
 
 (rule
  (target independent-23)
- (action (progn (run sleep 2) (write-file independent-23 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-23 done))))
 
 (rule
  (target independent-24)
- (action (progn (run sleep 2) (write-file independent-24 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-24 done))))
 
 (rule
  (target independent-25)
- (action (progn (run sleep 2) (write-file independent-25 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-25 done))))
 
 (rule
  (target independent-26)
- (action (progn (run sleep 2) (write-file independent-26 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-26 done))))
 
 (rule
  (target independent-27)
- (action (progn (run sleep 2) (write-file independent-27 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-27 done))))
 
 (rule
  (target independent-28)
- (action (progn (run sleep 2) (write-file independent-28 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-28 done))))
 
 (rule
  (target independent-29)
- (action (progn (run sleep 2) (write-file independent-29 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-29 done))))
 
 (rule
  (target independent-30)
- (action (progn (run sleep 2) (write-file independent-30 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-30 done))))
 
 (rule
  (target independent-31)
- (action (progn (run sleep 2) (write-file independent-31 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-31 done))))
 
 (rule
  (target independent-32)
- (action (progn (run sleep 2) (write-file independent-32 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-32 done))))
 
 (rule
  (target independent-33)
- (action (progn (run sleep 2) (write-file independent-33 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-33 done))))
 
 (rule
  (target independent-34)
- (action (progn (run sleep 2) (write-file independent-34 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-34 done))))
 
 (rule
  (target independent-35)
- (action (progn (run sleep 2) (write-file independent-35 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-35 done))))
 
 (rule
  (target independent-36)
- (action (progn (run sleep 2) (write-file independent-36 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-36 done))))
 
 (rule
  (target independent-37)
- (action (progn (run sleep 2) (write-file independent-37 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-37 done))))
 
 (rule
  (target independent-38)
- (action (progn (run sleep 2) (write-file independent-38 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-38 done))))
 
 (rule
  (target independent-39)
- (action (progn (run sleep 2) (write-file independent-39 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-39 done))))
 
 (rule
  (target independent-40)
- (action (progn (run sleep 2) (write-file independent-40 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-40 done))))
 
 (rule
  (target independent-41)
- (action (progn (run sleep 2) (write-file independent-41 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-41 done))))
 
 (rule
  (target independent-42)
- (action (progn (run sleep 2) (write-file independent-42 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-42 done))))
 
 (rule
  (target independent-43)
- (action (progn (run sleep 2) (write-file independent-43 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-43 done))))
 
 (rule
  (target independent-44)
- (action (progn (run sleep 2) (write-file independent-44 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-44 done))))
 
 (rule
  (target independent-45)
- (action (progn (run sleep 2) (write-file independent-45 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-45 done))))
 
 (rule
  (target independent-46)
- (action (progn (run sleep 2) (write-file independent-46 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-46 done))))
 
 (rule
  (target independent-47)
- (action (progn (run sleep 2) (write-file independent-47 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-47 done))))
 
 (rule
  (target independent-48)
- (action (progn (run sleep 2) (write-file independent-48 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-48 done))))
 
 (rule
  (target independent-49)
- (action (progn (run sleep 2) (write-file independent-49 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-49 done))))
 
 (rule
  (target independent-50)
- (action (progn (run sleep 2) (write-file independent-50 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-50 done))))
 
 (rule
  (target independent-51)
- (action (progn (run sleep 2) (write-file independent-51 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-51 done))))
 
 (rule
  (target independent-52)
- (action (progn (run sleep 2) (write-file independent-52 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-52 done))))
 
 (rule
  (target independent-53)
- (action (progn (run sleep 2) (write-file independent-53 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-53 done))))
 
 (rule
  (target independent-54)
- (action (progn (run sleep 2) (write-file independent-54 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-54 done))))
 
 (rule
  (target independent-55)
- (action (progn (run sleep 2) (write-file independent-55 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-55 done))))
 
 (rule
  (target independent-56)
- (action (progn (run sleep 2) (write-file independent-56 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-56 done))))
 
 (rule
  (target independent-57)
- (action (progn (run sleep 2) (write-file independent-57 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-57 done))))
 
 (rule
  (target independent-58)
- (action (progn (run sleep 2) (write-file independent-58 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-58 done))))
 
 (rule
  (target independent-59)
- (action (progn (run sleep 2) (write-file independent-59 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-59 done))))
 
 (rule
  (target independent-60)
- (action (progn (run sleep 2) (write-file independent-60 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-60 done))))
 
 (rule
  (target independent-61)
- (action (progn (run sleep 2) (write-file independent-61 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-61 done))))
 
 (rule
  (target independent-62)
- (action (progn (run sleep 2) (write-file independent-62 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-62 done))))
 
 (rule
  (target independent-63)
- (action (progn (run sleep 2) (write-file independent-63 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-63 done))))
 
 (rule
  (target independent-64)
- (action (progn (run sleep 2) (write-file independent-64 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-64 done))))
 
 (rule
  (target independent-65)
- (action (progn (run sleep 2) (write-file independent-65 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-65 done))))
 
 (rule
  (target independent-66)
- (action (progn (run sleep 2) (write-file independent-66 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-66 done))))
 
 (rule
  (target independent-67)
- (action (progn (run sleep 2) (write-file independent-67 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-67 done))))
 
 (rule
  (target independent-68)
- (action (progn (run sleep 2) (write-file independent-68 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-68 done))))
 
 (rule
  (target independent-69)
- (action (progn (run sleep 2) (write-file independent-69 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-69 done))))
 
 (rule
  (target independent-70)
- (action (progn (run sleep 2) (write-file independent-70 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-70 done))))
 
 (rule
  (target independent-71)
- (action (progn (run sleep 2) (write-file independent-71 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-71 done))))
 
 (rule
  (target independent-72)
- (action (progn (run sleep 2) (write-file independent-72 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-72 done))))
 
 (rule
  (target independent-73)
- (action (progn (run sleep 2) (write-file independent-73 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-73 done))))
 
 (rule
  (target independent-74)
- (action (progn (run sleep 2) (write-file independent-74 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-74 done))))
 
 (rule
  (target independent-75)
- (action (progn (run sleep 2) (write-file independent-75 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-75 done))))
 
 (rule
  (target independent-76)
- (action (progn (run sleep 2) (write-file independent-76 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-76 done))))
 
 (rule
  (target independent-77)
- (action (progn (run sleep 2) (write-file independent-77 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-77 done))))
 
 (rule
  (target independent-78)
- (action (progn (run sleep 2) (write-file independent-78 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-78 done))))
 
 (rule
  (target independent-79)
- (action (progn (run sleep 2) (write-file independent-79 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-79 done))))
 
 (rule
  (target independent-80)
- (action (progn (run sleep 2) (write-file independent-80 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-80 done))))
 
 (rule
  (target independent-81)
- (action (progn (run sleep 2) (write-file independent-81 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-81 done))))
 
 (rule
  (target independent-82)
- (action (progn (run sleep 2) (write-file independent-82 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-82 done))))
 
 (rule
  (target independent-83)
- (action (progn (run sleep 2) (write-file independent-83 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-83 done))))
 
 (rule
  (target independent-84)
- (action (progn (run sleep 2) (write-file independent-84 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-84 done))))
 
 (rule
  (target independent-85)
- (action (progn (run sleep 2) (write-file independent-85 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-85 done))))
 
 (rule
  (target independent-86)
- (action (progn (run sleep 2) (write-file independent-86 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-86 done))))
 
 (rule
  (target independent-87)
- (action (progn (run sleep 2) (write-file independent-87 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-87 done))))
 
 (rule
  (target independent-88)
- (action (progn (run sleep 2) (write-file independent-88 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-88 done))))
 
 (rule
  (target independent-89)
- (action (progn (run sleep 2) (write-file independent-89 done))))
+ (action
+  (progn
+   (run sleep 2)
+   (write-file independent-89 done))))
 
 (rule
  (target chain-0)
- (action (progn (run sleep 0.5) (write-file chain-0 done))))
+ (action
+  (progn
+   (run sleep 0.5)
+   (write-file chain-0 done))))
 
 (rule
  (target chain-1)
  (deps chain-0)
- (action (progn (run sleep 0.5) (write-file chain-1 done))))
+ (action
+  (progn
+   (run sleep 0.5)
+   (write-file chain-1 done))))
 
 (rule
  (target chain-2)
  (deps chain-1)
- (action (progn (run sleep 0.5) (write-file chain-2 done))))
+ (action
+  (progn
+   (run sleep 0.5)
+   (write-file chain-2 done))))
 
 (rule
  (target chain-3)
  (deps chain-2)
- (action (progn (run sleep 0.5) (write-file chain-3 done))))
+ (action
+  (progn
+   (run sleep 0.5)
+   (write-file chain-3 done))))
 
 (rule
  (target chain-4)
  (deps chain-3)
- (action (progn (run sleep 0.5) (write-file chain-4 done))))
+ (action
+  (progn
+   (run sleep 0.5)
+   (write-file chain-4 done))))
 
 (rule
  (target chain-5)
  (deps chain-4)
- (action (progn (run sleep 0.5) (write-file chain-5 done))))
+ (action
+  (progn
+   (run sleep 0.5)
+   (write-file chain-5 done))))
 
 (rule
  (target chain-6)
  (deps chain-5)
- (action (progn (run sleep 0.5) (write-file chain-6 done))))
+ (action
+  (progn
+   (run sleep 0.5)
+   (write-file chain-6 done))))
 
 (rule
  (target chain-7)
  (deps chain-6)
- (action (progn (run sleep 0.5) (write-file chain-7 done))))
+ (action
+  (progn
+   (run sleep 0.5)
+   (write-file chain-7 done))))
 
 (rule
  (target chain-8)
  (deps chain-7)
- (action (progn (run sleep 0.5) (write-file chain-8 done))))
+ (action
+  (progn
+   (run sleep 0.5)
+   (write-file chain-8 done))))
 
 (rule
  (target chain-9)
  (deps chain-8)
- (action (progn (run sleep 0.5) (write-file chain-9 done))))
+ (action
+  (progn
+   (run sleep 0.5)
+   (write-file chain-9 done))))
 
 (rule
  (target chain-10)
  (deps chain-9)
- (action (progn (run sleep 0.5) (write-file chain-10 done))))
+ (action
+  (progn
+   (run sleep 0.5)
+   (write-file chain-10 done))))
 
 (rule
  (target chain-11)
  (deps chain-10)
- (action (progn (run sleep 0.5) (write-file chain-11 done))))
+ (action
+  (progn
+   (run sleep 0.5)
+   (write-file chain-11 done))))
 
 (rule
  (target chain-12)
  (deps chain-11)
- (action (progn (run sleep 0.5) (write-file chain-12 done))))
+ (action
+  (progn
+   (run sleep 0.5)
+   (write-file chain-12 done))))
 
 (rule
  (target chain-13)
  (deps chain-12)
- (action (progn (run sleep 0.5) (write-file chain-13 done))))
+ (action
+  (progn
+   (run sleep 0.5)
+   (write-file chain-13 done))))
 
 (rule
  (target chain-14)
  (deps chain-13)
- (action (progn (run sleep 0.5) (write-file chain-14 done))))
+ (action
+  (progn
+   (run sleep 0.5)
+   (write-file chain-14 done))))
 
 (rule
  (target chain-15)
  (deps chain-14)
- (action (progn (run sleep 0.5) (write-file chain-15 done))))
+ (action
+  (progn
+   (run sleep 0.5)
+   (write-file chain-15 done))))
 
 (rule
  (target chain-16)
  (deps chain-15)
- (action (progn (run sleep 0.5) (write-file chain-16 done))))
+ (action
+  (progn
+   (run sleep 0.5)
+   (write-file chain-16 done))))
 
 (rule
  (target chain-17)
  (deps chain-16)
- (action (progn (run sleep 0.5) (write-file chain-17 done))))
+ (action
+  (progn
+   (run sleep 0.5)
+   (write-file chain-17 done))))
 
 (rule
  (target chain-18)
  (deps chain-17)
- (action (progn (run sleep 0.5) (write-file chain-18 done))))
+ (action
+  (progn
+   (run sleep 0.5)
+   (write-file chain-18 done))))
 
 (rule
  (target chain-19)
  (deps chain-18)
- (action (progn (run sleep 0.5) (write-file chain-19 done))))
+ (action
+  (progn
+   (run sleep 0.5)
+   (write-file chain-19 done))))
 
 (rule
  (target chain-final)
  (deps chain-19)
- (action (progn (run sleep 10) (write-file chain-final done))))
+ (action
+  (progn
+   (run sleep 10)
+   (write-file chain-final done))))
 
 (alias
  (name benchmark)

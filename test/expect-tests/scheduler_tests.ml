@@ -8,6 +8,7 @@ let () = init ()
 let default =
   Clflags.display := Short;
   { Scheduler.Config.concurrency = 1
+  ; priority_scheduling = false
   ; print_ctrl_c_warning = false
   ; watch_exclusions = []
   }
@@ -18,7 +19,10 @@ let go ?(timeout = Time.Span.of_secs 0.3) ?(config = default) f =
   | Shutdown.E Requested -> ()
 ;;
 
+let priority_config = { default with priority_scheduling = true }
+
 let%expect_test "Memo dependencies reprioritize queued jobs" =
+  let go = go ~config:priority_config in
   let order = ref [] in
   let job name =
     Memo.Lazy.create ~name:("job-" ^ name) (fun () ->
@@ -56,34 +60,71 @@ let%expect_test "Memo dependencies reprioritize queued jobs" =
     low |}]
 ;;
 
+let%expect_test "priority scheduling is disabled by default" =
+  let order = ref [] in
+  let blocker_started = Fiber.Ivar.create () in
+  let release_blocker = Fiber.Ivar.create () in
+  go (fun () ->
+    let* low = Scheduler.create_job_priority () in
+    let* high = Scheduler.create_job_priority ~priority:2 () in
+    let run name priority =
+      Scheduler.with_job_slot ~priority (fun () ->
+        order := name :: !order;
+        Fiber.return ())
+    in
+    Fiber.fork_and_join_unit
+      (fun () ->
+         Scheduler.with_job_slot (fun () ->
+           let* () = Fiber.Ivar.fill blocker_started () in
+           Fiber.Ivar.read release_blocker))
+      (fun () ->
+         let* () = Fiber.Ivar.read blocker_started in
+         Fiber.parallel_iter
+           [ (fun () -> run "low" low)
+           ; (fun () -> run "high" high)
+           ; (fun () -> Fiber.Ivar.fill release_blocker ())
+           ]
+           ~f:Fun.id));
+  List.rev !order |> List.iter ~f:print_endline;
+  [%expect
+    {|
+    low
+    high |}]
+;;
+
 let%expect_test "a deferred priority restart cannot strand waiters" =
   let blocker_started = Fiber.Ivar.create () in
   let release_high = Fiber.Ivar.create () in
   let release_blocker = Fiber.Ivar.create () in
-  go ~timeout:(Time.Span.of_secs 1.0) ~config:{ default with concurrency = 2 } (fun () ->
-    let* high = Scheduler.create_job_priority ~priority:2 () in
-    let* low = Scheduler.create_job_priority () in
-    Fiber.parallel_iter
-      [ (fun () ->
-          Scheduler.with_job_slot ~priority:high (fun () -> Fiber.Ivar.read release_high))
-      ; (fun () ->
-          Scheduler.with_job_slot (fun () ->
-            let* () = Fiber.Ivar.fill blocker_started () in
-            Fiber.Ivar.read release_blocker))
-      ; (fun () ->
-          let* () = Fiber.Ivar.read blocker_started in
-          Fiber.fork_and_join_unit
-            (fun () ->
-               Scheduler.with_job_slot ~priority:low (fun () ->
-                 print_endline "low resumed";
-                 Fiber.Ivar.fill release_blocker ()))
-            (fun () -> Fiber.Ivar.fill release_high ()))
-      ]
-      ~f:Fun.id);
+  go
+    ~timeout:(Time.Span.of_secs 1.0)
+    ~config:{ priority_config with concurrency = 2 }
+    (fun () ->
+       let* high = Scheduler.create_job_priority ~priority:2 () in
+       let* low = Scheduler.create_job_priority () in
+       Fiber.parallel_iter
+         [ (fun () ->
+             Scheduler.with_job_slot ~priority:high (fun () ->
+               Fiber.Ivar.read release_high))
+         ; (fun () ->
+             Scheduler.with_job_slot (fun () ->
+               let* () = Fiber.Ivar.fill blocker_started () in
+               Fiber.Ivar.read release_blocker))
+         ; (fun () ->
+             let* () = Fiber.Ivar.read blocker_started in
+             Fiber.fork_and_join_unit
+               (fun () ->
+                  Scheduler.with_job_slot ~priority:low (fun () ->
+                    print_endline "low resumed";
+                    Fiber.Ivar.fill release_blocker ()))
+               (fun () -> Fiber.Ivar.fill release_high ()))
+         ]
+         ~f:Fun.id);
   [%expect {| low resumed |}]
 ;;
 
 let%expect_test "Memo priorities propagate through dependency chains" =
+  let go = go ~config:priority_config in
   let order = ref [] in
   let job name =
     Memo.Lazy.create ~name:("job-" ^ name) (fun () ->
@@ -98,7 +139,7 @@ let%expect_test "Memo priorities propagate through dependency chains" =
       let name = sprintf "chain-%d" (n + 1) in
       Memo.Lazy.create ~name:(name ^ "-consumer") (fun () ->
         let* () = Memo.Lazy.force dependency in
-        Scheduler.with_job_slot (fun _ _ ->
+        Scheduler.with_job_slot (fun () ->
           order := name :: !order;
           Fiber.return ())))
   in

@@ -268,11 +268,24 @@ end
 
 module Job_priority : sig
   type t = Fiber.Throttle.priority
+  type factory
 
   val with_factory : (priority:int -> t) -> (unit -> 'a Fiber.t) -> 'a Fiber.t
+  val current_factory : unit -> factory option Fiber.t
+
+  val increase
+    :  ('i, 'o) Dep_node.t
+    -> caller:Stack_frame_with_state.t option
+    -> factory:factory option
+    -> unit
+
+  val inherit_from_dependency
+    :  ('i, 'o) Dep_node.t
+    -> caller:Stack_frame_with_state.t option
+    -> factory:factory option
+    -> unit
+
   val current : unit -> t option Fiber.t
-  val increase : ('i, 'o) Dep_node.t -> unit Fiber.t
-  val inherit_from_dependency : ('i, 'o) Dep_node.t -> unit Fiber.t
 end
 
 module Computation : sig

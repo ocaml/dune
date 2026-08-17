@@ -71,12 +71,18 @@ let rec restore_from_cache
        set of errors back and might as well skip the unnecessary work. The downside is that
        if a computation is in fact non-deterministic, there is no way to force rerunning it,
        apart from changing some of its dependencies. *)
+    let* factory = Job_priority.current_factory () in
+    let* caller =
+      match factory with
+      | None -> Fiber.return None
+      | Some _ -> Call_stack.get_call_stack () >>| List.hd_opt
+    in
     (* Make sure [f] gets inlined to avoid unnecessary closure allocations and improve
        stack traces in profiling. *)
     Deps.changed_or_not
       node.deps
       ~f:(fun[@inline] ~ok_to_recompute_eagerly (Dep_node.T dep) ->
-        let* () = Job_priority.increase dep in
+        Job_priority.increase dep ~caller ~factory;
         (* If the [Run.is_current] check succeeds then the node must have been [Cached] in
            the current run, so there is no need to restore it (which would allocate a
            fiber). We can compare the timestamps directly. *)
@@ -231,7 +237,6 @@ and consider_and_compute_without_adding_dep
 
 let add_dep_from_caller_and_get_value : type i o. (i, o) Dep_node.t -> o Fiber.t =
   fun node ->
-  let* () = Job_priority.inherit_from_dependency node in
   match node.value with
   | Ok value -> Deps_collector.add_dep_from_caller_and_return node value
   | Error _ | Uninitialized ->
@@ -280,8 +285,17 @@ let exec_dep_node_now : type i o. (i, o) Dep_node.t -> o Fiber.t =
       node
 ;;
 
-let exec_dep_node node =
-  Fiber.of_thunk (fun () ->
-    let* () = Job_priority.increase node in
-    exec_dep_node_now node)
+let exec_dep_node_with_priority node =
+  let* factory = Job_priority.current_factory () in
+  match factory with
+  | None -> exec_dep_node_now node
+  | Some _ ->
+    let* stack = Call_stack.get_call_stack () in
+    let caller = List.hd_opt stack in
+    Job_priority.increase node ~caller ~factory;
+    let* result = exec_dep_node_now node in
+    Job_priority.inherit_from_dependency node ~caller ~factory;
+    Fiber.return result
 ;;
+
+let exec_dep_node node = Fiber.of_thunk_apply exec_dep_node_with_priority node

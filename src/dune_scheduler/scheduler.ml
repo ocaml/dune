@@ -4,6 +4,7 @@ open Fiber.O
 module Config = struct
   type t =
     { concurrency : int
+    ; priority_scheduling : bool
     ; print_ctrl_c_warning : bool
     ; watch_exclusions : string list
     }
@@ -61,19 +62,24 @@ let increase_job_priority = Fiber.Throttle.increase_priority
 let with_job_slot ?cancellation ?priority f =
   let* () = Fiber.return () in
   let t = t () in
-  let* priority =
-    match priority with
-    | Some priority -> Fiber.return (Some priority)
-    | None -> Memo.Job_priority.current ()
+  let f () =
+    check_cancelled cancellation;
+    f ()
   in
-  Fiber.Throttle.run
-    t.job_throttle
-    ?priority
-    ~schedule_restart:(fun () ->
-      Event.Queue.send_job_throttle_restart t.events t.job_throttle)
-    (fun () ->
-       check_cancelled cancellation;
-       f ())
+  if not t.priority_scheduling
+  then Fiber.Throttle.run t.job_throttle f
+  else
+    let* priority =
+      match priority with
+      | Some priority -> Fiber.return (Some priority)
+      | None -> Memo.Job_priority.current ()
+    in
+    Fiber.Throttle.run
+      t.job_throttle
+      ?priority
+      ~schedule_restart:(fun () ->
+        Event.Queue.send_job_throttle_restart t.events t.job_throttle)
+      f
 ;;
 
 let wait_for_process t ~is_process_group_leader pid =
@@ -451,6 +457,7 @@ let prepare (config : Config.t) ~events ~file_watcher =
   let async_io = Async_io.create events in
   let t =
     { job_throttle = Fiber.Throttle.create config.concurrency
+    ; priority_scheduling = config.priority_scheduling
     ; process_watcher
     ; events
     ; file_watcher
@@ -505,16 +512,21 @@ module Run_once = struct
   ;;
 
   let run t f : _ result =
+    let run () =
+      Fiber.map_reduce_errors
+        (module Monoid.Unit)
+        f
+        ~on_error:(fun e ->
+          Dune_util.Report_error.report e;
+          Fiber.return ())
+    in
     let fiber =
-      Memo.Job_priority.with_factory
-        (fun ~priority -> Fiber.Throttle.create_priority ~priority t.job_throttle)
-        (fun () ->
-           Fiber.map_reduce_errors
-             (module Monoid.Unit)
-             f
-             ~on_error:(fun e ->
-               Dune_util.Report_error.report e;
-               Fiber.return ()))
+      if t.priority_scheduling
+      then
+        Memo.Job_priority.with_factory
+          (fun ~priority -> Fiber.Throttle.create_priority ~priority t.job_throttle)
+          run
+      else run ()
     in
     match Fiber.run fiber ~iter:(fun () -> iter t) with
     | Ok res ->

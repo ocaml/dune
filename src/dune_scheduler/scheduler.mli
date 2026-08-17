@@ -5,6 +5,7 @@ open Import
 module Config : sig
   type t =
     { concurrency : int
+    ; priority_scheduling : bool
     ; print_ctrl_c_warning : bool
     ; watch_exclusions : string list
     }
@@ -46,8 +47,9 @@ val create_job_priority : ?priority:int -> unit -> job_priority Fiber.t
 val increase_job_priority : job_priority -> unit
 
 (** [with_job_slot f] waits for one job slot (as per [-j <jobs] to become
-    available and then calls [f]. Jobs with higher priorities are admitted
-    first. If [cancellation] is fired before the job starts, the job is
+    available and then calls [f]. When [Config.priority_scheduling] is enabled,
+    jobs with higher priorities are admitted first; otherwise [priority] is
+    ignored. If [cancellation] is fired before the job starts, the job is
     cancelled. *)
 val with_job_slot
   :  ?cancellation:Fiber.Cancel.t

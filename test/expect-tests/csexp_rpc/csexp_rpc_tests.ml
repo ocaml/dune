@@ -54,6 +54,7 @@ let ok_exn = function
 
 let scheduler_config =
   { Scheduler.Config.concurrency = 1
+  ; priority_scheduling = false
   ; print_ctrl_c_warning = false
   ; watch_exclusions = []
   }

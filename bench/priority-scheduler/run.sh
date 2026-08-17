@@ -12,8 +12,17 @@ else
 fi
 cd "$script_dir"
 version=$("$dune" --version)
-rm -rf _build
-start=$(date +%s)
-"$dune" build --root . @benchmark -j10 --display=quiet --cache=disabled
-stop=$(date +%s)
-printf '%s: %ss\n' "$version" "$((stop - start))"
+
+run () {
+  mode=$1
+  rm -rf _build
+  start=$(date +%s)
+  DUNE_CONFIG__PRIORITY_SCHEDULING=$mode \
+    "$dune" build --root . @benchmark -j10 --display=quiet --cache=disabled
+  stop=$(date +%s)
+  printf '%s: %ss\n' "$mode" "$((stop - start))"
+}
+
+printf '%s\n' "$version"
+run disabled
+run enabled

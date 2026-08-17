@@ -177,18 +177,12 @@ true
 
 let%expect_test _ =
   is_descendant (e "/foo/bar") ~of_:(e "/foo");
-  [%expect
-    {|
-false
-|}]
+  [%expect {| true |}]
 ;;
 
 let%expect_test _ =
   is_descendant (e "/foo/bar") ~of_:(e "/foo/bar");
-  [%expect
-    {|
-false
-|}]
+  [%expect {| true |}]
 ;;
 
 let%expect_test _ =
@@ -201,18 +195,12 @@ false
 
 let%expect_test _ =
   is_descendant (e "/foo/bar/") ~of_:(e "/foo/bar");
-  [%expect
-    {|
-false
-|}]
+  [%expect {| true |}]
 ;;
 
 let%expect_test _ =
   is_descendant (e "/foo/bar") ~of_:(e "/");
-  [%expect
-    {|
-false
-|}]
+  [%expect {| true |}]
 ;;
 
 let%expect_test _ =

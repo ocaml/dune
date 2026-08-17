@@ -330,6 +330,11 @@ let compile_info ~scope (mel : Melange_stanzas.Emit.t) =
     ~dune_version
 ;;
 
+let requires_link_for_lib ~scope ~allow_overlaps lib =
+  let compile_info = Lib.Compile.for_lib ~allow_overlaps (Scope.libs scope) lib in
+  Memo.Lazy.force (Lib.Compile.requires_link compile_info ~for_)
+;;
+
 let js_targets_of_modules modules ~module_systems ~output =
   Modules.With_vlib.fold_no_vlib_with_aliases
     modules
@@ -891,12 +896,6 @@ let setup_js_rules_libraries =
     in
     let+ dir_targets =
       Memo.parallel_map requires_link ~f:(fun lib ->
-        let lib_compile_info =
-          Lib.Compile.for_lib
-            ~allow_overlaps:mel.allow_overlapping_dependencies
-            (Scope.libs scope)
-            lib
-        in
         let info = Lib.info lib in
         let build_js =
           let loc = Lib_info.loc info in
@@ -907,7 +906,10 @@ let setup_js_rules_libraries =
         let output = output_of_lib ~target_dir lib in
         let* includes =
           let+ requires_link =
-            Memo.Lazy.force (Lib.Compile.requires_link lib_compile_info ~for_)
+            requires_link_for_lib
+              ~scope
+              ~allow_overlaps:mel.allow_overlapping_dependencies
+              lib
             |> Resolve.Memo.map ~f:(with_vlib_implementations lib)
           in
           cmj_includes ~requires_link ~scope lib_config
@@ -947,12 +949,10 @@ let setup_js_rules_libraries =
                let* includes =
                  let+ requires_link =
                    let+ requires_link =
-                     Lib.Compile.for_lib
+                     requires_link_for_lib
+                       ~scope
                        ~allow_overlaps:mel.allow_overlapping_dependencies
-                       (Scope.libs scope)
                        vlib
-                     |> Lib.Compile.requires_link ~for_
-                     |> Memo.Lazy.force
                    in
                    let open Resolve.O in
                    let+ requires_link = requires_link in

@@ -60,6 +60,65 @@ let%expect_test "Memo dependencies reprioritize queued jobs" =
     low |}]
 ;;
 
+let%expect_test "a priority reservation survives asynchronous bookkeeping" =
+  let go = go ~config:priority_config in
+  let order = ref [] in
+  let record name = order := name :: !order in
+  let low =
+    Memo.Lazy.create ~name:"low" (fun () ->
+      Scheduler.with_job_slot (fun () ->
+        record "low";
+        Fiber.return ()))
+  in
+  let high =
+    Memo.Lazy.create ~name:"high" (fun () ->
+      let* () =
+        Scheduler.with_job_slot (fun () ->
+          record "high-1";
+          Fiber.return ())
+      in
+      let* () = Scheduler.async_exn (fun () -> Thread.delay 0.02) in
+      let* result =
+        Scheduler.async (fun () ->
+          Thread.delay 0.02;
+          raise Exit)
+      in
+      (match result with
+       | Error _ -> ()
+       | Ok () -> Code_error.raise "background failure was not reported" []);
+      Scheduler.with_job_slot (fun () ->
+        record "high-2";
+        Fiber.return ()))
+  in
+  let consumer name job = Memo.Lazy.create ~name (fun () -> Memo.Lazy.force job) in
+  let consumers =
+    [ consumer "low-consumer" low
+    ; consumer "high-consumer-1" high
+    ; consumer "high-consumer-2" high
+    ]
+  in
+  let blocker_started = Fiber.Ivar.create () in
+  let release_blocker = Fiber.Ivar.create () in
+  go (fun () ->
+    Fiber.fork_and_join_unit
+      (fun () ->
+         Scheduler.with_job_slot (fun () ->
+           let* () = Fiber.Ivar.fill blocker_started () in
+           Fiber.Ivar.read release_blocker))
+      (fun () ->
+         let* () = Fiber.Ivar.read blocker_started in
+         Fiber.fork_and_join_unit
+           (fun () ->
+              Memo.parallel_map consumers ~f:Memo.Lazy.force |> Memo.run >>| ignore)
+           (fun () -> Fiber.Ivar.fill release_blocker ())));
+  List.rev !order |> List.iter ~f:print_endline;
+  [%expect
+    {|
+    high-1
+    high-2
+    low |}]
+;;
+
 let%expect_test "priority scheduling is disabled by default" =
   let order = ref [] in
   let blocker_started = Fiber.Ivar.create () in

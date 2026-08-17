@@ -352,6 +352,8 @@ module Throttle : sig
 
   type t
   type priority
+  type restart
+  type restart_blocker
 
   (** [create n] creates a throttler that allows to run [n] jobs at once *)
   val create : int -> t
@@ -371,19 +373,28 @@ module Throttle : sig
   (** Increase the priority represented by the handle by the given amount. *)
   val increase_priority_by : priority -> int -> unit
 
-  (** Remove as many waiters as there are available slots and return their
-      ivars. This is intended for schedulers that resume waiters from an event
-      loop. *)
-  val restart_waiters : t -> unit Ivar.t list
+  (** Prevent deferred restarts for [priority] from releasing their reserved
+      slots until the returned blocker is released. *)
+  val create_restart_blocker : priority -> restart_blocker
+
+  (** Release a blocker. When this removes the last blocker, return the parked
+      restarts that must be rescheduled by the caller. *)
+  val release_restart_blocker : restart_blocker -> restart list
+
+  (** Process a deferred restart. A blocked restart is parked until
+      [release_restart_blocker] returns it; a ready restart releases its
+      reserved slot and returns the waiters that should be resumed. *)
+  val restart_waiters : restart -> [ `Blocked | `Ready of unit Ivar.t list ]
 
   (** Execute a fiber, waiting if too many jobs are already running. If the
       fiber needs to wait, jobs with higher priorities are resumed first.
-      [schedule_restart] may defer admitting lower-priority waiters so the
-      completed fiber's continuation can enqueue newly unblocked work. *)
+      [schedule_restart] may reserve a released slot so the completed fiber's
+      continuation can enqueue newly unblocked work. The callback must arrange
+      for the restart to be passed to [restart_waiters]. *)
   val run
     :  t
     -> ?priority:priority
-    -> ?schedule_restart:(unit -> unit)
+    -> ?schedule_restart:(restart -> unit)
     -> (unit -> 'a fiber)
     -> 'a fiber
 

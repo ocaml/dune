@@ -77,8 +77,7 @@ let with_job_slot ?cancellation ?priority f =
     Fiber.Throttle.run
       t.job_throttle
       ?priority
-      ~schedule_restart:(fun () ->
-        Event.Queue.send_job_throttle_restart t.events t.job_throttle)
+      ~schedule_restart:(Event.Queue.send_job_throttle_restart t.events)
       f
 ;;
 
@@ -502,10 +501,11 @@ module Run_once = struct
        | [] -> iter t
        | fills -> fills)
     | Fiber_fill_ivar fill -> [ fill ]
-    | Job_throttle_restart throttle ->
-      (match Fiber.Throttle.restart_waiters throttle with
-       | [] -> iter t
-       | waiters -> List.map waiters ~f:(fun ivar -> Fiber.Fill (ivar, ())))
+    | Job_throttle_restart restart ->
+      (match Fiber.Throttle.restart_waiters restart with
+       | `Blocked -> iter t
+       | `Ready [] -> iter t
+       | `Ready waiters -> List.map waiters ~f:(fun ivar -> Fiber.Fill (ivar, ())))
     | Shutdown reason ->
       got_shutdown reason;
       raise @@ Abort (Shutdown_requested reason)
@@ -552,13 +552,28 @@ end
 let async f =
   let* () = Fiber.return () in
   let t = t () in
+  let* priority =
+    if t.priority_scheduling then Memo.Job_priority.current () else Fiber.return None
+  in
+  let restart_blocker = Option.map priority ~f:Fiber.Throttle.create_restart_blocker in
+  let release_restart_blocker () =
+    Option.iter restart_blocker ~f:(fun restart_blocker ->
+      Fiber.Throttle.release_restart_blocker restart_blocker
+      |> List.iter ~f:(Event.Queue.send_job_throttle_restart t.events))
+  in
   let ivar = Fiber.Ivar.create () in
   let f () =
     let res = Exn_with_backtrace.try_with f in
     Event.Queue.send_worker_tasks_completed t.events [ Fiber.Fill (ivar, res) ]
   in
-  Thread_pool.task (Lazy.force t.thread_pool) ~f;
-  Fiber.Ivar.read ivar
+  (match Thread_pool.task (Lazy.force t.thread_pool) ~f with
+   | () -> ()
+   | exception exn ->
+     release_restart_blocker ();
+     raise exn);
+  let+ result = Fiber.Ivar.read ivar in
+  release_restart_blocker ();
+  result
 ;;
 
 let async_exn f =

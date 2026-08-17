@@ -28,7 +28,9 @@ module Run : sig
     -> 'a
 end
 
-(** [async f] runs [f] inside a background thread pool *)
+(** [async f] runs [f] inside a background thread pool. When priority
+    scheduling is enabled, deferred restarts for the current Memo priority are
+    held until [f] completes. *)
 val async : (unit -> 'a) -> ('a, Exn_with_backtrace.t) result Fiber.t
 
 (** [async_exn f] runs [f] inside a background thread pool *)

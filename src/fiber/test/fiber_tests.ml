@@ -155,27 +155,37 @@ module Throttle_tests = struct
     let blocker_started = Fiber.Ivar.create () in
     let release_first = Fiber.Ivar.create () in
     let release_blocker = Fiber.Ivar.create () in
+    let restarts = Queue.create () in
+    let schedule_restart restart = Queue.push restarts restart in
+    let rec process_restarts remaining =
+      if remaining = 0
+      then Fiber.return ()
+      else
+        let* () = Scheduler.yield () in
+        match Queue.pop restarts with
+        | None -> process_restarts remaining
+        | Some restart ->
+          (match Throttle.restart_waiters restart with
+           | `Blocked -> Code_error.raise "unexpected blocked restart" []
+           | `Ready waiters ->
+             let* () =
+               Fiber.sequential_iter waiters ~f:(fun ivar -> Fiber.Ivar.fill ivar ())
+             in
+             process_restarts (remaining - 1))
+    in
     test
       unit
       (Fiber.parallel_iter
          [ (fun () ->
              let* () =
-               Throttle.run
-                 throttle
-                 ~priority:first
-                 ~schedule_restart:(fun () -> ())
-                 (fun () ->
-                    print_endline "chain-1";
-                    Fiber.Ivar.read release_first)
+               Throttle.run throttle ~priority:first ~schedule_restart (fun () ->
+                 print_endline "chain-1";
+                 Fiber.Ivar.read release_first)
              in
              let* () =
-               Throttle.run
-                 throttle
-                 ~priority:second
-                 ~schedule_restart:(fun () -> ())
-                 (fun () ->
-                    print_endline "chain-2";
-                    Fiber.return ())
+               Throttle.run throttle ~priority:second ~schedule_restart (fun () ->
+                 print_endline "chain-2";
+                 Fiber.return ())
              in
              Fiber.Ivar.fill release_blocker ())
          ; (fun () ->
@@ -190,12 +200,121 @@ module Throttle_tests = struct
                     print_endline "low";
                     Fiber.return ()))
                (fun () -> Fiber.Ivar.fill release_first ()))
+         ; (fun () -> process_restarts 2)
          ]
          ~f:Fun.id);
     [%expect
       {|
       chain-1
       chain-2
+      low
+      () |}]
+  ;;
+
+  let%expect_test "a restart blocker preserves the reserved slot" =
+    let throttle = Throttle.create 1 in
+    let high = Throttle.create_priority ~priority:1 throttle in
+    let low = Throttle.create_priority throttle in
+    let first_restart_blocker = Throttle.create_restart_blocker high in
+    let second_restart_blocker = Throttle.create_restart_blocker high in
+    let high_started = Fiber.Ivar.create () in
+    let release_high = Fiber.Ivar.create () in
+    let low_finished = Fiber.Ivar.create () in
+    let restarts = Queue.create () in
+    let rec process_restart () =
+      let* () = Scheduler.yield () in
+      match Queue.pop restarts with
+      | None -> process_restart ()
+      | Some restart ->
+        (match Throttle.restart_waiters restart with
+         | `Ready _ -> Code_error.raise "restart was not blocked" []
+         | `Blocked ->
+           print_endline "restart blocked";
+           printf "running: %d\n" (Throttle.running throttle);
+           let* () = Throttle.resize throttle 2 in
+           let* () = Fiber.Ivar.read low_finished in
+           let* () = Throttle.resize throttle 1 in
+           let restarts = Throttle.release_restart_blocker first_restart_blocker in
+           if not (List.is_empty restarts)
+           then Code_error.raise "restart released with a remaining blocker" [];
+           print_endline "one blocker remains";
+           let restarts = Throttle.release_restart_blocker second_restart_blocker in
+           Fiber.sequential_iter restarts ~f:(fun restart ->
+             match Throttle.restart_waiters restart with
+             | `Blocked -> Code_error.raise "restart remained blocked" []
+             | `Ready waiters ->
+               Fiber.sequential_iter waiters ~f:(fun ivar -> Fiber.Ivar.fill ivar ())))
+    in
+    test
+      unit
+      (Fiber.parallel_iter
+         [ (fun () ->
+             Throttle.run
+               throttle
+               ~priority:high
+               ~schedule_restart:(fun restart -> Queue.push restarts restart)
+               (fun () ->
+                  print_endline "high";
+                  let* () = Fiber.Ivar.fill high_started () in
+                  Fiber.Ivar.read release_high))
+         ; (fun () ->
+             let* () = Fiber.Ivar.read high_started in
+             Fiber.fork_and_join_unit
+               (fun () ->
+                  Throttle.run throttle ~priority:low (fun () ->
+                    print_endline "low";
+                    Fiber.Ivar.fill low_finished ()))
+               (fun () ->
+                  let* () = Scheduler.yield () in
+                  Fiber.Ivar.fill release_high ()))
+         ; process_restart
+         ]
+         ~f:Fun.id);
+    [%expect
+      {|
+      high
+      restart blocked
+      running: 0
+      low
+      one blocker remains
+      () |}]
+  ;;
+
+  let%expect_test "a failing restart callback releases its reservation" =
+    let throttle = Throttle.create 1 in
+    let high = Throttle.create_priority ~priority:1 throttle in
+    let low = Throttle.create_priority throttle in
+    let high_started = Fiber.Ivar.create () in
+    let release_high = Fiber.Ivar.create () in
+    test
+      unit
+      (Fiber.fork_and_join_unit
+         (fun () ->
+            let* (_ : (unit, Exn_with_backtrace.t list) result) =
+              Fiber.collect_errors (fun () ->
+                Throttle.run
+                  throttle
+                  ~priority:high
+                  ~schedule_restart:(fun _ -> raise Exit)
+                  (fun () ->
+                     print_endline "high";
+                     let* () = Fiber.Ivar.fill high_started () in
+                     Fiber.Ivar.read release_high))
+            in
+            Fiber.return ())
+         (fun () ->
+            let* () = Fiber.Ivar.read high_started in
+            Fiber.fork_and_join_unit
+              (fun () ->
+                 Throttle.run throttle ~priority:low (fun () ->
+                   print_endline "low";
+                   Fiber.return ()))
+              (fun () ->
+                 let* () = Scheduler.yield () in
+                 Fiber.Ivar.fill release_high ())));
+    [%expect
+      {|
+      high
       low
       () |}]
   ;;

@@ -41,7 +41,7 @@ type t =
   | Shutdown of Shutdown.Reason.t
   | Fiber_fill_ivar of Fiber.fill
   | Job_complete_ready
-  | Job_throttle_restart of Fiber.Throttle.t
+  | Job_throttle_restart of Fiber.Throttle.restart
 
 module Queue = struct
   type event = t
@@ -53,7 +53,7 @@ module Queue = struct
     ; cond : Condition.t
     ; mutable job_complete_ready : bool
     ; worker_tasks_completed : Fiber.fill Queue.t
-    ; job_throttle_restarts : Fiber.Throttle.t Queue.t
+    ; job_throttle_restarts : Fiber.Throttle.restart Queue.t
     ; mutable got_event : bool
     ; mutable yield : unit Fiber.Ivar.t option
     }
@@ -197,8 +197,8 @@ module Queue = struct
 
   let send_job_completed_ready q = add_event q (fun q -> q.job_complete_ready <- true)
 
-  let send_job_throttle_restart q throttle =
-    add_event q (fun q -> Queue.push q.job_throttle_restarts throttle)
+  let send_job_throttle_restart q restart =
+    add_event q (fun q -> Queue.push q.job_throttle_restarts restart)
   ;;
 
   let send_shutdown q signal =

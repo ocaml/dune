@@ -84,25 +84,17 @@ module Anonymous_action : sig
   (* jeremiedimino: this type correspond to a subset of [Rule.t]. We should
      eventually share the code. *)
   type t =
-    { id : Id.t
-    ; action : Action.Full.t Action_builder.t
+    { action : Action.Full.t Action_builder.t
     ; loc : Loc.t
     ; dir : Path.Build.t
       (** Directory the action is attached to. This is the directory where
         the outcome of the action will be cached. *)
     }
 
-  include Comparable_intf.S with type key := t
-
-  val equal : t -> t -> bool
-  val hash : t -> int
-  val to_dyn : t -> Dyn.t
   val loc : t -> Loc.t
   val make : ?loc:Loc.t -> dir:Path.Build.t -> Action.Full.t Action_builder.t -> t
   val info : t -> Info.t
   val to_rule : targets:Targets.t -> ?mode:Mode.t -> t -> rule
-
-  module Set : Import.Set.S with type elt = t
 
   module Evaluated : sig
     type anon := t

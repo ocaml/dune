@@ -24,9 +24,10 @@ val local_package_dependencies
   -> (Package_name.t list, Resolve_opam_formula.unsatisfied_formula) result
 
 (** Convert a selected opam package to a package that dune can save to the lock
-    directory *)
+    directory. The list of solver_envs represents the platforms this package
+    is enabled on. The first solver_env is used for evaluating filters. *)
 val opam_package_to_lock_file_pkg
-  :  Solver_env.t
+  :  Solver_env.t list
   -> Solver_stats.Updater.t
   -> Package_version.t Package_name.Map.t
   -> OpamPackage.t

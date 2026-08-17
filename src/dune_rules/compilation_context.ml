@@ -176,12 +176,6 @@ let create
   let project = Scope.project scope in
   let context = Super_context.context super_context in
   let* ocaml = Context.ocaml context in
-  let modes =
-    match for_, modes with
-    | Compilation_mode.Melange, _ -> None
-    | Ocaml, Some modes -> Some modes
-    | Ocaml, None -> Some (Mode.Dict.make_both true)
-  in
   let direct_requires, hidden_requires =
     match Dune_project.implicit_transitive_deps project ocaml.version with
     | Enabled -> Memo.Lazy.force requires_link, Resolve.Memo.return []

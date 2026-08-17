@@ -1,11 +1,12 @@
-# Install Layouts for Package Sets
+# Install Layouts for Package and Library Sets
 
 ## Overview
 
 `(deps (package ...))` materializes a scoped install layout under
-`_build/install/<context>/.packages/<digest>/` containing only the declared
-package dependencies. This replaces the old alias-based mechanism where `(deps
-(package foo))` depended on the `.foo-files` install alias, which populated the
+`_build/install/<context>/.packages/<digest>/` containing the declared packages
+and the workspace library artifacts needed by their OCaml library closure.
+This replaces the old alias-based mechanism where `(deps (package foo))`
+depended on the `.foo-files` install alias, which populated the
 `_build/install/` staging area shared by all packages.
 
 ## Motivation
@@ -13,11 +14,11 @@ package dependencies. This replaces the old alias-based mechanism where `(deps
 The `_build/install/` staging area shared by all packages causes several
 problems:
 
-1. Actions can silently depend on packages they did not declare via the shared
-   environment variables (OCAMLPATH, PATH, etc.). Whether an action succeeds
-   can depend on what other packages happened to be built, making builds
-   non-deterministic. `(strict_package_deps)` validates that dependencies are
-   declared but does not prevent undeclared packages from being visible at
+1. Actions can silently depend on arbitrary packages they did not declare via
+   the shared environment variables (OCAMLPATH, PATH, etc.). Whether an action
+   succeeds can depend on what other packages happened to be built, making
+   builds non-deterministic. `(strict_package_deps)` validates that dependencies
+   are declared but does not prevent unrelated packages from being visible at
    runtime.
 
 2. The shared staging area can cause rule collisions and dependency cycles.
@@ -54,28 +55,111 @@ problems:
   non-lock-dir contexts; with a lock-dir active, external packages can
   only resolve as `Build` (if they are in `dune.lock`) or as not found.
 
-### Immediate deps only
+### Action package dependencies versus package metadata
 
-The layout includes only the immediate packages listed in `(deps (package
-...))`. No transitive expansion is performed. Actions should declare what
-they need explicitly.
+Two different dependencies are involved here:
 
-This is a deliberate design choice:
+- `(deps (package foo))` is an action dependency. It asks Dune to build or
+  locate the installable contents of `foo`, make them available to the action,
+  and track those contents as inputs.
 
-1. Transitive closure cannot traverse lock-dir packages (they are not
-   workspace packages), so it gives incomplete results in mixed
-   workspace/lock-dir setups. Immediate deps avoid this inconsistency.
+- `(package (name foo) (depends ...))` records package metadata. It describes
+  what must be available when `foo` is built or installed, but it does not say
+  which artifacts an arbitrary action intends to use.
 
-2. Workspace package compilation is handled by dune internally via `Lib.DB`,
-   not via OCAMLPATH. The only consumer of OCAMLPATH in the layout is
-   user-written rule actions, where explicit deps are appropriate.
+The install layout never computes the transitive closure of the second kind.
+For example, if package `foo` has a package dependency on `bar`, then
+`(deps (package foo))` does not expose `bar`'s executable, data files, or
+unrelated libraries. An action using those must also declare
+`(package bar)`. The only implicit expansion is the narrower library closure
+described below.
 
-3. Immediate deps keep layout *contents* tractable for the "in-and-out" problem
-   ([#8652]). This is orthogonal to whether per-package layouts exist at all.
-   When a lock-dir package depends on a workspace package, that workspace
-   package's layout can be provided to the lock-dir package's build env without
-   first computing a transitive closure that would have to cross back into other
-   lock-dir packages.
+### Library closure, not package closure
+
+The layout starts with the packages listed in `(deps (package ...))`. For each
+workspace package, Dune also finds the libraries it installs, computes their
+transitive OCaml and Melange library closures, and adds only the install
+entries belonging to those workspace libraries. It does not add the libraries'
+complete owning packages or traverse dependencies in package metadata.
+
+This distinction preserves two important properties:
+
+1. Installed and workspace packages have the same library semantics. The
+   `META` or `dune-package` entry for an installed library records the other
+   libraries it requires, and OCaml tools recursively resolve those libraries.
+   A scoped workspace layout must therefore make the same libraries findable.
+   Otherwise, metadata in the layout can refer to libraries outside it and a
+   command that works after installation can fail in the workspace.
+
+2. Package closure cannot be defined consistently. Dune knows package
+   dependencies for workspace and lock-directory packages, but `dune-package`
+   does not record them and findlib packages do not provide a reliable package
+   dependency graph. Following package dependencies only when that information
+   happens to be available would make `(package ...)` depend on where a package
+   came from.
+
+Package dependencies are also broader than the requirement imposed by OCaml
+library metadata: they can bring in tools, data, test dependencies, and
+unrelated libraries. Such dependencies must still be listed explicitly when an
+action uses them.
+
+Dune starts from both the libraries and deprecated-library redirects installed
+by each declared package. In each compilation mode, it computes the shared
+compile and link closures of every root library independently rather than
+trying to link all the package's libraries together. Their union retains
+virtual libraries as metadata requirements while also selecting default
+implementations needed at link time. Dune additionally follows PPX runtime
+dependencies and library references serialized by inline-test backends, PPX
+drivers, and instrumentation backends. Every intermediate name in a
+deprecated-library redirect chain is
+retained, including metadata emitted under deprecated package names.
+
+A package may provide independent libraries or competing implementations of a
+virtual library, so its libraries need not form one valid link-time closure.
+Dune requires a public virtual library and its default implementation to belong
+to the same package, but they remain separate libraries and both are selected
+when the default is needed. Resolution errors are reported rather than silently
+producing an incomplete layout.
+
+Library metadata is normally grouped by package. For each owning package in
+the support closure, Dune therefore generates a filtered `META` and
+`dune-package` containing only the selected libraries and relevant deprecated
+library redirects. The layout similarly contains only those libraries'
+interfaces, archives, runtime files, headers, and stubs. Unrelated sibling
+libraries and non-library entries such as binaries, data, and documentation
+are excluded.
+
+At namespace nodes that do not themselves contain a selected library, the
+filtered `META` retains only `directory`, which is the setting inherited by
+findlib subpackages. Other template variables at such a node describe that
+package node rather than its selected descendants and are dropped.
+
+A META file template can replace dependency or artifact rules independently of
+Dune's library graph and selected install entries. Such a template remains
+valid for ordinary installation, but a scoped `(package ...)` layout rejects
+additions or replacements of dependency and artifact-bearing variables in the
+selected package hierarchy. A template may omit generated rules. Rules in
+unselected support subpackages are filtered first, while complete explicitly
+requested packages are checked without filtering. Dune reports an incompatible
+rule instead of emitting dangling metadata or exposing a broader closure than
+the Dune library graph requires.
+
+Package sites and their directories are also excluded. The filtered
+`dune-package` consequently uses an empty sites map instead of advertising
+paths that the support layout does not materialize.
+
+The consuming action depends on every path materialized in the layout. A
+support library therefore adds dependencies on its selected interfaces,
+archives, stubs, headers, runtime files, and filtered metadata—not merely an
+`OCAMLPATH` entry. The symlink or generated-file rule for each layout path then
+tracks the corresponding workspace artifact or metadata input. Changes in a
+transitively required workspace library consequently invalidate the action.
+
+Installed libraries in the closure are already visible through the context
+environment; only workspace library artifacts need adding to the scoped
+layout. Because rule actions are opaque, a support library on `OCAMLPATH` is
+also directly queryable with `ocamlfind`. The distinction is one of dependency
+selection and layout contents, not an access-control boundary.
 
 ### Environment variables
 
@@ -100,12 +184,13 @@ entirely.
 
 The `env` lazy in `Super_context.create` (`src/dune_rules/super_context.ml`) is
 just `Context.installed_env` plus `Site_env.add_packages_env`, with no staging
-paths attached. Actions only see declared dependencies via layout env vars
-consed in `extend_action`. This is what makes the strict-deps property hold for
-workspace build outputs: no workspace-built artifact is reachable via
-dune-managed env vars unless declared. The user's inherited shell env (PATH,
-OCAMLPATH, findlib config) is still visible via `Context.installed_env`, as
-documented in "Environment variables" above.
+paths attached. Actions only see the named packages and the selected artifacts
+of their library closure via layout env vars consed in `extend_action`. This is
+what makes the strict-deps property hold for workspace build outputs: no
+unrelated workspace-built artifact is reachable via dune-managed env vars.
+The user's inherited shell env (PATH, OCAMLPATH, findlib config) is still
+visible via `Context.installed_env`, as documented in "Environment variables"
+above.
 
 ### `dune exec` and the staging area
 
@@ -138,26 +223,22 @@ staging cons above, this means:
   the staging dir is populated. The dune-site / sites cram tests
   consequently run `dune build @install` before `dune exec`.
 - Cram tests that exercise dune-site libraries (`(libraries dune-site
-  dune-site.plugins)`) must declare both `(package dune-site)` and
-  `(package dune-private-libs)` in their cram-level `dune` setup.
-  `dune-site` re-exports `dune-private-libs.dune-section`, and the layout
-  does not auto-expand transitive package deps (see "Immediate deps only"
-  above). The same pattern applies to other re-exporting libraries.
-  `(package stdune)`, for example, requires `(package dyn) (package
-  ordering) (package pp) (package top-closure) (package csexp) (package
-  fs-io)`. This is the explicit-deps tradeoff in its most visible form:
-  the immediate-deps-only design surfaces a library's transitive
-  dependencies at the call site rather than implicitly pulling them in.
+  dune-site.plugins)`) can declare `(package dune-site)` in their cram-level
+  `dune` setup. `dune-site` re-exports `dune-private-libs.dune-section`, so the
+  library closure also adds that library's install artifacts and filtered
+  metadata. It does not add the other contents of `dune-private-libs`. The same
+  rule applies to other re-exporting libraries. Package dependencies that are
+  not represented in the library graph must still be declared explicitly.
 
 The current staging cons is sufficient for the existing test surface and
 matches pre-install-layouts behaviour.
 
 ### Package set structure and `_root` section collisions
 
-The layout merges all packages' install entries into a single directory tree.
-For scoped sections (`lib`, `share`, `doc`, `etc`), each package installs
-under its own subdirectory (`lib/<pkgname>/`), so collisions are impossible
-by construction. The unordered set is the correct data structure.
+The layout merges the explicit packages' install entries and the selected
+support libraries' entries into a single directory tree. For scoped sections
+(`lib`, `share`, `doc`, `etc`), entries install under their owning package's
+subdirectory (`lib/<pkgname>/`), so collisions are impossible by construction.
 
 Collisions can only occur in `_root` sections (`lib_root`, `share_root`,
 `libexec_root`), which install directly to the section root without package
@@ -189,12 +270,15 @@ the core layout mechanism.
 ### Layout key (digest derivation)
 
 The `<digest>` component of `_build/install/<context>/.packages/<digest>/` is
-the hex `Digest.repr` of the sorted package-name list of the set (see
-`Install_layout.Key.encode` in `src/dune_rules/install_layout.ml`). The sort
-makes the digest order-independent. A reverse table maps each digest back to
-its original set so `gen_rules` can decode the layout dir's name when the
-engine asks for rules. Hash collisions are detected at insertion time and raise
-a `Code_error`.
+the hex `Digest.repr` of the sorted explicit-package names, support-library
+identities, and support-redirect identities. Library and redirect identities
+contain both their owning package and library name, so package-private names
+remain unambiguous across workspace scopes. See `Install_layout.Key.encode` in
+`src/dune_rules/install_layout.ml`. The sorting makes the digest
+order-independent. A reverse table maps each digest back to its original
+request so `gen_rules` can decode the layout dir's name when the engine asks
+for rules. Hash collisions are detected at insertion time and raise a
+`Code_error`.
 
 ### `For_rocq_only` escape hatch
 

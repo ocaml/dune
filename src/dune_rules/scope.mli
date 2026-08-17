@@ -35,7 +35,7 @@ module DB : sig
         ; deprecated_library_names : Deprecated_library_name.t list
         }
 
-      val partition_map : t -> f:(entry -> ('a, 'b) Either.t) -> 'a list * 'b list
+      val to_list : t -> entry list
     end
   end
 

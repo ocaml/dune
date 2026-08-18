@@ -776,6 +776,14 @@ type modules =
   | Wrapped of Wrapped.t
   | Stdlib of Stdlib.t
 
+let fold_modules t ~init ~f =
+  match t with
+  | Stdlib w -> Stdlib.fold w ~init ~f
+  | Singleton m -> f m init
+  | Unwrapped m -> Unwrapped.fold m ~f ~init
+  | Wrapped w -> Wrapped.fold w ~init ~f
+;;
+
 type t =
   { obj_map : Sourced_module.t Module_name.Unique.Map.t Lazy.t
   ; modules : modules
@@ -785,12 +793,7 @@ let obj_map : 'a. modules -> Sourced_module.t Module_name.Unique.Map.t =
   let module Map = Module_name.Unique.Map in
   let normal m = Sourced_module.Normal m in
   let f m acc = Map.add_exn acc (Module.obj_name m) (normal m) in
-  fun t ->
-    match t with
-    | Singleton m -> Map.add_exn Map.empty (Module.obj_name m) (normal m)
-    | Unwrapped m -> Unwrapped.fold m ~init:Map.empty ~f
-    | Wrapped w -> Wrapped.fold w ~init:Map.empty ~f
-    | Stdlib w -> Stdlib.fold w ~init:Map.empty ~f
+  fun t -> fold_modules t ~init:Map.empty ~f
 ;;
 
 let with_obj_map modules =
@@ -903,13 +906,7 @@ let make_wrapped ~obj_dir ~modules ~has_instances kind =
     with_obj_map modules
 ;;
 
-let fold t ~init ~f =
-  match t.modules with
-  | Stdlib w -> Stdlib.fold w ~init ~f
-  | Singleton m -> f m init
-  | Unwrapped m -> Unwrapped.fold m ~f ~init
-  | Wrapped w -> Wrapped.fold w ~init ~f
-;;
+let fold t ~init ~f = fold_modules t.modules ~init ~f
 
 let wrapped t =
   match t.modules with

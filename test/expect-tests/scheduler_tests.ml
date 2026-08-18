@@ -26,9 +26,53 @@ let%expect_test "Memo dependencies reprioritize queued jobs" =
   let order = ref [] in
   let job name =
     Memo.Lazy.create ~name:("job-" ^ name) (fun () ->
-      Scheduler.with_job_slot (fun () ->
-        order := name :: !order;
-        Fiber.return ()))
+      Memo.of_reproducible_fiber
+        (Scheduler.with_job_slot (fun () ->
+           order := name :: !order;
+           Fiber.return ())))
+  in
+  let low = job "low" in
+  let high = job "high" in
+  let consumer name job = Memo.Lazy.create ~name (fun () -> Memo.Lazy.force job) in
+  let consumers =
+    [ consumer "low-consumer" low
+    ; consumer "high-consumer-1" high
+    ; consumer "high-consumer-2" high
+    ]
+  in
+  let blocker_started = Fiber.Ivar.create () in
+  let release_blocker = Fiber.Ivar.create () in
+  go (fun () ->
+    Fiber.fork_and_join_unit
+      (fun () ->
+         Scheduler.with_job_slot (fun () ->
+           let* () = Fiber.Ivar.fill blocker_started () in
+           Fiber.Ivar.read release_blocker))
+      (fun () ->
+         let* () = Fiber.Ivar.read blocker_started in
+         Fiber.fork_and_join_unit
+           (fun () ->
+              Memo.parallel_map consumers ~f:Memo.Lazy.force |> Memo.run >>| ignore)
+           (fun () -> Fiber.Ivar.fill release_blocker ())));
+  List.rev !order |> List.iter ~f:print_endline;
+  [%expect
+    {|
+    high
+    low |}]
+;;
+
+let%expect_test "Memo dependents reprioritize nested queued jobs" =
+  let go = go ~config:priority_config in
+  let order = ref [] in
+  let job name =
+    let inner =
+      Memo.Lazy.create ~name:("inner-" ^ name) (fun () ->
+        Memo.of_reproducible_fiber
+          (Scheduler.with_job_slot (fun () ->
+             order := name :: !order;
+             Fiber.return ())))
+    in
+    Memo.Lazy.create ~name:("outer-" ^ name) (fun () -> Memo.Lazy.force inner)
   in
   let low = job "low" in
   let high = job "high" in
@@ -66,29 +110,31 @@ let%expect_test "a priority reservation survives asynchronous bookkeeping" =
   let record name = order := name :: !order in
   let low =
     Memo.Lazy.create ~name:"low" (fun () ->
-      Scheduler.with_job_slot (fun () ->
-        record "low";
-        Fiber.return ()))
+      Memo.of_reproducible_fiber
+        (Scheduler.with_job_slot (fun () ->
+           record "low";
+           Fiber.return ())))
   in
   let high =
     Memo.Lazy.create ~name:"high" (fun () ->
-      let* () =
-        Scheduler.with_job_slot (fun () ->
-          record "high-1";
-          Fiber.return ())
-      in
-      let* () = Scheduler.async_exn (fun () -> Thread.delay 0.02) in
-      let* result =
-        Scheduler.async (fun () ->
-          Thread.delay 0.02;
-          raise Exit)
-      in
-      (match result with
-       | Error _ -> ()
-       | Ok () -> Code_error.raise "background failure was not reported" []);
-      Scheduler.with_job_slot (fun () ->
-        record "high-2";
-        Fiber.return ()))
+      Memo.of_reproducible_fiber
+        (let* () =
+           Scheduler.with_job_slot (fun () ->
+             record "high-1";
+             Fiber.return ())
+         in
+         let* () = Scheduler.async_exn (fun () -> Thread.delay 0.02) in
+         let* result =
+           Scheduler.async (fun () ->
+             Thread.delay 0.02;
+             raise Exit)
+         in
+         (match result with
+          | Error _ -> ()
+          | Ok () -> Code_error.raise "background failure was not reported" []);
+         Scheduler.with_job_slot (fun () ->
+           record "high-2";
+           Fiber.return ())))
   in
   let consumer name job = Memo.Lazy.create ~name (fun () -> Memo.Lazy.force job) in
   let consumers =
@@ -143,7 +189,7 @@ let%expect_test "priority scheduling is disabled by default" =
            ; (fun () -> run "high" high)
            ; (fun () -> Fiber.Ivar.fill release_blocker ())
            ]
-           ~f:Fun.id));
+           ~f:(fun f -> f ())));
   List.rev !order |> List.iter ~f:print_endline;
   [%expect
     {|
@@ -178,7 +224,7 @@ let%expect_test "a deferred priority restart cannot strand waiters" =
                     Fiber.Ivar.fill release_blocker ()))
                (fun () -> Fiber.Ivar.fill release_high ()))
          ]
-         ~f:Fun.id);
+         ~f:(fun f -> f ()));
   [%expect {| low resumed |}]
 ;;
 
@@ -187,9 +233,10 @@ let%expect_test "Memo priorities propagate through dependency chains" =
   let order = ref [] in
   let job name =
     Memo.Lazy.create ~name:("job-" ^ name) (fun () ->
-      Scheduler.with_job_slot (fun () ->
-        order := name :: !order;
-        Fiber.return ()))
+      Memo.of_reproducible_fiber
+        (Scheduler.with_job_slot (fun () ->
+           order := name :: !order;
+           Fiber.return ())))
   in
   let low = job "low" in
   let chain =
@@ -197,10 +244,12 @@ let%expect_test "Memo priorities propagate through dependency chains" =
     |> List.fold_left ~init:(job "chain-0") ~f:(fun dependency n ->
       let name = sprintf "chain-%d" (n + 1) in
       Memo.Lazy.create ~name:(name ^ "-consumer") (fun () ->
+        let open Memo.O in
         let* () = Memo.Lazy.force dependency in
-        Scheduler.with_job_slot (fun () ->
-          order := name :: !order;
-          Fiber.return ())))
+        Memo.of_reproducible_fiber
+          (Scheduler.with_job_slot (fun () ->
+             order := name :: !order;
+             Fiber.return ()))))
   in
   let blocker_started = Fiber.Ivar.create () in
   let release_blocker = Fiber.Ivar.create () in

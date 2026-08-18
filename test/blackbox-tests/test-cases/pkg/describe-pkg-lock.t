@@ -50,24 +50,22 @@ Here is the output of solving for multiple contexts:
   - C.81.0.4044.138
   - D.0.4.0.beta1
   - E.3.0~alpha1
-Here is the output of dune describe pkg lock:
+By default the lock dir of the default context is shown:
   $ dune describe pkg lock
-  Contents of dune.lock:
+  Solution for _build/_private/default/.lock/dune.lock
+  
+  Dependencies common to all supported platforms:
   - A.1.2.0
   - B.2.1+rc1
   - C.81.0.4044.138
   - D.0.4.0.beta1
   - E.3.0~alpha1
 
-The names of the lockfiles can also be provided:
-  $ dune describe pkg lock dune.lock foo.lock 
-  Contents of dune.lock:
-  - A.1.2.0
-  - B.2.1+rc1
-  - C.81.0.4044.138
-  - D.0.4.0.beta1
-  - E.3.0~alpha1
-  Contents of foo.lock:
+Another context's lock dir can be selected with --context:
+  $ dune describe pkg lock --context foo
+  Solution for _build/_private/default/.lock/foo.lock
+  
+  Dependencies common to all supported platforms:
   - A.1.2.0
   - B.2.1+rc1
   - C.81.0.4044.138

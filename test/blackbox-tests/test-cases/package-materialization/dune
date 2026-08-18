@@ -1,3 +1,7 @@
 (cram
- (applies_to ocamlfind no-transitive-through-targets installed-package)
+ (applies_to
+  installed-package
+  no-transitive-through-targets
+  ocamlfind
+  virtual-without-default)
  (deps %{bin:ocamlfind}))

@@ -228,6 +228,14 @@ end = struct
     | Some parent_dir -> get ~dir:parent_dir >>| current_group parent_dir
   ;;
 
+  let group_component_or ~dir status =
+    enclosing_group ~dir
+    >>| function
+    | No_group -> status
+    | Group_root group_root ->
+      Is_component_of_a_group_but_not_the_root { stanzas = None; group_root }
+  ;;
+
   let collect_group =
     let rec walk st_dir ~dir ~local =
       DB.get ~dir
@@ -314,12 +322,7 @@ end = struct
         | None -> None
         | Some src_dir -> Some (ctx, src_dir)))
     >>= function
-    | None ->
-      enclosing_group ~dir
-      >>| (function
-       | No_group -> Generated
-       | Group_root group_root ->
-         Is_component_of_a_group_but_not_the_root { stanzas = None; group_root })
+    | None -> group_component_or ~dir Generated
     | Some (ctx, st_dir) ->
       let src_dir = Source_tree.Dir.path st_dir in
       Pkg_rules.lock_dir_path (Context_name.of_string (Filename.to_string ctx))
@@ -336,12 +339,7 @@ end = struct
           | None ->
             if build_dir_is_project_root
             then Memo.return (Source_only st_dir)
-            else
-              enclosing_group ~dir
-              >>| (function
-               | No_group -> Source_only st_dir
-               | Group_root group_root ->
-                 Is_component_of_a_group_but_not_the_root { stanzas = None; group_root })))
+            else group_component_or ~dir (Source_only st_dir)))
   ;;
 
   let get =

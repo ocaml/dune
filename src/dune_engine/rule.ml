@@ -131,8 +131,30 @@ let set_action t action = { t with action }
 
 module Anonymous_action = struct
   type t =
-    { action : Action.Full.t
+    { action : Action.Full.t Action_builder.t
     ; loc : Loc.t
     ; dir : Path.Build.t
     }
+
+  let loc t = t.loc
+  let info { loc; _ } = if Loc.is_none loc then Info.Internal else From_dune_file loc
+
+  let to_rule ~targets ?mode ({ action; loc = _; dir = _ } as anon) =
+    let info = info anon in
+    make ?mode ~info ~targets action
+  ;;
+
+  let make ?(loc = Loc.none) ~dir action = { action; loc; dir }
+
+  module Evaluated = struct
+    type anon = t
+
+    type t =
+      { anon : anon
+      ; action : Action.Full.t
+      ; facts : Dep.Facts.t
+      }
+
+    let make ~action ~facts anon = { anon; action; facts }
+  end
 end

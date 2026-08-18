@@ -37,6 +37,7 @@ module Pform : sig
   val name : t -> string
   val loc : t -> Loc.t
   val payload_loc : t -> Loc.t
+  val equal : t -> t -> bool
 
   (** Variables do not have a payload. While macros always do. *)
   val payload : t -> Payload.t option
@@ -55,7 +56,11 @@ module Part : sig
     | Text of string
     | Pform of Pform.t
 
+  val equal : t -> t -> bool
   val repr : t Repr.t
+  val to_dyn : t -> Dyn.t
+  val remove_locs : t -> t
+  val list_to_string : t list -> string
 end
 
 type t =

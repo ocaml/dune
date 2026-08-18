@@ -39,11 +39,4 @@ available Melange module metadata.
   > EOF
 
   $ OCAMLPATH="$PWD/prefix/lib:$OCAMLPATH" \
-  > dune build --display=quiet --root consumer consumer.install 2>&1 \
-  > | sed -n \
-  >     -e '/Description:/ { p; n; p; }' \
-  >     -e 's/^\(Called from Dune_rules__Ml_sources.virtual_modules\).*/\1/p'
-  Description:
-    ("Option.value_exn", {})
-  Called from Dune_rules__Ml_sources.virtual_modules
-  [1]
+  > dune build --display=quiet --root consumer consumer.install

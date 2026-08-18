@@ -121,16 +121,8 @@ end = struct
       >>| List.singleton
   ;;
 
-  let lib_files ~scope ~dir_contents ~dir ~lib_config lib =
-    let+ modules =
-      let* ml_sources = Dir_contents.ml dir_contents ~for_:Ocaml in
-      Ml_sources.modules
-        ml_sources
-        ~libs:(Scope.libs scope)
-        ~for_:(Library (Lib_info.lib_id lib |> Lib_id.to_local_exn))
-      >>| Modules.With_vlib.modules
-      >>| Option.some
-    and+ foreign_archives =
+  let lib_files ~ocaml_modules ~dir_contents ~dir ~lib_config lib =
+    let+ foreign_archives =
       match Lib_info.kind lib with
       | Dune_file _ ->
         Memo.return (Mode.Map.Multi.to_flat_list @@ Lib_info.foreign_archives lib)
@@ -155,7 +147,7 @@ end = struct
           [ byte
           ; native
           ; foreign_archives
-          ; Lib_info.eval_native_archives_exn lib ~modules
+          ; Lib_info.eval_native_archives_exn lib ~modules:ocaml_modules
           ; jsoo_files
           ]))
       (List.rev_map ~f:(fun f -> Section.Libexec, f) (Lib_info.plugins lib).native)
@@ -246,7 +238,7 @@ end = struct
       lib_modes
     in
     let lib_name = Library.best_name lib in
-    let* installable_modules =
+    let* modules_by_mode =
       let lib_modes = Compilation_mode.Set.of_lib_mode_set lib_modes in
       Memo.parallel_map (Compilation_mode.Set.to_list lib_modes) ~f:(fun for_ ->
         let+ modules =
@@ -255,7 +247,18 @@ end = struct
                 ~libs:(Scope.libs scope)
                 ~for_:(Library (Lib_info.lib_id info |> Lib_id.to_local_exn))
         and+ impl = Virtual_rules.impl sctx ~lib ~scope ~for_ in
-        for_, Virtual_rules.impl_modules impl modules |> Modules.With_vlib.split_by_lib)
+        let installable_modules =
+          Virtual_rules.impl_modules impl modules |> Modules.With_vlib.split_by_lib
+        in
+        for_, modules, installable_modules)
+    in
+    let ocaml_modules =
+      List.find_map modules_by_mode ~f:(function
+        | Ocaml, modules, _ -> Some (Modules.With_vlib.modules modules)
+        | Melange, _, _ -> None)
+    in
+    let installable_modules =
+      List.map modules_by_mode ~f:(fun (for_, _, modules) -> for_, modules)
     in
     let lib_src_dir = Lib_info.src_dir info in
     let sources =
@@ -448,7 +451,7 @@ end = struct
             if Module.kind m = Virtual then [] else common ~for_ m |> set_dir m))
       in
       modules_vlib @ modules_impl
-    and+ lib_files = lib_files ~scope ~dir ~dir_contents ~lib_config info
+    and+ lib_files = lib_files ~ocaml_modules ~dir ~dir_contents ~lib_config info
     and+ execs = lib_ppxs ctx ~scope ~lib
     and+ dll_files =
       dll_files ~modes:ocaml ~dynlink:lib.dynlink ~ctx info

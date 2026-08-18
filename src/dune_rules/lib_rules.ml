@@ -634,18 +634,7 @@ let library_rules
       ; for_
       }
   and+ () =
-    let toolchain = Compilation_context.ocaml cctx in
-    let user_written_requires = Lib.Compile.user_written_requires compile_info ~for_ in
-    let allow_unused_libraries = Lib.Compile.allow_unused_libraries compile_info in
-    Unused_libs_rules.gen_rules
-      sctx
-      toolchain
-      lib.buildable.loc
-      ~obj_dir
-      ~modules
-      ~dir
-      ~user_written_requires
-      ~allow_unused_libraries
+    Unused_libs_rules.gen_rules_for_context cctx compile_info ~loc:lib.buildable.loc
   and+ merlin =
     let+ requires_hidden = Compilation_context.requires_hidden cctx
     and+ parameters = Compilation_context.parameters cctx in

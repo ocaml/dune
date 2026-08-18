@@ -241,18 +241,7 @@ let executables_rules
   let lib_config = ocaml.lib_config in
   let* requires_compile = Compilation_context.requires_compile cctx in
   let* () =
-    let toolchain = Compilation_context.ocaml cctx in
-    let user_written_requires = Lib.Compile.user_written_requires compile_info ~for_ in
-    let allow_unused_libraries = Lib.Compile.allow_unused_libraries compile_info in
-    Unused_libs_rules.gen_rules
-      sctx
-      toolchain
-      exes.buildable.loc
-      ~obj_dir
-      ~modules
-      ~dir
-      ~user_written_requires
-      ~allow_unused_libraries
+    Unused_libs_rules.gen_rules_for_context cctx compile_info ~loc:exes.buildable.loc
   in
   let* () =
     let* dep_graphs =

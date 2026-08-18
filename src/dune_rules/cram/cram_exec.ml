@@ -323,15 +323,79 @@ let line_number =
   seq [ set "123456789"; rep digit ]
 ;;
 
-let rewrite_paths ~build_path_prefix_map ~parent_script ~command_script s =
+(* Windows paths may be emitted with a mix of '/' and '\' separators (for
+   instance a native path combined with a POSIX-style suffix), and '\' may be
+   escaped in output formats such as JSON. On Windows, match map sources
+   separator-insensitively and rewrite the remainder of the path using '/'
+   separators. *)
+let is_windows = Sys.win32
+
+let win_separator_re =
+  let open Re in
+  (* an escaped backslash (e.g. "\\" in JSON output) or a single separator *)
+  alt [ str "\\\\"; set "\\/" ]
+;;
+
+(* Compiled form of [win_separator_re], used for rewriting. *)
+let compiled_win_separator_re = Re.compile win_separator_re
+
+(* Once a mapped root is matched on Windows, consume the rest of the path
+   (separator followed by a component) so that it is rewritten with
+   normalized separators too. Components cannot contain '\', '/', or '"'
+   (the latter cannot appear in Windows paths and terminates e.g. JSON
+   strings). A single '\' followed by a JSON escape character (e.g. "\n")
+   is indistinguishable from a separator and a component starting with that
+   character, and is consumed as such; JSON output that escapes its
+   separators as "\\" is matched by the escaped-separator alternative. *)
+let win_path_continuation_re =
+  let open Re in
+  rep (seq [ win_separator_re; rep (compl [ set "\\/\"" ]) ])
+;;
+
+let windows_source_re source =
+  let open Re in
+  let parts =
+    String.fold_left source ~init:[] ~f:(fun acc c ->
+      if c = '/' || c = '\\'
+      then win_separator_re :: acc
+      else str (String.make 1 c) :: acc)
+    |> List.rev
+  in
+  seq (parts @ [ win_path_continuation_re ])
+;;
+
+(* Rewrite '\' and '\\' to '/'. Only applied to Windows output, where '\' is
+   always a path separator and '\\' is its escaped form. *)
+let normalize_windows_separators s = Re.replace_string compiled_win_separator_re s ~by:"/"
+
+let rewrite_paths ~src ~build_path_prefix_map ~parent_script ~command_script s =
   match Build_path_prefix_map.decode_map build_path_prefix_map with
   | Error msg ->
-    Code_error.raise
-      "Cannot decode build prefix map"
-      [ "build_path_prefix_map", String build_path_prefix_map; "msg", String msg ]
+    User_error.raise
+      ~loc:(Loc.in_file (Path.drop_optional_build_context_maybe_sandboxed src))
+      [ Pp.textf
+          "Invalid %s: %s"
+          Dune_util.Build_path_prefix_map._BUILD_PATH_PREFIX_MAP
+          msg
+      ]
   | Ok map ->
+    (* On Windows, normalize the map sources once so that the rewrite below
+       matches and drops prefixes separator-insensitively. *)
+    let map =
+      if is_windows
+      then
+        List.map map ~f:(function
+          | None -> None
+          | Some (p : Build_path_prefix_map.pair) ->
+            Some
+              { p with
+                Build_path_prefix_map.source = normalize_windows_separators p.source
+              })
+      else map
+    in
     let s =
-      (* Match map sources literally, longest first, so spaced paths match. *)
+      (* Match map sources, longest first, so spaced paths match. On Windows
+         separators are matched flexibly. *)
       match
         (* Drop None and empty sources: [Re.str ""] would match everywhere. *)
         List.filter_map map ~f:(function
@@ -344,12 +408,16 @@ let rewrite_paths ~build_path_prefix_map ~parent_script ~command_script s =
           sources
           |> List.sort ~compare:(fun a b ->
             Int.compare (String.length b) (String.length a))
-          |> List.map ~f:Re.str
+          |> List.map ~f:(if is_windows then windows_source_re else Re.str)
           |> Re.alt
           |> Re.compile
         in
         Re.replace abs_path_re s ~f:(fun g ->
-          Build_path_prefix_map.rewrite map (Re.Group.get g 0))
+          let matched = Re.Group.get g 0 in
+          let matched =
+            if is_windows then normalize_windows_separators matched else matched
+          in
+          Build_path_prefix_map.rewrite map matched)
     in
     let error_msg =
       let open Re in
@@ -380,7 +448,7 @@ let command_out_repr =
     ]
 ;;
 
-let sanitize ~parent_script cram_to_output : command_out Cram_lexer.block list =
+let sanitize ~src ~parent_script cram_to_output : command_out Cram_lexer.block list =
   List.map cram_to_output ~f:(fun (t : full_block_result Cram_lexer.block) ->
     match t with
     | Cram_lexer.Comment t -> Cram_lexer.Comment t
@@ -399,6 +467,7 @@ let sanitize ~parent_script cram_to_output : command_out Cram_lexer.block list =
             output
             ~f:
               (rewrite_paths
+                 ~src
                  ~parent_script
                  ~command_script:block.script
                  ~build_path_prefix_map)
@@ -751,13 +820,13 @@ let run_cram_test
            | None -> None
            | Some times -> Some { Dune_trace.Event.Cram.command; times }))
       |> Dune_trace.Event.Cram.test ~test:src);
-    sanitize ~parent_script:script detailed_output
+    sanitize ~src ~parent_script:script detailed_output
   | Error `Timed_out ->
     (match
        read_and_attach_metadata sh_script ~timed_out:true |> mark_timed_out_command
      with
      | None -> raise_timeout_error ~src ~timeout
-     | Some detailed_output -> sanitize ~parent_script:script detailed_output)
+     | Some detailed_output -> sanitize ~src ~parent_script:script detailed_output)
 ;;
 
 let run_produce_correction

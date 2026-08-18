@@ -553,23 +553,18 @@ module Parser_generators = struct
   ;;
 
   let modules t ~for_ =
-    match
+    let loc, modules =
       match for_ with
-      | Ocamllex loc -> Loc.Map.find t.modules.ocamllexes loc
-      | Ocamlyacc loc -> Loc.Map.find t.modules.ocamlyaccs loc
-      | Menhir loc -> Loc.Map.find t.modules.menhirs loc
-    with
+      | Ocamllex loc -> loc, t.modules.ocamllexes
+      | Ocamlyacc loc -> loc, t.modules.ocamlyaccs
+      | Menhir loc -> loc, t.modules.menhirs
+    in
+    match Loc.Map.find modules loc with
     | Some modules -> modules
     | None ->
-      let map =
-        match for_ with
-        | Ocamllex _ -> t.modules.ocamllexes
-        | Ocamlyacc _ -> t.modules.ocamlyaccs
-        | Menhir _ -> t.modules.menhirs
-      in
       Code_error.raise
         "Parser_generators.modules: failed lookup"
-        [ "keys", Dyn.list Loc.to_dyn (Loc.Map.keys map); "for_", dyn_of_for_ for_ ]
+        [ "keys", Dyn.list Loc.to_dyn (Loc.Map.keys modules); "for_", dyn_of_for_ for_ ]
   ;;
 
   module Targets = struct

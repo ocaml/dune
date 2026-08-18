@@ -241,75 +241,35 @@ let raise_duplicate_module ?loc ~dir name f1 f2 =
     ]
 ;;
 
-let modules_of_files ~dialects ~dir ~files =
-  let dir = Path.build dir in
-  let impl_files, intf_files =
-    let make_module dialect name fn =
-      let path_in_build_dir = Path.relative dir fn in
-      let original_path = Path.relative dir fn in
-      name, Module.File.make dialect ~original_path path_in_build_dir
-    in
-    let loc = Loc.in_dir dir in
-    List.filter_partition_map (Filename.Array.Set.to_list files) ~f:(fun fn ->
-      let fn = Filename.to_string fn in
-      (* we aren't using Filename.extension because we want to ignore
-         filenames such as `foo.cppo.ml` or `foo.{filter}.ml` (e.g. from the
-         `(select ..)` field) *)
-      match String.lsplit2 fn ~on:'.' with
-      | None -> Skip
-      | Some (s, ext) ->
-        (match Filename.Extension.of_string ("." ^ ext) with
-         | None -> Skip
-         | Some ext ->
-           (match Dialect.DB.find_by_extension dialects ext with
-            | None -> Skip
-            | Some (dialect, ml_kind) ->
-              let module_ =
-                let name = Module_name.of_string_allow_invalid (loc, s) in
-                make_module dialect name fn
-              in
-              (match ml_kind with
-               | Impl -> Left module_
-               | Intf -> Right module_))))
-  in
-  let parse_one_set (files : (Module_name.Unchecked.t * Module.File.t) list) =
-    match Module_name.Unchecked.Map.of_list files with
-    | Ok x -> x
-    | Error (name, f1, f2) ->
-      raise_duplicate_module
-        ~loc:(Loc.in_dir dir)
-        ~dir:(Path.as_in_build_dir_exn dir)
-        name
-        f1
-        f2
-  in
-  parse_one_set impl_files, parse_one_set intf_files
-;;
-
-let melange_modules_of_files ~root_dir ~dialects ~dir ~files =
+let module_files ~root_dir ~dialects ~dir ~files ~for_ =
+  let loc = Loc.in_dir (Path.build dir) in
   let impl_files, intf_files =
     let make_module dialect name ~original_fn ~fn =
-      let dst = Path.Build.relative dir fn in
-      let descendant =
-        Path.Local.descendant (Path.Build.local dst) ~of_:(Path.Build.local root_dir)
-        |> Option.value_exn
+      let path_in_build_dir =
+        match for_ with
+        | Compilation_mode.Ocaml -> Path.Build.relative dir fn
+        | Melange ->
+          let dst = Path.Build.relative dir fn in
+          let descendant =
+            Path.Local.descendant (Path.Build.local dst) ~of_:(Path.Build.local root_dir)
+            |> Option.value_exn
+          in
+          source_in_dir ~dir:root_dir descendant ~for_
       in
-      let path_in_build_dir = source_in_dir ~dir:root_dir descendant ~for_:Melange in
       let original_path = Path.Build.relative dir original_fn |> Path.build in
       name, Module.File.make dialect ~original_path (Path.build path_in_build_dir)
     in
-    let loc = Loc.in_dir (Path.build dir) in
     List.filter_partition_map (Filename.Array.Set.to_list files) ~f:(fun fn ->
       let fn = Filename.to_string fn in
-      (* we aren't using Filename.extension because we want to handle
-         filenames such as foo.cppo.ml *)
+      (* We don't use [Filename.extension] because Melange-specific files have
+         two extensions, while other multi-extension filenames must be ignored. *)
       match String.lsplit2 fn ~on:'.' with
       | None -> Skip
       | Some (s, ext) ->
         let melange_specific, ext =
-          match String.lsplit2 ext ~on:'.' with
-          | Some ("melange", ext) -> true, ext
-          | Some _ | None -> false, ext
+          match for_, String.lsplit2 ext ~on:'.' with
+          | Melange, Some ("melange", ext) -> true, ext
+          | (Ocaml | Melange), (Some _ | None) -> false, ext
         in
         (match Filename.Extension.of_string ("." ^ ext) with
          | None -> Skip
@@ -341,11 +301,10 @@ let melange_modules_of_files ~root_dir ~dialects ~dir ~files =
           let map =
             let inner =
               Module_name.Unchecked.Map.of_list_reducei files ~f:(fun name a b ->
-                match a, b with
-                | (_, true), (_, false) -> a
-                | (_, false), (_, true) -> b
-                | (f1, false), (f2, false) | (f1, true), (f2, true) ->
-                  raise (Duplicate (name, f1, f2)))
+                match for_, a, b with
+                | Melange, (_, true), (_, false) -> a
+                | Melange, (_, false), (_, true) -> b
+                | (Ocaml | Melange), (f1, _), (f2, _) -> raise (Duplicate (name, f1, f2)))
             in
             Module_name.Unchecked.Map.map inner ~f:fst
           in
@@ -355,17 +314,16 @@ let melange_modules_of_files ~root_dir ~dialects ~dir ~files =
       in
       match ret with
       | Ok x -> x
-      | Error (name, f1, f2) -> raise_duplicate_module ~dir name f1 f2
+      | Error (name, f1, f2) ->
+        (match for_ with
+         | Ocaml -> raise_duplicate_module ~loc ~dir name f1 f2
+         | Melange -> raise_duplicate_module ~dir name f1 f2)
   in
   parse_one_set impl_files, parse_one_set intf_files
 ;;
 
 let modules_of_files ~root_dir ~path ~dialects ~dir ~files ~for_ =
-  let impls, intfs =
-    match for_ with
-    | Compilation_mode.Melange -> melange_modules_of_files ~root_dir ~dialects ~dir ~files
-    | Ocaml -> modules_of_files ~dialects ~dir ~files
-  in
+  let impls, intfs = module_files ~root_dir ~dialects ~dir ~files ~for_ in
   Module_name.Unchecked.Map.merge impls intfs ~f:(fun name impl intf ->
     Some
       (Module.Source.make

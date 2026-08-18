@@ -1,6 +1,8 @@
 `--action-runner` does not invalidate stale outputs when it is toggled.
 
   $ make_dune_project 3.23
+  $ # Needed when upgrading this test to Dune language 3.25:
+  $ # export DUNE_CONFIG__LANDLOCK=disabled
   $ export TEST_DIR=$PWD
   $ export DUNE_TRACE=action,process
   $ echo one > input

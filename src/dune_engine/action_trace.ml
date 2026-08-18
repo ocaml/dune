@@ -8,6 +8,8 @@ let action_trace_root =
      root)
 ;;
 
+let root () = Path.build (Lazy.force action_trace_root)
+
 type t =
   { dir : Path.Build.t
   ; digest : string

@@ -42,8 +42,12 @@ module With_fallback : sig
 
   val fail : User_message.t -> t
   val run : command -> fallback:t -> t
-  val exec : t -> _ Fiber.t
-  val capture : t -> (Diff.t, User_message.t) result Fiber.t
+  val exec : t -> sandbox:Process.Sandbox.t option -> _ Fiber.t
+
+  val capture
+    :  t
+    -> sandbox:Process.Sandbox.t option
+    -> (Diff.t, User_message.t) result Fiber.t
 end = struct
   type t =
     { commands : command list
@@ -56,16 +60,26 @@ end = struct
 
   let fail error = { commands = []; error }
 
-  let rec exec = function
+  let rec exec t ~sandbox =
+    match t with
     | { commands = []; error } -> raise (User_error.E error)
     | { commands = { dir; metadata; prog; args } :: commands; error } ->
       let* () =
-        Process.run ~display:Quiet ~dir ~env:Env.initial Strict prog args ~metadata
+        Process.run
+          ~display:Quiet
+          ~dir
+          ~env:Env.initial
+          Strict
+          prog
+          args
+          ~metadata
+          ?sandbox
       in
-      exec { commands; error }
+      exec { commands; error } ~sandbox
   ;;
 
-  let rec capture = function
+  let rec capture t ~sandbox =
+    match t with
     | { commands = []; error } -> Fiber.return (Error error)
     | { commands = { dir; metadata; prog; args } :: commands; error } ->
       let* output, code =
@@ -77,10 +91,11 @@ end = struct
           prog
           args
           ~metadata
+          ?sandbox
       in
       (match code with
        | 1 -> Fiber.return (Ok { Diff.output; loc = metadata.Process_metadata.loc })
-       | _ -> capture { commands; error })
+       | _ -> capture { commands; error } ~sandbox)
   ;;
 end
 
@@ -252,7 +267,7 @@ let prepare ~skip_trailing_cr promotion path1 path2 =
   prepare_with_labels ~skip_trailing_cr ~dir loc promotion (label1, path1) (label2, path2)
 ;;
 
-let print ~skip_trailing_cr ~patch_back promotion path1 path2 =
+let print ~sandbox ~skip_trailing_cr ~patch_back promotion path1 path2 =
   let p =
     match patch_back with
     | None -> prepare ~skip_trailing_cr (Some promotion) path1 path2
@@ -269,10 +284,10 @@ let print ~skip_trailing_cr ~patch_back promotion path1 path2 =
         (label1, path1)
         (label2, path2)
   in
-  With_fallback.exec p
+  With_fallback.exec p ~sandbox
 ;;
 
-let get path1 path2 =
+let get ~sandbox path1 path2 =
   let p = prepare ~skip_trailing_cr:Sys.win32 None path1 path2 in
-  With_fallback.capture p
+  With_fallback.capture p ~sandbox
 ;;

@@ -2,6 +2,8 @@ A batch build should not wait for an idle RPC client to disconnect before
 exiting. The helper below is that idle client: it connects, sends an incomplete
 packet, writes a marker file, and then stays alive until this test kills it.
 
+  $ # Needed when upgrading this test to Dune language 3.25:
+  $ # export DUNE_CONFIG__LANDLOCK=disabled
   $ cat > dune-project <<EOF
   > (lang dune 3.23)
   > EOF

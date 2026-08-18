@@ -106,7 +106,8 @@ module Detect = struct
              ~stderr_to:eenv.stderr_to
              ~stdin_from:eenv.stdin_from
              ~dir:eenv.working_dir
-             ~env:eenv.env)
+             ~env:eenv.env
+             ?sandbox:ectx.sandbox)
         ~finally:(fun () ->
           Temp.destroy File header;
           Fiber.return ())

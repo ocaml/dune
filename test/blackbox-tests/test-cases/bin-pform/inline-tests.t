@@ -1,6 +1,8 @@
 %{bin:...} in (inline_tests (deps ...)) adds a bin-layout dir to
 the test runner's PATH.
 
+  $ # Needed when upgrading this test to Dune language 3.25:
+  $ # export DUNE_CONFIG__LANDLOCK=disabled
   $ make_mypkg_bin_project
 
 Custom backend whose runner records PATH to a file outside the

@@ -6,21 +6,20 @@ open Lwt.Syntax
 open Dune_rpc.V1
 open Dune_rpc_lwt.V1
 
-let _XDG_DATA_HOME = "XDG_DATA_HOME"
-let xdg_data_dir = Temp.create Dir ~prefix:"lwt" ~suffix:"dune"
-let () = Unix.putenv _XDG_DATA_HOME (Stdune.Path.to_absolute_filename xdg_data_dir)
+let _XDG_DATA_HOME = Env.Var.of_string "XDG_DATA_HOME"
+let _XDG_RUNTIME_DIR = Env.Var.of_string "XDG_RUNTIME_DIR"
+
+let xdg_env =
+  let data_dir = Temp.create Dir ~prefix:"lwt" ~suffix:"dune" in
+  let data_dir = Stdune.Path.to_absolute_filename data_dir in
+  Env.initial
+  |> Env.remove ~var:_XDG_RUNTIME_DIR
+  |> Env.add ~var:_XDG_DATA_HOME ~value:data_dir
+;;
 
 let connect ~root_dir =
   let build_dir = Filename.concat root_dir "_build" in
-  let env =
-    let env =
-      Env.add
-        Env.initial
-        ~var:(Env.Var.of_string _XDG_DATA_HOME)
-        ~value:(Stdune.Path.to_absolute_filename xdg_data_dir)
-    in
-    fun var -> Env.get env (Env.Var.of_string var)
-  in
+  let env var = Env.get xdg_env (Env.Var.of_string var) in
   let* res = Where.get ~env ~build_dir in
   match res with
   | Error e -> Lwt.fail e
@@ -47,6 +46,7 @@ let connect ~root_dir =
 
 let build_watch ~root_dir =
   Lwt_process.open_process_none
+    ~env:(Env.to_unix xdg_env |> Array.of_list)
     ~stdin:`Close
     ~stderr:`Dev_null
     ( "dune"

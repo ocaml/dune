@@ -34,6 +34,7 @@ type input =
   ; env : Env.t
   ; rule_loc : Loc.t
   ; execution_parameters : Execution_parameters.t
+  ; sandbox : Process.Sandbox.t option
   ; action : Action.t
   }
 

@@ -17,6 +17,76 @@ module Working_dir = struct
   let inherit_ = Inherit
 end
 
+module Landlock = struct
+  module Raw = struct
+    external abi_version : unit -> int = "dune_spawn_landlock_abi_version"
+
+    external write_access_rights
+      :  int
+      -> int64
+      = "dune_spawn_landlock_write_access_rights"
+
+    external create_ruleset
+      :  int64
+      -> Unix.file_descr
+      = "dune_spawn_landlock_create_ruleset"
+
+    external add_rule
+      :  Unix.file_descr
+      -> Unix.file_descr
+      -> int64
+      -> unit
+      = "dune_spawn_landlock_add_rule"
+
+    external restrict_self : Unix.file_descr -> unit = "dune_spawn_landlock_restrict_self"
+  end
+
+  type t =
+    { handled_access : int64
+    ; writable_directories : Fd.t list
+    }
+
+  let minimum_abi = 3
+
+  let available () =
+    match Raw.abi_version () with
+    | abi -> abi >= minimum_abi && not (Int64.equal (Raw.write_access_rights abi) 0L)
+    | exception Unix.Unix_error _ -> false
+  ;;
+
+  let write_access_rights () =
+    let abi = Raw.abi_version () in
+    if abi < minimum_abi then Code_error.raise "Landlock is not available" [];
+    let write_access = Raw.write_access_rights abi in
+    if Int64.equal write_access 0L
+    then Code_error.raise "Landlock write restrictions are not available" [];
+    write_access
+  ;;
+
+  let add_writable_directories directories t =
+    { t with writable_directories = t.writable_directories @ directories }
+  ;;
+
+  let allow_writes_to_directories writable_directories =
+    { handled_access = write_access_rights (); writable_directories }
+  ;;
+
+  let with_ruleset { handled_access; writable_directories } ~f =
+    let fd = Raw.create_ruleset handled_access |> Fd.unsafe_of_unix_file_descr in
+    Exn.protect
+      ~finally:(fun () -> Fd.close fd)
+      ~f:(fun () ->
+        let raw_fd = Fd.unsafe_to_unix_file_descr fd in
+        List.iter writable_directories ~f:(fun directory ->
+          Raw.add_rule raw_fd (Fd.unsafe_to_unix_file_descr directory) handled_access);
+        f fd)
+  ;;
+
+  let restrict t =
+    with_ruleset t ~f:(fun fd -> Raw.restrict_self (Fd.unsafe_to_unix_file_descr fd))
+  ;;
+end
+
 module Pgid = struct
   type t =
     | New
@@ -43,6 +113,7 @@ external spawn_unix_raw
   -> use_vfork:bool
   -> setpgid:int option
   -> sigprocmask:(Unix.sigprocmask_command * int list) option
+  -> landlock_fd:Unix.file_descr option
   -> pdeathsig:int
   -> int
   = "dune_spawn_unix_byte" "dune_spawn_unix"
@@ -59,27 +130,39 @@ let spawn_unix
       ~use_vfork
       ~setpgid
       ~sigprocmask
+      ~landlock
       ~pdeathsig
   =
   let env = Option.map env ~f:Env.to_list in
   let setpgid = Option.map ~f:Pgid.to_int setpgid in
   let pdeathsig = Signal.to_int pdeathsig in
-  spawn_unix_raw
-    ~env
-    ~cwd:(Working_dir.raw cwd)
-    ~prog
-    ~argv0
-    ~args
-    ~stdin:(Fd.unsafe_to_unix_file_descr stdin)
-    ~stdout:(Fd.unsafe_to_unix_file_descr stdout)
-    ~stderr:(Fd.unsafe_to_unix_file_descr stderr)
-    ~use_vfork
-    ~setpgid
-    ~sigprocmask:
-      (Option.map sigprocmask ~f:(fun (mask, signals) ->
-         mask, List.map signals ~f:Signal.to_int))
-    ~pdeathsig
-  |> Pid.of_int_exn
+  let sigprocmask =
+    Option.map sigprocmask ~f:(fun (mask, signals) ->
+      mask, List.map signals ~f:Signal.to_int)
+  in
+  let spawn landlock_fd =
+    spawn_unix_raw
+      ~env
+      ~cwd:(Working_dir.raw cwd)
+      ~prog
+      ~argv0
+      ~args
+      ~stdin:(Fd.unsafe_to_unix_file_descr stdin)
+      ~stdout:(Fd.unsafe_to_unix_file_descr stdout)
+      ~stderr:(Fd.unsafe_to_unix_file_descr stderr)
+      ~use_vfork
+      ~setpgid
+      ~sigprocmask
+      ~landlock_fd:(Option.map landlock_fd ~f:Fd.unsafe_to_unix_file_descr)
+      ~pdeathsig
+    |> Pid.of_int_exn
+  in
+  (* CR-soon rgrinberg: [landlock] is a policy recipe, so this creates an
+     equivalent kernel ruleset for every process. Create one ruleset per action
+     and reuse its descriptor for every process executing that action. *)
+  match landlock with
+  | None -> spawn None
+  | Some landlock -> Landlock.with_ruleset landlock ~f:(fun fd -> spawn (Some fd))
 ;;
 
 external spawn_windows_raw
@@ -164,6 +247,7 @@ let spawn
       ?setpgid
       ?(pdeathsig = Signal.Kill)
       ?sigprocmask
+      ?landlock
       ()
   =
   (match cwd with
@@ -200,6 +284,7 @@ let spawn
       ~use_vfork
       ~setpgid
       ~sigprocmask
+      ~landlock
       ~pdeathsig
 ;;
 

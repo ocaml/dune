@@ -1,5 +1,7 @@
 The debug event can be triggered with Sigusr1
 
+  $ # Needed when upgrading this test to Dune language 3.25:
+  $ # export DUNE_CONFIG__LANDLOCK=disabled
   $ debug_events_jq='select(.name == "debug") | .name'
   $ build_request_starts_jq='select(.cat == "rpc" and .name == "request" and .args.meth == "build" and .args.stage == "start") | .name'
   $ count_trace_events () {

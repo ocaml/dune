@@ -36,7 +36,9 @@
  (deps
   (source_tree tar-inputs))
  (action
-  (run tar -czf %{target} %{deps})))
+  ;; Dependencies are symlinks in the action sandbox. Dereference them so the
+  ;; archive is self-contained rather than referring back to _build/default.
+  (run tar -chzf %{target} %{deps})))
 
 (alias
  (name pkg)

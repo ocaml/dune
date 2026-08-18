@@ -24,8 +24,8 @@ let to_dune_dep_set =
 
 let exec ~(ectx : context) ~(eenv : env) prog args =
   let open Fiber.O in
-  let run_arguments_fn = Temp.create File ~prefix:"dune" ~suffix:"run" in
-  let response_fn = Temp.create File ~prefix:"dune" ~suffix:"response" in
+  let run_arguments_fn = Dtemp.action File ~prefix:"dune" ~suffix:"run" in
+  let response_fn = Dtemp.action File ~prefix:"dune" ~suffix:"response" in
   let run_arguments =
     let targets =
       match ectx.targets with
@@ -67,6 +67,7 @@ let exec ~(ectx : context) ~(eenv : env) prog args =
       ~stderr_to:eenv.stderr_to
       ~stdin_from:eenv.stdin_from
       ~metadata:ectx.metadata
+      ?sandbox:ectx.sandbox
       prog
       args
   in

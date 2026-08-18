@@ -74,6 +74,7 @@ let execute_pp_action ~sctx file pp_file dump_file =
     ; env
     ; rule_loc = Loc.none
     ; execution_parameters
+    ; sandbox = None
     ; action
     }
   in

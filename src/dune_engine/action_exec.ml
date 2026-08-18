@@ -75,6 +75,7 @@ let exec_run ~(ectx : context) ~(eenv : env) ~can_run_in_action_runner prog args
       ~stderr_to:eenv.stderr_to
       ~stdin_from:eenv.stdin_from
       ~metadata
+      ?sandbox:ectx.sandbox
       prog
       args
   in
@@ -221,7 +222,9 @@ let rec exec t ~ectx ~eenv : Done_or_more_deps.t Fiber.t =
     Fiber.return Done
   | Pipe (outputs, l) -> exec_pipe ~ectx ~eenv outputs l
   | Diff diff ->
-    let+ () = Diff_action.exec ~patch_back:None ectx.rule_loc diff in
+    let+ () =
+      Diff_action.exec ~sandbox:ectx.sandbox ~patch_back:None ectx.rule_loc diff
+    in
     Done
   | Extension (module A) ->
     let metadata =
@@ -347,18 +350,19 @@ type input =
   ; env : Env.t
   ; rule_loc : Loc.t
   ; execution_parameters : Execution_parameters.t
+  ; sandbox : Process.Sandbox.t option
   ; action : Action.t
   }
 
 let exec
-      { targets; root; context; env; rule_loc; execution_parameters; action = t }
+      { targets; root; context; env; rule_loc; execution_parameters; sandbox; action = t }
       ~build_deps
   =
   let ectx =
     let metadata =
       Process_metadata.create ~purpose:(Process_metadata.Build_job targets) ()
     in
-    { targets; metadata; context; rule_loc; build_deps }
+    { targets; metadata; context; sandbox; rule_loc; build_deps }
   and eenv =
     let env =
       match

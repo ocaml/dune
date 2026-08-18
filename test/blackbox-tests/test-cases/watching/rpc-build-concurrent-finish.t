@@ -1,5 +1,7 @@
 Concurrent RPC build requests finish independently when their targets are done.
 
+  $ # Needed when upgrading this test to Dune language 3.25:
+  $ # export DUNE_CONFIG__LANDLOCK=disabled
   $ make_dune_project 3.23
   $ export DUNE_TRACE=rpc,process
   $ count_trace_events () {

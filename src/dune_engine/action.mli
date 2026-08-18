@@ -105,6 +105,8 @@ module Full : sig
     ; env : Env.t
     ; locks : Path.t list
     ; can_go_in_shared_cache : bool
+    ; can_use_sandbox_policy : bool
+      (** Whether spawned processes can be subject to an additional sandbox policy. *)
     ; sandbox : Sandbox_config.t
     ; corrections : Corrections.t option
     }
@@ -121,17 +123,14 @@ module Full : sig
 
   val map : t -> f:(action -> action) -> t
 
-  (** The various [add_xxx] functions merge the given value with existing field
-      of the action. Put another way, [add_xxx x t] is the same as:
-
-      {[
-        combine t (make ~xxx:x (Progn []))
-      ]} *)
+  (** The various [add_xxx] functions merge the given value with the existing
+      field of the action. *)
 
   val add_env : Env.t -> t -> t
   val add_locks : Path.t list -> t -> t
   val add_sandbox : Sandbox_config.t -> t -> t
   val add_can_go_in_shared_cache : bool -> t -> t
+  val disable_sandbox_policy : t -> t
   val add_corrections : Corrections.t -> t -> t
 
   include Monoid with type t := t

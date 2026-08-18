@@ -109,6 +109,7 @@ module Exec = struct
     { targets : Targets.Validated.t option
     ; context : Build_context.t option
     ; metadata : Process_metadata.t
+    ; sandbox : Process.Sandbox.t option
     ; rule_loc : Loc.t
     ; build_deps : Dep.Set.t -> Dep.Facts.t Fiber.t
     }

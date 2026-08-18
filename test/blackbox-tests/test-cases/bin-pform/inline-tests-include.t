@@ -4,6 +4,8 @@ behavior of a top-level %{bin:NAME} dep (see inline-tests.t).
 Dep_conf_eval.unnamed mirrors named_paths_builder's include_envs
 collection to drain the env contribution from Include_result.
 
+  $ # Needed when upgrading this test to Dune language 3.25:
+  $ # export DUNE_CONFIG__LANDLOCK=disabled
   $ make_mypkg_bin_project
 
   $ cat >deps.sexp <<'EOF'

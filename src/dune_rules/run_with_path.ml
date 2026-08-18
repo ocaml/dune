@@ -285,6 +285,7 @@ module Spec = struct
                ~stdin_from:eenv.stdin_from
                ~dir:eenv.working_dir
                ~env
+               ?sandbox:ectx.sandbox
            in
            Output.prerr ~rc error;
            Fiber.return ())

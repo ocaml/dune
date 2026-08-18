@@ -1,6 +1,8 @@
 Demonstrate what happens when the server is shut down in the middle of serving
 a client.
 
+  $ # Needed when upgrading this test to Dune language 3.25:
+  $ # export DUNE_CONFIG__LANDLOCK=disabled
   $ make_dune_project 3.21
   $ STARTED=$(mktemp)
   $ RELEASE=$(mktemp)

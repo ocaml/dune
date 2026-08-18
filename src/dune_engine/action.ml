@@ -454,6 +454,7 @@ module Full = struct
       ; env : Env.t
       ; locks : Path.t list
       ; can_go_in_shared_cache : bool
+      ; can_use_sandbox_policy : bool
       ; sandbox : Sandbox_config.t
       ; corrections : Corrections.t option
       }
@@ -463,6 +464,7 @@ module Full = struct
       ; env = Env.empty
       ; locks = []
       ; can_go_in_shared_cache = true
+      ; can_use_sandbox_policy = true
       ; sandbox = Sandbox_config.default
       ; corrections = None
       }
@@ -480,11 +482,22 @@ module Full = struct
           [ "x", Corrections.to_dyn x; "y", Corrections.to_dyn y ]
     ;;
 
-    let combine { action; env; locks; can_go_in_shared_cache; sandbox; corrections } x =
+    let combine
+          { action
+          ; env
+          ; locks
+          ; can_go_in_shared_cache
+          ; can_use_sandbox_policy
+          ; sandbox
+          ; corrections
+          }
+          x
+      =
       { action = combine action x.action
       ; env = Env.extend_env env x.env
       ; locks = locks @ x.locks
       ; can_go_in_shared_cache = can_go_in_shared_cache && x.can_go_in_shared_cache
+      ; can_use_sandbox_policy = can_use_sandbox_policy && x.can_use_sandbox_policy
       ; sandbox = Sandbox_config.inter sandbox x.sandbox
       ; corrections = combine_corrections corrections x.corrections
       }
@@ -502,7 +515,14 @@ module Full = struct
         ?corrections
         action
     =
-    { action; env; locks; can_go_in_shared_cache; sandbox; corrections }
+    { action
+    ; env
+    ; locks
+    ; can_go_in_shared_cache
+    ; can_use_sandbox_policy = true
+    ; sandbox
+    ; corrections
+    }
   ;;
 
   let map t ~f = { t with action = f t.action }
@@ -513,6 +533,7 @@ module Full = struct
     { t with can_go_in_shared_cache = t.can_go_in_shared_cache && b }
   ;;
 
+  let disable_sandbox_policy t = { t with can_use_sandbox_policy = false }
   let add_sandbox s t = { t with sandbox = Sandbox_config.inter t.sandbox s }
 
   let add_corrections corrections t =

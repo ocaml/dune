@@ -144,7 +144,7 @@ module Diff = struct
   let diff_for_file (file : Diff_promotion.File.t) =
     let original = Diff_promotion.File.source file in
     let correction = Diff_promotion.File.correction_file file in
-    Dune_engine.Print_diff.get (Path.source original) correction
+    Dune_engine.Print_diff.get ~sandbox:None (Path.source original) correction
   ;;
 
   let display_diffs present =

@@ -20,11 +20,19 @@ let hold started release =
   run (return ())
 ;;
 
+let touch_and_respond path =
+  (try touch path with
+   | Sys_error _ -> ());
+  run (return ())
+;;
+
 let () =
   match Array.to_list Sys.argv with
   | [ _; "noop" ] -> noop ()
   | [ _; "hold"; started; release ] -> hold started release
+  | [ _; "touch"; path ] -> touch_and_respond path
   | _ ->
-    prerr_endline "Usage: action_plugin_helper (noop | hold <started> <release>)";
+    prerr_endline
+      "Usage: action_plugin_helper (noop | hold <started> <release> | touch <path>)";
     exit 1
 ;;

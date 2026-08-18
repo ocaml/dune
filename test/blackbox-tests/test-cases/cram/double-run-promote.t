@@ -2,6 +2,8 @@ This test demonstrates that we pointlessly re-run cram tests
 after they're promted
 
   $ make_dune_project 3.12
+  $ # Needed when upgrading this test to Dune language 3.25:
+  $ # export DUNE_CONFIG__LANDLOCK=disabled
 
   $ cat >foo.t <<EOF
   >   $ echo run >> $PWD/side-effect

@@ -1,6 +1,8 @@
 A faulty test escapes the sandbox by creating its target outside the sandbox
 
   $ make_directory_targets_project 3.11
+  $ # Needed when upgrading this test to Dune language 3.25:
+  $ # export DUNE_CONFIG__LANDLOCK=disabled
 
   $ cat >dune <<EOF
   > (rule

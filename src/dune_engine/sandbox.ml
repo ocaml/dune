@@ -96,11 +96,12 @@ type t =
   | Sandboxed of real
   | No_sandbox of { targets : Targets.Validated.t }
 
-let is_sandboxed = function
-  | Sandboxed _ -> true
-  | No_sandbox _ -> false
+let root = function
+  | Sandboxed { dir; _ } -> Some (Path.build dir)
+  | No_sandbox _ -> None
 ;;
 
+let is_sandboxed t = Option.is_some (root t)
 let map_real_path t p = Path.Build.append t.dir p
 
 let map_path t p =
@@ -288,6 +289,7 @@ let register_corrected_file_promotions t ~deps =
     in
     let file1 = build_path_without_corrected_suffix file2_without_sandbox |> Path.build in
     Diff_action.exec
+      ~sandbox:None
       ~patch_back:(Some (Path.build t.dir))
       t.loc
       { Diff.file1; file2; optional = false; mode = Text; directory_diffs = false })
@@ -397,6 +399,7 @@ let register_snapshot_promotion t (targets : Targets.Validated.t) ~old_snapshot 
        Fiber.parallel_iter !diffs ~f:(fun path ->
          let source = Path.drop_optional_sandbox_root path in
          Diff_action.exec
+           ~sandbox:None
            ~patch_back:(Some (Path.build t.dir))
            t.loc
            { Diff.file1 = source

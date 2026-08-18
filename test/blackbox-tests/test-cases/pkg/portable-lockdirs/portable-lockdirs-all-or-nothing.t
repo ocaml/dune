@@ -42,3 +42,24 @@ failure is reported once for the requested platform set:
 No partial lock directory is written:
 
   $ test ! -e dune.lock
+
+When the platform set only contains platforms where the package is available,
+locking succeeds:
+
+  $ cat > dune-workspace <<EOF
+  > (lang dune 3.11)
+  > (repository
+  >  (name mock)
+  >  (url "file://$(pwd)/mock-opam-repository"))
+  > (lock_dir
+  >  (repositories mock)
+  >  (solve_for_platforms
+  >   ((arch arm64)
+  >    (os macos))))
+  > EOF
+
+  $ dune pkg lock
+  Solution for dune.lock
+  
+  Dependencies common to all supported platforms:
+  - foo.0.0.1

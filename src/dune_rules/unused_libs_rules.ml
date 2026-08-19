@@ -116,3 +116,23 @@ let gen_rules
       ~loc
       (action |> Action_builder.map ~f:Action.Full.make)
 ;;
+
+let gen_rules_for_context cctx compile_info ~loc =
+  let sctx = Compilation_context.super_context cctx in
+  let toolchain = Compilation_context.ocaml cctx in
+  let for_ = Compilation_context.for_ cctx in
+  let obj_dir = Compilation_context.obj_dir cctx in
+  let modules = Compilation_context.modules cctx in
+  let dir = Compilation_context.dir cctx in
+  let user_written_requires = Lib.Compile.user_written_requires compile_info ~for_ in
+  let allow_unused_libraries = Lib.Compile.allow_unused_libraries compile_info in
+  gen_rules
+    sctx
+    toolchain
+    loc
+    ~obj_dir
+    ~modules
+    ~dir
+    ~user_written_requires
+    ~allow_unused_libraries
+;;

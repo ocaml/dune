@@ -433,10 +433,7 @@ let build_js
       m
   =
   let project = Scope.project scope in
-  let melange_extension_version =
-    Dune_project.find_extension_version project Dune_lang.Melange.syntax
-    |> Option.value_exn
-  in
+  let melange_cli = Melange.Cli.of_project project in
   let* compiler = Melange_binary.melc sctx ~loc:(Some loc) ~dir in
   js_outputs_of_module ~module_systems ~output m
   |> Memo.parallel_iter ~f:(fun (module_system, js_output) ->
@@ -457,19 +454,13 @@ let build_js
         let obj_dir = [ Command.Args.A "-I"; Path (Obj_dir.melange_dir obj_dir) ] in
         let melange_package_args =
           let pkg_name_args =
-            match pkg_name, melange_extension_version with
-            | None, _ -> []
-            | Some pkg_name, (0, 1) ->
-              [ "--bs-package-name"; Package.Name.to_string pkg_name ]
-            | Some pkg_name, _ ->
-              [ "--mel-package-name"; Package.Name.to_string pkg_name ]
+            match pkg_name with
+            | None -> []
+            | Some pkg_name ->
+              [ melange_cli.package_name; Package.Name.to_string pkg_name ]
           in
           let js_modules_str = Melange.Module_system.to_string module_system in
-          (if melange_extension_version >= (1, 0)
-           then "--mel-module-type"
-           else "--bs-module-type")
-          :: js_modules_str
-          :: pkg_name_args
+          melange_cli.module_type :: js_modules_str :: pkg_name_args
         in
         Command.run
           ~dir:(Super_context.context sctx |> Context.build_dir |> Path.build)
@@ -754,12 +745,7 @@ let modules_for_js_and_obj_dir ~sctx ~dir_contents ~scope (mel : Melange_stanzas
   modules, modules_for_js, obj_dir
 ;;
 
-let should_promote_in_source scope =
-  let project = Scope.project scope in
-  match Dune_project.find_extension_version project Dune_lang.Melange.syntax with
-  | Some v -> v >= (1, 0)
-  | None -> false
-;;
+let should_promote_in_source scope = Melange.Cli.promotes_in_source (Scope.project scope)
 
 let setup_entries_js
       ~sctx

@@ -135,11 +135,10 @@ let melange_args (cctx : Compilation_context.t) (cm_kind : Lib_mode.Cm_kind.t) m
   match cm_kind with
   | Ocaml (Cmi | Cmo | Cmx) | Melange Cmi -> []
   | Melange Cmj ->
-    let melange_extension_version =
+    let melange_cli =
       let scope = Compilation_context.scope cctx in
       let dune_project = Scope.project scope in
-      Dune_project.find_extension_version dune_project Dune_lang.Melange.syntax
-      |> Option.value_exn
+      Melange.Cli.of_project dune_project
     in
     let mel_package_name, mel_package_output =
       let package_output =
@@ -164,29 +163,15 @@ let melange_args (cctx : Compilation_context.t) (cm_kind : Lib_mode.Cm_kind.t) m
           |> Path.Local.to_string
           |> Path.Build.relative build_dir
         in
-        ( [ Command.Args.A
-              (if melange_extension_version >= (1, 0)
-               then "--mel-package-name"
-               else "--bs-package-name")
-          ; A (Lib_name.to_string lib_name)
-          ]
+        ( [ Command.Args.A melange_cli.package_name; A (Lib_name.to_string lib_name) ]
         , Path.build dir )
     in
-    if melange_extension_version >= (1, 0)
-    then
-      Command.Args.A "--mel-stop-after-cmj"
-      :: A "--mel-package-output"
-      :: Command.Args.Path mel_package_output
-      :: A "--mel-module-name"
-      :: A (melange_js_basename module_ |> Filename.to_string)
-      :: mel_package_name
-    else
-      Command.Args.A "--bs-stop-after-cmj"
-      :: A "--bs-package-output"
-      :: Command.Args.Path mel_package_output
-      :: A "--bs-module-name"
-      :: A (melange_js_basename module_ |> Filename.to_string)
-      :: mel_package_name
+    Command.Args.A melange_cli.stop_after_cmj
+    :: A melange_cli.package_output
+    :: Command.Args.Path mel_package_output
+    :: A melange_cli.module_name
+    :: A (melange_js_basename module_ |> Filename.to_string)
+    :: mel_package_name
 ;;
 
 let build_cm

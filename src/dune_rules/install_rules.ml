@@ -198,12 +198,13 @@ end = struct
 
   let doc_install_files ~loc mld_contents =
     List.rev_map mld_contents ~f:(fun (mld : Doc_sources.mld) ->
-      Install.Entry.Unexpanded.make
+      make_entry
+        None
         ~kind:Install.Entry.Unexpanded.File
         ~dst:(sprintf "odoc-pages/%s" (Path.Local.to_string mld.in_doc))
+        ~loc
         Section.Doc
-        mld.path
-      |> Install.Entry.Sourced.Unexpanded.create ~loc)
+        mld.path)
   ;;
 
   let lib_install_files
@@ -219,6 +220,9 @@ end = struct
     let* lib_config =
       let+ ocaml = Context.ocaml ctx in
       ocaml.lib_config
+    in
+    let make_stublib_entry file =
+      make_entry None ~loc ~kind:Install.Entry.Unexpanded.File Stublibs file
     in
     let make_entry ?(loc = loc) = make_entry lib_subdir ~loc in
     let* expander = Super_context.expander sctx ~dir in
@@ -455,11 +459,7 @@ end = struct
     and+ execs = lib_ppxs ctx ~scope ~lib
     and+ dll_files =
       dll_files ~modes:ocaml ~dynlink:lib.dynlink ~ctx info
-      >>| List.rev_map ~f:(fun a ->
-        let entry =
-          Install.Entry.Unexpanded.make ~kind:Install.Entry.Unexpanded.File Stublibs a
-        in
-        Install.Entry.Sourced.Unexpanded.create ~loc entry)
+      >>| List.rev_map ~f:make_stublib_entry
     in
     let install_c_headers =
       List.rev_map lib.install_c_headers ~f:(fun (loc, base) ->

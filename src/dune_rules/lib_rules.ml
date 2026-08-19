@@ -672,20 +672,24 @@ let library_rules
   merlin
 ;;
 
-let compile_context_data (lib : Library.t) ~dir_contents ~scope ~for_ =
-  let dir = Dir_contents.dir dir_contents in
-  let buildable = lib.buildable in
-  let libs = Scope.libs scope in
+let resolve_compile_info (lib : Library.t) ~dir ~scope =
   let lib_id =
     let src_dir = Path.Build.drop_build_context_exn dir in
     Library.to_lib_id ~src_dir lib
   in
-  let* local_lib, compile_info =
+  let+ local_lib, compile_info =
     Lib.DB.get_compile_info
-      libs
+      (Scope.libs scope)
       (Local lib_id)
-      ~allow_overlaps:buildable.allow_overlapping_dependencies
+      ~allow_overlaps:lib.buildable.allow_overlapping_dependencies
   in
+  lib_id, local_lib, compile_info
+;;
+
+let compile_context_data (lib : Library.t) ~dir_contents ~scope ~for_ =
+  let dir = Dir_contents.dir dir_contents in
+  let libs = Scope.libs scope in
+  let* lib_id, local_lib, compile_info = resolve_compile_info lib ~dir ~scope in
   let+ source_modules =
     Dir_contents.ml dir_contents ~for_ >>= Ml_sources.modules ~libs ~for_:(Library lib_id)
   in
@@ -791,18 +795,7 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~expander ~scope =
     in
     let for_merlin = Compilation_mode.Set.for_merlin modes in
     Memo.parallel_map (Compilation_mode.Set.to_list modes) ~f:(fun for_ ->
-      let buildable = lib.buildable in
-      let libs = Scope.libs scope in
-      let lib_id =
-        let src_dir = Path.Build.drop_build_context_exn dir in
-        Library.to_lib_id ~src_dir lib
-      in
-      let* _local_lib, compile_info =
-        Lib.DB.get_compile_info
-          libs
-          (Local lib_id)
-          ~allow_overlaps:buildable.allow_overlapping_dependencies
-      in
+      let* _, _, compile_info = resolve_compile_info lib ~dir ~scope in
       let* () = Buildable_rules.gen_select_rules sctx compile_info ~dir ~for_ in
       let+ r =
         Buildable_rules.with_lib_deps

@@ -343,17 +343,17 @@ let gen_rules_for_stanzas sctx dir_contents cctxs expander ~dune_file ~dir:ctx_d
   cctxs
 ;;
 
-let gen_format_and_cram_rules sctx ~dir source_dir =
+let gen_common_directory_rules sctx ~dir source_dir =
   let+ () = Format_rules.setup_alias sctx ~dir
-  and+ () = Cram_rules.rules source_dir ~sctx ~dir in
+  and+ () = Cram_rules.rules source_dir ~sctx ~dir
+  and+ () = Revdep_rules.add ~sctx ~dir in
   ()
 ;;
 
 let gen_rules_source_only sctx ~dir source_dir =
   Rules.collect_unit (fun () ->
     let* sctx = sctx in
-    let+ () = gen_format_and_cram_rules sctx ~dir source_dir
-    and+ () = Revdep_rules.add ~sctx ~dir
+    let+ () = gen_common_directory_rules sctx ~dir source_dir
     and+ () =
       define_all_alias ~dir ~js_targets:[] ~project:(Source_tree.Dir.project source_dir)
     in
@@ -363,8 +363,7 @@ let gen_rules_source_only sctx ~dir source_dir =
 let gen_rules_group_part_or_root sctx dir_contents cctxs ~source_dir ~dir
   : Compilation_context.t option Compilation_mode.Per_mode.t Loc.Map.t Memo.t
   =
-  let+ () = gen_format_and_cram_rules sctx ~dir source_dir
-  and+ () = Revdep_rules.add ~sctx ~dir
+  let+ () = gen_common_directory_rules sctx ~dir source_dir
   and+ contexts =
     (* CR-soon rgrinberg: we shouldn't have to fetch the stanzas yet again *)
     Dune_load.stanzas_in_dir dir

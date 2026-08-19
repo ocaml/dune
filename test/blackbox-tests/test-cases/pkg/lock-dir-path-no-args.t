@@ -3,8 +3,6 @@ stanza in dune-workspace, rather than always defaulting to dune.lock.
 
 See https://github.com/ocaml/dune/issues/13841
 
-$ export DUNE_CONFIG__PORTABLE_LOCK_DIR=disabled
-
   $ mkrepo
   $ mkpkg foo
 
@@ -54,3 +52,13 @@ Now foo.lock is created
 
   $ find . -maxdepth 1 -name "*.lock"
   ./foo.lock
+
+Passing an undeclared lock directory gives an error:
+
+  $ dune pkg lock bar.lock
+  Error: The following directories are not lock directories in this workspace:
+  - bar.lock
+  This workspace contains the following lock directories:
+  - dune.lock
+  - foo.lock
+  [1]

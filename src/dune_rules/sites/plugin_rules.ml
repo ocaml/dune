@@ -17,14 +17,11 @@ let resolve_libs t public_libs =
   Resolve.Memo.List.map t.libraries ~f:(Lib.DB.resolve public_libs)
 ;;
 
+let public_libs sctx = Super_context.context sctx |> Context.name |> Scope.DB.public_libs
+
 let setup_rules ~sctx ~dir t =
   (let open Action_builder.O in
-   let* public_libs =
-     Super_context.context sctx
-     |> Context.name
-     |> Scope.DB.public_libs
-     |> Action_builder.of_memo
-   in
+   let* public_libs = Action_builder.of_memo (public_libs sctx) in
    Resolve.Memo.read
    @@
    let open Resolve.Memo.O in
@@ -42,9 +39,7 @@ let setup_rules ~sctx ~dir t =
 
 let install_rules ~sctx ~package_db ~dir ({ name; site = loc, (pkg, site); _ } as t) =
   let* skip_files =
-    let* public_libs =
-      Super_context.context sctx |> Context.name |> Scope.DB.public_libs
-    in
+    let* public_libs = public_libs sctx in
     if t.optional
     then Resolve.Memo.is_error (resolve_libs t public_libs)
     else Memo.return false

@@ -571,6 +571,13 @@ let in_source_tree path =
   | External e -> Workspace.dev_tool_path_to_source_dir e
 ;;
 
+let package_basename package_name maybe_package_version =
+  let package_name = Package_name.to_string package_name in
+  match maybe_package_version with
+  | None -> package_name
+  | Some package_version -> package_name ^ "." ^ Package_version.to_string package_version
+;;
+
 module Pkg = struct
   type t =
     { build_command : Build_command.t Conditional_choice.t
@@ -906,27 +913,14 @@ module Pkg = struct
   let files_dir package_name maybe_package_version ~lock_dir =
     (* TODO(steve): Once portable lockdirs are enabled by default, make the
        package version non-optional *)
-    let extension = ".files" in
-    match maybe_package_version with
-    | None -> Path.relative lock_dir (Package_name.to_string package_name ^ extension)
-    | Some package_version ->
-      Path.relative
-        lock_dir
-        (Package_name.to_string package_name
-         ^ "."
-         ^ Package_version.to_string package_version
-         ^ extension)
+    let basename = package_basename package_name maybe_package_version in
+    Path.relative lock_dir (basename ^ ".files")
   ;;
 
   let source_files_dir package_name maybe_package_version ~lock_dir =
     let source = in_source_tree lock_dir in
-    let package_name = Package_name.to_string package_name in
-    match maybe_package_version with
-    | Some package_version ->
-      Path.Source.relative
-        source
-        (sprintf "%s.%s.files" package_name (Package_version.to_string package_version))
-    | None -> Path.Source.relative source (sprintf "%s.files" package_name)
+    let basename = package_basename package_name maybe_package_version in
+    Path.Source.relative source (basename ^ ".files")
   ;;
 
   (* Combine the platform-specific parts of a pair of [t]s, raising a code
@@ -1334,13 +1328,7 @@ module Package_filename = struct
        because if portable lockdirs is not enabled then we want to fall back to
        the behaviour where version numbers are not included in lockfile names.
        Make it non-optional when lockdirs become portable by default. *)
-    (match maybe_package_version with
-     | None -> Package_name.to_string package_name ^ file_extension_string
-     | Some package_version ->
-       Package_name.to_string package_name
-       ^ "."
-       ^ Package_version.to_string package_version
-       ^ file_extension_string)
+    package_basename package_name maybe_package_version ^ file_extension_string
     |> Filename.of_string_exn
   ;;
 

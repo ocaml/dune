@@ -174,6 +174,12 @@ module Run (P : PARAMS) = struct
       (Expander.expand_and_eval_set expander flags ~standard:env.Menhir_env.flags)
   ;;
 
+  let expand_rule_mode mode =
+    let open Memo.O in
+    let* expander = expander in
+    Rule_mode_expand.expand_path ~expander ~dir mode
+  ;;
+
   (* ------------------------------------------------------------------------ *)
 
   (* If there is no [base] clause, then a stanza that mentions several modules
@@ -307,11 +313,7 @@ module Run (P : PARAMS) = struct
       Module_compilation.ocamlc_i ~deps cctx mock_module ~output:(inferred_mli base)
     in
     let* explain_flags = explain_flags base stanza
-    and* mode =
-      let sctx = Compilation_context.super_context cctx in
-      let* expander = Super_context.expander sctx ~dir in
-      Rule_mode_expand.expand_path ~expander ~dir stanza.mode
-    in
+    and* mode = expand_rule_mode stanza.mode in
     (* 3. A second invocation of Menhir reads the inferred [.mli] file. *)
     menhir
       [ Command.Args.dyn expanded_flags
@@ -335,11 +337,7 @@ module Run (P : PARAMS) = struct
     let open Memo.O in
     let* expanded_flags = expand_flags stanza.flags
     and* explain_flags = explain_flags base stanza
-    and* mode =
-      let sctx = Compilation_context.super_context cctx in
-      let* expander = Super_context.expander sctx ~dir in
-      Rule_mode_expand.expand_path ~expander ~dir stanza.mode
-    in
+    and* mode = expand_rule_mode stanza.mode in
     menhir
       [ Command.Args.dyn expanded_flags
       ; S explain_flags

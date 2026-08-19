@@ -285,6 +285,7 @@ end = struct
         Value.L.to_strings v ~dir:(Path.build env.dir)
       ;;
 
+      let project = Expander.project
       let artifacts = Expander.artifacts
       let map_exe = Expander.map_exe
 
@@ -424,16 +425,16 @@ end = struct
              | Relative_to_current_dir | Absolute ->
                Action_builder.return (Ok (Path.relative dir s))
              | In_path ->
+               let dir = env.dir in
+               let where =
+                 if Dune_project.dune_version (Expander.project env.expander) >= (3, 14)
+                 then Artifacts.Original_path
+                 else Install_dir
+               in
                Action_builder.of_memo
                @@
                let open Memo.O in
-               let dir = env.dir in
-               let* where =
-                 let+ project = Dune_load.find_project ~dir in
-                 if Dune_project.dune_version project >= (3, 14)
-                 then Artifacts.Original_path
-                 else Install_dir
-               and* artifacts = Expander.artifacts env.expander in
+               let* artifacts = Expander.artifacts env.expander in
                let hint =
                  match s with
                  | "refmt" -> Some "opam install reason"
@@ -538,19 +539,16 @@ let rec expand (t : Dune_lang.Action.t) : Action.t Action_expander.t =
     O.Echo l
   | Cat xs ->
     A.with_expander (fun expander ->
-      let open Memo.O in
-      let+ version =
-        let dir = Expander.dir expander in
-        Dune_load.find_project ~dir >>| Dune_project.dune_version
-      in
+      let version = Expander.project expander |> Dune_project.dune_version in
       let open Action_expander.O in
-      if version >= (3, 10)
-      then
-        let+ xs = A.all (List.map xs ~f:E.deps) in
-        O.Cat (List.concat xs)
-      else
-        let+ xs = A.all (List.map xs ~f:E.dep) in
-        O.Cat xs)
+      Memo.return
+        (if version >= (3, 10)
+         then
+           let+ xs = A.all (List.map xs ~f:E.deps) in
+           O.Cat (List.concat xs)
+         else
+           let+ xs = A.all (List.map xs ~f:E.dep) in
+           O.Cat xs))
   | Copy (x, y) ->
     let+ x = E.dep x
     and+ y = E.target y in
@@ -616,15 +614,12 @@ let rec expand (t : Dune_lang.Action.t) : Action.t Action_expander.t =
     Cram_exec.action script
   | Format_dune_file (src, dst) ->
     A.with_expander (fun expander ->
-      let open Memo.O in
-      let+ version =
-        let dir = Expander.dir expander in
-        Dune_load.find_project ~dir >>| Dune_project.dune_version
-      in
+      let version = Expander.project expander |> Dune_project.dune_version in
       let open Action_expander.O in
-      let+ src = E.dep src
-      and+ dst = E.target dst in
-      Format_dune_file.action ~version src dst)
+      Memo.return
+        (let+ src = E.dep src
+         and+ dst = E.target dst in
+         Format_dune_file.action ~version src dst))
   | Withenv _ | Substitute _ | Patch _ | When _ ->
     (* these can only be provided by the package language which isn't expanded here *)
     assert false

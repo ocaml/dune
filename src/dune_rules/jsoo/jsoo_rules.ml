@@ -348,6 +348,12 @@ let wasmoo ~dir sctx =
     "wasm_of_ocaml"
 ;;
 
+let compiler ~dir sctx ~(mode : Js_of_ocaml.Mode.t) =
+  match mode with
+  | JS -> jsoo ~dir sctx
+  | Wasm -> wasmoo ~dir sctx
+;;
+
 let jsoo_version_at_least version minimum =
   match version with
   | None -> false
@@ -379,11 +385,7 @@ let resolve_config sctx ~dir ~(mode : Js_of_ocaml.Mode.t) flags =
     js_of_ocaml_flags sctx ~dir ~mode flags
     |> Action_builder.bind ~f:(fun (x : _ Js_of_ocaml.Flags.t) -> x.compile)
   in
-  let* jsoo =
-    match mode with
-    | JS -> jsoo ~dir sctx
-    | Wasm -> wasmoo ~dir sctx
-  in
+  let* jsoo = compiler ~dir sctx ~mode in
   let* jsoo_version = Action_builder.of_memo (Version.jsoo_version jsoo) in
   if jsoo_has_build_config jsoo_version
   then
@@ -405,11 +407,7 @@ let js_of_ocaml_rule
       ~directory_targets
   =
   let open Action_builder.O in
-  let jsoo =
-    match mode with
-    | JS -> jsoo ~dir sctx
-    | Wasm -> wasmoo ~dir sctx
-  in
+  let jsoo = compiler ~dir sctx ~mode in
   let flags =
     let* flags = js_of_ocaml_flags sctx ~dir ~mode flags in
     match sub_command with

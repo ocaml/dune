@@ -717,8 +717,9 @@ let link_rule
   =
   let sctx = Compilation_context.super_context cc in
   let dir = Compilation_context.dir cc in
-  let ctx = Super_context.context sctx |> Context.build_context in
-  let build_dir = Super_context.context sctx |> Context.build_dir in
+  let context = Super_context.context sctx in
+  let ctx = Context.build_context context in
+  let build_dir = Context.build_dir context in
   let get_all =
     let open Action_builder.O in
     let+ config = resolve_config sctx ~dir ~mode flags

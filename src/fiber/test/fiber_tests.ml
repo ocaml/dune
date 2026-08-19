@@ -139,7 +139,7 @@ module Throttle_tests = struct
                   Throttle.increase_priority second;
                   Fiber.Ivar.fill release_blocker ())
               ]
-              ~f:Fun.id));
+              ~f:(fun f -> f ())));
     [%expect
       {|
       second
@@ -202,7 +202,7 @@ module Throttle_tests = struct
                (fun () -> Fiber.Ivar.fill release_first ()))
          ; (fun () -> process_restarts 2)
          ]
-         ~f:Fun.id);
+         ~f:(fun f -> f ()));
     [%expect
       {|
       chain-1
@@ -269,7 +269,7 @@ module Throttle_tests = struct
                   Fiber.Ivar.fill release_high ()))
          ; process_restart
          ]
-         ~f:Fun.id);
+         ~f:(fun f -> f ()));
     [%expect
       {|
       high
@@ -397,7 +397,7 @@ module Throttle_tests = struct
              Throttle.increase_priority second;
              Throttle.resize throttle 1)
          ]
-         ~f:Fun.id);
+         ~f:(fun f -> f ()));
     [%expect
       {|
       second

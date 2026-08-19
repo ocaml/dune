@@ -90,6 +90,7 @@ module M : sig
     type 'a t =
       { ivar : 'a Fiber.Ivar.t
       ; dag_node : Lazy_dag_node.t
+      ; mutable job_priority_dependencies : Dep_node.packed list
       }
   end
 end
@@ -188,6 +189,7 @@ module Computation0 : sig
   type 'a t = 'a M.Computation0.t =
     { ivar : 'a Fiber.Ivar.t
     ; dag_node : M.Lazy_dag_node.t
+    ; mutable job_priority_dependencies : Dep_node.packed list
     }
 
   val create : unit -> 'a t
@@ -285,6 +287,11 @@ module Job_priority : sig
     -> factory:factory option
     -> unit
 
+  val add_dependency
+    :  ('i, 'o) Dep_node.t
+    -> caller:Stack_frame_with_state.t option
+    -> unit
+
   val current : unit -> t option Fiber.t
 end
 
@@ -292,6 +299,7 @@ module Computation : sig
   type 'a t = 'a Computation0.t =
     { ivar : 'a Fiber.Ivar.t
     ; dag_node : M.Lazy_dag_node.t
+    ; mutable job_priority_dependencies : Dep_node.packed list
     }
 
   val create : unit -> 'a t

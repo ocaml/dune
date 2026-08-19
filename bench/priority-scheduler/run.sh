@@ -51,13 +51,6 @@ rule () {
 unit_duration=$(awk -v j="$jobs" \
   'BEGIN { d = 1 / j; if (d < 0.1) d = 0.1; printf "%.9f", d }')
 
-# Fill every slot briefly so both schedulers select from the same ready queue.
-i=0
-while [ "$i" -lt "$jobs" ]; do
-  rule "gate-$i" 0.05
-  i=$((i + 1))
-done
-
 # For JOBS=m and time unit=u, m*(m-1) independent jobs take (m-1)*u under
 # FIFO and m*u on the m-1 slots left by priority scheduling. A critical path
 # lasting m*u overlaps all independent work in priority mode. The ideal
@@ -85,11 +78,6 @@ rule chain-final "$chain_duration" "$previous"
 
 {
   printf '(alias\n (name benchmark)\n (deps\n'
-  i=0
-  while [ "$i" -lt "$jobs" ]; do
-    printf '  gate-%s\n' "$i"
-    i=$((i + 1))
-  done
   i=0
   while [ "$i" -lt "$independent_jobs" ]; do
     printf '  independent-%s\n' "$i"

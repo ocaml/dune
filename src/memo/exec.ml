@@ -50,6 +50,18 @@ let dep_changed_or_not ~(node : _ Dep_node.t) ~(dep : _ Dep_node.t) : _ Changed_
   | Eq | Lt -> Unchanged
 ;;
 
+let with_job_priority_dependency node ~caller ~factory f =
+  match factory with
+  | None -> f ()
+  | Some _ ->
+    Job_priority.increase node ~caller ~factory;
+    if not (Run.is_current (Dep_node.last_validated_at node))
+    then Job_priority.add_dependency node ~caller;
+    let* result = f () in
+    Job_priority.inherit_from_dependency node ~caller ~factory;
+    Fiber.return result
+;;
+
 let rec restore_from_cache
   : 'i 'o. ('i, 'o) Dep_node.t -> Cycle_error.t Changed_or_not.t Fiber.t
   =
@@ -82,32 +94,32 @@ let rec restore_from_cache
     Deps.changed_or_not
       node.deps
       ~f:(fun[@inline] ~ok_to_recompute_eagerly (Dep_node.T dep) ->
-        Job_priority.increase dep ~caller ~factory;
-        (* If the [Run.is_current] check succeeds then the node must have been [Cached] in
+        with_job_priority_dependency dep ~caller ~factory (fun () ->
+          (* If the [Run.is_current] check succeeds then the node must have been [Cached] in
            the current run, so there is no need to restore it (which would allocate a
            fiber). We can compare the timestamps directly. *)
-        if Run.is_current (Dep_node.last_validated_at dep)
-        then Fiber.return (dep_changed_or_not ~node ~dep)
-        else
-          consider_and_restore_from_cache_without_adding_dep dep
-          >>= function
-          | Unchanged ->
-            (* Here [dep_changed_or_not] can return [Changed] if the [node] was skipped in
+          if Run.is_current (Dep_node.last_validated_at dep)
+          then Fiber.return (dep_changed_or_not ~node ~dep)
+          else
+            consider_and_restore_from_cache_without_adding_dep dep
+            >>= function
+            | Unchanged ->
+              (* Here [dep_changed_or_not] can return [Changed] if the [node] was skipped in
                the previous run, i.e., it was unreachable, while the [dep] wasn't skipped
                and changed. *)
-            Fiber.return (dep_changed_or_not ~node ~dep)
-          | Cancelled { dependency_cycle } ->
-            Fiber.return (Changed_or_not.Cancelled { dependency_cycle })
-          | Changed ->
-            (match Spec.has_cutoff dep.spec with
-             | false when not ok_to_recompute_eagerly ->
-               (* If [dep] has no cutoff and [ok_to_recompute_eagerly] is not set, it is
+              Fiber.return (dep_changed_or_not ~node ~dep)
+            | Cancelled { dependency_cycle } ->
+              Fiber.return (Changed_or_not.Cancelled { dependency_cycle })
+            | Changed ->
+              (match Spec.has_cutoff dep.spec with
+               | false when not ok_to_recompute_eagerly ->
+                 (* If [dep] has no cutoff and [ok_to_recompute_eagerly] is not set, it is
                   sufficient to check whether [dep] is up to date. We are in the [Changed]
                   branch, which means [dep] is not up to date, and we therefore must
                   recompute the [node]. *)
-               Fiber.return Changed_or_not.Changed
-             | _ ->
-               (* If [dep] has a cutoff predicate, it is not sufficient to check whether it
+                 Fiber.return Changed_or_not.Changed
+               | _ ->
+                 (* If [dep] has a cutoff predicate, it is not sufficient to check whether it
                   is up to date: even if it isn't, after we recompute it, the resulting
                   value may remain unchanged, allowing us to skip recomputing the [node].
 
@@ -116,13 +128,13 @@ let rec restore_from_cache
                   [dep] so that its computation runs in parallel with its siblings, instead
                   of being deferred to the compute phase where it might run sequentially. We
                   still report [Changed] in this case since there is no cutoff to check. *)
-               consider_and_compute_without_adding_dep dep
-               >>| (function
-                | Ok () ->
-                  (match Spec.has_cutoff dep.spec with
-                   | false -> Changed_or_not.Changed
-                   | true -> dep_changed_or_not ~node ~dep)
-                | Error dependency_cycle -> Cancelled { dependency_cycle })))
+                 consider_and_compute_without_adding_dep dep
+                 >>| (function
+                  | Ok () ->
+                    (match Spec.has_cutoff dep.spec with
+                     | false -> Changed_or_not.Changed
+                     | true -> dep_changed_or_not ~node ~dep)
+                  | Error dependency_cycle -> Cancelled { dependency_cycle }))))
 
 and compute : 'i 'o. ('i, 'o) Dep_node.t -> unit Fiber.t =
   fun node ->
@@ -293,6 +305,8 @@ let exec_dep_node_with_priority node =
     let* stack = Call_stack.get_call_stack () in
     let caller = List.hd_opt stack in
     Job_priority.increase node ~caller ~factory;
+    if not (Run.is_current (Dep_node.last_validated_at node))
+    then Job_priority.add_dependency node ~caller;
     let* result = exec_dep_node_now node in
     Job_priority.inherit_from_dependency node ~caller ~factory;
     Fiber.return result

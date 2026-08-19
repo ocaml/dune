@@ -137,6 +137,7 @@ module M = struct
     type 'a t =
       { ivar : 'a Fiber.Ivar.t
       ; dag_node : Lazy_dag_node.t
+      ; mutable job_priority_dependencies : Dep_node.packed list
       }
   end =
     Computation0
@@ -286,7 +287,12 @@ end
 module Computation0 = struct
   include M.Computation0
 
-  let create () = { ivar = Fiber.Ivar.create (); dag_node = Lazy_dag_node.create () }
+  let create () =
+    { ivar = Fiber.Ivar.create ()
+    ; dag_node = Lazy_dag_node.create ()
+    ; job_priority_dependencies = []
+    }
+  ;;
 end
 
 (* For debugging *)
@@ -551,21 +557,71 @@ module Job_priority = struct
   ;;
 
   let current_factory () = Fiber.Var.get Job_priority_state.current_factory
+  let succ priority = if priority = Int.max_int then priority else priority + 1
+
+  let is_active_dependency (Dep_node.T dep_node) =
+    match dep_node.state with
+    | Computing _ | Restoring _ -> true
+    | Cached | Not_cached | Out_of_date -> false
+  ;;
+
+  let active_dependencies (dep_node : _ Dep_node.t) =
+    let active dependencies = List.filter dependencies ~f:is_active_dependency in
+    match dep_node.state with
+    | Computing { compute } ->
+      let dependencies = active compute.job_priority_dependencies in
+      compute.job_priority_dependencies <- dependencies;
+      dependencies
+    | Restoring { restore_from_cache } ->
+      let dependencies = active restore_from_cache.job_priority_dependencies in
+      restore_from_cache.job_priority_dependencies <- dependencies;
+      dependencies
+    | Cached | Not_cached | Out_of_date -> []
+  ;;
+
+  let update_priority (dep_node : _ Dep_node.t) ~priority ~(factory : factory) =
+    if priority <= dep_node.job_priority
+    then false
+    else (
+      let increment = priority - dep_node.job_priority in
+      dep_node.job_priority <- priority;
+      (match dep_node.job_priority_handle with
+       | Some current when Id.equal current.factory_id factory.id ->
+         Fiber.Throttle.increase_priority_by current.priority increment
+       | None | Some _ -> ());
+      true)
+  ;;
+
+  let increase_to_at_least (dependency : Dep_node.packed) ~priority ~(factory : factory) =
+    let rec loop = function
+      | [] -> ()
+      | (Dep_node.T dep_node, priority, visited) :: work ->
+        if
+          Id.Set.mem visited dep_node.id
+          || not (update_priority dep_node ~priority ~factory)
+        then loop work
+        else (
+          match active_dependencies dep_node with
+          | [] -> loop work
+          | dependencies ->
+            let visited = Id.Set.add visited dep_node.id in
+            let priority = succ priority in
+            let work =
+              List.fold_left dependencies ~init:work ~f:(fun work dependency ->
+                (dependency, priority, visited) :: work)
+            in
+            loop work)
+    in
+    loop [ dependency, priority, Id.Set.empty ]
+  ;;
 
   let increase (dep_node : _ Dep_node.t) ~caller ~(factory : factory option) =
     match factory, caller with
     | None, _ | Some _, None -> ()
     | Some factory, Some caller ->
       let (Dep_node.T caller) = Stack_frame_with_state.dep_node caller in
-      let old_priority = dep_node.job_priority in
-      let priority = max old_priority caller.job_priority in
-      let priority = if priority = Int.max_int then priority else priority + 1 in
-      let increment = priority - old_priority in
-      dep_node.job_priority <- priority;
-      (match dep_node.job_priority_handle with
-       | Some current when Id.equal current.factory_id factory.id ->
-         Fiber.Throttle.increase_priority_by current.priority increment
-       | None | Some _ -> ())
+      let priority = succ (max dep_node.job_priority caller.job_priority) in
+      increase_to_at_least (Dep_node.T dep_node) ~priority ~factory
   ;;
 
   let inherit_from_dependency
@@ -577,14 +633,33 @@ module Job_priority = struct
     | None, _ | Some _, None -> ()
     | Some factory, Some caller ->
       let (Dep_node.T caller) = Stack_frame_with_state.dep_node caller in
-      let old_priority = caller.job_priority in
-      let priority = max old_priority dep_node.job_priority in
-      let increment = priority - old_priority in
-      caller.job_priority <- priority;
-      (match caller.job_priority_handle with
-       | Some current when Id.equal current.factory_id factory.id ->
-         Fiber.Throttle.increase_priority_by current.priority increment
-       | None | Some _ -> ())
+      ignore
+        (update_priority
+           caller
+           ~priority:(max caller.job_priority dep_node.job_priority)
+           ~factory
+         : bool)
+  ;;
+
+  let add_dependency (dep_node : _ Dep_node.t) ~caller =
+    match caller with
+    | None -> ()
+    | Some caller ->
+      let (Dep_node.T caller) = Stack_frame_with_state.dep_node caller in
+      let dependency = Dep_node.T dep_node in
+      (match caller.state with
+       | Computing { compute } ->
+         compute.job_priority_dependencies
+         <- dependency :: compute.job_priority_dependencies
+       | Restoring { restore_from_cache } ->
+         restore_from_cache.job_priority_dependencies
+         <- dependency :: restore_from_cache.job_priority_dependencies
+       | Cached | Not_cached | Out_of_date ->
+         Code_error.raise
+           "Job_priority.add_dependency: caller is not active"
+           [ "caller", Dep_node.to_dyn_without_state caller
+           ; "state", State.to_dyn caller.state
+           ])
   ;;
 
   let current () =
@@ -678,7 +753,7 @@ module Computation = struct
 
   (* Each computation should be forced exactly once. Not forcing it will lead to
      a deadlock. Forcing it twice will lead to [Fiber.Ivar.fill] raising. *)
-  let force { ivar; dag_node } ~phase ~dep_node fiber =
+  let force { ivar; dag_node; _ } ~phase ~dep_node fiber =
     let frame = Stack_frame_with_state.create phase ~dag_node ~dep_node in
     let* result =
       (* The only reason we make the stack [frame] available to the [fiber] is
@@ -692,7 +767,7 @@ module Computation = struct
       result
   ;;
 
-  let read_but_first_check_for_cycles { ivar; dag_node } ~phase ~dep_node =
+  let read_but_first_check_for_cycles { ivar; dag_node; _ } ~phase ~dep_node =
     match Fiber.Ivar.peek ivar with
     | Some res -> Fiber.return (Ok res)
     | None ->

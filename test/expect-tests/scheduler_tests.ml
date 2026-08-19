@@ -104,6 +104,58 @@ let%expect_test "Memo dependents reprioritize nested queued jobs" =
     low |}]
 ;;
 
+let%expect_test "Memo dependents reprioritize nested queued jobs while restoring" =
+  let go = go ~config:priority_config in
+  let order = ref [] in
+  let job name =
+    let inner_node, inner =
+      Memo.Lazy.Expert.create ~name:("inner-" ^ name) ~cutoff:Unit.equal (fun () ->
+        Memo.of_reproducible_fiber
+          (Scheduler.with_job_slot (fun () ->
+             order := name :: !order;
+             Fiber.return ())))
+    in
+    let outer =
+      Memo.Lazy.create ~name:("outer-" ^ name) (fun () -> Memo.Lazy.force inner)
+    in
+    inner_node, outer
+  in
+  let low_node, low = job "low" in
+  let high_node, high = job "high" in
+  go (fun () -> Memo.parallel_map [ low; high ] ~f:Memo.Lazy.force |> Memo.run >>| ignore);
+  order := [];
+  Memo.reset
+    (Memo.Invalidation.combine
+       (Memo.Node.invalidate ~reason:Memo.Invalidation.Reason.Test low_node)
+       (Memo.Node.invalidate ~reason:Memo.Invalidation.Reason.Test high_node));
+  let consumer name job = Memo.Lazy.create ~name (fun () -> Memo.Lazy.force job) in
+  let consumers =
+    [ consumer "low-consumer-restore" low
+    ; consumer "high-consumer-restore-1" high
+    ; consumer "high-consumer-restore-2" high
+    ]
+  in
+  let blocker_started = Fiber.Ivar.create () in
+  let release_blocker = Fiber.Ivar.create () in
+  go (fun () ->
+    Fiber.fork_and_join_unit
+      (fun () ->
+         Scheduler.with_job_slot (fun () ->
+           let* () = Fiber.Ivar.fill blocker_started () in
+           Fiber.Ivar.read release_blocker))
+      (fun () ->
+         let* () = Fiber.Ivar.read blocker_started in
+         Fiber.fork_and_join_unit
+           (fun () ->
+              Memo.parallel_map consumers ~f:Memo.Lazy.force |> Memo.run >>| ignore)
+           (fun () -> Fiber.Ivar.fill release_blocker ())));
+  List.rev !order |> List.iter ~f:print_endline;
+  [%expect
+    {|
+    high
+    low |}]
+;;
+
 let%expect_test "a priority reservation survives asynchronous bookkeeping" =
   let go = go ~config:priority_config in
   let order = ref [] in

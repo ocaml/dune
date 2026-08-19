@@ -268,17 +268,20 @@ let alias_and_root_module_flags =
   fun base -> Ocaml_flags.append_common base extra |> Ocaml_flags.append_nostdlib
 ;;
 
+let default_flags t =
+  let project = Scope.project t.scope in
+  let dune_version = Dune_project.dune_version project in
+  let profile = Super_context.context t.super_context |> Context.profile in
+  Ocaml_flags.default ~dune_version ~profile
+;;
+
 let for_alias_module t alias_module =
   let keep_flags = Modules.With_vlib.is_stdlib_alias (modules t) alias_module in
   let flags =
     if keep_flags
     then (* in the case of stdlib, these flags can be written by the user *)
       t.flags
-    else (
-      let project = Scope.project t.scope in
-      let dune_version = Dune_project.dune_version project in
-      let profile = Super_context.context t.super_context |> Context.profile in
-      Ocaml_flags.default ~dune_version ~profile)
+    else default_flags t
   in
   let flags =
     match t.instances with
@@ -311,12 +314,7 @@ let for_alias_module t alias_module =
 ;;
 
 let for_root_module t root_module =
-  let flags =
-    let project = Scope.project t.scope in
-    let dune_version = Dune_project.dune_version project in
-    let profile = Super_context.context t.super_context |> Context.profile in
-    Ocaml_flags.default ~profile ~dune_version
-  in
+  let flags = default_flags t in
   { t with
     flags = alias_and_root_module_flags flags
   ; modules = singleton_modules root_module

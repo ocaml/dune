@@ -324,6 +324,12 @@ Motivation and context
   `pyproject.toml`.
 </details>
 
+**Issues**
+
+<!-- TODO -->
+- Support specifying versions in tools stanzas (sats 1.3)
+  - We should reuse `dep_specification` as much as possible.
+
 [uv-versions]: https://github.com/astral-sh/uv/blob/0.12.2/docs/guides/tools.md#requesting-specific-versions
 
 ##### 1.3.1. Version consistency
@@ -390,6 +396,13 @@ Motivation and context
 - *uv* : Satisfied in uv by the `--from` flag which allows running/installing
   "commands" (executables) "from" just the named package, e.g., `$ uvx --from
   httpie http` to run the http tool from the httpie package.
+
+**Issues**
+
+<!-- TODO -->
+- Support specifying subset of binaries for installation
+  - Extend the tools stanza support only installing a subset of executables
+    provided by a package into the executable environment.
 
 </details>
 
@@ -475,6 +488,18 @@ Related issues:
 - *uv* :
   - Supported via system-wide `uv tool install`
 
+**Issues**
+
+<!-- TODO  -->
+- Design basic stanza configuration for discretionary tools
+  - Also addresses (4.2)
+  - Design the basic stanza for specifying discretionary tools. It only needs to
+    be able to specify a package and make all of its executables available via
+    `dune exec`, but these executables must *not* be available to build rules.
+- Implement basic configuration for discretionary tools
+  - Also addresses (4.2)
+  - Implement (land as PRs) the design.
+
 </details>
 
 ### 2. Usability
@@ -499,12 +524,35 @@ otherwise attempt to filter out a user's ambient environment. But it should
 provide pragmatic measures to support users by enforcing this behavior where
 feasible.
 
+
+<details>
+<summary>
+Motivation and context
+</summary>
+
+</details>
+
 ##### 2.1.2. When package management is not enabled in a workspace
 
 When users have not enabled dune package management in a workspace, they must be
 able to use *tools* managed by dune, but they should still be able to use tools
 installed by opam (or other possible package managers) in all operations of
 dune.
+
+
+<details>
+<summary>
+Motivation and context
+</summary>
+
+**Issues**
+
+<!-- TODO -->
+- Ensure tools exec lookup will fallback to the environment when package management is not enabled (2.1.2)
+  - Probably just needs a test to ensure this behavior, so we don't get
+    misleading warnings from 2.1.1
+
+</details>
 
 #### 2.2. Shells
 
@@ -534,6 +582,15 @@ dune tools exec merlin
   `GOBIN`, conventionally on the `PATH`. (`go tool <name>` runs tools from the
   build cache instead, and does not put them on the `PATH`.)
 - *uv* : Satisfied by installed tools being plain executables in the `PATH`.
+
+
+**Issues**
+
+<!-- TODO -->
+- Support putting all tooling binaries into shell environment
+  - Also satisfies 2.3, 3.2.2.1, 3.2.3.1
+  - Ideally thru a single directory of links to binaries, which can be added as,
+    e.g., `PATH=_build/tools/bin:$PATH`.
 
 </details>
 
@@ -584,6 +641,16 @@ Related issues:
   - Good to maintain compatibility with OPAM - but the tradeoff is the amount of
   work needed to achieve it.
 
+
+<details>
+
+**Issues**
+
+<!-- TODO -->
+- Prevent system fallback for dune tool integration subcommands when package
+  management is enabled
+
+</details>
 </details>
 
 ###### 2.3.1.1.2. When package management is not enabled in a workspace
@@ -619,6 +686,14 @@ Motivation and context
 - *uv* : Satisfied by `uv run` executing tools installed in any group, and
   activating a project's virtual environment will bring the tools into your
   path.
+
+**Issues**
+
+<!-- TODO -->
+- Enable putting all dune-managed binaries on system path
+  - Likely a prerequisite for the issue to satisfy 2.2
+  - Ideally thru a single directory of links to binaries, which can be added as,
+    e.g., `PATH=_build/tools/bin:$PATH`.
 
 </details>
 
@@ -729,6 +804,11 @@ avoiding recent compiler versions or making use of these (and many other)
 available tools. This would violate the design principles of orthogonality and
 generality, and yield a necessarily limited usability.
 
+**Issues**
+
+<!-- TODO -->
+- Enable building discretionary tools in isolation from project dependencies
+
 </details>
 
 ###### 3.1.1.1. Optimal builds
@@ -776,6 +856,12 @@ A special purpose field could also be introduced for this purpose.
 We can also consider data added to opam files that allows this requirement to be
 specified for provided tools at the package data level, instead of forcing this
 upon consuming users.
+
+
+**Issues**
+
+<!-- TODO -->
+- Support constraining discretionary tools to integrate with existing lock directories
 
 </details>
 
@@ -840,12 +926,51 @@ resolve `%{bin:...}` forms that attempt to reference them.
 
 By definition, tools referenced in rules are at least D2.
 
+
+<details>
+<summary>
+Motivation and context
+</summary>
+
+**Issues**
+
+<!-- TODO -->
+- Ensure discretionary tools cannot be referenced in build rules
+  - Will at least require a test, may need some caution around design of
+    exposure of bins via `dune exec`
+
+</details>
+
 ###### 3.2.1.2.1. Useful guidance on invalid reference in rules
 
 When a discretionary tool is configured and an invalid reference to it is found
 in a build rule, dune should report an error with clear guidance to users,
 advising them to move the tool configuration into the appropriate package
 dependency.
+
+
+<details>
+<summary>
+Motivation and context
+</summary>
+
+**Issues**
+
+<!-- TODO -->
+- Warn for correct use of declared discretionary tools  (2.1.1)
+  - Only when package management is enabled.
+  - If overlapping with a project dependency, should issue an informative error
+    (discretionary tool is not needed if project dep providing tool is installed)
+  - When relevant bin is referenced in a build rule, fail with an error saying
+    it needs to be made a project dependency.
+  - Discretionary tools (D1) cannot be accessed by build rules (otherwise they
+    would not be discretionary), but users may reasonably infer from the fact
+    that they can run a discretionary tool that it is available for build rules.
+    We should address this confusion by identifying when a configured
+    discretionary tool is referenced by a build action dependency, and warning
+    the user that the tool needs to be "promoted" to a package dependency.
+
+</details>
 
 ###### 3.2.1.3. Subset of D2 and D3 tools functionality
 
@@ -903,6 +1028,17 @@ If a set of tools are qualified with a filter such as `:with-test` or
 `:with-doc`, it must be possible to install just that set together (in addition
 to the unqualified dependencies).
 
+<details>
+<summary>
+Motivation and context
+</summary>
+
+**Issues**
+
+- https://github.com/ocaml/dune/issues/12135
+
+</details>
+
 ###### 3.2.2.3. Builtin D2 tools
 
 A select subset of keystone tools are treated by dune as builtin qualified
@@ -910,6 +1046,18 @@ dependencies, including `odoc`, `utop`, and `ocamlformat` as the most widely
 used. These should be treated as if they have qualified dependencies built in,
 with further constraint or specification of how to install them available as a
 user override on top of the default configuration.
+
+<details>
+<summary>
+Motivation and context
+</summary>
+
+**Issues**
+
+- Provide built-in tool rules for tool integrations
+  - Should provide equivalent behaviour to what is requested in https://gist.github.com/samoht/338e352234bcc2183c2710feb4efc6fc
+
+</details>
 
 ##### 3.2.3. Unqualified dependency tools (D3)
 
@@ -938,6 +1086,19 @@ Users must be able to manage tools using CLI commands:
 - Remove tools
 - Update/upgrade tools
 - Discover paths to tool executables
+
+
+<details>
+<summary>
+Motivation and context
+</summary>
+
+**Issues**
+
+- Implement CLI for adding tools
+  - Will effect updates to the dune-workspace
+
+</details>
 
 ##### 4.1.1. Managing multiple tools
 

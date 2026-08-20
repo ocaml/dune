@@ -172,28 +172,15 @@ module Public = struct
 end
 
 module Server_side = struct
-  module Abort = struct
-    let v1 = Decl.Notification.make_current_gen ~conv:Message.sexp ~version:1
+  let notification name =
+    let generation = Decl.Notification.make_current_gen ~conv:Message.sexp ~version:1 in
+    Decl.Notification.make
+      ~method_:(Method.Name.of_string ("notify/" ^ name))
+      ~generations:[ generation ]
+  ;;
 
-    let decl =
-      Decl.Notification.make
-        ~method_:(Method.Name.of_string "notify/abort")
-        ~generations:[ v1 ]
-    ;;
-  end
-
-  module Log = struct
-    let v1 = Decl.Notification.make_current_gen ~conv:Message.sexp ~version:1
-
-    let decl =
-      Decl.Notification.make
-        ~method_:(Method.Name.of_string "notify/log")
-        ~generations:[ v1 ]
-    ;;
-  end
-
-  let abort = Abort.decl
-  let log = Log.decl
+  let abort = notification "abort"
+  let log = notification "log"
 end
 
 module Poll = struct

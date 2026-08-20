@@ -43,9 +43,16 @@ let kill pid where (signal' : Signal.t) =
   | `Delivered -> `Delivered
   | `Dead -> `Dead
   | `Not_allowed ->
-    Code_error.raise
-      "Not allowed to signal"
-      [ "signal", Signal.to_dyn signal'; "pid", to_dyn pid ]
+    (match where, Platform.OS.value with
+     | `Group, Darwin ->
+       (* On macOS, this error can be expected when signaling a process group:
+          [kill(2)] returns [EPERM] if any group member could not be
+          signaled. *)
+       `Delivered
+     | _ ->
+       Code_error.raise
+         "Not allowed to signal"
+         [ "signal", Signal.to_dyn signal'; "pid", to_dyn pid ])
 ;;
 
 let kill_exn pid where signal =

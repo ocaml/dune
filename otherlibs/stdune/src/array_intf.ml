@@ -9,6 +9,7 @@ module type S = sig
     val iter : t -> f:(elt -> unit) -> unit
     val to_dyn : t -> Dyn.t
     val is_empty : t -> bool
+    val length : t -> int
     val mem : t -> elt -> bool
     val of_list : elt list -> t
     val of_sorted_list : elt list -> t

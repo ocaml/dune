@@ -18,8 +18,12 @@
   [plan.md:107-137](./plan.md#L107-L137),
   [plan.md:393-421](./plan.md#L393-L421)).
 - [ ] Replace scalar Memo priority with run-local, downward-only root demand
-  propagation ([plan.md:139-219](./plan.md#L139-L219),
-  [plan.md:423-458](./plan.md#L423-L458)).
+  propagation; implementation is present, but this milestone remains open until
+  generation-transition quiescence and the planned dynamic dependency, cycle,
+  and multi-target integration coverage are complete
+  ([plan.md:139-219](./plan.md#L139-L219),
+  [plan.md:423-487](./plan.md#L423-L487),
+  [plan.md:516-529](./plan.md#L516-L529)).
 - [ ] Remove demand on normal completion, cancellation, and watch restart
   ([plan.md:251-278](./plan.md#L251-L278),
   [plan.md:460-487](./plan.md#L460-L487)).
@@ -69,3 +73,22 @@
   [plan.md:393-421](./plan.md#L393-L421),
   [plan.md:423-451](./plan.md#L423-L451),
   [plan.md:516-542](./plan.md#L516-L542)).
+- **2026-08-20:** Replaced persistent scalar node priorities with a side-table
+  registry keyed by scheduler factory and Memo generation. Root membership now
+  propagates only from callers to active dependencies through an idempotent
+  `(root, node)` worklist, and queue handles use the maximum class score without
+  dependency-to-caller inheritance. Generation-transition demotion and
+  quiescence remain Stage 5 lifecycle work
+  ([plan.md:139-219](./plan.md#L139-L219),
+  [plan.md:423-487](./plan.md#L423-L487)).
+- **2026-08-20:** Replaced repeated-consumer expectations with class-based tests
+  covering repeated observation of one root, distinct same-class roots, late
+  nested `Direct` promotion, exact `Direct`/`Bulk` membership without upward
+  leakage, restoration, asynchronous continuation priority, and a direct
+  dependency chain. Target classification, dynamic dependency, transient
+  cycle, and multi-target rule integration remain for Stage 6/Task 9.
+  `./dune.exe runtest test/expect-tests/scheduler_tests.ml`,
+  `./dune.exe runtest src/fiber/test/ test/expect-tests/memo/`, and
+  `./dune.exe build @check @fmt` passed
+  ([plan.md:435-458](./plan.md#L435-L458),
+  [plan.md:489-529](./plan.md#L489-L529)).

@@ -50,16 +50,13 @@ let dep_changed_or_not ~(node : _ Dep_node.t) ~(dep : _ Dep_node.t) : _ Changed_
   | Eq | Lt -> Unchanged
 ;;
 
-let with_job_priority_dependency node ~caller ~factory f =
+let with_job_priority_dependency node ~caller ~root ~factory f =
   match factory with
   | None -> f ()
-  | Some _ ->
-    Job_priority.increase node ~caller ~factory;
+  | Some factory ->
     if not (Run.is_current (Dep_node.last_validated_at node))
-    then Job_priority.add_dependency node ~caller;
-    let* result = f () in
-    Job_priority.inherit_from_dependency node ~caller ~factory;
-    Fiber.return result
+    then Job_priority.observe_dependency node ~caller ~root ~factory;
+    f ()
 ;;
 
 let rec restore_from_cache
@@ -89,12 +86,17 @@ let rec restore_from_cache
       | None -> Fiber.return None
       | Some _ -> Call_stack.get_call_stack () >>| List.hd_opt
     in
+    let* root =
+      match factory with
+      | None -> Fiber.return None
+      | Some _ -> Job_priority.current_root ()
+    in
     (* Make sure [f] gets inlined to avoid unnecessary closure allocations and improve
        stack traces in profiling. *)
     Deps.changed_or_not
       node.deps
       ~f:(fun[@inline] ~ok_to_recompute_eagerly (Dep_node.T dep) ->
-        with_job_priority_dependency dep ~caller ~factory (fun () ->
+        with_job_priority_dependency dep ~caller ~root ~factory (fun () ->
           (* If the [Run.is_current] check succeeds then the node must have been [Cached] in
            the current run, so there is no need to restore it (which would allocate a
            fiber). We can compare the timestamps directly. *)
@@ -301,15 +303,13 @@ let exec_dep_node_with_priority node =
   let* factory = Job_priority.current_factory () in
   match factory with
   | None -> exec_dep_node_now node
-  | Some _ ->
+  | Some factory ->
     let* stack = Call_stack.get_call_stack () in
     let caller = List.hd_opt stack in
-    Job_priority.increase node ~caller ~factory;
+    let* root = Job_priority.current_root () in
     if not (Run.is_current (Dep_node.last_validated_at node))
-    then Job_priority.add_dependency node ~caller;
-    let* result = exec_dep_node_now node in
-    Job_priority.inherit_from_dependency node ~caller ~factory;
-    Fiber.return result
+    then Job_priority.observe_dependency node ~caller ~root ~factory;
+    exec_dep_node_now node
 ;;
 
 let exec_dep_node node = Fiber.of_thunk_apply exec_dep_node_with_priority node

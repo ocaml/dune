@@ -30,10 +30,6 @@ module Metrics = Metrics
 open! Import
 module Id : Id.S
 
-module Job_priority_state : sig
-  type t
-end
-
 module M : sig
   module Import : sig
     module Dag = Dag
@@ -58,8 +54,6 @@ module M : sig
       ; mutable value : 'o Value.t
       ; mutable runs : Run.Pair.t
       ; mutable deps : packed Deps.t
-      ; mutable job_priority : int
-      ; mutable job_priority_handle : Job_priority_state.t option
       }
 
     and packed = T : ('a, 'b) t -> packed [@@unboxed]
@@ -112,8 +106,6 @@ module Dep_node : sig
     ; mutable deps : packed Deps.t
       (** The dependencies captured at [last_validated_at], in the order they were depended
         on. *)
-    ; mutable job_priority : int
-    ; mutable job_priority_handle : Job_priority_state.t option
     }
 
   and packed = M.Dep_node.packed = T : ('a, 'b) t -> packed [@@unboxed]
@@ -295,23 +287,14 @@ module Job_priority : sig
 
   module For_tests : sig
     val current_root : unit -> (Demand_class.t * int) option Fiber.t
+    val current_node_roots : unit -> (Demand_class.t * int) list Fiber.t
   end
 
-  val increase
+  val observe_dependency
     :  ('i, 'o) Dep_node.t
     -> caller:Stack_frame_with_state.t option
-    -> factory:factory option
-    -> unit
-
-  val inherit_from_dependency
-    :  ('i, 'o) Dep_node.t
-    -> caller:Stack_frame_with_state.t option
-    -> factory:factory option
-    -> unit
-
-  val add_dependency
-    :  ('i, 'o) Dep_node.t
-    -> caller:Stack_frame_with_state.t option
+    -> root:root option
+    -> factory:factory
     -> unit
 
   val current : unit -> t option Fiber.t

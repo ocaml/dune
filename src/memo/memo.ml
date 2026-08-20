@@ -159,8 +159,6 @@ let make_dep_node ~spec ~input : _ Dep_node.t =
   ; value = Uninitialized
   ; runs = Run.Pair.invalid
   ; deps = Deps.empty
-  ; job_priority = 0
-  ; job_priority_handle = None
   }
 ;;
 

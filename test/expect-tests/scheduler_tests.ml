@@ -70,123 +70,177 @@ let%expect_test "Action builder demand roots are eager and fresh" =
     distinct IDs: true |}]
 ;;
 
-let%expect_test "Memo dependencies reprioritize queued jobs" =
-  let go = go ~config:priority_config in
+let run_with_demand demand_class memo =
+  Memo.with_job_demand demand_class (fun () -> memo) |> Memo.run
+;;
+
+let%expect_test "the same root observes an active nested dependency once" =
+  let module Demand_class = Memo.Job_priority.Demand_class in
+  let inner_started = Fiber.Ivar.create () in
+  let inspect_roots = Fiber.Ivar.create () in
+  let inner =
+    Memo.Lazy.create ~name:"same-root-inner" (fun () ->
+      Memo.of_reproducible_fiber
+        (let* () = Fiber.Ivar.fill inner_started () in
+         let* () = Fiber.Ivar.read inspect_roots in
+         let+ roots = Memo.Job_priority.For_tests.current_node_roots () in
+         let root_id =
+           match roots with
+           | [ (Demand_class.Bulk, root_id) ] -> Some root_id
+           | [] | [ ((Normal | Direct), _) ] | _ :: _ :: _ -> None
+         in
+         Printf.printf "one bulk root ID: %b\n" (Option.is_some root_id)))
+  in
+  let outer =
+    Memo.Lazy.create ~name:"same-root-outer" (fun () -> Memo.Lazy.force inner)
+  in
+  let force_twice =
+    Memo.with_job_demand Demand_class.Bulk (fun () ->
+      Memo.parallel_map [ outer; outer ] ~f:Memo.Lazy.force)
+  in
+  go ~config:priority_config (fun () ->
+    Fiber.fork_and_join_unit
+      (fun () -> Memo.run force_twice >>| ignore)
+      (fun () ->
+         let* () = Fiber.Ivar.read inner_started in
+         Fiber.Ivar.fill inspect_roots ()));
+  [%expect {| one bulk root ID: true |}]
+;;
+
+let%expect_test "distinct same-class roots reach an active nested dependency" =
+  let module Demand_class = Memo.Job_priority.Demand_class in
+  let inner_started = Fiber.Ivar.create () in
+  let inspect_roots = Fiber.Ivar.create () in
+  let inner =
+    Memo.Lazy.create ~name:"distinct-roots-inner" (fun () ->
+      Memo.of_reproducible_fiber
+        (let* () = Fiber.Ivar.fill inner_started () in
+         let* () = Fiber.Ivar.read inspect_roots in
+         let+ roots = Memo.Job_priority.For_tests.current_node_roots () in
+         let classes =
+           List.map roots ~f:(fun (demand_class, _) ->
+             match demand_class with
+             | Demand_class.Bulk -> "bulk"
+             | Normal -> "normal"
+             | Direct -> "direct")
+           |> List.sort ~compare:String.compare
+         in
+         Printf.printf "roots: %s\n" (String.concat ~sep:"," classes)))
+  in
+  let outer =
+    Memo.Lazy.create ~name:"distinct-roots-outer" (fun () -> Memo.Lazy.force inner)
+  in
+  go ~config:priority_config (fun () ->
+    Fiber.fork_and_join_unit
+      (fun () -> run_with_demand Demand_class.Bulk (Memo.Lazy.force outer))
+      (fun () ->
+         let* () = Fiber.Ivar.read inner_started in
+         Fiber.fork_and_join_unit
+           (fun () -> run_with_demand Demand_class.Bulk (Memo.Lazy.force outer))
+           (fun () -> Fiber.Ivar.fill inspect_roots ())));
+  [%expect {| roots: bulk,bulk |}]
+;;
+
+let%expect_test "late direct demand promotes nested work without leaking upward" =
+  let module Demand_class = Memo.Job_priority.Demand_class in
   let order = ref [] in
-  let job name =
-    Memo.Lazy.create ~name:("job-" ^ name) (fun () ->
+  let record name = order := name :: !order in
+  let inner_ready = Fiber.Ivar.create () in
+  let inner =
+    Memo.Lazy.create ~name:"shared-inner" (fun () ->
+      Memo.of_reproducible_fiber
+        (let* () = Fiber.Ivar.fill inner_ready () in
+         Scheduler.with_job_slot (fun () ->
+           let+ roots = Memo.Job_priority.For_tests.current_node_roots () in
+           let classes =
+             List.map roots ~f:(fun (demand_class, _) ->
+               match demand_class with
+               | Demand_class.Bulk -> "bulk"
+               | Normal -> "normal"
+               | Direct -> "direct")
+             |> List.sort ~compare:String.compare
+           in
+           Printf.printf "shared roots: %s\n" (String.concat ~sep:"," classes);
+           record "shared")))
+  in
+  let outer = Memo.Lazy.create ~name:"shared-outer" (fun () -> Memo.Lazy.force inner) in
+  let bulk_caller =
+    Memo.Lazy.create ~name:"bulk-caller" (fun () ->
+      let open Memo.O in
+      let* () = Memo.Lazy.force outer in
       Memo.of_reproducible_fiber
         (Scheduler.with_job_slot (fun () ->
-           order := name :: !order;
+           record "bulk-continuation";
            Fiber.return ())))
   in
-  let low = job "low" in
-  let high = job "high" in
-  let consumer name job = Memo.Lazy.create ~name (fun () -> Memo.Lazy.force job) in
-  let consumers =
-    [ consumer "low-consumer" low
-    ; consumer "high-consumer-1" high
-    ; consumer "high-consumer-2" high
-    ]
+  let normal =
+    Memo.Lazy.create ~name:"normal" (fun () ->
+      Memo.of_reproducible_fiber
+        (Scheduler.with_job_slot (fun () ->
+           record "normal";
+           Fiber.return ())))
   in
   let blocker_started = Fiber.Ivar.create () in
   let release_blocker = Fiber.Ivar.create () in
-  go (fun () ->
-    Fiber.fork_and_join_unit
-      (fun () ->
-         Scheduler.with_job_slot (fun () ->
-           let* () = Fiber.Ivar.fill blocker_started () in
-           Fiber.Ivar.read release_blocker))
-      (fun () ->
-         let* () = Fiber.Ivar.read blocker_started in
-         Fiber.fork_and_join_unit
-           (fun () ->
-              Memo.parallel_map consumers ~f:Memo.Lazy.force |> Memo.run >>| ignore)
-           (fun () -> Fiber.Ivar.fill release_blocker ())));
+  go ~config:priority_config (fun () ->
+    Fiber.parallel_iter
+      [ (fun () ->
+          Scheduler.with_job_slot (fun () ->
+            let* () = Fiber.Ivar.fill blocker_started () in
+            Fiber.Ivar.read release_blocker))
+      ; (fun () ->
+          let* () = Fiber.Ivar.read blocker_started in
+          run_with_demand Demand_class.Bulk (Memo.Lazy.force bulk_caller))
+      ; (fun () ->
+          let* () = Fiber.Ivar.read inner_ready in
+          Fiber.fork_and_join_unit
+            (fun () -> run_with_demand Demand_class.Normal (Memo.Lazy.force normal))
+            (fun () ->
+               Fiber.fork_and_join_unit
+                 (fun () -> run_with_demand Demand_class.Direct (Memo.Lazy.force outer))
+                 (fun () -> Fiber.Ivar.fill release_blocker ())))
+      ]
+      ~f:(fun f -> f ()));
   List.rev !order |> List.iter ~f:print_endline;
   [%expect
     {|
-    high
-    low |}]
+    shared roots: bulk,direct
+    shared
+    normal
+    bulk-continuation |}]
 ;;
 
-let%expect_test "Memo dependents reprioritize nested queued jobs" =
-  let go = go ~config:priority_config in
-  let order = ref [] in
-  let job name =
-    let inner =
-      Memo.Lazy.create ~name:("inner-" ^ name) (fun () ->
-        Memo.of_reproducible_fiber
-          (Scheduler.with_job_slot (fun () ->
-             order := name :: !order;
-             Fiber.return ())))
-    in
-    Memo.Lazy.create ~name:("outer-" ^ name) (fun () -> Memo.Lazy.force inner)
-  in
-  let low = job "low" in
-  let high = job "high" in
-  let consumer name job = Memo.Lazy.create ~name (fun () -> Memo.Lazy.force job) in
-  let consumers =
-    [ consumer "low-consumer" low
-    ; consumer "high-consumer-1" high
-    ; consumer "high-consumer-2" high
-    ]
-  in
-  let blocker_started = Fiber.Ivar.create () in
-  let release_blocker = Fiber.Ivar.create () in
-  go (fun () ->
-    Fiber.fork_and_join_unit
-      (fun () ->
-         Scheduler.with_job_slot (fun () ->
-           let* () = Fiber.Ivar.fill blocker_started () in
-           Fiber.Ivar.read release_blocker))
-      (fun () ->
-         let* () = Fiber.Ivar.read blocker_started in
-         Fiber.fork_and_join_unit
-           (fun () ->
-              Memo.parallel_map consumers ~f:Memo.Lazy.force |> Memo.run >>| ignore)
-           (fun () -> Fiber.Ivar.fill release_blocker ())));
-  List.rev !order |> List.iter ~f:print_endline;
-  [%expect
-    {|
-    high
-    low |}]
-;;
-
-let%expect_test "Memo dependents reprioritize nested queued jobs while restoring" =
-  let go = go ~config:priority_config in
+let%expect_test "demand classes propagate while restoring Memo dependencies" =
+  let module Demand_class = Memo.Job_priority.Demand_class in
   let order = ref [] in
   let job name =
     let inner_node, inner =
-      Memo.Lazy.Expert.create ~name:("inner-" ^ name) ~cutoff:Unit.equal (fun () ->
-        Memo.of_reproducible_fiber
-          (Scheduler.with_job_slot (fun () ->
-             order := name :: !order;
-             Fiber.return ())))
+      Memo.Lazy.Expert.create
+        ~name:("restore-inner-" ^ name)
+        ~cutoff:Unit.equal
+        (fun () ->
+           Memo.of_reproducible_fiber
+             (Scheduler.with_job_slot (fun () ->
+                order := name :: !order;
+                Fiber.return ())))
     in
     let outer =
-      Memo.Lazy.create ~name:("outer-" ^ name) (fun () -> Memo.Lazy.force inner)
+      Memo.Lazy.create ~name:("restore-outer-" ^ name) (fun () -> Memo.Lazy.force inner)
     in
     inner_node, outer
   in
-  let low_node, low = job "low" in
-  let high_node, high = job "high" in
-  go (fun () -> Memo.parallel_map [ low; high ] ~f:Memo.Lazy.force |> Memo.run >>| ignore);
+  let bulk_node, bulk = job "bulk" in
+  let direct_node, direct = job "direct" in
+  go ~config:priority_config (fun () ->
+    Memo.parallel_map [ bulk; direct ] ~f:Memo.Lazy.force |> Memo.run >>| ignore);
   order := [];
   Memo.reset
     (Memo.Invalidation.combine
-       (Memo.Node.invalidate ~reason:Memo.Invalidation.Reason.Test low_node)
-       (Memo.Node.invalidate ~reason:Memo.Invalidation.Reason.Test high_node));
-  let consumer name job = Memo.Lazy.create ~name (fun () -> Memo.Lazy.force job) in
-  let consumers =
-    [ consumer "low-consumer-restore" low
-    ; consumer "high-consumer-restore-1" high
-    ; consumer "high-consumer-restore-2" high
-    ]
-  in
+       (Memo.Node.invalidate ~reason:Memo.Invalidation.Reason.Test bulk_node)
+       (Memo.Node.invalidate ~reason:Memo.Invalidation.Reason.Test direct_node));
   let blocker_started = Fiber.Ivar.create () in
   let release_blocker = Fiber.Ivar.create () in
-  go (fun () ->
+  go ~config:priority_config (fun () ->
     Fiber.fork_and_join_unit
       (fun () ->
          Scheduler.with_job_slot (fun () ->
@@ -194,19 +248,20 @@ let%expect_test "Memo dependents reprioritize nested queued jobs while restoring
            Fiber.Ivar.read release_blocker))
       (fun () ->
          let* () = Fiber.Ivar.read blocker_started in
-         Fiber.fork_and_join_unit
-           (fun () ->
-              Memo.parallel_map consumers ~f:Memo.Lazy.force |> Memo.run >>| ignore)
-           (fun () -> Fiber.Ivar.fill release_blocker ())));
+         Fiber.parallel_iter
+           [ (fun () -> run_with_demand Demand_class.Bulk (Memo.Lazy.force bulk))
+           ; (fun () -> run_with_demand Demand_class.Direct (Memo.Lazy.force direct))
+           ; (fun () -> Fiber.Ivar.fill release_blocker ())
+           ]
+           ~f:(fun f -> f ())));
   List.rev !order |> List.iter ~f:print_endline;
   [%expect
     {|
-    high
-    low |}]
+    direct
+    bulk |}]
 ;;
 
 let%expect_test "a priority reservation survives asynchronous bookkeeping" =
-  let go = go ~config:priority_config in
   let order = ref [] in
   let record name = order := name :: !order in
   let low =
@@ -237,16 +292,10 @@ let%expect_test "a priority reservation survives asynchronous bookkeeping" =
            record "high-2";
            Fiber.return ())))
   in
-  let consumer name job = Memo.Lazy.create ~name (fun () -> Memo.Lazy.force job) in
-  let consumers =
-    [ consumer "low-consumer" low
-    ; consumer "high-consumer-1" high
-    ; consumer "high-consumer-2" high
-    ]
-  in
+  let module Demand_class = Memo.Job_priority.Demand_class in
   let blocker_started = Fiber.Ivar.create () in
   let release_blocker = Fiber.Ivar.create () in
-  go (fun () ->
+  go ~config:priority_config (fun () ->
     Fiber.fork_and_join_unit
       (fun () ->
          Scheduler.with_job_slot (fun () ->
@@ -254,10 +303,12 @@ let%expect_test "a priority reservation survives asynchronous bookkeeping" =
            Fiber.Ivar.read release_blocker))
       (fun () ->
          let* () = Fiber.Ivar.read blocker_started in
-         Fiber.fork_and_join_unit
-           (fun () ->
-              Memo.parallel_map consumers ~f:Memo.Lazy.force |> Memo.run >>| ignore)
-           (fun () -> Fiber.Ivar.fill release_blocker ())));
+         Fiber.parallel_iter
+           [ (fun () -> run_with_demand Demand_class.Bulk (Memo.Lazy.force low))
+           ; (fun () -> run_with_demand Demand_class.Direct (Memo.Lazy.force high))
+           ; (fun () -> Fiber.Ivar.fill release_blocker ())
+           ]
+           ~f:(fun f -> f ())));
   List.rev !order |> List.iter ~f:print_endline;
   [%expect
     {|
@@ -330,7 +381,6 @@ let%expect_test "a deferred priority restart cannot strand waiters" =
 ;;
 
 let%expect_test "Memo priorities propagate through dependency chains" =
-  let go = go ~config:priority_config in
   let order = ref [] in
   let job name =
     Memo.Lazy.create ~name:("job-" ^ name) (fun () ->
@@ -352,9 +402,10 @@ let%expect_test "Memo priorities propagate through dependency chains" =
              order := name :: !order;
              Fiber.return ()))))
   in
+  let module Demand_class = Memo.Job_priority.Demand_class in
   let blocker_started = Fiber.Ivar.create () in
   let release_blocker = Fiber.Ivar.create () in
-  go (fun () ->
+  go ~config:priority_config (fun () ->
     Fiber.fork_and_join_unit
       (fun () ->
          Scheduler.with_job_slot (fun () ->
@@ -362,10 +413,12 @@ let%expect_test "Memo priorities propagate through dependency chains" =
            Fiber.Ivar.read release_blocker))
       (fun () ->
          let* () = Fiber.Ivar.read blocker_started in
-         Fiber.fork_and_join_unit
-           (fun () ->
-              Memo.parallel_map [ low; chain ] ~f:Memo.Lazy.force |> Memo.run >>| ignore)
-           (fun () -> Fiber.Ivar.fill release_blocker ())));
+         Fiber.parallel_iter
+           [ (fun () -> run_with_demand Demand_class.Bulk (Memo.Lazy.force low))
+           ; (fun () -> run_with_demand Demand_class.Direct (Memo.Lazy.force chain))
+           ; (fun () -> Fiber.Ivar.fill release_blocker ())
+           ]
+           ~f:(fun f -> f ())));
   List.rev !order |> List.iter ~f:print_endline;
   [%expect
     {|

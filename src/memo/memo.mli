@@ -400,6 +400,8 @@ module Job_priority : sig
     (** Internal observation of the current demand root for tests. Do not use in
         production code. *)
     val current_root : unit -> (Demand_class.t * int) option Fiber.t
+
+    val current_node_roots : unit -> (Demand_class.t * int) list Fiber.t
   end
 end
 

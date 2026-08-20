@@ -104,7 +104,7 @@ let decode =
   fields
     (let+ applies_to = field "applies_to" decode_applies_to ~default:default_applies_to
      and+ alias = field_o "alias" Dune_lang.Alias.decode
-     and+ deps = field_o "deps" (Bindings.decode Dep_conf.decode)
+     and+ deps = field_o "deps" Dep_conf.decode_bindings
      and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:None ()
      and+ locks = Locks.field ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 9)) ()
      and+ package =

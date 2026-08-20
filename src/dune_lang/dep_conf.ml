@@ -151,6 +151,25 @@ let decode files =
 let decode_no_files = decode `Forbid
 let decode = decode `Allow
 
+let decode_bindings =
+  let+ bindings = Bindings.decode decode in
+  Bindings.fold bindings ~init:() ~f:(fun binding () ->
+    match binding with
+    | Bindings.Unnamed _ -> ()
+    | Named (name, deps) ->
+      List.iter deps ~f:(function
+        | Package package ->
+          User_error.raise
+            ~loc:(String_with_vars.loc package)
+            ~hints:[ Pp.text "Place the (package ...) entry in the deps list directly." ]
+            [ Pp.textf
+                "(package ...) is not supported inside a named dependency binding (:%s)."
+                name
+            ]
+        | _ -> ()));
+  bindings
+;;
+
 let command_line_parser ~stanza_version =
   Syntax.set
     Stanza.syntax

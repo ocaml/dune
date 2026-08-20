@@ -286,11 +286,20 @@ module Job_priority : sig
   val root_demand_class : root -> Demand_class.t
   val invalidate_current_registry : unit -> unit
 
+  type trace =
+    { generation : int
+    ; node_id : int
+    ; roots : (Demand_class.t * int) list
+    }
+
+  val current_trace : unit -> trace option Fiber.t
+
   module For_tests : sig
     val current_root : unit -> (Demand_class.t * int) option Fiber.t
     val current_node_roots : unit -> (Demand_class.t * int) list Fiber.t
     val remove_current_root : unit -> unit Fiber.t
     val current_registry_stats : unit -> (int * int) Fiber.t
+    val global_registry_stats : unit -> int * int
   end
 
   val observe_dependency

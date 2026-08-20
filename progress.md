@@ -6,32 +6,32 @@
   existing priority scheduler is experimental and disabled by default
   ([plan.md:3-11](./plan.md#L3-L11),
   [plan.md:331-336](./plan.md#L331-L336)).
-- [ ] Capture the mixed-root failure and add correlated scheduler tracing
+- [x] Capture the mixed-root failure and add correlated scheduler tracing
   ([plan.md:297-329](./plan.md#L297-L329),
   [plan.md:338-362](./plan.md#L338-L362)).
 - [x] Add bidirectional queue priority updates while preserving FIFO and restart
   semantics ([plan.md:221-249](./plan.md#L221-L249),
   [plan.md:364-391](./plan.md#L364-L391)).
-- [ ] Preserve resolved root grouping, infer `Direct`, `Normal`, and `Bulk`
+- [x] Preserve resolved root grouping, infer `Direct`, `Normal`, and `Bulk`
   without changing the CLI, and add Action-builder demand scopes
   ([plan.md:39-65](./plan.md#L39-L65),
   [plan.md:107-137](./plan.md#L107-L137),
   [plan.md:393-421](./plan.md#L393-L421)).
-- [ ] Replace scalar Memo priority with run-local, downward-only root demand
-  propagation; implementation is present, but this milestone remains open until
-  generation-transition quiescence and the planned dynamic dependency, cycle,
-  and multi-target integration coverage are complete
+- [x] Replace scalar Memo priority with run-local, downward-only root demand
+  propagation, including generation-transition quiescence and dynamic
+  dependency, cycle, and multi-target integration coverage
   ([plan.md:139-219](./plan.md#L139-L219),
   [plan.md:423-487](./plan.md#L423-L487),
   [plan.md:516-529](./plan.md#L516-L529)).
-- [ ] Remove demand on normal completion, cancellation, and watch restart;
-  lifecycle implementation and focused coverage are present, but production
-  watch/RPC restart integration remains for Task 9
+- [x] Remove demand on normal completion, cancellation, and watch restart,
+  including a production watch/RPC cancel-reset-next-build path
   ([plan.md:251-278](./plan.md#L251-L278),
   [plan.md:460-487](./plan.md#L460-L487),
   [plan.md:516-529](./plan.md#L516-L529)).
 - [ ] Validate deterministic behavior, the mixed-root workload, and the full
-  repository checks ([plan.md:489-542](./plan.md#L489-L542)).
+  repository checks; focused validation is complete, while the final full
+  `@runtest` gate remains for the parent session
+  ([plan.md:489-542](./plan.md#L489-L542)).
 
 ## Progress Log
 
@@ -112,7 +112,55 @@
   isolation, and enabled/disabled synthetic `Build_system.run` demand. Existing
   Fiber coverage continues to exercise deferred restart, resize,
   equal-priority, and shared-handle accounting; scheduler lifecycle cases run at
-  `-j1`. Production watch/RPC restart integration remains for Task 9, so the
-  lifecycle milestone remains open
+  `-j1`. At this point, production watch/RPC restart integration was left for
+  Task 9
   ([plan.md:460-487](./plan.md#L460-L487),
   [plan.md:489-529](./plan.md#L489-L529)).
+- **2026-08-20:** Added priority-enabled scheduler `job-slot` trace events for
+  ready/start decisions with a stable attempt ID, current integer class rank,
+  waiting length, Memo generation/node, and active root IDs/classes. Process
+  starts from local and action-runner execution reference the admitted attempt.
+  A deterministic `-j1` mixed-root cram uses the existing
+  CLI forms in intentionally unhelpful order: source directory `Bulk`, exact
+  alias `Normal`, then concrete `Direct`. Its generated-source fan-in and late
+  action-plugin dependency prove uninterrupted Direct selection and
+  Normal-before-remaining-Bulk selection; its shared multi-target rule proves
+  single execution and enabled/disabled action-multiset equivalence. A generated
+  directory expanded into two contexts further proves distinct Memo nodes retain
+  one original concrete-target root
+  ([plan.md:297-329](./plan.md#L297-L329),
+  [plan.md:338-362](./plan.md#L338-L362),
+  [plan.md:516-542](./plan.md#L516-L542)).
+- **2026-08-20:** Preserved the existing transient dependency-cycle suite in
+  default mode and added one focused priority-enabled transient-cycle
+  invocation. The production RPC request-during-eager-build
+  cancellation/restart test runs with priority scheduling enabled. Both modes
+  terminate and the watch test reaches a
+  successful reset/restarted build without stale demand or deadlock
+  ([plan.md:423-487](./plan.md#L423-L487),
+  [plan.md:489-529](./plan.md#L489-L529)).
+- **2026-08-20:** Focused mixed-root, dynamic-cycle, and watch/RPC tests pass,
+  alongside scheduler, Memo/Fiber, and `@check @fmt` validation. The final full
+  repository `@runtest` gate is intentionally left to the parent session, so
+  the Stage 6 validation milestone remains open
+  ([plan.md:489-512](./plan.md#L489-L512),
+  [plan.md:516-542](./plan.md#L516-L542)).
+- **2026-08-20:** Final review fixes clear the global demand registry at factory
+  exit, clear node/root maps after synchronous handle demotion, and maintain
+  per-class membership counts so root removal derives the next score in O(1).
+  Test-only invariants validate counts, roots, and score; nested demand scopes
+  under an active Memo stack are documented and rejected. Focused scheduler,
+  mixed-root, generated-directory/multi-context, action-runner trace, cycle, and
+  watch/RPC tests plus `@check @fmt` pass
+  ([plan.md:139-219](./plan.md#L139-L219),
+  [plan.md:251-329](./plan.md#L251-L329),
+  [plan.md:423-512](./plan.md#L423-L512)).
+- **2026-08-20:** Attempted the full
+  `./dune.exe build @check @fmt @runtest` gate twice. The changed scheduler,
+  Memo, Fiber, mixed-root, action-runner trace, cycle, and watch/RPC targets pass,
+  but the repository-wide run cannot complete in this sandbox: watch tests try
+  to create `/run/user/1000/dune` on a read-only mount, bubblewrap cannot create
+  a user namespace, and optional `utop`, `cinaps`, `melange`, and plugin test
+  dependencies are unavailable. No output was promoted
+  ([plan.md:489-512](./plan.md#L489-L512),
+  [plan.md:516-542](./plan.md#L516-L542)).

@@ -390,11 +390,21 @@ module Job_priority : sig
 
   type t = Fiber.Throttle.priority
 
-  (** Install a factory for priorities created while running [f]. *)
+  (** Install a factory for priorities created while running [f]. Demand state and
+      references to priority handles are cleared when the factory scope exits. *)
   val with_factory : (priority:int -> t) -> (unit -> 'a Fiber.t) -> 'a Fiber.t
 
   (** Return the priority of the current Memo computation, if it has one. *)
   val current : unit -> t option Fiber.t
+
+  type trace =
+    { generation : int
+    ; node_id : int
+    ; roots : (Demand_class.t * int) list
+    }
+
+  (** Return trace identity for the current Memo computation and its active demand roots. *)
+  val current_trace : unit -> trace option Fiber.t
 
   (** Invalidate all job demand in the current Memo run. This is called synchronously
       when canceling a build, before cancellation handlers run. *)
@@ -408,11 +418,13 @@ module Job_priority : sig
     val current_node_roots : unit -> (Demand_class.t * int) list Fiber.t
     val remove_current_root : unit -> unit Fiber.t
     val current_registry_stats : unit -> (int * int) Fiber.t
+    val global_registry_stats : unit -> int * int
   end
 end
 
-(** When priority scheduling is active, run [f] with a fresh root carrying
-    [demand_class]. With priority scheduling disabled, run [f] without allocating a root. *)
+(** Outer, non-memoized demand scope. When priority scheduling is active, run [f] with a
+    fresh root carrying [demand_class]. Entering this scope from an active Memo computation
+    is an error. With priority scheduling disabled, run [f] without allocating a root. *)
 val with_job_demand : Job_priority.Demand_class.t -> (unit -> 'a t) -> 'a t
 
 (** Insert a stack frame to make call stacks more precise when showing them to

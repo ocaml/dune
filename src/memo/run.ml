@@ -4,6 +4,7 @@ type t = int
 
 let compare = Int.compare
 let to_dyn = Dyn.int
+let to_int t = t
 let current = ref 0
 let is_current t = Int.equal !current t
 let restart () = incr current
@@ -41,5 +42,5 @@ end
 
 module For_testing = struct
   let of_int t = t
-  let to_int t = t
+  let to_int = to_int
 end

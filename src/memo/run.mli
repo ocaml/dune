@@ -13,6 +13,7 @@ open Stdune
 type t [@@immediate]
 
 val to_dyn : t -> Dyn.t
+val to_int : t -> int
 
 (** Return the current run. *)
 val current : unit -> t

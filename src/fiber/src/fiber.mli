@@ -361,11 +361,17 @@ module Throttle : sig
   (** How many jobs can run at the same time *)
   val size : t -> int
 
+  (** Return the number of jobs waiting to run. *)
+  val waiting : t -> int
+
   (** Change the number of jobs that can run at once *)
   val resize : t -> int -> unit fiber
 
   (** Create a priority handle owned by the throttler. *)
   val create_priority : ?priority:int -> t -> priority
+
+  (** Return the priority represented by the handle. *)
+  val priority : priority -> int
 
   (** Set the priority represented by the handle. Waiting jobs are
       reprioritized immediately without changing their FIFO age. *)

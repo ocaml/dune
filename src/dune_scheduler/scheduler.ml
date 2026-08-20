@@ -58,6 +58,18 @@ let create_job_priority ?priority () =
 ;;
 
 let increase_job_priority = Fiber.Throttle.increase_priority
+let current_job_slot_attempt_id_var : int option Fiber.Var.t = Fiber.Var.create None
+let current_job_slot_attempt_id () = Fiber.Var.get current_job_slot_attempt_id_var
+
+let next_job_slot_attempt_id =
+  let next = ref 0 in
+  fun () ->
+    let id = !next in
+    if id = Int.max_int
+    then Code_error.raise "scheduler job-slot attempt ID overflow" []
+    else next := id + 1;
+    id
+;;
 
 let with_job_slot ?cancellation ?priority f =
   let* () = Fiber.return () in
@@ -74,11 +86,49 @@ let with_job_slot ?cancellation ?priority f =
       | Some priority -> Fiber.return (Some priority)
       | None -> Memo.Job_priority.current ()
     in
+    let attempt_id = next_job_slot_attempt_id () in
+    let trace phase =
+      let priority =
+        match priority with
+        | None -> 0
+        | Some priority -> Fiber.Throttle.priority priority
+      in
+      let+ memo_trace = Memo.Job_priority.current_trace () in
+      let memo_generation, memo_node_id, memo_roots =
+        match memo_trace with
+        | None -> -1, -1, []
+        | Some { Memo.Job_priority.generation; node_id; roots } ->
+          let roots =
+            List.map roots ~f:(fun (demand_class, root_id) ->
+              let demand_class =
+                match demand_class with
+                | Memo.Job_priority.Demand_class.Bulk -> "bulk"
+                | Memo.Job_priority.Demand_class.Normal -> "normal"
+                | Memo.Job_priority.Demand_class.Direct -> "direct"
+              in
+              root_id, demand_class)
+          in
+          generation, node_id, roots
+      in
+      Dune_trace.emit ~buffered:true Scheduler (fun () ->
+        Dune_trace.Event.scheduler_job_slot
+          ~attempt_id
+          ~phase
+          ~priority
+          ~waiting:(Fiber.Throttle.waiting t.job_throttle)
+          ~memo_generation
+          ~memo_node_id
+          ~memo_roots)
+    in
+    let* () = trace `Ready in
     Fiber.Throttle.run
       t.job_throttle
       ?priority
       ~schedule_restart:(Event.Queue.send_job_throttle_restart t.events)
-      f
+      (fun () ->
+         Fiber.Var.set current_job_slot_attempt_id_var (Some attempt_id) (fun () ->
+           let* () = trace `Start in
+           f ()))
 ;;
 
 let wait_for_process t ~is_process_group_leader pid =

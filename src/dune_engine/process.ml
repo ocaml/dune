@@ -996,6 +996,7 @@ let spawn
       ?dir
       ?(env = Env.initial)
       ?(emit_trace = true)
+      ~extra_trace_args
       ~(prepared_outputs : prepared_outputs)
       ~(stdin : _ Io.t)
       ~queued
@@ -1074,7 +1075,7 @@ let spawn
   then
     Dune_trace.emit Process (fun () ->
       Dune_trace.Event.process_start
-        ~extra_args:[]
+        ~extra_args:extra_trace_args
         ~targets:(targets_of_purpose metadata.purpose)
         ~pid
         ~dir
@@ -1219,6 +1220,7 @@ let exec_locally
            ?dir
            ~env
            ~emit_trace:false
+           ~extra_trace_args:[]
            ~prepared_outputs
            ~stdin
            ~queued
@@ -1274,6 +1276,12 @@ let run_internal
     Option.map build ~f:(fun { Build.cancellation; _ } -> cancellation)
   in
   Scheduler.with_job_slot ?cancellation (fun () ->
+    let* job_slot_attempt_id = Scheduler.current_job_slot_attempt_id () in
+    let job_slot_trace_args =
+      match job_slot_attempt_id with
+      | None -> []
+      | Some id -> [ "job_slot_attempt_id", Sexp.Atom (Int.to_string id) ]
+    in
     let queued = Time.diff (Time.now ()) start in
     let dir =
       match dir with
@@ -1327,6 +1335,7 @@ let run_internal
         spawn
           ?dir
           ~env
+          ~extra_trace_args:job_slot_trace_args
           ~prepared_outputs
           ~stdin:stdin_from
           ~queued
@@ -1445,7 +1454,7 @@ let run_internal
      | Some started_at ->
        Dune_trace.emit Process (fun () ->
          Dune_trace.Event.process_start
-           ~extra_args:trace_args
+           ~extra_args:(job_slot_trace_args @ trace_args)
            ~targets:(targets_of_purpose metadata.purpose)
            ~pid:process_info.pid
            ~dir

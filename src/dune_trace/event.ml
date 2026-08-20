@@ -273,6 +273,36 @@ let scheduler_idle () =
   Event.instant ~name:"watch mode iteration" now Scheduler
 ;;
 
+let scheduler_job_slot
+      ~attempt_id
+      ~phase
+      ~priority
+      ~waiting
+      ~memo_generation
+      ~memo_node_id
+      ~memo_roots
+  =
+  let memo_roots =
+    List.map memo_roots ~f:(fun (root_id, demand_class) ->
+      Arg.record [ "id", Arg.int root_id; "class", Arg.string demand_class ] |> Arg.list)
+  in
+  let args =
+    [ "attempt_id", Arg.int attempt_id
+    ; ( "phase"
+      , Arg.string
+          (match phase with
+           | `Ready -> "ready"
+           | `Start -> "start") )
+    ; "priority", Arg.int priority
+    ; "waiting", Arg.int waiting
+    ; "memo_generation", Arg.int memo_generation
+    ; "memo_node_id", Arg.int memo_node_id
+    ; "memo_roots", Arg.list memo_roots
+    ]
+  in
+  Event.instant ~args ~name:"job-slot" (Time.now ()) Scheduler
+;;
+
 let process_cleanup_start () =
   Event.instant ~name:"process-cleanup-start" (Time.now ()) Process
 ;;

@@ -34,6 +34,7 @@ and restart_blocker =
 let create size = { size; running = 0; reserved = 0; waiting = Priority_queue.create () }
 let size t = t.size
 let running t = t.running
+let waiting t = Priority_queue.length t.waiting
 let occupied t = t.running + t.reserved
 
 let rec admit_waiters t acc =
@@ -66,6 +67,7 @@ let create_priority ?priority t =
   }
 ;;
 
+let priority t = Priority_queue.priority t.queue_priority
 let set_priority t priority = Priority_queue.set_priority t.queue_priority priority
 let increase_priority t = Priority_queue.increase_priority t.queue_priority
 let increase_priority_by t by = Priority_queue.increase_priority_by t.queue_priority by

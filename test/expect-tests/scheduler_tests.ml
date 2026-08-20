@@ -70,6 +70,29 @@ let%expect_test "Action builder demand roots are eager and fresh" =
     distinct IDs: true |}]
 ;;
 
+let%expect_test "job demand scopes reject active Memo stacks" =
+  let module Demand_class = Memo.Job_priority.Demand_class in
+  let rejected config =
+    let nested =
+      Memo.Lazy.create ~name:"nested-job-demand" (fun () ->
+        Memo.with_job_demand Demand_class.Direct (fun () -> Memo.return ()))
+    in
+    let result = ref None in
+    go ~config (fun () ->
+      let+ outcome =
+        Fiber.collect_errors (fun () -> Memo.Lazy.force nested |> Memo.run)
+      in
+      result := Some (Result.is_error outcome));
+    Option.value_exn !result
+  in
+  Printf.printf "enabled rejected: %b\n" (rejected priority_config);
+  Printf.printf "disabled rejected: %b\n" (rejected default);
+  [%expect
+    {|
+    enabled rejected: true
+    disabled rejected: false |}]
+;;
+
 let run_with_demand demand_class memo =
   Memo.with_job_demand demand_class (fun () -> memo) |> Memo.run
 ;;
@@ -132,6 +155,8 @@ let%expect_test "root finalization clears memberships and removal is idempotent"
     let* () = print_registry_stats "finalized" in
     let* () = run_with_demand Demand_class.Direct (Memo.Lazy.force remove_leaf) in
     print_registry_stats "second finalizer");
+  let roots, memberships = Memo.Job_priority.For_tests.global_registry_stats () in
+  Printf.printf "after factory: %d roots, %d memberships\n" roots memberships;
   [%expect
     {|
     active: 1 roots, 1 memberships
@@ -139,7 +164,8 @@ let%expect_test "root finalization clears memberships and removal is idempotent"
     before repeated removal: 1 roots, 1 memberships
     had queue handle: true
     removed twice: 0 roots, 0 memberships
-    second finalizer: 0 roots, 0 memberships |}]
+    second finalizer: 0 roots, 0 memberships
+    after factory: 0 roots, 0 memberships |}]
 ;;
 
 let%expect_test "removing direct demand reveals bulk and demotes queued work" =

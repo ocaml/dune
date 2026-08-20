@@ -3,7 +3,8 @@ emitted inside the worker are stamped with the action runner name, and process
 events routed through the worker record the worker name and pid.
 
   $ make_dune_project 3.23
-  $ export DUNE_TRACE=action,process
+  $ export DUNE_CONFIG__PRIORITY_SCHEDULING=enabled
+  $ export DUNE_TRACE=action,process,scheduler
   $ echo one > input
   $ cat > dune <<'EOF'
   > (rule
@@ -61,3 +62,16 @@ events routed through the worker record the worker name and pid.
       }
     }
   ]
+
+The action-runner process start references the scheduler job-slot attempt that
+admitted it.
+
+  $ dune trace cat | jq -s -e '
+  > [ .[] | select(.cat == "scheduler" and .name == "job-slot"
+  >                 and .args.phase == "start") | .args.attempt_id ] as $starts
+  > | [ .[] | select(.cat == "process" and .name == "start"
+  >                 and .args.action_runner == "action-runner")
+  >          | .args.job_slot_attempt_id ] as $processes
+  > | (($processes | length) > 0
+  >    and ($processes | all(. as $id | $starts | index($id) != null)))'
+  true

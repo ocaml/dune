@@ -59,6 +59,10 @@ val with_job_slot
   -> (unit -> 'a Fiber.t)
   -> 'a Fiber.t
 
+(** Return the current priority-scheduled job-slot attempt ID while running an admitted
+    callback. Returns [None] when priority scheduling is disabled or outside a job slot. *)
+val current_job_slot_attempt_id : unit -> int option Fiber.t
+
 (** Wait for the following process to terminate. If [is_process_group_leader] is
     true, kill the entire process group instead of just the process in case of
     timeout. *)

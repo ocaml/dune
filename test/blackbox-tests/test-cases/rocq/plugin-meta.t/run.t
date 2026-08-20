@@ -1,4 +1,5 @@
-The META file for plugins is built before calling coqdep
+The package layout for plugins is materialized before calling rocqdep. The
+native plugin is missing from it:
   $ cat > dune << EOF
   > (library
   >  (public_name bar.foo)
@@ -10,6 +11,7 @@ The META file for plugins is built before calling coqdep
   > EOF
 
   $ dune build .bar.theory.d
-  $ find _build/install/default/.packages -name META | censor
+  $ find _build/install/default/.packages \( -name META -o -name '*.cmxs' \) \
+  >   | sort | censor
   _build/install/default/.packages/$DIGEST/lib/bar/META
 

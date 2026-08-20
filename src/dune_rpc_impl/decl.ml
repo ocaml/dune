@@ -67,6 +67,32 @@ module Pkg_enabled = struct
   ;;
 end
 
+module Queue_overflow = struct
+  type response =
+    | Ok
+    | Not_in_watch_mode
+    | Build_failed
+
+  let v1 =
+    Decl.Request.make_current_gen
+      ~req:Conv.unit
+      ~resp:
+        (Conv.enum
+           [ "ok", Ok
+           ; "not-in-watch-mode", Not_in_watch_mode
+           ; "build-failed", Build_failed
+           ])
+      ~version:1
+  ;;
+
+  let decl =
+    Decl.Request.make
+      ~method_:(Method.Name.of_string "simulate-file-watcher-queue-overflow")
+      ~generations:[ v1 ]
+  ;;
+end
+
 let build = Build.decl
 let status = Status.decl
 let pkg_enabled = Pkg_enabled.decl
+let simulate_file_watcher_queue_overflow = Queue_overflow.decl

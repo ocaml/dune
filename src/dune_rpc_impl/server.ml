@@ -314,6 +314,21 @@ let handler (t : t Fdecl.t) : unit Handler.t =
     Handler.implement_request rpc Procedures.Public.flush_file_watcher f
   in
   let () =
+    let f session request_id () =
+      let t = Fdecl.get t in
+      let open Decl.Queue_overflow in
+      match t.server.watch_mode, t.build with
+      | No, _ | Yes _, Disabled -> Fiber.return Not_in_watch_mode
+      | Yes _, Enabled { build_loop; _ } ->
+        let* () = Build_loop.simulate_file_watcher_queue_overflow build_loop in
+        let+ outcome = submit_build_request t session request_id (Build []) in
+        (match outcome with
+         | Success -> Ok
+         | Failure -> Build_failed)
+    in
+    Handler.implement_request_with_id rpc Decl.simulate_file_watcher_queue_overflow f
+  in
+  let () =
     let shutdown _ () =
       let t = Fdecl.get t in
       let terminate_sessions () =

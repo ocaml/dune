@@ -30,6 +30,10 @@ val cancel_all_rpc_requests : t -> unit Fiber.t
     period. *)
 val flush_file_watcher : t -> unit Fiber.t
 
+(** Simulate a file-watcher queue overflow. This is exposed for testing through
+    Dune's private RPC protocol. *)
+val simulate_file_watcher_queue_overflow : t -> unit Fiber.t
+
 (** [poll t ~action_runner ~sticky_goal] runs the watch loop managed by [t].
     [action_runner] is used for each build started by the loop. [sticky_goal] is
     rebuilt after file changes and is also included in builds started for

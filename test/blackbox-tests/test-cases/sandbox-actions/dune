@@ -1,10 +1,18 @@
 (env
  (_
-  (binaries ../../utils/action_plugin_helper.exe)))
+  (binaries
+   ../../utils/action_plugin_helper.exe
+   ../../utils/landlock_scope.exe)))
 
 (cram
  (applies_to landlock-policy)
  (deps %{bin:action_plugin_helper})
+ (enabled_if
+  (= %{system} linux)))
+
+(cram
+ (applies_to landlock-scope)
+ (deps %{bin:landlock_scope})
  (enabled_if
   (= %{system} linux)))
 

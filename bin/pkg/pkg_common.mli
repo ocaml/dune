@@ -82,6 +82,17 @@ end
     [lock_dir]. *)
 val pp_packages : Dune_pkg.Lock_dir.Pkg.t list -> User_message.Style.t Pp.t
 
-(** [check_pkg_management_enabled ()] checks if package management is enabled in the
-    workspace configuration. Raises a user error if it is explicitly disabled. *)
-val check_pkg_management_enabled : unit -> unit Fiber.t
+(** [error_if_pkg_management_disabled ()] raises a user error if package
+    management is explicitly disabled. This is used to guard against invalid use
+    of functionality when package management should not be permitted. E.g.,
+    [dune pkg lock] should not be used when package management is explicitly disabled,
+    otherwise, it may create a lock directory, enabling package management. *)
+val error_if_pkg_management_disabled : unit -> unit Fiber.t
+
+(** [error_if_pkg_management_not_enabled ()] raises a user error when package
+    management is not enabled (even if it *could* be enabled). Commands that
+    assume package management is already enabled need this stronger check, so
+    that they fail cleanly and early instead of working towards an obscure
+    failure when they encounter some missing resources. E.g., [dune pkg
+    outdated] can only be used if package management is already enabled. *)
+val error_if_pkg_management_not_enabled : unit -> unit Fiber.t

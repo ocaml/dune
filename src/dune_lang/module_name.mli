@@ -69,6 +69,11 @@ module Unique : sig
   type nonrec t
 
   val of_string : string -> t
+
+  (** Convert the output of [to_string] back to a unique module name without
+      validating it again. *)
+  val of_string_unchecked : string -> t
+
   val of_name_assuming_needs_no_mangling : name -> t
 
   (** We allow invalid module names for backwards compatibility *)

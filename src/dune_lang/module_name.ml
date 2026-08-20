@@ -145,6 +145,7 @@ module Unique = struct
 
   let encode = Encoder.string
   let of_string s = of_name_assuming_needs_no_mangling (of_string s)
+  let of_string_unchecked s = s
   let to_string s = s
 
   let decode =

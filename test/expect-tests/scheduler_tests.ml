@@ -74,6 +74,324 @@ let run_with_demand demand_class memo =
   Memo.with_job_demand demand_class (fun () -> memo) |> Memo.run
 ;;
 
+let print_registry_stats label =
+  let+ roots, memberships = Memo.Job_priority.For_tests.current_registry_stats () in
+  Printf.printf "%s: %d roots, %d memberships\n" label roots memberships
+;;
+
+let%expect_test "Build_system.run supplies Normal demand only when enabled" =
+  let module Demand_class = Memo.Job_priority.Demand_class in
+  Path.mkdir_p (Path.relative Path.root "_build");
+  let observe config =
+    let result = ref None in
+    go ~config (fun () ->
+      let+ observation =
+        Dune_engine.Build_system.run (fun () ->
+          Memo.of_non_reproducible_fiber (Memo.Job_priority.For_tests.current_root ()))
+      in
+      result := Some observation);
+    match Option.value_exn !result with
+    | Error `Already_reported -> Code_error.raise "Build_system.run failed" []
+    | Ok observation -> observation
+  in
+  let to_string = function
+    | None -> "none"
+    | Some (Demand_class.Bulk, _) -> "bulk"
+    | Some (Normal, _) -> "normal"
+    | Some (Direct, _) -> "direct"
+  in
+  Printf.printf "enabled: %s\n" (observe priority_config |> to_string);
+  Printf.printf "disabled: %s\n" (observe default |> to_string);
+  [%expect
+    {|
+    enabled: normal
+    disabled: none |}]
+;;
+
+let%expect_test "root finalization clears memberships and removal is idempotent" =
+  let module Demand_class = Memo.Job_priority.Demand_class in
+  let leaf = Memo.Lazy.create ~name:"finalized-root" (fun () -> Memo.return ()) in
+  let remove_leaf =
+    Memo.Lazy.create ~name:"removed-root" (fun () ->
+      Memo.of_non_reproducible_fiber
+        (let* priority = Memo.Job_priority.current () in
+         let* () = print_registry_stats "before repeated removal" in
+         let* () = Memo.Job_priority.For_tests.remove_current_root () in
+         let* () = Memo.Job_priority.For_tests.remove_current_root () in
+         Printf.printf "had queue handle: %b\n" (Option.is_some priority);
+         print_registry_stats "removed twice"))
+  in
+  go ~config:priority_config (fun () ->
+    let finalized =
+      Memo.with_job_demand Demand_class.Direct (fun () ->
+        let open Memo.O in
+        let* () = Memo.Lazy.force leaf in
+        Memo.of_non_reproducible_fiber (print_registry_stats "active"))
+    in
+    let* () = Memo.run finalized in
+    let* () = print_registry_stats "finalized" in
+    let* () = run_with_demand Demand_class.Direct (Memo.Lazy.force remove_leaf) in
+    print_registry_stats "second finalizer");
+  [%expect
+    {|
+    active: 1 roots, 1 memberships
+    finalized: 0 roots, 0 memberships
+    before repeated removal: 1 roots, 1 memberships
+    had queue handle: true
+    removed twice: 0 roots, 0 memberships
+    second finalizer: 0 roots, 0 memberships |}]
+;;
+
+let%expect_test "removing direct demand reveals bulk and demotes queued work" =
+  let module Demand_class = Memo.Job_priority.Demand_class in
+  let order = ref [] in
+  let shared_ready = Fiber.Ivar.create () in
+  let normal_ready = Fiber.Ivar.create () in
+  let direct_removed = Fiber.Ivar.create () in
+  let shared =
+    Memo.Lazy.create ~name:"demoted-shared" (fun () ->
+      Memo.of_reproducible_fiber
+        (let* () = Fiber.Ivar.fill shared_ready () in
+         Scheduler.with_job_slot (fun () ->
+           let+ roots = Memo.Job_priority.For_tests.current_node_roots () in
+           let only_bulk =
+             match roots with
+             | [ (Demand_class.Bulk, _) ] -> true
+             | [] | [ ((Normal | Direct), _) ] | _ :: _ :: _ -> false
+           in
+           Printf.printf "only bulk remains: %b\n" only_bulk;
+           order := "shared" :: !order)))
+  in
+  let normal =
+    Memo.Lazy.create ~name:"demotion-normal" (fun () ->
+      Memo.of_reproducible_fiber
+        (let* () = Fiber.Ivar.fill normal_ready () in
+         Scheduler.with_job_slot (fun () ->
+           order := "normal" :: !order;
+           Fiber.return ())))
+  in
+  let direct =
+    Memo.with_job_demand Demand_class.Direct (fun () ->
+      Memo.of_non_reproducible_fiber
+        (Fiber.fork_and_join_unit
+           (fun () -> Memo.Lazy.force shared |> Memo.run)
+           (fun () ->
+              let* () = Fiber.Ivar.read shared_ready in
+              let* () = Memo.Job_priority.For_tests.remove_current_root () in
+              Fiber.Ivar.fill direct_removed ())))
+  in
+  let blocker_started = Fiber.Ivar.create () in
+  let release_blocker = Fiber.Ivar.create () in
+  go ~config:priority_config (fun () ->
+    Fiber.fork_and_join_unit
+      (fun () ->
+         Scheduler.with_job_slot (fun () ->
+           let* () = Fiber.Ivar.fill blocker_started () in
+           Fiber.Ivar.read release_blocker))
+      (fun () ->
+         let* () = Fiber.Ivar.read blocker_started in
+         Fiber.parallel_iter
+           [ (fun () -> run_with_demand Demand_class.Bulk (Memo.Lazy.force shared))
+           ; (fun () -> Memo.run direct)
+           ; (fun () -> run_with_demand Demand_class.Normal (Memo.Lazy.force normal))
+           ; (fun () ->
+               let* () = Fiber.Ivar.read direct_removed in
+               let* () = Fiber.Ivar.read normal_ready in
+               Fiber.Ivar.fill release_blocker ())
+           ]
+           ~f:(fun f -> f ())));
+  List.rev !order |> List.iter ~f:print_endline;
+  [%expect
+    {|
+    only bulk remains: true
+    normal
+    shared |}]
+;;
+
+let%expect_test "build cancellation demotes queued demand before branch finalizers" =
+  let module Demand_class = Memo.Job_priority.Demand_class in
+  let module Process = Dune_engine.Process in
+  let cancellation = Fiber.Cancel.create () in
+  let build =
+    Process.Build.create
+      ~action_runner:None
+      ~run_id:Dune_engine.Run_id.Batch
+      ~cancellation
+  in
+  let order = ref [] in
+  let direct_ready = Fiber.Ivar.create () in
+  let normal_ready = Fiber.Ivar.create () in
+  let blocker_started = Fiber.Ivar.create () in
+  let release_blocker = Fiber.Ivar.create () in
+  let direct =
+    Memo.Lazy.create ~name:"cancelled-direct" (fun () ->
+      Memo.of_reproducible_fiber
+        (Fiber.finalize
+           (fun () ->
+              let* () = Fiber.Ivar.fill direct_ready () in
+              Scheduler.with_job_slot (fun () ->
+                order := "direct" :: !order;
+                Fiber.return ()))
+           ~finally:(fun () -> print_registry_stats "branch finalizer")))
+  in
+  go ~config:priority_config (fun () ->
+    Process.Build.with_ build (fun () ->
+      let* normal_priority = Scheduler.create_job_priority ~priority:1 () in
+      Fiber.parallel_iter
+        [ (fun () ->
+            Scheduler.with_job_slot (fun () ->
+              let* () = Fiber.Ivar.fill blocker_started () in
+              Fiber.Ivar.read release_blocker))
+        ; (fun () ->
+            let* () = Fiber.Ivar.read blocker_started in
+            let+ (), canceled =
+              Fiber.Cancel.with_handler
+                cancellation
+                (fun () -> run_with_demand Demand_class.Direct (Memo.Lazy.force direct))
+                ~on_cancel:(fun () -> Fiber.return ())
+            in
+            Printf.printf
+              "branch canceled: %b\n"
+              (match canceled with
+               | Fiber.Cancel.Cancelled () -> true
+               | Not_cancelled -> false))
+        ; (fun () ->
+            let* () = Fiber.Ivar.read blocker_started in
+            let* () = Fiber.Ivar.fill normal_ready () in
+            Scheduler.with_job_slot ~priority:normal_priority (fun () ->
+              order := "normal" :: !order;
+              Fiber.return ()))
+        ; (fun () ->
+            let* () = Fiber.Ivar.read direct_ready in
+            let* () = Fiber.Ivar.read normal_ready in
+            let* () = Process.Build.cancel_current () in
+            Fiber.Ivar.fill release_blocker ())
+        ]
+        ~f:(fun f -> f ())));
+  List.rev !order |> List.iter ~f:print_endline;
+  [%expect
+    {|
+    branch finalizer: 0 roots, 0 memberships
+    branch canceled: true
+    normal
+    direct |}]
+;;
+
+let%expect_test "invalidation is terminal until the Memo generation changes" =
+  let module Demand_class = Memo.Job_priority.Demand_class in
+  let order = ref [] in
+  let seed =
+    Memo.Lazy.create ~name:"invalidation-seed" (fun () ->
+      Memo.of_reproducible_fiber (Scheduler.with_job_slot Fiber.return))
+  in
+  let undemanded_ready = Fiber.Ivar.create () in
+  let undemanded =
+    Memo.Lazy.create ~name:"same-run-after-invalidation" (fun () ->
+      Memo.of_non_reproducible_fiber
+        (let* root = Memo.Job_priority.For_tests.current_root () in
+         let* () = print_registry_stats "inside later scope" in
+         Printf.printf "later ambient root: %b\n" (Option.is_some root);
+         let* () = Fiber.Ivar.fill undemanded_ready () in
+         Scheduler.with_job_slot (fun () ->
+           order := "undemanded" :: !order;
+           Fiber.return ())))
+  in
+  let normal_ready = Fiber.Ivar.create () in
+  go ~config:priority_config (fun () ->
+    let* () = run_with_demand Demand_class.Direct (Memo.Lazy.force seed) in
+    Memo.Job_priority.invalidate_current_registry ();
+    let* normal_priority = Scheduler.create_job_priority ~priority:1 () in
+    let blocker_started = Fiber.Ivar.create () in
+    let release_blocker = Fiber.Ivar.create () in
+    let* () =
+      Fiber.fork_and_join_unit
+        (fun () ->
+           Scheduler.with_job_slot (fun () ->
+             let* () = Fiber.Ivar.fill blocker_started () in
+             Fiber.Ivar.read release_blocker))
+        (fun () ->
+           let* () = Fiber.Ivar.read blocker_started in
+           Fiber.parallel_iter
+             [ (fun () ->
+                 run_with_demand Demand_class.Direct (Memo.Lazy.force undemanded))
+             ; (fun () ->
+                 let* () = Fiber.Ivar.fill normal_ready () in
+                 Scheduler.with_job_slot ~priority:normal_priority (fun () ->
+                   order := "normal" :: !order;
+                   Fiber.return ()))
+             ; (fun () ->
+                 let* () = Fiber.Ivar.read undemanded_ready in
+                 let* () = Fiber.Ivar.read normal_ready in
+                 Fiber.Ivar.fill release_blocker ())
+             ]
+             ~f:(fun f -> f ()))
+    in
+    print_registry_stats "after later scope");
+  List.rev !order |> List.iter ~f:print_endline;
+  [%expect
+    {|
+    inside later scope: 0 roots, 0 memberships
+    later ambient root: false
+    after later scope: 0 roots, 0 memberships
+    normal
+    undemanded |}]
+;;
+
+let%expect_test "Memo.reset starts an empty registry for the same scheduler factory" =
+  let module Demand_class = Memo.Job_priority.Demand_class in
+  let order = ref [] in
+  let evaluation = ref 0 in
+  let reused_ready = Fiber.Ivar.create () in
+  let reused_node, reused =
+    Memo.Lazy.Expert.create ~name:"reused-priority" ~cutoff:Unit.equal (fun () ->
+      incr evaluation;
+      Memo.of_reproducible_fiber
+        (let* () =
+           if !evaluation = 1 then Fiber.return () else Fiber.Ivar.fill reused_ready ()
+         in
+         Scheduler.with_job_slot (fun () ->
+           if !evaluation > 1 then order := "reused" :: !order;
+           Fiber.return ())))
+  in
+  let normal_ready = Fiber.Ivar.create () in
+  let normal =
+    Memo.Lazy.create ~name:"new-run-normal" (fun () ->
+      Memo.of_reproducible_fiber
+        (let* () = Fiber.Ivar.fill normal_ready () in
+         Scheduler.with_job_slot (fun () ->
+           order := "normal" :: !order;
+           Fiber.return ())))
+  in
+  go ~config:priority_config (fun () ->
+    let* () = run_with_demand Demand_class.Direct (Memo.Lazy.force reused) in
+    Memo.reset (Memo.Node.invalidate ~reason:Memo.Invalidation.Reason.Test reused_node);
+    let* () = print_registry_stats "new run before demand" in
+    let blocker_started = Fiber.Ivar.create () in
+    let release_blocker = Fiber.Ivar.create () in
+    Fiber.fork_and_join_unit
+      (fun () ->
+         Scheduler.with_job_slot (fun () ->
+           let* () = Fiber.Ivar.fill blocker_started () in
+           Fiber.Ivar.read release_blocker))
+      (fun () ->
+         let* () = Fiber.Ivar.read blocker_started in
+         Fiber.parallel_iter
+           [ (fun () -> run_with_demand Demand_class.Bulk (Memo.Lazy.force reused))
+           ; (fun () -> run_with_demand Demand_class.Normal (Memo.Lazy.force normal))
+           ; (fun () ->
+               let* () = Fiber.Ivar.read reused_ready in
+               let* () = Fiber.Ivar.read normal_ready in
+               Fiber.Ivar.fill release_blocker ())
+           ]
+           ~f:(fun f -> f ())));
+  List.rev !order |> List.iter ~f:print_endline;
+  [%expect
+    {|
+    new run before demand: 0 roots, 0 memberships
+    normal
+    reused |}]
+;;
+
 let%expect_test "the same root observes an active nested dependency once" =
   let module Demand_class = Memo.Job_priority.Demand_class in
   let inner_started = Fiber.Ivar.create () in

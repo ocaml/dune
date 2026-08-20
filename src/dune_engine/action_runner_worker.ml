@@ -87,7 +87,7 @@ let cancel_build t ~name ({ Request.Cancel_build.run_id } : Request.Cancel_build
   in
   let* () =
     Fiber.parallel_iter active_builds ~f:(fun active ->
-      let* () = Fiber.Cancel.fire (Process.Build.cancellation active.build) in
+      let* () = Process.Build.cancel active.build in
       Fiber.Ivar.read active.drained)
   in
   Scheduler.cleanup_subreaper_child_processes ()

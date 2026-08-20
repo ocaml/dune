@@ -312,10 +312,15 @@ module Build = struct
       Fiber.return ())
   ;;
 
+  let cancel { cancellation; _ } =
+    Memo.Job_priority.invalidate_current_registry ();
+    Fiber.Cancel.fire cancellation
+  ;;
+
   let cancel_current () =
     match !current with
     | None -> Fiber.return ()
-    | Some { cancellation; _ } -> Fiber.Cancel.fire cancellation
+    | Some build -> cancel build
   ;;
 end
 

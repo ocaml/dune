@@ -24,9 +24,12 @@
   ([plan.md:139-219](./plan.md#L139-L219),
   [plan.md:423-487](./plan.md#L423-L487),
   [plan.md:516-529](./plan.md#L516-L529)).
-- [ ] Remove demand on normal completion, cancellation, and watch restart
+- [ ] Remove demand on normal completion, cancellation, and watch restart;
+  lifecycle implementation and focused coverage are present, but production
+  watch/RPC restart integration remains for Task 9
   ([plan.md:251-278](./plan.md#L251-L278),
-  [plan.md:460-487](./plan.md#L460-L487)).
+  [plan.md:460-487](./plan.md#L460-L487),
+  [plan.md:516-529](./plan.md#L516-L529)).
 - [ ] Validate deterministic behavior, the mixed-root workload, and the full
   repository checks ([plan.md:489-542](./plan.md#L489-L542)).
 
@@ -91,4 +94,25 @@
   `./dune.exe runtest src/fiber/test/ test/expect-tests/memo/`, and
   `./dune.exe build @check @fmt` passed
   ([plan.md:435-458](./plan.md#L435-L458),
+  [plan.md:489-529](./plan.md#L489-L529)).
+- **2026-08-20:** Added idempotent root finalization and registry invalidation.
+  Root removal uses touched-node membership to recompute and lower aggregate
+  scores; `Process.Build.cancel` demotes all handles synchronously before firing
+  cancellation, including action-runner worker cancellation; and factory or
+  Memo-generation transitions invalidate the old registry before creating an
+  empty one. Invalidation is terminal within the same factory and generation.
+  Non-CLI `Build_system.run` work receives a synthetic `Normal` scope without
+  wrapping CLI goals
+  ([plan.md:251-278](./plan.md#L251-L278),
+  [plan.md:460-487](./plan.md#L460-L487)).
+- **2026-08-20:** Added lifecycle expectations proving normal cleanup and
+  repeated removal from a real Memo node and queue handle, `Direct` removal
+  revealing `Bulk`, cancellation demotion of queued work before branch
+  finalizers, terminal same-run invalidation, same-factory Memo-generation
+  isolation, and enabled/disabled synthetic `Build_system.run` demand. Existing
+  Fiber coverage continues to exercise deferred restart, resize,
+  equal-priority, and shared-handle accounting; scheduler lifecycle cases run at
+  `-j1`. Production watch/RPC restart integration remains for Task 9, so the
+  lifecycle milestone remains open
+  ([plan.md:460-487](./plan.md#L460-L487),
   [plan.md:489-529](./plan.md#L489-L529)).

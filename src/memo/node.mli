@@ -284,10 +284,13 @@ module Job_priority : sig
   val current_root : unit -> root option Fiber.t
   val root_id : root -> Root_id.t
   val root_demand_class : root -> Demand_class.t
+  val invalidate_current_registry : unit -> unit
 
   module For_tests : sig
     val current_root : unit -> (Demand_class.t * int) option Fiber.t
     val current_node_roots : unit -> (Demand_class.t * int) list Fiber.t
+    val remove_current_root : unit -> unit Fiber.t
+    val current_registry_stats : unit -> (int * int) Fiber.t
   end
 
   val observe_dependency

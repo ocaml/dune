@@ -87,10 +87,18 @@ module Build : sig
     -> t
 
   val run_id : t -> Run_id.t
+
+  (** Return the cancellation token for checks and handlers. Call [cancel] rather than
+      firing this token directly. *)
   val cancellation : t -> Fiber.Cancel.t
+
   val action_runner : t -> Action_runner.t option
   val get : unit -> t option
   val with_ : t -> (unit -> 'a Fiber.t) -> 'a Fiber.t
+
+  (** Invalidate Memo demand before firing this build's cancellation token. *)
+  val cancel : t -> unit Fiber.t
+
   val cancel_current : unit -> unit Fiber.t
 end
 

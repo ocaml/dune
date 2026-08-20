@@ -396,12 +396,18 @@ module Job_priority : sig
   (** Return the priority of the current Memo computation, if it has one. *)
   val current : unit -> t option Fiber.t
 
+  (** Invalidate all job demand in the current Memo run. This is called synchronously
+      when canceling a build, before cancellation handlers run. *)
+  val invalidate_current_registry : unit -> unit
+
   module For_tests : sig
     (** Internal observation of the current demand root for tests. Do not use in
         production code. *)
     val current_root : unit -> (Demand_class.t * int) option Fiber.t
 
     val current_node_roots : unit -> (Demand_class.t * int) list Fiber.t
+    val remove_current_root : unit -> unit Fiber.t
+    val current_registry_stats : unit -> (int * int) Fiber.t
   end
 end
 

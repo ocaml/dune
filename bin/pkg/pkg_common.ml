@@ -203,7 +203,7 @@ module Lock_dirs_arg = struct
   ;;
 end
 
-let check_pkg_management_enabled () =
+let error_if_pkg_management_disabled () =
   Memo.run
   @@
   let open Memo.O in

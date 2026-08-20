@@ -30,6 +30,7 @@ module For_rocq_only : sig
 
       Returns the layout's [lib] root (suitable for prepending to
       [OCAMLPATH]) and registers the action's dependency on every
-      {!Section.Lib} entry the layout produces for the set. *)
+      {!Section.Lib} and {!Section.Libexec} entry the layout produces for the
+      set. *)
   val lib_root : Context_name.t -> Package.Name.Set.t -> Path.Build.t Action_builder.t
 end

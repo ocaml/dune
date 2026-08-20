@@ -185,13 +185,16 @@ let gen_rules context_name ~dir rest =
 module For_rocq_only = struct
   (* Rocq puts the layout's [lib] dir on [OCAMLPATH], where findlib walks
      eagerly. For a race-free, deterministic walk, every entry findlib could
-     see must be a declared dep. Bulk {!env} doesn't work: it also pulls in
-     {!Section.Lib_root} entries, which include Rocq theory [.vo] files under
+     see must be a declared dep. In the opam layout, both {!Section.Lib} and
+     {!Section.Libexec} are under [lib/<package>]; Dune uses Libexec for native
+     OCaml plugins so that their executable bit is preserved. Bulk {!env}
+     doesn't work: it also pulls in {!Section.Lib_root} entries, which include
+     Rocq theory [.vo] files under
      [lib/coq/user-contrib/...]; in the same-package theory-plus-plugin case,
      that creates a build cycle (the theory rule depending on its own output
-     via the layout symlink). Filtering to {!Section.Lib} excludes Lib_root
-     content (theory output) while keeping METAs, .cmxs, .cmi etc. — all
-     upstream of theory compilation. *)
+     via the layout symlink). Filtering to {!Section.Lib} and
+     {!Section.Libexec} excludes root-section content (theory output) while
+     keeping METAs, .cmi, .cmxs etc. — all upstream of theory compilation. *)
   let lib_root context_name packages =
     let open Action_builder.O in
     let* lib_paths =
@@ -200,7 +203,7 @@ module For_rocq_only = struct
             ~init:[]
             ~f:(fun dst (entry : Path.t Install.Entry.Expanded.t) acc ->
               match (entry.section : Section.t) with
-              | Lib -> Path.build dst :: acc
+              | Lib | Libexec -> Path.build dst :: acc
               | _ -> acc)
     in
     let+ () = Action_builder.paths lib_paths in

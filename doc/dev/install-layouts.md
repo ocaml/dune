@@ -199,17 +199,22 @@ a `Code_error`.
 ### `For_rocq_only` escape hatch
 
 `Install_layout.For_rocq_only.lib_root` exposes just the layout's `lib` root,
-filtered to `Section.Lib` entries only. It exists because rocq puts the
-layout's `lib` dir on `OCAMLPATH`, where findlib walks eagerly; for a
-race-free, deterministic walk, every entry findlib could see must be a declared
-dep. The bulk `env` function isn't suitable here because it also pulls in
-`Section.Lib_root` entries. For rocq those include the theory's own `.vo`
-output under `lib/coq/user-contrib/...`, creating a build cycle in the
-same-package theory-plus-plugin case (the theory rule would depend on its own
-output via the layout symlink). Filtering to `Section.Lib` excludes the theory
-output while keeping METAs, `.cmxs`, `.cmi` etc., all of which are upstream of
-theory compilation. See the comment on the module in `install_layout.ml` for
-details.
+filtered to `Section.Lib` and `Section.Libexec` entries. Package-set layouts
+follow opam's layout, where both sections install under `lib/<package>` and
+`Libexec` additionally preserves the executable bit. Dune records native OCaml
+plugins (`.cmxs`) in `Libexec`.
+
+The special handling exists because rocq puts the layout's `lib` dir on
+`OCAMLPATH`, where findlib walks eagerly; for a race-free, deterministic walk,
+every entry findlib could see must be a declared dep. The bulk `env` function
+isn't suitable here because it also pulls in root-section entries. For rocq
+those include the theory's own `.vo` output
+under `lib/coq/user-contrib/...`, creating a build cycle in the same-package
+theory-plus-plugin case (the theory rule would depend on its own output via the
+layout symlink). Filtering to `Section.Lib` and `Section.Libexec` excludes the
+theory output while keeping METAs, `.cmi`, `.cmxs` etc., all of which are
+upstream of theory compilation. See the comment on the module in
+`install_layout.ml` for details.
 
 ## Future work
 

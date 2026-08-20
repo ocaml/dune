@@ -367,6 +367,10 @@ module Throttle : sig
   (** Create a priority handle owned by the throttler. *)
   val create_priority : ?priority:int -> t -> priority
 
+  (** Set the priority represented by the handle. Waiting jobs are
+      reprioritized immediately without changing their FIFO age. *)
+  val set_priority : priority -> int -> unit
+
   (** Increase the priority represented by the handle. *)
   val increase_priority : priority -> unit
 

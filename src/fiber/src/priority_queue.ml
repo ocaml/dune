@@ -40,6 +40,7 @@ module type S = sig
   val create : unit -> 'a t
   val create_priority : ?priority:int -> 'a t -> 'a priority
   val priority : 'a priority -> int
+  val set_priority : 'a priority -> int -> unit
   val increase_priority : 'a priority -> unit
   val increase_priority_by : 'a priority -> int -> unit
   val check_priority : 'a t -> 'a priority -> unit
@@ -111,6 +112,15 @@ let remove t =
     t.key <- None
 ;;
 
+let set_priority t priority =
+  if priority <> t.value
+  then (
+    let is_queued = Option.is_some t.key in
+    if is_queued then remove t;
+    t.value <- priority;
+    if is_queued then insert t)
+;;
+
 let increase_priority_by t by =
   if by < 0
   then
@@ -118,12 +128,10 @@ let increase_priority_by t by =
       "Fiber.Priority_queue.increase_priority_by: negative increment"
       [ "increment", Dyn.Int by ];
   if by > 0 && t.value < Int.max_int
-  then (
-    let is_queued = Option.is_some t.key in
-    if is_queued then remove t;
-    t.value
-    <- (if t.value >= 0 && by > Int.max_int - t.value then Int.max_int else t.value + by);
-    if is_queued then insert t)
+  then
+    set_priority
+      t
+      (if t.value >= 0 && by > Int.max_int - t.value then Int.max_int else t.value + by)
 ;;
 
 let increase_priority t = increase_priority_by t 1

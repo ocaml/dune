@@ -66,6 +66,7 @@ let create_priority ?priority t =
   }
 ;;
 
+let set_priority t priority = Priority_queue.set_priority t.queue_priority priority
 let increase_priority t = Priority_queue.increase_priority t.queue_priority
 let increase_priority_by t by = Priority_queue.increase_priority_by t.queue_priority by
 

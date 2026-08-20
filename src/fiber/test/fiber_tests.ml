@@ -60,6 +60,59 @@ module Priority_queue_tests = struct
       first |}]
   ;;
 
+  let%expect_test "setting queued priorities preserves FIFO age" =
+    let queue = Queue.create () in
+    let first = Queue.create_priority ~priority:2 queue in
+    let second = Queue.create_priority ~priority:1 queue in
+    Queue.push queue first "first";
+    Queue.push queue second "second";
+    Queue.set_priority first 0;
+    print_and_drain queue;
+    [%expect
+      {|
+      second
+      first |}];
+    let queue = Queue.create () in
+    let first = Queue.create_priority queue in
+    let second = Queue.create_priority queue in
+    Queue.push queue first "first";
+    Queue.push queue second "second";
+    Queue.set_priority first 1;
+    Queue.set_priority first 0;
+    print_and_drain queue;
+    [%expect
+      {|
+      first
+      second |}]
+  ;;
+
+  let%expect_test "setting a shared or unqueued priority" =
+    let queue = Queue.create () in
+    let shared = Queue.create_priority ~priority:1 queue in
+    let other = Queue.create_priority ~priority:1 queue in
+    Queue.push queue shared "shared-1";
+    Queue.push queue other "other";
+    Queue.push queue shared "shared-2";
+    Queue.set_priority shared 0;
+    print_and_drain queue;
+    [%expect
+      {|
+      other
+      shared-1
+      shared-2 |}];
+    let queue = Queue.create () in
+    let first = Queue.create_priority queue in
+    let second = Queue.create_priority ~priority:1 queue in
+    Queue.set_priority first 2;
+    Queue.push queue second "second";
+    Queue.push queue first "first";
+    print_and_drain queue;
+    [%expect
+      {|
+      first
+      second |}]
+  ;;
+
   let%expect_test "shared and initially elevated priorities" =
     let queue = Queue.create () in
     let shared = Queue.create_priority queue in
@@ -147,6 +200,41 @@ module Throttle_tests = struct
       () |}]
   ;;
 
+  let%expect_test "queued jobs observe priority demotion" =
+    let throttle = Throttle.create 1 in
+    let first = Throttle.create_priority ~priority:2 throttle in
+    let second = Throttle.create_priority ~priority:1 throttle in
+    let blocker_started = Fiber.Ivar.create () in
+    let release_blocker = Fiber.Ivar.create () in
+    let run name priority =
+      Throttle.run throttle ~priority (fun () ->
+        print_endline name;
+        Fiber.return ())
+    in
+    test
+      unit
+      (Fiber.fork_and_join_unit
+         (fun () ->
+            Throttle.run throttle (fun () ->
+              let* () = Fiber.Ivar.fill blocker_started () in
+              Fiber.Ivar.read release_blocker))
+         (fun () ->
+            let* () = Fiber.Ivar.read blocker_started in
+            Fiber.parallel_iter
+              [ (fun () -> run "first" first)
+              ; (fun () -> run "second" second)
+              ; (fun () ->
+                  Throttle.set_priority first 0;
+                  Fiber.Ivar.fill release_blocker ())
+              ]
+              ~f:(fun f -> f ())));
+    [%expect
+      {|
+      second
+      first
+      () |}]
+  ;;
+
   let%expect_test "a high-priority chain keeps the released slot" =
     let throttle = Throttle.create 2 in
     let first = Throttle.create_priority ~priority:2 throttle in
@@ -211,6 +299,97 @@ module Throttle_tests = struct
       () |}]
   ;;
 
+  let%expect_test "equal priority does not reserve a released slot" =
+    let throttle = Throttle.create 1 in
+    let priority = Throttle.create_priority ~priority:1 throttle in
+    let running_started = Fiber.Ivar.create () in
+    let release_running = Fiber.Ivar.create () in
+    let restart_scheduled = ref false in
+    test
+      unit
+      (Fiber.fork_and_join_unit
+         (fun () ->
+            Throttle.run
+              throttle
+              ~priority
+              ~schedule_restart:(fun _ -> restart_scheduled := true)
+              (fun () ->
+                 let* () = Fiber.Ivar.fill running_started () in
+                 Fiber.Ivar.read release_running))
+         (fun () ->
+            let* () = Fiber.Ivar.read running_started in
+            Fiber.fork_and_join_unit
+              (fun () ->
+                 Throttle.run throttle ~priority (fun () ->
+                   print_endline "waiter";
+                   Fiber.return ()))
+              (fun () ->
+                 let* () = Scheduler.yield () in
+                 Fiber.Ivar.fill release_running ())));
+    printf "restart scheduled: %b\n" !restart_scheduled;
+    [%expect
+      {|
+      waiter
+      ()
+      restart scheduled: false |}]
+  ;;
+
+  let%expect_test "demotion does not strand a deferred restart" =
+    let throttle = Throttle.create 1 in
+    let high = Throttle.create_priority ~priority:2 throttle in
+    let low = Throttle.create_priority throttle in
+    let high_started = Fiber.Ivar.create () in
+    let release_high = Fiber.Ivar.create () in
+    let restarts = Queue.create () in
+    let rec process_restart () =
+      let* () = Scheduler.yield () in
+      match Queue.pop restarts with
+      | None -> process_restart ()
+      | Some restart ->
+        Throttle.set_priority high 0;
+        (match Throttle.restart_waiters restart with
+         | `Blocked -> Code_error.raise "unexpected blocked restart" []
+         | `Ready waiters ->
+           Fiber.sequential_iter waiters ~f:(fun ivar -> Fiber.Ivar.fill ivar ()))
+    in
+    test
+      unit
+      (let* () =
+         Fiber.parallel_iter
+           [ (fun () ->
+               Throttle.run
+                 throttle
+                 ~priority:high
+                 ~schedule_restart:(fun restart -> Queue.push restarts restart)
+                 (fun () ->
+                    print_endline "high";
+                    let* () = Fiber.Ivar.fill high_started () in
+                    Fiber.Ivar.read release_high))
+           ; (fun () ->
+               let* () = Fiber.Ivar.read high_started in
+               Fiber.fork_and_join_unit
+                 (fun () ->
+                    Throttle.run throttle ~priority:low (fun () ->
+                      print_endline "low";
+                      Fiber.return ()))
+                 (fun () ->
+                    let* () = Scheduler.yield () in
+                    Fiber.Ivar.fill release_high ()))
+           ; process_restart
+           ]
+           ~f:(fun f -> f ())
+       in
+       Throttle.run throttle (fun () ->
+         print_endline "probe";
+         Fiber.return ()));
+    [%expect
+      {|
+      high
+      low
+      probe
+      () |}]
+  ;;
+
   let%expect_test "a restart blocker preserves the reserved slot" =
     let throttle = Throttle.create 1 in
     let high = Throttle.create_priority ~priority:1 throttle in
@@ -231,6 +410,7 @@ module Throttle_tests = struct
          | `Blocked ->
            print_endline "restart blocked";
            printf "running: %d\n" (Throttle.running throttle);
+           Throttle.set_priority high 0;
            let* () = Throttle.resize throttle 2 in
            let* () = Fiber.Ivar.read low_finished in
            let* () = Throttle.resize throttle 1 in
@@ -247,29 +427,34 @@ module Throttle_tests = struct
     in
     test
       unit
-      (Fiber.parallel_iter
-         [ (fun () ->
-             Throttle.run
-               throttle
-               ~priority:high
-               ~schedule_restart:(fun restart -> Queue.push restarts restart)
-               (fun () ->
-                  print_endline "high";
-                  let* () = Fiber.Ivar.fill high_started () in
-                  Fiber.Ivar.read release_high))
-         ; (fun () ->
-             let* () = Fiber.Ivar.read high_started in
-             Fiber.fork_and_join_unit
-               (fun () ->
-                  Throttle.run throttle ~priority:low (fun () ->
-                    print_endline "low";
-                    Fiber.Ivar.fill low_finished ()))
-               (fun () ->
-                  let* () = Scheduler.yield () in
-                  Fiber.Ivar.fill release_high ()))
-         ; process_restart
-         ]
-         ~f:(fun f -> f ()));
+      (let* () =
+         Fiber.parallel_iter
+           [ (fun () ->
+               Throttle.run
+                 throttle
+                 ~priority:high
+                 ~schedule_restart:(fun restart -> Queue.push restarts restart)
+                 (fun () ->
+                    print_endline "high";
+                    let* () = Fiber.Ivar.fill high_started () in
+                    Fiber.Ivar.read release_high))
+           ; (fun () ->
+               let* () = Fiber.Ivar.read high_started in
+               Fiber.fork_and_join_unit
+                 (fun () ->
+                    Throttle.run throttle ~priority:low (fun () ->
+                      print_endline "low";
+                      Fiber.Ivar.fill low_finished ()))
+                 (fun () ->
+                    let* () = Scheduler.yield () in
+                    Fiber.Ivar.fill release_high ()))
+           ; process_restart
+           ]
+           ~f:(fun f -> f ())
+       in
+       Throttle.run throttle (fun () ->
+         print_endline "probe";
+         Fiber.return ()));
     [%expect
       {|
       high
@@ -277,6 +462,7 @@ module Throttle_tests = struct
       running: 0
       low
       one blocker remains
+      probe
       () |}]
   ;;
 
@@ -379,10 +565,10 @@ module Throttle_tests = struct
       () |}]
   ;;
 
-  let%expect_test "resizing admits the highest-priority job" =
+  let%expect_test "resizing admits the current highest-priority job" =
     let throttle = Throttle.create 0 in
-    let first = Throttle.create_priority throttle in
-    let second = Throttle.create_priority throttle in
+    let first = Throttle.create_priority ~priority:2 throttle in
+    let second = Throttle.create_priority ~priority:1 throttle in
     let run name priority =
       Throttle.run throttle ~priority (fun () ->
         print_endline name;
@@ -394,7 +580,7 @@ module Throttle_tests = struct
          [ (fun () -> run "first" first)
          ; (fun () -> run "second" second)
          ; (fun () ->
-             Throttle.increase_priority second;
+             Throttle.set_priority first 0;
              Throttle.resize throttle 1)
          ]
          ~f:(fun f -> f ()));

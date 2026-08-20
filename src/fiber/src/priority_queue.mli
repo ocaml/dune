@@ -16,6 +16,10 @@ module type S = sig
   (** Return the current value of the priority handle. *)
   val priority : 'a priority -> int
 
+  (** Set the handle's priority. If the handle has queued values, they are
+      reprioritized immediately without changing their FIFO age. *)
+  val set_priority : 'a priority -> int -> unit
+
   (** Increase the handle's priority by one. If the handle has queued values,
       they are reprioritized immediately. The priority saturates at [max_int]. *)
   val increase_priority : 'a priority -> unit

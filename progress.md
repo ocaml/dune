@@ -9,7 +9,7 @@
 - [ ] Capture the mixed-root failure and add correlated scheduler tracing
   ([plan.md:297-329](./plan.md#L297-L329),
   [plan.md:338-362](./plan.md#L338-L362)).
-- [ ] Add bidirectional queue priority updates while preserving FIFO and restart
+- [x] Add bidirectional queue priority updates while preserving FIFO and restart
   semantics ([plan.md:221-249](./plan.md#L221-L249),
   [plan.md:364-391](./plan.md#L364-L391)).
 - [ ] Preserve resolved root grouping, infer `Direct`, `Normal`, and `Bulk`
@@ -40,3 +40,16 @@
   `./dune.exe runtest test/expect-tests/scheduler_tests.ml`, and
   `./dune.exe build @check`
   ([plan.md:489-512](./plan.md#L489-L512)).
+- **2026-08-20:** Mapped the implementation seams: queue demotion can reuse the
+  existing remove/reinsert path; root grouping is lost only in
+  `resolve_targets_exn`; eager Action-builder evaluation is the safe root-ID
+  allocation boundary; and cancellation precedes `Memo.reset`
+  ([plan.md:107-176](./plan.md#L107-L176),
+  [plan.md:221-278](./plan.md#L221-L278)).
+- **2026-08-20:** Added absolute queue and throttle priority updates with tests
+  for demotion, FIFO age, shared handles, resize, equal-priority admission, and
+  deferred and blocked restart balance. Formatted the five changed OCaml files
+  with `ocamlformat -i`; `./dune.exe runtest src/fiber/test/` and
+  `./dune.exe build @check` passed
+  ([plan.md:221-249](./plan.md#L221-L249),
+  [plan.md:364-391](./plan.md#L364-L391)).

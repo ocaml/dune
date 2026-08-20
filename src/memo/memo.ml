@@ -290,6 +290,9 @@ module Implicit_output = Implicit_output
 
 let lazy_node ~name ?cutoff ?human_readable_description ?on_event f =
   let on_event = Option.map on_event ~f:(fun on_event () event -> on_event event) in
+  let human_readable_description =
+    Option.map human_readable_description ~f:(fun f () -> Some (f ()))
+  in
   let spec =
     Spec.create
       ~name:(Some name)

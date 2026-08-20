@@ -474,7 +474,7 @@ module DB = struct
       Memo.create
         "create-from-stanza"
         ~human_readable_description:(fun (_, _, path, theory) ->
-          Id.pp (Id.create ~path:(Path.build path) ~name:theory.name))
+          Id.pp (Id.create ~path:(Path.build path) ~name:theory.name) |> Option.some)
         ~input:(module Input)
         create_from_stanza_impl
     ;;

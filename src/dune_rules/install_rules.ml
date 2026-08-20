@@ -1268,7 +1268,8 @@ let symlinked_entries =
       ~human_readable_description:(fun (_, pkg) ->
         Pp.textf
           "Computing installable artifacts for package %s"
-          (Package.Name.to_string pkg))
+          (Package.Name.to_string pkg)
+        |> Option.some)
       "symlinked_entries"
       (fun (sctx, pkg) -> symlinked_entries sctx pkg)
   in
@@ -1524,7 +1525,8 @@ let memo =
     ~human_readable_description:(fun (_, pkg) ->
       Pp.textf
         "Computing installable artifacts for package %s"
-        (Package.Name.to_string pkg))
+        (Package.Name.to_string pkg)
+      |> Option.some)
     "install-rules-and-pkg-entries"
     (fun (sctx, pkg) ->
        Memo.return

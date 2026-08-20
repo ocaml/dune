@@ -53,3 +53,19 @@
   `./dune.exe build @check` passed
   ([plan.md:221-249](./plan.md#L221-L249),
   [plan.md:364-391](./plan.md#L364-L391)).
+- **2026-08-20:** Preserved one group per original target, classified resolved
+  file targets as `Direct`, non-recursive aliases as `Normal`, and recursive
+  aliases as `Bulk`, and added an eager-only Action-builder demand scope that
+  allocates fresh roots at evaluation time. `./dune.exe build @check @fmt`
+  passed ([plan.md:39-65](./plan.md#L39-L65),
+  [plan.md:107-137](./plan.md#L107-L137),
+  [plan.md:393-421](./plan.md#L393-L421)).
+- **2026-08-20:** Added a minimal test-only root observation and expect coverage
+  proving that lazy Action-builder evaluation allocates no root and repeated
+  eager evaluations allocate distinct roots carrying the requested class.
+  Classification and target action-set integration coverage remains for Stage
+  4/6, so the Stage 3 milestone remains open
+  ([plan.md:107-137](./plan.md#L107-L137),
+  [plan.md:393-421](./plan.md#L393-L421),
+  [plan.md:423-451](./plan.md#L423-L451),
+  [plan.md:516-542](./plan.md#L516-L542)).

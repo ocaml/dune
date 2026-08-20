@@ -9,9 +9,30 @@ open Fiber.O
 module Id = Id.Make ()
 
 module Job_priority_state = struct
+  module Demand_class = struct
+    type t =
+      | Bulk
+      | Normal
+      | Direct
+
+    let equal a b =
+      match a, b with
+      | Bulk, Bulk | Normal, Normal | Direct, Direct -> true
+      | Bulk, (Normal | Direct) | Normal, (Bulk | Direct) | Direct, (Bulk | Normal) ->
+        false
+    ;;
+  end
+
+  module Root_id = Stdune.Id.Make ()
+
   type factory =
     { id : Id.t
     ; create : priority:int -> Fiber.Throttle.priority
+    }
+
+  type root =
+    { id : Root_id.t
+    ; demand_class : Demand_class.t
     }
 
   type t =
@@ -20,6 +41,7 @@ module Job_priority_state = struct
     }
 
   let current_factory : factory option Fiber.Var.t = Fiber.Var.create None
+  let current_root : root option Fiber.Var.t = Fiber.Var.create None
 end
 
 module M = struct
@@ -548,8 +570,12 @@ module Call_stack = struct
 end
 
 module Job_priority = struct
+  module Demand_class = Job_priority_state.Demand_class
+  module Root_id = Job_priority_state.Root_id
+
   type t = Fiber.Throttle.priority
   type factory = Job_priority_state.factory
+  type root = Job_priority_state.root
 
   let with_factory create f =
     let factory = { Job_priority_state.id = Id.gen (); create } in
@@ -557,6 +583,28 @@ module Job_priority = struct
   ;;
 
   let current_factory () = Fiber.Var.get Job_priority_state.current_factory
+
+  let with_root demand_class f =
+    let* factory = current_factory () in
+    match factory with
+    | None -> f ()
+    | Some _ ->
+      let root = { Job_priority_state.id = Root_id.gen (); demand_class } in
+      Fiber.Var.set Job_priority_state.current_root (Some root) f
+  ;;
+
+  let current_root () = Fiber.Var.get Job_priority_state.current_root
+  let root_id { Job_priority_state.id; demand_class = _ } = id
+  let root_demand_class { Job_priority_state.id = _; demand_class } = demand_class
+
+  module For_tests = struct
+    let current_root () =
+      let+ root = current_root () in
+      Option.map root ~f:(fun root ->
+        root_demand_class root, Root_id.to_int (root_id root))
+    ;;
+  end
+
   let succ priority = if priority = Int.max_int then priority else priority + 1
 
   let is_active_dependency (Dep_node.T dep_node) =

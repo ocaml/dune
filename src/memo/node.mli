@@ -269,11 +269,33 @@ module Call_stack : sig
 end
 
 module Job_priority : sig
+  module Demand_class : sig
+    type t =
+      | Bulk
+      | Normal
+      | Direct
+
+    val equal : t -> t -> bool
+  end
+
+  module Root_id : sig
+    type t
+  end
+
   type t = Fiber.Throttle.priority
   type factory
+  type root
 
   val with_factory : (priority:int -> t) -> (unit -> 'a Fiber.t) -> 'a Fiber.t
   val current_factory : unit -> factory option Fiber.t
+  val with_root : Demand_class.t -> (unit -> 'a Fiber.t) -> 'a Fiber.t
+  val current_root : unit -> root option Fiber.t
+  val root_id : root -> Root_id.t
+  val root_demand_class : root -> Demand_class.t
+
+  module For_tests : sig
+    val current_root : unit -> (Demand_class.t * int) option Fiber.t
+  end
 
   val increase
     :  ('i, 'o) Dep_node.t

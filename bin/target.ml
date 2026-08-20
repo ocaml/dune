@@ -8,13 +8,46 @@ module Request = struct
     | Alias of Alias.t
 end
 
-let request targets =
+module Resolved_root = struct
+  module Demand_class = Memo.Job_priority.Demand_class
+
+  type t =
+    { requests : Request.t list
+    ; demand_class : Demand_class.t
+    }
+
+  let classify : Request.t -> Demand_class.t = function
+    | File _ -> Demand_class.Direct
+    | Alias { recursive = false; _ } -> Demand_class.Normal
+    | Alias { recursive = true; _ } -> Demand_class.Bulk
+  ;;
+
+  let create requests =
+    match requests with
+    | [] -> Code_error.raise "Target.Resolved_root.create: empty root" []
+    | request :: rest ->
+      let demand_class = classify request in
+      if
+        List.exists rest ~f:(fun request ->
+          not (Demand_class.equal demand_class (classify request)))
+      then Code_error.raise "Target.Resolved_root.create: mixed demand classes" [];
+      { requests; demand_class }
+  ;;
+end
+
+let request_targets targets =
   List.fold_left targets ~init:(Action_builder.return ()) ~f:(fun acc target ->
     acc
     >>>
     match (target : Request.t) with
     | File path -> Action_builder.path path
     | Alias a -> Alias.request a)
+;;
+
+let request roots =
+  Action_builder.all_unit
+    (List.map roots ~f:(fun { Resolved_root.requests; demand_class } ->
+       Action_builder.with_job_demand demand_class (request_targets requests)))
 ;;
 
 module Target_type = struct
@@ -264,12 +297,12 @@ let resolve_targets root (setup : Dune_rules.Main.build_system) user_targets =
 
 let resolve_targets_exn root setup user_targets =
   resolve_targets root setup user_targets
-  >>| List.concat_map ~f:(function
+  >>| List.map ~f:(function
     | Error (dep, hints) ->
       User_error.raise
         [ Pp.textf "Don't know how to build %s" (Arg.Dep.to_string_maybe_quoted dep) ]
         ~hints
-    | Ok targets -> targets)
+    | Ok requests -> Resolved_root.create requests)
 ;;
 
 let interpret_targets root setup user_targets =

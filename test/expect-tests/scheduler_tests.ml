@@ -21,6 +21,55 @@ let go ?(timeout = Time.Span.of_secs 0.3) ?(config = default) f =
 
 let priority_config = { default with priority_scheduling = true }
 
+let%expect_test "Action builder demand roots are eager and fresh" =
+  let module Action_builder = Dune_engine.Action_builder in
+  let module Demand_class = Memo.Job_priority.Demand_class in
+  let observation =
+    Memo.of_non_reproducible_fiber (Memo.Job_priority.For_tests.current_root ())
+  in
+  let builder =
+    Action_builder.with_job_demand
+      Demand_class.Direct
+      (Action_builder.of_memo observation)
+  in
+  let result = ref None in
+  go ~config:priority_config (fun () ->
+    let* lazy_root, _ = Action_builder.evaluate_and_collect_deps builder |> Memo.run in
+    let* eager_root_1, _ =
+      Action_builder.evaluate_and_collect_facts builder |> Memo.run
+    in
+    let* eager_root_2, _ =
+      Action_builder.evaluate_and_collect_facts builder |> Memo.run
+    in
+    result := Some (lazy_root, eager_root_1, eager_root_2);
+    Fiber.return ());
+  let demand_class = function
+    | Demand_class.Bulk -> "bulk"
+    | Demand_class.Normal -> "normal"
+    | Demand_class.Direct -> "direct"
+  in
+  let root = function
+    | None -> "none"
+    | Some (demand_class_, _) -> demand_class demand_class_
+  in
+  let lazy_root, eager_root_1, eager_root_2 = Option.value_exn !result in
+  Printf.printf "lazy: %s\n" (root lazy_root);
+  Printf.printf "eager 1: %s\n" (root eager_root_1);
+  Printf.printf "eager 2: %s\n" (root eager_root_2);
+  let distinct_ids =
+    match eager_root_1, eager_root_2 with
+    | Some (_, id_1), Some (_, id_2) -> id_1 <> id_2
+    | None, _ | _, None -> false
+  in
+  Printf.printf "distinct IDs: %b\n" distinct_ids;
+  [%expect
+    {|
+    lazy: none
+    eager 1: direct
+    eager 2: direct
+    distinct IDs: true |}]
+;;
+
 let%expect_test "Memo dependencies reprioritize queued jobs" =
   let go = go ~config:priority_config in
   let order = ref [] in

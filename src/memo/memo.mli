@@ -379,6 +379,15 @@ val pp_stack : unit -> _ Pp.t Fiber.t
 val get_call_stack : unit -> Stack_frame.t list t
 
 module Job_priority : sig
+  module Demand_class : sig
+    type t =
+      | Bulk
+      | Normal
+      | Direct
+
+    val equal : t -> t -> bool
+  end
+
   type t = Fiber.Throttle.priority
 
   (** Install a factory for priorities created while running [f]. *)
@@ -386,7 +395,17 @@ module Job_priority : sig
 
   (** Return the priority of the current Memo computation, if it has one. *)
   val current : unit -> t option Fiber.t
+
+  module For_tests : sig
+    (** Internal observation of the current demand root for tests. Do not use in
+        production code. *)
+    val current_root : unit -> (Demand_class.t * int) option Fiber.t
+  end
 end
+
+(** When priority scheduling is active, run [f] with a fresh root carrying
+    [demand_class]. With priority scheduling disabled, run [f] without allocating a root. *)
+val with_job_demand : Job_priority.Demand_class.t -> (unit -> 'a t) -> 'a t
 
 (** Insert a stack frame to make call stacks more precise when showing them to
     the user. *)

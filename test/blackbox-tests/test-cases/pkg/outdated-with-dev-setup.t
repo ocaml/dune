@@ -17,3 +17,13 @@ dune pkg outdated is able to handle :with-dev-setup correctly.
   $ dune pkg outdated
   dune.lock is up to date.
 
+Now update the solver env to include with-dev-setup deps
+  $ cat >dune-workspace <<EOF
+  > EOF
+
+  $ mkpkg a 0.0.2
+  $ mkpkg b 0.0.2
+  $ dune pkg outdated
+
+$ dune pkg outdated
+dune.lock is up to date.

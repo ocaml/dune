@@ -61,10 +61,10 @@ let%expect_test "directory metrics count directory scans" =
   Path.mkdir_p second;
   let count_before = Counter.read Metrics.Directory_read.count in
   let time_before = Counter.Timer.read Metrics.Directory_read.time in
-  ignore (Readdir.read_directory (Path.to_string first) |> ok_exn : string list);
+  ignore (Readdir.read_directory (Path.to_string first) |> ok_exn : Filename.t list);
   ignore
     (Readdir.read_directory_with_kinds (Path.to_string second) |> ok_exn
-     : (string * Unix.file_kind) list);
+     : (Filename.t * Unix.file_kind) list);
   Dune_tests_common.print_dyn
     (Dyn.record
        [ "count", Dyn.int (Counter.read Metrics.Directory_read.count - count_before)

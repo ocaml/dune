@@ -109,12 +109,7 @@ module Load = Make_load (struct
       | Error _ ->
         (* CR-someday rgrinberg: add some proper message here *)
         User_error.raise [ Pp.text "" ]
-      | Ok content ->
-        let content =
-          Stdune.List.map content ~f:(fun (name, kind) ->
-            Filename.of_string_exn name, kind)
-        in
-        return content
+      | Ok content -> return content
     ;;
 
     let with_lexbuf_from_file path ~f =

@@ -15,6 +15,12 @@
 #include <dirent.h>
 typedef struct dirent directory_entry;
 
+static int is_dot_or_dot_dot(const char *name)
+{
+  return name[0] == '.'
+    && (name[1] == '\0' || (name[1] == '.' && name[2] == '\0'));
+}
+
 value val_file_type(int typ) {
   switch(typ)
     {
@@ -50,16 +56,19 @@ CAMLprim value caml__dune_filesystem_stubs__readdir(value vd)
   directory_entry * e;
   d = DIR_Val(vd);
   if (d == (DIR *) NULL) unix_error(EBADF, "readdir", Nothing);
-  caml_enter_blocking_section();
-  errno = 0;
-  e = readdir((DIR *) d);
-  caml_leave_blocking_section();
-  if (e == (directory_entry *) NULL) {
-    if(errno == 0) {
-      CAMLreturn(Val_int(0));
-    } else {
-      uerror("readdir", Nothing);
+  while (1) {
+    caml_enter_blocking_section();
+    errno = 0;
+    e = readdir((DIR *) d);
+    caml_leave_blocking_section();
+    if (e == (directory_entry *) NULL) {
+      if(errno == 0) {
+        CAMLreturn(Val_int(0));
+      } else {
+        uerror("readdir", Nothing);
+      }
     }
+    if (!is_dot_or_dot_dot(e->d_name)) break;
   }
   v_filename = caml_copy_string(e->d_name);
   v_tuple = caml_alloc_small(2, 0);

@@ -216,7 +216,7 @@ let rec clear_dir ?(chmod = false) dir =
 
 and clear_files ?(chmod = false) dir listing =
   List.iter listing ~f:(fun (fn, kind) ->
-    let fn = Filename.concat dir fn in
+    let fn = Filename.append dir fn in
     (* Note that by the time we reach this point, [fn] might have been
        deleted by a concurrent process. Both [rm_rf_dir] and [unlink_no_err]
        will tolerate such phantom paths and succeed. *)
@@ -246,7 +246,6 @@ let rm_rf ?(chmod = false) fn =
 ;;
 
 let default ~dir:_ _ acc = acc
-let filename = Filename.of_string_exn
 
 (* CR-someday rgrinberg: maybe we should make sure that we don't hit any
    symlink loops here? *)
@@ -276,17 +275,16 @@ let traverse
           ]
   in
   let handle_kind ~dir fname kind stack acc =
-    let filename = filename fname in
     match (kind : Unix.file_kind) with
     | S_DIR ->
-      (match enter_dir ~dir filename with
+      (match enter_dir ~dir fname with
        | false -> stack, acc
        | true ->
-         let acc = on_dir ~dir filename acc in
-         let stack = Filename.concat dir fname :: stack in
+         let acc = on_dir ~dir fname acc in
+         let stack = Filename.append dir fname :: stack in
          stack, acc)
-    | S_REG -> stack, on_file ~dir filename acc
-    | kind -> stack, on_other ~dir filename kind acc
+    | S_REG -> stack, on_file ~dir fname acc
+    | kind -> stack, on_other ~dir fname kind acc
   in
   let on_error =
     match on_error with
@@ -309,7 +307,7 @@ let traverse
            then
              List.sort
                ~compare:(fun (name1, _kind1) (name2, _kind2) ->
-                 String.compare name2 name1)
+                 Filename.compare name2 name1)
                entries
            else entries
          in
@@ -322,16 +320,16 @@ let traverse
                   User_error.raise
                     [ Pp.textf
                         "Symlink %s is not allowed here"
-                        (Filename.concat dir fname)
+                        (Filename.append dir fname)
                     ]
                 | `Ignore -> stack, acc
                 | `Resolve ->
-                  (match Unix.stat (Filename.concat dir_path fname) with
+                  (match Unix.stat (Filename.append dir_path fname) with
                    | exception Unix.Unix_error (x, y, z) ->
                      stack, on_error ~dir (x, y, z) acc
                    | stat -> handle_kind ~dir fname stat.st_kind stack acc)
                 | `Call f ->
-                  let acc, kind = f ~dir (filename fname) acc in
+                  let acc, kind = f ~dir fname acc in
                   (match kind with
                    | None -> stack, acc
                    | Some kind -> handle_kind ~dir fname kind stack acc))

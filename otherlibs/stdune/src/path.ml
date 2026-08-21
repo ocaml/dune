@@ -773,19 +773,8 @@ let relative_to_source_in_build_or_external ?error_loc ~dir s =
      | In_build_dir _ | External _ -> path)
 ;;
 
-let readdir_unsorted t =
-  Result.map
-    (Readdir.read_directory (to_string t))
-    ~f:(List.map ~f:Filename.of_string_exn)
-;;
-
-let readdir_unsorted_with_kinds t =
-  Result.map
-    (Readdir.read_directory_with_kinds (to_string t))
-    ~f:(fun entries ->
-      List.map entries ~f:(fun (name, kind) -> Filename.of_string_exn name, kind))
-;;
-
+let readdir_unsorted t = Readdir.read_directory (to_string t)
+let readdir_unsorted_with_kinds t = Readdir.read_directory_with_kinds (to_string t)
 let build_dir_exists () = Fpath.is_directory (to_string build_dir)
 
 let ensure_build_dir_exists () =

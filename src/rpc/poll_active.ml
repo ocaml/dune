@@ -7,7 +7,7 @@ include
       let scandir dir =
         Fiber.return
           (match Stdune.Readdir.read_directory dir with
-           | Ok s -> Ok s
+           | Ok s -> Ok (Filename.L.to_string s)
            | Error (e, _, _) -> Error (Failure (dir ^ ": " ^ Unix.error_message e)))
       ;;
 

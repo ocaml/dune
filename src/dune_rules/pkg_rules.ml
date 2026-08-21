@@ -2229,7 +2229,7 @@ let rec scan_contents p =
     dir_contents
     ~init:(P.Set.empty, P.Set.empty)
     ~f:(fun (files, empty_directories) (file_name, file_kind) ->
-      let p = P.relative p file_name in
+      let p = P.relative_fname p file_name in
       match (file_kind : Unix.file_kind) with
       | S_REG -> P.Set.add files p, empty_directories
       | S_DIR ->

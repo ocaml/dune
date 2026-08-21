@@ -297,13 +297,7 @@ let rec dep expander : Dep_conf.t -> _ = function
          let* pkg_name = expand_package_name expander p in
          let context = Build_context.create ~name:(Expander.context expander) in
          let loc = String_with_vars.loc p in
-         let* dune_version =
-           Action_builder.of_memo
-           @@
-           let open Memo.O in
-           Dune_load.find_project ~dir:(Expander.dir expander)
-           >>| Dune_project.dune_version
-         in
+         let dune_version = Expander.project expander |> Dune_project.dune_version in
          package loc pkg_name context ~dune_version
        in
        [])
@@ -347,19 +341,13 @@ and combined_package_deps_builder expander pkgs =
     then Action_builder.return Env.empty
     else Install_layout.env context.name local_package_names
   in
+  let dune_version = Expander.project expander |> Dune_project.dune_version in
   let+ () =
     Action_builder.List.iter classified ~f:(fun (loc, pkg_name, found) ->
       match found with
       | Some (Local _) -> Action_builder.return ()
       | Some (Build build) -> build
-      | Some (Installed _) | None ->
-        let* dune_version =
-          Action_builder.of_memo
-            (let open Memo.O in
-             Dune_load.find_project ~dir:(Expander.dir expander)
-             >>| Dune_project.dune_version)
-        in
-        package loc pkg_name context ~dune_version)
+      | Some (Installed _) | None -> package loc pkg_name context ~dune_version)
   in
   env
 

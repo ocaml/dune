@@ -176,6 +176,22 @@ fast entry to be installed, so a sequential install would time out.
   Installing prefix/lib/foo/slow
   Installing prefix/lib/foo/fast
 
+Installation stops at the first copy error. Using a directory as the first
+source makes copying fail after destination validation; the later independent
+entry must not be installed.
+
+  $ rm -rf prefix source-dir
+  $ mkdir source-dir
+  $ printf 'second\n' >second
+  $ cat >_build/default/foo.install <<EOF
+  > lib: [
+  >   "source-dir" {"first"}
+  >   "second"
+  > ]
+  > EOF
+  $ if dune install --prefix prefix --display short >/dev/null 2>&1; then false; fi
+  $ test ! -e prefix/lib/foo/second
+
 A warning is not lost when the fallback copy fails. The FIFO is unlinked after
 Dune opens it, so parsing can finish but the fallback cannot reopen the source.
 

@@ -194,7 +194,7 @@ module Stanza = struct
       let* cctx =
         let dune_version = Scope.project scope |> Dune_project.dune_version in
         let* preprocessing =
-          let preprocess = Module_name.Per_item.for_all toplevel.pps in
+          let preprocess = Module_reference.Per_item.for_all toplevel.pps in
           Pp_spec_rules.make
             sctx
             ~dir

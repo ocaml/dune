@@ -2,9 +2,12 @@ type 'a t = ( :: ) of 'a * 'a list
 
 let hd (x :: _) = x
 
-let last = function
-  | [ t ] -> t
-  | _ :: ts -> List.last ts |> Option.value_exn
+let last =
+  let rec loop last = function
+    | [] -> last
+    | t :: ts -> loop t ts
+  in
+  fun (t :: ts) -> loop t ts
 ;;
 
 let destruct_last =

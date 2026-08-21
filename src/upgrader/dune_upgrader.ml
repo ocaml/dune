@@ -417,7 +417,7 @@ let upgrade () =
          additional upgrade should be needed *)
       (* We reset memoization tables as a simple way to refresh the
          Source_tree *)
-      Memo.reset (Memo.Invalidation.clear_caches ~reason:Upgrade);
+      Memo.reset (Memo.Invalidation.invalidate_caches ~reason:Upgrade);
       aux true)
     else if !v2_updates
     then (

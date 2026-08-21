@@ -65,8 +65,8 @@ let%expect_test "create_with_store routes memoization through a custom store" =
     computing 2
     f 2 = 20 (calls = 2)
     |}];
-  (* clear_caches empties the custom store (Store.clear), forcing a recompute. *)
-  Memo.reset (Memo.Invalidation.clear_caches ~reason:Reason.Test);
+  (* [invalidate_caches] invalidates the node in the custom store. *)
+  Memo.reset (Memo.Invalidation.invalidate_caches ~reason:Reason.Test);
   show 1;
   [%expect
     {|

@@ -115,9 +115,7 @@ let create_with_cache
       ?on_event
       f
   in
-  Caches.register ~clear:(fun () ->
-    Invalidation.invalidate_store cache;
-    Store.clear cache);
+  Caches.register ~invalidate:(fun () -> Invalidation.invalidate_store cache);
   { cache; spec }
 ;;
 
@@ -423,7 +421,7 @@ module For_tests = struct
            deps)
   ;;
 
-  let clear_memoization_caches () = Caches.clear ()
+  let invalidate_memoization_caches () = Caches.invalidate ()
 end
 
 module Store = Store_intf

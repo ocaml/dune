@@ -237,6 +237,7 @@ module Context = struct
       |> Package_name.of_opam_package_name
       |> Package_name.Map.mem (Lazy.force t.local_packages)
     in
+    let solver_env = Solver_env.extend t.solver_env platform in
     Solver_env.to_env_for_package solver_env ~request_flags:package_is_local
     |> Solver_stats.Updater.wrap_env t.stats_updater
     |> Lock_pkg.add_self_to_filter_env package

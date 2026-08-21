@@ -772,7 +772,23 @@ let run
             | Ok () -> true
             | Error _ -> false
           in
+          let install_sources_can_be_copied_concurrently () =
+            List.for_all
+              entries
+              ~f:(fun ((entry : Path.t Install.Entry.Expanded.t), _, _) ->
+                (* Opening a directory may succeed and only fail once copying
+                 starts. Keep it sequential so the error stops later entries. *)
+                match Unix.stat (Path.to_string entry.src) with
+                | { st_kind = S_DIR; _ } -> false
+                | _ -> true
+                | exception Unix.Unix_error _ -> false)
+          in
           let install_destinations_are_independent () =
+            let artifact_substitution_temp_file dst =
+              let dst_dir = Path.parent_exn dst in
+              let dst_name = Path.basename dst |> Filename.to_string in
+              Path.relative dst_dir (sprintf ".#%s.dune-temp" dst_name)
+            in
             let canonicalize path =
               let rec loop path suffix =
                 match Unix.realpath (Path.to_string path) with
@@ -808,14 +824,17 @@ let run
                 match
                   ( List.map entries ~f:(fun (_, dst, _) -> canonicalize dst)
                     |> Option.List.all
+                  , List.map entries ~f:(fun (_, dst, _) ->
+                      artifact_substitution_temp_file dst |> canonicalize)
+                    |> Option.List.all
                   , List.map
                       entries
                       ~f:(fun ((entry : Path.t Install.Entry.Expanded.t), _, _) ->
                         canonicalize entry.src)
                     |> Option.List.all )
                 with
-                | None, _ | _, None -> false
-                | Some paths, Some sources ->
+                | None, _, _ | _, None, _ | _, _, None -> false
+                | Some paths, Some staging_paths, Some sources ->
                   (* Artifact substitution stages copies in the [.#] namespace. *)
                   let rec uses_reserved_temp_path path =
                     match Path.parent path with
@@ -849,17 +868,18 @@ let run
                   let source_ancestors =
                     List.fold_left sources ~init:Path.Set.empty ~f:add_with_ancestors
                   in
+                  let write_paths = paths @ staging_paths in
                   if
                     List.exists (paths @ sources) ~f:uses_reserved_temp_path
-                    || List.exists paths ~f:(fun dst ->
+                    || List.exists write_paths ~f:(fun dst ->
                       Path.Set.mem source_ancestors dst
                       || path_or_ancestor_is_in source_paths dst)
                   then false
                   else (
-                    match collect Path.Set.empty paths with
+                    match collect Path.Set.empty write_paths with
                     | None -> false
                     | Some destinations ->
-                      List.for_all paths ~f:(fun path ->
+                      List.for_all write_paths ~f:(fun path ->
                         match Path.parent path with
                         | None -> true
                         | Some parent -> not (path_or_ancestor_is_in destinations parent))))
@@ -878,6 +898,7 @@ let run
             | Install
               when dry_run
                    || create_install_files
+                   || (not (install_sources_can_be_copied_concurrently ()))
                    || (not (install_destinations_are_independent ()))
                    || not (install_destinations_are_valid ()) ->
               Fiber.sequential_map entries ~f:(fun entry -> install_entry Immediate entry)

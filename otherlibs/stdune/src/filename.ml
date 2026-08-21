@@ -6,6 +6,16 @@ let rec contains_slash s i =
   i >= 0 && (Char.equal (String.unsafe_get s i) '/' || contains_slash s (i - 1))
 ;;
 
+let rec contains_dir_sep s i =
+  if i < 0
+  then false
+  else (
+    match String.unsafe_get s i with
+    | '/' -> true
+    | ('\\' | ':') when Sys.win32 || Sys.cygwin -> true
+    | _ -> contains_dir_sep s (i - 1))
+;;
+
 let is_valid s =
   let len = String.length s in
   len > 0
@@ -14,7 +24,7 @@ let is_valid s =
       || not
            (Char.equal (String.unsafe_get s 0) '.'
             && Char.equal (String.unsafe_get s 1) '.'))
-  && not (contains_slash s (len - 1))
+  && not (contains_dir_sep s (len - 1))
 ;;
 
 let of_string s = Option.some_if (is_valid s) s
@@ -84,7 +94,9 @@ module Extension = struct
 
   let is_valid s =
     let len = String.length s in
-    len > 0 && Char.equal (String.unsafe_get s 0) '.' && not (contains_slash s (len - 1))
+    len > 0
+    && Char.equal (String.unsafe_get s 0) '.'
+    && not (contains_dir_sep s (len - 1))
   ;;
 
   let of_string s = Option.some_if (is_valid s) s

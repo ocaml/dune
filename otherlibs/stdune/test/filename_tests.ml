@@ -3,6 +3,33 @@ open Dune_tests_common
 
 let () = init ()
 
+let%expect_test "filenames reject platform directory separators" =
+  let windows = Sys.win32 || Sys.cygwin in
+  let check_filename s ~expected =
+    let actual = Option.is_some (Filename.of_string s) in
+    Printf.printf "filename %S: %b\n" s (Bool.equal actual expected)
+  in
+  let check_extension s ~expected =
+    let actual = Option.is_some (Filename.Extension.of_string s) in
+    Printf.printf "extension %S: %b\n" s (Bool.equal actual expected)
+  in
+  check_filename "a/b" ~expected:false;
+  check_filename "a\\b" ~expected:(not windows);
+  check_filename "a:b" ~expected:(not windows);
+  check_extension ".a/b" ~expected:false;
+  check_extension ".a\\b" ~expected:(not windows);
+  check_extension ".a:b" ~expected:(not windows);
+  [%expect
+    {|
+    filename "a/b": true
+    filename "a\\b": true
+    filename "a:b": true
+    extension ".a/b": true
+    extension ".a\\b": true
+    extension ".a:b": true
+    |}]
+;;
+
 let extension s =
   let ext =
     Filename.of_string s

@@ -62,10 +62,13 @@ module Dir_rules = struct
   let empty = Id.Map.empty
   let union_map a b ~f = Id.Map.union a b ~f:(fun _key a b -> Some (f a b))
 
-  let union =
-    union_map ~f:(fun a b ->
-      assert (a == b);
-      a)
+  let union a b =
+    if a == b
+    then a
+    else
+      union_map a b ~f:(fun a b ->
+        assert (a == b);
+        a)
   ;;
 
   let singleton (data : data) =
@@ -107,7 +110,7 @@ module T = struct
 
   let empty = Path.Build.Map.empty
   let union_map a b ~f = Path.Build.Map.union a b ~f:(fun _key a b -> Some (f a b))
-  let union = union_map ~f:Dir_rules.Nonempty.union
+  let union a b = if a == b then a else union_map a b ~f:Dir_rules.Nonempty.union
   let name = "Rules"
 end
 

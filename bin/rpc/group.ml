@@ -14,7 +14,12 @@ let info =
 let group =
   Cmd.group
     info
-    [ Rpc_status.cmd; Rpc_build.cmd; Rpc_ping.cmd; Rpc_flush_file_watcher.cmd ]
+    [ Rpc_status.cmd
+    ; Rpc_build.cmd
+    ; Rpc_ping.cmd
+    ; Rpc_flush_file_watcher.cmd
+    ; Rpc_simulate_file_watcher_queue_overflow.cmd
+    ]
 ;;
 
 module Build = Rpc_build

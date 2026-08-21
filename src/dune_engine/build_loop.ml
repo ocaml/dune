@@ -183,6 +183,13 @@ let request_restart t invalidation =
     trigger_wakeup t)
 ;;
 
+let simulate_file_watcher_queue_overflow t =
+  ignore (Debouncer.push t.file_event_debouncer : _);
+  request_restart
+    t
+    (invalidation_of_file_events [ Event.File_watcher_event.Queue_overflow ])
+;;
+
 let file_event_debounce_interval =
   Config.make
     ~name:"file_event_debounce"

@@ -1,25 +1,32 @@
 module Digest = struct
-  type t = string
+  (* Float-only record fields are stored unboxed. The fields contain int64 bits
+     rather than floating-point values. *)
+  type t =
+    { first : float
+    ; second : float
+    }
 
-  let equal = String.equal
-  let compare = String.compare
-  let to_binary x = x
+  external equal : t -> t -> bool = "blake3_mini_digest_equal" [@@noalloc]
+  external compare : t -> t -> int = "blake3_mini_digest_compare" [@@noalloc]
 
-  include (
-  struct
-    let[@ocaml.warning "-32"] hash = Hashtbl.hash
+  let hash { first; _ } = Int64.to_int (Int64.bits_of_float first)
 
-    include String
-  end :
-  sig
-    val hash : t -> int
-  end)
+  let to_binary { first; second } =
+    let result = Bytes.create 16 in
+    Bytes.set_int64_ne result 0 (Int64.bits_of_float first);
+    Bytes.set_int64_ne result 8 (Int64.bits_of_float second);
+    Bytes.unsafe_to_string result
+  ;;
 
-  let to_hex = Digest.to_hex
+  let to_hex digest = Digest.to_hex (to_binary digest)
 
   let of_hex s =
     match Digest.from_hex s with
-    | s -> Some s
+    | s ->
+      Some
+        { first = Int64.float_of_bits (String.get_int64_ne s 0)
+        ; second = Int64.float_of_bits (String.get_int64_ne s 8)
+        }
     | exception Invalid_argument _ -> None
   ;;
 end
@@ -48,7 +55,7 @@ external feed_bigstring_release_lock
   -> unit
   = "blake3_mini_feed_bigstring_unlock"
 
-external fd : Unix.file_descr -> string = "blake3_mini_fd"
+external fd : Unix.file_descr -> Digest.t = "blake3_mini_fd"
 external file_with_size_unix : string -> Digest.t * int = "blake3_mini_file_with_size"
 
 let file_with_size_ocaml file =

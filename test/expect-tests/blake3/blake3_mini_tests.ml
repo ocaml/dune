@@ -44,8 +44,8 @@ let%expect_test "digest representation" =
   printf "unboxed fields: %b\n" (Obj.tag repr = Obj.double_array_tag);
   [%expect
     {|
-    payload bytes: 24
-    unboxed fields: false
+    payload bytes: 16
+    unboxed fields: true
     |}]
 ;;
 
@@ -92,7 +92,7 @@ let%expect_test "digest operations" =
     nan bits equal: true false
     compare: true true true true
     lexicographic compare: true
-    same-prefix hashes: false
+    same-prefix hashes: true
     |}]
 ;;
 

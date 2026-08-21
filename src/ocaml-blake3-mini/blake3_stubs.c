@@ -1,4 +1,6 @@
 #include <errno.h>
+#include <stdint.h>
+#include <string.h>
 #ifndef _WIN32
 #ifndef O_CLOEXEC
 #define O_CLOEXEC 0
@@ -22,10 +24,47 @@
 
 #define Blake3_val(v) (*(blake3_hasher **)Data_custom_val(v))
 
-static inline value alloc_hash(blake3_hasher *hasher, int len) {
-  value v_ret = caml_alloc_string(len);
-  const char *ret = String_val(v_ret);
-  blake3_hasher_finalize(hasher, (uint8_t *) ret, len);
+#define BLAKE3_MINI_DIGEST_SIZE 16
+
+static inline uint64_t digest_field(value digest, mlsize_t field) {
+  uint64_t result;
+  memcpy(&result, Op_val(digest) + (field * Double_wosize), sizeof(result));
+  return result;
+}
+
+static inline uint64_t digest_field_for_compare(value digest, mlsize_t field) {
+  uint64_t result = digest_field(digest, field);
+#ifndef ARCH_BIG_ENDIAN
+  result = ((result & UINT64_C(0x00ff00ff00ff00ff)) << 8) |
+           ((result & UINT64_C(0xff00ff00ff00ff00)) >> 8);
+  result = ((result & UINT64_C(0x0000ffff0000ffff)) << 16) |
+           ((result & UINT64_C(0xffff0000ffff0000)) >> 16);
+  result = (result << 32) | (result >> 32);
+#endif
+  return result;
+}
+
+CAMLprim value blake3_mini_digest_equal(value left, value right) {
+  return Val_bool(digest_field(left, 0) == digest_field(right, 0) &&
+                  digest_field(left, 1) == digest_field(right, 1));
+}
+
+CAMLprim value blake3_mini_digest_compare(value left, value right) {
+  uint64_t left_field = digest_field_for_compare(left, 0);
+  uint64_t right_field = digest_field_for_compare(right, 0);
+  if (left_field == right_field) {
+    left_field = digest_field_for_compare(left, 1);
+    right_field = digest_field_for_compare(right, 1);
+  }
+  return Val_int((left_field > right_field) - (left_field < right_field));
+}
+
+static inline value alloc_hash(blake3_hasher *hasher) {
+  /* Keep this allocation in sync with the float-only record in
+     [Blake3_mini.Digest]. */
+  value v_ret = caml_alloc(2 * Double_wosize, Double_array_tag);
+  blake3_hasher_finalize(hasher, (uint8_t *)Op_val(v_ret),
+                         BLAKE3_MINI_DIGEST_SIZE);
   return v_ret;
 }
 
@@ -60,7 +99,7 @@ CAMLprim value blake3_mini_fd(value v_fd) {
 
   caml_acquire_runtime_system();
   CAMLlocal1(v_ret);
-  v_ret = alloc_hash(&hasher, 16);
+  v_ret = alloc_hash(&hasher);
   CAMLreturn(v_ret);
 }
 
@@ -133,7 +172,7 @@ done:
     uerror(err_op, v_path);
   }
 
-  v_digest = alloc_hash(&hasher, 16);
+  v_digest = alloc_hash(&hasher);
   v_size = Val_long(size);
   v_result = caml_alloc_tuple(2);
   Store_field(v_result, 0, v_digest);
@@ -179,7 +218,7 @@ CAMLprim value blake3_mini_digest(value v_t) {
   CAMLlocal1(v_ret);
 
   blake3_hasher *hasher = Blake3_val(v_t);
-  v_ret = alloc_hash(hasher, 16);
+  v_ret = alloc_hash(hasher);
 
   CAMLreturn(v_ret);
 }

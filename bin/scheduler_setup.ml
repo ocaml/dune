@@ -1,20 +1,22 @@
 open Import
 open Scheduler
 
-let no_build_no_rpc ~config:dune_config f =
+let scheduler_config dune_config ~watch_exclusions =
   let config =
-    Dune_config.for_scheduler dune_config ~print_ctrl_c_warning:true ~watch_exclusions:[]
+    Dune_config.for_scheduler dune_config ~print_ctrl_c_warning:true ~watch_exclusions
   in
   Clflags.concurrency := config.concurrency;
+  config
+;;
+
+let no_build_no_rpc ~config:dune_config f =
+  let config = scheduler_config dune_config ~watch_exclusions:[] in
   Run.go config f
 ;;
 
 let go_without_rpc_server ~(common : Common.t) ~config:dune_config f =
-  let config =
-    let watch_exclusions = Common.watch_exclusions common in
-    Dune_config.for_scheduler dune_config ~print_ctrl_c_warning:true ~watch_exclusions
-  in
-  Clflags.concurrency := config.concurrency;
+  let watch_exclusions = Common.watch_exclusions common in
+  let config = scheduler_config dune_config ~watch_exclusions in
   Run.go config f
 ;;
 
@@ -45,11 +47,8 @@ let go_with_rpc_server ~common ~config f =
 ;;
 
 let go_with_rpc_server_and_file_watcher ~(common : Common.t) ~config:dune_config run =
-  let config =
-    let watch_exclusions = Common.watch_exclusions common in
-    Dune_config.for_scheduler dune_config ~print_ctrl_c_warning:true ~watch_exclusions
-  in
-  Clflags.concurrency := config.concurrency;
+  let watch_exclusions = Common.watch_exclusions common in
+  let config = scheduler_config dune_config ~watch_exclusions in
   let file_watcher = Common.file_watcher common in
   let run () =
     match Common.rpc common with

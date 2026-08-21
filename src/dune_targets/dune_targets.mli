@@ -13,7 +13,6 @@ val is_empty : t -> bool
 (** Combine the sets of file and directory targets. *)
 val combine : t -> t -> t
 
-val diff : t -> t -> t
 val iter : t -> file:(Path.Build.t -> unit) -> dir:(Path.Build.t -> unit) -> unit
 
 module File : sig

@@ -501,34 +501,7 @@ module Group = struct
       | Module m -> [ m ]
       | Group g -> closure_group g
     ;;
-
-    let find_dep_of_parents parents name =
-      match
-        List.find_map parents ~f:(fun (parent, name') ->
-          match name' with
-          | Some name' when Module_name.equal name' name -> Some `Parent_cycle
-          | _ -> Module_name.Map.find parent name |> Option.map ~f:(fun x -> `Found x))
-      with
-      | None -> Ok []
-      | Some `Parent_cycle -> Error `Parent_cycle
-      | Some (`Found m) -> Ok (closure_node m)
-    ;;
   end
-
-  let find_dep t ~of_ name =
-    match Module.kind of_ with
-    | Alias _ -> Ok []
-    | Wrapped_compat ->
-      let li = lib_interface t in
-      Ok (if Module_name.equal name (Module.name li) then [ li ] else [])
-    | _ ->
-      (* TODO don't recompute this *)
-      let parents =
-        parents_modules [ t ] t.modules of_
-        |> List.map ~f:(fun g -> g.modules, Some g.name)
-      in
-      Find_dep.find_dep_of_parents parents name
-  ;;
 
   module For_alias = struct
     let find_module alias modules name =
@@ -613,19 +586,6 @@ module Unwrapped = struct
   ;;
 
   let parents t m = Group.parents_modules [] t m
-
-  let find_dep t ~of_ name =
-    match Module.kind of_ with
-    | Alias _ -> Ok []
-    | Wrapped_compat -> assert false
-    | _ ->
-      let parents =
-        (t, None)
-        :: List.map (parents t of_) ~f:(fun (g : Group.t) -> g.modules, Some g.name)
-      in
-      Group.Find_dep.find_dep_of_parents parents name
-  ;;
-
   let fold t ~init ~f = Group.fold_modules t ~init ~f
   let exists t ~f = Group.exists_modules t ~f
   let alias_for : t -> _ -> Module.t list = Group.make_alias_for ~parents
@@ -753,7 +713,6 @@ module Wrapped = struct
   ;;
 
   let find t name = Group.find t.group name
-  let find_dep t ~of_ name = Group.find_dep t.group ~of_ name
   let alias_for t m = Group.alias_for t.group m
 end
 
@@ -1122,56 +1081,142 @@ module With_vlib = struct
        | None -> modules_find vlib name)
   ;;
 
-  exception Parent_cycle
+  module Dep_lookup = struct
+    type t =
+      | Empty
+      | Single of Module.t
+      | Parents of (Group.node Module_name.Map.t * Module_name.t option) list
+      | Stdlib of Stdlib.t * Module.t
 
-  let find_dep =
-    let from_impl_or_lib = List.map ~f:(fun m -> `Impl_or_lib, m) in
-    let find_dep_result =
-      List.filter_map ~f:(fun (from, m) ->
-        match from with
-        | `Impl_or_lib -> Some m
-        | `Vlib -> Option.some_if (Module.visibility m = Public) m)
-    in
-    let raise_parent_cycle = function
-      | Ok s -> from_impl_or_lib s
-      | Error `Parent_cycle -> raise_notrace Parent_cycle
-    in
-    let find_dep t ~of_ name : Module.t list =
-      if Module.name of_ = name
-      then []
-      else (
-        let result =
-          match t.modules with
-          | Singleton _ -> modules_find t name |> Option.to_list |> from_impl_or_lib
-          | Unwrapped w -> Unwrapped.find_dep w ~of_ name |> raise_parent_cycle
-          | Wrapped w -> Wrapped.find_dep w ~of_ name |> raise_parent_cycle
-          | Stdlib s -> Stdlib.find_dep s ~of_ name |> Option.to_list |> from_impl_or_lib
+    let rec find_dep_of_parents parents name =
+      match parents with
+      | [] -> Ok []
+      | (_, Some parent_name) :: _ when Module_name.equal parent_name name ->
+        Error (`Parent_cycle name)
+      | (parent, _) :: parents ->
+        (match Module_name.Map.find parent name with
+         | None -> find_dep_of_parents parents name
+         | Some node -> Ok (Group.Find_dep.closure_node node))
+    ;;
+
+    let of_group ({ Group.modules; _ } as group) ~of_ =
+      match Module.kind of_ with
+      | Alias _ -> Empty
+      | Wrapped_compat -> Single (Group.lib_interface group)
+      | _ ->
+        let parents =
+          Group.parents_modules [ group ] modules of_
+          |> List.map ~f:(fun ({ modules; name; _ } : Group.t) -> modules, Some name)
         in
-        find_dep_result result)
-    in
-    fun t ~of_ name ->
-      try
-        Ok
-          (match t with
-           | Modules t -> find_dep t ~of_ name
-           | Impl { vlib; impl; _ } ->
-             (match find_dep impl ~of_ name with
-              | [] -> find_dep vlib ~of_ name |> List.map ~f:(fun m -> `Vlib, m)
-              | xs -> from_impl_or_lib xs)
-             |> find_dep_result)
-      with
-      | Parent_cycle -> Error `Parent_cycle
-  ;;
+        Parents parents
+    ;;
+
+    let of_unwrapped modules ~of_ =
+      match Module.kind of_ with
+      | Alias _ -> Empty
+      | Wrapped_compat ->
+        Code_error.raise
+          "Modules.With_vlib.find_deps: wrapped compatibility module"
+          [ "module", Module.to_dyn of_ ]
+      | _ ->
+        let parents =
+          Group.parents_modules [] modules of_
+          |> List.map ~f:(fun ({ modules; name; _ } : Group.t) -> modules, Some name)
+        in
+        Parents ((modules, None) :: parents)
+    ;;
+
+    let prepare t ~of_ =
+      match t.modules with
+      | Singleton m -> Single m
+      | Unwrapped modules -> of_unwrapped modules ~of_
+      | Wrapped { group; _ } -> of_group group ~of_
+      | Stdlib modules -> Stdlib (modules, of_)
+    ;;
+
+    let find_nonself t name =
+      match t with
+      | Empty -> Ok []
+      | Single m -> Ok (if Module_name.equal name (Module.name m) then [ m ] else [])
+      | Parents parents -> find_dep_of_parents parents name
+      | Stdlib (modules, of_) -> Ok (Stdlib.find_dep modules ~of_ name |> Option.to_list)
+    ;;
+  end
 
   let find_deps =
-    let rec loop t ~of_ acc = function
+    let rec loop_modules lookup ~of_name acc = function
       | [] -> Ok (List.rev acc)
       | name :: names ->
-        (match find_dep t ~of_ name with
-         | Ok modules -> loop t ~of_ (List.rev_append modules acc) names
-         | Error `Parent_cycle -> Error (`Parent_cycle name))
+        if Module_name.equal name of_name
+        then loop_modules lookup ~of_name acc names
+        else (
+          match Dep_lookup.find_nonself lookup name with
+          | Error _ as error -> error
+          | Ok modules -> loop_modules lookup ~of_name (List.rev_append modules acc) names)
     in
-    fun t ~of_ names -> loop t ~of_ [] names
+    let append_vlib_modules modules acc =
+      List.fold_left modules ~init:acc ~f:(fun acc m ->
+        match Module.visibility m with
+        | Private -> acc
+        | Public -> m :: acc)
+    in
+    let rec loop_impl_with_vlib impl_lookup vlib_lookup ~of_name acc = function
+      | [] -> Ok (List.rev acc)
+      | name :: names ->
+        if Module_name.equal name of_name
+        then loop_impl_with_vlib impl_lookup vlib_lookup ~of_name acc names
+        else (
+          match Dep_lookup.find_nonself impl_lookup name with
+          | Error _ as error -> error
+          | Ok (_ :: _ as modules) ->
+            let acc = List.rev_append modules acc in
+            loop_impl_with_vlib impl_lookup vlib_lookup ~of_name acc names
+          | Ok [] ->
+            (match Dep_lookup.find_nonself vlib_lookup name with
+             | Error _ as error -> error
+             | Ok modules ->
+               let acc = append_vlib_modules modules acc in
+               loop_impl_with_vlib impl_lookup vlib_lookup ~of_name acc names))
+    in
+    let rec loop_impl impl_lookup vlib ~of_ ~of_name acc = function
+      | [] -> Ok (List.rev acc)
+      | name :: names ->
+        if Module_name.equal name of_name
+        then loop_impl impl_lookup vlib ~of_ ~of_name acc names
+        else (
+          match Dep_lookup.find_nonself impl_lookup name with
+          | Error _ as error -> error
+          | Ok (_ :: _ as modules) ->
+            let acc = List.rev_append modules acc in
+            loop_impl impl_lookup vlib ~of_ ~of_name acc names
+          | Ok [] ->
+            let vlib_lookup = Dep_lookup.prepare vlib ~of_ in
+            (match Dep_lookup.find_nonself vlib_lookup name with
+             | Error _ as error -> error
+             | Ok modules ->
+               let acc = append_vlib_modules modules acc in
+               loop_impl_with_vlib impl_lookup vlib_lookup ~of_name acc names))
+    in
+    let rec start t ~of_ ~of_name = function
+      | [] -> Ok []
+      | name :: names as remaining ->
+        if Module_name.equal name of_name
+        then start t ~of_ ~of_name names
+        else (
+          match t with
+          | Modules t ->
+            let lookup = Dep_lookup.prepare t ~of_ in
+            loop_modules lookup ~of_name [] remaining
+          | Impl { vlib; impl; _ } ->
+            let impl_lookup = Dep_lookup.prepare impl ~of_ in
+            loop_impl impl_lookup vlib ~of_ ~of_name [] remaining)
+    in
+    fun t ~of_ names ->
+      match names with
+      | [] -> Ok []
+      | _ :: _ ->
+        let of_name = Module.name of_ in
+        start t ~of_ ~of_name names
   ;;
 
   let implicit_deps t ~of_ =

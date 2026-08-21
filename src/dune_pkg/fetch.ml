@@ -317,8 +317,8 @@ let resolve_symlinks_in root =
           | Error e -> Unix_error.Detailed.raise e
           | Ok children ->
             List.iter children ~f:(fun (child_name, child_kind) ->
-              let src = Path.relative resolved child_name in
-              let dst = Path.relative relative child_name in
+              let src = Path.relative_fname resolved child_name in
+              let dst = Path.relative_fname relative child_name in
               match (child_kind : Unix.file_kind) with
               | S_REG -> Io.portable_hardlink ~src ~dst
               (* To avoid recursing here, we create symlinks will get resolved

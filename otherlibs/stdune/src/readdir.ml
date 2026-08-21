@@ -35,7 +35,7 @@ module Readdir_result = struct
   (* The values are constructed on the C-side *)
   type t =
     | End_of_directory
-    | Entry of string * File_kind.Option.t
+    | Entry of Filename.t * File_kind.Option.t
 end
 
 external readdir_with_kind_if_available_unix
@@ -43,14 +43,15 @@ external readdir_with_kind_if_available_unix
   -> Readdir_result.t
   = "caml__dune_filesystem_stubs__readdir"
 
-let readdir_with_kind_if_available_win32 : Unix.dir_handle -> Readdir_result.t =
+let rec readdir_with_kind_if_available_win32 : Unix.dir_handle -> Readdir_result.t =
   fun dir ->
   (* Windows also gives us the information about file kind and it's discarded by
      [readdir]. We could do better here, but the Windows code is more
      complicated. (there's an additional OCaml abstraction layer) *)
   match Unix.readdir dir with
   | exception End_of_file -> Readdir_result.End_of_directory
-  | entry -> Entry (entry, File_kind.Option.UNKNOWN)
+  | "." | ".." -> readdir_with_kind_if_available_win32 dir
+  | entry -> Entry (Filename.of_string_exn entry, File_kind.Option.UNKNOWN)
 ;;
 
 let readdir_with_kind_if_available =
@@ -80,7 +81,6 @@ let read_directory_with_kinds_exn dir_path =
   with_directory dir_path ~f:(fun dir ->
     let rec loop acc =
       match readdir_with_kind_if_available dir with
-      | Entry (("." | ".."), _) -> loop acc
       | End_of_directory -> acc
       | Entry (base, kind) ->
         let k kind = loop ((base, kind) :: acc) in
@@ -88,7 +88,7 @@ let read_directory_with_kinds_exn dir_path =
         File_kind.Option.elim
           kind
           ~none:(fun () ->
-            match Unix.lstat (Filename.concat dir_path base) with
+            match Unix.lstat (Filename.append dir_path base) with
             | exception Unix.Unix_error _ ->
               (* File disappeared between readdir & lstat system calls. Handle
                    as if readdir never told us about it *)
@@ -107,7 +107,6 @@ let read_directory_exn dir_path =
   with_directory dir_path ~f:(fun dir ->
     let rec loop acc =
       match readdir_with_kind_if_available dir with
-      | Entry (("." | ".."), _) -> loop acc
       | End_of_directory -> acc
       | Entry (base, _) -> loop (base :: acc)
     in

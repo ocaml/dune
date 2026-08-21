@@ -149,7 +149,9 @@ module Linux = struct
       | Error _ as error -> error
       | Ok tasks ->
         Result.List.fold_left tasks ~init:Pid.Set.empty ~f:(fun acc tid ->
-          let path = Printf.sprintf "/proc/%d/task/%s/children" pid tid in
+          let path =
+            Printf.sprintf "/proc/%d/task/%s/children" pid (Filename.to_string tid)
+          in
           match lines_of_file path with
           | Error (Unix.ENOENT, _, _) -> Ok acc
           | Error error -> Error (Cannot_read_file { path; error })

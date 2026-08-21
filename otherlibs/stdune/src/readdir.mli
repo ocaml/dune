@@ -4,8 +4,8 @@
     returning kinds of the filesystem entries. *)
 val read_directory_with_kinds
   :  string
-  -> ((string * File_kind.t) list, Unix_error.Detailed.t) Result.t
+  -> ((Filename.t * File_kind.t) list, Unix_error.Detailed.t) Result.t
 
 (** [read_directory_with_kinds d] returns all the filesystem entries in [d]
     except for "." and "..", similar to [Sys.readdir]. *)
-val read_directory : string -> (string list, Unix_error.Detailed.t) Result.t
+val read_directory : string -> (Filename.t list, Unix_error.Detailed.t) Result.t

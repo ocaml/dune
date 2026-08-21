@@ -49,7 +49,7 @@ module type With_loc = sig
   type t
 
   val relative : ?error_loc:Loc0.t -> t -> string -> t
-  val relative_fname : ?error_loc:Loc0.t -> t -> Filename.t -> t
+  val relative_fname : t -> Filename.t -> t
   val parse_string_exn : loc:Loc0.t -> string -> t
 end
 

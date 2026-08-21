@@ -118,7 +118,10 @@ module Local_gen = struct
         [ "t", to_dyn t; "path", String path ]
   ;;
 
-  let relative_fname t fn = relative t (Filename.to_string fn)
+  let relative_fname t fn =
+    let fn = Filename.to_string fn in
+    if is_root t then fn else String.append_with_char t ~sep:'/' fn
+  ;;
 
   (* Check whether a path is in canonical form: no '.' or '..' components, no
      repeated '/' components, no backslashes '\\' (on Windows only), and not

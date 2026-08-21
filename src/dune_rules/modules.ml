@@ -484,22 +484,29 @@ module Group = struct
   ;;
 
   module Find_dep = struct
-    let rec closure_group g =
-      let lib_interface = lib_interface g in
-      match Module.kind lib_interface with
-      | Alias _ ->
-        (* XXX ocamldep can't currently give us precise dependencies for
-           modules under [(include_subdirs qualified)] directories. For that
-           reason we currently depend on everything under the sub-directory. *)
-        let closure =
-          Module_name.Map.values g.modules |> List.concat_map ~f:closure_node
-        in
-        lib_interface :: closure
-      | _ -> [ g.alias; lib_interface ]
+    let rec rev_alias_closure_group g lib_interface acc =
+      (* XXX ocamldep can't currently give us precise dependencies for
+         modules under [(include_subdirs qualified)] directories. For that
+         reason we currently depend on everything under the sub-directory. *)
+      Module_name.Map.fold g.modules ~init:(lib_interface :: acc) ~f:rev_closure_node
 
-    and closure_node = function
+    and rev_closure_node node acc =
+      match node with
+      | Module m -> m :: acc
+      | Group g ->
+        let lib_interface = lib_interface g in
+        (match Module.kind lib_interface with
+         | Alias _ -> rev_alias_closure_group g lib_interface acc
+         | _ -> lib_interface :: g.alias :: acc)
+    ;;
+
+    let closure_node = function
       | Module m -> [ m ]
-      | Group g -> closure_group g
+      | Group g ->
+        let lib_interface = lib_interface g in
+        (match Module.kind lib_interface with
+         | Alias _ -> rev_alias_closure_group g lib_interface [] |> List.rev
+         | _ -> [ g.alias; lib_interface ])
     ;;
   end
 

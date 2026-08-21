@@ -1,7 +1,7 @@
 An implementation of an installed Melange virtual library must conservatively
 stage copied objects when binary annotations are unavailable.
 
-  $ mkdir -p producer/vlib consumer/impl
+  $ mkdir -p producer/vlib consumer/impl fake-bin
 
   $ cat > producer/dune-project <<'EOF'
   > (lang dune 3.24)
@@ -116,3 +116,41 @@ not turn copied artifacts into a Virt-to-Reverse module dependency cycle.
   _build/default/impl/.impl.objs/melange/vlib__Unused.cmi
   _build/default/impl/.impl.objs/melange/vlib__Unused.cmj
   _build/default/impl/.impl.objs/melange/vlib__Virt.cmi
+
+The current implementation ignores melobjinfo, so every copied object is still
+staged.
+
+  $ cat > fake-bin/melobjinfo <<'EOF'
+  > #!/bin/sh
+  > for unit do
+  >   printf 'File %s\n' "$unit"
+  >   printf 'Implementations imported:\n'
+  >   case "$unit" in
+  >     *vlib__Shared.cmj)
+  >       printf '  --------------------------------  Vlib__Helper\n'
+  >       ;;
+  >   esac
+  > done
+  > EOF
+  $ chmod +x fake-bin/melobjinfo
+
+  $ PATH="$PWD/fake-bin:$no_melobjinfo_path" \
+  > OCAMLPATH="$PWD/prefix/lib:$OCAMLPATH" \
+  > dune rules --root consumer --recursive --format=json --deps --display=quiet \
+  > impl/.impl.objs/melange/vlib__Virt.cmj > deps-with-melobjinfo.json
+  $ jq_dune -r '
+  >   [.[] | depsFilePaths
+  >    | select(endswith("vlib__Helper.cmi")
+  >             or endswith("vlib__Helper.cmj")
+  >             or endswith("vlib__Reverse.cmi")
+  >             or endswith("vlib__Reverse.cmj")
+  >             or endswith("vlib__Unused.cmi")
+  >             or endswith("vlib__Unused.cmj"))
+  >    | select(startswith("_build/default/impl/.impl.objs/melange/"))]
+  >   | unique[]
+  > ' deps-with-melobjinfo.json
+  _build/default/impl/.impl.objs/melange/vlib__Helper.cmi
+  _build/default/impl/.impl.objs/melange/vlib__Helper.cmj
+  _build/default/impl/.impl.objs/melange/vlib__Reverse.cmi
+  _build/default/impl/.impl.objs/melange/vlib__Unused.cmi
+  _build/default/impl/.impl.objs/melange/vlib__Unused.cmj

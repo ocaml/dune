@@ -30,6 +30,28 @@ let opens modules m =
   Command.Args.As (Modules.With_vlib.local_open modules m |> Ocaml_flags.open_flags)
 ;;
 
+let as_parameter_arg m =
+  Command.Args.As (if Module.kind m = Parameter then [ "-as-parameter" ] else [])
+;;
+
+let as_argument_for cctx m =
+  Command.Args.dyn
+    (let open Action_builder.O in
+     let impl = Compilation_context.implements cctx in
+     Virtual_rules.implements_parameter impl m
+     |> Resolve.Memo.read
+     >>| function
+     | None -> []
+     | Some parameter -> [ "-as-argument-for"; Module_name.to_string parameter ])
+;;
+
+let parameters cctx =
+  Command.Args.dyn
+    (let open Action_builder.O in
+     Resolve.Memo.read (Compilation_context.parameters cctx)
+     >>| List.concat_map ~f:(fun m -> [ "-parameter"; Module_name.to_string m ]))
+;;
+
 let add_rule ?mode ?loc ~can_go_in_shared_cache sctx ~dir build =
   let build =
     if can_go_in_shared_cache
@@ -323,22 +345,6 @@ let build_cm
      then A "-opaque"
      else Command.Args.empty
    in
-   let as_parameter_arg = if Module.kind m = Parameter then [ "-as-parameter" ] else [] in
-   let as_argument_for =
-     Command.Args.dyn
-       (let open Action_builder.O in
-        let impl = Compilation_context.implements cctx in
-        let+ argument = Resolve.Memo.read @@ Virtual_rules.implements_parameter impl m in
-        match argument with
-        | None -> []
-        | Some parameter -> [ "-as-argument-for"; Module_name.to_string parameter ])
-   in
-   let parameters =
-     Command.Args.dyn
-       (let open Action_builder.O in
-        Resolve.Memo.read (Compilation_context.parameters cctx)
-        >>| List.concat_map ~f:(fun m -> [ "-parameter"; Module_name.to_string m ]))
-   in
    let flags = Command.Args.dyn (Ocaml_flags.get (Compilation_context.flags cctx) mode) in
    let pp_flags, sandbox =
      match Module.pp_flags m with
@@ -394,9 +400,9 @@ let build_cm
             ; Command.Args.as_any
                 (Lib_mode.Cm_kind.Map.get (Compilation_context.includes cctx) cm_kind)
             ; extra_args
-            ; As as_parameter_arg
-            ; as_argument_for
-            ; parameters
+            ; as_parameter_arg m
+            ; as_argument_for cctx m
+            ; parameters cctx
             ; S (melange_args cctx cm_kind m)
             ; A "-no-alias-deps"
             ; opaque_arg
@@ -493,49 +499,102 @@ let build_module ?(force_write_cmi = false) ?(precompiled_cmi = false) cctx m =
     Rules.Produce.Alias.add_deps (Alias.make Alias0.all ~dir) deps
 ;;
 
-let ocamlc_i ~deps cctx (m : Module.t) ~output =
-  let sctx = Compilation_context.super_context cctx in
+let ocamlc_i_action ~deps cctx (m : Module.t) =
   let obj_dir = Compilation_context.obj_dir cctx in
-  let dir = Compilation_context.dir cctx in
-  let ctx = Super_context.context sctx in
+  let ctx = Compilation_context.super_context cctx |> Super_context.context in
   let src = Option.value_exn (Module.file m ~ml_kind:Impl) in
-  let sandbox = Compilation_context.sandbox cctx in
+  let original = Module.source_without_pp m ~ml_kind:Impl in
+  let sandbox =
+    match Module.kind m with
+    | Root -> Sandbox_config.needs_sandboxing
+    | _ -> Compilation_context.sandbox cctx
+  in
+  let pp_flags, sandbox =
+    match Module.pp_flags m with
+    | None -> Command.Args.empty, sandbox
+    | Some (pp_flags, pp_sandbox) ->
+      Command.Args.dyn pp_flags, Sandbox_config.inter sandbox pp_sandbox
+  in
   let cm_deps =
     Action_builder.dyn_paths_unit
       (let open Action_builder.O in
-       let+ deps = Ml_kind.Dict.get deps Impl in
-       List.concat_map deps ~f:(fun m ->
+       Ml_kind.Dict.get deps Impl
+       >>| List.concat_map ~f:(fun m ->
          [ Path.build (Obj_dir.Module.cm_file_exn obj_dir m ~kind:(Ocaml Cmi)) ]))
   in
   let ocaml_flags = Ocaml_flags.get (Compilation_context.flags cctx) (Ocaml Byte) in
   let modules = Compilation_context.modules cctx in
   let ocaml = Compilation_context.ocaml cctx in
-  Super_context.add_rule
+  let open Action_builder.O in
+  cm_deps
+  >>> Command.run'
+        (Ok ocaml.ocamlc)
+        ~dir:(Path.build (Context.build_dir ctx))
+        ~sandbox
+        ~forbid_action_runner:true
+        [ Command.Args.dyn ocaml_flags
+        ; pp_flags
+        ; A "-I"
+        ; Path (Path.build (Obj_dir.byte_dir obj_dir))
+        ; Lib_mode.Cm_kind.Map.get (Compilation_context.includes cctx) (Ocaml Cmo)
+        ; as_parameter_arg m
+        ; as_argument_for cctx m
+        ; parameters cctx
+        ; opens modules m
+        ; A "-short-paths"
+        ; A "-i"
+        ; Command.Ml_kind.flag Impl
+        ; Dep src
+        ; Hidden_deps (Dep.Set.of_files (Option.to_list original))
+        ]
+;;
+
+let ocamlc_i ~deps cctx m ~output =
+  let sctx = Compilation_context.super_context cctx in
+  let dir = Compilation_context.dir cctx in
+  ocamlc_i_action ~deps cctx m
+  |> Action_builder.with_stdout_to output
+  |> Super_context.add_rule sctx ~dir
+;;
+
+let infer_interface cctx m =
+  let sctx = Compilation_context.super_context cctx in
+  let dir = Compilation_context.dir cctx in
+  let action =
+    let source_file =
+      match Module.source_without_pp m ~ml_kind:Intf with
+      | Some source_file -> Path.as_in_build_dir_exn source_file
+      | None ->
+        Module.source_without_pp m ~ml_kind:Impl
+        |> Option.value_exn
+        |> Path.set_extension ~ext:Filename.Extension.mli
+        |> Path.as_in_build_dir_exn
+    in
+    let source_path = Path.build source_file in
+    let open Action_builder.O in
+    let+ action =
+      let deps =
+        let dep_graphs = Compilation_context.dep_graphs cctx in
+        Ml_kind.Dict.of_func (fun ~ml_kind ->
+          Dep_graph.deps_of (Ml_kind.Dict.get dep_graphs ml_kind) m)
+      in
+      ocamlc_i_action ~deps cctx m
+    and+ () = Action_builder.paths_existing [ source_path ] in
+    Action.Full.map action ~f:(fun action ->
+      let correction_file =
+        Path.Build.extend_basename source_file ~suffix:Filename.corrected
+      in
+      Action.progn
+        [ Action.with_stdout_to correction_file action
+        ; Action.diff ~optional:true source_path correction_file
+        ])
+  in
+  Super_context.execute_action_stdout
     sctx
+    ~loc:(Option.value (Compilation_context.loc cctx) ~default:Loc.none)
     ~dir
-    (Action_builder.With_targets.add
-       ~file_targets:[ output ]
-       (let open Action_builder.With_targets.O in
-        Action_builder.with_no_targets cm_deps
-        >>> Command.run
-              (Ok ocaml.ocamlc)
-              ~dir:(Path.build (Context.build_dir ctx))
-              ~stdout_to:output
-              ~sandbox
-              ~forbid_action_runner:true
-              [ Command.Args.dyn ocaml_flags
-              ; A "-I"
-              ; Path (Path.build (Obj_dir.byte_dir obj_dir))
-              ; Command.Args.as_any
-                  (Lib_mode.Cm_kind.Map.get
-                     (Compilation_context.includes cctx)
-                     (Ocaml Cmo))
-              ; opens modules m
-              ; A "-short-paths"
-              ; A "-i"
-              ; Command.Ml_kind.flag Impl
-              ; Dep src
-              ]))
+    action
+  >>| fun (_ : string) -> ()
 ;;
 
 module Alias_module = struct

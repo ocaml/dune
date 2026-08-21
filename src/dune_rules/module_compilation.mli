@@ -17,6 +17,9 @@ val ocamlc_i
   -> output:Path.Build.t
   -> unit Memo.t
 
+(** Infer the interface of a module and register it for promotion. *)
+val infer_interface : Compilation_context.t -> Module.t -> unit Memo.t
+
 val build_all : Compilation_context.t -> unit Memo.t
 
 val with_empty_intf

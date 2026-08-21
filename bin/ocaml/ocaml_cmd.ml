@@ -6,6 +6,7 @@ let group =
   Cmdliner.Cmd.group
     info
     [ Utop.command
+    ; Inferred_mli.command
     ; Ocaml_merlin.command
     ; Ocaml_merlin.Dump_dot_merlin.command
     ; Top.command

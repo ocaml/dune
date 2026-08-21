@@ -54,6 +54,33 @@ let%expect_test "clear_caches forces every memoized table to recompute" =
     |}]
 ;;
 
+let%expect_test "clear_caches detaches nodes retained by a lazy node" =
+  let source = ref 0 in
+  let table =
+    Memo.create
+      "table"
+      ~input:(module Unit)
+      ~cutoff:Int.equal
+      (fun () -> Memo.return !source)
+  in
+  let retained =
+    Memo.lazy_node ~name:"retained" ~cutoff:Int.equal (fun () -> Memo.exec table ())
+  in
+  let show () =
+    printfn "source = %d, retained = %d" !source (run (Memo.Node.read retained))
+  in
+  show ();
+  [%expect {| source = 0, retained = 0 |}];
+  Memo.reset (Memo.Invalidation.clear_caches ~reason:Reason.Test);
+  (* Recompute the old table node, which is now retained only by the lazy node. *)
+  ignore (run (Memo.Node.read retained) : int);
+  source := 1;
+  (* The table lookup creates and invalidates a new, disconnected node. *)
+  Memo.reset (Memo.Node.invalidate ~reason:Reason.Test (Memo.node table ()));
+  show ();
+  [%expect {| source = 1, retained = 0 |}]
+;;
+
 let%expect_test "changed_paths returns the deduplicated Path_changed reasons only" =
   let inv reason = Memo.Invalidation.custom ~reason ~f:(fun () -> ()) in
   let combined =

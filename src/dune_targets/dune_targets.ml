@@ -38,7 +38,9 @@ let is_empty { files; dirs } =
 ;;
 
 let combine x y =
-  if Stdlib.(x == empty)
+  if Stdlib.(x == y)
+  then x
+  else if Stdlib.(x == empty)
   then y
   else if Stdlib.(y == empty)
   then x
@@ -46,16 +48,16 @@ let combine x y =
   then y
   else if is_empty y
   then x
-  else
-    { files = Path.Build.Array.Set.union x.files y.files
-    ; dirs = Path.Build.Array.Set.union x.dirs y.dirs
-    }
-;;
-
-let diff t { files; dirs } =
-  { files = Path.Build.Array.Set.diff t.files files
-  ; dirs = Path.Build.Array.Set.diff t.dirs dirs
-  }
+  else (
+    let { files = x_files; dirs = x_dirs } = x in
+    let { files = y_files; dirs = y_dirs } = y in
+    let files = Path.Build.Array.Set.union x_files y_files in
+    let dirs = Path.Build.Array.Set.union x_dirs y_dirs in
+    if Stdlib.(files == x_files && dirs == x_dirs)
+    then x
+    else if Stdlib.(files == y_files && dirs == y_dirs)
+    then y
+    else { files; dirs })
 ;;
 
 let head { files; dirs } =

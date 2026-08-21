@@ -21,14 +21,17 @@ let cclibs =
          c_library_flags)
 ;;
 
-let standard_cxx_flags ~dir ~has_cxx sctx =
-  let open Action_builder.O in
-  let* project = Action_builder.of_memo (Dune_load.find_project ~dir) in
-  match Dune_project.use_standard_c_and_cxx_flags project with
-  | Some true when has_cxx () ->
-    let ctx = Super_context.context sctx in
-    Cc_flags.get_flags ~for_:Link (Context.build_context ctx)
-  | _ -> Action_builder.return []
+let expand_c_library_flags sctx expander ~dir ~has_cxx flags =
+  let standard =
+    let open Action_builder.O in
+    let* project = Action_builder.of_memo (Dune_load.find_project ~dir) in
+    match Dune_project.use_standard_c_and_cxx_flags project with
+    | Some true when has_cxx () ->
+      let ctx = Super_context.context sctx in
+      Cc_flags.get_flags ~for_:Link (Context.build_context ctx)
+    | _ -> Action_builder.return []
+  in
+  Expander.expand_and_eval_set expander flags ~standard
 ;;
 
 let lib_args (mode : Mode.t) ~stub_mode archive =
@@ -79,13 +82,12 @@ let build_lib
          stubs_archive @ foreign_archives)
     ; Dyn
         (let open Action_builder.O in
-         let standard =
-           standard_cxx_flags
-             ~dir
-             ~has_cxx:(fun () -> Buildable.has_foreign_cxx lib.buildable)
-             sctx
-         in
-         Expander.expand_and_eval_set expander lib.c_library_flags ~standard
+         expand_c_library_flags
+           sctx
+           expander
+           ~dir
+           ~has_cxx:(fun () -> Buildable.has_foreign_cxx lib.buildable)
+           lib.c_library_flags
          >>| map_cclibs)
     ; Command.Args.dyn
         (let standard = Action_builder.return [] in
@@ -266,13 +268,12 @@ let foreign_rules (library : Foreign_library.t) ~sctx ~expander ~dir ~dir_conten
   in
   let* () = Check_rules.add_files sctx ~dir o_files in
   let c_library_flags =
-    let standard =
-      standard_cxx_flags
-        ~dir
-        ~has_cxx:(fun () -> Foreign.Sources.has_cxx_sources foreign_sources)
-        sctx
-    in
-    Expander.expand_and_eval_set expander library.c_library_flags ~standard
+    expand_c_library_flags
+      sctx
+      expander
+      ~dir
+      ~has_cxx:(fun () -> Foreign.Sources.has_cxx_sources foreign_sources)
+      library.c_library_flags
   in
   ocamlmklib
     ~archive_name
@@ -322,11 +323,13 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents ~vlib_stubs_o_f
       in
       let c_library_flags =
         let open Action_builder.O in
-        let standard =
-          standard_cxx_flags ~dir sctx ~has_cxx:(fun () ->
-            Foreign.Sources.has_cxx_sources foreign_sources)
-        in
-        let+ c_lib = Expander.expand_and_eval_set expander lib.c_library_flags ~standard
+        let+ c_lib =
+          expand_c_library_flags
+            sctx
+            expander
+            ~dir
+            ~has_cxx:(fun () -> Foreign.Sources.has_cxx_sources foreign_sources)
+            lib.c_library_flags
         and+ ctypes_lib =
           (* CR-someday rgrinberg: Should we add these flags to :standard? to make
            it possible for users to remove these *)

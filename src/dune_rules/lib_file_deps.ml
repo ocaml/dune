@@ -49,9 +49,23 @@ end
 
 let deps_of_lib (lib : Lib.t) ~groups =
   let obj_dir = Lib.info lib |> Lib_info.obj_dir in
-  List.map groups ~f:(fun g ->
-    let dir = Group.obj_dir g obj_dir in
-    Group.to_glob g |> File_selector.of_glob ~dir |> Dep.file_selector)
+  List.concat_map groups ~f:(fun g ->
+    let glob = Group.to_glob g in
+    let dirs =
+      match g with
+      | Group.Ocaml Cmi ->
+        (* When a library has [private_modules], private module .cmi files
+           live in [byte_dir] while public ones go to [public_cmi_ocaml_dir]
+           (a sub-directory of [byte_dir]).  The compiler receives [byte_dir]
+           via [-H] (hidden includes, OCaml >= 5.2), but the dep-set previously
+           only covered [public_cmi_ocaml_dir], so a change to a private .mli
+           was invisible to Dune's rebuild logic.  Adding [byte_dir] here fixes
+           that.  When there are no private modules the two paths are the same
+           and [Dep.Set.of_list] deduplicates the entry. *)
+        [ Group.obj_dir g obj_dir; Obj_dir.byte_dir obj_dir ]
+      | _ -> [ Group.obj_dir g obj_dir ]
+    in
+    List.map dirs ~f:(fun dir -> File_selector.of_glob ~dir glob |> Dep.file_selector))
   |> Dep.Set.of_list
 ;;
 

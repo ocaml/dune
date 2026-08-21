@@ -1249,7 +1249,20 @@ let init_with_root_and_rpc ~(root : Workspace_root.t) ~rpc_build (builder : Buil
   No_build.set c.builder.no_build;
   if c.root.dir <> Filename.current_dir_name then Sys.chdir c.root.dir;
   Path.set_root (normalize_path (Path.External.cwd ()));
-  Path.Build.set_build_dir (Path.Outside_build_dir.of_string c.builder.build_dir);
+  let build_dir =
+    (* Normalize an absolute build directory that sits directly under the
+       workspace root to its relative form so that the cache keys are the same
+       regardless of whether the user spells the directory as "_build" or
+       "$PWD/_build". *)
+    let s = c.builder.build_dir in
+    if Filename.is_relative s
+    then s
+    else (
+      let parent = Filename.dirname s in
+      let root = Path.External.to_string (Path.External.cwd ()) in
+      if String.equal parent root then Filename.basename s else s)
+  in
+  Path.Build.set_build_dir (Path.Outside_build_dir.of_string build_dir);
   let () =
     match builder.trace_file with
     | None -> Log.init No_log_file

@@ -9,8 +9,7 @@ open Import
     - A rule to build the package and produce the artifacts in
       .pkg/$package/target.
 
-    It setups an alias rules to trigger the fetch and build of the
-    package universe. *)
+    It sets up alias rules to fetch the sources and build the package universe. *)
 
 val setup_rules
   :  components:string list
@@ -37,11 +36,7 @@ val resolve_installed_file
 
 val dev_tool_env : Dune_pkg.Dev_tool.t -> Env.t Memo.t
 val all_filtered_depexts : Context_name.t -> string list Memo.t
-
-val setup_pkg_install_alias
-  :  dir:Path.Build.t
-  -> Context_name.t
-  -> Build_config.Gen_rules.t
+val setup_pkg_aliases : dir:Path.Build.t -> Context_name.t -> Build_config.Gen_rules.t
 
 module Pkg_digest : sig
   type t

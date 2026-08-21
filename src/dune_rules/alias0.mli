@@ -17,6 +17,7 @@ val opam : Name.t
 val ocaml_index : Name.t
 val install : Name.t
 val pkg_install : Name.t
+val pkg_source : Name.t
 val runtest : Name.t
 val unused_libs : Name.t
 val revdep : Name.t

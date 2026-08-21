@@ -10,6 +10,7 @@ In an empty dune project, the following aliases are available.
   fmt
   ocaml-index
   pkg-install
+  pkg-source
   revdep
   revdep-check
   revdep-install
@@ -30,6 +31,7 @@ the command.
   foo
   ocaml-index
   pkg-install
+  pkg-source
   revdep
   revdep-check
   revdep-install
@@ -50,6 +52,7 @@ Aliases in subdirectories should not be picked up.
   foo
   ocaml-index
   pkg-install
+  pkg-source
   revdep
   revdep-check
   revdep-install
@@ -82,6 +85,7 @@ Adding an OCaml library will introduce OCaml specific aliases:
   fmt
   ocaml-index
   pkg-install
+  pkg-source
   revdep
   revdep-check
   revdep-install
@@ -101,6 +105,7 @@ bbb
   mytest
   ocaml-index
   pkg-install
+  pkg-source
   revdep
   revdep-check
   revdep-install
@@ -117,6 +122,7 @@ We can also show aliases in multiple directories at once:
   mytest
   ocaml-index
   pkg-install
+  pkg-source
   revdep
   revdep-check
   revdep-install
@@ -144,6 +150,7 @@ Including those in the _build/ directory:
   mytest
   ocaml-index
   pkg-install
+  pkg-source
   revdep
   revdep-check
   revdep-install
@@ -157,6 +164,7 @@ Including those in the _build/ directory:
   mytest
   ocaml-index
   pkg-install
+  pkg-source
   revdep
   revdep-check
   revdep-install
@@ -181,6 +189,7 @@ These are context sensitive:
   fmt
   mytest
   pkg-install
+  pkg-source
   revdep
   revdep-check
   revdep-install

@@ -32,16 +32,14 @@ The RPC returns after the build triggered by the simulated overflow finishes.
 
   $ with_timeout dune rpc simulate-file-watcher-queue-overflow --wait
 
-A later event invalidates a new node created in the cleared table. The source
-tree still depends on the old detached node, so even a forwarded build returns
-the stale result.
+A later event must invalidate the node retained by the source tree so that a
+forwarded build observes the new input.
 
   $ : > second.in
   $ with_timeout dune rpc flush-file-watcher --wait
   $ build .
   Success
   $ cat _build/default/all.out
-  ./first.in
-  $ test -f second.in
+  ./first.in ./second.in
 
   $ stop_dune_quiet

@@ -116,8 +116,8 @@ let create_with_cache
       f
   in
   Caches.register ~clear:(fun () ->
-    Store.clear cache;
-    Invalidation.invalidate_store cache);
+    Invalidation.invalidate_store cache;
+    Store.clear cache);
   { cache; spec }
 ;;
 

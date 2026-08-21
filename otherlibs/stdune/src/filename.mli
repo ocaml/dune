@@ -1,7 +1,7 @@
 (** Represent a non-empty path component.
 
-    A path component is just a non-empty string without a '/' character. It
-    cannot be ["."] or [".."]. *)
+    A path component is just a non-empty string without a directory separator.
+    It cannot be ["."] or [".."]. *)
 
 val current_dir_name : string
 val parent_dir_name : string

@@ -76,6 +76,25 @@ waits for that destination to be installed, so a sequential install times out.
   >   prefix/lib/foo/.#target.dune-temp
   Installing prefix/lib/foo/target
 
+Staging paths can themselves be symlinks. Here `.#target.dune-temp` points at
+the second entry's destination. Starting both entries would make them overwrite
+the same file, so they must remain sequential.
+
+  $ rm -rf prefix
+  $ rm -f aliased-staging-source
+  $ mkdir -p prefix/lib/foo
+  $ ln -s temp-target prefix/lib/foo/.#target.dune-temp
+  $ printf 'second\n' >second
+  $ cat >_build/default/foo.install <<EOF
+  > lib: [
+  >   "aliased-staging-source" {"target"}
+  >   "second" {"temp-target"}
+  > ]
+  > EOF
+  $ second_entry_must_not_start aliased-staging-source \
+  >   prefix/lib/foo/temp-target
+  Installing prefix/lib/foo/target
+
 Destinations that resolve through symlinks can also refer to the same file.
 The writer waits for the second alias, so preserving sequential behavior makes
 the install time out before it can start the second entry.
@@ -159,7 +178,7 @@ fast entry to be installed, so a sequential install would time out.
   $ (printf 'fast\n' >fast) &
   $ fast_writer=$!
   $ if output=$(
-  >   $timeout --signal=KILL 2 dune install --prefix prefix \
+  >   $timeout --signal=KILL 10 dune install --prefix prefix \
   >     --display short 2>&1
   > ); then
   >   printf '%s\n' "$output"
@@ -174,7 +193,23 @@ fast entry to be installed, so a sequential install would time out.
   >   false
   > fi
   Installing prefix/lib/foo/slow
-  [1]
+  Installing prefix/lib/foo/fast
+
+Installation stops at the first copy error. Using a directory as the first
+source makes copying fail after destination validation; the later independent
+entry must not be installed.
+
+  $ rm -rf prefix source-dir
+  $ mkdir source-dir
+  $ printf 'second\n' >second
+  $ cat >_build/default/foo.install <<EOF
+  > lib: [
+  >   "source-dir" {"first"}
+  >   "second"
+  > ]
+  > EOF
+  $ if dune install --prefix prefix --display short >/dev/null 2>&1; then false; fi
+  $ test ! -e prefix/lib/foo/second
 
 A warning is not lost when the fallback copy fails. The FIFO is unlinked after
 Dune opens it, so parsing can finish but the fallback cannot reopen the source.

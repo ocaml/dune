@@ -203,7 +203,7 @@ module Lock_dirs_arg = struct
   ;;
 end
 
-let check_pkg_management_enabled () =
+let error_if_pkg_management_disabled () =
   Memo.run
   @@
   let open Memo.O in
@@ -226,5 +226,23 @@ let check_pkg_management_enabled () =
         [ Pp.text
             "To enable package management, remove the explicit (pkg disabled) setting \
              from your dune-workspace file."
+        ]
+;;
+
+let error_if_pkg_management_not_enabled () =
+  let open Fiber.O in
+  let* () = error_if_pkg_management_disabled () in
+  let+ workspace = Memo.run (Workspace.workspace ()) in
+  if not (Workspace.pkg_enabled workspace)
+  then
+    User_error.raise
+      [ Pp.text "Package management is not enabled in this project." ]
+      ~hints:
+        [ Pp.concat
+            ~sep:Pp.space
+            [ Pp.text "Create a lock directory with"
+            ; User_message.command "dune pkg lock"
+            ; Pp.text "or add (pkg enabled) to your dune-workspace file."
+            ]
         ]
 ;;

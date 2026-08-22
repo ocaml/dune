@@ -504,7 +504,7 @@ let term =
   let common, config = Common.init builder in
   Scheduler_setup.go_with_rpc_server ~common ~config (fun () ->
     let open Fiber.O in
-    Pkg_common.check_pkg_management_enabled ()
+    Pkg_common.error_if_pkg_management_disabled ()
     >>>
     let portable_lock_dir =
       match Config.get Dune_rules.Compile_time.portable_lock_dir with

@@ -83,7 +83,7 @@ let term =
   let common, config = Common.init builder in
   Scheduler_setup.go_with_rpc_server ~common ~config (fun () ->
     let open Fiber.O in
-    Pkg_common.check_pkg_management_enabled () >>> validate_lock_dirs ~lock_dirs ())
+    Pkg_common.error_if_pkg_management_disabled () >>> validate_lock_dirs ~lock_dirs ())
 ;;
 
 let command = Cmd.v info term

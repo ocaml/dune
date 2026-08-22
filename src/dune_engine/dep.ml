@@ -351,7 +351,7 @@ module Facts = struct
   let union a b =
     Map.union a b ~f:(fun _ a b ->
       (* Conflicting facts for the same dependency are invalid. *)
-      assert (a = b);
+      assert (Fact.equal a b);
       Some a)
   ;;
 

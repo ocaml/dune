@@ -250,7 +250,7 @@ module P = Persistent.Make (struct
     type nonrec t = t
 
     let name = "WORKSPACE-CACHE"
-    let version = 4
+    let version = 5
     let sharing = true
     let repr = repr
   end)

@@ -17,6 +17,12 @@ let external_relative a b =
   |> print_endline
 ;;
 
+let external_relative_fname a b =
+  Path.External.relative_fname (Path.External.of_string a) (Filename.of_string_exn b)
+  |> Path.External.to_string
+  |> print_endline
+;;
+
 let external_append_local a b =
   Path.External.append_local (Path.External.of_string a) b
   |> Path.External.to_string
@@ -775,6 +781,16 @@ let%expect_test "path relative external dot-slash" =
 let%expect_test "path relative external plain" =
   relative (Path.of_string "/ext") "foo";
   [%expect {| External "/ext/foo" |}]
+;;
+
+let%expect_test "external relative filename" =
+  external_relative_fname "/root/" "foo";
+  external_relative_fname "/" "foo";
+  [%expect
+    {|
+    /root/foo
+    /foo
+    |}]
 ;;
 
 let%expect_test "external relative trailing slash" =

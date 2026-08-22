@@ -339,11 +339,15 @@ module Produced = struct
       with
       | None -> acc
       | Some payload ->
-        let key = Path.Local.of_string (Filename.append dir fname) in
+        let key =
+          Path.Local.relative_fname (Path.Local.relative Path.Local.root dir) fname
+        in
         Path.Local.Map.set acc key (Some payload)
     in
     let on_dir ~dir fname acc =
-      let key = Path.Local.of_string (Filename.append dir fname) in
+      let key =
+        Path.Local.relative_fname (Path.Local.relative Path.Local.root dir) fname
+      in
       Path.Local.Map.set acc key None
     in
     let on_error ~dir err _acc =
@@ -364,7 +368,9 @@ module Produced = struct
           ~on_other:
             (`Call
                 (fun ~dir fname kind _ ->
-                  let path = Path.Build.relative root (Filename.append dir fname) in
+                  let path =
+                    Path.Build.relative_fname (Path.Build.relative root dir) fname
+                  in
                   raise_notrace (Traverse_error (Unsupported_file (path, kind)))))
           ~on_symlink:(`Call (fun ~dir fname acc -> on_file ~dir fname acc, None))
           ~on_error:(`Call on_error)

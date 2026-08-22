@@ -218,10 +218,13 @@ let promote ~(targets : _ Targets.Produced.t) ~(promote : Rule.Promote.t) ~promo
       Fs_memo.Dir_contents.iter dir_contents ~f:(fun file_name kind ->
         match kind with
         | S_REG ->
-          let file_name_s = Filename.to_string file_name in
           if
-            not (Targets.Produced.mem targets (Path.Build.relative build_dir file_name_s))
-          then Fpath.unlink_no_err (Path.to_string (Path.relative dst_dir file_name_s))
+            not
+              (Targets.Produced.mem
+                 targets
+                 (Path.Build.relative_fname build_dir file_name))
+          then
+            Fpath.unlink_no_err (Path.to_string (Path.relative_fname dst_dir file_name))
         | S_DIR ->
           let src_dir = Path.Build.relative_fname build_dir file_name in
           if not (Targets.Produced.mem_dir targets src_dir)

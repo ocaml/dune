@@ -1456,12 +1456,12 @@ module Write_disk = struct
     | Error e -> raise_user_error_on_check_existance src e
     | Ok `Non_existant -> ()
     | Ok `Is_existing_lock_dir ->
-      let dst_of ~dir fname = Path.relative dst (Filename.append dir fname) in
+      let dst_of ~dir fname = Path.relative_fname (Path.relative dst dir) fname in
       Fpath.traverse
         ~dir:(Path.to_string src)
         ~init:()
         ~on_file:(fun ~dir fname () ->
-          let child_src = Path.relative src (Filename.append dir fname) in
+          let child_src = Path.relative_fname (Path.relative src dir) fname in
           let child_dst = dst_of ~dir fname in
           Path.mkdir_p (Path.relative dst dir);
           Io.copy_file ~src:child_src ~dst:child_dst ())

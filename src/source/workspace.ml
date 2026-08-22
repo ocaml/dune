@@ -1322,7 +1322,11 @@ let workspace_step1 =
     let* workspace_file =
       match clflags.workspace_file with
       | None ->
-        let p = Path.Outside_build_dir.of_string (Filename.to_string filename) in
+        let p =
+          Path.Outside_build_dir.relative_fname
+            (Path.Outside_build_dir.In_source_dir Path.Source.root)
+            filename
+        in
         let+ exists = Fs_memo.file_exists p in
         Option.some_if exists p
       | Some p ->

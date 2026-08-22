@@ -244,26 +244,28 @@ let raise_duplicate_module ?loc ~dir name f1 f2 =
 let module_files ~root_dir ~dialects ~dir ~files ~for_ =
   let loc = Loc.in_dir (Path.build dir) in
   let impl_files, intf_files =
-    let make_module dialect name ~original_fn ~fn =
+    let make_module dialect name ~original_filename ~fn =
       let path_in_build_dir =
         match for_ with
-        | Compilation_mode.Ocaml -> Path.Build.relative dir fn
+        | Compilation_mode.Ocaml -> Path.Build.relative_fname dir fn
         | Melange ->
-          let dst = Path.Build.relative dir fn in
+          let dst = Path.Build.relative_fname dir fn in
           let descendant =
             Path.Local.descendant (Path.Build.local dst) ~of_:(Path.Build.local root_dir)
             |> Option.value_exn
           in
           source_in_dir ~dir:root_dir descendant ~for_
       in
-      let original_path = Path.Build.relative dir original_fn |> Path.build in
+      let original_path = Path.Build.relative_fname dir original_filename |> Path.build in
       name, Module.File.make dialect ~original_path (Path.build path_in_build_dir)
     in
-    List.filter_partition_map (Filename.Array.Set.to_list files) ~f:(fun fn ->
-      let fn = Filename.to_string fn in
-      (* We don't use [Filename.extension] because Melange-specific files have
-         two extensions, while other multi-extension filenames must be ignored. *)
-      match String.lsplit2 fn ~on:'.' with
+    List.filter_partition_map (Filename.Array.Set.to_list files) ~f:(fun filename ->
+      match
+        let fn = Filename.to_string filename in
+        (* We don't use [Filename.extension] because Melange-specific files have
+           two extensions, while other multi-extension filenames must be ignored. *)
+        String.lsplit2 fn ~on:'.'
+      with
       | None -> Skip
       | Some (s, ext) ->
         let melange_specific, ext =
@@ -283,8 +285,8 @@ let module_files ~root_dir ~dialects ~dir ~files ~for_ =
                   make_module
                     dialect
                     name
-                    ~original_fn:fn
-                    ~fn:(s ^ Filename.Extension.to_string ext)
+                    ~original_filename:filename
+                    ~fn:(Filename.of_string_exn (s ^ Filename.Extension.to_string ext))
                 in
                 name, (module_, melange_specific)
               in

@@ -162,9 +162,7 @@ module Common = struct
     | Some _ -> ()
     | None ->
       let fn =
-        Path.Source.relative
-          (Dune_project.root project)
-          (Filename.to_string Dune_project.filename)
+        Path.Source.relative_fname (Dune_project.root project) Dune_project.filename
         |> Path.source
       in
       Console.print [ Pp.textf "Creating %s..." (Path.to_string_maybe_quoted fn) ];

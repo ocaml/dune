@@ -314,11 +314,10 @@ module Copy = struct
         ~init:()
         ~dir:(Path.to_string src_dir)
         ~on_dir:(fun ~dir fname () ->
-          Path.L.relative dst_dir [ dir; Filename.to_string fname ] |> Path.mkdir_p)
+          Path.relative_fname (Path.relative dst_dir dir) fname |> Path.mkdir_p)
         ~on_file:(fun ~dir fname () ->
-          let fname = Filename.to_string fname in
-          let src = Path.L.relative src_dir [ dir; fname ] in
-          let dst = Path.L.relative dst_dir [ dir; fname ] in
+          let src = Path.relative_fname (Path.relative src_dir dir) fname in
+          let dst = Path.relative_fname (Path.relative dst_dir dir) fname in
           Io.copy_file ~src ~dst ())
         ()
     ;;

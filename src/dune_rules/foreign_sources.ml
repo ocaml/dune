@@ -81,11 +81,10 @@ module Unresolved = struct
   let load ~dune_version ~dir ~files =
     let init = String.Map.empty in
     Filename.Array.Set.fold files ~init ~f:(fun fn acc ->
-      let fn_s = Filename.to_string fn in
-      match drop_source_extension fn_s ~dune_version with
+      match drop_source_extension (Filename.to_string fn) ~dune_version with
       | None -> acc
       | Some (obj, language) ->
-        let path = Path.Build.relative dir fn_s in
+        let path = Path.Build.relative_fname dir fn in
         String.Map.add_multi acc obj (language, path))
   ;;
 

@@ -265,8 +265,8 @@ let is_descendant t ~of_ =
    building packages, resolving them as hardlinks is good enough. *)
 let resolve_symlinks_in root =
   let on_symlink ~dir:raw_dir name () =
+    let relative = Path.relative_fname (Path.relative root raw_dir) name in
     let name = Filename.to_string name in
-    let relative = Path.relative (Path.relative root raw_dir) name in
     let full_name = Path.to_string relative in
     match Fpath.follow_symlink full_name with
     | Error Not_a_symlink ->
@@ -427,9 +427,8 @@ let%test_module "resolve symlink tests" =
        - other (pipes, sockets, etc.): "path [kind]" *)
     let dump_tree root =
       let str ~dir fname =
-        let fname = Filename.to_string fname in
         let dir = if String.is_empty dir then root else Path.relative root dir in
-        Path.to_string (Path.relative dir fname)
+        Path.to_string (Path.relative_fname dir fname)
       in
       let inodes = Table.create (module Int) 16 in
       Fpath.traverse

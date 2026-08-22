@@ -76,10 +76,9 @@ module DB = struct
 end
 
 let resolve_link ~dir ~fname (kind : File_kind.t) =
-  let fname_s = Filename.to_string fname in
   match kind with
   | S_LNK ->
-    (match Path.Untracked.stat (Path.relative dir fname_s) with
+    (match Path.Untracked.stat (Path.relative_fname dir fname) with
      | Ok { Unix.st_kind; _ } -> Some st_kind
      | Error _ -> None)
   | _ -> Some kind
@@ -187,14 +186,14 @@ let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib ~external_loc
            But it seems to be too invasive *)
         [], []
       | Ok dir_contents ->
-        List.rev_filter_partition_map dir_contents ~f:(fun f ->
-          let f = Filename.to_string f in
+        List.rev_filter_partition_map dir_contents ~f:(fun fname ->
+          let f = Filename.to_string fname in
           let ext =
             Stdlib.Filename.extension f |> Filename.Extension.Or_empty.of_string_exn
           in
           if Filename.Extension.Or_empty.check ext ext_lib
           then (
-            let file = Path.relative t.dir f in
+            let file = Path.relative_fname t.dir fname in
             if String.starts_with ~prefix:Foreign.Archive.Name.lib_file_prefix f
             then Left file
             else Right file)
@@ -505,16 +504,16 @@ module Loader = struct
           let+ sub_dirs =
             Filename.Set.to_list sub_dirs
             |> Memo.List.filter_map ~f:(fun name ->
-              let name = Filename.to_string name in
-              Path.L.relative dir [ name; Filename.to_string Findlib.Package.meta_fn ]
+              Path.relative_fname (Path.relative_fname dir name) Findlib.Package.meta_fn
               |> Fs.file_exists
               >>| function
-              | true -> Some (Package.Name.of_string name)
+              | true -> Some (Package.Name.of_string (Filename.to_string name))
               | false -> None)
           in
           let metas =
             Filename.Set.to_list_map metas ~f:(fun fn ->
-              String.drop_prefix ~prefix:Findlib_dir.file_prefix (Filename.to_string fn)
+              Filename.to_string fn
+              |> String.drop_prefix ~prefix:Findlib_dir.file_prefix
               |> Option.value_exn
               |> Package.Name.of_string)
           in

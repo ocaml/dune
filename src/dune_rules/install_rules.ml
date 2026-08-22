@@ -1336,9 +1336,11 @@ struct
         ~dir:(Path.to_string entry.src)
         ~init:[]
         ~on_file:(fun ~dir fname acc ->
-          let file = Filename.append dir fname in
-          let path = Path.relative entry.src file in
-          let comps = Path.Local.of_string file |> Path.Local.explode in
+          let path = Path.relative_fname (Path.relative entry.src dir) fname in
+          let comps =
+            Path.Local.relative_fname (Path.Local.relative Path.Local.root dir) fname
+            |> Path.Local.explode
+          in
           (path, comps) :: acc)
         ()
       |> List.rev_map ~f:(fun (path, comps) -> make_entry entry path comps)

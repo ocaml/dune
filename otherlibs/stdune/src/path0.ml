@@ -424,9 +424,7 @@ module Local_gen = struct
     module Set = struct
       include String.Set
 
-      let of_listing ~dir ~filenames =
-        of_list_map filenames ~f:(fun f -> relative dir (Filename.to_string f))
-      ;;
+      let of_listing ~dir ~filenames = of_list_map filenames ~f:(relative_fname dir)
     end
   end
 end

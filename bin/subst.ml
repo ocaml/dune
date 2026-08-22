@@ -193,7 +193,7 @@ module Dune_project = struct
     ; project : Dune_project.t
     }
 
-  let filename = Path.Source.of_string (Filename.to_string Dune_project.filename)
+  let filename = Path.Source.relative_fname Path.Source.root Dune_project.filename
 
   let load ~dir ~files ~infer_from_opam_files =
     let open Memo.O in

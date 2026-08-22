@@ -42,8 +42,7 @@ let build_c_command
   let src_relative =
     Foreign.Source.path src
     |> Path.Build.basename
-    |> Filename.to_string
-    |> Path.Local.of_string
+    |> Path.Local.relative_fname Path.Local.root
   in
   { directory = Path.build dir
   ; file = src_relative

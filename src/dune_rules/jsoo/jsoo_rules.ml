@@ -899,14 +899,7 @@ let setup_shared_runtime_rule sctx s_config s_digest =
     let { Runtime_key.Decoded.mode; lib_names; project_root } =
       Runtime_key.decode digest
     in
-    let* scope =
-      let dir =
-        match project_root with
-        | None -> Context.build_dir ctx
-        | Some dir -> Path.Build.append_source build_context.build_dir dir
-      in
-      Scope.DB.find_by_dir dir
-    in
+    let* scope = Scope.DB.find_by_project_root ctx project_root in
     let* libs =
       let lib_db = Scope.libs scope in
       Memo.parallel_map lib_names ~f:(fun name ->

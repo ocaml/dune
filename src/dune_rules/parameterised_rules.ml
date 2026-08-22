@@ -430,15 +430,8 @@ let has_rules fn =
 
 let find_scope ~sctx encoded_scope =
   let project_root = Parameterised_name.Scope.decode encoded_scope in
-  let ctx = Super_context.context sctx in
-  let dir =
-    match project_root with
-    | None -> Context.build_dir ctx
-    | Some dir ->
-      let build_context = Context.build_context ctx in
-      Path.Build.append_source build_context.build_dir dir
-  in
-  Scope.DB.find_by_dir dir
+  let context = Super_context.context sctx in
+  Scope.DB.find_by_project_root context project_root
 ;;
 
 let gen_rules ~sctx ~dir rest =

@@ -18,6 +18,7 @@ val rocq_libs : t -> Rocq_lib.DB.t Memo.t
 (** Scope databases *)
 module DB : sig
   val find_by_dir : Path.Build.t -> t Memo.t
+  val find_by_project_root : Context.t -> Path.Source.t option -> t Memo.t
   val find_by_project : Context_name.t -> Dune_project.t -> t Memo.t
   val public_libs : Context_name.t -> Lib.DB.t Memo.t
 

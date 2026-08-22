@@ -424,6 +424,17 @@ module DB = struct
     find_by_dir scopes dir
   ;;
 
+  let find_by_project_root context project_root =
+    let dir =
+      match project_root with
+      | None -> Context.build_dir context
+      | Some project_root ->
+        let build_context = Context.build_context context in
+        Path.Build.append_source build_context.build_dir project_root
+    in
+    find_by_dir dir
+  ;;
+
   let find_by_project context project =
     let+ scopes, _ = create_from_stanzas context in
     find_by_project scopes project

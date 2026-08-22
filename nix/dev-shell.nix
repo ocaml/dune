@@ -125,6 +125,7 @@ let
           patdiff
           pp
           ppx_expect
+          ppx_quick_test
           re
           spawn
           uutf

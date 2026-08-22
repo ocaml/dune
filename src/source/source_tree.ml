@@ -443,24 +443,19 @@ let ancestor_vcs =
         then None
         else (
           let dir = Filename.dirname dir in
-          match
-            let files =
-              Sys.readdir dir
-              |> Stdlib.Array.to_list
-              |> List.map ~f:Filename.of_string_exn
-              |> Filename.Array.Set.of_list
-            in
-            Vcs.Kind.of_dir_contents ~files ~dirs:Filename.Array.Map.empty
-          with
-          | Some kind -> Some { Vcs.kind; root = Path.of_string dir }
-          | None -> loop dir
-          | exception Sys_error msg ->
+          match Readdir.read_directory dir with
+          | Ok files ->
+            let files = Filename.Array.Set.of_list files in
+            (match Vcs.Kind.of_dir_contents ~files ~dirs:Filename.Array.Map.empty with
+             | Some kind -> Some { Vcs.kind; root = Path.of_string dir }
+             | None -> loop dir)
+          | Error unix_error ->
             User_warning.emit
               [ Pp.textf
                   "Unable to read directory %s. Will not look for VCS root in parent \
                    directories."
                   dir
-              ; User_error.reason (Pp.verbatim msg)
+              ; Unix_error.Detailed.pp_reason unix_error
               ];
             None)
       in

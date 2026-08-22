@@ -102,6 +102,7 @@ in
       "ocaml-index"
       "ocaml-lsp-server"
       "odoc"
+      "ppx_quick_test"
     ];
     extraBuildInputs =
       pkgs:

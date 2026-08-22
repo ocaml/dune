@@ -3,6 +3,7 @@
 
 (library
  (name blake3_mini_tests)
+ (modules blake3_mini_tests)
  (enabled_if
   (> %{ocaml_version} "4.14.2"))
  (inline_tests
@@ -22,6 +23,7 @@
 
 (library
  (name blake3_mini_tests)
+ (modules blake3_mini_tests)
  (enabled_if
   (<= %{ocaml_version} "4.14.2"))
  (inline_tests
@@ -39,3 +41,12 @@
   ppx_inline_test.config)
  (preprocess
   (pps ppx_expect)))
+
+(library
+ (name blake3_mini_quick_tests)
+ (modules blake3_mini_quick_tests)
+ (optional)
+ (inline_tests)
+ (libraries blake3_mini base ppx_inline_test.config)
+ (preprocess
+  (pps ppx_quick_test)))

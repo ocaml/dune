@@ -20,6 +20,11 @@ type _ t =
       -> ('b, 'error) result t
   | Thunk_t : (unit -> 'a t) -> 'a t
   | Thunk_apply_t : ('a -> 'b t) * 'a -> 'b t
+  | Sequential_fold_left_t : 'acc t * 'a list * ('acc -> 'a -> 'acc t) -> 'acc t
+  | Sequential_fold_left_result_t :
+      ('acc, 'error) result t * 'a list * ('acc -> 'a -> ('acc, 'error) result t)
+      -> ('acc, 'error) result t
+  | Sequential_iter_t : unit t * 'a list * ('a -> unit t) -> unit t
   | With_error_handler_t : (unit -> 'a t) * (Exn_with_backtrace.t -> Nothing.t t) -> 'a t
   | Map_reduce_errors_t :
       (module Monoid with type t = 'a) * (Exn_with_backtrace.t -> 'a t) * (unit -> 'b t)
@@ -76,6 +81,24 @@ and 'a continuation =
       ('a, 'b) fork_and_join_state ref * ('a * 'b) continuation
       -> 'b continuation
   | Resume_many : unit k list * unit continuation -> unit continuation
+  | Sequential_fold_left_complete :
+      { mutable rest : 'a list
+      ; f : 'acc -> 'a -> 'acc t
+      ; k : 'acc continuation
+      }
+      -> 'acc continuation
+  | Sequential_fold_left_result_complete :
+      { mutable rest : 'a list
+      ; f : 'acc -> 'a -> ('acc, 'error) result t
+      ; k : ('acc, 'error) result continuation
+      }
+      -> ('acc, 'error) result continuation
+  | Sequential_iter_complete :
+      { mutable rest : 'a list
+      ; f : 'a -> unit t
+      ; k : unit continuation
+      }
+      -> unit continuation
   | Unreachable : Nothing.t continuation
   | Never_called : 'a continuation
   | Accumulate_error : ('result, 'errors) map_reduce_context' -> 'errors continuation
@@ -255,6 +278,24 @@ let rec continue : type a. a continuation -> a -> eff =
     (match suspended with
      | [] -> continue k ()
      | suspended :: rest -> Resume (suspended, (), Resume_many (rest, k)))
+  | Sequential_fold_left_complete state as complete ->
+    (match state.rest with
+     | [] -> continue state.k x
+     | y :: rest ->
+       state.rest <- rest;
+       Run (state.f x y, complete))
+  | Sequential_fold_left_result_complete state as complete ->
+    (match x, state.rest with
+     | Error _, _ | Ok _, [] -> continue state.k x
+     | Ok acc, y :: rest ->
+       state.rest <- rest;
+       Run (state.f acc y, complete))
+  | Sequential_iter_complete state as complete ->
+    (match state.rest with
+     | [] -> continue state.k ()
+     | x :: rest ->
+       state.rest <- rest;
+       Run (state.f x, complete))
   | Unreachable -> Nothing.unreachable_code x
   | Never_called -> assert false
   | Accumulate_error map_reduce_context ->
@@ -319,6 +360,12 @@ let rec eval : type a. a t -> a continuation -> eff =
   | Bind_result_t (t, f) -> eval t (Bind_result (f, k))
   | Thunk_t f -> eval (f ()) k
   | Thunk_apply_t (f, x) -> eval (f x) k
+  | Sequential_fold_left_t (first, rest, f) ->
+    eval first (Sequential_fold_left_complete { rest; f; k })
+  | Sequential_fold_left_result_t (first, rest, f) ->
+    eval first (Sequential_fold_left_result_complete { rest; f; k })
+  | Sequential_iter_t (first, rest, f) ->
+    eval first (Sequential_iter_complete { rest; f; k })
   | With_error_handler_t (f, on_error) -> With_error_handler (on_error, f, k)
   | Map_reduce_errors_t (m, on_error, f) -> Map_reduce_errors (m, on_error, f, k)
   | Collect_errors_t f -> Run_collect_errors (f, k)
@@ -593,15 +640,25 @@ let sequential_map l ~f =
   loop l []
 ;;
 
+let sequential_fold_left l ~f ~init =
+  match l with
+  | [] -> return init
+  | [ x ] -> f init x
+  | x :: rest -> Sequential_fold_left_t (f init x, rest, f)
+;;
+
+let sequential_fold_left_result l ~f ~init =
+  match l with
+  | [] -> return (Ok init)
+  | [ x ] -> f init x
+  | x :: rest -> Sequential_fold_left_result_t (f init x, rest, f)
+;;
+
 let sequential_iter l ~f =
-  let rec loop l =
-    match l with
-    | [] -> return ()
-    | x :: l ->
-      let* () = f x in
-      loop l
-  in
-  loop l
+  match l with
+  | [] -> return ()
+  | [ x ] -> f x
+  | x :: rest -> Sequential_iter_t (f x, rest, f)
 ;;
 
 let run_parallel_iter l f k =

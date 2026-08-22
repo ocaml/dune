@@ -309,8 +309,17 @@ let shutdown t =
     t.destroyed <- true)
 ;;
 
+let status_line_refresh_interval = Time.Span.of_secs 0.2
+
 let start ~name t =
   Thread0.spawn ~name (fun () ->
+    let status_line_refresh =
+      Lev.Timer.create
+        ~after:status_line_refresh_interval
+        ~repeat:status_line_refresh_interval
+        (fun _watcher -> Event.Queue.send_status_line_refresh t.scheduler_queue)
+    in
+    Lev.Timer.start status_line_refresh t.loop;
     let rec loop () =
       ignore
         (Lev.Loop.run t.loop Lev.Loop.Once : [ `No_more_active_watchers | `Otherwise ]);
@@ -329,6 +338,9 @@ let start ~name t =
       if not shutting_down then loop ()
     in
     Exn.protect ~f:loop ~finally:(fun () ->
+      if Lev.Timer.is_active status_line_refresh
+      then Lev.Timer.stop status_line_refresh t.loop;
+      Lev.Timer.destroy status_line_refresh;
       destroy_loop_resources t;
       Lev.Loop.destroy t.loop;
       t.destroyed <- true))
@@ -388,6 +400,7 @@ let create scheduler_queue =
     }
   in
   Lev.Async.start wakeup loop;
+  Mutex.protect t.mutex (fun () -> ensure_running_locked t);
   t
 ;;
 

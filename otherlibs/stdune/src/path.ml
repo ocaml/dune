@@ -248,7 +248,7 @@ module Build = struct
 
   let extract_build_context_dir t =
     Option.map (split_first_component t) ~f:(fun (before, after) ->
-      of_local (Local.of_string (Filename.to_string before)), Source0.of_local after)
+      of_local (Local.relative_fname Local.root before), Source0.of_local after)
   ;;
 
   let split_sandbox_root t_original =
@@ -767,9 +767,7 @@ let relative_to_source_in_build_or_external ?error_loc ~dir s =
     (match path with
      | In_source_tree s ->
        in_build_dir
-         (Build.relative
-            (Build.of_string (Filename.to_string bctxt))
-            (Source0.to_string s))
+         (Build.relative (Build.relative_fname Build.root bctxt) (Source0.to_string s))
      | In_build_dir _ | External _ -> path)
 ;;
 
@@ -858,9 +856,7 @@ module Map = O.Map
 module Set = struct
   include O.Set
 
-  let of_listing ~dir ~filenames =
-    of_list_map filenames ~f:(fun f -> relative dir (Filename.to_string f))
-  ;;
+  let of_listing ~dir ~filenames = of_list_map filenames ~f:(relative_fname dir)
 end
 
 let source s = in_source_tree s

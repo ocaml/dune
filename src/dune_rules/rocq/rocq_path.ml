@@ -51,12 +51,12 @@ let build_user_contrib ~vo ~path ~name = { name; path; vo; corelib = false }
 (* Scanning todos: blacklist? *)
 let scan_vo ~dir dir_contents =
   let f (d, kind) =
-    let d = Filename.to_string d in
+    let d_s = Filename.to_string d in
     match kind with
     (* Skip some files as Rocq does, for now files with '-' *)
-    | _ when String.contains d '-' -> None
-    | (File_kind.S_REG | S_LNK) when String.ends_with ~suffix:".vo" d ->
-      Some (Path.relative dir d)
+    | _ when String.contains d_s '-' -> None
+    | (File_kind.S_REG | S_LNK) when String.ends_with ~suffix:".vo" d_s ->
+      Some (Path.relative_fname dir d)
     | _ -> None
   in
   List.filter_map ~f dir_contents
@@ -85,20 +85,20 @@ let rec scan_path ~(f : ('prefix, 'res) Scan_action.t) ~acc ~prefix ~dir dir_con
   =
   let open Memo.O in
   let f (d, kind) =
-    let d = Filename.to_string d in
+    let d_s = Filename.to_string d in
     match kind with
     (* We skip directories starting by . , this is mainly to avoid
        .coq-native *)
-    | (File_kind.S_DIR | S_LNK) when d.[0] = '.' -> Memo.return []
+    | (File_kind.S_DIR | S_LNK) when d_s.[0] = '.' -> Memo.return []
     (* Need to check the link resolves to a directory! *)
     | File_kind.S_DIR | S_LNK ->
-      let dir = Path.relative dir d in
+      let dir = Path.relative_fname dir d in
       let* dir_contents = Fs_memo.dir_contents (Path.as_outside_build_dir_exn dir) in
       (match dir_contents with
        | Error _ -> Memo.return []
        | Ok dir_contents ->
          let dir_contents = Fs_memo.Dir_contents.to_list dir_contents in
-         let prefix = acc prefix d in
+         let prefix = acc prefix d_s in
          let* subresults = scan_path ~f ~acc ~prefix ~dir dir_contents in
          f ~dir ~prefix ~subresults dir_contents)
     | _ -> Memo.return []

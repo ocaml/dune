@@ -6,7 +6,7 @@ module Build = struct
   let anonymous_actions_dir_basename = Filename.actions_dir_basename
 
   let anonymous_actions_dir =
-    Path.Build.(relative root) (Filename.to_string anonymous_actions_dir_basename)
+    Path.Build.relative_fname Path.Build.root anonymous_actions_dir_basename
   ;;
 end
 

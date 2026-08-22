@@ -215,10 +215,10 @@ let snapshot t =
       ~dir:(Path.to_string root)
       ~init:Path.Map.empty
       ~on_dir:(fun ~dir fname acc ->
-        let path = Path.relative root (Filename.append dir fname) in
+        let path = Path.relative_fname (Path.relative root dir) fname in
         Path.Map.add_exn acc path `Dir)
       ~on_file:(fun ~dir fname acc ->
-        let p = Path.relative root (Filename.append dir fname) in
+        let p = Path.relative_fname (Path.relative root dir) fname in
         let stats = Stat.stat (Path.to_string p) in
         Path.Map.add_exn acc p (`File stats))
       ~on_other:`Ignore
@@ -245,7 +245,7 @@ let find_corrected_files (t : real) ~deps =
         not (String.equal fname ".sandbox" || String.equal fname "_build"))
       ~on_file:(fun ~dir fname acc ->
         match
-          let path = Path.Build.relative t.dir (Filename.append dir fname) in
+          let path = Path.Build.relative_fname (Path.Build.relative t.dir dir) fname in
           if
             let extension = Filename.extension fname in
             Filename.Extension.Or_empty.check extension Filename.Extension.corrected

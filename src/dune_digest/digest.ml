@@ -502,7 +502,9 @@ exception E of Path_digest_error.t
 
 let directory_digest_with =
   let directory_digest_version = 4 in
-  let directory_digest_repr = Repr.(triple int (list (pair string digest_repr)) bool) in
+  let directory_digest_repr =
+    Repr.(triple int (list (pair Filename.repr digest_repr)) bool)
+  in
   fun repr_digest ~contents ~executable ->
     repr_digest directory_digest_repr (directory_digest_version, contents, executable)
 ;;
@@ -538,8 +540,7 @@ let path_with_stats_internal
        | Ok listing ->
          (match
             List.rev_map listing ~f:(fun name ->
-              let name = Filename.to_string name in
-              let path = Path.relative path name in
+              let path = Path.relative_fname path name in
               let stats =
                 match Path.lstat path with
                 | Error e -> raise_notrace (E (Unix_error e))
@@ -551,7 +552,7 @@ let path_with_stats_internal
                 | Error e -> raise_notrace (E e)
               in
               name, digest)
-            |> List.sort ~compare:(fun (x, _) (y, _) -> String.compare x y)
+            |> List.sort ~compare:(fun (x, _) (y, _) -> Filename.compare x y)
           with
           | exception E e -> Error e
           | contents -> Ok (directory_digest ~contents ~executable:stats.executable)))

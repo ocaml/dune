@@ -22,6 +22,7 @@ let to_string = function
 let merlin_folder_name = Filename.merlin_conf_dir_basename
 
 let merlin_file_path path ident =
-  Filename.concat (Filename.to_string merlin_folder_name) (to_string ident)
-  |> Path.Build.relative path
+  Path.Build.relative
+    (Path.Build.relative_fname path merlin_folder_name)
+    (to_string ident)
 ;;

@@ -45,9 +45,7 @@ module File = struct
              Memo.parallel_map
                (Fs_memo.Dir_contents.to_list dir_contents)
                ~f:(fun (p, _kind) ->
-                 let p =
-                   Path.Outside_build_dir.relative config_dir (Filename.to_string p)
-                 in
+                 let p = Path.Outside_build_dir.relative_fname config_dir p in
                  load p)
            in
            List.fold_left all_vars ~init:vars ~f:(fun acc vars ->

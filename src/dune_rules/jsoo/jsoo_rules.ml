@@ -972,13 +972,13 @@ let setup_separate_compilation_rules sctx components =
          Memo.parallel_iter archives ~f:(fun fn ->
            let build_context = Context.build_context ctx in
            let name = Path.basename fn in
-           let name_s = Filename.to_string name in
            let dir = in_build_dir build_context ~config [ lib_name ] in
            let src =
              let src_dir = Lib_info.src_dir info in
-             Path.relative src_dir name_s
+             Path.relative_fname src_dir name
            in
            let target =
+             let name_s = Filename.to_string name in
              in_build_dir build_context ~config [ lib_name; with_js_ext ~mode name_s ]
            in
            let shapes =

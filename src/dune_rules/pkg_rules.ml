@@ -1808,7 +1808,7 @@ module Install_action = struct
 
     let collect_files ~root ~skip_dirs =
       List.iter skip_dirs ~f:(fun s -> assert (Path.equal root (Path.parent_exn s)));
-      let path_of ~dir fname = Path.relative root (Filename.append dir fname) in
+      let path_of ~dir fname = Path.relative_fname (Path.relative root dir) fname in
       Fpath.traverse
         ~dir:(Path.to_string root)
         ~init:[]

@@ -297,9 +297,8 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
     Filename_set.filenames files
     |> Filename.Array.Set.to_list
     |> Memo.parallel_iter ~f:(fun basename ->
-      let basename = Filename.to_string basename in
-      let file_src = Path.relative src_in_build basename in
-      let file_dst = Path.Build.relative dir basename in
+      let file_src = Path.relative_fname src_in_build basename in
+      let file_dst = Path.Build.relative_fname dir basename in
       let context = Super_context.context sctx in
       Super_context.add_rule
         sctx

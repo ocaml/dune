@@ -6,23 +6,22 @@ let copy ~src ~dst ~copy_file ~mkdir ~on_unsupported ?(on_symlink = `Raise) () =
     | S_REG -> copy_file ~src ~dst
     | S_DIR ->
       mkdir ~src ~dst;
+      let relative path ~dir fname = Path.relative_fname (Path.relative path dir) fname in
       Fpath.traverse
         ~dir:(Path.to_string src)
         ~init:()
         ~on_file:(fun ~dir fname () ->
-          let rel = Filename.append dir fname in
-          let src = Path.relative src rel in
-          let dst = Path.relative dst rel in
+          let src = relative src ~dir fname in
+          let dst = relative dst ~dir fname in
           copy_file ~src ~dst)
         ~on_dir:(fun ~dir fname () ->
-          let rel = Filename.append dir fname in
-          let src = Path.relative src rel in
-          let dst = Path.relative dst rel in
+          let src = relative src ~dir fname in
+          let dst = relative dst ~dir fname in
           mkdir ~src ~dst)
         ~on_other:
           (`Call
               (fun ~dir fname kind () ->
-                let src = Path.relative src (Filename.append dir fname) in
+                let src = relative src ~dir fname in
                 on_unsupported ~src kind))
         ~on_symlink:
           (match on_symlink with
@@ -31,7 +30,7 @@ let copy ~src ~dst ~copy_file ~mkdir ~on_unsupported ?(on_symlink = `Raise) () =
            | `Call f ->
              `Call
                (fun ~dir fname () ->
-                 let src = Path.relative src (Filename.append dir fname) in
+                 let src = relative src ~dir fname in
                  (), f ~src))
         ()
     | kind -> on_unsupported ~src kind

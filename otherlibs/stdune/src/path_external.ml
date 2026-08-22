@@ -24,6 +24,18 @@ let parse_string_exn ~loc t =
 
 let to_dyn t = Dyn.variant "External" [ Dyn.string t ]
 
+let append_component x y =
+  (* Strip a trailing directory separator from [x] so we don't produce double
+     slashes (e.g. "/root/" + "foo" -> "/root/foo"). We use [is_dir_sep] so
+     that on Windows a trailing '\' is also removed, normalising the join to
+     always use '/'. *)
+  let x =
+    let len = String.length x in
+    if len > 0 && is_dir_sep x.[len - 1] then String.take x (len - 1) else x
+  in
+  String.append_with_char x ~sep:'/' y
+;;
+
 let relative x y =
   match y with
   | "." -> x
@@ -35,19 +47,10 @@ let relative x y =
     in
     (match y with
      | "" | "." -> x
-     | _ ->
-       (* Strip a trailing directory separator from [x] so we don't produce
-          double slashes (e.g. "/root/" + "foo" -> "/root/foo"). We use
-          [is_dir_sep] so that on Windows a trailing '\' is also removed,
-          normalising the join to always use '/'. *)
-       let x =
-         let len = String.length x in
-         if len > 0 && is_dir_sep x.[len - 1] then String.take x (len - 1) else x
-       in
-       String.append_with_char x ~sep:'/' y)
+     | _ -> append_component x y)
 ;;
 
-let relative_fname t fn = relative t (Filename.to_string fn)
+let relative_fname t fn = append_component t (Filename.to_string fn)
 let append_local t local = relative t (Local.to_string local)
 let root = of_string "/"
 let is_root = equal root
@@ -132,7 +135,5 @@ module Map = String.Map
 module Set = struct
   include String.Set
 
-  let of_listing ~dir ~filenames =
-    of_list_map filenames ~f:(fun f -> relative dir (Filename.to_string f))
-  ;;
+  let of_listing ~dir ~filenames = of_list_map filenames ~f:(relative_fname dir)
 end

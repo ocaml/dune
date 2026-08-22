@@ -21,7 +21,7 @@ let available_exes ~dir (exes : Executables.t) =
     in
     Lib.DB.resolve_user_written_deps
       libs
-      (`Exe exes.names)
+      (Executables.exe_target exes)
       exes.buildable.libraries
       ~allow_unused_libraries:exes.buildable.allow_unused_libraries
       ~pps

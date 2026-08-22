@@ -162,8 +162,11 @@ let context_indexes =
                | Executables.T exes | Tests.T { exes; _ } ->
                  Some (Executables.obj_dir ~dir exes)
                | Library.T lib -> Some (Library.obj_dir ~dir lib)
-               | Melange_stanzas.Emit.T { target; _ } ->
-                 Some (Obj_dir.make_melange_emit ~dir ~name:target)
+               | Melange_stanzas.Emit.T melange_emit ->
+                 Some
+                   (Obj_dir.make_for_exe_target
+                      ~dir
+                      (Melange_stanzas.Emit.exe_target melange_emit))
                | _ -> None
              in
              match obj with

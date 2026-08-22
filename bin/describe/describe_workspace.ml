@@ -621,7 +621,6 @@ module Crawl = struct
     >>= function
     | false -> Memo.return None
     | true ->
-      let first_exe = snd (Nonempty_list.hd exes.names) in
       let* scope =
         Scope.DB.find_by_project (Super_context.context sctx |> Context.name) project
       in
@@ -632,7 +631,7 @@ module Crawl = struct
           Ml_sources.modules_and_obj_dir
             ml_sources
             ~libs:(Scope.libs scope)
-            ~for_:(Exe { first_exe })
+            ~for_:(Exe_target (Executables.exe_target exes))
         in
         Modules.With_vlib.modules modules_, obj_dir
       in

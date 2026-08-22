@@ -16,6 +16,23 @@ Validates custom workspace context names.
   Error: "log" is an invalid context name.
   [1]
 
+Context names must be portable path components.
+
+  $ cat > dune-workspace << EOF
+  > (lang dune 3.13)
+  > (context default)
+  > (context
+  >  (default
+  >   (name foo:bar)))
+  > EOF
+
+  $ dune build
+  File "dune-workspace", line 5, characters 8-15:
+  5 |   (name foo:bar)))
+              ^^^^^^^
+  Error: "foo:bar" is an invalid context name.
+  [1]
+
   $ cat > dune-workspace << EOF
   > (lang dune 3.13)
   > (context default)

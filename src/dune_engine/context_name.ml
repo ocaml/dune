@@ -20,7 +20,7 @@ include (
       then false
       else (
         match String.unsafe_get name i with
-        | '/' | '\\' -> true
+        | '/' | '\\' | ':' -> true
         | _ -> contains_dir_sep name (i - 1))
     ;;
 

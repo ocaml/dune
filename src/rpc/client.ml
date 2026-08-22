@@ -20,6 +20,11 @@ module Connection = struct
 
   let connect_sock sock = Csexp_rpc.Client.create sock |> Csexp_rpc.Client.connect
 
+  let connect_error where detail =
+    User_error.make
+      [ Pp.textf "failed to connect to RPC server %s" (Where.to_string where); detail ]
+  ;;
+
   let of_fd fd =
     match Csexp_rpc.Session.of_fd fd with
     | fd -> fd
@@ -29,23 +34,12 @@ module Connection = struct
 
   let connect where =
     match Where.to_socket where with
-    | exception exn ->
-      Fiber.return
-        (Error
-           (User_error.make
-              [ Pp.textf "failed to connect to RPC server %s" (Where.to_string where)
-              ; Exn.pp exn
-              ]))
+    | exception exn -> Fiber.return (Error (connect_error where (Exn.pp exn)))
     | sock ->
       connect_sock sock
       >>| (function
        | Ok s -> Ok s
-       | Error exn ->
-         Error
-           (User_error.make
-              [ Pp.textf "failed to connect to RPC server %s" (Where.to_string where)
-              ; Exn_with_backtrace.pp exn
-              ]))
+       | Error exn -> Error (connect_error where (Exn_with_backtrace.pp exn)))
   ;;
 
   let connect_exn where = connect where >>| User_error.ok_exn

@@ -136,37 +136,48 @@ module Validation_result = struct
 end
 
 let validate { files; dirs } =
-  let first =
-    match Path.Build.Array.Set.choose files with
-    | Some _ as first -> first
-    | None -> Path.Build.Array.Set.choose dirs
-  in
-  match first with
-  | None -> Validation_result.No_targets
-  | Some first ->
-    let root = Path.Build.parent_exn first in
-    let exception Invalid of Validation_result.t in
-    (try
-       let files =
-         Path.Build.Array.Set.fold files ~init:Filename.Set.empty ~f:(fun path names ->
-           if Path.Build.equal root (Path.Build.parent_exn path)
-           then Filename.Set.add names (Path.Build.basename path)
-           else raise_notrace (Invalid Inconsistent_parent_dir))
-       in
-       let dirs =
-         Path.Build.Array.Set.fold dirs ~init:Filename.Set.empty ~f:(fun path names ->
-           if Path.Build.equal root (Path.Build.parent_exn path)
-           then (
-             let name = Path.Build.basename path in
-             if Filename.Set.mem files name
-             then
-               raise_notrace (Invalid (File_and_directory_target_with_the_same_name path))
-             else Filename.Set.add names name)
-           else raise_notrace (Invalid Inconsistent_parent_dir))
-       in
-       Valid { Validated.root; files; dirs }
-     with
-     | Invalid result -> result)
+  let first = Path.Build.Array.Set.choose files in
+  if Path.Build.Array.Set.length files = 1 && Path.Build.Array.Set.is_empty dirs
+  then (
+    let first = Option.value_exn first in
+    Validation_result.Valid
+      { Validated.root = Path.Build.parent_exn first
+      ; files = Filename.Set.singleton (Path.Build.basename first)
+      ; dirs = Filename.Set.empty
+      })
+  else (
+    let first =
+      match first with
+      | Some _ as first -> first
+      | None -> Path.Build.Array.Set.choose dirs
+    in
+    match first with
+    | None -> Validation_result.No_targets
+    | Some first ->
+      let root = Path.Build.parent_exn first in
+      let exception Invalid of Validation_result.t in
+      (try
+         let files =
+           Path.Build.Array.Set.fold files ~init:Filename.Set.empty ~f:(fun path names ->
+             if Path.Build.equal root (Path.Build.parent_exn path)
+             then Filename.Set.add names (Path.Build.basename path)
+             else raise_notrace (Invalid Inconsistent_parent_dir))
+         in
+         let dirs =
+           Path.Build.Array.Set.fold dirs ~init:Filename.Set.empty ~f:(fun path names ->
+             if Path.Build.equal root (Path.Build.parent_exn path)
+             then (
+               let name = Path.Build.basename path in
+               if Filename.Set.mem files name
+               then
+                 raise_notrace
+                   (Invalid (File_and_directory_target_with_the_same_name path))
+               else Filename.Set.add names name)
+             else raise_notrace (Invalid Inconsistent_parent_dir))
+         in
+         Valid { Validated.root; files; dirs }
+       with
+       | Invalid result -> result))
 ;;
 
 module Produced = struct

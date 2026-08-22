@@ -157,6 +157,7 @@ module Emit = struct
        })
   ;;
 
+  let exe_target t = Exe_target.melange_emit t.target
   let target_dir (emit : t) ~dir = Path.Build.relative dir emit.target
 end
 

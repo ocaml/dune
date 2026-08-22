@@ -175,12 +175,12 @@ let gen_rules sctx t ~dir ~scope =
          ~sandbox
          [ A "-staged"; Target cinaps_ml; Deps (List.map cinapsed_files ~f:Path.build) ])
   and* expander = Super_context.expander sctx ~dir in
+  let exe_target = Exe_target.executables Nonempty_list.[ t.loc, name ] in
   let compile_info =
     let dune_version = Scope.project scope |> Dune_project.dune_version in
-    let names = Nonempty_list.[ t.loc, name ] in
     Lib.DB.resolve_user_written_deps
       (Scope.libs scope)
-      (`Exe names)
+      exe_target
       (Lib_dep.Direct (loc, Lib_name.of_string "cinaps.runtime") :: t.libraries)
       ~allow_unused_libraries:[]
       ~pps:(Preprocess.Per_module.pps t.preprocess)
@@ -207,7 +207,7 @@ let gen_rules sctx t ~dir ~scope =
       in
       let requires_compile = Lib.Compile.direct_requires compile_info ~for_ in
       let requires_link = Lib.Compile.requires_link compile_info ~for_ in
-      let obj_dir = Obj_dir.make_exe ~dir:cinaps_dir ~name in
+      let obj_dir = Obj_dir.make_for_exe_target ~dir:cinaps_dir exe_target in
       Compilation_context.create
         for_
         ~super_context:sctx

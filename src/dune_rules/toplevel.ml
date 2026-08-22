@@ -26,7 +26,8 @@ module Source = struct
     |> Path.as_in_build_dir_exn
   ;;
 
-  let obj_dir { dir; name; _ } = Obj_dir.make_exe ~dir ~name
+  let exe_target t = Exe_target.executables Nonempty_list.[ t.loc, t.name ]
+  let obj_dir t = Obj_dir.make_for_exe_target ~dir:t.dir (exe_target t)
 
   let modules t pp =
     main_module t |> Pp_spec.pp_module pp >>| Modules.With_vlib.singleton_exe
@@ -211,7 +212,6 @@ module Stanza = struct
           let compiler_libs =
             Lib_name.parse_string_exn (source.loc, "compiler-libs.toplevel")
           in
-          let names = Nonempty_list.[ source.loc, source.name ] in
           let pps =
             match toplevel.pps with
             | Preprocess.Pps pps -> pps.pps
@@ -220,7 +220,7 @@ module Stanza = struct
           in
           Lib.DB.resolve_user_written_deps
             (Scope.libs scope)
-            (`Exe names)
+            (Source.exe_target source)
             ~forbidden_libraries:[]
             (Lib_dep.Direct (source.loc, compiler_libs)
              :: List.map toplevel.libraries ~f:(fun d -> Lib_dep.Direct d))

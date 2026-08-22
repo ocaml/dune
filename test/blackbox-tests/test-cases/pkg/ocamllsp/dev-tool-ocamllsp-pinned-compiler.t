@@ -51,17 +51,12 @@ The key indicator is that we see "ocaml-base-compiler.dev" in the solution (from
 rather than "ocaml-base-compiler.5.2.0" from opam-repository.
 
   $ dune tools install ocamllsp 2>&1 | head -10
-  Solution for _build/.dev-tools.locks/ocaml-lsp-server:
+  Solution for _build/.dev-tools.locks/ocaml-lsp-server
+  
+  Dependencies common to all supported platforms:
   - ocaml-base-compiler.dev
   - ocaml-lsp-server.0.0.1
 
   $ dune tools exec ocamllsp
-  The version of the compiler package ("ocaml-base-compiler") in this project's
-  lockdir has changed to dev (formerly the compiler version was dev). The
-  dev-tool "ocaml-lsp-server" will be re-locked and rebuilt with this version
-  of the compiler.
-  Solution for _build/.dev-tools.locks/ocaml-lsp-server:
-  - ocaml-base-compiler.dev
-  - ocaml-lsp-server.0.0.1
        Running 'ocamllsp'
   hello from fake ocamllsp

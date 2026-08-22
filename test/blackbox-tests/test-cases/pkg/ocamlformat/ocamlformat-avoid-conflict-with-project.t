@@ -28,7 +28,9 @@ Add a fake executable in the PATH
 
 Build the OCamlFormat binary dev-tool
   $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune fmt --preview
-  Solution for _build/.dev-tools.locks/ocamlformat:
+  Solution for _build/.dev-tools.locks/ocamlformat
+  
+  Dependencies common to all supported platforms:
   - ocamlformat.0.26.2
   File "dune", line 1, characters 0-0:
   --- dune

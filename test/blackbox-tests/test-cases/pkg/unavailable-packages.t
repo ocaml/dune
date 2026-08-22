@@ -3,12 +3,10 @@ solver.
 
   $ mkrepo
 
-This test is specialized to non-portable lockdirs. For an analogous test of
-portable-lockdirs where different packages or packgae versions are available on
-different platforms, see the tests "portable-lockdirs-partial-solve" and
+This test uses separate lock directories configured for Linux and macOS.
+For analogous multi-platform cases where packages or package versions are
+available on different platforms, see
 "portable-lockdirs-platform-dependant-version".
-  $ export DUNE_CONFIG__PORTABLE_LOCK_DIR=disabled
-
 Set up two build contexts: a default one for linux and another for macos.
   $ cat >dune-workspace <<EOF
   > (lang dune 3.8)
@@ -89,10 +87,17 @@ A package whose oldest and newest version is only available if with-test is fals
 No solution will be available on macos as all versions of this package are only
 available on linux.
   $ solve linux-only
-  Solution for dune.lock:
+  Solution for dune.lock
+  
+  Dependencies common to all supported platforms:
   - linux-only.0.0.2
-  Error: Unable to solve dependencies for the following lock directories:
-  Lock directory dune.macos.lock:
+  Error:
+  Unable to solve dependencies while generating lock directory: dune.macos.lock
+  
+  The dependency solver failed to find a solution for the requested platforms:
+  - arch = x86_64; os = macos
+  - arch = arm64; os = macos
+  ...with this error:
   Couldn't solve the package dependency formula.
   Selected candidates: x.dev
   - linux-only -> (problem)
@@ -104,19 +109,29 @@ available on linux.
 The latest version of the package will be chosen on linux but the middle
 version will be chosen on macos as that's the only version available on macos.
   $ solve macos-sometimes
-  Solution for dune.lock:
+  Solution for dune.lock
+  
+  Dependencies common to all supported platforms:
   - macos-sometimes.0.0.3
-  Solution for dune.macos.lock:
+  Solution for dune.macos.lock
+  
+  Dependencies common to all supported platforms:
   - macos-sometimes.0.0.2
 
-A warning will be printed as the undefined-var.0.0.1 package has an undefined
-variable in its `available` filter. The undefined-var.0.0.2 package has a valid
-`available` filter but is only available on linux.
+The undefined variable in undefined-var.0.0.1's availability filter makes that
+version unavailable. Version 0.0.2 is only available on Linux.
   $ solve undefined-var
-  Solution for dune.lock:
+  Solution for dune.lock
+  
+  Dependencies common to all supported platforms:
   - undefined-var.0.0.2
-  Error: Unable to solve dependencies for the following lock directories:
-  Lock directory dune.macos.lock:
+  Error:
+  Unable to solve dependencies while generating lock directory: dune.macos.lock
+  
+  The dependency solver failed to find a solution for the requested platforms:
+  - arch = x86_64; os = macos
+  - arch = arm64; os = macos
+  ...with this error:
   Couldn't solve the package dependency formula.
   Selected candidates: x.dev
   - undefined-var -> (problem)
@@ -128,16 +143,26 @@ variable in its `available` filter. The undefined-var.0.0.2 package has a valid
 Warnings will be printed and no solution will be found as the availability
 filter resolves to a string instead of to a boolean.
   $ solve availability-string
-  Error: Unable to solve dependencies for the following lock directories:
-  Lock directory dune.lock:
+  Error:
+  Unable to solve dependencies while generating lock directory: dune.lock
+  
+  The dependency solver failed to find a solution for the requested platforms:
+  - arch = x86_64; os = linux
+  - arch = arm64; os = linux
+  ...with this error:
   Couldn't solve the package dependency formula.
   Selected candidates: x.dev
   - availability-string -> (problem)
       No usable implementations:
         availability-string.0.0.2: Availability condition not satisfied
         availability-string.0.0.1: Availability condition not satisfied
-  Error: Unable to solve dependencies for the following lock directories:
-  Lock directory dune.macos.lock:
+  Error:
+  Unable to solve dependencies while generating lock directory: dune.macos.lock
+  
+  The dependency solver failed to find a solution for the requested platforms:
+  - arch = x86_64; os = macos
+  - arch = arm64; os = macos
+  ...with this error:
   Couldn't solve the package dependency formula.
   Selected candidates: x.dev
   - availability-string -> (problem)
@@ -150,7 +175,11 @@ The middle version will be picked as this is the only one available if
 with-test is set. This exercises that we can handle flags in the available
 filter.
   $ solve with-test-check
-  Solution for dune.lock:
+  Solution for dune.lock
+  
+  Dependencies common to all supported platforms:
   - with-test-check.0.0.2
-  Solution for dune.macos.lock:
+  Solution for dune.macos.lock
+  
+  Dependencies common to all supported platforms:
   - with-test-check.0.0.2

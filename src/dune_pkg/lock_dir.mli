@@ -125,9 +125,9 @@ val remove_locs : t -> t
 val equal : t -> t -> bool
 val to_dyn : t -> Dyn.t
 
-(** Returns whether this lock directory uses versioned paths for package
-    files directories. Portable lock directories use versioned paths to
-    handle multiple versions of the same package. *)
+(** Returns whether this lock directory uses versioned paths for package files
+    directories. Lock directories with [solved_for_platforms] metadata use
+    versioned paths to handle multiple versions of the same package. *)
 val uses_versioned_paths : t -> bool
 
 (** [create_latest_version packages ~ocaml ~repos
@@ -142,7 +142,6 @@ val create_latest_version
   -> repos:Opam_repo.t list option
   -> expanded_solver_variable_bindings:Solver_stats.Expanded_variable_bindings.t
   -> solved_for_platforms:Solver_env.t list
-  -> portable_lock_dir:bool
   -> t
 
 module Metadata : Dune_sexp.Versioned_file.S with type data := unit
@@ -154,8 +153,7 @@ module Write_disk : sig
   type t
 
   val prepare
-    :  portable_lock_dir:bool
-    -> lock_dir_path:Path.t
+    :  lock_dir_path:Path.t
     -> files:File_entry.t Package_version.Map.Multi.t Package_name.Map.t
     -> lock_dir
     -> t
@@ -192,10 +190,6 @@ val transitive_dependency_closure
 (** Attempt to download and compute checksums for packages that have source
     archive urls but no checksum. *)
 val compute_missing_checksums : t -> pinned_packages:Package_name.Set.t -> t Fiber.t
-
-(** Combine the platform-specific parts of a pair of lockdirs, throwing a code
-    error if the lockdirs differ in a non-platform-specific way. *)
-val merge_conditionals : t -> t -> t
 
 (** Returns the packages contained in the solution on the given platform. If
     the lockdir does not contain a solution compatible with the given platform

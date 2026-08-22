@@ -18,4 +18,3 @@ val toolchains : Toggle.t Config.t
 val lock_dev_tools : Toggle.t Config.t
 
 val bin_dev_tools : Toggle.t Config.t
-val portable_lock_dir : Toggle.t Config.t

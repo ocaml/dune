@@ -31,6 +31,71 @@ let read_file name =
 
 let somefile = read_file "somefile"
 
+let digest_of_hex hex =
+  match Blake3_mini.Digest.of_hex hex with
+  | Some digest -> digest
+  | None -> failwith "invalid digest"
+;;
+
+let%expect_test "digest representation" =
+  let digest = digest_of_hex "000102030405060708090a0b0c0d0e0f" in
+  let repr = Obj.repr digest in
+  printf "payload bytes: %d\n" (Obj.size repr * (Sys.word_size / 8));
+  printf "unboxed fields: %b\n" (Obj.tag repr = Obj.double_array_tag);
+  [%expect
+    {|
+    payload bytes: 24
+    unboxed fields: false
+    |}]
+;;
+
+let%expect_test "digest operations" =
+  let digest = digest_of_hex "000102030405060708090a0b0c0d0e0f" in
+  let same = digest_of_hex "000102030405060708090a0b0c0d0e0f" in
+  let different_second = digest_of_hex "000102030405060708090a0b0c0d0e10" in
+  let different_first = digest_of_hex "010102030405060708090a0b0c0d0e0f" in
+  let nan_bits = digest_of_hex "7ff800000000000108090a0b0c0d0e0f" in
+  let same_nan_bits = digest_of_hex "7ff800000000000108090a0b0c0d0e0f" in
+  let different_nan_bits = digest_of_hex "7ff800000000000208090a0b0c0d0e0f" in
+  printf
+    "equal: %b %b %b\n"
+    (Blake3_mini.Digest.equal digest same)
+    (Blake3_mini.Digest.equal digest different_second)
+    (Blake3_mini.Digest.equal digest different_first);
+  printf
+    "nan bits equal: %b %b\n"
+    (Blake3_mini.Digest.equal nan_bits same_nan_bits)
+    (Blake3_mini.Digest.equal nan_bits different_nan_bits);
+  let compare_is_antisymmetric x y =
+    let xy = Blake3_mini.Digest.compare x y in
+    let yx = Blake3_mini.Digest.compare y x in
+    xy <> 0 && Int.compare xy 0 = -Int.compare yx 0
+  in
+  printf
+    "compare: %b %b %b %b\n"
+    (Blake3_mini.Digest.compare digest same = 0)
+    (compare_is_antisymmetric digest different_second)
+    (compare_is_antisymmetric digest different_first)
+    (compare_is_antisymmetric nan_bits different_nan_bits);
+  printf
+    "lexicographic compare: %b\n"
+    (Blake3_mini.Digest.compare
+       (digest_of_hex "7fffffffffffffff08090a0b0c0d0e0f")
+       (digest_of_hex "800000000000000008090a0b0c0d0e0f")
+     < 0);
+  printf
+    "same-prefix hashes: %b\n"
+    (Blake3_mini.Digest.hash digest = Blake3_mini.Digest.hash different_second);
+  [%expect
+    {|
+    equal: true false false
+    nan bits equal: true false
+    compare: true true true true
+    lexicographic compare: true
+    same-prefix hashes: false
+    |}]
+;;
+
 let%expect_test "digest with hasher" =
   let hasher = Blake3_mini.create () in
   Blake3_mini.feed_string hasher somefile ~pos:0 ~len:(String.length somefile);

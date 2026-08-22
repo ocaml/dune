@@ -73,6 +73,10 @@ module Lock_dirs_arg : sig
       The [workspace] argument is used to determine the list of all lock lock
       directories.
 
+      If no lock directories were selected, the default lock directory of the
+      workspace is used: either the one declared by a single [lock_dir] stanza,
+      or [dune.lock] if there is none.
+
       A user error is raised if the list of positional arguments used when
       creating [t] is not a subset of the lock directories of the workspace. *)
   val lock_dirs_of_workspace : t -> Workspace.t -> Path.Source.t list

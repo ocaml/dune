@@ -84,7 +84,7 @@ module Unique : sig
   val to_string : t -> string
   val compare : t -> t -> Ordering.t
   val equal : t -> t -> bool
-  val artifact_filename : t -> ext:Filename.Extension.t -> string
+  val artifact_filename : t -> ext:Filename.Extension.t -> Filename.t
 
   include Conv.S with type t := t
   include Comparable_intf.S with type key := t

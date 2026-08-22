@@ -435,7 +435,7 @@ let setup_build_archives (lib : Library.t) ~top_sorted_modules ~cctx ~expander ~
                file explicitly *)
             Module.obj_name m
             |> Module_name.Unique.artifact_filename ~ext
-            |> Path.Build.relative (Obj_dir.dir obj_dir)
+            |> Path.Build.relative_fname (Obj_dir.dir obj_dir)
           in
           Action_builder.symlink ~src ~dst
         in

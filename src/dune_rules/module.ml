@@ -452,7 +452,7 @@ let generated
         | Ocaml -> src_dir
         | Melange -> Path.Build.relative src_dir Melange.Source.dir
       in
-      Path.Build.relative src_dir basename |> Path.build |> File.make Dialect.ocaml
+      Path.Build.relative_fname src_dir basename |> Path.build |> File.make Dialect.ocaml
     in
     Source.make ~impl:(Some impl) ~intf:None path
   in

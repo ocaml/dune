@@ -3,5 +3,6 @@
   installed-package
   no-transitive-through-targets
   ocamlfind
+  redirect-chain
   virtual-without-default)
  (deps %{bin:ocamlfind}))

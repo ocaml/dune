@@ -494,9 +494,9 @@ let to_local (t : Path.t t) =
 module Module = struct
   let relative (type path) (t : path t) (dir : path) name : path =
     match t with
-    | Local _ -> Path.Build.relative dir name
-    | Local_as_path _ -> Path.relative dir name
-    | External _ -> Path.relative dir name
+    | Local _ -> Path.Build.relative_fname dir name
+    | Local_as_path _ -> Path.relative_fname dir name
+    | External _ -> Path.relative_fname dir name
   ;;
 
   let path_of_build (type path) (t : path t) (dir : path) : Path.t =

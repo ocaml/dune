@@ -700,6 +700,7 @@ let cmo_js_of_module ~mode m =
   Module_name.Unique.artifact_filename
     (Module.obj_name m)
     ~ext:(Js_of_ocaml.Ext.cmo ~mode)
+  |> Filename.to_string
 ;;
 
 let link_rule

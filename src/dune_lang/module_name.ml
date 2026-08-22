@@ -167,7 +167,10 @@ module Unique = struct
   ;;
 
   let to_dyn = to_dyn
-  let artifact_filename (t : t) ~ext = t ^ Filename.Extension.to_string ext
+
+  let artifact_filename (t : t) ~ext =
+    Filename.of_string_exn (t ^ Filename.Extension.to_string ext)
+  ;;
 
   module Map = Map
   module Set = Set

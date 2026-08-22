@@ -161,9 +161,10 @@ let executables_rules
   (* Use "eobjs" rather than "objs" to avoid a potential conflict with a library
      of the same name *)
   let* modules, obj_dir =
-    let first_exe = first_exe exes in
     Dir_contents.ml dir_contents ~for_
-    >>= Ml_sources.modules_and_obj_dir ~libs:(Scope.libs scope) ~for_:(Exe { first_exe })
+    >>= Ml_sources.modules_and_obj_dir
+          ~libs:(Scope.libs scope)
+          ~for_:(Exe_target (Executables.exe_target exes))
   in
   let* () = Check_rules.add_obj_dir sctx ~obj_dir for_ in
   let ctx = Super_context.context sctx in
@@ -348,7 +349,7 @@ let executables_rules
       ~preprocess:
         (Preprocess.Per_module.without_instrumentation exes.buildable.preprocess.config)
       ~dialects:(Dune_project.dialects (Scope.project scope))
-      ~ident:(Merlin_ident.for_exes ~names:(Nonempty_list.map ~f:snd exes.names))
+      ~ident:(Merlin_ident.for_exe_target (Executables.exe_target exes))
       ~for_
       ~parameters:(Resolve.return [])
   in
@@ -367,7 +368,7 @@ let compile_info ~scope (exes : Executables.t) =
   in
   Lib.DB.resolve_user_written_deps
     (Scope.libs scope)
-    (`Exe exes.names)
+    (Executables.exe_target exes)
     exes.buildable.libraries
     ~allow_unused_libraries:exes.buildable.allow_unused_libraries
     ~pps
@@ -392,6 +393,6 @@ let rules ~sctx ~dir_contents ~scope ~expander (exes : Executables.t) =
   in
   let* () = Buildable_rules.gen_select_rules sctx compile_info ~dir ~for_
   and* () = Bootstrap_info.gen_rules sctx exes ~dir compile_info dir_contents in
-  let merlin_ident = Merlin_ident.for_exes ~names:(Nonempty_list.map ~f:snd exes.names) in
+  let merlin_ident = Merlin_ident.for_exe_target (Executables.exe_target exes) in
   Buildable_rules.with_lib_deps (Super_context.context sctx) merlin_ident ~dir ~f
 ;;

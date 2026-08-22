@@ -583,8 +583,5 @@ let single, multi =
 
 let has_foreign t = Buildable.has_foreign t.buildable
 let has_foreign_cxx t = Buildable.has_foreign_cxx t.buildable
-
-let obj_dir t ~dir =
-  let name = snd (Nonempty_list.hd t.names) in
-  Obj_dir.make_exe ~dir ~name
-;;
+let exe_target t = Exe_target.executables t.names
+let obj_dir t ~dir = Obj_dir.make_for_exe_target ~dir (exe_target t)

@@ -2505,11 +2505,7 @@ module DB = struct
         ~pps
         ~dune_version
     =
-    let for_ =
-      match targets with
-      | `Melange_emit _name -> Compilation_mode.Melange
-      | `Exe _ -> Ocaml
-    in
+    let for_ = Exe_target.compilation_mode targets in
     let resolved =
       Memo.lazy_ ~name:"resolved-library-dependencies" (fun () ->
         Resolve_names.resolve_deps_and_add_runtime_deps
@@ -2550,17 +2546,7 @@ module DB = struct
                  ~forbidden_libraries
                  ~for_
                  res)
-            ~human_readable_description:(fun () ->
-              match targets with
-              | `Melange_emit name -> Pp.textf "melange target %s" name
-              | `Exe Nonempty_list.[ (loc, name) ] ->
-                Pp.textf "executable %s in %s" name (Loc.to_file_colon_line loc)
-              | `Exe (Nonempty_list.((loc, _) :: _) as names) ->
-                Pp.textf
-                  "executables %s in %s"
-                  (String.enumerate_and
-                     (Nonempty_list.map ~f:snd names |> Nonempty_list.to_list))
-                  (Loc.to_file_colon_line loc)))
+            ~human_readable_description:(fun () -> Exe_target.description targets))
       in
       let init =
         Memo.lazy_ ~name:"empty-library-requires-link" (fun () -> Resolve.Memo.return [])

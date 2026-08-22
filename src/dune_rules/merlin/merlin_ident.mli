@@ -5,8 +5,7 @@ open Import
 type t
 
 val for_lib : Lib_name.t -> t
-val for_exes : names:string Nonempty_list.t -> t
-val for_melange : target:string -> t
+val for_exe_target : Exe_target.t -> t
 
 (** Merlin config folder name *)
 val merlin_folder_name : Filename.t

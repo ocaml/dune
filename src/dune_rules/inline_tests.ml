@@ -202,6 +202,7 @@ include Sub_system.Register_end_point (struct
       in
       let dune_version = Scope.project scope |> Dune_project.dune_version in
       let runner_name = Inline_tests_info.inline_test_runner in
+      let exe_target = Exe_target.executables Nonempty_list.[ loc, "t" ] in
       let main_module =
         let name = Module_name.of_checked_string "main" in
         Module.generated ~kind:Impl ~for_ ~src_dir:inline_test_dir [ name ]
@@ -271,7 +272,7 @@ include Sub_system.Register_end_point (struct
           in
           Ocaml_flags.append_common ocaml_flags [ "-w"; "-24"; "-g" ]
         in
-        let obj_dir = Obj_dir.make_exe ~dir:inline_test_dir ~name:"t" in
+        let obj_dir = Obj_dir.make_for_exe_target ~dir:inline_test_dir exe_target in
         let modules = Modules.With_vlib.singleton_exe main_module in
         let runner_libs =
           let lib_db = Scope.libs scope in

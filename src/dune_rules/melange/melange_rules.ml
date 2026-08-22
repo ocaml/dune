@@ -133,7 +133,7 @@ let emit_modules_and_obj_dir ~dir_contents ~scope (mel : Melange_stanzas.Emit.t)
   Dir_contents.ml dir_contents ~for_:Compilation_mode.Melange
   >>= Ml_sources.modules_and_obj_dir
         ~libs:(Scope.libs scope)
-        ~for_:(Melange { target = mel.target })
+        ~for_:(Exe_target (Melange_stanzas.Emit.exe_target mel))
 ;;
 
 let add_rule sctx ?mode ?loc ~dir build =
@@ -322,7 +322,7 @@ let compile_info ~scope (mel : Melange_stanzas.Emit.t) =
   in
   Lib.DB.resolve_user_written_deps
     (Scope.libs scope)
-    (`Melange_emit mel.target)
+    (Melange_stanzas.Emit.exe_target mel)
     ~allow_overlaps:mel.allow_overlapping_dependencies
     ~forbidden_libraries:[]
     libraries
@@ -514,7 +514,7 @@ let setup_emit_cmj_rules
   =
   let* compile_info = compile_info ~scope mel in
   let ctx = Super_context.context sctx in
-  let merlin_ident = Merlin_ident.for_melange ~target:mel.target in
+  let merlin_ident = Merlin_ident.for_exe_target (Melange_stanzas.Emit.exe_target mel) in
   let dir = Dir_contents.dir dir_contents in
   let f () =
     let* source_modules, obj_dir = emit_modules_and_obj_dir ~dir_contents ~scope mel in

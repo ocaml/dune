@@ -531,7 +531,7 @@ end = struct
                Lib.DB.resolve_user_written_deps
                  (Scope.libs scope)
                  ~forbidden_libraries:[]
-                 (`Exe exes.names)
+                 (Executables.exe_target exes)
                  exes.buildable.libraries
                  ~allow_unused_libraries:exes.buildable.allow_unused_libraries
                  ~pps

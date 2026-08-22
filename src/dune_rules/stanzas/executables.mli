@@ -63,6 +63,7 @@ val has_foreign : t -> bool
 (** Check if the executables have any c++ foreign stubs. *)
 val has_foreign_cxx : t -> bool
 
+val exe_target : t -> Exe_target.t
 val obj_dir : t -> dir:Path.Build.t -> Path.Build.t Obj_dir.t
 val single : t Dune_lang.Decoder.t
 val multi : t Dune_lang.Decoder.t

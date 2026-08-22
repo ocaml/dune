@@ -89,7 +89,7 @@ let add_stanza db ~dir (acc, pps) stanza =
         in
         Lib.DB.resolve_user_written_deps
           db
-          (`Exe exes.names)
+          (Executables.exe_target exes)
           exes.buildable.libraries
           ~allow_unused_libraries:exes.buildable.allow_unused_libraries
           ~pps

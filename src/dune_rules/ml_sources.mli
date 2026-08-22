@@ -22,10 +22,7 @@ val artifacts : t -> Artifacts_obj.t Memo.t
 
 type for_ =
   | Library of Lib_id.Local.t
-  | Exe of
-      { first_exe : string (** Name of first executable appearing in executables stanza *)
-      }
-  | Melange of { target : string }
+  | Exe_target of Exe_target.t
 
 val modules_and_obj_dir
   :  t

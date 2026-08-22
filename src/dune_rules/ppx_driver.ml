@@ -116,6 +116,13 @@ module Driver = struct
   let as_ppx_flags t = t.info.as_ppx_flags
   let lint_flags t = t.info.lint_flags
 
+  let serialized_replacements info =
+    match Sub_system_name.Map.find (Lib_info.sub_systems info) Info.name with
+    | Some (Info.T info) -> info.replaces
+    | None -> []
+    | Some _ -> Code_error.raise "invalid ppx.driver subsystem information" []
+  ;;
+
   let fail loc msg =
     match loc with
     | User_file (loc, _) -> Resolve.fail (User_error.make ~loc [ Pp.text msg ])

@@ -455,7 +455,7 @@ let gen_rules ~sctx ~dir rest =
     let* lib = resolve_instantiation scope instance_name in
     instantiate ~sctx lib
   | [ scope; _lib_name; instance_name; ".instance.objs"; jsoo; s_config ]
-    when Obj_dir.is_jsoo_dirname jsoo ->
+    when Obj_dir.is_jsoo_dirname (Filename.of_string_exn jsoo) ->
     let* scope = find_scope ~sctx scope in
     has_rules
     @@ fun () ->

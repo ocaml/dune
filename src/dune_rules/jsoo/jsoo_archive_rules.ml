@@ -86,13 +86,13 @@ end
 let parse_lib_archive_dir dir =
   let jsoo_dir_config =
     match Path.Build.basename dir with
-    | s when Obj_dir.is_jsoo_dirname (Filename.to_string s) -> Some (dir, None)
+    | basename when Obj_dir.is_jsoo_dirname basename -> Some (dir, None)
     | config ->
       (match Path.Build.parent dir with
        | Some parent
          when (not (Path.Build.is_root parent))
-              && Obj_dir.is_jsoo_dirname (Path.Build.basename parent |> Filename.to_string)
-         -> Some (parent, Some (Filename.to_string config))
+              && Obj_dir.is_jsoo_dirname (Path.Build.basename parent) ->
+         Some (parent, Some (Filename.to_string config))
        | _ -> None)
   in
   match jsoo_dir_config with

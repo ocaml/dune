@@ -1248,8 +1248,21 @@ let init_with_root_and_rpc ~(root : Workspace_root.t) ~rpc_build (builder : Buil
   let c = build root builder in
   No_build.set c.builder.no_build;
   if c.root.dir <> Filename.current_dir_name then Sys.chdir c.root.dir;
-  Path.set_root (normalize_path (Path.External.cwd ()));
-  Path.Build.set_build_dir (Path.Outside_build_dir.of_string c.builder.build_dir);
+  let source_root = normalize_path (Path.External.cwd ()) in
+  Path.set_root source_root;
+  let build_dir =
+    match Path.Outside_build_dir.of_string c.builder.build_dir with
+    | In_source_dir _ as build_dir -> build_dir
+    | External external_build_dir as build_dir ->
+      (match
+         Path.drop_prefix
+           (Path.external_ external_build_dir)
+           ~prefix:(Path.external_ source_root)
+       with
+       | None -> build_dir
+       | Some local -> In_source_dir (Path.Source.of_local local))
+  in
+  Path.Build.set_build_dir build_dir;
   let () =
     match builder.trace_file with
     | None -> Log.init No_log_file

@@ -113,7 +113,8 @@ let invalidation_of_file_events events =
       acc
       (match (event : Event.File_watcher_event.t) with
        | Fs_memo_event event -> Fs_memo.handle_fs_event event
-       | Queue_overflow -> Memo.Invalidation.clear_caches ~reason:Event_queue_overflow))
+       | Queue_overflow ->
+         Memo.Invalidation.invalidate_caches ~reason:Event_queue_overflow))
 ;;
 
 let next_watch_run_id t =

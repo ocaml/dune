@@ -87,7 +87,7 @@ let run_action (vcs : Vcs.t) action =
       (match vcs.kind with
        | Git -> "git"
        | Hg -> "hg");
-    Memo.reset (Memo.Invalidation.clear_caches ~reason:Test);
+    Memo.reset (Memo.Invalidation.invalidate_caches ~reason:Test);
     let vcs =
       match vcs.kind with
       | Hg when not has_hg -> { vcs with kind = Git }

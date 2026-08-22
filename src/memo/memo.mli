@@ -246,9 +246,8 @@ module Invalidation : sig
 
   val is_empty : t -> bool
 
-  (** Clear all memoization tables. We use it if the incremental mode is not
-      enabled. *)
-  val clear_caches : reason:Reason.t -> t
+  (** Invalidate all computations stored in all memoization tables. *)
+  val invalidate_caches : reason:Reason.t -> t
 
   (** Invalidate all computations stored in a given [memo] table. *)
   val invalidate_table : reason:Reason.t -> _ Table.t -> t
@@ -597,7 +596,7 @@ module For_tests : sig
 
   (** Forget all memoized values, forcing them to be recomputed on the next
       build run. *)
-  val clear_memoization_caches : unit -> unit
+  val invalidate_memoization_caches : unit -> unit
 end
 
 (** A check point. This fiber should be used to:

@@ -43,7 +43,7 @@ module Leaf = struct
   type kind =
     | Invalidate_node : _ Node.Dep_node.t -> kind
     | Clear_cache : ('input, ('input, 'output) Node.Dep_node.t) Store.t -> kind
-    | Clear_caches
+    | Invalidate_caches
     | Custom of (unit -> unit)
 
   type t =
@@ -79,7 +79,7 @@ let execute_leaf { Leaf.kind; _ } =
   match kind with
   | Invalidate_node dep_node -> Node.invalidate dep_node
   | Clear_cache store -> invalidate_store store
-  | Clear_caches -> Caches.clear ()
+  | Invalidate_caches -> Caches.invalidate ()
   | Custom f -> f ()
 ;;
 
@@ -155,7 +155,7 @@ let is_empty = function
   | _ -> false
 ;;
 
-let clear_caches ~reason = Leaf { kind = Clear_caches; reason }
+let invalidate_caches ~reason = Leaf { kind = Invalidate_caches; reason }
 
 let invalidate_table ~reason ({ cache; _ } : _ Table0.t) =
   Leaf { kind = Clear_cache cache; reason }

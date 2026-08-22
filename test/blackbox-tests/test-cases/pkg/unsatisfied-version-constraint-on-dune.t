@@ -28,7 +28,6 @@ Solve the dependencies:
   Selected candidates: foo.dev
   - dune -> (problem)
       User requested = 3.XX
-      foo dev requires < 3.XX
-      Rejected candidates:
-        dune.3.XX: Incompatible with restriction: < 3.XX
+      No usable implementations:
+        dune.3.XX: Package does not satisfy constraints of local package foo
   [1]

@@ -29,7 +29,7 @@ reason must be derived from Linux rather than a platform-less environment.
   Error:
   Unable to solve dependencies while generating lock directory: dune.lock
   
-  The dependency solver failed to find a solution for the following platforms:
+  The dependency solver failed to find a solution for the requested platforms:
   - arch = x86_64; os = linux
   ...with this error:
   Couldn't solve the package dependency formula.

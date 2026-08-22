@@ -1,6 +1,5 @@
-Separate platform solves minimize avoid-version packages independently. They
-therefore select two distinct platform-specific avoid-version packages instead
-of the single common alternative.
+Joint solving minimizes distinct avoid-version package versions rather than
+counting the same package once per selected platform.
 
   $ mkrepo
   $ add_mock_repo_if_needed
@@ -36,16 +35,13 @@ of the single common alternative.
   > EOF
   $ write_portable_lockdirs_project
 
+Selecting common on both platforms contributes one avoid-version package to
+the lock directory. Selecting both platform-specific alternatives contributes
+two.
+
   $ dune pkg lock
   Solution for dune.lock
   
   Dependencies common to all supported platforms:
+  - common.0.0.1 (this version should be avoided)
   - foo.0.0.1
-  
-  Additionally, some packages will only be built on specific platforms.
-  
-  arch = x86_64; os = linux:
-  - linux-alt.0.0.1 (this version should be avoided)
-  
-  arch = x86_64; os = macos:
-  - macos-alt.0.0.1 (this version should be avoided)

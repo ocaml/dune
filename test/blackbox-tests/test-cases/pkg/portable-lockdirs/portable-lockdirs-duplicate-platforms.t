@@ -1,5 +1,5 @@
-Duplicate entries in solve_for_platforms currently break result merging. Record the
-failure before joint solving deduplicates the requested platform set.
+Test that duplicate platform entries in solve_for_platforms are solved only
+once, so the lock file does not contain duplicated platform conditions.
 
   $ mkrepo
   $ add_mock_repo_if_needed
@@ -28,24 +28,33 @@ Solve for a platform set that contains the same platform twice:
   >   ((arch x86_64) (os linux))))
   > EOF
 
-Merging successful per-platform results rejects the duplicate solver
-environment:
+  $ dune pkg lock
+  Solution for dune.lock
+  
+  Dependencies common to all supported platforms:
+  - foo.0.0.1
 
-  $ dune pkg lock >output 2>&1
-  [1]
-  $ grep 'Tried to add duplicate solver env' output
-    ("Tried to add duplicate solver env to lockdir conditional choice",
+The solved_for_platforms metadata mentions each platform only once:
+  $ grep -c 'os macos' ${default_lock_dir}/lock.dune
+  1
+  $ grep -c 'os linux' ${default_lock_dir}/lock.dune
+  1
 
-When solving fails before result merging, the duplicate platform is reported
-twice:
-
+Duplicate platforms also appear only once when the joint solve fails:
   $ mkpkg foo <<'EOF'
   > available: false
   > EOF
-  $ dune pkg lock >output 2>&1
-  [1]
-  $ grep 'arch = arm64; os = macos' output
+  $ dune pkg lock
+  Error:
+  Unable to solve dependencies while generating lock directory: dune.lock
+  
+  The dependency solver failed to find a solution for the requested platforms:
   - arch = arm64; os = macos
-  - arch = arm64; os = macos
-  $ grep 'arch = x86_64; os = linux' output
   - arch = x86_64; os = linux
+  ...with this error:
+  Couldn't solve the package dependency formula.
+  Selected candidates: x.dev
+  - foo -> (problem)
+      No usable implementations:
+        foo.0.0.1: Availability condition not satisfied
+  [1]

@@ -553,10 +553,10 @@ module Internal = struct
   and execute_rule_impl ~rule_kind rule =
     let { Rule.id = _; targets; mode; action; info } = rule in
     let* execution_parameters =
-      match Dpath.Target_dir.of_target targets.root with
-      | Regular (With_context (context, _)) | Anonymous_action (With_context (context, _))
-        -> (Build_config.get ()).execution_parameters context ~dir:targets.root
-      | Anonymous_action Root | Regular Root | Invalid _ ->
+      match Dpath.Target_dir.context targets.root with
+      | Some context ->
+        (Build_config.get ()).execution_parameters context ~dir:targets.root
+      | None ->
         Code_error.raise
           "invalid dir for rule execution"
           [ "dir", Path.Build.to_dyn targets.root ]

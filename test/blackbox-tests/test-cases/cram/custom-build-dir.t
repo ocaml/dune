@@ -32,9 +32,7 @@ path
   +     $ echo bar
   +  +  bar
   +  [1]
-  Promoting
-    $TESTCASE_ROOT/tmp/default/foo.t.corrected
-    to foo.t.
+  Promoting tmp/default/foo.t.corrected to foo.t.
   [1]
   $ cat foo.t
     $ echo "  $ echo bar" >bar.t

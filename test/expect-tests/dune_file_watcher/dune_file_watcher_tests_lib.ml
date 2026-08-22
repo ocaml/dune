@@ -51,7 +51,7 @@ let create_watcher ?fsevents_debounce ~watch_exclusions () =
     let iter () =
       match Dune_scheduler.Event.Queue.next event_queue with
       | Fiber_fill_ivar fill -> [ fill ]
-      | Shutdown _ | Job_complete_ready -> assert false
+      | Shutdown _ | Job_complete_ready | Job_throttle_restart _ -> assert false
     in
     Thread.create (fun () -> Fiber.run (read_events ()) ~iter) ()
   in

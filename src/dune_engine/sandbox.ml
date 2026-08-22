@@ -4,7 +4,7 @@ open Stdune.Action_types
 let sandbox_dir = Path.Build.relative Path.Build.root ".sandbox"
 let max_live_sandboxes = 250
 let live_sandbox_throttle = lazy (Fiber.Throttle.create max_live_sandboxes)
-let with_live_sandbox_slot ~f = Fiber.Throttle.run (Lazy.force live_sandbox_throttle) ~f
+let with_live_sandbox_slot ~f = Fiber.Throttle.run (Lazy.force live_sandbox_throttle) f
 
 module Pending_targets = struct
   (* All file and directory targets of non-sandboxed actions that are currently

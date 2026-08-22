@@ -190,7 +190,7 @@ let file file =
 let file_async =
   let digest_throttle = lazy (Fiber.Throttle.create 32) in
   fun file ->
-    Fiber.Throttle.run (Lazy.force digest_throttle) ~f:(fun () ->
+    Fiber.Throttle.run (Lazy.force digest_throttle) (fun () ->
       let open Fiber.O in
       let start = Counter.Timer.start () in
       let+ digest, size =

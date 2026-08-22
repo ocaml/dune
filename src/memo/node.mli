@@ -84,6 +84,7 @@ module M : sig
     type 'a t =
       { ivar : 'a Fiber.Ivar.t
       ; dag_node : Lazy_dag_node.t
+      ; mutable job_priority_dependencies : Dep_node.packed list
       }
   end
 end
@@ -180,6 +181,7 @@ module Computation0 : sig
   type 'a t = 'a M.Computation0.t =
     { ivar : 'a Fiber.Ivar.t
     ; dag_node : M.Lazy_dag_node.t
+    ; mutable job_priority_dependencies : Dep_node.packed list
     }
 
   val create : unit -> 'a t
@@ -258,10 +260,63 @@ module Call_stack : sig
   val add_path_to : dag_node:Dag.node -> (unit, Cycle_error.t) result Fiber.t
 end
 
+module Job_priority : sig
+  module Demand_class : sig
+    type t =
+      | Bulk
+      | Normal
+      | Direct
+
+    val equal : t -> t -> bool
+  end
+
+  module Root_id : sig
+    type t
+  end
+
+  type t = Fiber.Throttle.priority
+  type factory
+  type root
+
+  val with_factory : (priority:int -> t) -> (unit -> 'a Fiber.t) -> 'a Fiber.t
+  val current_factory : unit -> factory option Fiber.t
+  val with_root : Demand_class.t -> (unit -> 'a Fiber.t) -> 'a Fiber.t
+  val current_root : unit -> root option Fiber.t
+  val root_id : root -> Root_id.t
+  val root_demand_class : root -> Demand_class.t
+  val invalidate_current_registry : unit -> unit
+
+  type trace =
+    { generation : int
+    ; node_id : int
+    ; roots : (Demand_class.t * int) list
+    }
+
+  val current_trace : unit -> trace option Fiber.t
+
+  module For_tests : sig
+    val current_root : unit -> (Demand_class.t * int) option Fiber.t
+    val current_node_roots : unit -> (Demand_class.t * int) list Fiber.t
+    val remove_current_root : unit -> unit Fiber.t
+    val current_registry_stats : unit -> (int * int) Fiber.t
+    val global_registry_stats : unit -> int * int
+  end
+
+  val observe_dependency
+    :  ('i, 'o) Dep_node.t
+    -> caller:Stack_frame_with_state.t option
+    -> root:root option
+    -> factory:factory
+    -> unit
+
+  val current : unit -> t option Fiber.t
+end
+
 module Computation : sig
   type 'a t = 'a Computation0.t =
     { ivar : 'a Fiber.Ivar.t
     ; dag_node : M.Lazy_dag_node.t
+    ; mutable job_priority_dependencies : Dep_node.packed list
     }
 
   val create : unit -> 'a t

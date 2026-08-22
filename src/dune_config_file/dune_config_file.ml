@@ -758,6 +758,10 @@ module Dune_config = struct
         | Tui -> Stdune.Display.Quiet
         | Simple { verbosity; _ } -> verbosity);
     { Dune_scheduler.Scheduler.Config.concurrency
+    ; priority_scheduling =
+        (match Config.get Config.priority_scheduling with
+         | `Enabled -> true
+         | `Disabled -> false)
     ; print_ctrl_c_warning
     ; watch_exclusions
     }

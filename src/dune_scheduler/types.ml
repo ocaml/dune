@@ -61,6 +61,7 @@ end
 module Scheduler = struct
   type t =
     { job_throttle : Fiber.Throttle.t
+    ; priority_scheduling : bool
     ; events : Event.Queue.t
     ; process_watcher : Process_watcher.t
     ; file_watcher : File_watcher.t option

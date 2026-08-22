@@ -117,6 +117,17 @@ module Event : sig
 
   val scan_source : name:string -> start:Time.t -> stop:Time.t -> dir:Path.Source.t -> t
   val scheduler_idle : unit -> t
+
+  val scheduler_job_slot
+    :  attempt_id:int
+    -> phase:[ `Ready | `Start ]
+    -> priority:int
+    -> waiting:int
+    -> memo_generation:int
+    -> memo_node_id:int
+    -> memo_roots:(int * string) list
+    -> t
+
   val process_cleanup_start : unit -> t
   val process_cleanup_sigkill : unit -> t
   val process_cleanup_finish : unit -> t

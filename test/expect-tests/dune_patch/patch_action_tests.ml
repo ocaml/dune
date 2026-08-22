@@ -23,6 +23,7 @@ let test files (patch, patch_contents) =
   let patch_file = Path.append_local dir (Path.Local.of_string patch) in
   let config =
     { Scheduler.Config.concurrency = 1
+    ; priority_scheduling = false
     ; print_ctrl_c_warning = false
     ; watch_exclusions = []
     }

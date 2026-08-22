@@ -5,6 +5,7 @@ open Import
 module Config : sig
   type t =
     { concurrency : int
+    ; priority_scheduling : bool
     ; print_ctrl_c_warning : bool
     ; watch_exclusions : string list
     }
@@ -27,7 +28,9 @@ module Run : sig
     -> 'a
 end
 
-(** [async f] runs [f] inside a background thread pool *)
+(** [async f] runs [f] inside a background thread pool. When priority
+    scheduling is enabled, deferred restarts for the current Memo priority are
+    held until [f] completes. *)
 val async : (unit -> 'a) -> ('a, Exn_with_backtrace.t) result Fiber.t
 
 (** [async_exn f] runs [f] inside a background thread pool *)
@@ -38,10 +41,27 @@ type t
 (** Get the instance of the scheduler that runs the current fiber. *)
 val t : unit -> t
 
+type job_priority
+
+(** Create a priority handle owned by the current scheduler. *)
+val create_job_priority : ?priority:int -> unit -> job_priority Fiber.t
+
+val increase_job_priority : job_priority -> unit
+
 (** [with_job_slot f] waits for one job slot (as per [-j <jobs] to become
-    available and then calls [f]. If [cancellation] is fired before the job
-    starts, the job is cancelled. *)
-val with_job_slot : ?cancellation:Fiber.Cancel.t -> (unit -> 'a Fiber.t) -> 'a Fiber.t
+    available and then calls [f]. When [Config.priority_scheduling] is enabled,
+    jobs with higher priorities are admitted first; otherwise [priority] is
+    ignored. If [cancellation] is fired before the job starts, the job is
+    cancelled. *)
+val with_job_slot
+  :  ?cancellation:Fiber.Cancel.t
+  -> ?priority:job_priority
+  -> (unit -> 'a Fiber.t)
+  -> 'a Fiber.t
+
+(** Return the current priority-scheduled job-slot attempt ID while running an admitted
+    callback. Returns [None] when priority scheduling is disabled or outside a job slot. *)
+val current_job_slot_attempt_id : unit -> int option Fiber.t
 
 (** Wait for the following process to terminate. If [is_process_group_leader] is
     true, kill the entire process group instead of just the process in case of

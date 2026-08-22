@@ -8,6 +8,45 @@ include Fiber
 open Fiber.O
 module Id = Id.Make ()
 
+module Job_priority_state = struct
+  module Demand_class = struct
+    type t =
+      | Bulk
+      | Normal
+      | Direct
+
+    let equal a b =
+      match a, b with
+      | Bulk, Bulk | Normal, Normal | Direct, Direct -> true
+      | Bulk, (Normal | Direct) | Normal, (Bulk | Direct) | Direct, (Bulk | Normal) ->
+        false
+    ;;
+
+    let priority = function
+      | Bulk -> 1
+      | Normal -> 2
+      | Direct -> 3
+    ;;
+  end
+
+  module Root_id = Stdune.Id.Make ()
+
+  type factory =
+    { id : Id.t
+    ; create : priority:int -> Fiber.Throttle.priority
+    }
+
+  type root =
+    { id : Root_id.t
+    ; demand_class : Demand_class.t
+    ; factory_id : Id.t
+    ; generation : Run.t
+    }
+
+  let current_factory : factory option Fiber.Var.t = Fiber.Var.create None
+  let current_root : root option Fiber.Var.t = Fiber.Var.create None
+end
+
 module M = struct
   module Import = struct
     module Dag = Dag
@@ -121,6 +160,7 @@ module M = struct
     type 'a t =
       { ivar : 'a Fiber.Ivar.t
       ; dag_node : Lazy_dag_node.t
+      ; mutable job_priority_dependencies : Dep_node.packed list
       }
   end =
     Computation0
@@ -270,7 +310,12 @@ end
 module Computation0 = struct
   include M.Computation0
 
-  let create () = { ivar = Fiber.Ivar.create (); dag_node = Lazy_dag_node.create () }
+  let create () =
+    { ivar = Fiber.Ivar.create ()
+    ; dag_node = Lazy_dag_node.create ()
+    ; job_priority_dependencies = []
+    }
+  ;;
 end
 
 (* For debugging *)
@@ -525,6 +570,448 @@ module Call_stack = struct
   ;;
 end
 
+module Job_priority = struct
+  module Demand_class = Job_priority_state.Demand_class
+  module Root_id = Job_priority_state.Root_id
+
+  type t = Fiber.Throttle.priority
+  type factory = Job_priority_state.factory
+  type root = Job_priority_state.root
+
+  type node_demand =
+    { mutable roots : root Root_id.Map.t
+    ; mutable bulk_roots : int
+    ; mutable normal_roots : int
+    ; mutable direct_roots : int
+    ; mutable score : int
+    ; mutable queue_handle : t option
+    }
+
+  type trace =
+    { generation : int
+    ; node_id : int
+    ; roots : (Demand_class.t * int) list
+    }
+
+  type root_state = { mutable touched_nodes : Dep_node.packed Id.Map.t }
+
+  type registry =
+    { factory_id : Id.t
+    ; generation : Run.t
+    ; mutable nodes : node_demand Id.Map.t
+    ; mutable roots : root_state Root_id.Map.t
+    ; mutable invalidated : bool
+    }
+
+  let current_registry : registry option ref = ref None
+
+  let invalidate_registry registry =
+    if not registry.invalidated
+    then (
+      registry.invalidated <- true;
+      Id.Map.iter registry.nodes ~f:(fun demand ->
+        Option.iter demand.queue_handle ~f:(fun handle ->
+          Fiber.Throttle.set_priority handle 0));
+      registry.nodes <- Id.Map.empty;
+      registry.roots <- Root_id.Map.empty)
+  ;;
+
+  let invalidate_current_registry () =
+    Option.iter !current_registry ~f:invalidate_registry
+  ;;
+
+  let with_factory create f =
+    let factory = { Job_priority_state.id = Id.gen (); create } in
+    Fiber.Var.set Job_priority_state.current_factory (Some factory) (fun () ->
+      Fiber.finalize f ~finally:(fun () ->
+        (match !current_registry with
+         | Some registry when Id.equal registry.factory_id factory.id ->
+           invalidate_registry registry;
+           current_registry := None
+         | None | Some _ -> ());
+        Fiber.return ()))
+  ;;
+
+  let current_factory () = Fiber.Var.get Job_priority_state.current_factory
+
+  let ensure_registry (factory : factory) =
+    let generation = Run.current () in
+    match !current_registry with
+    | Some registry
+      when Id.equal registry.factory_id factory.id
+           && Run.compare registry.generation generation = Eq -> registry
+    | previous ->
+      Option.iter previous ~f:invalidate_registry;
+      let registry =
+        { factory_id = factory.id
+        ; generation
+        ; nodes = Id.Map.empty
+        ; roots = Root_id.Map.empty
+        ; invalidated = false
+        }
+      in
+      current_registry := Some registry;
+      registry
+  ;;
+
+  let current_root () = Fiber.Var.get Job_priority_state.current_root
+
+  let root_id { Job_priority_state.id; demand_class = _; factory_id = _; generation = _ } =
+    id
+  ;;
+
+  let root_demand_class
+        { Job_priority_state.id = _; demand_class; factory_id = _; generation = _ }
+    =
+    demand_class
+  ;;
+
+  let find_root_state registry root =
+    match Root_id.Map.find registry.roots root.Job_priority_state.id with
+    | Some root_state -> root_state
+    | None ->
+      Code_error.raise
+        "Memo job demand root is not in the current registry"
+        [ "root", Root_id.to_dyn root.id ]
+  ;;
+
+  let find_node_demand registry (Dep_node.T dep_node) : node_demand =
+    match Id.Map.find registry.nodes dep_node.id with
+    | Some demand -> demand
+    | None ->
+      let demand =
+        { roots = Root_id.Map.empty
+        ; bulk_roots = 0
+        ; normal_roots = 0
+        ; direct_roots = 0
+        ; score = 0
+        ; queue_handle = None
+        }
+      in
+      registry.nodes <- Id.Map.set registry.nodes dep_node.id demand;
+      demand
+  ;;
+
+  let score_from_counts (demand : node_demand) =
+    if demand.direct_roots > 0
+    then Demand_class.priority Direct
+    else if demand.normal_roots > 0
+    then Demand_class.priority Normal
+    else if demand.bulk_roots > 0
+    then Demand_class.priority Bulk
+    else 0
+  ;;
+
+  let set_score (demand : node_demand) score =
+    if score <> demand.score
+    then (
+      demand.score <- score;
+      Option.iter demand.queue_handle ~f:(fun handle ->
+        Fiber.Throttle.set_priority handle score))
+  ;;
+
+  let increment_root_count count root =
+    if count = Int.max_int
+    then
+      Code_error.raise
+        "Memo job demand root count overflow"
+        [ "root", Root_id.to_dyn (root_id root) ];
+    count + 1
+  ;;
+
+  let decrement_root_count count root =
+    if count <= 0
+    then
+      Code_error.raise
+        "Memo job demand root count underflow"
+        [ "root", Root_id.to_dyn (root_id root) ];
+    count - 1
+  ;;
+
+  let add_root_count (demand : node_demand) root =
+    (match root_demand_class root with
+     | Bulk -> demand.bulk_roots <- increment_root_count demand.bulk_roots root
+     | Normal -> demand.normal_roots <- increment_root_count demand.normal_roots root
+     | Direct -> demand.direct_roots <- increment_root_count demand.direct_roots root);
+    set_score demand (score_from_counts demand)
+  ;;
+
+  let remove_root_count (demand : node_demand) root =
+    (match root_demand_class root with
+     | Bulk -> demand.bulk_roots <- decrement_root_count demand.bulk_roots root
+     | Normal -> demand.normal_roots <- decrement_root_count demand.normal_roots root
+     | Direct -> demand.direct_roots <- decrement_root_count demand.direct_roots root);
+    set_score demand (score_from_counts demand)
+  ;;
+
+  let remove_root root =
+    match !current_registry with
+    | None -> ()
+    | Some registry ->
+      (match Root_id.Map.find registry.roots root.Job_priority_state.id with
+       | None -> ()
+       | Some root_state ->
+         Id.Map.iter root_state.touched_nodes ~f:(fun (Dep_node.T dep_node) ->
+           match Id.Map.find registry.nodes dep_node.id with
+           | None -> ()
+           | Some demand ->
+             if Root_id.Map.mem demand.roots root.id
+             then (
+               demand.roots <- Root_id.Map.remove demand.roots root.id;
+               remove_root_count demand root));
+         registry.roots <- Root_id.Map.remove registry.roots root.id)
+  ;;
+
+  let with_root demand_class f =
+    let* factory = current_factory () in
+    match factory with
+    | None -> f ()
+    | Some factory ->
+      let* stack = Call_stack.get_call_stack () in
+      if not (List.is_empty stack)
+      then
+        Code_error.raise
+          "Memo.with_job_demand must be entered outside a Memo computation"
+          [];
+      let registry = ensure_registry factory in
+      if registry.invalidated
+      then Fiber.Var.set Job_priority_state.current_root None f
+      else (
+        let root =
+          { Job_priority_state.id = Root_id.gen ()
+          ; demand_class
+          ; factory_id = factory.id
+          ; generation = registry.generation
+          }
+        in
+        registry.roots
+        <- Root_id.Map.set registry.roots root.id { touched_nodes = Id.Map.empty };
+        Fiber.finalize
+          (fun () -> Fiber.Var.set Job_priority_state.current_root (Some root) f)
+          ~finally:(fun () ->
+            remove_root root;
+            Fiber.return ()))
+  ;;
+
+  let is_active_dependency (Dep_node.T dep_node) =
+    match dep_node.state with
+    | Computing _ | Restoring _ -> true
+    | Cached | Not_cached | Out_of_date -> false
+  ;;
+
+  let active_dependencies (dep_node : _ Dep_node.t) =
+    let active dependencies = List.filter dependencies ~f:is_active_dependency in
+    match dep_node.state with
+    | Computing { compute } ->
+      let dependencies = active compute.job_priority_dependencies in
+      compute.job_priority_dependencies <- dependencies;
+      dependencies
+    | Restoring { restore_from_cache } ->
+      let dependencies = active restore_from_cache.job_priority_dependencies in
+      restore_from_cache.job_priority_dependencies <- dependencies;
+      dependencies
+    | Cached | Not_cached | Out_of_date -> []
+  ;;
+
+  let add_roots registry dependency roots =
+    let rec loop = function
+      | [] -> ()
+      | ((Dep_node.T dep_node as node), root) :: work ->
+        let demand = find_node_demand registry node in
+        if Root_id.Map.mem demand.roots root.Job_priority_state.id
+        then loop work
+        else (
+          demand.roots <- Root_id.Map.set demand.roots root.id root;
+          let root_state = find_root_state registry root in
+          root_state.touched_nodes <- Id.Map.set root_state.touched_nodes dep_node.id node;
+          add_root_count demand root;
+          let work =
+            List.fold_left (active_dependencies dep_node) ~init:work ~f:(fun work dep ->
+              (dep, root) :: work)
+          in
+          loop work)
+    in
+    loop (List.map roots ~f:(fun root -> dependency, root))
+  ;;
+
+  let record_dependency (dep_node : _ Dep_node.t) ~caller =
+    match caller with
+    | None -> ()
+    | Some caller ->
+      let (Dep_node.T caller) = Stack_frame_with_state.dep_node caller in
+      let dependency = Dep_node.T dep_node in
+      let add dependencies =
+        if List.exists dependencies ~f:(Dep_node.Packed.equal dependency)
+        then dependencies
+        else dependency :: dependencies
+      in
+      (match caller.state with
+       | Computing { compute } ->
+         compute.job_priority_dependencies <- add compute.job_priority_dependencies
+       | Restoring { restore_from_cache } ->
+         restore_from_cache.job_priority_dependencies
+         <- add restore_from_cache.job_priority_dependencies
+       | Cached | Not_cached | Out_of_date ->
+         Code_error.raise
+           "Job_priority.record_dependency: caller is not active"
+           [ "caller", Dep_node.to_dyn_without_state caller
+           ; "state", State.to_dyn caller.state
+           ])
+  ;;
+
+  let roots_of_caller registry caller =
+    let (Dep_node.T caller) = Stack_frame_with_state.dep_node caller in
+    match Id.Map.find registry.nodes caller.id with
+    | None -> []
+    | Some demand -> Root_id.Map.values demand.roots
+  ;;
+
+  let root_is_registered registry root =
+    Id.equal root.Job_priority_state.factory_id registry.factory_id
+    && Run.compare root.generation registry.generation = Eq
+    && Root_id.Map.mem registry.roots root.id
+  ;;
+
+  let observe_dependency (dep_node : _ Dep_node.t) ~caller ~root ~(factory : factory) =
+    let registry = ensure_registry factory in
+    if not registry.invalidated
+    then (
+      record_dependency dep_node ~caller;
+      let roots =
+        match caller with
+        | None -> Option.to_list root
+        | Some caller -> roots_of_caller registry caller
+      in
+      let roots = List.filter roots ~f:(root_is_registered registry) in
+      add_roots registry (Dep_node.T dep_node) roots)
+  ;;
+
+  let current () =
+    let* stack = Call_stack.get_call_stack () in
+    let+ factory = Fiber.Var.get Job_priority_state.current_factory in
+    match List.hd_opt stack, factory with
+    | Some frame, Some factory ->
+      let registry = ensure_registry factory in
+      if registry.invalidated
+      then None
+      else (
+        let demand = Stack_frame_with_state.dep_node frame |> find_node_demand registry in
+        let priority =
+          match demand.queue_handle with
+          | Some priority -> priority
+          | None ->
+            let priority = factory.create ~priority:demand.score in
+            demand.queue_handle <- Some priority;
+            priority
+        in
+        Some priority)
+    | None, _ | _, None -> None
+  ;;
+
+  let current_trace () =
+    let* stack = Call_stack.get_call_stack () in
+    let+ factory = Fiber.Var.get Job_priority_state.current_factory in
+    match List.hd_opt stack, factory with
+    | Some frame, Some factory ->
+      let registry = ensure_registry factory in
+      if registry.invalidated
+      then None
+      else (
+        let (Dep_node.T dep_node) = Stack_frame_with_state.dep_node frame in
+        let roots =
+          match Id.Map.find registry.nodes dep_node.id with
+          | None -> []
+          | Some demand ->
+            Root_id.Map.values demand.roots
+            |> List.map ~f:(fun root ->
+              root_demand_class root, Root_id.to_int (root_id root))
+        in
+        Some
+          { generation = Run.to_int registry.generation
+          ; node_id = Id.to_int dep_node.id
+          ; roots
+          })
+    | None, _ | _, None -> None
+  ;;
+
+  module For_tests = struct
+    let current_root () =
+      let+ root = current_root () in
+      Option.map root ~f:(fun root ->
+        root_demand_class root, Root_id.to_int (root_id root))
+    ;;
+
+    let current_node_roots () =
+      let* stack = Call_stack.get_call_stack () in
+      let+ factory = current_factory () in
+      match List.hd_opt stack, factory with
+      | Some frame, Some factory ->
+        let registry = ensure_registry factory in
+        if registry.invalidated
+        then []
+        else (
+          let (Dep_node.T dep_node) = Stack_frame_with_state.dep_node frame in
+          match Id.Map.find registry.nodes dep_node.id with
+          | None -> []
+          | Some demand ->
+            let bulk_roots, normal_roots, direct_roots =
+              Root_id.Map.fold
+                demand.roots
+                ~init:(0, 0, 0)
+                ~f:(fun root (bulk, normal, direct) ->
+                  match root_demand_class root with
+                  | Bulk -> bulk + 1, normal, direct
+                  | Normal -> bulk, normal + 1, direct
+                  | Direct -> bulk, normal, direct + 1)
+            in
+            if
+              demand.bulk_roots <> bulk_roots
+              || demand.normal_roots <> normal_roots
+              || demand.direct_roots <> direct_roots
+              || demand.score <> score_from_counts demand
+            then
+              Code_error.raise
+                "Memo job demand counts do not match its roots"
+                [ "node", Dep_node.to_dyn_without_state dep_node
+                ; "bulk roots", Dyn.Int demand.bulk_roots
+                ; "normal roots", Dyn.Int demand.normal_roots
+                ; "direct roots", Dyn.Int demand.direct_roots
+                ; "score", Dyn.Int demand.score
+                ];
+            Root_id.Map.values demand.roots
+            |> List.map ~f:(fun root ->
+              root_demand_class root, Root_id.to_int (root_id root)))
+      | None, _ | _, None -> []
+    ;;
+
+    let remove_current_root () =
+      let+ root = Fiber.Var.get Job_priority_state.current_root in
+      Option.iter root ~f:remove_root
+    ;;
+
+    let registry_stats registry =
+      let memberships =
+        Id.Map.fold registry.nodes ~init:0 ~f:(fun demand count ->
+          count + Root_id.Map.cardinal demand.roots)
+      in
+      Root_id.Map.cardinal registry.roots, memberships
+    ;;
+
+    let current_registry_stats () =
+      let+ factory = current_factory () in
+      match factory with
+      | None -> 0, 0
+      | Some factory -> ensure_registry factory |> registry_stats
+    ;;
+
+    let global_registry_stats () =
+      match !current_registry with
+      | None -> 0, 0
+      | Some registry -> registry_stats registry
+    ;;
+  end
+end
+
 (* This module contains the essence of our cycle detection algorithm. Briefly,
    the idea is as follows: whenever we are about to get blocked to wait for the
    result of a computation that is currently running, we add the current call
@@ -596,7 +1083,7 @@ module Computation = struct
 
   (* Each computation should be forced exactly once. Not forcing it will lead to
      a deadlock. Forcing it twice will lead to [Fiber.Ivar.fill] raising. *)
-  let force { ivar; dag_node } ~phase ~dep_node fiber =
+  let force { ivar; dag_node; _ } ~phase ~dep_node fiber =
     let frame = Stack_frame_with_state.create phase ~dag_node ~dep_node in
     let* result =
       (* The only reason we make the stack [frame] available to the [fiber] is
@@ -610,7 +1097,7 @@ module Computation = struct
       result
   ;;
 
-  let read_but_first_check_for_cycles { ivar; dag_node } ~phase ~dep_node =
+  let read_but_first_check_for_cycles { ivar; dag_node; _ } ~phase ~dep_node =
     match Fiber.Ivar.peek ivar with
     | Some res -> Fiber.return (Ok res)
     | None ->

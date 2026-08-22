@@ -68,7 +68,11 @@ let download ?(reproducible = true) ~unpack ~port ~filename ~target ?checksum ()
 
 let run thunk =
   let config : Scheduler.Config.t =
-    { concurrency = 1; print_ctrl_c_warning = false; watch_exclusions = [] }
+    { concurrency = 1
+    ; priority_scheduling = false
+    ; print_ctrl_c_warning = false
+    ; watch_exclusions = []
+    }
   in
   Scheduler.Run.go config (fun () ->
     let open Fiber.O in

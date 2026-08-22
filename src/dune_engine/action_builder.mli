@@ -49,6 +49,12 @@ val exec_memo : ('i, 'o) memo -> 'i -> 'o t
     but the contents of [p] is irrelevant. *)
 val goal : 'a t -> 'a t
 
+(** Mark [t] as an outer, non-memoized demand scope. When priority scheduling is active,
+    evaluate [t] eagerly under a fresh root with the given job demand. Lazy evaluation and
+    evaluation with priority scheduling disabled do not create a root. Entering the scope
+    while a Memo computation is active is an error. *)
+val with_job_demand : Memo.Job_priority.Demand_class.t -> 'a t -> 'a t
+
 (** An action builder with no dependencies. Consider passing [Memo.of_thunk] to delay
     forcing the computation until the action's dependencies need to be determined.
 

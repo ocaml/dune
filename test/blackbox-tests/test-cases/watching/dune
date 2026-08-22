@@ -28,6 +28,12 @@
  (setup_scripts cached-failed-actions-helpers.sh))
 
 (cram
+ (applies_to priority-scheduler)
+ (deps
+  %{bin:action_plugin_helper}
+  (package dune-action-plugin)))
+
+(cram
  (applies_to rpc-flush-file-watcher rpc-registry)
  (deps
   %{bin:action_plugin_helper}

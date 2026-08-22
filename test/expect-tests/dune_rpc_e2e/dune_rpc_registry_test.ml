@@ -25,6 +25,7 @@ let run =
   Clflags.display := Quiet;
   let config =
     { Scheduler.Config.concurrency = 1
+    ; priority_scheduling = false
     ; print_ctrl_c_warning = false
     ; watch_exclusions = []
     }

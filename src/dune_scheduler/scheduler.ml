@@ -4,6 +4,7 @@ open Fiber.O
 module Config = struct
   type t =
     { concurrency : int
+    ; priority_scheduling : bool
     ; print_ctrl_c_warning : bool
     ; watch_exclusions : string list
     }
@@ -48,12 +49,86 @@ let check_point =
 
 let () = Memo.check_point := check_point
 
-let with_job_slot ?cancellation f =
+type job_priority = Fiber.Throttle.priority
+
+let create_job_priority ?priority () =
   let* () = Fiber.return () in
   let t = t () in
-  Fiber.Throttle.run t.job_throttle ~f:(fun () ->
+  Fiber.return (Fiber.Throttle.create_priority ?priority t.job_throttle)
+;;
+
+let increase_job_priority = Fiber.Throttle.increase_priority
+let current_job_slot_attempt_id_var : int option Fiber.Var.t = Fiber.Var.create None
+let current_job_slot_attempt_id () = Fiber.Var.get current_job_slot_attempt_id_var
+
+let next_job_slot_attempt_id =
+  let next = ref 0 in
+  fun () ->
+    let id = !next in
+    if id = Int.max_int
+    then Code_error.raise "scheduler job-slot attempt ID overflow" []
+    else next := id + 1;
+    id
+;;
+
+let with_job_slot ?cancellation ?priority f =
+  let* () = Fiber.return () in
+  let t = t () in
+  let f () =
     check_cancelled cancellation;
-    f ())
+    f ()
+  in
+  if not t.priority_scheduling
+  then Fiber.Throttle.run t.job_throttle f
+  else
+    let* priority =
+      match priority with
+      | Some priority -> Fiber.return (Some priority)
+      | None -> Memo.Job_priority.current ()
+    in
+    let attempt_id = next_job_slot_attempt_id () in
+    let trace phase =
+      let priority =
+        match priority with
+        | None -> 0
+        | Some priority -> Fiber.Throttle.priority priority
+      in
+      let+ memo_trace = Memo.Job_priority.current_trace () in
+      let memo_generation, memo_node_id, memo_roots =
+        match memo_trace with
+        | None -> -1, -1, []
+        | Some { Memo.Job_priority.generation; node_id; roots } ->
+          let roots =
+            List.map roots ~f:(fun (demand_class, root_id) ->
+              let demand_class =
+                match demand_class with
+                | Memo.Job_priority.Demand_class.Bulk -> "bulk"
+                | Memo.Job_priority.Demand_class.Normal -> "normal"
+                | Memo.Job_priority.Demand_class.Direct -> "direct"
+              in
+              root_id, demand_class)
+          in
+          generation, node_id, roots
+      in
+      Dune_trace.emit ~buffered:true Scheduler (fun () ->
+        Dune_trace.Event.scheduler_job_slot
+          ~attempt_id
+          ~phase
+          ~priority
+          ~waiting:(Fiber.Throttle.waiting t.job_throttle)
+          ~memo_generation
+          ~memo_node_id
+          ~memo_roots)
+    in
+    let* () = trace `Ready in
+    Fiber.Throttle.run
+      t.job_throttle
+      ?priority
+      ~schedule_restart:(Event.Queue.send_job_throttle_restart t.events)
+      (fun () ->
+         Fiber.Var.set current_job_slot_attempt_id_var (Some attempt_id) (fun () ->
+           let* () = trace `Start in
+           f ()))
 ;;
 
 let wait_for_process t ~is_process_group_leader pid =
@@ -347,6 +422,7 @@ let rec cleanup_iter t saw_shutdown =
      | [] -> cleanup_iter t saw_shutdown
      | fills -> fills)
   | Fiber_fill_ivar fill -> [ fill ]
+  | Job_throttle_restart _ -> cleanup_iter t saw_shutdown
   | Shutdown reason ->
     got_shutdown reason;
     saw_shutdown := Got_shutdown;
@@ -392,7 +468,7 @@ let kill_and_wait_for_all_processes t =
       let rec next () =
         match Event.Queue.next t.events with
         | Fiber_fill_ivar fill -> [ fill ]
-        | Job_complete_ready | Shutdown _ -> next ()
+        | Job_complete_ready | Job_throttle_restart _ | Shutdown _ -> next ()
       in
       next ());
   (* This silliness is needed because we have tests that run the scheduler
@@ -430,6 +506,7 @@ let prepare (config : Config.t) ~events ~file_watcher =
   let async_io = Async_io.create events in
   let t =
     { job_throttle = Fiber.Throttle.create config.concurrency
+    ; priority_scheduling = config.priority_scheduling
     ; process_watcher
     ; events
     ; file_watcher
@@ -474,19 +551,32 @@ module Run_once = struct
        | [] -> iter t
        | fills -> fills)
     | Fiber_fill_ivar fill -> [ fill ]
+    | Job_throttle_restart restart ->
+      (match Fiber.Throttle.restart_waiters restart with
+       | `Blocked -> iter t
+       | `Ready [] -> iter t
+       | `Ready waiters -> List.map waiters ~f:(fun ivar -> Fiber.Fill (ivar, ())))
     | Shutdown reason ->
       got_shutdown reason;
       raise @@ Abort (Shutdown_requested reason)
   ;;
 
   let run t f : _ result =
-    let fiber =
+    let run () =
       Fiber.map_reduce_errors
         (module Monoid.Unit)
         f
         ~on_error:(fun e ->
           Dune_util.Report_error.report e;
           Fiber.return ())
+    in
+    let fiber =
+      if t.priority_scheduling
+      then
+        Memo.Job_priority.with_factory
+          (fun ~priority -> Fiber.Throttle.create_priority ~priority t.job_throttle)
+          run
+      else run ()
     in
     match Fiber.run fiber ~iter:(fun () -> iter t) with
     | Ok res ->
@@ -512,13 +602,28 @@ end
 let async f =
   let* () = Fiber.return () in
   let t = t () in
+  let* priority =
+    if t.priority_scheduling then Memo.Job_priority.current () else Fiber.return None
+  in
+  let restart_blocker = Option.map priority ~f:Fiber.Throttle.create_restart_blocker in
+  let release_restart_blocker () =
+    Option.iter restart_blocker ~f:(fun restart_blocker ->
+      Fiber.Throttle.release_restart_blocker restart_blocker
+      |> List.iter ~f:(Event.Queue.send_job_throttle_restart t.events))
+  in
   let ivar = Fiber.Ivar.create () in
   let f () =
     let res = Exn_with_backtrace.try_with f in
     Event.Queue.send_worker_tasks_completed t.events [ Fiber.Fill (ivar, res) ]
   in
-  Thread_pool.task (Lazy.force t.thread_pool) ~f;
-  Fiber.Ivar.read ivar
+  (match Thread_pool.task (Lazy.force t.thread_pool) ~f with
+   | () -> ()
+   | exception exn ->
+     release_restart_blocker ();
+     raise exn);
+  let+ result = Fiber.Ivar.read ivar in
+  release_restart_blocker ();
+  result
 ;;
 
 let async_exn f =

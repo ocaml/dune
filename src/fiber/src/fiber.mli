@@ -351,6 +351,9 @@ module Throttle : sig
   (** Limit the number of jobs *)
 
   type t
+  type priority
+  type restart
+  type restart_blocker
 
   (** [create n] creates a throttler that allows to run [n] jobs at once *)
   val create : int -> t
@@ -358,15 +361,58 @@ module Throttle : sig
   (** How many jobs can run at the same time *)
   val size : t -> int
 
+  (** Return the number of jobs waiting to run. *)
+  val waiting : t -> int
+
   (** Change the number of jobs that can run at once *)
   val resize : t -> int -> unit fiber
 
-  (** Execute a fiber, waiting if too many jobs are already running *)
-  val run : t -> f:(unit -> 'a fiber) -> 'a fiber
+  (** Create a priority handle owned by the throttler. *)
+  val create_priority : ?priority:int -> t -> priority
+
+  (** Return the priority represented by the handle. *)
+  val priority : priority -> int
+
+  (** Set the priority represented by the handle. Waiting jobs are
+      reprioritized immediately without changing their FIFO age. *)
+  val set_priority : priority -> int -> unit
+
+  (** Increase the priority represented by the handle. *)
+  val increase_priority : priority -> unit
+
+  (** Increase the priority represented by the handle by the given amount. *)
+  val increase_priority_by : priority -> int -> unit
+
+  (** Prevent deferred restarts for [priority] from releasing their reserved
+      slots until the returned blocker is released. *)
+  val create_restart_blocker : priority -> restart_blocker
+
+  (** Release a blocker. When this removes the last blocker, return the parked
+      restarts that must be rescheduled by the caller. *)
+  val release_restart_blocker : restart_blocker -> restart list
+
+  (** Process a deferred restart. A blocked restart is parked until
+      [release_restart_blocker] returns it; a ready restart releases its
+      reserved slot and returns the waiters that should be resumed. *)
+  val restart_waiters : restart -> [ `Blocked | `Ready of unit Ivar.t list ]
+
+  (** Execute a fiber, waiting if too many jobs are already running. If the
+      fiber needs to wait, jobs with higher priorities are resumed first.
+      [schedule_restart] may reserve a released slot so the completed fiber's
+      continuation can enqueue newly unblocked work. The callback must arrange
+      for the restart to be passed to [restart_waiters]. *)
+  val run
+    :  t
+    -> ?priority:priority
+    -> ?schedule_restart:(restart -> unit)
+    -> (unit -> 'a fiber)
+    -> 'a fiber
 
   (** Return the number of jobs currently running *)
   val running : t -> int
 end
+
+module Priority_queue : module type of Priority_queue
 
 val repeat_while : f:('a -> 'a option t) -> init:'a -> unit t
 

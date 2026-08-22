@@ -86,6 +86,8 @@ let copy_file =
     ~default:`Best
 ;;
 
+let priority_scheduling = make_toggle ~name:"priority_scheduling" ~default:`Disabled
+
 let background_default =
   match Platform.OS.value with
   | Linux | Windows | Darwin -> `Enabled

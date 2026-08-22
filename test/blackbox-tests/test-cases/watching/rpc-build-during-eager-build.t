@@ -1,6 +1,9 @@
 RPC build requests sent while the eager loop is building cancel the current
-iteration and restart it with the RPC request incorporated.
+iteration and restart it with the RPC request incorporated. Run this production
+cancel -> reset -> next-build path with priority scheduling enabled.
 
+  $ export DUNE_CONFIG__PRIORITY_SCHEDULING=enabled
+  $ setup_xdg_runtime_dir
   $ make_dune_project 3.18
 
   $ marker_dir="$(mktemp -d)"

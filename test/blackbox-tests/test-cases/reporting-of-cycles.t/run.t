@@ -22,6 +22,17 @@ the second run of dune.
   -> required by _build/default/x1
   [1]
 
+The same transient Memo cycle terminates when the experimental priority
+scheduler propagates demand through the active nodes.
+
+  $ DUNE_CONFIG__PRIORITY_SCHEDULING=enabled dune build x1
+  Error: Dependency cycle between:
+     _build/default/x2
+  -> _build/default/x3
+  -> _build/default/x2
+  -> required by _build/default/x1
+  [1]
+
   $ dune build @complex-repro-case
   Error: Dependency cycle between:
      _build/default/cd3

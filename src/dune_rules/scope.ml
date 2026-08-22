@@ -494,14 +494,9 @@ module DB = struct
           f (Deprecated_library_name dep) acc)
       ;;
 
-      let partition_map t ~f =
-        let l, r =
-          fold t ~init:([], []) ~f:(fun x (l, r) ->
-            match f x with
-            | Left x -> x :: l, r
-            | Right x -> l, x :: r)
-        in
-        List.(rev l, rev r)
+      let to_list { libraries; deprecated_library_names } =
+        List.map libraries ~f:(fun library -> Library library)
+        @ List.map deprecated_library_names ~f:(fun name -> Deprecated_library_name name)
       ;;
     end
   end

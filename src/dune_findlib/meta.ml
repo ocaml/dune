@@ -320,16 +320,16 @@ let pp_predicate p =
      | Neg p -> "-" ^ p)
 ;;
 
+let escape_quoted_string s = String.escape_only '"' (String.escape_only '\\' s)
+
 let pp_print_text s =
   let open Pp.O in
-  Pp.verbatim "\"" ++ Pp.hvbox (Pp.text (String.escape_only '"' s)) ++ Pp.verbatim "\""
+  Pp.verbatim "\"" ++ Pp.hvbox (Pp.text (escape_quoted_string s)) ++ Pp.verbatim "\""
 ;;
 
 let pp_print_string s =
   let open Pp.O in
-  Pp.verbatim "\""
-  ++ Pp.hvbox (Pp.verbatim (String.escape_only '"' s))
-  ++ Pp.verbatim "\""
+  Pp.verbatim "\"" ++ Pp.hvbox (Pp.verbatim (escape_quoted_string s)) ++ Pp.verbatim "\""
 ;;
 
 let pp_quoted_value var =

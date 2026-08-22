@@ -143,12 +143,16 @@ module File = struct
     { entry; dune_syntax }
   ;;
 
-  let to_file_bindings_unexpanded ts ~expand ~dir =
+  let expand_includes ts ~expand ~dir =
     Memo.List.concat_map ts ~f:(fun { entry; dune_syntax } ->
-      let+ with_include_expanded =
+      let+ entries =
         Recursive_include.expand_include entry ~expand ~dir:(Path.build dir)
       in
-      List.map with_include_expanded ~f:(fun entry -> entry, dune_syntax))
+      List.map entries ~f:(fun entry -> entry, dune_syntax))
+  ;;
+
+  let to_file_bindings_unexpanded ts ~expand ~dir =
+    expand_includes ts ~expand ~dir
     |> Memo.bind
          ~f:
            (Memo.List.concat_map ~f:(fun (entry, dune_syntax) ->
@@ -157,11 +161,7 @@ module File = struct
 
   let to_file_bindings_expanded ts ~expand ~dir =
     let* file_bindings_expanded =
-      Memo.List.concat_map ts ~f:(fun { entry; dune_syntax } ->
-        let+ with_include_expanded =
-          Recursive_include.expand_include entry ~expand ~dir:(Path.build dir)
-        in
-        List.map with_include_expanded ~f:(fun entry -> entry, dune_syntax))
+      expand_includes ts ~expand ~dir
       |> Memo.bind
            ~f:
              (Memo.List.concat_map ~f:(fun (entry, dune_syntax) ->

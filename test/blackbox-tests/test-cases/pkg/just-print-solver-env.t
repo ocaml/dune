@@ -65,3 +65,35 @@ Add some build contexts with different environments
   - post = true
   - with-dev-setup = false
   - with-doc = false
+
+Lock directory arguments are currently resolved from the workspace root rather
+than the directory where Dune was started.
+
+  $ mkdir sub
+  $ cat >>dune-workspace <<EOF
+  > (lock_dir
+  >  (path sub/dune.lock)
+  >  (unset_solver_vars arch os-distribution os os-family os-version sys-ocaml-version))
+  > EOF
+  $ (cd sub && unset INSIDE_DUNE && dune pkg print-solver-env dune.lock) | head -n 1
+  Solver environment for lock directory dune.lock:
+  - opam-version = 2.2.0
+  - post = true
+  - with-dev-setup = false
+  - with-doc = false
+
+Absolute lock directory arguments are currently rejected.
+
+  $ dune pkg print-solver-env "$PWD/sub/dune.lock" 2>&1 \
+  > | awk '/Internal error!/,/Raised at/'
+  Internal error! Please report to https://github.com/ocaml/dune/issues,
+  providing the file _build/trace.csexp, if possible. This includes build
+  commands, message logs, and file paths.
+  Description:
+    ("Local.relative: received absolute path",
+     { t = "."
+     ; path =
+         "$TESTCASE_ROOT/sub/dune.lock"
+     })
+  Raised at Stdune__Code_error.raise in file
+  [1]

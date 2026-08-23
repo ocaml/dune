@@ -38,6 +38,11 @@ end
 
 module Redirect = Library
 
+type support =
+  { libraries : Library.Set.t
+  ; redirects : Redirect.Set.t
+  }
+
 type request =
   { packages : Package.Name.Set.t
   ; libraries : Library.Set.t
@@ -127,6 +132,7 @@ end
 type resolvers =
   { package_entries :
       Context_name.t -> Package.Name.t -> Install.Entry.Sourced.Unexpanded.t list Memo.t
+  ; library_support : Context_name.t -> Package.Name.Set.t -> support Memo.t
   ; library_entries :
       Context_name.t -> Library.Set.t -> Redirect.Set.t -> library_entries Memo.t
   }
@@ -159,7 +165,7 @@ let compute_entries context_name root { packages; libraries; redirects } =
       ; "redirects", Dyn.list Redirect.to_dyn overlapping_redirects
       ];
   let open Memo.O in
-  let { package_entries; library_entries } = Fdecl.get resolvers_fdecl in
+  let { package_entries; library_entries; _ } = Fdecl.get resolvers_fdecl in
   let resolve_entry (pkg, (s : Install.Entry.Sourced.Unexpanded.t)) =
     let install_paths =
       let roots = Install.Roots.opam_from_prefix Path.root ~relative:Path.relative in
@@ -279,7 +285,12 @@ let env_for_request context_name request =
   Install.Roots.add_to_env roots Env.empty
 ;;
 
-let env context_name packages libraries redirects =
+let env context_name packages =
+  let open Action_builder.O in
+  let { library_support; _ } = Fdecl.get resolvers_fdecl in
+  let* { libraries; redirects } =
+    Action_builder.of_memo (library_support context_name packages)
+  in
   env_for_request context_name { packages; libraries; redirects }
 ;;
 

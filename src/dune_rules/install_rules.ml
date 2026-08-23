@@ -1369,6 +1369,130 @@ let install_entries sctx package =
   Package.Name.Map.Multi.find packages package
 ;;
 
+let library_closure lib =
+  let open Memo.O in
+  Memo.parallel_map [ Compilation_mode.Ocaml; Melange ] ~f:(fun for_ ->
+    let* compile_closure =
+      Lib.closure [ lib ] ~linking:false ~for_ |> Resolve.Memo.read_memo
+    and* link_closure =
+      Lib.partial_link_closure [ lib ] ~for_ |> Resolve.Memo.read_memo
+    in
+    Memo.return (List.rev_append compile_closure link_closure))
+  >>| List.concat
+  >>| Lib.Set.of_list
+  >>| Lib.Set.to_list
+;;
+
+let workspace_redirects context =
+  let open Memo.O in
+  let* workspace_packages = Dune_load.packages () in
+  Package.Name.Map.keys workspace_packages
+  |> Memo.parallel_map ~f:(fun package ->
+    let+ { Scope.DB.Lib_entry.Set.deprecated_library_names; _ } =
+      Scope.DB.lib_entries_of_package context package
+    in
+    List.map
+      deprecated_library_names
+      ~f:(fun { Library_redirect.old_name; new_public_name; _ } ->
+        Public_lib.name (fst old_name), (package, snd new_public_name)))
+  >>| List.concat
+  >>| Lib_name.Map.of_list_reduce ~f:(fun redirect _ -> redirect)
+;;
+
+let library_support_closure context packages =
+  let open Memo.O in
+  let* public_libs = Scope.DB.public_libs context
+  and* redirects_by_name = workspace_redirects context in
+  let collect_redirects name =
+    let rec loop name seen redirects =
+      if Lib_name.Set.mem seen name
+      then redirects
+      else (
+        let seen = Lib_name.Set.add seen name in
+        match Lib_name.Map.find redirects_by_name name with
+        | None -> redirects
+        | Some (package, target) ->
+          let redirects =
+            if Package.Name.Set.mem packages package
+            then redirects
+            else
+              Install_layout.Redirect.Set.add
+                redirects
+                (Install_layout.Redirect.make ~package ~name)
+          in
+          loop target seen redirects)
+    in
+    loop name Lib_name.Set.empty Install_layout.Redirect.Set.empty
+  in
+  let* roots, redirects =
+    Package.Name.Set.to_list packages
+    |> Memo.parallel_map ~f:(fun package ->
+      let* { Scope.DB.Lib_entry.Set.libraries; deprecated_library_names } =
+        Scope.DB.lib_entries_of_package context package
+      in
+      let+ redirect_targets =
+        Memo.parallel_map deprecated_library_names ~f:(fun { new_public_name; _ } ->
+          let+ target =
+            Lib.DB.resolve public_libs new_public_name |> Resolve.Memo.read_memo
+          in
+          target, collect_redirects (snd new_public_name))
+      in
+      ( List.rev_append
+          (List.rev_map libraries ~f:Lib.Local.to_lib)
+          (List.map redirect_targets ~f:fst)
+      , List.fold_left
+          redirect_targets
+          ~init:Install_layout.Redirect.Set.empty
+          ~f:(fun redirects (_, selected) ->
+            Install_layout.Redirect.Set.union redirects selected) ))
+    >>| List.split
+    >>| fun (roots, redirects) ->
+    ( List.concat roots
+    , List.fold_left
+        redirects
+        ~init:Install_layout.Redirect.Set.empty
+        ~f:Install_layout.Redirect.Set.union )
+  in
+  let extra_dependencies libraries =
+    Memo.parallel_map libraries ~f:(fun lib ->
+      if Lib.is_local lib
+      then
+        Memo.parallel_map [ Compilation_mode.Ocaml; Melange ] ~f:(fun for_ ->
+          Lib.ppx_runtime_deps lib ~for_ |> Resolve.Memo.read_memo)
+        >>| List.concat
+      else Memo.return [])
+    >>| List.concat
+  in
+  let rec loop todo expanded inspected libraries =
+    match todo with
+    | [] -> Memo.return libraries
+    | lib :: todo ->
+      if Lib.Set.mem expanded lib
+      then loop todo expanded inspected libraries
+      else
+        let* closure = library_closure lib in
+        let expanded = Lib.Set.add expanded lib in
+        let uninspected =
+          List.filter closure ~f:(fun lib -> not (Lib.Set.mem inspected lib))
+        in
+        let inspected = List.fold_left uninspected ~init:inspected ~f:Lib.Set.add in
+        let libraries = List.fold_left closure ~init:libraries ~f:Lib.Set.add in
+        let* extra_dependencies = extra_dependencies uninspected in
+        loop (List.rev_append extra_dependencies todo) expanded inspected libraries
+  in
+  let+ closure = loop roots Lib.Set.empty Lib.Set.empty Lib.Set.empty in
+  let libraries =
+    Lib.Set.fold closure ~init:Install_layout.Library.Set.empty ~f:(fun lib libraries ->
+      match Lib.is_local lib, Lib_info.package (Lib.info lib) with
+      | true, Some package when not (Package.Name.Set.mem packages package) ->
+        Install_layout.Library.Set.add
+          libraries
+          (Install_layout.Library.make ~package ~name:(Lib.name lib))
+      | _ -> libraries)
+  in
+  { Install_layout.libraries; redirects }
+;;
+
 let library_install_entries sctx libraries redirects =
   let* entries_by_library = Stanzas_to_entries.library_entries sctx in
   let selected_libraries =
@@ -1461,6 +1585,7 @@ let () =
           let open Memo.O in
           let* sctx = Super_context.find_exn context_name in
           install_entries sctx package)
+    ; library_support = library_support_closure
     ; library_entries =
         (fun context_name libraries redirects ->
           let open Memo.O in

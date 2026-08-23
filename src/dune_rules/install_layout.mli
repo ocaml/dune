@@ -15,6 +15,11 @@ end
 
 module Redirect = Library
 
+type support =
+  { libraries : Library.Set.t
+  ; redirects : Redirect.Set.t
+  }
+
 type generated_entry =
   { package : Package.Name.t
   ; section : Section.t
@@ -30,6 +35,7 @@ type library_entries =
 type resolvers =
   { package_entries :
       Context_name.t -> Package.Name.t -> Install.Entry.Sourced.Unexpanded.t list Memo.t
+  ; library_support : Context_name.t -> Package.Name.Set.t -> support Memo.t
   ; library_entries :
       Context_name.t -> Library.Set.t -> Redirect.Set.t -> library_entries Memo.t
   }
@@ -42,12 +48,7 @@ val set_resolvers : resolvers -> unit
     entry the layout produces. Only the selected support libraries' install
     entries and metadata are included; their owning packages' other entries are
     not. *)
-val env
-  :  Context_name.t
-  -> Package.Name.Set.t
-  -> Library.Set.t
-  -> Redirect.Set.t
-  -> Env.t Action_builder.t
+val env : Context_name.t -> Package.Name.Set.t -> Env.t Action_builder.t
 
 (** Engine dispatch for [_build/install/<context>/.packages/<rest>]. Called
     from [Gen_rules]; the layout dir is owned by this module. Resolves to:

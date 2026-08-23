@@ -56,7 +56,12 @@ let rec to_buf t buf =
   match t with
   | `String s -> quote_string_to_buf s buf
   | `Int i -> Buffer.add_string buf (string_of_int i)
-  | `Float f -> Buffer.add_string buf (Printf.sprintf "%.17g" f)
+  | `Float f ->
+    (match classify_float f with
+     | FP_normal | FP_subnormal | FP_zero ->
+       Buffer.add_string buf (Printf.sprintf "%.17g" f)
+     | FP_infinite | FP_nan ->
+       Code_error.raise "Json.to_string: non-finite float" [ "float", Dyn.float f ])
   | `Bool b -> Buffer.add_string buf (string_of_bool b)
   | `List l ->
     Buffer.add_char buf '[';

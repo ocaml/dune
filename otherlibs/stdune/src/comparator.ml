@@ -19,34 +19,34 @@ end
 module Operators (X : S) = struct
   type t = X.t
 
-  let ( = ) a b =
+  let[@inline always] ( = ) a b =
     match X.compare a b with
     | Eq -> true
     | Gt | Lt -> false
   ;;
 
   let equal = ( = )
-  let ( <> ) a b = not (a = b)
+  let[@inline always] ( <> ) a b = not (a = b)
 
-  let ( >= ) a b =
+  let[@inline always] ( >= ) a b =
     match X.compare a b with
     | Gt | Eq -> true
     | Lt -> false
   ;;
 
-  let ( > ) a b =
+  let[@inline always] ( > ) a b =
     match X.compare a b with
     | Gt -> true
     | Lt | Eq -> false
   ;;
 
-  let ( <= ) a b =
+  let[@inline always] ( <= ) a b =
     match X.compare a b with
     | Lt | Eq -> true
     | Gt -> false
   ;;
 
-  let ( < ) a b =
+  let[@inline always] ( < ) a b =
     match X.compare a b with
     | Lt -> true
     | Gt | Eq -> false

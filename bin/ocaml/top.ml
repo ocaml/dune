@@ -60,8 +60,9 @@ let term =
       let context = Super_context.context sctx in
       let* libs =
         let dir =
-          let build_dir = Context.build_dir context in
-          Path.Build.relative build_dir (Common.prefix_target common dir)
+          Path.Build.append_source
+            (Context.build_dir context)
+            (Common.source_path common dir)
         in
         let* db =
           let+ scope = Dune_rules.Scope.DB.find_by_dir dir in

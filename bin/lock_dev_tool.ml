@@ -197,28 +197,67 @@ let lockdir_status dev_tool =
            with
            | false -> Memo.return (`Lockdir_ok_with_tool_pkg pkg)
            | true ->
-             let open Memo.O in
-             let* compiler = compiler_package () in
+             let+ compiler = compiler_package () in
              (match Package_name.Map.find packages compiler.info.name with
-              | None -> Memo.return `No_compiler_lockfile_in_lockdir
-              | Some pkg ->
-                let+ ocaml_compiler = compiler_package () in
-                (match Lock_dir.Pkg.equal pkg ocaml_compiler with
-                 | true -> `Lockdir_ok_with_tool_pkg pkg
-                 | false ->
-                   `Dev_tool_needs_to_be_relocked_because_project_compiler_version_changed
-                     (User_message.make
-                        [ Pp.textf
-                            "The version of the compiler package (%S) in this project's \
-                             lockdir has changed to %s (formerly the compiler version \
-                             was %s). The dev-tool %S will be re-locked and rebuilt with \
-                             this version of the compiler."
-                            (Package_name.to_string compiler.info.name)
-                            (Package_version.to_string ocaml_compiler.info.version)
-                            (Package_version.to_string pkg.info.version)
-                            (Dune_pkg.Dev_tool.package_name dev_tool
-                             |> Package_name.to_string)
-                        ]))))))
+              | None -> `No_compiler_lockfile_in_lockdir
+              | Some locked_compiler ->
+                let package_on_platform (pkg : Lock_dir.Pkg.t) =
+                  let choose choice =
+                    match
+                      Lock_dir.Conditional_choice.choose_for_platform choice ~platform
+                    with
+                    | None -> Lock_dir.Conditional_choice.empty
+                    | Some value ->
+                      Lock_dir.Conditional_choice.singleton
+                        Dune_pkg.Solver_env.empty
+                        value
+                  in
+                  { pkg with
+                    build_command = choose pkg.build_command
+                  ; install_command = choose pkg.install_command
+                  ; depends = choose pkg.depends
+                  ; enabled_on_platforms = [ Dune_pkg.Solver_env.empty ]
+                  }
+                  |> Lock_dir.Pkg.remove_locs
+                in
+                let same_compiler_package =
+                  Lock_dir.Pkg.equal
+                    (package_on_platform locked_compiler)
+                    (package_on_platform compiler)
+                in
+                if same_compiler_package
+                then `Lockdir_ok_with_tool_pkg pkg
+                else (
+                  let compiler_name = Package_name.to_string compiler.info.name in
+                  let dev_tool_name =
+                    Dune_pkg.Dev_tool.package_name dev_tool |> Package_name.to_string
+                  in
+                  let message =
+                    if
+                      Package_version.equal
+                        compiler.info.version
+                        locked_compiler.info.version
+                    then
+                      Pp.textf
+                        "The compiler package (%S) in this project's lockdir has changed \
+                         without changing its version (%s). The dev-tool %S will be \
+                         re-locked and rebuilt with the updated compiler package."
+                        compiler_name
+                        (Package_version.to_string compiler.info.version)
+                        dev_tool_name
+                    else
+                      Pp.textf
+                        "The version of the compiler package (%S) in this project's \
+                         lockdir has changed to %s (formerly the compiler version was \
+                         %s). The dev-tool %S will be re-locked and rebuilt with this \
+                         version of the compiler."
+                        compiler_name
+                        (Package_version.to_string compiler.info.version)
+                        (Package_version.to_string locked_compiler.info.version)
+                        dev_tool_name
+                  in
+                  `Dev_tool_needs_to_be_relocked_because_project_compiler_changed
+                    (User_message.make [ message ]))))))
 ;;
 
 (* [lock_dev_tool_at_version dev_tool version] generates the lockdir for the
@@ -261,7 +300,7 @@ let lock_dev_tool_at_version dev_tool version =
             "ocaml"
         ];
       true
-    | `Dev_tool_needs_to_be_relocked_because_project_compiler_version_changed message ->
+    | `Dev_tool_needs_to_be_relocked_because_project_compiler_changed message ->
       Console.print_user_message message;
       true
     | `Lockdir_missing_entry_for_tool message ->

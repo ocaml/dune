@@ -121,9 +121,10 @@ Library metadata is normally grouped by package. For each owning package in
 the support closure, Dune therefore generates a filtered `META` and
 `dune-package` containing only the selected libraries and relevant deprecated
 library redirects. The layout similarly contains only those libraries'
-interfaces, archives, runtime files, headers, and stubs. Unrelated sibling
-libraries and non-library entries such as binaries, data, and documentation
-are excluded.
+interfaces, archives, runtime files, headers, and stubs. Library references
+serialized by inline-test backends and PPX drivers are also included. Unrelated
+sibling libraries and non-library entries such as binaries, data, and
+documentation are excluded.
 
 Package sites and their directories are also excluded. The filtered
 `dune-package` consequently uses an empty sites map instead of advertising

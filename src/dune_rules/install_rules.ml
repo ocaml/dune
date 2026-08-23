@@ -1453,14 +1453,37 @@ let library_support_closure context packages =
         ~init:Install_layout.Redirect.Set.empty
         ~f:Install_layout.Redirect.Set.union )
   in
+  let serialized_dependencies lib =
+    match Lib.Local.of_lib lib with
+    | None -> Memo.return []
+    | Some local ->
+      let info = Lib.Local.info local in
+      let names =
+        Lib_info.sub_systems info
+        |> Sub_system_name.Map.values
+        |> List.concat_map ~f:(function
+          | Inline_tests_info.Backend.T { runner_libraries; extends; _ } ->
+            List.rev_append runner_libraries extends
+          | _ -> [])
+      in
+      let names =
+        List.rev_append (Ppx_driver.Driver.serialized_replacements info) names
+      in
+      let* scope = Scope.DB.find_by_dir (Lib_info.src_dir info) in
+      Memo.parallel_map names ~f:(fun name ->
+        Lib.DB.resolve (Scope.libs scope) name |> Resolve.Memo.read_memo)
+  in
   let extra_dependencies libraries =
     Memo.parallel_map libraries ~f:(fun lib ->
-      if Lib.is_local lib
-      then
-        Memo.parallel_map [ Compilation_mode.Ocaml; Melange ] ~f:(fun for_ ->
-          Lib.ppx_runtime_deps lib ~for_ |> Resolve.Memo.read_memo)
-        >>| List.concat
-      else Memo.return [])
+      if not (Lib.is_local lib)
+      then Memo.return []
+      else
+        let* ppx_runtime_deps =
+          Memo.parallel_map [ Compilation_mode.Ocaml; Melange ] ~f:(fun for_ ->
+            Lib.ppx_runtime_deps lib ~for_ |> Resolve.Memo.read_memo)
+          >>| List.concat
+        and* serialized_dependencies = serialized_dependencies lib in
+        Memo.return (List.rev_append ppx_runtime_deps serialized_dependencies))
     >>| List.concat
   in
   let rec loop todo expanded inspected libraries =

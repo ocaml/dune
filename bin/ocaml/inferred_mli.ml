@@ -14,26 +14,6 @@ let man =
 
 let info = Cmd.info "inferred-mli" ~doc ~man
 
-let source_path common module_path =
-  if Filename.is_relative module_path
-  then
-    Common.prefix_target common module_path
-    |> Path.Local.of_string
-    |> Path.Source.of_local
-  else (
-    let root =
-      (Common.root common).dir
-      |> Path.of_string
-      |> Path.to_absolute_filename
-      |> Path.of_string
-    in
-    match Path.drop_prefix ~prefix:root (Path.of_string module_path) with
-    | Some module_path -> Path.Source.of_local module_path
-    | None ->
-      User_error.raise
-        [ Pp.text "Module path is not a descendant of the workspace root." ])
-;;
-
 let term =
   let+ builder = Common.Builder.term
   and+ module_path =
@@ -43,7 +23,7 @@ let term =
       & info [] ~docv:"MODULE" ~doc:(Some "Path to an OCaml implementation."))
   and+ context_name = Common.context_arg ~doc:(Some "Build context to use.") in
   let common, config = Common.init builder in
-  let source = source_path common module_path in
+  let source = Common.source_path common module_path in
   if
     not
       (Filename.Extension.Or_empty.check

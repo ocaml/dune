@@ -23,6 +23,11 @@ val sandbox_actions : t -> bool
 val action_runner : t -> Dune_engine.Action_runner.t option
 val action_runner_requested : t -> bool
 val prefix_target : t -> string -> string
+
+(** Resolve a command-line path relative to the directory where Dune was
+    started, and require it to be inside the workspace. *)
+val source_path : t -> string -> Stdune.Path.Source.t
+
 val find_default_trace_file : unit -> string
 
 (** [No_build] describes the most basic command-line flags that don't affect

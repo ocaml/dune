@@ -5,9 +5,7 @@ let files_to_promote ~common files : Dune_rpc.Files_to_promote.t =
   match files with
   | [] -> All
   | _ ->
-    let files =
-      List.map files ~f:(fun fn -> Path.Source.of_string (Common.prefix_target common fn))
-    in
+    let files = List.map files ~f:(Common.source_path common) in
     These files
 ;;
 

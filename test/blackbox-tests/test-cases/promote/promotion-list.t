@@ -28,21 +28,10 @@ Tests dune promotion list output.
   $ dune promotion list b.expected --diff-command 'diff -u'
   b.expected
 
-Absolute paths inside the workspace are currently rejected.
+Absolute paths inside the workspace identify the same promotion.
 
-  $ dune promotion list "$PWD/b.expected" --diff-command 'diff -u' 2>&1 \
-  > | awk '/Internal error!/,/Raised at/'
-  Internal error! Please report to https://github.com/ocaml/dune/issues,
-  providing the file _build/trace.csexp, if possible. This includes build
-  commands, message logs, and file paths.
-  Description:
-    ("Local.relative: received absolute path",
-     { t = "."
-     ; path =
-         "$TESTCASE_ROOT/b.expected"
-     })
-  Raised at Stdune__Code_error.raise in file
-  [1]
+  $ dune promotion list "$PWD/b.expected" --diff-command 'diff -u'
+  b.expected
 
   $ dune promotion list a.expected nothing-to-promote.txt --diff-command 'diff -u'
   Warning: Nothing to promote for nothing-to-promote.txt.

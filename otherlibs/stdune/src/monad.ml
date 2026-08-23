@@ -124,6 +124,12 @@ module Option (M : S) = struct
     | None -> M.return None
     | Some a -> f a
   ;;
+
+  let value option ~default =
+    match option with
+    | Some a -> M.return a
+    | None -> default ()
+  ;;
 end
 
 module Result (M : S) = struct

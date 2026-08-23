@@ -1060,9 +1060,9 @@ let jsoo_compilation_mode
       ~(in_context : Js_of_ocaml.In_context.t Js_of_ocaml.Mode.Pair.t)
       ~mode
   =
-  match (Js_of_ocaml.Mode.Pair.select ~mode in_context).compilation_mode with
-  | None -> js_of_ocaml_compilation_mode t ~dir ~mode
-  | Some x -> Memo.return x
+  Memo.Option.value
+    (Js_of_ocaml.Mode.Pair.select ~mode in_context).compilation_mode
+    ~default:(fun () -> js_of_ocaml_compilation_mode t ~dir ~mode)
 ;;
 
 let jsoo_is_whole_program t ~dir ~in_context =
@@ -1090,9 +1090,8 @@ let build_standalone_runtime cc ~loc ~in_context ~jsoo_mode:mode =
     in_context
   in
   let* cmode =
-    match compilation_mode with
-    | None -> js_of_ocaml_compilation_mode sctx ~dir ~mode
-    | Some x -> Memo.return x
+    Memo.Option.value compilation_mode ~default:(fun () ->
+      js_of_ocaml_compilation_mode sctx ~dir ~mode)
   in
   match (cmode : Js_of_ocaml.Compilation_mode.t) with
   | Whole_program -> Memo.return None
@@ -1158,13 +1157,10 @@ let build_exe
     Rule_mode_expand.expand_optional_promote ~expander ~dir promote
   in
   let* cmode =
-    match compilation_mode with
-    | None -> js_of_ocaml_compilation_mode sctx ~dir ~mode
-    | Some x -> Memo.return x
+    Memo.Option.value compilation_mode ~default:(fun () ->
+      js_of_ocaml_compilation_mode sctx ~dir ~mode)
   and* sourcemap =
-    match sourcemap with
-    | None -> js_of_ocaml_sourcemap sctx ~dir ~mode
-    | Some x -> Memo.return x
+    Memo.Option.value sourcemap ~default:(fun () -> js_of_ocaml_sourcemap sctx ~dir ~mode)
   in
   assert (Js_of_ocaml.Mode.select ~mode ~js:(wasm_files = []) ~wasm:true);
   let runtime_files = javascript_files @ wasm_files in

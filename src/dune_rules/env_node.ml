@@ -11,12 +11,10 @@ let external_env t = Memo.Lazy.force t.external_env
 let artifacts t = Memo.Lazy.force t.artifacts
 
 let expand_str_lazy expander sw =
-  match String_with_vars.text_only sw with
-  | Some s -> Memo.return s
-  | None ->
+  Memo.Option.value (String_with_vars.text_only sw) ~default:(fun () ->
     let open Memo.O in
     let* expander = expander in
-    Expander.No_deps.expand_str expander sw
+    Expander.No_deps.expand_str expander sw)
 ;;
 
 let make

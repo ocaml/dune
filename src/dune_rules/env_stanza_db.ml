@@ -100,13 +100,11 @@ let bin_annot_cms ~dir =
     value ~default:None ~dir ~f:(fun (t : Dune_env.config) ->
       Memo.return (Option.map t.bin_annot_cms ~f:Option.some))
   in
-  match explicit with
-  | Some b -> Memo.return b
-  | None ->
+  Memo.Option.value explicit ~default:(fun () ->
     (* Enabled by default for OxCaml *)
     let* context = Context.DB.by_dir dir in
     let+ ocaml = Context.ocaml context in
-    Ocaml_config.ox ocaml.ocaml_config
+    Ocaml_config.ox ocaml.ocaml_config)
 ;;
 
 let inline_tests ~dir =
@@ -116,11 +114,9 @@ let inline_tests ~dir =
     match t.inline_tests with
     | None -> None
     | Some s -> Some (Some s))
-  >>= function
-  | Some s -> Memo.return s
-  | None ->
+  >>= Memo.Option.value ~default:(fun () ->
     let+ profile = profile ~dir in
-    if Profile.is_inline_test profile then Dune_env.Inline_tests.Enabled else Disabled
+    if Profile.is_inline_test profile then Dune_env.Inline_tests.Enabled else Disabled)
 ;;
 
 module Inherit = struct

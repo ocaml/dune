@@ -28,6 +28,7 @@ let is_valid s =
 ;;
 
 let of_string s = Option.some_if (is_valid s) s
+let of_string_unchecked s = s
 
 let of_string_exn s =
   if is_valid s

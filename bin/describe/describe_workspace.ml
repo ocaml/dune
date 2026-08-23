@@ -857,7 +857,7 @@ module Crawl = struct
 end
 
 let find_dir common dir =
-  let p = Path.Source.(relative root) (Common.prefix_target common dir) in
+  let p = Common.source_path common dir in
   let s = Path.source p in
   if not @@ Fpath.exists (Path.to_string s)
   then User_error.raise [ Pp.textf "No such file or directory: %s" (Path.to_string s) ];
@@ -894,7 +894,7 @@ let term : unit Term.t =
       let open Dune_lang.Decoder in
       fields
       @@ field "workspace"
-      @@ let+ dirs = repeat relative_file in
+      @@ let+ dirs = repeat string in
          (* [None] means that all directories should be accepted,
             whereas [Some l] means that only the directories in the
             list [l] should be accepted. The checks on whether the

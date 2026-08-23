@@ -13,9 +13,9 @@ a sandbox.
   +++ correct/add.ml.lint-corrected
   @@ -1 +1 @@
   -let () = Printf.printf "%d\n" @@ 1 + 2
-  +let () = Printf.printf "%d\n" @@ 3
+  +let () = Printf.printf "%d\n" @@ 42
   [1]
   $ dune promote correct/add.ml
   Promoting _build/default/correct/add.ml.lint-corrected to correct/add.ml.
   $ cat correct/add.ml
-  let () = Printf.printf "%d\n" @@ 3
+  let () = Printf.printf "%d\n" @@ 42

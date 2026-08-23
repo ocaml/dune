@@ -34,3 +34,20 @@ The version 0.2 requires dune 3.0
   Supported versions of this extension in version 2.9 of the dune language:
   - 0.1
   [1]
+
+The version 0.6 requires dune 3.25
+
+  $ cat >dune-project <<EOF
+  > (lang dune 3.24)
+  > (using mdx 0.6)
+  > (cram disable)
+  > EOF
+  $ dune build @install
+  File "dune-project", line 2, characters 11-14:
+  2 | (using mdx 0.6)
+                 ^^^
+  Error: Version 0.6 of mdx extension to verify code blocks in .md files is not
+  supported until version 3.25 of the dune language.
+  Supported versions of this extension in version 3.24 of the dune language:
+  - 0.1 to 0.5
+  [1]

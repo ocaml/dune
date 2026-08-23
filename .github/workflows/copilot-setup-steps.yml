@@ -36,5 +36,63 @@ jobs:
           gc-max-store-size-linux: 2G
           save: false
 
-      - name: Enter Nix dev shell
-        run: nix develop -c true
+      - name: Prepare Nix development environment
+        shell: bash
+        run: |
+          nix develop path:. -c make bootstrap
+
+          dev_env="$RUNNER_TEMP/dune-dev-env.json"
+          nix print-dev-env path:. --json > "$dev_env"
+          python3 - "$dev_env" "$GITHUB_ENV" <<'PY'
+          import json
+          import os
+          import secrets
+          import sys
+
+          with open(sys.argv[1]) as source:
+              variables = json.load(source)["variables"]
+
+          # print-dev-env contains derivation variables, not the ambient runner
+          # environment. Preserve runner controls and transient shell state.
+          excluded = {
+              "BASH_ENV",
+              "CI",
+              "NODE_OPTIONS",
+              "HOME",
+              "NIX_BUILD_TOP",
+              "NIX_LOG_FD",
+              "OLDPWD",
+              "TEMP",
+              "TEMPDIR",
+              "TMP",
+              "TMPDIR",
+              "shellHook",
+          }
+
+          with open(sys.argv[2], "a") as output:
+              for name, variable in variables.items():
+                  if variable["type"] != "exported" or name in excluded:
+                      continue
+                  if name.startswith(("ACTIONS_", "GITHUB_", "RUNNER_")):
+                      continue
+
+                  value = variable["value"]
+                  if name == "PATH":
+                      value = f"{value}{os.pathsep}{os.environ['PATH']}"
+                  elif name == "XDG_DATA_DIRS" and os.environ.get(name):
+                      value = f"{value}{os.pathsep}{os.environ[name]}"
+
+                  delimiter = f"__NIX_ENV_{secrets.token_hex(16)}__"
+                  output.write(f"{name}<<{delimiter}\n{value}\n{delimiter}\n")
+          PY
+          # The repository shell hook only sets this variable and Bash
+          # completion, which noninteractive agent commands do not need.
+          printf 'DUNE_SOURCE_ROOT=%s\n' "$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
+
+      - name: Verify unwrapped commands
+        shell: bash
+        run: |
+          test "$INSIDE_NIX" = true
+          command -v ocaml
+          command -v dune
+          dune --version

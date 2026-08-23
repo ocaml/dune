@@ -2637,6 +2637,15 @@ module DB = struct
   let instrumentation_backend t libname =
     instrumentation_backend t.instrument_with (resolve t) libname
   ;;
+
+  let pps_for_preprocessing t preprocess =
+    (* TODO Instrumentation backend resolution should be delayed. *)
+    Instrumentation.with_instrumentation
+      preprocess
+      ~instrumentation_backend:(instrumentation_backend t)
+    |> Resolve.Memo.read_memo
+    |> Memo.map ~f:Preprocess.Per_module.pps
+  ;;
 end
 
 let to_resolve_memo

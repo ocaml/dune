@@ -272,22 +272,16 @@ let term =
   and+ include_empty = arg_include_empty
   and+ split_public_names = arg_split_public_names
   and+ format = Describe_format.arg in
-  let common, config = Common.init builder in
-  Scheduler_setup.go_with_rpc_server ~common ~config
-  @@ fun () ->
-  Build.build_memo_exn
-  @@ fun () ->
-  let open Memo.O in
-  let* setup = Util.setup () in
-  let super_context = Dune_rules.Main.find_scontext_exn setup ~name:context_name in
-  let context_name =
-    Super_context.context super_context
-    |> Context.name
-    |> Dune_engine.Context_name.to_string
-  in
-  external_resolved_libs ~include_empty (Super_context.context super_context)
-  >>| to_dyn ~split_public_names context_name
-  >>| Describe_format.print_dyn format
+  Build.describe builder ~context_name (fun _common _setup super_context ->
+    let open Memo.O in
+    let context_name =
+      Super_context.context super_context
+      |> Context.name
+      |> Dune_engine.Context_name.to_string
+    in
+    external_resolved_libs ~include_empty (Super_context.context super_context)
+    >>| to_dyn ~split_public_names context_name
+    >>| Describe_format.print_dyn format)
 ;;
 
 let command =

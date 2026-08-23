@@ -207,3 +207,15 @@ let build =
 ;;
 
 let build_memo_exn f = Build_system.run_exn f
+
+let describe builder ~context_name f =
+  let common, config = Common.init builder in
+  Scheduler_setup.go_with_rpc_server ~common ~config
+  @@ fun () ->
+  build_memo_exn
+  @@ fun () ->
+  let open Memo.O in
+  let* setup = Util.setup () in
+  let sctx = Dune_rules.Main.find_scontext_exn setup ~name:context_name in
+  f common setup sctx
+;;

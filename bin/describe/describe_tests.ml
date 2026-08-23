@@ -141,21 +141,15 @@ let term : unit Term.t =
   let+ builder = Common.Builder.term
   and+ context_name = Common.context_arg ~doc:(Some "Build context to use.")
   and+ format = Describe_format.arg in
-  let common, config = Common.init builder in
-  Scheduler_setup.go_with_rpc_server ~common ~config
-  @@ fun () ->
-  Build.build_memo_exn
-  @@ fun () ->
-  let open Memo.O in
-  let* setup = Util.setup () in
-  let super_context = Dune_rules.Main.find_scontext_exn setup ~name:context_name in
-  let context = Super_context.context super_context in
-  let* tests_data = Crawl.tests setup context in
-  let dyn_data =
-    List.map tests_data ~f:Test_description.to_dyn |> fun list -> Dyn.List list
-  in
-  Describe_format.print_dyn format dyn_data;
-  Memo.return ()
+  Build.describe builder ~context_name (fun _common setup super_context ->
+    let open Memo.O in
+    let context = Super_context.context super_context in
+    let* tests_data = Crawl.tests setup context in
+    let dyn_data =
+      List.map tests_data ~f:Test_description.to_dyn |> fun list -> Dyn.List list
+    in
+    Describe_format.print_dyn format dyn_data;
+    Memo.return ())
 ;;
 
 let command =

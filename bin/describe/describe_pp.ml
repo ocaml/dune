@@ -169,18 +169,12 @@ let term =
     (* CR-someday Alizter: document this option *)
     Arg.(required & pos 0 (some string) None (Arg.info [] ~docv:"FILE" ~doc:None))
   in
-  let common, config = Common.init builder in
-  Scheduler_setup.go_with_rpc_server ~common ~config
-  @@ fun () ->
-  Build.build_memo_exn
-  @@ fun () ->
-  let open Memo.O in
-  let* setup = Util.setup () in
-  let sctx = Dune_rules.Main.find_scontext_exn setup ~name:context_name in
-  let* result = get_pped_file sctx file in
-  match result with
-  | Error file -> Io.cat file |> Memo.return
-  | Ok (pp_file, ml_kind) -> print_pped_file ~sctx file pp_file ~ml_kind
+  Build.describe builder ~context_name (fun _common _setup sctx ->
+    let open Memo.O in
+    let* result = get_pped_file sctx file in
+    match result with
+    | Error file -> Io.cat file |> Memo.return
+    | Ok (pp_file, ml_kind) -> print_pped_file ~sctx file pp_file ~ml_kind)
 ;;
 
 let command =

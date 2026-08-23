@@ -66,13 +66,16 @@ We try to load a module defined in a library with a dependency
   open Foo__
   ;;
 
-Relative module paths are currently resolved from the workspace root rather
-than the directory where Dune was started.
+Relative module paths are resolved from the directory where Dune was started.
 
   $ (cd foo &&
   >  unset INSIDE_DUNE &&
   >  dune ocaml top-module foo.ml)
-  Entering directory '$TESTCASE_ROOT'
-  Error: no module found
-  Leaving directory '$TESTCASE_ROOT'
-  [1]
+  #directory "$TESTCASE_ROOT/_build/default/.topmod/foo/foo.ml";;
+  #directory "$TESTCASE_ROOT/_build/default/mydummylib/.mydummylib.objs/byte";;
+  #load "$TESTCASE_ROOT/_build/default/mydummylib/mydummylib.cma";;
+  #load "$TESTCASE_ROOT/_build/default/foo/.foo.objs/byte/foo__.cmo";;
+  #load "$TESTCASE_ROOT/_build/default/foo/.foo.objs/byte/foo__Bar.cmo";;
+  #load "$TESTCASE_ROOT/_build/default/.topmod/foo/foo.ml/foo.cmo";;
+  open Foo__
+  ;;

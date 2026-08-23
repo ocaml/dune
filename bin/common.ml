@@ -1147,6 +1147,17 @@ let normalize_path path =
   else path
 ;;
 
+let source_path t path =
+  if Filename.is_relative path
+  then Path.Source.of_string (prefix_target t path)
+  else (
+    let root = Path.External.cwd () |> normalize_path |> Path.external_ in
+    match Path.drop_prefix ~prefix:root (Path.of_string path) with
+    | Some path -> Path.Source.of_local path
+    | None ->
+      User_error.raise [ Pp.text "Path is not a descendant of the workspace root." ])
+;;
+
 let print_entering_message c =
   let cwd = Path.to_absolute_filename Path.root in
   if cwd <> Fpath.initial_cwd && not c.builder.no_print_directory

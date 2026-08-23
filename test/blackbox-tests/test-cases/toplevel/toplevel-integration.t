@@ -18,20 +18,11 @@ Test toplevel-init-file on a tiny project
   #directory "$TESTCASE_ROOT/_build/default/.test.objs/byte";;
   #load "$TESTCASE_ROOT/_build/default/test.cma";;
 
-Absolute directory arguments are currently rejected.
+Absolute directory arguments identify the same source directory.
 
-  $ dune ocaml top "$PWD" 2>&1 | awk '/Internal error!/,/Raised at/'
-  Internal error! Please report to https://github.com/ocaml/dune/issues,
-  providing the file _build/trace.csexp, if possible. This includes build
-  commands, message logs, and file paths.
-  Description:
-    ("Local.relative: received absolute path",
-     { t = "default"
-     ; path =
-         "$TESTCASE_ROOT"
-     })
-  Raised at Stdune__Code_error.raise in file
-  [1]
+  $ dune ocaml top "$PWD"
+  #directory "$TESTCASE_ROOT/_build/default/.test.objs/byte";;
+  #load "$TESTCASE_ROOT/_build/default/test.cma";;
 
   $ ocaml -stdin <<EOF
   > #use_output "dune ocaml top";;

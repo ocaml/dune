@@ -1074,17 +1074,76 @@ end = struct
                 "%a"
                 (Dune_package.Or_meta.pp ~dune_version ~encoding:Relative))
     in
-    let entry contents dst =
-      { Install_layout.package = package_name
+    let entry ~package contents dst =
+      { Install_layout.package
       ; section = Lib
       ; dst = Install.Entry.Dst.of_string dst
       ; contents
       }
     in
+    let deprecated_entries =
+      List.filter_map lib_entries ~f:(function
+        | Scope.DB.Lib_entry.Deprecated_library_name
+            ({ old_name =
+                 _, Deprecated_library_name.Old_name.Deprecated { deprecated_package }
+             ; _
+             } as redirect) -> Some (deprecated_package, redirect)
+        | Library _ | Deprecated_library_name { old_name = _, Not_deprecated; _ } -> None)
+      |> Package.Name.Map.of_list_multi
+      |> Package.Name.Map.to_list
+      |> List.concat_map ~f:(fun (deprecated_package, redirects) ->
+        let meta_contents =
+          let open Action_builder.O in
+          let+ meta =
+            List.map redirects ~f:(fun redirect ->
+              Scope.DB.Lib_entry.Deprecated_library_name redirect)
+            |> Gen_meta.gen ~package ~add_directory_entry:false
+          in
+          Format.asprintf "%a" Pp.to_fmt (Pp.vbox (Meta.pp meta.entries))
+        in
+        let dune_package_contents =
+          let entries =
+            List.map
+              redirects
+              ~f:(fun { Library_redirect.old_name; new_public_name; loc; _ } ->
+                let old_public_name = Public_lib.name (fst old_name) in
+                ( old_public_name
+                , Dune_package.Entry.Deprecated_library_name
+                    { loc; old_public_name; new_public_name = snd new_public_name } ))
+            |> Lib_name.Map.of_list_exn
+          in
+          let dune_package =
+            { Dune_package.version = Package.version package
+            ; name = deprecated_package
+            ; entries
+            ; dir =
+                Path.build
+                  (Install.Context.lib_dir ~context:ctx.name ~package:deprecated_package)
+            ; sections = Section.Map.empty
+            ; sites = Site.Map.empty
+            ; files = []
+            }
+          in
+          Dune_package.Or_meta.Dune_package dune_package
+          |> Format.asprintf
+               "%a"
+               (Dune_package.Or_meta.pp ~dune_version ~encoding:Relative)
+          |> Action_builder.return
+        in
+        [ entry
+            ~package:deprecated_package
+            meta_contents
+            (Dune_findlib.Package.meta_fn |> Filename.to_string)
+        ; entry ~package:deprecated_package dune_package_contents Dune_package.fn
+        ])
+    in
     Memo.return
-      [ entry meta_contents (Dune_findlib.Package.meta_fn |> Filename.to_string)
-      ; entry dune_package_contents Dune_package.fn
-      ]
+      (entry
+         ~package:package_name
+         meta_contents
+         (Dune_findlib.Package.meta_fn |> Filename.to_string)
+       :: entry ~package:package_name dune_package_contents Dune_package.fn
+       :: deprecated_entries)
   ;;
 
   let gen_odoc_config sctx (pkg : Package.t) =

@@ -114,7 +114,8 @@ link-time closure. Dune requires a public virtual library and its default
 implementation to belong to the same package, but they remain separate
 libraries and both are selected when the default is needed. Resolution errors
 are reported rather than silently producing an incomplete layout. Every
-intermediate name in a deprecated-library redirect chain is retained.
+intermediate name in a deprecated-library redirect chain is retained, including
+metadata emitted under deprecated package names.
 
 Library metadata is normally grouped by package. For each owning package in
 the support closure, Dune therefore generates a filtered `META` and

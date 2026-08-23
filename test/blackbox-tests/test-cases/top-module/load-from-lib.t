@@ -1,6 +1,7 @@
 We try to load a module defined in a library with a dependency
 
   $ make_dune_project 3.3
+  $ echo '(lang dune 3.3)' >dune-workspace
 
   $ mkdir foo
   $ cd foo
@@ -64,3 +65,14 @@ We try to load a module defined in a library with a dependency
   #load "$TESTCASE_ROOT/_build/default/.topmod/foo/foo.ml/foo.cmo";;
   open Foo__
   ;;
+
+Relative module paths are currently resolved from the workspace root rather
+than the directory where Dune was started.
+
+  $ (cd foo &&
+  >  unset INSIDE_DUNE &&
+  >  dune ocaml top-module foo.ml)
+  Entering directory '$TESTCASE_ROOT'
+  Error: no module found
+  Leaving directory '$TESTCASE_ROOT'
+  [1]

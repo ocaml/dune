@@ -36,27 +36,35 @@ module Library = struct
   ;;
 end
 
+module Redirect = Library
+
 type request =
   { packages : Package.Name.Set.t
   ; libraries : Library.Set.t
+  ; redirects : Redirect.Set.t
   }
 
 let request_equal a b =
   Package.Name.Set.equal a.packages b.packages
   && Library.Set.equal a.libraries b.libraries
+  && Redirect.Set.equal a.redirects b.redirects
 ;;
 
-let request_hash { packages; libraries } =
-  Tuple.T2.hash
+let request_hash { packages; libraries; redirects } =
+  Tuple.T3.hash
     (List.hash Package.Name.hash)
     (List.hash Library.hash)
-    (Package.Name.Set.to_list packages, Library.Set.to_list libraries)
+    (List.hash Redirect.hash)
+    ( Package.Name.Set.to_list packages
+    , Library.Set.to_list libraries
+    , Redirect.Set.to_list redirects )
 ;;
 
-let request_to_dyn { packages; libraries } =
+let request_to_dyn { packages; libraries; redirects } =
   Dyn.record
     [ "packages", Package.Name.Set.to_dyn packages
     ; "libraries", Library.Set.to_dyn libraries
+    ; "redirects", Redirect.Set.to_dyn redirects
     ]
 ;;
 
@@ -90,11 +98,13 @@ module Key : sig
 end = struct
   let reverse_table : (Digest.t, request) Table.t = Table.create (module Digest) 128
 
-  let encode ({ packages; libraries } as request) =
+  let encode ({ packages; libraries; redirects } as request) =
     let y =
       Digest.repr
-        Repr.(pair (list Package.Name.repr) (list Library.repr))
-        (Package.Name.Set.to_list packages, Library.Set.to_list libraries)
+        Repr.(triple (list Package.Name.repr) (list Library.repr) (list Redirect.repr))
+        ( Package.Name.Set.to_list packages
+        , Library.Set.to_list libraries
+        , Redirect.Set.to_list redirects )
     in
     (match Table.find reverse_table y with
      | None -> Table.set reverse_table y request
@@ -117,7 +127,8 @@ end
 type resolvers =
   { package_entries :
       Context_name.t -> Package.Name.t -> Install.Entry.Sourced.Unexpanded.t list Memo.t
-  ; library_entries : Context_name.t -> Library.Set.t -> library_entries Memo.t
+  ; library_entries :
+      Context_name.t -> Library.Set.t -> Redirect.Set.t -> library_entries Memo.t
   }
 
 let resolvers_fdecl : resolvers Fdecl.t = Fdecl.create Dyn.opaque
@@ -132,18 +143,20 @@ let dir ~context ~key =
    materialised path under the layout. Collisions (two packages installing
    to the same destination, which can only happen in _root sections) are
    reported as user errors naming the conflicting packages and entry. *)
-let compute_entries context_name root { packages; libraries } =
-  let overlapping_libraries =
-    Library.Set.to_list libraries
-    |> List.filter ~f:(fun library ->
-      Package.Name.Set.mem packages (Library.package library))
+let compute_entries context_name root { packages; libraries; redirects } =
+  let overlapping items package =
+    Library.Set.to_list items
+    |> List.filter ~f:(fun item -> Package.Name.Set.mem packages (package item))
   in
-  if List.is_non_empty overlapping_libraries
+  let overlapping_libraries = overlapping libraries Library.package
+  and overlapping_redirects = overlapping redirects Redirect.package in
+  if List.is_non_empty overlapping_libraries || List.is_non_empty overlapping_redirects
   then
     Code_error.raise
-      "Install layout request contains support libraries owned by explicit packages"
+      "Install layout request contains support metadata owned by explicit packages"
       [ "packages", Package.Name.Set.to_dyn packages
       ; "libraries", Dyn.list Library.to_dyn overlapping_libraries
+      ; "redirects", Dyn.list Redirect.to_dyn overlapping_redirects
       ];
   let open Memo.O in
   let { package_entries; library_entries } = Fdecl.get resolvers_fdecl in
@@ -200,7 +213,7 @@ let compute_entries context_name root { packages; libraries } =
       List.map entries ~f:(fun entry -> pkg, entry))
     >>| List.concat
   and* { install_entries = library_entries; generated_entries } =
-    library_entries context_name libraries
+    library_entries context_name libraries redirects
   in
   let entries =
     List.append package_entries library_entries |> List.filter_map ~f:resolve_entry
@@ -266,8 +279,8 @@ let env_for_request context_name request =
   Install.Roots.add_to_env roots Env.empty
 ;;
 
-let env context_name packages libraries =
-  env_for_request context_name { packages; libraries }
+let env context_name packages libraries redirects =
+  env_for_request context_name { packages; libraries; redirects }
 ;;
 
 let make_dispatch ~dir ~directory_targets subdirs f =
@@ -332,7 +345,9 @@ module For_rocq_only = struct
      keeping METAs, .cmi, .cmxs etc. — all upstream of theory compilation. *)
   let lib_root context_name packages =
     let open Action_builder.O in
-    let request = { packages; libraries = Library.Set.empty } in
+    let request =
+      { packages; libraries = Library.Set.empty; redirects = Redirect.Set.empty }
+    in
     let* lib_paths =
       Action_builder.of_memo (entries context_name request)
       >>| Path.Build.Map.foldi ~init:[] ~f:(fun dst (entry : materialized_entry) acc ->

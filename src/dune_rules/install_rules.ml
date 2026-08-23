@@ -1310,9 +1310,9 @@ let install_entries sctx package =
   Package.Name.Map.Multi.find packages package
 ;;
 
-let library_install_entries sctx libraries =
+let library_install_entries sctx libraries redirects =
   let* entries_by_library = Stanzas_to_entries.library_entries sctx in
-  let selected =
+  let selected_libraries =
     Install_layout.Library.Set.to_list libraries
     |> List.map ~f:(fun library ->
       match Install_layout.Library.Map.find entries_by_library library with
@@ -1325,21 +1325,41 @@ let library_install_entries sctx libraries =
           [ "library", Install_layout.Library.to_dyn library ])
     |> Package.Name.Map.of_list_multi
   in
+  let selected_redirects =
+    Install_layout.Redirect.Set.to_list redirects
+    |> List.map ~f:(fun redirect ->
+      Install_layout.Redirect.package redirect, Install_layout.Redirect.name redirect)
+    |> Package.Name.Map.of_list_multi
+  in
+  let selected_packages =
+    List.rev_append
+      (Package.Name.Map.keys selected_libraries)
+      (Package.Name.Map.keys selected_redirects)
+    |> Package.Name.Set.of_list
+  in
   let* packages = Dune_load.packages () in
   let context = Super_context.context sctx |> Context.name in
   let+ entries =
-    Package.Name.Map.to_list selected
-    |> Memo.parallel_map ~f:(fun (package_name, selected) ->
+    Package.Name.Set.to_list selected_packages
+    |> Memo.parallel_map ~f:(fun package_name ->
       let package =
         match Package.Name.Map.find packages package_name with
         | Some package -> package
         | None ->
           Code_error.raise
-            "No package found for a local library in an install layout"
+            "No package found for local support metadata in an install layout"
             [ "package", Package.Name.to_dyn package_name ]
+      in
+      let selected =
+        Package.Name.Map.find selected_libraries package_name |> Option.value ~default:[]
       in
       let selected_names =
         Lib_name.Set.of_list_map selected ~f:(fun (library, _) -> library)
+      in
+      let selected_redirect_names =
+        Package.Name.Map.find selected_redirects package_name
+        |> Option.value ~default:[]
+        |> Lib_name.Set.of_list
       in
       let install_entries =
         List.concat_map selected ~f:(fun (_, entries) -> entries)
@@ -1350,16 +1370,13 @@ let library_install_entries sctx libraries =
         Scope.DB.Lib_entry.Set.to_list entries
       in
       let lib_entries =
-        List.filter all_lib_entries ~f:(fun entry ->
-          let keep =
-            match entry with
-            | Scope.DB.Lib_entry.Library lib ->
-              Lib_name.Set.mem selected_names (Lib.name (Lib.Local.to_lib lib))
-            | Deprecated_library_name
-                { old_name = _; new_public_name = _, new_public_name; _ } ->
-              Lib_name.Set.mem selected_names new_public_name
-          in
-          keep)
+        List.filter all_lib_entries ~f:(function
+          | Scope.DB.Lib_entry.Library lib ->
+            Lib_name.Set.mem selected_names (Lib.name (Lib.Local.to_lib lib))
+          | Deprecated_library_name { old_name; new_public_name = _, new_public_name; _ }
+            ->
+            Lib_name.Set.mem selected_redirect_names (Public_lib.name (fst old_name))
+            || Lib_name.Set.mem selected_names new_public_name)
       in
       let* generated_entries =
         Meta_and_dune_package.support_metadata_entries
@@ -1386,10 +1403,10 @@ let () =
           let* sctx = Super_context.find_exn context_name in
           install_entries sctx package)
     ; library_entries =
-        (fun context_name libraries ->
+        (fun context_name libraries redirects ->
           let open Memo.O in
           let* sctx = Super_context.find_exn context_name in
-          library_install_entries sctx libraries)
+          library_install_entries sctx libraries redirects)
     }
 ;;
 

@@ -5,13 +5,12 @@
   (package dune-site)
   (package dune-private-libs)))
 
-; The test being broken on CI, we deactivate it when
-; we detect that the CI environment variable is not
-; set. Most CI systems set it.
+; The test is broken on CI, so deactivate it when the CI
+; environment variable is set. Most CI systems set it.
 
 (cram
  (applies_to run_2_9 run)
  (enabled_if
   (and
-   (not %{env:CI=false})
-   (not %{env:INSIDE_NIX=false}))))
+   (= %{env:CI=false} false)
+   (= %{env:INSIDE_NIX=false} false))))

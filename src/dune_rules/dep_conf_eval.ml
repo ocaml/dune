@@ -223,14 +223,16 @@ let package loc pkg_name (context : Build_context.t) ~dune_version =
 
 let library_closure lib =
   let open Memo.O in
-  let* compile_closure =
-    Lib.closure [ lib ] ~linking:false ~for_:Compilation_mode.Ocaml
-    |> Resolve.Memo.read_memo
-  and* link_closure =
-    Lib.partial_link_closure [ lib ] ~for_:Compilation_mode.Ocaml
-    |> Resolve.Memo.read_memo
-  in
-  Memo.return (List.rev_append compile_closure link_closure)
+  Memo.parallel_map [ Compilation_mode.Ocaml; Melange ] ~f:(fun for_ ->
+    let* compile_closure =
+      Lib.closure [ lib ] ~linking:false ~for_ |> Resolve.Memo.read_memo
+    and* link_closure =
+      Lib.partial_link_closure [ lib ] ~for_ |> Resolve.Memo.read_memo
+    in
+    Memo.return (List.rev_append compile_closure link_closure))
+  >>| List.concat
+  >>| Lib.Set.of_list
+  >>| Lib.Set.to_list
 ;;
 
 let library_support_closure context packages =
@@ -252,7 +254,10 @@ let library_support_closure context packages =
   let extra_dependencies libraries =
     Memo.parallel_map libraries ~f:(fun lib ->
       if Lib.is_local lib
-      then Lib.ppx_runtime_deps lib ~for_:Compilation_mode.Ocaml |> Resolve.Memo.read_memo
+      then
+        Memo.parallel_map [ Compilation_mode.Ocaml; Melange ] ~f:(fun for_ ->
+          Lib.ppx_runtime_deps lib ~for_ |> Resolve.Memo.read_memo)
+        >>| List.concat
       else Memo.return [])
     >>| List.concat
   in

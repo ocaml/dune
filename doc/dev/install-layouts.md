@@ -4,7 +4,8 @@
 
 `(deps (package ...))` materializes a scoped install layout under
 `_build/install/<context>/.packages/<digest>/` containing the declared packages
-and the workspace library artifacts needed by their OCaml library closure.
+and the workspace library artifacts needed by their OCaml and Melange library
+closures.
 This replaces the old alias-based mechanism where `(deps (package foo))`
 depended on the `.foo-files` install alias, which populated the
 `_build/install/` staging area shared by all packages.
@@ -78,8 +79,8 @@ closure described below.
 
 The layout starts with the packages listed in `(deps (package ...))`. For each
 workspace package, Dune also finds the libraries it installs, computes their
-transitive OCaml library closure, and adds only the install entries belonging
-to those workspace libraries. It does not add the libraries' complete owning
+transitive OCaml and Melange library closures, and adds only the install entries
+belonging to those workspace libraries. It does not add the libraries' complete owning
 packages or traverse dependencies in package metadata.
 
 This distinction preserves two important properties:

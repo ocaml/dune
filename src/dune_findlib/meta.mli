@@ -29,6 +29,12 @@ and predicate =
 
 val to_dyn : t -> Dyn.t
 val filter_variable : t -> f:(string -> bool) -> t
+
+(** Filter [t] to the package hierarchy present in [selected]. At hierarchy
+    nodes with no selected rules, retain only [directory], which is inherited
+    by findlib subpackages. Comments are discarded. *)
+val filter_by_package_hierarchy : t -> selected:t -> t
+
 val parse_entries : Lexing.lexbuf -> entry list
 
 (** Add version fields to all package in [t] that don't have and have at least

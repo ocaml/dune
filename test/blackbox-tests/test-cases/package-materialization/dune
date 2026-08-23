@@ -3,6 +3,7 @@
   deprecated-package-redirect
   independent-roots
   installed-package
+  nested-namespace
   no-transitive-through-targets
   ocamlfind
   redirect-chain

@@ -127,6 +127,11 @@ are also included. Unrelated
 sibling libraries and non-library entries such as binaries, data, and
 documentation are excluded.
 
+At namespace nodes that do not themselves contain a selected library, the
+filtered `META` retains only `directory`, which is inherited by findlib
+subpackages. Other template variables at such a node describe that package
+node rather than its selected descendants and are dropped.
+
 Package sites and their directories are also excluded. The filtered
 `dune-package` consequently uses an empty sites map instead of advertising
 paths that the support layout does not materialize.

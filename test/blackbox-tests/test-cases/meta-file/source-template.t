@@ -1,5 +1,5 @@
-Malformed source META file templates are currently installed without a
-diagnostic. Snapshot that behavior before adding validation.
+Malformed source META file templates are rejected at their source location
+instead of being installed.
 
   $ make_dune_project_with_package 2.7 foobarlib
 
@@ -18,3 +18,7 @@ diagnostic. Snapshot that behavior before adding validation.
   > EOF
 
   $ dune build @install
+  File "META.foobarlib.template", line 3, characters 0-0:
+  Error: Invalid META template for package foobarlib.
+  1 closing parentheses missing
+  [1]

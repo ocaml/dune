@@ -33,6 +33,7 @@ val run_odoc
   -> Command.Args.any Command.Args.t list
   -> Action.Full.t Action_builder.With_targets.t
 
+val setup_support_files_rule : Super_context.t -> dir:Path.Build.t -> unit Memo.t
 val setup_library_odoc_rules : Compilation_context.t -> Lib.Local.t -> unit Memo.t
 val gen_project_rules : Super_context.t -> Dune_project.t -> unit Memo.t
 

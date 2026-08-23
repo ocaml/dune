@@ -18,6 +18,14 @@
   of the workspace.
   [1]
 
+The same restriction applies when the build directory is set in the environment.
+
+  $ DUNE_BUILD_DIR=.temp/dune dune build foo
+  Error: Invalid build directory: .temp/dune
+  The build directory must be an absolute path or a sub-directory of the root
+  of the workspace.
+  [1]
+
   $ mkdir project
   $ cp dune dune-project project/
 

@@ -9,6 +9,7 @@ type t =
   ; root_expander : Expander.t
   ; artifacts : Artifacts.t Memo.t
   ; get_node : Path.Build.t -> Env_node.t Memo.t
+  ; get_expander : Path.Build.t -> Expander.t Memo.t
   }
 
 let hash t = Context.hash t.context
@@ -51,11 +52,7 @@ let expander_for_artifacts t ~dir =
   |> Expander.set_scope ~dir ~project ~scope ~scope_host
 ;;
 
-let expander t ~dir =
-  let+ expander_for_artifacts = expander_for_artifacts t ~dir in
-  let artifacts_host = artifacts_host t ~dir in
-  Expander.set_artifacts expander_for_artifacts ~artifacts_host
-;;
+let expander t ~dir = t.get_expander dir
 
 let get_env_stanza ~dir =
   Dune_load.stanzas_in_dir dir
@@ -100,22 +97,24 @@ let get_impl t dir =
     ~default_artifacts:t.artifacts
 ;;
 
-(* Here we jump through some hoops to construct [t] as well as create a
-   memoization table that has access to [t] and is used in [t.get_node].
+(* Here we jump through some hoops to construct [t] as well as memoized
+   functions that have access to [t] and are used in [t.get_node] and
+   [t.get_expander].
 
    Morally, the code below is just:
 
-   let rec env_tree = ... and memo = ... in env_tree
+   let rec env_tree = ... and get_node = ... and get_expander = ... in env_tree
 
-   However, the right-hand side of [memo] is not allowed in a recursive let
-   binding. To work around this limitation, we place the functions into a
-   recursive module [Rec]. Since recursive let-modules are not allowed either,
-   we need to also wrap [Rec] inside a non-recursive module [Non_rec]. *)
+   However, these right-hand sides are not allowed in a recursive let binding.
+   To work around this limitation, we place the functions into a recursive
+   module [Rec]. Since recursive let-modules are not allowed either, we need to
+   also wrap [Rec] inside a non-recursive module [Non_rec]. *)
 let create ~context ~host_env_tree ~default_env ~root_expander ~artifacts ~context_env =
   let module Non_rec = struct
     module rec Rec : sig
       val env_tree : unit -> t
-      val memo : Path.Build.t -> Env_node.t Memo.t
+      val get_node : Path.Build.t -> Env_node.t Memo.t
+      val get_expander : Path.Build.t -> Expander.t Memo.t
     end = struct
       let env_tree =
         { context
@@ -124,16 +123,28 @@ let create ~context ~host_env_tree ~default_env ~root_expander ~artifacts ~conte
         ; host = host_env_tree
         ; root_expander
         ; artifacts
-        ; get_node = Rec.memo
+        ; get_node = Rec.get_node
+        ; get_expander = Rec.get_expander
         }
       ;;
 
-      let memo =
+      let get_node =
         Memo.exec
           (Memo.create
              "env-nodes-memo"
              ~input:(module Path.Build)
              (fun path -> get_impl env_tree path))
+      ;;
+
+      let get_expander =
+        Memo.exec
+          (Memo.create
+             "super-context-expanders"
+             ~input:(module Path.Build)
+             (fun dir ->
+                let+ expander_for_artifacts = expander_for_artifacts env_tree ~dir in
+                let artifacts_host = artifacts_host env_tree ~dir in
+                Expander.set_artifacts expander_for_artifacts ~artifacts_host))
       ;;
 
       let env_tree () = env_tree

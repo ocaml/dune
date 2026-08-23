@@ -1248,8 +1248,36 @@ let init_with_root_and_rpc ~(root : Workspace_root.t) ~rpc_build (builder : Buil
   let c = build root builder in
   No_build.set c.builder.no_build;
   if c.root.dir <> Filename.current_dir_name then Sys.chdir c.root.dir;
-  Path.set_root (normalize_path (Path.External.cwd ()));
-  Path.Build.set_build_dir (Path.Outside_build_dir.of_string c.builder.build_dir);
+  let source_root = normalize_path (Path.External.cwd ()) in
+  Path.set_root source_root;
+  let build_dir =
+    match Path.Outside_build_dir.of_string c.builder.build_dir with
+    | In_source_dir _ as build_dir -> build_dir
+    | External external_build_dir as build_dir ->
+      let external_build_dir = Path.External.to_string external_build_dir in
+      (match Filename.of_string (Filename.basename external_build_dir) with
+       | None -> build_dir
+       | Some basename ->
+         let parent =
+           Filename.dirname external_build_dir
+           |> Path.External.of_string
+           |> normalize_path
+         in
+         let parent_is_source_root =
+           Path.External.equal parent source_root
+           ||
+           match Unix.realpath (Path.External.to_string parent) with
+           | parent ->
+             Path.External.equal
+               (normalize_path (Path.External.of_string parent))
+               source_root
+           | exception Unix.Unix_error _ -> false
+         in
+         if parent_is_source_root
+         then In_source_dir (Path.Source.relative_fname Path.Source.root basename)
+         else build_dir)
+  in
+  Path.Build.set_build_dir build_dir;
   let () =
     match builder.trace_file with
     | None -> Log.init No_log_file

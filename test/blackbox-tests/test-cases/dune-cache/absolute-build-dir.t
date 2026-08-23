@@ -16,8 +16,8 @@ Populate the shared cache with the relative build directory.
   $ dune build target
   $ rm -rf _build
 
-Rebuilding with the same directory spelled as an absolute path currently misses
-the shared cache. Inspecting cache events tests the lookup directly, without
+Rebuilding with the same directory spelled as an absolute path hits the shared
+cache. Inspecting cache events tests the lookup directly, without
 relying on action output or undeclared targets.
 
   $ DUNE_BUILD_DIR=$PWD/_build dune build target
@@ -30,5 +30,10 @@ relying on action output or undeclared targets.
   >   ]'
   [
     "workspace_local_miss",
-    "miss"
+    "hit"
   ]
+
+Absolute build directories outside the workspace remain external.
+
+  $ DUNE_BUILD_DIR=$PWD/../absolute-build-dir-external dune build target
+  $ test -f ../absolute-build-dir-external/default/target

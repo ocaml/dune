@@ -9,5 +9,18 @@ This test also tests multiple function description modules.
 
   $ LIBEX=$(realpath "$PWD/../libexample")
 
+Pkg-config remains unsandboxed before Dune language 3.25.
+
+  $ PKG_CONFIG_PATH="$LIBEX/pkgconfig" PKG_CONFIG_ARGN="--define-prefix" \
+  > dune build ./example.exe
+  $ dune trace cat | jq_dune -sc '
+  >   [ .[]
+  >   | processes
+  >   | select(.args.prog | basename == "pkg-config")
+  >   | select(.args.process_args | index("--cflags"))
+  >   | (.args.dir | contains(".sandbox"))
+  >   ][0]'
+  false
+
   $ DYLD_LIBRARY_PATH="$LIBEX" LD_LIBRARY_PATH="$LIBEX" PKG_CONFIG_PATH="$LIBEX/pkgconfig" PKG_CONFIG_ARGN="--define-prefix" dune exec ./example.exe
   6

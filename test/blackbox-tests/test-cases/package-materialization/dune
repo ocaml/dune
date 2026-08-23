@@ -7,6 +7,8 @@
   no-transitive-through-targets
   ocamlfind
   redirect-chain
+  template-artifacts
+  template-dependencies
   transitive-closure
   virtual-without-default)
  (deps %{bin:ocamlfind}))

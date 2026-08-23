@@ -41,6 +41,7 @@ module Redirect = Library
 type support =
   { libraries : Library.Set.t
   ; redirects : Redirect.Set.t
+  ; check : unit Action_builder.t
   }
 
 type request =
@@ -288,9 +289,10 @@ let env_for_request context_name request =
 let env context_name packages =
   let open Action_builder.O in
   let { library_support; _ } = Fdecl.get resolvers_fdecl in
-  let* { libraries; redirects } =
+  let* { libraries; redirects; check } =
     Action_builder.of_memo (library_support context_name packages)
   in
+  let* () = check in
   env_for_request context_name { packages; libraries; redirects }
 ;;
 

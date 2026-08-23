@@ -785,6 +785,11 @@ end
 module Meta_and_dune_package : sig
   val meta_and_dune_package_rules : Super_context.t -> Dune_project.t -> unit Memo.t
 
+  val check_support_meta_template
+    :  Super_context.t
+    -> package:Package.t
+    -> unit Action_builder.t
+
   val support_metadata_entries
     :  Super_context.t
     -> package:Package.t
@@ -1228,6 +1233,129 @@ end = struct
       invalid_meta_template package ~loc message
   ;;
 
+  let support_metadata_variables =
+    String.Set.of_list
+      [ "archive"
+      ; "browse_interfaces"
+      ; "directory"
+      ; "dllpath"
+      ; "dlls"
+      ; "exists_if"
+      ; "exports"
+      ; "jsoo_runtime"
+      ; "library_kind"
+      ; "linkopts"
+      ; "mt_linkopts"
+      ; "plugin"
+      ; "ppx"
+      ; "ppx_runtime_deps"
+      ; "ppxopt"
+      ; "requires"
+      ; "wasmoo_runtime"
+      ]
+  ;;
+
+  let normalize_support_metadata meta =
+    let meta = Meta.filter_variable meta ~f:(String.Set.mem support_metadata_variables) in
+    let contents = Format.asprintf "%a" Pp.to_fmt (Pp.vbox (Meta.pp meta.entries)) in
+    Meta.of_string contents ~name:None
+  ;;
+
+  let support_metadata_is_subset ~(of_ : Meta.Simplified.t) meta =
+    let list_is_subset xs ~of_ =
+      let rec loop xs of_ =
+        match xs with
+        | [] -> true
+        | x :: xs ->
+          (match List.findi of_ ~f:(fun y -> Poly.equal x y) with
+           | None -> false
+           | Some (_, index) -> loop xs (List.filteri of_ ~f:(fun i _ -> i <> index)))
+      in
+      loop xs of_
+    in
+    let rules_are_subset
+          { Meta.Simplified.Rules.set_rules; add_rules }
+          ~(of_ : Meta.Simplified.Rules.t)
+      =
+      list_is_subset set_rules ~of_:of_.set_rules
+      && list_is_subset add_rules ~of_:of_.add_rules
+    in
+    let rec loop (meta : Meta.Simplified.t) ~(of_ : Meta.Simplified.t) =
+      String.Map.for_alli meta.vars ~f:(fun name rules ->
+        match String.Map.find of_.vars name with
+        | None -> false
+        | Some of_ -> rules_are_subset rules ~of_)
+      && List.for_all meta.subs ~f:(fun (meta : Meta.Simplified.t) ->
+        match
+          List.find of_.subs ~f:(fun (of_ : Meta.Simplified.t) ->
+            Option.equal Lib_name.equal meta.name of_.name)
+        with
+        | None -> false
+        | Some of_ -> loop meta ~of_)
+    in
+    loop meta ~of_
+  ;;
+
+  let check_support_template (package : Package.t) template ~selected ~rendered =
+    match template with
+    | None -> Action_builder.return ()
+    | Some { path; _ } ->
+      let selected = normalize_support_metadata selected in
+      let rendered = normalize_support_metadata rendered in
+      if support_metadata_is_subset ~of_:selected rendered
+      then Action_builder.return ()
+      else
+        Action_builder.fail
+          { fail =
+              (fun () ->
+                User_error.raise
+                  ~loc:(Loc.in_file path)
+                  [ Pp.textf
+                      "Package %s has a META file template that changes library \
+                       dependencies or artifact metadata."
+                      (Package.Name.to_string (Package.name package))
+                  ; Pp.text
+                      "Such templates cannot be used in a scoped package dependency."
+                  ])
+          }
+  ;;
+
+  let render_meta ~(package : Package.t) template (meta : Meta.t) =
+    let contents =
+      match template with
+      | Some template -> render_meta_template ~package template meta
+      | None -> Format.asprintf "%a" Pp.to_fmt (Pp.vbox (Meta.pp meta.entries))
+    in
+    let parsed =
+      match Meta.of_string contents ~name:(Some (Package.name package)) with
+      | parsed -> parsed
+      | exception User_error.E message ->
+        Code_error.raise
+          "generated invalid META"
+          [ "package", Package.Name.to_dyn (Package.name package)
+          ; "message", User_message.to_dyn message
+          ]
+    in
+    contents, parsed
+  ;;
+
+  let check_support_meta_template sctx ~(package : Package.t) =
+    let context = Super_context.context sctx |> Context.build_context in
+    let lib_entries =
+      Scope.DB.lib_entries_of_package context.name (Package.name package)
+    in
+    let open Action_builder.O in
+    let* template = meta_template context package lib_entries
+    and* selected =
+      let* lib_entries = Action_builder.of_memo lib_entries in
+      meta_entries_for_main_package lib_entries
+      |> Gen_meta.gen ~package ~add_directory_entry:true
+    in
+    let _, parsed = render_meta ~package template selected in
+    let rendered = Meta.complexify parsed in
+    check_support_template package template ~selected ~rendered
+  ;;
+
   let support_metadata_entries
         sctx
         ~(package : Package.t)
@@ -1244,16 +1372,11 @@ end = struct
       let open Action_builder.O in
       let* template = template
       and* selected = Gen_meta.gen ~package ~add_directory_entry:true meta_lib_entries in
-      let contents =
-        match template with
-        | None -> Format.asprintf "%a" Pp.to_fmt (Pp.vbox (Meta.pp selected.entries))
-        | Some template -> render_meta_template ~package template selected
-      in
+      let _, parsed = render_meta ~package template selected in
       let rendered =
-        Meta.of_string contents ~name:(Some package_name)
-        |> Meta.complexify
-        |> Meta.filter_by_package_hierarchy ~selected
+        Meta.complexify parsed |> Meta.filter_by_package_hierarchy ~selected
       in
+      let* () = check_support_template package template ~selected ~rendered in
       Action_builder.return
         (Format.asprintf "%a" Pp.to_fmt (Pp.vbox (Meta.pp rendered.entries)))
     in
@@ -1533,7 +1656,9 @@ let workspace_redirects context =
 
 let library_support_closure context packages =
   let open Memo.O in
-  let* public_libs = Scope.DB.public_libs context
+  let* sctx = Super_context.find_exn context
+  and* public_libs = Scope.DB.public_libs context
+  and* workspace_packages = Dune_load.packages ()
   and* redirects_by_name = workspace_redirects context in
   let collect_redirects name =
     let rec loop name seen redirects =
@@ -1673,7 +1798,14 @@ let library_support_closure context packages =
           (Install_layout.Library.make ~package ~name:(Lib.name lib))
       | _ -> libraries)
   in
-  { Install_layout.libraries; redirects }
+  let check =
+    Package.Name.Set.to_list packages
+    |> List.map ~f:(fun package_name ->
+      let package = Package.Name.Map.find_exn workspace_packages package_name in
+      Meta_and_dune_package.check_support_meta_template sctx ~package)
+    |> Action_builder.all_unit
+  in
+  { Install_layout.libraries; redirects; check }
 ;;
 
 let library_install_entries sctx libraries redirects =

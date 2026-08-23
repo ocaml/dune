@@ -132,6 +132,13 @@ filtered `META` retains only `directory`, which is inherited by findlib
 subpackages. Other template variables at such a node describe that package
 node rather than its selected descendants and are dropped.
 
+A META file template can replace dependency or artifact rules independently of
+Dune's library graph and selected install entries. Such templates remain valid
+for ordinary installation, but a scoped package layout rejects changes to
+dependency and artifact-bearing variables in the selected package hierarchy.
+Rules in unselected support subpackages are filtered first, while explicitly
+requested packages are checked without filtering.
+
 Package sites and their directories are also excluded. The filtered
 `dune-package` consequently uses an empty sites map instead of advertising
 paths that the support layout does not materialize.

@@ -18,6 +18,7 @@ module Redirect = Library
 type support =
   { libraries : Library.Set.t
   ; redirects : Redirect.Set.t
+  ; check : unit Action_builder.t
   }
 
 type generated_entry =

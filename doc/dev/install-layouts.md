@@ -122,7 +122,8 @@ the support closure, Dune therefore generates a filtered `META` and
 `dune-package` containing only the selected libraries and relevant deprecated
 library redirects. The layout similarly contains only those libraries'
 interfaces, archives, runtime files, headers, and stubs. Library references
-serialized by inline-test backends and PPX drivers are also included. Unrelated
+serialized by inline-test backends, PPX drivers, and instrumentation backends
+are also included. Unrelated
 sibling libraries and non-library entries such as binaries, data, and
 documentation are excluded.
 

@@ -1455,7 +1455,7 @@ let library_support_closure context packages =
   in
   let serialized_dependencies lib =
     match Lib.Local.of_lib lib with
-    | None -> Memo.return []
+    | None -> Memo.return ([], Install_layout.Redirect.Set.empty)
     | Some local ->
       let info = Lib.Local.info local in
       let names =
@@ -1469,29 +1469,49 @@ let library_support_closure context packages =
       let names =
         List.rev_append (Ppx_driver.Driver.serialized_replacements info) names
       in
+      let instrumentation_backend = Lib_info.instrumentation_backend info in
+      let names =
+        match instrumentation_backend with
+        | None -> names
+        | Some instrumentation_ppx -> instrumentation_ppx :: names
+      in
       let* scope = Scope.DB.find_by_dir (Lib_info.src_dir info) in
-      Memo.parallel_map names ~f:(fun name ->
-        Lib.DB.resolve (Scope.libs scope) name |> Resolve.Memo.read_memo)
+      let+ libraries =
+        Memo.parallel_map names ~f:(fun name ->
+          Lib.DB.resolve (Scope.libs scope) name |> Resolve.Memo.read_memo)
+      in
+      let redirects =
+        match instrumentation_backend with
+        | None -> Install_layout.Redirect.Set.empty
+        | Some instrumentation_ppx -> collect_redirects (snd instrumentation_ppx)
+      in
+      libraries, redirects
   in
   let extra_dependencies libraries =
     Memo.parallel_map libraries ~f:(fun lib ->
       if not (Lib.is_local lib)
-      then Memo.return []
+      then Memo.return ([], Install_layout.Redirect.Set.empty)
       else
         let* ppx_runtime_deps =
           Memo.parallel_map [ Compilation_mode.Ocaml; Melange ] ~f:(fun for_ ->
             Lib.ppx_runtime_deps lib ~for_ |> Resolve.Memo.read_memo)
           >>| List.concat
-        and* serialized_dependencies = serialized_dependencies lib in
-        Memo.return (List.rev_append ppx_runtime_deps serialized_dependencies))
-    >>| List.concat
+        and* serialized_dependencies, redirects = serialized_dependencies lib in
+        Memo.return (List.rev_append ppx_runtime_deps serialized_dependencies, redirects))
+    >>| List.split
+    >>| fun (libraries, redirects) ->
+    ( List.concat libraries
+    , List.fold_left
+        redirects
+        ~init:Install_layout.Redirect.Set.empty
+        ~f:Install_layout.Redirect.Set.union )
   in
-  let rec loop todo expanded inspected libraries =
+  let rec loop todo expanded inspected libraries redirects =
     match todo with
-    | [] -> Memo.return libraries
+    | [] -> Memo.return (libraries, redirects)
     | lib :: todo ->
       if Lib.Set.mem expanded lib
-      then loop todo expanded inspected libraries
+      then loop todo expanded inspected libraries redirects
       else
         let* closure = library_closure lib in
         let expanded = Lib.Set.add expanded lib in
@@ -1500,10 +1520,18 @@ let library_support_closure context packages =
         in
         let inspected = List.fold_left uninspected ~init:inspected ~f:Lib.Set.add in
         let libraries = List.fold_left closure ~init:libraries ~f:Lib.Set.add in
-        let* extra_dependencies = extra_dependencies uninspected in
-        loop (List.rev_append extra_dependencies todo) expanded inspected libraries
+        let* extra_dependencies, extra_redirects = extra_dependencies uninspected in
+        let redirects = Install_layout.Redirect.Set.union redirects extra_redirects in
+        loop
+          (List.rev_append extra_dependencies todo)
+          expanded
+          inspected
+          libraries
+          redirects
   in
-  let+ closure = loop roots Lib.Set.empty Lib.Set.empty Lib.Set.empty in
+  let+ closure, redirects =
+    loop roots Lib.Set.empty Lib.Set.empty Lib.Set.empty redirects
+  in
   let libraries =
     Lib.Set.fold closure ~init:Install_layout.Library.Set.empty ~f:(fun lib libraries ->
       match Lib.is_local lib, Lib_info.package (Lib.info lib) with

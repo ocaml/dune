@@ -29,6 +29,6 @@ relative form:
 An absolute path that is genuinely outside the workspace should produce a
 clean user error rather than a crash.
 
-  $ dune utop /tmp/does-not-exist 2>&1 | grep "cannot find"
-  Error: cannot find directory: /tmp/does-not-exist
+  $ dune utop /tmp/does-not-exist
+  Error: Path is not a descendant of the workspace root.
   [1]

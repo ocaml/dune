@@ -83,6 +83,19 @@ Defaults to commonjs / `.js` if no config present at all
   $ ls _build/default/output
   main.js
 
+dune shouldn't accept an empty module_systems field
+
+  $ dune clean
+  $ cat > dune <<EOF
+  > (melange.emit
+  >  (alias mel)
+  >  (target output)
+  >  (emit_stdlib false)
+  >  (module_systems))
+  > EOF
+
+  $ dune build @mel
+
 Errors out if extension starts with dot
 
   $ cat > dune <<EOF

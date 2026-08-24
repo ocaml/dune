@@ -1,5 +1,6 @@
 (cram
  (applies_to
+  deprecated-package-redirect
   installed-package
   no-transitive-through-targets
   ocamlfind

@@ -79,25 +79,28 @@ virtual library itself:
   > let v = "virt"
   > EOF
 
-The implementation of the parameter is missing its documentation, unlike the
-implementation of the virtual library which is documented by the virtual library
-itself:
+Every library gets its documentation, except the implementation of the virtual
+library:
 
   $ dune build @doc
   $ find _build/default/_doc/_odocls -name '*.odocl' | sort
   _build/default/_doc/_odocls/project/page-index.odocl
   _build/default/_doc/_odocls/project/param.odocl
+  _build/default/_doc/_odocls/project/param_impl.odocl
   _build/default/_doc/_odocls/project/plib.odocl
   _build/default/_doc/_odocls/project/user.odocl
   _build/default/_doc/_odocls/project/virt.odocl
 
-The package index does not mention it either:
+The package index lists them all:
 
   $ cat _build/default/_doc/_mlds/project/index.mld
   {0 project index}
   {1 Library project.param}
   The entry point of this library is the module:
   {!module-Param}.
+  {1 Library project.param_impl}
+  The entry point of this library is the module:
+  {!module-Param_impl}.
   {1 Library project.plib}
   The entry point of this library is the module:
   {!module-Plib}.
@@ -108,11 +111,12 @@ The package index does not mention it either:
   The entry point of this library is the module:
   {!module-Virt}.
 
-The new documentation generator misses it too:
+The new documentation generator agrees:
 
   $ dune build @doc-new 2>/dev/null
   $ find _build/default/_doc_new/odoc/local -name '*.odocl' | sort
   _build/default/_doc_new/odoc/local/project/param/param.odocl
+  _build/default/_doc_new/odoc/local/project/param_impl/param_impl.odocl
   _build/default/_doc_new/odoc/local/project/plib/plib.odocl
   _build/default/_doc_new/odoc/local/project/user/user.odocl
   _build/default/_doc_new/odoc/local/project/virt/virt.odocl

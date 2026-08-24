@@ -461,7 +461,6 @@ module Context = struct
       ; name : Context_name.t
       ; host_context : Context_name.t option
       ; paths : (string * Ordered_set_lang.t) list
-      ; fdo_target_exe : Path.t option
       ; dynamically_linked_foreign_archives : bool
       ; instrument_with : Lib_name.t list
       ; merlin : Merlin.t
@@ -489,7 +488,6 @@ module Context = struct
           ; name
           ; host_context
           ; paths
-          ; fdo_target_exe
           ; dynamically_linked_foreign_archives
           ; instrument_with
           ; merlin
@@ -504,21 +502,12 @@ module Context = struct
       && Context_name.equal name t.name
       && Option.equal Context_name.equal host_context t.host_context
       && List.equal (Tuple.T2.equal String.equal Ordered_set_lang.equal) paths t.paths
-      && Option.equal Path.equal fdo_target_exe t.fdo_target_exe
       && Bool.equal
            dynamically_linked_foreign_archives
            t.dynamically_linked_foreign_archives
       && List.equal Lib_name.equal instrument_with t.instrument_with
       && Merlin.equal merlin t.merlin
       && Cms_cmt_dependency.equal cms_cmt_dependency t.cms_cmt_dependency
-    ;;
-
-    let fdo_suffix t =
-      match t.fdo_target_exe with
-      | None -> ""
-      | Some file ->
-        let name, _ = Path.split_extension file in
-        "-fdo-" ^ (Path.basename name |> Filename.to_string)
     ;;
 
     let decode =
@@ -537,28 +526,6 @@ module Context = struct
             (Dune_lang.Syntax.since syntax (2, 0) >>> bool)
         in
         not disable
-      and+ fdo_target_exe =
-        let f file =
-          let ext =
-            Stdlib.Filename.extension file |> Filename.Extension.Or_empty.of_string_exn
-          in
-          if Filename.Extension.Or_empty.check ext Filename.Extension.exe
-          then Path.relative Path.root file
-          else
-            User_error.raise
-              [ Pp.concat
-                  ~sep:Pp.space
-                  [ User_message.command (sprintf "fdo %s" file)
-                  ; Pp.textf
-                      "expects executable filename ending with .exe extension, not %s. \n\
-                       Please specify the name of the executable to optimize, including \
-                       path from <root>."
-                      (Filename.Extension.Or_empty.to_string ext)
-                  ]
-                |> Pp.hovbox
-              ]
-        in
-        field_o "fdo" (Dune_lang.Syntax.since syntax (2, 0) >>> map string ~f)
       and+ paths =
         let f l =
           match
@@ -617,7 +584,6 @@ module Context = struct
         ; host_context
         ; toolchain
         ; paths
-        ; fdo_target_exe
         ; dynamically_linked_foreign_archives
         ; instrument_with
         ; merlin =
@@ -669,13 +635,12 @@ module Context = struct
           match name with
           | Some s -> s
           | None ->
-            let name = switch ^ Common.fdo_suffix base in
-            (match Context_name.of_string_opt name with
+            (match Context_name.of_string_opt switch with
              | Some s -> s
              | None ->
                User_error.raise
                  ~loc:loc_switch
-                 ?hints:(name_hint_opt name)
+                 ?hints:(name_hint_opt switch)
                  [ Pp.textf
                      "The name generated from this switch can not be used as a context \
                       name. Please use (name) to disambiguate."
@@ -715,12 +680,7 @@ module Context = struct
       in
       fun ~profile_default ~instrument_with_default ~x ->
         let common = common ~profile_default ~instrument_with_default in
-        let default =
-          (* TODO proper error handling with locs *)
-          let name = Context_name.to_string common.name ^ Common.fdo_suffix common in
-          Context_name.parse_string_exn (Loc.none, name)
-        in
-        let name = Option.value ~default name in
+        let name = Option.value ~default:common.name name in
         let base = { common with targets = Target.add common.targets x; name } in
         { base; lock_dir }
     ;;
@@ -807,7 +767,6 @@ module Context = struct
           ; env = None
           ; toolchain = None
           ; paths = []
-          ; fdo_target_exe = None
           ; dynamically_linked_foreign_archives = true
           ; instrument_with = Option.value instrument_with ~default:[]
           ; merlin = Not_selected

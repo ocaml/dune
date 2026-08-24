@@ -210,18 +210,17 @@ let include_dir_flags ~expander ~dir ~include_dirs =
      Command.Args.S (List.map include_dirs_expanded ~f:args_of_include_dir))
 ;;
 
-let base_flags ~(kind : Foreign_language.t) ~use_standard_flags ~ctx ~ocaml_config =
+let base_flags ~(kind : Foreign_language.t) ~use_standard_flags ~ocaml_config =
   match kind with
-  | Cxx -> Fdo.cxx_flags ctx
+  | Cxx -> []
   | C ->
     (match use_standard_flags with
-     | Some true -> Fdo.c_flags ctx
+     | Some true -> []
      | None | Some false ->
        (* In dune < 2.8 flags from ocamlc_config are always added *)
        List.concat
          [ Ocaml_config.ocamlc_cflags ocaml_config
          ; Ocaml_config.ocamlc_cppflags ocaml_config
-         ; Fdo.c_flags ctx
          ])
 ;;
 
@@ -253,7 +252,6 @@ let compilation_flags ~sctx ~dir ~expander ~loc ~(src : Foreign.Source.t) =
   base_flags
     ~kind
     ~use_standard_flags:(Dune_project.use_standard_c_and_cxx_flags project)
-    ~ctx
     ~ocaml_config:ocaml.ocaml_config
   @ user_flags
 ;;

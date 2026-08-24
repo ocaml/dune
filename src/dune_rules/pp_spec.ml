@@ -18,3 +18,8 @@ let pped_modules_map preprocess v =
   in
   Staged.stage (fun m -> Module_name.Per_item.get map (Module.name m) m)
 ;;
+
+let pped_modules preprocess version modules =
+  let map = Staged.unstage (pped_modules_map preprocess version) in
+  Modules.map_user_written modules ~f:(fun m -> Memo.return (map m))
+;;

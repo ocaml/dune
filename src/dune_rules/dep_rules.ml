@@ -215,8 +215,7 @@ let preprocessed_modules_of_local_lib ~sctx lib ~for_ =
       ~instrumentation_backend:(Lib.DB.instrumentation_backend (Scope.libs scope))
     |> Resolve.Memo.read_memo
   in
-  let pped_map = Staged.unstage (Pp_spec.pped_modules_map preprocess version) in
-  Modules.map_user_written modules ~f:(fun m -> Memo.return (pped_map m))
+  Pp_spec.pped_modules preprocess version modules
 ;;
 
 type imported_vlib_deps =

@@ -11,6 +11,9 @@ module Driver : sig
   val flags : t -> Ordered_set_lang.Unexpanded.t
   val as_ppx_flags : t -> Ordered_set_lang.Unexpanded.t
   val lint_flags : t -> Ordered_set_lang.Unexpanded.t
+
+  (** Libraries named by the driver's serialized [replaces] field. *)
+  val serialized_replacements : _ Lib_info.t -> (Loc.t * Lib_name.t) list
 end
 
 val build_ppx_driver

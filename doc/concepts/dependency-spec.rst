@@ -40,9 +40,14 @@ Dependencies in ``dune`` files can be specified using one of the following:
   from the workspace.
 - ``(package <pkg>)`` builds the files installed by ``<package>`` and adds
   them to the action's environment: bin entries on ``PATH``, libraries on
-  ``OCAMLPATH``, stublibs on ``CAML_LD_LIBRARY_PATH``, and so on. Only the
-  named package is added; transitive package dependencies must be listed
-  separately.
+  ``OCAMLPATH``, stublibs on ``CAML_LD_LIBRARY_PATH``, and so on. For a
+  workspace package, Dune also adds the workspace libraries in the transitive
+  OCaml and Melange closures of the libraries it installs. Only those
+  libraries' artifacts and metadata are added, not the other contents of their
+  owning packages.
+  This makes the same library closure findable before and after installation.
+  Dune does not follow dependencies from package metadata; non-library package
+  dependencies must be listed separately.
 - ``(env_var <var>)`` depends on the value of the environment variable ``<var>``.
   If this variable becomes set, becomes unset, or changes value, the target
   will be rebuilt.

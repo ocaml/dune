@@ -683,16 +683,10 @@ let setup_runtime_assets_rules sctx ~scope ~dir ~mode ~promote_in_source ~output
   Runtime_deps.targets sctx ~dir ~output ~for_ mel
   >>= fun { Runtime_deps.copy; deps } ->
   let loc = mel.loc in
+  let project = Scope.project scope in
   Memo.parallel_map copy ~f:(fun (src, dst) ->
     let mode =
-      compute_promote_in_source
-        ~promote_in_source
-        ~project:(Scope.project scope)
-        ~dir
-        ~output
-        ~mode
-        ~src
-        ~dst
+      compute_promote_in_source ~promote_in_source ~project ~dir ~output ~mode ~src ~dst
     in
     Memo.Option.bind
       (Path.as_in_build_dir src)

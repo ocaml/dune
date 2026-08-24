@@ -52,6 +52,31 @@ let rec filter_variable t ~f =
   }
 ;;
 
+let rec filter_by_package_hierarchy t ~selected =
+  let selected_has_rules =
+    List.exists selected.entries ~f:(function
+      | Rule { var = "directory"; _ } | Comment _ | Package _ -> false
+      | Rule _ -> true)
+  in
+  let selected_packages =
+    List.filter_map selected.entries ~f:(function
+      | Package package -> Some package
+      | Comment _ | Rule _ -> None)
+  in
+  let entries =
+    List.filter_map t.entries ~f:(function
+      | Comment _ -> None
+      | Rule ({ var = "directory"; _ } as rule) -> Some (Rule rule)
+      | Rule _ as rule -> Option.some_if selected_has_rules rule
+      | Package package ->
+        List.find selected_packages ~f:(fun selected ->
+          Option.equal Lib_name.equal selected.name package.name)
+        |> Option.map ~f:(fun selected ->
+          Package (filter_by_package_hierarchy package ~selected)))
+  in
+  { t with entries }
+;;
+
 module Simplified = struct
   module Rules = struct
     type t =
@@ -320,16 +345,16 @@ let pp_predicate p =
      | Neg p -> "-" ^ p)
 ;;
 
+let escape_quoted_string s = String.escape_only '"' (String.escape_only '\\' s)
+
 let pp_print_text s =
   let open Pp.O in
-  Pp.verbatim "\"" ++ Pp.hvbox (Pp.text (String.escape_only '"' s)) ++ Pp.verbatim "\""
+  Pp.verbatim "\"" ++ Pp.hvbox (Pp.text (escape_quoted_string s)) ++ Pp.verbatim "\""
 ;;
 
 let pp_print_string s =
   let open Pp.O in
-  Pp.verbatim "\""
-  ++ Pp.hvbox (Pp.verbatim (String.escape_only '"' s))
-  ++ Pp.verbatim "\""
+  Pp.verbatim "\"" ++ Pp.hvbox (Pp.verbatim (escape_quoted_string s)) ++ Pp.verbatim "\""
 ;;
 
 let pp_quoted_value var =

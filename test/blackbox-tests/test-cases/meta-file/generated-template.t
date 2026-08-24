@@ -1,5 +1,5 @@
-Rule-generated META file templates are currently accepted when malformed. The
-rule omits a final newline so the diagnostic must use the exact contents.
+Rule-generated META file templates are validated using their exact contents and
+are diagnosed at their build path.
 
   $ make_dune_project_with_package 2.7 generated
 
@@ -18,10 +18,9 @@ rule omits a final newline so the diagnostic must use the exact contents.
   > EOF
 
   $ dune build @install
-
-The generated template has the exact unterminated contents, including no final
-newline, and those contents reach the generated META file.
-
-  $ printf 'package "broken" (' | cmp - _build/default/META.generated.template
-  $ grep '^package "broken" (' _build/default/META.generated
-  package "broken" (
+  File "_build/default/META.generated.template", line 1, characters 18-18:
+  1 | package "broken" (
+                        
+  Error: Invalid META template for package generated.
+  1 closing parentheses missing
+  [1]

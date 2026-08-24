@@ -816,73 +816,68 @@ let run
                   (String.lowercase_ascii path |> Path.of_string)
             in
             let check () =
-              (* The normalization below only models ASCII case-folding.
-                 Other Windows and Unicode aliases are kept sequential. *)
-              if Sys.win32
-              then false
-              else (
-                match
-                  ( List.map entries ~f:(fun (_, dst, _) -> canonicalize dst)
-                    |> Option.List.all
-                  , List.map entries ~f:(fun (_, dst, _) ->
-                      artifact_substitution_temp_file dst |> canonicalize)
-                    |> Option.List.all
-                  , List.map
-                      entries
-                      ~f:(fun ((entry : Path.t Install.Entry.Expanded.t), _, _) ->
-                        canonicalize entry.src)
-                    |> Option.List.all )
-                with
-                | None, _, _ | _, None, _ | _, _, None -> false
-                | Some paths, Some staging_paths, Some sources ->
-                  (* Artifact substitution stages copies in the [.#] namespace. *)
-                  let rec uses_reserved_temp_path path =
-                    match Path.parent path with
-                    | None -> false
-                    | Some parent ->
-                      let basename = Path.basename path |> Filename.to_string in
-                      String.starts_with basename ~prefix:".#"
-                      || uses_reserved_temp_path parent
-                  in
-                  let rec add_with_ancestors paths path =
-                    let paths = Path.Set.add paths path in
-                    match Path.parent path with
-                    | None -> paths
-                    | Some parent -> add_with_ancestors paths parent
-                  in
-                  let rec path_or_ancestor_is_in paths path =
-                    Path.Set.mem paths path
-                    ||
-                    match Path.parent path with
-                    | None -> false
-                    | Some parent -> path_or_ancestor_is_in paths parent
-                  in
-                  let rec collect destinations = function
-                    | [] -> Some destinations
-                    | path :: paths ->
-                      if Path.Set.mem destinations path
-                      then None
-                      else collect (Path.Set.add destinations path) paths
-                  in
-                  let source_paths = Path.Set.of_list sources in
-                  let source_ancestors =
-                    List.fold_left sources ~init:Path.Set.empty ~f:add_with_ancestors
-                  in
-                  let write_paths = paths @ staging_paths in
-                  if
-                    List.exists (paths @ sources) ~f:uses_reserved_temp_path
-                    || List.exists write_paths ~f:(fun dst ->
-                      Path.Set.mem source_ancestors dst
-                      || path_or_ancestor_is_in source_paths dst)
-                  then false
-                  else (
-                    match collect Path.Set.empty write_paths with
-                    | None -> false
-                    | Some destinations ->
-                      List.for_all write_paths ~f:(fun path ->
-                        match Path.parent path with
-                        | None -> true
-                        | Some parent -> not (path_or_ancestor_is_in destinations parent))))
+              match
+                ( List.map entries ~f:(fun (_, dst, _) -> canonicalize dst)
+                  |> Option.List.all
+                , List.map entries ~f:(fun (_, dst, _) ->
+                    artifact_substitution_temp_file dst |> canonicalize)
+                  |> Option.List.all
+                , List.map
+                    entries
+                    ~f:(fun ((entry : Path.t Install.Entry.Expanded.t), _, _) ->
+                      canonicalize entry.src)
+                  |> Option.List.all )
+              with
+              | None, _, _ | _, None, _ | _, _, None -> false
+              | Some paths, Some staging_paths, Some sources ->
+                (* Artifact substitution stages copies in the [.#] namespace. *)
+                let rec uses_reserved_temp_path path =
+                  match Path.parent path with
+                  | None -> false
+                  | Some parent ->
+                    let basename = Path.basename path |> Filename.to_string in
+                    String.starts_with basename ~prefix:".#"
+                    || uses_reserved_temp_path parent
+                in
+                let rec add_with_ancestors paths path =
+                  let paths = Path.Set.add paths path in
+                  match Path.parent path with
+                  | None -> paths
+                  | Some parent -> add_with_ancestors paths parent
+                in
+                let rec path_or_ancestor_is_in paths path =
+                  Path.Set.mem paths path
+                  ||
+                  match Path.parent path with
+                  | None -> false
+                  | Some parent -> path_or_ancestor_is_in paths parent
+                in
+                let rec collect destinations = function
+                  | [] -> Some destinations
+                  | path :: paths ->
+                    if Path.Set.mem destinations path
+                    then None
+                    else collect (Path.Set.add destinations path) paths
+                in
+                let source_paths = Path.Set.of_list sources in
+                let source_ancestors =
+                  List.fold_left sources ~init:Path.Set.empty ~f:add_with_ancestors
+                in
+                let write_paths = paths @ staging_paths in
+                if
+                  List.exists (paths @ sources) ~f:uses_reserved_temp_path
+                  || List.exists write_paths ~f:(fun dst ->
+                    Path.Set.mem source_ancestors dst
+                    || path_or_ancestor_is_in source_paths dst)
+                then false
+                else (
+                  match collect Path.Set.empty write_paths with
+                  | None -> false
+                  | Some destinations ->
+                    List.for_all write_paths ~f:(fun path ->
+                      match Path.parent path with
+                      | None -> true
+                      | Some parent -> not (path_or_ancestor_is_in destinations parent)))
             in
             match Exn_with_backtrace.try_with check with
             | Ok independent -> independent

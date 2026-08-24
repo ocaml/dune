@@ -131,14 +131,16 @@ end
 
 module Info = Inline_tests_info.Tests
 
+let library_name_binding lib_name =
+  Pform.Map.singleton
+    (Pform.Var Library_name)
+    [ Value.String (Lib_name.Local.to_string lib_name) ]
+;;
+
 let flags ~(info : Info.t) ~expander ~backends ~lib_name ~partition =
   let expander =
+    let bindings = library_name_binding lib_name in
     let bindings =
-      let bindings =
-        Pform.Map.singleton
-          (Pform.Var Library_name)
-          [ Value.String (Lib_name.Local.to_string lib_name) ]
-      in
       match partition with
       | None -> bindings
       | Some p -> Pform.Map.add_exn bindings (Pform.Var Partition) [ Value.String p ]
@@ -162,12 +164,7 @@ let partition_flags ~expander ~lib_name ~(backends : Backend.t list) =
     let flags =
       let open Action_builder.O in
       let expander =
-        let bindings =
-          Pform.Map.singleton
-            (Pform.Var Library_name)
-            [ Value.String (Lib_name.Local.to_string lib_name) ]
-        in
-        Expander.add_bindings expander ~bindings
+        Expander.add_bindings expander ~bindings:(library_name_binding lib_name)
       in
       List.map
         flags

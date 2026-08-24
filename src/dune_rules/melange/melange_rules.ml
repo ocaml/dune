@@ -125,8 +125,7 @@ let modules_in_obj_dir ~sctx ~scope ~preprocess modules =
     let+ ocaml = Context.ocaml (Super_context.context sctx) in
     ocaml.version
   and* preprocess = instrument_preprocess ~scope preprocess in
-  let pped_map = Staged.unstage (Pp_spec.pped_modules_map preprocess version) in
-  Modules.map_user_written modules ~f:(fun m -> Memo.return @@ pped_map m)
+  Pp_spec.pped_modules preprocess version modules
 ;;
 
 let emit_modules_and_obj_dir ~dir_contents ~scope (mel : Melange_stanzas.Emit.t) =

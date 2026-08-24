@@ -504,14 +504,15 @@ let add_opam_file_rules sctx project =
 
 let add_rules sctx project =
   Memo.when_ (Dune_project.generate_opam_files project) (fun () ->
+    let context = Super_context.context sctx in
     let packages = Dune_project.packages project in
     Memo.parallel_iter_seq
       (Dune_lang.Package_name.Map.to_seq packages)
       ~f:(fun (_name, (pkg : Package.t)) ->
         let* () =
           add_alias_rule
-            (Context.build_context (Super_context.context sctx))
-            ~profile:(Context.profile (Super_context.context sctx))
+            (Context.build_context context)
+            ~profile:(Context.profile context)
             ~project
             ~pkg
         in

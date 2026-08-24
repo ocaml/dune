@@ -220,13 +220,6 @@ let rec validate_dir_can_be_created dir =
     Option.iter (Path.parent dir) ~f:validate_dir_can_be_created
 ;;
 
-let validate_install_destination ~dir ~dst =
-  validate_dir_can_be_created dir;
-  match Path.readdir_unsorted dst with
-  | Ok (_ :: _) -> raise_non_empty_dir_should_be_deleted dst
-  | Ok [] | Error _ -> ()
-;;
-
 module File_ops_dry_run (Verbosity : sig
     val verbosity : Display.t
   end) : File_operations = struct
@@ -518,6 +511,157 @@ let cmd_what = function
   | Uninstall -> "uninstall"
 ;;
 
+module Install_plan = struct
+  module Entry = struct
+    type t =
+      { entry : Path.t Install.Entry.Expanded.t
+      ; dst : Path.t
+      ; dir : Path.t
+      }
+  end
+
+  type t = Entry.t list
+
+  let make entries ~package ~roots ~destdir : t =
+    let paths = Install.Paths.make ~relative:Path.relative ~package ~roots in
+    List.map entries ~f:(fun entry ->
+      let dst =
+        Install.Entry.relative_installed_path entry ~paths |> interpret_destdir ~destdir
+      in
+      { Entry.entry; dst; dir = Path.parent_exn dst })
+  ;;
+
+  let validate_destination { Entry.dst; dir; _ } =
+    validate_dir_can_be_created dir;
+    match Path.readdir_unsorted dst with
+    | Ok (_ :: _) -> raise_non_empty_dir_should_be_deleted dst
+    | Ok [] | Error _ -> ()
+  ;;
+
+  let destinations_are_valid t =
+    match Exn_with_backtrace.try_with (fun () -> List.iter t ~f:validate_destination) with
+    | Ok () -> true
+    | Error _ -> false
+  ;;
+
+  let sources_can_be_copied_concurrently t =
+    List.for_all t ~f:(fun { Entry.entry; _ } ->
+      (* Opening a directory may succeed and only fail once copying starts. Keep it
+         sequential so the error stops later entries. *)
+      match Unix.stat (Path.to_string entry.src) with
+      | { st_kind = S_DIR; _ } -> false
+      | _ -> true
+      | exception Unix.Unix_error _ -> false)
+  ;;
+
+  let artifact_substitution_temp_file dst =
+    let dst_dir = Path.parent_exn dst in
+    let dst_name = Path.basename dst |> Filename.to_string in
+    Path.relative dst_dir (sprintf ".#%s.dune-temp" dst_name)
+  ;;
+
+  let canonicalize_for_comparison path =
+    let rec loop path suffix =
+      match Unix.realpath (Path.to_string path) with
+      | path -> Some (List.fold_left suffix ~init:(Path.of_string path) ~f:Path.relative)
+      | exception Unix.Unix_error ((ENOENT | ENOTDIR), _, _) ->
+        (match Unix.lstat (Path.to_string path) with
+         | { st_kind = S_LNK; _ } -> None
+         | _ | (exception Unix.Unix_error ((ENOENT | ENOTDIR), _, _)) ->
+           (match Path.parent path with
+            | None -> Some path
+            | Some parent ->
+              let basename = Path.basename path |> Filename.to_string in
+              loop parent (basename :: suffix)))
+    in
+    (* Case-folding is conservative on case-sensitive filesystems and prevents
+       aliases from racing on case-insensitive ones. *)
+    match loop path [] with
+    | None -> None
+    | Some path ->
+      let path = Path.to_string path in
+      Option.some_if
+        (String.for_all path ~f:(fun c -> Char.code c < 0x80))
+        (String.lowercase_ascii path |> Path.of_string)
+  ;;
+
+  (* Artifact substitution stages copies in the [.#] namespace. *)
+  let rec uses_reserved_temp_path path =
+    match Path.parent path with
+    | None -> false
+    | Some parent ->
+      let basename = Path.basename path |> Filename.to_string in
+      String.starts_with basename ~prefix:".#" || uses_reserved_temp_path parent
+  ;;
+
+  let rec add_with_ancestors paths path =
+    let paths = Path.Set.add paths path in
+    match Path.parent path with
+    | None -> paths
+    | Some parent -> add_with_ancestors paths parent
+  ;;
+
+  let rec path_or_ancestor_is_in paths path =
+    Path.Set.mem paths path
+    ||
+    match Path.parent path with
+    | None -> false
+    | Some parent -> path_or_ancestor_is_in paths parent
+  ;;
+
+  let rec set_if_distinct paths = function
+    | [] -> Some paths
+    | path :: rest ->
+      if Path.Set.mem paths path
+      then None
+      else set_if_distinct (Path.Set.add paths path) rest
+  ;;
+
+  let destinations_are_independent_exn t =
+    match
+      ( List.map t ~f:(fun { Entry.dst; _ } -> canonicalize_for_comparison dst)
+        |> Option.List.all
+      , List.map t ~f:(fun { Entry.dst; _ } ->
+          artifact_substitution_temp_file dst |> canonicalize_for_comparison)
+        |> Option.List.all
+      , List.map t ~f:(fun { Entry.entry; _ } -> canonicalize_for_comparison entry.src)
+        |> Option.List.all )
+    with
+    | None, _, _ | _, None, _ | _, _, None -> false
+    | Some paths, Some staging_paths, Some sources ->
+      let source_paths = Path.Set.of_list sources in
+      let source_ancestors =
+        List.fold_left sources ~init:Path.Set.empty ~f:add_with_ancestors
+      in
+      let write_paths = paths @ staging_paths in
+      if
+        List.exists (paths @ sources) ~f:uses_reserved_temp_path
+        || List.exists write_paths ~f:(fun dst ->
+          Path.Set.mem source_ancestors dst || path_or_ancestor_is_in source_paths dst)
+      then false
+      else (
+        match set_if_distinct Path.Set.empty write_paths with
+        | None -> false
+        | Some destinations ->
+          List.for_all write_paths ~f:(fun path ->
+            match Path.parent path with
+            | None -> true
+            | Some parent -> not (path_or_ancestor_is_in destinations parent)))
+  ;;
+
+  let destinations_are_independent t =
+    match Exn_with_backtrace.try_with (fun () -> destinations_are_independent_exn t) with
+    | Ok independent -> independent
+    | Error _ -> false
+  ;;
+
+  let can_install_concurrently t =
+    sources_can_be_copied_concurrently t
+    && destinations_are_independent t
+    && destinations_are_valid t
+  ;;
+end
+
 let install_entry
       ~ops
       ~conf
@@ -742,16 +886,8 @@ let run
         let* roots = get_dirs context ~prefix_from_command_line ~from_command_line in
         let conf = Artifact_substitution.Conf.of_install ~relocatable ~roots ~context in
         Fiber.sequential_iter entries_per_package ~f:(fun (package, entries) ->
-          let entries =
-            List.map entries ~f:(fun entry ->
-              let paths = Install.Paths.make ~relative:Path.relative ~package ~roots in
-              let dst =
-                Install.Entry.relative_installed_path entry ~paths
-                |> interpret_destdir ~destdir
-              in
-              entry, dst, Path.parent_exn dst)
-          in
-          let install_entry output_mode (entry, dst, dir) =
+          let plan = Install_plan.make entries ~package ~roots ~destdir in
+          let install_planned_entry output_mode { Install_plan.Entry.entry; dst; dir } =
             install_entry
               ~ops:(module Ops)
               ~conf
@@ -763,146 +899,25 @@ let run
               ~verbosity
               entry
           in
-          let install_destinations_are_valid () =
-            match
-              Exn_with_backtrace.try_with (fun () ->
-                List.iter entries ~f:(fun (_, dst, dir) ->
-                  validate_install_destination ~dir ~dst))
-            with
-            | Ok () -> true
-            | Error _ -> false
-          in
-          let install_sources_can_be_copied_concurrently () =
-            List.for_all
-              entries
-              ~f:(fun ((entry : Path.t Install.Entry.Expanded.t), _, _) ->
-                (* Opening a directory may succeed and only fail once copying
-                 starts. Keep it sequential so the error stops later entries. *)
-                match Unix.stat (Path.to_string entry.src) with
-                | { st_kind = S_DIR; _ } -> false
-                | _ -> true
-                | exception Unix.Unix_error _ -> false)
-          in
-          let install_destinations_are_independent () =
-            let artifact_substitution_temp_file dst =
-              let dst_dir = Path.parent_exn dst in
-              let dst_name = Path.basename dst |> Filename.to_string in
-              Path.relative dst_dir (sprintf ".#%s.dune-temp" dst_name)
-            in
-            let canonicalize path =
-              let rec loop path suffix =
-                match Unix.realpath (Path.to_string path) with
-                | path ->
-                  Some
-                    (List.fold_left suffix ~init:(Path.of_string path) ~f:Path.relative)
-                | exception Unix.Unix_error ((ENOENT | ENOTDIR), _, _) ->
-                  (match Unix.lstat (Path.to_string path) with
-                   | { st_kind = S_LNK; _ } -> None
-                   | _ | (exception Unix.Unix_error ((ENOENT | ENOTDIR), _, _)) ->
-                     (match Path.parent path with
-                      | None -> Some path
-                      | Some parent ->
-                        let basename = Path.basename path |> Filename.to_string in
-                        loop parent (basename :: suffix)))
-              in
-              (* Case-folding is conservative on case-sensitive filesystems and
-                 prevents aliases from racing on case-insensitive ones. *)
-              match loop path [] with
-              | None -> None
-              | Some path ->
-                let path = Path.to_string path in
-                Option.some_if
-                  (String.for_all path ~f:(fun c -> Char.code c < 0x80))
-                  (String.lowercase_ascii path |> Path.of_string)
-            in
-            let check () =
-              match
-                ( List.map entries ~f:(fun (_, dst, _) -> canonicalize dst)
-                  |> Option.List.all
-                , List.map entries ~f:(fun (_, dst, _) ->
-                    artifact_substitution_temp_file dst |> canonicalize)
-                  |> Option.List.all
-                , List.map
-                    entries
-                    ~f:(fun ((entry : Path.t Install.Entry.Expanded.t), _, _) ->
-                      canonicalize entry.src)
-                  |> Option.List.all )
-              with
-              | None, _, _ | _, None, _ | _, _, None -> false
-              | Some paths, Some staging_paths, Some sources ->
-                (* Artifact substitution stages copies in the [.#] namespace. *)
-                let rec uses_reserved_temp_path path =
-                  match Path.parent path with
-                  | None -> false
-                  | Some parent ->
-                    let basename = Path.basename path |> Filename.to_string in
-                    String.starts_with basename ~prefix:".#"
-                    || uses_reserved_temp_path parent
-                in
-                let rec add_with_ancestors paths path =
-                  let paths = Path.Set.add paths path in
-                  match Path.parent path with
-                  | None -> paths
-                  | Some parent -> add_with_ancestors paths parent
-                in
-                let rec path_or_ancestor_is_in paths path =
-                  Path.Set.mem paths path
-                  ||
-                  match Path.parent path with
-                  | None -> false
-                  | Some parent -> path_or_ancestor_is_in paths parent
-                in
-                let rec collect destinations = function
-                  | [] -> Some destinations
-                  | path :: paths ->
-                    if Path.Set.mem destinations path
-                    then None
-                    else collect (Path.Set.add destinations path) paths
-                in
-                let source_paths = Path.Set.of_list sources in
-                let source_ancestors =
-                  List.fold_left sources ~init:Path.Set.empty ~f:add_with_ancestors
-                in
-                let write_paths = paths @ staging_paths in
-                if
-                  List.exists (paths @ sources) ~f:uses_reserved_temp_path
-                  || List.exists write_paths ~f:(fun dst ->
-                    Path.Set.mem source_ancestors dst
-                    || path_or_ancestor_is_in source_paths dst)
-                then false
-                else (
-                  match collect Path.Set.empty write_paths with
-                  | None -> false
-                  | Some destinations ->
-                    List.for_all write_paths ~f:(fun path ->
-                      match Path.parent path with
-                      | None -> true
-                      | Some parent -> not (path_or_ancestor_is_in destinations parent)))
-            in
-            match Exn_with_backtrace.try_with check with
-            | Ok independent -> independent
-            | Error _ -> false
-          in
           let* entries =
             match what with
             | Uninstall ->
-              Fiber.sequential_map entries ~f:(fun (entry, dst, dir) ->
+              Fiber.sequential_map plan ~f:(fun { Install_plan.Entry.entry; dst; dir } ->
                 Ops.remove_file_if_exists dst |> Output.emit_all;
                 files_deleted_in := Path.Set.add !files_deleted_in dir;
                 Fiber.return entry)
             | Install
               when dry_run
                    || create_install_files
-                   || (not (install_sources_can_be_copied_concurrently ()))
-                   || (not (install_destinations_are_independent ()))
-                   || not (install_destinations_are_valid ()) ->
-              Fiber.sequential_map entries ~f:(fun entry -> install_entry Immediate entry)
+                   || not (Install_plan.can_install_concurrently plan) ->
+              Fiber.sequential_map plan ~f:(install_planned_entry Immediate)
             | Install ->
               let* results =
-                Fiber.parallel_map entries ~f:(fun entry ->
+                Fiber.parallel_map plan ~f:(fun entry ->
                   let output = ref [] in
                   let+ result =
-                    Fiber.collect_errors (fun () -> install_entry (Buffered output) entry)
+                    Fiber.collect_errors (fun () ->
+                      install_planned_entry (Buffered output) entry)
                   in
                   result, List.rev !output)
               in

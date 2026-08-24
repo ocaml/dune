@@ -95,22 +95,19 @@ let output_of_lib =
 ;;
 
 let js_outputs_of_module ~module_systems ~output m =
-  match module_systems with
-  | [] -> []
-  | _ :: _ ->
-    let dst_dir =
-      let src_dir =
-        Module.source m ~ml_kind:Impl
-        |> Option.value_exn
-        |> Module.File.original_path
-        |> Path.parent_exn
-      in
-      Output_kind.output_path output src_dir
+  let dst_dir =
+    let src_dir =
+      Module.source m ~ml_kind:Impl
+      |> Option.value_exn
+      |> Module.File.original_path
+      |> Path.parent_exn
     in
-    let basename = Module_compilation.melange_js_basename m in
-    List.map module_systems ~f:(fun (module_system, js_ext) ->
-      let basename = Filename.add_extension basename js_ext in
-      module_system, Path.Build.relative_fname dst_dir basename)
+    Output_kind.output_path output src_dir
+  in
+  let basename = Module_compilation.melange_js_basename m in
+  Nonempty_list.to_list_map module_systems ~f:(fun (module_system, js_ext) ->
+    let basename = Filename.add_extension basename js_ext in
+    module_system, Path.Build.relative_fname dst_dir basename)
 ;;
 
 let instrument_preprocess ~scope preprocess =

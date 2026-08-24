@@ -6,7 +6,7 @@ module Emit : sig
     { loc : Loc.t
     ; target : string
     ; alias : Alias.Name.t option
-    ; module_systems : (Melange.Module_system.t * Filename.Extension.t) list
+    ; module_systems : (Melange.Module_system.t * Filename.Extension.t) Nonempty_list.t
     ; modules : Modules_settings.t
     ; emit_stdlib : bool
     ; libraries : Lib_dep.t list

@@ -6,7 +6,7 @@ module Emit = struct
     { loc : Loc.t
     ; target : string
     ; alias : Alias.Name.t option
-    ; module_systems : (Melange.Module_system.t * Filename.Extension.t) list
+    ; module_systems : (Melange.Module_system.t * Filename.Extension.t) Nonempty_list.t
     ; modules : Modules_settings.t
     ; emit_stdlib : bool
     ; libraries : Lib_dep.t list
@@ -67,7 +67,9 @@ module Emit = struct
           Filename.Extension.Map.of_list_map module_systems ~f:(fun (ms, (loc, ext)) ->
             ext, (loc, ms))
         with
-        | Ok m -> Filename.Extension.Map.to_list_map m ~f:(fun ext (_loc, ms) -> ms, ext)
+        | Ok m ->
+          Filename.Extension.Map.to_list_map m ~f:(fun ext (_loc, ms) -> ms, ext)
+          |> Nonempty_list.of_list_exn
         | Error (ext, (_, (loc1, _)), (_, (loc2, _))) ->
           let main_message =
             Pp.textf
@@ -114,7 +116,10 @@ module Emit = struct
          field "target" (plain_string (fun ~loc s -> of_string ~loc s))
        and+ alias = field_o "alias" Dune_lang.Alias.decode
        and+ module_systems =
-         field "module_systems" module_systems ~default:[ Melange.Module_system.default ]
+         field
+           "module_systems"
+           module_systems
+           ~default:Nonempty_list.[ Melange.Module_system.default ]
        and+ libraries =
          field "libraries" (Lib_dep.L.decode ~allow_re_export:false) ~default:[]
        and+ package = Stanza_pkg.field_opt () >>| Option.map ~f:snd

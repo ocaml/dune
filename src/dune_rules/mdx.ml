@@ -200,6 +200,7 @@ let syntax =
     ; (0, 3), `Since (3, 2)
     ; (0, 4), `Since (3, 8)
     ; (0, 5), `Since (3, 22)
+    ; (0, 6), `Since (3, 25)
     ]
 ;;
 
@@ -435,6 +436,10 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~mdx_prog =
     (* We call mdx to generate the testing executable source *)
     Command.run_dyn_prog
       ~dir:(Path.build dir)
+      ~sandbox:
+        (if Dune_lang.Syntax.Version.Infix.(t.version >= (0, 6))
+         then Sandbox_config.needs_sandboxing
+         else Sandbox_config.no_special_requirements)
       mdx_prog
       ~stdout_to
       [ A "dune-gen"

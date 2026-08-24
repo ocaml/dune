@@ -43,3 +43,25 @@ Mdx tests run in a sandbox, so undeclared files are not visible.
   +top secret
    ```
   [1]
+
+The mdx generator is also sandboxed starting with version 0.6.
+
+  $ mdx_generator_is_sandboxed() {
+  >   dune trace cat | jq_dune -sc '
+  >     [ .[]
+  >     | processes
+  >     | select(.args.prog | basename == "ocaml-mdx")
+  >     | select(.args.process_args[0] == "dune-gen")
+  >     | (.args.dir | contains(".sandbox"))
+  >     ][0]'
+  > }
+
+  $ make_mdx_project 3.25 0.5
+  $ dune build mdx_gen.ml-gen
+  $ mdx_generator_is_sandboxed
+  false
+
+  $ make_mdx_project 3.25 0.6
+  $ dune build mdx_gen.ml-gen
+  $ mdx_generator_is_sandboxed
+  true

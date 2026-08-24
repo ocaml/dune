@@ -74,4 +74,16 @@ overlay // {
     nativeBuildInputs = (old.nativeBuildInputs or [ ]) ++ [ pkgs.binaryen ];
     patches = (old.patches or [ ]) ++ [ ./patches/wasm_of_ocaml-args-basename.patch ];
   });
+  # Use the OxCaml fork of Odoc for AST compatibility
+  odoc = osuper.odoc.overrideAttrs (old: {
+    version = "3.2.0+ox2";
+    src = pkgs.fetchFromGitHub {
+      owner = "oxcaml";
+      repo = "odoc";
+      # branch 5.2.0minus-39
+      rev = "b7b9090ac3dadc7b4b2108b2d21dd6667cd1be0f";
+      hash = "sha256-frnTw0yGFfN/Hh89z70jWTa4VXDzNDeuH0Miblrx2m0=";
+    };
+    buildInputs = (old.buildInputs or [ ]) ++ [ oself.result ];
+  });
 }

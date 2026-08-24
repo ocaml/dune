@@ -219,6 +219,7 @@ let lint_module sctx ~sandbox ~pps_sandbox ~dir ~expander ~lint ~lib_name ~scope
 
 let pp_one_module
       sctx
+      ~context
       ~lib_name
       ~scope
       ~preprocessor_deps
@@ -230,6 +231,7 @@ let pp_one_module
       (pp : _ Preprocess.Without_future_syntax.t)
   =
   let open Action_builder.O in
+  let command_dir = Context.build_dir context |> Path.build in
   match pp with
   | No_preprocessing ->
     Staged.stage
@@ -271,7 +273,7 @@ let pp_one_module
             "ppx command"
             (let* exe, driver, flags =
                Ppx_driver.ppx_driver_and_flags
-                 (Super_context.context sctx)
+                 context
                  ~expander
                  ~loc
                  ~scope
@@ -286,7 +288,7 @@ let pp_one_module
                  ~standard:(Action_builder.return [ "--as-ppx" ])
              and* () = preprocessor_deps in
              Command.expand_no_targets
-               ~dir:(Super_context.context sctx |> Context.build_dir |> Path.build)
+               ~dir:command_dir
                (S [ Dep (Path.build exe); As driver_flags; As flags ])
              >>| Appendable_list.to_list)
         in
@@ -319,7 +321,7 @@ let pp_one_module
           (let* () = Action_builder.return () in
            let* exe, driver, flags =
              Ppx_driver.ppx_driver_and_flags
-               (Super_context.context sctx)
+               context
                ~expander
                ~loc
                ~lib_name
@@ -364,11 +366,8 @@ let pp_one_module
                   (let open Action_builder.O in
                    preprocessor_deps
                    >>> let* exe, flags, args = driver_and_flags in
-                       let dir =
-                         Super_context.context sctx |> Context.build_dir |> Path.build
-                       in
                        Command.run'
-                         ~dir
+                         ~dir:command_dir
                          ~sandbox
                          ~env
                          (Ok (Path.build exe))
@@ -395,7 +394,8 @@ let make
       ~scope
   =
   let preprocessor_deps = preprocessor_deps @ instrumentation_deps in
-  let+ ocaml = Context.ocaml (Super_context.context sctx) in
+  let context = Super_context.context sctx in
+  let+ ocaml = Context.ocaml context in
   let preprocess =
     Module_name.Per_item.map preprocess ~f:(fun pp ->
       Preprocess.remove_future_syntax ~for_:Compiler pp ocaml.version)
@@ -435,6 +435,7 @@ let make
     Staged.unstage
     @@ pp_one_module
          sctx
+         ~context
          ~lib_name
          ~scope
          ~preprocessor_deps

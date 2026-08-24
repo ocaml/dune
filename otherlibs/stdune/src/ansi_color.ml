@@ -519,42 +519,45 @@ let make_printer supports_color ppf =
 let print = Staged.unstage (make_printer stdout_supports_color Format.std_formatter)
 let prerr = Staged.unstage (make_printer stderr_supports_color Format.err_formatter)
 
-let strip str =
+let escape_sequence_end str ~start =
   let len = String.length str in
-  let buf = Buffer.create len in
-  let rec loop start i =
-    if i = len
-    then (
-      if i - start > 0 then Buffer.add_substring buf str start (i - start);
-      Buffer.contents buf)
-    else (
-      match String.unsafe_get str i with
-      | '\027' ->
-        if i - start > 0 then Buffer.add_substring buf str start (i - start);
-        skip (i + 1)
-      | _ -> loop start (i + 1))
-  and skip i =
-    if i = len
-    then Buffer.contents buf
-    else (
-      match String.unsafe_get str i with
-      | 'm' -> loop (i + 1) (i + 1)
-      | _ -> skip (i + 1))
-  in
-  loop 0 0
+  if start + 1 >= len || str.[start] <> '\027' || str.[start + 1] <> '['
+  then None
+  else (
+    let rec loop i =
+      if i = len
+      then None
+      else (
+        match str.[i] with
+        | 'm' -> Some (i, `Style)
+        | 'K' -> Some (i, `Erase_line)
+        | '0' .. '9' | ';' -> loop (i + 1)
+        | _ -> None)
+    in
+    loop (start + 2))
 ;;
 
-let index_from_any str start chars =
-  let n = String.length str in
-  let rec go i =
-    if i >= n
-    then None
-    else (
-      match List.find chars ~f:(fun c -> Char.equal str.[i] c) with
-      | None -> go (i + 1)
-      | Some c -> Some (i, c))
-  in
-  go start
+let strip str =
+  match String.index_from str 0 '\027' with
+  | None -> str
+  | Some first_escape ->
+    let len = String.length str in
+    let buf = Buffer.create len in
+    let rec loop start i =
+      if i = len
+      then (
+        Buffer.add_substring buf str start (i - start);
+        Buffer.contents buf)
+      else if str.[i] = '\027'
+      then (
+        match escape_sequence_end str ~start:i with
+        | None -> loop start (i + 1)
+        | Some (sequence_end, _) ->
+          Buffer.add_substring buf str start (i - start);
+          loop (sequence_end + 1) (sequence_end + 1))
+      else loop start (i + 1)
+    in
+    loop 0 first_escape
 ;;
 
 let rec parse_styles l (accu : Style.t list) =
@@ -626,34 +629,34 @@ let parse_line str styles =
       in
       Pp.seq acc s)
   in
-  let rec loop (styles : Style.t list) i acc =
-    match String.index_from str i '\027' with
-    | None -> styles, add_chunk acc ~styles ~pos:i ~len:(len - i)
-    | Some seq_start ->
-      let acc = add_chunk acc ~styles ~pos:i ~len:(seq_start - i) in
-      (* Skip the "\027[" *)
-      let seq_start = seq_start + 2 in
-      if seq_start >= len || str.[seq_start - 1] <> '['
-      then styles, acc
-      else (
-        match index_from_any str seq_start [ 'm'; 'K' ] with
-        | None -> styles, acc
-        | Some (seq_end, 'm') ->
-          let styles =
-            if seq_start = seq_end
-            then
-              (* Some commands output "\027[m", which seems to be interpreted
-                 the same as "\027[0m" by terminals *)
-              []
-            else
-              String.sub str ~pos:seq_start ~len:(seq_end - seq_start)
-              |> String.split ~on:';'
-              |> parse_styles styles
-          in
-          loop styles (seq_end + 1) acc
-        | Some (seq_end, _) -> loop styles (seq_end + 1) acc)
+  let rec loop (styles : Style.t list) chunk_start search_start acc =
+    match String.index_from str search_start '\027' with
+    | None -> styles, add_chunk acc ~styles ~pos:chunk_start ~len:(len - chunk_start)
+    | Some sequence_start ->
+      (match escape_sequence_end str ~start:sequence_start with
+       | None -> loop styles chunk_start (sequence_start + 1) acc
+       | Some (sequence_end, terminator) ->
+         let acc =
+           add_chunk acc ~styles ~pos:chunk_start ~len:(sequence_start - chunk_start)
+         in
+         let styles =
+           match terminator with
+           | `Erase_line -> styles
+           | `Style ->
+             let parameters_start = sequence_start + 2 in
+             if parameters_start = sequence_end
+             then
+               (* Some commands output "\027[m", which seems to be interpreted
+                  the same as "\027[0m" by terminals. *)
+               []
+             else
+               String.sub str ~pos:parameters_start ~len:(sequence_end - parameters_start)
+               |> String.split ~on:';'
+               |> parse_styles styles
+         in
+         loop styles (sequence_end + 1) (sequence_end + 1) acc)
   in
-  loop styles 0 Pp.nop
+  loop styles 0 0 Pp.nop
 ;;
 
 let parse =

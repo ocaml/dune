@@ -7,6 +7,13 @@ type t =
       ; dir : Path.Source.t
       }
 
+module Name = struct
+  type t = string
+
+  let to_string s = s
+  let to_alias = Alias_name.of_string
+end
+
 let fname_in_dir_test = Filename.run_t
 let suffix = ".t"
 let is_cram_suffix fn = String.ends_with (Filename.to_string fn) ~suffix

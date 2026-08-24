@@ -10,6 +10,14 @@ type t =
 
 val to_dyn : t -> Dyn.t
 
+module Name : sig
+  (** The basename used to identify a cram test. *)
+  type t
+
+  val to_string : t -> string
+  val to_alias : t -> Alias_name.t
+end
+
 (** Checks if a filename has the ".t" suffix for a cram test. *)
 val is_cram_suffix : Filename.t -> bool
 
@@ -19,7 +27,7 @@ val fname_in_dir_test : Filename.t
 (** The [name] of a cram test. If this is a file test, then it will be the file
     name without the cram suffix. If this is a directory test, then it will be
     the directory name without the cram suffix. *)
-val name : t -> string
+val name : t -> Name.t
 
 (** The [path] associated to a cram test. If this is a file test, then it will
     be the file. If this is a directory test, then it will be the directory. *)

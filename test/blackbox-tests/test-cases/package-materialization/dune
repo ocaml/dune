@@ -3,5 +3,6 @@
   installed-package
   no-transitive-through-targets
   ocamlfind
+  template-dependencies
   virtual-without-default)
  (deps %{bin:ocamlfind}))

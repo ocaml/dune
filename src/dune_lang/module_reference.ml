@@ -50,8 +50,34 @@ let is_qualified t =
 
 let make ~loc ~mode path = { loc; path; mode }
 
-let parse_component loc component =
-  Module_name.of_string_user_error (loc, component) |> User_error.ok_exn
+let slash_separated_path value =
+  match String.split value ~on:'/' with
+  | first :: second :: rest ->
+    Option.List.traverse (first :: second :: rest) ~f:Module_name.of_string_opt
+    |> Option.map ~f:Nonempty_list.of_list_exn
+  | [] | [ _ ] -> None
+;;
+
+let parse_component loc ~mode component =
+  match Module_name.of_string_user_error (loc, component) with
+  | Ok name -> name
+  | Error message ->
+    let message =
+      match mode with
+      | Legacy -> message
+      | Path ->
+        (match slash_separated_path component with
+         | None -> message
+         | Some suggestion ->
+           { message with
+             User_message.hints =
+               [ Pp.textf
+                   "%s would be a correct module reference"
+                   (Module_name.Path.to_string suggestion)
+               ]
+           })
+    in
+    User_error.ok_exn (Error message)
 ;;
 
 let of_string version (loc, value) =
@@ -65,7 +91,9 @@ let of_string version (loc, value) =
        (3, 25)
        ~what:"Using qualified module references"
    | (Legacy | Path), _ -> ());
-  let path = List.map components ~f:(parse_component loc) |> Nonempty_list.of_list_exn in
+  let path =
+    List.map components ~f:(parse_component loc ~mode) |> Nonempty_list.of_list_exn
+  in
   make ~loc ~mode path
 ;;
 

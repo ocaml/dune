@@ -221,6 +221,73 @@ let package loc pkg_name (context : Build_context.t) ~dune_version =
       }
 ;;
 
+let library_closure lib =
+  let open Memo.O in
+  Memo.parallel_map [ Compilation_mode.Ocaml; Melange ] ~f:(fun for_ ->
+    let* compile_closure =
+      Lib.closure [ lib ] ~linking:false ~for_ |> Resolve.Memo.read_memo
+    and* link_closure =
+      Lib.partial_link_closure [ lib ] ~for_ |> Resolve.Memo.read_memo
+    in
+    Memo.return (List.rev_append compile_closure link_closure))
+  >>| List.concat
+  >>| Lib.Set.of_list
+  >>| Lib.Set.to_list
+;;
+
+let library_support_closure context packages =
+  let open Memo.O in
+  let* public_libs = Scope.DB.public_libs context in
+  let* roots =
+    Package.Name.Set.to_list packages
+    |> Memo.parallel_map ~f:(fun package ->
+      let* { Scope.DB.Lib_entry.Set.libraries; deprecated_library_names } =
+        Scope.DB.lib_entries_of_package context package
+      in
+      let+ redirect_targets =
+        Memo.parallel_map deprecated_library_names ~f:(fun { new_public_name; _ } ->
+          Lib.DB.resolve public_libs new_public_name |> Resolve.Memo.read_memo)
+      in
+      List.rev_append (List.rev_map libraries ~f:Lib.Local.to_lib) redirect_targets)
+    >>| List.concat
+  in
+  let extra_dependencies libraries =
+    Memo.parallel_map libraries ~f:(fun lib ->
+      if Lib.is_local lib
+      then
+        Memo.parallel_map [ Compilation_mode.Ocaml; Melange ] ~f:(fun for_ ->
+          Lib.ppx_runtime_deps lib ~for_ |> Resolve.Memo.read_memo)
+        >>| List.concat
+      else Memo.return [])
+    >>| List.concat
+  in
+  let rec loop todo expanded inspected libraries =
+    match todo with
+    | [] -> Memo.return libraries
+    | lib :: todo ->
+      if Lib.Set.mem expanded lib
+      then loop todo expanded inspected libraries
+      else
+        let* closure = library_closure lib in
+        let expanded = Lib.Set.add expanded lib in
+        let uninspected =
+          List.filter closure ~f:(fun lib -> not (Lib.Set.mem inspected lib))
+        in
+        let inspected = List.fold_left uninspected ~init:inspected ~f:Lib.Set.add in
+        let libraries = List.fold_left closure ~init:libraries ~f:Lib.Set.add in
+        let* extra_dependencies = extra_dependencies uninspected in
+        loop (List.rev_append extra_dependencies todo) expanded inspected libraries
+  in
+  let+ closure = loop roots Lib.Set.empty Lib.Set.empty Lib.Set.empty in
+  Lib.Set.fold closure ~init:Install_layout.Library.Set.empty ~f:(fun lib libraries ->
+    match Lib.is_local lib, Lib_info.package (Lib.info lib) with
+    | true, Some package when not (Package.Name.Set.mem packages package) ->
+      Install_layout.Library.Set.add
+        libraries
+        (Install_layout.Library.make ~package ~name:(Lib.name lib))
+    | _ -> libraries)
+;;
+
 let rec dep expander : Dep_conf.t -> _ = function
   | Include s ->
     (* TODO this is wrong. we shouldn't allow bindings here if we are in an
@@ -339,7 +406,11 @@ and combined_package_deps_builder expander pkgs =
   let* env =
     if Package.Name.Set.is_empty local_package_names
     then Action_builder.return Env.empty
-    else Install_layout.env context.name local_package_names
+    else
+      let* support_libraries =
+        Action_builder.of_memo (library_support_closure context.name local_package_names)
+      in
+      Install_layout.env context.name local_package_names support_libraries
   in
   let dune_version = Expander.project expander |> Dune_project.dune_version in
   let+ () =

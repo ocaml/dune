@@ -1,26 +1,109 @@
 open Import
 
-module Key : sig
-  val encode : Package.Name.Set.t -> string
-  val decode : string -> Package.Name.Set.t option
-end = struct
-  let reverse_table : (Digest.t, Package.Name.Set.t) Table.t =
-    Table.create (module Digest) 128
-  ;;
+module Library = struct
+  module T = struct
+    type t =
+      { package : Package.Name.t
+      ; name : Lib_name.t
+      }
 
-  let encode packages =
-    let sorted = Package.Name.Set.to_list packages in
-    let y = Digest.repr Repr.(list Package.Name.repr) sorted in
+    let compare a b =
+      match Package.Name.compare a.package b.package with
+      | Eq -> Lib_name.compare a.name b.name
+      | ordering -> ordering
+    ;;
+
+    let hash { package; name } =
+      Tuple.T2.hash Package.Name.hash Lib_name.hash (package, name)
+    ;;
+
+    let to_dyn { package; name } =
+      Dyn.record [ "package", Package.Name.to_dyn package; "name", Lib_name.to_dyn name ]
+    ;;
+  end
+
+  include T
+  include Comparable.Make (T)
+
+  let make ~package ~name = { package; name }
+  let package t = t.package
+  let name t = t.name
+
+  let repr =
+    Repr.view
+      Repr.(pair Package.Name.repr Lib_name.repr)
+      ~to_:(fun { package; name } -> package, name)
+  ;;
+end
+
+type request =
+  { packages : Package.Name.Set.t
+  ; libraries : Library.Set.t
+  }
+
+let request_equal a b =
+  Package.Name.Set.equal a.packages b.packages
+  && Library.Set.equal a.libraries b.libraries
+;;
+
+let request_hash { packages; libraries } =
+  Tuple.T2.hash
+    (List.hash Package.Name.hash)
+    (List.hash Library.hash)
+    (Package.Name.Set.to_list packages, Library.Set.to_list libraries)
+;;
+
+let request_to_dyn { packages; libraries } =
+  Dyn.record
+    [ "packages", Package.Name.Set.to_dyn packages
+    ; "libraries", Library.Set.to_dyn libraries
+    ]
+;;
+
+type generated_entry =
+  { package : Package.Name.t
+  ; section : Section.t
+  ; dst : Install.Entry.Dst.t
+  ; contents : string Action_builder.t
+  }
+
+type library_entries =
+  { install_entries : (Package.Name.t * Install.Entry.Sourced.Unexpanded.t) list
+  ; generated_entries : generated_entry list
+  }
+
+type materialized_source =
+  | Symlink of Path.t Install.Entry.Expanded.t
+  | Contents of string Action_builder.t
+
+type materialized_entry =
+  { package : Package.Name.t
+  ; section : Section.t
+  ; dst : Install.Entry.Dst.t
+  ; kind : Install.Entry.Expanded.kind
+  ; source : materialized_source
+  }
+
+module Key : sig
+  val encode : request -> string
+  val decode : string -> request option
+end = struct
+  let reverse_table : (Digest.t, request) Table.t = Table.create (module Digest) 128
+
+  let encode ({ packages; libraries } as request) =
+    let y =
+      Digest.repr
+        Repr.(pair (list Package.Name.repr) (list Library.repr))
+        (Package.Name.Set.to_list packages, Library.Set.to_list libraries)
+    in
     (match Table.find reverse_table y with
-     | None -> Table.set reverse_table y packages
-     | Some packages' ->
-       if not (Package.Name.Set.equal packages packages')
+     | None -> Table.set reverse_table y request
+     | Some request' ->
+       if not (request_equal request request')
        then
          Code_error.raise
-           "Hash collision between sets of packages"
-           [ "cached", Package.Name.Set.to_dyn packages'
-           ; "new", Package.Name.Set.to_dyn packages
-           ]);
+           "Hash collision between install layout requests"
+           [ "cached", request_to_dyn request'; "new", request_to_dyn request ]);
     Digest.to_string y
   ;;
 
@@ -31,14 +114,14 @@ end = struct
   ;;
 end
 
-let entry_resolver_fdecl
-  : (Context_name.t -> Package.Name.t -> Install.Entry.Sourced.Unexpanded.t list Memo.t)
-      Fdecl.t
-  =
-  Fdecl.create Dyn.opaque
-;;
+type resolvers =
+  { package_entries :
+      Context_name.t -> Package.Name.t -> Install.Entry.Sourced.Unexpanded.t list Memo.t
+  ; library_entries : Context_name.t -> Library.Set.t -> library_entries Memo.t
+  }
 
-let set_entry_resolver f = Fdecl.set entry_resolver_fdecl f
+let resolvers_fdecl : resolvers Fdecl.t = Fdecl.create Dyn.opaque
+let set_resolvers resolvers = Fdecl.set resolvers_fdecl resolvers
 
 let dir ~context ~key =
   Path.Build.L.relative (Install.Context.dir ~context) [ ".packages"; key ]
@@ -49,43 +132,89 @@ let dir ~context ~key =
    materialised path under the layout. Collisions (two packages installing
    to the same destination, which can only happen in _root sections) are
    reported as user errors naming the conflicting packages and entry. *)
-let compute_entries context_name root packages =
+let compute_entries context_name root { packages; libraries } =
+  let overlapping_libraries =
+    Library.Set.to_list libraries
+    |> List.filter ~f:(fun library ->
+      Package.Name.Set.mem packages (Library.package library))
+  in
+  if List.is_non_empty overlapping_libraries
+  then
+    Code_error.raise
+      "Install layout request contains support libraries owned by explicit packages"
+      [ "packages", Package.Name.Set.to_dyn packages
+      ; "libraries", Dyn.list Library.to_dyn overlapping_libraries
+      ];
   let open Memo.O in
-  let get_entries = Fdecl.get entry_resolver_fdecl in
-  Package.Name.Set.to_list packages
-  |> Memo.parallel_map ~f:(fun pkg ->
+  let { package_entries; library_entries } = Fdecl.get resolvers_fdecl in
+  let resolve_entry (pkg, (s : Install.Entry.Sourced.Unexpanded.t)) =
     let install_paths =
       let roots = Install.Roots.opam_from_prefix Path.root ~relative:Path.relative in
       Install.Paths.make ~relative:Path.relative ~package:pkg ~roots
     in
-    let+ entries = get_entries context_name pkg in
-    List.filter_map entries ~f:(fun (s : Install.Entry.Sourced.Unexpanded.t) ->
-      let entry = s.entry in
-      match entry.kind with
-      | Install.Entry.Unexpanded.Source_tree -> None
-      | File | Directory ->
-        let relative =
-          Install.Entry.relative_installed_path entry ~paths:install_paths
-          |> Path.as_in_source_tree_exn
-        in
-        let dst = Path.Build.append_source root relative in
-        let expanded =
-          Install.Entry.Expanded.set_src
-            (Install.Entry.Unexpanded.expand entry)
-            (Path.build entry.src)
-        in
-        Some (dst, (pkg, expanded))))
-  >>| List.concat
-  >>| Path.Build.Map.of_list
-  >>| function
-  | Ok m -> Path.Build.Map.map m ~f:snd
-  | Error (_, (pkg_a, entry_a), (pkg_b, _)) ->
+    let entry = s.entry in
+    match entry.kind with
+    | Install.Entry.Unexpanded.Source_tree -> None
+    | File | Directory ->
+      let relative =
+        Install.Entry.relative_installed_path entry ~paths:install_paths
+        |> Path.as_in_source_tree_exn
+      in
+      let dst = Path.Build.append_source root relative in
+      let expanded =
+        Install.Entry.Expanded.set_src
+          (Install.Entry.Unexpanded.expand entry)
+          (Path.build entry.src)
+      in
+      Some
+        ( dst
+        , { package = pkg
+          ; section = expanded.section
+          ; dst = expanded.dst
+          ; kind = expanded.kind
+          ; source = Symlink expanded
+          } )
+  in
+  let resolve_generated { package; section; dst; contents } =
+    let install_paths =
+      let roots = Install.Roots.opam_from_prefix Path.root ~relative:Path.relative in
+      Install.Paths.make ~relative:Path.relative ~package ~roots
+    in
+    let relative =
+      Install.Entry.Dst.install_path install_paths section dst
+      |> Path.as_in_source_tree_exn
+    in
+    let path = Path.Build.append_source root relative in
+    ( path
+    , { package
+      ; section
+      ; dst
+      ; kind = Install.Entry.Expanded.File
+      ; source = Contents contents
+      } )
+  in
+  let* package_entries =
+    Package.Name.Set.to_list packages
+    |> Memo.parallel_map ~f:(fun pkg ->
+      let+ entries = package_entries context_name pkg in
+      List.map entries ~f:(fun entry -> pkg, entry))
+    >>| List.concat
+  and* { install_entries = library_entries; generated_entries } =
+    library_entries context_name libraries
+  in
+  let entries =
+    List.append package_entries library_entries |> List.filter_map ~f:resolve_entry
+  in
+  let entries = List.append entries (List.map generated_entries ~f:resolve_generated) in
+  match Path.Build.Map.of_list entries with
+  | Ok m -> Memo.return m
+  | Error (_, entry_a, entry_b) ->
     User_error.raise
       ~hints:[ Pp.text "Rename one of the install entries." ]
       [ Pp.textf
           "%S and %S both install %S to section %s."
-          (Package.Name.to_string pkg_a)
-          (Package.Name.to_string pkg_b)
+          (Package.Name.to_string entry_a.package)
+          (Package.Name.to_string entry_b.package)
           (Install.Entry.Dst.to_string entry_a.dst)
           (Section.to_string entry_a.section)
       ; Pp.text
@@ -96,46 +225,49 @@ let compute_entries context_name root packages =
 ;;
 
 let entries =
-  let set_hash s = List.hash Package.Name.hash (Package.Name.Set.to_list s) in
   let memo =
     Memo.create
       "install-layout-entries"
       ~input:
         (module struct
-          type t = Context_name.t * Package.Name.Set.t
+          type t = Context_name.t * request
 
-          let equal = Tuple.T2.equal Context_name.equal Package.Name.Set.equal
-          let hash = Tuple.T2.hash Context_name.hash set_hash
-          let to_dyn = Tuple.T2.to_dyn Context_name.to_dyn Package.Name.Set.to_dyn
+          let equal = Tuple.T2.equal Context_name.equal request_equal
+          let hash = Tuple.T2.hash Context_name.hash request_hash
+          let to_dyn = Tuple.T2.to_dyn Context_name.to_dyn request_to_dyn
         end)
-      (fun (context, packages) ->
-         let key = Key.encode packages in
+      (fun (context, request) ->
+         let key = Key.encode request in
          let root = dir ~context ~key in
-         compute_entries context root packages)
+         compute_entries context root request)
   in
-  fun context packages -> Memo.exec memo (context, packages)
+  fun context request -> Memo.exec memo (context, request)
 ;;
 
-let files context_name packages =
+let files context_name request =
   let open Memo.O in
-  let+ entries = entries context_name packages in
+  let+ entries = entries context_name request in
   Path.Build.Map.keys entries |> List.map ~f:Path.build
 ;;
 
-let deps context_name packages =
+let deps context_name request =
   let open Action_builder.O in
-  let* files = Action_builder.of_memo (files context_name packages) in
+  let* files = Action_builder.of_memo (files context_name request) in
   Action_builder.paths files
 ;;
 
-let root context_name packages = dir ~context:context_name ~key:(Key.encode packages)
+let root context_name request = dir ~context:context_name ~key:(Key.encode request)
 
-let env context_name packages =
+let env_for_request context_name request =
   let open Action_builder.O in
-  let+ () = deps context_name packages in
-  let layout_root = root context_name packages in
+  let+ () = deps context_name request in
+  let layout_root = root context_name request in
   let roots = Install.Roots.opam_from_prefix layout_root ~relative:Path.Build.relative in
   Install.Roots.add_to_env roots Env.empty
+;;
+
+let env context_name packages libraries =
+  env_for_request context_name { packages; libraries }
 ;;
 
 let make_dispatch ~dir ~directory_targets subdirs f =
@@ -160,8 +292,8 @@ let gen_rules context_name ~dir rest =
   | [ key ] ->
     (match Key.decode key with
      | None -> Memo.return Build_config.Gen_rules.no_rules
-     | Some packages ->
-       let+ entries = entries context_name packages in
+     | Some request ->
+       let+ entries = entries context_name request in
        let directory_targets =
          Path.Build.Map.filter_map entries ~f:(fun entry ->
            match (entry.kind : Install.Entry.Expanded.kind) with
@@ -170,11 +302,14 @@ let gen_rules context_name ~dir rest =
        in
        make_dispatch ~dir ~directory_targets Subdir_set.empty (fun () ->
          Path.Build.Map.to_seq entries
-         |> Memo.parallel_iter_seq ~f:(fun (dst, { Install.Entry.kind; src; _ }) ->
+         |> Memo.parallel_iter_seq ~f:(fun (dst, { kind; source; _ }) ->
            let { Action_builder.With_targets.build; targets } =
-             match (kind : Install.Entry.Expanded.kind) with
-             | File -> Action_builder.symlink ~src ~dst
-             | Directory -> Action_builder.symlink_dir ~src ~dst
+             match source, (kind : Install.Entry.Expanded.kind) with
+             | Symlink { src; _ }, File -> Action_builder.symlink ~src ~dst
+             | Symlink { src; _ }, Directory -> Action_builder.symlink_dir ~src ~dst
+             | Contents contents, File -> Action_builder.write_file_dyn dst contents
+             | Contents _, Directory ->
+               Code_error.raise "Generated install layout entry is a directory" []
            in
            Rules.Produce.rule (Rule.make ~info:(Rule.Info.of_loc_opt None) ~targets build))))
   | _ :: _ :: _ ->
@@ -197,17 +332,16 @@ module For_rocq_only = struct
      keeping METAs, .cmi, .cmxs etc. — all upstream of theory compilation. *)
   let lib_root context_name packages =
     let open Action_builder.O in
+    let request = { packages; libraries = Library.Set.empty } in
     let* lib_paths =
-      Action_builder.of_memo (entries context_name packages)
-      >>| Path.Build.Map.foldi
-            ~init:[]
-            ~f:(fun dst (entry : Path.t Install.Entry.Expanded.t) acc ->
-              match (entry.section : Section.t) with
-              | Lib | Libexec -> Path.build dst :: acc
-              | _ -> acc)
+      Action_builder.of_memo (entries context_name request)
+      >>| Path.Build.Map.foldi ~init:[] ~f:(fun dst (entry : materialized_entry) acc ->
+        match (entry.section : Section.t) with
+        | Lib | Libexec -> Path.build dst :: acc
+        | _ -> acc)
     in
     let+ () = Action_builder.paths lib_paths in
-    let layout_root = root context_name packages in
+    let layout_root = root context_name request in
     (Install.Roots.opam_from_prefix layout_root ~relative:Path.Build.relative).lib_root
   ;;
 end

@@ -56,7 +56,7 @@ module Emit = struct
             ]
       in
       let+ module_systems =
-        repeat
+        repeat1
           (pair module_system extension_field
            <|> let+ loc, module_system = located module_system in
                let _, ext = Module_system.default in

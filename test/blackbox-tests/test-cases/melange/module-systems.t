@@ -95,6 +95,11 @@ dune shouldn't accept an empty module_systems field
   > EOF
 
   $ dune build @mel
+  File "dune", line 5, characters 1-17:
+  5 |  (module_systems))
+       ^^^^^^^^^^^^^^^^
+  Error: Not enough arguments for "module_systems"
+  [1]
 
 Errors out if extension starts with dot
 

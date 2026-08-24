@@ -5,6 +5,7 @@ open Import
 module Dst : sig
   type t
 
+  val of_string : string -> t
   val to_string : t -> string
   val local : t -> Path.Local.t
   val prepend_local : Path.Local.t -> t -> t

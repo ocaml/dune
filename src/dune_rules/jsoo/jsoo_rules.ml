@@ -354,6 +354,12 @@ let compiler ~dir sctx ~(mode : Js_of_ocaml.Mode.t) =
   | Wasm -> wasmoo ~dir sctx
 ;;
 
+let jsoo_version ~dir sctx =
+  let open Action_builder.O in
+  let* jsoo = jsoo ~dir sctx in
+  Action_builder.of_memo (Version.jsoo_version jsoo)
+;;
+
 let jsoo_version_at_least version minimum =
   match version with
   | None -> false
@@ -631,10 +637,7 @@ let exe_rule
   let linkall =
     let open Action_builder.O in
     let+ linkall = linkall
-    and+ jsoo_version =
-      let* jsoo = jsoo ~dir sctx in
-      Action_builder.of_memo @@ Version.jsoo_version jsoo
-    in
+    and+ jsoo_version = jsoo_version ~dir sctx in
     Command.Args.As (linkall_arg ~version:jsoo_version ~linkall)
   in
   let spec =
@@ -727,10 +730,7 @@ let link_rule
     and+ libs = Resolve.Memo.read (Compilation_context.requires_link cc)
     and+ { Link_time_code_gen_type.to_link; force_linkall } =
       Resolve.read link_time_code_gen
-    and+ jsoo_version =
-      let* jsoo = jsoo ~dir sctx in
-      Action_builder.of_memo @@ Version.jsoo_version jsoo
-    in
+    and+ jsoo_version = jsoo_version ~dir sctx in
     let libs =
       List.map libs ~f:(Lib.Parameterised.for_instance ~build_dir ~ext_lib:None)
     in
@@ -806,10 +806,7 @@ let build_cm'
             (let open Action_builder.O in
              let* () = Action_builder.return () in
              let+ shapes =
-               let* jsoo_version =
-                 let* jsoo = jsoo ~dir sctx in
-                 Action_builder.of_memo @@ Version.jsoo_version jsoo
-               in
+               let* jsoo_version = jsoo_version ~dir sctx in
                match jsoo_has_shapes jsoo_version with
                | false -> Action_builder.return []
                | true -> shapes

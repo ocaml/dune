@@ -1,7 +1,14 @@
 (cram
  (applies_to
+  independent-roots
   installed-package
   no-transitive-through-targets
   ocamlfind
+  redirect-chain
+  transitive-closure
   virtual-without-default)
  (deps %{bin:ocamlfind}))
+
+(cram
+ (applies_to melange-closure)
+ (deps %{bin:melc}))

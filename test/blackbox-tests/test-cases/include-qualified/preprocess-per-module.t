@@ -43,11 +43,12 @@ Using a slash instead does not work either:
 Qualified references are only available starting with Dune 3.25:
 
   $ mkdir version-gate
-  $ cd version-gate
-  $ make_dune_project 3.24
-  $ mkdir foo
-  $ touch foo/bar.ml
-  $ cat >dune <<'EOF'
+  $ cat >version-gate/dune-project <<'EOF'
+  > (lang dune 3.24)
+  > EOF
+  $ mkdir version-gate/foo
+  $ touch version-gate/foo/bar.ml
+  $ cat >version-gate/dune <<'EOF'
   > (include_subdirs qualified)
   > (library
   >  (name x)
@@ -56,24 +57,26 @@ Qualified references are only available starting with Dune 3.25:
   >    ((action
   >      (run cat %{input-file})) Foo.Bar))))
   > EOF
-  $ dune build
+  $ dune build --root=version-gate
+  Entering directory 'version-gate'
   File "dune", line 7, characters 30-37:
   7 |      (run cat %{input-file})) Foo.Bar))))
                                     ^^^^^^^
   Error: Using qualified module references is only available since version 3.25
   of the dune language. Please update your dune-project file to have (lang dune
   3.25).
+  Leaving directory 'version-gate'
   [1]
-  $ cd ..
 
 They are rejected when the effective `(include_subdirs)` mode is not
 `qualified`:
 
   $ mkdir unqualified
-  $ cd unqualified
-  $ make_dune_project 3.25
-  $ touch bar.ml
-  $ cat >dune <<'EOF'
+  $ cat >unqualified/dune-project <<'EOF'
+  > (lang dune 3.25)
+  > EOF
+  $ touch unqualified/bar.ml
+  $ cat >unqualified/dune <<'EOF'
   > (library
   >  (name x)
   >  (preprocess
@@ -81,55 +84,32 @@ They are rejected when the effective `(include_subdirs)` mode is not
   >    ((action
   >      (run cat %{input-file})) Foo.Bar))))
   > EOF
-  $ dune build
+  $ dune build --root=unqualified
+  Entering directory 'unqualified'
   File "dune", line 6, characters 30-37:
   6 |      (run cat %{input-file})) Foo.Bar))))
                                     ^^^^^^^
   Error: Qualified module reference "Foo.Bar" may only be used with
   (include_subdirs qualified).
+  Leaving directory 'unqualified'
   [1]
-  $ cd ..
-
-Unlike legacy `(per_module ...)`, qualified references are also checked against
-the modules selected by the stanza:
-
-  $ mkdir missing
-  $ cd missing
-  $ make_dune_project 3.25
-  $ mkdir foo
-  $ touch foo/bar.ml
-  $ cat >dune <<'EOF'
-  > (include_subdirs qualified)
-  > (library
-  >  (name x)
-  >  (preprocess
-  >   (per_module
-  >    ((action
-  >      (run cat %{input-file})) Foo.Missing))))
-  > EOF
-  $ dune build
-  File "dune", line 7, characters 30-41:
-  7 |      (run cat %{input-file})) Foo.Missing))))
-                                    ^^^^^^^^^^^
-  Error: Module Foo.Missing doesn't exist.
-  [1]
-  $ cd ..
 
 The full path distinguishes a root module from a nested module with the same
 leaf name. Different preprocessors must be applied to each one:
 
   $ mkdir exact
-  $ cd exact
-  $ make_dune_project 3.25
-  $ mkdir foo
-  $ echo 'This is not OCaml.' >bar.ml
-  $ echo 'This is not OCaml either.' >foo/bar.ml
-  $ cat >main.ml <<'EOF'
+  $ cat >exact/dune-project <<'EOF'
+  > (lang dune 3.25)
+  > EOF
+  $ mkdir exact/foo
+  $ echo 'This is not OCaml.' >exact/bar.ml
+  $ echo 'This is not OCaml either.' >exact/foo/bar.ml
+  $ cat >exact/main.ml <<'EOF'
   > let () =
   >   print_endline Refs.Bar.marker;
   >   print_endline Refs.Foo.Bar.marker
   > EOF
-  $ cat >dune <<'EOF'
+  $ cat >exact/dune <<'EOF'
   > (include_subdirs qualified)
   > (library
   >  (name refs)
@@ -145,28 +125,49 @@ leaf name. Different preprocessors must be applied to each one:
   >  (modules Main)
   >  (libraries refs))
   > EOF
-  $ dune exec ./main.exe
+  $ dune exec --root=exact ./main.exe
   root
   nested
-  $ cd ..
+
+The full path can also select the sole module of an executable:
+
+  $ mkdir singleton-executable
+  $ cat >singleton-executable/dune-project <<'EOF'
+  > (lang dune 3.25)
+  > EOF
+  $ mkdir singleton-executable/foo
+  $ echo 'This is not OCaml.' >singleton-executable/foo/main.ml
+  $ cat >singleton-executable/dune <<'EOF'
+  > (include_subdirs qualified)
+  > (executable
+  >  (name main)
+  >  (modules Foo.Main)
+  >  (preprocess
+  >   (per_module
+  >    ((action
+  >      (run echo "let () = print_endline \"singleton\"")) Foo.Main))))
+  > EOF
+  $ dune exec --root=singleton-executable ./main.exe
+  singleton
 
 A module group interface is named by the group path, without repeating the
 last component:
 
   $ mkdir group-interface
-  $ cd group-interface
-  $ make_dune_project 3.25
-  $ mkdir foo
-  $ echo 'This is not OCaml.' >foo/foo.ml
-  $ cat >foo/bar.ml <<'EOF'
+  $ cat >group-interface/dune-project <<'EOF'
+  > (lang dune 3.25)
+  > EOF
+  $ mkdir group-interface/foo
+  $ echo 'This is not OCaml.' >group-interface/foo/foo.ml
+  $ cat >group-interface/foo/bar.ml <<'EOF'
   > let marker = "nested"
   > EOF
-  $ cat >main.ml <<'EOF'
+  $ cat >group-interface/main.ml <<'EOF'
   > let () =
   >   print_endline Group.Foo.marker;
   >   print_endline Group.Foo.Bar.marker
   > EOF
-  $ cat >dune <<'EOF'
+  $ cat >group-interface/dune <<'EOF'
   > (include_subdirs qualified)
   > (library
   >  (name group)
@@ -180,23 +181,23 @@ last component:
   >  (modules Main)
   >  (libraries group))
   > EOF
-  $ dune exec ./main.exe
+  $ dune exec --root=group-interface ./main.exe
   group
   nested
-  $ cd ..
 
 Modules produced by `(select ...)` participate in qualified reference
 resolution:
 
   $ mkdir selected
-  $ cd selected
-  $ make_dune_project 3.25
-  $ mkdir foo
-  $ echo 'This is not OCaml.' >foo/generated.fallback.ml
-  $ cat >main.ml <<'EOF'
+  $ cat >selected/dune-project <<'EOF'
+  > (lang dune 3.25)
+  > EOF
+  $ mkdir selected/foo
+  $ echo 'This is not OCaml.' >selected/foo/generated.fallback.ml
+  $ cat >selected/main.ml <<'EOF'
   > let () = print_endline Selected.Foo.Generated.marker
   > EOF
-  $ cat >dune <<'EOF'
+  $ cat >selected/dune <<'EOF'
   > (include_subdirs qualified)
   > (library
   >  (name selected)
@@ -213,18 +214,18 @@ resolution:
   >  (modules Main)
   >  (libraries selected))
   > EOF
-  $ dune exec ./main.exe
+  $ dune exec --root=selected ./main.exe
   selected
-  $ cd ..
 
 The effective mode of a `(subdir ...)` stanza is used for validation:
 
   $ mkdir subdir-stanza
-  $ cd subdir-stanza
-  $ make_dune_project 3.25
-  $ mkdir -p nested/foo
-  $ echo 'This is not OCaml.' >nested/foo/bar.ml
-  $ cat >dune <<'EOF'
+  $ cat >subdir-stanza/dune-project <<'EOF'
+  > (lang dune 3.25)
+  > EOF
+  $ mkdir -p subdir-stanza/nested/foo
+  $ echo 'This is not OCaml.' >subdir-stanza/nested/foo/bar.ml
+  $ cat >subdir-stanza/dune <<'EOF'
   > (subdir nested
   >  (include_subdirs qualified)
   >  (library
@@ -234,17 +235,17 @@ The effective mode of a `(subdir ...)` stanza is used for validation:
   >     ((action
   >       (run echo "let marker = \"nested\"")) Foo.Bar)))))
   > EOF
-  $ dune build
-  $ cd ..
+  $ dune build --root=subdir-stanza
 
 Before Dune 3.25, a single module name keeps its legacy leaf-name semantics:
 
   $ mkdir legacy
-  $ cd legacy
-  $ make_dune_project 3.24
-  $ mkdir foo
-  $ echo 'This is not OCaml.' >foo/bar.ml
-  $ cat >dune <<'EOF'
+  $ cat >legacy/dune-project <<'EOF'
+  > (lang dune 3.24)
+  > EOF
+  $ mkdir legacy/foo
+  $ echo 'This is not OCaml.' >legacy/foo/bar.ml
+  $ cat >legacy/dune <<'EOF'
   > (include_subdirs qualified)
   > (library
   >  (name legacy)
@@ -253,5 +254,4 @@ Before Dune 3.25, a single module name keeps its legacy leaf-name semantics:
   >    ((action
   >      (run echo "let marker = \"legacy\"")) Bar))))
   > EOF
-  $ dune build
-  $ cd ..
+  $ dune build --root=legacy

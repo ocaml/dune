@@ -77,4 +77,4 @@ Use a stable markdown file when testing the dependency scanner.
   $ echo >> README.md
   $ dune runtest
   $ mdx_command_is_sandboxed deps
-  false
+  true

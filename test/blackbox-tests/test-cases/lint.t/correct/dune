@@ -1,3 +1,7 @@
 (executable
  (name add)
  (lint (pps correct_static_add)))
+
+(rule
+ (target lint-secret)
+ (action (write-file %{target} "secret")))

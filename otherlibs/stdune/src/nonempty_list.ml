@@ -1,6 +1,14 @@
 type 'a t = ( :: ) of 'a * 'a list
 
 let hd (x :: _) = x
+let length (_ :: xs) = 1 + List.length xs
+
+let iter (x :: xs) ~f =
+  f x;
+  List.iter xs ~f
+;;
+
+let for_all (x :: xs) ~f = f x && List.for_all xs ~f
 
 let last =
   let rec loop last = function
@@ -40,6 +48,7 @@ let of_list_exn = function
 let to_list (x :: xs) = List.cons x xs
 let to_list_map (x :: xs) ~f = List.map (x :: xs) ~f
 let map (x :: xs) ~f = f x :: List.map xs ~f
+let map2 (x :: xs) (y :: ys) ~f = f x y :: List.map2 xs ys ~f
 
 let compare (x :: xs) (y :: ys) ~compare =
   match compare x y with

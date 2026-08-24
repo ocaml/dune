@@ -29,8 +29,7 @@ Changing a private module's interface does not rebuild consumers (#16071).
 
   $ dune build ./main.exe
 
-Changing the private interface should rebuild [main]. Instead, its stale [.cmx]
-causes linking to fail.
+Changing the private interface rebuilds [main].
 
   $ cat > dep/priv.ml <<EOF
   > let v = 2
@@ -41,7 +40,3 @@ causes linking to fail.
   > val w : int
   > EOF
   $ dune build ./main.exe
-  File "_none_", line 1:
-  Error: Files .main.eobjs/native/dune__exe__Main.cmx and dep/dep.cmxa
-         make inconsistent assumptions over interface Dep__Priv
-  [1]

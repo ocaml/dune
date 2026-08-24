@@ -2,8 +2,8 @@ open Import
 open Memo.O
 
 (* This file builds dep specs for library files (cmi/cmx/cmj/header). Per-module
-   tight deps apply only to local unwrapped libraries; wrapped libraries take a
-   directory glob over their public cmi dir. [ocamldep -modules] outputs only
+   tight deps apply only to local unwrapped libraries; wrapped libraries take
+   directory globs over their cmi include dirs. [ocamldep -modules] outputs only
    top-level module names — for a consumer using [Foo.Bar.x] the output is
    [Foo], not [Foo.Bar] — so the filter cannot distinguish [Foo.Bar] from
    [Foo.Baz] consumers and a glob is the tightest sound dep. *)
@@ -28,13 +28,13 @@ module Group = struct
     | Header -> Foreign_language.header_extension
   ;;
 
-  let obj_dir t obj_dir =
+  let obj_dirs t obj_dir =
     match t with
-    | Ocaml Cmi -> Obj_dir.public_cmi_ocaml_dir obj_dir
-    | Ocaml Cmx -> Obj_dir.native_dir obj_dir
-    | Melange Cmi -> Obj_dir.public_cmi_melange_dir obj_dir
-    | Melange Cmj -> Obj_dir.melange_dir obj_dir
-    | Header -> Obj_dir.dir obj_dir
+    | Ocaml Cmi -> Obj_dir.public_cmi_ocaml_dir obj_dir :: Obj_dir.all_cmis obj_dir
+    | Ocaml Cmx -> [ Obj_dir.native_dir obj_dir ]
+    | Melange Cmi -> [ Obj_dir.public_cmi_melange_dir obj_dir ]
+    | Melange Cmj -> [ Obj_dir.melange_dir obj_dir ]
+    | Header -> [ Obj_dir.dir obj_dir ]
   ;;
 
   let to_glob =
@@ -49,9 +49,10 @@ end
 
 let deps_of_lib (lib : Lib.t) ~groups =
   let obj_dir = Lib.info lib |> Lib_info.obj_dir in
-  List.map groups ~f:(fun g ->
-    let dir = Group.obj_dir g obj_dir in
-    Group.to_glob g |> File_selector.of_glob ~dir |> Dep.file_selector)
+  List.concat_map groups ~f:(fun g ->
+    let glob = Group.to_glob g in
+    List.map (Group.obj_dirs g obj_dir) ~f:(fun dir ->
+      File_selector.of_glob ~dir glob |> Dep.file_selector))
   |> Dep.Set.of_list
 ;;
 

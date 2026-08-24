@@ -1,5 +1,6 @@
 (library
  (name dune_scheduler_tests)
+ (modules async_io_tests)
  (inline_tests)
  (preprocess
   (pps ppx_expect))
@@ -15,3 +16,10 @@
   ppx_expect.config_types
   base
   ppx_inline_test.config))
+
+(test
+ (name signal_watcher_repro)
+ (modules signal_watcher_repro)
+ (enabled_if
+  (= %{system} macosx))
+ (libraries stdune dune_scheduler unix threads.posix fiber))

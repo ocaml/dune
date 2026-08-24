@@ -336,10 +336,10 @@ let cstrs_dune_file t =
       Echo (x :: xs) )
   ; ( "cat"
     , let* xs = repeat1 sw in
-      (if List.length xs > 1
+      (if Nonempty_list.length xs > 1
        then Syntax.since ~what:"Passing several arguments to 'cat'" Stanza.syntax (3, 4)
        else return ())
-      >>> return (Cat xs) )
+      >>> return (Cat (Nonempty_list.to_list xs)) )
   ; ( "copy"
     , let+ src = sw
       and+ dst = sw in

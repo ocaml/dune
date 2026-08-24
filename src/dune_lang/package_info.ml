@@ -198,10 +198,10 @@ let decode ?since () =
       "license"
       (Syntax.since Stanza.syntax (v (1, 9))
        >>> let* l = repeat1 string in
-           (if List.length l > 1
+           (if Nonempty_list.length l > 1
             then Syntax.since ~what:"Parsing several licenses" Stanza.syntax (v (3, 2))
             else return ())
-           >>> return l)
+           >>> return (Nonempty_list.to_list l))
   and+ homepage = field_o "homepage" (Syntax.since Stanza.syntax (v (1, 10)) >>> string)
   and+ documentation =
     field_o "documentation" (Syntax.since Stanza.syntax (v (1, 10)) >>> string)

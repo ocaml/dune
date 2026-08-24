@@ -58,7 +58,7 @@ let gen_parse names =
             ; modes
             ; optional = false
             ; buildable
-            ; names = Nonempty_list.of_list_exn names
+            ; names
             ; public_names = None
             ; package = None
             ; promote = None
@@ -78,4 +78,7 @@ let gen_parse names =
 ;;
 
 let multi = gen_parse (field "names" (repeat1 (located string)))
-let single = gen_parse (field "name" (located string) >>| List.singleton)
+
+let single =
+  gen_parse (field "name" (located string) >>| fun name -> Nonempty_list.[ name ])
+;;

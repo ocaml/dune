@@ -141,7 +141,7 @@ let driver_flags expander ~corrected_suffix ~driver_flags ~standard =
   Expander.expand_and_eval_set expander driver_flags ~standard
 ;;
 
-let lint_module sctx ~sandbox ~dir ~expander ~lint ~lib_name ~scope =
+let lint_module sctx ~sandbox ~pps_sandbox ~dir ~expander ~lint ~lib_name ~scope =
   let open Action_builder.O in
   let add_alias build =
     Super_context.add_alias_action sctx [ Alias.make Alias0.lint ~dir ] build ~dir
@@ -204,6 +204,7 @@ let lint_module sctx ~sandbox ~dir ~expander ~lint ~lib_name ~scope =
                   let dir = ctx |> Context.build_dir |> Path.build in
                   Command.run'
                     ~dir
+                    ~sandbox:pps_sandbox
                     (Ok (Path.build exe))
                     [ As args
                     ; Command.Ml_kind.ppx_driver_flag ml_kind
@@ -405,12 +406,11 @@ let make
       preprocessor_deps
       ~expander
   in
+  let dune_version = Scope.project scope |> Dune_project.dune_version in
   let sandbox =
     match Sandbox_config.equal Sandbox_config.no_special_requirements sandbox with
     | false -> `Set_by_user sandbox
     | true ->
-      let project = Scope.project scope in
-      let dune_version = Dune_project.dune_version project in
       `Default
         (if dune_version >= (3, 3) then Sandbox_config.needs_sandboxing else sandbox)
   in
@@ -419,8 +419,17 @@ let make
     Action_builder.memoize "preprocessor deps" (Action_builder.ignore env)
   in
   let lint_module =
+    let pps_sandbox =
+      match sandbox with
+      | `Set_by_user sandbox -> sandbox
+      | `Default sandbox ->
+        if dune_version >= (3, 25)
+        then sandbox
+        else Sandbox_config.no_special_requirements
+    in
     let sandbox = sandbox_of_setting sandbox in
-    Staged.unstage (lint_module sctx ~sandbox ~dir ~expander ~lint ~lib_name ~scope)
+    Staged.unstage
+      (lint_module sctx ~sandbox ~pps_sandbox ~dir ~expander ~lint ~lib_name ~scope)
   in
   Module_name.Per_item.map preprocess ~f:(fun spec ->
     Staged.unstage

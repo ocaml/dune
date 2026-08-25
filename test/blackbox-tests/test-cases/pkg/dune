@@ -59,6 +59,10 @@
  (applies_to pkg-deps.t))
 
 (cram
+ (deps %{bin:cmp} %{bin:ocamlfind})
+ (applies_to package-library-closure.t))
+
+(cram
  (deps %{bin:curl})
  (applies_to
   unavailable-source-package.t

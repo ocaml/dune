@@ -23,8 +23,7 @@
  (enabled_if
   (and
    (= %{system} macosx)
-   (= %{architecture} arm64)
-   (= %{ocaml_version} 5.5.0)))
+   (= %{architecture} arm64)))
  (action
   (with-accepted-exit-codes
    2

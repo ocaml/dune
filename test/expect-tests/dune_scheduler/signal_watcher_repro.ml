@@ -51,13 +51,15 @@ let run () =
          if not (Atomic.get finished) then exit 2)
       ()
   in
-  let children = List.init 128 ~f:(fun _ -> spawn ()) in
-  let interrupt = interrupt () in
-  wait_for_sigint events;
-  Thread.join interrupt;
-  List.iter children ~f:(fun pid ->
-    try ignore (Unix.waitpid [] pid : int * Unix.process_status) with
-    | Unix.Unix_error (ECHILD, _, _) -> ());
+  for _ = 1 to 2 do
+    let children = List.init 128 ~f:(fun _ -> spawn ()) in
+    let interrupt = interrupt () in
+    wait_for_sigint events;
+    Thread.join interrupt;
+    List.iter children ~f:(fun pid ->
+      try ignore (Unix.waitpid [] pid : int * Unix.process_status) with
+      | Unix.Unix_error (ECHILD, _, _) -> ())
+  done;
   Unix.kill (Unix.getpid ()) (Signal.to_int Thread0.signal_watcher_interrupt);
   Thread0.join signal_watcher;
   Atomic.set finished true
@@ -85,7 +87,7 @@ let run_fresh () =
 let () =
   if Array.length Sys.argv = 1
   then
-    for _ = 1 to 20 do
+    for _ = 1 to 10 do
       run_fresh ()
     done
   else run ()

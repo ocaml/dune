@@ -9,8 +9,7 @@ module Position = struct
   let shift_cnum = 2 * field_size
 
   let small_enough =
-    let max_size = 1 lsl field_size in
-    let test int = int <= max_size in
+    let test int = int >= 0 && int <= field_mask in
     fun[@inline] { Lexing.pos_bol; pos_cnum; pos_lnum; pos_fname = _ } ->
       test pos_bol && test pos_cnum && test pos_lnum
   ;;
@@ -73,10 +72,7 @@ module Same_line_loc = struct
     create ~bol ~lnum ~start_cnum:stop_cnum ~stop_cnum
   ;;
 
-  let small_enough =
-    let max_size = 1 lsl field_size in
-    fun[@inline] int -> int <= max_size
-  ;;
+  let[@inline] small_enough int = int >= 0 && int <= field_mask
 
   let[@inline] to_loc t ~fname:pos_fname =
     let pos_lnum = lnum t in

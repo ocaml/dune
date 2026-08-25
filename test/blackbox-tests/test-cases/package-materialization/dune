@@ -3,6 +3,7 @@
   independent-roots.t
   installed-only-packages-fallback.t
   installed-package.t
+  installed-unavailable-sublibrary.t
   no-transitive-through-targets.t
   ocamlfind.t
   transitive-closure.t

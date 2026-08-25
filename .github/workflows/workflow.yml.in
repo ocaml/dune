@@ -437,6 +437,9 @@ jobs:
         with:
           node-version: latest
 
+      - name: Install odoc deps
+        run: opam install result
+
       - name: Install deps
         run: opam install csexp pp re spawn uutf odoc ppx_expect ppx_inline_test wasm_of_ocaml-compiler
 

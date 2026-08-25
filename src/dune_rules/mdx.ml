@@ -46,11 +46,12 @@ module Deps = struct
     | Error (_, msg) -> Error msg
   ;;
 
-  let read ~sctx ~dir ~loc ~mdx_prog (files : Files.t) =
+  let read ~sctx ~dir ~loc ~sandbox ~mdx_prog (files : Files.t) =
     let open Action_builder.O in
     (let* prog = mdx_prog in
      Command.run'
        ~dir:(Path.build dir)
+       ~sandbox
        prog
        [ Command.Args.A "deps"; Lazy.force color_always; Dep (Path.build files.src) ])
     |> Super_context.execute_action_stdout sctx ~loc ~dir
@@ -298,7 +299,12 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog ~mdx_prog_ge
   let mdx_action =
     let mdx_input_dependencies =
       let open Action_builder.O in
-      let* dep_set = Deps.read ~sctx ~dir ~loc ~mdx_prog files in
+      let sandbox =
+        if version >= (0, 6)
+        then Sandbox_config.needs_sandboxing
+        else Sandbox_config.no_special_requirements
+      in
+      let* dep_set = Deps.read ~sctx ~dir ~loc ~sandbox ~mdx_prog files in
       Action_builder.of_memo
         (let open Memo.O in
          let src_path_msg = Pp.seq (Pp.text "Source path: ") (Path.pp (Path.build src)) in

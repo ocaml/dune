@@ -46,22 +46,35 @@ Mdx tests run in a sandbox, so undeclared files are not visible.
 
 The mdx generator is also sandboxed starting with version 0.6.
 
-  $ mdx_generator_is_sandboxed() {
-  >   dune trace cat | jq_dune -sc '
+  $ mdx_command_is_sandboxed() {
+  >   dune trace cat | jq_dune -sc --arg command "$1" '
   >     [ .[]
   >     | processes
   >     | select(.args.prog | basename == "ocaml-mdx")
-  >     | select(.args.process_args[0] == "dune-gen")
+  >     | select(.args.process_args[0] == $command)
   >     | (.args.dir | contains(".sandbox"))
   >     ][0]'
   > }
 
+Use a stable markdown file when testing the dependency scanner.
+
+  $ cat > README.md <<'EOF'
+  > # Sandboxing
+  > EOF
+
   $ make_mdx_project 3.25 0.5
   $ dune build mdx_gen.ml-gen
-  $ mdx_generator_is_sandboxed
+  $ mdx_command_is_sandboxed dune-gen
+  false
+  $ dune runtest
+  $ mdx_command_is_sandboxed deps
   false
 
   $ make_mdx_project 3.25 0.6
   $ dune build mdx_gen.ml-gen
-  $ mdx_generator_is_sandboxed
+  $ mdx_command_is_sandboxed dune-gen
+  true
+  $ echo >> README.md
+  $ dune runtest
+  $ mdx_command_is_sandboxed deps
   true

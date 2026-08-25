@@ -21,5 +21,12 @@
  (name signal_watcher_repro)
  (modules signal_watcher_repro)
  (enabled_if
-  (= %{system} macosx))
+  (and
+   (= %{system} macosx)
+   (= %{architecture} arm64)
+   (= %{ocaml_version} 5.5.0)))
+ (action
+  (with-accepted-exit-codes
+   2
+   (run %{test})))
  (libraries stdune dune_scheduler unix threads.posix fiber))

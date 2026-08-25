@@ -49,10 +49,18 @@ let wait pid =
 let list_files = Filename.concat (Sys.getcwd ()) "exe/list_files.exe"
 let print_env = Filename.concat (Sys.getcwd ()) "exe/print_env.exe"
 
-let () =
-  Unix.mkdir "sub" 0o777;
-  close_out (open_out "sub/foo");
-  close_out (open_out "sub/bar")
+let with_sub f =
+  Temp.with_temp_dir
+    ~parent_dir:(Path.of_string (Sys.getcwd ()))
+    ~prefix:"stdune-spawn"
+    ~suffix:""
+    ~f:(fun temp_dir ->
+      let temp_dir = Result.ok_exn temp_dir in
+      let sub = Path.relative temp_dir "sub" in
+      Path.mkdir_p sub;
+      Io.write_file (Path.relative sub "foo") "";
+      Io.write_file (Path.relative sub "bar") "";
+      f sub)
 ;;
 
 let%expect_test "array arguments" =
@@ -67,13 +75,14 @@ let%expect_test "array arguments" =
 ;;
 
 let%expect_test "cwd:Path" =
-  wait
-    (Spawn.spawn
-       ()
-       ~prog:list_files
-       ~argv0:"list_files.exe"
-       ~args:no_args
-       ~cwd:(Spawn.Working_dir.path "sub"));
+  with_sub (fun sub ->
+    wait
+      (Spawn.spawn
+         ()
+         ~prog:list_files
+         ~argv0:"list_files.exe"
+         ~args:no_args
+         ~cwd:(Spawn.Working_dir.path (Path.to_string sub))));
   [%expect
     {|
     bar
@@ -84,16 +93,19 @@ let%expect_test "cwd:Path" =
 let%expect_test "cwd:Fd" =
   if Sys.win32
   then print_endline "bar\nfoo"
-  else (
-    let fd = Unix.openfile "sub" [ O_RDONLY ] 0 |> Fd.unsafe_of_unix_file_descr in
-    wait
-      (Spawn.spawn
-         ()
-         ~prog:list_files
-         ~argv0:"list_files.exe"
-         ~args:no_args
-         ~cwd:(Spawn.Working_dir.fd fd));
-    Fd.close fd);
+  else
+    with_sub (fun sub ->
+      let fd =
+        Unix.openfile (Path.to_string sub) [ O_RDONLY ] 0 |> Fd.unsafe_of_unix_file_descr
+      in
+      wait
+        (Spawn.spawn
+           ()
+           ~prog:list_files
+           ~argv0:"list_files.exe"
+           ~args:no_args
+           ~cwd:(Spawn.Working_dir.fd fd));
+      Fd.close fd);
   [%expect
     {|
     bar
@@ -351,11 +363,4 @@ let%expect_test "sigprocmask" =
         run ~sigprocmask:(SIG_UNBLOCK, [ Usr1 ]) Sys.sigusr1;
         run ~sigprocmask:(SIG_SETMASK, []) Sys.sigusr1));
   [%expect {||}]
-;;
-
-(* This should be at the end to clean up the test environment *)
-let () =
-  Unix.unlink "sub/foo";
-  Unix.unlink "sub/bar";
-  Unix.rmdir "sub"
 ;;

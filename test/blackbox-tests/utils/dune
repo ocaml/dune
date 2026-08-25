@@ -13,6 +13,14 @@
  (modules action_plugin_helper)
  (libraries dune-action-plugin unix))
 
+(executable
+ (name landlock_scope)
+ (modules landlock_scope)
+ (libraries unix)
+ (foreign_stubs
+  (language c)
+  (names landlock_scope_stubs)))
+
 (ocamllex dunepp)
 
 (executable

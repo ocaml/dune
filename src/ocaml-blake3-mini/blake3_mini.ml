@@ -34,7 +34,7 @@ end
 type t
 
 external create : unit -> t = "blake3_mini_create"
-external reset : t -> unit = "blake3_mini_reset"
+external reset : t -> unit = "blake3_mini_reset" [@@noalloc]
 external digest : t -> Digest.t = "blake3_mini_digest"
 
 external feed_string

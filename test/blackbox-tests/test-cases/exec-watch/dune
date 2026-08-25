@@ -19,11 +19,11 @@
 
 (cram
  (applies_to
-  exec-stdin
-  exec-watch-server
-  exec-watch-ignore-sigterm
-  exec-signal
-  exec-watch-fail
-  exec-watch-multi-levels
-  exec-watch-basic)
+  exec-stdin.t
+  exec-watch-server.t
+  exec-watch-ignore-sigterm.t
+  exec-signal.t
+  exec-watch-fail.t
+  exec-watch-multi-levels.t
+  exec-watch-basic.t)
  (enabled_if false))

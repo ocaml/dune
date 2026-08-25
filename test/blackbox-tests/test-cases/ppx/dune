@@ -1,9 +1,9 @@
 (cram
- (applies_to ppx-rewriter 9650-bytecode-rewriter ppx-pform)
+ (applies_to ppx-rewriter.t 9650-bytecode-rewriter.t ppx-pform.t)
  (deps
   (package ppxlib)
   %{bin:ocamlfind}))
 
 (cram
- (applies_to ppx-rewriter)
+ (applies_to ppx-rewriter.t)
  (deps %{bin:ocamlfind}))

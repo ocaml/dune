@@ -1,5 +1,5 @@
 (cram
- (applies_to what-dune-watches)
+ (applies_to what-dune-watches.t)
  (deps %{bin:strace}))
 
 (cram

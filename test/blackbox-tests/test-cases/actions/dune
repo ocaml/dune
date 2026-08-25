@@ -1,15 +1,15 @@
 (cram
- (applies_to stray-process)
+ (applies_to stray-process.t)
  (enabled_if
   (<> %{system} macosx)))
 
 (cram
- (applies_to subreaper)
+ (applies_to subreaper.t)
  (deps
   (source_tree bin))
  (enabled_if
   (= %{system} linux)))
 
 (cram
- (applies_to concurrent)
+ (applies_to concurrent.t)
  (enabled_if false))

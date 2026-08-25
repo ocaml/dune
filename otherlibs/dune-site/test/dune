@@ -9,7 +9,7 @@
 ; environment variable is set. Most CI systems set it.
 
 (cram
- (applies_to run_2_9 run)
+ (applies_to run_2_9.t run.t)
  (enabled_if
   (and
    (= %{env:CI=false} false)

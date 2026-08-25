@@ -1,10 +1,10 @@
 (cram
- (applies_to jsoo)
+ (applies_to jsoo.t)
  (deps %{bin:node} %{bin:js_of_ocaml})
  (alias runtest-js))
 
 (cram
- (applies_to wasmoo)
+ (applies_to wasmoo.t)
  (deps %{bin:node} %{bin:js_of_ocaml} %{bin:wasm_of_ocaml} %{bin:wasm-merge})
  (alias runtest-wasm)
  (enabled_if

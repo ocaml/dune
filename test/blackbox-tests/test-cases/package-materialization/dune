@@ -1,9 +1,9 @@
 (cram
  (applies_to
-  independent-roots
-  installed-package
-  no-transitive-through-targets
-  ocamlfind
-  transitive-closure
-  virtual-without-default)
+  independent-roots.t
+  installed-package.t
+  no-transitive-through-targets.t
+  ocamlfind.t
+  transitive-closure.t
+  virtual-without-default.t)
  (deps %{bin:ocamlfind}))

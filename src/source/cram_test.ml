@@ -33,12 +33,11 @@ let path = function
   | Dir d -> d.dir
 ;;
 
-let name t =
-  path t
-  |> Path.Source.basename
-  |> Filename.to_string
-  |> String.drop_suffix ~suffix
-  |> Option.value_exn
+let name t ~dune_version =
+  let name = path t |> Path.Source.basename |> Filename.to_string in
+  if dune_version >= (3, 25)
+  then name
+  else String.drop_suffix ~suffix name |> Option.value_exn
 ;;
 
 let script t =

@@ -143,7 +143,7 @@ The external diff used to report a timed-out cram test also receives the policy.
 
   $ cat >> dune <<'EOF'
   > (cram
-  >  (applies_to timeout)
+  >  (applies_to timeout.t)
   >  (deps (sandbox always))
   >  (timeout 0.05))
   > EOF

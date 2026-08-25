@@ -250,11 +250,10 @@ let collect_stanzas =
     | Some dir -> collect_whole_subtree [ acc ] dir
 ;;
 
-let spec_for_test ~stanzas test =
+let spec_for_test ~stanzas ~dune_version test =
   let name =
     match test with
-    | Ok test -> Cram_test.name test
-    | Error (Missing_run_t test) -> Cram_test.name test
+    | Ok test | Error (Missing_run_t test) -> Cram_test.name test ~dune_version
   in
   let test_name_alias = Cram_test.Name.to_alias name in
   let init = None, Spec.make_empty ~test_name_alias in
@@ -397,6 +396,7 @@ let spec_for_test ~stanzas test =
 ;;
 
 let rules ~sctx ~dir tests project =
+  let dune_version = Dune_project.dune_version project in
   let* stanzas = collect_stanzas ~dir
   and* with_package_mask =
     let+ mask = Dune_load.mask () >>| Only_packages.enumerate in
@@ -433,7 +433,7 @@ let rules ~sctx ~dir tests project =
          else fun packages _f -> with_validate_packages packages ~f:Memo.return)
   in
   Memo.parallel_iter tests ~f:(fun test ->
-    let* spec = spec_for_test ~stanzas test in
+    let* spec = spec_for_test ~stanzas ~dune_version test in
     with_package_mask spec.packages (fun () -> test_rule ~sctx ~dir spec test))
 ;;
 

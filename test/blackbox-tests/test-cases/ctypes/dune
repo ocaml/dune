@@ -21,18 +21,18 @@
   (package ctypes)))
 
 (cram
- (applies_to lib-return-errno)
+ (applies_to lib-return-errno.t)
  (deps
   (package integers)))
 
 (cram
  (applies_to
-  bytecode-stubs-external-lib
-  lib-pkg_config
-  lib-pkg_config-multiple-fd
-  lib-external-name-need-mangling
-  exe-pkg_config-multiple-fd
-  lib-return-errno
-  github-5561-name-mangle
-  exe-pkg_config)
+  bytecode-stubs-external-lib.t
+  lib-pkg_config.t
+  lib-pkg_config-multiple-fd.t
+  lib-external-name-need-mangling.t
+  exe-pkg_config-multiple-fd.t
+  lib-return-errno.t
+  github-5561-name-mangle.t
+  exe-pkg_config.t)
  (deps %{bin:pkg-config}))

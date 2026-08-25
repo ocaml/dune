@@ -39,13 +39,14 @@ Cram
       will apply the options to all tests in all subdirectories (recursively).
       This is useful to apply common options to an entire test suite.
 
-      The following will apply the stanza to all tests in this directory,
-      except for ``foo.t`` and ``bar.t``:
+      Starting with Dune 3.25, test names include the ``.t`` suffix. In earlier
+      versions, the suffix is omitted. The following will apply the stanza to
+      all tests in this directory except for ``foo.t`` and ``bar.t``:
 
       .. code:: dune
 
          (cram
-          (applies_to * \ foo bar)
+          (applies_to * \ foo.t bar.t)
           (deps ../foo.exe))
 
       .. seealso:: :doc:`/reference/predicate-language`
@@ -55,7 +56,8 @@ Cram
       Control whether the tests are included in the ``runtest`` alias and other
       aliases specified by the ``alias`` field. When ``enabled_if`` evaluates to
       ``false``, the test is excluded from these aliases but can still be run
-      explicitly via its own alias (e.g., ``dune build @foo`` for ``foo.t``).
+      explicitly via its own alias (e.g., ``dune build @foo.t`` for ``foo.t``
+      starting with Dune 3.25).
 
       .. seealso:: :doc:`/reference/boolean-language`, :doc:`/concepts/variables`
 
@@ -63,8 +65,9 @@ Cram
 
       Alias that can be used to run the test. In addition to the user alias,
       every test ``foo.t`` is attached to the :doc:`/reference/aliases/runtest`
-      alias and gets its own ``@foo`` alias to make it convenient to run
-      individually.
+      alias and gets its own alias to make it convenient to run individually.
+      Starting with Dune 3.25, this alias is ``@foo.t``; in earlier versions it
+      is ``@foo``.
 
    .. describe:: (locks <lock-names>)
 

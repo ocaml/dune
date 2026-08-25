@@ -1,6 +1,7 @@
 (cram
  (applies_to
   independent-roots.t
+  installed-foreign-object.t
   installed-only-packages-fallback.t
   installed-package.t
   no-transitive-through-targets.t

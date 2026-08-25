@@ -13,6 +13,7 @@
  (foreign_archives example)
  (ctypes
   (external_library_name examplelib)
+  (deps (source_tree vendor))
   (build_flags_resolver
    (vendored
     ;; hack: multiple -I directives to work around cc commands being run from

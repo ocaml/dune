@@ -106,7 +106,7 @@ module Processed = struct
   type module_config =
     { opens : Module_name.t list
     ; module_ : Module.t
-    ; reader : string list option
+    ; reader : string Nonempty_list.t option
     }
 
   let module_config_repr =
@@ -114,7 +114,10 @@ module Processed = struct
       "merlin-module-config"
       [ Repr.field "opens" (Repr.list Module_name.repr) ~get:(fun t -> t.opens)
       ; Repr.field "module_" (Repr.abstract Module.to_dyn) ~get:(fun t -> t.module_)
-      ; Repr.field "reader" (Repr.option (Repr.list Repr.string)) ~get:(fun t -> t.reader)
+      ; Repr.field
+          "reader"
+          (Repr.option (Repr.view (Repr.list Repr.string) ~to_:Nonempty_list.to_list))
+          ~get:(fun t -> t.reader)
       ]
   ;;
 
@@ -296,7 +299,9 @@ module Processed = struct
     let reader =
       match reader with
       | Some reader ->
-        [ make_directive "READER" (Sexp.List (List.map ~f:(fun r -> Sexp.Atom r) reader))
+        [ make_directive
+            "READER"
+            (Sexp.List (Nonempty_list.to_list_map reader ~f:(fun r -> Sexp.Atom r)))
         ]
       | None -> []
     in
@@ -575,7 +580,7 @@ module Unprocessed = struct
     ; libname : Lib_name.Local.t option
     ; objs_dirs : Path.Set.t
     ; extensions : string option Ml_kind.Dict.t list
-    ; readers : string list String.Map.t
+    ; readers : string Nonempty_list.t String.Map.t
     ; for_ : Compilation_mode.t
     ; parameters : Module_name.t list Resolve.t
     }

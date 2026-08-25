@@ -31,6 +31,9 @@ The virtual library and its implementation are both Melange-only.
   $ cat > producer/vlib/helper.ml <<'EOF'
   > let answer = Leaf.answer
   > EOF
+  $ cat > producer/vlib/helper.mli <<'EOF'
+  > val answer : int
+  > EOF
   $ cat > producer/vlib/leaf.ml <<'EOF'
   > let answer = 42
   > EOF

@@ -48,10 +48,7 @@ let run () =
     Thread.create
       (fun () ->
          Thread.delay 1.;
-         if not (Atomic.get finished)
-         then (
-           prerr_endline "timed out waiting for SIGINT";
-           exit 2))
+         if not (Atomic.get finished) then exit 2)
       ()
   in
   let children = List.init 128 ~f:(fun _ -> spawn ()) in
@@ -68,13 +65,21 @@ let run () =
 
 let run_fresh () =
   let argv = [| Sys.executable_name; "run" |] in
+  let dev_null = Unix.openfile "/dev/null" [ O_WRONLY ] 0 in
+  let stderr, child_stderr = Unix.pipe ~cloexec:true () in
   let pid =
-    Unix.create_process Sys.executable_name argv Unix.stdin Unix.stdout Unix.stderr
+    Unix.create_process Sys.executable_name argv Unix.stdin dev_null child_stderr
   in
-  match Unix.waitpid [] pid with
-  | _, WEXITED 0 -> ()
-  | _, WEXITED code -> exit code
-  | _, (WSIGNALED _ | WSTOPPED _) -> exit 2
+  Unix.close dev_null;
+  Unix.close child_stderr;
+  let stderr = Unix.in_channel_of_descr stderr in
+  let output = In_channel.input_all stderr in
+  close_in stderr;
+  match snd (Unix.waitpid [] pid), String.is_empty output with
+  | WEXITED 0, true -> ()
+  | (WEXITED _ | WSIGNALED _ | WSTOPPED _), _ ->
+    prerr_endline "signal watcher failed under concurrent SIGCHLD and SIGINT";
+    exit 2
 ;;
 
 let () =

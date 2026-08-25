@@ -54,7 +54,7 @@ module DB : sig
 
   type for_merlin =
     { extensions : string option Ml_kind.Dict.t list
-    ; readers : string list String.Map.t
+    ; readers : string Nonempty_list.t String.Map.t
     }
 
   val for_merlin : t -> for_:Compilation_mode.t -> for_merlin

@@ -36,7 +36,7 @@ module File_kind = struct
     ; preprocess : (Loc.t * Action.t) option
     ; format : Format.t option
     ; print_ast : (Loc.t * Action.t) option
-    ; merlin_reader : (Loc.t * string list) option
+    ; merlin_reader : (Loc.t * string Nonempty_list.t) option
     }
 
   let encode { kind; extension; preprocess; format; print_ast; merlin_reader } =
@@ -59,7 +59,11 @@ module File_kind = struct
                 "print_ast"
                 Action.encode
                 (Option.map ~f:(fun (_, x) -> x) print_ast)
-            ; field_o "merlin_reader" (list string) (Option.map ~f:snd merlin_reader)
+            ; field_o
+                "merlin_reader"
+                (list string)
+                (Option.map merlin_reader ~f:(fun (_, reader) ->
+                   Nonempty_list.to_list reader))
             ])
   ;;
 
@@ -71,7 +75,10 @@ module File_kind = struct
       ; "preprocess", option (fun (_, x) -> Action.to_dyn x) preprocess
       ; "format", option Format.to_dyn format
       ; "print_ast", option (fun (_, x) -> Action.to_dyn x) print_ast
-      ; "merlin_reader", option (fun (_, x) -> list string x) merlin_reader
+      ; ( "merlin_reader"
+        , option
+            (fun (_, reader) -> list string (Nonempty_list.to_list reader))
+            merlin_reader )
       ]
   ;;
 end
@@ -113,8 +120,7 @@ let decode =
     and+ merlin_reader =
       field_o
         "merlin_reader"
-        (Syntax.since Stanza.syntax (3, 16)
-         >>> located (repeat1 string >>| Nonempty_list.to_list))
+        (Syntax.since Stanza.syntax (3, 16) >>> located (repeat1 string))
     and+ syntax_ver = Syntax.get_exn Stanza.syntax in
     let ver = 3, 9 in
     if syntax_ver < ver && Option.is_some (String.index_from extension 1 '.')
@@ -294,7 +300,7 @@ module DB = struct
 
   and for_merlin =
     { extensions : string option Ml_kind.Dict.t list
-    ; readers : string list String.Map.t
+    ; readers : string Nonempty_list.t String.Map.t
     }
 
   let fold { by_name; _ } = String.Map.fold by_name

@@ -324,6 +324,10 @@ Motivation and context
   `pyproject.toml`.
 </details>
 
+**Issues**
+
+- https://github.com/ocaml/dune/issues/16188
+
 [uv-versions]: https://github.com/astral-sh/uv/blob/0.12.2/docs/guides/tools.md#requesting-specific-versions
 
 ##### 1.3.1. Version consistency
@@ -390,6 +394,10 @@ Motivation and context
 - *uv* : Satisfied in uv by the `--from` flag which allows running/installing
   "commands" (executables) "from" just the named package, e.g., `$ uvx --from
   httpie http` to run the http tool from the httpie package.
+
+**Issues**
+
+- https://github.com/ocaml/dune/issues/16189
 
 </details>
 
@@ -475,6 +483,11 @@ Related issues:
 - *uv* :
   - Supported via system-wide `uv tool install`
 
+**Issues**
+
+- https://github.com/ocaml/dune/issues/16185
+- https://github.com/ocaml/dune/issues/16186
+
 </details>
 
 ### 2. Usability
@@ -499,12 +512,36 @@ otherwise attempt to filter out a user's ambient environment. But it should
 provide pragmatic measures to support users by enforcing this behavior where
 feasible.
 
+
+<details>
+<summary>
+Motivation and context
+</summary>
+
+**Issues**
+
+- https://github.com/ocaml/dune/issues/16190
+
+</details>
+
 ##### 2.1.2. When package management is not enabled in a workspace
 
 When users have not enabled dune package management in a workspace, they must be
 able to use *tools* managed by dune, but they should still be able to use tools
 installed by opam (or other possible package managers) in all operations of
 dune.
+
+
+<details>
+<summary>
+Motivation and context
+</summary>
+
+**Issues**
+
+- https://github.com/ocaml/dune/issues/16190
+
+</details>
 
 #### 2.2. Shells
 
@@ -534,6 +571,11 @@ dune tools exec merlin
   `GOBIN`, conventionally on the `PATH`. (`go tool <name>` runs tools from the
   build cache instead, and does not put them on the `PATH`.)
 - *uv* : Satisfied by installed tools being plain executables in the `PATH`.
+
+
+**Issues**
+
+- https://github.com/ocaml/dune/issues/16191
 
 </details>
 
@@ -584,6 +626,10 @@ Related issues:
   - Good to maintain compatibility with OPAM - but the tradeoff is the amount of
   work needed to achieve it.
 
+**Issues**
+
+- https://github.com/ocaml/dune/issues/16187
+
 </details>
 
 ###### 2.3.1.1.2. When package management is not enabled in a workspace
@@ -619,6 +665,10 @@ Motivation and context
 - *uv* : Satisfied by `uv run` executing tools installed in any group, and
   activating a project's virtual environment will bring the tools into your
   path.
+
+**Issues**
+
+- https://github.com/ocaml/dune/issues/16191 
 
 </details>
 
@@ -729,6 +779,10 @@ avoiding recent compiler versions or making use of these (and many other)
 available tools. This would violate the design principles of orthogonality and
 generality, and yield a necessarily limited usability.
 
+**Issues**
+
+- https://github.com/ocaml/dune/issues/16193
+
 </details>
 
 ###### 3.1.1.1. Optimal builds
@@ -776,6 +830,11 @@ A special purpose field could also be introduced for this purpose.
 We can also consider data added to opam files that allows this requirement to be
 specified for provided tools at the package data level, instead of forcing this
 upon consuming users.
+
+
+**Issues**
+
+- https://github.com/ocaml/dune/issues/16195
 
 </details>
 
@@ -847,6 +906,18 @@ in a build rule, dune should report an error with clear guidance to users,
 advising them to move the tool configuration into the appropriate package
 dependency.
 
+
+<details>
+<summary>
+Motivation and context
+</summary>
+
+**Issues**
+
+- https://github.com/ocaml/dune/issues/16196
+
+</details>
+
 ###### 3.2.1.3. Subset of D2 and D3 tools functionality
 
 The functionality of discretionary, D1 tools must be a strict subset of the
@@ -903,6 +974,17 @@ If a set of tools are qualified with a filter such as `:with-test` or
 `:with-doc`, it must be possible to install just that set together (in addition
 to the unqualified dependencies).
 
+<details>
+<summary>
+Motivation and context
+</summary>
+
+**Issues**
+
+- https://github.com/ocaml/dune/issues/12135
+
+</details>
+
 ###### 3.2.2.3. Builtin D2 tools
 
 A select subset of keystone tools are treated by dune as builtin qualified
@@ -910,6 +992,18 @@ dependencies, including `odoc`, `utop`, and `ocamlformat` as the most widely
 used. These should be treated as if they have qualified dependencies built in,
 with further constraint or specification of how to install them available as a
 user override on top of the default configuration.
+
+<details>
+<summary>
+Motivation and context
+</summary>
+
+**Issues**
+
+- Provide built-in tool rules for tool integrations
+  - Should provide equivalent behaviour to what is requested in https://gist.github.com/samoht/338e352234bcc2183c2710feb4efc6fc
+
+</details>
 
 ##### 3.2.3. Unqualified dependency tools (D3)
 
@@ -938,6 +1032,19 @@ Users must be able to manage tools using CLI commands:
 - Remove tools
 - Update/upgrade tools
 - Discover paths to tool executables
+
+
+<details>
+<summary>
+Motivation and context
+</summary>
+
+**Issues**
+
+- Implement CLI for adding tools
+  - Will effect updates to the dune-workspace
+
+</details>
 
 ##### 4.1.1. Managing multiple tools
 

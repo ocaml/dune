@@ -608,7 +608,27 @@ The old `File` query still returns the default OCaml Merlin configuration.
   $ query_ocaml_merlin_pp "$PWD/mixed/foo.ml" --root mixed | grep -E 'MELC_STDLIB|\.objs/melange|pp_melange'
   [1]
 
-The extensionless lookup remains available for preprocessed filenames.
+Exact conditional source matches take precedence over another configuration's
+fallback lookup by filename without extension.
+
+  $ for file in platform.ml iface.mli; do
+  >   printf '%s: ' "$file"
+  >   query_ocaml_merlin_pp "$PWD/mixed/$file" --root mixed \
+  >     | grep -Eo 'pp_(ocaml|melange)' | sort -u
+  > done
+  platform.ml: pp_ocaml
+  iface.mli: pp_ocaml
+  $ for file in platform.melange.ml iface.melange.mli melange_only.ml; do
+  >   printf '%s: ' "$file"
+  >   query_ocaml_merlin_pp "$PWD/mixed/$file" --root mixed \
+  >     | grep -Eo 'pp_(ocaml|melange)' | sort -u
+  > done
+  platform.melange.ml: pp_melange
+  iface.melange.mli: pp_melange
+  melange_only.ml: pp_melange
+
+The lookup by filename without extension remains a last-resort fallback for
+preprocessed filenames.
 
   $ query_ocaml_merlin_pp "$PWD/mixed/platform.pp.ml" --root mixed \
   >   | grep -Eo 'pp_(ocaml|melange)' | sort -u

@@ -391,15 +391,19 @@ module Processed = struct
     Buffer.contents b
   ;;
 
+  type match_kind =
+    | Exact_or_copy
+    | Without_extension
+
   let get_configuration { per_file_config; pp_config; config } ~file =
     let open Option.O in
-    let+ { module_; opens; reader } =
+    let+ match_kind, { module_; opens; reader } =
       let find file = Path.Build.Map.find per_file_config file in
       match find file with
-      | Some _ as s -> s
+      | Some config -> Some (Exact_or_copy, config)
       | None ->
         (match Copy_line_directive.DB.follow_while file ~f:find with
-         | Some _ as s -> s
+         | Some config -> Some (Exact_or_copy, config)
          | None ->
            (* Fallback to handle preprocessed files (where the preprocessor has
               the file extensison changed).
@@ -409,16 +413,38 @@ module Processed = struct
               This is too rough but, really, preprocessors should emit copy
               line directives instead and then Dune should have the database
               similar to Copy_line_directive to handle this. *)
-           Path.Build.Map.find per_file_config (remove_extension file))
+           Path.Build.Map.find per_file_config (remove_extension file)
+           |> Option.map ~f:(fun config -> Without_extension, config))
     in
     let pp = Module_name.Per_item.get pp_config (Module.name module_) in
     let unit_name = Module_name.Unique.to_string (Module.obj_name module_) in
-    to_sexp ~unit_name ~opens ~pp ~reader config
+    match_kind, to_sexp ~unit_name ~opens ~pp ~reader config
   ;;
 
-  let get configurations ~file =
-    Nonempty_list.to_list configurations |> List.find_map ~f:(get_configuration ~file)
+  let configurations =
+    let rec loop configurations ~file ~exact ~without_extension =
+      match configurations with
+      | [] ->
+        (match exact with
+         | _ :: _ -> List.rev exact
+         | [] -> List.rev without_extension)
+        |> Nonempty_list.of_list
+      | configuration :: configurations ->
+        (match get_configuration configuration ~file with
+         | None -> loop configurations ~file ~exact ~without_extension
+         | Some (Exact_or_copy, directives) ->
+           loop configurations ~file ~exact:(directives :: exact) ~without_extension
+         | Some (Without_extension, directives) ->
+           loop
+             configurations
+             ~file
+             ~exact
+             ~without_extension:(directives :: without_extension))
+    in
+    fun t ~file -> loop (Nonempty_list.to_list t) ~file ~exact:[] ~without_extension:[]
   ;;
+
+  let get t ~file = Option.map (configurations t ~file) ~f:Nonempty_list.hd
 
   let dump_entries { per_file_config; pp_config; config } : Dump_entry.t list =
     Path.Build.Map.to_list per_file_config

@@ -23,7 +23,7 @@ module Names : sig
     -> Install_conf.t option
 end = struct
   type public =
-    { public_names : (Loc.t * string option) list
+    { public_names : (Loc.t * string option) Nonempty_list.t
     ; package : Package.t
     }
 
@@ -34,11 +34,7 @@ end = struct
     }
 
   let names t = t.names
-
-  let public_names t =
-    Option.map t.public ~f:(fun p -> Nonempty_list.of_list_exn p.public_names)
-  ;;
-
+  let public_names t = Option.map t.public ~f:(fun p -> p.public_names)
   let package t = Option.map t.public ~f:(fun p -> p.package)
   let has_public_name t = Option.is_some t.public
 
@@ -60,7 +56,7 @@ end = struct
       ~f:(fun (names, public_names) ->
         match names, public_names with
         | Some names, Some public_names ->
-          if List.length public_names = List.length names
+          if Nonempty_list.length public_names = Nonempty_list.length names
           then Ok (Some names, Some public_names)
           else
             Error
@@ -77,7 +73,8 @@ end = struct
     let dash_is_none = dune_syntax >= (3, 8) in
     let+ name = field_o "name" (located string)
     and+ public_name = field_o "public_name" (public_name ~dash_is_none) in
-    Option.map name ~f:List.singleton, Option.map public_name ~f:List.singleton
+    ( Option.map name ~f:(fun name -> Nonempty_list.[ name ])
+    , Option.map public_name ~f:(fun public_name -> Nonempty_list.[ public_name ]) )
   ;;
 
   let pluralize s ~multi = if multi then s ^ "s" else s
@@ -95,21 +92,19 @@ end = struct
         let open Dune_lang.Syntax.Version.Infix in
         if dune_syntax >= check_valid_name_version
         then
-          Option.iter
-            names
-            ~f:
-              (List.iter ~f:(fun name ->
-                 ignore
-                   (Module_name.of_string_allow_invalid name
-                    |> Module_name.Unchecked.validate_exn
-                    : Module_name.t)));
+          Option.iter names ~f:(fun names ->
+            Nonempty_list.iter names ~f:(fun name ->
+              ignore
+                (Module_name.of_string_allow_invalid name
+                 |> Module_name.Unchecked.validate_exn
+                 : Module_name.t)));
         match names, public_names with
         | Some names, _ -> names
         | None, Some public_names ->
           if dune_syntax >= allow_omit_names_version
           then (
             let check_names = dune_syntax >= check_valid_name_version in
-            List.map public_names ~f:(fun (loc, p) ->
+            Nonempty_list.map public_names ~f:(fun (loc, p) ->
               match p, check_names with
               | None, _ ->
                 User_error.raise ~loc [ Pp.text "This executable must have a name field" ]
@@ -150,14 +145,14 @@ end = struct
               ~loc
               [ Pp.textf "field %s is missing" (pluralize ~multi "name") ]
       in
-      Nonempty_list.of_list_exn names
+      names
     in
     let public =
       match package, public_names with
       | None, None -> None
       | Some (_loc, package), Some public_names -> Some { package; public_names }
       | None, Some public_names ->
-        if List.for_all public_names ~f:(fun (_, x) -> Option.is_none x)
+        if Nonempty_list.for_all public_names ~f:(fun (_, x) -> Option.is_none x)
         then None
         else
           Some
@@ -179,24 +174,18 @@ end = struct
   let install_conf t ~ext ~enabled_if ~dir =
     Option.map t.public ~f:(fun { package; public_names } ->
       let files =
-        List.map2
-          (Nonempty_list.to_list t.names)
-          public_names
-          ~f:(fun (locn, name) (locp, pub) ->
-            Option.map pub ~f:(fun pub ->
-              Install_entry.File.of_file_binding
-                (File_binding.Unexpanded.make
-                   ~src:(locn, name ^ Filename.Extension.to_string ext)
-                   ~dst:(locp, pub)
-                   ~dune_syntax:t.dune_syntax
-                   ~dir:(Some dir))))
+        Nonempty_list.map2 t.names public_names ~f:(fun (locn, name) (locp, pub) ->
+          Option.map pub ~f:(fun pub ->
+            Install_entry.File.of_file_binding
+              (File_binding.Unexpanded.make
+                 ~src:(locn, name ^ Filename.Extension.to_string ext)
+                 ~dst:(locp, pub)
+                 ~dune_syntax:t.dune_syntax
+                 ~dir:(Some dir))))
+        |> Nonempty_list.to_list
         |> List.filter_opt
       in
-      let loc =
-        match public_names with
-        | [] -> assert false
-        | (loc, _) :: _ -> loc
-      in
+      let loc, _ = Nonempty_list.hd public_names in
       { Install_conf.section = loc, Section Bin
       ; files
       ; dirs = []

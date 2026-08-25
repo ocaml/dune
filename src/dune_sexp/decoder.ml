@@ -764,7 +764,7 @@ and keyword : string -> values context -> values -> unit * values =
 let repeat1 p =
   let+ x = p
   and+ xs = repeat p in
-  x :: xs
+  Nonempty_list.(x :: xs)
 ;;
 
 let parse t context sexp =

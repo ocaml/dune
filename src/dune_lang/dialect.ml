@@ -113,7 +113,8 @@ let decode =
     and+ merlin_reader =
       field_o
         "merlin_reader"
-        (Syntax.since Stanza.syntax (3, 16) >>> located (repeat1 string))
+        (Syntax.since Stanza.syntax (3, 16)
+         >>> located (repeat1 string >>| Nonempty_list.to_list))
     and+ syntax_ver = Syntax.get_exn Stanza.syntax in
     let ver = 3, 9 in
     if syntax_ver < ver && Option.is_some (String.index_from extension 1 '.')

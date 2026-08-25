@@ -29,6 +29,22 @@ let test_bytes_hex ?check value =
   | None -> print_endline "hex value must not have letters"
 ;;
 
+let%expect_test "repeat1 returns a nonempty list" =
+  let values =
+    List.map [ "one"; "two" ] ~f:(Dune_sexp.Ast.atom_or_quoted_string Loc.none)
+  in
+  let value = Dune_sexp.Ast.List (Loc.none, values) in
+  let decoder = Dune_sexp.Decoder.(enter (repeat1 string)) in
+  let values : string Nonempty_list.t =
+    Dune_sexp.Decoder.parse decoder Univ_map.empty value
+  in
+  Nonempty_list.iter values ~f:print_endline;
+  [%expect
+    {|
+    one
+    two |}]
+;;
+
 (* Test parsing of integers. *)
 
 let%expect_test "parsing no suffix" =

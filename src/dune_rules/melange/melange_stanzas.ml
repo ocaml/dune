@@ -64,8 +64,9 @@ module Emit = struct
       in
       let module_systems =
         match
-          Filename.Extension.Map.of_list_map module_systems ~f:(fun (ms, (loc, ext)) ->
-            ext, (loc, ms))
+          Filename.Extension.Map.of_list_map
+            (Nonempty_list.to_list module_systems)
+            ~f:(fun (ms, (loc, ext)) -> ext, (loc, ms))
         with
         | Ok m ->
           Filename.Extension.Map.to_list_map m ~f:(fun ext (_loc, ms) -> ms, ext)

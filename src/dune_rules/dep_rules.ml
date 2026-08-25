@@ -153,45 +153,53 @@ let ooi_deps
       ~sctx
       ~dir
       ~obj_dir
+      ~vlib_obj_dir
       ~dune_version
       ~vlib_obj_map
-      ~(ml_kind : Ml_kind.t)
+      ~(for_ : Compilation_mode.t)
       (sourced_module : Modules.Sourced_module.t)
+      ~(ml_kind : Ml_kind.t)
   =
   let m = Modules.Sourced_module.to_module sourced_module in
-  let+ read =
-    let unit =
-      let cm_kind =
-        match ml_kind with
-        | Intf -> Cm_kind.Cmi
-        | Impl -> vimpl |> Vimpl.impl_cm_kind
-      in
-      Obj_dir.Module.cm_file_exn obj_dir m ~kind:(Ocaml cm_kind) |> Path.build
-    in
-    let sandbox =
-      if dune_version >= (3, 3) then Some Sandbox_config.needs_sandboxing else None
-    in
-    let+ ocaml =
-      let ctx = Super_context.context sctx in
-      Context.ocaml ctx
-    in
+  let sandbox =
+    if dune_version >= (3, 3) then Some Sandbox_config.needs_sandboxing else None
+  in
+  let+ ocaml = Context.ocaml (Super_context.context sctx) in
+  let read unit =
     Ocamlobjinfo.rules ocaml ~sandbox ~dir ~units:[ unit ]
     |> Action_builder.map ~f:(function
       | [ x ] -> x
       | [] | _ :: _ -> assert false)
+    |> Action_builder.memoize "ocamlobjinfo"
+    |> Action_builder.map ~f:(fun (ooi : Ocamlobjinfo.t) ->
+      Module_name.Unique.Set.to_list ooi.intf
+      |> List.filter_map ~f:(fun dep ->
+        if Module.obj_name m = dep
+        then None
+        else
+          Module_name.Unique.Map.find vlib_obj_map dep
+          |> Option.map ~f:Modules.Sourced_module.to_module))
   in
-  let read =
-    Action_builder.memoize
-      "ocamlobjinfo"
-      (let open Action_builder.O in
-       let+ (ooi : Ocamlobjinfo.t) = read in
-       Module_name.Unique.Set.to_list ooi.intf
-       |> List.filter_map ~f:(fun dep ->
-         if Module.obj_name m = dep
-         then None
-         else Module_name.Unique.Map.find vlib_obj_map dep))
+  let read_copied kind =
+    Obj_dir.Module.cm_file_exn obj_dir m ~kind |> Path.build |> read
   in
-  read
+  match ml_kind with
+  | Intf ->
+    read_copied
+      (match for_ with
+       | Ocaml -> Lib_mode.Cm_kind.Ocaml Cmi
+       | Melange -> Melange Cmi)
+  | Impl ->
+    let ocaml_deps = read_copied (Ocaml (Vimpl.impl_cm_kind vimpl)) in
+    (match for_ with
+     | Ocaml -> ocaml_deps
+     | Melange ->
+       (match
+          Obj_dir.Module.cmt_file vlib_obj_dir m ~ml_kind:Impl ~cm_kind:(Melange Cmj)
+        with
+        | None -> ocaml_deps
+        | Some cmt ->
+          Action_builder.if_file_exists cmt ~then_:(read cmt) ~else_:ocaml_deps))
 ;;
 
 let wrapped_compat_deps modules m =
@@ -219,7 +227,12 @@ let preprocessed_modules_of_local_lib ~sctx lib ~for_ =
 ;;
 
 type imported_vlib_deps =
-  Modules.Sourced_module.t -> ml_kind:Ml_kind.t -> Module.t list Action_builder.t Memo.t
+  { deps_of :
+      Modules.Sourced_module.t
+      -> ml_kind:Ml_kind.t
+      -> Module.t list Action_builder.t Memo.t
+  ; impl_deps_are_immediate : bool
+  }
 
 type memoized_transitive_deps =
   { output : Transitive_deps_output.t
@@ -318,10 +331,27 @@ and transitive_deps_output_of_imported_vlib t m ~ml_kind =
     let open Action_builder.O in
     let* deps =
       Action_builder.of_memo
-        (imported_vlib_deps (Modules.Sourced_module.Imported_from_vlib m) ~ml_kind)
+        (imported_vlib_deps.deps_of
+           (Modules.Sourced_module.Imported_from_vlib m)
+           ~ml_kind)
     in
-    let+ deps = deps in
-    Transitive_deps_output.of_modules deps
+    let* deps = deps in
+    (match ml_kind, imported_vlib_deps.impl_deps_are_immediate with
+     | Intf, _ | Impl, false ->
+       Transitive_deps_output.of_modules deps |> Action_builder.return
+     | Impl, true ->
+       let transitive =
+         List.filter_map deps ~f:(fun dep ->
+           match Module.kind dep with
+           | Root | Alias _ -> None
+           | _ ->
+             let ml_kind = if Module.has dep ~ml_kind:Impl then Ml_kind.Impl else Intf in
+             Some
+               (Action_builder.exec_memo (Lazy.force t.memo) (Module.obj_name dep, ml_kind)
+                |> Action_builder.map ~f:(fun memoized -> memoized.output)))
+       in
+       let immediate = List.map deps ~f:Module.obj_name in
+       Transitive_deps_output.merge ~dir:t.dir ~transitive ~immediate)
 ;;
 
 let transitive_deps_of t ~ml_kind unit =
@@ -346,26 +376,26 @@ let make_imported_vlib_deps ~obj_dir ~vimpl ~dir ~sctx ~sandbox ~for_ : imported
   match Lib.Local.of_lib vlib with
   | None ->
     let vlib_obj_map = Vimpl.vlib_obj_map vimpl in
+    let vlib_obj_dir = Lib.info vlib |> Lib_info.obj_dir in
     let dune_version =
       let impl = Vimpl.impl vimpl in
       Dune_project.dune_version impl.project
     in
-    let deps_of sourced_module ~ml_kind =
-      let+ deps =
+    { deps_of =
         ooi_deps
           ~vimpl
           ~sctx
           ~dir
           ~obj_dir
+          ~vlib_obj_dir
           ~dune_version
           ~vlib_obj_map
-          ~ml_kind
-          sourced_module
-      in
-      Action_builder.map deps ~f:(fun deps ->
-        List.map deps ~f:Modules.Sourced_module.to_module)
-    in
-    deps_of
+          ~for_
+    ; impl_deps_are_immediate =
+        (match for_ with
+         | Ocaml -> false
+         | Melange -> true)
+    }
   | Some lib ->
     let vlib_obj_dir =
       let info = Lib.Local.info lib in
@@ -388,7 +418,7 @@ let make_imported_vlib_deps ~obj_dir ~vimpl ~dir ~sctx ~sandbox ~for_ : imported
       let m = Modules.Sourced_module.to_module sourced_module in
       transitive_deps_of transitive_deps ~ml_kind m |> Memo.return
     in
-    deps_of
+    { deps_of; impl_deps_are_immediate = false }
 ;;
 
 let make_transitive_deps ~obj_dir ~modules ~sandbox ~impl ~dir ~sctx ~for_ =
@@ -457,7 +487,7 @@ let rec deps_of
        | None -> Code_error.raise "imported vlib module without vlib deps" []
        | Some imported_vlib_deps ->
          skip_if_source_absent
-           (fun sourced_module -> imported_vlib_deps sourced_module ~ml_kind)
+           (fun sourced_module -> imported_vlib_deps.deps_of sourced_module ~ml_kind)
            m)
     | Normal _ ->
       skip_if_source_absent

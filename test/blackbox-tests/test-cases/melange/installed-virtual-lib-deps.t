@@ -75,11 +75,6 @@ The virtual library and its implementation are both Melange-only.
 
   $ OCAMLPATH="$PWD/prefix/lib:$OCAMLPATH" \
   > dune build --root consumer --sandbox=symlink @melange
-  Entering directory 'consumer'
-  File "impl/.impl.objs/melange/_unknown_", line 1, characters 0-0:
-  Error: No rule found for impl/.impl.objs/native/vlib__Shared.cmx
-  Leaving directory 'consumer'
-  [1]
 
 With annotations, dependency analysis should read the precise imports from the
 CMT, including private modules but excluding unused ones.
@@ -87,12 +82,6 @@ CMT, including private modules but excluding unused ones.
   $ OCAMLPATH="$PWD/prefix/lib:$OCAMLPATH" \
   > dune rules --root consumer --recursive --format=json --deps --display=quiet \
   > impl/.impl.objs/melange/vlib__Virt.cmj > deps.json
-  Entering directory 'consumer'
-  Error: No rule found for impl/.impl.objs/native/vlib__Shared.cmx
-  -> required by transitive deps of vlib__Shared.impl in _build/default/impl
-  -> required by transitive deps of vlib__Virt.impl in _build/default/impl
-  Leaving directory 'consumer'
-  [1]
   $ jq_dune -r '
   >   [.[] | depsFilePaths
   >    | select(endswith("vlib__Helper.cmi")
@@ -108,3 +97,10 @@ CMT, including private modules but excluding unused ones.
   >    | select(startswith("_build/default/impl/.impl.objs/melange/"))]
   >   | unique[]
   > ' deps.json
+  _build/default/impl/.impl.objs/melange/vlib__Helper.cmi
+  _build/default/impl/.impl.objs/melange/vlib__Helper.cmj
+  _build/default/impl/.impl.objs/melange/vlib__Leaf.cmi
+  _build/default/impl/.impl.objs/melange/vlib__Leaf.cmj
+  _build/default/impl/.impl.objs/melange/vlib__Other.cmi
+  _build/default/impl/.impl.objs/melange/vlib__Other.cmj
+  _build/default/impl/.impl.objs/melange/vlib__Virt.cmi

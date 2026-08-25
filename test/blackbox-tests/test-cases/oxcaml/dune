@@ -9,3 +9,8 @@
 (cram
  (deps %{bin:tree})
  (applies_to vendor-parameterised))
+
+(cram
+ (enabled_if %{bin-available:odoc})
+ (deps %{bin:odoc})
+ (applies_to parameterised-doc))

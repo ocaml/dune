@@ -761,15 +761,26 @@ let setup_toplevel_index_rule sctx output =
   add_rule sctx (Action_builder.write_file path content)
 ;;
 
+let is_documentation_relevant lib =
+  (* Filter out implementations of virtual modules. *)
+  match Lib.implements lib with
+  | None -> Memo.return true
+  | Some implements ->
+    let+ implements = implements in
+    (match Resolve.peek implements with
+     | Error () -> false
+     | Ok implements ->
+       (match Lib.info implements |> Lib_info.kind with
+        | Parameter -> true
+        | Virtual | Dune_file _ -> false))
+;;
+
 let libs_of_pkg ctx ~pkg =
-  let+ { Scope.DB.Lib_entry.Set.libraries; _ } =
+  let* { Scope.DB.Lib_entry.Set.libraries; _ } =
     Scope.DB.lib_entries_of_package ctx pkg
   in
-  (* Filter out all implementations of virtual libraries *)
-  List.filter_map libraries ~f:(fun lib ->
-    match Lib.Local.to_lib lib |> Lib.info |> Lib_info.implements with
-    | None -> Some lib
-    | Some _ -> None)
+  Memo.List.filter libraries ~f:(fun lib ->
+    is_documentation_relevant (Lib.Local.to_lib lib))
 ;;
 
 let entry_modules_by_lib sctx lib =

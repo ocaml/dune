@@ -437,7 +437,7 @@ module Valid = struct
       let* libs, packages = libs_and_pkgs in
       let+ libs_list =
         let+ libs_list =
-          let+ libs_list =
+          let* libs_list =
             let* stdlib = stdlib_lib (Context.name ctx) in
             Memo.parallel_map libs ~f:(fun (_, _lib_db, libs) ->
               Lib.Set.fold ~init:(Memo.return []) libs ~f:(fun lib acc ->
@@ -458,9 +458,7 @@ module Valid = struct
           |> List.concat
           |> Lib.Set.of_list
           |> Lib.Set.to_list
-          |> List.filter ~f:(fun lib ->
-            let is_impl = Lib.info lib |> Lib_info.implements |> Option.is_some in
-            not is_impl)
+          |> Memo.List.filter ~f:Odoc.is_documentation_relevant
         in
         if all
         then libs_list

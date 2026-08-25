@@ -256,7 +256,7 @@ let spec_for_test ~stanzas test =
     | Ok test -> Cram_test.name test
     | Error (Missing_run_t test) -> Cram_test.name test
   in
-  let test_name_alias = Alias.Name.of_string name in
+  let test_name_alias = Cram_test.Name.to_alias name in
   let init = None, Spec.make_empty ~test_name_alias in
   let* runtest_alias, acc =
     Memo.List.fold_left
@@ -267,7 +267,10 @@ let spec_for_test ~stanzas test =
           match stanza.applies_to with
           | Whole_subtree -> true
           | Files_matching_in_this_dir pred ->
-            Predicate_lang.Glob.test pred ~standard:Predicate_lang.true_ name
+            Predicate_lang.Glob.test
+              pred
+              ~standard:Predicate_lang.true_
+              (Cram_test.Name.to_string name)
         with
         | false -> Memo.return (runtest_alias, acc)
         | true ->
@@ -308,7 +311,9 @@ let spec_for_test ~stanzas test =
                    [ Pp.text
                        "enabling or disabling the runtest alias for a cram test may only \
                         be set once."
-                   ; Pp.textf "It's already set for the test %S" name
+                   ; Pp.textf
+                       "It's already set for the test %S"
+                       (Cram_test.Name.to_string name)
                    ]
                  in
                  let compound =

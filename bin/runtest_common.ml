@@ -15,7 +15,7 @@ module Test_kind = struct
 
   let alias ~contexts = function
     | Cram (dir, cram) ->
-      let name = Dune_engine.Alias.Name.of_string (Source.Cram_test.name cram) in
+      let name = Source.Cram_test.name cram |> Source.Cram_test.Name.to_alias in
       Alias.in_dir ~name ~recursive:false ~contexts dir
     | Test_executable { dir; exe_name } ->
       let name = Dune_engine.Alias.Name.of_string ("runtest-" ^ exe_name) in

@@ -514,9 +514,18 @@ module DB = struct
           | Library.T ({ enabled_if; _ } as lib) ->
             let src_dir = Dune_file.dir d in
             let lib_dir = Path.Build.append_source build_dir src_dir in
-            (match lib.visibility with
-             | Private None -> Memo.return acc
-             | Private (Some pkg) ->
+            let* package_and_db =
+              match lib.visibility with
+              | Private None -> Memo.return None
+              | Private (Some package) ->
+                let+ scope = find_by_dir lib_dir in
+                Some (package, libs scope)
+              | Public public ->
+                Memo.return (Some (Public_lib.package public, public_libs))
+            in
+            (match package_and_db with
+             | None -> Memo.return acc
+             | Some (package, db) ->
                let* enabled =
                  let* expander = Expander0.get ~dir:lib_dir in
                  Expander0.eval_blang expander enabled_if
@@ -524,29 +533,12 @@ module DB = struct
                if not enabled
                then Memo.return acc
                else
-                 let* scope = find_by_dir lib_dir in
-                 Lib.DB.find_lib_id (libs scope) (Local (Library.to_lib_id ~src_dir lib))
+                 Lib.DB.find_lib_id db (Local (Library.to_lib_id ~src_dir lib))
                  >>| (function
                   | None -> acc
                   | Some lib ->
-                    let name = Package.name pkg in
-                    (name, Lib_entry.Library (Lib.Local.of_lib_exn lib)) :: acc)
-             | Public pub ->
-               let* enabled =
-                 let* expander = Expander0.get ~dir:lib_dir in
-                 Expander0.eval_blang expander enabled_if
-               in
-               if not enabled
-               then Memo.return acc
-               else
-                 Lib.DB.find_lib_id public_libs (Local (Library.to_lib_id ~src_dir lib))
-                 >>| (function
-                  | None -> acc
-                  | Some lib ->
-                    let package = Public_lib.package pub in
-                    let name = Package.name package in
-                    let local_lib = Lib.Local.of_lib_exn lib in
-                    (name, Lib_entry.Library local_lib) :: acc))
+                    (Package.name package, Lib_entry.Library (Lib.Local.of_lib_exn lib))
+                    :: acc))
           | Deprecated_library_name.T ({ old_name = old_public_name, _; _ } as d) ->
             let package = Public_lib.package old_public_name in
             let name = Package.name package in

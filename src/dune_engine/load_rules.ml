@@ -188,6 +188,14 @@ let report_rule_conflict fn (rule' : Rule.t) (rule : Rule.t) =
        | _ -> [])
 ;;
 
+let remove_subdir_if_stale ~dir ~subdirs_to_keep fn =
+  if not (Subdir_set.mem subdirs_to_keep fn)
+  then (
+    let path = Path.Build.relative_fname dir fn in
+    let () = Rule_cache.Workspace_local.remove_subtree path in
+    Path.rm_rf (Path.build path))
+;;
+
 let remove_old_artifacts
       ~dir
       ~(rules_here : Loaded.rules_here)
@@ -205,11 +213,7 @@ let remove_old_artifacts
       if not path_is_a_target
       then (
         match kind with
-        | Unix.S_DIR ->
-          if not (Subdir_set.mem subdirs_to_keep fn)
-          then (
-            let () = Rule_cache.Workspace_local.remove_subtree path in
-            Path.rm_rf (Path.build path))
+        | Unix.S_DIR -> remove_subdir_if_stale ~dir ~subdirs_to_keep fn
         | _ ->
           let () = Rule_cache.Workspace_local.remove_target path in
           Fpath.unlink_exn (Path.Build.to_string path)))
@@ -222,13 +226,8 @@ let remove_old_sub_dirs_in_anonymous_actions_dir ~dir ~(subdirs_to_keep : Subdir
   | Error _ -> ()
   | Ok files ->
     List.iter files ~f:(fun (fn, kind) ->
-      let path = Path.Build.relative_fname dir fn in
       match kind with
-      | Unix.S_DIR ->
-        if not (Subdir_set.mem subdirs_to_keep fn)
-        then (
-          let () = Rule_cache.Workspace_local.remove_subtree path in
-          Path.rm_rf (Path.build path))
+      | Unix.S_DIR -> remove_subdir_if_stale ~dir ~subdirs_to_keep fn
       | _ -> ())
 ;;
 

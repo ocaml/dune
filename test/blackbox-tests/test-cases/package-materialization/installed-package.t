@@ -26,11 +26,19 @@ Install packages "a" and "b" into a prefix. Library `a` depends on library
   $ mkdir -p a/b/unrelated
 
   $ cat >a/b/dune <<EOF
-  > (library (public_name b))
+  > (library
+  >  (public_name b)
+  >  (foreign_stubs
+  >   (language c)
+  >   (names b_stubs)))
   > EOF
 
   $ cat >a/b/b.ml <<EOF
   > let value = 1
+  > EOF
+
+  $ cat >a/b/b_stubs.c <<EOF
+  > int b_stubs_dummy(void) { return 0; }
   > EOF
 
   $ cat >a/b/unrelated/dune <<EOF
@@ -48,6 +56,14 @@ Install packages "a" and "b" into a prefix. Library `a` depends on library
   $ test -f prefix/lib/a/META
   $ test -f prefix/lib/b/META
   $ test -f prefix/lib/b/unrelated/unrelated.cmi
+
+A `dune-package` records the intermediate object used to build the installed
+stub archive, but the object itself is intentionally not installed. It must not
+become an action dependency.
+
+  $ grep -q 'foreign_objects b_stubs.o' prefix/lib/b/dune-package
+  $ test ! -e prefix/lib/b/b_stubs.o
+  $ export CAML_LD_LIBRARY_PATH=$PWD/prefix/lib/stublibs
 
 Now create a consumer project that depends on the installed package.
 The consumer uses `(deps (package a))` and external OCaml tooling to verify
@@ -86,6 +102,9 @@ environment in which they happen to be visible.
   > jq_dune '.[] | ruleDepFilePaths' |
   > grep -q "$PWD/prefix/lib/b/dune-package"
   [1]
+  $ ! OCAMLPATH=$PWD/prefix/lib dune rules --root consumer --format=json main.exe |
+  > jq_dune '.[] | ruleDepFilePaths' |
+  > grep -q "$PWD/prefix/lib/b/b_stubs.o"
   $ ! OCAMLPATH=$PWD/prefix/lib dune rules --root consumer --format=json main.exe |
   > jq_dune '.[] | ruleDepFilePaths' |
   > grep -q "$PWD/prefix/lib/b/unrelated/unrelated.cmi"

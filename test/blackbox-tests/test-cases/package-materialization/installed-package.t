@@ -1,113 +1,162 @@
-Test that (deps (package ...)) works with externally installed packages.
-Installed packages (found via findlib) go through the Installed codepath,
-not the layout. The layout only applies to Local (workspace) packages.
+An action depending on installed package a must track its required library b,
+not merely find it through OCAMLPATH. Package b also installs b.unrelated,
+which must not become a dependency of the action.
 
-Install packages "a" and "b" into a prefix. Library `a` depends on library
-`b`, so its installed metadata records `b` as a requirement.
+Use bytecode so changing b's implementation does not change a through native
+inlining. Test both dune-package and META readers with fresh consumers.
 
-  $ mkdir a consumer prefix
-
-  $ cat >a/dune-project <<EOF
+  $ mkdir -p source/b/unrelated prefix dune-consumer meta-consumer
+  $ cat >source/dune-project <<'EOF'
   > (lang dune 3.24)
   > (package (name a))
   > (package (name b))
   > EOF
-
-  $ cat >a/dune <<EOF
+  $ cat >source/dune <<'EOF'
   > (library
   >  (public_name a)
+  >  (modes byte)
   >  (libraries b))
   > EOF
-
-  $ cat >a/a.ml <<EOF
-  > let value = B.value + 1
+  $ echo 'let value = B.value + 1' >source/a.ml
+  $ echo '(library (public_name b) (modes byte))' >source/b/dune
+  $ echo 'let value = 1' >source/b/b.ml
+  $ cat >source/b/unrelated/dune <<'EOF'
+  > (library
+  >  (name unrelated)
+  >  (public_name b.unrelated)
+  >  (modes byte))
   > EOF
+  $ touch source/b/unrelated/unrelated.ml
+  $ dune build --root source @install
+  $ dune install --root source --prefix "$PWD/prefix" 2>/dev/null
 
-  $ mkdir a/b
+Check the metadata reader's inputs and the artifacts used in the dependency
+observations, including the sibling whose exclusion we want to verify.
 
-  $ cat >a/b/dune <<EOF
-  > (library (public_name b))
-  > EOF
+  $ export OCAMLPATH="$PWD/prefix/lib"
+  $ a_lib="$PWD/prefix/lib/a"
+  $ b_lib="$PWD/prefix/lib/b"
+  $ test -f "$a_lib/dune-package"
+  $ test -f "$b_lib/dune-package"
+  $ test -f "$a_lib/META"
+  $ test -f "$b_lib/META"
+  $ test -f "$b_lib/b.cmi"
+  $ test -f "$b_lib/b.cma"
+  $ test -f "$b_lib/unrelated/unrelated.cmi"
+  $ test -f "$b_lib/unrelated/unrelated.cma"
+  $ cp "$a_lib/a.cmi" a.cmi.before
+  $ cp "$a_lib/a.cma" a.cma.before
+  $ cp "$b_lib/b.cma" b.cma.before
 
-  $ cat >a/b/b.ml <<EOF
-  > let value = 1
-  > EOF
+Both consumers use only (package a), not an explicit dependency on b.
 
-  $ dune build --root a @install
-  $ dune install --root a --prefix $PWD/prefix 2>/dev/null
-  $ test -f prefix/lib/a/META
-  $ test -f prefix/lib/b/META
-
-Now create a consumer project that depends on the installed package.
-The consumer uses `(deps (package a))` and external OCaml tooling to verify
-that both `a` and its library dependency are findable:
-
-  $ cat >consumer/dune-project <<EOF
-  > (lang dune 3.24)
-  > EOF
-
-  $ cat >consumer/main.ml <<EOF
-  > let () = print_int A.value
-  > EOF
-
-  $ cat >consumer/dune <<'EOF'
+  $ echo '(lang dune 3.24)' >dune-consumer/dune-project
+  $ echo 'let () = Printf.printf "%d\n" A.value' >dune-consumer/main.ml
+  $ cat >dune-consumer/dune <<'EOF'
   > (rule
   >  (target main.exe)
-  >  (deps
-  >   main.ml
-  >   (package a))
+  >  (deps main.ml (package a))
   >  (action
   >   (run ocamlfind ocamlc -package a -linkpkg -o %{target} main.ml)))
   > EOF
-
-  $ OCAMLPATH=$PWD/prefix/lib dune build --root consumer main.exe
-  $ consumer/_build/default/main.exe
+  $ cp dune-consumer/dune dune-consumer/dune-project \
+  > dune-consumer/main.ml meta-consumer/
+  $ dune build --root dune-consumer main.exe
+  $ dune-consumer/_build/default/main.exe
   2
 
-When `--only-packages` masks a workspace library in the closure, library
-resolution falls back to its installed copy. The installed library remains on
-the inherited `OCAMLPATH`; it is not rematerialized as workspace support.
+CR-someday alizter: The required interface, archive and metadata should be
+tracked. Keep both sibling observations false. Accept direct dependencies
+or matching selectors rather than prescribing their representation.
 
-  $ mkdir masked masked/a-src masked/b-src
+  $ dune rules --root dune-consumer --format=json main.exe >dune-rules.json
+  $ jq_dune --arg b "$b_lib" --arg metadata dune-package '
+  >   rulesMatchingTarget("main.exe") | {
+  >     reader: $metadata,
+  >     required_interface:
+  >       ruleHasDepFileOrMatchingGlob($b + "/b.cmi"; $b; "*.cmi"),
+  >     required_archive:
+  >       ruleHasDepFileOrMatchingGlob($b + "/b.cma"; $b; "*.cma"),
+  >     required_metadata: ruleHasDepFile($b + "/" + $metadata),
+  >     unrelated_interface:
+  >       ruleHasDepFileOrMatchingGlob(
+  >         $b + "/unrelated/unrelated.cmi"; $b + "/unrelated"; "*.cmi"),
+  >     unrelated_archive:
+  >       ruleHasDepFileOrMatchingGlob(
+  >         $b + "/unrelated/unrelated.cma"; $b + "/unrelated"; "*.cma")
+  >   }' dune-rules.json
+  {
+    "reader": "dune-package",
+    "required_interface": false,
+    "required_archive": false,
+    "required_metadata": false,
+    "unrelated_interface": false,
+    "unrelated_archive": false
+  }
 
-  $ cat >masked/dune-project <<EOF
-  > (lang dune 3.24)
-  > (package (name a))
-  > (package (name b))
-  > EOF
+Replace only b's installed archive. Do not reinstall a or clean the consumer:
+its existing executable must be relinked because b changed.
 
-  $ cat >masked/a-src/dune <<EOF
-  > (library
-  >  (public_name a)
-  >  (libraries b))
-  > EOF
+  $ echo 'let value = 10' >source/b/b.ml
+  $ dune build --root source @install
+  $ cp source/_build/default/b/b.cma "$b_lib/b.cma"
+  $ cmp -s b.cma.before "$b_lib/b.cma"
+  [1]
+  $ dune build --root dune-consumer main.exe
+  $ cmp a.cmi.before "$a_lib/a.cmi"
+  $ cmp a.cma.before "$a_lib/a.cma"
 
-  $ cat >masked/a-src/a.ml <<EOF
-  > let value = B.value + 10
-  > EOF
+CR-someday alizter: This should print 11, but the consumer is stale.
 
-  $ cat >masked/b-src/dune <<EOF
-  > (library (public_name b))
-  > EOF
+  $ dune-consumer/_build/default/main.exe
+  2
 
-  $ cat >masked/b-src/b.ml <<EOF
-  > let value = 100
-  > EOF
+Restore b's original archive and remove dune-package files. The second
+consumer must use META, including after its dependency changes.
 
-  $ cat >masked/main.ml <<EOF
-  > let () = print_int A.value
-  > EOF
+  $ cp b.cma.before "$b_lib/b.cma"
+  $ rm "$a_lib/dune-package" "$b_lib/dune-package"
+  $ dune build --root meta-consumer main.exe
+  $ meta-consumer/_build/default/main.exe
+  2
+  $ dune rules --root meta-consumer --format=json main.exe >meta-rules.json
+  $ jq_dune --arg b "$b_lib" --arg metadata META '
+  >   rulesMatchingTarget("main.exe") | {
+  >     reader: $metadata,
+  >     required_interface:
+  >       ruleHasDepFileOrMatchingGlob($b + "/b.cmi"; $b; "*.cmi"),
+  >     required_archive:
+  >       ruleHasDepFileOrMatchingGlob($b + "/b.cma"; $b; "*.cma"),
+  >     required_metadata: ruleHasDepFile($b + "/" + $metadata),
+  >     unrelated_interface:
+  >       ruleHasDepFileOrMatchingGlob(
+  >         $b + "/unrelated/unrelated.cmi"; $b + "/unrelated"; "*.cmi"),
+  >     unrelated_archive:
+  >       ruleHasDepFileOrMatchingGlob(
+  >         $b + "/unrelated/unrelated.cma"; $b + "/unrelated"; "*.cma")
+  >   }' meta-rules.json
+  {
+    "reader": "META",
+    "required_interface": false,
+    "required_archive": false,
+    "required_metadata": false,
+    "unrelated_interface": false,
+    "unrelated_archive": false
+  }
 
-  $ cat >masked/dune <<'EOF'
-  > (rule
-  >  (target main.exe)
-  >  (deps
-  >   main.ml
-  >   (package a))
-  >  (action
-  >   (run %{bin:ocamlfind} ocamlc -package a -linkpkg -o %{target} main.ml)))
-  > EOF
+The rebuilt archive still contains b = 10. Copy only that archive, leaving
+both a's artifacts and the metadata reader unchanged.
 
-  $ OCAMLPATH=$PWD/prefix/lib dune build --root masked --only-packages a main.exe
-  $ masked/_build/default/main.exe
-  11
+  $ cp source/_build/default/b/b.cma "$b_lib/b.cma"
+  $ cmp -s b.cma.before "$b_lib/b.cma"
+  [1]
+  $ dune build --root meta-consumer main.exe
+  $ cmp a.cmi.before "$a_lib/a.cmi"
+  $ cmp a.cma.before "$a_lib/a.cma"
+  $ test ! -e "$a_lib/dune-package"
+  $ test ! -e "$b_lib/dune-package"
+
+CR-someday alizter: The META consumer should also print 11, not its stale result.
+
+  $ meta-consumer/_build/default/main.exe
+  2

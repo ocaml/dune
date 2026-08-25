@@ -2,8 +2,9 @@ Test that (deps (package ...)) depends on the library closure of externally
 installed packages. This must work whether the installed metadata is a
 `dune-package` file or a findlib META file.
 
-Install packages "a" and "b" into a prefix. Library `a` depends on library
-`b`, so both installed metadata formats record `b` as a requirement.
+Install packages "a", "b", and "unavailable" into a prefix. Library `a`
+depends on library `b`, so both installed metadata formats record `b` as a
+requirement.
 
   $ mkdir a consumer prefix
 
@@ -11,6 +12,7 @@ Install packages "a" and "b" into a prefix. Library `a` depends on library
   > (lang dune 3.24)
   > (package (name a))
   > (package (name b))
+  > (package (name unavailable))
   > EOF
 
   $ cat >a/dune <<EOF
@@ -23,7 +25,7 @@ Install packages "a" and "b" into a prefix. Library `a` depends on library
   > let value = B.value + 1
   > EOF
 
-  $ mkdir -p a/b/unrelated
+  $ mkdir -p a/b/unrelated a/optional a/unavailable
 
   $ cat >a/b/dune <<EOF
   > (library
@@ -41,6 +43,25 @@ Install packages "a" and "b" into a prefix. Library `a` depends on library
   > int b_stubs_dummy(void) { return 0; }
   > EOF
 
+  $ cat >a/optional/dune <<EOF
+  > (library
+  >  (name optional)
+  >  (public_name a.optional)
+  >  (libraries unavailable))
+  > EOF
+
+  $ cat >a/optional/optional.ml <<EOF
+  > let value = Unavailable.value
+  > EOF
+
+  $ cat >a/unavailable/dune <<EOF
+  > (library (public_name unavailable))
+  > EOF
+
+  $ cat >a/unavailable/unavailable.ml <<EOF
+  > let value = 3
+  > EOF
+
   $ cat >a/b/unrelated/dune <<EOF
   > (library
   >  (name unrelated)
@@ -56,6 +77,13 @@ Install packages "a" and "b" into a prefix. Library `a` depends on library
   $ test -f prefix/lib/a/META
   $ test -f prefix/lib/b/META
   $ test -f prefix/lib/b/unrelated/unrelated.cmi
+
+The requested package also advertises `a.optional`. Remove that library's
+requirement from the consumer environment so that the sublibrary is unusable.
+This must not prevent the independent `a` root from being selected.
+
+  $ test -f prefix/lib/unavailable/dune-package
+  $ rm -rf prefix/lib/unavailable
 
 A `dune-package` records the intermediate object used to build the installed
 stub archive, but the object itself is intentionally not installed. It must not
@@ -96,11 +124,11 @@ environment in which they happen to be visible.
 
   $ OCAMLPATH=$PWD/prefix/lib dune rules --root consumer --format=json main.exe |
   > jq_dune '.[] | ruleDepFilePaths' |
-  > grep -q "$PWD/prefix/lib/b/b.cmi"
+  > grep "$PWD/prefix/lib/b/b.cmi" >/dev/null
   [1]
   $ OCAMLPATH=$PWD/prefix/lib dune rules --root consumer --format=json main.exe |
   > jq_dune '.[] | ruleDepFilePaths' |
-  > grep -q "$PWD/prefix/lib/b/dune-package"
+  > grep "$PWD/prefix/lib/b/dune-package" >/dev/null
   [1]
   $ ! OCAMLPATH=$PWD/prefix/lib dune rules --root consumer --format=json main.exe |
   > jq_dune '.[] | ruleDepFilePaths' |
@@ -119,11 +147,11 @@ findlib META reader.
   2
   $ OCAMLPATH=$PWD/prefix/lib dune rules --root consumer --format=json main.exe |
   > jq_dune '.[] | ruleDepFilePaths' |
-  > grep -q "$PWD/prefix/lib/b/b.cmi"
+  > grep "$PWD/prefix/lib/b/b.cmi" >/dev/null
   [1]
   $ OCAMLPATH=$PWD/prefix/lib dune rules --root consumer --format=json main.exe |
   > jq_dune '.[] | ruleDepFilePaths' |
-  > grep -q "$PWD/prefix/lib/b/META"
+  > grep "$PWD/prefix/lib/b/META" >/dev/null
   [1]
   $ ! OCAMLPATH=$PWD/prefix/lib dune rules --root consumer --format=json main.exe |
   > jq_dune '.[] | ruleDepFilePaths' |
@@ -180,12 +208,12 @@ be an action dependency rather than merely visible on the inherited
   $ OCAMLPATH=$PWD/prefix/lib dune rules --root masked --only-packages a \
   > --format=json main.exe |
   > jq_dune '.[] | ruleDepFilePaths' |
-  > grep -q "$PWD/prefix/lib/b/b.cmi"
+  > grep "$PWD/prefix/lib/b/b.cmi" >/dev/null
   [1]
   $ OCAMLPATH=$PWD/prefix/lib dune rules --root masked --only-packages a \
   > --format=json main.exe |
   > jq_dune '.[] | ruleDepFilePaths' |
-  > grep -q "$PWD/prefix/lib/b/META"
+  > grep "$PWD/prefix/lib/b/META" >/dev/null
   [1]
   $ ! OCAMLPATH=$PWD/prefix/lib dune rules --root masked --only-packages a \
   > --format=json main.exe |

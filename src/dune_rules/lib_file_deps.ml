@@ -2,8 +2,8 @@ open Import
 open Memo.O
 
 (* This file builds dep specs for library files (cmi/cmx/cmj/header). Per-module
-   tight deps apply only to local unwrapped libraries; wrapped libraries take
-   directory globs over their cmi include dirs. [ocamldep -modules] outputs only
+   tight deps apply only to local unwrapped libraries; wrapped libraries take a
+   directory glob over their public cmi dir. [ocamldep -modules] outputs only
    top-level module names — for a consumer using [Foo.Bar.x] the output is
    [Foo], not [Foo.Bar] — so the filter cannot distinguish [Foo.Bar] from
    [Foo.Baz] consumers and a glob is the tightest sound dep. *)
@@ -28,13 +28,13 @@ module Group = struct
     | Header -> Foreign_language.header_extension
   ;;
 
-  let obj_dirs t obj_dir =
+  let obj_dir t obj_dir =
     match t with
-    | Ocaml Cmi -> Obj_dir.public_cmi_ocaml_dir obj_dir :: Obj_dir.all_cmis obj_dir
-    | Ocaml Cmx -> [ Obj_dir.native_dir obj_dir ]
-    | Melange Cmi -> [ Obj_dir.public_cmi_melange_dir obj_dir ]
-    | Melange Cmj -> [ Obj_dir.melange_dir obj_dir ]
-    | Header -> [ Obj_dir.dir obj_dir ]
+    | Ocaml Cmi -> Obj_dir.public_cmi_ocaml_dir obj_dir
+    | Ocaml Cmx -> Obj_dir.native_dir obj_dir
+    | Melange Cmi -> Obj_dir.public_cmi_melange_dir obj_dir
+    | Melange Cmj -> Obj_dir.melange_dir obj_dir
+    | Header -> Obj_dir.dir obj_dir
   ;;
 
   let to_glob =
@@ -49,15 +49,37 @@ end
 
 let deps_of_lib (lib : Lib.t) ~groups =
   let obj_dir = Lib.info lib |> Lib_info.obj_dir in
-  List.concat_map groups ~f:(fun g ->
-    let glob = Group.to_glob g in
-    List.map (Group.obj_dirs g obj_dir) ~f:(fun dir ->
-      File_selector.of_glob ~dir glob |> Dep.file_selector))
+  List.map groups ~f:(fun g ->
+    let dir = Group.obj_dir g obj_dir in
+    Group.to_glob g |> File_selector.of_glob ~dir |> Dep.file_selector)
   |> Dep.Set.of_list
 ;;
 
 let deps_with_exts = Dep.Set.union_map ~f:(fun (lib, groups) -> deps_of_lib lib ~groups)
 let deps libs ~groups = Dep.Set.union_map libs ~f:(deps_of_lib ~groups)
+
+let private_cmi_deps ~sctx libs =
+  Memo.List.fold_left libs ~init:Dep.Set.empty ~f:(fun deps lib ->
+    let obj_dir = Lib.info lib |> Lib_info.obj_dir in
+    let public_cmi_dir = Obj_dir.public_cmi_ocaml_dir obj_dir in
+    if
+      List.exists (Obj_dir.all_cmis obj_dir) ~f:(fun dir ->
+        not (Path.equal dir public_cmi_dir))
+    then
+      let+ modules = Dir_contents.modules_of_lib sctx lib ~for_:Compilation_mode.Ocaml in
+      match modules with
+      | None -> deps
+      | Some modules ->
+        let { Modules.With_vlib.vlib; impl } = Modules.With_vlib.split_by_lib modules in
+        List.fold_left (vlib @ impl) ~init:deps ~f:(fun deps m ->
+          if Module.visibility m = Private
+          then
+            Obj_dir.Module.cm_file_exn obj_dir m ~kind:(Ocaml Cmi)
+            |> Dep.file
+            |> Dep.Set.add deps
+          else deps)
+    else Memo.return deps)
+;;
 
 let groups_for_cm_kind ~opaque ~(cm_kind : Lib_mode.Cm_kind.t) lib =
   match cm_kind with

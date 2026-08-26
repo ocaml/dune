@@ -237,6 +237,7 @@ let solve_lock_dir
         (Package_name.Map.map local_packages ~f:Dune_pkg.Local_package.for_solver)
       ~constraints:(constraints_of_workspace workspace ~lock_dir_path)
       ~selected_depopts:(depopts_of_workspace workspace ~lock_dir_path)
+      ~package_paths:(Lock_dir.Package_paths.for_writing ~portable_lock_dir)
       ~portable_lock_dir
   in
   match result with

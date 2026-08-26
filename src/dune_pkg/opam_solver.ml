@@ -2291,6 +2291,7 @@ let solve_lock_dir
       ~constraints
       ~selected_depopts
       ~portable_lock_dir
+      ~package_paths
   =
   match platform_overlays with
   | [] -> Code_error.raise "solve_lock_dir called with empty platform_overlays" []
@@ -2548,6 +2549,7 @@ let solve_lock_dir
               ~repos:(Some repos)
               ~expanded_solver_variable_bindings
               ~solved_for_platforms:full_solver_envs
+              ~package_paths
               ~portable_lock_dir
           in
           let+ files =

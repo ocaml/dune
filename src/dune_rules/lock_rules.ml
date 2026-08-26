@@ -167,6 +167,7 @@ module Spec = struct
         ~local_packages
         ~constraints
         ~selected_depopts
+        ~package_paths:(Dune_pkg.Lock_dir.Package_paths.for_writing ~portable_lock_dir)
         ~portable_lock_dir
     in
     match solver_result with

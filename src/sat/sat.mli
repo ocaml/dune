@@ -65,6 +65,11 @@ module Make (User : USER) : sig
       Use this to tidy up at the end, when you no longer care about the order. *)
   val run_solver : t -> (unit -> lit option) -> bool
 
+  (** Return the current decision level. A decrease between calls to the decider
+      indicates that the solver backtracked, allowing incremental deciders to
+      invalidate cached state. *)
+  val get_decision_level : t -> int
+
   (** Return the first literal in the list whose value is [Undecided], or [None] if they're all decided.
       The decider function may find this useful. *)
   val get_best_undecided : at_most_one_clause -> lit option

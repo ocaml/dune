@@ -29,7 +29,7 @@ Initially odoc will depend on ocaml-base-compiler.5.2.0 to match the project.
   Error: Rule failed to generate the following targets:
   - _doc/_odoc/pkg/foo/page-index.odoc
   [1]
-  $ grep "version" "${dev_tool_lock_dir}"/ocaml-base-compiler.pkg
+  $ grep '^(version ' "${dev_tool_lock_dir}"/ocaml-base-compiler.pkg
   (version 5.2.0)
 
 We can re-run "dune ocaml doc" without relocking or rebuilding.
@@ -75,5 +75,5 @@ before running. Odoc now depends on ocaml.5.1.0.
   Error: Rule failed to generate the following targets:
   - _doc/_odoc/pkg/foo/page-index.odoc
   [1]
-  $ grep "version" "${dev_tool_lock_dir}"/ocaml-base-compiler.pkg
+  $ grep '^(version ' "${dev_tool_lock_dir}"/ocaml-base-compiler.pkg
   (version 5.1.0)

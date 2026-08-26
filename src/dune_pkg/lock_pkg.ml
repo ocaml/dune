@@ -607,7 +607,10 @@ let opam_package_to_lock_file_pkg_single
      platforms. [lockfile_field_choice value] creates a choice with a single
      possible value predicated by the platform this package is enabled on. *)
   let lockfile_field_choice value =
-    Lock_dir.Conditional_choice.singleton_multi [ solver_env ] value
+    let condition =
+      if portable_lock_dir then solver_env else Solver_env.empty
+    in
+    Lock_dir.Conditional_choice.singleton_multi [ condition ] value
   in
   let build_command =
     Option.map build_command ~f:lockfile_field_choice
@@ -621,7 +624,6 @@ let opam_package_to_lock_file_pkg_single
         opam_package
         (OpamFile.OPAM.depexts opam_file)
     else (
-      (* In the non-portable case, only include depexts for the current platform. *)
       let external_package_names =
         OpamFile.OPAM.depexts opam_file
         |> List.concat_map ~f:(fun (sys_pkgs, filter) ->

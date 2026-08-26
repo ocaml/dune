@@ -23,7 +23,7 @@ Initially ocamllsp will depend on ocaml-base-compiler.5.2.0 to match the project
   - ocaml-lsp-server.0.0.1
        Running 'ocamllsp'
   hello from fake ocamllsp
-  $ grep "version" "${dev_tool_lock_dir}"/ocaml-base-compiler.pkg
+  $ grep '^(version ' "${dev_tool_lock_dir}"/ocaml-base-compiler.pkg
   (version 5.2.0)
 
 
@@ -59,5 +59,5 @@ before running. Ocamllsp now depends on ocaml.5.1.0.
   - ocaml-lsp-server.0.0.1
        Running 'ocamllsp'
   hello from fake ocamllsp
-  $ grep "version" "${dev_tool_lock_dir}"/ocaml-base-compiler.pkg
+  $ grep '^(version ' "${dev_tool_lock_dir}"/ocaml-base-compiler.pkg
   (version 5.1.0)

@@ -89,6 +89,8 @@ Solve the packages again, this time with the variables set.
   (repositories
    (complete false)
    (used))
+  
+  (solved_for_platforms)
   Solution for dune.lock:
   - dynamic-deps.1.0
   - no-deps-a.1.0
@@ -105,6 +107,8 @@ Solve the packages again, this time with the variables set.
    (variable_values
     (os linux)
     (arch arm)))
+  
+  (solved_for_platforms)
   Solution for dune.lock:
   - dynamic-deps-lazy.1.0
   - no-deps-a.1.0
@@ -123,6 +127,8 @@ Solve the packages again, this time with the variables set.
     (os-family dunefamily)
     (os linux)
     (arch arm)))
+  
+  (solved_for_platforms)
 
 Test that variables referred to in filters on build and install commands are
 stored in the lockdir metadata:
@@ -150,12 +156,13 @@ stored in the lockdir metadata:
   (version 0.0.1)
   
   (install
-   (run echo qux))
+   (choice
+    ((())
+     (run echo qux))))
   
   (build
-   (progn
-    (run echo foo)
-    (run echo baz)))
+   (choice
+    ((()) ((action (progn (run echo foo) (run echo baz)))))))
   $ cat ${default_lock_dir}/lock.dune
   (lang package 0.1)
   
@@ -170,3 +177,5 @@ stored in the lockdir metadata:
     (os linux)
     (arch arm))
    (unset_variables x))
+  
+  (solved_for_platforms)

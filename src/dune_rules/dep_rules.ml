@@ -190,16 +190,15 @@ let ooi_deps
        | Ocaml -> Lib_mode.Cm_kind.Ocaml Cmi
        | Melange -> Melange Cmi)
   | Impl ->
-    let ocaml_deps = read_copied (Ocaml (Vimpl.impl_cm_kind vimpl)) in
     (match for_ with
-     | Ocaml -> ocaml_deps
+     | Ocaml -> read_copied (Ocaml (Vimpl.impl_cm_kind vimpl))
      | Melange ->
+       let no_deps = Action_builder.return [] in
        (match
           Obj_dir.Module.cmt_file vlib_obj_dir m ~ml_kind:Impl ~cm_kind:(Melange Cmj)
         with
-        | None -> ocaml_deps
-        | Some cmt ->
-          Action_builder.if_file_exists cmt ~then_:(read cmt) ~else_:ocaml_deps))
+        | None -> no_deps
+        | Some cmt -> Action_builder.if_file_exists cmt ~then_:(read cmt) ~else_:no_deps))
 ;;
 
 let wrapped_compat_deps modules m =
@@ -226,12 +225,16 @@ let preprocessed_modules_of_local_lib ~sctx lib ~for_ =
   Pp_spec.pped_modules preprocess version modules
 ;;
 
+type imported_vlib_impl_deps =
+  | Transitive
+  | Immediate of { stage_copied_objects_if_cmt_missing : unit Action_builder.t Lazy.t }
+
 type imported_vlib_deps =
   { deps_of :
       Modules.Sourced_module.t
       -> ml_kind:Ml_kind.t
       -> Module.t list Action_builder.t Memo.t
-  ; impl_deps_are_immediate : bool
+  ; impl_deps : imported_vlib_impl_deps
   }
 
 type memoized_transitive_deps =
@@ -327,19 +330,17 @@ and transitive_deps_output_of_imported_vlib t m ~ml_kind =
       ; "ml_kind", Ml_kind.to_dyn ml_kind
       ; "dir", Path.Build.to_dyn t.dir
       ]
-  | Some imported_vlib_deps ->
+  | Some { deps_of; impl_deps } ->
     let open Action_builder.O in
     let* deps =
       Action_builder.of_memo
-        (imported_vlib_deps.deps_of
-           (Modules.Sourced_module.Imported_from_vlib m)
-           ~ml_kind)
+        (deps_of (Modules.Sourced_module.Imported_from_vlib m) ~ml_kind)
     in
     let* deps = deps in
-    (match ml_kind, imported_vlib_deps.impl_deps_are_immediate with
-     | Intf, _ | Impl, false ->
+    (match ml_kind, impl_deps with
+     | Intf, _ | Impl, Transitive ->
        Transitive_deps_output.of_modules deps |> Action_builder.return
-     | Impl, true ->
+     | Impl, Immediate _ ->
        let transitive =
          List.filter_map deps ~f:(fun dep ->
            match Module.kind dep with
@@ -356,18 +357,27 @@ and transitive_deps_output_of_imported_vlib t m ~ml_kind =
 
 let transitive_deps_of t ~ml_kind unit =
   let obj_name = Module.obj_name unit in
-  match Module_name.Unique.Map.find t.obj_map obj_name with
-  | Some _ ->
-    Action_builder.exec_memo (Lazy.force t.memo) (obj_name, ml_kind)
-    |> Action_builder.map ~f:(fun output -> output.parsed)
-  | None ->
-    transitive_deps_output_uncached t unit ~ml_kind
-    |> Action_builder.map ~f:(Transitive_deps_output.parse ~modules:t.modules)
-    |> Action_builder.memoize
-         (sprintf
-            "%s.%s.transitive-deps"
-            (Module_name.Unique.to_string obj_name)
-            (Ml_kind.to_string ml_kind))
+  let deps =
+    match Module_name.Unique.Map.find t.obj_map obj_name with
+    | Some _ ->
+      Action_builder.exec_memo (Lazy.force t.memo) (obj_name, ml_kind)
+      |> Action_builder.map ~f:(fun output -> output.parsed)
+    | None ->
+      transitive_deps_output_uncached t unit ~ml_kind
+      |> Action_builder.map ~f:(Transitive_deps_output.parse ~modules:t.modules)
+      |> Action_builder.memoize
+           (sprintf
+              "%s.%s.transitive-deps"
+              (Module_name.Unique.to_string obj_name)
+              (Ml_kind.to_string ml_kind))
+  in
+  match ml_kind, t.imported_vlib_deps with
+  | Intf, _ | Impl, None | Impl, Some { impl_deps = Transitive; _ } -> deps
+  | Impl, Some { impl_deps = Immediate { stage_copied_objects_if_cmt_missing }; _ } ->
+    let open Action_builder.O in
+    let+ deps = deps
+    and+ () = Lazy.force stage_copied_objects_if_cmt_missing in
+    deps
 ;;
 
 let make_imported_vlib_deps ~obj_dir ~vimpl ~dir ~sctx ~sandbox ~for_ : imported_vlib_deps
@@ -377,6 +387,42 @@ let make_imported_vlib_deps ~obj_dir ~vimpl ~dir ~sctx ~sandbox ~for_ : imported
   | None ->
     let vlib_obj_map = Vimpl.vlib_obj_map vimpl in
     let vlib_obj_dir = Lib.info vlib |> Lib_info.obj_dir in
+    let impl_deps =
+      match for_ with
+      | Compilation_mode.Ocaml -> Transitive
+      | Compilation_mode.Melange ->
+        let stage_copied_objects_if_cmt_missing =
+          lazy
+            (let modules =
+               Module_name.Unique.Map.values vlib_obj_map
+               |> List.map ~f:Modules.Sourced_module.to_module
+             in
+             (* Without CMTs, stage every copied vlib object directly. Adding them as
+                module-graph edges could introduce cycles that aren't in the source. *)
+             let cmts =
+               List.filter_map modules ~f:(fun m ->
+                 Obj_dir.Module.cmt_file
+                   vlib_obj_dir
+                   m
+                   ~ml_kind:Impl
+                   ~cm_kind:(Melange Cmj))
+             in
+             (let open Action_builder.O in
+              let* cmts_exist =
+                List.map cmts ~f:Action_builder.file_exists |> Action_builder.all
+              in
+              if List.for_all cmts_exist ~f:Fun.id
+              then Action_builder.return ()
+              else (
+                let files =
+                  Obj_dir.Module.L.cm_files obj_dir modules ~kind:(Melange Cmi)
+                  @ Obj_dir.Module.L.cm_files obj_dir modules ~kind:(Melange Cmj)
+                in
+                Action_builder.paths files))
+             |> Action_builder.memoize "stage copied vlib objects if CMT missing")
+        in
+        Immediate { stage_copied_objects_if_cmt_missing }
+    in
     let dune_version =
       let impl = Vimpl.impl vimpl in
       Dune_project.dune_version impl.project
@@ -391,10 +437,7 @@ let make_imported_vlib_deps ~obj_dir ~vimpl ~dir ~sctx ~sandbox ~for_ : imported
           ~dune_version
           ~vlib_obj_map
           ~for_
-    ; impl_deps_are_immediate =
-        (match for_ with
-         | Ocaml -> false
-         | Melange -> true)
+    ; impl_deps
     }
   | Some lib ->
     let vlib_obj_dir =
@@ -418,7 +461,7 @@ let make_imported_vlib_deps ~obj_dir ~vimpl ~dir ~sctx ~sandbox ~for_ : imported
       let m = Modules.Sourced_module.to_module sourced_module in
       transitive_deps_of transitive_deps ~ml_kind m |> Memo.return
     in
-    { deps_of; impl_deps_are_immediate = false }
+    { deps_of; impl_deps = Transitive }
 ;;
 
 let make_transitive_deps ~obj_dir ~modules ~sandbox ~impl ~dir ~sctx ~for_ =

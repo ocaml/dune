@@ -78,21 +78,10 @@ not turn copied artifacts into a Virt-to-Reverse module dependency cycle.
 
   $ OCAMLPATH="$PWD/prefix/lib:$OCAMLPATH" \
   > dune build --root consumer --sandbox=symlink @melange
-  Entering directory 'consumer'
-  File "impl/.impl.objs/melange/_unknown_", line 1, characters 0-0:
-  Error: No rule found for impl/.impl.objs/native/vlib__Shared.cmx
-  Leaving directory 'consumer'
-  [1]
 
   $ OCAMLPATH="$PWD/prefix/lib:$OCAMLPATH" \
   > dune rules --root consumer --recursive --format=json --deps --display=quiet \
   > impl/.impl.objs/melange/vlib__Virt.cmj > deps.json
-  Entering directory 'consumer'
-  Error: No rule found for impl/.impl.objs/native/vlib__Shared.cmx
-  -> required by transitive deps of vlib__Shared.impl in _build/default/impl
-  -> required by transitive deps of vlib__Virt.impl in _build/default/impl
-  Leaving directory 'consumer'
-  [1]
   $ jq_dune -r '
   >   [.[] | depsFilePaths
   >    | select(endswith("vlib__Helper.cmi")
@@ -106,3 +95,9 @@ not turn copied artifacts into a Virt-to-Reverse module dependency cycle.
   >    | select(startswith("_build/default/impl/.impl.objs/melange/"))]
   >   | unique[]
   > ' deps.json
+  _build/default/impl/.impl.objs/melange/vlib__Helper.cmi
+  _build/default/impl/.impl.objs/melange/vlib__Helper.cmj
+  _build/default/impl/.impl.objs/melange/vlib__Reverse.cmi
+  _build/default/impl/.impl.objs/melange/vlib__Unused.cmi
+  _build/default/impl/.impl.objs/melange/vlib__Unused.cmj
+  _build/default/impl/.impl.objs/melange/vlib__Virt.cmi

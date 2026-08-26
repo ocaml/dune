@@ -22,6 +22,9 @@ module Make (User : USER) : sig
   type lit
 
   val neg : lit -> lit
+
+  (** [add_variable problem user_data] adds a variable while constructing [problem].
+      @raise Invalid_argument if a decision level is active. *)
   val add_variable : t -> User.t -> lit
 
   (** A clause is a boolean expression made up of literals. e.g. [A and B and not(C)] *)

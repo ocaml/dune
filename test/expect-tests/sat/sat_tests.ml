@@ -101,6 +101,31 @@ let%expect_test "run_solver records decisions, and counters are cumulative" =
   |}]
 ;;
 
+let%expect_test "variables cannot be added at an active decision level" =
+  let open Sat in
+  let p = create () in
+  let a = add_variable p 1 in
+  let _b = add_variable p 2 in
+  let first_decision = ref true in
+  let decide () =
+    if !first_decision
+    then (
+      first_decision := false;
+      Some a)
+    else (
+      (match add_variable p 3 with
+       | exception Invalid_argument message -> print_endline message
+       | _ -> print_endline "unexpectedly added a variable");
+      None)
+  in
+  print_endline (string_of_bool (run_solver p decide));
+  [%expect
+    {|
+    Sat.add_variable: cannot add variables after decisions have begun
+    true
+  |}]
+;;
+
 let%expect_test "incremental deciders can detect non-chronological backtracking" =
   let open Sat in
   let p = create () in

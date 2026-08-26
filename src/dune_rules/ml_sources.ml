@@ -1421,6 +1421,7 @@ let make
         ~lib_config
         ~libs
         ~exes
+        ~include_subdirs
         ~melange_emits)
   in
   { modules; artifacts; include_subdirs }

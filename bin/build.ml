@@ -70,7 +70,7 @@ let build =
           directory target), that rule is run; otherwise, if $(i,PATH) is a
           source directory, dune builds the $(b,@@default) alias in that
           directory. The path may contain any percent form accepted in dune
-          stanzas, such as $(b,%{bin:foo}) or $(b,%{cmi:lib/mod}).|}
+          stanzas, such as $(b,%{bin:foo}) or $(b,%{cmi:mod}).|}
         )
     ; `I
         ( {|$(b,@)$(i,name)|}

@@ -104,3 +104,21 @@ CMT, including private modules but excluding unused ones.
   _build/default/impl/.impl.objs/melange/vlib__Other.cmi
   _build/default/impl/.impl.objs/melange/vlib__Other.cmj
   _build/default/impl/.impl.objs/melange/vlib__Virt.cmi
+
+The missing-annotation fallback is deliberately conservative at the library
+level. Even when the missing CMT belongs to an unreachable module, every copied
+object is staged.
+
+  $ rm "$PWD/prefix/lib/repro/vlib/melange/.private/vlib__Unused.cmt"
+  $ OCAMLPATH="$PWD/prefix/lib:$OCAMLPATH" \
+  > dune rules --root consumer --recursive --format=json --deps --display=quiet \
+  > impl/.impl.objs/melange/vlib__Virt.cmj > deps-with-missing-cmt.json
+  $ jq_dune -r '
+  >   [.[] | depsFilePaths
+  >    | select(endswith("vlib__Unused.cmi")
+  >             or endswith("vlib__Unused.cmj"))
+  >    | select(startswith("_build/default/impl/.impl.objs/melange/"))]
+  >   | unique[]
+  > ' deps-with-missing-cmt.json
+  _build/default/impl/.impl.objs/melange/vlib__Unused.cmi
+  _build/default/impl/.impl.objs/melange/vlib__Unused.cmj

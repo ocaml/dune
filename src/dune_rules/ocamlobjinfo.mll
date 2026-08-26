@@ -24,6 +24,7 @@ let name = ['A'-'Z'] ['A'-'Z' 'a'-'z' '0'-'9' '_']*
 
 rule ocamlobjinfo acc_units acc = parse
   | "Interfaces imported:" newline { intfs acc_units acc lexbuf }
+  | "Cmt interfaces imported:" newline { intfs acc_units acc lexbuf }
   | "Implementations imported:" newline { impls acc_units acc lexbuf }
   | _ { ocamlobjinfo acc_units acc lexbuf }
   | eof { acc :: acc_units }

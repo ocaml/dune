@@ -12,7 +12,9 @@ a lockdir containing an "ocaml" lockfile.
   $ dune build
 
   $ dune tools exec ocamllsp
-  Solution for _build/.dev-tools.locks/ocaml-lsp-server:
+  Solution for _build/.dev-tools.locks/ocaml-lsp-server
+  
+  Dependencies common to all supported platforms:
   - ocaml-base-compiler.5.2.0
   - ocaml-compiler.5.2.0
   - ocaml-lsp-server.0.0.1

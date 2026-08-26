@@ -17,7 +17,9 @@ same version of the ocaml compiler as the code that it's analyzing.
 
 Initially odoc will depend on ocaml-base-compiler.5.2.0 to match the project.
   $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune ocaml doc
-  Solution for _build/.dev-tools.locks/odoc:
+  Solution for _build/.dev-tools.locks/odoc
+  
+  Dependencies common to all supported platforms:
   - ocaml-base-compiler.5.2.0
   - ocaml-compiler.5.2.0
   - odoc.0.0.1
@@ -38,7 +40,9 @@ We can re-run "dune ocaml doc" without relocking or rebuilding.
   lockdir has changed to 5.2.0 (formerly the compiler version was 5.2.0). The
   dev-tool "odoc" will be re-locked and rebuilt with this version of the
   compiler.
-  Solution for _build/.dev-tools.locks/odoc:
+  Solution for _build/.dev-tools.locks/odoc
+  
+  Dependencies common to all supported platforms:
   - ocaml-base-compiler.5.2.0
   - ocaml-compiler.5.2.0
   - odoc.0.0.1
@@ -63,7 +67,9 @@ before running. Odoc now depends on ocaml.5.1.0.
   lockdir has changed to 5.1.0 (formerly the compiler version was 5.2.0). The
   dev-tool "odoc" will be re-locked and rebuilt with this version of the
   compiler.
-  Solution for _build/.dev-tools.locks/odoc:
+  Solution for _build/.dev-tools.locks/odoc
+  
+  Dependencies common to all supported platforms:
   - ocaml-base-compiler.5.1.0
   - ocaml-compiler.5.1.0
   - odoc.0.0.1

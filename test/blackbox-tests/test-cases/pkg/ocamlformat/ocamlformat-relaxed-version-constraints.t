@@ -28,7 +28,9 @@ Initial file:
 This should choose the 0.24+foo version:
   $ echo "version=0.24" > .ocamlformat
   $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune fmt
-  Solution for _build/.dev-tools.locks/ocamlformat:
+  Solution for _build/.dev-tools.locks/ocamlformat
+  
+  Dependencies common to all supported platforms:
   - ocamlformat.0.24+foo
   File "foo.ml", line 1, characters 0-0:
   --- foo.ml
@@ -46,7 +48,9 @@ This should choose the 0.24+bar version:
   $ echo "version=0.25" > .ocamlformat
   $ rm -r "${dev_tool_lock_dir}"
   $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune fmt
-  Solution for _build/.dev-tools.locks/ocamlformat:
+  Solution for _build/.dev-tools.locks/ocamlformat
+  
+  Dependencies common to all supported platforms:
   - ocamlformat.0.25+bar
   File "foo.ml", line 1, characters 0-0:
   --- foo.ml

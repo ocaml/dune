@@ -46,7 +46,9 @@ lock directory from the updated recipe.
   lockdir has changed to 5.2.0 (formerly the compiler version was 5.2.0). The
   dev-tool "merlin" will be re-locked and rebuilt with this version of the
   compiler.
-  Solution for _build/.dev-tools.locks/merlin:
+  Solution for _build/.dev-tools.locks/merlin
+  
+  Dependencies common to all supported platforms:
   - merlin.0.0.1
   - ocaml-base-compiler.5.2.0
   - ocaml-compiler.5.2.0

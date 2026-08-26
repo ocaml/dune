@@ -3,7 +3,7 @@ Building a module artifact target (%{cmi:...}, %{cmo:...}, %{cmx:...},
 used and two qualified subdirectories contain modules with the same leaf
 name.
 
-  $ make_dune_project 3.7
+  $ make_dune_project 3.25
 
   $ cat > dune <<EOF
   > (include_subdirs qualified)
@@ -13,9 +13,11 @@ name.
   > let _ = (Sub_a.Group.x, Sub_b.Group.x)
   > EOF
 
-  $ mkdir sub_a sub_b
+  $ mkdir -p foo sub_a/nested sub_b
+  $ echo 'let x = "group interface"' > foo/foo.ml
   $ echo 'let x = "a"' > sub_a/group.ml
   $ echo 'let x = "b"' > sub_b/group.ml
+  $ echo 'let x = "nested"' > sub_a/nested/group.ml
 
 A normal build succeeds:
 
@@ -36,6 +38,14 @@ A module artifact target for a module in a qualified subdirectory works:
   $ dune build %{cmo:sub_a/group}
   $ dune build %{cmo:sub_b/group}
 
+A module group interface is addressed by its source path:
+
+  $ dune build %{cmi:foo/foo}
+  $ dune build %{cmi:foo}
+  File "command line", line 1, characters 0-10:
+  Error: Module Foo does not exist.
+  [1]
+
 An unqualified leaf name [group] is not the module path of any module
 (the modules are [Sub_a.Group] and [Sub_b.Group]), so it is reported as
 missing:
@@ -45,17 +55,46 @@ missing:
   Error: Module Group does not exist.
   [1]
 
-A (rule ...) in a subdir dune file that references a module artifact
-pform with a leaf name %{cmi:group}:
+A (rule ...) in a subdir dune file can use a relative source path:
 
   $ cat > sub_a/dune <<EOF
-  > (rule (with-stdout-to out.txt (echo %{cmi:group})))
+  > (rule (with-stdout-to out.txt (echo %{cmi:nested/group})))
   > EOF
   $ dune build sub_a/out.txt
 
-Using a dot separator [sub_a.group] instead of a slash:
+Even in Dune 3.25, a dotted module reference [sub_a.group] does not work:
 
   $ dune build %{cmi:sub_a.group}
   File "command line", line 1, characters 0-18:
   Error: Module Sub_a.group does not exist.
   [1]
+
+Versions before Dune 3.25 use slash-separated source paths, both from the
+project root and relative to a subdirectory:
+
+  $ mkdir -p legacy/sub_a/nested
+  $ cat >legacy/dune-project <<'EOF'
+  > (lang dune 3.24)
+  > EOF
+  $ cat >legacy/dune <<'EOF'
+  > (include_subdirs qualified)
+  > (library (name legacy))
+  > EOF
+  $ echo 'let x = "legacy"' >legacy/sub_a/nested/group.ml
+  $ cat >legacy/sub_a/dune <<'EOF'
+  > (rule (with-stdout-to out.txt (echo %{cmi:nested/group})))
+  > EOF
+  $ dune build --root=legacy %{cmi:sub_a/nested/group}
+  $ dune build --root=legacy sub_a/out.txt
+
+A source directory prefix can select the artifacts of a standalone subdirectory:
+
+  $ mkdir -p standalone/sub
+  $ cat >standalone/dune-project <<'EOF'
+  > (lang dune 3.25)
+  > EOF
+  $ cat >standalone/sub/dune <<'EOF'
+  > (library (name bar))
+  > EOF
+  $ echo 'let x = "standalone"' >standalone/sub/x.ml
+  $ dune build --root=standalone %{cmo:sub/x}

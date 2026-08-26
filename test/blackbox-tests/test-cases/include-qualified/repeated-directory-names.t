@@ -2,7 +2,7 @@ Qualified module groups can repeat the same name at arbitrary depths.
 
   $ mkdir -p foo/foo/foo/foo
   $ cat >dune-project <<'EOF'
-  > (lang dune 3.24)
+  > (lang dune 3.25)
   > (package (name repeated))
   > EOF
   $ cat >dune <<'EOF'
@@ -18,6 +18,15 @@ Qualified module groups can repeat the same name at arbitrary depths.
   > EOF
 
   $ dune build @check
+
+The dotted logical module artifact reference is not yet recognized. The
+five-component source path still identifies the module:
+
+  $ dune build '%{cmi:Foo.Foo.Foo.Foo}'
+  File "command line", line 1, characters 0-22:
+  Error: Module Foo.Foo.Foo.Foo does not exist.
+  [1]
+  $ dune build '%{cmi:foo/foo/foo/foo/foo}'
 
 The installed format keeps the group-interface component that distinguishes
 the source-trie path from the four-component logical module path.

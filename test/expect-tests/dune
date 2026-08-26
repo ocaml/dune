@@ -1,3 +1,11 @@
+;; Keep Git invocations independent of user and system configuration.
+
+(env
+ (_
+  (env-vars
+   (GIT_CONFIG_GLOBAL /dev/null)
+   (GIT_CONFIG_SYSTEM /dev/null))))
+
 (library
  (name dune_unit_tests)
  (libraries

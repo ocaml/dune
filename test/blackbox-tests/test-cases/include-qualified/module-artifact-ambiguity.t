@@ -25,16 +25,24 @@ they each generate a [Foo] alias, their leaf module artifacts are distinct.
   >    (unix -> foo/baz.unix.ml))))
   > EOF
 
-The qualified module references are not yet recognized as artifact references:
+The dotted module references identify the distinct leaf artifacts:
 
-  $ dune build '%{cmi:Foo.Bar}'
-  File "command line", line 1, characters 0-14:
-  Error: Module Foo.Bar does not exist.
-  [1]
-  $ dune build '%{cmi:Foo.Baz}'
-  File "command line", line 1, characters 0-14:
-  Error: Module Foo.Baz does not exist.
-  [1]
+  $ build_and_show() {
+  >   dune build "$@"
+  >   dune trace cat | jq 'select(.name == "targets") | .args'
+  > }
+  $ build_and_show '%{cmi:Foo.Bar}'
+  {
+    "targets": [
+      "_build/default/.left.objs/byte/left__Foo__Bar.cmi"
+    ]
+  }
+  $ build_and_show '%{cmi:Foo.Baz}'
+  {
+    "targets": [
+      "_build/default/.right.objs/byte/right__Foo__Baz.cmi"
+    ]
+  }
 
 Both generated group aliases can coexist:
 
@@ -42,9 +50,9 @@ Both generated group aliases can coexist:
   $ test -f _build/default/.left.objs/byte/left__Foo.cmi
   $ test -f _build/default/.right.objs/byte/right__Foo.cmi
 
-Nor is there a source module at [Foo]:
+The generated group reference itself is ambiguous:
 
   $ dune build '%{cmi:Foo}'
   File "command line", line 1, characters 0-10:
-  Error: Module Foo does not exist.
+  Error: Module reference Foo is ambiguous.
   [1]

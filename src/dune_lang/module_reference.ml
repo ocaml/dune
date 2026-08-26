@@ -48,6 +48,23 @@ let is_qualified t =
   | [ _ ] -> false
 ;;
 
+let validate_qualified t ~include_subdirs =
+  if
+    is_qualified t
+    &&
+    match include_subdirs with
+    | Include_subdirs.Include Qualified -> false
+    | No | Include Unqualified -> true
+  then
+    User_error.raise
+      ~loc:t.loc
+      [ Pp.textf
+          "Qualified module reference %S may only be used with (include_subdirs \
+           qualified)."
+          (to_string t)
+      ]
+;;
+
 let make ~loc ~mode path = { loc; path; mode }
 
 let parse_component loc component =

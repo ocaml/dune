@@ -15,24 +15,35 @@ expected and also inside :doc:`../reference/actions/index`. When used inside
 :doc:`../reference/actions/index`, they implicitly declare a dependency on the
 corresponding artifact.
 
-The variables have the form ``%{<ext>:<path>}``, where ``<path>`` is
-interpreted relative to the current directory:
+The variables have the form ``%{<ext>:<reference>}``:
 
-- ``cmo:<path>``, ``cmx:<path>``, and ``cmi:<path>`` expand to the corresponding
-  artifact's path for the module specified by ``<path>``. The basename of
-  ``<path>`` should be the name of a module as specified in a ``(modules)``
-  field.
+- ``cmo:<reference>``, ``cmx:<reference>``, and ``cmi:<reference>`` expand to
+  the corresponding artifact's path for the specified module. Starting with
+  Dune language version 3.25, the final component of ``<reference>`` is the
+  module's full logical path. It is rooted at the selected module tree even when
+  used in a nested ``dune`` file. For example, with
+  ``(include_subdirs qualified)``, ``%{cmi:Foo.Bar}`` refers to the module
+  ``Foo.Bar``. Qualified references require ``(include_subdirs qualified)``.
+  An optional directory prefix is interpreted relative to the current directory
+  and selects another module tree, as in ``%{cmi:sub/X}``. To prevent a legacy
+  source path from silently selecting a different logical module, Dune rejects
+  a reference when its complete spelling is the source path of another module.
+  In earlier language versions, the whole ``<reference>`` is the extensionless
+  source path interpreted relative to the current directory, such as
+  ``%{cmi:foo/bar}``.
 
-- ``cma:<path>`` and ``cmxa:<path>`` expands to the corresponding artifact's
-  path for the library specified by ``<path>``. The basename of ``<path>``
-  should be the name of the library as specified in the ``(name)`` field of a
-  ``library`` stanza (*not* its public name).
+- ``cma:<path>`` and ``cmxa:<path>`` expand to the corresponding artifact's
+  path for the library specified by ``<path>``, interpreted relative to the
+  current directory. The basename of ``<path>`` should be the name of the
+  library as specified in the ``(name)`` field of a ``library`` stanza (*not*
+  its public name).
 
-- ``cmt:<path>`` and ``cmti:<path>`` expand to the corresponding compiled
-  annotation files for the module specified by ``<path>``. These files contain
-  the typed abstract syntax tree with precise location information and type
-  annotations, generated with the ``-bin-annot`` flag. They are particularly
-  useful for IDE tools to provide tooltips and type information.
+- ``cmt:<reference>`` and ``cmti:<reference>`` expand to the corresponding
+  compiled annotation files for the specified module. Module references are
+  interpreted in the same way as for ``cmo``, ``cmx``, and ``cmi``. These files
+  contain the typed abstract syntax tree with precise location information and
+  type annotations, generated with the ``-bin-annot`` flag. They are
+  particularly useful for IDE tools to provide tooltips and type information.
 
   .. versionadded:: 3.21
 

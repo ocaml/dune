@@ -19,14 +19,18 @@ Qualified module groups can repeat the same name at arbitrary depths.
 
   $ dune build @check
 
-The dotted logical module artifact reference is not yet recognized. The
-five-component source path still identifies the module:
+The logical module artifact reference has four components:
 
   $ dune build '%{cmi:Foo.Foo.Foo.Foo}'
-  File "command line", line 1, characters 0-22:
-  Error: Module Foo.Foo.Foo.Foo does not exist.
-  [1]
+
+A five-component source path must not silently resolve the shallow [Foo]
+group alias:
+
   $ dune build '%{cmi:foo/foo/foo/foo/foo}'
+  File "command line", line 1, characters 0-26:
+  Error: Module reference Foo does not match the module at this source path.
+  Hint: Foo.Foo.Foo.Foo would be a correct module reference
+  [1]
 
 The installed format keeps the group-interface component that distinguishes
 the source-trie path from the four-component logical module path.

@@ -1,7 +1,7 @@
-Building a module artifact target (%{cmi:...}, %{cmo:...}, %{cmx:...},
-%{cmt:...}, %{cmti:...}) should work when (include_subdirs qualified) is
-used and two qualified subdirectories contain modules with the same leaf
-name.
+Starting in Dune 3.25, module artifact targets (%{cmi:...}, %{cmo:...},
+%{cmx:...}, %{cmt:...}, %{cmti:...}) use dotted logical module references.
+This disambiguates modules with the same leaf name under
+(include_subdirs qualified).
 
   $ make_dune_project 3.25
 
@@ -33,18 +33,16 @@ A module artifact target for the top-level module works:
 
 A module artifact target for a module in a qualified subdirectory works:
 
-  $ dune build %{cmi:sub_a/group}
-  $ dune build %{cmi:sub_b/group}
-  $ dune build %{cmo:sub_a/group}
-  $ dune build %{cmo:sub_b/group}
+  $ dune build %{cmi:sub_a.group}
+  $ dune build %{cmi:Sub_b.Group}
+  $ dune build %{cmo:sub_a.group}
+  $ dune build %{cmo:Sub_b.Group}
 
-A module group interface is addressed by its source path:
+A module group interface is addressed by its logical module reference. An
+optional source directory prefix may select the same module tree:
 
-  $ dune build %{cmi:foo/foo}
   $ dune build %{cmi:foo}
-  File "command line", line 1, characters 0-10:
-  Error: Module Foo does not exist.
-  [1]
+  $ dune build %{cmi:foo/foo}
 
 An unqualified leaf name [group] is not the module path of any module
 (the modules are [Sub_a.Group] and [Sub_b.Group]), so it is reported as
@@ -55,18 +53,28 @@ missing:
   Error: Module Group does not exist.
   [1]
 
-A (rule ...) in a subdir dune file can use a relative source path:
+A (rule ...) in a subdir dune file uses the full logical module reference:
 
   $ cat > sub_a/dune <<EOF
-  > (rule (with-stdout-to out.txt (echo %{cmi:nested/group})))
+  > (rule (with-stdout-to out.txt (echo %{cmi:Sub_a.Nested.Group})))
   > EOF
   $ dune build sub_a/out.txt
 
-Even in Dune 3.25, a dotted module reference [sub_a.group] does not work:
+The module reference is rooted at the module tree, not relative to the dune
+file's directory:
 
-  $ dune build %{cmi:sub_a.group}
+  $ dune build %{cmi:sub_a/Nested.Group}
+  File "command line", line 1, characters 0-25:
+  Error: Module Nested.Group does not exist.
+  [1]
+
+A slash selects a source directory; it no longer separates module path
+components in Dune 3.25. Therefore this looks for [Group], not [Sub_a.Group]:
+
+  $ dune build %{cmi:sub_a/group}
   File "command line", line 1, characters 0-18:
-  Error: Module Sub_a.group does not exist.
+  Error: Module reference Group does not match the module at this source path.
+  Hint: Sub_a.Group would be a correct module reference
   [1]
 
 Versions before Dune 3.25 use slash-separated source paths, both from the
@@ -98,3 +106,11 @@ A source directory prefix can select the artifacts of a standalone subdirectory:
   > EOF
   $ echo 'let x = "standalone"' >standalone/sub/x.ml
   $ dune build --root=standalone %{cmo:sub/x}
+
+Qualified module references require (include_subdirs qualified):
+
+  $ dune build %{cmi:standalone/sub/Foo.Bar}
+  File "command line", line 1, characters 0-29:
+  Error: Qualified module reference "Foo.Bar" may only be used with
+  (include_subdirs qualified).
+  [1]

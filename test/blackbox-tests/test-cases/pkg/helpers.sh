@@ -524,13 +524,9 @@ dune_pkg_lock_normalized() {
   out="$(mktemp)"
   if dune pkg lock "$@" 2>> "${out}"; then
     processed="$(mktemp)"
-    if [ "${DUNE_CONFIG__PORTABLE_LOCK_DIR:-}" = "disabled" ]; then
-      cp "${out}" "${processed}"
-    else
-        awk '/Solution/{printf"%s:\n",$0;f=0};f{print};/Dependencies.*:/{f=1}' "${out}" \
-        | dune_cmd subst '\(none\)' '(no dependencies to lock)' \
-        > "${processed}"
-    fi
+    awk '/Solution/{printf"%s:\n",$0;f=0};f{print};/Dependencies.*:/{f=1}' "${out}" \
+      | dune_cmd subst '\(none\)' '(no dependencies to lock)' \
+      > "${processed}"
     cat "${processed}"
   else
     processed="$(mktemp)"

@@ -136,11 +136,6 @@ module Spec = struct
     let open Fiber.O in
     let* () = Fiber.return () in
     let local_packages = Package.Name.Map.map packages ~f:Local_package.for_solver in
-    let portable_lock_dir =
-      match Config.get Compile_time.portable_lock_dir with
-      | `Enabled -> true
-      | `Disabled -> false
-    in
     let* solver_env =
       let open Fiber.O in
       let+ solver_env_from_current_system =
@@ -156,7 +151,7 @@ module Spec = struct
         Opam_solver.base_solver_env_and_platforms
           solver_env
           ~solve_for_platforms:Solver_env.popular_platform_envs
-          ~portable_lock_dir
+          ~portable_lock_dir:true
       in
       Opam_solver.solve_lock_dir
         base_solver_env
@@ -167,8 +162,9 @@ module Spec = struct
         ~local_packages
         ~constraints
         ~selected_depopts
-        ~package_paths:(Dune_pkg.Lock_dir.Package_paths.for_writing ~portable_lock_dir)
-        ~portable_lock_dir
+        ~package_paths:
+          (Dune_pkg.Lock_dir.Package_paths.for_writing ~portable_lock_dir:true)
+        ~portable_lock_dir:true
     in
     match solver_result with
     | Error (`Manifest_error diagnostic) -> raise (User_error.E diagnostic)
@@ -179,7 +175,7 @@ module Spec = struct
         Dune_pkg.Lock_dir.compute_missing_checksums ~pinned_packages lock_dir
       in
       Dune_pkg.Lock_dir.Write_disk.prepare
-        ~portable_lock_dir
+        ~portable_lock_dir:true
         ~lock_dir_path
         ~files
         lock_dir

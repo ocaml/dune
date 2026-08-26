@@ -44,7 +44,7 @@ class.
 The transitive macOS dependency and the Linux package must coexist even though
 they belong to the same conflict class on different platforms.
 
-  $ DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled dune pkg lock
+  $ dune pkg lock
   Solution for dune.lock
   
   Dependencies common to all supported platforms:
@@ -75,7 +75,7 @@ restriction rather than attributing the failure to the conflict class.
   >   "needs-impossible" {os = "macos"}
   > ]
   > EOF
-  $ DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled dune pkg lock
+  $ dune pkg lock
   Error:
   Unable to solve dependencies while generating lock directory: dune.lock
   

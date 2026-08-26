@@ -347,7 +347,7 @@ let project_pins =
   Dune_rules.Dune_load.projects () >>| Pin.Project.collect_all
 ;;
 
-let lock ~version_preference ~lock_dirs_arg ~print_perf_stats ~portable_lock_dir =
+let lock ~version_preference ~lock_dirs_arg ~print_perf_stats =
   let open Fiber.O in
   let* solver_env_from_current_system =
     poll_solver_env_from_current_system () >>| Option.some
@@ -372,7 +372,7 @@ let lock ~version_preference ~lock_dirs_arg ~print_perf_stats ~portable_lock_dir
     ~version_preference
     ~lock_dirs
     ~print_perf_stats
-    ~portable_lock_dir
+    ~portable_lock_dir:true
 ;;
 
 let term =
@@ -386,13 +386,7 @@ let term =
   Scheduler_setup.go_with_rpc_server ~common ~config (fun () ->
     let open Fiber.O in
     Pkg_common.error_if_pkg_management_disabled ()
-    >>>
-    let portable_lock_dir =
-      match Config.get Dune_rules.Compile_time.portable_lock_dir with
-      | `Enabled -> true
-      | `Disabled -> false
-    in
-    lock ~version_preference ~lock_dirs_arg ~print_perf_stats ~portable_lock_dir)
+    >>> lock ~version_preference ~lock_dirs_arg ~print_perf_stats)
 ;;
 
 let info =

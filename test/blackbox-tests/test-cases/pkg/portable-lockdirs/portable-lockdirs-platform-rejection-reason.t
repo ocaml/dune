@@ -29,7 +29,7 @@ reason must be derived from Linux rather than a platform-less environment.
   Error:
   Unable to solve dependencies while generating lock directory: dune.lock
   
-  The dependency solver failed to find a solution for the following platforms:
+  The dependency solver failed to find a solution for the requested platforms:
   - arch = x86_64; os = linux
   ...with this error:
   Couldn't solve the package dependency formula.
@@ -111,13 +111,18 @@ Only the pinned version appears in their rejection lists:
   Error:
   Unable to solve dependencies while generating lock directory: dune.lock
   
-  The dependency solver failed to find a solution for the following platforms:
+  The dependency solver failed to find a solution for the requested platforms:
+  - arch = x86_64; os = linux
+  - arch = arm64; os = linux
   - arch = x86_64; os = macos
   - arch = arm64; os = macos
   ...with this error:
   Couldn't solve the package dependency formula.
-  Selected candidates: x.dev
-  - foo -> (problem)
+  Selected candidates: foo.2 x.dev
+  - foo -> (problem) on arch = arm64; os = macos
+      No usable implementations:
+        foo.2: Availability condition not satisfied
+  - foo -> (problem) on arch = x86_64; os = macos
       No usable implementations:
         foo.2: Availability condition not satisfied
   [1]

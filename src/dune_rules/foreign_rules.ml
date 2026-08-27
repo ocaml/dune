@@ -273,16 +273,18 @@ let c_compile_args ~sctx ~dir ~expander ~loc ~src ~include_flags =
 ;;
 
 let build_c ~sctx ~dir ~expander ~include_flags (loc, (src : Foreign.Source.t), dst) =
-  let env, _sandbox =
-    (* We don't sandbox the C compiler, see comment at the
-       [Action.Full.add_sandbox Sandbox_config.no_sandboxing] call below. *)
+  let env, sandbox =
     match Foreign.Source.kind src with
     | Stubs stubs ->
-      Dep_conf_eval.unnamed
-        Sandbox_config.no_special_requirements
-        stubs.extra_deps
-        ~expander
-    | Ctypes _ -> Action_builder.return Env.empty, Sandbox_config.default
+      let env, _ =
+        Dep_conf_eval.unnamed
+          Sandbox_config.no_special_requirements
+          stubs.extra_deps
+          ~expander
+      in
+      env, Sandbox_config.no_sandboxing
+    | Ctypes ctypes ->
+      Dep_conf_eval.unnamed Sandbox_config.needs_sandboxing ctypes.deps ~expander
   in
   let ctx = Super_context.context sctx in
   let* ocaml = Context.ocaml ctx in
@@ -349,10 +351,7 @@ let build_c ~sctx ~dir ~expander ~include_flags (loc, (src : Foreign.Source.t), 
      Command.run_dyn_prog
        ~dir:(Path.build dir)
        ~env
-         (* With sandboxing we get errors like: bar.c:2:19: fatal error:
-            foo.cxx: No such file or directory #include "foo.cxx". (These
-            errors happen only when compiling c files.) *)
-       ~sandbox:Sandbox_config.no_sandboxing
+       ~sandbox
        c_compiler
        [ c_compile_args ~sctx ~dir ~expander ~loc ~src ~include_flags
        ; Hidden_deps (Dep.Set.singleton (Dep.file_selector caml_headers))

@@ -9,14 +9,15 @@ This is the version that builds into an executable.
   $ LIBEX=$(realpath "$PWD/../libexample")
   $ TARGET=./vendor
   $ mkdir -p $TARGET && install $LIBEX/*example* $TARGET
-Ctypes 0.3 should honor dependencies when sandboxing is requested externally.
+Ctypes stub generation is sandboxed and honors its declared dependencies.
 
-  $ DUNE_SANDBOX=symlink dune exec ./example.exe
+  $ dune exec ./example.exe
   4
   $ dune trace cat | jq_dune -sc '
   >   [ .[]
   >   | processes
-  >   | select(.args.process_args | any(contains("c_cout_generated_functions")))
+  >   | select((.args.target_files // [])
+  >            | any(startswith("_build/default/examplelib__")))
   >   | (.args.dir | contains(".sandbox"))
-  >   ][0]'
-  false
+  >   ] | unique'
+  [true]

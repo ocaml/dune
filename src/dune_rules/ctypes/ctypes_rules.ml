@@ -170,6 +170,7 @@ let build_c_program
       ~cflags
       ~output
       ~env
+      ~sandbox
   =
   let ctx = Super_context.context sctx in
   let ocaml = Context.ocaml ctx in
@@ -250,7 +251,7 @@ let build_c_program
     in
     let open Action_builder.With_targets.O in
     Action_builder.with_no_targets extra_deps
-    >>> Command.run_dyn_prog ~dir:(Path.build dir) ~env exe args
+    >>> Command.run_dyn_prog ~dir:(Path.build dir) ~env ~sandbox exe args
   in
   Super_context.add_rule sctx ~dir action
 ;;
@@ -313,7 +314,7 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
     gen_headers ~expander ctypes.headers |> Action_builder.memoize "ctypes-gen-headers"
   in
   let env, sandbox =
-    Dep_conf_eval.unnamed Sandbox_config.no_special_requirements ~expander ctypes.deps
+    Dep_conf_eval.unnamed Sandbox_config.needs_sandboxing ~expander ctypes.deps
   in
   let exe_link_only = exe_link_only ~dir ~shared_cctx:cctx ~sandbox ~env in
   (* Type_gen produces a .c file, taking your type description module above as
@@ -352,7 +353,7 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
         ~loc:Loc.none
         (let exe = Ok (Path.build (Path.Build.relative dir (type_gen_script ^ ".exe"))) in
          let stdout_to = Path.Build.relative dir c_generated_types_cout_c in
-         Command.run ~stdout_to ~dir:(Path.build dir) ~env exe [])
+         Command.run ~stdout_to ~dir:(Path.build dir) ~env ~sandbox exe [])
     in
     let* () =
       let foreign_archives_deps =
@@ -374,6 +375,7 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
         ~output:c_generated_types_cout_exe
         ~cflags
         ~env
+        ~sandbox
     in
     Super_context.add_rule
       sctx
@@ -385,7 +387,7 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
          |> Path.Build.relative dir
        in
        let exe = Ok (Path.build (Path.Build.relative dir c_generated_types_cout_exe)) in
-       Command.run ~stdout_to ~dir:(Path.build dir) ~env exe [])
+       Command.run ~stdout_to ~dir:(Path.build dir) ~env ~sandbox exe [])
   in
   (* Function_gen is similar to type_gen above, though it produces both an .ml
      file and a .c file. These files correspond to the files you would have to
@@ -420,7 +422,13 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
           External_lib_name.(external_library_name |> clean |> to_string) ^ "_stubs"
         in
         fun ~stdout_to ~what ->
-          Command.run ~stdout_to ~dir:(Path.build dir) ~env exe [ A what; A stubs_prefix ]
+          Command.run
+            ~stdout_to
+            ~dir:(Path.build dir)
+            ~env
+            ~sandbox
+            exe
+            [ A what; A stubs_prefix ]
       in
       let* () =
         Super_context.add_rule

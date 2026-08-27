@@ -303,9 +303,10 @@ descriptions by referencing them as the module specified in optional
    - ``(headers (preamble <preamble>)`` adds directly the preamble. Variables
      can be used in ``<preamble>`` such as ``%{read: }``.
 
-- Since the Dune's ``ctypes`` feature is still experimental, it could be useful to
-  add additional dependencies in order to make sure that local
-  headers or libraries are available: ``(deps <deps-conf list>)``. See
+- ``(deps <deps-conf list>)`` declares additional dependencies, such as local
+  headers or libraries. Ctypes stub generation is sandboxed, so all such
+  dependencies must be declared. For example, use
+  ``(deps (source_tree vendor))`` for headers kept in ``vendor``. See
   :doc:`concepts/dependency-spec` for more details.
 
 ``<optional-function-description-fields>`` are:

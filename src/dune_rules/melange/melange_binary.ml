@@ -1,15 +1,18 @@
 open Import
 open Memo.O
 
-let melc sctx ~loc ~dir =
+let resolve_program sctx ~loc ~dir name =
   Super_context.resolve_program_memo
     sctx
     ~loc
     ~dir
     ~where:Original_path
     ~hint:"opam install melange"
-    "melc"
+    name
 ;;
+
+let melc sctx ~loc ~dir = resolve_program sctx ~loc ~dir "melc"
+let melobjinfo sctx ~loc ~dir = resolve_program sctx ~loc ~dir "melobjinfo"
 
 let available sctx ~dir =
   let+ melc = melc sctx ~loc:None ~dir in

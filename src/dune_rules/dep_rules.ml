@@ -148,6 +148,16 @@ let transitive_dep m =
     Some (Module.obj_name m, if Module.has m ~ml_kind:Intf then Ml_kind.Intf else Impl)
 ;;
 
+let imported_vlib_modules ~vlib_obj_map ~self imports =
+  Module_name.Unique.Set.to_list imports
+  |> List.filter_map ~f:(fun dep ->
+    if Module_name.Unique.equal self dep
+    then None
+    else
+      Module_name.Unique.Map.find vlib_obj_map dep
+      |> Option.map ~f:Modules.Sourced_module.to_module)
+;;
+
 let ooi_deps
       ~vimpl
       ~sctx
@@ -172,13 +182,7 @@ let ooi_deps
       | [] | _ :: _ -> assert false)
     |> Action_builder.memoize "ocamlobjinfo"
     |> Action_builder.map ~f:(fun (ooi : Ocamlobjinfo.t) ->
-      Module_name.Unique.Set.to_list ooi.intf
-      |> List.filter_map ~f:(fun dep ->
-        if Module.obj_name m = dep
-        then None
-        else
-          Module_name.Unique.Map.find vlib_obj_map dep
-          |> Option.map ~f:Modules.Sourced_module.to_module))
+      imported_vlib_modules ~vlib_obj_map ~self:(Module.obj_name m) ooi.intf)
   in
   let read_copied kind =
     Obj_dir.Module.cm_file_exn obj_dir m ~kind |> Path.build |> read
@@ -199,6 +203,58 @@ let ooi_deps
         with
         | None -> no_deps
         | Some cmt -> Action_builder.if_file_exists cmt ~then_:(read cmt) ~else_:no_deps))
+;;
+
+let make_melobjinfo_deps ~sctx ~dir ~sandbox ~vlib_obj_dir ~vlib_obj_map =
+  let files =
+    Module_name.Unique.Map.values vlib_obj_map
+    |> List.filter_map ~f:(fun sourced_module ->
+      let m = Modules.Sourced_module.to_module sourced_module in
+      Obj_dir.Module.cm_file vlib_obj_dir m ~kind:(Melange Cmj)
+      |> Option.map ~f:(fun path -> m, path))
+  in
+  Memo.lazy_ ~name:"installed-melange-vlib-melobjinfo-deps" (fun () ->
+    let* program = Melange_binary.melobjinfo sctx ~loc:None ~dir in
+    match program with
+    | Error _ -> Memo.return None
+    | Ok _ ->
+      let deps =
+        match files with
+        | [] -> Action_builder.return Module_name.Unique.Map.empty
+        | _ :: _ ->
+          let action =
+            let open Action_builder.O in
+            let+ action =
+              Command.run'
+                ?sandbox
+                ~dir:(Path.build dir)
+                program
+                [ Deps (List.map files ~f:snd) ]
+            in
+            { Rule.Anonymous_action.action; loc = Loc.none; dir }
+          in
+          Build_system.execute_action_stdout action
+          |> Memo.map ~f:Ocamlobjinfo.parse
+          |> Action_builder.of_memo
+          |> Action_builder.map ~f:(fun results ->
+            let expected = List.length files in
+            let actual = List.length results in
+            if expected <> actual
+            then
+              Code_error.raise
+                "unexpected number of melobjinfo results"
+                [ "expected", Dyn.int expected; "actual", Dyn.int actual ];
+            List.combine files results
+            |> List.fold_left
+                 ~init:Module_name.Unique.Map.empty
+                 ~f:(fun deps ((m, _), (ooi : Ocamlobjinfo.t)) ->
+                   let self = Module.obj_name m in
+                   let imports = imported_vlib_modules ~vlib_obj_map ~self ooi.impl in
+                   Module_name.Unique.Map.set deps self imports))
+      in
+      Action_builder.memoize "installed Melange vlib melobjinfo deps" deps
+      |> Option.some
+      |> Memo.return)
 ;;
 
 let wrapped_compat_deps modules m =
@@ -225,16 +281,16 @@ let preprocessed_modules_of_local_lib ~sctx lib ~for_ =
   Pp_spec.pped_modules preprocess version modules
 ;;
 
-type imported_vlib_impl_deps =
-  | Transitive
-  | Immediate of { stage_copied_objects_if_cmt_missing : unit Action_builder.t Lazy.t }
+type imported_vlib_deps_result =
+  | Transitive of Module.t list
+  | Immediate of (Module.t * Ml_kind.t) list
 
 type imported_vlib_deps =
   { deps_of :
       Modules.Sourced_module.t
       -> ml_kind:Ml_kind.t
-      -> Module.t list Action_builder.t Memo.t
-  ; impl_deps : imported_vlib_impl_deps
+      -> imported_vlib_deps_result Action_builder.t Memo.t
+  ; stage_copied_objects_if_cmt_missing : unit Action_builder.t Lazy.t option
   }
 
 type memoized_transitive_deps =
@@ -330,28 +386,31 @@ and transitive_deps_output_of_imported_vlib t m ~ml_kind =
       ; "ml_kind", Ml_kind.to_dyn ml_kind
       ; "dir", Path.Build.to_dyn t.dir
       ]
-  | Some { deps_of; impl_deps } ->
+  | Some { deps_of; _ } ->
     let open Action_builder.O in
     let* deps =
       Action_builder.of_memo
         (deps_of (Modules.Sourced_module.Imported_from_vlib m) ~ml_kind)
     in
     let* deps = deps in
-    (match ml_kind, impl_deps with
-     | Intf, _ | Impl, Transitive ->
-       Transitive_deps_output.of_modules deps |> Action_builder.return
-     | Impl, Immediate _ ->
+    (match deps with
+     | Transitive deps -> Transitive_deps_output.of_modules deps |> Action_builder.return
+     | Immediate deps ->
        let transitive =
-         List.filter_map deps ~f:(fun dep ->
+         List.filter_map deps ~f:(fun (dep, ml_kind) ->
            match Module.kind dep with
            | Root | Alias _ -> None
            | _ ->
-             let ml_kind = if Module.has dep ~ml_kind:Impl then Ml_kind.Impl else Intf in
+             let ml_kind =
+               match ml_kind with
+               | Ml_kind.Intf -> Ml_kind.Intf
+               | Impl -> if Module.has dep ~ml_kind:Impl then Ml_kind.Impl else Intf
+             in
              Some
                (Action_builder.exec_memo (Lazy.force t.memo) (Module.obj_name dep, ml_kind)
                 |> Action_builder.map ~f:(fun memoized -> memoized.output)))
        in
-       let immediate = List.map deps ~f:Module.obj_name in
+       let immediate = List.map deps ~f:(fun (dep, _) -> Module.obj_name dep) in
        Transitive_deps_output.merge ~dir:t.dir ~transitive ~immediate)
 ;;
 
@@ -372,11 +431,12 @@ let transitive_deps_of t ~ml_kind unit =
               (Ml_kind.to_string ml_kind))
   in
   match ml_kind, t.imported_vlib_deps with
-  | Intf, _ | Impl, None | Impl, Some { impl_deps = Transitive; _ } -> deps
-  | Impl, Some { impl_deps = Immediate { stage_copied_objects_if_cmt_missing }; _ } ->
+  | Impl, Some { stage_copied_objects_if_cmt_missing = Some stage; _ } ->
     let open Action_builder.O in
     let+ deps = deps
-    and+ () = Lazy.force stage_copied_objects_if_cmt_missing in
+    and+ () = Lazy.force stage in
+    deps
+  | Intf, _ | Impl, None | Impl, Some { stage_copied_objects_if_cmt_missing = None; _ } ->
     deps
 ;;
 
@@ -387,58 +447,105 @@ let make_imported_vlib_deps ~obj_dir ~vimpl ~dir ~sctx ~sandbox ~for_ : imported
   | None ->
     let vlib_obj_map = Vimpl.vlib_obj_map vimpl in
     let vlib_obj_dir = Lib.info vlib |> Lib_info.obj_dir in
-    let impl_deps =
-      match for_ with
-      | Compilation_mode.Ocaml -> Transitive
-      | Compilation_mode.Melange ->
-        let stage_copied_objects_if_cmt_missing =
-          lazy
-            (let modules =
-               Module_name.Unique.Map.values vlib_obj_map
-               |> List.map ~f:Modules.Sourced_module.to_module
-             in
-             (* Without CMTs, stage every copied vlib object directly. Adding them as
-                module-graph edges could introduce cycles that aren't in the source. *)
-             let cmts =
-               List.filter_map modules ~f:(fun m ->
-                 Obj_dir.Module.cmt_file
-                   vlib_obj_dir
-                   m
-                   ~ml_kind:Impl
-                   ~cm_kind:(Melange Cmj))
-             in
-             (let open Action_builder.O in
-              let* cmts_exist =
-                List.map cmts ~f:Action_builder.file_exists |> Action_builder.all
-              in
-              if List.for_all cmts_exist ~f:Fun.id
-              then Action_builder.return ()
-              else (
-                let files =
-                  Obj_dir.Module.L.cm_files obj_dir modules ~kind:(Melange Cmi)
-                  @ Obj_dir.Module.L.cm_files obj_dir modules ~kind:(Melange Cmj)
-                in
-                Action_builder.paths files))
-             |> Action_builder.memoize "stage copied vlib objects if CMT missing")
-        in
-        Immediate { stage_copied_objects_if_cmt_missing }
-    in
     let dune_version =
       let impl = Vimpl.impl vimpl in
       Dune_project.dune_version impl.project
     in
-    { deps_of =
-        ooi_deps
-          ~vimpl
-          ~sctx
-          ~dir
-          ~obj_dir
-          ~vlib_obj_dir
-          ~dune_version
-          ~vlib_obj_map
-          ~for_
-    ; impl_deps
-    }
+    let deps_from_ooi =
+      ooi_deps ~vimpl ~sctx ~dir ~obj_dir ~vlib_obj_dir ~dune_version ~vlib_obj_map ~for_
+    in
+    (match for_ with
+     | Compilation_mode.Ocaml ->
+       let deps_of sourced_module ~ml_kind =
+         let+ deps = deps_from_ooi sourced_module ~ml_kind in
+         Action_builder.map deps ~f:(fun deps -> Transitive deps)
+       in
+       { deps_of; stage_copied_objects_if_cmt_missing = None }
+     | Compilation_mode.Melange ->
+       let object_info_sandbox =
+         if dune_version >= (3, 3) then Some Sandbox_config.needs_sandboxing else None
+       in
+       let melobjinfo_deps =
+         make_melobjinfo_deps
+           ~sctx
+           ~dir
+           ~sandbox:object_info_sandbox
+           ~vlib_obj_dir
+           ~vlib_obj_map
+       in
+       let fallback_impl_deps sourced_module =
+         let+ deps = deps_from_ooi sourced_module ~ml_kind:Impl in
+         Action_builder.map deps ~f:(fun deps ->
+           Immediate
+             (List.map deps ~f:(fun dep ->
+                let ml_kind =
+                  if Module.has dep ~ml_kind:Impl then Ml_kind.Impl else Intf
+                in
+                dep, ml_kind)))
+       in
+       let deps_of sourced_module ~(ml_kind : Ml_kind.t) =
+         match ml_kind with
+         | Ml_kind.Intf ->
+           let+ deps = deps_from_ooi sourced_module ~ml_kind:Intf in
+           Action_builder.map deps ~f:(fun deps -> Transitive deps)
+         | Impl ->
+           let* melobjinfo_deps = Memo.Lazy.force melobjinfo_deps in
+           (match melobjinfo_deps with
+            | None -> fallback_impl_deps sourced_module
+            | Some impl_deps ->
+              let+ intf_deps = deps_from_ooi sourced_module ~ml_kind:Intf in
+              let obj_name =
+                Modules.Sourced_module.to_module sourced_module |> Module.obj_name
+              in
+              let open Action_builder.O in
+              let+ intf_deps = intf_deps
+              and+ impl_deps =
+                Action_builder.map impl_deps ~f:(fun deps ->
+                  Module_name.Unique.Map.find deps obj_name |> Option.value ~default:[])
+              in
+              Immediate
+                (List.map intf_deps ~f:(fun dep -> dep, Ml_kind.Intf)
+                 @ List.map impl_deps ~f:(fun dep -> dep, Ml_kind.Impl)))
+       in
+       let stage_copied_objects_if_cmt_missing =
+         lazy
+           ((let open Action_builder.O in
+             let* melobjinfo_deps =
+               Action_builder.of_memo (Memo.Lazy.force melobjinfo_deps)
+             in
+             match melobjinfo_deps with
+             | Some _ -> Action_builder.return ()
+             | None ->
+               let modules =
+                 Module_name.Unique.Map.values vlib_obj_map
+                 |> List.map ~f:Modules.Sourced_module.to_module
+               in
+               (* Without CMTs, stage every copied vlib object directly. Adding them as
+                  module-graph edges could introduce cycles that aren't in the source. *)
+               let cmts =
+                 List.filter_map modules ~f:(fun m ->
+                   Obj_dir.Module.cmt_file
+                     vlib_obj_dir
+                     m
+                     ~ml_kind:Impl
+                     ~cm_kind:(Melange Cmj))
+               in
+               let* cmts_exist =
+                 List.map cmts ~f:Action_builder.file_exists |> Action_builder.all
+               in
+               if List.for_all cmts_exist ~f:Fun.id
+               then Action_builder.return ()
+               else (
+                 let files =
+                   Obj_dir.Module.L.cm_files obj_dir modules ~kind:(Melange Cmi)
+                   @ Obj_dir.Module.L.cm_files obj_dir modules ~kind:(Melange Cmj)
+                 in
+                 Action_builder.paths files))
+            |> Action_builder.memoize "stage copied vlib objects if CMT missing")
+       in
+       { deps_of
+       ; stage_copied_objects_if_cmt_missing = Some stage_copied_objects_if_cmt_missing
+       })
   | Some lib ->
     let vlib_obj_dir =
       let info = Lib.Local.info lib in
@@ -459,9 +566,11 @@ let make_imported_vlib_deps ~obj_dir ~vimpl ~dir ~sctx ~sandbox ~for_ : imported
     let deps_of sourced_module ~ml_kind =
       let* transitive_deps = Memo.Lazy.force transitive_deps in
       let m = Modules.Sourced_module.to_module sourced_module in
-      transitive_deps_of transitive_deps ~ml_kind m |> Memo.return
+      transitive_deps_of transitive_deps ~ml_kind m
+      |> Action_builder.map ~f:(fun deps -> Transitive deps)
+      |> Memo.return
     in
-    { deps_of; impl_deps = Transitive }
+    { deps_of; stage_copied_objects_if_cmt_missing = None }
 ;;
 
 let make_transitive_deps ~obj_dir ~modules ~sandbox ~impl ~dir ~sctx ~for_ =
@@ -530,7 +639,11 @@ let rec deps_of
        | None -> Code_error.raise "imported vlib module without vlib deps" []
        | Some imported_vlib_deps ->
          skip_if_source_absent
-           (fun sourced_module -> imported_vlib_deps.deps_of sourced_module ~ml_kind)
+           (fun sourced_module ->
+              let+ deps = imported_vlib_deps.deps_of sourced_module ~ml_kind in
+              Action_builder.map deps ~f:(function
+                | Transitive deps -> deps
+                | Immediate deps -> List.map deps ~f:fst))
            m)
     | Normal _ ->
       skip_if_source_absent

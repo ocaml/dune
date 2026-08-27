@@ -21,7 +21,8 @@ val archive_rules
   -> archive:Path.t
   -> Module_name.Unique.Set.t Action_builder.t
 
-(** For testing only *)
+(** Parse the output of an object-info tool that follows the [ocamlobjinfo]
+    format. *)
 val parse : string -> t list
 
 (** Parse archive output to extract module names defined in the archive *)

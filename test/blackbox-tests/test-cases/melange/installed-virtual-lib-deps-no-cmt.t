@@ -117,8 +117,8 @@ not turn copied artifacts into a Virt-to-Reverse module dependency cycle.
   _build/default/impl/.impl.objs/melange/vlib__Unused.cmj
   _build/default/impl/.impl.objs/melange/vlib__Virt.cmi
 
-The current implementation ignores melobjinfo, so every copied object is still
-staged.
+melobjinfo makes precise dependencies available without CMTs, so unrelated
+copied objects no longer need to be staged.
 
   $ cat > fake-bin/melobjinfo <<'EOF'
   > #!/bin/sh
@@ -151,6 +151,3 @@ staged.
   > ' deps-with-melobjinfo.json
   _build/default/impl/.impl.objs/melange/vlib__Helper.cmi
   _build/default/impl/.impl.objs/melange/vlib__Helper.cmj
-  _build/default/impl/.impl.objs/melange/vlib__Reverse.cmi
-  _build/default/impl/.impl.objs/melange/vlib__Unused.cmi
-  _build/default/impl/.impl.objs/melange/vlib__Unused.cmj

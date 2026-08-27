@@ -151,9 +151,9 @@ CMT, including private modules but excluding unused ones.
   _build/default/impl/.impl.objs/melange/vlib__Type_runtime.cmj
   _build/default/impl/.impl.objs/melange/vlib__Virt.cmi
 
-The current implementation ignores melobjinfo. It therefore still follows
-Type_only's implementation dependency on Type_runtime, even though Shared only
-imports Type_only through its interface.
+When melobjinfo is available, it takes precedence over CMT analysis.
+Implementation dependencies are followed through CMJs, while interface-only
+dependencies are followed through CMIs.
 
   $ cat > fake-bin/melobjinfo <<'EOF'
   > #!/bin/sh
@@ -197,7 +197,7 @@ imports Type_only through its interface.
   $ dune trace cat --trace-file "$PWD/trace" \
   > | jq_dune -s \
   >   '[.[] | processesBrief | select(.prog == "melobjinfo")] | length'
-  0
+  1
 
   $ PATH="$PWD/fake-bin:$no_melobjinfo_path" \
   > OCAMLPATH="$PWD/prefix/lib:$OCAMLPATH" \
@@ -224,8 +224,10 @@ imports Type_only through its interface.
   _build/default/impl/.impl.objs/melange/vlib__Other_type.cmj
   _build/default/impl/.impl.objs/melange/vlib__Type_only.cmi
   _build/default/impl/.impl.objs/melange/vlib__Type_only.cmj
-  _build/default/impl/.impl.objs/melange/vlib__Type_runtime.cmi
-  _build/default/impl/.impl.objs/melange/vlib__Type_runtime.cmj
+
+Other is virtual, so its implementation dependency is normalized to an
+interface dependency and leads to Other_type. Type_only is also part of
+Shared's interface, so its CMJ-only dependency on Type_runtime is not followed.
 
 The missing-annotation fallback is deliberately conservative at the library
 level. Even when the missing CMT belongs to an unreachable module, every copied

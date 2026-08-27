@@ -235,14 +235,17 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
       (* Close transitively over transparent aliases that ocamldep doesn't
          report. *)
       let* all_libs = Resolve.Memo.read (Lib.closure direct_libs ~linking:false ~for_) in
-      (* Wrapped-lib soundness recovery: when [referenced] names a wrapped local
-         lib's wrapper, the consumer may reach the lib's transitive closure
-         through aliases the cross-library walk cannot see; glob that closure
-         unconditionally. *)
+      let* tight_set =
+        cross_lib_tight_set ~sandbox ~sctx ~lib_index ~mode ~initial_refs:referenced
+      in
+      (* Wrapped-lib soundness recovery: when the cross-library walk reaches a
+         wrapped local lib's wrapper, the consumer may reach the lib's
+         transitive closure through aliases the walk cannot see; glob that
+         closure unconditionally. *)
       let wrapped_referenced =
         Lib_file_deps.Lib_index.wrapped_libs_referenced
           lib_index
-          ~referenced_modules:referenced
+          ~referenced_modules:tight_set
       in
       let* must_glob_libs =
         Resolve.Memo.read
@@ -254,9 +257,6 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
              ~for_)
       in
       let must_glob_set = Lib.Set.of_list must_glob_libs in
-      let* tight_set =
-        cross_lib_tight_set ~sandbox ~sctx ~lib_index ~mode ~initial_refs:referenced
-      in
       (* Classify each lib in [all_libs]: - lib has [None]-entry referenced
          (mixed-entry or wrapped) → glob (covers the None entries' [.cmi]s); -
          lib has only [Some] entries referenced → per-module deps; - lib

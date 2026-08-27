@@ -145,8 +145,3 @@ The consumer initially references only [Bridge]. The cross-library walk then
 reaches the wrapped [Middle], whose closure includes [Leaf].
 
   $ dune build --sandbox=copy consumer/consumer.exe
-  File "consumer/consumer.ml", line 1, characters 19-27:
-  1 | let () = print_int Bridge.L.value
-                         ^^^^^^^^
-  Error: The module Bridge.L is an alias for module Leaf, which is missing
-  [1]

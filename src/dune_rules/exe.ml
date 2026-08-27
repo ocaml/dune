@@ -179,14 +179,10 @@ let link_exe
   let dir = Compilation_context.dir cctx in
   let mode = Link_mode.mode linkage_mode in
   let exe = exe_path_from_name cctx ~name ~linkage in
-  let* action_with_targets =
+  let action_with_targets =
     let ocaml_flags = Ocaml_flags.get (Compilation_context.flags cctx) (Ocaml mode) in
     let prefix =
       Cm_files.top_sorted_objects_and_cms cm_files ~mode |> Action_builder.dyn_paths_unit
-    in
-    let+ fdo_linker_script_flags =
-      let fdo_linker_script = Fdo.Linker_script.create cctx (Path.build exe) in
-      Fdo.Linker_script.flags fdo_linker_script
     in
     let open Action_builder.With_targets.O in
     (* NB. Below we take care to pass [link_args] last on the command-line for
@@ -236,10 +232,10 @@ let link_exe
           ; Dyn
               (let top_sorted_cms = Cm_files.top_sorted_cms cm_files ~mode in
                Action_builder.map top_sorted_cms ~f:(fun x -> Command.Args.Deps x))
-          ; fdo_linker_script_flags
           ; Dyn link_args
           ]
-  and* mode =
+  in
+  let* mode =
     let sctx = Compilation_context.super_context cctx in
     let* expander = Super_context.expander sctx ~dir in
     Rule_mode_expand.expand_optional_promote ~expander ~dir promote

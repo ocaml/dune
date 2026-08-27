@@ -59,10 +59,6 @@ val to_dyn_concise : t -> Dyn.t
 val name : t -> Context_name.t
 val which : t -> Filename.t -> Path.t option Memo.t
 
-(** [Some path/to/foo.exe] if this contexts is for feedback-directed
-    optimization of target path/to/foo.exe *)
-val fdo_target_exe : t -> Path.t option
-
 (** By default Dune builds and installs dynamically linked foreign
     archives (usually named [dll*.so]). It is possible to disable this by
     adding (disable_dynamically_linked_foreign_archives true) to the workspace

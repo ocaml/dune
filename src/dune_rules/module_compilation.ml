@@ -196,14 +196,7 @@ let melange_args (cctx : Compilation_context.t) (cm_kind : Lib_mode.Cm_kind.t) m
     :: mel_package_name
 ;;
 
-let build_cm
-      cctx
-      ~force_write_cmi
-      ~precompiled_cmi
-      ~cm_kind
-      (m : Module.t)
-      ~(phase : Fdo.phase option)
-  =
+let build_cm cctx ~force_write_cmi ~precompiled_cmi ~cm_kind (m : Module.t) =
   if force_write_cmi && precompiled_cmi
   then Code_error.raise "force_write_cmi and precompiled_cmi are mutually exclusive" [];
   let sctx = Compilation_context.super_context cctx in
@@ -255,38 +248,28 @@ let build_cm
      else (
        (* If we're compiling an implementation, then the cmi is present *)
        let public_vlib_module = Module.kind m = Impl_vmodule in
-       match phase with
-       | Some Emit -> Memo.return Command.Args.empty
-       | Some Compile | Some All | None ->
-         (match cm_kind, Module.file m ~ml_kind:Intf, public_vlib_module with
-          (* If there is no mli, [ocamlY -c file.ml] produces both the .cmY and
-             .cmi. We choose to use ocamlc to produce the cmi and to produce the
-             cmx we have to wait to avoid race conditions. *)
-          | (Ocaml Cmo | Melange Cmj), None, false ->
-            if force_write_cmi
-            then Memo.return (Command.Args.As [ "-intf-suffix"; ".dummy-ignore-mli" ])
-            else
-              let+ () = copy_interface ~dir ~obj_dir ~sctx ~cm_kind m in
-              let cmi_kind = Lib_mode.Cm_kind.cmi cm_kind in
-              Command.Args.Hidden_targets
-                [ Obj_dir.Module.cm_file_exn obj_dir m ~kind:cmi_kind ]
-          | (Ocaml Cmo | Melange Cmj), None, true
-          | (Ocaml (Cmo | Cmx) | Melange Cmj), _, _ ->
-            Memo.return (force_read_cmi ~obj_dir ~version:ocaml.version ~cm_kind ~src m)
-          | (Ocaml Cmi | Melange Cmi), _, _ ->
-            let+ () = copy_interface ~dir ~obj_dir ~sctx ~cm_kind m in
-            Command.Args.empty))
+       match cm_kind, Module.file m ~ml_kind:Intf, public_vlib_module with
+       (* If there is no mli, [ocamlY -c file.ml] produces both the .cmY and
+          .cmi. We choose to use ocamlc to produce the cmi and to produce the
+          cmx we have to wait to avoid race conditions. *)
+       | (Ocaml Cmo | Melange Cmj), None, false ->
+         if force_write_cmi
+         then Memo.return (Command.Args.As [ "-intf-suffix"; ".dummy-ignore-mli" ])
+         else
+           let+ () = copy_interface ~dir ~obj_dir ~sctx ~cm_kind m in
+           let cmi_kind = Lib_mode.Cm_kind.cmi cm_kind in
+           Command.Args.Hidden_targets
+             [ Obj_dir.Module.cm_file_exn obj_dir m ~kind:cmi_kind ]
+       | (Ocaml Cmo | Melange Cmj), None, true | (Ocaml (Cmo | Cmx) | Melange Cmj), _, _
+         -> Memo.return (force_read_cmi ~obj_dir ~version:ocaml.version ~cm_kind ~src m)
+       | (Ocaml Cmi | Melange Cmi), _, _ ->
+         let+ () = copy_interface ~dir ~obj_dir ~sctx ~cm_kind m in
+         Command.Args.empty)
    in
    let other_targets =
      match cm_kind with
      | Ocaml (Cmi | Cmo) | Melange (Cmi | Cmj) -> Command.Args.empty
-     | Ocaml Cmx ->
-       (match phase with
-        | Some Compile ->
-          Hidden_targets
-            [ Obj_dir.Module.obj_file obj_dir m ~kind:(Ocaml Cmx) ~ext:Fdo.linear_ext ]
-        | Some Emit -> Command.Args.empty
-        | Some All | None -> Hidden_targets [ obj ])
+     | Ocaml Cmx -> Hidden_targets [ obj ]
    in
    let opaque = Compilation_context.opaque cctx in
    let other_cm_files =
@@ -351,21 +334,6 @@ let build_cm
      | None -> Command.Args.empty, sandbox
      | Some (pp, sandbox') -> Command.Args.dyn pp, Sandbox_config.inter sandbox sandbox'
    in
-   let output =
-     match phase with
-     | Some Compile -> dst
-     | Some Emit -> obj
-     | Some All | None -> dst
-   in
-   let src =
-     match phase with
-     | Some Emit ->
-       let linear_fdo =
-         Obj_dir.Module.obj_file obj_dir m ~kind:(Ocaml Cmx) ~ext:Fdo.linear_fdo_ext
-       in
-       Path.build linear_fdo
-     | Some Compile | Some All | None -> src
-   in
    let opens =
      let modules = Compilation_context.modules cctx in
      opens modules m
@@ -406,10 +374,9 @@ let build_cm
             ; S (melange_args cctx cm_kind m)
             ; A "-no-alias-deps"
             ; opaque_arg
-            ; As (Fdo.phase_flags phase)
             ; opens
             ; A "-o"
-            ; Target output
+            ; Target dst
             ; A "-c"
             ; Command.Ml_kind.flag ml_kind
             ; Dep src
@@ -427,24 +394,10 @@ let build_module ?(force_write_cmi = false) ?(precompiled_cmi = false) cctx m =
   let build_cm = build_cm cctx m ~force_write_cmi ~precompiled_cmi in
   match Compilation_context.for_ cctx with
   | Ocaml ->
-    let* () = build_cm ~cm_kind:(Ocaml Cmo) ~phase:None
+    let* () = build_cm ~cm_kind:(Ocaml Cmo)
+    and* () = build_cm ~cm_kind:(Ocaml Cmx)
     and* () =
-      let ctx = Compilation_context.context cctx in
-      let ocaml = Compilation_context.ocaml cctx in
-      let can_split =
-        Ocaml.Version.supports_split_at_emit ocaml.version
-        || Ocaml_config.is_dev_version ocaml.ocaml_config
-      in
-      match Context.fdo_target_exe ctx, can_split with
-      | None, _ -> build_cm ~cm_kind:(Ocaml Cmx) ~phase:None
-      | Some _, false -> build_cm ~cm_kind:(Ocaml Cmx) ~phase:(Some All)
-      | Some _, true ->
-        build_cm ~cm_kind:(Ocaml Cmx) ~phase:(Some Compile)
-        >>> Fdo.opt_rule cctx m
-        >>> build_cm ~cm_kind:(Ocaml Cmx) ~phase:(Some Emit)
-    and* () =
-      Memo.when_ (not precompiled_cmi) (fun () ->
-        build_cm ~cm_kind:(Ocaml Cmi) ~phase:None)
+      Memo.when_ (not precompiled_cmi) (fun () -> build_cm ~cm_kind:(Ocaml Cmi))
     in
     let obj_dir = Compilation_context.obj_dir cctx in
     (match Obj_dir.Module.cm_file obj_dir m ~kind:(Ocaml Cmo) with
@@ -473,10 +426,9 @@ let build_module ?(force_write_cmi = false) ?(precompiled_cmi = false) cctx m =
            in
            Super_context.add_rule sctx ~dir action_with_targets)))
   | Melange ->
-    let* () = build_cm ~cm_kind:(Melange Cmj) ~phase:None
+    let* () = build_cm ~cm_kind:(Melange Cmj)
     and* () =
-      Memo.when_ (not precompiled_cmi) (fun () ->
-        build_cm ~cm_kind:(Melange Cmi) ~phase:None)
+      Memo.when_ (not precompiled_cmi) (fun () -> build_cm ~cm_kind:(Melange Cmi))
     in
     let project = Compilation_context.scope cctx |> Scope.project in
     let dir = Compilation_context.dir cctx in

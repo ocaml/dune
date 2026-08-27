@@ -69,7 +69,6 @@ type builder =
   { profile : Profile.t
   ; merlin : bool
   ; instrument_with : Lib_name.t list
-  ; fdo_target_exe : Path.t option
   ; dynamically_linked_foreign_archives : bool
   ; env_nodes : Env_nodes.t
   ; name : Context_name.t
@@ -107,7 +106,6 @@ module Builder = struct
     { profile = Profile.Dev
     ; merlin = false
     ; instrument_with = []
-    ; fdo_target_exe = None
     ; dynamically_linked_foreign_archives = false
     ; env_nodes = Env_nodes.empty
     ; name = Context_name.default
@@ -150,7 +148,6 @@ module Builder = struct
         ; toolchain
         ; paths
         ; loc = _
-        ; fdo_target_exe
         ; dynamically_linked_foreign_archives
         ; instrument_with
         ; merlin
@@ -169,7 +166,6 @@ module Builder = struct
     ; profile
     ; dynamically_linked_foreign_archives
     ; instrument_with
-    ; fdo_target_exe
     ; name
     ; env = Memo.return env
     ; findlib_toolchain = toolchain
@@ -197,7 +193,6 @@ let dynamically_linked_foreign_archives t =
     Ocaml_config.supports_shared_libraries ocaml.ocaml_config
 ;;
 
-let fdo_target_exe t = t.builder.fdo_target_exe
 let instrument_with t = t.builder.instrument_with
 let merlin t = t.builder.merlin
 let profile t = t.builder.profile
@@ -220,13 +215,11 @@ let host t =
 
 let to_dyn t : Dyn.t =
   let open Dyn in
-  let path = Path.to_dyn in
   record
     [ "name", Context_name.to_dyn t.builder.name
     ; "kind", Kind.to_dyn t.kind
     ; "profile", Profile.to_dyn t.builder.profile
     ; "merlin", Bool t.builder.merlin
-    ; "fdo_target_exe", option path t.builder.fdo_target_exe
     ; "build_dir", Path.Build.to_dyn t.build_dir
     ; "instrument_with", (list Lib_name.to_dyn) t.builder.instrument_with
     ]
@@ -509,8 +502,6 @@ let create (builder : Builder.t) ~(kind : Kind.t) =
                 toolchain, `Lock)
          in
          Ocaml_toolchain.register_response_file_support ocaml;
-         if Option.is_some builder.fdo_target_exe
-         then Ocaml_toolchain.check_fdo_support ocaml builder.name;
          ocaml, env)
   in
   let default_ocamlpath =

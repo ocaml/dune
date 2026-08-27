@@ -68,19 +68,6 @@ regular build context, or ``(opam ...)`` to use an opam switch.
   Relative paths are interpreted with respect to the workspace root. See
   :ref:`finding-root`.
 
-- ``(fdo <target_exe>)`` builds this context with feedback-directed
-  optimizations. It requires `OCamlFDO
-  <https://github.com/gretay-js/ocamlfdo>`__. ``<target_exe>`` is a path
-  interpreted relative to the workspace root (see :ref:`finding-root`).
-  ``<target_exe>`` specifies which executable to optimize. Users should define a
-  different context for each target executable built with FDO. The context name
-  is derived automatically from the default name and ``<target-exe>``, unless
-  explicitly specified using the ``(name ...)`` field. For example, if
-  ``<target_exe>`` is *src/foo.exe* in a default context, then the name of the
-  context is *default-fdo-foo* and the filename that contains execution counters
-  is *src/fdo.exe.fdo-profile*.  This feature is **experimental** and no
-  backward compatibility is implied.
-
 - ``(instrument_with <instrumentation_backend>)`` turns on instrumentation for
   the context. See :doc:`/instrumentation` for more information.
 

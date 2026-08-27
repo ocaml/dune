@@ -186,16 +186,11 @@ let build_c_program
       let+ ocaml = Action_builder.of_memo ocaml in
       let use_standard_flags = Dune_project.use_standard_c_and_cxx_flags project in
       let cfg = ocaml.ocaml_config in
-      let fdo_flags = Command.Args.As (Fdo.c_flags ctx) in
       match use_standard_flags with
-      | Some true -> fdo_flags
+      | Some true -> Command.Args.empty
       | None | Some false ->
         (* In dune < 2.8 flags from ocamlc_config are always added *)
-        S
-          [ As (Ocaml_config.ocamlc_cflags cfg)
-          ; As (Ocaml_config.ocamlc_cppflags cfg)
-          ; fdo_flags
-          ]
+        S [ As (Ocaml_config.ocamlc_cflags cfg); As (Ocaml_config.ocamlc_cppflags cfg) ]
     in
     let open Action_builder.O in
     let* expander = Action_builder.of_memo (Super_context.expander sctx ~dir) in

@@ -94,6 +94,13 @@ narrowing kicks in):
   $ cat _build/default/other-out
   true
 
+The package [other] was built:
+
+  $ dune trace cat | jq 'select(.cat == "process" and .name == "finish" and .args.target_dirs[]?) | .args.target_dirs[]' | sort -u | censor
+  "_build/_private/default/.pkg/direct.0.0.1-$DIGEST1/target"
+  "_build/_private/default/.pkg/other.0.0.1-$DIGEST2/target"
+  "_build/_private/default/.pkg/transitive.0.0.1-$DIGEST3/target"
+
 All the lockdir packages' bin layout is added to $PATH:
 
   $ env_added "$(cat _build/default/path-output)" "$PATH" | censor

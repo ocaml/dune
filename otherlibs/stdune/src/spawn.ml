@@ -1,5 +1,3 @@
-external contains_null : string -> bool = "dune_spawn_contains_null" [@@noalloc]
-
 module Working_dir = struct
   type 'a gen =
     | Path of string
@@ -224,7 +222,7 @@ let spawn_windows
 ;;
 
 let no_null s =
-  if contains_null s
+  if String.contains s '\000'
   then
     Printf.ksprintf
       invalid_arg

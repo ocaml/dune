@@ -248,6 +248,8 @@ let%expect_test "forward searches agree with the standard library" =
         let char = Char.chr code in
         let expected = Stdlib.String.index_from_opt s pos char in
         assert (Option.equal Int.equal (String.index_from s pos char) expected);
+        assert (Option.equal Int.equal (String.index_from_opt s pos char) expected);
+        if pos = 0 then assert (Option.equal Int.equal (String.index_opt s char) expected);
         assert (
           Int.equal
             (String.index_from_unchecked s pos char)
@@ -260,6 +262,23 @@ let%expect_test "forward searches agree with the standard library" =
     done);
   print_endline "all searches agree";
   [%expect {| all searches agree |}]
+;;
+
+let%expect_test "checked forward searches reject invalid positions" =
+  let raises_invalid_argument f =
+    match f () with
+    | exception Invalid_argument _ -> true
+    | _ -> false
+  in
+  List.iter search_test_strings ~f:(fun s ->
+    List.iter
+      [ -1; String.length s + 1 ]
+      ~f:(fun pos ->
+        assert (raises_invalid_argument (fun () -> String.index_from s pos '\000'));
+        assert (raises_invalid_argument (fun () -> String.index_from_opt s pos '\000'));
+        assert (raises_invalid_argument (fun () -> String.contains_from s pos '\000'))));
+  print_endline "all invalid positions rejected";
+  [%expect {| all invalid positions rejected |}]
 ;;
 
 let%expect_test "reverse searches agree with the standard library" =

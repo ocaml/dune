@@ -209,11 +209,6 @@ static int __pthread_fchdir(int fd) {
 
 #endif
 
-CAMLprim value dune_spawn_contains_null(value v_string)
-{
-  return Val_bool(memchr(String_val(v_string), '\0', caml_string_length(v_string)) != NULL);
-}
-
 #if !defined(_WIN32)
 
 # if defined(USE_POSIX_SPAWN)

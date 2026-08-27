@@ -76,19 +76,40 @@ module Caseless = Cased_functions (struct
 
 include Stdlib.StringLabels
 
-let index_from_unchecked s i c =
-  let length = length s in
-  let rec loop i =
-    if i = length then -1 else if Char.equal (unsafe_get s i) c then i else loop (i + 1)
-  in
-  loop i
-;;
+external index_from_unchecked : t -> int -> char -> int = "dune_string_index_from"
+[@@noalloc]
 
 let rindex_from_unchecked s i c =
   let rec loop i =
     if i = -1 then -1 else if Char.equal (unsafe_get s i) c then i else loop (i - 1)
   in
   loop i
+;;
+
+let index_from s i c =
+  let length = length s in
+  if i < 0 || i > length then invalid_arg "String.index_from_opt / Bytes.index_from_opt";
+  if i = length
+  then None
+  else (
+    match index_from_unchecked s i c with
+    | -1 -> None
+    | index -> Some index)
+;;
+
+let index_from_opt = index_from
+let index s c = index_from s 0 c
+let index_opt = index
+
+let contains_from s i c =
+  let length = length s in
+  if i < 0 || i > length then invalid_arg "String.contains_from / Bytes.contains_from";
+  i < length && index_from_unchecked s i c <> -1
+;;
+
+let contains s c =
+  let length = length s in
+  length > 0 && index_from_unchecked s 0 c <> -1
 ;;
 
 (* [StringLabels] shadows these implementations with versions that allocate a
@@ -116,8 +137,6 @@ let capitalize = capitalize_ascii
 let uncapitalize = uncapitalize_ascii
 let uppercase = uppercase_ascii
 let lowercase = lowercase_ascii
-let index = index_opt
-let index_from s i c = index_from_opt s i c
 let rindex = rindex_opt
 let rindex_from s i c = rindex_from_opt s i c
 let break s ~pos = sub s ~pos:0 ~len:pos, sub s ~pos ~len:(length s - pos)
@@ -226,7 +245,7 @@ let quoted = Printf.sprintf "%S"
 
 let maybe_quoted s =
   let escaped = escaped s in
-  if (s == escaped || s = escaped) && not (String.contains s ' ') then s else quoted s
+  if (s == escaped || s = escaped) && not (contains s ' ') then s else quoted s
 ;;
 
 include Comparable.Make (T)

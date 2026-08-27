@@ -48,8 +48,12 @@ val capitalize : t -> t
 val uncapitalize : t -> t
 val uppercase : t -> t
 val lowercase : t -> t
+val contains : t -> char -> bool
+val contains_from : t -> int -> char -> bool
 val index : t -> char -> int option
+val index_opt : t -> char -> int option
 val index_from : t -> int -> char -> int option
+val index_from_opt : t -> int -> char -> int option
 val rindex : t -> char -> int option
 val rindex_from : t -> int -> char -> int option
 

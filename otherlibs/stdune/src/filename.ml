@@ -18,18 +18,19 @@ let concat dirname filename =
   else String.append_with_char dirname ~sep:(String.unsafe_get dir_sep 0) filename
 ;;
 
-let rec contains_slash s i =
-  i >= 0 && (Char.equal (String.unsafe_get s i) '/' || contains_slash s (i - 1))
-;;
-
-let rec contains_dir_sep s i =
+let rec contains_windows_dir_sep s i =
   if i < 0
   then false
   else (
     match String.unsafe_get s i with
-    | '/' -> true
-    | ('\\' | ':') when Sys.win32 || Sys.cygwin -> true
-    | _ -> contains_dir_sep s (i - 1))
+    | '/' | '\\' | ':' -> true
+    | _ -> contains_windows_dir_sep s (i - 1))
+;;
+
+let contains_dir_sep s =
+  if Sys.win32 || Sys.cygwin
+  then contains_windows_dir_sep s (String.length s - 1)
+  else String.contains s '/'
 ;;
 
 let is_valid s =
@@ -40,7 +41,7 @@ let is_valid s =
       || not
            (Char.equal (String.unsafe_get s 0) '.'
             && Char.equal (String.unsafe_get s 1) '.'))
-  && not (contains_dir_sep s (len - 1))
+  && not (contains_dir_sep s)
 ;;
 
 let of_string s = Option.some_if (is_valid s) s
@@ -111,9 +112,7 @@ module Extension = struct
 
   let is_valid s =
     let len = String.length s in
-    len > 0
-    && Char.equal (String.unsafe_get s 0) '.'
-    && not (contains_dir_sep s (len - 1))
+    len > 0 && Char.equal (String.unsafe_get s 0) '.' && not (contains_dir_sep s)
   ;;
 
   let of_string s = Option.some_if (is_valid s) s
@@ -245,9 +244,7 @@ type program_name_kind =
 let analyze_program_name fn =
   if not (is_relative fn)
   then Absolute
-  else if
-    contains_slash fn (String.length fn - 1)
-    || (Stdlib.Sys.win32 && String.contains fn '\\')
+  else if String.contains fn '/' || (Stdlib.Sys.win32 && String.contains fn '\\')
   then Relative_to_current_dir
   else In_path
 ;;

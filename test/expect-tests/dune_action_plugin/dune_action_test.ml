@@ -60,13 +60,10 @@ let%expect_test _ =
     read_directory_with_glob
       ~glob:Glob.universal
       ~path:(Path.of_string "directory_that_does_not_exist")
-    |> map ~f:ignore
+    |> map ~f:(fun entries -> Printf.printf "[%s]\n" (String.concat ";" entries))
   in
-  run_action_expect_throws action;
-  [%expect
-    {|
-    read_directory: opendir(directory_that_does_not_exist): No such file or directory
-  |}]
+  Private.do_run action;
+  [%expect {| [] |}]
 ;;
 
 let%expect_test _ =

@@ -20,10 +20,15 @@
   $ dune runtest
   Directory listing: [some_file1; some_file2]
 
-A generated empty directory is not materialized by the glob dependency, so the
-plugin currently fails to read it.
+A missing directory has an empty listing when the plugin runs directly.
 
   $ rm -rf some_dir
+  $ ./foo.exe
+  Directory listing: []
+
+A generated empty directory also has an empty listing even though the glob
+dependency does not materialize it.
+
   $ cat > dune-project << EOF
   > (lang dune 3.24)
   > (using action-plugin 0.1)
@@ -38,9 +43,4 @@ plugin currently fails to read it.
   >  (action (dynamic-run ./foo.exe)))
   > EOF
   $ dune build @check-empty
-  File "dune", lines 4-6, characters 0-61:
-  4 | (rule
-  5 |  (alias check-empty)
-  6 |  (action (dynamic-run ./foo.exe)))
-  read_directory: opendir(some_dir): No such file or directory
-  [1]
+  Directory listing: []

@@ -103,3 +103,50 @@ the [.cmi] content change invalidates the consumer:
       ]
     }
   ]
+
+The wrapped library can also be discovered after the initial consumer
+references. Its closure must still take the conservative glob path.
+
+[bridge] is unwrapped and re-exports an alias from the wrapped [middle]
+library. [middle]'s child in turn aliases [leaf]:
+
+  $ mkdir transitive-wrapped && cd transitive-wrapped
+  $ make_dune_project 3.23
+  $ mkdir leaf middle bridge consumer
+  $ cat > leaf/dune <<EOF
+  > (library (name leaf) (wrapped false))
+  > EOF
+  $ cat > leaf/leaf.ml <<EOF
+  > let value = 42
+  > EOF
+  $ cat > middle/dune <<EOF
+  > (library (name middle) (libraries leaf))
+  > EOF
+  $ cat > middle/middle_child.ml <<EOF
+  > module L = Leaf
+  > EOF
+  $ cat > bridge/dune <<EOF
+  > (library
+  >  (name bridge)
+  >  (wrapped false)
+  >  (libraries middle))
+  > EOF
+  $ cat > bridge/bridge.ml <<EOF
+  > module L = Middle.Middle_child.L
+  > EOF
+  $ cat > consumer/dune <<EOF
+  > (executable (name consumer) (libraries bridge))
+  > EOF
+  $ cat > consumer/consumer.ml <<EOF
+  > let () = print_int Bridge.L.value
+  > EOF
+
+The consumer initially references only [Bridge]. The cross-library walk then
+reaches the wrapped [Middle], whose closure includes [Leaf].
+
+  $ dune build --sandbox=copy consumer/consumer.exe
+  File "consumer/consumer.ml", line 1, characters 19-27:
+  1 | let () = print_int Bridge.L.value
+                         ^^^^^^^^
+  Error: The module Bridge.L is an alias for module Leaf, which is missing
+  [1]

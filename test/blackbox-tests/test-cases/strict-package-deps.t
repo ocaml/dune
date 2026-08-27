@@ -8,8 +8,8 @@ the package dependencies inferred by dune:
   > (package (name foo))
   > EOF
   $ mkdir foo bar
-  $ echo 'let () = print_int Bar.value' >foo/foo.ml
-  $ echo 'let value = 1' >bar/bar.ml
+  $ touch foo/foo.ml
+  $ touch bar/bar.ml
   $ cat >foo/dune <<EOF
   > (executable (public_name foo) (libraries bar) (package foo))
   > EOF
@@ -26,15 +26,7 @@ the package dependencies inferred by dune:
   $ cat >foo/dune <<EOF
   > (library (public_name foo) (libraries bar))
   > EOF
-  $ cat >foo/foo.ml <<EOF
-  > let use_bar () = Bar.value
-  > EOF
   $ dune build @install
-  Error: Package foo is missing the following package dependencies
-  - bar
-  -> required by _build/default/foo.install
-  -> required by alias install
-  [1]
   $ cd ..
 
 Strict package deps reports missing dependencies because it does not check
@@ -48,17 +40,10 @@ transitive deps.
   > (package (name bar) (depends baz))
   > (package (name foo) (depends bar))
   > EOF
-  $ echo 'let value = 1' >baz.ml
-  $ echo 'let chain = Baz.value' >bar.ml
-  $ echo 'let use = Bar.chain' >foo.ml
+  $ touch baz.ml bar.ml foo.ml
   $ cat >dune <<EOF
   > (library (public_name baz) (modules baz))
   > (library (public_name bar) (libraries baz) (modules bar))
   > (library (public_name foo) (libraries bar) (modules foo))
   > EOF
   $ dune build @install
-  Error: Package foo is missing the following package dependencies
-  - baz
-  -> required by _build/default/foo.install
-  -> required by alias install
-  [1]

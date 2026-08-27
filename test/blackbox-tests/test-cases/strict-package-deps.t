@@ -27,6 +27,11 @@ the package dependencies inferred by dune:
   > (library (public_name foo) (libraries bar))
   > EOF
   $ dune build @install
+  Error: Package foo is missing the following package dependencies
+  - bar
+  -> required by _build/default/foo.install
+  -> required by alias install
+  [1]
   $ cd ..
 
 Strict package deps reports missing dependencies because it does not check
@@ -47,3 +52,8 @@ transitive deps.
   > (library (public_name foo) (libraries bar) (modules foo))
   > EOF
   $ dune build @install
+  Error: Package foo is missing the following package dependencies
+  - baz
+  -> required by _build/default/foo.install
+  -> required by alias install
+  [1]

@@ -8,6 +8,38 @@ let all_libs cctx =
   d @ h
 ;;
 
+(* Package dependency inference walks file dependencies of installable rules.
+   When narrowing drops a local library's artifacts, retain a dependency on its
+   stable package metadata so strict package checks still see the declaration. *)
+let strict_package_deps_markers cctx libs =
+  let project = Compilation_context.scope cctx |> Scope.project in
+  if not (Dune_project.strict_package_deps project)
+  then Dep.Set.empty
+  else (
+    let build_context = Compilation_context.context cctx |> Context.build_context in
+    let current_package = Compilation_context.package cctx |> Option.map ~f:Package.id in
+    List.filter_map libs ~f:(fun lib ->
+      let package =
+        match Lib_info.status (Lib.info lib) with
+        | Lib_info.Status.Public (_, package) | Lib_info.Status.Private (_, Some package)
+          -> Some package
+        | Lib_info.Status.Installed_private | Lib_info.Status.Installed
+        | Lib_info.Status.Private (_, None) -> None
+      in
+      Option.bind package ~f:(fun package ->
+        match current_package with
+        | Some current when Package.Id.compare current (Package.id package) = Eq -> None
+        | None | Some _ ->
+          let dir =
+            Path.Build.append_source build_context.build_dir (Package.dir package)
+          in
+          let filename =
+            Package.Name.to_string (Package.name package) ^ "." ^ Dune_package.fn
+          in
+          Some (Path.Build.relative dir filename |> Path.build |> Dep.file)))
+    |> Dep.Set.of_list)
+;;
+
 let union_module_name_sets_mapped xs ~f =
   Action_builder.List.map xs ~f
   |> Action_builder.map
@@ -291,10 +323,14 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
                 else td, lib :: gl, Lib.Set.add kl lib))
       in
       let glob_deps = Lib_file_deps.deps_of_entries ~opaque ~cm_kind glob_libs in
+      let package_deps =
+        List.filter libs ~f:(fun lib -> not (Lib.Set.mem kept_libs lib))
+        |> strict_package_deps_markers cctx
+      in
       let+ include_flags =
         Compilation_context.filtered_include_flags cctx ~cm_kind ~kept_libs
       in
-      include_flags, Dep.Set.union tight_deps glob_deps
+      include_flags, Dep.Set.union package_deps (Dep.Set.union tight_deps glob_deps)
 ;;
 
 let lib_cm_deps ~cctx ~cm_kind ~ml_kind ~mode m =

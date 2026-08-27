@@ -99,8 +99,3 @@ reports [Prelude]:
   > EOF
 
   $ dune build --sandbox=copy native_consumer/native_consumer.exe
-  File "native_consumer/native_consumer.ml", line 2, characters 4-9:
-  2 |   | Green -> print_endline "g"
-          ^^^^^
-  Error: Unbound constructor Green
-  [1]

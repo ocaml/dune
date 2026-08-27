@@ -14,6 +14,22 @@ let union_module_name_sets_mapped xs ~f =
        ~f:(List.fold_left ~init:Module_name.Set.empty ~f:Module_name.Set.union)
 ;;
 
+(* Native compilation consumes interfaces produced with byte flags, so both
+   flag sets can introduce opens that affect its dependency frontier. *)
+let open_modules_for_mode flags mode =
+  let open Action_builder.O in
+  let open_modules mode =
+    let+ flags = Ocaml_flags.get flags mode in
+    Ocaml_flags.extract_open_module_names flags
+  in
+  match mode with
+  | Lib_mode.Ocaml Native ->
+    let* byte = open_modules (Lib_mode.Ocaml Byte) in
+    let+ native = open_modules (Lib_mode.Ocaml Native) in
+    Module_name.Set.union byte native
+  | (Lib_mode.Ocaml Byte | Lib_mode.Melange) as mode -> open_modules mode
+;;
+
 let module_kind_is_filterable m =
   match Module.kind m with
   | Root | Wrapped_compat | Impl_vmodule | Virtual | Parameter -> false
@@ -51,8 +67,7 @@ let cross_lib_tight_set ~sandbox ~sctx ~lib_index ~mode ~initial_refs =
       let* ocaml_flags =
         Action_builder.of_memo (Ocaml_flags_db.ocaml_flags sctx ~dir spec)
       in
-      let+ flag_strings = Ocaml_flags.get ocaml_flags mode in
-      Ocaml_flags.extract_open_module_names flag_strings)
+      open_modules_for_mode ocaml_flags mode)
   in
   let read_entry_deps (lib, m) =
     let obj_dir = Lib.info lib |> Lib_info.obj_dir |> Obj_dir.as_local_exn in
@@ -178,8 +193,7 @@ let lib_deps_for_module ~cctx ~obj_dir ~for_ ~dep_graph ~opaque ~cm_kind ~ml_kin
         union_module_name_sets_mapped trans_deps ~f:(read_dep_m_raw ~is_consumer:false)
       in
       let all_raw = Module_name.Set.union m_raw trans_raw in
-      let* flags = Ocaml_flags.get (Compilation_context.flags cctx) mode in
-      let open_modules = Ocaml_flags.extract_open_module_names flags in
+      let* open_modules = open_modules_for_mode (Compilation_context.flags cctx) mode in
       (* [Stdlib] is implicitly opened by every compile and so is referenced by
          every consumer even when ocamldep doesn't list it. For OCaml-mode
          compiles the compiler's built-in stdlib path supplies it (no dune lib

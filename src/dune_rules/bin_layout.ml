@@ -3,24 +3,25 @@ open Import
 module Entry = struct
   module T = struct
     type t =
-      { lookup_name : string
+      { original_path : Path.t
       ; install_name : Filename.t
       }
 
     let repr =
       Repr.record
         "bin-layout-entry"
-        [ Repr.field "lookup_name" Repr.string ~get:(fun t -> t.lookup_name)
+        [ Repr.field "original_path" Path.repr ~get:(fun t -> t.original_path)
         ; Repr.field "install_name" Filename.repr ~get:(fun t -> t.install_name)
         ]
     ;;
 
     (* CR-someday Alizter: [Filename.t] is structurally a string and uses
        [String.compare], but [Filename.repr] exposes it as a view, which
-       [Repr.Poly] conservatively rejects. Make its representation structural
-       so this comparison can be derived. *)
+       [Repr.Poly] conservatively rejects. The same is true for the cases in
+       [Path.repr] too. Making their representation structural would allow this
+       comparison to be derived. *)
     let compare x y =
-      match String.compare x.lookup_name y.lookup_name with
+      match Path.compare x.original_path y.original_path with
       | Eq -> Filename.compare x.install_name y.install_name
       | (Lt | Gt) as ordering -> ordering
     ;;
@@ -75,8 +76,9 @@ let create context ~artifacts ~dir bin_names =
   let open Memo.O in
   let+ entries =
     Memo.List.filter_map bin_names ~f:(fun lookup_name ->
-      Artifacts.local_binary_install_name artifacts ~dir lookup_name
-      >>| Option.map ~f:(fun install_name -> { Entry.lookup_name; install_name }))
+      Artifacts.local_binary artifacts ~dir lookup_name
+      >>| Option.map ~f:(fun (original_path, install_name) ->
+        { Entry.install_name; original_path }))
   in
   match entries with
   | [] -> None
@@ -85,32 +87,20 @@ let create context ~artifacts ~dir bin_names =
     let layout_dir = Key.encode entries |> layout_dir ~context in
     Some
       ( layout_dir
-      , Entry.Set.to_list_map entries ~f:(fun { Entry.lookup_name = _; install_name } ->
+      , Entry.Set.to_list_map entries ~f:(fun { Entry.install_name; _ } ->
           Path.build (Path.Build.relative_fname layout_dir install_name)) )
 ;;
 
-let symlink_rules_for_key context_name ~dir key =
+let symlink_rules_for_key ~dir key =
   let entries = Key.decode key in
-  let open Memo.O in
-  let* artifacts =
-    let* sctx = Super_context.find_exn context_name in
-    Artifacts_db.get (Super_context.context sctx)
-  in
   Entry.Set.to_list entries
-  |> Memo.parallel_iter ~f:(fun ({ Entry.lookup_name; install_name } as entry) ->
-    let* prog =
-      Artifacts.binary artifacts ~where:Original_path ~dir ~loc:None lookup_name
+  |> Memo.parallel_iter ~f:(fun { Entry.install_name; original_path; _ } ->
+    let { Action_builder.With_targets.build; targets } =
+      Action_builder.symlink
+        ~src:original_path
+        ~dst:(Path.Build.relative_fname dir install_name)
     in
-    match prog with
-    | Error _ ->
-      Code_error.raise
-        "Bin_layout.gen_rules: binary not found"
-        [ "entry", Entry.to_dyn entry; "context", Context_name.to_dyn context_name ]
-    | Ok src ->
-      let { Action_builder.With_targets.build; targets } =
-        Action_builder.symlink ~src ~dst:(Path.Build.relative_fname dir install_name)
-      in
-      Rules.Produce.rule (Rule.make ~targets build))
+    Rules.Produce.rule (Rule.make ~targets build))
 ;;
 
 let make_dispatch ~dir subdirs f =
@@ -121,12 +111,11 @@ let make_dispatch ~dir subdirs f =
     rules
 ;;
 
-let gen_rules context_name ~dir rest =
+let gen_rules ~dir rest =
   match rest with
   | [] -> make_dispatch ~dir Subdir_set.all (fun () -> Memo.return ())
   | [ key ] ->
-    make_dispatch ~dir Subdir_set.empty (fun () ->
-      symlink_rules_for_key context_name ~dir key)
+    make_dispatch ~dir Subdir_set.empty (fun () -> symlink_rules_for_key ~dir key)
   | _ :: _ :: _ ->
     Build_config.Gen_rules.redirect_to_parent Build_config.Gen_rules.Rules.empty
 ;;

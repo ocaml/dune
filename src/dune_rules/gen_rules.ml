@@ -799,8 +799,7 @@ let gen_rules ctx ~dir components =
         Gen_rules.Build_only_sub_dirs.singleton ~dir context_dirs
       in
       Gen_rules.make ~build_dir_only_sub_dirs (Memo.return Rules.empty)
-    | ctx :: ".binaries" :: rest ->
-      Bin_layout.gen_rules (Context_name.of_string ctx) ~dir rest |> Memo.return
+    | _ctx :: ".binaries" :: rest -> Bin_layout.gen_rules ~dir rest |> Memo.return
     | ctx :: ".packages" :: rest ->
       Install_layout.gen_rules (Context_name.of_string ctx) ~dir rest
     | ctx :: rest ->

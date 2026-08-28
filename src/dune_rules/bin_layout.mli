@@ -23,8 +23,4 @@ val create
       engine descends.
     - [[ key ]]: produce symlink rules for the bin set keyed by [key].
     - deeper: redirect to parent. *)
-val gen_rules
-  :  Context_name.t
-  -> dir:Path.Build.t
-  -> string list
-  -> Build_config.Gen_rules.result
+val gen_rules : dir:Path.Build.t -> string list -> Build_config.Gen_rules.result

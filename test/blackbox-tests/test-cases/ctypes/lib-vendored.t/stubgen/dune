@@ -1,16 +1,6 @@
-(rule
- (targets libexample.a dllexample%{ext_dll})
- (deps (source_tree vendor))
- (action
-  (no-infer
-   (progn
-    (copy vendor/libexample.a libexample.a)
-    (copy vendor/libexample%{ext_dll} dllexample%{ext_dll})))))
-
 (library
  (name examplelib)
  (flags (:standard -w -9-27))
- (foreign_archives example)
  (ctypes
   (external_library_name examplelib)
   (deps (source_tree vendor))
@@ -19,7 +9,7 @@
     ;; hack: multiple -I directives to work around cc commands being run from
     ;; different relative directories.  Is there a cleaner way to do this?
     (c_flags ("-Istubgen/vendor" "-Ivendor"))
-    (c_library_flags ("-Lstubgen/vendor" "-Lvendor" "-lexample"))))
+    (c_library_flags ("-Lstubgen/vendor" "-lexample"))))
   (headers (include "example.h"))
   (type_description
    (instance Types)

@@ -29,9 +29,12 @@ With Ctypes 0.3, the final executable link runs outside a sandbox.
   >   | processes
   >   | select((.args.target_files // [])
   >            | index("_build/default/example.exe"))
-  >   | (.args.dir | contains(".sandbox"))
+  >   | { sandbox: (.args.dir | contains(".sandbox"))
+  >     , example_flags:
+  >         ([.args.process_args[] | select(. == "-lexample")] | length)
+  >     }
   >   ][0]'
-  false
+  {"sandbox":false,"example_flags":1}
 
 The Ctypes headers found through its implicit include directory are not rule
 dependencies.

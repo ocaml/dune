@@ -196,8 +196,8 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
-  ; { path = "src/dune_targets"
-    ; main_module_name = Some "Dune_targets"
+  ; { path = "src/targets"
+    ; main_module_name = Some "Targets"
     ; include_subdirs = No
     ; special_builtin_support = None
     ; root_module = None
@@ -243,7 +243,6 @@ let local_libraries =
               ; "Dune_glob"
               ; "Dune_rpc"
               ; "Dune_scheduler"
-              ; "Dune_targets"
               ; "Dune_trace"
               ; "Dune_util"
               ; "Dyn"
@@ -253,6 +252,7 @@ let local_libraries =
               ; "Predicate_lang"
               ; "Rpc"
               ; "Stdune"
+              ; "Targets"
               ; "Thread"
               ; "Unix"
               ; "UnixLabels"
@@ -460,7 +460,6 @@ let main =
             ; "Dune_rpc_impl"
             ; "Dune_rules"
             ; "Dune_scheduler"
-            ; "Dune_targets"
             ; "Dune_trace"
             ; "Dune_upgrader"
             ; "Dune_util"
@@ -491,6 +490,7 @@ let main =
             ; "Rpc"
             ; "Source"
             ; "Stdune"
+            ; "Targets"
             ; "Unix"
             ; "UnixLabels"
             ; "Xdg"

@@ -56,6 +56,7 @@ module File = struct
   ;;
 
   let get { vars; preds } var = Vars.get vars var preds
+  let find_matching { vars; preds } var = Vars.find_matching vars var preds
   let toolchain t ~toolchain = { t with preds = Ps.singleton (P.make toolchain) }
 end
 
@@ -106,11 +107,21 @@ let ocamlpath t =
 ;;
 
 let tool t ~prog =
-  match File.get t.config prog with
+  match File.find_matching t.config prog with
   | None -> Memo.return None
   | Some s ->
     (match Filename.analyze_program_name s with
-     | In_path -> t.which (Filename.of_string_exn s)
+     | In_path ->
+       (match Filename.of_string s with
+        | Some prog -> t.which prog
+        | None ->
+          User_error.raise
+            [ Pp.textf
+                "The effective Findlib configuration specifies an invalid program name \
+                 %S for program %S."
+                s
+                prog
+            ])
      | Relative_to_current_dir ->
        User_error.raise
          [ Pp.textf

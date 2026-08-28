@@ -208,6 +208,15 @@ let%expect_test _ =
   [%expect {| [ ""; ""; ""; "" ] |}]
 ;;
 
+let%expect_test "split functions agree with the standard library" =
+  List.iter [ ""; "a"; ":"; "a:b"; "::a::b::" ] ~f:(fun s ->
+    let expected = Stdlib.String.split_on_char ':' s in
+    assert (List.equal String.equal (String.split s ~on:':') expected);
+    assert (List.equal String.equal (String.split_on_char ~sep:':' s) expected));
+  print_endline "all splits agree";
+  [%expect {| all splits agree |}]
+;;
+
 let%expect_test "extract blank separated words" =
   List.iter [ ""; " \t "; "one"; " one\ttwo  three " ] ~f:(fun s ->
     String.extract_blank_separated_words s |> list string |> print_dyn);

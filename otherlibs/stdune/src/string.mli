@@ -88,6 +88,7 @@ val rsplit2 : t -> on:char -> (t * t) option
     the original string [s]. *)
 val split : t -> on:char -> t list
 
+val split_on_char : sep:char -> t -> t list
 val split_lines : t -> t list
 
 (** Escape ONLY one character. {!escape} also escapes '\n',... and transforms

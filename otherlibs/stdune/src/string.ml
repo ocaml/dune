@@ -201,6 +201,8 @@ let rsplit2 s ~on =
 
 include String_split
 
+let split_on_char ~sep s = split s ~on:sep
+
 let escape_only c s =
   let n = ref 0 in
   let len = length s in

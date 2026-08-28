@@ -160,19 +160,10 @@ The ordinary narrowed pform lookup selects [pkg-a], the only provider in
   $ cat _build/default/c/via-pform
   from a
 
-Staging the same pform through [(deps ...)] should select the same provider.
-[Bin_layout.create] resolves it correctly in [c/], but records only the lookup
-and install names. The rule producing the staged copy then resolves [dup] again
-from the unowned [.binaries] directory, where both definitions are visible:
+[pkg-c] depends on [pkg-a] only, and [pkg-a]'s [dup] binary is picked up
+correctly, via PATH too.
 
   $ dune build c/via-path
-  File "b/dune", line 1, characters 47-53:
-  1 | (install (package pkg-b) (section bin) (files (dup.sh as dup)))
-                                                     ^^^^^^
-  Error: binary "dup" is available from more than one definition. It is also
-  available in:
-  - a/dune:1
-  [1]
 
-The layout key needs to retain the source or provider selected by the first
-lookup so that [via-path] also runs [pkg-a]'s [dup].
+  $ cat _build/default/c/via-path
+  from a

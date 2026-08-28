@@ -113,6 +113,18 @@ let analyze_binary t ~dir name =
             ]))
 ;;
 
+let origin_original_path { dir; binding; _ } =
+  let+ expanded =
+    let* expander = Expander0.get ~dir in
+    File_binding_expand.expand
+      binding
+      ~dir
+      ~f:(Expander0.expand_str_and_build_deps expander)
+  in
+  let src = File_binding.Expanded.src expanded in
+  Path.build src
+;;
+
 let binary t ?hint ?(where = Original_path) ~dir ~loc name =
   analyze_binary t ~dir name
   >>= function
@@ -134,28 +146,21 @@ let binary t ?hint ?(where = Original_path) ~dir ~loc name =
             ~context
             ~loc
             ())
-  | `Origin { dir; binding; dst; enabled_if = _; package = _ } ->
+  | `Origin ({ dst; dir = _; binding = _; enabled_if = _; package = _ } as origin) ->
     (match where with
      | Install_dir ->
        let install_dir = Install.Context.bin_dir ~context:(Context.name t.context) in
        Memo.return @@ Ok (Path.build @@ Path.Build.append_local install_dir dst)
-     | Original_path ->
-       let+ expanded =
-         let* expander = Expander0.get ~dir in
-         File_binding_expand.expand
-           binding
-           ~dir
-           ~f:(Expander0.expand_str_and_build_deps expander)
-       in
-       let src = File_binding.Expanded.src expanded in
-       Ok (Path.build src))
+     | Original_path -> origin_original_path origin >>| Result.ok)
 ;;
 
-let local_binary_install_name t ~dir name =
+let local_binary t ~dir name =
   analyze_binary t ~dir name
-  >>| function
-  | `Origin { package = Some _; dst; _ } -> Some (Path.Local.basename dst)
-  | `Origin { package = None; _ } | `Resolved _ | `None -> None
+  >>= function
+  | `Origin ({ package = Some _; dst; _ } as origin) ->
+    let+ src = origin_original_path origin in
+    Some (src, Path.Local.basename dst)
+  | `Origin { package = None; _ } | `Resolved _ | `None -> Memo.return None
 ;;
 
 let binary_available t ~dir name =

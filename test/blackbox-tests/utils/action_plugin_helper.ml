@@ -40,6 +40,7 @@ let () =
   | [ _; "touch"; path ] -> touch_and_respond path
   | _ ->
     prerr_endline
-      "Usage: action_plugin_helper (noop | read-file <path> | hold <started> <release> | touch <path>)";
+      "Usage: action_plugin_helper (noop | read-file <path> | hold <started> <release> | \
+       touch <path>)";
     exit 1
 ;;

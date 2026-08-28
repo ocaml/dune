@@ -76,6 +76,21 @@ module Caseless = Cased_functions (struct
 
 include Stdlib.StringLabels
 
+let index_from_unchecked s i c =
+  let length = length s in
+  let rec loop i =
+    if i = length then -1 else if Char.equal (unsafe_get s i) c then i else loop (i + 1)
+  in
+  loop i
+;;
+
+let rindex_from_unchecked s i c =
+  let rec loop i =
+    if i = -1 then -1 else if Char.equal (unsafe_get s i) c then i else loop (i - 1)
+  in
+  loop i
+;;
+
 (* [StringLabels] shadows these implementations with versions that allocate a
    local recursive closure on each call. *)
 let starts_with = Case_sensitive.starts_with

@@ -99,6 +99,29 @@ let%expect_test "local path parsing produces canonical representations" =
     |}]
 ;;
 
+let%expect_test "canonical local component boundaries" =
+  let option f = function
+    | None -> "none"
+    | Some value -> f value
+  in
+  List.iter [ "."; "one"; "one/two" ] ~f:(fun input ->
+    let path = Path.Local.of_string input in
+    let parent = Path.Local.parent path |> option Path.Local.to_string in
+    let basename = Path.Local.basename_opt path |> option Filename.to_string in
+    let first =
+      Path.Local.split_first_component path
+      |> option (fun (first, rest) ->
+        sprintf "%s,%s" (Filename.to_string first) (Path.Local.to_string rest))
+    in
+    printfn "%s: parent=%s basename=%s first=%s" input parent basename first);
+  [%expect
+    {|
+    .: parent=none basename=none first=none
+    one: parent=. basename=one first=one,.
+    one/two: parent=one basename=two first=one,two
+    |}]
+;;
+
 let%expect_test _ =
   let p = Path.(relative root) "foo" in
   descendant p ~of_:p;

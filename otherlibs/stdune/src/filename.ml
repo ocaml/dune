@@ -2,6 +2,22 @@ include Stdlib.Filename
 
 type t = string
 
+let is_dir_sep =
+  if Sys.win32 || Sys.cygwin
+  then
+    function
+    | '/' | '\\' | ':' -> true
+    | _ -> false
+  else Char.equal '/'
+;;
+
+let concat dirname filename =
+  let length = String.length dirname in
+  if length = 0 || is_dir_sep (String.unsafe_get dirname (length - 1))
+  then dirname ^ filename
+  else String.append_with_char dirname ~sep:(String.unsafe_get dir_sep 0) filename
+;;
+
 let rec contains_slash s i =
   i >= 0 && (Char.equal (String.unsafe_get s i) '/' || contains_slash s (i - 1))
 ;;

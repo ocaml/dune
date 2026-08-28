@@ -52,6 +52,17 @@ val index : t -> char -> int option
 val index_from : t -> int -> char -> int option
 val rindex : t -> char -> int option
 val rindex_from : t -> int -> char -> int option
+
+(** [index_from_unchecked s pos char] returns the first index of [char] at or
+    after [pos], or [-1] if it is absent. [pos] must be between [0] and
+    [length s]. *)
+val index_from_unchecked : t -> int -> char -> int
+
+(** [rindex_from_unchecked s pos char] returns the last index of [char] at or
+    before [pos], or [-1] if it is absent. [pos] must be between [-1] and
+    [length s - 1]. *)
+val rindex_from_unchecked : t -> int -> char -> int
+
 val extract_words : t -> is_word_char:(char -> bool) -> t list
 val extract_comma_space_separated_words : t -> t list
 val extract_blank_separated_words : t -> t list

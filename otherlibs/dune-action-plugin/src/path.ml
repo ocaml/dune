@@ -1,6 +1,6 @@
 type t = string
 
-let concat = Filename.concat
+let concat = Stdune.Filename.concat
 let to_string t = t
 
 let of_string path =

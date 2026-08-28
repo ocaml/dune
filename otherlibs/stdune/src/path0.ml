@@ -52,9 +52,9 @@ module Local_gen = struct
     if is_root t
     then None
     else (
-      match String.rindex_from t (String.length t - 1) '/' with
-      | None -> Some root
-      | Some i -> Some (String.take t i))
+      match String.rindex_from_unchecked t (String.length t - 1) '/' with
+      | -1 -> Some root
+      | i -> Some (String.take t i))
   ;;
 
   let basename t =
@@ -63,9 +63,9 @@ module Local_gen = struct
       then Code_error.raise "Path.Local.basename called on the root" []
       else (
         let len = String.length t in
-        match String.rindex_from t (len - 1) '/' with
-        | None -> t
-        | Some i -> String.sub t ~pos:(i + 1) ~len:(len - i - 1))
+        match String.rindex_from_unchecked t (len - 1) '/' with
+        | -1 -> t
+        | i -> String.sub t ~pos:(i + 1) ~len:(len - i - 1))
     in
     Filename.of_string_unchecked basename
   ;;
@@ -390,9 +390,13 @@ module Local_gen = struct
     if is_root t
     then None
     else (
-      match String.lsplit2 t ~on:'/' with
-      | None -> Some (Filename.of_string_unchecked t, root)
-      | Some (before, after) -> Some (Filename.of_string_unchecked before, after))
+      match String.index_from_unchecked t 0 '/' with
+      | -1 -> Some (Filename.of_string_unchecked t, root)
+      | separator ->
+        let length = String.length t in
+        let before = String.sub t ~pos:0 ~len:separator |> Filename.of_string_unchecked in
+        let after = String.sub t ~pos:(separator + 1) ~len:(length - separator - 1) in
+        Some (before, after))
   ;;
 
   let explode p =

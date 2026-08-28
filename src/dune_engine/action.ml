@@ -448,10 +448,9 @@ let is_useful_to memoize =
 let is_useful_to_memoize = is_useful_to true
 
 module Full = struct
-  module T = struct
-    type nonrec t =
-      { action : t
-      ; env : Env.t
+  module Props = struct
+    type t =
+      { env : Env.t
       ; locks : Path.t list
       ; can_go_in_shared_cache : bool
       ; can_use_sandbox_policy : bool
@@ -460,8 +459,7 @@ module Full = struct
       }
 
     let empty =
-      { action = Progn []
-      ; env = Env.empty
+      { env = Env.empty
       ; locks = []
       ; can_go_in_shared_cache = true
       ; can_use_sandbox_policy = true
@@ -483,24 +481,64 @@ module Full = struct
     ;;
 
     let combine
-          { action
-          ; env
+          { env
           ; locks
           ; can_go_in_shared_cache
           ; can_use_sandbox_policy
           ; sandbox
           ; corrections
           }
-          x
+          t
       =
-      { action = combine action x.action
-      ; env = Env.extend_env env x.env
-      ; locks = locks @ x.locks
-      ; can_go_in_shared_cache = can_go_in_shared_cache && x.can_go_in_shared_cache
-      ; can_use_sandbox_policy = can_use_sandbox_policy && x.can_use_sandbox_policy
-      ; sandbox = Sandbox_config.inter sandbox x.sandbox
-      ; corrections = combine_corrections corrections x.corrections
+      { env = Env.extend_env env t.env
+      ; locks = locks @ t.locks
+      ; can_go_in_shared_cache = can_go_in_shared_cache && t.can_go_in_shared_cache
+      ; can_use_sandbox_policy = can_use_sandbox_policy && t.can_use_sandbox_policy
+      ; sandbox = Sandbox_config.inter sandbox t.sandbox
+      ; corrections = combine_corrections corrections t.corrections
       }
+    ;;
+
+    let make ~env ~locks ~can_go_in_shared_cache ~sandbox ~corrections =
+      { env
+      ; locks
+      ; can_go_in_shared_cache
+      ; can_use_sandbox_policy = true
+      ; sandbox
+      ; corrections
+      }
+    ;;
+
+    let add_env t env = { t with env = Env.extend_env t.env env }
+    let add_locks t locks = { t with locks = t.locks @ locks }
+
+    let add_can_go_in_shared_cache t can_go_in_shared_cache =
+      { t with
+        can_go_in_shared_cache = t.can_go_in_shared_cache && can_go_in_shared_cache
+      }
+    ;;
+
+    let disable_sandbox_policy t = { t with can_use_sandbox_policy = false }
+
+    let add_sandbox t sandbox =
+      { t with sandbox = Sandbox_config.inter t.sandbox sandbox }
+    ;;
+
+    let add_corrections t corrections =
+      { t with corrections = combine_corrections (Some corrections) t.corrections }
+    ;;
+  end
+
+  module T = struct
+    type nonrec t =
+      { action : t
+      ; props : Props.t
+      }
+
+    let empty = { action = Progn []; props = Props.empty }
+
+    let combine { action; props } t =
+      { action = combine action t.action; props = Props.combine props t.props }
     ;;
   end
 
@@ -515,28 +553,26 @@ module Full = struct
         ?corrections
         action
     =
-    { action
-    ; env
-    ; locks
-    ; can_go_in_shared_cache
-    ; can_use_sandbox_policy = true
-    ; sandbox
-    ; corrections
-    }
+    let props = Props.make ~env ~locks ~can_go_in_shared_cache ~sandbox ~corrections in
+    { action; props }
   ;;
 
   let map t ~f = { t with action = f t.action }
-  let add_env e t = if Env.is_empty e then t else { t with env = Env.extend_env t.env e }
-  let add_locks l t = { t with locks = t.locks @ l }
 
-  let add_can_go_in_shared_cache b t =
-    { t with can_go_in_shared_cache = t.can_go_in_shared_cache && b }
+  let add_env env t =
+    if Env.is_empty env then t else { t with props = Props.add_env t.props env }
   ;;
 
-  let disable_sandbox_policy t = { t with can_use_sandbox_policy = false }
-  let add_sandbox s t = { t with sandbox = Sandbox_config.inter t.sandbox s }
+  let add_locks locks t = { t with props = Props.add_locks t.props locks }
+
+  let add_can_go_in_shared_cache can_go_in_shared_cache t =
+    { t with props = Props.add_can_go_in_shared_cache t.props can_go_in_shared_cache }
+  ;;
+
+  let disable_sandbox_policy t = { t with props = Props.disable_sandbox_policy t.props }
+  let add_sandbox sandbox t = { t with props = Props.add_sandbox t.props sandbox }
 
   let add_corrections corrections t =
-    { t with corrections = combine_corrections (Some corrections) t.corrections }
+    { t with props = Props.add_corrections t.props corrections }
   ;;
 end

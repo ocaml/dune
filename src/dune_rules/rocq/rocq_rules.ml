@@ -558,11 +558,11 @@ let setup_rocqproject_for_theory_rule
         (Action_builder.path (Path.build rocqproject))
 ;;
 
-(* Cons the plugin layout's lib root onto whatever OCAMLPATH [action.env]
-   already carries (e.g. layout entries from [(deps (package ...))]) rather
-   than overwriting it. *)
+(* Cons the plugin layout's lib root onto whatever OCAMLPATH the action's
+   environment already carries (e.g. layout entries from [(deps (package ...))])
+   rather than overwriting it. *)
 let add_plugin_ocamlpath ~lib_root (action : Action.Full.t) =
-  let { Action.Full.env = action_env; _ } = action in
+  let action_env = action.props.env in
   let env =
     Install.Roots.cons_path action_env ~var:Findlib_config.ocamlpath_var lib_root
   in

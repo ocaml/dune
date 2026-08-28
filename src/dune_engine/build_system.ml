@@ -272,8 +272,8 @@ module Internal = struct
         ~sandbox_mode
         ~execution_parameters
     =
-    let { Action.Full.action
-        ; env
+    let { Action.Full.action; props } = action in
+    let { Action.Full.Props.env
         ; locks
         ; can_go_in_shared_cache
         ; can_use_sandbox_policy
@@ -281,7 +281,7 @@ module Internal = struct
         ; corrections
         }
       =
-      action
+      props
     in
     let execution_parameters =
       if Action.runs_process action
@@ -428,8 +428,8 @@ module Internal = struct
     : Exec_result.t Fiber.t
     =
     let open Fiber.O in
-    let { Action.Full.action
-        ; env
+    let { Action.Full.action; props } = action in
+    let { Action.Full.Props.env
         ; locks
         ; can_go_in_shared_cache = _
         ; can_use_sandbox_policy
@@ -437,7 +437,7 @@ module Internal = struct
         ; corrections
         }
       =
-      action
+      props
     in
     let execute_action sandbox =
       let action_trace = Action_trace.create rule_digest in
@@ -568,6 +568,7 @@ module Internal = struct
        memoized, and the result is not expected to change often, so we do not
        sacrifice too much performance here by executing it sequentially. *)
     let* action, facts = Action_builder.evaluate_and_collect_facts action in
+    let { Action.Full.action = action_ast; props } = action in
     let wrap_fiber f =
       Memo.of_reproducible_fiber
         (match info with
@@ -584,11 +585,11 @@ module Internal = struct
     wrap_fiber (fun () ->
       let open Fiber.O in
       report_evaluated_rule_exn ();
-      let is_action_dynamic = Action.is_dynamic action.action in
+      let is_action_dynamic = Action.is_dynamic action_ast in
       let sandbox_mode =
         select_sandbox_mode
           ~rule
-          action.sandbox
+          props.sandbox
           ~sandboxing_preference:config.sandboxing_preference
       in
       (* CR-someday amokhov: More [always_rerun] and [can_go_in_shared_cache]
@@ -619,11 +620,11 @@ module Internal = struct
         compute_rule_digest rule ~facts ~action ~sandbox_mode ~execution_parameters
       in
       let can_go_in_shared_cache =
-        action.can_go_in_shared_cache
+        props.can_go_in_shared_cache
         && (not
               (always_rerun
                || is_action_dynamic
-               || Action.is_useful_to_memoize action.action = Clearly_not))
+               || Action.is_useful_to_memoize action_ast = Clearly_not))
         &&
         match sandbox_mode with
         | Some Patch_back_source_tree ->
@@ -637,7 +638,7 @@ module Internal = struct
           ~always_rerun
           ~rule_digest
           ~targets
-          ~env:action.env
+          ~env:props.env
           ~build_deps
         >>= function
         | Some produced_targets -> Fiber.return produced_targets
@@ -714,7 +715,7 @@ module Internal = struct
                   ~f:(fun (deps, fact_map) ->
                     ( deps
                     , let d = Digest.Manual.create () in
-                      Dep.Facts.digest fact_map d ~env:action.env;
+                      Dep.Facts.digest fact_map d ~env:props.env;
                       Digest.Manual.get d ))
               in
               Fiber.return (produced_targets, dynamic_deps_stages)
@@ -796,20 +797,17 @@ module Internal = struct
     let observing_facts = () in
     ignore observing_facts;
     let digest =
-      let { Rule.Anonymous_action.action =
-              { action
-              ; env
-              ; locks
-              ; can_go_in_shared_cache
-              ; can_use_sandbox_policy
-              ; sandbox
-              ; corrections
-              }
-          ; loc = _
-          ; dir
+      let { Rule.Anonymous_action.action = full_action; loc = _; dir } = act in
+      let { Action.Full.action; props } = full_action in
+      let { Action.Full.Props.env
+          ; locks
+          ; can_go_in_shared_cache
+          ; can_use_sandbox_policy
+          ; sandbox
+          ; corrections
           }
         =
-        act
+        props
       in
       let digest =
         let d = Digest.Manual.create () in

@@ -99,16 +99,23 @@ val is_useful_to_memoize : t -> is_useful
 module Full : sig
   type action := t
 
-  (** A full action with its environment and list of locks *)
+  (** Properties that control how an action is executed. *)
+  module Props : sig
+    type t = private
+      { env : Env.t
+      ; locks : Path.t list
+      ; can_go_in_shared_cache : bool
+      ; can_use_sandbox_policy : bool
+        (** Whether spawned processes can be subject to an additional sandbox policy. *)
+      ; sandbox : Sandbox_config.t
+      ; corrections : Corrections.t option
+      }
+  end
+
+  (** An action together with its execution properties. *)
   type t = private
     { action : action
-    ; env : Env.t
-    ; locks : Path.t list
-    ; can_go_in_shared_cache : bool
-    ; can_use_sandbox_policy : bool
-      (** Whether spawned processes can be subject to an additional sandbox policy. *)
-    ; sandbox : Sandbox_config.t
-    ; corrections : Corrections.t option
+    ; props : Props.t
     }
 
   val make

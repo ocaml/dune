@@ -122,6 +122,20 @@ let%expect_test "canonical local component boundaries" =
     |}]
 ;;
 
+let%expect_test "normalize relative path separators" =
+  List.iter
+    [ "foo//bar/"; "./foo"; "foo///bar//baz"; "foo/./bar"; "foo/../bar" ]
+    ~f:(fun path -> Path.relative Path.root path |> Path.to_dyn |> print_dyn);
+  [%expect
+    {|
+    In_source_tree "foo/bar"
+    In_source_tree "foo"
+    In_source_tree "foo/bar/baz"
+    In_source_tree "foo/bar"
+    In_source_tree "bar"
+    |}]
+;;
+
 let%expect_test _ =
   let p = Path.(relative root) "foo" in
   descendant p ~of_:p;

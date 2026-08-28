@@ -11,26 +11,47 @@ let is_dir_sep =
 let basename_opt ~is_root ~basename t = if is_root t then None else Some (basename t)
 
 let explode_path =
-  let rec start acc path i =
-    if i < 0
-    then acc
-    else if is_dir_sep (String.unsafe_get path i)
-    then start acc path (i - 1)
-    else component acc path i (i - 1)
-  and component acc path end_ i =
-    if i < 0
-    then String.take path (end_ + 1) :: acc
-    else if is_dir_sep (String.unsafe_get path i)
-    then start (String.sub path ~pos:(i + 1) ~len:(end_ - i) :: acc) path (i - 1)
-    else component acc path end_ (i - 1)
-  in
-  fun path ->
-    if path = Filename.current_dir_name
-    then [ path ]
-    else (
-      match start [] path (String.length path - 1) with
-      | "." :: xs -> xs
-      | xs -> xs)
+  if Sys.win32 || Sys.cygwin
+  then (
+    let rec start acc path i =
+      if i < 0
+      then acc
+      else if is_dir_sep (String.unsafe_get path i)
+      then start acc path (i - 1)
+      else component acc path i (i - 1)
+    and component acc path end_ i =
+      if i < 0
+      then String.take path (end_ + 1) :: acc
+      else if is_dir_sep (String.unsafe_get path i)
+      then start (String.sub path ~pos:(i + 1) ~len:(end_ - i) :: acc) path (i - 1)
+      else component acc path end_ (i - 1)
+    in
+    fun path ->
+      if path = Filename.current_dir_name
+      then [ path ]
+      else (
+        match start [] path (String.length path - 1) with
+        | "." :: xs -> xs
+        | xs -> xs))
+  else (
+    let rec components path length start =
+      if start = length
+      then []
+      else (
+        match String.index_from_unchecked path start '/' with
+        | -1 -> [ String.sub path ~pos:start ~len:(length - start) ]
+        | separator when separator = start -> components path length (start + 1)
+        | separator ->
+          String.sub path ~pos:start ~len:(separator - start)
+          :: components path length (separator + 1))
+    in
+    fun path ->
+      if path = Filename.current_dir_name
+      then [ path ]
+      else (
+        match components path (String.length path) 0 with
+        | "." :: xs -> xs
+        | xs -> xs))
 ;;
 
 module Local_gen = struct

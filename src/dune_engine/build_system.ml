@@ -337,6 +337,7 @@ module Internal = struct
     type t =
       { action : Rule.Anonymous_action.t
       ; deps : Dep.Set.t
+      ; anonymous_action_facts : Dep.Facts.t
       ; capture_stdout : bool
       ; digest : Digest.t
       }
@@ -742,9 +743,13 @@ module Internal = struct
        the presence of dynamic actions. *)
     >>| fun produced_targets -> { facts; targets = produced_targets }
 
-  (* Returns the action's stdout or the empty string if [capture_stdout = false]. *)
   and execute_action_generic_stage2_impl
-        { Anonymous_action.action = { dir; loc; action }; deps; capture_stdout; digest }
+        { Anonymous_action.action = { dir; loc; action }
+        ; deps
+        ; anonymous_action_facts
+        ; capture_stdout
+        ; digest
+        }
     =
     let target =
       let dir =
@@ -753,18 +758,23 @@ module Internal = struct
       Path.Build.relative dir (Digest.to_string digest)
     in
     let rule =
+      let build_dep dep =
+        match Dep.Map.find anonymous_action_facts dep with
+        | Some fact -> Memo.return fact
+        | None -> build_dep dep
+      in
       Rule.make
         ~info:(if Loc.is_none loc then Internal else From_dune_file loc)
         ~targets:(Targets.File.create target)
         ~mode:Standard
         (Action_builder.record action deps ~f:build_dep)
     in
-    let+ { facts = _; targets = _ } =
+    let+ { targets; _ } =
       execute_rule_impl
         rule
         ~rule_kind:(Anonymous_action { capture_stdout; stamp_file = target })
     in
-    if capture_stdout then Io.read_file (Path.build target) else ""
+    targets
 
   and execute_action_generic
         ~observing_facts
@@ -786,13 +796,24 @@ module Internal = struct
        only depend on the action. If the two execution could run concurrently,
        then they would both try to create the same file. So in this regard, we
        use [Memo] mostly for synchronisation purposes. *)
-    (* Here we "forget" the facts about the world. We do that to make the input
-       of the memoized function smaller. If we passed the whole [original_facts]
-       as input, then we would end up memoizing one entry per set of facts. This
-       could use a lot of memory. For instance, if we used [action_stdout] for
-       the calls to [ocamldep], then Dune would remember the whole history of
-       calls to [ocamldep] for each OCaml source file. *)
+    (* Keep only the dependency labels to make the input of the memoized function
+       smaller. If we passed all the facts, Dune would remember the whole history
+       of calls to [ocamldep] for each OCaml source file. Facts for anonymous action
+       targets are the exception because these targets cannot be rebuilt through
+       [Load_rules]. *)
     let deps = Dep.Map.map observing_facts ~f:ignore in
+    let anonymous_action_facts =
+      Dep.Map.foldi observing_facts ~init:Dep.Facts.empty ~f:(fun dep fact facts ->
+        match dep with
+        | File path ->
+          (match Path.as_in_build_dir path with
+           | Some path ->
+             (match Dpath.analyse_target path with
+              | Anonymous_action _ -> Dep.Map.set facts dep fact
+              | Alias _ | Regular _ | Other _ -> facts)
+           | None -> facts)
+        | Alias _ | File_selector _ | Universe | Env _ -> facts)
+    in
     (* Shadow [observing_facts] to make sure we don't use it again. *)
     let observing_facts = () in
     ignore observing_facts;
@@ -842,17 +863,37 @@ module Internal = struct
        the execution and avoid such a race condition. *)
     Memo.exec
       (Lazy.force execute_action_generic_stage2_memo)
-      { Anonymous_action.action = act; deps; capture_stdout; digest }
+      { Anonymous_action.action = act
+      ; deps
+      ; anonymous_action_facts
+      ; capture_stdout
+      ; digest
+      }
 
   and execute_action ~observing_facts act =
-    let+ (_empty_string : string) =
+    let+ (_ : Digest.t Targets.Produced.t) =
       execute_action_generic ~observing_facts act ~capture_stdout:false
     in
     ()
 
-  and execute_action_stdout action =
+  and execute_action_stdout_targets action =
     let* action, observing_facts = Action_builder.evaluate_and_collect_facts action in
     execute_action_generic ~observing_facts action ~capture_stdout:true
+
+  and execute_action_stdout action =
+    let+ targets = execute_action_stdout_targets action in
+    Targets.Produced.head targets |> Path.build |> Io.read_file
+
+  and execute_action_stdout_target action =
+    Action_builder.of_memo (execute_action_stdout_targets action)
+    |> Action_builder.bind ~f:(fun targets ->
+      let target = Targets.Produced.head targets in
+      let digest = Targets.Produced.find targets target |> Option.value_exn in
+      let target = Path.build target in
+      Action_builder.record
+        target
+        (Dep.Set.singleton (Dep.file target))
+        ~f:(fun _ -> Memo.return (Dep.Fact.file target digest)))
 
   (* A rule can have multiple targets but calls to [execute_rule] are memoized,
      so the rule will be executed only once. *)
@@ -1004,7 +1045,7 @@ module Internal = struct
          "execute-action"
          ~input:(module Anonymous_action)
          ~initial_store_size:2048
-         ~cutoff:String.equal
+         ~cutoff:(fun x y -> Targets.Produced.equal x y ~equal:Digest.equal)
          ~on_event:State.on_rule_event
          execute_action_generic_stage2_impl)
 

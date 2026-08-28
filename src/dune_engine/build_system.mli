@@ -41,6 +41,13 @@ val execute_action : observing_facts:Dep.Facts.t -> Rule.Anonymous_action.t -> u
 (** Execute an action and capture its stdout. The execution is cached. *)
 val execute_action_stdout : Rule.Anonymous_action.t Action_builder.t -> string Memo.t
 
+(** Execute an action and expose its captured stdout as a build target. The execution is
+    cached, and the returned action builder records the target and its digest as a
+    dependency. *)
+val execute_action_stdout_target
+  :  Rule.Anonymous_action.t Action_builder.t
+  -> Path.t Action_builder.t
+
 type rule_execution_result =
   { facts : Dep.Fact.t Dep.Map.t
   ; targets : Digest.t Targets.Produced.t

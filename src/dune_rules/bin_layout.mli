@@ -8,8 +8,8 @@ open Import
     the ones [%{bin:...}] resolves. Returns [None] when no name does. Otherwise
     returns the directory and the list of symlink paths for dependency
     tracking; depend on the paths before putting the directory on [PATH]. The
-    symlinks are created as build rules keyed by a digest of the sorted (lookup
-    name, installed filename) pairs. *)
+    symlinks are created as build rules keyed by a digest of the sorted
+    (original path, installed filename) pairs. *)
 val create
   :  Context_name.t
   -> artifacts:Artifacts.t
@@ -23,8 +23,4 @@ val create
       engine descends.
     - [[ key ]]: produce symlink rules for the bin set keyed by [key].
     - deeper: redirect to parent. *)
-val gen_rules
-  :  Context_name.t
-  -> dir:Path.Build.t
-  -> string list
-  -> Build_config.Gen_rules.result
+val gen_rules : dir:Path.Build.t -> string list -> Build_config.Gen_rules.result

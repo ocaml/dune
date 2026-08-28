@@ -46,6 +46,66 @@ module Priority_queue_tests = struct
       second-2 |}]
   ;;
 
+  let%expect_test "LIFO ordering applies across and within shared handles" =
+    let queue =
+      Queue.create_with_order_key ~order_key:(fun { sequence; _ } -> sequence)
+    in
+    let shared = Queue.create_priority queue in
+    let other = Queue.create_priority queue in
+    Queue.push queue shared "first";
+    Queue.push queue other "second";
+    Queue.push queue shared "third";
+    print_and_drain queue;
+    [%expect
+      {|
+      third
+      second
+      first |}]
+  ;;
+
+  let%expect_test "random enqueue keys are deterministic" =
+    let run () =
+      let queue =
+        Queue.create_with_order_key ~order_key:(fun { random_key; _ } -> random_key)
+      in
+      let priority = Queue.create_priority queue in
+      List.iter [ "first"; "second"; "third"; "fourth" ] ~f:(fun value ->
+        Queue.push queue priority value);
+      let rec drain acc =
+        match Queue.pop queue with
+        | None -> List.rev acc
+        | Some value -> drain (value :: acc)
+      in
+      drain []
+    in
+    let first = run () in
+    let second = run () in
+    printf
+      "%b %b\n"
+      (List.equal String.equal first second)
+      (not (List.equal String.equal first [ "first"; "second"; "third"; "fourth" ]));
+    [%expect {| true true |}]
+  ;;
+
+  let%expect_test "semantic rank precedes enqueue ordering" =
+    let queue =
+      Queue.create_with_order_key ~order_key:(fun { sequence; _ } -> sequence)
+    in
+    let low = Queue.create_priority queue in
+    let high =
+      Queue.create_rank
+        ~rank:(Queue.Priority.make ~primary:0 ~secondary:1 ~tertiary:0)
+        queue
+    in
+    Queue.push queue high "older-high";
+    Queue.push queue low "newer-low";
+    print_and_drain queue;
+    [%expect
+      {|
+      older-high
+      newer-low |}]
+  ;;
+
   let%expect_test "increasing the priority of queued values" =
     let queue = Queue.create () in
     let first = Queue.create_priority queue in

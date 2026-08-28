@@ -355,8 +355,12 @@ module Throttle : sig
   type restart
   type restart_blocker
 
-  (** [create n] creates a throttler that allows to run [n] jobs at once *)
+  (** [create n] creates a FIFO throttler that allows [n] jobs to run at once. *)
   val create : int -> t
+
+  (** Create a throttler where [order_key] controls the order among waiting jobs
+      with equal semantic priorities. Higher keys run first. *)
+  val create_with_order_key : int -> order_key:(Priority_queue.Enqueue.t -> int) -> t
 
   (** How many jobs can run at the same time *)
   val size : t -> int
@@ -370,12 +374,18 @@ module Throttle : sig
   (** Create a priority handle owned by the throttler. *)
   val create_priority : ?priority:int -> t -> priority
 
+  val create_rank : rank:Priority_queue.Priority.t -> t -> priority
+
   (** Return the priority represented by the handle. *)
   val priority : priority -> int
+
+  val rank : priority -> Priority_queue.Priority.t
 
   (** Set the priority represented by the handle. Waiting jobs are
       reprioritized immediately without changing their FIFO age. *)
   val set_priority : priority -> int -> unit
+
+  val set_rank : priority -> Priority_queue.Priority.t -> unit
 
   (** Increase the priority represented by the handle. *)
   val increase_priority : priority -> unit

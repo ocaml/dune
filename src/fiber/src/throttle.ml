@@ -31,7 +31,15 @@ and restart_blocker =
   ; mutable released : bool
   }
 
-let create size = { size; running = 0; reserved = 0; waiting = Priority_queue.create () }
+let create_with_order_key size ~order_key =
+  { size
+  ; running = 0
+  ; reserved = 0
+  ; waiting = Priority_queue.create_with_order_key ~order_key
+  }
+;;
+
+let create size = create_with_order_key size ~order_key:(fun enqueue -> -enqueue.sequence)
 let size t = t.size
 let running t = t.running
 let waiting t = Priority_queue.length t.waiting
@@ -60,15 +68,21 @@ let resize t n =
   restart t
 ;;
 
-let create_priority ?priority t =
-  { queue_priority = Priority_queue.create_priority ?priority t.waiting
+let create_rank ~rank t =
+  { queue_priority = Priority_queue.create_rank ~rank t.waiting
   ; restart_blockers = 0
   ; blocked_restarts = []
   }
 ;;
 
+let create_priority ?(priority = 0) t =
+  create_rank ~rank:(Priority_queue.Priority.of_int priority) t
+;;
+
 let priority t = Priority_queue.priority t.queue_priority
+let rank t = Priority_queue.rank t.queue_priority
 let set_priority t priority = Priority_queue.set_priority t.queue_priority priority
+let set_rank t rank = Priority_queue.set_rank t.queue_priority rank
 let increase_priority t = Priority_queue.increase_priority t.queue_priority
 let increase_priority_by t by = Priority_queue.increase_priority_by t.queue_priority by
 
@@ -124,9 +138,12 @@ let restart_waiters restart =
 ;;
 
 let restart_after_job t priority schedule_restart =
-  match schedule_restart, priority, Priority_queue.max_priority t.waiting with
+  match schedule_restart, priority, Priority_queue.max_rank t.waiting with
   | Some schedule_restart, Some priority, Some waiting_priority
-    when Priority_queue.priority priority.queue_priority > waiting_priority ->
+    when Priority_queue.Priority.compare
+           (Priority_queue.rank priority.queue_priority)
+           waiting_priority
+         = Gt ->
     t.running <- t.running - 1;
     t.reserved <- t.reserved + 1;
     let restart = { throttle = t; priority; state = Scheduled } in

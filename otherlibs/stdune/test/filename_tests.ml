@@ -30,6 +30,19 @@ let%expect_test "filenames reject platform directory separators" =
     |}]
 ;;
 
+let%expect_test "concat agrees with the standard library" =
+  let directories = [ ""; "."; "dir"; "dir/"; "dir\\"; "C:" ] in
+  let filenames = [ ""; "file"; "sub/file" ] in
+  List.iter directories ~f:(fun directory ->
+    List.iter filenames ~f:(fun filename ->
+      assert (
+        String.equal
+          (Filename.concat directory filename)
+          (Stdlib.Filename.concat directory filename))));
+  print_endline "all concatenations agree";
+  [%expect {| all concatenations agree |}]
+;;
+
 let extension s =
   let ext =
     Filename.of_string s

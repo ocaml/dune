@@ -220,6 +220,65 @@ let%expect_test "extract blank separated words" =
     |}]
 ;;
 
+let search_test_strings =
+  [ ""
+  ; "a"
+  ; "abcdefgh"
+  ; "abcdefghi"
+  ; String.init 257 ~f:(fun i -> Char.chr (i land 0xff))
+  ]
+;;
+
+let%expect_test "contains agrees with the standard library" =
+  List.iter search_test_strings ~f:(fun s ->
+    for code = 0 to 255 do
+      let char = Char.chr code in
+      assert (Bool.equal (String.contains s char) (Stdlib.String.contains s char))
+    done);
+  let unchanged = "unchanged" in
+  assert (String.escape_only 'x' unchanged == unchanged);
+  print_endline "all searches agree";
+  [%expect {| all searches agree |}]
+;;
+
+let%expect_test "forward searches agree with the standard library" =
+  List.iter search_test_strings ~f:(fun s ->
+    for pos = 0 to String.length s do
+      for code = 0 to 255 do
+        let char = Char.chr code in
+        let expected = Stdlib.String.index_from_opt s pos char in
+        assert (Option.equal Int.equal (String.index_from s pos char) expected);
+        assert (
+          Int.equal
+            (String.index_from_unchecked s pos char)
+            (Option.value expected ~default:(-1)));
+        assert (
+          Bool.equal
+            (String.contains_from s pos char)
+            (Stdlib.String.contains_from s pos char))
+      done
+    done);
+  print_endline "all searches agree";
+  [%expect {| all searches agree |}]
+;;
+
+let%expect_test "reverse searches agree with the standard library" =
+  List.iter search_test_strings ~f:(fun s ->
+    for pos = -1 to String.length s - 1 do
+      for code = 0 to 255 do
+        let char = Char.chr code in
+        let expected = Stdlib.String.rindex_from_opt s pos char in
+        assert (Option.equal Int.equal (String.rindex_from s pos char) expected);
+        assert (
+          Int.equal
+            (String.rindex_from_unchecked s pos char)
+            (Option.value expected ~default:(-1)))
+      done
+    done);
+  print_endline "all searches agree";
+  [%expect {| all searches agree |}]
+;;
+
 let%expect_test "split_lines preserves carriage returns outside CRLF" =
   List.iter [ "\r"; "first\n\r"; "first\rsecond"; "first\r\nsecond" ] ~f:(fun s ->
     String.split_lines s |> list string |> print_dyn);

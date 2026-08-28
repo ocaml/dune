@@ -36,7 +36,7 @@ With Ctypes 0.3, the final executable link runs outside a sandbox.
   >   ][0]'
   {"sandbox":false,"example_flags":1}
 
-The Ctypes headers found through its implicit include directory are not rule
+The Ctypes headers found through its implicit include directory are rule
 dependencies.
 
   $ dune rules --format=json \
@@ -46,6 +46,7 @@ dependencies.
   >    | select(.deps)
   >    | ruleDepFilePaths
   >    | select(endswith("ctypes_cstubs_internals.h"))
+  >    | {kind: "file", path: basename}
   >    ]
   >    +
   >    [ .[]
@@ -53,5 +54,6 @@ dependencies.
   >    | ruleDepGlobEntries
   >    | select((.dir | endswith("ctypes"))
   >             and (.predicate | tostring | contains(".h")))
-  >    ]) | length > 0'
-  false
+  >    | {kind: "glob", dir: (.dir | basename), predicate}
+  >    ]) | unique'
+  [{"kind":"glob","dir":"ctypes","predicate":"*.h"}]

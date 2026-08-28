@@ -451,6 +451,62 @@ let%expect_test "the same root observes an active nested dependency once" =
   [%expect {| one bulk root ID: true |}]
 ;;
 
+let%expect_test "equal demand leaves a dependency chain behind FIFO work" =
+  let module Demand_class = Memo.Job_priority.Demand_class in
+  let order = ref [] in
+  let flat_ready = Fiber.Ivar.create () in
+  let chain_ready = Fiber.Ivar.create () in
+  let job name ready =
+    Memo.Lazy.create ~name:("same-root-" ^ name) (fun () ->
+      Memo.of_reproducible_fiber
+        (let* () = Fiber.Ivar.fill ready () in
+         Scheduler.with_job_slot (fun () ->
+           order := name :: !order;
+           Fiber.return ())))
+  in
+  let flat = job "flat" flat_ready in
+  let chain =
+    List.init 3 ~f:Fun.id
+    |> List.fold_left ~init:(job "chain-0" chain_ready) ~f:(fun dependency n ->
+      let name = sprintf "chain-%d" (n + 1) in
+      Memo.Lazy.create ~name:("same-root-" ^ name) (fun () ->
+        let open Memo.O in
+        let* () = Memo.Lazy.force dependency in
+        Memo.of_reproducible_fiber
+          (Scheduler.with_job_slot (fun () ->
+             order := name :: !order;
+             Fiber.return ()))))
+  in
+  let blocker_started = Fiber.Ivar.create () in
+  let release_blocker = Fiber.Ivar.create () in
+  go ~config:priority_config (fun () ->
+    Fiber.fork_and_join_unit
+      (fun () ->
+         Scheduler.with_job_slot (fun () ->
+           let* () = Fiber.Ivar.fill blocker_started () in
+           Fiber.Ivar.read release_blocker))
+      (fun () ->
+         let* () = Fiber.Ivar.read blocker_started in
+         Fiber.fork_and_join_unit
+           (fun () ->
+              run_with_demand
+                Demand_class.Bulk
+                (Memo.parallel_map [ flat; chain ] ~f:Memo.Lazy.force
+                 |> Memo.map ~f:ignore))
+           (fun () ->
+              let* () = Fiber.Ivar.read flat_ready in
+              let* () = Fiber.Ivar.read chain_ready in
+              Fiber.Ivar.fill release_blocker ())));
+  List.rev !order |> List.iter ~f:print_endline;
+  [%expect
+    {|
+    flat
+    chain-0
+    chain-1
+    chain-2
+    chain-3 |}]
+;;
+
 let%expect_test "distinct same-class roots reach an active nested dependency" =
   let module Demand_class = Memo.Job_priority.Demand_class in
   let inner_started = Fiber.Ivar.create () in

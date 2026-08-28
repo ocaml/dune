@@ -2,7 +2,7 @@
 set -eu
 
 usage () {
-  echo "usage: $0 [JOBS] [DUNE]" >&2
+  echo "usage: $0 [JOBS] [DUNE] [POLICY]" >&2
   exit 2
 }
 
@@ -12,12 +12,12 @@ case ${1-} in
   *[!0-9]*) ;;
   *) jobs=$1; shift ;;
 esac
-if [ "$jobs" -lt 2 ] || [ "$#" -gt 1 ]; then
+if [ "$jobs" -lt 2 ] || [ "$#" -gt 2 ]; then
   usage
 fi
 
 script_dir=$(CDPATH= cd "$(dirname "$0")" && pwd)
-if [ "$#" -eq 1 ] && [ -n "$1" ]; then
+if [ "$#" -ge 1 ] && [ -n "$1" ]; then
   case $1 in
     /*) dune=$1 ;;
     */*) dune=$PWD/$1 ;;
@@ -26,6 +26,15 @@ if [ "$#" -eq 1 ] && [ -n "$1" ]; then
 else
   dune=$script_dir/../../dune.exe
 fi
+if [ "$#" -gt 0 ]; then
+  shift
+fi
+policy=${1-${DUNE_CONFIG__PRIORITY_SCHEDULING_POLICY-current}}
+random_seed=${DUNE_CONFIG__PRIORITY_SCHEDULING_RANDOM_SEED-0}
+case $policy in
+  current | fifo | lifo | random) ;;
+  *) usage ;;
+esac
 
 workload=$script_dir/_build/workload
 rm -rf "$script_dir/_build"
@@ -62,8 +71,8 @@ while [ "$i" -lt "$independent_jobs" ]; do
   i=$((i + 1))
 done
 
-# Keep enough dependency edges for the Memo priority signal to dominate the
-# fixed internal graph depth.
+# Use several short links so queue disciplines have repeated opportunities to
+# discover and advance the serial chain.
 chain_jobs=20
 chain_duration=$(awk -v j="$jobs" -v n="$chain_jobs" -v u="$unit_duration" \
   'BEGIN { printf "%.9f", j * u / n }')
@@ -94,7 +103,9 @@ measure () {
   rm -rf "$workload/_build"
   if ! (cd "$workload" && { time -p env \
           DUNE_CONFIG__BACKGROUND_DIGESTS=disabled \
-          DUNE_CONFIG__PRIORITY_SCHEDULING=$mode \
+          DUNE_CONFIG__PRIORITY_SCHEDULING="$mode" \
+          DUNE_CONFIG__PRIORITY_SCHEDULING_POLICY="$policy" \
+          DUNE_CONFIG__PRIORITY_SCHEDULING_RANDOM_SEED="$random_seed" \
           "$dune" build --root . @benchmark -j "$jobs" --display=quiet \
             --cache=disabled; }) 2> "$timing"
   then
@@ -115,7 +126,11 @@ measure () {
 }
 
 version=$("$dune" --version)
-printf '%s (-j %s)\n' "$version" "$jobs"
+if [ "$policy" = random ]; then
+  printf '%s (-j %s, policy %s, seed %s)\n' "$version" "$jobs" "$policy" "$random_seed"
+else
+  printf '%s (-j %s, policy %s)\n' "$version" "$jobs" "$policy"
+fi
 
 # Run in both orders to balance one-time filesystem and OS cache effects.
 disabled_1=$(measure disabled 1)
@@ -128,5 +143,5 @@ improvement=$(awk -v d="$disabled" -v e="$enabled" \
   'BEGIN { printf "%.1f", 100 * (d - e) / d }')
 maximum=$(awk -v j="$jobs" 'BEGIN { printf "%.1f", 100 * (j - 1) / (2 * j - 1) }')
 printf 'disabled: %ss\n' "$disabled"
-printf 'enabled: %ss\n' "$enabled"
+printf '%s: %ss\n' "$policy" "$enabled"
 printf 'improvement: %s%% (maximum %s%%)\n' "$improvement" "$maximum"

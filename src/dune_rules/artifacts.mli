@@ -41,11 +41,7 @@ val binary
 
 (** Return the installed filename when the selected binary is from a local
     package. *)
-val local_binary_install_name
-  :  t
-  -> dir:Path.Build.t
-  -> string
-  -> Filename.t option Memo.t
+val local_binary : t -> dir:Path.Build.t -> string -> (Path.t * Filename.t) option Memo.t
 
 val binary_available : t -> dir:Path.Build.t -> string -> bool Memo.t
 val add_binaries : t -> dir:Path.Build.t -> File_binding.Expanded.t list -> t

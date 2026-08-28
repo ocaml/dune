@@ -16,7 +16,8 @@
   (deps (source_tree vendor))
   (build_flags_resolver
    (vendored
-    (c_flags "-Ivendor")))
+    (c_flags "-Ivendor")
+    (c_library_flags ("-Lvendor" "-lexample"))))
   (headers (include (:include includes.sexp)))
   (type_description
    (instance Types)

@@ -11,7 +11,7 @@ This is the version that builds into an executable.
   $ mkdir -p $TARGET && install $LIBEX/*example* $TARGET
 Ctypes stub generation is sandboxed and honors its declared dependencies.
 
-  $ dune exec ./example.exe
+  $ DYLD_LIBRARY_PATH="$TARGET" LD_LIBRARY_PATH="$TARGET" dune exec ./example.exe
   4
   $ dune trace cat | jq_dune -sc '
   >   [ .[]
@@ -21,3 +21,34 @@ Ctypes stub generation is sandboxed and honors its declared dependencies.
   >   | (.args.dir | contains(".sandbox"))
   >   ] | unique'
   [true]
+
+With Ctypes 0.3, the final executable link runs outside a sandbox.
+
+  $ dune trace cat | jq_dune -sc '
+  >   [ .[]
+  >   | processes
+  >   | select((.args.target_files // [])
+  >            | index("_build/default/example.exe"))
+  >   | (.args.dir | contains(".sandbox"))
+  >   ][0]'
+  false
+
+The Ctypes headers found through its implicit include directory are not rule
+dependencies.
+
+  $ dune rules --format=json \
+  >   _build/default/examplelib__c_cout_generated_types.exe \
+  > | jq_dune -c '
+  >   ([ .[]
+  >    | select(.deps)
+  >    | ruleDepFilePaths
+  >    | select(endswith("ctypes_cstubs_internals.h"))
+  >    ]
+  >    +
+  >    [ .[]
+  >    | select(.deps)
+  >    | ruleDepGlobEntries
+  >    | select((.dir | endswith("ctypes"))
+  >             and (.predicate | tostring | contains(".h")))
+  >    ]) | length > 0'
+  false

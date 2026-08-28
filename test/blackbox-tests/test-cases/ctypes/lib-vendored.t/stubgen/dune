@@ -18,7 +18,8 @@
    (vendored
     ;; hack: multiple -I directives to work around cc commands being run from
     ;; different relative directories.  Is there a cleaner way to do this?
-    (c_flags ("-Istubgen/vendor" "-Ivendor"))))
+    (c_flags ("-Istubgen/vendor" "-Ivendor"))
+    (c_library_flags ("-Lstubgen/vendor" "-Lvendor" "-lexample"))))
   (headers (include "example.h"))
   (type_description
    (instance Types)

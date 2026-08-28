@@ -7,6 +7,7 @@ between systems, we can't hardcode them in the test. Instead, we use the opam va
 to compare their values.
 
   $ export OPAMROOT=$(mktemp -d)
+  $ export OPAMSWITCH=default
   $ mkdir -p $OPAMROOT/default/.opam-switch/
   $ cat >$OPAMROOT/default/.opam-switch/switch-config <<EOF
   > opam-version: "2.0"

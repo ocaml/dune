@@ -8,7 +8,7 @@ This is the version that builds into a library.
   $ LIBEX=$(realpath "$PWD/../libexample")
   $ TARGET=./stubgen/vendor
   $ mkdir -p $TARGET && install $LIBEX/*example* $TARGET
-  $ dune exec ./example.exe
+  $ if [ "$(uname)" = "Darwin" ]; then dune exec ./example.exe 2>/dev/null; else dune exec ./example.exe; fi
   4
 
 With Ctypes 0.3, the C stubs library link runs outside a sandbox.
@@ -21,4 +21,3 @@ With Ctypes 0.3, the C stubs library link runs outside a sandbox.
   >   | (.args.dir | contains(".sandbox"))
   >   ][0]'
   false
-

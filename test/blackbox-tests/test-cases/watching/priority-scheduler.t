@@ -1,7 +1,6 @@
-The experimental priority scheduler classifies existing target forms without a
-CLI override.  Put the least urgent recursive directory first, then an ordinary
-alias, and the concrete target last so command-line order cannot explain the
-schedule.
+The current compatibility policy interprets factual target root kinds. Put the
+recursive alias first, then an ordinary alias, and the file root last so
+command-line order cannot explain the schedule.
 
   $ cat > dune-project <<'EOF'
   > (lang dune 2.0)
@@ -20,21 +19,21 @@ schedule.
   >    (bash "printf 'shared-multi\\n' >> order; sleep 0.1")
   >    (write-file shared-a shared)
   >    (write-file shared-b shared))))
-  >
+  > 
   > (rule
   >  (target cpp-1)
   >  (action
   >   (progn
   >    (bash "printf 'direct-cpp-1\\n' >> order; sleep 0.1")
   >    (write-file cpp-1 cpp))))
-  >
+  > 
   > (rule
   >  (target cpp-2)
   >  (action
   >   (progn
   >    (bash "printf 'direct-cpp-2\\n' >> order; sleep 0.1")
   >    (write-file cpp-2 cpp))))
-  >
+  > 
   > (rule
   >  (target barrier)
   >  (deps cpp-1 cpp-2 shared-a)
@@ -42,18 +41,18 @@ schedule.
   >   (progn
   >    (bash "printf 'direct-barrier\\n' >> order; sleep 0.1")
   >    (write-file barrier barrier))))
-  >
+  > 
   > (rule
   >  (target dynamic-source)
   >  (action
   >   (progn
   >    (bash "printf 'direct-dynamic-source\\n' >> order; sleep 0.1")
   >    (write-file dynamic-source dynamic))))
-  >
+  > 
   > (rule
   >  (alias direct-dynamic)
   >  (action (dynamic-run action_plugin_helper read-file dynamic-source)))
-  >
+  > 
   > (rule
   >  (target send.vo)
   >  (deps barrier (alias direct-dynamic))
@@ -61,14 +60,14 @@ schedule.
   >   (progn
   >    (bash "printf 'direct-send\\n' >> order; sleep 0.1")
   >    (write-file send.vo direct))))
-  >
+  > 
   > (rule
   >  (target normal-job)
   >  (action
   >   (progn
   >    (bash "printf 'normal-job\\n' >> order; sleep 0.1")
   >    (write-file normal-job normal))))
-  >
+  > 
   > (alias
   >  (name normal)
   >  (deps normal-job))
@@ -80,32 +79,32 @@ schedule.
   >   (progn
   >    (bash "printf 'bulk-hammer-1\\n' >> ../order; sleep 0.1")
   >    (write-file hammer-1 bulk))))
-  >
+  > 
   > (rule
   >  (target hammer-2)
   >  (action
   >   (progn
   >    (bash "printf 'bulk-hammer-2\\n' >> ../order; sleep 0.1")
   >    (write-file hammer-2 bulk))))
-  >
+  > 
   > (rule
   >  (target hammer-3)
   >  (action
   >   (progn
   >    (bash "printf 'bulk-hammer-3\\n' >> ../order; sleep 0.1")
   >    (write-file hammer-3 bulk))))
-  >
+  > 
   > (alias
   >  (name default)
   >  (deps ../shared-b hammer-1 hammer-2 hammer-3))
   > EOF
 
-The shared multi-target action may start from the leading Bulk root before the
-other roots are ready. Once Direct generated-source work is ready, it runs
-without lower-class selection; then Normal runs before the remaining Bulk
-hammers. The action-plugin request discovers [dynamic-source] only after
-[send.vo]'s nested alias action starts, inherits Direct demand, and also runs
-ahead of the lower classes.
+The shared multi-target action may start from the leading recursive-alias root
+before the other roots are ready. Once file-root generated-source work is
+ready, it runs without lower-priority selection; then the alias runs before the
+remaining recursive-alias hammers. The action-plugin request discovers
+[dynamic-source] only after [send.vo]'s nested alias action starts, inherits the
+file root, and also runs ahead of the lower priorities.
 
   $ rm -rf _build
   $ DUNE_CONFIG__PRIORITY_SCHEDULING=enabled DUNE_TRACE=scheduler,process \
@@ -122,7 +121,7 @@ ahead of the lower classes.
   bulk-hammer-2
   bulk-hammer-3
 
-Ready and start events correlate by a stable attempt ID.  At least one Direct
+Ready and start events correlate by a stable attempt ID. At least one file-root
 attempt (rank 3) waited, and every started event reports the handle's current
 priority and queue length.
 
@@ -142,15 +141,17 @@ priority and queue length.
   >    and ($slots | any(.args.phase == "ready"
   >                      and .args.priority == 3
   >                      and .args.waiting > 0))
-  >    and ($slots | all(.args.priority >= 0 and .args.waiting >= 0))
+  >    and ($slots | all(.args.policy == "current"
+  >                      and .args.priority >= 0
+  >                      and .args.waiting >= 0))
   >    and ($slots | map(select(.args.priority == 3))
   >                | all(.args.memo_generation >= 0
   >                      and .args.memo_node_id >= 0
-  >                      and (.args.memo_roots | any(.class == "direct"))))
+  >                      and (.args.memo_roots | any(.kind == "file"))))
   >    and ($slots | any(.args.priority == 2
-  >                      and (.args.memo_roots | any(.class == "normal"))))
+  >                      and (.args.memo_roots | any(.kind == "alias"))))
   >    and ($slots | any(.args.priority == 1
-  >                      and (.args.memo_roots | any(.class == "bulk"))))
+  >                      and (.args.memo_roots | any(.kind == "recursive-alias"))))
   >    and (($processes | length) > 0
   >         and ($processes | all(. as $id | $start_ids | index($id) != null)))
   >    and ($starts | any(. == 1) and any(. == 2) and any(. == 3))
@@ -172,8 +173,8 @@ The shared multi-target action still runs exactly once in each build.
   >   test "$(grep -c '^shared-multi$' "$log")" = 1
   > done
 
-A generated directory is a concrete Direct target. When it expands into two
-build contexts, both resolved requests retain the one original root ID while
+A generated directory is a concrete file root. When it expands into two build
+contexts, both resolved requests retain the one original root ID while
 executing as distinct Memo nodes.
 
   $ mkdir grouping
@@ -199,8 +200,8 @@ executing as distinct Memo nodes.
   $ dune trace cat --trace-file _build/trace.csexp | jq -s -e '
   > [ .[] | select(.cat == "scheduler" and .name == "job-slot"
   >                 and .args.phase == "start" and .args.priority == 3
-  >                 and (.args.memo_roots | any(.class == "direct"))) ] as $direct
-  > | [ $direct[].args.memo_roots[] | select(.class == "direct") | .id ] as $roots
+  >                 and (.args.memo_roots | any(.kind == "file"))) ] as $direct
+  > | [ $direct[].args.memo_roots[] | select(.kind == "file") | .id ] as $roots
   > | (($direct | length) == 2
   >    and ($direct | map(.args.memo_generation) | unique | length) == 1
   >    and ($direct | map(.args.memo_node_id) | unique | length) == 2

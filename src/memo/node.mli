@@ -261,21 +261,23 @@ module Call_stack : sig
 end
 
 module Job_priority : sig
-  module Demand_class : sig
+  module Root_kind : sig
     type t =
-      | Bulk
-      | Normal
-      | Direct
+      | Recursive_alias
+      | Alias
+      | File
+      | Internal
 
     val equal : t -> t -> bool
   end
 
   module Facts : sig
     type t =
-      { legacy_bulk_roots : int
-      ; legacy_normal_roots : int
-      ; legacy_direct_roots : int
-      ; demand_count : int
+      { recursive_alias_roots : int
+      ; alias_roots : int
+      ; file_roots : int
+      ; internal_roots : int
+      ; root_count : int
       ; dependency_depth : int
       ; dependent_count : int
       ; estimated_cost_ns : int64
@@ -297,24 +299,24 @@ module Job_priority : sig
     -> 'a Fiber.t
 
   val current_factory : unit -> factory option Fiber.t
-  val with_root : Demand_class.t -> (unit -> 'a Fiber.t) -> 'a Fiber.t
+  val with_root : Root_kind.t -> (unit -> 'a Fiber.t) -> 'a Fiber.t
   val current_root : unit -> root option Fiber.t
   val root_id : root -> Root_id.t
-  val root_demand_class : root -> Demand_class.t
+  val root_kind : root -> Root_kind.t
   val invalidate_current_registry : unit -> unit
 
   type trace =
     { generation : int
     ; node_id : int
-    ; roots : (Demand_class.t * int) list
+    ; roots : (Root_kind.t * int) list
     ; facts : Facts.t
     }
 
   val current_trace : unit -> trace option Fiber.t
 
   module For_tests : sig
-    val current_root : unit -> (Demand_class.t * int) option Fiber.t
-    val current_node_roots : unit -> (Demand_class.t * int) list Fiber.t
+    val current_root : unit -> (Root_kind.t * int) option Fiber.t
+    val current_node_roots : unit -> (Root_kind.t * int) list Fiber.t
     val remove_current_root : unit -> unit Fiber.t
     val current_registry_stats : unit -> (int * int) Fiber.t
     val global_registry_stats : unit -> int * int

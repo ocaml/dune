@@ -129,7 +129,7 @@ module Event : sig
     -> memo_generation:int
     -> memo_node_id:int
     -> memo_roots:(int * string) list
-    -> memo_demand_count:int
+    -> memo_root_count:int
     -> memo_dependency_depth:int
     -> memo_dependent_count:int
     -> t

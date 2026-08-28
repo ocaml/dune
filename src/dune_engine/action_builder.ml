@@ -69,7 +69,7 @@ module T = struct
     | Record_success : unit Memo.t -> unit t
     | Memoize : 'a memoized -> 'a t
     | Goal : 'a t -> 'a t
-    | With_job_demand : Memo.Job_priority.Demand_class.t * 'a t -> 'a t
+    | With_job_root : Memo.Job_priority.Root_kind.t * 'a t -> 'a t
     | Exec_memo : ('i, 'o) memo * 'i -> 'o t
     | Push_stack_frame : (unit -> User_message.Style.t Pp.t) * (unit -> 'a t) -> 'a t
     | List_map : 'a list * ('a -> 'b t) -> 'b list t
@@ -110,7 +110,7 @@ module T = struct
   let record_success memo = Record_success memo
   let exec_memo m i = Exec_memo (m, i)
   let goal t = Goal t
-  let with_job_demand demand_class t = With_job_demand (demand_class, t)
+  let with_job_root root_kind t = With_job_root (root_kind, t)
 
   module O = struct
     let ( >>> ) a b = Seq (a, b)
@@ -266,10 +266,10 @@ let rec eval : type a m. a t -> m eval_mode -> (a * m) Memo.t =
     let open Memo.O in
     let+ a, _ = eval t mode in
     a, Deps_or_facts.empty mode
-  | With_job_demand (demand_class, t) ->
+  | With_job_root (root_kind, t) ->
     (match mode with
      | Lazy -> eval t Lazy
-     | Eager -> Memo.with_job_demand demand_class (fun () -> eval t Eager))
+     | Eager -> Memo.with_job_root root_kind (fun () -> eval t Eager))
   | Exec_memo (m, i) -> exec_memo_eval m i mode
   | Push_stack_frame (human_readable_description, f) ->
     Memo.push_stack_frame ~human_readable_description (fun () -> eval (f ()) mode)

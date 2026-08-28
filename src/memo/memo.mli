@@ -379,21 +379,23 @@ val pp_stack : unit -> _ Pp.t Fiber.t
 val get_call_stack : unit -> Stack_frame.t list t
 
 module Job_priority : sig
-  module Demand_class : sig
+  module Root_kind : sig
     type t =
-      | Bulk
-      | Normal
-      | Direct
+      | Recursive_alias
+      | Alias
+      | File
+      | Internal
 
     val equal : t -> t -> bool
   end
 
   module Facts : sig
     type t =
-      { legacy_bulk_roots : int
-      ; legacy_normal_roots : int
-      ; legacy_direct_roots : int
-      ; demand_count : int
+      { recursive_alias_roots : int
+      ; alias_roots : int
+      ; file_roots : int
+      ; internal_roots : int
+      ; root_count : int
       ; dependency_depth : int
       ; dependent_count : int
       ; estimated_cost_ns : int64
@@ -416,33 +418,33 @@ module Job_priority : sig
   type trace =
     { generation : int
     ; node_id : int
-    ; roots : (Demand_class.t * int) list
+    ; roots : (Root_kind.t * int) list
     ; facts : Facts.t
     }
 
-  (** Return trace identity for the current Memo computation and its active demand roots. *)
+  (** Return trace identity for the current Memo computation and its active scheduling roots. *)
   val current_trace : unit -> trace option Fiber.t
 
-  (** Invalidate all job demand in the current Memo run. This is called synchronously
+  (** Invalidate all scheduling roots in the current Memo run. This is called synchronously
       when canceling a build, before cancellation handlers run. *)
   val invalidate_current_registry : unit -> unit
 
   module For_tests : sig
-    (** Internal observation of the current demand root for tests. Do not use in
+    (** Internal observation of the current scheduling root for tests. Do not use in
         production code. *)
-    val current_root : unit -> (Demand_class.t * int) option Fiber.t
+    val current_root : unit -> (Root_kind.t * int) option Fiber.t
 
-    val current_node_roots : unit -> (Demand_class.t * int) list Fiber.t
+    val current_node_roots : unit -> (Root_kind.t * int) list Fiber.t
     val remove_current_root : unit -> unit Fiber.t
     val current_registry_stats : unit -> (int * int) Fiber.t
     val global_registry_stats : unit -> int * int
   end
 end
 
-(** Outer, non-memoized demand scope. When priority scheduling is active, run [f] with a
-    fresh root carrying [demand_class]. Entering this scope from an active Memo computation
+(** Outer, non-memoized scheduling-root scope. When priority scheduling is active, run [f]
+    with a fresh root carrying [root_kind]. Entering this scope from a Memo computation
     is an error. With priority scheduling disabled, run [f] without allocating a root. *)
-val with_job_demand : Job_priority.Demand_class.t -> (unit -> 'a t) -> 'a t
+val with_job_root : Job_priority.Root_kind.t -> (unit -> 'a t) -> 'a t
 
 (** Insert a stack frame to make call stacks more precise when showing them to
     the user. *)

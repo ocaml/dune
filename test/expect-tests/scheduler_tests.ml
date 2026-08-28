@@ -77,16 +77,14 @@ let%expect_test "first-class policies choose ready-queue order" =
     random seed changes order: true |}]
 ;;
 
-let%expect_test "Action builder demand roots are eager and fresh" =
+let%expect_test "Action builder scheduling roots are eager and fresh" =
   let module Action_builder = Dune_engine.Action_builder in
-  let module Demand_class = Memo.Job_priority.Demand_class in
+  let module Root_kind = Memo.Job_priority.Root_kind in
   let observation =
     Memo.of_non_reproducible_fiber (Memo.Job_priority.For_tests.current_root ())
   in
   let builder =
-    Action_builder.with_job_demand
-      Demand_class.Direct
-      (Action_builder.of_memo observation)
+    Action_builder.with_job_root Root_kind.File (Action_builder.of_memo observation)
   in
   let result = ref None in
   go ~config:priority_config (fun () ->
@@ -99,14 +97,15 @@ let%expect_test "Action builder demand roots are eager and fresh" =
     in
     result := Some (lazy_root, eager_root_1, eager_root_2);
     Fiber.return ());
-  let demand_class = function
-    | Demand_class.Bulk -> "bulk"
-    | Demand_class.Normal -> "normal"
-    | Demand_class.Direct -> "direct"
+  let root_kind = function
+    | Root_kind.Recursive_alias -> "recursive-alias"
+    | Root_kind.Alias -> "alias"
+    | Root_kind.File -> "file"
+    | Root_kind.Internal -> "internal"
   in
   let root = function
     | None -> "none"
-    | Some (demand_class_, _) -> demand_class demand_class_
+    | Some (root_kind_, _) -> root_kind root_kind_
   in
   let lazy_root, eager_root_1, eager_root_2 = Option.value_exn !result in
   Printf.printf "lazy: %s\n" (root lazy_root);
@@ -121,17 +120,17 @@ let%expect_test "Action builder demand roots are eager and fresh" =
   [%expect
     {|
     lazy: none
-    eager 1: direct
-    eager 2: direct
+    eager 1: file
+    eager 2: file
     distinct IDs: true |}]
 ;;
 
-let%expect_test "job demand scopes reject active Memo stacks" =
-  let module Demand_class = Memo.Job_priority.Demand_class in
+let%expect_test "job root scopes reject active Memo stacks" =
+  let module Root_kind = Memo.Job_priority.Root_kind in
   let rejected config =
     let nested =
       Memo.Lazy.create ~name:"nested-job-demand" (fun () ->
-        Memo.with_job_demand Demand_class.Direct (fun () -> Memo.return ()))
+        Memo.with_job_root Root_kind.File (fun () -> Memo.return ()))
     in
     let result = ref None in
     go ~config (fun () ->
@@ -149,8 +148,8 @@ let%expect_test "job demand scopes reject active Memo stacks" =
     disabled rejected: false |}]
 ;;
 
-let run_with_demand demand_class memo =
-  Memo.with_job_demand demand_class (fun () -> memo) |> Memo.run
+let run_with_root root_kind memo =
+  Memo.with_job_root root_kind (fun () -> memo) |> Memo.run
 ;;
 
 let print_registry_stats label =
@@ -158,8 +157,8 @@ let print_registry_stats label =
   Printf.printf "%s: %d roots, %d memberships\n" label roots memberships
 ;;
 
-let%expect_test "Build_system.run supplies Normal demand only when enabled" =
-  let module Demand_class = Memo.Job_priority.Demand_class in
+let%expect_test "Build_system.run supplies an internal root only when enabled" =
+  let module Root_kind = Memo.Job_priority.Root_kind in
   Path.mkdir_p (Path.relative Path.root "_build");
   let observe config =
     let result = ref None in
@@ -175,20 +174,21 @@ let%expect_test "Build_system.run supplies Normal demand only when enabled" =
   in
   let to_string = function
     | None -> "none"
-    | Some (Demand_class.Bulk, _) -> "bulk"
-    | Some (Normal, _) -> "normal"
-    | Some (Direct, _) -> "direct"
+    | Some (Root_kind.Recursive_alias, _) -> "recursive-alias"
+    | Some (Alias, _) -> "alias"
+    | Some (File, _) -> "file"
+    | Some (Internal, _) -> "internal"
   in
   Printf.printf "enabled: %s\n" (observe priority_config |> to_string);
   Printf.printf "disabled: %s\n" (observe default |> to_string);
   [%expect
     {|
-    enabled: normal
+    enabled: internal
     disabled: none |}]
 ;;
 
 let%expect_test "root finalization clears memberships and removal is idempotent" =
-  let module Demand_class = Memo.Job_priority.Demand_class in
+  let module Root_kind = Memo.Job_priority.Root_kind in
   let leaf = Memo.Lazy.create ~name:"finalized-root" (fun () -> Memo.return ()) in
   let remove_leaf =
     Memo.Lazy.create ~name:"removed-root" (fun () ->
@@ -202,14 +202,14 @@ let%expect_test "root finalization clears memberships and removal is idempotent"
   in
   go ~config:priority_config (fun () ->
     let finalized =
-      Memo.with_job_demand Demand_class.Direct (fun () ->
+      Memo.with_job_root Root_kind.File (fun () ->
         let open Memo.O in
         let* () = Memo.Lazy.force leaf in
         Memo.of_non_reproducible_fiber (print_registry_stats "active"))
     in
     let* () = Memo.run finalized in
     let* () = print_registry_stats "finalized" in
-    let* () = run_with_demand Demand_class.Direct (Memo.Lazy.force remove_leaf) in
+    let* () = run_with_root Root_kind.File (Memo.Lazy.force remove_leaf) in
     print_registry_stats "second finalizer");
   let roots, memberships = Memo.Job_priority.For_tests.global_registry_stats () in
   Printf.printf "after factory: %d roots, %d memberships\n" roots memberships;
@@ -224,8 +224,8 @@ let%expect_test "root finalization clears memberships and removal is idempotent"
     after factory: 0 roots, 0 memberships |}]
 ;;
 
-let%expect_test "removing direct demand reveals bulk and demotes queued work" =
-  let module Demand_class = Memo.Job_priority.Demand_class in
+let%expect_test "removing a file root reveals a recursive alias root" =
+  let module Root_kind = Memo.Job_priority.Root_kind in
   let order = ref [] in
   let shared_ready = Fiber.Ivar.create () in
   let normal_ready = Fiber.Ivar.create () in
@@ -236,12 +236,12 @@ let%expect_test "removing direct demand reveals bulk and demotes queued work" =
         (let* () = Fiber.Ivar.fill shared_ready () in
          Scheduler.with_job_slot (fun () ->
            let+ roots = Memo.Job_priority.For_tests.current_node_roots () in
-           let only_bulk =
+           let only_recursive_alias =
              match roots with
-             | [ (Demand_class.Bulk, _) ] -> true
-             | [] | [ ((Normal | Direct), _) ] | _ :: _ :: _ -> false
+             | [ (Root_kind.Recursive_alias, _) ] -> true
+             | [] | [ ((Alias | File | Internal), _) ] | _ :: _ :: _ -> false
            in
-           Printf.printf "only bulk remains: %b\n" only_bulk;
+           Printf.printf "only recursive alias remains: %b\n" only_recursive_alias;
            order := "shared" :: !order)))
   in
   let normal =
@@ -249,11 +249,11 @@ let%expect_test "removing direct demand reveals bulk and demotes queued work" =
       Memo.of_reproducible_fiber
         (let* () = Fiber.Ivar.fill normal_ready () in
          Scheduler.with_job_slot (fun () ->
-           order := "normal" :: !order;
+           order := "alias" :: !order;
            Fiber.return ())))
   in
   let direct =
-    Memo.with_job_demand Demand_class.Direct (fun () ->
+    Memo.with_job_root Root_kind.File (fun () ->
       Memo.of_non_reproducible_fiber
         (Fiber.fork_and_join_unit
            (fun () -> Memo.Lazy.force shared |> Memo.run)
@@ -273,9 +273,9 @@ let%expect_test "removing direct demand reveals bulk and demotes queued work" =
       (fun () ->
          let* () = Fiber.Ivar.read blocker_started in
          Fiber.parallel_iter
-           [ (fun () -> run_with_demand Demand_class.Bulk (Memo.Lazy.force shared))
+           [ (fun () -> run_with_root Root_kind.Recursive_alias (Memo.Lazy.force shared))
            ; (fun () -> Memo.run direct)
-           ; (fun () -> run_with_demand Demand_class.Normal (Memo.Lazy.force normal))
+           ; (fun () -> run_with_root Root_kind.Alias (Memo.Lazy.force normal))
            ; (fun () ->
                let* () = Fiber.Ivar.read direct_removed in
                let* () = Fiber.Ivar.read normal_ready in
@@ -285,13 +285,13 @@ let%expect_test "removing direct demand reveals bulk and demotes queued work" =
   List.rev !order |> List.iter ~f:print_endline;
   [%expect
     {|
-    only bulk remains: true
-    normal
+    only recursive alias remains: true
+    alias
     shared |}]
 ;;
 
-let%expect_test "build cancellation demotes queued demand before branch finalizers" =
-  let module Demand_class = Memo.Job_priority.Demand_class in
+let%expect_test "build cancellation clears queued roots before branch finalizers" =
+  let module Root_kind = Memo.Job_priority.Root_kind in
   let module Process = Dune_engine.Process in
   let cancellation = Fiber.Cancel.create () in
   let build =
@@ -312,7 +312,7 @@ let%expect_test "build cancellation demotes queued demand before branch finalize
            (fun () ->
               let* () = Fiber.Ivar.fill direct_ready () in
               Scheduler.with_job_slot (fun () ->
-                order := "direct" :: !order;
+                order := "file" :: !order;
                 Fiber.return ()))
            ~finally:(fun () -> print_registry_stats "branch finalizer")))
   in
@@ -329,7 +329,7 @@ let%expect_test "build cancellation demotes queued demand before branch finalize
             let+ (), canceled =
               Fiber.Cancel.with_handler
                 cancellation
-                (fun () -> run_with_demand Demand_class.Direct (Memo.Lazy.force direct))
+                (fun () -> run_with_root Root_kind.File (Memo.Lazy.force direct))
                 ~on_cancel:(fun () -> Fiber.return ())
             in
             Printf.printf
@@ -341,7 +341,7 @@ let%expect_test "build cancellation demotes queued demand before branch finalize
             let* () = Fiber.Ivar.read blocker_started in
             let* () = Fiber.Ivar.fill normal_ready () in
             Scheduler.with_job_slot ~priority:normal_priority (fun () ->
-              order := "normal" :: !order;
+              order := "alias" :: !order;
               Fiber.return ()))
         ; (fun () ->
             let* () = Fiber.Ivar.read direct_ready in
@@ -355,12 +355,12 @@ let%expect_test "build cancellation demotes queued demand before branch finalize
     {|
     branch finalizer: 0 roots, 0 memberships
     branch canceled: true
-    normal
-    direct |}]
+    alias
+    file |}]
 ;;
 
 let%expect_test "invalidation is terminal until the Memo generation changes" =
-  let module Demand_class = Memo.Job_priority.Demand_class in
+  let module Root_kind = Memo.Job_priority.Root_kind in
   let order = ref [] in
   let seed =
     Memo.Lazy.create ~name:"invalidation-seed" (fun () ->
@@ -380,7 +380,7 @@ let%expect_test "invalidation is terminal until the Memo generation changes" =
   in
   let normal_ready = Fiber.Ivar.create () in
   go ~config:priority_config (fun () ->
-    let* () = run_with_demand Demand_class.Direct (Memo.Lazy.force seed) in
+    let* () = run_with_root Root_kind.File (Memo.Lazy.force seed) in
     Memo.Job_priority.invalidate_current_registry ();
     let* normal_priority = Scheduler.create_job_priority ~priority:1 () in
     let blocker_started = Fiber.Ivar.create () in
@@ -394,12 +394,11 @@ let%expect_test "invalidation is terminal until the Memo generation changes" =
         (fun () ->
            let* () = Fiber.Ivar.read blocker_started in
            Fiber.parallel_iter
-             [ (fun () ->
-                 run_with_demand Demand_class.Direct (Memo.Lazy.force undemanded))
+             [ (fun () -> run_with_root Root_kind.File (Memo.Lazy.force undemanded))
              ; (fun () ->
                  let* () = Fiber.Ivar.fill normal_ready () in
                  Scheduler.with_job_slot ~priority:normal_priority (fun () ->
-                   order := "normal" :: !order;
+                   order := "alias" :: !order;
                    Fiber.return ()))
              ; (fun () ->
                  let* () = Fiber.Ivar.read undemanded_ready in
@@ -415,12 +414,12 @@ let%expect_test "invalidation is terminal until the Memo generation changes" =
     inside later scope: 0 roots, 0 memberships
     later ambient root: false
     after later scope: 0 roots, 0 memberships
-    normal
+    alias
     undemanded |}]
 ;;
 
 let%expect_test "Memo.reset starts an empty registry for the same scheduler factory" =
-  let module Demand_class = Memo.Job_priority.Demand_class in
+  let module Root_kind = Memo.Job_priority.Root_kind in
   let order = ref [] in
   let evaluation = ref 0 in
   let reused_ready = Fiber.Ivar.create () in
@@ -441,13 +440,13 @@ let%expect_test "Memo.reset starts an empty registry for the same scheduler fact
       Memo.of_reproducible_fiber
         (let* () = Fiber.Ivar.fill normal_ready () in
          Scheduler.with_job_slot (fun () ->
-           order := "normal" :: !order;
+           order := "alias" :: !order;
            Fiber.return ())))
   in
   go ~config:priority_config (fun () ->
-    let* () = run_with_demand Demand_class.Direct (Memo.Lazy.force reused) in
+    let* () = run_with_root Root_kind.File (Memo.Lazy.force reused) in
     Memo.reset (Memo.Node.invalidate ~reason:Memo.Invalidation.Reason.Test reused_node);
-    let* () = print_registry_stats "new run before demand" in
+    let* () = print_registry_stats "new run before roots" in
     let blocker_started = Fiber.Ivar.create () in
     let release_blocker = Fiber.Ivar.create () in
     Fiber.fork_and_join_unit
@@ -458,8 +457,8 @@ let%expect_test "Memo.reset starts an empty registry for the same scheduler fact
       (fun () ->
          let* () = Fiber.Ivar.read blocker_started in
          Fiber.parallel_iter
-           [ (fun () -> run_with_demand Demand_class.Bulk (Memo.Lazy.force reused))
-           ; (fun () -> run_with_demand Demand_class.Normal (Memo.Lazy.force normal))
+           [ (fun () -> run_with_root Root_kind.Recursive_alias (Memo.Lazy.force reused))
+           ; (fun () -> run_with_root Root_kind.Alias (Memo.Lazy.force normal))
            ; (fun () ->
                let* () = Fiber.Ivar.read reused_ready in
                let* () = Fiber.Ivar.read normal_ready in
@@ -469,13 +468,13 @@ let%expect_test "Memo.reset starts an empty registry for the same scheduler fact
   List.rev !order |> List.iter ~f:print_endline;
   [%expect
     {|
-    new run before demand: 0 roots, 0 memberships
-    normal
+    new run before roots: 0 roots, 0 memberships
+    alias
     reused |}]
 ;;
 
 let%expect_test "the same root observes an active nested dependency once" =
-  let module Demand_class = Memo.Job_priority.Demand_class in
+  let module Root_kind = Memo.Job_priority.Root_kind in
   let inner_started = Fiber.Ivar.create () in
   let inspect_roots = Fiber.Ivar.create () in
   let inner =
@@ -486,16 +485,16 @@ let%expect_test "the same root observes an active nested dependency once" =
          let+ roots = Memo.Job_priority.For_tests.current_node_roots () in
          let root_id =
            match roots with
-           | [ (Demand_class.Bulk, root_id) ] -> Some root_id
-           | [] | [ ((Normal | Direct), _) ] | _ :: _ :: _ -> None
+           | [ (Root_kind.Recursive_alias, root_id) ] -> Some root_id
+           | [] | [ ((Alias | File | Internal), _) ] | _ :: _ :: _ -> None
          in
-         Printf.printf "one bulk root ID: %b\n" (Option.is_some root_id)))
+         Printf.printf "one recursive alias root ID: %b\n" (Option.is_some root_id)))
   in
   let outer =
     Memo.Lazy.create ~name:"same-root-outer" (fun () -> Memo.Lazy.force inner)
   in
   let force_twice =
-    Memo.with_job_demand Demand_class.Bulk (fun () ->
+    Memo.with_job_root Root_kind.Recursive_alias (fun () ->
       Memo.parallel_map [ outer; outer ] ~f:Memo.Lazy.force)
   in
   go ~config:priority_config (fun () ->
@@ -504,11 +503,11 @@ let%expect_test "the same root observes an active nested dependency once" =
       (fun () ->
          let* () = Fiber.Ivar.read inner_started in
          Fiber.Ivar.fill inspect_roots ()));
-  [%expect {| one bulk root ID: true |}]
+  [%expect {| one recursive alias root ID: true |}]
 ;;
 
-let%expect_test "equal demand leaves a dependency chain behind FIFO work" =
-  let module Demand_class = Memo.Job_priority.Demand_class in
+let%expect_test "one root kind leaves a dependency chain behind FIFO work" =
+  let module Root_kind = Memo.Job_priority.Root_kind in
   let order = ref [] in
   let flat_ready = Fiber.Ivar.create () in
   let chain_ready = Fiber.Ivar.create () in
@@ -545,8 +544,8 @@ let%expect_test "equal demand leaves a dependency chain behind FIFO work" =
          let* () = Fiber.Ivar.read blocker_started in
          Fiber.fork_and_join_unit
            (fun () ->
-              run_with_demand
-                Demand_class.Bulk
+              run_with_root
+                Root_kind.Recursive_alias
                 (Memo.parallel_map [ flat; chain ] ~f:Memo.Lazy.force
                  |> Memo.map ~f:ignore))
            (fun () ->
@@ -564,7 +563,7 @@ let%expect_test "equal demand leaves a dependency chain behind FIFO work" =
 ;;
 
 let%expect_test "distinct same-class roots reach an active nested dependency" =
-  let module Demand_class = Memo.Job_priority.Demand_class in
+  let module Root_kind = Memo.Job_priority.Root_kind in
   let inner_started = Fiber.Ivar.create () in
   let inspect_roots = Fiber.Ivar.create () in
   let inner =
@@ -574,11 +573,12 @@ let%expect_test "distinct same-class roots reach an active nested dependency" =
          let* () = Fiber.Ivar.read inspect_roots in
          let+ roots = Memo.Job_priority.For_tests.current_node_roots () in
          let classes =
-           List.map roots ~f:(fun (demand_class, _) ->
-             match demand_class with
-             | Demand_class.Bulk -> "bulk"
-             | Normal -> "normal"
-             | Direct -> "direct")
+           List.map roots ~f:(fun (root_kind, _) ->
+             match root_kind with
+             | Root_kind.Recursive_alias -> "recursive-alias"
+             | Alias -> "alias"
+             | File -> "file"
+             | Internal -> "internal")
            |> List.sort ~compare:String.compare
          in
          Printf.printf "roots: %s\n" (String.concat ~sep:"," classes)))
@@ -588,17 +588,17 @@ let%expect_test "distinct same-class roots reach an active nested dependency" =
   in
   go ~config:priority_config (fun () ->
     Fiber.fork_and_join_unit
-      (fun () -> run_with_demand Demand_class.Bulk (Memo.Lazy.force outer))
+      (fun () -> run_with_root Root_kind.Recursive_alias (Memo.Lazy.force outer))
       (fun () ->
          let* () = Fiber.Ivar.read inner_started in
          Fiber.fork_and_join_unit
-           (fun () -> run_with_demand Demand_class.Bulk (Memo.Lazy.force outer))
+           (fun () -> run_with_root Root_kind.Recursive_alias (Memo.Lazy.force outer))
            (fun () -> Fiber.Ivar.fill inspect_roots ())));
-  [%expect {| roots: bulk,bulk |}]
+  [%expect {| roots: recursive-alias,recursive-alias |}]
 ;;
 
-let%expect_test "late direct demand promotes nested work without leaking upward" =
-  let module Demand_class = Memo.Job_priority.Demand_class in
+let%expect_test "a late file root promotes nested work without leaking upward" =
+  let module Root_kind = Memo.Job_priority.Root_kind in
   let order = ref [] in
   let record name = order := name :: !order in
   let inner_ready = Fiber.Ivar.create () in
@@ -609,11 +609,12 @@ let%expect_test "late direct demand promotes nested work without leaking upward"
          Scheduler.with_job_slot (fun () ->
            let+ roots = Memo.Job_priority.For_tests.current_node_roots () in
            let classes =
-             List.map roots ~f:(fun (demand_class, _) ->
-               match demand_class with
-               | Demand_class.Bulk -> "bulk"
-               | Normal -> "normal"
-               | Direct -> "direct")
+             List.map roots ~f:(fun (root_kind, _) ->
+               match root_kind with
+               | Root_kind.Recursive_alias -> "recursive-alias"
+               | Alias -> "alias"
+               | File -> "file"
+               | Internal -> "internal")
              |> List.sort ~compare:String.compare
            in
            Printf.printf "shared roots: %s\n" (String.concat ~sep:"," classes);
@@ -626,14 +627,14 @@ let%expect_test "late direct demand promotes nested work without leaking upward"
       let* () = Memo.Lazy.force outer in
       Memo.of_reproducible_fiber
         (Scheduler.with_job_slot (fun () ->
-           record "bulk-continuation";
+           record "recursive-alias-continuation";
            Fiber.return ())))
   in
   let normal =
-    Memo.Lazy.create ~name:"normal" (fun () ->
+    Memo.Lazy.create ~name:"alias" (fun () ->
       Memo.of_reproducible_fiber
         (Scheduler.with_job_slot (fun () ->
-           record "normal";
+           record "alias";
            Fiber.return ())))
   in
   let blocker_started = Fiber.Ivar.create () in
@@ -646,28 +647,28 @@ let%expect_test "late direct demand promotes nested work without leaking upward"
             Fiber.Ivar.read release_blocker))
       ; (fun () ->
           let* () = Fiber.Ivar.read blocker_started in
-          run_with_demand Demand_class.Bulk (Memo.Lazy.force bulk_caller))
+          run_with_root Root_kind.Recursive_alias (Memo.Lazy.force bulk_caller))
       ; (fun () ->
           let* () = Fiber.Ivar.read inner_ready in
           Fiber.fork_and_join_unit
-            (fun () -> run_with_demand Demand_class.Normal (Memo.Lazy.force normal))
+            (fun () -> run_with_root Root_kind.Alias (Memo.Lazy.force normal))
             (fun () ->
                Fiber.fork_and_join_unit
-                 (fun () -> run_with_demand Demand_class.Direct (Memo.Lazy.force outer))
+                 (fun () -> run_with_root Root_kind.File (Memo.Lazy.force outer))
                  (fun () -> Fiber.Ivar.fill release_blocker ())))
       ]
       ~f:(fun f -> f ()));
   List.rev !order |> List.iter ~f:print_endline;
   [%expect
     {|
-    shared roots: bulk,direct
+    shared roots: file,recursive-alias
     shared
-    normal
-    bulk-continuation |}]
+    alias
+    recursive-alias-continuation |}]
 ;;
 
-let%expect_test "demand classes propagate while restoring Memo dependencies" =
-  let module Demand_class = Memo.Job_priority.Demand_class in
+let%expect_test "root kinds propagate while restoring Memo dependencies" =
+  let module Root_kind = Memo.Job_priority.Root_kind in
   let order = ref [] in
   let job name =
     let inner_node, inner =
@@ -685,8 +686,8 @@ let%expect_test "demand classes propagate while restoring Memo dependencies" =
     in
     inner_node, outer
   in
-  let bulk_node, bulk = job "bulk" in
-  let direct_node, direct = job "direct" in
+  let bulk_node, bulk = job "recursive-alias" in
+  let direct_node, direct = job "file" in
   go ~config:priority_config (fun () ->
     Memo.parallel_map [ bulk; direct ] ~f:Memo.Lazy.force |> Memo.run >>| ignore);
   order := [];
@@ -705,16 +706,16 @@ let%expect_test "demand classes propagate while restoring Memo dependencies" =
       (fun () ->
          let* () = Fiber.Ivar.read blocker_started in
          Fiber.parallel_iter
-           [ (fun () -> run_with_demand Demand_class.Bulk (Memo.Lazy.force bulk))
-           ; (fun () -> run_with_demand Demand_class.Direct (Memo.Lazy.force direct))
+           [ (fun () -> run_with_root Root_kind.Recursive_alias (Memo.Lazy.force bulk))
+           ; (fun () -> run_with_root Root_kind.File (Memo.Lazy.force direct))
            ; (fun () -> Fiber.Ivar.fill release_blocker ())
            ]
            ~f:(fun f -> f ())));
   List.rev !order |> List.iter ~f:print_endline;
   [%expect
     {|
-    direct
-    bulk |}]
+    file
+    recursive-alias |}]
 ;;
 
 let%expect_test "a priority reservation survives asynchronous bookkeeping" =
@@ -748,7 +749,7 @@ let%expect_test "a priority reservation survives asynchronous bookkeeping" =
            record "high-2";
            Fiber.return ())))
   in
-  let module Demand_class = Memo.Job_priority.Demand_class in
+  let module Root_kind = Memo.Job_priority.Root_kind in
   let blocker_started = Fiber.Ivar.create () in
   let release_blocker = Fiber.Ivar.create () in
   go ~config:priority_config (fun () ->
@@ -760,8 +761,8 @@ let%expect_test "a priority reservation survives asynchronous bookkeeping" =
       (fun () ->
          let* () = Fiber.Ivar.read blocker_started in
          Fiber.parallel_iter
-           [ (fun () -> run_with_demand Demand_class.Bulk (Memo.Lazy.force low))
-           ; (fun () -> run_with_demand Demand_class.Direct (Memo.Lazy.force high))
+           [ (fun () -> run_with_root Root_kind.Recursive_alias (Memo.Lazy.force low))
+           ; (fun () -> run_with_root Root_kind.File (Memo.Lazy.force high))
            ; (fun () -> Fiber.Ivar.fill release_blocker ())
            ]
            ~f:(fun f -> f ())));
@@ -858,7 +859,7 @@ let%expect_test "Memo priorities propagate through dependency chains" =
              order := name :: !order;
              Fiber.return ()))))
   in
-  let module Demand_class = Memo.Job_priority.Demand_class in
+  let module Root_kind = Memo.Job_priority.Root_kind in
   let blocker_started = Fiber.Ivar.create () in
   let release_blocker = Fiber.Ivar.create () in
   go ~config:priority_config (fun () ->
@@ -870,8 +871,8 @@ let%expect_test "Memo priorities propagate through dependency chains" =
       (fun () ->
          let* () = Fiber.Ivar.read blocker_started in
          Fiber.parallel_iter
-           [ (fun () -> run_with_demand Demand_class.Bulk (Memo.Lazy.force low))
-           ; (fun () -> run_with_demand Demand_class.Direct (Memo.Lazy.force chain))
+           [ (fun () -> run_with_root Root_kind.Recursive_alias (Memo.Lazy.force low))
+           ; (fun () -> run_with_root Root_kind.File (Memo.Lazy.force chain))
            ; (fun () -> Fiber.Ivar.fill release_blocker ())
            ]
            ~f:(fun f -> f ())));

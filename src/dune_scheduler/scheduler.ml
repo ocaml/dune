@@ -30,21 +30,22 @@ module Scheduling_policy = struct
     let name = "current"
 
     let priority
-          { Memo.Job_priority.Facts.legacy_bulk_roots
-          ; legacy_normal_roots
-          ; legacy_direct_roots
-          ; demand_count = _
+          { Memo.Job_priority.Facts.recursive_alias_roots
+          ; alias_roots
+          ; file_roots
+          ; internal_roots
+          ; root_count = _
           ; dependency_depth = _
           ; dependent_count = _
           ; estimated_cost_ns = _
           }
       =
       let primary =
-        if legacy_direct_roots > 0
+        if file_roots > 0
         then 3
-        else if legacy_normal_roots > 0
+        else if alias_roots > 0 || internal_roots > 0
         then 2
-        else if legacy_bulk_roots > 0
+        else if recursive_alias_roots > 0
         then 1
         else 0
       in
@@ -173,7 +174,7 @@ let with_job_slot ?cancellation ?priority f =
       let ( memo_generation
           , memo_node_id
           , memo_roots
-          , memo_demand_count
+          , memo_root_count
           , memo_dependency_depth
           , memo_dependent_count )
         =
@@ -181,19 +182,20 @@ let with_job_slot ?cancellation ?priority f =
         | None -> -1, -1, [], 0, 0, 0
         | Some { Memo.Job_priority.generation; node_id; roots; facts } ->
           let roots =
-            List.map roots ~f:(fun (demand_class, root_id) ->
-              let demand_class =
-                match demand_class with
-                | Memo.Job_priority.Demand_class.Bulk -> "bulk"
-                | Memo.Job_priority.Demand_class.Normal -> "normal"
-                | Memo.Job_priority.Demand_class.Direct -> "direct"
+            List.map roots ~f:(fun (root_kind, root_id) ->
+              let root_kind =
+                match root_kind with
+                | Memo.Job_priority.Root_kind.Recursive_alias -> "recursive-alias"
+                | Memo.Job_priority.Root_kind.Alias -> "alias"
+                | Memo.Job_priority.Root_kind.File -> "file"
+                | Memo.Job_priority.Root_kind.Internal -> "internal"
               in
-              root_id, demand_class)
+              root_id, root_kind)
           in
           ( generation
           , node_id
           , roots
-          , facts.demand_count
+          , facts.root_count
           , facts.dependency_depth
           , facts.dependent_count )
       in
@@ -209,7 +211,7 @@ let with_job_slot ?cancellation ?priority f =
           ~memo_generation
           ~memo_node_id
           ~memo_roots
-          ~memo_demand_count
+          ~memo_root_count
           ~memo_dependency_depth
           ~memo_dependent_count)
     in

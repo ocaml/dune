@@ -9,29 +9,29 @@ module Request = struct
 end
 
 module Resolved_root = struct
-  module Demand_class = Memo.Job_priority.Demand_class
+  module Root_kind = Memo.Job_priority.Root_kind
 
   type t =
     { requests : Request.t list
-    ; demand_class : Demand_class.t
+    ; root_kind : Root_kind.t
     }
 
-  let classify : Request.t -> Demand_class.t = function
-    | File _ -> Demand_class.Direct
-    | Alias { recursive = false; _ } -> Demand_class.Normal
-    | Alias { recursive = true; _ } -> Demand_class.Bulk
+  let classify : Request.t -> Root_kind.t = function
+    | File _ -> Root_kind.File
+    | Alias { recursive = false; _ } -> Root_kind.Alias
+    | Alias { recursive = true; _ } -> Root_kind.Recursive_alias
   ;;
 
   let create requests =
     match requests with
     | [] -> Code_error.raise "Target.Resolved_root.create: empty root" []
     | request :: rest ->
-      let demand_class = classify request in
+      let root_kind = classify request in
       if
         List.exists rest ~f:(fun request ->
-          not (Demand_class.equal demand_class (classify request)))
-      then Code_error.raise "Target.Resolved_root.create: mixed demand classes" [];
-      { requests; demand_class }
+          not (Root_kind.equal root_kind (classify request)))
+      then Code_error.raise "Target.Resolved_root.create: mixed root kinds" [];
+      { requests; root_kind }
   ;;
 end
 
@@ -46,8 +46,8 @@ let request_targets targets =
 
 let request roots =
   Action_builder.all_unit
-    (List.map roots ~f:(fun { Resolved_root.requests; demand_class } ->
-       Action_builder.with_job_demand demand_class (request_targets requests)))
+    (List.map roots ~f:(fun { Resolved_root.requests; root_kind } ->
+       Action_builder.with_job_root root_kind (request_targets requests)))
 ;;
 
 module Target_type = struct

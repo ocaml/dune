@@ -204,7 +204,7 @@ let get_call_stack = Call_stack.get_call_stack_without_state
 
 module Job_priority = Node.Job_priority
 
-let with_job_demand = Job_priority.with_root
+let with_job_root = Job_priority.with_root
 
 module Invalidation = Invalidation
 

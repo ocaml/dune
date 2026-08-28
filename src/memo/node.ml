@@ -9,36 +9,39 @@ open Fiber.O
 module Id = Id.Make ()
 
 module Job_priority_state = struct
-  module Demand_class = struct
+  module Root_kind = struct
     type t =
-      | Bulk
-      | Normal
-      | Direct
+      | Recursive_alias
+      | Alias
+      | File
+      | Internal
 
     let equal a b =
       match a, b with
-      | Bulk, Bulk | Normal, Normal | Direct, Direct -> true
-      | Bulk, (Normal | Direct) | Normal, (Bulk | Direct) | Direct, (Bulk | Normal) ->
-        false
+      | Recursive_alias, Recursive_alias | Alias, Alias | File, File | Internal, Internal
+        -> true
+      | (Recursive_alias | Alias | File | Internal), _ -> false
     ;;
   end
 
   module Facts = struct
     type t =
-      { legacy_bulk_roots : int
-      ; legacy_normal_roots : int
-      ; legacy_direct_roots : int
-      ; demand_count : int
+      { recursive_alias_roots : int
+      ; alias_roots : int
+      ; file_roots : int
+      ; internal_roots : int
+      ; root_count : int
       ; dependency_depth : int
       ; dependent_count : int
       ; estimated_cost_ns : int64
       }
 
     let empty =
-      { legacy_bulk_roots = 0
-      ; legacy_normal_roots = 0
-      ; legacy_direct_roots = 0
-      ; demand_count = 0
+      { recursive_alias_roots = 0
+      ; alias_roots = 0
+      ; file_roots = 0
+      ; internal_roots = 0
+      ; root_count = 0
       ; dependency_depth = 0
       ; dependent_count = 0
       ; estimated_cost_ns = 0L
@@ -58,7 +61,7 @@ module Job_priority_state = struct
 
   type root =
     { id : Root_id.t
-    ; demand_class : Demand_class.t
+    ; root_kind : Root_kind.t
     ; factory_id : Id.t
     ; generation : Run.t
     }
@@ -591,7 +594,7 @@ module Call_stack = struct
 end
 
 module Job_priority = struct
-  module Demand_class = Job_priority_state.Demand_class
+  module Root_kind = Job_priority_state.Root_kind
   module Facts = Job_priority_state.Facts
   module Root_id = Job_priority_state.Root_id
 
@@ -601,9 +604,10 @@ module Job_priority = struct
 
   type node_demand =
     { mutable roots : root Root_id.Map.t
-    ; mutable bulk_roots : int
-    ; mutable normal_roots : int
-    ; mutable direct_roots : int
+    ; mutable recursive_alias_roots : int
+    ; mutable alias_roots : int
+    ; mutable file_roots : int
+    ; mutable internal_roots : int
     ; mutable facts : Facts.t
     ; mutable queue_handle : t option
     }
@@ -611,7 +615,7 @@ module Job_priority = struct
   type trace =
     { generation : int
     ; node_id : int
-    ; roots : (Demand_class.t * int) list
+    ; roots : (Root_kind.t * int) list
     ; facts : Facts.t
     }
 
@@ -680,14 +684,12 @@ module Job_priority = struct
 
   let current_root () = Fiber.Var.get Job_priority_state.current_root
 
-  let root_id { Job_priority_state.id; demand_class = _; factory_id = _; generation = _ } =
+  let root_id { Job_priority_state.id; root_kind = _; factory_id = _; generation = _ } =
     id
   ;;
 
-  let root_demand_class
-        { Job_priority_state.id = _; demand_class; factory_id = _; generation = _ }
-    =
-    demand_class
+  let root_kind { Job_priority_state.id = _; root_kind; factory_id = _; generation = _ } =
+    root_kind
   ;;
 
   let find_root_state registry root =
@@ -695,7 +697,7 @@ module Job_priority = struct
     | Some root_state -> root_state
     | None ->
       Code_error.raise
-        "Memo job demand root is not in the current registry"
+        "Memo scheduling root is not in the current registry"
         [ "root", Root_id.to_dyn root.id ]
   ;;
 
@@ -705,9 +707,10 @@ module Job_priority = struct
     | None ->
       let demand =
         { roots = Root_id.Map.empty
-        ; bulk_roots = 0
-        ; normal_roots = 0
-        ; direct_roots = 0
+        ; recursive_alias_roots = 0
+        ; alias_roots = 0
+        ; file_roots = 0
+        ; internal_roots = 0
         ; facts = Facts.empty
         ; queue_handle = None
         }
@@ -717,11 +720,17 @@ module Job_priority = struct
   ;;
 
   let facts_from_counts (demand : node_demand) =
-    let demand_count = demand.bulk_roots + demand.normal_roots + demand.direct_roots in
-    { Facts.legacy_bulk_roots = demand.bulk_roots
-    ; legacy_normal_roots = demand.normal_roots
-    ; legacy_direct_roots = demand.direct_roots
-    ; demand_count
+    let root_count =
+      demand.recursive_alias_roots
+      + demand.alias_roots
+      + demand.file_roots
+      + demand.internal_roots
+    in
+    { Facts.recursive_alias_roots = demand.recursive_alias_roots
+    ; alias_roots = demand.alias_roots
+    ; file_roots = demand.file_roots
+    ; internal_roots = demand.internal_roots
+    ; root_count
     ; dependency_depth = 0
     ; dependent_count = 0
     ; estimated_cost_ns = 0L
@@ -740,7 +749,7 @@ module Job_priority = struct
     if count = Int.max_int
     then
       Code_error.raise
-        "Memo job demand root count overflow"
+        "Memo scheduling root count overflow"
         [ "root", Root_id.to_dyn (root_id root) ];
     count + 1
   ;;
@@ -749,24 +758,32 @@ module Job_priority = struct
     if count <= 0
     then
       Code_error.raise
-        "Memo job demand root count underflow"
+        "Memo scheduling root count underflow"
         [ "root", Root_id.to_dyn (root_id root) ];
     count - 1
   ;;
 
   let add_root_count registry (demand : node_demand) root =
-    (match root_demand_class root with
-     | Bulk -> demand.bulk_roots <- increment_root_count demand.bulk_roots root
-     | Normal -> demand.normal_roots <- increment_root_count demand.normal_roots root
-     | Direct -> demand.direct_roots <- increment_root_count demand.direct_roots root);
+    (match root_kind root with
+     | Recursive_alias ->
+       demand.recursive_alias_roots
+       <- increment_root_count demand.recursive_alias_roots root
+     | Alias -> demand.alias_roots <- increment_root_count demand.alias_roots root
+     | File -> demand.file_roots <- increment_root_count demand.file_roots root
+     | Internal ->
+       demand.internal_roots <- increment_root_count demand.internal_roots root);
     update_facts registry demand
   ;;
 
   let remove_root_count registry (demand : node_demand) root =
-    (match root_demand_class root with
-     | Bulk -> demand.bulk_roots <- decrement_root_count demand.bulk_roots root
-     | Normal -> demand.normal_roots <- decrement_root_count demand.normal_roots root
-     | Direct -> demand.direct_roots <- decrement_root_count demand.direct_roots root);
+    (match root_kind root with
+     | Recursive_alias ->
+       demand.recursive_alias_roots
+       <- decrement_root_count demand.recursive_alias_roots root
+     | Alias -> demand.alias_roots <- decrement_root_count demand.alias_roots root
+     | File -> demand.file_roots <- decrement_root_count demand.file_roots root
+     | Internal ->
+       demand.internal_roots <- decrement_root_count demand.internal_roots root);
     update_facts registry demand
   ;;
 
@@ -788,7 +805,7 @@ module Job_priority = struct
          registry.roots <- Root_id.Map.remove registry.roots root.id)
   ;;
 
-  let with_root demand_class f =
+  let with_root root_kind f =
     let* factory = current_factory () in
     match factory with
     | None -> f ()
@@ -797,7 +814,7 @@ module Job_priority = struct
       if not (List.is_empty stack)
       then
         Code_error.raise
-          "Memo.with_job_demand must be entered outside a Memo computation"
+          "Memo.with_job_root must be entered outside a Memo computation"
           [];
       let registry = ensure_registry factory in
       if registry.invalidated
@@ -805,7 +822,7 @@ module Job_priority = struct
       else (
         let root =
           { Job_priority_state.id = Root_id.gen ()
-          ; demand_class
+          ; root_kind
           ; factory_id = factory.id
           ; generation = registry.generation
           }
@@ -949,8 +966,7 @@ module Job_priority = struct
           | None -> [], Facts.empty
           | Some demand ->
             ( Root_id.Map.values demand.roots
-              |> List.map ~f:(fun root ->
-                root_demand_class root, Root_id.to_int (root_id root))
+              |> List.map ~f:(fun root -> root_kind root, Root_id.to_int (root_id root))
             , demand.facts )
         in
         Some
@@ -965,8 +981,7 @@ module Job_priority = struct
   module For_tests = struct
     let current_root () =
       let+ root = current_root () in
-      Option.map root ~f:(fun root ->
-        root_demand_class root, Root_id.to_int (root_id root))
+      Option.map root ~f:(fun root -> root_kind root, Root_id.to_int (root_id root))
     ;;
 
     let current_node_roots () =
@@ -982,33 +997,35 @@ module Job_priority = struct
           match Id.Map.find registry.nodes dep_node.id with
           | None -> []
           | Some demand ->
-            let bulk_roots, normal_roots, direct_roots =
+            let recursive_alias_roots, alias_roots, file_roots, internal_roots =
               Root_id.Map.fold
                 demand.roots
-                ~init:(0, 0, 0)
-                ~f:(fun root (bulk, normal, direct) ->
-                  match root_demand_class root with
-                  | Bulk -> bulk + 1, normal, direct
-                  | Normal -> bulk, normal + 1, direct
-                  | Direct -> bulk, normal, direct + 1)
+                ~init:(0, 0, 0, 0)
+                ~f:(fun root (recursive_alias, alias, file, internal) ->
+                  match root_kind root with
+                  | Recursive_alias -> recursive_alias + 1, alias, file, internal
+                  | Alias -> recursive_alias, alias + 1, file, internal
+                  | File -> recursive_alias, alias, file + 1, internal
+                  | Internal -> recursive_alias, alias, file, internal + 1)
             in
             if
-              demand.bulk_roots <> bulk_roots
-              || demand.normal_roots <> normal_roots
-              || demand.direct_roots <> direct_roots
+              demand.recursive_alias_roots <> recursive_alias_roots
+              || demand.alias_roots <> alias_roots
+              || demand.file_roots <> file_roots
+              || demand.internal_roots <> internal_roots
               || not (Facts.equal demand.facts (facts_from_counts demand))
             then
               Code_error.raise
-                "Memo job demand counts do not match its roots"
+                "Memo job root counts do not match its roots"
                 [ "node", Dep_node.to_dyn_without_state dep_node
-                ; "bulk roots", Dyn.Int demand.bulk_roots
-                ; "normal roots", Dyn.Int demand.normal_roots
-                ; "direct roots", Dyn.Int demand.direct_roots
-                ; "demand count", Dyn.Int demand.facts.demand_count
+                ; "recursive alias roots", Dyn.Int demand.recursive_alias_roots
+                ; "alias roots", Dyn.Int demand.alias_roots
+                ; "file roots", Dyn.Int demand.file_roots
+                ; "internal roots", Dyn.Int demand.internal_roots
+                ; "root count", Dyn.Int demand.facts.root_count
                 ];
             Root_id.Map.values demand.roots
-            |> List.map ~f:(fun root ->
-              root_demand_class root, Root_id.to_int (root_id root)))
+            |> List.map ~f:(fun root -> root_kind root, Root_id.to_int (root_id root)))
       | None, _ | _, None -> []
     ;;
 

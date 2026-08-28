@@ -1383,8 +1383,8 @@ let run ?restart_started_at ?build f =
   let result = ref None in
   let goal =
     let open Memo.O in
-    Action_builder.with_job_demand
-      Memo.Job_priority.Demand_class.Normal
+    Action_builder.with_job_root
+      Memo.Job_priority.Root_kind.Internal
       (Action_builder.of_memo
          (let+ result_value = f () in
           result := Some result_value))

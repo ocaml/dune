@@ -284,13 +284,13 @@ let scheduler_job_slot
       ~memo_generation
       ~memo_node_id
       ~memo_roots
-      ~memo_demand_count
+      ~memo_root_count
       ~memo_dependency_depth
       ~memo_dependent_count
   =
   let memo_roots =
-    List.map memo_roots ~f:(fun (root_id, demand_class) ->
-      Arg.record [ "id", Arg.int root_id; "class", Arg.string demand_class ] |> Arg.list)
+    List.map memo_roots ~f:(fun (root_id, root_kind) ->
+      Arg.record [ "id", Arg.int root_id; "kind", Arg.string root_kind ] |> Arg.list)
   in
   let args =
     [ "attempt_id", Arg.int attempt_id
@@ -307,7 +307,7 @@ let scheduler_job_slot
     ; "memo_generation", Arg.int memo_generation
     ; "memo_node_id", Arg.int memo_node_id
     ; "memo_roots", Arg.list memo_roots
-    ; "memo_demand_count", Arg.int memo_demand_count
+    ; "memo_root_count", Arg.int memo_root_count
     ; "memo_dependency_depth", Arg.int memo_dependency_depth
     ; "memo_dependent_count", Arg.int memo_dependent_count
     ]

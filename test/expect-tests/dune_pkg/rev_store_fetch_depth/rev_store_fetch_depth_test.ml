@@ -76,7 +76,7 @@ let%expect_test "second fetch uses refs for efficient negotiation (fix #13323)" 
   in
   (Dune_scheduler.Scheduler.Run.go
      { concurrency = 2
-     ; priority_scheduling = false
+     ; scheduling_policy = None
      ; print_ctrl_c_warning = false
      ; watch_exclusions = []
      }

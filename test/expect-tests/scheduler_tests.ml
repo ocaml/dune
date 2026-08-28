@@ -8,7 +8,7 @@ let () = init ()
 let default =
   Clflags.display := Short;
   { Scheduler.Config.concurrency = 1
-  ; priority_scheduling = false
+  ; scheduling_policy = None
   ; print_ctrl_c_warning = false
   ; watch_exclusions = []
   }
@@ -19,7 +19,63 @@ let go ?(timeout = Time.Span.of_secs 0.3) ?(config = default) f =
   | Shutdown.E Requested -> ()
 ;;
 
-let priority_config = { default with priority_scheduling = true }
+let priority_config =
+  { default with scheduling_policy = Some Scheduler.Scheduling_policy.current }
+;;
+
+let run_policy policy =
+  let config = { default with scheduling_policy = Some policy } in
+  let names = [ "first"; "second"; "third"; "fourth" ] in
+  let ready = List.map names ~f:(fun _ -> Fiber.Ivar.create ()) in
+  let blocker_started = Fiber.Ivar.create () in
+  let release_blocker = Fiber.Ivar.create () in
+  let order = ref [] in
+  go ~config (fun () ->
+    Fiber.fork_and_join_unit
+      (fun () ->
+         Scheduler.with_job_slot (fun () ->
+           let* () = Fiber.Ivar.fill blocker_started () in
+           Fiber.Ivar.read release_blocker))
+      (fun () ->
+         let* () = Fiber.Ivar.read blocker_started in
+         Fiber.parallel_iter
+           (List.map2 names ready ~f:(fun name ready () ->
+              let* () = Fiber.Ivar.fill ready () in
+              Scheduler.with_job_slot (fun () ->
+                order := name :: !order;
+                Fiber.return ()))
+            @ [ (fun () ->
+                  let* () = Fiber.sequential_iter ready ~f:Fiber.Ivar.read in
+                  Fiber.Ivar.fill release_blocker ())
+              ])
+           ~f:(fun f -> f ())));
+  List.rev !order
+;;
+
+let%expect_test "first-class policies choose ready-queue order" =
+  let print policy =
+    Printf.printf
+      "%s: %s\n"
+      (Scheduler.Scheduling_policy.name policy)
+      (run_policy policy |> String.concat ~sep:", ")
+  in
+  print Scheduler.Scheduling_policy.fifo;
+  print Scheduler.Scheduling_policy.lifo;
+  let random = Scheduler.Scheduling_policy.random ~seed:17 in
+  let first = run_policy random in
+  let second = run_policy random in
+  let other = run_policy (Scheduler.Scheduling_policy.random ~seed:18) in
+  Printf.printf "random reproducible: %b\n" (List.equal String.equal first second);
+  Printf.printf
+    "random seed changes order: %b\n"
+    (not (List.equal String.equal first other));
+  [%expect
+    {|
+    fifo: first, second, third, fourth
+    lifo: fourth, third, second, first
+    random reproducible: true
+    random seed changes order: true |}]
+;;
 
 let%expect_test "Action builder demand roots are eager and fresh" =
   let module Action_builder = Dune_engine.Action_builder in

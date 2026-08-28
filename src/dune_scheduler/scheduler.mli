@@ -2,10 +2,26 @@
 
 open Import
 
+module Scheduling_policy : sig
+  module type S = sig
+    val name : string
+    val priority : Memo.Job_priority.Facts.t -> Fiber.Priority_queue.Priority.t
+    val order_key : Fiber.Priority_queue.Enqueue.t -> int
+  end
+
+  type t = (module S)
+
+  val fifo : t
+  val lifo : t
+  val random : seed:int -> t
+  val current : t
+  val name : t -> string
+end
+
 module Config : sig
   type t =
     { concurrency : int
-    ; priority_scheduling : bool
+    ; scheduling_policy : Scheduling_policy.t option
     ; print_ctrl_c_warning : bool
     ; watch_exclusions : string list
     }
@@ -49,7 +65,7 @@ val create_job_priority : ?priority:int -> unit -> job_priority Fiber.t
 val increase_job_priority : job_priority -> unit
 
 (** [with_job_slot f] waits for one job slot (as per [-j <jobs] to become
-    available and then calls [f]. When [Config.priority_scheduling] is enabled,
+    available and then calls [f]. When [Config.scheduling_policy] is present,
     jobs with higher priorities are admitted first; otherwise [priority] is
     ignored. If [cancellation] is fired before the job starts, the job is
     cancelled. *)

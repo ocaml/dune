@@ -21,19 +21,39 @@ module Job_priority_state = struct
       | Bulk, (Normal | Direct) | Normal, (Bulk | Direct) | Direct, (Bulk | Normal) ->
         false
     ;;
+  end
 
-    let priority = function
-      | Bulk -> 1
-      | Normal -> 2
-      | Direct -> 3
+  module Facts = struct
+    type t =
+      { legacy_bulk_roots : int
+      ; legacy_normal_roots : int
+      ; legacy_direct_roots : int
+      ; demand_count : int
+      ; dependency_depth : int
+      ; dependent_count : int
+      ; estimated_cost_ns : int64
+      }
+
+    let empty =
+      { legacy_bulk_roots = 0
+      ; legacy_normal_roots = 0
+      ; legacy_direct_roots = 0
+      ; demand_count = 0
+      ; dependency_depth = 0
+      ; dependent_count = 0
+      ; estimated_cost_ns = 0L
+      }
     ;;
+
+    let equal a b = Poly.equal a b
   end
 
   module Root_id = Stdune.Id.Make ()
 
   type factory =
     { id : Id.t
-    ; create : priority:int -> Fiber.Throttle.priority
+    ; create : facts:Facts.t -> Fiber.Throttle.priority
+    ; update : Fiber.Throttle.priority -> facts:Facts.t -> unit
     }
 
   type root =
@@ -572,6 +592,7 @@ end
 
 module Job_priority = struct
   module Demand_class = Job_priority_state.Demand_class
+  module Facts = Job_priority_state.Facts
   module Root_id = Job_priority_state.Root_id
 
   type t = Fiber.Throttle.priority
@@ -583,7 +604,7 @@ module Job_priority = struct
     ; mutable bulk_roots : int
     ; mutable normal_roots : int
     ; mutable direct_roots : int
-    ; mutable score : int
+    ; mutable facts : Facts.t
     ; mutable queue_handle : t option
     }
 
@@ -591,12 +612,14 @@ module Job_priority = struct
     { generation : int
     ; node_id : int
     ; roots : (Demand_class.t * int) list
+    ; facts : Facts.t
     }
 
   type root_state = { mutable touched_nodes : Dep_node.packed Id.Map.t }
 
   type registry =
     { factory_id : Id.t
+    ; update : t -> facts:Facts.t -> unit
     ; generation : Run.t
     ; mutable nodes : node_demand Id.Map.t
     ; mutable roots : root_state Root_id.Map.t
@@ -611,7 +634,7 @@ module Job_priority = struct
       registry.invalidated <- true;
       Id.Map.iter registry.nodes ~f:(fun demand ->
         Option.iter demand.queue_handle ~f:(fun handle ->
-          Fiber.Throttle.set_priority handle 0));
+          registry.update handle ~facts:Facts.empty));
       registry.nodes <- Id.Map.empty;
       registry.roots <- Root_id.Map.empty)
   ;;
@@ -620,8 +643,8 @@ module Job_priority = struct
     Option.iter !current_registry ~f:invalidate_registry
   ;;
 
-  let with_factory create f =
-    let factory = { Job_priority_state.id = Id.gen (); create } in
+  let with_factory ~create ~update f =
+    let factory = { Job_priority_state.id = Id.gen (); create; update } in
     Fiber.Var.set Job_priority_state.current_factory (Some factory) (fun () ->
       Fiber.finalize f ~finally:(fun () ->
         (match !current_registry with
@@ -644,6 +667,7 @@ module Job_priority = struct
       Option.iter previous ~f:invalidate_registry;
       let registry =
         { factory_id = factory.id
+        ; update = factory.update
         ; generation
         ; nodes = Id.Map.empty
         ; roots = Root_id.Map.empty
@@ -684,7 +708,7 @@ module Job_priority = struct
         ; bulk_roots = 0
         ; normal_roots = 0
         ; direct_roots = 0
-        ; score = 0
+        ; facts = Facts.empty
         ; queue_handle = None
         }
       in
@@ -692,22 +716,24 @@ module Job_priority = struct
       demand
   ;;
 
-  let score_from_counts (demand : node_demand) =
-    if demand.direct_roots > 0
-    then Demand_class.priority Direct
-    else if demand.normal_roots > 0
-    then Demand_class.priority Normal
-    else if demand.bulk_roots > 0
-    then Demand_class.priority Bulk
-    else 0
+  let facts_from_counts (demand : node_demand) =
+    let demand_count = demand.bulk_roots + demand.normal_roots + demand.direct_roots in
+    { Facts.legacy_bulk_roots = demand.bulk_roots
+    ; legacy_normal_roots = demand.normal_roots
+    ; legacy_direct_roots = demand.direct_roots
+    ; demand_count
+    ; dependency_depth = 0
+    ; dependent_count = 0
+    ; estimated_cost_ns = 0L
+    }
   ;;
 
-  let set_score (demand : node_demand) score =
-    if score <> demand.score
+  let update_facts registry (demand : node_demand) =
+    let facts = facts_from_counts demand in
+    if not (Facts.equal facts demand.facts)
     then (
-      demand.score <- score;
-      Option.iter demand.queue_handle ~f:(fun handle ->
-        Fiber.Throttle.set_priority handle score))
+      demand.facts <- facts;
+      Option.iter demand.queue_handle ~f:(fun handle -> registry.update handle ~facts))
   ;;
 
   let increment_root_count count root =
@@ -728,20 +754,20 @@ module Job_priority = struct
     count - 1
   ;;
 
-  let add_root_count (demand : node_demand) root =
+  let add_root_count registry (demand : node_demand) root =
     (match root_demand_class root with
      | Bulk -> demand.bulk_roots <- increment_root_count demand.bulk_roots root
      | Normal -> demand.normal_roots <- increment_root_count demand.normal_roots root
      | Direct -> demand.direct_roots <- increment_root_count demand.direct_roots root);
-    set_score demand (score_from_counts demand)
+    update_facts registry demand
   ;;
 
-  let remove_root_count (demand : node_demand) root =
+  let remove_root_count registry (demand : node_demand) root =
     (match root_demand_class root with
      | Bulk -> demand.bulk_roots <- decrement_root_count demand.bulk_roots root
      | Normal -> demand.normal_roots <- decrement_root_count demand.normal_roots root
      | Direct -> demand.direct_roots <- decrement_root_count demand.direct_roots root);
-    set_score demand (score_from_counts demand)
+    update_facts registry demand
   ;;
 
   let remove_root root =
@@ -758,7 +784,7 @@ module Job_priority = struct
              if Root_id.Map.mem demand.roots root.id
              then (
                demand.roots <- Root_id.Map.remove demand.roots root.id;
-               remove_root_count demand root));
+               remove_root_count registry demand root));
          registry.roots <- Root_id.Map.remove registry.roots root.id)
   ;;
 
@@ -824,7 +850,7 @@ module Job_priority = struct
           demand.roots <- Root_id.Map.set demand.roots root.id root;
           let root_state = find_root_state registry root in
           root_state.touched_nodes <- Id.Map.set root_state.touched_nodes dep_node.id node;
-          add_root_count demand root;
+          add_root_count registry demand root;
           let work =
             List.fold_left (active_dependencies dep_node) ~init:work ~f:(fun work dep ->
               (dep, root) :: work)
@@ -900,7 +926,7 @@ module Job_priority = struct
           match demand.queue_handle with
           | Some priority -> priority
           | None ->
-            let priority = factory.create ~priority:demand.score in
+            let priority = factory.create ~facts:demand.facts in
             demand.queue_handle <- Some priority;
             priority
         in
@@ -918,18 +944,20 @@ module Job_priority = struct
       then None
       else (
         let (Dep_node.T dep_node) = Stack_frame_with_state.dep_node frame in
-        let roots =
+        let roots, facts =
           match Id.Map.find registry.nodes dep_node.id with
-          | None -> []
+          | None -> [], Facts.empty
           | Some demand ->
-            Root_id.Map.values demand.roots
-            |> List.map ~f:(fun root ->
-              root_demand_class root, Root_id.to_int (root_id root))
+            ( Root_id.Map.values demand.roots
+              |> List.map ~f:(fun root ->
+                root_demand_class root, Root_id.to_int (root_id root))
+            , demand.facts )
         in
         Some
           { generation = Run.to_int registry.generation
           ; node_id = Id.to_int dep_node.id
           ; roots
+          ; facts
           })
     | None, _ | _, None -> None
   ;;
@@ -968,7 +996,7 @@ module Job_priority = struct
               demand.bulk_roots <> bulk_roots
               || demand.normal_roots <> normal_roots
               || demand.direct_roots <> direct_roots
-              || demand.score <> score_from_counts demand
+              || not (Facts.equal demand.facts (facts_from_counts demand))
             then
               Code_error.raise
                 "Memo job demand counts do not match its roots"
@@ -976,7 +1004,7 @@ module Job_priority = struct
                 ; "bulk roots", Dyn.Int demand.bulk_roots
                 ; "normal roots", Dyn.Int demand.normal_roots
                 ; "direct roots", Dyn.Int demand.direct_roots
-                ; "score", Dyn.Int demand.score
+                ; "demand count", Dyn.Int demand.facts.demand_count
                 ];
             Root_id.Map.values demand.roots
             |> List.map ~f:(fun root ->

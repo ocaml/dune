@@ -8,7 +8,7 @@ module Vcs = Dune_vcs.Vcs
 let run thunk =
   let config : Scheduler.Config.t =
     { concurrency = 1
-    ; priority_scheduling = false
+    ; scheduling_policy = None
     ; print_ctrl_c_warning = false
     ; watch_exclusions = []
     }

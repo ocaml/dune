@@ -270,6 +270,18 @@ module Job_priority : sig
     val equal : t -> t -> bool
   end
 
+  module Facts : sig
+    type t =
+      { legacy_bulk_roots : int
+      ; legacy_normal_roots : int
+      ; legacy_direct_roots : int
+      ; demand_count : int
+      ; dependency_depth : int
+      ; dependent_count : int
+      ; estimated_cost_ns : int64
+      }
+  end
+
   module Root_id : sig
     type t
   end
@@ -278,7 +290,12 @@ module Job_priority : sig
   type factory
   type root
 
-  val with_factory : (priority:int -> t) -> (unit -> 'a Fiber.t) -> 'a Fiber.t
+  val with_factory
+    :  create:(facts:Facts.t -> t)
+    -> update:(t -> facts:Facts.t -> unit)
+    -> (unit -> 'a Fiber.t)
+    -> 'a Fiber.t
+
   val current_factory : unit -> factory option Fiber.t
   val with_root : Demand_class.t -> (unit -> 'a Fiber.t) -> 'a Fiber.t
   val current_root : unit -> root option Fiber.t
@@ -290,6 +307,7 @@ module Job_priority : sig
     { generation : int
     ; node_id : int
     ; roots : (Demand_class.t * int) list
+    ; facts : Facts.t
     }
 
   val current_trace : unit -> trace option Fiber.t

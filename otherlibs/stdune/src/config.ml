@@ -88,6 +88,30 @@ let copy_file =
 
 let priority_scheduling = make_toggle ~name:"priority_scheduling" ~default:`Disabled
 
+let priority_scheduling_policy =
+  make
+    ~name:"priority_scheduling_policy"
+    ~of_string:(function
+      | "fifo" -> Ok `Fifo
+      | "lifo" -> Ok `Lifo
+      | "random" -> Ok `Random
+      | "current" -> Ok `Current
+      | _ ->
+        Error
+          (sprintf "only %S, %S, %S, and %S are allowed" "fifo" "lifo" "random" "current"))
+    ~default:`Current
+;;
+
+let priority_scheduling_random_seed =
+  make
+    ~name:"priority_scheduling_random_seed"
+    ~of_string:(fun value ->
+      match Int.of_string value with
+      | Some seed -> Ok seed
+      | None -> Error "expected an integer")
+    ~default:0
+;;
+
 let background_default =
   match Platform.OS.value with
   | Linux | Windows | Darwin -> `Enabled

@@ -1,10 +1,86 @@
 open Import
 open Fiber.O
 
+module Scheduling_policy = struct
+  module type S = sig
+    val name : string
+    val priority : Memo.Job_priority.Facts.t -> Fiber.Priority_queue.Priority.t
+    val order_key : Fiber.Priority_queue.Enqueue.t -> int
+  end
+
+  type t = (module S)
+
+  let zero_priority _ = Fiber.Priority_queue.Priority.zero
+  let fifo_order { Fiber.Priority_queue.Enqueue.sequence; _ } = -sequence
+  let lifo_order { Fiber.Priority_queue.Enqueue.sequence; _ } = sequence
+
+  module Fifo = struct
+    let name = "fifo"
+    let priority = zero_priority
+    let order_key = fifo_order
+  end
+
+  module Lifo = struct
+    let name = "lifo"
+    let priority = zero_priority
+    let order_key = lifo_order
+  end
+
+  module Current = struct
+    let name = "current"
+
+    let priority
+          { Memo.Job_priority.Facts.legacy_bulk_roots
+          ; legacy_normal_roots
+          ; legacy_direct_roots
+          ; demand_count = _
+          ; dependency_depth = _
+          ; dependent_count = _
+          ; estimated_cost_ns = _
+          }
+      =
+      let primary =
+        if legacy_direct_roots > 0
+        then 3
+        else if legacy_normal_roots > 0
+        then 2
+        else if legacy_bulk_roots > 0
+        then 1
+        else 0
+      in
+      Fiber.Priority_queue.Priority.make ~primary ~secondary:0 ~tertiary:0
+    ;;
+
+    let order_key = fifo_order
+  end
+
+  let mix seed value =
+    let open Int64 in
+    let mix x = mul (logxor x (shift_right_logical x 16)) 0x45d9f3bL in
+    let x = logxor (of_int value) (shift_left (of_int seed) 1) |> mix |> mix in
+    logxor x (shift_right_logical x 16) |> logand 0x3fffffffL |> to_int
+  ;;
+
+  let random ~seed =
+    let module Random = struct
+      let name = sprintf "random:%d" seed
+      let priority = zero_priority
+      let order_key { Fiber.Priority_queue.Enqueue.random_key; _ } = mix seed random_key
+    end
+    in
+    (module Random : S)
+  ;;
+
+  let fifo = (module Fifo : S)
+  let lifo = (module Lifo : S)
+  let current = (module Current : S)
+  let name (module Policy : S) = Policy.name
+end
+
 module Config = struct
   type t =
     { concurrency : int
-    ; priority_scheduling : bool
+    ; scheduling_policy : Scheduling_policy.t option
     ; print_ctrl_c_warning : bool
     ; watch_exclusions : string list
     }
@@ -78,7 +154,7 @@ let with_job_slot ?cancellation ?priority f =
     check_cancelled cancellation;
     f ()
   in
-  if not t.priority_scheduling
+  if Option.is_none t.job_priority
   then Fiber.Throttle.run t.job_throttle f
   else
     let* priority =
@@ -88,16 +164,22 @@ let with_job_slot ?cancellation ?priority f =
     in
     let attempt_id = next_job_slot_attempt_id () in
     let trace phase =
-      let priority =
+      let rank =
         match priority with
-        | None -> 0
-        | Some priority -> Fiber.Throttle.priority priority
+        | None -> Fiber.Priority_queue.Priority.zero
+        | Some priority -> Fiber.Throttle.rank priority
       in
       let+ memo_trace = Memo.Job_priority.current_trace () in
-      let memo_generation, memo_node_id, memo_roots =
+      let ( memo_generation
+          , memo_node_id
+          , memo_roots
+          , memo_demand_count
+          , memo_dependency_depth
+          , memo_dependent_count )
+        =
         match memo_trace with
-        | None -> -1, -1, []
-        | Some { Memo.Job_priority.generation; node_id; roots } ->
+        | None -> -1, -1, [], 0, 0, 0
+        | Some { Memo.Job_priority.generation; node_id; roots; facts } ->
           let roots =
             List.map roots ~f:(fun (demand_class, root_id) ->
               let demand_class =
@@ -108,17 +190,28 @@ let with_job_slot ?cancellation ?priority f =
               in
               root_id, demand_class)
           in
-          generation, node_id, roots
+          ( generation
+          , node_id
+          , roots
+          , facts.demand_count
+          , facts.dependency_depth
+          , facts.dependent_count )
       in
       Dune_trace.emit ~buffered:true Scheduler (fun () ->
         Dune_trace.Event.scheduler_job_slot
           ~attempt_id
           ~phase
-          ~priority
+          ~policy:(Option.value_exn t.scheduling_policy_name)
+          ~priority:rank.primary
+          ~priority_secondary:rank.secondary
+          ~priority_tertiary:rank.tertiary
           ~waiting:(Fiber.Throttle.waiting t.job_throttle)
           ~memo_generation
           ~memo_node_id
-          ~memo_roots)
+          ~memo_roots
+          ~memo_demand_count
+          ~memo_dependency_depth
+          ~memo_dependent_count)
     in
     let* () = trace `Ready in
     Fiber.Throttle.run
@@ -504,9 +597,21 @@ let prepare (config : Config.t) ~events ~file_watcher =
   in
   let process_watcher = Process_watcher.init events in
   let async_io = Async_io.create events in
+  let job_priority, scheduling_policy_name, job_throttle =
+    match config.scheduling_policy with
+    | None -> None, None, Fiber.Throttle.create config.concurrency
+    | Some policy ->
+      let module Policy = (val policy : Scheduling_policy.S) in
+      ( Some Policy.priority
+      , Some Policy.name
+      , Fiber.Throttle.create_with_order_key
+          config.concurrency
+          ~order_key:Policy.order_key )
+  in
   let t =
-    { job_throttle = Fiber.Throttle.create config.concurrency
-    ; priority_scheduling = config.priority_scheduling
+    { job_throttle
+    ; job_priority
+    ; scheduling_policy_name
     ; process_watcher
     ; events
     ; file_watcher
@@ -571,12 +676,14 @@ module Run_once = struct
           Fiber.return ())
     in
     let fiber =
-      if t.priority_scheduling
-      then
+      match t.job_priority with
+      | None -> run ()
+      | Some priority ->
         Memo.Job_priority.with_factory
-          (fun ~priority -> Fiber.Throttle.create_priority ~priority t.job_throttle)
+          ~create:(fun ~facts ->
+            Fiber.Throttle.create_rank ~rank:(priority facts) t.job_throttle)
+          ~update:(fun handle ~facts -> Fiber.Throttle.set_rank handle (priority facts))
           run
-      else run ()
     in
     match Fiber.run fiber ~iter:(fun () -> iter t) with
     | Ok res ->
@@ -603,7 +710,9 @@ let async f =
   let* () = Fiber.return () in
   let t = t () in
   let* priority =
-    if t.priority_scheduling then Memo.Job_priority.current () else Fiber.return None
+    if Option.is_some t.job_priority
+    then Memo.Job_priority.current ()
+    else Fiber.return None
   in
   let restart_blocker = Option.map priority ~f:Fiber.Throttle.create_restart_blocker in
   let release_restart_blocker () =

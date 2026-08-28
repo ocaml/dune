@@ -757,11 +757,21 @@ module Dune_config = struct
      := match t.display with
         | Tui -> Stdune.Display.Quiet
         | Simple { verbosity; _ } -> verbosity);
+    let scheduling_policy =
+      match Config.get Config.priority_scheduling with
+      | `Disabled -> None
+      | `Enabled ->
+        Some
+          (match Config.get Config.priority_scheduling_policy with
+           | `Fifo -> Dune_scheduler.Scheduler.Scheduling_policy.fifo
+           | `Lifo -> Dune_scheduler.Scheduler.Scheduling_policy.lifo
+           | `Random ->
+             Dune_scheduler.Scheduler.Scheduling_policy.random
+               ~seed:(Config.get Config.priority_scheduling_random_seed)
+           | `Current -> Dune_scheduler.Scheduler.Scheduling_policy.current)
+    in
     { Dune_scheduler.Scheduler.Config.concurrency
-    ; priority_scheduling =
-        (match Config.get Config.priority_scheduling with
-         | `Enabled -> true
-         | `Disabled -> false)
+    ; scheduling_policy
     ; print_ctrl_c_warning
     ; watch_exclusions
     }

@@ -96,7 +96,7 @@ let lock_dir_encode_decode_round_trip_test ?commit ~lock_dir_path ~lock_dir () =
 let run thunk =
   let config : Scheduler.Config.t =
     { concurrency = 1
-    ; priority_scheduling = false
+    ; scheduling_policy = None
     ; print_ctrl_c_warning = false
     ; watch_exclusions = []
     }

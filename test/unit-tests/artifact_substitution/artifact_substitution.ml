@@ -9,7 +9,7 @@ let () =
 
 let scheduler_config =
   { Scheduler.Config.concurrency = 1
-  ; priority_scheduling = false
+  ; scheduling_policy = None
   ; print_ctrl_c_warning = false
   ; watch_exclusions = []
   }

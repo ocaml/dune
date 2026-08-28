@@ -121,11 +121,17 @@ module Event : sig
   val scheduler_job_slot
     :  attempt_id:int
     -> phase:[ `Ready | `Start ]
+    -> policy:string
     -> priority:int
+    -> priority_secondary:int
+    -> priority_tertiary:int
     -> waiting:int
     -> memo_generation:int
     -> memo_node_id:int
     -> memo_roots:(int * string) list
+    -> memo_demand_count:int
+    -> memo_dependency_depth:int
+    -> memo_dependent_count:int
     -> t
 
   val process_cleanup_start : unit -> t

@@ -227,7 +227,7 @@ let () =
   let config =
     Clflags.display := Quiet;
     { Scheduler.Config.concurrency = 10
-    ; priority_scheduling = false
+    ; scheduling_policy = None
     ; print_ctrl_c_warning = false
     ; watch_exclusions = []
     }

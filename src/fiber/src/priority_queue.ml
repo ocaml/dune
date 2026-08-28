@@ -160,7 +160,7 @@ let set_rank t rank =
       insert_waiter t.owner waiter))
 ;;
 
-let set_priority t priority = set_rank t (Priority.of_int priority)
+let set_priority t primary = set_rank t { t.value with primary }
 
 let increase_priority_by t by =
   if by < 0
@@ -185,9 +185,10 @@ let check_priority owner t =
 ;;
 
 let random_key attempt_id =
-  let x = attempt_id lxor (attempt_id lsr 16) * 0x45d9f3b in
-  let x = x lxor (x lsr 16) * 0x45d9f3b in
-  x lxor (x lsr 16) land Int.max_int
+  let open Int64 in
+  let mix x = mul (logxor x (shift_right_logical x 16)) 0x45d9f3bL in
+  let x = of_int attempt_id |> mix |> mix in
+  logxor x (shift_right_logical x 16) |> logand 0x3fffffffL |> to_int
 ;;
 
 let push owner priority value =

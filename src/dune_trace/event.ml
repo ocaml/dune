@@ -276,11 +276,17 @@ let scheduler_idle () =
 let scheduler_job_slot
       ~attempt_id
       ~phase
+      ~policy
       ~priority
+      ~priority_secondary
+      ~priority_tertiary
       ~waiting
       ~memo_generation
       ~memo_node_id
       ~memo_roots
+      ~memo_demand_count
+      ~memo_dependency_depth
+      ~memo_dependent_count
   =
   let memo_roots =
     List.map memo_roots ~f:(fun (root_id, demand_class) ->
@@ -293,11 +299,17 @@ let scheduler_job_slot
           (match phase with
            | `Ready -> "ready"
            | `Start -> "start") )
+    ; "policy", Arg.string policy
     ; "priority", Arg.int priority
+    ; "priority_secondary", Arg.int priority_secondary
+    ; "priority_tertiary", Arg.int priority_tertiary
     ; "waiting", Arg.int waiting
     ; "memo_generation", Arg.int memo_generation
     ; "memo_node_id", Arg.int memo_node_id
     ; "memo_roots", Arg.list memo_roots
+    ; "memo_demand_count", Arg.int memo_demand_count
+    ; "memo_dependency_depth", Arg.int memo_dependency_depth
+    ; "memo_dependent_count", Arg.int memo_dependent_count
     ]
   in
   Event.instant ~args ~name:"job-slot" (Time.now ()) Scheduler

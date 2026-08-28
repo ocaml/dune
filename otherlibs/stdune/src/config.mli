@@ -31,6 +31,9 @@ val copy_file : [ `Portable | `Best ] t
     priorities. *)
 val priority_scheduling : Toggle.t t
 
+val priority_scheduling_policy : [ `Fifo | `Lifo | `Random | `Current ] t
+val priority_scheduling_random_seed : int t
+
 (** Compute digests of files in a background thread *)
 val background_digests : Toggle.t t
 

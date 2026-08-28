@@ -162,10 +162,11 @@ let extend_action_env t ~dir action =
       (let open Memo.O in
        t.get_node dir >>= Env_node.external_env)
   in
-  (* Cons path-like vars from action.env (bin-layout PATH, package-layout
-     OCAMLPATH/etc.) onto the directory env so that both layout and system
-     entries remain visible. Other vars from action.env overwrite dir env. *)
-  let env = Install.Roots.extend_env_concat_path_vars env action.env in
+  (* Cons path-like vars from the action's environment (bin-layout PATH,
+     package-layout OCAMLPATH/etc.) onto the directory env so that both layout
+     and system entries remain visible. Other vars from the action's environment
+     overwrite dir env. *)
+  let env = Install.Roots.extend_env_concat_path_vars env action.props.env in
   Action.Full.add_env env action
 ;;
 

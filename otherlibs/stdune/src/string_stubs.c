@@ -12,3 +12,14 @@ CAMLprim value dune_string_index_from(value v_string, value v_position, value v_
     (const unsigned char *)memchr(string + position, Int_val(v_char), length - position);
   return Val_long(result == NULL ? -1 : result - string);
 }
+
+CAMLprim value dune_bytes_index_in_range(
+  value v_bytes, value v_position, value v_length, value v_char)
+{
+  const unsigned char *bytes = (const unsigned char *)String_val(v_bytes);
+  size_t position = Long_val(v_position);
+  size_t length = Long_val(v_length);
+  const unsigned char *result =
+    (const unsigned char *)memchr(bytes + position, Int_val(v_char), length);
+  return Val_long(result == NULL ? -1 : result - bytes);
+}

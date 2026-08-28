@@ -290,6 +290,41 @@ let%expect_test "checked forward searches reject invalid positions" =
   [%expect {| all invalid positions rejected |}]
 ;;
 
+let%expect_test "bounded bytes search agrees with a scalar search" =
+  let scalar_index_in_range bytes ~pos ~len char =
+    let stop = pos + len in
+    let rec loop i =
+      if i = stop
+      then -1
+      else if Char.equal (Bytes.unsafe_get bytes i) char
+      then i
+      else loop (i + 1)
+    in
+    loop pos
+  in
+  let bytes = Bytes.of_string (String.init 17 ~f:(fun i -> Char.chr (i * 47 land 255))) in
+  for pos = 0 to Bytes.length bytes do
+    for len = 0 to Bytes.length bytes - pos do
+      for code = 0 to 255 do
+        let char = Char.chr code in
+        assert (
+          Int.equal
+            (Bytes.index_in_range_unchecked bytes ~pos ~len char)
+            (scalar_index_in_range bytes ~pos ~len char))
+      done
+    done
+  done;
+  let all_bytes = Bytes.of_string (String.init 256 ~f:Char.chr) in
+  for code = 0 to 255 do
+    assert (
+      Int.equal
+        (Bytes.index_in_range_unchecked all_bytes ~pos:code ~len:1 (Char.chr code))
+        code)
+  done;
+  print_endline "all bounded searches agree";
+  [%expect {| all bounded searches agree |}]
+;;
+
 let%expect_test "reverse searches agree with the standard library" =
   List.iter search_test_strings ~f:(fun s ->
     for pos = -1 to String.length s - 1 do

@@ -509,15 +509,22 @@ let%expect_test "the same root observes an active nested dependency once" =
 let%expect_test "one root kind leaves a dependency chain behind FIFO work" =
   let module Root_kind = Memo.Job_priority.Root_kind in
   let order = ref [] in
+  let record name =
+    let+ trace = Memo.Job_priority.current_trace () in
+    let depth =
+      match trace with
+      | None -> -1
+      | Some trace -> trace.facts.dependency_depth
+    in
+    order := (name, depth) :: !order
+  in
   let flat_ready = Fiber.Ivar.create () in
   let chain_ready = Fiber.Ivar.create () in
   let job name ready =
     Memo.Lazy.create ~name:("same-root-" ^ name) (fun () ->
       Memo.of_reproducible_fiber
         (let* () = Fiber.Ivar.fill ready () in
-         Scheduler.with_job_slot (fun () ->
-           order := name :: !order;
-           Fiber.return ())))
+         Scheduler.with_job_slot (fun () -> record name)))
   in
   let flat = job "flat" flat_ready in
   let chain =
@@ -527,10 +534,7 @@ let%expect_test "one root kind leaves a dependency chain behind FIFO work" =
       Memo.Lazy.create ~name:("same-root-" ^ name) (fun () ->
         let open Memo.O in
         let* () = Memo.Lazy.force dependency in
-        Memo.of_reproducible_fiber
-          (Scheduler.with_job_slot (fun () ->
-             order := name :: !order;
-             Fiber.return ()))))
+        Memo.of_reproducible_fiber (Scheduler.with_job_slot (fun () -> record name))))
   in
   let blocker_started = Fiber.Ivar.create () in
   let release_blocker = Fiber.Ivar.create () in
@@ -552,14 +556,15 @@ let%expect_test "one root kind leaves a dependency chain behind FIFO work" =
               let* () = Fiber.Ivar.read flat_ready in
               let* () = Fiber.Ivar.read chain_ready in
               Fiber.Ivar.fill release_blocker ())));
-  List.rev !order |> List.iter ~f:print_endline;
+  List.rev !order
+  |> List.iter ~f:(fun (name, depth) -> Printf.printf "%s depth %d\n" name depth);
   [%expect
     {|
-    flat
-    chain-0
-    chain-1
-    chain-2
-    chain-3 |}]
+    flat depth 0
+    chain-0 depth 3
+    chain-1 depth 2
+    chain-2 depth 1
+    chain-3 depth 0 |}]
 ;;
 
 let%expect_test "distinct same-class roots reach an active nested dependency" =

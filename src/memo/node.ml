@@ -4,6 +4,7 @@ module Metrics = Metrics0
 module Console = Console
 module Debug = Memo_debug
 module Event = Spec.Event
+module Dag0 = Dag
 include Fiber
 open Fiber.O
 module Id = Id.Make ()
@@ -602,14 +603,27 @@ module Job_priority = struct
   type factory = Job_priority_state.factory
   type root = Job_priority_state.root
 
+  module Ranking_dag =
+    Dag0.Make
+      (struct
+        type t = Dep_node.packed
+      end)
+      ()
+
+  type root_reach =
+    { root : root
+    ; mutable depth : int
+    }
+
   type node_demand =
-    { mutable roots : root Root_id.Map.t
+    { mutable roots : root_reach Root_id.Map.t
     ; mutable recursive_alias_roots : int
     ; mutable alias_roots : int
     ; mutable file_roots : int
     ; mutable internal_roots : int
     ; mutable facts : Facts.t
     ; mutable queue_handle : t option
+    ; ranking_dag_node : Ranking_dag.node
     }
 
   type trace =
@@ -628,6 +642,7 @@ module Job_priority = struct
     ; mutable nodes : node_demand Id.Map.t
     ; mutable roots : root_state Root_id.Map.t
     ; mutable invalidated : bool
+    ; mutable depth_enabled : bool
     }
 
   let current_registry : registry option ref = ref None
@@ -676,6 +691,7 @@ module Job_priority = struct
         ; nodes = Id.Map.empty
         ; roots = Root_id.Map.empty
         ; invalidated = false
+        ; depth_enabled = true
         }
       in
       current_registry := Some registry;
@@ -705,6 +721,7 @@ module Job_priority = struct
     match Id.Map.find registry.nodes dep_node.id with
     | Some demand -> demand
     | None ->
+      let node = Dep_node.T dep_node in
       let demand =
         { roots = Root_id.Map.empty
         ; recursive_alias_roots = 0
@@ -713,36 +730,58 @@ module Job_priority = struct
         ; internal_roots = 0
         ; facts = Facts.empty
         ; queue_handle = None
+        ; ranking_dag_node = Ranking_dag.create_node node
         }
       in
       registry.nodes <- Id.Map.set registry.nodes dep_node.id demand;
       demand
   ;;
 
-  let facts_from_counts (demand : node_demand) =
+  (* Keep ranks bounded while retaining far more depth than practical build chains. *)
+  let max_dependency_depth = 65_535
+
+  let next_dependency_depth depth =
+    if depth >= max_dependency_depth then max_dependency_depth else depth + 1
+  ;;
+
+  let facts_from_counts registry (demand : node_demand) =
     let root_count =
       demand.recursive_alias_roots
       + demand.alias_roots
       + demand.file_roots
       + demand.internal_roots
     in
+    let dependency_depth =
+      if registry.depth_enabled
+      then
+        Root_id.Map.fold demand.roots ~init:0 ~f:(fun reach depth ->
+          Int.max reach.depth depth)
+      else 0
+    in
     { Facts.recursive_alias_roots = demand.recursive_alias_roots
     ; alias_roots = demand.alias_roots
     ; file_roots = demand.file_roots
     ; internal_roots = demand.internal_roots
     ; root_count
-    ; dependency_depth = 0
+    ; dependency_depth
     ; dependent_count = 0
     ; estimated_cost_ns = 0L
     }
   ;;
 
   let update_facts registry (demand : node_demand) =
-    let facts = facts_from_counts demand in
+    let facts = facts_from_counts registry demand in
     if not (Facts.equal facts demand.facts)
     then (
       demand.facts <- facts;
       Option.iter demand.queue_handle ~f:(fun handle -> registry.update handle ~facts))
+  ;;
+
+  let disable_depth registry =
+    if registry.depth_enabled
+    then (
+      registry.depth_enabled <- false;
+      Id.Map.iter registry.nodes ~f:(update_facts registry))
   ;;
 
   let increment_root_count count root =
@@ -859,54 +898,91 @@ module Job_priority = struct
   let add_roots registry dependency roots =
     let rec loop = function
       | [] -> ()
-      | ((Dep_node.T dep_node as node), root) :: work ->
+      | ((Dep_node.T dep_node as node), root, depth) :: work ->
         let demand = find_node_demand registry node in
-        if Root_id.Map.mem demand.roots root.Job_priority_state.id
-        then loop work
-        else (
-          demand.roots <- Root_id.Map.set demand.roots root.id root;
-          let root_state = find_root_state registry root in
-          root_state.touched_nodes <- Id.Map.set root_state.touched_nodes dep_node.id node;
-          add_root_count registry demand root;
-          let work =
+        let changed =
+          match Root_id.Map.find demand.roots root.Job_priority_state.id with
+          | Some reach when (not registry.depth_enabled) || depth <= reach.depth -> false
+          | Some reach ->
+            reach.depth <- depth;
+            update_facts registry demand;
+            true
+          | None ->
+            let reach = { root; depth = (if registry.depth_enabled then depth else 0) } in
+            demand.roots <- Root_id.Map.set demand.roots root.id reach;
+            let root_state = find_root_state registry root in
+            root_state.touched_nodes
+            <- Id.Map.set root_state.touched_nodes dep_node.id node;
+            add_root_count registry demand root;
+            true
+        in
+        let work =
+          if changed
+          then
             List.fold_left (active_dependencies dep_node) ~init:work ~f:(fun work dep ->
-              (dep, root) :: work)
-          in
-          loop work)
+              (dep, root, next_dependency_depth depth) :: work)
+          else work
+        in
+        loop work
     in
-    loop (List.map roots ~f:(fun root -> dependency, root))
+    loop (List.map roots ~f:(fun (root, depth) -> dependency, root, depth))
   ;;
 
-  let record_dependency (dep_node : _ Dep_node.t) ~caller =
+  let record_dependency registry (dep_node : _ Dep_node.t) ~caller =
     match caller with
     | None -> ()
-    | Some caller ->
-      let (Dep_node.T caller) = Stack_frame_with_state.dep_node caller in
+    | Some caller_frame ->
+      let (Dep_node.T caller as caller_node) =
+        Stack_frame_with_state.dep_node caller_frame
+      in
       let dependency = Dep_node.T dep_node in
       let add dependencies =
         if List.exists dependencies ~f:(Dep_node.Packed.equal dependency)
-        then dependencies
-        else dependency :: dependencies
+        then false, dependencies
+        else true, dependency :: dependencies
       in
-      (match caller.state with
-       | Computing { compute } ->
-         compute.job_priority_dependencies <- add compute.job_priority_dependencies
-       | Restoring { restore_from_cache } ->
-         restore_from_cache.job_priority_dependencies
-         <- add restore_from_cache.job_priority_dependencies
-       | Cached | Not_cached | Out_of_date ->
-         Code_error.raise
-           "Job_priority.record_dependency: caller is not active"
-           [ "caller", Dep_node.to_dyn_without_state caller
-           ; "state", State.to_dyn caller.state
-           ])
+      let added =
+        match caller.state with
+        | Computing { compute } ->
+          let added, dependencies = add compute.job_priority_dependencies in
+          compute.job_priority_dependencies <- dependencies;
+          added
+        | Restoring { restore_from_cache } ->
+          let added, dependencies = add restore_from_cache.job_priority_dependencies in
+          restore_from_cache.job_priority_dependencies <- dependencies;
+          added
+        | Cached | Not_cached | Out_of_date ->
+          Code_error.raise
+            "Job_priority.record_dependency: caller is not active"
+            [ "caller", Dep_node.to_dyn_without_state caller
+            ; "state", State.to_dyn caller.state
+            ]
+      in
+      if added && registry.depth_enabled
+      then (
+        let caller = find_node_demand registry caller_node in
+        let dependency = find_node_demand registry dependency in
+        try
+          Ranking_dag.add_assuming_missing
+            caller.ranking_dag_node
+            dependency.ranking_dag_node
+        with
+        | Ranking_dag.Cycle _ ->
+          (* Positive longest-path relaxation is undefined on a cycle. Memo's cycle
+             detector remains responsible for reporting it; scheduling falls back to
+             zero depth for the rest of this generation. *)
+          disable_depth registry)
   ;;
 
   let roots_of_caller registry caller =
     let (Dep_node.T caller) = Stack_frame_with_state.dep_node caller in
     match Id.Map.find registry.nodes caller.id with
     | None -> []
-    | Some demand -> Root_id.Map.values demand.roots
+    | Some demand ->
+      Root_id.Map.values demand.roots
+      |> List.map ~f:(fun reach ->
+        let depth = next_dependency_depth reach.depth in
+        reach.root, depth)
   ;;
 
   let root_is_registered registry root =
@@ -919,13 +995,15 @@ module Job_priority = struct
     let registry = ensure_registry factory in
     if not registry.invalidated
     then (
-      record_dependency dep_node ~caller;
+      record_dependency registry dep_node ~caller;
       let roots =
         match caller with
-        | None -> Option.to_list root
+        | None -> Option.to_list root |> List.map ~f:(fun root -> root, 0)
         | Some caller -> roots_of_caller registry caller
       in
-      let roots = List.filter roots ~f:(root_is_registered registry) in
+      let roots =
+        List.filter roots ~f:(fun (root, _) -> root_is_registered registry root)
+      in
       add_roots registry (Dep_node.T dep_node) roots)
   ;;
 
@@ -966,7 +1044,8 @@ module Job_priority = struct
           | None -> [], Facts.empty
           | Some demand ->
             ( Root_id.Map.values demand.roots
-              |> List.map ~f:(fun root -> root_kind root, Root_id.to_int (root_id root))
+              |> List.map ~f:(fun reach ->
+                root_kind reach.root, Root_id.to_int (root_id reach.root))
             , demand.facts )
         in
         Some
@@ -1001,8 +1080,8 @@ module Job_priority = struct
               Root_id.Map.fold
                 demand.roots
                 ~init:(0, 0, 0, 0)
-                ~f:(fun root (recursive_alias, alias, file, internal) ->
-                  match root_kind root with
+                ~f:(fun reach (recursive_alias, alias, file, internal) ->
+                  match root_kind reach.root with
                   | Recursive_alias -> recursive_alias + 1, alias, file, internal
                   | Alias -> recursive_alias, alias + 1, file, internal
                   | File -> recursive_alias, alias, file + 1, internal
@@ -1013,7 +1092,7 @@ module Job_priority = struct
               || demand.alias_roots <> alias_roots
               || demand.file_roots <> file_roots
               || demand.internal_roots <> internal_roots
-              || not (Facts.equal demand.facts (facts_from_counts demand))
+              || not (Facts.equal demand.facts (facts_from_counts registry demand))
             then
               Code_error.raise
                 "Memo job root counts do not match its roots"
@@ -1025,7 +1104,8 @@ module Job_priority = struct
                 ; "root count", Dyn.Int demand.facts.root_count
                 ];
             Root_id.Map.values demand.roots
-            |> List.map ~f:(fun root -> root_kind root, Root_id.to_int (root_id root)))
+            |> List.map ~f:(fun reach ->
+              root_kind reach.root, Root_id.to_int (root_id reach.root)))
       | None, _ | _, None -> []
     ;;
 

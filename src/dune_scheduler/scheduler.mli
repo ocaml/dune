@@ -14,6 +14,7 @@ module Scheduling_policy : sig
   val fifo : t
   val lifo : t
   val random : seed:int -> t
+  val revealed_depth : t
   val current : t
   val name : t -> string
 end

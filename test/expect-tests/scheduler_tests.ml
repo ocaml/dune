@@ -61,6 +61,7 @@ let%expect_test "first-class policies choose ready-queue order" =
   in
   print Scheduler.Scheduling_policy.fifo;
   print Scheduler.Scheduling_policy.lifo;
+  print Scheduler.Scheduling_policy.revealed_depth;
   let random = Scheduler.Scheduling_policy.random ~seed:17 in
   let first = run_policy random in
   let second = run_policy random in
@@ -73,6 +74,7 @@ let%expect_test "first-class policies choose ready-queue order" =
     {|
     fifo: first, second, third, fourth
     lifo: fourth, third, second, first
+    revealed-depth: first, second, third, fourth
     random reproducible: true
     random seed changes order: true |}]
 ;;
@@ -506,7 +508,7 @@ let%expect_test "the same root observes an active nested dependency once" =
   [%expect {| one recursive alias root ID: true |}]
 ;;
 
-let%expect_test "one root kind leaves a dependency chain behind FIFO work" =
+let one_root_chain_order policy =
   let module Root_kind = Memo.Job_priority.Root_kind in
   let order = ref [] in
   let record name =
@@ -538,7 +540,8 @@ let%expect_test "one root kind leaves a dependency chain behind FIFO work" =
   in
   let blocker_started = Fiber.Ivar.create () in
   let release_blocker = Fiber.Ivar.create () in
-  go ~config:priority_config (fun () ->
+  let config = { default with scheduling_policy = Some policy } in
+  go ~config (fun () ->
     Fiber.fork_and_join_unit
       (fun () ->
          Scheduler.with_job_slot (fun () ->
@@ -557,7 +560,15 @@ let%expect_test "one root kind leaves a dependency chain behind FIFO work" =
               let* () = Fiber.Ivar.read chain_ready in
               Fiber.Ivar.fill release_blocker ())));
   List.rev !order
-  |> List.iter ~f:(fun (name, depth) -> Printf.printf "%s depth %d\n" name depth);
+;;
+
+let print_one_root_chain_order policy =
+  one_root_chain_order policy
+  |> List.iter ~f:(fun (name, depth) -> Printf.printf "%s depth %d\n" name depth)
+;;
+
+let%expect_test "one root kind leaves a dependency chain behind FIFO work" =
+  print_one_root_chain_order Scheduler.Scheduling_policy.current;
   [%expect
     {|
     flat depth 0
@@ -565,6 +576,87 @@ let%expect_test "one root kind leaves a dependency chain behind FIFO work" =
     chain-1 depth 2
     chain-2 depth 1
     chain-3 depth 0 |}]
+;;
+
+let%expect_test "revealed depth advances a dependency chain before shallow work" =
+  print_one_root_chain_order Scheduler.Scheduling_policy.revealed_depth;
+  [%expect
+    {|
+    chain-0 depth 3
+    chain-1 depth 2
+    chain-2 depth 1
+    flat depth 0
+    chain-3 depth 0 |}]
+;;
+
+let%expect_test "a late deeper root reprioritizes queued shared work" =
+  let module Root_kind = Memo.Job_priority.Root_kind in
+  let order = ref [] in
+  let record name =
+    let+ trace = Memo.Job_priority.current_trace () in
+    let depth =
+      match trace with
+      | None -> -1
+      | Some trace -> trace.facts.dependency_depth
+    in
+    order := (name, depth) :: !order
+  in
+  let other_ready = Fiber.Ivar.create () in
+  let other =
+    Memo.Lazy.create ~name:"depth-other" (fun () ->
+      Memo.of_reproducible_fiber
+        (let* () = Fiber.Ivar.fill other_ready () in
+         Scheduler.with_job_slot (fun () -> record "other")))
+  in
+  let shared_ready = Fiber.Ivar.create () in
+  let shared =
+    Memo.Lazy.create ~name:"depth-shared" (fun () ->
+      Memo.of_reproducible_fiber
+        (let* () = Fiber.Ivar.fill shared_ready () in
+         Scheduler.with_job_slot (fun () -> record "shared")))
+  in
+  let deep_edge_ready = Fiber.Ivar.create () in
+  let deep_inner =
+    Memo.Lazy.create ~name:"depth-inner" (fun () ->
+      let open Memo.O in
+      let* () = Memo.of_reproducible_fiber (Fiber.Ivar.fill deep_edge_ready ()) in
+      Memo.Lazy.force shared)
+  in
+  let deep_outer =
+    Memo.Lazy.create ~name:"depth-outer" (fun () -> Memo.Lazy.force deep_inner)
+  in
+  let blocker_started = Fiber.Ivar.create () in
+  let release_blocker = Fiber.Ivar.create () in
+  let config =
+    { default with scheduling_policy = Some Scheduler.Scheduling_policy.revealed_depth }
+  in
+  go ~config (fun () ->
+    Fiber.fork_and_join_unit
+      (fun () ->
+         Scheduler.with_job_slot (fun () ->
+           let* () = Fiber.Ivar.fill blocker_started () in
+           Fiber.Ivar.read release_blocker))
+      (fun () ->
+         let* () = Fiber.Ivar.read blocker_started in
+         Fiber.parallel_iter
+           [ (fun () -> run_with_root Root_kind.File (Memo.Lazy.force other))
+           ; (fun () ->
+               let* () = Fiber.Ivar.read other_ready in
+               run_with_root Root_kind.File (Memo.Lazy.force shared))
+           ; (fun () ->
+               let* () = Fiber.Ivar.read shared_ready in
+               run_with_root Root_kind.File (Memo.Lazy.force deep_outer))
+           ; (fun () ->
+               let* () = Fiber.Ivar.read deep_edge_ready in
+               Fiber.Ivar.fill release_blocker ())
+           ]
+           ~f:(fun f -> f ())));
+  List.rev !order
+  |> List.iter ~f:(fun (name, depth) -> Printf.printf "%s depth %d\n" name depth);
+  [%expect
+    {|
+    shared depth 2
+    other depth 0 |}]
 ;;
 
 let%expect_test "distinct same-class roots reach an active nested dependency" =

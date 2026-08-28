@@ -26,6 +26,19 @@ module Scheduling_policy = struct
     let order_key = lifo_order
   end
 
+  module Revealed_depth = struct
+    let name = "revealed-depth"
+
+    let priority { Memo.Job_priority.Facts.dependency_depth; _ } =
+      Fiber.Priority_queue.Priority.make
+        ~primary:dependency_depth
+        ~secondary:0
+        ~tertiary:0
+    ;;
+
+    let order_key = fifo_order
+  end
+
   module Current = struct
     let name = "current"
 
@@ -74,6 +87,7 @@ module Scheduling_policy = struct
 
   let fifo = (module Fifo : S)
   let lifo = (module Lifo : S)
+  let revealed_depth = (module Revealed_depth : S)
   let current = (module Current : S)
   let name (module Policy : S) = Policy.name
 end

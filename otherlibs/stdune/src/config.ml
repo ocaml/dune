@@ -95,10 +95,17 @@ let priority_scheduling_policy =
       | "fifo" -> Ok `Fifo
       | "lifo" -> Ok `Lifo
       | "random" -> Ok `Random
+      | "revealed-depth" -> Ok `Revealed_depth
       | "current" -> Ok `Current
       | _ ->
         Error
-          (sprintf "only %S, %S, %S, and %S are allowed" "fifo" "lifo" "random" "current"))
+          (sprintf
+             "only %S, %S, %S, %S, and %S are allowed"
+             "fifo"
+             "lifo"
+             "random"
+             "revealed-depth"
+             "current"))
     ~default:`Current
 ;;
 

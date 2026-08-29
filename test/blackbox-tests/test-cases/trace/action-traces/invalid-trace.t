@@ -17,7 +17,7 @@ Invalid traces should be an error
   _build/REDACTED
   [1]
 
-A failed action currently leaves its trace event uncollected.
+A failed action still collects its trace event.
 
   $ cat >dune <<'EOF'
   > (rule
@@ -31,3 +31,12 @@ A failed action currently leaves its trace event uncollected.
   >   jq_dune -s '
   >     redactedActionTraces | select(.name == "failed")
   >   '
+  {
+    "cat": "bar",
+    "name": "failed",
+    "ts": 0,
+    "args": {
+      "arg": "baz",
+      "digest": "REDACTED"
+    }
+  }

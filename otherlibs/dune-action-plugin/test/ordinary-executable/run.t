@@ -27,3 +27,15 @@ ordinary executable instead of one linked against dune-action-plugin.
   consider changing 'dynamic-run' to 'run' in your rule definition.
   [1]
 
+A missing executable should produce the usual program-not-found diagnostic
+rather than an internal error.
+
+  $ cat >> dune << EOF
+  > (rule
+  >  (alias missing)
+  >  (action (dynamic-run program-that-does-not-exist)))
+  > EOF
+
+  $ dune build @missing 2>&1 | grep -E '^Assertion failed|^Error: Program'
+  Assertion failed
+

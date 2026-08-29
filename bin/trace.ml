@@ -236,6 +236,17 @@ let cat =
         value
         & flag
         & info [ "follow"; "f" ] ~doc:(Some "follow the trace file until the exit event"))
+    and+ action_events =
+      Arg.(
+        value
+        & vflag
+            `All
+            [ ( `Exclude
+              , info [ "no-actions" ] ~doc:(Some "exclude events emitted by actions") )
+            ; ( `Only
+              , info [ "only-actions" ] ~doc:(Some "print only events emitted by actions")
+              )
+            ])
     in
     Common.No_build.set_debug_backtraces debug_backtraces;
     let mode =
@@ -246,27 +257,39 @@ let cat =
       | true, false -> `Chrome
       | false, false -> `Json
     in
+    let first_chrome_event = ref true in
     let print =
       match mode with
       | `Sexp -> fun sexp -> print_endline (Sexp.to_string sexp)
       | `Json ->
         fun sexp -> print_endline (Json.to_string (json_of_event ~chrome:false sexp))
       | `Chrome ->
-        let first = ref true in
         fun sexp ->
           let char =
-            if !first
+            if !first_chrome_event
             then (
-              let () = first := false in
+              let () = first_chrome_event := false in
               '[')
             else ','
           in
           print_char char;
           print_endline (Json.to_string (json_of_event ~chrome:true sexp))
     in
-    let print_with_flush sexp =
-      print sexp;
-      if follow then flush stdout
+    let print_if_selected sexp =
+      let selected =
+        match action_events with
+        | `All -> true
+        | (`Exclude | `Only) as action_events ->
+          let _, _, _, _, digest = base_of_sexp sexp in
+          let is_action = Option.is_some digest in
+          (match action_events with
+           | `Exclude -> not is_action
+           | `Only -> is_action)
+      in
+      if selected
+      then (
+        print sexp;
+        if follow then flush stdout)
     in
     let trace_file =
       match trace_file with
@@ -274,10 +297,10 @@ let cat =
       | None -> Common.find_default_trace_file ()
     in
     if follow
-    then iter_sexps_follow trace_file ~f:print_with_flush
-    else iter_sexps trace_file ~f:print;
+    then iter_sexps_follow trace_file ~f:print_if_selected
+    else iter_sexps trace_file ~f:print_if_selected;
     match mode with
-    | `Chrome -> print_endline "]"
+    | `Chrome -> print_endline (if !first_chrome_event then "[]" else "]")
     | `Json | `Sexp -> ()
   in
   Cmd.v info term

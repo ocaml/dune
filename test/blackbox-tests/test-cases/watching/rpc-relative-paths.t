@@ -1,5 +1,4 @@
-RPC build requests currently interpret relative paths from the server's working
-directory rather than the client's working directory.
+RPC build requests interpret relative paths from the client's working directory.
 
 Root discovery is disabled inside tests, so add a workspace file and unset
 INSIDE_DUNE for commands run from subdirectories.
@@ -33,8 +32,8 @@ INSIDE_DUNE for commands run from subdirectories.
   > EOF
   $ echo 'let ()=print_int (6+5)' > sub/nested.ml
 
-Start the server from a third directory so that incorrect resolution from its
-working directory is visible.
+Start the server from a third directory so its working directory cannot affect
+how it interprets the paths sent by the client.
 
   $ mkdir server
   $ cat > server/dune <<'EOF'
@@ -55,28 +54,28 @@ working directory is visible.
   $ start_dune
   $ cd ..
 
-A forwarded build resolves its target from the server's directory.
+A forwarded build resolves its target from the client's directory.
 
   $ (cd sub && unset INSIDE_DUNE; dune build rpc-build-target) 2>/dev/null
   $ find _build/default -name rpc-build-target -type f -print
-  _build/default/server/rpc-build-target
+  _build/default/sub/rpc-build-target
 
-The build request made by exec also loses the client's directory.
+Exec also builds relative programs from the client's directory.
 
   $ (cd sub && dune exec ./nested.exe) >/dev/null 2>&1
-  [1]
   $ find _build/default -name nested.exe -type f -print
+  _build/default/sub/nested.exe
 
-The default target also resolves from the server's directory.
+The default target is also relative to the client's directory.
 
   $ (cd sub && dune build) 2>/dev/null
   $ find _build/default -name '*.exe' -type f -print
-  _build/default/server/server.exe
+  _build/default/sub/nested.exe
 
-A forwarded runtest request does the same.
+A forwarded runtest request also uses the client's directory.
 
   $ (cd sub && unset INSIDE_DUNE; dune runtest) 2>/dev/null
   $ find _build/default -name 'rpc-runtest-*' -type f -print
-  _build/default/server/rpc-runtest-server
+  _build/default/sub/rpc-runtest-sub
 
   $ stop_dune_quiet

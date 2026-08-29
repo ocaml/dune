@@ -304,10 +304,14 @@ let prepare_exec_via_rpc_server ~common ~prog ~args ~no_rebuild builder lock_hel
         ]
   in
   let context = Common.x common |> Option.value ~default:Context_name.default in
-  let dir = Context_name.build_dir context in
-  let prog = ensure_terminal prog in
   let args = List.map args ~f:ensure_terminal in
   let+ prog =
+    let prog = ensure_terminal prog in
+    let dir =
+      Path.Build.relative
+        (Context_name.build_dir context)
+        (Common.prefix_target common "")
+    in
     build_prog_via_rpc_if_necessary ~dir ~no_rebuild builder lock_held_by prog
   in
   let env = extend_with_staging_env context Env.initial in

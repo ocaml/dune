@@ -47,6 +47,13 @@ let runtest_term =
         ~to_cwd:(Common.root common).to_cwd
         ~test_paths)
   | Error lock_held_by ->
+    let test_paths =
+      List.map test_paths ~f:(fun path ->
+        let path =
+          if Filename.is_relative path then Common.prefix_target common path else path
+        in
+        Path.relative Path.root path |> Path.to_string)
+    in
     Scheduler_setup.no_build_no_rpc ~config (fun () ->
       let open Fiber.O in
       Rpc.Rpc_common.fire_request

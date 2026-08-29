@@ -13,6 +13,9 @@ val compare : t -> t -> Ordering.t
 val compare_no_loc : t -> t -> Ordering.t
 val equal_no_loc : t -> t -> bool
 
+(** Add text before the first part of the string. *)
+val add_prefix : t -> string -> t
+
 (** [loc t] returns the location of [t] — typically, in the [dune] file. *)
 val loc : t -> Loc.t
 

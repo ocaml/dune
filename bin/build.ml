@@ -188,7 +188,9 @@ let build =
          an RPC server in the background to schedule the fiber which will
          perform the RPC call.
       *)
-      let targets = Rpc.Rpc_common.prepare_targets targets in
+      let targets =
+        Rpc.Rpc_common.prepare_targets_relative_to_root (Common.root common) targets
+      in
       Scheduler_setup.go_without_rpc_server ~common ~config (fun () ->
         let open Fiber.O in
         Rpc.Rpc_common.fire_request

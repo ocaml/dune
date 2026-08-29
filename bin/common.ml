@@ -1203,15 +1203,17 @@ let action_builder_of_rpc_request request =
   Dune_engine.Action_builder.of_memo (Memo.of_thunk Util.setup) >>= request
 ;;
 
-let rpc_request_action ~root (kind : Dune_rpc_impl.Server.build_request) =
+let rpc_request_action
+      ~(root : Workspace_root.t)
+      (kind : Dune_rpc_impl.Server.build_request)
+  =
   action_builder_of_rpc_request (fun setup ->
     match kind with
-    | Build targets -> Target.interpret_targets root setup targets
+    | Build targets ->
+      let root = { root with to_cwd = []; reach_from_root_prefix = "" } in
+      Target.interpret_targets root setup targets
     | Runtest test_paths ->
-      Runtest_common.make_request
-        ~scontexts:setup.scontexts
-        ~to_cwd:root.to_cwd
-        ~test_paths)
+      Runtest_common.make_request ~scontexts:setup.scontexts ~to_cwd:[] ~test_paths)
 ;;
 
 (* CR-someday rleshchinskiy: The split between `build` and `init` seems quite arbitrary,

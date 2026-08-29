@@ -66,12 +66,9 @@ let subst_string s path ~map =
     loop 1 0 0
   in
   let rec loop i acc =
-    if i = len
-    then acc
-    else (
-      match s.[i] with
-      | '%' -> after_percent (i + 1) acc
-      | _ -> loop (i + 1) acc)
+    match String.index_from_unchecked s i '%' with
+    | -1 -> acc
+    | percent -> after_percent (percent + 1) acc
   and after_percent i acc =
     if i = len
     then acc

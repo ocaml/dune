@@ -405,14 +405,9 @@ module Scanner = struct
      buffer is the less likely case. *)
 
   let rec scan0 ~buf ~pos ~end_of_data =
-    if pos < end_of_data
-    then (
-      let c = Bytes.unsafe_get buf pos in
-      let pos = pos + 1 in
-      match c with
-      | '%' -> scan1 ~buf ~pos ~end_of_data
-      | _ -> scan0 ~buf ~pos ~end_of_data)
-    else Scan0
+    match Bytes.index_in_range_unchecked buf ~pos ~len:(end_of_data - pos) '%' with
+    | -1 -> Scan0
+    | percent -> scan1 ~buf ~pos:(percent + 1) ~end_of_data
 
   and scan1 ~buf ~pos ~end_of_data =
     if pos < end_of_data

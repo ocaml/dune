@@ -49,13 +49,6 @@ let hash { dir; predicate; only_generated_files } =
     (dir, predicate, only_generated_files)
 ;;
 
-let test t path =
-  Predicate_lang.Glob.test
-    t.predicate
-    ~standard:Predicate_lang.false_
-    (Path.basename path |> Filename.to_string)
-;;
-
 let test_basename t ~basename =
   Predicate_lang.Glob.test
     t.predicate

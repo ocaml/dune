@@ -12,7 +12,6 @@ val env : Env.Var.t -> t
 val universe : t
 val file_selector : File_selector.t -> t
 val alias : Alias.t -> t
-val compare : t -> t -> Ordering.t
 val repr : t Repr.t
 
 module Map : sig

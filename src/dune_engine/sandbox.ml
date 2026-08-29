@@ -101,7 +101,6 @@ let root = function
   | No_sandbox _ -> None
 ;;
 
-let is_sandboxed t = Option.is_some (root t)
 let map_real_path t p = Path.Build.append t.dir p
 
 let map_path t p =

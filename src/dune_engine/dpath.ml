@@ -90,19 +90,6 @@ let describe_target fn =
   | Other fn -> Path.Build.to_string_maybe_quoted fn
 ;;
 
-let describe_path (p : Path.t) =
-  match p with
-  | External _ | In_source_tree _ -> Path.to_string_maybe_quoted p
-  | In_build_dir p -> describe_target p
-;;
-
-let analyse_path (fn : Path.t) =
-  match fn with
-  | In_source_tree src -> Source src
-  | External e -> External e
-  | In_build_dir build -> Build (analyse_target build)
-;;
-
 let analyse_dir (fn : Path.t) =
   match fn with
   | In_source_tree src -> Source src

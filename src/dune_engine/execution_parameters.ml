@@ -5,10 +5,8 @@ module Action_output_limit = struct
   type t = int
 
   let default = 100_000
-  let to_string = Int.to_string
   let equal = Int.equal
   let repr = Repr.int
-  let to_dyn = Repr.to_dyn repr
 end
 
 module Workspace_root_for_build_prefix_map = struct
@@ -33,8 +31,6 @@ module Workspace_root_for_build_prefix_map = struct
           | Set root -> Some root)
       ]
   ;;
-
-  let to_dyn = Repr.to_dyn repr
 end
 
 type t =
@@ -78,32 +74,6 @@ let equal
        t.should_remove_write_permissions_on_generated_files
   && Bool.equal sandbox_actions t.sandbox_actions
   && Bool.equal use_sandbox_policy t.use_sandbox_policy
-;;
-
-let hash
-      { action_stdout_on_success
-      ; action_stderr_on_success
-      ; action_stdout_limit
-      ; action_stderr_limit
-      ; expand_aliases_in_sandbox
-      ; workspace_root_to_build_path_prefix_map
-      ; action_project_root
-      ; should_remove_write_permissions_on_generated_files
-      ; sandbox_actions
-      ; use_sandbox_policy
-      }
-  =
-  Poly.hash
-    ( Action_output_on_success.hash action_stdout_on_success
-    , Action_output_on_success.hash action_stderr_on_success
-    , action_stdout_limit
-    , action_stderr_limit
-    , expand_aliases_in_sandbox
-    , workspace_root_to_build_path_prefix_map
-    , action_project_root
-    , should_remove_write_permissions_on_generated_files
-    , sandbox_actions
-    , use_sandbox_policy )
 ;;
 
 let bool_to_int b = if b then 1 else 0
@@ -203,8 +173,6 @@ let repr =
     ; Repr.field "use_sandbox_policy" Repr.bool ~get:(fun t -> t.use_sandbox_policy)
     ]
 ;;
-
-let to_dyn = Repr.to_dyn repr
 
 let builtin_default =
   make

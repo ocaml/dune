@@ -12,7 +12,6 @@ open Import
 (** A set of sandbox modes in which the rule is expected to work correctly. *)
 type t = Sandbox_mode.Set.t
 
-val compare : t -> t -> Ordering.t
 val equal : t -> t -> bool
 
 (** Computes the intersection of allowed sandbox modes *)
@@ -32,7 +31,6 @@ val needs_sandboxing : t
     Currently we have [default = no_special_requirements]. *)
 val default : t
 
-val disallow : Sandbox_mode.t -> t
 val mem : t -> Sandbox_mode.t -> bool
 
 module Partial : sig

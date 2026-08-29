@@ -74,7 +74,3 @@ module Partial = struct
       if Sandbox_mode.equal mode mode' then Some false else None)
   ;;
 end
-
-let disallow (mode : Sandbox_mode.t) =
-  Sandbox_mode.Set.of_func (fun mode' -> not (Sandbox_mode.equal mode mode'))
-;;

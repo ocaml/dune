@@ -23,7 +23,6 @@ struct
     include S
 
     let is_dynamic = false
-    let runs_process = runs_process
 
     let encode t f g =
       let open Sexp in

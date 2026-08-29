@@ -9,6 +9,13 @@ let conv = Conv.string
 module Table = String.Table
 
 let gen =
-  let module Id = Stdune.Id.Make () in
-  fun () -> Id.gen () |> Id.to_int |> Int.to_string
+  let prng = lazy (Random.State.make_self_init ()) in
+  fun () ->
+    let state = Lazy.force prng in
+    Printf.sprintf
+      "%08x%08x%08x%08x"
+      (Random.State.bits state)
+      (Random.State.bits state)
+      (Random.State.bits state)
+      (Random.State.bits state)
 ;;

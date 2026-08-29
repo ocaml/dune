@@ -35,15 +35,30 @@ module Server = struct
   module Rpc = Action_plugin.Rpc
   module Build_deps = Dune_rpc.Procedures.Public.Action_plugin.Build_deps
   module Handler = Root.Rpc.Server.Handler
+  module Session = Root.Rpc.Server.Session
 
   type active =
     { build_deps : Dep.Set.t -> unit Fiber.t
     ; rule_loc : Loc.t
     ; working_dir : Path.t
-    ; mutable initialized : bool
+    ; mutable session_id : Session.Id.t option
     }
 
   let active = Action_id.Table.create 16
+
+  let rec fresh_id () =
+    let id = Action_id.gen () in
+    if Action_id.Table.mem active id then fresh_id () else id
+  ;;
+
+  let invalid_request message =
+    raise
+      (Dune_rpc.Response.Error.E
+         (Dune_rpc.Response.Error.create
+            ~kind:Dune_rpc.Response.Error.Invalid_request
+            ~message
+            ()))
+  ;;
 
   let find_active action_id =
     match Action_id.Table.find active action_id with
@@ -61,12 +76,12 @@ module Server = struct
   ;;
 
   let with_active ~(ectx : context) ~(eenv : env) f =
-    let action_id = Action_id.gen () in
+    let action_id = fresh_id () in
     let active_action =
       { build_deps = ectx.build_deps
       ; rule_loc = ectx.rule_loc
       ; working_dir = eenv.working_dir
-      ; initialized = false
+      ; session_id = None
       }
     in
     Action_id.Table.add_exn active action_id active_action;
@@ -90,8 +105,13 @@ module Server = struct
       | [] -> "dependency build failed"
       | { Exn_with_backtrace.exn; _ } :: _ -> exception_message exn
     in
-    fun _session { Build_deps.action_id; deps } ->
+    fun session { Build_deps.action_id; deps } ->
       let active = find_active action_id in
+      (match active.session_id with
+       | None -> invalid_request "dynamic action is not initialized"
+       | Some session_id ->
+         if not (Session.Id.equal session_id (Session.id session))
+         then invalid_request "dynamic action belongs to another RPC session");
       let deps_to_build =
         to_dune_dep_set deps ~loc:active.rule_loc ~working_dir:active.working_dir
       in
@@ -102,10 +122,13 @@ module Server = struct
       | Ok () -> None
   ;;
 
-  let initialize _session action_id =
+  let initialize session action_id =
     let active = find_active action_id in
-    active.initialized <- true;
-    Fiber.return ()
+    match active.session_id with
+    | Some _ -> invalid_request "dynamic action is already initialized"
+    | None ->
+      active.session_id <- Some (Session.id session);
+      Fiber.return ()
   ;;
 
   let implement_handler handler =
@@ -145,7 +168,7 @@ let exec ~(ectx : context) ~(eenv : env) prog args =
         prog
         args
     in
-    if not active_action.initialized
+    if Option.is_none active_action.session_id
     then
       User_error.raise
         ~loc:ectx.rule_loc

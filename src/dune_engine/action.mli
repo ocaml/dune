@@ -28,6 +28,7 @@ module Prog : sig
       -> t
 
     val raise : t -> _
+    val program : t -> Filename.t
   end
 
   type t = (Path.t, Not_found.t) result

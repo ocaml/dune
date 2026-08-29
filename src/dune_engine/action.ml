@@ -81,6 +81,7 @@ module Prog = struct
       }
 
     let create ?hint ~context ~program ~loc () = { hint; context; program; loc }
+    let program t = t.program
 
     let raise { context; program; hint; loc } =
       Utils.program_not_found ?hint ~loc ~context (Filename.to_string program)

@@ -621,6 +621,9 @@ module Job_priority = struct
     ; mutable alias_roots : int
     ; mutable file_roots : int
     ; mutable internal_roots : int
+    ; mutable observed_dependencies : Dep_node.packed Id.Map.t
+    ; mutable observed_dependents : Dep_node.packed Id.Map.t
+    ; mutable active_dependent_count : int
     ; mutable facts : Facts.t
     ; mutable queue_handle : t option
     ; ranking_dag_node : Ranking_dag.node
@@ -728,6 +731,9 @@ module Job_priority = struct
         ; alias_roots = 0
         ; file_roots = 0
         ; internal_roots = 0
+        ; observed_dependencies = Id.Map.empty
+        ; observed_dependents = Id.Map.empty
+        ; active_dependent_count = 0
         ; facts = Facts.empty
         ; queue_handle = None
         ; ranking_dag_node = Ranking_dag.create_node node
@@ -764,7 +770,7 @@ module Job_priority = struct
     ; internal_roots = demand.internal_roots
     ; root_count
     ; dependency_depth
-    ; dependent_count = 0
+    ; dependent_count = demand.active_dependent_count
     ; estimated_cost_ns = 0L
     }
   ;;
@@ -782,6 +788,31 @@ module Job_priority = struct
     then (
       registry.depth_enabled <- false;
       Id.Map.iter registry.nodes ~f:(update_facts registry))
+  ;;
+
+  let adjust_active_dependent_count registry (demand : node_demand) delta =
+    let count = demand.active_dependent_count in
+    if (delta > 0 && count = Int.max_int) || (delta < 0 && count = 0)
+    then
+      Code_error.raise
+        "Memo active dependent count is invalid"
+        [ "count", Dyn.Int count; "delta", Dyn.Int delta ];
+    demand.active_dependent_count <- count + delta;
+    update_facts registry demand
+  ;;
+
+  let set_observed_dependencies_active registry (demand : node_demand) active =
+    let delta = if active then 1 else -1 in
+    Id.Map.iter demand.observed_dependencies ~f:(fun dependency ->
+      let dependency = find_node_demand registry dependency in
+      adjust_active_dependent_count registry dependency delta)
+  ;;
+
+  let dependent_count_from_graph registry (demand : node_demand) =
+    Id.Map.fold demand.observed_dependents ~init:0 ~f:(fun (Dep_node.T dependent) count ->
+      match Id.Map.find registry.nodes dependent.id with
+      | Some dependent when not (Root_id.Map.is_empty dependent.roots) -> count + 1
+      | None | Some _ -> count)
   ;;
 
   let increment_root_count count root =
@@ -840,7 +871,9 @@ module Job_priority = struct
              if Root_id.Map.mem demand.roots root.id
              then (
                demand.roots <- Root_id.Map.remove demand.roots root.id;
-               remove_root_count registry demand root));
+               remove_root_count registry demand root;
+               if Root_id.Map.is_empty demand.roots
+               then set_observed_dependencies_active registry demand false));
          registry.roots <- Root_id.Map.remove registry.roots root.id)
   ;;
 
@@ -908,12 +941,14 @@ module Job_priority = struct
             update_facts registry demand;
             true
           | None ->
+            let was_inactive = Root_id.Map.is_empty demand.roots in
             let reach = { root; depth = (if registry.depth_enabled then depth else 0) } in
             demand.roots <- Root_id.Map.set demand.roots root.id reach;
             let root_state = find_root_state registry root in
             root_state.touched_nodes
             <- Id.Map.set root_state.touched_nodes dep_node.id node;
             add_root_count registry demand root;
+            if was_inactive then set_observed_dependencies_active registry demand true;
             true
         in
         let work =
@@ -958,20 +993,33 @@ module Job_priority = struct
             ; "state", State.to_dyn caller.state
             ]
       in
-      if added && registry.depth_enabled
+      if added
       then (
-        let caller = find_node_demand registry caller_node in
-        let dependency = find_node_demand registry dependency in
-        try
-          Ranking_dag.add_assuming_missing
-            caller.ranking_dag_node
-            dependency.ranking_dag_node
-        with
-        | Ranking_dag.Cycle _ ->
-          (* Positive longest-path relaxation is undefined on a cycle. Memo's cycle
-             detector remains responsible for reporting it; scheduling falls back to
-             zero depth for the rest of this generation. *)
-          disable_depth registry)
+        let caller_demand = find_node_demand registry caller_node in
+        let dependency_demand = find_node_demand registry dependency in
+        let edge_is_new =
+          not (Id.Map.mem caller_demand.observed_dependencies dep_node.id)
+        in
+        if edge_is_new
+        then (
+          caller_demand.observed_dependencies
+          <- Id.Map.set caller_demand.observed_dependencies dep_node.id dependency;
+          dependency_demand.observed_dependents
+          <- Id.Map.set dependency_demand.observed_dependents caller.id caller_node;
+          if not (Root_id.Map.is_empty caller_demand.roots)
+          then adjust_active_dependent_count registry dependency_demand 1;
+          if registry.depth_enabled
+          then (
+            try
+              Ranking_dag.add_assuming_missing
+                caller_demand.ranking_dag_node
+                dependency_demand.ranking_dag_node
+            with
+            | Ranking_dag.Cycle _ ->
+              (* Positive longest-path relaxation is undefined on a cycle. Memo's cycle
+                 detector remains responsible for reporting it; scheduling falls back to
+                 zero depth for the rest of this generation. *)
+              disable_depth registry)))
   ;;
 
   let roots_of_caller registry caller =
@@ -1092,6 +1140,8 @@ module Job_priority = struct
               || demand.alias_roots <> alias_roots
               || demand.file_roots <> file_roots
               || demand.internal_roots <> internal_roots
+              || demand.active_dependent_count
+                 <> dependent_count_from_graph registry demand
               || not (Facts.equal demand.facts (facts_from_counts registry demand))
             then
               Code_error.raise
@@ -1102,6 +1152,7 @@ module Job_priority = struct
                 ; "file roots", Dyn.Int demand.file_roots
                 ; "internal roots", Dyn.Int demand.internal_roots
                 ; "root count", Dyn.Int demand.facts.root_count
+                ; "dependent count", Dyn.Int demand.active_dependent_count
                 ];
             Root_id.Map.values demand.roots
             |> List.map ~f:(fun reach ->

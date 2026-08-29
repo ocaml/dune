@@ -508,6 +508,73 @@ let%expect_test "the same root observes an active nested dependency once" =
   [%expect {| one recursive alias root ID: true |}]
 ;;
 
+let%expect_test "dependent count includes unique active immediate callers" =
+  let module Root_kind = Memo.Job_priority.Root_kind in
+  let observed = ref None in
+  let shared =
+    Memo.Lazy.create ~name:"dependent-count-shared" (fun () ->
+      Memo.of_reproducible_fiber
+        (Scheduler.with_job_slot (fun () ->
+           let+ trace = Memo.Job_priority.current_trace () in
+           observed := trace)))
+  in
+  let caller ~remove_root ~repeat ready name =
+    Memo.Lazy.create ~name (fun () ->
+      let open Memo.O in
+      let* () =
+        if remove_root
+        then
+          Memo.of_non_reproducible_fiber
+            (Memo.Job_priority.For_tests.remove_current_root ())
+        else Memo.return ()
+      in
+      let* () = Memo.of_reproducible_fiber (Fiber.Ivar.fill ready ()) in
+      if repeat
+      then
+        Memo.fork_and_join_unit
+          (fun () -> Memo.Lazy.force shared)
+          (fun () -> Memo.Lazy.force shared)
+      else Memo.Lazy.force shared)
+  in
+  let active_ready_1 = Fiber.Ivar.create () in
+  let active_ready_2 = Fiber.Ivar.create () in
+  let inactive_ready = Fiber.Ivar.create () in
+  let ready = [ active_ready_1; active_ready_2; inactive_ready ] in
+  let callers =
+    [ caller ~remove_root:false ~repeat:true active_ready_1 "active-caller-1"
+    ; caller ~remove_root:false ~repeat:false active_ready_2 "active-caller-2"
+    ; caller ~remove_root:true ~repeat:false inactive_ready "inactive-caller"
+    ]
+  in
+  let blocker_started = Fiber.Ivar.create () in
+  let release_blocker = Fiber.Ivar.create () in
+  go ~config:priority_config (fun () ->
+    Fiber.fork_and_join_unit
+      (fun () ->
+         Scheduler.with_job_slot (fun () ->
+           let* () = Fiber.Ivar.fill blocker_started () in
+           Fiber.Ivar.read release_blocker))
+      (fun () ->
+         let* () = Fiber.Ivar.read blocker_started in
+         Fiber.parallel_iter
+           (List.map callers ~f:(fun caller () ->
+              run_with_root Root_kind.File (Memo.Lazy.force caller))
+            @ [ (fun () ->
+                  let* () = Fiber.sequential_iter ready ~f:Fiber.Ivar.read in
+                  Fiber.Ivar.fill release_blocker ())
+              ])
+           ~f:(fun f -> f ())));
+  let { Memo.Job_priority.facts; _ } = Option.value_exn !observed in
+  Printf.printf "roots: %d\n" facts.root_count;
+  Printf.printf "depth: %d\n" facts.dependency_depth;
+  Printf.printf "active immediate dependents: %d\n" facts.dependent_count;
+  [%expect
+    {|
+    roots: 2
+    depth: 1
+    active immediate dependents: 2 |}]
+;;
+
 let one_root_chain_order policy =
   let module Root_kind = Memo.Job_priority.Root_kind in
   let order = ref [] in

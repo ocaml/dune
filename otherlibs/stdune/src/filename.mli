@@ -6,6 +6,7 @@
 val current_dir_name : string
 val parent_dir_name : string
 val dir_sep : string
+val null : string
 val concat : string -> string -> string
 val is_relative : string -> bool
 val check_suffix : string -> string -> bool

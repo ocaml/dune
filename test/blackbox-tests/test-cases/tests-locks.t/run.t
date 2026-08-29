@@ -8,8 +8,7 @@ These tests are run without locks. They should end together (= expected)
   > grep "^> *" | uniq -c | [ $(wc -l) -eq 1 ] && echo '=' || echo '<>'
   =
 
-Duplicate lock declarations currently deadlock a rule by making it acquire the same
-non-reentrant mutex twice.
+Duplicate lock declarations are harmless; a rule acquires each lock only once.
 
   $ mkdir duplicate-lock
   $ cat >duplicate-lock/dune <<EOF
@@ -23,4 +22,4 @@ non-reentrant mutex twice.
   > else
   >   echo timed-out
   > fi
-  timed-out
+  done

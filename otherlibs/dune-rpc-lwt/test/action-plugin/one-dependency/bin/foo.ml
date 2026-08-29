@@ -77,12 +77,41 @@ let detached_action dap state =
   Lwt_io.printl "ran"
 ;;
 
+let write_connection path =
+  let temp = path ^ ".tmp" in
+  let output = open_out temp in
+  output_string output (Sys.getenv "DUNE_DYNAMIC_RUN_ACTION_ID");
+  output_char output '\n';
+  output_string output (Sys.getenv "DUNE_RPC");
+  output_char output '\n';
+  close_out output;
+  Sys.rename temp path
+;;
+
+let held_action _dap ~connection ~release =
+  let open Lwt.Syntax in
+  let* () =
+    Lwt_io.with_file ~mode:Output "held-target" (fun output -> Lwt_io.write output "held")
+  in
+  write_connection connection;
+  let rec loop () =
+    if Sys.file_exists release
+    then Lwt.return_unit
+    else
+      let* () = Lwt_unix.sleep 0.05 in
+      loop ()
+  in
+  loop ()
+;;
+
 let action dap =
   match Sys.argv with
   | [| _ |] -> ordinary_action dap ~path:"some_dependency"
   | [| _; "read"; path |] -> ordinary_action dap ~path
   | [| _; "sandbox" |] -> sandbox_action dap
   | [| _; "detached"; state |] -> detached_action dap state
+  | [| _; "hold"; connection; release |] -> held_action dap ~connection ~release
+  | [| _; "initialize" |] -> Lwt.return_unit
   | _ -> invalid_arg "invalid arguments"
 ;;
 

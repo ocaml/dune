@@ -113,3 +113,44 @@ The makefile version of pipe actions uses actual pipes:
   e a | e b
   o a | o b | e c
   e a | o b | e c
+
+A failed pipe currently retains its temporary file until the build finishes.
+
+  $ mkdir "$TMPDIR/pipe-cleanup"
+  $ export TMPDIR="$TMPDIR/pipe-cleanup"
+  $ pipe_started="$PWD/pipe-started"
+  $ blocker_started="$PWD/blocker-started"
+  $ release="$PWD/pipe-release"
+
+  $ cat >dune <<EOF
+  > (rule
+  >  (alias failed-pipe)
+  >  (action
+  >   (pipe-stdout
+  >    (bash "touch '$pipe_started'; echo input")
+  >    (system "exit 1"))))
+  > (rule
+  >  (target blocked)
+  >  (action
+  >   (bash
+  >    "touch '$blocker_started'
+  >     while test ! -e '$release'; do sleep 0.01; done
+  >     touch blocked")))
+  > EOF
+
+  $ dune build -j2 @failed-pipe blocked >pipe-output 2>&1 &
+  $ build_pid=$!
+  $ with_timeout dune_cmd wait-for-file-to-appear "$pipe_started"
+  $ with_timeout dune_cmd wait-for-file-to-appear "$blocker_started"
+  $ $timeout 1 sh -c '
+  > while find "$TMPDIR" -type f -name "dune-pipe-action-*" | grep -q .; do
+  >   sleep 0.01
+  > done' || true
+
+  $ find "$TMPDIR" -type f -name 'dune-pipe-action-*' -exec basename {} \; |
+  > sed -E 's/^dune-pipe-action-.*$/dune-pipe-action-<id>/'
+  dune-pipe-action-<id>
+
+  $ touch "$release"
+  $ wait "$build_pid"
+  [1]

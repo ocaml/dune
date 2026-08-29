@@ -496,8 +496,11 @@ module Internal = struct
             let build_deps deps = Memo.run (build_deps deps) in
             Action_exec.exec input ~build_deps
           in
-          let* action_exec_result = Action_exec.Exec_result.ok_exn action_exec_result in
-          let* () = Action_trace.collect action_trace in
+          let* action_exec_result, () =
+            Fiber.fork_and_join
+              (fun () -> Action_exec.Exec_result.ok_exn action_exec_result)
+              (fun () -> Action_trace.collect action_trace)
+          in
           let+ () =
             if not is_sandboxed
             then Fiber.return ()

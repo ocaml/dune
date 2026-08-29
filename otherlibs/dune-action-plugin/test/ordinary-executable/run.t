@@ -37,5 +37,5 @@ rather than an internal error.
   > EOF
 
   $ dune build @missing 2>&1 | grep -E '^Assertion failed|^Error: Program'
-  Assertion failed
+  Error: Program program-that-does-not-exist not found in the tree or in PATH
 

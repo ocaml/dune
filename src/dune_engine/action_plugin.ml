@@ -131,8 +131,8 @@ module Spec = struct
       [ Atom name
       ; Atom (Int.to_string version)
       ; (match prog with
-         | Ok s -> f s
-         | Error _ -> assert false)
+         | Ok path -> f path
+         | Error error -> Atom (Filename.to_string (Action.Prog.Not_found.program error)))
       ; List (List.map args ~f:(fun s -> Atom s))
       ]
   ;;

@@ -96,15 +96,17 @@ let priority_scheduling_policy =
       | "lifo" -> Ok `Lifo
       | "random" -> Ok `Random
       | "revealed-depth" -> Ok `Revealed_depth
+      | "dependent-count" -> Ok `Dependent_count
       | "current" -> Ok `Current
       | _ ->
         Error
           (sprintf
-             "only %S, %S, %S, %S, and %S are allowed"
+             "only %S, %S, %S, %S, %S, and %S are allowed"
              "fifo"
              "lifo"
              "random"
              "revealed-depth"
+             "dependent-count"
              "current"))
     ~default:`Current
 ;;

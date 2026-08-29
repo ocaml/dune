@@ -39,6 +39,16 @@ module Scheduling_policy = struct
     let order_key = fifo_order
   end
 
+  module Dependent_count = struct
+    let name = "dependent-count"
+
+    let priority { Memo.Job_priority.Facts.dependent_count; _ } =
+      Fiber.Priority_queue.Priority.make ~primary:dependent_count ~secondary:0 ~tertiary:0
+    ;;
+
+    let order_key = fifo_order
+  end
+
   module Current = struct
     let name = "current"
 
@@ -88,6 +98,7 @@ module Scheduling_policy = struct
   let fifo = (module Fifo : S)
   let lifo = (module Lifo : S)
   let revealed_depth = (module Revealed_depth : S)
+  let dependent_count = (module Dependent_count : S)
   let current = (module Current : S)
   let name (module Policy : S) = Policy.name
 end

@@ -32,7 +32,7 @@ fi
 policy=${1-${DUNE_CONFIG__PRIORITY_SCHEDULING_POLICY-current}}
 random_seed=${DUNE_CONFIG__PRIORITY_SCHEDULING_RANDOM_SEED-0}
 case $policy in
-  current | fifo | lifo | random | revealed-depth) ;;
+  current | fifo | lifo | random | revealed-depth | dependent-count) ;;
   *) usage ;;
 esac
 

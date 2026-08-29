@@ -62,6 +62,7 @@ let%expect_test "first-class policies choose ready-queue order" =
   print Scheduler.Scheduling_policy.fifo;
   print Scheduler.Scheduling_policy.lifo;
   print Scheduler.Scheduling_policy.revealed_depth;
+  print Scheduler.Scheduling_policy.dependent_count;
   let random = Scheduler.Scheduling_policy.random ~seed:17 in
   let first = run_policy random in
   let second = run_policy random in
@@ -75,6 +76,7 @@ let%expect_test "first-class policies choose ready-queue order" =
     fifo: first, second, third, fourth
     lifo: fourth, third, second, first
     revealed-depth: first, second, third, fourth
+    dependent-count: first, second, third, fourth
     random reproducible: true
     random seed changes order: true |}]
 ;;
@@ -508,15 +510,19 @@ let%expect_test "the same root observes an active nested dependency once" =
   [%expect {| one recursive alias root ID: true |}]
 ;;
 
-let%expect_test "dependent count includes unique active immediate callers" =
+let%expect_test "dependent count propagates active caller width through dependencies" =
   let module Root_kind = Memo.Job_priority.Root_kind in
   let observed = ref None in
-  let shared =
-    Memo.Lazy.create ~name:"dependent-count-shared" (fun () ->
+  let shared_action =
+    Memo.Lazy.create ~name:"dependent-count-shared-action" (fun () ->
       Memo.of_reproducible_fiber
         (Scheduler.with_job_slot (fun () ->
            let+ trace = Memo.Job_priority.current_trace () in
            observed := trace)))
+  in
+  let shared =
+    Memo.Lazy.create ~name:"dependent-count-shared" (fun () ->
+      Memo.Lazy.force shared_action)
   in
   let caller ~remove_root ~repeat ready name =
     Memo.Lazy.create ~name (fun () ->
@@ -567,12 +573,99 @@ let%expect_test "dependent count includes unique active immediate callers" =
   let { Memo.Job_priority.facts; _ } = Option.value_exn !observed in
   Printf.printf "roots: %d\n" facts.root_count;
   Printf.printf "depth: %d\n" facts.dependency_depth;
-  Printf.printf "active immediate dependents: %d\n" facts.dependent_count;
+  Printf.printf "revealed dependent width: %d\n" facts.dependent_count;
   [%expect
     {|
     roots: 2
-    depth: 1
-    active immediate dependents: 2 |}]
+    depth: 2
+    revealed dependent width: 2 |}]
+;;
+
+let dependent_count_order policy =
+  let module Root_kind = Memo.Job_priority.Root_kind in
+  let order = ref [] in
+  let record name =
+    let+ trace = Memo.Job_priority.current_trace () in
+    let dependent_count =
+      match trace with
+      | None -> -1
+      | Some trace -> trace.facts.dependent_count
+    in
+    order := (name, dependent_count) :: !order
+  in
+  let other_ready = Fiber.Ivar.create () in
+  let other =
+    Memo.Lazy.create ~name:"dependent-count-other" (fun () ->
+      Memo.of_reproducible_fiber
+        (let* () = Fiber.Ivar.fill other_ready () in
+         Scheduler.with_job_slot (fun () -> record "other")))
+  in
+  let shared_ready = Fiber.Ivar.create () in
+  let shared_action =
+    Memo.Lazy.create ~name:"dependent-count-prioritized" (fun () ->
+      Memo.of_reproducible_fiber
+        (let* () = Fiber.Ivar.fill shared_ready () in
+         Scheduler.with_job_slot (fun () -> record "shared")))
+  in
+  let shared =
+    Memo.Lazy.create ~name:"dependent-count-shared-branch" (fun () ->
+      Memo.Lazy.force shared_action)
+  in
+  let caller ready name =
+    Memo.Lazy.create ~name (fun () ->
+      let open Memo.O in
+      let* () = Memo.of_reproducible_fiber (Fiber.Ivar.fill ready ()) in
+      Memo.Lazy.force shared)
+  in
+  let first_caller_ready = Fiber.Ivar.create () in
+  let second_caller_ready = Fiber.Ivar.create () in
+  let first_caller = caller first_caller_ready "dependent-count-first-caller" in
+  let second_caller = caller second_caller_ready "dependent-count-second-caller" in
+  let blocker_started = Fiber.Ivar.create () in
+  let release_blocker = Fiber.Ivar.create () in
+  let config = { default with scheduling_policy = Some policy } in
+  go ~config (fun () ->
+    Fiber.fork_and_join_unit
+      (fun () ->
+         Scheduler.with_job_slot (fun () ->
+           let* () = Fiber.Ivar.fill blocker_started () in
+           Fiber.Ivar.read release_blocker))
+      (fun () ->
+         let* () = Fiber.Ivar.read blocker_started in
+         Fiber.parallel_iter
+           [ (fun () -> run_with_root Root_kind.File (Memo.Lazy.force other))
+           ; (fun () ->
+               let* () = Fiber.Ivar.read other_ready in
+               run_with_root Root_kind.File (Memo.Lazy.force first_caller))
+           ; (fun () ->
+               let* () = Fiber.Ivar.read shared_ready in
+               run_with_root Root_kind.File (Memo.Lazy.force second_caller))
+           ; (fun () ->
+               let* () = Fiber.Ivar.read first_caller_ready in
+               let* () = Fiber.Ivar.read second_caller_ready in
+               Fiber.Ivar.fill release_blocker ())
+           ]
+           ~f:(fun f -> f ())));
+  List.rev !order
+;;
+
+let print_dependent_count_order policy =
+  let name = Scheduler.Scheduling_policy.name policy in
+  let order =
+    dependent_count_order policy
+    |> List.map ~f:(fun (job, count) -> sprintf "%s(%d)" job count)
+    |> String.concat ~sep:", "
+  in
+  Printf.printf "%s: %s\n" name order
+;;
+
+let%expect_test "dependent-count reprioritizes shared work after a late caller" =
+  print_dependent_count_order Scheduler.Scheduling_policy.fifo;
+  print_dependent_count_order Scheduler.Scheduling_policy.dependent_count;
+  [%expect
+    {|
+    fifo: other(0), shared(2)
+    dependent-count: shared(2), other(0) |}]
 ;;
 
 let one_root_chain_order policy =
@@ -580,12 +673,12 @@ let one_root_chain_order policy =
   let order = ref [] in
   let record name =
     let+ trace = Memo.Job_priority.current_trace () in
-    let depth =
+    let depth, dependent_count =
       match trace with
-      | None -> -1
-      | Some trace -> trace.facts.dependency_depth
+      | None -> -1, -1
+      | Some trace -> trace.facts.dependency_depth, trace.facts.dependent_count
     in
-    order := (name, depth) :: !order
+    order := (name, depth, dependent_count) :: !order
   in
   let flat_ready = Fiber.Ivar.create () in
   let chain_ready = Fiber.Ivar.create () in
@@ -631,7 +724,7 @@ let one_root_chain_order policy =
 
 let print_one_root_chain_order policy =
   one_root_chain_order policy
-  |> List.iter ~f:(fun (name, depth) -> Printf.printf "%s depth %d\n" name depth)
+  |> List.iter ~f:(fun (name, depth, _) -> Printf.printf "%s depth %d\n" name depth)
 ;;
 
 let%expect_test "one root kind leaves a dependency chain behind FIFO work" =
@@ -654,6 +747,19 @@ let%expect_test "revealed depth advances a dependency chain before shallow work"
     chain-2 depth 1
     flat depth 0
     chain-3 depth 0 |}]
+;;
+
+let%expect_test "dependent count prioritizes revealed width" =
+  one_root_chain_order Scheduler.Scheduling_policy.dependent_count
+  |> List.iter ~f:(fun (name, depth, dependent_count) ->
+    Printf.printf "%s depth %d width %d\n" name depth dependent_count);
+  [%expect
+    {|
+    chain-0 depth 3 width 1
+    chain-1 depth 2 width 1
+    chain-2 depth 1 width 1
+    flat depth 0 width 0
+    chain-3 depth 0 width 0 |}]
 ;;
 
 let%expect_test "a late deeper root reprioritizes queued shared work" =

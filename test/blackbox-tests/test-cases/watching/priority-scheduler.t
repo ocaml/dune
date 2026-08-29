@@ -189,6 +189,21 @@ its semantic rank.
   >    and ($slots | any(.args.priority > 0)))'
   true
 
+The dependent-count policy ranks the greatest revealed active caller fan-out.
+
+  $ rm -rf _build
+  $ DUNE_CONFIG__PRIORITY_SCHEDULING=enabled \
+  > DUNE_CONFIG__PRIORITY_SCHEDULING_POLICY=dependent-count \
+  > DUNE_TRACE=scheduler \
+  >   dune build --config-file config -j1 bulk @@normal send.vo
+  $ dune trace cat --trace-file _build/trace.csexp | jq -s -e '
+  > [ .[] | select(.cat == "scheduler" and .name == "job-slot") ] as $slots
+  > | (($slots | length) > 0
+  >    and ($slots | all(.args.policy == "dependent-count"
+  >                      and .args.priority == .args.memo_dependent_count))
+  >    and ($slots | any(.args.priority > 0)))'
+  true
+
 A generated directory is a concrete file root. When it expands into two build
 contexts, both resolved requests retain the one original root ID while
 executing as distinct Memo nodes.

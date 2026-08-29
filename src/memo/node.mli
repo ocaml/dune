@@ -274,9 +274,9 @@ module Job_priority : sig
   module Facts : sig
     (** Policy-neutral facts about an active Memo node. [dependency_depth] is the
         longest currently revealed caller-to-dependency path from any active root.
-        It is reset to zero if depth collection encounters a dependency cycle.
-        [dependent_count] is the number of unique immediate callers reached by at
-        least one active root. *)
+        [dependent_count] is the greatest number of unique immediate active callers
+        revealed at the node or along its caller paths. Both graph ranks are reset to
+        zero if collection encounters a dependency cycle. *)
     type t =
       { recursive_alias_roots : int
       ; alias_roots : int

@@ -769,6 +769,8 @@ module Dune_config = struct
              Dune_scheduler.Scheduler.Scheduling_policy.random
                ~seed:(Config.get Config.priority_scheduling_random_seed)
            | `Revealed_depth -> Dune_scheduler.Scheduler.Scheduling_policy.revealed_depth
+           | `Dependent_count ->
+             Dune_scheduler.Scheduler.Scheduling_policy.dependent_count
            | `Current -> Dune_scheduler.Scheduler.Scheduling_policy.current)
     in
     { Dune_scheduler.Scheduler.Config.concurrency

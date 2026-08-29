@@ -623,7 +623,8 @@ module Job_priority = struct
     ; mutable internal_roots : int
     ; mutable observed_dependencies : Dep_node.packed Id.Map.t
     ; mutable observed_dependents : Dep_node.packed Id.Map.t
-    ; mutable active_dependent_count : int
+    ; mutable immediate_dependent_count : int
+    ; mutable dependent_count : int
     ; mutable facts : Facts.t
     ; mutable queue_handle : t option
     ; ranking_dag_node : Ranking_dag.node
@@ -645,7 +646,7 @@ module Job_priority = struct
     ; mutable nodes : node_demand Id.Map.t
     ; mutable roots : root_state Root_id.Map.t
     ; mutable invalidated : bool
-    ; mutable depth_enabled : bool
+    ; mutable graph_ranks_enabled : bool
     }
 
   let current_registry : registry option ref = ref None
@@ -694,7 +695,7 @@ module Job_priority = struct
         ; nodes = Id.Map.empty
         ; roots = Root_id.Map.empty
         ; invalidated = false
-        ; depth_enabled = true
+        ; graph_ranks_enabled = true
         }
       in
       current_registry := Some registry;
@@ -733,7 +734,8 @@ module Job_priority = struct
         ; internal_roots = 0
         ; observed_dependencies = Id.Map.empty
         ; observed_dependents = Id.Map.empty
-        ; active_dependent_count = 0
+        ; immediate_dependent_count = 0
+        ; dependent_count = 0
         ; facts = Facts.empty
         ; queue_handle = None
         ; ranking_dag_node = Ranking_dag.create_node node
@@ -758,7 +760,7 @@ module Job_priority = struct
       + demand.internal_roots
     in
     let dependency_depth =
-      if registry.depth_enabled
+      if registry.graph_ranks_enabled
       then
         Root_id.Map.fold demand.roots ~init:0 ~f:(fun reach depth ->
           Int.max reach.depth depth)
@@ -770,7 +772,7 @@ module Job_priority = struct
     ; internal_roots = demand.internal_roots
     ; root_count
     ; dependency_depth
-    ; dependent_count = demand.active_dependent_count
+    ; dependent_count = demand.dependent_count
     ; estimated_cost_ns = 0L
     }
   ;;
@@ -783,36 +785,78 @@ module Job_priority = struct
       Option.iter demand.queue_handle ~f:(fun handle -> registry.update handle ~facts))
   ;;
 
-  let disable_depth registry =
-    if registry.depth_enabled
+  let disable_graph_ranks registry =
+    if registry.graph_ranks_enabled
     then (
-      registry.depth_enabled <- false;
-      Id.Map.iter registry.nodes ~f:(update_facts registry))
+      registry.graph_ranks_enabled <- false;
+      Id.Map.iter registry.nodes ~f:(fun demand ->
+        demand.dependent_count <- 0;
+        update_facts registry demand))
   ;;
 
-  let adjust_active_dependent_count registry (demand : node_demand) delta =
-    let count = demand.active_dependent_count in
-    if (delta > 0 && count = Int.max_int) || (delta < 0 && count = 0)
-    then
-      Code_error.raise
-        "Memo active dependent count is invalid"
-        [ "count", Dyn.Int count; "delta", Dyn.Int delta ];
-    demand.active_dependent_count <- count + delta;
-    update_facts registry demand
-  ;;
-
-  let set_observed_dependencies_active registry (demand : node_demand) active =
-    let delta = if active then 1 else -1 in
-    Id.Map.iter demand.observed_dependencies ~f:(fun dependency ->
-      let dependency = find_node_demand registry dependency in
-      adjust_active_dependent_count registry dependency delta)
-  ;;
-
-  let dependent_count_from_graph registry (demand : node_demand) =
+  let immediate_dependent_count_from_graph registry (demand : node_demand) =
     Id.Map.fold demand.observed_dependents ~init:0 ~f:(fun (Dep_node.T dependent) count ->
       match Id.Map.find registry.nodes dependent.id with
       | Some dependent when not (Root_id.Map.is_empty dependent.roots) -> count + 1
       | None | Some _ -> count)
+  ;;
+
+  (* Job slots are often below several unary Memo nodes. Propagate the largest
+     immediate fan-out towards dependencies so the job sees the branch width.
+     Taking a maximum avoids counting the multiple paths through a diamond. *)
+  let dependent_count_from_graph registry (demand : node_demand) =
+    if not registry.graph_ranks_enabled
+    then 0
+    else
+      Id.Map.fold
+        demand.observed_dependents
+        ~init:demand.immediate_dependent_count
+        ~f:(fun (Dep_node.T dependent) count ->
+          match Id.Map.find registry.nodes dependent.id with
+          | Some dependent when not (Root_id.Map.is_empty dependent.roots) ->
+            Int.max count dependent.dependent_count
+          | None | Some _ -> count)
+  ;;
+
+  let update_dependent_counts registry nodes =
+    let rec loop = function
+      | [] -> ()
+      | (Dep_node.T _ as node) :: nodes ->
+        let demand = find_node_demand registry node in
+        let dependent_count = dependent_count_from_graph registry demand in
+        if dependent_count = demand.dependent_count
+        then loop nodes
+        else (
+          demand.dependent_count <- dependent_count;
+          update_facts registry demand;
+          let nodes =
+            Id.Map.fold demand.observed_dependencies ~init:nodes ~f:(fun node nodes ->
+              node :: nodes)
+          in
+          loop nodes)
+    in
+    loop nodes
+  ;;
+
+  let adjust_immediate_dependent_count (demand : node_demand) delta =
+    let count = demand.immediate_dependent_count in
+    if (delta > 0 && count = Int.max_int) || (delta < 0 && count = 0)
+    then
+      Code_error.raise
+        "Memo immediate dependent count is invalid"
+        [ "count", Dyn.Int count; "delta", Dyn.Int delta ];
+    demand.immediate_dependent_count <- count + delta
+  ;;
+
+  let set_observed_dependencies_active registry (demand : node_demand) active =
+    let delta = if active then 1 else -1 in
+    let changed =
+      Id.Map.fold demand.observed_dependencies ~init:[] ~f:(fun dependency changed ->
+        let dependency_demand = find_node_demand registry dependency in
+        adjust_immediate_dependent_count dependency_demand delta;
+        dependency :: changed)
+    in
+    update_dependent_counts registry changed
   ;;
 
   let increment_root_count count root =
@@ -935,14 +979,17 @@ module Job_priority = struct
         let demand = find_node_demand registry node in
         let changed =
           match Root_id.Map.find demand.roots root.Job_priority_state.id with
-          | Some reach when (not registry.depth_enabled) || depth <= reach.depth -> false
+          | Some reach when (not registry.graph_ranks_enabled) || depth <= reach.depth ->
+            false
           | Some reach ->
             reach.depth <- depth;
             update_facts registry demand;
             true
           | None ->
             let was_inactive = Root_id.Map.is_empty demand.roots in
-            let reach = { root; depth = (if registry.depth_enabled then depth else 0) } in
+            let reach =
+              { root; depth = (if registry.graph_ranks_enabled then depth else 0) }
+            in
             demand.roots <- Root_id.Map.set demand.roots root.id reach;
             let root_state = find_root_state registry root in
             root_state.touched_nodes
@@ -1006,9 +1053,7 @@ module Job_priority = struct
           <- Id.Map.set caller_demand.observed_dependencies dep_node.id dependency;
           dependency_demand.observed_dependents
           <- Id.Map.set dependency_demand.observed_dependents caller.id caller_node;
-          if not (Root_id.Map.is_empty caller_demand.roots)
-          then adjust_active_dependent_count registry dependency_demand 1;
-          if registry.depth_enabled
+          if registry.graph_ranks_enabled
           then (
             try
               Ranking_dag.add_assuming_missing
@@ -1016,10 +1061,14 @@ module Job_priority = struct
                 dependency_demand.ranking_dag_node
             with
             | Ranking_dag.Cycle _ ->
-              (* Positive longest-path relaxation is undefined on a cycle. Memo's cycle
-                 detector remains responsible for reporting it; scheduling falls back to
-                 zero depth for the rest of this generation. *)
-              disable_depth registry)))
+              (* Graph rank propagation is undefined on a cycle. Memo's cycle detector
+                 remains responsible for reporting it; graph ranks fall back to zero for
+                 the rest of this generation. *)
+              disable_graph_ranks registry);
+          if not (Root_id.Map.is_empty caller_demand.roots)
+          then (
+            adjust_immediate_dependent_count dependency_demand 1;
+            update_dependent_counts registry [ dependency ])))
   ;;
 
   let roots_of_caller registry caller =
@@ -1140,8 +1189,9 @@ module Job_priority = struct
               || demand.alias_roots <> alias_roots
               || demand.file_roots <> file_roots
               || demand.internal_roots <> internal_roots
-              || demand.active_dependent_count
-                 <> dependent_count_from_graph registry demand
+              || demand.immediate_dependent_count
+                 <> immediate_dependent_count_from_graph registry demand
+              || demand.dependent_count <> dependent_count_from_graph registry demand
               || not (Facts.equal demand.facts (facts_from_counts registry demand))
             then
               Code_error.raise
@@ -1152,7 +1202,8 @@ module Job_priority = struct
                 ; "file roots", Dyn.Int demand.file_roots
                 ; "internal roots", Dyn.Int demand.internal_roots
                 ; "root count", Dyn.Int demand.facts.root_count
-                ; "dependent count", Dyn.Int demand.active_dependent_count
+                ; "immediate dependent count", Dyn.Int demand.immediate_dependent_count
+                ; "dependent count", Dyn.Int demand.dependent_count
                 ];
             Root_id.Map.values demand.roots
             |> List.map ~f:(fun reach ->

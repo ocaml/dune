@@ -155,12 +155,15 @@ module State = struct
   ;;
 end
 
-let rec with_locks ~f = function
-  | [] -> f ()
-  | m :: mutexes ->
-    Fiber.Mutex.with_lock
-      (Table.find_or_add State.locks m ~f:(fun _ -> Fiber.Mutex.create ()))
-      ~f:(fun () -> with_locks ~f mutexes)
+let with_locks ~f locks =
+  let rec loop = function
+    | [] -> f ()
+    | lock :: locks ->
+      Fiber.Mutex.with_lock
+        (Table.find_or_add State.locks lock ~f:(fun _ -> Fiber.Mutex.create ()))
+        ~f:(fun () -> loop locks)
+  in
+  Path.Set.to_list locks |> loop
 ;;
 
 type rule_execution_result =
@@ -228,8 +231,8 @@ module Internal = struct
   ;;
 
   let digest_locks d locks =
-    Digest.Manual.list d locks ~f:(fun d path ->
-      Digest.Manual.string d (Path.to_string path))
+    Digest.Manual.int d (Path.Set.cardinal locks);
+    Path.Set.iter locks ~f:(fun path -> Digest.Manual.string d (Path.to_string path))
   ;;
 
   let digest_sandbox_config d sandbox =
@@ -263,7 +266,7 @@ module Internal = struct
 
   (* The current version of the rule digest scheme. We should increment it when
      making any changes to the scheme, to avoid collisions. *)
-  let rule_digest_version = 33
+  let rule_digest_version = 34
 
   let compute_rule_digest
         (rule : Rule.t)

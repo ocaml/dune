@@ -452,7 +452,7 @@ module Full = struct
   module Props = struct
     type t =
       { env : Env.t
-      ; locks : Path.t list
+      ; locks : Path.Set.t
       ; can_go_in_shared_cache : bool
       ; can_use_sandbox_policy : bool
       ; sandbox : Sandbox_config.t
@@ -461,7 +461,7 @@ module Full = struct
 
     let empty =
       { env = Env.empty
-      ; locks = []
+      ; locks = Path.Set.empty
       ; can_go_in_shared_cache = true
       ; can_use_sandbox_policy = true
       ; sandbox = Sandbox_config.default
@@ -492,7 +492,7 @@ module Full = struct
           t
       =
       { env = Env.extend_env env t.env
-      ; locks = locks @ t.locks
+      ; locks = Path.Set.union locks t.locks
       ; can_go_in_shared_cache = can_go_in_shared_cache && t.can_go_in_shared_cache
       ; can_use_sandbox_policy = can_use_sandbox_policy && t.can_use_sandbox_policy
       ; sandbox = Sandbox_config.inter sandbox t.sandbox
@@ -502,7 +502,7 @@ module Full = struct
 
     let make ~env ~locks ~can_go_in_shared_cache ~sandbox ~corrections =
       { env
-      ; locks
+      ; locks = Path.Set.of_list locks
       ; can_go_in_shared_cache
       ; can_use_sandbox_policy = true
       ; sandbox
@@ -511,7 +511,10 @@ module Full = struct
     ;;
 
     let add_env t env = { t with env = Env.extend_env t.env env }
-    let add_locks t locks = { t with locks = t.locks @ locks }
+
+    let add_locks t locks =
+      { t with locks = Path.Set.union t.locks (Path.Set.of_list locks) }
+    ;;
 
     let add_can_go_in_shared_cache t can_go_in_shared_cache =
       { t with

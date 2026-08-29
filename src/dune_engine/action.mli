@@ -104,7 +104,7 @@ module Full : sig
   module Props : sig
     type t = private
       { env : Env.t
-      ; locks : Path.t list
+      ; locks : Path.Set.t
       ; can_go_in_shared_cache : bool
       ; can_use_sandbox_policy : bool
         (** Whether spawned processes can be subject to an additional sandbox policy. *)

@@ -48,6 +48,7 @@ let run_fmt_command ~common ~config ~preview builder =
   | Error lock_held_by ->
     (* The --preview flag is being ignored by the RPC server, warn the user. *)
     if preview then Rpc.Rpc_common.warn_ignore_arguments lock_held_by;
+    let dir = Common.source_path common "." |> Path.Source.to_string in
     Scheduler_setup.no_build_no_rpc ~config (fun () ->
       Rpc.Rpc_common.fire_request
         ~name:"format"
@@ -56,7 +57,7 @@ let run_fmt_command ~common ~config ~preview builder =
         ~lock_held_by
         builder
         Dune_rpc.Procedures.Public.format
-        ())
+        dir)
 ;;
 
 let command =

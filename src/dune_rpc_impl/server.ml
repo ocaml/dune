@@ -282,15 +282,18 @@ let handler (t : t Fdecl.t) : unit Handler.t =
     implement_build_request Procedures.Public.runtest ~f:(fun paths -> Runtest paths)
   in
   let () =
-    let f session request_id () =
+    let f session request_id dir =
+      let dir = For_handlers.source_path_of_string dir in
+      let alias =
+        Path.Source.relative dir "fmt"
+        |> Path.Source.to_string
+        |> Dune_lang.String_with_vars.make_text Loc.none
+      in
       submit_build_request
         (Fdecl.get t)
         session
         request_id
-        (Build
-           [ (let alias = Dune_lang.String_with_vars.make_text Loc.none "fmt" in
-              Dune_lang.Dep_conf.Alias_rec alias)
-           ])
+        (Build [ Dune_lang.Dep_conf.Alias_rec alias ])
       >>| function
       (* A 'successful' formatting means there is nothing to promote. *)
       | Success -> ()

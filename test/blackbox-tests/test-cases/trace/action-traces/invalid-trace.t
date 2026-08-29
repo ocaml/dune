@@ -16,3 +16,18 @@ Invalid traces should be an error
   Error: invalid action trace in
   _build/REDACTED
   [1]
+
+A failed action currently leaves its trace event uncollected.
+
+  $ cat >dune <<'EOF'
+  > (rule
+  >  (alias failed)
+  >  (action
+  >   (bash "action_trace -name failed -cat bar -arg baz; exit 1")))
+  > EOF
+
+  $ dune build @failed >/dev/null 2>&1 ||
+  >   dune trace cat --only-actions |
+  >   jq_dune -s '
+  >     redactedActionTraces | select(.name == "failed")
+  >   '

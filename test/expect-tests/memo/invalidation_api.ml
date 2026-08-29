@@ -2,10 +2,10 @@ open! Stdune
 open Test_helpers.Make ()
 module Reason = Memo.Invalidation.Reason
 
-(* [clear_caches] and [changed_paths] are public-only Invalidation features, so they are
-   exercised only here. *)
+(* [invalidate_caches] and [changed_paths] are public-only [Invalidation]
+   features, so they are exercised only here. *)
 
-let%expect_test "clear_caches forces every memoized table to recompute" =
+let%expect_test "invalidate_caches forces every memoized table to recompute" =
   let fa =
     Memo.create
       "a"
@@ -42,8 +42,8 @@ let%expect_test "clear_caches forces every memoized table to recompute" =
     a 1 = 2
     b 2 = 4
     |}];
-  (* clear_caches empties every registered table, forcing both to recompute. *)
-  Memo.reset (Memo.Invalidation.clear_caches ~reason:Reason.Test);
+  (* [invalidate_caches] forces both tables to recompute. *)
+  Memo.reset (Memo.Invalidation.invalidate_caches ~reason:Reason.Test);
   run_both ();
   [%expect
     {|
@@ -52,6 +52,34 @@ let%expect_test "clear_caches forces every memoized table to recompute" =
     compute b 2
     b 2 = 4
     |}]
+;;
+
+let%expect_test "invalidate_caches preserves retained nodes" =
+  let source = ref 0 in
+  let table =
+    Memo.create
+      "table"
+      ~input:(module Unit)
+      ~cutoff:Int.equal
+      (fun () -> Memo.return !source)
+  in
+  let retained =
+    let compute () = Memo.exec table () in
+    Memo.lazy_node ~name:"retained" ~cutoff:Int.equal compute
+  in
+  let show () =
+    printfn "source = %d, retained = %d" !source (run (Memo.Node.read retained))
+  in
+  show ();
+  [%expect {| source = 0, retained = 0 |}];
+  Memo.reset (Memo.Invalidation.invalidate_caches ~reason:Reason.Test);
+  (* Recompute the node while both the table and lazy node retain it. *)
+  ignore (run (Memo.Node.read retained) : int);
+  source := 1;
+  (* The table lookup returns and invalidates the same node. *)
+  Memo.reset (Memo.Node.invalidate ~reason:Reason.Test (Memo.node table ()));
+  show ();
+  [%expect {| source = 1, retained = 1 |}]
 ;;
 
 let%expect_test "changed_paths returns the deduplicated Path_changed reasons only" =

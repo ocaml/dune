@@ -33,8 +33,6 @@ include struct
   module type Stringlike = Stringlike
 end
 
-module Targets = Dune_targets
-
 include struct
   open Dune_engine
   module Corrections = Corrections

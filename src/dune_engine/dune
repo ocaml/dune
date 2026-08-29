@@ -16,7 +16,7 @@
   dune_cache
   dune_scheduler
   dune_glob
-  dune_targets
+  targets
   dune_trace
   dune_action_plugin
   dune_util

@@ -10,7 +10,6 @@ module type Stringlike = Dune_util.Stringlike
 
 module Persistent = Dune_util.Persistent
 module Glob = Dune_glob.V1
-module Targets = Dune_targets
 include No_io
 
 (* To make bug reports usable *)

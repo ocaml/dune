@@ -25,7 +25,7 @@
   dune_vcs
   dune_engine
   dune_scheduler
-  dune_targets
+  targets
   dune_util
   dune_upgrader
   dune_pkg

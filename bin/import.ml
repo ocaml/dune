@@ -7,8 +7,6 @@ include struct
   module Scheduler = Scheduler
 end
 
-module Targets = Dune_targets
-
 include struct
   open Dune_engine
   module Build_config = Build_config

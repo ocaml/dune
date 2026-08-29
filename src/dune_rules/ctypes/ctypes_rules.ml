@@ -207,23 +207,24 @@ let build_c_program
   in
   let include_args =
     let open Action_builder.O in
-    let+ include_dirs =
-      let* ocaml = Action_builder.of_memo ocaml in
-      let+ ctypes_include_dirs =
-        (* XXX: need glob dependency *)
-        let open Action_builder.O in
-        let+ lib =
-          let ctypes = Lib_name.of_string "ctypes" in
-          Lib.DB.resolve (Scope.libs scope) (Loc.none, ctypes) |> Resolve.Memo.read
-        in
-        Lib_flags.L.include_paths [ lib ] (Ocaml Native) ocaml.lib_config
-        |> Lib_flags.L.include_only
+    let* ocaml = Action_builder.of_memo ocaml in
+    let+ ctypes_include_dirs =
+      let+ lib =
+        let ctypes = Lib_name.of_string "ctypes" in
+        Lib.DB.resolve (Scope.libs scope) (Loc.none, ctypes) |> Resolve.Memo.read
       in
-      let ocaml_where = ocaml.lib_config.stdlib_dir in
-      ocaml_where :: ctypes_include_dirs
+      Lib_flags.L.include_paths [ lib ] (Ocaml Native) ocaml.lib_config
+      |> Lib_flags.L.include_only
+    in
+    let include_arg dir = Command.Args.S [ A "-I"; Path dir ] in
+    let ctypes_include_arg dir =
+      let headers = File_selector.of_glob ~dir (Glob.of_string "*.h") in
+      Command.Args.S
+        [ include_arg dir; Hidden_deps (Dep.Set.singleton (Dep.file_selector headers)) ]
     in
     Command.Args.S
-      (List.map include_dirs ~f:(fun dir -> Command.Args.S [ A "-I"; Path dir ]))
+      (include_arg ocaml.lib_config.stdlib_dir
+       :: List.map ctypes_include_dirs ~f:ctypes_include_arg)
   in
   let extra_deps =
     let source_file_deps =

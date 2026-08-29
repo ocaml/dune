@@ -130,7 +130,15 @@ let rec exec t ~ectx ~eenv : Done_or_more_deps.t Fiber.t =
   | Ignore (outputs, t) -> redirect_out t ~ectx ~eenv ~perm:Normal outputs Dev_null.path
   | Progn ts -> exec_list ts ~ectx ~eenv
   | Concurrent ts ->
-    Fiber.parallel_map ts ~f:(exec ~ectx ~eenv)
+    Fiber.parallel_map ts ~f:(fun t ->
+      let eenv =
+        { eenv with
+          stdout_to = Process.Io.multi_use eenv.stdout_to
+        ; stderr_to = Process.Io.multi_use eenv.stderr_to
+        ; stdin_from = Process.Io.multi_use eenv.stdin_from
+        }
+      in
+      exec t ~ectx ~eenv)
     >>| List.fold_left ~f:Done_or_more_deps.union ~init:Done
   | Echo strs ->
     let () =

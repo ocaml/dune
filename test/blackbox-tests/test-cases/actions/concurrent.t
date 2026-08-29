@@ -53,7 +53,7 @@ When we run the rule, we see that the two actions are indeed run concurrently.
 Notice the need for a -j2. If Dune was configured with -j1 then the action would
 never terminate.
 
-Concurrent process actions currently share a single-use redirection.
+Concurrent process actions clone a shared redirection without closing it early.
 
   $ cat > dune <<'EOF'
   > (rule
@@ -69,7 +69,7 @@ Concurrent process actions currently share a single-use redirection.
   concurrent-output:
   $ cat _build/default/concurrent-output
   output
+  output
   $ echo 'escaped-output:'
   escaped-output:
   $ cat escaped-output
-  output

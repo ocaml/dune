@@ -798,12 +798,15 @@ let run_produce_correction
   >>| compose_cram_output
 ;;
 
+let cram_result_name = "CRAM-RESULT"
+let cram_result_version = 3
+
 module Script = Persistent.Make (struct
     type nonrec t = command_out list
 
-    let name = "CRAM-RESULT"
+    let name = cram_result_name
     let sharing = false
-    let version = 3
+    let version = cram_result_version
     let repr = Repr.list command_out_repr
   end)
 
@@ -897,7 +900,9 @@ module Run = struct
       : Sexp.t
       =
       List
-        [ path dir
+        [ Atom cram_result_name
+        ; Atom (Int.to_string cram_result_version)
+        ; path dir
         ; path script
         ; target output
         ; Dune_sexp.Encoder.(

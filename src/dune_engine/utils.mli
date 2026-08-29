@@ -9,6 +9,3 @@ val program_not_found
   -> loc:Loc.t option
   -> string
   -> _
-
-(** Pretty-printer for suggesting a given shell command to the user *)
-val pp_command_hint : string -> _ Pp.t

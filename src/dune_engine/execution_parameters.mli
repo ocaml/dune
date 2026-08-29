@@ -21,22 +21,17 @@ open Action_types
 type t
 
 val equal : t -> t -> bool
-val hash : t -> int
 val repr : t Repr.t
 val digest : t -> Digest.t
-val to_dyn : t -> Dyn.t
 
 module Action_output_limit : sig
   (** Maximum size for output (stdout/stderr) of actions, above which the output is
-      truncated. [None] means no limit, and [Some n] means a limit of [n] bytes. *)
+      truncated. *)
 
   type t = int
 
   val default : t
-  val to_string : t -> string
-  val equal : t -> t -> bool
   val repr : t Repr.t
-  val to_dyn : t -> Dyn.t
 end
 
 (** {1 Constructors} *)
@@ -48,7 +43,6 @@ module Workspace_root_for_build_prefix_map : sig
     | Set of string (** [Set root] substitute the root with [root] *)
 
   val repr : t Repr.t
-  val to_dyn : t -> Dyn.t
 end
 
 val builtin_default : t

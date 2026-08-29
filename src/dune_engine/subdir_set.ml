@@ -24,11 +24,6 @@ let of_dir_set d =
 let of_list l = These (Filename.Set.of_list l)
 let empty = These Filename.Set.empty
 
-let is_empty = function
-  | All -> false
-  | These set -> Filename.Set.is_empty set
-;;
-
 let mem t dir =
   match t with
   | All -> true
@@ -40,5 +35,3 @@ let union a b =
   | All, _ | _, All -> All
   | These a, These b -> These (Filename.Set.union a b)
 ;;
-
-let union_all = List.fold_left ~init:empty ~f:union

@@ -6,9 +6,6 @@ type t
 
 val root : t -> Path.t option
 
-(** [is_sandboxed t] is [true] when [t] represents a real sandbox. *)
-val is_sandboxed : t -> bool
-
 (** [map_path t p] returns the path corresponding to [p] inside the sandbox. *)
 val map_path : t -> Path.Build.t -> Path.Build.t
 

@@ -44,16 +44,6 @@ let create ~default ~here ~exceptions =
   else Nontrivial { here; default; exceptions }
 ;;
 
-let is_empty = function
-  | Empty -> true
-  | _ -> false
-;;
-
-let is_universal = function
-  | Universal -> true
-  | _ -> false
-;;
-
 let merge_exceptions a b ~default ~f =
   Filename.Map.merge a.exceptions b.exceptions ~f:(fun _ x y ->
     let x = Option.value x ~default:(trivial a.default) in
@@ -96,17 +86,6 @@ let rec negate x =
       ; default = not default
       ; exceptions = Filename.Map.map exceptions ~f:negate
       }
-;;
-
-let rec diff x y =
-  match x with
-  | Empty -> Empty
-  | Universal -> negate y
-  | Nontrivial nx ->
-    (match y with
-     | Empty -> x
-     | Universal -> Empty
-     | Nontrivial ny -> merge_nontrivial nx ny ~f_one:(fun a b -> a && not b) ~f_set:diff)
 ;;
 
 let rec mem t dir =
@@ -199,8 +178,4 @@ let toplevel_subdirs t =
   | Empty -> Finite Filename.Set.empty
   | Nontrivial t ->
     if t.default then Infinite else Finite (Filename.Set.of_keys t.exceptions)
-;;
-
-let of_list paths =
-  union_all (List.map paths ~f:(fun p -> singleton' (Path.Local_gen.explode p)))
 ;;

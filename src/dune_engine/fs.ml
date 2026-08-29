@@ -30,13 +30,6 @@ let file_exists file =
   | `Inside _ -> exists file Unix.S_REG
 ;;
 
-let dir_exists dir =
-  let* () = Memo.return () in
-  match Path.destruct_build_dir dir with
-  | `Outside dir -> Fs_memo.dir_exists dir
-  | `Inside _ -> exists dir Unix.S_DIR
-;;
-
 let with_lexbuf_from_file file ~f =
   let* () = Memo.return () in
   match Path.destruct_build_dir file with

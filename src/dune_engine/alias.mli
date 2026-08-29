@@ -21,5 +21,4 @@ val name : t -> Name.t
 val dir : t -> Path.Build.t
 val to_dyn : t -> Dyn.t
 val of_user_written_path : loc:Loc.t -> Path.t -> t
-val fully_qualified_name : t -> Path.Build.t
 val describe : ?loc:Loc.t -> t -> _ Pp.t

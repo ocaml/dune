@@ -18,6 +18,7 @@ INSIDE_DUNE for commands run from subdirectories.
   >  (name root))
   > EOF
   $ echo 'let ()=print_int (5+4)' > root.ml
+  $ touch .ocamlformat
 
   $ mkdir sub
   $ cat > sub/dune <<'EOF'
@@ -78,5 +79,16 @@ A forwarded runtest request does the same.
   $ (cd sub && unset INSIDE_DUNE; dune runtest) 2>/dev/null
   $ find _build/default -name 'rpc-runtest-*' -type f -print
   _build/default/server/rpc-runtest-server
+
+The format RPC has no path argument, so it formats recursively from the
+server's directory rather than the client's directory.
+
+  $ (cd sub && unset INSIDE_DUNE; dune fmt) 2>/dev/null
+  $ cat root.ml
+  let ()=print_int (5+4)
+  $ cat sub/nested.ml
+  let ()=print_int (6+5)
+  $ cat server/server.ml
+  (* fake ocamlformat output *)
 
   $ stop_dune_quiet

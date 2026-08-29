@@ -52,3 +52,24 @@ When we run the rule, we see that the two actions are indeed run concurrently.
 
 Notice the need for a -j2. If Dune was configured with -j1 then the action would
 never terminate.
+
+Concurrent process actions currently share a single-use redirection.
+
+  $ cat > dune <<'EOF'
+  > (rule
+  >  (action
+  >   (with-stdout-to concurrent-output
+  >    (concurrent
+  >     (run sh -c "echo output")
+  >     (run sh -c "echo output")))))
+  > EOF
+
+  $ dune build -j2 concurrent-output >escaped-output 2>&1
+  $ echo 'concurrent-output:'
+  concurrent-output:
+  $ cat _build/default/concurrent-output
+  output
+  $ echo 'escaped-output:'
+  escaped-output:
+  $ cat escaped-output
+  output

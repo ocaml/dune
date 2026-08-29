@@ -12,7 +12,14 @@
 
   $ cp ./bin/foo.exe ./
 
-Reading a directory containing the action's target currently deadlocks.
+Reading a directory containing the action's target is rejected.
 
   $ timeout 3 dune build some_file
-  [124]
+  File "dune", lines 1-4, characters 0-62:
+  1 | (rule
+  2 |  (target some_file)
+  3 |  (action
+  4 |   (dynamic-run ./foo.exe)))
+  Dependency cycle between:
+     _build/default/some_file
+  [1]

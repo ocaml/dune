@@ -82,6 +82,8 @@ module Server = struct
       let rec exception_message = function
         | User_error.E message -> User_message.to_string message
         | Memo.Error.E error -> exception_message (Memo.Error.get error)
+        | Memo.Cycle_error.E _ as exn ->
+          Dune_util.Report_error.message_of_exception exn |> User_message.to_string
         | exn -> Printexc.to_string exn
       in
       function

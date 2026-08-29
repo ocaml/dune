@@ -496,7 +496,10 @@ module Internal = struct
               ; action
               }
             in
-            let build_deps deps = Memo.run (build_deps deps) in
+            let* memo_context = Memo.Cycle_detection_context.current () in
+            let build_deps deps =
+              Memo.Cycle_detection_context.run memo_context (build_deps deps)
+            in
             Action_exec.exec input ~build_deps
           in
           let* action_exec_result, () =

@@ -249,6 +249,23 @@ let run t =
   | false -> t
 ;;
 
+module Cycle_detection_context = struct
+  type t = Call_stack.t
+
+  let current = Call_stack.get_call_stack
+
+  let run context memo =
+    Fiber.Var.set_apply
+      Call_stack.call_stack_var
+      context
+      (fun memo ->
+         run_with_error_handler
+           (fun () -> memo)
+           ~handle_error_no_raise:(fun _exn -> Fiber.return ()))
+      memo
+  ;;
+end
+
 module With_implicit_output = struct
   type ('i, 'o) t = 'i -> 'o Fiber.t
 

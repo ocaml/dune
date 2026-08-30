@@ -15,7 +15,9 @@ Test reproducibility check
   >     cat dune-build-output
   >     return $status
   >   }
-  >   sed -n '/^Warning:/,/^action at dune:6/p' dune-build-output
+  >   if grep -q '^Warning:' dune-build-output; then
+  >     sed -n '/^Warning:/,/^action at dune:6/p' dune-build-output | censor
+  >   fi
   >   sed -n '/^build /p' dune-build-output | sort
   >   sed '/^Warning:/,/^action at dune:6/d; /^build /d' dune-build-output
   > }
@@ -80,9 +82,9 @@ Set 'cache-check-probability' to 1.0, which should trigger the check
   > EOF
   $ rm -rf _build
   $ dune_build_sorted_actions --config-file config reproducible non-reproducible
-  Warning: cache store error [ec544297636df4b8a35a7a4cb367c872]: ((in_cache
-  ((non-reproducible 7378fb2d7d80dc4468d6558d864f0897))) (computed
-  ((non-reproducible 074ebdc1c3853f27c68566d8d183032c)))) after executing
+  Warning: cache store error [$DIGEST1]: ((in_cache
+  ((non-reproducible $DIGEST2))) (computed
+  ((non-reproducible $DIGEST3)))) after executing
   action at dune:6
   build non-reproducible
   build reproducible
@@ -136,9 +138,9 @@ Test that the environment variable and the command line flag work too
 
   $ rm -rf _build
   $ DUNE_CACHE_CHECK_PROBABILITY=1.0 dune_build_sorted_actions --cache=enabled reproducible non-reproducible
-  Warning: cache store error [ec544297636df4b8a35a7a4cb367c872]: ((in_cache
-  ((non-reproducible 7378fb2d7d80dc4468d6558d864f0897))) (computed
-  ((non-reproducible 074ebdc1c3853f27c68566d8d183032c)))) after executing
+  Warning: cache store error [$DIGEST1]: ((in_cache
+  ((non-reproducible $DIGEST2))) (computed
+  ((non-reproducible $DIGEST3)))) after executing
   action at dune:6
   build non-reproducible
   build reproducible
@@ -148,9 +150,9 @@ Test that the environment variable and the command line flag work too
 
   $ rm -rf _build
   $ dune_build_sorted_actions --cache=enabled --cache-check-probability=1.0 reproducible non-reproducible
-  Warning: cache store error [ec544297636df4b8a35a7a4cb367c872]: ((in_cache
-  ((non-reproducible 7378fb2d7d80dc4468d6558d864f0897))) (computed
-  ((non-reproducible 074ebdc1c3853f27c68566d8d183032c)))) after executing
+  Warning: cache store error [$DIGEST1]: ((in_cache
+  ((non-reproducible $DIGEST2))) (computed
+  ((non-reproducible $DIGEST3)))) after executing
   action at dune:6
   build non-reproducible
   build reproducible

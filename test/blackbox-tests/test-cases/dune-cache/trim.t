@@ -81,9 +81,10 @@ entries uniformly.
 
   $ metadata_dir="$PWD/.xdg-cache/dune/db/meta/v5"
   $ (cd "$metadata_dir"; find . -mindepth 2 -maxdepth 2 -type f | sort) > metadata-paths
-  $ cat metadata-paths | censor
-  ./62/$DIGEST1
-  ./9f/$DIGEST2
+  $ cat metadata-paths \
+  > | dune_cmd subst-unique '[0-9a-f]{2}/[0-9a-f]{32}' '$DIGEST'
+  ./$DIGEST1
+  ./$DIGEST2
 
   $ while read path; do dune internal cache-metadata "$metadata_dir/$path"; done < metadata-paths \
   > | jq_dune -S -s 'sortCacheMetadataByFirstPath' \

@@ -25,6 +25,9 @@ INSIDE_DUNE for commands run from subdirectories.
   >  (target rpc-build-target)
   >  (action (with-stdout-to %{target} (echo sub))))
   > (rule
+  >  (target rpc-absolute-build-target)
+  >  (action (with-stdout-to %{target} (echo absolute))))
+  > (rule
   >  (alias runtest)
   >  (target rpc-runtest-sub)
   >  (action (with-stdout-to %{target} (echo sub))))
@@ -61,6 +64,13 @@ A forwarded build resolves its target from the client's directory.
   $ find _build/default -name rpc-build-target -type f -print
   _build/default/sub/rpc-build-target
 
+An absolute target inside the workspace is treated as an external path instead
+of a build target.
+
+  $ (cd sub && unset INSIDE_DUNE; dune build "$PWD/rpc-absolute-build-target") 2>/dev/null
+  [1]
+  $ find _build/default -name rpc-absolute-build-target -type f -print
+
 Exec also builds relative programs from the client's directory.
 
   $ (cd sub && dune exec ./nested.exe) >/dev/null 2>&1
@@ -80,13 +90,13 @@ A forwarded runtest request also uses the client's directory.
   _build/default/sub/rpc-runtest-sub
 
 The format RPC has no path argument, so it formats recursively from the
-server's directory rather than the client's directory.
+workspace root rather than the client's directory.
 
   $ (cd sub && unset INSIDE_DUNE; dune fmt) 2>/dev/null
   $ cat root.ml
-  let ()=print_int (5+4)
+  (* fake ocamlformat output *)
   $ cat sub/nested.ml
-  let ()=print_int (6+5)
+  (* fake ocamlformat output *)
   $ cat server/server.ml
   (* fake ocamlformat output *)
 

@@ -1,4 +1,4 @@
-;;; dune.el --- Integration with the dune build system
+;;; dune.el --- Integration with the dune build system  -*- lexical-binding: t; -*-
 
 ;; Copyright 2018 Jane Street Group, LLC <opensource@janestreet.com>
 ;;           2017- Christophe Troestler
@@ -31,6 +31,8 @@
 ;; CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 ;;; Code:
+
+(declare-function xref-push-marker-stack "xref" (&optional m))
 
 (defgroup dune nil
   "Integration with the dune build system."
@@ -148,7 +150,7 @@
 (defmacro dune--field-vals (field &rest vals)
   "Build a `font-lock-keywords' rule for the dune FIELD accepting values VALS."
   `(list (concat "(" ,field "[[:space:]]+" ,(regexp-opt vals t))
-         1 font-lock-constant-face))
+         1 'font-lock-constant-face))
 
 (defvar dune-font-lock-keywords
   `((,(concat "(\\(" dune-stanzas-regex "\\)") 1 font-lock-keyword-face)
@@ -197,10 +199,12 @@
 
 (require 'smie)
 
+;; Internal SMIE variable, bound dynamically by SMIE during indentation.
+(defvar smie--parent)
+
 (defvar dune-smie-grammar
-  (when (fboundp 'smie-prec2->grammar)
-    (smie-prec2->grammar
-     (smie-bnf->prec2 '()))))
+  (smie-prec2->grammar
+   (smie-bnf->prec2 '())))
 
 (defun dune-smie-rules (kind token)
   "Rules for `smie-setup'.
@@ -378,8 +382,7 @@ See `smie-rules-function' for the meaning of KIND and TOKEN."
        ["test" dune-insert-test-form t]
        ["env" dune-insert-env-form t]
        ["ignored_subdirs" dune-insert-ignored-subdirs-form t]
-       )))
-  (easy-menu-add dune-mode-menu))
+       ))))
 
 
 ;;;###autoload

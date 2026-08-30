@@ -20,6 +20,13 @@
   $ dune runtest
   Directory listing: [some_file1; some_file2]
 
+A direct run includes directories even though glob dependencies only track
+files.
+
+  $ mkdir some_dir/subdir
+  $ ./foo.exe
+  Directory listing: [some_file1; some_file2; subdir]
+
 A missing directory has an empty listing when the plugin runs directly.
 
   $ rm -rf some_dir

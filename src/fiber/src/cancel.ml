@@ -13,15 +13,41 @@ type handlers =
       ; mutable prev : handlers
       }
 
-module State = struct
-  type t =
-    | Cancelled
-    | Not_cancelled of { mutable handlers : handlers }
-end
+type state =
+  | Cancelled
+  | Not_cancelled of
+      { mutable handlers : handlers
+      ; mutable children : t list
+      ; parent : t option
+      }
 
-type t = { mutable state : State.t }
+and t = { mutable state : state }
 
-let create () = { state = Not_cancelled { handlers = End_of_handlers } }
+let create () =
+  { state = Not_cancelled { handlers = End_of_handlers; children = []; parent = None } }
+;;
+
+let make_child parent =
+  match parent.state with
+  | Cancelled -> { state = Cancelled }
+  | Not_cancelled p ->
+    let child =
+      { state =
+          Not_cancelled
+            { handlers = End_of_handlers; children = []; parent = Some parent }
+      }
+    in
+    p.children <- child :: p.children;
+    child
+;;
+
+let remove_me_from_parent t ~parent =
+  match parent with
+  | None -> ()
+  | Some { state = Cancelled; _ } -> ()
+  | Some { state = Not_cancelled p; _ } ->
+    p.children <- List.filter (fun c -> not (c == t)) p.children
+;;
 
 let rec invoke_handlers = function
   | Handler { ivar; next; prev = _ } ->
@@ -30,13 +56,20 @@ let rec invoke_handlers = function
   | End_of_handlers -> return ()
 ;;
 
-let fire t =
-  of_thunk (fun () ->
+let fire =
+  let rec gather acc t =
     match t.state with
-    | Cancelled -> return ()
-    | Not_cancelled { handlers } ->
+    | Cancelled -> acc
+    | Not_cancelled { handlers; children; parent = _ } ->
       t.state <- Cancelled;
-      invoke_handlers handlers)
+      List.fold_left gather (handlers :: acc) children
+  in
+  fun t ->
+    of_thunk (fun () ->
+      (match t.state with
+       | Cancelled -> ()
+       | Not_cancelled { parent; _ } -> remove_me_from_parent t ~parent);
+      gather [] t |> List.rev |> parallel_iter ~f:invoke_handlers)
 ;;
 
 let rec fills_of_handlers acc = function
@@ -45,12 +78,13 @@ let rec fills_of_handlers acc = function
   | End_of_handlers -> List.rev acc
 ;;
 
-let fire' t =
+let rec fire' t =
   match t.state with
   | Cancelled -> []
-  | Not_cancelled { handlers } ->
+  | Not_cancelled { handlers; children; parent } ->
     t.state <- Cancelled;
-    fills_of_handlers [] handlers
+    remove_me_from_parent t ~parent;
+    fills_of_handlers [] handlers @ List.concat_map fire' children
 ;;
 
 let fired t =
@@ -63,7 +97,7 @@ let with_handler t f ~on_cancel =
   match t.state with
   | Cancelled ->
     let+ x, y = fork_and_join f on_cancel in
-    x, Cancelled y
+    x, (Cancelled y : _ outcome)
   | Not_cancelled h ->
     let ivar = Ivar.create () in
     let node = Handler { ivar; next = h.handlers; prev = End_of_handlers } in
@@ -97,6 +131,6 @@ let with_handler t f ~on_cancel =
          >>= function
          | Cancelled () ->
            let+ x = on_cancel () in
-           Cancelled x
-         | Not_cancelled -> return Not_cancelled)
+           (Cancelled x : _ outcome)
+         | Not_cancelled -> return (Not_cancelled : _ outcome))
 ;;

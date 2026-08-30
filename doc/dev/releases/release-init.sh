@@ -52,15 +52,15 @@ set -u
 # For testing, you can set this to your fork
 DUNE_GIT_URL="https://github.com/${DUNE_REPO}.git"
 
-POST_RELEASE_STEPS="""## Post-release
+POST_RELEASE_STEPS="## Post-release
 
 - [ ] Merge release branch into \`main\`
 - [ ] Write a post about the release on Discuss: [link]
 - [ ] Open PR announcing release on ocaml.org: [link]
 - [ ] Store the revdeps error file in the [logs](https://github.com/ocaml/dune/wiki/Reverse-dependencies-CI-logs) as HTML
-"""
+"
 
-MINOR_OR_MAJOR_BODY="""## Known blockers
+MINOR_OR_MAJOR_BODY="## Known blockers
 
 Issues blocking the release
 
@@ -89,7 +89,7 @@ ${POST_RELEASE_STEPS}
   - [ ] in the [CI workflow](https://github.com/ocaml/dune/tree/main/.github/workflows/workflow.yml.in)
   - [ ] in [dune-project](https://github.com/ocaml/dune/blob/main/dune-project#L1)
   - [ ] in the [dune-rpc](https://github.com/ocaml/dune/blob/main/otherlibs/dune-rpc/types.ml#L30)
-"""
+"
 
 function confirm () {
     read \
@@ -111,13 +111,14 @@ issue_body=
 rc_branch=
 
 function patch_release () {
-    local last_version=$(git -c versionsort.suffix="_alpha" tag --list '*.*.*' --sort=-version:refname | head -n 1 )
+    local last_version
+    last_version=$(git -c versionsort.suffix="_alpha" tag --list '*.*.*' --sort=-version:refname | head -n 1 )
     next_version=$(echo "${last_version}" | awk -F. -v OFS=. '{print $1, $2, $3+1 }')
     rc_branch="${next_version}-rc"
 
     confirm
 
-    issue_body="""## Fixes
+    issue_body="## Fixes
 
 Regressions requiring fixes in \`main\` and backports to \`${next_version}-rc\`:
 
@@ -140,7 +141,7 @@ For each PR needing a backport
 [point-release]: https://github.com/ocaml/dune/blob/main/doc/dev/releases/process.md#point-releases--patch-releases-xyz-z--0
 
 ${POST_RELEASE_STEPS}
-"""
+"
     git switch -c "${rc_branch}" "${last_version}"
 }
 

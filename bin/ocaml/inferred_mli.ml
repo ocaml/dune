@@ -31,7 +31,7 @@ let term =
          Filename.Extension.ml)
   then User_error.raise [ Pp.text "Module path must have a .ml extension." ];
   Scheduler_setup.go_with_rpc_server ~common ~config (fun () ->
-    Build.build_memo_exn (fun () ->
+    Build_system.run_exn (fun () ->
       let open Memo.O in
       let* sctx =
         let+ setup = Util.setup () in

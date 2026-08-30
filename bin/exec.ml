@@ -339,7 +339,7 @@ let exec_building_directly ~common ~config ~context ~prog ~args ~no_rebuild =
     let prepared_exec =
       Scheduler_setup.go_with_rpc_server ~common ~config
       @@ fun () ->
-      Build.build_memo_exn (fun () ->
+      Build_system.run_exn (fun () ->
         let open Memo.O in
         let* setup = Util.setup () in
         let sctx = Dune_rules.Main.find_scontext_exn setup ~name:context in

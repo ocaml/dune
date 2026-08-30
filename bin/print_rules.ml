@@ -342,7 +342,7 @@ let term =
   let common, config = Common.init builder in
   let out = Option.map ~f:Path.of_string out in
   Scheduler_setup.go_with_rpc_server ~common ~config (fun () ->
-    Build.build_memo_exn (fun () ->
+    Build_system.run_exn (fun () ->
       let open Memo.O in
       let* setup = Util.setup () in
       let* request =

@@ -72,7 +72,7 @@ let term =
       |> Path.Build.append_local (Context.build_dir context)
     in
     let* rocqtop, rocq_arg, args, env =
-      Build.build_memo_exn
+      Build_system.run_exn
       @@ fun () ->
       let open Memo.O in
       let* (tr : Dune_rules.Dir_contents.triage) =

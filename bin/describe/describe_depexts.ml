@@ -3,7 +3,7 @@ open Import
 let print_depexts context_name =
   let open Fiber.O in
   let+ depexts =
-    Build.build_memo_exn (fun () ->
+    Build_system.run_exn (fun () ->
       Dune_rules.Pkg_rules.all_filtered_depexts context_name)
   in
   List.iter depexts ~f:print_endline

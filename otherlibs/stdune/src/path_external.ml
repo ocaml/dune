@@ -91,25 +91,81 @@ let cwd () = Sys.getcwd ()
 let initial_cwd = Fpath.initial_cwd
 let as_local t = "." ^ t
 
-(* Only relativize POSIX-style absolute paths on non-Windows systems. Other
-   absolute syntaxes, such as Windows drive-letter and UNC paths, keep their
-   absolute spelling. *)
-let local_part t =
+let posix_root_and_local t =
   match String.drop_prefix t ~prefix:"/" with
   | None -> None
   | Some t when String.starts_with ~prefix:"/" t -> None
-  | Some "" -> Some Local.root
-  | Some t -> Some (Local.of_string t)
+  | Some "" -> Some ("/", Local.root)
+  | Some t -> Some ("/", Local.of_string t)
 ;;
 
+(* Relative paths on Windows are only meaningful within the same root. Roots
+   can be the current drive, a drive letter, or a UNC server and share. Extended
+   drive and UNC paths use the same structure after their [\\?\] prefix. *)
+let windows_root_and_local t =
+  let t =
+    String.map t ~f:(function
+      | '\\' -> '/'
+      | c -> c)
+  in
+  let length = String.length t in
+  let lowercase = String.lowercase t in
+  let rec skip_separators pos =
+    if pos < length && Char.equal t.[pos] '/' then skip_separators (pos + 1) else pos
+  in
+  let make ~root_end ~local_start =
+    let root = String.take t root_end |> String.lowercase in
+    let local_start = skip_separators local_start in
+    let local = String.drop t local_start |> Local.of_string in
+    Some (root, local)
+  in
+  let unc ~start =
+    match String.index_from t start '/' with
+    | None -> None
+    | Some server_end ->
+      let share_start = server_end + 1 in
+      if server_end = start || share_start = length
+      then None
+      else (
+        match String.index_from t share_start '/' with
+        | None -> make ~root_end:length ~local_start:length
+        | Some share_end ->
+          if share_end = share_start
+          then None
+          else make ~root_end:share_end ~local_start:(share_end + 1))
+  in
+  let is_drive pos =
+    pos + 2 < length
+    && (match t.[pos] with
+        | 'A' .. 'Z' | 'a' .. 'z' -> true
+        | _ -> false)
+    && Char.equal t.[pos + 1] ':'
+    && Char.equal t.[pos + 2] '/'
+  in
+  if String.starts_with lowercase ~prefix:"//?/unc/"
+  then unc ~start:8
+  else if String.starts_with lowercase ~prefix:"//?/" && is_drive 4
+  then make ~root_end:6 ~local_start:7
+  else if
+    String.starts_with lowercase ~prefix:"//?/"
+    || String.starts_with lowercase ~prefix:"//./"
+  then None
+  else if String.starts_with t ~prefix:"//"
+  then unc ~start:2
+  else if length > 0 && Char.equal t.[0] '/'
+  then make ~root_end:1 ~local_start:1
+  else if is_drive 0
+  then make ~root_end:2 ~local_start:3
+  else None
+;;
+
+let root_and_local = if Sys.win32 then windows_root_and_local else posix_root_and_local
+
 let reach t ~from =
-  (* CR-someday rgrinberg: I couldn't get this to work on Windows. *)
-  if Sys.win32
-  then to_string t
-  else (
-    match local_part t, local_part from with
-    | Some t, Some from -> Local.reach t ~from
-    | _ -> to_string t)
+  match root_and_local t, root_and_local from with
+  | Some (root, t), Some (from_root, from) when String.equal root from_root ->
+    Local.reach t ~from
+  | _ -> to_string t
 ;;
 
 let of_filename_relative_to_initial_cwd fn =

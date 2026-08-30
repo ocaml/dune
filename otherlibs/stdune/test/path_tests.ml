@@ -354,19 +354,9 @@ None
 |}]
 ;;
 
-let check_on_win_or_unix output ~wind ~unix =
-  let expected = String.trim (if Sys.win32 then wind else unix) in
-  let output = String.trim output in
-  if not (String.equal output expected)
-  then
-    Code_error.raise
-      "output mismatch"
-      [ "expected", String expected; "got", String output ]
-;;
-
 let%expect_test _ =
   reach "/foo/baz" ~from:"/foo/bar";
-  check_on_win_or_unix [%expect.output] ~wind:{| "/foo/baz" |} ~unix:{| "../baz" |}
+  [%expect {| "../baz" |}]
 ;;
 
 let check_external_reach_on_windows ~to_ ~from ~expected =
@@ -378,15 +368,12 @@ let check_external_reach_on_windows ~to_ ~from ~expected =
 ;;
 
 let%expect_test "external path reach on Windows" =
-  check_external_reach_on_windows ~to_:"/foo/baz" ~from:"/foo/bar" ~expected:"/foo/baz";
-  check_external_reach_on_windows
-    ~to_:{|\foo\baz|}
-    ~from:"/foo/bar"
-    ~expected:{|\foo\baz|};
+  check_external_reach_on_windows ~to_:"/foo/baz" ~from:"/foo/bar" ~expected:"../baz";
+  check_external_reach_on_windows ~to_:{|\foo\baz|} ~from:"/foo/bar" ~expected:"../baz";
   check_external_reach_on_windows
     ~to_:{|C:\foo\baz|}
     ~from:"c:/foo/bar"
-    ~expected:{|C:\foo\baz|};
+    ~expected:"../baz";
   check_external_reach_on_windows ~to_:"C:/foo" ~from:"D:/bar" ~expected:"C:/foo";
   check_external_reach_on_windows
     ~to_:{|C:foo\baz|}
@@ -395,7 +382,7 @@ let%expect_test "external path reach on Windows" =
   check_external_reach_on_windows
     ~to_:{|\\server\share\foo\baz|}
     ~from:{|\\SERVER\SHARE\foo\bar|}
-    ~expected:{|\\server\share\foo\baz|};
+    ~expected:"../baz";
   check_external_reach_on_windows
     ~to_:{|\\server\other\foo|}
     ~from:{|\\server\share\bar|}
@@ -403,11 +390,11 @@ let%expect_test "external path reach on Windows" =
   check_external_reach_on_windows
     ~to_:{|\\?\C:\foo\baz|}
     ~from:{|\\?\c:\foo\bar|}
-    ~expected:{|\\?\C:\foo\baz|};
+    ~expected:"../baz";
   check_external_reach_on_windows
     ~to_:{|\\?\UNC\server\share\foo\baz|}
     ~from:{|\\?\unc\SERVER\SHARE\foo\bar|}
-    ~expected:{|\\?\UNC\server\share\foo\baz|};
+    ~expected:"../baz";
   check_external_reach_on_windows ~to_:"/foo" ~from:"C:/bar" ~expected:"/foo";
   [%expect {| |}]
 ;;

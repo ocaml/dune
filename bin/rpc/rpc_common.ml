@@ -105,6 +105,31 @@ let prepare_targets targets =
     Dune_lang.to_string sexp)
 ;;
 
+let prepare_targets_relative_to_root (root : Workspace_root.t) targets =
+  let prefix = root.reach_from_root_prefix in
+  let prefix_path path =
+    let loc = Dune_lang.String_with_vars.loc path in
+    match Dune_lang.String_with_vars.known_prefix path with
+    | Full path ->
+      let path = if Filename.is_relative path then prefix ^ path else path in
+      Path.relative Path.root path
+      |> Path.to_string
+      |> Dune_lang.String_with_vars.make_text loc
+    | Partial { prefix = ""; source_pform = _ } ->
+      Dune_lang.String_with_vars.add_prefix path prefix
+    | Partial { prefix = path_prefix; source_pform = _ } ->
+      if Filename.is_relative path_prefix
+      then Dune_lang.String_with_vars.add_prefix path prefix
+      else path
+  in
+  List.map targets ~f:(function
+    | Dune_lang.Dep_conf.File path -> Dune_lang.Dep_conf.File (prefix_path path)
+    | Alias path -> Dune_lang.Dep_conf.Alias (prefix_path path)
+    | Alias_rec path -> Dune_lang.Dep_conf.Alias_rec (prefix_path path)
+    | target -> target)
+  |> prepare_targets
+;;
+
 let warn_ignore_arguments lock_held_by =
   User_warning.emit
     [ Pp.paragraphf

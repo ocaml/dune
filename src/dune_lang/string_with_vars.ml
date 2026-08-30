@@ -41,6 +41,19 @@ let compare_no_loc { quoted; parts; loc = _ } t =
 ;;
 
 let equal_no_loc t1 t2 = Ordering.is_eq (compare_no_loc t1 t2)
+
+let add_prefix t prefix =
+  if String.equal prefix ""
+  then t
+  else (
+    let parts =
+      match t.parts with
+      | Text text :: parts -> Text (prefix ^ text) :: parts
+      | parts -> Text prefix :: parts
+    in
+    { t with parts })
+;;
+
 let make_text ?(quoted = false) loc s = { quoted; loc; parts = [ Text s ] }
 
 let part_of_pform loc pform =

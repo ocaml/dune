@@ -17,6 +17,13 @@ val wait_term : bool Cmdliner.Term.t
     be sent via RPC. *)
 val prepare_targets : Dune_lang.Dep_conf.t list -> string list
 
+(** Rebase relative target paths from the client's directory to its workspace
+    root. *)
+val prepare_targets_relative_to_root
+  :  Workspace_root.t
+  -> Dune_lang.Dep_conf.t list
+  -> string list
+
 (** Send a request to the RPC server. If [wait], it will poll forever until a server is listening.
     Should be scheduled by a scheduler that does not come with a RPC server on its own.
 

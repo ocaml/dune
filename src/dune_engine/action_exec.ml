@@ -288,45 +288,48 @@ and exec_pipe outputs ts ~ectx ~eenv : Done_or_more_deps.t Fiber.t =
   let tmp_file () =
     Dtemp.file ~prefix:"dune-pipe-action-" ~suffix:("." ^ Outputs.to_string outputs)
   in
+  let with_tmp_file ~f =
+    let tmp = tmp_file () in
+    Fiber.finalize
+      (fun () -> f tmp)
+      ~finally:(fun () ->
+        Dtemp.destroy File tmp;
+        Fiber.return ())
+  in
   let rec loop ~in_ ts =
     match ts with
     | [] -> assert false
     | [ last_t ] ->
-      let+ result =
-        let eenv =
-          match outputs with
-          | Stderr -> { eenv with stdout_to = Process.Io.multi_use eenv.stderr_to }
-          | _ -> eenv
-        in
-        redirect_in last_t ~ectx ~eenv Stdin in_
+      let eenv =
+        match outputs with
+        | Stderr -> { eenv with stdout_to = Process.Io.multi_use eenv.stderr_to }
+        | _ -> eenv
       in
-      Dtemp.destroy File in_;
-      result
+      redirect_in last_t ~ectx ~eenv Stdin in_
     | t :: ts ->
-      let out = tmp_file () in
-      let* done_or_deps =
-        let eenv = { eenv with stderr_to = Process.Io.multi_use eenv.stderr_to } in
-        redirect t ~ectx ~eenv ~in_:(Stdin, in_) ~out:(Stdout, out, Normal) ()
-      in
-      Dtemp.destroy File in_;
-      (match done_or_deps with
-       | Need_more_deps _ as need -> Fiber.return need
-       | Done -> loop ~in_:out ts)
+      with_tmp_file ~f:(fun out ->
+        let* done_or_deps =
+          let eenv = { eenv with stderr_to = Process.Io.multi_use eenv.stderr_to } in
+          redirect t ~ectx ~eenv ~in_:(Stdin, in_) ~out:(Stdout, out, Normal) ()
+        in
+        match done_or_deps with
+        | Need_more_deps _ as need -> Fiber.return need
+        | Done -> loop ~in_:out ts)
   in
   match ts with
   | [] -> assert false
   | t1 :: ts ->
-    let out = tmp_file () in
-    let eenv =
-      match outputs with
-      | Outputs -> eenv
-      | Stdout -> { eenv with stderr_to = Process.Io.multi_use eenv.stderr_to }
-      | Stderr -> { eenv with stdout_to = Process.Io.multi_use eenv.stdout_to }
-    in
-    redirect_out t1 ~ectx ~eenv ~perm:Normal outputs out
-    >>= (function
-     | Need_more_deps _ as need -> Fiber.return need
-     | Done -> loop ~in_:out ts)
+    with_tmp_file ~f:(fun out ->
+      let eenv =
+        match outputs with
+        | Outputs -> eenv
+        | Stdout -> { eenv with stderr_to = Process.Io.multi_use eenv.stderr_to }
+        | Stderr -> { eenv with stdout_to = Process.Io.multi_use eenv.stdout_to }
+      in
+      redirect_out t1 ~ectx ~eenv ~perm:Normal outputs out
+      >>= function
+      | Need_more_deps _ as need -> Fiber.return need
+      | Done -> loop ~in_:out ts)
 ;;
 
 let exec_until_all_deps_ready ~ectx ~eenv t =

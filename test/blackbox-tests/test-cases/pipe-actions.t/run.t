@@ -114,7 +114,7 @@ The makefile version of pipe actions uses actual pipes:
   o a | o b | e c
   e a | o b | e c
 
-A failed pipe currently retains its temporary file until the build finishes.
+A failed pipe releases its temporary file before the build finishes.
 
   $ mkdir "$TMPDIR/pipe-cleanup"
   $ export TMPDIR="$TMPDIR/pipe-cleanup"
@@ -149,7 +149,6 @@ A failed pipe currently retains its temporary file until the build finishes.
 
   $ find "$TMPDIR" -type f -name 'dune-pipe-action-*' -exec basename {} \; |
   > sed -E 's/^dune-pipe-action-.*$/dune-pipe-action-<id>/'
-  dune-pipe-action-<id>
 
   $ touch "$release"
   $ wait "$build_pid"

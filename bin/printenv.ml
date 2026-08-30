@@ -90,7 +90,7 @@ let term =
   in
   let common, config = Common.init builder in
   Scheduler_setup.go_with_rpc_server ~common ~config (fun () ->
-    Build.build_memo_exn (fun () ->
+    Build_system.run_exn (fun () ->
       let open Memo.O in
       let* setup = Util.setup () in
       let dir = Path.of_string dir in

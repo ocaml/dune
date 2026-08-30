@@ -206,13 +206,11 @@ let build =
   Cmd.v (Cmd.info "build" ~doc ~man ~envs:Common.envs) term
 ;;
 
-let build_memo_exn f = Build_system.run_exn f
-
 let describe builder ~context_name f =
   let common, config = Common.init builder in
   Scheduler_setup.go_with_rpc_server ~common ~config
   @@ fun () ->
-  build_memo_exn
+  Build_system.run_exn
   @@ fun () ->
   let open Memo.O in
   let* setup = Util.setup () in

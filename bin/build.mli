@@ -14,8 +14,6 @@ val run_build_command
   -> request:(Dune_rules.Main.build_system -> unit Action_builder.t)
   -> unit
 
-val build_memo_exn : (unit -> 'a Memo.t) -> 'a Fiber.t
-
 val describe
   :  Common.Builder.t
   -> context_name:Dune_engine.Context_name.t

@@ -32,7 +32,7 @@ let term : unit Term.t =
   Scheduler_setup.go_with_rpc_server ~common ~config
   @@ fun () ->
   let open Memo.O in
-  Build.build_memo_exn
+  Build_system.run_exn
   @@ fun () ->
   let* setup = Util.setup () in
   let sctx = Dune_rules.Main.find_scontext_exn setup ~name:context in

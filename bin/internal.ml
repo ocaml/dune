@@ -17,7 +17,7 @@ let bootstrap_info =
     and+ context_name = Common.context_arg ~doc:(Some "Build context to use.") in
     let common, config = Common.init builder in
     Scheduler_setup.go_without_rpc_server ~common ~config (fun () ->
-      Build.build_memo_exn
+      Build_system.run_exn
       @@ fun () ->
       let open Memo.O in
       let* setup = Util.setup () in

@@ -355,10 +355,8 @@ None
 ;;
 
 let%expect_test _ =
-  let expected = if Sys.win32 then "/foo/baz" else "../baz" in
-  let actual = Path.reach (e "/foo/baz") ~from:(e "/foo/bar") in
-  if not (String.equal actual expected) then printfn "expected %S, got %S" expected actual;
-  [%expect {| |}]
+  reach "/foo/baz" ~from:"/foo/bar";
+  [%expect {| "../baz" |}]
 ;;
 
 let check_external_reach_on_windows ~to_ ~from ~expected =
@@ -370,15 +368,12 @@ let check_external_reach_on_windows ~to_ ~from ~expected =
 ;;
 
 let%expect_test "external path reach on Windows" =
-  check_external_reach_on_windows ~to_:"/foo/baz" ~from:"/foo/bar" ~expected:"/foo/baz";
-  check_external_reach_on_windows
-    ~to_:"\\foo\\baz"
-    ~from:"/foo/bar"
-    ~expected:"\\foo\\baz";
+  check_external_reach_on_windows ~to_:"/foo/baz" ~from:"/foo/bar" ~expected:"../baz";
+  check_external_reach_on_windows ~to_:"\\foo\\baz" ~from:"/foo/bar" ~expected:"../baz";
   check_external_reach_on_windows
     ~to_:"C:\\foo\\baz"
     ~from:"c:/foo/bar"
-    ~expected:"C:\\foo\\baz";
+    ~expected:"../baz";
   check_external_reach_on_windows ~to_:"C:/foo" ~from:"D:/bar" ~expected:"C:/foo";
   check_external_reach_on_windows
     ~to_:"C:foo\\baz"
@@ -387,7 +382,7 @@ let%expect_test "external path reach on Windows" =
   check_external_reach_on_windows
     ~to_:"\\\\server\\share\\foo\\baz"
     ~from:"\\\\SERVER\\SHARE\\foo\\bar"
-    ~expected:"\\\\server\\share\\foo\\baz";
+    ~expected:"../baz";
   check_external_reach_on_windows
     ~to_:"\\\\server\\other\\foo"
     ~from:"\\\\server\\share\\bar"
@@ -395,11 +390,11 @@ let%expect_test "external path reach on Windows" =
   check_external_reach_on_windows
     ~to_:"\\\\?\\C:\\foo\\baz"
     ~from:"\\\\?\\c:\\foo\\bar"
-    ~expected:"\\\\?\\C:\\foo\\baz";
+    ~expected:"../baz";
   check_external_reach_on_windows
     ~to_:"\\\\?\\UNC\\server\\share\\foo\\baz"
     ~from:"\\\\?\\unc\\SERVER\\SHARE\\foo\\bar"
-    ~expected:"\\\\?\\UNC\\server\\share\\foo\\baz";
+    ~expected:"../baz";
   check_external_reach_on_windows ~to_:"/foo" ~from:"C:/bar" ~expected:"/foo";
   [%expect {| |}]
 ;;

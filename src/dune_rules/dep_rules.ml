@@ -223,17 +223,13 @@ let make_melobjinfo_deps ~sctx ~dir ~sandbox ~vlib_obj_dir ~vlib_obj_map =
         | [] -> Action_builder.return Module_name.Unique.Map.empty
         | _ :: _ ->
           let action =
-            let open Action_builder.O in
-            let+ action =
-              Command.run'
-                ?sandbox
-                ~dir:(Path.build dir)
-                program
-                [ Deps (List.map files ~f:snd) ]
-            in
-            { Rule.Anonymous_action.action; loc = Loc.none; dir }
+            Command.run'
+              ?sandbox
+              ~dir:(Path.build dir)
+              program
+              [ Deps (List.map files ~f:snd) ]
           in
-          Build_system.execute_action_stdout action
+          Super_context.execute_action_stdout sctx ~loc:Loc.none ~dir action
           |> Memo.map ~f:Ocamlobjinfo.parse
           |> Action_builder.of_memo
           |> Action_builder.map ~f:(fun results ->

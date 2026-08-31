@@ -1,5 +1,5 @@
-This test demonstrates that we pointlessly re-run cram tests
-after they're promted
+Promoting corrected cram output should not rerun the test unless --force is
+passed.
 
   $ make_dune_project 3.12
   $ # Needed when upgrading this test to Dune language 3.25:
@@ -34,7 +34,8 @@ However, if passing --force, we should still be able to re-run cram tests:
 
   $ dune runtest foo.t --force
 
-There should be two "run"s here, however there is only one:
+There should be two "run"s here:
   $ cat side-effect
+  run
   run
 

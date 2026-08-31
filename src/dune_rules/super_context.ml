@@ -170,11 +170,18 @@ let extend_action_env t ~dir action =
   Action.Full.add_env env action
 ;;
 
-let execute_action_stdout t ~loc ~dir action =
+let anonymous_action t ~loc ~dir action =
   let open Action_builder.O in
-  (let+ action = extend_action_env t ~dir action in
-   { Rule.Anonymous_action.action; loc; dir })
-  |> Build_system.execute_action_stdout
+  let+ action = extend_action_env t ~dir action in
+  { Rule.Anonymous_action.action; loc; dir }
+;;
+
+let execute_action_stdout t ~loc ~dir action =
+  anonymous_action t ~loc ~dir action |> Build_system.execute_action_stdout
+;;
+
+let execute_action_stdout_target t ~loc ~dir action =
+  anonymous_action t ~loc ~dir action |> Build_system.execute_action_stdout_target
 ;;
 
 let extend_action t ~dir action =

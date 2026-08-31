@@ -68,6 +68,14 @@ val execute_action_stdout
   -> Action.Full.t Action_builder.t
   -> string Memo.t
 
+(** Like [execute_action_stdout], but expose the captured output as a build target. *)
+val execute_action_stdout_target
+  :  t
+  -> loc:Loc.t
+  -> dir:Path.Build.t
+  -> Action.Full.t Action_builder.t
+  -> Path.t Action_builder.t
+
 (** [resolve_program t ?hint name] resolves a program. [name] is looked up in
     the workspace, if it is not found in the tree is is looked up in the PATH.
     If it is not found at all, the resulting [Action.Prog.t] will either return

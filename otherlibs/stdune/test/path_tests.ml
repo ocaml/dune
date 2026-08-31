@@ -369,11 +369,46 @@ let%expect_test _ =
   check_on_win_or_unix [%expect.output] ~wind:{| "/foo/baz" |} ~unix:{| "../baz" |}
 ;;
 
-let%expect_test _ =
+let check_external_reach_on_windows ~to_ ~from ~expected =
   if Sys.win32
   then (
-    let result = Path.reach (e "C:/foo") ~from:(e "D:/bar") in
-    if not (String.equal result "C:/foo") then print_endline result);
+    let actual = Path.reach (e to_) ~from:(e from) in
+    if not (String.equal actual expected)
+    then printfn "reach %S from %S: expected %S, got %S" to_ from expected actual)
+;;
+
+let%expect_test "external path reach on Windows" =
+  check_external_reach_on_windows ~to_:"/foo/baz" ~from:"/foo/bar" ~expected:"/foo/baz";
+  check_external_reach_on_windows
+    ~to_:{|\foo\baz|}
+    ~from:"/foo/bar"
+    ~expected:{|\foo\baz|};
+  check_external_reach_on_windows
+    ~to_:{|C:\foo\baz|}
+    ~from:"c:/foo/bar"
+    ~expected:{|C:\foo\baz|};
+  check_external_reach_on_windows ~to_:"C:/foo" ~from:"D:/bar" ~expected:"C:/foo";
+  check_external_reach_on_windows
+    ~to_:{|C:foo\baz|}
+    ~from:{|C:foo\bar|}
+    ~expected:{|C:foo\baz|};
+  check_external_reach_on_windows
+    ~to_:{|\\server\share\foo\baz|}
+    ~from:{|\\SERVER\SHARE\foo\bar|}
+    ~expected:{|\\server\share\foo\baz|};
+  check_external_reach_on_windows
+    ~to_:{|\\server\other\foo|}
+    ~from:{|\\server\share\bar|}
+    ~expected:{|\\server\other\foo|};
+  check_external_reach_on_windows
+    ~to_:{|\\?\C:\foo\baz|}
+    ~from:{|\\?\c:\foo\bar|}
+    ~expected:{|\\?\C:\foo\baz|};
+  check_external_reach_on_windows
+    ~to_:{|\\?\UNC\server\share\foo\baz|}
+    ~from:{|\\?\unc\SERVER\SHARE\foo\bar|}
+    ~expected:{|\\?\UNC\server\share\foo\baz|};
+  check_external_reach_on_windows ~to_:"/foo" ~from:"C:/bar" ~expected:"/foo";
   [%expect {| |}]
 ;;
 

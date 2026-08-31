@@ -1055,6 +1055,55 @@ module Packages = struct
   ;;
 end
 
+module Package_paths = struct
+  type t =
+    | Versioned
+    | Unversioned
+
+  let equal = Poly.equal
+
+  let to_dyn = function
+    | Versioned -> Dyn.variant "Versioned" []
+    | Unversioned -> Dyn.variant "Unversioned" []
+  ;;
+
+  let versioned = function
+    | Versioned -> true
+    | Unversioned -> false
+  ;;
+
+  let env_var = Env.Var.of_string "DUNE_PKG_VERSIONED_LOCK_DIR_PATHS"
+
+  let for_writing ~portable_lock_dir =
+    match Env.get Env.initial env_var with
+    | None -> if portable_lock_dir then Versioned else Unversioned
+    | Some "enabled" -> Versioned
+    | Some "disabled" -> Unversioned
+    | Some value ->
+      User_error.raise
+        [ Pp.textf "Invalid value %S for %s." value (Env.Var.to_string env_var) ]
+        ~hints:[ Pp.text "Expected \"enabled\" or \"disabled\"." ]
+  ;;
+
+  let infer ~lock_dir_path ~default package_versions =
+    let has_versioned, has_unversioned =
+      List.fold_left package_versions ~init:(false, false) ~f:(fun (v, u) -> function
+        | Some _ -> true, u
+        | None -> v, true)
+    in
+    match has_versioned, has_unversioned with
+    | true, false -> Versioned
+    | false, true -> Unversioned
+    | false, false -> default
+    | true, true ->
+      User_error.raise
+        [ Pp.textf
+            "Lock directory %s mixes versioned and unversioned package paths."
+            (Path.to_string_maybe_quoted lock_dir_path)
+        ]
+  ;;
+end
+
 type t =
   { version : Syntax.Version.t
   ; dependency_hash : (Loc.t * Local_package.Dependency_hash.t) option
@@ -1063,6 +1112,7 @@ type t =
   ; repos : Repositories.t
   ; expanded_solver_variable_bindings : Solver_stats.Expanded_variable_bindings.t
   ; solved_for_platforms : Loc.t * Solver_env.t list
+  ; package_paths : Package_paths.t
   }
 
 let remove_locs t =
@@ -1080,6 +1130,7 @@ let equal
       ; repos
       ; expanded_solver_variable_bindings
       ; solved_for_platforms
+      ; package_paths
       }
       t
   =
@@ -1097,6 +1148,7 @@ let equal
   && (Tuple.T2.equal Loc.equal (List.equal Solver_env.equal))
        solved_for_platforms
        t.solved_for_platforms
+  && Package_paths.equal package_paths t.package_paths
 ;;
 
 let to_dyn
@@ -1107,6 +1159,7 @@ let to_dyn
       ; repos
       ; expanded_solver_variable_bindings
       ; solved_for_platforms
+      ; package_paths
       }
   =
   Dyn.record
@@ -1122,12 +1175,11 @@ let to_dyn
       , Solver_stats.Expanded_variable_bindings.to_dyn expanded_solver_variable_bindings )
     ; ( "solved_for_platforms"
       , Tuple.T2.to_dyn Loc.to_dyn_hum (Dyn.list Solver_env.to_dyn) solved_for_platforms )
+    ; "package_paths", Package_paths.to_dyn package_paths
     ]
 ;;
 
-(* CR-someday Alizter: Remove this when portable lock directories are
-   consolidated with non-portable lock directories. *)
-let uses_versioned_paths t = not (List.is_empty (snd t.solved_for_platforms))
+let uses_versioned_paths t = Package_paths.versioned t.package_paths
 
 type missing_dependency =
   { dependant_package : Pkg.t
@@ -1165,6 +1217,7 @@ let create_latest_version
       ~repos
       ~expanded_solver_variable_bindings
       ~solved_for_platforms
+      ~package_paths
       ~portable_lock_dir
   =
   let packages =
@@ -1215,6 +1268,7 @@ let create_latest_version
   ; repos = { complete; used }
   ; expanded_solver_variable_bindings
   ; solved_for_platforms = Loc.none, solved_for_platforms_platform_specific_only
+  ; package_paths
   }
 ;;
 
@@ -1233,6 +1287,7 @@ let encode_metadata
       ; packages = _
       ; expanded_solver_variable_bindings
       ; solved_for_platforms
+      ; package_paths = _
       }
   =
   let open Encoder in
@@ -1338,11 +1393,8 @@ let file_contents_by_path ~portable_lock_dir t =
   :: (Packages.to_pkg_list t.packages
       |> List.map ~f:(fun (pkg : Pkg.t) ->
         let _loc, solved_for_platforms = t.solved_for_platforms in
-        let package_filename =
-          if portable_lock_dir
-          then Package_filename.make pkg.info.name (Some pkg.info.version)
-          else Package_filename.make pkg.info.name None
-        in
+        let package_version = Option.some_if (uses_versioned_paths t) pkg.info.version in
+        let package_filename = Package_filename.make pkg.info.name package_version in
         ( Filename.to_string package_filename
         , Pkg.encode ~portable_lock_dir ~solved_for_platforms pkg )))
 ;;
@@ -1505,11 +1557,11 @@ module Write_disk = struct
         Format.asprintf "%a" Pp.to_fmt pp |> Io.write_file path;
         Package_name.Map.iteri files ~f:(fun package_name files_by_version ->
           Package_version.Map.iteri files_by_version ~f:(fun package_version files ->
+            let package_version =
+              Option.some_if (uses_versioned_paths lock_dir) package_version
+            in
             let files_dir =
-              let maybe_package_version =
-                if portable_lock_dir then Some package_version else None
-              in
-              Pkg.files_dir package_name maybe_package_version ~lock_dir:lock_dir_path
+              Pkg.files_dir package_name package_version ~lock_dir:lock_dir_path
             in
             Path.mkdir_p files_dir;
             List.iter files ~f:(fun { File_entry.original; local_file } ->
@@ -1693,7 +1745,7 @@ struct
       | Some x -> true, x
       | None -> false, (Loc.none, [])
     in
-    let+ packages =
+    let* package_filenames =
       Io.readdir_with_kinds lock_dir_path
       >>| List.filter_map ~f:(fun (name, (kind : Unix.file_kind)) ->
         match kind with
@@ -1701,7 +1753,15 @@ struct
         | _ ->
           (* TODO *)
           None)
-      >>= Io.parallel_map ~f:(fun (package_name, maybe_package_version) ->
+    in
+    let package_paths =
+      let default =
+        if portable_lock_dir then Package_paths.Versioned else Package_paths.Unversioned
+      in
+      List.map package_filenames ~f:snd |> Package_paths.infer ~lock_dir_path ~default
+    in
+    let+ packages =
+      Io.parallel_map package_filenames ~f:(fun (package_name, maybe_package_version) ->
         let _loc, solved_for_platforms = solved_for_platforms in
         let+ pkg =
           load_pkg
@@ -1725,6 +1785,7 @@ struct
         ; repos
         ; expanded_solver_variable_bindings
         ; solved_for_platforms
+        ; package_paths
         })
     in
     Option.iter (Dune_trace.global ()) ~f:(fun trace -> Dune_trace.Out.finish trace event);

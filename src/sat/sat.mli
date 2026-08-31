@@ -22,6 +22,9 @@ module Make (User : USER) : sig
   type lit
 
   val neg : lit -> lit
+
+  (** [add_variable problem user_data] adds a variable while constructing [problem].
+      @raise Invalid_argument if a decision level is active. *)
   val add_variable : t -> User.t -> lit
 
   (** A clause is a boolean expression made up of literals. e.g. [A and B and not(C)] *)
@@ -64,6 +67,11 @@ module Make (User : USER) : sig
       we try setting the remaining variables to [False] ([decider] will not be called again unless we backtrack).
       Use this to tidy up at the end, when you no longer care about the order. *)
   val run_solver : t -> (unit -> lit option) -> bool
+
+  (** Return the current decision level. A decrease between calls to the decider
+      indicates that the solver backtracked, allowing incremental deciders to
+      invalidate cached state. *)
+  val get_decision_level : t -> int
 
   (** Return the first literal in the list whose value is [Undecided], or [None] if they're all decided.
       The decider function may find this useful. *)

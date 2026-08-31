@@ -354,9 +354,19 @@ None
 |}]
 ;;
 
+let check_on_win_or_unix output ~wind ~unix =
+  let expected = String.trim (if Sys.win32 then wind else unix) in
+  let output = String.trim output in
+  if not (String.equal output expected)
+  then
+    Code_error.raise
+      "output mismatch"
+      [ "expected", String expected; "got", String output ]
+;;
+
 let%expect_test _ =
   reach "/foo/baz" ~from:"/foo/bar";
-  [%expect {| "../baz" |}]
+  check_on_win_or_unix [%expect.output] ~wind:{| "/foo/baz" |} ~unix:{| "../baz" |}
 ;;
 
 let%expect_test _ =

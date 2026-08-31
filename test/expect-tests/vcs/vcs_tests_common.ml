@@ -71,13 +71,7 @@ type action =
 
 let run_action (vcs : Vcs.t) action =
   match action with
-  | Init ->
-    let* () = run vcs [ "init"; "-q" ] in
-    (match vcs.kind with
-     | Hg -> Fiber.return ()
-     | Git ->
-       let* () = run vcs [ "config"; "user.email"; "dune@dune.com" ] in
-       run vcs [ "config"; "user.name"; "Dune Dune" ])
+  | Init -> run vcs [ "init"; "-q" ]
   | Add fn -> run vcs [ "add"; fn ]
   | Commit ->
     (match vcs.kind with

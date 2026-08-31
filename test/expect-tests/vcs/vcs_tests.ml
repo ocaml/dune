@@ -5,8 +5,6 @@ let%expect_test _ =
   [%expect
     {|
 $ git init -q
-$ git config user.email dune@dune.com
-$ git config user.name 'Dune Dune'
 $ echo "-" > a
 $ git add a
 $ git commit -m 'commit message'

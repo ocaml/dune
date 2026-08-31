@@ -1,5 +1,4 @@
 {
-open Stdune
 type t =
   { lang    : Loc.t * string
   ; version : Loc.t * string

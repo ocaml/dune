@@ -1,7 +1,5 @@
 (** Parsing of the Dune language *)
 
-open Stdune
-
 module Mode : sig
   type 'a t =
     | Single : Ast.t t

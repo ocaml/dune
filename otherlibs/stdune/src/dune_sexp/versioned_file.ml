@@ -1,4 +1,3 @@
-open Stdune
 module First_line = Versioned_file_first_line
 
 module type S = Versioned_file_intf.S

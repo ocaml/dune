@@ -1,5 +1,3 @@
-open Stdune
-
 type t = A of string [@@unboxed]
 
 let to_dyn (A s) =

@@ -1,4 +1,4 @@
-open Stdune
+open Import
 
 let error (loc : Loc.t) message = User_error.raise ~loc [ Pp.text message ]
 

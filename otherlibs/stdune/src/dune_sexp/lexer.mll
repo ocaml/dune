@@ -1,5 +1,5 @@
 {
-open Stdune
+open Import
 
 module Token = struct
   type t =

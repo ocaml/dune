@@ -1,0 +1,3 @@
+(ocamllex
+ (modules lexer versioned_file_first_line)
+ (flags -ml))

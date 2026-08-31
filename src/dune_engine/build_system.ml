@@ -790,6 +790,13 @@ module Internal = struct
        only depend on the action. If the two execution could run concurrently,
        then they would both try to create the same file. So in this regard, we
        use [Memo] mostly for synchronisation purposes. *)
+    let { Rule.Anonymous_action.Evaluated.anon = { dir; _ }
+        ; facts = observing_facts
+        ; action = { action; props }
+        }
+      =
+      anon
+    in
     (* Here we "forget" the facts about the world. We do that to make the input
        of the memoized function smaller. If we passed the whole [original_facts]
        as input, then we would end up memoizing one entry per set of facts. This
@@ -801,13 +808,6 @@ module Internal = struct
     let observing_facts = () in
     ignore observing_facts;
     let digest =
-      let { Rule.Anonymous_action.Evaluated.anon = { dir; _ }
-          ; facts = observing_facts
-          ; action = { action; props }
-          }
-        =
-        anon
-      in
       let { Action.Full.Props.env
           ; locks
           ; can_go_in_shared_cache

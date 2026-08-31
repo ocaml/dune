@@ -46,6 +46,21 @@ stage copied objects when binary annotations are unavailable.
   $ test -e "$PWD/prefix/lib/repro/vlib/melange/.private/vlib__Helper.cmi"
   $ test ! -e "$PWD/prefix/lib/repro/vlib/melange/.private/vlib__Helper.cmt"
 
+Keep the fallback independent of whether the test environment provides
+melobjinfo.
+
+  $ mkdir no-melobjinfo-bin
+  $ for program in dune melc ocamlc ocamlopt ocamldep ocamlobjinfo; do
+  >   command -v "$program" > "no-melobjinfo-bin/$program.target"
+  >   cat > "no-melobjinfo-bin/$program" <<'EOF'
+  > #!/bin/sh
+  > IFS= read -r target < "$0.target"
+  > exec "$target" "$@"
+  > EOF
+  >   chmod +x "no-melobjinfo-bin/$program"
+  > done
+  $ no_melobjinfo_path="$PWD/no-melobjinfo-bin"
+
   $ cat > consumer/dune-project <<'EOF'
   > (lang dune 3.24)
   > (using melange 1.0)
@@ -76,10 +91,10 @@ not turn copied artifacts into a Virt-to-Reverse module dependency cycle.
   >  (libraries impl))
   > EOF
 
-  $ OCAMLPATH="$PWD/prefix/lib:$OCAMLPATH" \
+  $ PATH="$no_melobjinfo_path" OCAMLPATH="$PWD/prefix/lib:$OCAMLPATH" \
   > dune build --root consumer --sandbox=symlink @melange
 
-  $ OCAMLPATH="$PWD/prefix/lib:$OCAMLPATH" \
+  $ PATH="$no_melobjinfo_path" OCAMLPATH="$PWD/prefix/lib:$OCAMLPATH" \
   > dune rules --root consumer --recursive --format=json --deps --display=quiet \
   > impl/.impl.objs/melange/vlib__Virt.cmj > deps.json
   $ jq_dune -r '

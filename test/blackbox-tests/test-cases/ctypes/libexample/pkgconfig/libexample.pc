@@ -11,5 +11,5 @@ Name: libexample
 Description: An example library for testing dune ctypes
 Requires:
 Version: 1.00.00
-Libs: -L${prefix}/libexample -lexample
+Libs: -L${prefix}/libexample -Wl,-rpath,${prefix}/libexample -lexample
 Cflags: -I${prefix}/libexample

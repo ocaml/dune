@@ -29,21 +29,31 @@ module Dependency = struct
           | Glob { path; glob } -> case (path, glob) glob_cstr)
     ;;
 
-    let compare x y =
-      match x, y with
-      | File x, File y -> String.compare x y
-      | File _, _ -> Lt
-      | _, File _ -> Gt
-      | Directory x, Directory y -> String.compare x y
-      | Directory _, _ -> Lt
-      | _, Directory _ -> Gt
-      | Glob { path; glob }, Glob t ->
-        let open Ordering.O in
-        let= () = String.compare path t.path in
-        String.compare glob t.glob
+    let repr =
+      Repr.variant
+        "dependency"
+        [ Repr.case "File" Repr.string ~proj:(function
+            | File path -> Some path
+            | Directory _ | Glob _ -> None)
+        ; Repr.case "Directory" Repr.string ~proj:(function
+            | Directory path -> Some path
+            | File _ | Glob _ -> None)
+        ; Repr.case
+            "Glob"
+            Repr.(pair string string)
+            ~proj:(function
+              | Glob { path; glob } -> Some (path, glob)
+              | File _ | Directory _ -> None)
+        ]
     ;;
 
-    let to_dyn = Dyn.opaque
+    include Repr.Poly (struct
+        type nonrec t = t
+
+        let repr = repr
+      end)
+
+    let to_dyn = Repr.to_dyn repr
   end
 
   include T

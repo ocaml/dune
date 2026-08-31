@@ -164,16 +164,13 @@ let ooi_deps
       ~dir
       ~obj_dir
       ~vlib_obj_dir
-      ~dune_version
+      ~sandbox
       ~vlib_obj_map
       ~(for_ : Compilation_mode.t)
       (sourced_module : Modules.Sourced_module.t)
       ~(ml_kind : Ml_kind.t)
   =
   let m = Modules.Sourced_module.to_module sourced_module in
-  let sandbox =
-    if dune_version >= (3, 3) then Some Sandbox_config.needs_sandboxing else None
-  in
   let+ ocaml = Context.ocaml (Super_context.context sctx) in
   let read unit =
     Ocamlobjinfo.rules ocaml ~sandbox ~dir ~units:[ unit ]
@@ -448,8 +445,19 @@ let make_imported_vlib_deps ~obj_dir ~vimpl ~dir ~sctx ~sandbox ~for_ : imported
       let impl = Vimpl.impl vimpl in
       Dune_project.dune_version impl.project
     in
+    let object_info_sandbox =
+      if dune_version >= (3, 3) then Some Sandbox_config.needs_sandboxing else None
+    in
     let deps_from_ooi =
-      ooi_deps ~vimpl ~sctx ~dir ~obj_dir ~vlib_obj_dir ~dune_version ~vlib_obj_map ~for_
+      ooi_deps
+        ~vimpl
+        ~sctx
+        ~dir
+        ~obj_dir
+        ~vlib_obj_dir
+        ~sandbox:object_info_sandbox
+        ~vlib_obj_map
+        ~for_
     in
     (match for_ with
      | Compilation_mode.Ocaml ->
@@ -459,9 +467,6 @@ let make_imported_vlib_deps ~obj_dir ~vimpl ~dir ~sctx ~sandbox ~for_ : imported
        in
        { deps_of; stage_copied_objects_if_dep_info_missing = None }
      | Compilation_mode.Melange ->
-       let object_info_sandbox =
-         if dune_version >= (3, 3) then Some Sandbox_config.needs_sandboxing else None
-       in
        let melobjinfo_deps =
          make_melobjinfo_deps
            ~sctx

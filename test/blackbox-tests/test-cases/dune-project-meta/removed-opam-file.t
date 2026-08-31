@@ -1,5 +1,5 @@
 The [@opam] diff action conditionally depends on the source opam file while it
-exists. Removing that file must invalidate the action so Dune records a
+exists. Removing that file must not let a stale build-tree copy hide the
 creation promotion.
 
   $ cat > dune-project << EOF
@@ -10,8 +10,8 @@ creation promotion.
   >  (allow_empty))
   > EOF
 
-Create [foo.opam], then prime [@opam]'s rule cache with a successful build
-while the source file exists.
+Create [foo.opam], then leave its build-tree copy behind by successfully
+building [@opam] while the source file exists.
 
   $ dune build @opam > /dev/null 2>&1
   [1]
@@ -19,9 +19,13 @@ while the source file exists.
   Promoting _build/default/foo.opam.generated to foo.opam.
   $ dune build @opam
 
-The cached action is incorrectly reused after deleting [foo.opam].
+Deleting [foo.opam] must expose the generated file as a creation promotion.
 
   $ rm foo.opam
-  $ dune build @opam
+  $ dune build @opam > /dev/null 2>&1
+  [1]
   $ dune promotion list
-  $ test ! -e foo.opam
+  foo.opam
+  $ dune promote
+  Promoting _build/default/foo.opam.generated to foo.opam.
+  $ test -e foo.opam

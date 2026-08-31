@@ -102,16 +102,15 @@ end = struct
 
   let merge ~dir ~transitive ~immediate =
     let open Action_builder.O in
-    let action =
-      let+ transitive = Action_builder.all transitive in
-      { Rule.Anonymous_action.action =
-          Merge.action ~transitive ~immediate
-          |> Action.Full.make ~sandbox:Sandbox_config.no_sandboxing
-      ; loc = Loc.none
-      ; dir
-      }
+    let anon =
+      let action =
+        let+ transitive = Action_builder.all transitive in
+        Merge.action ~transitive ~immediate
+        |> Action.Full.make ~sandbox:Sandbox_config.no_sandboxing
+      in
+      Rule.Anonymous_action.make ~dir action
     in
-    Build_system.execute_action_stdout action |> Action_builder.of_memo
+    Build_system.execute_action_stdout anon |> Action_builder.of_memo
   ;;
 end
 

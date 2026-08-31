@@ -47,6 +47,21 @@ The virtual library and its implementation are both Melange-only.
   $ test -e "$PWD/prefix/lib/repro/vlib/melange/.private/vlib__Helper.cmt"
   $ test -e "$PWD/prefix/lib/repro/vlib/melange/.private/vlib__Leaf.cmt"
 
+Keep the fallback independent of whether the test environment provides
+melobjinfo.
+
+  $ mkdir no-melobjinfo-bin
+  $ for program in dune melc ocamlc ocamlopt ocamldep ocamlobjinfo; do
+  >   command -v "$program" > "no-melobjinfo-bin/$program.target"
+  >   cat > "no-melobjinfo-bin/$program" <<'EOF'
+  > #!/bin/sh
+  > IFS= read -r target < "$0.target"
+  > exec "$target" "$@"
+  > EOF
+  >   chmod +x "no-melobjinfo-bin/$program"
+  > done
+  $ no_melobjinfo_path="$PWD/no-melobjinfo-bin"
+
   $ cat > consumer/dune-project <<'EOF'
   > (lang dune 3.24)
   > (using melange 1.0)
@@ -73,13 +88,13 @@ The virtual library and its implementation are both Melange-only.
   >  (libraries impl))
   > EOF
 
-  $ OCAMLPATH="$PWD/prefix/lib:$OCAMLPATH" \
+  $ PATH="$no_melobjinfo_path" OCAMLPATH="$PWD/prefix/lib:$OCAMLPATH" \
   > dune build --root consumer --sandbox=symlink @melange
 
 With annotations, dependency analysis should read the precise imports from the
 CMT, including private modules but excluding unused ones.
 
-  $ OCAMLPATH="$PWD/prefix/lib:$OCAMLPATH" \
+  $ PATH="$no_melobjinfo_path" OCAMLPATH="$PWD/prefix/lib:$OCAMLPATH" \
   > dune rules --root consumer --recursive --format=json --deps --display=quiet \
   > impl/.impl.objs/melange/vlib__Virt.cmj > deps.json
   $ jq_dune -r '
@@ -110,7 +125,7 @@ level. Even when the missing CMT belongs to an unreachable module, every copied
 object is staged.
 
   $ rm "$PWD/prefix/lib/repro/vlib/melange/.private/vlib__Unused.cmt"
-  $ OCAMLPATH="$PWD/prefix/lib:$OCAMLPATH" \
+  $ PATH="$no_melobjinfo_path" OCAMLPATH="$PWD/prefix/lib:$OCAMLPATH" \
   > dune rules --root consumer --recursive --format=json --deps --display=quiet \
   > impl/.impl.objs/melange/vlib__Virt.cmj > deps-with-missing-cmt.json
   $ jq_dune -r '

@@ -61,84 +61,68 @@ let user_lock_dir_path path =
   | External e -> Dune_pkg.Pkg_workspace.dev_tool_path_to_source_dir e |> Path.source
 ;;
 
-let summary_message
-      ~portable_lock_dir
-      ~lock_dir_path
-      ~(lock_dir : Lock_dir.t)
-      ~maybe_perf_stats
-  =
-  if portable_lock_dir
-  then (
-    let pkgs_by_platform = Lock_dir.Packages.pkgs_by_platform lock_dir.packages in
-    let opam_package_of_pkg (pkg : Lock_dir.Pkg.t) =
-      OpamPackage.create
-        (Dune_pkg.Package_name.to_opam_package_name pkg.info.name)
-        (Dune_pkg.Package_version.to_opam_package_version pkg.info.version)
-    in
-    let pkgs_by_opam_package =
-      Lock_dir.Packages.to_pkg_list lock_dir.packages
-      |> List.map ~f:(fun pkg -> opam_package_of_pkg pkg, pkg)
-      |> OpamPackage.Map.of_list
-    in
-    let opam_package_to_pkg opam_package =
-      OpamPackage.Map.find opam_package pkgs_by_opam_package
-    in
-    let opam_package_sets_by_platform =
-      Solver_env.Map.map pkgs_by_platform ~f:(fun pkgs ->
-        List.map pkgs ~f:opam_package_of_pkg |> OpamPackage.Set.of_list)
-    in
-    let common_packages =
-      Solver_env.Map.values opam_package_sets_by_platform
-      |> List.reduce ~f:OpamPackage.Set.inter
-      |> Option.value ~default:OpamPackage.Set.empty
-    in
-    let pp_package_set package_set =
-      if OpamPackage.Set.is_empty package_set
-      then Pp.tag User_message.Style.Warning @@ Pp.text "(none)"
-      else (
-        let pkgs =
-          OpamPackage.Set.elements package_set |> List.map ~f:opam_package_to_pkg
-        in
-        Pkg_common.pp_packages pkgs)
-    in
-    let uncommon_packages_by_platform =
-      Solver_env.Map.map opam_package_sets_by_platform ~f:(fun package_set ->
-        OpamPackage.Set.diff package_set common_packages)
-      |> Solver_env.Map.filteri ~f:(fun _ package_set ->
-        not (OpamPackage.Set.is_empty package_set))
-    in
-    let maybe_uncommon_packages =
-      if Solver_env.Map.is_empty uncommon_packages_by_platform
-      then []
-      else
-        Pp.nop
-        :: Pp.text "Additionally, some packages will only be built on specific platforms."
-        :: (Solver_env.Map.to_list uncommon_packages_by_platform
-            |> List.concat_map ~f:(fun (platform, packages) ->
-              [ Pp.nop
-              ; Pp.concat [ Solver_env.pp_oneline platform; Pp.text ":" ]
-              ; pp_package_set packages
-              ]))
-    in
-    Pp.tag
-      User_message.Style.Success
-      (Pp.textf
-         "Solution for %s"
-         (Path.to_string_maybe_quoted (user_lock_dir_path lock_dir_path)))
-    :: Pp.nop
-    :: Pp.text "Dependencies common to all supported platforms:"
-    :: pp_package_set common_packages
-    :: (maybe_uncommon_packages @ maybe_perf_stats))
-  else
-    Pp.tag
-      User_message.Style.Success
-      (Pp.textf
-         "Solution for %s:"
-         (Path.to_string_maybe_quoted (user_lock_dir_path lock_dir_path)))
-    :: (match Lock_dir.Packages.to_pkg_list lock_dir.packages with
-        | [] -> Pp.tag User_message.Style.Warning @@ Pp.text "(no dependencies to lock)"
-        | packages -> pp_packages packages)
-    :: maybe_perf_stats
+let summary_message ~lock_dir_path ~(lock_dir : Lock_dir.t) ~maybe_perf_stats =
+  let pkgs_by_platform = Lock_dir.Packages.pkgs_by_platform lock_dir.packages in
+  let opam_package_of_pkg (pkg : Lock_dir.Pkg.t) =
+    OpamPackage.create
+      (Dune_pkg.Package_name.to_opam_package_name pkg.info.name)
+      (Dune_pkg.Package_version.to_opam_package_version pkg.info.version)
+  in
+  let pkgs_by_opam_package =
+    Lock_dir.Packages.to_pkg_list lock_dir.packages
+    |> List.map ~f:(fun pkg -> opam_package_of_pkg pkg, pkg)
+    |> OpamPackage.Map.of_list
+  in
+  let opam_package_to_pkg opam_package =
+    OpamPackage.Map.find opam_package pkgs_by_opam_package
+  in
+  let opam_package_sets_by_platform =
+    Solver_env.Map.map pkgs_by_platform ~f:(fun pkgs ->
+      List.map pkgs ~f:opam_package_of_pkg |> OpamPackage.Set.of_list)
+  in
+  let common_packages =
+    Solver_env.Map.values opam_package_sets_by_platform
+    |> List.reduce ~f:OpamPackage.Set.inter
+    |> Option.value ~default:
+         (OpamPackage.Map.keys pkgs_by_opam_package |> OpamPackage.Set.of_list)
+  in
+  let pp_package_set package_set =
+    if OpamPackage.Set.is_empty package_set
+    then Pp.tag User_message.Style.Warning @@ Pp.text "(none)"
+    else (
+      let pkgs =
+        OpamPackage.Set.elements package_set |> List.map ~f:opam_package_to_pkg
+      in
+      pp_packages pkgs)
+  in
+  let uncommon_packages_by_platform =
+    Solver_env.Map.map opam_package_sets_by_platform ~f:(fun package_set ->
+      OpamPackage.Set.diff package_set common_packages)
+    |> Solver_env.Map.filteri ~f:(fun _ package_set ->
+      not (OpamPackage.Set.is_empty package_set))
+  in
+  let maybe_uncommon_packages =
+    if Solver_env.Map.is_empty uncommon_packages_by_platform
+    then []
+    else
+      Pp.nop
+      :: Pp.text "Additionally, some packages will only be built on specific platforms."
+      :: (Solver_env.Map.to_list uncommon_packages_by_platform
+          |> List.concat_map ~f:(fun (platform, packages) ->
+            [ Pp.nop
+            ; Pp.concat [ Solver_env.pp_oneline platform; Pp.text ":" ]
+            ; pp_package_set packages
+            ]))
+  in
+  Pp.tag
+    User_message.Style.Success
+    (Pp.textf
+       "Solution for %s"
+       (Path.to_string_maybe_quoted (user_lock_dir_path lock_dir_path)))
+  :: Pp.nop
+  :: Pp.text "Dependencies common to all supported platforms:"
+  :: pp_package_set common_packages
+  :: (maybe_uncommon_packages @ maybe_perf_stats)
 ;;
 
 (* A failed joint solve does not prove that every requested platform fails on
@@ -237,6 +221,7 @@ let solve_lock_dir
         (Package_name.Map.map local_packages ~f:Dune_pkg.Local_package.for_solver)
       ~constraints:(constraints_of_workspace workspace ~lock_dir_path)
       ~selected_depopts:(depopts_of_workspace workspace ~lock_dir_path)
+      ~package_paths:(Lock_dir.Package_paths.for_writing ~portable_lock_dir)
       ~portable_lock_dir
   in
   match result with
@@ -271,7 +256,7 @@ let solve_lock_dir
     in
     let summary_message =
       User_message.make
-        (summary_message ~portable_lock_dir ~lock_dir_path ~lock_dir ~maybe_perf_stats)
+        (summary_message ~lock_dir_path ~lock_dir ~maybe_perf_stats)
     in
     progress_state := None;
     let+ lock_dir = Lock_dir.compute_missing_checksums ~pinned_packages lock_dir in
@@ -362,7 +347,7 @@ let project_pins =
   Dune_rules.Dune_load.projects () >>| Pin.Project.collect_all
 ;;
 
-let lock ~version_preference ~lock_dirs_arg ~print_perf_stats ~portable_lock_dir =
+let lock ~version_preference ~lock_dirs_arg ~print_perf_stats =
   let open Fiber.O in
   let* solver_env_from_current_system =
     poll_solver_env_from_current_system () >>| Option.some
@@ -387,7 +372,7 @@ let lock ~version_preference ~lock_dirs_arg ~print_perf_stats ~portable_lock_dir
     ~version_preference
     ~lock_dirs
     ~print_perf_stats
-    ~portable_lock_dir
+    ~portable_lock_dir:true
 ;;
 
 let term =
@@ -401,13 +386,7 @@ let term =
   Scheduler_setup.go_with_rpc_server ~common ~config (fun () ->
     let open Fiber.O in
     Pkg_common.error_if_pkg_management_disabled ()
-    >>>
-    let portable_lock_dir =
-      match Config.get Dune_rules.Compile_time.portable_lock_dir with
-      | `Enabled -> true
-      | `Disabled -> false
-    in
-    lock ~version_preference ~lock_dirs_arg ~print_perf_stats ~portable_lock_dir)
+    >>> lock ~version_preference ~lock_dirs_arg ~print_perf_stats)
 ;;
 
 let info =

@@ -39,7 +39,9 @@ attempt to build the package "foo".
   $ cat foo.ml
   let () = print_endline "Hello, world"
   $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune fmt
-  Solution for _build/.dev-tools.locks/ocamlformat:
+  Solution for _build/.dev-tools.locks/ocamlformat
+  
+  Dependencies common to all supported platforms:
   - ocamlformat.0.0.1
   File "foo.ml", line 1, characters 0-0:
   --- foo.ml

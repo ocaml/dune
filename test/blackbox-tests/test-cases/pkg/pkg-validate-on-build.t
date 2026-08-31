@@ -1,12 +1,9 @@
 Test that we validate lockdirs before using them to build a package.
 
-Disable portable lockdirs. This test exercise dune's ability to detect when
-dune is asked to execute a build plan on a different platform than the platform
-it was generated for. A similar case is possible with portable lockdirs where
-the current platform isn't one of the platforms for which a solution exists in
-the lockdir, and this is tested in "portable-lockdirs-custom-platforms".
-  $ export DUNE_CONFIG__PORTABLE_LOCK_DIR=disabled
-
+This test exercises Dune's ability to detect when it is asked to execute a
+build plan on a platform for which the lock directory has no solution. The
+analogous case for an explicitly configured platform set is tested in
+"portable-lockdirs-custom-platforms".
   $ mkrepo
 
   $ mkpkg a <<EOF
@@ -18,7 +15,7 @@ the lockdir, and this is tested in "portable-lockdirs-custom-platforms".
   $ mkpkg bar <<EOF
   > depends: [
   >   "a" { ? custom }
-  >   "b" { os = "macos" }
+  >   "b" { flavor = "macos" }
   > ]
   > EOF
 
@@ -44,7 +41,7 @@ Helper function that creates a workspace file with a given solver env.
 
   $ generate_workspace > dune-workspace <<EOF
   > (solver_env
-  >  (os macos))
+  >  (flavor macos))
   > EOF
 
   $ solve_project <<EOF
@@ -60,19 +57,19 @@ Helper function that creates a workspace file with a given solver env.
 When the workspace and lockdir is consistent we can build packages in the lockdir.
   $ build_pkg bar
 
-Now change the workspace so that the "os" solver variable is changed, but don't
-regenerate the lockdir, leaving the project in an inconsistent state.
+Now change the "flavor" solver variable, but don't regenerate the lockdir,
+leaving the project in an inconsistent state.
   $ generate_workspace > dune-workspace <<EOF
   > (solver_env
-  >  (os linux))
+  >  (flavor linux))
   > EOF
 
 Print an error when attempting to build when the lockdir and workspace disagree
 about the value of a variable.
   $ build_pkg bar
   Error: The dependency solution relies on the assignment of the solver
-  variable "os" to "macos" but the solver environment in the workspace would
-  assign it the value "linux".
+  variable "flavor" to "macos" but the solver environment in the workspace
+  would assign it the value "linux".
   Hint: This can happen if the "solver_env" for the lockdir in the
   dune-workspace file has changed since generating the lockdir. Regenerate the
   lockdir by running:
@@ -83,7 +80,7 @@ Also detect the case where a variable that was unassigned at solve time and
 used during solving is later given a value in the workspace file:
   $ generate_workspace > dune-workspace <<EOF
   > (solver_env
-  >  (os macos)
+  >  (flavor macos)
   >  (custom foo))
   > EOF
 
@@ -97,12 +94,18 @@ used during solving is later given a value in the workspace file:
   Hint: 'dune pkg lock'
   [1]
 
-If we don't set a variable in the workspace but that variable appears in
-lockdir metadata it's not an error because it might have got there by polling
-the current system. Note that to prevent the "os" variable from being taken
-from the current system it must be added to the unset variables in the
-workspace.
+The default platform set is independent from [unset_solver_vars]. A variable
+listed there remains in explicit or default platform overlays.
 
   $ generate_workspace > dune-workspace <<EOF
   > (unset_solver_vars os)
   > EOF
+
+Regenerating with [os] unset still records it in the default platform set:
+  $ dune pkg lock >/dev/null
+  Solution for dune.lock
+  
+  Dependencies common to all supported platforms:
+  - bar.0.0.1
+  $ grep -q '(os linux)' dune.lock/lock.dune
+  $ grep -q '(os macos)' dune.lock/lock.dune

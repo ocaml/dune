@@ -35,7 +35,7 @@ variables in the lock stanza's solver_env.
   > (pkg enabled)
   > EOF
 
-  $ DUNE_CONFIG__PORTABLE_LOCK_DIR=enabled dune pkg lock
+  $ dune pkg lock
   Solution for dune.lock
   
   Dependencies common to all supported platforms:

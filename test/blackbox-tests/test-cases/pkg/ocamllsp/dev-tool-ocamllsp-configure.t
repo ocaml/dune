@@ -37,7 +37,9 @@ Add ocamlbuild 0.0.2 as a constraint to make sure the constraint field makes the
 Installing ocamllsp picks the right version of ocamlbuild
 
   $ dune tools install ocamllsp
-  Solution for _build/.dev-tools.locks/ocaml-lsp-server:
+  Solution for _build/.dev-tools.locks/ocaml-lsp-server
+  
+  Dependencies common to all supported platforms:
   - ocaml-base-compiler.5.2.0
   - ocaml-compiler.5.2.0
   - ocaml-lsp-server.0.0.1

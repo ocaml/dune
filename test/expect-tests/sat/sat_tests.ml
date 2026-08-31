@@ -101,6 +101,70 @@ let%expect_test "run_solver records decisions, and counters are cumulative" =
   |}]
 ;;
 
+let%expect_test "variables cannot be added at an active decision level" =
+  let open Sat in
+  let p = create () in
+  let a = add_variable p 1 in
+  let _b = add_variable p 2 in
+  let first_decision = ref true in
+  let decide () =
+    if !first_decision
+    then (
+      first_decision := false;
+      Some a)
+    else (
+      (match add_variable p 3 with
+       | exception Invalid_argument message -> print_endline message
+       | _ -> print_endline "unexpectedly added a variable");
+      None)
+  in
+  print_endline (string_of_bool (run_solver p decide));
+  [%expect
+    {|
+    Sat.add_variable: cannot add variables after decisions have begun
+    true
+  |}]
+;;
+
+let%expect_test "incremental deciders can detect non-chronological backtracking" =
+  let open Sat in
+  let p = create () in
+  let a = add_variable p 1 in
+  let c = add_variable p 2 in
+  let d = add_variable p 3 in
+  let x = add_variable p 4 in
+  (* Selecting [a] and [d] implies both [x] and [not x]. The unrelated
+     decision [c] makes conflict analysis backjump from level 3 to level 1. *)
+  at_least_one p [ neg a; neg d; x ];
+  at_least_one p [ neg a; neg d; neg x ];
+  let choices = ref [ a; c; d ] in
+  let previous_level = ref 0 in
+  let decide () =
+    let level = get_decision_level p in
+    if level < !previous_level
+    then Format.printf "backtracked from level %d to %d@." !previous_level level;
+    previous_level := level;
+    Format.printf "decide at level %d@." level;
+    match !choices with
+    | [] -> None
+    | choice :: rest ->
+      choices := rest;
+      Some choice
+  in
+  print_endline (string_of_bool (run_solver p decide));
+  print_stats p;
+  [%expect
+    {|
+    decide at level 0
+    decide at level 1
+    decide at level 2
+    backtracked from level 2 to 1
+    decide at level 1
+    true
+    num_variables=4 num_clauses=2 num_decisions=5 num_conflicts=1
+  |}]
+;;
+
 let%expect_test "impossible problems are rejected before solving" =
   let open Sat in
   let p = create () in

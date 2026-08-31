@@ -105,6 +105,17 @@ module Packages : sig
   val pkgs_by_platform : t -> Pkg.t list Solver_env.Map.t
 end
 
+module Package_paths : sig
+  type t =
+    | Versioned
+    | Unversioned
+
+  (** Choose the package path layout for a newly generated lock directory.
+      [DUNE_PKG_VERSIONED_LOCK_DIR_PATHS=enabled|disabled] overrides the
+      existing default selected by [portable_lock_dir]. *)
+  val for_writing : portable_lock_dir:bool -> t
+end
+
 type t = private
   { version : Syntax.Version.t
   ; dependency_hash : (Loc.t * Local_package.Dependency_hash.t) option
@@ -119,15 +130,16 @@ type t = private
       dependencies. Can be used to determine if a lockdir is compatible
       with a particular system. *)
   ; solved_for_platforms : Loc.t * Solver_env.t list
+  ; package_paths : Package_paths.t
   }
 
 val remove_locs : t -> t
 val equal : t -> t -> bool
 val to_dyn : t -> Dyn.t
 
-(** Returns whether this lock directory uses versioned paths for package
-    files directories. Portable lock directories use versioned paths to
-    handle multiple versions of the same package. *)
+(** Returns whether this lock directory uses versioned paths for package files
+    and package file directories. The layout is detected while reading and does
+    not depend on the writer's environment variable. *)
 val uses_versioned_paths : t -> bool
 
 (** [create_latest_version packages ~ocaml ~repos
@@ -142,6 +154,7 @@ val create_latest_version
   -> repos:Opam_repo.t list option
   -> expanded_solver_variable_bindings:Solver_stats.Expanded_variable_bindings.t
   -> solved_for_platforms:Solver_env.t list
+  -> package_paths:Package_paths.t
   -> portable_lock_dir:bool
   -> t
 
@@ -154,9 +167,9 @@ module Write_disk : sig
   type t
 
   val prepare
-    :  portable_lock_dir:bool
-    -> lock_dir_path:Path.t
+    :  lock_dir_path:Path.t
     -> files:File_entry.t Package_version.Map.Multi.t Package_name.Map.t
+    -> portable_lock_dir:bool
     -> lock_dir
     -> t
 

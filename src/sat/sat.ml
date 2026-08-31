@@ -126,6 +126,10 @@ module Make (User : USER) = struct
       (* The decision level at which we got a value (when not Undecided) *)
     ; mutable undo : undo list
       (* Functions to call if we become unbound (by backtracking) *)
+    ; (* Undecided variables form a linked list. Assigned variables retain their
+         neighbours so trail-ordered undo can restore them in constant time. *)
+      mutable previous_undecided : var option
+    ; mutable next_undecided : var option
     ; watch_queue : clause Queue.t (* Clauses to notify when var becomes True *)
     ; neg_watch_queue : clause Queue.t (* Clauses to notify when var becomes False *)
     ; obj : User.t (* The object this corresponds to (for our caller and for debugging) *)
@@ -137,6 +141,7 @@ module Make (User : USER) = struct
     { id_maker : VarID.mint
     ; (* Propagation *)
       mutable vars : var list
+    ; mutable first_undecided : var option
     ; propQ : lit Queue.t (* propagation queue *)
     ; (* Assignments *)
       mutable trail : lit list (* order of assignments, most recent first *)
@@ -195,6 +200,8 @@ module Make (User : USER) = struct
     ; reason = None
     ; level = -1
     ; undo = []
+    ; previous_undecided = None
+    ; next_undecided = None
     ; watch_queue = Queue.create ()
     ; neg_watch_queue = Queue.create ()
     ; obj
@@ -224,6 +231,7 @@ module Make (User : USER) = struct
     if debug then log_debug (Pp.text "--- new SAT problem ---");
     { id_maker = VarID.make_mint ()
     ; vars = []
+    ; first_undecided = None
     ; propQ = Queue.create ()
     ; trail = []
     ; trail_len = 0
@@ -292,13 +300,34 @@ module Make (User : USER) = struct
   let get_decision_level problem = problem.trail_lim_len
 
   let add_variable problem obj : lit =
+    if problem.trail_lim_len <> 0
+    then invalid_arg "Sat.add_variable: cannot add variables after decisions have begun";
     (* if debug then log_debug "add_variable('%s')" obj; *)
     let var =
       let i = VarID.issue problem.id_maker in
       make_var i obj
     in
+    var.next_undecided <- problem.first_undecided;
+    Option.iter problem.first_undecided ~f:(fun first ->
+      first.previous_undecided <- Some var);
+    problem.first_undecided <- Some var;
     problem.vars <- var :: problem.vars;
     Pos, var
+  ;;
+
+  let remove_undecided problem var =
+    (match var.previous_undecided with
+     | None -> problem.first_undecided <- var.next_undecided
+     | Some previous -> previous.next_undecided <- var.next_undecided);
+    Option.iter var.next_undecided ~f:(fun next ->
+      next.previous_undecided <- var.previous_undecided)
+  ;;
+
+  let restore_undecided problem var =
+    (match var.previous_undecided with
+     | None -> problem.first_undecided <- Some var
+     | Some previous -> previous.next_undecided <- Some var);
+    Option.iter var.next_undecided ~f:(fun next -> next.previous_undecided <- Some var)
   ;;
 
   (* [lit] is now [True].
@@ -318,6 +347,7 @@ module Make (User : USER) = struct
     | True -> true (* Already set (shouldn't happen) *)
     | Undecided ->
       let var_info = var_of_lit lit in
+      remove_undecided problem var_info;
       var_info.value <- (if fst lit == Neg then False else True);
       var_info.level <- get_decision_level problem;
       var_info.reason <- Some reason;
@@ -335,6 +365,7 @@ module Make (User : USER) = struct
       (* if debug then log_debug "(pop %s)" (name_lit lit); *)
       let var_info = var_of_lit lit in
       var_info.value <- Undecided;
+      restore_undecided problem var_info;
       var_info.reason <- None;
       var_info.level <- -1;
       problem.trail <- rest;
@@ -897,8 +928,8 @@ module Make (User : USER) = struct
                If it leads to a conflict, we'll backtrack and
                try it the other way. *)
             let undecided =
-              match List.find problem.vars ~f:(fun info -> info.value = Undecided) with
-              | Some s -> s
+              match problem.first_undecided with
+              | Some undecided -> undecided
               | None -> raise_notrace (SolveDone true)
             in
             let lit =

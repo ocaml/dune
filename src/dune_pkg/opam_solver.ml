@@ -828,6 +828,10 @@ module Solver = struct
       | Selected of Input.dependency list
       | Unselected
 
+    type search_item =
+      | Visit_role of Input.Role.t
+      | Visit_dependencies of Input.dependency list
+
     type selection =
       { impl : Input.Impl.t (** The implementation chosen to fill the role *)
       ; var : Sat.lit
@@ -1193,33 +1197,56 @@ module Solver = struct
       in
       let+ impl_clauses = Fiber.Cache.to_table impl_clauses in
       (* Run the solve *)
+      let pending = ref [ Visit_role root_req ] in
+      let seen = Table.create (module Input.Role) 100 in
+      let previous_decision_level = ref 0 in
+      let reset_search () =
+        pending := [ Visit_role root_req ];
+        Table.clear seen
+      in
       let decider () =
-        (* Walk the current solution, depth-first, looking for the first
-           undecided interface. Then try the most preferred implementation of
-           it that hasn't been ruled out. *)
-        let seen = Table.create (module Input.Role) 100 in
-        let rec find_undecided req =
-          if Table.mem seen req
-          then None (* Break cycles *)
-          else (
-            Table.set seen req true;
-            match Table.find_exn impl_clauses req |> Candidates.state with
-            | Unselected -> None
-            | Undecided lit -> Some lit
-            | Selected deps ->
-              (* We've already selected a candidate for this component. Now
-                 check its dependencies. *)
-              List.find_map deps ~f:(fun (dep : Input.dependency) ->
-                match dep.importance with
-                | Ensure -> find_undecided dep.drole
-                | Prevent ->
-                  (* Restrictions don't express that we do or don't want the
-                     dependency, so skip them here. If someone else needs this,
-                     we'll handle it when we get to them.
-                     If noone wants it, it will be set to unselected at the end. *)
-                  None))
+        (* Resume the depth-first walk from the previous decision. Assignments
+           are monotonic until a backjump, so already visited roles cannot gain
+           a new undecided candidate. *)
+        let decision_level = Sat.get_decision_level sat in
+        if decision_level < !previous_decision_level then reset_search ();
+        previous_decision_level := decision_level;
+        let rec find_undecided () =
+          match !pending with
+          | [] -> None
+          | Visit_role req :: rest ->
+            if Table.mem seen req
+            then (
+              pending := rest;
+              find_undecided ())
+            else (
+              match Table.find_exn impl_clauses req |> Candidates.state with
+              | Unselected ->
+                Table.set seen req true;
+                pending := rest;
+                find_undecided ()
+              | Undecided lit -> Some lit
+              | Selected deps ->
+                (* We've already selected a candidate for this component. Now
+                   check its dependencies. *)
+                Table.set seen req true;
+                pending := Visit_dependencies deps :: rest;
+                find_undecided ())
+          | Visit_dependencies [] :: rest ->
+            pending := rest;
+            find_undecided ()
+          | Visit_dependencies (dep :: deps) :: rest ->
+            pending := Visit_dependencies deps :: rest;
+            (match dep.importance with
+             | Ensure -> pending := Visit_role dep.drole :: !pending
+             | Prevent ->
+               (* Restrictions don't express that we do or don't want the
+                  dependency. If another package needs it, it will be visited
+                  from that package. *)
+               ());
+            find_undecided ()
         in
-        find_undecided root_req
+        find_undecided ()
       in
       let start = Time.now () in
       let result = Sat.run_solver sat decider in
@@ -2264,6 +2291,7 @@ let solve_lock_dir
       ~constraints
       ~selected_depopts
       ~portable_lock_dir
+      ~package_paths
   =
   match platform_overlays with
   | [] -> Code_error.raise "solve_lock_dir called with empty platform_overlays" []
@@ -2521,6 +2549,7 @@ let solve_lock_dir
               ~repos:(Some repos)
               ~expanded_solver_variable_bindings
               ~solved_for_platforms:full_solver_envs
+              ~package_paths
               ~portable_lock_dir
           in
           let+ files =

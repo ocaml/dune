@@ -1,5 +1,9 @@
 {
   inputs = {
+    melange = {
+      url = "github:melange-re/melange/v7-55";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     nixpkgs.url = "github:nix-ocaml/nix-overlays";
     ocaml-trunk = {
       url = "github:ocaml/ocaml/trunk";
@@ -19,6 +23,7 @@
   outputs =
     {
       self,
+      melange,
       nixpkgs,
       ocaml-trunk,
       revdeps-dune,
@@ -69,6 +74,7 @@
                   ocamlPackages_5_5 = self.ocamlPackages;
                 };
               })
+              melange.overlays.default
             ];
           in
           f pkgs

@@ -1,7 +1,7 @@
 An implementation of an installed Melange virtual library must conservatively
 stage copied objects when binary annotations are unavailable.
 
-  $ mkdir -p producer/vlib consumer/impl
+  $ mkdir -p producer/vlib consumer/impl fake-bin
 
   $ cat > producer/dune-project <<'EOF'
   > (lang dune 3.24)
@@ -46,6 +46,21 @@ stage copied objects when binary annotations are unavailable.
   $ test -e "$PWD/prefix/lib/repro/vlib/melange/.private/vlib__Helper.cmi"
   $ test ! -e "$PWD/prefix/lib/repro/vlib/melange/.private/vlib__Helper.cmt"
 
+Keep the fallback independent of whether the test environment provides
+melobjinfo.
+
+  $ mkdir no-melobjinfo-bin
+  $ for program in dune melc ocamlc ocamlopt ocamldep ocamlobjinfo; do
+  >   command -v "$program" > "no-melobjinfo-bin/$program.target"
+  >   cat > "no-melobjinfo-bin/$program" <<'EOF'
+  > #!/bin/sh
+  > IFS= read -r target < "$0.target"
+  > exec "$target" "$@"
+  > EOF
+  >   chmod +x "no-melobjinfo-bin/$program"
+  > done
+  $ no_melobjinfo_path="$PWD/no-melobjinfo-bin"
+
   $ cat > consumer/dune-project <<'EOF'
   > (lang dune 3.24)
   > (using melange 1.0)
@@ -76,10 +91,10 @@ not turn copied artifacts into a Virt-to-Reverse module dependency cycle.
   >  (libraries impl))
   > EOF
 
-  $ OCAMLPATH="$PWD/prefix/lib:$OCAMLPATH" \
+  $ PATH="$no_melobjinfo_path" OCAMLPATH="$PWD/prefix/lib:$OCAMLPATH" \
   > dune build --root consumer --sandbox=symlink @melange
 
-  $ OCAMLPATH="$PWD/prefix/lib:$OCAMLPATH" \
+  $ PATH="$no_melobjinfo_path" OCAMLPATH="$PWD/prefix/lib:$OCAMLPATH" \
   > dune rules --root consumer --recursive --format=json --deps --display=quiet \
   > impl/.impl.objs/melange/vlib__Virt.cmj > deps.json
   $ jq_dune -r '
@@ -101,3 +116,38 @@ not turn copied artifacts into a Virt-to-Reverse module dependency cycle.
   _build/default/impl/.impl.objs/melange/vlib__Unused.cmi
   _build/default/impl/.impl.objs/melange/vlib__Unused.cmj
   _build/default/impl/.impl.objs/melange/vlib__Virt.cmi
+
+melobjinfo makes precise dependencies available without CMTs, so unrelated
+copied objects no longer need to be staged.
+
+  $ cat > fake-bin/melobjinfo <<'EOF'
+  > #!/bin/sh
+  > for unit do
+  >   printf 'File %s\n' "$unit"
+  >   printf 'Implementations imported:\n'
+  >   case "$unit" in
+  >     *vlib__Shared.cmj)
+  >       printf '  --------------------------------  Vlib__Helper\n'
+  >       ;;
+  >   esac
+  > done
+  > EOF
+  $ chmod +x fake-bin/melobjinfo
+
+  $ PATH="$PWD/fake-bin:$no_melobjinfo_path" \
+  > OCAMLPATH="$PWD/prefix/lib:$OCAMLPATH" \
+  > dune rules --root consumer --recursive --format=json --deps --display=quiet \
+  > impl/.impl.objs/melange/vlib__Virt.cmj > deps-with-melobjinfo.json
+  $ jq_dune -r '
+  >   [.[] | depsFilePaths
+  >    | select(endswith("vlib__Helper.cmi")
+  >             or endswith("vlib__Helper.cmj")
+  >             or endswith("vlib__Reverse.cmi")
+  >             or endswith("vlib__Reverse.cmj")
+  >             or endswith("vlib__Unused.cmi")
+  >             or endswith("vlib__Unused.cmj"))
+  >    | select(startswith("_build/default/impl/.impl.objs/melange/"))]
+  >   | unique[]
+  > ' deps-with-melobjinfo.json
+  _build/default/impl/.impl.objs/melange/vlib__Helper.cmi
+  _build/default/impl/.impl.objs/melange/vlib__Helper.cmj

@@ -464,7 +464,9 @@ let add_alias_rule (ctx : Build_context.t) ~profile ~project ~pkg =
              ~then_:(Action_builder.path (Path.build opam_path))
              ~else_:(Action_builder.return ())
          in
-         Action.Full.make (Action.diff (Path.build opam_path) generated_opam_path))
+         Action.diff (Path.build opam_path) generated_opam_path
+         |> Action.Full.make
+         |> Action.Full.add_sandbox Sandbox_config.needs_sandboxing)
     | Exists _ | Generated | Generated_with_diff -> Memo.return ()
   in
   Memo.parallel_iter aliases ~f:(fun alias ->

@@ -12,8 +12,30 @@
  (action
   (run ar rcs %{target} %{deps})))
 
+; On macOS, a shared library linked without -install_name records its
+; output path (e.g. "./libexample.so") as its install name. dlopen
+; treats any slash-containing name as a literal path and never consults
+; DYLD_LIBRARY_PATH, so stubs linked against it abort at load time.
+; Use @rpath and let consumers supply the rpath (see pkgconfig/libexample.pc).
+
 (rule
  (deps example.o)
  (target libexample.so)
+ (enabled_if
+  (= %{system} macosx))
+ (action
+  (run
+   %{cc}
+   -shared
+   -o
+   %{target}
+   -Wl,-install_name,@rpath/libexample.so
+   %{deps})))
+
+(rule
+ (deps example.o)
+ (target libexample.so)
+ (enabled_if
+  (<> %{system} macosx))
  (action
   (run %{cc} -shared -o %{target} %{deps})))

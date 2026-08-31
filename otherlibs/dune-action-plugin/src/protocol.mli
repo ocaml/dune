@@ -27,10 +27,22 @@ module Greeting : sig
   include Sexpable with type t := t
 end
 
+module Target : sig
+  type t =
+    | File of string
+    | Directory of string
+
+  val describe : t -> string
+
+  module Set : sig
+    include Set.S with type elt = t
+  end
+end
+
 module Run_arguments : sig
   type t =
     { prepared_dependencies : Dependency.Set.t
-    ; targets : String.Set.t
+    ; targets : Target.Set.t
     }
 
   include Sexpable with type t := t
@@ -57,6 +69,6 @@ module Context : sig
 
   val create : unit -> create_result
   val prepared_dependencies : t -> Dependency.Set.t
-  val targets : t -> String.Set.t
+  val targets : t -> Target.Set.t
   val respond : t -> Response.t -> unit
 end

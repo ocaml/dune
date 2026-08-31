@@ -29,18 +29,17 @@ let exec ~(ectx : context) ~(eenv : env) prog args =
   let run_arguments =
     let targets =
       match ectx.targets with
-      | None -> String.Set.empty
+      | None -> DAP.Target.Set.empty
       | Some targets ->
-        if not (Filename.Set.is_empty targets.dirs)
-        then
-          User_error.raise
-            ~loc:ectx.rule_loc
-            [ Pp.text "Directory targets are not compatible with dynamic actions" ];
-        Filename.Set.to_list_map targets.files ~f:(fun target ->
-          Path.Build.relative_fname targets.root target
-          |> Path.build
-          |> Path.reach ~from:eenv.working_dir)
-        |> String.Set.of_list
+        Targets.Validated.fold
+          targets
+          ~init:DAP.Target.Set.empty
+          ~file:(fun target targets ->
+            let path = Path.build target |> Path.reach ~from:eenv.working_dir in
+            DAP.Target.Set.add targets (DAP.Target.File path))
+          ~dir:(fun target targets ->
+            let path = Path.build target |> Path.reach ~from:eenv.working_dir in
+            DAP.Target.Set.add targets (DAP.Target.Directory path))
     in
     { DAP.Run_arguments.prepared_dependencies = eenv.prepared_dependencies; targets }
   in

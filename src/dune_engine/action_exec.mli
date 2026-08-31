@@ -27,6 +27,9 @@ end
 
 type input =
   { targets : Targets.Validated.t option (* Some Jane Street actions use [None] *)
+    (** Original [targets] in the build directory. *)
+  ; action_targets : Targets.Validated.t option
+    (** [action_targets] mapped into the action's sandbox, if any. *)
   ; root : Path.t
     (** [root] should be the root of the current build context, or the root
       of the sandbox if the action is sandboxed. *)

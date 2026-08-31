@@ -20,6 +20,48 @@ module V1 : sig
 
   module Path = Path
 
+  (** An in-memory non-empty directory tree. *)
+  module Directory : sig
+    type t
+
+    (** A builder that prevents constructing empty directory trees. Entry names must be
+        single path components and unique within their directory.
+
+        For example:
+
+        {[
+          let generated =
+            Directory.Builder.empty
+            |> Directory.Builder.add_file ~name:"code.ml" ~data:"let x = 1\n"
+            |> Directory.Builder.build
+          in
+          let output =
+            Directory.Builder.empty
+            |> Directory.Builder.add_file ~name:"README" ~data:"Generated files\n"
+            |> Directory.Builder.add_directory ~name:"lib" ~directory:generated
+            |> Directory.Builder.build
+          in
+          write_directory ~path:(Path.of_string "output") ~directory:output
+        ]} *)
+    module Builder : sig
+      type empty
+      type nonempty
+      type 'state builder
+
+      (** An empty builder. At least one entry must be added before calling [build]. *)
+      val empty : empty builder
+
+      (** Add a file named [name] containing [data]. *)
+      val add_file : _ builder -> name:string -> data:string -> nonempty builder
+
+      (** Add [directory] as a subdirectory named [name]. *)
+      val add_directory : _ builder -> name:string -> directory:t -> nonempty builder
+
+      (** Finish building a non-empty directory tree. *)
+      val build : nonempty builder -> t
+    end
+  end
+
   type 'a t
 
   (** {1:monadic_interface Applicative/monadic interface} *)
@@ -86,6 +128,13 @@ module V1 : sig
 
       Note: [file] must be declared as a target in dune build file. *)
   val write_file : path:Path.t -> data:string -> unit t
+
+  (** [write_directory ~path ~directory] returns a computation that recursively writes
+      the contents of [directory] to [path].
+
+      Note: [path] must be declared as a directory target in the corresponding
+      dune build file. *)
+  val write_directory : path:Path.t -> directory:Directory.t -> unit t
 
   (** [read_directory_with_glob ~path:directory ~glob] returns a computation
       depending on a listing of a [directory] (including source and target

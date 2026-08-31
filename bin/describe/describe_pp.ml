@@ -69,6 +69,7 @@ let execute_pp_action ~sctx file pp_file dump_file =
       | File_and_directory_target_with_the_same_name _ -> assert false
     in
     { Dune_engine.Action_exec.targets = Some targets
+    ; action_targets = Some targets
     ; root = Path.build build_dir
     ; context = Some (Dune_engine.Build_context.create ~name:context)
     ; env

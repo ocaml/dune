@@ -1,5 +1,5 @@
   $ cat > dune-project << EOF
-  > (lang dune 2.0)
+  > (lang dune 3.25)
   > (using action-plugin 0.1)
   > EOF
 
@@ -16,5 +16,5 @@
   1 | (rule
   2 |  (alias runtest)
   3 |  (action (dynamic-run ./foo.exe)))
-  The file target "bar" was produced despite not being declared in the dune file. To fix this, declare it as a target.
+  The directory target "bar" was produced despite not being declared in the dune file. To fix this, declare it as a target.
   [1]

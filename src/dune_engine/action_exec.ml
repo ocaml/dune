@@ -353,6 +353,9 @@ let exec_until_all_deps_ready ~ectx ~eenv t =
 
 type input =
   { targets : Targets.Validated.t option (* Some Jane Street actions use [None] *)
+    (** Original targets in the build directory. *)
+  ; action_targets : Targets.Validated.t option
+    (** [action_targets] mapped into the action's sandbox, if any. *)
   ; root : Path.t
   ; context : Build_context.t option
   ; env : Env.t
@@ -363,14 +366,23 @@ type input =
   }
 
 let exec
-      { targets; root; context; env; rule_loc; execution_parameters; sandbox; action = t }
+      { targets
+      ; action_targets
+      ; root
+      ; context
+      ; env
+      ; rule_loc
+      ; execution_parameters
+      ; sandbox
+      ; action = t
+      }
       ~build_deps
   =
   let ectx =
     let metadata =
       Process_metadata.create ~purpose:(Process_metadata.Build_job targets) ()
     in
-    { targets; metadata; context; sandbox; rule_loc; build_deps }
+    { targets = action_targets; metadata; context; sandbox; rule_loc; build_deps }
   and eenv =
     let env =
       match

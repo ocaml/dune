@@ -481,6 +481,9 @@ module Internal = struct
         | Some context -> context.build_dir
       in
       let root = Path.build (Sandbox.map_path sandbox root) in
+      let action_targets =
+        Targets.Validated.map_root targets ~f:(Sandbox.map_path sandbox)
+      in
       let execute () =
         with_locks locks ~f:(fun () ->
           let* action_exec_result =
@@ -490,6 +493,7 @@ module Internal = struct
               ; context (* can be derived from the root *)
               ; env
               ; targets = Some targets
+              ; action_targets = Some action_targets
               ; rule_loc = loc
               ; execution_parameters
               ; sandbox = process_sandbox

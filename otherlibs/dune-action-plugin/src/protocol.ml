@@ -78,24 +78,64 @@ module Greeting = struct
   include Sexpable_intf.Make (T)
 end
 
+module Target = struct
+  module T = struct
+    type t =
+      | File of string
+      | Directory of string
+
+    let conv =
+      let open Conv in
+      let file = constr "File" string (fun path -> File path) in
+      let directory = constr "Directory" string (fun path -> Directory path) in
+      sum
+        [ econstr file; econstr directory ]
+        (function
+          | File path -> case path file
+          | Directory path -> case path directory)
+    ;;
+
+    let compare x y =
+      match x, y with
+      | File x, File y -> String.compare x y
+      | File _, Directory _ -> Lt
+      | Directory _, File _ -> Gt
+      | Directory x, Directory y -> String.compare x y
+    ;;
+
+    let describe = function
+      | File path -> Printf.sprintf "file target %S" path
+      | Directory path -> Printf.sprintf "directory target %S" path
+    ;;
+
+    let to_dyn = Dyn.opaque
+  end
+
+  include T
+  module O = Comparable.Make (T)
+
+  module Set = struct
+    include O.Set
+
+    let conv : t Conv.value = Conv.iso (Conv.list conv) of_list to_list
+  end
+end
+
 module Run_arguments = struct
   module T = struct
     type t =
       { prepared_dependencies : Dependency.Set.t
-      ; targets : String.Set.t
+      ; targets : Target.Set.t
       }
 
     let conv =
       let from { prepared_dependencies; targets } = prepared_dependencies, targets in
       let to_ (prepared_dependencies, targets) = { prepared_dependencies; targets } in
-      let string_set =
-        Conv.iso Conv.(list string) String.Set.of_list String.Set.to_list
-      in
-      let conv = Conv.pair Dependency.Set.conv string_set in
+      let conv = Conv.pair Dependency.Set.conv Target.Set.conv in
       Conv.iso conv to_ from
     ;;
 
-    let version = 0
+    let version = 1
   end
 
   include T
@@ -132,7 +172,7 @@ module Context = struct
   type t =
     { response_fn : string
     ; prepared_dependencies : Dependency.Set.t
-    ; targets : String.Set.t
+    ; targets : Target.Set.t
     }
 
   type create_result =

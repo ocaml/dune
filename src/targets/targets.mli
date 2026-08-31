@@ -50,6 +50,9 @@ module Validated : sig
       target file. Otherwise, it's the lexicographically first target directory. *)
   val head : t -> Path.Build.t
 
+  (** Change the common root while preserving all relative file and directory names. *)
+  val map_root : t -> f:(Path.Build.t -> Path.Build.t) -> t
+
   val to_dyn : t -> Dyn.t
 end
 

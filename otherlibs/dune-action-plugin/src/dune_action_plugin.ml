@@ -16,9 +16,44 @@ module V1 = struct
     ;;
   end
 
+  module Directory = struct
+    type entry =
+      | File of string
+      | Directory of t
+
+    and t = entry String.Map.t
+
+    let iter t ~f = String.Map.iteri t ~f
+
+    module Builder = struct
+      type empty
+      type nonempty
+      type 'state builder = t
+
+      let empty = String.Map.empty
+
+      let add_entry t ~name entry =
+        if
+          String.is_empty name
+          || Fpath.contains_path_sep name
+          || name = "."
+          || name = ".."
+        then invalid_arg "Directory entry must be a single path component";
+        match String.Map.add t name entry with
+        | Ok t -> t
+        | Error _ -> invalid_arg (Printf.sprintf "duplicate directory entry %s" name)
+      ;;
+
+      let add_file t ~name ~data = add_entry t ~name (File data)
+      let add_directory t ~name ~directory = add_entry t ~name (Directory directory)
+      let build t = t
+    end
+  end
+
   module Fs : sig
     val read_directory : string -> (string list, string) result
     val read_file : string -> (string, string) result
+    val write_directory : string -> Directory.t -> (unit, string) result
     val write_file : string -> string -> (unit, string) result
   end = struct
     let catch_system_exceptions f ~name =
@@ -54,13 +89,33 @@ module V1 = struct
       catch_system_exceptions ~name:"write_file" (fun () ->
         Io.String_path.write_file path data)
     ;;
+
+    let mkdir_p path =
+      match Fpath.mkdir_p_strict path with
+      | `Created | `Already_exists -> ()
+      | `Not_a_dir ->
+        raise (Sys_error (Printf.sprintf "%s exists but is not a directory" path))
+    ;;
+
+    let write_directory path directory =
+      catch_system_exceptions ~name:"write_directory" (fun () ->
+        let rec write path directory =
+          mkdir_p path;
+          Directory.iter directory ~f:(fun name entry ->
+            let path = Filename.concat path name in
+            match entry with
+            | Directory.File data -> Io.String_path.write_file path data
+            | Directory.Directory directory -> write path directory)
+        in
+        write path directory)
+    ;;
   end
 
   module Stage = struct
     type 'a t =
       { action : unit -> 'a
       ; dependencies : Dependency.Set.t
-      ; targets : String.Set.t
+      ; targets : Target.Set.t
       }
 
     let map (t : 'a t) ~f = { t with action = (fun () -> f (t.action ())) }
@@ -68,7 +123,7 @@ module V1 = struct
     let both (t1 : 'a t) (t2 : 'b t) =
       { action = (fun () -> t1.action (), t2.action ())
       ; dependencies = Dependency.Set.union t1.dependencies t2.dependencies
-      ; targets = String.Set.union t1.targets t2.targets
+      ; targets = Target.Set.union t1.targets t2.targets
       }
     ;;
   end
@@ -108,7 +163,7 @@ module V1 = struct
     lift_stage
       { action
       ; dependencies = Dependency.Set.singleton (File path)
-      ; targets = String.Set.empty
+      ; targets = Target.Set.empty
       }
   ;;
 
@@ -116,7 +171,22 @@ module V1 = struct
     let path = Path.to_string path in
     let action () = Fs.write_file path data |> Execution_error.raise_on_fs_error in
     lift_stage
-      { action; dependencies = Dependency.Set.empty; targets = String.Set.singleton path }
+      { action
+      ; dependencies = Dependency.Set.empty
+      ; targets = Target.Set.singleton (Target.File path)
+      }
+  ;;
+
+  let write_directory ~path ~directory =
+    let path = Path.to_string path in
+    let action () =
+      Fs.write_directory path directory |> Execution_error.raise_on_fs_error
+    in
+    lift_stage
+      { action
+      ; dependencies = Dependency.Set.empty
+      ; targets = Target.Set.singleton (Target.Directory path)
+      }
   ;;
 
   let read_directory_with_glob ~path ~glob =
@@ -130,31 +200,80 @@ module V1 = struct
       { action
       ; dependencies =
           Dependency.Set.singleton (Glob { path; glob = Glob.to_string glob })
-      ; targets = String.Set.empty
+      ; targets = Target.Set.empty
       }
   ;;
 
   let rec run_by_dune t context =
+    let is_descendant path ~of_ =
+      match String.drop_prefix path ~prefix:(of_ ^ Filename.dir_sep) with
+      | None -> false
+      | Some path ->
+        (match
+           Result.try_with (fun () ->
+             Stdune.Path.Local.relative Stdune.Path.Local.root path)
+         with
+         | Ok _ -> true
+         | Error _ -> false)
+    in
     match t with
     | Pure () -> Context.respond context Done
     | Stage at ->
       let allowed_targets = Context.targets context in
-      let disallowed_targets = String.Set.diff at.targets allowed_targets in
-      (match String.Set.to_list disallowed_targets with
+      let target_is_allowed ~declared ~produced =
+        match declared, produced with
+        | Target.File declared, Target.File produced -> String.equal declared produced
+        | File _, Directory _ -> false
+        | Directory declared, (File produced | Directory produced) ->
+          String.equal declared produced || is_descendant produced ~of_:declared
+      in
+      let is_allowed produced =
+        Target.Set.exists allowed_targets ~f:(fun declared ->
+          target_is_allowed ~declared ~produced)
+      in
+      let disallowed_targets =
+        Target.Set.filter at.targets ~f:(fun produced -> not (is_allowed produced))
+      in
+      let kind_mismatch = function
+        | Target.File path ->
+          if Target.Set.mem allowed_targets (Directory path)
+          then Some (path, "file", "directory")
+          else None
+        | Directory path ->
+          if Target.Set.mem allowed_targets (File path)
+          then Some (path, "directory", "file")
+          else None
+      in
+      (match Target.Set.to_list disallowed_targets with
        | [] -> ()
-       | [ t ] ->
+       | [ target ] ->
+         let message =
+           match kind_mismatch target with
+           | Some (path, produced_kind, declared_kind) ->
+             Printf.sprintf
+               "The %s target %S was produced, but %S is declared as a %s target in the \
+                dune file."
+               produced_kind
+               path
+               path
+               declared_kind
+           | None ->
+             Printf.sprintf
+               "The %s was produced despite not being declared in the dune file. To fix \
+                this, declare it as a target."
+               (Target.describe target)
+         in
+         Execution_error.raise message
+       | targets ->
          Execution_error.raise
            (Printf.sprintf
-              "%s is written despite not being declared as a target in dune file. To \
-               fix, add it to target list in dune file."
-              t)
-       | ts ->
-         Execution_error.raise
-           (Printf.sprintf
-              "Following files were written despite not being declared as targets in \
+              "The following targets were produced despite not being declared in the \
                dune file:\n\
-               %sTo fix, add them to target list in dune file."
-              (ts |> String.concat ~sep:"\n")));
+               %s\n\
+               To fix this, declare them as targets."
+              (targets
+               |> List.map ~f:(fun target -> "- " ^ Target.describe target)
+               |> String.concat ~sep:"\n")));
       let prepared_dependencies = Context.prepared_dependencies context in
       let required_dependencies =
         Dependency.Set.diff at.dependencies prepared_dependencies

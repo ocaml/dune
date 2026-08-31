@@ -118,6 +118,8 @@ module Validated = struct
     Path.Build.relative_fname root name
   ;;
 
+  let map_root t ~f = { t with root = f t.root }
+
   let to_dyn { root; files; dirs } =
     Dyn.Record
       [ "root", Path.Build.to_dyn root

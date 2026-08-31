@@ -11,6 +11,7 @@ include struct
   module Comparable = Comparable
   module Result = Result
   module Map = Map
+  module Fpath = Fpath
 end
 
 module Conv = Dune_rpc.Private.Conv

@@ -286,7 +286,7 @@ type imported_vlib_deps =
       Modules.Sourced_module.t
       -> ml_kind:Ml_kind.t
       -> imported_vlib_deps_result Action_builder.t Memo.t
-  ; stage_copied_objects_if_cmt_missing : unit Action_builder.t Lazy.t option
+  ; stage_copied_objects_if_dep_info_missing : unit Action_builder.t Lazy.t option
   }
 
 type memoized_transitive_deps =
@@ -427,13 +427,14 @@ let transitive_deps_of t ~ml_kind unit =
               (Ml_kind.to_string ml_kind))
   in
   match ml_kind, t.imported_vlib_deps with
-  | Impl, Some { stage_copied_objects_if_cmt_missing = Some stage; _ } ->
+  | Impl, Some { stage_copied_objects_if_dep_info_missing = Some stage; _ } ->
     let open Action_builder.O in
     let+ deps = deps
     and+ () = Lazy.force stage in
     deps
-  | Intf, _ | Impl, None | Impl, Some { stage_copied_objects_if_cmt_missing = None; _ } ->
-    deps
+  | Intf, _
+  | Impl, None
+  | Impl, Some { stage_copied_objects_if_dep_info_missing = None; _ } -> deps
 ;;
 
 let make_imported_vlib_deps ~obj_dir ~vimpl ~dir ~sctx ~sandbox ~for_ : imported_vlib_deps
@@ -456,7 +457,7 @@ let make_imported_vlib_deps ~obj_dir ~vimpl ~dir ~sctx ~sandbox ~for_ : imported
          let+ deps = deps_from_ooi sourced_module ~ml_kind in
          Action_builder.map deps ~f:(fun deps -> Transitive deps)
        in
-       { deps_of; stage_copied_objects_if_cmt_missing = None }
+       { deps_of; stage_copied_objects_if_dep_info_missing = None }
      | Compilation_mode.Melange ->
        let object_info_sandbox =
          if dune_version >= (3, 3) then Some Sandbox_config.needs_sandboxing else None
@@ -503,7 +504,7 @@ let make_imported_vlib_deps ~obj_dir ~vimpl ~dir ~sctx ~sandbox ~for_ : imported
                 (List.map intf_deps ~f:(fun dep -> dep, Ml_kind.Intf)
                  @ List.map impl_deps ~f:(fun dep -> dep, Ml_kind.Impl)))
        in
-       let stage_copied_objects_if_cmt_missing =
+       let stage_copied_objects_if_dep_info_missing =
          lazy
            ((let open Action_builder.O in
              let* melobjinfo_deps =
@@ -537,10 +538,12 @@ let make_imported_vlib_deps ~obj_dir ~vimpl ~dir ~sctx ~sandbox ~for_ : imported
                    @ Obj_dir.Module.L.cm_files obj_dir modules ~kind:(Melange Cmj)
                  in
                  Action_builder.paths files))
-            |> Action_builder.memoize "stage copied vlib objects if CMT missing")
+            |> Action_builder.memoize
+                 "stage copied vlib objects if dependency info missing")
        in
        { deps_of
-       ; stage_copied_objects_if_cmt_missing = Some stage_copied_objects_if_cmt_missing
+       ; stage_copied_objects_if_dep_info_missing =
+           Some stage_copied_objects_if_dep_info_missing
        })
   | Some lib ->
     let vlib_obj_dir =
@@ -566,7 +569,7 @@ let make_imported_vlib_deps ~obj_dir ~vimpl ~dir ~sctx ~sandbox ~for_ : imported
       |> Action_builder.map ~f:(fun deps -> Transitive deps)
       |> Memo.return
     in
-    { deps_of; stage_copied_objects_if_cmt_missing = None }
+    { deps_of; stage_copied_objects_if_dep_info_missing = None }
 ;;
 
 let make_transitive_deps ~obj_dir ~modules ~sandbox ~impl ~dir ~sctx ~for_ =

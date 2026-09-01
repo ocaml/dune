@@ -177,6 +177,7 @@ module Event : sig
     -> num_clauses:int
     -> num_decisions:int
     -> num_conflicts:int
+    -> num_opam_files:int
     -> t
 
   module Promote : sig

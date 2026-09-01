@@ -35,10 +35,12 @@ retrying with different `max_avoids`), so only assert sane ranges:
   >       and (.args.num_clauses | type) == "number"
   >       and (.args.num_decisions | type) == "number"
   >       and (.args.num_conflicts | type) == "number"
+  >       and (.args.num_opam_files | type) == "number"
   >       and .args.num_variables >= 1
   >       and .args.num_clauses >= 1
   >       and .args.num_decisions >= 0
   >       and .args.num_conflicts >= 0
+  >       and .args.num_opam_files >= 1
   >       and (.dur | type) == "number")
   >   }
   > '

@@ -147,12 +147,9 @@ module Make (User : USER) = struct
     ; mutable set_to_false : bool
     ; conflict_vars : VarID.Hash_set.t
       (* we are finishing up by setting everything else to False *)
-      (* Counters for observability. [num_clauses] counts input clauses
-         added via [at_least_one] / [implies] / [impossible]; the
-         at-most clauses are not counted because they do not carry a
-         problem handle at their construction site (see sat.mli).
-         [num_decisions] and [num_conflicts] are incremented in
-         [run_solver]. *)
+      (* Counters for observability. [num_clauses] counts the clauses added
+         via [at_least_one] / [implies] / [at_most] / [impossible];
+         [num_decisions] and [num_conflicts] the work done by the solver. *)
     ; num_clauses : Counter.t
     ; num_decisions : Counter.t
     ; num_conflicts : Counter.t
@@ -675,7 +672,7 @@ module Make (User : USER) = struct
     | Exit -> true
   ;;
 
-  let at_most nb lits : at_most_clause =
+  let at_most problem nb lits : at_most_clause =
     assert (not (List.is_empty lits));
     (* if debug then log_debug (Pp.textf "at_most_%i(%s)" nb (string_of_lits lits)); *)
     (* If there are not enough literals then we're trivially true
@@ -693,6 +690,7 @@ module Make (User : USER) = struct
         Pp.text "at_most_one(" ++ pp_lits lits ++ Pp.paragraph "): duplicates in list!"
       in
       invalid_arg (Format.asprintf "%a." Pp.to_fmt msg));
+    Counter.incr problem.num_clauses;
     (* Ignore any literals already known to be False.
        If any are True then they're enqueued and we'll process them
        soon. *)
@@ -703,7 +701,7 @@ module Make (User : USER) = struct
     clause
   ;;
 
-  let at_most_one lits = at_most 1 lits
+  let at_most_one problem lits = at_most problem 1 lits
 
   let analyse problem (original_cause : clause) =
     (* After trying some assignments, we've discovered a conflict.

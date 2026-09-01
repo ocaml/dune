@@ -29,6 +29,6 @@ The input is fixed, so the exact SAT problem size detects redundant encoding.
   [
     {
       "num_variables": 2,
-      "num_clauses": 2
+      "num_clauses": 4
     }
   ]

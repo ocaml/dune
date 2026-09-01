@@ -41,11 +41,9 @@ module Rule = struct
   ;;
 end
 
-(* A rule is identified by its first target and an anonymous action by the stamp
-   file the build system executes it through. The latter is named after a digest
-   of the evaluated action, so an action attached to several aliases has a single
-   identity here, just as it has a single execution there. *)
-let digest_of_identity path = Digest.string (Path.Build.to_string path)
+(* A rule is identified by its first target, and an anonymous action by the stamp
+   file the build system generates for it. *)
+let id_of_path path = Digest.string (Path.Build.to_string path)
 
 module Anon_rules = struct
   type t = Rule.t Digest.Map.t
@@ -59,6 +57,9 @@ module Anon_rules = struct
   ;;
 
   module Aliases = struct
+    (* The same anonymous action can be attached to several aliases; we
+       accumulate them and put them back once all rules are collected. *)
+
     type t = Alias_name.Set.t Digest.Map.t ref
 
     let create () = ref Digest.Map.empty
@@ -95,7 +96,7 @@ end = struct
     let* full_action, deps = Action_builder.evaluate_and_collect_deps anon.action in
     let stamp_file = Build_system.anonymous_action_stamp_file anon ~full_action ~deps in
     let+ expanded_deps, _anon_rules = Expand.deps deps in
-    let id = digest_of_identity stamp_file in
+    let id = id_of_path stamp_file in
     ( Path.Set.empty
     , Digest.Map.singleton
         id
@@ -155,7 +156,7 @@ let evaluate_rule =
          let* action, deps = Action_builder.evaluate_and_collect_deps rule.action in
          let* expanded_deps, _anon_rules = Expand.deps deps in
          Memo.return
-           { Rule.id = digest_of_identity (Targets.Validated.head rule.targets)
+           { Rule.id = id_of_path (Targets.Validated.head rule.targets)
            ; deps
            ; expanded_deps
            ; targets = Some rule.targets
@@ -168,9 +169,6 @@ let evaluate_rule =
 ;;
 
 let eval ~recursive ~request =
-  (* The same anonymous action can be attached to several aliases, in which case
-     the closure below visits it once and forgets all but the first of its
-     aliases. We accumulate them here and put them back once it is done. *)
   let aliases = Anon_rules.Aliases.create () in
   let rules_of_deps deps =
     let* paths, anon_rules = Expand.deps deps in

@@ -22,38 +22,19 @@ let with_test solver_env =
 ;;
 
 module Priority = struct
-  (* A priority defines a package's position in the list of candidates
-     fed to the solver. Any change to package selection should be reflected in
-     this priority rather than implemented in an ad-hoc manner *)
-  type t =
-    { (* We prefer packages with [avoid-version: false] *)
-      avoid : bool
-    ; version : OpamPackage.Version.t
-    }
+  (* A priority defines a package's position in the list of candidates fed to
+     the solver, such that it will select package versions in the order
+     specified by the version preference. *)
+  type t = { version : OpamPackage.Version.t }
 
-  let compare_version =
+  let make version = { version }
+
+  let compare (pref : Version_preference.t) { version = x } { version = y } =
     let ord x y = OpamPackage.Version.compare x y |> Ordering.of_int in
-    fun (pref : Version_preference.t) x y ->
-      match pref with
-      | Oldest -> ord x y
-      | Newest -> ord y x
+    match pref with
+    | Oldest -> ord x y
+    | Newest -> ord y x
   ;;
-
-  let compare pref t { avoid; version } =
-    Tuple.T2.compare
-      Bool.compare
-      (compare_version pref)
-      (t.avoid, t.version)
-      (avoid, version)
-  ;;
-
-  let make (package : OpamFile.OPAM.t) =
-    let avoid = List.mem package.flags Pkgflag_AvoidVersion ~equal:Poly.equal in
-    let version = OpamFile.OPAM.package package |> OpamPackage.version in
-    { version; avoid }
-  ;;
-
-  let allowed version = { avoid = false; version }
 end
 
 module Context = struct
@@ -217,7 +198,7 @@ module Context = struct
     let resolved = OpamPackage.Version.Map.singleton version resolved_package in
     (* We don't respect avoid-version for pinned packages. This is intentional. *)
     { unfiltered =
-        [ { priority = Priority.allowed version; opam = opam_file; origin = Pinned } ]
+        [ { priority = Priority.make version; opam = opam_file; origin = Pinned } ]
     ; resolved
     }
   ;;
@@ -371,7 +352,8 @@ module Context = struct
       OpamPackage.Version.Map.values resolved
       |> List.map ~f:(fun resolved_package ->
         let opam = Resolved_package.opam_file resolved_package in
-        { priority = Priority.make opam; opam; origin = Repository })
+        let version = OpamFile.OPAM.package opam |> OpamPackage.version in
+        { priority = Priority.make version; opam; origin = Repository })
       |> List.sort ~compare:(fun x y ->
         Priority.compare t.version_preference x.priority y.priority)
     in
@@ -385,7 +367,7 @@ module Context = struct
     let key = Package_name.of_opam_package_name name in
     match Package_name.Map.find (Lazy.force t.local_packages) key with
     | Some local_package ->
-      let priority = Priority.allowed local_package.version in
+      let priority = Priority.make local_package.version in
       Fiber.return [ { priority; opam = local_package.opam_file; origin = Local } ]
     | None ->
       let+ res =
@@ -782,7 +764,8 @@ module Solver = struct
           match Context.rejection_for_platform context ~platform candidate with
           | Some _ -> None
           | None ->
-            let { Priority.version; avoid } = priority in
+            let { Priority.version } = priority in
+            let avoid = List.mem opam.flags Pkgflag_AvoidVersion ~equal:Poly.equal in
             let pkg = OpamPackage.create name version in
             (* Note: we ignore depopts here: see opam/doc/design/depopts-and-features *)
             let requires =

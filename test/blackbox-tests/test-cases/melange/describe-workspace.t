@@ -1,11 +1,10 @@
 `dune describe workspace` and Melange targets
 =============================================
 
-`melange.emit` stanzas are described as `melange.emit` items. Libraries are
-still only described in OCaml mode: every library is described exactly once,
-even when it is only ever built for Melange. This test records that current
-behaviour; a later change will make these outputs contain `melange.library`
-items too.
+`melange.emit` stanzas are described as `melange.emit` items, and libraries are
+described once per compilation mode they are actually built in: as a `library`
+item for OCaml and as a `melange.library` item for Melange. A library built in
+both modes therefore appears twice, under two distinct uids.
 
 The `--sanitize-for-tests` flag is required so that absolute paths stay stable
 across machines, and `censor` replaces library digests with stable labels.
@@ -48,9 +47,9 @@ module.
 An emit depending on a Melange-only library
 -------------------------------------------
 
-The library is built for Melange only, yet it is described as an ordinary
-`library` item, with OCaml `.objs/byte` artifacts that are never built. Later
-it should be described as a `melange.library` item instead.
+The library is built for Melange only, so it is described by a single
+`melange.library` item. It no longer produces a `library` item, which used to
+report OCaml artifacts that are never built.
 
   $ mkdir mel-lib && cd mel-lib
   $ make_melange_project 3.8 0.1
@@ -89,7 +88,7 @@ it should be described as a `melange.library` item instead.
         (cmti ())
         (origin (dune ((dune_file dune)))))))
      (include_dirs (_build/default/.dist.mobjs/byte))))
-   (library
+   (melange.library
     ((name mylib)
      (uid $DIGEST)
      (local true)
@@ -97,20 +96,21 @@ it should be described as a `melange.library` item instead.
      (source_dir _build/default/lib)
      (modules
       (((name Mylib)
-        (impl (_build/default/lib/mylib.ml))
+        (impl (_build/default/lib/.melange_src/mylib.ml))
         (intf ())
         (cmt (_build/default/lib/.mylib.objs/byte/mylib.cmt))
         (cmti ())
-        (origin source))))
+        (origin (dune ((dune_file lib/dune)))))))
      (include_dirs (_build/default/lib/.mylib.objs/byte)))))
   $ cd ..
 
 A library used by both an executable and a melange.emit
 -------------------------------------------------------
 
-The library is built in both OCaml and Melange mode, but there is exactly one
-`library` item for it. Later there should be two items with distinct uids: one
-`library` and one `melange.library`.
+The library is built in both OCaml and Melange mode, so it is described twice,
+by a `library` item and a `melange.library` item with distinct uids. The
+executable's `requires` names the OCaml uid and the emit's `requires` names the
+Melange one.
 
   $ mkdir shared && cd shared
   $ make_melange_project 3.8 0.1
@@ -147,7 +147,7 @@ The library is built in both OCaml and Melange mode, but there is exactly one
    (build_context _build/default)
    (executables
     ((names (main))
-     (requires ($DIGEST))
+     (requires ($DIGEST1))
      (modules
       (((name Main)
         (impl (_build/default/exe/main.ml))
@@ -161,7 +161,7 @@ The library is built in both OCaml and Melange mode, but there is exactly one
      (alias melange)
      (module_systems ((commonjs .js)))
      (target_dir _build/default/emit/dist)
-     (requires ($DIGEST))
+     (requires ($DIGEST2))
      (modules
       (((name App)
         (impl (_build/default/emit/.melange_src/app.ml))
@@ -172,7 +172,7 @@ The library is built in both OCaml and Melange mode, but there is exactly one
      (include_dirs (_build/default/emit/.dist.mobjs/byte))))
    (library
     ((name shared_lib)
-     (uid $DIGEST)
+     (uid $DIGEST1)
      (local true)
      (requires ())
      (source_dir _build/default/lib)
@@ -183,14 +183,28 @@ The library is built in both OCaml and Melange mode, but there is exactly one
         (cmt (_build/default/lib/.shared_lib.objs/byte/shared_lib.cmt))
         (cmti ())
         (origin source))))
+     (include_dirs (_build/default/lib/.shared_lib.objs/byte))))
+   (melange.library
+    ((name shared_lib)
+     (uid $DIGEST2)
+     (local true)
+     (requires ())
+     (source_dir _build/default/lib)
+     (modules
+      (((name Shared_lib)
+        (impl (_build/default/lib/.melange_src/shared_lib.ml))
+        (intf ())
+        (cmt (_build/default/lib/.shared_lib.objs/byte/shared_lib.cmt))
+        (cmti ())
+        (origin (dune ((dune_file lib/dune)))))))
      (include_dirs (_build/default/lib/.shared_lib.objs/byte)))))
   $ cd ..
 
 An OCaml-only library in a project that also has an emit
 --------------------------------------------------------
 
-This library is not usable from Melange, so it must keep exactly one `library`
-item even after Melange targets are described: it guards a filter based on
+This library is not usable from Melange, so it is described by exactly one
+`library` item and no `melange.library` item: it guards the filter based on
 `Lib_info.effective_modes`.
 
   $ mkdir ocaml-only && cd ocaml-only
@@ -250,8 +264,7 @@ The csexp format
 
 The csexp output is a single long line, so it is written to a file and
 pretty-printed back before being compared. This guards the printing of the
-dotted `melange.emit` atom, and of the `melange.library` atom that a later
-change introduces.
+dotted `melange.emit` and `melange.library` atoms.
 
   $ mkdir csexp && cd csexp
   $ make_melange_project 3.8 0.1
@@ -295,7 +308,7 @@ change introduces.
          (dune
           ((dune_file dune)))))))
      (include_dirs (_build/default/.dist.mobjs/byte))))
-   (library
+   (melange.library
     ((name mylib)
      (uid $DIGEST)
      (local true)
@@ -303,10 +316,12 @@ change introduces.
      (source_dir _build/default/lib)
      (modules
       (((name Mylib)
-        (impl (_build/default/lib/mylib.ml))
+        (impl (_build/default/lib/.melange_src/mylib.ml))
         (intf ())
         (cmt (_build/default/lib/.mylib.objs/byte/mylib.cmt))
         (cmti ())
-        (origin source))))
+        (origin
+         (dune
+          ((dune_file lib/dune)))))))
      (include_dirs (_build/default/lib/.mylib.objs/byte)))))
   $ cd ..

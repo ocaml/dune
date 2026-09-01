@@ -57,6 +57,7 @@ module Library = Library
 module Melange = Melange
 module Melange_emit = Melange_stanzas.Emit
 module Melange_rules = Melange_rules
+module Melange_binary = Melange_binary
 module Executables = Executables
 module Tests = Tests
 module Stanzas = Stanzas

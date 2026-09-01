@@ -368,6 +368,7 @@ module Descr = struct
       | Executables of Exe.t
       | Melange_emit of Melange_emit.t
       | Library of Lib.t
+      | Melange_library of Lib.t
       | Root of Path.t
       | Build_context of Path.t
 
@@ -376,6 +377,7 @@ module Descr = struct
       | Executables exe -> Executables (Exe.map_path exe ~f)
       | Melange_emit emit -> Melange_emit (Melange_emit.map_path emit ~f)
       | Library lib -> Library (Lib.map_path lib ~f)
+      | Melange_library lib -> Melange_library (Lib.map_path lib ~f)
       | Root r -> Root (f r)
       | Build_context c -> Build_context (f c)
     ;;
@@ -386,6 +388,8 @@ module Descr = struct
       | Melange_emit emit_descr ->
         Variant ("melange.emit", [ Melange_emit.to_dyn options emit_descr ])
       | Library lib_descr -> Variant ("library", [ Lib.to_dyn options lib_descr ])
+      | Melange_library lib_descr ->
+        Variant ("melange.library", [ Lib.to_dyn options lib_descr ])
       | Root root -> Variant ("root", [ String (Path.to_absolute_filename root) ])
       | Build_context build_ctxt ->
         Variant ("build_context", [ String (Path.to_string build_ctxt) ])
@@ -503,16 +507,59 @@ module Crawl = struct
   open Dune_engine
   open Memo.O
 
-  (* Computes the digest of a library *)
-  let uid_of_library (lib : Lib.t) : Digest.t =
-    let name = Lib.name lib in
-    if Lib.is_local lib
-    then (
-      let source_dir = Lib_info.src_dir (Lib.info lib) in
+  (* Computes the digest of a library. The digest is salted with the
+     compilation mode so that a library described in both modes gets two
+     distinct identifiers. The [Ocaml] digests are the ones that were computed
+     before Melange items existed, so that existing consumers keep working. *)
+  let uid_of_library ~for_ (lib : Lib.t) : Digest.t =
+    let name = Lib_name.to_string (Lib.name lib) in
+    let source_dir () = Path.to_string (Lib_info.src_dir (Lib.info lib)) in
+    match (for_ : Compilation_mode.t), Lib.is_local lib with
+    | Ocaml, true ->
       Digest.Feed.compute_digest
         (Digest.Feed.tuple2 Digest.Feed.string Digest.Feed.string)
-        (Lib_name.to_string name, Path.to_string source_dir))
-    else Digest.string (Lib_name.to_string name)
+        (name, source_dir ())
+    | Ocaml, false -> Digest.string name
+    | Melange, true ->
+      Digest.Feed.compute_digest
+        (Digest.Feed.tuple3 Digest.Feed.string Digest.Feed.string Digest.Feed.string)
+        (name, source_dir (), "melange")
+    | Melange, false ->
+      Digest.Feed.compute_digest
+        (Digest.Feed.tuple2 Digest.Feed.string Digest.Feed.string)
+        (name, "melange")
+  ;;
+
+  (* The compilation modes a library is actually built in. A library whose
+     sources live outside the build directory has no directory to look up the
+     Melange toolchain in, so the context's build directory is used. *)
+  let compilation_modes sctx (lib : Lib.t) : Compilation_mode.Set.t Memo.t =
+    let info = Lib.info lib in
+    let dir =
+      match Path.as_in_build_dir (Lib_info.src_dir info) with
+      | Some dir -> dir
+      | None -> Context.build_dir (Super_context.context sctx)
+    in
+    let+ effective_modes =
+      Lib_info.effective_modes
+        info
+        ~melange_available:(Melange_binary.available sctx ~dir)
+    in
+    Compilation_mode.Set.of_lib_mode_set effective_modes
+  ;;
+
+  (* Keeps the libraries of [libs] that are built in mode [for_] *)
+  let filter_by_mode sctx ~for_ libs =
+    Lib.Set.to_list libs
+    |> Memo.parallel_map ~f:(fun lib ->
+      let+ modes = compilation_modes sctx lib in
+      match
+        List.mem (Compilation_mode.Set.to_list modes) for_ ~equal:Compilation_mode.equal
+      with
+      | true -> Some lib
+      | false -> None)
+    >>| List.filter_opt
+    >>| Lib.Set.of_list
   ;;
 
   let immediate_deps_of_module ~sctx ~options ~obj_dir ~modules unit =
@@ -721,7 +768,7 @@ module Crawl = struct
            { Descr.Exe.names = Nonempty_list.to_list_map exes.names ~f:snd
            ; public_names =
                Option.map exes.public_names ~f:(Nonempty_list.to_list_map ~f:snd)
-           ; requires = List.map ~f:uid_of_library libs
+           ; requires = List.map ~f:(uid_of_library ~for_) libs
            ; modules
            ; include_dirs
            }
@@ -786,7 +833,7 @@ module Crawl = struct
            ; alias = Option.value mel.alias ~default:Melange_emit.implicit_alias
            ; module_systems = Nonempty_list.to_list mel.module_systems
            ; target_dir = Path.build (Melange_emit.target_dir mel ~dir)
-           ; requires = List.map ~f:uid_of_library libs
+           ; requires = List.map ~f:(uid_of_library ~for_) libs
            ; modules
            ; include_dirs
            }
@@ -852,15 +899,17 @@ module Crawl = struct
       let lib_descr =
         { Descr.Lib.name
         ; public_name
-        ; uid = uid_of_library lib
+        ; uid = uid_of_library ~for_ lib
         ; local = Lib.is_local lib
-        ; requires = List.map requires ~f:uid_of_library
+        ; requires = List.map requires ~f:(uid_of_library ~for_)
         ; source_dir = src_dir
         ; modules = modules_
         ; include_dirs
         }
       in
-      Some (Descr.Item.Library lib_descr)
+      (match (for_ : Compilation_mode.t) with
+       | Ocaml -> Some (Descr.Item.Library lib_descr)
+       | Melange -> Some (Descr.Item.Melange_library lib_descr))
   ;;
 
   (* [source_path_is_in_dirs dirs p] tests whether the source path [p] is a
@@ -903,7 +952,6 @@ module Crawl = struct
   (* Builds a workspace description for the provided dune setup and context *)
   let workspace
         options
-        ~for_
         ({ Dune_rules.Main.contexts = _; scontexts } : Dune_rules.Main.build_system)
         (context : Context.t)
         dirs
@@ -913,31 +961,37 @@ module Crawl = struct
     let context_name = Context.name context in
     let sctx = Context_name.Map.find_exn scontexts context_name in
     let open Memo.O in
-    let* dune_files =
+    let* stanzas =
       Dune_load.dune_files context_name
       >>| List.filter ~f:(dune_file_is_in_dirs ~no_recursive dirs)
+      >>= Memo.parallel_map ~f:(fun (dune_file : Dune_file.t) ->
+        let+ stanzas = Dune_file.stanzas dune_file in
+        let dir =
+          Path.Build.append_source (Context.build_dir context) (Dune_file.dir dune_file)
+        in
+        let project = Dune_file.project dune_file in
+        List.map stanzas ~f:(fun stanza -> dir, project, stanza))
+      >>| List.concat
     in
     let* exes, exe_libs =
       (* the list of workspace items that describe executables, and the list of
          their direct library dependencies *)
-      Memo.parallel_map dune_files ~f:(fun (dune_file : Dune_file.t) ->
-        Dune_file.stanzas dune_file
-        >>= Memo.parallel_map ~f:(fun stanza ->
-          let dir =
-            Path.Build.append_source (Context.build_dir context) (Dune_file.dir dune_file)
-          in
-          let project = Dune_file.project dune_file in
-          match Stanza.repr stanza with
-          | Executables.T exes -> executables sctx ~options ~project ~dir ~for_ exes
-          | Melange_emit.T mel -> melange_emit sctx ~options ~project ~dir mel
-          | _ -> Memo.return None)
-        >>| List.filter_opt)
-      >>| List.concat
+      Memo.parallel_map stanzas ~f:(fun (dir, project, stanza) ->
+        match Stanza.repr stanza with
+        | Executables.T exes ->
+          executables sctx ~options ~project ~dir ~for_:Compilation_mode.Ocaml exes
+        | _ -> Memo.return None)
+      >>| List.filter_opt
       >>| List.split
     in
-    let exe_libs =
-      (* conflate the dependencies of executables into a single set *)
-      Lib.Set.union_all exe_libs
+    let* mel_emits, mel_emit_libs =
+      (* the same, for the [melange.emit] stanzas *)
+      Memo.parallel_map stanzas ~f:(fun (dir, project, stanza) ->
+        match Stanza.repr stanza with
+        | Melange_emit.T mel -> melange_emit sctx ~options ~project ~dir mel
+        | _ -> Memo.return None)
+      >>| List.filter_opt
+      >>| List.split
     in
     let* project_libs =
       (* the list of libraries declared in the project *)
@@ -949,17 +1003,19 @@ module Crawl = struct
       >>| Lib.Set.union_all
       >>| Lib.Set.filter ~f:(lib_is_in_dirs ~no_recursive dirs)
     in
-    let+ libs =
-      (* the executables' libraries, and the project's libraries *)
-      Lib.Set.union exe_libs project_libs
-      |> Lib.Set.to_list (* TODO(anmonteiro): support Melange *)
+    let libs ~for_ seeds =
+      let* project_libs = filter_by_mode sctx ~for_ project_libs in
+      Lib.Set.union (Lib.Set.union_all seeds) project_libs
+      |> Lib.Set.to_list
       |> Lib.descriptive_closure ~with_pps:options.with_pps ~for_
       >>= Memo.parallel_map ~f:(library ~options ~for_ sctx)
       >>| List.filter_opt
     in
+    let* ocaml_libs = libs ~for_:Compilation_mode.Ocaml exe_libs in
+    let+ melange_libs = libs ~for_:Compilation_mode.Melange mel_emit_libs in
     let root = root () in
     let build_ctxt = build_ctxt context in
-    root :: build_ctxt :: (exes @ libs)
+    root :: build_ctxt :: (exes @ mel_emits @ ocaml_libs @ melange_libs)
   ;;
 end
 
@@ -1025,7 +1081,7 @@ let term : unit Term.t =
        command also works correctly when it is run from a
        subdirectory *)
     Memo.Option.map dirs ~f:(Memo.List.map ~f:(find_dir common))
-    >>= Crawl.workspace options ~for_:Compilation_mode.Ocaml setup context
+    >>= Crawl.workspace options setup context
     >>| Sanitize_for_tests.Workspace.sanitize ~findlib_paths
     >>| Descr.Workspace.to_dyn options
     >>| Describe_format.print_dyn format)

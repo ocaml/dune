@@ -41,6 +41,7 @@ include struct
   module Melange = Melange
   module Melange_emit = Melange_emit
   module Melange_rules = Melange_rules
+  module Melange_binary = Melange_binary
   module Dir_contents = Dir_contents
 end
 

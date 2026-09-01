@@ -10,7 +10,6 @@ include struct
   module Build_command = Lock_dir.Build_command
   module Pkg_info = Lock_dir.Pkg_info
   module Depexts = Lock_dir.Depexts
-  module Digest_feed = Dune_digest.Feed
   module Dune_dep = Dune_dep
 end
 
@@ -54,13 +53,8 @@ module Variable = struct
 end
 
 module Package_universe = struct
-  (* A type of group of packages that are co-installed. Multiple different
-     versions of a package may be co-installed into the same universe.
-
-     Note that a dev tool universe just contains the package for the dev tool
-     itself and not its dependencies, which are installed into the
-     [Dependencies _] universe for the default context so they may be
-     shared with the project's dependencies. *)
+  (* A type of group of packages that are co-installed. Different package
+     universes are isolated from each other. *)
   type t =
     | Dependencies of Context_name.t
     | Dev_tool of Dune_pkg.Dev_tool.t
@@ -78,6 +72,8 @@ module Package_universe = struct
       Tuple.T2.hash Int.hash Context_name.hash (0, context_name)
     | Dev_tool dev_tool -> Tuple.T2.hash Int.hash Dune_pkg.Dev_tool.hash (1, dev_tool)
   ;;
+
+  let to_dyn = Dyn.opaque
 
   let context_name = function
     | Dependencies context_name -> context_name
@@ -97,102 +93,6 @@ module Package_universe = struct
     match t with
     | Dependencies ctx -> Lock_dir.get_exn ctx
     | Dev_tool dev_tool -> Lock_dir.of_dev_tool dev_tool
-  ;;
-end
-
-module Pkg_digest = struct
-  module T = struct
-    type t =
-      { name : Package.Name.t
-      ; version : Package_version.t
-      ; lockfile_and_dependency_digest : Dune_digest.t
-        (* A hash of the package's lockfile as well as of the digests of all
-           the package's dependencies. *)
-      }
-
-    let equal { name; version; lockfile_and_dependency_digest } t =
-      Package.Name.equal name t.name
-      && Package_version.equal version t.version
-      && Dune_digest.equal lockfile_and_dependency_digest t.lockfile_and_dependency_digest
-    ;;
-
-    let compare { name; version; lockfile_and_dependency_digest } t =
-      let open Ordering.O in
-      let= () = Package.Name.compare name t.name in
-      let= () = Package_version.compare version t.version in
-      Dune_digest.compare lockfile_and_dependency_digest t.lockfile_and_dependency_digest
-    ;;
-
-    let to_dyn { name; version; lockfile_and_dependency_digest } =
-      Dyn.record
-        [ "name", Package.Name.to_dyn name
-        ; "version", Package_version.to_dyn version
-        ; ( "lockfile_and_dependency_digest"
-          , Dune_digest.to_dyn lockfile_and_dependency_digest )
-        ]
-    ;;
-
-    let hash { name; version; lockfile_and_dependency_digest } =
-      Tuple.T3.hash
-        Package.Name.hash
-        Package_version.hash
-        Dune_digest.hash
-        (name, version, lockfile_and_dependency_digest)
-    ;;
-
-    let digest_repr = Repr.view Repr.string ~to_:Dune_digest.to_string
-
-    let repr =
-      Repr.record
-        "pkg-digest"
-        [ Repr.field "name" Package.Name.repr ~get:(fun t -> t.name)
-        ; Repr.field "version" Package_version.repr ~get:(fun t -> t.version)
-        ; Repr.field "lockfile_and_dependency_digest" digest_repr ~get:(fun t ->
-            t.lockfile_and_dependency_digest)
-        ]
-    ;;
-  end
-
-  include T
-  include Comparable.Make (T)
-
-  let to_string { name; version; lockfile_and_dependency_digest } =
-    sprintf
-      "%s.%s-%s"
-      (Package.Name.to_string name)
-      (Package_version.to_string version)
-      (Dune_digest.to_string lockfile_and_dependency_digest)
-  ;;
-
-  let of_string s =
-    let parse_error msg =
-      User_error.raise [ Pp.textf "Failed to parse %S as a package pkg digest." s; msg ]
-    in
-    match String.lsplit2 s ~on:'.' with
-    | None -> parse_error (Pp.text "Missing '.' between name and version.")
-    | Some (name, rest) ->
-      (match String.rsplit2 rest ~on:'-' with
-       | None -> parse_error (Pp.text "Missing '-' between version and lockfile digest.")
-       | Some (version, lockfile_and_dependency_digest) ->
-         (match Dune_digest.from_hex lockfile_and_dependency_digest with
-          | None ->
-            parse_error
-              (Pp.textf "Failed to parse %S as digest" lockfile_and_dependency_digest)
-          | Some lockfile_and_dependency_digest ->
-            let name = Package.Name.of_string name in
-            let version = Package_version.of_string version in
-            { name; version; lockfile_and_dependency_digest }))
-  ;;
-
-  let create lockfile_pkg depends_pkg_digests =
-    let lockfile_and_dependency_digest =
-      Digest_feed.compute_digest
-        (Digest_feed.tuple2 Lock_dir.Pkg.digest_feed (Digest_feed.repr (Repr.list repr)))
-        (Dune_pkg.Lock_dir.Pkg.remove_locs lockfile_pkg, depends_pkg_digests)
-    in
-    let name = lockfile_pkg.info.name in
-    let version = lockfile_pkg.info.version in
-    { name; version; lockfile_and_dependency_digest }
   ;;
 end
 
@@ -248,16 +148,17 @@ module Paths = struct
     Path.Build.append_local t.extra_sources extra_source
   ;;
 
-  let make pkg_digest universe =
-    let root =
+  let make universe name =
+    let universe_root =
       match (universe : Package_universe.t) with
       | Dependencies ctx ->
         Path.Build.L.relative
           Private_context.t.build_dir
-          [ Context_name.to_string ctx; ".pkg"; Pkg_digest.to_string pkg_digest ]
+          [ Context_name.to_string ctx; ".pkg" ]
       | Dev_tool dev_tool -> Pkg_dev_tool.universe_install_path dev_tool
     in
-    of_root pkg_digest.name ~root
+    let root = Path.Build.relative universe_root (Package.Name.to_string name) in
+    of_root name ~root
   ;;
 
   let make_install_cookie target_dir ~relative = relative target_dir "cookie"
@@ -457,7 +358,6 @@ module Pkg = struct
     ; paths : Path.t Paths.t
     ; write_paths : Path.Build.t Paths.t
     ; files_dir : Path.Build.t
-    ; pkg_digest : Pkg_digest.t
     ; mutable exported_env : string Env_update.t list
     }
 
@@ -1270,40 +1170,22 @@ module DB = struct
     type dep =
       { dep_pkg : Pkg.t
       ; dep_loc : Loc.t
-      ; dep_pkg_digest : Pkg_digest.t
       }
 
     type entry =
       { pkg : Pkg.t
       ; deps : dep list
       ; has_dune_dep : bool
-      ; pkg_digest : Pkg_digest.t
       }
-
-    type compiler =
-      | From_lock_dir
-      | From_project of entry
 
     let entries_by_name_of_lock_dir
           (lock_dir : Dune_pkg.Lock_dir.t)
           ~platform
           ~system_provided
-          ~compiler
       =
       let pkgs_by_name = Dune_pkg.Lock_dir.packages_on_platform lock_dir ~platform in
-      let cache =
-        (* Cache so that the digest of each package is only computed once *)
-        Package.Name.Table.create 10
-      in
+      let cache = Package.Name.Table.create 10 in
       let rec compute_entry (pkg : Pkg.t) ~seen_set ~seen_list =
-        match compiler with
-        | From_project project_compiler
-          when Package.Name.equal pkg.info.name project_compiler.pkg.info.name
-               && Package_version.equal pkg.info.version project_compiler.pkg.info.version
-          -> project_compiler
-        | From_lock_dir | From_project _ ->
-          compute_entry_from_lock_dir pkg ~seen_set ~seen_list
-      and compute_entry_from_lock_dir (pkg : Pkg.t) ~seen_set ~seen_list =
         if Package.Name.Set.mem seen_set pkg.info.name
         then
           User_error.raise
@@ -1337,105 +1219,20 @@ module DB = struct
                    | false, true -> has_dune_dep, acc
                    | _, false ->
                      let dep_pkg = Package.Name.Map.find_exn pkgs_by_name name in
-                     let dep_entry = compute_entry dep_pkg ~seen_set ~seen_list in
-                     ( has_dune_dep
-                     , { dep_pkg; dep_loc; dep_pkg_digest = dep_entry.pkg_digest } :: acc
-                     ))
+                     let (_ : entry) = compute_entry dep_pkg ~seen_set ~seen_list in
+                     has_dune_dep, { dep_pkg; dep_loc } :: acc)
           in
-          let pkg_digest =
-            Pkg_digest.create
-              pkg
-              (List.map deps ~f:(fun { dep_pkg_digest; _ } -> dep_pkg_digest))
-          in
-          { pkg; deps; has_dune_dep; pkg_digest })
+          { pkg; deps; has_dune_dep })
       in
       Package.Name.Map.map
         pkgs_by_name
         ~f:(compute_entry ~seen_set:Package.Name.Set.empty ~seen_list:[])
     ;;
 
-    (* Associate each package's digest with the package and its dependencies. *)
-    type t = entry Pkg_digest.Map.t
+    type t = entry Package.Name.Map.t
 
-    let of_entries entries =
-      Package.Name.Map.values entries
-      |> Pkg_digest.Map.of_list_map_exn ~f:(fun entry -> entry.pkg_digest, entry)
-    ;;
-
-    let of_lock_dir lock_dir ~platform ~system_provided ~compiler =
-      entries_by_name_of_lock_dir lock_dir ~platform ~system_provided ~compiler
-      |> of_entries
-    ;;
-
-    (* Helper which is called when both tables have an entry with the same
-       digest. This happens when two lock directories have a package in common
-       and the transitive dependency closure of the package is identical in both
-       lock directories. Here we assert that the packages and their immediate
-       dependencies are identical as a sanity check. *)
-    let union_check
-          pkg_digest
-          ({ pkg = pkg_a; deps = deps_a; has_dune_dep = _; pkg_digest = _ } as entry)
-          { pkg = pkg_b; deps = deps_b; has_dune_dep = _; pkg_digest = _ }
-      =
-      if not (Pkg.equal (Pkg.remove_locs pkg_a) (Pkg.remove_locs pkg_b))
-      then
-        Code_error.raise
-          "Two packages with the same pkg digest differ in their fields"
-          [ "pkg_digest", Pkg_digest.to_dyn pkg_digest
-          ; "pkg_a", Pkg.to_dyn pkg_a
-          ; "pkg_b", Pkg.to_dyn pkg_b
-          ];
-      List.combine deps_a deps_b
-      |> List.iter ~f:(fun (dep_a, dep_b) ->
-        if not (Pkg.equal (Pkg.remove_locs dep_a.dep_pkg) (Pkg.remove_locs dep_b.dep_pkg))
-        then
-          Code_error.raise
-            "Two packages with the same pkg digest differ in their dependencies"
-            [ "pkg_digest", Pkg_digest.to_dyn pkg_digest
-            ; "pkg_a", Pkg.to_dyn pkg_a
-            ; "pkg_b", Pkg.to_dyn pkg_b
-            ; "dep_of_a", Pkg.to_dyn dep_a.dep_pkg
-            ; "dep_of_b", Pkg.to_dyn dep_b.dep_pkg
-            ]);
-      Some entry
-    ;;
-
-    let empty = Pkg_digest.Map.empty
-    let union = Pkg_digest.Map.union ~f:union_check
-    let union_all = Pkg_digest.Map.union_all ~f:union_check
-
-    let compiler_for_dev_tool dev_tool project_compiler =
-      match
-        ( Dune_pkg.Dev_tool.needs_to_build_with_same_compiler_as_project dev_tool
-        , project_compiler )
-      with
-      | true, Some project_compiler -> From_project project_compiler
-      | false, _ | true, None -> From_lock_dir
-    ;;
-
-    let of_dev_tool_deps_if_lock_dir_exists
-          dev_tool
-          ~platform
-          ~system_provided
-          ~project_compiler
-      =
-      let+ lock_dir_opt = Lock_dir.of_dev_tool_if_lock_dir_exists dev_tool in
-      Option.map lock_dir_opt ~f:(fun lock_dir ->
-        let compiler = compiler_for_dev_tool dev_tool project_compiler in
-        of_lock_dir lock_dir ~platform ~system_provided ~compiler)
-    ;;
-
-    let all_existing_dev_tools ~platform ~system_provided ~project_compiler =
-      let+ xs =
-        Memo.List.map
-          Pkg_dev_tool.all
-          ~f:
-            (of_dev_tool_deps_if_lock_dir_exists
-               ~platform
-               ~system_provided
-               ~project_compiler)
-      in
-      List.filter_opt xs |> union_all
+    let of_lock_dir lock_dir ~platform ~system_provided =
+      entries_by_name_of_lock_dir lock_dir ~platform ~system_provided
     ;;
   end
 
@@ -1443,170 +1240,63 @@ module DB = struct
 
   type t =
     { id : Id.t
-    ; pkg_digest_table : Pkg_table.t
-    ; system_provided : Package.Name.Set.t
+    ; pkg_table : Pkg_table.t
     }
 
   let equal x y = Id.equal x.id y.id
 
-  let create ~pkg_digest_table ~system_provided =
-    { id = Id.gen (); pkg_digest_table; system_provided }
-  ;;
-
-  let entries_by_name_of_lock_dir lock_dir platform ~system_provided =
-    Pkg_table.entries_by_name_of_lock_dir
-      lock_dir
-      ~platform
-      ~system_provided
-      ~compiler:Pkg_table.From_lock_dir
-  ;;
-
-  let project_compiler lock_dir entries_by_name =
-    Option.map lock_dir.Dune_pkg.Lock_dir.ocaml ~f:(fun (_, package) ->
-      Package.Name.Map.find_exn entries_by_name package)
-  ;;
-
-  let pkg_digest_of_name lock_dir platform pkg_name ~system_provided ~compiler =
-    let entries_by_name =
-      Pkg_table.entries_by_name_of_lock_dir lock_dir ~platform ~system_provided ~compiler
-    in
-    let entry = Package.Name.Map.find_exn entries_by_name pkg_name in
-    entry.pkg_digest
-  ;;
-
-  let of_ctx =
-    let of_ctx_memo =
+  let get =
+    let memo =
       Memo.create
         "pkg-db"
-        ~input:
-          (module struct
-            type t = Context_name.t * bool
-
-            let to_dyn = Tuple.T2.to_dyn Context_name.to_dyn Dyn.bool
-            let hash = Tuple.T2.hash Context_name.hash Bool.hash
-            let equal = Tuple.T2.equal Context_name.equal Bool.equal
-          end)
-        (fun (ctx, allow_sharing) ->
-           Per_context.valid ctx
-           >>= function
-           | false ->
-             Code_error.raise "invalid context" [ "context", Context_name.to_dyn ctx ]
-           | true ->
-             (* Dev tools are built in the default context, so allow their
-                dependencies to be shared with the project's if it too is being
-                built in the default context. *)
-             let allow_sharing = allow_sharing && Context_name.is_default ctx in
-             (* Is this value anything other than [default_system_provided]? *)
-             let system_provided = default_system_provided in
-             let* lock_dir = Lock_dir.get_exn ctx
-             and* platform = Lock_dir.Sys_vars.solver_env in
-             let project_entries =
-               entries_by_name_of_lock_dir lock_dir platform ~system_provided
-             in
-             let project_compiler = project_compiler lock_dir project_entries in
-             let* dev_tools =
-               if allow_sharing
-               then
-                 Pkg_table.all_existing_dev_tools
-                   ~platform
-                   ~system_provided
-                   ~project_compiler
-               else Memo.return Pkg_table.empty
-             in
-             let pkg_digest_table =
-               Pkg_table.union (Pkg_table.of_entries project_entries) dev_tools
-             in
-             Memo.return (create ~pkg_digest_table ~system_provided))
+        ~input:(module Package_universe)
+        (fun universe ->
+           let* () =
+             match (universe : Package_universe.t) with
+             | Dev_tool _ -> Memo.return ()
+             | Dependencies ctx ->
+               Per_context.valid ctx
+               >>= (function
+                | true -> Memo.return ()
+                | false ->
+                  Code_error.raise
+                    "invalid context"
+                    [ "context", Context_name.to_dyn ctx ])
+           in
+           let+ lock_dir = Package_universe.lock_dir universe
+           and+ platform = Lock_dir.Sys_vars.solver_env in
+           let pkg_table =
+             Pkg_table.of_lock_dir
+               lock_dir
+               ~platform
+               ~system_provided:default_system_provided
+           in
+           { id = Id.gen (); pkg_table })
     in
-    fun ctx ~allow_sharing -> Memo.exec of_ctx_memo (ctx, allow_sharing)
-  ;;
-
-  (* Returns the db for the given context and the digest of the given package
-     within that context. *)
-  let of_project_pkg ctx pkg_name =
-    let* lock_dir = Lock_dir.get_exn ctx
-    and* platform = Lock_dir.Sys_vars.solver_env in
-    let+ t = of_ctx ctx ~allow_sharing:true in
-    ( t
-    , pkg_digest_of_name
-        lock_dir
-        platform
-        pkg_name
-        ~system_provided:t.system_provided
-        ~compiler:Pkg_table.From_lock_dir )
-  ;;
-
-  (* Returns the db for all dev tools combined with the default context, and
-     the digest for the dev tool's package. *)
-  let of_dev_tool =
-    let system_provided = default_system_provided in
-    let inactive_lockdir =
-      Memo.lazy_ ~name:"inactive-lockdir-package-db" (fun () ->
-        let* platform = Lock_dir.Sys_vars.solver_env in
-        let+ pkg_digest_table =
-          Pkg_table.all_existing_dev_tools
-            ~platform
-            ~system_provided
-            ~project_compiler:None
-        in
-        create ~pkg_digest_table ~system_provided)
-    in
-    fun dev_tool ->
-      let* lock_dir_active = Lock_dir.lock_dir_active Context_name.default
-      and* dev_tool_lock_dir = Lock_dir.of_dev_tool dev_tool
-      and* platform = Lock_dir.Sys_vars.solver_env in
-      match lock_dir_active with
-      | false ->
-        let+ db = Memo.Lazy.force inactive_lockdir in
-        let pkg_digest =
-          pkg_digest_of_name
-            dev_tool_lock_dir
-            platform
-            (Pkg_dev_tool.package_name dev_tool)
-            ~system_provided
-            ~compiler:Pkg_table.From_lock_dir
-        in
-        db, pkg_digest
-      | true ->
-        let* project_lock_dir = Lock_dir.get_exn Context_name.default
-        and* db = of_ctx Context_name.default ~allow_sharing:true in
-        let project_entries =
-          entries_by_name_of_lock_dir project_lock_dir platform ~system_provided
-        in
-        let project_compiler = project_compiler project_lock_dir project_entries in
-        let compiler = Pkg_table.compiler_for_dev_tool dev_tool project_compiler in
-        let pkg_digest =
-          pkg_digest_of_name
-            dev_tool_lock_dir
-            platform
-            (Pkg_dev_tool.package_name dev_tool)
-            ~system_provided
-            ~compiler
-        in
-        Memo.return (db, pkg_digest)
+    fun universe -> Memo.exec memo universe
   ;;
 end
 
 module rec Resolve : sig
-  val resolve : DB.t -> Loc.t -> Pkg_digest.t -> Package_universe.t -> Pkg.t Memo.t
+  val resolve : DB.t -> Loc.t -> Package.Name.t -> Package_universe.t -> Pkg.t Memo.t
 end = struct
   open Resolve
 
   module Input = struct
     type t =
       { db : DB.t
-      ; pkg_digest : Pkg_digest.t
+      ; package : Package.Name.t
       ; universe : Package_universe.t
       }
 
-    let equal { db; pkg_digest; universe } t =
-      Pkg_digest.equal pkg_digest t.pkg_digest
+    let equal { db; package; universe } t =
+      Package.Name.equal package t.package
       && Package_universe.equal universe t.universe
       && DB.equal db t.db
     ;;
 
-    let hash { db = _; pkg_digest; universe } =
-      Tuple.T2.hash Pkg_digest.hash Package_universe.hash (pkg_digest, universe)
+    let hash { db = _; package; universe } =
+      Tuple.T2.hash Package.Name.hash Package_universe.hash (package, universe)
     ;;
 
     let to_dyn = Dyn.opaque
@@ -1648,8 +1338,8 @@ end = struct
     | Eq | Gt -> true
   ;;
 
-  let resolve_impl { Input.db; pkg_digest; universe = package_universe } =
-    match Pkg_digest.Map.find db.pkg_digest_table pkg_digest with
+  let resolve_from_universe db package package_universe =
+    match Package.Name.Map.find db.DB.pkg_table package with
     | None -> Memo.return None
     | Some
         { pkg =
@@ -1663,27 +1353,15 @@ end = struct
             } as pkg
         ; deps
         ; has_dune_dep
-        ; pkg_digest = _
         } ->
-      assert (Package.Name.equal pkg_digest.name info.name);
+      assert (Package.Name.equal package info.name);
       let* platform = Lock_dir.Sys_vars.solver_env in
       let choose_for_current_platform field =
         Dune_pkg.Lock_dir.Conditional_choice.choose_for_platform field ~platform
       in
       let* depends =
-        Memo.parallel_map
-          deps
-          ~f:(fun { DB.Pkg_table.dep_pkg = _; dep_loc; dep_pkg_digest } ->
-            let package_universe =
-              match package_universe with
-              | Dev_tool _ ->
-                (* The dependencies of dev tools are installed into the default
-                 context so they may be shared with the project's
-                 dependencies. *)
-                Package_universe.Dependencies Context_name.default
-              | _ -> package_universe
-            in
-            resolve db dep_loc dep_pkg_digest package_universe)
+        Memo.parallel_map deps ~f:(fun { DB.Pkg_table.dep_pkg; dep_loc } ->
+          resolve db dep_loc dep_pkg.info.name package_universe)
       and+ files_dir =
         let+ lock_dir_path =
           Package_universe.lock_dir_path package_universe >>| Option.value_exn
@@ -1696,7 +1374,7 @@ end = struct
       in
       let id = Pkg.Id.gen () in
       let write_paths =
-        Paths.make pkg_digest package_universe ~relative:Path.Build.relative
+        Paths.make package_universe package ~relative:Path.Build.relative
       in
       let install_command = choose_for_current_platform install_command in
       let install_command = Option.map install_command ~f:relocate in
@@ -1743,7 +1421,6 @@ end = struct
         ; write_paths
         ; info
         ; files_dir
-        ; pkg_digest
         ; exported_env = []
         }
       in
@@ -1757,24 +1434,62 @@ end = struct
       Some t
   ;;
 
+  let project_compiler =
+    Memo.lazy_ ~name:"project-compiler-package" (fun () ->
+      let* lock_dir_active = Lock_dir.lock_dir_active Context_name.default in
+      if not lock_dir_active
+      then Memo.return None
+      else (
+        let universe = Package_universe.Dependencies Context_name.default in
+        let* lock_dir = Lock_dir.get_exn Context_name.default
+        and* db = DB.get universe in
+        match lock_dir.Dune_pkg.Lock_dir.ocaml with
+        | None -> Memo.return None
+        | Some (_, package) ->
+          let entry = Package.Name.Map.find_exn db.pkg_table package in
+          Memo.return (Some (db, entry))))
+  ;;
+
+  let resolve_impl { Input.db; package; universe = package_universe } =
+    match package_universe with
+    | Dev_tool dev_tool
+      when Dune_pkg.Dev_tool.needs_to_build_with_same_compiler_as_project dev_tool ->
+      let* project_compiler = Memo.Lazy.force project_compiler in
+      (match project_compiler, Package.Name.Map.find db.pkg_table package with
+       | Some (project_db, project_entry), Some { DB.Pkg_table.pkg = dev_tool_pkg; _ }
+         when Package.Name.equal project_entry.pkg.info.name dev_tool_pkg.info.name
+              && Package_version.equal
+                   project_entry.pkg.info.version
+                   dev_tool_pkg.info.version ->
+         let+ pkg =
+           resolve
+             project_db
+             Loc.none
+             package
+             (Package_universe.Dependencies Context_name.default)
+         in
+         Some pkg
+       | _ -> resolve_from_universe db package package_universe)
+    | Dependencies _ | Dev_tool _ -> resolve_from_universe db package package_universe
+  ;;
+
   let resolve =
     let memo =
       Memo.create
         "pkg-resolve"
         ~input:(module Input)
         ~human_readable_description:(fun t ->
-          Pp.textf "- package %s" (Package.Name.to_string t.pkg_digest.name)
-          |> Option.some)
+          Pp.textf "- package %s" (Package.Name.to_string t.package) |> Option.some)
         resolve_impl
     in
-    fun (db : DB.t) loc pkg_digest package_universe ->
-      Memo.exec memo { db; pkg_digest; universe = package_universe }
+    fun (db : DB.t) loc package package_universe ->
+      Memo.exec memo { db; package; universe = package_universe }
       >>| function
       | Some s -> s
       | None ->
         User_error.raise
           ~loc
-          [ Pp.textf "Unknown package %S" (Package.Name.to_string pkg_digest.name) ]
+          [ Pp.textf "Unknown package %S" (Package.Name.to_string package) ]
   ;;
 end
 
@@ -2491,15 +2206,14 @@ let setup_pkg_install_alias =
     (* Fetching the package target implies that we will also fetch the extra
        sources. *)
     let open Action_builder.O in
-    let* pkg_digests =
+    let* packages =
       Action_builder.of_memo
         (let open Memo.O in
-         let+ db = DB.of_ctx ctx_name ~allow_sharing:true in
-         Pkg_digest.Map.values db.pkg_digest_table
-         |> List.map ~f:(fun { DB.Pkg_table.pkg_digest; _ } -> pkg_digest))
+         let+ db = DB.get (Dependencies ctx_name) in
+         Package.Name.Map.keys db.pkg_table)
     in
-    List.map pkg_digests ~f:(fun pkg_digest ->
-      Paths.make ~relative:Path.Build.relative pkg_digest (Dependencies ctx_name)
+    List.map packages ~f:(fun package ->
+      Paths.make ~relative:Path.Build.relative (Dependencies ctx_name) package
       |> Paths.target_dir
       |> Path.build)
     |> Action_builder.paths
@@ -2527,9 +2241,9 @@ let setup_pkg_install_alias =
     |> Gen_rules.rules_here
 ;;
 
-let setup_package_rules db ~package_universe ~dir ~pkg_digest : Gen_rules.result Memo.t =
-  let* pkg = Resolve.resolve db Loc.none pkg_digest package_universe in
-  let paths = Paths.make pkg.pkg_digest package_universe ~relative:Path.Build.relative in
+let setup_package_rules db ~package_universe ~dir ~package : Gen_rules.result Memo.t =
+  let* pkg = Resolve.resolve db Loc.none package package_universe in
+  let paths = Paths.make package_universe package ~relative:Path.Build.relative in
   let+ directory_targets =
     let map =
       let target_dir = paths.target_dir in
@@ -2559,22 +2273,27 @@ let setup_rules ~components ~dir ctx =
      the value of [Pkg_dev_tool.install_path_base_dir_name]. *)
   assert (String.equal Pkg_dev_tool.install_path_base_dir_name ".dev-tool");
   match Context_name.is_default ctx, components with
-  | true, [ ".dev-tool"; dev_tool_package_name ] ->
-    let pkg_name = Package.Name.of_string dev_tool_package_name in
-    let dev_tool = Pkg_dev_tool.of_package_name pkg_name in
-    let* db, pkg_digest = DB.of_dev_tool (Dune_pkg.Dev_tool.of_package_name pkg_name) in
-    setup_package_rules db ~package_universe:(Dev_tool dev_tool) ~dir ~pkg_digest
-  | true, [ ".dev-tool" ] -> Gen_rules.make_empty ~dir Subdir_set.all |> Memo.return
+  | true, [ ".dev-tool"; dev_tool_package_name; package_name ] ->
+    let dev_tool =
+      Package.Name.of_string dev_tool_package_name |> Pkg_dev_tool.of_package_name
+    in
+    let package_universe = Package_universe.Dev_tool dev_tool in
+    let* db = DB.get package_universe in
+    let package = Package.Name.of_string package_name in
+    setup_package_rules db ~package_universe ~dir ~package
+  | true, [ ".dev-tool" ] | true, [ ".dev-tool"; _ ] ->
+    Gen_rules.make_empty ~dir Subdir_set.all |> Memo.return
   | _, [ ".pkg" ] -> Gen_rules.make_empty ~dir Subdir_set.all |> Memo.return
-  | _, [ ".pkg"; pkg_digest_string ] ->
+  | _, [ ".pkg"; package_name ] ->
     (* Only generate pkg rules if there is a lock dir for that context *)
     let* lock_dir_active = Lock_dir.lock_dir_active ctx in
     (match lock_dir_active with
      | false -> Memo.return @@ Gen_rules.make (Memo.return Rules.empty)
      | true ->
-       let pkg_digest = Pkg_digest.of_string pkg_digest_string in
-       let* db = DB.of_ctx ctx ~allow_sharing:true in
-       setup_package_rules db ~package_universe:(Dependencies ctx) ~dir ~pkg_digest)
+       let package_universe = Package_universe.Dependencies ctx in
+       let* db = DB.get package_universe in
+       let package = Package.Name.of_string package_name in
+       setup_package_rules db ~package_universe ~dir ~package)
   | _, ".pkg" :: _ :: _ ->
     Memo.return @@ Gen_rules.redirect_to_parent Gen_rules.Rules.empty
   | true, ".dev-tool" :: _ :: _ :: _ ->
@@ -2592,8 +2311,9 @@ let setup_rules ~components ~dir ctx =
 ;;
 
 let resolve_pkg_dep context (loc, package_name) =
-  let* db, pkg_digest = DB.of_project_pkg context package_name in
-  Resolve.resolve db loc pkg_digest (Dependencies context)
+  let package_universe = Package_universe.Dependencies context in
+  let* db = DB.get package_universe in
+  Resolve.resolve db loc package_name package_universe
 ;;
 
 let ocaml_toolchain context =
@@ -2632,17 +2352,9 @@ let ocaml_toolchain context =
 ;;
 
 let all_deps universe =
-  let* db =
-    match (universe : Package_universe.t) with
-    | Dependencies ctx ->
-      (* Disallow sharing so that the only packages in the DB are the ones from
-         the universe's respective lock directory. *)
-      DB.of_ctx ctx ~allow_sharing:false
-    | Dev_tool tool -> DB.of_dev_tool tool >>| fst
-  in
-  Pkg_digest.Map.values db.pkg_digest_table
-  |> Memo.parallel_map ~f:(fun { DB.Pkg_table.pkg_digest; _ } ->
-    Resolve.resolve db Loc.none pkg_digest universe)
+  let* db = DB.get universe in
+  Package.Name.Map.keys db.pkg_table
+  |> Memo.parallel_map ~f:(fun package -> Resolve.resolve db Loc.none package universe)
   >>| Pkg.top_closure
 ;;
 
@@ -2689,8 +2401,9 @@ let dev_tool_env tool =
       "lock directory environment for dev tools %S"
       (Package.Name.to_string package_name))
   @@ fun () ->
-  let* db, pkg_digest = DB.of_dev_tool tool in
-  let+ pkg = Resolve.resolve db Loc.none pkg_digest (Dev_tool tool) in
+  let package_universe = Package_universe.Dev_tool tool in
+  let* db = DB.get package_universe in
+  let+ pkg = Resolve.resolve db Loc.none package_name package_universe in
   Pkg.exported_env pkg
 ;;
 
@@ -2756,11 +2469,4 @@ let all_filtered_depexts context =
     Action_expander.Expander.filtered_depexts expander)
   >>| List.concat
   >>| List.sort_uniq ~compare:String.compare
-;;
-
-let pkg_digest_of_project_dependency ctx package_name =
-  let+ db = DB.of_ctx ctx ~allow_sharing:false in
-  Pkg_digest.Map.keys db.pkg_digest_table
-  |> List.find ~f:(fun (pkg_digest : Pkg_digest.t) ->
-    Package.Name.equal pkg_digest.name package_name)
 ;;

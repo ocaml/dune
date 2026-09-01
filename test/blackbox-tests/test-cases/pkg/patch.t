@@ -48,8 +48,7 @@ Ed-format patches are not supported and should give a clear error:
   $ build_pkg ed-test 2>&1 | censor
   Error: Could not parse the patch file. Only unified diff format is supported.
   Context diffs and ed commands are not supported.
-  -> required by
-     _build/_private/default/.pkg/ed-test.0.0.1-$DIGEST/target
+  -> required by _build/_private/default/.pkg/ed-test/target
   [1]
 
 Demonstrate that the original source shouldn't be modified:
@@ -84,6 +83,5 @@ without sources).
 
   $ build_pkg no-source 2>&1 | censor
   Error: Cannot edit file "foo.ml": file does not exist
-  -> required by
-     _build/_private/default/.pkg/no-source.0.0.1-$DIGEST/target
+  -> required by _build/_private/default/.pkg/no-source/target
   [1]

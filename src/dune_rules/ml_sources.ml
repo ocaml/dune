@@ -1365,7 +1365,7 @@ let make
           let output_dir = Melange.output_path ~target_dir dir in
           let { Melange_stanzas.Emit.alias; loc; _ } = stanza in
           let alias = Option.value alias ~default:Melange_stanzas.Emit.implicit_alias in
-          target_dir, ({ Melange.Emit.output_dir; stanza_dir = dir; alias }, loc))
+          target_dir, ({ Melange.Emit_target.output_dir; stanza_dir = dir; alias }, loc))
       in
       let { Source_file_dir.dir; _ } = Nonempty_list.hd dirs in
       Artifacts_obj.make

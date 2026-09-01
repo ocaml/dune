@@ -4,7 +4,7 @@ open Memo.O
 type t =
   { libraries : Lib_info.local Lib_name.Map.t
   ; modules : (Path.Build.t Obj_dir.t * Module.t) Path.Build.Map.t
-  ; melange_emits : Melange.Emit.t Path.Build.Map.t
+  ; melange_emits : Melange.Emit_target.t Path.Build.Map.t
   }
 
 let empty =

@@ -61,7 +61,7 @@ module Env_nodes = struct
          let+ (env : Dune_env.config) = env >>= Dune_env.find_opt ~profile in
          env.env_vars)
     in
-    Env.extend_env (make context) (make workspace)
+    Env.extend_env (make workspace) (make context)
   ;;
 end
 

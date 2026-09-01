@@ -1196,36 +1196,45 @@ module Solver = struct
       in
       let+ impl_clauses = Fiber.Cache.to_table impl_clauses in
       (* Run the solve *)
-      let decider () =
-        (* Walk the current solution, depth-first, looking for the first
-           undecided interface. Then try the most preferred implementation of
-           it that hasn't been ruled out. *)
-        let seen = Table.create (module Input.Role) 100 in
-        let rec find_undecided req =
-          if Table.mem seen req
-          then None (* Break cycles *)
-          else (
-            Table.set seen req true;
-            match Table.find_exn impl_clauses req |> Candidates.state with
-            | Unselected -> None
-            | Undecided lit -> Some lit
-            | Selected deps ->
-              (* We've already selected a candidate for this component. Now
-                 check its dependencies. *)
-              List.find_map deps ~f:(fun (dep : Input.dependency) ->
-                match dep.importance with
-                | Ensure -> find_undecided dep.drole
-                | Prevent ->
-                  (* Restrictions don't express that we do or don't want the
-                     dependency, so skip them here. If someone else needs this,
-                     we'll handle it when we get to them.
-                     If noone wants it, it will be set to unselected at the end. *)
-                  None))
-        in
-        find_undecided root_req
+      let seen = Table.create (module Input.Role) 100 in
+      let rec decider requireds =
+        match requireds with
+        | [] -> progress `Any_false requireds
+        | req :: reqs when Table.mem seen req -> decider reqs
+        | req :: reqs ->
+          (match Table.find_exn impl_clauses req |> Candidates.state with
+           | Unselected -> decider reqs
+           | Undecided lit -> progress (`True lit) requireds
+           | Selected deps ->
+             Table.set seen req ();
+             (* TODO: lazy load this package constraints *)
+             let deps =
+               List.filter_map deps ~f:(fun dep ->
+                 match dep.Input.importance with
+                 | Ensure -> Some dep.drole
+                 | Prevent -> None)
+             in
+             let result = decider (deps @ reqs) in
+             Table.remove seen req;
+             result)
+      and progress choice requireds =
+        Sat.choose sat choice;
+        match solve requireds with
+        | (`Sat | `Unsat) as result -> result
+        | `Backtrack 1 -> solve requireds
+        | `Backtrack n -> `Backtrack (n - 1)
+      and solve requireds =
+        match Sat.step sat with
+        | `Decide -> decider requireds
+        | (`Sat | `Unsat | `Backtrack _) as result -> result
       in
       let start = Time.now () in
-      let result = Sat.run_solver sat decider in
+      let result =
+        match solve [ root_req ] with
+        | `Sat -> true
+        | `Unsat -> false
+        | `Backtrack _ -> assert false
+      in
       let stop = Time.now () in
       let num_opam_files = Context.count_expanded_packages context - opam_files_before in
       Dune_trace.emit Sat (fun () ->

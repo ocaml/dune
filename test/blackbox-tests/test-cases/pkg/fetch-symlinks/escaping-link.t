@@ -35,11 +35,11 @@ We then delete it silently.
   $ build_pkg foo
   content
 
-  $ dune trace cat | jq 'select(.args.message == "Deleted broken symlink from fetched archive") | {args}' | sanitize_pkg_digest foo.0.0.1
+  $ dune trace cat | jq 'select(.args.message == "Deleted broken symlink from fetched archive") | {args}'
   {
     "args": {
       "message": "Deleted broken symlink from fetched archive",
-      "full_name": "_build/_private/default/.pkg/foo.0.0.1-DIGEST_HASH/source/link_to_outside"
+      "full_name": "_build/_private/default/.pkg/foo/source/link_to_outside"
     }
   }
 
@@ -61,10 +61,10 @@ Case 2 relative directory link that is still valid after extraction
   $ tar czf _src.tar.gz _src
 
 This fails correctly, the link isn't allowed to go outside
-  $ build_pkg foo 2>&1 | sanitize_pkg_digest foo.0.0.1 | tail -3
+  $ build_pkg foo 2>&1 | tail -3
   Error: Unable to resolve symlink
-  _build/_private/default/.pkg/foo.0.0.1-DIGEST_HASH/source/link_to_outside:
-  its target _outside_sources is outside the source directory
+  _build/_private/default/.pkg/foo/source/link_to_outside: its target
+  _outside_sources is outside the source directory
   [1]
 
 Case 3: absolute directory link
@@ -76,10 +76,9 @@ Case 3: absolute directory link
   $ tar czf _src.tar.gz _src
 
 This fails correctly
-  $ build_pkg foo 2>&1 | sanitize_pkg_digest foo.0.0.1 | tail -5
+  $ build_pkg foo 2>&1 | tail -4
   Error: Unable to resolve symlink
-  _build/_private/default/.pkg/foo.0.0.1-DIGEST_HASH/source/link_to_outside:
-  its target
+  _build/_private/default/.pkg/foo/source/link_to_outside: its target
   $TESTCASE_ROOT/_outside_sources
   is outside the source directory
   [1]
@@ -104,11 +103,11 @@ same file system contents as case 1, hence the build is a cache hit.
 The symlink is correctly deleted because it goes outside the sources.
   $ build_pkg foo
 
-  $ dune trace cat | jq 'select(.args.message == "Deleted broken symlink from fetched archive") | {args}' | sanitize_pkg_digest foo.0.0.1
+  $ dune trace cat | jq 'select(.args.message == "Deleted broken symlink from fetched archive") | {args}'
   {
     "args": {
       "message": "Deleted broken symlink from fetched archive",
-      "full_name": "_build/_private/default/.pkg/foo.0.0.1-DIGEST_HASH/source/link_to_secret"
+      "full_name": "_build/_private/default/.pkg/foo/source/link_to_secret"
     }
   }
 
@@ -129,10 +128,9 @@ Case 5: absolute file links
   $ tar czf _src.tar.gz _src
 
 This fails correctly
-  $ build_pkg foo 2>&1 | sanitize_pkg_digest foo.0.0.1 | tail -5
+  $ build_pkg foo 2>&1 | tail -4
   Error: Unable to resolve symlink
-  _build/_private/default/.pkg/foo.0.0.1-DIGEST_HASH/source/link_to_secret:
-  its target
+  _build/_private/default/.pkg/foo/source/link_to_secret: its target
   $TESTCASE_ROOT/_outside_sources/file.txt
   is outside the source directory
   [1]

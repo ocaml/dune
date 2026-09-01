@@ -276,10 +276,9 @@ let all_packages_versions_map ts opam_package_name =
     else OpamPackage.Version.Map.add version (repo, pkg) acc)
 ;;
 
-let load_all_versions_by_keys ts =
+let load_keys keys =
   let from_git, from_dirs =
-    OpamPackage.Version.Map.values ts
-    |> List.partition_map ~f:(fun (repo, (pkg : Key.t)) ->
+    List.partition_map keys ~f:(fun (repo, (pkg : Key.t)) ->
       match pkg with
       | Git (file, pkg, rev, files_dir) -> Left (file, pkg, rev, files_dir)
       | Directory pkg -> Right (repo, pkg))
@@ -305,13 +304,26 @@ let load_all_versions_by_keys ts =
         pkg, resolved_package)
   in
   from_dirs @ from_git
-  |> List.rev_map ~f:(fun (opam_package, resolved_package) ->
+;;
+
+let load_all_versions_by_keys ts =
+  let+ resolved = OpamPackage.Version.Map.values ts |> load_keys in
+  List.rev_map resolved ~f:(fun (opam_package, resolved_package) ->
     OpamPackage.version opam_package, resolved_package)
   |> OpamPackage.Version.Map.of_list
 ;;
 
 let load_all_versions ts opam_package_name =
   all_packages_versions_map ts opam_package_name |> load_all_versions_by_keys
+;;
+
+let load_version key =
+  let+ resolved = load_keys [ key ] in
+  match resolved with
+  | [] -> None
+  | [ (_, resolved) ] -> Some resolved
+  | _ :: _ :: _ ->
+    Code_error.raise "Opam_repo.load_version: one key gave several packages" []
 ;;
 
 let packages_in_repo repo =

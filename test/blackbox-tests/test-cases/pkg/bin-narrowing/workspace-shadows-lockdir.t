@@ -63,7 +63,7 @@ same:
 The lockdir [provider]'s bin layout is still on $PATH:
 
   $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
-  $PWD/_build/_private/default/.pkg/provider.0.0.1-$DIGEST/target/bin
+  $PWD/_build/_private/default/.pkg/provider/target/bin
 
 When the workspace binary is DISABLED via [(enabled_if false)], its
 [local_bins] origin is filtered out and resolution falls through to the lockdir
@@ -103,7 +103,7 @@ to the lockdir binary:
 The lockdir [provider]'s bin layout is on $PATH:
 
   $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
-  $PWD/_build/_private/default/.pkg/provider.0.0.1-$DIGEST/target/bin
+  $PWD/_build/_private/default/.pkg/provider/target/bin
 
 Without declaring [provider], the lookup still resolves to the lockdir binary:
 
@@ -120,7 +120,7 @@ Without declaring [provider], the lookup still resolves to the lockdir binary:
 The lockdir [provider]'s bin layout is on $PATH:
 
   $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
-  $PWD/_build/_private/default/.pkg/provider.0.0.1-$DIGEST/target/bin
+  $PWD/_build/_private/default/.pkg/provider/target/bin
 
 Both blocks above print [true] with [provider] on $PATH today, so the
 without-provider block looks redundant. It earns its place only once narrowing

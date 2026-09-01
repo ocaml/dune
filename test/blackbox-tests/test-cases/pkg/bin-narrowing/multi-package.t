@@ -66,11 +66,11 @@ Both packages' env also gets every lockdir package's bin layout on $PATH,
 regardless of which tool each declares:
 
   $ env_added "$(cat _build/default/a/a-path)" "$PATH" | censor
-  $PWD/_build/_private/default/.pkg/tool-b.0.0.1-$DIGEST1/target/bin
-  $PWD/_build/_private/default/.pkg/tool-a.0.0.1-$DIGEST2/target/bin
+  $PWD/_build/_private/default/.pkg/tool-b/target/bin
+  $PWD/_build/_private/default/.pkg/tool-a/target/bin
   $ env_added "$(cat _build/default/b/b-path)" "$PATH" | censor
-  $PWD/_build/_private/default/.pkg/tool-b.0.0.1-$DIGEST1/target/bin
-  $PWD/_build/_private/default/.pkg/tool-a.0.0.1-$DIGEST2/target/bin
+  $PWD/_build/_private/default/.pkg/tool-b/target/bin
+  $PWD/_build/_private/default/.pkg/tool-a/target/bin
 
 The narrowing is ultimately about the build-dependency set, not just what is
 visible: an unnarrowed lookup forces every lockdir package's cookie. From a

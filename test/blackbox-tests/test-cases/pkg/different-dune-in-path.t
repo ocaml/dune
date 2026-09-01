@@ -82,15 +82,10 @@ Dune and add our fake `dune` to the PATH.
   $ DUNE=$(which dune)
   $ fakepath=$PWD/.bin:$PATH
 
-Remember the digests, to not to have to call nested Dunes:
-
-  $ foo_digest="$(dune pkg print-digest foo)"
-  $ bar_digest="$(dune pkg print-digest bar)"
-
 Call Dune with an absolute PATH as argv[0]:
 
-  $ PATH=$fakepath $DUNE build "$pkg_root/$foo_digest/target/"
-  $ PATH=$fakepath $DUNE build "$pkg_root/$bar_digest/target/"
+  $ PATH=$fakepath $DUNE build "$pkg_root/foo/target/"
+  $ PATH=$fakepath $DUNE build "$pkg_root/bar/target/"
 
 argv[0] is set by the calling program (like a shell or cram test runner) and
 could be wrong, hence it cannot always be trusted. In the examples above we
@@ -103,4 +98,4 @@ namely argv[0] = "dune". This is exactly what happens if `dune` is in the PATH
 and the user launches `dune` in a shell.
 
   $ dune clean
-  $ PATH=$fakepath dune_cmd exec-a "dune" $DUNE build "$pkg_root/$foo_digest/target/"
+  $ PATH=$fakepath dune_cmd exec-a "dune" $DUNE build "$pkg_root/foo/target/"

@@ -238,12 +238,6 @@ let rule_loc ~with_locs (rule : Dune_engine.Reflection.Rule.t) =
     Some (sprintf "%s:%d" start.pos_fname start.pos_lnum))
 ;;
 
-let rule_aliases (rule : Dune_engine.Reflection.Rule.t) =
-  Option.map rule.aliases ~f:(fun aliases ->
-    List.map (Alias_name.Set.to_list aliases) ~f:Alias_name.to_string
-    |> List.sort ~compare:String.compare)
-;;
-
 let rule_repr ~with_locs =
   Repr.record
     "rule"
@@ -253,7 +247,10 @@ let rule_repr ~with_locs =
     ; Repr.field "context" (Repr.option Repr.string) ~get:rule_context
     ; Repr.field "action" action_repr ~get:(fun rule ->
         rule.Dune_engine.Reflection.Rule.action)
-    ; Repr.field "aliases" (Repr.option (Repr.list Repr.string)) ~get:rule_aliases
+    ; Repr.field
+        "aliases"
+        (Repr.option (Repr.list Repr.string))
+        ~get:Dune_engine.Reflection.Rule.alias_list
     ; Repr.field "loc" (Repr.option Repr.string) ~get:(rule_loc ~with_locs)
     ]
 ;;

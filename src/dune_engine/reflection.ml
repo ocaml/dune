@@ -5,7 +5,7 @@ open Memo.O
 
 module Rule = struct
   type t =
-    { digest : Digest.t
+    { id : Digest.t
     ; deps : Dep.Set.t
     ; expanded_deps : Path.Set.t
     ; targets : Targets.Validated.t option
@@ -14,18 +14,30 @@ module Rule = struct
     ; loc : Loc.t
     }
 
-  let pp { targets; loc; _ } =
-    match targets with
-    | Some targets ->
-      Pp.verbatim
-        (Path.to_string_maybe_quoted (Path.build (Targets.Validated.head targets)))
-    | None ->
-      (* Anonymous actions have no targets; describe them by their location instead. *)
+  let alias_list { aliases; _ } =
+    Option.map aliases ~f:(Alias_name.Set.to_list_map ~f:Alias_name.to_string)
+  ;;
+
+  let pp t =
+    let { targets; loc; _ } = t in
+    let name =
+      match targets with
+      | Some targets ->
+        Targets.Validated.head targets |> Path.build |> Path.to_string_maybe_quoted
+      | None ->
+        let alias = alias_list t in
+        (match alias with
+         | Some (alias :: _) -> "alias " ^ alias
+         | Some [] | None -> "anonymous action")
+    in
+    let loc =
       if Loc.is_none loc
-      then Pp.verbatim "<anonymous action>"
+      then ""
       else (
         let start = Loc.start loc in
-        Pp.verbatim (sprintf "<anonymous action at %s:%d>" start.pos_fname start.pos_lnum))
+        sprintf " in %s:%d" start.pos_fname start.pos_lnum)
+    in
+    Pp.verbatim (name ^ loc)
   ;;
 end
 
@@ -53,14 +65,14 @@ module Anon_rules = struct
 
     let update ~anon_rules (aliases : t) =
       aliases
-      := Digest.Map.foldi anon_rules ~init:!aliases ~f:(fun digest (rule : Rule.t) acc ->
-           Digest.Map.update acc digest ~f:(fun existing ->
+      := Digest.Map.foldi anon_rules ~init:!aliases ~f:(fun id (rule : Rule.t) acc ->
+           Digest.Map.update acc id ~f:(fun existing ->
              Option.merge existing rule.aliases ~f:Alias_name.Set.union))
     ;;
 
     let apply ~rules (aliases : t) =
       List.map rules ~f:(fun (rule : Rule.t) ->
-        match Digest.Map.find !aliases rule.digest with
+        match Digest.Map.find !aliases rule.id with
         | None -> rule
         | Some aliases -> { rule with Rule.aliases = Some aliases })
     ;;
@@ -83,11 +95,11 @@ end = struct
     let* full_action, deps = Action_builder.evaluate_and_collect_deps anon.action in
     let stamp_file = Build_system.anonymous_action_stamp_file anon ~full_action ~deps in
     let+ expanded_deps, _anon_rules = Expand.deps deps in
-    let digest = digest_of_identity stamp_file in
+    let id = digest_of_identity stamp_file in
     ( Path.Set.empty
     , Digest.Map.singleton
-        digest
-        { Rule.digest
+        id
+        { Rule.id
         ; deps
         ; expanded_deps
         ; targets = None
@@ -143,7 +155,7 @@ let evaluate_rule =
          let* action, deps = Action_builder.evaluate_and_collect_deps rule.action in
          let* expanded_deps, _anon_rules = Expand.deps deps in
          Memo.return
-           { Rule.digest = digest_of_identity (Targets.Validated.head rule.targets)
+           { Rule.id = digest_of_identity (Targets.Validated.head rule.targets)
            ; deps
            ; expanded_deps
            ; targets = Some rule.targets
@@ -178,7 +190,7 @@ let eval ~recursive ~request =
   let* root_rules = rules_of_deps deps in
   Rule_top_closure.top_closure
     root_rules
-    ~key:(fun (rule : Rule.t) -> rule.digest)
+    ~key:(fun (rule : Rule.t) -> rule.id)
     ~deps:(fun rule -> if recursive then rules_of_deps rule.Rule.deps else Memo.return [])
   >>| function
   | Ok rules -> Anon_rules.Aliases.apply ~rules aliases

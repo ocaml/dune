@@ -3,7 +3,7 @@ module Non_evaluated_rule = Rule
 
 module Rule : sig
   type t = private
-    { digest : Digest.t
+    { id : Digest.t
     ; deps : Dep.Set.t
     ; (* [expanded_deps] resolves [deps] down to concrete files: globs are
          expanded to the files they match and aliases to their contents.
@@ -14,6 +14,8 @@ module Rule : sig
     ; aliases : Alias_name.Set.t option
     ; loc : Loc.t
     }
+
+  val alias_list : t -> string list option
 end
 
 (** Used by Jane Street internal rules. *)

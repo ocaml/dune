@@ -1,12 +1,11 @@
 `dune describe workspace` and Melange targets
 =============================================
 
-`dune describe workspace` only ever describes the OCaml compilation of a
-workspace. Melange targets are therefore invisible today: `melange.emit`
-stanzas are not described at all, and every library is described exactly once,
-in OCaml mode, even when it is only ever built for Melange. This test records
-that current behaviour; a later change will make these outputs contain
-`melange.emit` and `melange.library` items.
+`melange.emit` stanzas are described as `melange.emit` items. Libraries are
+still only described in OCaml mode: every library is described exactly once,
+even when it is only ever built for Melange. This test records that current
+behaviour; a later change will make these outputs contain `melange.library`
+items too.
 
 The `--sanitize-for-tests` flag is required so that absolute paths stay stable
 across machines, and `censor` replaces library digests with stable labels.
@@ -14,8 +13,8 @@ across machines, and `censor` replaces library digests with stable labels.
 A single melange.emit stanza
 ----------------------------
 
-Nothing is printed for the emit or its modules. Later there should be a
-`melange.emit` item describing `dist` and the `main` module.
+The emit is described by a `melange.emit` item covering `dist` and the `main`
+module.
 
   $ mkdir single && cd single
   $ make_melange_project 3.8 0.1
@@ -29,7 +28,21 @@ Nothing is printed for the emit or its modules. Later there should be a
   > EOF
   $ dune describe workspace --lang 0.1 --sanitize-for-tests | censor
   ((root /WORKSPACE_ROOT)
-   (build_context _build/default))
+   (build_context _build/default)
+   (melange.emit
+    ((target dist)
+     (alias melange)
+     (module_systems ((commonjs .js)))
+     (target_dir _build/default/dist)
+     (requires ())
+     (modules
+      (((name Main)
+        (impl (_build/default/.melange_src/main.ml))
+        (intf ())
+        (cmt (_build/default/.dist.mobjs/byte/melange__Main.cmt))
+        (cmti ())
+        (origin (dune ((dune_file dune)))))))
+     (include_dirs (_build/default/.dist.mobjs/byte)))))
   $ cd ..
 
 An emit depending on a Melange-only library
@@ -62,6 +75,20 @@ it should be described as a `melange.library` item instead.
   $ dune describe workspace --lang 0.1 --sanitize-for-tests | censor
   ((root /WORKSPACE_ROOT)
    (build_context _build/default)
+   (melange.emit
+    ((target dist)
+     (alias melange)
+     (module_systems ((commonjs .js)))
+     (target_dir _build/default/dist)
+     (requires ($DIGEST))
+     (modules
+      (((name Main)
+        (impl (_build/default/.melange_src/main.ml))
+        (intf ())
+        (cmt (_build/default/.dist.mobjs/byte/melange__Main.cmt))
+        (cmti ())
+        (origin (dune ((dune_file dune)))))))
+     (include_dirs (_build/default/.dist.mobjs/byte))))
    (library
     ((name mylib)
      (uid $DIGEST)
@@ -129,6 +156,20 @@ The library is built in both OCaml and Melange mode, but there is exactly one
         (cmti ())
         (origin source))))
      (include_dirs (_build/default/exe/.main.eobjs/byte))))
+   (melange.emit
+    ((target dist)
+     (alias melange)
+     (module_systems ((commonjs .js)))
+     (target_dir _build/default/emit/dist)
+     (requires ($DIGEST))
+     (modules
+      (((name App)
+        (impl (_build/default/emit/.melange_src/app.ml))
+        (intf ())
+        (cmt (_build/default/emit/.dist.mobjs/byte/melange__App.cmt))
+        (cmti ())
+        (origin (dune ((dune_file emit/dune)))))))
+     (include_dirs (_build/default/emit/.dist.mobjs/byte))))
    (library
     ((name shared_lib)
      (uid $DIGEST)
@@ -174,6 +215,20 @@ item even after Melange targets are described: it guards a filter based on
   $ dune describe workspace --lang 0.1 --sanitize-for-tests | censor
   ((root /WORKSPACE_ROOT)
    (build_context _build/default)
+   (melange.emit
+    ((target dist)
+     (alias melange)
+     (module_systems ((commonjs .js)))
+     (target_dir _build/default/emit/dist)
+     (requires ())
+     (modules
+      (((name App)
+        (impl (_build/default/emit/.melange_src/app.ml))
+        (intf ())
+        (cmt (_build/default/emit/.dist.mobjs/byte/melange__App.cmt))
+        (cmti ())
+        (origin (dune ((dune_file emit/dune)))))))
+     (include_dirs (_build/default/emit/.dist.mobjs/byte))))
    (library
     ((name ocaml_only)
      (uid $DIGEST)
@@ -195,8 +250,8 @@ The csexp format
 
 The csexp output is a single long line, so it is written to a file and
 pretty-printed back before being compared. This guards the printing of the
-dotted `melange.emit` and `melange.library` atoms that a later change
-introduces.
+dotted `melange.emit` atom, and of the `melange.library` atom that a later
+change introduces.
 
   $ mkdir csexp && cd csexp
   $ make_melange_project 3.8 0.1
@@ -223,6 +278,23 @@ introduces.
   $ dune internal sexp-pp --format csexp workspace.csexp | censor
   ((root /WORKSPACE_ROOT)
    (build_context _build/default)
+   (melange.emit
+    ((target dist)
+     (alias melange)
+     (module_systems
+      ((commonjs .js)))
+     (target_dir _build/default/dist)
+     (requires ($DIGEST))
+     (modules
+      (((name Main)
+        (impl (_build/default/.melange_src/main.ml))
+        (intf ())
+        (cmt (_build/default/.dist.mobjs/byte/melange__Main.cmt))
+        (cmti ())
+        (origin
+         (dune
+          ((dune_file dune)))))))
+     (include_dirs (_build/default/.dist.mobjs/byte))))
    (library
     ((name mylib)
      (uid $DIGEST)

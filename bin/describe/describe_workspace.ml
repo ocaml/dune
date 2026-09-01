@@ -263,6 +263,52 @@ module Descr = struct
     ;;
   end
 
+  (* Description of melange.emit stanzas *)
+  module Melange_emit = struct
+    type t =
+      { target : string (* the [target] field of the stanza *)
+      ; alias : Alias_name.t (* the alias that builds this emit *)
+      ; module_systems : (Melange.Module_system.t * Filename.Extension.t) list
+        (* the JavaScript module systems and file extensions that are emitted *)
+      ; target_dir : Path.t (* directory the JavaScript files are emitted to *)
+      ; requires : Digest.t list
+        (* list of direct dependencies to libraries, identified by their
+             digests *)
+      ; modules : Mod.t list (* list of the modules the emit is composed of *)
+      ; include_dirs : Path.t list (* list of include directories *)
+      }
+
+    let map_path t ~f =
+      { t with target_dir = f t.target_dir; include_dirs = List.map ~f t.include_dirs }
+    ;;
+
+    (* Conversion to the [Dyn.t] type *)
+    let to_dyn
+          options
+          { target; alias; module_systems; target_dir; requires; modules; include_dirs }
+      : Dyn.t
+      =
+      let open Dyn in
+      record
+        [ "target", string target
+        ; "alias", string (Alias_name.to_string alias)
+        ; ( "module_systems"
+          , list
+              (fun (module_system, extension) ->
+                 pair
+                   string
+                   string
+                   ( Melange.Module_system.to_string module_system
+                   , Filename.Extension.to_string extension ))
+              module_systems )
+        ; "target_dir", dyn_path target_dir
+        ; "requires", (list string) (List.map ~f:Digest.to_string requires)
+        ; "modules", list (Mod.to_dyn options) modules
+        ; "include_dirs", (list dyn_path) include_dirs
+        ]
+    ;;
+  end
+
   (* Description of libraries *)
 
   module Lib = struct
@@ -320,6 +366,7 @@ module Descr = struct
   module Item = struct
     type t =
       | Executables of Exe.t
+      | Melange_emit of Melange_emit.t
       | Library of Lib.t
       | Root of Path.t
       | Build_context of Path.t
@@ -327,6 +374,7 @@ module Descr = struct
     let map_path t ~f =
       match t with
       | Executables exe -> Executables (Exe.map_path exe ~f)
+      | Melange_emit emit -> Melange_emit (Melange_emit.map_path emit ~f)
       | Library lib -> Library (Lib.map_path lib ~f)
       | Root r -> Root (f r)
       | Build_context c -> Build_context (f c)
@@ -335,6 +383,8 @@ module Descr = struct
     (* Conversion to the [Dyn.t] type *)
     let to_dyn options : t -> Dyn.t = function
       | Executables exe_descr -> Variant ("executables", [ Exe.to_dyn options exe_descr ])
+      | Melange_emit emit_descr ->
+        Variant ("melange.emit", [ Melange_emit.to_dyn options emit_descr ])
       | Library lib_descr -> Variant ("library", [ Lib.to_dyn options lib_descr ])
       | Root root -> Variant ("root", [ String (Path.to_absolute_filename root) ])
       | Build_context build_ctxt ->
@@ -679,6 +729,71 @@ module Crawl = struct
          Some (Descr.Item.Executables exe_descr, Lib.Set.of_list libs))
   ;;
 
+  (* Builds a workspace item for the provided [melange.emit] stanza *)
+  let melange_emit sctx ~options ~project ~dir (mel : Melange_emit.t)
+    : (Descr.Item.t * Lib.Set.t) option Memo.t
+    =
+    let for_ = Compilation_mode.Melange in
+    let* expander = Super_context.expander sctx ~dir in
+    Expander.eval_blang expander mel.enabled_if
+    >>= function
+    | false -> Memo.return None
+    | true ->
+      let* scope =
+        Scope.DB.find_by_project (Super_context.context sctx |> Context.name) project
+      in
+      let* ml_sources = Dir_contents.get sctx ~dir >>= Dir_contents.ml ~for_ in
+      let parser_gen_origins = Ml_sources.parser_gen_origins ml_sources in
+      let* modules_, obj_dir =
+        let+ modules_, obj_dir =
+          Ml_sources.modules_and_obj_dir
+            ml_sources
+            ~libs:(Scope.libs scope)
+            ~for_:(Exe_target (Melange_emit.exe_target mel))
+        in
+        Modules.With_vlib.modules modules_, obj_dir
+      in
+      let* pp_map =
+        pp_map
+          sctx
+          (Dune_lang.Preprocess.Per_module.without_instrumentation mel.preprocess.config)
+      in
+      let deps_of module_ =
+        let module_ = pp_map module_ in
+        immediate_deps_of_module ~sctx ~options ~obj_dir ~modules:modules_ module_
+      in
+      let obj_dir = Obj_dir.of_local obj_dir in
+      let dune_file = dune_file_of_loc mel.loc in
+      let* modules =
+        modules ~options ~obj_dir ~dune_file ~parser_gen_origins ~deps_of modules_
+      in
+      let+ requires =
+        let* compile_info = Melange_rules.compile_info ~scope mel in
+        let open Resolve.Memo.O in
+        let* requires = Lib.Compile.direct_requires compile_info ~for_ in
+        if options.with_pps
+        then
+          let+ pps = Lib.Compile.pps compile_info ~for_ in
+          pps @ requires
+        else Resolve.Memo.return requires
+      in
+      (match Resolve.peek requires with
+       | Error () -> None
+       | Ok libs ->
+         let include_dirs = Obj_dir.all_cmis obj_dir in
+         let emit_descr =
+           { Descr.Melange_emit.target = mel.target
+           ; alias = Option.value mel.alias ~default:Melange_emit.implicit_alias
+           ; module_systems = Nonempty_list.to_list mel.module_systems
+           ; target_dir = Path.build (Melange_emit.target_dir mel ~dir)
+           ; requires = List.map ~f:uid_of_library libs
+           ; modules
+           ; include_dirs
+           }
+         in
+         Some (Descr.Item.Melange_emit emit_descr, Lib.Set.of_list libs))
+  ;;
+
   (* Builds a workspace item for the provided library object *)
   let library sctx ~options ~for_ (lib : Lib.t) : Descr.Item.t option Memo.t =
     let* requires = Lib.requires lib ~for_ in
@@ -808,15 +923,13 @@ module Crawl = struct
       Memo.parallel_map dune_files ~f:(fun (dune_file : Dune_file.t) ->
         Dune_file.stanzas dune_file
         >>= Memo.parallel_map ~f:(fun stanza ->
+          let dir =
+            Path.Build.append_source (Context.build_dir context) (Dune_file.dir dune_file)
+          in
+          let project = Dune_file.project dune_file in
           match Stanza.repr stanza with
-          | Executables.T exes ->
-            let dir =
-              Path.Build.append_source
-                (Context.build_dir context)
-                (Dune_file.dir dune_file)
-            in
-            let project = Dune_file.project dune_file in
-            executables sctx ~options ~project ~dir ~for_ exes
+          | Executables.T exes -> executables sctx ~options ~project ~dir ~for_ exes
+          | Melange_emit.T mel -> melange_emit sctx ~options ~project ~dir mel
           | _ -> Memo.return None)
         >>| List.filter_opt)
       >>| List.concat

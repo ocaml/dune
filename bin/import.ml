@@ -38,6 +38,9 @@ include struct
   module Dune_file = Dune_file
   module Library = Library
   module Executables = Executables
+  module Melange = Melange
+  module Melange_emit = Melange_emit
+  module Melange_rules = Melange_rules
   module Dir_contents = Dir_contents
 end
 

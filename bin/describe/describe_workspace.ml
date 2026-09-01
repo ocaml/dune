@@ -610,15 +610,13 @@ module Crawl = struct
       module_ ~obj_dir ~origin ~deps_for_intf ~deps_for_impl m :: acc)
   ;;
 
-  let for_ = Compilation_mode.Ocaml
-
   let pp_map sctx preprocess =
     let+ ocaml = Super_context.context sctx |> Context.ocaml in
     Staged.unstage (Pp_spec.pped_modules_map preprocess ocaml.version)
   ;;
 
   (* Builds a workspace item for the provided executables object *)
-  let executables sctx ~options ~project ~dir (exes : Executables.t)
+  let executables sctx ~options ~project ~dir ~for_ (exes : Executables.t)
     : (Descr.Item.t * Lib.Set.t) option Memo.t
     =
     let* expander = Super_context.expander sctx ~dir in
@@ -682,7 +680,7 @@ module Crawl = struct
   ;;
 
   (* Builds a workspace item for the provided library object *)
-  let library sctx ~options (lib : Lib.t) : Descr.Item.t option Memo.t =
+  let library sctx ~options ~for_ (lib : Lib.t) : Descr.Item.t option Memo.t =
     let* requires = Lib.requires lib ~for_ in
     match Resolve.peek requires with
     | Error () -> Memo.return None
@@ -790,6 +788,7 @@ module Crawl = struct
   (* Builds a workspace description for the provided dune setup and context *)
   let workspace
         options
+        ~for_
         ({ Dune_rules.Main.contexts = _; scontexts } : Dune_rules.Main.build_system)
         (context : Context.t)
         dirs
@@ -817,7 +816,7 @@ module Crawl = struct
                 (Dune_file.dir dune_file)
             in
             let project = Dune_file.project dune_file in
-            executables sctx ~options ~project ~dir exes
+            executables sctx ~options ~project ~dir ~for_ exes
           | _ -> Memo.return None)
         >>| List.filter_opt)
       >>| List.concat
@@ -842,7 +841,7 @@ module Crawl = struct
       Lib.Set.union exe_libs project_libs
       |> Lib.Set.to_list (* TODO(anmonteiro): support Melange *)
       |> Lib.descriptive_closure ~with_pps:options.with_pps ~for_
-      >>= Memo.parallel_map ~f:(library ~options sctx)
+      >>= Memo.parallel_map ~f:(library ~options ~for_ sctx)
       >>| List.filter_opt
     in
     let root = root () in
@@ -913,7 +912,7 @@ let term : unit Term.t =
        command also works correctly when it is run from a
        subdirectory *)
     Memo.Option.map dirs ~f:(Memo.List.map ~f:(find_dir common))
-    >>= Crawl.workspace options setup context
+    >>= Crawl.workspace options ~for_:Compilation_mode.Ocaml setup context
     >>| Sanitize_for_tests.Workspace.sanitize ~findlib_paths
     >>| Descr.Workspace.to_dyn options
     >>| Describe_format.print_dyn format)

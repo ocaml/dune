@@ -19,7 +19,7 @@ Build a package that uses the archive as its source:
   Solution for dune.lock:
   - foo.0.0.1
   $ build_pkg foo
-  $ cat _build/_private/default/.pkg/$($dune pkg print-digest foo)/source/*
+  $ cat _build/_private/default/.pkg/foo/source/*
   hello
   world
 
@@ -36,6 +36,6 @@ Build a package that uses the src directory as its source:
   Solution for dune.lock:
   - foo.0.0.1
   $ build_pkg foo
-  $ cat _build/_private/default/.pkg/$($dune pkg print-digest foo)/source/*
+  $ cat _build/_private/default/.pkg/foo/source/*
   hello
   world

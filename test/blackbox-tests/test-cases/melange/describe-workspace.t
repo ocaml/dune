@@ -38,10 +38,10 @@ module.
       (((name Main)
         (impl (_build/default/.melange_src/main.ml))
         (intf ())
-        (cmt (_build/default/.dist.mobjs/byte/melange__Main.cmt))
+        (cmt (_build/default/.dist.mobjs/melange/melange__Main.cmt))
         (cmti ())
         (origin (dune ((dune_file dune)))))))
-     (include_dirs (_build/default/.dist.mobjs/byte)))))
+     (include_dirs (_build/default/.dist.mobjs/melange)))))
   $ cd ..
 
 An emit depending on a Melange-only library
@@ -84,10 +84,10 @@ report OCaml artifacts that are never built.
       (((name Main)
         (impl (_build/default/.melange_src/main.ml))
         (intf ())
-        (cmt (_build/default/.dist.mobjs/byte/melange__Main.cmt))
+        (cmt (_build/default/.dist.mobjs/melange/melange__Main.cmt))
         (cmti ())
         (origin (dune ((dune_file dune)))))))
-     (include_dirs (_build/default/.dist.mobjs/byte))))
+     (include_dirs (_build/default/.dist.mobjs/melange))))
    (melange.library
     ((name mylib)
      (uid $DIGEST)
@@ -98,10 +98,10 @@ report OCaml artifacts that are never built.
       (((name Mylib)
         (impl (_build/default/lib/.melange_src/mylib.ml))
         (intf ())
-        (cmt (_build/default/lib/.mylib.objs/byte/mylib.cmt))
+        (cmt (_build/default/lib/.mylib.objs/melange/mylib.cmt))
         (cmti ())
         (origin (dune ((dune_file lib/dune)))))))
-     (include_dirs (_build/default/lib/.mylib.objs/byte)))))
+     (include_dirs (_build/default/lib/.mylib.objs/melange)))))
   $ cd ..
 
 A library used by both an executable and a melange.emit
@@ -166,10 +166,10 @@ Melange one.
       (((name App)
         (impl (_build/default/emit/.melange_src/app.ml))
         (intf ())
-        (cmt (_build/default/emit/.dist.mobjs/byte/melange__App.cmt))
+        (cmt (_build/default/emit/.dist.mobjs/melange/melange__App.cmt))
         (cmti ())
         (origin (dune ((dune_file emit/dune)))))))
-     (include_dirs (_build/default/emit/.dist.mobjs/byte))))
+     (include_dirs (_build/default/emit/.dist.mobjs/melange))))
    (library
     ((name shared_lib)
      (uid $DIGEST1)
@@ -194,10 +194,10 @@ Melange one.
       (((name Shared_lib)
         (impl (_build/default/lib/.melange_src/shared_lib.ml))
         (intf ())
-        (cmt (_build/default/lib/.shared_lib.objs/byte/shared_lib.cmt))
+        (cmt (_build/default/lib/.shared_lib.objs/melange/shared_lib.cmt))
         (cmti ())
         (origin (dune ((dune_file lib/dune)))))))
-     (include_dirs (_build/default/lib/.shared_lib.objs/byte)))))
+     (include_dirs (_build/default/lib/.shared_lib.objs/melange)))))
   $ cd ..
 
 An OCaml-only library in a project that also has an emit
@@ -239,10 +239,10 @@ This library is not usable from Melange, so it is described by exactly one
       (((name App)
         (impl (_build/default/emit/.melange_src/app.ml))
         (intf ())
-        (cmt (_build/default/emit/.dist.mobjs/byte/melange__App.cmt))
+        (cmt (_build/default/emit/.dist.mobjs/melange/melange__App.cmt))
         (cmti ())
         (origin (dune ((dune_file emit/dune)))))))
-     (include_dirs (_build/default/emit/.dist.mobjs/byte))))
+     (include_dirs (_build/default/emit/.dist.mobjs/melange))))
    (library
     ((name ocaml_only)
      (uid $DIGEST)
@@ -302,12 +302,12 @@ dotted `melange.emit` and `melange.library` atoms.
       (((name Main)
         (impl (_build/default/.melange_src/main.ml))
         (intf ())
-        (cmt (_build/default/.dist.mobjs/byte/melange__Main.cmt))
+        (cmt (_build/default/.dist.mobjs/melange/melange__Main.cmt))
         (cmti ())
         (origin
          (dune
           ((dune_file dune)))))))
-     (include_dirs (_build/default/.dist.mobjs/byte))))
+     (include_dirs (_build/default/.dist.mobjs/melange))))
    (melange.library
     ((name mylib)
      (uid $DIGEST)
@@ -318,10 +318,10 @@ dotted `melange.emit` and `melange.library` atoms.
       (((name Mylib)
         (impl (_build/default/lib/.melange_src/mylib.ml))
         (intf ())
-        (cmt (_build/default/lib/.mylib.objs/byte/mylib.cmt))
+        (cmt (_build/default/lib/.mylib.objs/melange/mylib.cmt))
         (cmti ())
         (origin
          (dune
           ((dune_file lib/dune)))))))
-     (include_dirs (_build/default/lib/.mylib.objs/byte)))))
+     (include_dirs (_build/default/lib/.mylib.objs/melange)))))
   $ cd ..

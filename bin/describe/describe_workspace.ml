@@ -669,15 +669,19 @@ module Crawl = struct
   let module_
         ~obj_dir
         ~origin
+        ~for_
         ~(deps_for_intf : Module.t list)
         ~(deps_for_impl : Module.t list)
         (m : Module.t)
     : Descr.Mod.t
     =
     let source ml_kind = Option.map (Module.source m ~ml_kind) ~f:Module.File.path in
-    let cmt ml_kind =
-      Dune_rules.Obj_dir.Module.cmt_file obj_dir m ~ml_kind ~cm_kind:(Ocaml Cmi)
+    let cm_kind : Dune_lang.Lib_mode.Cm_kind.t =
+      match (for_ : Compilation_mode.t) with
+      | Ocaml -> Ocaml Cmi
+      | Melange -> Melange Cmi
     in
+    let cmt ml_kind = Dune_rules.Obj_dir.Module.cmt_file obj_dir m ~ml_kind ~cm_kind in
     { Descr.Mod.name = Module.name m
     ; impl = source Impl
     ; intf = source Intf
@@ -692,7 +696,7 @@ module Crawl = struct
   ;;
 
   (* Builds the list of modules *)
-  let modules ~options ~obj_dir ~dune_file ~parser_gen_origins ~deps_of modules_
+  let modules ~options ~obj_dir ~dune_file ~parser_gen_origins ~deps_of ~for_ modules_
     : Descr.Mod.t list Memo.t
     =
     modules_
@@ -704,7 +708,7 @@ module Crawl = struct
       let+ { Root.Ocaml.Ml_kind.Dict.intf = deps_for_intf; impl = deps_for_impl }, _ =
         Dune_engine.Action_builder.evaluate_and_collect_facts deps
       in
-      module_ ~obj_dir ~origin ~deps_for_intf ~deps_for_impl m :: acc)
+      module_ ~obj_dir ~origin ~for_ ~deps_for_intf ~deps_for_impl m :: acc)
   ;;
 
   let pp_map sctx preprocess =
@@ -748,7 +752,7 @@ module Crawl = struct
       let obj_dir = Obj_dir.of_local obj_dir in
       let dune_file = dune_file_of_loc exes.buildable.loc in
       let* modules =
-        modules ~options ~obj_dir ~dune_file ~parser_gen_origins ~deps_of modules_
+        modules ~options ~obj_dir ~dune_file ~parser_gen_origins ~deps_of ~for_ modules_
       in
       let+ requires =
         let* compile_info = Exe_rules.compile_info ~scope exes in
@@ -763,7 +767,7 @@ module Crawl = struct
       (match Resolve.peek requires with
        | Error () -> None
        | Ok libs ->
-         let include_dirs = Obj_dir.all_cmis obj_dir in
+         let include_dirs = Obj_dir.all_cmis obj_dir ~mode:for_ in
          let exe_descr =
            { Descr.Exe.names = Nonempty_list.to_list_map exes.names ~f:snd
            ; public_names =
@@ -812,7 +816,7 @@ module Crawl = struct
       let obj_dir = Obj_dir.of_local obj_dir in
       let dune_file = dune_file_of_loc mel.loc in
       let* modules =
-        modules ~options ~obj_dir ~dune_file ~parser_gen_origins ~deps_of modules_
+        modules ~options ~obj_dir ~dune_file ~parser_gen_origins ~deps_of ~for_ modules_
       in
       let+ requires =
         let* compile_info = Melange_rules.compile_info ~scope mel in
@@ -827,7 +831,7 @@ module Crawl = struct
       (match Resolve.peek requires with
        | Error () -> None
        | Ok libs ->
-         let include_dirs = Obj_dir.all_cmis obj_dir in
+         let include_dirs = Obj_dir.all_cmis obj_dir ~mode:for_ in
          let emit_descr =
            { Descr.Melange_emit.target = mel.target
            ; alias = Option.value mel.alias ~default:Melange_emit.implicit_alias
@@ -893,9 +897,9 @@ module Crawl = struct
               (pp_map module_)
           in
           let dune_file = dune_file_of_loc (Lib_info.loc info) in
-          modules ~options ~obj_dir ~dune_file ~parser_gen_origins ~deps_of modules_
+          modules ~options ~obj_dir ~dune_file ~parser_gen_origins ~deps_of ~for_ modules_
       in
-      let include_dirs = Obj_dir.all_cmis obj_dir in
+      let include_dirs = Obj_dir.all_cmis obj_dir ~mode:for_ in
       let lib_descr =
         { Descr.Lib.name
         ; public_name

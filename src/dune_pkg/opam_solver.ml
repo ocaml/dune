@@ -879,7 +879,7 @@ module Solver = struct
           let impl_clause =
             match impls with
             | [] -> None
-            | _ :: _ -> Some (Sat.at_most_one (List.map impls ~f:(fun s -> s.var)))
+            | _ :: _ -> Some (Sat.at_most_one sat (List.map impls ~f:(fun s -> s.var)))
           in
           { role; clause = impl_clause; vars = impls }
         in
@@ -939,11 +939,11 @@ module Solver = struct
 
       (* Call this at the end to add the final clause with all discovered groups.
          [t] must not be used after this. *)
-      let seal t =
+      let seal sat t =
         Key_map.iter t.groups ~f:(fun impls ->
           match !impls with
           | _ :: _ :: _ ->
-            let (_ : Sat.at_most_one_clause) = Sat.at_most_one !impls in
+            let (_ : Sat.at_most_one_clause) = Sat.at_most_one sat !impls in
             ()
           | _ -> ())
       ;;
@@ -1027,7 +1027,7 @@ module Solver = struct
           (fun _name bucket ->
              match !bucket with
              | [] | [ _ ] -> ()
-             | vars -> ignore (Sat.at_most_one vars : Sat.at_most_one_clause))
+             | vars -> ignore (Sat.at_most_one t.sat vars : Sat.at_most_one_clause))
           t.per_name
       ;;
     end
@@ -1114,7 +1114,9 @@ module Solver = struct
                the [essential] case, because we must select a good version and we can't
                select two. *)
             (try
-               let (_ : Sat.at_most_one_clause) = Sat.at_most_one (user_var :: fail) in
+               let (_ : Sat.at_most_one_clause) =
+                 Sat.at_most_one sat (user_var :: fail)
+               in
                ()
              with
              | Invalid_argument reason ->
@@ -1140,12 +1142,12 @@ module Solver = struct
           process_dep `No_expand impl_var dep)
         (* All impl_candidates have now been added, so snapshot the cache. *)
       in
-      Conflict_classes.seal conflict_classes;
+      Conflict_classes.seal sat conflict_classes;
       Cross_platform_version.seal cross_platform_versions;
       (match max_avoids, OpamPackage.Map.bindings !avoids |> List.map ~f:snd with
        | None, _ | _, [] -> ()
        | Some max_avoids, avoids ->
-         let _ : Sat.at_most_clause = Sat.at_most max_avoids avoids in
+         let _ : Sat.at_most_clause = Sat.at_most sat max_avoids avoids in
          ());
       impl_cache
     ;;

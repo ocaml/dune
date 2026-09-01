@@ -50,13 +50,13 @@ module Make (User : USER) : sig
 
   (** Add a clause preventing more than one literal in the list from being [True].
       @raise Invalid_argument if the list contains duplicates. *)
-  val at_most_one : lit list -> at_most_one_clause
+  val at_most_one : t -> lit list -> at_most_one_clause
 
   type at_most_clause
 
   (** Add a clause preventing more than [n] literals in the list from being [True].
       @raise Invalid_argument if the list contains duplicates. *)
-  val at_most : int -> lit list -> at_most_clause
+  val at_most : t -> int -> lit list -> at_most_clause
 
   (** [run_solver decider] tries to solve the SAT problem. It simplifies it as much as possible first. When it
       has two paths which both appear possible, it calls [decider ()] to choose which to explore first. If this
@@ -91,11 +91,7 @@ module Make (User : USER) : sig
   (** Statistics describing a SAT problem and the work done to solve it.
       [num_variables] and [num_clauses] are structural (the problem size);
       [num_decisions] and [num_conflicts] are cumulative counters of work
-      performed by the solver. Note that [num_clauses] counts only
-      "at-least-one" / "implies" / "impossible" clauses; the
-      "at-most-{one,n}" clauses (used for conflict-class / mutual-exclusion
-      groupings) are not counted because they do not carry a problem handle
-      at their construction site. *)
+      performed by the solver. *)
   type stats =
     { num_variables : int
     ; num_clauses : int

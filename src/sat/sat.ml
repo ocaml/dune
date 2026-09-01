@@ -144,8 +144,8 @@ module Make (User : USER) = struct
     ; mutable trail_lim : int list (* decision levels (len(trail) at each decision) *)
     ; mutable trail_lim_len : int
     ; mutable toplevel_conflict : bool
-    ; mutable set_to_false : bool
     ; conflict_vars : VarID.Hash_set.t
+    ; mutable set_to_false : bool
       (* we are finishing up by setting everything else to False *)
       (* Counters for observability. [num_clauses] counts the clauses added
          via [at_least_one] / [implies] / [at_most] / [impossible];
@@ -211,7 +211,6 @@ module Make (User : USER) = struct
   ;;
 
   exception ConflictingClause of clause
-  exception SolveDone of bool
 
   type added_result =
     | AddedFact of bool (* Result of enqueing the new fact *)
@@ -287,6 +286,10 @@ module Make (User : USER) = struct
   ;;
 
   let get_decision_level problem = problem.trail_lim_len
+
+  let first_undecided problem =
+    List.find problem.vars ~f:(fun var -> var.value = Undecided)
+  ;;
 
   let add_variable problem obj : lit =
     (* if debug then log_debug "add_variable('%s')" obj; *)
@@ -875,90 +878,102 @@ module Make (User : USER) = struct
     learnt, !btlevel
   ;;
 
-  let run_solver problem decide =
-    (* Check whether we detected a trivial problem during setup. *)
+  let step problem =
     if problem.toplevel_conflict
     then (
       if debug then log_debug (Pp.text "FAIL: toplevel_conflict before starting solve!");
-      false)
+      `Unsat)
     else (
-      try
-        while true do
-          (* Use logical deduction to simplify the clauses
-             and assign literals where there is only one possibility. *)
-          match propagate problem with
-          | None ->
-            (* No conflicts *)
-            (* if debug then log_debug "new state: %s" problem.assigns *)
-
-            (* Pick a variable and try assigning it one way.
-               If it leads to a conflict, we'll backtrack and
-               try it the other way. *)
-            let undecided =
-              match List.find problem.vars ~f:(fun info -> info.value = Undecided) with
-              | Some s -> s
-              | None -> raise_notrace (SolveDone true)
-            in
-            let lit =
-              if problem.set_to_false
-              then (* Printf.printf "%s -> false\n" (name_lit undecided); *)
-                Neg, undecided
-              else (
-                match decide () with
-                | Some lit -> lit
-                | None ->
-                  (* Switch to set_to_false mode (until we backtrack). *)
-                  problem.set_to_false <- true;
-                  undecided.undo <- Decided :: undecided.undo;
-                  (* Printf.printf "%s -> false\n" (name_lit undecided); *)
-                  Neg, undecided)
-            in
-            if debug then log_debug (Pp.text "TRYING: " ++ name_lit lit);
-            let old = lit_value lit in
-            if old <> Undecided
-            then
-              Code_error.raise
-                "Decider chose already-decided variable"
-                [ "lit", Dyn.string (Format.asprintf "%a@." Pp.to_fmt (name_lit lit))
-                ; "was", Var_value.to_dyn old
-                ];
-            problem.trail_lim <- problem.trail_len :: problem.trail_lim;
-            problem.trail_lim_len <- problem.trail_lim_len + 1;
-            Counter.incr problem.num_decisions;
-            let r = enqueue problem lit (External "considering") in
-            assert r
-          | Some conflicting_clause ->
-            Counter.incr problem.num_conflicts;
-            if get_decision_level problem = 0
-            then (
-              if debug then log_debug (Pp.text "FAIL: conflict found at top level");
-              raise_notrace (SolveDone false))
-            else (
-              (* Figure out the root cause of this failure. *)
-              let learnt, backtrack_level = analyse problem conflicting_clause in
-              (* We have learnt that something in [learnt] must be True or we get a conflict. *)
-              cancel_until problem backtrack_level;
-              match
-                internal_at_least_one
-                  problem
-                  learnt
-                  ~learnt:true
-                  ~reason:(Clause conflicting_clause)
-              with
-              | AddedFact true -> ()
-              | AddedFact false ->
-                (* This is what the Python would do. Perhaps it can't happen? *)
-                let e = enqueue problem (List.hd learnt) (External "conflict!") in
-                assert e
-              | AddedClause c ->
-                (* Everything except the first literal in learnt is known to
+      (* Use logical deduction to simplify the clauses
+         and assign literals where there is only one possibility. *)
+      match propagate problem with
+      | None ->
+        (* No conflicts *)
+        (* if debug then log_debug "new state: %s" problem.assigns *)
+        (match first_undecided problem with
+         | None -> `Sat
+         | Some _ -> `Decide)
+      | Some conflicting_clause ->
+        Counter.incr problem.num_conflicts;
+        let current_level = get_decision_level problem in
+        if current_level = 0
+        then (
+          if debug then log_debug (Pp.text "FAIL: conflict found at top level");
+          `Unsat)
+        else (
+          (* Figure out the root cause of this failure. *)
+          let learnt, backtrack_level = analyse problem conflicting_clause in
+          (* We have learnt that something in [learnt] must be True or we get a conflict. *)
+          cancel_until problem backtrack_level;
+          (match
+             internal_at_least_one
+               problem
+               learnt
+               ~learnt:true
+               ~reason:(Clause conflicting_clause)
+           with
+           | AddedFact true -> ()
+           | AddedFact false ->
+             (* This is what the Python would do. Perhaps it can't happen? *)
+             let e = enqueue problem (List.hd learnt) (External "conflict!") in
+             assert e
+           | AddedClause c ->
+             (* Everything except the first literal in learnt is known to
                    be False, so the first must be True. *)
-                let e = enqueue problem (List.hd learnt) (Clause c) in
-                assert e)
-        done;
-        Code_error.raise "not reached" []
-      with
-      | SolveDone t -> t)
+             let e = enqueue problem (List.hd learnt) (Clause c) in
+             assert e);
+          let new_level = get_decision_level problem in
+          let nb_levels = current_level - new_level in
+          assert (nb_levels > 0);
+          `Backtrack nb_levels))
+  ;;
+
+  let choose problem choice =
+    let lit =
+      match choice with
+      | `True lit -> lit
+      | `Any_false ->
+        (match first_undecided problem with
+         | None -> assert false
+         | Some undecided ->
+           if not problem.set_to_false
+           then (
+             problem.set_to_false <- true;
+             undecided.undo <- Decided :: undecided.undo);
+           Neg, undecided)
+    in
+    if debug then log_debug (Pp.text "TRYING: " ++ name_lit lit);
+    let old = lit_value lit in
+    if old <> Undecided
+    then
+      Code_error.raise
+        "Decider chose already-decided variable"
+        [ "lit", Dyn.string (Format.asprintf "%a@." Pp.to_fmt (name_lit lit))
+        ; "was", Var_value.to_dyn old
+        ];
+    problem.trail_lim <- problem.trail_len :: problem.trail_lim;
+    problem.trail_lim_len <- problem.trail_lim_len + 1;
+    Counter.incr problem.num_decisions;
+    let r = enqueue problem lit (External "considering") in
+    assert r
+  ;;
+
+  let rec run_solver problem decide =
+    match step problem with
+    | `Sat -> true
+    | `Unsat -> false
+    | `Decide ->
+      let choice =
+        if problem.set_to_false
+        then `Any_false
+        else (
+          match decide () with
+          | Some lit -> `True lit
+          | None -> `Any_false)
+      in
+      choose problem choice;
+      run_solver problem decide
+    | `Backtrack _ -> run_solver problem decide
   ;;
 
   let pp_lit_reason lit =

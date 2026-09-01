@@ -65,10 +65,23 @@ module Make (User : USER) : sig
       Use this to tidy up at the end, when you no longer care about the order. *)
   val run_solver : t -> (unit -> lit option) -> bool
 
-  (** Return the current decision level. A decrease between calls to the decider
-      indicates that the solver backtracked, allowing incremental deciders to
-      invalidate cached state. *)
-  val get_decision_level : t -> int
+  (** Alternative interface for [run_solver] as a loop of alternating calls to [step] and [choose]: *)
+
+  (** [step problem] performs one deductive step and returns either:
+      - [`Sat] if the problem is fully solved,
+      - [`Unsat] if the problem has no solution,
+      - [`Decide] if the problem still has undecided literals to be choosen,
+      - [`Backtrack nb_levels] if a contradiction was discovered with the [nb_levels] previous choice.
+
+      [step] must be called before any choice is made.
+  *)
+  val step : t -> [ `Sat | `Unsat | `Decide | `Backtrack of int ]
+
+  (** [choose problem choice] sets an undecided variable according to [choice],
+      either a specific literal to [true] or any remaining unknowns to [false].
+      [step problem] must be called right after to check for logical deductions
+      resulting from that choice. *)
+  val choose : t -> [ `True of lit | `Any_false ] -> unit
 
   (** Return the first literal in the list whose value is [Undecided], or [None] if they're all decided.
       The decider function may find this useful. *)

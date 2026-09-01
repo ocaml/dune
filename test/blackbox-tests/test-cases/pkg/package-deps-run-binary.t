@@ -31,7 +31,7 @@ This should print "from provider", but fails instead:
 
   $ dune build @all 2>&1 | censor
   Error:
-  symlink(_build/.sandbox/$DIGEST1/_private/default/.pkg/provider.0.0.1-$DIGEST2/target): File exists
+  symlink(_build/.sandbox/$DIGEST/_private/default/.pkg/provider/target): File exists
   -> required by _build/default/out
   -> required by alias all
   [1]

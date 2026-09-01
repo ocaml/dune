@@ -257,20 +257,6 @@ let of_dev_tool dev_tool =
   Load.load_exn path
 ;;
 
-let of_dev_tool_if_lock_dir_exists dev_tool =
-  let path = dev_tool |> dev_tool_external_lock_dir |> Path.external_ in
-  let exists =
-    (* Note we use [Fpath.exists] here rather than [Fs_memo] because a tool's
-       lockdir may be generated part way through a build. *)
-    Fpath.exists (Path.to_string path)
-  in
-  if exists
-  then
-    let+ t = Load.load_exn path in
-    Some t
-  else Memo.return None
-;;
-
 let lock_dirs_of_workspace (workspace : Workspace.t) =
   let module Set = Path.Source.Set in
   let+ lock_dirs_from_ctx =

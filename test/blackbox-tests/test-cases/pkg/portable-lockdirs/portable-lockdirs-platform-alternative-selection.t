@@ -77,12 +77,12 @@ each platform:
 
   $ DUNE_CONFIG__OS=linux DUNE_CONFIG__ARCH=arm64 DUNE_CONFIG__OS_FAMILY=debian DUNE_CONFIG__OS_DISTRIBUTION=ubuntu DUNE_CONFIG__OS_VERSION=24.11 dune build
   $ ls $pkg_root/ | censor
-  foo.0.0.1-$DIGEST1
-  linux-impl.0.0.1-$DIGEST2
+  foo
+  linux-impl
 
   $ dune clean
 
   $ DUNE_CONFIG__OS=macos DUNE_CONFIG__ARCH=x86_64 DUNE_CONFIG__OS_FAMILY=homebrew DUNE_CONFIG__OS_DISTRIBUTION=homebrew DUNE_CONFIG__OS_VERSION=15.3.1 dune build
   $ ls $pkg_root/ | censor
-  foo.0.0.1-$DIGEST1
-  macos-impl.0.0.1-$DIGEST2
+  foo
+  macos-impl

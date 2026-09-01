@@ -231,7 +231,7 @@ let rule_repr =
   Repr.record
     "rule"
     [ Repr.field "deps" deps_repr ~get:(fun rule -> rule.Dune_engine.Reflection.Rule.deps)
-    ; Repr.field "targets" targets_repr ~get:(fun rule ->
+    ; Repr.field "targets" (Repr.option targets_repr) ~get:(fun rule ->
         rule.Dune_engine.Reflection.Rule.targets)
     ; Repr.field "context" (Repr.option Repr.string) ~get:rule_context
     ; Repr.field "action" action_repr ~get:(fun rule ->

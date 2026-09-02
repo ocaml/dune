@@ -1,11 +1,31 @@
-*.ml*             text eol=lf linguist-language=OCaml
+*.ml*             text eol=lf
+*.ml              linguist-language=OCaml
+*.mli             linguist-language=OCaml
+*.mll             linguist-language=OCaml
+*.mly             linguist-language=OCaml
+*.mld             linguist-language=Text linguist-documentation
+*.re              text eol=lf linguist-language=Reason
+*.rei             text eol=lf linguist-language=Reason
+*.rei.pp          text eol=lf linguist-language=Reason
 *.rst             text eol=lf
 *.c               text eol=lf
 *.t               text eol=lf -linguist-detectable
 *.sh              text eol=lf
 *.ps1             text working-tree-encoding=UTF-16 eol=crlf
-dune              text eol=lf
-dune.inc          text eol=lf
+*.dune            text eol=lf linguist-language=Dune
+dune              text eol=lf linguist-language=Dune
+dune.inc          text eol=lf linguist-language=Dune
+dune-file         text eol=lf linguist-language=Dune
+dune-project      text eol=lf linguist-language=Dune
+dune-project.in   text eol=lf linguist-language=Dune
+dune-workspace    text eol=lf linguist-language=Dune
+dune-workspace.*  text eol=lf linguist-language=Dune
+
+# These fixtures deliberately use OCaml syntax in Dune-named files.
+**/dune-ocaml-syntax/dune linguist-language=OCaml
+**/ocaml-syntax.t/dune    linguist-language=OCaml
+**/ocaml-syntax.dune      linguist-language=OCaml
+
 .gitignore        text eol=lf
 .gitattributes    text eol=lf
 .ocamlformat      text eol=lf

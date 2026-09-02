@@ -7,3 +7,7 @@
   transitive-closure.t
   virtual-without-default.t)
  (deps %{bin:ocamlfind}))
+
+(cram
+ (applies_to melange-closure)
+ (deps %{bin:melc}))

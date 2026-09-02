@@ -68,6 +68,9 @@ val load_all_versions
   -> OpamPackage.Name.t
   -> Resolved_package.t OpamPackage.Version.Map.t Fiber.t
 
+(** Load the metadata of a single version. *)
+val load_version : t * Key.t -> Resolved_package.t option Fiber.t
+
 module Private : sig
   val create : source:string option -> t
 end

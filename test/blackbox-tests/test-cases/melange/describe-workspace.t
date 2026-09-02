@@ -263,6 +263,116 @@ This library is not usable from Melange, so it is described by exactly one
      (include_dirs (_build/default/lib/.ocaml_only.objs/byte)))))
   $ cd ..
 
+Generated modules under a melange.emit
+--------------------------------------
+
+A module that was generated is still generated once Melange copies it, so its
+origin reports the rule that produced it rather than `copy_of_source`. Only the
+hand-written `main.ml` is a copy of a source file.
+
+  $ mkdir generated && cd generated
+  $ make_melange_project 3.8 0.1
+  $ cat > dune <<EOF
+  > (melange.emit
+  >  (target dist)
+  >  (emit_stdlib false))
+  > (rule
+  >  (target gen.ml)
+  >  (action
+  >   (write-file gen.ml "let x = 42")))
+  > EOF
+  $ cat > main.ml <<EOF
+  > let () = Js.log Gen.x
+  > EOF
+  $ dune describe workspace --lang 0.1 --sanitize-for-tests | censor
+  ((root /WORKSPACE_ROOT)
+   (build_context _build/default)
+   (melange.emit
+    ((target dist)
+     (alias melange)
+     (module_systems ((commonjs .js)))
+     (target_dir _build/default/dist)
+     (requires ())
+     (modules
+      (((name Main)
+        (impl (_build/default/.melange_src/main.ml))
+        (intf ())
+        (cmt (_build/default/.dist.mobjs/melange/melange__Main.cmt))
+        (cmti ())
+        (origin
+         (copy_of_source main.ml)))
+       ((name Gen)
+        (impl (_build/default/.melange_src/gen.ml))
+        (intf ())
+        (cmt (_build/default/.dist.mobjs/melange/melange__Gen.cmt))
+        (cmti ())
+        (origin
+         (dune ((dune_file dune)))))
+       ((name Melange)
+        (impl (_build/default/.dist.mobjs/.melange_src/melange.ml-gen))
+        (intf ())
+        (cmt (_build/default/.dist.mobjs/melange/melange.cmt))
+        (cmti ())
+        (origin
+         (wrapper dune)))))
+     (include_dirs (_build/default/.dist.mobjs/melange)))))
+  $ cd ..
+
+A parser generator's output under a melange.emit
+------------------------------------------------
+
+The origin names the `.mll` file in the source tree, not the `.melange_src`
+copy of the generated `.ml`.
+
+  $ mkdir lexer && cd lexer
+  $ make_melange_project 3.8 0.1
+  $ cat > dune <<EOF
+  > (melange.emit
+  >  (target dist)
+  >  (emit_stdlib false))
+  > (ocamllex tokens)
+  > EOF
+  $ cat > tokens.mll <<EOF
+  > rule token = parse
+  >   | eof { () }
+  > EOF
+  $ cat > main.ml <<EOF
+  > let () = Js.log "hello"
+  > EOF
+  $ dune describe workspace --lang 0.1 --sanitize-for-tests | censor
+  ((root /WORKSPACE_ROOT)
+   (build_context _build/default)
+   (melange.emit
+    ((target dist)
+     (alias melange)
+     (module_systems ((commonjs .js)))
+     (target_dir _build/default/dist)
+     (requires ())
+     (modules
+      (((name Tokens)
+        (impl (_build/default/.melange_src/tokens.ml))
+        (intf ())
+        (cmt (_build/default/.dist.mobjs/melange/melange__Tokens.cmt))
+        (cmti ())
+        (origin
+         (ocamllex tokens.mll)))
+       ((name Main)
+        (impl (_build/default/.melange_src/main.ml))
+        (intf ())
+        (cmt (_build/default/.dist.mobjs/melange/melange__Main.cmt))
+        (cmti ())
+        (origin
+         (copy_of_source main.ml)))
+       ((name Melange)
+        (impl (_build/default/.dist.mobjs/.melange_src/melange.ml-gen))
+        (intf ())
+        (cmt (_build/default/.dist.mobjs/melange/melange.cmt))
+        (cmti ())
+        (origin
+         (wrapper dune)))))
+     (include_dirs (_build/default/.dist.mobjs/melange)))))
+  $ cd ..
+
 The csexp format
 ----------------
 

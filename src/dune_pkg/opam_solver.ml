@@ -1052,125 +1052,164 @@ module Solver = struct
       let seal t = Groups.seal t.per_name t.sat
     end
 
-    (* Starting from [root_req], explore all the feeds and implementations we
-       might need, adding all of them to [sat_problem]. *)
-    let build_problem
-          context
-          root_req
-          sat
-          ~enforce_cross_platform_versions
-          ~max_avoids
-          ~dummy_impl
-      =
-      (* For each (iface, source) we have a list of implementations. *)
-      let impl_cache = Fiber.Cache.create (module Input.Role) in
-      let conflict_classes = Conflict_classes.create () in
-      let cross_platform_versions =
-        Cross_platform_version.create sat ~enabled:enforce_cross_platform_versions
-      in
-      let avoids = ref OpamPackage.Map.empty in
-      let+ () =
-        let rec lookup_impl expand_deps role =
-          let impls = ref [] in
-          let* candidates =
-            Fiber.Cache.find_or_add impl_cache role ~f:(fun () ->
-              let+ candidates, impls' =
-                Candidates.make_impl_clause sat context ~dummy_impl role
-              in
-              impls := impls';
-              candidates)
-          in
-          let+ () =
-            Fiber.parallel_iter !impls ~f:(fun { var = impl_var; impl } ->
-              Conflict_classes.process conflict_classes role impl_var impl;
-              let version_selection =
-                Cross_platform_version.process cross_platform_versions impl_var impl
-              in
-              (match version_selection with
-               | Some (key, selection_var) when Input.Impl.avoid impl ->
-                 avoids := OpamPackage.Map.add key selection_var !avoids
-               | Some _ | None -> ());
-              match expand_deps with
-              | `No_expand -> Fiber.return ()
-              | `Expand_and_collect_conflicts deferred ->
-                Input.Impl.requires role impl
-                |> Fiber.parallel_iter ~f:(fun (dep : Input.dependency) ->
-                  match dep.importance with
-                  | Ensure -> process_dep expand_deps impl_var dep
-                  | Prevent ->
-                    (* Defer processing restricting deps until all essential
-                       deps have been processed for the entire problem.
-                       Restricting deps will be processed later without
-                       recurring into their dependencies. *)
-                    deferred := (impl_var, dep) :: !deferred;
-                    Fiber.return ()))
-          in
-          candidates
-        and process_dep expand_deps user_var (dep : Input.dependency) : unit Fiber.t =
-          (* Process a dependency of [user_var]:
-             - find the candidate implementations to satisfy it
-             - take just those that satisfy any restrictions in the dependency
-             - ensure that we don't pick an incompatbile version if we select
-               [user_var]
-             - ensure that we do pick a compatible version if we select
-               [user_var] (for "essential" dependencies only) *)
-          let+ pass, fail =
-            let+ candidates = lookup_impl expand_deps dep.drole in
-            List.partition_map candidates.vars ~f:(fun { var; impl } ->
-              if List.for_all ~f:(Input.meets_restriction impl) dep.restrictions
-              then Left var
-              else Right var)
-          in
-          match dep.importance with
-          | Ensure ->
-            Sat.implies
-              sat
-              ~reason:"essential dep"
-              user_var
-              pass (* Must choose a suitable candidate *)
-          | Prevent ->
-            (* If [user_var] is selected, don't select an incompatible version of
-               the optional dependency. We don't need to do this explicitly in
-               the [essential] case, because we must select a good version and we can't
-               select two. *)
-            (try
-               let (_ : Sat.at_most_one_clause) =
-                 Sat.at_most_one sat (user_var :: fail)
-               in
-               ()
-             with
-             | Invalid_argument reason ->
-               (* Explicitly conflicts with itself! *)
-               Sat.at_least_one sat [ Sat.neg user_var ] ~reason)
+    module Problem = struct
+      type t =
+        { sat : Sat.t
+        ; context : Context.t
+        ; dummy_impl : Input.Impl.t option
+        ; cache : (Input.Role.t, Candidates.t) Fiber.Cache.t
+        ; by_role : (Input.Role.t, Candidates.t) Table.t
+        ; mutable created : Candidates.t list
+        ; conflict_classes : Conflict_classes.t
+        ; cross_platform_versions : Cross_platform_version.t
+        ; max_avoids : int option
+        ; mutable avoids : Sat.lit OpamPackage.Map.t
+        }
+
+      let create context sat ~enforce_cross_platform_versions ~max_avoids ~dummy_impl =
+        { sat
+        ; context
+        ; dummy_impl
+        ; cache = Fiber.Cache.create (module Input.Role)
+        ; by_role = Table.create (module Input.Role) 100
+        ; created = []
+        ; conflict_classes = Conflict_classes.create ()
+        ; cross_platform_versions =
+            Cross_platform_version.create sat ~enabled:enforce_cross_platform_versions
+        ; max_avoids
+        ; avoids = OpamPackage.Map.empty
+        }
+      ;;
+
+      let avoid t package selection =
+        t.avoids <- OpamPackage.Map.add package selection t.avoids
+      ;;
+
+      let seal_groups t =
+        let conflict_classes = Conflict_classes.seal t.conflict_classes t.sat in
+        let cross_platform = Cross_platform_version.seal t.cross_platform_versions in
+        let avoids =
+          match t.max_avoids, OpamPackage.Map.bindings t.avoids |> List.map ~f:snd with
+          | None, _ | _, [] -> false
+          | Some max_avoids, avoids ->
+            let (_ : Sat.at_most_clause) = Sat.at_most t.sat max_avoids avoids in
+            true
         in
-        let conflicts = ref [] in
-        let* () =
-          (* This recursively builds the whole problem up. *)
-          let+ candidates =
-            lookup_impl (`Expand_and_collect_conflicts conflicts) root_req
-          in
-          List.map candidates.vars ~f:(fun x -> x.var)
-          |> Sat.at_least_one sat ~reason:"need root" (* Must get what we came for! *)
+        conflict_classes || cross_platform || avoids
+      ;;
+
+      let process_impl t role ({ var = impl_var; impl } : selection) =
+        Conflict_classes.process t.conflict_classes role impl_var impl;
+        match Cross_platform_version.process t.cross_platform_versions impl_var impl with
+        | Some (package, selection_var) when Input.Impl.avoid impl ->
+          avoid t package selection_var
+        | Some _ | None -> ()
+      ;;
+
+      let role_candidates t role =
+        let impls = ref [] in
+        let+ candidates =
+          Fiber.Cache.find_or_add t.cache role ~f:(fun () ->
+            let+ candidates, impls' =
+              Candidates.make_impl_clause t.sat t.context ~dummy_impl:t.dummy_impl role
+            in
+            impls := impls';
+            Table.set t.by_role role candidates;
+            t.created <- candidates :: t.created;
+            candidates)
         in
-        (* Now process any restricting deps. Due to the cache, only restricting
-           deps that aren't also an essential dep will be expanded. The solver will
-           not process any transitive dependencies here since the dependencies of
-           restricting dependencies are irrelevant to solving the dependency
-           problem. *)
-        List.rev !conflicts
-        |> Fiber.parallel_iter ~f:(fun (impl_var, dep) ->
-          process_dep `No_expand impl_var dep)
-        (* All impl_candidates have now been added, so snapshot the cache. *)
-      in
-      let (_ : bool) = Conflict_classes.seal conflict_classes sat in
-      let (_ : bool) = Cross_platform_version.seal cross_platform_versions in
-      (match max_avoids, OpamPackage.Map.bindings !avoids |> List.map ~f:snd with
-       | None, _ | _, [] -> ()
-       | Some max_avoids, avoids ->
-         let _ : Sat.at_most_clause = Sat.at_most sat max_avoids avoids in
-         ());
-      impl_cache
-    ;;
+        candidates, !impls
+      ;;
+
+      let candidates_exn t role = Table.find_exn t.by_role role
+
+      let require t user_var (dep : Input.dependency) (dep_candidates : Candidates.t) =
+        let pass, fail =
+          List.partition_map dep_candidates.vars ~f:(fun { var; impl } ->
+            if List.for_all ~f:(Input.meets_restriction impl) dep.restrictions
+            then Left var
+            else Right var)
+        in
+        match dep.importance with
+        | Ensure ->
+          (* Must choose a suitable candidate *)
+          Sat.implies t.sat ~reason:"essential dep" user_var pass
+        | Prevent ->
+          (* If [user_var] is selected, don't select an incompatible version of
+             the optional dependency. We don't need to do this explicitly in the
+             [essential] case, because we must select a good version and we
+             can't select two. *)
+          (try
+             let (_ : Sat.at_most_one_clause) =
+               Sat.at_most_one t.sat (user_var :: fail)
+             in
+             ()
+           with
+           | Invalid_argument reason ->
+             (* Explicitly conflicts with itself! *)
+             Sat.at_least_one t.sat [ Sat.neg user_var ] ~reason)
+      ;;
+
+      (* Starting from [root_req], explore all the feeds and implementations we
+         might need, adding all of them to the SAT problem. *)
+      let build t root_req =
+        let+ () =
+          let rec lookup_impl expand_deps role =
+            let* candidates, impls = role_candidates t role in
+            let+ () =
+              Fiber.parallel_iter impls ~f:(fun ({ var = impl_var; impl } as candidate) ->
+                process_impl t role candidate;
+                match expand_deps with
+                | `No_expand -> Fiber.return ()
+                | `Expand_and_collect_conflicts deferred ->
+                  Input.Impl.requires role impl
+                  |> Fiber.parallel_iter ~f:(fun (dep : Input.dependency) ->
+                    match dep.importance with
+                    | Ensure -> process_dep expand_deps impl_var dep
+                    | Prevent ->
+                      (* Defer processing restricting deps until all essential
+                         deps have been processed for the entire problem.
+                         Restricting deps will be processed later without
+                         recurring into their dependencies. *)
+                      deferred := (impl_var, dep) :: !deferred;
+                      Fiber.return ()))
+            in
+            candidates
+          and process_dep expand_deps user_var (dep : Input.dependency) : unit Fiber.t =
+            let+ dep_candidates = lookup_impl expand_deps dep.drole in
+            require t user_var dep dep_candidates
+          in
+          let conflicts = ref [] in
+          let* () =
+            (* This recursively builds the whole problem up. *)
+            let+ candidates =
+              lookup_impl (`Expand_and_collect_conflicts conflicts) root_req
+            in
+            List.map candidates.vars ~f:(fun x -> x.var)
+            |> Sat.at_least_one t.sat ~reason:"need root"
+            (* Must get what we came for! *)
+          in
+          (* Now process any restricting deps. Due to the cache, only restricting
+             deps that aren't also an essential dep will be expanded. The solver will
+             not process any transitive dependencies here since the dependencies of
+             restricting dependencies are irrelevant to solving the dependency
+             problem. *)
+          List.rev !conflicts
+          |> Fiber.parallel_iter ~f:(fun (impl_var, dep) ->
+            process_dep `No_expand impl_var dep)
+          (* All impl_candidates have now been added, so snapshot the cache. *)
+        in
+        let (_ : bool) = seal_groups t in
+        ()
+      ;;
+
+      let selections t =
+        List.filter_map t.created ~f:(fun candidates ->
+          Candidates.selected candidates
+          |> Option.map ~f:(fun selection -> candidates.role, selection))
+        |> Input.Role.Map.of_list_exn
+      ;;
+    end
 
     (** [do_solve model req] finds an implementation matching the given
         requirements, plus any other implementations needed
@@ -1204,17 +1243,16 @@ module Solver = struct
       *)
       let opam_files_before = Context.count_expanded_packages context in
       let sat = Sat.create () in
-      let* impl_clauses =
+      let problem =
         let dummy_impl = if closest_match then Some Input.Dummy else None in
-        build_problem
+        Problem.create
           context
-          root_req
           sat
           ~enforce_cross_platform_versions
           ~max_avoids
           ~dummy_impl
       in
-      let+ impl_clauses = Fiber.Cache.to_table impl_clauses in
+      let+ () = Problem.build problem root_req in
       (* Run the solve *)
       let seen = Table.create (module Input.Role) 100 in
       let rec decider requireds =
@@ -1222,7 +1260,7 @@ module Solver = struct
         | [] -> progress `Any_false requireds
         | req :: reqs when Table.mem seen req -> decider reqs
         | req :: reqs ->
-          (match Table.find_exn impl_clauses req |> Candidates.state with
+          (match Problem.candidates_exn problem req |> Candidates.state with
            | Unselected -> decider reqs
            | Undecided lit -> progress (`True lit) requireds
            | Selected deps ->
@@ -1271,11 +1309,7 @@ module Solver = struct
       | false -> None
       | true ->
         (* Build the results object *)
-        Some
-          (Table.to_list impl_clauses
-           |> List.filter_map ~f:(fun (key, v) ->
-             Candidates.selected v |> Option.map ~f:(fun v -> key, v))
-           |> Input.Role.Map.of_list_exn)
+        Some (Problem.selections problem)
     ;;
 
     let do_solve context ~closest_match root_req =

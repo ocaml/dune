@@ -112,29 +112,33 @@ let%expect_test "incremental deciders can detect non-chronological backtracking"
   at_least_one p [ neg a; neg d; x ];
   at_least_one p [ neg a; neg d; neg x ];
   let choices = ref [ a; c; d ] in
-  let previous_level = ref 0 in
-  let decide () =
-    let level = get_decision_level p in
-    if level < !previous_level
-    then Format.printf "backtracked from level %d to %d@." !previous_level level;
-    previous_level := level;
-    Format.printf "decide at level %d@." level;
-    match !choices with
-    | [] -> None
-    | choice :: rest ->
-      choices := rest;
-      Some choice
+  let rec solve level =
+    match step p with
+    | `Sat -> Format.printf "sat at level %d@." level
+    | `Unsat -> Format.printf "unsat@."
+    | `Backtrack nb_levels ->
+      Format.printf "backtracked %d level(s) from level %d@." nb_levels level;
+      solve (level - nb_levels)
+    | `Decide ->
+      Format.printf "decide at level %d@." level;
+      (match !choices with
+       | [] -> choose p `Any_false
+       | choice :: rest ->
+         choices := rest;
+         choose p (`True choice));
+      solve (level + 1)
   in
-  print_endline (string_of_bool (run_solver p decide));
+  solve 0;
   print_stats p;
   [%expect
     {|
     decide at level 0
     decide at level 1
     decide at level 2
-    backtracked from level 2 to 1
+    backtracked 2 level(s) from level 3
     decide at level 1
-    true
+    decide at level 2
+    sat at level 3
     num_variables=4 num_clauses=2 num_decisions=5 num_conflicts=1
   |}]
 ;;
@@ -173,4 +177,33 @@ let%expect_test "run_solver records conflicts on an unsatisfiable problem" =
     false
     num_variables=2 num_clauses=4 num_decisions=1 num_conflicts=2
   |}]
+;;
+
+let%expect_test "run_solver stops calling the decider once None" =
+  let open Sat in
+  let p = create () in
+  let a = add_variable p 1 in
+  let b = add_variable p 2 in
+  let c = add_variable p 3 in
+  let d = add_variable p 4 in
+  at_least_one p [ a; b; c; d ];
+  let choices = ref [ neg a; d ] in
+  let calls = ref 0 in
+  let decide () =
+    incr calls;
+    match !choices with
+    | [] -> None
+    | choice :: rest ->
+      choices := rest;
+      Some choice
+  in
+  print_endline (string_of_bool (run_solver p decide));
+  Format.printf "decide calls=%d@." !calls;
+  print_stats p;
+  [%expect
+    {|
+    true
+    decide calls=3
+    num_variables=4 num_clauses=1 num_decisions=4 num_conflicts=0
+    |}]
 ;;

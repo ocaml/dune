@@ -46,11 +46,17 @@ let run (vcs : Vcs.t) args =
     ~env:
       ((* One of the reasons to set GIT_DIR is to override any GIT_DIR set by
           the environment, which helps for example during [git rebase
-          --exec]. *)
-       Env.add
-         Env.initial
-         ~var:Env.Var._GIT_DIR
-         ~value:(Filename.concat (Path.to_absolute_filename vcs.root) ".git"))
+          --exec]. More generally, we need to configure the expected git variables
+          to give consistent results accross systems. *)
+       List.fold_left
+         [ Env.Var._GIT_DIR, Filename.concat (Path.to_absolute_filename vcs.root) ".git"
+         ; Env.Var.of_string "GIT_AUTHOR_NAME", "Dune Dune"
+         ; Env.Var.of_string "GIT_AUTHOR_EMAIL", "dune@dune.com"
+         ; Env.Var.of_string "GIT_COMMITTER_NAME", "Dune Dune"
+         ; Env.Var.of_string "GIT_COMMITTER_EMAIL", "dune@dune.com"
+         ]
+         ~init:Env.initial
+         ~f:(fun env (var, value) -> Env.add env ~var ~value))
     ~dir:vcs.root
     ~stdout_to:(Process.Io.file Dev_null.path Process.Io.Out)
 ;;
@@ -65,13 +71,7 @@ type action =
 
 let run_action (vcs : Vcs.t) action =
   match action with
-  | Init ->
-    let* () = run vcs [ "init"; "-q" ] in
-    (match vcs.kind with
-     | Hg -> Fiber.return ()
-     | Git ->
-       let* () = run vcs [ "config"; "user.email"; "dune@dune.com" ] in
-       run vcs [ "config"; "user.name"; "Dune Dune" ])
+  | Init -> run vcs [ "init"; "-q" ]
   | Add fn -> run vcs [ "add"; fn ]
   | Commit ->
     (match vcs.kind with

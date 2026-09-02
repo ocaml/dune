@@ -166,6 +166,16 @@ All the packages' bin layouts are added to $PATH:
   $PWD/_build/_private/default/.pkg/check-env.0.0.1-$DIGEST2/target/bin
 
 
+The [(deps (package provider))] declaration on [@test-sys] is an independent,
+action-level dependency. Its documented meaning is to build [provider] and add
+that package's install roots to the action environment. Building that alias in
+isolation shows that the package is built and the binary can be found on PATH:
+
+  $ dune build @test-sys 2>&1
+
+  $ cat _build/default/system-mybin-output
+  from provider
+
 With a package defined in the project, *with a dir field, and explicit depends
 on only [provider]*, the behavior remains the same.
 

@@ -174,3 +174,32 @@ let%expect_test "run_solver records conflicts on an unsatisfiable problem" =
     num_variables=2 num_clauses=4 num_decisions=1 num_conflicts=2
   |}]
 ;;
+
+let%expect_test "run_solver stops calling the decider once None" =
+  let open Sat in
+  let p = create () in
+  let a = add_variable p 1 in
+  let b = add_variable p 2 in
+  let c = add_variable p 3 in
+  let d = add_variable p 4 in
+  at_least_one p [ a; b; c; d ];
+  let choices = ref [ neg a; d ] in
+  let calls = ref 0 in
+  let decide () =
+    incr calls;
+    match !choices with
+    | [] -> None
+    | choice :: rest ->
+      choices := rest;
+      Some choice
+  in
+  print_endline (string_of_bool (run_solver p decide));
+  Format.printf "decide calls=%d@." !calls;
+  print_stats p;
+  [%expect
+    {|
+    true
+    decide calls=3
+    num_variables=4 num_clauses=1 num_decisions=4 num_conflicts=0
+    |}]
+;;

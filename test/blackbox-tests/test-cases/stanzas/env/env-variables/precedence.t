@@ -37,4 +37,4 @@ When a variable is set from both a context and a global one, the context one is
 used.
 
   $ dune exec -- dune_cmd printenv VARIABLE_FROM_BOTH
-  VARIABLE_FROM_BOTH=from_workspace
+  VARIABLE_FROM_BOTH=from_context

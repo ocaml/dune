@@ -887,6 +887,66 @@ module Solver = struct
       ;;
     end
 
+    module At_most_group = struct
+      (* A group of SAT literals, of which at most [nb] may be selected.
+         The group may grow over time, so its constraint is reintroduced
+         whenever it changes by [seal].  *)
+      type t =
+        { nb : int
+        ; mutable vars : Sat.lit list
+        ; mutable nb_vars : int
+        ; mutable sealed : int
+        }
+
+      let create nb = { nb; vars = []; nb_vars = 0; sealed = 0 }
+
+      let add t var =
+        t.vars <- var :: t.vars;
+        t.nb_vars <- t.nb_vars + 1
+      ;;
+
+      let seal sat t =
+        if t.nb_vars <= t.nb || t.nb_vars = t.sealed
+        then false
+        else (
+          t.sealed <- t.nb_vars;
+          (* The new [at_most_clause] subsumes the previous one. *)
+          let (_ : Sat.at_most_clause) = Sat.at_most sat t.nb t.vars in
+          true)
+      ;;
+    end
+
+    module Exclusive_group_map (Map : Map.S) = struct
+      type t =
+        { mutable groups : At_most_group.t Map.t
+        ; mutable grown : Map.key list (* The groups that grew since the last [seal]. *)
+        }
+
+      let create () = { groups = Map.empty; grown = [] }
+
+      let add t key var =
+        let group =
+          match Map.find t.groups key with
+          | Some group -> group
+          | None ->
+            let group = At_most_group.create 1 in
+            t.groups <- Map.set t.groups key group;
+            group
+        in
+        At_most_group.add group var;
+        t.grown <- key :: t.grown
+      ;;
+
+      let seal t sat =
+        let grown = t.grown in
+        t.grown <- [];
+        List.fold_left grown ~init:false ~f:(fun added key ->
+          match Map.find t.groups key with
+          | None -> added
+          | Some group -> At_most_group.seal sat group || added)
+      ;;
+    end
+
     module Conflict_classes = struct
       (* Key is (conflict_class_name, platform) to ensure conflict classes
          are enforced per-platform, not across platforms. In multi-platform
@@ -908,20 +968,7 @@ module Solver = struct
         ;;
       end
 
-      module Key_map = Map.Make (Key)
-
-      type t = { mutable groups : Sat.lit list ref Key_map.t }
-
-      let create () = { groups = Key_map.empty }
-
-      let var t key =
-        match Key_map.find t.groups key with
-        | Some v -> v
-        | None ->
-          let v = ref [] in
-          t.groups <- Key_map.set t.groups key v;
-          v
-      ;;
+      include Exclusive_group_map (Map.Make (Key))
 
       (* Add [impl] to its conflict groups, if any.
          [role] is used to extract the platform for the group key.
@@ -932,20 +979,7 @@ module Solver = struct
         | Input.Virtual _ -> ()
         | Input.Real (_, platform) ->
           Input.Impl.conflict_class impl
-          |> List.iter ~f:(fun name ->
-            let impls = var t (name, platform) in
-            impls := impl_var :: !impls)
-      ;;
-
-      (* Call this at the end to add the final clause with all discovered groups.
-         [t] must not be used after this. *)
-      let seal sat t =
-        Key_map.iter t.groups ~f:(fun impls ->
-          match !impls with
-          | _ :: _ :: _ ->
-            let (_ : Sat.at_most_one_clause) = Sat.at_most_one sat !impls in
-            ()
-          | _ -> ())
+          |> List.iter ~f:(fun name -> add t (name, platform) impl_var)
       ;;
     end
 
@@ -961,20 +995,22 @@ module Solver = struct
          same version, while still permitting platforms to omit a package
          entirely (e.g. unix-only packages on Windows). *)
 
+      module Groups = Exclusive_group_map (Package_name.Map)
+
       type t =
         { sat : Sat.t
         ; enabled : bool
         ; mutable somewhere_vars : Sat.lit OpamPackage.Map.t
-        ; (* For each package name, the list of somewhere-vars across its
-             versions. Used at seal time to add the at-most-one clauses. *)
-          mutable per_name : Sat.lit list ref OpamPackage.Name.Map.t
+        ; (* For each package name, the somewhere-vars across its versions, of
+             which at most one can be selected. *)
+          per_name : Groups.t
         }
 
       let create sat ~enabled =
         { sat
         ; enabled
         ; somewhere_vars = OpamPackage.Map.empty
-        ; per_name = OpamPackage.Name.Map.empty
+        ; per_name = Groups.create ()
         }
       ;;
 
@@ -988,15 +1024,7 @@ module Solver = struct
              package selection. *)
           let v = Sat.add_variable t.sat Input.Dummy in
           t.somewhere_vars <- OpamPackage.Map.add package v t.somewhere_vars;
-          let bucket =
-            match OpamPackage.Name.Map.find_opt name t.per_name with
-            | Some b -> b
-            | None ->
-              let b = ref [] in
-              t.per_name <- OpamPackage.Name.Map.add name b t.per_name;
-              b
-          in
-          bucket := v :: !bucket;
+          Groups.add t.per_name (Package_name.of_opam_package_name name) v;
           v
       ;;
 
@@ -1020,16 +1048,8 @@ module Solver = struct
         | VirtualImpl _ | Reject _ | Dummy -> None
       ;;
 
-      (* Add at-most-one over the somewhere-vars per package name. Call after
-         all impls have been processed. *)
-      let seal t =
-        OpamPackage.Name.Map.iter
-          (fun _name bucket ->
-             match !bucket with
-             | [] | [ _ ] -> ()
-             | vars -> ignore (Sat.at_most_one t.sat vars : Sat.at_most_one_clause))
-          t.per_name
-      ;;
+      (* Add at-most-one over the somewhere-vars per package name. *)
+      let seal t = Groups.seal t.per_name t.sat
     end
 
     (* Starting from [root_req], explore all the feeds and implementations we
@@ -1142,8 +1162,8 @@ module Solver = struct
           process_dep `No_expand impl_var dep)
         (* All impl_candidates have now been added, so snapshot the cache. *)
       in
-      Conflict_classes.seal sat conflict_classes;
-      Cross_platform_version.seal cross_platform_versions;
+      let (_ : bool) = Conflict_classes.seal conflict_classes sat in
+      let (_ : bool) = Cross_platform_version.seal cross_platform_versions in
       (match max_avoids, OpamPackage.Map.bindings !avoids |> List.map ~f:snd with
        | None, _ | _, [] -> ()
        | Some max_avoids, avoids ->

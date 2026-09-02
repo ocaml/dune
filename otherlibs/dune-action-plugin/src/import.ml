@@ -10,6 +10,7 @@ include struct
   module Option = Option
   module Comparable = Comparable
   module Result = Result
+  module Repr = Repr
   module Map = Map
 end
 

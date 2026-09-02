@@ -1182,6 +1182,7 @@ module Solver = struct
          2) we follow every dependency of every selected implementation (better versions first)
          3) we follow every dependency of every selected implementation
       *)
+      let opam_files_before = Context.count_expanded_packages context in
       let sat = Sat.create () in
       let* impl_clauses =
         let dummy_impl = if closest_match then Some Input.Dummy else None in
@@ -1226,6 +1227,7 @@ module Solver = struct
       let start = Time.now () in
       let result = Sat.run_solver sat decider in
       let stop = Time.now () in
+      let num_opam_files = Context.count_expanded_packages context - opam_files_before in
       Dune_trace.emit Sat (fun () ->
         let stats = Sat.get_stats sat in
         Dune_trace.Event.sat_solve
@@ -1234,7 +1236,8 @@ module Solver = struct
           ~num_variables:stats.num_variables
           ~num_clauses:stats.num_clauses
           ~num_decisions:stats.num_decisions
-          ~num_conflicts:stats.num_conflicts);
+          ~num_conflicts:stats.num_conflicts
+          ~num_opam_files);
       match result with
       | false -> None
       | true ->

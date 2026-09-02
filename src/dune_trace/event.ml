@@ -1079,12 +1079,21 @@ let spawn_thread ~name =
   Event.instant ~args ~name:"spawn_thread" now Thread
 ;;
 
-let sat_solve ~start ~dur ~num_variables ~num_clauses ~num_decisions ~num_conflicts =
+let sat_solve
+      ~start
+      ~dur
+      ~num_variables
+      ~num_clauses
+      ~num_decisions
+      ~num_conflicts
+      ~num_opam_files
+  =
   let args =
     [ "num_variables", Arg.int num_variables
     ; "num_clauses", Arg.int num_clauses
     ; "num_decisions", Arg.int num_decisions
     ; "num_conflicts", Arg.int num_conflicts
+    ; "num_opam_files", Arg.int num_opam_files
     ]
   in
   Event.complete ~args ~name:"solve" ~start ~dur Sat

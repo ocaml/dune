@@ -14,6 +14,13 @@ module type USER = sig
   val pp : t -> 'tag Pp.t
 end
 
+module Var_value : sig
+  type t =
+    | True
+    | False
+    | Undecided
+end
+
 module Make (User : USER) : sig
   (** A SAT problem consists of a set of variables and a set of clauses which must be satisfied. *)
   type t
@@ -23,6 +30,7 @@ module Make (User : USER) : sig
 
   val neg : lit -> lit
   val add_variable : t -> User.t -> lit
+  val lit_value : lit -> Var_value.t
 
   (** A clause is a boolean expression made up of literals. e.g. [A and B and not(C)] *)
   type clause

@@ -996,54 +996,174 @@ end = struct
       Super_context.add_rule sctx ~dir:ctx.build_dir action
   ;;
 
+  let meta_entries_for_main_package entries =
+    Scope.DB.Lib_entry.Set.partition_map entries ~f:(function
+      | Scope.DB.Lib_entry.Deprecated_library_name
+          { old_name = public, Deprecated { deprecated_package }; _ } as entry ->
+        (match Public_lib.sub_dir public with
+         | None -> Left (deprecated_package, entry)
+         | Some _ -> Right entry)
+      | entry -> Right entry)
+    |> snd
+  ;;
+
+  type meta_template_line =
+    { text : string
+    ; generation_marker_loc : Loc.t option
+    }
+
+  type meta_template =
+    { lines : meta_template_line list
+    ; path : Path.t
+    }
+
+  let invalid_meta_template (package : Package.t) ~loc (message : User_message.t) =
+    User_error.raise
+      ~loc
+      ~hints:message.hints
+      ~compound:message.compound
+      ~has_embedded_location:message.has_embedded_location
+      ~needs_stack_trace:message.needs_stack_trace
+      ?promotion:message.promotion
+      [ Pp.textf
+          "Invalid META template for package %s."
+          (Package.Name.to_string (Package.name package))
+      ; Pp.text (User_message.to_string message)
+      ]
+  ;;
+
+  let is_meta_generation_line line =
+    if String.starts_with ~prefix:"#" line
+    then (
+      match String.extract_blank_separated_words (String.drop line 1) with
+      | [ ("JBUILDER_GEN" | "DUNE_GEN") ] -> true
+      | _ -> false)
+    else false
+  ;;
+
+  let meta_template ctx (pkg : Package.t) entries =
+    let meta_template_path = Package_paths.meta_template ctx pkg in
+    let meta_template = Path.build meta_template_path in
+    let source_template =
+      Path.Build.drop_build_context_exn meta_template_path |> Path.source
+    in
+    let validate path contents =
+      let fname = Path.to_string path in
+      let lexbuf = Lexbuf.from_string contents ~fname in
+      match Meta.of_lex lexbuf ~name:(Some (Package.name pkg)) with
+      | (_ : Meta.Simplified.t) ->
+        let rec add_locations line_number acc = function
+          | [] -> List.rev acc
+          | text :: lines ->
+            let generation_marker_loc =
+              if is_meta_generation_line text
+              then (
+                let start : Lexing.position =
+                  { pos_fname = fname; pos_lnum = line_number; pos_cnum = 0; pos_bol = 0 }
+                in
+                Some
+                  (Loc.create ~start ~stop:{ start with pos_cnum = String.length text }))
+              else None
+            in
+            add_locations (line_number + 1) ({ text; generation_marker_loc } :: acc) lines
+        in
+        { lines = add_locations 1 [] (String.split_lines contents); path }
+      | exception User_error.E message ->
+        let loc = Option.value message.loc ~default:(Loc.in_file path) in
+        invalid_meta_template pkg ~loc message
+    in
+    let meta_template_or_fail =
+      let open Action_builder.O in
+      let* { Scope.DB.Lib_entry.Set.libraries; _ } = Action_builder.of_memo entries in
+      match
+        List.find_map libraries ~f:(fun lib ->
+          match Lib_info.kind (Lib.Local.info lib) with
+          | Parameter | Virtual -> Some lib
+          | Dune_file _ -> None)
+      with
+      | Some vlib ->
+        Action_builder.fail
+          { fail =
+              (fun () ->
+                let name = Lib.name (Lib.Local.to_lib vlib) in
+                User_error.raise
+                  ~loc:(Loc.in_file meta_template)
+                  [ Pp.textf
+                      "Package %s defines virtual library %s and has a META template. \
+                       This is not allowed."
+                      (Package.Name.to_string (Package.name pkg))
+                      (Lib_name.to_string name)
+                  ])
+          }
+      | None ->
+        let* contents = Action_builder.contents meta_template
+        and* source_contents =
+          Action_builder.if_file_exists
+            source_template
+            ~then_:
+              (let+ contents = Action_builder.contents source_template in
+               Some contents)
+            ~else_:(Action_builder.return None)
+        in
+        let path =
+          match source_contents with
+          | Some source_contents when String.equal contents source_contents ->
+            source_template
+          | None | Some _ -> meta_template
+        in
+        Action_builder.return (Some (validate path contents))
+    in
+    Action_builder.if_file_exists
+      meta_template
+      ~then_:meta_template_or_fail
+      ~else_:(Action_builder.return None)
+  ;;
+
+  let render_meta_template ~(package : Package.t) template (meta : Meta.t) =
+    let generated_line_count =
+      let generated = Format.asprintf "%a" Pp.to_fmt (Meta.pp meta.entries) in
+      match String.split_lines generated with
+      | [] -> 1
+      | lines -> List.length lines
+    in
+    let contents =
+      Pp.concat_map template.lines ~sep:Pp.newline ~f:(fun { text; _ } ->
+        if is_meta_generation_line text then Meta.pp meta.entries else Pp.verbatim text)
+      |> Pp.vbox
+      |> Format.asprintf "%a" Pp.to_fmt
+    in
+    match Meta.of_string contents ~name:(Some (Package.name package)) with
+    | (_ : Meta.Simplified.t) -> contents
+    | exception User_error.E message ->
+      let marker_locations =
+        let _, locations =
+          List.fold_left
+            template.lines
+            ~init:(1, [])
+            ~f:(fun (line_number, acc) -> function
+            | { generation_marker_loc = None; _ } -> line_number + 1, acc
+            | { generation_marker_loc = Some loc; _ } ->
+              line_number + generated_line_count, (line_number, loc) :: acc)
+        in
+        List.rev locations
+      in
+      let loc =
+        match message.loc with
+        | None -> Loc.in_file template.path
+        | Some rendered_loc ->
+          let rendered_line = (Loc.start rendered_loc).pos_lnum in
+          List.fold_left marker_locations ~init:None ~f:(fun loc (line_number, marker) ->
+            if line_number <= rendered_line then Some marker else loc)
+          |> Option.value ~default:(Loc.in_file template.path)
+      in
+      invalid_meta_template package ~loc message
+  ;;
+
   let gen_meta_file sctx (pkg : Package.t) entries =
     let ctx = Super_context.context sctx |> Context.build_context in
     let* () =
-      let template =
-        let meta_template = Path.build (Package_paths.meta_template ctx pkg) in
-        let meta_template_lines_or_fail =
-          let open Action_builder.O in
-          let* () = Action_builder.return () in
-          let* { Scope.DB.Lib_entry.Set.libraries; _ } = Action_builder.of_memo entries in
-          match
-            List.find_map libraries ~f:(fun lib ->
-              match Lib_info.kind (Lib.Local.info lib) with
-              | Parameter | Virtual -> Some lib
-              | Dune_file _ -> None)
-          with
-          | None -> Action_builder.lines_of meta_template
-          | Some vlib ->
-            Action_builder.fail
-              { fail =
-                  (fun () ->
-                    let name = Lib.name (Lib.Local.to_lib vlib) in
-                    let pkg_name = Package.name pkg in
-                    User_error.raise
-                      ~loc:(Loc.in_file meta_template)
-                      [ Pp.textf
-                          "Package %s defines virtual library %s and has a META \
-                           template. This is not allowed."
-                          (Package.Name.to_string pkg_name)
-                          (Lib_name.to_string name)
-                      ])
-              }
-        in
-        Action_builder.if_file_exists
-          meta_template
-          ~then_:meta_template_lines_or_fail
-          ~else_:(Action_builder.return [ "# DUNE_GEN" ])
-      in
-      let meta_entries =
-        entries
-        >>| Scope.DB.Lib_entry.Set.partition_map ~f:(function
-          | Scope.DB.Lib_entry.Deprecated_library_name
-              { old_name = public, Deprecated { deprecated_package }; _ } as entry ->
-            (match Public_lib.sub_dir public with
-             | None -> Left (deprecated_package, entry)
-             | Some _ -> Right entry)
-          | entry -> Right entry)
-        >>| snd
-      in
+      let template = meta_template ctx pkg entries in
+      let meta_entries = entries >>| meta_entries_for_main_package in
       Super_context.add_rule
         sctx
         ~dir:ctx.build_dir
@@ -1053,17 +1173,9 @@ end = struct
             Action_builder.of_memo meta_entries
             >>= Gen_meta.gen ~package:pkg ~add_directory_entry:true
           in
-          let pp =
-            Pp.concat_map template ~sep:Pp.newline ~f:(fun s ->
-              if String.starts_with ~prefix:"#" s
-              then (
-                match String.extract_blank_separated_words (String.drop s 1) with
-                | [ ("JBUILDER_GEN" | "DUNE_GEN") ] -> Meta.pp meta.entries
-                | _ -> Pp.verbatim s)
-              else Pp.verbatim s)
-            |> Pp.vbox
-          in
-          Format.asprintf "%a" Pp.to_fmt pp)
+          match template with
+          | None -> Format.asprintf "%a" Pp.to_fmt (Pp.vbox (Meta.pp meta.entries))
+          | Some template -> render_meta_template ~package:pkg template meta)
          |> Action_builder.write_file_dyn (Package_paths.meta_file ctx pkg))
     in
     let deprecated_packages =

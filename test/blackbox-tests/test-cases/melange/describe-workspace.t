@@ -6,6 +6,10 @@ described once per compilation mode they are actually built in: as a `library`
 item for OCaml and as a `melange.library` item for Melange. A library built in
 both modes therefore appears twice, under two distinct uids.
 
+Melange compiles a copy of each source file rather than the file itself, so the
+modules of a Melange item have a `copy_of_source` origin naming the file the
+user wrote.
+
 The `--sanitize-for-tests` flag is required so that absolute paths stay stable
 across machines, and `censor` replaces library digests with stable labels.
 
@@ -40,7 +44,7 @@ module.
         (intf ())
         (cmt (_build/default/.dist.mobjs/melange/melange__Main.cmt))
         (cmti ())
-        (origin (dune ((dune_file dune)))))))
+        (origin (copy_of_source main.ml)))))
      (include_dirs (_build/default/.dist.mobjs/melange)))))
   $ cd ..
 
@@ -86,7 +90,7 @@ report OCaml artifacts that are never built.
         (intf ())
         (cmt (_build/default/.dist.mobjs/melange/melange__Main.cmt))
         (cmti ())
-        (origin (dune ((dune_file dune)))))))
+        (origin (copy_of_source main.ml)))))
      (include_dirs (_build/default/.dist.mobjs/melange))))
    (melange.library
     ((name mylib)
@@ -100,7 +104,7 @@ report OCaml artifacts that are never built.
         (intf ())
         (cmt (_build/default/lib/.mylib.objs/melange/mylib.cmt))
         (cmti ())
-        (origin (dune ((dune_file lib/dune)))))))
+        (origin (copy_of_source lib/mylib.ml)))))
      (include_dirs (_build/default/lib/.mylib.objs/melange)))))
   $ cd ..
 
@@ -168,7 +172,7 @@ Melange one.
         (intf ())
         (cmt (_build/default/emit/.dist.mobjs/melange/melange__App.cmt))
         (cmti ())
-        (origin (dune ((dune_file emit/dune)))))))
+        (origin (copy_of_source emit/app.ml)))))
      (include_dirs (_build/default/emit/.dist.mobjs/melange))))
    (library
     ((name shared_lib)
@@ -196,7 +200,7 @@ Melange one.
         (intf ())
         (cmt (_build/default/lib/.shared_lib.objs/melange/shared_lib.cmt))
         (cmti ())
-        (origin (dune ((dune_file lib/dune)))))))
+        (origin (copy_of_source lib/shared_lib.ml)))))
      (include_dirs (_build/default/lib/.shared_lib.objs/melange)))))
   $ cd ..
 
@@ -241,7 +245,7 @@ This library is not usable from Melange, so it is described by exactly one
         (intf ())
         (cmt (_build/default/emit/.dist.mobjs/melange/melange__App.cmt))
         (cmti ())
-        (origin (dune ((dune_file emit/dune)))))))
+        (origin (copy_of_source emit/app.ml)))))
      (include_dirs (_build/default/emit/.dist.mobjs/melange))))
    (library
     ((name ocaml_only)
@@ -305,8 +309,7 @@ dotted `melange.emit` and `melange.library` atoms.
         (cmt (_build/default/.dist.mobjs/melange/melange__Main.cmt))
         (cmti ())
         (origin
-         (dune
-          ((dune_file dune)))))))
+         (copy_of_source main.ml)))))
      (include_dirs (_build/default/.dist.mobjs/melange))))
    (melange.library
     ((name mylib)
@@ -321,7 +324,6 @@ dotted `melange.emit` and `melange.library` atoms.
         (cmt (_build/default/lib/.mylib.objs/melange/mylib.cmt))
         (cmti ())
         (origin
-         (dune
-          ((dune_file lib/dune)))))))
+         (copy_of_source lib/mylib.ml)))))
      (include_dirs (_build/default/lib/.mylib.objs/melange)))))
   $ cd ..

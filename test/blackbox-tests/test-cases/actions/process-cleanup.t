@@ -20,7 +20,10 @@ A failed spawn currently retains captured output while Dune remains running.
   >    (run ./disappearing-executable))))
   > EOF
 
-  $ start_dune
+File-watcher invalidations can restart the build and create extra capture files,
+so disable the watcher to observe exactly one failed spawn.
+
+  $ start_dune --file-watcher manual
   $ build "(alias spawn-failure)"
   Failure
   [1]

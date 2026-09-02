@@ -1062,8 +1062,8 @@ module Solver = struct
         ; mutable created : Candidates.t list
         ; conflict_classes : Conflict_classes.t
         ; cross_platform_versions : Cross_platform_version.t
-        ; max_avoids : int option
-        ; mutable avoids : Sat.lit OpamPackage.Map.t
+        ; avoids : At_most_group.t option
+        ; mutable avoided : OpamPackage.Set.t
         }
 
       let create context sat ~enforce_cross_platform_versions ~max_avoids ~dummy_impl =
@@ -1076,24 +1076,26 @@ module Solver = struct
         ; conflict_classes = Conflict_classes.create ()
         ; cross_platform_versions =
             Cross_platform_version.create sat ~enabled:enforce_cross_platform_versions
-        ; max_avoids
-        ; avoids = OpamPackage.Map.empty
+        ; avoids = Option.map max_avoids ~f:At_most_group.create
+        ; avoided = OpamPackage.Set.empty
         }
       ;;
 
       let avoid t package selection =
-        t.avoids <- OpamPackage.Map.add package selection t.avoids
+        Option.iter t.avoids ~f:(fun avoids ->
+          if not (OpamPackage.Set.mem package t.avoided)
+          then (
+            t.avoided <- OpamPackage.Set.add package t.avoided;
+            At_most_group.add avoids selection))
       ;;
 
       let seal_groups t =
         let conflict_classes = Conflict_classes.seal t.conflict_classes t.sat in
         let cross_platform = Cross_platform_version.seal t.cross_platform_versions in
         let avoids =
-          match t.max_avoids, OpamPackage.Map.bindings t.avoids |> List.map ~f:snd with
-          | None, _ | _, [] -> false
-          | Some max_avoids, avoids ->
-            let (_ : Sat.at_most_clause) = Sat.at_most t.sat max_avoids avoids in
-            true
+          match t.avoids with
+          | None -> false
+          | Some avoids -> At_most_group.seal t.sat avoids
         in
         conflict_classes || cross_platform || avoids
       ;;

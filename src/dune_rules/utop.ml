@@ -109,17 +109,14 @@ let libs_and_ppx_under_dir sctx ~db ~dir =
   >>= function
   | None -> Memo.return ([], [])
   | Some dir ->
+    let build_dir = Context.build_dir (Super_context.context sctx) in
     let+ libs, pps =
       Source_tree_map_reduce.map_reduce
         dir
         ~traverse:Source_dir_status.Set.all
         ~trace_event_name:"Utop rules loading"
         ~f:(fun dir ->
-          let dir =
-            Path.Build.append_source
-              (Context.build_dir (Super_context.context sctx))
-              (Source_tree.Dir.path dir)
-          in
+          let dir = Path.Build.append_source build_dir (Source_tree.Dir.path dir) in
           Dune_load.stanzas_in_dir dir
           >>= function
           | None -> Memo.return Libs_and_ppxs.empty

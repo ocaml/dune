@@ -225,7 +225,7 @@ let make_same_lib_emission_deps =
       | "--mel-no-cross-module-opt" | "-mel-no-cross-module-opt" -> false
       | _ -> enabled)
   in
-  let impl_dep_graph ~sctx ~obj_dir ~modules =
+  let impl_dep_graph ~sctx ~dir ~obj_dir ~modules =
     let per_module =
       Modules.With_vlib.obj_map modules
       |> Module_name.Unique.Map.mapi ~f:(fun _ sourced_module ->
@@ -238,7 +238,7 @@ let make_same_lib_emission_deps =
           ~ml_kind:Impl
           module_)
     in
-    Dep_graph.make ~dir:(Obj_dir.dir obj_dir) ~per_module
+    Dep_graph.make ~dir ~per_module
   in
   let deps_of_closure ~obj_dir ~kind modules =
     let modules = Obj_dir.Module.L.cm_files obj_dir modules ~kind:(Melange kind) in
@@ -250,11 +250,12 @@ let make_same_lib_emission_deps =
     Dep.Set.union cmi cmj
   in
   fun ~sctx ~obj_dir ~modules ~(compile_flags : Ocaml_flags.t) ->
+    let dir = Obj_dir.dir obj_dir in
     let xopt_enabled =
       Ocaml_flags.get compile_flags Melange
       |> Action_builder.map ~f:melange_cross_module_opt_enabled
     in
-    let dep_graph = impl_dep_graph ~sctx ~obj_dir ~modules in
+    let dep_graph = impl_dep_graph ~sctx ~dir ~obj_dir ~modules in
     fun module_ ->
       let open Action_builder.O in
       xopt_enabled
@@ -267,7 +268,7 @@ let make_same_lib_emission_deps =
             ~obj_dir
             ~modules
             ~impl:Virtual_rules.no_implements
-            ~dir:(Obj_dir.dir obj_dir)
+            ~dir
             ~for_
             ~ml_kind:Intf
             module_

@@ -196,7 +196,6 @@ module Context = struct
     let version = Resolved_package.package resolved_package |> OpamPackage.version in
     let opam_file = Resolved_package.opam_file resolved_package in
     let resolved = OpamPackage.Version.Map.singleton version resolved_package in
-    (* We don't respect avoid-version for pinned packages. This is intentional. *)
     { unfiltered =
         [ { priority = Priority.make version; opam = opam_file; origin = Pinned } ]
     ; resolved
@@ -320,6 +319,14 @@ module Context = struct
           try_refute t ~platform package
           |> Option.map ~f:(fun name -> package, Refuted_by name)
         else None)
+  ;;
+
+  (* We don't respect avoid-version for local and pinned packages. *)
+  let avoid_candidate { opam; origin; _ } =
+    match origin with
+    | Local | Pinned -> false
+    | Repository ->
+      List.mem opam.OpamFile.OPAM.flags Pkgflag_AvoidVersion ~equal:Poly.equal
   ;;
 
   let rejection_for_platform t ~platform { opam; origin; _ } =
@@ -765,7 +772,7 @@ module Solver = struct
           | Some _ -> None
           | None ->
             let { Priority.version } = priority in
-            let avoid = List.mem opam.flags Pkgflag_AvoidVersion ~equal:Poly.equal in
+            let avoid = Context.avoid_candidate candidate in
             let pkg = OpamPackage.create name version in
             (* Note: we ignore depopts here: see opam/doc/design/depopts-and-features *)
             let requires =

@@ -24,9 +24,8 @@ coming from the repository:
   > pin-depends: [ "pinned.1.0.0" "file://$PWD/_pinned" ]
   > EOF
 
-FIXME: the solver avoids the pinned package and selects the fallback, while it
-should have picked the pinned one:
+The solver selects the pinned package, despite its avoid-version flag:
 
   $ dune_pkg_lock_normalized
   Solution for dune.lock:
-  - fallback.0.0.1
+  - pinned.1.0.0 (this version should be avoided)

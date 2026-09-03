@@ -988,11 +988,9 @@ let setup_js_rules_libraries_and_entries
   Path.Build.Map.union_exn dir_targets_libraries directory_targets
 ;;
 
-let setup_emit_js_rules ~dir_contents ~dir ~scope ~sctx mel =
-  let target_dir =
-    let dir = Dir_contents.dir dir_contents in
-    Melange_stanzas.Emit.target_dir ~dir mel
-  in
+let setup_emit_js_rules ~dir_contents ~scope ~sctx mel =
+  let dir = Dir_contents.dir dir_contents in
+  let target_dir = Melange_stanzas.Emit.target_dir ~dir mel in
   let promote_in_source = should_promote_in_source scope in
   let* mode =
     let* expander = Super_context.expander sctx ~dir in
@@ -1069,7 +1067,7 @@ let emit_rules sctx { stanza_dir; stanza } =
     let* sctx = sctx in
     let* dir_contents = Dir_contents.get sctx ~dir:stanza_dir in
     let* scope = Scope.DB.find_by_dir stanza_dir in
-    setup_emit_js_rules ~dir_contents ~dir:stanza_dir ~scope ~sctx stanza)
+    setup_emit_js_rules ~dir_contents ~scope ~sctx stanza)
 ;;
 
 (* Detect if [dir] is under the target directory of a melange.emit stanza. *)

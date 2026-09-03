@@ -56,7 +56,7 @@ let partial_eval_filter = function
   | Some f ->
     let env = Fun.const None in
     (match OpamFilter.eval_to_bool env f with
-     | exception Failure _ -> `Filter (Some f)
+     | exception (Failure _ | Invalid_argument _) -> `Filter (Some f)
      | b -> if b then `Filter None else `Skip)
 ;;
 

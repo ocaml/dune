@@ -3,6 +3,10 @@
  (alias all-merlin-tests))
 
 (cram
+ (applies_to suffix.t granularity.t)
+ (deps %{bin:merlin_configurations}))
+
+(cram
  (applies_to merlin-tests.t instrumentation.t)
  (deps %{bin:ocamlfind}))
 

@@ -12,18 +12,20 @@ filter as an interpolated string rather than as a boolean: (as seen in
 
 As the package `other` is not part of the solution, the interpolation expands
 to the empty string, which is not a boolean. Opam removes these arguments when
-their filter does not evaluate to true. Dune currently crashes:
+their filter does not evaluate to true. Dune does the same:
 
-  $ solve_project <<EOF 2>&1 | head -1
+  $ solve_project <<EOF
   > (lang dune 3.11)
   > (package
   >  (name x)
   >  (allow_empty)
   >  (depends string-filter))
   > EOF
-  Error: exception Invalid_argument("value_bool: \"\"")
-  [1]
+  Solution for dune.lock:
+  - string-filter.0.0.1
 
   $ cat ${default_lock_dir}/string-filter.0.0.1.pkg
-  cat: dune.lock/string-filter.0.0.1.pkg: No such file or directory
-  [1]
+  (version 0.0.1)
+  
+  (build
+   (all_platforms ((action (progn (run echo always) (run configure))))))

@@ -18,7 +18,15 @@ type t =
 
 let make_builtins ~ocaml_config ~version =
   Memo.Lazy.create ~name:"ocaml-toolchain-builtins" (fun () ->
-    let stdlib_dir = Path.of_string (Ocaml_config.standard_library ocaml_config) in
+    let stdlib_dir =
+      (* A compiler installed as a regular package reports a stdlib inside
+       [_build]; relabel it as a build path so it can be depended on and
+       sandboxed. Paths elsewhere (system or local opam switches, [OCAMLLIB]
+       overrides) must remain external. *)
+      let path = Path.of_string (Ocaml_config.standard_library ocaml_config) in
+      let localized = Path.Expert.try_localize_external path in
+      if Path.is_in_build_dir localized then localized else path
+    in
     Meta.builtins ~stdlib_dir ~version)
 ;;
 

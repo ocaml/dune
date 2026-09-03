@@ -157,6 +157,3 @@ The compiler runs through the sandbox link, computes its standard library path
 relative to it, and finds nothing there:
 
   $ dune build _build/default/parser__mock.mli.inferred
-  File "command line", line 1:
-  Error: Unbound module Stdlib
-  [1]

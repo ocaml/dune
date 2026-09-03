@@ -68,7 +68,15 @@ let create ocaml_config ~ocamlopt =
   ; natdynlink_supported =
       (let natdynlink_supported = Ocaml_config.natdynlink_supported ocaml_config in
        Dynlink_supported.By_the_os.of_bool natdynlink_supported)
-  ; stdlib_dir = Path.of_string (Ocaml_config.standard_library ocaml_config)
+  ; stdlib_dir =
+      (* When a compiler is installed as a regular package we get its stdlib
+         location as an External path but it is located in the [_build]
+         directory. If we leave it External, it will not get copied into
+         sandboxes, so we localize it. Paths elsewhere (system or local opam
+         switches, [OCAMLLIB] overrides) must remain external. *)
+      (let path = Path.of_string (Ocaml_config.standard_library ocaml_config) in
+       let localized = Path.Expert.try_localize_external path in
+       if Path.is_in_build_dir localized then localized else path)
   ; ccomp_type = Ocaml_config.ccomp_type ocaml_config
   ; ocaml_version_string = Ocaml_config.version_string ocaml_config
   ; ocaml_version = Ocaml.Version.of_ocaml_config ocaml_config

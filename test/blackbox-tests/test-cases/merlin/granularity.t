@@ -313,3 +313,23 @@ A copy-line directive can lead through a filename without an extension.
   $ dune build --root copied @check
   $ query_ocaml_merlin_pp "$PWD/copied/actual.ml" --root copied > copied.out
   $ query_ocaml_merlin_pp "$PWD/copied/input.txt" --root copied | diff copied.out -
+
+The typed lookup also follows the alias when its source kind is unambiguous.
+
+  $ (cd copied && merlin_configurations _build/default/.merlin-conf/lib-copied input.txt)
+  input.txt: ocaml true impl -
+
+An ambiguous intermediate alias does not hide an exact copy destination from
+the typed lookup.
+
+  $ cat > copied/dune <<EOF
+  > (library
+  >  (name copied)
+  >  (modules actual))
+  > (rule (action (copy# input.txt actual)))
+  > (rule (action (copy# actual actual.ml)))
+  > EOF
+  $ printf 'val value : int\n' > copied/actual.mli
+  $ dune build --root copied @check
+  $ (cd copied && merlin_configurations _build/default/.merlin-conf/lib-copied input.txt)
+  input.txt: ocaml true impl actual.mli

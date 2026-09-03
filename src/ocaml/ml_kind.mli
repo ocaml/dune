@@ -7,6 +7,7 @@ type t =
 val all : t list
 val choose : t -> impl:'a -> intf:'a -> 'a
 val to_string : t -> string
+val repr : t Repr.t
 val to_dyn : t -> Dyn.t
 val cmt_ext : t -> Filename.Extension.t
 val cms_ext : t -> Filename.Extension.t

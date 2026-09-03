@@ -43,6 +43,12 @@
  (deps %{bin:strace}))
 
 (cram
+ (applies_to rev-store-lock-unlink-linux)
+ (enabled_if
+  (= %{system} linux))
+ (deps %{bin:flock} %{bin:timeout}))
+
+(cram
  (deps %{bin:awk} %{bin:cmp})
  (applies_to git-repo.t))
 

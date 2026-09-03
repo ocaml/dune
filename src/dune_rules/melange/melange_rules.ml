@@ -888,7 +888,6 @@ let setup_js_rules_libraries =
             let vlib_output = output_of_lib ~target_dir vlib in
             (match vlib_output, output with
              | Public_library _, Private_library_or_emit _ ->
-               let info = Lib.info lib in
                User_error.raise
                  ~loc:(Lib_info.loc info)
                  [ Pp.text

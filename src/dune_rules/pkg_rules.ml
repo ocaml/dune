@@ -1280,10 +1280,15 @@ module DB = struct
       ; pkg_digest : Pkg_digest.t
       }
 
+    type compiler =
+      | From_lock_dir
+      | From_project of entry
+
     let entries_by_name_of_lock_dir
           (lock_dir : Dune_pkg.Lock_dir.t)
           ~platform
           ~system_provided
+          ~compiler
       =
       let pkgs_by_name = Dune_pkg.Lock_dir.packages_on_platform lock_dir ~platform in
       let cache =
@@ -1291,6 +1296,14 @@ module DB = struct
         Package.Name.Table.create 10
       in
       let rec compute_entry (pkg : Pkg.t) ~seen_set ~seen_list =
+        match compiler with
+        | From_project project_compiler
+          when Package.Name.equal pkg.info.name project_compiler.pkg.info.name
+               && Package_version.equal pkg.info.version project_compiler.pkg.info.version
+          -> project_compiler
+        | From_lock_dir | From_project _ ->
+          compute_entry_from_lock_dir pkg ~seen_set ~seen_list
+      and compute_entry_from_lock_dir (pkg : Pkg.t) ~seen_set ~seen_list =
         if Package.Name.Set.mem seen_set pkg.info.name
         then
           User_error.raise
@@ -1344,10 +1357,14 @@ module DB = struct
     (* Associate each package's digest with the package and its dependencies. *)
     type t = entry Pkg_digest.Map.t
 
-    let of_lock_dir lock_dir ~platform ~system_provided =
-      entries_by_name_of_lock_dir lock_dir ~platform ~system_provided
-      |> Package.Name.Map.values
+    let of_entries entries =
+      Package.Name.Map.values entries
       |> Pkg_digest.Map.of_list_map_exn ~f:(fun entry -> entry.pkg_digest, entry)
+    ;;
+
+    let of_lock_dir lock_dir ~platform ~system_provided ~compiler =
+      entries_by_name_of_lock_dir lock_dir ~platform ~system_provided ~compiler
+      |> of_entries
     ;;
 
     (* Helper which is called when both tables have an entry with the same
@@ -1387,23 +1404,38 @@ module DB = struct
     let union = Pkg_digest.Map.union ~f:union_check
     let union_all = Pkg_digest.Map.union_all ~f:union_check
 
-    let of_dev_tool_deps_if_lock_dir_exists dev_tool ~platform ~system_provided =
-      let+ lock_dir_opt = Lock_dir.of_dev_tool_if_lock_dir_exists dev_tool in
-      Option.map lock_dir_opt ~f:(of_lock_dir ~platform ~system_provided)
+    let compiler_for_dev_tool dev_tool project_compiler =
+      match
+        ( Dune_pkg.Dev_tool.needs_to_build_with_same_compiler_as_project dev_tool
+        , project_compiler )
+      with
+      | true, Some project_compiler -> From_project project_compiler
+      | false, _ | true, None -> From_lock_dir
     ;;
 
-    let all_existing_dev_tools =
-      Memo.lazy_ ~name:"all-existing-dev-tools" (fun () ->
-        let* platform = Lock_dir.Sys_vars.solver_env in
-        let+ xs =
-          Memo.List.map
-            Pkg_dev_tool.all
-            ~f:
-              (of_dev_tool_deps_if_lock_dir_exists
-                 ~platform
-                 ~system_provided:default_system_provided)
-        in
-        List.filter_opt xs |> union_all)
+    let of_dev_tool_deps_if_lock_dir_exists
+          dev_tool
+          ~platform
+          ~system_provided
+          ~project_compiler
+      =
+      let+ lock_dir_opt = Lock_dir.of_dev_tool_if_lock_dir_exists dev_tool in
+      Option.map lock_dir_opt ~f:(fun lock_dir ->
+        let compiler = compiler_for_dev_tool dev_tool project_compiler in
+        of_lock_dir lock_dir ~platform ~system_provided ~compiler)
+    ;;
+
+    let all_existing_dev_tools ~platform ~system_provided ~project_compiler =
+      let+ xs =
+        Memo.List.map
+          Pkg_dev_tool.all
+          ~f:
+            (of_dev_tool_deps_if_lock_dir_exists
+               ~platform
+               ~system_provided
+               ~project_compiler)
+      in
+      List.filter_opt xs |> union_all
     ;;
   end
 
@@ -1421,9 +1453,22 @@ module DB = struct
     { id = Id.gen (); pkg_digest_table; system_provided }
   ;;
 
-  let pkg_digest_of_name lock_dir platform pkg_name ~system_provided =
+  let entries_by_name_of_lock_dir lock_dir platform ~system_provided =
+    Pkg_table.entries_by_name_of_lock_dir
+      lock_dir
+      ~platform
+      ~system_provided
+      ~compiler:Pkg_table.From_lock_dir
+  ;;
+
+  let project_compiler lock_dir entries_by_name =
+    Option.map lock_dir.Dune_pkg.Lock_dir.ocaml ~f:(fun (_, package) ->
+      Package.Name.Map.find_exn entries_by_name package)
+  ;;
+
+  let pkg_digest_of_name lock_dir platform pkg_name ~system_provided ~compiler =
     let entries_by_name =
-      Pkg_table.entries_by_name_of_lock_dir lock_dir ~platform ~system_provided
+      Pkg_table.entries_by_name_of_lock_dir lock_dir ~platform ~system_provided ~compiler
     in
     let entry = Package.Name.Map.find_exn entries_by_name pkg_name in
     entry.pkg_digest
@@ -1453,16 +1498,25 @@ module DB = struct
              let allow_sharing = allow_sharing && Context_name.is_default ctx in
              (* Is this value anything other than [default_system_provided]? *)
              let system_provided = default_system_provided in
-             let+ pkg_digest_table =
-               let* lock_dir = Lock_dir.get_exn ctx
-               and* platform = Lock_dir.Sys_vars.solver_env in
-               (if allow_sharing
-                then Memo.Lazy.force Pkg_table.all_existing_dev_tools
-                else Memo.return Pkg_table.empty)
-               >>| Pkg_table.union
-                     (Pkg_table.of_lock_dir lock_dir ~platform ~system_provided)
+             let* lock_dir = Lock_dir.get_exn ctx
+             and* platform = Lock_dir.Sys_vars.solver_env in
+             let project_entries =
+               entries_by_name_of_lock_dir lock_dir platform ~system_provided
              in
-             create ~pkg_digest_table ~system_provided)
+             let project_compiler = project_compiler lock_dir project_entries in
+             let* dev_tools =
+               if allow_sharing
+               then
+                 Pkg_table.all_existing_dev_tools
+                   ~platform
+                   ~system_provided
+                   ~project_compiler
+               else Memo.return Pkg_table.empty
+             in
+             let pkg_digest_table =
+               Pkg_table.union (Pkg_table.of_entries project_entries) dev_tools
+             in
+             Memo.return (create ~pkg_digest_table ~system_provided))
     in
     fun ctx ~allow_sharing -> Memo.exec of_ctx_memo (ctx, allow_sharing)
   ;;
@@ -1473,7 +1527,13 @@ module DB = struct
     let* lock_dir = Lock_dir.get_exn ctx
     and* platform = Lock_dir.Sys_vars.solver_env in
     let+ t = of_ctx ctx ~allow_sharing:true in
-    t, pkg_digest_of_name lock_dir platform pkg_name ~system_provided:t.system_provided
+    ( t
+    , pkg_digest_of_name
+        lock_dir
+        platform
+        pkg_name
+        ~system_provided:t.system_provided
+        ~compiler:Pkg_table.From_lock_dir )
   ;;
 
   (* Returns the db for all dev tools combined with the default context, and
@@ -1482,28 +1542,48 @@ module DB = struct
     let system_provided = default_system_provided in
     let inactive_lockdir =
       Memo.lazy_ ~name:"inactive-lockdir-package-db" (fun () ->
-        let+ pkg_digest_table = Memo.Lazy.force Pkg_table.all_existing_dev_tools in
+        let* platform = Lock_dir.Sys_vars.solver_env in
+        let+ pkg_digest_table =
+          Pkg_table.all_existing_dev_tools
+            ~platform
+            ~system_provided
+            ~project_compiler:None
+        in
         create ~pkg_digest_table ~system_provided)
     in
-    let of_dev_tool_memo =
-      Memo.create "pkg-db-dev-tool" ~input:(module Dune_pkg.Dev_tool)
-      @@ fun dev_tool ->
-      let+ lock_dir = Lock_dir.of_dev_tool dev_tool
-      and+ platform = Lock_dir.Sys_vars.solver_env in
-      pkg_digest_of_name
-        lock_dir
-        platform
-        (Pkg_dev_tool.package_name dev_tool)
-        ~system_provided
-    in
     fun dev_tool ->
-      let+ db =
-        Lock_dir.lock_dir_active Context_name.default
-        >>= function
-        | false -> Memo.Lazy.force inactive_lockdir
-        | true -> of_ctx Context_name.default ~allow_sharing:true
-      and+ pkg_digest = Memo.exec of_dev_tool_memo dev_tool in
-      db, pkg_digest
+      let* lock_dir_active = Lock_dir.lock_dir_active Context_name.default
+      and* dev_tool_lock_dir = Lock_dir.of_dev_tool dev_tool
+      and* platform = Lock_dir.Sys_vars.solver_env in
+      match lock_dir_active with
+      | false ->
+        let+ db = Memo.Lazy.force inactive_lockdir in
+        let pkg_digest =
+          pkg_digest_of_name
+            dev_tool_lock_dir
+            platform
+            (Pkg_dev_tool.package_name dev_tool)
+            ~system_provided
+            ~compiler:Pkg_table.From_lock_dir
+        in
+        db, pkg_digest
+      | true ->
+        let* project_lock_dir = Lock_dir.get_exn Context_name.default
+        and* db = of_ctx Context_name.default ~allow_sharing:true in
+        let project_entries =
+          entries_by_name_of_lock_dir project_lock_dir platform ~system_provided
+        in
+        let project_compiler = project_compiler project_lock_dir project_entries in
+        let compiler = Pkg_table.compiler_for_dev_tool dev_tool project_compiler in
+        let pkg_digest =
+          pkg_digest_of_name
+            dev_tool_lock_dir
+            platform
+            (Pkg_dev_tool.package_name dev_tool)
+            ~system_provided
+            ~compiler
+        in
+        Memo.return (db, pkg_digest)
   ;;
 end
 

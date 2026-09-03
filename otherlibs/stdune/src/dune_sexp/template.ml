@@ -1,5 +1,3 @@
-open Stdune
-
 module Pform = struct
   module Payload = struct
     type t = string
@@ -195,7 +193,7 @@ end = struct
 end
 
 let to_string = Pp.to_string
-let pp t = Stdune.Pp.verbatim (Pp.to_string t)
+let pp t = Root.Pp.verbatim (Pp.to_string t)
 
 let repr =
   Repr.record

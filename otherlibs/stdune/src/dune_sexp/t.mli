@@ -1,9 +1,4 @@
-(** Parsing of s-expressions.
-
-    This library is internal to dune and guarantees no API stability.*)
-open Stdune
-
-(** The S-expression type *)
+(** Parsing of s-expressions. The S-expression type is [t]. *)
 type t =
   | Atom of Atom.t
   | Quoted_string of string

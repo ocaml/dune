@@ -1,4 +1,4 @@
-include Dune_sexp
+include Stdune.Dune_sexp
 module Lib_name = Lib_name
 module Alias = Alias
 module Format = Format

@@ -1,4 +1,3 @@
-open Stdune
 open T
 
 type nonrec 'a t = 'a -> t

@@ -3,8 +3,10 @@ Parsing of Dune Files
 
 Parsing ``dune`` files is done in two steps:
 
-- They are parsed as S-expressions using :file:`src/dune_sexp/parser.mli`;
-- Then they are decoded using :file:`src/dune_sexp/decoder.mli`. The result of
+- They are parsed as S-expressions using
+  :file:`otherlibs/stdune/src/dune_sexp/parser.mli`;
+- Then they are decoded using
+  :file:`otherlibs/stdune/src/dune_sexp/decoder.mli`. The result of
   this decoding step is added to an extensible variant using a mechanism in
   :file:`src/dune_lang/stanza.mli`.
 

@@ -126,3 +126,143 @@ let%expect_test "deleted extension version" =
     3.25. Please port this project to a newer version of the extension, such as
     0.2. |}]
 ;;
+
+let quoted value = Dune_sexp.to_string (Quoted_string value)
+
+let escaped value =
+  let quoted = quoted value in
+  String.sub quoted ~pos:1 ~len:(String.length quoted - 2)
+;;
+
+let print_escaped value = Printf.printf "%S -> %S\n" value (escaped value)
+
+let%expect_test "escaped - plain strings pass through unchanged" =
+  print_escaped "hello";
+  print_escaped "foo_bar";
+  print_escaped "123";
+  print_escaped "a/b/c";
+  [%expect
+    {|
+    "hello" -> "hello"
+    "foo_bar" -> "foo_bar"
+    "123" -> "123"
+    "a/b/c" -> "a/b/c"
+    |}]
+;;
+
+let%expect_test "escaped - special characters are escaped" =
+  print_escaped "has\"quote";
+  print_escaped "back\\slash";
+  print_escaped "new\nline";
+  print_escaped "tab\there";
+  print_escaped "car\rret";
+  print_escaped "back\bspace";
+  [%expect
+    {|
+    "has\"quote" -> "has\\\"quote"
+    "back\\slash" -> "back\\\\slash"
+    "new\nline" -> "new\\nline"
+    "tab\there" -> "tab\\there"
+    "car\rret" -> "car\\rret"
+    "back\bspace" -> "back\\bspace"
+    |}]
+;;
+
+let%expect_test "escaped - percent brace escaping" =
+  print_escaped "%{var}";
+  print_escaped "100%";
+  print_escaped "%%";
+  print_escaped "%alone";
+  [%expect
+    {|
+    "%{var}" -> "\\%{var}"
+    "100%" -> "100%"
+    "%%" -> "%%"
+    "%alone" -> "%alone"
+    |}]
+;;
+
+let%expect_test "escaped - empty string" =
+  let result = escaped "" in
+  Printf.printf "%S -> %S\n" "" result;
+  [%expect {| "" -> "" |}]
+;;
+
+let%expect_test "escaped - non-ascii bytes are octal-escaped" =
+  print_escaped "\x00";
+  print_escaped "\x01";
+  print_escaped "\x7f";
+  print_escaped "\xff";
+  [%expect
+    {|
+    "\000" -> "\000"
+    "\001" -> "\001"
+    "\127" -> "\127"
+    "\255" -> "\\255"
+    |}]
+;;
+
+let%expect_test "escaped - valid utf8 passes through" =
+  (* 2-byte: é *)
+  print_escaped "\xc3\xa9";
+  (* 3-byte: € *)
+  print_escaped "\xe2\x82\xac";
+  (* 4-byte: 𝄞 *)
+  print_escaped "\xf0\x9d\x84\x9e";
+  [%expect
+    {|
+    "\195\169" -> "\195\169"
+    "\226\130\172" -> "\226\130\172"
+    "\240\157\132\158" -> "\240\157\132\158"
+    |}]
+;;
+
+let%expect_test "quoted - wraps in double quotes" =
+  let test value = Printf.printf "%S -> %s\n" value (quoted value) in
+  test "";
+  test "hello";
+  test "has space";
+  test "has\"quote";
+  test "new\nline";
+  test "%{var}";
+  [%expect
+    {|
+    "" -> ""
+    "hello" -> "hello"
+    "has space" -> "has space"
+    "has\"quote" -> "has\"quote"
+    "new\nline" -> "new\nline"
+    "%{var}" -> "\%{var}"
+    |}]
+;;
+
+let%expect_test "escaped lengths match expected values" =
+  let test value expected =
+    let actual = String.length (escaped value) in
+    if expected <> actual
+    then Printf.printf "MISMATCH %S: expected=%d actual=%d\n" value expected actual
+  in
+  test "" 0;
+  test "hello" 5;
+  test "has\"quote" 10;
+  test "new\nline" 9;
+  test "%{var}" 7;
+  test "\x00\xff" 5;
+  test "\xc3\xa9" 2;
+  test "\xe2\x82\xac" 3;
+  test "\xf0\x9d\x84\x9e" 4;
+  print_endline "all match";
+  [%expect {| all match |}]
+;;
+
+let%expect_test "escaped - mixed content" =
+  print_escaped "hello\nworld\t!";
+  print_escaped "say \"hi\" and \\go";
+  print_escaped "%{x} is 100%";
+  [%expect
+    {|
+    "hello\nworld\t!" -> "hello\\nworld\\t!"
+    "say \"hi\" and \\go" -> "say \\\"hi\\\" and \\\\go"
+    "%{x} is 100%" -> "\\%{x} is 100%"
+    |}]
+;;

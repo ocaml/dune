@@ -8,6 +8,5 @@
   ordering
   pp
   build_path_prefix_map
-  dune_sexp
   memo
   unix))

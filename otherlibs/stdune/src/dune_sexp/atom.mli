@@ -1,5 +1,3 @@
-open Stdune
-
 type t = private A of string [@@unboxed]
 
 val equal : t -> t -> bool

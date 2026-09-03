@@ -1,7 +1,5 @@
 (** Concrete syntax tree *)
 
-open Stdune
-
 type t =
   | Atom of Loc.t * Atom.t
   | Quoted_string of Loc.t * string

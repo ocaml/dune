@@ -1,7 +1,9 @@
 open Stdune.Action_types
 module Toggle = Stdune.Toggle
 
-let decode_action_stdout_on_success = Dune_sexp.Decoder.enum Action_output_on_success.all
+let decode_action_stdout_on_success =
+  Stdune.Dune_sexp.Decoder.enum Action_output_on_success.all
+;;
 
 module Dune_config = struct
   open Dune_lang.Decoder
@@ -203,8 +205,8 @@ module Dune_config = struct
 
     let equal = List.equal Sandbox_mode.equal
 
-    let decode : Sandbox_mode.t Dune_sexp.Decoder.t =
-      let open Dune_sexp.Decoder in
+    let decode : Sandbox_mode.t Stdune.Dune_sexp.Decoder.t =
+      let open Stdune.Dune_sexp.Decoder in
       enum
         [ "none", None
         ; "symlink", Some Sandbox_mode.Symlink

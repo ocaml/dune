@@ -27,7 +27,7 @@ let local_libraries =
     }
   ; { path = "otherlibs/stdune/src"
     ; main_module_name = Some "Stdune"
-    ; include_subdirs = No
+    ; include_subdirs = Qualified
     ; special_builtin_support = None
     ; root_module =
         Some
@@ -66,12 +66,6 @@ let local_libraries =
     }
   ; { path = "src/memo"
     ; main_module_name = Some "Memo"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
-  ; { path = "src/dune_sexp"
-    ; main_module_name = Some "Dune_sexp"
     ; include_subdirs = No
     ; special_builtin_support = None
     ; root_module = None

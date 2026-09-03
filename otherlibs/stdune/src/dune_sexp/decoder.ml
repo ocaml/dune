@@ -1,4 +1,4 @@
-open Stdune
+open Import
 open Ast
 
 let[@inline] loc_compare_start_pos_cnum a b =

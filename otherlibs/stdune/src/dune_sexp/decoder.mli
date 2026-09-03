@@ -1,7 +1,5 @@
 (** Reading OCaml values from dune lang ones *)
 
-open Stdune
-
 (** Monad producing a value of type ['a] by parsing an input composed of a
     sequence of S-expressions.
 

@@ -1,7 +1,5 @@
 (** Management of syntaxes *)
 
-open Stdune
-
 module Name : sig
   type t
 

@@ -1,3 +1,5 @@
+(include_subdirs qualified)
+
 (library
  (name stdune)
  (public_name stdune)

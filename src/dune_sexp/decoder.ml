@@ -58,35 +58,55 @@ end = struct
     ; known : string list
     }
 
-  let leftover_fields t fields = { unparsed = Name.Map.empty; known = t.known @ fields }
-  let junk_unparsed t = { t with unparsed = Name.Map.empty }
+  let empty = { unparsed = Name.Map.empty; known = [] }
+  let leftover_fields _ _ = empty
+  let junk_unparsed _ = empty
 
-  let of_values sexps =
-    let unparsed =
-      List.fold_left sexps ~init:Name.Map.empty ~f:(fun acc sexp ->
-        match sexp with
-        | List (_, name_sexp :: values) ->
-          (match name_sexp with
-           | Atom (_, A name) ->
-             Name.Map.set
-               acc
-               name
-               { Unparsed.values; entry = sexp; prev = Name.Map.find acc name }
-           | List (loc, _) | Quoted_string (loc, _) | Template { loc; _ } ->
-             User_error.raise ~loc [ Pp.text "Atom expected" ])
-        | _ ->
-          User_error.raise
-            ~loc:(Ast.loc sexp)
-            [ Pp.text "S-expression of the form (<name> <values>...) expected" ])
-    in
-    { unparsed; known = [] }
+  let name_and_values sexp =
+    match sexp with
+    | List (_, name_sexp :: values) ->
+      (match name_sexp with
+       | Atom (_, A name) -> name, values
+       | List (loc, _) | Quoted_string (loc, _) | Template { loc; _ } ->
+         User_error.raise ~loc [ Pp.text "Atom expected" ])
+    | _ ->
+      User_error.raise
+        ~loc:(Ast.loc sexp)
+        [ Pp.text "S-expression of the form (<name> <values>...) expected" ]
+  ;;
+
+  let of_values = function
+    | [] -> empty
+    | [ sexp ] ->
+      let name, values = name_and_values sexp in
+      let entry = { Unparsed.values; entry = sexp; prev = None } in
+      { unparsed = Name.Map.singleton name entry; known = [] }
+    | first :: rest ->
+      let name, values = name_and_values first in
+      let entry = { Unparsed.values; entry = first; prev = None } in
+      let unparsed =
+        List.fold_left rest ~init:(Name.Map.singleton name entry) ~f:(fun unparsed sexp ->
+          let name, values = name_and_values sexp in
+          let entry =
+            { Unparsed.values; entry = sexp; prev = Name.Map.find unparsed name }
+          in
+          Name.Map.set unparsed name entry)
+      in
+      { unparsed; known = [] }
   ;;
 
   let consume state name =
-    { unparsed = Name.Map.remove state.unparsed name; known = name :: state.known }
+    let unparsed = Name.Map.remove state.unparsed name in
+    if Name.Map.is_empty unparsed
+    then empty
+    else { unparsed; known = name :: state.known }
   ;;
 
-  let add_known state name = { state with known = name :: state.known }
+  let add_known state name =
+    if Name.Map.is_empty state.unparsed
+    then state
+    else { state with known = name :: state.known }
+  ;;
 
   let unparsed_ast =
     let rec loop acc = function

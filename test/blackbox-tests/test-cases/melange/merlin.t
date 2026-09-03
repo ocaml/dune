@@ -675,3 +675,29 @@ The mixed library should also expose its Melange configuration.
   $ dune ocaml merlin dump-config --root mixed --format=json "$PWD/mixed" | jq_dune -e '
   > [merlinEntry("Foo") | .config[] | select(.[0] == "B") | .[1]]
   > | any(contains(".mixed.objs/melange"))' >/dev/null
+
+The typed lookup reports each mode with its source kind and counterpart.
+Exact matches exclude fallback configurations from other modes.
+
+  $ (cd mixed && merlin_configurations _build/default/.merlin-conf/lib-mixed \
+  >   foo.ml platform.ml platform.melange.ml platform.pp.ml \
+  >   iface.ml iface.mli iface.melange.mli iface.pp.mli iface)
+  foo.ml: ocaml true impl -
+  foo.ml: melange false impl -
+  platform.ml: ocaml true impl -
+  platform.melange.ml: melange false impl -
+  platform.pp.ml: ocaml true impl -
+  platform.pp.ml: melange false impl -
+  iface.ml: ocaml true impl iface.mli
+  iface.ml: melange false impl iface.melange.mli
+  iface.mli: ocaml true intf iface.ml
+  iface.melange.mli: melange false intf iface.ml
+  iface.pp.mli: ocaml true intf iface.ml
+  iface.pp.mli: melange false intf iface.ml
+  iface: none
+
+Melange-only libraries have a default Melange configuration.
+
+  $ (cd mixed && merlin_configurations \
+  >   _build/default/.merlin-conf/lib-melange_only_lib melange_only.ml)
+  melange_only.ml: melange true impl -

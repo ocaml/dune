@@ -103,8 +103,8 @@ any attempt to build the stale dependency is observable.
   $ dune build >/dev/null 2>&1
 
 Delete and relock only Merlin. Ocamllsp's lock directory still contains the old
-compiler, but this must not prevent Merlin from running. Merlin currently
-rebuilds the project compiler despite it already being built.
+compiler, but this does not prevent Merlin from running or cause the project
+compiler to be rebuilt.
 
   $ rm -rf "$dev_tool_lock_dir"
   $ dune tools exec ocamlmerlin >merlin-output 2>&1
@@ -113,11 +113,11 @@ rebuilds the project compiler despite it already being built.
   $ grep -q old-compiler-dependency \
   >   "$ocamllsp_lock_dir"/relocatable-compiler*.pkg
   $ grep "build compiler" merlin-output
-  build compiler d00ed00ed00ed00ed00ed00ed00ed00e relocatable-compiler enabled
+  [1]
 
-The stale dev-tool closure is currently included in @pkg-install, so its old
-compiler dependency is built again.
+Only the compiler closure reachable after substitution is included in
+@pkg-install, so the stale dependency is not rebuilt.
 
   $ dune build @pkg-install >output 2>&1
   $ grep "building old compiler dependency" output
-  building old compiler dependency
+  [1]

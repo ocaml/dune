@@ -20,7 +20,8 @@ a lockdir containing an "ocaml" lockfile.
   building fake compiler
 
 The dev tool's non-portable lock directory describes the same compiler as the
-project's portable lock directory, but the dev tool currently rebuilds it.
+project's portable lock directory. The dev tool reuses the compiler already
+built for the project.
 
   $ DUNE_CACHE=disabled dune tools exec ocamlmerlin 2>&1 | tee output
   Solution for _build/.dev-tools.locks/merlin:
@@ -28,8 +29,7 @@ project's portable lock directory, but the dev tool currently rebuilds it.
   - ocaml.5.2.0
   - ocaml-base-compiler.5.2.0
   - ocaml-compiler.5.2.0
-  building fake compiler
        Running 'ocamlmerlin'
   hello from fake ocamlmerlin
   $ grep "building fake compiler" output
-  building fake compiler
+  [1]

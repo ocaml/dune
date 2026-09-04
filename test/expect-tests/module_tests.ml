@@ -100,6 +100,32 @@ let%expect_test "qualified group alias source path" =
   [%expect {| [ [ "Group"; "Group" ] ] |}]
 ;;
 
+let%expect_test "repeated qualified group paths" =
+  let modules =
+    make_lib
+      ~lib_name:"foo"
+      [ generated ~obj_name:"Foo__Foo__Foo__Foo__A" [ "Foo"; "Foo"; "Foo"; "Foo"; "A" ]
+      ; generated ~obj_name:"Foo__Foo__Foo__Foo__B" [ "Foo"; "Foo"; "Foo"; "Foo"; "B" ]
+      ]
+  in
+  Modules.fold modules ~init:[] ~f:(fun module_ paths ->
+    match Module.kind module_ with
+    | Alias _ -> Module.path module_ :: paths
+    | Intf_only | Virtual | Impl | Impl_vmodule | Wrapped_compat | Root | Parameter ->
+      paths)
+  |> List.rev
+  |> Dyn.list Module_name.Path.to_dyn
+  |> Dune_tests_common.print_dyn;
+  [%expect
+    {|
+    [ [ "Foo"; "Foo" ]
+    ; [ "Foo"; "Foo"; "Foo" ]
+    ; [ "Foo"; "Foo"; "Foo"; "Foo" ]
+    ; [ "Foo"; "Foo"; "Foo"; "Foo"; "Foo" ]
+    ]
+    |}]
+;;
+
 let kind_name = function
   | Kind.Intf_only -> "intf-only"
   | Virtual -> "virtual"

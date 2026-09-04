@@ -96,10 +96,7 @@ module V1 : sig
       filtering, so dune won't re-run the action when the directory changes in
       an unimportant way.
 
-      An absent directory is returned as an empty listing.
-
-      BUG: the returned listing includes directories even though that dependency
-      is not tracked. *)
+      An absent directory is returned as an empty listing. *)
   val read_directory_with_glob : path:Path.t -> glob:Dune_glob.V1.t -> string list t
 
   (** {1:running Running the computation} *)

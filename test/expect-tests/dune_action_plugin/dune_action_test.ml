@@ -29,7 +29,7 @@ let%expect_test _ =
   Private.do_run action;
   [%expect
     {|
-    some_file,subdir
+    some_file
   |}]
 ;;
 

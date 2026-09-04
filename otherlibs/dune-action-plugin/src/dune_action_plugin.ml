@@ -30,10 +30,14 @@ module V1 = struct
     ;;
 
     let read_directory =
-      let rec loop dh acc =
+      let rec loop path dh acc =
         match Unix.readdir dh with
-        | "." | ".." -> loop dh acc
-        | s -> loop dh (s :: acc)
+        | "." | ".." -> loop path dh acc
+        | entry ->
+          let entry_path = Filename.concat path entry in
+          (match (Unix.lstat entry_path).st_kind with
+           | S_DIR -> loop path dh acc
+           | _ -> loop path dh (entry :: acc))
         | exception End_of_file -> acc
       in
       fun path ->
@@ -42,7 +46,7 @@ module V1 = struct
           | exception Unix.Unix_error ((ENOENT | ENOTDIR), _, _) -> []
           | dh ->
             Exn.protect
-              ~f:(fun () -> loop dh [] |> List.sort ~compare:String.compare)
+              ~f:(fun () -> loop path dh [] |> List.sort ~compare:String.compare)
               ~finally:(fun () -> Unix.closedir dh))
     ;;
 

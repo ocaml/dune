@@ -221,6 +221,198 @@ let package loc pkg_name (context : Build_context.t) ~dune_version =
       }
 ;;
 
+(* Package metadata may advertise libraries whose dependencies are unavailable
+   in the current context. Such libraries are not usable roots. *)
+let available_library_closure lib =
+  let open Memo.O in
+  let compile_closure = Lib.closure [ lib ] ~linking:false ~for_:Compilation_mode.Ocaml in
+  let* available = Resolve.Memo.is_ok compile_closure in
+  if not available
+  then Memo.return []
+  else
+    let* compile_closure = Resolve.Memo.read_memo compile_closure
+    and* link_closure =
+      Lib.partial_link_closure [ lib ] ~for_:Compilation_mode.Ocaml
+      |> Resolve.Memo.read_memo
+    in
+    Memo.return (List.rev_append compile_closure link_closure)
+;;
+
+type library_support =
+  { workspace_libraries : Install_layout.Library.Set.t
+  ; external_files : Path.Set.t
+  }
+
+let empty_library_support =
+  { workspace_libraries = Install_layout.Library.Set.empty
+  ; external_files = Path.Set.empty
+  }
+;;
+
+let external_library_files lib =
+  let open Memo.O in
+  let info = Lib.info lib in
+  let modules =
+    match Lib_info.modules info ~for_:Compilation_mode.Ocaml with
+    | Local | External None -> None
+    | External (Some modules) -> Some modules
+  in
+  let* module_files =
+    match modules with
+    | Some modules ->
+      let obj_dir = Lib_info.obj_dir info in
+      let { Lib_mode.Map.ocaml = { Mode.Dict.byte; native }; melange = _ } =
+        Lib_info.modes info
+      in
+      Modules.With_vlib.obj_map modules
+      |> Module_name.Unique.Map.values
+      |> List.rev_concat_map ~f:(fun module_ ->
+        let module_ = Modules.Sourced_module.to_module module_ in
+        let cm_file kind = Obj_dir.Module.cm_file obj_dir module_ ~kind in
+        let cm_file_if enabled kind = if enabled then cm_file kind else None in
+        let virtual_files =
+          match Lib_info.kind info with
+          | Virtual ->
+            [ cm_file_if byte (Lib_mode.Cm_kind.Ocaml Cmo)
+            ; cm_file_if native (Lib_mode.Cm_kind.Ocaml Cmx)
+            ]
+          | Dune_file _ | Parameter -> []
+        in
+        List.filter_opt (cm_file (Lib_mode.Cm_kind.Ocaml Cmi) :: virtual_files))
+      |> Memo.return
+    | None ->
+      (* META files do not list their modules. Scan only the library's immediate
+         directory so that nested findlib subpackages remain excluded. *)
+      let dir = Lib_info.src_dir info in
+      Fs.dir_contents dir
+      >>| (function
+       | Error error -> Unix_error.Detailed.raise error
+       | Ok files ->
+         List.filter_map files ~f:(fun (file, kind) ->
+           match Filename.extension file |> Filename.Extension.Or_empty.extension with
+           | Some extension
+             when (File_kind.equal kind S_REG || File_kind.equal kind S_LNK)
+                  && List.mem
+                       [ Filename.Extension.cmi
+                       ; Filename.Extension.cmo
+                       ; Filename.Extension.cmx
+                       ]
+                       extension
+                       ~equal:Filename.Extension.equal ->
+             Path.relative_fname dir file |> Option.some
+           | None | Some _ -> None))
+  in
+  let foreign_objects =
+    (* [dune-package] records foreign objects for every library, but only
+       virtual-library foreign objects are installed. *)
+    match Lib_info.kind info with
+    | Virtual ->
+      (match Lib_info.foreign_objects info with
+       | Local -> []
+       | External files -> files)
+    | Parameter | Dune_file _ -> []
+  in
+  let public_headers =
+    match Lib_info.public_headers info with
+    | Local _ -> []
+    | External files -> files
+  in
+  let metadata_file =
+    let loc = Lib_info.loc info in
+    if Loc.is_none loc then [] else [ Path.of_string (Loc.start loc).pos_fname ]
+  in
+  let { Mode.Dict.byte; native } = Lib_info.archives info in
+  List.rev_concat
+    [ metadata_file
+    ; module_files
+    ; byte
+    ; native
+    ; Lib_info.eval_native_archives_exn info ~modules
+    ; Mode.Map.Multi.to_flat_list (Lib_info.foreign_archives info)
+    ; foreign_objects
+    ; public_headers
+    ; (Lib_info.plugins info).byte
+    ; (Lib_info.plugins info).native
+    ; Lib_info.foreign_dll_files info
+    ; Lib_info.jsoo_runtime info
+    ; Lib_info.wasmoo_runtime info
+    ]
+  |> Path.Set.of_list
+  |> Memo.return
+;;
+
+let installed_library_root_names (package : Dune_package.t) =
+  Lib_name.Map.values package.entries
+  |> List.filter_map ~f:(function
+    | Dune_package.Entry.Library lib -> Some (Lib_info.name (Dune_package.Lib.info lib))
+    | Deprecated_library_name { new_public_name; _ } -> Some new_public_name
+    | Hidden_library _ -> None)
+;;
+
+let library_support_closure
+      context
+      ~packages
+      ~workspace_packages
+      ~installed_library_names
+      ~build_packages
+  =
+  let open Memo.O in
+  let* public_libs = Scope.DB.public_libs context in
+  let* local_roots =
+    Package.Name.Set.to_list workspace_packages
+    |> Memo.parallel_map ~f:(fun package ->
+      let+ { Scope.DB.Lib_entry.Set.libraries; deprecated_library_names = _ } =
+        Scope.DB.lib_entries_of_package context package
+      in
+      List.rev_map libraries ~f:Lib.Local.to_lib)
+    >>| List.concat
+  and* installed_roots =
+    Lib_name.Set.to_list installed_library_names
+    |> Memo.parallel_map ~f:(Lib.DB.find public_libs)
+    >>| List.filter_opt
+  and* build_libraries =
+    if Package.Name.Set.is_empty build_packages
+    then Memo.return Lib.Set.empty
+    else Lib.DB.all ~recursive:true public_libs
+  in
+  let roots =
+    Lib.Set.fold
+      build_libraries
+      ~init:(List.rev_append local_roots installed_roots)
+      ~f:(fun lib roots ->
+        match Lib_info.package (Lib.info lib) with
+        | Some package when Package.Name.Set.mem build_packages package -> lib :: roots
+        | None | Some _ -> roots)
+  in
+  let* closure =
+    Memo.parallel_map roots ~f:available_library_closure
+    >>| List.concat
+    >>| Lib.Set.of_list
+  in
+  Memo.List.fold_left
+    (Lib.Set.to_list closure)
+    ~init:empty_library_support
+    ~f:(fun support lib ->
+      match Lib_info.package (Lib.info lib) with
+      | Some package when Package.Name.Set.mem packages package -> Memo.return support
+      | package ->
+        if Lib.is_local lib
+        then
+          Memo.return
+            (match package with
+             | Some package ->
+               { support with
+                 workspace_libraries =
+                   Install_layout.Library.Set.add
+                     support.workspace_libraries
+                     (Install_layout.Library.make ~package ~name:(Lib.name lib))
+               }
+             | None -> support)
+        else
+          let+ files = external_library_files lib in
+          { support with external_files = Path.Set.union support.external_files files })
+;;
+
 let rec dep expander : Dep_conf.t -> _ = function
   | Include s ->
     (* TODO this is wrong. we shouldn't allow bindings here if we are in an
@@ -329,6 +521,11 @@ and combined_package_deps_builder expander pkgs =
       let+ found = Action_builder.of_memo (Package_db.find_package package_db pkg) in
       loc, pkg, found)
   in
+  let package_names =
+    List.filter_map classified ~f:(fun (_, package, found) ->
+      Option.map found ~f:(fun _ -> package))
+    |> Package.Name.Set.of_list
+  in
   let local_package_names =
     List.filter_map classified ~f:(fun (_, _, found) ->
       match found with
@@ -336,11 +533,40 @@ and combined_package_deps_builder expander pkgs =
       | _ -> None)
     |> Package.Name.Set.of_list
   in
-  let* env =
-    if Package.Name.Set.is_empty local_package_names
-    then Action_builder.return Env.empty
-    else Install_layout.env context.name local_package_names
+  let installed_library_names =
+    List.concat_map classified ~f:(fun (_, _, found) ->
+      match found with
+      | Some (Package_db.Installed package) -> installed_library_root_names package
+      | Some (Build _ | Local _) | None -> [])
+    |> Lib_name.Set.of_list
   in
+  let build_package_names =
+    List.filter_map classified ~f:(fun (_, package, found) ->
+      match found with
+      | Some (Package_db.Build _) -> Some package
+      | Some (Installed _ | Local _) | None -> None)
+    |> Package.Name.Set.of_list
+  in
+  let* { workspace_libraries; external_files } =
+    if Package.Name.Set.is_empty package_names
+    then Action_builder.return empty_library_support
+    else
+      Action_builder.of_memo
+        (library_support_closure
+           context.name
+           ~packages:package_names
+           ~workspace_packages:local_package_names
+           ~installed_library_names
+           ~build_packages:build_package_names)
+  in
+  let* env =
+    if
+      Package.Name.Set.is_empty local_package_names
+      && Install_layout.Library.Set.is_empty workspace_libraries
+    then Action_builder.return Env.empty
+    else Install_layout.env context.name local_package_names workspace_libraries
+  in
+  let* () = Action_builder.paths (Path.Set.to_list external_files) in
   let dune_version = Expander.project expander |> Dune_project.dune_version in
   let+ () =
     Action_builder.List.iter classified ~f:(fun (loc, pkg_name, found) ->

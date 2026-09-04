@@ -55,7 +55,7 @@
  (applies_to make.t))
 
 (cram
- (deps %{bin:which})
+ (deps %{bin:ocamlfind} %{bin:which})
  (applies_to pkg-deps.t))
 
 (cram

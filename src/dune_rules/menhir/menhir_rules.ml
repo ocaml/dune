@@ -195,7 +195,7 @@ module Run (P : PARAMS) = struct
   let stanzas : (stanza * Path.Set.t) list Memo.Lazy.t =
     Memo.lazy_ ~name:"menhir-stanzas" (fun () ->
       let open Memo.O in
-      let+ { Ml_sources.Parser_generators.deps; targets = _ } =
+      let+ { Ml_sources.Parser_generators.deps; targets = _; trie_prefix = _ } =
         Dir_contents.get sctx ~dir
         >>= Dir_contents.ml ~for_
         >>| Ml_sources.Parser_generators.modules ~for_:(Menhir stanza.loc)

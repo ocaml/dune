@@ -33,6 +33,7 @@ end
 type parser_gen_dep_info =
   { deps : Path.Set.t
   ; targets : (Loc.t * Module.Source.t) Module_trie.t
+  ; trie_prefix : Module_name.Unchecked.t list
   }
 
 module Per_stanza = struct
@@ -327,11 +328,11 @@ let module_files ~root_dir ~dialects ~dir ~files ~for_ =
 let modules_of_files ~root_dir ~path ~dialects ~dir ~files ~for_ =
   let impls, intfs = module_files ~root_dir ~dialects ~dir ~files ~for_ in
   Module_name.Unchecked.Map.merge impls intfs ~f:(fun name impl intf ->
-    Some
-      (Module.Source.make
-         Nonempty_list.(map (path @ [ name ]) ~f:Module_name.Unchecked.allow_invalid)
-         ~impl
-         ~intf))
+    let path =
+      Nonempty_list.(map (path @ [ name ]) ~f:Module_name.Unchecked.allow_invalid)
+      |> Module.Source.logical_path_of_trie_path
+    in
+    Some (Module.Source.make path ~impl ~intf))
 ;;
 
 type for_ =
@@ -500,6 +501,7 @@ module Parser_generators = struct
   type dep_info = parser_gen_dep_info =
     { deps : Path.Set.t
     ; targets : (Loc.t * Module.Source.t) Module_trie.t
+    ; trie_prefix : Module_name.Unchecked.t list
     }
 
   type for_ =
@@ -587,7 +589,8 @@ module Parser_generators = struct
           let intf = make_file ~original_path ~root_dir ~ml_kind:Ml_kind.Intf ~for_ in
           Some intf
       in
-      Module.Source.make ~impl ~intf module_path
+      let path = Module.Source.logical_path_of_trie_path module_path in
+      Module.Source.make ~impl ~intf path
     in
     fun ~expander ~root_dir ~src_dir ~module_path ~for_ ~mode ->
       let+ expanded =
@@ -648,17 +651,18 @@ module Parser_generators = struct
             Some (make_file ~original_path ~root_dir ~ml_kind:Ml_kind.Intf ~for_:mode)
           in
           let module_name = Module_name.of_string_allow_invalid (loc, basename) in
-          let module_path = Nonempty_list.(module_path @ [ module_name ]) in
+          let trie_path = Nonempty_list.(module_path @ [ module_name ]) in
           let m =
             let module_path =
-              Nonempty_list.map module_path ~f:Module_name.Unchecked.allow_invalid
+              Nonempty_list.map trie_path ~f:Module_name.Unchecked.allow_invalid
+              |> Module.Source.logical_path_of_trie_path
             in
             Module.Source.make ~impl ~intf module_path
           in
-          Module_trie.Unchecked.singleton module_path (loc, m)
+          Module_trie.Unchecked.singleton Nonempty_list.[ module_name ] (loc, m)
       in
       let targets = Module_trie.Unchecked.check_exn targets in
-      { deps; targets }
+      { deps; targets; trie_prefix = module_path }
   ;;
 end
 
@@ -911,7 +915,10 @@ module Generated_modules = struct
       let impls = parse_one_set ~dir impl_files in
       let intfs = parse_one_set ~dir intf_files in
       Module_name.Unchecked.Path.Map.merge impls intfs ~f:(fun path impl intf ->
-        let path = Nonempty_list.map path ~f:Module_name.Unchecked.allow_invalid in
+        let path =
+          Nonempty_list.map path ~f:Module_name.Unchecked.allow_invalid
+          |> Module.Source.logical_path_of_trie_path
+        in
         let impl = Option.map ~f:snd impl in
         let intf = Option.map ~f:snd intf in
         Some (Module.Source.make path ~impl ~intf))
@@ -958,19 +965,18 @@ module Generated_modules = struct
     let merge_parser_targets ~ocamllexes ~ocamlyaccs ~menhirs modules =
       let parser_gen_modules =
         List.concat
-          [ List.map ocamllexes ~f:(fun (x : _ Per_stanza.parser_gen_group) ->
-              x.dep_info.targets)
-          ; List.map ocamlyaccs ~f:(fun (x : _ Per_stanza.parser_gen_group) ->
-              x.dep_info.targets)
-          ; List.map menhirs ~f:(fun (x : _ Per_stanza.parser_gen_group) ->
-              x.dep_info.targets)
+          [ List.map ocamllexes ~f:(fun (x : _ Per_stanza.parser_gen_group) -> x.dep_info)
+          ; List.map ocamlyaccs ~f:(fun (x : _ Per_stanza.parser_gen_group) -> x.dep_info)
+          ; List.map menhirs ~f:(fun (x : _ Per_stanza.parser_gen_group) -> x.dep_info)
           ]
-        |> List.fold_left ~init:Module_trie.Unchecked.empty ~f:(fun acc targets ->
-          Module_trie.fold targets ~init:acc ~f:(fun (_, m) acc ->
-            let module_path =
-              Nonempty_list.map (Module.Source.path m) ~f:Module_name.unchecked
-            in
-            Module_trie.Unchecked.set acc module_path m))
+        |> List.fold_left
+             ~init:Module_trie.Unchecked.empty
+             ~f:(fun acc { targets; trie_prefix; deps = _ } ->
+               Module_trie.foldi targets ~init:acc ~f:(fun module_path (_, m) acc ->
+                 let module_path =
+                   Nonempty_list.(trie_prefix @ map module_path ~f:Module_name.unchecked)
+                 in
+                 Module_trie.Unchecked.set acc module_path m))
       in
       merge_two modules parser_gen_modules
     in

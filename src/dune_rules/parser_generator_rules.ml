@@ -49,7 +49,7 @@ let gen_rules sctx ~dir_contents ~dir ~for_ =
   in
   (* NOTE(anmonteiro): Parser generator rules run in the "OCaml module space":
     `Ml_sources` generates `foo.mll` -> `foo.ml`. Melange  *)
-  let* { deps = _; targets } =
+  let* { deps = _; targets; trie_prefix = _ } =
     Dir_contents.ml dir_contents ~for_:Ocaml
     >>| Ml_sources.Parser_generators.modules ~for_:modules_for
   in

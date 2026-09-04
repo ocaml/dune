@@ -48,8 +48,8 @@ Module `Foo_Group__` appears twice (the alias module and the shadowed module):
   module Foo__Group__ = struct end
   [@@deprecated "this module is shadowed"]
 
-Nested group interfaces in unwrapped libraries currently use the source-trie
-path with a repeated final component as their canonical path:
+Nested group interfaces in unwrapped libraries use their logical canonical
+path rather than the source-trie path with a repeated final component:
 
   $ mkdir -p unwrapped-canonical/foo/bar
   $ cat >unwrapped-canonical/dune-project <<'EOF'
@@ -65,5 +65,5 @@ path with a repeated final component as their canonical path:
   > EOF
   $ dune build --root=unwrapped-canonical
   $ grep -A1 '@canonical Foo.Bar' unwrapped-canonical/_build/default/foo.ml-gen
-  (** @canonical Foo.Bar.Bar *)
+  (** @canonical Foo.Bar *)
   module Bar = Foo__Bar

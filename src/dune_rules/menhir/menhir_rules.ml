@@ -291,11 +291,7 @@ module Run (P : PARAMS) = struct
       Module.of_source ~visibility:Public ~kind:Impl source
     in
     let* mock_module =
-      Pp_spec.pp_module_as
-        (Compilation_context.preprocessing cctx)
-        name
-        mock_module
-        ~lint:false
+      Pp_spec.pp_module (Compilation_context.preprocessing cctx) mock_module ~lint:false
     in
     let inference_cctx =
       Compilation_context.set_sandbox cctx Sandbox_config.needs_sandboxing

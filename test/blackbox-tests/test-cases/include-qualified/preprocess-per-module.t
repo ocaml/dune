@@ -18,6 +18,21 @@ Regression test for GH-15578: qualified modules can be selected in
 
   $ dune build
 
+Explicit references should name modules selected by the stanza, but a missing
+module is currently accepted silently:
+
+  $ cat >dune <<'EOF'
+  > (include_subdirs qualified)
+  > (library
+  >  (name x)
+  >  (preprocess
+  >   (per_module
+  >    ((action
+  >      (run cat %{input-file})) Missing))))
+  > EOF
+
+  $ dune build
+
 A slash-separated source path is rejected with a hint for the corresponding
 logical module reference:
 

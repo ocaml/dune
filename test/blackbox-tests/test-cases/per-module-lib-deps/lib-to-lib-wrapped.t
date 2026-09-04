@@ -5,7 +5,9 @@ in A are recompiled due to coarse dependency analysis.
 
 See: https://github.com/ocaml/dune/issues/4572
 
-  $ make_dune_project 3.0
+  $ cat > dune-project <<EOF
+  > (lang dune 3.0)
+  > EOF
 
   $ mkdir base_lib
   $ cat > base_lib/dune <<EOF
@@ -60,8 +62,8 @@ See: https://github.com/ocaml/dune/issues/4572
   > let new_base_fn () = "hello"
   > EOF
 
-Standalone in middle_lib is recompiled even though it doesn't use base_lib:
+Standalone in middle_lib is not recompiled because it doesn't use base_lib:
 
   $ dune build ./main.exe
-  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("Standalone"))] | length'
-  2
+  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("Standalone"))] | length'
+  0

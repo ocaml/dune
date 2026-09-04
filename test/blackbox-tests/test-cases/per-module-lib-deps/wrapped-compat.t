@@ -5,7 +5,9 @@ Currently, all inner modules are recompiled when any library dependency changes.
 
 See: https://github.com/ocaml/dune/issues/4572
 
-  $ make_dune_project 2.0
+  $ cat > dune-project <<EOF
+  > (lang dune 2.0)
+  > EOF
 
   $ mkdir baselib
   $ cat > baselib/dune <<EOF
@@ -65,8 +67,8 @@ See: https://github.com/ocaml/dune/issues/4572
   > let new_fn () = "hello"
   > EOF
 
-Standalone is recompiled even though it doesn't reference Baselib:
+Standalone is not recompiled because it doesn't reference Baselib:
 
   $ dune build ./main.exe
-  $ dune trace cat | jq_dune -s '[.[] | targetsMatchingFilter(test("Standalone"))] | length'
-  2
+  $ dune trace cat | jq -s 'include "dune"; [.[] | targetsMatchingFilter(test("Standalone"))] | length'
+  0

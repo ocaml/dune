@@ -197,3 +197,26 @@ let allow_only_melange t =
 let open_flags modules =
   List.concat_map modules ~f:(fun name -> [ "-open"; Module_name.to_string name ])
 ;;
+
+let extract_open_module_names flags =
+  let rec loop acc = function
+    | "-open" :: name :: rest ->
+      (* [-open] accepts a module path such as [Foo.Bar]; only top-level
+         module names map to libraries in the cross-library frontier, so
+         key on the head component ([Foo]). *)
+      let head =
+        match String.lsplit2 name ~on:'.' with
+        | Some (head, _) -> head
+        | None -> name
+      in
+      let acc =
+        match Module_name.of_string_opt head with
+        | Some m -> Module_name.Set.add acc m
+        | None -> acc
+      in
+      loop acc rest
+    | _ :: rest -> loop acc rest
+    | [] -> acc
+  in
+  loop Module_name.Set.empty flags
+;;

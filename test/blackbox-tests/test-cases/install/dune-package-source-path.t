@@ -97,3 +97,23 @@ Test paths on public libraries with `.` are correct
           (source (path Child Bar) (impl (path sub/child/bar.ml))))))
         (source (path Foo) (impl (path sub/foo.ml))))))
 
+A singleton with a repeated logical path retains an unambiguous installed path:
+
+  $ mkdir -p c/foo/foo
+  $ cat > c/dune-project <<EOF
+  > (lang dune 3.24)
+  > (package (name c))
+  > EOF
+  $ cat > c/dune <<EOF
+  > (include_subdirs qualified)
+  > (library
+  >  (name singleton)
+  >  (public_name c.singleton)
+  >  (wrapped false))
+  > EOF
+  $ cat > c/foo/foo/foo.ml <<EOF
+  > let x = "foo"
+  > EOF
+  $ dune build c.install --root c
+  $ grep -o '(path Foo Foo Foo)' c/_build/install/default/lib/c/dune-package
+  (path Foo Foo Foo)

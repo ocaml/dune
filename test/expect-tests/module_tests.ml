@@ -81,6 +81,25 @@ let make_lib
     ~for_:Ocaml
 ;;
 
+let%expect_test "qualified group alias source path" =
+  let modules =
+    make_lib
+      ~lib_name:"group"
+      [ generated ~obj_name:"Group__A" [ "Group"; "A" ]
+      ; generated ~obj_name:"Group__B" [ "Group"; "B" ]
+      ]
+  in
+  Modules.fold modules ~init:[] ~f:(fun module_ paths ->
+    match Module.kind module_ with
+    | Alias _ -> Module.path module_ :: paths
+    | Intf_only | Virtual | Impl | Impl_vmodule | Wrapped_compat | Root | Parameter ->
+      paths)
+  |> List.rev
+  |> Dyn.list Module_name.Path.to_dyn
+  |> Dune_tests_common.print_dyn;
+  [%expect {| [ [ "Group"; "Group" ] ] |}]
+;;
+
 let kind_name = function
   | Kind.Intf_only -> "intf-only"
   | Virtual -> "virtual"

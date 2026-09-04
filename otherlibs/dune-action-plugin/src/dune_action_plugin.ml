@@ -19,7 +19,6 @@ module V1 = struct
   module Fs : sig
     val read_directory : string -> (string list, string) result
     val read_file : string -> (string, string) result
-    val write_file : string -> string -> (unit, string) result
   end = struct
     let catch_system_exceptions f ~name =
       try Ok (f ()) with
@@ -49,18 +48,12 @@ module V1 = struct
     let read_file path =
       catch_system_exceptions ~name:"read_file" (fun () -> Io.String_path.read_file path)
     ;;
-
-    let write_file path data =
-      catch_system_exceptions ~name:"write_file" (fun () ->
-        Io.String_path.write_file path data)
-    ;;
   end
 
   module Stage = struct
     type 'a t =
       { action : unit -> 'a
       ; dependencies : Dependency.Set.t
-      ; targets : String.Set.t
       }
 
     let map (t : 'a t) ~f = { t with action = (fun () -> f (t.action ())) }
@@ -68,7 +61,6 @@ module V1 = struct
     let both (t1 : 'a t) (t2 : 'b t) =
       { action = (fun () -> t1.action (), t2.action ())
       ; dependencies = Dependency.Set.union t1.dependencies t2.dependencies
-      ; targets = String.Set.union t1.targets t2.targets
       }
     ;;
   end
@@ -105,18 +97,7 @@ module V1 = struct
   let read_file ~path =
     let path = Path.to_string path in
     let action () = Fs.read_file path |> Execution_error.raise_on_fs_error in
-    lift_stage
-      { action
-      ; dependencies = Dependency.Set.singleton (File path)
-      ; targets = String.Set.empty
-      }
-  ;;
-
-  let write_file ~path ~data =
-    let path = Path.to_string path in
-    let action () = Fs.write_file path data |> Execution_error.raise_on_fs_error in
-    lift_stage
-      { action; dependencies = Dependency.Set.empty; targets = String.Set.singleton path }
+    lift_stage { action; dependencies = Dependency.Set.singleton (File path) }
   ;;
 
   let read_directory_with_glob ~path ~glob =
@@ -130,7 +111,6 @@ module V1 = struct
       { action
       ; dependencies =
           Dependency.Set.singleton (Glob { path; glob = Glob.to_string glob })
-      ; targets = String.Set.empty
       }
   ;;
 
@@ -138,23 +118,6 @@ module V1 = struct
     match t with
     | Pure () -> Context.respond context Done
     | Stage at ->
-      let allowed_targets = Context.targets context in
-      let disallowed_targets = String.Set.diff at.targets allowed_targets in
-      (match String.Set.to_list disallowed_targets with
-       | [] -> ()
-       | [ t ] ->
-         Execution_error.raise
-           (Printf.sprintf
-              "%s is written despite not being declared as a target in dune file. To \
-               fix, add it to target list in dune file."
-              t)
-       | ts ->
-         Execution_error.raise
-           (Printf.sprintf
-              "Following files were written despite not being declared as targets in \
-               dune file:\n\
-               %sTo fix, add them to target list in dune file."
-              (ts |> String.concat ~sep:"\n")));
       let prepared_dependencies = Context.prepared_dependencies context in
       let required_dependencies =
         Dependency.Set.diff at.dependencies prepared_dependencies
@@ -165,7 +128,7 @@ module V1 = struct
   ;;
 
   (* If executable is not run by dune, assume that all dependencies are already
-     prepared and no target checking is done. *)
+     prepared. *)
   let rec run_outside_of_dune t =
     match t with
     | Pure () -> ()

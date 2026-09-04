@@ -14,9 +14,7 @@ module V1 : sig
       starts a process from scratch for every stage. So a linear chain of binds
       leads to a linear number of program re-runs, and therefore overall
       quadratic time complexity. This also means that using non-deterministic
-      mutable state can lead to surprising results. (note that with the current
-      implementation, nontrivial stages are those that have some dependencies,
-      so a stage that merely writes out some targets is "free") *)
+      mutable state can lead to surprising results. *)
 
   module Path = Path
   module Glob = Glob
@@ -81,12 +79,6 @@ module V1 : sig
   (** [read_file ~path:file] returns a computation depending on a [file] to be
       run and resulting in a file content. *)
   val read_file : path:Path.t -> string t
-
-  (** [write_file ~path:file ~data] returns a computation that writes [data] to
-      a [file].
-
-      Note: [file] must be declared as a target in dune build file. *)
-  val write_file : path:Path.t -> data:string -> unit t
 
   (** [read_directory_with_glob ~path:directory ~glob] returns a computation
       depending on a listing of a [directory] (including source and target

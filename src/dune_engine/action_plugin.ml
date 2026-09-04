@@ -27,22 +27,7 @@ let exec ~(ectx : context) ~(eenv : env) prog args =
   let run_arguments_fn = Dtemp.action File ~prefix:"dune" ~suffix:"run" in
   let response_fn = Dtemp.action File ~prefix:"dune" ~suffix:"response" in
   let run_arguments =
-    let targets =
-      match ectx.targets with
-      | None -> String.Set.empty
-      | Some targets ->
-        if not (Filename.Set.is_empty targets.dirs)
-        then
-          User_error.raise
-            ~loc:ectx.rule_loc
-            [ Pp.text "Directory targets are not compatible with dynamic actions" ];
-        Filename.Set.to_list_map targets.files ~f:(fun target ->
-          Path.Build.relative_fname targets.root target
-          |> Path.build
-          |> Path.reach ~from:eenv.working_dir)
-        |> String.Set.of_list
-    in
-    { DAP.Run_arguments.prepared_dependencies = eenv.prepared_dependencies; targets }
+    { DAP.Run_arguments.prepared_dependencies = eenv.prepared_dependencies }
   in
   DAP.Run_arguments.to_sexp run_arguments
   |> Csexp.to_string

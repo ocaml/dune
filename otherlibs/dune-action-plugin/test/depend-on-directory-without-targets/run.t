@@ -51,3 +51,20 @@ dependency does not materialize it.
   > EOF
   $ dune build @check-empty
   Directory listing: []
+
+A dynamic action may be part of a rule with a directory target. The action
+plugin does not manage the rule's targets.
+
+  $ cat > dune << EOF
+  > (data_only_dirs some_dir)
+  > \
+  > (rule
+  >  (targets (dir output))
+  >  (action
+  >   (progn
+  >    (dynamic-run ./foo.exe)
+  >    (run mkdir output)
+  >    (run touch output/file))))
+  > EOF
+  $ dune build output
+  Directory listing: []

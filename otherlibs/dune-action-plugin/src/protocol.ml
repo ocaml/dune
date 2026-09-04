@@ -90,22 +90,16 @@ end
 
 module Run_arguments = struct
   module T = struct
-    type t =
-      { prepared_dependencies : Dependency.Set.t
-      ; targets : String.Set.t
-      }
+    type t = { prepared_dependencies : Dependency.Set.t }
 
     let conv =
-      let from { prepared_dependencies; targets } = prepared_dependencies, targets in
-      let to_ (prepared_dependencies, targets) = { prepared_dependencies; targets } in
-      let string_set =
-        Conv.iso Conv.(list string) String.Set.of_list String.Set.to_list
-      in
-      let conv = Conv.pair Dependency.Set.conv string_set in
-      Conv.iso conv to_ from
+      Conv.iso
+        Dependency.Set.conv
+        (fun prepared_dependencies -> { prepared_dependencies })
+        (fun { prepared_dependencies } -> prepared_dependencies)
     ;;
 
-    let version = 0
+    let version = 1
   end
 
   include T
@@ -142,7 +136,6 @@ module Context = struct
   type t =
     { response_fn : string
     ; prepared_dependencies : Dependency.Set.t
-    ; targets : String.Set.t
     }
 
   type create_result =
@@ -186,16 +179,11 @@ module Context = struct
                   (match Run_arguments.of_sexp sexp with
                    | Error (Version_mismatch _) -> version_mismatch_error
                    | Error Parse_error -> cannot_parse_error
-                   | Ok { prepared_dependencies; targets } ->
-                     Ok
-                       { response_fn = greeting.response_fn
-                       ; prepared_dependencies
-                       ; targets
-                       })))))
+                   | Ok { prepared_dependencies } ->
+                     Ok { response_fn = greeting.response_fn; prepared_dependencies })))))
   ;;
 
   let prepared_dependencies (t : t) = t.prepared_dependencies
-  let targets (t : t) = t.targets
 
   let respond (t : t) response =
     let data = Response.to_sexp response |> Csexp.to_string in

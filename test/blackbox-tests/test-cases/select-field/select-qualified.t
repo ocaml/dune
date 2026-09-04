@@ -135,5 +135,5 @@ A selected file can itself be a nested group interface:
   $ dune build --root=selected-group-interface
   $ grep -A1 '@canonical Outer.Foo' \
   > selected-group-interface/_build/default/outer.ml-gen
-  (** @canonical Outer.Foo.Foo *)
+  (** @canonical Outer.Foo *)
   module Foo = Outer__Foo

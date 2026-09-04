@@ -679,7 +679,7 @@ module Alias_module = struct
     let aliases =
       Modules.Group.for_alias group
       |> List.map ~f:(fun (local_name, m) ->
-        let canonical_path = Modules.With_vlib.canonical_path modules group m in
+        let canonical_path = Modules.With_vlib.canonical_path modules m in
         let obj_name = Module.obj_name m in
         { Alias.local_name; canonical_path; obj_name })
     in

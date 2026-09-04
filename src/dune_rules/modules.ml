@@ -36,7 +36,10 @@ module Stdlib = struct
     let open Dune_lang.Encoder in
     record_fields
       [ Common.Encode.main_module_name main_module_name
-      ; Common.Encode.modules modules ~src_dir
+      ; field_l
+          "modules"
+          Fun.id
+          (Module.Name_map.encode_stdlib modules ~src_dir ~main_module_name)
       ; field_o "exit_module" Module_name.encode exit_module
       ; field_l "unwrapped" Module_name.encode (Module_name.Set.to_list unwrapped)
       ]
@@ -46,7 +49,11 @@ module Stdlib = struct
     let open Dune_lang.Decoder in
     fields
       (let+ main_module_name = Common.Decode.main_module_name
-       and+ modules = Common.Decode.modules ~src_dir ()
+       and+ modules =
+         field
+           ~default:Module_name.Map.empty
+           "modules"
+           (Module.Name_map.decode_stdlib ~src_dir)
        and+ exit_module = field_o "exit_module" Module_name.decode
        and+ unwrapped = field ~default:[] "unwrapped" (repeat Module_name.decode) in
        let unwrapped = Module_name.Set.of_list unwrapped in
@@ -104,9 +111,8 @@ module Stdlib = struct
           if Module.name m = main_module_name || special_compiler_module stdlib m
           then m
           else (
-            let path = Nonempty_list.[ main_module_name; Module.name m ] in
-            let m = Module.set_path m path in
-            Module.set_obj_name m (Module_name.Path.wrap path)))
+            let mangle_path = Nonempty_list.[ main_module_name; Module.name m ] in
+            Module.set_obj_name m (Module_name.Path.wrap mangle_path)))
     in
     let unwrapped = stdlib.modules_before_stdlib in
     let exit_module = stdlib.exit_module in
@@ -228,17 +234,21 @@ module Mangle = struct
       in
       Module_name.Path.wrap wrap
     in
-    let path =
+    let logical_path =
       if has_lib_interface
       then Nonempty_list.[ Module_name.Unique.to_name ~loc:Loc.none obj_name ]
-      else Nonempty_list.(path @ [ interface ])
+      else (
+        match path with
+        | [] -> Nonempty_list.[ interface ]
+        | name :: path -> Nonempty_list.(name :: path))
     in
     let install_as =
       if has_lib_interface
       then None
       else
         Some
-          (Nonempty_list.to_list_map path ~f:Module_name.uncapitalize
+          (Nonempty_list.(path @ [ interface ])
+           |> Nonempty_list.to_list_map ~f:Module_name.uncapitalize
            |> Path.Local.L.relative Path.Local.root
            |> Path.Local.set_extension ~ext:Filename.Extension.ml)
     in
@@ -248,32 +258,31 @@ module Mangle = struct
       | Unwrapped | Exe -> Ocaml
       | Melange -> Melange
     in
-    Module.generated ?install_as path ~obj_name ~kind ~for_ ~src_dir:obj_dir
+    Module.generated ?install_as logical_path ~obj_name ~kind ~for_ ~src_dir:obj_dir
   ;;
 
-  let wrap_module t m ~interface =
+  let wrap_module t m ~interface ~(mangle_path : Module_name.Path.t) =
     let is_lib_interface =
       match interface with
       | None -> false
       | Some interface -> Module_name.equal interface (Module.name m)
     in
     let path_for_mangle =
-      let path = Module.path m in
       let prefix = prefix t in
       match t with
       | Exe | Melange ->
         let prefix = Option.value_exn prefix in
-        let (x :: xs) = path in
+        let (x :: xs) = mangle_path in
         Nonempty_list.(prefix.public :: x :: xs)
       | Unwrapped ->
         if is_lib_interface
         then (
-          let path = Nonempty_list.to_list path in
+          let path = Nonempty_list.to_list mangle_path in
           List.remove_last_exn path |> Nonempty_list.of_list_exn)
-        else path
+        else mangle_path
       | Lib _ ->
         let path =
-          let path = Nonempty_list.to_list path in
+          let path = Nonempty_list.to_list mangle_path in
           if is_lib_interface then List.remove_last_exn path else path
         in
         Nonempty_list.(
@@ -318,8 +327,12 @@ module Group = struct
               match m with
               | Map m -> Group (loop name (Nonempty_list.to_list rev_path) m)
               | Leaf m ->
-                let m = Module.set_path m (Nonempty_list.rev rev_path) in
-                Module (Mangle.wrap_module mangle m ~interface:(Some interface)))
+                Module
+                  (Mangle.wrap_module
+                     mangle
+                     m
+                     ~interface:(Some interface)
+                     ~mangle_path:(Nonempty_list.rev rev_path)))
         }
       in
       loop interface rev_path trie
@@ -415,21 +428,37 @@ module Group = struct
     Module_name.Map.of_list_exn modules
   ;;
 
-  let rec encode { alias; modules; name } ~src_dir =
+  let is_nested_group_interface group_name m =
+    match group_name with
+    | None -> false
+    | Some group_name -> Module_name.equal group_name (Module.name m)
+  ;;
+
+  let rec encode { alias; modules; name } ~src_dir ~group_name =
     let open Dune_lang.Encoder in
     record_fields
-      [ field_l "alias" sexp (Module.encode ~src_dir alias)
+      [ field_l
+          "alias"
+          sexp
+          (Module.encode
+             ~src_dir
+             ~is_nested_group_interface:(is_nested_group_interface group_name alias)
+             alias)
       ; field "name" Module_name.encode name
-      ; field_l "modules" Fun.id (encode_modules ~src_dir modules)
+      ; field_l "modules" Fun.id (encode_modules ~src_dir ~group_name modules)
       ]
 
-  and encode_modules modules ~src_dir =
+  and encode_modules modules ~src_dir ~group_name =
     Module_name.Map.to_list_map modules ~f:(fun _ t ->
       Dune_lang.List
         (match t with
          | Group g ->
-           Dune_lang.atom "group" :: Module_name.encode g.name :: encode ~src_dir g
-         | Module m -> Dune_lang.atom "module" :: Module.encode ~src_dir m))
+           Dune_lang.atom "group"
+           :: Module_name.encode g.name
+           :: encode ~src_dir ~group_name:(Some g.name) g
+         | Module m ->
+           let is_nested_group_interface = is_nested_group_interface group_name m in
+           Dune_lang.atom "module" :: Module.encode ~src_dir ~is_nested_group_interface m))
   ;;
 
   let parents_modules =
@@ -570,7 +599,7 @@ module Unwrapped = struct
         Module_name.Map.map map ~f:(fun m -> Group.Module m)
   ;;
 
-  let encode = Group.encode_modules
+  let encode modules ~src_dir = Group.encode_modules modules ~src_dir ~group_name:None
   let to_dyn t = Module_name.Map.to_dyn Group.dyn_of_node t
 
   let of_trie trie ~mangle ~obj_dir =
@@ -581,9 +610,7 @@ module Unwrapped = struct
           Group.Of_trie.of_trie trie ~mangle ~obj_dir ~interface:name ~rev_path:[ name ]
         in
         Group.Group group
-      | Leaf m ->
-        let m = Module.set_path m [ name ] in
-        Module m)
+      | Leaf m -> Module m)
   ;;
 
   let find (t : t) name =
@@ -654,7 +681,7 @@ module Wrapped = struct
   let encode { group; wrapped_compat; wrapped; toplevel_module = _ } ~src_dir =
     let open Dune_lang.Encoder in
     record_fields
-      [ field_l "group" Fun.id (Group.encode ~src_dir group)
+      [ field_l "group" Fun.id (Group.encode ~src_dir ~group_name:None group)
       ; Common.Encode.modules ~name:"wrapped_compat" ~src_dir wrapped_compat
       ; field "wrapped" Wrapped.encode wrapped
       ]
@@ -847,8 +874,7 @@ let make_singleton m mangle =
   let modules =
     Singleton
       (let name = Module.name m in
-       let m = Module.set_path m [ name ] in
-       Mangle.wrap_module mangle m ~interface:None)
+       Mangle.wrap_module mangle m ~interface:None ~mangle_path:[ name ])
   in
   with_obj_map modules
 ;;
@@ -1017,7 +1043,9 @@ module With_vlib = struct
     let encode t ~src_dir =
       let open Dune_sexp in
       match t.modules with
-      | Singleton m -> List (atom "singleton" :: Module.encode m ~src_dir)
+      | Singleton m ->
+        List
+          (atom "singleton" :: Module.encode m ~src_dir ~is_nested_group_interface:false)
       | Unwrapped m -> List (atom "unwrapped" :: Unwrapped.encode m ~src_dir)
       | Wrapped m -> List (atom "wrapped" :: Wrapped.encode m ~src_dir)
       | Stdlib m -> List (atom "stdlib" :: Stdlib.encode m ~src_dir)
@@ -1431,23 +1459,13 @@ module With_vlib = struct
     | _ -> None
   ;;
 
-  let canonical_path t (group : Group.t) m =
-    let path =
-      let path = Module.path m in
-      match Module_name.Map.find group.modules (Module.name m) with
-      | None | Some (Group.Module _) -> path
-      | Some (Group _) ->
-        (* The path for group interfaces always duplicates
-           the last component.
-
-           For example: foo/foo.ml would has the path [ "Foo"; "Foo" ] *)
-        List.remove_last_exn (Nonempty_list.to_list path) |> Nonempty_list.of_list_exn
-    in
+  let canonical_path t m =
+    let path = Module.path m in
     match t with
     | Impl { impl = { modules = Wrapped w; _ }; _ } | Modules { modules = Wrapped w; _ }
       ->
       let (x :: xs) = path in
       Nonempty_list.(w.group.name :: x :: xs)
-    | _ -> Module.path m
+    | _ -> path
   ;;
 end

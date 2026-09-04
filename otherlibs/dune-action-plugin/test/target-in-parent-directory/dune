@@ -1,3 +1,0 @@
-(cram
- (deps
-  (glob_files bin/*.exe)))

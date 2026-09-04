@@ -11,7 +11,8 @@
   > (rule
   >  (target some_copy)
   >  (action
-  >   (dynamic-run ./foo.exe)))
+  >   (with-stdout-to %{target}
+  >    (dynamic-run ./foo.exe))))
   > \
   > (rule
   >  (alias runtest)

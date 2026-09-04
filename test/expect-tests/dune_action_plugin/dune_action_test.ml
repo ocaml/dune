@@ -33,12 +33,6 @@ let%expect_test _ =
   |}]
 ;;
 
-let%expect_test _ =
-  let action = write_file ~path:(Path.of_string "another_file") ~data:"Hello world!" in
-  Private.do_run action;
-  [%expect {| |}]
-;;
-
 let run_action_expect_throws action =
   try
     Private.do_run action;
@@ -64,15 +58,4 @@ let%expect_test _ =
   in
   Private.do_run action;
   [%expect {| [] |}]
-;;
-
-let%expect_test _ =
-  let action =
-    write_file
-      ~path:(Path.of_string "directory_that_does_not_exist/some_file")
-      ~data:"foo"
-  in
-  run_action_expect_throws action;
-  [%expect
-    {| write_file: open(directory_that_does_not_exist/some_file): No such file or directory |}]
 ;;

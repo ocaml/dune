@@ -268,6 +268,55 @@ module Internal = struct
      making any changes to the scheme, to avoid collisions. *)
   let rule_digest_version = 34
 
+  let anonymous_action_digest ~dir ~(full_action : Action.Full.t) ~deps ~capture_stdout =
+    let { Action.Full.action; props } = full_action in
+    let { Action.Full.Props.env
+        ; locks
+        ; can_go_in_shared_cache
+        ; can_use_sandbox_policy
+        ; sandbox
+        ; corrections
+        }
+      =
+      props
+    in
+    let d = Digest.Manual.create () in
+    Digest.Manual.int d rule_digest_version;
+    (* Here we restrict the environment to only the variables we depend on, so
+       that we don't re-execute all actions when some irrelevant environment
+       variable changes.
+
+       Ideally, we would pass this restricted environment to the external
+       command, however that might be tedious to do in practice. See this
+       ticket for a longer discussion about the management of the environment:
+       https://github.com/ocaml/dune/issues/4382 *)
+    digest_env_subset d deps env;
+    Dep.Set.digest deps d;
+    Action.digest d action;
+    digest_locks d locks;
+    Digest.Manual.string d (Path.Build.to_string dir);
+    Digest.Manual.bool d capture_stdout;
+    Digest.Manual.bool d can_go_in_shared_cache;
+    Digest.Manual.bool d can_use_sandbox_policy;
+    digest_sandbox_config d sandbox;
+    Digest.Manual.repr d Repr.(option Corrections.repr) corrections;
+    Digest.Manual.get d
+  ;;
+
+  let anonymous_action_target ~dir ~digest =
+    let dir =
+      Path.Build.append_local Dpath.Build.anonymous_actions_dir (Path.Build.local dir)
+    in
+    Path.Build.relative dir (Digest.to_string digest)
+  ;;
+
+  let anonymous_action_stamp_file (anon : Rule.Anonymous_action.t) ~full_action ~deps =
+    let digest =
+      anonymous_action_digest ~dir:anon.dir ~full_action ~deps ~capture_stdout:false
+    in
+    anonymous_action_target ~dir:anon.dir ~digest
+  ;;
+
   let compute_rule_digest
         (rule : Rule.t)
         ~facts
@@ -752,14 +801,7 @@ module Internal = struct
   and execute_action_generic_stage2_impl
         { Anonymous_action.action = { anon; action; _ }; deps; capture_stdout; digest }
     =
-    let target =
-      let dir =
-        Path.Build.append_local
-          Dpath.Build.anonymous_actions_dir
-          (Path.Build.local anon.dir)
-      in
-      Path.Build.relative dir (Digest.to_string digest)
-    in
+    let target = anonymous_action_target ~dir:anon.dir ~digest in
     let rule =
       Rule.Anonymous_action.to_rule
         ~targets:(Targets.File.create target)
@@ -792,7 +834,7 @@ module Internal = struct
        use [Memo] mostly for synchronisation purposes. *)
     let { Rule.Anonymous_action.Evaluated.anon = { dir; _ }
         ; facts = observing_facts
-        ; action = { action; props }
+        ; action = full_action
         }
       =
       anon
@@ -807,42 +849,7 @@ module Internal = struct
     (* Shadow [observing_facts] to make sure we don't use it again. *)
     let observing_facts = () in
     ignore observing_facts;
-    let digest =
-      let { Action.Full.Props.env
-          ; locks
-          ; can_go_in_shared_cache
-          ; can_use_sandbox_policy
-          ; sandbox
-          ; corrections
-          }
-        =
-        props
-      in
-      let digest =
-        let d = Digest.Manual.create () in
-        Digest.Manual.int d rule_digest_version;
-        (* Here we restrict the environment to only the variables we depend on,
-           so that we don't re-execute all actions when some irrelevant
-           environment variable changes.
-
-           Ideally, we would pass this restricted environment to the external
-           command, however that might be tedious to do in practice. See this
-           ticket for a longer discussion about the management of the
-           environment: https://github.com/ocaml/dune/issues/4382 *)
-        digest_env_subset d deps env;
-        Dep.Set.digest deps d;
-        Action.digest d action;
-        digest_locks d locks;
-        Digest.Manual.string d (Path.Build.to_string dir);
-        Digest.Manual.bool d capture_stdout;
-        Digest.Manual.bool d can_go_in_shared_cache;
-        Digest.Manual.bool d can_use_sandbox_policy;
-        digest_sandbox_config d sandbox;
-        Digest.Manual.repr d Repr.(option Corrections.repr) corrections;
-        Digest.Manual.get d
-      in
-      digest
-    in
+    let digest = anonymous_action_digest ~dir ~full_action ~deps ~capture_stdout in
     (* It might seem superfluous to memoize the execution here, given that a
        given anonymous action will typically only appear once during a given
        build. However, it is possible that two code paths try to execute the

@@ -112,3 +112,28 @@ More levels:
   $ dune exec ./foo.exe
   Test: Unix was found!
   Test: Unix was found!
+
+A selected file can itself be a nested group interface:
+
+  $ mkdir -p selected-group-interface/outer/foo
+  $ cat >selected-group-interface/dune-project <<'EOF'
+  > (lang dune 3.22)
+  > EOF
+  $ cat >selected-group-interface/dune <<'EOF'
+  > (include_subdirs qualified)
+  > (library
+  >  (name selected)
+  >  (wrapped false)
+  >  (libraries
+  >   (select outer/foo/foo.ml from
+  >    (unix -> outer/foo/foo.unix.ml)
+  >    (!unix -> outer/foo/foo.nounix.ml))))
+  > EOF
+  $ touch selected-group-interface/outer/foo/foo.unix.ml
+  $ touch selected-group-interface/outer/foo/foo.nounix.ml
+  $ touch selected-group-interface/outer/foo/bar.ml
+  $ dune build --root=selected-group-interface
+  $ grep -A1 '@canonical Outer.Foo' \
+  > selected-group-interface/_build/default/outer.ml-gen
+  (** @canonical Outer.Foo.Foo *)
+  module Foo = Outer__Foo

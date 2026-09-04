@@ -168,8 +168,7 @@ module Per_stanza = struct
     in
     let rev_map =
       let by_path (origin : Origin.t * Path.Build.t) trie =
-        Module_trie.to_list_map trie ~f:(fun (_loc, m) ->
-          Module.Source.logical_path m, origin)
+        Module_trie.to_list_map trie ~f:(fun (_loc, m) -> Module.Source.path m, origin)
       in
       List.rev_concat
         [ List.rev_concat_map libs ~f:(fun part ->
@@ -413,7 +412,7 @@ let parser_gen_origins (t : t) =
   let add kind map dep_infos =
     Loc.Map.fold dep_infos ~init:map ~f:(fun dep_info map ->
       Module_trie.fold dep_info.targets ~init:map ~f:(fun (_loc, m) map ->
-        Module_name.Path.Map.set map (Module.Source.logical_path m) kind))
+        Module_name.Path.Map.set map (Module.Source.path m) kind))
   in
   add Parser_gen_origin.Ocamllex Module_name.Path.Map.empty t.modules.ocamllexes
   |> fun map ->
@@ -615,23 +614,27 @@ module Parser_generators = struct
         | Ocamllex { loc; _ }
         | Ocamlyacc { loc; _ }
         | Menhir { Menhir_stanza.merge_into = None; loc; _ } ->
-          Module_trie.Unchecked.map expanded ~f:(fun (_, (module_name, basename)) ->
-            let module_path =
-              Nonempty_list.(
-                map (module_path @ [ module_name ]) ~f:Module_name.Unchecked.allow_invalid)
-            in
-            let original_path =
-              let base_path = Path.Build.relative src_dir basename in
-              let ext = Targets.extension ~for_ in
-              Path.Build.set_extension base_path ~ext
-            in
-            ( loc
-            , make_module
-                ~module_path
-                ~original_path
-                ~root_dir
-                ~for_parser_gen:for_
-                ~for_:mode ))
+          Module_trie.Unchecked.mapi
+            expanded
+            ~f:(fun path (_, (_module_name, basename)) ->
+              let trie_path = Nonempty_list.(module_path @ path) in
+              let module_path =
+                Nonempty_list.map trie_path ~f:Module_name.Unchecked.allow_invalid
+              in
+              let original_path =
+                let base_path = Path.Build.relative src_dir basename in
+                let ext = Targets.extension ~for_ in
+                Path.Build.set_extension base_path ~ext
+              in
+              let m =
+                make_module
+                  ~module_path
+                  ~original_path
+                  ~root_dir
+                  ~for_parser_gen:for_
+                  ~for_:mode
+              in
+              loc, m)
         | Menhir { Menhir_stanza.merge_into = Some basename; loc; _ } ->
           let impl =
             let original_path =

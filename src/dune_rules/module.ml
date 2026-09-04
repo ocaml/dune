@@ -180,13 +180,6 @@ module Source = struct
   let name t = Nonempty_list.last t.path
   let path t = t.path
 
-  let logical_path t =
-    match List.rev (Nonempty_list.to_list t.path) with
-    | name :: parent :: rest when Module_name.equal name parent ->
-      Nonempty_list.of_list_exn (List.rev (parent :: rest))
-    | _ -> t.path
-  ;;
-
   let choose_file { files = { impl; intf }; path = _ } =
     match intf, impl with
     | None, None -> assert false
@@ -238,7 +231,7 @@ type t =
   }
 
 let name t = Source.name t.source
-let path t = Source.logical_path t.source
+let path t = Source.path t.source
 let kind t = t.kind
 let pp_flags t = t.pp
 let install_as t = t.install_as
@@ -319,7 +312,6 @@ let set_pp t pp = { t with pp }
 let to_dyn { source; obj_name; pp; visibility; kind; install_as } =
   Dyn.record
     [ "source", Source.to_dyn source
-    ; "path", Module_name.Path.to_dyn (Source.logical_path source)
     ; "obj_name", Module_name.Unique.to_dyn obj_name
     ; "pp", Dyn.(option string) (Option.map ~f:(fun _ -> "has pp") pp)
     ; "visibility", Visibility.to_dyn visibility

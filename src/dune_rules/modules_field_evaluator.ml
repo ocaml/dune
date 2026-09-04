@@ -40,17 +40,17 @@ module Unordered_trie = Ordered_set_lang.Unordered (Trie_key)
 module Indexed_source = struct
   type t =
     { logical_path : Module_name.Unchecked.Path.t
-    ; source_path : Module_name.Unchecked.Path.t
+    ; trie_path : Module_name.Unchecked.Path.t
     ; source : Module.Source.t
     }
 end
 
 let unchecked_path path = Nonempty_list.map path ~f:Module_name.unchecked
 
-let source_path ~version source =
+let reference_path ~version source =
   if version < (3, 25)
   then Nonempty_list.[ Module.Source.name source |> Module_name.unchecked ]
-  else Module.Source.logical_path source |> unchecked_path
+  else Module.Source.path source |> unchecked_path
 ;;
 
 let expand_all_unchecked =
@@ -471,15 +471,15 @@ let eval
       modules
       ~init:Module_trie.Unchecked.empty
       ~f:(fun logical_path (loc, m) acc ->
-        let { Indexed_source.source_path; _ } =
+        let { Indexed_source.trie_path; _ } =
           Module_name.Unchecked.Path.Map.find_exn all_modules logical_path
         in
-        Module_trie.Unchecked.set acc source_path (loc, m))
+        Module_trie.Unchecked.set acc trie_path (loc, m))
     |> Module_trie.Unchecked.check_exn
   in
   let all_modules =
     Module_trie.mapi modules ~f:(fun _path (_, m) ->
-      let logical_path = source_path ~version m in
+      let logical_path = reference_path ~version m in
       let visibility =
         if Module_name.Unchecked.Path.Map.mem private_modules logical_path
         then Visibility.Private
@@ -493,7 +493,7 @@ let eval
         else if Module.Source.has m ~ml_kind:Impl
         then (
           let path =
-            source_path ~version m
+            reference_path ~version m
             |> Nonempty_list.map ~f:Module_name.Unchecked.allow_invalid
           in
           if Module_name.Path.Set.mem existing_virtual_modules path
@@ -535,14 +535,12 @@ let eval
       ~init:Module_name.Unchecked.Path.Map.empty
       ~f:(fun path m acc ->
         let logical_path =
-          if version < (3, 25)
-          then path
-          else Module.Source.logical_path m |> unchecked_path
+          if version < (3, 25) then path else Module.Source.path m |> unchecked_path
         in
         Module_name.Unchecked.Path.Map.set
           acc
           logical_path
-          { Indexed_source.logical_path; source_path = path; source = m })
+          { Indexed_source.logical_path; trie_path = path; source = m })
   in
   let* modules0 =
     eval0

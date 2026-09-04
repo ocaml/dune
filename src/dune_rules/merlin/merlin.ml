@@ -416,12 +416,7 @@ module Processed = struct
            Path.Build.Map.find per_file_config (remove_extension file)
            |> Option.map ~f:(fun config -> Without_extension, config))
     in
-    let pp =
-      Module_reference.Per_item.find
-        pp_config
-        ~path:(Module.path module_)
-        ~name:(Module.name module_)
-    in
+    let pp = Module_reference.Per_item.find pp_config (Module.path module_) in
     let unit_name = Module_name.Unique.to_string (Module.obj_name module_) in
     match_kind, to_sexp ~unit_name ~opens ~pp ~reader config
   ;;
@@ -456,12 +451,7 @@ module Processed = struct
     |> List.map ~f:(fun (source_path, { module_; opens; reader }) ->
       let module_name = Module.name module_ in
       let unit_name = Module_name.Unique.to_string (Module.obj_name module_) in
-      let pp =
-        Module_reference.Per_item.find
-          pp_config
-          ~path:(Module.path module_)
-          ~name:module_name
-      in
+      let pp = Module_reference.Per_item.find pp_config (Module.path module_) in
       let config = to_sexp ~unit_name ~reader ~opens ~pp config in
       Dump_entry.{ module_name; source_path; config })
   ;;

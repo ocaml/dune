@@ -27,8 +27,6 @@ module T = struct
     Module_name.Path.compare t1.path t2.path
   ;;
 
-  let equal t1 t2 = compare t1 t2 |> Ordering.is_eq
-
   let to_dyn { loc; path; mode } =
     Dyn.record
       [ "loc", Loc.to_dyn loc
@@ -59,14 +57,14 @@ let parse_component loc component =
 let of_string version (loc, value) =
   let components = String.split value ~on:'.' in
   let mode = if version >= (3, 25) then Path else Legacy in
-  (match components with
-   | _ :: _ :: _ when version < (3, 25) ->
+  (match mode, components with
+   | Legacy, _ :: _ :: _ ->
      Syntax.Error.since
        loc
        Stanza.syntax
        (3, 25)
        ~what:"Using qualified module references"
-   | _ -> ());
+   | (Legacy | Path), _ -> ());
   let path = List.map components ~f:(parse_component loc) |> Nonempty_list.of_list_exn in
   make ~loc ~mode path
 ;;
@@ -122,11 +120,11 @@ module Per_item = struct
     | (reference, _) :: _ -> reference.mode
   ;;
 
-  let find t ~path ~name =
+  let find t path =
     let mode = mode t in
     let path =
       match mode with
-      | Legacy -> Nonempty_list.[ name ]
+      | Legacy -> Nonempty_list.[ Nonempty_list.last path ]
       | Path -> path
     in
     Base.get t (make ~loc:Loc.none ~mode path)

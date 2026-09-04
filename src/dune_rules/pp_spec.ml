@@ -4,8 +4,10 @@ type t = (Module.t -> lint:bool -> Module.t Memo.t) Module_reference.Per_item.t
 
 let make x = x
 let dummy : t = Module_reference.Per_item.for_all (fun m ~lint:_ -> Memo.return m)
-let find t m ~name = Module_reference.Per_item.find t ~path:(Module.path m) ~name
-let pp_module t ?(lint = true) m = find t m ~name:(Module.name m) m ~lint
+
+let pp_module t ?(lint = true) m =
+  Module_reference.Per_item.find t (Module.path m) m ~lint
+;;
 
 let pped_modules_map preprocess v =
   let map =
@@ -16,8 +18,7 @@ let pped_modules_map preprocess v =
       | Pps { loc = _; pps = _; flags = _; staged } ->
         if staged then Module.ml_source else fun m -> Module.pped (Module.ml_source m))
   in
-  Staged.stage (fun m ->
-    Module_reference.Per_item.find map ~path:(Module.path m) ~name:(Module.name m) m)
+  Staged.stage (fun m -> Module_reference.Per_item.find map (Module.path m) m)
 ;;
 
 let pped_modules preprocess version modules =

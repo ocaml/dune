@@ -3,4 +3,4 @@
 (library
  (name vlib)
  (public_name vlib)
- (virtual_modules Bar.Virt))
+ (virtual_modules Bar.Virt Foo.Foo Group))

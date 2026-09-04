@@ -217,6 +217,44 @@ resolution:
   $ dune exec --root=selected ./main.exe
   selected
 
+A selected module can provide a group interface, whose logical path omits the
+repeated trie component:
+
+  $ mkdir selected-group
+  $ cat >selected-group/dune-project <<'EOF'
+  > (lang dune 3.25)
+  > EOF
+  $ mkdir selected-group/foo
+  $ echo 'This is not OCaml.' >selected-group/foo/foo.fallback.ml
+  $ cat >selected-group/foo/bar.ml <<'EOF'
+  > let marker = "nested"
+  > EOF
+  $ cat >selected-group/main.ml <<'EOF'
+  > let () =
+  >   print_endline Selected_group.Foo.marker;
+  >   print_endline Selected_group.Foo.Bar.marker
+  > EOF
+  $ cat >selected-group/dune <<'EOF'
+  > (include_subdirs qualified)
+  > (library
+  >  (name selected_group)
+  >  (modules Foo Foo.Bar)
+  >  (libraries
+  >   (select foo/foo.ml from
+  >    (-> foo/foo.fallback.ml)))
+  >  (preprocess
+  >   (per_module
+  >    ((action
+  >      (run echo "let marker = \"group\"\nmodule Bar = Bar")) Foo))))
+  > (executable
+  >  (name main)
+  >  (modules Main)
+  >  (libraries selected_group))
+  > EOF
+  $ dune exec --root=selected-group ./main.exe
+  group
+  nested
+
 The effective mode of a `(subdir ...)` stanza is used for validation:
 
   $ mkdir subdir-stanza

@@ -6,26 +6,37 @@ open Import
     multiple components, for example [Foo.Bar]. *)
 type t
 
-val compare : t -> t -> Ordering.t
-val equal : t -> t -> bool
 val loc : t -> Loc.t
 val path : t -> Module_name.Path.t
 val to_string : t -> string
-val to_dyn : t -> Dyn.t
 val of_string : Syntax.Version.t -> Loc.t * string -> t
 val is_qualified : t -> bool
-val decode : t Decoder.t
 
 module Per_item : sig
-  include Per_item with type key = t
+  type key = t
+  type 'a t
+
+  val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
+  val for_all : 'a -> 'a t
+  val map : 'a t -> f:('a -> 'b) -> 'b t
+  val fold : 'a t -> init:'acc -> f:('a -> 'acc -> 'acc) -> 'acc
+  val exists : 'a t -> f:('a -> bool) -> bool
+
+  module Make_monad_traversals (Monad : sig
+      include Monad.S
+
+      val all : 'a t list -> 'a list t
+    end) : sig
+    val fold : 'a t -> init:'acc -> f:('a -> 'acc -> 'acc Monad.t) -> 'acc Monad.t
+    val map : 'a t -> f:('a -> 'b Monad.t) -> 'b t Monad.t
+  end
 
   val decode : default:'a -> 'a Decoder.t -> 'a t Decoder.t
   val repr : 'a Repr.t -> 'a t Repr.t
 
-  (** Find the value associated with a module. [path] is its logical path and
-      [name] is its final component. The latter preserves the lookup semantics
-      of dune language versions before 3.25. *)
-  val find : 'a t -> path:Module_name.Path.t -> name:Module_name.t -> 'a
+  (** Find the value associated with a module by its logical path. In dune
+      language versions before 3.25, only the final component is used. *)
+  val find : 'a t -> Module_name.Path.t -> 'a
 
   val explicit_references : 'a t -> key list
 end

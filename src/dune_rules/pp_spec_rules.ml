@@ -214,12 +214,7 @@ let lint_module sctx ~sandbox ~pps_sandbox ~dir ~expander ~lint ~lib_name ~scope
   in
   Staged.stage
   @@ fun ~(source : Module.t) ~ast ->
-  Module_reference.Per_item.find
-    lint
-    ~path:(Module.path source)
-    ~name:(Module.name source)
-    ~source
-    ~ast
+  Module_reference.Per_item.find lint (Module.path source) ~source ~ast
 ;;
 
 let pp_one_module

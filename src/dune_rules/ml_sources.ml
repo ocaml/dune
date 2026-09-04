@@ -612,23 +612,27 @@ module Parser_generators = struct
         | Ocamllex { loc; _ }
         | Ocamlyacc { loc; _ }
         | Menhir { Menhir_stanza.merge_into = None; loc; _ } ->
-          Module_trie.Unchecked.map expanded ~f:(fun (_, (module_name, basename)) ->
-            let module_path =
-              Nonempty_list.(
-                map (module_path @ [ module_name ]) ~f:Module_name.Unchecked.allow_invalid)
-            in
-            let original_path =
-              let base_path = Path.Build.relative src_dir basename in
-              let ext = Targets.extension ~for_ in
-              Path.Build.set_extension base_path ~ext
-            in
-            ( loc
-            , make_module
-                ~module_path
-                ~original_path
-                ~root_dir
-                ~for_parser_gen:for_
-                ~for_:mode ))
+          Module_trie.Unchecked.mapi
+            expanded
+            ~f:(fun path (_, (_module_name, basename)) ->
+              let trie_path = Nonempty_list.(module_path @ path) in
+              let module_path =
+                Nonempty_list.map trie_path ~f:Module_name.Unchecked.allow_invalid
+              in
+              let original_path =
+                let base_path = Path.Build.relative src_dir basename in
+                let ext = Targets.extension ~for_ in
+                Path.Build.set_extension base_path ~ext
+              in
+              let m =
+                make_module
+                  ~module_path
+                  ~original_path
+                  ~root_dir
+                  ~for_parser_gen:for_
+                  ~for_:mode
+              in
+              loc, m)
         | Menhir { Menhir_stanza.merge_into = Some basename; loc; _ } ->
           let impl =
             let original_path =

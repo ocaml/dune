@@ -89,7 +89,7 @@ module Per_module : sig
   val default : unit -> 'a t
 
   (** Find the preprocessing specification for a module. *)
-  val find : path:Module_name.Path.t -> name:Module_name.t -> 'a t -> 'a preprocess
+  val find : Module_name.Path.t -> 'a t -> 'a preprocess
 
   val pps : Without_instrumentation.t t -> Without_instrumentation.t list
 

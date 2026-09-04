@@ -34,7 +34,6 @@
   (package dune-action-plugin)
   (package dune-rpc)
   (package stdune)
-  (package dune-glob)
   (package top-closure)
   (package ordering)
   (package dyn)

@@ -1,3 +1,3 @@
 (library
  (name predicate_lang)
- (libraries stdune dune_glob dune_digest dyn))
+ (libraries stdune dune_action_plugin dune_digest dyn))

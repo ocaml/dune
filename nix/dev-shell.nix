@@ -59,12 +59,6 @@ let
                 pname = "top-closure";
                 inherit (dune_3) src version;
               };
-              dune-glob = osuper.dune-glob.overrideAttrs (o: {
-                propagatedBuildInputs = o.propagatedBuildInputs ++ [
-                  pp
-                  re
-                ];
-              });
               stdune = osuper.stdune.overrideAttrs (o: {
                 propagatedBuildInputs = o.propagatedBuildInputs ++ [
                   pp

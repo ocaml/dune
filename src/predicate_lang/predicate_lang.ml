@@ -185,7 +185,7 @@ module Repr_derived = Repr.Make1 (struct
   end)
 
 module Glob = struct
-  module Glob = Dune_glob.V1
+  module Glob = Dune_action_plugin.V1.Glob
 
   module Element = struct
     module Proxy = struct
@@ -279,7 +279,7 @@ module Glob = struct
 
   let of_glob g =
     let proxy =
-      let repr = Dune_glob.V1.to_string g in
+      let repr = Glob.to_string g in
       Element.Proxy.of_string repr
     in
     Element (Element.Glob proxy)

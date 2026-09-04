@@ -15,7 +15,6 @@
   predicate_lang
   dune_cache
   dune_scheduler
-  dune_glob
   targets
   dune_trace
   dune_action_plugin

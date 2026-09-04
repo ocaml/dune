@@ -19,6 +19,7 @@ module V1 : sig
       so a stage that merely writes out some targets is "free") *)
 
   module Path = Path
+  module Glob = Glob
 
   type 'a t
 
@@ -100,7 +101,7 @@ module V1 : sig
 
       BUG: the returned listing includes directories even though that dependency
       is not tracked. *)
-  val read_directory_with_glob : path:Path.t -> glob:Dune_glob.V1.t -> string list t
+  val read_directory_with_glob : path:Path.t -> glob:Glob.t -> string list t
 
   (** {1:running Running the computation} *)
 

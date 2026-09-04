@@ -83,13 +83,6 @@ let
         dune-build-info = mkDuneLib {
           pname = "dune-build-info";
         };
-        dune-glob = mkDuneLib {
-          pname = "dune-glob";
-          propagatedBuildInputs = with oself; [
-            stdune
-            re
-          ];
-        };
         dune-rpc = mkDuneLib {
           pname = "dune-rpc";
           propagatedBuildInputs = with oself; [
@@ -106,7 +99,7 @@ let
           pname = "dune-action-plugin";
           propagatedBuildInputs = with oself; [
             dune-rpc
-            dune-glob
+            re
           ];
         };
         dune-rpc-lwt = mkDuneLib {

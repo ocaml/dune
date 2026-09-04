@@ -3,3 +3,16 @@
  (alias run_dynamic)
  (deps
   (package dune)))
+
+(library
+ (name action_plugin_glob_tests)
+ (inline_tests)
+ (libraries
+  stdune
+  dune_action_plugin
+  ppx_expect.config
+  ppx_expect.config_types
+  base
+  ppx_inline_test.config)
+ (preprocess
+  (pps ppx_expect)))

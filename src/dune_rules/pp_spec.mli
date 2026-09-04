@@ -12,10 +12,6 @@ val make : (Module.t -> lint:bool -> Module.t Memo.t) Module_name.Per_item.t -> 
     translated modules *)
 val pp_module : t -> ?lint:bool -> Module.t -> Module.t Memo.t
 
-(** Preprocess a single module, using the configuration for the given module
-    name. *)
-val pp_module_as : t -> ?lint:bool -> Module_name.t -> Module.t -> Module.t Memo.t
-
 val pped_modules_map
   :  Preprocess.Without_instrumentation.t Preprocess.t Module_name.Per_item.t
   -> Ocaml.Version.t

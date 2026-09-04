@@ -2,7 +2,7 @@ open Import
 
 module V1 = struct
   module Path = Path
-  module Glob = Dune_glob.V1
+  module Glob = Glob
   open Protocol
 
   module Execution_error = struct

@@ -5,7 +5,7 @@
  (synopsis "[Internal] S-expression library")
  (libraries
   stdune
-  dune_glob
+  dune_action_plugin
   dune_rpc
   dune_digest
   opam_format

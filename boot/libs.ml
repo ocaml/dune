@@ -82,12 +82,6 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
-  ; { path = "otherlibs/dune-glob/src"
-    ; main_module_name = Some "Dune_glob"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
   ; { path = "otherlibs/ocamlc-loc/src"
     ; main_module_name = Some "Ocamlc_loc"
     ; include_subdirs = No
@@ -102,6 +96,12 @@ let local_libraries =
     }
   ; { path = "otherlibs/dune-rpc"
     ; main_module_name = Some "Dune_rpc"
+    ; include_subdirs = No
+    ; special_builtin_support = None
+    ; root_module = None
+    }
+  ; { path = "otherlibs/dune-action-plugin/src"
+    ; main_module_name = Some "Dune_action_plugin"
     ; include_subdirs = No
     ; special_builtin_support = None
     ; root_module = None
@@ -202,12 +202,6 @@ let local_libraries =
     ; special_builtin_support = None
     ; root_module = None
     }
-  ; { path = "otherlibs/dune-action-plugin/src"
-    ; main_module_name = Some "Dune_action_plugin"
-    ; include_subdirs = No
-    ; special_builtin_support = None
-    ; root_module = None
-    }
   ; { path = "src/rpc"
     ; main_module_name = Some "Rpc"
     ; include_subdirs = No
@@ -234,7 +228,6 @@ let local_libraries =
               ; "Dune_action_trace"
               ; "Dune_cache"
               ; "Dune_digest"
-              ; "Dune_glob"
               ; "Dune_rpc"
               ; "Dune_scheduler"
               ; "Dune_trace"

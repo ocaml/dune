@@ -10,7 +10,6 @@
   ppx_expect.config
   ppx_expect.config_types
   base
-  ppx_inline_test.config
-  dune-glob)
+  ppx_inline_test.config)
  (preprocess
   (pps ppx_expect)))

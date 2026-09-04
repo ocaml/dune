@@ -1,5 +1,5 @@
 open Import
-include Dune_glob.V1
+include Dune_action_plugin.V1.Glob
 
 let to_dyn t = Dyn.variant "Glob" [ Dyn.string (to_string t) ]
 let compare x y = String.compare (to_string x) (to_string y)

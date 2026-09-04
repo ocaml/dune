@@ -120,12 +120,14 @@ Among other things, dune-configurator allows one to:
  (dir otherlibs/dune-action-plugin)
  (synopsis "[experimental] API for writing dynamic Dune actions")
  (depends
-  (dune-glob (= :version))
   (csexp (>= 1.5.0))
   (ppx_expect :with-test)
   (stdune (= :version))
   (dune-private-libs (= :version))
   (dune-rpc (= :version))
+  dyn
+  ordering
+  re
   base-unix)
  (description "\
 
@@ -136,19 +138,6 @@ Dynamic dune actions do not need to declare their dependencies
 upfront; they are instead discovered automatically during the
 execution of the action.
 "))
-
-(package
- (name dune-glob)
- (dir otherlibs/dune-glob)
- (synopsis "Glob string matching language supported by dune")
- (depends
-  (stdune (= :version))
-  dyn
-  re
-  ordering)
- (description "\
-dune-glob provides a parser and interpreter for globs as \
-understood by dune language."))
 
 (package
  (name dune-site)

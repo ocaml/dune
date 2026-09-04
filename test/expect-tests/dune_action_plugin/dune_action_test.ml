@@ -1,5 +1,5 @@
 open Dune_action_plugin.V1
-module Glob = Dune_glob.V1
+module Glob = Dune_action_plugin.V1.Glob
 module Private = Dune_action_plugin.Private
 
 let%expect_test _ =

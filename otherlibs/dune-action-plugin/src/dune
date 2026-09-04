@@ -1,6 +1,10 @@
 (library
  (name dune_action_plugin)
  (public_name dune-action-plugin)
- (libraries stdune csexp dune-glob unix dune-rpc)
+ (libraries stdune csexp re dyn ordering unix dune-rpc)
  (synopsis
   "[Internal] Monadic interface for defining scripts with dynamic or complex sets of dependencies."))
+
+(ocamllex
+ (modules lexer)
+ (flags -ml))

@@ -32,7 +32,7 @@ module Glob : sig
   val repr : t Repr.t
   val to_dyn : t -> Dyn.t
   val test : t -> standard:t -> string -> bool
-  val of_glob : Dune_glob.V1.t -> t
+  val of_glob : Dune_action_plugin.V1.Glob.t -> t
 
   (** [of_string_list xs] return an expression that will match any element
       inside the list [xs] *)

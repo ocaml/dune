@@ -122,11 +122,11 @@ module Per_item = struct
     | (reference, _) :: _ -> reference.mode
   ;;
 
-  let find t ~path ~name =
+  let find t path =
     let mode = mode t in
     let path =
       match mode with
-      | Legacy -> Nonempty_list.[ name ]
+      | Legacy -> Nonempty_list.[ Nonempty_list.last path ]
       | Path -> path
     in
     Base.get t (make ~loc:Loc.none ~mode path)

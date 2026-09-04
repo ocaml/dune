@@ -22,10 +22,9 @@ module Per_item : sig
   val decode : default:'a -> 'a Decoder.t -> 'a t Decoder.t
   val repr : 'a Repr.t -> 'a t Repr.t
 
-  (** Find the value associated with a module. [path] is its logical path and
-      [name] is its final component. The latter preserves the lookup semantics
-      of dune language versions before 3.25. *)
-  val find : 'a t -> path:Module_name.Path.t -> name:Module_name.t -> 'a
+  (** Find the value associated with a module by its logical path. In dune
+      language versions before 3.25, only the final component is used. *)
+  val find : 'a t -> Module_name.Path.t -> 'a
 
   val explicit_references : 'a t -> key list
 end

@@ -328,7 +328,7 @@ module Per_module = struct
   let equal f x y = Per_module.equal (equal f) x y
   let decode = Per_module.decode decode ~default:No_preprocessing
   let no_preprocessing () = Per_module.for_all No_preprocessing
-  let find ~path ~name t = Per_module.find t ~path ~name
+  let find path t = Per_module.find t path
   let default () = Per_module.for_all No_preprocessing
 
   let pps t =

@@ -137,10 +137,11 @@ module Source = struct
   let decode ~dir =
     let open Dune_lang.Decoder in
     fields
-    @@ let+ path = field "path" Module_name.Path.decode
+    @@ let+ path =
+         let+ path = field "path" Module_name.Path.decode in
+         logical_path_of_trie_path path
        and+ intf = field_o "intf" (File.decode ~dir)
        and+ impl = field_o "impl" (File.decode ~dir) in
-       let path = logical_path_of_trie_path path in
        { path; files = { Ml_kind.Dict.intf; impl } }
   ;;
 

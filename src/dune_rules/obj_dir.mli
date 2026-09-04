@@ -50,7 +50,7 @@ val jsoo_dir : 'path t -> 'path
 (** The private compiled melange file directories, and all cmi *)
 val melange_dir : 'path t -> 'path
 
-val all_cmis : 'path t -> 'path list
+val all_cmis : 'path t -> mode:Compilation_mode.t -> 'path list
 
 (** The public compiled cmi file directory for ocaml *)
 val public_cmi_ocaml_dir : 'path t -> 'path

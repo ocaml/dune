@@ -26,7 +26,7 @@ module Cm_kind : module type of Dune_lang.Melange.Cm_kind
 
 val output_path : target_dir:Path.Build.t -> Path.Build.t -> Path.Build.t
 
-module Emit : sig
+module Emit_target : sig
   type t =
     { output_dir : Path.Build.t
     ; stanza_dir : Path.Build.t

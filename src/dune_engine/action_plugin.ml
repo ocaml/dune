@@ -47,6 +47,7 @@ module Server = struct
     ; root : Path.t
     ; mutable initialized : bool
     ; mutable pending : unit Fiber.Ivar.t list
+    ; mutable errors : string list
     }
 
   let active = Action_id.Table.create 16
@@ -70,14 +71,20 @@ module Server = struct
     let { Action.Ext.Exec.build_deps; rule_loc; root; _ } = ectx in
     let action_id = Action_id.gen () in
     let active_action =
-      { build_deps; rule_loc; root; initialized = false; pending = [] }
+      { build_deps; rule_loc; root; initialized = false; pending = []; errors = [] }
     in
     Action_id.Table.add_exn active action_id active_action;
-    Fiber.finalize
-      (fun () -> f action_id active_action)
-      ~finally:(fun () ->
-        Action_id.Table.remove active action_id;
-        Fiber.parallel_iter active_action.pending ~f:Fiber.Ivar.read)
+    let open Fiber.O in
+    let+ result =
+      Fiber.finalize
+        (fun () -> f action_id active_action)
+        ~finally:(fun () ->
+          Action_id.Table.remove active action_id;
+          Fiber.parallel_iter active_action.pending ~f:Fiber.Ivar.read)
+    in
+    match active_action.errors with
+    | [] -> result
+    | errors -> User_error.raise ~loc:ectx.rule_loc (List.rev_map errors ~f:Pp.verbatim)
   ;;
 
   let build_deps =
@@ -92,18 +99,24 @@ module Server = struct
       | { Exn_with_backtrace.exn; _ } :: _ -> exception_message exn
     in
     fun _session { Build_deps.action_id; deps } ->
-      let ({ rule_loc; root; _ } as active) = find_active action_id in
-      let deps_to_build = to_dune_dep_set deps ~loc:rule_loc ~root in
-      let open Fiber.O in
-      let completed = Fiber.Ivar.create () in
-      active.pending <- completed :: active.pending;
-      Fiber.finalize
-        (fun () ->
-           Fiber.collect_errors (fun () -> active.build_deps deps_to_build)
-           >>| function
-           | Error errors -> Some (build_error_message errors)
-           | Ok () -> None)
-        ~finally:(fun () -> Fiber.Ivar.fill completed ())
+      let ({ rule_loc; root; errors; _ } as active) = find_active action_id in
+      match errors with
+      | message :: _ -> Fiber.return (Some message)
+      | [] ->
+        let deps_to_build = to_dune_dep_set deps ~loc:rule_loc ~root in
+        let open Fiber.O in
+        let completed = Fiber.Ivar.create () in
+        active.pending <- completed :: active.pending;
+        Fiber.finalize
+          (fun () ->
+             Fiber.collect_errors (fun () -> active.build_deps deps_to_build)
+             >>| function
+             | Error errors ->
+               let message = build_error_message errors in
+               active.errors <- message :: active.errors;
+               Some message
+             | Ok () -> None)
+          ~finally:(fun () -> Fiber.Ivar.fill completed ())
   ;;
 
   let initialize _session action_id =

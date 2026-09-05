@@ -97,9 +97,9 @@ narrowing kicks in):
 All the lockdir packages' bin layout is added to $PATH:
 
   $ env_added "$(cat _build/default/path-output)" "$PATH" | censor
-  $PWD/_build/_private/default/.pkg/other.0.0.1-$DIGEST1/target/bin
-  $PWD/_build/_private/default/.pkg/direct.0.0.1-$DIGEST2/target/bin
-  $PWD/_build/_private/default/.pkg/transitive.0.0.1-$DIGEST3/target/bin
+  $PWD/_build/_private/default/.pkg/other/target/bin
+  $PWD/_build/_private/default/.pkg/direct/target/bin
+  $PWD/_build/_private/default/.pkg/transitive/target/bin
 
 In the current code, expanding a %{bin:X}/%{bin-available:X} pform forces the
 install [cookie] of every lockdir package through [Artifacts_and_deps.of_closure]

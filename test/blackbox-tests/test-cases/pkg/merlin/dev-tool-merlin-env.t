@@ -23,4 +23,4 @@ First install the tool:
 Now check that 'dune tools env' puts the dev tool in PATH:
   $ eval $(dune tools env)
   $ which ocamlmerlin
-  $TESTCASE_ROOT/_build/_private/default/.dev-tool/merlin/target/bin/ocamlmerlin
+  $TESTCASE_ROOT/_build/_private/default/.dev-tool/merlin/merlin/target/bin/ocamlmerlin

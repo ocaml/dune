@@ -61,14 +61,17 @@
 (cram
  (deps %{bin:curl})
  (applies_to
-  unavailable-source-package.t
+  unavailable-package-source.t
   compute-checksums-when-missing.t
   e2e.t
+  e2e-autolock.t
   ocamlformat-dev-tool.t
   source-caching.t
+  source-with-directory-symlink.t
   tarball.t
   pin-depends.t
   extra-sources.t
+  fetch-cache.t
   fetch-cache-symlink.t
   broken-symlink-in-dependency.t))
 

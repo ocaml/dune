@@ -9,8 +9,6 @@ Testing install actions
   $ build_pkg test
   foobar
 
-  $ export BUILD_PATH_PREFIX_MAP="/PKG_ROOT=test/target:$BUILD_PATH_PREFIX_MAP"
-
   $ show_pkg_targets test
   
   /bin
@@ -31,10 +29,7 @@ Testing install actions
 
   $ show_pkg_cookie test
   { files =
-      [ (LIB_ROOT,
-         [ In_build_dir
-             "_private/default/.pkg/test.0.0.1-$DIGEST/target/lib/xxx"
-         ])
+      [ (LIB_ROOT, [ In_build_dir "_private/default/.pkg/test/target/lib/xxx" ])
       ]
   ; variables = []
   }

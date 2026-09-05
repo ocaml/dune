@@ -140,6 +140,7 @@ let exec ~(ectx : context) ~(eenv : env) prog args =
         Strict
         ~dir:eenv.working_dir
         ~env
+        ~stdout_to:eenv.stdout_to
         ~stderr_to:eenv.stderr_to
         ~stdin_from:eenv.stdin_from
         ~metadata:ectx.metadata

@@ -28,7 +28,8 @@
   Hello there!
   Hello there!
 
-The output above is misleading: the plugin prints to Dune's stdout instead of
-its redirected target, which is empty.
+Check the target itself: combined terminal output could also look correct if
+the plugin ignored its stdout redirection and left an empty target.
 
   $ cat _build/default/some_copy
+  Hello there!

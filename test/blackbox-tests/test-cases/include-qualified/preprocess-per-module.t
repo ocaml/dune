@@ -18,7 +18,8 @@ Regression test for GH-15578: qualified modules can be selected in
 
   $ dune build
 
-Using a slash instead does not work either:
+A slash-separated source path is rejected with a hint for the corresponding
+logical module reference:
 
   $ cat >dune <<'EOF'
   > (include_subdirs qualified)
@@ -37,7 +38,7 @@ Using a slash instead does not work either:
   Error: "foo/bar" is an invalid module name.
   Module names must be non-empty, start with a letter, and composed only of the
   following characters: 'A'..'Z', 'a'..'z', '_', ''' or '0'..'9'.
-  Hint: foobar would be a correct module name
+  Hint: Foo.Bar would be a correct module reference
   [1]
 
 Qualified references are only available starting with Dune 3.25:

@@ -55,7 +55,7 @@ let sandbox_action dap =
     Lwt_io.fprintf output "%s\n%s\n%s\n" data (String.concat ", " listing) static)
 ;;
 
-let detached_action dap state ~cancel =
+let detached_sandbox_action dap state ~cancel =
   let open Lwt.Syntax in
   let* () =
     Lwt_io.with_file ~mode:Output (Filename.concat state "pid") (fun output ->
@@ -106,6 +106,28 @@ let held_action _dap ~connection ~release =
 
 let absolute_path path =
   if Filename.is_relative path then Filename.concat (Sys.getcwd ()) path else path
+;;
+
+let detached_action dap =
+  let open Lwt.Syntax in
+  let* () =
+    Lwt_io.with_file ~mode:Output "parent-pid" (fun output ->
+      Lwt_io.fprintf output "%d" (Unix.getpid ()))
+  in
+  let rec wait_started () =
+    if Sys.file_exists "started"
+    then Lwt.return_unit
+    else
+      let* () = Lwt_unix.sleep 0.01 in
+      wait_started ()
+  in
+  let* () =
+    Lwt.choose [ Lwt.map ignore (read_file dap ~path:"slow-input"); wait_started () ]
+  in
+  let* () =
+    Lwt_io.with_file ~mode:Output "detached" (fun output -> Lwt_io.write output "done")
+  in
+  Lwt_io.printl "ran"
 ;;
 
 let change_dir dir =
@@ -178,11 +200,12 @@ let action dap =
   | [| _ |] -> ordinary_action dap ~path:"some_dependency"
   | [| _; "read"; path |] -> ordinary_action dap ~path
   | [| _; "sandbox" |] -> sandbox_action dap
-  | [| _; "detached"; state |] -> detached_action dap state ~cancel:false
-  | [| _; "cancelled"; state |] -> detached_action dap state ~cancel:true
+  | [| _; "detached"; state |] -> detached_sandbox_action dap state ~cancel:false
+  | [| _; "cancelled"; state |] -> detached_sandbox_action dap state ~cancel:true
   | [| _; "hold"; connection; release |] -> held_action dap ~connection ~release
   | [| _; "initialize" |] -> Lwt.return_unit
   | [| _; "exit"; code |] -> exit (int_of_string code)
+  | [| _; "detached" |] -> detached_action dap
   | _ -> invalid_arg "invalid arguments"
 ;;
 

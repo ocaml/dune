@@ -119,7 +119,18 @@ let map_of_unix arr =
     | x :: _ -> x)
 ;;
 
-let initial = of_map (map_of_unix (Unix.environment ()))
+let initial =
+  let vars = map_of_unix (Unix.environment ()) in
+  (* The native Dune executable temporarily sets these before OCaml starts. *)
+  let runtime_defaults_marker = "DUNE_INTERNAL__RUNTIME_DEFAULTS" in
+  let vars =
+    if Map.mem vars runtime_defaults_marker
+    then Map.remove (Map.remove vars runtime_defaults_marker) "OCAMLRUNPARAM"
+    else vars
+  in
+  of_map vars
+;;
+
 let of_unix u = of_map (map_of_unix u)
 
 let add t ~var ~value =

@@ -48,6 +48,17 @@ val with_job_slot
   -> (unit -> 'a Fiber.t)
   -> 'a Fiber.t
 
+module Job_slot : sig
+  (** A process slot lent to dependency builds while requests are outstanding.
+      Earlier replies may resume the process before the last request finishes;
+      this is cooperative scheduling, not a strict bound on runnable processes. *)
+  type t
+
+  val create : job_slots:int -> t
+  val with_ : t -> f:(unit -> 'a Fiber.t) -> 'a Fiber.t
+  val run : t -> Fiber.Cancel.t -> (unit -> 'a Fiber.t) -> 'a Fiber.t
+end
+
 (** Wait for the following process to terminate. If [is_process_group_leader] is
     true, kill the entire process group instead of just the process in case of
     timeout. *)

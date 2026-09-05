@@ -63,8 +63,8 @@ subsequent request with the real ID must still initialize successfully.
   $ cat _build/default/held-target
   held
 
-A plugin holds its job slot while waiting for dependencies. Inputs that need
-subprocesses rather than built-in Dune actions currently deadlock at -j 1.
+A plugin lends its job slot while waiting for dependencies, including inputs
+that require subprocesses rather than built-in Dune actions.
 
   $ cat >> dune <<'EOF'
   > (rule
@@ -110,14 +110,45 @@ all diagnostics when the build exits without timing out.
   > }
 
   $ build_with_timeout -j 1 @scheduled
-  [124]
+  scheduled
 
 Overlapping requests must lend only one slot, not one slot per request.
 
   $ build_with_timeout -j 1 @parallel
-  [124]
+  first,second
 
 Nested dynamic actions must be able to lend their slots independently.
 
   $ build_with_timeout -j 1 @nested
-  [124]
+  leaf
+  nested
+
+Weighted dynamic actions lend their full reservation, including when nested.
+Reservations larger than the concurrency limit are capped before lending.
+
+  $ cat > dune-project <<'EOF'
+  > (lang dune 3.26)
+  > (using action-plugin 0.1)
+  > EOF
+  $ cat >> dune <<'EOF'
+  > (rule
+  >  (target weighted-leaf)
+  >  (action (run sh -c "printf leaf > weighted-leaf")))
+  > (rule
+  >  (target weighted-input)
+  >  (job_slots (run echo 2))
+  >  (action
+  >   (progn
+  >    (dynamic-run ./foo.exe read weighted-leaf)
+  >    (write-file weighted-input weighted))))
+  > (rule
+  >  (alias weighted)
+  >  (job_slots (run echo 2))
+  >  (action (dynamic-run ./foo.exe read weighted-input)))
+  > EOF
+  $ timeout 5 dune build -j 2 @weighted
+  leaf
+  weighted
+  $ timeout 5 dune build -j 1 --build-dir=_build-weighted @weighted
+  leaf
+  weighted

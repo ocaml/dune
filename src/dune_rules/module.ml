@@ -115,16 +115,37 @@ module Source = struct
     ; files : File.t option Ml_kind.Dict.t
     }
 
+  let logical_path_of_trie_path path =
+    match Nonempty_list.rev path with
+    | name :: parent :: rest when Module_name.equal name parent ->
+      Nonempty_list.(rev (parent :: rest))
+    | _ -> path
+  ;;
+
+  let path_for_dune_package ~is_nested_group_interface path =
+    (* Module paths in dune-package files historically used trie paths for
+       nested group interfaces. Preserve that representation, and escape a
+       logical path that already ends in a repeated component so [decode] can
+       always remove exactly one repeated final component. *)
+    match is_nested_group_interface, Nonempty_list.rev path with
+    | true, name :: _ -> Nonempty_list.(to_list path @ [ name ])
+    | false, name :: parent :: _ when Module_name.equal name parent ->
+      Nonempty_list.(to_list path @ [ name ])
+    | false, _ -> path
+  ;;
+
   let decode ~dir =
     let open Dune_lang.Decoder in
     fields
-    @@ let+ path = field "path" Module_name.Path.decode
+    @@ let+ path =
+         let+ path = field "path" Module_name.Path.decode in
+         logical_path_of_trie_path path
        and+ intf = field_o "intf" (File.decode ~dir)
        and+ impl = field_o "impl" (File.decode ~dir) in
        { path; files = { Ml_kind.Dict.intf; impl } }
   ;;
 
-  let encode ~dir { path; files = { Ml_kind.Dict.intf; impl } } =
+  let encode ~dir ~path { path = _; files = { Ml_kind.Dict.intf; impl } } =
     let open Dune_lang.Encoder in
     let file = function
       | None -> []
@@ -271,11 +292,6 @@ let iter t ~f =
 
 let set_obj_name t obj_name = { t with obj_name }
 
-let set_path t path =
-  let source = { t.source with Source.path } in
-  { t with source }
-;;
-
 let add_file t kind file =
   let source = Source.add_file t.source kind file in
   { t with source }
@@ -361,7 +377,11 @@ module Obj_map = struct
     end)
 end
 
-let encode ({ source; obj_name; pp = _; visibility; kind; install_as = _ } as t) ~src_dir =
+let encode_with_source_path
+      ({ source; obj_name; pp = _; visibility; kind; install_as = _ } as t)
+      ~src_dir
+      ~source_path
+  =
   let open Dune_lang.Encoder in
   let has_impl = has t ~ml_kind:Impl in
   let kind =
@@ -381,8 +401,15 @@ let encode ({ source; obj_name; pp = _; visibility; kind; install_as = _ } as t)
     [ field "obj_name" Module_name.Unique.encode obj_name
     ; field "visibility" Visibility.encode visibility
     ; field_o "kind" Kind.encode kind
-    ; field_l "source" Fun.id (Source.encode ~dir:src_dir source)
+    ; field_l "source" Fun.id (Source.encode ~dir:src_dir ~path:source_path source)
     ]
+;;
+
+let encode t ~src_dir ~is_nested_group_interface =
+  let source_path =
+    Source.path t.source |> Source.path_for_dune_package ~is_nested_group_interface
+  in
+  encode_with_source_path t ~src_dir ~source_path
 ;;
 
 let decode ~src_dir =
@@ -487,7 +514,33 @@ module Name_map = struct
   ;;
 
   let encode t ~src_dir =
-    Module_name.Map.to_list_map t ~f:(fun _ x -> Dune_lang.List (encode ~src_dir x))
+    Module_name.Map.to_list_map t ~f:(fun _ x ->
+      Dune_lang.List (encode ~src_dir ~is_nested_group_interface:false x))
+  ;;
+
+  let encode_stdlib t ~src_dir ~main_module_name =
+    Module_name.Map.to_list_map t ~f:(fun _ m ->
+      let name = name m in
+      let wrapped_path = Nonempty_list.[ main_module_name; name ] in
+      (* Wrapped stdlib modules historically included their wrapper in the
+         source path. The object name distinguishes wrapped modules from
+         exceptions such as compiler-internal and exit modules. *)
+      let source_path =
+        if Module_name.Unique.equal (obj_name m) (Module_name.Path.wrap wrapped_path)
+        then wrapped_path
+        else Nonempty_list.[ name ]
+      in
+      Dune_lang.List (encode_with_source_path m ~src_dir ~source_path))
+  ;;
+
+  let decode_stdlib ~src_dir =
+    let open Dune_lang.Decoder in
+    let+ modules = decode ~src_dir in
+    Module_name.Map.map modules ~f:(fun m ->
+      (* Qualified subdirectories are forbidden for stdlib libraries. *)
+      let name = name m in
+      let source = { m.source with Source.path = Nonempty_list.[ name ] } in
+      { m with source })
   ;;
 
   let add t module_ = Module_name.Map.set t (name module_) module_

@@ -97,7 +97,7 @@ let%expect_test "qualified group alias source path" =
   |> List.rev
   |> Dyn.list Module_name.Path.to_dyn
   |> Dune_tests_common.print_dyn;
-  [%expect {| [ [ "Group"; "Group" ] ] |}]
+  [%expect {| [ [ "Group" ] ] |}]
 ;;
 
 let%expect_test "repeated qualified group paths" =
@@ -118,10 +118,10 @@ let%expect_test "repeated qualified group paths" =
   |> Dune_tests_common.print_dyn;
   [%expect
     {|
-    [ [ "Foo"; "Foo" ]
+    [ [ "Foo" ]
+    ; [ "Foo"; "Foo" ]
     ; [ "Foo"; "Foo"; "Foo" ]
     ; [ "Foo"; "Foo"; "Foo"; "Foo" ]
-    ; [ "Foo"; "Foo"; "Foo"; "Foo"; "Foo" ]
     ]
     |}]
 ;;

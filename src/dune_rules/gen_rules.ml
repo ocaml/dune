@@ -295,12 +295,17 @@ let gen_rules_for_stanzas sctx dir_contents cctxs expander ~dune_file ~dir:ctx_d
            let { Ml_sources.Parser_generators.deps = _; targets } =
              Ml_sources.Parser_generators.modules ml_sources ~for_:(Menhir m.loc)
            in
-           Memo.List.find_map (Module_trie.to_list targets) ~f:(fun (_, m) ->
-             let module_path = Module.Source.path m in
-             Ml_sources.find_origin ml_sources ~libs:(Scope.libs scope) module_path
-             >>| Option.bind ~f:(fun loc ->
-               Loc.Map.find cctxs (Ml_sources.Origin.loc loc))
-             >>| Option.map ~f:(fun cctx -> module_path, cctx))
+           Memo.List.find_map
+             (Module_trie.to_list_mapi targets ~f:(fun module_path (_, m) ->
+                module_path, m))
+             ~f:(fun (module_path, m) ->
+               Ml_sources.find_origin
+                 ml_sources
+                 ~libs:(Scope.libs scope)
+                 (Module.Source.path m)
+               >>| Option.bind ~f:(fun loc ->
+                 Loc.Map.find cctxs (Ml_sources.Origin.loc loc))
+               >>| Option.map ~f:(fun cctx -> module_path, cctx))
            >>= (function
             | Some (module_path, cctx) ->
               let module_path, _ = Nonempty_list.destruct_last module_path in

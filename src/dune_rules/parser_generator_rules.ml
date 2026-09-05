@@ -58,7 +58,6 @@ let gen_rules sctx ~dir_contents ~dir ~for_ =
     let standard = Action_builder.return [] in
     Expander.expand_and_eval_set expander flags ~standard
   in
-  Module_trie.to_map targets
-  |> Module_name.Map.values
+  Module_trie.to_list targets
   |> Memo.parallel_iter ~f:(add_rule sctx ~dir ~mode ~flags ~expander ~for_)
 ;;

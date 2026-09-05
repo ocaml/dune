@@ -54,12 +54,17 @@ let scan_vo ~dir dir_contents =
     let d_s = Filename.to_string d in
     match kind with
     (* Skip some files as Rocq does, for now files with '-' *)
-    | _ when String.contains d_s '-' -> None
-    | (File_kind.S_REG | S_LNK) when String.ends_with ~suffix:".vo" d_s ->
-      Some (Path.relative_fname dir d)
-    | _ -> None
+    | _ when String.contains d_s '-' -> Memo.return None
+    | File_kind.S_REG when String.ends_with ~suffix:".vo" d_s ->
+      Memo.return (Some (Path.relative_fname dir d))
+    | S_LNK when String.ends_with ~suffix:".vo" d_s ->
+      let path = Path.relative_fname dir d in
+      let open Memo.O in
+      let+ exists = Fs_memo.file_exists (Path.as_outside_build_dir_exn path) in
+      Option.some_if exists path
+    | _ -> Memo.return None
   in
-  List.filter_map ~f dir_contents
+  Memo.List.filter_map ~f dir_contents
 ;;
 
 (* Note this will only work for absolute paths *)
@@ -120,7 +125,8 @@ let scan_path ~f ~acc ~prefix dir =
     in [Dir_status] *)
 let scan_user_path root_path =
   let f ~dir ~prefix ~subresults dir_contents =
-    let vo = scan_vo ~dir dir_contents in
+    let open Memo.O in
+    let* vo = scan_vo ~dir dir_contents in
     let vo_r = retrieve_vo subresults in
     let vo = vo @ vo_r in
     Memo.return (build_user_contrib ~vo ~path:dir ~name:prefix :: subresults)
@@ -130,8 +136,9 @@ let scan_user_path root_path =
 
 let scan_vo root_path =
   let f ~dir ~prefix:() ~subresults dir_contents =
-    let vo = scan_vo ~dir dir_contents in
-    Memo.return (vo @ subresults)
+    let open Memo.O in
+    let+ vo = scan_vo ~dir dir_contents in
+    vo @ subresults
   in
   let acc _ _ = () in
   scan_path ~f ~acc ~prefix:() root_path

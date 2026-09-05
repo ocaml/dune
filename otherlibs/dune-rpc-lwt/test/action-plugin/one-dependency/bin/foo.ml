@@ -142,6 +142,28 @@ let detached_action dap =
   Lwt_io.printl "ran"
 ;;
 
+let helper env args =
+  let cwd = Sys.getcwd () in
+  let prog = Filename.concat cwd "foo.exe" in
+  env, cwd, (prog, Array.of_list (prog :: args))
+;;
+
+let reject_helper env =
+  let env, cwd, command = helper env [ "initialize" ] in
+  let open Lwt.Syntax in
+  let* status = Lwt_process.exec ~env ~cwd ~stderr:`Dev_null command in
+  match status with
+  | Unix.WEXITED 1 -> Lwt.return_unit
+  | _ -> failwith "helper was not rejected"
+;;
+
+let action_id_prefix = "DUNE_DYNAMIC_RUN_ACTION_ID="
+
+let is_action_id value =
+  String.length value >= String.length action_id_prefix
+  && String.sub value 0 (String.length action_id_prefix) = action_id_prefix
+;;
+
 let change_dir dir =
   if not (Sys.file_exists dir) then Unix.mkdir dir 0o755;
   Sys.chdir dir
@@ -222,6 +244,44 @@ let action dap =
   | [| _; "initialize" |] -> Lwt.return_unit
   | [| _; "exit"; code |] -> exit (int_of_string code)
   | [| _; "detached" |] -> detached_action dap
+  | [| _; "helpers" |] ->
+    let open Lwt.Syntax in
+    let read path =
+      let env, cwd, command = helper (Unix.environment ()) [ "read"; path ] in
+      Lwt_process.with_process_in ~env ~cwd command (fun process ->
+        let* contents = Lwt_io.read process#stdout in
+        let+ status = process#status in
+        match status with
+        | Unix.WEXITED 0 -> contents
+        | _ -> failwith "helper failed")
+    in
+    let* first, second = Lwt.both (read "helper-first") (read "helper-second") in
+    let* repeated = read "helper-first" in
+    Lwt_io.printf "%s%s%s" first second repeated
+  | [| _; "ignore-missing" |] ->
+    Lwt.catch
+      (fun () -> read_file dap ~path:"missing-helper-input" |> Lwt.map ignore)
+      (fun _ -> Lwt.return_unit)
+  | [| _; "helper-failure" |] ->
+    let open Lwt.Syntax in
+    let env, cwd, command = helper (Unix.environment ()) [ "ignore-missing" ] in
+    let* status = Lwt_process.exec ~env ~cwd command in
+    (match status with
+     | Unix.WEXITED 0 -> Lwt.return_unit
+     | _ -> failwith "helper did not catch the failure")
+  | [| _; "action-id" |] -> Lwt_io.printl (Sys.getenv "DUNE_DYNAMIC_RUN_ACTION_ID")
+  | [| _; "expired" |] ->
+    let open Lwt.Syntax in
+    let* token = read_file dap ~path:"action-id" in
+    let env =
+      (action_id_prefix ^ String.trim token)
+      :: (Unix.environment ()
+          |> Array.to_list
+          |> List.filter (fun s -> not (is_action_id s)))
+      |> Array.of_list
+    in
+    let* () = reject_helper env in
+    Lwt_io.printl "expired action rejected"
   | [| _; "parallel"; first; second |] ->
     let open Lwt.Syntax in
     let* first, second =

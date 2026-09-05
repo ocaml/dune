@@ -1,4 +1,4 @@
-A failed spawn currently retains captured output while Dune remains running.
+A failed spawn releases captured output while Dune remains running.
 
   $ make_dune_project 3.0
   $ mkdir "$TMPDIR/process-cleanup"
@@ -33,7 +33,5 @@ so disable the watcher to observe exactly one failed spawn.
   >     basename "$f" | sed -E 's/^dune.*(stdout|stderr)$/dune<ID>\1/'
   >   fi
   > done
-  dune<ID>stdout
-  dune<ID>stderr
 
   $ stop_dune_quiet

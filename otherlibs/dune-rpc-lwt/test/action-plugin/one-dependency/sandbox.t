@@ -59,22 +59,22 @@ rerun the action with its new contents, without exposing unmatched dependencies.
   >   fi
   > done 2>&1 | sed -E 's|\.sandbox/[a-f0-9]{32}|.sandbox/SANDBOX|g'
   symlink:
-  File "dune", lines 5-8, characters 0-124:
-  5 | (rule
-  6 |  (target result)
-  7 |  (deps inputs/static.txt (sandbox always))
-  8 |  (action (chdir subdir (dynamic-run ../foo.exe sandbox))))
   starting sandboxed action
-  No rule found for
-  _build-symlink/.sandbox/SANDBOX/default/choice
-  sandboxed build failed
+  picked
+  other.txt, picked.txt, static.txt
+  local
+  starting sandboxed action
+  other
+  other.txt, picked.txt, static.txt
+  local
+  checked isolation
   hardlink:
-  File "dune", lines 5-8, characters 0-124:
-  5 | (rule
-  6 |  (target result)
-  7 |  (deps inputs/static.txt (sandbox always))
-  8 |  (action (chdir subdir (dynamic-run ../foo.exe sandbox))))
   starting sandboxed action
-  No rule found for
-  _build-hardlink/.sandbox/SANDBOX/default/choice
-  sandboxed build failed
+  picked
+  other.txt, picked.txt, static.txt
+  local
+  starting sandboxed action
+  other
+  other.txt, picked.txt, static.txt
+  local
+  checked isolation

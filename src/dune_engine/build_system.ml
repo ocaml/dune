@@ -496,7 +496,24 @@ module Internal = struct
               ; action
               }
             in
-            let build_deps deps = Memo.run (build_deps deps) in
+            let build_deps deps =
+              let* facts = Memo.run (build_deps deps) in
+              let+ () =
+                if not is_sandboxed
+                then Fiber.return ()
+                else
+                  Sandbox.add_deps
+                    sandbox
+                    ~dirs:(Dep.Facts.necessary_dirs_for_sandboxing facts)
+                    ~deps:
+                      (Dep.Facts.paths
+                         facts
+                         ~expand_aliases:
+                           (Execution_parameters.expand_aliases_in_sandbox
+                              execution_parameters))
+              in
+              facts
+            in
             Action_exec.exec input ~build_deps
           in
           let* action_exec_result, () =

@@ -514,58 +514,6 @@ let rec encode =
   | Format_dune_file (src, dst) -> List [ atom "format-dune-file"; sw src; sw dst ]
 ;;
 
-(* In [Action_exec] we rely on one-to-one mapping between the cwd-relative paths
-   seen by the action and [Path.t] seen by dune.
-
-   Having more than one dynamic_run with different cwds could break that. Also,
-   we didn't really want to think about how multiple dynamic actions would
-   interact (do we want dependencies requested by one to be visible to the
-   other?). *)
-let ensure_at_most_one_dynamic_run ~loc action =
-  let rec loop : t -> bool = function
-    | Dynamic_run _ -> true
-    | Chdir (_, t)
-    | Setenv (_, _, t)
-    | Redirect_out (_, _, _, t)
-    | Redirect_in (_, _, t)
-    | Ignore (_, t)
-    | With_accepted_exit_codes (_, t)
-    | Withenv (_, t)
-    | When (_, t)
-    | No_infer t -> loop t
-    | Run _
-    | Runexec _
-    | Echo _
-    | Cat _
-    | Copy _
-    | Symlink _
-    | Copy_and_add_line_directive _
-    | System _
-    | Bash _
-    | Write_file _
-    | Mkdir _
-    | Diff _
-    | Substitute _
-    | Patch _
-    | Cram _
-    | Format_dune_file _ -> false
-    | Pipe (_, ts) | Progn ts | Concurrent ts ->
-      List.fold_left ts ~init:false ~f:(fun acc t ->
-        let have_dyn = loop t in
-        if acc && have_dyn
-        then
-          User_error.raise
-            ~loc
-            [ Pp.text
-                "Multiple 'dynamic-run' commands within single action are not supported."
-            ]
-        else acc || have_dyn)
-  in
-  ignore (loop action)
-;;
-
-let validate ~loc t = ensure_at_most_one_dynamic_run ~loc t
-
 let rec blang_map_string_with_vars ~f = function
   | Blang.Const _ as c -> c
   | Not blang -> Not (blang_map_string_with_vars ~f blang)
@@ -675,9 +623,7 @@ let equal_no_locs t1 t2 = Ordering.is_eq (compare_no_locs t1 t2)
 open Decoder
 
 let make_decode decode =
-  (let+ loc, action = located decode in
-   validate ~loc action;
-   action)
+  decode
   <|> let+ loc = loc in
       User_error.raise
         ~loc

@@ -12,16 +12,6 @@ module Common = struct
       field_l name Fun.id (Module.Name_map.encode modules ~src_dir)
     ;;
   end
-
-  module Decode = struct
-    open Dune_lang.Decoder
-
-    let main_module_name = field "main_module_name" Module_name.decode
-
-    let modules ?(name = "modules") ~src_dir () =
-      field ~default:Module_name.Map.empty name (Module.Name_map.decode ~src_dir)
-    ;;
-  end
 end
 
 module Stdlib = struct
@@ -48,7 +38,7 @@ module Stdlib = struct
   let decode ~src_dir =
     let open Dune_lang.Decoder in
     fields
-      (let+ main_module_name = Common.Decode.main_module_name
+      (let+ main_module_name = field "main_module_name" Module_name.decode
        and+ modules =
          field
            ~default:Module_name.Map.empty
@@ -689,10 +679,13 @@ module Wrapped = struct
 
   let decode ~src_dir =
     let open Dune_lang.Decoder in
-    let open Common.Decode in
     fields
       (let+ group = field "group" (Group.decode ~src_dir)
-       and+ wrapped_compat = modules ~name:"wrapped_compat" ~src_dir ()
+       and+ wrapped_compat =
+         field
+           ~default:Module_name.Map.empty
+           "wrapped_compat"
+           (Module.Name_map.decode ~src_dir)
        and+ wrapped = field "wrapped" Dune_lang.Wrapped.decode in
        { group; wrapped_compat; wrapped; toplevel_module = `Exported })
   ;;

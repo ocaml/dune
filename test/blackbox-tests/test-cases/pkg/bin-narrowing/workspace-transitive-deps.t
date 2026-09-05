@@ -1,14 +1,5 @@
-Workspace-installed binaries (the local_bins in [Artifacts]) are currently not
-narrowed: a package's stanzas resolve any workspace package's binary, including
-packages not in its dependency closure.
-
-Once narrowing lands, this will be restricted to the owning package's TRANSITIVE
-workspace dependency closure -- like [transitive-deps.t] for the lockdir side. In
-particular a transitively-depended package's binary must still resolve (which is
-what distinguishes narrowing to the transitive closure from narrowing to only the
-direct dependencies).
-
-  $ make_lockdir
+Workspace-installed binaries (the local_bins in [Artifacts]) are narrowed: a
+package's stanzas resolve any workspace package's binary present in its closure.
 
 Three workspace packages forming a chain [p] -> [q] -> [r]. [q] installs
 [q-tool] and [r] installs [r-tool]. A sibling [s] installs [s-tool] and is not
@@ -62,8 +53,61 @@ in [p]'s dependency closure.
   $ cat _build/default/p/r-avail
   true
 
-[s-tool] (sibling not in p's closure) is available too, since workspace binaries
-are not narrowed yet:
+[s-tool] (sibling not in p's closure) is NOT available:
 
   $ cat _build/default/p/s-avail
+  false
+
+Transitive closure across Dune projects
+---------------------------------------
+
+The same dependency chain should remain transitive when each package belongs to
+its own Dune project. Cross-project package dependencies are supported, so
+moving [q] and [r] below their own [dune-project] files should not change which
+binaries [p] can see.
+
+  $ mkdir -p cross-project/p cross-project/q cross-project/r
+  $ cd cross-project
+  $ cat >dune-project <<'EOF'
+  > (lang dune 3.25)
+  > (package (name p) (allow_empty) (dir p) (depends q))
+  > EOF
+  $ cat >q/dune-project <<'EOF'
+  > (lang dune 3.25)
+  > (package (name q) (allow_empty) (dir .) (depends r))
+  > EOF
+  $ cat >r/dune-project <<'EOF'
+  > (lang dune 3.25)
+  > (package (name r) (allow_empty) (dir .))
+  > EOF
+
+  $ cat >q/q-tool.sh <<'EOF'
+  > #!/bin/sh
+  > echo from q
+  > EOF
+  $ cat >r/r-tool.sh <<'EOF'
+  > #!/bin/sh
+  > echo from r
+  > EOF
+  $ chmod +x q/q-tool.sh r/r-tool.sh
+  $ cat >q/dune <<'EOF'
+  > (install (package q) (section bin) (files (q-tool.sh as q-tool)))
+  > EOF
+  $ cat >r/dune <<'EOF'
+  > (install (package r) (section bin) (files (r-tool.sh as r-tool)))
+  > EOF
+  $ cat >p/dune <<'EOF'
+  > (rule (with-stdout-to q-avail (echo %{bin-available:q-tool})))
+  > (rule (with-stdout-to r-avail (echo %{bin-available:r-tool})))
+  > EOF
+
+The direct cross-project dependency is visible:
+
+  $ dune build p/q-avail p/r-avail
+  $ cat _build/default/p/q-avail
+  true
+
+[r-tool] is available too, since workspace binaries are not narrowed yet:
+
+  $ cat _build/default/p/r-avail
   true

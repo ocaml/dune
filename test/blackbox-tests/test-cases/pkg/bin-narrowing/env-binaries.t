@@ -32,3 +32,52 @@ not narrowed:
   true
   $ cat _build/default/mybin-out
   from env binary
+
+An env binary colliding with a lock-directory binary
+-----------------------------------------------------
+
+Env binaries also take precedence over package binaries during artifact
+resolution. They should have the same precedence on the action's [PATH].
+Create a locked package that installs another [mybin], plus a distinct binary
+used to force the package to be built before the action runs:
+
+  $ make_lockpkg provider <<'EOF'
+  > (version 0.0.1)
+  > (build
+  >  (progn
+  >   (system "\| cat > mybin <<'EOI'
+  >           "\| #!/bin/sh
+  >           "\| echo from lockdir
+  >           "\| EOI
+  >   )
+  >   (system "\| cat > force-provider <<'EOI'
+  >           "\| #!/bin/sh
+  >           "\| echo force provider
+  >           "\| EOI
+  >   )
+  >   (system "chmod +x mybin force-provider")
+  >   (system "echo 'bin: [ \"mybin\" \"force-provider\" ]' > provider.install")
+  >  ))
+  > EOF
+
+  $ make_dune_project 3.25
+  $ cat >>dune-project <<'EOF'
+  > (package (name mypkg) (allow_empty) (dir .) (depends provider))
+  > EOF
+  $ cat >>dune <<'EOF'
+  > (rule
+  >  (deps %{bin:force-provider})
+  >  (action (with-stdout-to mybin-from-path (system mybin))))
+  > EOF
+
+The pform still selects the env binding:
+
+  $ dune clean
+  $ dune build mybin-out mybin-from-path
+  $ cat _build/default/mybin-out
+  from env binary
+
+Bare-name lookups also preserve this precedence order:
+
+  $ cat _build/default/mybin-from-path
+  from env binary

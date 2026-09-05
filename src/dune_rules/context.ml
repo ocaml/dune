@@ -89,7 +89,7 @@ and t =
   ; default_ocamlpath : Path.t list Memo.Lazy.t
   ; build_context : Build_context.t
   ; builder : builder
-  ; which : Filename.t -> Path.t option Memo.t
+  ; which : packages:Package.Name.Set.t option -> Filename.t -> Path.t option Memo.t
   }
 
 let default_target_exec ~target_exec toolchain =
@@ -200,7 +200,8 @@ let cms_cmt_dependency t = t.builder.cms_cmt_dependency
 let equal x y = Context_name.equal x.builder.name y.builder.name
 let hash t = Context_name.hash t.builder.name
 let build_context t = t.build_context
-let which t fname = t.which fname
+let which t fname = t.which ~packages:None fname
+let which_narrowed_to_packages t ~packages fname = t.which ~packages:(Some packages) fname
 let name t = t.builder.name
 let path t = t.builder.path
 let installed_env t = t.builder.env
@@ -420,6 +421,10 @@ let create (builder : Builder.t) ~(kind : Kind.t) =
           (fun () ->
              let+ current_env = builder.env
              and+ pkg_env = Pkg_rules.exported_env builder.name in
+             (* [PATH] is not added here because it is contributed per
+                directory by [Env_node], where the set of narrowed lockdir
+                packages is known. *)
+             let pkg_env = Env.remove pkg_env ~var:Env_path.var in
              Env_path.extend_env_concat_path current_env pkg_env)
         |> Memo.Lazy.force
       in
@@ -428,10 +433,11 @@ let create (builder : Builder.t) ~(kind : Kind.t) =
   let which_outside_lockdir = Which.which ~path:builder.path in
   let which =
     match kind with
-    | Default | Opam _ -> which_outside_lockdir
+    (* There are no lock directory packages to narrow to outside of a [Lock]
+       context. *)
+    | Default | Opam _ -> fun ~packages:_ -> which_outside_lockdir
     | Lock _ ->
-      let which = Staged.unstage @@ Pkg_rules.which builder.name in
-      fun prog ->
+      fun ~packages prog ->
         Memo.push_stack_frame
           ~human_readable_description:(fun () ->
             Pp.textf
@@ -439,7 +445,7 @@ let create (builder : Builder.t) ~(kind : Kind.t) =
               (Filename.to_string prog)
               (Context_name.to_string builder.name))
           (fun () ->
-             which prog
+             Pkg_rules.which ~packages builder.name prog
              >>= function
              | Some p -> Memo.return (Some p)
              | None -> Which.which ~path:builder.path prog)
@@ -467,7 +473,11 @@ let create (builder : Builder.t) ~(kind : Kind.t) =
          let findlib_toolchain =
            Option.map builder.findlib_toolchain ~f:Context_name.to_string
          in
-         Findlib_config.discover_from_env ~env ~which ~ocamlpath ~findlib_toolchain)
+         Findlib_config.discover_from_env
+           ~env
+           ~which:(which ~packages:None)
+           ~ocamlpath
+           ~findlib_toolchain)
   in
   let ocaml_and_build_env_kind =
     Memo.Lazy.create

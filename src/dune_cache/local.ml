@@ -57,15 +57,20 @@ let restore_file_content path : string Restore_result.t =
     Error e
 ;;
 
-let restore_metadata_file file ~of_sexp : _ Restore_result.t =
+let restore_sexp file =
   restore_file_content file
   |> Restore_result.bind ~f:(fun content ->
     match Csexp.parse_string content with
     | Error (_offset, msg) -> Error (Failure msg)
-    | Ok sexp ->
-      (match of_sexp sexp with
-       | Ok content -> Restored content
-       | Error e -> Error e))
+    | Ok sexp -> Restored sexp)
+;;
+
+let restore_metadata_file file ~of_sexp : _ Restore_result.t =
+  restore_sexp file
+  |> Restore_result.bind ~f:(fun sexp ->
+    match of_sexp sexp with
+    | Ok content -> Restored content
+    | Error e -> Error e)
 ;;
 
 module Artifacts = struct
@@ -182,7 +187,11 @@ module Artifacts = struct
       in
       match
         let content = Csexp.to_string (to_sexp metadata) in
-        Util.write_atomically ~mode ~content path_in_cache
+        Util.write_atomically
+          ~mode
+          ~content
+          ~perm:Permissions.Mode.private_file
+          path_in_cache
       with
       | Ok -> Stored
       | Error e -> Error e

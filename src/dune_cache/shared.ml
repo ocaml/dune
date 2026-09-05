@@ -9,6 +9,58 @@ let config = ref Config.Disabled
 
 open Import
 
+module Dynamic_deps = struct
+  let manifest_path = Path.Local.of_string ".dap-manifest"
+
+  let load ~rule_digest =
+    match !config with
+    | Disabled -> None
+    | Enabled _ ->
+      (match Artifacts.list ~rule_digest with
+       | Restored [ { Artifacts.Metadata_entry.path; digest = Some digest } ]
+         when Path.Local.equal path manifest_path ->
+         (match
+            Local.restore_sexp (Lazy.force (Layout.file_path ~file_digest:digest))
+          with
+          | Restored value -> Some value
+          | Not_found_in_cache | Error _ -> None)
+       | Restored _ | Not_found_in_cache | Error _ -> None)
+  ;;
+
+  let store ~rule_digest manifest =
+    match !config with
+    | Disabled -> ()
+    | Enabled { storage_mode = mode; _ } ->
+      let content = Csexp.to_string manifest in
+      let digest =
+        Digest.path_with_executable_bit
+          ~executable:false
+          ~content_digest:(Digest.string content)
+      in
+      (match
+         match
+           let dst = Lazy.force (Layout.file_path ~file_digest:digest) in
+           Util.write_atomically
+             ~mode
+             ~content
+             ~perm:(Permissions.remove Permissions.write Permissions.Mode.default_file)
+             dst
+         with
+         | Error exn -> Store_result.Error exn
+         | Ok | Already_present ->
+           Artifacts.Metadata_file.store
+             [ { Artifacts.Metadata_entry.path = manifest_path; digest = Some digest } ]
+             ~mode
+             ~rule_digest
+       with
+       | Stored | Already_present | Will_not_store_due_to_non_determinism _ -> ()
+       | Error exn ->
+         Log.info
+           "Unable to store dynamic dependency manifest"
+           [ "error", Dyn.string (Printexc.to_string exn) ])
+  ;;
+end
+
 module Store_artifacts_result = struct
   type t =
     | Stored of Digest.t Targets.Produced.t

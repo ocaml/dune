@@ -15,7 +15,12 @@ end
     When the [mode] is set to [Copy], there is a small chance that atomicity is
     violated, in which case the destination is silently overwritten and the
     function returns [Ok] instead of [Already_present]. *)
-val write_atomically : mode:Mode.t -> content:string -> Path.t -> Write_result.t
+val write_atomically
+  :  mode:Mode.t
+  -> content:string
+  -> perm:Permissions.Mode.t
+  -> Path.t
+  -> Write_result.t
 
 (** The functions in this module are bare wrappers that assume that the "target
     directory" (whatever that means for a given function) already exists. If the

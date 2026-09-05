@@ -92,17 +92,12 @@ Allows nested action modifiers under `with-accepted-exit-codes` in Dune 2.2.
   >    (not 0) 
   >    (setenv VAR myvar
   >     (chdir .
-  >      (with-stdout-to out.txt
+  >      (with-stdout-to dynamic-out.txt
   >       (dynamic-run dune_cmd exit-code 1)))))))
   > EOF
 
-  $ dune build --display=short --root . @g
-  File "dune", lines 42-45, characters 3-106:
-  42 |    (setenv VAR myvar
-  43 |     (chdir .
-  44 |      (with-stdout-to out.txt
-  45 |       (dynamic-run dune_cmd exit-code 1)))))))
-  Error: Only "run", "bash", "system", "chdir", "setenv", "ignore-<outputs>",
-  "with-stdin-from", "with-<outputs>-to" and "no-infer" can be nested under
-  "with-accepted-exit-codes"
-  [1]
+The modifiers and accepted code are valid, but the executable is not a plugin.
+
+  $ dune build --root . @g > g.output 2>&1; echo $?
+  1
+  $ tr '\n' ' ' < g.output | grep -qF 'failed to respond to dune.'

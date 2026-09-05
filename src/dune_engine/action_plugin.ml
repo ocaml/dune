@@ -135,10 +135,10 @@ let exec ~(ectx : context) ~(eenv : env) prog args =
            ~var:Action_plugin.Rpc.action_id_env_variable
            ~value:(Action_id.to_string action_id)
     in
-    let+ () =
+    let+ (_ : (unit, int) result) =
       Process.run
         ~display:!Clflags.display
-        Strict
+        (Accept eenv.exit_codes)
         ~dir:eenv.working_dir
         ~env
         ~stdout_to:eenv.stdout_to

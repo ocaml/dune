@@ -229,7 +229,7 @@ let two_or_more decode =
 
 let decode_with_accepted_exit_codes =
   let rec is_ok loc ~nesting_support ~nesting_support_version = function
-    | Run _ | Bash _ | System _ -> true
+    | Run _ | Bash _ | System _ | Dynamic_run _ -> true
     | Chdir (_, t)
     | Setenv (_, _, t)
     | Ignore (_, t)
@@ -269,6 +269,7 @@ let decode_with_accepted_exit_codes =
                 (String.enumerate_and
                  @@ quote
                       [ "run"
+                      ; "dynamic-run"
                       ; "bash"
                       ; "system"
                       ; "chdir"
@@ -284,7 +285,7 @@ let decode_with_accepted_exit_codes =
             ~loc
             [ Pp.textf
                 "with-accepted-exit-codes can only be used with %s"
-                (String.enumerate_or (quote [ "run"; "bash"; "system" ]))
+                (String.enumerate_or (quote [ "run"; "dynamic-run"; "bash"; "system" ]))
             ]
 ;;
 
@@ -519,10 +520,7 @@ let rec encode =
    Having more than one dynamic_run with different cwds could break that. Also,
    we didn't really want to think about how multiple dynamic actions would
    interact (do we want dependencies requested by one to be visible to the
-   other?).
-
-   Moreover, we also check that 'dynamic-run' is not used within
-   'with-exit-codes', since the meaning of this interaction is not clear. *)
+   other?). *)
 let ensure_at_most_one_dynamic_run ~loc action =
   let rec loop : t -> bool = function
     | Dynamic_run _ -> true

@@ -54,10 +54,8 @@ Checks `with-accepted-exit-codes` against matching and failing commands.
   >  (action (with-accepted-exit-codes (not 0) (dynamic-run dune_cmd exit-code 1))))
   > EOF
 
-  $ dune build --display=short --root . @e
-  File "dune", line 15, characters 43-77:
-  15 |  (action (with-accepted-exit-codes (not 0) (dynamic-run dune_cmd exit-code 1))))
-                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  Error: with-accepted-exit-codes can only be used with "run", "bash" or
-  "system"
-  [1]
+The accepted code does not excuse failing to initialize the DAP session.
+
+  $ dune build --root . @e > e.output 2>&1; echo $?
+  1
+  $ tr '\n' ' ' < e.output | grep -qF 'failed to respond to dune.'

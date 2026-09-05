@@ -23,8 +23,7 @@ is accepted and a nonzero exit code fails the action.
   Command exited with code 7.
   [1]
 
-An explicitly accepted code should succeed. Currently dynamic-run is rejected
-inside with-accepted-exit-codes before the plugin can start.
+An explicitly accepted code succeeds after DAP initialization.
 
   $ cat > dune <<'EOF'
   > (rule
@@ -32,15 +31,8 @@ inside with-accepted-exit-codes before the plugin can start.
   >  (action (with-accepted-exit-codes 7 (dynamic-run ./foo.exe exit 7))))
   > EOF
   $ dune build @accepted
-  File "dune", line 3, characters 37-67:
-  3 |  (action (with-accepted-exit-codes 7 (dynamic-run ./foo.exe exit 7))))
-                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  Error: with-accepted-exit-codes can only be used with "run", "bash" or
-  "system"
-  [1]
 
-Zero should fail when only seven is accepted. Keep this rule separate so its
-result is not masked by the preceding rule's validation error.
+Zero fails when only seven is accepted.
 
   $ cat > dune <<'EOF'
   > (rule
@@ -48,9 +40,9 @@ result is not masked by the preceding rule's validation error.
   >  (action (with-accepted-exit-codes 7 (dynamic-run ./foo.exe exit 0))))
   > EOF
   $ dune build @rejected
-  File "dune", line 3, characters 37-67:
+  File "dune", lines 1-3, characters 0-94:
+  1 | (rule
+  2 |  (alias rejected)
   3 |  (action (with-accepted-exit-codes 7 (dynamic-run ./foo.exe exit 0))))
-                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  Error: with-accepted-exit-codes can only be used with "run", "bash" or
-  "system"
+  Command exited with code 0.
   [1]

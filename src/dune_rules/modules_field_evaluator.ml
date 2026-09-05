@@ -93,20 +93,7 @@ let eval0 =
       else (
         let reference = Module_reference.of_string version (loc, s) in
         let path = Module_reference.path reference in
-        if
-          Module_reference.is_qualified reference
-          &&
-          match include_subdirs with
-          | Include_subdirs.Include Qualified -> false
-          | No | Include Unqualified -> true
-        then
-          User_error.raise
-            ~loc
-            [ Pp.textf
-                "Qualified module reference %S may only be used with (include_subdirs \
-                 qualified)."
-                (Module_reference.to_string reference)
-            ];
+        Module_reference.validate_qualified reference ~include_subdirs;
         unchecked_path path)
     in
     match Module_name.Unchecked.Path.Map.find all_modules path with

@@ -6,11 +6,13 @@ open Import
     multiple components, for example [Foo.Bar]. *)
 type t
 
-val loc : t -> Loc.t
 val path : t -> Module_name.Path.t
 val to_string : t -> string
 val of_string : Syntax.Version.t -> Loc.t * string -> t
-val is_qualified : t -> bool
+
+(** Reject a qualified reference unless subdirectories are included with
+    qualified names. *)
+val validate_qualified : t -> include_subdirs:Include_subdirs.t -> unit
 
 module Per_item : sig
   type key = t

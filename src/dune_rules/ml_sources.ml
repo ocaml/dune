@@ -684,21 +684,7 @@ let has_instances (lib : Buildable.t) =
 
 let validate_qualified_module_references ~include_subdirs per_module =
   Module_reference.Per_item.explicit_references per_module
-  |> List.iter ~f:(fun reference ->
-    if
-      Module_reference.is_qualified reference
-      &&
-      match include_subdirs with
-      | Include_subdirs.Include Qualified -> false
-      | No | Include Unqualified -> true
-    then
-      User_error.raise
-        ~loc:(Module_reference.loc reference)
-        [ Pp.textf
-            "Qualified module reference %S may only be used with (include_subdirs \
-             qualified)."
-            (Module_reference.to_string reference)
-        ])
+  |> List.iter ~f:(Module_reference.validate_qualified ~include_subdirs)
 ;;
 
 let validate_buildable_preprocessing ~include_subdirs ~for_ buildable =
@@ -1435,6 +1421,7 @@ let make
         ~lib_config
         ~libs
         ~exes
+        ~include_subdirs
         ~melange_emits)
   in
   { modules; artifacts; include_subdirs }

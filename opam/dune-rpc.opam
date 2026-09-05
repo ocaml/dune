@@ -15,8 +15,10 @@ depends: [
   "ordering"
   "dyn"
   "xdg"
+  "re"
   "stdune" {= version}
   "pp" {>= "1.1.0"}
+  "ppx_expect" {with-test}
   "odoc" {with-doc}
 ]
 dev-repo: "git+https://github.com/ocaml/dune.git"

@@ -1,20 +1,24 @@
-open Dune_action_plugin.V1
-module Glob = Dune_action_plugin.V1.Glob
-module Private = Dune_action_plugin.Private
+open Dune_rpc_lwt.V1.Action_plugin
+module Glob = Dune_rpc_lwt.V1.Action_plugin.Glob
+module Error = Dune_rpc_lwt.V1.Action_plugin.Error
+
+let run action = Lwt_main.run (action outside_of_dune)
 
 let%expect_test _ =
-  try ignore @@ Path.of_string "/some/absolute/path" with
+  try run (fun dap -> read_file dap ~path:"/some/absolute/path" |> Lwt.map ignore) with
   | Invalid_argument message ->
     print_endline message;
     [%expect
-      {| Path "/some/absolute/path" is absolute. All paths used with dune-action-plugin must be relative. |}]
+      {| Path "/some/absolute/path" is absolute. All paths used with Dune_rpc.V1.Action_plugin must be relative. |}]
 ;;
 
 let%expect_test _ =
-  let action =
-    read_file ~path:(Path.of_string "some_dir/some_file") |> map ~f:print_endline
+  let action dap =
+    let open Lwt.Syntax in
+    let+ data = read_file dap ~path:"some_dir/some_file" in
+    print_endline data
   in
-  Private.do_run action;
+  run action;
   [%expect
     {|
     Hello from foo!
@@ -22,11 +26,12 @@ let%expect_test _ =
 ;;
 
 let%expect_test _ =
-  let action =
-    read_directory_with_glob ~glob:Glob.universal ~path:(Path.of_string "some_dir")
-    |> map ~f:(fun data -> String.concat "," data |> print_endline)
+  let action dap =
+    let open Lwt.Syntax in
+    let+ data = read_directory_with_glob dap ~glob:Glob.universal ~path:"some_dir" in
+    String.concat "," data |> print_endline
   in
-  Private.do_run action;
+  run action;
   [%expect
     {|
     some_file,subdir
@@ -35,27 +40,45 @@ let%expect_test _ =
 
 let run_action_expect_throws action =
   try
-    Private.do_run action;
+    run action;
     print_endline "SHOULD BE UNREACHABLE"
   with
-  | Private.Execution_error.E message -> print_endline message
+  | Error.E message -> print_endline message
 ;;
 
 let%expect_test _ =
-  let action =
-    read_file ~path:(Path.of_string "file_that_does_not_exist") |> map ~f:ignore
+  let action dap =
+    let open Lwt.Syntax in
+    let+ data = read_file dap ~path:"file_that_does_not_exist" in
+    ignore data
   in
   run_action_expect_throws action;
   [%expect {| read_file: open(file_that_does_not_exist): No such file or directory |}]
 ;;
 
 let%expect_test _ =
-  let action =
-    read_directory_with_glob
-      ~glob:Glob.universal
-      ~path:(Path.of_string "directory_that_does_not_exist")
-    |> map ~f:(fun entries -> Printf.printf "[%s]\n" (String.concat ";" entries))
+  let action dap =
+    let open Lwt.Syntax in
+    let+ entries =
+      read_directory_with_glob
+        dap
+        ~glob:Glob.universal
+        ~path:"directory_that_does_not_exist"
+    in
+    Printf.printf "[%s]\n" (String.concat ";" entries)
   in
-  Private.do_run action;
+  run action;
+  [%expect {| [] |}]
+;;
+
+let%expect_test "reading a file as a directory gives an empty listing" =
+  let action dap =
+    let open Lwt.Syntax in
+    let+ entries =
+      read_directory_with_glob dap ~glob:Glob.universal ~path:"some_dir/some_file"
+    in
+    Printf.printf "[%s]\n" (String.concat ";" entries)
+  in
+  run action;
   [%expect {| [] |}]
 ;;

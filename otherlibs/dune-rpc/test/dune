@@ -1,0 +1,11 @@
+(library
+ (name dune_rpc_action_plugin_tests)
+ (inline_tests)
+ (libraries
+  dune_rpc
+  ppx_expect.config
+  ppx_expect.config_types
+  base
+  ppx_inline_test.config)
+ (preprocess
+  (pps ppx_expect)))

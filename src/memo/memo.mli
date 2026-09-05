@@ -38,6 +38,18 @@ end
 (* CR-someday amokhov: Return the set of exceptions explicitly. *)
 val run : 'a t -> 'a Fiber.t
 
+module Cycle_detection_context : sig
+  (** The cycle-detection context of a running memoized computation. *)
+  type t
+
+  val current : unit -> t Fiber.t
+
+  (** Run a memoized computation from another fiber while preserving the call
+      stack of the captured context. The context may only be used during the
+      memoization run in which it was captured. *)
+  val run : t -> 'a memo -> 'a Fiber.t
+end
+
 (** Every error gets reported twice: once early, in non-deterministic order, by
     calling [handler_error], and once later, in deterministic order, by raising
     a fiber exception.

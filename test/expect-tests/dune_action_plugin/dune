@@ -6,7 +6,9 @@
   (deps
    (source_tree some_dir)))
  (libraries
-  dune_action_plugin
+  dune_rpc_lwt
+  lwt
+  lwt.unix
   ppx_expect.config
   ppx_expect.config_types
   base

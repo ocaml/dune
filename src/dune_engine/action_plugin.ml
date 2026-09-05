@@ -1,103 +1,187 @@
 open Import
-module DAP = Dune_action_plugin.Private.Protocol
-module Dependency = Dune_action_plugin.Private.Protocol.Dependency
 open Action.Ext.Exec
 
+include struct
+  open Dune_rpc
+  module Action_id = Action_id
+  module Action_plugin = Action_plugin
+end
+
 let to_dune_dep_set =
-  let of_DAP_dep ~loc ~working_dir : Dependency.t -> Dep.t =
+  let of_action_plugin_dep ~loc ~working_dir : Dune_rpc.Dep.t -> Dep.t =
     let to_dune_path = Path.relative working_dir in
     function
     | File fn -> Dep.file (to_dune_path fn)
     | Directory dir ->
-      let dir = to_dune_path dir in
-      let selector = File_selector.of_glob ~dir Glob.universal in
+      let selector =
+        let dir = to_dune_path dir in
+        File_selector.of_glob ~dir Glob.universal
+      in
       Dep.file_selector selector
     | Glob { path; glob } ->
-      let dir = to_dune_path path in
-      let glob = Glob.of_string_exn loc glob in
-      let selector = File_selector.of_glob ~dir glob in
+      let selector =
+        let dir = to_dune_path path in
+        let glob = Glob.of_string_exn loc glob in
+        File_selector.of_glob ~dir glob
+      in
       Dep.file_selector selector
   in
   fun set ~loc ~working_dir ->
-    Dependency.Set.to_list_map set ~f:(of_DAP_dep ~loc ~working_dir) |> Dep.Set.of_list
+    Dune_rpc.Dep.Set.to_list_map set ~f:(of_action_plugin_dep ~loc ~working_dir)
+    |> Dep.Set.of_list
 ;;
+
+module Server = struct
+  module Rpc = Action_plugin.Rpc
+  module Build_deps = Dune_rpc.Procedures.Public.Action_plugin.Build_deps
+  module Handler = Root.Rpc.Server.Handler
+  module Session = Root.Rpc.Server.Session
+
+  type active =
+    { build_deps : Dep.Set.t -> unit Fiber.t
+    ; rule_loc : Loc.t
+    ; working_dir : Path.t
+    ; mutable session_id : Session.Id.t option
+    }
+
+  let active = Action_id.Table.create 16
+
+  let rec fresh_id () =
+    let id = Action_id.gen () in
+    if Action_id.Table.mem active id then fresh_id () else id
+  ;;
+
+  let invalid_request message =
+    raise
+      (Dune_rpc.Response.Error.E
+         (Dune_rpc.Response.Error.create
+            ~kind:Dune_rpc.Response.Error.Invalid_request
+            ~message
+            ()))
+  ;;
+
+  let find_active action_id =
+    match Action_id.Table.find active action_id with
+    | Some active -> active
+    | None ->
+      let message =
+        Printf.sprintf "unknown dynamic action %S" (Action_id.to_string action_id)
+      in
+      raise
+        (Dune_rpc.Response.Error.E
+           (Dune_rpc.Response.Error.create
+              ~kind:Dune_rpc.Response.Error.Invalid_request
+              ~message
+              ()))
+  ;;
+
+  let with_active ~(ectx : context) ~(eenv : env) f =
+    let action_id = fresh_id () in
+    let active_action =
+      { build_deps = ectx.build_deps
+      ; rule_loc = ectx.rule_loc
+      ; working_dir = eenv.working_dir
+      ; session_id = None
+      }
+    in
+    Action_id.Table.add_exn active action_id active_action;
+    Fiber.finalize
+      (fun () -> f action_id active_action)
+      ~finally:(fun () ->
+        Action_id.Table.remove active action_id;
+        Fiber.return ())
+  ;;
+
+  let build_deps =
+    let build_error_message =
+      let rec exception_message = function
+        | User_error.E message -> User_message.to_string message
+        | Memo.Error.E error -> exception_message (Memo.Error.get error)
+        | Memo.Cycle_error.E _ as exn ->
+          Dune_util.Report_error.message_of_exception exn |> User_message.to_string
+        | exn -> Printexc.to_string exn
+      in
+      function
+      | [] -> "dependency build failed"
+      | { Exn_with_backtrace.exn; _ } :: _ -> exception_message exn
+    in
+    fun session { Build_deps.action_id; deps } ->
+      let active = find_active action_id in
+      (match active.session_id with
+       | None -> invalid_request "dynamic action is not initialized"
+       | Some session_id ->
+         if not (Session.Id.equal session_id (Session.id session))
+         then invalid_request "dynamic action belongs to another RPC session");
+      let deps_to_build =
+        to_dune_dep_set deps ~loc:active.rule_loc ~working_dir:active.working_dir
+      in
+      let open Fiber.O in
+      Fiber.collect_errors (fun () -> active.build_deps deps_to_build)
+      >>| function
+      | Error errors -> Some (build_error_message errors)
+      | Ok () -> None
+  ;;
+
+  let initialize session action_id =
+    let active = find_active action_id in
+    match active.session_id with
+    | Some _ -> invalid_request "dynamic action is already initialized"
+    | None ->
+      active.session_id <- Some (Session.id session);
+      Fiber.return ()
+  ;;
+
+  let implement_handler handler =
+    Handler.implement_request handler Rpc.initialize initialize;
+    Handler.implement_request handler Rpc.build_deps build_deps
+  ;;
+end
 
 let exec ~(ectx : context) ~(eenv : env) prog args =
   let open Fiber.O in
-  let run_arguments_fn = Dtemp.action File ~prefix:"dune" ~suffix:"run" in
-  let response_fn = Dtemp.action File ~prefix:"dune" ~suffix:"response" in
-  let run_arguments =
-    { DAP.Run_arguments.prepared_dependencies = eenv.prepared_dependencies }
-  in
-  DAP.Run_arguments.to_sexp run_arguments
-  |> Csexp.to_string
-  |> Io.write_file run_arguments_fn;
-  let env =
-    let value =
-      DAP.Greeting.(
-        to_sexp
-          { run_arguments_fn = Path.to_absolute_filename run_arguments_fn
-          ; response_fn = Path.to_absolute_filename response_fn
-          })
-      |> Csexp.to_string
-    in
-    Env.add eenv.env ~var:(Env.Var.of_string DAP.run_by_dune_env_variable) ~value
-  in
-  let+ () =
-    Process.run
-      ~display:!Clflags.display
-      Strict
-      ~dir:eenv.working_dir
-      ~env
-      ~stderr_to:eenv.stderr_to
-      ~stdin_from:eenv.stdin_from
-      ~metadata:ectx.metadata
-      ?sandbox:ectx.sandbox
-      prog
-      args
-  in
-  let response_raw = Io.read_file response_fn in
-  Temp.destroy File run_arguments_fn;
-  Temp.destroy File response_fn;
-  let response =
-    match Csexp.parse_string response_raw with
-    | Ok s -> DAP.Response.of_sexp s
-    | Error _ -> Error DAP.Error.Parse_error
-  in
   let prog_name = Path.reach ~from:eenv.working_dir prog in
-  match response with
-  | Error _ when String.is_empty response_raw ->
-    User_error.raise
-      ~loc:ectx.rule_loc
-      [ Pp.textf
-          "Executable '%s' declared as using dune-action-plugin (declared with \
-           'dynamic-run' tag) failed to respond to dune."
-          prog_name
-      ; Pp.nop
-      ; Pp.text
-          "If you don't use dynamic dependency discovery in your executable you may \
-           consider changing 'dynamic-run' to 'run' in your rule definition."
-      ]
-  | Error Parse_error ->
-    User_error.raise
-      ~loc:ectx.rule_loc
-      [ Pp.textf
-          "Executable '%s' declared as using dune-action-plugin (declared with \
-           'dynamic-run' tag) responded with invalid message."
-          prog_name
-      ]
-  | Error (Version_mismatch _) ->
-    User_error.raise
-      ~loc:ectx.rule_loc
-      [ Pp.textf
-          "Executable '%s' is linked against a version of dune-action-plugin library \
-           that is incompatible with this version of dune."
-          prog_name
-      ]
-  | Ok Done -> Done_or_more_deps.Done
-  | Ok (Need_more_deps deps) ->
-    Need_more_deps
-      (deps, to_dune_dep_set deps ~loc:ectx.rule_loc ~working_dir:eenv.working_dir)
+  Server.with_active ~ectx ~eenv (fun action_id active_action ->
+    let env =
+      let where =
+        match Root.Rpc.Where.default () with
+        | `Unix _ ->
+          `Unix
+            (Path.reach
+               (Path.build (Root.Rpc.Where.rpc_socket_file ()))
+               ~from:eenv.working_dir)
+        | where -> where
+      in
+      Dune_rpc.Where.add_to_env where eenv.env
+      |> Env.add
+           ~var:Action_plugin.Rpc.action_id_env_variable
+           ~value:(Action_id.to_string action_id)
+    in
+    let+ () =
+      Process.run
+        ~display:!Clflags.display
+        Strict
+        ~dir:eenv.working_dir
+        ~env
+        ~stderr_to:eenv.stderr_to
+        ~stdin_from:eenv.stdin_from
+        ~metadata:ectx.metadata
+        prog
+        args
+    in
+    if Option.is_none active_action.session_id
+    then
+      User_error.raise
+        ~loc:ectx.rule_loc
+        [ Pp.textf
+            "Executable '%s' declared as using dune-action-plugin (declared with \
+             'dynamic-run' tag) failed to respond to dune."
+            prog_name
+        ; Pp.nop
+        ; Pp.text
+            "If you don't use dynamic dependency discovery in your executable you may \
+             consider changing 'dynamic-run' to 'run' in your rule definition."
+        ];
+    ())
 ;;
 
 module Spec = struct

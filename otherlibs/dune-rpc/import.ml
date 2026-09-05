@@ -9,6 +9,8 @@ include struct
   module Code_error = Code_error
   module Env = Env
   module Comparable = Comparable
+  module Repr = Repr
+  module Set = Set
   module Result = Result
   module Option = Option
   module Table = Table

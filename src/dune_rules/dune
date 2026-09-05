@@ -5,7 +5,6 @@
  (libraries
   build_path_prefix_map
   csexp
-  dune_action_plugin
   dune_config_file
   dune_digest
   dune_engine

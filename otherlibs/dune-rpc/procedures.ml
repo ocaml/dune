@@ -159,6 +159,52 @@ module Public = struct
     ;;
   end
 
+  module Action_plugin = struct
+    module Build_deps = struct
+      type t =
+        { action_id : Action_id.t
+        ; deps : Dep.Set.t
+        }
+
+      let conv =
+        let open Conv in
+        let to_ (action_id, deps) = { action_id; deps } in
+        let from { action_id; deps } = action_id, deps in
+        iso (pair Action_id.conv Dep.Set.conv) to_ from
+      ;;
+    end
+
+    module Initialize = struct
+      let v1 =
+        Decl.Request.make_current_gen ~req:Action_id.conv ~resp:Conv.unit ~version:1
+      ;;
+
+      let decl =
+        Decl.Request.make
+          ~method_:(Method.Name.of_string "dap/initialize")
+          ~generations:[ v1 ]
+      ;;
+    end
+
+    module Build_deps_request = struct
+      let v1 =
+        Decl.Request.make_current_gen
+          ~req:Build_deps.conv
+          ~resp:Conv.(option string)
+          ~version:1
+      ;;
+
+      let decl =
+        Decl.Request.make
+          ~method_:(Method.Name.of_string "dap/build-deps")
+          ~generations:[ v1 ]
+      ;;
+    end
+
+    let initialize = Initialize.decl
+    let build_deps = Build_deps_request.decl
+  end
+
   let ping = Ping.decl
   let diagnostics = Diagnostics.decl
   let shutdown = Shutdown.decl
@@ -373,6 +419,8 @@ module Builtin = struct
     ; request Public.promote_many
     ; request Public.build_dir
     ; request Public.runtest
+    ; request Public.Action_plugin.initialize
+    ; request Public.Action_plugin.build_deps
     ; notification ~declare_with_client:false Server_side.abort
     ; notification ~declare_with_client:false Server_side.log
     ; request (Poll.poll Poll.running_jobs)

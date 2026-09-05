@@ -15,6 +15,13 @@ module Request = struct
   let promote_many = Procedures.Public.promote_many.decl
   let build_dir = Procedures.Public.build_dir.decl
   let runtest = Procedures.Public.runtest.decl
+
+  module Action_plugin = struct
+    module Build_deps = Procedures.Public.Action_plugin.Build_deps
+
+    let initialize = Procedures.Public.Action_plugin.initialize.decl
+    let build_deps = Procedures.Public.Action_plugin.build_deps.decl
+  end
 end
 
 module Notification = struct

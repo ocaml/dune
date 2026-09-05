@@ -15,6 +15,7 @@ include struct
   module Action_builder = Action_builder
   module Build_loop = Build_loop
   module Diff_promotion = Diff_promotion
+  module Action_plugin = Action_plugin
   module Action_runner = Action_runner
 end
 
@@ -412,6 +413,7 @@ let handler (t : t Fdecl.t) : unit Handler.t =
     let f _ () = Fiber.return Path.Build.(to_string root) in
     Handler.implement_request rpc Procedures.Public.build_dir f
   in
+  Action_plugin.Server.implement_handler rpc;
   Dune_rules_rpc.register rpc;
   rpc
 ;;

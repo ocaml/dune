@@ -112,6 +112,8 @@ let get_error_from_exn = function
     }
 ;;
 
+let message_of_exception exn = (get_error_from_exn exn).msg
+
 let i_must_not_crash =
   let reported = ref false in
   fun () ->

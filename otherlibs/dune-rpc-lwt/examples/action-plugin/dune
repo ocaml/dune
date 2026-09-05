@@ -1,0 +1,7 @@
+(executables
+ (names simple_concatenation choosing_dependency)
+ (libraries dune_rpc_lwt lwt lwt.unix))
+
+(alias
+ (name examples)
+ (deps simple_concatenation.exe))

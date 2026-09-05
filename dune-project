@@ -116,30 +116,6 @@ Among other things, dune-configurator allows one to:
 "))
 
 (package
- (name dune-action-plugin)
- (dir otherlibs/dune-action-plugin)
- (synopsis "[experimental] API for writing dynamic Dune actions")
- (depends
-  (csexp (>= 1.5.0))
-  (ppx_expect :with-test)
-  (stdune (= :version))
-  (dune-private-libs (= :version))
-  (dune-rpc (= :version))
-  dyn
-  ordering
-  re
-  base-unix)
- (description "\
-
-This library is experimental. No backwards compatibility is implied.
-
-dune-action-plugin provides an API for writing dynamic Dune actions.
-Dynamic dune actions do not need to declare their dependencies
-upfront; they are instead discovered automatically during the
-execution of the action.
-"))
-
-(package
  (name dune-site)
  (dir otherlibs/dune-site)
  (synopsis "Embed locations information inside executable and libraries")
@@ -150,7 +126,16 @@ execution of the action.
  (name dune-rpc)
  (dir otherlibs/dune-rpc)
  (synopsis "Communicate with dune using rpc")
- (depends ocamlc-loc csexp ordering dyn xdg (stdune (= :version)) (pp (>= 1.1.0)))
+ (depends
+  ocamlc-loc
+  csexp
+  ordering
+  dyn
+  xdg
+  re
+  (stdune (= :version))
+  (pp (>= 1.1.0))
+  (ppx_expect :with-test))
  (description "Library to connect and control a running dune instance"))
 
 (package
@@ -161,6 +146,7 @@ execution of the action.
   (dune-rpc (= :version))
   (csexp (>= 1.5.0))
   (lwt (>= 5.6.0))
+  (stdune (= :version))
   base-unix)
  (description "Specialization of dune-rpc to Lwt"))
 

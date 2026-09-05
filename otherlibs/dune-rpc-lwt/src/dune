@@ -1,4 +1,4 @@
 (library
  (name dune_rpc_lwt)
  (public_name dune-rpc-lwt)
- (libraries csexp dune_rpc lwt lwt.unix unix))
+ (libraries csexp dune_rpc lwt lwt.unix stdune unix))

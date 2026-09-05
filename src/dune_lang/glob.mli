@@ -1,6 +1,6 @@
 open Import
 
-type t = Dune_action_plugin.V1.Glob.t
+type t = Dune_rpc.V1.Action_plugin.Glob.t
 
 val equal : t -> t -> bool
 val compare : t -> t -> Ordering.t

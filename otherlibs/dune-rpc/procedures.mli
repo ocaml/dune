@@ -12,6 +12,20 @@ module Public : sig
   val promote_many : (Promote_targets.t, Build_outcome_with_diagnostics.t) Decl.Request.t
   val build_dir : (unit, Path.t) Decl.Request.t
   val runtest : (string list, Build_outcome_with_diagnostics.t) Decl.Request.t
+
+  module Action_plugin : sig
+    module Build_deps : sig
+      type t =
+        { action_id : Action_id.t
+        ; deps : Dep.Set.t
+        }
+
+      val conv : t Conv.value
+    end
+
+    val initialize : (Action_id.t, unit) Decl.Request.t
+    val build_deps : (Build_deps.t, string option) Decl.Request.t
+  end
 end
 
 module Server_side : sig

@@ -46,7 +46,7 @@ val decode_modules : Modules_settings.t Dune_lang.Decoder.fields_parser
 
 (* Parser for the lint field *)
 val decode_lint
-  : Preprocess.Without_instrumentation.t Preprocess.t Module_name.Per_item.t
+  : Preprocess.Without_instrumentation.t Preprocess.t Module_reference.Per_item.t
       Dune_lang.Decoder.fields_parser
 
 (* Parser for allow_overlapping_dependencies *)

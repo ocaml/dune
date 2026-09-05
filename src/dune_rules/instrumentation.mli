@@ -1,7 +1,7 @@
 open Import
 
 val fold
-  :  'a Module_name.Per_item.t
+  :  'a Module_reference.Per_item.t
   -> init:'b
   -> f:('a -> 'b -> 'b Resolve.Memo.t)
   -> 'b Resolve.Memo.t

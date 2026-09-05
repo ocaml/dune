@@ -38,6 +38,31 @@ let%expect_test "directories with symlinks" =
   [%expect {| [PASS] |}]
 ;;
 
+let%expect_test "file digest from in-memory contents" =
+  let path = Temp.create File ~prefix:"digest-tests" ~suffix:"" in
+  List.iter [ ""; "(4:done())"; "\000\255\r\n" ] ~f:(fun content ->
+    Io.write_file ~binary:true path content;
+    List.iter [ false; true ] ~f:(fun executable ->
+      let expected =
+        Digest.path_with_executable_bit
+          ~executable
+          ~content_digest:(Digest.string content)
+      in
+      let stats = { Digest.Stats_for_digest.st_kind = S_REG; executable } in
+      match Digest.path_with_stats ~allow_dirs:false path stats with
+      | Ok actual -> print_endline (Bool.to_string (Digest.equal expected actual))
+      | Error _ -> print_endline "unable to digest file"));
+  [%expect
+    {|
+    true
+    true
+    true
+    true
+    true
+    true
+    |}]
+;;
+
 let encode_int i =
   let i = Int64.of_int i in
   String.init 8 ~f:(fun byte ->

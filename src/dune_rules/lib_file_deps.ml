@@ -58,6 +58,29 @@ let deps_of_lib (lib : Lib.t) ~groups =
 let deps_with_exts = Dep.Set.union_map ~f:(fun (lib, groups) -> deps_of_lib lib ~groups)
 let deps libs ~groups = Dep.Set.union_map libs ~f:(deps_of_lib ~groups)
 
+let private_cmi_deps ~sctx libs =
+  Memo.List.fold_left libs ~init:Dep.Set.empty ~f:(fun deps lib ->
+    let obj_dir = Lib.info lib |> Lib_info.obj_dir in
+    let public_cmi_dir = Obj_dir.public_cmi_ocaml_dir obj_dir in
+    if
+      List.exists (Obj_dir.all_cmis obj_dir) ~f:(fun dir ->
+        not (Path.equal dir public_cmi_dir))
+    then
+      let+ modules = Dir_contents.modules_of_lib sctx lib ~for_:Compilation_mode.Ocaml in
+      match modules with
+      | None -> deps
+      | Some modules ->
+        let { Modules.With_vlib.vlib; impl } = Modules.With_vlib.split_by_lib modules in
+        List.fold_left (vlib @ impl) ~init:deps ~f:(fun deps m ->
+          if Module.visibility m = Private
+          then
+            Obj_dir.Module.cm_file_exn obj_dir m ~kind:(Ocaml Cmi)
+            |> Dep.file
+            |> Dep.Set.add deps
+          else deps)
+    else Memo.return deps)
+;;
+
 let groups_for_cm_kind ~opaque ~(cm_kind : Lib_mode.Cm_kind.t) lib =
   match cm_kind with
   | Ocaml Cmi | Ocaml Cmo -> [ Group.Ocaml Cmi ]

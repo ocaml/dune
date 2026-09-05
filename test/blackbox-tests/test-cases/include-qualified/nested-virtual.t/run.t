@@ -1,4 +1,4 @@
-We can nested modules virtual
+We can make nested modules virtual
   $ mkdir -p vlib/group impl/group vlib/foo/foo impl/foo/foo
   $ cat >vlib/group/group.mli <<'EOF'
   > val value : int

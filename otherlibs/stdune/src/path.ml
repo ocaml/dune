@@ -38,6 +38,8 @@ module Local = struct
   let of_string s =
     parse_string_result s |> inside_workspace_exn ~path:s ~from:(to_string root)
   ;;
+
+  let conv = Conv.iso Conv.string of_string to_string
 end
 
 module Relative_to_source_root = struct
@@ -85,6 +87,8 @@ module Source0 = struct
   let of_string s =
     parse_string_result s |> inside_workspace_exn ~path:s ~from:(to_string root)
   ;;
+
+  let conv = Conv.iso Conv.string of_string to_string
 end
 
 let abs_root, set_root =
@@ -201,6 +205,7 @@ module Build = struct
   include Path0.Build
 
   let repr = Repr.view Repr.string ~to_:to_string
+  let conv = Conv.iso Local.conv of_local local
 
   module L = struct
     include L
@@ -395,6 +400,19 @@ end = struct
 end
 
 include T
+
+let conv =
+  let open Conv in
+  let build = constr "build" Build.conv in_build_dir in
+  let source = constr "source" Source0.conv in_source_tree in
+  let external_ = constr "external" External.conv external_ in
+  sum
+    [ econstr build; econstr source; econstr external_ ]
+    (function
+      | In_build_dir path -> case path build
+      | In_source_tree path -> case path source
+      | External path -> case path external_)
+;;
 
 let repr =
   Repr.variant

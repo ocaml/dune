@@ -12,6 +12,7 @@ module Var : sig
   val of_string : string -> t
 
   val to_string : t -> string
+  val conv : t Conv.value
   val repr : t Repr.t
   val temp_dir : t
   val _PATH : t

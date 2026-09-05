@@ -502,6 +502,7 @@ let iso_result a t f = Iso_result (a, t, f)
 let version ?until t ~since = Version (t, { until; since })
 let field name spec = Field (name, spec)
 let enum choices = Enum choices
+let bool = enum Bool.all
 
 let three a b c =
   iso (Both (a, Both (b, c))) (fun (x, (y, z)) -> x, y, z) (fun (x, y, z) -> x, (y, z))

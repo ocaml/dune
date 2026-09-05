@@ -63,6 +63,9 @@ end
 module Set : sig
   include Set.S with type elt = t and type 'a map := 'a Map.t and type t = unit Map.t
 
+  (** Universe dependencies cannot be serialized. *)
+  val conv : t Conv.value
+
   (** [of_source_files ~files ~empty_directories] depend on all source files
       [files].
 

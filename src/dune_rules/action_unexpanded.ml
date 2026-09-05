@@ -51,6 +51,7 @@ module Action_expander : sig
     -> 'a Action_builder.With_targets.t Memo.t
 
   val with_expander : (Expander.t -> 'a t Memo.t) -> 'a t
+  val bind_action_builder : 'a t -> f:('a -> 'b Action_builder.t) -> 'b t
 
   (* String with vars expansion *)
   module E : sig
@@ -122,6 +123,11 @@ end = struct
     let open Memo.O in
     let* f = f env.expander in
     f env acc
+  ;;
+
+  let bind_action_builder t ~f env acc =
+    let+! action, acc = t env acc in
+    Action_builder.bind action ~f, acc
   ;;
 
   let map t ~f env acc =
@@ -465,11 +471,27 @@ end = struct
   end
 end
 
-let rec expand (t : Dune_lang.Action.t) : Action.t Action_expander.t =
+type format_generated_diffs =
+  | Do_not_format
+  | Format of Super_context.t
+
+let combine_actions actions ~f =
+  let action_values =
+    List.map actions ~f:(fun (action : Action.Full.t) -> action.action)
+  in
+  Action.Full.make Action.empty :: actions
+  |> Action.Full.reduce
+  |> Action.Full.map ~f:(fun (_ : Action.t) -> f action_values)
+;;
+
+let rec expand_action ~format_generated_diffs (t : Dune_lang.Action.t)
+  : Action.Full.t Action_expander.t
+  =
   let module A = Action_expander in
   let module E = Action_expander.E in
   let open Action_expander.O in
   let module O (* [O] for "outcome" *) = Action in
+  let expand = expand_action ~format_generated_diffs in
   let expand_run ~force_host prog args =
     let+ args = A.all (List.map args ~f:E.strings)
     and+ prog, more_args = E.prog_and_args ~force_host prog in
@@ -490,6 +512,7 @@ let rec expand (t : Dune_lang.Action.t) : Action.t Action_expander.t =
     | prog :: args ->
       let+ prog, args = expand_run ~force_host prog args in
       O.Run { prog; args = Appendable_list.of_list args; can_run_in_action_runner = true }
+      |> Action.Full.make
     | [] ->
       User_error.raise
         [ Pp.textf "\"%s\" action must have at least one argument" action_name ]
@@ -499,44 +522,44 @@ let rec expand (t : Dune_lang.Action.t) : Action.t Action_expander.t =
   | Runexec args -> expand_run_action ~force_host:true ~action_name:"runexec" args
   | With_accepted_exit_codes (pred, t) ->
     let+ t = expand t in
-    O.With_accepted_exit_codes (pred, t)
+    Action.Full.map t ~f:(fun t -> O.With_accepted_exit_codes (pred, t))
   | Dynamic_run (prog, args) ->
     let+ prog, args = expand_run ~force_host:false prog args in
-    Action_plugin.action ~prog ~args
+    Action_plugin.action ~prog ~args |> Action.Full.make
   | Chdir (fn, t) ->
     E.At_rule_eval_stage.path fn ~f:(fun dir ->
       A.chdir
         (Expander0.as_in_build_dir dir ~loc:(String_with_vars.loc fn) ~what:"Directory")
         (let+ t = expand t in
-         O.Chdir (dir, t)))
+         Action.Full.map t ~f:(fun t -> O.Chdir (dir, t))))
   | Setenv (var, value, t) ->
     E.At_rule_eval_stage.string var ~f:(fun var ->
       A.set_env
         ~var
         ~value:(E.string value)
         (let+ t = expand t in
-         fun ~value -> O.Setenv (var, value, t)))
+         fun ~value -> Action.Full.map t ~f:(fun t -> O.Setenv (var, value, t))))
   | Redirect_out (outputs, fn, perm, t) ->
     let+ fn = E.target fn
     and+ t = expand t in
-    O.Redirect_out (outputs, fn, perm, t)
+    Action.Full.map t ~f:(fun t -> O.Redirect_out (outputs, fn, perm, t))
   | Redirect_in (inputs, fn, t) ->
     let+ fn = E.dep fn
     and+ t = expand t in
-    O.Redirect_in (inputs, fn, t)
+    Action.Full.map t ~f:(fun t -> O.Redirect_in (inputs, fn, t))
   | Ignore (outputs, t) ->
     let+ t = expand t in
-    O.Ignore (outputs, t)
+    Action.Full.map t ~f:(fun t -> O.Ignore (outputs, t))
   | Progn l ->
     let+ l = A.all (List.map l ~f:expand) in
-    O.Progn l
+    combine_actions l ~f:(fun l -> O.Progn l)
   | Concurrent l ->
     let+ l = A.all (List.map l ~f:expand) in
-    O.Concurrent l
+    combine_actions l ~f:(fun l -> O.Concurrent l)
   | Echo xs ->
     let+ l = A.all (List.map xs ~f:E.strings) in
     let l = List.concat l in
-    O.Echo l
+    O.Echo l |> Action.Full.make
   | Cat xs ->
     A.with_expander (fun expander ->
       let version = Expander.project expander |> Dune_project.dune_version in
@@ -545,18 +568,18 @@ let rec expand (t : Dune_lang.Action.t) : Action.t Action_expander.t =
         (if version >= (3, 10)
          then
            let+ xs = A.all (List.map xs ~f:E.deps) in
-           O.Cat (List.concat xs)
+           O.Cat (List.concat xs) |> Action.Full.make
          else
            let+ xs = A.all (List.map xs ~f:E.dep) in
-           O.Cat xs))
+           O.Cat xs |> Action.Full.make))
   | Copy (x, y) ->
     let+ x = E.dep x
     and+ y = E.target y in
-    O.Copy (x, y)
+    O.Copy (x, y) |> Action.Full.make
   | Symlink (x, y) ->
     let+ x = E.dep x
     and+ y = E.target y in
-    O.Symlink (x, y)
+    O.Symlink (x, y) |> Action.Full.make
   | Copy_and_add_line_directive (x, y) ->
     A.with_expander (fun expander ->
       Expander.context expander
@@ -564,24 +587,24 @@ let rec expand (t : Dune_lang.Action.t) : Action.t Action_expander.t =
       |> Memo.map ~f:(fun context ->
         let+ x = E.dep x
         and+ y = E.target y in
-        Copy_line_directive.action context ~src:x ~dst:y))
+        Copy_line_directive.action context ~src:x ~dst:y |> Action.Full.make))
   | System x ->
     let+ x = E.string x in
-    O.System x
+    O.System x |> Action.Full.make
   | Bash x ->
     let+ script = E.string x in
-    O.Bash { script; can_run_in_action_runner = true }
+    O.Bash { script; can_run_in_action_runner = true } |> Action.Full.make
   | Write_file (fn, perm, s) ->
     let+ fn = E.target fn
     and+ s = E.string s in
-    O.Write_file (fn, perm, s)
+    O.Write_file (fn, perm, s) |> Action.Full.make
   | Mkdir x ->
     (* This code path should in theory be unreachable too, but we don't delete
        it to remember about the check in in case we expose [mkdir] in the syntax
        one day. *)
     let+ path = E.path x in
     (match Path.as_in_build_dir path with
-     | Some path -> O.Mkdir path
+     | Some path -> O.Mkdir path |> Action.Full.make
      | None ->
        User_error.raise
          ~loc:(String_with_vars.loc x)
@@ -595,23 +618,44 @@ let rec expand (t : Dune_lang.Action.t) : Action.t Action_expander.t =
                    ]))
          ])
   | Diff { optional; file1; file2; mode; directory_diffs } ->
-    let+ file1 = E.dep_if_exists file1
-    and+ () = E.source_tree_if_directory file1
-    and+ file2 =
-      if optional
-      then E.consume_file file2
-      else
-        let+ p = E.dep file2 in
-        Expander0.as_in_build_dir p ~loc:(String_with_vars.loc file2) ~what:"File"
-    in
-    Action.diff ~optional ~mode ~directory_diffs file1 file2
+    A.with_expander (fun expander ->
+      Memo.return
+        (let paths =
+           let+ file1 = E.dep_if_exists file1
+           and+ () = E.source_tree_if_directory file1
+           and+ file2 =
+             if optional
+             then E.consume_file file2
+             else
+               let+ p = E.dep file2 in
+               Expander0.as_in_build_dir p ~loc:(String_with_vars.loc file2) ~what:"File"
+           in
+           file1, file2
+         in
+         A.bind_action_builder paths ~f:(fun (file1, file2) ->
+           let diff = Action.diff ~optional ~mode ~directory_diffs file1 file2 in
+           match format_generated_diffs, optional, mode with
+           | Format sctx, true, Text ->
+             let source_dir =
+               Path.as_in_build_dir file1
+               |> Option.map ~f:Path.Build.parent_exn
+               |> Option.value ~default:(Expander.dir expander)
+             in
+             Format_generated.format_diff
+               sctx
+               ~dir:source_dir
+               ~source:file1
+               ~target:file2
+               ~diff
+           | (Do_not_format | Format _), _, _ ->
+             Action_builder.return (Action.Full.make diff))))
   | No_infer t -> A.no_infer (expand t)
   | Pipe (outputs, l) ->
     let+ l = A.all (List.map l ~f:expand) in
-    O.Pipe (outputs, l)
+    combine_actions l ~f:(fun l -> O.Pipe (outputs, l))
   | Cram script ->
     let+ script = E.dep script in
-    Cram_exec.action script
+    Cram_exec.action script |> Action.Full.make
   | Format_dune_file (src, dst) ->
     A.with_expander (fun expander ->
       let version = Expander.project expander |> Dune_project.dune_version in
@@ -619,13 +663,22 @@ let rec expand (t : Dune_lang.Action.t) : Action.t Action_expander.t =
       Memo.return
         (let+ src = E.dep src
          and+ dst = E.target dst in
-         Format_dune_file.action ~version src dst))
+         Format_dune_file.action ~version src dst |> Action.Full.make))
   | Withenv _ | Substitute _ | Patch _ | When _ ->
     (* these can only be provided by the package language which isn't expanded here *)
     assert false
 ;;
 
-let expand_no_targets t sandbox ~loc ~chdir ~deps:deps_written_by_user ~expander ~what =
+let expand_no_targets_internal
+      ~format_generated_diffs
+      t
+      sandbox
+      ~loc
+      ~chdir
+      ~deps:deps_written_by_user
+      ~expander
+      ~what
+  =
   let open Action_builder.O in
   let env, expander, sandbox =
     Dep_conf_eval.named ~expander sandbox deps_written_by_user
@@ -634,7 +687,7 @@ let expand_no_targets t sandbox ~loc ~chdir ~deps:deps_written_by_user ~expander
     Expander.set_expanding_what expander (User_action_without_targets { what })
   in
   let* { Action_builder.With_targets.build = action; targets } =
-    expand t
+    expand_action ~format_generated_diffs t
     |> Action_expander.run ~chdir ~targets_dir:None ~expander
     |> Action_builder.of_memo
   in
@@ -651,11 +704,46 @@ let expand_no_targets t sandbox ~loc ~chdir ~deps:deps_written_by_user ~expander
   let+ sandbox
   and+ env
   and+ action in
-  let action = Action.Chdir (Path.build chdir, action) in
-  Action.Full.make action ~sandbox |> Action.Full.add_env env
+  Action.Full.map action ~f:(fun action -> Action.Chdir (Path.build chdir, action))
+  |> Action.Full.add_sandbox sandbox
+  |> Action.Full.add_env env
 ;;
 
-let expand
+let expand_no_targets t sandbox ~loc ~chdir ~deps ~expander ~what =
+  expand_no_targets_internal
+    ~format_generated_diffs:Do_not_format
+    t
+    sandbox
+    ~loc
+    ~chdir
+    ~deps
+    ~expander
+    ~what
+;;
+
+let expand_no_targets_with_formatted_diffs
+      sctx
+      t
+      sandbox
+      ~loc
+      ~chdir
+      ~deps
+      ~expander
+      ~what
+  =
+  expand_no_targets_internal
+    ~format_generated_diffs:(Format sctx)
+    t
+    sandbox
+    ~loc
+    ~chdir
+    ~deps
+    ~expander
+    ~what
+;;
+
+let expand_internal
+      ~format_generated_diffs
       t
       sandbox
       ~loc
@@ -691,7 +779,8 @@ let expand
     Expander.set_expanding_what expander (User_action targets_written_by_user)
   in
   let+! { Action_builder.With_targets.build = action; targets } =
-    expand t |> Action_expander.run ~chdir ~targets_dir:(Some targets_dir) ~expander
+    expand_action ~format_generated_diffs t
+    |> Action_expander.run ~chdir ~targets_dir:(Some targets_dir) ~expander
   in
   let targets =
     match (targets_written_by_user : _ Targets_spec.t) with
@@ -712,11 +801,47 @@ let expand
     let+ sandbox
     and+ env
     and+ action in
-    Action.Chdir (Path.build chdir, action)
-    |> Action.Full.make ~sandbox
+    Action.Full.map action ~f:(fun action -> Action.Chdir (Path.build chdir, action))
+    |> Action.Full.add_sandbox sandbox
     |> Action.Full.add_env env
   in
   Action_builder.with_targets ~targets build
+;;
+
+let expand t sandbox ~loc ~chdir ~deps ~targets_dir ~targets ~expander =
+  expand_internal
+    ~format_generated_diffs:Do_not_format
+    t
+    sandbox
+    ~loc
+    ~chdir
+    ~deps
+    ~targets_dir
+    ~targets
+    ~expander
+;;
+
+let expand_with_formatted_diffs
+      sctx
+      t
+      sandbox
+      ~loc
+      ~chdir
+      ~deps
+      ~targets_dir
+      ~targets
+      ~expander
+  =
+  expand_internal
+    ~format_generated_diffs:(Format sctx)
+    t
+    sandbox
+    ~loc
+    ~chdir
+    ~deps
+    ~targets_dir
+    ~targets
+    ~expander
 ;;
 
 (* We re-export [Dune_lang.Action] in the end to avoid polluting the inferred

@@ -502,8 +502,6 @@ let of_source ~visibility ~kind source =
   of_source ~install_as:None ~obj_name:None ~visibility ~kind source
 ;;
 
-let decode_module = decode
-
 module Name_map = struct
   type nonrec t = t Module_name.Map.t
 
@@ -511,7 +509,7 @@ module Name_map = struct
 
   let decode ~src_dir =
     let open Dune_lang.Decoder in
-    let+ modules = repeat (enter (decode_module ~src_dir)) in
+    let+ modules = repeat (enter (decode ~src_dir)) in
     Module_name.Map.of_list_map_exn ~f:(fun m -> name m, m) modules
   ;;
 
@@ -537,12 +535,12 @@ module Name_map = struct
 
   let decode_stdlib ~src_dir =
     let open Dune_lang.Decoder in
-    let+ modules = repeat (enter (decode_module ~src_dir)) in
-    Module_name.Map.of_list_map_exn modules ~f:(fun m ->
+    let+ modules = decode ~src_dir in
+    Module_name.Map.map modules ~f:(fun m ->
       (* Qualified subdirectories are forbidden for stdlib libraries. *)
       let name = name m in
       let source = { m.source with Source.path = Nonempty_list.[ name ] } in
-      name, { m with source })
+      { m with source })
   ;;
 
   let add t module_ = Module_name.Map.set t (name module_) module_

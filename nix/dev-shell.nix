@@ -144,7 +144,7 @@ pkgs'.mkShell {
   inherit meta;
   nativeBuildInputs =
     baseInputs
-    ++ pkgs'.lib.optionals stdenv.isDarwin [ pkgs'.darwin.sigtool ]
+    ++ pkgs'.lib.optionals stdenv.hostPlatform.isDarwin [ pkgs'.darwin.sigtool ]
     ++ [ duneScript ]
     ++ (if hasOcamlOverride then [ pkgs'.ocamlPackages.ocaml ] else [ ]);
   inputsFrom = if hasOcamlOverride then [ ] else [ pkgs'.ocamlPackages.dune_3 ];

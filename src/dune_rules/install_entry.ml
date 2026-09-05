@@ -14,6 +14,17 @@ let expand_with_check_for_local_path ~expand sw =
     str)
 ;;
 
+let validate_file_bindings file_bindings ~relative_dst_path_starts_with_parent_error_when =
+  let+ () =
+    Memo.parallel_iter
+      file_bindings
+      ~f:
+        (File_binding_expand.validate_for_install_stanza
+           ~relative_dst_path_starts_with_parent_error_when)
+  in
+  file_bindings
+;;
+
 module Glob_files_with_optional_prefix = struct
   type t =
     { glob_files : Dep_conf.Glob_files.t

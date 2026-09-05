@@ -43,13 +43,6 @@ val compare : t -> t -> Ordering.t
 val repr : t Repr.t
 val uncapitalize : t -> string
 
-module Per_item : sig
-  include Per_item with type key = t
-
-  val decode : default:'a -> 'a Decoder.t -> 'a t Decoder.t
-  val repr : 'a Repr.t -> 'a t Repr.t
-end
-
 module Infix : Comparator.OPS with type t = t
 
 val of_local_lib_name : Loc.t * Lib_name.Local.t -> t

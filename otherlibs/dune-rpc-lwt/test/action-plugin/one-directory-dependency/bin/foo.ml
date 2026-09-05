@@ -7,4 +7,4 @@ let action dap =
   Lwt_io.printl (String.concat "\n" listing)
 ;;
 
-let () = run action
+let () = Lwt_main.run (run action)

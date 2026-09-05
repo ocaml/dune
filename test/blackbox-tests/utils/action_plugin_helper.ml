@@ -27,12 +27,13 @@ let touch_and_respond path =
 ;;
 
 let () =
-  match Array.to_list Sys.argv with
-  | [ _; "noop" ] -> noop ()
-  | [ _; "hold"; started; release ] -> hold started release
-  | [ _; "touch"; path ] -> touch_and_respond path
-  | _ ->
-    prerr_endline
-      "Usage: action_plugin_helper (noop | hold <started> <release> | touch <path>)";
-    exit 1
+  Lwt_main.run
+    (match Array.to_list Sys.argv with
+     | [ _; "noop" ] -> noop ()
+     | [ _; "hold"; started; release ] -> hold started release
+     | [ _; "touch"; path ] -> touch_and_respond path
+     | _ ->
+       prerr_endline
+         "Usage: action_plugin_helper (noop | hold <started> <release> | touch <path>)";
+       exit 1)
 ;;

@@ -185,4 +185,17 @@ let action dap =
   | _ -> invalid_arg "invalid arguments"
 ;;
 
-let () = run action
+let () =
+  try
+    Lwt_main.run
+      (match Sys.argv with
+       | [| _; "promise" |] ->
+         let open Lwt.Syntax in
+         let* () = run (fun dap -> ordinary_action dap ~path:"some_dependency") in
+         Lwt_io.printl "returned"
+       | _ -> run action)
+  with
+  | Error.E message ->
+    prerr_endline message;
+    exit 1
+;;

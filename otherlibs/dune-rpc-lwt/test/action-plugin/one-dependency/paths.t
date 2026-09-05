@@ -159,3 +159,16 @@ called, even if it changes while the request is pending.
   $ cat _build/default/mixed-output; echo
   fileglobdirectory
   $ test ! -e _build/default/mixed/glob/ignored.ml
+
+The promise-returning runner leaves ownership of the event loop with the caller.
+
+  $ cat >> dune <<'EOF'
+  > (rule (target some_dependency) (action (write-file some_dependency promise)))
+  > (rule
+  >  (target promise-output)
+  >  (action (with-stdout-to promise-output (dynamic-run ./foo.exe promise))))
+  > EOF
+  $ dune build -j 1 promise-output
+  $ cat _build/default/promise-output
+  promise
+  returned

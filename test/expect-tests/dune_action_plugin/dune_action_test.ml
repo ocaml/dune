@@ -2,7 +2,7 @@ open Dune_rpc_lwt.V1.Action_plugin
 module Glob = Dune_rpc_lwt.V1.Action_plugin.Glob
 module Error = Dune_rpc_lwt.V1.Action_plugin.Error
 
-let run action = Lwt_main.run (action outside_of_dune)
+let run action = Lwt_main.run (Dune_rpc_lwt.V1.Action_plugin.run action)
 
 let%expect_test _ =
   try run (fun dap -> read_file dap ~path:"/some/absolute/path" |> Lwt.map ignore) with

@@ -7,4 +7,4 @@ let action dap =
   Lwt_io.printl data
 ;;
 
-let () = run action
+let () = Lwt_main.run (run action)

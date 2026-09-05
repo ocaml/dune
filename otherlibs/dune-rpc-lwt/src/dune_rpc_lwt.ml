@@ -176,24 +176,12 @@ module V1 = struct
         (fun exn -> Lwt.fail (connection_error exn))
     ;;
 
-    let report_error message =
-      prerr_endline message;
-      exit 1
-    ;;
-
     let run f =
-      try
-        let computation =
-          match Core.run_context () with
-          | Outside_of_dune -> f outside_of_dune
-          | Under_dune { action_id; where } ->
-            let* chan = connect where in
-            Plugin.run chan ~action_id ~f
-        in
-        Lwt_main.run computation;
-        exit 0
-      with
-      | Error.E message -> report_error message
+      match Core.run_context () with
+      | Outside_of_dune -> f outside_of_dune
+      | Under_dune { action_id; where } ->
+        let* chan = connect where in
+        Plugin.run chan ~action_id ~f
     ;;
   end
 end

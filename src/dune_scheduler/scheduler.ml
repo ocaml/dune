@@ -56,6 +56,70 @@ let with_job_slot ?cancellation ~job_slots f =
     f ())
 ;;
 
+module Job_slot = struct
+  type t =
+    { slot : Fiber.Throttle.Slot.t
+    ; mutable requests : int
+    ; mutable acquiring : unit Fiber.Ivar.t option
+    ; mutable closed : bool
+    }
+
+  let create ~job_slots =
+    { slot = Fiber.Throttle.Slot.create (t ()).job_throttle ~size:job_slots
+    ; requests = 0
+    ; acquiring = None
+    ; closed = false
+    }
+  ;;
+
+  let rec acquire t =
+    let* () = Fiber.return () in
+    if t.closed || t.requests > 0
+    then Fiber.return ()
+    else (
+      match t.acquiring with
+      | Some ready ->
+        let* () = Fiber.Ivar.read ready in
+        acquire t
+      | None ->
+        let ready = Fiber.Ivar.create () in
+        t.acquiring <- Some ready;
+        let* acquired = Fiber.Throttle.Slot.acquire t.slot in
+        t.acquiring <- None;
+        let* () =
+          if t.closed || t.requests > 0
+          then Fiber.Throttle.Slot.release t.slot
+          else Fiber.return ()
+        in
+        let* () = Fiber.Ivar.fill ready () in
+        if acquired then Fiber.return () else acquire t)
+  ;;
+
+  let begin_request t =
+    let* () = Fiber.return () in
+    if t.closed then cancelled ();
+    t.requests <- t.requests + 1;
+    if t.requests = 1 then Fiber.Throttle.Slot.release t.slot else Fiber.return ()
+  ;;
+
+  let end_request t =
+    let* () = Fiber.return () in
+    t.requests <- t.requests - 1;
+    if t.requests = 0 then acquire t else Fiber.return ()
+  ;;
+
+  let run t ~cancellation f =
+    Fiber.finalize
+      (fun () ->
+         let* () = acquire t in
+         check_cancelled cancellation;
+         f ())
+      ~finally:(fun () ->
+        t.closed <- true;
+        Fiber.Throttle.Slot.release t.slot)
+  ;;
+end
+
 let wait_for_process t ~is_process_group_leader pid =
   let ivar = Fiber.Ivar.create () in
   Process_watcher.register_job t.process_watcher { pid; is_process_group_leader; ivar };

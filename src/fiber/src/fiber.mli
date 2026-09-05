@@ -366,6 +366,21 @@ module Throttle : sig
   (** Change the capacity. *)
   val resize : t -> int -> unit fiber
 
+  module Slot : sig
+    type throttle := t
+    type t
+
+    val create : throttle -> size:int -> t
+
+    (** Acquire a reservation of [size] slots, capped at the throttle's capacity
+        when created. Return [false] if [release] cancels the queued acquisition.
+        Acquiring an already held reservation is a no-op. *)
+    val acquire : t -> bool fiber
+
+    (** Release a held reservation or cancel a queued acquisition. Idempotent. *)
+    val release : t -> unit fiber
+  end
+
   (** Execute a fiber taking [size] slots. A job can start whenever the occupied
       slots are below the throttle's capacity, even if its size takes the total
       above capacity. Requests larger than the capacity are capped at it. Jobs

@@ -120,15 +120,15 @@ completion is handled, without relying on a delay in the generator.
   $ build_detached
   ran
 
-The completed request currently recreates the sandbox after it was destroyed.
+Accepted requests finish before the sandbox is destroyed.
 
   $ find _build-lifetime/.sandbox -name slow-input -exec echo leaked \;
-  leaked
 
-Its dependency is also missing from the cached action result.
+Their dependencies are recorded in the cached action result.
 
   $ rm "$state/pid" "$state/started"
   $ printf second > control
   $ build_detached
+  ran
   $ cat _build-lifetime/default/slow-input
-  first
+  second

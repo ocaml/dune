@@ -41,6 +41,7 @@ module Server = struct
     ; rule_loc : Loc.t
     ; working_dir : Path.t
     ; mutable initialized : bool
+    ; mutable pending : unit Fiber.Ivar.t list
     }
 
   let active = Action_id.Table.create 16
@@ -67,6 +68,7 @@ module Server = struct
       ; rule_loc = ectx.rule_loc
       ; working_dir = Path.drop_optional_sandbox_root eenv.working_dir
       ; initialized = false
+      ; pending = []
       }
     in
     Action_id.Table.add_exn active action_id active_action;
@@ -74,7 +76,7 @@ module Server = struct
       (fun () -> f action_id active_action)
       ~finally:(fun () ->
         Action_id.Table.remove active action_id;
-        Fiber.return ())
+        Fiber.parallel_iter active_action.pending ~f:Fiber.Ivar.read)
   ;;
 
   let build_deps =
@@ -94,10 +96,15 @@ module Server = struct
         to_dune_dep_set deps ~loc:active.rule_loc ~working_dir:active.working_dir
       in
       let open Fiber.O in
-      Fiber.collect_errors (fun () -> active.build_deps deps_to_build)
-      >>| function
-      | Error errors -> Some (build_error_message errors)
-      | Ok () -> None
+      let completed = Fiber.Ivar.create () in
+      active.pending <- completed :: active.pending;
+      Fiber.finalize
+        (fun () ->
+           Fiber.collect_errors (fun () -> active.build_deps deps_to_build)
+           >>| function
+           | Error errors -> Some (build_error_message errors)
+           | Ok () -> None)
+        ~finally:(fun () -> Fiber.Ivar.fill completed ())
   ;;
 
   let initialize _session action_id =

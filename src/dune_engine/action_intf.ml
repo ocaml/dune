@@ -111,7 +111,7 @@ module Exec = struct
     ; metadata : Process_metadata.t
     ; sandbox : Process.Sandbox.t option
     ; rule_loc : Loc.t
-    ; build_deps : Dep.Set.t -> Dep.Facts.t Fiber.t
+    ; build_deps : Dep.Set.t -> unit Fiber.t
     }
 
   type env =
@@ -120,7 +120,6 @@ module Exec = struct
     ; stdout_to : Process.Io.output Process.Io.t
     ; stderr_to : Process.Io.output Process.Io.t
     ; stdin_from : Process.Io.input Process.Io.t
-    ; prepared_dependencies : Dune_action_plugin.Private.Protocol.Dependency.Set.t
     ; exit_codes : int Predicate.t
     }
 end
@@ -144,11 +143,7 @@ module Ext = struct
       :  (Path.t, Path.Build.t) t
       -> ectx:Exec.context
       -> eenv:Exec.env
-      -> (* cwong: For now, I think we should only worry about extensions with
-            known dependencies. In the future, we may generalize this to return
-            an [Action_exec.done_or_more_deps], but that may be trickier to get
-            right, and is a bridge we can cross when we get there. *)
-      Done_or_more_deps.t Fiber.t
+      -> unit Fiber.t
   end
 
   module type Instance = sig

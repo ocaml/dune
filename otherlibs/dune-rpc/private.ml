@@ -1,4 +1,7 @@
+module Action_id = Action_id
+module Action_plugin = Action_plugin
 module Conv = Conv
+module Dep = Dep
 module Versioned = Versioned
 module Menu = Menu
 module Procedures = Procedures
@@ -13,5 +16,6 @@ module Sub = Sub
 module Public = Public
 module Server_notifications = Server_notifications
 module Client = Client
+module Glob = Glob
 
 module type Fiber = Fiber_intf.S

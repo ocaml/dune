@@ -138,4 +138,60 @@ module V1 = struct
     in
     input, output
   ;;
+
+  module Action_plugin = struct
+    module Glob = Dune_rpc.V1.Action_plugin.Glob
+    module Core = Dune_rpc.V1.Action_plugin
+
+    module Chan = struct
+      type t = Lwt_io.input_channel * Lwt_io.output_channel
+    end
+
+    module Plugin = Dune_rpc.V1.Action_plugin.Make (Fiber) (Chan) (Client)
+
+    type t = Plugin.t
+
+    module Error = Core.Error
+
+    let outside_of_dune = Plugin.outside_of_dune
+    let read_file = Plugin.read_file
+    let read_directory_with_glob = Plugin.read_directory_with_glob
+
+    let connection_error exn =
+      match exn with
+      | Unix.Unix_error (error, syscall, arg) ->
+        let message =
+          Stdune.Unix_error.Detailed.create error ~syscall ~arg
+          |> Stdune.Unix_error.Detailed.to_string_hum
+        in
+        Error.E ("unable to connect to dune rpc server: " ^ message)
+      | exn -> exn
+    ;;
+
+    let connect where =
+      Lwt.catch
+        (fun () -> connect_chan where)
+        (fun exn -> Lwt.fail (connection_error exn))
+    ;;
+
+    let report_error message =
+      prerr_endline message;
+      exit 1
+    ;;
+
+    let run f =
+      try
+        let computation =
+          match Core.run_context () with
+          | Outside_of_dune -> f outside_of_dune
+          | Under_dune { action_id; where } ->
+            let* chan = connect where in
+            Plugin.run chan ~action_id ~f
+        in
+        Lwt_main.run computation;
+        exit 0
+      with
+      | Error.E message -> report_error message
+    ;;
+  end
 end

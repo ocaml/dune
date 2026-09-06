@@ -21,3 +21,5 @@ module Client = struct
 
   module Make = Client_impl.Make
 end
+
+module Action_plugin = Action_plugin

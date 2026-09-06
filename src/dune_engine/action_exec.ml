@@ -1,8 +1,6 @@
 open Import
 open Stdune.Action_types
 open Action_intf.Exec
-open Done_or_more_deps
-module Dependency = Dune_action_plugin.Private.Protocol.Dependency
 
 module Exec_result = struct
   module Error = struct
@@ -95,16 +93,13 @@ let bash_exn =
 
 let zero = Predicate_lang.element 0
 
-let rec exec t ~ectx ~eenv : Done_or_more_deps.t Fiber.t =
+let rec exec t ~ectx ~eenv : unit Fiber.t =
   match (t : Action.t) with
   | Run { prog = Error e; args = _; can_run_in_action_runner = _ } ->
     Action.Prog.Not_found.raise e
   | Run { prog = Ok prog; args; can_run_in_action_runner } ->
-    let+ () =
-      let args = Appendable_list.to_immutable_array args in
-      exec_run ~ectx ~eenv ~can_run_in_action_runner prog args
-    in
-    Done
+    let args = Appendable_list.to_immutable_array args in
+    exec_run ~ectx ~eenv ~can_run_in_action_runner prog args
   | With_accepted_exit_codes (exit_codes, t) ->
     let eenv =
       let exit_codes =
@@ -122,7 +117,7 @@ let rec exec t ~ectx ~eenv : Done_or_more_deps.t Fiber.t =
   | Redirect_out (Stdout, fn, perm, Echo s) ->
     let perm = File_perm.to_unix_perm perm in
     Io.write_file ~perm (Path.build fn) (String.concat s ~sep:" ");
-    Fiber.return Done
+    Fiber.return ()
   | Redirect_out (outputs, fn, perm, t) ->
     let fn = Path.build fn in
     redirect_out t ~ectx ~eenv outputs ~perm fn
@@ -130,7 +125,7 @@ let rec exec t ~ectx ~eenv : Done_or_more_deps.t Fiber.t =
   | Ignore (outputs, t) -> redirect_out t ~ectx ~eenv ~perm:Normal outputs Dev_null.path
   | Progn ts -> exec_list ts ~ectx ~eenv
   | Concurrent ts ->
-    Fiber.parallel_map ts ~f:(fun t ->
+    Fiber.parallel_iter ts ~f:(fun t ->
       let eenv =
         { eenv with
           stdout_to = Process.Io.multi_use eenv.stdout_to
@@ -139,17 +134,16 @@ let rec exec t ~ectx ~eenv : Done_or_more_deps.t Fiber.t =
         }
       in
       exec t ~ectx ~eenv)
-    >>| List.fold_left ~f:Done_or_more_deps.union ~init:Done
   | Echo strs ->
     let () =
       String.concat strs ~sep:" " |> output_string (Process.Io.out_channel eenv.stdout_to)
     in
-    Fiber.return Done
+    Fiber.return ()
   | Cat xs ->
     List.iter xs ~f:(fun fn ->
       Io.with_file_in fn ~f:(fun ic ->
         Io.copy_channels ic (Process.Io.out_channel eenv.stdout_to)));
-    Fiber.return Done
+    Fiber.return ()
   | Copy (src, dst) ->
     let dst = Path.build dst in
     let copy_file ~src ~dst =
@@ -176,36 +170,30 @@ let rec exec t ~ectx ~eenv : Done_or_more_deps.t Fiber.t =
         Tree_copy.copy ~src ~dst ~copy_file ~mkdir ~on_unsupported ()
       | _ -> copy_file ~src ~dst
     in
-    Fiber.return Done
+    Fiber.return ()
   | Symlink (src, dst) ->
     Io.portable_symlink ~src ~dst:(Path.build dst);
-    Fiber.return Done
+    Fiber.return ()
   | Hardlink (src, dst) ->
     Io.portable_hardlink ~src ~dst:(Path.build dst);
-    Fiber.return Done
+    Fiber.return ()
   | System command ->
-    let+ () =
-      let prog, arg =
-        Env_path.system_shell_exn ~needed_to:"interpret (system ...) actions"
-      in
-      exec_run
-        ~ectx
-        ~eenv
-        ~can_run_in_action_runner:true
-        prog
-        (Array.Immutable.of_list [ arg; command ])
+    let prog, arg =
+      Env_path.system_shell_exn ~needed_to:"interpret (system ...) actions"
     in
-    Done
+    exec_run
+      ~ectx
+      ~eenv
+      ~can_run_in_action_runner:true
+      prog
+      (Array.Immutable.of_list [ arg; command ])
   | Bash { script; can_run_in_action_runner } ->
-    let+ () =
-      exec_run
-        ~ectx
-        ~eenv
-        ~can_run_in_action_runner
-        (bash_exn ~loc:ectx.rule_loc ~needed_to:"interpret (bash ...) actions")
-        (Array.Immutable.of_list [ "-e"; "-u"; "-o"; "pipefail"; "-c"; script ])
-    in
-    Done
+    exec_run
+      ~ectx
+      ~eenv
+      ~can_run_in_action_runner
+      (bash_exn ~loc:ectx.rule_loc ~needed_to:"interpret (bash ...) actions")
+      (Array.Immutable.of_list [ "-e"; "-u"; "-o"; "pipefail"; "-c"; script ])
   | Write_file (fn, perm, s) ->
     let start = Time.now () in
     let fn = Path.build fn in
@@ -216,24 +204,21 @@ let rec exec t ~ectx ~eenv : Done_or_more_deps.t Fiber.t =
     let finish = Time.now () in
     Dune_trace.emit ~buffered:true Action (fun () ->
       Dune_trace.Event.Action.write_file ~start ~finish ~file:fn ~size:(String.length s));
-    Fiber.return Done
+    Fiber.return ()
   | Rename (src, dst) ->
     let src = Path.Build.to_string src in
     let dst = Path.Build.to_string dst in
     Unix.rename src dst;
-    Fiber.return Done
+    Fiber.return ()
   | Remove_tree path ->
     Path.rm_rf (Path.build path);
-    Fiber.return Done
+    Fiber.return ()
   | Mkdir path ->
     Path.mkdir_p (Path.build path);
-    Fiber.return Done
+    Fiber.return ()
   | Pipe (outputs, l) -> exec_pipe ~ectx ~eenv outputs l
   | Diff diff ->
-    let+ () =
-      Diff_action.exec ~sandbox:ectx.sandbox ~patch_back:None ectx.rule_loc diff
-    in
-    Done
+    Diff_action.exec ~sandbox:ectx.sandbox ~patch_back:None ectx.rule_loc diff
   | Extension (module A) ->
     let metadata =
       { ectx.metadata with can_run_in_action_runner = A.Spec.can_run_in_action_runner }
@@ -266,25 +251,22 @@ and redirect t ~ectx ~eenv ?in_ ?out () =
       in
       stdout_to, stderr_to, fun () -> Process.Io.release out
   in
-  let+ result = exec t ~ectx ~eenv:{ eenv with stdin_from; stdout_to; stderr_to } in
+  let+ () = exec t ~ectx ~eenv:{ eenv with stdin_from; stdout_to; stderr_to } in
   release_in ();
-  release_out ();
-  result
+  release_out ()
 
-and exec_list ts ~ectx ~eenv : Done_or_more_deps.t Fiber.t =
+and exec_list ts ~ectx ~eenv : unit Fiber.t =
   match ts with
-  | [] -> Fiber.return Done
+  | [] -> Fiber.return ()
   | [ t ] -> exec t ~ectx ~eenv
   | t :: rest ->
-    (let stdout_to = Process.Io.multi_use eenv.stdout_to in
-     let stderr_to = Process.Io.multi_use eenv.stderr_to in
-     let stdin_from = Process.Io.multi_use eenv.stdin_from in
-     exec t ~ectx ~eenv:{ eenv with stdout_to; stderr_to; stdin_from })
-    >>= (function
-     | Need_more_deps _ as need -> Fiber.return need
-     | Done -> exec_list rest ~ectx ~eenv)
+    let stdout_to = Process.Io.multi_use eenv.stdout_to in
+    let stderr_to = Process.Io.multi_use eenv.stderr_to in
+    let stdin_from = Process.Io.multi_use eenv.stdin_from in
+    let* () = exec t ~ectx ~eenv:{ eenv with stdout_to; stderr_to; stdin_from } in
+    exec_list rest ~ectx ~eenv
 
-and exec_pipe outputs ts ~ectx ~eenv : Done_or_more_deps.t Fiber.t =
+and exec_pipe outputs ts ~ectx ~eenv : unit Fiber.t =
   let tmp_file () =
     Dtemp.file ~prefix:"dune-pipe-action-" ~suffix:("." ^ Outputs.to_string outputs)
   in
@@ -292,26 +274,19 @@ and exec_pipe outputs ts ~ectx ~eenv : Done_or_more_deps.t Fiber.t =
     match ts with
     | [] -> assert false
     | [ last_t ] ->
-      let+ result =
-        let eenv =
-          match outputs with
-          | Stderr -> { eenv with stdout_to = Process.Io.multi_use eenv.stderr_to }
-          | _ -> eenv
-        in
-        redirect_in last_t ~ectx ~eenv Stdin in_
+      let eenv =
+        match outputs with
+        | Stderr -> { eenv with stdout_to = Process.Io.multi_use eenv.stderr_to }
+        | _ -> eenv
       in
-      Dtemp.destroy File in_;
-      result
+      let+ () = redirect_in last_t ~ectx ~eenv Stdin in_ in
+      Dtemp.destroy File in_
     | t :: ts ->
       let out = tmp_file () in
-      let* done_or_deps =
-        let eenv = { eenv with stderr_to = Process.Io.multi_use eenv.stderr_to } in
-        redirect t ~ectx ~eenv ~in_:(Stdin, in_) ~out:(Stdout, out, Normal) ()
-      in
+      let eenv = { eenv with stderr_to = Process.Io.multi_use eenv.stderr_to } in
+      let* () = redirect t ~ectx ~eenv ~in_:(Stdin, in_) ~out:(Stdout, out, Normal) () in
       Dtemp.destroy File in_;
-      (match done_or_deps with
-       | Need_more_deps _ as need -> Fiber.return need
-       | Done -> loop ~in_:out ts)
+      loop ~in_:out ts
   in
   match ts with
   | [] -> assert false
@@ -323,32 +298,8 @@ and exec_pipe outputs ts ~ectx ~eenv : Done_or_more_deps.t Fiber.t =
       | Stdout -> { eenv with stderr_to = Process.Io.multi_use eenv.stderr_to }
       | Stderr -> { eenv with stdout_to = Process.Io.multi_use eenv.stdout_to }
     in
-    redirect_out t1 ~ectx ~eenv ~perm:Normal outputs out
-    >>= (function
-     | Need_more_deps _ as need -> Fiber.return need
-     | Done -> loop ~in_:out ts)
-;;
-
-let exec_until_all_deps_ready ~ectx ~eenv t =
-  let rec loop ~eenv stages =
-    let* result = exec ~ectx ~eenv t in
-    match result with
-    | Done -> Fiber.return stages
-    | Need_more_deps (relative_deps, deps_to_build) ->
-      let* stages =
-        let+ fact_map = ectx.build_deps deps_to_build in
-        (deps_to_build, fact_map) :: stages
-      in
-      let eenv =
-        { eenv with
-          prepared_dependencies =
-            Dependency.Set.union eenv.prepared_dependencies relative_deps
-        }
-      in
-      loop ~eenv stages
-  in
-  let+ stages = loop ~eenv [] in
-  { Exec_result.dynamic_deps_stages = List.rev stages }
+    let* () = redirect_out t1 ~ectx ~eenv ~perm:Normal outputs out in
+    loop ~in_:out ts
 ;;
 
 type input =
@@ -366,9 +317,14 @@ let exec
       { targets; root; context; env; rule_loc; execution_parameters; sandbox; action = t }
       ~build_deps
   =
+  let dynamic_deps_stages = ref [] in
   let ectx =
     let metadata =
       Process_metadata.create ~purpose:(Process_metadata.Build_job targets) ()
+    in
+    let build_deps deps =
+      let+ facts = build_deps deps in
+      dynamic_deps_stages := (deps, facts) :: !dynamic_deps_stages
     in
     { targets; metadata; context; sandbox; rule_loc; build_deps }
   and eenv =
@@ -408,14 +364,13 @@ let exec
             (Execution_parameters.action_stderr_on_success execution_parameters)
           ~output_limit:(Execution_parameters.action_stderr_limit execution_parameters)
     ; stdin_from = Process.Io.null In
-    ; prepared_dependencies = Dependency.Set.empty
     ; exit_codes = Predicate.create (Int.equal 0)
     }
   in
   let open Fiber.O in
-  Fiber.collect_errors (fun () -> exec_until_all_deps_ready t ~ectx ~eenv)
+  Fiber.collect_errors (fun () -> exec t ~ectx ~eenv)
   >>| function
-  | Ok res -> Ok res
+  | Ok () -> Ok { Exec_result.dynamic_deps_stages = List.rev !dynamic_deps_stages }
   | Error exns ->
     Error
       (List.map exns ~f:(fun (e : Exn_with_backtrace.t) -> Exec_result.Error.of_exn e.exn))

@@ -17,7 +17,6 @@
   dune_scheduler
   targets
   dune_trace
-  dune_action_plugin
   dune_util
   build_path_prefix_map
   dune_rpc

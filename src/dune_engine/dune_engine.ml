@@ -5,7 +5,6 @@ module Dep = Dep
 module Action = Action
 module Action_ext = Action_ext
 module Action_plugin = Action_plugin
-module Done_or_more_deps = Done_or_more_deps
 module Utils = Utils
 module Dir_set = Dir_set
 module Subdir_set = Subdir_set

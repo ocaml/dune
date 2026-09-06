@@ -2,9 +2,6 @@
  (copy dune-private-libs.opam.template dune-configurator.opam.template))
 
 (rule
- (copy dune-private-libs.opam.template dune-action-plugin.opam.template))
-
-(rule
  (copy dune-private-libs.opam.template dune-build-info.opam.template))
 
 (rule

@@ -1,7 +1,0 @@
-(executables
- (names simple_concatenation choosing_dependency)
- (libraries dune_action_plugin))
-
-(alias
- (name examples)
- (deps simple_concatenation.exe))

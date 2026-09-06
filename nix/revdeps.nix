@@ -91,15 +91,9 @@ let
             ocamlc-loc
             ordering
             pp
+            re
             xdg
             csexp
-          ];
-        };
-        dune-action-plugin = mkDuneLib {
-          pname = "dune-action-plugin";
-          propagatedBuildInputs = with oself; [
-            dune-rpc
-            re
           ];
         };
         dune-rpc-lwt = mkDuneLib {
@@ -108,6 +102,7 @@ let
             dune-rpc
             csexp
             lwt
+            stdune
           ];
         };
         dune-action-trace = mkDuneLib {

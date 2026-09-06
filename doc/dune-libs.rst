@@ -184,10 +184,14 @@ promotion.
 (Experimental) Dune Action Plugin
 =================================
 
-*This library is experimental and no backwards compatibility is implied. Use at
+*This API is experimental and no backwards compatibility is implied. Use at
 your own risk.*
 
-``Dune-action-plugin`` provides a monadic interface to express program
+``Dune_rpc.V1.Action_plugin`` provides operations for declaring program
 dependencies directly inside the source code. Programs using this feature
-should be declared using :doc:`/reference/actions/dynamic-run` instead of usual
-:doc:`/reference/actions/run`.
+should be declared using :doc:`/reference/actions/dynamic-run` instead of the
+usual :doc:`/reference/actions/run`.
+
+``Dune_rpc_lwt.V1.Action_plugin`` provides operations in Lwt; other clients can
+instantiate ``Dune_rpc.V1.Action_plugin.Make`` with their own Dune RPC I/O
+layer.

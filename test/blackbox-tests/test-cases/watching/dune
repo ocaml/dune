@@ -31,7 +31,7 @@
  (applies_to rpc-flush-file-watcher.t rpc-registry.t)
  (deps
   %{bin:action_plugin_helper}
-  (package dune-action-plugin)
+  (package dune-rpc-lwt)
   (package dune-rpc)
   (package stdune)
   (package top-closure)

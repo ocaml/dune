@@ -55,10 +55,33 @@ let sandbox_action dap =
     Lwt_io.fprintf output "%s\n%s\n%s\n" data (String.concat ", " listing) static)
 ;;
 
+let detached_action dap state =
+  let open Lwt.Syntax in
+  let* () =
+    Lwt_io.with_file ~mode:Output (Filename.concat state "pid") (fun output ->
+      Lwt_io.fprintf output "%d" (Unix.getpid ()))
+  in
+  let rec wait_started () =
+    if Sys.file_exists (Filename.concat state "started")
+    then Lwt.return_unit
+    else
+      let* () = Lwt_unix.sleep 0.01 in
+      wait_started ()
+  in
+  let* () =
+    Lwt.choose [ Lwt.map ignore (read_file dap ~path:"slow-input"); wait_started () ]
+  in
+  let* () =
+    Lwt_io.with_file ~mode:Output "detached" (fun output -> Lwt_io.write output "done")
+  in
+  Lwt_io.printl "ran"
+;;
+
 let action dap =
   match Sys.argv with
   | [| _ |] -> ordinary_action dap
   | [| _; "sandbox" |] -> sandbox_action dap
+  | [| _; "detached"; state |] -> detached_action dap state
   | _ -> invalid_arg "invalid arguments"
 ;;
 

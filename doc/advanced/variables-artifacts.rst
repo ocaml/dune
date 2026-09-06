@@ -23,6 +23,11 @@ interpreted relative to the current directory:
 
 - ``cmi:<path>`` expands to the compiled interface for the specified module.
 
+- ``melange.cmi:<path>`` expands to the Melange compiled interface for the
+  specified module, including when that module is also selected for OCaml.
+
+  .. versionadded:: 3.26
+
 - ``cmj:<path>`` expands to the Melange compiled module for the specified
   module.
 

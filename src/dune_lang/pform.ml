@@ -272,9 +272,15 @@ module Artifact = struct
     | Lib mode -> Mode.compiled_lib_ext mode
   ;;
 
+  let name = function
+    | Mod (Melange Cmi) -> "melange.cmi"
+    | artifact -> ext artifact |> Filename.Extension.drop_dot
+  ;;
+
   let all =
     Mod Cmt
     :: Mod Cmti
+    :: Mod (Melange Cmi)
     :: Mod (Melange Cmj)
     :: (List.map ~f:(fun kind -> Mod (Cm_kind kind)) Cm_kind.all
         @ List.map ~f:(fun mode -> Lib mode) Mode.all)
@@ -430,7 +436,7 @@ module Macro = struct
     | Pkg -> Ok "pkg"
     | Pkg_self -> Ok "pkg-self"
     | Ppx -> Ok "ppx"
-    | Artifact a -> Ok (Artifact.ext a |> Filename.Extension.drop_dot)
+    | Artifact a -> Ok (Artifact.name a)
   ;;
 end
 
@@ -667,7 +673,7 @@ module Env = struct
     let macros =
       let macro (x : Macro.t) = No_info x in
       let artifact x =
-        let name = Artifact.ext x |> Filename.Extension.drop_dot in
+        let name = Artifact.name x in
         let version =
           match x with
           | Mod Cmt | Mod Cmti -> 3, 21

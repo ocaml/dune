@@ -35,6 +35,28 @@ artifact, like Merlin does.
     ]
   }
 
+The melange.cmi variable explicitly selects the Melange artifact, including
+when the module is selected in both modes.
+
+  $ dune build '%{melange.cmi:lib/common}'
+  $ dune trace cat | jq 'select(.name == "targets") | .args'
+  {
+    "targets": [
+      "_build/default/lib/.foo.objs/melange/foo__Common.cmi"
+    ]
+  }
+
+It also selects modules that are only compiled with Melange.
+
+  $ dune build '%{melange.cmi:lib/melange_only}'
+
+It does not fall back to the OCaml module set.
+
+  $ dune build '%{melange.cmi:lib/ocaml_only}'
+  File "command line", line 1, characters 0-29:
+  Error: Module Ocaml_only does not exist.
+  [1]
+
 The cmj variable always selects the Melange artifact.
 
   $ dune build '%{cmj:lib/common}'
@@ -72,3 +94,36 @@ OCaml-specific artifact variables do not fall back to the Melange module set.
   File "command line", line 1, characters 0-23:
   Error: Module Melange_only does not exist.
   [1]
+
+The melange.cmi variable is available in dune files since version 3.26 of the
+Dune language.
+
+  $ mkdir version-gate
+  $ cat > version-gate/dune-project <<'EOF'
+  > (lang dune 3.25)
+  > (using melange 1.0)
+  > EOF
+  $ cat > version-gate/dune <<'EOF'
+  > (library
+  >  (name foo)
+  >  (modes melange))
+  > (alias
+  >  (name explicit-cmi)
+  >  (deps %{melange.cmi:foo}))
+  > EOF
+  $ touch version-gate/foo.ml
+  $ dune build --root=version-gate @explicit-cmi
+  Entering directory 'version-gate'
+  File "dune", line 6, characters 7-25:
+  6 |  (deps %{melange.cmi:foo}))
+             ^^^^^^^^^^^^^^^^^^
+  Error: %{melange.cmi:..} is only available since version 3.26 of the dune
+  language. Please update your dune-project file to have (lang dune 3.26).
+  Leaving directory 'version-gate'
+  [1]
+
+  $ cat > version-gate/dune-project <<'EOF'
+  > (lang dune 3.26)
+  > (using melange 1.0)
+  > EOF
+  $ dune build --root=version-gate @explicit-cmi

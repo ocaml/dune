@@ -78,3 +78,57 @@ rerun the action with its new contents, without exposing unmatched dependencies.
   other.txt, picked.txt, static.txt
   local
   checked isolation
+
+An accepted request can outlive the plugin process. The generator acknowledges
+that the request reached Dune, then waits for the plugin to exit. Disable
+background sandbox operations so cleanup finishes before the generator's
+completion is handled, without relying on a delay in the generator.
+
+  $ cat > dune-project <<'EOF'
+  > (lang dune 2.0)
+  > (using action-plugin 0.1)
+  > EOF
+  $ export DUNE_CONFIG__BACKGROUND_SANDBOXES=disabled
+  $ state=$(mktemp -d)
+  $ export PLUGIN_STATE="$state"
+  $ printf first > control
+  $ cat > slow.sh <<'EOF'
+  > if [ -f "$1/pid" ]; then
+  >   touch "$1/started"
+  >   while kill -0 "$(cat "$1/pid")" 2>/dev/null; do sleep 0.01; done
+  > fi
+  > cat control > slow-input
+  > EOF
+  $ cat > dune <<'EOF'
+  > (rule
+  >  (target slow-input)
+  >  (deps control (sandbox none))
+  >  (action (run sh %{dep:slow.sh} %{env:PLUGIN_STATE=unset})))
+  > (rule
+  >  (target detached)
+  >  (deps (sandbox always))
+  >  (action (dynamic-run ./foo.exe detached %{env:PLUGIN_STATE=unset})))
+  > EOF
+  $ cat > sandbox-config <<'EOF'
+  > (lang dune 3.25)
+  > (sandboxing_preference hardlink none)
+  > EOF
+  $ build_detached() {
+  >   timeout 10 dune build -j 2 detached \
+  >     --config-file sandbox-config --build-dir _build-lifetime
+  > }
+  $ build_detached
+  ran
+
+The completed request currently recreates the sandbox after it was destroyed.
+
+  $ find _build-lifetime/.sandbox -name slow-input -exec echo leaked \;
+  leaked
+
+Its dependency is also missing from the cached action result.
+
+  $ rm "$state/pid" "$state/started"
+  $ printf second > control
+  $ build_detached
+  $ cat _build-lifetime/default/slow-input
+  first

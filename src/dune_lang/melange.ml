@@ -5,6 +5,13 @@ module Cm_kind = struct
     | Cmi
     | Cmj
 
+  let compare x y =
+    match x, y with
+    | Cmi, Cmi | Cmj, Cmj -> Eq
+    | Cmi, Cmj -> Lt
+    | Cmj, Cmi -> Gt
+  ;;
+
   let source = function
     | Cmi -> Ocaml.Ml_kind.Intf
     | Cmj -> Impl

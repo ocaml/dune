@@ -105,6 +105,7 @@ end
 module Artifact : sig
   type mod_ =
     | Cm_kind of Ocaml.Cm_kind.t
+    | Melange of Melange.Cm_kind.t
     | Cmt
     | Cmti
 

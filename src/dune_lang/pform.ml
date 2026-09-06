@@ -225,6 +225,7 @@ module Artifact = struct
 
   type mod_ =
     | Cm_kind of Ocaml.Cm_kind.t
+    | Melange of Melange.Cm_kind.t
     | Cmt
     | Cmti
 
@@ -232,6 +233,7 @@ module Artifact = struct
     let open Dyn in
     function
     | Cm_kind x -> Ocaml.Cm_kind.to_dyn x
+    | Melange x -> variant "Melange" [ Melange.Cm_kind.to_dyn x ]
     | Cmt -> variant "Cmt" []
     | Cmti -> variant "Cmti" []
   ;;
@@ -245,6 +247,9 @@ module Artifact = struct
     | Cm_kind x, Cm_kind y -> Ocaml.Cm_kind.compare x y
     | Cm_kind _, _ -> Lt
     | _, Cm_kind _ -> Gt
+    | Melange x, Melange y -> Melange.Cm_kind.compare x y
+    | Melange _, _ -> Lt
+    | _, Melange _ -> Gt
     | Cmt, Cmt -> Eq
     | Cmt, _ -> Lt
     | _, Cmt -> Gt
@@ -263,12 +268,14 @@ module Artifact = struct
     | Mod Cmt -> Filename.Extension.cmt
     | Mod Cmti -> Filename.Extension.cmti
     | Mod (Cm_kind cm_kind) -> Cm_kind.ext cm_kind
+    | Mod (Melange cm_kind) -> Melange.Cm_kind.ext cm_kind
     | Lib mode -> Mode.compiled_lib_ext mode
   ;;
 
   let all =
     Mod Cmt
     :: Mod Cmti
+    :: Mod (Melange Cmj)
     :: (List.map ~f:(fun kind -> Mod (Cm_kind kind)) Cm_kind.all
         @ List.map ~f:(fun mode -> Lib mode) Mode.all)
   ;;
@@ -664,6 +671,7 @@ module Env = struct
         let version =
           match x with
           | Mod Cmt | Mod Cmti -> 3, 21
+          | Mod (Melange _) -> 3, 26
           | _ -> 2, 0
         in
         name, since ~version (Macro.Artifact x)

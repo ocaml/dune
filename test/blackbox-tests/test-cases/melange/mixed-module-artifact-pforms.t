@@ -35,6 +35,16 @@ artifact, like Merlin does.
     ]
   }
 
+The cmj variable always selects the Melange artifact.
+
+  $ dune build '%{cmj:lib/common}'
+  $ dune trace cat | jq 'select(.name == "targets") | .args'
+  {
+    "targets": [
+      "_build/default/lib/.foo.objs/melange/foo__Common.cmj"
+    ]
+  }
+
 The Melange-only module artifacts exist in the Melange object directory.
 
   $ dune build lib/.foo.objs/melange/foo__Melange_only.{cmi,cmt}

@@ -86,9 +86,11 @@ type snapshot = [ `Dir | `File of Stat.t ] Path.Map.t
 
 type real =
   { dir : Path.Build.t
-  ; snapshot : snapshot option
+  ; mutable snapshot : snapshot option
   ; corrections : Corrections.t
-  ; deps : Path.Set.t option
+  ; mode : Sandbox_mode.some
+  ; mutable deps : Path.Set.t
+  ; mutex : Fiber.Mutex.t
   ; loc : Loc.t
   }
 
@@ -158,12 +160,23 @@ let copy_recursively =
       ()
 ;;
 
-let create_dir t dir = Path.mkdir_p (Path.build (map_real_path t dir))
-
-let create_dirs t ~dirs ~rule_dir =
-  create_dir t rule_dir;
-  Path.Build.Set.iter dirs ~f:(fun dir -> create_dir t dir)
+let create_dir t dir =
+  Path.mkdir_p (Path.build (map_real_path t dir));
+  t.snapshot
+  <- Option.map t.snapshot ~f:(fun snapshot ->
+       let rec loop snapshot dir =
+         match Path.Build.parent dir with
+         | None -> snapshot
+         | Some parent ->
+           let path = Path.build (map_real_path t dir) in
+           if Path.Map.mem snapshot path
+           then snapshot
+           else loop (Path.Map.set snapshot path `Dir) parent
+       in
+       loop snapshot dir)
 ;;
+
+let create_dirs t dirs = Path.Build.Set.iter dirs ~f:(fun dir -> create_dir t dir)
 
 let link_function ~(mode : Sandbox_mode.some) =
   let win32_error mode =
@@ -190,8 +203,8 @@ let link_function ~(mode : Sandbox_mode.some) =
        fun src dst -> Io.copy_file ~src ~dst ~chmod ())
 ;;
 
-let link_deps t ~mode ~deps =
-  let link = Staged.unstage (link_function ~mode) in
+let link_deps t ~deps =
+  let link = Staged.unstage (link_function ~mode:t.mode) in
   Path.Set.iter deps ~f:(fun path ->
     match Path.as_in_build_dir path with
     | None ->
@@ -204,6 +217,56 @@ let link_deps t ~mode ~deps =
            build directory instead."
           [ "path", Path.to_dyn path ]
     | Some p -> link path (Path.build (map_real_path t p)))
+;;
+
+let unlinked_deps t deps =
+  let rec already_linked paths path =
+    Path.Set.mem paths path
+    ||
+    match Path.parent path with
+    | None -> false
+    | Some parent -> already_linked paths parent
+  in
+  let rec loop path acc =
+    if already_linked t.deps path || already_linked acc path
+    then acc
+    else (
+      match Path.as_in_build_dir path with
+      | Some p
+        when Fpath.is_directory (Path.Build.to_string (map_real_path t p))
+             && Fpath.is_directory (Path.to_string path) ->
+        (match Path.Untracked.readdir_unsorted path with
+         | Error error -> Unix_error.Detailed.raise error
+         | Ok files ->
+           List.fold_left files ~init:acc ~f:(fun acc name ->
+             loop (Path.relative_fname path name) acc))
+      | _ -> Path.Set.add acc path)
+  in
+  Path.Set.fold deps ~init:Path.Set.empty ~f:loop
+;;
+
+let add_deps t ~dirs ~deps =
+  match t with
+  | No_sandbox _ -> Fiber.return ()
+  | Sandboxed t ->
+    Fiber.Mutex.with_lock t.mutex ~f:(fun () ->
+      let open Fiber.O in
+      let+ (_ : Time.t * Time.t * Time.Span.t option) =
+        maybe_async (fun () ->
+          create_dirs t dirs;
+          let unlinked = unlinked_deps t deps in
+          link_deps t ~deps:unlinked;
+          t.snapshot
+          <- Option.map t.snapshot ~f:(fun snapshot ->
+               Path.Set.fold unlinked ~init:snapshot ~f:(fun path snapshot ->
+                 match Path.as_in_build_dir path with
+                 | None -> snapshot
+                 | Some p ->
+                   let dst = Path.build (map_real_path t p) in
+                   Path.Map.set snapshot dst (`File (Stat.stat (Path.to_string dst)))));
+          t.deps <- Path.Set.union t.deps deps)
+      in
+      ())
 ;;
 
 let snapshot t =
@@ -309,32 +372,31 @@ let create_real
     Path.Build.relative sandbox_dir sandbox_suffix
   in
   let t =
-    { dir = sandbox_dir; snapshot = None; deps = None; loc = rule_loc; corrections }
+    { dir = sandbox_dir
+    ; snapshot = None
+    ; deps
+    ; mutex = Fiber.Mutex.create ()
+    ; mode
+    ; loc = rule_loc
+    ; corrections
+    }
   in
   let open Fiber.O in
   let+ start, stop, queued =
     maybe_async (fun () ->
       Path.rm_rf (Path.build sandbox_dir);
-      create_dirs t ~dirs ~rule_dir;
-      (* CR-someday amokhov: Note that this doesn't link dynamic dependencies, so
-         targets produced dynamically will be unavailable. *)
-      link_deps t ~mode ~deps)
+      create_dir t rule_dir;
+      create_dirs t dirs;
+      link_deps t ~deps)
   in
   Dune_trace.emit ~buffered:true Sandbox (fun () ->
     Dune_trace.Event.sandbox `Create ~start ~stop ~queued t.loc ~dir:t.dir);
-  let deps =
-    match corrections, mode with
-    | Ignore, Patch_back_source_tree -> Some deps
-    | Produce, Patch_back_source_tree ->
-      Code_error.raise "a patch back sandboxed rule may not produce corrections" []
-    | _, (Symlink | Copy | Hardlink) ->
-      (match corrections with
-       | Produce -> Some deps
-       | Ignore -> None)
-  in
-  match mode with
-  | Patch_back_source_tree -> { t with snapshot = Some (snapshot t); deps }
-  | _ -> { t with deps }
+  (match corrections, mode with
+   | Ignore, Patch_back_source_tree -> t.snapshot <- Some (snapshot t)
+   | Produce, Patch_back_source_tree ->
+     Code_error.raise "a patch back sandboxed rule may not produce corrections" []
+   | _, (Symlink | Copy | Hardlink) -> ());
+  t
 ;;
 
 (* Same as [rename] except that if the source doesn't exist we delete the
@@ -438,9 +500,7 @@ let move_real_targets_to_build_dir t ~should_be_skipped ~(targets : Targets.Vali
   let* () =
     match t.corrections with
     | Ignore -> Fiber.return ()
-    | Produce ->
-      let deps = Option.value_exn t.deps in
-      register_corrected_file_promotions t ~deps
+    | Produce -> register_corrected_file_promotions t ~deps:t.deps
   in
   let+ () =
     match t.snapshot with

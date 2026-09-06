@@ -65,7 +65,7 @@ module Server = struct
     let active_action =
       { build_deps = ectx.build_deps
       ; rule_loc = ectx.rule_loc
-      ; working_dir = eenv.working_dir
+      ; working_dir = Path.drop_optional_sandbox_root eenv.working_dir
       ; initialized = false
       }
     in

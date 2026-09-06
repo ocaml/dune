@@ -9,6 +9,8 @@ val root : t -> Path.t option
 (** [map_path t p] returns the path corresponding to [p] inside the sandbox. *)
 val map_path : t -> Path.Build.t -> Path.Build.t
 
+val add_deps : t -> dirs:Path.Build.Set.t -> deps:Path.Set.t -> unit Fiber.t
+
 (** Delete targets left behind by interrupted non-sandboxed actions. *)
 val cleanup_pending_targets : unit -> unit
 

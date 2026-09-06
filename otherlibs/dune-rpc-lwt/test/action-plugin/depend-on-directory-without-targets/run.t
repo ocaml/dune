@@ -33,8 +33,8 @@ A missing directory has an empty listing when the plugin runs directly.
   $ ./foo.exe
   Directory listing: []
 
-A generated empty directory also has an empty listing even though the glob
-dependency does not materialize it.
+A directory dependency builds its generating rule. Dune rejects directory
+targets containing no files, rather than silently returning an empty listing.
 
   $ cat > dune-project << EOF
   > (lang dune 3.24)
@@ -50,7 +50,13 @@ dependency does not materialize it.
   >  (action (dynamic-run ./foo.exe)))
   > EOF
   $ dune build @check-empty
-  Directory listing: []
+  File "dune", lines 4-6, characters 0-61:
+  4 | (rule
+  5 |  (alias check-empty)
+  6 |  (action (dynamic-run ./foo.exe)))
+  Rule produced directory "some_dir" that contains no files nor
+  non-empty subdirectories
+  [1]
 
 A dynamic action may be part of a rule with a directory target. The action
 plugin does not manage the rule's targets.

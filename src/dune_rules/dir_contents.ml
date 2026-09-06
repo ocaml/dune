@@ -518,9 +518,9 @@ let modules_of_lib sctx lib ~for_ =
 ;;
 
 let () =
-  Fdecl.set Expander.lookup_artifacts (fun ~dir ->
+  Fdecl.set Expander.lookup_artifacts (fun ~dir ~for_ ->
     let* t =
       Context.DB.by_dir dir >>| Context.name >>= Super_context.find_exn >>= Load.get ~dir
     in
-    Memo.Lazy.force t.ocaml >>= Ml_sources.artifacts)
+    ml t ~for_ >>= Ml_sources.artifacts)
 ;;

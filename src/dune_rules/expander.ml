@@ -185,18 +185,19 @@ let expand_artifact ~source t artifact arg =
   let does_not_exist ~what name =
     User_error.raise ~loc [ Pp.textf "%s %s does not exist." what name ]
   in
-  let* artifacts =
+  let lookup_artifacts ~for_ =
     let lookup = Fdecl.get lookup_artifacts in
-    Action_builder.of_memo (lookup ~dir)
+    Action_builder.of_memo (lookup ~dir ~for_)
   in
   match artifact with
   | Pform.Artifact.Mod kind ->
-    let module_ =
-      let reference = Module_reference.of_string_path (loc, Filename.to_string name) in
+    let reference = Module_reference.of_string_path (loc, Filename.to_string name) in
+    let reference_path = Module_reference.path reference in
+    let lookup_module ~for_ =
+      let+ artifacts = lookup_artifacts ~for_ in
       Module_reference.validate_qualified
         reference
         ~include_subdirs:(Artifacts_obj.include_subdirs artifacts);
-      let reference_path = Module_reference.path reference in
       (match Artifacts_obj.lookup_module_by_source_path artifacts path with
        | Some (_, module_)
          when not (Module_name.Path.equal reference_path (Module.path module_)) ->
@@ -213,7 +214,7 @@ let expand_artifact ~source t artifact arg =
            ]
        | None | Some _ -> ());
       match Artifacts_obj.lookup_modules_by_logical_path artifacts reference_path with
-      | [ module_ ] -> module_
+      | [ (obj_dir, module_) ] -> Some (for_, obj_dir, module_)
       | _ :: _ ->
         User_error.raise
           ~loc
@@ -221,21 +222,36 @@ let expand_artifact ~source t artifact arg =
               "Module reference %s is ambiguous."
               (Module_reference.to_string reference)
           ]
-      | [] ->
-        User_error.raise
-          ~loc
-          [ Pp.textf "Module %s does not exist." (Module_reference.to_string reference) ]
+      | [] -> None
     in
-    let obj_dir, module_ = module_ in
-    (match
-       match kind with
-       | Cm_kind kind -> Obj_dir.Module.cm_file obj_dir module_ ~kind:(Ocaml kind)
-       | Cmt -> Obj_dir.Module.cmt_file obj_dir module_ ~cm_kind:(Ocaml Cmi) ~ml_kind:Impl
-       | Cmti -> Some (Obj_dir.Module.cmti_file obj_dir module_ ~cm_kind:(Ocaml Cmi))
-     with
-     | None -> Action_builder.return [ Value.String "" ]
-     | Some path -> dep (Path.build path))
+    let* module_ =
+      match kind with
+      | Cm_kind (Cmo | Cmx) -> lookup_module ~for_:Compilation_mode.Ocaml
+      | Cm_kind Cmi | Cmt | Cmti ->
+        let* ocaml = lookup_module ~for_:Compilation_mode.Ocaml in
+        (match ocaml with
+         | Some _ -> Action_builder.return ocaml
+         | None -> lookup_module ~for_:Compilation_mode.Melange)
+    in
+    (match module_ with
+     | None -> does_not_exist ~what:"Module" (Module_reference.to_string reference)
+     | Some (for_, obj_dir, m) ->
+       let cmi_kind =
+         match for_ with
+         | Compilation_mode.Ocaml -> Lib_mode.Cm_kind.Ocaml Ocaml.Cm_kind.Cmi
+         | Compilation_mode.Melange -> Lib_mode.Cm_kind.Melange Melange.Cm_kind.Cmi
+       in
+       (match
+          match kind with
+          | Cm_kind Cmi -> Obj_dir.Module.cm_file obj_dir m ~kind:cmi_kind
+          | Cm_kind kind -> Obj_dir.Module.cm_file obj_dir m ~kind:(Ocaml kind)
+          | Cmt -> Obj_dir.Module.cmt_file obj_dir m ~cm_kind:cmi_kind ~ml_kind:Impl
+          | Cmti -> Some (Obj_dir.Module.cmti_file obj_dir m ~cm_kind:cmi_kind)
+        with
+        | None -> Action_builder.return [ Value.String "" ]
+        | Some path -> dep (Path.build path)))
   | Lib mode ->
+    let* artifacts = lookup_artifacts ~for_:Compilation_mode.Ocaml in
     let name =
       Lib_name.parse_string_exn
         (Dune_lang.Template.Pform.loc source, Filename.to_string name)
@@ -258,7 +274,7 @@ let expand_melange_emit ~source t arg =
   then User_error.raise ~loc [ Pp.text "cannot escape the workspace root directory" ];
   let* artifacts =
     let lookup = Fdecl.get lookup_artifacts in
-    Action_builder.of_memo (lookup ~dir:stanza_dir)
+    Action_builder.of_memo (lookup ~dir:stanza_dir ~for_:Compilation_mode.Melange)
   in
   match Artifacts_obj.lookup_melange_emit artifacts target_dir with
   | None ->

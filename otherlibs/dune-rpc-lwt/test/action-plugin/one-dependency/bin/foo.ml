@@ -1,8 +1,8 @@
 open Dune_rpc_lwt.V1.Action_plugin
 
-let ordinary_action dap =
+let ordinary_action dap ~path =
   let open Lwt.Syntax in
-  let* data = read_file dap ~path:"some_dependency" in
+  let* data = read_file dap ~path in
   Lwt_io.printl data
 ;;
 
@@ -79,7 +79,8 @@ let detached_action dap state =
 
 let action dap =
   match Sys.argv with
-  | [| _ |] -> ordinary_action dap
+  | [| _ |] -> ordinary_action dap ~path:"some_dependency"
+  | [| _; "read"; path |] -> ordinary_action dap ~path
   | [| _; "sandbox" |] -> sandbox_action dap
   | [| _; "detached"; state |] -> detached_action dap state
   | _ -> invalid_arg "invalid arguments"

@@ -132,3 +132,64 @@ Their dependencies are recorded in the cached action result.
   ran
   $ cat _build-lifetime/default/slow-input
   second
+
+Patch-back must track directories populated by dynamic requests, including
+parents created along the way. The input is not a static dependency, so its
+directories are absent from the initial sandbox. Deleting them after the
+request must report both directory deletions, not just the file deletion.
+
+  $ unset DUNE_CONFIG__BACKGROUND_SANDBOXES
+  $ cat > dune-project <<'EOF'
+  > (lang dune 3.25)
+  > (using action-plugin 0.1)
+  > EOF
+  $ mkdir -p todelete/nested
+  $ printf original > todelete/nested/input
+  $ cat > dune <<'EOF'
+  > (rule
+  >  (alias patch-back)
+  >  (deps (sandbox patch_back_source_tree))
+  >  (action
+  >   (progn
+  >    (bash "test ! -e todelete")
+  >    (dynamic-run ./foo.exe read todelete/nested/input)
+  >    (run rm -r todelete))))
+  > EOF
+  $ dune build @patch-back --build-dir _build-patch-back
+  original
+  File "dune", lines 1-8, characters 0-196:
+  1 | (rule
+  2 |  (alias patch-back)
+  3 |  (deps (sandbox patch_back_source_tree))
+  4 |  (action
+  5 |   (progn
+  6 |    (bash "test ! -e todelete")
+  7 |    (dynamic-run ./foo.exe read todelete/nested/input)
+  8 |    (run rm -r todelete))))
+  Error: Directory todelete should be deleted
+  File "dune", lines 1-8, characters 0-196:
+  1 | (rule
+  2 |  (alias patch-back)
+  3 |  (deps (sandbox patch_back_source_tree))
+  4 |  (action
+  5 |   (progn
+  6 |    (bash "test ! -e todelete")
+  7 |    (dynamic-run ./foo.exe read todelete/nested/input)
+  8 |    (run rm -r todelete))))
+  Error: Directory todelete/nested should be deleted
+  File "dune", lines 1-8, characters 0-196:
+  1 | (rule
+  2 |  (alias patch-back)
+  3 |  (deps (sandbox patch_back_source_tree))
+  4 |  (action
+  5 |   (progn
+  6 |    (bash "test ! -e todelete")
+  7 |    (dynamic-run ./foo.exe read todelete/nested/input)
+  8 |    (run rm -r todelete))))
+  Error: File todelete/nested/input should be deleted
+  [1]
+
+The source input remains untouched until the deletions are promoted.
+
+  $ cat todelete/nested/input
+  original

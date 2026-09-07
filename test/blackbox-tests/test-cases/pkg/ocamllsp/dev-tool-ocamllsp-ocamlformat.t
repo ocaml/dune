@@ -1,24 +1,17 @@
 Test that the ocamllsp dev tool can see the ocamlformat dev tool.
 
   $ mkrepo
-  $ mkpkg ocaml 5.2.0
-
-  $ cat > dune-workspace <<EOF
-  > (lang dune 3.20)
-  > (pkg enabled)
+  $ mk_ocaml 5.2.0
+  $ setup_ocamllsp_workspace
+  $ cat >> dune-workspace <<EOF
   > (lock_dir
-  >  (path "dev-tools.locks/ocaml-lsp-server")
+  >  (path "_build/.dev-tools.locks/ocamlformat")
   >  (repositories mock))
-  > (lock_dir
-  >  (path "dev-tools.locks/ocamlformat")
-  >  (repositories mock))
-  > (lock_dir
-  >   (repositories mock))
   > EOF
-  $ add_mock_repo_if_needed
 
-Make a fake ocamllsp package that prints out the PATH variable:
+Make a fake ocamllsp package that invokes ocamlformat:
   $ mkpkg ocaml-lsp-server <<EOF
+  > depends: [ "ocaml" ]
   > install: [
   >   [ "sh" "-c" "echo '#!/bin/sh' > %{bin}%/ocamllsp" ]
   >   [ "sh" "-c" "echo 'echo fake ocamllsp will now run fake ocamlformat:' >> %{bin}%/ocamllsp" ]
@@ -36,18 +29,18 @@ Make a fake ocamlformat
   > ]
   > EOF
 
-  $ make_lockdir
-  $ make_lockpkg ocaml <<EOF
-  > (version 5.2.0)
-  > EOF
+  $ make_named_package_project foo 3.20 "(ocaml (= 5.2.0))"
+  $ dune build
 
   $ dune tools install ocamlformat
-  Solution for dev-tools.locks/ocamlformat:
+  Solution for _build/.dev-tools.locks/ocamlformat:
   - ocamlformat.0.0.1
 
   $ dune tools exec ocamllsp
-  Solution for dev-tools.locks/ocaml-lsp-server:
+  Solution for _build/.dev-tools.locks/ocaml-lsp-server:
   - ocaml.5.2.0
+  - ocaml-base-compiler.5.2.0
+  - ocaml-compiler.5.2.0
   - ocaml-lsp-server.0.0.1
        Running 'ocamllsp'
   fake ocamllsp will now run fake ocamlformat:

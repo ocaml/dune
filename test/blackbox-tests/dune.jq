@@ -108,6 +108,11 @@ def ruleDepGlobPredicates:
 def ruleHasDepFile($path):
   [ ruleDepFilePaths | select(pathMatches($path)) ] | length > 0;
 
+def ruleHasDepFileOrMatchingGlob($path; $dir; $predicate):
+  ruleHasDepFile($path)
+  or any(ruleDepGlobEntries;
+         .dir == $dir and .predicate == $predicate);
+
 def ruleActionNodes:
   .action | .. | arrays | select(length > 0 and (.[0] | type) == "string");
 

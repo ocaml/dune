@@ -39,14 +39,19 @@ The Melange-only module artifacts exist in the Melange object directory.
 
   $ dune build lib/.foo.objs/melange/foo__Melange_only.{cmi,cmt}
 
-Artifact variables do not find modules that are only in the Melange module
-set.
+Artifact variables fall back to the Melange module set when the module is not
+selected for OCaml.
 
   $ dune build '%{cmi:lib/melange_only}'
+  $ dune build '%{cmt:lib/melange_only}'
+
+OCaml-specific artifact variables do not fall back to the Melange module set.
+
+  $ dune build '%{cmo:lib/melange_only}'
   File "command line", line 1, characters 0-23:
   Error: Module Melange_only does not exist.
   [1]
-  $ dune build '%{cmt:lib/melange_only}'
+  $ dune build '%{cmx:lib/melange_only}'
   File "command line", line 1, characters 0-23:
   Error: Module Melange_only does not exist.
   [1]

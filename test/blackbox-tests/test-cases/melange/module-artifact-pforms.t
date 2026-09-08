@@ -26,21 +26,12 @@ The Melange compiler produces all four module artifacts.
   _build/default/.foo.objs/melange/foo.cmt
   _build/default/.foo.objs/melange/foo.cmti
 
-The existing module artifact variables incorrectly resolve artifacts for a
-Melange-only library to the bytecode object directory.
+Module artifact variables resolve artifacts from the Melange object directory
+for a Melange-only library.
 
   $ dune build '%{cmi:foo}'
-  Error: No rule found for .foo.objs/byte/foo.cmi
-  -> required by %{cmi:foo} at command line:1
-  [1]
   $ dune build '%{cmt:foo}'
-  Error: No rule found for .foo.objs/byte/foo.cmt
-  -> required by %{cmt:foo} at command line:1
-  [1]
   $ dune build '%{cmti:foo}'
-  Error: No rule found for .foo.objs/byte/foo.cmti
-  -> required by %{cmti:foo} at command line:1
-  [1]
 
 The variable for Melange's compiled module artifact is not recognized.
 

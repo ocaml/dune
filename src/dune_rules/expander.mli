@@ -136,7 +136,8 @@ val foreign_flags
   : (dir:Path.Build.t -> string list Action_builder.t Foreign_language.Dict.t Memo.t)
       Fdecl.t
 
-val lookup_artifacts : (dir:Path.Build.t -> Artifacts_obj.t Memo.t) Fdecl.t
+val lookup_artifacts
+  : (dir:Path.Build.t -> for_:Compilation_mode.t -> Artifacts_obj.t Memo.t) Fdecl.t
 
 val resolve_pkg_install_file
   : (loc:Loc.t

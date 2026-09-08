@@ -1417,6 +1417,7 @@ let make
       let { Source_file_dir.dir; _ } = Nonempty_list.hd dirs in
       Artifacts_obj.make
         ~dir
+        ~for_
         ~expander:(Expander.to_expander0 expander)
         ~lib_config
         ~libs

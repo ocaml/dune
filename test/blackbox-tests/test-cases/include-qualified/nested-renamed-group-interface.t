@@ -63,3 +63,94 @@ Directory renames must preserve path depth.
   path components.
   Leaving directory 'bad-depth'
   [1]
+
+A rename must not silently overlap an existing directory. This currently
+raises an internal error instead of reporting the conflicting groups.
+
+  $ mkdir -p collision/internal collision/public
+  $ cat >collision/dune-project <<EOF
+  > (lang dune 3.25)
+  > EOF
+  $ cat >collision/dune <<EOF
+  > (include_subdirs
+  >  (mode qualified)
+  >  (dirs (internal as public)))
+  > (library
+  >  (name collision))
+  > EOF
+  $ touch collision/internal/leaf.ml collision/public/other.ml
+  $ dune build --root collision >collision.log 2>&1
+  [1]
+  $ sed -n 's/.*Assertion.*/Assertion failed/p' collision.log
+  Assertion failed
+
+An uppercase source filename should still provide the renamed group
+interface. Currently, Internal.ml is treated as a child of Public instead.
+
+  $ mkdir -p uppercase/internal
+  $ cat >uppercase/dune-project <<EOF
+  > (lang dune 3.25)
+  > EOF
+  $ cat >uppercase/dune <<EOF
+  > (include_subdirs
+  >  (mode qualified)
+  >  (dirs (internal as public)))
+  > (library
+  >  (name uppercase)
+  >  (modules Public))
+  > (executable
+  >  (name main)
+  >  (modules Main)
+  >  (libraries uppercase))
+  > EOF
+  $ cat >uppercase/internal/Internal.ml <<EOF
+  > let value = "from uppercase group interface"
+  > EOF
+  $ cat >uppercase/main.ml <<EOF
+  > let () = print_endline Uppercase.Public.value
+  > EOF
+  $ dune exec --root uppercase ./main.exe
+  Entering directory 'uppercase'
+  File "dune", line 6, characters 10-16:
+  6 |  (modules Public))
+                ^^^^^^
+  Error: Module Public doesn't exist.
+  Leaving directory 'uppercase'
+  [1]
+
+A selected source should likewise provide the renamed group interface.
+Currently, its source basename is retained in the logical module path.
+
+  $ mkdir -p selected/internal
+  $ cat >selected/dune-project <<EOF
+  > (lang dune 3.25)
+  > EOF
+  $ cat >selected/dune <<EOF
+  > (include_subdirs
+  >  (mode qualified)
+  >  (dirs (internal as public)))
+  > (library
+  >  (name selected)
+  >  (modules Public)
+  >  (libraries
+  >   (select internal/internal.ml from
+  >    (-> internal/internal.fallback.ml))))
+  > (executable
+  >  (name main)
+  >  (modules Main)
+  >  (libraries selected))
+  > EOF
+  $ cat >selected/internal/internal.fallback.ml <<EOF
+  > let value = "from selected group interface"
+  > EOF
+  $ cat >selected/main.ml <<EOF
+  > let () = print_endline Selected.Public.value
+  > EOF
+  $ dune exec --root selected ./main.exe
+  Entering directory 'selected'
+  File "dune", line 6, characters 10-16:
+  6 |  (modules Public)
+                ^^^^^^
+  Error: Module Public doesn't exist.
+  Leaving directory 'selected'
+  [1]

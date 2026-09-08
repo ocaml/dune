@@ -197,22 +197,16 @@ let expand_artifact ~source t artifact arg =
         reference
         ~include_subdirs:(Artifacts_obj.include_subdirs artifacts);
       let reference_path = Module_reference.path reference in
-      let source_module = Artifacts_obj.lookup_module_by_source_path artifacts path in
-      let source_hints =
-        match source_module with
-        | None -> []
-        | Some (_, module_) ->
-          [ Pp.textf
-              "%s would be a correct module reference"
-              (Module.path module_ |> Module_name.Path.to_string)
-          ]
-      in
-      (match source_module with
+      (match Artifacts_obj.lookup_module_by_source_path artifacts path with
        | Some (_, module_)
          when not (Module_name.Path.equal reference_path (Module.path module_)) ->
          User_error.raise
            ~loc
-           ~hints:source_hints
+           ~hints:
+             [ Pp.textf
+                 "%s would be a correct module reference"
+                 (Module.path module_ |> Module_name.Path.to_string)
+             ]
            [ Pp.textf
                "Module reference %s does not match the module at this source path."
                (Module_reference.to_string reference)
@@ -230,7 +224,6 @@ let expand_artifact ~source t artifact arg =
       | [] ->
         User_error.raise
           ~loc
-          ~hints:source_hints
           [ Pp.textf "Module %s does not exist." (Module_reference.to_string reference) ]
     in
     let obj_dir, module_ = module_ in

@@ -1,5 +1,7 @@
 open Import
 
+val compile_info : scope:Scope.t -> Melange_stanzas.Emit.t -> Lib.Compile.t Memo.t
+
 val setup_melange_sources_copy_rules
   :  sctx:Super_context.t
   -> dir:Path.Build.t

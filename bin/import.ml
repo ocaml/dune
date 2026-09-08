@@ -37,8 +37,11 @@ include struct
   module Resolve = Resolve
   module Dune_file = Dune_file
   module Library = Library
-  module Melange = Melange
   module Executables = Executables
+  module Melange = Melange
+  module Melange_emit = Melange_emit
+  module Melange_rules = Melange_rules
+  module Melange_binary = Melange_binary
   module Dir_contents = Dir_contents
 end
 

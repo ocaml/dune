@@ -163,13 +163,13 @@ module External = struct
     |> Path.Set.to_list
   ;;
 
-  let all_cmis { public_dir; private_dir; public_cmi_dir } =
-    List.filter_opt
-      [ Some public_dir.ocaml
-      ; private_dir.ocaml
-      ; public_cmi_dir.ocaml
-        (* TODO: might need to pass mode to conditionally include public_cmi_melange_dir *)
-      ]
+  let all_cmis { public_dir; private_dir; public_cmi_dir } ~(mode : Compilation_mode.t) =
+    match mode with
+    | Ocaml ->
+      List.filter_opt [ Some public_dir.ocaml; private_dir.ocaml; public_cmi_dir.ocaml ]
+    | Melange ->
+      List.filter_opt
+        [ Some public_dir.melange; private_dir.melange; public_cmi_dir.melange ]
   ;;
 
   let cm_public_dir t (cm_kind : Lib_mode.Cm_kind.t) =
@@ -278,6 +278,12 @@ module Local = struct
       [ t.melange_dir; public_cmi_melange_dir t ]
       |> Path.Build.Set.of_list
       |> Path.Build.Set.to_list
+  ;;
+
+  let all_cmis t ~(mode : Compilation_mode.t) =
+    match mode with
+    | Ocaml -> [ t.byte_dir ]
+    | Melange -> [ t.melange_dir ]
   ;;
 
   let make_lib ~dir ~has_private_modules ~private_lib lib_name =
@@ -421,11 +427,11 @@ let convert_to_external (t : Path.Build.t t) ~dir ~has_private_modules =
   | _ -> assert false
 ;;
 
-let all_cmis (type path) (t : path t) : path list =
+let all_cmis (type path) (t : path t) ~mode : path list =
   match t with
-  | Local e -> [ Local.byte_dir e ]
-  | Local_as_path e -> [ Path.build (Local.byte_dir e) ]
-  | External e -> External.all_cmis e
+  | Local e -> Local.all_cmis e ~mode
+  | Local_as_path e -> Local.all_cmis e ~mode |> List.map ~f:Path.build
+  | External e -> External.all_cmis e ~mode
 ;;
 
 let all_obj_dirs (type path) (t : path t) ~mode : path list =

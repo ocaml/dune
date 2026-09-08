@@ -234,7 +234,7 @@ let expand_melange_emit ~source t arg =
   match Artifacts_obj.lookup_melange_emit artifacts target_dir with
   | None ->
     User_error.raise ~loc [ Pp.textf "Melange emit target %S does not exist." arg ]
-  | Some { Melange.Emit.output_dir; stanza_dir; alias } ->
+  | Some { Melange.Emit_target.output_dir; stanza_dir; alias } ->
     let stanza_alias = Alias.make alias ~dir:stanza_dir in
     let target_alias = Alias.make alias ~dir:target_dir in
     let output_dir = Path.build output_dir in

@@ -159,7 +159,7 @@ module L = struct
       | false ->
         if use_hidden
         then
-          Obj_dir.all_cmis obj_dir
+          Obj_dir.all_cmis obj_dir ~mode:Ocaml
           |> List.fold_left ~init:acc ~f:(fun acc dir -> add_flag acc dir Hidden)
         else acc
       | true ->

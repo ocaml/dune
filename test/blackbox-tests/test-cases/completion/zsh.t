@@ -31,3 +31,37 @@ results can be inspected outside the interactive line editor.
   > EOF
   runtest
   zsh.t
+
+Semantic directory candidates currently use Zsh's default trailing-space
+suffix. Use a synthetic completion response so this behavior is covered
+independently of any command-specific semantic completer.
+
+  $ cat > semantic-completion <<'EOF'
+  > #!/bin/sh
+  > printf '%s\n' 1 item tests/ item-end
+  > EOF
+  $ chmod +x semantic-completion
+  $ zsh -f <<EOF
+  > typeset -A compstate
+  > compstate[nmatches]=0
+  > _describe() {
+  >   local completion_name=\$3
+  >   local -a described=( "\${(@P)completion_name}" )
+  >   local completion
+  >   for completion in "\${described[@]}"; do
+  >     print -r -- "\${completion%%:*}"
+  >   done
+  >   if (( \${argv[(I)-S]} )); then
+  >     print -r -- "empty suffix"
+  >   else
+  >     print -r -- "trailing space"
+  >   fi
+  >   (( compstate[nmatches] += \${#described} ))
+  > }
+  > _default() {}
+  > words=("$PWD/semantic-completion" tes)
+  > CURRENT=2
+  > source <(dune completion zsh)
+  > EOF
+  tests/
+  trailing space

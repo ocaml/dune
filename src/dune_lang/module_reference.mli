@@ -1,14 +1,18 @@
 open Import
 
-(** A reference to a module in a dune file.
-
-    Starting with version 3.25 of the dune language, references may contain
-    multiple components, for example [Foo.Bar]. *)
+(** A reference to a module, optionally containing multiple components, for
+    example [Foo.Bar]. *)
 type t
 
 val path : t -> Module_name.Path.t
 val to_string : t -> string
+
+(** Parse a module reference according to the dune language version. *)
 val of_string : Syntax.Version.t -> Loc.t * string -> t
+
+(** Parse a dotted logical module path independently of the dune language
+    version. *)
+val of_string_path : Loc.t * string -> t
 
 (** Reject a qualified reference unless subdirectories are included with
     qualified names. *)

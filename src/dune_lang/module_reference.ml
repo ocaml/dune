@@ -96,9 +96,8 @@ let parse_component loc ~mode component =
     User_error.ok_exn (Error message)
 ;;
 
-let of_string version (loc, value) =
+let of_string_with_mode ~mode (loc, value) =
   let components = String.split value ~on:'.' in
-  let mode = if version >= (3, 25) then Path else Legacy in
   (match mode, components with
    | Legacy, _ :: _ :: _ ->
      Syntax.Error.since
@@ -112,6 +111,13 @@ let of_string version (loc, value) =
   in
   make ~loc ~mode path
 ;;
+
+let of_string version value =
+  let mode = if version >= (3, 25) then Path else Legacy in
+  of_string_with_mode ~mode value
+;;
+
+let of_string_path value = of_string_with_mode ~mode:Path value
 
 let decode =
   let open Decoder in

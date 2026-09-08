@@ -25,19 +25,19 @@ they each generate a [Foo] alias, their leaf module artifacts are distinct.
   >    (unix -> foo/baz.unix.ml))))
   > EOF
 
-The source-path artifact references remain unambiguous:
+The dotted module references identify the distinct leaf artifacts:
 
   $ build_and_show() {
   >   dune build "$@"
   >   dune trace cat | jq 'select(.name == "targets") | .args'
   > }
-  $ build_and_show '%{cmi:foo/bar}'
+  $ build_and_show '%{cmi:Foo.Bar}'
   {
     "targets": [
       "_build/default/.left.objs/byte/left__Foo__Bar.cmi"
     ]
   }
-  $ build_and_show '%{cmi:foo/baz}'
+  $ build_and_show '%{cmi:Foo.Baz}'
   {
     "targets": [
       "_build/default/.right.objs/byte/right__Foo__Baz.cmi"
@@ -50,9 +50,9 @@ Both generated group aliases can coexist:
   $ test -f _build/default/.left.objs/byte/left__Foo.cmi
   $ test -f _build/default/.right.objs/byte/right__Foo.cmi
 
-There is no unique source-path artifact reference for the generated group:
+The generated group reference itself is ambiguous:
 
-  $ dune build '%{cmi:foo}'
+  $ dune build '%{cmi:Foo}'
   File "command line", line 1, characters 0-10:
-  Error: Module Foo does not exist.
+  Error: Module reference Foo is ambiguous.
   [1]

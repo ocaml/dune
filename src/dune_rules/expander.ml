@@ -191,21 +191,50 @@ let expand_artifact ~source t artifact arg =
   in
   match artifact with
   | Pform.Artifact.Mod kind ->
-    (match Artifacts_obj.lookup_module artifacts path with
-     | None ->
-       Module_name.of_string_allow_invalid (loc, Filename.to_string name)
-       |> Module_name.Unchecked.allow_invalid
-       |> Module_name.to_string
-       |> does_not_exist ~what:"Module"
-     | Some (t, m) ->
-       (match
-          match kind with
-          | Cm_kind kind -> Obj_dir.Module.cm_file t m ~kind:(Ocaml kind)
-          | Cmt -> Obj_dir.Module.cmt_file t m ~cm_kind:(Ocaml Cmi) ~ml_kind:Impl
-          | Cmti -> Some (Obj_dir.Module.cmti_file t m ~cm_kind:(Ocaml Cmi))
-        with
-        | None -> Action_builder.return [ Value.String "" ]
-        | Some path -> dep (Path.build path)))
+    let module_ =
+      let reference = Module_reference.of_string_path (loc, Filename.to_string name) in
+      Module_reference.validate_qualified
+        reference
+        ~include_subdirs:(Artifacts_obj.include_subdirs artifacts);
+      let reference_path = Module_reference.path reference in
+      (match Artifacts_obj.lookup_module_by_source_path artifacts path with
+       | Some (_, module_)
+         when not (Module_name.Path.equal reference_path (Module.path module_)) ->
+         User_error.raise
+           ~loc
+           ~hints:
+             [ Pp.textf
+                 "%s would be a correct module reference"
+                 (Module.path module_ |> Module_name.Path.to_string)
+             ]
+           [ Pp.textf
+               "Module reference %s does not match the module at this source path."
+               (Module_reference.to_string reference)
+           ]
+       | None | Some _ -> ());
+      match Artifacts_obj.lookup_modules_by_logical_path artifacts reference_path with
+      | [ module_ ] -> module_
+      | _ :: _ ->
+        User_error.raise
+          ~loc
+          [ Pp.textf
+              "Module reference %s is ambiguous."
+              (Module_reference.to_string reference)
+          ]
+      | [] ->
+        User_error.raise
+          ~loc
+          [ Pp.textf "Module %s does not exist." (Module_reference.to_string reference) ]
+    in
+    let obj_dir, module_ = module_ in
+    (match
+       match kind with
+       | Cm_kind kind -> Obj_dir.Module.cm_file obj_dir module_ ~kind:(Ocaml kind)
+       | Cmt -> Obj_dir.Module.cmt_file obj_dir module_ ~cm_kind:(Ocaml Cmi) ~ml_kind:Impl
+       | Cmti -> Some (Obj_dir.Module.cmti_file obj_dir module_ ~cm_kind:(Ocaml Cmi))
+     with
+     | None -> Action_builder.return [ Value.String "" ]
+     | Some path -> dep (Path.build path))
   | Lib mode ->
     let name =
       Lib_name.parse_string_exn

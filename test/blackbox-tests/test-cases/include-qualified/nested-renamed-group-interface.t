@@ -64,8 +64,7 @@ Directory renames must preserve path depth.
   Leaving directory 'bad-depth'
   [1]
 
-A rename must not silently overlap an existing directory. This currently
-raises an internal error instead of reporting the conflicting groups.
+A rename must not overlap an existing directory.
 
   $ mkdir -p collision/internal collision/public
   $ cat >collision/dune-project <<EOF
@@ -79,13 +78,16 @@ raises an internal error instead of reporting the conflicting groups.
   >  (name collision))
   > EOF
   $ touch collision/internal/leaf.ml collision/public/other.ml
-  $ dune build --root collision >collision.log 2>&1
+  $ dune build --root=collision
+  Entering directory 'collision'
+  File "dune", line 1, characters 0-0:
+  Error: Module group "Public" appears in several directories:
+  - internal/
+  - public/
+  Leaving directory 'collision'
   [1]
-  $ sed -n 's/.*Assertion.*/Assertion failed/p' collision.log
-  Assertion failed
 
-An uppercase source filename should still provide the renamed group
-interface. Currently, Internal.ml is treated as a child of Public instead.
+An uppercase source filename should still provide the renamed group interface.
 
   $ mkdir -p uppercase/internal
   $ cat >uppercase/dune-project <<EOF
@@ -110,16 +112,9 @@ interface. Currently, Internal.ml is treated as a child of Public instead.
   > let () = print_endline Uppercase.Public.value
   > EOF
   $ dune exec --root uppercase ./main.exe
-  Entering directory 'uppercase'
-  File "dune", line 6, characters 10-16:
-  6 |  (modules Public))
-                ^^^^^^
-  Error: Module Public doesn't exist.
-  Leaving directory 'uppercase'
-  [1]
+  from uppercase group interface
 
 A selected source should likewise provide the renamed group interface.
-Currently, its source basename is retained in the logical module path.
 
   $ mkdir -p selected/internal
   $ cat >selected/dune-project <<EOF
@@ -147,13 +142,7 @@ Currently, its source basename is retained in the logical module path.
   > let () = print_endline Selected.Public.value
   > EOF
   $ dune exec --root selected ./main.exe
-  Entering directory 'selected'
-  File "dune", line 6, characters 10-16:
-  6 |  (modules Public)
-                ^^^^^^
-  Error: Module Public doesn't exist.
-  Leaving directory 'selected'
-  [1]
+  from selected group interface
 
 The dirs field should only be accepted with qualified mode.
 
@@ -186,8 +175,7 @@ The dirs field should only be accepted with qualified mode.
   Leaving directory 'unqualified'
   [1]
 
-A nested rename may refer to a parent directory visited later. This currently
-mistakes the implicit parent group for a conflicting directory.
+A nested rename may refer to a parent directory visited later.
 
   $ mkdir -p reparented/a/nested reparented/public
   $ cat >reparented/dune-project <<EOF
@@ -208,13 +196,9 @@ mistakes the implicit parent group for a conflicting directory.
   $ cat >reparented/reparented.ml <<EOF
   > let value = Public.value
   > EOF
-  $ dune build --root=reparented reparented.cma >reparented.log 2>&1
-  [1]
-  $ sed -n 's/.*Assertion.*/Assertion failed/p' reparented.log
-  Assertion failed
+  $ dune build --root=reparented reparented.cma
 
-A renamed group must not pass through an existing module. Currently the
-group is silently omitted.
+A renamed group must not pass through an existing module.
 
   $ mkdir -p prefix/a/nested
   $ cat >prefix/dune-project <<EOF
@@ -228,9 +212,16 @@ group is silently omitted.
   > EOF
   $ touch prefix/z.ml prefix/a/nested/leaf.ml
   $ dune build --root=prefix prefix.cma
+  Entering directory 'prefix'
+  File "dune", line 1, characters 0-0:
+  Error: The following module and module group cannot co-exist in the same
+  executable or library because they correspond to the same module path
+  - module z.ml
+  - module group a/nested/
+  Leaving directory 'prefix'
+  [1]
 
 A lexer-generated source should provide the renamed group interface too.
-Currently its source basename is retained, as with select-generated sources.
 
   $ mkdir -p lexer/internal
   $ cat >lexer/dune-project <<EOF
@@ -259,25 +250,54 @@ Currently its source basename is retained, as with select-generated sources.
   > let () = print_endline (Lexer.Public.token (Lexing.from_string ""))
   > EOF
   $ dune exec --root=lexer ./main.exe
-  Entering directory 'lexer'
-  File "dune", line 6, characters 10-16:
-  6 |  (modules Public))
-                ^^^^^^
-  Error: Module Public doesn't exist.
-  Leaving directory 'lexer'
-  [1]
+  from generated group interface
 
 Renamed generator targets must not overwrite each other, whether the generators
-are declared together or in separate stanzas. Currently both cases succeed.
+are declared together or in separate stanzas.
 
   $ cp lexer/internal/internal.mll lexer/internal/public.mll
   $ cat >lexer/internal/dune <<EOF
   > (ocamllex internal public)
   > EOF
   $ dune build --root=lexer lexer.cma
+  Entering directory 'lexer'
+  File "internal/dune", line 1, characters 0-26:
+  1 | (ocamllex internal public)
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: Too many files for module Public in internal:
+  - _build/default/internal/internal.ml
+  - _build/default/internal/public.ml
+  Leaving directory 'lexer'
+  [1]
 
   $ cat >lexer/internal/dune <<EOF
   > (ocamllex internal)
   > (ocamllex public)
   > EOF
   $ dune build --root=lexer lexer.cma
+  Entering directory 'lexer'
+  File "internal/dune", line 2, characters 0-17:
+  2 | (ocamllex public)
+      ^^^^^^^^^^^^^^^^^
+  Error: Too many files for module Public in internal:
+  - _build/default/internal/internal.ml
+  - _build/default/internal/public.ml
+  Leaving directory 'lexer'
+  [1]
+
+Repeating a generator for the same source still reports conflicting rules.
+
+  $ cat >lexer/internal/dune <<EOF
+  > (ocamllex internal)
+  > (ocamllex internal)
+  > EOF
+  $ dune build --root=lexer lexer.cma
+  Entering directory 'lexer'
+  Error: Multiple rules generated for _build/default/internal/internal.ml:
+  - internal/dune:2
+  - internal/dune:1
+  -> required by transitive deps of lexer__Public.impl in _build/default
+  -> required by _build/default/.lexer.objs/byte/lexer__Public.cmo
+  -> required by _build/default/lexer.cma
+  Leaving directory 'lexer'
+  [1]

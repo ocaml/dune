@@ -1,5 +1,5 @@
 Test that the install layout sets OCAMLPATH correctly so that ocamlfind
-can locate declared packages, and only those.
+can locate declared packages and those reached through library dependencies.
 
   $ cat >dune-project <<EOF
   > (lang dune 3.24)
@@ -39,9 +39,7 @@ the query against the layout's OCAMLPATH.
 
   $ dune build out
 
-Current-behavior snapshot: myutil is mylib's declared opam dependency but is
-not in the immediate-only layout for (deps (package mylib)), so ocamlfind
-cannot find it.
+The library dependency on myutil brings its package into the layout.
 
   $ cat >dune <<'EOF'
   > (rule
@@ -52,16 +50,8 @@ cannot find it.
   > EOF
 
   $ dune build out2
-  File "dune", lines 1-5, characters 0-96:
-  1 | (rule
-  2 |  (deps (package mylib))
-  3 |  (action
-  4 |   (with-stdout-to out2
-  5 |    (run ocamlfind query myutil))))
-  ocamlfind: Package `myutil' not found
-  [1]
 
-Declaring both packages explicitly makes both visible.
+Declaring both packages explicitly also makes both visible.
 
   $ cat >dune <<'EOF'
   > (rule

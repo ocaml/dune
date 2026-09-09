@@ -301,3 +301,43 @@ Repeating a generator for the same source still reports conflicting rules.
   -> required by _build/default/lexer.cma
   Leaving directory 'lexer'
   [1]
+
+A mapping can read a generated file outside the qualified group. Changing
+the generator's input must update the module namespace without cleaning or
+explicitly building the mapping file first.
+
+  $ mkdir -p dynamic/config dynamic/lib/internal
+  $ cat >dynamic/dune-project <<EOF
+  > (lang dune 3.25)
+  > EOF
+  $ cat >dynamic/config/dune <<EOF
+  > (rule
+  >  (target mapping)
+  >  (action (copy mapping.in %{target})))
+  > EOF
+  $ cat >dynamic/lib/dune <<EOF
+  > (include_subdirs
+  >  (mode qualified)
+  >  (dirs (internal as %{read:../config/mapping})))
+  > (library (name renamed))
+  > EOF
+  $ echo 'let value = 42' >dynamic/lib/internal/leaf.ml
+
+  $ printf public >dynamic/config/mapping.in
+  $ dune build --root=dynamic '%{cmi:lib/Public.Leaf}'
+  $ cat dynamic/_build/default/config/mapping
+  public
+
+  $ printf exposed >dynamic/config/mapping.in
+  $ dune build --root=dynamic '%{cmi:lib/Exposed.Leaf}'
+  $ cat dynamic/_build/default/config/mapping
+  exposed
+
+The previous namespace is no longer available.
+
+  $ dune build --root=dynamic '%{cmi:lib/Public.Leaf}'
+  Entering directory 'dynamic'
+  File "command line", line 1, characters 0-22:
+  Error: Module Public.Leaf does not exist.
+  Leaving directory 'dynamic'
+  [1]

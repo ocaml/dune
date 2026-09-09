@@ -254,3 +254,18 @@ Currently its source basename is retained, as with select-generated sources.
   Error: Module Public doesn't exist.
   Leaving directory 'lexer'
   [1]
+
+Renamed generator targets must not overwrite each other, whether the generators
+are declared together or in separate stanzas. Currently both cases succeed.
+
+  $ cp lexer/internal/internal.mll lexer/internal/public.mll
+  $ cat >lexer/internal/dune <<EOF
+  > (ocamllex internal public)
+  > EOF
+  $ dune build --root=lexer lexer.cma
+
+  $ cat >lexer/internal/dune <<EOF
+  > (ocamllex internal)
+  > (ocamllex public)
+  > EOF
+  $ dune build --root=lexer lexer.cma

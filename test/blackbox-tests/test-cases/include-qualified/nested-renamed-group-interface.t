@@ -154,3 +154,22 @@ Currently, its source basename is retained in the logical module path.
   Error: Module Public doesn't exist.
   Leaving directory 'selected'
   [1]
+
+The dirs field should only be accepted with qualified mode. Currently it is
+silently ignored with both no and unqualified modes.
+
+  $ for mode in no unqualified; do
+  >   mkdir -p "$mode/internal"
+  >   cat >"$mode/dune-project" <<EOF
+  > (lang dune 3.25)
+  > EOF
+  >   cat >"$mode/dune" <<EOF
+  > (include_subdirs
+  >  (mode $mode)
+  >  (dirs (internal as public)))
+  > (library
+  >  (name ignored))
+  > EOF
+  >   touch "$mode/ignored.ml" "$mode/internal/leaf.ml"
+  >   dune build --root="$mode" ignored.cma
+  > done

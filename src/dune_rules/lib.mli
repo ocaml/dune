@@ -47,6 +47,7 @@ end
 val is_local : t -> bool
 
 val info : t -> Path.t Lib_info.t
+val package : t -> Package.Name.t option
 val main_module_name : t -> Module_name.t option Resolve.Memo.t
 val wrapped : t -> Wrapped.t option Resolve.Memo.t
 

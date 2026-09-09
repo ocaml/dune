@@ -2629,11 +2629,25 @@ let find_package ctx pkg =
   >>= function
   | false -> Memo.return None
   | true ->
-    let+ pkg = resolve_pkg_dep ctx (Loc.none, pkg) in
+    let+ ({ Pkg.paths; _ } as pkg) = resolve_pkg_dep ctx (Loc.none, pkg) in
     Some
       (let open Action_builder.O in
-       let+ _cookie = (Pkg_installed.of_paths pkg.paths).cookie in
-       ())
+       let* () = Action_builder.deps (Pkg.package_deps pkg) in
+       let* { Install_cookie.Gen.files; _ } = (Pkg_installed.of_paths paths).cookie in
+       Action_builder.paths (Section.Map.values files |> List.concat))
+;;
+
+let find_package_by_installed_path ctx path =
+  lock_dir_active ctx
+  >>= function
+  | false -> Memo.return None
+  | true ->
+    all_project_deps ctx
+    >>| List.find_map
+          ~f:(fun { Pkg.info = { name; _ }; paths = { Paths.prefix; _ }; _ } ->
+            match Path.drop_prefix path ~prefix with
+            | None -> None
+            | Some _ -> Some name)
 ;;
 
 let resolve_installed_file ~loc ~context_name ~pkg_name ~section ~file =

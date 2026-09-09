@@ -441,3 +441,47 @@ The unrelated library from package `bar` is not discoverable.
   64 |    (run %{bin:ocamlfind} query bar.unrelated))))
   ocamlfind: Package `bar.unrelated' not found
   [1]
+
+Package-granular closure must also follow the requirements of sibling libraries
+in an added package, and include that package's non-library install entries.
+It must not follow dependencies that appear only in package metadata.
+
+  $ echo '(package (name sibling-support))' >>dune-project
+  $ mkdir sibling-support-src
+  $ cat >sibling-support-src/dune <<'EOF'
+  > (library (name sibling_support) (public_name sibling-support))
+  > EOF
+  $ echo 'let value = 7' >sibling-support-src/sibling_support.ml
+  $ cat >bar-unrelated-src/dune <<'EOF'
+  > (library
+  >  (name bar_unrelated)
+  >  (public_name bar.unrelated)
+  >  (libraries sibling-support))
+  > EOF
+  $ echo 'let value = Sibling_support.value' >bar-unrelated-src/bar_unrelated.ml
+  $ echo 'package data' >baz-src/payload
+  $ cat >>baz-src/dune <<'EOF'
+  > (install (section share) (package baz) (files payload))
+  > EOF
+  $ cat >dune <<'EOF'
+  > (rule
+  >  (target package-result)
+  >  (deps (package foo))
+  >  (action (with-stdout-to %{target} (echo built))))
+  > EOF
+  $ dune build package-result
+  $ dune rules --format=json package-result | jq_dune '
+  >   rulesMatchingTarget("package-result") | {
+  >     sibling: ruleHasDepFile("lib/bar/unrelated/bar_unrelated.cmi"),
+  >     sibling_dependency:
+  >       ruleHasDepFile("lib/sibling-support/sibling_support.cmi"),
+  >     package_data: ruleHasDepFile("share/baz/payload"),
+  >     package_only_dependency:
+  >       ruleHasDepFile("lib/package-only-dep/package_only_dep.cmi")
+  >   }'
+  {
+    "sibling": false,
+    "sibling_dependency": false,
+    "package_data": false,
+    "package_only_dependency": false
+  }

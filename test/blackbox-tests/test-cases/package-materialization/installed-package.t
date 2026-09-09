@@ -1,15 +1,16 @@
 An action depending on installed package a must track its required library b,
 not merely find it through OCAMLPATH. Package b also installs b.unrelated,
-which must not become a dependency of the action.
+which requires c. Package-granular closure must include both b and c.
 
 Use bytecode so changing b's implementation does not change a through native
 inlining. Test both dune-package and META readers with fresh consumers.
 
-  $ mkdir -p source/b/unrelated prefix dune-consumer meta-consumer
+  $ mkdir -p source/b/unrelated source/c prefix dune-consumer meta-consumer
   $ cat >source/dune-project <<'EOF'
   > (lang dune 3.24)
   > (package (name a))
   > (package (name b))
+  > (package (name c))
   > EOF
   $ cat >source/dune <<'EOF'
   > (library
@@ -24,18 +25,24 @@ inlining. Test both dune-package and META readers with fresh consumers.
   > (library
   >  (name unrelated)
   >  (public_name b.unrelated)
-  >  (modes byte))
+  >  (modes byte)
+  >  (libraries c))
   > EOF
-  $ touch source/b/unrelated/unrelated.ml
+  $ echo 'let value = C.value' >source/b/unrelated/unrelated.ml
+  $ echo '(library (public_name c) (modes byte))' >source/c/dune
+  $ echo 'let value = 7' >source/c/c.ml
+  $ echo 'package data' >source/b/payload
+  $ echo '(install (section share) (package b) (files payload))' >>source/b/dune
   $ dune build --root source @install
   $ dune install --root source --prefix "$PWD/prefix" 2>/dev/null
 
 Check the metadata reader's inputs and the artifacts used in the dependency
-observations, including the sibling whose exclusion we want to verify.
+observations, including the sibling and its dependency, which should also be tracked.
 
   $ export OCAMLPATH="$PWD/prefix/lib"
   $ a_lib="$PWD/prefix/lib/a"
   $ b_lib="$PWD/prefix/lib/b"
+  $ c_lib="$PWD/prefix/lib/c"
   $ test -f "$a_lib/dune-package"
   $ test -f "$b_lib/dune-package"
   $ test -f "$a_lib/META"
@@ -44,6 +51,8 @@ observations, including the sibling whose exclusion we want to verify.
   $ test -f "$b_lib/b.cma"
   $ test -f "$b_lib/unrelated/unrelated.cmi"
   $ test -f "$b_lib/unrelated/unrelated.cma"
+  $ test -f "$c_lib/c.cma"
+  $ test -f prefix/share/b/payload
   $ cp "$a_lib/a.cmi" a.cmi.before
   $ cp "$a_lib/a.cma" a.cma.before
   $ cp "$b_lib/b.cma" b.cma.before
@@ -65,12 +74,11 @@ Both consumers use only (package a), not an explicit dependency on b.
   $ dune-consumer/_build/default/main.exe
   2
 
-CR-someday alizter: The required interface, archive and metadata should be
-tracked. Keep both sibling observations false. Accept direct dependencies
-or matching selectors rather than prescribing their representation.
+CR-someday alizter: Required packages' contents should be tracked, including
+sibling libraries, their requirements, and non-library installed files.
 
   $ dune rules --root dune-consumer --format=json main.exe >dune-rules.json
-  $ jq_dune --arg b "$b_lib" --arg metadata dune-package '
+  $ jq_dune --arg b "$b_lib" --arg c "$c_lib" --arg metadata dune-package '
   >   rulesMatchingTarget("main.exe") | {
   >     reader: $metadata,
   >     required_interface:
@@ -83,7 +91,9 @@ or matching selectors rather than prescribing their representation.
   >         $b + "/unrelated/unrelated.cmi"; $b + "/unrelated"; "*.cmi"),
   >     unrelated_archive:
   >       ruleHasDepFileOrMatchingGlob(
-  >         $b + "/unrelated/unrelated.cma"; $b + "/unrelated"; "*.cma")
+  >         $b + "/unrelated/unrelated.cma"; $b + "/unrelated"; "*.cma"),
+  >     sibling_dependency: ruleHasDepFile($c + "/c.cma"),
+  >     package_data: ruleHasDepFile("share/b/payload")
   >   }' dune-rules.json
   {
     "reader": "dune-package",
@@ -91,7 +101,9 @@ or matching selectors rather than prescribing their representation.
     "required_archive": false,
     "required_metadata": false,
     "unrelated_interface": false,
-    "unrelated_archive": false
+    "unrelated_archive": false,
+    "sibling_dependency": false,
+    "package_data": false
   }
 
 Replace only b's installed archive. Do not reinstall a or clean the consumer:
@@ -115,12 +127,12 @@ Restore b's original archive and remove dune-package files. The second
 consumer must use META, including after its dependency changes.
 
   $ cp b.cma.before "$b_lib/b.cma"
-  $ rm "$a_lib/dune-package" "$b_lib/dune-package"
+  $ rm "$a_lib/dune-package" "$b_lib/dune-package" "$c_lib/dune-package"
   $ dune build --root meta-consumer main.exe
   $ meta-consumer/_build/default/main.exe
   2
   $ dune rules --root meta-consumer --format=json main.exe >meta-rules.json
-  $ jq_dune --arg b "$b_lib" --arg metadata META '
+  $ jq_dune --arg b "$b_lib" --arg c "$c_lib" --arg metadata META '
   >   rulesMatchingTarget("main.exe") | {
   >     reader: $metadata,
   >     required_interface:
@@ -133,7 +145,8 @@ consumer must use META, including after its dependency changes.
   >         $b + "/unrelated/unrelated.cmi"; $b + "/unrelated"; "*.cmi"),
   >     unrelated_archive:
   >       ruleHasDepFileOrMatchingGlob(
-  >         $b + "/unrelated/unrelated.cma"; $b + "/unrelated"; "*.cma")
+  >         $b + "/unrelated/unrelated.cma"; $b + "/unrelated"; "*.cma"),
+  >     sibling_dependency: ruleHasDepFile($c + "/c.cma")
   >   }' meta-rules.json
   {
     "reader": "META",
@@ -141,7 +154,8 @@ consumer must use META, including after its dependency changes.
     "required_archive": false,
     "required_metadata": false,
     "unrelated_interface": false,
-    "unrelated_archive": false
+    "unrelated_archive": false,
+    "sibling_dependency": false
   }
 
 The rebuilt archive still contains b = 10. Copy only that archive, leaving

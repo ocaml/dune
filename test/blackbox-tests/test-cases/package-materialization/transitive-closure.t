@@ -1,10 +1,11 @@
-`(deps (package foo))` currently materializes only `foo` and omits the closure
-of the libraries installed by it. This snapshots the missing-library errors
-seen by OCaml tooling before the closure is materialized.
+`(deps (package foo))` includes the closure of the libraries installed by
+`foo`, but not the closure of `foo`'s package dependencies.
 
-The intended library closure is narrower than `foo`'s package dependencies:
-package dependencies can contain unrelated executables, data, or libraries,
-and are not reliably available for all kinds of packages.
+The library closure is necessary because tools consuming an installed OCaml
+library expect its transitive library dependencies to be findable. Following
+package dependencies would be broader: those dependencies can contain
+unrelated executables, data, or libraries, and are not reliably available for
+all kinds of packages.
 
   $ make_dune_project 3.24
   $ cat >>dune-project <<EOF
@@ -23,7 +24,7 @@ and are not reliably available for all kinds of packages.
   > EOF
 
   $ mkdir foo-src bar-src bar-private-src bar-unrelated-src baz-src namespace-src
-  $ mkdir namespace-unrelated-src package-only-dep-src
+  $ mkdir package-only-dep-src
   $ mkdir redirect-root-src redirect-target-src virtual-root-src
   $ mkdir virtual-support-src virtual-support-impl-src stubbed-src
 
@@ -86,8 +87,7 @@ The package that owns `bar` also contains an unrelated library. Requiring
   > EOF
 
 Only `namespace.selected`, not a top-level `namespace` library, is in the
-closure. Findlib subpackages inherit their directory but not arbitrary
-top-level variables, so the filtered META drops `top_marker`.
+closure. This also exercises generated metadata for a nested findlib package.
 
   $ cat >namespace-src/dune <<EOF
   > (library
@@ -97,21 +97,6 @@ top-level variables, so the filtered META drops `top_marker`.
 
   $ cat >namespace-src/selected.ml <<EOF
   > let unused = ()
-  > EOF
-
-  $ cat >namespace-unrelated-src/dune <<EOF
-  > (library
-  >  (name unrelated)
-  >  (public_name namespace.unrelated))
-  > EOF
-
-  $ cat >namespace-unrelated-src/unrelated.ml <<EOF
-  > let unused = ()
-  > EOF
-
-  $ cat >META.namespace.template <<EOF
-  > top_marker = "drop"
-  > # DUNE_GEN
   > EOF
 
   $ cat >package-only-dep-src/dune <<EOF
@@ -264,11 +249,11 @@ even though they are not ordinary `requires`.
   >   (with-stdout-to %{target}
   >    (run %{bin:ocamlfind} query bar.old))))
   > (rule
-  >  (target namespace-marker)
+  >  (target namespace-selected)
   >  (deps (package foo))
   >  (action
   >   (with-stdout-to %{target}
-  >    (run %{bin:ocamlfind} query -format "%(top_marker)" namespace))))
+  >    (run %{bin:ocamlfind} query namespace.selected))))
   > (rule
   >  (target ppx-runtime-marker)
   >  (deps (package test-ppx))
@@ -283,53 +268,15 @@ even though they are not ordinary `requires`.
   >    (run %{bin:ocamlfind} query -recursive redirect-root.old))))
   > EOF
 
-The package dependency does not currently supply the library closure needed
-for external OCaml tooling to compile and link against `foo`.
+The package dependency supplies enough of the library closure for external
+OCaml tooling to compile and link against `foo`.
 
   $ dune build main.exe && _build/default/main.exe
-  File "dune", lines 1-16, characters 0-179:
-   1 | (rule
-   2 |  (target main.exe)
-   3 |  (deps
-  ....
-  14 |    -o
-  15 |    %{target}
-  16 |    main.ml)))
-  ocamlfind: Package `bar' not found - required by `foo'
-  [1]
+  9
   $ dune build stubs-result && cat _build/default/stubs-result
-  File "dune", lines 17-25, characters 0-229:
-  17 | (rule
-  18 |  (targets main.bc stubs-result)
-  19 |  (deps
-  20 |   main.ml
-  21 |   (package foo))
-  22 |  (action
-  23 |   (progn
-  24 |    (run %{bin:ocamlfind} ocamlc -package foo -linkpkg -o main.bc main.ml)
-  25 |    (with-stdout-to stubs-result (run %{bin:ocamlrun} main.bc)))))
-  ocamlfind: Package `bar' not found - required by `foo'
-  [1]
+  9
   $ dune build redirect
-  File "dune", lines 26-31, characters 0-126:
-  26 | (rule
-  27 |  (target redirect)
-  28 |  (deps (package foo))
-  29 |  (action
-  30 |   (with-stdout-to %{target}
-  31 |    (run %{bin:ocamlfind} query bar.old))))
-  ocamlfind: Package `bar.old' not found
-  [1]
-  $ dune build namespace-marker && test -z "$(cat _build/default/namespace-marker)"
-  File "dune", lines 32-37, characters 0-160:
-  32 | (rule
-  33 |  (target namespace-marker)
-  34 |  (deps (package foo))
-  35 |  (action
-  36 |   (with-stdout-to %{target}
-  37 |    (run %{bin:ocamlfind} query -format "%(top_marker)" namespace))))
-  ocamlfind: Package `namespace' not found
-  [1]
+  $ dune build namespace-selected
   $ dune build ppx-runtime-marker
   File "dune", lines 38-43, characters 0-145:
   38 | (rule
@@ -351,9 +298,9 @@ for external OCaml tooling to compile and link against `foo`.
   ocamlfind: Package `redirect-target' not found - required by `redirect-root.old'
   [1]
 
-The same missing closure is visible to a nested Dune invocation: the
-materialized `foo` metadata names `namespace.selected`, but its package is
-absent from the layout.
+The filtered dune-package files are consumed by a nested Dune invocation. In
+particular, Dune must be able to select and link the virtual library's default
+implementation from the support package.
 
   $ mkdir consumer
   $ cat >consumer/dune-project <<EOF
@@ -382,36 +329,33 @@ absent from the layout.
   >    (chdir consumer (run %{bin:dune} exec ./main.exe)))))
   > EOF
 
-  $ dune build dune-package-result 2>&1 | censor
-  File "$PWD/_build/install/default/.packages/$DIGEST/lib/foo/dune-package", line 14, characters 15-33:
-  14 |  (requires bar namespace.selected)
-                      ^^^^^^^^^^^^^^^^^^
-  Error: Library "namespace.selected" not found.
-  -> required by library "foo" in
-     $PWD/_build/install/default/.packages/$DIGEST/lib/foo
-  -> required by executable main in dune:2
-  -> required by _build/default/.main.eobjs/native/dune__exe__Main.cmx
-  -> required by _build/default/main.exe
-  [1]
+  $ dune build dune-package-result && cat _build/default/dune-package-result
+  51
 
-The current layout contains only `foo`. It contains neither the libraries in
-its library closure nor `package-only-dep` from package metadata.
+The layout contains `foo` and the artifacts in its library closure. It does not
+contain `package-only-dep`, because that edge exists only in package metadata.
 
   $ dune rules --format=json _build/default/main.exe |
   > jq_dune '.[] | ruleDepFilePaths' |
   > censor |
   > grep dune-package |
   > sort
+  "_build/install/default/.packages/$DIGEST/lib/bar/dune-package"
+  "_build/install/default/.packages/$DIGEST/lib/baz/dune-package"
   "_build/install/default/.packages/$DIGEST/lib/foo/dune-package"
+  "_build/install/default/.packages/$DIGEST/lib/namespace/dune-package"
+  "_build/install/default/.packages/$DIGEST/lib/stubbed/dune-package"
 
-The required libraries' compiled interfaces are consequently not tracked.
+The required libraries' compiled interfaces are tracked by the action.
 
   $ dune rules --format=json _build/default/main.exe |
   > jq_dune '.[] | ruleDepFilePaths' |
   > censor |
   > grep -E 'lib/(bar/bar|bar/__private__/bar_private/.public_cmi/bar_private|baz/baz)\.cmi' |
   > sort
-  [1]
+  "_build/install/default/.packages/$DIGEST/lib/bar/__private__/bar_private/.public_cmi/bar_private.cmi"
+  "_build/install/default/.packages/$DIGEST/lib/bar/bar.cmi"
+  "_build/install/default/.packages/$DIGEST/lib/baz/baz.cmi"
 
 No artifact belonging to the unrelated sibling is a dependency of the action.
 

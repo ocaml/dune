@@ -72,29 +72,15 @@ uses the virtual library on its own and therefore needs the default.
   >     alternative-support))))
   > EOF
 
-Both implementations and their archives must be present in the scoped layout.
-The default is currently absent because `roots.b` is not closed independently.
+Each root is closed independently, so the layout includes both the alternative
+implementation selected by `roots.a` and the default needed by `roots.b`.
 
   $ dune build result
-  File "dune", lines 1-7, characters 0-179:
-  1 | (rule
-  2 |  (target result)
-  3 |  (deps (package roots))
-  4 |  (action
-  5 |   (with-stdout-to %{target}
-  6 |    (run %{bin:ocamlfind} query -predicates byte -format "%d/%A"
-  7 |     virtual-support.default))))
-  ocamlfind: Package `virtual-support.default' not found
-  [1]
+  $ cat _build/default/result | censor
+  $PWD/_build/install/default/.packages/$DIGEST/lib/virtual-support/default/default_impl.cma
+  $ test -f "$(cat _build/default/result)"
 
   $ dune build alternative-result
-  File "dune", lines 8-14, characters 0-187:
-   8 | (rule
-   9 |  (target alternative-result)
-  10 |  (deps (package roots))
-  11 |  (action
-  12 |   (with-stdout-to %{target}
-  13 |    (run %{bin:ocamlfind} query -predicates byte -format "%d/%A"
-  14 |     alternative-support))))
-  ocamlfind: Package `alternative-support' not found
-  [1]
+  $ cat _build/default/alternative-result | censor
+  $PWD/_build/install/default/.packages/$DIGEST/lib/alternative-support/alternative_impl.cma
+  $ test -f "$(cat _build/default/alternative-result)"

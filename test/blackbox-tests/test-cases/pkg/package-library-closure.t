@@ -101,9 +101,9 @@ from the consumer's dependencies cannot be explained by missing artifacts.
   $ test -f "$c_lib/c.cmi"
   $ test -f "$c_lib/c.cma"
 
-CR-someday alizter: The required interface, archive and metadata should be
-tracked. The unselected libraries' interfaces and archives must stay untracked.
-Accept dependencies represented by direct files or matching selectors.
+The required interface, archive and metadata are tracked, but the unselected
+libraries' interfaces and archives are not. Accept dependencies represented
+by direct files or matching selectors.
 
   $ dune rules --format=json main.exe >rules.json
   $ jq_dune --arg b "$b_lib" --arg c "$c_lib" '
@@ -125,9 +125,9 @@ Accept dependencies represented by direct files or matching selectors.
   >       ruleHasDepFileOrMatchingGlob($c + "/c.cma"; $c; "*.cma")
   >   }' rules.json
   {
-    "required_interface": false,
-    "required_archive": false,
-    "required_metadata": false,
+    "required_interface": true,
+    "required_archive": true,
+    "required_metadata": true,
     "unrelated_interface": false,
     "unrelated_archive": false,
     "package_only_interface": false,
@@ -154,8 +154,7 @@ The required library's archive really changed.
   $ cmp -s b.cma.before "$b_lib/b.cma"
   [1]
 
-CR-someday alizter: This should print 11. The consumer was not relinked after
-its required library changed.
+The consumer was relinked against b's updated archive.
 
   $ _build/default/main.exe
-  2
+  11

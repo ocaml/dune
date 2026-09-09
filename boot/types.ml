@@ -5,7 +5,7 @@ type 'name root_module =
 
 type include_subdirs =
   | Unqualified
-  | Qualified
+  | Qualified of (string list * string list) list
   | No
 
 type 'name library =

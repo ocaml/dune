@@ -62,8 +62,6 @@ before each shared-cache build.
   > EOF
   $ export DUNE_CACHE_ROOT="$PWD/_cache"
 
-BUG: The second build still uses the first expanded value in both cases.
-
   $ for cache in disabled enabled; do
   >   export DUNE_CACHE="$cache"
   >   echo "Cache $cache"
@@ -78,7 +76,7 @@ BUG: The second build still uses the first expanded value in both cases.
   > done
   Cache disabled
   first
-  first
+  second
   Cache enabled
   first
-  first
+  second

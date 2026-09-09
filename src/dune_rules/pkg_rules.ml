@@ -530,7 +530,10 @@ module Pkg = struct
 
   let package_deps t =
     deps_closure t
-    |> List.fold_left ~init:Dep.Set.empty ~f:(fun acc t -> dep t |> Dep.Set.add acc)
+    |> List.fold_left ~init:Dep.Set.empty ~f:(fun acc t ->
+      let acc = Dep.Set.add acc (dep t) in
+      List.fold_left t.exported_env ~init:acc ~f:(fun acc { Env_update.var; _ } ->
+        Dep.Set.add acc (Dep.env var)))
   ;;
 
   let install_roots t =
@@ -2371,7 +2374,6 @@ let build_rule context_name ~source_deps (pkg : Pkg.t) =
      | true -> Dep.Set.add deps (Lazy.force dune_dep)
    in
    Action_builder.deps deps |> Action_builder.with_no_targets)
-  (* TODO should we add env deps on these? *)
   >>> add_env (Pkg.exported_env pkg) build_action
   |> Action_builder.With_targets.map ~f:Action.Full.disable_sandbox_policy
   |> Action_builder.With_targets.add_directories

@@ -173,3 +173,84 @@ silently ignored with both no and unqualified modes.
   >   touch "$mode/ignored.ml" "$mode/internal/leaf.ml"
   >   dune build --root="$mode" ignored.cma
   > done
+
+A nested rename may refer to a parent directory visited later. This currently
+mistakes the implicit parent group for a conflicting directory.
+
+  $ mkdir -p reparented/a/nested reparented/public
+  $ cat >reparented/dune-project <<EOF
+  > (lang dune 3.25)
+  > EOF
+  $ cat >reparented/dune <<EOF
+  > (include_subdirs
+  >  (mode qualified)
+  >  (dirs (a/nested as public/nested)))
+  > (library (name reparented))
+  > EOF
+  $ cat >reparented/a/nested/leaf.ml <<EOF
+  > let value = 42
+  > EOF
+  $ cat >reparented/public/public.ml <<EOF
+  > let value = Nested.Leaf.value
+  > EOF
+  $ cat >reparented/reparented.ml <<EOF
+  > let value = Public.value
+  > EOF
+  $ dune build --root=reparented reparented.cma >reparented.log 2>&1
+  [1]
+  $ sed -n 's/.*Assertion.*/Assertion failed/p' reparented.log
+  Assertion failed
+
+A renamed group must not pass through an existing module. Currently the
+group is silently omitted.
+
+  $ mkdir -p prefix/a/nested
+  $ cat >prefix/dune-project <<EOF
+  > (lang dune 3.25)
+  > EOF
+  $ cat >prefix/dune <<EOF
+  > (include_subdirs
+  >  (mode qualified)
+  >  (dirs (a/nested as z/nested)))
+  > (library (name prefix))
+  > EOF
+  $ touch prefix/z.ml prefix/a/nested/leaf.ml
+  $ dune build --root=prefix prefix.cma
+
+A lexer-generated source should provide the renamed group interface too.
+Currently its source basename is retained, as with select-generated sources.
+
+  $ mkdir -p lexer/internal
+  $ cat >lexer/dune-project <<EOF
+  > (lang dune 3.25)
+  > EOF
+  $ cat >lexer/dune <<EOF
+  > (include_subdirs
+  >  (mode qualified)
+  >  (dirs (internal as public)))
+  > (library
+  >  (name lexer)
+  >  (modules Public))
+  > (executable
+  >  (name main)
+  >  (modules Main)
+  >  (libraries lexer))
+  > EOF
+  $ cat >lexer/internal/dune <<EOF
+  > (ocamllex internal)
+  > EOF
+  $ cat >lexer/internal/internal.mll <<EOF
+  > rule token = parse
+  > | eof { "from generated group interface" }
+  > EOF
+  $ cat >lexer/main.ml <<EOF
+  > let () = print_endline (Lexer.Public.token (Lexing.from_string ""))
+  > EOF
+  $ dune exec --root=lexer ./main.exe
+  Entering directory 'lexer'
+  File "dune", line 6, characters 10-16:
+  6 |  (modules Public))
+                ^^^^^^
+  Error: Module Public doesn't exist.
+  Leaving directory 'lexer'
+  [1]

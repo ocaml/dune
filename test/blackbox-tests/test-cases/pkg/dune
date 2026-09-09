@@ -59,7 +59,7 @@
  (applies_to pkg-deps.t))
 
 (cram
- (deps %{bin:cmp} %{bin:ocamlfind})
+ (deps %{bin:awk} %{bin:cmp} %{bin:ocamlfind})
  (applies_to package-library-closure.t))
 
 (cram

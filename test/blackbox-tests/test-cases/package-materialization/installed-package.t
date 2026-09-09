@@ -1,6 +1,7 @@
 An action depending on installed package a must track its required library b,
 not merely find it through OCAMLPATH. Package b also installs b.unrelated,
-which requires c. Package-granular closure must include both b and c.
+which requires c. The library closure of a contains only a and b, so c must
+remain untracked.
 
 Use bytecode so changing b's implementation does not change a through native
 inlining. Test both dune-package and META readers with fresh consumers.
@@ -37,7 +38,7 @@ inlining. Test both dune-package and META readers with fresh consumers.
   $ dune install --root source --prefix "$PWD/prefix" 2>/dev/null
 
 Check the metadata reader's inputs and the artifacts used in the dependency
-observations, including the sibling and its dependency, which should also be tracked.
+observations. Package c must remain untracked even though it is installed.
 
   $ export OCAMLPATH="$PWD/prefix/lib"
   $ a_lib="$PWD/prefix/lib/a"
@@ -74,8 +75,8 @@ Both consumers use only (package a), not an explicit dependency on b.
   $ dune-consumer/_build/default/main.exe
   2
 
-CR-someday alizter: Required packages' contents should be tracked, including
-sibling libraries, their requirements, and non-library installed files.
+Required packages' contents are tracked, including sibling libraries and
+non-library installed files, but not the sibling libraries' requirements.
 
   $ dune rules --root dune-consumer --format=json main.exe >dune-rules.json
   $ jq_dune --arg b "$b_lib" --arg c "$c_lib" --arg metadata dune-package '
@@ -97,13 +98,13 @@ sibling libraries, their requirements, and non-library installed files.
   >   }' dune-rules.json
   {
     "reader": "dune-package",
-    "required_interface": false,
-    "required_archive": false,
-    "required_metadata": false,
-    "unrelated_interface": false,
-    "unrelated_archive": false,
+    "required_interface": true,
+    "required_archive": true,
+    "required_metadata": true,
+    "unrelated_interface": true,
+    "unrelated_archive": true,
     "sibling_dependency": false,
-    "package_data": false
+    "package_data": true
   }
 
 Replace only b's installed archive. Do not reinstall a or clean the consumer:
@@ -118,10 +119,10 @@ its existing executable must be relinked because b changed.
   $ cmp a.cmi.before "$a_lib/a.cmi"
   $ cmp a.cma.before "$a_lib/a.cma"
 
-CR-someday alizter: This should print 11, but the consumer is stale.
+The consumer is relinked against b's updated archive.
 
   $ dune-consumer/_build/default/main.exe
-  2
+  11
 
 Restore b's original archive and remove dune-package files. The second
 consumer must use META, including after its dependency changes.
@@ -170,7 +171,7 @@ both a's artifacts and the metadata reader unchanged.
   $ test ! -e "$a_lib/dune-package"
   $ test ! -e "$b_lib/dune-package"
 
-CR-someday alizter: The META consumer should also print 11, not its stale result.
+The META consumer is also relinked against b's updated archive.
 
   $ meta-consumer/_build/default/main.exe
   2

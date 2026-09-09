@@ -3,8 +3,9 @@ not just the requested package's install cookie.
 
 Library dependencies: a -> b; b.unrelated -> d.
 Lock package dependencies: provider -> b-provider, c; b-provider -> d.
-The provider names differ from the library namespaces. Package-granular
-closure should include the contents of b-provider and d, but not c.
+The provider names differ from the library namespaces. The library closure
+contains only a and b, so include the contents of provider and b-provider,
+but not c or d.
 
 Keep the package sources outside the workspace so they are built through the
 lock directory, not treated as workspace libraries. Use bytecode so changing
@@ -126,8 +127,8 @@ this query checks library requirements, not which other libraries are visible.
   $ _build/default/main.exe
   2
 
-Check that the excluded libraries really were installed, so their absence
-from the consumer's dependencies cannot be explained by missing artifacts.
+Check that all the libraries were installed, including the package-only
+dependency c and sibling dependency d, whose artifacts must remain untracked.
 
   $ a_target="$(get_build_pkg_dir provider)/target"
   $ b_target="$(get_build_pkg_dir b-provider)/target"
@@ -144,9 +145,9 @@ from the consumer's dependencies cannot be explained by missing artifacts.
   $ test -f "$d_lib/d.cma"
   $ test -f "$b_target/share/b-provider/payload"
 
-CR-someday alizter: The required packages' contents should be tracked,
-including b.unrelated, d, and the data file. Package-only dependency c must
-remain untracked.
+The required packages' contents are tracked, including b.unrelated and the
+data file. Neither package-only dependency c nor sibling dependency d is
+tracked.
 
   $ dune rules --format=json main.exe >rules.json
   $ jq_dune --arg b "$b_lib" --arg c "$c_lib" --arg d "$d_lib" '
@@ -170,21 +171,22 @@ remain untracked.
   >     package_data: ruleHasDepFile("share/b-provider/payload")
   >   }' rules.json
   {
-    "required_interface": false,
-    "required_archive": false,
-    "required_metadata": false,
-    "unrelated_interface": false,
-    "unrelated_archive": false,
+    "required_interface": true,
+    "required_archive": true,
+    "required_metadata": true,
+    "unrelated_interface": true,
+    "unrelated_archive": true,
     "package_only_interface": false,
     "package_only_archive": false,
     "sibling_dependency": false,
-    "package_data": false
+    "package_data": true
   }
 
 Changing b's implementation must relink the consumer even if a's artifacts
 and install cookie remain unchanged.
 
   $ cp "$a_target/cookie" a.cookie.before
+  $ cp "$b_target/cookie" b.cookie.before
   $ cp "$a_target/lib/a/a.cmi" a.cmi.before
   $ cp "$a_target/lib/a/a.cma" a.cma.before
   $ cp "$b_lib/b.cmi" b.cmi.before
@@ -192,6 +194,7 @@ and install cookie remain unchanged.
   $ echo 'let value = 10' >"$sources/b/b.ml"
   $ dune build main.exe
   $ cmp a.cookie.before "$a_target/cookie"
+  $ cmp b.cookie.before "$b_target/cookie"
   $ cmp a.cmi.before "$a_target/lib/a/a.cmi"
   $ cmp a.cma.before "$a_target/lib/a/a.cma"
   $ cmp b.cmi.before "$b_lib/b.cmi"
@@ -201,8 +204,49 @@ The required library's archive really changed.
   $ cmp -s b.cma.before "$b_lib/b.cma"
   [1]
 
-CR-someday alizter: This should print 11. The consumer was not relinked after
-its required library changed.
+The consumer is relinked against b's updated archive.
 
   $ _build/default/main.exe
-  2
+  11
+
+Library discovery must also work when a provider installs only dune-package
+metadata, without a META file. This action does not invoke ocamlfind.
+
+  $ awk '!/META/' "$sources/a/provider.install" >provider.install.no-meta
+  $ mv provider.install.no-meta "$sources/a/provider.install"
+  $ cat >dune <<'EOF'
+  > (rule
+  >  (target package-result)
+  >  (deps (package provider))
+  >  (action (with-stdout-to %{target} (echo built))))
+  > EOF
+  $ dune build package-result
+  $ test ! -e "$a_target/lib/a/META"
+  $ dune rules --format=json package-result | jq_dune \
+  > --arg b "$b_lib" --arg d "$d_lib" '
+  >   rulesMatchingTarget("package-result") | {
+  >     required_archive: ruleHasDepFile($b + "/b.cma"),
+  >     sibling_dependency: ruleHasDepFile($d + "/d.cma")
+  >   }'
+  {
+    "required_archive": true,
+    "sibling_dependency": false
+  }
+
+Discover names from the provider, but resolve them through the common library
+DB. A workspace library with the same name takes precedence.
+
+  $ echo '(package (name a))' >>dune-project
+  $ mkdir workspace-a
+  $ echo '(library (public_name a) (modes byte))' >workspace-a/dune
+  $ echo 'let value = 100' >workspace-a/a.ml
+  $ cat >dune <<'EOF'
+  > (rule
+  >  (target main.exe)
+  >  (deps main.ml (package provider))
+  >  (action
+  >   (run ocamlfind ocamlc -package a -linkpkg -o %{target} main.ml)))
+  > EOF
+  $ dune build main.exe
+  $ _build/default/main.exe
+  100

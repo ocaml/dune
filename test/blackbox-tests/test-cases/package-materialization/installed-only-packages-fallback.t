@@ -70,9 +70,8 @@ Make independent workspace consumers so each starts with the intended reader.
   $ masked-dune/_build/default/main.exe
   11
 
-CR-someday alizter: The installed dependency must be tracked, not just visible
-to the compiler. The three required observations should be true; both sibling
-observations must remain false.
+The installed package is tracked, not just visible to the compiler. This
+includes its sibling library even though workspace b is masked.
 
   $ dune rules --root masked-dune --only-packages a --format=json main.exe \
   > >dune-rules.json
@@ -93,11 +92,11 @@ observations must remain false.
   >   }' dune-rules.json
   {
     "reader": "dune-package",
-    "required_interface": false,
-    "required_archive": false,
-    "required_metadata": false,
-    "unrelated_interface": false,
-    "unrelated_archive": false
+    "required_interface": true,
+    "required_archive": true,
+    "required_metadata": true,
+    "unrelated_interface": true,
+    "unrelated_archive": true
   }
 
 Repeat the same precedence and dependency checks with META files.

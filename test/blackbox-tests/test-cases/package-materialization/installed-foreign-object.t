@@ -40,7 +40,7 @@ Use the compiler's platform-specific suffixes throughout.
   $ ext_dll=$(ocamlc -config-var ext_dll)
   $ b_lib="$PWD/prefix/lib/b"
   $ stub_archive="$b_lib/libb_stubs$ext_lib"
-  $ stub_dll="$b_lib/../stublibs/dllb_stubs$ext_dll"
+  $ stub_dll="$PWD/prefix/lib/stublibs/dllb_stubs$ext_dll"
   $ foreign_object="$b_lib/b_stubs$ext_obj"
   $ grep -Fq "foreign_objects b_stubs$ext_obj" "$b_lib/dune-package"
   $ test ! -e "$foreign_object"
@@ -69,8 +69,8 @@ though b's intermediate object is absent.
   $ dune-consumer/_build/default/main.exe
   2
 
-CR-someday alizter: The required library and installed stubs should be tracked.
-The uninstalled object must remain absent from the action's dependencies.
+The required library and installed stubs are tracked, while the uninstalled
+object remains absent from the action's dependencies.
 
   $ dune rules --root dune-consumer --format=json main.exe >dune-rules.json
   $ jq_dune --arg b "$b_lib" --arg archive "$stub_archive" \
@@ -88,11 +88,11 @@ The uninstalled object must remain absent from the action's dependencies.
   >   }' dune-rules.json
   {
     "reader": "dune-package",
-    "required_interface": false,
-    "required_archive": false,
-    "required_metadata": false,
-    "stub_archive": false,
-    "stub_dll": false,
+    "required_interface": true,
+    "required_archive": true,
+    "required_metadata": true,
+    "stub_archive": true,
+    "stub_dll": true,
     "uninstalled_object": false
   }
 
